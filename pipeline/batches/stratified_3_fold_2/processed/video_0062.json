@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does failure occur in the video?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样在视频的第几秒断开？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>给出断裂的时间和模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What is the fracture mode?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>这是什么破坏方式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Report the fracture second and mode."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0062.mp4"
+        ]
+    }
+]
