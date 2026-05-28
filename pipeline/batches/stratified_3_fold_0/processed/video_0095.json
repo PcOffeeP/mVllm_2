@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Fracture onset time?"
+                "content": "<video>请判断断裂模式。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0095.mp4"
+            "videos/video_0095.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What time? What failure mode?"
+                "content": "<video>Describe the failure mode."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0095.mp4"
+            "videos/video_0095.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>断裂模式名称是什么？"
+                "content": "<video>何时断裂？只回答时间。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0095.mp4"
+            "videos/video_0095.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样断裂的时间戳是多少？"
+                "content": "<video>何时发生断裂？请描述断裂形态。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0095.mp4"
+            "videos/video_0095.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>How did it break?"
+                "content": "<video>What's the break time?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0095.mp4"
+            "videos/video_0095.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>断裂时间和断裂模式分别是？"
+                "content": "<video>Give me the fracture time and its type."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0095.mp4"
+            "videos/video_0095.mp4"
         ]
     }
 ]

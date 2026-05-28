@@ -3,30 +3,30 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>At what second does it break? What mode?"
+                "content": "<video>Give me the fracture time and its type."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0087.mp4"
+            "videos/video_0087.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>何时拉断？怎么断的？"
+                "content": "<video>试样破坏模式是啥？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0087.mp4"
+            "videos/video_0087.mp4"
         ]
     },
     {
@@ -37,56 +37,56 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0087.mp4"
+            "videos/video_0087.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What's the fracture timestamp?"
+                "content": "<video>Only give the fracture mode."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0087.mp4"
+            "videos/video_0087.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Give the fracture mode name."
+                "content": "<video>破坏时间与破坏方式？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0087.mp4"
+            "videos/video_0087.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>断裂形式属于哪类？"
+                "content": "<video>At which moment does fracture happen?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0087.mp4"
+            "videos/video_0087.mp4"
         ]
     }
 ]

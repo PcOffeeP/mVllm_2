@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Give me the fracture time and its type."
+                "content": "<video>When? How? (fracture time & mode)"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"1.75s\", \"type\": \"brittle fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0079.mp4"
+            "videos/video_0079.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样破坏模式是啥？"
+                "content": "<video>输出断裂时间和断裂模式。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"脆性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0079.mp4"
+            "videos/video_0079.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>视频时间轴上，断裂发生在？"
+                "content": "<video>试样的破坏形式如何？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"1.75s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0079.mp4"
+            "videos/video_0079.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Only give the fracture mode."
+                "content": "<video>When does fracture initiate?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"brittle fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0079.mp4"
+            "videos/video_0079.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>破坏时间与破坏方式？"
+                "content": "<video>请问破坏发生在第几秒？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"1.75s\", \"type\": \"脆性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0079.mp4"
+            "videos/video_0079.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>At which moment does fracture happen?"
+                "content": "<video>Fracture pattern?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"1.75s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0079.mp4"
+            "videos/video_0079.mp4"
         ]
     }
 ]

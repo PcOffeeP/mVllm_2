@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>When does failure occur in the video?"
+                "content": "<video>What's the fracture timestamp?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"16.37s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0008.mp4"
+            "videos/video_0008.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样在视频的第几秒断开？"
+                "content": "<video>断裂模式名称是什么？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"16.37s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0008.mp4"
+            "videos/video_0008.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>给出断裂的时间和模式。"
+                "content": "<video>断裂发生在第几秒？属于什么模式？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"16.37s\", \"type\": \"齐根断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0008.mp4"
+            "videos/video_0008.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What is the fracture mode?"
+                "content": "<video>Time of fracture and failure description."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"grip-end fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0008.mp4"
+            "videos/video_0008.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>这是什么破坏方式？"
+                "content": "<video>只输出断裂时间。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"齐根断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0008.mp4"
+            "videos/video_0008.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Report the fracture second and mode."
+                "content": "<video>What type of failure is this?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"16.37s\", \"type\": \"grip-end fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0008.mp4"
+            "videos/video_0008.mp4"
         ]
     }
 ]

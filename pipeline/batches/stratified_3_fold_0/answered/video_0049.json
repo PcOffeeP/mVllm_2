@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的破坏形式如何？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0049.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>只输出断裂时间。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"168.5s\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0049.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does fracture initiate?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"168.5s\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0049.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>何时拉断？怎么断的？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"168.5s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0049.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Time of fracture and failure description."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"168.5s\", \"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0049.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>How would you categorize this break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0049.mp4"
+        ]
+    }
+]

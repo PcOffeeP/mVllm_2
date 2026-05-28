@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样何时发生破坏？"
+                "content": "<video>试样的破坏形式如何？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"168.5s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0049.mp4"
+            "videos/video_0049.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>When does the sample break?"
+                "content": "<video>只输出断裂时间。"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"168.5s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0049.mp4"
+            "videos/video_0049.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What type of failure is this?"
+                "content": "<video>When does fracture initiate?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0049.mp4"
+            "videos/video_0049.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样在哪一秒断裂？断裂方式是什么？"
+                "content": "<video>何时拉断？怎么断的？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"168.5s\", \"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0049.mp4"
+            "videos/video_0049.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>断裂属于韧性还是脆性？"
+                "content": "<video>Time of fracture and failure description."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0049.mp4"
+            "videos/video_0049.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>When does breakage occur? Describe it."
+                "content": "<video>How would you categorize this break?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"168.5s\", \"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0049.mp4"
+            "videos/video_0049.mp4"
         ]
     }
 ]

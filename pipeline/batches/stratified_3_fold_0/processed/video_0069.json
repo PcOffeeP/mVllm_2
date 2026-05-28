@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>何时拉断？怎么断的？"
+                "content": "<video>试样何时断裂？断裂特征是什么？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0069.mp4"
+            "videos/video_0069.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样的断裂方式是什么？"
+                "content": "<video>At which moment does fracture happen?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0069.mp4"
+            "videos/video_0069.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What second does the fracture take place?"
+                "content": "<video>How did it break?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0069.mp4"
+            "videos/video_0069.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>告诉我断裂发生在第几秒。"
+                "content": "<video>Fracture timestamp and mode, please."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0069.mp4"
+            "videos/video_0069.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Fracture time and fracture pattern?"
+                "content": "<video>试样断裂的时间戳是多少？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0069.mp4"
+            "videos/video_0069.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Fracture pattern?"
+                "content": "<video>试样的破坏形式如何？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0069.mp4"
+            "videos/video_0069.mp4"
         ]
     }
 ]

@@ -130,7 +130,7 @@ def batch_rename_videos(
 
 
 batch_rename_videos(
-    directory="data/videos",
+    directory="data/01_videos",
     mode="random",
     prefix="train",
     suffix="",

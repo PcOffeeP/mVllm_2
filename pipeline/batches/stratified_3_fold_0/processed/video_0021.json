@@ -7,86 +7,86 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0021.mp4"
+            "videos/video_0021.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Only give the fracture mode."
+                "content": "<video>只告诉我断裂类型。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0021.mp4"
+            "videos/video_0021.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样的断裂方式是什么？"
+                "content": "<video>输出断裂时间和断裂模式。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0021.mp4"
+            "videos/video_0021.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样何时断裂？断裂特征是什么？"
+                "content": "<video>What failure mode does it show?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0021.mp4"
+            "videos/video_0021.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>视频时间轴上，断裂发生在？"
+                "content": "<video>断裂发生在哪个时刻？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0021.mp4"
+            "videos/video_0021.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What's the break time?"
+                "content": "<video>What second does the fracture take place?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0021.mp4"
+            "videos/video_0021.mp4"
         ]
     }
 ]

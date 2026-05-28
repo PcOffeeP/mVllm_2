@@ -4,17 +4,17 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent  # validation/ → AAA-TS-Video/ → finetune/ → mVllm/
 DATA_DIR_ROOT = PROJECT_ROOT / "data"
-VIDEO_DIR = DATA_DIR_ROOT / "videos"
+VIDEO_DIR = DATA_DIR_ROOT / "01_videos"
 
 
 VALIDATION_DIR = Path(__file__).resolve().parent
 AAA_TS_VIDEO_DIR = VALIDATION_DIR.parent
 DATA_DIR = AAA_TS_VIDEO_DIR / "data"
 JSON_DIR = DATA_DIR / "JSON"
-SPLIT_DIR = DATA_DIR_ROOT / "splits"
+SPLIT_DIR = DATA_DIR_ROOT / "03_splits"
 RESULTS_DIR = VALIDATION_DIR / "results"
 
-GROUND_TRUTH_XLSX = DATA_DIR_ROOT / "annotations" / "all_videos_tag.xlsx"
+GROUND_TRUTH_CSV = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.csv"
 GROUND_TRUTH_JSON = DATA_DIR / "all_videos_tag.json"
 TRAINING_JSON_FILES = [
     JSON_DIR / "3k0.json",

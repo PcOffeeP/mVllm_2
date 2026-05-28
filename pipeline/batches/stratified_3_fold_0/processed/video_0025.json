@@ -3,45 +3,60 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>这是什么类型的断裂？"
+                "content": "<video>给出断裂的时间和模式。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"齐根断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0025.mp4"
+            "videos/video_0025.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>第几秒断的？属于哪种破坏？"
+                "content": "<video>Describe the fracture type."
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"27.30s\", \"type\": \"齐根断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0025.mp4"
+            "videos/video_0025.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>How would you categorize this break?"
+                "content": "<video>断裂发生在第几秒？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"grip-end fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0025.mp4"
+            "videos/video_0025.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When? How? (fracture time & mode)"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0025.mp4"
         ]
     },
     {
@@ -52,41 +67,26 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"27.30s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0025.mp4"
+            "videos/video_0025.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>At what second does it break? What mode?"
+                "content": "<video>只回答断裂模式。"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"27.30s\", \"type\": \"grip-end fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0025.mp4"
-        ]
-    },
-    {
-        "messages": [
-            {
-                "role": "user",
-                "content": "<video>断裂瞬间对应的时间是多少？"
-            },
-            {
-                "role": "assistant",
-                "content": "{\"time\": \"27.30s\"}"
-            }
-        ],
-        "videos": [
-            "Video/all_videos/video_0025.mp4"
+            "videos/video_0025.mp4"
         ]
     }
 ]

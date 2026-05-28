@@ -90,7 +90,7 @@ def main():
             if "videos" in item and len(item["videos"]) > 0:
                 # 确保填入的是相对于项目根目录的相对路径
                 # 如果输入已经是相对于项目根的相对路径，relpath 会处理好它
-                    # 提取视频文件名，统一映射到 data/videos/ 目录下
+                    # 提取视频文件名，统一映射到 data/01_videos/ 目录下
                     video_filename = os.path.basename(video_path)
                     final_path = f"videos/{video_filename}"
                     item["videos"][0] = final_path

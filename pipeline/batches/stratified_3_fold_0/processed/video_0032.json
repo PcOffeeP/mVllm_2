@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Fracture pattern?"
+                "content": "<video>Identify the fracture style."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"brittle fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0032.mp4"
+            "videos/video_0032.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What's the fracture timestamp?"
+                "content": "<video>Give me the fracture time and its type."
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"3.37s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0032.mp4"
+            "videos/video_0032.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>When? How? (fracture time & mode)"
+                "content": "<video>When does it break?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"3.37s\", \"type\": \"brittle fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0032.mp4"
+            "videos/video_0032.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>告诉我时间和断裂模式。"
+                "content": "<video>试样破坏模式是啥？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"3.37s\", \"type\": \"脆性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0032.mp4"
+            "videos/video_0032.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样的断裂方式是什么？"
+                "content": "<video>第几秒断的？属于哪种破坏？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"脆性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0032.mp4"
+            "videos/video_0032.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样在哪一秒断裂？"
+                "content": "<video>断裂起始时间点是？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"3.37s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0032.mp4"
+            "videos/video_0032.mp4"
         ]
     }
 ]

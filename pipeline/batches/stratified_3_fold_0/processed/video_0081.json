@@ -7,11 +7,11 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"99.60s\", \"type\": \"韧性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0081.mp4"
+            "videos/video_0081.mp4"
         ]
     },
     {
@@ -22,11 +22,11 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"99.60s\", \"type\": \"ductile fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0081.mp4"
+            "videos/video_0081.mp4"
         ]
     },
     {
@@ -37,11 +37,11 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"韧性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0081.mp4"
+            "videos/video_0081.mp4"
         ]
     },
     {
@@ -52,11 +52,11 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"99.60s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0081.mp4"
+            "videos/video_0081.mp4"
         ]
     },
     {
@@ -67,11 +67,11 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"99.60s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0081.mp4"
+            "videos/video_0081.mp4"
         ]
     },
     {
@@ -82,11 +82,11 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"ductile fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0081.mp4"
+            "videos/video_0081.mp4"
         ]
     }
 ]

@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Report the fracture second and mode."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.77s\", \"type\": \"brittle fracture\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0075.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Is it ductile or brittle?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"brittle fracture\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0075.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At which moment does fracture happen?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.77s\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0075.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频里第几秒断裂？什么类型？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.77s\", \"type\": \"脆性断裂\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0075.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂瞬间对应的时间是多少？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.77s\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0075.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>这是什么类型的断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"脆性断裂\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0075.mp4"
+        ]
+    }
+]

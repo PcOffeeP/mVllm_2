@@ -3,60 +3,15 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>请判断断裂模式。"
+                "content": "<video>Identify the fracture moment and pattern."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0005.mp4"
-        ]
-    },
-    {
-        "messages": [
-            {
-                "role": "user",
-                "content": "<video>Give both time and fracture style."
-            },
-            {
-                "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
-            }
-        ],
-        "videos": [
-            "Video/all_videos/video_0005.mp4"
-        ]
-    },
-    {
-        "messages": [
-            {
-                "role": "user",
-                "content": "<video>Report the fracture second."
-            },
-            {
-                "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
-            }
-        ],
-        "videos": [
-            "Video/all_videos/video_0005.mp4"
-        ]
-    },
-    {
-        "messages": [
-            {
-                "role": "user",
-                "content": "<video>告诉我断裂发生在第几秒。"
-            },
-            {
-                "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
-            }
-        ],
-        "videos": [
-            "Video/all_videos/video_0005.mp4"
+            "videos/video_0005.mp4"
         ]
     },
     {
@@ -67,26 +22,71 @@
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"no fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0005.mp4"
+            "videos/video_0005.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>何时断裂？如何断裂？"
+                "content": "<video>断裂发生在第几秒？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"未断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0005.mp4"
+            "videos/video_0005.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What second does the fracture take place?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0005.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频里第几秒断裂？什么类型？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0005.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂模式属于哪一种？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
+            }
+        ],
+        "videos": [
+            "videos/video_0005.mp4"
         ]
     }
 ]

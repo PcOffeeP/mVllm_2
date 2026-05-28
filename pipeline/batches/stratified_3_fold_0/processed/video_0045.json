@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样的断裂方式是什么？"
+                "content": "<video>视频里第几秒出现断裂？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0045.mp4"
+            "videos/video_0045.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>只输出断裂时间。"
+                "content": "<video>给出断裂模式的术语名称。"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"184.30s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0045.mp4"
+            "videos/video_0045.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Time of failure?"
+                "content": "<video>When does fracture initiate?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"184.30s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0045.mp4"
+            "videos/video_0045.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What time does it break and how?"
+                "content": "<video>告诉我时间和断裂模式。"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"184.30s\", \"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0045.mp4"
+            "videos/video_0045.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Is it ductile or brittle?"
+                "content": "<video>Time and mode of fracture."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0045.mp4"
+            "videos/video_0045.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样何时断裂？断裂特征是什么？"
+                "content": "<video>How did it break?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"184.30s\", \"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0045.mp4"
+            "videos/video_0045.mp4"
         ]
     }
 ]

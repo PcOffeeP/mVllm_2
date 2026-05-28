@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Report the fracture second and mode."
+                "content": "<video>请指出破坏发生的时刻和类型。"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"75.20s\", \"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0078.mp4"
+            "videos/video_0078.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>破坏时间与破坏方式？"
+                "content": "<video>Identify the fracture style."
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"75.20s\", \"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0078.mp4"
+            "videos/video_0078.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>断裂后试样呈现什么特征？"
+                "content": "<video>试样的破坏形式如何？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0078.mp4"
+            "videos/video_0078.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>At what time does the specimen fail?"
+                "content": "<video>When does the sample break?"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"75.20s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0078.mp4"
+            "videos/video_0078.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>拉断的具体时间是？"
+                "content": "<video>视频里第几秒出现断裂？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"75.20s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0078.mp4"
+            "videos/video_0078.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What is the fracture mode?"
+                "content": "<video>When? How? (fracture time & mode)"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0078.mp4"
+            "videos/video_0078.mp4"
         ]
     }
 ]

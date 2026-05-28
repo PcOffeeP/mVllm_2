@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>试样破坏模式是啥？"
+                "content": "<video>Tell me the fracture type."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"韧性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0022.mp4"
+            "videos/video_0022.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What is the fracture mode?"
+                "content": "<video>这是什么类型的断裂？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"ductile fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0022.mp4"
+            "videos/video_0022.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>What's the fracture timestamp?"
+                "content": "<video>Tell me the exact time of failure."
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"57.16s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0022.mp4"
+            "videos/video_0022.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>When and how does the specimen fail?"
+                "content": "<video>Give both time and fracture style."
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"57.16s\", \"type\": \"ductile fracture\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0022.mp4"
+            "videos/video_0022.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>请问破坏发生在第几秒？"
+                "content": "<video>视频时间轴上，断裂发生在？"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"57.16s\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0022.mp4"
+            "videos/video_0022.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>告诉我时间和断裂模式。"
+                "content": "<video>何时发生断裂？请描述断裂形态。"
             },
             {
                 "role": "assistant",
-                "content": "{\"time\": \"57.16s\", \"type\": \"韧性断裂\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0022.mp4"
+            "videos/video_0022.mp4"
         ]
     }
 ]

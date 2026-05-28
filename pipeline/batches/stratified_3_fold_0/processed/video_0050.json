@@ -3,90 +3,90 @@
         "messages": [
             {
                 "role": "user",
-                "content": "<video>给出断裂模式的术语名称。"
+                "content": "<video>Tell me when it fractures and how."
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0050.mp4"
+            "videos/video_0050.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>断裂起始时间点是？"
+                "content": "<video>What type of failure is this?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0050.mp4"
+            "videos/video_0050.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>断裂起始时刻和断裂类别？"
+                "content": "<video>告诉我断裂发生在第几秒。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"视频异常\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0050.mp4"
+            "videos/video_0050.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Identify the fracture moment and pattern."
+                "content": "<video>When does it break?"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0050.mp4"
+            "videos/video_0050.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>When does failure occur in the video?"
+                "content": "<video>请指出破坏发生的时刻和类型。"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0050.mp4"
+            "videos/video_0050.mp4"
         ]
     },
     {
         "messages": [
             {
                 "role": "user",
-                "content": "<video>Only give the fracture mode."
+                "content": "<video>试样的破坏形式如何？"
             },
             {
                 "role": "assistant",
-                "content": "{\"type\": \"video anomaly\"}"
+                "content": "{\"time\": \"s\", \"type\": \"\"}"
             }
         ],
         "videos": [
-            "Video/all_videos/video_0050.mp4"
+            "videos/video_0050.mp4"
         ]
     }
 ]
