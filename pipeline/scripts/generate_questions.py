@@ -121,11 +121,11 @@ def generate_for_video(
     for msg, new_q in zip(user_msgs, new_questions):
         msg["content"] = new_q
 
-    # 更新视频路径为统一格式: videos/video_XXXX.mp4
+    # 更新视频路径为统一格式: 01_videos/video_XXXX.mp4
     video_filename = Path(video_path).name  # 提取纯文件名
     for dialog in data:
         if "videos" in dialog and len(dialog["videos"]) > 0:
-            dialog["videos"][0] = f"videos/{video_filename}"
+            dialog["videos"][0] = f"01_videos/{video_filename}"
 
     return data
 
@@ -141,7 +141,7 @@ def _check_legacy_video_paths(output_dir: Path):
                 data = json.load(f)
             for item in data if isinstance(data, list) else [data]:
                 videos = item.get("videos", [])
-                if videos and not videos[0].startswith("videos/"):
+                if videos and not videos[0].startswith("01_videos/"):
                     legacy_files.append(f"  - {json_file.name}: videos[0]={videos[0]!r}")
                     break
         except Exception:

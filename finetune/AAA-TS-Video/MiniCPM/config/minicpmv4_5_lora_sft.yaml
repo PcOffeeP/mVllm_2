@@ -28,7 +28,7 @@ overwrite_cache: true # 是否覆盖之前的缓存
 preprocessing_num_workers: 1 # 预处理线程数
 
 dataset_dir: "data"
-media_dir: "AAA-TS-Video/data"
+media_dir: "../../data"
 
 ### output
 output_dir: saves/minicpmv4_5/lora/sft_3k2# 更新为第三次训练路径

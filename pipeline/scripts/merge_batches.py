@@ -66,9 +66,10 @@ def _collect_batches(base_dir, batch_names=None):
         seen = set()
         result = []
         for b in batch_names:
-            if b not in seen:
-                seen.add(b)
-                result.append((b, base_dir / b))
+            safe_name = Path(b).name
+            if safe_name not in seen:
+                seen.add(safe_name)
+                result.append((safe_name, base_dir / safe_name))
         return result
 
     if not base_dir.exists():
@@ -112,13 +113,14 @@ def main():
 
     # --- Merged mode: --output specified ---
     if args.output:
-        if not args.output.lower().endswith(".json"):
-            args.output += ".json"
-        target_file = output_dir / args.output
+        safe_output = Path(args.output).name
+        if not safe_output.lower().endswith(".json"):
+            safe_output += ".json"
+        target_file = output_dir / safe_output
 
         all_data = []
         total_files = 0
-        logger.info(f"Merged mode: {len(batches)} batches -> {args.output}")
+        logger.info(f"Merged mode: {len(batches)} batches -> {safe_output}")
 
         for batch_name, batch_path in batches:
             data, n = _read_batch_data(batch_path, args.source)

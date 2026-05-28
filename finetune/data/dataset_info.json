@@ -2,25 +2,9 @@
   "identity": {
     "file_name": "identity.json"
   },
-  "tensile_video": {
-    "file_name": "../AAA-TS-Video/data/JSON/kfold_5_fold_0.json",
-    "folder": "../AAA-TS-Video/data",
-    "formatting": "sharegpt",
-    "columns": {
-      "messages": "messages",
-      "videos": "videos"
-    },
-    "tags": {
-      "role_tag": "role",
-      "content_tag": "content",
-      "system_tag": "system",
-      "user_tag": "user",
-      "assistant_tag": "assistant"
-    }
-  },
   "tensile_video_3k0": {
-    "file_name": "../AAA-TS-Video/data/JSON/3k0.json",
-    "folder": "../AAA-TS-Video/data",
+    "file_name": "../../data/04_merged/stratified_3_fold_0.json",
+    "folder": "../../data/04_merged",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -35,8 +19,8 @@
     }
   },
   "tensile_video_3k1": {
-    "file_name": "../AAA-TS-Video/data/JSON/3k1.json",
-    "folder": "../AAA-TS-Video/data",
+    "file_name": "../../data/04_merged/stratified_3_fold_1.json",
+    "folder": "../../data/04_merged",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -51,8 +35,8 @@
     }
   },
   "tensile_video_3k2": {
-    "file_name": "../AAA-TS-Video/data/JSON/3k2.json",
-    "folder": "../AAA-TS-Video/data",
+    "file_name": "../../data/04_merged/stratified_3_fold_2.json",
+    "folder": "../../data/04_merged",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",

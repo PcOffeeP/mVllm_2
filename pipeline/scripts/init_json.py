@@ -92,7 +92,7 @@ def main():
                 # 如果输入已经是相对于项目根的相对路径，relpath 会处理好它
                     # 提取视频文件名，统一映射到 data/01_videos/ 目录下
                     video_filename = os.path.basename(video_path)
-                    final_path = f"videos/{video_filename}"
+                    final_path = f"01_videos/{video_filename}"
                     item["videos"][0] = final_path
         
         with open(json_filepath, 'w', encoding='utf-8') as f:

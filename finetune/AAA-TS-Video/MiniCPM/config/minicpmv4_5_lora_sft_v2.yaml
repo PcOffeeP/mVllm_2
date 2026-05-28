@@ -34,11 +34,11 @@ overwrite_cache: true
 preprocessing_num_workers: 1
 
 dataset_dir: "data"
-media_dir: "AAA-TS-Video/data"
+media_dir: "../../data"
 
 
 ### output
-output_dir: saves/minicpmv4_5/lora/sft_v2_template
+output_dir: saves/minicpmv4_5/lora/sft_3k2_v2
 logging_steps: 10
 save_steps: 100
 plot_loss: true

@@ -12,8 +12,9 @@
 
 | 仓库 | 说明 | 当前状态 |
 |------|------|----------|
-| `finetune-cpm/` | MiniCPM-V-4.5 视频理解微调项目 | ✅ 已完成基于 LLaMA-Factory 的 3 折 LoRA 微调训练与评测闭环 |
-| `vllm_-json/` | 数据集构建工程 | ⚠️ 流水线已完成，但存在合并产物命名拼写错误、视频源文件缺失等问题 |
+| `finetune/` | MiniCPM-V-4.5 视频理解微调项目 | ✅ 已完成基于 LLaMA-Factory 的 3 折 LoRA 微调训练与评测闭环 |
+| `pipeline/` | 数据集构建流水线（脚本与配置） | ✅ 含 init_json.py, merge_batches.py, dataset_manager.py, generate_questions.py, fill_answers.py 等 |
+| `data/` | 数据集资产目录 | ✅ 含 01_videos（110 个视频）、02_annotations、03_splits（stratified 3-fold）、04_merged（3 fold 合并产物） |
 
 ### 1.2 规划文档
 
@@ -30,14 +31,12 @@
 
 - [x] MiniCPM-V-4.5 单模型微调与评测闭环
 - [x] 数据集流水线搭建
-- [ ] 数据集工程收尾（命名、补全 5 折、视频路径确认）
-- [ ] MiniCPM 持续优化（评测分析、超参数调优、迭代训练）
+- [x] 数据集工程收尾（命名修复、视频路径确认、stratified 3-fold 划分替代原 5 折方案）
+- [~] MiniCPM 持续优化（评测分析已完成，type acc 9.2% / time MAE 242s；v2 超参配置已准备，待重训）
 - [ ] 多基座模型横向对比（框架待定，5 个候选模型，含 MiniCPM 基线）
 - [ ] 工程落地与场景拓展
 
-> 当前阻塞：阶段一 P0 任务（1.1–1.3）待完成，主要等待视频源文件位置确认与合并产物补全。
-
-> 数据规模：当前已标注：待统计 | 已清洗可用：待统计 | 目标缺口：待统计
+> 数据规模：已标注视频 110 个 | stratified 3-fold 划分完成 | 合并产物位于 `data/04_merged/`
 
 ---
 
@@ -47,21 +46,19 @@
 
 - 目标完成日期：待定
 
-> 聚焦 `vllm_-json/` 仓库的已知缺陷修复与数据完整性保障。注意：`vllm_-json/` 目录名含下划线+连字符，自动化脚本中需做转义处理。
+> 聚焦 `pipeline/` + `data/` 目录的数据完整性保障与流水线收尾。流水线脚本位于 `pipeline/scripts/`，数据资产位于 `data/`。
 
 | # | 任务 | 优先级 | 说明 |
 |---|------|--------|------|
-| 1.1 | 修复合并产物命名错误 | **P0** | `kfold_5_flod_0` → `kfold_5_fold_0.json`；`3k0/3k1/3k2`（3,000 条样本的 3-fold 合并产物，编号 0/1/2）补 `.json` 扩展名 |
-| 1.2 | 补全 5 折合并产物 | **P0** | 补充 `kfold_5_fold_1~4` 的合并产物 |
-| 1.3 | 确认视频源文件位置 | **P0** | `Video/all_videos/` 目录不存在，需确认视频实际存放路径并更新 JSON 中的视频路径 |
-| 1.4 | 统一路径分隔符 | P1 | 统一为正斜杠 `/`，以兼容 Linux/macOS 部署环境 |
-| 1.5 | 厘清 `batch_000` 来源 | P1 | 该批次无对应 `split` 文件，需确认用途。⚠️ 若 batch_000 含未划分样本，需确认是否已泄露至现有训练/验证集，必要时重新生成全部 split 文件 |
+| 1.1 | 修复合并产物命名错误 | ~~P0~~ ✅ | 已完成：`flod` → `fold`，补 `.json` 扩展名 |
+| 1.2 | 确认视频源文件位置 | ~~P0~~ ✅ | 已完成：`data/01_videos/` 含全部 110 个视频（video_0001~video_0110.mp4） |
+| 1.3 | 统一路径分隔符 | ~~P1~~ ✅ | 已完成：统一为正斜杠 `/` |
+| 1.4 | Stratified 3-fold 数据划分 | ✅ 新增 | `data/03_splits/` 含 stratified_3_fold_0~2.json；`data/04_merged/` 含对应 3 个 fold 的合并产物；流水线脚本位于 `pipeline/scripts/` |
 
-- [ ] 1.1 修复合并产物命名错误
-- [ ] 1.2 补全 5 折合并产物
-- [ ] 1.3 确认视频源文件位置
-- [ ] 1.4 统一路径分隔符
-- [ ] 1.5 厘清 `batch_000` 来源
+- [x] 1.1 修复合并产物命名错误
+- [x] 1.2 确认视频源文件位置
+- [x] 1.3 统一路径分隔符
+- [x] 1.4 Stratified 3-fold 数据划分与合并
 
 ---
 
@@ -69,21 +66,21 @@
 
 - 目标完成日期：待定
 
-> 在 `finetune-cpm/` 仓库对 MiniCPM 基座模型进行持续优化。当前微调性能尚未达到理想水平，需通过深度分析与迭代调优同步提升效果。
+> 在 `finetune/` 仓库对 MiniCPM 基座模型进行持续优化。当前微调性能尚未达到理想水平（type acc 9.2%, time MAE 242s），需通过深度分析与迭代调优同步提升效果。已完成 3 折 LoRA 训练（`saves/minicpmv4_5/lora/sft_3k0~2`），评测分析文档位于 `finetune/AAA-TS-Video/`。
 
 > **工作模式**：本阶段与阶段三为并行推进关系。MiniCPM 的持续优化（阶段二）不阻塞其他基座模型的实验筹划（阶段三），两者同步进行。
 
 | # | 任务 | 优先级 | 说明 |
 |---|------|--------|------|
-| 2.1 | **MiniCPM 评测结果深度分析与迭代优化** | **P0** | 基于 `AAA-TS-Video/validation/results/` 中的 time/type metrics，定位 MiniCPM 当前短板，并制定下一轮优化方案 |
-| 2.2 | 超参数调优 | P1 | （依赖 2.1 结论）调整 LoRA rank、learning rate、epoch、prompt 策略等 |
-| 2.3 | 训练配置文档化 | P1 | 将配置设计 rationale 写入文档 |
-| 2.4 | Few-shot / CoT 策略优化 | P2 | 尝试不同示例组合提升推理稳定性 |
+| 2.1 | **MiniCPM 评测结果深度分析与迭代优化** | ~~P0~~ [~] | 评测已完成（time/type/joint），但效果差：type acc 9.2%, time MAE 242s。归因分析文档位于 `finetune/AAA-TS-Video/`，优化方案待执行 |
+| 2.2 | 超参数调优 | P1 [~] | v2 配置已准备（`minicpmv4_5_lora_sft_v2.yaml`），尚未执行重训 |
+| 2.3 | 训练配置文档化 | ~~P1~~ ✅ | 已完成：`finetune/AAA-TS-Video/runbook.md` |
+| 2.4 | Few-shot / CoT 策略优化 | ~~P2~~ ✅ | 已完成：`run_inference.py` 支持 baseline/strict/fewshot preset |
 
-- [ ] 2.1 MiniCPM 评测结果深度分析与迭代优化
-- [ ] 2.2 超参数调优
-- [ ] 2.3 训练配置文档化
-- [ ] 2.4 Few-shot / CoT 策略优化
+- [~] 2.1 MiniCPM 评测结果深度分析与迭代优化（评测完成，效果差，优化待执行）
+- [~] 2.2 超参数调优（v2 配置已准备，未执行重训）
+- [x] 2.3 训练配置文档化
+- [x] 2.4 Few-shot / CoT 策略优化
 
 ---
 
