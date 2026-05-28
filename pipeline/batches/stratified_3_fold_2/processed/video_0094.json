@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>How would you categorize this break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0094.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>输出断裂时间和断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"148.10s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0094.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>只输出断裂时间。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"148.10s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0094.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的破坏形式如何？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0094.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does the specimen fracture?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"148.10s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0094.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Report the fracture second and mode."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"148.10s\", \"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0094.mp4"
+        ]
+    }
+]

@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does the specimen fracture?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.56s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0068.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture time and fracture pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.56s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0068.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频里第几秒出现断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.56s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0068.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Describe the fracture type."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0068.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>请指出破坏发生的时刻和类型。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.56s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0068.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>如何分类这次断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0068.mp4"
+        ]
+    }
+]

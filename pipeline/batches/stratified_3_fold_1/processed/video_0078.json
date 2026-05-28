@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Give me the fracture time and its type."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"75.20s\", \"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0078.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样破坏模式是啥？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0078.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频时间轴上，断裂发生在？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"75.20s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0078.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Only give the fracture mode."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0078.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>破坏时间与破坏方式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"75.20s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0078.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At which moment does fracture happen?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"75.20s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0078.mp4"
+        ]
+    }
+]

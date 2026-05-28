@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the fracture timestamp?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.29s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂模式名称是什么？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"爆炸性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂发生在第几秒？属于什么模式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.29s\", \"type\": \"爆炸性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Time of fracture and failure description."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.29s\", \"type\": \"explosive fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>只输出断裂时间。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.29s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What type of failure is this?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"explosive fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    }
+]

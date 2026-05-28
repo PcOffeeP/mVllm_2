@@ -1,0 +1,92 @@
+[
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>（用户对视频的提问）"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "data/Video/train/train_062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>（用户对视频的提问）"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "data/Video/train/train_062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>（用户对视频的提问）"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "data/Video/train/train_062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>（用户对视频的提问）"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "data/Video/train/train_062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>（用户对视频的提问）"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "data/Video/train/train_062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>（用户对视频的提问）"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "data/Video/train/train_062.mp4"
+    ]
+  }
+]

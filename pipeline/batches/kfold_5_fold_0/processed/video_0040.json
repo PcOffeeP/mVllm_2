@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Tell me when it fractures and how."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.3s\", \"type\": \"explosive fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What type of failure is this?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"explosive fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>告诉我断裂发生在第几秒。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.3s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does it break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.3s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>请指出破坏发生的时刻和类型。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.3s\", \"type\": \"爆炸性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的破坏形式如何？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"爆炸性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0040.mp4"
+        ]
+    }
+]

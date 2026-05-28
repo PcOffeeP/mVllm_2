@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的破坏形式如何？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0039.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>只输出断裂时间。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"63.7s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0039.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does fracture initiate?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"63.7s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0039.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>何时拉断？怎么断的？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"63.7s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0039.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Time of fracture and failure description."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"63.7s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0039.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>How would you categorize this break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0039.mp4"
+        ]
+    }
+]

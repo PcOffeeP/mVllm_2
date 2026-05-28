@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Give me the fracture time and its type."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"151.17s\", \"type\": \"interface tear-off\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0063.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂模式属于哪一种？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"界面脱粘\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0063.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Mode of fracture?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"interface tear-off\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0063.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What second does the fracture take place?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"151.17s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0063.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>只输出断裂时间。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"151.17s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0063.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样何时断裂？断裂特征是什么？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"151.17s\", \"type\": \"界面脱粘\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0063.mp4"
+        ]
+    }
+]

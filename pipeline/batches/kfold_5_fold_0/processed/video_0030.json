@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的破坏形式如何？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0030.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>How did it break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.6s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0030.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂时间和断裂模式分别是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.6s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0030.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At what time does the specimen fail?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.6s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0030.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does breakage occur? Describe it."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.6s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0030.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>给我断裂的具体时间。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.6s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0030.mp4"
+        ]
+    }
+]

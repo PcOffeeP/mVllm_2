@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Identify the fracture moment and pattern."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\", \"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the failure pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂发生在第几秒？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What second does the fracture take place?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频里第几秒断裂？什么类型？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂模式属于哪一种？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0083.mp4"
+        ]
+    }
+]

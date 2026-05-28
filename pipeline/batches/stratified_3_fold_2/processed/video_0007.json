@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样在视频的第几秒断开？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"49.41s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0007.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>给出断裂模式的术语名称。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0007.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>给出断裂的时间和模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"49.41s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0007.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At what time does the specimen fail?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"49.41s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0007.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Describe the fracture type."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0007.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does breakage occur? Describe it."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"49.41s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0007.mp4"
+        ]
+    }
+]

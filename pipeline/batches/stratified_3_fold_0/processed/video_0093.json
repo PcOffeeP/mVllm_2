@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>给出断裂的时间和模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"55.34s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0093.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Describe the fracture type."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0093.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂发生在第几秒？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"55.34s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0093.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When? How? (fracture time & mode)"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"55.34s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0093.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Report the fracture second."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"55.34s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0093.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>只回答断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0093.mp4"
+        ]
+    }
+]

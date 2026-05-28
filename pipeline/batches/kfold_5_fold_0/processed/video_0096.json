@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频时间轴上，断裂发生在？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"220.0s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0096.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>请指出破坏发生的时刻和类型。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"220.0s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0096.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Time of failure?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"220.0s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0096.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Tell me the fracture type."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0096.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>如何分类这次断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0096.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Report the fracture second and mode."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"220.0s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0096.mp4"
+        ]
+    }
+]

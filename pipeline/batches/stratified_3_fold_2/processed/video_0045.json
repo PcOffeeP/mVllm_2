@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>何时拉断？怎么断的？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"184.30s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0045.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的断裂方式是什么？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0045.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What second does the fracture take place?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"184.30s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0045.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>告诉我断裂发生在第几秒。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"184.30s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0045.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture time and fracture pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"184.30s\", \"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0045.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0045.mp4"
+        ]
+    }
+]

@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When is the break? What is the fracture type?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.61s\", \"type\": \"brittle fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0065.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the fracture timestamp?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.61s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0065.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"brittle fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0065.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>破坏时间与破坏方式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.61s\", \"type\": \"脆性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0065.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>告诉我断裂发生在第几秒。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"0.61s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0065.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样断裂的形态是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"脆性断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0065.mp4"
+        ]
+    }
+]

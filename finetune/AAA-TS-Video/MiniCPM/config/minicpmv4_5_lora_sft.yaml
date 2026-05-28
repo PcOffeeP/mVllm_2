@@ -1,0 +1,66 @@
+### model
+model_name_or_path: openbmb/MiniCPM-V-4_5 # 可以是MiniCPM-V或者MiniCPM-o的本地模型
+cache_dir: /hy-tmp/cache  # 添加这一行
+trust_remote_code: true
+quantization_bit: 4 # 量化为4位
+upcast_layernorm: true # 提升LayerNorm的数值稳定性
+flash_attn: fa2 # 使用Flash Attention 2加速注意力计算
+
+
+### method
+stage: sft # sft训练
+do_train: true
+finetuning_type: lora # lora微调
+lora_target: all # 扩大LoRA覆盖面
+lora_rank: 16 # 提升LoRA秩，增强格式约束能力
+lora_alpha: 32 # 维持1:2的经典比例
+lora_dropout: 0.1 # 增加Dropout防止过拟合
+
+### dataset
+dataset: tensile_video_3k2 # 改成data/data_info.json的文件下新增的键名
+template: minicpm_v # 不要改
+
+cutoff_len: 8192 # 视觉模型建议至少 1024，过小会导致视觉 token 截断异常
+video_maxlen: 36 # 视频帧数，确保断裂瞬间特征被捕捉
+# max_samples: 48 #最多用多少条数据
+
+overwrite_cache: true # 是否覆盖之前的缓存
+preprocessing_num_workers: 1 # 预处理线程数
+
+dataset_dir: "data"
+media_dir: "AAA-TS-Video/data"
+
+### output
+output_dir: saves/minicpmv4_5/lora/sft_3k2# 更新为第三次训练路径
+logging_steps: 10 #多少步打印一次日志
+save_steps: 100 #多少步保存一次
+plot_loss: true # 是否绘制损失函数
+overwrite_output_dir: true #覆盖之前的测试结果
+save_total_limit: 3
+
+### train
+per_device_train_batch_size: 1 #测试batch_size=16
+gradient_accumulation_steps: 18 #梯度累积次数
+learning_rate: 1.5e-5 # 学习率
+num_train_epochs: 8 # 增加到 8 轮，确保模型深刻记忆 JSON 格式
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+
+fp16: false
+bf16: true # 使用bfloat16
+
+dataloader_num_workers: 0 # 数据加载线程数，设为0减少内存占用
+ddp_timeout: 180000000
+save_only_model: true
+gradient_checkpointing: true # 激活梯度检查点，大幅降低内存占用
+
+### eval
+do_eval: false
+# val_size: 0.1 # 验证集比例（必须 > 1e-6）。如果你有单独的 eval 数据集，可改为指定 eval_dataset
+# eval_strategy: epoch # 评估策略
+
+
+### memory optimization
+max_grad_norm: 1.0 # 梯度裁剪，防止梯度爆炸
+save_strategy: epoch # 保存策略
+optim: paged_adamw_8bit # 高效的优化器

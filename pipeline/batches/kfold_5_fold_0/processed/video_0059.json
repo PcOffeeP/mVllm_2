@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the fracture timestamp?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"31.6s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0059.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>何时断裂？只回答时间。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"31.6s\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0059.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样破坏模式是啥？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"齐根断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0059.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Identify the fracture style."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"grip-end fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0059.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What time does it break and how?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"31.6s\", \"type\": \"grip-end fracture\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0059.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂时间和断裂模式分别是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"31.6s\", \"type\": \"齐根断裂\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0059.mp4"
+        ]
+    }
+]

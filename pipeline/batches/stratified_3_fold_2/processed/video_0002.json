@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture timestamp and mode, please."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"not clamped\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0002.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>第几秒断的？属于哪种破坏？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"未夹紧\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0002.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>如何分类这次断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"未夹紧\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0002.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>How would you categorize this break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"not clamped\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0002.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Give the fracture time."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"not clamped\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0002.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样何时发生破坏？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"未夹紧\"}"
+            }
+        ],
+        "videos": [
+            "Video/all_videos/video_0002.mp4"
+        ]
+    }
+]
