@@ -1,13 +1,13 @@
 ### model
-model_name_or_path: openbmb/MiniCPM-V-4_5 # 这里可以填入原始模型地址，可以是本地模型
-cache_dir: /hy-tmp/cache  # 添加这一行
-adapter_name_or_path: ./saves/minicpmv4_5/lora/sft_3k2 # 这里填入保存的lora模型地址
-template: minicpm_v
+model_name_or_path: openbmb/MiniCPM-V-4_6
+cache_dir: null
+adapter_name_or_path: ./saves/minicpmv4_6/lora/sft_3k0
+template: minicpm_v_4_6
 finetuning_type: lora
 trust_remote_code: true
 
 ### export
-export_dir: /hy-tmp/model/train/test01/sft_3k2
+export_dir: ./saves/minicpmv4_6/lora/sft_3k0_merged
 export_size: 2
 export_device: cpu
 export_legacy_format: false
