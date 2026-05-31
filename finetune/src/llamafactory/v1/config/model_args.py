@@ -15,25 +15,37 @@
 
 from dataclasses import dataclass, field
 
+from ..utils.types import AttentionFunction
 from .arg_utils import ModelClass, PluginConfig, get_plugin_config
 
 
 @dataclass
 class ModelArguments:
     model: str = field(
+        default="Qwen/Qwen3-4B-Instruct-2507",
         metadata={"help": "Path to the model or model identifier from Hugging Face."},
+    )
+    template: str = field(
+        default="qwen3_nothink",
+        metadata={"help": "Template for the model."},
     )
     trust_remote_code: bool = field(
         default=False,
         metadata={"help": "Trust remote code from Hugging Face."},
     )
-    use_fast_processor: bool = field(
-        default=True,
-        metadata={"help": "Use fast processor from Hugging Face."},
+    flash_attn: AttentionFunction = field(
+        default=AttentionFunction.SDPA,
+        metadata={
+            "help": "Attention implementation to use: eager, sdpa, or flash_attention_2. SDPA is the default implementation for models."
+        },
     )
     model_class: ModelClass = field(
         default=ModelClass.LLM,
         metadata={"help": "Model class from Hugging Face."},
+    )
+    init_config: PluginConfig | None = field(
+        default=None,
+        metadata={"help": "Initialization configuration for the model."},
     )
     peft_config: PluginConfig | None = field(
         default=None,
@@ -49,6 +61,13 @@ class ModelArguments:
     )
 
     def __post_init__(self) -> None:
+        supported_flash_attn = [item.value for item in AttentionFunction]
+        if self.flash_attn not in supported_flash_attn:
+            raise ValueError(
+                f"Unsupported `flash_attn`: {self.flash_attn}. Supported values are: {supported_flash_attn}."
+            )
+
+        self.init_config = get_plugin_config(self.init_config)
         self.peft_config = get_plugin_config(self.peft_config)
         self.kernel_config = get_plugin_config(self.kernel_config)
         self.quant_config = get_plugin_config(self.quant_config)

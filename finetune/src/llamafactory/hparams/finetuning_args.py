@@ -482,6 +482,24 @@ class FinetuningArguments(
             )
         },
     )
+    use_hyper_parallel: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "Whether or not to use HyperParallel distributed training backend (FSDP/TP). "
+                "Only supported for the 'sft' stage with full fine-tuning."
+            )
+        },
+    )
+    hyper_parallel_args: str | None = field(
+        default=None,
+        metadata={
+            "help": (
+                "Path to a JSON file containing HyperParallel strategy arguments "
+                "(e.g., tp_size, param_dtype). Used when use_hyper_parallel=True."
+            )
+        },
+    )
     use_muon: bool = field(
         default=False,
         metadata={"help": "Whether or not to use the Muon optimizer."},
@@ -489,6 +507,22 @@ class FinetuningArguments(
     use_dft_loss: bool = field(
         default=False,
         metadata={"help": "Whether to use the DFT loss."},
+    )
+    use_asft_loss: bool = field(
+        default=False,
+        metadata={"help": "Whether to use the ASFT loss."},
+    )
+    asft_alpha: float = field(
+        default=0.1,
+        metadata={"help": "The alpha parameter for ASFT loss to control the power of adaptive weight."},
+    )
+    use_eaft_loss: bool = field(
+        default=False,
+        metadata={"help": "Whether to use the EAFT loss."},
+    )
+    eaft_alpha: float = field(
+        default=1.0,
+        metadata={"help": "The alpha parameter for EAFT loss to control the power of adaptive weight."},
     )
     freeze_vision_tower: bool = field(
         default=True,

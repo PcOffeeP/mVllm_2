@@ -170,17 +170,13 @@ def configure_quantization(
                 init_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
             elif model_args.quantization_bit == 4:
                 check_version("bitsandbytes>=0.39.0", mandatory=True)
-                kwargs = {
-                    "load_in_4bit": True,
-                    "bnb_4bit_compute_dtype": model_args.compute_dtype,
-                    "bnb_4bit_use_double_quant": model_args.double_quantization,
-                    "bnb_4bit_quant_type": model_args.quantization_type,
-                    "bnb_4bit_quant_storage": model_args.compute_dtype,  # crucial for fsdp+qlora
-                }
-                if getattr(config, "model_type", None) in ["minicpmv", "minicpmo"]:
-                    kwargs["llm_int8_skip_modules"] = ["resampler"]
-
-                init_kwargs["quantization_config"] = BitsAndBytesConfig(**kwargs)
+                init_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=model_args.compute_dtype,
+                    bnb_4bit_use_double_quant=model_args.double_quantization,
+                    bnb_4bit_quant_type=model_args.quantization_type,
+                    bnb_4bit_quant_storage=model_args.compute_dtype,  # crucial for fsdp+qlora
+                )
             else:
                 raise ValueError("Bitsandbytes only accepts 4-bit or 8-bit quantization.")
 
