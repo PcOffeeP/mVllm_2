@@ -1,6 +1,6 @@
 # mVllm — 材料拉伸断裂行为视频理解模型微调
 
-基于 MiniCPM-V-4.5 的视频多模态模型微调项目，用于理解和分析材料拉伸断裂行为视频。
+基于 MiniCPM-V-4.6 的视频多模态模型微调项目，用于理解和分析材料拉伸断裂行为视频。
 
 详细约束与规范见 [AGENTS.md](./AGENTS.md)。
 
@@ -12,7 +12,7 @@
 mVllm/
 ├── data/
 │   ├── 01_videos/              # 原始视频文件 (video_0001~video_0110.mp4)
-│   ├── 02_annotations/         # CSV 标注 + video_mapping.csv
+│   ├── 02_annotations/         # CSV 标注 + video_mapping.csv + all_videos_tag.csv
 │   ├── 03_splits/              # stratified 3-fold 划分文件
 │   └── 04_merged/              # 合并后的训练数据 JSON
 ├── pipeline/
@@ -21,17 +21,39 @@ mVllm/
 │   │   ├── generate_questions.py    # 生成带随机问题的训练 JSON
 │   │   ├── fill_answers.py          # 从 CSV 填入答案
 │   │   ├── merge_batches.py         # 合并各 batch 为最终训练 JSON
-│   │   └── init_json.py             # 初始化 JSON
+│   │   ├── init_json.py             # 初始化 JSON
+│   │   ├── randomize_qs.py
+│   │   ├── test_fill_answers.py
+│   │   └── video_rename.py
 │   ├── config/                 # 问题池配置 (question_pool.yaml)
+│   ├── templates/
+│   │   └── template.json             # 问题模板
 │   └── batches/                # 中间产物 (processed/ + answered/)
 ├── finetune/                   # LLaMA-Factory 训练目录
 │   ├── data/
 │   │   └── dataset_info.json         # 数据集注册表
 │   ├── AAA-TS-Video/MiniCPM/config/
-│   │   ├── minicpmv4_5_lora_sft.yaml       # v1 训练配置
-│   │   └── minicpmv4_5_lora_sft_v2.yaml    # v2 训练配置
-│   └── saves/                  # 训练产出
+│   │   ├── minicpmv4_6_lora_sft_fold0.yaml  # Fold 0 训练配置
+│   │   ├── minicpmv4_6_lora_sft_fold1.yaml  # Fold 1 训练配置
+│   │   ├── minicpmv4_6_lora_sft_fold2.yaml  # Fold 2 训练配置
+│   │   └── merge.yaml                         # LoRA 合并配置
+│   ├── AAA-TS-Video/validation/      # 推理与评测脚本
+│   │   ├── run_inference.py
+│   │   ├── evaluate_joint.py
+│   │   ├── evaluate_time.py
+│   │   ├── evaluate_type.py
+│   │   ├── prepare_ground_truth.py
+│   │   ├── plot_type_confusion_matrix.py
+│   │   ├── common.py
+│   │   └── config.py
+│   └── saves/                  # 训练产出 (当前为空)
+├── docs/
+│   ├── frac_mode.md            # 断裂模式分类指南
+│   └── question_pool.md        # 问题池参考
+├── assets/
 ├── AGENTS.md                   # 项目开发约束
+├── ROADMAP.md                  # 工作计划与路线图
+├── TASK_TRACKER.md             # 项目任务清单
 └── README.md
 ```
 
@@ -80,7 +102,7 @@ python3 pipeline/scripts/merge_batches.py --source answered
 
 ## Phase 2：安装依赖
 
-> **Python 版本**：官方 CookBook 要求 Python 3.11，当前项目使用 Python 3.13，需降级至 3.11 后执行以下安装。
+> **Python 版本**：官方 CookBook 要求 Python 3.11，项目统一使用 Python 3.11。
 
 关键依赖版本：`transformers==5.7.0`（官方 CookBook 硬要求），其他依赖按以下命令安装。
 
@@ -89,7 +111,10 @@ python3 pipeline/scripts/merge_batches.py --source answered
 pip install torch==2.8.0 torchvision==0.23.0
 
 # 2. 核心训练依赖
-pip install transformers==5.7.0 accelerate==1.13.0 deepspeed==0.18.3 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
+pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
+
+# （可选）deepspeed — 当前训练未使用，仅在多卡场景需要
+# pip install deepspeed==0.18.3
 
 # 3. Flash Attention（编译安装）
 MAX_JOBS=32 pip install --no-build-isolation flash-attn==2.8.3
@@ -98,7 +123,7 @@ MAX_JOBS=32 pip install --no-build-isolation flash-attn==2.8.3
 cd finetune/
 
 # 5. LLaMA-Factory 核心 + MiniCPM-V 视频处理依赖
-pip install -e ".[metrics,deepspeed]"
+pip install -e ".[metrics]"
 pip install -r examples/requirements/minicpm-v.txt
 
 # 6. （可选）从 ModelScope 下载模型
@@ -109,7 +134,19 @@ pip install modelscope
 
 ## Phase 3：训练
 
-### MiniCPM-V-4.6 训练（推荐）
+### 3-fold 交叉验证结构
+
+项目采用 **3-fold 交叉验证**，每个 fold 使用 2 份数据训练、1 份数据验证：
+
+| Fold | 训练集 | 验证集 | 配置文件 |
+|------|--------|--------|----------|
+| Fold 0 | 3k1 + 3k2 | 3k0 | `minicpmv4_6_lora_sft_fold0.yaml` |
+| Fold 1 | 3k0 + 3k2 | 3k1 | `minicpmv4_6_lora_sft_fold1.yaml` |
+| Fold 2 | 3k0 + 3k1 | 3k2 | `minicpmv4_6_lora_sft_fold2.yaml` |
+
+其中 3k0 / 3k1 / 3k2 对应 Phase 1 生成的 `tensile_video_3k0` / `tensile_video_3k1` / `tensile_video_3k2` 数据集。
+
+### 启动训练
 
 ```bash
 # 确保在 finetune/ 目录下
@@ -119,47 +156,78 @@ cd finetune/
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
-# 启动训练（默认使用 fold 2 数据）
-llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft.yaml
+# Fold 0: 训练用 3k1+3k2，验证用 3k0
+llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml
+
+# Fold 1: 训练用 3k0+3k2，验证用 3k1
+llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold1.yaml
+
+# Fold 2: 训练用 3k0+3k1，验证用 3k2
+llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold2.yaml
 ```
 
-### MiniCPM-V-4.5 训练
+三个 fold 相互独立，可串行执行也可在不同 GPU 上并行。
+
+### 训练配置说明
+
+| 配置项 | 默认值 |
+|--------|--------|
+| 模型 | `openbmb/MiniCPM-V-4_6` |
+| 微调方式 | LoRA (rank=16, alpha=32, dropout=0.1) |
+| 量化 | 4-bit (QLoRA) |
+| 模板 | `minicpm_v_4_6` |
+| cutoff_len | 8192 |
+| 视频最大帧数 | 36 |
+| 批次大小 | 1 × 梯度累积 16 |
+| 学习率 | 1.5e-5 (cosine) |
+| 训练轮数 | 8 |
+| warmup_ratio | 0.05 |
+| weight_decay | 0.1 |
+| adam_beta2 | 0.95 |
+| optim | paged_adamw_8bit |
+| max_grad_norm | 1000 |
+| seed | 42 |
+| gradient_checkpointing | ✅ |
+| media_dir | `../data` |
+
+> **`media_dir` 说明**：`media_dir: ../data` 确保训练数据 JSON 中的视频相对路径（如 `01_videos/video_0001.mp4`）能够从 `finetune/` 正确解析到 `data/01_videos/` 下的实际视频文件。
+
+---
+
+## Phase 4：合并 LoRA Adapter
+
+训练完成后，使用 `merge.yaml` 将 LoRA adapter 合并到基础模型中：
 
 ```bash
 cd finetune/
 
-# 使用 v2 配置启动训练（默认使用 fold 2 数据）
-llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_5_lora_sft_v2.yaml
+# 合并指定 fold 的 adapter（以 Fold 0 为例）
+llamafactory-cli export AAA-TS-Video/MiniCPM/config/merge.yaml
 ```
 
-### 训练配置说明
+`merge.yaml` 中 `adapter_name_or_path` 指向训练产出目录（如 `./saves/minicpmv4_6/lora/sft_3k0`），合并后的完整模型输出到 `export_dir`（如 `./saves/minicpmv4_6/lora/sft_3k0_merged`）。切换 fold 时修改对应路径即可。
 
-| 配置项 | v4.6 默认值 | v4.5 v2 默认值 |
-|--------|-----------|---------------|
-| 模型 | `openbmb/MiniCPM-V-4_6` | `openbmb/MiniCPM-V-4_5` |
-| 微调方式 | LoRA (rank=16, alpha=32) | LoRA (rank=16, alpha=32) |
-| 量化 | 4-bit (QLoRA) | 4-bit |
-| 模板 | `minicpm_v_4_6` | `minicpm_v` |
-| 数据集 | `tensile_video_3k2` | `tensile_video_3k2` |
-| cutoff_len | 8192 | — |
-| 视频最大帧数 | 36 | 36 |
-| 批次大小 | 1 × 梯度累积 18 | 1 × 梯度累积 18 |
-| 学习率 | 1.5e-5 (cosine) | 1.5e-5 (cosine) |
-| 训练轮数 | 8 | 8 |
-| 验证集比例 | 10% | 10% |
-| gradient_checkpointing | ✅ | — |
+## Phase 5：验证与评测
 
-可通过修改 `dataset` 字段切换 fold：将 `tensile_video_3k2` 改为 `tensile_video_3k0` 或 `tensile_video_3k1`。
-
----
-
-## 验证
-
-训练完成后，模型权重保存路径：
-- v4.6：`finetune/saves/minicpmv4_6/lora/sft_3k2/`
-- v4.5：`finetune/saves/minicpmv4_5/lora/sft_3k2_v2/`
+训练完成后，模型权重保存路径（以 Fold 0 为例）：`finetune/saves/minicpmv4_6/lora/sft_3k0/`。
 
 验证策略为 **epoch 级评估**，以 `eval_loss` 为最佳模型指标，训练结束时自动加载最优 checkpoint。
+
+### 推理与评测流程
+
+`finetune/AAA-TS-Video/validation/` 目录提供完整的推理与评测脚本：
+
+1. **推理**：`run_inference.py` 对指定 fold 的测试集执行模型推理
+2. **评测**：
+   - `evaluate_time.py` — 断裂时间 MAE 评测
+   - `evaluate_type.py` — 断裂模式分类准确率评测
+   - `evaluate_joint.py` — 联合评测（时间 + 模式）
+3. **辅助**：
+   - `prepare_ground_truth.py` — 生成 ground truth 文件
+   - `plot_type_confusion_matrix.py` — 绘制分类混淆矩阵
+   - `common.py` / `config.py` — 共享工具与配置
+
+详细用法见各脚本的 `--help` 参数说明。
 
 ---
 
@@ -187,4 +255,4 @@ llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_5_lora_sft_v2.yaml
 - 新标注视频需追加到 `data/02_annotations/video_mapping.csv`
 - 材料类型归为四大类：金属、高分子、复材
 - 所有脚本使用 `python3` 调用，从项目根目录执行
-- Python 版本：3.13
+- Python 版本：3.11
