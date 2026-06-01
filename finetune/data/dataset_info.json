@@ -81,8 +81,8 @@
       "assistant_tag": "assistant"
     }
   },
-  "tensile_video_3k0": {
-    "file_name": "../../data/04_merged/stratified_3_fold_0.json",
+  "tensile_video_3k0_train": {
+    "file_name": "../../data/04_merged/stratified_3_fold_0_train.json",
     "folder": "../../data/04_merged",
     "formatting": "sharegpt",
     "columns": {
@@ -96,8 +96,8 @@
       "assistant_tag": "assistant"
     }
   },
-  "tensile_video_3k1": {
-    "file_name": "../../data/04_merged/stratified_3_fold_1.json",
+  "tensile_video_3k0_val": {
+    "file_name": "../../data/04_merged/stratified_3_fold_0_val.json",
     "folder": "../../data/04_merged",
     "formatting": "sharegpt",
     "columns": {
@@ -111,8 +111,53 @@
       "assistant_tag": "assistant"
     }
   },
-  "tensile_video_3k2": {
-    "file_name": "../../data/04_merged/stratified_3_fold_2.json",
+  "tensile_video_3k1_train": {
+    "file_name": "../../data/04_merged/stratified_3_fold_1_train.json",
+    "folder": "../../data/04_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_3k1_val": {
+    "file_name": "../../data/04_merged/stratified_3_fold_1_val.json",
+    "folder": "../../data/04_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_3k2_train": {
+    "file_name": "../../data/04_merged/stratified_3_fold_2_train.json",
+    "folder": "../../data/04_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_3k2_val": {
+    "file_name": "../../data/04_merged/stratified_3_fold_2_val.json",
     "folder": "../../data/04_merged",
     "formatting": "sharegpt",
     "columns": {

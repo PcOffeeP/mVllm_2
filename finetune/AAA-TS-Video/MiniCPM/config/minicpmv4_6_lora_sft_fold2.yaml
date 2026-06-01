@@ -15,8 +15,8 @@ lora_dropout: 0.1
 quantization_bit: 4
 
 # === dataset ===
-dataset: tensile_video_3k0,tensile_video_3k1
-eval_dataset: tensile_video_3k2
+dataset: tensile_video_3k0_train,tensile_video_3k1_train
+eval_dataset: tensile_video_3k2_val
 template: minicpm_v_4_6
 media_dir: ../data
 cutoff_len: 8192

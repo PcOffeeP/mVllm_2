@@ -29,9 +29,9 @@ export DISABLE_VERSION_CHECK=1
 
 ## 3-Fold 交叉验证
 
-- fold0: dataset=tensile_video_3k1,3k2 / eval_dataset=tensile_video_3k0
-- fold1: dataset=tensile_video_3k0,3k2 / eval_dataset=tensile_video_3k1
-- fold2: dataset=tensile_video_3k0,3k1 / eval_dataset=tensile_video_3k2
+- fold0: dataset=tensile_video_3k1_train,tensile_video_3k2_train / eval_dataset=tensile_video_3k0_val
+- fold1: dataset=tensile_video_3k0_train,tensile_video_3k2_train / eval_dataset=tensile_video_3k1_val
+- fold2: dataset=tensile_video_3k0_train,tensile_video_3k1_train / eval_dataset=tensile_video_3k2_val
 - 禁止只在单个 fold 上训练（错误用法）
 
 ## 多机器部署

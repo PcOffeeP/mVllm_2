@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂起始时间点是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"28.06s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the failure pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does it break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"28.06s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>请判断断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>告诉我时间和断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"28.06s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0062.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Time and mode of fracture."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"28.06s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0062.mp4"
+        ]
+    }
+]

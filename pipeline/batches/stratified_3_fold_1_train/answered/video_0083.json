@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Give me the fracture time and its type."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\", \"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样破坏模式是啥？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频时间轴上，断裂发生在？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Only give the fracture mode."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>破坏时间与破坏方式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\", \"type\": \"视频异常\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0083.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At which moment does fracture happen?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"162.26s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0083.mp4"
+        ]
+    }
+]

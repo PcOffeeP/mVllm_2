@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"video anomaly, unable to determine\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0056.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the fracture timestamp?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"video anomaly, unable to determine\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0056.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When? How? (fracture time & mode)"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"video anomaly, unable to determine\", \"type\": \"video anomaly, unable to determine\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0056.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>告诉我时间和断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"视频异常，无法判断\", \"type\": \"视频异常，无法判断\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0056.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的断裂方式是什么？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"视频异常，无法判断\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0056.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样在哪一秒断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"视频异常，无法判断\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0056.mp4"
+        ]
+    }
+]

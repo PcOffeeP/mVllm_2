@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Mode of fracture?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"interface tear-off\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0020.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂时间和断裂模式分别是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.72s\", \"type\": \"界面脱粘\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0020.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture timestamp and mode, please."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.72s\", \"type\": \"interface tear-off\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0020.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂起始时间点是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.72s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0020.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样断裂的形态是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"界面脱粘\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0020.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the break time?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"25.72s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0020.mp4"
+        ]
+    }
+]

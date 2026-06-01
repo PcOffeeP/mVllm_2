@@ -202,6 +202,13 @@ def main():
         action="store_true",
         help="强制覆盖已存在的文件（默认跳过）",
     )
+    parser.add_argument(
+        "--split",
+        type=str,
+        choices=["train", "val", "both"],
+        default="train",
+        help="要处理的数据划分（默认: train）",
+    )
 
     args = parser.parse_args()
 
@@ -220,12 +227,17 @@ def main():
         logger.error(f"无法读取划分文件: {e}")
         sys.exit(1)
 
-    if "train" not in split_data:
-        logger.error("划分文件中缺少 'train' 键")
-        sys.exit(1)
+    # 根据 --split 确定要处理的数据划分
+    if args.split == "both":
+        splits_to_process = ["train", "val"]
+    else:
+        splits_to_process = [args.split]
 
-    train_videos = split_data["train"]
-    logger.info(f"从划分文件读取到 {len(train_videos)} 个训练集视频")
+    # 验证 split 文件中有所需的键
+    for split_name in splits_to_process:
+        if split_name not in split_data:
+            logger.error(f"划分文件中缺少 '{split_name}' 键")
+            sys.exit(1)
 
     # 确定 batch name
     batch_name = args.batch_name or args.split_file.stem
@@ -254,44 +266,54 @@ def main():
         logger.error(f"无法加载问题池: {e}")
         sys.exit(1)
 
-    # 创建输出目录
-    output_dir = args.output_dir / batch_name / "processed"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # 逐个处理每个划分
+    for split_name in splits_to_process:
+        videos = split_data[split_name]
+        logger.info(f"从划分文件读取到 {len(videos)} 个 {split_name} 集视频")
 
-    logger.info(f"开始生成批次 '{batch_name}' → {output_dir}")
+        # 确定输出目录：both 模式使用 _train/_val 后缀，单模式保持原名
+        if args.split == "both":
+            current_batch_name = f"{batch_name}_{split_name}"
+        else:
+            current_batch_name = batch_name
 
-    success_count = 0
-    skip_count = 0
+        output_dir = args.output_dir / current_batch_name / "processed"
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    for video_path in train_videos:
-        video_name = Path(video_path).stem  # e.g. "video_0001"
-        json_filename = f"{video_name}.json"
-        json_filepath = output_dir / json_filename
+        logger.info(f"开始生成批次 '{current_batch_name}' → {output_dir}")
 
-        if json_filepath.exists():
-            if not args.force:
-                logger.debug(f"跳过: {json_filename} (文件已存在)")
-                skip_count += 1
-                continue
-            logger.debug(f"覆盖: {json_filename} (--force)")
+        success_count = 0
+        skip_count = 0
 
-        try:
-            data = generate_for_video(video_path, template_data, pool)
-            with open(json_filepath, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-            success_count += 1
-        except Exception as e:
-            logger.error(f"处理 {video_name} 失败: {e}")
+        for video_path in videos:
+            video_name = Path(video_path).stem  # e.g. "video_0001"
+            json_filename = f"{video_name}.json"
+            json_filepath = output_dir / json_filename
 
-    logger.info(
-        f"批次 '{batch_name}' 完成! "
-        f"成功: {success_count}/{len(train_videos)}, "
-        f"跳过: {skip_count}"
-    )
-    logger.info(f"输出: {output_dir}")
+            if json_filepath.exists():
+                if not args.force:
+                    logger.debug(f"跳过: {json_filename} (文件已存在)")
+                    skip_count += 1
+                    continue
+                logger.debug(f"覆盖: {json_filename} (--force)")
 
-    # 检测旧格式视频路径
-    _check_legacy_video_paths(output_dir)
+            try:
+                data = generate_for_video(video_path, template_data, pool)
+                with open(json_filepath, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+                success_count += 1
+            except Exception as e:
+                logger.error(f"处理 {video_name} 失败: {e}")
+
+        logger.info(
+            f"批次 '{current_batch_name}' 完成! "
+            f"成功: {success_count}/{len(videos)}, "
+            f"跳过: {skip_count}"
+        )
+        logger.info(f"输出: {output_dir}")
+
+        # 检测旧格式视频路径
+        _check_legacy_video_paths(output_dir)
 
 
 if __name__ == "__main__":

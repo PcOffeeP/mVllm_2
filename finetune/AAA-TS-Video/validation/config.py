@@ -17,9 +17,12 @@ RESULTS_DIR = VALIDATION_DIR / "results"
 GROUND_TRUTH_CSV = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.csv"
 GROUND_TRUTH_JSON = DATA_DIR / "all_videos_tag.json"
 TRAINING_JSON_FILES = [
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_0.json",
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_1.json",
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_2.json",
+    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_0_train.json",
+    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_0_val.json",
+    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_1_train.json",
+    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_1_val.json",
+    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_2_train.json",
+    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_2_val.json",
 ]
 
 DEFAULT_VIDEO_ROOT = VIDEO_DIR  # 远端原值: Path("/hy-tmp/videos")

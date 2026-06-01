@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样的破坏形式如何？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0097.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture time and fracture pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.22s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0097.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What failure mode does it show?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0097.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What second does the fracture take place?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.22s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0097.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>告诉我断裂时间和断裂形式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.22s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0097.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频里第几秒出现断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"33.22s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0097.mp4"
+        ]
+    }
+]

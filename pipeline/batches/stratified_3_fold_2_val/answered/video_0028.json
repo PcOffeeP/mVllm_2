@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样在哪一秒断裂？断裂方式是什么？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.59s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0028.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>这是什么破坏方式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0028.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What's the failure pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0028.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样何时发生破坏？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.59s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0028.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When and how does the specimen fail?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.59s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0028.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Give me the fracture time only."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"179.59s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0028.mp4"
+        ]
+    }
+]

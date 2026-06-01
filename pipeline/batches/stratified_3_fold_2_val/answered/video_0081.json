@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>请问破坏发生在第几秒？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"99.60s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0081.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture time and fracture pattern?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"99.60s\", \"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0081.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Mode of fracture?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0081.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does fracture initiate?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"99.60s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0081.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>请判断断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0081.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>给出断裂的时间和模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"99.60s\", \"type\": \"韧性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0081.mp4"
+        ]
+    }
+]

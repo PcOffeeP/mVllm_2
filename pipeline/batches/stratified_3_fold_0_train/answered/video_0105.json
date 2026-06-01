@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What time does it break and how?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"147.56s\", \"type\": \"brittle fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0105.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>试样在哪一秒断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"147.56s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0105.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>第几秒断的？属于哪种破坏？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"147.56s\", \"type\": \"脆性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0105.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>这是什么破坏方式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"脆性断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0105.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At what time does the specimen fail?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"147.56s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0105.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What does the fracture look like?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"brittle fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0105.mp4"
+        ]
+    }
+]

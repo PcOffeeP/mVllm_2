@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Tell me when it fractures and how."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"4.63s\", \"type\": \"brittle-ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0014.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At what time does the specimen fail?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"4.63s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0014.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>第几秒断的？属于哪种破坏？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"4.63s\", \"type\": \"半脆半韧断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0014.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>拉断的具体时间是？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"4.63s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0014.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>How would you categorize this break?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"brittle-ductile fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0014.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>只回答断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"半脆半韧断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0014.mp4"
+        ]
+    }
+]

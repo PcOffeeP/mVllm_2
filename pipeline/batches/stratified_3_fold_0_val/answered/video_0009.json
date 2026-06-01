@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>这是什么破坏方式？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"界面脱粘\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0009.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>When does breakage occur? Describe it."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"188.33s\", \"type\": \"interface tear-off\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0009.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>啥时候断的？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"188.33s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0009.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>At what second does the break occur?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"188.33s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0009.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>告诉我时间和断裂模式。"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"188.33s\", \"type\": \"界面脱粘\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0009.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>What failure mode does it show?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"interface tear-off\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0009.mp4"
+        ]
+    }
+]

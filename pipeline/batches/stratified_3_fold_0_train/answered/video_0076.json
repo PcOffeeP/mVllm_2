@@ -1,0 +1,92 @@
+[
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Give the fracture time."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"178.99s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0076.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>视频里第几秒出现断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"178.99s\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0076.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>断裂起始时刻和断裂类别？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"178.99s\", \"type\": \"齐根断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0076.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>这是什么类型的断裂？"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"齐根断裂\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0076.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Fracture timestamp and mode, please."
+            },
+            {
+                "role": "assistant",
+                "content": "{\"time\": \"178.99s\", \"type\": \"grip-end fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0076.mp4"
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "<video>Mode of fracture?"
+            },
+            {
+                "role": "assistant",
+                "content": "{\"type\": \"grip-end fracture\"}"
+            }
+        ],
+        "videos": [
+            "01_videos/video_0076.mp4"
+        ]
+    }
+]

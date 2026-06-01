@@ -91,12 +91,15 @@ python3 pipeline/scripts/fill_answers.py -b stratified_3_fold_2
 python3 pipeline/scripts/merge_batches.py --source answered
 ```
 
-完成后，`data/04_merged/` 下会生成三个训练数据集文件：
-- `stratified_3_fold_0.json`
-- `stratified_3_fold_1.json`
-- `stratified_3_fold_2.json`
+完成后，`data/04_merged/` 下会生成六个训练/验证数据集文件：
+- `stratified_3_fold_0_train.json`
+- `stratified_3_fold_0_val.json`
+- `stratified_3_fold_1_train.json`
+- `stratified_3_fold_1_val.json`
+- `stratified_3_fold_2_train.json`
+- `stratified_3_fold_2_val.json`
 
-这些数据集已在 `finetune/data/dataset_info.json` 中注册为 `tensile_video_3k0`、`tensile_video_3k1`、`tensile_video_3k2`。
+这些数据集已在 `finetune/data/dataset_info.json` 中注册为 `tensile_video_3k0_train`、`tensile_video_3k0_val`、`tensile_video_3k1_train`、`tensile_video_3k1_val`、`tensile_video_3k2_train`、`tensile_video_3k2_val`。
 
 ---
 
@@ -140,11 +143,11 @@ pip install modelscope
 
 | Fold | 训练集 | 验证集 | 配置文件 |
 |------|--------|--------|----------|
-| Fold 0 | 3k1 + 3k2 | 3k0 | `minicpmv4_6_lora_sft_fold0.yaml` |
-| Fold 1 | 3k0 + 3k2 | 3k1 | `minicpmv4_6_lora_sft_fold1.yaml` |
-| Fold 2 | 3k0 + 3k1 | 3k2 | `minicpmv4_6_lora_sft_fold2.yaml` |
+| Fold 0 | 3k1_train + 3k2_train | 3k0_val | `minicpmv4_6_lora_sft_fold0.yaml` |
+| Fold 1 | 3k0_train + 3k2_train | 3k1_val | `minicpmv4_6_lora_sft_fold1.yaml` |
+| Fold 2 | 3k0_train + 3k1_train | 3k2_val | `minicpmv4_6_lora_sft_fold2.yaml` |
 
-其中 3k0 / 3k1 / 3k2 对应 Phase 1 生成的 `tensile_video_3k0` / `tensile_video_3k1` / `tensile_video_3k2` 数据集。
+其中 3k0_train / 3k0_val / 3k1_train / 3k1_val / 3k2_train / 3k2_val 对应 Phase 1 生成的 `tensile_video_3k0_train` / `tensile_video_3k0_val` / `tensile_video_3k1_train` / `tensile_video_3k1_val` / `tensile_video_3k2_train` / `tensile_video_3k2_val` 数据集。
 
 ### 启动训练
 

@@ -1,0 +1,6482 @@
+[
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second and mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0076.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Is it ductile or brittle?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0076.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At which moment does fracture happen?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0076.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒断裂？什么类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0076.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂瞬间对应的时间是多少？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0076.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么类型的断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0076.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请判断断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0099.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the failure mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0099.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？只回答时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0099.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时发生断裂？请描述断裂形态。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0099.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the break time?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0099.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time and its type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0099.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When is the break? What is the fracture type?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0021.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只告诉我断裂类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0021.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>输出断裂时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0021.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What failure mode does it show?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0021.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在哪个时刻？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0021.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0021.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When is the break? What is the fracture type?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0060.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the fracture timestamp?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0060.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0060.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>破坏时间与破坏方式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0060.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂发生在第几秒。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0060.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样断裂的形态是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0060.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does it fail and what's the mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0095.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样破坏模式是啥？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0095.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问破坏发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0095.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the failure mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0095.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂时间和断裂模式分别是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0095.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0095.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>输出断裂时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0017.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time only."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0017.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What is the fracture mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0017.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0017.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time and mode of fracture."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0017.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>啥时候断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0017.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么断裂类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0001.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂时间和断裂形式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0001.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time does it break and how?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0001.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0001.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How did it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0001.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0001.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂起始时刻和断裂类别？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0104.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does failure occur in the video?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0104.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time and its type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0104.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How did it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0104.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0104.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请判断断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0104.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂时间和断裂形式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0041.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0041.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the exact time of failure."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0041.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样断裂的形态是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0041.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒出现断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0041.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time? What failure mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0041.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How would you categorize this break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0016.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>输出断裂时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0016.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0016.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0016.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does the specimen fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0016.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second and mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0016.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时拉断？怎么断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0082.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When is the break? What is the fracture type?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0082.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0082.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what second does the break occur?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0082.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给我断裂的具体时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0082.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the break pattern."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0082.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does the specimen fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0108.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me when it fractures and how."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0108.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What failure mode does it show?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0108.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>啥时候断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0108.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么断裂类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0108.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>第几秒断的？属于哪种破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0108.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时发生破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0061.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does the sample break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0061.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What type of failure is this?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0061.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在哪一秒断裂？断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0061.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂属于韧性还是脆性？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0061.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does breakage occur? Describe it."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0061.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？如何断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0036.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0036.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？只回答时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0036.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0036.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does the sample break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0036.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what second does it break? What mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0036.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0020.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂发生在第几秒。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0020.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does fracture occur and what is the mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0020.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么断裂类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0020.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请指出破坏发生的时刻和类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0020.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0020.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give the fracture time."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0077.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒出现断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0077.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂起始时刻和断裂类别？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0077.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么类型的断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0077.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture timestamp and mode, please."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0077.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Mode of fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0077.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time and its type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0098.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂模式属于哪一种？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0098.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Mode of fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0098.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0098.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0098.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时断裂？断裂特征是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0098.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture timestamp and mode, please."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0093.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>第几秒断的？属于哪种破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0093.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>如何分类这次断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0093.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How would you categorize this break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0093.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give the fracture time."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0093.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时发生破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0093.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second and mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0085.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>破坏时间与破坏方式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0085.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂后试样呈现什么特征？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0085.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0085.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>拉断的具体时间是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0085.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What is the fracture mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0085.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what second does the break occur?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0103.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0103.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？只回答时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0103.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does it fail and what's the mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0103.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>破坏时间与破坏方式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0103.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What is the fracture mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0103.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请判断断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0046.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give both time and fracture style."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0046.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0046.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂发生在第几秒。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0046.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the failure pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0046.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？如何断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0046.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does the specimen fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0050.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture time and fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0050.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒出现断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0050.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0050.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请指出破坏发生的时刻和类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0050.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>如何分类这次断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0050.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the fracture timestamp?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0007.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂模式名称是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0007.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在第几秒？属于什么模式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0007.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time of fracture and failure description."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0007.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0007.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What type of failure is this?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0007.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时断裂？断裂特征是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0070.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At which moment does fracture happen?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0070.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How did it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0070.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture timestamp and mode, please."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0070.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样断裂的时间戳是多少？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0070.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0070.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在视频的第几秒断开？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0027.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给出断裂模式的术语名称。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0027.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给出断裂的时间和模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0027.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0027.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0027.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does breakage occur? Describe it."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0027.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0031.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时断裂？断裂特征是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0031.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0031.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second and mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0031.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂模式属于哪一种？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0031.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What type of failure is this?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0031.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0067.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0067.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time of failure?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0067.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time does it break and how?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0067.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Is it ductile or brittle?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0067.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时断裂？断裂特征是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0067.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给出断裂的时间和模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0030.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0030.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0030.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When? How? (fracture time & mode)"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0030.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0030.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只回答断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0030.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Classify the fracture behavior."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0026.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0026.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频时间轴上，断裂发生在？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0026.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂模式名称是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0026.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在第几秒？属于什么模式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0026.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time does it break and how?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0026.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time of fracture and failure description."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0071.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture onset time?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0071.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时断裂？断裂特征是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0071.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂属于韧性还是脆性？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0071.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>啥时候断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0071.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Mode of fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0071.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture moment and pattern."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0006.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the failure pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0006.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0006.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0006.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒断裂？什么类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0006.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂模式属于哪一种？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0006.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒出现断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0051.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给出断裂模式的术语名称。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0051.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does fracture initiate?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0051.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0051.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time and mode of fracture."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0051.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How did it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0051.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture timestamp and mode, please."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0102.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂瞬间对应的时间是多少？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0102.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时发生断裂？请描述断裂形态。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0102.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How would you categorize this break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0102.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0102.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does failure occur in the video?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0102.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time of fracture and failure description."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0047.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样断裂的时间和形式分别是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0047.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂瞬间对应的时间是多少？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0047.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0047.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂属于韧性还是脆性？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0047.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does failure occur in the video?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0047.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0084.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂瞬间的时间戳和模式名称。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0084.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time only."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0084.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂后试样呈现什么特征？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0084.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me when it fractures and how."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0084.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>啥时候断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0084.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0052.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0052.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does fracture initiate?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0052.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时拉断？怎么断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0052.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time of fracture and failure description."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0052.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How would you categorize this break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0052.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0044.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时发生断裂？请描述断裂形态。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0044.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>怎么断的？描述断裂形式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0044.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what second does the break occur?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0044.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂瞬间对应的时间是多少？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0044.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me when it fractures and how."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0044.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请指出破坏发生的时刻和类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0068.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0068.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？只回答时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0068.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么断裂类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0068.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0068.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture timestamp and mode, please."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0068.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂模式名称是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0091.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0091.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问破坏发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0091.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0091.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂时间和断裂形式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0091.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture moment and pattern."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0091.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Is it ductile or brittle?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0009.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>The time of fracture is?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0009.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂属于韧性还是脆性？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0009.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请指出破坏发生的时刻和类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0009.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问破坏发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0009.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me when it fractures and how."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0009.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what second does it break? What mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0048.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时拉断？怎么断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0048.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频时间轴上，断裂发生在？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0048.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the fracture timestamp?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0048.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give the fracture mode name."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0048.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂形式属于哪类？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0048.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When and how does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0064.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样断裂的形态是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0064.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give the fracture mode name."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0064.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>The time of fracture is?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0064.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0064.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>输出断裂时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0064.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture style."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0032.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？只回答时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0032.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂后试样呈现什么特征？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0032.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请指出破坏发生的时刻和类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0032.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture time and fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0032.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0032.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时拉断？怎么断的？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0065.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0065.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0065.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂发生在第几秒。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0065.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture time and fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0065.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0065.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time does it break and how?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0090.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在哪一秒断裂？断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0090.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0090.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只告诉我断裂类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0090.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does failure occur in the video?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0090.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只输出断裂时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0090.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time and its type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0086.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样破坏模式是啥？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0086.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频时间轴上，断裂发生在？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0086.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0086.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>破坏时间与破坏方式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0086.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At which moment does fracture happen?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0086.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0100.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture time and fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0100.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What failure mode does it show?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0100.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0100.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂时间和断裂形式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0100.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒出现断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0100.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me when it fractures and how."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0053.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What type of failure is this?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0053.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂发生在第几秒。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0053.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0053.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请指出破坏发生的时刻和类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0053.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0053.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture onset time?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0004.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time? What failure mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0004.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂模式名称是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0004.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样断裂的时间戳是多少？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0004.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How did it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0004.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂时间和断裂模式分别是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0004.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0058.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When? How? (fracture time & mode)"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0058.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0058.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问破坏发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0058.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时断裂？断裂特征是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0058.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>只告诉我断裂类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0058.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>第几秒断的？属于哪种破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0019.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂形式属于哪类？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0019.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在哪个时刻？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0019.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When is the break? What is the fracture type?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0019.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time only."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0019.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0019.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does failure occur in the video?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在视频的第几秒断开？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给出断裂的时间和模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What is the fracture mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么破坏方式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second and mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0062.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给出断裂模式的术语名称。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0035.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂起始时间点是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0035.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂起始时刻和断裂类别？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0035.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture moment and pattern."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0035.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does failure occur in the video?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0035.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0035.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What failure mode does it show?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0074.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问破坏发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0074.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>如何分类这次断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0074.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second and mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0074.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does the specimen fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0074.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒断裂？什么类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0074.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么类型的断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0054.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>第几秒断的？属于哪种破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0054.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How would you categorize this break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0054.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0054.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what second does it break? What mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0054.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂瞬间对应的时间是多少？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0054.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0042.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>How did it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0042.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂时间和断裂模式分别是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0042.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0042.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does breakage occur? Describe it."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0042.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>给我断裂的具体时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0042.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time does it break and how?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0107.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在哪一秒断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0107.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>第几秒断的？属于哪种破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0107.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么破坏方式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0107.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>At what time does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0107.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What does the fracture look like?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0107.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture style."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0039.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give me the fracture time and its type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0039.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0039.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样破坏模式是啥？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0039.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>第几秒断的？属于哪种破坏？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0039.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂起始时间点是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0039.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样破坏模式是啥？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0096.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What is the fracture mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0096.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the fracture timestamp?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0096.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When and how does the specimen fail?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0096.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问破坏发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0096.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0096.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请指出破坏发生的时刻和类型。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0079.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture style."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0079.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0079.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does the sample break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0079.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频里第几秒出现断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0079.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When? How? (fracture time & mode)"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0079.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样断裂的形态是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0038.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在哪一秒断裂？断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0038.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0038.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When is the break? What is the fracture type?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0038.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0038.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture style."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0038.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When? How? (fracture time & mode)"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0080.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>输出断裂时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0080.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的破坏形式如何？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0080.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does fracture initiate?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0080.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问破坏发生在第几秒？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0080.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0080.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time? What failure mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0014.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What second does the fracture take place?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0014.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我断裂时间和断裂形式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0014.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the break pattern."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0014.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>如何分类这次断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0014.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在视频的第几秒断开？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0014.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0043.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0043.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>破坏时间与破坏方式？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0043.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请问试样断裂的时间点是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0043.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When is the break? What is the fracture type?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0043.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请判断断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0043.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0106.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时发生断裂？请描述断裂形态。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0106.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>The time of fracture is?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0106.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time of fracture and failure description."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0106.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂形式属于哪类？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0106.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>拉断的具体时间是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0106.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么类型的断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0110.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？只回答时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0110.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give the fracture time."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0110.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Report the fracture second and mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0110.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？如何断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0110.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Describe the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0110.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When is the break? What is the fracture type?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0002.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Only give the fracture mode."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0002.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0002.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样何时断裂？断裂特征是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0002.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频时间轴上，断裂发生在？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0002.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the break time?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0002.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the fracture timestamp?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0075.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？只回答时间。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0075.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样破坏模式是啥？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0075.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Identify the fracture style."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0075.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What time does it break and how?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0075.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂时间和断裂模式分别是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0075.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the fracture type."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0022.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么类型的断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0022.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Tell me the exact time of failure."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0022.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give both time and fracture style."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0022.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>视频时间轴上，断裂发生在？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0022.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时发生断裂？请描述断裂形态。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0022.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂起始时间点是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0063.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the failure pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0063.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does it break?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0063.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>请判断断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0063.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0063.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Time and mode of fracture."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0063.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>何时断裂？如何断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0018.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Mode of fracture?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0018.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>断裂起始时间点是？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0018.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>这是什么断裂类型？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0018.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When does fracture occur and what is the mode?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0018.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Give the fracture time."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0018.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>Fracture pattern?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0059.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>What's the fracture timestamp?"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0059.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>When? How? (fracture time & mode)"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0059.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>告诉我时间和断裂模式。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0059.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样的断裂方式是什么？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0059.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "<video>试样在哪一秒断裂？"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"time\": \"s\", \"type\": \"\"}"
+      }
+    ],
+    "videos": [
+      "01_videos/video_0059.mp4"
+    ]
+  }
+]
