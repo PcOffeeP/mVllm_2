@@ -12,3 +12,7 @@ wheels/
 # video files
 *.mp4
 *.mov
+
+# 模型文件
+
+MiniCPM-V-4_6/
