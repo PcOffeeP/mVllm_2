@@ -88,6 +88,12 @@
     "columns": {
       "messages": "messages",
       "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
     }
   },
   "tensile_video_3k1": {
@@ -97,6 +103,12 @@
     "columns": {
       "messages": "messages",
       "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
     }
   },
   "tensile_video_3k2": {
@@ -106,6 +118,12 @@
     "columns": {
       "messages": "messages",
       "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
     }
   },
   "alpaca_en": {
