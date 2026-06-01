@@ -124,7 +124,7 @@ cd finetune/
 
 # 5. LLaMA-Factory 核心 + MiniCPM-V 视频处理依赖
 pip install -e ".[metrics]"
-pip install -r examples/requirements/minicpm-v.txt
+pip install -r requirements/minicpm-v.txt
 
 # 6. （可选）从 ModelScope 下载模型
 pip install modelscope
