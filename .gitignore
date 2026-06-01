@@ -17,3 +17,7 @@ wheels/
 
 MiniCPM-V-4_6/
 MiniCPM-V-4.6/
+
+# dependency lock files (not cross-platform)
+uv.lock
+pyproject.toml
