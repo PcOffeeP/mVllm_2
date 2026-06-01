@@ -119,7 +119,7 @@ conda create -n mvllm python=3.11 -y
 conda activate mvllm
 
 # 2. PyTorch 三件套
-pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu124
+pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 -i https://pypi.tuna.tsinghua.edu.cn/simple -f https://download.pytorch.org/whl/cu124
 
 # 3. CUDA Runtime（V100S 驱动 580+ 缺 libcudart）
 conda install -c nvidia cuda-runtime=13.0 -y
@@ -151,7 +151,7 @@ conda create -n mvllm python=3.11 -y
 conda activate mvllm
 
 # 2. PyTorch 三件套
-pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu121
+pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 -i https://pypi.tuna.tsinghua.edu.cn/simple -f https://download.pytorch.org/whl/cu121
 
 # 3. 核心训练依赖（含 flash-attn，4090 支持）
 pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
