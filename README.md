@@ -105,6 +105,9 @@ python3 pipeline/scripts/merge_batches.py --source answered
 
 ## Phase 2：安装依赖
 
+> ⚠️ 前置检查：运行 `nvidia-smi` 确认 Driver Version ≥ 550（4090 cu124）或 ≥ 580（V100S cu128）。
+> 驱动不足需先升级，否则 torch 2.8.0 无法运行。
+
 > **Python 版本**：官方 CookBook 要求 Python 3.11，项目统一使用 Python 3.11。
 
 以下提供两套完整安装方案，请根据 GPU 环境选择对应步骤。
@@ -138,7 +141,11 @@ pip install transformers==5.7.0
 # 7. 模型下载
 pip install modelscope
 modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
+# ⚠️ 若训练报错 "Processor was not found"，说明 modelscope 下载不完整。
+# 改用：python -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='./MiniCPM-V-4_6')"
 ```
+
+> ⚠️ 下载完成后，确认各 fold YAML 中 `model_name_or_path` 已指向本地路径 `../MiniCPM-V-4_6`。
 
 ### RTX 4090（本地桌面）
 
@@ -151,6 +158,9 @@ conda activate mvllm
 
 # 2. PyTorch 三件套
 pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 -i https://pypi.tuna.tsinghua.edu.cn/simple -f https://download.pytorch.org/whl/cu121
+
+# 2.5 CUDA Runtime（若系统缺 libcudart.so）
+conda install -c nvidia cuda-runtime=13.0 -y
 
 # 3. 核心训练依赖（含 flash-attn，4090 支持）
 pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
@@ -167,9 +177,15 @@ pip install transformers==5.7.0
 # 6. 模型下载
 pip install modelscope
 modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
+# ⚠️ 若训练报错 "Processor was not found"，说明 modelscope 下载不完整。
+# 改用：python -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='./MiniCPM-V-4_6')"
 ```
 
+> ⚠️ 下载完成后，确认各 fold YAML 中 `model_name_or_path` 已指向本地路径 `../MiniCPM-V-4_6`。
+
 > ⚠️ **4090 需额外修改训练 YAML**：将 `flash_attn: sdpa` 改为 `flash_attn: fa2`，以启用 Flash Attention 2 加速。
+
+> 💡 4090 用户可将 YAML 中 `preprocessing_num_workers` 提升至 4~16，加速数据预处理。
 
 ---
 
