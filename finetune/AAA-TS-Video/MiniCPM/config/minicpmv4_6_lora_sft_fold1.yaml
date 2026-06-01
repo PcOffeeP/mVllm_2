@@ -3,6 +3,7 @@ model_name_or_path: openbmb/MiniCPM-V-4_6
 cache_dir: null
 trust_remote_code: true
 flash_attn: sdpa
+# flash_attn: fa2  # 4090 GPU：取消此行注释并注释上一行
 
 # === method ===
 stage: sft

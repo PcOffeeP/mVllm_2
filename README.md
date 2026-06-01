@@ -107,31 +107,69 @@ python3 pipeline/scripts/merge_batches.py --source answered
 
 > **Python 版本**：官方 CookBook 要求 Python 3.11，项目统一使用 Python 3.11。
 
-关键依赖版本：`transformers==5.7.0`（官方 CookBook 硬要求），其他依赖按以下命令安装。
+以下提供两套完整安装方案，请根据 GPU 环境选择对应步骤。
+
+### V100S（云服务器）
+
+> **关键限制**：V100S 的 SM 7.0 架构不支持 Flash Attention 2。训练 YAML 中 attention 已设为 `sdpa`，安装时跳过 flash-attn。
 
 ```bash
-# 1. PyTorch（建议先装，确保 CUDA 兼容）
-pip install torch==2.8.0 torchvision==0.23.0
+# 1. Python 环境
+conda create -n mvllm python=3.11 -y
+conda activate mvllm
 
-# 2. 核心训练依赖
+# 2. PyTorch 三件套
+pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu124
+
+# 3. CUDA Runtime（V100S 驱动 580+ 缺 libcudart）
+conda install -c nvidia cuda-runtime=13.0 -y
+
+# 4. 核心训练依赖（跳过 flash-attn，V100S 不支持）
 pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
 
-# （可选）deepspeed — 当前训练未使用，仅在多卡场景需要
-# pip install deepspeed==0.18.3
-
-# 3. Flash Attention（编译安装）
-MAX_JOBS=32 pip install --no-build-isolation flash-attn==2.8.3
-
-# 4. 进入 finetune/ 目录
+# 5. LLaMA-Factory
 cd finetune/
-
-# 5. LLaMA-Factory 核心 + MiniCPM-V 视频处理依赖
 pip install -e ".[metrics]"
 pip install -r requirements/minicpm-v.txt
 
-# 6. （可选）从 ModelScope 下载模型
+# 6. 锁定 transformers 版本
+pip install transformers==5.7.0
+
+# 7. （可选）模型下载
+pip install modelscope
+# ⚠️ modelscope download 只下配置不下权重，推荐：
+python -c "from transformers import AutoModel; AutoModel.from_pretrained('openbmb/MiniCPM-V-4_6', trust_remote_code=True)"
+```
+
+### RTX 4090（本地桌面）
+
+> **优势**：SM 8.9 架构原生支持 Flash Attention 2，训练时需启用 `fa2`。
+
+```bash
+# 1. Python 环境
+conda create -n mvllm python=3.11 -y
+conda activate mvllm
+
+# 2. PyTorch 三件套
+pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu121
+
+# 3. 核心训练依赖（含 flash-attn，4090 支持）
+pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
+MAX_JOBS=32 pip install --no-build-isolation flash-attn==2.8.3
+
+# 4. LLaMA-Factory
+cd finetune/
+pip install -e ".[metrics]"
+pip install -r requirements/minicpm-v.txt
+
+# 5. 锁定 transformers 版本
+pip install transformers==5.7.0
+
+# 6. （可选）模型下载
 pip install modelscope
 ```
+
+> ⚠️ **4090 需额外修改训练 YAML**：将 `flash_attn: sdpa` 改为 `flash_attn: fa2`，以启用 Flash Attention 2 加速。
 
 ---
 
