@@ -1510,7 +1510,10 @@ class MiniCPMV4_6Plugin(BasePlugin):
             flat_index += num_patches_per_image[idx]
         n_patches = num_patches_per_image[image_idx]
 
-        img_target_sizes = target_sizes[flat_index : flat_index + n_patches]
+        if target_sizes is None:
+            img_target_sizes = torch.full((n_patches, 2), 448, dtype=torch.int32)
+        else:
+            img_target_sizes = target_sizes[flat_index : flat_index + n_patches]
         num_tokens_per_patch = img_target_sizes.prod(-1) // token_divisor
         num_rows, num_cols = grids[image_idx]
 
