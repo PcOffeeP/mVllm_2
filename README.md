@@ -135,10 +135,9 @@ pip install -r requirements/minicpm-v.txt
 # 6. 锁定 transformers 版本
 pip install transformers==5.7.0
 
-# 7. （可选）模型下载
+# 7. 模型下载
 pip install modelscope
-# ⚠️ modelscope download 只下配置不下权重，推荐：
-python -c "from transformers import AutoModel; AutoModel.from_pretrained('openbmb/MiniCPM-V-4_6', trust_remote_code=True)"
+modelscope download --model OpenBMB/MiniCPM-V-4_6 --local_dir ./MiniCPM-V-4_6
 ```
 
 ### RTX 4090（本地桌面）
@@ -165,8 +164,9 @@ pip install -r requirements/minicpm-v.txt
 # 5. 锁定 transformers 版本
 pip install transformers==5.7.0
 
-# 6. （可选）模型下载
+# 6. 模型下载
 pip install modelscope
+modelscope download --model OpenBMB/MiniCPM-V-4_6 --local_dir ./MiniCPM-V-4_6
 ```
 
 > ⚠️ **4090 需额外修改训练 YAML**：将 `flash_attn: sdpa` 改为 `flash_attn: fa2`，以启用 Flash Attention 2 加速。
