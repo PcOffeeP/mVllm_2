@@ -1462,15 +1462,10 @@ class MiniCPMV4_6Plugin(BasePlugin):
             # downsample_mode only affects the token divisor in _build_v4_6_placeholder and model forward.
             mm_inputs.update(image_processor(images, return_tensors="pt"))
 
-        if len(videos) != 0:
-            if video_processor is not None:
-                video_inputs = video_processor(videos, return_tensors="pt")
+            if len(videos) != 0:
+                video_inputs = processor(videos=videos, return_tensors="pt")
                 mm_inputs["pixel_values_videos"] = video_inputs["pixel_values_videos"]
                 mm_inputs["target_sizes_videos"] = video_inputs["target_sizes_videos"]
-            else:
-                video_inputs = image_processor(videos, return_tensors="pt")
-                mm_inputs["pixel_values_videos"] = video_inputs["pixel_values"]
-                mm_inputs["target_sizes_videos"] = video_inputs["target_sizes"]
 
         if len(audios) != 0:
             audio_features, audio_feature_lens, audio_phs = processor.audio_feature_extract(

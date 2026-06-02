@@ -128,7 +128,7 @@ pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 -i https://pypi.t
 conda install -c nvidia cuda-runtime=13.0 -y
 
 # 4. 核心训练依赖（跳过 flash-attn，V100S 不支持）
-pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
+pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 bitsandbytes>=0.39.0 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
 
 # 5. LLaMA-Factory
 cd finetune/
@@ -163,7 +163,7 @@ pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 -i https://pypi.t
 conda install -c nvidia cuda-runtime=13.0 -y
 
 # 3. 核心训练依赖（含 flash-attn，4090 支持）
-pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
+pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 bitsandbytes>=0.39.0 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
 MAX_JOBS=32 pip install --no-build-isolation flash-attn==2.8.3
 
 # 4. LLaMA-Factory
