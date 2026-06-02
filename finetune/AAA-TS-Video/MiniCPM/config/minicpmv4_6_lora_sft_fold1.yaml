@@ -22,7 +22,7 @@ template: minicpm_v_4_6
 media_dir: ../data
 cutoff_len: 8192
 video_maxlen: 36
-preprocessing_num_workers: 1
+preprocessing_num_workers: 4
 overwrite_cache: true
 
 # === output ===
