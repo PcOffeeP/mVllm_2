@@ -390,7 +390,7 @@ class MMPluginMixin:
                 video_maxlen=getattr(processor, "video_maxlen", 128),
             )["videos"]
             if "videos" in inspect.signature(video_processor.preprocess).parameters:  # for qwen2_vl and video_llava
-                mm_inputs.update(video_processor(images=None, videos=videos, return_tensors="pt"))
+                mm_inputs.update(video_processor(text='', images=None, videos=videos, return_tensors="pt"))
             else:  # for llava_next_video
                 mm_inputs.update(video_processor(videos, return_tensors="pt"))
 
@@ -700,6 +700,7 @@ class Gemma4Plugin(BasePlugin):
             ]
             mm_inputs.update(
                 video_processor(
+                    text='',
                     videos=video_data["videos"],
                     video_metadata=video_metadata,
                     return_tensors="pt",
@@ -1463,7 +1464,7 @@ class MiniCPMV4_6Plugin(BasePlugin):
             mm_inputs.update(image_processor(images, return_tensors="pt"))
 
         if len(videos) != 0:
-            video_inputs = processor(videos=videos, return_tensors="pt")
+            video_inputs = processor(text='', videos=videos, return_tensors="pt")
             mm_inputs["pixel_values_videos"] = video_inputs["pixel_values_videos"]
             mm_inputs["target_sizes_videos"] = video_inputs["target_sizes_videos"]
 
@@ -2193,7 +2194,7 @@ class Qwen2VLPlugin(BasePlugin):
                 video_fps=getattr(processor, "video_fps", 2.0),
                 video_maxlen=getattr(processor, "video_maxlen", 128),
             )
-            mm_inputs.update(video_processor(videos=video_data["videos"], return_tensors="pt"))
+            mm_inputs.update(video_processor(text='', videos=video_data["videos"], return_tensors="pt"))
             temporal_patch_size: int = getattr(image_processor, "temporal_patch_size", 2)
             if "second_per_grid_ts" in processor.model_input_names:
                 mm_inputs["second_per_grid_ts"] = [temporal_patch_size / fps for fps in video_data["fps_per_video"]]
@@ -2339,6 +2340,7 @@ class Qwen3VLPlugin(Qwen2VLPlugin):
             ]
             mm_inputs.update(
                 video_processor(
+                    text='',
                     videos=videos["videos"],
                     video_metadata=video_metadata,
                     fps=getattr(processor, "video_fps", 2.0),
@@ -2465,7 +2467,7 @@ class GLM4VPlugin(Qwen2VLPlugin):
                 {"fps": 2, "duration": duration, "total_frames": len(video)}
                 for video, duration in zip(video_data["videos"], video_data["durations"])
             ]
-            mm_inputs.update(video_processor(images=None, videos=video_data["videos"], video_metadata=video_metadata))
+            mm_inputs.update(video_processor(text='', images=None, videos=video_data["videos"], video_metadata=video_metadata))
 
         return mm_inputs
 
@@ -2597,7 +2599,7 @@ class Qwen2OmniPlugin(Qwen2VLPlugin):
                 video_fps=getattr(processor, "video_fps", 2.0),
                 video_maxlen=getattr(processor, "video_maxlen", 128),
             )
-            mm_inputs.update(video_processor(videos=video_dict["videos"], return_tensors="pt"))
+            mm_inputs.update(video_processor(text='', videos=video_dict["videos"], return_tensors="pt"))
             temporal_patch_size: int = getattr(image_processor, "temporal_patch_size", 2)
             mm_inputs["video_second_per_grid"] = torch.tensor(
                 [temporal_patch_size / fps for fps in video_dict["fps_per_video"]]
