@@ -9,12 +9,12 @@ mVllm：基于 MiniCPM-V-4.6 的视频多模态 LoRA/QLoRA 微调项目，分析
 ---
 
 ## 模型与配置约束
-- model_name_or_path: `../MiniCPM-V-4_6`（下划线，非点号）
+- model_name_or_path: `../MiniCPM-V-4.6`
 - template: `minicpm_v_4_6`
-- flash_attn: `sdpa`（V100S）或 `fa2`（4090），YAML 注释行可切换
+- flash_attn: `fa2`
 - video_maxlen: 36, cutoff_len: 8192, media_dir: `../data`
 - env: `export DOWNSAMPLE_MODE=4x DISABLE_VERSION_CHECK=1`
-- preprocessing_num_workers: V100S=1, 4090=4~16
+- preprocessing_num_workers: 4~16
 - 训练：LoRA (rank=16, alpha=32, dropout=0.1) + QLoRA 4-bit
 - optim: paged_adamw_8bit, lr=1.5e-5 cosine, epochs=8, warmup_ratio=0.05
 - weight_decay=0.1, adam_beta2=0.95, max_grad_norm=1000, bf16=true
@@ -30,7 +30,6 @@ mVllm：基于 MiniCPM-V-4.6 的视频多模态 LoRA/QLoRA 微调项目，分析
 
 | 环境 | torch | flash-attn | 驱动 | 其他 |
 |------|-------|-----------|------|------|
-| V100S | cu124 | ❌ SM 7.0 不支持 | ≥580 | — |
 | 4090 | cu121 | fa2==2.8.3 | ≥550 | YAML 改 flash_attn: fa2 |
 
 ---
@@ -61,7 +60,7 @@ mVllm：基于 MiniCPM-V-4.6 的视频多模态 LoRA/QLoRA 微调项目，分析
 
 ### 模型下载
 ```bash
-modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
+modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4.6
 ```
 默认下载全部文件。需含 model.safetensors, tokenizer.json, preprocessor_config.json。
 若缺 Processor → 改用 `snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='...')`

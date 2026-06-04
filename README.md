@@ -105,7 +105,7 @@ python3 pipeline/scripts/merge_batches.py --source answered
 
 ## Phase 2：安装依赖
 
-> ⚠️ 前置检查：运行 `nvidia-smi` 确认 Driver Version ≥ 550（4090 cu124）或 ≥ 580（V100S cu128）。
+> ⚠️ 前置检查：运行 `nvidia-smi` 确认 Driver Version ≥ 550。
 > 驱动不足需先升级，否则 torch 2.8.0 无法运行。
 
 > **Python 版本**：官方 CookBook 要求 Python 3.11，项目统一使用 Python 3.11。
@@ -114,48 +114,9 @@ python3 pipeline/scripts/merge_batches.py --source answered
 
 ```bash
 pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
-conda config --set show_channel_urls yes
 ```
 
-以下提供两套完整安装方案，请根据 GPU 环境选择对应步骤。
-
-### V100S（云服务器）
-
-> **关键限制**：V100S 的 SM 7.0 架构不支持 Flash Attention 2。训练 YAML 中 attention 已设为 `sdpa`，安装时跳过 flash-attn。
-
-```bash
-# 1. Python 环境
-conda create -n mvllm python=3.11 -y
-conda activate mvllm
-
-# 2. PyTorch 三件套
-pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 -i https://pypi.tuna.tsinghua.edu.cn/simple -f https://download.pytorch.org/whl/cu124
-
-# 3. CUDA Runtime（V100S 驱动 580+ 缺 libcudart）
-conda install -c nvidia cuda-runtime=13.0 -y
-
-# 4. 核心训练依赖（跳过 flash-attn，V100S 不支持）
-pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 bitsandbytes>=0.39.0 trl==0.24.0 wandb ninja einops safetensors tokenizers sentencepiece
-
-# 5. LLaMA-Factory
-cd finetune/
-pip install -e ".[metrics]"
-pip install -r requirements/minicpm-v.txt
-
-# 6. 锁定 transformers 版本
-pip install transformers==5.7.0
-
-# 7. 模型下载
-pip install modelscope
-# export HF_ENDPOINT=https://hf-mirror.com  # 备选：国内用户可通过 HF 镜像下载
-modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
-# ⚠️ 若训练报错 "Processor was not found"，说明 modelscope 下载不完整。
-# 改用：python -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='./MiniCPM-V-4_6')"
-```
-
-> ⚠️ 下载完成后，确认各 fold YAML 中 `model_name_or_path` 已指向本地路径 `../MiniCPM-V-4_6`。
+以下为完整安装方案。
 
 ### RTX 4090（本地桌面）
 
