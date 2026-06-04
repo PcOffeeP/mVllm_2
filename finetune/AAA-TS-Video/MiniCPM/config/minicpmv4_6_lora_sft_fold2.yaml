@@ -18,7 +18,7 @@ quantization_bit: 4
 # === dataset ===
 dataset: tensile_video_3k2_train
 eval_dataset: tensile_video_3k2_val
-template: minicpm_v_4_6
+template: minicpm_v
 media_dir: ../data
 cutoff_len: 8192
 video_maxlen: 36
