@@ -1,66 +1,85 @@
-# 项目开发约束
+# AGENTS.md — mVllm 项目开发约束
 
-> 本文件记录项目中需要遵守的约束。所有 Agent 在操作本仓库时需遵守。
+> 所有 Agent 操作本仓库时必须遵守。
 
-## 官方参考
+## 项目定位
+mVllm：基于 MiniCPM-V-4.6 的视频多模态 LoRA/QLoRA 微调项目，分析材料拉伸断裂行为。
+数据：110 个标注视频，stratified 3-fold CV。任务：断裂时刻（time）+ 断裂模式（type）。
 
-MiniCPM-V-4.6 微调官方 CookBook（LLaMA-Factory 方案）：
-https://github.com/OpenSQZ/MiniCPM-V-CookBook/blob/main/finetune/llamafactory/llamafactory_minicpmv46_zh.md
+---
 
-与官方 CookBook 的关键差异：
-- Full fine-tuning → LoRA + QLoRA (4-bit)：显存限制
-- 未使用 DeepSpeed：LoRA 显存够用
-- cutoff_len: 4096 → 8192：视频 token 量大
-- eval/save 按 epoch（非 steps）：数据集小
-- gradient_checkpointing: true（官方未启用）：显存优化
+## 模型与配置约束
+- model_name_or_path: `../MiniCPM-V-4_6`（下划线，非点号）
+- template: `minicpm_v_4_6`
+- flash_attn: `sdpa`（V100S）或 `fa2`（4090），YAML 注释行可切换
+- video_maxlen: 36, cutoff_len: 8192, media_dir: `../data`
+- env: `export DOWNSAMPLE_MODE=4x DISABLE_VERSION_CHECK=1`
+- preprocessing_num_workers: V100S=1, 4090=4~16
+- 训练：LoRA (rank=16, alpha=32, dropout=0.1) + QLoRA 4-bit
+- optim: paged_adamw_8bit, lr=1.5e-5 cosine, epochs=8, warmup_ratio=0.05
+- weight_decay=0.1, adam_beta2=0.95, max_grad_norm=1000, bf16=true
+- batch: 1 × grad_accum 16, gradient_checkpointing=true, seed=42
 
-已启用训练参数（与官方一致）：
-- warmup_ratio=0.05 / weight_decay=0.1 / adam_beta2=0.95
+---
 
-## 训练前必须设置
+## 依赖约束
+- **Python 3.11 硬要求**
+- transformers==5.7.0, torch==2.8.0, peft==0.18.1, bitsandbytes>=0.39.0, trl==0.24.0
+- sentencepiece 必须装；DeepSpeed 不需要（LoRA 单卡）
+- CUDA runtime: `conda install -c nvidia cuda-runtime=13.0`
 
+| 环境 | torch | flash-attn | 驱动 | 其他 |
+|------|-------|-----------|------|------|
+| V100S | cu124 | ❌ SM 7.0 不支持 | ≥580 | — |
+| 4090 | cu121 | fa2==2.8.3 | ≥550 | YAML 改 flash_attn: fa2 |
+
+---
+
+## mm_plugin.py 已知修改
+文件：`finetune/src/llamafactory/data/mm_plugin.py`
+
+### MiniCPMV4_6Plugin._get_mm_inputs
+- 视频处理必须为**平级 if 块**（不嵌套在 images 内）
+- 所有 `processor()` 调用须带 `text=''` 参数
+- `processor(videos=...)` 不能用 `video_processor(videos)` 代替
+
+### _build_v4_6_placeholder
+- `target_sizes is None` 需空值保护 → `torch.full((n_patches, 2), 448)`
+
+---
+
+## 数据流与 pipeline
+### 产出与注册
+- pipeline → `data/04_merged/{fold}_{train,val}.json`（6 个文件）
+- dataset_info.json 注册名: `tensile_video_3k{0,1,2}_{train,val}`
+
+### 关键约束
+- 视频路径相对 `media_dir: ../data` 解析（CWD=finetune/）
+- CSV 时间: `XXX.XXs`（无空格），禁用 `XXX.XX s`
+- 视频命名: `video_XXXX.mp4`（4 位零填充），路径正斜杠 `/`
+- 材料类型: 金属、高分子、复材
+
+### 模型下载
 ```bash
-export DOWNSAMPLE_MODE=4x
-export DISABLE_VERSION_CHECK=1
+modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
 ```
+默认下载全部文件。需含 model.safetensors, tokenizer.json, preprocessor_config.json。
+若缺 Processor → 改用 `snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='...')`
 
-- `media_dir`: 必须设为 `../data`（从 CWD=finetune/ 正确解析到 `data/01_videos/`）
-- `template`: 必须使用 `minicpm_v_4_6`，禁止用 `minicpm_v`
+---
 
-## 3-Fold 交叉验证
+## 3-Fold CV
+| Fold | train | val |
+|------|-------|-----|
+| 0 | tensile_video_3k1_train + 3k2_train | tensile_video_3k0_val |
+| 1 | tensile_video_3k0_train + 3k2_train | tensile_video_3k1_val |
+| 2 | tensile_video_3k0_train + 3k1_train | tensile_video_3k2_val |
+每 fold 只用自己对应的 train/val JSON，不跨 fold。
 
-- fold0: dataset=tensile_video_3k1_train,tensile_video_3k2_train / eval_dataset=tensile_video_3k0_val
-- fold1: dataset=tensile_video_3k0_train,tensile_video_3k2_train / eval_dataset=tensile_video_3k1_val
-- fold2: dataset=tensile_video_3k0_train,tensile_video_3k1_train / eval_dataset=tensile_video_3k2_val
-- 禁止只在单个 fold 上训练（错误用法）
+---
 
 ## 多机器部署
+- 单分支 + 固定 commit；Mac 作控制塔，执行环境只读；data/ 完整同步
 
-- 单分支 + 固定 commit 策略
-- 执行环境只读，Mac 作为控制塔
-
-## 数据目录结构
-
-- data/ 完整同步到每台机器，保持 `data/01_videos/` 与 `data/04_merged/` 相对关系
-- 原始视频：`data/01_videos/`
-- 标注文件：`data/02_annotations/`
-- 数据集划分：`data/03_splits/`
-- 合并产物：`data/04_merged/`
-
-## 数据格式
-
-- CSV 时间格式：`XXX.XXs`（无空格，禁止 `XXX.XX s`）
-- 视频路径：正斜杠 `/`，如 `videos/video_XXXX.mp4`
-- 视频文件命名：`video_XXXX.mp4`（4 位零填充序号）
-- 新标注视频追加到 `data/02_annotations/video_mapping.csv`
-
-## 标注规范
-
-- 材料类型归为：金属、高分子、复材
-- `video_mapping.csv` 固定字段：标准化文件名、原始文件名、来源目录、材料类别、状态、duration、resolution、codec
-
-## 脚本与执行
-
-- 从项目根目录运行，路径格式 `pipeline/scripts/xxx.py`、`data/...`
-- Python 3.11 / transformers 5.7.0 / torch 2.8.0
-- 验证与推理脚本见 `finetune/AAA-TS-Video/validation/`（evaluate_*.py, run_inference.py 等）
+## 参考文档
+ROADMAP.md, TASK_TRACKER.md, docs/frac_mode.md, docs/question_pool.md

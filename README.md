@@ -110,6 +110,15 @@ python3 pipeline/scripts/merge_batches.py --source answered
 
 > **Python 版本**：官方 CookBook 要求 Python 3.11，项目统一使用 Python 3.11。
 
+### 镜像源配置（国内用户必做）
+
+```bash
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+conda config --set show_channel_urls yes
+```
+
 以下提供两套完整安装方案，请根据 GPU 环境选择对应步骤。
 
 ### V100S（云服务器）
@@ -140,6 +149,7 @@ pip install transformers==5.7.0
 
 # 7. 模型下载
 pip install modelscope
+# export HF_ENDPOINT=https://hf-mirror.com  # 备选：国内用户可通过 HF 镜像下载
 modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
 # ⚠️ 若训练报错 "Processor was not found"，说明 modelscope 下载不完整。
 # 改用：python -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='./MiniCPM-V-4_6')"
@@ -176,6 +186,7 @@ pip install transformers==5.7.0
 
 # 6. 模型下载
 pip install modelscope
+# export HF_ENDPOINT=https://hf-mirror.com  # 备选：国内用户可通过 HF 镜像下载
 modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
 # ⚠️ 若训练报错 "Processor was not found"，说明 modelscope 下载不完整。
 # 改用：python -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='./MiniCPM-V-4_6')"
