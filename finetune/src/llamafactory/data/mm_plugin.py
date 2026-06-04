@@ -1315,7 +1315,10 @@ class MiniCPMVPlugin(BasePlugin):
                 num_image_tokens += 1
 
             while VIDEO_PLACEHOLDER in content:
-                video_seqlen = len(mm_inputs["image_sizes"][num_video_tokens]) if self.expand_mm_tokens else 1
+                if self.expand_mm_tokens and "image_sizes" in mm_inputs:
+                    video_seqlen = len(mm_inputs["image_sizes"][num_video_tokens])
+                else:
+                    video_seqlen = 1
                 content = content.replace(VIDEO_PLACEHOLDER, "{{image}}" * video_seqlen, 1)
                 num_video_tokens += 1
 
@@ -1335,7 +1338,7 @@ class MiniCPMVPlugin(BasePlugin):
 
         if self.expand_mm_tokens and mm_inputs:
             pattern = "(<image>./</image>)"
-            image_sizes = mm_inputs["image_sizes"]
+            image_sizes = mm_inputs.get("image_sizes", mm_inputs.get("target_sizes_videos", []))
             idx = 0
             for index, message in enumerate(messages):
                 text = message["content"]
