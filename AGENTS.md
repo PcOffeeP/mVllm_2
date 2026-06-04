@@ -82,3 +82,8 @@ modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4.6
 
 ## 参考文档
 ROADMAP.md, TASK_TRACKER.md, docs/frac_mode.md, docs/question_pool.md
+
+---
+
+## 操作约束
+- **禁止自动推送**：修改代码后默认只 commit，不 push。只有用户明确说「推送」「push」时才执行 git push。
