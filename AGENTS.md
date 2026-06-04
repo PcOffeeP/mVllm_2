@@ -86,4 +86,4 @@ ROADMAP.md, TASK_TRACKER.md, docs/frac_mode.md, docs/question_pool.md
 ---
 
 ## 操作约束
-- **禁止自动推送**：修改代码后默认只 commit，不 push。只有用户明确说「推送」「push」时才执行 git push。
+- **禁止自动 git 操作**：修改代码后只改文件，不执行 git add / git commit / git push。只有用户明确说「提交」「commit」「推送」「push」时才执行对应操作。
