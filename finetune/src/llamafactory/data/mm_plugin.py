@@ -1497,7 +1497,7 @@ class MiniCPMV4_6Plugin(BasePlugin):
         """Build image placeholder for MiniCPM-V-4.6 using NaViT token count computation."""
         grids = image_inputs.get("grids", [[0, 0]])
         num_patches_per_image = image_inputs.get("num_patches_per_image", [1])
-        target_sizes = image_inputs.get("target_sizes")
+        target_sizes = image_inputs.get("target_sizes") or image_inputs.get("target_sizes_videos")
 
         downsample_mode = os.getenv("DOWNSAMPLE_MODE")
         if downsample_mode is None:
