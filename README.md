@@ -53,7 +53,6 @@ mVllm/
 ├── assets/
 ├── AGENTS.md                   # 项目开发约束
 ├── ROADMAP.md                  # 工作计划与路线图
-├── TASK_TRACKER.md             # 项目任务清单
 └── README.md
 ```
 

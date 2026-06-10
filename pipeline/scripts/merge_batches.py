@@ -92,8 +92,8 @@ def main():
     parser.add_argument(
         "--source",
         choices=["processed", "answered"],
-        default="processed",
-        help="读取来源目录: processed (默认) 或 answered",
+        default="answered",
+        help="读取来源目录: answered (默认) 或 processed",
     )
 
     # Defaults

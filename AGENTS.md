@@ -1,89 +1,60 @@
-# AGENTS.md — mVllm 项目开发约束
+# AGENTS.md - mVllm 项目开发约束
 
-> 所有 Agent 操作本仓库时必须遵守。
+> 所有 Agent 操作本仓库时必须遵守。本文只保留稳定决策、易踩坑约束和权威入口；具体参数以被链接的配置文件为准。
 
-## 项目定位
-mVllm：基于 MiniCPM-V-4.6 的视频多模态 LoRA/QLoRA 微调项目，分析材料拉伸断裂行为。
-数据：110 个标注视频，stratified 3-fold CV。任务：断裂时刻（time）+ 断裂模式（type）。
+## 1. 项目定位
 
----
+mVllm 是基于 MiniCPM-V-4.6 的视频多模态 LoRA/QLoRA 微调项目，用于分析材料拉伸断裂行为。任务输出包括断裂时刻 `time` 和断裂模式 `type`，数据采用 110 个标注视频的 stratified 3-fold CV。
 
-## 模型与配置约束
-- model_name_or_path: `../MiniCPM-V-4.6`
-- template: `minicpm_v_4_6`
-- flash_attn: `fa2`
-- video_maxlen: 36, cutoff_len: 8192, media_dir: `../data`
-- env: `export DOWNSAMPLE_MODE=4x DISABLE_VERSION_CHECK=1`
-- preprocessing_num_workers: 4~16
-- 训练：LoRA (rank=16, alpha=32, dropout=0.1) + QLoRA 4-bit
-- optim: paged_adamw_8bit, lr=1.5e-5 cosine, epochs=8, warmup_ratio=0.05
-- weight_decay=0.1, adam_beta2=0.95, max_grad_norm=1000, bf16=true
-- batch: 1 × grad_accum 16, gradient_checkpointing=true, seed=42
+## 2. 权威配置入口
 
----
+- 训练配置：[finetune/AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml](finetune/AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml)
+- 合并配置：[finetune/AAA-TS-Video/MiniCPM/config/merge.yaml](finetune/AAA-TS-Video/MiniCPM/config/merge.yaml)
+- Python 版本：[.python-version](.python-version)、[pyproject.toml](pyproject.toml)
+- 环境安装：[README.md](README.md)
+- Pipeline 配置：[pipeline/config/question_pool.yaml](pipeline/config/question_pool.yaml)
+- 领域说明：[docs/frac_mode.md](docs/frac_mode.md)、[docs/question_pool.md](docs/question_pool.md)、[docs/known_issues.md](docs/known_issues.md)
+- 项目路线：[ROADMAP.md](ROADMAP.md)
 
-## 依赖约束
-- **Python 3.11 硬要求**
-- transformers==5.7.0, torch==2.8.0, peft==0.18.1, bitsandbytes>=0.39.0, trl==0.24.0
-- sentencepiece 必须装；DeepSpeed 不需要（LoRA 单卡）
-- CUDA runtime: `conda install -c nvidia cuda-runtime=13.0`
+不要在 `AGENTS.md` 复制完整训练超参或依赖清单；如果配置变更，优先更新权威文件，再按需更新这里的约束摘要。
 
-| 环境 | torch | flash-attn | 驱动 | 其他 |
-|------|-------|-----------|------|------|
-| 4090 | cu121 | fa2==2.8.3 | ≥550 | YAML 改 flash_attn: fa2 |
+## 3. 模型与运行约束
 
----
+- 基础模型路径固定为 `../MiniCPM-V-4.6`，对话模板固定为 `minicpm_v_4_6`。
+- 当前训练方案为 LoRA + QLoRA 4-bit；优化器、学习率、batch、长度等细节以训练 YAML 为准。
+- Python 需满足 `>=3.11`；核心训练依赖版本以 README 的安装段落为准。
+- `sentencepiece` 必须安装；单卡 LoRA 不需要 DeepSpeed。
+- 运行训练前设置：`export DOWNSAMPLE_MODE=4x DISABLE_VERSION_CHECK=1`
+- `media_dir` 按训练配置相对 `finetune/` 解析，当前指向 `../data`。
+- 4090 环境使用 `flash_attn: fa2`；CUDA、torch、flash-attn 版本以环境文档或训练记录为准。
 
-## mm_plugin.py 已知修改
-文件：`finetune/src/llamafactory/data/mm_plugin.py`
+## 4. 数据与交叉验证
 
-### MiniCPMV4_6Plugin._get_mm_inputs
-- 视频处理必须为**平级 if 块**（不嵌套在 images 内）
-- 所有 `processor()` 调用须带 `text=''` 参数
-- `processor(videos=...)` 不能用 `video_processor(videos)` 代替
+- Pipeline 产出 `data/04_merged/{fold}_{train,val}.json`，并通过 `dataset_info.json` 注册为 `tensile_video_3k{0,1,2}_{train,val}`。
+- 视频路径使用正斜杠 `/`，文件名保持 `video_XXXX.mp4` 四位零填充。
+- CSV 时间格式必须是 `XXX.XXs`，不要写成 `XXX.XX s`。
+- 材料类型限定为：金属、高分子、复材。
+- 每个 fold 只使用对应 train/val JSON，不跨 fold 混用。
 
-### _build_v4_6_placeholder
-- `target_sizes is None` 需空值保护 → `torch.full((n_patches, 2), 448)`
+3-fold 数据集组合：
 
----
-
-## 数据流与 pipeline
-### 产出与注册
-- pipeline → `data/04_merged/{fold}_{train,val}.json`（6 个文件）
-- dataset_info.json 注册名: `tensile_video_3k{0,1,2}_{train,val}`
-
-### 关键约束
-- 视频路径相对 `media_dir: ../data` 解析（CWD=finetune/）
-- CSV 时间: `XXX.XXs`（无空格），禁用 `XXX.XX s`
-- 视频命名: `video_XXXX.mp4`（4 位零填充），路径正斜杠 `/`
-- 材料类型: 金属、高分子、复材
-
-### 模型下载
-```bash
-modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4.6
-```
-默认下载全部文件。需含 model.safetensors, tokenizer.json, preprocessor_config.json。
-若缺 Processor → 改用 `snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='...')`
-
----
-
-## 3-Fold CV
 | Fold | train | val |
-|------|-------|-----|
-| 0 | tensile_video_3k1_train + 3k2_train | tensile_video_3k0_val |
-| 1 | tensile_video_3k0_train + 3k2_train | tensile_video_3k1_val |
-| 2 | tensile_video_3k0_train + 3k1_train | tensile_video_3k2_val |
-每 fold 只用自己对应的 train/val JSON，不跨 fold。
+| --- | --- | --- |
+| 0 | `tensile_video_3k1_train` + `tensile_video_3k2_train` | `tensile_video_3k0_val` |
+| 1 | `tensile_video_3k0_train` + `tensile_video_3k2_train` | `tensile_video_3k1_val` |
+| 2 | `tensile_video_3k0_train` + `tensile_video_3k1_train` | `tensile_video_3k2_val` |
 
----
+## 5. MiniCPM 多模态补丁约束
 
-## 多机器部署
-- 单分支 + 固定 commit；Mac 作控制塔，执行环境只读；data/ 完整同步
+涉及 [finetune/src/llamafactory/data/mm_plugin.py](finetune/src/llamafactory/data/mm_plugin.py) 时保持以下行为：
 
-## 参考文档
-ROADMAP.md, TASK_TRACKER.md, docs/frac_mode.md, docs/question_pool.md
+- `MiniCPMV4_6Plugin._get_mm_inputs` 中视频处理为平级 `if` 块，不嵌套在 images 分支内。
+- 所有 `processor()` 调用都带 `text=''`。
+- 视频处理使用 `processor(videos=...)`，不要替换为 `video_processor(videos)`。
+- `_build_v4_6_placeholder` 对 `target_sizes is None` 做空值保护，使用 `torch.full((n_patches, 2), 448)`。
 
----
+## 6. 操作边界
 
-## 操作约束
-- **禁止自动 git 操作**：修改代码后只改文件，不执行 git add / git commit / git push。只有用户明确说「提交」「commit」「推送」「push」时才执行对应操作。
+- 修改必须保持小而准；不要顺手重构、格式化或清理无关代码。
+- 发现配置与本文不一致时，以权威配置文件为准，并在回复中指出差异。
+- 禁止自动执行 `git add`、`git commit`、`git push`；只有用户明确要求「提交 / commit / 推送 / push」时才执行对应操作。
