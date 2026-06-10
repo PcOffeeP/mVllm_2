@@ -49,10 +49,10 @@ mVllm/
 │   └── saves/                  # 训练产出 (当前为空)
 ├── docs/
 │   ├── frac_mode.md            # 断裂模式分类指南
-│   └── question_pool.md        # 问题池参考
+│   ├── question_pool.md        # 问题池参考
+│   └── roadmap.md              # 项目计划与路线图
 ├── assets/
 ├── AGENTS.md                   # 项目开发约束
-├── ROADMAP.md                  # 工作计划与路线图
 └── README.md
 ```
 
@@ -284,3 +284,9 @@ llamafactory-cli export AAA-TS-Video/MiniCPM/config/merge.yaml
 - 材料类型归为四大类：金属、高分子、复材
 - 所有脚本使用 `python3` 调用，从项目根目录执行
 - Python 版本：3.11
+
+---
+
+## 项目计划与路线图
+
+详细的项目计划、阶段目标与路线图已迁移至 [docs/roadmap.md](./docs/roadmap.md)。

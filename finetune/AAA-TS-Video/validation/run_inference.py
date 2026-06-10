@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any
-
-from PIL import Image
 
 from common import (
     build_prompt,
@@ -23,7 +22,7 @@ from common import (
     validate_prompt_preset,
     validate_task,
 )
-from config import DEFAULT_VIDEO_ROOT, GROUND_TRUTH_JSON, PROMPT_PRESETS, SAMPLE_FRAMES
+from config import DEFAULT_VIDEO_ROOT, GROUND_TRUTH_JSON, PROMPT_PRESETS, VIDEO_MAX_FRAMES
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,52 +37,52 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def sample_frame_indices(frame_count: int, num_frames: int) -> list[int]:
-    if frame_count <= 0:
-        return []
-    if frame_count <= num_frames:
-        return list(range(frame_count))
-    if num_frames == 1:
-        return [frame_count // 2]
-    step = (frame_count - 1) / (num_frames - 1)
-    return [round(index * step) for index in range(num_frames)]
-
-
-def load_video_frames(video_path: Path, num_frames: int) -> list[Image.Image]:
-    try:
-        from decord import VideoReader, cpu
-    except ImportError as exc:
-        raise RuntimeError("decord is required for inference. Install it on the remote host first.") from exc
-
-    reader = VideoReader(str(video_path), ctx=cpu(0))
-    indices = sample_frame_indices(len(reader), num_frames)
-    if not indices:
-        return []
-    batch = reader.get_batch(indices).asnumpy()
-    return [Image.fromarray(frame) for frame in batch]
-
-
 def load_model(model_dir: str) -> tuple[Any, Any]:
     import torch
-    from transformers import AutoModel, AutoTokenizer
+    from transformers import AutoModelForImageTextToText, AutoProcessor
 
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
-    torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
-    model = AutoModel.from_pretrained(model_dir, trust_remote_code=True, torch_dtype=torch_dtype)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = model.to(device=device)
-    model.eval()
-    return tokenizer, model
-
-
-def run_single_inference(model: Any, tokenizer: Any, frames: list[Image.Image], prompt: str) -> str:
-    messages = [{"role": "user", "content": frames + [prompt]}]
-    return model.chat(
-        image=None,
-        msgs=messages,
-        tokenizer=tokenizer,
-        sampling=False,
+    processor = AutoProcessor.from_pretrained(model_dir, trust_remote_code=True)
+    torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"
+    model = AutoModelForImageTextToText.from_pretrained(
+        model_dir,
+        trust_remote_code=True,
+        torch_dtype=torch_dtype,
+        device_map="auto" if torch.cuda.is_available() else None,
     )
+    if not torch.cuda.is_available():
+        model = model.to(device="cpu")
+    model.eval()
+    return processor, model
+
+
+def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: str) -> str:
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "video", "url": str(video_path.resolve())},
+                {"type": "text", "text": prompt},
+            ],
+        }
+    ]
+    downsample_mode = os.getenv("DOWNSAMPLE_MODE", "4x")
+    inputs = processor.apply_chat_template(
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+        return_dict=True,
+        return_tensors="pt",
+        downsample_mode=downsample_mode,
+        max_num_frames=VIDEO_MAX_FRAMES,
+        stack_frames=1,
+        max_slice_nums=1,
+        use_image_id=False,
+    ).to(model.device)
+    generated_ids = model.generate(**inputs, downsample_mode=downsample_mode, max_new_tokens=512)
+    generated_ids = [
+        output_ids[len(input_ids) :] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
+    ]
+    return processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
 
 
 def main() -> None:
@@ -106,7 +105,7 @@ def main() -> None:
     if resolved_prompt_preset != args.prompt_preset:
         print(f"[info] task={args.task} does not support fewshot directly, fallback to prompt preset={resolved_prompt_preset}")
 
-    tokenizer, model = load_model(model_dir)
+    processor, model = load_model(model_dir)
     records: list[dict[str, Any]] = []
     for sample in samples:
         video_path = video_root / sample["video_name"]
@@ -133,10 +132,9 @@ def main() -> None:
         }
         start = time.time()
         try:
-            frames = load_video_frames(video_path, SAMPLE_FRAMES)
-            if not frames:
-                raise RuntimeError("No frames decoded.")
-            response_text = run_single_inference(model, tokenizer, frames, prompt)
+            if not video_path.exists():
+                raise RuntimeError(f"Video not found: {video_path}")
+            response_text = run_single_inference(model, processor, video_path, prompt)
             record["raw_output"] = response_text
             json_valid, payload = parse_response_payload(response_text)
             record["json_valid"] = json_valid
@@ -147,7 +145,7 @@ def main() -> None:
                 record["pred_type_norm"] = normalize_prediction_label(payload.get("type"))
         except Exception as exc:
             record["raw_output"] = str(exc)
-            record["failure_reason"] = "video_load_failed"
+            record["failure_reason"] = "model_inference_failed" if video_path.exists() else "video_load_failed"
         record["elapsed_sec"] = round(time.time() - start, 6)
         if record["failure_reason"] is None:
             record["failure_reason"] = infer_failure_reason(record, args.task)

@@ -32,7 +32,7 @@ DEFAULT_MODEL_DIRS = {
     2: "/hy-tmp/model/train/test01/sft_3k2",
 }
 
-SAMPLE_FRAMES = 8
+VIDEO_MAX_FRAMES = 36
 TIME_THRESHOLD_SEC = 2.0
 SUPPORTED_FOLDS = (0, 1, 2)
 SUPPORTED_TASKS = ("time", "type", "joint")
@@ -107,6 +107,7 @@ LABEL_ALIASES = {
 
 FAILURE_REASONS = (
     "video_load_failed",
+    "model_inference_failed",
     "json_invalid",
     "time_unparseable",
     "type_unmapped",

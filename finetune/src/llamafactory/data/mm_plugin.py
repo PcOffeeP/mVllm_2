@@ -1454,7 +1454,6 @@ class MiniCPMV4_6Plugin(BasePlugin):
         **kwargs,
     ) -> dict[str, "torch.Tensor"]:
         image_processor = getattr(processor, "image_processor")
-        video_processor = getattr(processor, "video_processor", None)
         mm_inputs = {}
 
         if len(images) != 0:
@@ -1463,14 +1462,8 @@ class MiniCPMV4_6Plugin(BasePlugin):
             mm_inputs.update(image_processor(images, return_tensors="pt"))
 
         if len(videos) != 0:
-            if video_processor is not None:
-                video_inputs = video_processor(videos, return_tensors="pt")
-                mm_inputs["pixel_values_videos"] = video_inputs["pixel_values_videos"]
-                mm_inputs["target_sizes_videos"] = video_inputs["target_sizes_videos"]
-            else:
-                video_inputs = image_processor(videos, return_tensors="pt")
-                mm_inputs["pixel_values_videos"] = video_inputs["pixel_values"]
-                mm_inputs["target_sizes_videos"] = video_inputs["target_sizes"]
+            video_inputs = processor(videos=videos, text="", return_tensors="pt")
+            mm_inputs.update(video_inputs)
 
         if len(audios) != 0:
             audio_features, audio_feature_lens, audio_phs = processor.audio_feature_extract(
@@ -1645,6 +1638,17 @@ class MiniCPMV4_6Plugin(BasePlugin):
         # Ensure target_sizes key name matches the model's expected input
         if "target_sizes" not in mm_inputs and "tgt_sizes" in mm_inputs:
             mm_inputs["target_sizes"] = mm_inputs.pop("tgt_sizes")
+
+        # v4.6 model forward expects video pixel values in "pixel_values" (same key as images).
+        # Images and videos are mutually exclusive for this model (validated in process_messages).
+        if "pixel_values_videos" in mm_inputs:
+            if "pixel_values" in mm_inputs:
+                raise ValueError("Images and videos are mutually exclusive for MiniCPMV4_6.")
+            mm_inputs["pixel_values"] = mm_inputs.pop("pixel_values_videos")
+        if "target_sizes_videos" in mm_inputs:
+            if "target_sizes" in mm_inputs:
+                raise ValueError("Images and videos are mutually exclusive for MiniCPMV4_6.")
+            mm_inputs["target_sizes"] = mm_inputs.pop("target_sizes_videos")
 
         if "target_sizes" not in mm_inputs:
             mm_inputs["target_sizes"] = torch.empty(0, 2, dtype=torch.int32)
