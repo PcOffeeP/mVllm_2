@@ -14,6 +14,7 @@ mVllm 是基于 MiniCPM-V-4.6 的视频多模态 LoRA/QLoRA 微调项目，用�
 - 环境安装：[README.md](README.md)
 - Pipeline 配置：[pipeline/config/question_pool.yaml](pipeline/config/question_pool.yaml)
 - 领域说明：[docs/frac_mode.md](docs/frac_mode.md)、[docs/question_pool.md](docs/question_pool.md)
+- 帧区间迭代定位设计文档：[docs/frame_interval_agent_design.md](docs/frame_interval_agent_design.md)
 - 项目路线：[docs/roadmap.md](docs/roadmap.md)
 
 不要在 `AGENTS.md` 复制完整训练超参或依赖清单；如果配置变更，优先更新权威文件，再按需更新这里的约束摘要。
