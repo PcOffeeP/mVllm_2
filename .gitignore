@@ -27,5 +27,3 @@ pyproject.toml
 
 # macOS system files
 .DS_Store
-.agents/skills/
-.codex/
