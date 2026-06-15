@@ -1,6 +1,6 @@
-# mVllm — 材料拉伸断裂行为视频理解模型微调
+# TensileAgent — 材料拉伸断裂行为视频理解模型微调
 
-基于 MiniCPM-V-4.6 的视频多模态模型微调项目，用于理解和分析材料拉伸断裂行为视频。
+基于 `models/minicpm-v-4.6` 的视频多模态模型微调项目，用于理解和分析材料拉伸断裂行为视频。
 
 详细约束与规范见 [AGENTS.md](./AGENTS.md)。
 
@@ -9,7 +9,7 @@
 ## 目录结构
 
 ```
-mVllm/
+TensileAgent/
 ├── data/
 │   ├── 01_videos/              # 原始视频文件 (video_0001~video_0110.mp4)
 │   ├── 02_annotations/         # CSV 标注 + video_mapping.csv + all_videos_tag.csv
@@ -29,15 +29,14 @@ mVllm/
 │   ├── templates/
 │   │   └── template.json             # 问题模板
 │   └── batches/                # 中间产物 (processed/ + answered/)
-├── finetune/                   # LLaMA-Factory 训练目录
-│   ├── data/
-│   │   └── dataset_info.json         # 数据集注册表
-│   ├── AAA-TS-Video/MiniCPM/config/
+├── finetune/                   # 项目专属 LLaMA-Factory 配置与验证脚本
+│   ├── dataset_info.json             # 数据集注册表
+│   ├── MiniCPM/config/
 │   │   ├── minicpmv4_6_lora_sft_fold0.yaml  # Fold 0 训练配置
 │   │   ├── minicpmv4_6_lora_sft_fold1.yaml  # Fold 1 训练配置
 │   │   ├── minicpmv4_6_lora_sft_fold2.yaml  # Fold 2 训练配置
 │   │   └── merge.yaml                         # LoRA 合并配置
-│   ├── AAA-TS-Video/validation/      # 推理与评测脚本
+│   ├── validation/                   # 推理与评测脚本
 │   │   ├── run_inference.py
 │   │   ├── evaluate_joint.py
 │   │   ├── evaluate_time.py
@@ -46,7 +45,6 @@ mVllm/
 │   │   ├── plot_type_confusion_matrix.py
 │   │   ├── common.py
 │   │   └── config.py
-│   └── saves/                  # 训练产出 (当前为空)
 ├── docs/
 │   ├── frac_mode.md            # 断裂模式分类指南
 │   ├── question_pool.md        # 问题池参考
@@ -98,7 +96,7 @@ python3 pipeline/scripts/merge_batches.py --source answered
 - `stratified_3_fold_2_train.json`
 - `stratified_3_fold_2_val.json`
 
-这些数据集已在 `finetune/data/dataset_info.json` 中注册为 `tensile_video_3k0_train`、`tensile_video_3k0_val`、`tensile_video_3k1_train`、`tensile_video_3k1_val`、`tensile_video_3k2_train`、`tensile_video_3k2_val`。
+这些数据集已在 `finetune/dataset_info.json` 中注册为 `tensile_video_3k0_train`、`tensile_video_3k0_val`、`tensile_video_3k1_train`、`tensile_video_3k1_val`、`tensile_video_3k2_train`、`tensile_video_3k2_val`。
 
 ---
 
@@ -137,7 +135,7 @@ pip install transformers==5.7.0 accelerate==1.13.0 peft==0.18.1 bitsandbytes>=0.
 MAX_JOBS=32 pip install --no-build-isolation flash-attn==2.8.3
 
 # 4. LLaMA-Factory
-cd finetune/
+cd LlamaFactory/
 pip install -e ".[metrics]"
 pip install -r requirements/minicpm-v.txt
 
@@ -147,12 +145,12 @@ pip install transformers==5.7.0
 # 6. 模型下载
 pip install modelscope
 # export HF_ENDPOINT=https://hf-mirror.com  # 备选：国内用户可通过 HF 镜像下载
-modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./MiniCPM-V-4_6
+modelscope download --model OpenBMB/MiniCPM-V-4.6 --local_dir ./models/minicpm-v-4.6
 # ⚠️ 若训练报错 "Processor was not found"，说明 modelscope 下载不完整。
-# 改用：python -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='./MiniCPM-V-4_6')"
+# 改用：python -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/MiniCPM-V-4_6', local_dir='./models/minicpm-v-4.6')"
 ```
 
-> ⚠️ 下载完成后，确认各 fold YAML 中 `model_name_or_path` 已指向本地路径 `../MiniCPM-V-4_6`。
+> ⚠️ 下载完成后，确认各 fold YAML 中 `model_name_or_path` 已指向本地路径 `../models/minicpm-v-4.6`。
 
 > ⚠️ **4090 需额外修改训练 YAML**：将 `flash_attn: sdpa` 改为 `flash_attn: fa2`，以启用 Flash Attention 2 加速。
 
@@ -185,13 +183,13 @@ export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
 # Fold 0: 训练用 3k1+3k2，验证用 3k0
-llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml
+llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml
 
 # Fold 1: 训练用 3k0+3k2，验证用 3k1
-llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold1.yaml
+llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_fold1.yaml
 
 # Fold 2: 训练用 3k0+3k1，验证用 3k2
-llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold2.yaml
+llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_fold2.yaml
 ```
 
 三个 fold 相互独立，可串行执行也可在不同 GPU 上并行。
@@ -200,7 +198,7 @@ llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold2.ya
 
 | 配置项 | 默认值 |
 |--------|--------|
-| 模型 | `openbmb/MiniCPM-V-4_6` |
+| 模型 | `models/minicpm-v-4.6` |
 | 微调方式 | LoRA (rank=16, alpha=32, dropout=0.1) |
 | 量化 | 4-bit (QLoRA) |
 | 模板 | `minicpm_v_4_6` |
@@ -230,20 +228,20 @@ llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold2.ya
 cd finetune/
 
 # 合并指定 fold 的 adapter（以 Fold 0 为例）
-llamafactory-cli export AAA-TS-Video/MiniCPM/config/merge.yaml
+llamafactory-cli export MiniCPM/config/merge.yaml
 ```
 
-`merge.yaml` 中 `adapter_name_or_path` 指向训练产出目录（如 `./saves/minicpmv4_6/lora/sft_3k0`），合并后的完整模型输出到 `export_dir`（如 `./saves/minicpmv4_6/lora/sft_3k0_merged`）。切换 fold 时修改对应路径即可。
+`merge.yaml` 中 `adapter_name_or_path` 指向训练产出目录（如 `../LlamaFactory/saves/minicpmv4_6/lora/sft_3k0`），合并后的完整模型输出到 `export_dir`（如 `../LlamaFactory/saves/minicpmv4_6/lora/sft_3k0_merged`）。切换 fold 时修改对应路径即可。
 
 ## Phase 5：验证与评测
 
-训练完成后，模型权重保存路径（以 Fold 0 为例）：`finetune/saves/minicpmv4_6/lora/sft_3k0/`。
+训练完成后，模型权重保存路径（以 Fold 0 为例）：`LlamaFactory/saves/minicpmv4_6/lora/sft_3k0/`。
 
 验证策略为 **epoch 级评估**，以 `eval_loss` 为最佳模型指标，训练结束时自动加载最优 checkpoint。
 
 ### 推理与评测流程
 
-`finetune/AAA-TS-Video/validation/` 目录提供完整的推理与评测脚本：
+`finetune/validation/` 目录提供完整的推理与评测脚本：
 
 1. **推理**：`run_inference.py` 对指定 fold 的测试集执行模型推理
 2. **评测**：

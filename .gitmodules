@@ -1,0 +1,3 @@
+[submodule "LlamaFactory"]
+	path = LlamaFactory
+	url = git@gitee.com:l-i-u-yang/LlamaFactory.git
