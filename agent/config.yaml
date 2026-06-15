@@ -1,0 +1,12 @@
+video_fps: 8.0
+video_maxlen: 36
+
+agent:
+  tolerance_seconds: 1.0
+  max_rounds: 10
+
+backend:
+  name: minicpmv4_6
+  base_model: ../MiniCPM-V-4.6
+  adapter_base_dir: finetune/saves/minicpmv4_6/lora
+  adapter_pattern: new_sft_fold{fold}

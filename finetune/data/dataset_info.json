@@ -171,6 +171,96 @@
       "assistant_tag": "assistant"
     }
   },
+  "tensile_video_interval_fold0_train": {
+    "file_name": "../../data/04_new_merged/fold_0_train.json",
+    "folder": "../../data/04_new_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_interval_fold0_val": {
+    "file_name": "../../data/04_new_merged/fold_0_val.json",
+    "folder": "../../data/04_new_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_interval_fold1_train": {
+    "file_name": "../../data/04_new_merged/fold_1_train.json",
+    "folder": "../../data/04_new_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_interval_fold1_val": {
+    "file_name": "../../data/04_new_merged/fold_1_val.json",
+    "folder": "../../data/04_new_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_interval_fold2_train": {
+    "file_name": "../../data/04_new_merged/fold_2_train.json",
+    "folder": "../../data/04_new_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "tensile_video_interval_fold2_val": {
+    "file_name": "../../data/04_new_merged/fold_2_val.json",
+    "folder": "../../data/04_new_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
   "alpaca_en": {
     "hf_hub_url": "llamafactory/alpaca_en",
     "ms_hub_url": "llamafactory/alpaca_en",
