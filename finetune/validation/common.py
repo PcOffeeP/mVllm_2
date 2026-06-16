@@ -210,7 +210,7 @@ def time_range_contains_gt(time_range: tuple[float, float] | None, gt_time: floa
     return time_range[0] <= gt_time <= time_range[1]
 
 
-_CONFIDENCE_LEVEL_SCORE = {"高": 0.9, "中": 0.6, "低": 0.3}
+_CONFIDENCE_LEVEL_SCORE = {"高": 0.9, "中": 0.6, "低": 0.3, "不可信": 0.25}
 
 
 def _extract_confidence(record: dict[str, Any]) -> tuple[float | None, str | None]:

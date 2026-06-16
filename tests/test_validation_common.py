@@ -289,5 +289,23 @@ def test_type_metrics_tracks_failure_rate_for_non_fracture():
     assert all(row["gt_type"] in FRACTURE_CLASSES for row in confusion)
 
 
+def test_extract_confidence_maps_untrusted_level():
+    """The four-level confidence mapping includes '不可信'."""
+    assert _extract_confidence({"pred_confidence_level": "不可信"}) == (0.25, "不可信")
+    assert _extract_confidence({"confidence_level": "不可信"}) == (0.25, "不可信")
+
+
+def test_confidence_buckets_untrusted_level():
+    """Level-only '不可信' records are binned using the canonical score."""
+    agg = init_time_aggregator()
+    update_time_aggregator(agg, _make_record(10.0, 10.1, pred_confidence_level="不可信"))
+
+    metrics = finalize_time_aggregator(agg)
+    buckets = {row["bucket"]: row for row in metrics["confidence_buckets"]}
+    assert "0.2-0.3" in buckets
+    assert buckets["0.2-0.3"]["count"] == 1
+    assert buckets["0.2-0.3"]["avg_confidence"] == 0.25
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

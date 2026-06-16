@@ -225,7 +225,11 @@ def _parse_confidence(payload: dict[str, Any] | None) -> tuple[float, str]:
                     source = key
                     break
                 except (TypeError, ValueError):
-                    pass
+                    logger.warning(
+                        "Unparseable confidence value from '%s': %r, falling back to default",
+                        key,
+                        value,
+                    )
 
         if score is not None:
             if not math.isfinite(score):
@@ -251,6 +255,25 @@ def _parse_confidence(payload: dict[str, Any] | None) -> tuple[float, str]:
     if score is None:
         score = 0.5
     return round(score, 6), _map_confidence_level(score)
+
+
+_ALLOWED_LOCATIONS = {"inside_gauge", "outside_gauge", "N/A"}
+
+
+def _parse_location(payload: dict[str, Any] | None) -> str | None:
+    """Normalize model-reported location per the interface contract.
+
+    Negative samples (``has_fracture=false``) must report ``"N/A"``.
+    Any other value outside the allowed set is treated as unknown.
+    """
+    if payload is None:
+        return None
+    if payload.get("has_fracture") is False:
+        return "N/A"
+    location = payload.get("location")
+    if location in _ALLOWED_LOCATIONS:
+        return location
+    return None
 
 
 def main() -> None:
@@ -313,14 +336,14 @@ def main() -> None:
             record["json_valid"] = json_valid
             if json_valid and payload is not None:
                 record["pred_has_fracture"] = payload.get("has_fracture")
-                record["pred_location"] = payload.get("location")
+                record["pred_location"] = _parse_location(payload)
                 record["pred_time_raw"] = payload.get("time")
                 record["pred_time_sec"] = parse_seconds(payload.get("time"))
 
                 # Resolve video duration only when the new interval protocol
                 # may be used; old-protocol payloads fall back to legacy fields.
                 duration_sec = None
-                if "fracture_between" in payload or "has_fracture" in payload:
+                if payload.get("has_fracture") is True and "fracture_between" in payload:
                     duration_sec = _get_video_duration(video_path)
 
                 record["pred_time_range"] = _parse_pred_time_range(payload, duration_sec)

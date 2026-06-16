@@ -14,7 +14,7 @@ sys.path.insert(0, str(VALIDATION_DIR))
 sys.path.insert(0, str(ROOT))
 
 import run_inference
-from run_inference import VIDEO_MAX_FRAMES, _parse_confidence, _parse_pred_time_range
+from run_inference import VIDEO_MAX_FRAMES, _parse_confidence, _parse_location, _parse_pred_time_range
 
 
 # ---------------------------------------------------------------------------
@@ -170,9 +170,12 @@ def test_parse_confidence_string_fallback():
     assert _parse_confidence({"confidence_level": "不可信"}) == (0.25, "不可信")
 
 
-def test_parse_confidence_unparseable_string_falls_back():
-    """Unparseable string values fall back silently to the default score."""
-    assert _parse_confidence({"confidence_score": "not-a-number"}) == (0.5, "低")
+def test_parse_confidence_unparseable_string_warns(caplog: pytest.LogCaptureFixture):
+    """Unparseable string values trigger a warning and fall back to 0.5."""
+    with caplog.at_level("WARNING", logger="run_inference"):
+        assert _parse_confidence({"confidence_score": "not-a-number"}) == (0.5, "低")
+        assert _parse_confidence({"final_confidence": "N/A"}) == (0.5, "低")
+    assert sum("Unparseable confidence" in rec.message for rec in caplog.records) == 2
 
 
 def test_parse_confidence_output_is_json_serializable():
@@ -353,3 +356,127 @@ def test_main_old_protocol_non_fracture_type(monkeypatch: pytest.MonkeyPatch, tm
     record = json.loads(lines[0])
     assert record["pred_has_fracture"] is False
     assert record["pred_location"] is None
+
+
+def test_parse_pred_time_range_negative_skips_ffprobe(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Negative samples must not trigger an ffprobe call for duration lookup."""
+    sample = {
+        "video_id": "v004",
+        "video_name": "v004.mp4",
+        "gt_time_sec": 10.0,
+        "gt_type": "未断裂",
+        "time_available": True,
+        "material": None,
+        "clarity": None,
+    }
+
+    def fail_if_called(video_path: Path) -> float:
+        raise AssertionError("_get_video_duration should not be called for negative samples")
+
+    monkeypatch.setattr(run_inference, "load_ground_truth", lambda path: {sample["video_name"]: sample})
+    monkeypatch.setattr(run_inference, "load_fold_samples", lambda fold, gt_map: [sample])
+    monkeypatch.setattr(run_inference, "load_model", lambda model_dir: (None, None))
+    monkeypatch.setattr(
+        run_inference,
+        "run_single_inference",
+        lambda model, processor, video_path, prompt: (
+            '{"has_fracture": false, "fracture_between": null, '
+            '"type": "未断裂", "location": "N/A", "confidence": 0.95}'
+        ),
+    )
+    monkeypatch.setattr(run_inference, "_get_video_duration", fail_if_called)
+
+    (tmp_path / "v004.mp4").write_text("fake", encoding="utf-8")
+    output_path = tmp_path / "out.jsonl"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_inference",
+            "--task",
+            "joint",
+            "--fold",
+            "0",
+            "--output",
+            str(output_path),
+            "--video-root",
+            str(tmp_path),
+            "--model-dir",
+            str(tmp_path / "model"),
+        ],
+    )
+
+    run_inference.main()
+    assert output_path.exists()
+    lines = [line for line in output_path.read_text(encoding="utf-8").strip().split("\n") if line]
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["pred_has_fracture"] is False
+    assert record["pred_time_range"] is None
+
+
+def test_parse_location_normalization():
+    """Legal locations pass through; illegal values become None; negatives become N/A."""
+    assert _parse_location({"has_fracture": True, "location": "inside_gauge"}) == "inside_gauge"
+    assert _parse_location({"has_fracture": True, "location": "outside_gauge"}) == "outside_gauge"
+    assert _parse_location({"has_fracture": True, "location": "N/A"}) == "N/A"
+    assert _parse_location({"has_fracture": True, "location": "invalid"}) is None
+    assert _parse_location({"has_fracture": True, "location": None}) is None
+    assert _parse_location({"has_fracture": True, "location": ""}) is None
+    assert _parse_location({"has_fracture": False, "location": "outside_gauge"}) == "N/A"
+    assert _parse_location({"has_fracture": False, "location": None}) == "N/A"
+    assert _parse_location(None) is None
+
+
+def test_main_new_protocol_negative_records_na_location(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """New-protocol negative sample normalizes pred_location to 'N/A'."""
+    sample = {
+        "video_id": "v005",
+        "video_name": "v005.mp4",
+        "gt_time_sec": 10.0,
+        "gt_type": "未断裂",
+        "time_available": True,
+        "material": None,
+        "clarity": None,
+    }
+
+    monkeypatch.setattr(run_inference, "load_ground_truth", lambda path: {sample["video_name"]: sample})
+    monkeypatch.setattr(run_inference, "load_fold_samples", lambda fold, gt_map: [sample])
+    monkeypatch.setattr(run_inference, "load_model", lambda model_dir: (None, None))
+    monkeypatch.setattr(
+        run_inference,
+        "run_single_inference",
+        lambda model, processor, video_path, prompt: (
+            '{"has_fracture": false, "fracture_between": null, '
+            '"type": "未断裂", "location": "outside_gauge", "confidence": 0.95}'
+        ),
+    )
+
+    (tmp_path / "v005.mp4").write_text("fake", encoding="utf-8")
+    output_path = tmp_path / "out.jsonl"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_inference",
+            "--task",
+            "joint",
+            "--fold",
+            "0",
+            "--output",
+            str(output_path),
+            "--video-root",
+            str(tmp_path),
+            "--model-dir",
+            str(tmp_path / "model"),
+        ],
+    )
+
+    run_inference.main()
+    assert output_path.exists()
+    lines = [line for line in output_path.read_text(encoding="utf-8").strip().split("\n") if line]
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["pred_has_fracture"] is False
+    assert record["pred_location"] == "N/A"
+    assert record["pred_time_range"] is None
