@@ -32,3 +32,9 @@ pyproject.toml
 
 # macOS system files
 .DS_Store
+
+# Agent runtime outputs (frames & clips)
+/data/runtime/
+
+# pytest cache
+.pytest_cache/
