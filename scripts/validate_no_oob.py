@@ -25,6 +25,11 @@ def main() -> int:
 
     # 1. 扫描子视频元数据
     meta_path = ROOT / "data" / "metadata" / "subvideos_meta.json"
+    if not meta_path.exists():
+        print(f"SKIP: generated subvideo metadata does not exist: {meta_path}")
+        print("Run pipeline/scripts/subvideo_builder.py before validating generated artifacts.")
+        return 0
+
     subs = json.loads(meta_path.read_text(encoding="utf-8"))
     for sub in subs:
         fb = sub.get("fracture_between")

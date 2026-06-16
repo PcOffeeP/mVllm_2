@@ -42,3 +42,11 @@ class TestIsValidFractureBetween:
     def test_left_sentinel_without_n_passes(self):
         """[0, 0] 是明确的左边界哨兵，无需总帧数。"""
         assert vnoob._is_valid_fracture_between([0, 0], n=None) is True
+
+
+def test_main_skips_when_generated_metadata_missing(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(vnoob, "ROOT", tmp_path)
+
+    assert vnoob.main() == 0
+    captured = capsys.readouterr()
+    assert "SKIP: generated subvideo metadata does not exist" in captured.out
