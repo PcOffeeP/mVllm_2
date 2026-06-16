@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import os
+import shutil
+import subprocess
 import time
 from pathlib import Path
 from typing import Any
@@ -24,7 +27,16 @@ from common import (
     validate_prompt_preset,
     validate_task,
 )
-from config import DEFAULT_VIDEO_ROOT, GROUND_TRUTH_JSON, PROMPT_PRESETS, VIDEO_MAX_FRAMES
+from config import (
+    DEFAULT_VIDEO_ROOT,
+    FRACTURE_CLASSES,
+    GROUND_TRUTH_JSON,
+    NON_FRACTURE_CLASSES,
+    PROMPT_PRESETS,
+    VIDEO_MAX_FRAMES,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,15 +99,87 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
     return processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
 
 
-def _parse_pred_time_range(payload: dict[str, Any] | None, pred_time_sec: float | None) -> list[float] | None:
+def _get_video_duration(video_path: Path) -> float | None:
+    """Return the video duration in seconds using ffprobe, or None if unavailable."""
+    ffprobe = shutil.which("ffprobe")
+    if ffprobe is None:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                str(video_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        data = json.loads(result.stdout)
+        duration = float(data["format"]["duration"])
+        if math.isfinite(duration) and duration > 0:
+            return duration
+    except Exception:
+        pass
+    return None
+
+
+def _parse_pred_time_range(
+    payload: dict[str, Any] | None,
+    duration_sec: float | None = None,
+    max_num_frames: int = VIDEO_MAX_FRAMES,
+) -> list[float] | None:
     """Parse predicted time range from model payload.
 
-    Non-finite range endpoints are rejected and fall back to the placeholder
-    window (or None if no point prediction is available).
+    The new interval protocol (``has_fracture`` + ``fracture_between``) is
+    preferred.  Frame indices are converted to seconds with the uniform
+    sampling formula, assuming the processor samples ``max_num_frames`` frames
+    uniformly across ``[0, duration_sec]``.  The actual frame sequence may
+    differ depending on decoder/sampling strategy.  Legacy fields are kept as
+    compatibility fallbacks.
 
-    TODO: Replace placeholder fallback with real model output once the model
-    protocol supports returning an explicit time interval.
+    Within the new protocol, a zero-width interval is only accepted at the
+    boundaries (``[0, 0]`` or ``[max_idx, max_idx]``); any other ``[k, k]``
+    pair is rejected.
     """
+    # New interval protocol.
+    if payload is not None and payload.get("has_fracture") is True and duration_sec is not None:
+        fracture_between = payload.get("fracture_between")
+        if fracture_between is None:
+            return None
+        if isinstance(fracture_between, (list, tuple)) and len(fracture_between) == 2:
+            try:
+                start_idx = int(fracture_between[0])
+                end_idx = int(fracture_between[1])
+            except (TypeError, ValueError):
+                start_idx = end_idx = None
+            max_idx = max_num_frames - 1
+            if start_idx is None or end_idx is None:
+                return None
+            if not (0 <= start_idx <= max_idx and 0 <= end_idx <= max_idx):
+                return None
+            if end_idx == start_idx + 1:
+                # Adjacent frames form a non-empty interval.
+                pass
+            elif end_idx == start_idx and (start_idx == 0 or start_idx == max_idx):
+                # Boundary zero-width sentinel only.
+                pass
+            else:
+                return None
+            if max_num_frames <= 1:
+                return [0.0, round(duration_sec, 6)]
+            # Uniform sampling assumption: k-th sampled frame is at
+            # k * duration / (max_num_frames - 1).
+            step = duration_sec / (max_num_frames - 1)
+            return [round(start_idx * step, 6), round(end_idx * step, 6)]
+
+    # Legacy interval fields compatibility.
     parsed: tuple[float, float] | None = None
     if payload is not None:
         for key in ("time_range", "time_range_sec", "time_interval"):
@@ -106,50 +190,64 @@ def _parse_pred_time_range(payload: dict[str, Any] | None, pred_time_sec: float 
                     break
     if parsed is not None and math.isfinite(parsed[0]) and math.isfinite(parsed[1]):
         return [parsed[0], parsed[1]]
-    if pred_time_sec is not None:
-        # Placeholder: symmetric 1s window around the point prediction.
-        return [round(pred_time_sec - 0.5, 6), round(pred_time_sec + 0.5, 6)]
+
+    # No explicit interval available; do not fabricate a placeholder window.
     return None
 
 
 def _map_confidence_level(score: float) -> str:
-    if score >= 0.7:
+    """Map a numeric confidence score to the four-level grading."""
+    if score >= 0.9:
         return "高"
-    if score >= 0.4:
+    if score >= 0.7:
         return "中"
-    return "低"
+    if score >= 0.5:
+        return "低"
+    return "不可信"
 
 
 def _parse_confidence(payload: dict[str, Any] | None) -> tuple[float, str]:
     """Parse confidence score/level from model payload.
 
-    Unparseable or non-finite values fall back to the default to avoid
-    emitting NaN/inf into the JSONL records.
-
-    TODO: Replace placeholder default with real model output once the model
-    protocol supports returning explicit confidence scores.
-    TODO: Emit a structured log/warning for invalid confidence values.
+    New protocol numeric ``confidence`` is preferred, followed by legacy
+    ``confidence_score`` / ``final_confidence`` and string
+    ``confidence_level``.  NaN/inf or out-of-range values trigger a warning
+    and are sanitized to keep JSONL records finite.
     """
     score: float | None = None
+    source: str | None = None
     if payload is not None:
-        for key in ("confidence_score", "confidence", "final_confidence"):
+        for key in ("confidence", "confidence_score", "final_confidence"):
             value = payload.get(key)
             if value is not None:
                 try:
                     score = float(value)
+                    source = key
                     break
                 except (TypeError, ValueError):
                     pass
-        if score is not None and not math.isfinite(score):
-            # TODO: emit a structured log/warning for invalid confidence values
-            # once telemetry is wired up.
-            score = None
+
         if score is not None:
-            score = max(0.0, min(1.0, score))
+            if not math.isfinite(score):
+                logger.warning(
+                    "Invalid confidence value from '%s': %r is not finite, falling back to 0.5",
+                    source,
+                    score,
+                )
+                score = 0.5
+            elif score < 0.0 or score > 1.0:
+                logger.warning(
+                    "Confidence value from '%s' out of [0, 1]: %r, clipping",
+                    source,
+                    score,
+                )
+                score = max(0.0, min(1.0, score))
+
         if score is None:
             level = payload.get("confidence_level") or payload.get("confidence")
-            if isinstance(level, str) and level in ("高", "中", "低"):
-                score = {"高": 0.9, "中": 0.6, "低": 0.3}[level]
+            if isinstance(level, str) and level in ("高", "中", "低", "不可信"):
+                score = {"高": 0.9, "中": 0.6, "低": 0.3, "不可信": 0.25}[level]
+
     if score is None:
         score = 0.5
     return round(score, 6), _map_confidence_level(score)
@@ -194,6 +292,8 @@ def main() -> None:
             "pred_time_range": None,
             "pred_confidence_score": None,
             "pred_confidence_level": None,
+            "pred_has_fracture": None,
+            "pred_location": None,
             "pred_type_raw": None,
             "pred_type_norm": None,
             "gt_time_sec": sample["gt_time_sec"],
@@ -212,12 +312,28 @@ def main() -> None:
             json_valid, payload = parse_response_payload(response_text)
             record["json_valid"] = json_valid
             if json_valid and payload is not None:
+                record["pred_has_fracture"] = payload.get("has_fracture")
+                record["pred_location"] = payload.get("location")
                 record["pred_time_raw"] = payload.get("time")
                 record["pred_time_sec"] = parse_seconds(payload.get("time"))
-                record["pred_time_range"] = _parse_pred_time_range(payload, record["pred_time_sec"])
+
+                # Resolve video duration only when the new interval protocol
+                # may be used; old-protocol payloads fall back to legacy fields.
+                duration_sec = None
+                if "fracture_between" in payload or "has_fracture" in payload:
+                    duration_sec = _get_video_duration(video_path)
+
+                record["pred_time_range"] = _parse_pred_time_range(payload, duration_sec)
                 record["pred_confidence_score"], record["pred_confidence_level"] = _parse_confidence(payload)
                 record["pred_type_raw"] = payload.get("type")
                 record["pred_type_norm"] = normalize_prediction_label(payload.get("type"))
+
+                if record["pred_has_fracture"] is None:
+                    pred_type = record["pred_type_norm"]
+                    if pred_type in NON_FRACTURE_CLASSES:
+                        record["pred_has_fracture"] = False
+                    elif pred_type in FRACTURE_CLASSES or record["pred_time_sec"] is not None:
+                        record["pred_has_fracture"] = True
         except Exception as exc:
             record["raw_output"] = str(exc)
             record["failure_reason"] = "model_inference_failed" if video_path.exists() else "video_load_failed"
