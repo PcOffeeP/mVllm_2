@@ -178,5 +178,20 @@
       "user_tag": "user",
       "assistant_tag": "assistant"
     }
+  },
+  "tensile_video_interval_test": {
+    "file_name": "../data/04_new_merged/test.json",
+    "folder": "../data/04_new_merged",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
   }
 }
