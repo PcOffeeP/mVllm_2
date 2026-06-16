@@ -131,7 +131,7 @@ def main():
         logger.info(f"Writing {len(all_data)} records to {target_file}...")
         try:
             with target_file.open('w', encoding='utf-8') as f:
-                json.dump(all_data, f, ensure_ascii=False, indent=2)
+                json.dump(all_data, f, ensure_ascii=False, indent=2, allow_nan=False)
             logger.info("Merge complete!")
         except Exception as e:
             logger.error(f"Failed to write output: {e}")
@@ -149,7 +149,7 @@ def main():
         logger.info(f"Writing {len(data)} records ({n} files) to {target_file}...")
         try:
             with target_file.open('w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+                json.dump(data, f, ensure_ascii=False, indent=2, allow_nan=False)
         except Exception as e:
             logger.error(f"Failed to write {out_name}: {e}")
 

@@ -118,7 +118,7 @@ def process_single_json(file_path: Path, output_dir: Path, pool: QuestionPool) -
 
     output_path = output_dir / file_path.name
     with output_path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        json.dump(data, f, ensure_ascii=False, indent=4, allow_nan=False)
     
     return output_path
 

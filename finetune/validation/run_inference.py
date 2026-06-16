@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import time
 from pathlib import Path
@@ -17,6 +18,7 @@ from common import (
     normalize_prediction_label,
     parse_response_payload,
     parse_seconds,
+    parse_time_range,
     round_record_times,
     validate_fold,
     validate_prompt_preset,
@@ -85,6 +87,74 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
     return processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
 
 
+def _parse_pred_time_range(payload: dict[str, Any] | None, pred_time_sec: float | None) -> list[float] | None:
+    """Parse predicted time range from model payload.
+
+    Non-finite range endpoints are rejected and fall back to the placeholder
+    window (or None if no point prediction is available).
+
+    TODO: Replace placeholder fallback with real model output once the model
+    protocol supports returning an explicit time interval.
+    """
+    parsed: tuple[float, float] | None = None
+    if payload is not None:
+        for key in ("time_range", "time_range_sec", "time_interval"):
+            value = payload.get(key)
+            if value is not None:
+                parsed = parse_time_range(value)
+                if parsed is not None:
+                    break
+    if parsed is not None and math.isfinite(parsed[0]) and math.isfinite(parsed[1]):
+        return [parsed[0], parsed[1]]
+    if pred_time_sec is not None:
+        # Placeholder: symmetric 1s window around the point prediction.
+        return [round(pred_time_sec - 0.5, 6), round(pred_time_sec + 0.5, 6)]
+    return None
+
+
+def _map_confidence_level(score: float) -> str:
+    if score >= 0.7:
+        return "高"
+    if score >= 0.4:
+        return "中"
+    return "低"
+
+
+def _parse_confidence(payload: dict[str, Any] | None) -> tuple[float, str]:
+    """Parse confidence score/level from model payload.
+
+    Unparseable or non-finite values fall back to the default to avoid
+    emitting NaN/inf into the JSONL records.
+
+    TODO: Replace placeholder default with real model output once the model
+    protocol supports returning explicit confidence scores.
+    TODO: Emit a structured log/warning for invalid confidence values.
+    """
+    score: float | None = None
+    if payload is not None:
+        for key in ("confidence_score", "confidence", "final_confidence"):
+            value = payload.get(key)
+            if value is not None:
+                try:
+                    score = float(value)
+                    break
+                except (TypeError, ValueError):
+                    pass
+        if score is not None and not math.isfinite(score):
+            # TODO: emit a structured log/warning for invalid confidence values
+            # once telemetry is wired up.
+            score = None
+        if score is not None:
+            score = max(0.0, min(1.0, score))
+        if score is None:
+            level = payload.get("confidence_level") or payload.get("confidence")
+            if isinstance(level, str) and level in ("高", "中", "低"):
+                score = {"高": 0.9, "中": 0.6, "低": 0.3}[level]
+    if score is None:
+        score = 0.5
+    return round(score, 6), _map_confidence_level(score)
+
+
 def main() -> None:
     args = parse_args()
     validate_task(args.task)
@@ -121,6 +191,9 @@ def main() -> None:
             "json_valid": False,
             "pred_time_raw": None,
             "pred_time_sec": None,
+            "pred_time_range": None,
+            "pred_confidence_score": None,
+            "pred_confidence_level": None,
             "pred_type_raw": None,
             "pred_type_norm": None,
             "gt_time_sec": sample["gt_time_sec"],
@@ -141,11 +214,15 @@ def main() -> None:
             if json_valid and payload is not None:
                 record["pred_time_raw"] = payload.get("time")
                 record["pred_time_sec"] = parse_seconds(payload.get("time"))
+                record["pred_time_range"] = _parse_pred_time_range(payload, record["pred_time_sec"])
+                record["pred_confidence_score"], record["pred_confidence_level"] = _parse_confidence(payload)
                 record["pred_type_raw"] = payload.get("type")
                 record["pred_type_norm"] = normalize_prediction_label(payload.get("type"))
         except Exception as exc:
             record["raw_output"] = str(exc)
             record["failure_reason"] = "model_inference_failed" if video_path.exists() else "video_load_failed"
+        if record["pred_confidence_score"] is None:
+            record["pred_confidence_score"], record["pred_confidence_level"] = _parse_confidence(None)
         record["elapsed_sec"] = round(time.time() - start, 6)
         if record["failure_reason"] is None:
             record["failure_reason"] = infer_failure_reason(record, args.task)
@@ -157,7 +234,7 @@ def main() -> None:
 
     with output_path.open("w", encoding="utf-8") as handle:
         for record in records:
-            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+            handle.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
 
 
 if __name__ == "__main__":

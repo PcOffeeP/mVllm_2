@@ -32,3 +32,15 @@ pyproject.toml
 
 # macOS system files
 .DS_Store
+
+# Data pipeline artifacts: external symlink, generated subvideos/frames/interval outputs
+/data/01_videos
+/data/02_subvideos/
+/data/03_frames/
+/data/04_new_merged/
+/data/metadata/
+
+# New interval split outputs (old stratified_3_fold_* baselines remain tracked)
+/data/03_splits/fold_*.json
+/data/03_splits/test.json
+/data/03_splits/stratified_split_decision_log.json

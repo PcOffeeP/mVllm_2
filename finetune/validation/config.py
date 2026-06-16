@@ -16,8 +16,12 @@ SPLIT_DIR = DATA_DIR_ROOT / "03_splits"
 RESULTS_DIR = VALIDATION_DIR / "results"
 
 GROUND_TRUTH_CSV = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.csv"
-# TODO: 确认 ground truth JSON 文件实际位置；当前目录下仅有 all_videos_tag.csv
+# 历史产物：由 prepare_ground_truth.py 从 CSV 生成。如该 JSON 不存在，
+# common.load_ground_truth() 会回退到直接读取 GROUND_TRUTH_CSV。
 GROUND_TRUTH_JSON = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.json"
+
+# 旧 stratified 3-fold 训练/验证合并产物，保留用于与旧方案在同一 test split 上对比。
+# 若新 interval 方案产出到 04_new_merged，请将对应路径替换进此列表（不要删除 04_merged 旧文件）。
 TRAINING_JSON_FILES = [
     DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_0_train.json",
     DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_0_val.json",
@@ -40,7 +44,7 @@ SUPPORTED_FOLDS = (0, 1, 2)
 SUPPORTED_TASKS = ("time", "type", "joint")
 PROMPT_PRESETS = ("baseline", "strict", "fewshot")
 
-ALLOWED_TYPE_LABELS = (
+FRACTURE_CLASSES = (
     "韧性断裂",
     "脆性断裂",
     "界面脱粘",
@@ -48,10 +52,15 @@ ALLOWED_TYPE_LABELS = (
     "界面脱粘、齐根断裂",
     "爆炸性断裂",
     "半脆半韧断裂",
+)
+
+NON_FRACTURE_CLASSES = (
     "未断裂",
     "未夹紧",
     "视频异常",
 )
+
+ALLOWED_TYPE_LABELS = FRACTURE_CLASSES + NON_FRACTURE_CLASSES
 
 PROMPT_INSTRUCTION = '任务：分析视频中材料的断裂。要求：仅以JSON格式输出，严禁任何文字解释。'
 BASELINE_PROMPTS = {

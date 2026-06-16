@@ -96,7 +96,7 @@ def main():
                     item["videos"][0] = final_path
         
         with open(json_filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            json.dump(data, f, ensure_ascii=False, indent=2, allow_nan=False)
         
         print(f"创建: {json_filename}")
         count += 1

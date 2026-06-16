@@ -188,16 +188,16 @@ def _generate_special_answer(
     time_answer = time_map.get(special_value, special_value)
 
     if category in ("zh_time", "en_time"):
-        return json.dumps({"time": time_answer}, ensure_ascii=False)
+        return json.dumps({"time": time_answer}, ensure_ascii=False, allow_nan=False)
 
     elif category in ("zh_mode", "en_mode"):
         if special_value == "视频异常":
-            return json.dumps({"type": anomaly_text}, ensure_ascii=False)
+            return json.dumps({"type": anomaly_text}, ensure_ascii=False, allow_nan=False)
         else:
             answer = {}
             if mode_val:
                 answer["type"] = mode_val
-            return json.dumps(answer, ensure_ascii=False)
+            return json.dumps(answer, ensure_ascii=False, allow_nan=False)
 
     elif category in ("zh_both", "en_both"):
         answer = {"time": time_answer}
@@ -205,7 +205,7 @@ def _generate_special_answer(
             answer["type"] = anomaly_text
         elif mode_val:
             answer["type"] = mode_val
-        return json.dumps(answer, ensure_ascii=False)
+        return json.dumps(answer, ensure_ascii=False, allow_nan=False)
 
     # Fallback
     answer = {"time": time_answer}
@@ -213,7 +213,7 @@ def _generate_special_answer(
         answer["type"] = anomaly_text
     elif mode_val:
         answer["type"] = mode_val
-    return json.dumps(answer, ensure_ascii=False)
+    return json.dumps(answer, ensure_ascii=False, allow_nan=False)
 
 
 def generate_answer(
@@ -245,7 +245,7 @@ def generate_answer(
         answer = {}
         if mode_val:
             answer["type"] = mode_val
-        return json.dumps(answer, ensure_ascii=False)
+        return json.dumps(answer, ensure_ascii=False, allow_nan=False)
 
     # Detect non-numeric fracture_time (e.g. "未断裂s" from load_csv_data)
     # Normal times: "38.65s", "168.5s"; Special: "未断裂s", "视频异常s"
@@ -258,23 +258,23 @@ def generate_answer(
             answer = {}
             if mode_val:
                 answer["type"] = mode_val
-            return json.dumps(answer, ensure_ascii=False)
+            return json.dumps(answer, ensure_ascii=False, allow_nan=False)
         return _generate_special_answer(category, special_value, mode_val, is_chinese)
 
     if category in ("zh_time", "en_time"):
-        return json.dumps({"time": fracture_time}, ensure_ascii=False)
+        return json.dumps({"time": fracture_time}, ensure_ascii=False, allow_nan=False)
 
     elif category in ("zh_mode", "en_mode"):
         answer = {}
         if mode_val:
             answer["type"] = mode_val
-        return json.dumps(answer, ensure_ascii=False)
+        return json.dumps(answer, ensure_ascii=False, allow_nan=False)
 
     elif category in ("zh_both", "en_both"):
         answer = {"time": fracture_time}
         if mode_val:
             answer["type"] = mode_val
-        return json.dumps(answer, ensure_ascii=False)
+        return json.dumps(answer, ensure_ascii=False, allow_nan=False)
 
     # Fallback
     answer = {}
@@ -282,7 +282,7 @@ def generate_answer(
         answer["time"] = fracture_time
     if mode_val:
         answer["type"] = mode_val
-    return json.dumps(answer, ensure_ascii=False)
+    return json.dumps(answer, ensure_ascii=False, allow_nan=False)
 
 
 # ===================== Main Processing =====================
@@ -356,7 +356,7 @@ def process_batch(batch_name: str, base_dir: Path, csv_path: Path, yaml_path: Pa
         # Write to answered/
         output_path = answered_dir / jf.name
         with output_path.open("w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+            json.dump(data, f, ensure_ascii=False, indent=4, allow_nan=False)
 
         success += 1
 

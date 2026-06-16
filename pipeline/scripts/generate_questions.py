@@ -102,7 +102,7 @@ def generate_for_video(
     Returns:
         处理后的对话数据列表
     """
-    data = json.loads(json.dumps(template_data))  # deep copy
+    data = json.loads(json.dumps(template_data, allow_nan=False))  # deep copy
 
     # 收集所有 user message
     user_msgs = []
@@ -300,7 +300,7 @@ def main():
             try:
                 data = generate_for_video(video_path, template_data, pool)
                 with open(json_filepath, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=4)
+                    json.dump(data, f, ensure_ascii=False, indent=4, allow_nan=False)
                 success_count += 1
             except Exception as e:
                 logger.error(f"处理 {video_name} 失败: {e}")
