@@ -664,7 +664,7 @@ Agent 返回给下游的完整 JSON 结构如下。
   "history": [
     {
       "round": 0,
-      "model": "MiniCPM-V-4.6-finetuned",
+      "model": "minicpm-v-4.6-finetuned",
       "reasoning": "第一轮对全范围进行采样，以确认是否存在断裂。",
       "tool_calls": [
         {
@@ -908,7 +908,7 @@ Agent 实现也可根据多轮结果加权融合，但输出时必须同时提�
 │  - 输出 checkpoints                   │
 └─────────────────────────────────────┘
     |
-    v  finetune/saves/minicpmv4_6/lora/new_sft_fold*/
+    v  LlamaFactory/saves/minicpmv4_6/lora/sft_3k*/
 ┌─────────────────────────────────────────────────────────────┐
 │  Agent 迭代侧：Meta-Agent 驱动的迭代推理框架                  │
 │                                                             │

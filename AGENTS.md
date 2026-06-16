@@ -8,7 +8,7 @@
 - `data/04_merged/`：用于微调的最终训练/验证 JSON。
 - `pipeline/scripts/`：数据集准备脚本；从仓库根目录运行这些脚本。
 - `pipeline/config/`、`pipeline/templates/`：问题池和 JSON 模板。
-- `finetune/`：LLaMA-Factory 代码、配置、验证和测试。
+- `finetune/`：项目专属 LLaMA-Factory 训练配置、验证脚本与数据集注册表。LLaMA-Factory 框架源码位于仓库根目录 `LlamaFactory/` submodule。
 - `docs/`：设计笔记、接口和领域参考资料。
 
 ## 构建、测试与开发命令
@@ -22,31 +22,30 @@ python3 pipeline/scripts/fill_answers.py -b stratified_3_fold_0
 python3 pipeline/scripts/merge_batches.py --source answered
 ```
 
-微调包：
+安装 LLaMA-Factory（在 `LlamaFactory/` submodule 中执行一次即可）：
 
 ```bash
-cd finetune
+cd LlamaFactory/
 pip install -e ".[metrics]"
-make quality
-make style
-make test
+pip install -r requirements/minicpm-v.txt
 ```
 
-训练一个折（fold）：
+训练一个折（fold，在 `finetune/` 下执行）：
 
 ```bash
+cd finetune/
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
-llamafactory-cli train AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml
+llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml
 ```
 
 ## 代码风格与命名约定
 
-使用 Python 3.11。遵循 `finetune/pyproject.toml`：4 空格缩进、双引号、每行 119 字符，并在需要时使用 Google 风格文档字符串。确保 pipeline 脚本可从仓库根目录通过 `python3` 运行。保留 `video_XXXX.mp4` 和 `stratified_3_fold_N` 的命名方式。
+使用 Python 3.11。遵循 `LlamaFactory/pyproject.toml` 的代码风格：4 空格缩进、双引号、每行 119 字符，并在需要时使用 Google 风格文档字符串。确保 pipeline 脚本可从仓库根目录通过 `python3` 运行。保留 `video_XXXX.mp4` 和 `stratified_3_fold_N` 的命名方式。
 
 ## 测试规范
 
-微调测试使用 `pytest`；测试文件放在 `finetune/tests/` 或 `finetune/tests_v1/` 下，命名如 `test_loader.py`。优先为转换、模板和评估编写聚焦的测试。从 `finetune/` 目录运行 `make test`。修改 pipeline 后，在一个折上运行受影响的脚本并检查生成的 JSON。
+不再在 `finetune/` 中维护 LLaMA-Factory 框架测试。项目级测试（如有）请在仓库根目录运行 `pytest tests/`。修改 pipeline 后，在一个折上运行受影响的脚本并检查生成的 JSON。
 
 ## 提交与拉取请求规范
 

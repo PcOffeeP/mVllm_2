@@ -13,10 +13,15 @@ wheels/
 *.mp4
 *.mov
 
-# 模型文件
+# 本地模型权重（统一放在 models/ 下，由 models/README.md 说明）
+models/*
+!models/README.md
 
-MiniCPM-V-4_6/
-MiniCPM-V-4.6/
+# LLaMA-Factory 训练输出
+LlamaFactory/saves/
+
+# 验证脚本输出
+finetune/validation/results/
 
 # dependency lock files (not cross-platform)
 uv.lock
@@ -27,3 +32,9 @@ pyproject.toml
 
 # macOS system files
 .DS_Store
+
+# Agent runtime outputs (frames & clips)
+/data/runtime/
+
+# pytest cache
+.pytest_cache/

@@ -1092,7 +1092,7 @@ Agent 侧直接消费微调模型输出,并产出最终预测结果。为避免�
 ## 附录 A:Agent 数据流图
 
 ```
-finetune/saves/minicpmv4_6/lora/new_sft_fold*/
+LlamaFactory/saves/minicpmv4_6/lora/sft_3k*/
     |
     v
 ┌─────────────────────────────────────────────────────────────┐

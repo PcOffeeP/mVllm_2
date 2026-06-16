@@ -6,7 +6,7 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser(description="基于划分文件初始化训练集的 JSON 标注文件")
     # Define global project root relative to this script
-    # Script is in pipeline/scripts/, so root is three levels up (mVllm/)
+    # Script is in pipeline/scripts/, so root is three levels up (TensileAgent/)
     project_root = Path(__file__).resolve().parent.parent.parent
     parser.add_argument("--split-file", "-s", type=Path, required=True, 
                        help="划分文件路径 (例如: splits/kfold_5_fold_0.json)")

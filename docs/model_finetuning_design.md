@@ -149,7 +149,7 @@ Schema(单条记录)见第 5.1 节。
    - `data/04_new_merged/fold_{0,1,2}_{train,val}.json`
    - `data/04_new_merged/test.json`
    - `data/04_new_merged/samples_meta.json`
-2. 在 `finetune/data/dataset_info.json` 中注册新的 dataset 键名(如 `tensile_video_interval_fold0_train` 等),并指向 `data/04_new_merged`。
+2. 在 `finetune/dataset_info.json` 中注册新的 dataset 键名(如 `tensile_video_interval_fold0_train` 等),并指向 `data/04_new_merged`。
 3. 新划分以 `type + location` 分层,`location = N/A` 的异常样本单独成层。
 4. 旧 `data/04_merged` 数据保留作为基线对比,不删除;训练 YAML 通过切换 `dataset` 键名即可在新旧数据之间切换。
 
@@ -271,11 +271,11 @@ Schema(单条记录)见第 5.1 节。
 
 #### LLaMA-Factory YAML 配置要点
 
-以下 YAML 示例与当前可跑配置 `finetune/AAA-TS-Video/MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml` 保持一致;实际训练时以该文件为准。
+以下 YAML 示例与当前可跑配置 `finetune/MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml` 保持一致;实际训练时以该文件为准。
 
 ```yaml
 # === model ===
-model_name_or_path: ../MiniCPM-V-4.6
+model_name_or_path: ../models/minicpm-v-4.6
 cache_dir: null
 trust_remote_code: true
 flash_attn: fa2
@@ -293,6 +293,7 @@ quantization_bit: 4
 # === dataset ===
 dataset: tensile_video_3k0_train  # 在 dataset_info.json 中注册;3-fold 时每折切换
 eval_dataset: tensile_video_3k0_val  # 对应 fold 的验证集键名
+dataset_dir: ../finetune
 template: minicpm_v_4_6
 video_fps: 8.0    # 视频采样帧率超参数,后续可通过消融实验调整
 video_maxlen: 36  # 视频采样帧数上限;实际帧数 N = min(total_frames, video_maxlen, max(1, floor(duration * video_fps)))
@@ -302,7 +303,7 @@ preprocessing_num_workers: 4
 overwrite_cache: true
 
 # === output ===
-output_dir: saves/minicpmv4_6/lora/sft_3k0
+output_dir: ../LlamaFactory/saves/minicpmv4_6/lora/sft_3k0
 save_strategy: epoch
 eval_strategy: epoch
 load_best_model_at_end: true
@@ -326,8 +327,8 @@ bf16: true
 ```json
 {
   "tensile_video_3k0_train": {
-    "file_name": "../../data/04_merged/stratified_3_fold_0_train.json",
-    "folder": "../../data/04_merged",
+    "file_name": "../data/04_merged/stratified_3_fold_0_train.json",
+    "folder": "../data/04_merged",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -384,9 +385,9 @@ bf16: true
 
 2. **Checkpoint 保存路径**:
    ```
-   finetune/saves/minicpmv4_6/lora/new_sft_fold_0/
-   finetune/saves/minicpmv4_6/lora/new_sft_fold_1/
-   finetune/saves/minicpmv4_6/lora/new_sft_fold_2/
+   LlamaFactory/saves/minicpmv4_6/lora/sft_3k0/
+   LlamaFactory/saves/minicpmv4_6/lora/sft_3k1/
+   LlamaFactory/saves/minicpmv4_6/lora/sft_3k2/
    ```
 
 3. **验证策略**:每轮 epoch 后在验证集上评估 JSON 输出准确率,保存最佳 checkpoint。
@@ -621,7 +622,7 @@ bf16: true
 │  - 输出 checkpoints                   │
 └─────────────────────────────────────┘
     |
-    v  finetune/saves/minicpmv4_6/lora/new_sft_fold*/
+    v  LlamaFactory/saves/minicpmv4_6/lora/sft_3k*/
 ```
 
 > 完整数据流图(含 Agent 迭代与评估)见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 附录 A。
