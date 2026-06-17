@@ -9,7 +9,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Callable
 from typing import Any
+
+from pydantic import BaseModel
 
 from agent.inference import InferenceClient, LlamaFactoryInferenceClient, MockInferenceClient
 from agent.llm import BaseAgentLLM
@@ -172,6 +175,7 @@ class IterativeAgent:
         sampler: VideoSampler | None = None,
         clip_builder: VideoClipBuilder | None = None,
         inference_client: InferenceClient | None = None,
+        event_callback: Callable[[dict], None] | None = None,
     ) -> None:
         self.llm = llm_client
         self.video_meta = video_meta
@@ -201,6 +205,28 @@ class IterativeAgent:
         self.sampler = sampler or UniformVideoSampler()
         self.clip_builder = clip_builder or FfmpegVideoClipBuilder()
         self.inference_client = inference_client or self._default_inference_client()
+        self.event_callback = event_callback
+
+    # ------------------------------------------------------------------
+    # Event emission
+    # ------------------------------------------------------------------
+    def _emit(self, event_type: str, **payload: Any) -> None:
+        """Emit an event to the optional UI callback."""
+        if self.event_callback is None:
+            return
+        event: dict[str, Any] = {
+            "event_type": event_type,
+            "video_id": self.video_meta.get("video_id", "unknown"),
+            **payload,
+        }
+        self.event_callback(event)
+
+    @staticmethod
+    def _to_json_value(value: Any) -> Any:
+        """Convert a Pydantic model to a JSON-serializable dict if needed."""
+        if isinstance(value, BaseModel):
+            return value.model_dump(mode="json")
+        return value
 
     # ------------------------------------------------------------------
     # Public API
@@ -208,8 +234,22 @@ class IterativeAgent:
     def run(self) -> dict[str, Any]:
         """Run the iterative loop and return the final output dict."""
         messages = self._build_system_messages()
+        self._emit(
+            "video_started",
+            video_path=self.video_meta.get("video_path"),
+            duration_sec=self.video_meta.get("duration", 0.0),
+            max_rounds=self.max_rounds,
+            initial_candidate=list(self.candidate),
+        )
 
         for round_idx in range(self.max_rounds):
+            self._emit(
+                "round_started",
+                round=round_idx,
+                display_round=round_idx + 1,
+                state=self.state,
+                candidate=list(self.candidate),
+            )
             response = self.llm.chat_with_tools(
                 messages=messages,
                 tools=TOOLS_SCHEMA,
@@ -232,12 +272,31 @@ class IterativeAgent:
             except json.JSONDecodeError:
                 tool_args = {}
 
+            self._emit(
+                "llm_tool_call",
+                round=round_idx,
+                display_round=round_idx + 1,
+                tool_name=tool_name,
+                tool_args=tool_args,
+                reasoning=message.content or "",
+            )
+
             if tool_name == "terminate":
                 allowed, reason = self._can_terminate(tool_args, round_idx)
+                self._emit(
+                    "termination_requested",
+                    round=round_idx,
+                    display_round=round_idx + 1,
+                    allowed=allowed,
+                    reason=reason,
+                    tool_args=tool_args,
+                )
                 if allowed:
                     self.state = "TERMINATED"
                     final_args = self._build_final_args(tool_args)
-                    return self._finalize(final_args)
+                    result = self._finalize(final_args)
+                    self._emit("video_finished", result=result)
+                    return result
 
                 messages.append(self._assistant_tool_message(message, tool_call, tool_name))
                 messages.append(
@@ -252,8 +311,45 @@ class IterativeAgent:
                 continue
 
             if tool_name == "sample_and_infer":
+                sample_range = list(tool_args["sample_range"])
+                num_frames = int(tool_args.get("num_frames", self.video_maxlen))
+                video_fps = float(tool_args.get("video_fps", self.video_fps))
+                sampling_strategy = tool_args.get("sampling_strategy", "uniform")
+                self._emit(
+                    "sample_and_infer_started",
+                    round=round_idx,
+                    display_round=round_idx + 1,
+                    sample_range=sample_range,
+                    num_frames=num_frames,
+                    video_fps=video_fps,
+                    sampling_strategy=sampling_strategy,
+                )
+
                 result = self._execute_sample_and_infer(tool_args)
+                self._emit(
+                    "sample_and_infer_finished",
+                    round=round_idx,
+                    display_round=round_idx + 1,
+                    model_output=self._to_json_value(result.get("model_output")),
+                    inferred_time_range=result.get("inferred_time_range"),
+                    inferred_frame_range=result.get("inferred_frame_range"),
+                    boundary_status=result.get("boundary_status"),
+                    parse_error=result.get("parse_error"),
+                    round_confidence_level=result.get("round_confidence_level"),
+                )
+
+                previous_state = self.state
+                previous_candidate = list(self.candidate)
                 self._transition(result)
+                self._emit(
+                    "state_updated",
+                    round=round_idx,
+                    display_round=round_idx + 1,
+                    previous_state=previous_state,
+                    state=self.state,
+                    previous_candidate=previous_candidate,
+                    candidate=list(self.candidate),
+                )
                 self._log_round(round_idx, message, result)
 
                 messages.append(self._assistant_tool_message(message, tool_call, tool_name))
@@ -266,7 +362,9 @@ class IterativeAgent:
                 )
 
                 if self.state == "TERMINATED":
-                    return self._force_terminate()
+                    result = self._force_terminate()
+                    self._emit("video_finished", result=result)
+                    return result
 
                 messages.append({
                     "role": "user",
@@ -292,7 +390,9 @@ class IterativeAgent:
                 }
             )
 
-        return self._force_terminate()
+        result = self._force_terminate()
+        self._emit("video_finished", result=result)
+        return result
 
     # ------------------------------------------------------------------
     # Message builders

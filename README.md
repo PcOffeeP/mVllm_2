@@ -60,6 +60,18 @@ pip install -e ".[metrics]"
 pip install -r requirements/minicpm-v.txt
 ```
 
+- 安装项目根依赖（运行 Agent CLI/UI 必需）：
+
+```bash
+pip install -e .
+```
+
+若需要开发依赖（pytest、streamlit 等），使用：
+
+```bash
+pip install -e ".[dev]"
+```
+
 - 本地模型默认放在 `models/minicpm-v-4.6`，不提交模型权重或 checkpoint。
 - Agent 远程后端需要配置 `LLM_API_KEY` 或在 `agent/config.yaml` 中填入 `agent.remote.api_key`。
 
@@ -143,7 +155,40 @@ python3 finetune/validation/evaluate_joint.py \
 
 ### 4. Agent 推理
 
-使用 `agent/iterative_agent.py` 对单个视频执行多轮迭代定位。具体入口与参数以代码实现为准。
+Agent 由共享执行内核 `agent/runner.py` 驱动，支持 Streamlit UI 与命令行两种入口。CLI 入口为 `agent/run.py`。
+
+#### 启动方式
+
+1. **Streamlit UI**
+
+```bash
+python3 -m streamlit run ui/agent_app.py
+```
+
+2. **CLI 单视频**
+
+```bash
+python3 -m agent.run --video data/01_videos/video_0001.mp4 --mock
+```
+
+3. **CLI 批量**
+
+```bash
+python3 -m agent.run --videos-dir data/01_videos --mock
+```
+
+#### Mock 模式
+
+`--mock` 会启用 Mock 推理模式（设置环境变量 `INFERENCE_MOCK=1`），用于在没有模型服务时测试 Agent 状态机、工具调用与整体流程。Mock 不调用真实模型，仅返回占位结果，便于快速验证链路。
+
+#### 真实运行
+
+正式推理前，需要启动微调模型推理服务（LLaMA-Factory API），并确保环境变量 `LLM_API_KEY` 已配置（或在 `agent/config.yaml` 的 `agent.remote.api_key` 中填入有效 key）。去掉 `--mock` 后即可使用真实模型运行，例如：
+
+```bash
+export LLM_API_KEY="your-api-key"
+python3 -m agent.run --video data/01_videos/video_0001.mp4
+```
 
 ## 测试
 
