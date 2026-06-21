@@ -50,3 +50,4 @@ pyproject.toml
 /data/03_splits/fold_*.json
 /data/03_splits/test.json
 /data/03_splits/stratified_split_decision_log.json
+.agents/skills/
