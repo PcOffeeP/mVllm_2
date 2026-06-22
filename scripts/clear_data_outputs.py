@@ -17,6 +17,11 @@ TARGET_DIRS = [
     "data/02_subvideos/",
     "data/03_frames/",
     "data/metadata/",
+    "data/03_splits_v2/",
+    "data/04_merged_v2/",
+    "data/02_subvideos_v2/",
+    "data/03_frames_v2/",
+    "data/metadata_v2/",
 ]
 
 PROTECTED_DIRS = [

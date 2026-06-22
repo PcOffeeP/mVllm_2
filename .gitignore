@@ -47,8 +47,17 @@ pyproject.toml
 /data/04_new_merged/
 /data/metadata/
 
+# v2 data pipeline artifacts
+/data/02_subvideos_v2/
+/data/03_frames_v2/
+/data/04_merged_v2/
+/data/metadata_v2/
+
 # New interval split outputs (old stratified_3_fold_* baselines remain tracked)
 /data/03_splits/fold_*.json
 /data/03_splits/test.json
 /data/03_splits/stratified_split_decision_log.json
+
+# v2 split outputs
+/data/03_splits_v2/
 .agents/skills/
