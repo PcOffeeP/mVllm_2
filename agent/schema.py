@@ -1,6 +1,8 @@
 """Pydantic models that formalize the model/agent interface contract.
 
-See ``docs/architecture/model_agent_interface.md`` for the authoritative definitions.
+See ``docs/IMPLEMENTATIONS/model-agent-contract.md`` for the authoritative
+definitions. This module implements the v2 model output, tool schemas and
+public result envelopes used by the iterative localization pipeline.
 """
 
 from __future__ import annotations
@@ -8,7 +10,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class FractureType(StrEnum):
@@ -26,7 +28,7 @@ class FractureType(StrEnum):
     VIDEO_ABNORMAL = "视频异常"
 
 
-FRACTURE_CLASSES = {
+FRACTURE_CLASSES: set[str] = {
     FractureType.TOUGH,
     FractureType.BRITTLE,
     FractureType.INTERFACE_DEBOND,
@@ -36,11 +38,12 @@ FRACTURE_CLASSES = {
     FractureType.INTERFACE_DEBOND_AND_ROOT,
 }
 
-NON_FRACTURE_CLASSES = {
+NON_FRACTURE_CLASSES: set[str] = {
     FractureType.NO_FRACTURE,
     FractureType.NOT_CLAMPED,
-    FractureType.VIDEO_ABNORMAL,
 }
+
+ALL_MODEL_OUTPUT_TYPES: set[str] = FRACTURE_CLASSES | NON_FRACTURE_CLASSES | {FractureType.VIDEO_ABNORMAL}
 
 
 class LocationType(StrEnum):
@@ -50,8 +53,12 @@ class LocationType(StrEnum):
     OUTSIDE = "outside_gauge"
 
 
+# ---------------------------------------------------------------------------
+# Legacy enums kept for backward-compatible imports. They are no longer used
+# by ModelOutput or any public v2/v3 contract model.
+# ---------------------------------------------------------------------------
 class ConfidenceLevel(StrEnum):
-    """Four-level confidence grading used by the Agent."""
+    """Four-level confidence grading (legacy, retained for import stability)."""
 
     HIGH = "高"
     MEDIUM = "中"
@@ -60,7 +67,7 @@ class ConfidenceLevel(StrEnum):
 
 
 class BoundaryStatus(StrEnum):
-    """Boundary sentinel status for a ``fracture_between`` prediction."""
+    """Boundary sentinel status (legacy, retained for import stability)."""
 
     NONE = "none"
     LEFT_SENTINEL = "left_sentinel"
@@ -68,146 +75,318 @@ class BoundaryStatus(StrEnum):
 
 
 class SamplingStrategy(StrEnum):
-    """Sampling strategy requested by the Agent."""
+    """Sampling strategy requested by the Agent (legacy, retained for imports)."""
 
     UNIFORM = "uniform"
     ADAPTIVE = "adaptive"
 
 
+# ---------------------------------------------------------------------------
+# v2 model output
+# ---------------------------------------------------------------------------
 class ModelOutput(BaseModel):
-    """Single-round model output JSON schema (section 2 of the contract)."""
+    """Single-round fine-tuned model output JSON schema.
 
-    model_config = ConfigDict(use_enum_values=False)
+    The object always contains exactly the five fields below and must belong
+    to one of the five legal combinations described in the contract.
+    """
 
-    has_fracture: bool
+    model_config = ConfigDict(extra="forbid", use_enum_values=False)
+
+    has_fracture: bool | None
     fracture_between: list[int] | None = None
     type: FractureType
-    location: str | None
+    location: str | None = None
     confidence: float = Field(..., ge=0.0, le=1.0)
 
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _reject_bool_confidence(cls, value: Any) -> Any:
+        if isinstance(value, bool):
+            raise ValueError("confidence must be a JSON number, not a boolean")
+        return value
+
+    @field_validator("fracture_between", mode="before")
+    @classmethod
+    def _reject_bool_indexes(cls, value: Any) -> Any:
+        if isinstance(value, list) and any(isinstance(item, bool) for item in value):
+            raise ValueError("fracture_between indexes must be integers, not booleans")
+        return value
+
     @model_validator(mode="after")
-    def _validate_fracture_consistency(self) -> Self:
-        if self.has_fracture:
+    def _validate_five_legal_combinations(self) -> Self:
+        # Combination 1: normal fracture with locatable boundary.
+        if self.has_fracture is True and self.type in FRACTURE_CLASSES:
             if self.fracture_between is None:
-                raise ValueError("fracture_between is required when has_fracture is true")
+                raise ValueError("fracture_between is required for a normal fracture prediction")
             if len(self.fracture_between) != 2:
-                raise ValueError("fracture_between must be a two-element list [i, i+1]")
+                raise ValueError("fracture_between must contain exactly two integers [i, i+1]")
             i, j = self.fracture_between
-            if j != i + 1:
-                raise ValueError("fracture_between must be strictly adjacent [i, i+1]")
-            if self.type not in FRACTURE_CLASSES:
-                raise ValueError(
-                    f"type must be one of the 7 fracture classes when has_fracture is true, got {self.type}"
-                )
+            if j != i + 1 or i < 0:
+                raise ValueError("fracture_between must be strictly adjacent [i, i+1] with i >= 0")
             if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE}:
                 raise ValueError(
-                    f"location must be inside_gauge or outside_gauge when has_fracture is true, got {self.location}"
+                    "location must be inside_gauge or outside_gauge for a normal fracture prediction"
                 )
-        else:
+            return self
+
+        # Combination 5: video anomaly but fracture presence is confirmed.
+        if self.has_fracture is True and self.type == FractureType.VIDEO_ABNORMAL:
+            if self.fracture_between is not None:
+                raise ValueError(
+                    "fracture_between must be null for video anomaly with confirmed fracture"
+                )
+            if self.location is not None:
+                raise ValueError("location must be null for video anomaly")
+            return self
+
+        # Combinations 2 & 3: confirmed no fracture / not clamped.
+        if self.has_fracture is False:
             if self.fracture_between is not None:
                 raise ValueError("fracture_between must be null when has_fracture is false")
-            if self.type not in NON_FRACTURE_CLASSES:
+            if self.type not in {FractureType.NO_FRACTURE, FractureType.NOT_CLAMPED}:
                 raise ValueError(
-                    f"type must be one of 未断裂/未夹紧/视频异常 when has_fracture is false, got {self.type}"
+                    "type must be 未断裂 or 未夹紧 when has_fracture is false, "
+                    f"got {self.type}"
                 )
             if self.location is not None:
                 raise ValueError("location must be null when has_fracture is false")
-        return self
+            return self
+
+        # Combination 4: video anomaly, fracture presence unknown.
+        if self.has_fracture is None:
+            if self.fracture_between is not None:
+                raise ValueError("fracture_between must be null when has_fracture is null")
+            if self.type != FractureType.VIDEO_ABNORMAL:
+                raise ValueError(
+                    "type must be 视频异常 when has_fracture is null, "
+                    f"got {self.type}"
+                )
+            if self.location is not None:
+                raise ValueError("location must be null when has_fracture is null")
+            return self
+
+        raise ValueError(f"illegal combination: has_fracture={self.has_fracture}, type={self.type}")
 
 
+# ---------------------------------------------------------------------------
+# Tool schemas
+# ---------------------------------------------------------------------------
 class ToolSampleAndInfer(BaseModel):
-    """Schema for the ``sample_and_infer`` tool (section 3)."""
+    """Schema for the ``sample_and_infer`` tool (v2).
+
+    The decision model may only provide the inspection interval and the
+    complete user prompt. All sampling hyperparameters are removed from the
+    public tool contract.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     sample_range: list[float] = Field(..., min_length=2, max_length=2)
-    num_frames: int = Field(default=36, ge=1)
-    video_fps: float = Field(default=8.0, gt=0.0)
-    sampling_strategy: SamplingStrategy = Field(default=SamplingStrategy.UNIFORM)
-    prompt: str
-    expected_schema: dict[str, Any] | None = None
+    prompt: str = Field(..., min_length=1)
 
 
 class ToolTerminate(BaseModel):
-    """Schema for the ``terminate`` tool (section 4)."""
+    """Schema for the ``terminate`` tool (v3).
 
-    has_fracture: bool
-    time_range: list[float] | None = Field(None, min_length=2, max_length=2)
-    time_estimate: float | None = None
-    frame_range: list[int] | None = Field(None, min_length=2, max_length=2)
-    type: FractureType
-    location: str | None
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    confidence_level: ConfidenceLevel
+    The decision model proposes a final status, the semantic fields and the
+    evidence rounds that support the proposal. The program later derives the
+    concrete ``time_range`` and validates the proposal against the evidence
+    threshold rules.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: str
+    fracture_type: str | None = None
+    location: str | None = None
+    confidence: float | None = None
+    unrecognized_reason: str | None = None
+    evidence_rounds: list[int] | None = None
 
     @model_validator(mode="after")
-    def _validate_terminate_consistency(self) -> Self:
-        if self.has_fracture:
-            if self.time_range is None or self.time_estimate is None or self.frame_range is None:
-                raise ValueError("time_range, time_estimate and frame_range are required when has_fracture is true")
-            if self.type not in FRACTURE_CLASSES:
-                raise ValueError("type must be a fracture class when has_fracture is true")
+    def _validate_status(self) -> Self:
+        valid_statuses = {"fracture", "no_fracture", "unrecognized"}
+        if self.status not in valid_statuses:
+            raise ValueError(f"status must be one of {valid_statuses}, got {self.status}")
+
+        if self.status == "fracture":
+            if self.fracture_type not in FRACTURE_CLASSES:
+                raise ValueError("fracture_type must be one of the 7 fracture classes")
             if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE}:
-                raise ValueError(
-                    f"location must be inside_gauge or outside_gauge when has_fracture is true, got {self.location}"
-                )
-        else:
-            if self.time_range is not None or self.time_estimate is not None or self.frame_range is not None:
-                raise ValueError("time_range, time_estimate and frame_range must be null when has_fracture is false")
-            if self.type not in NON_FRACTURE_CLASSES:
-                raise ValueError("type must be 未断裂/未夹紧/视频异常 when has_fracture is false")
+                raise ValueError("location must be inside_gauge or outside_gauge for fracture status")
+            if self.confidence is None:
+                raise ValueError("confidence is required for fracture status")
+            if self.unrecognized_reason is not None:
+                raise ValueError("unrecognized_reason must be null for fracture status")
+            if not self.evidence_rounds:
+                raise ValueError("evidence_rounds is required for fracture status")
+
+        elif self.status == "no_fracture":
+            if self.fracture_type is not None:
+                raise ValueError("fracture_type must be null for no_fracture status")
             if self.location is not None:
-                raise ValueError("location must be null when has_fracture is false")
+                raise ValueError("location must be null for no_fracture status")
+            if self.confidence is None:
+                raise ValueError("confidence is required for no_fracture status")
+            if self.unrecognized_reason is not None:
+                raise ValueError("unrecognized_reason must be null for no_fracture status")
+
+        else:  # unrecognized
+            if self.unrecognized_reason is None:
+                raise ValueError("unrecognized_reason is required for unrecognized status")
+            if self.fracture_type is not None:
+                raise ValueError("fracture_type must be null for unrecognized status")
+            if self.location is not None:
+                raise ValueError("location must be null for unrecognized status")
+            if self.confidence is not None:
+                raise ValueError("confidence must be null for unrecognized status")
+            if self.evidence_rounds is not None:
+                raise ValueError("evidence_rounds must be null for unrecognized status")
+
         return self
+
+
+# ---------------------------------------------------------------------------
+# Tool results and diagnostics
+# ---------------------------------------------------------------------------
+class ValidationErrorInfo(BaseModel):
+    """Stable validation error object exposed to the decision model."""
+
+    code: str
+    message: str
+    field: str | None = None
 
 
 class SampleAndInferResult(BaseModel):
-    """Structured result returned by the tool execution layer (section 5.3)."""
+    """Compact tool result visible to the decision model (v2).
 
-    model_output: dict[str, Any]
-    frames: list[dict[str, Any]]
-    model_video_path: str
+    This object deliberately excludes temporary paths, full frame tables and
+    raw HTTP payloads. Those details live in ``SampleAndInferDiagnostics``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ok: bool
     sample_range: list[float] = Field(..., min_length=2, max_length=2)
-    video_fps: float
-    video_maxlen: int
-    num_sample_frames: int
-    sampling_strategy: SamplingStrategy
+    model_output: dict[str, Any] | None = None
     inferred_time_range: list[float] | None = Field(None, min_length=2, max_length=2)
-    inferred_frame_range: list[int] | None = Field(None, min_length=2, max_length=2)
-    boundary_status: BoundaryStatus
-    parse_error: str | None = None
-    round_confidence_level: ConfidenceLevel
-
-
-class FinalOutput(BaseModel):
-    """Final Agent output delivered to downstream consumers (section 7)."""
-
-    video_id: str
-    has_fracture: bool
-    time_range: list[float] | None = Field(None, min_length=2, max_length=2)
-    time_estimate: float | None = None
-    frame_range: list[int] | None = Field(None, min_length=2, max_length=2)
-    type: FractureType
-    location: str | None
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    confidence_level: ConfidenceLevel
-    rounds: int = Field(..., ge=0)
-    history: list[dict[str, Any]]
+    validation_error: ValidationErrorInfo | None = None
+    attempts: int = Field(..., ge=1, le=3)
 
     @model_validator(mode="after")
-    def _validate_final_output_consistency(self) -> Self:
-        if self.has_fracture:
-            if self.time_range is None or self.time_estimate is None or self.frame_range is None:
-                raise ValueError("time_range, time_estimate and frame_range are required when has_fracture is true")
-            if self.type not in FRACTURE_CLASSES:
-                raise ValueError("type must be a fracture class when has_fracture is true")
-            if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE}:
-                raise ValueError(
-                    f"location must be inside_gauge or outside_gauge when has_fracture is true, got {self.location}"
-                )
+    def _validate_result_consistency(self) -> Self:
+        if self.ok:
+            if self.validation_error is not None:
+                raise ValueError("validation_error must be null when ok is true")
         else:
-            if self.time_range is not None or self.time_estimate is not None or self.frame_range is not None:
-                raise ValueError("time_range, time_estimate and frame_range must be null when has_fracture is false")
-            if self.type not in NON_FRACTURE_CLASSES:
-                raise ValueError("type must be 未断裂/未夹紧/视频异常 when has_fracture is false")
-            if self.location is not None:
-                raise ValueError("location must be null when has_fracture is false")
+            if self.model_output is not None:
+                raise ValueError("model_output must be null when ok is false")
+            if self.inferred_time_range is not None:
+                raise ValueError("inferred_time_range must be null when ok is false")
+            if self.validation_error is None:
+                raise ValueError("validation_error is required when ok is false")
         return self
+
+
+class SampleAndInferDiagnostics(BaseModel):
+    """Internal diagnostics for a single ``sample_and_infer`` execution."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str | None = None
+    processor_version: str | None = None
+    video_maxlen: int | None = None
+    sampled_frames: list[dict[str, Any]] | None = None
+    temp_video_manifest: list[dict[str, Any]] | None = None
+    internal_frame_range: list[int] | None = None
+    temp_video_hash: str | None = None
+    temp_video_bytes: int | None = None
+    mime_type: str | None = None
+    base64_length: int | None = None
+    raw_http_response: dict[str, Any] | None = None
+    transport_retries: int = 0
+    correction_retries: int = 0
+    elapsed_seconds: float | None = None
+    error: ValidationErrorInfo | None = None
+
+
+# ---------------------------------------------------------------------------
+# Final public result and Runner envelope
+# ---------------------------------------------------------------------------
+class FinalOutput(BaseModel):
+    """Final public result delivered to downstream consumers (v3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    video_id: str
+    status: str
+    time_range: list[float] | None = Field(None, min_length=2, max_length=2)
+    fracture_type: str | None = None
+    location: str | None = None
+    confidence: float | None = None
+    unrecognized_reason: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_public_result(self) -> Self:
+        valid_statuses = {"fracture", "no_fracture", "unrecognized"}
+        if self.status not in valid_statuses:
+            raise ValueError(f"status must be one of {valid_statuses}, got {self.status}")
+
+        if self.status == "fracture":
+            if self.time_range is None:
+                raise ValueError("time_range is required for fracture status")
+            if self.fracture_type not in FRACTURE_CLASSES:
+                raise ValueError("fracture_type must be one of the 7 fracture classes")
+            if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE, "unknown"}:
+                raise ValueError("location must be inside_gauge, outside_gauge or unknown")
+            if self.confidence is None:
+                raise ValueError("confidence is required for fracture status")
+            if self.unrecognized_reason is not None:
+                raise ValueError("unrecognized_reason must be null for fracture status")
+
+        elif self.status == "no_fracture":
+            if self.time_range is not None:
+                raise ValueError("time_range must be null for no_fracture status")
+            if self.fracture_type is not None:
+                raise ValueError("fracture_type must be null for no_fracture status")
+            if self.location is not None:
+                raise ValueError("location must be null for no_fracture status")
+            if self.confidence is None:
+                raise ValueError("confidence is required for no_fracture status")
+            if self.unrecognized_reason is not None:
+                raise ValueError("unrecognized_reason must be null for no_fracture status")
+
+        else:  # unrecognized
+            if self.unrecognized_reason is None:
+                raise ValueError("unrecognized_reason is required for unrecognized status")
+            if self.time_range is not None:
+                raise ValueError("time_range must be null for unrecognized status")
+            if self.fracture_type is not None:
+                raise ValueError("fracture_type must be null for unrecognized status")
+            if self.location is not None:
+                raise ValueError("location must be null for unrecognized status")
+            if self.confidence is not None:
+                raise ValueError("confidence must be null for unrecognized status")
+
+        return self
+
+
+class RunnerError(BaseModel):
+    """Structured Runner failure envelope."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    stage: str
+    code: str
+    message: str
+
+
+class RunnerResult(BaseModel):
+    """Runner execution envelope that separates success from infrastructure failure."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ok: bool
+    result: FinalOutput | None = None
+    error: RunnerError | None = None

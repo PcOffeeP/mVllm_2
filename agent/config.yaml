@@ -1,9 +1,7 @@
 # Agent-side configuration for the iterative frame-interval localization pipeline.
-# See docs/architecture/agent_iteration_design.md section 6 and
-# docs/architecture/model_agent_interface.md.
+# See docs/IMPLEMENTATIONS/model-agent-contract.md.
 
-video_fps: 8.0
-video_maxlen: 36
+video_maxlen: 8
 
 agent:
   tolerance_seconds: 1.0
@@ -12,8 +10,7 @@ agent:
   max_low_conf_rounds: 2
   backend: "remote"
   temperature: 0.7
-  video_fps: 8.0
-  video_maxlen: 36
+  video_maxlen: 8
 
   remote:
     provider: "dashscope"
