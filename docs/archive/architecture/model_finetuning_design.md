@@ -3,7 +3,8 @@
 > 项目:mVllm-frame-interval-agent
 > 模型:MiniCPM-V 4.6
 > 日期:2026-06-11
-> 状态:Current Repository Design
+> 状态:已过期
+> 替代文档:[`docs/PROJECT_PLAN.md`](../../PROJECT_PLAN.md) v2
 
 ---
 
@@ -11,12 +12,14 @@
 
 本文档是 `mVllm-frame-interval-agent` 项目**模型微调侧**的设计文档,定义数据管道、训练样本构建、模型微调训练及模型侧配置参数。若本文与 `dataset_info.json`、训练 YAML、CSV 标注文件等权威配置不一致,以对应文件为准并优先修订本文。
 
+断裂行为的视觉现象说明可参考 [`assets/frac_mode.md`](../../assets/frac_mode.md)，但训练标签仍以 CSV 原始字段及 canonical 派生字段为准。
+
 本文只定义新 worktree 的帧区间迭代定位方案中**模型侧**的实现;旧 worktree 中"直接预测断裂时间与断裂模式"的方案仅作为对比基线,不在本文范围内继续扩展。
 
 ### 与其他文档的关系
 
-- [`docs/agent_iteration_design.md`](./agent_iteration_design.md):定义 Agent 迭代控制器、评估体系及 Agent 侧配置。
-- [`docs/model_agent_interface.md`](./model_agent_interface.md):定义微调模型与 Agent 之间的接口契约,包括模型输出 JSON Schema、Tool Schema、Prompt 契约、索引/时间换算规则等。本文在涉及这些契约时仅做引用说明,详细定义以接口契约为准。
+- [`docs/architecture/agent_iteration_design.md`](./agent_iteration_design.md):定义 Agent 迭代控制器、评估体系及 Agent 侧配置。
+- [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md):定义微调模型与 Agent 之间的接口契约,包括模型输出 JSON Schema、Tool Schema、Prompt 契约、索引/时间换算规则等。本文在涉及这些契约时仅做引用说明,详细定义以接口契约为准。
 
 ---
 
@@ -179,7 +182,7 @@ Schema(单条记录)见第 5.1 节。
 - 模型输入/输出层面的 `type` / `location` **仅描述当前片段**:
   - 当前片段包含断裂（正样本 / 全时长正样本）：`type` 必须且只能取 7 个断裂类之一：`韧性断裂`、`脆性断裂`、`界面脱粘`、`齐根断裂`、`爆炸性断裂`、`半脆半韧断裂`、`界面脱粘、齐根断裂`；`location` 为 `inside_gauge` / `outside_gauge` / `N/A`。
   - 当前片段不包含断裂(人工负样本 / 无断裂视频):`type` 为 `未断裂` / `未夹紧` / `视频异常` 之一,`location` 为 `N/A`。
-- 父视频真实断裂信息仅保存在训练 metadata 的 `source_type` / `source_location` 中,**不进入模型输出 JSON**。详见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 2.6 节。
+- 父视频真实断裂信息仅保存在训练 metadata 的 `source_type` / `source_location` 中,**不进入模型输出 JSON**。详见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 2.6 节。
 
 **异常样本与 `location = N/A` 的处理**
 
@@ -252,7 +255,7 @@ Schema(单条记录)见第 5.1 节。
 
 #### Prompt 设计规范
 
-微调模型在**训练与推理阶段使用同一套 System Prompt 模板**,由 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 6.1 节统一定义。System Prompt 固定,训练时由**数据构造器**写入每条样本的 `messages[0]`;Agent 侧仅在 System Prompt 之上追加动态构建的 user prompt。
+微调模型在**训练与推理阶段使用同一套 System Prompt 模板**,由 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 6.1 节统一定义。System Prompt 固定,训练时由**数据构造器**写入每条样本的 `messages[0]`;Agent 侧仅在 System Prompt 之上追加动态构建的 user prompt。
 
 训练样本的 user prompt 由数据构造器根据片段类型动态生成,模拟 Agent 会发送的 prompt 分布:
 
@@ -267,7 +270,7 @@ Schema(单条记录)见第 5.1 节。
 4. **输入说明**:当前区间的时间范围、帧数等。
 5. **输出格式要求**:严格合法的 JSON schema,包含 `has_fracture`、`fracture_between`、`type`、`location`、`confidence` 字段。
 
-> 注:Agent 在推理时可根据当前迭代阶段调整 **user prompt** 的措辞和重点(例如初期侧重"有无断裂",后期侧重"精确边界"),但**不得修改 system prompt**。完整 Prompt 契约见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 6 节。
+> 注:Agent 在推理时可根据当前迭代阶段调整 **user prompt** 的措辞和重点(例如初期侧重"有无断裂",后期侧重"精确边界"),但**不得修改 system prompt**。完整 Prompt 契约见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 6 节。
 
 #### LLaMA-Factory YAML 配置要点
 
@@ -350,7 +353,7 @@ bf16: true
 
 #### 训练数据 confidence 标注规范
 
-与 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 2.4 节保持一致:
+与 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 2.4 节保持一致:
 
 - **Ground truth 样本**:所有训练样本的 `confidence` 均标注为 `1.0`,即假设人工标注和 CSV 读取标签是确定的。
 - **负样本**:`has_fracture: false` 的样本同样标注 `confidence: 1.0`,表示"该片段确实不包含断裂"是确定事实。
@@ -360,11 +363,11 @@ bf16: true
 
 #### 模型输出 JSON
 
-微调模型在推理时的输出 JSON Schema 定义见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 2 节。示例仅在接口契约文件中保留,避免重复。
+微调模型在推理时的输出 JSON Schema 定义见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 2 节。示例仅在接口契约文件中保留,避免重复。
 
 **负样本 `type` / `location` 与父视频 `source_type` / `source_location` 规则**
 
-与 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 2.5、2.6 节保持一致:
+与 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 2.5、2.6 节保持一致:
 
 - **当前片段 `has_fracture = false` 且父视频本身无断裂**(全时长异常样本):
   - 模型输出 JSON 中的 `type` 仅允许 `未断裂` / `未夹紧` / `视频异常` 三者之一(不允许使用 `none`)；训练标签由样本构造器决定:真实无断裂/异常样本保留其 CSV 标注。
@@ -539,7 +542,7 @@ bf16: true
 | `n_folds` | 3 | 交叉验证折数 |
 | `dataset_manager_output` | `data/04_new_merged/` | 新 interval 方案生成的训练/验证/测试 JSON 输出目录;当前基线使用 `data/04_merged/` |
 
-> Agent 侧配置参数(如 `max_rounds`、`tolerance_seconds`、`agent.backend` 等)见 [`docs/agent_iteration_design.md`](./agent_iteration_design.md) 第 6 节。
+> Agent 侧配置参数(如 `max_rounds`、`tolerance_seconds`、`agent.backend` 等)见 [`docs/architecture/agent_iteration_design.md`](./agent_iteration_design.md) 第 6 节。
 
 ---
 
@@ -550,7 +553,7 @@ bf16: true
 | **Phase 1** | Week 1 | 元数据管理 + 子视频生成与训练样本构建 | `video_meta.json`、子视频 `.mp4` 文件、可选帧图缓存、训练/测试 JSON | 所有子视频生成完毕,JSON 格式通过 LLaMA-Factory 数据加载验证 |
 | **Phase 2** | Week 2 | Prompt 设计与训练配置 + 模型微调训练 | YAML 配置、`dataset_info.json`、3 个 fold 的 checkpoint | 每折训练 loss 收敛,验证集上 JSON 可解析率 > 95% |
 
-> Phase 3-4(Agent 迭代与评估)见 [`docs/agent_iteration_design.md`](./agent_iteration_design.md) 第 7 节。
+> Phase 3-4(Agent 迭代与评估)见 [`docs/architecture/agent_iteration_design.md`](./agent_iteration_design.md) 第 7 节。
 
 ---
 
@@ -625,4 +628,4 @@ bf16: true
     v  LlamaFactory/saves/minicpmv4_6/lora/sft_3k*/
 ```
 
-> 完整数据流图(含 Agent 迭代与评估)见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 附录 A。
+> 完整数据流图(含 Agent 迭代与评估)见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 附录 A。

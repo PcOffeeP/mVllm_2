@@ -3,14 +3,11 @@
 材料拉伸试验视频的断裂行为理解项目。当前主线采用 **frame-interval 微调模型 + Meta-Agent 迭代定位**：微调模型判断给定视频片段中“断裂发生在哪两帧之间”，Meta-Agent 据此多轮缩小时间区间，最终输出断裂区间、类型、位置及置信度。
 
 - 微调模型输出结构化 JSON，核心字段为 `has_fracture`、`fracture_between`、`type`、`location`、`confidence`。
-- Agent 通过 Native Function Calling 调用 `sample_and_infer`，逐步收敛候选区间，最终调用 `terminate` 输出结果。
-- 旧单点预测基线文件仍保留在 Git 索引中，但已冻结，仅用于对比。
+- Agent 通过 Native Function Calling 调用 `sample_and_infer`，逐步收敛候选区间，最终输出 `fracture`、`no_fracture` 或 `unrecognized`。
+- 旧单点预测方案由另一个项目维护，本项目只导入其版本化预测产物进行统一比较。
 
 > 详细开发约束、命名约定、提交规范见 [AGENTS.md](./AGENTS.md)。
-> 接口契约、训练设计、Agent 设计分别见：
-> - [docs/model_agent_interface.md](./docs/model_agent_interface.md)
-> - [docs/model_finetuning_design.md](./docs/model_finetuning_design.md)
-> - [docs/agent_iteration_design.md](./docs/agent_iteration_design.md)
+> 当前项目设计见 [docs/PROJECT_PLAN.md](./docs/PROJECT_PLAN.md)，分步骤实施设计见 [docs/IMPLEMENTATIONS/](./docs/IMPLEMENTATIONS/)。
 
 ## 仓库结构
 
@@ -29,16 +26,16 @@ TensileAgent/
 ├── scripts/
 │   └── validate_no_oob.py  # 生成产物一致性 / OOB 校验
 ├── tests/                  # 项目级 pytest
+├── docs/                   # 当前项目计划、实施方案和历史设计归档
+├── assets/                 # 领域参考文档与项目原始说明材料
 ├── data/
 │   ├── 01_videos/          # 原始视频（本地，不提交）
 │   ├── 02_annotations/     # CSV 标注与映射文件
-│   ├── 03_splits/          # 旧 stratified_3_fold_* 基线 + 新 fold/test 划分
-│   ├── 04_merged/          # 旧基线训练/验证 JSON（冻结保留）
+│   ├── 03_splits/          # 新 interval fold/test 划分
 │   ├── 02_subvideos/       # 新 interval 子视频产物（本地，不提交）
 │   ├── 03_frames/          # 帧图缓存（本地，不提交）
 │   ├── 04_new_merged/      # 新 interval ShareGPT 训练 JSON（本地，不提交）
 │   └── metadata/           # video_meta.json / subvideos_meta.json（本地，不提交）
-├── docs/                   # 设计文档与接口契约
 ├── AGENTS.md               # 仓库开发规范
 └── README.md
 ```
@@ -229,7 +226,7 @@ python3 pipeline/scripts/training_sample_builder.py \
 - uniform 采样换算目前假设固定 `video_fps=8.0`、`video_maxlen=36`；实际采样帧数由子视频时长、帧率与上限共同决定。
 - 子视频生成依赖 `ffmpeg` / `ffprobe`，请确保系统已安装。
 - 新 interval 数据产物（`data/02_subvideos/`、`data/03_frames/`、`data/04_new_merged/`、`data/metadata/`）默认被 `.gitignore` 忽略，不提交。
-- 旧基线文件（`data/03_splits/stratified_3_fold_*.json`、`data/04_merged/stratified_3_fold_*_{train,val}.json`）保留在索引中，不要误删。
+- 旧直接预测方案不在本项目维护；对比时只导入外部项目生成的版本化预测产物。
 
 ## 开发约束
 

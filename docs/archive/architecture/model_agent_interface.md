@@ -3,7 +3,8 @@
 > 项目：mVllm-frame-interval-agent
 > 日期：2026-06-14
 > 版本：v1.0
-> 状态：Current Repository Design
+> 状态：已过期
+> 替代文档：[`docs/PROJECT_PLAN.md`](../../PROJECT_PLAN.md) v2
 
 ---
 
@@ -11,8 +12,8 @@
 
 本文档是 `mVllm-frame-interval-agent` 项目中**微调模型侧**与 **Agent 迭代侧**之间的**单一接口契约**。
 
-- [`docs/model_finetuning_design.md`](./model_finetuning_design.md)：定义模型微调侧的数据管道、训练样本构建、模型训练流程及模型侧配置。
-- [`docs/agent_iteration_design.md`](./agent_iteration_design.md)：定义 Agent 迭代控制器、评估体系及 Agent 侧配置。
+- [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md)：定义模型微调侧的数据管道、训练样本构建、模型训练流程及模型侧配置。
+- [`docs/architecture/agent_iteration_design.md`](./agent_iteration_design.md)：定义 Agent 迭代控制器、评估体系及 Agent 侧配置。
 - **本文档**：定义上述两者之间的所有交互边界，包括模型输出 JSON Schema、Tool Schema、Prompt 契约、Tool 执行层接口、最终输出 Schema、索引/时间换算规则等。
 
 **两队并行实现时，以此文档为准。** 若本文与训练 YAML、`dataset_info.json`、CSV 标注文件或代码实现不一致，以对应权威文件为准，并优先修订本文。
@@ -28,7 +29,7 @@
 3. 工具执行层（视频采样、模型推理、结果解析）的输入输出语义一致。
 4. Prompt 构建、索引/时间换算、最终输出结构均有统一约定。
 
-**本文档不包含** LLM 后端类定义（如 `BaseAgentLLM`、`RemoteAPIClient`、`LocalClient` 等），这些保留在 [`docs/agent_iteration_design.md`](./agent_iteration_design.md) 中。
+**本文档不包含** LLM 后端类定义（如 `BaseAgentLLM`、`RemoteAPIClient`、`LocalClient` 等），这些保留在 [`docs/architecture/agent_iteration_design.md`](./agent_iteration_design.md) 中。
 
 ---
 
@@ -51,9 +52,9 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `has_fracture` | boolean | 是 | 当前视频片段是否包含断裂 |
-| `fracture_between` | `[int, int]` / `null` | 是 | 断裂发生在第 i 帧与第 i+1 帧之间，格式为 `[i, i+1]`，其中正常区间 `j = i + 1`；数组长度固定为 2（`minItems: 2`, `maxItems: 2`）。<br>边界哨兵 `[0, 0]` 与 `[N-1, N-1]` 表示断裂位于首采样帧之前/末采样帧之后（或恰好在边界），不代表两帧之间，评估时单独处理。 |
+| `fracture_between` | `[int, int]` / `null` | 是 | 断裂发生在第 i 帧与第 i+1 帧之间，严格为 `[i, i+1]`（即 `j = i + 1`）；数组长度固定为 2（`minItems: 2`, `maxItems: 2`）。当 `has_fracture=false` 时必须为 `null`。 |
 | `type` | string | 是 | 断裂模式或异常类别，取值须为 CSV 实际枚举之一（见 2.2 节） |
-| `location` | string | 是 | 标距内/外位置判断：`inside_gauge` / `outside_gauge` / `N/A` |
+| `location` | string / `null` | 是 | 标距内/外位置判断：`has_fracture=true` 时为 `inside_gauge` / `outside_gauge`；`has_fracture=false` 时必须为 `null` |
 | `confidence` | float | 是 | 模型对当前判断的主观置信度，范围 `[0.0, 1.0]` |
 
 ### 2.2 `type` 取值约束
@@ -75,16 +76,16 @@
 
 | 取值 | 含义 |
 |---|---|
-| `inside_gauge` | 断裂发生在标距内 |
-| `outside_gauge` | 断裂发生在标距外 |
-| `N/A` | 不适用或异常样本 |
+| `inside_gauge` | 断裂发生在标距内（`has_fracture=true`） |
+| `outside_gauge` | 断裂发生在标距外（`has_fracture=true`） |
+| `null` | `has_fracture=false` 时不存在位置判断，统一为 `null` |
 
 ### 2.4 `confidence` 取值约束
 
 - 类型：`float`
 - 范围：`[0.0, 1.0]`
 - 含义：模型对当前输出整体判断的主观置信度。
-- 训练阶段 Ground Truth 样本统一标注为 `1.0`（详见 [`docs/model_finetuning_design.md`](./model_finetuning_design.md) 第 3.3 节）；推理时由模型自报。
+- 训练阶段 Ground Truth 样本统一标注为 `1.0`（详见 [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md) 第 3.3 节）；推理时由模型自报。
 
 ### 2.5 `has_fracture = false` 时的字段规则
 
@@ -97,7 +98,7 @@
 | `has_fracture` | `false` |
 | `fracture_between` | `null` |
 | `type` | 仅允许 `未断裂` / `未夹紧` / `视频异常` 三者之一，**不允许输出 `none`**。训练标签由样本构造器决定：人工负片段（断裂前/后裁剪）默认 `未断裂`，真实无断裂/异常样本保留其 CSV 标注；推理时由模型直接预测当前片段类别，Agent 最终输出再通过多轮预测投票/置信度聚合决定。 |
-| `location` | 必须为 `"N/A"` |
+| `location` | 必须为 `null` |
 | `confidence` | 仍需给出，表示对"无断裂"判断的置信度 |
 
 负样本输出示例：
@@ -107,14 +108,14 @@
   "has_fracture": false,
   "fracture_between": null,
   "type": "未断裂",
-  "location": "N/A",
+  "location": null,
   "confidence": 0.95
 }
 ```
 
 ### 2.6 训练样本 metadata：`source_type` / `source_location`
 
-为消除与 [`docs/model_finetuning_design.md`](./model_finetuning_design.md) 中"断裂前/后人工负样本继承父视频 type/location"的冲突，训练样本在 LLaMA-Factory 对话格式之外额外携带以下 metadata 字段：
+为消除与 [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md) 中"断裂前/后人工负样本继承父视频 type/location"的冲突，训练样本在 LLaMA-Factory 对话格式之外额外携带以下 metadata 字段：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -123,9 +124,9 @@
 
 使用规则：
 
-1. **当前片段 `has_fracture = true`**：`type` / `location` 直接描述当前片段，`type` 必须且只能取 7 个断裂类之一：`韧性断裂`、`脆性断裂`、`界面脱粘`、`齐根断裂`、`爆炸性断裂`、`半脆半韧断裂`、`界面脱粘、齐根断裂`；`location` 取 `inside_gauge` / `outside_gauge` / `N/A`；此时 `source_type` / `source_location` 与 `type` / `location` 相同。
+1. **当前片段 `has_fracture = true`**：`type` / `location` 直接描述当前片段，`type` 必须且只能取 7 个断裂类之一：`韧性断裂`、`脆性断裂`、`界面脱粘`、`齐根断裂`、`爆炸性断裂`、`半脆半韧断裂`、`界面脱粘、齐根断裂`；`location` 取 `inside_gauge` / `outside_gauge`；此时 `source_type` / `source_location` 与 `type` / `location` 相同。
 2. **当前片段 `has_fracture = false` 但来自 `has_fracture = true` 的父视频**（如断裂前/后人工负样本子片段）：
-   - 模型输出 JSON 中的 `type` 必须为 `未断裂` / `未夹紧` / `视频异常` 之一，`location` 必须为 `"N/A"`。
+   - 模型输出 JSON 中的 `type` 必须为 `未断裂` / `未夹紧` / `视频异常` 之一，`location` 必须为 `null`。
    - 训练 metadata 中的 `source_type` / `source_location` 保留父视频真实信息，用于追溯与后续评估分析，**不进入模型输出 JSON**。
 3. **当前片段 `has_fracture = false` 且父视频本身无断裂**（全时长异常样本）：`source_type` / `source_location` 与 `type` / `location` 一致。
 
@@ -257,7 +258,7 @@ Agent 通过 Native Function Calling 调用 `sample_and_infer` 工具，由工�
         },
         "location": {
           "type": "string",
-          "description": "标距内位置判断。has_fracture=true 时为 `inside_gauge` / `outside_gauge` / `N/A`；has_fracture=false 时必须为 `N/A`"
+          "description": "标距内位置判断。has_fracture=true 时为 `inside_gauge` / `outside_gauge`；has_fracture=false 时必须为 `null`"
         },
         "confidence": {
           "type": "number",
@@ -284,7 +285,7 @@ Agent 通过 Native Function Calling 调用 `sample_and_infer` 工具，由工�
 | `time_estimate` | number / `null` | 是 | 断裂时间估计值（秒） |
 | `frame_range` | `[int, int]` / `null` | 是 | 最终断裂帧区间 |
 | `type` | string | 是 | 断裂模式或异常类别；`has_fracture=true` 时为 7 个断裂类别之一，`has_fracture=false` 时仅允许 `未断裂` / `未夹紧` / `视频异常`，取值规则同第 2.2、2.5 节 |
-| `location` | string | 是 | 标距位置，取值规则同第 2.3 节 |
+| `location` | string / `null` | 是 | 标距位置，取值规则同第 2.3 节 |
 | `confidence` | float | 是 | 最终综合置信度，`[0.0, 1.0]` |
 | `confidence_level` | string | 是 | 置信度等级：`高` / `中` / `低` / `不可信` |
 
@@ -297,7 +298,7 @@ Agent 通过 Native Function Calling 调用 `sample_and_infer` 工具，由工�
 | `time_estimate` | 统一填 `null` |
 | `frame_range` | 统一填 `null` |
 | `type` | 仅允许 `未断裂` / `未夹紧` / `视频异常` 三者之一，不允许输出 `none`。训练标签由构造器决定：人工负片段默认 `未断裂`，真实无断裂/异常样本保留其标注；推理最终输出由模型多轮预测投票/置信度聚合决定：若模型在多轮中明确预测 `未夹紧` 或 `视频异常` 且置信度可接受，则采用该预测；否则默认 `未断裂`，并将 `confidence_level` 降至 `中` 或 `低`（至少不为 `高`） |
-| `location` | 必须为 `"N/A"` |
+| `location` | 必须为 `null` |
 | `confidence` | 仍需给出，表示对"无断裂"判断的综合置信度 |
 | `confidence_level` | 按第 4.4 节分级标准填写 |
 
@@ -455,7 +456,7 @@ def build(
 | `sampling_strategy` | string | 是 | 本轮实际执行的采样策略，`uniform` 或 `adaptive` |
 | `inferred_time_range` | `[number, number]` / `null` | 否 | 当 `model_output.has_fracture = true` 时，由 `fracture_between` 换算得到的原视频时间区间；否则为 `null` |
 | `inferred_frame_range` | `[int, int]` / `null` | 否 | 当 `model_output.has_fracture = true` 时，由 `fracture_between` 与 `frames[].original_frame` 换算得到的原视频帧区间；否则为 `null` |
-| `boundary_status` | string | 是 | 边界哨兵状态：`none` / `left_sentinel` / `right_sentinel`。`left_sentinel` 对应 `fracture_between = [0, 0]`，`right_sentinel` 对应 `[N-1, N-1]`；哨兵产生的区间仅为临时扩展提示，不得单独触发收敛终止 |
+| `boundary_status` | string | 是 | 固定为 `none`。本契约不再使用 `[0, 0]` / `[N-1, N-1]` 等边界哨兵，`fracture_between` 严格为 `[i, i+1]`。 |
 | `parse_error` | string / `null` | 是 | 若 `ResultParser.parse` 失败，此处为错误描述；否则为 `null` |
 | `round_confidence_level` | string | 是 | 由 `model_output.confidence` 按第 4.4 节四级分层派生：`高` / `中` / `低` / `不可信`；Agent 内部冲突处理、停止条件均使用此字段 |
 
@@ -463,7 +464,7 @@ def build(
 
 1. `_execute_sample_and_infer` 必须按上述结构装配，字段名不得改变；`_transition` 等 Agent 内部逻辑只读取 `SampleAndInferResult` 的命名字段。
 2. `inferred_time_range` 与 `inferred_frame_range` 的换算规则见第 8 节。
-3. `boundary_status` 由工具执行层根据 `fracture_between` 判定：正常区间 `[i, i+1]` 为 `none`；`[0, 0]` 为 `left_sentinel`；`[N-1, N-1]` 为 `right_sentinel`。
+3. `boundary_status` 固定为 `none`；本契约不再使用边界哨兵。
 4. 若 `parse_error` 非 `null`，Agent 侧按解析失败流程处理（重试或终止），不得继续基于 `model_output` 做状态转移。
 
 ### 5.4 `InferenceClient.infer`
@@ -527,13 +528,13 @@ def parse(
 如果存在断裂，请回答：
 1. 断裂发生在哪两帧之间（用帧索引表示，如 [17, 18]）
 2. 断裂模式（若存在断裂，has_fracture=true，type 只能从 7 个断裂类中选：韧性断裂；脆性断裂；界面脱粘；齐根断裂；爆炸性断裂；半脆半韧断裂；界面脱粘、齐根断裂。其中组合标签 `界面脱粘、齐根断裂` 作为独立类别，与单独的 `界面脱粘`、`齐根断裂` 不同。若不存在断裂，has_fracture=false，type 只能从 3 个非断裂/异常类中选：未断裂；未夹紧；视频异常）
-3. 断裂位置是否在标距内（inside_gauge / outside_gauge / N/A）
+3. 断裂位置是否在标距内（inside_gauge / outside_gauge）
 4. 你对判断的置信度（confidence，0.0 ~ 1.0 的浮点数）
 
-如果判断不存在断裂，has_fracture 为 false，fracture_between 为 null，type 只能取 `未断裂` / `未夹紧` / `视频异常` 三者之一（不允许输出 `none`；根据当前片段内容判断取值），location 填 "N/A"，confidence 仍需给出（表示你对"无断裂"判断的置信度）。
+如果判断不存在断裂，has_fracture 为 false，fracture_between 为 null，type 只能取 `未断裂` / `未夹紧` / `视频异常` 三者之一（不允许输出 `none`；根据当前片段内容判断取值），location 填 null，confidence 仍需给出（表示你对"无断裂"判断的置信度）。
 
 输出必须为严格合法的 JSON 格式，不要包含任何其他解释文字。confidence 字段为必填项。
-输出 Schema：{"has_fracture": bool, "fracture_between": [int, int]或null, "type": str, "location": str, "confidence": float}
+输出 Schema：{"has_fracture": bool, "fracture_between": [int, int]或null, "type": str, "location": str或null, "confidence": float}
 ```
 
 #### 训练样本格式（权威示例）
@@ -551,7 +552,7 @@ def parse(
   "messages": [
     {
       "role": "system",
-      "content": "你是一个材料拉伸试验视频分析助手。你的任务是分析给定的视频片段，判断试样是否发生断裂。\n\n如果存在断裂，请回答：\n1. 断裂发生在哪两帧之间（用帧索引表示，如 [17, 18]）\n2. 断裂模式（若存在断裂，has_fracture=true，type 只能从 7 个断裂类中选：韧性断裂；脆性断裂；界面脱粘；齐根断裂；爆炸性断裂；半脆半韧断裂；界面脱粘、齐根断裂。其中组合标签 `界面脱粘、齐根断裂` 作为独立类别，与单独的 `界面脱粘`、`齐根断裂` 不同。若不存在断裂，has_fracture=false，type 只能从 3 个非断裂/异常类中选：未断裂；未夹紧；视频异常）\n3. 断裂位置是否在标距内（inside_gauge / outside_gauge / N/A）\n4. 你对判断的置信度（confidence，0.0 ~ 1.0 的浮点数）\n\n如果判断不存在断裂，has_fracture 为 false，fracture_between 为 null，type 只能取 `未断裂` / `未夹紧` / `视频异常` 三者之一（不允许输出 `none`；根据当前片段内容判断取值），location 填 \"N/A\"，confidence 仍需给出（表示你对\"无断裂\"判断的置信度）。\n\n输出必须为严格合法的 JSON 格式，不要包含任何其他解释文字。confidence 字段为必填项。\n输出 Schema：{\"has_fracture\": bool, \"fracture_between\": [int, int]或null, \"type\": str, \"location\": str, \"confidence\": float}"
+      "content": "你是一个材料拉伸试验视频分析助手。你的任务是分析给定的视频片段，判断试样是否发生断裂。\n\n如果存在断裂，请回答：\n1. 断裂发生在哪两帧之间（用帧索引表示，如 [17, 18]）\n2. 断裂模式（若存在断裂，has_fracture=true，type 只能从 7 个断裂类中选：韧性断裂；脆性断裂；界面脱粘；齐根断裂；爆炸性断裂；半脆半韧断裂；界面脱粘、齐根断裂。其中组合标签 `界面脱粘、齐根断裂` 作为独立类别，与单独的 `界面脱粘`、`齐根断裂` 不同。若不存在断裂，has_fracture=false，type 只能从 3 个非断裂/异常类中选：未断裂；未夹紧；视频异常）\n3. 断裂位置是否在标距内（inside_gauge / outside_gauge）\n4. 你对判断的置信度（confidence，0.0 ~ 1.0 的浮点数）\n\n如果判断不存在断裂，has_fracture 为 false，fracture_between 为 null，type 只能取 `未断裂` / `未夹紧` / `视频异常` 三者之一（不允许输出 `none`；根据当前片段内容判断取值），location 填 null，confidence 仍需给出（表示你对\"无断裂\"判断的置信度）。\n\n输出必须为严格合法的 JSON 格式，不要包含任何其他解释文字。confidence 字段为必填项。\n输出 Schema：{\"has_fracture\": bool, \"fracture_between\": [int, int]或null, \"type\": str, \"location\": str或null, \"confidence\": float}"
     },
     {
       "role": "user",
@@ -567,7 +568,7 @@ def parse(
 
 > - 本文档以 `messages` + `role` / `content` 为权威格式；若其他文档或旧配置中出现 `conversations` / `from` / `value` 混用，应转换为本格式。
 > - `user` 角色的 `content` 中必须包含 `<video>` 占位符，与 `videos` 列表中的子视频路径一一对应。
-> - 具体训练配置细节（如 LoRA 参数、学习率、`dataset_info.json` 注册字段映射）保留在 [`docs/model_finetuning_design.md`](./model_finetuning_design.md) 中。
+> - 具体训练配置细节（如 LoRA 参数、学习率、`dataset_info.json` 注册字段映射）保留在 [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md) 中。
 
 ### 6.2 Agent 动态构建 prompt 的必填要素
 
@@ -734,7 +735,7 @@ Agent 返回给下游的完整 JSON 结构如下。
 
 - `time_range` / `time_estimate` / `frame_range`：统一填 `null`。
 - `type`：仅允许 `未断裂` / `未夹紧` / `视频异常` 三者之一，**不允许输出 `none`**。训练标签由构造器决定：人工负片段默认 `未断裂`，真实无断裂/异常样本保留其标注。推理最终输出由模型多轮预测投票/置信度聚合决定：若模型在多轮中明确预测 `未夹紧` 或 `视频异常` 且置信度可接受，则采用该预测；否则默认 `未断裂`，并将 `confidence_level` 降至 `中` 或 `低`（至少不为 `高`）。
-- `location`：必须为 `"N/A"`。
+- `location`：必须为 `null`。
 
 ---
 
@@ -780,19 +781,17 @@ original_frame[k] = clamp(round(timestamp[k] * fps), 0, total_frames - 1)
    ```
    此时 `fracture_between = [i, i+1]`，其中 `j = i + 1`。
 
-2. **越界前段**：若 `event_frame_original < original_frame[0]`，取 `fracture_between = [0, 0]`，表示断裂发生在第 0 帧之前或恰好在第 0 帧。评估时将该情况单独标记为"前段越界"；工具执行层对应的 `SampleAndInferResult.boundary_status = "left_sentinel"`。
+2. **越界前段**：若 `event_frame_original < original_frame[0]`，取 `fracture_between = [0, 1]`。
 
-3. **越界末段**：若 `event_frame_original >= original_frame[N-1]`，取 `fracture_between = [N-1, N-1]`，表示断裂发生在最后一采样帧之后或恰好在最后一采样帧。评估时将该情况单独标记为"末段越界"；工具执行层对应的 `SampleAndInferResult.boundary_status = "right_sentinel"`。
+3. **越界末段**：若 `event_frame_original >= original_frame[N-1]`，取 `fracture_between = [N-2, N-1]`。
 
-4. **恰好命中采样帧**：若 `event_frame_original == original_frame[i]` 且 `i > 0`，取左侧区间 `fracture_between = [i-1, i]`，确保区间表示唯一；若 `i = 0`，按规则 2 取 `[0, 0]`。
+4. **恰好命中采样帧**：若 `event_frame_original == original_frame[i]` 且 `i > 0`，取左侧区间 `fracture_between = [i-1, i]`，确保区间表示唯一；若 `i = 0`，取 `[0, 1]`。
 
 ### 8.4 `fracture_between` → `time_range` / `frame_range`
 
 若模型输出 `fracture_between = [i, j]`：
 
-- 正常情况：`j = i + 1`；
-- 前段越界：`[i, j] = [0, 0]`，此时 `frames[i]` 与 `frames[j]` 为同一采样帧；
-- 末段越界：`[i, j] = [N-1, N-1]`，此时 `frames[i]` 与 `frames[j]` 为同一采样帧。
+- 正常情况：`j = i + 1`。
 
 则：
 
@@ -803,7 +802,7 @@ frame_range = [frames[i].original_frame, frames[j].original_frame]
 
 **禁止**重新用 `round(timestamp * fps)` 换算 `frame_range`，必须直接使用 `VideoSampler` 返回的 `frames[].original_frame`，避免与采样器结果出现 ±1 帧偏差。
 
-**边界哨兵 `boundary_status`**：当 `fracture_between = [0, 0]` 或 `[N-1, N-1]` 时，按上述规则得到的 `time_range` 与 `frame_range` 为同一采样帧对应的零宽区间（`i == j`）。该区间仅为提示 Agent 向对应边界扩展的临时值，**不得单独触发收敛终止**；Agent 必须进入边界扩展分支，扩大采样区间后重新验证。工具执行层应在 `SampleAndInferResult.boundary_status` 中明确标记 `left_sentinel` / `right_sentinel`。
+> **注**：由于 `fracture_between` 严格为 `[i, i+1]`，`time_range` 与 `frame_range` 始终为两个不同采样帧之间的非零宽区间。`boundary_status` 固定为 `none`。
 
 ### 8.5 真实时间 `t_gt` 回退规则
 
@@ -844,6 +843,7 @@ Agent 实现也可根据多轮结果加权融合，但输出时必须同时提�
 | v1.2 | 2026-06-15 | 修复审查阻塞/高风险问题：训练样本 `videos` 使用 `.mp4` 子视频路径并要求 `content` 含 `<video>`；明确 `fracture_between` 边界哨兵语义；统一采样帧号换算公式；补充 `adaptive` 采样约束；明确 macro-F1 只在 7 个断裂类上计算 | 项目团队 |
 | v1.3 | 2026-06-15 | 修复审查阻塞/高风险问题：新增 `SampleAndInferResult` 权威结构；推理阶段禁止读取评估 CSV 原值，训练标签由构造器决定；`boundary_status` 显式化边界哨兵；统一 `round_confidence_level` 四级分层；`confidence_level` 仅用于 `terminate` 最终输出 | 项目团队 |
 | v1.4 | 2026-06-15 | 明确 `video_fps=8.0` 为可配置超参数；统一 `num_frames` 为 `video_maxlen` 上限而非固定实际帧数；区分模型微调训练子视频与 Agent 临时推理片段 | 项目团队 |
+| v1.5 | 2026-06-21 | 统一负样本 `location` 为 `null`；`fracture_between` 严格限定为 `[i, i+1]`；移除 `[0,0]` / `[N-1,N-1]` 边界哨兵相关描述 | 项目团队 |
 
 ---
 
@@ -946,7 +946,7 @@ Agent 实现也可根据多轮结果加权融合，但输出时必须同时提�
     v  评估报告
 ```
 
-> **不变量3 / 与旧方案对比口径**：与旧方案对比时，口径强制为：旧方案必须复用新方案的 video-level test split 重新生成或过滤测试输入；新旧对比只能在相同的 `video_id` 集合上进行，不允许旧方案使用自己的 test split 或全量数据。若旧 baseline 当前无独立 test 集，则需通过新方案的 test split 过滤其输出后计算指标。详见 `docs/agent_iteration_design.md` 第 4.3 节。
+> **不变量3 / 与旧方案对比口径**：与旧方案对比时，口径强制为：旧方案必须复用新方案的 video-level test split 重新生成或过滤测试输入；新旧对比只能在相同的 `video_id` 集合上进行，不允许旧方案使用自己的 test split 或全量数据。若旧 baseline 当前无独立 test 集，则需通过新方案的 test split 过滤其输出后计算指标。详见 `docs/architecture/agent_iteration_design.md` 第 4.3 节。
 
-> 更详细的模型侧数据流见 [`docs/model_finetuning_design.md`](./model_finetuning_design.md) 附录 A。  
-> 更详细的 Agent 侧数据流见 [`docs/agent_iteration_design.md`](./agent_iteration_design.md) 附录 A。
+> 更详细的模型侧数据流见 [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md) 附录 A。  
+> 更详细的 Agent 侧数据流见 [`docs/architecture/agent_iteration_design.md`](./agent_iteration_design.md) 附录 A。

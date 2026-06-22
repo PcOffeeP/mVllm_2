@@ -2,7 +2,8 @@
 
 > 项目:mVllm-frame-interval-agent
 > 日期:2026-06-11
-> 状态:Current Repository Design
+> 状态:已过期
+> 替代文档:[`docs/PROJECT_PLAN.md`](../../PROJECT_PLAN.md) v2
 
 ---
 
@@ -14,8 +15,8 @@
 
 ### 与其他文档的关系
 
-- [`docs/model_finetuning_design.md`](./model_finetuning_design.md):定义模型微调侧的数据管道、训练样本构建、模型训练流程及模型侧配置。
-- [`docs/model_agent_interface.md`](./model_agent_interface.md):定义微调模型与 Agent 之间的接口契约,包括模型输出 JSON Schema、Tool Schema、Prompt 契约、索引/时间换算规则、最终输出 Schema 等。本文在涉及这些契约时仅做引用说明,详细定义以接口契约为准。
+- [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md):定义模型微调侧的数据管道、训练样本构建、模型训练流程及模型侧配置。
+- [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md):定义微调模型与 Agent 之间的接口契约,包括模型输出 JSON Schema、Tool Schema、Prompt 契约、索引/时间换算规则、最终输出 Schema 等。本文在涉及这些契约时仅做引用说明,详细定义以接口契约为准。
 
 ---
 
@@ -336,8 +337,8 @@ agent:
               本轮结果 → 追加到 history → 回到 Agent Loop
 ```
 
-> **Tool Schema 定义**(`sample_and_infer`、`terminate`)见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 3-4 节。
-> **Tool 执行层接口定义**(`VideoSampler.sample`、`VideoClipBuilder.build`、`InferenceClient.infer`、`ResultParser.parse`)见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 5 节。
+> **Tool Schema 定义**(`sample_and_infer`、`terminate`)见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 3-4 节。
+> **Tool 执行层接口定义**(`VideoSampler.sample`、`VideoClipBuilder.build`、`InferenceClient.infer`、`ResultParser.parse`)见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 5 节。
 
 ---
 
@@ -786,7 +787,7 @@ class IterativeAgent:
     def _convert_to_time_range(self, frames: list, fracture_between: list) -> list:
         """将 fracture_between 索引换算为原视频时间区间。
 
-        详细换算规则见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 8 节。
+        详细换算规则见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 8 节。
         """
         i, j = fracture_between
         return [frames[i]["timestamp"], frames[j]["timestamp"]]
@@ -906,7 +907,7 @@ NO_FRACTURE（仅由全局范围进入）
 
 ### 3.4 Agent System Prompt 设计
 
-Agent 的 System Prompt 完整模板由接口文档统一约定,本节仅保留 Agent 侧的角色、目标与关键约束说明。完整模板与示例见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 6.3 节。
+Agent 的 System Prompt 完整模板由接口文档统一约定,本节仅保留 Agent 侧的角色、目标与关键约束说明。完整模板与示例见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 6.3 节。
 
 - **角色**:Agent 是"材料拉伸试验视频分析协调者",负责驱动多轮工具调用。
 - **目标**:通过调用 `sample_and_infer` 与 `terminate` 工具,逐步缩小候选区间,最终输出包含断裂时刻区间、断裂类型、位置及综合置信度的结果。
@@ -968,7 +969,7 @@ FPS: {fps}
 
 ### 3.7 最终输出
 
-Agent 最终输出 JSON Schema 定义见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 7 节。本节保留关键约束说明:
+Agent 最终输出 JSON Schema 定义见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 7 节。本节保留关键约束说明:
 
 - 无断裂/异常样本的最终输出约束:
   - `has_fracture`: `false`
@@ -1023,8 +1024,8 @@ Agent 最终输出 JSON Schema 定义见 [`docs/model_agent_interface.md`](./mod
 
 Agent 侧直接消费微调模型输出,并产出最终预测结果。为避免重复,本节仅做引用说明:
 
-- **微调模型输出 JSON Schema**:详细定义与示例见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 2 节。
-- **Agent 最终输出 JSON Schema**:详细定义与示例见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 第 7 节。
+- **微调模型输出 JSON Schema**:详细定义与示例见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 2 节。
+- **Agent 最终输出 JSON Schema**:详细定义与示例见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 第 7 节。
 
 ---
 
@@ -1050,7 +1051,7 @@ Agent 侧直接消费微调模型输出,并产出最终预测结果。为避免�
 | `agent.local.base_url` | "http://localhost:11434/v1" | Ollama API 地址 |
 | `agent.temperature` | 0.7 | Agent LLM 采样温度 |
 
-> 模型侧配置参数(如 `video_fps`、`video_maxlen`、`focus_windows`、`test_ratio` 等)见 [`docs/model_finetuning_design.md`](./model_finetuning_design.md) 第 5 节。Agent 侧的 `agent.video_fps` 与 `agent.video_maxlen` 是推理执行层镜像配置,默认与模型侧保持一致。
+> 模型侧配置参数(如 `video_fps`、`video_maxlen`、`focus_windows`、`test_ratio` 等)见 [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md) 第 5 节。Agent 侧的 `agent.video_fps` 与 `agent.video_maxlen` 是推理执行层镜像配置,默认与模型侧保持一致。
 
 ---
 
@@ -1061,7 +1062,7 @@ Agent 侧直接消费微调模型输出,并产出最终预测结果。为避免�
 | **Phase 3** | Week 3 | Meta-Agent 迭代推理框架 | 迭代推理 Agent 代码、预测结果 JSON | 在测试集上单视频推理成功,输出符合最终 Schema |
 | **Phase 4** | Week 4 | 评估体系 | 评估报告(含旧方案对比) | 所有指标计算完毕,报告输出到 `docs/eval/` |
 
-> Phase 1-2(数据管道与模型微调训练)见 [`docs/model_finetuning_design.md`](./model_finetuning_design.md) 第 6 节。
+> Phase 1-2(数据管道与模型微调训练)见 [`docs/architecture/model_finetuning_design.md`](./model_finetuning_design.md) 第 6 节。
 
 ---
 
@@ -1132,4 +1133,4 @@ LlamaFactory/saves/minicpmv4_6/lora/sft_3k*/
     v  评估报告
 ```
 
-> 完整数据流图(含模型数据流)见 [`docs/model_agent_interface.md`](./model_agent_interface.md) 附录 A。
+> 完整数据流图(含模型数据流)见 [`docs/architecture/model_agent_interface.md`](./model_agent_interface.md) 附录 A。

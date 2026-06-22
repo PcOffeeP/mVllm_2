@@ -1,3 +1,8 @@
+# 旧基线问题池
+
+> 定位：旧直接预测基线的问题模板快照，仅供查阅。
+> 运行时权威来源：[`pipeline/config/question_pool.yaml`](../pipeline/config/question_pool.yaml)。
+> `generate_questions.py`、`fill_answers.py` 和 `randomize_qs.py` 均直接读取 YAML，不读取本文档。
 
 ## 提问池
 ### S1 : 中文-时间 (18条)

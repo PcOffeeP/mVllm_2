@@ -21,14 +21,14 @@
 
 - 支持新项目和已有项目。
 - 通过逐轮澄清确定目标、MVP、范围、非目标、技术方案和核心实施步骤。
-- 只生成或修订 `PROJECT_PLAN.md`。
+- 只生成或修订 `docs/PROJECT_PLAN.md`。
 - 不生成实施文档，不修改代码，不创建或修改 `AGENTS.md`、`PLANS.md`、`TASKS.md`。
 
 ### implementation-designer
 
-- 只读取状态为 `已批准` 的 `PROJECT_PLAN.md`。
+- 只读取状态为 `已批准` 的 `docs/PROJECT_PLAN.md`。
 - 为用户指定的一个或多个核心步骤逐个澄清和设计。
-- 每个步骤生成独立的 `IMPLEMENTATIONS/<kebab-case-topic>.md`。
+- 每个步骤生成独立的 `docs/IMPLEMENTATIONS/<kebab-case-topic>.md`。
 - 不修改项目计划，不实施代码，不生成覆盖整个项目的总实施方案。
 
 ## 文档契约
@@ -55,17 +55,18 @@
     ├── SKILL.md
     └── scripts/validate_implementation_doc.py
 
-PROJECT_PLAN.md
-IMPLEMENTATIONS/
-├── authentication.md
-├── database-schema.md
-└── payment-integration.md
+docs/
+├── PROJECT_PLAN.md
+└── IMPLEMENTATIONS/
+    ├── authentication.md
+    ├── database-schema.md
+    └── payment-integration.md
 ```
 
 ## 推荐使用流程
 
 1. 调用 `project-architect`，完成项目访谈和方案比较。
-2. 生成状态为 `待审批` 的 `PROJECT_PLAN.md`，运行结构校验。
+2. 生成状态为 `待审批` 的 `docs/PROJECT_PLAN.md`，运行结构校验。
 3. 用户明确批准后将状态改为 `已批准`，校验必须返回 `0`。
 4. 调用 `implementation-designer` 并指定一个或多个核心步骤。
 5. 逐步骤生成独立实施文档、审批并校验。

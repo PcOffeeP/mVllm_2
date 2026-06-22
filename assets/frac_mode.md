@@ -1,5 +1,9 @@
 # 材料拉伸断裂行为分类指南
 
+> 定位：用于理解视觉现象的领域参考，不是训练标签或代码枚举的权威来源。
+> 标签治理以 [`data/02_annotations/all_videos_tag.csv`](../data/02_annotations/all_videos_tag.csv) 为准，
+> 代码闭集以 [`agent/schema.py`](../agent/schema.py) 及相关验证配置为准；本文不得覆盖 CSV 原字段或 canonical 口径。
+
 ## 一、按材料类型分类
 
 ### 1. 金属材料
@@ -63,4 +67,3 @@
 |**界面脱粘（interface tear-off）**|纤维与基体间存在明显间隙，局部出现"微鼓包"或“层间分离”|
 
 ---
-
