@@ -1,5 +1,6 @@
 # Agent-side configuration for the iterative frame-interval localization pipeline.
-# See docs/agent_iteration_design.md section 6 and docs/model_agent_interface.md.
+# See docs/architecture/agent_iteration_design.md section 6 and
+# docs/architecture/model_agent_interface.md.
 
 video_fps: 8.0
 video_maxlen: 36

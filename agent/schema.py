@@ -1,6 +1,6 @@
 """Pydantic models that formalize the model/agent interface contract.
 
-See ``docs/model_agent_interface.md`` for the authoritative definitions.
+See ``docs/architecture/model_agent_interface.md`` for the authoritative definitions.
 """
 
 from __future__ import annotations
@@ -48,7 +48,6 @@ class LocationType(StrEnum):
 
     INSIDE = "inside_gauge"
     OUTSIDE = "outside_gauge"
-    NA = "N/A"
 
 
 class ConfidenceLevel(StrEnum):
@@ -83,7 +82,7 @@ class ModelOutput(BaseModel):
     has_fracture: bool
     fracture_between: list[int] | None = None
     type: FractureType
-    location: LocationType
+    location: str | None
     confidence: float = Field(..., ge=0.0, le=1.0)
 
     @model_validator(mode="after")
@@ -94,12 +93,15 @@ class ModelOutput(BaseModel):
             if len(self.fracture_between) != 2:
                 raise ValueError("fracture_between must be a two-element list [i, i+1]")
             i, j = self.fracture_between
-            is_sentinel = i == j
-            if not is_sentinel and j != i + 1:
-                raise ValueError("fracture_between must be [i, i+1] or a boundary sentinel [k, k]")
+            if j != i + 1:
+                raise ValueError("fracture_between must be strictly adjacent [i, i+1]")
             if self.type not in FRACTURE_CLASSES:
                 raise ValueError(
                     f"type must be one of the 7 fracture classes when has_fracture is true, got {self.type}"
+                )
+            if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE}:
+                raise ValueError(
+                    f"location must be inside_gauge or outside_gauge when has_fracture is true, got {self.location}"
                 )
         else:
             if self.fracture_between is not None:
@@ -108,8 +110,8 @@ class ModelOutput(BaseModel):
                 raise ValueError(
                     f"type must be one of 未断裂/未夹紧/视频异常 when has_fracture is false, got {self.type}"
                 )
-            if self.location != LocationType.NA:
-                raise ValueError("location must be N/A when has_fracture is false")
+            if self.location is not None:
+                raise ValueError("location must be null when has_fracture is false")
         return self
 
 
@@ -132,7 +134,7 @@ class ToolTerminate(BaseModel):
     time_estimate: float | None = None
     frame_range: list[int] | None = Field(None, min_length=2, max_length=2)
     type: FractureType
-    location: LocationType
+    location: str | None
     confidence: float = Field(..., ge=0.0, le=1.0)
     confidence_level: ConfidenceLevel
 
@@ -143,13 +145,17 @@ class ToolTerminate(BaseModel):
                 raise ValueError("time_range, time_estimate and frame_range are required when has_fracture is true")
             if self.type not in FRACTURE_CLASSES:
                 raise ValueError("type must be a fracture class when has_fracture is true")
+            if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE}:
+                raise ValueError(
+                    f"location must be inside_gauge or outside_gauge when has_fracture is true, got {self.location}"
+                )
         else:
             if self.time_range is not None or self.time_estimate is not None or self.frame_range is not None:
                 raise ValueError("time_range, time_estimate and frame_range must be null when has_fracture is false")
             if self.type not in NON_FRACTURE_CLASSES:
                 raise ValueError("type must be 未断裂/未夹紧/视频异常 when has_fracture is false")
-            if self.location != LocationType.NA:
-                raise ValueError("location must be N/A when has_fracture is false")
+            if self.location is not None:
+                raise ValueError("location must be null when has_fracture is false")
         return self
 
 
@@ -180,7 +186,7 @@ class FinalOutput(BaseModel):
     time_estimate: float | None = None
     frame_range: list[int] | None = Field(None, min_length=2, max_length=2)
     type: FractureType
-    location: LocationType
+    location: str | None
     confidence: float = Field(..., ge=0.0, le=1.0)
     confidence_level: ConfidenceLevel
     rounds: int = Field(..., ge=0)
@@ -193,11 +199,15 @@ class FinalOutput(BaseModel):
                 raise ValueError("time_range, time_estimate and frame_range are required when has_fracture is true")
             if self.type not in FRACTURE_CLASSES:
                 raise ValueError("type must be a fracture class when has_fracture is true")
+            if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE}:
+                raise ValueError(
+                    f"location must be inside_gauge or outside_gauge when has_fracture is true, got {self.location}"
+                )
         else:
             if self.time_range is not None or self.time_estimate is not None or self.frame_range is not None:
                 raise ValueError("time_range, time_estimate and frame_range must be null when has_fracture is false")
             if self.type not in NON_FRACTURE_CLASSES:
                 raise ValueError("type must be 未断裂/未夹紧/视频异常 when has_fracture is false")
-            if self.location != LocationType.NA:
-                raise ValueError("location must be N/A when has_fracture is false")
+            if self.location is not None:
+                raise ValueError("location must be null when has_fracture is false")
         return self

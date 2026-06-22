@@ -7,7 +7,7 @@ This module contains:
 2. The **Meta-Agent** system prompt and conversation user prompt builder,
    used by ``IterativeAgent``.
 
-See ``docs/model_agent_interface.md`` sections 6.1 and 6.3 for the
+See ``docs/architecture/model_agent_interface.md`` sections 6.1 and 6.3 for the
 authoritative text.
 """
 
@@ -29,16 +29,16 @@ SYSTEM_PROMPT = (
     "`界面脱粘、齐根断裂` 作为独立类别，与单独的 `界面脱粘`、`齐根断裂` 不同。"
     "若不存在断裂，has_fracture=false，"
     "type 只能从 3 个非断裂/异常类中选：未断裂；未夹紧；视频异常）\n"
-    "3. 断裂位置是否在标距内（inside_gauge / outside_gauge / N/A）\n"
+    "3. 断裂位置是否在标距内（inside_gauge / outside_gauge）\n"
     "4. 你对判断的置信度（confidence，0.0 ~ 1.0 的浮点数）\n\n"
     "如果判断不存在断裂，has_fracture 为 false，fracture_between 为 null，"
     "type 只能取 `未断裂` / `未夹紧` / `视频异常` 三者之一（不允许输出 `none`；"
-    '根据当前片段内容判断取值），location 填 "N/A"，'
+    '根据当前片段内容判断取值），location 填 null，'
     'confidence 仍需给出（表示你对"无断裂"判断的置信度）。\n\n'
     "输出必须为严格合法的 JSON 格式，不要包含任何其他解释文字。"
     "confidence 字段为必填项。\n"
     '输出 Schema：{"has_fracture": bool, "fracture_between": [int, int]或null, '
-    '"type": str, "location": str, "confidence": float}'
+    '"type": str, "location": str或null, "confidence": float}'
 )
 
 
@@ -148,7 +148,7 @@ def build_meta_agent_user_context(
     """Build the per-round user prompt for the Meta-Agent.
 
     The text follows the format described in
-    ``docs/agent_iteration_design.md`` section 3.5.
+    ``docs/architecture/agent_iteration_design.md`` section 3.5.
     """
     duration = video_meta.get("duration", 0.0)
     fps = video_meta.get("fps", 0.0)

@@ -150,8 +150,8 @@ def test_iterative_agent_no_fracture_global_scope():
     config["agent"]["max_rounds"] = 3
 
     responses = [
-        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": "N/A", "confidence": 0.95},
-        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": "N/A", "confidence": 0.95},
+        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": None, "confidence": 0.95},
+        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": None, "confidence": 0.95},
     ]
 
     llm = StaticLLM([
@@ -163,7 +163,7 @@ def test_iterative_agent_no_fracture_global_scope():
             "time_estimate": None,
             "frame_range": None,
             "type": "未断裂",
-            "location": "N/A",
+            "location": None,
             "confidence": 0.95,
             "confidence_level": "高",
         }),
@@ -181,7 +181,7 @@ def test_iterative_agent_no_fracture_global_scope():
     result = agent.run()
     assert result["has_fracture"] is False
     assert result["type"] == "未断裂"
-    assert result["location"] == "N/A"
+    assert result["location"] is None
     assert result["time_range"] is None
     assert result["rounds"] == 2
 
@@ -284,29 +284,30 @@ def test_iterative_agent_handles_parse_error():
     assert "解析失败" in result["history"][0]["result"]["parse_error"]
 
 
-def test_iterative_agent_boundary_sentinel_expands_non_global_candidate():
-    """Boundary sentinel on a focused interval must visibly expand the candidate."""
+def test_iterative_agent_rejects_boundary_sentinel_as_parse_error():
+    """A boundary sentinel [0,0] / [N-1,N-1] is rejected as a strict-adjacency parse error."""
     video_meta = {"video_id": "v004", "duration": 100.0, "video_path": "v004.mp4"}
     config = make_config()
     config["agent"]["max_rounds"] = 4
+    config["agent"]["tolerance_seconds"] = 5.0
 
     responses = [
-        # Round 0: full range, fracture in the middle.
+        # Round 0: full range, valid fracture in the middle.
         {"has_fracture": True, "fracture_between": [17, 18], "type": "脆性断裂", "location": "inside_gauge", "confidence": 0.85},
-        # Round 1: focused interval returns left sentinel -> expand left.
+        # Round 1: focused interval returns illegal boundary sentinel -> parse error.
         {"has_fracture": True, "fracture_between": [0, 0], "type": "脆性断裂", "location": "inside_gauge", "confidence": 0.85},
-        # Round 2: expanded interval returns a converged normal interval.
-        {"has_fracture": True, "fracture_between": [8, 9], "type": "脆性断裂", "location": "inside_gauge", "confidence": 0.90},
+        # Round 2: focused interval returns valid left-edge adjacent pair.
+        {"has_fracture": True, "fracture_between": [0, 1], "type": "脆性断裂", "location": "inside_gauge", "confidence": 0.90},
     ]
 
     llm = StaticLLM([
         ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
         ("sample_and_infer", {"sample_range": [48.571429, 51.428571], "prompt": "analyze"}),
-        ("sample_and_infer", {"sample_range": [47.571429, 51.428571], "prompt": "analyze"}),
+        ("sample_and_infer", {"sample_range": [48.571429, 51.428571], "prompt": "analyze"}),
         ("terminate", {
             "has_fracture": True,
-            "time_range": [48.635471, 48.768476],
-            "time_estimate": 48.7019735,
+            "time_range": [48.571429, 48.707484],
+            "time_estimate": 48.6394565,
             "frame_range": [389, 390],
             "type": "脆性断裂",
             "location": "inside_gauge",
@@ -327,9 +328,10 @@ def test_iterative_agent_boundary_sentinel_expands_non_global_candidate():
     result = agent.run()
     assert result["has_fracture"] is True
     assert result["type"] == "脆性断裂"
-    # Round 1 is the boundary sentinel that triggered expansion.
-    assert result["history"][1]["result"]["boundary_status"] == "left_sentinel"
-    assert result["history"][1]["result"].get("boundary_handled") == "expanded_left"
+    # Round 1 must carry a parse_error for the non-adjacent boundary sentinel.
+    assert result["history"][1]["result"]["parse_error"]
+    assert "严格相邻" in result["history"][1]["result"]["parse_error"]
+    assert result["history"][1]["result"]["boundary_status"] == "none"
     assert result["rounds"] == 3
 
 
@@ -343,7 +345,7 @@ def test_iterative_agent_focus_false_expands_candidate():
         # Round 0: full range, fracture in the middle.
         {"has_fracture": True, "fracture_between": [17, 18], "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.92},
         # Round 1: focused interval returns false -> focus miss, expand candidate.
-        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": "N/A", "confidence": 0.80},
+        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": None, "confidence": 0.80},
         # Round 2: expanded interval returns a converged normal interval.
         {"has_fracture": True, "fracture_between": [17, 18], "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.92},
     ]
@@ -662,8 +664,8 @@ def test_no_fracture_terminate_rejects_invalid_type_and_high_confidence():
     config["agent"]["max_rounds"] = 3
 
     responses = [
-        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": "N/A", "confidence": 0.95},
-        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": "N/A", "confidence": 0.95},
+        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": None, "confidence": 0.95},
+        {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": None, "confidence": 0.95},
     ]
 
     llm = StaticLLM([
@@ -693,7 +695,7 @@ def test_no_fracture_terminate_rejects_invalid_type_and_high_confidence():
     result = agent.run()
     assert result["has_fracture"] is False
     assert result["type"] == "未断裂"
-    assert result["location"] == "N/A"
+    assert result["location"] is None
     assert result["time_range"] is None
     assert result["frame_range"] is None
     assert result["confidence_level"] != "高"
@@ -926,6 +928,6 @@ def test_force_terminate_no_fracture_state_ignores_positive_history(caplog):
 
     assert result["has_fracture"] is False
     assert result["type"] == "未断裂"
-    assert result["location"] == "N/A"
+    assert result["location"] is None
     assert "NO_FRACTURE" in caplog.text
     assert "state machine priority" in caplog.text

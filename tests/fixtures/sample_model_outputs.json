@@ -15,28 +15,8 @@
       "has_fracture": false,
       "fracture_between": null,
       "type": "未断裂",
-      "location": "N/A",
+      "location": null,
       "confidence": 0.95
-    }
-  },
-  {
-    "description": "left boundary sentinel",
-    "model_output": {
-      "has_fracture": true,
-      "fracture_between": [0, 0],
-      "type": "脆性断裂",
-      "location": "outside_gauge",
-      "confidence": 0.88
-    }
-  },
-  {
-    "description": "right boundary sentinel",
-    "model_output": {
-      "has_fracture": true,
-      "fracture_between": [35, 35],
-      "type": "界面脱粘",
-      "location": "inside_gauge",
-      "confidence": 0.81
     }
   },
   {
@@ -45,7 +25,7 @@
       "has_fracture": false,
       "fracture_between": null,
       "type": "未夹紧",
-      "location": "N/A",
+      "location": null,
       "confidence": 0.90
     }
   }

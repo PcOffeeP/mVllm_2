@@ -22,10 +22,11 @@ def test_mock_inference_client_returns_dict():
 
 def test_mock_inference_client_parses_json_string():
     client = MockInferenceClient(
-        '{"has_fracture": false, "fracture_between": null, "type": "未断裂", "location": "N/A", "confidence": 0.6}'
+        '{"has_fracture": false, "fracture_between": null, "type": "未断裂", "location": null, "confidence": 0.6}'
     )
     result = client.infer("any.mp4", "prompt")
     assert result["has_fracture"] is False
+    assert result["location"] is None
     assert result["confidence"] == pytest.approx(0.6)
 
 
@@ -50,6 +51,7 @@ def test_create_inference_client_mock_mode():
         result = client.infer("any.mp4", "prompt")
         assert result["has_fracture"] is False
         assert result["type"] == "未断裂"
+        assert result["location"] is None
 
 
 def test_llama_factory_inference_client_missing_video():

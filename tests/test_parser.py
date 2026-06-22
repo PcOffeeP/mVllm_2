@@ -18,7 +18,7 @@ def test_parse_plain_json():
 
 
 def test_parse_json_with_markdown_fence():
-    raw = '```json\n{"has_fracture": false, "fracture_between": null, "type": "未断裂", "location": "N/A", "confidence": 0.88}\n```'
+    raw = '```json\n{"has_fracture": false, "fracture_between": null, "type": "未断裂", "location": null, "confidence": 0.88}\n```'
     parsed = ResultParser.parse(raw)
     assert parsed["has_fracture"] is False
     assert parsed["type"] == "未断裂"
@@ -40,7 +40,7 @@ def test_parse_rejects_confidence_out_of_range():
 
 
 def test_parse_extracts_json_from_noise():
-    raw = 'Some explanation text before {\n  "has_fracture": false,\n  "fracture_between": null,\n  "type": "未夹紧",\n  "location": "N/A",\n  "confidence": 0.7\n} and after.'
+    raw = 'Some explanation text before {\n  "has_fracture": false,\n  "fracture_between": null,\n  "type": "未夹紧",\n  "location": null,\n  "confidence": 0.7\n} and after.'
     parsed = ResultParser.parse(raw)
     assert parsed["type"] == "未夹紧"
     assert parsed["confidence"] == pytest.approx(0.7)

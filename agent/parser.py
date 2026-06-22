@@ -15,7 +15,7 @@ class ResultParser:
     the result against the model-output schema using ``agent.schema.ModelOutput``.
     ``expected_schema`` is accepted for interface compatibility but the
     authoritative schema is always the contract defined in
-    ``docs/model_agent_interface.md`` section 2.
+    ``docs/architecture/model_agent_interface.md`` section 2.
     """
 
     # Basic JSON object heuristic used when json.loads fails.

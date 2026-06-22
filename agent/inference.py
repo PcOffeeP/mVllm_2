@@ -28,7 +28,7 @@ class InferenceClient(Protocol):
         """Run inference on ``video_path`` with ``prompt`` and return parsed JSON.
 
         Returns ``None`` when the model response cannot be parsed, per the
-        contract in ``docs/model_agent_interface.md`` section 5.4.
+        contract in ``docs/architecture/model_agent_interface.md`` section 5.4.
         """
         ...
 
@@ -124,7 +124,7 @@ def create_inference_client(config: dict[str, Any] | None = None) -> InferenceCl
             "has_fracture": False,
             "fracture_between": None,
             "type": "未断裂",
-            "location": "N/A",
+            "location": None,
             "confidence": 0.5,
         })
 

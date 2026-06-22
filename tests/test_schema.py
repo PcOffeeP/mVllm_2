@@ -38,11 +38,11 @@ def test_model_output_accepts_string_enums():
         has_fracture=False,
         fracture_between=None,
         type="未断裂",
-        location="N/A",
+        location=None,
         confidence=0.95,
     )
     assert output.type == FractureType.NO_FRACTURE
-    assert output.location == LocationType.NA
+    assert output.location is None
 
 
 def test_model_output_rejects_invalid_type_for_fracture():
@@ -83,7 +83,7 @@ def test_has_fracture_false_constraints():
         has_fracture=False,
         fracture_between=None,
         type=FractureType.VIDEO_ABNORMAL,
-        location=LocationType.NA,
+        location=None,
         confidence=0.88,
     )
     assert positive.type == FractureType.VIDEO_ABNORMAL
@@ -93,7 +93,7 @@ def test_has_fracture_false_constraints():
             has_fracture=False,
             fracture_between=[0, 1],
             type=FractureType.NO_FRACTURE,
-            location=LocationType.NA,
+            location=None,
             confidence=0.88,
         )
 
@@ -102,7 +102,7 @@ def test_has_fracture_false_constraints():
             has_fracture=False,
             fracture_between=None,
             type=FractureType.TOUGH,
-            location=LocationType.NA,
+            location=None,
             confidence=0.88,
         )
 
@@ -111,7 +111,16 @@ def test_has_fracture_false_constraints():
             has_fracture=False,
             fracture_between=None,
             type=FractureType.NO_FRACTURE,
-            location=LocationType.OUTSIDE,
+            location="outside_gauge",
+            confidence=0.88,
+        )
+
+    with pytest.raises(ValidationError):
+        ModelOutput(
+            has_fracture=False,
+            fracture_between=None,
+            type=FractureType.NO_FRACTURE,
+            location="N/A",
             confidence=0.88,
         )
 
@@ -148,9 +157,29 @@ def test_tool_terminate_false_constraints():
             time_estimate=250.0,
             frame_range=[7286, 7714],
             type=FractureType.NO_FRACTURE,
-            location=LocationType.NA,
+            location=None,
             confidence=0.79,
             confidence_level=ConfidenceLevel.MEDIUM,
+        )
+
+
+def test_model_output_rejects_non_adjacent_fracture_between():
+    with pytest.raises(ValidationError):
+        ModelOutput(
+            has_fracture=True,
+            fracture_between=[17, 17],
+            type=FractureType.TOUGH,
+            location=LocationType.INSIDE,
+            confidence=0.92,
+        )
+
+    with pytest.raises(ValidationError):
+        ModelOutput(
+            has_fracture=True,
+            fracture_between=[0, 0],
+            type=FractureType.TOUGH,
+            location=LocationType.INSIDE,
+            confidence=0.92,
         )
 
 
@@ -179,7 +208,7 @@ def test_final_output_false_constraints():
             time_estimate=250.0,
             frame_range=[7286, 7714],
             type=FractureType.NO_FRACTURE,
-            location=LocationType.NA,
+            location=None,
             confidence=0.79,
             confidence_level=ConfidenceLevel.MEDIUM,
             rounds=1,

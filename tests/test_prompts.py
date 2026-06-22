@@ -8,6 +8,9 @@ def test_system_prompt_is_stable():
     assert "输出必须为严格合法的 JSON 格式" in SYSTEM_PROMPT
     assert "has_fracture" in SYSTEM_PROMPT
     assert "fracture_between" in SYSTEM_PROMPT
+    assert "N/A" not in SYSTEM_PROMPT
+    assert "location 填 null" in SYSTEM_PROMPT
+    assert "location\": str或null" in SYSTEM_PROMPT
 
 
 def test_build_user_prompt_contains_video_placeholder_and_range():

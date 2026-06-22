@@ -1,7 +1,7 @@
 """Meta-Agent iterative controller.
 
 Implements the deterministic state machine described in
-``docs/agent_iteration_design.md`` section 3.3.
+``docs/architecture/agent_iteration_design.md`` section 3.3.
 """
 
 from __future__ import annotations
@@ -130,8 +130,11 @@ TOOLS_SCHEMA: list[dict[str, Any]] = [
                         "description": "断裂模式或异常类别",
                     },
                     "location": {
-                        "type": "string",
-                        "description": "标距内位置判断",
+                        "anyOf": [
+                            {"type": "string"},
+                            {"type": "null"},
+                        ],
+                        "description": "标距内位置判断；has_fracture=false 时应置为 null",
                     },
                     "confidence": {
                         "type": "number",
@@ -706,7 +709,7 @@ class IterativeAgent:
             valid_set={LocationType.INSIDE, LocationType.OUTSIDE},
         )
         if voted_location is None:
-            voted_location = LocationType.NA
+            voted_location = None
 
         final_confidence = self._aggregate_confidence(positive_rounds)
         return {
@@ -724,7 +727,7 @@ class IterativeAgent:
         """Normalize a no-fracture termination result.
 
         The no-fracture class is constrained to the three valid non-fracture
-        labels, ``location`` is forced to ``N/A``, interval fields are cleared,
+        labels, ``location`` is forced to ``None``, interval fields are cleared,
         and ``confidence_level`` is capped at ``中`` because no positive
         evidence has been aggregated.
         """
@@ -748,7 +751,7 @@ class IterativeAgent:
             "time_estimate": None,
             "frame_range": None,
             "type": final_type,
-            "location": LocationType.NA,
+            "location": None,
             "confidence": requested.get("confidence", 0.5),
             "confidence_level": level,
         }
@@ -783,7 +786,7 @@ class IterativeAgent:
             "time_estimate": args.get("time_estimate") if has_fracture else None,
             "frame_range": args.get("frame_range") if has_fracture else None,
             "type": args.get("type", FractureType.NO_FRACTURE),
-            "location": args.get("location", LocationType.NA),
+            "location": args.get("location", None),
             "confidence": args.get("confidence", 0.0),
             "confidence_level": args.get("confidence_level", ConfidenceLevel.UNTRUSTED),
             "rounds": len(self.history),
@@ -803,7 +806,7 @@ class IterativeAgent:
             output["time_estimate"] = None
             output["frame_range"] = None
             output["type"] = FractureType.NO_FRACTURE
-            output["location"] = LocationType.NA
+            output["location"] = None
             output["confidence"] = 0.0
             output["confidence_level"] = ConfidenceLevel.UNTRUSTED
             output["downgrade_reason"] = reason
@@ -939,12 +942,13 @@ class IterativeAgent:
                 )
                 return result
 
-            if n >= 1 and fracture_between == [0, 0]:
-                result["boundary_status"] = "left_sentinel"
-            elif n >= 1 and fracture_between == [n - 1, n - 1]:
-                result["boundary_status"] = "right_sentinel"
-            else:
-                result["boundary_status"] = "none"
+            if i == j:
+                result["parse_error"] = (
+                    f"fracture_between {fracture_between} 必须是严格相邻的两帧 [i, i+1]"
+                )
+                return result
+
+            result["boundary_status"] = "none"
 
             result["inferred_time_range"] = self._convert_to_time_range(frames, fracture_between)
             result["inferred_frame_range"] = self._convert_to_frame_range(frames, fracture_between)
@@ -955,7 +959,7 @@ class IterativeAgent:
         """Return whether ``confidence`` is below the configured threshold.
 
         The four-level ``round_confidence_level`` mapping remains hard-coded
-        per ``docs/model_agent_interface.md`` section 4.4.  This threshold is
+        per ``docs/architecture/model_agent_interface.md`` section 4.4.  This threshold is
         used only by the Agent's internal fallback / conflict-handling logic.
         """
         return confidence < self.confidence_threshold
@@ -1021,7 +1025,7 @@ class IterativeAgent:
                 "has_fracture": False,
                 "fracture_between": None,
                 "type": "未断裂",
-                "location": "N/A",
+                "location": None,
                 "confidence": 0.5,
             })
         return LlamaFactoryInferenceClient(

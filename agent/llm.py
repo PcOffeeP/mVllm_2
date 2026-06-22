@@ -1,7 +1,7 @@
 """Agent LLM backends with a unified Native Function Calling interface.
 
 The abstraction intentionally does **not** introduce MCP or any external protocol.
-See ``docs/agent_iteration_design.md`` section 3.1 for the authoritative design.
+See ``docs/architecture/agent_iteration_design.md`` section 3.1 for the authoritative design.
 """
 
 from __future__ import annotations
