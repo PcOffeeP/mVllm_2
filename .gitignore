@@ -43,6 +43,7 @@ pyproject.toml
 /data/01_videos
 /data/02_subvideos/
 /data/03_frames/
+/data/04_merged/
 /data/04_new_merged/
 /data/metadata/
 
