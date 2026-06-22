@@ -20,15 +20,14 @@ GROUND_TRUTH_CSV = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.csv"
 # common.load_ground_truth() 会回退到直接读取 GROUND_TRUTH_CSV。
 GROUND_TRUTH_JSON = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.json"
 
-# 旧 stratified 3-fold 训练/验证合并产物，保留用于与旧方案在同一 test split 上对比。
-# 若新 interval 方案产出到 04_new_merged，请将对应路径替换进此列表（不要删除 04_merged 旧文件）。
+# 新 interval 方案训练/验证产物。
 TRAINING_JSON_FILES = [
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_0_train.json",
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_0_val.json",
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_1_train.json",
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_1_val.json",
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_2_train.json",
-    DATA_DIR_ROOT / "04_merged" / "stratified_3_fold_2_val.json",
+    DATA_DIR_ROOT / "04_merged" / "fold_0_train.json",
+    DATA_DIR_ROOT / "04_merged" / "fold_0_val.json",
+    DATA_DIR_ROOT / "04_merged" / "fold_1_train.json",
+    DATA_DIR_ROOT / "04_merged" / "fold_1_val.json",
+    DATA_DIR_ROOT / "04_merged" / "fold_2_train.json",
+    DATA_DIR_ROOT / "04_merged" / "fold_2_val.json",
 ]
 
 DEFAULT_VIDEO_ROOT = VIDEO_DIR  # 远端原值: Path("/hy-tmp/videos")

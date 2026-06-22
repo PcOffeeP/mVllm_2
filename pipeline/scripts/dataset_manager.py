@@ -137,7 +137,8 @@ def _parse_bool(raw: Any) -> bool:
     return text in {"true", "1", "yes", "是"}
 
 
-def _clean_location(raw: Any) -> str:
+def _clean_location(raw: Any) -> str | None:
+    """CSV 原始 location：保留空值/缺失为 'N/A'，与 CSV 口径一致。"""
     if raw is None or pd.isna(raw):
         return "N/A"
     text = str(raw).strip()
@@ -215,11 +216,11 @@ def build_video_meta(
                 is_label_conflict = True
             if location != "N/A":
                 reason = (
-                    f"{video_id}: is_abnormal=True，location 强制设为 location_canonical=N/A"
+                    f"{video_id}: is_abnormal=True，location 强制设为 location_canonical=None"
                 )
                 warnings.append(reason)
                 governance_reasons.append(reason)
-                location_canonical = "N/A"
+                location_canonical = None
                 is_label_conflict = True
         elif has_fracture and fracture_type not in FRACTURE_TYPES:
             reason = (
@@ -240,6 +241,15 @@ def build_video_meta(
             warnings.append(reason)
             governance_reasons.append(reason)
             is_label_conflict = True
+
+        # 非断裂/异常样本的 canonical location 统一为 null；断裂样本只保留有效位置
+        if has_fracture_canonical:
+            if location in ("inside_gauge", "outside_gauge"):
+                location_canonical = location
+            else:
+                location_canonical = None
+        else:
+            location_canonical = None
 
         record = {
             "video_id": video_id,
@@ -279,7 +289,7 @@ def _compute_strata(
     for rec in records:
         loc = rec.get("location_canonical", rec["location"])
         ftype = rec["type"]
-        if loc == "N/A":
+        if loc is None or loc == "N/A":
             key = "N/A"
         else:
             key = f"{ftype}@@{loc}"
@@ -304,7 +314,7 @@ def _compute_strata(
     if needs_fallback:
         final_keys: dict[str, str] = {}
         for rec in records:
-            if rec.get("location_canonical", rec["location"]) == "N/A":
+            if rec.get("location_canonical", rec["location"]) in (None, "N/A"):
                 final_keys[rec["video_id"]] = "N/A"
             else:
                 final_keys[rec["video_id"]] = rec["type"]
@@ -313,27 +323,62 @@ def _compute_strata(
     return merged_keys, "type_location_rare_merged"
 
 
+def _is_canonical_fracture(rec: dict[str, Any]) -> bool:
+    """判断记录是否属于可用于训练的确认断裂样本。"""
+    if rec.get("is_abnormal"):
+        return False
+    if not rec.get("has_fracture_canonical", rec.get("has_fracture", False)):
+        return False
+    return rec.get("type") in FRACTURE_TYPES
+
+
+def compute_rare_pool(records: list[dict[str, Any]]) -> list[str]:
+    """识别稀有断裂类别（视频数 <=2）并返回其 video_id 列表。"""
+    type_counts: Counter[str] = Counter()
+    type_ids: dict[str, list[str]] = defaultdict(list)
+    for rec in records:
+        if _is_canonical_fracture(rec):
+            ftype = rec["type"]
+            type_counts[ftype] += 1
+            type_ids[ftype].append(rec["video_id"])
+
+    rare_pool: list[str] = []
+    for ftype, count in type_counts.items():
+        if count <= 2:
+            rare_pool.extend(type_ids[ftype])
+    return sorted(rare_pool)
+
+
 def stratified_split(
     records: list[dict[str, Any]],
     test_ratio: float = 0.2,
     n_folds: int = 3,
     seed: int = 42,
-) -> tuple[dict[str, list[str]], dict[str, str]]:
+) -> tuple[dict[str, list[str]], dict[str, Any]]:
     """
-    按 strata 分层划分：test_ratio 为测试集比例，剩余做 n_folds。
-    返回 (split_map, decision_log)，其中 split_map 包括 test、fold_i_train、fold_i_val；
-    decision_log 记录分层策略与关键统计信息。
+    确定性视频级划分：
+    1. 稀有断裂类别（<=2 视频）强制加入每个 fold 的训练集，不进验证/测试。
+    2. 剩余视频按约 test_ratio 划出冻结测试集。
+    3. 剩余视频做 n_folds 分层划分；每个 fold 训练集 = 其他 folds + 稀有池。
+    同一原视频只会出现在一个集合中。
+    返回 (split_map, decision_log)。
     """
     import random
 
     random.seed(seed)
-    strata, decision = _compute_strata(records)
+
+    rare_pool = compute_rare_pool(records)
+    rare_set = set(rare_pool)
+    remaining_records = [r for r in records if r["video_id"] not in rare_set]
+
+    # 对非稀有视频按 type 分层划分测试集与 fold
+    strata, decision = _compute_strata(remaining_records)
     strata_groups: dict[str, list[str]] = defaultdict(list)
-    for rec in records:
+    for rec in remaining_records:
         strata_groups[strata[rec["video_id"]]].append(rec["video_id"])
 
     test_ids: list[str] = []
-    remaining_ids: list[str] = []
+    pool_ids: list[str] = []
 
     for stratum, ids in strata_groups.items():
         ids = ids.copy()
@@ -343,14 +388,14 @@ def stratified_split(
         while len(ids) - n_test < n_folds and n_test > 0:
             n_test -= 1
         test_ids.extend(ids[:n_test])
-        remaining_ids.extend(ids[n_test:])
+        pool_ids.extend(ids[n_test:])
 
-    # 对 remaining 再按 strata 分 fold
-    remaining_records = [r for r in records if r["video_id"] in set(remaining_ids)]
-    remaining_strata, rem_decision = _compute_strata(remaining_records)
+    # 对非测试、非稀有视频再按 strata 分 fold
+    pool_records = [r for r in records if r["video_id"] in set(pool_ids)]
+    pool_strata, pool_decision = _compute_strata(pool_records)
     rem_groups: dict[str, list[str]] = defaultdict(list)
-    for rec in remaining_records:
-        rem_groups[remaining_strata[rec["video_id"]]].append(rec["video_id"])
+    for rec in pool_records:
+        rem_groups[pool_strata[rec["video_id"]]].append(rec["video_id"])
 
     folds: list[list[str]] = [[] for _ in range(n_folds)]
     for stratum, ids in rem_groups.items():
@@ -363,26 +408,83 @@ def stratified_split(
     result: dict[str, list[str]] = {"test": sorted(test_ids)}
     for i in range(n_folds):
         val_ids = folds[i]
-        train_ids = []
+        train_ids: list[str] = []
         for j in range(n_folds):
             if j != i:
                 train_ids.extend(folds[j])
-        result[f"fold_{i}_train"] = sorted(train_ids)
+        # 稀有池强制加入每个 fold 训练集
+        train_ids.extend(rare_pool)
+        result[f"fold_{i}_train"] = sorted(set(train_ids))
         result[f"fold_{i}_val"] = sorted(val_ids)
 
-    decision_log = {
-        "method": "stratified_split",
+    decision_log: dict[str, Any] = {
+        "method": "stratified_split_with_rare_pool",
         "test_ratio": test_ratio,
         "n_folds": n_folds,
         "seed": seed,
+        "rare_pool": rare_pool,
+        "rare_pool_size": len(rare_pool),
         "overall_strata_decision": decision,
         "overall_strata_counts": dict(Counter(strata.values()).most_common()),
-        "remaining_strata_decision": rem_decision,
-        "remaining_strata_counts": dict(
-            Counter(remaining_strata.values()).most_common()
-        ),
+        "pool_strata_decision": pool_decision,
+        "pool_strata_counts": dict(Counter(pool_strata.values()).most_common()),
     }
     return result, decision_log
+
+
+def build_inventory_report(
+    records: list[dict[str, Any]],
+    splits: dict[str, list[str]],
+    decision_log: dict[str, Any],
+) -> dict[str, Any]:
+    """生成权威库存报告，覆盖 110 个视频、canonical 分组、稀有池与划分统计。"""
+    categories: dict[str, list[str]] = {
+        "confirmed_fracture": [],
+        "confirmed_no_fracture": [],
+        "not_clamped": [],
+        "video_anomaly": [],
+    }
+    location_counts: Counter[str] = Counter()
+    type_counts: Counter[str] = Counter()
+
+    for rec in records:
+        vid = rec["video_id"]
+        ftype = rec["type"]
+        is_canonical = _is_canonical_fracture(rec)
+
+        type_counts[ftype] += 1
+        loc = rec.get("location_canonical") or rec.get("location")
+        if loc:
+            location_counts[loc] += 1
+
+        if is_canonical:
+            categories["confirmed_fracture"].append(vid)
+        elif ftype == "未夹紧":
+            categories["not_clamped"].append(vid)
+        elif ftype == "视频异常" or rec.get("is_abnormal"):
+            categories["video_anomaly"].append(vid)
+        else:
+            categories["confirmed_no_fracture"].append(vid)
+
+    split_counts = {name: len(ids) for name, ids in splits.items()}
+    split_type_distribution: dict[str, dict[str, int]] = {}
+    by_id = {r["video_id"]: r for r in records}
+    for name, ids in splits.items():
+        split_type_distribution[name] = dict(
+            Counter(by_id[vid]["type"] for vid in ids if vid in by_id).most_common()
+        )
+
+    return {
+        "total_videos": len(records),
+        "categories": {k: sorted(v) for k, v in categories.items()},
+        "category_counts": {k: len(v) for k, v in categories.items()},
+        "type_counts": dict(type_counts.most_common()),
+        "location_counts": dict(location_counts.most_common()),
+        "rare_pool": decision_log.get("rare_pool", []),
+        "splits": split_counts,
+        "split_type_distribution": split_type_distribution,
+        "decision_log": decision_log,
+    }
 
 
 def validate_frames(
@@ -531,17 +633,24 @@ def main():
             "split": split_label,
             "video_ids": ids,
             "count": len(ids),
-            "method": "stratified_type_location",
+            "method": "stratified_type_location_with_rare_pool",
             "test_ratio": args.test_ratio if "test" in name else None,
             "fold": int(name.split("_")[1]) if name.startswith("fold_") else None,
+            "rare_pool_included": name.startswith("fold_") and name.endswith("_train"),
             "strata_decision": decision_log.get("overall_strata_decision"),
         }
         write_json(split_path, data)
         print(f"写入: {split_path} ({len(ids)} 条)")
 
-    decision_path = args.splits_dir / "stratified_split_decision_log.json"
+    decision_path = args.metadata_dir / "stratified_split_decision_log.json"
     write_json(decision_path, decision_log)
     print(f"写入分层决策日志: {decision_path}")
+
+    print("生成库存报告...")
+    inventory_report = build_inventory_report(records, splits, decision_log)
+    inventory_path = args.metadata_dir / "inventory_report.json"
+    write_json(inventory_path, inventory_report)
+    print(f"写入库存报告: {inventory_path}")
 
     print("完成。")
 

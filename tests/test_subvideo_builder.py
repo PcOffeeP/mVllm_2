@@ -24,15 +24,16 @@ def test_compute_fracture_between_exact_hit_middle_returns_left_interval():
     assert builder.compute_fracture_between(sampled, 30) == [1, 2]
 
 
-def test_compute_fracture_between_exact_hit_first_returns_sentinel():
+def test_compute_fracture_between_exact_hit_first_is_illegal():
+    """命中第一帧时无法构成合法 [i, i+1]，应返回 None。"""
     sampled = _frames(30, 40, 50)
-    assert builder.compute_fracture_between(sampled, 30) == [0, 0]
+    assert builder.compute_fracture_between(sampled, 30) is None
 
 
-def test_compute_fracture_between_exact_hit_last_prefers_right_sentinel():
-    """命中最后一帧时，按越界末段规则取 [N-1, N-1]。"""
+def test_compute_fracture_between_exact_hit_last_uses_left_interval():
+    """命中最后一帧时，取左侧相邻区间 [N-2, N-1]。"""
     sampled = _frames(10, 20, 30)
-    assert builder.compute_fracture_between(sampled, 30) == [2, 2]
+    assert builder.compute_fracture_between(sampled, 30) == [1, 2]
 
 
 def test_compute_fracture_between_normal_interval():
@@ -40,14 +41,14 @@ def test_compute_fracture_between_normal_interval():
     assert builder.compute_fracture_between(sampled, 25) == [1, 2]
 
 
-def test_compute_fracture_between_left_out_of_bounds():
+def test_compute_fracture_between_left_out_of_bounds_is_illegal():
     sampled = _frames(20, 30, 40)
-    assert builder.compute_fracture_between(sampled, 5) == [0, 0]
+    assert builder.compute_fracture_between(sampled, 5) is None
 
 
-def test_compute_fracture_between_right_out_of_bounds():
+def test_compute_fracture_between_right_out_of_bounds_is_illegal():
     sampled = _frames(10, 20, 30)
-    assert builder.compute_fracture_between(sampled, 100) == [2, 2]
+    assert builder.compute_fracture_between(sampled, 100) is None
 
 
 def test_compute_fracture_between_none_event_frame():
@@ -93,14 +94,21 @@ def test_subvideo_builder_write_json_rejects_nan(monkeypatch: pytest.MonkeyPatch
         }
     ]
     video_meta.write_text(json.dumps(records), encoding="utf-8")
-    (splits_dir / "test.json").write_text(
-        json.dumps({"split": "test", "video_ids": ["v001"]}), encoding="utf-8"
+    (splits_dir / "fold_0_train.json").write_text(
+        json.dumps({"split": "train", "video_ids": ["v001"]}), encoding="utf-8"
     )
 
     monkeypatch.setattr(
         builder,
         "build_subvideos_for_record",
-        lambda rec, split_info: [{"subvideo_id": "v001_full", "bad_value": float("nan")}],
+        lambda rec, split_info, *args, **kwargs: [{
+            "subvideo_id": "v001_full",
+            "source_video": "v001",
+            "fold_assignments": ["fold_0_train"],
+            "has_fracture": True,
+            "has_fracture_canonical": True,
+            "bad_value": float("nan"),
+        }],
     )
     monkeypatch.setattr(
         sys,
@@ -198,7 +206,7 @@ def test_build_subvideos_for_record_generates_all_classes_for_fracture(
     monkeypatch.setattr(
         builder,
         "build_full_subvideo",
-        lambda r, s: {
+        lambda r, s, *args, **kwargs: {
             "subvideo_id": f"{r['video_id']}_full",
             "source_video": r["video_id"],
             "video_path": f"02_subvideos/{r['video_id']}_full.mp4",
@@ -221,10 +229,10 @@ def test_build_subvideos_for_record_generates_all_classes_for_fracture(
         },
     )
     monkeypatch.setattr(
-        builder, "build_focus_subvideos", lambda r, s: [{"crop_type": "focus"}] * 3
+        builder, "build_focus_subvideos", lambda r, s, *args, **kwargs: [{"crop_type": "focus"}] * 3
     )
     monkeypatch.setattr(
-        builder, "build_neg_before_after", lambda r, s: [{"crop_type": "neg"}] * 2
+        builder, "build_neg_before_after", lambda r, s, *args, **kwargs: [{"crop_type": "neg"}] * 2
     )
 
     result = builder.build_subvideos_for_record(rec, split_info)
@@ -253,7 +261,7 @@ def test_build_subvideos_for_record_abnormal_only_full(
     monkeypatch.setattr(
         builder,
         "build_full_subvideo",
-        lambda r, s: {
+        lambda r, s, *args, **kwargs: {
             "subvideo_id": f"{r['video_id']}_full",
             "source_video": r["video_id"],
             "video_path": f"02_subvideos/{r['video_id']}_full.mp4",
@@ -267,7 +275,7 @@ def test_build_subvideos_for_record_abnormal_only_full(
             "is_abnormal": True,
             "fracture_between": None,
             "type": r["type"],
-            "location": r["location"],
+            "location": None,
             "source_type": r["type"],
             "source_location": r["location"],
             "fold": s.get("fold"),
@@ -275,8 +283,8 @@ def test_build_subvideos_for_record_abnormal_only_full(
             "fold_assignments": s.get("fold_assignments", []),
         },
     )
-    monkeypatch.setattr(builder, "build_focus_subvideos", lambda r, s: [])
-    monkeypatch.setattr(builder, "build_neg_before_after", lambda r, s: [])
+    monkeypatch.setattr(builder, "build_focus_subvideos", lambda r, s, *args, **kwargs: [])
+    monkeypatch.setattr(builder, "build_neg_before_after", lambda r, s, *args, **kwargs: [])
 
     result = builder.build_subvideos_for_record(rec, split_info)
     assert len(result) == 1
@@ -302,7 +310,7 @@ def test_build_subvideos_for_record_non_fracture_only_full(
     monkeypatch.setattr(
         builder,
         "build_full_subvideo",
-        lambda r, s: {
+        lambda r, s, *args, **kwargs: {
             "subvideo_id": f"{r['video_id']}_full",
             "source_video": r["video_id"],
             "video_path": f"02_subvideos/{r['video_id']}_full.mp4",
@@ -316,7 +324,7 @@ def test_build_subvideos_for_record_non_fracture_only_full(
             "is_abnormal": False,
             "fracture_between": None,
             "type": r["type"],
-            "location": r["location"],
+            "location": None,
             "source_type": r["type"],
             "source_location": r["location"],
             "fold": s.get("fold"),
@@ -324,8 +332,10 @@ def test_build_subvideos_for_record_non_fracture_only_full(
             "fold_assignments": s.get("fold_assignments", []),
         },
     )
-    monkeypatch.setattr(builder, "build_focus_subvideos", lambda r, s: [])
-    monkeypatch.setattr(builder, "build_neg_before_after", lambda r, s: [])
+    monkeypatch.setattr(builder, "build_focus_subvideos", lambda r, s, *args, **kwargs: [])
+    monkeypatch.setattr(builder, "build_neg_before_after", lambda r, s, *args, **kwargs: [])
+    monkeypatch.setattr(builder, "build_non_fracture_clips", lambda r, s, *args, **kwargs: [])
+    monkeypatch.setattr(builder, "build_not_clamped_clips", lambda r, s, *args, **kwargs: [])
 
     result = builder.build_subvideos_for_record(rec, split_info)
     assert len(result) == 1
@@ -363,8 +373,8 @@ def test_build_full_subvideo_preserves_original_and_outputs_canonical(
     assert sub["has_fracture"] is False
     assert sub["has_fracture_canonical"] is False
     assert sub["type"] == "视频异常"
-    assert sub["location"] == "N/A"
-    assert sub["location_canonical"] == "N/A"
+    assert sub["location"] is None
+    assert sub["location_canonical"] is None
     assert sub["source_type"] == "视频异常"
     assert sub["source_location"] == "inside_gauge"
     assert sub["crop_type"] == "full_neg"
@@ -375,13 +385,18 @@ def test_build_full_subvideo_preserves_original_and_outputs_canonical(
 # ---------------------------------------------------------------------------
 
 
+def _load_subvideos(meta_path: Path) -> list[dict]:
+    data = json.loads(meta_path.read_text(encoding="utf-8"))
+    return data.get("subvideos", []) if isinstance(data, dict) else data
+
+
 @pytest.mark.skipif(
     not (ROOT / "data" / "metadata" / "subvideos_meta.json").exists(),
     reason="需要先生成 data/metadata/subvideos_meta.json 产物",
 )
 def test_subvideos_meta_has_start_end_frames():
     meta_path = ROOT / "data" / "metadata" / "subvideos_meta.json"
-    subs = json.loads(meta_path.read_text(encoding="utf-8"))
+    subs = _load_subvideos(meta_path)
     assert subs
     for sub in subs:
         assert "start_frame" in sub, sub["subvideo_id"]
@@ -398,22 +413,19 @@ def test_subvideos_meta_has_start_end_frames():
     reason="需要先生成 data/metadata/subvideos_meta.json 产物",
 )
 def test_subvideos_meta_positive_fracture_between_in_bounds_and_adjacent():
-    """正样本的 fracture_between 必须是正常相邻区间 [i, i+1] 或边界哨兵 [0,0] / [N-1,N-1]。"""
+    """正样本的 fracture_between 必须是严格相邻区间 [i, i+1]，拒绝边界哨兵。"""
     meta_path = ROOT / "data" / "metadata" / "subvideos_meta.json"
-    subs = json.loads(meta_path.read_text(encoding="utf-8"))
+    subs = _load_subvideos(meta_path)
     for sub in subs:
         if not sub.get("has_fracture"):
             continue
         fb = sub.get("fracture_between")
         assert fb is not None, sub["subvideo_id"]
         assert len(fb) == 2, sub["subvideo_id"]
-        n = len(sub.get("frame_paths") or [])
+        n = len(sub.get("sampled_frames") or [])
         assert 0 <= fb[0] < n, sub["subvideo_id"]
         assert 0 <= fb[1] < n, sub["subvideo_id"]
-        if fb[0] == fb[1]:
-            assert fb == [0, 0] or fb == [n - 1, n - 1], sub["subvideo_id"]
-        else:
-            assert fb[1] == fb[0] + 1, sub["subvideo_id"]
+        assert fb[1] == fb[0] + 1, sub["subvideo_id"]
 
 
 @pytest.mark.skipif(
@@ -424,7 +436,7 @@ def test_subvideos_meta_positive_fracture_between_in_bounds_and_adjacent():
 def test_subvideos_meta_frame_bounds_consistent_with_time():
     meta_path = ROOT / "data" / "metadata" / "subvideos_meta.json"
     video_meta_path = ROOT / "data" / "metadata" / "video_meta.json"
-    subs = json.loads(meta_path.read_text(encoding="utf-8"))
+    subs = _load_subvideos(meta_path)
     video_meta = {
         v["video_id"]: v
         for v in json.loads(video_meta_path.read_text(encoding="utf-8"))
@@ -449,7 +461,7 @@ def test_subvideos_meta_fracture_between_recalculation_consistent():
     """用 start_frame/end_frame 对应的时间区间反算 fracture_between，验证无 ±1 帧偏差。"""
     meta_path = ROOT / "data" / "metadata" / "subvideos_meta.json"
     video_meta_path = ROOT / "data" / "metadata" / "video_meta.json"
-    subs = json.loads(meta_path.read_text(encoding="utf-8"))
+    subs = _load_subvideos(meta_path)
     video_meta = {
         v["video_id"]: v
         for v in json.loads(video_meta_path.read_text(encoding="utf-8"))
@@ -459,20 +471,11 @@ def test_subvideos_meta_fracture_between_recalculation_consistent():
         if not sub.get("has_fracture"):
             continue
         rec = video_meta[sub["source_video"]]
-        fps = rec["fps"]
-        total_frames = rec["total_frames"]
         event_frame = rec["event_frame_original"]
         if event_frame is None:
             continue
-        # 以实际 frame_paths 数量作为采样帧数反算，确保与元数据一致
-        n_actual = len(sub.get("frame_paths") or [])
-        sampled = builder.compute_sampled_frames_with_n(
-            sub["start_time"],
-            sub["end_time"],
-            fps,
-            total_frames,
-            n_actual,
-        )
+        # 直接用子视频元数据中的理论采样帧列表反算 fracture_between
+        sampled = sub.get("sampled_frames") or []
         recomputed = builder.compute_fracture_between(sampled, event_frame)
         if recomputed != sub["fracture_between"]:
             mismatches.append(

@@ -33,8 +33,9 @@ except Exception as exc:  # pragma: no cover
 
 
 SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata" / "subvideos_meta.json"
+VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata" / "video_meta.json"
 SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "03_splits"
-OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "04_new_merged"
+OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "04_merged"
 
 VIDEO_FPS = 8.0
 VIDEO_MAXLEN = 36
@@ -108,12 +109,13 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
         if is_abnormal or ftype not in FRACTURE_TYPES:
             has_fracture = False
 
-    if "location_canonical" in sub:
-        location = sub["location_canonical"]
+    # 负样本/异常样本 location 统一为 null；断裂样本仅保留有效位置
+    if has_fracture:
+        location = sub.get("location_canonical") or sub.get("location")
+        if location not in ("inside_gauge", "outside_gauge"):
+            location = None
     else:
-        location = sub.get("location", "N/A")
-        if is_abnormal and location != "N/A":
-            location = "N/A"
+        location = None
 
     sub["has_fracture"] = has_fracture
     sub["has_fracture_canonical"] = has_fracture
@@ -123,7 +125,7 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
 
     if is_abnormal and ftype not in FRACTURE_TYPES:
         sub["source_type"] = ftype
-        sub["source_location"] = "N/A"
+        sub["source_location"] = None
 
     return sub
 
@@ -199,23 +201,78 @@ def convert_subvideo_to_sample(
     return sample
 
 
+def _sample_with_priority(
+    items: list[dict[str, Any]], target: int, seed: int
+) -> list[dict[str, Any]]:
+    """优先保留全时长样本，再从片段中随机采样至目标数量。"""
+    import random
+
+    random.seed(seed)
+    if target >= len(items):
+        return items
+    full = [it for it in items if str(it.get("id", "")).endswith("_full")]
+    other = [it for it in items if not str(it.get("id", "")).endswith("_full")]
+    need = max(0, target - len(full))
+    selected_other = []
+    if need > 0 and other:
+        selected_other = random.sample(other, min(need, len(other)))
+    if len(full) > target:
+        return random.sample(full, target)
+    return full + selected_other
+
+
+def _balance_train_samples(
+    samples: list[dict[str, Any]],
+    seed: int = 42,
+) -> list[dict[str, Any]]:
+    """训练集正负样本平衡：正:负处于 1:1 ~ 2:1。"""
+    pos = [s for s in samples if s.get("has_fracture_canonical", s["has_fracture"])]
+    neg = [s for s in samples if not s.get("has_fracture_canonical", s["has_fracture"])]
+    pos_n = len(pos)
+    neg_n = len(neg)
+    if pos_n == 0:
+        return samples
+    if neg_n == 0:
+        return pos
+
+    # 在 1:1 ~ 2:1 范围内尽可能保留样本
+    target_pos = min(pos_n, 2 * neg_n)
+    target_neg = min(neg_n, target_pos)
+
+    selected_pos = _sample_with_priority(pos, target_pos, seed)
+    selected_neg = _sample_with_priority(neg, target_neg, seed)
+    return selected_pos + selected_neg
+
+
 def build_split_samples(
     subvideos: list[dict[str, Any]],
     split_video_ids: dict[str, set[str]],
     video_fps: float,
     video_maxlen: int,
+    seed: int = 42,
 ) -> dict[str, list[dict[str, Any]]]:
-    """按当前划分将子视频分组并转换为训练样本。"""
+    """按当前划分将子视频分组并转换为训练样本（训练集做正负平衡，验证集保持完整）。"""
     by_split: dict[str, list[dict[str, Any]]] = {
-        name: [] for name in split_video_ids
+        name: [] for name in split_video_ids if name != "test"
     }
     for sub in subvideos:
         src = sub["source_video"]
+        selected_splits = set(sub.get("selected_splits", []))
         for name, ids in split_video_ids.items():
-            if src in ids:
-                by_split[name].append(
-                    convert_subvideo_to_sample(sub, video_fps, video_maxlen)
-                )
+            if name == "test":
+                continue
+            if src not in ids:
+                continue
+            # 若子视频元数据携带 selected_splits，仅保留被选中的 split
+            if selected_splits and name not in selected_splits:
+                continue
+            by_split[name].append(
+                convert_subvideo_to_sample(sub, video_fps, video_maxlen)
+            )
+
+    for name in by_split:
+        if name.endswith("_train"):
+            by_split[name] = _balance_train_samples(by_split[name], seed=seed)
     return by_split
 
 
@@ -244,11 +301,15 @@ def compute_samples_meta(
         type_dist = Counter(s["type"] for s in samples)
         source_type_dist = Counter(s["source_type"] for s in samples)
 
+        pos_ratio = round(pos / len(samples), 4) if samples else 0.0
+        neg_ratio = round(neg / len(samples), 4) if samples else 0.0
         split_meta[name] = {
             "sample_count": len(samples),
             "video_source_count": len(source_dist),
             "positive_samples": pos,
             "negative_samples": neg,
+            "positive_ratio": pos_ratio,
+            "negative_ratio": neg_ratio,
             "source_distribution": _counter_to_dict(source_dist, top_k=20),
             "type_distribution": _counter_to_dict(type_dist),
             "source_type_distribution": _counter_to_dict(source_type_dist),
@@ -270,12 +331,47 @@ def compute_samples_meta(
     }
 
 
+def _build_test_artifacts(
+    video_meta: list[dict[str, Any]],
+    test_video_ids: set[str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """构造测试输入清单与真值 JSON。"""
+    by_id = {r["video_id"]: r for r in video_meta}
+    inputs: list[dict[str, Any]] = []
+    ground_truth: list[dict[str, Any]] = []
+    for vid in sorted(test_video_ids):
+        rec = by_id.get(vid, {})
+        inputs.append(
+            {
+                "id": vid,
+                "video_id": vid,
+                "video_path": f"data/01_videos/{vid}.mp4",
+            }
+        )
+        ground_truth.append(
+            {
+                "video_id": vid,
+                "has_fracture": rec.get("has_fracture"),
+                "has_fracture_canonical": rec.get("has_fracture_canonical"),
+                "is_abnormal": rec.get("is_abnormal"),
+                "event_frame_original": rec.get("event_frame_original"),
+                "event_time": rec.get("event_time"),
+                "type": rec.get("type"),
+                "location": rec.get("location"),
+                "location_canonical": rec.get("location_canonical"),
+            }
+        )
+    return inputs, ground_truth
+
+
 def build_all(
     subvideos_meta: Path,
     splits_dir: Path,
     output_dir: Path,
     video_fps: float,
     video_maxlen: int,
+    video_meta_path: Path | None = None,
+    seed: int = 42,
 ) -> dict[str, Any]:
     """核心构建入口：读取元数据、分组、写文件、返回统计信息。"""
     if not subvideos_meta.exists():
@@ -284,7 +380,12 @@ def build_all(
         raise FileNotFoundError(f"划分目录不存在: {splits_dir}")
 
     print(f"读取子视频元数据: {subvideos_meta}")
-    subvideos = load_json(subvideos_meta)
+    raw_subvideos = load_json(subvideos_meta)
+    # 兼容新版对象格式（含 subvideos/exclusions/exclusion_stats）与旧版列表格式
+    if isinstance(raw_subvideos, dict):
+        subvideos = raw_subvideos.get("subvideos", [])
+    else:
+        subvideos = raw_subvideos
     print(f"共 {len(subvideos)} 个子视频")
 
     print(f"加载划分文件: {splits_dir}")
@@ -294,7 +395,7 @@ def build_all(
 
     print("构建训练样本...")
     split_samples = build_split_samples(
-        subvideos, split_video_ids, video_fps, video_maxlen
+        subvideos, split_video_ids, video_fps, video_maxlen, seed=seed
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -302,6 +403,23 @@ def build_all(
         out_path = output_dir / f"{name}.json"
         write_json(out_path, samples)
         print(f"写入: {out_path} ({len(samples)} 条样本)")
+
+    # test 不输出 ShareGPT 样本，改为输入清单 + 真值
+    test_ids = split_video_ids.get("test", set())
+    if test_ids:
+        vm_path = video_meta_path or VIDEO_META_DEFAULT
+        if vm_path.exists():
+            video_meta = load_json(vm_path)
+            test_inputs, test_ground_truth = _build_test_artifacts(video_meta, test_ids)
+            write_json(output_dir / "test_inputs.json", test_inputs)
+            write_json(output_dir / "test_ground_truth.json", test_ground_truth)
+            print(
+                f"写入测试清单: {output_dir / 'test_inputs.json'} "
+                f"({len(test_inputs)} 条), "
+                f"真值: {output_dir / 'test_ground_truth.json'}"
+            )
+        else:
+            print(f"警告：未找到 video_meta，跳过测试清单生成: {vm_path}")
 
     print("汇总样本统计信息...")
     samples_meta = compute_samples_meta(split_samples, split_video_ids)
@@ -317,10 +435,12 @@ def main() -> None:
     parser.add_argument(
         "--subvideos-meta", type=Path, default=SUBVIDEOS_META_DEFAULT
     )
+    parser.add_argument("--video-meta", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--splits-dir", type=Path, default=SPLITS_DIR_DEFAULT)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR_DEFAULT)
     parser.add_argument("--video-fps", type=float, default=VIDEO_FPS)
     parser.add_argument("--video-maxlen", type=int, default=VIDEO_MAXLEN)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     build_all(
@@ -329,6 +449,8 @@ def main() -> None:
         output_dir=args.output_dir,
         video_fps=args.video_fps,
         video_maxlen=args.video_maxlen,
+        video_meta_path=args.video_meta,
+        seed=args.seed,
     )
 
 

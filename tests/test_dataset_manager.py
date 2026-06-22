@@ -13,6 +13,8 @@ sys.path.insert(0, str(ROOT))
 from pipeline.scripts.dataset_manager import (
     _parse_frame_rate,
     _to_float,
+    build_video_meta,
+    compute_rare_pool,
     stratified_split,
     write_json,
 )
@@ -36,13 +38,19 @@ def _make_records(n: int) -> list[dict]:
     for i in range(n):
         ftype = types[i % len(types)]
         loc = "inside_gauge" if i % 10 < 7 else "outside_gauge"
+        loc_canonical = loc
         if ftype in {"未断裂", "未夹紧", "视频异常"}:
             loc = "N/A"
+            loc_canonical = None
         records.append(
             {
                 "video_id": f"video_{i:04d}",
                 "type": ftype,
                 "location": loc,
+                "location_canonical": loc_canonical,
+                "has_fracture": ftype not in {"未断裂", "未夹紧", "视频异常"},
+                "is_abnormal": ftype in {"未夹紧", "视频异常"},
+                "has_fracture_canonical": ftype not in {"未断裂", "未夹紧", "视频异常"},
             }
         )
     return records
@@ -86,12 +94,92 @@ def test_stratified_split_train_larger_than_val():
         assert len(splits[f"fold_{i}_train"]) > len(splits[f"fold_{i}_val"])
 
 
+def _make_records_with_rare() -> list[dict]:
+    """构造包含稀有断裂类（<=2 视频）的记录。"""
+    records: list[dict] = []
+    # 常见类：韧性断裂 10 个
+    for i in range(10):
+        records.append(
+            {
+                "video_id": f"common_{i:03d}",
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "location_canonical": "inside_gauge",
+                "has_fracture": True,
+                "is_abnormal": False,
+                "has_fracture_canonical": True,
+            }
+        )
+    # 稀有类 A：2 视频
+    for i in range(2):
+        records.append(
+            {
+                "video_id": f"rare_a_{i:03d}",
+                "type": "爆炸性断裂",
+                "location": "inside_gauge",
+                "location_canonical": "inside_gauge",
+                "has_fracture": True,
+                "is_abnormal": False,
+                "has_fracture_canonical": True,
+            }
+        )
+    # 稀有类 B：1 视频
+    records.append(
+        {
+            "video_id": "rare_b_000",
+            "type": "半脆半韧断裂",
+            "location": "outside_gauge",
+            "location_canonical": "outside_gauge",
+            "has_fracture": True,
+            "is_abnormal": False,
+            "has_fracture_canonical": True,
+        }
+    )
+    # 负样本：5 视频
+    for i in range(5):
+        records.append(
+            {
+                "video_id": f"neg_{i:03d}",
+                "type": "未断裂",
+                "location": "N/A",
+                "location_canonical": None,
+                "has_fracture": False,
+                "is_abnormal": False,
+                "has_fracture_canonical": False,
+            }
+        )
+    return records
+
+
+def test_compute_rare_pool_finds_low_frequency_fracture_types():
+    records = _make_records_with_rare()
+    rare_pool = compute_rare_pool(records)
+    assert sorted(rare_pool) == ["rare_a_000", "rare_a_001", "rare_b_000"]
+
+
+def test_stratified_split_rare_pool_only_in_train():
+    records = _make_records_with_rare()
+    splits, decision_log = stratified_split(records, test_ratio=0.2, n_folds=3, seed=42)
+    rare_pool = set(decision_log["rare_pool"])
+    assert rare_pool, "应有稀有池"
+
+    for i in range(3):
+        train_ids = set(splits[f"fold_{i}_train"])
+        val_ids = set(splits[f"fold_{i}_val"])
+        assert rare_pool <= train_ids, f"fold {i} 训练集应包含全部稀有池"
+        assert not (rare_pool & val_ids), f"fold {i} 验证集不应包含稀有池"
+
+    assert not (rare_pool & set(splits["test"])), "测试集不应包含稀有池"
+
+
 # ---------------------------------------------------------------------------
 # 真实产物检查
 # ---------------------------------------------------------------------------
 
 VIDEO_META_PATH = ROOT / "data" / "metadata" / "video_meta.json"
 SPLITS_DIR = ROOT / "data" / "03_splits"
+METADATA_DIR = ROOT / "data" / "metadata"
+DECISION_LOG_PATH = METADATA_DIR / "stratified_split_decision_log.json"
 
 CONFLICT_VIDEOS = {
     "video_0045",
@@ -118,11 +206,52 @@ def test_conflict_abnormal_videos_are_downgraded():
         assert rec["has_fracture_canonical"] is False, (
             f"{vid} 冲突样本 canonical 未降级"
         )
-        assert rec["location_canonical"] == "N/A", (
-            f"{vid} 异常样本 location_canonical 应为 N/A"
+        assert rec["location_canonical"] is None, (
+            f"{vid} 异常样本 location_canonical 应为 None"
         )
         assert rec["is_label_conflict"] is True, f"{vid} 应被标记为标签冲突"
         assert rec["label_governance_reason"], f"{vid} 应有治理原因"
+
+
+@pytest.mark.skipif(
+    not DECISION_LOG_PATH.exists(), reason="分层决策日志不存在"
+)
+def test_real_split_decision_log_in_metadata_dir():
+    data = json.loads(DECISION_LOG_PATH.read_text(encoding="utf-8"))
+    assert "rare_pool" in data
+    assert "method" in data
+    assert data.get("method") == "stratified_split_with_rare_pool"
+
+
+@pytest.mark.skipif(
+    not (SPLITS_DIR / "test.json").exists(), reason="划分文件不存在"
+)
+def test_real_split_rare_pool_only_in_train():
+    decision_log = json.loads(DECISION_LOG_PATH.read_text(encoding="utf-8"))
+    rare_pool = set(decision_log.get("rare_pool", []))
+    if not rare_pool:
+        pytest.skip("稀有池为空，跳过")
+
+    for i in range(3):
+        train_ids = set(
+            json.loads(
+                (SPLITS_DIR / f"fold_{i}_train.json").read_text(encoding="utf-8")
+            ).get("video_ids", [])
+        )
+        val_ids = set(
+            json.loads(
+                (SPLITS_DIR / f"fold_{i}_val.json").read_text(encoding="utf-8")
+            ).get("video_ids", [])
+        )
+        assert rare_pool <= train_ids, f"fold {i} 训练集应包含全部稀有池"
+        assert not (rare_pool & val_ids), f"fold {i} 验证集不应包含稀有池"
+
+    test_ids = set(
+        json.loads(
+            (SPLITS_DIR / "test.json").read_text(encoding="utf-8")
+        ).get("video_ids", [])
+    )
+    assert not (rare_pool & test_ids), "测试集不应包含稀有池"
 
 
 @pytest.mark.skipif(
@@ -232,7 +361,7 @@ def test_canonical_preserved_for_abnormal_fracture_conflict(monkeypatch: pytest.
     assert rec["has_fracture"] is True, "CSV 原始 has_fracture 必须保留"
     assert rec["location"] == "inside_gauge", "CSV 原始 location 必须保留"
     assert rec["has_fracture_canonical"] is False
-    assert rec["location_canonical"] == "N/A"
+    assert rec["location_canonical"] is None
     assert rec["is_label_conflict"] is True
     assert any("is_abnormal=True" in r for r in rec["label_governance_reason"])
     assert any("数据一致性错误" in w for w in warnings)
@@ -259,6 +388,7 @@ def test_canonical_preserved_for_non_fracture_type(monkeypatch: pytest.MonkeyPat
     assert rec["has_fracture"] is True, "CSV 原始 has_fracture 必须保留"
     assert rec["type"] == "未断裂", "CSV 原始 type 必须保留"
     assert rec["has_fracture_canonical"] is False
+    assert rec["location_canonical"] is None
     assert rec["is_label_conflict"] is True
     assert any("不在 7 个断裂类中" in r for r in rec["label_governance_reason"])
 
@@ -310,6 +440,7 @@ def test_canonical_equals_original_for_normal_negative(monkeypatch: pytest.Monke
     rec = records[0]
     assert rec["has_fracture"] is False
     assert rec["has_fracture_canonical"] is False
+    assert rec["location_canonical"] is None
     assert rec["is_label_conflict"] is False
     assert rec["label_governance_reason"] == []
 
@@ -317,7 +448,7 @@ def test_canonical_equals_original_for_normal_negative(monkeypatch: pytest.Monke
 def test_abnormal_forces_location_canonical_to_na_without_overwriting_original(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """异常样本的 location 应通过 location_canonical 改为 N/A，原始 location 保留。"""
+    """异常样本的 location 应通过 location_canonical 改为 None，原始 location 保留。"""
     df = pd.DataFrame(
         [
             _make_annotation_row(
@@ -336,12 +467,12 @@ def test_abnormal_forces_location_canonical_to_na_without_overwriting_original(
     assert len(records) == 1
     rec = records[0]
     assert rec["location"] == "inside_gauge", "CSV 原始 location 必须保留"
-    assert rec["location_canonical"] == "N/A", "异常样本 location_canonical 应为 N/A"
+    assert rec["location_canonical"] is None, "异常样本 location_canonical 应为 None"
     assert rec["has_fracture"] is False
     assert rec["has_fracture_canonical"] is False
     assert rec["is_label_conflict"] is True
-    assert any("location 强制设为 location_canonical=N/A" in r for r in rec["label_governance_reason"])
-    assert any("location 强制设为 location_canonical=N/A" in w for w in warnings)
+    assert any("location 强制设为 location_canonical=None" in r for r in rec["label_governance_reason"])
+    assert any("location 强制设为 location_canonical=None" in w for w in warnings)
 
 
 # ---------------------------------------------------------------------------

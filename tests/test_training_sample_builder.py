@@ -98,7 +98,7 @@ def test_convert_negative_sample_has_null_fracture_between():
     assert assistant["has_fracture"] is False
     assert assistant["fracture_between"] is None
     assert assistant["type"] == "未断裂"
-    assert assistant["location"] == "N/A"
+    assert assistant["location"] is None
     assert sample["fracture_between"] is None
 
 
@@ -148,6 +148,8 @@ def test_build_all_outputs_valid_json_and_samples_meta(tmp_path):
     )
 
     for name in builder.SPLIT_NAMES:
+        if name == "test":
+            continue
         path = out_dir / f"{name}.json"
         assert path.exists(), f"{path} 不存在"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -166,7 +168,7 @@ def test_build_all_outputs_valid_json_and_samples_meta(tmp_path):
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     assert meta["total_samples"] > 0
     assert "splits" in meta
-    assert all(name in meta["splits"] for name in builder.SPLIT_NAMES)
+    assert all(name in meta["splits"] for name in builder.SPLIT_NAMES if name != "test")
 
 
 def test_dataset_info_interval_keys_point_to_existing_files():
@@ -177,6 +179,8 @@ def test_dataset_info_interval_keys_point_to_existing_files():
 
     interval_keys = [k for k in dataset_info if k.startswith("tensile_video_interval")]
     assert interval_keys, "未找到 tensile_video_interval 键"
+    # 新方案只保留 6 个训练/验证数据集键，不再包含 test ShareGPT 键
+    assert "tensile_video_interval_test" not in dataset_info
 
     missing: list[str] = []
     for key in interval_keys:
@@ -184,13 +188,14 @@ def test_dataset_info_interval_keys_point_to_existing_files():
         assert entry.get("formatting") == "sharegpt"
         assert entry["columns"].get("messages") == "messages"
         assert entry["columns"].get("videos") == "videos"
+        assert "04_merged" in entry["file_name"]
         file_path = (finetune_dir / entry["file_name"]).resolve()
         if not file_path.exists():
             missing.append(str(file_path.relative_to(Path.cwd())))
 
     if missing:
         pytest.skip(
-            f"需要先生成 data/04_new_merged 训练样本: {', '.join(missing)}"
+            f"需要先生成 data/04_merged 训练样本: {', '.join(missing)}"
         )
 
 
@@ -213,6 +218,8 @@ def test_build_all_outputs_contain_start_end_frames(tmp_path):
     )
 
     for name in builder.SPLIT_NAMES:
+        if name == "test":
+            continue
         path = out_dir / f"{name}.json"
         assert path.exists(), f"{path} 不存在"
         samples = json.loads(path.read_text(encoding="utf-8"))
@@ -318,11 +325,12 @@ def test_conflict_videos_samples_are_negative(tmp_path):
                 assert sample.get("has_fracture_canonical") is False
                 assert sample.get("fracture_between") is None
                 assert sample["type"] == "视频异常"
-                assert sample["location"] == "N/A"
-                assert sample.get("location_canonical") == "N/A"
+                assert sample["location"] is None
+                assert sample.get("location_canonical") is None
                 assistant = json.loads(sample["messages"][2]["content"])
                 assert assistant["has_fracture"] is False
                 assert assistant["fracture_between"] is None
+                assert assistant["location"] is None
 
 
 def test_no_positive_sample_with_non_fracture_type(tmp_path):
@@ -380,10 +388,11 @@ def test_convert_subvideo_downgrades_inconsistent_positive():
     assert sample["has_fracture"] is False
     assert sample["has_fracture_canonical"] is False
     assert sample["fracture_between"] is None
-    assert sample["location"] == "N/A"
-    assert sample["location_canonical"] == "N/A"
+    assert sample["location"] is None
+    assert sample["location_canonical"] is None
     assistant = json.loads(sample["messages"][2]["content"])
     assert assistant["has_fracture"] is False
+    assert assistant["location"] is None
 
 
 def test_convert_subvideo_prefers_canonical_over_original():
@@ -400,11 +409,11 @@ def test_convert_subvideo_prefers_canonical_over_original():
     sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
     assert sample["has_fracture"] is False
     assert sample["has_fracture_canonical"] is False
-    assert sample["location"] == "N/A"
-    assert sample["location_canonical"] == "N/A"
+    assert sample["location"] is None
+    assert sample["location_canonical"] is None
     assistant = json.loads(sample["messages"][2]["content"])
     assert assistant["has_fracture"] is False
-    assert assistant["location"] == "N/A"
+    assert assistant["location"] is None
 
 
 if __name__ == "__main__":
