@@ -13,13 +13,20 @@ sys.path.insert(0, str(ROOT))
 from pipeline.scripts import training_sample_builder as builder
 
 
-def _subvideo(video_id: str = "video_0001", has_fracture: bool = True) -> dict:
+def _subvideo(
+    video_id: str = "video_0001",
+    has_fracture: bool | None = True,
+    ftype: str | None = None,
+    source_type: str | None = None,
+) -> dict:
     """构造一条最小子视频元数据。"""
+    ftype = ftype or ("韧性断裂" if has_fracture is True else "未断裂")
+    source_type = source_type or ftype
     return {
         "subvideo_id": f"{video_id}_focus_3s_50pct",
         "source_video": video_id,
-        "video_path": f"02_subvideos/{video_id}_focus_3s_50pct.mp4",
-        "frame_paths": [f"03_frames/{video_id}_focus_3s_50pct/frame_{i:04d}.jpg" for i in range(24)],
+        "video_path": f"02_subvideos_v2/{video_id}_focus_3s_50pct.mp4",
+        "frame_paths": [f"03_frames_v2/{video_id}_focus_3s_50pct/frame_{i:04d}.jpg" for i in range(24)],
         "start_time": 143.9,
         "end_time": 146.9,
         "start_frame": 4317,
@@ -29,14 +36,21 @@ def _subvideo(video_id: str = "video_0001", has_fracture: bool = True) -> dict:
         "event_position_ratio": 0.5,
         "has_fracture": has_fracture,
         "has_fracture_canonical": has_fracture,
-        "fracture_between": [17, 18] if has_fracture else None,
-        "type": "韧性断裂" if has_fracture else "未断裂",
-        "location": "inside_gauge" if has_fracture else "N/A",
-        "location_canonical": "inside_gauge" if has_fracture else "N/A",
-        "source_type": "韧性断裂",
+        "fracture_between": [17, 18] if has_fracture is True else None,
+        "type": ftype,
+        "location": "inside_gauge" if has_fracture is True else "N/A",
+        "location_canonical": "inside_gauge" if has_fracture is True else None,
+        "source_type": source_type,
         "source_location": "inside_gauge",
+        "actual_frame_mapping": [
+            {"input_index": i, "original_frame": 4317 + i, "timestamp": round(143.9 + i / 30.0, 4)}
+            for i in range(24)
+        ],
+        "processor_fingerprint": "mock:test:fingerprint",
         "fold": "fold_0_train",
         "split": "fold_0_train",
+        "selection_reason": "focus_positive",
+        "exclusion_reason": None,
     }
 
 
@@ -100,6 +114,35 @@ def test_convert_negative_sample_has_null_fracture_between():
     assert assistant["type"] == "未断裂"
     assert assistant["location"] is None
     assert sample["fracture_between"] is None
+
+
+def test_convert_assistant_json_has_exactly_five_fields():
+    sub = _subvideo(has_fracture=True)
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    assistant = json.loads(sample["messages"][2]["content"])
+    assert set(assistant.keys()) == {"has_fracture", "fracture_between", "type", "location", "confidence"}
+    assert isinstance(assistant["confidence"], float)
+    assert assistant["confidence"] == pytest.approx(1.0)
+
+
+def test_convert_presence_unknown_sample_has_null_has_fracture():
+    sub = _subvideo(has_fracture=None, ftype="视频异常", source_type="视频异常")
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    assistant = json.loads(sample["messages"][2]["content"])
+    assert assistant["has_fracture"] is None
+    assert assistant["fracture_between"] is None
+    assert assistant["type"] == "视频异常"
+    assert assistant["location"] is None
+
+
+def test_convert_time_unknown_anomaly_has_true_has_fracture_null_between():
+    sub = _subvideo(has_fracture=True, ftype="视频异常", source_type="视频异常")
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    assistant = json.loads(sample["messages"][2]["content"])
+    assert assistant["has_fracture"] is True
+    assert assistant["fracture_between"] is None
+    assert assistant["type"] == "视频异常"
+    assert assistant["location"] is None
 
 
 def test_compute_effective_frames_prefers_frame_paths():
@@ -171,32 +214,86 @@ def test_build_all_outputs_valid_json_and_samples_meta(tmp_path):
     assert all(name in meta["splits"] for name in builder.SPLIT_NAMES if name != "test")
 
 
-def test_dataset_info_interval_keys_point_to_existing_files():
-    dataset_info = json.loads(
-        Path("finetune/dataset_info.json").read_text(encoding="utf-8")
+def test_build_all_outputs_contain_metadata_fields(tmp_path):
+    """生成的训练样本顶层必须包含 v2 metadata 字段。"""
+    sub_meta = tmp_path / "subvideos_meta.json"
+    splits_dir = tmp_path / "splits"
+    out_dir = tmp_path / "out"
+
+    sub = _subvideo("video_0001", has_fracture=True)
+    _write_subvideos_meta(sub_meta, [sub])
+    _write_splits(splits_dir, {"fold_0_train": ["video_0001"]})
+
+    builder.build_all(
+        subvideos_meta=sub_meta,
+        splits_dir=splits_dir,
+        output_dir=out_dir,
+        video_fps=8.0,
+        video_maxlen=36,
     )
-    finetune_dir = Path("finetune").resolve()
 
-    interval_keys = [k for k in dataset_info if k.startswith("tensile_video_interval")]
-    assert interval_keys, "未找到 tensile_video_interval 键"
-    # 新方案只保留 6 个训练/验证数据集键，不再包含 test ShareGPT 键
-    assert "tensile_video_interval_test" not in dataset_info
+    samples = json.loads((out_dir / "fold_0_train.json").read_text(encoding="utf-8"))
+    assert samples
+    sample = samples[0]
+    assert sample["source_video"] == "video_0001"
+    assert sample["source_type"] == "韧性断裂"
+    assert sample["source_location"] == "inside_gauge"
+    assert "actual_frame_mapping" in sample
+    assert isinstance(sample["actual_frame_mapping"], list)
+    assert sample["processor_fingerprint"] == sub["processor_fingerprint"]
+    assert sample["selection_reason"] == "focus_positive"
+    assert "exclusion_reason" in sample
 
-    missing: list[str] = []
-    for key in interval_keys:
-        entry = dataset_info[key]
-        assert entry.get("formatting") == "sharegpt"
-        assert entry["columns"].get("messages") == "messages"
-        assert entry["columns"].get("videos") == "videos"
-        assert "04_merged" in entry["file_name"]
-        file_path = (finetune_dir / entry["file_name"]).resolve()
-        if not file_path.exists():
-            missing.append(str(file_path.relative_to(Path.cwd())))
 
-    if missing:
-        pytest.skip(
-            f"需要先生成 data/04_merged 训练样本: {', '.join(missing)}"
-        )
+def test_build_all_outputs_test_artifacts_with_isolation(tmp_path):
+    """测试集必须生成独立输入清单与真值，且训练样本不含测试视频。"""
+    sub_meta = tmp_path / "subvideos_meta.json"
+    splits_dir = tmp_path / "splits"
+    out_dir = tmp_path / "out"
+    video_meta = tmp_path / "video_meta.json"
+
+    train_sub = _subvideo("video_train", has_fracture=True)
+    test_sub = _subvideo("video_test", has_fracture=False)
+    _write_subvideos_meta(sub_meta, [train_sub, test_sub])
+    _write_splits(
+        splits_dir,
+        {
+            "fold_0_train": ["video_train"],
+            "test": ["video_test"],
+        },
+    )
+    video_meta.write_text(
+        json.dumps(
+            [
+                {"video_id": "video_test", "has_fracture": False, "type": "未断裂"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    builder.build_all(
+        subvideos_meta=sub_meta,
+        splits_dir=splits_dir,
+        output_dir=out_dir,
+        video_fps=8.0,
+        video_maxlen=36,
+        video_meta_path=video_meta,
+    )
+
+    inputs_path = out_dir / "test_inputs.json"
+    gt_path = out_dir / "test_ground_truth.json"
+    assert inputs_path.exists()
+    assert gt_path.exists()
+
+    inputs = json.loads(inputs_path.read_text(encoding="utf-8"))
+    gt = json.loads(gt_path.read_text(encoding="utf-8"))
+    assert len(inputs) == 1
+    assert inputs[0]["video_id"] == "video_test"
+    assert len(gt) == 1
+    assert gt[0]["video_id"] == "video_test"
+
+    train_samples = json.loads((out_dir / "fold_0_train.json").read_text(encoding="utf-8"))
+    assert all(s["source_video"] != "video_test" for s in train_samples)
 
 
 def test_build_all_outputs_contain_start_end_frames(tmp_path):
@@ -273,36 +370,21 @@ FRACTURE_TYPES = {
     "界面脱粘、齐根断裂",
 }
 
-CONFLICT_VIDEOS = {
-    "video_0045",
-    "video_0049",
-    "video_0078",
-    "video_0083",
-    "video_0094",
-    "video_0096",
-    "video_0107",
-}
 
-
-def test_conflict_videos_samples_are_negative(tmp_path):
-    """7 条冲突视频在生成的训练样本中必须被降级为负样本。"""
+def test_time_unknown_anomaly_samples_keep_true_has_fracture(tmp_path):
+    """时间不可靠视频异常的训练样本应保持 has_fracture=true、type=视频异常。"""
     sub_meta = tmp_path / "subvideos_meta.json"
     splits_dir = tmp_path / "splits"
     out_dir = tmp_path / "out"
 
-    conflict_subs = []
-    for vid in CONFLICT_VIDEOS:
-        sub = _subvideo(vid, has_fracture=True)
-        sub["has_fracture_canonical"] = False
-        sub["is_abnormal"] = True
-        sub["type"] = "视频异常"
-        sub["location"] = "N/A"
-        sub["location_canonical"] = "N/A"
-        sub["fracture_between"] = [10, 11]
-        conflict_subs.append(sub)
+    subs = []
+    for vid in ["video_tu_001", "video_tu_002"]:
+        sub = _subvideo(vid, has_fracture=True, ftype="视频异常", source_type="视频异常")
+        sub["fracture_between"] = None
+        subs.append(sub)
 
-    _write_subvideos_meta(sub_meta, conflict_subs)
-    _write_splits(splits_dir, {"fold_0_train": sorted(CONFLICT_VIDEOS)})
+    _write_subvideos_meta(sub_meta, subs)
+    _write_splits(splits_dir, {"fold_0_train": ["video_tu_001", "video_tu_002"]})
 
     builder.build_all(
         subvideos_meta=sub_meta,
@@ -312,29 +394,19 @@ def test_conflict_videos_samples_are_negative(tmp_path):
         video_maxlen=36,
     )
 
-    for name in builder.SPLIT_NAMES:
-        path = out_dir / f"{name}.json"
-        if not path.exists():
-            continue
-        samples = json.loads(path.read_text(encoding="utf-8"))
-        for sample in samples:
-            if sample.get("source_video") in CONFLICT_VIDEOS:
-                assert sample["has_fracture"] is False, (
-                    f"{sample['id']} 来源为冲突视频，has_fracture 必须为 False"
-                )
-                assert sample.get("has_fracture_canonical") is False
-                assert sample.get("fracture_between") is None
-                assert sample["type"] == "视频异常"
-                assert sample["location"] is None
-                assert sample.get("location_canonical") is None
-                assistant = json.loads(sample["messages"][2]["content"])
-                assert assistant["has_fracture"] is False
-                assert assistant["fracture_between"] is None
-                assert assistant["location"] is None
+    samples = json.loads((out_dir / "fold_0_train.json").read_text(encoding="utf-8"))
+    for sample in samples:
+        assert sample["has_fracture"] is True
+        assert sample["type"] == "视频异常"
+        assert sample["location"] is None
+        assistant = json.loads(sample["messages"][2]["content"])
+        assert assistant["has_fracture"] is True
+        assert assistant["fracture_between"] is None
+        assert assistant["location"] is None
 
 
 def test_no_positive_sample_with_non_fracture_type(tmp_path):
-    """has_fracture=True 的样本 type 必须在 7 个断裂类中。"""
+    """has_fracture=True 的样本 type 必须在 7 个断裂类中或视频异常时间不可靠。"""
     sub_meta = tmp_path / "subvideos_meta.json"
     splits_dir = tmp_path / "splits"
     out_dir = tmp_path / "out"
@@ -369,7 +441,7 @@ def test_no_positive_sample_with_non_fracture_type(tmp_path):
         samples = json.loads(path.read_text(encoding="utf-8"))
         for sample in samples:
             if sample["has_fracture"] is True:
-                assert sample["type"] in FRACTURE_TYPES, (
+                assert sample["type"] in FRACTURE_TYPES | {"视频异常"}, (
                     f"{sample['id']} has_fracture=True 但 type={sample['type']}"
                 )
 
@@ -414,6 +486,23 @@ def test_convert_subvideo_prefers_canonical_over_original():
     assistant = json.loads(sample["messages"][2]["content"])
     assert assistant["has_fracture"] is False
     assert assistant["location"] is None
+
+
+def test_assistant_fracture_between_matches_actual_frame_mapping():
+    """assistant JSON 的 fracture_between 必须与 actual_frame_mapping 严格对应。"""
+    sub = _subvideo("video_0001", has_fracture=True)
+    sub["actual_frame_mapping"] = [
+        {"input_index": i, "original_frame": 100 + i * 10, "timestamp": float(i)}
+        for i in range(8)
+    ]
+    sub["fracture_between"] = [2, 3]
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=8)
+
+    assistant = json.loads(sample["messages"][2]["content"])
+    assert assistant["fracture_between"] == [2, 3]
+    mapping = sample["actual_frame_mapping"]
+    assert 0 <= assistant["fracture_between"][0] < assistant["fracture_between"][1] < len(mapping)
+    assert mapping[2]["original_frame"] < 125 <= mapping[3]["original_frame"]
 
 
 if __name__ == "__main__":

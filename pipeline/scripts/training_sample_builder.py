@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-训练样本构建器（新 interval 方案）
+训练样本构建器（v2 五字段契约）
 
-将 ``data/metadata/subvideos_meta.json`` 中的子视频元数据转换为
-LLaMA-Factory ShareGPT 格式的多模态训练样本，并按 ``data/03_splits/``
-中的 video_id 集合分组输出到 ``data/04_new_merged/``。
+将 ``data/metadata_v2/subvideos_meta.json`` 中的子视频元数据转换为
+LLaMA-Factory ShareGPT 格式的多模态训练样本，并按 ``data/03_splits_v2/``
+中的 video_id 集合分组输出到 ``data/04_merged_v2/``。
 """
 
 from __future__ import annotations
@@ -32,10 +32,10 @@ except Exception as exc:  # pragma: no cover
     ) from exc
 
 
-SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata" / "subvideos_meta.json"
-VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata" / "video_meta.json"
-SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "03_splits"
-OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "04_merged"
+SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata_v2" / "subvideos_meta.json"
+VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata_v2" / "video_meta.json"
+SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "03_splits_v2"
+OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "04_merged_v2"
 
 VIDEO_FPS = 8.0
 VIDEO_MAXLEN = 36
@@ -86,7 +86,6 @@ def load_split_video_ids(splits_dir: Path) -> dict[str, set[str]]:
             continue
         data = load_json(path)
         mapping[path.stem] = set(data.get("video_ids", []))
-    # 保证输出顺序稳定
     return {name: mapping.get(name, set()) for name in SPLIT_NAMES}
 
 
@@ -95,43 +94,53 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
 
     - 若子视频元数据已包含 ``has_fracture_canonical`` / ``location_canonical``，
       直接沿用，保证 CSV 原始标签不被覆盖。
-    - 否则按 ``is_abnormal`` / ``type`` 推导 canonical 值。
-    - 保证 ``has_fracture_canonical=True`` 时 ``type`` 在 7 个断裂类中。
+    - 保证 ``has_fracture_canonical=True`` 时 ``type`` 在 7 个断裂类中或视频异常时间不可靠。
     """
     sub = dict(sub)
     ftype = sub.get("type", "")
+    source_type = sub.get("source_type", ftype)
+    source_location = sub.get("source_location")
     is_abnormal = sub.get("is_abnormal", False)
 
-    if "has_fracture_canonical" in sub:
-        has_fracture = bool(sub["has_fracture_canonical"])
-    else:
-        has_fracture = sub.get("has_fracture", False)
+    has_fracture_canonical = sub.get("has_fracture_canonical")
+    canonical_explicitly_null = "has_fracture_canonical" in sub and sub["has_fracture_canonical"] is None
+    if has_fracture_canonical is None and not canonical_explicitly_null:
+        has_fracture_canonical = sub.get("has_fracture", False)
         if is_abnormal or ftype not in FRACTURE_TYPES:
-            has_fracture = False
+            has_fracture_canonical = False
 
-    # 负样本/异常样本 location 统一为 null；断裂样本仅保留有效位置
-    if has_fracture:
-        location = sub.get("location_canonical") or sub.get("location")
-        if location not in ("inside_gauge", "outside_gauge"):
+    # 视频异常保留原 type；断裂样本仅保留有效位置
+    if has_fracture_canonical is True:
+        if ftype in FRACTURE_TYPES:
+            location = sub.get("location_canonical") or sub.get("location")
+            if location not in ("inside_gauge", "outside_gauge"):
+                location = None
+            fracture_between = sub.get("fracture_between")
+        elif ftype == "视频异常":
             location = None
+            fracture_between = None
+        else:
+            # 不一致：降级为负样本
+            has_fracture_canonical = False
+            location = None
+            fracture_between = None
     else:
         location = None
+        fracture_between = None
 
-    sub["has_fracture"] = has_fracture
-    sub["has_fracture_canonical"] = has_fracture
-    sub["fracture_between"] = sub.get("fracture_between") if has_fracture else None
+    sub["has_fracture"] = has_fracture_canonical
+    sub["has_fracture_canonical"] = has_fracture_canonical
+    sub["fracture_between"] = fracture_between
     sub["location"] = location
     sub["location_canonical"] = location
-
-    if is_abnormal and ftype not in FRACTURE_TYPES:
-        sub["source_type"] = ftype
-        sub["source_location"] = None
+    sub["source_type"] = source_type
+    sub["source_location"] = source_location
 
     return sub
 
 
 def compute_effective_frames(sub: dict[str, Any], video_fps: float, video_maxlen: int) -> int:
-    """计算当前子视频在 LLaMA-Factory 默认 uniform 采样下的实际帧数。"""
+    """计算当前子视频在 uniform 采样下的实际帧数。"""
     frames = sub.get("frame_paths") or []
     if frames:
         return len(frames)
@@ -143,18 +152,39 @@ def compute_effective_frames(sub: dict[str, Any], video_fps: float, video_maxlen
 
 
 def build_assistant_content(sub: dict[str, Any]) -> str:
-    """构造 assistant 输出的 JSON 字符串。"""
+    """构造 assistant 输出的 JSON 字符串，严格五字段。"""
     has_fracture = sub["has_fracture_canonical"]
     output: dict[str, Any] = {
         "has_fracture": has_fracture,
-        "fracture_between": (
-            sub.get("fracture_between") if has_fracture else None
-        ),
+        "fracture_between": sub.get("fracture_between") if has_fracture is True else None,
         "type": sub["type"],
         "location": sub["location_canonical"],
         "confidence": 1.0,
     }
     return json.dumps(output, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+
+
+def _build_actual_frame_mapping(sub: dict[str, Any]) -> list[dict[str, Any]]:
+    """构建 actual_frame_mapping；优先使用子视频元数据中的 actual_frame_mapping。"""
+    mapping = sub.get("actual_frame_mapping")
+    if mapping is not None:
+        return [
+            {
+                "input_index": frame.get("input_index"),
+                "original_frame": frame.get("original_frame"),
+                "timestamp": frame.get("timestamp"),
+            }
+            for frame in mapping
+        ]
+    sampled = sub.get("sampled_frames") or []
+    return [
+        {
+            "input_index": frame.get("input_index"),
+            "original_frame": frame.get("original_frame"),
+            "timestamp": frame.get("timestamp"),
+        }
+        for frame in sampled
+    ]
 
 
 def convert_subvideo_to_sample(
@@ -168,12 +198,9 @@ def convert_subvideo_to_sample(
     end_time = sub.get("end_time", 0.0)
     effective_frames = compute_effective_frames(sub, video_fps, video_maxlen)
 
-    user_prompt = build_user_prompt(
-        sample_range=[start_time, end_time],
-        num_frames=video_maxlen,
-        video_fps=video_fps,
-        effective_frames=effective_frames,
-    )
+    user_prompt = build_user_prompt(sample_range=[start_time, end_time], video_maxlen=video_maxlen)
+    # ShareGPT 视频占位符由调用方插入
+    user_content = f"<video>\n{user_prompt}"
     assistant_content = build_assistant_content(sub)
 
     sample: dict[str, Any] = {
@@ -181,14 +208,12 @@ def convert_subvideo_to_sample(
         "videos": [sub["video_path"]],
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
+            {"role": "user", "content": user_content},
             {"role": "assistant", "content": assistant_content},
         ],
         "has_fracture": sub["has_fracture_canonical"],
         "has_fracture_canonical": sub["has_fracture_canonical"],
-        "fracture_between": (
-            sub.get("fracture_between") if sub["has_fracture_canonical"] else None
-        ),
+        "fracture_between": sub.get("fracture_between"),
         "type": sub["type"],
         "location": sub["location_canonical"],
         "location_canonical": sub["location_canonical"],
@@ -197,6 +222,10 @@ def convert_subvideo_to_sample(
         "source_video": sub["source_video"],
         "start_frame": sub.get("start_frame"),
         "end_frame": sub.get("end_frame"),
+        "actual_frame_mapping": _build_actual_frame_mapping(sub),
+        "processor_fingerprint": sub.get("processor_fingerprint") or "theoretical:v2:phase2",
+        "selection_reason": sub.get("selection_reason"),
+        "exclusion_reason": sub.get("exclusion_reason"),
     }
     return sample
 
@@ -226,8 +255,13 @@ def _balance_train_samples(
     seed: int = 42,
 ) -> list[dict[str, Any]]:
     """训练集正负样本平衡：正:负处于 1:1 ~ 2:1。"""
-    pos = [s for s in samples if s.get("has_fracture_canonical", s["has_fracture"])]
-    neg = [s for s in samples if not s.get("has_fracture_canonical", s["has_fracture"])]
+
+    def _is_pos(s: dict[str, Any]) -> bool:
+        hf = s.get("has_fracture_canonical", s["has_fracture"])
+        return hf is True and s.get("type") in FRACTURE_TYPES
+
+    pos = [s for s in samples if _is_pos(s)]
+    neg = [s for s in samples if not _is_pos(s)]
     pos_n = len(pos)
     neg_n = len(neg)
     if pos_n == 0:
@@ -235,7 +269,6 @@ def _balance_train_samples(
     if neg_n == 0:
         return pos
 
-    # 在 1:1 ~ 2:1 范围内尽可能保留样本
     target_pos = min(pos_n, 2 * neg_n)
     target_neg = min(neg_n, target_pos)
 
@@ -263,7 +296,6 @@ def build_split_samples(
                 continue
             if src not in ids:
                 continue
-            # 若子视频元数据携带 selected_splits，仅保留被选中的 split
             if selected_splits and name not in selected_splits:
                 continue
             by_split[name].append(
@@ -292,7 +324,10 @@ def compute_samples_meta(
     total_neg = 0
 
     for name, samples in split_samples.items():
-        pos = sum(1 for s in samples if s.get("has_fracture_canonical", s["has_fracture"]))
+        pos = sum(
+            1 for s in samples
+            if s.get("has_fracture_canonical", s["has_fracture"]) is True and s["type"] in FRACTURE_TYPES
+        )
         neg = len(samples) - pos
         total_pos += pos
         total_neg += neg
@@ -354,6 +389,9 @@ def _build_test_artifacts(
                 "has_fracture": rec.get("has_fracture"),
                 "has_fracture_canonical": rec.get("has_fracture_canonical"),
                 "is_abnormal": rec.get("is_abnormal"),
+                "is_abnormal_canonical": rec.get("is_abnormal_canonical"),
+                "video_anomaly_kind": rec.get("video_anomaly_kind"),
+                "event_time_reliable": rec.get("event_time_reliable"),
                 "event_frame_original": rec.get("event_frame_original"),
                 "event_time": rec.get("event_time"),
                 "type": rec.get("type"),
@@ -381,7 +419,6 @@ def build_all(
 
     print(f"读取子视频元数据: {subvideos_meta}")
     raw_subvideos = load_json(subvideos_meta)
-    # 兼容新版对象格式（含 subvideos/exclusions/exclusion_stats）与旧版列表格式
     if isinstance(raw_subvideos, dict):
         subvideos = raw_subvideos.get("subvideos", [])
     else:
@@ -404,7 +441,6 @@ def build_all(
         write_json(out_path, samples)
         print(f"写入: {out_path} ({len(samples)} 条样本)")
 
-    # test 不输出 ShareGPT 样本，改为输入清单 + 真值
     test_ids = split_video_ids.get("test", set())
     if test_ids:
         vm_path = video_meta_path or VIDEO_META_DEFAULT
@@ -431,7 +467,7 @@ def build_all(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="新 interval 方案训练样本构建器")
+    parser = argparse.ArgumentParser(description="v2 五字段契约训练样本构建器")
     parser.add_argument(
         "--subvideos-meta", type=Path, default=SUBVIDEOS_META_DEFAULT
     )

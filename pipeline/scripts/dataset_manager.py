@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-模型微调数据管道：数据集管理器（新 interval 方案）
+模型微调数据管道：数据集管理器（v2 五字段契约）
 
 功能：
-1. 读取 CSV 标注，提取 event_frame_original、location、type 等字段。
-2. 使用 ffprobe 提取每个视频的 fps、总帧数、时长，输出 video_meta.json。
-3. 0-based 帧号校验：抽样核对 event_frame_original，输出 frame_index_validation.json。
-4. 按 type + location 分层划分：留出 20% test，训练集内 3-fold，输出 split JSON。
+1. 读取 CSV 标注并保留所有原字段。
+2. 新增训练采用 canonical 字段与标签治理字段。
+3. 识别五类训练语义与两类视频异常。
+4. 稀有断裂类别强制加入每折训练集；固定 seed=42 分层划分。
+5. 输出 splits、inventory_report、decision_log 与测试清单 SHA-256。
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -28,8 +30,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CSV_PATH_DEFAULT = PROJECT_ROOT / "data" / "02_annotations" / "all_videos_tag.csv"
 VIDEO_DIR_DEFAULT = PROJECT_ROOT / "data" / "01_videos"
-METADATA_DIR_DEFAULT = PROJECT_ROOT / "data" / "metadata"
-SPLITS_DIR_DEFAULT = PROJECT_ROOT / "data" / "03_splits"
+METADATA_DIR_DEFAULT = PROJECT_ROOT / "data" / "metadata_v2"
+SPLITS_DIR_DEFAULT = PROJECT_ROOT / "data" / "03_splits_v2"
 
 FRACTURE_TYPES = [
     "韧性断裂",
@@ -41,7 +43,11 @@ FRACTURE_TYPES = [
     "界面脱粘、齐根断裂",
 ]
 
-NON_FRACTURE_TYPES = ["未断裂", "未夹紧", "视频异常"]
+NON_FRACTURE_TYPES = ["未断裂", "未夹紧"]
+VIDEO_ANOMALY_TYPE = "视频异常"
+
+VIDEO_ANOMALY_KIND_PRESENCE_UNKNOWN = "fracture_presence_unknown"
+VIDEO_ANOMALY_KIND_TIME_UNKNOWN = "fracture_time_unknown"
 
 
 def _ffprobe(video_path: Path) -> dict[str, Any]:
@@ -137,8 +143,24 @@ def _parse_bool(raw: Any) -> bool:
     return text in {"true", "1", "yes", "是"}
 
 
+def _parse_bool_or_none(raw: Any) -> bool | None:
+    """解析 has_fracture：保留 CSV 的显式真/假，缺失视为 False。"""
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return raw
+    if pd.isna(raw):
+        return None
+    text = str(raw).strip().lower()
+    if text in {"true", "1", "yes", "是"}:
+        return True
+    if text in {"false", "0", "no", "否", ""}:
+        return False
+    return None
+
+
 def _clean_location(raw: Any) -> str | None:
-    """CSV 原始 location：保留空值/缺失为 'N/A'，与 CSV 口径一致。"""
+    """CSV 原始 location：空值/缺失返回 'N/A'，与 CSV 口径一致。"""
     if raw is None or pd.isna(raw):
         return "N/A"
     text = str(raw).strip()
@@ -162,6 +184,21 @@ def load_annotations(csv_path: Path) -> pd.DataFrame:
     return df
 
 
+def _canonical_location(location: Any, has_fracture: bool) -> str | None:
+    if not has_fracture:
+        return None
+    loc = str(location).strip() if location is not None else ""
+    if loc in ("inside_gauge", "outside_gauge"):
+        return loc
+    return None
+
+
+def _video_anomaly_kind(csv_has_fracture: bool) -> str:
+    if csv_has_fracture:
+        return VIDEO_ANOMALY_KIND_TIME_UNKNOWN
+    return VIDEO_ANOMALY_KIND_PRESENCE_UNKNOWN
+
+
 def build_video_meta(
     df: pd.DataFrame,
     video_dir: Path,
@@ -172,7 +209,11 @@ def build_video_meta(
 
     for _, row in df.iterrows():
         video_id = str(row["id"]).strip()
-        csv_path_str = str(row["video_path"]).strip() if not pd.isna(row["video_path"]) else f"data/01_videos/{video_id}.mp4"
+        csv_path_str = (
+            str(row["video_path"]).strip()
+            if not pd.isna(row["video_path"])
+            else f"data/01_videos/{video_id}.mp4"
+        )
         video_path = video_dir / f"{video_id}.mp4"
 
         ffprobe_info = _ffprobe(video_path) if video_path.exists() else {}
@@ -193,63 +234,118 @@ def build_video_meta(
         event_frame_original = _parse_event_frame(row.get("断裂帧数"))
         fracture_type = _clean_type(row.get("断裂模式"))
         location = _clean_location(row.get("断裂位置"))
-        has_fracture = _parse_bool(row.get("has_fracture"))
-        is_abnormal = _parse_bool(row.get("is_abnormal"))
-        material_type = str(row.get("材料类型", "")).strip() if not pd.isna(row.get("材料类型")) else "其他"
-        resolution = str(row.get("清晰度", "")).strip() if not pd.isna(row.get("清晰度")) else "未知"
+        csv_has_fracture = _parse_bool_or_none(row.get("has_fracture"))
+        csv_is_abnormal = _parse_bool(row.get("is_abnormal"))
+        material_type = (
+            str(row.get("材料类型", "")).strip()
+            if not pd.isna(row.get("材料类型"))
+            else "其他"
+        )
+        resolution = (
+            str(row.get("清晰度", "")).strip()
+            if not pd.isna(row.get("清晰度"))
+            else "未知"
+        )
 
-        # 治理异常/正样本冲突：CSV 原始字段只读，写入派生 canonical 字段供下游使用
-        has_fracture_canonical = has_fracture
-        location_canonical = location
+        # v2 五类训练语义治理
+        has_fracture_canonical: bool | None
+        is_abnormal_canonical: bool
+        video_anomaly_kind: str | None
+        event_time_reliable: bool
         is_label_conflict = False
         governance_reasons: list[str] = []
+        canonical_location: str | None = None
 
-        if is_abnormal:
-            if has_fracture:
+        if fracture_type in FRACTURE_TYPES:
+            # 确认断裂且时间可靠
+            if csv_has_fracture is False:
                 reason = (
-                    f"{video_id}: is_abnormal=True 但 has_fracture=True，"
-                    "按设计文档降级为 has_fracture_canonical=False"
+                    f"{video_id}: type={fracture_type} 为断裂类但 CSV has_fracture=False，"
+                    "仍视为确认断裂（以 type 为准）"
                 )
                 warnings.append(reason)
                 governance_reasons.append(reason)
-                has_fracture_canonical = False
                 is_label_conflict = True
-            if location != "N/A":
+            has_fracture_canonical = True
+            is_abnormal_canonical = False
+            video_anomaly_kind = None
+            event_time_reliable = True
+            canonical_location = _canonical_location(location, True)
+        elif fracture_type == "未断裂":
+            has_fracture_canonical = False
+            is_abnormal_canonical = False
+            video_anomaly_kind = None
+            event_time_reliable = False
+            canonical_location = None
+            if csv_has_fracture is True:
                 reason = (
-                    f"{video_id}: is_abnormal=True，location 强制设为 location_canonical=None"
+                    f"{video_id}: type=未断裂但 CSV has_fracture=True，"
+                    "标记为数据一致性错误"
                 )
                 warnings.append(reason)
                 governance_reasons.append(reason)
-                location_canonical = None
                 is_label_conflict = True
-        elif has_fracture and fracture_type not in FRACTURE_TYPES:
-            reason = (
-                f"{video_id}: has_fracture=True 但 type={fracture_type} 不在 7 个断裂类中，"
-                "降级为 has_fracture_canonical=False"
-            )
+            if csv_is_abnormal is True:
+                reason = (
+                    f"{video_id}: type=未断裂但 CSV is_abnormal=True，"
+                    "is_abnormal_canonical 强制为 False"
+                )
+                warnings.append(reason)
+                governance_reasons.append(reason)
+                is_label_conflict = True
+        elif fracture_type == "未夹紧":
+            has_fracture_canonical = False
+            is_abnormal_canonical = True
+            video_anomaly_kind = None
+            event_time_reliable = False
+            canonical_location = None
+            if csv_has_fracture is True:
+                reason = (
+                    f"{video_id}: type=未夹紧但 CSV has_fracture=True，"
+                    "标记为数据一致性错误"
+                )
+                warnings.append(reason)
+                governance_reasons.append(reason)
+                is_label_conflict = True
+        elif fracture_type == VIDEO_ANOMALY_TYPE:
+            # 视频异常按 CSV has_fracture 拆分为两类
+            video_anomaly_kind = _video_anomaly_kind(bool(csv_has_fracture))
+            is_abnormal_canonical = True
+            canonical_location = None
+            event_time_reliable = False
+            if csv_has_fracture is True:
+                # 确认断裂但时间不可靠
+                has_fracture_canonical = True
+            elif csv_has_fracture is False:
+                # 是否断裂不确定
+                has_fracture_canonical = None
+            else:
+                # 缺失时按 presence unknown 处理
+                has_fracture_canonical = None
+                reason = f"{video_id}: type=视频异常但 CSV has_fracture 缺失，按不确定处理"
+                warnings.append(reason)
+                governance_reasons.append(reason)
+        else:
+            # 未知类型：保守降级
+            reason = f"{video_id}: 未知 type={fracture_type}，按未断裂处理"
             warnings.append(reason)
             governance_reasons.append(reason)
             has_fracture_canonical = False
+            is_abnormal_canonical = False
+            video_anomaly_kind = None
+            event_time_reliable = False
+            canonical_location = None
             is_label_conflict = True
 
-        # 一致性校验：has_fracture=true 但 type 为非断裂类（CSV 原值保留，仅记录冲突）
-        if has_fracture and fracture_type in NON_FRACTURE_TYPES:
+        # location 与 is_abnormal 一致性校验
+        if is_abnormal_canonical and location not in (None, "N/A"):
             reason = (
-                f"{video_id}: has_fracture=True 但 type={fracture_type}，"
-                "标记为数据一致性错误"
+                f"{video_id}: is_abnormal_canonical=True，"
+                "location_canonical 强制设为 None"
             )
             warnings.append(reason)
             governance_reasons.append(reason)
             is_label_conflict = True
-
-        # 非断裂/异常样本的 canonical location 统一为 null；断裂样本只保留有效位置
-        if has_fracture_canonical:
-            if location in ("inside_gauge", "outside_gauge"):
-                location_canonical = location
-            else:
-                location_canonical = None
-        else:
-            location_canonical = None
 
         record = {
             "video_id": video_id,
@@ -263,12 +359,15 @@ def build_video_meta(
             "location": location,
             "material_type": material_type,
             "resolution": resolution,
-            "has_fracture": has_fracture,
-            "is_abnormal": is_abnormal,
+            "has_fracture": csv_has_fracture,
+            "is_abnormal": csv_is_abnormal,
             "has_fracture_canonical": has_fracture_canonical,
-            "location_canonical": location_canonical,
+            "location_canonical": canonical_location,
+            "is_abnormal_canonical": is_abnormal_canonical,
+            "video_anomaly_kind": video_anomaly_kind,
+            "event_time_reliable": event_time_reliable,
             "is_label_conflict": is_label_conflict,
-            "label_governance_reason": governance_reasons,
+            "label_governance_reason": "; ".join(governance_reasons) if governance_reasons else None,
         }
         records.append(record)
 
@@ -278,18 +377,14 @@ def build_video_meta(
 def _compute_strata(
     records: list[dict[str, Any]],
 ) -> tuple[dict[str, str], str]:
-    """为每个 video_id 计算仅用于划分的 strata key，并在过于稀疏时降级。
-
-    返回 (video_id -> strata key, decision)，其中 decision 用于记录当前采用的
-    分层策略："type_location_rare_merged" 或 "type_only"。
-    """
+    """为每个 video_id 计算仅用于划分的 strata key，并在过于稀疏时降级。"""
     raw_counts: Counter[str] = Counter()
     raw_keys: dict[str, str] = {}
 
     for rec in records:
-        loc = rec.get("location_canonical", rec["location"])
+        loc = rec.get("location_canonical")
         ftype = rec["type"]
-        if loc is None or loc == "N/A":
+        if loc is None:
             key = "N/A"
         else:
             key = f"{ftype}@@{loc}"
@@ -302,7 +397,7 @@ def _compute_strata(
     for rec in records:
         key = raw_keys[rec["video_id"]]
         if key != "N/A" and raw_counts[key] <= 2:
-            loc = rec.get("location_canonical", rec["location"])
+            loc = rec.get("location_canonical")
             key = f"rare_fracture@@{loc}"
         merged_keys[rec["video_id"]] = key
         merged_counts[key] += 1
@@ -314,7 +409,7 @@ def _compute_strata(
     if needs_fallback:
         final_keys: dict[str, str] = {}
         for rec in records:
-            if rec.get("location_canonical", rec["location"]) in (None, "N/A"):
+            if rec.get("location_canonical") is None:
                 final_keys[rec["video_id"]] = "N/A"
             else:
                 final_keys[rec["video_id"]] = rec["type"]
@@ -324,12 +419,10 @@ def _compute_strata(
 
 
 def _is_canonical_fracture(rec: dict[str, Any]) -> bool:
-    """判断记录是否属于可用于训练的确认断裂样本。"""
-    if rec.get("is_abnormal"):
+    """判断记录是否属于可用于训练的确认断裂样本（含时间可靠）。"""
+    if rec.get("type") not in FRACTURE_TYPES:
         return False
-    if not rec.get("has_fracture_canonical", rec.get("has_fracture", False)):
-        return False
-    return rec.get("type") in FRACTURE_TYPES
+    return rec.get("has_fracture_canonical") is True
 
 
 def compute_rare_pool(records: list[dict[str, Any]]) -> list[str]:
@@ -437,12 +530,13 @@ def build_inventory_report(
     splits: dict[str, list[str]],
     decision_log: dict[str, Any],
 ) -> dict[str, Any]:
-    """生成权威库存报告，覆盖 110 个视频、canonical 分组、稀有池与划分统计。"""
+    """生成权威库存报告，覆盖五类训练语义、稀有池与划分统计。"""
     categories: dict[str, list[str]] = {
-        "confirmed_fracture": [],
+        "confirmed_fracture_time_reliable": [],
         "confirmed_no_fracture": [],
         "not_clamped": [],
-        "video_anomaly": [],
+        "video_anomaly_presence_unknown": [],
+        "video_anomaly_time_unknown": [],
     }
     location_counts: Counter[str] = Counter()
     type_counts: Counter[str] = Counter()
@@ -450,19 +544,20 @@ def build_inventory_report(
     for rec in records:
         vid = rec["video_id"]
         ftype = rec["type"]
-        is_canonical = _is_canonical_fracture(rec)
-
         type_counts[ftype] += 1
         loc = rec.get("location_canonical") or rec.get("location")
-        if loc:
+        if loc and loc != "N/A":
             location_counts[loc] += 1
 
-        if is_canonical:
-            categories["confirmed_fracture"].append(vid)
+        if _is_canonical_fracture(rec):
+            categories["confirmed_fracture_time_reliable"].append(vid)
         elif ftype == "未夹紧":
             categories["not_clamped"].append(vid)
-        elif ftype == "视频异常" or rec.get("is_abnormal"):
-            categories["video_anomaly"].append(vid)
+        elif ftype == VIDEO_ANOMALY_TYPE:
+            if rec.get("video_anomaly_kind") == VIDEO_ANOMALY_KIND_TIME_UNKNOWN:
+                categories["video_anomaly_time_unknown"].append(vid)
+            else:
+                categories["video_anomaly_presence_unknown"].append(vid)
         else:
             categories["confirmed_no_fracture"].append(vid)
 
@@ -490,6 +585,7 @@ def build_inventory_report(
 def validate_frames(
     records: list[dict[str, Any]],
     video_dir: Path,
+    metadata_dir: Path,
     n_samples: int = 8,
     seed: int = 42,
 ) -> list[dict[str, Any]]:
@@ -518,7 +614,7 @@ def validate_frames(
         video_path = video_dir / f"{video_id}.mp4"
         extracted_path: str | None = None
         if video_path.exists():
-            out_dir = METADATA_DIR_DEFAULT / "validation_frames"
+            out_dir = metadata_dir / "validation_frames"
             out_dir.mkdir(parents=True, exist_ok=True)
             ts = event_frame / fps if fps else 0.0
             extracted_path = str(out_dir / f"{video_id}_frame_{event_frame:06d}.jpg")
@@ -566,14 +662,25 @@ def _extract_frame(video_path: Path, timestamp: float, output_path: Path) -> Non
     """使用 ffmpeg 抽取单帧图片。"""
     cmd = [
         "ffmpeg",
-        "-y",
-        "-ss", str(timestamp),
+        "-y", "-ss", str(timestamp),
         "-i", str(video_path),
         "-frames:v", "1",
         "-q:v", "2",
         str(output_path),
     ]
     subprocess.run(cmd, capture_output=True, check=False)
+
+
+def build_test_manifest_sha256(splits: dict[str, list[str]]) -> dict[str, Any]:
+    """为排序后的测试清单计算 SHA-256。"""
+    test_ids = sorted(splits.get("test", []))
+    payload = json.dumps(test_ids, ensure_ascii=False, separators=(",", ":"))
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return {
+        "test_video_ids": test_ids,
+        "sha256": digest,
+        "count": len(test_ids),
+    }
 
 
 def write_json(path: Path, data: Any) -> None:
@@ -583,7 +690,7 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="新 interval 方案数据集管理器")
+    parser = argparse.ArgumentParser(description="v2 五字段契约数据集管理器")
     parser.add_argument("--csv", type=Path, default=CSV_PATH_DEFAULT)
     parser.add_argument("--video-dir", type=Path, default=VIDEO_DIR_DEFAULT)
     parser.add_argument("--metadata-dir", type=Path, default=METADATA_DIR_DEFAULT)
@@ -611,7 +718,10 @@ def main():
     print(f"写入: {video_meta_path} ({len(records)} 条)")
 
     print("0-based 帧号校验...")
-    validations = validate_frames(records, args.video_dir, n_samples=args.validation_samples, seed=args.seed)
+    validations = validate_frames(
+        records, args.video_dir, args.metadata_dir,
+        n_samples=args.validation_samples, seed=args.seed,
+    )
     validation_path = args.metadata_dir / "frame_index_validation.json"
     write_json(validation_path, validations)
     print(f"写入: {validation_path} ({len(validations)} 条抽样)")
@@ -633,7 +743,7 @@ def main():
             "split": split_label,
             "video_ids": ids,
             "count": len(ids),
-            "method": "stratified_type_location_with_rare_pool",
+            "method": "stratified_type_location_with_rare_pool_v2",
             "test_ratio": args.test_ratio if "test" in name else None,
             "fold": int(name.split("_")[1]) if name.startswith("fold_") else None,
             "rare_pool_included": name.startswith("fold_") and name.endswith("_train"),
@@ -651,6 +761,12 @@ def main():
     inventory_path = args.metadata_dir / "inventory_report.json"
     write_json(inventory_path, inventory_report)
     print(f"写入库存报告: {inventory_path}")
+
+    print("生成测试清单 SHA-256...")
+    manifest = build_test_manifest_sha256(splits)
+    manifest_path = args.metadata_dir / "test_manifest_sha256.json"
+    write_json(manifest_path, manifest)
+    print(f"写入测试清单: {manifest_path} (count={manifest['count']}, sha256={manifest['sha256'][:16]}...)")
 
     print("完成。")
 

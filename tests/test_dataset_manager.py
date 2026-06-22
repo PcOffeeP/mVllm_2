@@ -11,8 +11,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from pipeline.scripts.dataset_manager import (
+    VIDEO_ANOMALY_KIND_PRESENCE_UNKNOWN,
+    VIDEO_ANOMALY_KIND_TIME_UNKNOWN,
     _parse_frame_rate,
     _to_float,
+    build_test_manifest_sha256,
     build_video_meta,
     compute_rare_pool,
     stratified_split,
@@ -173,15 +176,174 @@ def test_stratified_split_rare_pool_only_in_train():
 
 
 # ---------------------------------------------------------------------------
+# v2 五类训练语义
+# ---------------------------------------------------------------------------
+
+
+def _make_annotation_row(
+    video_id: str,
+    has_fracture: bool | None,
+    is_abnormal: bool,
+    ftype: str,
+    location: str | None,
+) -> dict:
+    return {
+        "id": video_id,
+        "video_path": f"data/01_videos/{video_id}.mp4",
+        "断裂时间点": "",
+        "断裂模式": ftype,
+        "材料类型": "金属",
+        "清晰度": "480P",
+        "断裂位置": location if location is not None else "",
+        "断裂帧数": "",
+        "视频时长": "",
+        "视频帧率": "",
+        "视频总帧数": "",
+        "has_fracture": has_fracture,
+        "is_abnormal": is_abnormal,
+    }
+
+
+def test_five_semantics_confirmed_fracture_time_reliable(monkeypatch: pytest.MonkeyPatch):
+    df = pd.DataFrame(
+        [
+            _make_annotation_row(
+                "v_fracture", has_fracture=True, is_abnormal=False,
+                ftype="韧性断裂", location="inside_gauge",
+            )
+        ]
+    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
+    records, _ = build_video_meta(df, Path("data/01_videos"))
+    rec = records[0]
+    assert rec["has_fracture_canonical"] is True
+    assert rec["type"] == "韧性断裂"
+    assert rec["location_canonical"] == "inside_gauge"
+    assert rec["is_abnormal_canonical"] is False
+    assert rec["video_anomaly_kind"] is None
+    assert rec["event_time_reliable"] is True
+    assert rec["is_label_conflict"] is False
+
+
+def test_five_semantics_confirmed_no_fracture(monkeypatch: pytest.MonkeyPatch):
+    df = pd.DataFrame(
+        [
+            _make_annotation_row(
+                "v_no", has_fracture=False, is_abnormal=False,
+                ftype="未断裂", location="N/A",
+            )
+        ]
+    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
+    records, _ = build_video_meta(df, Path("data/01_videos"))
+    rec = records[0]
+    assert rec["has_fracture_canonical"] is False
+    assert rec["type"] == "未断裂"
+    assert rec["location_canonical"] is None
+    assert rec["is_abnormal_canonical"] is False
+    assert rec["video_anomaly_kind"] is None
+    assert rec["event_time_reliable"] is False
+
+
+def test_five_semantics_not_clamped(monkeypatch: pytest.MonkeyPatch):
+    df = pd.DataFrame(
+        [
+            _make_annotation_row(
+                "v_clamp", has_fracture=False, is_abnormal=True,
+                ftype="未夹紧", location="N/A",
+            )
+        ]
+    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
+    records, _ = build_video_meta(df, Path("data/01_videos"))
+    rec = records[0]
+    assert rec["has_fracture_canonical"] is False
+    assert rec["type"] == "未夹紧"
+    assert rec["location_canonical"] is None
+    assert rec["is_abnormal_canonical"] is True
+    assert rec["video_anomaly_kind"] is None
+    assert rec["event_time_reliable"] is False
+
+
+def test_five_semantics_video_anomaly_presence_unknown(monkeypatch: pytest.MonkeyPatch):
+    df = pd.DataFrame(
+        [
+            _make_annotation_row(
+                "v_presence", has_fracture=False, is_abnormal=True,
+                ftype="视频异常", location="N/A",
+            )
+        ]
+    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
+    records, _ = build_video_meta(df, Path("data/01_videos"))
+    rec = records[0]
+    assert rec["has_fracture_canonical"] is None
+    assert rec["type"] == "视频异常"
+    assert rec["location_canonical"] is None
+    assert rec["is_abnormal_canonical"] is True
+    assert rec["video_anomaly_kind"] == VIDEO_ANOMALY_KIND_PRESENCE_UNKNOWN
+    assert rec["event_time_reliable"] is False
+
+
+def test_five_semantics_video_anomaly_time_unknown(monkeypatch: pytest.MonkeyPatch):
+    df = pd.DataFrame(
+        [
+            _make_annotation_row(
+                "v_time", has_fracture=True, is_abnormal=True,
+                ftype="视频异常", location="N/A",
+            )
+        ]
+    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
+    records, _ = build_video_meta(df, Path("data/01_videos"))
+    rec = records[0]
+    assert rec["has_fracture_canonical"] is True
+    assert rec["type"] == "视频异常"
+    assert rec["location_canonical"] is None
+    assert rec["is_abnormal_canonical"] is True
+    assert rec["video_anomaly_kind"] == VIDEO_ANOMALY_KIND_TIME_UNKNOWN
+    assert rec["event_time_reliable"] is False
+
+
+def test_no_fracture_forces_is_abnormal_canonical_false(monkeypatch: pytest.MonkeyPatch):
+    df = pd.DataFrame(
+        [
+            _make_annotation_row(
+                "v_no_conflict", has_fracture=False, is_abnormal=True,
+                ftype="未断裂", location="N/A",
+            )
+        ]
+    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
+    records, _ = build_video_meta(df, Path("data/01_videos"))
+    rec = records[0]
+    assert rec["is_abnormal_canonical"] is False
+    assert rec["is_label_conflict"] is True
+    assert rec["label_governance_reason"] is not None
+
+
+def test_build_test_manifest_sha256_is_stable():
+    splits = {"test": ["c", "a", "b"], "fold_0_train": ["x"]}
+    manifest = build_test_manifest_sha256(splits)
+    assert manifest["count"] == 3
+    assert manifest["test_video_ids"] == ["a", "b", "c"]
+    assert len(manifest["sha256"]) == 64
+    # 排序稳定性
+    manifest2 = build_test_manifest_sha256({"test": ["a", "b", "c"]})
+    assert manifest["sha256"] == manifest2["sha256"]
+
+
+# ---------------------------------------------------------------------------
 # 真实产物检查
 # ---------------------------------------------------------------------------
 
-VIDEO_META_PATH = ROOT / "data" / "metadata" / "video_meta.json"
-SPLITS_DIR = ROOT / "data" / "03_splits"
-METADATA_DIR = ROOT / "data" / "metadata"
+VIDEO_META_PATH = ROOT / "data" / "metadata_v2" / "video_meta.json"
+SPLITS_DIR = ROOT / "data" / "03_splits_v2"
+METADATA_DIR = ROOT / "data" / "metadata_v2"
 DECISION_LOG_PATH = METADATA_DIR / "stratified_split_decision_log.json"
+TEST_MANIFEST_PATH = METADATA_DIR / "test_manifest_sha256.json"
 
-CONFLICT_VIDEOS = {
+TIME_UNKNOWN_VIDEOS = {
     "video_0045",
     "video_0049",
     "video_0078",
@@ -193,24 +355,25 @@ CONFLICT_VIDEOS = {
 
 
 @pytest.mark.skipif(not VIDEO_META_PATH.exists(), reason="video_meta.json 不存在")
-def test_conflict_abnormal_videos_are_downgraded():
+def test_time_unknown_videos_keep_true_canonical():
     meta = json.loads(VIDEO_META_PATH.read_text(encoding="utf-8"))
     by_id = {r["video_id"]: r for r in meta}
-    for vid in CONFLICT_VIDEOS:
+    for vid in TIME_UNKNOWN_VIDEOS:
         rec = by_id[vid]
-        assert rec["is_abnormal"] is True, f"{vid} 应为异常样本"
-        # CSV 原始标签必须保留
-        assert rec["has_fracture"] is True, f"{vid} CSV 原始 has_fracture 不应被覆盖"
-        assert rec["type"] == "视频异常", f"{vid} CSV 原始 type 不应被覆盖"
-        # canonical 字段应被正确降级
-        assert rec["has_fracture_canonical"] is False, (
-            f"{vid} 冲突样本 canonical 未降级"
-        )
-        assert rec["location_canonical"] is None, (
-            f"{vid} 异常样本 location_canonical 应为 None"
-        )
-        assert rec["is_label_conflict"] is True, f"{vid} 应被标记为标签冲突"
-        assert rec["label_governance_reason"], f"{vid} 应有治理原因"
+        assert rec["type"] == "视频异常", f"{vid} 应为视频异常"
+        assert rec["has_fracture"] is True, f"{vid} CSV 原始 has_fracture 必须保留"
+        assert rec["has_fracture_canonical"] is True, f"{vid} 时间不可靠异常 canonical 应为 True"
+        assert rec["video_anomaly_kind"] == VIDEO_ANOMALY_KIND_TIME_UNKNOWN
+        assert rec["location_canonical"] is None
+        assert rec["event_time_reliable"] is False
+
+
+@pytest.mark.skipif(not VIDEO_META_PATH.exists(), reason="video_meta.json 不存在")
+def test_no_fracture_videos_are_not_abnormal_canonical():
+    meta = json.loads(VIDEO_META_PATH.read_text(encoding="utf-8"))
+    for rec in meta:
+        if rec["type"] == "未断裂":
+            assert rec["is_abnormal_canonical"] is False, rec["video_id"]
 
 
 @pytest.mark.skipif(
@@ -221,6 +384,17 @@ def test_real_split_decision_log_in_metadata_dir():
     assert "rare_pool" in data
     assert "method" in data
     assert data.get("method") == "stratified_split_with_rare_pool"
+
+
+@pytest.mark.skipif(
+    not TEST_MANIFEST_PATH.exists(), reason="测试清单不存在"
+)
+def test_real_test_manifest_has_sha256():
+    data = json.loads(TEST_MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert "sha256" in data
+    assert "test_video_ids" in data
+    assert len(data["sha256"]) == 64
+    assert data["test_video_ids"] == sorted(data["test_video_ids"])
 
 
 @pytest.mark.skipif(
@@ -313,58 +487,52 @@ def test_real_split_type_distribution_not_empty():
 # 标签治理 / canonical 字段单元测试
 # ---------------------------------------------------------------------------
 
-from pipeline.scripts.dataset_manager import build_video_meta
 
-
-def _make_annotation_row(
-    video_id: str,
-    has_fracture: bool,
-    is_abnormal: bool,
-    ftype: str,
-    location: str | None,
-) -> dict:
-    return {
-        "id": video_id,
-        "video_path": f"data/01_videos/{video_id}.mp4",
-        "断裂时间点": "",
-        "断裂模式": ftype,
-        "材料类型": "金属",
-        "清晰度": "480P",
-        "断裂位置": location if location is not None else "",
-        "断裂帧数": "",
-        "视频时长": "",
-        "视频帧率": "",
-        "视频总帧数": "",
-        "has_fracture": has_fracture,
-        "is_abnormal": is_abnormal,
-    }
-
-
-def test_canonical_preserved_for_abnormal_fracture_conflict(monkeypatch: pytest.MonkeyPatch):
+def test_canonical_preserved_for_video_anomaly_time_unknown(monkeypatch: pytest.MonkeyPatch):
     df = pd.DataFrame(
         [
             _make_annotation_row(
-                "video_conflict",
+                "video_time_unknown",
                 has_fracture=True,
                 is_abnormal=True,
+                ftype="视频异常",
+                location="N/A",
+            )
+        ]
+    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
+    records, warnings = build_video_meta(df, Path("data/01_videos"))
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["has_fracture"] is True, "CSV 原始 has_fracture 必须保留"
+    assert rec["location"] == "N/A", "CSV 原始 location 必须保留"
+    assert rec["has_fracture_canonical"] is True
+    assert rec["video_anomaly_kind"] == VIDEO_ANOMALY_KIND_TIME_UNKNOWN
+    assert rec["location_canonical"] is None
+    assert rec["is_label_conflict"] is False
+    assert rec["label_governance_reason"] is None
+
+
+def test_canonical_preserved_for_video_anomaly_presence_unknown(monkeypatch: pytest.MonkeyPatch):
+    df = pd.DataFrame(
+        [
+            _make_annotation_row(
+                "video_presence_unknown",
+                has_fracture=False,
+                is_abnormal=False,
                 ftype="视频异常",
                 location="inside_gauge",
             )
         ]
     )
-    monkeypatch.setattr(
-        "pipeline.scripts.dataset_manager._ffprobe", lambda path: {}
-    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
     records, warnings = build_video_meta(df, Path("data/01_videos"))
     assert len(records) == 1
     rec = records[0]
-    assert rec["has_fracture"] is True, "CSV 原始 has_fracture 必须保留"
-    assert rec["location"] == "inside_gauge", "CSV 原始 location 必须保留"
-    assert rec["has_fracture_canonical"] is False
+    assert rec["has_fracture"] is False
+    assert rec["has_fracture_canonical"] is None
+    assert rec["video_anomaly_kind"] == VIDEO_ANOMALY_KIND_PRESENCE_UNKNOWN
     assert rec["location_canonical"] is None
-    assert rec["is_label_conflict"] is True
-    assert any("is_abnormal=True" in r for r in rec["label_governance_reason"])
-    assert any("数据一致性错误" in w for w in warnings)
 
 
 def test_canonical_preserved_for_non_fracture_type(monkeypatch: pytest.MonkeyPatch):
@@ -379,9 +547,7 @@ def test_canonical_preserved_for_non_fracture_type(monkeypatch: pytest.MonkeyPat
             )
         ]
     )
-    monkeypatch.setattr(
-        "pipeline.scripts.dataset_manager._ffprobe", lambda path: {}
-    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
     records, warnings = build_video_meta(df, Path("data/01_videos"))
     assert len(records) == 1
     rec = records[0]
@@ -389,8 +555,9 @@ def test_canonical_preserved_for_non_fracture_type(monkeypatch: pytest.MonkeyPat
     assert rec["type"] == "未断裂", "CSV 原始 type 必须保留"
     assert rec["has_fracture_canonical"] is False
     assert rec["location_canonical"] is None
+    assert rec["is_abnormal_canonical"] is False
     assert rec["is_label_conflict"] is True
-    assert any("不在 7 个断裂类中" in r for r in rec["label_governance_reason"])
+    assert "type=未断裂但 CSV has_fracture=True" in rec["label_governance_reason"]
 
 
 def test_canonical_equals_original_for_normal_fracture(monkeypatch: pytest.MonkeyPatch):
@@ -405,9 +572,7 @@ def test_canonical_equals_original_for_normal_fracture(monkeypatch: pytest.Monke
             )
         ]
     )
-    monkeypatch.setattr(
-        "pipeline.scripts.dataset_manager._ffprobe", lambda path: {}
-    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
     records, warnings = build_video_meta(df, Path("data/01_videos"))
     assert len(records) == 1
     rec = records[0]
@@ -415,9 +580,9 @@ def test_canonical_equals_original_for_normal_fracture(monkeypatch: pytest.Monke
     assert rec["has_fracture_canonical"] is True
     assert rec["location"] == "inside_gauge"
     assert rec["location_canonical"] == "inside_gauge"
+    assert rec["is_abnormal_canonical"] is False
     assert rec["is_label_conflict"] is False
-    assert rec["label_governance_reason"] == []
-    assert all("ffprobe" in w for w in warnings) or not warnings
+    assert rec["label_governance_reason"] is None
 
 
 def test_canonical_equals_original_for_normal_negative(monkeypatch: pytest.MonkeyPatch):
@@ -432,47 +597,16 @@ def test_canonical_equals_original_for_normal_negative(monkeypatch: pytest.Monke
             )
         ]
     )
-    monkeypatch.setattr(
-        "pipeline.scripts.dataset_manager._ffprobe", lambda path: {}
-    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
     records, warnings = build_video_meta(df, Path("data/01_videos"))
     assert len(records) == 1
     rec = records[0]
     assert rec["has_fracture"] is False
     assert rec["has_fracture_canonical"] is False
     assert rec["location_canonical"] is None
+    assert rec["is_abnormal_canonical"] is False
     assert rec["is_label_conflict"] is False
-    assert rec["label_governance_reason"] == []
-
-
-def test_abnormal_forces_location_canonical_to_na_without_overwriting_original(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    """异常样本的 location 应通过 location_canonical 改为 None，原始 location 保留。"""
-    df = pd.DataFrame(
-        [
-            _make_annotation_row(
-                "video_abnormal_loc",
-                has_fracture=False,
-                is_abnormal=True,
-                ftype="未夹紧",
-                location="inside_gauge",
-            )
-        ]
-    )
-    monkeypatch.setattr(
-        "pipeline.scripts.dataset_manager._ffprobe", lambda path: {}
-    )
-    records, warnings = build_video_meta(df, Path("data/01_videos"))
-    assert len(records) == 1
-    rec = records[0]
-    assert rec["location"] == "inside_gauge", "CSV 原始 location 必须保留"
-    assert rec["location_canonical"] is None, "异常样本 location_canonical 应为 None"
-    assert rec["has_fracture"] is False
-    assert rec["has_fracture_canonical"] is False
-    assert rec["is_label_conflict"] is True
-    assert any("location 强制设为 location_canonical=None" in r for r in rec["label_governance_reason"])
-    assert any("location 强制设为 location_canonical=None" in w for w in warnings)
+    assert rec["label_governance_reason"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -512,9 +646,7 @@ def test_build_video_meta_handles_nan_duration_and_fps(monkeypatch: pytest.Monke
     row["视频时长"] = float("nan")
     row["视频帧率"] = float("nan")
     df = pd.DataFrame([row])
-    monkeypatch.setattr(
-        "pipeline.scripts.dataset_manager._ffprobe", lambda path: {}
-    )
+    monkeypatch.setattr("pipeline.scripts.dataset_manager._ffprobe", lambda path: {})
     records, warnings = build_video_meta(df, Path("data/01_videos"))
     assert len(records) == 1
     rec = records[0]
