@@ -383,10 +383,53 @@ class RunnerError(BaseModel):
 
 
 class RunnerResult(BaseModel):
-    """Runner execution envelope that separates success from infrastructure failure."""
+    """Runner execution envelope that separates success from infrastructure failure.
+
+    Enforces mutual exclusion:
+    - ``ok=True``  → ``result is not None and error is None``
+    - ``ok=False`` → ``result is None and error is not None``
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     ok: bool
     result: FinalOutput | None = None
     error: RunnerError | None = None
+
+    @model_validator(mode="after")
+    def _validate_mutual_exclusion(self) -> Self:
+        if self.ok:
+            if self.result is None:
+                raise ValueError("result is required when ok=True")
+            if self.error is not None:
+                raise ValueError("error must be None when ok=True")
+        else:
+            if self.result is not None:
+                raise ValueError("result must be None when ok=False")
+            if self.error is None:
+                raise ValueError("error is required when ok=False")
+        return self
+
+    # ------------------------------------------------------------------
+    # Dict-like access for backward compatibility
+    # ------------------------------------------------------------------
+    def __getitem__(self, key: str) -> Any:
+        """Delegated item access: first top-level, then result/error fields."""
+        if key in ("ok", "result", "error"):
+            return getattr(self, key)
+        if self.ok and self.result is not None:
+            result_dict = self.result.model_dump()
+            if key in result_dict:
+                return result_dict[key]
+        if not self.ok and self.error is not None:
+            error_dict = self.error.model_dump()
+            if key in error_dict:
+                return error_dict[key]
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dict-like get with default fallback."""
+        try:
+            return self[key]
+        except KeyError:
+            return default

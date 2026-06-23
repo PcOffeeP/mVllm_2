@@ -13,6 +13,8 @@ from typing import Any, Callable
 
 import yaml
 
+from agent.schema import FinalOutput, RunnerError, RunnerResult
+
 
 def load_config(config_path: str | Path = "agent/config.yaml") -> dict[str, Any]:
     """Load and return the YAML configuration at ``config_path``."""
@@ -151,11 +153,16 @@ def run_one(
     event_callback: Callable[[dict], None] | None = None,
     work_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Run the agent on a single video and return the final result dict.
+    """Run the agent on a single video and return a ``RunnerResult`` dict.
 
-    Configuration is loaded from ``config_path`` inside this function. All
-    exceptions are caught, emitted as a ``video_failed`` event (when a callback
-    is provided), annotated with the failing ``stage``, and then re-raised.
+    Configuration is loaded from ``config_path`` inside this function. On
+    success the dict wraps a ``FinalOutput``; on failure it carries a
+    ``RunnerError`` with the stage where the failure occurred.  A
+    ``video_failed`` event is emitted (when a callback is provided) before
+    the failure envelope is returned.
+
+    Returns a plain ``dict`` (``RunnerResult.model_dump()``) for backward
+    compatibility with callers that consume dicts.
     """
     from agent.iterative_agent import IterativeAgent
 
@@ -193,7 +200,15 @@ def run_one(
             inference_client=inference_client,
             event_callback=event_callback,
         )
-        return agent.run()
+        raw_result = agent.run()
+        # agent.run() returns a dict that may contain extra metadata beyond
+        # FinalOutput fields; filter to only the public contract fields.
+        _FO_FIELDS = {"video_id", "status", "time_range", "fracture_type",
+                       "location", "confidence", "unrecognized_reason"}
+        fo_dict = {k: v for k, v in raw_result.items() if k in _FO_FIELDS}
+        return RunnerResult(
+            ok=True, result=FinalOutput(**fo_dict)
+        ).model_dump()
     except Exception as exc:
         exc._stage = stage  # type: ignore[attr-defined]
         if event_callback is not None:
@@ -205,7 +220,14 @@ def run_one(
                     "stage": stage,
                 }
             )
-        raise
+        return RunnerResult(
+            ok=False,
+            error=RunnerError(
+                stage=stage,
+                code=type(exc).__name__,
+                message=str(exc),
+            ),
+        ).model_dump()
 
 
 def run_batch(
@@ -217,33 +239,21 @@ def run_batch(
     """Run the agent sequentially on multiple videos.
 
     Configuration is loaded by each call to ``run_one`` from ``config_path``.
-    A single video failure emits a ``video_failed`` event (via ``run_one``) and
-    is recorded as
-    ``{"video_id": ..., "video_path": ..., "ok": false, "error": ..., "stage": ...}``
-    without interrupting the rest of the batch.
+    A single video failure is recorded as a
+    ``RunnerResult(ok=False, ...).model_dump()`` dict without interrupting
+    the rest of the batch.
     """
     results: list[dict[str, Any]] = []
     for path in video_paths:
         path_obj = Path(path)
         resolved_id = path_obj.stem
-        try:
-            results.append(
-                run_one(
-                    path_obj,
-                    config_path,
-                    video_id=resolved_id,
-                    event_callback=event_callback,
-                    work_dir=work_dir,
-                )
+        results.append(
+            run_one(
+                path_obj,
+                config_path,
+                video_id=resolved_id,
+                event_callback=event_callback,
+                work_dir=work_dir,
             )
-        except Exception as exc:
-            results.append(
-                {
-                    "video_id": resolved_id,
-                    "video_path": str(path_obj),
-                    "ok": False,
-                    "error": str(exc),
-                    "stage": getattr(exc, "_stage", "run_one"),
-                }
-            )
+        )
     return results

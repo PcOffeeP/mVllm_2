@@ -35,6 +35,7 @@ from agent.schema import (
     LocationType,
     RunnerError,
     RunnerResult,
+    ToolSampleAndInfer,
     ToolTerminate,
 )
 
@@ -899,11 +900,344 @@ class TestRunnerResultEnvelope:
         error = RunnerError(stage=stage, code="test_code", message="Test error")
         assert error.stage == stage
 
-    def test_runner_result_mutually_exclusive(self) -> None:
-        """RunnerResult with both result and error is valid per schema but logically exclusive."""
-        result = RunnerResult(
-            ok=False,
-            error=RunnerError(stage="input", code="file_not_found", message="Missing file"),
+    # ---- Mutual exclusion enforcement (Fix 4a) ----
+
+    def test_ok_true_rejects_missing_result(self) -> None:
+        """ok=True with result=None raises ValidationError."""
+        with pytest.raises(ValidationError, match="result is required when ok=True"):
+            RunnerResult(ok=True, result=None, error=None)
+
+    def test_ok_true_rejects_error_present(self) -> None:
+        """ok=True with error set raises ValidationError."""
+        with pytest.raises(ValidationError, match="error must be None when ok=True"):
+            RunnerResult(
+                ok=True,
+                result=FinalOutput(video_id="v001", status="no_fracture", confidence=0.5),
+                error=RunnerError(stage="input", code="E", message="x"),
+            )
+
+    def test_ok_false_rejects_result_present(self) -> None:
+        """ok=False with result set raises ValidationError."""
+        with pytest.raises(ValidationError, match="result must be None when ok=False"):
+            RunnerResult(
+                ok=False,
+                result=FinalOutput(video_id="v001", status="no_fracture", confidence=0.5),
+                error=RunnerError(stage="input", code="E", message="x"),
+            )
+
+    def test_ok_false_rejects_missing_error(self) -> None:
+        """ok=False with error=None raises ValidationError."""
+        with pytest.raises(ValidationError, match="error is required when ok=False"):
+            RunnerResult(ok=False, result=None, error=None)
+
+    # ---- Dict-like access (backward compat) ----
+
+    def test_dict_access_ok_true_delegates_to_result(self) -> None:
+        """When ok=True, dict access forwards to FinalOutput fields."""
+        rr = RunnerResult(
+            ok=True,
+            result=FinalOutput(
+                video_id="v_dict_001",
+                status="fracture",
+                time_range=[10.0, 11.0],
+                fracture_type=FractureType.TOUGH,
+                location="inside_gauge",
+                confidence=0.92,
+            ),
         )
-        assert result.result is None
-        assert result.error is not None
+        assert rr["ok"] is True
+        assert rr["video_id"] == "v_dict_001"
+        assert rr["status"] == "fracture"
+        assert rr.get("confidence") == 0.92
+        assert rr.get("nonexistent", "fallback") == "fallback"
+
+    def test_dict_access_ok_false_delegates_to_error(self) -> None:
+        """When ok=False, dict access forwards to RunnerError fields."""
+        rr = RunnerResult(
+            ok=False,
+            error=RunnerError(stage="sampling", code="timeout", message="Timeout"),
+        )
+        assert rr["ok"] is False
+        assert rr["stage"] == "sampling"
+        assert rr["code"] == "timeout"
+        assert rr["message"] == "Timeout"
+        assert rr.get("nonexistent") is None
+
+    def test_dict_access_raises_keyerror_for_unknown_key(self) -> None:
+        """Accessing an unknown key raises KeyError."""
+        rr = RunnerResult(
+            ok=True,
+            result=FinalOutput(video_id="v001", status="no_fracture", confidence=0.5),
+        )
+        with pytest.raises(KeyError):
+            _ = rr["unknown_key"]
+
+
+# =========================================================================
+# 6. FIX 7: Pydantic validation rejects invalid tool call arguments
+# =========================================================================
+
+class TestToolCallValidation:
+    """Invalid tool call arguments are rejected at the Pydantic layer."""
+
+    def test_sample_and_infer_rejects_invalid_sample_range(self) -> None:
+        """sample_range with 3 elements is rejected by ToolSampleAndInfer."""
+        with pytest.raises(ValidationError):
+            ToolSampleAndInfer(sample_range=[0.0, 50.0, 100.0], prompt="test")
+
+    def test_sample_and_infer_rejects_empty_prompt(self) -> None:
+        """Empty prompt is rejected by ToolSampleAndInfer (min_length=1)."""
+        with pytest.raises(ValidationError):
+            ToolSampleAndInfer(sample_range=[0.0, 100.0], prompt="")
+
+    def test_terminate_rejects_invalid_status(self) -> None:
+        """Invalid status value is rejected by ToolTerminate model_validator."""
+        with pytest.raises(ValidationError):
+            ToolTerminate(status="bad_status")
+
+    def test_terminate_fracture_rejects_non_fracture_type(self) -> None:
+        """fracture status with 未断裂 type is rejected."""
+        with pytest.raises(ValidationError):
+            ToolTerminate(
+                status="fracture",
+                fracture_type="未断裂",
+                location="inside_gauge",
+                confidence=0.92,
+                evidence_rounds=[0, 1],
+            )
+
+    def test_terminate_fracture_rejects_unrecognized_reason(self) -> None:
+        """fracture status with unrecognized_reason set is rejected (mutual exclusion)."""
+        with pytest.raises(ValidationError):
+            ToolTerminate(
+                status="fracture",
+                fracture_type="韧性断裂",
+                location="inside_gauge",
+                confidence=0.92,
+                unrecognized_reason="max_rounds",
+                evidence_rounds=[0, 1],
+            )
+
+    def test_terminate_no_fracture_rejects_fracture_type(self) -> None:
+        """no_fracture status with fracture_type set is rejected."""
+        with pytest.raises(ValidationError):
+            ToolTerminate(
+                status="no_fracture",
+                fracture_type="韧性断裂",
+                confidence=0.95,
+            )
+
+    def test_terminate_unrecognized_requires_reason(self) -> None:
+        """unrecognized status without unrecognized_reason is rejected."""
+        with pytest.raises(ValidationError):
+            ToolTerminate(status="unrecognized")
+
+
+# =========================================================================
+# 7. FIX 2: Missing preprocessing metadata contract
+# =========================================================================
+
+class TestMissingPreprocessingContract:
+    """Preprocessing metadata contract: missing + has_fracture → fail."""
+
+    def test_missing_preprocessing_with_fracture_errors(self) -> None:
+        """When preprocessing is None and has_fracture is True, the round fails."""
+        from agent.inference import InferenceResult
+
+        video_meta = {"video_id": "v_fix2_001", "duration": 100.0, "video_path": "v_fix2_001.mp4"}
+        config = make_config()
+        config["agent"]["max_rounds"] = 3
+
+        responses = [
+            InferenceResult(
+                ok=True,
+                model_output={
+                    "has_fracture": True,
+                    "fracture_between": [17, 18],
+                    "type": "韧性断裂",
+                    "location": "inside_gauge",
+                    "confidence": 0.92,
+                },
+                attempts=1,
+                preprocessing=None,  # explicitly None
+            ),
+            InferenceResult(
+                ok=True,
+                model_output={
+                    "has_fracture": False,
+                    "fracture_between": None,
+                    "type": "未断裂",
+                    "location": None,
+                    "confidence": 0.95,
+                },
+                attempts=1,
+            ),
+        ]
+
+        llm = StaticLLM([
+            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            ("terminate", {"status": "no_fracture", "confidence": 0.95}),
+        ])
+
+        agent = IterativeAgent(
+            llm_client=llm,
+            video_meta=video_meta,
+            config=config,
+            clip_builder=FakeClipBuilder(),
+            inference_client=FakeInferenceClient(responses),
+        )
+
+        result = agent.run()
+        # Round 0 must fail with missing_or_invalid_preprocessing_metadata.
+        round0 = result["history"][0]["result"]
+        assert not round0["ok"]
+        assert round0["validation_error"]["code"] == "missing_or_invalid_preprocessing_metadata"
+        # Agent should still produce a valid final output.
+        assert result["status"] in ("no_fracture", "unrecognized")
+
+    def test_missing_preprocessing_no_fracture_graceful(self) -> None:
+        """When preprocessing is None and has_fracture is False, graceful degrade."""
+        from agent.inference import InferenceResult
+
+        video_meta = {"video_id": "v_fix2_002", "duration": 60.0, "video_path": "v_fix2_002.mp4"}
+        config = make_config()
+        config["agent"]["max_rounds"] = 3
+
+        responses = [
+            InferenceResult(
+                ok=True,
+                model_output={
+                    "has_fracture": False,
+                    "fracture_between": None,
+                    "type": "未断裂",
+                    "location": None,
+                    "confidence": 0.95,
+                },
+                attempts=1,
+                preprocessing=None,
+            ),
+            InferenceResult(
+                ok=True,
+                model_output={
+                    "has_fracture": False,
+                    "fracture_between": None,
+                    "type": "未断裂",
+                    "location": None,
+                    "confidence": 0.95,
+                },
+                attempts=1,
+                preprocessing=None,
+            ),
+        ]
+
+        llm = StaticLLM([
+            ("sample_and_infer", {"sample_range": [0.0, 60.0], "prompt": "analyze"}),
+            ("sample_and_infer", {"sample_range": [0.0, 60.0], "prompt": "analyze"}),
+            ("terminate", {"status": "no_fracture", "confidence": 0.95}),
+        ])
+
+        agent = IterativeAgent(
+            llm_client=llm,
+            video_meta=video_meta,
+            config=config,
+            clip_builder=FakeClipBuilder(),
+            inference_client=FakeInferenceClient(responses),
+        )
+
+        result = agent.run()
+        assert result["status"] == "no_fracture"
+        # Both rounds should be OK — no fracture_between to map.
+        for entry in result["history"]:
+            assert entry["result"]["ok"]
+
+
+# =========================================================================
+# 8. FIX 3: Evidence threshold — intersection and convergence
+# =========================================================================
+
+class TestEvidenceThresholdContract:
+    """Evidence threshold: intersection check, max_rounds convergence."""
+
+    def test_disjoint_evidence_ranges_prevent_termination(self) -> None:
+        """Non-overlapping inferred_time_range across evidence rounds blocks termination."""
+        video_meta = {"video_id": "v_fix3_001", "duration": 100.0, "video_path": "v_fix3_001.mp4"}
+        config = make_config()
+        config["agent"]["max_rounds"] = 5
+
+        # Two rounds with disjoint ranges: [0.0, 2.857] and [48.571, 51.429]
+        responses = [
+            {"has_fracture": True, "fracture_between": [0, 1], "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.92},
+            {"has_fracture": True, "fracture_between": [17, 18], "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.91},
+            {"has_fracture": True, "fracture_between": [17, 18], "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.90},
+        ]
+
+        llm = StaticLLM([
+            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            # Try to terminate with disjoint evidence → rejected.
+            ("terminate", {
+                "status": "fracture",
+                "fracture_type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+                "evidence_rounds": [0, 1],
+            }),
+            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            # Terminate with overlapping evidence (rounds 1, 2 have same range).
+            ("terminate", {
+                "status": "fracture",
+                "fracture_type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+                "evidence_rounds": [1, 2],
+            }),
+        ])
+
+        agent = IterativeAgent(
+            llm_client=llm,
+            video_meta=video_meta,
+            config=config,
+            clip_builder=FakeClipBuilder(),
+            inference_client=FakeInferenceClient(responses),
+        )
+
+        result = agent.run()
+        # The second terminate (rounds 1, 2) should succeed with overlapping ranges.
+        assert result["status"] == "fracture"
+        assert result["fracture_type"] == "韧性断裂"
+
+    def test_build_fracture_args_intersection(self) -> None:
+        """_build_fracture_args returns intersection of all positive time ranges."""
+        video_meta = {"video_id": "v_fix3_002", "duration": 100.0, "video_path": "v_fix3_002.mp4"}
+        config = make_config()
+        llm = StaticLLM([])
+        agent = IterativeAgent(
+            llm_client=llm,
+            video_meta=video_meta,
+            config=config,
+            clip_builder=FakeClipBuilder(),
+            inference_client=FakeInferenceClient([]),
+        )
+
+        positive_rounds = [
+            {"result": {
+                "model_output": {"has_fracture": True, "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.92},
+                "inferred_time_range": [10.0, 20.0],
+                "round_confidence_level": "高",
+            }},
+            {"result": {
+                "model_output": {"has_fracture": True, "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.88},
+                "inferred_time_range": [15.0, 18.0],
+                "round_confidence_level": "中",
+            }},
+        ]
+
+        args = agent._build_fracture_args(positive_rounds, {
+            "status": "fracture",
+            "fracture_type": "韧性断裂",
+            "location": "inside_gauge",
+            "confidence": 0.92,
+        })
+        assert args["time_range"] == [15.0, 18.0]  # intersection
+        assert args["fracture_type"] == "韧性断裂"

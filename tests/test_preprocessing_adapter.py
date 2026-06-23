@@ -261,28 +261,34 @@ def test_minicpm_processor_get_info_class_name():
     assert info.backend == "transformers"
 
 
-def test_minicpm_processor_sample_calls_video_processor(short_video: Path):
-    """processor 路径下 sample() 调用 video_processor 并根据输出帧数返回。"""
+def test_minicpm_processor_sample_calls_video_processor(short_video: Path, caplog):
+    """processor 输出帧数 ≠ 解码帧数时 fallback 到 pyav 并记录 warning。"""
+    import logging
     from unittest.mock import MagicMock
 
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
     mock_vp = MagicMock()
     mock_vp.return_value = {"pixel_values_videos": MagicMock()}
+    # 4 ≠ ~150（5s@30fps 解码帧数），触发 fallback
     mock_vp.return_value["pixel_values_videos"].shape = (4, 3, 224, 224)
 
     preprocessor._video_processor = mock_vp
     preprocessor._processor = MagicMock()
     preprocessor._processor_loaded = True
 
-    frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
+    with caplog.at_level(logging.WARNING, logger="pipeline.preprocessing.minicpm_preprocessor"):
+        frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
-    # video_processor 应被调用
+    # 应记录 fallback warning
+    assert "降级到 pyav" in caplog.text
+
+    # video_processor 仍被调用
     mock_vp.assert_called_once()
     _, kwargs = mock_vp.call_args
     assert kwargs.get("return_tensors") == "pt"
 
-    # 应返回 4 帧（匹配 pixel_values_videos.shape[0]）
-    assert len(frames) == 4
+    # fallback 返回 ≤8 帧（pyav 均匀采样）
+    assert 1 <= len(frames) <= 8
     assert all(isinstance(f, FrameMapping) for f in frames)
 
 
@@ -299,6 +305,38 @@ def test_minicpm_processor_sample_fallback_on_processor_error(short_video: Path)
 
     frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
     assert 1 <= len(frames) <= 8
+
+
+def test_minicpm_processor_sample_one_to_one_mapping(short_video: Path):
+    """processor 输出帧数 == 解码帧数时 1:1 映射，不 fallback。"""
+    import logging
+    from unittest.mock import MagicMock, patch
+
+    preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
+
+    # 构造 5 帧解码结果
+    fake_frames = [MagicMock() for _ in range(5)]
+    fake_indices = [10, 20, 30, 40, 50]
+
+    mock_vp = MagicMock()
+    mock_vp.return_value = {"pixel_values_videos": MagicMock()}
+    # processor 返回 5 帧 == len(decoded_frames)，走 1:1 映射
+    mock_vp.return_value["pixel_values_videos"].shape = (5, 3, 224, 224)
+
+    preprocessor._video_processor = mock_vp
+    preprocessor._processor = MagicMock()
+    preprocessor._processor_loaded = True
+
+    with patch.object(
+        preprocessor, "_decode_frame_range",
+        return_value=(fake_frames, fake_indices),
+    ):
+        frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
+
+    # 1:1 映射：5 帧，帧号即 fake_indices
+    assert len(frames) == 5
+    assert [f.original_frame for f in frames] == fake_indices
+    assert [f.input_index for f in frames] == [0, 1, 2, 3, 4]
 
 
 def test_minicpm_processor_sample_fallback_on_missing_pixel_values(short_video: Path):

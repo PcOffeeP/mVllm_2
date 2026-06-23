@@ -465,9 +465,11 @@ def test_validate_preprocessing_meta_none():
 
 
 def test_validate_preprocessing_meta_max_frames_not_8():
+    """max_frames != 8 is a warning, not a hard error (non-fatal)."""
     from agent.inference import _validate_preprocessing_meta
     meta = {"max_frames": 4, "frames": []}
-    assert _validate_preprocessing_meta(meta) == "max_frames_not_8"
+    # max_frames != 8 is downgraded to warning only; the meta is still usable.
+    assert _validate_preprocessing_meta(meta) is None
 
 
 def test_validate_preprocessing_meta_too_many_frames():

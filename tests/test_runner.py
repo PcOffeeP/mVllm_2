@@ -145,14 +145,23 @@ class TestRunOne:
         mock_create_clip_builder.return_value = mock_clip_builder
 
         mock_agent_instance = MagicMock()
-        mock_agent_instance.run.return_value = {"has_fracture": False}
+        mock_agent_instance.run.return_value = {
+            "video_id": "sample",
+            "status": "no_fracture",
+            "confidence": 0.95,
+        }
         mock_iterative_agent.return_value = mock_agent_instance
 
         config = {"llm": {"model": "test"}}
         with patch("agent.runner.load_config", return_value=config) as mock_load_config:
             result = runner.run_one(video_path, config_path="agent/config.yaml")
 
-        assert result == {"has_fracture": False}
+        assert isinstance(result, dict)
+        assert result["ok"] is True
+        assert result["error"] is None
+        assert result["result"]["video_id"] == "sample"
+        assert result["result"]["status"] == "no_fracture"
+        assert result["result"]["confidence"] == 0.95
         mock_load_config.assert_called_once_with("agent/config.yaml")
         mock_build_video_meta.assert_called_once_with(video_path, video_id="sample")
         mock_create_llm_client.assert_called_once_with(config)
@@ -206,7 +215,7 @@ class TestRunOne:
     @patch("agent.runner.create_inference_client")
     @patch("agent.runner.create_llm_client")
     @patch("agent.runner.build_video_meta")
-    def test_run_one_failure_emits_video_failed_and_reraises(
+    def test_run_one_failure_emits_video_failed_and_returns_error(
         self,
         mock_build_video_meta: MagicMock,
         mock_create_llm_client: MagicMock,
@@ -224,13 +233,19 @@ class TestRunOne:
         callback = MagicMock()
         config = {"llm": {"model": "test"}}
 
-        with pytest.raises(RuntimeError, match="metadata extraction failed"):
-            with patch("agent.runner.load_config", return_value=config):
-                runner.run_one(
-                    video_path,
-                    config_path="agent/config.yaml",
-                    event_callback=callback,
-                )
+        with patch("agent.runner.load_config", return_value=config):
+            result = runner.run_one(
+                video_path,
+                config_path="agent/config.yaml",
+                event_callback=callback,
+            )
+
+        assert isinstance(result, dict)
+        assert result["ok"] is False
+        assert result["result"] is None
+        assert result["error"]["stage"] == "metadata"
+        assert result["error"]["code"] == "RuntimeError"
+        assert result["error"]["message"] == "metadata extraction failed"
 
         callback.assert_called_once()
         event = callback.call_args.args[0]
@@ -239,7 +254,7 @@ class TestRunOne:
         assert event["error"] == "metadata extraction failed"
         assert event["stage"] == "metadata"
 
-    def test_run_one_load_config_failure_emits_video_failed_and_reraises(
+    def test_run_one_load_config_failure_emits_video_failed_and_returns_error(
         self, tmp_path: Path
     ) -> None:
         video_path = tmp_path / "fake.mp4"
@@ -247,12 +262,18 @@ class TestRunOne:
 
         callback = MagicMock()
         with patch("agent.runner.load_config", side_effect=RuntimeError("config broken")):
-            with pytest.raises(RuntimeError, match="config broken"):
-                runner.run_one(
-                    video_path,
-                    config_path="agent/config.yaml",
-                    event_callback=callback,
-                )
+            result = runner.run_one(
+                video_path,
+                config_path="agent/config.yaml",
+                event_callback=callback,
+            )
+
+        assert isinstance(result, dict)
+        assert result["ok"] is False
+        assert result["result"] is None
+        assert result["error"]["stage"] == "metadata"
+        assert result["error"]["code"] == "RuntimeError"
+        assert result["error"]["message"] == "config broken"
 
         callback.assert_called_once()
         event = callback.call_args.args[0]
@@ -273,8 +294,16 @@ class TestRunBatch:
         video2.write_text("fake", encoding="utf-8")
 
         mock_run_one.side_effect = [
-            {"video_id": "v1", "ok": True},
-            {"video_id": "v2", "ok": True},
+            {
+                "ok": True,
+                "result": {"video_id": "v1", "status": "no_fracture", "confidence": 0.9},
+                "error": None,
+            },
+            {
+                "ok": True,
+                "result": {"video_id": "v2", "status": "no_fracture", "confidence": 0.85},
+                "error": None,
+            },
         ]
 
         callback = MagicMock()
@@ -288,8 +317,10 @@ class TestRunBatch:
 
         mock_load_config.assert_not_called()
         assert len(results) == 2
-        assert results[0] == {"video_id": "v1", "ok": True}
-        assert results[1] == {"video_id": "v2", "ok": True}
+        assert results[0]["ok"] is True
+        assert results[0]["result"]["video_id"] == "v1"
+        assert results[1]["ok"] is True
+        assert results[1]["result"]["video_id"] == "v2"
         assert mock_run_one.call_count == 2
         assert mock_run_one.call_args_list[0].args[0] == video1
         assert mock_run_one.call_args_list[1].args[0] == video2
@@ -315,10 +346,20 @@ class TestRunBatch:
             work_dir=None,
         ) -> dict:
             if Path(path).name == "v1.mp4":
-                exc = RuntimeError("inference timeout")
-                exc._stage = "inference_client"
-                raise exc
-            return {"video_id": video_id, "ok": True}
+                return {
+                    "ok": False,
+                    "result": None,
+                    "error": {
+                        "stage": "inference_client",
+                        "code": "RuntimeError",
+                        "message": "inference timeout",
+                    },
+                }
+            return {
+                "ok": True,
+                "result": {"video_id": video_id, "status": "no_fracture", "confidence": 0.9},
+                "error": None,
+            }
 
         mock_run_one.side_effect = _side_effect
 
@@ -329,14 +370,13 @@ class TestRunBatch:
             )
 
         assert len(results) == 2
-        assert results[0] == {
-            "video_id": "v1",
-            "video_path": str(video1),
-            "ok": False,
-            "error": "inference timeout",
-            "stage": "inference_client",
-        }
-        assert results[1] == {"video_id": "v2", "ok": True}
+        assert results[0]["ok"] is False
+        assert results[0]["result"] is None
+        assert results[0]["error"]["stage"] == "inference_client"
+        assert results[0]["error"]["code"] == "RuntimeError"
+        assert results[0]["error"]["message"] == "inference timeout"
+        assert results[1]["ok"] is True
+        assert results[1]["result"]["video_id"] == "v2"
 
     @patch("agent.runner.run_one")
     def test_run_batch_emits_video_failed_event(
@@ -364,10 +404,20 @@ class TestRunBatch:
                     }
                 )
             if Path(path).name == "v1.mp4":
-                exc = RuntimeError("metadata error")
-                exc._stage = "metadata"
-                raise exc
-            return {"video_id": video_id, "ok": True}
+                return {
+                    "ok": False,
+                    "result": None,
+                    "error": {
+                        "stage": "metadata",
+                        "code": "RuntimeError",
+                        "message": "metadata error",
+                    },
+                }
+            return {
+                "ok": True,
+                "result": {"video_id": video_id, "status": "no_fracture", "confidence": 0.9},
+                "error": None,
+            }
 
         mock_run_one.side_effect = _side_effect
         callback = MagicMock()
@@ -444,7 +494,14 @@ class TestEventsJsonSerializable:
                     "result": {"has_fracture": True, "time_range": [3.0, 5.0]},
                 }
             )
-            return {"has_fracture": True}
+            return {
+                "video_id": "sample",
+                "status": "fracture",
+                "time_range": [3.0, 5.0],
+                "fracture_type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.85,
+            }
 
         mock_agent_instance = MagicMock()
         mock_agent_instance.run = _fake_run

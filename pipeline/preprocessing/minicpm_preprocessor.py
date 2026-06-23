@@ -289,19 +289,30 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             logger.warning("video_processor 调用失败 (%s)，回退到 pyav", exc)
             return self._sample_fallback(start_time, end_time, fps, total_frames)
 
-        # 3. 根据 processor 实际输出帧数均匀采样
+        # 3. processor 输出帧数与解码帧数的关系决定回映策略
         n = min(n, len(decoded_frames))
         if n <= 0:
             return []
 
-        selected = self._uniform_select(n, len(decoded_frames))
+        # 若 processor 做了采样（n != 解码帧数），无法假设均匀分布，
+        # 因为我们没有帧级索引信息来反推 processor 到底选了哪些帧。
+        # 降级到 pyav 均匀采样。
+        if n != len(decoded_frames):
+            logger.warning(
+                "processor 输出帧数 (%d) 与解码帧数 (%d) 不匹配，"
+                "processor 采样行为偏离均匀假设，降级到 pyav 均匀采样",
+                n, len(decoded_frames),
+            )
+            return self._sample_fallback(start_time, end_time, fps, total_frames)
+
+        # n == len(decoded_frames): processor 未二次采样，可 1:1 映射
         return [
             FrameMapping(
                 input_index=i,
-                original_frame=decoded_indices[idx],
-                timestamp=decoded_indices[idx] / fps,
+                original_frame=decoded_indices[i],
+                timestamp=decoded_indices[i] / fps,
             )
-            for i, idx in enumerate(selected)
+            for i in range(n)
         ]
 
     @staticmethod

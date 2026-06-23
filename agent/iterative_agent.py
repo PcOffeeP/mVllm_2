@@ -13,7 +13,7 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from agent.inference import (
     InferenceClient,
@@ -189,6 +189,39 @@ class IterativeAgent:
                 tool_args = json.loads(tool_call.function.arguments)
             except json.JSONDecodeError:
                 tool_args = {}
+
+            # --- Pydantic schema validation (Fix 7) ---
+            try:
+                if tool_name == "terminate":
+                    tool_args = ToolTerminate(**tool_args).model_dump()
+                elif tool_name == "sample_and_infer":
+                    tool_args = ToolSampleAndInfer(**tool_args).model_dump()
+            except ValidationError as ve:
+                err_detail = {
+                    "error": f"工具参数校验失败: {ve.errors()}",
+                    "tool_name": tool_name,
+                    "received_args": tool_args,
+                }
+                messages.append(
+                    self._assistant_tool_message(message, tool_call, tool_name)
+                )
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": json.dumps(err_detail, ensure_ascii=False),
+                    }
+                )
+                self._emit(
+                    "llm_tool_call",
+                    round=round_idx,
+                    display_round=round_idx + 1,
+                    tool_name=tool_name,
+                    tool_args=tool_args,
+                    reasoning=message.content or "",
+                    validation_error=str(ve.errors()),
+                )
+                continue
 
             self._emit(
                 "llm_tool_call",
@@ -426,13 +459,36 @@ class IterativeAgent:
                     f"{len(positive_evidence)} 轮有效断裂记录"
                 )
 
+            # --- Fix 3a: intersection check across all positive evidence ---
+            evidence_ranges: list[list[float]] = []
+            for r_idx in positive_evidence:
+                rng = self.history[r_idx]["result"].get("inferred_time_range")
+                if rng and len(rng) == 2:
+                    evidence_ranges.append(rng)
+            if len(evidence_ranges) >= 2:
+                inter_start = max(r[0] for r in evidence_ranges)
+                inter_end = min(r[1] for r in evidence_ranges)
+                if inter_start >= inter_end:
+                    return False, (
+                        f"正证据轮次 {positive_evidence} 的 inferred_time_range "
+                        f"无交集，无法收敛，请继续验证"
+                    )
+
             # Must converge or exhaust rounds.
             if self.candidate[1] - self.candidate[0] <= self.tolerance:
                 if self.last_round_confidence_level == "不可信":
                     return False, "区间虽收敛但最新一轮置信度不可信，请继续验证"
                 return True, "候选区间宽度 ≤ tolerance"
+            # --- Fix 3c: max_rounds requires convergence ---
             if round_idx >= self.max_rounds - 1:
-                return True, "达到 max_rounds"
+                width = self.candidate[1] - self.candidate[0]
+                k_tolerance = self.tolerance * 2  # reasonable k factor for exhaustion path
+                if width <= k_tolerance:
+                    return True, "达到 max_rounds 且候选区间宽度 ≤ 2×tolerance"
+                return False, (
+                    f"达到 max_rounds 但候选区间宽度 {width:.2f}s 超过 "
+                    f"2×tolerance ({k_tolerance:.2f}s)，无法终止"
+                )
 
             return False, "区间尚未收敛，请继续调用 sample_and_infer"
 
@@ -611,8 +667,28 @@ class IterativeAgent:
         best_model_output = best_result.get("model_output", {})
         best_frames = best_result.get("manifest") or best_result.get("frames", [])
 
-        # Time range: inferred from best round.
-        best_time_range = best_result.get("inferred_time_range")
+        # --- Fix 3b: use intersection of all positive evidence time ranges ---
+        all_ranges: list[list[float]] = []
+        for r in positive_rounds:
+            rng = r["result"].get("inferred_time_range")
+            if rng and len(rng) == 2:
+                all_ranges.append(rng)
+
+        if len(all_ranges) >= 2:
+            inter_start = max(r[0] for r in all_ranges)
+            inter_end = min(r[1] for r in all_ranges)
+            if inter_start < inter_end:
+                best_time_range: list[float] | None = [inter_start, inter_end]
+            else:
+                # No intersection — fall back to best single round.
+                logger.warning(
+                    "Positive evidence time ranges have no intersection; "
+                    "falling back to best single round."
+                )
+                best_time_range = best_result.get("inferred_time_range")
+        else:
+            best_time_range = best_result.get("inferred_time_range")
+
         if best_time_range is None:
             logger.warning(
                 "Best positive round lacks inferred_time_range; "
@@ -883,8 +959,9 @@ class IterativeAgent:
 
         # Check server-side preprocessing metadata.
         # When the server adapter is not installed (preprocessing is None),
-        # gracefully degrade by using the local manifest — existing tests
-        # and development workflows depend on this.
+        # and has_fracture=True: mark the round as failed (cannot map
+        # fracture_between to original time range without server metadata).
+        # When has_fracture=False/None: degrade gracefully using local manifest.
         preprocessing = inference_result.preprocessing
         pp_error_code: str | None = None
         use_server_frames = False
@@ -909,8 +986,8 @@ class IterativeAgent:
                 )
         else:
             logger.warning(
-                "No preprocessing metadata from server. "
-                "Using local manifest for fracture_between mapping."
+                "No preprocessing metadata from server (server adapter not installed). "
+                "Will check has_fracture to decide degrade vs. error."
             )
 
         # Derive confidence level.
@@ -965,6 +1042,8 @@ class IterativeAgent:
 
             # Derive original_frame from the local manifest by matching
             # timestamps (server frames don't carry original_frame).
+            # When lookup fails, fall through to Case 3 (local manifest)
+            # instead of trusting server timestamps alone.
             def _lookup_original_frame(ts: float) -> int | None:
                 for entry in manifest:
                     if abs(entry["timestamp"] - ts) < 0.0001:
@@ -975,8 +1054,18 @@ class IterativeAgent:
             orig_j = _lookup_original_frame(server_frames[j]["timestamp"])
             if orig_i is not None and orig_j is not None:
                 result["inferred_frame_range"] = [orig_i, orig_j]
+                return result
 
-            return result
+            # Timestamps from server frames don't match local manifest.
+            # Fall through to Case 3 for local-manifest-based mapping.
+            logger.warning(
+                "Server frame timestamps [%s, %s] not found in local manifest; "
+                "falling back to local manifest mapping.",
+                server_frames[i]["timestamp"],
+                server_frames[j]["timestamp"],
+            )
+            # Reset time_range so Case 3 can set it from local manifest.
+            result["inferred_time_range"] = None
 
         # ------------------------------------------------------------------
         # Case 2: Preprocessing present but invalid → hard error.
@@ -1000,8 +1089,29 @@ class IterativeAgent:
 
         # ------------------------------------------------------------------
         # Case 3: Preprocessing missing (server adapter not installed).
-        # Graceful degradation: use local manifest, do NOT mark error.
+        # When has_fracture is True, fail per contract: missing metadata
+        # means we cannot reliably map fracture_between to original time range.
+        # When has_fracture is False/None, graceful degrade with local manifest.
         # ------------------------------------------------------------------
+        if has_fracture and preprocessing is None:
+            logger.warning(
+                "Preprocessing metadata missing but has_fracture=True. "
+                "Marking round as failed (missing_or_invalid_preprocessing_metadata)."
+            )
+            result["ok"] = False
+            result["model_output"] = None
+            result["inferred_time_range"] = None
+            result["inferred_frame_range"] = None
+            result["validation_error"] = {
+                "code": "missing_or_invalid_preprocessing_metadata",
+                "message": (
+                    "服务端未返回 preprocessing 元数据，无法将 fracture_between "
+                    "映射为原始时间范围"
+                ),
+                "field": "preprocessing",
+            }
+            return result
+
         if has_fracture:
             fracture_between = model_output["fracture_between"]
             n = len(manifest)

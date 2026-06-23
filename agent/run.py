@@ -33,15 +33,24 @@ def _make_event_writer(run_id: str, events_dir: Path) -> Any:
     return write_event
 
 
-def _write_jsonl(results: dict[str, Any] | list[dict[str, Any]], output_path: Path) -> None:
-    """Write one or more result dicts as JSON lines to ``output_path``."""
+def _write_jsonl(results: dict[str, Any] | list[dict[str, Any]] | list[Any], output_path: Path) -> None:
+    """Write one or more result dicts as JSON lines to ``output_path``.
+
+    ``RunnerResult`` objects are serialized via ``.model_dump()``.
+    """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         if isinstance(results, list):
             for item in results:
-                f.write(json.dumps(item) + "\n")
+                if hasattr(item, "model_dump"):
+                    f.write(json.dumps(item.model_dump()) + "\n")
+                else:
+                    f.write(json.dumps(item) + "\n")
         else:
-            f.write(json.dumps(results) + "\n")
+            if hasattr(results, "model_dump"):
+                f.write(json.dumps(results.model_dump()) + "\n")
+            else:
+                f.write(json.dumps(results) + "\n")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -98,15 +107,14 @@ def main() -> None:
     event_callback = _make_event_writer(run_id, events_dir)
 
     if args.video:
-        try:
-            result = runner.run_one(
-                args.video,
-                config_path=args.config,
-                event_callback=event_callback,
-                work_dir=work_dir,
-            )
-        except Exception as exc:
-            print(f"Run failed for {args.video}: {exc}", file=sys.stderr)
+        result = runner.run_one(
+            args.video,
+            config_path=args.config,
+            event_callback=event_callback,
+            work_dir=work_dir,
+        )
+        if not result.ok:
+            print(f"Run failed for {args.video}: {result.error.message}", file=sys.stderr)
             sys.exit(1)
         _write_jsonl(result, output_path)
         print(f"Result written to {output_path}")
@@ -142,12 +150,12 @@ def main() -> None:
     )
     _write_jsonl(results, output_path)
 
-    failed = [r for r in results if r.get("ok") is False]
+    failed = [r for r in results if not r.ok]
     if failed:
         print(f"Batch finished with {len(failed)} failure(s):", file=sys.stderr)
         for item in failed:
             print(
-                f"  - {item.get('video_id')}: {item.get('error')}",
+                f"  - {item.result.video_id if item.ok else item.error.stage}: {item.error.message}",
                 file=sys.stderr,
             )
         sys.exit(1)

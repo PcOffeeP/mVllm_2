@@ -169,11 +169,14 @@ def _result_to_row(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _export_jsonl(results: list[dict[str, Any]]) -> bytes:
+def _export_jsonl(results: list[Any]) -> bytes:
     """Serialize ``results`` as JSON lines."""
     buffer = io.StringIO()
     for item in results:
-        buffer.write(json.dumps(item, ensure_ascii=False) + "\n")
+        if hasattr(item, "model_dump"):
+            buffer.write(json.dumps(item.model_dump(), ensure_ascii=False) + "\n")
+        else:
+            buffer.write(json.dumps(item, ensure_ascii=False) + "\n")
     return buffer.getvalue().encode("utf-8")
 
 
@@ -199,9 +202,13 @@ def _export_csv(results: list[dict[str, Any]]) -> bytes:
     return buffer.getvalue().encode("utf-8")
 
 
-def _export_json(results: list[dict[str, Any]]) -> bytes:
+def _export_json(results: list[Any]) -> bytes:
     """Serialize ``results`` as a pretty-printed JSON string."""
-    return json.dumps(results, ensure_ascii=False, indent=2).encode("utf-8")
+    serializable = [
+        item.model_dump() if hasattr(item, "model_dump") else item
+        for item in results
+    ]
+    return json.dumps(serializable, ensure_ascii=False, indent=2).encode("utf-8")
 
 
 def _run_single_video(
@@ -220,17 +227,17 @@ def _run_single_video(
         _update_timeline_placeholder(timeline_placeholder, event)
 
     with st.spinner("Agent 运行中..."):
-        try:
-            result = runner.run_one(
-                video_path,
-                config_path,
-                event_callback=event_callback,
-                work_dir=work_dir,
-            )
-            st.session_state.result = result
+        result = runner.run_one(
+            video_path,
+            config_path,
+            event_callback=event_callback,
+            work_dir=work_dir,
+        )
+        st.session_state.result = result
+        if result.ok:
             st.success("运行完成")
-        except Exception as exc:
-            st.error(f"运行失败: {exc}")
+        else:
+            st.error(f"运行失败: {result.error.message}")
 
 
 def _run_batch(
@@ -267,30 +274,32 @@ def _run_batch(
         _update_timeline_placeholder(timeline_placeholder, event)
 
     with st.spinner("批量 Agent 运行中..."):
-        try:
-            results = runner.run_batch(
-                video_paths,
-                config_path,
-                event_callback=event_callback,
-                work_dir=work_dir,
-            )
-            st.session_state.batch_results = results
-            st.success(f"完成 {len(video_paths)} 个视频")
-        except Exception as exc:
-            st.error(f"批量运行失败: {exc}")
+        results = runner.run_batch(
+            video_paths,
+            config_path,
+            event_callback=event_callback,
+            work_dir=work_dir,
+        )
+        st.session_state.batch_results = results
+        st.success(f"完成 {len(video_paths)} 个视频")
 
 
-def _render_single_result(result: dict[str, Any]) -> None:
+def _render_single_result(result: Any) -> None:
     """Render the final result summary for a single video."""
     if st is None:
         return
-    has_fracture = result.get("has_fracture", False)
+    video_id = result.get("video_id", "")
+    status = result.get("status", "")
+    has_fracture = status == "fracture"
     cols = st.columns(4)
-    cols[0].metric("video_id", result.get("video_id", ""))
-    cols[1].metric("has_fracture", str(has_fracture))
-    cols[2].metric("time_estimate", result.get("time_estimate"))
+    cols[0].metric("video_id", video_id)
+    cols[1].metric("status", status)
+    cols[2].metric("fracture_type", result.get("fracture_type") or "-")
     cols[3].metric("confidence", result.get("confidence"))
-    st.json(result)
+    if hasattr(result, "model_dump"):
+        st.json(result.model_dump())
+    else:
+        st.json(result)
 
 
 def _render_batch_results(results: list[dict[str, Any]]) -> None:

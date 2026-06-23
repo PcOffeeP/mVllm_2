@@ -226,24 +226,26 @@ def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
 
     Checks (in order):
     - ``meta`` is not ``None``.
-    - ``meta["max_frames"] == 8`` (the MiniCPM-V 4.6 contract).
-    - ``len(meta["frames"]) <= 8``.
+    - ``meta["max_frames"]`` is a positive integer (warns if != 8).
+    - ``len(meta["frames"]) <= meta["max_frames"]``.
     - frame ``index`` values are strictly monotonically increasing.
     """
     if meta is None:
         return "missing_or_invalid_preprocessing_metadata"
 
     max_frames = meta.get("max_frames")
+    if not isinstance(max_frames, int) or max_frames <= 0:
+        return "max_frames_not_positive_integer"
     if max_frames != 8:
         logger.warning(
-            "Preprocessing max_frames=%s, expected 8", max_frames
+            "Preprocessing max_frames=%s, expected 8 (non-fatal)", max_frames
         )
-        return "max_frames_not_8"
 
     frames = meta.get("frames", [])
-    if len(frames) > 8:
+    if len(frames) > max_frames:
         logger.warning(
-            "Preprocessing frames count %d exceeds max 8", len(frames)
+            "Preprocessing frames count %d exceeds max_frames %d",
+            len(frames), max_frames,
         )
         return "too_many_frames"
 
