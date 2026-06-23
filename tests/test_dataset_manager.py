@@ -337,9 +337,9 @@ def test_build_test_manifest_sha256_is_stable():
 # 真实产物检查
 # ---------------------------------------------------------------------------
 
-VIDEO_META_PATH = ROOT / "data" / "metadata_v2" / "video_meta.json"
-SPLITS_DIR = ROOT / "data" / "03_splits_v2"
-METADATA_DIR = ROOT / "data" / "metadata_v2"
+VIDEO_META_PATH = ROOT / "data" / "07_metadata" / "video_meta.json"
+SPLITS_DIR = ROOT / "data" / "05_splits"
+METADATA_DIR = ROOT / "data" / "07_metadata"
 DECISION_LOG_PATH = METADATA_DIR / "stratified_split_decision_log.json"
 TEST_MANIFEST_PATH = METADATA_DIR / "test_manifest_sha256.json"
 

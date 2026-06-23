@@ -16,8 +16,8 @@ lora_dropout: 0.1
 quantization_bit: 4
 
 # === dataset ===
-dataset: tensile_video_interval_v2_fold1_train
-eval_dataset: tensile_video_interval_v2_fold1_val
+dataset: tensile_video_interval_fold1_train
+eval_dataset: tensile_video_interval_fold1_val
 dataset_dir: ../finetune
 template: minicpm_v_4_6
 media_dir: ../data

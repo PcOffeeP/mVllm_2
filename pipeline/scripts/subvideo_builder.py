@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-子视频生成器（v2 先选后生成）
+子视频生成器（先选后生成）
 
 阶段 1：为每个训练/验证视频生成候选子视频清单（不生成媒体）。
 阶段 2：按训练集正:负 1:1~2:1 选择样本。
-阶段 3：只生成被选中的子视频到 data/02_subvideos_v2/。
+阶段 3：只生成被选中的子视频到 data/03_subvideos/。
 
 候选策略：
 - 确认断裂且时间可靠：完整视频 + 3s/10s/30s × 5 位置。
@@ -43,11 +43,11 @@ from pipeline.preprocessing import (
     VideoPreprocessor,
 )
 
-VIDEO_META_DEFAULT = PROJECT_ROOT / "data" / "metadata_v2" / "video_meta.json"
-SPLITS_DIR_DEFAULT = PROJECT_ROOT / "data" / "03_splits_v2"
-SUBVIDEO_DIR_DEFAULT = PROJECT_ROOT / "data" / "02_subvideos_v2"
-FRAME_DIR_DEFAULT = PROJECT_ROOT / "data" / "03_frames_v2"
-SUBVIDEOS_META_DEFAULT = PROJECT_ROOT / "data" / "metadata_v2" / "subvideos_meta.json"
+VIDEO_META_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "video_meta.json"
+SPLITS_DIR_DEFAULT = PROJECT_ROOT / "data" / "05_splits"
+SUBVIDEO_DIR_DEFAULT = PROJECT_ROOT / "data" / "03_subvideos"
+FRAME_DIR_DEFAULT = PROJECT_ROOT / "data" / "04_frames"
+SUBVIDEOS_META_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.json"
 
 FOCUS_WINDOWS = [3, 10, 30]
 FOCUS_POSITIONS = [0.2, 0.35, 0.5, 0.65, 0.8]
@@ -1134,7 +1134,7 @@ def _generate_media_for_candidate(
 
 def main():
     global FOCUS_WINDOWS, FOCUS_POSITIONS, VIDEO_FPS, VIDEO_MAXLEN, NEG_CLIP_DURATIONS
-    parser = argparse.ArgumentParser(description="子视频生成器（v2 先选后生成）")
+    parser = argparse.ArgumentParser(description="子视频生成器（先选后生成）")
     parser.add_argument("--video-meta", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--splits-dir", type=Path, default=SPLITS_DIR_DEFAULT)
     parser.add_argument("--subvideo-dir", type=Path, default=SUBVIDEO_DIR_DEFAULT)

@@ -139,7 +139,7 @@ def test_subvideo_builder_write_json_rejects_nan(monkeypatch: pytest.MonkeyPatch
         lambda rec, split_info, *args, **kwargs: [{
             "subvideo_id": "v001_full",
             "source_video": "v001",
-            "video_path": "02_subvideos_v2/v001_full.mp4",
+            "video_path": "03_subvideos/v001_full.mp4",
             "crop_type": "full_pos",
             "start_time": 0.0,
             "end_time": 10.0,
@@ -256,7 +256,7 @@ def test_build_subvideos_for_record_generates_all_classes_for_fracture(
         lambda r, s, *args, **kwargs: {
             "subvideo_id": f"{r['video_id']}_full",
             "source_video": r["video_id"],
-            "video_path": "02_subvideos_v2/{}_full.mp4".format(r["video_id"]),
+            "video_path": "03_subvideos/{}_full.mp4".format(r["video_id"]),
             "frame_paths": [],
             "start_time": 0.0,
             "end_time": r["duration"],
@@ -312,7 +312,7 @@ def test_build_subvideos_for_record_abnormal_only_full(
         lambda r, s, *args, **kwargs: {
             "subvideo_id": f"{r['video_id']}_full",
             "source_video": r["video_id"],
-            "video_path": "02_subvideos_v2/{}_full.mp4".format(r["video_id"]),
+            "video_path": "03_subvideos/{}_full.mp4".format(r["video_id"]),
             "frame_paths": [],
             "start_time": 0.0,
             "end_time": r["duration"],
@@ -362,7 +362,7 @@ def test_build_subvideos_for_record_non_fracture_only_full(
         lambda r, s, *args, **kwargs: {
             "subvideo_id": f"{r['video_id']}_full",
             "source_video": r["video_id"],
-            "video_path": "02_subvideos_v2/{}_full.mp4".format(r["video_id"]),
+            "video_path": "03_subvideos/{}_full.mp4".format(r["video_id"]),
             "frame_paths": [],
             "start_time": 0.0,
             "end_time": r["duration"],
@@ -723,11 +723,11 @@ def _load_subvideos(meta_path: Path) -> list[dict]:
 
 
 @pytest.mark.skipif(
-    not (ROOT / "data" / "metadata_v2" / "subvideos_meta.json").exists(),
-    reason="需要先生成 data/metadata_v2/subvideos_meta.json 产物",
+    not (ROOT / "data" / "07_metadata" / "subvideos_meta.json").exists(),
+    reason="需要先生成 data/07_metadata/subvideos_meta.json 产物",
 )
 def test_subvideos_meta_has_start_end_frames():
-    meta_path = ROOT / "data" / "metadata_v2" / "subvideos_meta.json"
+    meta_path = ROOT / "data" / "07_metadata" / "subvideos_meta.json"
     subs = _load_subvideos(meta_path)
     assert subs
     for sub in subs:
@@ -741,15 +741,18 @@ def test_subvideos_meta_has_start_end_frames():
 
 
 @pytest.mark.skipif(
-    not (ROOT / "data" / "metadata_v2" / "subvideos_meta.json").exists(),
-    reason="需要先生成 data/metadata_v2/subvideos_meta.json 产物",
+    not (ROOT / "data" / "07_metadata" / "subvideos_meta.json").exists(),
+    reason="需要先生成 data/07_metadata/subvideos_meta.json 产物",
 )
 def test_subvideos_meta_positive_fracture_between_in_bounds_and_adjacent():
     """正样本的 fracture_between 必须是严格相邻区间 [i, i+1]，拒绝边界哨兵。"""
-    meta_path = ROOT / "data" / "metadata_v2" / "subvideos_meta.json"
+    meta_path = ROOT / "data" / "07_metadata" / "subvideos_meta.json"
     subs = _load_subvideos(meta_path)
     for sub in subs:
         if not sub.get("has_fracture"):
+            continue
+        # 视频异常（尤其是时间不可靠的异常）允许 has_fracture=True 但 fracture_between=None
+        if sub.get("type") == "视频异常" or sub.get("is_abnormal"):
             continue
         fb = sub.get("fracture_between")
         assert fb is not None, sub["subvideo_id"]
@@ -761,13 +764,13 @@ def test_subvideos_meta_positive_fracture_between_in_bounds_and_adjacent():
 
 
 @pytest.mark.skipif(
-    not (ROOT / "data" / "metadata_v2" / "subvideos_meta.json").exists()
-    or not (ROOT / "data" / "metadata_v2" / "video_meta.json").exists(),
-    reason="需要先生成 data/metadata_v2/subvideos_meta.json 与 video_meta.json 产物",
+    not (ROOT / "data" / "07_metadata" / "subvideos_meta.json").exists()
+    or not (ROOT / "data" / "07_metadata" / "video_meta.json").exists(),
+    reason="需要先生成 data/07_metadata/subvideos_meta.json 与 video_meta.json 产物",
 )
 def test_subvideos_meta_frame_bounds_consistent_with_time():
-    meta_path = ROOT / "data" / "metadata_v2" / "subvideos_meta.json"
-    video_meta_path = ROOT / "data" / "metadata_v2" / "video_meta.json"
+    meta_path = ROOT / "data" / "07_metadata" / "subvideos_meta.json"
+    video_meta_path = ROOT / "data" / "07_metadata" / "video_meta.json"
     subs = _load_subvideos(meta_path)
     video_meta = {
         v["video_id"]: v
@@ -785,14 +788,14 @@ def test_subvideos_meta_frame_bounds_consistent_with_time():
 
 
 @pytest.mark.skipif(
-    not (ROOT / "data" / "metadata_v2" / "subvideos_meta.json").exists()
-    or not (ROOT / "data" / "metadata_v2" / "video_meta.json").exists(),
-    reason="需要先生成 data/metadata_v2/subvideos_meta.json 与 video_meta.json 产物",
+    not (ROOT / "data" / "07_metadata" / "subvideos_meta.json").exists()
+    or not (ROOT / "data" / "07_metadata" / "video_meta.json").exists(),
+    reason="需要先生成 data/07_metadata/subvideos_meta.json 与 video_meta.json 产物",
 )
 def test_subvideos_meta_fracture_between_recalculation_consistent():
     """用 start_frame/end_frame 对应的时间区间反算 fracture_between，验证无 ±1 帧偏差。"""
-    meta_path = ROOT / "data" / "metadata_v2" / "subvideos_meta.json"
-    video_meta_path = ROOT / "data" / "metadata_v2" / "video_meta.json"
+    meta_path = ROOT / "data" / "07_metadata" / "subvideos_meta.json"
+    video_meta_path = ROOT / "data" / "07_metadata" / "video_meta.json"
     subs = _load_subvideos(meta_path)
     video_meta = {
         v["video_id"]: v
@@ -801,6 +804,9 @@ def test_subvideos_meta_fracture_between_recalculation_consistent():
     mismatches = []
     for sub in subs:
         if not sub.get("has_fracture"):
+            continue
+        # 视频异常（尤其是时间不可靠的异常）允许 fracture_between=None，无需反算
+        if sub.get("type") == "视频异常" or sub.get("is_abnormal"):
             continue
         rec = video_meta[sub["source_video"]]
         event_frame = rec["event_frame_original"]

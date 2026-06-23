@@ -276,7 +276,7 @@ class UniformVideoSampler(VideoSampler):
         n = _effective_num_frames([start, end], video_fps, num_frames, total_frames_in_clip)
         timestamps = _uniform_timestamps(start, end, n)
 
-        cache = Path(self.cache_dir) if self.cache_dir else Path("data/runtime/agent_frames")
+        cache = Path(self.cache_dir) if self.cache_dir else Path("data/08_runtime/agent_frames")
         video_stem = Path(video_path).stem
         frame_dir = cache / f"{video_stem}_{start:.2f}_{end:.2f}"
         frame_dir.mkdir(parents=True, exist_ok=True)
@@ -371,7 +371,7 @@ class FfmpegVideoClipBuilder(VideoClipBuilder):
         if not os.path.exists(source_video):
             raise FileNotFoundError(f"Source video not found: {source_video}")
 
-        out_dir = Path(self.output_dir) if self.output_dir else Path("data/runtime/agent_clips")
+        out_dir = Path(self.output_dir) if self.output_dir else Path("data/08_runtime/agent_clips")
         out_dir.mkdir(parents=True, exist_ok=True)
 
         video_stem = Path(source_video).stem

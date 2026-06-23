@@ -283,14 +283,14 @@ def _build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--video-meta",
         type=Path,
-        default=ROOT / "data" / "metadata_v2" / "video_meta.json",
+        default=ROOT / "data" / "07_metadata" / "video_meta.json",
         help="video_meta.json 路径",
     )
     parser.add_argument(
         "--splits-dir",
         type=Path,
-        default=ROOT / "data" / "03_splits_v2",
-        help="03_splits_v2 目录路径",
+        default=ROOT / "data" / "05_splits",
+        help="05_splits 目录路径",
     )
     parser.add_argument(
         "--preprocessor",
@@ -306,7 +306,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "data" / "metadata_v2" / "calibration_report.json",
+        default=ROOT / "data" / "07_metadata" / "calibration_report.json",
         help="校准报告输出路径",
     )
     parser.add_argument(

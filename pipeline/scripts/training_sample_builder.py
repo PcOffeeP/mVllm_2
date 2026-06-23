@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-训练样本构建器（v2 五字段契约）
+训练样本构建器（五字段契约）
 
-将 ``data/metadata_v2/subvideos_meta.json`` 中的子视频元数据转换为
-LLaMA-Factory ShareGPT 格式的多模态训练样本，并按 ``data/03_splits_v2/``
-中的 video_id 集合分组输出到 ``data/04_merged_v2/``。
+将 ``data/07_metadata/subvideos_meta.json`` 中的子视频元数据转换为
+LLaMA-Factory ShareGPT 格式的多模态训练样本，并按 ``data/05_splits/``
+中的 video_id 集合分组输出到 ``data/06_merged/``。
 """
 
 from __future__ import annotations
@@ -32,10 +32,10 @@ except Exception as exc:  # pragma: no cover
     ) from exc
 
 
-SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata_v2" / "subvideos_meta.json"
-VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "metadata_v2" / "video_meta.json"
-SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "03_splits_v2"
-OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "04_merged_v2"
+SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.json"
+VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "video_meta.json"
+SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "05_splits"
+OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "06_merged"
 
 VIDEO_FPS = 8.0
 VIDEO_MAXLEN = 8
@@ -484,7 +484,7 @@ def build_all(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="v2 五字段契约训练样本构建器")
+    parser = argparse.ArgumentParser(description="五字段契约训练样本构建器")
     parser.add_argument(
         "--subvideos-meta", type=Path, default=SUBVIDEOS_META_DEFAULT
     )

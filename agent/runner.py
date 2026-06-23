@@ -43,12 +43,12 @@ def create_inference_client(config: dict[str, Any]):
 def create_sampler(config: dict[str, Any], cache_dir: str | Path | None = None):
     """Create a ``UniformVideoSampler``.
 
-    Defaults ``cache_dir`` to ``data/runtime/agent_frames`` if not provided.
+    Defaults ``cache_dir`` to ``data/08_runtime/agent_frames`` if not provided.
     """
     from agent.sampling import UniformVideoSampler
 
     if cache_dir is None:
-        cache_dir = "data/runtime/agent_frames"
+        cache_dir = "data/08_runtime/agent_frames"
     return UniformVideoSampler(cache_dir=str(cache_dir))
 
 
@@ -57,12 +57,12 @@ def create_clip_builder(
 ):
     """Create a ``FfmpegVideoClipBuilder``.
 
-    Defaults ``output_dir`` to ``data/runtime/agent_clips`` if not provided.
+    Defaults ``output_dir`` to ``data/08_runtime/agent_clips`` if not provided.
     """
     from agent.sampling import FfmpegVideoClipBuilder
 
     if output_dir is None:
-        output_dir = "data/runtime/agent_clips"
+        output_dir = "data/08_runtime/agent_clips"
     return FfmpegVideoClipBuilder(output_dir=str(output_dir))
 
 
@@ -140,8 +140,8 @@ def build_video_meta(
 def _runtime_dir(work_dir: str | Path | None, name: str) -> Path:
     """Return a runtime subdirectory path rooted at ``work_dir`` or cwd."""
     if work_dir is None:
-        return Path("data/runtime") / name
-    return Path(work_dir) / "data/runtime" / name
+        return Path("data/08_runtime") / name
+    return Path(work_dir) / "data/08_runtime" / name
 
 
 def run_one(

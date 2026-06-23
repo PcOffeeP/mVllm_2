@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""v2 数据产物质量校验脚本。
+"""数据产物质量校验脚本。
 
-读取 ``data/04_merged_v2/`` 下的训练/验证/测试产物，执行强制检查并输出
-``data/metadata_v2/quality_check_report.json``。
+读取 ``data/06_merged/`` 下的训练/验证/测试产物，执行强制检查并输出
+``data/07_metadata/quality_check_report.json``。
 """
 from __future__ import annotations
 
@@ -19,10 +19,10 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 DATA_DIR = _PROJECT_ROOT / "data"
 VIDEO_DIR = DATA_DIR / "01_videos"
-SUBVIDEO_DIR = DATA_DIR / "02_subvideos_v2"
-META_V2_DIR = DATA_DIR / "metadata_v2"
-SPLITS_V2_DIR = DATA_DIR / "03_splits_v2"
-MERGED_V2_DIR = DATA_DIR / "04_merged_v2"
+SUBVIDEO_DIR = DATA_DIR / "03_subvideos"
+META_V2_DIR = DATA_DIR / "07_metadata"
+SPLITS_V2_DIR = DATA_DIR / "05_splits"
+MERGED_V2_DIR = DATA_DIR / "06_merged"
 
 REPORT_PATH = META_V2_DIR / "quality_check_report.json"
 
@@ -586,7 +586,7 @@ def run_quality_check(
         errors.append(
             {
                 "check": "existence",
-                "detail": "merged_v2_directory_missing",
+                "detail": "merged_directory_missing",
                 "path": str(merged_dir),
             }
         )
@@ -619,18 +619,18 @@ def run_quality_check(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="v2 数据产物质量校验")
+    parser = argparse.ArgumentParser(description="数据产物质量校验")
     parser.add_argument(
         "--merged-dir",
         type=Path,
         default=MERGED_V2_DIR,
-        help="v2 产物目录（默认：data/04_merged_v2）",
+        help="产物目录（默认：data/06_merged）",
     )
     parser.add_argument(
         "--subvideos-meta",
         type=Path,
         default=META_V2_DIR / "subvideos_meta.json",
-        help="v2 子视频元数据路径（默认：data/metadata_v2/subvideos_meta.json）",
+        help="子视频元数据路径（默认：data/07_metadata/subvideos_meta.json）",
     )
     parser.add_argument(
         "--report",

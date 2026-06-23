@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""v2 数据版本冻结脚本。
+"""数据版本冻结脚本。
 
 收集代码 commit、配置哈希、处理器指纹、输入/划分/样本清单哈希、统计报告与
-磁盘占用，输出 ``data/metadata_v2/data_version_lock.json``。
+磁盘占用，输出 ``data/07_metadata/data_version_lock.json``。
 """
 from __future__ import annotations
 
@@ -22,10 +22,10 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 DATA_DIR = _PROJECT_ROOT / "data"
 VIDEO_DIR = DATA_DIR / "01_videos"
-SUBVIDEO_V2_DIR = DATA_DIR / "02_subvideos_v2"
-SPLITS_V2_DIR = DATA_DIR / "03_splits_v2"
-MERGED_V2_DIR = DATA_DIR / "04_merged_v2"
-META_V2_DIR = DATA_DIR / "metadata_v2"
+SUBVIDEO_V2_DIR = DATA_DIR / "03_subvideos"
+SPLITS_V2_DIR = DATA_DIR / "05_splits"
+MERGED_V2_DIR = DATA_DIR / "06_merged"
+META_V2_DIR = DATA_DIR / "07_metadata"
 
 LOCK_PATH = META_V2_DIR / "data_version_lock.json"
 
@@ -236,8 +236,8 @@ def run_freeze(
         "sample_manifest": _collect_sample_manifest_sha256(merged_dir),
         "statistics": _collect_statistics(merged_dir),
         "disk_usage_bytes": {
-            "02_subvideos_v2": _dir_size_bytes(subvideo_dir),
-            "04_merged_v2": _dir_size_bytes(merged_dir),
+            "03_subvideos": _dir_size_bytes(subvideo_dir),
+            "06_merged": _dir_size_bytes(merged_dir),
         },
     }
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -246,36 +246,36 @@ def run_freeze(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="v2 数据版本冻结")
+    parser = argparse.ArgumentParser(description="数据版本冻结")
     parser.add_argument(
         "--merged-dir",
         type=Path,
         default=MERGED_V2_DIR,
-        help="v2 产物目录（默认：data/04_merged_v2）",
+        help="产物目录（默认：data/06_merged）",
     )
     parser.add_argument(
         "--subvideos-meta",
         type=Path,
         default=META_V2_DIR / "subvideos_meta.json",
-        help="v2 子视频元数据路径",
+        help="子视频元数据路径",
     )
     parser.add_argument(
         "--video-meta",
         type=Path,
         default=META_V2_DIR / "video_meta.json",
-        help="v2 视频元数据路径",
+        help="视频元数据路径",
     )
     parser.add_argument(
         "--splits-dir",
         type=Path,
         default=SPLITS_V2_DIR,
-        help="v2 划分目录",
+        help="划分目录",
     )
     parser.add_argument(
         "--subvideo-dir",
         type=Path,
         default=SUBVIDEO_V2_DIR,
-        help="v2 子视频媒体目录",
+        help="子视频媒体目录",
     )
     parser.add_argument(
         "--lock",

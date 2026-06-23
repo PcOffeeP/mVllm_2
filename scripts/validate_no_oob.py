@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""独立校验脚本：扫描 data/04_merged_v2 与 metadata_v2，验证新 interval 数据产物合规性。"""
+"""独立校验脚本：扫描 data/06_merged 与 07_metadata，验证新 interval 数据产物合规性。"""
 from __future__ import annotations
 
 import json
@@ -10,10 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 VIDEO_DIR = DATA_DIR / "01_videos"
-SUBVIDEO_DIR = DATA_DIR / "02_subvideos_v2"
-META_DIR = DATA_DIR / "metadata_v2"
-SPLITS_DIR = DATA_DIR / "03_splits_v2"
-MERGED_DIR = DATA_DIR / "04_merged_v2"
+SUBVIDEO_DIR = DATA_DIR / "03_subvideos"
+META_DIR = DATA_DIR / "07_metadata"
+SPLITS_DIR = DATA_DIR / "05_splits"
+MERGED_DIR = DATA_DIR / "06_merged"
 
 FRACTURE_TYPES = {
     "韧性断裂",
@@ -171,7 +171,11 @@ def _validate_train_ratio(errors: list) -> None:
         if not isinstance(data, list):
             errors.append(("ratio", path.name, "missing"))
             continue
-        pos = sum(1 for s in data if s.get("has_fracture_canonical", s.get("has_fracture", False)))
+        pos = sum(
+            1
+            for s in data
+            if s.get("has_fracture") is True and s.get("type") in FRACTURE_TYPES
+        )
         neg = len(data) - pos
         if pos == 0:
             errors.append(("ratio", path.name, "no_positive_samples"))

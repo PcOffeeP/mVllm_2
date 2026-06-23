@@ -24,14 +24,14 @@ def _write_json(path: Path, data: object) -> None:
 def fake_project(tmp_path: Path) -> Path:
     """创建包含最小 v2 产物与配置的临时项目目录。"""
     # 输入视频元数据
-    video_meta = tmp_path / "data" / "metadata_v2" / "video_meta.json"
+    video_meta = tmp_path / "data" / "07_metadata" / "video_meta.json"
     _write_json(
         video_meta,
         [{"video_id": f"video_{i:04d}"} for i in range(1, 111)],
     )
 
     # 划分文件
-    splits_dir = tmp_path / "data" / "03_splits_v2"
+    splits_dir = tmp_path / "data" / "05_splits"
     splits_dir.mkdir(parents=True)
     for name in [
         "fold_0_train.json",
@@ -45,7 +45,7 @@ def fake_project(tmp_path: Path) -> Path:
         _write_json(splits_dir / name, {"video_ids": ["video_0001"], "split": name.replace(".json", "")})
 
     # 产物目录
-    merged_dir = tmp_path / "data" / "04_merged_v2"
+    merged_dir = tmp_path / "data" / "06_merged"
     merged_dir.mkdir(parents=True)
     sample = {
         "id": "video_0001_full",
@@ -76,7 +76,7 @@ def fake_project(tmp_path: Path) -> Path:
         p.write_text("{}\n", encoding="utf-8")
 
     # 子视频媒体目录
-    subvideo_dir = tmp_path / "data" / "02_subvideos_v2"
+    subvideo_dir = tmp_path / "data" / "03_subvideos"
     subvideo_dir.mkdir(parents=True)
     (subvideo_dir / "placeholder.mp4").write_bytes(b"x")
 
@@ -85,7 +85,7 @@ def fake_project(tmp_path: Path) -> Path:
 
 class TestFieldPresence:
     def test_lock_contains_required_fields(self, fake_project: Path):
-        merged_dir = fake_project / "data" / "04_merged_v2"
+        merged_dir = fake_project / "data" / "06_merged"
         lock_path = fake_project / "data_version_lock.json"
         config_files = [
             fake_project / "finetune" / "dataset_info.json",
@@ -94,10 +94,10 @@ class TestFieldPresence:
         ]
         lock = run_freeze(
             merged_dir=merged_dir,
-            subvideos_meta_path=fake_project / "data" / "metadata_v2" / "subvideos_meta.json",
-            video_meta_path=fake_project / "data" / "metadata_v2" / "video_meta.json",
-            splits_dir=fake_project / "data" / "03_splits_v2",
-            subvideo_dir=fake_project / "data" / "02_subvideos_v2",
+            subvideos_meta_path=fake_project / "data" / "07_metadata" / "subvideos_meta.json",
+            video_meta_path=fake_project / "data" / "07_metadata" / "video_meta.json",
+            splits_dir=fake_project / "data" / "05_splits",
+            subvideo_dir=fake_project / "data" / "03_subvideos",
             lock_path=lock_path,
             config_files=config_files,
             project_root=fake_project,
@@ -115,11 +115,11 @@ class TestFieldPresence:
 
     def test_input_video_count(self, fake_project: Path):
         lock = run_freeze(
-            merged_dir=fake_project / "data" / "04_merged_v2",
-            subvideos_meta_path=fake_project / "data" / "metadata_v2" / "subvideos_meta.json",
-            video_meta_path=fake_project / "data" / "metadata_v2" / "video_meta.json",
-            splits_dir=fake_project / "data" / "03_splits_v2",
-            subvideo_dir=fake_project / "data" / "02_subvideos_v2",
+            merged_dir=fake_project / "data" / "06_merged",
+            subvideos_meta_path=fake_project / "data" / "07_metadata" / "subvideos_meta.json",
+            video_meta_path=fake_project / "data" / "07_metadata" / "video_meta.json",
+            splits_dir=fake_project / "data" / "05_splits",
+            subvideo_dir=fake_project / "data" / "03_subvideos",
             lock_path=fake_project / "lock.json",
             config_files=[],
             project_root=fake_project,
@@ -136,21 +136,21 @@ class TestHashReproducibility:
             fake_project / "pyproject.toml",
         ]
         lock1 = run_freeze(
-            merged_dir=fake_project / "data" / "04_merged_v2",
-            subvideos_meta_path=fake_project / "data" / "metadata_v2" / "subvideos_meta.json",
-            video_meta_path=fake_project / "data" / "metadata_v2" / "video_meta.json",
-            splits_dir=fake_project / "data" / "03_splits_v2",
-            subvideo_dir=fake_project / "data" / "02_subvideos_v2",
+            merged_dir=fake_project / "data" / "06_merged",
+            subvideos_meta_path=fake_project / "data" / "07_metadata" / "subvideos_meta.json",
+            video_meta_path=fake_project / "data" / "07_metadata" / "video_meta.json",
+            splits_dir=fake_project / "data" / "05_splits",
+            subvideo_dir=fake_project / "data" / "03_subvideos",
             lock_path=fake_project / "lock1.json",
             config_files=config_files,
             project_root=fake_project,
         )
         lock2 = run_freeze(
-            merged_dir=fake_project / "data" / "04_merged_v2",
-            subvideos_meta_path=fake_project / "data" / "metadata_v2" / "subvideos_meta.json",
-            video_meta_path=fake_project / "data" / "metadata_v2" / "video_meta.json",
-            splits_dir=fake_project / "data" / "03_splits_v2",
-            subvideo_dir=fake_project / "data" / "02_subvideos_v2",
+            merged_dir=fake_project / "data" / "06_merged",
+            subvideos_meta_path=fake_project / "data" / "07_metadata" / "subvideos_meta.json",
+            video_meta_path=fake_project / "data" / "07_metadata" / "video_meta.json",
+            splits_dir=fake_project / "data" / "05_splits",
+            subvideo_dir=fake_project / "data" / "03_subvideos",
             lock_path=fake_project / "lock2.json",
             config_files=config_files,
             project_root=fake_project,
@@ -212,15 +212,15 @@ class TestCli:
         rc = main(
             [
                 "--merged-dir",
-                str(fake_project / "data" / "04_merged_v2"),
+                str(fake_project / "data" / "06_merged"),
                 "--subvideos-meta",
-                str(fake_project / "data" / "metadata_v2" / "subvideos_meta.json"),
+                str(fake_project / "data" / "07_metadata" / "subvideos_meta.json"),
                 "--video-meta",
-                str(fake_project / "data" / "metadata_v2" / "video_meta.json"),
+                str(fake_project / "data" / "07_metadata" / "video_meta.json"),
                 "--splits-dir",
-                str(fake_project / "data" / "03_splits_v2"),
+                str(fake_project / "data" / "05_splits"),
                 "--subvideo-dir",
-                str(fake_project / "data" / "02_subvideos_v2"),
+                str(fake_project / "data" / "03_subvideos"),
                 "--lock",
                 str(lock_path),
                 "--project-root",

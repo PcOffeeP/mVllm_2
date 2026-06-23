@@ -12,12 +12,12 @@ from pathlib import Path
 
 
 TARGET_DIRS = [
-    "data/03_splits/",
-    "data/04_merged/",
-    "data/02_subvideos/",
-    "data/03_frames/",
-    "data/metadata/",
-    "data/runtime/",
+    "data/05_splits/",
+    "data/06_merged/",
+    "data/03_subvideos/",
+    "data/04_frames/",
+    "data/07_metadata/",
+    "data/08_runtime/",
 ]
 
 PROTECTED_DIRS = [

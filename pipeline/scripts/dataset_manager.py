@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-模型微调数据管道：数据集管理器（v2 五字段契约）
+模型微调数据管道：数据集管理器（五字段契约）
 
 功能：
 1. 读取 CSV 标注并保留所有原字段。
@@ -30,8 +30,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CSV_PATH_DEFAULT = PROJECT_ROOT / "data" / "02_annotations" / "all_videos_tag.csv"
 VIDEO_DIR_DEFAULT = PROJECT_ROOT / "data" / "01_videos"
-METADATA_DIR_DEFAULT = PROJECT_ROOT / "data" / "metadata_v2"
-SPLITS_DIR_DEFAULT = PROJECT_ROOT / "data" / "03_splits_v2"
+METADATA_DIR_DEFAULT = PROJECT_ROOT / "data" / "07_metadata"
+SPLITS_DIR_DEFAULT = PROJECT_ROOT / "data" / "05_splits"
 
 FRACTURE_TYPES = [
     "韧性断裂",
@@ -690,7 +690,7 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="v2 五字段契约数据集管理器")
+    parser = argparse.ArgumentParser(description="五字段契约数据集管理器")
     parser.add_argument("--csv", type=Path, default=CSV_PATH_DEFAULT)
     parser.add_argument("--video-dir", type=Path, default=VIDEO_DIR_DEFAULT)
     parser.add_argument("--metadata-dir", type=Path, default=METADATA_DIR_DEFAULT)

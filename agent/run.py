@@ -69,13 +69,13 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output", "-o",
-        default="data/runtime/results/run.jsonl",
-        help="Result output JSONL path. (default: data/runtime/results/run.jsonl)",
+        default="data/08_runtime/results/run.jsonl",
+        help="Result output JSONL path. (default: data/08_runtime/results/run.jsonl)",
     )
     parser.add_argument(
         "--work-dir",
-        default="data/runtime",
-        help="Runtime working directory. (default: data/runtime)",
+        default="data/08_runtime",
+        help="Runtime working directory. (default: data/08_runtime)",
     )
     parser.add_argument(
         "--mock",

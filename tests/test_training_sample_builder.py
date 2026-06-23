@@ -26,8 +26,8 @@ def _subvideo(
     return {
         "subvideo_id": f"{video_id}_focus_3s_50pct",
         "source_video": video_id,
-        "video_path": video_path or f"02_subvideos_v2/{video_id}_focus_3s_50pct.mp4",
-        "frame_paths": [f"03_frames_v2/{video_id}_focus_3s_50pct/frame_{i:04d}.jpg" for i in range(24)],
+        "video_path": video_path or f"03_subvideos/{video_id}_focus_3s_50pct.mp4",
+        "frame_paths": [f"04_frames/{video_id}_focus_3s_50pct/frame_{i:04d}.jpg" for i in range(24)],
         "start_time": 143.9,
         "end_time": 146.9,
         "start_frame": 4317,
@@ -76,7 +76,7 @@ def test_convert_subvideo_to_sample_sharegpt_format():
     sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
 
     assert sample["id"] == sub["subvideo_id"]
-    assert sample["videos"] == ["data/02_subvideos_v2/video_0001_focus_3s_50pct.mp4"]
+    assert sample["videos"] == ["data/03_subvideos/video_0001_focus_3s_50pct.mp4"]
     assert len(sample["messages"]) == 3
 
     roles = [m["role"] for m in sample["messages"]]
@@ -121,10 +121,10 @@ def test_convert_subvideo_prefixes_subvideo_dir():
     sub = _subvideo(
         video_id="video_0001",
         has_fracture=True,
-        video_path="02_subvideos_v2/video_0001_focus_3s_50pct.mp4",
+        video_path="03_subvideos/video_0001_focus_3s_50pct.mp4",
     )
     sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
-    assert sample["videos"] == ["data/02_subvideos_v2/video_0001_focus_3s_50pct.mp4"]
+    assert sample["videos"] == ["data/03_subvideos/video_0001_focus_3s_50pct.mp4"]
 
 
 def test_convert_subvideo_prefixes_frames_dir():
@@ -132,10 +132,10 @@ def test_convert_subvideo_prefixes_frames_dir():
     sub = _subvideo(
         video_id="video_0001",
         has_fracture=True,
-        video_path="03_frames_v2/video_0001_focus_3s_50pct.mp4",
+        video_path="04_frames/video_0001_focus_3s_50pct.mp4",
     )
     sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
-    assert sample["videos"] == ["data/03_frames_v2/video_0001_focus_3s_50pct.mp4"]
+    assert sample["videos"] == ["data/04_frames/video_0001_focus_3s_50pct.mp4"]
 
 
 def test_convert_subvideo_preserves_absolute_path():
@@ -357,7 +357,7 @@ def test_build_test_artifacts_uses_video_meta_path(tmp_path):
                     "video_id": "video_test",
                     "has_fracture": True,
                     "type": "韧性断裂",
-                    "video_path": "02_subvideos_v2/video_test_focus_3s.mp4",
+                    "video_path": "03_subvideos/video_test_focus_3s.mp4",
                 }
             ]
         ),
@@ -375,7 +375,7 @@ def test_build_test_artifacts_uses_video_meta_path(tmp_path):
 
     inputs = json.loads((out_dir / "test_inputs.json").read_text(encoding="utf-8"))
     assert len(inputs) == 1
-    assert inputs[0]["video_path"] == "data/02_subvideos_v2/video_test_focus_3s.mp4"
+    assert inputs[0]["video_path"] == "data/03_subvideos/video_test_focus_3s.mp4"
 
 
 def test_build_test_artifacts_falls_back_to_default_prefix(tmp_path):
