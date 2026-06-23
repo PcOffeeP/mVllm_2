@@ -155,17 +155,18 @@ def _set_mock_mode(enabled: bool) -> None:
 
 def _result_to_row(result: dict[str, Any]) -> dict[str, Any]:
     """Normalize a runner result into a flat table row."""
+    inner = result.get("result", {}) if isinstance(result, dict) else {}
     return {
-        "video_id": result.get("video_id", ""),
-        "has_fracture": result.get("has_fracture", False),
-        "time_estimate": result.get("time_estimate"),
-        "type": result.get("type", ""),
-        "location": result.get("location", ""),
-        "confidence": result.get("confidence", 0.0),
-        "confidence_level": result.get("confidence_level", ""),
+        "video_id": inner.get("video_id", ""),
+        "has_fracture": inner.get("status") == "fracture",
+        "time_estimate": inner.get("time_range"),
+        "type": inner.get("fracture_type", ""),
+        "location": inner.get("location", ""),
+        "confidence": inner.get("confidence", 0.0),
+        "confidence_level": inner.get("confidence_level", ""),
         "rounds": result.get("rounds", 0),
-        "status": "failed" if result.get("status") == "failed" else "success",
-        "error": result.get("error", ""),
+        "status": "failed" if not result.get("ok", True) else "success",
+        "error": result.get("error", {}).get("message", "") if isinstance(result.get("error"), dict) else "",
     }
 
 
@@ -288,14 +289,15 @@ def _render_single_result(result: Any) -> None:
     """Render the final result summary for a single video."""
     if st is None:
         return
-    video_id = result.get("video_id", "")
-    status = result.get("status", "")
+    inner = result.get("result", {}) if isinstance(result, dict) else {}
+    video_id = inner.get("video_id", "")
+    status = inner.get("status", "")
     has_fracture = status == "fracture"
     cols = st.columns(4)
     cols[0].metric("video_id", video_id)
     cols[1].metric("status", status)
-    cols[2].metric("fracture_type", result.get("fracture_type") or "-")
-    cols[3].metric("confidence", result.get("confidence"))
+    cols[2].metric("fracture_type", inner.get("fracture_type") or "-")
+    cols[3].metric("confidence", inner.get("confidence"))
     if hasattr(result, "model_dump"):
         st.json(result.model_dump())
     else:

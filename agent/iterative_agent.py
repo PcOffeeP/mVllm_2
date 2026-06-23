@@ -34,6 +34,8 @@ from agent.schema import (
     FinalOutput,
     FRACTURE_CLASSES,
     LocationType,
+    RunnerError,
+    RunnerResult,
     SampleAndInferResult,
     ToolSampleAndInfer,
     ToolTerminate,
@@ -118,8 +120,11 @@ class IterativeAgent:
         self.low_conf_count = 0
         self.conflict_count = 0
         self.focus_miss_count = 0
+        self.infra_fail_count = 0
+        self.infra_terminated = False
         self.last_round_confidence_level = "不可信"
         self.best_positive_round: dict[str, Any] | None = None
+        self.no_fracture_windows_covered: set[int] = set()
 
         self.clip_builder = clip_builder or FfmpegVideoClipBuilder()
         self.inference_client = inference_client or self._default_inference_client()
@@ -391,8 +396,18 @@ class IterativeAgent:
         """Build a ``SampleAndInferResult`` from the internal result dict.
 
         Only the six contract fields are exposed to the decision model.
+        Infrastructure errors carry ``infra_error`` instead of
+        ``validation_error``; map them to a validation_error for the
+        LLM-facing envelope so the decision model can see the failure.
         """
         validation_error = internal.get("validation_error")
+        infra_error = internal.get("infra_error")
+        if validation_error is None and infra_error is not None:
+            validation_error = {
+                "code": infra_error.get("code", "infra_failed"),
+                "message": infra_error.get("message", "基础设施故障"),
+                "field": None,
+            }
         return SampleAndInferResult(
             ok=bool(internal.get("ok")),
             sample_range=internal.get("sample_range", [0.0, 0.0]),
@@ -432,25 +447,27 @@ class IterativeAgent:
                 )
             return True, "模型明确报告无法识别"
 
-        # -- no_fracture: must have global-scope evidence --
+        # -- no_fracture: must cover all five fixed overlapping windows --
         if status == "no_fracture":
-            is_global_scope = (
-                self.candidate[0] <= 0.0
-                and self.candidate[1] >= self.video_meta.get("duration", 0.0)
+            if self._all_no_fracture_windows_covered():
+                return True, "所有 5 个覆盖窗口均已确认无断裂"
+            return False, (
+                f"无断裂覆盖不完整，还需覆盖: {self._uncovered_windows_desc()}"
             )
-            if self.state == "NO_FRACTURE" and is_global_scope:
-                if self.no_fracture_count >= 2:
-                    return True, "NO_FRACTURE 状态下连续 2 轮确认无断裂（全局范围）"
-            return False, "无断裂判定尚未稳定，请继续验证（仅在 NO_FRACTURE 全局范围可终止）"
 
         # -- fracture: check evidence threshold and convergence --
         if status == "fracture":
             evidence_rounds: list[int] = args.get("evidence_rounds") or []
-            if not evidence_rounds:
-                return False, "evidence_rounds 不能为空"
+            # Fix 3b: deduplicate evidence_rounds; reject [-1, -1] and [0, 0].
+            unique_rounds = list(set(r for r in evidence_rounds if r >= 0))
+            if len(unique_rounds) < 2:
+                return False, (
+                    f"去重后 evidence_rounds 不足 2 个独立轮次 "
+                    f"(原始: {evidence_rounds}, 去重: {unique_rounds})"
+                )
 
             positive_evidence = [
-                r for r in evidence_rounds
+                r for r in unique_rounds
                 if r < len(self.history) and self._round_has_fracture(self.history[r])
             ]
             if len(positive_evidence) < 2:
@@ -473,21 +490,27 @@ class IterativeAgent:
                         f"正证据轮次 {positive_evidence} 的 inferred_time_range "
                         f"无交集，无法收敛，请继续验证"
                     )
+                # Fix 3d: evidence time_range width must be ≤ tolerance.
+                if inter_end - inter_start > self.tolerance:
+                    return False, (
+                        f"evidence time_range 交集宽度 "
+                        f"{inter_end - inter_start:.2f}s 超过 "
+                        f"tolerance ({self.tolerance}s)，请继续验证"
+                    )
 
             # Must converge or exhaust rounds.
             if self.candidate[1] - self.candidate[0] <= self.tolerance:
                 if self.last_round_confidence_level == "不可信":
                     return False, "区间虽收敛但最新一轮置信度不可信，请继续验证"
                 return True, "候选区间宽度 ≤ tolerance"
-            # --- Fix 3c: max_rounds requires convergence ---
+            # --- Fix 3d: max_rounds requires strict tolerance (no 2× relaxation) ---
             if round_idx >= self.max_rounds - 1:
                 width = self.candidate[1] - self.candidate[0]
-                k_tolerance = self.tolerance * 2  # reasonable k factor for exhaustion path
-                if width <= k_tolerance:
-                    return True, "达到 max_rounds 且候选区间宽度 ≤ 2×tolerance"
+                if width <= self.tolerance:
+                    return True, "达到 max_rounds 且候选区间宽度 ≤ tolerance"
                 return False, (
                     f"达到 max_rounds 但候选区间宽度 {width:.2f}s 超过 "
-                    f"2×tolerance ({k_tolerance:.2f}s)，无法终止"
+                    f"tolerance ({self.tolerance:.2f}s)，无法终止"
                 )
 
             return False, "区间尚未收敛，请继续调用 sample_and_infer"
@@ -497,8 +520,55 @@ class IterativeAgent:
     # ------------------------------------------------------------------
     # State machine
     # ------------------------------------------------------------------
+    @property
+    def _no_fracture_windows(self) -> list[list[float]]:
+        """Five fixed overlapping windows covering the full video duration.
+
+        Normalised fractions [0, 0.4], [0.2, 0.6], [0.4, 0.8], [0.6, 1.0],
+        [0, 1.0] mapped to the actual video duration.
+        """
+        duration = self.video_meta.get("duration", 0.0)
+        if duration <= 0:
+            return [[0.0, 0.0]] * 5
+        return [
+            [0.0, 0.4 * duration],
+            [0.2 * duration, 0.6 * duration],
+            [0.4 * duration, 0.8 * duration],
+            [0.6 * duration, duration],
+            [0.0, duration],
+        ]
+
+    def _all_no_fracture_windows_covered(self) -> bool:
+        """Return True when all five overlapping windows have been sampled
+        with ``has_fracture=False`` at least once."""
+        return len(self.no_fracture_windows_covered) >= 5
+
+    def _uncovered_windows_desc(self) -> str:
+        """Human-readable description of windows not yet covered."""
+        windows = self._no_fracture_windows
+        uncovered = sorted(set(range(5)) - self.no_fracture_windows_covered)
+        return ", ".join(
+            f"窗口{i}({windows[i][0]:.1f}-{windows[i][1]:.1f}s)" for i in uncovered
+        )
+
+    # ------------------------------------------------------------------
+    # State machine
+    # ------------------------------------------------------------------
     def _transition(self, result: dict[str, Any]) -> None:
         """Update state, candidate interval and counters from a tool result."""
+        infra_error = result.get("infra_error")
+        if infra_error:
+            # Infrastructure failures must not drive state transitions, fracture
+            # counting, or candidate updates.
+            self.infra_fail_count += 1
+            if self.infra_fail_count >= 2:
+                self.state = "TERMINATED"
+                self.infra_terminated = True
+            return
+
+        # Reset infra failure counter on any non-infra round.
+        self.infra_fail_count = 0
+
         validation_error = result.get("validation_error")
         if validation_error:
             # Validation failures must not drive state transitions.  Record low
@@ -531,6 +601,13 @@ class IterativeAgent:
         if has_fracture is False:
             self.last_round_confidence_level = confidence_level
 
+            # Track window coverage for no_fracture: every has_fracture=False
+            # round may cover one or more of the five fixed overlapping windows.
+            sample_range = result.get("sample_range", [0.0, 0.0])
+            for i, (w_start, w_end) in enumerate(self._no_fracture_windows):
+                if sample_range[0] <= w_start + 1e-9 and sample_range[1] >= w_end - 1e-9:
+                    self.no_fracture_windows_covered.add(i)
+
             is_global_scope = (
                 self.state == "INITIAL"
                 or (
@@ -554,6 +631,7 @@ class IterativeAgent:
         # Fracture path
         # ------------------------------------------------------------------
         self.no_fracture_count = 0
+        self.no_fracture_windows_covered.clear()
         if self.state in ("INITIAL", "NO_FRACTURE"):
             self.state = "NARROWING"
 
@@ -638,7 +716,16 @@ class IterativeAgent:
             return self._build_non_fracture_args(tool_args)
 
         if status == "fracture":
-            positive_rounds = [r for r in self.history if self._round_has_fracture(r)]
+            # Fix 3c: only use evidence_rounds specified by the LLM, not all history.
+            evidence_rounds: list[int] = tool_args.get("evidence_rounds") or []
+            if evidence_rounds:
+                positive_rounds = [
+                    self.history[r] for r in evidence_rounds
+                    if r < len(self.history) and self._round_has_fracture(self.history[r])
+                ]
+            else:
+                # Force-terminate path: no evidence_rounds provided, use all history.
+                positive_rounds = [r for r in self.history if self._round_has_fracture(r)]
             if positive_rounds:
                 return self._build_fracture_args(positive_rounds, tool_args)
             # No positive evidence – downgrade.
@@ -767,6 +854,20 @@ class IterativeAgent:
 
     def _force_terminate(self) -> dict[str, Any]:
         """Construct a final output when rounds are exhausted or conflicts unresolvable."""
+        # Fix 3a: consecutive infrastructure failures → RunnerResult(ok=false).
+        if self.infra_terminated:
+            return RunnerResult(
+                ok=False,
+                error=RunnerError(
+                    stage="internal",
+                    code="consecutive_infra_failures",
+                    message=(
+                        f"连续 {self.infra_fail_count} 轮基础设施失败，"
+                        f"无法完成分析"
+                    ),
+                ),
+            ).model_dump()
+
         positive_rounds = [r for r in self.history if self._round_has_fracture(r)]
         if self.state == "NO_FRACTURE" or not positive_rounds:
             if self.state == "NO_FRACTURE" and positive_rounds:
@@ -909,8 +1010,9 @@ class IterativeAgent:
             )
         except Exception as exc:
             logger.warning("Clip build failed: %s", exc)
-            return self._error_result(
+            return self._infra_error_result(
                 sample_range,
+                stage="sampling",
                 code="sampling_error",
                 message=f"无法构建临时视频片段: {exc}",
             )
@@ -924,11 +1026,11 @@ class IterativeAgent:
             )
         except Exception as exc:
             logger.warning("Inference transport/execution failed: %s", exc)
-            return self._error_result(
+            return self._infra_error_result(
                 sample_range,
+                stage="inference_transport",
                 code="inference_transport",
                 message=f"推理请求失败: {exc}",
-                attempts=1,
             )
 
         # Build internal result base.
@@ -1172,6 +1274,33 @@ class IterativeAgent:
             "inferred_frame_range": None,
             "validation_error": {"code": code, "message": message, "field": field},
             "attempts": attempts,
+            "manifest": [],
+            "model_video_path": None,
+            "round_confidence_level": "不可信",
+        }
+
+    def _infra_error_result(
+        self,
+        sample_range: list[float],
+        stage: str,
+        code: str,
+        message: str,
+    ) -> dict[str, Any]:
+        """Build an infrastructure error internal result.
+
+        Infrastructure failures (sampling, inference transport) are NOT
+        validation errors.  They carry ``infra_error`` so that
+        ``_transition`` can distinguish them from model-level failures.
+        """
+        return {
+            "ok": False,
+            "sample_range": sample_range,
+            "model_output": None,
+            "inferred_time_range": None,
+            "inferred_frame_range": None,
+            "infra_error": {"stage": stage, "code": code, "message": message},
+            "validation_error": None,
+            "attempts": 1,
             "manifest": [],
             "model_video_path": None,
             "round_confidence_level": "不可信",

@@ -184,6 +184,9 @@ def test_llama_factory_inference_client_sends_base64(tmp_path: Path):
         captured["messages"] = messages
         captured["extra_body"] = extra_body
         mock_completion = MagicMock()
+        mock_completion.model_dump.return_value = {}
+        mock_completion.model_extra = {}
+        mock_completion.preprocessing = None
         mock_completion.choices = [MagicMock()]
         mock_completion.choices[0].message.content = (
             '{"has_fracture": true, "fracture_between": [2, 3], '
@@ -232,6 +235,9 @@ def test_llama_factory_inference_client_clip_build_result_sends_manifest(
     def fake_create(*, model, messages, temperature, max_tokens, extra_body=None):
         captured["extra_body"] = extra_body
         mock_completion = MagicMock()
+        mock_completion.model_dump.return_value = {}
+        mock_completion.model_extra = {}
+        mock_completion.preprocessing = None
         mock_completion.choices = [MagicMock()]
         mock_completion.choices[0].message.content = (
             '{"has_fracture": false, "fracture_between": null, '
@@ -266,6 +272,9 @@ def test_llama_factory_inference_client_transport_retry(tmp_path: Path, monkeypa
         status_code = 503
 
     mock_completion = MagicMock()
+    mock_completion.model_dump.return_value = {}
+    mock_completion.model_extra = {}
+    mock_completion.preprocessing = None
     mock_completion.choices = [MagicMock()]
     mock_completion.choices[0].message.content = (
         '{"has_fracture": false, "fracture_between": null, '
@@ -348,6 +357,9 @@ def test_llama_factory_inference_client_correction_then_success(
     def fake_create(*, model, messages, temperature, max_tokens, extra_body=None):
         calls.append(messages)
         completion = MagicMock()
+        completion.model_dump.return_value = {}
+        completion.model_extra = {}
+        completion.preprocessing = None
         completion.choices = [MagicMock()]
         if len(calls) == 1:
             completion.choices[0].message.content = "not valid json"
@@ -389,6 +401,9 @@ def test_llama_factory_inference_client_correction_exhausted(
 
     def make_completion(content: str):
         completion = MagicMock()
+        completion.model_dump.return_value = {}
+        completion.model_extra = {}
+        completion.preprocessing = None
         completion.choices = [MagicMock()]
         completion.choices[0].message.content = content
         return completion
@@ -465,11 +480,10 @@ def test_validate_preprocessing_meta_none():
 
 
 def test_validate_preprocessing_meta_max_frames_not_8():
-    """max_frames != 8 is a warning, not a hard error (non-fatal)."""
+    """max_frames != 8 is fatal."""
     from agent.inference import _validate_preprocessing_meta
     meta = {"max_frames": 4, "frames": []}
-    # max_frames != 8 is downgraded to warning only; the meta is still usable.
-    assert _validate_preprocessing_meta(meta) is None
+    assert _validate_preprocessing_meta(meta) == "max_frames_not_8"
 
 
 def test_validate_preprocessing_meta_too_many_frames():
@@ -510,11 +524,25 @@ def test_validate_preprocessing_meta_valid():
         "max_frames": 8,
         "frames": [
             {"index": 0, "timestamp": 0.0},
-            {"index": 3, "timestamp": 1.5},
-            {"index": 7, "timestamp": 3.0},
+            {"index": 1, "timestamp": 1.5},
+            {"index": 2, "timestamp": 3.0},
         ],
     }
     assert _validate_preprocessing_meta(meta) is None
+
+
+def test_validate_preprocessing_meta_non_continuous_indices():
+    """Indices with gaps (non-continuous) are fatal."""
+    from agent.inference import _validate_preprocessing_meta
+    meta = {
+        "max_frames": 8,
+        "frames": [
+            {"index": 0, "timestamp": 0.0},
+            {"index": 2, "timestamp": 1.0},
+            {"index": 5, "timestamp": 2.0},
+        ],
+    }
+    assert _validate_preprocessing_meta(meta) == "non_monotonic_indices"
 
 
 def test_extract_preprocessing_from_response_model_dump():

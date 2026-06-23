@@ -226,9 +226,9 @@ def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
 
     Checks (in order):
     - ``meta`` is not ``None``.
-    - ``meta["max_frames"]`` is a positive integer (warns if != 8).
-    - ``len(meta["frames"]) <= meta["max_frames"]``.
-    - frame ``index`` values are strictly monotonically increasing.
+    - ``meta["max_frames"]`` is a positive integer and equals 8 (fatal otherwise).
+    - ``len(meta["frames"]) <= 8`` (fewer frames allowed for short videos).
+    - frame ``index`` values are consecutive and start at 0.
     """
     if meta is None:
         return "missing_or_invalid_preprocessing_metadata"
@@ -237,20 +237,17 @@ def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
     if not isinstance(max_frames, int) or max_frames <= 0:
         return "max_frames_not_positive_integer"
     if max_frames != 8:
-        logger.warning(
-            "Preprocessing max_frames=%s, expected 8 (non-fatal)", max_frames
-        )
+        return "max_frames_not_8"
 
     frames = meta.get("frames", [])
-    if len(frames) > max_frames:
+    if len(frames) > 8:
         logger.warning(
             "Preprocessing frames count %d exceeds max_frames %d",
             len(frames), max_frames,
         )
         return "too_many_frames"
 
-    # Check monotonic indices.
-    last_index: int | None = None
+    # Check monotonic and continuous indices (0, 1, 2, ...).
     for i, entry in enumerate(frames):
         idx = entry.get("index")
         if not isinstance(idx, int) or idx < 0:
@@ -258,13 +255,12 @@ def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
                 "Preprocessing frame[%d] has invalid index: %r", i, idx
             )
             return "non_monotonic_indices"
-        if last_index is not None and idx <= last_index:
+        if idx != i:
             logger.warning(
-                "Preprocessing frame[%d] index %d is not > previous %d",
-                i, idx, last_index,
+                "Preprocessing frame[%d] index %d is not expected %d",
+                i, idx, i,
             )
             return "non_monotonic_indices"
-        last_index = idx
 
     return None
 

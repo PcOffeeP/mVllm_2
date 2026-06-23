@@ -267,7 +267,14 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         fps: float,
         total_frames: int,
     ) -> list[FrameMapping]:
-        """用 video_processor 处理解码帧，根据实际输出帧数回映。"""
+        """用 video_processor 处理解码帧，返回真实帧号映射。
+
+        优先尝试 ``do_sample_frames=False`` 避免 processor 二次采样；
+        若 processor 仍做了抽帧，通过逐帧独立调用 + 像素比对确认保留帧，
+        映射回解码帧号。不再静默回退到 pyav 均匀采样。
+        """
+        import inspect as _inspect
+
         # 1. 解码区间内的帧
         decoded_frames, decoded_indices = self._decode_frame_range(
             container, video_stream, start_time, end_time, fps, total_frames,
@@ -275,45 +282,120 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         if not decoded_frames:
             return []
 
-        # 2. 调用 video_processor
+        # 2. 构建 video_processor 调用参数
+        extra_kwargs: dict[str, Any] = {}
         try:
-            video_inputs = self._video_processor([decoded_frames], return_tensors="pt")  # type: ignore[union-attr]
-            pixel_values = video_inputs.get("pixel_values_videos")
-            if pixel_values is None:
-                logger.warning(
-                    "video_processor 输出不含 pixel_values_videos，回退到 pyav",
-                )
-                return self._sample_fallback(start_time, end_time, fps, total_frames)
-            n = pixel_values.shape[0]
-        except Exception as exc:
-            logger.warning("video_processor 调用失败 (%s)，回退到 pyav", exc)
-            return self._sample_fallback(start_time, end_time, fps, total_frames)
+            sig = _inspect.signature(self._video_processor)  # type: ignore[union-attr]
+        except (ValueError, TypeError):
+            sig = None
+        if sig is not None and "do_sample_frames" in sig.parameters:
+            extra_kwargs["do_sample_frames"] = False
 
-        # 3. processor 输出帧数与解码帧数的关系决定回映策略
-        n = min(n, len(decoded_frames))
+        # 3. 调用 video_processor（失败抛异常，不静默回退）
+        try:
+            video_inputs = self._video_processor([decoded_frames], return_tensors="pt", **extra_kwargs)  # type: ignore[union-attr]
+        except Exception as exc:
+            raise RuntimeError(
+                f"video_processor 调用失败: {exc}"
+            ) from exc
+
+        pixel_values = video_inputs.get("pixel_values_videos")
+        if pixel_values is None:
+            raise RuntimeError(
+                "video_processor 输出不含 pixel_values_videos"
+            )
+
+        n = min(pixel_values.shape[0], len(decoded_frames))
         if n <= 0:
             return []
 
-        # 若 processor 做了采样（n != 解码帧数），无法假设均匀分布，
-        # 因为我们没有帧级索引信息来反推 processor 到底选了哪些帧。
-        # 降级到 pyav 均匀采样。
-        if n != len(decoded_frames):
-            logger.warning(
-                "processor 输出帧数 (%d) 与解码帧数 (%d) 不匹配，"
-                "processor 采样行为偏离均匀假设，降级到 pyav 均匀采样",
-                n, len(decoded_frames),
-            )
-            return self._sample_fallback(start_time, end_time, fps, total_frames)
+        # 4. 确定帧映射
+        if n == len(decoded_frames):
+            # processor 未二次采样，1:1 映射
+            return [
+                FrameMapping(
+                    input_index=i,
+                    original_frame=decoded_indices[i],
+                    timestamp=decoded_indices[i] / fps,
+                )
+                for i in range(n)
+            ]
 
-        # n == len(decoded_frames): processor 未二次采样，可 1:1 映射
-        return [
-            FrameMapping(
-                input_index=i,
-                original_frame=decoded_indices[i],
-                timestamp=decoded_indices[i] / fps,
+        # processor 做了抽帧，通过逐帧独立调用确认保留帧
+        return self._match_processor_frames(
+            decoded_frames, decoded_indices, pixel_values, n, fps,
+        )
+
+    def _match_processor_frames(
+        self,
+        decoded_frames: list[Any],
+        decoded_indices: list[int],
+        batch_pixel_values: Any,
+        n: int,
+        fps: float,
+    ) -> list[FrameMapping]:
+        """逐帧独立调用 video_processor，通过像素比对确认保留帧。
+
+        对每个解码帧单独调用 ``video_processor([[frame]])``，
+        再将批量输出的每一帧与独立输出做 L1 距离匹配，
+        映射回 ``decoded_indices``。
+        """
+        import torch
+
+        # 逐帧调用 video_processor
+        individual_pvs: list[Any] = []
+        for frame in decoded_frames:
+            try:
+                ind_result = self._video_processor([[frame]], return_tensors="pt")  # type: ignore[union-attr]
+                ind_pv = ind_result.get("pixel_values_videos")
+                if ind_pv is not None and ind_pv.shape[0] > 0:
+                    individual_pvs.append(ind_pv[0].float())
+                else:
+                    individual_pvs.append(None)
+            except Exception:
+                individual_pvs.append(None)
+
+        # 批量输出与独立输出做像素比对
+        results: list[FrameMapping] = []
+        used: set[int] = set()
+
+        for batch_idx in range(n):
+            batch_frame = batch_pixel_values[batch_idx].float()
+            best_match = -1
+            best_diff = float("inf")
+
+            for i, ind_pv in enumerate(individual_pvs):
+                if ind_pv is None:
+                    continue
+                if i in used:
+                    continue
+                if batch_frame.shape != ind_pv.shape:
+                    continue
+                diff = torch.abs(batch_frame - ind_pv).mean().item()
+                if diff < best_diff:
+                    best_diff = diff
+                    best_match = i
+
+            if best_match < 0:
+                raise RuntimeError(
+                    f"无法确定 batch 帧 {batch_idx} 对应哪个解码帧"
+                )
+
+            used.add(best_match)
+            results.append(
+                FrameMapping(
+                    input_index=len(results),
+                    original_frame=decoded_indices[best_match],
+                    timestamp=decoded_indices[best_match] / fps,
+                )
             )
-            for i in range(n)
-        ]
+
+        if not results:
+            raise RuntimeError(
+                "逐帧比对未找到任何匹配"
+            )
+
+        return results
 
     @staticmethod
     def _frame_to_rgb(frame: av.video.frame.VideoFrame) -> Any:

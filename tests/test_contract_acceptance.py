@@ -522,9 +522,9 @@ class TestRunnerOkFalseSampling:
 
         result = agent.run()
         assert result["status"] == "unrecognized"
-        # Verify the sampling error was recorded.
-        assert result["history"][0]["result"].get("validation_error") is not None
-        assert "sampling_error" in str(result["history"][0]["result"]["validation_error"])
+        # Verify the sampling error was recorded as an infra_error (not validation_error).
+        assert result["history"][0]["result"].get("infra_error") is not None
+        assert "sampling_error" in str(result["history"][0]["result"]["infra_error"])
 
 
 # -------------------------------------------------------------------------
@@ -564,9 +564,9 @@ class TestRunnerOkFalseInference:
 
         result = agent.run()
         assert result["status"] == "unrecognized"
-        # Verify inference transport error was recorded.
-        assert result["history"][0]["result"].get("validation_error") is not None
-        assert "inference_transport" in str(result["history"][0]["result"]["validation_error"])
+        # Verify inference transport error was recorded as an infra_error (not validation_error).
+        assert result["history"][0]["result"].get("infra_error") is not None
+        assert "inference_transport" in str(result["history"][0]["result"]["infra_error"])
 
 
 # -------------------------------------------------------------------------
