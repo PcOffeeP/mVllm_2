@@ -5,6 +5,10 @@
 - [项目计划](./PROJECT_PLAN.md)：项目目标、范围、技术方向、实施阶段和项目级验收标准。
 - [实施方案](./IMPLEMENTATIONS/)：按项目计划核心步骤拆分的审批式实施文档。
 
+## 开发工作流
+
+- [开发工作流与运行环境](./PROJECT_WORKFLOW.md)：开发机（Mac M4）与训练机双机协同、Git 同步、LLaMA-Factory submodule 管理、数据产物管理原则。
+
 ## 参考资料
 
 - [材料拉伸断裂行为分类指南](../assets/frac_mode.md)

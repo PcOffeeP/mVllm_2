@@ -58,9 +58,14 @@ def test_build_meta_agent_user_context_includes_history():
 def test_build_sample_and_infer_prompt_has_required_elements():
     config = {"agent": {"video_fps": 8.0, "video_maxlen": 36}}
     prompt = build_sample_and_infer_prompt(sample_range=[10.0, 20.0], config=config)
-    assert "<video>" in prompt
+    # Contract: runtime user prompt does NOT contain <video> literal
+    assert "<video>" not in prompt
+    # Sample range is still present
     assert "[10.0, 20.0]" in prompt
-    assert "video_fps=8.0" in prompt
-    assert "video_maxlen=36" in prompt
-    assert "实际采样 80 帧" not in prompt  # clamped to 36
-    assert "实际采样 36 帧" in prompt
+    # v2 prompt reports max frames via this wording
+    assert "最多选择 36 帧" in prompt
+    # v2 prompt does not expose FPS or video_maxlen as key=value
+    assert "video_fps" not in prompt
+    assert "video_maxlen=" not in prompt
+    # v2 prompt does not use the old "实际采样" phrasing
+    assert "实际采样" not in prompt

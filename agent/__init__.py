@@ -15,6 +15,7 @@ from agent.prompts import (
     build_user_prompt,
 )
 from agent.sampling import (
+    ClipBuildResult,
     FfmpegVideoClipBuilder,
     UniformVideoSampler,
     VideoClipBuilder,
@@ -45,6 +46,7 @@ __all__ = [
     "AgentLLMFactory",
     "BaseAgentLLM",
     "BoundaryStatus",
+    "ClipBuildResult",
     "ConfidenceLevel",
     "FOLD_ADAPTER_PATHS",
     "FfmpegVideoClipBuilder",

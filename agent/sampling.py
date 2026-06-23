@@ -14,6 +14,7 @@ import os
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -208,6 +209,23 @@ def _run_ffmpeg(args: list[str], check: bool = True) -> subprocess.CompletedProc
 
 
 # ---------------------------------------------------------------------------
+# Temporary clip result
+# ---------------------------------------------------------------------------
+@dataclass
+class ClipBuildResult:
+    """Path to a continuous temporary MP4 clip plus its frame manifest.
+
+    The ``manifest`` maps each frame index inside the temporary clip back to
+    the corresponding original video frame number and timestamp.  It is the
+    authoritative source for translating model-output ``fracture_between``
+    indices into original-video time ranges.
+    """
+
+    path: str
+    manifest: list[dict[str, Any]]
+
+
+# ---------------------------------------------------------------------------
 # VideoSampler
 # ---------------------------------------------------------------------------
 class VideoSampler(ABC):
@@ -235,6 +253,12 @@ class UniformVideoSampler(VideoSampler):
 
     Saves extracted frames to ``cache_dir`` for debugging/audit.  If
     ``cache_dir`` is ``None``, frames are written to a temporary directory.
+
+    .. note::
+        This sampler is retained for backward compatibility.  The contract
+        requires the inference clip to be a continuous crop of the source
+        video; use ``FfmpegVideoClipBuilder.build_with_manifest`` for new
+        code.
     """
 
     def __init__(self, cache_dir: str | None = None) -> None:
@@ -335,31 +359,39 @@ class VideoClipBuilder(ABC):
 
 
 class FfmpegVideoClipBuilder(VideoClipBuilder):
-    """Build temporary inference clips that exactly match the ``frames`` sequence.
+    """Build continuous temporary inference clips by cropping the source video.
 
-    The builder extracts each sampled frame from the source video at its
-    original timestamp, then concatenates those frames into a new ``.mp4``
-    encoded at ``video_fps``.  This guarantees that the fine-tuned model sees
-    the same frame order and count as the ``frames`` metadata used for
-    ``fracture_between`` conversion.
+    The builder no longer pre-extracts frames or concatenates them at an
+    artificial FPS.  Instead it directly crops the original video between
+    ``sample_range[0]`` and ``sample_range[1]`` and preserves the original
+    time axis.  A manifest is produced that maps every frame in the temporary
+    clip back to the original video frame index and timestamp.
 
     For ``adaptive`` strategy the builder falls back to ``uniform`` because
-    generating a clip that exactly matches an arbitrary ``frames`` sequence is
-    not supported in this version.
+    the contract only supports continuous cropping for this version.
+
+    The ``frames`` argument of ``build`` is kept for backward compatibility
+    but is intentionally ignored; the clip is derived solely from
+    ``sample_range``.
     """
 
     def __init__(self, output_dir: str | None = None) -> None:
         self.output_dir = output_dir
 
-    def build(
+    def build_with_manifest(
         self,
         source_video: str,
         sample_range: list[float],
-        frames: list[dict[str, Any]],
         video_fps: float = 8.0,
         video_maxlen: int = 36,
         sampling_strategy: str = "uniform",
-    ) -> str:
+    ) -> ClipBuildResult:
+        """Crop a continuous MP4 clip and return it with its frame manifest.
+
+        ``video_fps`` and ``video_maxlen`` are accepted for interface
+        compatibility but do not influence the crop; the temporary clip keeps
+        the source video's time axis.
+        """
         if sampling_strategy == "adaptive":
             logger.warning(
                 "adaptive clip building is not fully supported yet; falling back to uniform."
@@ -371,42 +403,92 @@ class FfmpegVideoClipBuilder(VideoClipBuilder):
         if not os.path.exists(source_video):
             raise FileNotFoundError(f"Source video not found: {source_video}")
 
+        probe = _probe_video(source_video)
+        original_fps = probe["fps"] or video_fps
+        duration = probe["duration"]
+
+        # Explicit validation to avoid cryptic ffmpeg failures on degenerate ranges.
+        if len(sample_range) != 2:
+            raise ValueError("sample_range must be a two-element list [start, end]")
+        start, end = sample_range
+        if not (0 <= start < end <= duration):
+            raise ValueError(
+                f"Invalid sample_range [{start}, {end}]: expected "
+                f"0 <= start < end <= video_duration ({duration})"
+            )
+
+        start = max(0.0, start)
+        end = min(end, duration) if duration else end
+        if end < start:
+            end = start
+        clip_duration = end - start
+
         out_dir = Path(self.output_dir) if self.output_dir else Path("data/08_runtime/agent_clips")
         out_dir.mkdir(parents=True, exist_ok=True)
 
         video_stem = Path(source_video).stem
-        start, end = sample_range
         output_path = out_dir / f"{video_stem}_{start:.2f}_{end:.2f}.mp4"
 
-        # Extract the exact sampled frames into a temporary staging directory.
-        staging = out_dir / f"{video_stem}_{start:.2f}_{end:.2f}_frames"
-        staging.mkdir(parents=True, exist_ok=True)
-        for idx, frame in enumerate(frames):
-            output_frame = staging / f"frame_{idx:04d}.jpg"
-            _run_ffmpeg(
-                [
-                    "-y",
-                    "-ss", str(frame["timestamp"]),
-                    "-i", source_video,
-                    "-frames:v", "1",
-                    "-q:v", "2",
-                    str(output_frame),
-                ]
-            )
-
-        # Concatenate the extracted frames at the target fps using the image2 demuxer.
+        # Directly crop the continuous segment.  Do NOT pre-extract frames.
         _run_ffmpeg(
             [
                 "-y",
-                "-framerate", str(video_fps),
-                "-i", str(staging / "frame_%04d.jpg"),
+                "-ss", str(start),
+                "-i", source_video,
+                "-t", str(clip_duration),
                 "-an",
                 "-c:v", "libx264",
                 "-pix_fmt", "yuv420p",
                 str(output_path),
             ]
         )
-        return str(output_path)
+
+        # Probe the resulting clip to obtain its actual frame count and fps.
+        temp_probe = _probe_video(str(output_path))
+        temp_fps = temp_probe["fps"] or original_fps
+        temp_total_frames = temp_probe["total_frames"] or 0
+        if temp_total_frames <= 0 and temp_probe["duration"] and temp_fps:
+            temp_total_frames = max(1, round(temp_probe["duration"] * temp_fps))
+
+        # Build manifest: temp_index -> original_frame / timestamp.
+        manifest: list[dict[str, Any]] = []
+        for k in range(temp_total_frames):
+            timestamp = start + k / temp_fps
+            if timestamp > end + 1e-6:
+                break
+            original_frame = time_to_frame(timestamp, original_fps)
+            manifest.append(
+                {
+                    "temp_index": k,
+                    "original_frame": original_frame,
+                    "timestamp": round(timestamp, 6),
+                }
+            )
+
+        return ClipBuildResult(path=str(output_path), manifest=manifest)
+
+    def build(
+        self,
+        source_video: str,
+        sample_range: list[float],
+        frames: list[dict[str, Any]],
+        video_fps: float = 8.0,
+        video_maxlen: int = 36,
+        sampling_strategy: str = "uniform",
+    ) -> str:
+        """Return the path of the temporary clip.
+
+        ``frames`` is accepted for backward compatibility but is ignored; the
+        clip is derived directly from ``sample_range``.
+        """
+        result = self.build_with_manifest(
+            source_video=source_video,
+            sample_range=sample_range,
+            video_fps=video_fps,
+            video_maxlen=video_maxlen,
+            sampling_strategy=sampling_strategy,
+        )
+        return result.path
 
 
 VideoClipBuilder.register(FfmpegVideoClipBuilder)
