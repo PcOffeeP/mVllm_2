@@ -234,10 +234,10 @@ def _run_single_video(
             work_dir=work_dir,
         )
         st.session_state.result = result
-        if result.ok:
+        if result["ok"]:
             st.success("运行完成")
         else:
-            st.error(f"运行失败: {result.error.message}")
+            st.error(f"运行失败: {result['error']['message']}")
 
 
 def _run_batch(

@@ -113,8 +113,8 @@ def main() -> None:
             event_callback=event_callback,
             work_dir=work_dir,
         )
-        if not result.ok:
-            print(f"Run failed for {args.video}: {result.error.message}", file=sys.stderr)
+        if not result["ok"]:
+            print(f"Run failed for {args.video}: {result['error']['message']}", file=sys.stderr)
             sys.exit(1)
         _write_jsonl(result, output_path)
         print(f"Result written to {output_path}")
@@ -150,12 +150,12 @@ def main() -> None:
     )
     _write_jsonl(results, output_path)
 
-    failed = [r for r in results if not r.ok]
+    failed = [r for r in results if not r["ok"]]
     if failed:
         print(f"Batch finished with {len(failed)} failure(s):", file=sys.stderr)
         for item in failed:
             print(
-                f"  - {item.result.video_id if item.ok else item.error.stage}: {item.error.message}",
+                f"  - {item['result']['video_id'] if item['ok'] else item['error']['stage']}: {item['error']['message']}",
                 file=sys.stderr,
             )
         sys.exit(1)
