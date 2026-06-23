@@ -454,3 +454,263 @@ def test_client_repr_does_not_leak_api_key():
 # ---------------------------------------------------------------------------
 def test_default_request_size_is_32_mib():
     assert DEFAULT_MAX_REQUEST_SIZE == 32 * 1024 * 1024
+
+
+# ---------------------------------------------------------------------------
+# Preprocessing metadata extraction and validation
+# ---------------------------------------------------------------------------
+def test_validate_preprocessing_meta_none():
+    from agent.inference import _validate_preprocessing_meta
+    assert _validate_preprocessing_meta(None) == "missing_or_invalid_preprocessing_metadata"
+
+
+def test_validate_preprocessing_meta_max_frames_not_8():
+    from agent.inference import _validate_preprocessing_meta
+    meta = {"max_frames": 4, "frames": []}
+    assert _validate_preprocessing_meta(meta) == "max_frames_not_8"
+
+
+def test_validate_preprocessing_meta_too_many_frames():
+    from agent.inference import _validate_preprocessing_meta
+    meta = {"max_frames": 8, "frames": [{"index": i, "timestamp": float(i)} for i in range(9)]}
+    assert _validate_preprocessing_meta(meta) == "too_many_frames"
+
+
+def test_validate_preprocessing_meta_non_monotonic_indices():
+    from agent.inference import _validate_preprocessing_meta
+    meta = {
+        "max_frames": 8,
+        "frames": [
+            {"index": 0, "timestamp": 0.0},
+            {"index": 2, "timestamp": 1.0},
+            {"index": 1, "timestamp": 2.0},  # not monotonic
+        ],
+    }
+    assert _validate_preprocessing_meta(meta) == "non_monotonic_indices"
+
+
+def test_validate_preprocessing_meta_duplicate_index():
+    from agent.inference import _validate_preprocessing_meta
+    meta = {
+        "max_frames": 8,
+        "frames": [
+            {"index": 0, "timestamp": 0.0},
+            {"index": 1, "timestamp": 1.0},
+            {"index": 1, "timestamp": 2.0},  # not strictly increasing
+        ],
+    }
+    assert _validate_preprocessing_meta(meta) == "non_monotonic_indices"
+
+
+def test_validate_preprocessing_meta_valid():
+    from agent.inference import _validate_preprocessing_meta
+    meta = {
+        "max_frames": 8,
+        "frames": [
+            {"index": 0, "timestamp": 0.0},
+            {"index": 3, "timestamp": 1.5},
+            {"index": 7, "timestamp": 3.0},
+        ],
+    }
+    assert _validate_preprocessing_meta(meta) is None
+
+
+def test_extract_preprocessing_from_response_model_dump():
+    """Extract via model_dump() when extra fields are included."""
+    from agent.inference import _extract_preprocessing_from_response
+
+    class FakeResponse:
+        def model_dump(self):
+            return {
+                "id": "chatcmpl-xxx",
+                "preprocessing": {
+                    "request_id": "uuid-1",
+                    "processor_version": "minicpmv4.6/0.1",
+                    "max_frames": 8,
+                    "frames": [{"index": 0, "timestamp": 1.0}],
+                },
+            }
+
+    result = _extract_preprocessing_from_response(FakeResponse())
+    assert result is not None
+    assert result["request_id"] == "uuid-1"
+    assert result["max_frames"] == 8
+
+
+def test_extract_preprocessing_from_response_model_extra():
+    """Extract via model_extra dict (Pydantic v2)."""
+    from agent.inference import _extract_preprocessing_from_response
+
+    class FakeResponse:
+        model_extra = {
+            "preprocessing": {
+                "request_id": "uuid-2",
+                "processor_version": "minicpmv4.6/0.1",
+                "max_frames": 8,
+                "frames": [{"index": 0, "timestamp": 1.0}],
+            },
+        }
+
+        def model_dump(self):
+            return {"id": "chatcmpl-xxx"}
+
+    result = _extract_preprocessing_from_response(FakeResponse())
+    assert result is not None
+    assert result["request_id"] == "uuid-2"
+
+
+def test_extract_preprocessing_from_response_direct_attr():
+    """Extract via direct attribute access (test mocks)."""
+    from agent.inference import _extract_preprocessing_from_response
+
+    class FakeResponse:
+        preprocessing = {
+            "request_id": "uuid-3",
+            "processor_version": "minicpmv4.6/0.1",
+            "max_frames": 8,
+            "frames": [{"index": 0, "timestamp": 1.0}],
+        }
+
+        def model_dump(self):
+            return {"id": "chatcmpl-xxx"}
+
+    result = _extract_preprocessing_from_response(FakeResponse())
+    assert result is not None
+    assert result["request_id"] == "uuid-3"
+
+
+def test_extract_preprocessing_from_response_absent():
+    from agent.inference import _extract_preprocessing_from_response
+
+    class FakeResponse:
+        def model_dump(self):
+            return {"id": "chatcmpl-xxx"}
+
+    result = _extract_preprocessing_from_response(FakeResponse())
+    assert result is None
+
+
+def test_llama_factory_inference_client_extracts_preprocessing(tmp_path: Path):
+    """End-to-end: LlamaFactoryInferenceClient extracts preprocessing from response."""
+    video = tmp_path / "clip.mp4"
+    _write_fake_mp4(video)
+
+    preprocessing_payload = {
+        "request_id": "e2e-uuid",
+        "processor_version": "minicpmv4.6/0.1",
+        "max_frames": 8,
+        "frames": [
+            {"index": 0, "timestamp": 0.0},
+            {"index": 4, "timestamp": 2.0},
+            {"index": 7, "timestamp": 3.5},
+        ],
+    }
+
+    def fake_create(*, model, messages, temperature, max_tokens, extra_body=None):
+        mock_completion = MagicMock()
+        mock_completion.choices = [MagicMock()]
+        mock_completion.choices[0].message.content = (
+            '{"has_fracture": false, "fracture_between": null, '
+            '"type": "未断裂", "location": null, "confidence": 0.8}'
+        )
+        # Inject preprocessing via model_extra
+        mock_completion.model_extra = {"preprocessing": preprocessing_payload}
+
+        def model_dump():
+            return {"id": "chatcmpl-e2e", "choices": [{"index": 0}]}
+        mock_completion.model_dump = model_dump
+        return mock_completion
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = fake_create
+
+    with patch("agent.inference.OpenAI") as mock_openai:
+        mock_openai.return_value = mock_client
+        client = LlamaFactoryInferenceClient(model="minicpm-test")
+        result = client.infer(str(video), "analyze")
+
+    assert result.ok
+    assert result.preprocessing is not None
+    assert result.preprocessing["request_id"] == "e2e-uuid"
+    assert result.preprocessing["max_frames"] == 8
+    assert len(result.preprocessing["frames"]) == 3
+
+
+def test_llama_factory_inference_client_extracts_invalid_preprocessing(
+    tmp_path: Path,
+):
+    """Invalid preprocessing is still stored (caller validates)."""
+    video = tmp_path / "clip.mp4"
+    _write_fake_mp4(video)
+
+    preprocessing_payload = {
+        "request_id": "invalid-uuid",
+        "processor_version": "old",
+        "max_frames": 4,  # Not 8
+        "frames": [{"index": 0, "timestamp": 0.0}],
+    }
+
+    def fake_create(*, model, messages, temperature, max_tokens, extra_body=None):
+        mock_completion = MagicMock()
+        mock_completion.choices = [MagicMock()]
+        mock_completion.choices[0].message.content = (
+            '{"has_fracture": false, "fracture_between": null, '
+            '"type": "未断裂", "location": null, "confidence": 0.8}'
+        )
+        mock_completion.model_extra = {"preprocessing": preprocessing_payload}
+
+        def model_dump():
+            return {"id": "chatcmpl-invalid"}
+        mock_completion.model_dump = model_dump
+        return mock_completion
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = fake_create
+
+    with patch("agent.inference.OpenAI") as mock_openai:
+        mock_openai.return_value = mock_client
+        client = LlamaFactoryInferenceClient(model="minicpm-test")
+        result = client.infer(str(video), "analyze")
+
+    # Invalid preprocessing is still stored (raw) for caller to validate.
+    assert result.preprocessing is not None
+    assert result.preprocessing["max_frames"] == 4  # raw value preserved
+
+
+def test_llama_factory_inference_client_no_preprocessing_is_graceful(
+    tmp_path: Path,
+):
+    """Missing preprocessing does not crash — preprocessing field is None."""
+    video = tmp_path / "clip.mp4"
+    _write_fake_mp4(video)
+
+    class _ResponseStub:
+        """Stub that mimics ChatCompletion without preprocessing."""
+        class _Choice:
+            class _Message:
+                content = (
+                    '{"has_fracture": false, "fracture_between": null, '
+                    '"type": "未断裂", "location": null, "confidence": 0.8}'
+                )
+            message = _Message()
+
+        choices = [_Choice()]
+        model_extra: dict = {}
+
+        @staticmethod
+        def model_dump():
+            return {"id": "chatcmpl-nope"}
+
+    def fake_create(*, model, messages, temperature, max_tokens, extra_body=None):
+        return _ResponseStub()
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = fake_create
+
+    with patch("agent.inference.OpenAI") as mock_openai:
+        mock_openai.return_value = mock_client
+        client = LlamaFactoryInferenceClient(model="minicpm-test")
+        result = client.infer(str(video), "analyze")
+
+    assert result.ok
+    assert result.preprocessing is None  # graceful degradation

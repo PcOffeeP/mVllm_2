@@ -16,7 +16,10 @@ from pipeline.scripts.calibration import (
     _check_order_match,
     _collect_split_video_ids,
     _compare_results,
+    _compute_uniform_original_frames,
+    _get_video_total_frames,
     _pick_calibration_videos,
+    _try_load_llama_factory_batch,
     _window_positions,
     build_calibration_cases,
 )
@@ -782,6 +785,246 @@ def test_run_calibration_basic():
     assert report["fingerprint"] == "fake-fingerprint"
     assert isinstance(report["all_passed"], bool)
     assert isinstance(report["passed_cases"], int)
+
+
+# ===================================================================
+# _get_video_total_frames
+# ===================================================================
+
+
+def test_get_video_total_frames_nonexistent_file():
+    """不存在的文件返回 None。"""
+    result = _get_video_total_frames("/nonexistent/video.mp4")
+    assert result is None
+
+
+def test_get_video_total_frames_ffprobe_failure():
+    """ffprobe 执行失败时返回 None。"""
+    with patch("subprocess.run", side_effect=FileNotFoundError("ffprobe not found")):
+        result = _get_video_total_frames("some_video.mp4")
+    assert result is None
+
+
+# ===================================================================
+# _compute_uniform_original_frames
+# ===================================================================
+
+
+def test_compute_uniform_original_frames_zero_count():
+    assert _compute_uniform_original_frames(100, 0) == []
+
+
+def test_compute_uniform_original_frames_single_frame():
+    assert _compute_uniform_original_frames(100, 1) == [0]
+
+
+def test_compute_uniform_original_frames_two_frames():
+    """总帧 100，采样 2 帧：第 0 帧和第 99 帧。"""
+    result = _compute_uniform_original_frames(100, 2)
+    assert result == [0, 99]
+
+
+def test_compute_uniform_original_frames_eight_of_100():
+    """总帧 100，采样 8 帧。"""
+    result = _compute_uniform_original_frames(100, 8)
+    assert len(result) == 8
+    assert result[0] == 0
+    assert result[-1] == 99
+    # 检查近似均匀
+    diffs = [result[i + 1] - result[i] for i in range(len(result) - 1)]
+    assert min(diffs) >= 13  # 约 100/7 ≈ 14.3
+    assert max(diffs) <= 15
+
+
+def test_compute_uniform_original_frames_more_than_total():
+    """frame_count > total_frames 时只使用可用帧。"""
+    result = _compute_uniform_original_frames(10, 20)
+    assert len(result) == 20
+    # 均匀采样范围仍是 [0, 9]
+    assert result[0] == 0
+    # linspace(0, 9, 20) — 步长 9/19 ≈ 0.47
+    # last index = round(19 * 9 / 19) = 9
+    assert result[-1] == 9
+
+
+# ===================================================================
+# _try_load_llama_factory_batch — fallback 路径测试
+# ===================================================================
+
+
+def _fixture_preprocessor_info() -> ProcessorInfo:
+    return ProcessorInfo(name="mock-ffmpeg-uniform", version="0.1.0", max_frames=8, backend="ffmpeg")
+
+
+def _fixture_adapter_frames() -> list[FrameMapping]:
+    return [
+        FrameMapping(input_index=0, original_frame=0, timestamp=0.0),
+        FrameMapping(input_index=1, original_frame=15, timestamp=0.5),
+        FrameMapping(input_index=2, original_frame=30, timestamp=1.0),
+    ]
+
+
+def test_try_load_llama_factory_batch_natural_fallback():
+    """LLaMA-Factory 不可导入时自然回退到 fallback（无需 mock）。"""
+    info = _fixture_preprocessor_info()
+    frames = _fixture_adapter_frames()
+    result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
+    assert result["source"] == "fallback"
+    assert "LLaMA-Factory import failed" in result["error"]
+    assert result["processor_name"] == info.name
+    assert result["max_frames"] == info.max_frames
+    assert result["frame_count"] == len(frames)
+    assert len(result["frames"]) == len(frames)
+
+
+def _make_mock_llamafactory_modules(broken_plugin=None):
+    """创建假冒的 llamafactory 模块层级，避免 torch 依赖。"""
+    import sys as _sys
+    from unittest.mock import MagicMock
+
+    mock_plugin = MagicMock()
+    if broken_plugin is not None:
+        mock_plugin.MiniCPMV4_6Plugin = MagicMock(return_value=broken_plugin)
+    else:
+        mock_plugin.MiniCPMV4_6Plugin = MagicMock()
+
+    mock_data = MagicMock()
+    mock_data.mm_plugin = mock_plugin
+
+    mock_llamafactory = MagicMock()
+    mock_llamafactory.data = mock_data
+
+    _sys.modules["llamafactory"] = mock_llamafactory
+    _sys.modules["llamafactory.data"] = mock_data
+    _sys.modules["llamafactory.data.mm_plugin"] = mock_plugin
+
+
+def _make_mock_transformers_modules():
+    """创建假冒的 transformers 模块层级，避免真实导入。"""
+    import sys as _sys
+    from unittest.mock import MagicMock
+
+    mock_auto = MagicMock()
+    mock_transformers = MagicMock()
+    mock_transformers.AutoProcessor = mock_auto
+
+    _sys.modules["transformers"] = mock_transformers
+
+
+def _make_mock_torch():
+    """创建假冒的 torch 模块。"""
+    import sys as _sys
+    from unittest.mock import MagicMock
+    if "torch" not in _sys.modules:
+        _sys.modules["torch"] = MagicMock()
+
+
+def _cleanup_mock_modules():
+    """清理注入的所有 mock 模块。"""
+    import sys as _sys
+    for key in list(_sys.modules):
+        if key.startswith("llamafactory") or key == "transformers" or key == "torch":
+            del _sys.modules[key]
+
+
+@pytest.fixture
+def mock_llamafactory():
+    """Fixture：注入 mock llamafactory + transformers + torch 模块。"""
+    _make_mock_llamafactory_modules()
+    _make_mock_transformers_modules()
+    _make_mock_torch()
+    yield
+    _cleanup_mock_modules()
+
+
+def test_try_load_llama_factory_batch_transformers_import_fallback(mock_llamafactory):
+    """transformers 导入失败时返回 fallback。"""
+    info = _fixture_preprocessor_info()
+    frames = _fixture_adapter_frames()
+
+    # 让 transformers 导入失败
+    import builtins
+    original_import = builtins.__import__
+
+    def _side_effect(name, *args, **kwargs):
+        if name == "transformers":
+            raise ImportError("no transformers")
+        return original_import(name, *args, **kwargs)
+
+    with patch("builtins.__import__", side_effect=_side_effect):
+        result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
+    assert result["source"] == "fallback"
+    assert "transformers import failed" in result["error"]
+    assert result["frame_count"] == len(frames)
+
+
+def test_try_load_llama_factory_batch_processor_load_fallback(mock_llamafactory):
+    """processor 加载失败时返回 fallback。"""
+    info = _fixture_preprocessor_info()
+    frames = _fixture_adapter_frames()
+
+    with patch("transformers.AutoProcessor.from_pretrained", side_effect=OSError("model not found")):
+        result = _try_load_llama_factory_batch("dummy.mp4", info, frames, model_name="fake/model")
+    assert result["source"] == "fallback"
+    assert "processor load failed" in result["error"]
+    assert result["frame_count"] == len(frames)
+
+
+def test_try_load_llama_factory_batch_get_mm_inputs_fallback(mock_llamafactory):
+    """_get_mm_inputs 调用失败时返回 fallback。"""
+    info = _fixture_preprocessor_info()
+    frames = _fixture_adapter_frames()
+
+    class FakeProcessor:
+        __class__ = type("FakeProcessor", (), {})()
+
+    class BrokenPlugin:
+        def _get_mm_inputs(self, **kwargs):
+            raise RuntimeError("simulated error")
+
+    # 先清理再注入带 broken_plugin 的 mock
+    _cleanup_mock_modules()
+    _make_mock_llamafactory_modules(broken_plugin=BrokenPlugin())
+    _make_mock_transformers_modules()
+    # 注入 mock torch
+    import sys
+    from unittest.mock import MagicMock
+    sys.modules["torch"] = MagicMock()
+
+    with patch("transformers.AutoProcessor.from_pretrained", return_value=FakeProcessor()):
+        result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
+    assert result["source"] == "fallback"
+    assert "_get_mm_inputs failed" in result["error"]
+    assert result["frame_count"] == len(frames)
+
+    _cleanup_mock_modules()
+
+
+def test_try_load_llama_factory_batch_get_mm_inputs_torch_import_fallback(mock_llamafactory):
+    """torch 导入失败时（_get_mm_inputs 阶段）返回 fallback。"""
+    info = _fixture_preprocessor_info()
+    frames = _fixture_adapter_frames()
+
+    class FakeProcessor:
+        __class__ = type("FakeProcessor", (), {})()
+
+    import builtins
+    original_import = builtins.__import__
+
+    def _side_effect(name, *args, **kwargs):
+        if name == "torch":
+            raise ImportError("no torch")
+        return original_import(name, *args, **kwargs)
+
+    with (
+        patch("transformers.AutoProcessor.from_pretrained", return_value=FakeProcessor()),
+        patch("builtins.__import__", side_effect=_side_effect),
+    ):
+        result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
+    assert result["source"] == "fallback"
+    assert result["frame_count"] == len(frames)
+
+    _cleanup_mock_modules()
 
 
 if __name__ == "__main__":

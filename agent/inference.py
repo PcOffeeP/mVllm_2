@@ -46,12 +46,18 @@ class InferenceResult:
     The envelope separates a successful model output from an invalid model
     output (with a stable parser error code) and transport failures, which
     are raised as exceptions instead of being returned.
+
+    ``preprocessing`` carries the server-side ``preprocessing`` metadata
+    (frame table / processor info) when the server adapter is installed.
+    ``None`` means the metadata was absent or invalid; the caller should
+    fall back to the local clip manifest for frame mapping.
     """
 
     ok: bool
     model_output: dict[str, Any] | None = None
     error: ParseError | None = None
     attempts: int = 1
+    preprocessing: dict[str, Any] | None = None
 
 
 @runtime_checkable
@@ -167,6 +173,98 @@ def _redact_data_url(url: str, max_plain: int = 32) -> str:
     if not sep or len(payload) <= max_plain * 2:
         return url
     return f"{prefix},{payload[:max_plain]}...[REDACTED:{len(payload)} chars]"
+
+
+def _extract_preprocessing_from_response(response: Any) -> dict[str, Any] | None:
+    """Extract the ``preprocessing`` field from an OpenAI ``ChatCompletion`` response.
+
+    The server adapter injects ``preprocessing`` at the top level of the JSON
+    response.  Because the OpenAI Pydantic model typically ignores unknown
+    fields, we try several access paths in order:
+
+    1. ``response.model_dump()`` -- includes the field if the model config
+       permits extra fields.
+    2. ``response.model_extra`` -- Pydantic v2 bucket for unrecognised keys.
+    3. Top-level attribute access (for monkey-patched or proxy objects).
+
+    Returns the dict value or ``None`` when the field is absent.
+    """
+    # Path 1: model_dump() includes extra fields when extra='allow'.
+    try:
+        dump: dict[str, Any] = response.model_dump()
+        pp = dump.get("preprocessing")
+        if pp is not None:
+            return pp
+    except Exception:
+        pass
+
+    # Path 2: model_extra (Pydantic v2, available even with extra='ignore').
+    try:
+        extra: dict[str, Any] = getattr(response, "model_extra", None) or {}
+        pp = extra.get("preprocessing")
+        if pp is not None:
+            return pp
+    except Exception:
+        pass
+
+    # Path 3: direct attribute (covers test mocks / dict-like objects).
+    try:
+        pp = getattr(response, "preprocessing", None)
+        if pp is not None:
+            return pp
+    except Exception:
+        pass
+
+    return None
+
+
+def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
+    """Validate server-returned ``preprocessing`` metadata.
+
+    Returns ``None`` when the metadata is valid, or an error-code string
+    describing the first violation.
+
+    Checks (in order):
+    - ``meta`` is not ``None``.
+    - ``meta["max_frames"] == 8`` (the MiniCPM-V 4.6 contract).
+    - ``len(meta["frames"]) <= 8``.
+    - frame ``index`` values are strictly monotonically increasing.
+    """
+    if meta is None:
+        return "missing_or_invalid_preprocessing_metadata"
+
+    max_frames = meta.get("max_frames")
+    if max_frames != 8:
+        logger.warning(
+            "Preprocessing max_frames=%s, expected 8", max_frames
+        )
+        return "max_frames_not_8"
+
+    frames = meta.get("frames", [])
+    if len(frames) > 8:
+        logger.warning(
+            "Preprocessing frames count %d exceeds max 8", len(frames)
+        )
+        return "too_many_frames"
+
+    # Check monotonic indices.
+    last_index: int | None = None
+    for i, entry in enumerate(frames):
+        idx = entry.get("index")
+        if not isinstance(idx, int) or idx < 0:
+            logger.warning(
+                "Preprocessing frame[%d] has invalid index: %r", i, idx
+            )
+            return "non_monotonic_indices"
+        if last_index is not None and idx <= last_index:
+            logger.warning(
+                "Preprocessing frame[%d] index %d is not > previous %d",
+                i, idx, last_index,
+            )
+            return "non_monotonic_indices"
+        last_index = idx
+
+    return None
 
 
 class LlamaFactoryInferenceClient:
@@ -285,6 +383,9 @@ class LlamaFactoryInferenceClient:
             # current logic but kept for type safety.
             raise last_error  # type: ignore[misc]
 
+        # Capture the last raw HTTP response for preprocessing extraction.
+        _last_raw_response: list[Any] = [None]
+
         def _fetch_fn(last_error: ParseError | None) -> str:
             nonlocal messages
             if last_error is not None:
@@ -296,14 +397,48 @@ class LlamaFactoryInferenceClient:
                 )
                 messages = messages + [{"role": "user", "content": correction}]
             response = _call_model(messages)
+            _last_raw_response[0] = response
             return response.choices[0].message.content or ""
 
         parse_result = ResultParser.parse_with_retries(_fetch_fn, max_retries=2)
+
+        # Extract server-side preprocessing metadata.
+        # The raw dict (or None) is propagated to InferenceResult so that
+        # the caller can decide whether to use server frames or local
+        # manifest for fracture_between mapping.
+        preprocessing: dict[str, Any] | None = None
+        if _last_raw_response[0] is not None:
+            raw_pp = _extract_preprocessing_from_response(_last_raw_response[0])
+            if raw_pp is not None:
+                err_code = _validate_preprocessing_meta(raw_pp)
+                if err_code is None:
+                    logger.info(
+                        "Server preprocessing metadata OK: max_frames=%s, "
+                        "frames=%d",
+                        raw_pp.get("max_frames"),
+                        len(raw_pp.get("frames", [])),
+                    )
+                else:
+                    logger.warning(
+                        "Server preprocessing metadata invalid (%s): %s",
+                        err_code, raw_pp,
+                    )
+                # Always store the raw dict so caller can distinguish
+                # "present but invalid" from "missing entirely".
+                preprocessing = raw_pp
+            else:
+                logger.warning(
+                    "No preprocessing metadata in inference response. "
+                    "Server-side adapter may not be installed. "
+                    "Falling back to local manifest mapping."
+                )
+
         return InferenceResult(
             ok=parse_result.ok,
             model_output=parse_result.data,
             error=parse_result.error,
             attempts=parse_result.attempts,
+            preprocessing=preprocessing,
         )
 
 

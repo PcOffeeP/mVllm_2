@@ -15,7 +15,13 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from agent.inference import InferenceClient, InferenceResult, LlamaFactoryInferenceClient, MockInferenceClient
+from agent.inference import (
+    InferenceClient,
+    InferenceResult,
+    LlamaFactoryInferenceClient,
+    MockInferenceClient,
+    _validate_preprocessing_meta,
+)
 from agent.llm import BaseAgentLLM
 
 from agent.prompts import (
@@ -875,17 +881,55 @@ class IterativeAgent:
             }
             return result
 
+        # Check server-side preprocessing metadata.
+        # When the server adapter is not installed (preprocessing is None),
+        # gracefully degrade by using the local manifest — existing tests
+        # and development workflows depend on this.
+        preprocessing = inference_result.preprocessing
+        pp_error_code: str | None = None
+        use_server_frames = False
+        server_frames: list[dict[str, Any]] | None = None
+
+        if preprocessing is not None:
+            # Re-validate; even though infer() already logged warnings, we
+            # need the specific error code for the result envelope.
+            pp_error_code = _validate_preprocessing_meta(preprocessing)
+            if pp_error_code is None:
+                use_server_frames = True
+                server_frames = preprocessing.get("frames", [])
+                logger.info(
+                    "Using server-provided frames (count=%d) for mapping",
+                    len(server_frames),
+                )
+            else:
+                logger.warning(
+                    "Preprocessing metadata from server is invalid (%s), "
+                    "will not use server frames for mapping",
+                    pp_error_code,
+                )
+        else:
+            logger.warning(
+                "No preprocessing metadata from server. "
+                "Using local manifest for fracture_between mapping."
+            )
+
         # Derive confidence level.
         model_output = result["model_output"] or {}
         confidence = model_output.get("confidence", 0.5)
         result["round_confidence_level"] = _confidence_to_level(confidence)
 
-        # Map fracture_between to original video ranges.
-        if model_output.get("has_fracture") is True and model_output.get("fracture_between"):
-            fracture_between = model_output["fracture_between"]
-            n = len(manifest)
+        has_fracture = (
+            model_output.get("has_fracture") is True
+            and model_output.get("fracture_between") is not None
+        )
 
-            # Guard: validate indices against manifest length.
+        # ------------------------------------------------------------------
+        # Case 1: Preprocessing present and valid — use server frames.
+        # ------------------------------------------------------------------
+        if use_server_frames and has_fracture:
+            fracture_between = model_output["fracture_between"]
+            n = len(server_frames)  # Server-reported frame count
+
             def _reject_indices(msg: str) -> dict[str, Any]:
                 result["ok"] = False
                 result["model_output"] = None
@@ -904,14 +948,92 @@ class IterativeAgent:
             i, j = fracture_between
             if not (0 <= i < n and 0 <= j < n):
                 return _reject_indices(
-                    f"fracture_between {fracture_between} 超出采样帧索引范围 [0, {n - 1}]"
+                    f"fracture_between {fracture_between} "
+                    f"超出服务帧索引范围 [0, {n - 1}]"
                 )
             if i == j:
                 return _reject_indices(
-                    f"fracture_between {fracture_between} 必须是严格相邻的两帧 [i, i+1]"
+                    f"fracture_between {fracture_between} "
+                    f"必须是严格相邻的两帧 [i, i+1]"
                 )
 
-            # Map through manifest.
+            # Map through server frames (authoritative frame table).
+            result["inferred_time_range"] = [
+                server_frames[i]["timestamp"],
+                server_frames[j]["timestamp"],
+            ]
+
+            # Derive original_frame from the local manifest by matching
+            # timestamps (server frames don't carry original_frame).
+            def _lookup_original_frame(ts: float) -> int | None:
+                for entry in manifest:
+                    if abs(entry["timestamp"] - ts) < 0.0001:
+                        return entry["original_frame"]
+                return None
+
+            orig_i = _lookup_original_frame(server_frames[i]["timestamp"])
+            orig_j = _lookup_original_frame(server_frames[j]["timestamp"])
+            if orig_i is not None and orig_j is not None:
+                result["inferred_frame_range"] = [orig_i, orig_j]
+
+            return result
+
+        # ------------------------------------------------------------------
+        # Case 2: Preprocessing present but invalid → hard error.
+        # ------------------------------------------------------------------
+        if pp_error_code is not None and preprocessing is not None:
+            logger.warning(
+                "Preprocessing metadata present but invalid (%s). "
+                "Marking round as failed.",
+                pp_error_code,
+            )
+            result["ok"] = False
+            result["model_output"] = None
+            result["inferred_time_range"] = None
+            result["inferred_frame_range"] = None
+            result["validation_error"] = {
+                "code": pp_error_code,
+                "message": f"服务端 preprocessing 元数据校验失败: {pp_error_code}",
+                "field": "preprocessing",
+            }
+            return result
+
+        # ------------------------------------------------------------------
+        # Case 3: Preprocessing missing (server adapter not installed).
+        # Graceful degradation: use local manifest, do NOT mark error.
+        # ------------------------------------------------------------------
+        if has_fracture:
+            fracture_between = model_output["fracture_between"]
+            n = len(manifest)
+
+            def _reject_indices(msg: str) -> dict[str, Any]:
+                result["ok"] = False
+                result["model_output"] = None
+                result["inferred_time_range"] = None
+                result["validation_error"] = {
+                    "code": "invalid_index",
+                    "message": msg,
+                    "field": "fracture_between",
+                }
+                return result
+
+            if len(fracture_between) != 2:
+                return _reject_indices(
+                    f"fracture_between 长度必须为 2，got {fracture_between}"
+                )
+            i, j = fracture_between
+            if not (0 <= i < n and 0 <= j < n):
+                return _reject_indices(
+                    f"fracture_between {fracture_between} "
+                    f"超出采样帧索引范围 [0, {n - 1}]"
+                )
+            if i == j:
+                return _reject_indices(
+                    f"fracture_between {fracture_between} "
+                    f"必须是严格相邻的两帧 [i, i+1]"
+                )
+
+            # Map through local manifest (existing behaviour).
             result["inferred_time_range"] = [
                 manifest[i]["timestamp"],
                 manifest[j]["timestamp"],

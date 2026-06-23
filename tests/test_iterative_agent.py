@@ -927,3 +927,297 @@ def test_unrecognized_termination_invalid_reason_rejected():
     # With invalid unrecognized_reason, the terminate is rejected.
     # After max_rounds, force_terminate kicks in with no positive rounds -> no_fracture.
     assert result["status"] in ("no_fracture", "unrecognized")
+
+
+# ---------------------------------------------------------------------------
+# Preprocessing metadata integration
+# ---------------------------------------------------------------------------
+def test_iterative_agent_uses_server_frames_when_preprocessing_valid():
+    """With valid server preprocessing, fracture_between maps via server frames."""
+    video_meta = {"video_id": "v400", "duration": 100.0, "video_path": "v400.mp4"}
+    config = make_config()
+    config["agent"]["max_rounds"] = 3
+
+    # Server frames (3 frames selected by MiniCPM-V processor).
+    server_frames = [
+        {"index": 0, "timestamp": 0.0},
+        {"index": 1, "timestamp": 0.5},
+        {"index": 2, "timestamp": 1.0},
+    ]
+    preprocessing = {
+        "request_id": "uuid-400",
+        "processor_version": "minicpmv4.6/0.1",
+        "max_frames": 8,
+        "frames": server_frames,
+    }
+
+    responses = [
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": True,
+                "fracture_between": [0, 1],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+            },
+            attempts=1,
+            preprocessing=preprocessing,
+        ),
+    ]
+
+    llm = StaticLLM([
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("terminate", {
+            "status": "fracture",
+            "fracture_type": "韧性断裂",
+            "location": "inside_gauge",
+            "confidence": 0.92,
+            "evidence_rounds": [0],
+        }),
+        ("sample_and_infer", {"sample_range": [0.0, 0.5], "prompt": "analyze"}),
+        ("terminate", {
+            "status": "fracture",
+            "fracture_type": "韧性断裂",
+            "location": "inside_gauge",
+            "confidence": 0.92,
+            "evidence_rounds": [0, 1],
+        }),
+    ])
+
+    agent = IterativeAgent(
+        llm_client=llm,
+        video_meta=video_meta,
+        config=config,
+        clip_builder=FakeClipBuilder(),
+        inference_client=FakeInferenceClient(responses),
+    )
+
+    result = agent.run()
+    assert result["status"] == "fracture"
+    # The time_range should be derived from server frames [0, 1] -> [0.0, 0.5]
+    assert result["time_range"] == [0.0, 0.5]
+
+    # Round 0 should use server timestamps, not local manifest.
+    round0 = result["history"][0]["result"]
+    assert round0["inferred_time_range"] == [0.0, 0.5]
+
+
+def test_iterative_agent_missing_preprocessing_graceful_fallback():
+    """Missing preprocessing (server adapter not deployed) gracefully falls back to local manifest."""
+    video_meta = {"video_id": "v401", "duration": 100.0, "video_path": "v401.mp4"}
+    config = make_config()
+    config["agent"]["max_rounds"] = 3
+
+    # No preprocessing — InferenceResult.preprocessing defaults to None.
+    responses = [
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": True,
+                "fracture_between": [17, 18],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+            },
+            attempts=1,
+            # preprocessing=None by default
+        ),
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": True,
+                "fracture_between": [0, 1],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+            },
+            attempts=1,
+            # preprocessing=None by default
+        ),
+    ]
+
+    llm = StaticLLM([
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("terminate", {
+            "status": "fracture",
+            "fracture_type": "韧性断裂",
+            "location": "inside_gauge",
+            "confidence": 0.92,
+            "evidence_rounds": [0],
+        }),
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("terminate", {
+            "status": "fracture",
+            "fracture_type": "韧性断裂",
+            "location": "inside_gauge",
+            "confidence": 0.92,
+            "evidence_rounds": [0, 1],
+        }),
+    ])
+
+    agent = IterativeAgent(
+        llm_client=llm,
+        video_meta=video_meta,
+        config=config,
+        clip_builder=FakeClipBuilder(),
+        inference_client=FakeInferenceClient(responses),
+    )
+
+    result = agent.run()
+    # Status must be fracture (not error) — graceful fallback works.
+    assert result["status"] == "fracture"
+    # The time_range should use local manifest mapping.
+    assert result["time_range"] is not None
+
+
+def test_iterative_agent_invalid_preprocessing_max_frames_not_8_errors():
+    """Preprocessing with max_frames != 8 causes round failure."""
+    video_meta = {"video_id": "v402", "duration": 100.0, "video_path": "v402.mp4"}
+    config = make_config()
+    config["agent"]["max_rounds"] = 3
+
+    preprocessing = {
+        "request_id": "uuid-402",
+        "processor_version": "wrong-version",
+        "max_frames": 4,  # Not 8
+        "frames": [{"index": 0, "timestamp": 0.0}],
+    }
+
+    responses = [
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": True,
+                "fracture_between": [0, 1],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+            },
+            attempts=1,
+            preprocessing=preprocessing,  # Present but invalid
+        ),
+        # Second round: fallback with valid output so agent can continue.
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": True,
+                "fracture_between": [17, 18],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+            },
+            attempts=1,
+            # no preprocessing (graceful fallback)
+        ),
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": True,
+                "fracture_between": [0, 1],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+            },
+            attempts=1,
+        ),
+    ]
+
+    llm = StaticLLM([
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("terminate", {
+            "status": "fracture",
+            "fracture_type": "韧性断裂",
+            "location": "inside_gauge",
+            "confidence": 0.92,
+            "evidence_rounds": [1],
+        }),
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("terminate", {
+            "status": "fracture",
+            "fracture_type": "韧性断裂",
+            "location": "inside_gauge",
+            "confidence": 0.92,
+            "evidence_rounds": [1, 2],
+        }),
+    ])
+
+    agent = IterativeAgent(
+        llm_client=llm,
+        video_meta=video_meta,
+        config=config,
+        clip_builder=FakeClipBuilder(),
+        inference_client=FakeInferenceClient(responses),
+    )
+
+    result = agent.run()
+    # The agent should still reach a conclusion despite the invalid preprocessing on round 0.
+    assert result["status"] == "fracture"
+    # Round 0 should have a validation error.
+    round0 = result["history"][0]["result"]
+    assert not round0["ok"]
+    assert round0["validation_error"] is not None
+
+
+def test_iterative_agent_too_many_frames_preprocessing_error():
+    """Preprocessing with >8 frames causes round failure."""
+    video_meta = {"video_id": "v403", "duration": 100.0, "video_path": "v403.mp4"}
+    config = make_config()
+    config["agent"]["max_rounds"] = 3
+
+    preprocessing = {
+        "request_id": "uuid-403",
+        "processor_version": "minicpmv4.6/0.1",
+        "max_frames": 8,
+        "frames": [{"index": i, "timestamp": float(i)} for i in range(9)],  # 9 frames > 8
+    }
+
+    responses = [
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": True,
+                "fracture_between": [0, 1],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+                "confidence": 0.92,
+            },
+            attempts=1,
+            preprocessing=preprocessing,
+        ),
+        InferenceResult(
+            ok=True,
+            model_output={
+                "has_fracture": False,
+                "fracture_between": None,
+                "type": "未断裂",
+                "location": None,
+                "confidence": 0.95,
+            },
+            attempts=1,
+        ),
+    ]
+
+    llm = StaticLLM([
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+        ("terminate", {
+            "status": "no_fracture",
+            "confidence": 0.95,
+        }),
+    ])
+
+    agent = IterativeAgent(
+        llm_client=llm,
+        video_meta=video_meta,
+        config=config,
+        clip_builder=FakeClipBuilder(),
+        inference_client=FakeInferenceClient(responses),
+    )
+
+    result = agent.run()
+    # Should reach a conclusion despite round 0 error.
+    assert result["status"] in ("fracture", "no_fracture")
+    round0 = result["history"][0]["result"]
+    assert not round0["ok"]
