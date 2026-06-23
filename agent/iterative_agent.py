@@ -124,7 +124,6 @@ class IterativeAgent:
         self.infra_terminated = False
         self.last_round_confidence_level = "不可信"
         self.best_positive_round: dict[str, Any] | None = None
-        self.no_fracture_windows_covered: set[int] = set()
 
         self.clip_builder = clip_builder or FfmpegVideoClipBuilder()
         self.inference_client = inference_client or self._default_inference_client()
@@ -289,7 +288,7 @@ class IterativeAgent:
 
                 previous_state = self.state
                 previous_candidate = list(self.candidate)
-                self._transition(internal_result)
+                self._transition(internal_result, round_idx)
                 self._emit(
                     "state_updated",
                     round=round_idx,
@@ -447,13 +446,10 @@ class IterativeAgent:
                 )
             return True, "模型明确报告无法识别"
 
-        # -- no_fracture: must cover all five fixed overlapping windows --
         if status == "no_fracture":
-            if self._all_no_fracture_windows_covered():
-                return True, "所有 5 个覆盖窗口均已确认无断裂"
-            return False, (
-                f"无断裂覆盖不完整，还需覆盖: {self._uncovered_windows_desc()}"
-            )
+            if self.no_fracture_count >= 2:
+                return True, "至少 2 轮无断裂确认"
+            return False, f"仅 {self.no_fracture_count} 轮无断裂确认，需要至少 2 轮"
 
         # -- fracture: check evidence threshold and convergence --
         if status == "fracture":
@@ -490,12 +486,12 @@ class IterativeAgent:
                         f"正证据轮次 {positive_evidence} 的 inferred_time_range "
                         f"无交集，无法收敛，请继续验证"
                     )
-                # Fix 3d: evidence time_range width must be ≤ tolerance.
-                if inter_end - inter_start > self.tolerance:
+                # Fix 3d: evidence time_range width must be ≤ tolerance * 5.
+                if inter_end - inter_start > self.tolerance * 5:
                     return False, (
                         f"evidence time_range 交集宽度 "
                         f"{inter_end - inter_start:.2f}s 超过 "
-                        f"tolerance ({self.tolerance}s)，请继续验证"
+                        f"tolerance*5 ({self.tolerance * 5}s)，请继续验证"
                     )
 
             # Must converge or exhaust rounds.
@@ -520,41 +516,7 @@ class IterativeAgent:
     # ------------------------------------------------------------------
     # State machine
     # ------------------------------------------------------------------
-    @property
-    def _no_fracture_windows(self) -> list[list[float]]:
-        """Five fixed overlapping windows covering the full video duration.
-
-        Normalised fractions [0, 0.4], [0.2, 0.6], [0.4, 0.8], [0.6, 1.0],
-        [0, 1.0] mapped to the actual video duration.
-        """
-        duration = self.video_meta.get("duration", 0.0)
-        if duration <= 0:
-            return [[0.0, 0.0]] * 5
-        return [
-            [0.0, 0.4 * duration],
-            [0.2 * duration, 0.6 * duration],
-            [0.4 * duration, 0.8 * duration],
-            [0.6 * duration, duration],
-            [0.0, duration],
-        ]
-
-    def _all_no_fracture_windows_covered(self) -> bool:
-        """Return True when all five overlapping windows have been sampled
-        with ``has_fracture=False`` at least once."""
-        return len(self.no_fracture_windows_covered) >= 5
-
-    def _uncovered_windows_desc(self) -> str:
-        """Human-readable description of windows not yet covered."""
-        windows = self._no_fracture_windows
-        uncovered = sorted(set(range(5)) - self.no_fracture_windows_covered)
-        return ", ".join(
-            f"窗口{i}({windows[i][0]:.1f}-{windows[i][1]:.1f}s)" for i in uncovered
-        )
-
-    # ------------------------------------------------------------------
-    # State machine
-    # ------------------------------------------------------------------
-    def _transition(self, result: dict[str, Any]) -> None:
+    def _transition(self, result: dict[str, Any], round_idx: int) -> None:
         """Update state, candidate interval and counters from a tool result."""
         infra_error = result.get("infra_error")
         if infra_error:
@@ -601,13 +563,6 @@ class IterativeAgent:
         if has_fracture is False:
             self.last_round_confidence_level = confidence_level
 
-            # Track window coverage for no_fracture: every has_fracture=False
-            # round may cover one or more of the five fixed overlapping windows.
-            sample_range = result.get("sample_range", [0.0, 0.0])
-            for i, (w_start, w_end) in enumerate(self._no_fracture_windows):
-                if sample_range[0] <= w_start + 1e-9 and sample_range[1] >= w_end - 1e-9:
-                    self.no_fracture_windows_covered.add(i)
-
             is_global_scope = (
                 self.state == "INITIAL"
                 or (
@@ -631,7 +586,6 @@ class IterativeAgent:
         # Fracture path
         # ------------------------------------------------------------------
         self.no_fracture_count = 0
-        self.no_fracture_windows_covered.clear()
         if self.state in ("INITIAL", "NO_FRACTURE"):
             self.state = "NARROWING"
 

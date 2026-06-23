@@ -114,10 +114,10 @@ class FakeInferenceClient:
                 pp = {
                     "request_id": "fake-uuid",
                     "processor_version": "minicpmv4.6/0.1",
-                    "max_frames": max_idx,
+                    "max_frames": 8,
                     "frames": [
                         {"index": i, "timestamp": round(i * 0.5, 6)}
-                        for i in range(max_idx)
+                        for i in range(8)
                     ],
                 }
             return InferenceResult(
@@ -989,7 +989,7 @@ def test_iterative_agent_uses_server_frames_when_preprocessing_valid():
     preprocessing = {
         "request_id": "uuid-400",
         "processor_version": "minicpmv4.6/0.1",
-        "max_frames": 2,
+        "max_frames": 8,
         "frames": server_frames,
     }
 
@@ -1252,8 +1252,8 @@ def test_iterative_agent_invalid_preprocessing_too_many_frames_errors():
             preprocessing={
                 "request_id": "uuid-402-r1",
                 "processor_version": "minicpmv4.6/0.1",
-                "max_frames": 36,
-                "frames": [{"index": i, "timestamp": float(i)} for i in range(36)],
+                "max_frames": 8,
+                "frames": [{"index": i, "timestamp": float(i)} for i in range(8)],
             },
         ),
         InferenceResult(
@@ -1269,8 +1269,8 @@ def test_iterative_agent_invalid_preprocessing_too_many_frames_errors():
             preprocessing={
                 "request_id": "uuid-402-r2",
                 "processor_version": "minicpmv4.6/0.1",
-                "max_frames": 36,
-                "frames": [{"index": i, "timestamp": float(i)} for i in range(36)],
+                "max_frames": 8,
+                "frames": [{"index": i, "timestamp": float(i)} for i in range(8)],
             },
         ),
     ]
