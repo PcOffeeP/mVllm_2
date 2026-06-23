@@ -38,7 +38,7 @@ SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "03_splits_v2"
 OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "04_merged_v2"
 
 VIDEO_FPS = 8.0
-VIDEO_MAXLEN = 36
+VIDEO_MAXLEN = 8
 
 FRACTURE_TYPES = {
     "韧性断裂",
