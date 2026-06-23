@@ -89,6 +89,20 @@ def load_split_video_ids(splits_dir: Path) -> dict[str, set[str]]:
     return {name: mapping.get(name, set()) for name in SPLIT_NAMES}
 
 
+def _normalize_video_path(video_path: str) -> str:
+    """规范化视频路径。
+
+    - 以 ``data/`` 开头的相对路径保持原样。
+    - 绝对路径（以 ``/`` 开头）保持原样。
+    - 其它相对路径视为 ``data/`` 下的子目录，补全 ``data/`` 前缀。
+    """
+    if not isinstance(video_path, str):
+        return video_path
+    if video_path.startswith("data/") or video_path.startswith("/"):
+        return video_path
+    return f"data/{video_path}"
+
+
 def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
     """治理标签冲突：优先使用上游子视频元数据中的 canonical 字段。
 
@@ -205,7 +219,7 @@ def convert_subvideo_to_sample(
 
     sample: dict[str, Any] = {
         "id": sub["subvideo_id"],
-        "videos": [sub["video_path"]],
+        "videos": [_normalize_video_path(sub["video_path"])],
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
@@ -376,11 +390,14 @@ def _build_test_artifacts(
     ground_truth: list[dict[str, Any]] = []
     for vid in sorted(test_video_ids):
         rec = by_id.get(vid, {})
+        video_path = _normalize_video_path(
+            rec.get("video_path") or f"data/01_videos/{vid}.mp4"
+        )
         inputs.append(
             {
                 "id": vid,
                 "video_id": vid,
-                "video_path": f"data/01_videos/{vid}.mp4",
+                "video_path": video_path,
             }
         )
         ground_truth.append(

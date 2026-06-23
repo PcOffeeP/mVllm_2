@@ -18,6 +18,7 @@ def _subvideo(
     has_fracture: bool | None = True,
     ftype: str | None = None,
     source_type: str | None = None,
+    video_path: str | None = None,
 ) -> dict:
     """构造一条最小子视频元数据。"""
     ftype = ftype or ("韧性断裂" if has_fracture is True else "未断裂")
@@ -25,7 +26,7 @@ def _subvideo(
     return {
         "subvideo_id": f"{video_id}_focus_3s_50pct",
         "source_video": video_id,
-        "video_path": f"02_subvideos_v2/{video_id}_focus_3s_50pct.mp4",
+        "video_path": video_path or f"02_subvideos_v2/{video_id}_focus_3s_50pct.mp4",
         "frame_paths": [f"03_frames_v2/{video_id}_focus_3s_50pct/frame_{i:04d}.jpg" for i in range(24)],
         "start_time": 143.9,
         "end_time": 146.9,
@@ -75,7 +76,7 @@ def test_convert_subvideo_to_sample_sharegpt_format():
     sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
 
     assert sample["id"] == sub["subvideo_id"]
-    assert sample["videos"] == [sub["video_path"]]
+    assert sample["videos"] == ["data/02_subvideos_v2/video_0001_focus_3s_50pct.mp4"]
     assert len(sample["messages"]) == 3
 
     roles = [m["role"] for m in sample["messages"]]
@@ -102,6 +103,50 @@ def test_convert_subvideo_to_sample_sharegpt_format():
     assert sample["source_location"] == "inside_gauge"
     assert sample["start_frame"] == sub["start_frame"]
     assert sample["end_frame"] == sub["end_frame"]
+
+
+def test_convert_subvideo_preserves_data_videos_prefix():
+    """子视频 video_path 为 data/01_videos/ 前缀时应原样透传。"""
+    sub = _subvideo(
+        video_id="video_0001",
+        has_fracture=True,
+        video_path="data/01_videos/video_0001.mp4",
+    )
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    assert sample["videos"] == ["data/01_videos/video_0001.mp4"]
+
+
+def test_convert_subvideo_prefixes_subvideo_dir():
+    """子视频 video_path 缺少 data/ 前缀时应自动补全。"""
+    sub = _subvideo(
+        video_id="video_0001",
+        has_fracture=True,
+        video_path="02_subvideos_v2/video_0001_focus_3s_50pct.mp4",
+    )
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    assert sample["videos"] == ["data/02_subvideos_v2/video_0001_focus_3s_50pct.mp4"]
+
+
+def test_convert_subvideo_prefixes_frames_dir():
+    """帧目录 video_path 缺少 data/ 前缀时应自动补全。"""
+    sub = _subvideo(
+        video_id="video_0001",
+        has_fracture=True,
+        video_path="03_frames_v2/video_0001_focus_3s_50pct.mp4",
+    )
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    assert sample["videos"] == ["data/03_frames_v2/video_0001_focus_3s_50pct.mp4"]
+
+
+def test_convert_subvideo_preserves_absolute_path():
+    """绝对路径 video_path 应保持原样。"""
+    sub = _subvideo(
+        video_id="video_0001",
+        has_fracture=True,
+        video_path="/abs/path/to/video_0001.mp4",
+    )
+    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    assert sample["videos"] == ["/abs/path/to/video_0001.mp4"]
 
 
 def test_convert_negative_sample_has_null_fracture_between():
@@ -294,6 +339,75 @@ def test_build_all_outputs_test_artifacts_with_isolation(tmp_path):
 
     train_samples = json.loads((out_dir / "fold_0_train.json").read_text(encoding="utf-8"))
     assert all(s["source_video"] != "video_test" for s in train_samples)
+
+
+def test_build_test_artifacts_uses_video_meta_path(tmp_path):
+    """测试集输入清单应使用 video_meta.json 中的 video_path，而非硬编码前缀。"""
+    sub_meta = tmp_path / "subvideos_meta.json"
+    splits_dir = tmp_path / "splits"
+    out_dir = tmp_path / "out"
+    video_meta = tmp_path / "video_meta.json"
+
+    _write_subvideos_meta(sub_meta, [])
+    _write_splits(splits_dir, {"test": ["video_test"]})
+    video_meta.write_text(
+        json.dumps(
+            [
+                {
+                    "video_id": "video_test",
+                    "has_fracture": True,
+                    "type": "韧性断裂",
+                    "video_path": "02_subvideos_v2/video_test_focus_3s.mp4",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    builder.build_all(
+        subvideos_meta=sub_meta,
+        splits_dir=splits_dir,
+        output_dir=out_dir,
+        video_fps=8.0,
+        video_maxlen=36,
+        video_meta_path=video_meta,
+    )
+
+    inputs = json.loads((out_dir / "test_inputs.json").read_text(encoding="utf-8"))
+    assert len(inputs) == 1
+    assert inputs[0]["video_path"] == "data/02_subvideos_v2/video_test_focus_3s.mp4"
+
+
+def test_build_test_artifacts_falls_back_to_default_prefix(tmp_path):
+    """video_meta 缺少 video_path 时，测试集输入清单回退到 data/01_videos/。"""
+    sub_meta = tmp_path / "subvideos_meta.json"
+    splits_dir = tmp_path / "splits"
+    out_dir = tmp_path / "out"
+    video_meta = tmp_path / "video_meta.json"
+
+    _write_subvideos_meta(sub_meta, [])
+    _write_splits(splits_dir, {"test": ["video_fallback"]})
+    video_meta.write_text(
+        json.dumps(
+            [
+                {"video_id": "video_fallback", "has_fracture": False, "type": "未断裂"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    builder.build_all(
+        subvideos_meta=sub_meta,
+        splits_dir=splits_dir,
+        output_dir=out_dir,
+        video_fps=8.0,
+        video_maxlen=36,
+        video_meta_path=video_meta,
+    )
+
+    inputs = json.loads((out_dir / "test_inputs.json").read_text(encoding="utf-8"))
+    assert len(inputs) == 1
+    assert inputs[0]["video_path"] == "data/01_videos/video_fallback.mp4"
 
 
 def test_build_all_outputs_contain_start_end_frames(tmp_path):
