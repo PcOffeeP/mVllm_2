@@ -145,3 +145,96 @@ Runner 统一返回 `{ok:true,result:<公共结果>,error:null}` 或 `{ok:false,
 - [非阻塞] LLaMA-Factory 外层 `video_maxlen` 不一定传入 MiniCPM-V 4.6 子处理器，且后续版本可能改变视频读取行为；通过检查实际子处理器、锁定依赖、返回抽帧元数据和真实预处理校准阻止静默漂移。
 - [非阻塞] Base64 会增加约三分之一请求体积，连续完整视频可能超过默认 32 MiB 请求上限；工具可以在不改变时间轴和帧序列的前提下做空间缩放与压缩，仍超限时作为运行错误显式报告，不能通过项目侧预抽帧规避。
 - [非阻塞] LLaMA-Factory 默认 OpenAI-compatible 服务可能不返回实际抽帧元数据；项目侧服务适配层必须补充该内部元数据，否则该服务只能用于不涉及时间定位的诊断，不能接入正式 Agent。
+
+## 实施进度标注
+
+> 本章节由实施阶段维护，用于对照本文档的「执行清单」与「验收标准」记录实际落地状态、文件位置、关键缺口及下一步 owner。不影响正文内容。
+
+### 总体状态
+
+| 维度 | 状态 | 说明 |
+|---|---|---|
+| 契约模型与校验 | 已完成 | `agent/schema.py`、`agent/parser.py` 已覆盖 v3 五字段模型输出、工具 schema、公共结果信封和严格解析。 |
+| Prompt 契约 | 已完成 | `agent/prompts.py` 已统一 system prompt 与五字段 JSON 语义。 |
+| Native Function Calling 工具 schema | 已完成 | `agent/schema.py` 中 `ToolSampleAndInfer` / `ToolTerminate` 已收紧参数。 |
+| 预处理适配层抽象 | 骨架完成 | `pipeline/preprocessing/adapter.py` + mock + minicpm 模板已抽象，真实处理器接入仍为占位。 |
+| 校准与质量冻结 | 骨架完成 | `pipeline/scripts/calibration.py`、`quality_check.py`、`freeze_data_version.py` 已建立流程骨架。 |
+| Base64 HTTP 推理客户端 | 未开始 | `agent/inference.py` 仍发送本地路径，尚未实现 `data:video/mp4;base64` 传输与服务元数据扩展。 |
+| 连续临时视频边界裁剪 | 未开始 | `agent/sampling.py` 仍先抽帧再拼接，未改为按 `sample_range` 直接裁剪连续 MP4。 |
+| 终止提案与 Runner 信封纯契约校验 | 未开始 | `agent/iterative_agent.py` 仍使用旧 `TOOLS_SCHEMA` 和旧终止逻辑，未迁移到 `agent/schema.py` 的终止提案/公共结果模型。 |
+| 真实 MiniCPM-V 4.6 处理器接入 | 需训练机环境 | `pipeline/preprocessing/minicpm_preprocessor.py` 的 `sample()` 为占位，需真实环境验证。 |
+| LLaMA-Factory 实际 batch 校准 | 需训练机环境 | 校准脚本骨架已具备，但未在真实训练机上执行 batch 校准。 |
+
+### 执行清单逐项状态
+
+- [x] **建立唯一的契约模型和枚举**
+  - 状态：已完成
+  - 位置：`agent/schema.py`（`ModelOutput`、`FinalOutput`、`ToolSampleAndInfer`、`ToolTerminate`、`FractureType`、`LocationType` 等）
+  - 说明：已替换旧架构文档引用、边界哨兵、二值最终结果、置信度等级；支持两类视频异常的模型输出、工具结果、终止提案、公共结果和 Runner 信封校验入口。
+- [x] **统一训练与推理的视觉模型 system prompt 和五字段 JSON 语义**
+  - 状态：已完成
+  - 位置：`agent/prompts.py`（`SYSTEM_PROMPT`、`build_user_prompt`）
+  - 说明：已删除噪声 JSON 提取、额外字段过滤和静默默认值，严格按五种合法组合定义。
+- [x] **严格解析与两次纠错重试**
+  - 状态：已完成
+  - 位置：`agent/parser.py`（`ResultParser`、`ParseError`、`ParseResult`）
+  - 说明：解析器带稳定错误码；重试接口已由 `ResultParser.parse_with_retry` 暴露，调用方负责追加纠错 prompt 并限制最多两次重试。
+- [x] **收紧 Native Function Calling 工具 schema**
+  - 状态：已完成
+  - 位置：`agent/schema.py`（`ToolSampleAndInfer`、`ToolTerminate`）
+  - 说明：`sample_and_infer` 只接收 `sample_range` 与 `prompt`；`terminate` 只提交结论字段和证据轮次。
+- [ ] **重构连续临时视频边界**
+  - 状态：未开始
+  - 当前位置：`agent/sampling.py`（仍先抽帧再拼接）
+  - 缺口：需要改为按 `sample_range` 直接裁剪连续 MP4，生成临时视频到原视频的帧映射清单，并作为 Base64 来源。
+  - 下一步 owner：负责采样/媒体处理的开发者。
+- [ ] **将 MiniCPM-V 4.6 实际子处理器的最大帧数设置为 8，建立真实预处理适配层与校准**
+  - 状态：部分完成 / 骨架完成
+  - 位置：`pipeline/preprocessing/adapter.py`（抽象）、`pipeline/preprocessing/minicpm_preprocessor.py`（模板，真实 `sample()` 占位）、`pipeline/scripts/calibration.py`（骨架）
+  - 缺口：需在训练机上接入真实 `video_processor`，验证 8 帧上限、顺序单调、训练/服务选择一致。
+  - 下一步 owner：训练机环境 owner + 预处理模块开发者。
+- [ ] **实现只发送 Base64 `data:video/mp4` 的 OpenAI-compatible 推理客户端和项目侧服务适配层**
+  - 状态：未开始
+  - 当前位置：`agent/inference.py`（仍发送本地路径）
+  - 缺口：需实现 Base64 编码、请求大小/MIME/超时检查、传输重试、内部 `preprocessing` 元数据解析、敏感信息脱敏；项目侧服务适配层未建立。
+  - 下一步 owner：推理客户端/服务适配开发者。
+- [ ] **分离决策模型可见工具结果与内部诊断**
+  - 状态：部分完成（契约定义已完成，运行时未接入）
+  - 位置：`agent/schema.py`（`ToolResult` / 公共结果模型，诊断字段在契约中定义）
+  - 缺口：`agent/iterative_agent.py` 仍使用旧结果结构，需迁移到契约模型并移除临时路径/帧表暴露。
+  - 下一步 owner：Agent Runtime 开发者。
+- [ ] **实现终止提案和 Runner 信封的纯契约校验**
+  - 状态：未开始
+  - 当前位置：`agent/iterative_agent.py`（仍使用旧 `TOOLS_SCHEMA` 和旧终止逻辑）
+  - 缺口：需用 `ToolTerminate` / `FinalOutput` 替换旧 schema，程序派生 `time_range`、校验证据门槛、区分 Runner `ok=false` 与 `unrecognized`。
+  - 下一步 owner：Agent Runtime 开发者。
+- [ ] **更新契约 fixtures 和项目级测试**
+  - 状态：未开始
+  - 缺口：需要补充五种合法组合、两类视频异常、Base64 请求、三次非法输出、传输失败、终止门槛、敏感信息不落日志等测试。
+  - 下一步 owner：测试/QA 负责人。
+
+### 验收标准对照
+
+| 验收标准 | 状态 | 位置/说明 |
+|---|---|---|
+| 项目计划保持 `已批准` v7，本实施方案通过实施文档校验器 | 待确认 | 文档已标注 v7；需运行校验器确认无归档设计引用。 |
+| Agent 工具不再暴露/接受 `num_frames`、`video_fps`、`sampling_strategy`、`expected_schema`；MiniCPM-V 4.6 实际子处理器最大帧数为 8，无项目级 FPS 覆盖 | 部分完成 | `agent/schema.py` 的工具 schema 已移除这些字段；`agent/iterative_agent.py` 的旧 `TOOLS_SCHEMA` 仍保留这些字段，未实际生效。真实 8 帧校验待训练机环境完成。 |
+| 真实视频测试证明连续临时媒体未被预先抽帧或改变时间轴 | 未开始 | `agent/sampling.py` 当前仍先抽帧再拼接。 |
+| 真实 MiniCPM-V 4.6 处理器对合法区间最多选择 8 个顺序单调帧，训练/服务一致 | 需训练机环境 | `pipeline/preprocessing/minicpm_preprocessor.py` 的 `sample()` 为占位。 |
+| HTTP 请求测试证明 Base64 `data:video/mp4`、无本地路径、assistant 内容为五字段 JSON、内部响应元数据完整 | 未开始 | `agent/inference.py` 仍发送本地路径，未返回/解析 `preprocessing` 元数据。 |
+| 模型输出只有完整、无额外字段且属于五种合法组合时才成功；非法情况均失败，最多两次纠错后得到 `invalid_model_output` | 已完成 | `agent/parser.py` + `agent/schema.py` 已实现。 |
+| 七种正常断裂输出只使用服务返回的实际帧表得到唯一 `inferred_time_range`；其余情况为 `null` | 部分完成 | `agent/sampling.py` 提供 `fracture_between_to_time_range` 映射函数；实际调用链路未接入服务元数据。 |
+| 决策模型可见结果只包含六个约定字段；内部诊断不保存 Base64/凭据/本地路径 | 部分完成 | 契约定义已完成；`agent/iterative_agent.py` 未迁移。 |
+| 两种视频异常只能生成 `unrecognized_reason=video_anomaly`；三种公共状态及七种 `unrecognized_reason` 全部通过条件字段测试；不满足证据门槛的 `terminate` 提案被拒绝 | 未开始 | 终止逻辑仍在 `agent/iterative_agent.py` 旧实现中。 |
+| `python3 -m pytest tests -q`、真实预处理校准测试和 `git diff --check` 均通过，且无需修改 `LlamaFactory/` submodule | 待确认 | 部分单元测试可能已覆盖 parser/schema；完整验收测试和真实校准测试待执行。 |
+
+### 关键缺口与下一步 owner
+
+| 缺口 | 影响 | 下一步 owner |
+|---|---|---|
+| `agent/inference.py` 仍发送本地视频路径，未实现 Base64 HTTP 传输与服务元数据扩展 | 阻塞服务部署与跨机推理；无法完成 HTTP 传输验收 | 推理客户端/服务适配开发者 |
+| `agent/sampling.py` 仍先抽帧再拼接，未按 `sample_range` 裁剪连续临时 MP4 | 可能导致时间轴改变/预先抽帧，违反连续媒体契约 | 采样/媒体处理开发者 |
+| `agent/iterative_agent.py` 仍使用旧 `TOOLS_SCHEMA` 和旧终止逻辑，未迁移到 `ToolSampleAndInfer` / `ToolTerminate` / `FinalOutput` | 终止提案、Runner 信封、纯契约校验无法落地；旧字段仍会暴露给决策模型 | Agent Runtime 开发者 |
+| `pipeline/preprocessing/minicpm_preprocessor.py` 真实 `sample()` 为占位，需在训练机接入 MiniCPM-V 4.6 `video_processor` | 阻塞 8 帧上限验证、训练/服务一致性校准、真实视频测试 | 训练机环境 owner + 预处理模块开发者 |
+| `pipeline/scripts/calibration.py` 尚未在真实训练机上执行 LLaMA-Factory 实际 batch 校准 | 无法确认训练配置指纹、处理器版本、部署清单一致性 | 训练机环境 owner |
+| 项目级契约 fixtures 和验收测试未补齐 | 无法持续验证契约不被回归 | 测试/QA 负责人 |
