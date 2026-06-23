@@ -11,8 +11,8 @@ VIDEO_DIR = DATA_DIR_ROOT / "01_videos"
 VALIDATION_DIR = Path(__file__).resolve().parent
 FINETUNE_DIR = VALIDATION_DIR.parent  # finetune/（原视频目录已上提合并至此）
 DATA_DIR = DATA_DIR_ROOT  # 仓库根目录的 data/
-JSON_DIR = DATA_DIR / "04_merged"  # 合并后的训练/验证 JSON 存放目录
-SPLIT_DIR = DATA_DIR_ROOT / "03_splits"
+JSON_DIR = DATA_DIR / "04_merged_v2"  # 合并后的训练/验证 JSON 存放目录
+SPLIT_DIR = DATA_DIR_ROOT / "03_splits_v2"
 RESULTS_DIR = VALIDATION_DIR / "results"
 
 GROUND_TRUTH_CSV = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.csv"
@@ -22,12 +22,12 @@ GROUND_TRUTH_JSON = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.json"
 
 # 新 interval 方案训练/验证产物。
 TRAINING_JSON_FILES = [
-    DATA_DIR_ROOT / "04_merged" / "fold_0_train.json",
-    DATA_DIR_ROOT / "04_merged" / "fold_0_val.json",
-    DATA_DIR_ROOT / "04_merged" / "fold_1_train.json",
-    DATA_DIR_ROOT / "04_merged" / "fold_1_val.json",
-    DATA_DIR_ROOT / "04_merged" / "fold_2_train.json",
-    DATA_DIR_ROOT / "04_merged" / "fold_2_val.json",
+    DATA_DIR_ROOT / "04_merged_v2" / "fold_0_train.json",
+    DATA_DIR_ROOT / "04_merged_v2" / "fold_0_val.json",
+    DATA_DIR_ROOT / "04_merged_v2" / "fold_1_train.json",
+    DATA_DIR_ROOT / "04_merged_v2" / "fold_1_val.json",
+    DATA_DIR_ROOT / "04_merged_v2" / "fold_2_train.json",
+    DATA_DIR_ROOT / "04_merged_v2" / "fold_2_val.json",
 ]
 
 DEFAULT_VIDEO_ROOT = VIDEO_DIR  # 远端原值: Path("/hy-tmp/videos")
