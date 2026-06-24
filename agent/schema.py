@@ -7,8 +7,10 @@ public result envelopes used by the iterative localization pipeline.
 
 from __future__ import annotations
 
+import math
+
 from enum import StrEnum
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -45,40 +47,22 @@ NON_FRACTURE_CLASSES: set[str] = {
 
 ALL_MODEL_OUTPUT_TYPES: set[str] = FRACTURE_CLASSES | NON_FRACTURE_CLASSES | {FractureType.VIDEO_ABNORMAL}
 
+UNRECOGNIZED_REASONS: set[str] = {
+    "video_anomaly",
+    "not_clamped",
+    "conflicting_results",
+    "invalid_model_output",
+    "insufficient_confidence",
+    "incomplete_coverage",
+    "max_rounds",
+}
+
 
 class LocationType(StrEnum):
     """Gauge-length location judgment."""
 
     INSIDE = "inside_gauge"
     OUTSIDE = "outside_gauge"
-
-
-# ---------------------------------------------------------------------------
-# Legacy enums kept for backward-compatible imports. They are no longer used
-# by ModelOutput or any public v2/v3 contract model.
-# ---------------------------------------------------------------------------
-class ConfidenceLevel(StrEnum):
-    """Four-level confidence grading (legacy, retained for import stability)."""
-
-    HIGH = "高"
-    MEDIUM = "中"
-    LOW = "低"
-    UNTRUSTED = "不可信"
-
-
-class BoundaryStatus(StrEnum):
-    """Boundary sentinel status (legacy, retained for import stability)."""
-
-    NONE = "none"
-    LEFT_SENTINEL = "left_sentinel"
-    RIGHT_SENTINEL = "right_sentinel"
-
-
-class SamplingStrategy(StrEnum):
-    """Sampling strategy requested by the Agent (legacy, retained for imports)."""
-
-    UNIFORM = "uniform"
-    ADAPTIVE = "adaptive"
 
 
 # ---------------------------------------------------------------------------
@@ -99,18 +83,29 @@ class ModelOutput(BaseModel):
     location: str | None = None
     confidence: float = Field(..., ge=0.0, le=1.0)
 
+    @field_validator("has_fracture", mode="before")
+    @classmethod
+    def _validate_has_fracture(cls, value: Any) -> Any:
+        if value is not None and not isinstance(value, bool):
+            raise ValueError("has_fracture must be a JSON boolean or null")
+        return value
+
     @field_validator("confidence", mode="before")
     @classmethod
     def _reject_bool_confidence(cls, value: Any) -> Any:
-        if isinstance(value, bool):
-            raise ValueError("confidence must be a JSON number, not a boolean")
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("confidence must be a JSON number, not a boolean or string")
+        if not math.isfinite(value):
+            raise ValueError("confidence must be finite")
         return value
 
     @field_validator("fracture_between", mode="before")
     @classmethod
     def _reject_bool_indexes(cls, value: Any) -> Any:
-        if isinstance(value, list) and any(isinstance(item, bool) for item in value):
-            raise ValueError("fracture_between indexes must be integers, not booleans")
+        if isinstance(value, list) and any(
+            isinstance(item, bool) or not isinstance(item, int) for item in value
+        ):
+            raise ValueError("fracture_between indexes must be JSON integers")
         return value
 
     @model_validator(mode="after")
@@ -183,7 +178,31 @@ class ToolSampleAndInfer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     sample_range: list[float] = Field(..., min_length=2, max_length=2)
-    prompt: str = Field(..., min_length=1)
+    prompt: str = Field(..., min_length=1, max_length=4096)
+
+    @field_validator("sample_range", mode="before")
+    @classmethod
+    def _validate_sample_range(cls, value: Any) -> Any:
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError("sample_range must contain exactly two floats")
+        if any(
+            isinstance(item, bool) or not isinstance(item, (int, float))
+            for item in value
+        ):
+            raise ValueError("sample_range values must be JSON numbers")
+        start, end = value
+        if not math.isfinite(start) or not math.isfinite(end):
+            raise ValueError("sample_range values must be finite floats")
+        if not start < end:
+            raise ValueError("sample_range must satisfy start < end")
+        return value
+
+    @field_validator("prompt")
+    @classmethod
+    def _reject_literal_video_marker(cls, value: str) -> str:
+        if "<video>" in value:
+            raise ValueError("prompt must not contain the literal <video> marker")
+        return value
 
 
 class ToolTerminate(BaseModel):
@@ -203,6 +222,33 @@ class ToolTerminate(BaseModel):
     confidence: float | None = None
     unrecognized_reason: str | None = None
     evidence_rounds: list[int] | None = None
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _validate_confidence(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, bool):
+            raise ValueError("confidence must be a JSON number, not a boolean")
+        if not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError("confidence must be a finite JSON number")
+        if not 0.0 <= float(value) <= 1.0:
+            raise ValueError("confidence must be between 0 and 1")
+        return value
+
+    @field_validator("evidence_rounds", mode="before")
+    @classmethod
+    def _validate_evidence_rounds(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if not isinstance(value, list) or any(
+            isinstance(item, bool) or not isinstance(item, int) or item < 0
+            for item in value
+        ):
+            raise ValueError("evidence_rounds must contain non-negative integers")
+        if len(value) != len(set(value)):
+            raise ValueError("evidence_rounds must not contain duplicates")
+        return value
 
     @model_validator(mode="after")
     def _validate_status(self) -> Self:
@@ -233,8 +279,10 @@ class ToolTerminate(BaseModel):
                 raise ValueError("unrecognized_reason must be null for no_fracture status")
 
         else:  # unrecognized
-            if self.unrecognized_reason is None:
-                raise ValueError("unrecognized_reason is required for unrecognized status")
+            if self.unrecognized_reason not in UNRECOGNIZED_REASONS:
+                raise ValueError(
+                    f"unrecognized_reason must be one of {sorted(UNRECOGNIZED_REASONS)}"
+                )
             if self.fracture_type is not None:
                 raise ValueError("fracture_type must be null for unrecognized status")
             if self.location is not None:
@@ -274,6 +322,36 @@ class SampleAndInferResult(BaseModel):
     validation_error: ValidationErrorInfo | None = None
     attempts: int = Field(..., ge=1, le=3)
 
+    @field_validator("ok", mode="before")
+    @classmethod
+    def _validate_ok(cls, value: Any) -> Any:
+        if not isinstance(value, bool):
+            raise ValueError("ok must be a JSON boolean")
+        return value
+
+    @field_validator("sample_range", "inferred_time_range", mode="before")
+    @classmethod
+    def _validate_ranges(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError("time ranges must contain exactly two JSON numbers")
+        if any(
+            isinstance(item, bool)
+            or not isinstance(item, (int, float))
+            or not math.isfinite(item)
+            for item in value
+        ):
+            raise ValueError("time ranges must contain finite JSON numbers")
+        return value
+
+    @field_validator("attempts", mode="before")
+    @classmethod
+    def _validate_attempts(cls, value: Any) -> Any:
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError("attempts must be a JSON integer")
+        return value
+
     @model_validator(mode="after")
     def _validate_result_consistency(self) -> Self:
         if self.ok:
@@ -296,8 +374,9 @@ class SampleAndInferDiagnostics(BaseModel):
 
     request_id: str | None = None
     processor_version: str | None = None
-    video_maxlen: int | None = None
+    max_frames: int | None = None
     sampled_frames: list[dict[str, Any]] | None = None
+    deployment_manifest: dict[str, Any] | None = None
     temp_video_manifest: list[dict[str, Any]] | None = None
     internal_frame_range: list[int] | None = None
     temp_video_hash: str | None = None
@@ -309,6 +388,7 @@ class SampleAndInferDiagnostics(BaseModel):
     correction_retries: int = 0
     elapsed_seconds: float | None = None
     error: ValidationErrorInfo | None = None
+    video_anomaly_kind: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +407,35 @@ class FinalOutput(BaseModel):
     confidence: float | None = None
     unrecognized_reason: str | None = None
 
+    @field_validator("time_range", mode="before")
+    @classmethod
+    def _validate_time_range_input(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError("time_range must contain exactly two JSON numbers")
+        if any(
+            isinstance(item, bool)
+            or not isinstance(item, (int, float))
+            or not math.isfinite(item)
+            for item in value
+        ):
+            raise ValueError("time_range values must be finite JSON numbers")
+        return value
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _validate_confidence(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, bool):
+            raise ValueError("confidence must be a JSON number, not a boolean")
+        if not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError("confidence must be a finite JSON number")
+        if not 0.0 <= float(value) <= 1.0:
+            raise ValueError("confidence must be between 0 and 1")
+        return value
+
     @model_validator(mode="after")
     def _validate_public_result(self) -> Self:
         valid_statuses = {"fracture", "no_fracture", "unrecognized"}
@@ -336,6 +445,15 @@ class FinalOutput(BaseModel):
         if self.status == "fracture":
             if self.time_range is None:
                 raise ValueError("time_range is required for fracture status")
+            start, end = self.time_range
+            if isinstance(start, bool) or isinstance(end, bool):
+                raise ValueError("time_range values must be finite JSON numbers")
+            if not math.isfinite(start) or not math.isfinite(end):
+                raise ValueError("time_range values must be finite")
+            if not start < end:
+                raise ValueError("time_range must satisfy start < end")
+            if end - start > 1.0 + 1e-9:
+                raise ValueError("time_range width must be <= 1 second")
             if self.fracture_type not in FRACTURE_CLASSES:
                 raise ValueError("fracture_type must be one of the 7 fracture classes")
             if self.location not in {LocationType.INSIDE, LocationType.OUTSIDE, "unknown"}:
@@ -358,8 +476,10 @@ class FinalOutput(BaseModel):
                 raise ValueError("unrecognized_reason must be null for no_fracture status")
 
         else:  # unrecognized
-            if self.unrecognized_reason is None:
-                raise ValueError("unrecognized_reason is required for unrecognized status")
+            if self.unrecognized_reason not in UNRECOGNIZED_REASONS:
+                raise ValueError(
+                    f"unrecognized_reason must be one of {sorted(UNRECOGNIZED_REASONS)}"
+                )
             if self.time_range is not None:
                 raise ValueError("time_range must be null for unrecognized status")
             if self.fracture_type is not None:
@@ -377,7 +497,14 @@ class RunnerError(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    stage: str
+    stage: Literal[
+        "configuration",
+        "input",
+        "decision_backend",
+        "inference_transport",
+        "sampling",
+        "internal",
+    ]
     code: str
     message: str
 
@@ -395,6 +522,13 @@ class RunnerResult(BaseModel):
     ok: bool
     result: FinalOutput | None = None
     error: RunnerError | None = None
+
+    @field_validator("ok", mode="before")
+    @classmethod
+    def _validate_ok(cls, value: Any) -> Any:
+        if not isinstance(value, bool):
+            raise ValueError("ok must be a JSON boolean")
+        return value
 
     @model_validator(mode="after")
     def _validate_mutual_exclusion(self) -> Self:

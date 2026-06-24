@@ -112,7 +112,6 @@ class TestBuildVideoMeta:
 class TestRunOne:
     @patch("agent.iterative_agent.IterativeAgent")
     @patch("agent.runner.create_clip_builder")
-    @patch("agent.runner.create_sampler")
     @patch("agent.runner.create_inference_client")
     @patch("agent.runner.create_llm_client")
     @patch("agent.runner.build_video_meta")
@@ -121,7 +120,6 @@ class TestRunOne:
         mock_build_video_meta: MagicMock,
         mock_create_llm_client: MagicMock,
         mock_create_inference_client: MagicMock,
-        mock_create_sampler: MagicMock,
         mock_create_clip_builder: MagicMock,
         mock_iterative_agent: MagicMock,
         tmp_path: Path,
@@ -137,11 +135,9 @@ class TestRunOne:
         mock_build_video_meta.return_value = video_meta
         mock_llm_client = MagicMock()
         mock_inference_client = MagicMock()
-        mock_sampler = MagicMock()
         mock_clip_builder = MagicMock()
         mock_create_llm_client.return_value = mock_llm_client
         mock_create_inference_client.return_value = mock_inference_client
-        mock_create_sampler.return_value = mock_sampler
         mock_create_clip_builder.return_value = mock_clip_builder
 
         mock_agent_instance = MagicMock()
@@ -166,14 +162,12 @@ class TestRunOne:
         mock_build_video_meta.assert_called_once_with(video_path, video_id="sample")
         mock_create_llm_client.assert_called_once_with(config)
         mock_create_inference_client.assert_called_once_with(config)
-        mock_create_sampler.assert_called_once()
         mock_create_clip_builder.assert_called_once()
         mock_iterative_agent.assert_called_once()
         mock_agent_instance.run.assert_called_once()
 
     @patch("agent.iterative_agent.IterativeAgent")
     @patch("agent.runner.create_clip_builder")
-    @patch("agent.runner.create_sampler")
     @patch("agent.runner.create_inference_client")
     @patch("agent.runner.create_llm_client")
     @patch("agent.runner.build_video_meta")
@@ -182,7 +176,6 @@ class TestRunOne:
         mock_build_video_meta: MagicMock,
         mock_create_llm_client: MagicMock,
         mock_create_inference_client: MagicMock,
-        mock_create_sampler: MagicMock,
         mock_create_clip_builder: MagicMock,
         mock_iterative_agent: MagicMock,
         tmp_path: Path,
@@ -211,7 +204,101 @@ class TestRunOne:
 
     @patch("agent.iterative_agent.IterativeAgent")
     @patch("agent.runner.create_clip_builder")
-    @patch("agent.runner.create_sampler")
+    @patch("agent.runner.create_inference_client")
+    @patch("agent.runner.create_llm_client")
+    @patch("agent.runner.build_video_meta")
+    def test_run_one_passes_work_dir_to_agent(
+        self,
+        mock_build_video_meta: MagicMock,
+        mock_create_llm_client: MagicMock,
+        mock_create_inference_client: MagicMock,
+        mock_create_clip_builder: MagicMock,
+        mock_iterative_agent: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        video_path = tmp_path / "sample.mp4"
+        video_path.write_text("fake video content", encoding="utf-8")
+
+        mock_build_video_meta.return_value = {
+            "video_id": "sample",
+            "video_path": str(video_path),
+            "duration_sec": 8.0,
+        }
+        mock_iterative_agent.return_value = MagicMock()
+
+        work_dir = tmp_path / "runs"
+        config = {"llm": {"model": "test"}}
+        with patch("agent.runner.load_config", return_value=config):
+            runner.run_one(
+                video_path,
+                config_path="agent/config.yaml",
+                work_dir=str(work_dir),
+            )
+
+        call_kwargs = mock_iterative_agent.call_args.kwargs
+        assert call_kwargs["work_dir"] == str(work_dir)
+
+    @patch("agent.iterative_agent.IterativeAgent")
+    @patch("agent.runner.create_clip_builder")
+    @patch("agent.runner.create_inference_client")
+    @patch("agent.runner.create_llm_client")
+    @patch("agent.runner.build_video_meta")
+    def test_run_one_propagates_runner_failure_envelope(
+        self,
+        mock_build_video_meta: MagicMock,
+        mock_create_llm_client: MagicMock,
+        mock_create_inference_client: MagicMock,
+        mock_create_clip_builder: MagicMock,
+        mock_iterative_agent: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """``run_one`` must propagate ``RunnerResult(ok=False, ...)`` from the agent.
+
+        Without this check the success branch tries to build a ``FinalOutput``
+        from the error dict and masks the original ``consecutive_infra_failures``
+        code with a generic ``ValidationError``.
+        """
+        video_path = tmp_path / "sample.mp4"
+        video_path.write_text("fake video content", encoding="utf-8")
+
+        mock_build_video_meta.return_value = {
+            "video_id": "sample",
+            "video_path": str(video_path),
+            "duration_sec": 8.0,
+        }
+        mock_iterative_agent.return_value = MagicMock()
+        failure_envelope = {
+            "ok": False,
+            "result": None,
+            "error": {
+                "stage": "internal",
+                "code": "consecutive_infra_failures",
+                "message": "连续 2 轮基础设施失败，无法完成分析",
+            },
+        }
+        mock_iterative_agent.return_value.run.return_value = failure_envelope
+
+        callback = MagicMock()
+        config = {"llm": {"model": "test"}}
+        with patch("agent.runner.load_config", return_value=config):
+            result = runner.run_one(
+                video_path,
+                config_path="agent/config.yaml",
+                event_callback=callback,
+            )
+
+        assert result == failure_envelope
+        assert result["error"]["code"] == "consecutive_infra_failures"
+
+        callback.assert_called_once()
+        event = callback.call_args.args[0]
+        assert event["event_type"] == "video_failed"
+        assert event["video_id"] == "sample"
+        assert event["stage"] == "internal"
+        assert "基础设施失败" in event["error"]
+
+    @patch("agent.iterative_agent.IterativeAgent")
+    @patch("agent.runner.create_clip_builder")
     @patch("agent.runner.create_inference_client")
     @patch("agent.runner.create_llm_client")
     @patch("agent.runner.build_video_meta")
@@ -220,7 +307,6 @@ class TestRunOne:
         mock_build_video_meta: MagicMock,
         mock_create_llm_client: MagicMock,
         mock_create_inference_client: MagicMock,
-        mock_create_sampler: MagicMock,
         mock_create_clip_builder: MagicMock,
         mock_iterative_agent: MagicMock,
         tmp_path: Path,
@@ -243,7 +329,7 @@ class TestRunOne:
         assert isinstance(result, dict)
         assert result["ok"] is False
         assert result["result"] is None
-        assert result["error"]["stage"] == "metadata"
+        assert result["error"]["stage"] == "input"
         assert result["error"]["code"] == "RuntimeError"
         assert result["error"]["message"] == "metadata extraction failed"
 
@@ -252,7 +338,7 @@ class TestRunOne:
         assert event["event_type"] == "video_failed"
         assert event["video_id"] == "sample"
         assert event["error"] == "metadata extraction failed"
-        assert event["stage"] == "metadata"
+        assert event["stage"] == "input"
 
     def test_run_one_load_config_failure_emits_video_failed_and_returns_error(
         self, tmp_path: Path
@@ -271,7 +357,7 @@ class TestRunOne:
         assert isinstance(result, dict)
         assert result["ok"] is False
         assert result["result"] is None
-        assert result["error"]["stage"] == "metadata"
+        assert result["error"]["stage"] == "configuration"
         assert result["error"]["code"] == "RuntimeError"
         assert result["error"]["message"] == "config broken"
 
@@ -280,7 +366,7 @@ class TestRunOne:
         assert event["event_type"] == "video_failed"
         assert event["video_id"] == "fake"
         assert event["error"] == "config broken"
-        assert event["stage"] == "metadata"
+        assert event["stage"] == "configuration"
 
 
 class TestRunBatch:
@@ -350,7 +436,7 @@ class TestRunBatch:
                     "ok": False,
                     "result": None,
                     "error": {
-                        "stage": "inference_client",
+                        "stage": "inference_transport",
                         "code": "RuntimeError",
                         "message": "inference timeout",
                     },
@@ -372,7 +458,7 @@ class TestRunBatch:
         assert len(results) == 2
         assert results[0]["ok"] is False
         assert results[0]["result"] is None
-        assert results[0]["error"]["stage"] == "inference_client"
+        assert results[0]["error"]["stage"] == "inference_transport"
         assert results[0]["error"]["code"] == "RuntimeError"
         assert results[0]["error"]["message"] == "inference timeout"
         assert results[1]["ok"] is True
@@ -400,7 +486,7 @@ class TestRunBatch:
                         "event_type": "video_failed",
                         "video_id": video_id,
                         "error": "metadata error",
-                        "stage": "metadata",
+                        "stage": "input",
                     }
                 )
             if Path(path).name == "v1.mp4":
@@ -408,7 +494,7 @@ class TestRunBatch:
                     "ok": False,
                     "result": None,
                     "error": {
-                        "stage": "metadata",
+                        "stage": "input",
                         "code": "RuntimeError",
                         "message": "metadata error",
                     },
@@ -434,13 +520,12 @@ class TestRunBatch:
         assert event["event_type"] == "video_failed"
         assert event["video_id"] == "v1"
         assert event["error"] == "metadata error"
-        assert event["stage"] == "metadata"
+        assert event["stage"] == "input"
 
 
 class TestEventsJsonSerializable:
     @patch("agent.iterative_agent.IterativeAgent")
     @patch("agent.runner.create_clip_builder")
-    @patch("agent.runner.create_sampler")
     @patch("agent.runner.create_inference_client")
     @patch("agent.runner.create_llm_client")
     @patch("agent.runner.build_video_meta")
@@ -449,7 +534,6 @@ class TestEventsJsonSerializable:
         mock_build_video_meta: MagicMock,
         mock_create_llm_client: MagicMock,
         mock_create_inference_client: MagicMock,
-        mock_create_sampler: MagicMock,
         mock_create_clip_builder: MagicMock,
         mock_iterative_agent: MagicMock,
         tmp_path: Path,
@@ -520,7 +604,7 @@ class TestEventsJsonSerializable:
                 "event_type": "video_failed",
                 "video_id": "sample",
                 "error": "metadata error",
-                "stage": "metadata",
+                "stage": "input",
             }
         )
 

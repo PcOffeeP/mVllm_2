@@ -379,10 +379,10 @@ def _validate_processor_fingerprints(
                 fingerprints.add(fp)
 
     if mock_fingerprints:
-        warnings.append(
+        errors.append(
             {
                 "check": "processor_fingerprint",
-                "detail": "mock_or_theoretical_fingerprints_allowed_with_warning",
+                "detail": "mock_or_theoretical_fingerprints_forbidden",
                 "fingerprints": sorted(mock_fingerprints),
             }
         )

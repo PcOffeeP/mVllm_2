@@ -3,24 +3,10 @@ from __future__ import annotations
 import pytest
 
 from agent.sampling import (
+    ClipBuildResult,
     fracture_between_to_frame_range,
     fracture_between_to_time_range,
-    frame_to_time,
-    is_boundary_sentinel,
-    time_to_frame,
 )
-
-
-def test_frame_to_time_and_back():
-    fps = 30.0
-    assert frame_to_time(150, fps) == pytest.approx(5.0)
-    assert time_to_frame(5.0, fps) == 150
-    assert time_to_frame(5.017, fps) == 151
-
-
-def test_time_to_frame_rejects_non_positive_fps():
-    with pytest.raises(ValueError):
-        time_to_frame(1.0, 0.0)
 
 
 def test_fracture_between_to_time_range():
@@ -41,9 +27,35 @@ def test_fracture_between_out_of_range():
         fracture_between_to_time_range([0, 1], frames)
 
 
-def test_boundary_sentinel_detection():
-    assert is_boundary_sentinel([0, 0], 10) is True
-    assert is_boundary_sentinel([9, 9], 10) is True
-    assert is_boundary_sentinel([4, 5], 10) is False
-    assert is_boundary_sentinel(None, 10) is False
-    assert is_boundary_sentinel([0, 0], 0) is False
+def test_clip_build_result_includes_hash_and_size(tmp_path, monkeypatch):
+    """ClipBuildResult must carry SHA256 hash and byte size of the temp clip."""
+    from agent.sampling import FfmpegVideoClipBuilder, _probe_video
+
+    source = tmp_path / "src.mp4"
+    source.write_bytes(b"\x00\x00\x00\x18ftypisom\x00\x00\x00\x00isommp41fake_video")
+
+    def fake_probe(path):
+        return {"fps": 8.0, "total_frames": 8, "duration": 1.0, "width": 64, "height": 64}
+
+    def fake_ffmpeg(args, check=True):
+        output = args[-1]
+        # Copy source bytes to the output path so hashing/sizing works.
+        import shutil
+        shutil.copy(str(source), output)
+        return None
+
+    monkeypatch.setattr("agent.sampling._probe_video", fake_probe)
+    monkeypatch.setattr(
+        "agent.sampling._probe_frame_timestamps",
+        lambda path: [i / 8 for i in range(8)],
+    )
+    monkeypatch.setattr("agent.sampling._run_ffmpeg", fake_ffmpeg)
+
+    builder = FfmpegVideoClipBuilder(output_dir=str(tmp_path / "clips"))
+    result = builder.build_with_manifest(str(source), [0.0, 1.0])
+
+    assert isinstance(result, ClipBuildResult)
+    assert result.file_size == source.stat().st_size
+    import hashlib
+    assert result.file_hash == hashlib.sha256(source.read_bytes()).hexdigest()
+    assert result.file_hash != ""

@@ -14,7 +14,27 @@ sys.path.insert(0, str(VALIDATION_DIR))
 sys.path.insert(0, str(ROOT))
 
 import run_inference
-from run_inference import VIDEO_MAX_FRAMES, _parse_confidence, _parse_location, _parse_pred_time_range
+from pipeline.preprocessing import FrameMapping
+from run_inference import _parse_confidence, _parse_location, _parse_pred_time_range
+
+
+class _FakeFrameMapper:
+    def __init__(self, model_dir: str, processor: Any = None) -> None:
+        self.model_dir = model_dir
+
+    def sample(self, video_path: str, start_time: float, end_time: float) -> list[FrameMapping]:
+        return [FrameMapping(i, i, float(i)) for i in range(8)]
+
+    def get_info(self):
+        from pipeline.preprocessing import ProcessorInfo
+
+        return ProcessorInfo("minicpm-v-4.6", "FakeProcessor", 8, "test")
+
+
+@pytest.fixture(autouse=True)
+def _stub_actual_frame_mapper(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(run_inference, "MiniCPMVideoPreprocessor", _FakeFrameMapper)
+    monkeypatch.setattr(run_inference, "_get_video_duration", lambda path: 10.0)
 
 
 # ---------------------------------------------------------------------------
@@ -22,106 +42,86 @@ from run_inference import VIDEO_MAX_FRAMES, _parse_confidence, _parse_location, 
 # ---------------------------------------------------------------------------
 
 def test_parse_pred_time_range_new_protocol_positive():
-    """New-protocol interval [17, 18] maps to seconds under uniform sampling."""
-    payload = {"has_fracture": True, "fracture_between": [17, 18]}
-    duration = 500.0
-    result = _parse_pred_time_range(payload, duration_sec=duration, max_num_frames=36)
-    # step = 500 / 35 = 14.285714...
-    assert result == [pytest.approx(242.857143, abs=1e-6), pytest.approx(257.142857, abs=1e-6)]
+    payload = {"has_fracture": True, "fracture_between": [1, 2]}
+    frames = [FrameMapping(i, i * 10, ts) for i, ts in enumerate((0.0, 2.3, 7.9))]
+    assert _parse_pred_time_range(payload, frames) == [2.3, 7.9]
 
 
 def test_parse_pred_time_range_new_protocol_negative():
     """Negative sample with has_fracture=false yields no time range."""
     payload = {"has_fracture": False, "fracture_between": None}
-    assert _parse_pred_time_range(payload, duration_sec=500.0) is None
+    assert _parse_pred_time_range(payload, []) is None
 
 
-def test_parse_pred_time_range_old_protocol_compatibility():
-    """Legacy interval fields are still parsed when new protocol is absent."""
-    assert _parse_pred_time_range({"time_range": [5.0, 15.0]}) == [5.0, 15.0]
-    assert _parse_pred_time_range({"time_range_sec": [6.0, 16.0]}) == [6.0, 16.0]
-    assert _parse_pred_time_range({"time_interval": [7.0, 17.0]}) == [7.0, 17.0]
+def test_parse_pred_time_range_rejects_legacy_interval_fields():
+    assert _parse_pred_time_range({"time_range": [5.0, 15.0]}, []) is None
 
 
-def test_parse_pred_time_range_boundary_sentinels():
-    """Left and right boundary sentinels produce zero-width intervals."""
-    duration = 100.0
-    max_frames = 11  # step = 100 / 10 = 10.0
+def test_parse_pred_time_range_rejects_boundary_sentinels():
+    frames = [FrameMapping(i, i, float(i)) for i in range(3)]
     assert _parse_pred_time_range(
-        {"has_fracture": True, "fracture_between": [0, 0]},
-        duration_sec=duration,
-        max_num_frames=max_frames,
-    ) == [0.0, 0.0]
-    assert _parse_pred_time_range(
-        {"has_fracture": True, "fracture_between": [max_frames - 1, max_frames - 1]},
-        duration_sec=duration,
-        max_num_frames=max_frames,
-    ) == [duration, duration]
+        {"has_fracture": True, "fracture_between": [0, 0]}, frames
+    ) is None
 
 
 def test_parse_pred_time_range_rejects_invalid_fracture_between():
     """Invalid indices fall back to legacy fields or None."""
-    duration = 100.0
+    frames = [FrameMapping(i, i, float(i)) for i in range(8)]
     # Out of bounds.
     assert _parse_pred_time_range(
-        {"has_fracture": True, "fracture_between": [VIDEO_MAX_FRAMES, VIDEO_MAX_FRAMES + 1]},
-        duration_sec=duration,
+        {"has_fracture": True, "fracture_between": [8, 9]}, frames,
     ) is None
     # Wrong spacing (not adjacent and not sentinel).
     assert _parse_pred_time_range(
         {"has_fracture": True, "fracture_between": [1, 3]},
-        duration_sec=duration,
+        frames,
     ) is None
     # Wrong length.
     assert _parse_pred_time_range(
         {"has_fracture": True, "fracture_between": [1]},
-        duration_sec=duration,
+        frames,
     ) is None
 
 
-def test_parse_pred_time_range_rejects_nan_and_inf():
-    """Non-finite legacy range endpoints are rejected; no ±0.5s placeholder."""
-    assert _parse_pred_time_range({"time_range": [float("nan"), 10.0]}) is None
-    assert _parse_pred_time_range({"time_range_sec": [0.0, float("inf")]}) is None
-    assert _parse_pred_time_range({"time_interval": [float("-inf"), 5.0]}) is None
-    assert _parse_pred_time_range({"time_range": [5.0, 15.0]}) == [5.0, 15.0]
-    assert _parse_pred_time_range({"time_range": [float("nan"), 1.0]}) is None
+def test_parse_pred_time_range_requires_actual_frames():
+    assert _parse_pred_time_range(
+        {"has_fracture": True, "fracture_between": [0, 1]}, None
+    ) is None
 
 
 def test_parse_pred_time_range_rejects_non_boundary_zero_width():
     """A zero-width interval [k, k] is only accepted at the boundaries."""
-    duration = 100.0
-    max_frames = 11
+    frames = [FrameMapping(i, i, float(i)) for i in range(5)]
     # Non-boundary zero-width must be rejected.
     assert _parse_pred_time_range(
         {"has_fracture": True, "fracture_between": [3, 3]},
-        duration_sec=duration,
-        max_num_frames=max_frames,
+        frames,
     ) is None
     # Adjacent frames remain valid.
     assert _parse_pred_time_range(
         {"has_fracture": True, "fracture_between": [3, 4]},
-        duration_sec=duration,
-        max_num_frames=max_frames,
-    ) == [30.0, 40.0]
+        frames,
+    ) == [3.0, 4.0]
 
 
 def test_parse_pred_time_range_rejects_missing_fracture_between():
     """New protocol with has_fracture=True but no fracture_between returns None."""
     assert _parse_pred_time_range(
         {"has_fracture": True},
-        duration_sec=500.0,
+        [],
     ) is None
     assert _parse_pred_time_range(
         {"has_fracture": True, "fracture_between": None},
-        duration_sec=500.0,
+        [],
     ) is None
 
 
-def test_parse_pred_time_range_new_protocol_requires_duration():
-    """New protocol intervals require a valid duration; None yields None."""
+def test_parse_pred_time_range_rejects_boolean_indices():
     payload = {"has_fracture": True, "fracture_between": [0, 1]}
-    assert _parse_pred_time_range(payload, duration_sec=None) is None
+    assert _parse_pred_time_range(
+        {"has_fracture": True, "fracture_between": [False, 1]},
+        [FrameMapping(0, 0, 0.0), FrameMapping(1, 1, 1.0)],
+    ) is None
 
 
 # ---------------------------------------------------------------------------
@@ -249,7 +249,8 @@ def test_main_writes_jsonl_with_allow_nan_false(monkeypatch: pytest.MonkeyPatch,
     record = json.loads(lines[0])
     assert record["video_id"] == "v001"
     assert math.isfinite(record["pred_confidence_score"])
-    assert record["pred_has_fracture"] is True
+    assert record["json_valid"] is False
+    assert record["pred_has_fracture"] is None
     assert record["pred_location"] is None
 
 
@@ -271,7 +272,7 @@ def test_main_new_protocol_records_has_fracture_and_location(monkeypatch: pytest
         run_inference,
         "run_single_inference",
         lambda model, processor, video_path, prompt: (
-            '{"has_fracture": true, "fracture_between": [17, 18], '
+            '{"has_fracture": true, "fracture_between": [3, 4], '
             '"type": "韧性断裂", "location": "inside_gauge", "confidence": 0.92}'
         ),
     )
@@ -308,8 +309,7 @@ def test_main_new_protocol_records_has_fracture_and_location(monkeypatch: pytest
     assert record["pred_time_range"] is not None
 
 
-def test_main_old_protocol_non_fracture_type(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    """Old-protocol payload with type=未断裂 should set pred_has_fracture=False."""
+def test_main_rejects_old_protocol_non_fracture_type(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     sample = {
         "video_id": "v003",
         "video_name": "v003.mp4",
@@ -354,12 +354,12 @@ def test_main_old_protocol_non_fracture_type(monkeypatch: pytest.MonkeyPatch, tm
     lines = [line for line in output_path.read_text(encoding="utf-8").strip().split("\n") if line]
     assert len(lines) == 1
     record = json.loads(lines[0])
-    assert record["pred_has_fracture"] is False
+    assert record["json_valid"] is False
+    assert record["pred_has_fracture"] is None
     assert record["pred_location"] is None
 
 
-def test_parse_pred_time_range_negative_skips_ffprobe(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    """Negative samples must not trigger an ffprobe call for duration lookup."""
+def test_negative_result_records_actual_preprocessing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     sample = {
         "video_id": "v004",
         "video_name": "v004.mp4",
@@ -370,9 +370,6 @@ def test_parse_pred_time_range_negative_skips_ffprobe(monkeypatch: pytest.Monkey
         "clarity": None,
     }
 
-    def fail_if_called(video_path: Path) -> float:
-        raise AssertionError("_get_video_duration should not be called for negative samples")
-
     monkeypatch.setattr(run_inference, "load_ground_truth", lambda path: {sample["video_name"]: sample})
     monkeypatch.setattr(run_inference, "load_fold_samples", lambda fold, gt_map: [sample])
     monkeypatch.setattr(run_inference, "load_model", lambda model_dir: (None, None))
@@ -381,10 +378,9 @@ def test_parse_pred_time_range_negative_skips_ffprobe(monkeypatch: pytest.Monkey
         "run_single_inference",
         lambda model, processor, video_path, prompt: (
             '{"has_fracture": false, "fracture_between": null, '
-            '"type": "未断裂", "location": "N/A", "confidence": 0.95}'
+            '"type": "未断裂", "location": null, "confidence": 0.95}'
         ),
     )
-    monkeypatch.setattr(run_inference, "_get_video_duration", fail_if_called)
 
     (tmp_path / "v004.mp4").write_text("fake", encoding="utf-8")
     output_path = tmp_path / "out.jsonl"
@@ -413,6 +409,7 @@ def test_parse_pred_time_range_negative_skips_ffprobe(monkeypatch: pytest.Monkey
     record = json.loads(lines[0])
     assert record["pred_has_fracture"] is False
     assert record["pred_time_range"] is None
+    assert record["preprocessing"]["max_frames"] == 8
 
 
 def test_parse_location_normalization():
@@ -448,7 +445,7 @@ def test_main_new_protocol_negative_records_na_location(monkeypatch: pytest.Monk
         "run_single_inference",
         lambda model, processor, video_path, prompt: (
             '{"has_fracture": false, "fracture_between": null, '
-            '"type": "未断裂", "location": "outside_gauge", "confidence": 0.95}'
+            '"type": "未断裂", "location": null, "confidence": 0.95}'
         ),
     )
 

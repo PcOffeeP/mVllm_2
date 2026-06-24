@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from agent.prompts import SYSTEM_PROMPT, build_user_prompt
 
 
@@ -51,6 +53,6 @@ def test_build_user_prompt_does_not_contain_fps_or_thirty_six():
     assert "实际采样" not in prompt
 
 
-def test_build_user_prompt_accepts_custom_maxlen():
-    prompt = build_user_prompt(sample_range=[0.0, 10.0], video_maxlen=4)
-    assert "4" in prompt
+def test_build_user_prompt_rejects_retired_video_maxlen():
+    with pytest.raises(TypeError):
+        build_user_prompt(sample_range=[0.0, 10.0], video_maxlen=4)  # type: ignore[call-arg]

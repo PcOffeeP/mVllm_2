@@ -50,7 +50,9 @@ def test_build_meta_agent_user_context_includes_history():
         candidate=[48.57, 51.43],
         history=history,
     )
-    assert "轮次1:" in context
+    assert "evidence_index=0（Agent轮次1）:" in context
+    assert "evidence_rounds" in META_AGENT_SYSTEM_PROMPT
+    assert "evidence_index" in META_AGENT_SYSTEM_PROMPT
     assert "[0.0, 100.0]s" in context
     assert "[48.57, 51.43]s" in context
 
@@ -63,7 +65,7 @@ def test_build_sample_and_infer_prompt_has_required_elements():
     # Sample range is still present
     assert "[10.0, 20.0]" in prompt
     # v2 prompt reports max frames via this wording
-    assert "最多选择 36 帧" in prompt
+    assert "最多选择 8 帧" in prompt
     # v2 prompt does not expose FPS or video_maxlen as key=value
     assert "video_fps" not in prompt
     assert "video_maxlen=" not in prompt

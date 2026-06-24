@@ -16,8 +16,6 @@ from pipeline.scripts.calibration import (
     _check_order_match,
     _collect_split_video_ids,
     _compare_results,
-    _compute_uniform_original_frames,
-    _get_video_total_frames,
     _pick_calibration_videos,
     _try_load_llama_factory_batch,
     _window_positions,
@@ -408,7 +406,11 @@ def adapter_frames() -> list[FrameMapping]:
 
 def _batch_frames_from_adapter(adapter: list[FrameMapping]) -> list[dict]:
     return [
-        {"input_index": f.input_index, "original_frame": f.original_frame}
+        {
+            "input_index": f.input_index,
+            "original_frame": f.original_frame,
+            "timestamp": f.timestamp,
+        }
         for f in adapter
     ]
 
@@ -416,17 +418,21 @@ def _batch_frames_from_adapter(adapter: list[FrameMapping]) -> list[dict]:
 def _make_batch_result(
     adapter_frames: list[FrameMapping],
     *,
-    processor_name: str = "mock-ffmpeg-uniform",
+    processor_name: str = "0.1.0",
     max_frames: int = 8,
     frame_count: int | None = None,
 ) -> dict:
     return {
-        "source": "mock-llama-factory-fallback",
+        "source": "mock-llama-factory",
         "error": "",
         "processor_name": processor_name,
         "max_frames": max_frames,
         "frame_count": frame_count if frame_count is not None else len(adapter_frames),
         "frames": _batch_frames_from_adapter(adapter_frames),
+        "tensor_digest": "same-digest",
+        "adapter_tensor_digest": "same-digest",
+        "tensor_shape": [1, len(adapter_frames), 3, 2, 2],
+        "adapter_tensor_shape": [1, len(adapter_frames), 3, 2, 2],
     }
 
 
@@ -439,8 +445,8 @@ def test_order_match_exact_match():
         FrameMapping(1, 15, 0.5),
     ]
     bf = [
-        {"input_index": 0, "original_frame": 0},
-        {"input_index": 1, "original_frame": 15},
+        {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+        {"input_index": 1, "original_frame": 15, "timestamp": 0.5},
     ]
     assert _check_order_match(af, bf) is True
 
@@ -476,12 +482,11 @@ def test_order_match_empty_lists():
 # --- _check_mapping_match ---
 
 
-def test_mapping_match_delegates_to_order_match():
-    """当前实现中 mapping_match 委托给 order_match。"""
+def test_mapping_match_checks_frame_and_timestamp():
     af = [FrameMapping(0, 0, 0.0), FrameMapping(1, 15, 0.5)]
     bf = [
-        {"input_index": 0, "original_frame": 0},
-        {"input_index": 1, "original_frame": 15},
+        {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+        {"input_index": 1, "original_frame": 15, "timestamp": 0.5},
     ]
     assert _check_mapping_match(af, bf) is True
 
@@ -517,6 +522,20 @@ def test_compare_processor_name_mismatch(
     result = _compare_results(processor_info, adapter_frames, batch)
     assert result["passed"] is False
     assert result["processor_version_match"] is False
+
+
+def test_compare_rejects_same_frame_count_with_different_actual_tensor(
+    processor_info: ProcessorInfo,
+    adapter_frames: list[FrameMapping],
+):
+    batch = _make_batch_result(adapter_frames)
+    batch["tensor_digest"] = "different-digest"
+
+    result = _compare_results(processor_info, adapter_frames, batch)
+
+    assert result["frame_count_match"] is True
+    assert result["tensor_digest_match"] is False
+    assert result["passed"] is False
 
 
 def test_compare_max_frames_mismatch(
@@ -787,68 +806,84 @@ def test_run_calibration_basic():
     assert isinstance(report["passed_cases"], int)
 
 
+def test_run_calibration_compares_the_same_continuous_clip(monkeypatch):
+    from types import SimpleNamespace
+    from pipeline.scripts import calibration
+
+    frames = [FrameMapping(0, 0, 0.0), FrameMapping(1, 1, 0.5)]
+    calls = []
+
+    class FakeClipBuilder:
+        def __init__(self, output_dir):
+            pass
+
+        def build_with_manifest(self, source, sample_range):
+            calls.append(("clip", source, sample_range))
+            return SimpleNamespace(
+                path="same-clip.mp4",
+                manifest=[
+                    {"temp_index": 0, "original_frame": 30, "timestamp": 1.0},
+                    {"temp_index": 1, "original_frame": 45, "timestamp": 1.5},
+                ],
+            )
+
+    class FakePreprocessor:
+        def get_info(self):
+            return ProcessorInfo("minicpm-v-4.6", "ProcessorV46", 8, "test")
+
+        def fingerprint(self):
+            return "production"
+
+        def sample(self, path, start, end):
+            calls.append(("adapter", path, start, end))
+            return frames
+
+    def fake_batch(path, info, adapter_frames, model_name):
+        calls.append(("batch", path))
+        return {
+            "processor_name": "ProcessorV46",
+            "max_frames": 8,
+            "frame_count": 2,
+            "frames": [
+                {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+                {"input_index": 1, "original_frame": 1, "timestamp": 0.5},
+            ],
+            "tensor_digest": "same",
+            "adapter_tensor_digest": "same",
+            "tensor_shape": [1, 2, 3, 2, 2],
+            "adapter_tensor_shape": [1, 2, 3, 2, 2],
+        }
+
+    monkeypatch.setattr(calibration, "FfmpegVideoClipBuilder", FakeClipBuilder)
+    monkeypatch.setattr(calibration, "_try_load_llama_factory_batch", fake_batch)
+    report = calibration.run_calibration(
+        FakePreprocessor(),
+        [{
+            "case_id": "v_3s_middle",
+            "video_id": "v",
+            "video_path": "source.mp4",
+            "start_time": 1.0,
+            "end_time": 2.0,
+            "window_size": 1.0,
+            "event_position": "middle",
+        }],
+    )
+
+    assert report["all_passed"] is True
+    assert ("adapter", "same-clip.mp4", 0.0, 1.0) in calls
+    assert ("batch", "same-clip.mp4") in calls
+    assert report["cases"][0]["source_frame_mapping"][1]["original_frame"] == 45
+
+
+def test_formal_calibration_cli_rejects_mock():
+    from pipeline.scripts.calibration import _build_argparser
+
+    with pytest.raises(SystemExit):
+        _build_argparser().parse_args(["--preprocessor", "mock"])
+
+
 # ===================================================================
-# _get_video_total_frames
-# ===================================================================
-
-
-def test_get_video_total_frames_nonexistent_file():
-    """不存在的文件返回 None。"""
-    result = _get_video_total_frames("/nonexistent/video.mp4")
-    assert result is None
-
-
-def test_get_video_total_frames_ffprobe_failure():
-    """ffprobe 执行失败时返回 None。"""
-    with patch("subprocess.run", side_effect=FileNotFoundError("ffprobe not found")):
-        result = _get_video_total_frames("some_video.mp4")
-    assert result is None
-
-
-# ===================================================================
-# _compute_uniform_original_frames
-# ===================================================================
-
-
-def test_compute_uniform_original_frames_zero_count():
-    assert _compute_uniform_original_frames(100, 0) == []
-
-
-def test_compute_uniform_original_frames_single_frame():
-    assert _compute_uniform_original_frames(100, 1) == [0]
-
-
-def test_compute_uniform_original_frames_two_frames():
-    """总帧 100，采样 2 帧：第 0 帧和第 99 帧。"""
-    result = _compute_uniform_original_frames(100, 2)
-    assert result == [0, 99]
-
-
-def test_compute_uniform_original_frames_eight_of_100():
-    """总帧 100，采样 8 帧。"""
-    result = _compute_uniform_original_frames(100, 8)
-    assert len(result) == 8
-    assert result[0] == 0
-    assert result[-1] == 99
-    # 检查近似均匀
-    diffs = [result[i + 1] - result[i] for i in range(len(result) - 1)]
-    assert min(diffs) >= 13  # 约 100/7 ≈ 14.3
-    assert max(diffs) <= 15
-
-
-def test_compute_uniform_original_frames_more_than_total():
-    """frame_count > total_frames 时只使用可用帧。"""
-    result = _compute_uniform_original_frames(10, 20)
-    assert len(result) == 20
-    # 均匀采样范围仍是 [0, 9]
-    assert result[0] == 0
-    # linspace(0, 9, 20) — 步长 9/19 ≈ 0.47
-    # last index = round(19 * 9 / 19) = 9
-    assert result[-1] == 9
-
-
-# ===================================================================
-# _try_load_llama_factory_batch — fallback 路径测试
+# _try_load_llama_factory_batch — fail-closed paths
 # ===================================================================
 
 
@@ -864,17 +899,11 @@ def _fixture_adapter_frames() -> list[FrameMapping]:
     ]
 
 
-def test_try_load_llama_factory_batch_natural_fallback():
-    """LLaMA-Factory 不可导入时自然回退到 fallback（无需 mock）。"""
+def test_try_load_llama_factory_batch_requires_llama_factory():
     info = _fixture_preprocessor_info()
     frames = _fixture_adapter_frames()
-    result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
-    assert result["source"] == "fallback"
-    assert "LLaMA-Factory import failed" in result["error"]
-    assert result["processor_name"] == info.name
-    assert result["max_frames"] == info.max_frames
-    assert result["frame_count"] == len(frames)
-    assert len(result["frames"]) == len(frames)
+    with pytest.raises(RuntimeError, match="LLaMA-Factory is required"):
+        _try_load_llama_factory_batch("dummy.mp4", info, frames)
 
 
 def _make_mock_llamafactory_modules(broken_plugin=None):
@@ -937,8 +966,7 @@ def mock_llamafactory():
     _cleanup_mock_modules()
 
 
-def test_try_load_llama_factory_batch_transformers_import_fallback(mock_llamafactory):
-    """transformers 导入失败时返回 fallback。"""
+def test_try_load_llama_factory_batch_requires_transformers(mock_llamafactory):
     info = _fixture_preprocessor_info()
     frames = _fixture_adapter_frames()
 
@@ -951,32 +979,31 @@ def test_try_load_llama_factory_batch_transformers_import_fallback(mock_llamafac
             raise ImportError("no transformers")
         return original_import(name, *args, **kwargs)
 
-    with patch("builtins.__import__", side_effect=_side_effect):
-        result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
-    assert result["source"] == "fallback"
-    assert "transformers import failed" in result["error"]
-    assert result["frame_count"] == len(frames)
+    with patch("builtins.__import__", side_effect=_side_effect), pytest.raises(
+        RuntimeError, match="transformers is required"
+    ):
+        _try_load_llama_factory_batch("dummy.mp4", info, frames)
 
 
-def test_try_load_llama_factory_batch_processor_load_fallback(mock_llamafactory):
-    """processor 加载失败时返回 fallback。"""
+def test_try_load_llama_factory_batch_processor_load_fails_closed(mock_llamafactory):
     info = _fixture_preprocessor_info()
     frames = _fixture_adapter_frames()
 
-    with patch("transformers.AutoProcessor.from_pretrained", side_effect=OSError("model not found")):
-        result = _try_load_llama_factory_batch("dummy.mp4", info, frames, model_name="fake/model")
-    assert result["source"] == "fallback"
-    assert "processor load failed" in result["error"]
-    assert result["frame_count"] == len(frames)
+    with patch(
+        "transformers.AutoProcessor.from_pretrained", side_effect=OSError("model not found")
+    ), pytest.raises(OSError, match="model not found"):
+        _try_load_llama_factory_batch("dummy.mp4", info, frames, model_name="fake/model")
 
 
-def test_try_load_llama_factory_batch_get_mm_inputs_fallback(mock_llamafactory):
-    """_get_mm_inputs 调用失败时返回 fallback。"""
+def test_try_load_llama_factory_batch_get_mm_inputs_fails_closed(mock_llamafactory):
     info = _fixture_preprocessor_info()
     frames = _fixture_adapter_frames()
 
     class FakeProcessor:
         __class__ = type("FakeProcessor", (), {})()
+
+        def __init__(self):
+            self.video_processor = type("VideoProcessor", (), {"max_frames": 32})()
 
     class BrokenPlugin:
         def _get_mm_inputs(self, **kwargs):
@@ -991,17 +1018,24 @@ def test_try_load_llama_factory_batch_get_mm_inputs_fallback(mock_llamafactory):
     from unittest.mock import MagicMock
     sys.modules["torch"] = MagicMock()
 
-    with patch("transformers.AutoProcessor.from_pretrained", return_value=FakeProcessor()):
-        result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
-    assert result["source"] == "fallback"
-    assert "_get_mm_inputs failed" in result["error"]
-    assert result["frame_count"] == len(frames)
+    def fake_sample(self, *_args, **_kwargs):
+        self.last_tensor_digest = "adapter-digest"
+        self.last_tensor_shape = [1, len(frames), 3, 2, 2]
+        return frames
+
+    with patch(
+        "transformers.AutoProcessor.from_pretrained", return_value=FakeProcessor()
+    ), patch(
+        "pipeline.scripts.calibration._probe_video", return_value={"duration": 1.0}
+    ), patch(
+        "pipeline.scripts.calibration.MiniCPMVideoPreprocessor.sample", new=fake_sample
+    ), pytest.raises(RuntimeError, match="simulated error"):
+        _try_load_llama_factory_batch("dummy.mp4", info, frames)
 
     _cleanup_mock_modules()
 
 
-def test_try_load_llama_factory_batch_get_mm_inputs_torch_import_fallback(mock_llamafactory):
-    """torch 导入失败时（_get_mm_inputs 阶段）返回 fallback。"""
+def test_try_load_llama_factory_batch_requires_explicit_mapping(mock_llamafactory):
     info = _fixture_preprocessor_info()
     frames = _fixture_adapter_frames()
 
@@ -1020,9 +1054,8 @@ def test_try_load_llama_factory_batch_get_mm_inputs_torch_import_fallback(mock_l
         patch("transformers.AutoProcessor.from_pretrained", return_value=FakeProcessor()),
         patch("builtins.__import__", side_effect=_side_effect),
     ):
-        result = _try_load_llama_factory_batch("dummy.mp4", info, frames)
-    assert result["source"] == "fallback"
-    assert result["frame_count"] == len(frames)
+        with pytest.raises((RuntimeError, AttributeError)):
+            _try_load_llama_factory_batch("dummy.mp4", info, frames)
 
     _cleanup_mock_modules()
 

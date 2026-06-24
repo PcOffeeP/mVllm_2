@@ -1,7 +1,7 @@
 """Meta-Agent iterative controller.
 
 Implements the deterministic state machine described in
-``docs/architecture/agent_iteration_design.md`` section 3.3, migrated to the
+``docs/IMPLEMENTATIONS/model-agent-contract.md`` section 3.3, migrated to the
 v2 ``ToolSampleAndInfer`` / v3 ``ToolTerminate`` / ``FinalOutput`` contract.
 """
 
@@ -10,7 +10,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from collections.abc import Callable
+from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -33,9 +36,11 @@ from agent.sampling import ClipBuildResult, FfmpegVideoClipBuilder, VideoClipBui
 from agent.schema import (
     FinalOutput,
     FRACTURE_CLASSES,
+    FractureType,
     LocationType,
     RunnerError,
     RunnerResult,
+    SampleAndInferDiagnostics,
     SampleAndInferResult,
     ToolSampleAndInfer,
     ToolTerminate,
@@ -100,6 +105,7 @@ class IterativeAgent:
         clip_builder: VideoClipBuilder | None = None,
         inference_client: InferenceClient | None = None,
         event_callback: Callable[[dict], None] | None = None,
+        work_dir: str | Path | None = None,
     ) -> None:
         self.llm = llm_client
         self.video_meta = video_meta
@@ -124,10 +130,13 @@ class IterativeAgent:
         self.infra_terminated = False
         self.last_round_confidence_level = "不可信"
         self.best_positive_round: dict[str, Any] | None = None
+        self.coverage_index = 0
+        self.pending_recheck_range: list[float] | None = None
 
         self.clip_builder = clip_builder or FfmpegVideoClipBuilder()
         self.inference_client = inference_client or self._default_inference_client()
         self.event_callback = event_callback
+        self.work_dir = work_dir
 
     # ------------------------------------------------------------------
     # Event emission
@@ -151,6 +160,122 @@ class IterativeAgent:
         return value
 
     # ------------------------------------------------------------------
+    # Diagnostics persistence
+    # ------------------------------------------------------------------
+    def _diagnostics_dir(self) -> Path:
+        """Return the runtime diagnostics directory for this agent run."""
+        if self.work_dir is not None:
+            return Path(self.work_dir) / "data" / "runtime" / "diagnostics"
+        return Path("data/runtime/diagnostics")
+
+    def _persist_diagnostics(
+        self, round_idx: int, diagnostics: SampleAndInferDiagnostics
+    ) -> None:
+        """Persist one round's diagnostics to a JSON file."""
+        try:
+            d = self._diagnostics_dir()
+            d.mkdir(parents=True, exist_ok=True)
+            video_id = self.video_meta.get("video_id", "unknown")
+            path = d / f"{video_id}_round_{round_idx:04d}_diagnostics.json"
+            path.write_text(
+                diagnostics.model_dump_json(indent=2, exclude_none=True),
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            logger.warning("Failed to persist diagnostics: %s", exc)
+
+    def _persist_summary(self, result: dict[str, Any]) -> None:
+        """Persist the public result plus rounds/history as a summary JSON."""
+        try:
+            d = self._diagnostics_dir()
+            d.mkdir(parents=True, exist_ok=True)
+            video_id = result.get("video_id", self.video_meta.get("video_id", "unknown"))
+            path = d / f"{video_id}_diagnostics_summary.json"
+            public_fields = {
+                "video_id",
+                "status",
+                "time_range",
+                "fracture_type",
+                "location",
+                "confidence",
+                "unrecognized_reason",
+                "rounds",
+                "history",
+            }
+            summary = {k: v for k, v in result.items() if k in public_fields}
+            # Redact local temporary video paths from the persisted history; the
+            # in-memory result keeps the original path for runtime diagnostics.
+            if "history" in summary:
+                summary["history"] = deepcopy(summary["history"])
+                for entry in summary["history"]:
+                    entry_result = entry.get("result")
+                    if (
+                        isinstance(entry_result, dict)
+                        and isinstance(entry_result.get("model_video_path"), str)
+                        and entry_result["model_video_path"]
+                    ):
+                        entry_result["model_video_path"] = "[REDACTED]"
+            path.write_text(
+                json.dumps(summary, ensure_ascii=False, indent=2, default=str),
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            logger.warning("Failed to persist summary: %s", exc)
+
+    def _build_round_diagnostics(
+        self,
+        result: dict[str, Any],
+        clip_result: ClipBuildResult | None,
+        inference_result: InferenceResult | None,
+        elapsed_seconds: float,
+    ) -> SampleAndInferDiagnostics:
+        """Build a ``SampleAndInferDiagnostics`` from a round's artifacts.
+
+        Fields populated by ``inference.py`` are reused when available; the
+        agent layer overwrites ``internal_frame_range``, ``elapsed_seconds``,
+        ``video_anomaly_kind`` and ``error`` with its own view of the round.
+        """
+        diagnostics = (
+            inference_result.diagnostics.model_copy(deep=True)
+            if inference_result is not None and inference_result.diagnostics is not None
+            else SampleAndInferDiagnostics()
+        )
+
+        if clip_result is not None:
+            diagnostics.temp_video_hash = clip_result.file_hash
+            diagnostics.temp_video_bytes = clip_result.file_size
+            diagnostics.temp_video_manifest = clip_result.manifest
+
+        diagnostics.internal_frame_range = result.get("inferred_frame_range")
+        diagnostics.elapsed_seconds = round(elapsed_seconds, 6)
+
+        # Map agent-level errors onto the diagnostics error field.
+        infra_error = result.get("infra_error")
+        validation_error = result.get("validation_error")
+        if infra_error is not None:
+            diagnostics.error = ValidationErrorInfo(
+                code=infra_error.get("code", "infra_failed"),
+                message=infra_error.get("message", "基础设施故障"),
+                field=None,
+            )
+        elif validation_error is not None:
+            diagnostics.error = ValidationErrorInfo(**validation_error)
+
+        # Video anomaly classification.
+        model_output = result.get("model_output") or {}
+        has_fracture = model_output.get("has_fracture")
+        output_type = model_output.get("type")
+        if has_fracture is None and output_type == FractureType.VIDEO_ABNORMAL:
+            diagnostics.video_anomaly_kind = "fracture_presence_unknown"
+        elif (
+            has_fracture is True
+            and output_type == FractureType.VIDEO_ABNORMAL
+        ):
+            diagnostics.video_anomaly_kind = "fracture_time_unknown"
+
+        return diagnostics
+
+    # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
     def run(self) -> dict[str, Any]:
@@ -172,11 +297,22 @@ class IterativeAgent:
                 state=self.state,
                 candidate=list(self.candidate),
             )
-            response = self.llm.chat_with_tools(
-                messages=messages,
-                tools=TOOLS_SCHEMA,
-                temperature=self.temperature,
-            )
+            try:
+                response = self.llm.chat_with_tools(
+                    messages=messages,
+                    tools=TOOLS_SCHEMA,
+                    temperature=self.temperature,
+                )
+            except Exception as exc:
+                logger.exception("Decision backend failed")
+                return RunnerResult(
+                    ok=False,
+                    error=RunnerError(
+                        stage="decision_backend",
+                        code="decision_backend_error",
+                        message=f"决策模型调用失败: {exc}",
+                    ),
+                ).model_dump()
             message = response.choices[0].message
 
             # The LLM must output tool_calls; plain text is not acceptable.
@@ -250,6 +386,7 @@ class IterativeAgent:
                     self.state = "TERMINATED"
                     final_args = self._build_final_args(tool_args)
                     result = self._finalize(final_args)
+                    self._persist_summary(result)
                     self._emit("video_finished", result=result)
                     return result
 
@@ -266,6 +403,22 @@ class IterativeAgent:
                 continue
 
             if tool_name == "sample_and_infer":
+                # Program-owned scheduling: after an initial global negative,
+                # the decision model only supplies the prompt. The five
+                # coverage ranges and mandatory same-range rechecks cannot be
+                # overridden through tool arguments.
+                if self.pending_recheck_range is not None:
+                    tool_args["sample_range"] = list(self.pending_recheck_range)
+                elif self.state == "INITIAL":
+                    # The first semantic inspection is program-owned and must
+                    # cover the complete video. Invalid retries remain in
+                    # INITIAL and are forced to the same full range.
+                    tool_args["sample_range"] = [
+                        0.0,
+                        float(self.video_meta.get("duration", 0.0)),
+                    ]
+                elif self.state == "COVERAGE" and self.coverage_index < 5:
+                    tool_args["sample_range"] = self._coverage_ranges()[self.coverage_index]
                 sample_range = list(tool_args["sample_range"])
                 self._emit(
                     "sample_and_infer_started",
@@ -274,7 +427,7 @@ class IterativeAgent:
                     sample_range=sample_range,
                 )
 
-                internal_result = self._execute_sample_and_infer(tool_args)
+                internal_result = self._execute_sample_and_infer(tool_args, round_idx)
                 self._emit(
                     "sample_and_infer_finished",
                     round=round_idx,
@@ -300,6 +453,20 @@ class IterativeAgent:
                 )
                 self._log_round(round_idx, message, internal_result)
 
+                # Sampling and inference transport failures have already
+                # exhausted their component retry budget. Continuing the
+                # semantic state machine would turn an infrastructure failure
+                # into a misleading domain result.
+                infra_error = internal_result.get("infra_error")
+                if infra_error is not None:
+                    result = RunnerResult(
+                        ok=False,
+                        error=RunnerError(**infra_error),
+                    ).model_dump()
+                    self._persist_summary(result)
+                    self._emit("video_finished", result=result)
+                    return result
+
                 # Build compact result for LLM tool response.
                 compact = self._build_compact_result(internal_result)
                 messages.append(self._assistant_tool_message(message, tool_call, tool_name))
@@ -315,6 +482,7 @@ class IterativeAgent:
 
                 if self.state == "TERMINATED":
                     result = self._force_terminate()
+                    self._persist_summary(result)
                     self._emit("video_finished", result=result)
                     return result
 
@@ -343,6 +511,7 @@ class IterativeAgent:
             )
 
         result = self._force_terminate()
+        self._persist_summary(result)
         self._emit("video_finished", result=result)
         return result
 
@@ -444,17 +613,21 @@ class IterativeAgent:
                     f"unrecognized_reason 无效: {unrecognized_reason}，"
                     f"须为 {sorted(valid_reasons)}"
                 )
+            if unrecognized_reason in {"video_anomaly", "not_clamped"}:
+                if not self._has_consistent_special_recheck(unrecognized_reason):
+                    return False, "视频异常或未夹紧必须在同一区间得到两次一致结果"
             return True, "模型明确报告无法识别"
 
         if status == "no_fracture":
-            if self.no_fracture_count >= 2:
-                return True, "至少 2 轮无断裂确认"
-            return False, f"仅 {self.no_fracture_count} 轮无断裂确认，需要至少 2 轮"
+            if self._has_complete_no_fracture_coverage():
+                return True, "五个固定重叠区间均得到高于门槛的未断裂结果"
+            return False, "尚未完成五个固定重叠区间的未断裂覆盖检查"
 
         # -- fracture: check evidence threshold and convergence --
         if status == "fracture":
             evidence_rounds: list[int] = args.get("evidence_rounds") or []
-            # Fix 3b: deduplicate evidence_rounds; reject [-1, -1] and [0, 0].
+            # evidence_rounds are stable 0-based history evidence_index values
+            # explicitly shown to the decision model, not Agent loop rounds.
             unique_rounds = list(set(r for r in evidence_rounds if r >= 0))
             if len(unique_rounds) < 2:
                 return False, (
@@ -464,7 +637,7 @@ class IterativeAgent:
 
             positive_evidence = [
                 r for r in unique_rounds
-                if r < len(self.history) and self._round_has_fracture(self.history[r])
+                if r < len(self.history) and self._round_is_local_fracture(self.history[r])
             ]
             if len(positive_evidence) < 2:
                 return False, (
@@ -486,12 +659,14 @@ class IterativeAgent:
                         f"正证据轮次 {positive_evidence} 的 inferred_time_range "
                         f"无交集，无法收敛，请继续验证"
                     )
-                # Fix 3d: evidence time_range width must be ≤ tolerance * 5.
-                if inter_end - inter_start > self.tolerance * 5:
+                all_strictly_local = all(
+                    self._sample_range_is_local(self.history[r].get("result", {}).get("sample_range"))
+                    for r in positive_evidence
+                )
+                if all_strictly_local and inter_end - inter_start > 1.0 + 1e-9:
                     return False, (
-                        f"evidence time_range 交集宽度 "
-                        f"{inter_end - inter_start:.2f}s 超过 "
-                        f"tolerance*5 ({self.tolerance * 5}s)，请继续验证"
+                        f"局部证据共同交集宽度 {inter_end - inter_start:.2f}s "
+                        "超过公共结果 1 秒上限，请继续局部复查"
                     )
 
             # Must converge or exhaust rounds.
@@ -548,13 +723,21 @@ class IterativeAgent:
         new_range = result.get("inferred_time_range")
         confidence_level = result.get("round_confidence_level", "不可信")
 
+        # Both legal VIDEO_ABNORMAL combinations carry no usable temporal
+        # evidence.  Even when fracture presence is confirmed, the round must
+        # never enter narrowing or count as fracture evidence.
+        if model_output.get("type") == FractureType.VIDEO_ABNORMAL:
+            self.last_round_confidence_level = confidence_level
+            self._update_special_recheck(result)
+            return
+
         # ------------------------------------------------------------------
         # has_fracture is None: video anomaly / cannot determine
         # Do not enter NO_FRACTURE state, do not increment counters.
         # ------------------------------------------------------------------
         if has_fracture is None:
             self.last_round_confidence_level = confidence_level
-            # Stay in current state; anomaly_count tracking is optional.
+            self._update_special_recheck(result)
             return
 
         # ------------------------------------------------------------------
@@ -562,6 +745,24 @@ class IterativeAgent:
         # ------------------------------------------------------------------
         if has_fracture is False:
             self.last_round_confidence_level = confidence_level
+
+            if model_output.get("type") == FractureType.NOT_CLAMPED:
+                self._update_special_recheck(result)
+                return
+
+            if self.state == "COVERAGE":
+                expected = self._coverage_ranges()[self.coverage_index]
+                confidence = float(model_output.get("confidence", 0.0))
+                if (
+                    self._same_range(result.get("sample_range"), expected)
+                    and model_output.get("type") == FractureType.NO_FRACTURE
+                    and confidence >= self.confidence_threshold
+                ):
+                    self.coverage_index += 1
+                    self.no_fracture_count = self.coverage_index
+                    if self.coverage_index >= 5:
+                        self.state = "NO_FRACTURE"
+                return
 
             is_global_scope = (
                 self.state == "INITIAL"
@@ -572,8 +773,9 @@ class IterativeAgent:
             )
 
             if is_global_scope:
-                self.state = "NO_FRACTURE"
-                self.no_fracture_count += 1
+                self.state = "COVERAGE"
+                self.coverage_index = 0
+                self.no_fracture_count = 0
                 return
 
             # Focused sub-interval returned false: expand and fall back.
@@ -586,7 +788,8 @@ class IterativeAgent:
         # Fracture path
         # ------------------------------------------------------------------
         self.no_fracture_count = 0
-        if self.state in ("INITIAL", "NO_FRACTURE"):
+        self.pending_recheck_range = None
+        if self.state in ("INITIAL", "NO_FRACTURE", "COVERAGE"):
             self.state = "NARROWING"
 
         # Normal interval update and conflict handling.
@@ -645,8 +848,110 @@ class IterativeAgent:
     # ------------------------------------------------------------------
     def _round_has_fracture(self, entry: dict[str, Any]) -> bool:
         """Safely check whether a history entry has a positive fracture prediction."""
-        model_output = entry.get("result", {}).get("model_output")
-        return isinstance(model_output, dict) and model_output.get("has_fracture", False) is True
+        result = entry.get("result", {})
+        model_output = result.get("model_output")
+        inferred_range = result.get("inferred_time_range")
+        return (
+            isinstance(model_output, dict)
+            and model_output.get("has_fracture", False) is True
+            and model_output.get("type") in FRACTURE_CLASSES
+            and isinstance(inferred_range, list)
+            and len(inferred_range) == 2
+        )
+
+    def _round_is_local_fracture(self, entry: dict[str, Any]) -> bool:
+        """Require fracture evidence to come from a genuine local inspection."""
+        if not self._round_has_fracture(entry):
+            return False
+        result = entry.get("result", {})
+        sample_range = result.get("sample_range")
+        inferred_range = result.get("inferred_time_range")
+        return (
+            self._sample_range_is_local(sample_range)
+            and isinstance(inferred_range, list)
+            and len(inferred_range) == 2
+            and sample_range[0] <= inferred_range[0] < inferred_range[1] <= sample_range[1]
+        )
+
+    def _sample_range_is_local(self, sample_range: Any) -> bool:
+        duration = float(self.video_meta.get("duration", 0.0))
+        return (
+            isinstance(sample_range, list)
+            and len(sample_range) == 2
+            and sample_range[1] - sample_range[0] < duration - 1e-9
+        )
+
+    def _coverage_ranges(self) -> list[list[float]]:
+        """Return the five fixed D/4 windows required after a global negative."""
+        duration = float(self.video_meta.get("duration", 0.0))
+        return [
+            [duration * start / 16.0, duration * (start + 4) / 16.0]
+            for start in (0, 3, 6, 9, 12)
+        ]
+
+    @staticmethod
+    def _same_range(left: Any, right: Any, epsilon: float = 1e-6) -> bool:
+        return (
+            isinstance(left, list)
+            and isinstance(right, list)
+            and len(left) == len(right) == 2
+            and abs(float(left[0]) - float(right[0])) <= epsilon
+            and abs(float(left[1]) - float(right[1])) <= epsilon
+        )
+
+    def _has_complete_no_fracture_coverage(self) -> bool:
+        """Validate five fixed windows from recorded, legal model results."""
+        for expected in self._coverage_ranges():
+            matched = False
+            for entry in self.history:
+                result = entry.get("result", {})
+                output = result.get("model_output") or {}
+                if (
+                    result.get("ok") is True
+                    and self._same_range(result.get("sample_range"), expected)
+                    and output.get("has_fracture") is False
+                    and output.get("type") == FractureType.NO_FRACTURE
+                    and float(output.get("confidence", 0.0)) >= self.confidence_threshold
+                ):
+                    matched = True
+                    break
+            if not matched:
+                return False
+        return True
+
+    def _has_consistent_special_recheck(self, reason: str) -> bool:
+        """Require two matching anomaly/not-clamped results on the same range."""
+        matches: list[tuple[list[float], tuple[Any, Any]]] = []
+        for entry in self.history:
+            result = entry.get("result", {})
+            output = result.get("model_output") or {}
+            is_match = (
+                reason == "video_anomaly" and output.get("type") == FractureType.VIDEO_ABNORMAL
+            ) or (
+                reason == "not_clamped" and output.get("type") == FractureType.NOT_CLAMPED
+            )
+            if result.get("ok") is True and is_match:
+                matches.append(
+                    (result.get("sample_range"), (output.get("has_fracture"), output.get("type")))
+                )
+        for index, (sample_range, signature) in enumerate(matches):
+            if any(
+                self._same_range(sample_range, other_range) and signature == other_signature
+                for other_range, other_signature in matches[index + 1 :]
+            ):
+                return True
+        return False
+
+    def _update_special_recheck(self, result: dict[str, Any]) -> None:
+        """Schedule or complete the mandatory same-range special-result recheck."""
+        sample_range = result.get("sample_range")
+        if not isinstance(sample_range, list) or len(sample_range) != 2:
+            return
+        if self.pending_recheck_range is None:
+            self.pending_recheck_range = list(sample_range)
+            return
+        if self._same_range(sample_range, self.pending_recheck_range):
+            self.pending_recheck_range = None
 
     def _build_final_args(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         """Build the final result args from code-layer aggregation.
@@ -670,7 +975,8 @@ class IterativeAgent:
             return self._build_non_fracture_args(tool_args)
 
         if status == "fracture":
-            # Fix 3c: only use evidence_rounds specified by the LLM, not all history.
+            # Use the same 0-based history evidence_index semantics as
+            # _can_terminate and the decision-model context.
             evidence_rounds: list[int] = tool_args.get("evidence_rounds") or []
             if evidence_rounds:
                 positive_rounds = [
@@ -773,7 +1079,15 @@ class IterativeAgent:
             valid_set={LocationType.INSIDE, LocationType.OUTSIDE},
         )
         if voted_location is None:
-            voted_location = None
+            fallback_location = tool_args.get("location")
+            if fallback_location in {LocationType.INSIDE, LocationType.OUTSIDE}:
+                voted_location = fallback_location
+            else:
+                fallback_location = best_model_output.get("location")
+                if fallback_location in {LocationType.INSIDE, LocationType.OUTSIDE}:
+                    voted_location = fallback_location
+                else:
+                    voted_location = "unknown"
 
         final_confidence = self._aggregate_confidence(positive_rounds)
         return {
@@ -823,18 +1137,32 @@ class IterativeAgent:
             ).model_dump()
 
         positive_rounds = [r for r in self.history if self._round_has_fracture(r)]
-        if self.state == "NO_FRACTURE" or not positive_rounds:
-            if self.state == "NO_FRACTURE" and positive_rounds:
+        if self.state == "NO_FRACTURE":
+            if positive_rounds:
                 logger.info(
-                    "Force terminating in NO_FRACTURE state despite %d positive history "
-                    "round(s); state machine priority treats NO_FRACTURE as authoritative.",
+                    "NO_FRACTURE state machine priority takes precedence over "
+                    "%d stale positive round(s)",
                     len(positive_rounds),
                 )
             return self._finalize(self._build_non_fracture_args({
                 "status": "no_fracture",
                 "confidence": 0.0,
             }))
-        return self._finalize(self._build_final_args({"status": "fracture"}))
+
+        # Exhaustion cannot manufacture a fracture from insufficient or wide
+        # evidence.  Only the normal terminate path may approve a fracture.
+        return self._finalize({
+            "status": "unrecognized",
+            "time_range": None,
+            "fracture_type": None,
+            "location": None,
+            "confidence": None,
+            "unrecognized_reason": "max_rounds",
+            "downgrade_reason": (
+                "rounds exhausted before fracture/no-fracture evidence "
+                "satisfied the contract"
+            ),
+        })
 
     def _finalize(self, args: dict[str, Any]) -> dict[str, Any]:
         """Return the final output dict including metadata and history.
@@ -939,20 +1267,71 @@ class IterativeAgent:
     # ------------------------------------------------------------------
     # Tool execution
     # ------------------------------------------------------------------
-    def _execute_sample_and_infer(self, args: dict[str, Any]) -> dict[str, Any]:
+    def _execute_sample_and_infer(
+        self, args: dict[str, Any], round_idx: int
+    ) -> dict[str, Any]:
         """Run one round of sample + infer and return the internal result.
 
         Builds a continuous clip via ``build_with_manifest``, sends it to the
         inference model, decodes the ``ModelOutput``, and maps
         ``fracture_between`` back to original video time/frame ranges using
-        the clip manifest.
+        the clip manifest.  Also builds, persists and attaches
+        ``SampleAndInferDiagnostics`` to the returned dict.
         """
+        round_start = time.perf_counter()
         sample_range = list(args["sample_range"])
+        clip_result: ClipBuildResult | None = None
+        inference_result: InferenceResult | None = None
+
+        def _finalize(result: dict[str, Any]) -> dict[str, Any]:
+            elapsed = time.perf_counter() - round_start
+            diagnostics = self._build_round_diagnostics(
+                result=result,
+                clip_result=clip_result,
+                inference_result=inference_result,
+                elapsed_seconds=elapsed,
+            )
+            self._persist_diagnostics(round_idx, diagnostics)
+            result["diagnostics"] = diagnostics.model_dump(mode="json", exclude_none=True)
+            return result
+
+        # Runtime sample_range validity against video boundaries.
+        video_duration = self.video_meta.get("duration", 0.0)
+        start, end = sample_range
+        if not (0 <= start < end <= video_duration):
+            return _finalize(
+                self._error_result(
+                    sample_range=sample_range,
+                    code="invalid_sample_range",
+                    message=(
+                        f"sample_range [{start}, {end}] 超出合法区间 "
+                        f"[0, {video_duration}] 或不是严格递增"
+                    ),
+                    field="sample_range",
+                )
+            )
+
         prompt = args.get("prompt") or build_sample_and_infer_prompt(
             sample_range=sample_range,
             config=self.config,
             previous_context=f"当前候选区间为 {self.candidate}",
         )
+
+        # Runtime length re-check against configurable limit (default 4096).
+        agent_cfg = self.config.get("agent", {})
+        max_len = agent_cfg.get("max_prompt_length", 4096)
+        if len(prompt) > max_len:
+            return _finalize(
+                self._error_result(
+                    sample_range=sample_range,
+                    code="prompt_too_long",
+                    message=(
+                        f"prompt length {len(prompt)} exceeds configured "
+                        f"max_prompt_length {max_len}"
+                    ),
+                    field="prompt",
+                )
+            )
 
         source_video = self.video_meta["video_path"]
 
@@ -964,27 +1343,29 @@ class IterativeAgent:
             )
         except Exception as exc:
             logger.warning("Clip build failed: %s", exc)
-            return self._infra_error_result(
-                sample_range,
-                stage="sampling",
-                code="sampling_error",
-                message=f"无法构建临时视频片段: {exc}",
+            return _finalize(
+                self._infra_error_result(
+                    sample_range,
+                    stage="sampling",
+                    code="sampling_error",
+                    message=f"无法构建临时视频片段: {exc}",
+                )
             )
 
         manifest = clip_result.manifest
 
         # Run inference.
         try:
-            inference_result: InferenceResult = self.inference_client.infer(
-                clip_result, prompt
-            )
+            inference_result = self.inference_client.infer(clip_result, prompt)
         except Exception as exc:
             logger.warning("Inference transport/execution failed: %s", exc)
-            return self._infra_error_result(
-                sample_range,
-                stage="inference_transport",
-                code="inference_transport",
-                message=f"推理请求失败: {exc}",
+            return _finalize(
+                self._infra_error_result(
+                    sample_range,
+                    stage="inference_transport",
+                    code="inference_transport",
+                    message=f"推理请求失败: {exc}",
+                )
             )
 
         # Build internal result base.
@@ -1011,40 +1392,24 @@ class IterativeAgent:
                 "message": err.message if err else "模型输出解析失败",
                 "field": err.field if err else None,
             }
-            return result
+            return _finalize(result)
 
-        # Check server-side preprocessing metadata.
-        # When the server adapter is not installed (preprocessing is None),
-        # and has_fracture=True: mark the round as failed (cannot map
-        # fracture_between to original time range without server metadata).
-        # When has_fracture=False/None: degrade gracefully using local manifest.
+        # Server-side preprocessing metadata is mandatory for every semantic
+        # result. Negative/anomaly predictions are not exempt: accepting them
+        # without proving which frames the model saw would make coverage and
+        # repeat-check evidence unverifiable.
         preprocessing = inference_result.preprocessing
-        pp_error_code: str | None = None
-        use_server_frames = False
-        server_frames: list[dict[str, Any]] | None = None
-
-        if preprocessing is not None:
-            # Re-validate; even though infer() already logged warnings, we
-            # need the specific error code for the result envelope.
-            pp_error_code = _validate_preprocessing_meta(preprocessing)
-            if pp_error_code is None:
-                use_server_frames = True
-                server_frames = preprocessing.get("frames", [])
-                logger.info(
-                    "Using server-provided frames (count=%d) for mapping",
-                    len(server_frames),
+        pp_error_code = _validate_preprocessing_meta(preprocessing)
+        if pp_error_code is not None:
+            return _finalize(
+                self._infra_error_result(
+                    sample_range,
+                    stage="inference_transport",
+                    code="missing_or_invalid_preprocessing_metadata",
+                    message=f"服务端 preprocessing 元数据无效: {pp_error_code}",
                 )
-            else:
-                logger.warning(
-                    "Preprocessing metadata from server is invalid (%s), "
-                    "will not use server frames for mapping",
-                    pp_error_code,
-                )
-        else:
-            logger.warning(
-                "No preprocessing metadata from server (server adapter not installed). "
-                "Will check has_fracture to decide degrade vs. error."
             )
+        server_frames: list[dict[str, Any]] = preprocessing["frames"]
 
         # Derive confidence level.
         model_output = result["model_output"] or {}
@@ -1059,7 +1424,7 @@ class IterativeAgent:
         # ------------------------------------------------------------------
         # Case 1: Preprocessing present and valid — use server frames.
         # ------------------------------------------------------------------
-        if use_server_frames and has_fracture:
+        if has_fracture:
             fracture_between = model_output["fracture_between"]
             n = len(server_frames)  # Server-reported frame count
 
@@ -1072,144 +1437,61 @@ class IterativeAgent:
                     "message": msg,
                     "field": "fracture_between",
                 }
-                return result
+                return _finalize(result)
 
             if len(fracture_between) != 2:
-                return _reject_indices(
-                    f"fracture_between 长度必须为 2，got {fracture_between}"
+                return _finalize(
+                    _reject_indices(
+                        f"fracture_between 长度必须为 2，got {fracture_between}"
+                    )
                 )
             i, j = fracture_between
             if not (0 <= i < n and 0 <= j < n):
-                return _reject_indices(
-                    f"fracture_between {fracture_between} "
-                    f"超出服务帧索引范围 [0, {n - 1}]"
+                return _finalize(
+                    _reject_indices(
+                        f"fracture_between {fracture_between} "
+                        f"超出采样帧索引范围 [0, {n - 1}]"
+                    )
                 )
             if i == j:
-                return _reject_indices(
-                    f"fracture_between {fracture_between} "
-                    f"必须是严格相邻的两帧 [i, i+1]"
+                return _finalize(
+                    _reject_indices(
+                        f"fracture_between {fracture_between} "
+                        f"必须是严格相邻的两帧 [i, i+1]"
+                    )
                 )
 
             # Map through server frames (authoritative frame table).
-            result["inferred_time_range"] = [
-                server_frames[i]["timestamp"],
-                server_frames[j]["timestamp"],
-            ]
-
-            # Derive original_frame from the local manifest by matching
-            # timestamps (server frames don't carry original_frame).
-            # When lookup fails, fall through to Case 3 (local manifest)
-            # instead of trusting server timestamps alone.
-            def _lookup_original_frame(ts: float) -> int | None:
+            # Map temporary-clip timestamps through the actual-PTS manifest.
+            def _lookup_manifest(ts: float) -> dict[str, Any] | None:
                 for entry in manifest:
-                    if abs(entry["timestamp"] - ts) < 0.0001:
-                        return entry["original_frame"]
+                    clip_timestamp = entry.get("clip_timestamp", entry["timestamp"])
+                    if abs(clip_timestamp - ts) < 0.0001:
+                        return entry
                 return None
 
-            orig_i = _lookup_original_frame(server_frames[i]["timestamp"])
-            orig_j = _lookup_original_frame(server_frames[j]["timestamp"])
-            if orig_i is not None and orig_j is not None:
-                result["inferred_frame_range"] = [orig_i, orig_j]
-                return result
+            mapped_i = _lookup_manifest(server_frames[i]["timestamp"])
+            mapped_j = _lookup_manifest(server_frames[j]["timestamp"])
+            if mapped_i is not None and mapped_j is not None:
+                result["inferred_time_range"] = [mapped_i["timestamp"], mapped_j["timestamp"]]
+                result["inferred_frame_range"] = [
+                    mapped_i["original_frame"], mapped_j["original_frame"]
+                ]
+                return _finalize(result)
 
-            # Timestamps from server frames don't match local manifest.
-            # Fall through to Case 3 for local-manifest-based mapping.
-            logger.warning(
-                "Server frame timestamps [%s, %s] not found in local manifest; "
-                "falling back to local manifest mapping.",
-                server_frames[i]["timestamp"],
-                server_frames[j]["timestamp"],
-            )
-            # Reset time_range so Case 3 can set it from local manifest.
-            result["inferred_time_range"] = None
-
-        # ------------------------------------------------------------------
-        # Case 2: Preprocessing present but invalid → hard error.
-        # ------------------------------------------------------------------
-        if pp_error_code is not None and preprocessing is not None:
-            logger.warning(
-                "Preprocessing metadata present but invalid (%s). "
-                "Marking round as failed.",
-                pp_error_code,
-            )
-            result["ok"] = False
-            result["model_output"] = None
-            result["inferred_time_range"] = None
-            result["inferred_frame_range"] = None
-            result["validation_error"] = {
-                "code": pp_error_code,
-                "message": f"服务端 preprocessing 元数据校验失败: {pp_error_code}",
-                "field": "preprocessing",
-            }
-            return result
-
-        # ------------------------------------------------------------------
-        # Case 3: Preprocessing missing (server adapter not installed).
-        # When has_fracture is True, fail per contract: missing metadata
-        # means we cannot reliably map fracture_between to original time range.
-        # When has_fracture is False/None, graceful degrade with local manifest.
-        # ------------------------------------------------------------------
-        if has_fracture and preprocessing is None:
-            logger.warning(
-                "Preprocessing metadata missing but has_fracture=True. "
-                "Marking round as failed (missing_or_invalid_preprocessing_metadata)."
-            )
-            result["ok"] = False
-            result["model_output"] = None
-            result["inferred_time_range"] = None
-            result["inferred_frame_range"] = None
-            result["validation_error"] = {
-                "code": "missing_or_invalid_preprocessing_metadata",
-                "message": (
-                    "服务端未返回 preprocessing 元数据，无法将 fracture_between "
-                    "映射为原始时间范围"
-                ),
-                "field": "preprocessing",
-            }
-            return result
-
-        if has_fracture:
-            fracture_between = model_output["fracture_between"]
-            n = len(manifest)
-
-            def _reject_indices(msg: str) -> dict[str, Any]:
-                result["ok"] = False
-                result["model_output"] = None
-                result["inferred_time_range"] = None
-                result["validation_error"] = {
-                    "code": "invalid_index",
-                    "message": msg,
-                    "field": "fracture_between",
-                }
-                return result
-
-            if len(fracture_between) != 2:
-                return _reject_indices(
-                    f"fracture_between 长度必须为 2，got {fracture_between}"
+            return _finalize(
+                self._infra_error_result(
+                    sample_range,
+                    stage="inference_transport",
+                    code="preprocessing_timestamp_mismatch",
+                    message=(
+                        "服务端采样时间戳无法与临时视频的实际帧清单对应，"
+                        "拒绝使用本地推测映射"
+                    ),
                 )
-            i, j = fracture_between
-            if not (0 <= i < n and 0 <= j < n):
-                return _reject_indices(
-                    f"fracture_between {fracture_between} "
-                    f"超出采样帧索引范围 [0, {n - 1}]"
-                )
-            if i == j:
-                return _reject_indices(
-                    f"fracture_between {fracture_between} "
-                    f"必须是严格相邻的两帧 [i, i+1]"
-                )
+            )
 
-            # Map through local manifest (existing behaviour).
-            result["inferred_time_range"] = [
-                manifest[i]["timestamp"],
-                manifest[j]["timestamp"],
-            ]
-            result["inferred_frame_range"] = [
-                manifest[i]["original_frame"],
-                manifest[j]["original_frame"],
-            ]
-
-        return result
+        return _finalize(result)
 
     def _error_result(
         self,

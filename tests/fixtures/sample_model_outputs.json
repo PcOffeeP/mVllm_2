@@ -28,5 +28,25 @@
       "location": null,
       "confidence": 0.90
     }
+  },
+  {
+    "description": "video anomaly: fracture presence unknown",
+    "model_output": {
+      "has_fracture": null,
+      "fracture_between": null,
+      "type": "视频异常",
+      "location": null,
+      "confidence": 0.70
+    }
+  },
+  {
+    "description": "video anomaly: confirmed fracture but unreliable time",
+    "model_output": {
+      "has_fracture": true,
+      "fracture_between": null,
+      "type": "视频异常",
+      "location": null,
+      "confidence": 0.65
+    }
   }
 ]

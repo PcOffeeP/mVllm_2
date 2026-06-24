@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -433,10 +434,22 @@ def test_llama_factory_inference_client_correction_exhausted(
 # ---------------------------------------------------------------------------
 def test_redact_data_url():
     url = "data:video/mp4;base64," + "A" * 200
-    redacted = _redact_data_url(url, max_plain=8)
-    assert redacted.startswith("data:video/mp4;base64,AAAAAAAA")
+    redacted = _redact_data_url(url)
+    assert redacted.startswith("data:video/mp4;base64,[REDACTED:")
     assert "[REDACTED:" in redacted
     assert "A" * 190 not in redacted
+
+
+@pytest.mark.parametrize("payload_len", [1, 8, 32, 33, 64, 65])
+def test_redact_data_url_redacts_any_non_empty_payload(payload_len: int):
+    """Any non-empty Base64 payload must be length-tokenized, never returned verbatim."""
+    # Use a character that does not appear in the prefix/marker to avoid false positives.
+    payload = "X" * payload_len
+    url = "data:video/mp4;base64," + payload
+    redacted = _redact_data_url(url)
+    assert redacted.startswith("data:video/mp4;base64,")
+    assert "[REDACTED:" in redacted
+    assert payload not in redacted
 
 
 def test_logs_do_not_contain_full_base64(tmp_path: Path, caplog):
@@ -482,13 +495,13 @@ def test_validate_preprocessing_meta_none():
 def test_validate_preprocessing_meta_max_frames_not_8():
     """max_frames != 8 is fatal."""
     from agent.inference import _validate_preprocessing_meta
-    meta = {"max_frames": 4, "frames": []}
+    meta = {"request_id": "r", "processor_version": "v", "max_frames": 4, "frames": []}
     assert _validate_preprocessing_meta(meta) == "max_frames_not_8"
 
 
 def test_validate_preprocessing_meta_too_many_frames():
     from agent.inference import _validate_preprocessing_meta
-    meta = {"max_frames": 8, "frames": [{"index": i, "timestamp": float(i)} for i in range(9)]}
+    meta = {"request_id": "r", "processor_version": "v", "max_frames": 8, "frames": [{"index": i, "timestamp": float(i)} for i in range(9)]}
     assert _validate_preprocessing_meta(meta) == "too_many_frames"
 
 
@@ -496,6 +509,8 @@ def test_validate_preprocessing_meta_non_monotonic_indices():
     from agent.inference import _validate_preprocessing_meta
     meta = {
         "max_frames": 8,
+        "request_id": "r", "processor_version": "v",
+        "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
         "frames": [
             {"index": 0, "timestamp": 0.0},
             {"index": 2, "timestamp": 1.0},
@@ -509,6 +524,7 @@ def test_validate_preprocessing_meta_duplicate_index():
     from agent.inference import _validate_preprocessing_meta
     meta = {
         "max_frames": 8,
+        "request_id": "r", "processor_version": "v",
         "frames": [
             {"index": 0, "timestamp": 0.0},
             {"index": 1, "timestamp": 1.0},
@@ -522,6 +538,8 @@ def test_validate_preprocessing_meta_valid():
     from agent.inference import _validate_preprocessing_meta
     meta = {
         "max_frames": 8,
+        "request_id": "r", "processor_version": "v",
+        "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
         "frames": [
             {"index": 0, "timestamp": 0.0},
             {"index": 1, "timestamp": 1.5},
@@ -536,6 +554,7 @@ def test_validate_preprocessing_meta_non_continuous_indices():
     from agent.inference import _validate_preprocessing_meta
     meta = {
         "max_frames": 8,
+        "request_id": "r", "processor_version": "v",
         "frames": [
             {"index": 0, "timestamp": 0.0},
             {"index": 2, "timestamp": 1.0},
@@ -556,6 +575,7 @@ def test_extract_preprocessing_from_response_model_dump():
                 "preprocessing": {
                     "request_id": "uuid-1",
                     "processor_version": "minicpmv4.6/0.1",
+                    "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
                     "max_frames": 8,
                     "frames": [{"index": 0, "timestamp": 1.0}],
                 },
@@ -576,6 +596,7 @@ def test_extract_preprocessing_from_response_model_extra():
             "preprocessing": {
                 "request_id": "uuid-2",
                 "processor_version": "minicpmv4.6/0.1",
+                "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
                 "max_frames": 8,
                 "frames": [{"index": 0, "timestamp": 1.0}],
             },
@@ -597,6 +618,7 @@ def test_extract_preprocessing_from_response_direct_attr():
         preprocessing = {
             "request_id": "uuid-3",
             "processor_version": "minicpmv4.6/0.1",
+            "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
             "max_frames": 8,
             "frames": [{"index": 0, "timestamp": 1.0}],
         }
@@ -628,6 +650,7 @@ def test_llama_factory_inference_client_extracts_preprocessing(tmp_path: Path):
     preprocessing_payload = {
         "request_id": "e2e-uuid",
         "processor_version": "minicpmv4.6/0.1",
+        "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
         "max_frames": 8,
         "frames": [
             {"index": 0, "timestamp": 0.0},
@@ -676,6 +699,7 @@ def test_llama_factory_inference_client_extracts_invalid_preprocessing(
     preprocessing_payload = {
         "request_id": "invalid-uuid",
         "processor_version": "old",
+        "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
         "max_frames": 4,  # Not 8
         "frames": [{"index": 0, "timestamp": 0.0}],
     }
@@ -744,3 +768,144 @@ def test_llama_factory_inference_client_no_preprocessing_is_graceful(
 
     assert result.ok
     assert result.preprocessing is None  # graceful degradation
+
+
+# ---------------------------------------------------------------------------
+# Diagnostics
+# ---------------------------------------------------------------------------
+def test_inference_result_includes_diagnostics(tmp_path: Path):
+    """A successful inference call must populate diagnostics fields."""
+    video = tmp_path / "clip.mp4"
+    _write_fake_mp4(video)
+
+    def fake_create(*, model, messages, temperature, max_tokens, extra_body=None):
+        mock_completion = MagicMock()
+        mock_completion.model_dump.return_value = {
+            "id": "chatcmpl-diag",
+            "model": model,
+        }
+        mock_completion.model_extra = {}
+        mock_completion.preprocessing = {
+            "request_id": "req-123",
+            "processor_version": "minicpmv4.6/0.1",
+            "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
+            "max_frames": 8,
+            "frames": [{"index": 0, "timestamp": 0.0}],
+        }
+        mock_completion.choices = [MagicMock()]
+        mock_completion.choices[0].message.content = (
+            '{"has_fracture": false, "fracture_between": null, '
+            '"type": "未断裂", "location": null, "confidence": 0.8}'
+        )
+        return mock_completion
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = fake_create
+
+    with patch("agent.inference.OpenAI") as mock_openai:
+        mock_openai.return_value = mock_client
+        client = LlamaFactoryInferenceClient(model="minicpm-test")
+        result = client.infer(str(video), "analyze")
+
+    assert result.ok
+    assert result.diagnostics is not None
+    assert result.diagnostics.request_id == "req-123"
+    assert result.diagnostics.processor_version == "minicpmv4.6/0.1"
+    assert result.diagnostics.max_frames == 8
+    assert result.diagnostics.sampled_frames is not None
+    assert result.diagnostics.mime_type == "video/mp4"
+    assert result.diagnostics.base64_length > 0
+    assert result.diagnostics.raw_http_response is not None
+    assert result.diagnostics.transport_retries == 0
+    assert result.diagnostics.correction_retries == 0
+    assert result.diagnostics.elapsed_seconds is not None
+
+
+def test_diagnostics_transport_retries(tmp_path: Path, monkeypatch):
+    """Transport retries must be counted in diagnostics."""
+    video = tmp_path / "clip.mp4"
+    _write_fake_mp4(video)
+    monkeypatch.setattr("agent.inference.time.sleep", lambda _s: None)
+
+    class FakeRetryableError(Exception):
+        status_code = 503
+
+    mock_completion = MagicMock()
+    mock_completion.model_dump.return_value = {"id": "chatcmpl-retry"}
+    mock_completion.model_extra = {}
+    mock_completion.preprocessing = None
+    mock_completion.choices = [MagicMock()]
+    mock_completion.choices[0].message.content = (
+        '{"has_fracture": false, "fracture_between": null, '
+        '"type": "未断裂", "location": null, "confidence": 0.8}'
+    )
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = [
+        FakeRetryableError("server error"),
+        mock_completion,
+    ]
+
+    with patch("agent.inference.OpenAI") as mock_openai:
+        mock_openai.return_value = mock_client
+        client = LlamaFactoryInferenceClient(model="minicpm-test")
+        result = client.infer(str(video), "prompt")
+
+    assert result.ok
+    assert result.diagnostics is not None
+    assert result.diagnostics.transport_retries == 1
+
+
+def test_diagnostics_do_not_leak_base64(tmp_path: Path):
+    """Diagnostics raw_http_response must not contain the full Base64 payload."""
+    video = tmp_path / "clip.mp4"
+    secret = b"secret video bytes " * 50
+    _write_fake_mp4(video, secret)
+
+    captured_messages: list[list[dict[str, Any]]] = []
+
+    def fake_create(*, model, messages, temperature, max_tokens, extra_body=None):
+        captured_messages.append(messages)
+        mock_completion = MagicMock()
+        mock_completion.model_dump.return_value = {"id": "chatcmpl-redact"}
+        mock_completion.model_extra = {}
+        mock_completion.preprocessing = None
+        mock_completion.choices = [MagicMock()]
+        mock_completion.choices[0].message.content = (
+            '{"has_fracture": false, "fracture_between": null, '
+            '"type": "未断裂", "location": null, "confidence": 0.8}'
+        )
+        return mock_completion
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = fake_create
+
+    with patch("agent.inference.OpenAI") as mock_openai:
+        mock_openai.return_value = mock_client
+        client = LlamaFactoryInferenceClient(model="minicpm-test")
+        result = client.infer(str(video), "prompt")
+
+    assert result.ok
+    diagnostics = result.diagnostics
+    assert diagnostics is not None
+    raw = diagnostics.raw_http_response
+    assert raw is not None
+    request_messages = raw["request"]["messages"]
+    user_content = request_messages[1]["content"]
+    video_url = user_content[0]["video_url"]["url"]
+    assert "[REDACTED:" in video_url
+    # The original full base64 payload must not appear anywhere in diagnostics.
+    diagnostics_json = json.dumps(diagnostics.model_dump(mode="json"))
+    import base64
+    full_payload = base64.b64encode(_FAKE_MP4_HEADER + secret).decode("ascii")
+    assert full_payload not in diagnostics_json
+TEST_DEPLOYMENT_MANIFEST = {
+    "model_version": "minicpm-v-4.6",
+    "transformers_version": "4.test",
+    "llamafactory_version": "test-rev",
+    "base_model_version": "base-test",
+    "artifact_version": "adapter-test",
+    "config_fingerprint": "sha256:test",
+    "runtime_device": "cpu",
+    "runtime_dtype": "float32",
+}

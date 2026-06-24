@@ -83,7 +83,7 @@ pip install -e ".[dev]"
 python3 pipeline/scripts/dataset_manager.py
 
 # 基于划分与 video_meta 生成子视频、帧图缓存和 subvideos_meta.json
-python3 pipeline/scripts/subvideo_builder.py
+python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.6
 
 # 将子视频元数据转换为 LLaMA-Factory ShareGPT JSON
 python3 pipeline/scripts/training_sample_builder.py
@@ -107,9 +107,9 @@ cd finetune/
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
-llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
-llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_interval_fold1.yaml
-llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_interval_fold2.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold1.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold2.yaml
 ```
 
 训练完成后如需合并 LoRA，可参考 `finetune/MiniCPM/config/merge.yaml`。
@@ -180,7 +180,15 @@ python3 -m agent.run --videos-dir data/01_videos --mock
 
 #### 真实运行
 
-正式推理前，需要启动微调模型推理服务（LLaMA-Factory API），并确保环境变量 `LLM_API_KEY` 已配置（或在 `agent/config.yaml` 的 `agent.remote.api_key` 中填入有效 key）。去掉 `--mock` 后即可使用真实模型运行，例如：
+正式推理前，需要启动项目侧 `pipeline.server_proxy` 同进程集成服务。它直接创建 LLaMA-Factory ChatModel，包装模型实际使用的 MiniCPM-V 4.6 子处理器，并把本次真实输入帧和 tensor digest 注入内部 `preprocessing` 元数据；Agent 不能直接连接 stock endpoint。部署清单格式见 `pipeline/server_deployment_manifest.example.json`。
+
+```bash
+python3 -m pipeline.server_proxy \
+  --model models/minicpm-v-4.6 \
+  --deployment-manifest /path/to/deployment-manifest.json
+```
+
+随后配置 `LLM_API_KEY`（或 `agent/config.yaml` 中的对应字段），并让 inference endpoint 指向 proxy。去掉 `--mock` 后运行：
 
 ```bash
 export LLM_API_KEY="your-api-key"
@@ -210,20 +218,18 @@ python3 scripts/validate_no_oob.py
 # 构建训练样本（默认参数）
 python3 pipeline/scripts/training_sample_builder.py
 
-# 自定义输入输出路径 / 采样参数
+# 自定义输入输出路径
 python3 pipeline/scripts/training_sample_builder.py \
   --subvideos-meta data/metadata/subvideos_meta.json \
   --splits-dir data/03_splits \
-  --output-dir data/04_new_merged \
-  --video-fps 8.0 \
-  --video-maxlen 36
+  --output-dir data/04_new_merged
 ```
 
 ## 已知限制 / 当前状态
 
 - `scripts/validate_no_oob.py` 在 `data/metadata/subvideos_meta.json` 不存在时会输出 `SKIP` 并正常退出；生成产物后才会执行严格 OOB 校验。
 - `subvideo_builder.py` 的快速模式（`--fast`）依赖已有 `subvideos_meta.json`，若元数据不存在会自动退回到完整生成。
-- uniform 采样换算目前假设固定 `video_fps=8.0`、`video_maxlen=36`；实际采样帧数由子视频时长、帧率与上限共同决定。
+- 正式数据构建必须使用 MiniCPM-V 真实视频处理器产生的最多 8 帧映射；缺少映射时显式失败，不按 FPS 或区间宽度推算。
 - 子视频生成依赖 `ffmpeg` / `ffprobe`，请确保系统已安装。
 - 新 interval 数据产物（`data/02_subvideos/`、`data/03_frames/`、`data/04_new_merged/`、`data/metadata/`）默认被 `.gitignore` 忽略，不提交。
 - 旧直接预测方案不在本项目维护；对比时只导入外部项目生成的版本化预测产物。

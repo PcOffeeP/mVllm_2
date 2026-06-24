@@ -19,9 +19,7 @@ from common import (
     load_fold_samples,
     load_ground_truth,
     normalize_prediction_label,
-    parse_response_payload,
     parse_seconds,
-    parse_time_range,
     round_record_times,
     validate_fold,
     validate_prompt_preset,
@@ -29,12 +27,16 @@ from common import (
 )
 from config import (
     DEFAULT_VIDEO_ROOT,
-    FRACTURE_CLASSES,
     GROUND_TRUTH_JSON,
-    NON_FRACTURE_CLASSES,
     PROMPT_PRESETS,
     VIDEO_MAX_FRAMES,
 )
+from pipeline.preprocessing import FrameMapping
+from pipeline.preprocessing.minicpm_preprocessor import (
+    MiniCPMVideoPreprocessor,
+    configure_processor_max_frames,
+)
+from agent.parser import ResultParser
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,7 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     from transformers import AutoModelForImageTextToText, AutoProcessor
 
     processor = AutoProcessor.from_pretrained(model_dir, trust_remote_code=True)
+    configure_processor_max_frames(processor)
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"
     model = AutoModelForImageTextToText.from_pretrained(
         model_dir,
@@ -132,67 +135,26 @@ def _get_video_duration(video_path: Path) -> float | None:
 
 def _parse_pred_time_range(
     payload: dict[str, Any] | None,
-    duration_sec: float | None = None,
-    max_num_frames: int = VIDEO_MAX_FRAMES,
+    sampled_frames: list[FrameMapping] | None = None,
 ) -> list[float] | None:
-    """Parse predicted time range from model payload.
-
-    The new interval protocol (``has_fracture`` + ``fracture_between``) is
-    preferred.  Frame indices are converted to seconds with the uniform
-    sampling formula, assuming the processor samples ``max_num_frames`` frames
-    uniformly across ``[0, duration_sec]``.  The actual frame sequence may
-    differ depending on decoder/sampling strategy.  Legacy fields are kept as
-    compatibility fallbacks.
-
-    Within the new protocol, a zero-width interval is only accepted at the
-    boundaries (``[0, 0]`` or ``[max_idx, max_idx]``); any other ``[k, k]``
-    pair is rejected.
-    """
-    # New interval protocol.
-    if payload is not None and payload.get("has_fracture") is True and duration_sec is not None:
-        fracture_between = payload.get("fracture_between")
-        if fracture_between is None:
-            return None
-        if isinstance(fracture_between, (list, tuple)) and len(fracture_between) == 2:
-            try:
-                start_idx = int(fracture_between[0])
-                end_idx = int(fracture_between[1])
-            except (TypeError, ValueError):
-                start_idx = end_idx = None
-            max_idx = max_num_frames - 1
-            if start_idx is None or end_idx is None:
-                return None
-            if not (0 <= start_idx <= max_idx and 0 <= end_idx <= max_idx):
-                return None
-            if end_idx == start_idx + 1:
-                # Adjacent frames form a non-empty interval.
-                pass
-            elif end_idx == start_idx and (start_idx == 0 or start_idx == max_idx):
-                # Boundary zero-width sentinel only.
-                pass
-            else:
-                return None
-            if max_num_frames <= 1:
-                return [0.0, round(duration_sec, 6)]
-            # Uniform sampling assumption: k-th sampled frame is at
-            # k * duration / (max_num_frames - 1).
-            step = duration_sec / (max_num_frames - 1)
-            return [round(start_idx * step, 6), round(end_idx * step, 6)]
-
-    # Legacy interval fields compatibility.
-    parsed: tuple[float, float] | None = None
-    if payload is not None:
-        for key in ("time_range", "time_range_sec", "time_interval"):
-            value = payload.get(key)
-            if value is not None:
-                parsed = parse_time_range(value)
-                if parsed is not None:
-                    break
-    if parsed is not None and math.isfinite(parsed[0]) and math.isfinite(parsed[1]):
-        return [parsed[0], parsed[1]]
-
-    # No explicit interval available; do not fabricate a placeholder window.
-    return None
+    """Map strict adjacent indices through actual processor frame metadata."""
+    if payload is None or payload.get("has_fracture") is not True:
+        return None
+    fracture_between = payload.get("fracture_between")
+    if (
+        not isinstance(fracture_between, list)
+        or len(fracture_between) != 2
+        or any(isinstance(value, bool) or not isinstance(value, int) for value in fracture_between)
+        or sampled_frames is None
+    ):
+        return None
+    start_idx, end_idx = fracture_between
+    if end_idx != start_idx + 1 or not (0 <= start_idx < end_idx < len(sampled_frames)):
+        return None
+    return [
+        round(sampled_frames[start_idx].timestamp, 6),
+        round(sampled_frames[end_idx].timestamp, 6),
+    ]
 
 
 def _map_confidence_level(score: float) -> str:
@@ -297,6 +259,7 @@ def main() -> None:
         print(f"[info] task={args.task} does not support fewshot directly, fallback to prompt preset={resolved_prompt_preset}")
 
     processor, model = load_model(model_dir)
+    frame_mapper = MiniCPMVideoPreprocessor(model_dir, processor=processor)
     records: list[dict[str, Any]] = []
     for sample in samples:
         video_path = video_root / sample["video_name"]
@@ -330,33 +293,38 @@ def main() -> None:
         try:
             if not video_path.exists():
                 raise RuntimeError(f"Video not found: {video_path}")
+            duration_sec = _get_video_duration(video_path)
+            if duration_sec is None:
+                raise RuntimeError("Unable to determine video duration for actual frame mapping")
+            sampled_frames = frame_mapper.sample(video_path.as_posix(), 0.0, duration_sec)
+            record["preprocessing"] = {
+                "processor_version": frame_mapper.get_info().version,
+                "max_frames": frame_mapper.get_info().max_frames,
+                "frames": [
+                    {
+                        "index": frame.input_index,
+                        "original_frame": frame.original_frame,
+                        "timestamp": frame.timestamp,
+                    }
+                    for frame in sampled_frames
+                ],
+            }
             response_text = run_single_inference(model, processor, video_path, prompt)
             record["raw_output"] = response_text
-            json_valid, payload = parse_response_payload(response_text)
-            record["json_valid"] = json_valid
-            if json_valid and payload is not None:
+            parsed = ResultParser.parse(response_text)
+            payload = parsed.data
+            record["json_valid"] = parsed.ok
+            if parsed.ok and payload is not None:
                 record["pred_has_fracture"] = payload.get("has_fracture")
                 record["pred_location"] = _parse_location(payload)
                 record["pred_time_raw"] = payload.get("time")
                 record["pred_time_sec"] = parse_seconds(payload.get("time"))
 
-                # Resolve video duration only when the new interval protocol
-                # may be used; old-protocol payloads fall back to legacy fields.
-                duration_sec = None
-                if payload.get("has_fracture") is True and "fracture_between" in payload:
-                    duration_sec = _get_video_duration(video_path)
-
-                record["pred_time_range"] = _parse_pred_time_range(payload, duration_sec)
+                record["pred_time_range"] = _parse_pred_time_range(payload, sampled_frames)
                 record["pred_confidence_score"], record["pred_confidence_level"] = _parse_confidence(payload)
                 record["pred_type_raw"] = payload.get("type")
                 record["pred_type_norm"] = normalize_prediction_label(payload.get("type"))
 
-                if record["pred_has_fracture"] is None:
-                    pred_type = record["pred_type_norm"]
-                    if pred_type in NON_FRACTURE_CLASSES:
-                        record["pred_has_fracture"] = False
-                    elif pred_type in FRACTURE_CLASSES or record["pred_time_sec"] is not None:
-                        record["pred_has_fracture"] = True
         except Exception as exc:
             record["raw_output"] = str(exc)
             record["failure_reason"] = "model_inference_failed" if video_path.exists() else "video_load_failed"

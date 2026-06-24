@@ -38,7 +38,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pipeline.preprocessing import (
-    MockVideoPreprocessor,
     MiniCPMVideoPreprocessor,
     VideoPreprocessor,
 )
@@ -54,7 +53,6 @@ FOCUS_POSITIONS = [0.2, 0.35, 0.5, 0.65, 0.8]
 NEG_CLIP_DURATIONS = [3, 10, 30]
 NEG_BEFORE_DURATION = 5
 NEG_AFTER_DURATION = 5
-VIDEO_FPS = 8.0
 VIDEO_MAXLEN = 8
 
 FRACTURE_TYPES = [
@@ -89,8 +87,6 @@ def _ffprobe(path: Path) -> dict[str, Any]:
         fps = _parse_fps(fps_raw)
         duration = _to_float(stream.get("duration"))
         total_frames = _to_int(stream.get("nb_frames"))
-        if total_frames is None and duration and fps:
-            total_frames = int(round(duration * fps))
         return {"fps": fps, "duration": duration, "total_frames": total_frames}
     except Exception:
         return {}
@@ -182,61 +178,6 @@ def clamp(value: int, low: int, high: int) -> int:
     return max(low, min(high, value))
 
 
-def compute_n_sampled_frames(duration: float, total_frames: int, video_fps: float, video_maxlen: int) -> int:
-    if duration <= 0 or total_frames <= 0:
-        return 0
-    n_by_fps = max(1, int(math.floor(duration * video_fps)))
-    return min(total_frames, video_maxlen, n_by_fps)
-
-
-def compute_sampled_frames_with_n(
-    start_time: float,
-    end_time: float,
-    source_fps: float,
-    source_total_frames: int,
-    n: int,
-) -> list[dict[str, Any]]:
-    """按给定帧数 n 在 [start_time, end_time] 内均匀采样帧映射。"""
-    if n <= 0:
-        return []
-    duration = end_time - start_time
-    if duration <= 0:
-        return []
-
-    frames = []
-    for k in range(n):
-        if n == 1:
-            t = start_time
-        else:
-            t = start_time + k * duration / (n - 1)
-        original_frame = clamp(round(t * source_fps), 0, source_total_frames - 1)
-        frames.append(
-            {
-                "input_index": k,
-                "original_frame": original_frame,
-                "timestamp": round(t, 4),
-            }
-        )
-    return frames
-
-
-def compute_sampled_frames(
-    start_time: float,
-    end_time: float,
-    source_fps: float,
-    source_total_frames: int,
-    video_fps: float,
-    video_maxlen: int,
-) -> list[dict[str, Any]]:
-    """按 uniform 采样规则计算采样帧映射。"""
-    duration = end_time - start_time
-    if duration <= 0:
-        return []
-    total_frames_in_clip = max(1, int(round(duration * source_fps)))
-    n = compute_n_sampled_frames(duration, total_frames_in_clip, video_fps, video_maxlen)
-    return compute_sampled_frames_with_n(start_time, end_time, source_fps, source_total_frames, n)
-
-
 def compute_fracture_between(
     sampled_frames: list[dict[str, Any]], event_frame: int | None
 ) -> list[int] | None:
@@ -320,13 +261,11 @@ def _source_video_path(rec: dict[str, Any]) -> Path:
     return source_path
 
 
-def _create_preprocessor(name: str, max_frames: int) -> VideoPreprocessor:
+def _create_preprocessor(name: str, max_frames: int, model_path: str) -> VideoPreprocessor:
     """根据 CLI 选择构造预处理器实例。"""
-    if name == "mock":
-        return MockVideoPreprocessor(max_frames=max_frames)
     if name == "minicpm":
         return MiniCPMVideoPreprocessor(
-            model_path_or_name="openbmb/MiniCPM-V-2_6", max_frames=max_frames
+            model_path_or_name=model_path, max_frames=max_frames
         )
     raise ValueError(f"未知预处理器: {name}")
 
@@ -508,9 +447,7 @@ def build_focus_subvideos(
                     )
                     continue
             else:
-                sampled = compute_sampled_frames(
-                    start_time, end_time, fps, total_frames, VIDEO_FPS, VIDEO_MAXLEN
-                )
+                raise RuntimeError("正式数据构建必须提供真实视频预处理器")
             fracture_between = compute_fracture_between(sampled, event_frame)
 
             if fracture_between is None and preprocessor is not None:
@@ -618,9 +555,7 @@ def _build_clip_candidate(
             )
             return None
     else:
-        sampled = compute_sampled_frames(
-            start_time, end_time, fps, total_frames, VIDEO_FPS, VIDEO_MAXLEN
-        )
+        raise RuntimeError("正式数据构建必须提供真实视频预处理器")
 
     gen_this = generate_media and (selected_ids is None or subvideo_id in selected_ids)
     if gen_this:
@@ -875,9 +810,7 @@ def build_full_subvideo(
                 )
                 return None
         else:
-            sampled = compute_sampled_frames(
-                start_time, end_time, fps, total_frames, VIDEO_FPS, VIDEO_MAXLEN
-            )
+            raise RuntimeError("正式数据构建必须提供真实视频预处理器")
         if extract_frames and generate_media:
             frame_dir = FRAME_DIR_DEFAULT / subvideo_id
             frame_files = extract_sampled_frames(source_path, frame_dir, len(sampled), end_time)
@@ -938,37 +871,14 @@ def update_subvideo_metadata(sub: dict[str, Any], rec: dict[str, Any]) -> dict[s
         sub["end_time"] = round(sub["end_frame"] / fps, 4)
         sub["duration"] = sub["end_time"]
 
-    frame_paths = sub.get("frame_paths") or []
-    n = len(frame_paths)
     has_fracture = sub.get("has_fracture_canonical", sub.get("has_fracture"))
-
-    if n > 0 and fps and total_frames:
-        sampled = compute_sampled_frames_with_n(
-            sub.get("start_time", 0.0),
-            sub.get("end_time", 0.0),
-            fps,
-            total_frames,
-            n,
-        )
-        if has_fracture is True and event_frame is not None:
-            sub["fracture_between"] = compute_fracture_between(sampled, event_frame)
-        else:
-            sub["fracture_between"] = None
-    elif fps and total_frames:
-        exact_start = sub.get("start_frame", 0) / fps
-        exact_end = sub.get("end_frame", 0) / fps
-        sampled = compute_sampled_frames(
-            exact_start, exact_end, fps, total_frames, VIDEO_FPS, VIDEO_MAXLEN
-        )
-        if has_fracture is True and event_frame is not None:
-            sub["fracture_between"] = compute_fracture_between(sampled, event_frame)
-        else:
-            sub["fracture_between"] = None
-    elif has_fracture is not True:
-        sub["fracture_between"] = None
-        sampled = []
+    sampled = sub.get("actual_frame_mapping") or sub.get("sampled_frames")
+    if not sampled:
+        raise RuntimeError("快速模式缺少真实处理器帧映射，拒绝按 FPS 重新推算")
+    if has_fracture is True and event_frame is not None:
+        sub["fracture_between"] = compute_fracture_between(sampled, event_frame)
     else:
-        sampled = []
+        sub["fracture_between"] = None
 
     sub["sampled_frames"] = sampled
     return sub
@@ -1133,7 +1043,7 @@ def _generate_media_for_candidate(
 
 
 def main():
-    global FOCUS_WINDOWS, FOCUS_POSITIONS, VIDEO_FPS, VIDEO_MAXLEN, NEG_CLIP_DURATIONS
+    global FOCUS_WINDOWS, FOCUS_POSITIONS, VIDEO_MAXLEN, NEG_CLIP_DURATIONS
     parser = argparse.ArgumentParser(description="子视频生成器（先选后生成）")
     parser.add_argument("--video-meta", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--splits-dir", type=Path, default=SPLITS_DIR_DEFAULT)
@@ -1143,13 +1053,16 @@ def main():
     parser.add_argument("--focus-windows", type=float, nargs="+", default=FOCUS_WINDOWS)
     parser.add_argument("--focus-positions", type=float, nargs="+", default=FOCUS_POSITIONS)
     parser.add_argument("--neg-clip-durations", type=float, nargs="+", default=NEG_CLIP_DURATIONS)
-    parser.add_argument("--video-fps", type=float, default=VIDEO_FPS)
-    parser.add_argument("--video-maxlen", type=int, default=VIDEO_MAXLEN)
     parser.add_argument(
         "--preprocessor",
-        choices=["mock", "minicpm"],
-        default="mock",
-        help="视频预处理适配层（默认 mock）",
+        choices=["minicpm"],
+        default="minicpm",
+        help="正式数据构建固定使用 MiniCPM 实际处理器选帧",
+    )
+    parser.add_argument(
+        "--model",
+        default=str(PROJECT_ROOT / "models" / "minicpm-v-4.6"),
+        help="MiniCPM-V 4.6 模型目录；须与训练和校准使用同一版本",
     )
     parser.add_argument(
         "--extract-frames",
@@ -1172,10 +1085,9 @@ def main():
     FOCUS_WINDOWS = [int(w) if w == int(w) else w for w in args.focus_windows]
     FOCUS_POSITIONS = args.focus_positions
     NEG_CLIP_DURATIONS = [int(w) if w == int(w) else w for w in args.neg_clip_durations]
-    VIDEO_FPS = args.video_fps
-    VIDEO_MAXLEN = args.video_maxlen
+    VIDEO_MAXLEN = 8
 
-    preprocessor = _create_preprocessor(args.preprocessor, args.video_maxlen)
+    preprocessor = _create_preprocessor(args.preprocessor, VIDEO_MAXLEN, args.model)
     if not preprocessor.healthcheck():
         info = preprocessor.get_info()
         raise RuntimeError(f"预处理器健康检查失败: {info.name} ({info.backend})")

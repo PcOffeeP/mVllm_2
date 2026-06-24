@@ -59,6 +59,14 @@ def _make_processor_info(
     return {
         "processor_version": version,
         "max_frames": max_frames,
+        "model_version": "minicpm-v-4.6",
+        "transformers_version": "4.test",
+        "llamafactory_version": "test-rev",
+        "base_model_version": "base-test",
+        "artifact_version": "adapter-test",
+        "config_fingerprint": "sha256:test",
+        "runtime_device": "cpu",
+        "runtime_dtype": "float32",
     }
 
 
@@ -114,20 +122,12 @@ class TestNormalInjection:
         assert result["preprocessing"]["max_frames"] == 8
 
     def test_default_processor_version_when_missing(self):
-        result = wrap_response(
-            _make_raw_response(),
-            _make_frames(2),
-            {},
-        )
-        assert result["preprocessing"]["processor_version"] == "unknown"
+        with pytest.raises(ValueError, match="processor_version"):
+            wrap_response(_make_raw_response(), _make_frames(2), {})
 
     def test_default_max_frames_when_missing(self):
-        result = wrap_response(
-            _make_raw_response(),
-            _make_frames(2),
-            {},
-        )
-        assert result["preprocessing"]["max_frames"] == 8
+        with pytest.raises(ValueError, match="processor_version"):
+            wrap_response(_make_raw_response(), _make_frames(2), {})
 
 
 # ---------------------------------------------------------------------------
@@ -137,20 +137,12 @@ class TestNormalInjection:
 
 class TestEmptyFrames:
     def test_empty_frames_list(self):
-        result = wrap_response(
-            _make_raw_response(),
-            [],
-            _make_processor_info(),
-        )
-        assert result["preprocessing"]["frames"] == []
+        with pytest.raises(ValueError, match="between 1 and 8"):
+            wrap_response(_make_raw_response(), [], _make_processor_info())
 
     def test_empty_frames_type_is_list(self):
-        result = wrap_response(
-            _make_raw_response(),
-            [],
-            _make_processor_info(),
-        )
-        assert isinstance(result["preprocessing"]["frames"], list)
+        with pytest.raises(ValueError, match="between 1 and 8"):
+            wrap_response(_make_raw_response(), [], _make_processor_info())
 
 
 # ---------------------------------------------------------------------------
@@ -242,9 +234,8 @@ class TestFramesContent:
 
     def test_frame_index_values(self):
         input_frames = [{"index": 10, "timestamp": 5.0}, {"index": 20, "timestamp": 10.0}]
-        result = wrap_response(_make_raw_response(), input_frames, _make_processor_info())
-        assert result["preprocessing"]["frames"][0]["index"] == 10
-        assert result["preprocessing"]["frames"][1]["index"] == 20
+        with pytest.raises(ValueError, match="consecutive"):
+            wrap_response(_make_raw_response(), input_frames, _make_processor_info())
 
     def test_frame_timestamp_values(self):
         input_frames = [{"index": 0, "timestamp": 1.5}, {"index": 1, "timestamp": 3.7}]
@@ -272,45 +263,35 @@ class TestProcessorInfoMapping:
         result = wrap_response(
             _make_raw_response(),
             _make_frames(3),
-            {"processor_version": "custom/1.0", "max_frames": 8},
+            _make_processor_info(version="custom/1.0"),
         )
         assert result["preprocessing"]["processor_version"] == "custom/1.0"
 
     def test_max_frames_mapped(self):
-        result = wrap_response(
-            _make_raw_response(),
-            _make_frames(3),
-            {"processor_version": "v1", "max_frames": 12},
-        )
-        assert result["preprocessing"]["max_frames"] == 12
+        with pytest.raises(ValueError, match="exactly 8"):
+            wrap_response(
+                _make_raw_response(), _make_frames(3),
+                {"processor_version": "v1", "max_frames": 12},
+            )
 
     def test_processor_info_with_extra_fields_ignored(self):
         """processor_info 中额外的字段不会污染 preprocessing。"""
-        info = {
-            "processor_version": "v1",
-            "max_frames": 8,
-            "unused_key": "should_not_appear",
-        }
+        info = {**_make_processor_info(version="v1"), "unused_key": "should_not_appear"}
         result = wrap_response(_make_raw_response(), _make_frames(3), info)
         pp_keys = set(result["preprocessing"].keys())
         assert "unused_key" not in pp_keys
 
     def test_processor_version_defaults_to_unknown(self):
-        result = wrap_response(_make_raw_response(), _make_frames(1), {})
-        assert result["preprocessing"]["processor_version"] == "unknown"
+        with pytest.raises(ValueError, match="processor_version"):
+            wrap_response(_make_raw_response(), _make_frames(1), {})
 
     def test_max_frames_defaults_to_eight(self):
-        result = wrap_response(_make_raw_response(), _make_frames(1), {})
-        assert result["preprocessing"]["max_frames"] == 8
+        with pytest.raises(ValueError, match="processor_version"):
+            wrap_response(_make_raw_response(), _make_frames(1), {})
 
     def test_request_id_still_present_when_info_empty(self):
-        result = wrap_response(
-            _make_raw_response(),
-            _make_frames(2),
-            {},
-        )
-        assert isinstance(result["preprocessing"]["request_id"], str)
-        assert len(result["preprocessing"]["request_id"]) > 0
+        with pytest.raises(ValueError, match="processor_version"):
+            wrap_response(_make_raw_response(), _make_frames(2), {})
 
 
 if __name__ == "__main__":

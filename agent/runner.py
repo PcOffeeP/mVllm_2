@@ -42,29 +42,17 @@ def create_inference_client(config: dict[str, Any]):
     return _create_inference_client(config)
 
 
-def create_sampler(config: dict[str, Any], cache_dir: str | Path | None = None):
-    """Create a ``UniformVideoSampler``.
-
-    Defaults ``cache_dir`` to ``data/08_runtime/agent_frames`` if not provided.
-    """
-    from agent.sampling import UniformVideoSampler
-
-    if cache_dir is None:
-        cache_dir = "data/08_runtime/agent_frames"
-    return UniformVideoSampler(cache_dir=str(cache_dir))
-
-
 def create_clip_builder(
     config: dict[str, Any], output_dir: str | Path | None = None
 ):
     """Create a ``FfmpegVideoClipBuilder``.
 
-    Defaults ``output_dir`` to ``data/08_runtime/agent_clips`` if not provided.
+    Defaults ``output_dir`` to ``data/runtime/agent_clips`` if not provided.
     """
     from agent.sampling import FfmpegVideoClipBuilder
 
     if output_dir is None:
-        output_dir = "data/08_runtime/agent_clips"
+        output_dir = "data/runtime/agent_clips"
     return FfmpegVideoClipBuilder(output_dir=str(output_dir))
 
 
@@ -142,8 +130,8 @@ def build_video_meta(
 def _runtime_dir(work_dir: str | Path | None, name: str) -> Path:
     """Return a runtime subdirectory path rooted at ``work_dir`` or cwd."""
     if work_dir is None:
-        return Path("data/08_runtime") / name
-    return Path(work_dir) / "data/08_runtime" / name
+        return Path("data/runtime") / name
+    return Path(work_dir) / "data/runtime" / name
 
 
 def run_one(
@@ -169,40 +157,54 @@ def run_one(
     path = Path(video_path)
     resolved_id = video_id if video_id is not None else path.stem
 
-    stage = "metadata"
+    stage = "configuration"
     try:
         config = load_config(config_path)
+
+        stage = "input"
         video_meta = build_video_meta(path, video_id=resolved_id)
 
-        stage = "llm_client"
+        stage = "decision_backend"
         llm_client = create_llm_client(config)
 
-        stage = "inference_client"
+        stage = "inference_transport"
         inference_client = create_inference_client(config)
 
-        stage = "sampler"
-        sampler = create_sampler(
-            config, cache_dir=_runtime_dir(work_dir, "agent_frames")
-        )
-
-        stage = "clip_builder"
+        stage = "sampling"
         clip_builder = create_clip_builder(
             config, output_dir=_runtime_dir(work_dir, "agent_clips")
         )
 
-        stage = "agent"
+        stage = "internal"
         agent = IterativeAgent(
             config=config,
             video_meta=video_meta,
             llm_client=llm_client,
-            sampler=sampler,
             clip_builder=clip_builder,
             inference_client=inference_client,
             event_callback=event_callback,
+            work_dir=work_dir,
         )
         raw_result = agent.run()
-        # agent.run() returns a dict that may contain extra metadata beyond
-        # FinalOutput fields; filter to only the public contract fields.
+        # ``IterativeAgent.run()`` returns either a dict of public final-output
+        # fields (plus metadata) or, on consecutive infrastructure failures, a
+        # ``RunnerResult(ok=False, ...)`` envelope.  Propagate failure envelopes
+        # directly so the original error code (e.g. ``consecutive_infra_failures``)
+        # is not overwritten by a downstream ``ValidationError``.
+        if raw_result.get("ok") is False and raw_result.get("error") is not None:
+            error = raw_result["error"]
+            if event_callback is not None:
+                event_callback(
+                    {
+                        "event_type": "video_failed",
+                        "video_id": resolved_id,
+                        "error": error.get("message", ""),
+                        "stage": error.get("stage", "internal"),
+                    }
+                )
+            return raw_result
+
+        # Normal success path: filter to the public FinalOutput contract fields.
         _FO_FIELDS = {"video_id", "status", "time_range", "fracture_type",
                        "location", "confidence", "unrecognized_reason"}
         fo_dict = {k: v for k, v in raw_result.items() if k in _FO_FIELDS}

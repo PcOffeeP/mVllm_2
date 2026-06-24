@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -12,10 +13,11 @@ sys.path.insert(0, str(ROOT))
 from pipeline.preprocessing import (
     FrameMapping,
     MiniCPMVideoPreprocessor,
-    MockVideoPreprocessor,
     ProcessorInfo,
     VideoPreprocessor,
 )
+from pipeline.llamafactory_contract import configure_loaded_processor
+from agent.sampling import FfmpegVideoClipBuilder, _probe_video
 
 
 def _load_video_meta(path: Path) -> dict[str, dict[str, Any]]:
@@ -142,176 +144,59 @@ def _window_positions(
 # ---------------------------------------------------------------------------
 
 
-def _get_video_total_frames(video_path: str) -> int | None:
-    """用 ffprobe 查询视频总帧数。返回 None 表示查询失败。"""
-    import subprocess
-    try:
-        result = subprocess.run(
-            [
-                "ffprobe", "-v", "error",
-                "-select_streams", "v:0",
-                "-show_entries", "stream=nb_frames",
-                "-of", "default=nokey=1:noprint_wrappers=1",
-                video_path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        raw = result.stdout.strip()
-        if raw and raw.isdigit():
-            return int(raw)
-        # fallback: try count_packets 方案
-        result2 = subprocess.run(
-            [
-                "ffprobe", "-v", "error",
-                "-select_streams", "v:0",
-                "-count_packets",
-                "-show_entries", "stream=nb_read_packets",
-                "-of", "default=nokey=1:noprint_wrappers=1",
-                video_path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        raw2 = result2.stdout.strip()
-        if raw2 and raw2.isdigit():
-            return int(raw2)
-        return None
-    except Exception:
-        return None
-
-
-def _compute_uniform_original_frames(
-    total_frames: int, frame_count: int
-) -> list[int]:
-    """均匀采样反推原始帧号：等价于 np.linspace(0, total_frames-1, frame_count)。"""
-    import math
-    if frame_count <= 0:
-        return []
-    if frame_count == 1:
-        return [0]
-    return [
-        round(i * (total_frames - 1) / (frame_count - 1))
-        for i in range(frame_count)
-    ]
-
-
 def _try_load_llama_factory_batch(
     video_path: str,
     preprocessor_info: ProcessorInfo,
     preprocessor_frames: list[FrameMapping],
-    model_name: str = "openbmb/MiniCPM-V-2_6",
+    model_name: str = str(ROOT / "models" / "minicpm-v-4.6"),
 ) -> dict[str, Any]:
-    """尝试通过 LLaMA-Factory MiniCPMV4_6Plugin._get_mm_inputs() 加载视频帧。
-
-    返回 dict 结构：
-        {
-            "source": "llama-factory-minicpmv4.6",  # 或 "fallback"
-            "processor_name": str,
-            "max_frames": int,
-            "frame_count": int,
-            "frames": [{"input_index": int, "original_frame": int}, ...],
-        }
-    加载失败时 graceful fallback 到 mock 数据。
-    """
+    """Load a real LLaMA-Factory batch and require its actual frame mapping."""
     # ---- 1. 尝试导入 LLaMA-Factory ----
     try:
         from llamafactory.data.mm_plugin import MiniCPMV4_6Plugin
     except ImportError as exc:
-        import logging
-        logging.warning(
-            "LLaMA-Factory not importable (%s); fallback to mock batch", exc
-        )
-        return {
-            "source": "fallback",
-            "error": f"LLaMA-Factory import failed: {exc}",
-            "processor_name": preprocessor_info.name,
-            "max_frames": preprocessor_info.max_frames,
-            "frame_count": len(preprocessor_frames),
-            "frames": [
-                {"input_index": f.input_index, "original_frame": f.original_frame}
-                for f in preprocessor_frames
-            ],
-        }
+        raise RuntimeError("LLaMA-Factory is required for real calibration") from exc
 
     # ---- 2. 尝试加载 processor ----
     try:
         from transformers import AutoProcessor
     except ImportError as exc:
-        import logging
-        logging.warning(
-            "transformers not importable (%s); fallback to mock batch", exc
-        )
-        return {
-            "source": "fallback",
-            "error": f"transformers import failed: {exc}",
-            "processor_name": preprocessor_info.name,
-            "max_frames": preprocessor_info.max_frames,
-            "frame_count": len(preprocessor_frames),
-            "frames": [
-                {"input_index": f.input_index, "original_frame": f.original_frame}
-                for f in preprocessor_frames
-            ],
-        }
+        raise RuntimeError("transformers is required for real calibration") from exc
 
-    try:
-        processor = AutoProcessor.from_pretrained(
-            model_name, trust_remote_code=True
-        )
-    except Exception as exc:
-        import logging
-        logging.warning(
-            "Processor load failed for %r (%s); fallback to mock batch",
-            model_name, exc,
-        )
-        return {
-            "source": "fallback",
-            "error": f"processor load failed: {exc}",
-            "processor_name": preprocessor_info.name,
-            "max_frames": preprocessor_info.max_frames,
-            "frame_count": len(preprocessor_frames),
-            "frames": [
-                {"input_index": f.input_index, "original_frame": f.original_frame}
-                for f in preprocessor_frames
-            ],
-        }
+    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+    capture_wrapper = configure_loaded_processor(processor, capture=True)
+    assert capture_wrapper is not None
+
+    # Adapter path: decoded continuous clip -> actual child processor.
+    capture_preprocessor = MiniCPMVideoPreprocessor(model_name, processor=processor)
+    duration = float(_probe_video(video_path)["duration"])
+    captured_frames = capture_preprocessor.sample(video_path, 0.0, duration)
+    adapter_tensor_digest = capture_preprocessor.last_tensor_digest
+    adapter_tensor_shape = capture_preprocessor.last_tensor_shape
+    if adapter_tensor_digest is None or adapter_tensor_shape is None:
+        raise RuntimeError("adapter did not expose its actual processed tensor digest")
+    capture_wrapper.reset_capture()
 
     # ---- 3. 调用 _get_mm_inputs ----
-    try:
-        import torch
-        plugin = MiniCPMV4_6Plugin()
-        mm_inputs = plugin._get_mm_inputs(
-            images=[],
-            videos=[video_path],
-            audios=[],
-            processor=processor,
-        )
-    except Exception as exc:
-        import logging
-        logging.warning(
-            "_get_mm_inputs failed for %r (%s); fallback to mock batch",
-            video_path, exc,
-        )
-        return {
-            "source": "fallback",
-            "error": f"_get_mm_inputs failed: {exc}",
-            "processor_name": preprocessor_info.name,
-            "max_frames": preprocessor_info.max_frames,
-            "frame_count": len(preprocessor_frames),
-            "frames": [
-                {"input_index": f.input_index, "original_frame": f.original_frame}
-                for f in preprocessor_frames
-            ],
-        }
+    plugin = MiniCPMV4_6Plugin()
+    mm_inputs = plugin._get_mm_inputs(
+        images=[], videos=[video_path], audios=[], processor=processor
+    )
+    actual_capture = capture_wrapper.last_capture
+    if actual_capture is None:
+        raise RuntimeError("actual LLaMA-Factory video_processor invocation was not captured")
 
     # ---- 4. 提取帧信息 ----
     # processor_name
     processor_name = processor.__class__.__name__
 
     # max_frames: 从 processor 配置读取
-    max_frames = getattr(processor, "video_maxlen", 128)
+    video_processor = getattr(processor, "video_processor", None)
+    max_frames = getattr(video_processor, "max_frames", None)
+    if max_frames is None:
+        max_frames = getattr(processor, "video_maxlen", None)
+    if max_frames != 8:
+        raise RuntimeError(f"actual MiniCPM video max_frames is not 8: {max_frames!r}")
 
     # frame_count: 从 pixel_values_videos 形状推算
     pixel_values_videos = mm_inputs.get("pixel_values_videos")
@@ -323,34 +208,26 @@ def _try_load_llama_factory_batch(
         elif len(shape) == 4:
             frame_count = shape[0]
         else:
-            frame_count = len(preprocessor_frames)
+            raise RuntimeError(f"unsupported pixel_values_videos shape: {tuple(shape)}")
     else:
-        frame_count = len(preprocessor_frames)
+        raise RuntimeError("LLaMA-Factory batch lacks pixel_values_videos")
 
-    # ---- 5. 获取视频总帧数（用于均匀采样反推 original_frame）----
-    total_frames = _get_video_total_frames(video_path)
-    if total_frames is not None and total_frames > 0 and frame_count > 0:
-        original_frames = _compute_uniform_original_frames(total_frames, frame_count)
-    else:
-        # 无法获取总帧数时，利用 preprocessor_frames 反向推算
-        original_frames = [
-            f.original_frame for f in preprocessor_frames[:frame_count]
-        ]
-        # 若 preprocessor_frames 不够用，退化为 input_index 等同
-        while len(original_frames) < frame_count:
-            original_frames.append(len(original_frames))
-
-    frames = [
-        {"input_index": i, "original_frame": orig}
-        for i, orig in enumerate(original_frames)
-    ]
+    actual_frames = actual_capture["frames"]
+    if len(actual_frames) != frame_count:
+        raise RuntimeError(
+            "captured LLaMA-Factory frame table does not match its tensor frame count"
+        )
 
     return {
         "source": "llama-factory-minicpmv4.6",
         "processor_name": processor_name,
         "max_frames": max_frames,
         "frame_count": frame_count,
-        "frames": frames,
+        "frames": actual_frames,
+        "tensor_digest": actual_capture["tensor_digest"],
+        "tensor_shape": actual_capture["tensor_shape"],
+        "adapter_tensor_digest": adapter_tensor_digest,
+        "adapter_tensor_shape": adapter_tensor_shape,
     }
 
 
@@ -361,11 +238,15 @@ def _compare_results(
 ) -> dict[str, Any]:
     """比较数据构建适配层与 LLaMA-Factory batch 加载结果。"""
     checks = {
-        "processor_version_match": batch_result.get("processor_name") == preprocessor_info.name,
+        "processor_version_match": batch_result.get("processor_name") == preprocessor_info.version,
         "max_frames_match": batch_result.get("max_frames") == preprocessor_info.max_frames,
         "frame_count_match": batch_result.get("frame_count") == len(adapter_frames),
         "order_match": _check_order_match(adapter_frames, batch_result.get("frames", [])),
         "mapping_match": _check_mapping_match(adapter_frames, batch_result.get("frames", [])),
+        "tensor_digest_match": batch_result.get("tensor_digest")
+        == batch_result.get("adapter_tensor_digest"),
+        "tensor_shape_match": batch_result.get("tensor_shape")
+        == batch_result.get("adapter_tensor_shape"),
     }
     checks["passed"] = all(checks.values())
     return checks
@@ -386,7 +267,13 @@ def _check_order_match(
 def _check_mapping_match(
     adapter_frames: list[FrameMapping], batch_frames: list[dict[str, Any]]
 ) -> bool:
-    return _check_order_match(adapter_frames, batch_frames)
+    if not _check_order_match(adapter_frames, batch_frames):
+        return False
+    return all(
+        isinstance(batch.get("timestamp"), (int, float))
+        and abs(adapter.timestamp - float(batch["timestamp"])) <= 1e-6
+        for adapter, batch in zip(adapter_frames, batch_frames)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -411,43 +298,61 @@ def build_calibration_cases(
 def run_calibration(
     preprocessor: VideoPreprocessor,
     cases: list[dict[str, Any]],
-    llama_factory_model: str = "openbmb/MiniCPM-V-2_6",
+    model_name: str = str(ROOT / "models" / "minicpm-v-4.6"),
 ) -> dict[str, Any]:
     info = preprocessor.get_info()
     results: list[dict[str, Any]] = []
     all_passed = True
 
-    for case in cases:
-        case_result: dict[str, Any] = {
-            "case_id": case["case_id"],
-            "video_id": case["video_id"],
-            "window_size": case["window_size"],
-            "event_position": case["event_position"],
-            "start_time": case["start_time"],
-            "end_time": case["end_time"],
-        }
-        try:
-            frames = preprocessor.sample(
-                case["video_path"], case["start_time"], case["end_time"]
-            )
-            batch_result = _try_load_llama_factory_batch(
-                case["video_path"], info, frames, model_name=llama_factory_model
-            )
-            comparison = _compare_results(info, frames, batch_result)
-            case_result["adapter_frames"] = [
-                {"input_index": f.input_index, "original_frame": f.original_frame, "timestamp": f.timestamp}
-                for f in frames
-            ]
-            case_result["batch_result"] = batch_result
-            case_result["comparison"] = comparison
-            case_result["ok"] = comparison["passed"]
-            if not comparison["passed"]:
+    with tempfile.TemporaryDirectory(prefix="minicpm_calibration_") as temp_dir:
+        clip_builder = FfmpegVideoClipBuilder(output_dir=temp_dir)
+        for case in cases:
+            case_result: dict[str, Any] = {
+                "case_id": case["case_id"],
+                "video_id": case["video_id"],
+                "window_size": case["window_size"],
+                "event_position": case["event_position"],
+                "start_time": case["start_time"],
+                "end_time": case["end_time"],
+            }
+            try:
+                # Both paths must process the exact same continuous media.  The
+                # clip manifest also preserves the mapping back to the source.
+                clip = clip_builder.build_with_manifest(
+                    case["video_path"], [case["start_time"], case["end_time"]]
+                )
+                clip_duration = case["end_time"] - case["start_time"]
+                frames = preprocessor.sample(clip.path, 0.0, clip_duration)
+                batch_result = _try_load_llama_factory_batch(
+                    clip.path, info, frames, model_name=model_name
+                )
+                comparison = _compare_results(info, frames, batch_result)
+                case_result["adapter_frames"] = [
+                    {"input_index": f.input_index, "original_frame": f.original_frame, "timestamp": f.timestamp}
+                    for f in frames
+                ]
+                manifest_by_temp = {item["temp_index"]: item for item in clip.manifest}
+                case_result["source_frame_mapping"] = [
+                    {
+                        "input_index": frame.input_index,
+                        "original_frame": manifest_by_temp[frame.original_frame]["original_frame"],
+                        "timestamp": manifest_by_temp[frame.original_frame]["timestamp"],
+                    }
+                    for frame in frames
+                    if frame.original_frame in manifest_by_temp
+                ]
+                if len(case_result["source_frame_mapping"]) != len(frames):
+                    raise RuntimeError("cannot map every calibrated clip frame back to source video")
+                case_result["batch_result"] = batch_result
+                case_result["comparison"] = comparison
+                case_result["ok"] = comparison["passed"]
+                if not comparison["passed"]:
+                    all_passed = False
+            except Exception as exc:
+                case_result["ok"] = False
+                case_result["error"] = f"{type(exc).__name__}: {exc}"
                 all_passed = False
-        except Exception as exc:
-            case_result["ok"] = False
-            case_result["error"] = f"{type(exc).__name__}: {exc}"
-            all_passed = False
-        results.append(case_result)
+            results.append(case_result)
 
     return {
         "processor_info": {
@@ -483,19 +388,14 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--preprocessor",
-        choices=["mock", "minicpm"],
-        default="mock",
-        help="使用的预处理器（本地默认 mock，训练机可换 minicpm）",
+        choices=["minicpm"],
+        default="minicpm",
+        help="正式校准固定使用 MiniCPM-V 4.6 实际处理器",
     )
     parser.add_argument(
         "--model",
-        default="openbmb/MiniCPM-V-2_6",
+        default=str(ROOT / "models" / "minicpm-v-4.6"),
         help="minicpm 模型路径或名称（预处理器使用）",
-    )
-    parser.add_argument(
-        "--llama-factory-model",
-        default="openbmb/MiniCPM-V-2_6",
-        help="LLaMA-Factory 视频处理器模型名称或路径",
     )
     parser.add_argument(
         "--output",
@@ -515,10 +415,7 @@ def _build_argparser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _build_argparser().parse_args(argv)
 
-    if args.preprocessor == "mock":
-        preprocessor: VideoPreprocessor = MockVideoPreprocessor()
-    else:
-        preprocessor = MiniCPMVideoPreprocessor(model_path_or_name=args.model)
+    preprocessor: VideoPreprocessor = MiniCPMVideoPreprocessor(model_path_or_name=args.model)
 
     if not preprocessor.healthcheck():
         print(f"ERROR: preprocessor healthcheck failed: {preprocessor.get_info()}", file=sys.stderr)
@@ -535,7 +432,7 @@ def main(argv: list[str] | None = None) -> int:
         for vid in selected:
             cases.extend(_build_cases_for_video(meta[vid]))
 
-    report = run_calibration(preprocessor, cases, llama_factory_model=args.llama_factory_model)
+    report = run_calibration(preprocessor, cases, model_name=args.model)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

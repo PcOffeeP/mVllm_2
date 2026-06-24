@@ -1,0 +1,12 @@
+{
+  "processor_version": "MiniCPMVProcessor",
+  "max_frames": 8,
+  "model_version": "minicpm-v-4.6",
+  "transformers_version": "REPLACE_WITH_INSTALLED_VERSION",
+  "llamafactory_version": "REPLACE_WITH_GIT_COMMIT",
+  "base_model_version": "REPLACE_WITH_MODEL_REVISION",
+  "artifact_version": "REPLACE_WITH_ADAPTER_OR_MERGED_MODEL_REVISION",
+  "config_fingerprint": "REPLACE_WITH_SHA256",
+  "runtime_device": "cuda:0",
+  "runtime_dtype": "bfloat16"
+}

@@ -4,8 +4,6 @@ import pytest
 from pydantic import ValidationError
 
 from agent.schema import (
-    BoundaryStatus,
-    ConfidenceLevel,
     FinalOutput,
     FractureType,
     LocationType,
@@ -14,7 +12,6 @@ from agent.schema import (
     RunnerResult,
     SampleAndInferDiagnostics,
     SampleAndInferResult,
-    SamplingStrategy,
     ToolSampleAndInfer,
     ToolTerminate,
     ValidationErrorInfo,
@@ -38,6 +35,18 @@ def test_model_output_normal_fracture():
     assert data["type"] == "韧性断裂"
     assert data["location"] == "inside_gauge"
     assert data["confidence"] == pytest.approx(0.92)
+
+
+@pytest.mark.parametrize("value", [1, 0, "true", "false"])
+def test_model_output_rejects_non_boolean_has_fracture(value):
+    with pytest.raises(ValidationError):
+        ModelOutput(
+            has_fracture=value,
+            fracture_between=None,
+            type=FractureType.NO_FRACTURE,
+            location=None,
+            confidence=0.8,
+        )
 
 
 def test_model_output_no_fracture():
@@ -237,6 +246,39 @@ def test_tool_sample_and_infer_rejects_extra_fields():
         )
 
 
+def test_tool_sample_and_infer_rejects_prompt_over_4096():
+    with pytest.raises(ValidationError):
+        ToolSampleAndInfer(
+            sample_range=[0.0, 500.0],
+            prompt="x" * 4097,
+        )
+
+
+def test_tool_sample_and_infer_rejects_literal_video_marker():
+    with pytest.raises(ValidationError):
+        ToolSampleAndInfer(
+            sample_range=[0.0, 500.0],
+            prompt="请分析<video>视频",
+        )
+
+
+@pytest.mark.parametrize(
+    "sample_range",
+    [
+        [10.0, 5.0],  # start >= end
+        [5.0, 5.0],  # start == end
+        [float("inf"), 10.0],  # non-finite start
+        [0.0, float("nan")],  # non-finite end
+    ],
+)
+def test_tool_sample_and_infer_rejects_invalid_range(sample_range):
+    with pytest.raises(ValidationError):
+        ToolSampleAndInfer(
+            sample_range=sample_range,
+            prompt="请分析视频",
+        )
+
+
 def test_tool_terminate_fracture_status():
     tool = ToolTerminate(
         status="fracture",
@@ -308,7 +350,7 @@ def test_sample_and_infer_result_compact():
 def test_sample_and_infer_diagnostics():
     diag = SampleAndInferDiagnostics(
         request_id="req-001",
-        video_maxlen=8,
+        max_frames=8,
         sampled_frames=[{"index": 0, "timestamp": 1.0}],
     )
     assert diag.request_id == "req-001"
@@ -355,6 +397,33 @@ def test_final_output_unrecognized():
     assert output.confidence is None
 
 
+def test_tool_and_final_output_reject_unknown_unrecognized_reason():
+    with pytest.raises(ValidationError):
+        ToolTerminate(status="unrecognized", unrecognized_reason="arbitrary_reason")
+    with pytest.raises(ValidationError):
+        FinalOutput(
+            video_id="v001",
+            status="unrecognized",
+            unrecognized_reason="arbitrary_reason",
+        )
+
+
+@pytest.mark.parametrize("value", [0, 1, "true"])
+def test_result_envelopes_reject_non_boolean_ok(value):
+    with pytest.raises(ValidationError):
+        SampleAndInferResult(
+            ok=value,
+            sample_range=[0.0, 1.0],
+            validation_error=ValidationErrorInfo(code="invalid", message="invalid"),
+            attempts=1,
+        )
+    with pytest.raises(ValidationError):
+        RunnerResult(
+            ok=value,
+            error=RunnerError(stage="internal", code="invalid", message="invalid"),
+        )
+
+
 def test_final_output_rejects_invalid_status():
     with pytest.raises(ValidationError):
         FinalOutput(
@@ -384,12 +453,3 @@ def test_runner_result_failure():
     )
     assert result.ok is False
     assert result.result is None
-
-
-# ---------------------------------------------------------------------------
-# Legacy enums remain importable for backward compatibility
-# ---------------------------------------------------------------------------
-def test_legacy_enums_still_importable():
-    assert ConfidenceLevel.HIGH == "高"
-    assert BoundaryStatus.NONE == "none"
-    assert SamplingStrategy.UNIFORM == "uniform"

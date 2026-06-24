@@ -1,13 +1,15 @@
-"""Video sampling abstractions and index/time conversion utilities.
+"""Video clip builder and index/time conversion utilities.
 
 Concrete implementations use ``ffmpeg``/``ffprobe`` via subprocess so that the
 tool execution layer does not require ``cv2``.  For tests without a real video
-file, callers can subclass ``VideoSampler`` / ``VideoClipBuilder`` or monkeypatch
-``_probe_video`` / ``_run_ffmpeg``.
+file, callers can subclass ``VideoClipBuilder`` or monkeypatch ``_probe_video`` /
+``_run_ffmpeg``.
 """
 
 from __future__ import annotations
 
+import hashlib
+import bisect
 import json
 import logging
 import os
@@ -25,20 +27,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Index / time conversion utilities
 # ---------------------------------------------------------------------------
-def frame_to_time(frame: int, fps: float) -> float:
-    """Convert a 0-based frame index to seconds."""
-    if fps <= 0:
-        raise ValueError("fps must be positive")
-    return frame / fps
-
-
-def time_to_frame(time_seconds: float, fps: float) -> int:
-    """Convert seconds to a 0-based frame index using ``round``."""
-    if fps <= 0:
-        raise ValueError("fps must be positive")
-    return round(time_seconds * fps)
-
-
 def _resolve_between_indices(fracture_between: list[int], num_frames: int) -> tuple[int, int]:
     """Validate and return ``(i, j)`` indices for ``fracture_between``."""
     if fracture_between is None or len(fracture_between) != 2:
@@ -67,17 +55,6 @@ def fracture_between_to_frame_range(
     return [frames[i]["original_frame"], frames[j]["original_frame"]]
 
 
-def is_boundary_sentinel(fracture_between: list[int] | None, num_frames: int) -> bool:
-    """Return whether ``fracture_between`` is the left or right boundary sentinel.
-
-    Left sentinel is ``[0, 0]``; right sentinel is ``[N - 1, N - 1]``.
-    """
-    if fracture_between is None or len(fracture_between) != 2 or num_frames < 1:
-        return False
-    i, j = fracture_between
-    return (i == 0 and j == 0) or (i == num_frames - 1 and j == num_frames - 1)
-
-
 # ---------------------------------------------------------------------------
 # ffmpeg helpers
 # ---------------------------------------------------------------------------
@@ -87,7 +64,7 @@ def _which_ffmpeg() -> str:
     if ffmpeg is None:
         raise RuntimeError(
             "ffmpeg executable not found. Install ffmpeg to use the concrete "
-            "VideoSampler/VideoClipBuilder implementations."
+            "VideoClipBuilder implementations."
         )
     return ffmpeg
 
@@ -98,7 +75,7 @@ def _which_ffprobe() -> str:
     if ffprobe is None:
         raise RuntimeError(
             "ffprobe executable not found. Install ffmpeg to use the concrete "
-            "VideoSampler/VideoClipBuilder implementations."
+            "VideoClipBuilder implementations."
         )
     return ffprobe
 
@@ -127,8 +104,6 @@ def _probe_video(video_path: str) -> dict[str, Any]:
     fps = _parse_fps(stream.get("r_frame_rate") or stream.get("avg_frame_rate", "0/1"))
     duration = _parse_float(stream.get("duration") or fmt.get("duration"))
     total_frames = _parse_int(stream.get("nb_frames"))
-    if total_frames is None and duration and fps:
-        total_frames = round(duration * fps)
 
     return {
         "fps": fps,
@@ -137,6 +112,52 @@ def _probe_video(video_path: str) -> dict[str, Any]:
         "width": _parse_int(stream.get("width")) or 0,
         "height": _parse_int(stream.get("height")) or 0,
     }
+
+
+def _probe_frame_timestamps(video_path: str) -> list[float]:
+    """Return decoded video-frame timestamps reported by ffprobe."""
+    proc = subprocess.run(
+        [
+            _which_ffprobe(),
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "frame=best_effort_timestamp_time",
+            "-of", "json",
+            video_path,
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    values: list[float] = []
+    for frame in json.loads(proc.stdout).get("frames", []):
+        timestamp = _parse_float(frame.get("best_effort_timestamp_time"))
+        if timestamp is not None:
+            values.append(timestamp)
+    if not values:
+        raise RuntimeError(f"ffprobe did not return frame timestamps for {video_path}")
+    return values
+
+
+def _nearest_timestamp_index(timestamps: list[float], target: float) -> int:
+    """Return the closest actual frame index for ``target``."""
+    pos = bisect.bisect_left(timestamps, target)
+    if pos <= 0:
+        return 0
+    if pos >= len(timestamps):
+        return len(timestamps) - 1
+    before = timestamps[pos - 1]
+    after = timestamps[pos]
+    return pos - 1 if target - before <= after - target else pos
+
+
+def _sha256_file(path: str) -> str:
+    """Return the SHA256 hex digest of the file at ``path``."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _parse_float(value: Any) -> float | None:
@@ -174,34 +195,6 @@ def _parse_fps(fps_str: str) -> float:
         return 0.0
 
 
-def _effective_num_frames(
-    sample_range: list[float],
-    video_fps: float,
-    video_maxlen: int,
-    total_frames_in_clip: int | None = None,
-) -> int:
-    """Compute the number of frames actually sampled in a clip.
-
-    N = min(total_frames_in_clip, video_maxlen, max(1, floor(duration * video_fps)))
-    """
-    duration = sample_range[1] - sample_range[0]
-    if duration <= 0:
-        return 1
-    by_fps = max(1, int(duration * video_fps))
-    upper = min(by_fps, video_maxlen)
-    if total_frames_in_clip is not None:
-        upper = min(upper, total_frames_in_clip)
-    return max(1, upper)
-
-
-def _uniform_timestamps(start: float, end: float, n: int) -> list[float]:
-    """Return ``n`` uniform timestamps in ``[start, end]`` (inclusive of both ends)."""
-    if n <= 1:
-        return [start]
-    step = (end - start) / (n - 1)
-    return [start + k * step for k in range(n)]
-
-
 def _run_ffmpeg(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
     """Run ffmpeg with the given arguments."""
     ffmpeg = _which_ffmpeg()
@@ -219,123 +212,16 @@ class ClipBuildResult:
     the corresponding original video frame number and timestamp.  It is the
     authoritative source for translating model-output ``fracture_between``
     indices into original-video time ranges.
+
+    ``file_hash`` is the SHA256 hex digest of the temporary clip file and
+    ``file_size`` is its size in bytes.  Both are computed by
+    ``FfmpegVideoClipBuilder.build_with_manifest`` for diagnostics.
     """
 
     path: str
     manifest: list[dict[str, Any]]
-
-
-# ---------------------------------------------------------------------------
-# VideoSampler
-# ---------------------------------------------------------------------------
-class VideoSampler(ABC):
-    """Abstract video frame sampler used by the tool execution layer."""
-
-    @abstractmethod
-    def sample(
-        self,
-        video_path: str,
-        sample_range: list[float],
-        num_frames: int,
-        video_fps: float = 8.0,
-        strategy: str = "uniform",
-    ) -> list[dict[str, Any]]:
-        """Return a list of sampled frame descriptors.
-
-        Each descriptor must contain ``input_index``, ``original_frame``,
-        ``timestamp`` and ``frame_path`` keys.
-        """
-        ...
-
-
-class UniformVideoSampler(VideoSampler):
-    """Uniform frame sampler backed by ffmpeg.
-
-    Saves extracted frames to ``cache_dir`` for debugging/audit.  If
-    ``cache_dir`` is ``None``, frames are written to a temporary directory.
-
-    .. note::
-        This sampler is retained for backward compatibility.  The contract
-        requires the inference clip to be a continuous crop of the source
-        video; use ``FfmpegVideoClipBuilder.build_with_manifest`` for new
-        code.
-    """
-
-    def __init__(self, cache_dir: str | None = None) -> None:
-        self.cache_dir = cache_dir
-
-    def sample(
-        self,
-        video_path: str,
-        sample_range: list[float],
-        num_frames: int,
-        video_fps: float = 8.0,
-        strategy: str = "uniform",
-    ) -> list[dict[str, Any]]:
-        if strategy == "adaptive":
-            logger.warning(
-                "adaptive sampling is not fully supported yet; falling back to uniform."
-            )
-            strategy = "uniform"
-        if strategy != "uniform":
-            raise ValueError(f"Unsupported sampling strategy: {strategy}")
-
-        if not os.path.exists(video_path):
-            raise FileNotFoundError(f"Video not found: {video_path}")
-
-        probe = _probe_video(video_path)
-        original_fps = probe["fps"] or video_fps
-        duration = probe["duration"]
-
-        start, end = sample_range
-        start = max(0.0, start)
-        end = min(end, duration) if duration else end
-        if end < start:
-            end = start
-
-        # Number of frames in the source clip if we sampled at the original fps.
-        clip_duration = end - start
-        total_frames_in_clip = max(1, int(round(clip_duration * original_fps)))
-
-        n = _effective_num_frames([start, end], video_fps, num_frames, total_frames_in_clip)
-        timestamps = _uniform_timestamps(start, end, n)
-
-        cache = Path(self.cache_dir) if self.cache_dir else Path("data/08_runtime/agent_frames")
-        video_stem = Path(video_path).stem
-        frame_dir = cache / f"{video_stem}_{start:.2f}_{end:.2f}"
-        frame_dir.mkdir(parents=True, exist_ok=True)
-
-        frames: list[dict[str, Any]] = []
-        for idx, ts in enumerate(timestamps):
-            original_frame = min(max(0, round(ts * original_fps)), probe["total_frames"] - 1)
-            frame_path = frame_dir / f"frame_{idx:04d}_{original_frame:08d}.jpg"
-            self._extract_frame(video_path, ts, str(frame_path))
-            frames.append(
-                {
-                    "input_index": idx,
-                    "original_frame": original_frame,
-                    "timestamp": round(ts, 6),
-                    "frame_path": str(frame_path),
-                }
-            )
-        return frames
-
-    def _extract_frame(self, video_path: str, timestamp: float, output_path: str) -> None:
-        """Extract a single frame at ``timestamp`` using ffmpeg."""
-        _run_ffmpeg(
-            [
-                "-y",
-                "-ss", str(timestamp),
-                "-i", video_path,
-                "-frames:v", "1",
-                "-q:v", "2",
-                output_path,
-            ]
-        )
-
-
-# Provide a default concrete sampler under the base name for convenience.
-VideoSampler.register(UniformVideoSampler)
+    file_hash: str = ""
+    file_size: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -349,10 +235,6 @@ class VideoClipBuilder(ABC):
         self,
         source_video: str,
         sample_range: list[float],
-        frames: list[dict[str, Any]],
-        video_fps: float = 8.0,
-        video_maxlen: int = 36,
-        sampling_strategy: str = "uniform",
     ) -> str:
         """Return the path of the temporary clip sent to ``InferenceClient``."""
         ...
@@ -382,29 +264,15 @@ class FfmpegVideoClipBuilder(VideoClipBuilder):
         self,
         source_video: str,
         sample_range: list[float],
-        video_fps: float = 8.0,
-        video_maxlen: int = 36,
-        sampling_strategy: str = "uniform",
     ) -> ClipBuildResult:
         """Crop a continuous MP4 clip and return it with its frame manifest.
 
-        ``video_fps`` and ``video_maxlen`` are accepted for interface
-        compatibility but do not influence the crop; the temporary clip keeps
-        the source video's time axis.
+        The manifest is based on decoded frame PTS, never theoretical FPS.
         """
-        if sampling_strategy == "adaptive":
-            logger.warning(
-                "adaptive clip building is not fully supported yet; falling back to uniform."
-            )
-            sampling_strategy = "uniform"
-        if sampling_strategy != "uniform":
-            raise ValueError(f"Unsupported sampling strategy: {sampling_strategy}")
-
         if not os.path.exists(source_video):
             raise FileNotFoundError(f"Source video not found: {source_video}")
 
         probe = _probe_video(source_video)
-        original_fps = probe["fps"] or video_fps
         duration = probe["duration"]
 
         # Explicit validation to avoid cryptic ffmpeg failures on degenerate ranges.
@@ -423,7 +291,7 @@ class FfmpegVideoClipBuilder(VideoClipBuilder):
             end = start
         clip_duration = end - start
 
-        out_dir = Path(self.output_dir) if self.output_dir else Path("data/08_runtime/agent_clips")
+        out_dir = Path(self.output_dir) if self.output_dir else Path("data/runtime/agent_clips")
         out_dir.mkdir(parents=True, exist_ok=True)
 
         video_stem = Path(source_video).stem
@@ -443,50 +311,46 @@ class FfmpegVideoClipBuilder(VideoClipBuilder):
             ]
         )
 
-        # Probe the resulting clip to obtain its actual frame count and fps.
-        temp_probe = _probe_video(str(output_path))
-        temp_fps = temp_probe["fps"] or original_fps
-        temp_total_frames = temp_probe["total_frames"] or 0
-        if temp_total_frames <= 0 and temp_probe["duration"] and temp_fps:
-            temp_total_frames = max(1, round(temp_probe["duration"] * temp_fps))
+        source_timestamps = _probe_frame_timestamps(source_video)
+        temp_timestamps = _probe_frame_timestamps(str(output_path))
+        temp_origin = temp_timestamps[0]
 
-        # Build manifest: temp_index -> original_frame / timestamp.
+        # Build manifest from actual decoded PTS. The temporary clip's first
+        # PTS can be non-zero, so normalize it before mapping to source time.
         manifest: list[dict[str, Any]] = []
-        for k in range(temp_total_frames):
-            timestamp = start + k / temp_fps
+        for k, temp_timestamp in enumerate(temp_timestamps):
+            target_timestamp = start + (temp_timestamp - temp_origin)
+            original_frame = _nearest_timestamp_index(source_timestamps, target_timestamp)
+            timestamp = source_timestamps[original_frame]
             if timestamp > end + 1e-6:
                 break
-            original_frame = time_to_frame(timestamp, original_fps)
             manifest.append(
                 {
                     "temp_index": k,
+                    "clip_timestamp": round(temp_timestamp, 6),
                     "original_frame": original_frame,
                     "timestamp": round(timestamp, 6),
                 }
             )
 
-        return ClipBuildResult(path=str(output_path), manifest=manifest)
+        file_size = output_path.stat().st_size
+        file_hash = _sha256_file(str(output_path))
+        return ClipBuildResult(
+            path=str(output_path),
+            manifest=manifest,
+            file_hash=file_hash,
+            file_size=file_size,
+        )
 
     def build(
         self,
         source_video: str,
         sample_range: list[float],
-        frames: list[dict[str, Any]],
-        video_fps: float = 8.0,
-        video_maxlen: int = 36,
-        sampling_strategy: str = "uniform",
     ) -> str:
-        """Return the path of the temporary clip.
-
-        ``frames`` is accepted for backward compatibility but is ignored; the
-        clip is derived directly from ``sample_range``.
-        """
+        """Return the path of the continuous temporary clip."""
         result = self.build_with_manifest(
             source_video=source_video,
             sample_range=sample_range,
-            video_fps=video_fps,
-            video_maxlen=video_maxlen,
-            sampling_strategy=sampling_strategy,
         )
         return result.path
 

@@ -55,7 +55,7 @@ git submodule update --init --recursive
 cd finetune/
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
-llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
 
 # 6. 推理验证
 python3 finetune/validation/run_inference.py \

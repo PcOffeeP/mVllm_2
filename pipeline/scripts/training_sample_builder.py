@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -37,8 +36,6 @@ VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "video_meta.json"
 SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "05_splits"
 OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "06_merged"
 
-VIDEO_FPS = 8.0
-VIDEO_MAXLEN = 8
 
 FRACTURE_TYPES = {
     "韧性断裂",
@@ -153,16 +150,14 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
     return sub
 
 
-def compute_effective_frames(sub: dict[str, Any], video_fps: float, video_maxlen: int) -> int:
-    """计算当前子视频在 uniform 采样下的实际帧数。"""
-    frames = sub.get("frame_paths") or []
-    if frames:
-        return len(frames)
-    duration = sub.get("duration") or 0.0
-    if duration <= 0:
-        return 1
-    n_by_fps = max(1, int(math.floor(duration * video_fps)))
-    return min(n_by_fps, video_maxlen)
+def compute_effective_frames(sub: dict[str, Any]) -> int:
+    """Read actual processor frame count; never derive it from duration/FPS."""
+    mapping = sub.get("actual_frame_mapping") or sub.get("sampled_frames") or []
+    if not mapping:
+        raise ValueError("missing actual processor frame mapping")
+    if len(mapping) > 8:
+        raise ValueError("actual processor frame count violates max_frames=8")
+    return len(mapping)
 
 
 def build_assistant_content(sub: dict[str, Any]) -> str:
@@ -203,16 +198,22 @@ def _build_actual_frame_mapping(sub: dict[str, Any]) -> list[dict[str, Any]]:
 
 def convert_subvideo_to_sample(
     sub: dict[str, Any],
-    video_fps: float,
-    video_maxlen: int,
 ) -> dict[str, Any]:
     """将单条子视频元数据转换为 ShareGPT 训练样本。"""
     sub = _normalize_subvideo_labels(sub)
+    processor_fingerprint = sub.get("processor_fingerprint")
+    if not isinstance(processor_fingerprint, str) or not processor_fingerprint.strip():
+        raise ValueError(f"{sub.get('subvideo_id')}: missing processor_fingerprint")
+    lowered_fingerprint = processor_fingerprint.lower()
+    if "mock" in lowered_fingerprint or "theoretical" in lowered_fingerprint:
+        raise ValueError(
+            f"{sub.get('subvideo_id')}: diagnostic processor fingerprint is forbidden"
+        )
     start_time = sub.get("start_time", 0.0)
     end_time = sub.get("end_time", 0.0)
-    effective_frames = compute_effective_frames(sub, video_fps, video_maxlen)
+    effective_frames = compute_effective_frames(sub)
 
-    user_prompt = build_user_prompt(sample_range=[start_time, end_time], video_maxlen=video_maxlen)
+    user_prompt = build_user_prompt(sample_range=[start_time, end_time])
     # ShareGPT 视频占位符由调用方插入
     user_content = f"<video>\n{user_prompt}"
     assistant_content = build_assistant_content(sub)
@@ -237,7 +238,7 @@ def convert_subvideo_to_sample(
         "start_frame": sub.get("start_frame"),
         "end_frame": sub.get("end_frame"),
         "actual_frame_mapping": _build_actual_frame_mapping(sub),
-        "processor_fingerprint": sub.get("processor_fingerprint") or "theoretical:v2:phase2",
+        "processor_fingerprint": processor_fingerprint,
         "selection_reason": sub.get("selection_reason"),
         "exclusion_reason": sub.get("exclusion_reason"),
     }
@@ -294,8 +295,6 @@ def _balance_train_samples(
 def build_split_samples(
     subvideos: list[dict[str, Any]],
     split_video_ids: dict[str, set[str]],
-    video_fps: float,
-    video_maxlen: int,
     seed: int = 42,
 ) -> dict[str, list[dict[str, Any]]]:
     """按当前划分将子视频分组并转换为训练样本（训练集做正负平衡，验证集保持完整）。"""
@@ -313,7 +312,7 @@ def build_split_samples(
             if selected_splits and name not in selected_splits:
                 continue
             by_split[name].append(
-                convert_subvideo_to_sample(sub, video_fps, video_maxlen)
+                convert_subvideo_to_sample(sub)
             )
 
     for name in by_split:
@@ -423,8 +422,6 @@ def build_all(
     subvideos_meta: Path,
     splits_dir: Path,
     output_dir: Path,
-    video_fps: float,
-    video_maxlen: int,
     video_meta_path: Path | None = None,
     seed: int = 42,
 ) -> dict[str, Any]:
@@ -448,9 +445,7 @@ def build_all(
         print(f"  {name}: {len(ids)} 个原始视频")
 
     print("构建训练样本...")
-    split_samples = build_split_samples(
-        subvideos, split_video_ids, video_fps, video_maxlen, seed=seed
-    )
+    split_samples = build_split_samples(subvideos, split_video_ids, seed=seed)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, samples in split_samples.items():
@@ -491,8 +486,6 @@ def main() -> None:
     parser.add_argument("--video-meta", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--splits-dir", type=Path, default=SPLITS_DIR_DEFAULT)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR_DEFAULT)
-    parser.add_argument("--video-fps", type=float, default=VIDEO_FPS)
-    parser.add_argument("--video-maxlen", type=int, default=VIDEO_MAXLEN)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -500,8 +493,6 @@ def main() -> None:
         subvideos_meta=args.subvideos_meta,
         splits_dir=args.splits_dir,
         output_dir=args.output_dir,
-        video_fps=args.video_fps,
-        video_maxlen=args.video_maxlen,
         video_meta_path=args.video_meta,
         seed=args.seed,
     )

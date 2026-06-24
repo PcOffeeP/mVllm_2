@@ -303,6 +303,22 @@ class TestQualityCheck:
         )
         assert any(e["check"] == "media_path" for e in errors)
 
+    def test_mock_processor_fingerprint_is_an_error(self, fake_project: Path):
+        merged_dir = fake_project / "data" / "06_merged"
+        sample = _make_sample(fingerprint="mock:diagnostic")
+        _write_json(merged_dir / "fold_0_train.json", [sample])
+        errors, _warnings, _summary = run_quality_check(
+            merged_dir=merged_dir,
+            subvideos_meta_path=fake_project / "data" / "07_metadata" / "subvideos_meta.json",
+            report_path=fake_project / "report.json",
+            project_root=fake_project,
+        )
+        assert any(
+            e["check"] == "processor_fingerprint"
+            and e["detail"] == "mock_or_theoretical_fingerprints_forbidden"
+            for e in errors
+        )
+
     def test_exclusion_without_reason(self, fake_project: Path):
         merged_dir = fake_project / "data" / "06_merged"
         subvideos_meta = fake_project / "data" / "07_metadata" / "subvideos_meta.json"

@@ -134,6 +134,21 @@ class TestFinalOutputFractureValid:
 class TestFinalOutputFractureInvalid:
     """Invalid fracture field combinations are rejected by FinalOutput."""
 
+    @pytest.mark.parametrize(
+        "time_range",
+        [[10.0, 11.0001], [11.0, 10.0], [10.0, 10.0], [10.0, float("inf")]],
+    )
+    def test_invalid_time_range_is_rejected(self, time_range: list[float]) -> None:
+        with pytest.raises(ValidationError):
+            FinalOutput(
+                video_id="v_width",
+                status="fracture",
+                time_range=time_range,
+                fracture_type=FractureType.TOUGH,
+                location="inside_gauge",
+                confidence=0.92,
+            )
+
     def test_missing_time_range_is_rejected(self) -> None:
         with pytest.raises(ValidationError):
             FinalOutput(
@@ -441,18 +456,22 @@ class TestUnrecognizedReasonsEndToEnd:
         config = make_config()
         config["agent"]["max_rounds"] = 5
 
-        # Provide at least one model output so the agent can do a round.
-        responses = [
-            {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": None, "confidence": 0.50},
-        ]
+        if reason == "video_anomaly":
+            output = {"has_fracture": None, "fracture_between": None, "type": "视频异常", "location": None, "confidence": 0.70}
+        elif reason == "not_clamped":
+            output = {"has_fracture": False, "fracture_between": None, "type": "未夹紧", "location": None, "confidence": 0.70}
+        else:
+            output = {"has_fracture": False, "fracture_between": None, "type": "未断裂", "location": None, "confidence": 0.50}
+        responses = [output, deepcopy(output)]
 
-        llm = StaticLLM([
-            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
-            ("terminate", {
+        sequence = [("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"})]
+        if reason in {"video_anomaly", "not_clamped"}:
+            sequence.append(("sample_and_infer", {"sample_range": [10.0, 20.0], "prompt": "recheck"}))
+        sequence.append(("terminate", {
                 "status": "unrecognized",
                 "unrecognized_reason": reason,
-            }),
-        ])
+            }))
+        llm = StaticLLM(sequence)
 
         agent = IterativeAgent(
             llm_client=llm,
@@ -521,10 +540,9 @@ class TestRunnerOkFalseSampling:
         )
 
         result = agent.run()
-        assert result["status"] == "unrecognized"
-        # Verify the sampling error was recorded as an infra_error (not validation_error).
-        assert result["history"][0]["result"].get("infra_error") is not None
-        assert "sampling_error" in str(result["history"][0]["result"]["infra_error"])
+        assert result["ok"] is False
+        assert result["error"]["stage"] == "sampling"
+        assert result["error"]["code"] == "sampling_error"
 
 
 # -------------------------------------------------------------------------
@@ -563,10 +581,8 @@ class TestRunnerOkFalseInference:
         )
 
         result = agent.run()
-        assert result["status"] == "unrecognized"
-        # Verify inference transport error was recorded as an infra_error (not validation_error).
-        assert result["history"][0]["result"].get("infra_error") is not None
-        assert "inference_transport" in str(result["history"][0]["result"]["infra_error"])
+        assert result["ok"] is False
+        assert result["error"]["stage"] == "inference_transport"
 
 
 # -------------------------------------------------------------------------
@@ -773,49 +789,26 @@ class TestEdgeCases:
     """Additional edge cases to guard against regressions."""
 
     def test_fracture_with_location_unknown_in_finalize(self) -> None:
-        """The iterative agent _finalize should allow location=null for fracture if that's what _build_fracture_args returns (falls back to no location)."""
+        """The public fracture result accepts the explicit unknown location."""
         video_meta = {"video_id": "v_edge_001", "duration": 100.0, "video_path": "v_edge_001.mp4"}
         config = make_config()
-        config["agent"]["max_rounds"] = 3
-
-        responses = [
-            {"has_fracture": True, "fracture_between": [17, 18], "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.92},
-        ]
-
-        llm = StaticLLM([
-            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
-            ("terminate", {
-                "status": "fracture",
-                "fracture_type": "韧性断裂",
-                "location": "inside_gauge",
-                "confidence": 0.92,
-                "evidence_rounds": [0],
-            }),
-        ])
-
-        # Low tolerance to allow converge in one round.
-        config["agent"]["tolerance_seconds"] = 100.0
-        config["agent"]["max_rounds"] = 2
-
         agent = IterativeAgent(
-            llm_client=llm,
+            llm_client=StaticLLM([]),
             video_meta=video_meta,
             config=config,
             clip_builder=FakeClipBuilder(),
-            inference_client=FakeInferenceClient(responses),
+            inference_client=FakeInferenceClient([]),
         )
-
-        result = agent.run()
-        # With only 1 evidence round, agent may reject early terminate but
-        # converge on candidate width after the first round because
-        # tolerance_seconds=100 covers the full candidate.
-        # The agent enters VERIFYING state after round 0 since width ≤ tolerance.
-        # Then LLM still calls terminate which gets checked again with evidence_rounds.
-        # The converge check passes (candidate width <= tolerance with 1 round is enough? no...)
-        # Actually _can_terminate checks len(positive_evidence) < 2 for fracture status.
-        # So first terminate is rejected. Then LLM calls sample_and_infer again (round 1),
-        # then terminate with evidence_rounds=[0,1] which works.
+        result = agent._finalize({
+            "status": "fracture",
+            "time_range": [10.0, 10.5],
+            "fracture_type": "韧性断裂",
+            "location": "unknown",
+            "confidence": 0.92,
+            "unrecognized_reason": None,
+        })
         assert result["status"] == "fracture"
+        assert result["location"] == "unknown"
 
     def test_non_fracture_type_in_terminate_rejected_by_schema(self) -> None:
         """Using a non-fracture type like 未断裂 in fracture terminate is rejected."""
@@ -836,10 +829,12 @@ class TestEdgeCases:
         responses = [
             # has_fracture=None indicates video anomaly, presence unknown
             {"has_fracture": None, "fracture_between": None, "type": "视频异常", "location": None, "confidence": 0.70},
+            {"has_fracture": None, "fracture_between": None, "type": "视频异常", "location": None, "confidence": 0.70},
         ]
 
         llm = StaticLLM([
             ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            ("sample_and_infer", {"sample_range": [20.0, 40.0], "prompt": "recheck"}),
             ("terminate", {
                 "status": "unrecognized",
                 "unrecognized_reason": "video_anomaly",
@@ -1089,12 +1084,8 @@ class TestMissingPreprocessingContract:
         )
 
         result = agent.run()
-        # Round 0 must fail with missing_or_invalid_preprocessing_metadata.
-        round0 = result["history"][0]["result"]
-        assert not round0["ok"]
-        assert round0["validation_error"]["code"] == "missing_or_invalid_preprocessing_metadata"
-        # Agent should still produce a valid final output.
-        assert result["status"] in ("no_fracture", "unrecognized")
+        assert result["ok"] is False
+        assert result["error"]["code"] == "missing_or_invalid_preprocessing_metadata"
 
     def test_missing_preprocessing_no_fracture_graceful(self) -> None:
         """When preprocessing is None and has_fracture is False, graceful degrade."""
@@ -1146,10 +1137,8 @@ class TestMissingPreprocessingContract:
         )
 
         result = agent.run()
-        assert result["status"] == "no_fracture"
-        # Both rounds should be OK — no fracture_between to map.
-        for entry in result["history"]:
-            assert entry["result"]["ok"]
+        assert result["ok"] is False
+        assert result["error"]["code"] == "missing_or_invalid_preprocessing_metadata"
 
 
 # =========================================================================
@@ -1173,8 +1162,8 @@ class TestEvidenceThresholdContract:
         ]
 
         llm = StaticLLM([
-            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
-            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            ("sample_and_infer", {"sample_range": [0.0, 20.0], "prompt": "analyze"}),
+            ("sample_and_infer", {"sample_range": [48.0, 52.0], "prompt": "analyze"}),
             # Try to terminate with disjoint evidence → rejected.
             ("terminate", {
                 "status": "fracture",
@@ -1183,7 +1172,7 @@ class TestEvidenceThresholdContract:
                 "confidence": 0.92,
                 "evidence_rounds": [0, 1],
             }),
-            ("sample_and_infer", {"sample_range": [0.0, 100.0], "prompt": "analyze"}),
+            ("sample_and_infer", {"sample_range": [48.0, 52.0], "prompt": "analyze"}),
             # Terminate with overlapping evidence (rounds 1, 2 have same range).
             ("terminate", {
                 "status": "fracture",

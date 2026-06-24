@@ -49,16 +49,16 @@ export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
 # Fold 0
-llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_fold0.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
 
 # Fold 1
-llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_fold1.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold1.yaml
 
 # Fold 2
-llamafactory-cli train MiniCPM/config/minicpmv4_6_lora_sft_fold2.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold2.yaml
 ```
 
-训练输出目录为 `LlamaFactory/saves/minicpmv4_6/lora/sft_3k{0,1,2}`。
+训练输出目录为 `LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k{0,1,2}`。必须通过 `train_with_contract.py` 启动，以便实际子处理器的 8 帧约束在每个训练进程中生效。
 
 ## 合并 LoRA
 

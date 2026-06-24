@@ -27,7 +27,7 @@ def _subvideo(
         "subvideo_id": f"{video_id}_focus_3s_50pct",
         "source_video": video_id,
         "video_path": video_path or f"03_subvideos/{video_id}_focus_3s_50pct.mp4",
-        "frame_paths": [f"04_frames/{video_id}_focus_3s_50pct/frame_{i:04d}.jpg" for i in range(24)],
+        "frame_paths": [f"04_frames/{video_id}_focus_3s_50pct/frame_{i:04d}.jpg" for i in range(8)],
         "start_time": 143.9,
         "end_time": 146.9,
         "start_frame": 4317,
@@ -37,7 +37,7 @@ def _subvideo(
         "event_position_ratio": 0.5,
         "has_fracture": has_fracture,
         "has_fracture_canonical": has_fracture,
-        "fracture_between": [17, 18] if has_fracture is True else None,
+        "fracture_between": [3, 4] if has_fracture is True else None,
         "type": ftype,
         "location": "inside_gauge" if has_fracture is True else "N/A",
         "location_canonical": "inside_gauge" if has_fracture is True else None,
@@ -45,9 +45,9 @@ def _subvideo(
         "source_location": "inside_gauge",
         "actual_frame_mapping": [
             {"input_index": i, "original_frame": 4317 + i, "timestamp": round(143.9 + i / 30.0, 4)}
-            for i in range(24)
+            for i in range(8)
         ],
-        "processor_fingerprint": "mock:test:fingerprint",
+        "processor_fingerprint": "minicpm-v-4.6:test:fingerprint",
         "fold": "fold_0_train",
         "split": "fold_0_train",
         "selection_reason": "focus_positive",
@@ -73,7 +73,7 @@ def _write_splits(splits_dir: Path, mapping: dict[str, list[str]]) -> None:
 
 def test_convert_subvideo_to_sample_sharegpt_format():
     sub = _subvideo(has_fracture=True)
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
 
     assert sample["id"] == sub["subvideo_id"]
     assert sample["videos"] == ["data/03_subvideos/video_0001_focus_3s_50pct.mp4"]
@@ -92,13 +92,13 @@ def test_convert_subvideo_to_sample_sharegpt_format():
     assistant_text = sample["messages"][2]["content"]
     assistant = json.loads(assistant_text)
     assert assistant["has_fracture"] is True
-    assert assistant["fracture_between"] == [17, 18]
+    assert assistant["fracture_between"] == [3, 4]
     assert assistant["type"] == "韧性断裂"
     assert assistant["location"] == "inside_gauge"
     assert assistant["confidence"] == pytest.approx(1.0)
 
     assert sample["has_fracture"] is True
-    assert sample["fracture_between"] == [17, 18]
+    assert sample["fracture_between"] == [3, 4]
     assert sample["source_type"] == "韧性断裂"
     assert sample["source_location"] == "inside_gauge"
     assert sample["start_frame"] == sub["start_frame"]
@@ -112,7 +112,7 @@ def test_convert_subvideo_preserves_data_videos_prefix():
         has_fracture=True,
         video_path="data/01_videos/video_0001.mp4",
     )
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assert sample["videos"] == ["data/01_videos/video_0001.mp4"]
 
 
@@ -123,7 +123,7 @@ def test_convert_subvideo_prefixes_subvideo_dir():
         has_fracture=True,
         video_path="03_subvideos/video_0001_focus_3s_50pct.mp4",
     )
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assert sample["videos"] == ["data/03_subvideos/video_0001_focus_3s_50pct.mp4"]
 
 
@@ -134,7 +134,7 @@ def test_convert_subvideo_prefixes_frames_dir():
         has_fracture=True,
         video_path="04_frames/video_0001_focus_3s_50pct.mp4",
     )
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assert sample["videos"] == ["data/04_frames/video_0001_focus_3s_50pct.mp4"]
 
 
@@ -145,13 +145,13 @@ def test_convert_subvideo_preserves_absolute_path():
         has_fracture=True,
         video_path="/abs/path/to/video_0001.mp4",
     )
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assert sample["videos"] == ["/abs/path/to/video_0001.mp4"]
 
 
 def test_convert_negative_sample_has_null_fracture_between():
     sub = _subvideo(has_fracture=False)
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
 
     assistant = json.loads(sample["messages"][2]["content"])
     assert assistant["has_fracture"] is False
@@ -163,7 +163,7 @@ def test_convert_negative_sample_has_null_fracture_between():
 
 def test_convert_assistant_json_has_exactly_five_fields():
     sub = _subvideo(has_fracture=True)
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assistant = json.loads(sample["messages"][2]["content"])
     assert set(assistant.keys()) == {"has_fracture", "fracture_between", "type", "location", "confidence"}
     assert isinstance(assistant["confidence"], float)
@@ -172,7 +172,7 @@ def test_convert_assistant_json_has_exactly_five_fields():
 
 def test_convert_presence_unknown_sample_has_null_has_fracture():
     sub = _subvideo(has_fracture=None, ftype="视频异常", source_type="视频异常")
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assistant = json.loads(sample["messages"][2]["content"])
     assert assistant["has_fracture"] is None
     assert assistant["fracture_between"] is None
@@ -182,7 +182,7 @@ def test_convert_presence_unknown_sample_has_null_has_fracture():
 
 def test_convert_time_unknown_anomaly_has_true_has_fracture_null_between():
     sub = _subvideo(has_fracture=True, ftype="视频异常", source_type="视频异常")
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assistant = json.loads(sample["messages"][2]["content"])
     assert assistant["has_fracture"] is True
     assert assistant["fracture_between"] is None
@@ -192,7 +192,7 @@ def test_convert_time_unknown_anomaly_has_true_has_fracture_null_between():
 
 def test_compute_effective_frames_prefers_frame_paths():
     sub = _subvideo()
-    assert builder.compute_effective_frames(sub, 8.0, 36) == len(sub["frame_paths"])
+    assert builder.compute_effective_frames(sub) == len(sub["frame_paths"])
 
 
 def test_build_split_samples_groups_by_source_video():
@@ -203,7 +203,7 @@ def test_build_split_samples_groups_by_source_video():
         "fold_0_val": {"video_0002"},
     }
     split_samples = builder.build_split_samples(
-        [sub1, sub2], split_ids, video_fps=8.0, video_maxlen=36
+        [sub1, sub2], split_ids
     )
     assert len(split_samples["fold_0_train"]) == 1
     assert len(split_samples["fold_0_val"]) == 1
@@ -231,8 +231,6 @@ def test_build_all_outputs_valid_json_and_samples_meta(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
     )
 
     for name in builder.SPLIT_NAMES:
@@ -273,8 +271,6 @@ def test_build_all_outputs_contain_metadata_fields(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
     )
 
     samples = json.loads((out_dir / "fold_0_train.json").read_text(encoding="utf-8"))
@@ -288,6 +284,14 @@ def test_build_all_outputs_contain_metadata_fields(tmp_path):
     assert sample["processor_fingerprint"] == sub["processor_fingerprint"]
     assert sample["selection_reason"] == "focus_positive"
     assert "exclusion_reason" in sample
+
+
+@pytest.mark.parametrize("fingerprint", [None, "", "mock:test", "theoretical:v2"])
+def test_convert_subvideo_rejects_non_production_fingerprint(fingerprint):
+    sub = _subvideo("video_0001", has_fracture=True)
+    sub["processor_fingerprint"] = fingerprint
+    with pytest.raises(ValueError, match="fingerprint"):
+        builder.convert_subvideo_to_sample(sub)
 
 
 def test_build_all_outputs_test_artifacts_with_isolation(tmp_path):
@@ -320,8 +324,6 @@ def test_build_all_outputs_test_artifacts_with_isolation(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
         video_meta_path=video_meta,
     )
 
@@ -368,8 +370,6 @@ def test_build_test_artifacts_uses_video_meta_path(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
         video_meta_path=video_meta,
     )
 
@@ -400,8 +400,6 @@ def test_build_test_artifacts_falls_back_to_default_prefix(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
         video_meta_path=video_meta,
     )
 
@@ -424,8 +422,6 @@ def test_build_all_outputs_contain_start_end_frames(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
     )
 
     for name in builder.SPLIT_NAMES:
@@ -460,8 +456,6 @@ def test_main_with_custom_paths():
             subvideos_meta=sub_meta,
             splits_dir=splits_dir,
             output_dir=out_dir,
-            video_fps=8.0,
-            video_maxlen=36,
         )
 
         out_file = out_dir / "fold_0_train.json"
@@ -504,8 +498,6 @@ def test_time_unknown_anomaly_samples_keep_true_has_fracture(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
     )
 
     samples = json.loads((out_dir / "fold_0_train.json").read_text(encoding="utf-8"))
@@ -544,8 +536,6 @@ def test_no_positive_sample_with_non_fracture_type(tmp_path):
         subvideos_meta=sub_meta,
         splits_dir=splits_dir,
         output_dir=out_dir,
-        video_fps=8.0,
-        video_maxlen=36,
     )
 
     for name in builder.SPLIT_NAMES:
@@ -570,7 +560,7 @@ def test_convert_subvideo_downgrades_inconsistent_positive():
     sub["is_abnormal"] = True
     sub["has_fracture_canonical"] = False
 
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assert sample["has_fracture"] is False
     assert sample["has_fracture_canonical"] is False
     assert sample["fracture_between"] is None
@@ -592,7 +582,7 @@ def test_convert_subvideo_prefers_canonical_over_original():
     sub["is_abnormal"] = True
     sub["fracture_between"] = [10, 11]
 
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=36)
+    sample = builder.convert_subvideo_to_sample(sub)
     assert sample["has_fracture"] is False
     assert sample["has_fracture_canonical"] is False
     assert sample["location"] is None
@@ -610,7 +600,7 @@ def test_assistant_fracture_between_matches_actual_frame_mapping():
         for i in range(8)
     ]
     sub["fracture_between"] = [2, 3]
-    sample = builder.convert_subvideo_to_sample(sub, video_fps=8.0, video_maxlen=8)
+    sample = builder.convert_subvideo_to_sample(sub)
 
     assistant = json.loads(sample["messages"][2]["content"])
     assert assistant["fracture_between"] == [2, 3]

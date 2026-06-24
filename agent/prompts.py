@@ -53,7 +53,7 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_user_prompt(sample_range: list[float], video_maxlen: int = 8) -> str:
+def build_user_prompt(sample_range: list[float]) -> str:
     """Build the user prompt for one ``sample_and_infer`` round.
 
     The returned string intentionally does **not** contain a ``<video>``
@@ -62,12 +62,11 @@ def build_user_prompt(sample_range: list[float], video_maxlen: int = 8) -> str:
 
     Args:
         sample_range: Start and end timestamps of the clip, in seconds.
-        video_maxlen: Maximum number of frames the model processor may select.
     """
     start, end = sample_range
     return (
         f"请分析这段拉伸试验视频，判断是否存在断裂。当前区间为 [{start}, {end}] 秒。"
-        f"视频处理器将从该区间连续时间轴上最多选择 {video_maxlen} 帧作为模型输入。"
+        "视频处理器将从该区间连续时间轴上最多选择 8 帧作为模型输入。"
     )
 
 
@@ -96,14 +95,16 @@ META_AGENT_SYSTEM_PROMPT = (
     "  - `status`：``fracture``、``no_fracture`` 或 ``unrecognized``。\n"
     "  - `fracture_type` / `location` / `confidence`：status=fracture 时必填。\n"
     "  - `unrecognized_reason`：status=unrecognized 时必填。\n"
-    "  - `evidence_rounds`：支持结论的历史轮次索引。\n\n"
+    "  - `evidence_rounds`：支持结论的历史记录 `evidence_index`（从 0 开始），"
+    "不得填写展示用 Agent 轮次。\n\n"
     "## 决策规则\n"
     "- 初始候选区间为 `[0, duration]`（全视频）。\n"
     "- 每轮根据当前候选区间、历史迭代记录和模型返回结果，决定下一步采样区间或是否终止。\n"
-    "- 如果模型返回 `has_fracture = true`，使用换算后的 `inferred_time_range` 更新候选区间，"
-    "并继续向断裂点聚焦。\n"
+    "- 只有七种正常断裂类别且存在合法 `inferred_time_range` 时才更新候选区间并继续聚焦；"
+    "`type=视频异常` 即使 `has_fracture=true` 也没有可靠时间证据，只能同范围复查后考虑 unrecognized。\n"
     "- 如果模型在**初始全范围采样或已扩展回全范围**后返回 `has_fracture = false` 且置信度高，"
-    "可判断当前视频无断裂或异常，调用 `terminate`；若在聚焦子区间返回 `has_fracture = false`，"
+    "程序会强制执行五个重叠区间的完整覆盖检查；覆盖完成前禁止 terminate 为 no_fracture。"
+    "若在聚焦子区间返回 `has_fracture = false`，"
     "说明候选可能错过断裂点，必须扩大采样范围继续验证，禁止直接判定无断裂。\n"
     "- 可动态调整 user prompt 的措辞和重点，例如初期侧重\"是否存在断裂\"，后期侧重\"精确边界\"。\n"
     "- 当确认无断裂、区间宽度 ≤ `tolerance_seconds` 或达到 `max_rounds` 时，必须调用 `terminate`。\n"
@@ -113,14 +114,6 @@ META_AGENT_SYSTEM_PROMPT = (
     "- 每次调用只能选择一个工具；如需继续分析，调用 `sample_and_infer`；如需结束，调用 `terminate`。\n"
     "- 不要编造模型输出，所有推理必须基于历史迭代记录。"
 )
-
-
-def _effective_frame_count(sample_range: list[float], video_maxlen: int) -> int:
-    """Compute the effective frame count reported in the user prompt (legacy helper)."""
-    # In v2 the count is bounded by the model processor maximum (8 frames) and
-    # is no longer derived from an FPS assumption.
-    duration = sample_range[1] - sample_range[0]
-    return min(max(1, int(duration)), video_maxlen)
 
 
 def build_meta_agent_user_context(
@@ -139,7 +132,6 @@ def build_meta_agent_user_context(
     agent_cfg = config.get("agent", {})
     tolerance = agent_cfg.get("tolerance_seconds", 1.0)
     max_rounds = agent_cfg.get("max_rounds", 10)
-    video_maxlen = agent_cfg.get("video_maxlen", 8)
 
     lines: list[str] = [
         f"[视频元信息]",
@@ -152,19 +144,19 @@ def build_meta_agent_user_context(
         f"容忍误差: {tolerance}s",
         f"最大迭代轮数: {max_rounds}",
         f"当前轮次: {current_round}/{max_rounds}",
-        f"视频处理器最大帧数: {video_maxlen}",
+        "视频处理器最大帧数: 8",
         "",
     ]
 
     if history:
         lines.append("[历史迭代记录]")
-        for entry in history:
+        for evidence_index, entry in enumerate(history):
             rnd = entry.get("round", 0)
             result = entry.get("result", {})
             model_output = result.get("model_output", {})
             inferred = result.get("inferred_time_range")
             sample_range = result.get("sample_range")
-            lines.append(f"轮次{rnd + 1}:")
+            lines.append(f"evidence_index={evidence_index}（Agent轮次{rnd + 1}）:")
             if sample_range is not None:
                 lines.append(f"- 采样区间: {sample_range}s")
             lines.append(f"- 模型输出: {model_output}")
@@ -195,10 +187,7 @@ def build_sample_and_infer_prompt(
     previous_context: str = "",
 ) -> str:
     """Build the ``prompt`` argument passed to ``sample_and_infer``."""
-    agent_cfg = config.get("agent", {})
-    video_maxlen = agent_cfg.get("video_maxlen", 8)
-
-    parts = [build_user_prompt(sample_range, video_maxlen)]
+    parts = [build_user_prompt(sample_range)]
     if previous_context:
         parts.append(f"\n历史上下文提示：{previous_context}")
     return "".join(parts)

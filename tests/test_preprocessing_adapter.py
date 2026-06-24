@@ -175,57 +175,48 @@ def test_minicpm_healthcheck_requires_max_frames_eight():
 
 def test_minicpm_sample_at_most_eight_frames(short_video: Path):
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
-    frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
-    assert len(frames) <= 8
-    assert all(isinstance(f, FrameMapping) for f in frames)
+    with pytest.raises(RuntimeError, match="video_processor"):
+        preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
 
 def test_minicpm_sample_monotonic_frames_and_timestamps(short_video: Path):
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
-    frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
-    original_frames = [f.original_frame for f in frames]
-    timestamps = [f.timestamp for f in frames]
-    assert original_frames == sorted(original_frames)
-    assert timestamps == sorted(timestamps)
-    assert len(set(original_frames)) == len(original_frames)
+    with pytest.raises(RuntimeError, match="video_processor"):
+        preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
 
 def test_minicpm_sample_input_index_is_sequential(short_video: Path):
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
-    frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
-    assert [f.input_index for f in frames] == list(range(len(frames)))
+    with pytest.raises(RuntimeError, match="video_processor"):
+        preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
 
 def test_minicpm_sample_full_video_returns_eight_frames(long_video: Path):
     """35s @ 30fps 应均匀取 8 帧。"""
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
-    frames = preprocessor.sample(str(long_video), start_time=0.0, end_time=35.0)
-    assert len(frames) == 8
-    assert frames[0].original_frame == 0
-    assert frames[-1].original_frame >= 30 * 35 - 2  # 接近最后一帧
+    with pytest.raises(RuntimeError, match="video_processor"):
+        preprocessor.sample(str(long_video), start_time=0.0, end_time=35.0)
 
 
 def test_minicpm_sample_short_interval_returns_fewer_than_eight(short_video: Path):
     """0.1s 区间约 3 帧，应返回 <=3 帧。"""
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
-    frames = preprocessor.sample(str(short_video), start_time=1.0, end_time=1.1)
-    assert 1 <= len(frames) <= 3
+    with pytest.raises(RuntimeError, match="video_processor"):
+        preprocessor.sample(str(short_video), start_time=1.0, end_time=1.1)
 
 
 def test_minicpm_sample_clamps_negative_start_time(short_video: Path):
     """start_time < 0 应截断为 0，不抛异常。"""
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
-    frames = preprocessor.sample(str(short_video), start_time=-1.0, end_time=2.0)
-    assert len(frames) <= 8
-    assert frames[0].timestamp >= 0.0
+    with pytest.raises(RuntimeError, match="video_processor"):
+        preprocessor.sample(str(short_video), start_time=-1.0, end_time=2.0)
 
 
 def test_minicpm_sample_clamps_end_time_exceeding_duration(short_video: Path):
     """end_time > duration 应截断为 duration。"""
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
-    frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=999.0)
-    assert len(frames) <= 8
-    assert frames[-1].timestamp <= 5.0
+    with pytest.raises(RuntimeError, match="video_processor"):
+        preprocessor.sample(str(short_video), start_time=0.0, end_time=999.0)
 
 
 def test_minicpm_sample_empty_interval_returns_empty(short_video: Path):
@@ -261,9 +252,8 @@ def test_minicpm_processor_get_info_class_name():
     assert info.backend == "transformers"
 
 
-def test_minicpm_processor_sample_do_sample_frames_false(short_video: Path):
-    """video_processor 接受 do_sample_frames 参数时传入 False。"""
-    import inspect
+def test_minicpm_processor_uses_real_sampling_defaults(short_video: Path):
+    """Do not disable the real processor's frame-selection behavior."""
     from unittest.mock import MagicMock, patch
 
     preprocessor = MiniCPMVideoPreprocessor("openbmb/MiniCPM-V-2_6")
@@ -280,25 +270,14 @@ def test_minicpm_processor_sample_do_sample_frames_false(short_video: Path):
     preprocessor._processor = MagicMock()
     preprocessor._processor_loaded = True
 
-    # 构造一个包含 do_sample_frames 参数的假签名
-    fake_sig = inspect.Signature(
-        parameters=[
-            inspect.Parameter("videos", inspect.Parameter.POSITIONAL_OR_KEYWORD),
-            inspect.Parameter("return_tensors", inspect.Parameter.KEYWORD_ONLY, default="pt"),
-            inspect.Parameter("do_sample_frames", inspect.Parameter.KEYWORD_ONLY, default=True),
-        ]
-    )
-
     with patch.object(
         preprocessor, "_decode_frame_range",
-        return_value=(fake_frames, fake_indices),
-    ), patch("inspect.signature", return_value=fake_sig):
+        return_value=(fake_frames, fake_indices, [i / 30 for i in fake_indices]),
+    ):
         frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
-    # 验证 do_sample_frames=False 被传入
     _, kwargs = mock_vp.call_args
-    assert "do_sample_frames" in kwargs
-    assert kwargs["do_sample_frames"] is False
+    assert "do_sample_frames" not in kwargs
 
     # 1:1 映射
     assert len(frames) == 5
@@ -349,7 +328,7 @@ def test_minicpm_processor_sample_per_frame_matching(short_video: Path):
 
     with patch.object(
         preprocessor, "_decode_frame_range",
-        return_value=(fake_frames, fake_indices),
+        return_value=(fake_frames, fake_indices, [i / 30 for i in fake_indices]),
     ):
         frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
@@ -396,7 +375,7 @@ def test_minicpm_processor_sample_one_to_one_mapping(short_video: Path):
 
     with patch.object(
         preprocessor, "_decode_frame_range",
-        return_value=(fake_frames, fake_indices),
+        return_value=(fake_frames, fake_indices, [i / 30 for i in fake_indices]),
     ):
         frames = preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
@@ -442,7 +421,8 @@ def test_minicpm_processor_sample_decoded_frames_passed_to_processor(short_video
     preprocessor._processor = MagicMock()
     preprocessor._processor_loaded = True
 
-    preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
+    with pytest.raises(RuntimeError, match="超过契约上限"):
+        preprocessor.sample(str(short_video), start_time=0.0, end_time=5.0)
 
     args, _ = mock_vp.call_args
     assert len(args) >= 1
@@ -466,7 +446,7 @@ def test_minicpm_processor_get_info_fallback_when_not_loaded():
 
     info = preprocessor.get_info()
     assert info.version == "openbmb/MiniCPM-V-2_6"
-    assert info.backend in ("transformers-not-installed", "transformers-fallback")
+    assert info.backend in ("transformers-not-installed", "transformers-unavailable")
 
 
 if __name__ == "__main__":

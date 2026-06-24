@@ -28,15 +28,39 @@ except Exception:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
+def configure_processor_max_frames(processor: Any, max_frames: int = 8) -> Any:
+    """Set and verify the real MiniCPM video-processor frame limit."""
+    if max_frames != 8:
+        raise ValueError("MiniCPM-V contract requires max_frames=8")
+    video_processor = getattr(processor, "video_processor", None)
+    if video_processor is None:
+        raise RuntimeError(f"Processor {type(processor).__name__} lacks video_processor")
+    configured = False
+    for target, attribute in (
+        (video_processor, "max_frames"),
+        (video_processor, "video_maxlen"),
+        (processor, "video_maxlen"),
+    ):
+        if hasattr(target, attribute):
+            setattr(target, attribute, max_frames)
+            if getattr(target, attribute) != max_frames:
+                raise RuntimeError(f"failed to set actual processor {attribute}=8")
+            configured = True
+    if not configured:
+        raise RuntimeError("cannot locate MiniCPM actual max-frame parameter")
+    return video_processor
+
+
 # ---------------------------------------------------------------------------
-# 辅助：CPU 退路
+# 辅助：环境能力检测
 # ---------------------------------------------------------------------------
 
 
-def _cpu_fallback() -> bool:
+def _processor_environment_unsupported() -> bool:
     """检测当前环境是否可安全加载 transformer 模型。
 
-    Mac（mps／无 GPU）上加载大型视觉模型容易 OOM，返回 True 表示应走 fallback。
+    Mac（mps／无 GPU）上加载大型视觉模型容易 OOM，返回 True 表示当前
+    环境不支持正式预处理校验。正式 sample() 会 fail closed。
     """
     import platform
     if platform.system() != "Darwin":
@@ -54,7 +78,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
     """MiniCPM-V 4.6 视频处理器。
 
     加载 `transformers.AutoProcessor` 并提取 `video_processor` 用于帧选择。
-    在 Mac（无 GPU／transformers 不可用）上优雅 fallback 到 pyav 帧索引计算。
+    processor 不可用时直接失败；不得用理论 FPS 或均匀采样伪造模型实际帧。
 
     Architecture
     ------------
@@ -67,15 +91,27 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
     NAME = "minicpm-v-4.6"
     EXPECTED_MAX_FRAMES = 8
 
-    def __init__(self, model_path_or_name: str, max_frames: int = EXPECTED_MAX_FRAMES) -> None:
+    def __init__(
+        self,
+        model_path_or_name: str,
+        max_frames: int = EXPECTED_MAX_FRAMES,
+        processor: Any | None = None,
+    ) -> None:
         self._model_path_or_name = model_path_or_name
         self._max_frames = max_frames
-        self._processor: Any | None = None
-        self._video_processor: Any | None = None
-        self._processor_loaded = False
+        self._processor = processor
+        self._video_processor = (
+            configure_processor_max_frames(processor, max_frames)
+            if processor is not None
+            else None
+        )
+        self._processor_loaded = processor is not None
+        self.last_tensor_digest: str | None = None
+        self.last_tensor_shape: list[int] | None = None
 
         # 尝试预加载；忽略 Mac 上可预见的失败
-        self._try_load_processor()
+        if processor is None:
+            self._try_load_processor()
 
     # ------------------------------------------------------------------
     # Processor 生命周期
@@ -85,7 +121,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         """预加载 processor；失败不抛异常，留待延迟加载。"""
         if _transformers_module is None:
             return
-        if _cpu_fallback():
+        if _processor_environment_unsupported():
             return
         try:
             self._load_processor()
@@ -102,17 +138,13 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             self._model_path_or_name,
             trust_remote_code=True,
         )
-        video_processor = getattr(processor, "video_processor", None)
-        if video_processor is None:
-            raise RuntimeError(
-                f"Processor {type(processor).__name__} 没有 video_processor 属性"
-            )
+        video_processor = configure_processor_max_frames(processor, self._max_frames)
         self._processor = processor
         self._video_processor = video_processor
         self._processor_loaded = True
 
     def _ensure_processor(self) -> None:
-        """确保 processor 已加载；若失败则静默 fallback。"""
+        """确保 processor 已加载；不可用时由 sample() 明确失败。"""
         if self._processor_loaded:
             return
         if _transformers_module is None:
@@ -121,9 +153,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             self._load_processor()
             logger.info("延迟加载 processor 成功: %s", type(self._processor).__name__)
         except Exception as exc:
-            logger.warning(
-                "processor 加载失败，回退到 pyav 帧索引计算: %s", exc,
-            )
+            logger.warning("processor 加载失败: %s", exc)
 
     # ------------------------------------------------------------------
     # VideoPreprocessor 接口
@@ -139,7 +169,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         elif _transformers_module is None:
             backend = "transformers-not-installed"
         else:
-            backend = "transformers-fallback"
+            backend = "transformers-unavailable"
 
         return ProcessorInfo(
             name=self.NAME,
@@ -154,7 +184,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             return False
         if _transformers_module is None:
             return False
-        if _cpu_fallback():
+        if _processor_environment_unsupported():
             return False
 
         self._ensure_processor()
@@ -210,9 +240,9 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
     ) -> list[FrameMapping]:
         """对视频时间区间采样，返回帧映射列表。
 
-        优先使用真实 ``video_processor`` 做帧选择；
-        processor 不可用时回退到 pyav 均匀帧索引计算。
+        仅使用真实 ``video_processor`` 做帧选择。
         """
+        frame_index_by_timestamp = self._actual_frame_index_map(video_path)
         container = av.open(video_path, "r")
         try:
             video_stream = next(s for s in container.streams if s.type == "video")
@@ -231,25 +261,19 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             if end_time <= start_time:
                 return []
 
-            # --- 获取 FPS 和总帧数 ---
-            fps = float(video_stream.average_rate)
-            total_frames: int = (
-                video_stream.frames
-                if video_stream.frames is not None and video_stream.frames > 0
-                else int(round(duration * fps))
-            )
+            total_frames = len(frame_index_by_timestamp)
 
             # --- 尝试使用真实 processor ---
             self._ensure_processor()
             if self._processor_loaded and self._video_processor is not None:
                 return self._sample_with_processor(
                     container, video_stream,
-                    start_time, end_time, fps, total_frames,
+                    start_time, end_time, total_frames, frame_index_by_timestamp,
                 )
 
-            # --- fallback：pyav 纯帧索引计算 ---
-            return self._sample_fallback(
-                start_time, end_time, fps, total_frames,
+            raise RuntimeError(
+                "MiniCPM-V video_processor 不可用；拒绝用理论 FPS/均匀采样 "
+                "伪造模型实际输入帧"
             )
         finally:
             container.close()
@@ -264,36 +288,26 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         video_stream: av.stream.Stream,
         start_time: float,
         end_time: float,
-        fps: float,
         total_frames: int,
+        frame_index_by_timestamp: dict[float, int],
     ) -> list[FrameMapping]:
         """用 video_processor 处理解码帧，返回真实帧号映射。
 
-        优先尝试 ``do_sample_frames=False`` 避免 processor 二次采样；
-        若 processor 仍做了抽帧，通过逐帧独立调用 + 像素比对确认保留帧，
+        允许真实 processor 按其已锁定的 max_frames=8 选择帧；
+        通过逐帧独立调用 + 像素比对确认保留帧，
         映射回解码帧号。不再静默回退到 pyav 均匀采样。
         """
-        import inspect as _inspect
-
         # 1. 解码区间内的帧
-        decoded_frames, decoded_indices = self._decode_frame_range(
-            container, video_stream, start_time, end_time, fps, total_frames,
+        decoded_frames, decoded_indices, decoded_timestamps = self._decode_frame_range(
+            container, video_stream, start_time, end_time, total_frames,
+            frame_index_by_timestamp,
         )
         if not decoded_frames:
             return []
 
-        # 2. 构建 video_processor 调用参数
-        extra_kwargs: dict[str, Any] = {}
+        # 2. 调用真实 video_processor（失败抛异常，不静默回退）
         try:
-            sig = _inspect.signature(self._video_processor)  # type: ignore[union-attr]
-        except (ValueError, TypeError):
-            sig = None
-        if sig is not None and "do_sample_frames" in sig.parameters:
-            extra_kwargs["do_sample_frames"] = False
-
-        # 3. 调用 video_processor（失败抛异常，不静默回退）
-        try:
-            video_inputs = self._video_processor([decoded_frames], return_tensors="pt", **extra_kwargs)  # type: ignore[union-attr]
+            video_inputs = self._video_processor([decoded_frames], return_tensors="pt")  # type: ignore[union-attr]
         except Exception as exc:
             raise RuntimeError(
                 f"video_processor 调用失败: {exc}"
@@ -305,34 +319,61 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 "video_processor 输出不含 pixel_values_videos"
             )
 
-        n = min(pixel_values.shape[0], len(decoded_frames))
+        shape = tuple(pixel_values.shape)
+        if len(shape) == 5:
+            n = int(shape[1])
+            selected_pixel_values = pixel_values[0]
+        elif len(shape) == 4:
+            n = int(shape[0])
+            selected_pixel_values = pixel_values
+        else:
+            raise RuntimeError(f"无法识别 pixel_values_videos 形状: {shape}")
+        if n > self._max_frames:
+            raise RuntimeError(
+                f"video_processor 实际输出 {n} 帧，超过契约上限 {self._max_frames}"
+            )
+        if n > len(decoded_frames):
+            raise RuntimeError(
+                f"video_processor 输出帧数 {n} 大于解码帧数 {len(decoded_frames)}"
+            )
         if n <= 0:
             return []
 
-        # 4. 确定帧映射
+        try:
+            import torch
+            if isinstance(pixel_values, torch.Tensor):
+                raw_tensor = pixel_values.detach().cpu().contiguous()
+                self.last_tensor_digest = hashlib.sha256(
+                    raw_tensor.view(dtype=torch.uint8).numpy().tobytes()
+                ).hexdigest()
+                self.last_tensor_shape = list(shape)
+        except ImportError:  # pragma: no cover - unit environment without torch
+            pass
+
+        # 3. 确定帧映射
         if n == len(decoded_frames):
             # processor 未二次采样，1:1 映射
             return [
                 FrameMapping(
                     input_index=i,
                     original_frame=decoded_indices[i],
-                    timestamp=decoded_indices[i] / fps,
+                    timestamp=decoded_timestamps[i],
                 )
                 for i in range(n)
             ]
 
         # processor 做了抽帧，通过逐帧独立调用确认保留帧
         return self._match_processor_frames(
-            decoded_frames, decoded_indices, pixel_values, n, fps,
+            decoded_frames, decoded_indices, decoded_timestamps, selected_pixel_values, n,
         )
 
     def _match_processor_frames(
         self,
         decoded_frames: list[Any],
         decoded_indices: list[int],
+        decoded_timestamps: list[float],
         batch_pixel_values: Any,
         n: int,
-        fps: float,
     ) -> list[FrameMapping]:
         """逐帧独立调用 video_processor，通过像素比对确认保留帧。
 
@@ -349,7 +390,12 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 ind_result = self._video_processor([[frame]], return_tensors="pt")  # type: ignore[union-attr]
                 ind_pv = ind_result.get("pixel_values_videos")
                 if ind_pv is not None and ind_pv.shape[0] > 0:
-                    individual_pvs.append(ind_pv[0].float())
+                    if len(ind_pv.shape) == 5:
+                        individual_pvs.append(ind_pv[0, 0].float())
+                    elif len(ind_pv.shape) == 4:
+                        individual_pvs.append(ind_pv[0].float())
+                    else:
+                        individual_pvs.append(None)
                 else:
                     individual_pvs.append(None)
             except Exception:
@@ -386,7 +432,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 FrameMapping(
                     input_index=len(results),
                     original_frame=decoded_indices[best_match],
-                    timestamp=decoded_indices[best_match] / fps,
+                    timestamp=decoded_timestamps[best_match],
                 )
             )
 
@@ -405,7 +451,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             if img.mode != "RGB":
                 img = img.convert("RGB")
             return img
-        # fallback: numpy ndarray (不需要 PIL)
+        # PIL unavailable: use an RGB numpy ndarray.
         return frame.reformat(format="rgb24").to_ndarray()
 
     def _decode_frame_range(
@@ -414,13 +460,10 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         video_stream: av.stream.Stream,
         start_time: float,
         end_time: float,
-        fps: float,
         total_frames: int,
-    ) -> tuple[list[Any], list[int]]:
-        """解码 [start_time, end_time] 区间的帧，返回 (RGB图像列表, 帧号列表)。"""
-        start_frame = max(0, min(int(round(start_time * fps)), total_frames - 1))
-        end_frame = min(total_frames, int(round(end_time * fps)))
-
+        frame_index_by_timestamp: dict[float, int],
+    ) -> tuple[list[Any], list[int], list[float]]:
+        """解码区间帧，返回 RGB、原始帧序号和实际 PTS 时间戳。"""
         # seek 到 start_time 附近（前移 0.5s 确保覆盖关键帧）
         seek_pts = int(max(0, start_time - 0.5) / float(video_stream.time_base))
         container.seek(seek_pts, stream=video_stream)
@@ -429,8 +472,9 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
 
         decoded_frames: list[Any] = []
         decoded_indices: list[int] = []
+        decoded_timestamps: list[float] = []
         # 上限防止死循环
-        max_decode = (end_frame - start_frame) * 2 + 30
+        max_decode = total_frames + 30
 
         for packet in container.demux(video_stream):
             for frame in packet.decode():
@@ -447,9 +491,12 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 img = self._frame_to_rgb(frame)
                 decoded_frames.append(img)
 
-                # 从 PTS 反推帧号
-                frame_idx = int(round(pts * float(video_stream.time_base) * fps))
+                timestamp = float(pts * video_stream.time_base)
+                frame_idx = frame_index_by_timestamp.get(round(timestamp, 9))
+                if frame_idx is None:
+                    raise RuntimeError("解码帧 PTS 无法映射到实际原始帧序号")
                 decoded_indices.append(frame_idx)
+                decoded_timestamps.append(timestamp)
 
             if len(decoded_frames) >= max_decode:
                 break
@@ -458,77 +505,40 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 break
 
         if not decoded_frames:
-            return [], []
+            return [], [], []
 
-        # 如果 seek 到了 start 之前，截断到 start_frame
+        # Seek may land before the requested start; trim by actual PTS.
         trimmed_frames: list[Any] = []
         trimmed_indices: list[int] = []
-        for img, idx in zip(decoded_frames, decoded_indices):
-            if idx >= start_frame and idx < end_frame:
+        trimmed_timestamps: list[float] = []
+        for img, idx, timestamp in zip(decoded_frames, decoded_indices, decoded_timestamps):
+            if start_time <= timestamp < end_time:
                 trimmed_frames.append(img)
                 trimmed_indices.append(idx)
+                trimmed_timestamps.append(timestamp)
 
-        return trimmed_frames, trimmed_indices
+        return trimmed_frames, trimmed_indices, trimmed_timestamps
 
-    def _uniform_select(self, n: int, total: int) -> list[int]:
-        """从 [0, total) 中均匀选择 n 个索引，去重保序。"""
-        if n <= 0 or total <= 0:
-            return []
-        if n == 1:
-            return [0]
-        if n >= total:
-            return list(range(total))
-
-        step = (total - 1) / (n - 1)
-        indices = [int(round(i * step)) for i in range(n)]
-
-        seen: set[int] = set()
-        unique: list[int] = []
-        for idx in indices:
-            if idx not in seen and idx < total:
-                seen.add(idx)
-                unique.append(idx)
-        while len(unique) < n and unique[-1] + 1 < total:
-            unique.append(unique[-1] + 1)
-        return unique[:n]
-
-    def _sample_fallback(
-        self,
-        start_time: float,
-        end_time: float,
-        fps: float,
-        total_frames: int,
-    ) -> list[FrameMapping]:
-        """pyav 均匀帧索引计算（processor 不可用时的 fallback）。"""
-        start_frame = max(0, min(int(round(start_time * fps)), total_frames - 1))
-        end_frame = max(
-            start_frame + 1,
-            min(int(round(end_time * fps)), total_frames),
-        )
-        frame_count = end_frame - start_frame
-        n = min(self._max_frames, max(1, frame_count))
-
-        if n == 1:
-            indices: list[int] = [start_frame]
-        else:
-            step = (frame_count - 1) / (n - 1)
-            indices = [start_frame + int(round(i * step)) for i in range(n)]
-
-        seen: set[int] = set()
-        unique: list[int] = []
-        for idx in indices:
-            if idx not in seen and idx < total_frames:
-                seen.add(idx)
-                unique.append(idx)
-
-        return [
-            FrameMapping(
-                input_index=i,
-                original_frame=frame_idx,
-                timestamp=frame_idx / fps,
-            )
-            for i, frame_idx in enumerate(unique)
-        ]
+    @staticmethod
+    def _actual_frame_index_map(video_path: str) -> dict[float, int]:
+        """Decode actual PTS in display order and map each timestamp to its ordinal."""
+        mapping: dict[float, int] = {}
+        probe_container = av.open(video_path, "r")
+        try:
+            stream = next(s for s in probe_container.streams if s.type == "video")
+            for index, frame in enumerate(probe_container.decode(stream)):
+                if frame.pts is None:
+                    raise RuntimeError("视频帧缺少 PTS，无法建立真实帧映射")
+                timestamp = float(frame.pts * stream.time_base)
+                key = round(timestamp, 9)
+                if key in mapping:
+                    raise RuntimeError("视频帧 PTS 重复，无法建立唯一帧映射")
+                mapping[key] = index
+        finally:
+            probe_container.close()
+        if not mapping:
+            raise RuntimeError("视频不包含可解码帧")
+        return mapping
 
     def fingerprint(self) -> str:
         backend_flag = (
@@ -562,7 +572,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default="openbmb/MiniCPM-V-2_6",
+        default=str(Path(__file__).resolve().parents[2] / "models" / "minicpm-v-4.6"),
         help="模型路径或 HuggingFace 名称",
     )
     return parser

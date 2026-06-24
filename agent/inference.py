@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import math
 import os
 import time
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from typing import Any, Callable, Protocol, runtime_checkable
 from agent.parser import ParseError, ResultParser
 from agent.prompts import SYSTEM_PROMPT
 from agent.sampling import ClipBuildResult
+from agent.schema import SampleAndInferDiagnostics, ValidationErrorInfo
 
 try:
     from openai import OpenAI
@@ -49,8 +51,8 @@ class InferenceResult:
 
     ``preprocessing`` carries the server-side ``preprocessing`` metadata
     (frame table / processor info) when the server adapter is installed.
-    ``None`` means the metadata was absent or invalid; the caller should
-    fall back to the local clip manifest for frame mapping.
+    ``None`` means the required server metadata was absent. The caller must
+    fail closed instead of guessing a frame mapping locally.
     """
 
     ok: bool
@@ -58,6 +60,7 @@ class InferenceResult:
     error: ParseError | None = None
     attempts: int = 1
     preprocessing: dict[str, Any] | None = None
+    diagnostics: SampleAndInferDiagnostics | None = None
 
 
 @runtime_checkable
@@ -160,19 +163,50 @@ def _encode_video_to_data_url(path: str) -> str:
     return f"data:{DEFAULT_MIME_TYPE};base64,{payload}"
 
 
-def _redact_data_url(url: str, max_plain: int = 32) -> str:
+def _redact_data_url(url: str) -> str:
     """Return a log-safe preview of a Base64 data URL.
 
-    Only the first ``max_plain`` characters of the payload are kept; the
-    remainder is replaced with a length marker so that logs never contain
-    the full Base64 media.
+    Any non-empty Base64 payload is removed completely; diagnostics retain
+    only the media prefix and payload length.
     """
     if not url or not url.startswith("data:"):
         return url
     prefix, sep, payload = url.partition(",")
-    if not sep or len(payload) <= max_plain * 2:
+    if not sep or not payload:
         return url
-    return f"{prefix},{payload[:max_plain]}...[REDACTED:{len(payload)} chars]"
+    return f"{prefix},[REDACTED:{len(payload)} chars]"
+
+
+def _redact_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return a deep copy of ``messages`` with Base64 video URLs redacted."""
+    redacted: list[dict[str, Any]] = []
+    for msg in messages:
+        copy: dict[str, Any] = dict(msg)
+        content = copy.get("content")
+        if isinstance(content, list):
+            new_content: list[dict[str, Any]] = []
+            for item in content:
+                new_item: dict[str, Any] = dict(item)
+                if item.get("type") == "video_url":
+                    url = item.get("video_url", {}).get("url", "")
+                    new_item["video_url"] = {"url": _redact_data_url(url)}
+                new_content.append(new_item)
+            copy["content"] = new_content
+        redacted.append(copy)
+    return redacted
+
+
+def _redact_dict_values(obj: Any) -> Any:
+    """Recursively redact Base64 data URLs in string values of a dict/list."""
+    if isinstance(obj, dict):
+        return {k: _redact_dict_values(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_redact_dict_values(v) for v in obj]
+    if isinstance(obj, str):
+        if obj.startswith("data:") and "," in obj:
+            return _redact_data_url(obj)
+        return obj
+    return obj
 
 
 def _extract_preprocessing_from_response(response: Any) -> dict[str, Any] | None:
@@ -224,14 +258,22 @@ def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
     Returns ``None`` when the metadata is valid, or an error-code string
     describing the first violation.
 
-    Checks (in order):
-    - ``meta`` is not ``None``.
-    - ``meta["max_frames"]`` is a positive integer and equals 8 (fatal otherwise).
-    - ``len(meta["frames"]) <= 8`` (fewer frames allowed for short videos).
-    - frame ``index`` values are consecutive and start at 0.
+    The metadata is part of the runtime contract, not optional diagnostics.
     """
     if meta is None:
         return "missing_or_invalid_preprocessing_metadata"
+
+    request_id = meta.get("request_id")
+    if not isinstance(request_id, str) or not request_id.strip():
+        return "missing_or_invalid_request_id"
+
+    processor_version = meta.get("processor_version")
+    if (
+        not isinstance(processor_version, str)
+        or not processor_version.strip()
+        or processor_version.strip().lower() == "unknown"
+    ):
+        return "missing_or_invalid_processor_version"
 
     max_frames = meta.get("max_frames")
     if not isinstance(max_frames, int) or max_frames <= 0:
@@ -239,7 +281,9 @@ def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
     if max_frames != 8:
         return "max_frames_not_8"
 
-    frames = meta.get("frames", [])
+    frames = meta.get("frames")
+    if not isinstance(frames, list) or not frames:
+        return "missing_or_invalid_frames"
     if len(frames) > 8:
         logger.warning(
             "Preprocessing frames count %d exceeds max_frames %d",
@@ -249,18 +293,47 @@ def _validate_preprocessing_meta(meta: dict[str, Any] | None) -> str | None:
 
     # Check monotonic and continuous indices (0, 1, 2, ...).
     for i, entry in enumerate(frames):
+        if not isinstance(entry, dict):
+            return "missing_or_invalid_frames"
         idx = entry.get("index")
-        if not isinstance(idx, int) or idx < 0:
+        if isinstance(idx, bool) or not isinstance(idx, int) or idx < 0:
             logger.warning(
                 "Preprocessing frame[%d] has invalid index: %r", i, idx
             )
             return "non_monotonic_indices"
+
+        timestamp = entry.get("timestamp")
+        if (
+            isinstance(timestamp, bool)
+            or not isinstance(timestamp, (int, float))
+            or not math.isfinite(timestamp)
+        ):
+            return "invalid_frame_timestamp"
+        if i > 0 and timestamp <= frames[i - 1]["timestamp"]:
+            return "non_monotonic_timestamps"
         if idx != i:
             logger.warning(
                 "Preprocessing frame[%d] index %d is not expected %d",
                 i, idx, i,
             )
             return "non_monotonic_indices"
+
+    deployment = meta.get("deployment_manifest")
+    required_deployment = {
+        "model_version",
+        "transformers_version",
+        "llamafactory_version",
+        "base_model_version",
+        "artifact_version",
+        "config_fingerprint",
+        "runtime_device",
+        "runtime_dtype",
+    }
+    if not isinstance(deployment, dict) or any(
+        not isinstance(deployment.get(key), str) or not deployment[key].strip()
+        for key in required_deployment
+    ):
+        return "missing_or_invalid_deployment_manifest"
 
     return None
 
@@ -306,7 +379,7 @@ class LlamaFactoryInferenceClient:
     def infer(
         self, video_input: str | ClipBuildResult, prompt: str
     ) -> InferenceResult:
-        """Call the model and return the parsed JSON output."""
+        """Call the model and return the parsed JSON output plus diagnostics."""
         video_path, manifest = _resolve_video_input(video_input)
 
         if not os.path.exists(video_path):
@@ -320,6 +393,8 @@ class LlamaFactoryInferenceClient:
                 f"Base64 video payload ({len(data_url)} chars) exceeds "
                 f"max_request_size ({self.max_request_size} bytes)"
             )
+
+        base64_payload = data_url.split(",", 1)[1] if "," in data_url else ""
 
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": self.system_prompt},
@@ -346,10 +421,13 @@ class LlamaFactoryInferenceClient:
             len(manifest) if manifest else 0,
         )
 
+        transport_retries = 0
+
         def _call_model(
             current_messages: list[dict[str, Any]],
         ) -> Any:
             """Execute one model-output attempt, with transport retries."""
+            nonlocal transport_retries
             last_error: Exception | None = None
             for attempt in range(self.max_retries + 1):
                 try:
@@ -366,6 +444,7 @@ class LlamaFactoryInferenceClient:
                     last_error = exc
                     if attempt >= self.max_retries or not _is_retryable_error(exc):
                         raise
+                    transport_retries += 1
                     sleep_seconds = DEFAULT_RETRY_BACKOFF ** attempt
                     logger.warning(
                         "Inference transport retryable error on attempt %d: %s. "
@@ -383,6 +462,7 @@ class LlamaFactoryInferenceClient:
 
         # Capture the last raw HTTP response for preprocessing extraction.
         _last_raw_response: list[Any] = [None]
+        _last_assistant_content: list[str | None] = [None]
 
         def _fetch_fn(last_error: ParseError | None) -> str:
             nonlocal messages
@@ -393,12 +473,20 @@ class LlamaFactoryInferenceClient:
                     "object with exactly the five required fields and no Markdown "
                     "fences or surrounding text."
                 )
+                if _last_assistant_content[0] is not None:
+                    messages = messages + [
+                        {"role": "assistant", "content": _last_assistant_content[0]}
+                    ]
                 messages = messages + [{"role": "user", "content": correction}]
             response = _call_model(messages)
             _last_raw_response[0] = response
-            return response.choices[0].message.content or ""
+            content = response.choices[0].message.content or ""
+            _last_assistant_content[0] = content
+            return content
 
+        infer_start = time.perf_counter()
         parse_result = ResultParser.parse_with_retries(_fetch_fn, max_retries=2)
+        infer_elapsed = time.perf_counter() - infer_start
 
         # Extract server-side preprocessing metadata.
         # The raw dict (or None) is propagated to InferenceResult so that
@@ -426,10 +514,75 @@ class LlamaFactoryInferenceClient:
                 preprocessing = raw_pp
             else:
                 logger.warning(
-                    "No preprocessing metadata in inference response. "
-                    "Server-side adapter may not be installed. "
-                    "Falling back to local manifest mapping."
+                    "No preprocessing metadata in inference response; the "
+                    "runtime caller must fail closed."
                 )
+
+        # Build a redacted raw HTTP envelope for diagnostics.
+        raw_response_dump: dict[str, Any] = {}
+        response_id: str | None = None
+        if _last_raw_response[0] is not None:
+            try:
+                raw_response_dump = _last_raw_response[0].model_dump()
+            except Exception:
+                pass
+            try:
+                extra = getattr(_last_raw_response[0], "model_extra", None) or {}
+                raw_response_dump.update(extra)
+            except Exception:
+                pass
+            response_id = raw_response_dump.get("id")
+
+        raw_http_response: dict[str, Any] = {
+            "request": {
+                "model": self.model,
+                "messages": _redact_messages(messages),
+                "temperature": 0.2,
+                "max_tokens": 512,
+                "extra_body": extra_body,
+            },
+            "response": _redact_dict_values(raw_response_dump),
+        }
+
+        # Resolve diagnostics fields from preprocessing or response fallbacks.
+        request_id: str | None = None
+        processor_version: str | None = None
+        max_frames_actual: int | None = None
+        sampled_frames: list[dict[str, Any]] | None = None
+        deployment_manifest: dict[str, Any] | None = None
+        if preprocessing is not None:
+            request_id = preprocessing.get("request_id")
+            processor_version = preprocessing.get("processor_version")
+            max_frames = preprocessing.get("max_frames")
+            if isinstance(max_frames, int) and max_frames > 0:
+                max_frames_actual = max_frames
+            sampled_frames = preprocessing.get("frames")
+            deployment_manifest = preprocessing.get("deployment_manifest")
+        if request_id is None:
+            request_id = response_id
+
+        error_info: ValidationErrorInfo | None = None
+        if parse_result.error is not None:
+            error_info = ValidationErrorInfo(
+                code=parse_result.error.code,
+                message=parse_result.error.message,
+                field=parse_result.error.field,
+            )
+
+        diagnostics = SampleAndInferDiagnostics(
+            request_id=request_id,
+            processor_version=processor_version,
+            max_frames=max_frames_actual,
+            sampled_frames=sampled_frames,
+            deployment_manifest=deployment_manifest,
+            mime_type=DEFAULT_MIME_TYPE,
+            base64_length=len(base64_payload),
+            raw_http_response=raw_http_response,
+            transport_retries=transport_retries,
+            correction_retries=max(0, parse_result.attempts - 1),
+            elapsed_seconds=round(infer_elapsed, 6),
+            error=error_info,
+        )
 
         return InferenceResult(
             ok=parse_result.ok,
@@ -437,6 +590,7 @@ class LlamaFactoryInferenceClient:
             error=parse_result.error,
             attempts=parse_result.attempts,
             preprocessing=preprocessing,
+            diagnostics=diagnostics,
         )
 
 
