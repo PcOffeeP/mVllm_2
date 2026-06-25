@@ -13,6 +13,7 @@ from typing import Any
 from pipeline.preprocessing.adapter import FrameMapping, ProcessorInfo, VideoPreprocessor
 
 import av
+import functools
 
 try:
     import transformers as _transformers_module
@@ -598,6 +599,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         return trimmed_frames, trimmed_indices, trimmed_timestamps
 
     @staticmethod
+    @functools.lru_cache(maxsize=200)
     def _actual_frame_index_map(video_path: str) -> dict[float, int]:
         """Decode actual PTS in display order and map each timestamp to its ordinal."""
         mapping: dict[float, int] = {}

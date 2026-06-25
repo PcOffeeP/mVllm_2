@@ -1133,6 +1133,7 @@ def main():
         all_candidates: list[dict[str, Any]] = []
         for rec in records:
             video_id = rec["video_id"]
+            print(f"  处理视频 {video_id}...")
             split_info = split_mapping.get(video_id, {"split": "unknown", "fold": "unknown"})
             if split_info.get("split") == "test":
                 continue
