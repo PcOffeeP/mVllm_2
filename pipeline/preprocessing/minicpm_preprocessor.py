@@ -378,7 +378,11 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
 
         # 2. 调用真实顶层 processor（失败抛异常，不静默回退）
         try:
-            video_inputs = self._processor.image_processor(images=decoded_frames, return_tensors="pt")  # type: ignore[union-attr]
+            video_inputs = self._processor(
+                text="<image>./</image>" * len(decoded_frames),
+                images=decoded_frames,
+                return_tensors="pt",
+            )
         except Exception as exc:
             raise RuntimeError(
                 f"processor 调用失败: {exc}"
@@ -464,7 +468,11 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         individual_pvs: list[Any] = []
         for frame in decoded_frames:
             try:
-                ind_result = self._processor.image_processor(images=[frame], return_tensors="pt")  # type: ignore[union-attr]
+                ind_result = self._processor(
+                    text="<image>./</image>",
+                    images=[frame],
+                    return_tensors="pt",
+                )
                 ind_pv = ind_result.get("pixel_values_videos")
                 if ind_pv is None:
                     ind_pv = ind_result.get("pixel_values")
