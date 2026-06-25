@@ -198,13 +198,17 @@ def _collect_environment() -> dict[str, Any]:
                     name,
                 )
                 env[name] = None
-        except FileNotFoundError:
-            env[name] = None
-        except PermissionError:
-            env[name] = None
-        except subprocess.CalledProcessError as exc:
+        except FileNotFoundError as exc:
             logger.warning(
-                "Command %s failed: %s; %s will be unavailable.",
+                "Command %s not found: %s; %s will be unavailable.",
+                cmd[0],
+                exc,
+                name,
+            )
+            env[name] = None
+        except PermissionError as exc:
+            logger.warning(
+                "Command %s permission denied: %s; %s will be unavailable.",
                 cmd[0],
                 exc,
                 name,

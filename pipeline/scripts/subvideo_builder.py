@@ -1160,7 +1160,8 @@ def main():
     args.frame_dir.mkdir(parents=True, exist_ok=True)
     args.output_meta.parent.mkdir(parents=True, exist_ok=True)
 
-    assert args.seed is not None, "--seed must be set for reproducibility"
+    if args.seed is None:
+        raise ValueError("--seed must be set for reproducibility")
 
     exclusion_stats: dict[str, Any] = {
         "total_exclusions": len(EXCLUSIONS),
