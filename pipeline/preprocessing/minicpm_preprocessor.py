@@ -51,6 +51,20 @@ def _hash_model_files(model_path_or_name: str) -> dict[str, str | None]:
     return hashes
 
 
+def _sanitize_model_path(model_path: str) -> str:
+    """如果模型路径的目录名包含点号（会导致 trust_remote_code 模块导入失败），
+    自动创建无点号的符号链接并返回新路径。如果链接已存在则复用。"""
+    path = Path(model_path).resolve()
+    dir_name = path.name
+    if "." in dir_name or "-" in dir_name:
+        safe_name = dir_name.replace(".", "_").replace("-", "_")
+        safe_path = path.parent / safe_name
+        if not safe_path.exists():
+            safe_path.symlink_to(path, target_is_directory=True)
+        return str(safe_path)
+    return str(model_path)
+
+
 def configure_processor_max_frames(processor: Any, max_frames: int = 8) -> Any:
     """Set and verify the real MiniCPM-V processor frame limit.
 
@@ -186,8 +200,9 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         """实际加载 ``transformers.AutoProcessor`` 并配置 max_frames。"""
         from transformers import AutoProcessor
 
+        model_path = _sanitize_model_path(self._model_path_or_name)
         processor = AutoProcessor.from_pretrained(
-            self._model_path_or_name,
+            model_path,
             trust_remote_code=True,
             local_files_only=True,
         )

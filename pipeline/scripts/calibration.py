@@ -20,6 +20,20 @@ from pipeline.llamafactory_contract import configure_loaded_processor
 from agent.sampling import FfmpegVideoClipBuilder, _probe_video
 
 
+def _sanitize_model_path(model_path: str) -> str:
+    """如果模型路径的目录名包含点号（会导致 trust_remote_code 模块导入失败），
+    自动创建无点号的符号链接并返回新路径。如果链接已存在则复用。"""
+    path = Path(model_path).resolve()
+    dir_name = path.name
+    if "." in dir_name or "-" in dir_name:
+        safe_name = dir_name.replace(".", "_").replace("-", "_")
+        safe_path = path.parent / safe_name
+        if not safe_path.exists():
+            safe_path.symlink_to(path, target_is_directory=True)
+        return str(safe_path)
+    return str(model_path)
+
+
 def _load_video_meta(path: Path) -> dict[str, dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     return {rec["video_id"]: rec for rec in data}
@@ -163,7 +177,8 @@ def _try_load_llama_factory_batch(
     except ImportError as exc:
         raise RuntimeError("transformers is required for real calibration") from exc
 
-    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
+    model_path = _sanitize_model_path(model_name)
+    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
     capture_wrapper = configure_loaded_processor(processor, capture=True)
     assert capture_wrapper is not None
 

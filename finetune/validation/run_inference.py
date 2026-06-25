@@ -41,6 +41,20 @@ from agent.parser import ResultParser
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_model_path(model_path: str) -> str:
+    """如果模型路径的目录名包含点号（会导致 trust_remote_code 模块导入失败），
+    自动创建无点号的符号链接并返回新路径。如果链接已存在则复用。"""
+    path = Path(model_path).resolve()
+    dir_name = path.name
+    if "." in dir_name or "-" in dir_name:
+        safe_name = dir_name.replace(".", "_").replace("-", "_")
+        safe_path = path.parent / safe_name
+        if not safe_path.exists():
+            safe_path.symlink_to(path, target_is_directory=True)
+        return str(safe_path)
+    return str(model_path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run MiniCPM inference for one task and one fold.")
     parser.add_argument("--task", required=True, choices=("time", "type", "joint"))
@@ -57,11 +71,12 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     import torch
     from transformers import AutoModelForImageTextToText, AutoProcessor
 
-    processor = AutoProcessor.from_pretrained(model_dir, trust_remote_code=True, local_files_only=True)
+    model_path = _sanitize_model_path(model_dir)
+    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
     configure_processor_max_frames(processor)
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"
     model = AutoModelForImageTextToText.from_pretrained(
-        model_dir,
+        model_path,
         trust_remote_code=True,
         torch_dtype=torch_dtype,
         device_map="auto" if torch.cuda.is_available() else None,
