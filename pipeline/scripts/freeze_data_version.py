@@ -9,12 +9,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import logging
 import os
 import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
@@ -169,6 +172,97 @@ def _collect_git_commit(project_root: Path = _PROJECT_ROOT) -> dict[str, Any]:
         return {"commit": None, "error": str(exc)}
 
 
+def _collect_environment() -> dict[str, Any]:
+    """收集关键环境/依赖版本信息，用于可复现性校验。"""
+    env: dict[str, Any] = {}
+
+    for name, cmd in (
+        ("ffmpeg_version", ["ffmpeg", "-version"]),
+        ("ffprobe_version", ["ffprobe", "-version"]),
+    ):
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+            if result.returncode == 0 and result.stdout:
+                env[name] = result.stdout.splitlines()[0].strip()
+            else:
+                logger.warning(
+                    "Command %s returned non-zero exit code %s; %s will be unavailable.",
+                    cmd[0],
+                    result.returncode,
+                    name,
+                )
+                env[name] = None
+        except FileNotFoundError:
+            env[name] = None
+        except PermissionError:
+            env[name] = None
+        except subprocess.CalledProcessError as exc:
+            logger.warning(
+                "Command %s failed: %s; %s will be unavailable.",
+                cmd[0],
+                exc,
+                name,
+            )
+            env[name] = None
+        except Exception as exc:
+            logger.warning(
+                "Unexpected error collecting %s: %s",
+                name,
+                exc,
+            )
+            env[name] = None
+
+    env["python_version"] = sys.version
+
+    try:
+        import transformers
+
+        env["transformers_version"] = transformers.__version__
+    except Exception as exc:
+        logger.warning(
+            "Failed to import transformers: %s; transformers_version will be unavailable.",
+            exc,
+        )
+        env["transformers_version"] = None
+
+    try:
+        import torch
+
+        env["torch_version"] = torch.__version__
+    except Exception as exc:
+        logger.warning(
+            "Failed to import torch: %s; torch_version will be unavailable.",
+            exc,
+        )
+        env["torch_version"] = None
+
+    try:
+        import av
+
+        env["av_version"] = av.__version__
+    except Exception as exc:
+        logger.warning(
+            "Failed to import av: %s; av_version will be unavailable.",
+            exc,
+        )
+        env["av_version"] = None
+
+    missing = [key for key, value in env.items() if value is None]
+    if missing:
+        logger.warning(
+            "Environment collection missing critical fields: %s",
+            ", ".join(missing),
+        )
+
+    return env
+
+
 def _is_git_dirty(project_root: Path = _PROJECT_ROOT) -> bool | None:
     try:
         result = subprocess.run(
@@ -230,6 +324,7 @@ def run_freeze(
         "version": "2.0.0",
         "code": _collect_git_commit(project_root),
         "config": _collect_config_hashes(config_files, project_root),
+        "environment": _collect_environment(),
         "processor": _collect_processor_fingerprints(merged_dir, subvideos_meta_path),
         "input_video_manifest": _collect_input_video_sha256(video_meta_path),
         "split_manifest": _collect_split_manifest_sha256(splits_dir),

@@ -1160,6 +1160,8 @@ def main():
     args.frame_dir.mkdir(parents=True, exist_ok=True)
     args.output_meta.parent.mkdir(parents=True, exist_ok=True)
 
+    assert args.seed is not None, "--seed must be set for reproducibility"
+
     exclusion_stats: dict[str, Any] = {
         "total_exclusions": len(EXCLUSIONS),
         "reason_distribution": {},
@@ -1179,6 +1181,8 @@ def main():
         "candidates": all_candidates,
         "exclusions": EXCLUSIONS,
         "exclusion_stats": exclusion_stats,
+        "preprocessor_fingerprint": preprocessor.fingerprint(),
+        "seed": args.seed,
     }
     with open(args.output_meta, "w", encoding="utf-8") as f:
         json.dump(output_payload, f, ensure_ascii=False, indent=2, allow_nan=False)

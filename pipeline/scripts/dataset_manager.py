@@ -449,11 +449,15 @@ def stratified_split(
     seed: int = 42,
 ) -> tuple[dict[str, list[str]], dict[str, Any]]:
     """
-    确定性视频级划分：
+    确定性视频级划分（已固定 random seed）：
     1. 稀有断裂类别（<=2 视频）强制加入每个 fold 的训练集，不进验证/测试。
     2. 剩余视频按约 test_ratio 划出冻结测试集。
     3. 剩余视频做 n_folds 分层划分；每个 fold 训练集 = 其他 folds + 稀有池。
     同一原视频只会出现在一个集合中。
+
+    使用 Python 标准 ``random`` 模块并在函数开头调用 ``random.seed(seed)``，
+    保证给定相同的 ``records``、``test_ratio``、``n_folds``、``seed`` 时输出
+    完全一致。决策日志中记录所用 seed。
     返回 (split_map, decision_log)。
     """
     import random
@@ -744,6 +748,7 @@ def main():
             "video_ids": ids,
             "count": len(ids),
             "method": "stratified_type_location_with_rare_pool_v2",
+            "seed": args.seed,
             "test_ratio": args.test_ratio if "test" in name else None,
             "fold": int(name.split("_")[1]) if name.startswith("fold_") else None,
             "rare_pool_included": name.startswith("fold_") and name.endswith("_train"),

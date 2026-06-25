@@ -28,6 +28,29 @@ except Exception:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
+def _hash_model_files(model_path_or_name: str) -> dict[str, str | None]:
+    """对模型目录中的关键配置文件计算内容 hash，区分不同权重/版本。
+
+    若 ``model_path_or_name`` 指向本地目录，则读取 ``config.json`` 和
+    ``preprocessor_config.json``，分别计算 SHA-256 并取前 16 位。
+    不存在的文件对应值为 ``None``；远程模型名或文件路径不存在时全部返回
+    ``None``，此时 fingerprint 退化为仅使用路径字符串。
+    """
+    model_path = Path(model_path_or_name)
+    hashes: dict[str, str | None] = {"config": None, "preprocessor": None}
+    if not model_path.is_dir():
+        return hashes
+
+    for key, filename in (
+        ("config", "config.json"),
+        ("preprocessor", "preprocessor_config.json"),
+    ):
+        candidate = model_path / filename
+        if candidate.is_file():
+            hashes[key] = hashlib.sha256(candidate.read_bytes()).hexdigest()[:16]
+    return hashes
+
+
 def configure_processor_max_frames(processor: Any, max_frames: int = 8) -> Any:
     """Set and verify the real MiniCPM video-processor frame limit."""
     if max_frames != 8:
@@ -541,6 +564,20 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         return mapping
 
     def fingerprint(self) -> str:
+        """返回包含模型权重/版本可验证信息的配置指纹。
+
+        指纹包含：处理器名称、模型路径/名称、关键模型配置文件
+        （``config.json`` / ``preprocessor_config.json``）的内容 hash、
+        max_frames 以及 backend 加载状态。本地模型目录下配置文件存在时，
+        取其 SHA-256 前 16 位以 ``cfg=`` / ``pre=`` 形式拼入；远程模型名
+        或非目录路径不存在时退化为仅使用路径字符串。
+
+        Raises:
+            ValueError: 当 ``model_path_or_name`` 指向本地目录且
+                ``config.json`` 与 ``preprocessor_config.json`` 均不存在时，
+                抛出明确错误说明缺少的文件，避免在配置文件缺失时生成
+                不可区分的退化指纹。
+        """
         backend_flag = (
             "transformers-loaded"
             if self._processor_loaded
@@ -548,11 +585,27 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             if _transformers_module is not None
             else "no-transformers"
         )
-        base = (
-            f"{self.NAME}:{self._model_path_or_name}:"
-            f"max_frames={self._max_frames}:{backend_flag}"
-        )
-        return hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]
+        parts = [f"{self.NAME}:{self._model_path_or_name}"]
+        file_hashes = _hash_model_files(self._model_path_or_name)
+
+        model_path = Path(self._model_path_or_name)
+        if (
+            model_path.is_dir()
+            and file_hashes["config"] is None
+            and file_hashes["preprocessor"] is None
+        ):
+            raise ValueError(
+                f"模型目录 {model_path} 缺少关键配置文件: "
+                "config.json 和 preprocessor_config.json"
+            )
+
+        if file_hashes["config"]:
+            parts.append(f"cfg={file_hashes['config']}")
+        if file_hashes["preprocessor"]:
+            parts.append(f"pre={file_hashes['preprocessor']}")
+        parts.append(f"max_frames={self._max_frames}")
+        parts.append(f"backend={backend_flag}")
+        return ":".join(parts)
 
 
 # ---------------------------------------------------------------------------

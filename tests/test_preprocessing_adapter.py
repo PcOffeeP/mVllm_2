@@ -234,6 +234,15 @@ def test_minicpm_fingerprint_is_stable():
     assert p1.fingerprint() == p2.fingerprint()
 
 
+def test_minicpm_fingerprint_missing_config_files_raises(tmp_path: Path):
+    """本地模型目录缺少 config.json 和 preprocessor_config.json 时明确失败。"""
+    empty_model_dir = tmp_path / "empty_model"
+    empty_model_dir.mkdir()
+    preprocessor = MiniCPMVideoPreprocessor(str(empty_model_dir))
+    with pytest.raises(ValueError, match="config.json"):
+        preprocessor.fingerprint()
+
+
 # ---------------------------------------------------------------------------
 # minicpm processor 集成路径（mock）
 # ---------------------------------------------------------------------------
