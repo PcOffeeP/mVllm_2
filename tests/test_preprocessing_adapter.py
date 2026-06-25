@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -16,6 +18,7 @@ from pipeline.preprocessing import (
     ProcessorInfo,
     VideoPreprocessor,
 )
+from pipeline.preprocessing.minicpm_preprocessor import configure_processor_max_frames
 
 
 def _make_test_video(path: Path, duration: float, fps: float = 30.0) -> None:
@@ -451,6 +454,107 @@ def test_minicpm_processor_get_info_fallback_when_not_loaded():
     info = preprocessor.get_info()
     assert info.version == "openbmb/MiniCPM-V-2_6"
     assert info.backend in ("transformers-not-installed", "transformers-unavailable")
+
+
+# ---------------------------------------------------------------------------
+# configure_processor_max_frames 单元测试
+# ---------------------------------------------------------------------------
+
+
+def test_configure_processor_max_frames_45_style():
+    """4.5 风格 processor：属性挂在 image_processor 上，返回顶层 processor。"""
+    image_processor = SimpleNamespace(max_frames=4)
+    processor = SimpleNamespace(image_processor=image_processor)
+
+    returned = configure_processor_max_frames(processor, max_frames=8)
+
+    assert returned is processor
+    assert image_processor.max_frames == 8
+
+
+def test_configure_processor_max_frames_46_style():
+    """4.6 风格 processor：属性挂在 video_processor 子组件上，返回子组件。"""
+    video_processor = SimpleNamespace(max_frames=32)
+    processor = SimpleNamespace(video_processor=video_processor)
+
+    returned = configure_processor_max_frames(processor, max_frames=8)
+
+    assert returned is video_processor
+    assert video_processor.max_frames == 8
+
+
+def test_configure_processor_max_frames_set_failure():
+    """属性设置不生效时应抛出 RuntimeError。"""
+    class _ReadOnlyMaxFrames:
+        max_frames = 4
+
+        def __setattr__(self, name, value):
+            if name == "max_frames":
+                return
+            super().__setattr__(name, value)
+
+    processor = SimpleNamespace(image_processor=_ReadOnlyMaxFrames())
+    with pytest.raises(RuntimeError, match="failed to set actual processor"):
+        configure_processor_max_frames(processor, max_frames=8)
+
+
+def test_configure_processor_max_frames_not_found():
+    """找不到任何 max_frames/video_maxlen 参数时应抛出 RuntimeError。"""
+    processor = SimpleNamespace(foo="bar")
+    with pytest.raises(RuntimeError, match="cannot locate MiniCPM actual max-frame parameter"):
+        configure_processor_max_frames(processor, max_frames=8)
+
+
+# ---------------------------------------------------------------------------
+# 4.6 风格 processor 兼容路径验证
+# ---------------------------------------------------------------------------
+
+
+def test_minicpm_46_style_healthcheck_and_reference(tmp_path: Path, monkeypatch):
+    """4.6 风格 processor 返回 5D pixel_values_videos，healthcheck 应通过且内部引用正确。"""
+    from unittest.mock import patch
+
+    monkeypatch.setattr(
+        "pipeline.preprocessing.minicpm_preprocessor._processor_environment_unsupported",
+        lambda: False,
+    )
+
+    model_dir = tmp_path / "minicpm-4.6-mock"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text("{}")
+    (model_dir / "preprocessor_config.json").write_text("{}")
+
+    video_processor = SimpleNamespace(max_frames=32)
+    top_processor = MagicMock()
+    top_processor.video_processor = video_processor
+    pixel_values = MagicMock()
+    pixel_values.shape = (1, 5, 3, 224, 224)
+    top_processor.return_value = {"pixel_values_videos": pixel_values}
+
+    preprocessor = MiniCPMVideoPreprocessor(str(model_dir), processor=top_processor)
+
+    # configure_processor_max_frames 应返回 video_processor 子组件
+    assert preprocessor._video_processor is video_processor
+    assert video_processor.max_frames == 8
+
+    fake_frames = [MagicMock() for _ in range(5)]
+    fake_indices = [0, 1, 2, 3, 4]
+    fake_timestamps = [0.0, 0.1, 0.2, 0.3, 0.4]
+
+    with patch.object(
+        preprocessor,
+        "_decode_frame_range",
+        return_value=(fake_frames, fake_indices, fake_timestamps),
+    ):
+        ok = preprocessor.healthcheck()
+
+    assert ok is True
+    info = preprocessor.get_info()
+    assert isinstance(info, ProcessorInfo)
+    assert info.name == "minicpm-v-4.5"
+    assert info.max_frames == 8
+    assert info.backend == "transformers"
+    assert info.version == type(top_processor).__name__
 
 
 if __name__ == "__main__":
