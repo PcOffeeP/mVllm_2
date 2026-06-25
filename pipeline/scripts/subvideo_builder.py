@@ -1027,6 +1027,7 @@ def _generate_media_for_candidate(
     rec: dict[str, Any],
     frame_dir: Path,
     extract_frames: bool = False,
+    preprocessor: VideoPreprocessor | None = None,
 ) -> dict[str, Any]:
     """根据已生成的候选元数据，仅生成 mp4/帧图媒体文件。"""
     source_path = _source_video_path(rec)
@@ -1048,6 +1049,20 @@ def _generate_media_for_candidate(
             sub["frame_paths"] = [
                 str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files
             ]
+
+    # 补全 actual_frame_mapping（阶段 1 跳过了 processor 调用）
+    if preprocessor is not None and not sub.get("actual_frame_mapping"):
+        try:
+            sampled = _preprocessor_sample(
+                preprocessor, source_path, sub["start_time"], sub["end_time"]
+            )
+            sub["actual_frame_mapping"] = sampled
+            sub["sampled_frames"] = sampled
+        except Exception as exc:
+            print(f"   ⚠️ 帧映射采样失败: {exc}")
+            sub["actual_frame_mapping"] = []
+            sub["sampled_frames"] = []
+
     return sub
 
 
@@ -1177,7 +1192,9 @@ def main():
             end = cand.get("end_time", 0)
             print(f"  [{completed}/{total}] {cand['subvideo_id']} ({crop_type}, {start:.1f}s→{end:.1f}s)...")
             sub = _generate_media_for_candidate(
-                cand, rec, args.frame_dir, extract_frames=args.extract_frames
+                cand, rec, args.frame_dir,
+                extract_frames=args.extract_frames,
+                preprocessor=preprocessor,
             )
             generated_by_id[sub["subvideo_id"]] = sub
 
