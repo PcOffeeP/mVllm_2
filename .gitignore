@@ -25,7 +25,6 @@ finetune/validation/results/
 
 # dependency lock files (not cross-platform)
 uv.lock
-pyproject.toml
 
 # cache 文件
 .cache/
