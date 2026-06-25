@@ -88,56 +88,56 @@ pip install -e ".[dev]"
 
 ```bash
 # 1. （可选）清空旧产物
-PYTHONPATH=. python3 scripts/clear_data_outputs.py
+python3 -m scripts.clear_data_outputs
 ```
 
 清理 `data/03_subvideos/`、`data/04_frames/`、`data/05_splits/`、`data/06_merged/`、`data/07_metadata/`、`data/08_runtime/` 等目录中的历史产物，避免旧数据污染新版本。`data/01_videos/` 与 `data/02_annotations/` 受保护，不会被清空。
 
 ```bash
 # 2. 划分数据集与生成元数据
-PYTHONPATH=. python3 pipeline/scripts/dataset_manager.py
+python3 -m pipeline.scripts.dataset_manager
 ```
 
 读取 `data/02_annotations/` 中的 CSV 与映射，生成 `data/05_splits/` 下的 fold/test 划分，以及 `data/07_metadata/video_meta.json` 等视频级元数据。当前 macOS 环境此步骤可成功运行。
 
 ```bash
 # 3. 生成子视频与帧图缓存
-PYTHONPATH=. python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.5
+python3 -m pipeline.scripts.subvideo_builder --model models/minicpm-v-4.5
 ```
 
 基于划分与 `video_meta.json` 生成 `data/03_subvideos/` 子视频、`data/04_frames/` 帧图缓存，以及 `data/07_metadata/subvideos_meta.json` 子视频元数据。该步骤调用真实 MiniCPM 视频处理器生成最多 8 帧映射。当前 macOS/Darwin 环境会失败退出，因为 `pipeline/preprocessing/minicpm_preprocessor.py` 在该平台禁用了真实处理器，且系统 Python 缺少 `torch`；需在 Linux 训练机上运行。
 
 ```bash
 # 4. 构建训练样本
-PYTHONPATH=. python3 pipeline/scripts/training_sample_builder.py
+python3 -m pipeline.scripts.training_sample_builder
 ```
 
 将子视频元数据转换为 LLaMA-Factory ShareGPT 格式，输出到 `data/06_merged/`。当前 macOS 环境阻塞，依赖步骤 3 产物。
 
 ```bash
 # 5. 越界校验
-PYTHONPATH=. python3 scripts/validate_no_oob.py
+python3 -m scripts.validate_no_oob
 ```
 
 扫描 `data/06_merged/` 与 `data/07_metadata/`，校验 `fracture_between` 与 `start_frame/end_frame` 一致性。不产生新产物。当前 macOS 环境缺少步骤 3 产物时，`validate_no_oob.py` 会输出 `SKIP` 并以退出码 0 正常退出，无法执行严格 OOB 校验。
 
 ```bash
 # 6. 质量检查
-PYTHONPATH=. python3 pipeline/scripts/quality_check.py
+python3 -m pipeline.scripts.quality_check
 ```
 
 对 `data/06_merged/` 执行强制检查，输出 `data/07_metadata/quality_check_report.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
 
 ```bash
 # 7. 冻结数据版本
-PYTHONPATH=. python3 pipeline/scripts/freeze_data_version.py
+python3 -m pipeline.scripts.freeze_data_version
 ```
 
 收集 git commit、配置哈希、处理器指纹、输入/划分/样本清单哈希与统计报告，输出 `data/07_metadata/data_version_lock.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
 
 ```bash
 # 8. （可选）校准
-PYTHONPATH=. python3 pipeline/scripts/calibration.py
+python3 -m pipeline.scripts.calibration
 ```
 
 运行可选校准，生成 `data/07_metadata/calibration_report.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
@@ -166,16 +166,16 @@ PYTHONPATH=. python3 pipeline/scripts/calibration.py
 
 ```bash
 # 读取 CSV 与原始视频，生成 video_meta.json 与新 video-level 划分
-python3 pipeline/scripts/dataset_manager.py
+python3 -m pipeline.scripts.dataset_manager
 
 # 基于划分与 video_meta 生成子视频、帧图缓存和 subvideos_meta.json
-python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.5
+python3 -m pipeline.scripts.subvideo_builder --model models/minicpm-v-4.5
 
 # 将子视频元数据转换为 LLaMA-Factory ShareGPT JSON
-python3 pipeline/scripts/training_sample_builder.py
+python3 -m pipeline.scripts.training_sample_builder
 
 # 校验 fracture_between 与 start_frame/end_frame 一致性
-python3 scripts/validate_no_oob.py
+python3 -m scripts.validate_no_oob
 ```
 
 `subvideo_builder.py` 支持快速模式，仅更新已有子视频元数据而不重新编码：

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tensileagent"
+version = "0.1.0"
+description = "Material tensile fracture behavior video understanding with iterative agent and frame-interval fine-tuning."
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.30",
+    "pyyaml>=6.0",
+    "opencv-python>=4.8",
+    "openai>=1.0",
+    "pydantic>=2.0",
+    "requests>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4.0",
+]
+minicpm = [
+    "transformers>=4.40",
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "av>=10.0.0",
+    "opencv-python>=4.8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "agent",
+    "ui",
+]
+only-include = [
+    "pipeline/",
+]
