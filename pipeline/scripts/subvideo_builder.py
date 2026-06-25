@@ -432,25 +432,28 @@ def build_focus_subvideos(
             end_time = end_frame / fps
 
             if preprocessor is not None:
-                try:
-                    sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
-                except Exception as exc:
-                    EXCLUSIONS.append(
-                        {
-                            "subvideo_id": f"{video_id}_focus_{window}s_{int(ratio * 100):02d}pct",
-                            "source_video": video_id,
-                            "reason": f"预处理器采样失败: {exc}",
-                            "event_frame": event_frame,
-                            "window": window,
-                            "ratio": ratio,
-                        }
-                    )
-                    continue
+                if generate_media:
+                    try:
+                        sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
+                    except Exception as exc:
+                        EXCLUSIONS.append(
+                            {
+                                "subvideo_id": f"{video_id}_focus_{window}s_{int(ratio * 100):02d}pct",
+                                "source_video": video_id,
+                                "reason": f"预处理器采样失败: {exc}",
+                                "event_frame": event_frame,
+                                "window": window,
+                                "ratio": ratio,
+                            }
+                        )
+                        continue
+                else:
+                    sampled = []
             else:
                 raise RuntimeError("正式数据构建必须提供真实视频预处理器")
             fracture_between = compute_fracture_between(sampled, event_frame)
 
-            if fracture_between is None and preprocessor is not None:
+            if fracture_between is None and preprocessor is not None and generate_media:
                 adjusted = _try_adjust_window_with_preprocessor(
                     preprocessor, source_path, event_frame, start_time, end_time, duration
                 )
@@ -460,7 +463,7 @@ def build_focus_subvideos(
                     end_frame = clamp(round(end_time * fps), 0, total_frames - 1)
                     fracture_between = compute_fracture_between(sampled, event_frame)
 
-            if fracture_between is None:
+            if generate_media and fracture_between is None:
                 EXCLUSIONS.append(
                     {
                         "subvideo_id": f"{video_id}_focus_{window}s_{int(ratio * 100):02d}pct",
@@ -542,18 +545,21 @@ def _build_clip_candidate(
     info = _processor_info(preprocessor)
 
     if preprocessor is not None:
-        try:
-            sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
-        except Exception as exc:
-            EXCLUSIONS.append(
-                {
-                    "subvideo_id": subvideo_id,
-                    "source_video": video_id,
-                    "reason": f"预处理器采样失败: {exc}",
-                    "crop_type": crop_type,
-                }
-            )
-            return None
+        if generate_media:
+            try:
+                sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
+            except Exception as exc:
+                EXCLUSIONS.append(
+                    {
+                        "subvideo_id": subvideo_id,
+                        "source_video": video_id,
+                        "reason": f"预处理器采样失败: {exc}",
+                        "crop_type": crop_type,
+                    }
+                )
+                return None
+        else:
+            sampled = []
     else:
         raise RuntimeError("正式数据构建必须提供真实视频预处理器")
 
@@ -798,17 +804,20 @@ def build_full_subvideo(
 
     if fps is not None and total_frames is not None and end_time is not None:
         if preprocessor is not None:
-            try:
-                sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
-            except Exception as exc:
-                EXCLUSIONS.append(
-                    {
-                        "subvideo_id": subvideo_id,
-                        "source_video": video_id,
-                        "reason": f"预处理器采样失败: {exc}",
-                    }
-                )
-                return None
+            if generate_media:
+                try:
+                    sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
+                except Exception as exc:
+                    EXCLUSIONS.append(
+                        {
+                            "subvideo_id": subvideo_id,
+                            "source_video": video_id,
+                            "reason": f"预处理器采样失败: {exc}",
+                        }
+                    )
+                    return None
+            else:
+                sampled = []
         else:
             raise RuntimeError("正式数据构建必须提供真实视频预处理器")
         if extract_frames and generate_media:
@@ -819,7 +828,7 @@ def build_full_subvideo(
     event_frame = rec["event_frame_original"]
     if fracture_between is None and has_fracture_canonical is True and rec_type in FRACTURE_TYPES:
         fracture_between = compute_fracture_between(sampled, event_frame)
-        if fracture_between is None and preprocessor is not None:
+        if fracture_between is None and preprocessor is not None and generate_media:
             adjusted = _try_adjust_window_with_preprocessor(
                 preprocessor, source_path, event_frame, start_time, end_time, duration
             )
@@ -829,7 +838,7 @@ def build_full_subvideo(
                     start_frame = clamp(round(start_time * fps), 0, total_frames - 1)
                     end_frame = clamp(round(end_time * fps), 0, total_frames - 1)
                 fracture_between = compute_fracture_between(sampled, event_frame)
-        if fracture_between is None:
+        if generate_media and fracture_between is None:
             EXCLUSIONS.append(
                 {
                     "subvideo_id": subvideo_id,
