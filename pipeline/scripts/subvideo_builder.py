@@ -283,6 +283,56 @@ def _processor_info(preprocessor: VideoPreprocessor | None) -> dict[str, Any] | 
     }
 
 
+def _build_frame_mapping_pyav(
+    video_path: Path,
+    start_time: float,
+    end_time: float,
+) -> list[dict[str, Any]]:
+    """纯 PyAV 构建帧映射，无需 MiniCPM processor。"""
+    import av
+
+    # 建立 PTS → 帧号 映射
+    container = av.open(str(video_path), "r")
+    stream = next(s for s in container.streams if s.type == "video")
+    pts_to_frame: dict[float, int] = {}
+    for idx, frame in enumerate(container.decode(stream)):
+        if frame.pts is None:
+            continue
+        ts = round(float(frame.pts * stream.time_base), 9)
+        if ts not in pts_to_frame:
+            pts_to_frame[ts] = idx
+    container.close()
+
+    # 解码目标区间
+    container = av.open(str(video_path), "r")
+    stream = next(s for s in container.streams if s.type == "video")
+    time_base = float(stream.time_base)
+    seek_pts = int(max(0, start_time - 0.5) / time_base)
+    end_pts = int(end_time / time_base)
+    container.seek(seek_pts, stream=stream)
+
+    result: list[dict[str, Any]] = []
+    input_idx = 0
+    for packet in container.demux(stream):
+        for frame in packet.decode():
+            if frame.pts is None:
+                continue
+            if frame.pts > end_pts:
+                break
+            ts = float(frame.pts * time_base)
+            if start_time <= ts < end_time:
+                original = pts_to_frame.get(round(ts, 9))
+                if original is not None:
+                    result.append({
+                        "input_index": input_idx,
+                        "original_frame": original,
+                        "timestamp": round(ts, 4),
+                    })
+                    input_idx += 1
+    container.close()
+    return result
+
+
 def _preprocessor_sample(
     preprocessor: VideoPreprocessor | None,
     video_path: Path,
@@ -292,15 +342,19 @@ def _preprocessor_sample(
     """调用预处理器 sample 并转换为可序列化的帧映射字典列表。"""
     if preprocessor is None:
         return []
-    mappings = preprocessor.sample(str(video_path), float(start_time), float(end_time))
-    return [
-        {
-            "input_index": m.input_index,
-            "original_frame": m.original_frame,
-            "timestamp": round(m.timestamp, 4),
-        }
-        for m in mappings
-    ]
+    try:
+        mappings = preprocessor.sample(str(video_path), float(start_time), float(end_time))
+        return [
+            {
+                "input_index": m.input_index,
+                "original_frame": m.original_frame,
+                "timestamp": round(m.timestamp, 4),
+            }
+            for m in mappings
+        ]
+    except Exception:
+        # 回退：纯 PyAV 帧映射（processor 失败时无需停摆）
+        return _build_frame_mapping_pyav(video_path, start_time, end_time)
 
 
 def _try_adjust_window_with_preprocessor(
