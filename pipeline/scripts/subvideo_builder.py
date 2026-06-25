@@ -1074,6 +1074,11 @@ def main():
         action="store_true",
         help="仅更新已有子视频元数据，避免重新编码/抽帧 mp4",
     )
+    parser.add_argument(
+        "--skip-healthcheck",
+        action="store_true",
+        help="跳过预处理器健康检查（处理器加载成功后直接开始构建子视频）",
+    )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -1088,9 +1093,12 @@ def main():
     VIDEO_MAXLEN = 8
 
     preprocessor = _create_preprocessor(args.preprocessor, VIDEO_MAXLEN, args.model)
-    if not preprocessor.healthcheck():
-        info = preprocessor.get_info()
-        raise RuntimeError(f"预处理器健康检查失败: {info.name} ({info.backend})")
+    if not args.skip_healthcheck:
+        if not preprocessor.healthcheck():
+            info = preprocessor.get_info()
+            raise RuntimeError(f"预处理器健康检查失败: {info.name} ({info.backend})")
+    else:
+        print("跳过预处理器健康检查")
     print(f"使用预处理器: {preprocessor.get_info().name}, fingerprint={preprocessor.fingerprint()}")
 
     if args.fast and args.output_meta.exists():
