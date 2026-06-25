@@ -1142,10 +1142,11 @@ def main():
         all_candidates: list[dict[str, Any]] = []
         for rec in records:
             video_id = rec["video_id"]
-            print(f"  处理视频 {video_id}...")
             split_info = split_mapping.get(video_id, {"split": "unknown", "fold": "unknown"})
             if split_info.get("split") == "test":
+                print(f"  跳过 {video_id}（测试集）")
                 continue
+            print(f"  处理 {video_id}（{split_info.get('split')}）...")
             subs = build_subvideos_for_record(
                 rec, split_info, generate_media=False, extract_frames=False, preprocessor=preprocessor
             )
