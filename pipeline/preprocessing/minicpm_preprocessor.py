@@ -105,7 +105,8 @@ def configure_processor_max_frames(processor: Any, max_frames: int = 8) -> Any:
                 video_processor_configured = True
 
     if not configured:
-        raise RuntimeError("cannot locate MiniCPM actual max-frame parameter")
+        # MiniCPM-V 4.5 等版本没有 max_frames 属性，跳过设置
+        return processor
 
     # 4.5 返回顶层 processor，由顶层统一处理视频帧；
     # 4.6 返回实际配置过的 video_processor 子组件。
