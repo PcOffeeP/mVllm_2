@@ -1160,13 +1160,22 @@ def main():
 
         print("阶段 3：生成选中子视频媒体...")
         selected_ids = {c["subvideo_id"] for c in all_candidates if c.get("selected_splits")}
+        total = len(selected_ids)
+        print(f"  计划生成 {total} 个选中子视频")
+
         generated_by_id: dict[str, dict[str, Any]] = {}
+        completed = 0
         for cand in all_candidates:
             if cand["subvideo_id"] not in selected_ids:
                 continue
             rec = video_meta_dict.get(cand["source_video"])
             if rec is None:
                 continue
+            completed += 1
+            crop_type = cand.get("crop_type", "?")
+            start = cand.get("start_time", 0)
+            end = cand.get("end_time", 0)
+            print(f"  [{completed}/{total}] {cand['subvideo_id']} ({crop_type}, {start:.1f}s→{end:.1f}s)...")
             sub = _generate_media_for_candidate(
                 cand, rec, args.frame_dir, extract_frames=args.extract_frames
             )
