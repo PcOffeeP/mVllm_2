@@ -189,6 +189,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         processor = AutoProcessor.from_pretrained(
             self._model_path_or_name,
             trust_remote_code=True,
+            local_files_only=True,
         )
         # 4.5 返回顶层 processor 本身作为帧处理可调用对象。
         frame_processor = configure_processor_max_frames(processor, self._max_frames)

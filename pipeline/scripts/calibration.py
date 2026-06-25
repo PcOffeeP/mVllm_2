@@ -163,7 +163,7 @@ def _try_load_llama_factory_batch(
     except ImportError as exc:
         raise RuntimeError("transformers is required for real calibration") from exc
 
-    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
     capture_wrapper = configure_loaded_processor(processor, capture=True)
     assert capture_wrapper is not None
 

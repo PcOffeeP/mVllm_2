@@ -57,7 +57,7 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     import torch
     from transformers import AutoModelForImageTextToText, AutoProcessor
 
-    processor = AutoProcessor.from_pretrained(model_dir, trust_remote_code=True)
+    processor = AutoProcessor.from_pretrained(model_dir, trust_remote_code=True, local_files_only=True)
     configure_processor_max_frames(processor)
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"
     model = AutoModelForImageTextToText.from_pretrained(
@@ -65,6 +65,7 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
         trust_remote_code=True,
         torch_dtype=torch_dtype,
         device_map="auto" if torch.cuda.is_available() else None,
+        local_files_only=True,
     )
     if not torch.cuda.is_available():
         model = model.to(device="cpu")
