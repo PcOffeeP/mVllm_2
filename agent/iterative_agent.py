@@ -1583,5 +1583,5 @@ class IterativeAgent:
                 "confidence": 0.5,
             })
         return LlamaFactoryInferenceClient(
-            model=self.config.get("backend", {}).get("name", "minicpmv4_6"),
+            model=self.config.get("backend", {}).get("name", "minicpmv4_5"),
         )

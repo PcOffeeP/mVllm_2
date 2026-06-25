@@ -574,7 +574,7 @@ def test_extract_preprocessing_from_response_model_dump():
                 "id": "chatcmpl-xxx",
                 "preprocessing": {
                     "request_id": "uuid-1",
-                    "processor_version": "minicpmv4.6/0.1",
+                    "processor_version": "minicpmv4.5/0.1",
                     "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
                     "max_frames": 8,
                     "frames": [{"index": 0, "timestamp": 1.0}],
@@ -595,7 +595,7 @@ def test_extract_preprocessing_from_response_model_extra():
         model_extra = {
             "preprocessing": {
                 "request_id": "uuid-2",
-                "processor_version": "minicpmv4.6/0.1",
+                "processor_version": "minicpmv4.5/0.1",
                 "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
                 "max_frames": 8,
                 "frames": [{"index": 0, "timestamp": 1.0}],
@@ -617,7 +617,7 @@ def test_extract_preprocessing_from_response_direct_attr():
     class FakeResponse:
         preprocessing = {
             "request_id": "uuid-3",
-            "processor_version": "minicpmv4.6/0.1",
+            "processor_version": "minicpmv4.5/0.1",
             "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
             "max_frames": 8,
             "frames": [{"index": 0, "timestamp": 1.0}],
@@ -649,7 +649,7 @@ def test_llama_factory_inference_client_extracts_preprocessing(tmp_path: Path):
 
     preprocessing_payload = {
         "request_id": "e2e-uuid",
-        "processor_version": "minicpmv4.6/0.1",
+        "processor_version": "minicpmv4.5/0.1",
         "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
         "max_frames": 8,
         "frames": [
@@ -787,7 +787,7 @@ def test_inference_result_includes_diagnostics(tmp_path: Path):
         mock_completion.model_extra = {}
         mock_completion.preprocessing = {
             "request_id": "req-123",
-            "processor_version": "minicpmv4.6/0.1",
+            "processor_version": "minicpmv4.5/0.1",
             "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
             "max_frames": 8,
             "frames": [{"index": 0, "timestamp": 0.0}],
@@ -810,7 +810,7 @@ def test_inference_result_includes_diagnostics(tmp_path: Path):
     assert result.ok
     assert result.diagnostics is not None
     assert result.diagnostics.request_id == "req-123"
-    assert result.diagnostics.processor_version == "minicpmv4.6/0.1"
+    assert result.diagnostics.processor_version == "minicpmv4.5/0.1"
     assert result.diagnostics.max_frames == 8
     assert result.diagnostics.sampled_frames is not None
     assert result.diagnostics.mime_type == "video/mp4"
@@ -900,7 +900,7 @@ def test_diagnostics_do_not_leak_base64(tmp_path: Path):
     full_payload = base64.b64encode(_FAKE_MP4_HEADER + secret).decode("ascii")
     assert full_payload not in diagnostics_json
 TEST_DEPLOYMENT_MANIFEST = {
-    "model_version": "minicpm-v-4.6",
+    "model_version": "minicpm-v-4.5",
     "transformers_version": "4.test",
     "llamafactory_version": "test-rev",
     "base_model_version": "base-test",

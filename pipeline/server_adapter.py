@@ -13,7 +13,7 @@ wraps the actual child ``video_processor`` used by ChatModel and calls
 **Installation steps on the training machine (LLaMA-Factory host):**
 
 1.  Install the project and editable LLaMA-Factory dependencies.
-2.  Start ``python3 -m pipeline.server_proxy`` with the exact MiniCPM-V 4.6
+2.  Start ``python3 -m pipeline.server_proxy`` with the exact MiniCPM-V 4.5
     merged model path and a completed deployment manifest.
 
     The returned ``response`` dict is JSON-serialisable and includes a
@@ -54,7 +54,7 @@ def wrap_response(
         LLaMA-Factory's ``/v1/chat/completions`` endpoint.  This is typically
         obtained via ``completion.model_dump()`` on the server side.
     video_frames:
-        The actual frames selected by the MiniCPM-V 4.6 video processor.
+        The actual frames selected by the MiniCPM-V 4.5 video processor.
         Each entry **must** contain ``index`` (int, 0-based frame index in
         the processor output) and ``timestamp`` (float, seconds in the
         source video).

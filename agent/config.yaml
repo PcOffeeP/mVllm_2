@@ -21,7 +21,7 @@ agent:
 
 # Fine-tuned model backend configuration (used by InferenceClient).
 backend:
-  name: minicpmv4_6
-  base_model: models/minicpm-v-4.6
-  adapter_base_dir: LlamaFactory/saves/minicpmv4_6/lora
+  name: minicpmv4_5
+  base_model: models/minicpm-v-4.5
+  adapter_base_dir: LlamaFactory/saves/minicpmv4_5/lora
   adapter_pattern: sft_3k{fold}

@@ -129,7 +129,7 @@ def main() -> int:
         raise RuntimeError("LLaMA-Factory and uvicorn are required") from exc
     chat_model = ChatModel({
         "model_name_or_path": args.model,
-        "template": "minicpm_v_4_6",
+        "template": "minicpm_v",
         "infer_backend": "huggingface",
     })
     app = create_integrated_app(chat_model, deployment_info)

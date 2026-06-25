@@ -20,7 +20,7 @@
 
 ## 实际训练机命令行操作
 
-以下为 8 项待办在训练机上对应的具体命令和操作步骤。所有命令基于仓库根目录执行，默认模型路径为 `models/minicpm-v-4.6`；若实际路径不同，替换 `<model-path>` 占位符即可。
+以下为 8 项待办在训练机上对应的具体命令和操作步骤。所有命令基于仓库根目录执行，默认模型路径为 `models/minicpm-v-4.5`；若实际路径不同，替换 `<model-path>` 占位符即可。
 
 ---
 
@@ -36,7 +36,7 @@ cd LlamaFactory && git log --oneline -1 && cd ..
 python3 -c "import transformers; print(transformers.__version__)"
 
 # 1c. 基础模型 revision（替换为实际模型路径）
-cd models/minicpm-v-4.6 && git log --oneline -1 && cd ../..
+cd models/minicpm-v-4.5 && git log --oneline -1 && cd ../..
 
 # 1d. adapter/merged-model revision（若适用）
 cd <adapter-or-merged-dir> && git log --oneline -1 && cd ../..
@@ -98,7 +98,7 @@ python3 -c "import av; print(f'av {av.__version__} OK')"
 # 3b. 预处理器 healthcheck（替换 <model-path> 若不同）
 python3 -m pipeline.preprocessing.minicpm_preprocessor \
     --healthcheck \
-    --model models/minicpm-v-4.6
+    --model models/minicpm-v-4.5
 ```
 
 **预期输出（示例）**：
@@ -107,7 +107,7 @@ python3 -m pipeline.preprocessing.minicpm_preprocessor \
   "ok": true,
   "info": {
     "name": "MiniCPMVideoPreprocessor",
-    "version": "minicpm-v-4.6",
+    "version": "minicpm-v-4.5",
     "max_frames": 8,
     "backend": "pytorch"
   },
@@ -120,7 +120,7 @@ python3 -m pipeline.preprocessing.minicpm_preprocessor \
 # 3c. 校准
 python3 pipeline/scripts/calibration.py \
     --preprocessor minicpm \
-    --model models/minicpm-v-4.6 \
+    --model models/minicpm-v-4.5 \
     --output data/07_metadata/calibration_report.json
 ```
 
@@ -180,7 +180,7 @@ curl -s -X POST http://127.0.0.1:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d "$(cat <<EOF
 {
-  "model": "minicpm-v-4.6",
+  "model": "minicpm-v-4.5",
   "messages": [
     {
       "role": "user",
@@ -273,7 +273,7 @@ else:
 
 ```bash
 # 7a. 缺失清单 → 启动时不提供 --deployment-manifest（应报错退出）
-python3 -m pipeline.server_proxy --model models/minicpm-v-4.6 2>&1 | grep -q 'required' && echo '✅ 缺失清单校验通过' || echo '❌ 未检测到缺失清单错误'
+python3 -m pipeline.server_proxy --model models/minicpm-v-4.5 2>&1 | grep -q 'required' && echo '✅ 缺失清单校验通过' || echo '❌ 未检测到缺失清单错误'
 ```
 
 ```bash
@@ -287,7 +287,7 @@ json.dump(m, open('/tmp/manifest_bad_frames.json', 'w'))
 print('max_frames 已改为 4')
 "
 python3 -m pipeline.server_proxy \
-    --model models/minicpm-v-4.6 \
+    --model models/minicpm-v-4.5 \
     --deployment-manifest /tmp/manifest_bad_frames.json 2>&1 | grep -q 'max_frames' && \
     echo '✅ max_frames 校验通过' || echo '❌ 未检测到 max_frames 错误'
 # 恢复原始清单

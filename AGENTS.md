@@ -52,7 +52,7 @@ python3 scripts/validate_no_oob.py
 cd finetune/
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
 ```
 
 项目级验证：

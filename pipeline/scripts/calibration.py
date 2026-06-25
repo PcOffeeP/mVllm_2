@@ -140,7 +140,7 @@ def _window_positions(
 
 
 # ---------------------------------------------------------------------------
-# LLaMA-Factory batch 加载 —— 真实 MiniCPM-V-4.6 _get_mm_inputs 调用
+# LLaMA-Factory batch 加载 —— 真实 MiniCPM-V-4.5 _get_mm_inputs 调用
 # ---------------------------------------------------------------------------
 
 
@@ -148,12 +148,12 @@ def _try_load_llama_factory_batch(
     video_path: str,
     preprocessor_info: ProcessorInfo,
     preprocessor_frames: list[FrameMapping],
-    model_name: str = str(ROOT / "models" / "minicpm-v-4.6"),
+    model_name: str = str(ROOT / "models" / "minicpm-v-4.5"),
 ) -> dict[str, Any]:
     """Load a real LLaMA-Factory batch and require its actual frame mapping."""
     # ---- 1. 尝试导入 LLaMA-Factory ----
     try:
-        from llamafactory.data.mm_plugin import MiniCPMV4_6Plugin
+        from llamafactory.data.mm_plugin import MiniCPMVPlugin
     except ImportError as exc:
         raise RuntimeError("LLaMA-Factory is required for real calibration") from exc
 
@@ -178,7 +178,7 @@ def _try_load_llama_factory_batch(
     capture_wrapper.reset_capture()
 
     # ---- 3. 调用 _get_mm_inputs ----
-    plugin = MiniCPMV4_6Plugin()
+    plugin = MiniCPMVPlugin()
     mm_inputs = plugin._get_mm_inputs(
         images=[], videos=[video_path], audios=[], processor=processor
     )
@@ -219,7 +219,7 @@ def _try_load_llama_factory_batch(
         )
 
     return {
-        "source": "llama-factory-minicpmv4.6",
+        "source": "llama-factory-minicpmv4.5",
         "processor_name": processor_name,
         "max_frames": max_frames,
         "frame_count": frame_count,
@@ -298,7 +298,7 @@ def build_calibration_cases(
 def run_calibration(
     preprocessor: VideoPreprocessor,
     cases: list[dict[str, Any]],
-    model_name: str = str(ROOT / "models" / "minicpm-v-4.6"),
+    model_name: str = str(ROOT / "models" / "minicpm-v-4.5"),
 ) -> dict[str, Any]:
     info = preprocessor.get_info()
     results: list[dict[str, Any]] = []
@@ -390,11 +390,11 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--preprocessor",
         choices=["minicpm"],
         default="minicpm",
-        help="正式校准固定使用 MiniCPM-V 4.6 实际处理器",
+        help="正式校准固定使用 MiniCPM-V 4.5 实际处理器",
     )
     parser.add_argument(
         "--model",
-        default=str(ROOT / "models" / "minicpm-v-4.6"),
+        default=str(ROOT / "models" / "minicpm-v-4.5"),
         help="minicpm 模型路径或名称（预处理器使用）",
     )
     parser.add_argument(

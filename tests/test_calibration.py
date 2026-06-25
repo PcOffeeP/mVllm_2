@@ -829,7 +829,7 @@ def test_run_calibration_compares_the_same_continuous_clip(monkeypatch):
 
     class FakePreprocessor:
         def get_info(self):
-            return ProcessorInfo("minicpm-v-4.6", "ProcessorV46", 8, "test")
+            return ProcessorInfo("minicpm-v-4.5", "ProcessorV46", 8, "test")
 
         def fingerprint(self):
             return "production"
@@ -913,9 +913,9 @@ def _make_mock_llamafactory_modules(broken_plugin=None):
 
     mock_plugin = MagicMock()
     if broken_plugin is not None:
-        mock_plugin.MiniCPMV4_6Plugin = MagicMock(return_value=broken_plugin)
+        mock_plugin.MiniCPMVPlugin = MagicMock(return_value=broken_plugin)
     else:
-        mock_plugin.MiniCPMV4_6Plugin = MagicMock()
+        mock_plugin.MiniCPMVPlugin = MagicMock()
 
     mock_data = MagicMock()
     mock_data.mm_plugin = mock_plugin

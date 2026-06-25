@@ -22,7 +22,7 @@ def _make_raw_response(**overrides: dict) -> dict:
         "id": "chatcmpl-abc123",
         "object": "chat.completion",
         "created": 1719200000,
-        "model": "minicpm-v-4.6",
+        "model": "minicpm-v-4.5",
         "choices": [
             {
                 "index": 0,
@@ -54,12 +54,12 @@ def _make_frames(
 
 
 def _make_processor_info(
-    version: str = "minicpmv4.6/0.1", max_frames: int = 8
+    version: str = "minicpmv4.5/0.1", max_frames: int = 8
 ) -> dict:
     return {
         "processor_version": version,
         "max_frames": max_frames,
-        "model_version": "minicpm-v-4.6",
+        "model_version": "minicpm-v-4.5",
         "transformers_version": "4.test",
         "llamafactory_version": "test-rev",
         "base_model_version": "base-test",
@@ -109,9 +109,9 @@ class TestNormalInjection:
         result = wrap_response(
             _make_raw_response(),
             _make_frames(3),
-            _make_processor_info(version="minicpmv4.6/0.2"),
+            _make_processor_info(version="minicpmv4.5/0.2"),
         )
-        assert result["preprocessing"]["processor_version"] == "minicpmv4.6/0.2"
+        assert result["preprocessing"]["processor_version"] == "minicpmv4.5/0.2"
 
     def test_max_frames_passed_correctly(self):
         result = wrap_response(

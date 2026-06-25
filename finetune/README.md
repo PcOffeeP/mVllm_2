@@ -9,10 +9,10 @@ LLaMA-Factory 框架本身已迁移为仓库根目录的 Git submodule：`LlamaF
 finetune/
 ├── dataset_info.json          # 项目数据集注册表
 ├── README.md                  # 本说明
-├── MiniCPM/config/            # models/minicpm-v-4.6 3-fold LoRA SFT YAML 配置
-│   ├── minicpmv4_6_lora_sft_fold0.yaml
-│   ├── minicpmv4_6_lora_sft_fold1.yaml
-│   ├── minicpmv4_6_lora_sft_fold2.yaml
+├── MiniCPM/config/            # models/minicpm-v-4.5 3-fold LoRA SFT YAML 配置
+│   ├── minicpmv4_5_lora_sft_fold0.yaml
+│   ├── minicpmv4_5_lora_sft_fold1.yaml
+│   ├── minicpmv4_5_lora_sft_fold2.yaml
 │   └── merge.yaml
 └── validation/                # 推理与评测脚本
     ├── run_inference.py
@@ -27,7 +27,7 @@ finetune/
 
 ## 前置条件
 
-1. 下载基座模型到 `models/minicpm-v-4.6/`（见仓库根目录 `README.md`）。
+1. 下载基座模型到 `models/minicpm-v-4.5/`（见仓库根目录 `README.md`）。
 2. 按根目录 `README.md` 准备训练数据，生成 `data/04_merged/` 或 `data/04_new_merged/` 下的 JSON。
 3. `finetune/dataset_info.json` 已注册 `tensile_video_3k*` / `tensile_video_interval_*` 数据集。
 
@@ -49,16 +49,16 @@ export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
 # Fold 0
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
 
 # Fold 1
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold1.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold1.yaml
 
 # Fold 2
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold2.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2.yaml
 ```
 
-训练输出目录为 `LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k{0,1,2}`。必须通过 `train_with_contract.py` 启动，以便实际子处理器的 8 帧约束在每个训练进程中生效。
+训练输出目录为 `LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k{0,1,2}`。必须通过 `train_with_contract.py` 启动，以便实际子处理器的 8 帧约束在每个训练进程中生效。
 
 ## 合并 LoRA
 
@@ -67,7 +67,7 @@ cd finetune/
 llamafactory-cli export MiniCPM/config/merge.yaml
 ```
 
-合并后的完整模型输出到 `LlamaFactory/saves/minicpmv4_6/lora/sft_3k0_merged/`（默认对应 fold0，切换 fold 时请修改 `merge.yaml` 中的 `adapter_name_or_path` 与 `export_dir`）。
+合并后的完整模型输出到 `LlamaFactory/saves/minicpmv4_5/lora/sft_3k0_merged/`（默认对应 fold0，切换 fold 时请修改 `merge.yaml` 中的 `adapter_name_or_path` 与 `export_dir`）。
 
 ## 验证与评测
 

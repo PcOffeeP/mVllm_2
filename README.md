@@ -69,7 +69,7 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
-- 本地模型默认放在 `models/minicpm-v-4.6`，不提交模型权重或 checkpoint。
+- 本地模型默认放在 `models/minicpm-v-4.5`，不提交模型权重或 checkpoint。
 - Agent 远程后端需要配置 `LLM_API_KEY` 或在 `agent/config.yaml` 中填入 `agent.remote.api_key`。
 
 ## 当前主流程
@@ -83,7 +83,7 @@ pip install -e ".[dev]"
 python3 pipeline/scripts/dataset_manager.py
 
 # 基于划分与 video_meta 生成子视频、帧图缓存和 subvideos_meta.json
-python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.6
+python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.5
 
 # 将子视频元数据转换为 LLaMA-Factory ShareGPT JSON
 python3 pipeline/scripts/training_sample_builder.py
@@ -107,9 +107,9 @@ cd finetune/
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold1.yaml
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold2.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold1.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2.yaml
 ```
 
 训练完成后如需合并 LoRA，可参考 `finetune/MiniCPM/config/merge.yaml`。
@@ -117,9 +117,9 @@ python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold
 
 | fold | adapter_name_or_path | export_dir |
 |------|----------------------|------------|
-| 0    | `../LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k0` | `../LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k0_merged` |
-| 1    | `../LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k1` | `../LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k1_merged` |
-| 2    | `../LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k2` | `../LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k2_merged` |
+| 0    | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged` |
+| 1    | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k1` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k1_merged` |
+| 2    | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2_merged` |
 
 执行合并：
 
@@ -137,7 +137,7 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 python3 finetune/validation/run_inference.py \
   --task joint \
   --fold 0 \
-  --model-dir LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k0_merged \
+  --model-dir LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
   --output finetune/validation/results/joint_fold0.jsonl
 ```
 
@@ -180,11 +180,11 @@ python3 -m agent.run --videos-dir data/01_videos --mock
 
 #### 真实运行
 
-正式推理前，需要启动项目侧 `pipeline.server_proxy` 同进程集成服务。它直接创建 LLaMA-Factory ChatModel，包装模型实际使用的 MiniCPM-V 4.6 子处理器，并把本次真实输入帧和 tensor digest 注入内部 `preprocessing` 元数据；Agent 不能直接连接 stock endpoint。部署清单格式见 `pipeline/server_deployment_manifest.example.json`。
+正式推理前，需要启动项目侧 `pipeline.server_proxy` 同进程集成服务。它直接创建 LLaMA-Factory ChatModel，包装模型实际使用的 MiniCPM-V 4.5 子处理器，并把本次真实输入帧和 tensor digest 注入内部 `preprocessing` 元数据；Agent 不能直接连接 stock endpoint。部署清单格式见 `pipeline/server_deployment_manifest.example.json`。
 
 ```bash
 python3 -m pipeline.server_proxy \
-  --model models/minicpm-v-4.6 \
+  --model models/minicpm-v-4.5 \
   --deployment-manifest /path/to/deployment-manifest.json
 ```
 

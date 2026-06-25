@@ -1,7 +1,7 @@
 {
   "processor_version": "MiniCPMVProcessor",
   "max_frames": 8,
-  "model_version": "minicpm-v-4.6",
+  "model_version": "minicpm-v-4.5",
   "transformers_version": "REPLACE_WITH_INSTALLED_VERSION",
   "llamafactory_version": "REPLACE_WITH_GIT_COMMIT",
   "base_model_version": "REPLACE_WITH_MODEL_REVISION",

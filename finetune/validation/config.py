@@ -32,9 +32,9 @@ TRAINING_JSON_FILES = [
 
 DEFAULT_VIDEO_ROOT = VIDEO_DIR  # 远端原值: Path("/hy-tmp/videos")
 DEFAULT_MODEL_DIRS = {
-    0: "LlamaFactory/saves/minicpmv4_6/lora/sft_3k0_merged",
-    1: "LlamaFactory/saves/minicpmv4_6/lora/sft_3k1_merged",
-    2: "LlamaFactory/saves/minicpmv4_6/lora/sft_3k2_merged",
+    0: "LlamaFactory/saves/minicpmv4_5/lora/sft_3k0_merged",
+    1: "LlamaFactory/saves/minicpmv4_5/lora/sft_3k1_merged",
+    2: "LlamaFactory/saves/minicpmv4_5/lora/sft_3k2_merged",
 }
 
 VIDEO_MAX_FRAMES = 36

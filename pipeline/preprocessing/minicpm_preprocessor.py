@@ -52,26 +52,52 @@ def _hash_model_files(model_path_or_name: str) -> dict[str, str | None]:
 
 
 def configure_processor_max_frames(processor: Any, max_frames: int = 8) -> Any:
-    """Set and verify the real MiniCPM video-processor frame limit."""
+    """Set and verify the real MiniCPM-V processor frame limit.
+
+    MiniCPM-V 4.5 does not expose a separate ``video_processor`` sub-component.
+    The top-level ``AutoProcessor`` (``MiniCPMVProcessor``) handles video frames
+    directly. We therefore configure max-frames on the top-level processor and
+    return the processor itself as the callable used for frame processing.
+    """
     if max_frames != 8:
         raise ValueError("MiniCPM-V contract requires max_frames=8")
-    video_processor = getattr(processor, "video_processor", None)
-    if video_processor is None:
-        raise RuntimeError(f"Processor {type(processor).__name__} lacks video_processor")
+
     configured = False
-    for target, attribute in (
+    video_processor = getattr(processor, "video_processor", None)
+    video_processor_configured = False
+
+    # 4.5 风格：属性通常挂在 image_processor 或顶层 processor/config 上。
+    # 4.6 风格：属性也可能挂在独立的 video_processor 子组件上，保持兼容。
+    candidates = [
+        (getattr(processor, "image_processor", None), "max_frames"),
+        (getattr(processor, "image_processor", None), "video_maxlen"),
         (video_processor, "max_frames"),
         (video_processor, "video_maxlen"),
+        (getattr(processor, "config", None), "max_frames"),
+        (getattr(processor, "config", None), "video_maxlen"),
+        (processor, "max_frames"),
         (processor, "video_maxlen"),
-    ):
+    ]
+
+    for target, attribute in candidates:
+        if target is None:
+            continue
         if hasattr(target, attribute):
             setattr(target, attribute, max_frames)
             if getattr(target, attribute) != max_frames:
                 raise RuntimeError(f"failed to set actual processor {attribute}=8")
             configured = True
+            if target is video_processor:
+                video_processor_configured = True
+
     if not configured:
         raise RuntimeError("cannot locate MiniCPM actual max-frame parameter")
-    return video_processor
+
+    # 4.5 返回顶层 processor，由顶层统一处理视频帧；
+    # 4.6 返回实际配置过的 video_processor 子组件。
+    if video_processor is not None and video_processor_configured:
+        return video_processor
+    return processor
 
 
 # ---------------------------------------------------------------------------
@@ -93,25 +119,28 @@ def _processor_environment_unsupported() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# MiniCPM-V 4.6 视频预处理器
+# MiniCPM-V 4.5 视频预处理器
 # ---------------------------------------------------------------------------
 
 
 class MiniCPMVideoPreprocessor(VideoPreprocessor):
-    """MiniCPM-V 4.6 视频处理器。
+    """MiniCPM-V 4.5 视频处理器。
 
-    加载 `transformers.AutoProcessor` 并提取 `video_processor` 用于帧选择。
-    processor 不可用时直接失败；不得用理论 FPS 或均匀采样伪造模型实际帧。
+    加载 `transformers.AutoProcessor` 后由顶层 ``MiniCPMVProcessor`` 直接处理
+    视频帧。4.5 版本没有独立的 ``video_processor`` 子组件，因此
+    ``self._video_processor`` 实际保存的是顶层 processor 引用，仅用于标记
+    processor 已就绪；实际调用均通过 ``self._processor(images=..., return_tensors="pt")``
+    完成。processor 不可用时直接失败；不得用理论 FPS 或均匀采样伪造模型实际帧。
 
     Architecture
     ------------
     * `__init__` 尝试预加载 processor；若失败（Mac／import 错误）标记延迟加载。
     * `_ensure_processor()` 在首次需要时加载。
-    * `sample()` 优先走 processor 路径：解码帧 → video_processor → 输出帧数回映。
+    * `sample()` 优先走 processor 路径：解码帧 → 顶层 processor → 输出帧数回映。
     * `healthcheck()` 生成临时视频做集成验证。
     """
 
-    NAME = "minicpm-v-4.6"
+    NAME = "minicpm-v-4.5"
     EXPECTED_MAX_FRAMES = 8
 
     def __init__(
@@ -154,16 +183,17 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             )
 
     def _load_processor(self) -> None:
-        """实际加载 ``transformers.AutoProcessor`` 并提取 ``video_processor``。"""
+        """实际加载 ``transformers.AutoProcessor`` 并配置 max_frames。"""
         from transformers import AutoProcessor
 
         processor = AutoProcessor.from_pretrained(
             self._model_path_or_name,
             trust_remote_code=True,
         )
-        video_processor = configure_processor_max_frames(processor, self._max_frames)
+        # 4.5 返回顶层 processor 本身作为帧处理可调用对象。
+        frame_processor = configure_processor_max_frames(processor, self._max_frames)
         self._processor = processor
-        self._video_processor = video_processor
+        self._video_processor = frame_processor
         self._processor_loaded = True
 
     def _ensure_processor(self) -> None:
@@ -263,7 +293,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
     ) -> list[FrameMapping]:
         """对视频时间区间采样，返回帧映射列表。
 
-        仅使用真实 ``video_processor`` 做帧选择。
+        仅使用真实顶层 ``processor`` 做帧选择。
         """
         frame_index_by_timestamp = self._actual_frame_index_map(video_path)
         container = av.open(video_path, "r")
@@ -295,7 +325,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 )
 
             raise RuntimeError(
-                "MiniCPM-V video_processor 不可用；拒绝用理论 FPS/均匀采样 "
+                "MiniCPM-V processor 不可用；拒绝用理论 FPS/均匀采样 "
                 "伪造模型实际输入帧"
             )
         finally:
@@ -314,7 +344,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         total_frames: int,
         frame_index_by_timestamp: dict[float, int],
     ) -> list[FrameMapping]:
-        """用 video_processor 处理解码帧，返回真实帧号映射。
+        """用顶层 processor 处理解码帧，返回真实帧号映射。
 
         允许真实 processor 按其已锁定的 max_frames=8 选择帧；
         通过逐帧独立调用 + 像素比对确认保留帧，
@@ -328,36 +358,41 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         if not decoded_frames:
             return []
 
-        # 2. 调用真实 video_processor（失败抛异常，不静默回退）
+        # 2. 调用真实顶层 processor（失败抛异常，不静默回退）
         try:
-            video_inputs = self._video_processor([decoded_frames], return_tensors="pt")  # type: ignore[union-attr]
+            video_inputs = self._processor(images=decoded_frames, return_tensors="pt")  # type: ignore[union-attr]
         except Exception as exc:
             raise RuntimeError(
-                f"video_processor 调用失败: {exc}"
+                f"processor 调用失败: {exc}"
             ) from exc
 
+        # 4.5 输出 key 为 pixel_values；4.6 风格为 pixel_values_videos。
         pixel_values = video_inputs.get("pixel_values_videos")
         if pixel_values is None:
+            pixel_values = video_inputs.get("pixel_values")
+        if pixel_values is None:
             raise RuntimeError(
-                "video_processor 输出不含 pixel_values_videos"
+                "processor 输出不含 pixel_values_videos 或 pixel_values"
             )
 
         shape = tuple(pixel_values.shape)
         if len(shape) == 5:
+            # 4.6 风格: (B, T, C, H, W)
             n = int(shape[1])
             selected_pixel_values = pixel_values[0]
         elif len(shape) == 4:
+            # 4.5 风格: (T, C, H, W)
             n = int(shape[0])
             selected_pixel_values = pixel_values
         else:
-            raise RuntimeError(f"无法识别 pixel_values_videos 形状: {shape}")
+            raise RuntimeError(f"无法识别 pixel_values 形状: {shape}")
         if n > self._max_frames:
             raise RuntimeError(
-                f"video_processor 实际输出 {n} 帧，超过契约上限 {self._max_frames}"
+                f"processor 实际输出 {n} 帧，超过契约上限 {self._max_frames}"
             )
         if n > len(decoded_frames):
             raise RuntimeError(
-                f"video_processor 输出帧数 {n} 大于解码帧数 {len(decoded_frames)}"
+                f"processor 输出帧数 {n} 大于解码帧数 {len(decoded_frames)}"
             )
         if n <= 0:
             return []
@@ -390,6 +425,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             decoded_frames, decoded_indices, decoded_timestamps, selected_pixel_values, n,
         )
 
+
     def _match_processor_frames(
         self,
         decoded_frames: list[Any],
@@ -398,20 +434,22 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         batch_pixel_values: Any,
         n: int,
     ) -> list[FrameMapping]:
-        """逐帧独立调用 video_processor，通过像素比对确认保留帧。
+        """逐帧独立调用顶层 processor，通过像素比对确认保留帧。
 
-        对每个解码帧单独调用 ``video_processor([[frame]])``，
+        对每个解码帧单独调用 ``processor(images=[frame], return_tensors="pt")``，
         再将批量输出的每一帧与独立输出做 L1 距离匹配，
         映射回 ``decoded_indices``。
         """
         import torch
 
-        # 逐帧调用 video_processor
+        # 逐帧调用顶层 processor
         individual_pvs: list[Any] = []
         for frame in decoded_frames:
             try:
-                ind_result = self._video_processor([[frame]], return_tensors="pt")  # type: ignore[union-attr]
+                ind_result = self._processor(images=[frame], return_tensors="pt")  # type: ignore[union-attr]
                 ind_pv = ind_result.get("pixel_values_videos")
+                if ind_pv is None:
+                    ind_pv = ind_result.get("pixel_values")
                 if ind_pv is not None and ind_pv.shape[0] > 0:
                     if len(ind_pv.shape) == 5:
                         individual_pvs.append(ind_pv[0, 0].float())
@@ -616,7 +654,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
 def _build_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pipeline.preprocessing.minicpm_preprocessor",
-        description="MiniCPM-V 4.6 视频预处理器 CLI",
+        description="MiniCPM-V 4.5 视频预处理器 CLI",
     )
     parser.add_argument(
         "--healthcheck",
@@ -625,7 +663,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default=str(Path(__file__).resolve().parents[2] / "models" / "minicpm-v-4.6"),
+        default=str(Path(__file__).resolve().parents[2] / "models" / "minicpm-v-4.5"),
         help="模型路径或 HuggingFace 名称",
     )
     return parser

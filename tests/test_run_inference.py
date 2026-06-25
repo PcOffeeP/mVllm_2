@@ -28,7 +28,7 @@ class _FakeFrameMapper:
     def get_info(self):
         from pipeline.preprocessing import ProcessorInfo
 
-        return ProcessorInfo("minicpm-v-4.6", "FakeProcessor", 8, "test")
+        return ProcessorInfo("minicpm-v-4.5", "FakeProcessor", 8, "test")
 
 
 @pytest.fixture(autouse=True)

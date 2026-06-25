@@ -16,7 +16,7 @@ class MockVideoPreprocessor(VideoPreprocessor):
     """基于 ffmpeg 的 mock 预处理器，输出格式与真实接口一致。
 
     该实现仅用于本地结构验证，明确标注为 diagnostic mock，不应替代真实
-    MiniCPM-V 4.6 视频处理器。
+    MiniCPM-V 4.5 视频处理器。
     """
 
     NAME = "mock-ffmpeg-uniform"

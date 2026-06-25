@@ -47,7 +47,7 @@ def _subvideo(
             {"input_index": i, "original_frame": 4317 + i, "timestamp": round(143.9 + i / 30.0, 4)}
             for i in range(8)
         ],
-        "processor_fingerprint": "minicpm-v-4.6:test:fingerprint",
+        "processor_fingerprint": "minicpm-v-4.5:test:fingerprint",
         "fold": "fold_0_train",
         "split": "fold_0_train",
         "selection_reason": "focus_positive",

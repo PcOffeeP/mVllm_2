@@ -55,13 +55,13 @@ git submodule update --init --recursive
 cd finetune/
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
-python3 train_with_contract.py MiniCPM/config/minicpmv4_6_lora_sft_interval_fold0.yaml
+python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
 
 # 6. 推理验证
 python3 finetune/validation/run_inference.py \
   --task joint \
   --fold 0 \
-  --model-dir ../LlamaFactory/saves/minicpmv4_6/lora/sft_interval_3k0_merged \
+  --model-dir ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
   --output finetune/validation/results/joint_fold0.jsonl
 ```
 

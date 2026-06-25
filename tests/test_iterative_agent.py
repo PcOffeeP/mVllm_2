@@ -16,7 +16,7 @@ from agent.sampling import ClipBuildResult
 
 
 TEST_DEPLOYMENT_MANIFEST = {
-    "model_version": "minicpm-v-4.6",
+    "model_version": "minicpm-v-4.5",
     "transformers_version": "4.test",
     "llamafactory_version": "test-rev",
     "base_model_version": "base-test",
@@ -180,7 +180,7 @@ class FakeInferenceClient:
                     selected = [manifest[i] for i in selected_indices]
                 pp = {
                     "request_id": "fake-uuid",
-                    "processor_version": "minicpmv4.6/0.1",
+                    "processor_version": "minicpmv4.5/0.1",
                     "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
                     "max_frames": 8,
                     "frames": [
@@ -629,7 +629,7 @@ def test_iterative_agent_out_of_bounds_fracture_between():
             "confidence": 0.92,
             "_preprocessing": {
                 "request_id": "uuid-oob",
-                "processor_version": "minicpmv4.6/0.1",
+                "processor_version": "minicpmv4.5/0.1",
                 "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
                 "max_frames": 8,
                 "frames": [{"index": i, "timestamp": float(i)} for i in range(8)],
@@ -1092,7 +1092,7 @@ def test_iterative_agent_uses_server_frames_when_preprocessing_valid():
     ]
     preprocessing = {
         "request_id": "uuid-400",
-        "processor_version": "minicpmv4.6/0.1",
+        "processor_version": "minicpmv4.5/0.1",
         "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
         "max_frames": 8,
         "frames": server_frames,
@@ -1374,7 +1374,7 @@ def test_iterative_agent_too_many_frames_preprocessing_error():
 
     preprocessing = {
         "request_id": "uuid-403",
-        "processor_version": "minicpmv4.6/0.1",
+        "processor_version": "minicpmv4.5/0.1",
         "deployment_manifest": TEST_DEPLOYMENT_MANIFEST,
         "max_frames": 8,
         "frames": [{"index": i, "timestamp": float(i)} for i in range(9)],  # 9 frames > 8

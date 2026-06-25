@@ -642,7 +642,7 @@ def create_inference_client(config: dict[str, Any] | None = None) -> InferenceCl
 
     cfg = config or {}
     backend_cfg = cfg.get("backend", {})
-    model = backend_cfg.get("name", "minicpmv4_6")
+    model = backend_cfg.get("name", "minicpmv4_5")
     base_url = os.getenv("INFERENCE_BASE_URL", "http://localhost:8000/v1")
     api_key = os.getenv("INFERENCE_API_KEY", "EMPTY")
     return LlamaFactoryInferenceClient(
