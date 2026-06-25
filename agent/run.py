@@ -78,13 +78,13 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output", "-o",
-        default="data/runtime/results/run.jsonl",
-        help="Result output JSONL path. (default: data/runtime/results/run.jsonl)",
+        default="data/08_runtime/results/run.jsonl",
+        help="Result output JSONL path. (default: data/08_runtime/results/run.jsonl)",
     )
     parser.add_argument(
         "--work-dir",
         default=".",
-        help="Workspace root under which data/runtime is created. (default: current directory)",
+        help="Workspace root under which data/08_runtime is created. (default: current directory)",
     )
     parser.add_argument(
         "--mock",
@@ -102,7 +102,7 @@ def main() -> None:
 
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     work_dir = Path(args.work_dir)
-    events_dir = work_dir / "data" / "runtime" / "events"
+    events_dir = work_dir / "data" / "08_runtime" / "events"
     output_path = Path(args.output)
     event_callback = _make_event_writer(run_id, events_dir)
 

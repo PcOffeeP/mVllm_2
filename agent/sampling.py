@@ -291,7 +291,7 @@ class FfmpegVideoClipBuilder(VideoClipBuilder):
             end = start
         clip_duration = end - start
 
-        out_dir = Path(self.output_dir) if self.output_dir else Path("data/runtime/agent_clips")
+        out_dir = Path(self.output_dir) if self.output_dir else Path("data/08_runtime/agent_clips")
         out_dir.mkdir(parents=True, exist_ok=True)
 
         video_stem = Path(source_video).stem

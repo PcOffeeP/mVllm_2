@@ -31,11 +31,11 @@ TensileAgent/
 ├── data/
 │   ├── 01_videos/          # 原始视频（本地，不提交）
 │   ├── 02_annotations/     # CSV 标注与映射文件
-│   ├── 03_splits/          # 新 interval fold/test 划分
-│   ├── 02_subvideos/       # 新 interval 子视频产物（本地，不提交）
-│   ├── 03_frames/          # 帧图缓存（本地，不提交）
-│   ├── 04_new_merged/      # 新 interval ShareGPT 训练 JSON（本地，不提交）
-│   └── metadata/           # video_meta.json / subvideos_meta.json（本地，不提交）
+│   ├── 05_splits/          # 新 interval fold/test 划分
+│   ├── 03_subvideos/       # 新 interval 子视频产物（本地，不提交）
+│   ├── 04_frames/          # 帧图缓存（本地，不提交）
+│   ├── 06_merged/          # 新 interval ShareGPT 训练 JSON（本地，不提交）
+│   └── 07_metadata/        # video_meta.json / subvideos_meta.json（本地，不提交）
 ├── AGENTS.md               # 仓库开发规范
 └── README.md
 ```
@@ -72,9 +72,95 @@ pip install -e ".[dev]"
 - 本地模型默认放在 `models/minicpm-v-4.5`，不提交模型权重或 checkpoint。
 - Agent 远程后端需要配置 `LLM_API_KEY` 或在 `agent/config.yaml` 中填入 `agent.remote.api_key`。
 
+## 数据复现流程
+
+本节说明从原始输入到冻结数据版本的完整复现命令。以下命令均从仓库根目录执行。
+
+### 前提条件
+
+- 输入数据：`data/01_videos/` 原始视频、`data/02_annotations/` CSV 标注与映射文件。
+- 本地模型：`models/minicpm-v-4.5/` 已放置 MiniCPM-V 4.5 权重。
+- Python 依赖：按[环境准备](#环境准备)安装项目根依赖与 LLaMA-Factory 依赖；`subvideo_builder.py` 需要 `torch` 等训练环境依赖。
+- 系统依赖：`ffmpeg` / `ffprobe` 已安装。
+- 平台要求：真实 MiniCPM 预处理逻辑需在 Linux 训练机上运行；当前 macOS/Darwin 环境会触发平台保护逻辑并缺失 `torch`，无法完成完整复现。
+
+### 复现步骤
+
+```bash
+# 1. （可选）清空旧产物
+PYTHONPATH=. python3 scripts/clear_data_outputs.py
+```
+
+清理 `data/03_subvideos/`、`data/04_frames/`、`data/05_splits/`、`data/06_merged/`、`data/07_metadata/`、`data/08_runtime/` 等目录中的历史产物，避免旧数据污染新版本。`data/01_videos/` 与 `data/02_annotations/` 受保护，不会被清空。
+
+```bash
+# 2. 划分数据集与生成元数据
+PYTHONPATH=. python3 pipeline/scripts/dataset_manager.py
+```
+
+读取 `data/02_annotations/` 中的 CSV 与映射，生成 `data/05_splits/` 下的 fold/test 划分，以及 `data/07_metadata/video_meta.json` 等视频级元数据。当前 macOS 环境此步骤可成功运行。
+
+```bash
+# 3. 生成子视频与帧图缓存
+PYTHONPATH=. python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.5
+```
+
+基于划分与 `video_meta.json` 生成 `data/03_subvideos/` 子视频、`data/04_frames/` 帧图缓存，以及 `data/07_metadata/subvideos_meta.json` 子视频元数据。该步骤调用真实 MiniCPM 视频处理器生成最多 8 帧映射。当前 macOS/Darwin 环境会失败退出，因为 `pipeline/preprocessing/minicpm_preprocessor.py` 在该平台禁用了真实处理器，且系统 Python 缺少 `torch`；需在 Linux 训练机上运行。
+
+```bash
+# 4. 构建训练样本
+PYTHONPATH=. python3 pipeline/scripts/training_sample_builder.py
+```
+
+将子视频元数据转换为 LLaMA-Factory ShareGPT 格式，输出到 `data/06_merged/`。当前 macOS 环境阻塞，依赖步骤 3 产物。
+
+```bash
+# 5. 越界校验
+PYTHONPATH=. python3 scripts/validate_no_oob.py
+```
+
+扫描 `data/06_merged/` 与 `data/07_metadata/`，校验 `fracture_between` 与 `start_frame/end_frame` 一致性。不产生新产物。当前 macOS 环境缺少步骤 3 产物时，`validate_no_oob.py` 会输出 `SKIP` 并以退出码 0 正常退出，无法执行严格 OOB 校验。
+
+```bash
+# 6. 质量检查
+PYTHONPATH=. python3 pipeline/scripts/quality_check.py
+```
+
+对 `data/06_merged/` 执行强制检查，输出 `data/07_metadata/quality_check_report.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
+
+```bash
+# 7. 冻结数据版本
+PYTHONPATH=. python3 pipeline/scripts/freeze_data_version.py
+```
+
+收集 git commit、配置哈希、处理器指纹、输入/划分/样本清单哈希与统计报告，输出 `data/07_metadata/data_version_lock.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
+
+```bash
+# 8. （可选）校准
+PYTHONPATH=. python3 pipeline/scripts/calibration.py
+```
+
+运行可选校准，生成 `data/07_metadata/calibration_report.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
+
+### 复现性保障
+
+- 随机种子固定为 `42`，确保划分结果可复现。
+- `quality_check.py` 与 `training_sample_builder.py` 会拒绝 mock/theoretical fingerprint，确保训练样本与质量检查对应真实运行环境。
+- `freeze_data_version.py` 负责记录当前 git commit、配置哈希、处理器指纹、输入/划分/样本清单哈希与统计报告，输出 `data/07_metadata/data_version_lock.json`，不执行拒绝逻辑。
+- 数据版本产物被 `.gitignore` 忽略，不提交；复现时按上述流程重新生成。
+
+### 当前环境真实状态
+
+- `dataset_manager.py` 可在当前 macOS 跑通，生成 `data/05_splits/` 与 `data/07_metadata/` 的部分文件。
+- `subvideo_builder.py` 在 macOS 会失败，因此 `data/03_subvideos/`、`data/04_frames/` 与后续 `data/06_merged/` 在当前环境无法生成。
+- 后续 `training_sample_builder.py`、`pipeline/scripts/quality_check.py`、`pipeline/scripts/freeze_data_version.py` 依赖 `subvideo_builder.py` 产物，在当前 macOS 环境同样阻塞；`scripts/validate_no_oob.py` 则标记为 `SKIP`（无法执行严格校验）。
+- `data/08_runtime/` 用于运行时/验证临时文件，不属于当前数据复现流程在 macOS 上的可生成产物。
+
 ## 当前主流程
 
 ### 1. 数据准备
+
+> 详细复现流程见上文 `## 数据复现流程`。
 
 从仓库根目录执行：
 
@@ -220,18 +306,18 @@ python3 pipeline/scripts/training_sample_builder.py
 
 # 自定义输入输出路径
 python3 pipeline/scripts/training_sample_builder.py \
-  --subvideos-meta data/metadata/subvideos_meta.json \
-  --splits-dir data/03_splits \
-  --output-dir data/04_new_merged
+  --subvideos-meta data/07_metadata/subvideos_meta.json \
+  --splits-dir data/05_splits \
+  --output-dir data/06_merged
 ```
 
 ## 已知限制 / 当前状态
 
-- `scripts/validate_no_oob.py` 在 `data/metadata/subvideos_meta.json` 不存在时会输出 `SKIP` 并正常退出；生成产物后才会执行严格 OOB 校验。
+- `scripts/validate_no_oob.py` 在 `data/07_metadata/subvideos_meta.json` 不存在时会输出 `SKIP` 并正常退出；生成产物后才会执行严格 OOB 校验。
 - `subvideo_builder.py` 的快速模式（`--fast`）依赖已有 `subvideos_meta.json`，若元数据不存在会自动退回到完整生成。
 - 正式数据构建必须使用 MiniCPM-V 真实视频处理器产生的最多 8 帧映射；缺少映射时显式失败，不按 FPS 或区间宽度推算。
 - 子视频生成依赖 `ffmpeg` / `ffprobe`，请确保系统已安装。
-- 新 interval 数据产物（`data/02_subvideos/`、`data/03_frames/`、`data/04_new_merged/`、`data/metadata/`）默认被 `.gitignore` 忽略，不提交。
+- 新 interval 数据产物（`data/03_subvideos/`、`data/04_frames/`、`data/06_merged/`、`data/07_metadata/`）默认被 `.gitignore` 忽略，不提交。
 - 旧直接预测方案不在本项目维护；对比时只导入外部项目生成的版本化预测产物。
 
 ## 开发约束

@@ -356,7 +356,7 @@ def main() -> None:
             video_dir_input = st.text_input("视频目录路径", value="")
 
         config_path = st.text_input("配置文件路径", value="agent/config.yaml")
-        work_dir = st.text_input("工作目录", value="data/08_runtime")
+        work_dir = st.text_input("工作目录", value=".")
         mock_mode = st.checkbox("Mock 推理模式")
         run_clicked = st.button("运行 Agent")
 

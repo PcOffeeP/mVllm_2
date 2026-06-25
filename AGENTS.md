@@ -79,7 +79,7 @@ CSV 标注是权威来源。发生冲突时，不覆盖 CSV 原字段；通过 `
 
 ## Agent Runtime 规范
 
-Agent 使用 Native Function Calling，不引入 MCP。微调模型的 `fracture_between` 只允许严格相邻的 `[i,i+1]`，不接受边界哨兵。`IterativeAgent` 的候选区间更新、五个重叠区间完整覆盖、至少两次局部断裂确认、冲突与非法输出处理，以及 `fracture` / `no_fracture` / `unrecognized` 最终状态必须由代码层兜底，不能完全信任 LLM 参数。每轮 `sample_and_infer` 后必须把更新后的候选区间和历史追加到下一轮 user context。Agent 推理阶段动态生成的帧和临时 clip 写入 `data/runtime/`，不要提交。
+Agent 使用 Native Function Calling，不引入 MCP。微调模型的 `fracture_between` 只允许严格相邻的 `[i,i+1]`，不接受边界哨兵。`IterativeAgent` 的候选区间更新、五个重叠区间完整覆盖、至少两次局部断裂确认、冲突与非法输出处理，以及 `fracture` / `no_fracture` / `unrecognized` 最终状态必须由代码层兜底，不能完全信任 LLM 参数。每轮 `sample_and_infer` 后必须把更新后的候选区间和历史追加到下一轮 user context。Agent 推理阶段动态生成的帧和临时 clip 写入 `data/08_runtime/`，不要提交。
 
 ## 提交与拉取请求规范
 
@@ -97,4 +97,4 @@ Agent 使用 Native Function Calling，不引入 MCP。微调模型的 `fracture
 
 ## 安全与配置提示
 
-不要提交 checkpoint、模型权重、密钥、token、大型输出文件或本地视频数据。`.gitignore` 已覆盖 `data/01_videos/`、`data/02_subvideos/`、`data/03_frames/`、`data/04_new_merged/`、`data/metadata/`、`data/runtime/` 和验证结果目录。PR 中记录本地模型路径、GPU 相关 YAML 设置和 `DOWNSAMPLE_MODE`。标注时间保持为 `XXX.XXs` 格式，不要嵌入空格。
+不要提交 checkpoint、模型权重、密钥、token、大型输出文件或本地视频数据。`.gitignore` 已覆盖 `data/01_videos/`、`data/02_subvideos/`、`data/03_frames/`、`data/04_new_merged/`、`data/metadata/`、`data/08_runtime/` 和验证结果目录。PR 中记录本地模型路径、GPU 相关 YAML 设置和 `DOWNSAMPLE_MODE`。标注时间保持为 `XXX.XXs` 格式，不要嵌入空格。

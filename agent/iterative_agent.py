@@ -165,8 +165,8 @@ class IterativeAgent:
     def _diagnostics_dir(self) -> Path:
         """Return the runtime diagnostics directory for this agent run."""
         if self.work_dir is not None:
-            return Path(self.work_dir) / "data" / "runtime" / "diagnostics"
-        return Path("data/runtime/diagnostics")
+            return Path(self.work_dir) / "data" / "08_runtime" / "diagnostics"
+        return Path("data/08_runtime/diagnostics")
 
     def _persist_diagnostics(
         self, round_idx: int, diagnostics: SampleAndInferDiagnostics

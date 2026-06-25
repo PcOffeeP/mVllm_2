@@ -73,7 +73,7 @@ HTTP assistant 内容仍严格只有五字段模型 JSON。项目侧模型服务
 
 源视频由当前 Runner 上下文绑定，不是工具参数。`num_frames`、`video_fps`、`sampling_strategy` 和 `expected_schema` 从 Native Function Calling schema 中移除，未知参数直接拒绝。
 
-程序根据 `sample_range` 裁剪连续临时 MP4，不在模型处理器之前选帧，也不改变时间轴 FPS。允许为 HTTP 大小和模型输入分辨率进行确定性的空间缩放与视频压缩，但不得进行抽帧、补帧或改变播放时长；生成过程保存临时视频每个帧序号到原视频帧号和时间戳的清单。临时视频只作为本轮 HTTP Base64 数据来源，位于 ignored 的 `data/runtime/`，不得成为跨服务路径接口。
+程序根据 `sample_range` 裁剪连续临时 MP4，不在模型处理器之前选帧，也不改变时间轴 FPS。允许为 HTTP 大小和模型输入分辨率进行确定性的空间缩放与视频压缩，但不得进行抽帧、补帧或改变播放时长；生成过程保存临时视频每个帧序号到原视频帧号和时间戳的清单。临时视频只作为本轮 HTTP Base64 数据来源，位于 ignored 的 `data/08_runtime/`，不得成为跨服务路径接口。
 
 MiniCPM-V 4.5 的实际 `video_processor` 负责从连续视频时间轴均匀选择最多 8 帧，短视频允许少于 8 帧。项目不配置额外采样 FPS，也不能仅凭 LLaMA-Factory 外层 `video_maxlen` 判断配置生效；训练和模型服务启动时必须检查子处理器的实际最大帧数。服务部署清单记录模型、Transformers、LLaMA-Factory、处理器版本、实际最大帧数、基础模型、适配器或合并模型版本及配置指纹。配置指纹（fingerprint）由项目侧预处理器生成，包含：处理器 `NAME` 常量与模型路径/名称、关键模型配置文件 `config.json`（以 `cfg=` 标记）和 `preprocessor_config.json`（以 `pre=` 标记）内容的 SHA-256 前 16 位（本地目录存在时计算，不存在则退化到仅使用路径字符串）、`max_frames` 以及 backend 加载状态（`transformers-loaded` / `transformers` / `no-transformers`）；该指纹用于训练、推理与部署清单的可复现性校验，不得包含 mock/theoretical 标识。
 

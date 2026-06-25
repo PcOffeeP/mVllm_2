@@ -43,6 +43,5 @@ pyproject.toml
 /data/06_merged/
 /data/07_metadata/
 /data/08_runtime/
-/data/runtime/
 
 .agents/skills/

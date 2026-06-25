@@ -114,7 +114,7 @@ git submodule update --init --recursive
 | `data/03_frames/` | 帧图缓存 | 是 |
 | `data/04_new_merged/` | 训练 JSON | 是 |
 | `data/metadata/` | 元数据 JSON | 是 |
-| `data/runtime/` | Agent 运行时帧/clip | 是 |
+| `data/08_runtime/` | Agent 运行时帧/clip | 是 |
 | `LlamaFactory/saves/` | 训练 checkpoint | 是 |
 | `finetune/validation/results/` | 验证结果 | 是 |
 
