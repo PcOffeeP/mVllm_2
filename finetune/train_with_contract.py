@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import os
+
+# Avoid W&B interactive login prompt; keep offline logging.
+# User can override via shell env (e.g., WANDB_MODE=online, WANDB_API_KEY=xxx).
+os.environ.setdefault("WANDB_MODE", "offline")
+
 import sys
 from pathlib import Path
 
