@@ -56,6 +56,8 @@ def _sanitize_model_path(model_path: str) -> str:
     """如果模型路径的目录名包含点号（会导致 trust_remote_code 模块导入失败），
     自动创建无点号的符号链接并返回新路径。如果链接已存在则复用。"""
     path = Path(model_path).resolve()
+    if not path.exists():
+        return str(model_path)
     dir_name = path.name
     if "." in dir_name or "-" in dir_name:
         safe_name = dir_name.replace(".", "_").replace("-", "_")
