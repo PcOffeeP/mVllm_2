@@ -1,6 +1,6 @@
 {
   "tensile_video_interval_fold0_train": {
-    "file_name": "fold_0_train.json",
+    "file_name": "../data/06_merged/fold_0_train.json",
     "folder": "../data/06_merged",
     "formatting": "sharegpt",
     "columns": {
@@ -16,7 +16,7 @@
     "system_prompt_ref": "agent/prompts.py:SYSTEM_PROMPT"
   },
   "tensile_video_interval_fold0_val": {
-    "file_name": "fold_0_val.json",
+    "file_name": "../data/06_merged/fold_0_val.json",
     "folder": "../data/06_merged",
     "formatting": "sharegpt",
     "columns": {
@@ -32,7 +32,7 @@
     "system_prompt_ref": "agent/prompts.py:SYSTEM_PROMPT"
   },
   "tensile_video_interval_fold1_train": {
-    "file_name": "fold_1_train.json",
+    "file_name": "../data/06_merged/fold_1_train.json",
     "folder": "../data/06_merged",
     "formatting": "sharegpt",
     "columns": {
@@ -48,7 +48,7 @@
     "system_prompt_ref": "agent/prompts.py:SYSTEM_PROMPT"
   },
   "tensile_video_interval_fold1_val": {
-    "file_name": "fold_1_val.json",
+    "file_name": "../data/06_merged/fold_1_val.json",
     "folder": "../data/06_merged",
     "formatting": "sharegpt",
     "columns": {
@@ -64,7 +64,7 @@
     "system_prompt_ref": "agent/prompts.py:SYSTEM_PROMPT"
   },
   "tensile_video_interval_fold2_train": {
-    "file_name": "fold_2_train.json",
+    "file_name": "../data/06_merged/fold_2_train.json",
     "folder": "../data/06_merged",
     "formatting": "sharegpt",
     "columns": {
@@ -80,7 +80,7 @@
     "system_prompt_ref": "agent/prompts.py:SYSTEM_PROMPT"
   },
   "tensile_video_interval_fold2_val": {
-    "file_name": "fold_2_val.json",
+    "file_name": "../data/06_merged/fold_2_val.json",
     "folder": "../data/06_merged",
     "formatting": "sharegpt",
     "columns": {
