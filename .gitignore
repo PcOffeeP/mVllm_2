@@ -38,9 +38,7 @@ uv.lock
 # Data pipeline artifacts (numbered outputs, ignored; 01_videos and 02_annotations are not ignored)
 /data/03_subvideos/
 /data/04_frames/
-/data/05_splits/
 /data/06_merged/
-/data/07_metadata/
 /data/08_runtime/
 
 .agents/skills/
