@@ -299,6 +299,8 @@ def _validate_fracture_between(
                 continue
             mapping = sample.get("actual_frame_mapping") or []
             n = len(mapping)
+            if n == 0:
+                continue  # ShareGPT 格式不含 actual_frame_mapping，边界校验跳过
             if not isinstance(fb, list) or len(fb) != 2:
                 errors.append(
                     {
