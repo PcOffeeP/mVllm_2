@@ -341,6 +341,20 @@ def _build_frame_mapping_pyav(
                     })
                     input_idx += 1
     container.close()
+
+    # 均匀采样，确保不超过 max_frames=8（与 MiniCPM processor 行为一致）
+    max_frames = 8
+    if len(result) > max_frames:
+        total = len(result)
+        step = (total - 1) / (max_frames - 1)
+        sampled = []
+        for i in range(max_frames):
+            idx = min(total - 1, round(i * step))
+            item = result[idx].copy()
+            item["input_index"] = i
+            sampled.append(item)
+        result = sampled
+
     return result
 
 
