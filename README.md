@@ -41,10 +41,6 @@ git submodule update --init --recursive
 
 ### 创建 Conda 环境（两步法）
 
-> **为什么不用 `conda env create -f environment.yml`？**
-> 该命令的 pip 子进程将全部依赖捆绑安装，任一个包失败即整体回滚，且本地路径安装兼容性差。
-> 拆分为两步可逐个排查，失败不影响已安装部分。
-
 **Step 1：创建最小 Conda 环境**
 
 ```bash
