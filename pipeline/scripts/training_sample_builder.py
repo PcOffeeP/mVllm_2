@@ -12,11 +12,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_PROJECT_ROOT))
 
 
 SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.json"
