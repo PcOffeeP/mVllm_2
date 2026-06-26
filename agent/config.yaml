@@ -24,4 +24,4 @@ backend:
   name: minicpmv4_5
   base_model: models/minicpm-v-4.5
   adapter_base_dir: LlamaFactory/saves/minicpmv4_5/lora
-  adapter_pattern: sft_3k{fold}
+  adapter_pattern: sft_interval_3k{fold}

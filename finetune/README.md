@@ -10,9 +10,9 @@ finetune/
 ├── dataset_info.json          # 项目数据集注册表
 ├── README.md                  # 本说明
 ├── MiniCPM/config/            # models/minicpm-v-4.5 3-fold LoRA SFT YAML 配置
-│   ├── minicpmv4_5_lora_sft_fold0.yaml
-│   ├── minicpmv4_5_lora_sft_fold1.yaml
-│   ├── minicpmv4_5_lora_sft_fold2.yaml
+│   ├── minicpmv4_5_lora_sft_interval_fold0.yaml
+│   ├── minicpmv4_5_lora_sft_interval_fold1.yaml
+│   ├── minicpmv4_5_lora_sft_interval_fold2.yaml
 │   └── merge.yaml
 └── validation/                # 推理与评测脚本
     ├── run_inference.py
@@ -67,7 +67,7 @@ cd finetune/
 llamafactory-cli export MiniCPM/config/merge.yaml
 ```
 
-合并后的完整模型输出到 `LlamaFactory/saves/minicpmv4_5/lora/sft_3k0_merged/`（默认对应 fold0，切换 fold 时请修改 `merge.yaml` 中的 `adapter_name_or_path` 与 `export_dir`）。
+合并后的完整模型输出到 `LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged/`（默认对应 fold0，切换 fold 时请修改 `merge.yaml` 中的 `adapter_name_or_path` 与 `export_dir`）。
 
 ## 验证与评测
 

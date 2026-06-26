@@ -1,13 +1,13 @@
 ### model
 model_name_or_path: ../models/minicpm-v-4.5
 cache_dir: null
-adapter_name_or_path: ../LlamaFactory/saves/minicpmv4_5/lora/sft_3k0
+adapter_name_or_path: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0
 template: minicpm_v
 finetuning_type: lora
 trust_remote_code: true
 
 ### export
-export_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_3k0_merged
+export_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged
 export_size: 2
 export_device: cpu
 export_legacy_format: false

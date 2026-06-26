@@ -213,7 +213,7 @@ python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold
 llamafactory-cli export MiniCPM/config/merge.yaml
 ```
 
-> 注意：`merge.yaml` 当前仍保留旧的 `sft_3k0` / `sft_3k0_merged` 示例路径，合并前必须按上表修改。
+> 注意：`merge.yaml` 当前仍保留旧的 `sft_interval_3k0` / `sft_interval_3k0_merged` 示例路径，合并前必须按上表修改。
 
 ### 3. 验证
 

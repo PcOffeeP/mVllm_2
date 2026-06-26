@@ -4,9 +4,9 @@ from __future__ import annotations
 
 
 FOLD_ADAPTER_PATHS: dict[int, str] = {
-    0: "LlamaFactory/saves/minicpmv4_5/lora/sft_3k0",
-    1: "LlamaFactory/saves/minicpmv4_5/lora/sft_3k1",
-    2: "LlamaFactory/saves/minicpmv4_5/lora/sft_3k2",
+    0: "LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0",
+    1: "LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k1",
+    2: "LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2",
 }
 
 
