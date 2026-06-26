@@ -1,5 +1,5 @@
 # === model ===
-model_name_or_path: ../models/minicpm-v-4.5
+model_name_or_path: ../models/minicpm_v_4_5
 cache_dir: null
 trust_remote_code: true
 flash_attn: fa2 # 4090 GPU：取消此行注释并注释上一行
@@ -18,7 +18,7 @@ quantization_bit: 4
 # === dataset ===
 dataset: tensile_video_interval_fold0_train
 eval_dataset: tensile_video_interval_fold0_val
-dataset_dir: ../finetune
+dataset_dir: ../data/06_merged
 template: minicpm_v
 media_dir: ../data
 cutoff_len: 8192
