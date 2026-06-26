@@ -1142,6 +1142,14 @@ def _generate_media_for_candidate(
             sub["actual_frame_mapping"] = []
             sub["sampled_frames"] = []
 
+    # 补算 fracture_between（阶段 1 时 sampled=[] 导致 fracture_between=None）
+    has_fracture = sub.get("has_fracture", sub.get("has_fracture_canonical"))
+    if has_fracture is True and sub.get("fracture_between") is None:
+        event_frame = rec.get("event_frame_original")
+        if event_frame is not None and sub.get("actual_frame_mapping"):
+            fb = compute_fracture_between(sub["actual_frame_mapping"], event_frame)
+            if fb is not None:
+                sub["fracture_between"] = fb
     return sub
 
 
