@@ -146,19 +146,19 @@ async def task_events(task_id: str):
         sse_connections[task_id] = []
     sse_connections[task_id].append(queue)
 
-    # 先发送已有事件
-    events_path = _events_path(task_id)
-    if events_path.exists():
-        for line in events_path.read_text(encoding="utf-8").strip().split("\n"):
-            if line:
-                try:
-                    ev = json.loads(line)
-                    yield {"data": json.dumps(ev)}
-                except Exception:
-                    continue
-
     async def event_generator():
         try:
+            # 先发送已有的历史事件
+            events_path = _events_path(task_id)
+            if events_path.exists():
+                for line in events_path.read_text(encoding="utf-8").strip().split("\n"):
+                    if line:
+                        try:
+                            ev = json.loads(line)
+                            yield {"data": json.dumps(ev)}
+                        except Exception:
+                            continue
+            # 实时事件
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
