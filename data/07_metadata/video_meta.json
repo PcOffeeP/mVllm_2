@@ -100,14 +100,14 @@
     "material_type": "金属",
     "resolution": "480P",
     "has_fracture": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "has_fracture_canonical": false,
     "location_canonical": null,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,
-    "is_label_conflict": true,
-    "label_governance_reason": "video_0005: type=未断裂但 CSV is_abnormal=True，is_abnormal_canonical 强制为 False"
+    "is_label_conflict": false,
+    "label_governance_reason": null
   },
   {
     "video_id": "video_0006",
@@ -452,14 +452,14 @@
     "material_type": "高分子",
     "resolution": "480P",
     "has_fracture": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "has_fracture_canonical": false,
     "location_canonical": null,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,
-    "is_label_conflict": true,
-    "label_governance_reason": "video_0021: type=未断裂但 CSV is_abnormal=True，is_abnormal_canonical 强制为 False"
+    "is_label_conflict": false,
+    "label_governance_reason": null
   },
   {
     "video_id": "video_0022",
@@ -914,14 +914,14 @@
     "material_type": "金属",
     "resolution": "480P",
     "has_fracture": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "has_fracture_canonical": false,
     "location_canonical": null,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,
-    "is_label_conflict": true,
-    "label_governance_reason": "video_0042: type=未断裂但 CSV is_abnormal=True，is_abnormal_canonical 强制为 False"
+    "is_label_conflict": false,
+    "label_governance_reason": null
   },
   {
     "video_id": "video_0043",
@@ -1134,14 +1134,14 @@
     "material_type": "复材",
     "resolution": "480P",
     "has_fracture": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "has_fracture_canonical": false,
     "location_canonical": null,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,
-    "is_label_conflict": true,
-    "label_governance_reason": "video_0052: type=未断裂但 CSV is_abnormal=True，is_abnormal_canonical 强制为 False"
+    "is_label_conflict": false,
+    "label_governance_reason": null
   },
   {
     "video_id": "video_0053",
@@ -1178,14 +1178,14 @@
     "material_type": "金属",
     "resolution": "<480P",
     "has_fracture": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "has_fracture_canonical": false,
     "location_canonical": null,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,
-    "is_label_conflict": true,
-    "label_governance_reason": "video_0054: type=未断裂但 CSV is_abnormal=True，is_abnormal_canonical 强制为 False"
+    "is_label_conflict": false,
+    "label_governance_reason": null
   },
   {
     "video_id": "video_0055",
@@ -1508,14 +1508,14 @@
     "material_type": "金属",
     "resolution": "480P",
     "has_fracture": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "has_fracture_canonical": false,
     "location_canonical": null,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,
-    "is_label_conflict": true,
-    "label_governance_reason": "video_0069: type=未断裂但 CSV is_abnormal=True，is_abnormal_canonical 强制为 False"
+    "is_label_conflict": false,
+    "label_governance_reason": null
   },
   {
     "video_id": "video_0070",
@@ -2080,14 +2080,14 @@
     "material_type": "复材",
     "resolution": "480P",
     "has_fracture": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "has_fracture_canonical": false,
     "location_canonical": null,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,
-    "is_label_conflict": true,
-    "label_governance_reason": "video_0095: type=未断裂但 CSV is_abnormal=True，is_abnormal_canonical 强制为 False"
+    "is_label_conflict": false,
+    "label_governance_reason": null
   },
   {
     "video_id": "video_0096",
