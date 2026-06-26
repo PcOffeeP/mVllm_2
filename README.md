@@ -320,6 +320,88 @@ python3 pipeline/scripts/training_sample_builder.py \
 - 新 interval 数据产物（`data/03_subvideos/`、`data/04_frames/`、`data/06_merged/`、`data/07_metadata/`）默认被 `.gitignore` 忽略，不提交。
 - 旧直接预测方案不在本项目维护；对比时只导入外部项目生成的版本化预测产物。
 
+## Streamlit 工作台使用说明
+
+Streamlit 工作台 (`ui/agent_app.py`) 提供完整的深色工程化三栏控制台界面，支持单视频和批量分析。
+
+### 启动命令
+
+```bash
+# 从仓库根目录执行
+streamlit run ui/agent_app.py
+```
+
+启动后浏览器自动打开（默认 `http://localhost:8501`）。
+
+### Mock 模式
+
+勾选左侧面板的「Mock 推理模式」复选框即可启用。Mock 模式设置环境变量 `INFERENCE_MOCK=1`，不调用真实模型服务，适合快速验证 UI 链路。
+
+### 单视频入口
+
+- **上传文件**：通过文件上传器选择视频文件。上传同名文件时自动添加 `_YYYYMMDD_HHMMSS` 时间戳后缀，不会静默覆盖。
+- **路径输入**：直接输入本地视频路径。系统会校验 `Path.exists()`，路径不存在时提示 warning 且不创建任务。
+
+### 批量入口
+
+在批量输入区域输入视频目录路径。系统扫描目录下的 `.mp4/.avi/.mov/.mkv/.webm` 文件（大小写不敏感），显示文件数量后可通过按钮添加到队列。
+
+### 三栏布局
+
+| 栏位 | 宽度 | 内容 |
+|------|------|------|
+| 左栏 | 窄 | 产品标识、视图切换（工作台/历史/配置）、Mock 与工作目录设置、近期任务列表 |
+| 中栏 | 宽 | 当前视图内容（工作台/历史/配置） |
+| 右栏 | 中等 | 选中任务的实时状态面板（事件流、结果） |
+
+窄窗口下所有面板可滚动，无文字重叠。
+
+### 视图
+
+1. **🔬 工作台**：视频输入与队列管理。任务 key 使用完整 `video_path`，同名不同目录的视频互不覆盖。
+2. **📋 历史**：可搜索（按 `video_id` 过滤）、可筛选状态（全部/completed/failed）。选择任务回看事件日志与结果，支持导出。
+3. **⚙️ 配置**：只读展示 Agent 参数、LLM 端点、API key 状态（已配置/未配置）。不保存密钥，不覆盖 `config.yaml`。
+
+### 实时事件面板（右栏）
+
+运行过程中右栏实时更新事件流，按时间顺序追加最近 30 条事件：
+
+| 事件 | 显示 |
+|------|------|
+| `video_started` | 视频信息卡片 + 进度阶段 |
+| `round_started` | 轮次徽标 `第 N 轮` |
+| `llm_tool_call` | 工具名 + 参数 JSON（可折叠） |
+| `sample_and_infer_finished` | 模型输出摘要 + 推理时间区间 |
+| `state_updated` | 状态转移（→） |
+| `video_finished` / `video_failed` | 终端式日志流 |
+
+### 结果面板
+
+| 状态 | 颜色 | 显示字段 |
+|------|------|----------|
+| `fracture` | 🟢 绿色 `#22c55e` | time_range、fracture_type、location、confidence、rounds |
+| `no_fracture` | 🔵 蓝色 `#3b82f6` | confidence、rounds |
+| `unrecognized` | 🟡 黄色 `#eab308` | unrecognized_reason、rounds |
+| `failed` | 🔴 红色 `#ef4444` | stage、code、message |
+
+可折叠 JSON 查看完整 result（仅暴露 FinalOutput 级别字段，不包含内部帧区间等诊断信息）。
+
+### 导出格式
+
+结果面板和视图均支持三种导出格式：
+
+| 格式 | 说明 |
+|------|------|
+| JSONL | 每行一个 JSON 对象 |
+| CSV | 扁平化表格，包含 video_id、status、confidence 等字段 |
+| JSON | 美观打印的 JSON 数组 |
+
+### UI 限制
+
+- **UI 不读取真值标注**：工作台仅展示 Agent 推理结果，不加载 CSV 标注或 `video_meta.json` 中的 ground truth。
+- **无持久化数据库**：所有任务和事件保存在 Streamlit session state 中，页面刷新后丢失。
+- **不保存 API 密钥**：配置视图仅显示密钥是否已配置，不提供密钥编辑界面。
+
 ## 开发约束
 
 开发、提交、测试与代码风格规范见 [AGENTS.md](./AGENTS.md)。本 README 不再重复。
