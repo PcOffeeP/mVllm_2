@@ -20,7 +20,7 @@ dataset: tensile_video_interval_fold1_train
 eval_dataset: tensile_video_interval_fold1_val
 dataset_dir: ../finetune
 template: minicpm_v
-media_dir: ../data
+media_dir: ..
 cutoff_len: 8192
 video_maxlen: 8
 preprocessing_num_workers: 4
