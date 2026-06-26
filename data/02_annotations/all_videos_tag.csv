@@ -3,7 +3,7 @@ video_0001,data/01_videos/video_0001.mp4,38.65s,韧性断裂,金属,480P,inside_
 video_0002,data/01_videos/video_0002.mp4,未夹紧,未夹紧,高分子,720P,N/A,N/A,6.47,30,194,FALSE,TRUE
 video_0003,data/01_videos/video_0003.mp4,26.19s,脆性断裂,金属,480P,inside_gauge,787,30.4,30,912,TRUE,FALSE
 video_0004,data/01_videos/video_0004.mp4,183.55s,界面脱粘,复材,480P,inside_gauge,5512,188.56,30,5657,TRUE,FALSE
-video_0005,data/01_videos/video_0005.mp4,未断裂,未断裂,金属,480P,N/A,N/A,30,30,900,FALSE,TRUE
+video_0005,data/01_videos/video_0005.mp4,未断裂,未断裂,金属,480P,N/A,N/A,30,30,900,FALSE,FALSE
 video_0006,data/01_videos/video_0006.mp4,21.50s,韧性断裂,金属,480P,inside_gauge,649,23.3,30,699,TRUE,FALSE
 video_0007,data/01_videos/video_0007.mp4,49.41s,韧性断裂,金属,480P,inside_gauge,1485,51,30,1530,TRUE,FALSE
 video_0008,data/01_videos/video_0008.mp4,16.37s,脆性断裂,金属,720P,outside_gauge,495,19.17,30,575,TRUE,FALSE
@@ -19,7 +19,7 @@ video_0017,data/01_videos/video_0017.mp4,206.73s,界面脱粘、齐根断裂,复
 video_0018,data/01_videos/video_0018.mp4,144.01s,韧性断裂,金属,480P,inside_gauge,4320,147.13,30,4414,TRUE,FALSE
 video_0019,data/01_videos/video_0019.mp4,15.62s,韧性断裂,金属,480P,inside_gauge,469,19.37,30,581,TRUE,FALSE
 video_0020,data/01_videos/video_0020.mp4,25.72s,界面脱粘,复材,480P,inside_gauge,772,30.63,30,919,TRUE,FALSE
-video_0021,data/01_videos/video_0021.mp4,未断裂,未断裂,高分子,480P,N/A,N/A,5.99,30.03,180,FALSE,TRUE
+video_0021,data/01_videos/video_0021.mp4,未断裂,未断裂,高分子,480P,N/A,N/A,5.99,30.03,180,FALSE,FALSE
 video_0022,data/01_videos/video_0022.mp4,57.16s,韧性断裂,金属,480P,inside_gauge,1715,61.13,30,1834,TRUE,FALSE
 video_0023,data/01_videos/video_0023.mp4,9.37s,韧性断裂,金属,480P,inside_gauge,281,10.73,30,322,TRUE,FALSE
 video_0024,data/01_videos/video_0024.mp4,31.33s,韧性断裂,金属,480P,inside_gauge,940,37.17,30,1115,TRUE,FALSE
@@ -40,7 +40,7 @@ video_0038,data/01_videos/video_0038.mp4,51.73s,韧性断裂,金属,480P,inside_
 video_0039,data/01_videos/video_0039.mp4,63.71s,韧性断裂,金属,480P,inside_gauge,1911,65.07,30,1952,TRUE,FALSE
 video_0040,data/01_videos/video_0040.mp4,25.29s,爆炸性断裂,复材,<480P,inside_gauge,759,27.37,30,821,TRUE,FALSE
 video_0041,data/01_videos/video_0041.mp4,30.05s,脆性断裂,金属,480P,inside_gauge,902,32.87,30,986,TRUE,FALSE
-video_0042,data/01_videos/video_0042.mp4,未断裂,未断裂,金属,480P,N/A,N/A,41.03,30,1231,FALSE,TRUE
+video_0042,data/01_videos/video_0042.mp4,未断裂,未断裂,金属,480P,N/A,N/A,41.03,30,1231,FALSE,FALSE
 video_0043,data/01_videos/video_0043.mp4,182.02s,界面脱粘,复材,480P,inside_gauge,5461,187.36,30,5621,TRUE,FALSE
 video_0044,data/01_videos/video_0044.mp4,176.48s,界面脱粘,复材,480P,inside_gauge,5294,182.72,30,5482,TRUE,FALSE
 video_0045,data/01_videos/video_0045.mp4,184.30s,视频异常,高分子,480P,N/A,5529,186.7,30,5601,TRUE,TRUE
@@ -50,9 +50,9 @@ video_0048,data/01_videos/video_0048.mp4,21.63s,齐根断裂,高分子,<480P,out
 video_0049,data/01_videos/video_0049.mp4,168.5s,视频异常,复材,480P,N/A,5055,175.36,30,5261,TRUE,TRUE
 video_0050,data/01_videos/video_0050.mp4,视频异常,视频异常,其他(无机非),720P,N/A,N/A,53.63,30,1609,FALSE,TRUE
 video_0051,data/01_videos/video_0051.mp4,7.43s,韧性断裂,金属,720P,inside_gauge,223,9.3,30,279,TRUE,FALSE
-video_0052,data/01_videos/video_0052.mp4,未断裂,未断裂,复材,480P,N/A,N/A,10.03,30,301,FALSE,TRUE
+video_0052,data/01_videos/video_0052.mp4,未断裂,未断裂,复材,480P,N/A,N/A,10.03,30,301,FALSE,FALSE
 video_0053,data/01_videos/video_0053.mp4,148.16s,界面脱粘,复材,480P,inside_gauge,4445,152.29,30,4569,TRUE,FALSE
-video_0054,data/01_videos/video_0054.mp4,未断裂,未断裂,金属,<480P,N/A,N/A,79,30,2370,FALSE,TRUE
+video_0054,data/01_videos/video_0054.mp4,未断裂,未断裂,金属,<480P,N/A,N/A,79,30,2370,FALSE,FALSE
 video_0055,data/01_videos/video_0055.mp4,8.68s,韧性断裂,高分子,480P,outside_gauge,260,9.7,30,291,TRUE,FALSE
 video_0056,data/01_videos/video_0056.mp4,视频异常,视频异常,复材,480P,N/A,N/A,73.6,30,2208,FALSE,TRUE
 video_0057,data/01_videos/video_0057.mp4,34.51s,韧性断裂,金属,<480P,inside_gauge,1035,37.8,30,1134,TRUE,FALSE
@@ -67,7 +67,7 @@ video_0065,data/01_videos/video_0065.mp4,0.61s,脆性断裂,金属,720P,inside_g
 video_0066,data/01_videos/video_0066.mp4,34.10s,韧性断裂,金属,<480P,inside_gauge,1023,36.1,30,1083,TRUE,FALSE
 video_0067,data/01_videos/video_0067.mp4,145.54s,韧性断裂,金属,480P,inside_gauge,4366,147.43,30,4423,TRUE,FALSE
 video_0068,data/01_videos/video_0068.mp4,33.56s,韧性断裂,金属,720P,inside_gauge,1007,35.67,30,1070,TRUE,FALSE
-video_0069,data/01_videos/video_0069.mp4,未断裂,未断裂,金属,480P,N/A,N/A,192.1,30,5763,FALSE,TRUE
+video_0069,data/01_videos/video_0069.mp4,未断裂,未断裂,金属,480P,N/A,N/A,192.1,30,5763,FALSE,FALSE
 video_0070,data/01_videos/video_0070.mp4,150.90s,韧性断裂,金属,480P,inside_gauge,4527,154.3,30,4629,TRUE,FALSE
 video_0071,data/01_videos/video_0071.mp4,4.51s,脆性断裂,金属,480P,inside_gauge,135,5.23,30,157,TRUE,FALSE
 video_0072,data/01_videos/video_0072.mp4,114.47s,韧性断裂,金属,480P,inside_gauge,3434,117.27,30,3518,TRUE,FALSE
@@ -93,7 +93,7 @@ video_0091,data/01_videos/video_0091.mp4,9.36s,韧性断裂,金属,480P,outside_
 video_0092,data/01_videos/video_0092.mp4,15.16s,韧性断裂,金属,480P,outside_gauge,455,16.87,30,506,TRUE,FALSE
 video_0093,data/01_videos/video_0093.mp4,55.34s,韧性断裂,金属,480P,inside_gauge,1660,56.73,30,1702,TRUE,FALSE
 video_0094,data/01_videos/video_0094.mp4,148.10s,视频异常,复材,480P,N/A,4443,156.53,30,4696,TRUE,TRUE
-video_0095,data/01_videos/video_0095.mp4,未断裂,未断裂,复材,480P,N/A,N/A,140.87,30,4226,FALSE,TRUE
+video_0095,data/01_videos/video_0095.mp4,未断裂,未断裂,复材,480P,N/A,N/A,140.87,30,4226,FALSE,FALSE
 video_0096,data/01_videos/video_0096.mp4,220.04s,视频异常,复材,480P,N/A,6601,225.19,30,6756,TRUE,TRUE
 video_0097,data/01_videos/video_0097.mp4,33.22s,韧性断裂,高分子,720P,inside_gauge,997,35.47,30,1064,TRUE,FALSE
 video_0098,data/01_videos/video_0098.mp4,162.67s,韧性断裂,金属,<480P,inside_gauge,4880,167.2,30,5016,TRUE,FALSE
