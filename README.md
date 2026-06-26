@@ -311,7 +311,7 @@ python3 pipeline/scripts/training_sample_builder.py \
 - `subvideo_builder.py` 的快速模式（`--fast`）依赖已有 `subvideos_meta.json`，若元数据不存在会自动退回到完整生成。
 - 正式数据构建必须使用 MiniCPM-V 真实视频处理器产生的最多 8 帧映射；缺少映射时显式失败，不按 FPS 或区间宽度推算。
 - 子视频生成依赖 `ffmpeg` / `ffprobe`，请确保系统已安装。
-- 新 interval 数据产物（`data/03_subvideos/`、`data/04_frames/`、`data/06_merged/`、`data/07_metadata/`）默认被 `.gitignore` 忽略，不提交。
+- 新 interval 数据产物（`data/03_subvideos/`、`data/04_frames/`、`data/05_splits/`、`data/06_merged/`、`data/07_metadata/`、`data/08_runtime/`）默认被 `.gitignore` 忽略，不提交。
 - 旧直接预测方案不在本项目维护；对比时只导入外部项目生成的版本化预测产物。
 
 ## 开发约束

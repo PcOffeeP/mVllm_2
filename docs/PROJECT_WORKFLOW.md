@@ -110,10 +110,10 @@ git submodule update --init --recursive
 | 目录 | 内容 | .gitignore |
 |------|------|------------|
 | `data/01_videos/` | 原始视频 | 否（仅忽略 `.mp4` 等扩展名） |
-| `data/02_subvideos/` | 子视频 | 是 |
-| `data/03_frames/` | 帧图缓存 | 是 |
-| `data/04_new_merged/` | 训练 JSON | 是 |
-| `data/metadata/` | 元数据 JSON | 是 |
+| `data/03_subvideos/` | 子视频 | 是 |
+| `data/04_frames/` | 帧图缓存 | 是 |
+| `data/06_merged/` | 训练 JSON | 是 |
+| `data/07_metadata/` | 元数据 JSON | 是 |
 | `data/08_runtime/` | Agent 运行时帧/clip | 是 |
 | `LlamaFactory/saves/` | 训练 checkpoint | 是 |
 | `finetune/validation/results/` | 验证结果 | 是 |

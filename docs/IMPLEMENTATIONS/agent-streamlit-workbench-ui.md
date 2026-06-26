@@ -32,14 +32,14 @@
 ## 执行清单
 
 - [x] 清理当前 UI 路线边界，确认 Streamlit 工作台不再作为新验收入口；已移除旧 `ui/agent_app.py`，不影响 CLI 和共享 runner。
-- [ ] 补充 Python 依赖和启动入口，加入 FastAPI、Uvicorn 及必要的 multipart/SSE 支持，并确保项目包配置包含新的 API 模块。
-- [ ] 设计并实现本地 Web API 的任务模型、错误模型和事件模型，复用 `{ok, result, error}` Runner 信封和三种 Agent 最终状态。
-- [ ] 实现上传与任务创建 API，支持单文件上传、本地视频路径创建任务、目录批量创建任务，并把上传副本写入 ignored runtime 目录。
-- [ ] 实现单 worker 顺序队列，按 `queued` 到 `running` 到 `completed`/`failed` 的生命周期调用 `runner.run_one`，并保证单任务失败不阻塞后续队列。
-- [ ] 实现 SSE 事件流，把 runner 回调事件规范化为 UI 事件，同时持久化事件摘要并过滤 Base64、API key、token 和不必要的内部临时路径。
-- [ ] 实现本地 JSON 历史持久化，支持任务列表、任务详情、事件回放、结果读取、历史删除和服务重启后的索引恢复。
-- [ ] 实现结果导出 API，至少支持 JSON、JSONL 和 CSV，字段与 Runner 公共结果和现有 CLI 导出语义兼容。
-- [ ] 初始化 `web/` 前端工程，配置 React、TypeScript、Vite、Tailwind CSS、lucide-react、基础 lint/build/test 脚本和 `/api` dev proxy。
+- [x] 补充 Python 依赖和启动入口，加入 FastAPI、Uvicorn 及必要的 multipart/SSE 支持，并确保项目包配置包含新的 API 模块。
+- [x] 设计并实现本地 Web API 的任务模型、错误模型和事件模型，复用 `{ok, result, error}` Runner 信封和三种 Agent 最终状态。
+- [x] 实现上传与任务创建 API，支持单文件上传、本地视频路径创建任务、目录批量创建任务，并把上传副本写入 ignored runtime 目录。
+- [x] 实现单 worker 顺序队列，按 `queued` 到 `running` 到 `completed`/`failed` 的生命周期调用 `runner.run_one`，并保证单任务失败不阻塞后续队列。
+- [x] 实现 SSE 事件流，把 runner 回调事件规范化为 UI 事件，同时持久化事件摘要并过滤 Base64、API key、token 和不必要的内部临时路径。
+- [x] 实现本地 JSON 历史持久化，支持任务列表、任务详情、事件回放、结果读取、历史删除和服务重启后的索引恢复。
+- [x] 实现结果导出 API，至少支持 JSON、JSONL 和 CSV，字段与 Runner 公共结果和现有 CLI 导出语义兼容。
+- [x] 初始化 `web/` 前端工程，配置 React、TypeScript、Vite、Tailwind CSS、lucide-react、基础 lint/build/test 脚本和 `/api` dev proxy。
 - [ ] 构建参考式前端布局，完成左侧导航、实验分析、历史记录、配置摘要和右侧任务详情面板。
 - [ ] 实现前端上传、路径/目录输入、任务队列、任务选择、删除历史、开始分析、SSE 订阅、断线重连提示和错误状态展示。
 - [ ] 实现公共结果展示，按 `fracture`、`no_fracture`、`unrecognized` 和运行失败分别展示状态、时间区间、断裂模式、位置、置信度、轮数、失败阶段、错误码和错误消息。

@@ -215,7 +215,7 @@ def _validate_media_paths(subvideos: list[dict], errors: list) -> None:
         if not rel:
             errors.append(("media", sub["subvideo_id"], "missing_video_path"))
             continue
-        # video_path 可能是 data/...（相对项目根）或 02_subvideos/...（相对 data 目录）
+        # video_path 可能是 data/...（相对项目根）或 03_subvideos/...（相对 data 目录）
         if rel.startswith("data/"):
             full = ROOT / rel
         else:

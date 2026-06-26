@@ -5,14 +5,14 @@
 - `agent/`：Agent/模型接口契约实现、schema、prompt、采样、推理客户端和 `IterativeAgent` 状态机。
 - `data/01_videos/`：原始视频，本地数据，命名为 `video_XXXX.mp4`，不要提交。
 - `data/02_annotations/`：CSV 标注文件、`video_mapping.csv` 和 `all_videos_tag.csv`。
-- `data/03_splits/`：新 interval 方案生成的 `fold_*_{train,val}.json`、`test.json` 和划分决策记录。
-- `data/02_subvideos/`、`data/03_frames/`、`data/04_new_merged/`、`data/metadata/`：新 interval pipeline 的本地生成产物，不提交。
+- `data/05_splits/`：新 interval 方案生成的 `fold_*_{train,val}.json`、`test.json` 和划分决策记录。
+- `data/03_subvideos/`、`data/04_frames/`、`data/06_merged/`、`data/07_metadata/`：新 interval pipeline 的本地生成产物，不提交。
 - `pipeline/scripts/`：数据集准备、子视频生成、训练样本构建脚本；从仓库根目录运行。
 - `pipeline/config/`、`pipeline/templates/`：旧问题池和 JSON 模板。
 - `finetune/`：项目专属 LLaMA-Factory 配置、数据集注册表和验证脚本。
 - `LlamaFactory/`：LLaMA-Factory git submodule，不在 `finetune/` 中维护框架源码副本。
 - `docs/PROJECT_PLAN.md`、`docs/IMPLEMENTATIONS/`：项目级计划与分步骤实施方案。
-- `docs/archive/`、`docs/plans/`：已过期的原设计资料和带日期的历史设计记录，不作为当前实现依据。
+- `docs/archive/`：已过期的原设计资料和带日期的历史设计记录，不作为当前实现依据。
 - `assets/`：领域参考文档和项目原始说明材料；运行时配置仍保存在对应代码或配置目录。
 - `tests/`：项目级 pytest 测试。
 
@@ -24,7 +24,7 @@
 2. 每个核心步骤必须有独立的 `docs/IMPLEMENTATIONS/*.md`。只有状态为 `已批准`、且记录的项目计划版本与当前批准版本一致时，Agent 才能执行该步骤。
 3. 开始修改代码或数据流程前，Agent 必须读取 `AGENTS.md`、当前批准的项目计划和对应实施方案，并把变更限制在实施方案范围内。
 4. 实施中发现项目设计不可行或与仓库事实冲突时，停止施工并返回项目设计阶段；发现步骤路线或清单需要改变时，使用 `implementation-designer` 修订实施方案，不得边施工边静默改变设计。
-5. `docs/archive/` 和 `docs/plans/` 只提供历史背景。其内容与当前项目计划或批准的实施方案冲突时，以后两者为准，不能从归档文档恢复旧契约。
+5. `docs/archive/` 只提供历史背景。其内容与当前项目计划或批准的实施方案冲突时，以后两者为准，不能从归档文档恢复旧契约。
 
 ## 构建、测试与开发命令
 
@@ -75,7 +75,7 @@ CSV 标注是权威来源。发生冲突时，不覆盖 CSV 原字段；通过 `
 
 ## 测试规范
 
-项目级测试从仓库根目录运行 `python3 -m pytest tests -q`。真实生成产物不存在时，部分 `data/metadata/` 或 `data/04_new_merged/` 相关测试应 `skip`，不能依赖本机 ignored 产物才能通过。修改 pipeline 后，优先运行相关单测、一个小样本脚本链路和 `scripts/validate_no_oob.py`。修改 Agent runtime 后，重点覆盖 `tests/test_iterative_agent.py`、`tests/test_sampling*.py`、`tests/test_parser.py`、`tests/test_inference.py`。
+项目级测试从仓库根目录运行 `python3 -m pytest tests -q`。真实生成产物不存在时，部分 `data/07_metadata/` 或 `data/06_merged/` 相关测试应 `skip`，不能依赖本机 ignored 产物才能通过。修改 pipeline 后，优先运行相关单测、一个小样本脚本链路和 `scripts/validate_no_oob.py`。修改 Agent runtime 后，重点覆盖 `tests/test_iterative_agent.py`、`tests/test_sampling*.py`、`tests/test_parser.py`、`tests/test_inference.py`。
 
 ## Agent Runtime 规范
 
@@ -97,4 +97,4 @@ Agent 使用 Native Function Calling，不引入 MCP。微调模型的 `fracture
 
 ## 安全与配置提示
 
-不要提交 checkpoint、模型权重、密钥、token、大型输出文件或本地视频数据。`.gitignore` 已覆盖 `data/01_videos/`、`data/02_subvideos/`、`data/03_frames/`、`data/04_new_merged/`、`data/metadata/`、`data/08_runtime/` 和验证结果目录。PR 中记录本地模型路径、GPU 相关 YAML 设置和 `DOWNSAMPLE_MODE`。标注时间保持为 `XXX.XXs` 格式，不要嵌入空格。
+不要提交 checkpoint、模型权重、密钥、token、大型输出文件或本地视频数据。`.gitignore` 已覆盖 `data/01_videos/`、`data/03_subvideos/`、`data/04_frames/`、`data/06_merged/`、`data/07_metadata/`、`data/08_runtime/` 和验证结果目录。PR 中记录本地模型路径、GPU 相关 YAML 设置和 `DOWNSAMPLE_MODE`。标注时间保持为 `XXX.XXs` 格式，不要嵌入空格。

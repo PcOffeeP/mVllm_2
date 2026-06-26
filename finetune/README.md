@@ -28,7 +28,7 @@ finetune/
 ## 前置条件
 
 1. 下载基座模型到 `models/minicpm-v-4.5/`（见仓库根目录 `README.md`）。
-2. 按根目录 `README.md` 准备训练数据，生成 `data/04_merged/` 或 `data/04_new_merged/` 下的 JSON。
+2. 按根目录 `README.md` 准备训练数据，生成 `data/06_merged/` 下的 JSON。
 3. `finetune/dataset_info.json` 已注册 `tensile_video_3k*` / `tensile_video_interval_*` 数据集。
 
 ## 安装 LLaMA-Factory

@@ -40,5 +40,7 @@ uv.lock
 /data/04_frames/
 /data/06_merged/
 /data/08_runtime/
+/data/05_splits/
+/data/07_metadata/
 
 .agents/skills/
