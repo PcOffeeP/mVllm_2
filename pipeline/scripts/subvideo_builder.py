@@ -1259,20 +1259,26 @@ def main():
 
         EXCLUSIONS.clear()
 
-        print("阶段 1：生成候选子视频清单...")
+        total_videos = len(records)
+        skipped_test = 0
+        processed_count = 0
+        print("阶段 1：生成候选子视频清单")
         all_candidates: list[dict[str, Any]] = []
         for rec in records:
             video_id = rec["video_id"]
             split_info = split_mapping.get(video_id, {"split": "unknown", "fold": "unknown"})
             if split_info.get("split") == "test":
                 print(f"  跳过 {video_id}（测试集）")
+                skipped_test += 1
                 continue
-            print(f"  处理 {video_id}（{split_info.get('split')}）...")
+            print(f"  处理 {video_id}（train）")
+            processed_count += 1
             subs = build_subvideos_for_record(
                 rec, split_info, generate_media=False, extract_frames=False, preprocessor=preprocessor
             )
             all_candidates.extend(subs)
         print(f"候选子视频：{len(all_candidates)} 条")
+        print(f"  共 {total_videos} 个视频，已处理 {processed_count} 个，跳过 {skipped_test} 个（测试集）")
 
         print("阶段 2：训练集候选选择...")
         _select_train_candidates(all_candidates, split_defs, n_folds=3, seed=args.seed)
@@ -1296,7 +1302,7 @@ def main():
             crop_type = cand.get("crop_type", "?")
             start = cand.get("start_time", 0)
             end = cand.get("end_time", 0)
-            print(f"  [{completed}/{total}] {cand['subvideo_id']} ({crop_type}, {start:.1f}s→{end:.1f}s)...")
+            print(f"  [{completed}/{total}] {cand['subvideo_id']} ({crop_type}, {start:.1f}s→{end:.1f}s)")
             sub = _generate_media_for_candidate(
                 cand, rec, args.frame_dir,
                 extract_frames=args.extract_frames,
