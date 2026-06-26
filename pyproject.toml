@@ -9,14 +9,11 @@ description = "Material tensile fracture behavior video understanding with itera
 requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6.0",
-    "opencv-python>=4.8",
-    "openai>=1.0",
-    "pydantic>=2.0",
-    "requests>=2.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
-    "python-multipart>=0.0.20",
-    "sse-starlette>=2.2.1",
+    "av>=12.0",
+    "pandas>=2.0",
+    "Pillow>=10.0",
 ]
 
 [project.optional-dependencies]
@@ -40,9 +37,6 @@ minicpm = [
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = [
-    "agent",
-]
 only-include = [
     "pipeline/",
 ]

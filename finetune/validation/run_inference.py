@@ -19,6 +19,7 @@ from common import (
     load_fold_samples,
     load_ground_truth,
     normalize_prediction_label,
+    parse_response_payload,
     parse_seconds,
     round_record_times,
     validate_fold,
@@ -36,8 +37,6 @@ from pipeline.preprocessing.minicpm_preprocessor import (
     MiniCPMVideoPreprocessor,
     configure_processor_max_frames,
 )
-from agent.parser import ResultParser
-
 logger = logging.getLogger(__name__)
 
 
@@ -327,10 +326,9 @@ def main() -> None:
             }
             response_text = run_single_inference(model, processor, video_path, prompt)
             record["raw_output"] = response_text
-            parsed = ResultParser.parse(response_text)
-            payload = parsed.data
-            record["json_valid"] = parsed.ok
-            if parsed.ok and payload is not None:
+            json_valid, payload = parse_response_payload(response_text)
+            record["json_valid"] = json_valid
+            if json_valid and payload is not None:
                 record["pred_has_fracture"] = payload.get("has_fracture")
                 record["pred_location"] = _parse_location(payload)
                 record["pred_time_raw"] = payload.get("time")

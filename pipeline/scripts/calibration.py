@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -17,7 +19,70 @@ from pipeline.preprocessing import (
     VideoPreprocessor,
 )
 from pipeline.llamafactory_contract import configure_loaded_processor
-from agent.sampling import FfmpegVideoClipBuilder, _probe_video
+
+
+def _probe_video(video_path: str) -> dict:
+    """Get video duration via ffprobe."""
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "json", video_path],
+        capture_output=True, text=True, check=True
+    )
+    info = json.loads(result.stdout)
+    return {"duration": float(info["format"]["duration"])}
+
+
+class _VideoClip:
+    """Simple video clip result."""
+    def __init__(self, path: str, manifest: dict):
+        self.path = path
+        self.manifest = manifest
+
+
+class _FfmpegVideoClipBuilder:
+    """Inline replacement for agent.sampling.FfmpegVideoClipBuilder."""
+    def __init__(self, output_dir: str):
+        self.output_dir = output_dir
+    
+    def build_with_manifest(self, video_path: str, time_range: list[float]) -> _VideoClip:
+        start, end = time_range
+        duration = end - start
+
+        # Probe source video for frame rate
+        probe_result = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=r_frame_rate",
+             "-of", "json", video_path],
+            capture_output=True, text=True, check=True
+        )
+        probe_info = json.loads(probe_result.stdout)
+        r_frame_rate = probe_info["streams"][0].get("r_frame_rate", "30/1")
+        num, den = r_frame_rate.split("/")
+        fps = float(num) / float(den)
+
+        # Calculate frame range in source video
+        start_frame = int(round(start * fps))
+        end_frame = int(round(end * fps))
+
+        # Build frame-level manifest
+        manifest = []
+        for i, original_frame in enumerate(range(start_frame, end_frame)):
+            manifest.append({
+                "temp_index": i,
+                "original_frame": original_frame,
+                "timestamp": original_frame / fps,
+            })
+
+        # Build the video clip via ffmpeg
+        filename = f"clip_{os.path.basename(video_path)}"
+        output_path = os.path.join(self.output_dir, filename)
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-ss", str(start), "-t", str(duration),
+             "-c", "copy", output_path, "-y"],
+            capture_output=True, check=True
+        )
+
+        return _VideoClip(path=output_path, manifest=manifest)
 
 
 def _sanitize_model_path(model_path: str) -> str:
@@ -320,7 +385,7 @@ def run_calibration(
     all_passed = True
 
     with tempfile.TemporaryDirectory(prefix="minicpm_calibration_") as temp_dir:
-        clip_builder = FfmpegVideoClipBuilder(output_dir=temp_dir)
+        clip_builder = _FfmpegVideoClipBuilder(output_dir=temp_dir)
         for case in cases:
             case_result: dict[str, Any] = {
                 "case_id": case["case_id"],
