@@ -31,7 +31,7 @@
 
 ## 执行清单
 
-- [ ] 清理当前 UI 路线边界，确认 Streamlit 工作台不再作为新验收入口；保留或移除旧 `ui/agent_app.py` 时不得影响 CLI 和共享 runner。
+- [x] 清理当前 UI 路线边界，确认 Streamlit 工作台不再作为新验收入口；已移除旧 `ui/agent_app.py`，不影响 CLI 和共享 runner。
 - [ ] 补充 Python 依赖和启动入口，加入 FastAPI、Uvicorn 及必要的 multipart/SSE 支持，并确保项目包配置包含新的 API 模块。
 - [ ] 设计并实现本地 Web API 的任务模型、错误模型和事件模型，复用 `{ok, result, error}` Runner 信封和三种 Agent 最终状态。
 - [ ] 实现上传与任务创建 API，支持单文件上传、本地视频路径创建任务、目录批量创建任务，并把上传副本写入 ignored runtime 目录。

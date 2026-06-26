@@ -1,6 +1,6 @@
 """Shared execution kernel for the iterative agent.
 
-This module is the single entry point used by both the local Streamlit UI and
+This module is the single entry point used by both the local Web API and
 the CLI. It loads configuration, builds the minimal video metadata required by
 ``IterativeAgent``, wires up the LLM / inference / sampling / clip-building
 dependencies, and runs one or more videos.

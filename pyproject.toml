@@ -8,7 +8,6 @@ version = "0.1.0"
 description = "Material tensile fracture behavior video understanding with iterative agent and frame-interval fine-tuning."
 requires-python = ">=3.11"
 dependencies = [
-    "streamlit>=1.30",
     "pyyaml>=6.0",
     "opencv-python>=4.8",
     "openai>=1.0",
@@ -39,7 +38,6 @@ testpaths = ["tests"]
 [tool.hatch.build.targets.wheel]
 packages = [
     "agent",
-    "ui",
 ]
 only-include = [
     "pipeline/",
