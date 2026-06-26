@@ -31,24 +31,35 @@ TensileAgent/
 
 ## 环境准备
 
+项目使用 **Conda** 管理 Python 环境（推荐），训练依赖在远程 4090 Linux 系统上运行。
+
+### 创建 Conda 环境
+
 ```bash
 # 初始化子模块
 git submodule update --init --recursive
 
-# 创建 UV 虚拟环境（Python 3.11+）
-uv venv --python 3.11
-source .venv/bin/activate
-
-# 安装项目依赖
-uv sync
-
-# 安装训练依赖（需在远程训练机上执行）
-uv sync --group minicpm
-
-# 下载 MiniCPM-V-4.5 基座模型至 models/ 目录
+# 创建 Conda 环境（Python 3.11）
+conda env create -f environment.yml
+conda activate tensileagent
 ```
 
-训练时需在 `finetune/` 目录下设置以下环境变量：
+> **Mac 开发机**：如需在本地运行数据流水线等，可手动创建不带 CUDA 的环境：
+> ```bash
+> conda create -n tensileagent python=3.11 pip
+> conda activate tensileagent
+> pip install -e ../LlamaFactory
+> conda install av pandas Pillow pyyaml fastapi uvicorn python-multipart
+> ```
+
+### 下载模型
+
+将 MiniCPM-V-4.5 基座模型下载至 `models/` 目录。
+
+### 环境变量
+
+训练前需设置以下环境变量（训练命令需在 `finetune/` 目录下执行）：
+
 ```bash
 export DOWNSAMPLE_MODE=4x    # MiniCPM 视频预处理下采样策略
 export DISABLE_VERSION_CHECK=1

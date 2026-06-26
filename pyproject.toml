@@ -5,33 +5,10 @@ build-backend = "hatchling.build"
 [project]
 name = "tensileagent"
 version = "0.1.0"
-description = "Material tensile fracture behavior video understanding with iterative agent and frame-interval fine-tuning."
+description = "Material tensile fracture behavior video understanding with frame-interval fine-tuning."
 requires-python = ">=3.11"
-dependencies = [
-    "pyyaml>=6.0",
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.34.0",
-    "av>=12.0",
-    "pandas>=2.0",
-    "Pillow>=10.0",
-]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "ruff>=0.4.0",
-]
-minicpm = [
-    "llamafactory",
-    "soundfile",
-    "torchvision",
-    "torchaudio",
-    "vector-quantize-pytorch",
-    "vocos",
-    "msgpack",
-    "referencing",
-    "jsonschema-specifications",
-]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -41,5 +18,4 @@ only-include = [
     "pipeline/",
 ]
 
-[tool.uv.sources]
-llamafactory = { path = "LlamaFactory", editable = true }
+
