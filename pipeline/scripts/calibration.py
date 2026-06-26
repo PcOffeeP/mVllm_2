@@ -53,7 +53,7 @@ class _FfmpegVideoClipBuilder:
             ["ffprobe", "-v", "error", "-select_streams", "v:0",
              "-show_entries", "stream=r_frame_rate",
              "-of", "json", video_path],
-            capture_output=True, text=True, check=True
+            capture_output=True, text=True, check=True, timeout=30
         )
         probe_info = json.loads(probe_result.stdout)
         r_frame_rate = probe_info["streams"][0].get("r_frame_rate", "30/1")
@@ -77,9 +77,9 @@ class _FfmpegVideoClipBuilder:
         filename = f"clip_{os.path.basename(video_path)}"
         output_path = os.path.join(self.output_dir, filename)
         subprocess.run(
-            ["ffmpeg", "-i", video_path, "-ss", str(start), "-t", str(duration),
-             "-c", "copy", output_path, "-y"],
-            capture_output=True, check=True
+            ["ffmpeg", "-y", "-ss", str(start), "-i", video_path, "-t", str(duration),
+             "-c", "copy", output_path],
+            capture_output=True, check=True, timeout=120
         )
 
         return _VideoClip(path=output_path, manifest=manifest)
