@@ -15,11 +15,8 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LLAMAFACTORY_SRC = ROOT / "LlamaFactory" / "src"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-if str(LLAMAFACTORY_SRC) not in sys.path:
-    sys.path.insert(0, str(LLAMAFACTORY_SRC))
 
 from pipeline.llamafactory_contract import install_training_processor_contract
 

@@ -25,11 +25,15 @@ dev = [
     "ruff>=0.4.0",
 ]
 minicpm = [
-    "transformers>=4.40",
-    "torch>=2.0",
-    "torchvision>=0.15",
-    "av>=10.0.0",
-    "opencv-python>=4.8",
+    "llamafactory",
+    "soundfile",
+    "torchvision",
+    "torchaudio",
+    "vector-quantize-pytorch",
+    "vocos",
+    "msgpack",
+    "referencing",
+    "jsonschema-specifications",
 ]
 
 [tool.pytest.ini_options]
@@ -42,3 +46,6 @@ packages = [
 only-include = [
     "pipeline/",
 ]
+
+[tool.uv.sources]
+llamafactory = { path = "LlamaFactory", editable = true }
