@@ -1104,16 +1104,16 @@ def _generate_media_for_candidate(
                 str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files
             ]
 
-    # 补全 actual_frame_mapping（阶段 1 跳过了 processor 调用）
-    if preprocessor is not None and not sub.get("actual_frame_mapping"):
+    # 补全 actual_frame_mapping（跳过 MiniCPM processor，只用 PyAV）
+    if not sub.get("actual_frame_mapping"):
         try:
-            sampled = _preprocessor_sample(
-                preprocessor, source_path, sub["start_time"], sub["end_time"]
+            sampled = _build_frame_mapping_pyav(
+                source_path, sub["start_time"], sub["end_time"]
             )
             sub["actual_frame_mapping"] = sampled
             sub["sampled_frames"] = sampled
         except Exception as exc:
-            print(f"   ⚠️ 帧映射采样失败: {exc}")
+            print(f"   ⚠️ PyAV 帧映射失败: {exc}")
             sub["actual_frame_mapping"] = []
             sub["sampled_frames"] = []
 
