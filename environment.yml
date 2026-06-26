@@ -39,7 +39,7 @@ dependencies:
       - altair==6.2.2
       - annotated-doc==0.0.4
       - annotated-types==0.7.0
-      - antlr4-python-runtime==4.9.3
+      - antlr4-python3-runtime==4.9.3
       - anyio==4.14.1
       - attrs==26.1.0
       - av==16.0.0
