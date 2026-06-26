@@ -21,7 +21,5 @@ agent:
 
 # Fine-tuned model backend configuration (used by InferenceClient).
 backend:
-  name: minicpmv4_5
-  base_model: models/minicpm-v-4.5
-  adapter_base_dir: LlamaFactory/saves/minicpmv4_5/lora
-  adapter_pattern: sft_interval_3k{fold}
+  api_url: http://localhost:8000/v1
+  model: minicpmv4_5

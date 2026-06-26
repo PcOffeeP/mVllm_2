@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from agent.adapter import FOLD_ADAPTER_PATHS, get_adapter_path, list_supported_folds
 from agent.inference import InferenceClient, LlamaFactoryInferenceClient, MockInferenceClient
 from agent.iterative_agent import IterativeAgent, TOOLS_SCHEMA
 from agent.llm import AgentLLMFactory, BaseAgentLLM, LocalClient, RemoteAPIClient
@@ -38,7 +37,6 @@ __all__ = [
     "AgentLLMFactory",
     "BaseAgentLLM",
     "ClipBuildResult",
-    "FOLD_ADAPTER_PATHS",
     "FfmpegVideoClipBuilder",
     "FinalOutput",
     "FractureType",
@@ -63,6 +61,4 @@ __all__ = [
     "build_user_prompt",
     "fracture_between_to_frame_range",
     "fracture_between_to_time_range",
-    "get_adapter_path",
-    "list_supported_folds",
 ]
