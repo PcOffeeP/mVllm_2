@@ -31,23 +31,46 @@ TensileAgent/
 
 ## 环境准备
 
-项目使用 **Conda** 管理 Python 环境（推荐），训练依赖在远程 4090 Linux 系统上运行。
+项目使用 **Conda + pip** 管理 Python 环境（推荐），训练依赖在远程 4090 Linux 系统上运行。
 
-### 创建 Conda 环境
+### 初始化子模块
 
 ```bash
-# 初始化子模块
 git submodule update --init --recursive
+```
 
-# 创建 Conda 环境（Python 3.11）
-conda env create -f environment.yml
+### 创建 Conda 环境（两步法）
+
+> **为什么不用 `conda env create -f environment.yml`？**
+> 该命令的 pip 子进程将全部依赖捆绑安装，任一个包失败即整体回滚，且本地路径安装兼容性差。
+> 拆分为两步可逐个排查，失败不影响已安装部分。
+
+**Step 1：创建最小 Conda 环境**
+
+```bash
+conda create -n mVllm2 python=3.11 pip -y
 conda activate mVllm2
 ```
+
+**Step 2：pip 安装所有依赖**
+
+```bash
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+**Step 3：安装本地子模块**
+
+```bash
+pip install -e ./LlamaFactory
+```
+
+如果某个包安装失败，pip 会继续安装其余包，最后单独处理失败的那一个即可。
 
 > **Mac 开发机**：如需在本地运行数据流水线等，可手动创建不带 CUDA 的环境：
 > ```bash
 > conda create -n mVllm2 python=3.11 pip
 > conda activate mVllm2
+> pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 > pip install -e ./LlamaFactory
 > conda install av pandas Pillow pyyaml fastapi uvicorn python-multipart
 > ```
