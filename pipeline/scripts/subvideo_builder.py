@@ -28,6 +28,9 @@ import re
 import shutil
 import subprocess
 import sys
+
+import functools
+
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -283,6 +286,23 @@ def _processor_info(preprocessor: VideoPreprocessor | None) -> dict[str, Any] | 
     }
 
 
+@functools.lru_cache(maxsize=200)
+def _build_pts_frame_map(video_path: str) -> dict[float, int]:
+    """解码一次，缓存 PTS→帧号映射，后续候选直接复用。"""
+    import av
+    container = av.open(video_path, "r")
+    stream = next(s for s in container.streams if s.type == "video")
+    mapping: dict[float, int] = {}
+    for idx, frame in enumerate(container.decode(stream)):
+        if frame.pts is None:
+            continue
+        ts = round(float(frame.pts * stream.time_base), 9)
+        if ts not in mapping:
+            mapping[ts] = idx
+    container.close()
+    return mapping
+
+
 def _build_frame_mapping_pyav(
     video_path: Path,
     start_time: float,
@@ -291,17 +311,8 @@ def _build_frame_mapping_pyav(
     """纯 PyAV 构建帧映射，无需 MiniCPM processor。"""
     import av
 
-    # 建立 PTS → 帧号 映射
-    container = av.open(str(video_path), "r")
-    stream = next(s for s in container.streams if s.type == "video")
-    pts_to_frame: dict[float, int] = {}
-    for idx, frame in enumerate(container.decode(stream)):
-        if frame.pts is None:
-            continue
-        ts = round(float(frame.pts * stream.time_base), 9)
-        if ts not in pts_to_frame:
-            pts_to_frame[ts] = idx
-    container.close()
+    # 使用缓存的 PTS→帧号映射，避免重复解码全视频
+    pts_to_frame = _build_pts_frame_map(str(video_path))
 
     # 解码目标区间
     container = av.open(str(video_path), "r")
