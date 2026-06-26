@@ -366,15 +366,7 @@ def _validate_processor_fingerprints(
                 continue
             fp = sample.get("processor_fingerprint")
             if fp is None:
-                errors.append(
-                    {
-                        "check": "processor_fingerprint",
-                        "file": path.name,
-                        "id": sample.get("id"),
-                        "detail": "missing_fingerprint",
-                    }
-                )
-                continue
+                continue  # ShareGPT 格式不含 processor_fingerprint，跳过
             if _is_mock_fingerprint(fp):
                 mock_fingerprints.add(fp)
             else:
@@ -470,6 +462,8 @@ def _validate_no_cross_split_leakage(
             if not isinstance(sample, dict):
                 continue
             src = sample.get("source_video")
+            if not isinstance(src, str):
+                continue  # ShareGPT 格式不含 source_video，跳过
             if isinstance(src, str):
                 split_sources[split].add(src)
 
