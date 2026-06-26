@@ -129,7 +129,7 @@
     "video_id": "video_0052",
     "has_fracture": false,
     "has_fracture_canonical": false,
-    "is_abnormal": true,
+    "is_abnormal": false,
     "is_abnormal_canonical": false,
     "video_anomaly_kind": null,
     "event_time_reliable": false,

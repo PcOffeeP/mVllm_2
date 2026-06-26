@@ -1,7 +1,7 @@
 {
   "summary": {
-    "merged_dir": "/home/liuyang/文档/TensileAgent/data/06_merged",
-    "subvideos_meta": "/home/liuyang/文档/TensileAgent/data/07_metadata/subvideos_meta.json",
+    "merged_dir": "/home/liuyang/文档/mVllm_2/data/06_merged",
+    "subvideos_meta": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
     "error_count": 0,
     "warning_count": 0
   },

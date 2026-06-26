@@ -1,16 +1,16 @@
 {
   "version": "2.0.0",
   "code": {
-    "commit": "cff142dc2e861713fdc92b42b89f87ff4f3b339d",
+    "commit": "b5bfe34f67c2f7ce793e0e3151e5c8828ff38f42",
     "dirty": true
   },
   "config": {
     "files": {
-      "finetune/dataset_info.json": "48c0ed7de5f599d28f1e80464953660fe03e62ef7f94f7fcacd1e5489fc36d18",
-      "agent/config.yaml": "c5021272e60c3367e886a265754791622dcdc5da60e5c4094d133322ae42fb20",
-      "pyproject.toml": "a83391562ec236f1675f063453fe5ccc942b642cbfa99376b7b5ed7ff3c0b30d"
+      "finetune/dataset_info.json": "58f7bd967f2197375863ac6e93ec874e8f6ae597995eec631e027c17d27ebbbe",
+      "agent/config.yaml": null,
+      "pyproject.toml": "865401f17db1518725e5a0bc9acaaea8df2ae32379e5b0c630aee0fe52108ed0"
     },
-    "combined_sha256": "0751c9b9c43be3aa3258c3b7321d3ffc54f2aa2efba191045197985fb0e4fe5a"
+    "combined_sha256": "b5d5cac539938ce61cf672c3f699f8501ab3647381d4f437e3cadb7495cc5c83"
   },
   "environment": {
     "ffmpeg_version": "ffmpeg version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2000-2021 the FFmpeg developers",
@@ -22,15 +22,15 @@
   },
   "processor": {
     "fingerprints": {
-      "minicpm-v-4.5:models/minicpm-v-4.5:cfg=1d6f6eb441da34dc:pre=5c0dbc92920ded23:max_frames=8:backend=transformers-loaded": 9116
+      "minicpm-v-4.5:models/minicpm-v-4.5:cfg=1d6f6eb441da34dc:pre=5c0dbc92920ded23:max_frames=8:backend=transformers-loaded": 2279
     },
     "dominant": "minicpm-v-4.5:models/minicpm-v-4.5:cfg=1d6f6eb441da34dc:pre=5c0dbc92920ded23:max_frames=8:backend=transformers-loaded",
-    "count": 9116
+    "count": 2279
   },
   "input_video_manifest": {
     "count": 110,
     "sha256": "567f0e97ec00481e8d47fbe6fae47aa11d875c18466d4da6df69ec95dc1b8ae0",
-    "source": "/home/liuyang/文档/TensileAgent/data/07_metadata/video_meta.json"
+    "source": "/home/liuyang/文档/mVllm_2/data/07_metadata/video_meta.json"
   },
   "split_manifest": {
     "count": 7,
@@ -44,7 +44,7 @@
       "test.json"
     ],
     "sha256": "e3d5ac2ba9c642c929065a5953679d2e5e6d0760482b4009d2157326a2f47f42",
-    "source": "/home/liuyang/文档/TensileAgent/data/05_splits"
+    "source": "/home/liuyang/文档/mVllm_2/data/05_splits"
   },
   "sample_manifest": {
     "count": 8,
@@ -58,11 +58,11 @@
       "samples_meta.json",
       "test_inputs.json"
     ],
-    "sha256": "80d4875ecbf0db2f2c010383f0386ed93c7616f520a5cf4e5bf1bf329783327e",
-    "source": "/home/liuyang/文档/TensileAgent/data/06_merged"
+    "sha256": "541ae715f7a950836be17ef8341815fcd98da86f7b0dedccbfb0c13300b76199",
+    "source": "/home/liuyang/文档/mVllm_2/data/06_merged"
   },
   "statistics": {
-    "source": "/home/liuyang/文档/TensileAgent/data/06_merged/samples_meta.json",
+    "source": "/home/liuyang/文档/mVllm_2/data/06_merged/samples_meta.json",
     "summary": {
       "total_samples": 6837,
       "total_video_sources": 89,
@@ -389,6 +389,6 @@
   },
   "disk_usage_bytes": {
     "03_subvideos": 1846403900,
-    "06_merged": 29074839
+    "06_merged": 4132801
   }
 }
