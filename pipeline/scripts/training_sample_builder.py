@@ -16,19 +16,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-# 允许从项目根目录之外直接运行时导入 agent.prompts
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-import sys
-
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
-
-try:
-    from agent.prompts import SYSTEM_PROMPT, build_user_prompt
-except Exception as exc:  # pragma: no cover
-    raise ImportError(
-        "无法导入 agent.prompts，请确保从项目根目录运行或 PYTHONPATH 包含项目根目录"
-    ) from exc
 
 
 SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.json"
@@ -213,16 +201,17 @@ def convert_subvideo_to_sample(
     end_time = sub.get("end_time", 0.0)
     effective_frames = compute_effective_frames(sub)
 
-    user_prompt = build_user_prompt(sample_range=[start_time, end_time])
-    # ShareGPT 视频占位符由调用方插入
-    user_content = f"<video>\n{user_prompt}"
+    user_content = (
+        "<video>\n请分析这段拉伸试验视频，判断是否存在断裂。"
+        "视频将被处理为最多 8 帧，请判断断裂发生在哪两帧之间。"
+        "按 JSON 格式输出：has_fracture、fracture_between、type、location、confidence。"
+    )
     assistant_content = build_assistant_content(sub)
 
     sample: dict[str, Any] = {
         "id": sub["subvideo_id"],
         "videos": [_normalize_video_path(sub["video_path"])],
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
             {"role": "assistant", "content": assistant_content},
         ],
@@ -450,7 +439,11 @@ def build_all(
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, samples in split_samples.items():
         out_path = output_dir / f"{name}.json"
-        write_json(out_path, samples)
+        clean_samples = [
+            {k: v for k, v in s.items() if k in ("messages", "videos")}
+            for s in samples
+        ]
+        write_json(out_path, clean_samples)
         print(f"写入: {out_path} ({len(samples)} 条样本)")
 
     test_ids = split_video_ids.get("test", set())
