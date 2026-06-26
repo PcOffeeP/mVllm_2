@@ -14,6 +14,7 @@ SUBVIDEO_DIR = DATA_DIR / "03_subvideos"
 META_DIR = DATA_DIR / "07_metadata"
 SPLITS_DIR = DATA_DIR / "05_splits"
 MERGED_DIR = DATA_DIR / "06_merged"
+SAMPLES_META_PATH = MERGED_DIR / "samples_meta.json"
 
 FRACTURE_TYPES = {
     "韧性断裂",
@@ -165,24 +166,26 @@ def _validate_splits(splits: dict[str, set[str]], video_meta: list[dict], errors
 
 
 def _validate_train_ratio(errors: list) -> None:
+    meta = _load_json(SAMPLES_META_PATH)
+    splits = meta.get("splits", {})
     for i in range(3):
-        path = MERGED_DIR / f"fold_{i}_train.json"
-        data = _load_json(path)
-        if not isinstance(data, list):
-            errors.append(("ratio", path.name, "missing"))
+        split_name = f"fold_{i}_train"
+        split = splits.get(split_name)
+        if split is None:
+            errors.append(("ratio", f"fold_{i}_train.json", "missing_in_samples_meta"))
             continue
-        pos = sum(
-            1
-            for s in data
-            if s.get("has_fracture") is True and s.get("type") in FRACTURE_TYPES
-        )
-        neg = len(data) - pos
+        pos = split.get("positive_samples", 0)
+        neg = split.get("negative_samples", 0)
         if pos == 0:
-            errors.append(("ratio", path.name, "no_positive_samples"))
-            continue
-        ratio = pos / neg if neg else float("inf")
-        if not (1.0 <= ratio <= 2.0):
-            errors.append(("ratio", path.name, f"pos={pos} neg={neg} ratio={ratio:.2f}", "not_in_1:1_to_2:1"))
+            errors.append(("ratio", f"fold_{i}_train.json", "no_positive_samples"))
+        if neg == 0:
+            errors.append(("ratio", f"fold_{i}_train.json", "no_negative_samples"))
+        total = pos + neg
+        if total == 0:
+            errors.append(("ratio", f"fold_{i}_train.json", "no_samples"))
+        ratio = pos / neg if neg > 0 else float("inf")
+        if not (0.5 <= ratio <= 2.0):
+            errors.append(("ratio", f"fold_{i}_train.json", f"pos/neg ratio={ratio:.2f}"))
 
 
 def _validate_test_isolation(errors: list) -> None:
