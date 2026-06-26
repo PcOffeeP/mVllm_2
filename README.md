@@ -1,319 +1,239 @@
 # TensileAgent
 
-材料拉伸试验视频的断裂行为理解项目。当前主线采用 **frame-interval 微调模型 + Meta-Agent 迭代定位**：微调模型判断给定视频片段中“断裂发生在哪两帧之间”，Meta-Agent 据此多轮缩小时间区间，最终输出断裂区间、类型、位置及置信度。
+> 材料拉伸试验视频断裂行为理解 — 基于 MiniCPM-V-4.5 的 frame-interval 精细化微调与评估
 
-- 微调模型输出结构化 JSON，核心字段为 `has_fracture`、`fracture_between`、`type`、`location`、`confidence`。
-- Agent 通过 Native Function Calling 调用 `sample_and_infer`，逐步收敛候选区间，最终输出 `fracture`、`no_fracture` 或 `unrecognized`。
-- 旧单点预测方案由另一个项目维护，本项目只导入其版本化预测产物进行统一比较。
+**一句话定位**：采用 **frame-interval 多帧区间建模**，对材料拉伸试验视频进行断裂时间定位与断裂类型分类。
 
-> 详细开发约束、命名约定、提交规范见 [AGENTS.md](./AGENTS.md)。
-> 当前项目设计见 [docs/PROJECT_PLAN.md](./docs/PROJECT_PLAN.md)，分步骤实施设计见 [docs/IMPLEMENTATIONS/](./docs/IMPLEMENTATIONS/)。
+## 目录结构
 
-## 仓库结构
-
-```text
+```
 TensileAgent/
-├── agent/                  # Agent 状态机、LLM 后端、推理客户端、采样与 prompt/schema
-├── pipeline/
-│   ├── scripts/            # 数据准备、子视频生成、训练样本构建脚本
-│   ├── config/             # 旧问题池与 JSON 模板（基线遗留）
-│   └── templates/          # 旧问题模板（基线遗留）
-├── finetune/
-│   ├── MiniCPM/config/     # 3-fold interval 训练 YAML 与 LoRA merge 配置
-│   ├── validation/         # 推理、评估脚本与结果目录
-│   └── dataset_info.json   # 数据集注册表
-├── LlamaFactory/           # LLaMA-Factory git submodule
-├── scripts/
-│   └── validate_no_oob.py  # 生成产物一致性 / OOB 校验
-├── tests/                  # 项目级 pytest
-├── docs/                   # 当前项目计划、实施方案和历史设计归档
-├── assets/                 # 领域参考文档与项目原始说明材料
-├── data/
-│   ├── 01_videos/          # 原始视频（本地，不提交）
-│   ├── 02_annotations/     # CSV 标注与映射文件
-│   ├── 05_splits/          # 新 interval fold/test 划分
-│   ├── 03_subvideos/       # 新 interval 子视频产物（本地，不提交）
-│   ├── 04_frames/          # 帧图缓存（本地，不提交）
-│   ├── 06_merged/          # 新 interval ShareGPT 训练 JSON（本地，不提交）
-│   └── 07_metadata/        # video_meta.json / subvideos_meta.json（本地，不提交）
-├── AGENTS.md               # 仓库开发规范
+├── pipeline/                  # 数据流水线 + 预处理适配层
+│   ├── scripts/               #   数据处理脚本（划分→子视频→训练样本→质量检查→冻结）
+│   ├── preprocessing/         #   视频预处理适配层（MiniCPM processor 封装）
+│   ├── server_proxy.py        #   同进程推理服务（LLaMA-Factory ChatModel 封装）
+│   ├── server_adapter.py      #   推理服务适配层
+│   └── llamafactory_contract.py  # Processor contract（帧数上限 8 + 帧捕获）
+├── finetune/                  # 微调训练与验证
+│   ├── train_with_contract.py #   训练入口
+│   ├── MiniCPM/config/        #   3-fold YAML 配置文件
+│   ├── validation/            #   推理 + 三种评估脚本
+│   └── dataset_info.json      #   LLaMA-Factory 数据集注册表
+├── data/                      # 数据资产（视频、标注、划分、子视频、训练 JSON、元数据）
+├── LlamaFactory/              # LLaMA-Factory git submodule（训练框架）
+├── models/                    # 基座模型权重（.gitignore）
+├── docs/                      # 项目文档
+├── scripts/                   # 辅助工具脚本（清理、调试、校验）
+├── assets/                    # 领域参考文档与原始说明材料
+├── pyproject.toml             # UV 项目配置
 └── README.md
 ```
 
 ## 环境准备
 
-- Python 3.11（仓库根目录 `.python-version`）。
-- 初始化 LLaMA-Factory 子模块：
-
 ```bash
+# 初始化子模块
 git submodule update --init --recursive
+
+# 创建 UV 虚拟环境（Python 3.11+）
+uv venv --python 3.11
+source .venv/bin/activate
+
+# 安装项目依赖
+uv sync
+
+# 安装训练依赖（需在远程训练机上执行）
+uv sync --group minicpm
+
+# 下载 MiniCPM-V-4.5 基座模型至 models/ 目录
 ```
 
-- 安装训练依赖（手动安装，或参考 [LLaMA-Factory 文档](https://github.com/hiyouga/LLaMA-Factory)）：
-
+训练时需在 `finetune/` 目录下设置以下环境变量：
 ```bash
-cd LlamaFactory/
-pip install -e ".[metrics]"
-pip install -r requirements/minicpm-v.txt
+export DOWNSAMPLE_MODE=4x    # MiniCPM 视频预处理下采样策略
+export DISABLE_VERSION_CHECK=1
 ```
 
-- 安装项目根依赖（运行 Agent CLI/UI 必需）：
+## 方法论：Frame-Interval 精细化微调
 
-```bash
-pip install -e .
+传统做法对整段视频做单次预测，难以精确到秒级断裂定位。本项目采用 **frame-interval 建模**：
+
+1. **帧级粒度**：通过 MiniCPM-V-4.5 的 processor 将视频解码为离散帧序列（默认最多 8 帧），每帧关联精确时间戳。
+2. **区间标注**：断裂位置标注为相邻帧索引对 `[i, i+1]`（即 fracture_between），由真实 processor 的帧选结果推导，确保标注与模型输入一致。
+3. **子视频采样**：围绕断裂时刻构造多种时间窗口的子视频（聚焦窗口 3s/5s/10s/20s + 断裂前负样本 + 断裂后困难负样本），构造丰富的正负样本对。
+4. **3-fold 交叉验证**：按视频分层划分 3 折，每折独立训练 + 验证，确保评估稳定性。
+
+## 数据流水线
+
+从原始 CSV 标注到可训练的 ShareGPT JSON，共 **7 步**：
+
+```
+原始视频 + CSV 标注
+    │
+    ├─① dataset_manager.py     读取 CSV → 构建 video_meta.json → 3-fold 分层划分
+    │                           输出: data/05_splits/, data/07_metadata/video_meta.json
+    │
+    ├─② subvideo_builder.py    加载 MiniCPM processor → 生成候选子视频
+    │    3 阶段                  阶段1: 生成候选清单（全时长 + focus 窗口 + 负样本）
+    │                           阶段2: 按正:负 1:1~2:1 选样
+    │                           阶段3: 编码子视频 → data/03_subvideos/
+    │                           输出: data/07_metadata/subvideos_meta.json
+    │
+    ├─③ training_sample_builder.py  子视频元数据 → ShareGPT JSON
+    │                                 输出: data/06_merged/fold_*_train.json / val.json
+    │
+    ├─④ validate_no_oob.py     校验 fracture_between 与 start/end_frame 一致性
+    │
+    ├─⑤ quality_check.py       强制质量检查（路径存在性、字段合法性、leakage 检测等）
+    │                           输出: data/07_metadata/quality_check_report.json
+    │
+    ├─⑥ freeze_data_version.py 冻结数据版本（git commit、配置哈希、processor 指纹等）
+    │                           输出: data/07_metadata/data_version_lock.json
+    │
+    └─⑦ calibration.py         （可选）校验预处理适配层与 LLaMA-Factory 真实 batch 加载一致
+                               输出: data/07_metadata/calibration_report.json
 ```
 
-若需要开发依赖（pytest 等），使用：
+### 完整复现命令
+
+以下命令从仓库根目录执行，按顺序依次运行：
 
 ```bash
-pip install -e ".[dev]"
-```
+# ① 读取 CSV，生成视频元数据与 3-fold 划分
+python3 -m pipeline.scripts.dataset_manager --csv data/02_annotations/all_videos_tag.csv
 
-- 本地模型默认放在 `models/minicpm-v-4.5`，不提交模型权重或 checkpoint。
-- Agent 远程后端需要配置 `LLM_API_KEY` 或在 `agent/config.yaml` 中填入 `agent.remote.api_key`。
-
-## 数据复现流程
-
-本节说明从原始输入到冻结数据版本的完整复现命令。以下命令均从仓库根目录执行。
-
-### 前提条件
-
-- 输入数据：`data/01_videos/` 原始视频、`data/02_annotations/` CSV 标注与映射文件。
-- 本地模型：`models/minicpm-v-4.5/` 已放置 MiniCPM-V 4.5 权重。
-- Python 依赖：按[环境准备](#环境准备)安装项目根依赖与 LLaMA-Factory 依赖；`subvideo_builder.py` 需要 `torch` 等训练环境依赖。
-- 系统依赖：`ffmpeg` / `ffprobe` 已安装。
-- 平台要求：真实 MiniCPM 预处理逻辑需在 Linux 训练机上运行；当前 macOS/Darwin 环境会触发平台保护逻辑并缺失 `torch`，无法完成完整复现。
-
-### 复现步骤
-
-```bash
-# 1. （可选）清空旧产物
-python3 -m scripts.clear_data_outputs
-```
-
-清理 `data/03_subvideos/`、`data/04_frames/`、`data/05_splits/`、`data/06_merged/`、`data/07_metadata/`、`data/08_runtime/` 等目录中的历史产物，避免旧数据污染新版本。`data/01_videos/` 与 `data/02_annotations/` 受保护，不会被清空。
-
-```bash
-# 2. 划分数据集与生成元数据
-python3 -m pipeline.scripts.dataset_manager
-```
-
-读取 `data/02_annotations/` 中的 CSV 与映射，生成 `data/05_splits/` 下的 fold/test 划分，以及 `data/07_metadata/video_meta.json` 等视频级元数据。当前 macOS 环境此步骤可成功运行。
-
-```bash
-# 3. 生成子视频与帧图缓存
+# ② 加载 MiniCPM processor，生成编码子视频与元数据
 python3 -m pipeline.scripts.subvideo_builder --model models/minicpm-v-4.5
-```
 
-基于划分与 `video_meta.json` 生成 `data/03_subvideos/` 子视频、`data/04_frames/` 帧图缓存，以及 `data/07_metadata/subvideos_meta.json` 子视频元数据。该步骤调用真实 MiniCPM 视频处理器生成最多 8 帧映射。当前 macOS/Darwin 环境会失败退出，因为 `pipeline/preprocessing/minicpm_preprocessor.py` 在该平台禁用了真实处理器，且系统 Python 缺少 `torch`；需在 Linux 训练机上运行。
-
-```bash
-# 4. 构建训练样本
+# ③ 子视频元数据 → ShareGPT 训练 JSON
 python3 -m pipeline.scripts.training_sample_builder
-```
 
-将子视频元数据转换为 LLaMA-Factory ShareGPT 格式，输出到 `data/06_merged/`。当前 macOS 环境阻塞，依赖步骤 3 产物。
-
-```bash
-# 5. 越界校验
+# ④ 校验 fracture_between 与帧范围一致性
 python3 -m scripts.validate_no_oob
-```
 
-扫描 `data/06_merged/` 与 `data/07_metadata/`，校验 `fracture_between` 与 `start_frame/end_frame` 一致性。不产生新产物。当前 macOS 环境缺少步骤 3 产物时，`validate_no_oob.py` 会输出 `SKIP` 并以退出码 0 正常退出，无法执行严格 OOB 校验。
-
-```bash
-# 6. 质量检查
+# ⑤ 强制质量检查（路径、字段、数据泄漏）
 python3 -m pipeline.scripts.quality_check
-```
 
-对 `data/06_merged/` 执行强制检查，输出 `data/07_metadata/quality_check_report.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
-
-```bash
-# 7. 冻结数据版本
+# ⑥ 冻结数据版本
 python3 -m pipeline.scripts.freeze_data_version
-```
 
-收集 git commit、配置哈希、处理器指纹、输入/划分/样本清单哈希与统计报告，输出 `data/07_metadata/data_version_lock.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
-
-```bash
-# 8. （可选）校准
+# ⑦ （可选）校准检查
 python3 -m pipeline.scripts.calibration
 ```
 
-运行可选校准，生成 `data/07_metadata/calibration_report.json`。当前 macOS 环境阻塞，依赖步骤 3 产物。
+> **注意**：步骤 ② 依赖真实 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。步骤 ② 完成后，后续步骤才可继续。
 
-### 复现性保障
+### 子视频快速模式
 
-- 随机种子固定为 `42`，确保划分结果可复现。
-- `quality_check.py` 与 `training_sample_builder.py` 会拒绝 mock/theoretical fingerprint，确保训练样本与质量检查对应真实运行环境。
-- `freeze_data_version.py` 负责记录当前 git commit、配置哈希、处理器指纹、输入/划分/样本清单哈希与统计报告，输出 `data/07_metadata/data_version_lock.json`，不执行拒绝逻辑。
-- 数据版本产物被 `.gitignore` 忽略，不提交；复现时按上述流程重新生成。
-
-### 当前环境真实状态
-
-- `dataset_manager.py` 可在当前 macOS 跑通，生成 `data/05_splits/` 与 `data/07_metadata/` 的部分文件。
-- `subvideo_builder.py` 在 macOS 会失败，因此 `data/03_subvideos/`、`data/04_frames/` 与后续 `data/06_merged/` 在当前环境无法生成。
-- 后续 `training_sample_builder.py`、`pipeline/scripts/quality_check.py`、`pipeline/scripts/freeze_data_version.py` 依赖 `subvideo_builder.py` 产物，在当前 macOS 环境同样阻塞；`scripts/validate_no_oob.py` 则标记为 `SKIP`（无法执行严格校验）。
-- `data/08_runtime/` 用于运行时/验证临时文件，不属于当前数据复现流程在 macOS 上的可生成产物。
-
-## 当前主流程
-
-### 1. 数据准备
-
-> 详细复现流程见上文 `## 数据复现流程`。
-
-从仓库根目录执行：
-
+仅更新元数据而不重新编码视频：
 ```bash
-# 读取 CSV 与原始视频，生成 video_meta.json 与新 video-level 划分
-python3 -m pipeline.scripts.dataset_manager
-
-# 基于划分与 video_meta 生成子视频、帧图缓存和 subvideos_meta.json
-python3 -m pipeline.scripts.subvideo_builder --model models/minicpm-v-4.5
-
-# 将子视频元数据转换为 LLaMA-Factory ShareGPT JSON
-python3 -m pipeline.scripts.training_sample_builder
-
-# 校验 fracture_between 与 start_frame/end_frame 一致性
-python3 -m scripts.validate_no_oob
+python3 -m pipeline.scripts.subvideo_builder --fast
 ```
 
-`subvideo_builder.py` 支持快速模式，仅更新已有子视频元数据而不重新编码：
+### 清理旧产物
 
 ```bash
-python3 pipeline/scripts/subvideo_builder.py --fast
+python3 -m scripts.clear_data_outputs
 ```
 
-### 2. 训练
+受保护的目录（`data/01_videos/`、`data/02_annotations/`）不会被清理。
 
-在 `LlamaFactory/` 子模块中使用项目配置文件训练 3 个 fold：
+## 训练
+
+### 启动训练
 
 ```bash
-cd finetune/
+cd finetune
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
 python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
+```
+
+每个 fold 对应一份 YAML 配置，手动或串行依次启动 `fold0`、`fold1`、`fold2`：
+
+```bash
 python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold1.yaml
 python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2.yaml
 ```
 
-训练完成后如需合并 LoRA，可参考 `finetune/MiniCPM/config/merge.yaml`。
-使用该文件前，请将其中的 `adapter_name_or_path` 和 `export_dir` 替换为当前 fold 对应的 interval 路径：
+### 关键超参
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 基座模型 | MiniCPM-V-4.5 | 多模态视觉-语言模型 |
+| 微调方式 | LoRA (rank=16, alpha=32, dropout=0.1) | 参数高效微调 |
+| 每卡 batch size | 1 × gradient accumulation 16 = 有效 16 | 适配 24GB 显存 |
+| 学习率 | 1.5e-5, cosine 调度, warmup 5% | |
+| 训练轮数 | 8 epochs | 每 epoch 验证 + 保存 |
+| 精度 | BF16 混合精度 | |
+| 优化器 | paged_adamw_8bit | 节省显存 |
+| 最大帧数 | 8 帧/视频 | 与 processor contract 一致 |
+| 最大序列长度 | 2048 | |
+
+### LoRA 合并
+
+训练完成后，将 LoRA adapter 合并回基座模型。编辑 `finetune/MiniCPM/config/merge.yaml`，替换 `adapter_name_or_path` 和 `export_dir` 为对应 fold 的路径：
 
 | fold | adapter_name_or_path | export_dir |
 |------|----------------------|------------|
-| 0    | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged` |
-| 1    | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k1` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k1_merged` |
-| 2    | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2_merged` |
-
-执行合并：
+| 0 | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged` |
+| 1 | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k1` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k1_merged` |
+| 2 | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2` | `../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2_merged` |
 
 ```bash
+cd finetune
 llamafactory-cli export MiniCPM/config/merge.yaml
 ```
 
-> 注意：`merge.yaml` 当前仍保留旧的 `sft_interval_3k0` / `sft_interval_3k0_merged` 示例路径，合并前必须按上表修改。
+## 验证
 
-### 3. 验证
+验证流程：推理 → 评估。
 
-对训练好的 fold checkpoint 运行推理：
+### 推理
 
-```bash
-python3 finetune/validation/run_inference.py \
-  --task joint \
-  --fold 0 \
-  --model-dir LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
-  --output finetune/validation/results/joint_fold0.jsonl
-```
-
-然后运行对应评估脚本：
+对指定 fold 的验证集运行模型推理，输出 JSONL：
 
 ```bash
-python3 finetune/validation/evaluate_joint.py \
-  --inputs finetune/validation/results/joint_fold0.jsonl \
-  --out-dir finetune/validation/results/joint_eval \
-  --split fold_0_val
+cd finetune
+python3 -m validation.run_inference \
+    --task joint \
+    --fold 0 \
+    --model-dir ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0/checkpoint-xxx \
+    --output results/joint_fold0.jsonl
 ```
 
-### 4. Agent 推理
+### 评估
 
-Agent 由共享执行内核 `agent/runner.py` 驱动，支持命令行入口。CLI 入口为 `agent/run.py`。
-
-#### 启动方式
-
-1. **CLI 单视频**
+三种评估维度：
 
 ```bash
-python3 -m agent.run --video data/01_videos/video_0001.mp4 --mock
+# 断裂时间定位评估（MAE、MSE、±2s 命中率、区间命中率、置信度分桶）
+python3 -m validation.evaluate_time \
+    --inputs results/joint_fold0.jsonl --split fold_0_val
+
+# 断裂类型分类评估（Accuracy、Macro-F1、混淆矩阵、逐类指标）
+python3 -m validation.evaluate_type \
+    --inputs results/joint_fold0.jsonl --out-dir results/type_eval
+
+# 联合评估（时间 + 类型联合成功率、失败原因分布）
+python3 -m validation.evaluate_joint \
+    --inputs results/joint_fold0.jsonl --out-dir results/joint_eval --split fold_0_val
 ```
 
-2. **CLI 批量**
+### 推理服务（同进程部署）
 
-```bash
-python3 -m agent.run --videos-dir data/01_videos --mock
-```
-
-#### Mock 模式
-
-`--mock` 会启用 Mock 推理模式（设置环境变量 `INFERENCE_MOCK=1`），用于在没有模型服务时测试 Agent 状态机、工具调用与整体流程。Mock 不调用真实模型，仅返回占位结果，便于快速验证链路。
-
-#### 真实运行
-
-正式推理前，需要启动项目侧 `pipeline.server_proxy` 同进程集成服务。它直接创建 LLaMA-Factory ChatModel，包装模型实际使用的 MiniCPM-V 4.5 子处理器，并把本次真实输入帧和 tensor digest 注入内部 `preprocessing` 元数据；Agent 不能直接连接 stock endpoint。部署清单格式见 `pipeline/server_deployment_manifest.example.json`。
+对单条视频进行端到端推理（预处理 → 模型推理 → 结果返回）：
 
 ```bash
 python3 -m pipeline.server_proxy \
-  --model models/minicpm-v-4.5 \
-  --deployment-manifest /path/to/deployment-manifest.json
+    --model-path ../LlamaFactory/saves/merged_model
 ```
 
-随后配置 `LLM_API_KEY`（或 `agent/config.yaml` 中的对应字段），并让 inference endpoint 指向 proxy。去掉 `--mock` 后运行：
+## 已知限制
 
-```bash
-export LLM_API_KEY="your-api-key"
-python3 -m agent.run --video data/01_videos/video_0001.mp4
-```
-
-## 测试
-
-从仓库根目录运行：
-
-```bash
-python3 -m pytest tests/ -q
-```
-
-## 关键脚本命令
-
-```bash
-# 生成子视频与元数据
-python3 pipeline/scripts/subvideo_builder.py
-
-# 快速模式：仅更新已有子视频元数据
-python3 pipeline/scripts/subvideo_builder.py --fast
-
-# 校验生成产物
-python3 scripts/validate_no_oob.py
-
-# 构建训练样本（默认参数）
-python3 pipeline/scripts/training_sample_builder.py
-
-# 自定义输入输出路径
-python3 pipeline/scripts/training_sample_builder.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.json \
-  --splits-dir data/05_splits \
-  --output-dir data/06_merged
-```
-
-## 已知限制 / 当前状态
-
-- `scripts/validate_no_oob.py` 在 `data/07_metadata/subvideos_meta.json` 不存在时会输出 `SKIP` 并正常退出；生成产物后才会执行严格 OOB 校验。
-- `subvideo_builder.py` 的快速模式（`--fast`）依赖已有 `subvideos_meta.json`，若元数据不存在会自动退回到完整生成。
-- 正式数据构建必须使用 MiniCPM-V 真实视频处理器产生的最多 8 帧映射；缺少映射时显式失败，不按 FPS 或区间宽度推算。
-- 子视频生成依赖 `ffmpeg` / `ffprobe`，请确保系统已安装。
-- 新 interval 数据产物（`data/03_subvideos/`、`data/04_frames/`、`data/05_splits/`、`data/06_merged/`、`data/07_metadata/`、`data/08_runtime/`）默认被 `.gitignore` 忽略，不提交。
-- 旧直接预测方案不在本项目维护；对比时只导入外部项目生成的版本化预测产物。
-
-## 开发约束
-
-开发、提交、测试与代码风格规范见 [AGENTS.md](./AGENTS.md)。本 README 不再重复。
+- **负样本偏差**：当前正:负采样比约 1:1~2:1，与真实场景分布不同；部署时需调低断裂先验阈值。
+- **训练环境差异**：本地 Mac 开发，远程 4090 Linux 训练；submodule 和虚拟环境需同步。
+- **评估指标相关性**：时间定位精度与断裂类型分类存在耦合（时间误差大时类型分类必然不准）。
+- **数据版本管理**：数据版本依赖 git lfs 或手动同步；产物被 `.gitignore` 忽略，不提交。
+- **子视频生成依赖**：`subvideo_builder.py` 需要系统安装 `ffmpeg` / `ffprobe`。
