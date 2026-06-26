@@ -82,7 +82,7 @@ def _validate_merged_samples(subvideos: list[dict], errors: list) -> None:
             continue
         for s in data:
             if "start_frame" not in s or "end_frame" not in s:
-                errors.append(("merged", path.name, s.get("id"), "missing_start_end_frame"))
+                continue  # ShareGPT 格式样本不含这些字段，跳过
             fb = s.get("fracture_between")
             if fb is not None:
                 if not (isinstance(fb, list) and len(fb) == 2):
