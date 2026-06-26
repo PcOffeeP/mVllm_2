@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import re
 import shutil
@@ -34,6 +35,9 @@ import functools
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+
+logger = logging.getLogger(__name__)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -358,6 +362,10 @@ def _build_frame_mapping_pyav(
     return result
 
 
+# 统计 MiniCPM processor 降级为 PyAV 均匀采样的次数
+_preprocessor_fallback_count = 0
+
+
 def _preprocessor_sample(
     preprocessor: VideoPreprocessor | None,
     video_path: Path,
@@ -377,8 +385,14 @@ def _preprocessor_sample(
             }
             for m in mappings
         ]
-    except Exception:
-        # 回退：纯 PyAV 帧映射（processor 失败时无需停摆）
+    except Exception as e:
+        global _preprocessor_fallback_count
+        _preprocessor_fallback_count += 1
+        logger.warning(
+            "MiniCPM processor sample failed for %s [%.2f-%.2f], "
+            "fallback to PyAV uniform sampling: %s",
+            video_path, start_time, end_time, e,
+        )
         return _build_frame_mapping_pyav(video_path, start_time, end_time)
 
 
@@ -1155,6 +1169,11 @@ def _generate_media_for_candidate(
 
 def main():
     global FOCUS_WINDOWS, FOCUS_POSITIONS, VIDEO_MAXLEN, NEG_CLIP_DURATIONS
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
     parser = argparse.ArgumentParser(description="子视频生成器（先选后生成）")
     parser.add_argument("--video-meta", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--splits-dir", type=Path, default=SPLITS_DIR_DEFAULT)
@@ -1319,6 +1338,12 @@ def main():
     }
     with open(args.output_meta, "w", encoding="utf-8") as f:
         json.dump(output_payload, f, ensure_ascii=False, indent=2, allow_nan=False)
+    if _preprocessor_fallback_count > 0:
+        logger.warning(
+            "总共有 %d 个子视频使用了 PyAV 均匀采样 fallback "
+            "（MiniCPM processor 失败）",
+            _preprocessor_fallback_count,
+        )
     print(f"完成：共 {len(all_subvideos)} 个子视频，元数据写入 {args.output_meta}")
 
 
