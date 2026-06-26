@@ -19,6 +19,14 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from agent.runner import run_one
+from agent.config_util import (
+    get_api_key,
+    get_configured_model,
+    is_remote_configured,
+    list_available_models,
+    save_api_key,
+    save_model,
+)
 
 # ── 路径常量 ──────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -440,6 +448,67 @@ async def create_batch_tasks(
         await task_queue.put(task_id)
         results.append({"task_id": task_id, "video_id": vid, "status": TASK_STATUS_QUEUED})
     return {"tasks": results}
+
+
+@app.get("/api/config/status")
+async def get_config_status():
+    """Check if remote backend is configured.
+
+    Returns configuration status without exposing the full API key.
+    """
+    configured = is_remote_configured()
+    api_key = get_api_key()
+    masked_key = None
+    if api_key and len(api_key) > 8:
+        masked_key = api_key[:6] + "*" * (len(api_key) - 10) + api_key[-4:]
+
+    return {
+        "configured": configured,
+        "has_api_key": bool(api_key),
+        "has_model": bool(get_configured_model()),
+        "api_key_masked": masked_key,
+        "current_model": get_configured_model(),
+    }
+
+
+@app.post("/api/config/setup")
+async def setup_config(body: dict):
+    """Save API key and model, with connection test.
+
+    Request body:
+    {
+        "api_key": "sk-...",
+        "model": "qwen-max"
+    }
+    """
+    api_key = body.get("api_key", "").strip()
+    model = body.get("model", "").strip()
+
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API Key 不能为空")
+    if not model:
+        raise HTTPException(status_code=400, detail="模型名称不能为空")
+
+    # Test connection by listing models
+    models = list_available_models(api_key=api_key)
+    if not models:
+        raise HTTPException(
+            status_code=400,
+            detail="连接测试失败，请检查 API Key 是否正确",
+        )
+
+    # Verify the selected model is in the available list
+    if model not in models:
+        raise HTTPException(
+            status_code=400,
+            detail=f"模型 '{model}' 不在可用列表中。可用模型: {', '.join(models[:10])}",
+        )
+
+    # Save
+    save_api_key(api_key)
+    save_model(model)
+
+    return {"ok": True, "model": model, "available_models_count": len(models)}
 
 
 # ── 静态文件托管和主入口 ──────────────────────────────────

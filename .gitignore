@@ -44,3 +44,6 @@ uv.lock
 /data/07_metadata/
 
 .agents/skills/
+
+# API key file
+agent/.env

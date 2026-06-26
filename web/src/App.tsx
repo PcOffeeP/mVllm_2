@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { listTasks, getConfig, type Task, type AppConfig, subscribeEvents, getHealth } from "./api";
+import { listTasks, getConfig, getConfigStatus, type Task, type AppConfig, subscribeEvents, getHealth } from "./api";
 import Sidebar from "./components/Sidebar";
 import AnalysisView from "./components/AnalysisView";
 import HistoryView from "./components/HistoryView";
 import ConfigView from "./components/ConfigView";
 import TaskDetail from "./components/TaskDetail";
+import SetupDialog from "./components/SetupDialog";
 
 type View = "analysis" | "history" | "config";
 
@@ -14,6 +15,7 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [health, setHealth] = useState<{ ok: boolean; tasks: number; queue_size: number } | null>(null);
+  const [configReady, setConfigReady] = useState<boolean | null>(null);
   const [taskEvents, setTaskEvents] = useState<Record<string, unknown[]>>({});
 
   const refreshTasks = useCallback(async () => {
@@ -31,6 +33,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Check if remote is configured
+    getConfigStatus()
+      .then(status => setConfigReady(status.configured))
+      .catch(() => setConfigReady(true)); // If can't check, assume configured
     refreshTasks();
     refreshConfig();
     const interval = setInterval(refreshTasks, 3000);
@@ -73,6 +79,18 @@ export default function App() {
       refreshTasks();
     } catch { /* ignore */ }
   }, [selectedTask, refreshTasks]);
+
+  if (configReady === null) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0f0f23", color: "#8888aa" }}>
+        <p>加载中...</p>
+      </div>
+    );
+  }
+
+  if (configReady === false) {
+    return <SetupDialog onComplete={() => setConfigReady(true)} />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">

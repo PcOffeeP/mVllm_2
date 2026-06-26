@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+
+from agent.config_util import get_api_key as _get_api_key
 from typing import Any
 
 try:
@@ -168,7 +170,7 @@ class AgentLLMFactory:
 
         if backend == "remote":
             remote_cfg = agent_cfg.get("remote", {})
-            api_key = remote_cfg.get("api_key") or os.getenv("LLM_API_KEY")
+            api_key = remote_cfg.get("api_key") or _get_api_key()
             if not api_key:
                 raise ValueError(
                     "Remote backend requires 'api_key' in config or "

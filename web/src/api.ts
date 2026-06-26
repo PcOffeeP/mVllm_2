@@ -75,3 +75,38 @@ export async function getHealth(): Promise<{ ok: boolean; tasks: number; queue_s
 export function getExportUrl(taskId: string, fmt: "json" | "jsonl" | "csv"): string {
   return `${API}/tasks/${taskId}/export?fmt=${fmt}`;
 }
+
+// ── Config Setup Types ──
+
+export interface ConfigStatus {
+  configured: boolean;
+  has_api_key: boolean;
+  has_model: boolean;
+  api_key_masked: string | null;
+  current_model: string | null;
+}
+
+export interface AvailableModel {
+  id: string;
+}
+
+// ── Config Setup API ──
+
+export async function getConfigStatus(): Promise<ConfigStatus> {
+  const res = await fetch("/api/config/status");
+  if (!res.ok) throw new Error("获取配置状态失败");
+  return res.json();
+}
+
+export async function setupConfig(apiKey: string, model: string): Promise<{ ok: boolean }> {
+  const res = await fetch("/api/config/setup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey, model }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "配置保存失败");
+  }
+  return res.json();
+}
