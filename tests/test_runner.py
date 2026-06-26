@@ -430,6 +430,7 @@ class TestRunBatch:
             video_id: str | None = None,
             event_callback=None,
             work_dir=None,
+            **kwargs,
         ) -> dict:
             if Path(path).name == "v1.mp4":
                 return {
@@ -479,6 +480,7 @@ class TestRunBatch:
             video_id: str | None = None,
             event_callback=None,
             work_dir=None,
+            **kwargs,
         ) -> dict:
             if event_callback is not None and Path(path).name == "v1.mp4":
                 event_callback(

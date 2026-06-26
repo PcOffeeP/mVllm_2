@@ -140,6 +140,8 @@ def run_one(
     video_id: str | None = None,
     event_callback: Callable[[dict], None] | None = None,
     work_dir: str | Path | None = None,
+    agent_backend: str | None = None,
+    agent_model: str | None = None,
 ) -> dict[str, Any]:
     """Run the agent on a single video and return a ``RunnerResult`` dict.
 
@@ -160,6 +162,13 @@ def run_one(
     stage = "configuration"
     try:
         config = load_config(config_path)
+
+        # 允许 CLI 参数覆盖 agent 后端和模型
+        if agent_backend is not None:
+            config["agent"]["backend"] = agent_backend
+        if agent_model is not None:
+            backend = agent_backend or config["agent"]["backend"]
+            config["agent"][backend]["model"] = agent_model
 
         stage = "input"
         video_meta = build_video_meta(path, video_id=resolved_id)
@@ -237,6 +246,8 @@ def run_batch(
     config_path: str | Path = "agent/config.yaml",
     event_callback: Callable[[dict], None] | None = None,
     work_dir: str | Path | None = None,
+    agent_backend: str | None = None,
+    agent_model: str | None = None,
 ) -> list[dict[str, Any]]:
     """Run the agent sequentially on multiple videos.
 
@@ -256,6 +267,8 @@ def run_batch(
                 video_id=resolved_id,
                 event_callback=event_callback,
                 work_dir=work_dir,
+                agent_backend=agent_backend,
+                agent_model=agent_model,
             )
         )
     return results

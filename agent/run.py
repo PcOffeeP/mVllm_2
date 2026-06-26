@@ -91,6 +91,10 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable mock inference mode (sets INFERENCE_MOCK=1).",
     )
+    parser.add_argument("--agent-backend", choices=["remote", "local"], default=None,
+                        help="Override agent backend (remote or local). Useful for quickly switching between models for comparison.")
+    parser.add_argument("--agent-model", type=str, default=None,
+                        help="Override agent model name. E.g. 'qwen-max', 'qwen3.5:7b'. Useful for testing different models.")
     return parser.parse_args()
 
 
@@ -112,6 +116,8 @@ def main() -> None:
             config_path=args.config,
             event_callback=event_callback,
             work_dir=work_dir,
+            agent_backend=args.agent_backend,
+            agent_model=args.agent_model,
         )
         if not result["ok"]:
             print(f"Run failed for {args.video}: {result['error']['message']}", file=sys.stderr)
@@ -147,6 +153,8 @@ def main() -> None:
         config_path=args.config,
         event_callback=event_callback,
         work_dir=work_dir,
+        agent_backend=args.agent_backend,
+        agent_model=args.agent_model,
     )
     _write_jsonl(results, output_path)
 
