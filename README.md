@@ -41,13 +41,13 @@ git submodule update --init --recursive
 
 # 创建 Conda 环境（Python 3.11）
 conda env create -f environment.yml
-conda activate tensileagent
+conda activate mVllm2
 ```
 
 > **Mac 开发机**：如需在本地运行数据流水线等，可手动创建不带 CUDA 的环境：
 > ```bash
-> conda create -n tensileagent python=3.11 pip
-> conda activate tensileagent
+> conda create -n mVllm2 python=3.11 pip
+> conda activate mVllm2
 > pip install -e ./LlamaFactory
 > conda install av pandas Pillow pyyaml fastapi uvicorn python-multipart
 > ```

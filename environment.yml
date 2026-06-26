@@ -1,4 +1,4 @@
-name: tensileagent
+name: mVllm2
 channels:
   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
