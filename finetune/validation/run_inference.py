@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from common import (
+from .common import (
     build_prompt,
     ensure_parent_dir,
     get_default_model_dir,

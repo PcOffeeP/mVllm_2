@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from common import (
+from .common import (
     dump_summary_with_overall,
     finalize_time_aggregator,
     init_time_aggregator,

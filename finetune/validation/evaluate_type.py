@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from common import (
+from .common import (
     compute_type_metrics,
     dump_summary_with_overall,
     load_split_video_names,

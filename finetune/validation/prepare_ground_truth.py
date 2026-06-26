@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from common import normalize_ground_truth_label, parse_seconds, write_json
+from .common import normalize_ground_truth_label, parse_seconds, write_json
 from config import GROUND_TRUTH_CSV, GROUND_TRUTH_JSON, TRAINING_JSON_FILES
 
 

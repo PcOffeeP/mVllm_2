@@ -25,7 +25,7 @@ TensileAgent/
 ├── docs/                      # 项目文档
 ├── scripts/                   # 辅助工具脚本（清理、调试、校验）
 ├── assets/                    # 领域参考文档与原始说明材料
-├── pyproject.toml             # UV 项目配置
+├── pyproject.toml             # Hatchling 构建配置
 └── README.md
 ```
 
@@ -48,7 +48,7 @@ conda activate tensileagent
 > ```bash
 > conda create -n tensileagent python=3.11 pip
 > conda activate tensileagent
-> pip install -e ../LlamaFactory
+> pip install -e ./LlamaFactory
 > conda install av pandas Pillow pyyaml fastapi uvicorn python-multipart
 > ```
 
@@ -238,7 +238,14 @@ python3 -m validation.evaluate_joint \
 
 ```bash
 python3 -m pipeline.server_proxy \
-    --model-path ../LlamaFactory/saves/merged_model
+    --model /path/to/merged_model \
+    --deployment-manifest /path/to/deployment_manifest.json
+
+**必需参数说明**：
+- `--model`：合并后的模型路径
+- `--deployment-manifest`：部署清单 JSON 文件路径（包含 `processor_version`、`max_frames` 等）
+- `--host` （可选，默认 `127.0.0.1`）
+- `--port` （可选，默认 `8001`）
 ```
 
 ## 已知限制
