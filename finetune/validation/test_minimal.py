@@ -1,0 +1,87 @@
+"""Minimal model loading and inference test.
+Run on the training machine (GPU required).
+
+Usage:
+    cd finetune/
+    python -m validation.test_minimal
+"""
+
+import sys
+from pathlib import Path
+
+
+def main():
+    base_model = Path(__file__).resolve().parents[2] / "models" / "minicpmv4_5"
+    merged_model = (
+        Path(__file__).resolve().parents[2]
+        / "LlamaFactory" / "saves" / "minicpmv4_5" / "lora" / "sft_interval_3k0_merged"
+    )
+    
+    print(f"Base model:  {base_model}  (exists={base_model.exists()})")
+    print(f"Merged model: {merged_model}  (exists={merged_model.exists()})")
+    
+    # Step 1
+    print("\n[Step 1] Loading tokenizer...")
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained(
+        str(base_model), trust_remote_code=True, local_files_only=True
+    )
+    print(f"  type: {type(tokenizer).__name__}, vocab: {tokenizer.vocab_size}")
+    
+    # Step 2
+    print("\n[Step 2] Loading image processor...")
+    from transformers import AutoImageProcessor
+    image_processor = AutoImageProcessor.from_pretrained(
+        str(base_model), trust_remote_code=True, local_files_only=True
+    )
+    print(f"  type: {type(image_processor).__name__}")
+    
+    # Step 3
+    print("\n[Step 3] Loading processor...")
+    from transformers import AutoProcessor
+    processor = AutoProcessor.from_pretrained(
+        str(base_model), trust_remote_code=True, local_files_only=True
+    )
+    print(f"  processor type: {type(processor).__name__}")
+    print(f"  processor.tokenizer type: {type(processor.tokenizer).__name__ if processor.tokenizer else 'None'}")
+    processor.tokenizer = tokenizer
+    print(f"  After force-set: processor.tokenizer is tokenizer: {processor.tokenizer is tokenizer}")
+    
+    # Step 4
+    print("\n[Step 4] Testing chat template...")
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+    try:
+        text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        print(f"  OK: {text[:80]}...")
+    except Exception as e:
+        print(f"  FAILED: {e}")
+        sys.exit(1)
+    
+    # Step 5
+    print("\n[Step 5] Loading model...")
+    import torch
+    from transformers import AutoModel
+    model = AutoModel.from_pretrained(
+        str(merged_model),
+        trust_remote_code=True,
+        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+        device_map="auto",
+        low_cpu_mem_usage=True,
+    ).eval()
+    print(f"  type: {type(model).__name__}, device: {model.device}")
+    
+    # Step 6
+    print("\n[Step 6] Running minimal inference (no video)...")
+    inputs = processor(text=text, return_tensors="pt").to(model.device)
+    print(f"  input_ids shape: {inputs.input_ids.shape}")
+    with torch.no_grad():
+        generated_ids = model.generate(
+            **inputs, max_new_tokens=20, do_sample=False, num_beams=1,
+        )
+    response = tokenizer.decode(generated_ids[0][len(inputs.input_ids[0]):], skip_special_tokens=True)
+    print(f"  Model response: {response}")
+    print("\n✅ ALL TESTS PASSED")
+
+
+if __name__ == "__main__":
+    main()
