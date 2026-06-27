@@ -1174,3 +1174,39 @@ def round_record_times(record: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, float) and math.isfinite(value):
             record[key] = round(value, 6)
     return record
+
+
+def read_results_and_meta(results_paths: list[str], meta_paths: list[str]) -> list[dict]:
+    """Read and join results + meta JSONL files by line order (same order written by run_inference).
+
+    Args:
+        results_paths: One or more results JSONL paths (prediction fields).
+        meta_paths: One or more meta JSONL paths (GT, validation, experiment fields).
+                    Must have the same count as results_paths, paired by index.
+
+    Returns:
+        List of merged records (results + meta) for all files combined.
+    """
+    if len(results_paths) != len(meta_paths):
+        raise ValueError(
+            f"results_paths ({len(results_paths)}) and meta_paths ({len(meta_paths)}) "
+            f"must have the same count"
+        )
+
+    all_records = []
+    for res_path, meta_path in zip(results_paths, meta_paths):
+        with open(res_path, "r") as f:
+            results_records = [json.loads(line) for line in f if line.strip()]
+        with open(meta_path, "r") as f:
+            meta_records = [json.loads(line) for line in f if line.strip()]
+
+        if len(results_records) != len(meta_records):
+            raise ValueError(
+                f"Mismatched line count: {res_path} ({len(results_records)}) vs "
+                f"{meta_path} ({len(meta_records)})"
+            )
+
+        for r, m in zip(results_records, meta_records):
+            all_records.append({**r, **m})
+
+    return all_records

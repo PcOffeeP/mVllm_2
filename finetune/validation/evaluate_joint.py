@@ -12,6 +12,7 @@ from .common import (
     load_split_video_names,
     load_test_video_names,
     read_jsonl,
+    read_results_and_meta,
     update_joint_aggregator,
     write_csv,
     write_json,
@@ -22,6 +23,8 @@ from .config import SPLIT_DIR
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate joint task usability results.")
     parser.add_argument("--inputs", nargs="+", required=True, help="Input JSONL files.")
+    parser.add_argument("--meta", nargs="+", required=True,
+                        help="Path(s) to meta JSONL file(s), paired with --inputs")
     parser.add_argument("--out-dir", required=True, help="Directory for evaluation artifacts.")
     parser.add_argument(
         "--split",
@@ -48,7 +51,7 @@ def _load_split_video_ids(split: str) -> set[str]:
 
 def main() -> None:
     args = parse_args()
-    records = read_jsonl(args.inputs)
+    records = read_results_and_meta(args.inputs, args.meta)
     if args.split:
         split_ids = _load_split_video_ids(args.split)
         records = [r for r in records if r["video_id"] in split_ids]

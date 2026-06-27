@@ -7,7 +7,7 @@ import math
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, List, Tuple
 
 from .common import (
     build_prompt,
@@ -108,39 +108,58 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     return processor, model
 
 
-def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: str) -> str:
-    content_str = f"(<video>./</video>)\n{prompt}"
-    messages = [
-        {
-            "role": "user",
-            "content": content_str,
-        }
-    ]
-    downsample_mode = os.getenv("DOWNSAMPLE_MODE", "4x")
-    inputs = processor.apply_chat_template(
+def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: str) -> Tuple[str, List[float]]:
+    """Run inference on a single video sample.
+
+    Returns:
+        Tuple of (response_text, frame_timestamps):
+          - response_text: raw decoded text from model
+          - frame_timestamps: PTS timestamps of the sampled video frames
+    """
+    from .video_loader import load_video_frames
+
+    # Step 1: Load video frames as PIL Images + actual timestamps
+    frames, temporal_ids, frame_timestamps = load_video_frames(str(video_path), max_frames=VIDEO_MAX_FRAMES)
+
+    # Step 2: Build message with <image> placeholders (one per frame)
+    image_tags = "".join("(<image>./</image>)" for _ in frames)
+    content_str = f"{image_tags}\n{prompt}"
+    messages = [{"role": "user", "content": content_str}]
+
+    # Step 3: Render chat template (text only, no tokenization)
+    prompt_text = processor.apply_chat_template(
         messages,
-        tokenize=True,
+        tokenize=False,
         add_generation_prompt=True,
-        return_dict=True,
-        return_tensors="pt",
-        downsample_mode=downsample_mode,
-        max_num_frames=VIDEO_MAX_FRAMES,
-        stack_frames=1,
+    )
+
+    # Step 4: Processor encodes text + images together
+    inputs = processor(
+        text=prompt_text,
+        images=frames,
+        temporal_ids=temporal_ids,
         max_slice_nums=1,
         use_image_id=False,
+        return_tensors="pt",
     ).to(model.device)
+
+    # Step 5: Generate
     gen_cfg = DEFAULT_GENERATION_CONFIG
     generated_ids = model.generate(
         **inputs,
-        downsample_mode=downsample_mode,
         do_sample=gen_cfg["do_sample"],
         num_beams=gen_cfg["num_beams"],
         max_new_tokens=gen_cfg["max_new_tokens"],
     )
     generated_ids = [
-        output_ids[len(input_ids) :] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
+        output_ids[len(input_ids):]
+        for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
     ]
-    return processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+    response_text = processor.batch_decode(
+        generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
+    )[0]
+
+    return response_text, frame_timestamps
 
 
 def _parse_pred_time_range(
@@ -441,8 +460,9 @@ def main() -> None:
                     "processor_fingerprint": "subvideos_meta_full",
                 }
 
-            response_text = run_single_inference(model, processor, video_path, prompt)
+            response_text, actual_timestamps = run_single_inference(model, processor, video_path, prompt)
             record["raw_output"] = response_text
+            record["preprocessing"]["actual_timestamps"] = actual_timestamps
 
             json_valid, payload = parse_response_payload(response_text)
             record["json_valid"] = json_valid
@@ -466,16 +486,27 @@ def main() -> None:
                 record["schema_valid"] = schema_valid
                 record["schema_errors"] = "; ".join(schema_errors) if schema_errors else None
 
-                # Compute time range and midpoint from fracture_between + frame mapping
+                # Compute time range and midpoint from fracture_between + actual timestamps
                 # Only derive if schema_valid, otherwise the prediction is not reliable
-                if schema_valid and sampled_frames and record["pred_fracture_between"] is not None:
-                    time_range = _map_fracture_between_to_time_sec(
-                        record["pred_fracture_between"], sampled_frames
-                    )
-                    if time_range is not None:
-                        record["pred_time_range_sec"] = list(time_range)
-                        record["pred_time_range"] = list(time_range)  # Legacy compat
-                        record["pred_time_midpoint_sec"] = round((time_range[0] + time_range[1]) / 2, 6)
+                if (
+                    schema_valid
+                    and record["pred_fracture_between"] is not None
+                    and len(actual_timestamps) > 0
+                ):
+                    fb = record["pred_fracture_between"]
+                    if (
+                        isinstance(fb, list)
+                        and len(fb) == 2
+                        and isinstance(fb[0], int)
+                        and isinstance(fb[1], int)
+                        and 0 <= fb[0] < len(actual_timestamps)
+                        and 0 <= fb[1] <= len(actual_timestamps)
+                    ):
+                        low = actual_timestamps[fb[0]]
+                        high = actual_timestamps[fb[1]]
+                        record["pred_time_range_sec"] = [low, high]
+                        record["pred_time_range"] = [low, high]  # Legacy compat
+                        record["pred_time_midpoint_sec"] = round((low + high) / 2, 6)
 
                 # Legacy time field for backward compat
                 record["pred_time_raw"] = payload.get("time")
@@ -508,10 +539,32 @@ def main() -> None:
             f"failure={record['failure_reason'] or 'ok'}"
         )
 
-    with output_path.open("w", encoding="utf-8") as handle:
+    # 结果文件路径
+    results_path = output_path.parent / (output_path.stem + "_results.jsonl")
+
+    with output_path.open("w", encoding="utf-8") as meta_f, results_path.open("w", encoding="utf-8") as res_f:
         for record in records:
-            handle.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+            # 结果记录：video_id + 所有 pred_* + raw_output
+            results_record = {
+                "video_id": record.get("video_id"),
+                "raw_output": record.get("raw_output"),
+            }
+            for k, v in record.items():
+                if k.startswith("pred_") or k.startswith("confidence_"):
+                    results_record[k] = v
+            # 也对 "pred_time_range" 等非 pred_ 前缀的结果字段做处理
+            for alt_field in ["pred_time_range", "pred_time_sec", "pred_time_raw"]:
+                if alt_field in record:
+                    results_record[alt_field] = record[alt_field]
+
+            # 元信息记录：除结果字段外的所有字段
+            meta_record = {k: v for k, v in record.items() if k not in results_record}
+            meta_record["video_id"] = record.get("video_id")
+
+            meta_f.write(json.dumps(meta_record, ensure_ascii=False, allow_nan=False) + "\n")
+            res_f.write(json.dumps(results_record, ensure_ascii=False, allow_nan=False) + "\n")
     print(f"Wrote {len(records)} records to {output_path}")
+    print(f"Wrote {len(records)} results records to {results_path}")
 
 
 if __name__ == "__main__":
