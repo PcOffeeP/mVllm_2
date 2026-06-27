@@ -84,19 +84,31 @@ def parse_args() -> argparse.Namespace:
 
 def load_model(model_dir: str) -> tuple[Any, Any]:
     import torch
-    from transformers import AutoModel, AutoProcessor
+    from transformers import AutoModel, AutoProcessor, AutoTokenizer, AutoImageProcessor
     from pathlib import Path
 
     model_path = _sanitize_model_path(model_dir)
     base_path = Path(BASE_MODEL_DIR)
 
-    # Always load processor from base model (architecture files are complete)
+    # Load processor components explicitly to ensure tokenizer is properly initialized
     processor_path = str(base_path) if base_path.exists() else model_path
     if base_path.exists():
         logger.info("Loading processor from base model: %s", base_path)
-    processor = AutoProcessor.from_pretrained(
-        processor_path, trust_remote_code=True
+    
+    # Load tokenizer and image_processor separately with trust_remote_code
+    tokenizer = AutoTokenizer.from_pretrained(
+        processor_path, trust_remote_code=True, local_files_only=True
     )
+    image_processor = AutoImageProcessor.from_pretrained(
+        processor_path, trust_remote_code=True, local_files_only=True
+    )
+    # Load processor for configuration
+    processor = AutoProcessor.from_pretrained(
+        processor_path, trust_remote_code=True, local_files_only=True
+    )
+    # Explicitly set tokenizer on processor (ensures it's properly initialized)
+    processor.tokenizer = tokenizer
+    
     configure_processor_max_frames(processor)
 
     # Load chat_template from merged model directory first, fallback to base
