@@ -109,13 +109,11 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
 
 
 def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: str) -> str:
+    content_str = f"(<video>./</video>)\n{prompt}"
     messages = [
         {
             "role": "user",
-            "content": [
-                {"type": "video", "url": str(video_path.resolve())},
-                {"type": "text", "text": prompt},
-            ],
+            "content": content_str,
         }
     ]
     downsample_mode = os.getenv("DOWNSAMPLE_MODE", "4x")
