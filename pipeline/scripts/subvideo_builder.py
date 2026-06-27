@@ -1199,7 +1199,7 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default=str(PROJECT_ROOT / "models" / "minicpm-v-4.5"),
+        default=str(PROJECT_ROOT / "models" / "minicpmv4_5"),
         help="MiniCPM-V 4.5 模型目录；须与训练和校准使用同一版本",
     )
     parser.add_argument(

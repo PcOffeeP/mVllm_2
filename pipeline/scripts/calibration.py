@@ -227,7 +227,7 @@ def _try_load_llama_factory_batch(
     video_path: str,
     preprocessor_info: ProcessorInfo,
     preprocessor_frames: list[FrameMapping],
-    model_name: str = str(ROOT / "models" / "minicpm-v-4.5"),
+    model_name: str = str(ROOT / "models" / "minicpmv4_5"),
 ) -> dict[str, Any]:
     """Load a real LLaMA-Factory batch and require its actual frame mapping."""
     # ---- 1. 尝试导入 LLaMA-Factory ----
@@ -378,7 +378,7 @@ def build_calibration_cases(
 def run_calibration(
     preprocessor: VideoPreprocessor,
     cases: list[dict[str, Any]],
-    model_name: str = str(ROOT / "models" / "minicpm-v-4.5"),
+    model_name: str = str(ROOT / "models" / "minicpmv4_5"),
 ) -> dict[str, Any]:
     info = preprocessor.get_info()
     results: list[dict[str, Any]] = []
@@ -474,7 +474,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default=str(ROOT / "models" / "minicpm-v-4.5"),
+        default=str(ROOT / "models" / "minicpmv4_5"),
         help="minicpm 模型路径或名称（预处理器使用）",
     )
     parser.add_argument(

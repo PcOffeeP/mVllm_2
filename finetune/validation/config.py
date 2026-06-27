@@ -32,7 +32,7 @@ TRAINING_JSON_FILES = [
 ]
 
 # Base model path (for processor fallback when merged model tokenizer is None)
-BASE_MODEL_DIR = str(PROJECT_ROOT / "models" / "minicpm-v-4.5")
+BASE_MODEL_DIR = str(PROJECT_ROOT / "models" / "minicpmv4_5")
 
 DEFAULT_VIDEO_ROOT = VIDEO_DIR  # 远端原值: Path("/hy-tmp/videos")
 DEFAULT_MODEL_DIRS = {

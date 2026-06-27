@@ -158,7 +158,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
     * `healthcheck()` 生成临时视频做集成验证。
     """
 
-    NAME = "minicpm-v-4.5"
+    NAME = "minicpmv4_5"
     EXPECTED_MAX_FRAMES = 8
 
     def __init__(
@@ -690,7 +690,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default=str(Path(__file__).resolve().parents[2] / "models" / "minicpm-v-4.5"),
+        default=str(Path(__file__).resolve().parents[2] / "models" / "minicpmv4_5"),
         help="模型路径或 HuggingFace 名称",
     )
     return parser
