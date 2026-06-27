@@ -31,6 +31,7 @@ from .common import (
     validate_task,
 )
 from .config import (
+    BASE_MODEL_DIR,
     DEFAULT_VIDEO_ROOT,
     GROUND_TRUTH_JSON,
     PROMPT_PRESETS,
@@ -86,12 +87,29 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     from transformers import AutoModel, AutoProcessor
 
     model_path = _sanitize_model_path(model_dir)
-    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
+    processor = AutoProcessor.from_pretrained(
+        model_path, trust_remote_code=True, local_files_only=True
+    )
+    # Fallback: if tokenizer is None (merged model directory may drop tokenizer
+    # sub-components), reload processor from base model path.
+    if getattr(processor, "tokenizer", None) is None:
+        base_path = Path(BASE_MODEL_DIR)
+        if base_path.exists():
+            logger.warning(
+                "processor.tokenizer is None from %s, falling back to base model %s",
+                model_path,
+                base_path,
+            )
+            processor = AutoProcessor.from_pretrained(
+                str(base_path), trust_remote_code=True
+            )
     configure_processor_max_frames(processor)
     # Explicitly load chat_template: MiniCPMVProcessor.__init__ may not accept it,
     # causing validate_init_kwargs to drop it during from_pretrained.
     if getattr(processor, "chat_template", None) is None:
         chat_template_path = Path(model_path) / "chat_template.jinja"
+        if not chat_template_path.exists():
+            chat_template_path = Path(BASE_MODEL_DIR) / "chat_template.jinja"
         if chat_template_path.exists():
             processor.chat_template = chat_template_path.read_text(encoding="utf-8")
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"

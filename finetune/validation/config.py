@@ -31,6 +31,9 @@ TRAINING_JSON_FILES = [
     DATA_DIR_ROOT / "06_merged" / "fold_2_val.json",
 ]
 
+# Base model path (for processor fallback when merged model tokenizer is None)
+BASE_MODEL_DIR = str(PROJECT_ROOT / "models" / "minicpm-v-4.5")
+
 DEFAULT_VIDEO_ROOT = VIDEO_DIR  # 远端原值: Path("/hy-tmp/videos")
 DEFAULT_MODEL_DIRS = {
     0: "LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged",
