@@ -19,6 +19,7 @@ GROUND_TRUTH_CSV = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.csv"
 # 历史产物：由 prepare_ground_truth.py 从 CSV 生成。如该 JSON 不存在，
 # common.load_ground_truth() 会回退到直接读取 GROUND_TRUTH_CSV。
 GROUND_TRUTH_JSON = DATA_DIR_ROOT / "02_annotations" / "all_videos_tag.json"
+SUBVIDEOS_META_JSON = DATA_DIR_ROOT / "07_metadata" / "subvideos_meta.json"
 
 # 新 interval 方案训练/验证产物。
 TRAINING_JSON_FILES = [
@@ -37,7 +38,7 @@ DEFAULT_MODEL_DIRS = {
     2: "LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k2_merged",
 }
 
-VIDEO_MAX_FRAMES = 36
+VIDEO_MAX_FRAMES = 8
 TIME_THRESHOLD_SEC = 2.0
 SUPPORTED_FOLDS = (0, 1, 2)
 SUPPORTED_TASKS = ("time", "type", "joint")

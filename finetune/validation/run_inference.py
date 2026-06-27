@@ -5,8 +5,6 @@ import json
 import logging
 import math
 import os
-import shutil
-import subprocess
 import time
 from pathlib import Path
 from typing import Any
@@ -30,13 +28,10 @@ from config import (
     DEFAULT_VIDEO_ROOT,
     GROUND_TRUTH_JSON,
     PROMPT_PRESETS,
+    SUBVIDEOS_META_JSON,
     VIDEO_MAX_FRAMES,
 )
-from pipeline.preprocessing import FrameMapping
-from pipeline.preprocessing.minicpm_preprocessor import (
-    MiniCPMVideoPreprocessor,
-    configure_processor_max_frames,
-)
+from pipeline.preprocessing.minicpm_preprocessor import configure_processor_max_frames
 logger = logging.getLogger(__name__)
 
 
@@ -117,41 +112,10 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
     return processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
 
 
-def _get_video_duration(video_path: Path) -> float | None:
-    """Return the video duration in seconds using ffprobe, or None if unavailable."""
-    ffprobe = shutil.which("ffprobe")
-    if ffprobe is None:
-        return None
-    try:
-        result = subprocess.run(
-            [
-                ffprobe,
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "json",
-                str(video_path),
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=10,
-        )
-        data = json.loads(result.stdout)
-        duration = float(data["format"]["duration"])
-        if math.isfinite(duration) and duration > 0:
-            return duration
-    except Exception:
-        pass
-    return None
-
-
 def _parse_pred_time_range(
     payload: dict[str, Any] | None,
-    sampled_frames: list[FrameMapping] | None = None,
-) -> list[float] | None:
+    sampled_frames: list[dict] | None = None,
+) -> list[int] | None:
     """Map strict adjacent indices through actual processor frame metadata."""
     if payload is None or payload.get("has_fracture") is not True:
         return None
@@ -166,10 +130,7 @@ def _parse_pred_time_range(
     start_idx, end_idx = fracture_between
     if end_idx != start_idx + 1 or not (0 <= start_idx < end_idx < len(sampled_frames)):
         return None
-    return [
-        round(sampled_frames[start_idx].timestamp, 6),
-        round(sampled_frames[end_idx].timestamp, 6),
-    ]
+    return [start_idx, end_idx]
 
 
 def _map_confidence_level(score: float) -> str:
@@ -253,6 +214,31 @@ def _parse_location(payload: dict[str, Any] | None) -> str | None:
     return None
 
 
+def _load_full_frame_mappings(meta_path: Path) -> dict[str, list[dict[str, Any]]]:
+    """从 subvideos_meta.json 加载所有 full video 的帧映射。
+    
+    返回 {source_video: frames_list} 索引，其中每条 frame 为：
+    {"index": int, "original_frame": int, "timestamp": float}
+    """
+    data = json.loads(meta_path.read_text(encoding="utf-8"))
+    full_videos: dict[str, list[dict[str, Any]]] = {}
+    for entry in data.get("subvideos", []):
+        if entry.get("crop_type", "").startswith("full"):
+            source = entry["source_video"]
+            mapping = entry.get("actual_frame_mapping") or entry.get("sampled_frames", [])
+            # 重命名 input_index → index，兼容下游 _resolve_frame_indices_to_time_range
+            frames = [
+                {
+                    "index": f["input_index"],
+                    "original_frame": f["original_frame"],
+                    "timestamp": f["timestamp"],
+                }
+                for f in mapping
+            ]
+            full_videos[source] = frames
+    return full_videos
+
+
 def main() -> None:
     args = parse_args()
     validate_task(args.task)
@@ -274,8 +260,10 @@ def main() -> None:
         print(f"[info] task={args.task} does not support fewshot directly, fallback to prompt preset={resolved_prompt_preset}")
 
     processor, model = load_model(model_dir)
-    frame_mapper = MiniCPMVideoPreprocessor(model_dir, processor=processor)
     records: list[dict[str, Any]] = []
+
+    full_mappings = _load_full_frame_mappings(SUBVIDEOS_META_JSON)
+    print(f"[info] loaded {len(full_mappings)} full video frame mappings from subvideos_meta.json")
     for sample in samples:
         video_path = video_root / sample["video_name"]
         record = {
@@ -308,21 +296,13 @@ def main() -> None:
         try:
             if not video_path.exists():
                 raise RuntimeError(f"Video not found: {video_path}")
-            duration_sec = _get_video_duration(video_path)
-            if duration_sec is None:
-                raise RuntimeError("Unable to determine video duration for actual frame mapping")
-            sampled_frames = frame_mapper.sample(video_path.as_posix(), 0.0, duration_sec)
+            video_id = sample["video_id"]
+            sampled_frames = full_mappings.get(video_id)
+            if sampled_frames is None:
+                raise RuntimeError(f"Full video frame mapping not found for {video_id} in subvideos_meta.json")
             record["preprocessing"] = {
-                "processor_version": frame_mapper.get_info().version,
-                "max_frames": frame_mapper.get_info().max_frames,
-                "frames": [
-                    {
-                        "index": frame.input_index,
-                        "original_frame": frame.original_frame,
-                        "timestamp": frame.timestamp,
-                    }
-                    for frame in sampled_frames
-                ],
+                "max_frames": len(sampled_frames),
+                "frames": sampled_frames,
             }
             response_text = run_single_inference(model, processor, video_path, prompt)
             record["raw_output"] = response_text

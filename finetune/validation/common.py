@@ -204,6 +204,47 @@ def parse_time_range(value: Any) -> tuple[float, float] | None:
     return None
 
 
+def _resolve_frame_indices_to_time_range(record: dict[str, Any]) -> tuple[float, float] | None:
+    """将预测的帧索引（如 [2, 3]）通过预处理元数据中的帧时间戳，转换为秒级时间区间。
+
+    record["pred_time_range"] 存储的是模型输出的 fracture_between 整数帧索引，
+    record["preprocessing"]["frames"] 存储了每个采样帧的 index 和 timestamp。
+    """
+    pred_range = record.get("pred_time_range")
+    if not isinstance(pred_range, (list, tuple)) or len(pred_range) != 2:
+        return None
+    start_idx, end_idx = pred_range
+    if not (isinstance(start_idx, int) and isinstance(end_idx, int)):
+        return None
+
+    frames = record.get("preprocessing", {}).get("frames", [])
+    if not frames:
+        return None
+
+    # 在 frames 列表中查找匹配的帧索引
+    start_frame = next((f for f in frames if f.get("index") == start_idx), None)
+    end_frame = next((f for f in frames if f.get("index") == end_idx), None)
+    if start_frame is None or end_frame is None:
+        return None
+
+    start_ts = start_frame.get("timestamp")
+    end_ts = end_frame.get("timestamp")
+    if start_ts is None or end_ts is None:
+        return None
+
+    try:
+        low = float(start_ts)
+        high = float(end_ts)
+    except (TypeError, ValueError):
+        return None
+
+    if not math.isfinite(low) or not math.isfinite(high):
+        return None
+    if low > high:
+        low, high = high, low
+    return (low, high)
+
+
 def time_range_contains_gt(time_range: tuple[float, float] | None, gt_time: float | None) -> bool:
     if time_range is None or gt_time is None:
         return False
@@ -494,7 +535,7 @@ def update_time_aggregator(agg: dict[str, Any], record: dict[str, Any], threshol
 
     agg["applicable_count"] += 1
     pred_time = record.get("pred_time_sec")
-    pred_range = parse_time_range(record.get("pred_time_range"))
+    pred_range = _resolve_frame_indices_to_time_range(record)
     if pred_time is None:
         agg["time_unparseable_count"] += 1
         return
@@ -564,7 +605,7 @@ def update_joint_aggregator(agg: dict[str, Any], record: dict[str, Any], thresho
         agg["json_valid_count"] += 1
 
     pred_time = record.get("pred_time_sec")
-    pred_range = parse_time_range(record.get("pred_time_range"))
+    pred_range = _resolve_frame_indices_to_time_range(record)
     error = abs(pred_time - record["gt_time_sec"]) if pred_time is not None else None
     time_ok = error is not None and error < threshold
     type_ok = record.get("pred_type_norm") == record["gt_type"]
