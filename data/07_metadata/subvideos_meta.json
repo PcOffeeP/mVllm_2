@@ -136843,10 +136843,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -203882,10 +203879,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -215134,10 +215128,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -242593,10 +242584,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -244346,10 +244334,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -282346,10 +282331,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -427631,10 +427613,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -494670,10 +494649,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -505922,10 +505898,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -533381,10 +533354,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -535134,10 +535104,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,
@@ -573134,10 +573101,7 @@
       "crop_type": "full_anomaly_time_unknown",
       "has_fracture": true,
       "has_fracture_canonical": true,
-      "fracture_between": [
-        6,
-        7
-      ],
+      "fracture_between": null,
       "type": "视频异常",
       "location": null,
       "location_canonical": null,

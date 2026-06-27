@@ -977,7 +977,11 @@ def update_subvideo_metadata(sub: dict[str, Any], rec: dict[str, Any]) -> dict[s
     sampled = sub.get("actual_frame_mapping") or sub.get("sampled_frames")
     if not sampled:
         raise RuntimeError("快速模式缺少真实处理器帧映射，拒绝按 FPS 重新推算")
-    if has_fracture is True and event_frame is not None:
+    if (
+        has_fracture is True
+        and rec.get("type") in FRACTURE_TYPES
+        and event_frame is not None
+    ):
         sub["fracture_between"] = compute_fracture_between(sampled, event_frame)
     else:
         sub["fracture_between"] = None
@@ -1158,7 +1162,11 @@ def _generate_media_for_candidate(
 
     # 补算 fracture_between（阶段 1 时 sampled=[] 导致 fracture_between=None）
     has_fracture = sub.get("has_fracture", sub.get("has_fracture_canonical"))
-    if has_fracture is True and sub.get("fracture_between") is None:
+    if (
+        has_fracture is True
+        and sub.get("type") in FRACTURE_TYPES
+        and sub.get("fracture_between") is None
+    ):
         event_frame = rec.get("event_frame_original")
         if event_frame is not None and sub.get("actual_frame_mapping"):
             fb = compute_fracture_between(sub["actual_frame_mapping"], event_frame)
