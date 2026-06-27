@@ -1,7 +1,7 @@
 ### model
-model_name_or_path: ../models/minicpm-v-4.5
+model_name_or_path: ../models/minicpmv4_5
 cache_dir: null
-adapter_name_or_path: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0
+adapter_name_or_path: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0/checkpoint-198
 template: minicpm_v
 finetuning_type: lora
 trust_remote_code: true
