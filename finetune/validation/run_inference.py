@@ -83,13 +83,13 @@ def parse_args() -> argparse.Namespace:
 
 def load_model(model_dir: str) -> tuple[Any, Any]:
     import torch
-    from transformers import AutoModelForImageTextToText, AutoProcessor
+    from transformers import AutoModel, AutoProcessor
 
     model_path = _sanitize_model_path(model_dir)
     processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
     configure_processor_max_frames(processor)
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"
-    model = AutoModelForImageTextToText.from_pretrained(
+    model = AutoModel.from_pretrained(
         model_path,
         trust_remote_code=True,
         torch_dtype=torch_dtype,
