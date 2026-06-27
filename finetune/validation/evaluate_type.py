@@ -13,7 +13,7 @@ from .common import (
     write_csv,
     write_json,
 )
-from config import SPLIT_DIR
+from .config import SPLIT_DIR
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,9 +50,12 @@ def main() -> None:
         split_ids = _load_split_video_ids(args.split)
         records = [r for r in records if r["video_id"] in split_ids]
 
+    if not records:
+        raise ValueError(f"No records found after filtering split={args.split}. Input files: {args.inputs}")
+
     by_fold: dict[str, list[dict[str, object]]] = {}
     for record in records:
-        fold_key = args.split if args.split else str(record["fold"])
+        fold_key = args.split if args.split else str(record.get("fold", "unknown"))
         by_fold.setdefault(fold_key, []).append(record)
 
     per_fold = {}
@@ -66,7 +69,28 @@ def main() -> None:
     write_csv(out_dir / "type_per_class.csv", ["label", "support", "precision", "recall", "f1"], overall_per_class)
     confusion_fields = list(overall_confusion[0].keys()) if overall_confusion else ["gt_type"]
     write_csv(out_dir / "type_confusion_matrix.csv", confusion_fields, overall_confusion)
+
+    # NEW: output invalid schema samples
+    invalid_schema_rows = []
+    for r in records:
+        if not r.get("schema_valid", True) or not r.get("json_valid", False):
+            invalid_schema_rows.append({
+                "video_id": r.get("video_id"),
+                "json_valid": r.get("json_valid", False),
+                "schema_valid": r.get("schema_valid", False),
+                "schema_errors": r.get("schema_errors", ""),
+                "gt_type": r.get("gt_type"),
+                "pred_type_norm": r.get("pred_type_norm"),
+            })
+    if invalid_schema_rows:
+        write_csv(
+            out_dir / "invalid_schema.csv",
+            ["video_id", "json_valid", "schema_valid", "schema_errors", "gt_type", "pred_type_norm"],
+            invalid_schema_rows,
+        )
     print(f"Wrote type evaluation artifacts to {out_dir}")
+    print(f"  accuracy={overall_summary.get('accuracy')}, macro_f1={overall_summary.get('macro_f1')}, "
+          f"false_positive_rate={overall_summary.get('false_positive_rate')}")
 
 
 if __name__ == "__main__":

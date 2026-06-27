@@ -8,11 +8,12 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from config import (
+from .config import (
     ALLOWED_TYPE_LABELS,
     BASELINE_PROMPTS,
     DEFAULT_MODEL_DIRS,
     FEWSHOT_EXAMPLES,
+    FEWSHOT_INTERVAL_EXAMPLES,
     FRACTURE_CLASSES,
     GROUND_TRUTH_CSV,
     GROUND_TRUTH_JSON,
@@ -21,7 +22,11 @@ from config import (
     PROMPT_PRESETS,
     SPLIT_DIR,
     STRICT_PROMPTS,
+    STRICT_INTERVAL_PROMPT,
     SUPPORTED_FOLDS,
+    SUPPORTED_SPLITS,
+    TEST_INPUTS_JSON,
+    TEST_GROUND_TRUTH_JSON,
     TIME_THRESHOLD_SEC,
 )
 
@@ -92,6 +97,8 @@ def resolve_prompt_preset(task: str, prompt_preset: str) -> str:
     validate_prompt_preset(prompt_preset)
     if prompt_preset == "fewshot" and task == "time":
         return "strict"
+    if prompt_preset in ("strict_interval", "fewshot_interval") and task in ("time", "type"):
+        return "strict"
     return prompt_preset
 
 
@@ -99,6 +106,10 @@ def build_prompt(task: str, prompt_preset: str = "strict") -> tuple[str, str]:
     resolved_prompt_preset = resolve_prompt_preset(task, prompt_preset)
     if resolved_prompt_preset == "baseline":
         task_prompt = BASELINE_PROMPTS[task]
+    elif resolved_prompt_preset in ("strict_interval", "fewshot_interval"):
+        task_prompt = STRICT_INTERVAL_PROMPT["joint"]
+        if resolved_prompt_preset == "fewshot_interval":
+            task_prompt = f"{task_prompt}\n{FEWSHOT_INTERVAL_EXAMPLES}"
     else:
         task_prompt = STRICT_PROMPTS[task]
         if resolved_prompt_preset == "fewshot":
@@ -175,7 +186,150 @@ def load_fold_samples(fold: int, gt_map: dict[str, dict[str, Any]]) -> list[dict
     missing = [name for name in videos if name not in gt_map]
     if missing:
         raise ValueError(f"Fold {fold} videos missing from GT: {missing}")
-    return [gt_map[name] for name in videos]
+    samples = [dict(gt_map[name]) for name in videos]  # Copy to avoid mutating source
+    # Derive gt_has_fracture from gt_type if not already present
+    for s in samples:
+        if s.get("gt_has_fracture") is None:
+            gt_type = s.get("gt_type")
+            if gt_type in FRACTURE_CLASSES:
+                s["gt_has_fracture"] = True
+            elif gt_type in ("未断裂", "未夹紧"):
+                s["gt_has_fracture"] = False
+            elif gt_type == "视频异常":
+                s["gt_has_fracture"] = None
+    return samples
+
+
+def load_test_inputs() -> list[dict[str, Any]]:
+    """Load test video input metadata from test_inputs.json.
+
+    Returns list of dicts with keys: id, video_id, video_path.
+    """
+    if not TEST_INPUTS_JSON.exists():
+        raise FileNotFoundError(f"Test inputs not found: {TEST_INPUTS_JSON}")
+    return json.loads(TEST_INPUTS_JSON.read_text(encoding="utf-8"))
+
+
+def load_test_ground_truth() -> dict[str, dict[str, Any]]:
+    """Load test ground truth from test_ground_truth.json.
+
+    Returns {video_id: record} mapping.
+    The test GT has fields:
+      video_id, has_fracture, type, location, event_time, event_frame_original,
+      is_abnormal, video_anomaly_kind, event_time_reliable, etc.
+
+    Normalize to standard fields:
+      - gt_has_fracture: bool or None
+      - gt_type: normalized type string
+      - gt_location: location string ("inside_gauge"/"outside_gauge"/"N_A"/None)
+      - gt_time_sec: float or None
+      - time_available: bool
+    """
+    if not TEST_GROUND_TRUTH_JSON.exists():
+        raise FileNotFoundError(f"Test ground truth not found: {TEST_GROUND_TRUTH_JSON}")
+    data = json.loads(TEST_GROUND_TRUTH_JSON.read_text(encoding="utf-8"))
+    result: dict[str, dict[str, Any]] = {}
+    for item in data:
+        vid = item["video_id"]
+        gt_type_raw = item.get("type")
+        gt_type = normalize_ground_truth_label(gt_type_raw)
+        event_time = item.get("event_time")
+        # event_time could be a float (seconds) or a string like "视频异常" or "未断裂"
+        gt_time_sec: float | None = None
+        time_available = False
+        if isinstance(event_time, (int, float)):
+            gt_time_sec = float(event_time)
+            time_available = True
+        elif isinstance(event_time, str):
+            try:
+                gt_time_sec = float(event_time)
+                time_available = True
+            except (ValueError, TypeError):
+                gt_time_sec = None
+                time_available = False
+
+        result[vid] = {
+            "video_id": vid,
+            "video_name": f"{vid}.mp4",
+            # For 视频异常, fracture presence is canonically unknown → use None
+            "gt_has_fracture": None if gt_type == "视频异常" else item.get("has_fracture"),
+            "gt_type": gt_type,
+            "gt_location": item.get("location"),
+            "gt_time_sec": gt_time_sec,
+            "gt_time_raw": event_time,
+            "time_available": time_available,
+            "event_time_reliable": item.get("event_time_reliable", False),
+            "is_abnormal": item.get("is_abnormal", False),
+            "video_anomaly_kind": item.get("video_anomaly_kind"),
+            "location_canonical": item.get("location_canonical"),
+            "_source": "test_ground_truth",
+        }
+    return result
+
+
+def load_test_split_samples() -> list[dict[str, Any]]:
+    """Load test split samples combining test_inputs.json and test_ground_truth.json.
+
+    Returns list of sample dicts compatible with load_fold_samples() output.
+    Each sample has: video_id, video_name, video_path, gt_*, etc.
+    """
+    test_inputs = load_test_inputs()
+    test_gt = load_test_ground_truth()
+
+    samples: list[dict[str, Any]] = []
+    for inp in test_inputs:
+        vid = inp["video_id"]
+        if vid not in test_gt:
+            raise ValueError(f"Test video {vid} has no ground truth entry")
+        gt = test_gt[vid]
+        samples.append({
+            "video_id": vid,
+            "video_name": f"{vid}.mp4",
+            "video_path": inp.get("video_path", f"data/01_videos/{vid}.mp4"),
+            **gt,
+        })
+    return samples
+
+
+def load_video_metadata() -> dict[str, dict[str, Any]]:
+    """Load video metadata (total_frames, fps) from the annotation CSV.
+
+    Returns {video_id: {"total_frames": int, "fps": float}}.
+    """
+    if not GROUND_TRUTH_CSV.exists():
+        return {}
+    with GROUND_TRUTH_CSV.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        result: dict[str, dict[str, Any]] = {}
+        for row in reader:
+            vid = str(row["id"]).strip()
+            try:
+                total_frames = int(row.get("视频总帧数", 0))
+                fps = float(row.get("视频帧率", 30))
+                if total_frames > 0 and fps > 0:
+                    result[vid] = {"total_frames": total_frames, "fps": fps}
+            except (ValueError, TypeError):
+                pass
+    return result
+
+
+def generate_frame_mapping(total_frames: int, fps: float, max_frames: int = 8) -> list[dict[str, Any]]:
+    """Generate uniform frame mapping matching MiniCPM processor sampling behavior.
+
+    Returns list of {index, original_frame, timestamp} dicts.
+    """
+    frames: list[dict[str, Any]] = []
+    n = min(max_frames, total_frames)
+    step = total_frames / n if n > 0 else 0.0
+    for i in range(n):
+        frame_idx = min(int(i * step), total_frames - 1)
+        timestamp = round(frame_idx / fps, 6) if fps > 0 else 0.0
+        frames.append({
+            "index": i,
+            "original_frame": frame_idx,
+            "timestamp": timestamp,
+        })
+    return frames
 
 
 def parse_time_range(value: Any) -> tuple[float, float] | None:
@@ -401,19 +555,17 @@ def write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, Any]]) -> 
 
 def compute_type_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     # ``type`` macro-F1 is only defined on samples where the ground truth says
-    # the video has a fracture and the type is one of the seven fracture classes.
-    # All other samples (``has_fracture = false`` or non-fracture ``gt_type``)
-    # are tracked separately via a failure rate and must not enter macro-F1.
-    fracture_records = [
-        record
-        for record in records
-        if record.get("has_fracture") is True and record.get("gt_type") in FRACTURE_CLASSES
-    ]
-    non_fracture_records = [
-        record
-        for record in records
-        if not (record.get("has_fracture") is True and record.get("gt_type") in FRACTURE_CLASSES)
-    ]
+    # the video has a fracture. Use gt_has_fracture or gt_type in FRACTURE_CLASSES.
+    fracture_records = []
+    non_fracture_records = []
+    for record in records:
+        gt_type = record.get("gt_type")
+        gt_has_fracture = record.get("gt_has_fracture")
+        is_fracture = gt_type in FRACTURE_CLASSES
+        if not is_fracture:
+            non_fracture_records.append(record)
+        else:
+            fracture_records.append(record)
 
     labels = sorted(FRACTURE_CLASSES)
     pred_labels = sorted(
@@ -441,6 +593,7 @@ def compute_type_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any],
     macro_precision = 0.0
     macro_recall = 0.0
     macro_f1 = 0.0
+    class_count = len(labels)
     for label in labels:
         tp = sum(
             1
@@ -474,11 +627,22 @@ def compute_type_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any],
             }
         )
 
-    class_count = len(labels) or 1
-    type_failure_count = sum(
-        1 for record in non_fracture_records if record.get("pred_type_norm") in FRACTURE_CLASSES
+    # false_positive_rate: GT non-fracture but pred is fracture
+    fp_count = sum(
+        1 for record in non_fracture_records
+        if record.get("pred_type_norm") in FRACTURE_CLASSES
+        or record.get("pred_has_fracture") is True
     )
-    type_non_fracture_count = len(non_fracture_records)
+    non_fracture_total = len(non_fracture_records)
+
+    # false_negative_rate: GT fracture but pred is not fracture
+    fn_count = sum(
+        1 for record in fracture_records
+        if record.get("pred_type_norm") not in FRACTURE_CLASSES
+        or record.get("pred_has_fracture") is not True
+    )
+    fracture_total = len(fracture_records)
+
     summary: dict[str, Any] = {
         "total_count": len(records),
         "count": total,
@@ -486,15 +650,16 @@ def compute_type_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any],
         "macro_precision": round(macro_precision / class_count, 6),
         "macro_recall": round(macro_recall / class_count, 6),
         "macro_f1": round(macro_f1 / class_count, 6),
-        "type_failure_count": type_failure_count,
-        "type_failure_rate": round(
-            type_failure_count / type_non_fracture_count, 6
-        ) if type_non_fracture_count else 0.0,
-        "type_non_fracture_count": type_non_fracture_count,
+        "false_positive_count": fp_count,
+        "false_positive_rate": round(fp_count / non_fracture_total, 6) if non_fracture_total else 0.0,
+        "false_negative_count": fn_count,
+        "false_negative_rate": round(fn_count / fracture_total, 6) if fracture_total else 0.0,
+        "non_fracture_count": non_fracture_total,
+        "fracture_count": fracture_total,
     }
     if total == 0:
         summary["macro_f1_note"] = (
-            "No has_fracture=true records with fracture-class gt_type; "
+            "No fracture-class gt_type records; "
             "macro-F1 is undefined and reported as 0."
         )
 
@@ -505,6 +670,225 @@ def compute_type_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any],
         confusion_rows.append(row)
 
     return summary, per_class_rows, confusion_rows
+
+
+def _is_valid_time_range(value: Any) -> bool:
+    """Check if a value is a valid time range: length-2 list/tuple of finite numbers."""
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return False
+    try:
+        low, high = float(value[0]), float(value[1])
+        if not math.isfinite(low) or not math.isfinite(high):
+            return False
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def compute_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Compute interval-based time localization metrics.
+
+    Returns (summary_dict, error_rows_list).
+
+    Metrics computed:
+    - interval_hit_rate: GT time falls within pred_time_range_sec
+    - midpoint_mae: mean absolute error of pred_time_midpoint_sec vs gt_time_sec
+    - midpoint_mse: mean squared error
+    - within_1s/3s/5s: percentage of samples within N seconds of GT
+    - unparseable_or_invalid_rate: samples with json_invalid, schema_invalid, or frame_mapping_missing
+
+    Only samples with time_available=True and valid pred_time_midpoint_sec participate
+    in time metrics. All samples participate in schema/invalid metrics.
+    """
+    total = len(records)
+    # Only records with valid JSON and valid schema can contribute to time metrics
+    valid_records = [r for r in records if r.get("json_valid") and r.get("schema_valid")]
+    time_available = [r for r in valid_records if r.get("time_available")]
+    has_midpoint = [r for r in time_available if r.get("pred_time_midpoint_sec") is not None]
+    has_range = [r for r in time_available if _is_valid_time_range(r.get("pred_time_range_sec"))]
+
+    # Schema/invalid stats
+    json_invalid = sum(1 for r in records if not r.get("json_valid", False))
+    schema_invalid = sum(1 for r in records if not r.get("schema_valid", True))
+    frame_missing = sum(1 for r in records if r.get("failure_reason") == "frame_mapping_missing")
+    # Deduplicate: count unique samples that fail ANY validity check
+    invalid_ids = set()
+    for r in records:
+        vid = r.get("video_id", str(id(r)))
+        if not r.get("json_valid", False) or not r.get("schema_valid", True) or r.get("failure_reason") == "frame_mapping_missing":
+            invalid_ids.add(vid)
+    unparseable = len(invalid_ids)
+
+    # Midpoint errors
+    errors_list = []
+    sum_abs_error = 0.0
+    sum_sq_error = 0.0
+    within_1s = 0
+    within_3s = 0
+    within_5s = 0
+    interval_hit = 0
+
+    for r in has_midpoint:
+        gt_time = r["gt_time_sec"]
+        midpoint = r["pred_time_midpoint_sec"]
+        error = abs(midpoint - gt_time)
+        sum_abs_error += error
+        sum_sq_error += error * error
+        if error <= 1.0:
+            within_1s += 1
+        if error <= 3.0:
+            within_3s += 1
+        if error <= 5.0:
+            within_5s += 1
+        errors_list.append({
+            "video_id": r.get("video_id"),
+            "gt_time_sec": gt_time,
+            "pred_midpoint_sec": midpoint,
+            "abs_error_sec": round(error, 6),
+        })
+
+    for r in has_range:
+        gt_time = r["gt_time_sec"]
+        tr = r["pred_time_range_sec"]
+        # Already validated by _is_valid_time_range filter, but use safe access
+        if isinstance(tr, (list, tuple)) and len(tr) == 2:
+            low, high = float(tr[0]), float(tr[1])
+            if low <= gt_time <= high:
+                interval_hit += 1
+
+    m_count = len(has_midpoint) or 1
+    ta_count = len(time_available) or 1
+
+    summary: dict[str, Any] = {
+        "total_samples": total,
+        "time_available_count": len(time_available),
+        "has_midpoint_count": len(has_midpoint),
+        "has_range_count": len(has_range),
+        "interval_hit_rate": round(interval_hit / ta_count, 6) if time_available else None,
+        "midpoint_mae": round(sum_abs_error / m_count, 6) if has_midpoint else None,
+        "midpoint_mse": round(sum_sq_error / m_count, 6) if has_midpoint else None,
+        "within_1s": round(within_1s / ta_count, 6) if time_available else None,
+        "within_3s": round(within_3s / ta_count, 6) if time_available else None,
+        "within_5s": round(within_5s / ta_count, 6) if time_available else None,
+        "json_invalid_count": json_invalid,
+        "schema_invalid_count": schema_invalid,
+        "frame_mapping_missing_count": frame_missing,
+        "unparseable_or_invalid_count": unparseable,
+        "unparseable_or_invalid_rate": round(unparseable / total, 6) if total else 0.0,
+    }
+
+    return summary, errors_list
+
+
+def compute_joint_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Compute joint (interval + type) success metrics.
+
+    joint_success = schema_valid AND:
+      - has_fracture judgment correct (pred matches GT)
+      - If GT is fracture class: type correct AND interval hit
+      - If GT is non-fracture: prediction is valid AND no fracture_between produced
+
+    Returns (summary_dict, failure_rows_list).
+    """
+    total = len(records)
+    success_count = 0
+    failure_rows: list[dict[str, Any]] = []
+
+    fracture_samples = [r for r in records if r.get("gt_type") in FRACTURE_CLASSES]
+    non_fracture_samples = [r for r in records if r.get("gt_type") not in FRACTURE_CLASSES]
+
+    for r in records:
+        if not r.get("schema_valid", False) or not r.get("json_valid", False):
+            failure_rows.append({
+                "video_id": r.get("video_id"),
+                "gt_type": r.get("gt_type"),
+                "failure_reason": "schema_invalid",
+                "details": r.get("schema_errors", ""),
+            })
+            continue
+
+        gt_type = r.get("gt_type")
+        pred_type = r.get("pred_type_norm")
+        gt_hf = r.get("gt_has_fracture")
+        pred_hf = r.get("pred_has_fracture")
+
+        # Has_fracture judgment
+        hf_correct = (gt_hf == pred_hf)
+        if not hf_correct:
+            failure_rows.append({
+                "video_id": r.get("video_id"),
+                "gt_type": gt_type,
+                "failure_reason": "has_fracture_mismatch",
+                "details": f"GT has_fracture={gt_hf}, pred={pred_hf}",
+            })
+            continue
+
+        if gt_type in FRACTURE_CLASSES:
+            # Type correct
+            type_correct = (pred_type == gt_type)
+            if not type_correct:
+                failure_rows.append({
+                    "video_id": r.get("video_id"),
+                    "gt_type": gt_type,
+                    "failure_reason": "type_mismatch",
+                    "details": f"GT type={gt_type}, pred={pred_type}",
+                })
+                continue
+
+            # Interval hit (if time available)
+            if r.get("time_available") and _is_valid_time_range(r.get("pred_time_range_sec")):
+                gt_time = r["gt_time_sec"]
+                tr = r["pred_time_range_sec"]
+                low, high = float(tr[0]), float(tr[1])
+                if low <= gt_time <= high:
+                    success_count += 1
+                else:
+                    failure_rows.append({
+                        "video_id": r.get("video_id"),
+                        "gt_type": gt_type,
+                        "failure_reason": "interval_miss",
+                        "details": f"GT time={gt_time}s not in range=[{low}, {high}]",
+                    })
+            elif r.get("time_available"):
+                # GT fracture with time_available, but no pred_time_range_sec -> failure
+                reason = "frame_mapping_missing" if r.get("failure_reason") == "frame_mapping_missing" else "no_range"
+                failure_rows.append({
+                    "video_id": r.get("video_id"),
+                    "gt_type": gt_type,
+                    "failure_reason": reason,
+                    "details": f"GT time={r.get('gt_time_sec')}s but no pred_time_range_sec (failure={r.get('failure_reason')})",
+                })
+                continue
+            else:
+                # Time NOT available in GT -> only type+has_fracture correctness matters
+                success_count += 1
+        else:
+            # Non-fracture: should NOT have fracture_between
+            pred_fb = r.get("pred_fracture_between")
+            if pred_fb is not None:
+                failure_rows.append({
+                    "video_id": r.get("video_id"),
+                    "gt_type": gt_type,
+                    "failure_reason": "false_positive_fracture",
+                    "details": f"Non-fracture GT but pred fracture_between={pred_fb}",
+                })
+            else:
+                success_count += 1
+
+    # Failure reason distribution
+    failure_reasons = Counter(f["failure_reason"] for f in failure_rows)
+
+    summary: dict[str, Any] = {
+        "total_samples": total,
+        "fracture_samples": len(fracture_samples),
+        "non_fracture_samples": len(non_fracture_samples),
+        "success_count": success_count,
+        "joint_success_rate": round(success_count / total, 6) if total else 0.0,
+        "failure_count": len(failure_rows),
+        "failure_reasons": dict(failure_reasons),
+    }
+
+    return summary, failure_rows
 
 
 def init_time_aggregator() -> dict[str, Any]:
@@ -694,6 +1078,89 @@ def validate_task(task: str) -> None:
 def validate_prompt_preset(prompt_preset: str) -> None:
     if prompt_preset not in PROMPT_PRESETS:
         raise ValueError(f"Unsupported prompt preset: {prompt_preset}")
+
+
+def validate_interval_schema(payload: dict[str, Any] | None) -> tuple[bool, list[str]]:
+    """Validate a parsed JSON payload against the interval 5-field protocol.
+
+    Returns (valid, errors_list).
+    """
+    errors: list[str] = []
+    if payload is None:
+        return False, ["payload is None"]
+
+    # Check required fields exist
+    required_fields = ["has_fracture", "fracture_between", "type", "location", "confidence"]
+    for field in required_fields:
+        if field not in payload:
+            errors.append(f"missing field: {field}")
+
+    if errors:
+        return False, errors
+
+    # Must have ONLY the five fields, no extras
+    allowed_fields = {"has_fracture", "fracture_between", "type", "location", "confidence"}
+    extra_fields = set(payload.keys()) - allowed_fields
+    if extra_fields:
+        errors.append(f"extra fields not allowed in interval protocol: {sorted(extra_fields)}")
+
+    # has_fracture must be true, false, or null
+    hf = payload.get("has_fracture")
+    if hf not in (True, False, None):
+        errors.append(f"has_fracture must be true/false/null, got {type(hf).__name__}: {hf!r}")
+
+    # type validation
+    pred_type = payload.get("type")
+    if not isinstance(pred_type, str) or pred_type not in ALLOWED_TYPE_LABELS:
+        errors.append(f"type not in allowed labels: {pred_type!r}")
+    else:
+        norm_type = normalize_prediction_label(pred_type)
+    norm_type = normalize_prediction_label(payload.get("type"))
+
+    # fracture_between type
+    fb = payload.get("fracture_between")
+
+    # location type
+    loc = payload.get("location")
+
+    # confidence must be numeric 0-1
+    conf = payload.get("confidence")
+    if not isinstance(conf, (int, float)) or isinstance(conf, bool):
+        errors.append(f"confidence must be a number, got {type(conf).__name__}: {conf!r}")
+    else:
+        if conf < 0.0 or conf > 1.0:
+            errors.append(f"confidence out of [0, 1] range: {conf}")
+
+    # Legal combination rules
+    if norm_type in FRACTURE_CLASSES:
+        if hf is not True:
+            errors.append(f"fracture type {norm_type!r} requires has_fracture=true, got {hf!r}")
+        if not isinstance(fb, list) or len(fb) != 2:
+            errors.append(f"fracture type {norm_type!r} requires fracture_between=[i, i+1], got {fb!r}")
+        elif not all(isinstance(v, int) and not isinstance(v, bool) for v in fb):
+            errors.append(f"fracture_between elements must be ints, got {fb!r}")
+        elif fb[1] != fb[0] + 1:
+            errors.append(f"fracture_between must be adjacent integers [i, i+1], got {fb!r}")
+        elif fb[0] < 0 or fb[1] > 7:
+            errors.append(f"fracture_between values out of range 0-7, got {fb!r}")
+        if loc not in ("inside_gauge", "outside_gauge"):
+            errors.append(f"fracture type {norm_type!r} requires location inside_gauge/outside_gauge, got {loc!r}")
+    elif norm_type in ("未断裂", "未夹紧"):
+        if hf is not False:
+            errors.append(f"type {norm_type!r} requires has_fracture=false, got {hf!r}")
+        if fb is not None:
+            errors.append(f"type {norm_type!r} requires fracture_between=null, got {fb!r}")
+        if loc is not None:
+            errors.append(f"type {norm_type!r} requires location=null, got {loc!r}")
+    elif norm_type == "视频异常":
+        if hf is not None:
+            errors.append(f"type 视频异常 requires has_fracture=null, got {hf!r}")
+        if fb is not None:
+            errors.append(f"type 视频异常 requires fracture_between=null, got {fb!r}")
+        if loc is not None:
+            errors.append(f"type 视频异常 requires location=null, got {loc!r}")
+
+    return len(errors) == 0, errors
 
 
 def dump_summary_with_overall(per_fold: dict[int, dict[str, Any]], overall: dict[str, Any]) -> dict[str, Any]:

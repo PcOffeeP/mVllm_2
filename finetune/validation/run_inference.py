@@ -12,27 +12,45 @@ from typing import Any
 from .common import (
     build_prompt,
     ensure_parent_dir,
+    generate_frame_mapping,
     get_default_model_dir,
     infer_failure_reason,
     load_fold_samples,
     load_ground_truth,
+    load_test_split_samples,
+    load_test_inputs,
+    load_test_ground_truth,
+    load_video_metadata,
     normalize_prediction_label,
     parse_response_payload,
     parse_seconds,
     round_record_times,
+    validate_interval_schema,
     validate_fold,
     validate_prompt_preset,
     validate_task,
 )
-from config import (
+from .config import (
     DEFAULT_VIDEO_ROOT,
     GROUND_TRUTH_JSON,
     PROMPT_PRESETS,
     SUBVIDEOS_META_JSON,
+    SUPPORTED_SPLITS,
+    TEST_INPUTS_JSON,
+    TEST_GROUND_TRUTH_JSON,
     VIDEO_MAX_FRAMES,
 )
 from pipeline.preprocessing.minicpm_preprocessor import configure_processor_max_frames
+
 logger = logging.getLogger(__name__)
+
+DEFAULT_GENERATION_CONFIG = {
+    "do_sample": False,
+    "num_beams": 1,
+    "max_new_tokens": 256,
+    "temperature": None,
+    "top_p": None,
+}
 
 
 def _sanitize_model_path(model_path: str) -> str:
@@ -50,10 +68,12 @@ def _sanitize_model_path(model_path: str) -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run MiniCPM inference for one task and one fold.")
+    parser = argparse.ArgumentParser(description="Run MiniCPM inference for evaluation.")
     parser.add_argument("--task", required=True, choices=("time", "type", "joint"))
-    parser.add_argument("--fold", required=True, type=int, choices=(0, 1, 2))
-    parser.add_argument("--model-dir", default=None, help="Merged model directory. Defaults to the configured path for the fold.")
+    parser.add_argument("--fold", type=int, default=None, choices=(0, 1, 2), help="Fold number (0, 1, 2). Use --split instead for test.")
+    parser.add_argument("--split", default=None, choices=SUPPORTED_SPLITS, help="Split name: fold_0_val, fold_1_val, fold_2_val, test. Overrides --fold when set.")
+    parser.add_argument("--model-dir", default=None, help="Merged model directory. Defaults to configured path for the fold.")
+    parser.add_argument("--model-name", default=None, help="Model name to embed in output records. Defaults to directory basename.")
     parser.add_argument("--video-root", default=str(DEFAULT_VIDEO_ROOT), help="Root directory containing the videos.")
     parser.add_argument("--prompt-preset", default="strict", choices=PROMPT_PRESETS, help="Prompt strategy preset.")
     parser.add_argument("--output", required=True, help="JSONL output path.")
@@ -105,7 +125,14 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
         max_slice_nums=1,
         use_image_id=False,
     ).to(model.device)
-    generated_ids = model.generate(**inputs, downsample_mode=downsample_mode, max_new_tokens=512)
+    gen_cfg = DEFAULT_GENERATION_CONFIG
+    generated_ids = model.generate(
+        **inputs,
+        downsample_mode=downsample_mode,
+        do_sample=gen_cfg["do_sample"],
+        num_beams=gen_cfg["num_beams"],
+        max_new_tokens=gen_cfg["max_new_tokens"],
+    )
     generated_ids = [
         output_ids[len(input_ids) :] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
     ]
@@ -239,18 +266,83 @@ def _load_full_frame_mappings(meta_path: Path) -> dict[str, list[dict[str, Any]]
     return full_videos
 
 
+def _map_fracture_between_to_time_sec(
+    fracture_between: list[int] | None,
+    sampled_frames: list[dict],
+) -> tuple[float, float] | None:
+    """Map fracture_between frame indices [i, i+1] to actual time range in seconds.
+    
+    Uses the frame mapping's timestamps. Returns (start_sec, end_sec) or None.
+    """
+    if not isinstance(fracture_between, list) or len(fracture_between) != 2:
+        return None
+    start_idx, end_idx = fracture_between
+    if not (isinstance(start_idx, int) and isinstance(end_idx, int)):
+        return None
+
+    start_frame = next((f for f in sampled_frames if f.get("index") == start_idx), None)
+    end_frame = next((f for f in sampled_frames if f.get("index") == end_idx), None)
+    if start_frame is None or end_frame is None:
+        return None
+
+    start_ts = start_frame.get("timestamp")
+    end_ts = end_frame.get("timestamp")
+    if start_ts is None or end_ts is None:
+        return None
+
+    try:
+        low = float(start_ts)
+        high = float(end_ts)
+    except (TypeError, ValueError):
+        return None
+
+    if not math.isfinite(low) or not math.isfinite(high):
+        return None
+    if low > high:
+        low, high = high, low
+    return (low, high)
+
+
 def main() -> None:
     args = parse_args()
     validate_task(args.task)
-    validate_fold(args.fold)
     validate_prompt_preset(args.prompt_preset)
 
-    gt_map = load_ground_truth(Path(GROUND_TRUTH_JSON))
-    samples = load_fold_samples(args.fold, gt_map)
+    # Resolve split
+    split = args.split
+    fold = args.fold
+    if split is None and fold is None:
+        parser = argparse.ArgumentParser()
+        parser.error("Either --split or --fold must be provided.")
+    if split is not None:
+        # Derive fold from split name if applicable
+        if split.startswith("fold_") and split.endswith("_val"):
+            fold = int(split.split("_")[1])
+        else:
+            fold = None
+    elif fold is not None:
+        split = f"fold_{fold}_val"
+        validate_fold(fold)
+
+    # Load samples based on split
+    if split == "test":
+        samples = load_test_split_samples()
+    else:
+        # fold_*_val split
+        gt_map = load_ground_truth(Path(GROUND_TRUTH_JSON))
+        samples = load_fold_samples(fold, gt_map)
+
     if args.max_samples is not None:
         samples = samples[: args.max_samples]
 
-    model_dir = args.model_dir or get_default_model_dir(args.fold)
+    # Resolve model
+    model_dir = args.model_dir or (get_default_model_dir(fold) if fold is not None else None)
+    if model_dir is None:
+        raise ValueError("--model-dir required for test split (no default fold).")
+
+    model_name = args.model_name or Path(model_dir).name
+
+    # Build prompt
     resolved_prompt_preset, prompt = build_prompt(args.task, args.prompt_preset)
     video_root = Path(args.video_root)
     output_path = Path(args.output)
@@ -259,83 +351,163 @@ def main() -> None:
     if resolved_prompt_preset != args.prompt_preset:
         print(f"[info] task={args.task} does not support fewshot directly, fallback to prompt preset={resolved_prompt_preset}")
 
+    full_mappings = _load_full_frame_mappings(SUBVIDEOS_META_JSON)
+    print(f"[info] loaded {len(full_mappings)} full video frame mappings from subvideos_meta.json")
+
+    # Fill missing frame mappings from CSV metadata
+    missing_mapping = [s.get("video_id") for s in samples if s.get("video_id") not in full_mappings]
+    if missing_mapping:
+        video_meta = load_video_metadata()
+        generated = 0
+        for vid in missing_mapping:
+            if vid in video_meta:
+                fm = generate_frame_mapping(video_meta[vid]["total_frames"], video_meta[vid]["fps"])
+                full_mappings[vid] = fm
+                generated += 1
+        still_missing = len(missing_mapping) - generated
+        if generated > 0:
+            print(f"[info] generated {generated} frame mapping(s) from CSV metadata (total_frames + fps)")
+        if still_missing > 0:
+            print(f"[warn] {still_missing}/{len(samples)} videos still have no frame mapping. "
+                  f"Interval metrics will be unavailable for these videos.")
+
     processor, model = load_model(model_dir)
     records: list[dict[str, Any]] = []
 
-    full_mappings = _load_full_frame_mappings(SUBVIDEOS_META_JSON)
-    print(f"[info] loaded {len(full_mappings)} full video frame mappings from subvideos_meta.json")
     for sample in samples:
+        video_id = sample["video_id"]
         video_path = video_root / sample["video_name"]
+
+        # Build record with ALL required fields (see specification)
         record = {
-            "fold": args.fold,
-            "task": args.task,
-            "video_id": sample["video_id"],
-            "video_path": str(video_path),
+            "model_name": model_name,
             "model_dir": model_dir,
+            "split": split,
+            "fold": fold,
+            "task": args.task,
             "prompt_preset": resolved_prompt_preset,
             "prompt_text": prompt,
+            "generation_config": dict(DEFAULT_GENERATION_CONFIG),
+            "video_id": video_id,
+            "video_path": str(video_path),
             "raw_output": "",
             "json_valid": False,
-            "pred_time_raw": None,
-            "pred_time_sec": None,
-            "pred_time_range": None,
-            "pred_confidence_score": None,
-            "pred_confidence_level": None,
+            "schema_valid": False,
+            "schema_errors": None,
             "pred_has_fracture": None,
-            "pred_location": None,
+            "pred_fracture_between": None,
             "pred_type_raw": None,
             "pred_type_norm": None,
-            "gt_time_sec": sample["gt_time_sec"],
-            "gt_type": sample["gt_type"],
-            "time_available": sample["time_available"],
-            "material": sample["material"],
-            "clarity": sample["clarity"],
+            "pred_location": None,
+            "pred_confidence_score": None,
+            "pred_time_range_sec": None,
+            "pred_time_range": None,  # Legacy compat
+            "pred_time_midpoint_sec": None,
+            # GT fields
+            "gt_has_fracture": sample.get("gt_has_fracture"),
+            "gt_fracture_between": None,  # Not available at video level
+            "gt_type": sample.get("gt_type"),
+            "gt_location": sample.get("gt_location"),
+            "gt_time_sec": sample.get("gt_time_sec"),
+            "time_available": sample.get("time_available", False),
+            # Preprocessing
+            "preprocessing": None,
+            # Legacy fields for backward compat
+            "pred_time_raw": None,
+            "pred_time_sec": None,
+            "pred_confidence_level": None,
+            "elapsed_sec": 0.0,
             "failure_reason": None,
         }
+
         start = time.time()
         try:
             if not video_path.exists():
                 raise RuntimeError(f"Video not found: {video_path}")
-            video_id = sample["video_id"]
+
+            # Get frame mapping
             sampled_frames = full_mappings.get(video_id)
             if sampled_frames is None:
-                raise RuntimeError(f"Full video frame mapping not found for {video_id} in subvideos_meta.json")
-            record["preprocessing"] = {
-                "max_frames": len(sampled_frames),
-                "frames": sampled_frames,
-            }
+                record["failure_reason"] = "frame_mapping_missing"
+                record["preprocessing"] = {"max_frames": VIDEO_MAX_FRAMES, "frames": [], "frame_mapping_missing": True}
+            else:
+                record["preprocessing"] = {
+                    "max_frames": len(sampled_frames),
+                    "frames": sampled_frames,
+                    "processor_fingerprint": "subvideos_meta_full",
+                }
+
             response_text = run_single_inference(model, processor, video_path, prompt)
             record["raw_output"] = response_text
+
             json_valid, payload = parse_response_payload(response_text)
             record["json_valid"] = json_valid
+
             if json_valid and payload is not None:
+                # Parse all 5 interval fields
                 record["pred_has_fracture"] = payload.get("has_fracture")
-                record["pred_location"] = _parse_location(payload)
+                record["pred_fracture_between"] = payload.get("fracture_between")
+                record["pred_type_raw"] = payload.get("type")
+                record["pred_type_norm"] = normalize_prediction_label(payload.get("type"))
+                record["pred_location"] = payload.get("location")
+
+                # Parse confidence
+                conf = payload.get("confidence")
+                if isinstance(conf, (int, float)) and not isinstance(conf, bool):
+                    if 0.0 <= conf <= 1.0:
+                        record["pred_confidence_score"] = round(float(conf), 6)
+
+                # Validate against interval schema
+                schema_valid, schema_errors = validate_interval_schema(payload)
+                record["schema_valid"] = schema_valid
+                record["schema_errors"] = "; ".join(schema_errors) if schema_errors else None
+
+                # Compute time range and midpoint from fracture_between + frame mapping
+                # Only derive if schema_valid, otherwise the prediction is not reliable
+                if schema_valid and sampled_frames and record["pred_fracture_between"] is not None:
+                    time_range = _map_fracture_between_to_time_sec(
+                        record["pred_fracture_between"], sampled_frames
+                    )
+                    if time_range is not None:
+                        record["pred_time_range_sec"] = list(time_range)
+                        record["pred_time_range"] = list(time_range)  # Legacy compat
+                        record["pred_time_midpoint_sec"] = round((time_range[0] + time_range[1]) / 2, 6)
+
+                # Legacy time field for backward compat
                 record["pred_time_raw"] = payload.get("time")
                 record["pred_time_sec"] = parse_seconds(payload.get("time"))
 
-                record["pred_time_range"] = _parse_pred_time_range(payload, sampled_frames)
-                record["pred_confidence_score"], record["pred_confidence_level"] = _parse_confidence(payload)
-                record["pred_type_raw"] = payload.get("type")
-                record["pred_type_norm"] = normalize_prediction_label(payload.get("type"))
+                # Confidence level
+                conf_score = record.get("pred_confidence_score")
+                if conf_score is not None:
+                    if conf_score >= 0.9:
+                        record["pred_confidence_level"] = "高"
+                    elif conf_score >= 0.7:
+                        record["pred_confidence_level"] = "中"
+                    elif conf_score >= 0.5:
+                        record["pred_confidence_level"] = "低"
+                    else:
+                        record["pred_confidence_level"] = "不可信"
 
         except Exception as exc:
             record["raw_output"] = str(exc)
             record["failure_reason"] = "model_inference_failed" if video_path.exists() else "video_load_failed"
-        if record["pred_confidence_score"] is None:
-            record["pred_confidence_score"], record["pred_confidence_level"] = _parse_confidence(None)
+
         record["elapsed_sec"] = round(time.time() - start, 6)
         if record["failure_reason"] is None:
             record["failure_reason"] = infer_failure_reason(record, args.task)
         records.append(round_record_times(record))
+
         print(
-            f"[{args.task}] fold={args.fold} video={sample['video_name']} "
-            f"json_valid={record['json_valid']} failure={record['failure_reason'] or 'ok'}"
+            f"[{args.task}] split={split} video={sample['video_name']} "
+            f"json_valid={record['json_valid']} schema_valid={record['schema_valid']} "
+            f"failure={record['failure_reason'] or 'ok'}"
         )
 
     with output_path.open("w", encoding="utf-8") as handle:
         for record in records:
             handle.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+    print(f"Wrote {len(records)} records to {output_path}")
 
 
 if __name__ == "__main__":

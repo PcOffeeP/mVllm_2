@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .common import (
+    compute_interval_metrics,
     dump_summary_with_overall,
     finalize_time_aggregator,
     init_time_aggregator,
@@ -15,7 +16,7 @@ from .common import (
     write_csv,
     write_json,
 )
-from config import SPLIT_DIR
+from .config import SPLIT_DIR
 
 
 def parse_args() -> argparse.Namespace:
@@ -52,6 +53,9 @@ def main() -> None:
         split_ids = _load_split_video_ids(args.split)
         records = [r for r in records if r["video_id"] in split_ids]
 
+    if not records:
+        raise ValueError(f"No records found after filtering split={args.split}. Input files: {args.inputs}")
+
     per_fold: dict[str, dict[str, object]] = {}
     overall_agg = init_time_aggregator()
     error_rows = []
@@ -60,7 +64,7 @@ def main() -> None:
 
     by_fold: dict[str, list[dict[str, object]]] = {}
     for record in records:
-        fold_key = args.split if args.split else str(record["fold"])
+        fold_key = args.split if args.split else str(record.get("fold", "unknown"))
         by_fold.setdefault(fold_key, []).append(record)
 
     for fold_key, fold_records in sorted(by_fold.items()):
@@ -89,14 +93,27 @@ def main() -> None:
                     }
                 )
         fold_metrics = finalize_time_aggregator(fold_agg)
-        per_fold[fold_key] = fold_metrics
+        fold_interval, _ = compute_interval_metrics(fold_records)
+        per_fold[fold_key] = {
+            "interval_metrics": fold_interval,
+            "deprecated_legacy_metrics": fold_metrics,
+        }
         for bucket in fold_metrics["confidence_buckets"]:
             bucket_rows.append({"fold": fold_key, **bucket})
 
     overall_metrics = finalize_time_aggregator(overall_agg)
 
+    # NEW: compute interval metrics
+    interval_summary, interval_errors = compute_interval_metrics(records)
+    merged_metrics = {
+        "interval_metrics": interval_summary,
+        "deprecated_legacy_metrics": overall_metrics,
+        "_note": "'deprecated_legacy_metrics' uses the old time/type prompt aggregator. "
+                  "For interval 5-field protocol evaluations, use 'interval_metrics' as the primary metric source.",
+    }
+
     out_dir = Path(args.out_dir)
-    write_json(out_dir / "time_metrics.json", dump_summary_with_overall(per_fold, overall_metrics))
+    write_json(out_dir / "time_metrics.json", dump_summary_with_overall(per_fold, merged_metrics))
     write_csv(
         out_dir / "time_errors.csv",
         ["fold", "video_id", "gt_time_sec", "pred_time_sec", "abs_error_sec"],
@@ -107,6 +124,30 @@ def main() -> None:
         ["fold", "video_id", "gt_type", "failure_reason"],
         excluded_rows,
     )
+    # NEW: output interval errors
+    if interval_errors:
+        write_csv(
+            out_dir / "interval_errors.csv",
+            ["video_id", "gt_time_sec", "pred_midpoint_sec", "abs_error_sec"],
+            interval_errors,
+        )
+    # NEW: output invalid schema samples
+    invalid_schema_rows = []
+    for r in records:
+        if not r.get("schema_valid", True):
+            invalid_schema_rows.append({
+                "video_id": r.get("video_id"),
+                "schema_valid": r.get("schema_valid", False),
+                "schema_errors": r.get("schema_errors", ""),
+                "json_valid": r.get("json_valid", False),
+                "failure_reason": r.get("failure_reason", ""),
+            })
+    if invalid_schema_rows:
+        write_csv(
+            out_dir / "invalid_schema.csv",
+            ["video_id", "json_valid", "schema_valid", "schema_errors", "failure_reason"],
+            invalid_schema_rows,
+        )
     if bucket_rows:
         write_csv(
             out_dir / "time_confidence_buckets.csv",
@@ -114,6 +155,7 @@ def main() -> None:
             bucket_rows,
         )
     print(f"Wrote time evaluation artifacts to {out_dir}")
+    print(f"  interval: midpoint_mae={interval_summary.get('midpoint_mae')}, interval_hit_rate={interval_summary.get('interval_hit_rate')}")
 
 
 if __name__ == "__main__":
