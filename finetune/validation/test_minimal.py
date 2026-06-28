@@ -121,6 +121,7 @@ def main():
     with torch.no_grad():
         generated_ids = model.generate(
             **inputs,
+            tokenizer=tokenizer,  # 新增：显式传入 tokenizer
             max_new_tokens=50,
             do_sample=False,
             num_beams=1,

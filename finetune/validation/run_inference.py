@@ -167,6 +167,7 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
     gen_cfg = DEFAULT_GENERATION_CONFIG
     generated_ids = model.generate(
         **inputs,
+        tokenizer=processor.tokenizer,  # 新增：显式传入 tokenizer
         do_sample=gen_cfg["do_sample"],
         num_beams=gen_cfg["num_beams"],
         max_new_tokens=gen_cfg["max_new_tokens"],
