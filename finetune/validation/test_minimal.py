@@ -81,21 +81,55 @@ def main():
     print(f"  type: {type(model).__name__}, device: {model.device}")
     
     # Step 6
-    print("\n[Step 6] Running minimal inference (no video)...")
+    print("\n[Step 6] Running inference on real video...")
     from PIL import Image
-    # MiniCPM-V requires pixel_values even for text-only inference
-    dummy_image = Image.new("RGB", (448, 448), color=0)
+    from .video_loader import load_video_frames
+
+    # Pick a test video
+    video_root = Path(__file__).resolve().parents[2] / "data" / "01_videos"
+    video_path = video_root / "video_0003.mp4"
+    print(f"  Video: {video_path}  (exists={video_path.exists()})")
+
+    # Load frames
+    frames, temporal_ids, timestamps = load_video_frames(
+        str(video_path), max_frames=8
+    )
+    print(f"  Loaded {len(frames)} frames, timestamps: {[f'{t:.2f}' for t in timestamps]}")
+
+    # Build a simple prompt
+    prompt = "Describe what you see in this video in one sentence."
+    image_tags = "".join("(<image>./</image>)" for _ in frames)
+    content_str = f"{image_tags}\n{prompt}"
+    messages = [{"role": "user", "content": content_str}]
+
+    # Render chat template
+    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    print(f"  Prompt rendered: {len(text)} chars")
+
+    # Encode text + images
     inputs = processor(
         text=text,
-        images=dummy_image,
+        images=frames,
+        temporal_ids=temporal_ids,
+        max_slice_nums=1,
+        use_image_id=False,
         return_tensors="pt",
     ).to(model.device)
     print(f"  input_ids shape: {inputs.input_ids.shape}")
+
+    # Generate
     with torch.no_grad():
         generated_ids = model.generate(
-            **inputs, max_new_tokens=20, do_sample=False, num_beams=1,
+            **inputs,
+            max_new_tokens=50,
+            do_sample=False,
+            num_beams=1,
         )
-    response = tokenizer.decode(generated_ids[0][len(inputs.input_ids[0]):], skip_special_tokens=True)
+    response = tokenizer.decode(
+        generated_ids[0][len(inputs.input_ids[0]):],
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=False,
+    )
     print(f"  Model response: {response}")
     print("\n✅ ALL TESTS PASSED")
 
