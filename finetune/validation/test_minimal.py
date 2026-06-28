@@ -149,18 +149,14 @@ def main():
     # Generate
     inputs.pop("image_sizes", None)
     with torch.no_grad():
-        generated_ids = model.generate(
+        response = model.generate(
             **inputs,
-            tokenizer=tokenizer,  # 新增：显式传入 tokenizer
+            tokenizer=tokenizer,
             max_new_tokens=50,
             do_sample=False,
             num_beams=1,
-        )
-    response = tokenizer.decode(
-        generated_ids[0][len(inputs.input_ids[0]):],
-        skip_special_tokens=True,
-        clean_up_tokenization_spaces=False,
-    )
+            decode_text=True,
+        )[0]
     print(f"  Model response: {response}")
     print("\n✅ ALL TESTS PASSED")
 

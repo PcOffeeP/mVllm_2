@@ -178,20 +178,14 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
     inputs.pop("image_sizes", None)  # 必须在 generate 前弹出，与 chat() L437 一致
     gen_cfg = DEFAULT_GENERATION_CONFIG
     with torch.no_grad():
-        generated_ids = model.generate(
+        response_text = model.generate(
             **inputs,
-            tokenizer=processor.tokenizer,  # 新增：显式传入 tokenizer
+            tokenizer=processor.tokenizer,
             do_sample=gen_cfg["do_sample"],
             num_beams=gen_cfg["num_beams"],
             max_new_tokens=gen_cfg["max_new_tokens"],
-        )
-    generated_ids = [
-        output_ids[len(input_ids):]
-        for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
-    ]
-    response_text = processor.batch_decode(
-        generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
-    )[0]
+            decode_text=True,
+        )[0]
 
     return response_text, frame_timestamps
 
