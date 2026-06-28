@@ -146,10 +146,11 @@ def main():
     ).to(model.device)
     print(f"  input_ids shape: {inputs.input_ids.shape}")
 
-    # Generate (pass ALL processor outputs)
+    # Generate
+    inputs.pop("image_sizes", None)
     with torch.no_grad():
         generated_ids = model.generate(
-            **inputs,  # 包含 image_sizes
+            **inputs,
             tokenizer=tokenizer,  # 新增：显式传入 tokenizer
             max_new_tokens=50,
             do_sample=False,

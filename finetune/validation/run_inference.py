@@ -174,11 +174,12 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
         return_tensors="pt",
     ).to(model.device)
 
-    # Step 5: Generate with torch.no_grad() (pass ALL processor outputs, including image_sizes)
+    # Step 5: Generate with torch.no_grad()
+    inputs.pop("image_sizes", None)  # 必须在 generate 前弹出，与 chat() L437 一致
     gen_cfg = DEFAULT_GENERATION_CONFIG
     with torch.no_grad():
         generated_ids = model.generate(
-            **inputs,  # 不再过滤 image_sizes
+            **inputs,
             tokenizer=processor.tokenizer,  # 新增：显式传入 tokenizer
             do_sample=gen_cfg["do_sample"],
             num_beams=gen_cfg["num_beams"],
