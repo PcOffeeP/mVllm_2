@@ -117,10 +117,13 @@ def main():
     ).to(model.device)
     print(f"  input_ids shape: {inputs.input_ids.shape}")
 
+    # Remove keys not accepted by model.generate()
+    gen_inputs = {k: v for k, v in inputs.items() if k != "image_sizes"}
+
     # Generate
     with torch.no_grad():
         generated_ids = model.generate(
-            **inputs,
+            **gen_inputs,
             tokenizer=tokenizer,  # 新增：显式传入 tokenizer
             max_new_tokens=50,
             do_sample=False,

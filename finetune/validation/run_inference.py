@@ -165,8 +165,10 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
 
     # Step 5: Generate
     gen_cfg = DEFAULT_GENERATION_CONFIG
+    # Remove keys not accepted by model.generate()
+    gen_inputs = {k: v for k, v in inputs.items() if k != "image_sizes"}
     generated_ids = model.generate(
-        **inputs,
+        **gen_inputs,
         tokenizer=processor.tokenizer,  # 新增：显式传入 tokenizer
         do_sample=gen_cfg["do_sample"],
         num_beams=gen_cfg["num_beams"],
