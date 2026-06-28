@@ -79,6 +79,13 @@ def main():
         low_cpu_mem_usage=True,
     ).eval()
     print(f"  type: {type(model).__name__}, device: {model.device}")
+
+    # Monkey-patch _decode to consume image_sizes
+    original_decode = model._decode
+    def _patched_decode(*args, **kwargs):
+        kwargs.pop("image_sizes", None)
+        return original_decode(*args, **kwargs)
+    model._decode = _patched_decode
     
     # Step 6
     print("\n[Step 6] Running inference on real video...")
@@ -117,13 +124,10 @@ def main():
     ).to(model.device)
     print(f"  input_ids shape: {inputs.input_ids.shape}")
 
-    # Remove keys not accepted by model.generate()
-    gen_inputs = {k: v for k, v in inputs.items() if k != "image_sizes"}
-
-    # Generate
+    # Generate (pass ALL processor outputs)
     with torch.no_grad():
         generated_ids = model.generate(
-            **gen_inputs,
+            **inputs,  # 包含 image_sizes
             tokenizer=tokenizer,  # 新增：显式传入 tokenizer
             max_new_tokens=50,
             do_sample=False,

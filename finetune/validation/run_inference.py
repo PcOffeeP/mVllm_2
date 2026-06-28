@@ -124,7 +124,15 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
         device_map="auto",
         low_cpu_mem_usage=True,
     ).eval()
-    
+
+    # Monkey-patch: MiniCPM's _decode passes kwargs to self.llm.generate(),
+    # which rejects image_sizes. We intercept and consume it here.
+    original_decode = model._decode
+    def _patched_decode(*args, **kwargs):
+        kwargs.pop("image_sizes", None)
+        return original_decode(*args, **kwargs)
+    model._decode = _patched_decode
+
     return processor, model
 
 
@@ -163,12 +171,10 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
         return_tensors="pt",
     ).to(model.device)
 
-    # Step 5: Generate
+    # Step 5: Generate (pass ALL processor outputs, including image_sizes)
     gen_cfg = DEFAULT_GENERATION_CONFIG
-    # Remove keys not accepted by model.generate()
-    gen_inputs = {k: v for k, v in inputs.items() if k != "image_sizes"}
     generated_ids = model.generate(
-        **gen_inputs,
+        **inputs,  # 不再过滤 image_sizes
         tokenizer=processor.tokenizer,  # 新增：显式传入 tokenizer
         do_sample=gen_cfg["do_sample"],
         num_beams=gen_cfg["num_beams"],
