@@ -126,11 +126,12 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     ).eval()
 
     # Monkey-patch: MiniCPM's _decode passes kwargs to self.llm.generate(),
-    # which rejects image_sizes and temporal_ids. We intercept and consume them here.
+    # which rejects non-standard keys from processor output.
+    # Pop all processor keys except input_ids / attention_mask / pixel_values.
     original_decode = model._decode
     def _patched_decode(*args, **kwargs):
-        kwargs.pop("image_sizes", None)
-        kwargs.pop("temporal_ids", None)
+        for key in ["image_sizes", "temporal_ids", "image_bound", "tgt_sizes"]:
+            kwargs.pop(key, None)
         return original_decode(*args, **kwargs)
     model._decode = _patched_decode
 
