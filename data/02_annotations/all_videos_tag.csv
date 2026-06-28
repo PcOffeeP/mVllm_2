@@ -1,6 +1,6 @@
 id,video_path,断裂时间点,断裂模式,材料类型,清晰度,断裂位置,断裂帧数,视频时长,视频帧率,视频总帧数,has_fracture,is_abnormal
 video_0001,data/01_videos/video_0001.mp4,38.65s,韧性断裂,金属,480P,inside_gauge,1165,40.43,30,1213,TRUE,FALSE
-video_0002,data/01_videos/video_0002.mp4, ,未夹紧,高分子,720P,N/A,N/A,6.47,30,194,FALSE,TRUE
+video_0002,data/01_videos/video_0002.mp4,5.933s,未夹紧,高分子,720P,N/A,178,6.47,30,194,FALSE,TRUE
 video_0003,data/01_videos/video_0003.mp4,26.19s,脆性断裂,金属,480P,inside_gauge,787,30.4,30,912,TRUE,FALSE
 video_0004,data/01_videos/video_0004.mp4,183.55s,界面脱粘,复材,480P,inside_gauge,5512,188.56,30,5657,TRUE,FALSE
 video_0005,data/01_videos/video_0005.mp4, ,视频异常,金属,480P,N/A,N/A,30,30,900,FALSE,TRUE
