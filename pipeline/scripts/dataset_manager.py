@@ -426,11 +426,11 @@ def _is_canonical_fracture(rec: dict[str, Any]) -> bool:
 
 
 def compute_rare_pool(records: list[dict[str, Any]]) -> list[str]:
-    """识别稀有断裂类别（视频数 <=2）并返回其 video_id 列表。"""
+    """识别稀有标签类型（视频数 <=2）并返回其 video_id 列表。"""
     type_counts: Counter[str] = Counter()
     type_ids: dict[str, list[str]] = defaultdict(list)
     for rec in records:
-        if _is_canonical_fracture(rec):
+        if rec.get("type"):
             ftype = rec["type"]
             type_counts[ftype] += 1
             type_ids[ftype].append(rec["video_id"])

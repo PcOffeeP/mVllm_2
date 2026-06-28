@@ -14,11 +14,13 @@
       "video_0012",
       "video_0013",
       "video_0014",
+      "video_0015",
       "video_0016",
       "video_0017",
       "video_0018",
       "video_0019",
       "video_0020",
+      "video_0021",
       "video_0022",
       "video_0023",
       "video_0024",
@@ -42,6 +44,8 @@
       "video_0046",
       "video_0047",
       "video_0048",
+      "video_0049",
+      "video_0050",
       "video_0051",
       "video_0053",
       "video_0055",
@@ -64,10 +68,12 @@
       "video_0075",
       "video_0076",
       "video_0077",
+      "video_0078",
       "video_0079",
       "video_0080",
       "video_0081",
       "video_0082",
+      "video_0083",
       "video_0084",
       "video_0085",
       "video_0086",
@@ -77,6 +83,8 @@
       "video_0091",
       "video_0092",
       "video_0093",
+      "video_0094",
+      "video_0096",
       "video_0097",
       "video_0098",
       "video_0099",
@@ -87,65 +95,57 @@
       "video_0104",
       "video_0105",
       "video_0106",
+      "video_0107",
       "video_0108",
       "video_0109",
       "video_0110"
     ],
     "confirmed_no_fracture": [
-      "video_0005",
-      "video_0021",
-      "video_0042",
+      "video_0034",
+      "video_0036",
       "video_0052",
       "video_0054",
-      "video_0069",
+      "video_0056",
+      "video_0064",
+      "video_0087",
       "video_0095"
     ],
     "not_clamped": [
       "video_0002"
     ],
     "video_anomaly_presence_unknown": [
-      "video_0015",
-      "video_0034",
-      "video_0036",
-      "video_0050",
-      "video_0056",
-      "video_0064",
-      "video_0087"
-    ],
-    "video_anomaly_time_unknown": [
+      "video_0005",
+      "video_0042",
       "video_0045",
-      "video_0049",
-      "video_0078",
-      "video_0083",
-      "video_0094",
-      "video_0096",
-      "video_0107"
-    ]
+      "video_0069"
+    ],
+    "video_anomaly_time_unknown": []
   },
   "category_counts": {
-    "confirmed_fracture_time_reliable": 88,
-    "confirmed_no_fracture": 7,
+    "confirmed_fracture_time_reliable": 97,
+    "confirmed_no_fracture": 8,
     "not_clamped": 1,
-    "video_anomaly_presence_unknown": 7,
-    "video_anomaly_time_unknown": 7
+    "video_anomaly_presence_unknown": 4,
+    "video_anomaly_time_unknown": 0
   },
   "type_counts": {
-    "韧性断裂": 49,
-    "脆性断裂": 20,
-    "视频异常": 14,
+    "韧性断裂": 52,
+    "脆性断裂": 26,
     "界面脱粘": 8,
-    "未断裂": 7,
+    "未断裂": 8,
     "齐根断裂": 6,
+    "视频异常": 4,
     "界面脱粘、齐根断裂": 2,
     "爆炸性断裂": 2,
     "未夹紧": 1,
     "半脆半韧断裂": 1
   },
   "location_counts": {
-    "inside_gauge": 64,
+    "inside_gauge": 68,
     "outside_gauge": 24
   },
   "rare_pool": [
+    "video_0002",
     "video_0014",
     "video_0017",
     "video_0026",
@@ -153,81 +153,79 @@
     "video_0040"
   ],
   "splits": {
-    "test": 21,
-    "fold_0_train": 60,
+    "test": 22,
+    "fold_0_train": 59,
     "fold_0_val": 29,
-    "fold_1_train": 60,
+    "fold_1_train": 59,
     "fold_1_val": 29,
-    "fold_2_train": 63,
-    "fold_2_val": 26
+    "fold_2_train": 64,
+    "fold_2_val": 24
   },
   "split_type_distribution": {
     "test": {
-      "韧性断裂": 10,
-      "脆性断裂": 4,
-      "视频异常": 3,
+      "韧性断裂": 11,
+      "脆性断裂": 5,
+      "视频异常": 2,
       "界面脱粘": 2,
-      "未断裂": 1,
-      "齐根断裂": 1
-    },
-    "fold_0_train": {
-      "韧性断裂": 26,
-      "脆性断裂": 10,
-      "视频异常": 6,
-      "未断裂": 5,
-      "界面脱粘": 4,
-      "齐根断裂": 3,
-      "界面脱粘、齐根断裂": 2,
-      "爆炸性断裂": 2,
-      "未夹紧": 1,
-      "半脆半韧断裂": 1
-    },
-    "fold_0_val": {
-      "韧性断裂": 13,
-      "脆性断裂": 6,
-      "视频异常": 5,
-      "界面脱粘": 2,
-      "齐根断裂": 2,
+      "齐根断裂": 1,
       "未断裂": 1
     },
-    "fold_1_train": {
-      "韧性断裂": 26,
-      "脆性断裂": 10,
-      "视频异常": 8,
+    "fold_0_train": {
+      "韧性断裂": 27,
+      "脆性断裂": 14,
       "界面脱粘": 4,
-      "未断裂": 3,
+      "未断裂": 4,
       "齐根断裂": 3,
       "界面脱粘、齐根断裂": 2,
       "爆炸性断裂": 2,
       "未夹紧": 1,
-      "半脆半韧断裂": 1
+      "半脆半韧断裂": 1,
+      "视频异常": 1
     },
-    "fold_1_val": {
-      "韧性断裂": 13,
-      "脆性断裂": 6,
+    "fold_0_val": {
+      "韧性断裂": 14,
+      "脆性断裂": 7,
       "未断裂": 3,
-      "视频异常": 3,
       "界面脱粘": 2,
-      "齐根断裂": 2
+      "齐根断裂": 2,
+      "视频异常": 1
     },
-    "fold_2_train": {
-      "韧性断裂": 26,
-      "脆性断裂": 12,
-      "视频异常": 8,
+    "fold_1_train": {
+      "韧性断裂": 27,
+      "脆性断裂": 11,
+      "未断裂": 7,
       "界面脱粘": 4,
-      "未断裂": 4,
-      "齐根断裂": 4,
+      "齐根断裂": 3,
       "界面脱粘、齐根断裂": 2,
       "爆炸性断裂": 2,
+      "未夹紧": 1,
+      "半脆半韧断裂": 1,
+      "视频异常": 1
+    },
+    "fold_1_val": {
+      "韧性断裂": 14,
+      "脆性断裂": 10,
+      "齐根断裂": 2,
+      "界面脱粘": 2,
+      "视频异常": 1
+    },
+    "fold_2_train": {
+      "韧性断裂": 28,
+      "脆性断裂": 17,
+      "界面脱粘": 4,
+      "齐根断裂": 4,
+      "未断裂": 3,
+      "界面脱粘、齐根断裂": 2,
+      "爆炸性断裂": 2,
+      "视频异常": 2,
+      "未夹紧": 1,
       "半脆半韧断裂": 1
     },
     "fold_2_val": {
       "韧性断裂": 13,
       "脆性断裂": 4,
-      "视频异常": 3,
+      "未断裂": 4,
       "界面脱粘": 2,
-      "未断裂": 2,
-      "未夹紧": 1,
       "齐根断裂": 1
     }
   },
@@ -237,18 +235,19 @@
     "n_folds": 3,
     "seed": 42,
     "rare_pool": [
+      "video_0002",
       "video_0014",
       "video_0017",
       "video_0026",
       "video_0027",
       "video_0040"
     ],
-    "rare_pool_size": 5,
+    "rare_pool_size": 6,
     "overall_strata_decision": "type_location_rare_merged",
     "overall_strata_counts": {
-      "韧性断裂@@inside_gauge": 41,
-      "N/A": 22,
-      "脆性断裂@@inside_gauge": 12,
+      "韧性断裂@@inside_gauge": 44,
+      "N/A": 17,
+      "脆性断裂@@inside_gauge": 13,
       "界面脱粘@@inside_gauge": 8,
       "脆性断裂@@outside_gauge": 8,
       "韧性断裂@@outside_gauge": 8,
@@ -256,8 +255,8 @@
     },
     "pool_strata_decision": "type_location_rare_merged",
     "pool_strata_counts": {
-      "韧性断裂@@inside_gauge": 33,
-      "N/A": 18,
+      "韧性断裂@@inside_gauge": 35,
+      "N/A": 14,
       "脆性断裂@@inside_gauge": 10,
       "界面脱粘@@inside_gauge": 6,
       "脆性断裂@@outside_gauge": 6,
