@@ -122,28 +122,45 @@ pip install -e ./LlamaFactory
 
 ```bash
 # ① 读取 CSV，生成视频元数据与 3-fold 划分
-python3 -m pipeline.scripts.dataset_manager --csv data/02_annotations/all_videos_tag.csv
+python3 pipeline/scripts/dataset_manager.py
 
-# ② 加载 MiniCPM processor，生成编码子视频与元数据
-python3 -m pipeline.scripts.subvideo_builder --model models/minicpm-v-4.5
+# ② 加载 MiniCPM processor，生成子视频与元数据（需 GPU/Linux 环境）
+python3 pipeline/scripts/subvideo_builder.py \
+    --model models/minicpm-v-4.5 \
+    --extract-frames
 
 # ③ 子视频元数据 → ShareGPT 训练 JSON
-python3 -m pipeline.scripts.training_sample_builder
+python3 pipeline/scripts/training_sample_builder.py
 
 # ④ 校验 fracture_between 与帧范围一致性
-python3 -m scripts.validate_no_oob
+python3 scripts/validate_no_oob.py
 
 # ⑤ 强制质量检查（路径、字段、数据泄漏）
-python3 -m pipeline.scripts.quality_check
+python3 pipeline/scripts/quality_check.py
 
 # ⑥ 冻结数据版本
-python3 -m pipeline.scripts.freeze_data_version
+python3 pipeline/scripts/freeze_data_version.py
 
 # ⑦ （可选）校准检查
-python3 -m pipeline.scripts.calibration
+python3 pipeline/scripts/calibration.py
 ```
 
-> **注意**：步骤 ② 依赖真实 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。步骤 ② 完成后，后续步骤才可继续。
+#### 步骤 ② 参数说明
+
+| 参数 | 必传？ | 默认值 | 说明 |
+|------|--------|--------|------|
+| `--model` | **是**（模型路径非默认时） | `models/minicpmv4_5` | MiniCPM-V 4.5 模型目录；实际路径通常为 `models/minicpm-v-4.5` |
+| `--preprocessor` | 否 | `minicpm` | 当前只有 MiniCPM，不传即为默认值 |
+| `--extract-frames` | 否 | 不抽帧 | 加上后同时抽取子视频的采样帧图到 `data/04_frames/` |
+| `--fast` | 否 | 完整模式 | 快速模式：仅更新元数据，不重新编码 mp4 |
+| `--seed` | 否 | `42` | 随机种子，保持默认即可 |
+| `--skip-healthcheck` | 否 | 执行检查 | 首次建议不传，让脚本验证 processor 加载正常 |
+
+> **注意事项**：
+> - 步骤 ② 依赖 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。
+> - `--model` 的默认路径是 `models/minicpmv4_5`，但实际模型文件夹通常是 `models/minicpm-v-4.5`，首次运行时建议显式指定。
+> - 步骤 ② 完成后，后续步骤才可继续。
+> - 步骤 ② 默认会编码 mp4 子视频到 `data/03_subvideos/`，可通过 `--fast` 跳过（仅更新元数据）。
 
 ### 子视频快速模式
 

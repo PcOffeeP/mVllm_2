@@ -220,7 +220,8 @@ def build_video_meta(
         if not ffprobe_info:
             warnings.append(f"{video_id}: ffprobe 失败或视频缺失，使用 CSV 值")
 
-        fps = ffprobe_info.get("fps") or _to_float(row.get("视频帧率")) or 30.0
+        csv_fps = _to_float(row.get("视频帧率"))
+        fps = csv_fps or ffprobe_info.get("fps") or 30.0
         duration = ffprobe_info.get("duration") or _to_float(row.get("视频时长"))
         total_frames = ffprobe_info.get("total_frames") or _to_int(row.get("视频总帧数"))
         if duration is None and total_frames is not None and fps is not None:
