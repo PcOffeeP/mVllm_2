@@ -111,13 +111,9 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     
     configure_processor_max_frames(processor)
 
-    # Load chat_template from merged model directory first, fallback to base
-    if getattr(processor, "chat_template", None) is None:
-        for p in [Path(model_path), base_path]:
-            chat_path = p / "chat_template.jinja"
-            if chat_path.exists():
-                processor.chat_template = chat_path.read_text(encoding="utf-8")
-                break
+    # Set chat_template from tokenizer (always available, no .jinja file needed)
+    if getattr(processor, "chat_template", None) is None and tokenizer.chat_template is not None:
+        processor.chat_template = tokenizer.chat_template
 
     # Load model weights from merged model directory
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"

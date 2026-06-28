@@ -48,13 +48,23 @@ def main():
     print(f"  After force-set: processor.tokenizer is tokenizer: {processor.tokenizer is tokenizer}")
     
     # Step 4
-    print("\n[Step 4] Testing chat template...")
+    print("\n[Step 4] Debugging chat template...")
+    print(f"  tokenizer.chat_template present: {tokenizer.chat_template is not None}")
+    if tokenizer.chat_template is not None:
+        print(f"  tokenizer.chat_template (first 100 chars): {tokenizer.chat_template[:100]}")
+    print(f"  processor.chat_template present: {processor.chat_template is not None}")
+    print(f"  processor.tokenizer.chat_template present: {processor.tokenizer.chat_template is not None}")
+
+    # Set chat_template on processor before using it
+    processor.chat_template = tokenizer.chat_template
+    print(f"  After force-set: processor.chat_template present: {processor.chat_template is not None}")
+
     messages = [{"role": "user", "content": "Say hello in one word."}]
     try:
         text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        print(f"  OK: {text[:80]}...")
+        print(f"  [processor] OK: {text[:80]}...")
     except Exception as e:
-        print(f"  FAILED: {e}")
+        print(f"  [processor] FAILED: {e}")
         sys.exit(1)
     
     # Step 5
