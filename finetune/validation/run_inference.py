@@ -554,6 +554,8 @@ def main() -> None:
                         record["pred_confidence_level"] = "不可信"
 
         except Exception as exc:
+            import traceback
+            traceback.print_exc()
             record["raw_output"] = str(exc)
             record["failure_reason"] = "model_inference_failed" if video_path.exists() else "video_load_failed"
 
