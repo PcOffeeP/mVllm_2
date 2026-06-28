@@ -82,7 +82,14 @@ def main():
     
     # Step 6
     print("\n[Step 6] Running minimal inference (no video)...")
-    inputs = tokenizer(text=text, return_tensors="pt").to(model.device)
+    from PIL import Image
+    # MiniCPM-V requires pixel_values even for text-only inference
+    dummy_image = Image.new("RGB", (448, 448), color=0)
+    inputs = processor(
+        text=text,
+        images=dummy_image,
+        return_tensors="pt",
+    ).to(model.device)
     print(f"  input_ids shape: {inputs.input_ids.shape}")
     with torch.no_grad():
         generated_ids = model.generate(
