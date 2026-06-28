@@ -8,12 +8,12 @@
 阶段 3：只生成被选中的子视频到 data/03_subvideos/。
 
 候选策略：
-- 确认断裂且时间可靠：完整视频 + 3s/10s/30s × 5 位置。
-- 确认未断裂：完整视频 + 3s/10s/30s 前/中/后固定位置负样本。
-- 未夹紧：仅完整视频。
+- 确认断裂且时间可靠：完整视频 + 3s/5s/10s/20s × 5 位置。
+- 确认未断裂：完整视频 + 3s/5s/10s/20s 前/中/后固定位置负样本。
+- 未夹紧（无事件时间）：仅完整视频。
+- 未夹紧（有事件时间）：完整视频 + 聚焦 + 断裂前负样本。
 - 视频异常：仅完整视频。
 - 断裂前负样本：与事件保持 ≥1s 安全间隔。
-- 少量断裂后困难负样本：所有采样帧晚于事件。
 
 默认不抽帧；抽帧仅在 --extract-frames 时进行。
 测试集视频不生成子视频。
@@ -58,8 +58,6 @@ SUBVIDEOS_META_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta
 FOCUS_WINDOWS = [3, 5, 10, 20]
 FOCUS_POSITIONS = [0.2, 0.35, 0.5, 0.65, 0.8]
 NEG_CLIP_DURATIONS = [3, 5, 10, 20]
-NEG_BEFORE_DURATION = 5
-NEG_AFTER_DURATION = 5
 VIDEO_MAXLEN = 8
 
 FRACTURE_TYPES = [
@@ -76,6 +74,37 @@ NON_FRACTURE_TYPES = ["未断裂", "未夹紧"]
 VIDEO_ANOMALY_TYPE = "视频异常"
 
 EXCLUSIONS: list[dict[str, Any]] = []
+
+
+def is_positive_label(obj: dict[str, Any]) -> bool:
+    """统一正样本判断：以 has_fracture/has_fracture_canonical 为准。"""
+    return obj.get("has_fracture_canonical", obj.get("has_fracture")) is True
+
+
+def _is_deprecated_post_event_negative(sub: dict[str, Any]) -> bool:
+    """识别旧版本生成的事件后负样本，fast 模式中必须剔除。"""
+    return (
+        sub.get("crop_type") == "neg_after"
+        or sub.get("selection_reason") == "post_event_hard_negative"
+        or "neg_after" in str(sub.get("subvideo_id", ""))
+    )
+
+
+def _event_frame(rec: dict[str, Any]) -> int | None:
+    """返回有效事件帧；0 是合法帧号，不能用 truthy/falsy 判断。"""
+    effective = rec.get("event_frame_effective")
+    if effective is not None:
+        return effective
+    return rec.get("event_frame_original")
+
+
+def _is_stale_unclamped_event_negative(sub: dict[str, Any], rec: dict[str, Any] | None) -> bool:
+    """识别旧 metadata 中带事件未夹紧仍被标成负样本的记录。"""
+    if rec is None or rec.get("type") != "未夹紧" or _event_frame(rec) is None:
+        return False
+    if sub.get("source_video") != rec.get("video_id"):
+        return False
+    return is_positive_label(sub) is False
 
 
 def _ffprobe(path: Path) -> dict[str, Any]:
@@ -504,7 +533,7 @@ def build_focus_subvideos(
     fps = rec["fps"]
     total_frames = rec["total_frames"]
     duration = rec.get("duration") or 0.0
-    event_frame = rec["event_frame_original"]
+    event_frame = _event_frame(rec)
     if event_frame is None or fps is None or total_frames is None:
         return subvideos
 
@@ -673,7 +702,7 @@ def _build_clip_candidate(
         start_frame=start_frame, end_frame=end_frame,
         sampled=sampled,
         has_fracture=False,
-        ftype="未断裂",
+        ftype=rec.get("type", "未断裂"),
         location=None,
         fracture_between=None,
         selection_reason=selection_reason or crop_type,
@@ -714,28 +743,6 @@ def _pre_event_windows(
     return unique
 
 
-def _post_event_windows(
-    duration: float,
-    event_time: float,
-    clip_len: float,
-    min_gap: float = 1.0,
-) -> list[tuple[float, float]]:
-    """生成起始时间不早于 event_time + min_gap 的后事件困难负样本窗口。"""
-    region_start = event_time + min_gap
-    if region_start >= duration or duration - region_start < clip_len * 0.8:
-        return []
-    available = duration - region_start
-    n = min(2, max(1, int(available // clip_len)))
-    step = (available - clip_len) / max(1, n - 1) if n > 1 else 0.0
-    windows = []
-    for k in range(n):
-        st = region_start + k * step
-        ed = min(st + clip_len, duration)
-        st = max(region_start, ed - clip_len)
-        if ed - st >= clip_len * 0.8:
-            windows.append((st, ed))
-    return windows
-
 
 def build_neg_before_after(
     rec: dict[str, Any],
@@ -745,31 +752,26 @@ def build_neg_before_after(
     selected_ids: set[str] | None = None,
     preprocessor: VideoPreprocessor | None = None,
 ) -> list[dict[str, Any]]:
-    """为断裂视频生成断裂前负样本（≥1s 安全间隔）与少量断裂后困难负样本。"""
+    """为断裂视频生成断裂前负样本（≥1s 安全间隔）。"""
     subvideos: list[dict[str, Any]] = []
     video_id = rec["video_id"]
     fps = rec["fps"]
     total_frames = rec["total_frames"]
     duration = rec.get("duration")
-    event_time = rec["event_time"]
-    if event_time is None or fps is None or total_frames is None or duration is None:
+    event_frame = _event_frame(rec)
+    if event_frame is None or fps is None or total_frames is None or duration is None:
         return subvideos
+    event_time = event_frame / fps
 
     candidates: list[tuple[str, float, float, str, str]] = []
 
-    # 断裂前负样本：3s/10s/30s 前/中/后位置，与事件保持 ≥1s 间隔
+    # 断裂前负样本：3s/5s/10s/20s 前/中/后位置，与事件保持 ≥1s 间隔
     for clip_len in NEG_CLIP_DURATIONS:
         for idx, (st, ed) in enumerate(_pre_event_windows(duration, event_time, clip_len), start=1):
             subvideo_id = f"{video_id}_neg_before_{int(clip_len)}s_{idx:02d}"
             candidates.append(("neg_before", st, ed, subvideo_id, "pre_event_negative"))
 
-    # 少量断裂后困难负样本：所有采样帧晚于事件
-    for clip_len in [3, 5]:
-        for idx, (st, ed) in enumerate(_post_event_windows(duration, event_time, clip_len), start=1):
-            subvideo_id = f"{video_id}_neg_after_{int(clip_len)}s_{idx:02d}"
-            candidates.append(("neg_after", st, ed, subvideo_id, "post_event_hard_negative"))
-
-    # 每源上限 12 条：优先保留前后近事件窗口
+    # 每源上限 12 条：优先保留近事件窗口
     if len(candidates) > 12:
         candidates = candidates[:12]
 
@@ -806,7 +808,7 @@ def build_non_fracture_clips(
     selected_ids: set[str] | None = None,
     preprocessor: VideoPreprocessor | None = None,
 ) -> list[dict[str, Any]]:
-    """为确认未断裂视频生成 3s/10s/30s 前/中/后固定位置负样本。"""
+    """为确认未断裂视频生成 3s/5s/10s/20s 前/中/后固定位置负样本。"""
     subvideos: list[dict[str, Any]] = []
     video_id = rec["video_id"]
     duration = rec.get("duration")
@@ -864,10 +866,18 @@ def build_full_subvideo(
             loc = None
             fracture_between = None
     elif rec_type == "未夹紧":
-        crop_type = "full_not_clamped"
-        ftype = "未夹紧"
-        loc = None
-        fracture_between = None
+        if rec.get("event_frame_effective") is not None:
+            # 带事件标注的未夹紧：full 样本也作为正样本
+            crop_type = "full"
+            ftype = "未夹紧"
+            loc = None
+            fracture_between = None
+            has_fracture_canonical = True  # 覆盖 L818 的 False
+        else:
+            crop_type = "full_not_clamped"
+            ftype = "未夹紧"
+            loc = None
+            fracture_between = None
     elif has_fracture_canonical is True:
         crop_type = "full_pos"
         ftype = rec_type
@@ -918,8 +928,8 @@ def build_full_subvideo(
             frame_files = extract_sampled_frames(source_path, frame_dir, len(sampled), end_time)
             frame_paths = [str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files]
 
-    event_frame = rec["event_frame_original"]
-    if fracture_between is None and has_fracture_canonical is True and rec_type in FRACTURE_TYPES:
+    event_frame = _event_frame(rec)
+    if fracture_between is None and has_fracture_canonical is True and rec_type != VIDEO_ANOMALY_TYPE:
         fracture_between = compute_fracture_between(sampled, event_frame)
         if fracture_between is None and preprocessor is not None and generate_media:
             adjusted = _try_adjust_window_with_preprocessor(
@@ -958,6 +968,8 @@ def build_full_subvideo(
     sub["actual_frame_mapping"] = sampled
     sub["processor_fingerprint"] = fingerprint
     sub["processor_info"] = info
+    if has_fracture_canonical is True and fracture_between is None and not generate_media:
+        sub["fracture_between_pending"] = True
     return sub
 
 
@@ -966,7 +978,7 @@ def update_subvideo_metadata(sub: dict[str, Any], rec: dict[str, Any]) -> dict[s
     sub = dict(sub)
     fps = rec.get("fps")
     total_frames = rec.get("total_frames")
-    event_frame = rec.get("event_frame_original")
+    event_frame = _event_frame(rec)
 
     if sub.get("crop_type").startswith("full") and total_frames and fps:
         sub["end_frame"] = int(total_frames - 1)
@@ -979,7 +991,7 @@ def update_subvideo_metadata(sub: dict[str, Any], rec: dict[str, Any]) -> dict[s
         raise RuntimeError("快速模式缺少真实处理器帧映射，拒绝按 FPS 重新推算")
     if (
         has_fracture is True
-        and rec.get("type") in FRACTURE_TYPES
+        and rec.get("type") != VIDEO_ANOMALY_TYPE
         and event_frame is not None
     ):
         sub["fracture_between"] = compute_fracture_between(sampled, event_frame)
@@ -1015,8 +1027,18 @@ def build_subvideos_for_record(
     rec_type = rec["type"]
     has_fracture_canonical = rec.get("has_fracture_canonical")
 
-    # 未夹紧与视频异常只保留完整视频
-    if rec_type in ("未夹紧", VIDEO_ANOMALY_TYPE):
+    # 视频异常只保留完整视频
+    if rec_type == VIDEO_ANOMALY_TYPE:
+        return results
+
+    # 未夹紧且标注了事件时间 → 按断裂型逻辑生成聚焦+负样本（必须排在 has_fracture_canonical 判断之前！）
+    if rec_type == "未夹紧" and _event_frame(rec) is not None:
+        results.extend(build_focus_subvideos(rec, split_info, generate_media, extract_frames, selected_ids, preprocessor))
+        results.extend(build_neg_before_after(rec, split_info, generate_media, extract_frames, selected_ids, preprocessor))
+        return results
+
+    # 未夹紧且没有标注事件时间 → 只保留完整视频
+    if rec_type == "未夹紧":
         return results
 
     # 确认未断裂：完整视频 + 固定位置负样本
@@ -1024,7 +1046,7 @@ def build_subvideos_for_record(
         results.extend(build_non_fracture_clips(rec, split_info, generate_media, extract_frames, selected_ids, preprocessor))
         return results
 
-    # 确认断裂且时间可靠：完整视频 + 聚焦 + 断裂前/后负样本
+    # 确认断裂且时间可靠：完整视频 + 聚焦 + 断裂前负样本
     if has_fracture_canonical is True and rec_type in FRACTURE_TYPES:
         results.extend(build_focus_subvideos(rec, split_info, generate_media, extract_frames, selected_ids, preprocessor))
         results.extend(build_neg_before_after(rec, split_info, generate_media, extract_frames, selected_ids, preprocessor))
@@ -1044,71 +1066,148 @@ def load_split_definitions(splits_dir: Path) -> dict[str, set[str]]:
     return split_defs
 
 
-def _sample_with_priority(
-    cands: list[dict[str, Any]], target: int
-) -> set[str]:
-    """优先保留全时长样本，再从片段中随机采样至目标数量。"""
-    import random
-
-    if target >= len(cands):
-        return {c["subvideo_id"] for c in cands}
-    full_ids = {c["subvideo_id"] for c in cands if c.get("crop_type", "").startswith("full")}
-    other = [c for c in cands if c["subvideo_id"] not in full_ids]
-    need = max(0, target - len(full_ids))
-    selected_other = set()
-    if need > 0 and other:
-        selected_other = {c["subvideo_id"] for c in random.sample(other, min(need, len(other)))}
-    if len(full_ids) > target:
-        return set(random.sample(sorted(full_ids), target))
-    return full_ids | selected_other
-
-
-def _select_train_candidates(
+def _balance_global_by_video(
     all_candidates: list[dict[str, Any]],
-    split_defs: dict[str, set[str]],
-    n_folds: int = 3,
     seed: int = 42,
-) -> None:
-    """按正:负 1:1~2:1 为每个 fold 训练集选择样本，并在候选元数据上标记 selected_splits。"""
-    import random
+) -> list[dict[str, Any]]:
+    """
+    全局正负比例平衡（样本级计数，视频级剔除）。
 
+    用 is_positive_label() 判断每个子视频的正负。
+    按视频号分组，每个视频记录正/负样本数。
+    若整体比例超出 0.5:1~2:1 范围，搜索剔除整个视频的样本，
+    使剩余比例落在目标范围内或最接近目标范围。
+    """
+    import random
+    from collections import defaultdict
     random.seed(seed)
 
+    if not all_candidates:
+        return all_candidates
+
+    def _sample_is_pos(c: dict) -> bool:
+        return is_positive_label(c)
+
+    # 按 source_video 分组，每组记录正负样本数
+    video_map: dict[str, list[dict]] = defaultdict(list)
     for cand in all_candidates:
-        assignments = set(cand.get("fold_assignments", []))
-        cand["selected_splits"] = sorted(assignments - {"test"})
+        video_map[cand["source_video"]].append(cand)
 
-    for i in range(n_folds):
-        train_name = f"fold_{i}_train"
-        train_ids = split_defs.get(train_name, set())
-        train_cands = [c for c in all_candidates if c.get("source_video") in train_ids]
+    # 每个视频的正负样本计数
+    video_stats: dict[str, tuple[int, int]] = {}
+    for vid, cands in video_map.items():
+        pos = sum(1 for c in cands if _sample_is_pos(c))
+        neg = len(cands) - pos
+        video_stats[vid] = (pos, neg)
 
-        def _is_pos(c: dict[str, Any]) -> bool:
-            hf = c.get("has_fracture_canonical", c.get("has_fracture"))
-            return hf is True and c.get("type") in FRACTURE_TYPES
+    def _counts(cands: list[dict]) -> tuple[int, int]:
+        pos = sum(1 for c in cands if _sample_is_pos(c))
+        return pos, len(cands) - pos
 
-        pos = [c for c in train_cands if _is_pos(c)]
-        neg = [c for c in train_cands if not _is_pos(c)]
+    def _ratio_ok(pos: int, neg: int) -> bool:
+        return neg > 0 and 0.5 <= pos / neg <= 2.0
 
-        pos_n = len(pos)
-        neg_n = len(neg)
+    def _distance_to_target(pos: int, neg: int) -> float:
+        """比例越界时，计算到目标范围的距离。范围内返回 0。"""
+        if neg == 0 or pos == 0:
+            return float("inf")
+        r = pos / neg
+        if r < 0.5:
+            return 0.5 - r
+        if r > 2.0:
+            return r - 2.0
+        return 0.0
 
-        if neg_n == 0:
-            target_pos = pos_n
-            target_neg = 0
+    base_pos, base_neg = _counts(all_candidates)
+
+    # 如果任一类为 0 或比例已在范围内，无需调整
+    if base_pos == 0 or base_neg == 0:
+        print(
+            f"[_balance_global_by_video] ⚠️ 原始正:{base_pos} 负:{base_neg}，"
+            "只有单一类别，无法达到 0.5~2.0 范围"
+        )
+        return all_candidates
+    if _ratio_ok(base_pos, base_neg):
+        return all_candidates
+
+    # 确定哪些视频可以被剔除（属于过代表类的视频）
+    if base_pos / base_neg > 2.0:
+        # 正样本过多 → 只考虑含正样本的视频作为剔除候选
+        removable_vids = [vid for vid, (p, _n) in video_stats.items() if p > 0]
+    else:
+        # 负样本过多 → 只考虑含负样本的视频作为剔除候选
+        removable_vids = [vid for vid, (_p, n) in video_stats.items() if n > 0]
+
+    if not removable_vids:
+        print(
+            f"[_balance_global_by_video] ⚠️ 原始正:{base_pos} 负:{base_neg} "
+            f"比例:{base_pos/base_neg:.2f}，没有可剔除视频，无法达到 0.5~2.0 范围"
+        )
+        return all_candidates
+
+    # 状态搜索：state=(removed_pos, removed_neg)，value=removed_vids。
+    # 这样不会因随机顺序错过已存在的合法视频级剔除组合。
+    random.shuffle(removable_vids)
+    states: dict[tuple[int, int], frozenset[str]] = {(0, 0): frozenset()}
+    for vid in removable_vids:
+        vid_pos, vid_neg = video_stats[vid]
+        additions: dict[tuple[int, int], frozenset[str]] = {}
+        for (removed_pos, removed_neg), removed_vids in states.items():
+            next_state = (removed_pos + vid_pos, removed_neg + vid_neg)
+            remaining_pos = base_pos - next_state[0]
+            remaining_neg = base_neg - next_state[1]
+            if remaining_pos <= 0 or remaining_neg <= 0:
+                continue
+            if next_state not in states and next_state not in additions:
+                additions[next_state] = removed_vids | {vid}
+        states.update(additions)
+
+    def _state_score(state: tuple[int, int]) -> tuple[float, int, int]:
+        removed_pos, removed_neg = state
+        remaining_pos = base_pos - removed_pos
+        remaining_neg = base_neg - removed_neg
+        ratio = remaining_pos / remaining_neg
+        removed_samples = removed_pos + removed_neg
+        removed_videos = len(states[state])
+        return (abs(ratio - 1.0), removed_samples, removed_videos)
+
+    valid_states = [
+        state for state in states
+        if state != (0, 0) and _ratio_ok(base_pos - state[0], base_neg - state[1])
+    ]
+    if valid_states:
+        best_state = min(valid_states, key=_state_score)
+    else:
+        candidate_states = [state for state in states if state != (0, 0)]
+        if candidate_states:
+            best_state = min(
+                candidate_states,
+                key=lambda state: (
+                    _distance_to_target(base_pos - state[0], base_neg - state[1]),
+                    state[0] + state[1],
+                    len(states[state]),
+                ),
+            )
         else:
-            target_pos = min(pos_n, 2 * neg_n)
-            target_neg = min(neg_n, target_pos)
+            best_state = (0, 0)
 
-        selected_pos = _sample_with_priority(pos, target_pos)
-        selected_neg = _sample_with_priority(neg, target_neg)
+    best_removed = set(states[best_state])
+    result = [c for c in all_candidates
+              if c["source_video"] not in best_removed]
+    final_pos, final_neg = _counts(result)
 
-        for c in train_cands:
-            if c["subvideo_id"] not in selected_pos and c["subvideo_id"] not in selected_neg:
-                splits = list(c["selected_splits"])
-                if train_name in splits:
-                    splits.remove(train_name)
-                c["selected_splits"] = splits
+    final_ratio = final_pos / final_neg if final_neg else float("inf")
+    print(f"[_balance_global_by_video] 原始正:{base_pos} 负:{base_neg} "
+          f"比例:{base_pos/base_neg:.2f}")
+    print(f"[_balance_global_by_video] 剔除 {len(best_removed)} 个视频: "
+          f"{sorted(best_removed)}")
+    print(f"[_balance_global_by_video] 最终正:{final_pos} 负:{final_neg} "
+          f"比例:{final_ratio:.2f}")
+    if not _ratio_ok(final_pos, final_neg):
+        print(f"[_balance_global_by_video] ⚠️ 无法达到 0.5~2.0 范围，"
+              f"采用最接近方案")
+
+    return result
 
 
 def _subvideo_output_path(sub: dict[str, Any]) -> Path:
@@ -1164,14 +1263,19 @@ def _generate_media_for_candidate(
     has_fracture = sub.get("has_fracture", sub.get("has_fracture_canonical"))
     if (
         has_fracture is True
-        and sub.get("type") in FRACTURE_TYPES
+        and sub.get("type") != VIDEO_ANOMALY_TYPE
         and sub.get("fracture_between") is None
     ):
-        event_frame = rec.get("event_frame_original")
+        event_frame = _event_frame(rec)
         if event_frame is not None and sub.get("actual_frame_mapping"):
             fb = compute_fracture_between(sub["actual_frame_mapping"], event_frame)
             if fb is not None:
                 sub["fracture_between"] = fb
+                sub.pop("fracture_between_pending", None)
+        if sub.get("fracture_between") is None:
+            raise RuntimeError(
+                f"{sub.get('subvideo_id')}: positive sample missing valid fracture_between"
+            )
     return sub
 
 
@@ -1250,6 +1354,39 @@ def main():
             existing_subs = existing
             existing_candidates = existing
             existing_exclusions = []
+        old_sub_count = len(existing_subs)
+        old_candidate_count = len(existing_candidates)
+        existing_subs = [
+            sub for sub in existing_subs
+            if not _is_deprecated_post_event_negative(sub)
+        ]
+        existing_candidates = [
+            sub for sub in existing_candidates
+            if not _is_deprecated_post_event_negative(sub)
+        ]
+        removed_old = (old_sub_count - len(existing_subs)) + (
+            old_candidate_count - len(existing_candidates)
+        )
+        old_exclusion_count = len(existing_exclusions)
+        existing_exclusions = [
+            exc for exc in existing_exclusions
+            if not _is_deprecated_post_event_negative(exc)
+        ]
+        removed_old += old_exclusion_count - len(existing_exclusions)
+        if removed_old:
+            print(f"快速模式：剔除旧事件后负样本元数据 {removed_old} 条")
+        stale_unclamped = [
+            sub for sub in [*existing_subs, *existing_candidates]
+            if _is_stale_unclamped_event_negative(
+                sub, video_meta_dict.get(sub.get("source_video"))
+            )
+        ]
+        if stale_unclamped:
+            examples = sorted({sub.get("subvideo_id", "<unknown>") for sub in stale_unclamped})[:5]
+            raise RuntimeError(
+                "快速模式发现旧的带事件未夹紧负样本元数据，必须去掉 --fast 完整重建；"
+                f"示例: {examples}"
+            )
         all_subvideos: list[dict[str, Any]] = []
         for sub in existing_subs:
             rec = video_meta_dict.get(sub.get("source_video"))
@@ -1288,8 +1425,12 @@ def main():
         print(f"候选子视频：{len(all_candidates)} 条")
         print(f"  共 {total_videos} 个视频，已处理 {processed_count} 个，跳过 {skipped_test} 个（测试集）")
 
-        print("阶段 2：训练集候选选择...")
-        _select_train_candidates(all_candidates, split_defs, n_folds=3, seed=args.seed)
+        print("阶段 2：全局视频级平衡...")
+        all_candidates = _balance_global_by_video(all_candidates, seed=args.seed)
+        # 设置 selected_splits（从 fold_assignments 中去掉 test）
+        for cand in all_candidates:
+            assignments = set(cand.get("fold_assignments", []))
+            cand["selected_splits"] = sorted(assignments - {"test"})
         selected_count = sum(1 for c in all_candidates if c.get("selected_splits"))
         print(f"选中子视频：{selected_count} 条")
 
@@ -1311,11 +1452,23 @@ def main():
             start = cand.get("start_time", 0)
             end = cand.get("end_time", 0)
             print(f"  [{completed}/{total}] {cand['subvideo_id']} ({crop_type}, {start:.1f}s→{end:.1f}s)")
-            sub = _generate_media_for_candidate(
-                cand, rec, args.frame_dir,
-                extract_frames=args.extract_frames,
-                preprocessor=preprocessor,
-            )
+            try:
+                sub = _generate_media_for_candidate(
+                    cand, rec, args.frame_dir,
+                    extract_frames=args.extract_frames,
+                    preprocessor=preprocessor,
+                )
+            except Exception as exc:
+                EXCLUSIONS.append(
+                    {
+                        "subvideo_id": cand["subvideo_id"],
+                        "source_video": cand.get("source_video"),
+                        "reason": f"生成媒体或补算标注失败: {exc}",
+                        "crop_type": crop_type,
+                    }
+                )
+                print(f"   ⚠️ 跳过 {cand['subvideo_id']}: {exc}")
+                continue
             generated_by_id[sub["subvideo_id"]] = sub
 
         all_subvideos = [generated_by_id[c["subvideo_id"]] for c in all_candidates if c["subvideo_id"] in generated_by_id]

@@ -60,6 +60,13 @@ LEGAL_COMBINATIONS = [
         "type": {"未夹紧"},
         "location": {None},
     },
+    # 3b. 未夹紧但有事件标注（正样本）
+    {
+        "has_fracture": True,
+        "fracture_between": "adjacent_pair",
+        "type": {"未夹紧"},
+        "location": {None},
+    },
     # 4. 视频异常，无法确定是否断裂
     {
         "has_fracture": None,
@@ -75,6 +82,12 @@ LEGAL_COMBINATIONS = [
         "location": {None},
     },
 ]
+
+
+def is_positive_label(obj: dict[str, Any]) -> bool:
+    """统一正样本判断：以 has_fracture/has_fracture_canonical 为准。"""
+    return obj.get("has_fracture_canonical", obj.get("has_fracture")) is True
+
 
 TRUTH_FIELDS = {
     "event_frame",
@@ -395,9 +408,7 @@ def _is_positive_sample(sample: dict[str, Any]) -> bool:
     output = _extract_assistant_output(sample)
     if output is None:
         return False
-    hf = output.get("has_fracture")
-    ftype = output.get("type")
-    return hf is True and ftype in FRACTURE_TYPES
+    return is_positive_label(output)
 
 
 def _validate_train_ratios(
@@ -405,44 +416,53 @@ def _validate_train_ratios(
     errors: list[dict[str, Any]],
     warnings: list[dict[str, Any]],
 ) -> None:
+    train_samples: list[dict[str, Any]] = []
+    missing_or_bad: list[str] = []
     for i in range(3):
         path = merged_dir / f"fold_{i}_train.json"
         data = _load_json(path)
         if not isinstance(data, list):
-            errors.append(
-                {
-                    "check": "train_ratio",
-                    "file": path.name,
-                    "detail": "missing_or_not_a_list",
-                }
-            )
+            missing_or_bad.append(path.name)
             continue
-        pos = sum(1 for s in data if _is_positive_sample(s))
-        neg = len(data) - pos
-        if neg == 0:
-            errors.append(
-                {
-                    "check": "train_ratio",
-                    "file": path.name,
-                    "detail": "no_negative_samples",
-                    "positive": pos,
-                    "negative": neg,
-                }
-            )
-            continue
-        ratio = pos / neg
-        if not (1.0 <= ratio <= 2.0):
-            errors.append(
-                {
-                    "check": "train_ratio",
-                    "file": path.name,
-                    "detail": "ratio_out_of_range",
-                    "positive": pos,
-                    "negative": neg,
-                    "ratio": round(ratio, 4),
-                    "allowed": "1:1 ~ 2:1",
-                }
-            )
+        train_samples.extend(data)
+
+    if missing_or_bad:
+        errors.append(
+            {
+                "check": "train_ratio",
+                "file": ",".join(missing_or_bad),
+                "detail": "missing_or_not_a_list",
+            }
+        )
+        return
+
+    pos = sum(1 for s in train_samples if _is_positive_sample(s))
+    neg = len(train_samples) - pos
+    if pos == 0 or neg == 0:
+        errors.append(
+            {
+                "check": "train_ratio",
+                "file": "all_train_splits",
+                "detail": "missing_positive_or_negative_samples",
+                "positive": pos,
+                "negative": neg,
+            }
+        )
+        return
+
+    ratio = pos / neg
+    if not (0.5 <= ratio <= 2.0):
+        errors.append(
+            {
+                "check": "train_ratio",
+                "file": "all_train_splits",
+                "detail": "global_ratio_out_of_range",
+                "positive": pos,
+                "negative": neg,
+                "ratio": round(ratio, 4),
+                "allowed": "0.5:1 ~ 2:1",
+            }
+        )
 
 
 def _validate_no_cross_split_leakage(

@@ -48,6 +48,11 @@ SPLIT_NAMES = [
 ]
 
 
+def is_positive_label(obj: dict[str, Any]) -> bool:
+    """统一正样本判断：以 has_fracture/has_fracture_canonical 为准。"""
+    return obj.get("has_fracture_canonical", obj.get("has_fracture")) is True
+
+
 def load_json(path: Path) -> Any:
     """读取 JSON 文件。"""
     with open(path, encoding="utf-8") as f:
@@ -120,6 +125,12 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
         elif ftype == "视频异常":
             location = None
             fracture_between = None
+        elif ftype == "未夹紧":
+            # 未夹紧但有事件标注，保留正样本
+            location = sub.get("location_canonical") or sub.get("location")
+            if location not in ("inside_gauge", "outside_gauge"):
+                location = None
+            fracture_between = sub.get("fracture_between")
         else:
             # 不一致：降级为负样本
             has_fracture_canonical = False
@@ -128,6 +139,12 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
     else:
         location = None
         fracture_between = None
+
+    if has_fracture_canonical is True and ftype != "视频异常" and fracture_between is None:
+        raise ValueError(
+            f"{sub.get('subvideo_id', sub.get('id', '<unknown>'))}: "
+            "positive sample missing fracture_between"
+        )
 
     sub["has_fracture"] = has_fracture_canonical
     sub["has_fracture_canonical"] = has_fracture_canonical
@@ -236,52 +253,6 @@ def convert_subvideo_to_sample(
     return sample
 
 
-def _sample_with_priority(
-    items: list[dict[str, Any]], target: int, seed: int
-) -> list[dict[str, Any]]:
-    """优先保留全时长样本，再从片段中随机采样至目标数量。"""
-    import random
-
-    random.seed(seed)
-    if target >= len(items):
-        return items
-    full = [it for it in items if str(it.get("id", "")).endswith("_full")]
-    other = [it for it in items if not str(it.get("id", "")).endswith("_full")]
-    need = max(0, target - len(full))
-    selected_other = []
-    if need > 0 and other:
-        selected_other = random.sample(other, min(need, len(other)))
-    if len(full) > target:
-        return random.sample(full, target)
-    return full + selected_other
-
-
-def _balance_train_samples(
-    samples: list[dict[str, Any]],
-    seed: int = 42,
-) -> list[dict[str, Any]]:
-    """训练集正负样本平衡：正:负处于 1:1 ~ 2:1。"""
-
-    def _is_pos(s: dict[str, Any]) -> bool:
-        hf = s.get("has_fracture_canonical", s["has_fracture"])
-        return hf is True and s.get("type") in FRACTURE_TYPES
-
-    pos = [s for s in samples if _is_pos(s)]
-    neg = [s for s in samples if not _is_pos(s)]
-    pos_n = len(pos)
-    neg_n = len(neg)
-    if pos_n == 0:
-        return samples
-    if neg_n == 0:
-        return pos
-
-    target_pos = min(pos_n, 2 * neg_n)
-    target_neg = min(neg_n, target_pos)
-
-    selected_pos = _sample_with_priority(pos, target_pos, seed)
-    selected_neg = _sample_with_priority(neg, target_neg, seed)
-    return selected_pos + selected_neg
-
 
 def build_split_samples(
     subvideos: list[dict[str, Any]],
@@ -306,9 +277,7 @@ def build_split_samples(
                 convert_subvideo_to_sample(sub)
             )
 
-    for name in by_split:
-        if name.endswith("_train"):
-            by_split[name] = _balance_train_samples(by_split[name], seed=seed)
+    # 全局平衡已在 subvideo_builder 中完成，此处不再重复做 fold 级平衡
     return by_split
 
 
@@ -328,10 +297,7 @@ def compute_samples_meta(
     total_neg = 0
 
     for name, samples in split_samples.items():
-        pos = sum(
-            1 for s in samples
-            if s.get("has_fracture_canonical", s["has_fracture"]) is True and s["type"] in FRACTURE_TYPES
-        )
+        pos = sum(1 for s in samples if is_positive_label(s))
         neg = len(samples) - pos
         total_pos += pos
         total_neg += neg

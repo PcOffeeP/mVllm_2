@@ -118,10 +118,10 @@ def _to_int(value: Any) -> int | None:
 
 def _parse_event_time(raw: Any) -> float | str | None:
     """CSV 断裂时间点：可解析为数字时返回秒数，否则保留原字符串或 null。"""
-    if raw is None:
+    if pd.isna(raw):
         return None
     text = str(raw).strip()
-    if not text or text.lower() in {"nan", "nat"}:
+    if not text:
         return None
     match = re.search(r"(\d+(?:\.\d+)?)", text)
     if match:
@@ -232,6 +232,12 @@ def build_video_meta(
 
         event_time = _parse_event_time(row.get("断裂时间点"))
         event_frame_original = _parse_event_frame(row.get("断裂帧数"))
+
+        # 派生有效事件帧：优先用原始帧号，没有时从 event_time × fps 推导
+        event_frame_effective = event_frame_original
+        if event_frame_effective is None and isinstance(event_time, (int, float)) and fps:
+            event_frame_effective = int(round(event_time * fps))
+
         fracture_type = _clean_type(row.get("断裂模式"))
         location = _clean_location(row.get("断裂位置"))
         csv_has_fracture = _parse_bool_or_none(row.get("has_fracture"))
@@ -297,7 +303,22 @@ def build_video_meta(
             has_fracture_canonical = False
             is_abnormal_canonical = True
             video_anomaly_kind = None
-            event_time_reliable = False
+            # 如果 CSV 中有有效的断裂时间/帧数，标记为可靠
+            csv_event_frame = row.get("断裂帧数")
+            csv_event_time = row.get("断裂时间点")
+
+            def _has_value(val) -> bool:
+                """检查 CSV 单元格是否有有效值（非 None、非 NaN、非空字符串）"""
+                if val is None:
+                    return False
+                if isinstance(val, float) and math.isnan(val):
+                    return False
+                if pd.isna(val):
+                    return False
+                text = str(val).strip()
+                return text != "" and text.lower() not in {"nan", "nat", "<na>"}
+
+            event_time_reliable = _has_value(csv_event_frame) or _has_value(csv_event_time)
             canonical_location = None
             if csv_has_fracture is True:
                 reason = (
@@ -355,6 +376,7 @@ def build_video_meta(
             "duration": duration,
             "event_time": event_time,
             "event_frame_original": event_frame_original,
+            "event_frame_effective": event_frame_effective,
             "type": fracture_type,
             "location": location,
             "material_type": material_type,

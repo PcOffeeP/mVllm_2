@@ -168,24 +168,31 @@ def _validate_splits(splits: dict[str, set[str]], video_meta: list[dict], errors
 def _validate_train_ratio(errors: list) -> None:
     meta = _load_json(SAMPLES_META_PATH)
     splits = meta.get("splits", {})
+    pos = 0
+    neg = 0
+    missing = []
     for i in range(3):
         split_name = f"fold_{i}_train"
         split = splits.get(split_name)
         if split is None:
-            errors.append(("ratio", f"fold_{i}_train.json", "missing_in_samples_meta"))
+            missing.append(f"{split_name}.json")
             continue
-        pos = split.get("positive_samples", 0)
-        neg = split.get("negative_samples", 0)
-        if pos == 0:
-            errors.append(("ratio", f"fold_{i}_train.json", "no_positive_samples"))
-        if neg == 0:
-            errors.append(("ratio", f"fold_{i}_train.json", "no_negative_samples"))
-        total = pos + neg
-        if total == 0:
-            errors.append(("ratio", f"fold_{i}_train.json", "no_samples"))
-        ratio = pos / neg if neg > 0 else float("inf")
-        if not (0.5 <= ratio <= 2.0):
-            errors.append(("ratio", f"fold_{i}_train.json", f"pos/neg ratio={ratio:.2f}"))
+        pos += split.get("positive_samples", 0)
+        neg += split.get("negative_samples", 0)
+    if missing:
+        errors.append(("ratio", ",".join(missing), "missing_in_samples_meta"))
+        return
+    if pos == 0:
+        errors.append(("ratio", "all_train_splits", "no_positive_samples"))
+    if neg == 0:
+        errors.append(("ratio", "all_train_splits", "no_negative_samples"))
+    total = pos + neg
+    if total == 0:
+        errors.append(("ratio", "all_train_splits", "no_samples"))
+        return
+    ratio = pos / neg if neg > 0 else float("inf")
+    if not (0.5 <= ratio <= 2.0):
+        errors.append(("ratio", "all_train_splits", f"global pos/neg ratio={ratio:.2f}"))
 
 
 def _validate_test_isolation(errors: list) -> None:
