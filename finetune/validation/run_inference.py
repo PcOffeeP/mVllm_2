@@ -126,10 +126,11 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     ).eval()
 
     # Monkey-patch: MiniCPM's _decode passes kwargs to self.llm.generate(),
-    # which rejects image_sizes. We intercept and consume it here.
+    # which rejects image_sizes and temporal_ids. We intercept and consume them here.
     original_decode = model._decode
     def _patched_decode(*args, **kwargs):
         kwargs.pop("image_sizes", None)
+        kwargs.pop("temporal_ids", None)
         return original_decode(*args, **kwargs)
     model._decode = _patched_decode
 
@@ -171,15 +172,16 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
         return_tensors="pt",
     ).to(model.device)
 
-    # Step 5: Generate (pass ALL processor outputs, including image_sizes)
+    # Step 5: Generate with torch.no_grad() (pass ALL processor outputs, including image_sizes)
     gen_cfg = DEFAULT_GENERATION_CONFIG
-    generated_ids = model.generate(
-        **inputs,  # 不再过滤 image_sizes
-        tokenizer=processor.tokenizer,  # 新增：显式传入 tokenizer
-        do_sample=gen_cfg["do_sample"],
-        num_beams=gen_cfg["num_beams"],
-        max_new_tokens=gen_cfg["max_new_tokens"],
-    )
+    with torch.no_grad():
+        generated_ids = model.generate(
+            **inputs,  # 不再过滤 image_sizes
+            tokenizer=processor.tokenizer,  # 新增：显式传入 tokenizer
+            do_sample=gen_cfg["do_sample"],
+            num_beams=gen_cfg["num_beams"],
+            max_new_tokens=gen_cfg["max_new_tokens"],
+        )
     generated_ids = [
         output_ids[len(input_ids):]
         for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
