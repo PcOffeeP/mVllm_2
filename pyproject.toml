@@ -1,21 +1,9 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "tensileagent"
+name = "mvllm-2"
 version = "0.1.0"
-description = "Material tensile fracture behavior video understanding with frame-interval fine-tuning."
-requires-python = ">=3.11"
-
-
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-
-[tool.hatch.build.targets.wheel]
-only-include = [
-    "pipeline/",
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pandas>=3.0.3",
 ]
-
-
