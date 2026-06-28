@@ -82,7 +82,7 @@ def main():
     
     # Step 6
     print("\n[Step 6] Running minimal inference (no video)...")
-    inputs = processor(text=text, return_tensors="pt").to(model.device)
+    inputs = tokenizer(text=text, return_tensors="pt").to(model.device)
     print(f"  input_ids shape: {inputs.input_ids.shape}")
     with torch.no_grad():
         generated_ids = model.generate(
