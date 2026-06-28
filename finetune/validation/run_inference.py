@@ -146,6 +146,7 @@ def run_single_inference(model: Any, processor: Any, video_path: Path, prompt: s
           - frame_timestamps: PTS timestamps of the sampled video frames
     """
     from .video_loader import load_video_frames
+    import torch
 
     # Step 1: Load video frames as PIL Images + actual timestamps
     frames, temporal_ids, frame_timestamps = load_video_frames(str(video_path), max_frames=VIDEO_MAX_FRAMES)
