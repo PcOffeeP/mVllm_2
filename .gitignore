@@ -47,3 +47,15 @@ agent/.env
 
 # wandb outputs
 finetune/wandb/
+
+# UV Python version pin
+.python-version
+
+# Apple Double files (macOS resource forks)
+._*
+
+# macOS Spotlight index
+.Spotlight-V100
+
+# macOS Trash
+.Trashes
