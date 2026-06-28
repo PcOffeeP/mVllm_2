@@ -1143,8 +1143,8 @@ def validate_interval_schema(payload: dict[str, Any] | None) -> tuple[bool, list
             errors.append(f"fracture_between must be adjacent integers [i, i+1], got {fb!r}")
         elif fb[0] < 0 or fb[1] > 7:
             errors.append(f"fracture_between values out of range 0-7, got {fb!r}")
-        if loc not in ("inside_gauge", "outside_gauge"):
-            errors.append(f"fracture type {norm_type!r} requires location inside_gauge/outside_gauge, got {loc!r}")
+        if loc is not None and loc not in ("inside_gauge", "outside_gauge"):
+            errors.append(f"fracture type {norm_type!r} requires location inside_gauge/outside_gauge or null, got {loc!r}")
     elif norm_type in ("未断裂", "未夹紧"):
         if hf is not False:
             errors.append(f"type {norm_type!r} requires has_fracture=false, got {hf!r}")

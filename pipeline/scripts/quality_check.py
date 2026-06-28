@@ -88,6 +88,13 @@ LEGAL_COMBINATIONS = [
         "type": FRACTURE_TYPES,
         "location": {None},
     },
+    # 7. 断裂类型视频的聚焦正样本（可定位但位置信息缺失）
+    {
+        "has_fracture": True,
+        "fracture_between": "adjacent_pair",
+        "type": FRACTURE_TYPES,
+        "location": {None},
+    },
 ]
 
 
