@@ -1,0 +1,4 @@
+fold,video_id,gt_type,failure_reason
+test,video_0015,视频异常,type_mismatch
+test,video_0052,未断裂,type_mismatch
+test,video_0056,视频异常,type_mismatch

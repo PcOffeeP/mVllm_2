@@ -1,0 +1,83 @@
+{
+  "per_fold": {
+    "test": {
+      "interval_metrics": {
+        "total_samples": 21,
+        "time_available_count": 18,
+        "has_midpoint_count": 16,
+        "has_range_count": 16,
+        "interval_hit_rate": 0.111111,
+        "midpoint_mae": 19.707769,
+        "midpoint_mse": 846.885255,
+        "within_1s": 0.055556,
+        "within_3s": 0.222222,
+        "within_5s": 0.277778,
+        "json_invalid_count": 0,
+        "schema_invalid_count": 0,
+        "frame_mapping_missing_count": 0,
+        "unparseable_or_invalid_count": 0,
+        "unparseable_or_invalid_rate": 0.0
+      },
+      "deprecated_legacy_metrics": {
+        "count": 21,
+        "applicable_count": 18,
+        "excluded_no_gt_time": 3,
+        "excluded_labels": {
+          "视频异常": 2,
+          "未断裂": 1
+        },
+        "parseable_prediction_count": 0,
+        "time_unparseable_count": 18,
+        "mae": null,
+        "mse": null,
+        "hit_at_2s": 0.0,
+        "time_range_hit": 0.0,
+        "within_1s": 0.0,
+        "within_3s": 0.0,
+        "within_5s": 0.0,
+        "time_unparseable_ratio": 1.0,
+        "confidence_buckets": []
+      }
+    }
+  },
+  "overall": {
+    "interval_metrics": {
+      "total_samples": 21,
+      "time_available_count": 18,
+      "has_midpoint_count": 16,
+      "has_range_count": 16,
+      "interval_hit_rate": 0.111111,
+      "midpoint_mae": 19.707769,
+      "midpoint_mse": 846.885255,
+      "within_1s": 0.055556,
+      "within_3s": 0.222222,
+      "within_5s": 0.277778,
+      "json_invalid_count": 0,
+      "schema_invalid_count": 0,
+      "frame_mapping_missing_count": 0,
+      "unparseable_or_invalid_count": 0,
+      "unparseable_or_invalid_rate": 0.0
+    },
+    "deprecated_legacy_metrics": {
+      "count": 21,
+      "applicable_count": 18,
+      "excluded_no_gt_time": 3,
+      "excluded_labels": {
+        "视频异常": 2,
+        "未断裂": 1
+      },
+      "parseable_prediction_count": 0,
+      "time_unparseable_count": 18,
+      "mae": null,
+      "mse": null,
+      "hit_at_2s": 0.0,
+      "time_range_hit": 0.0,
+      "within_1s": 0.0,
+      "within_3s": 0.0,
+      "within_5s": 0.0,
+      "time_unparseable_ratio": 1.0,
+      "confidence_buckets": []
+    },
+    "_note": "'deprecated_legacy_metrics' uses the old time/type prompt aggregator. For interval 5-field protocol evaluations, use 'interval_metrics' as the primary metric source."
+  }
+}
