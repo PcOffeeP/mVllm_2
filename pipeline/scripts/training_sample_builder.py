@@ -140,11 +140,26 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
         location = None
         fracture_between = None
 
-    if has_fracture_canonical is True and ftype != "视频异常" and fracture_between is None:
+    if has_fracture_canonical is True and ftype not in ("视频异常", "未夹紧") and fracture_between is None:
         raise ValueError(
             f"{sub.get('subvideo_id', sub.get('id', '<unknown>'))}: "
             "positive sample missing fracture_between"
         )
+
+    # 归一化 type 字段
+    if has_fracture_canonical is True:
+        if ftype in FRACTURE_TYPES:
+            sub["type"] = ftype
+        elif ftype == "未夹紧":
+            sub["type"] = "未夹紧"
+        elif ftype == "视频异常":
+            sub["type"] = "视频异常"
+        else:
+            sub["type"] = "未断裂"
+    elif has_fracture_canonical is None and ftype == "视频异常":
+        sub["type"] = "视频异常"
+    else:
+        sub["type"] = "未断裂"
 
     sub["has_fracture"] = has_fracture_canonical
     sub["has_fracture_canonical"] = has_fracture_canonical
@@ -175,7 +190,7 @@ def build_assistant_content(sub: dict[str, Any]) -> str:
         "fracture_between": sub.get("fracture_between") if has_fracture is True else None,
         "type": sub["type"],
         "location": sub["location_canonical"],
-        "confidence": 1.0,
+        "confidence": sub.get("confidence", 1.0),
     }
     return json.dumps(output, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 

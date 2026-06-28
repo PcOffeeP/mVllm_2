@@ -81,13 +81,6 @@ LEGAL_COMBINATIONS = [
         "type": {"视频异常"},
         "location": {None},
     },
-    # 6. 断裂类型视频的事件前负样本（无断裂发生，但视频本身是断裂类型）
-    {
-        "has_fracture": False,
-        "fracture_between": {None},
-        "type": FRACTURE_TYPES,
-        "location": {None},
-    },
     # 7. 断裂类型视频的聚焦正样本（可定位但位置信息缺失）
     {
         "has_fracture": True,

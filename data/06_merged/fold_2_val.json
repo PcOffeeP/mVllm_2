@@ -325,7 +325,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -340,7 +340,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -355,7 +355,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -370,7 +370,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -385,7 +385,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -400,7 +400,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -415,7 +415,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -430,7 +430,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -445,7 +445,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -460,7 +460,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -475,7 +475,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -490,7 +490,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -820,7 +820,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -835,7 +835,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -850,7 +850,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -865,7 +865,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -880,7 +880,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -895,7 +895,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -910,7 +910,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -925,7 +925,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -940,7 +940,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -955,7 +955,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -970,7 +970,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -985,7 +985,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1315,7 +1315,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1330,7 +1330,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1345,7 +1345,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1360,7 +1360,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1375,7 +1375,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1390,7 +1390,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1405,7 +1405,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1420,7 +1420,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1435,7 +1435,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1450,7 +1450,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1465,7 +1465,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1480,7 +1480,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"界面脱粘\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1810,7 +1810,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1825,7 +1825,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1840,7 +1840,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1855,7 +1855,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1870,7 +1870,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1885,7 +1885,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1900,7 +1900,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1915,7 +1915,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1930,7 +1930,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1945,7 +1945,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1960,7 +1960,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -1975,7 +1975,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2305,7 +2305,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2320,7 +2320,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2335,7 +2335,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2350,7 +2350,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2365,7 +2365,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2380,7 +2380,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2395,7 +2395,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2410,7 +2410,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2425,7 +2425,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2440,7 +2440,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2455,7 +2455,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2470,7 +2470,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2800,7 +2800,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2815,7 +2815,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2830,7 +2830,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2845,7 +2845,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2860,7 +2860,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2875,7 +2875,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2890,7 +2890,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2905,7 +2905,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2920,7 +2920,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2935,7 +2935,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2950,7 +2950,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -2965,7 +2965,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3490,7 +3490,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3505,7 +3505,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3520,7 +3520,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3535,7 +3535,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3550,7 +3550,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3565,7 +3565,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3580,7 +3580,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3595,7 +3595,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3610,7 +3610,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3625,7 +3625,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3640,7 +3640,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -3655,7 +3655,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4180,7 +4180,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4195,7 +4195,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4210,7 +4210,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4225,7 +4225,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4240,7 +4240,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4255,7 +4255,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4270,7 +4270,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4285,7 +4285,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4300,7 +4300,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4315,7 +4315,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4330,7 +4330,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4345,7 +4345,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4825,7 +4825,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4840,7 +4840,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4855,7 +4855,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4870,7 +4870,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4885,7 +4885,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -4900,7 +4900,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5425,7 +5425,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5440,7 +5440,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5455,7 +5455,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5470,7 +5470,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5485,7 +5485,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5500,7 +5500,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5515,7 +5515,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5530,7 +5530,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5545,7 +5545,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5560,7 +5560,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5575,7 +5575,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5590,7 +5590,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"齐根断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5920,7 +5920,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5935,7 +5935,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5950,7 +5950,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5965,7 +5965,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5980,7 +5980,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -5995,7 +5995,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6010,7 +6010,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6025,7 +6025,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6040,7 +6040,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6055,7 +6055,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6070,7 +6070,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6085,7 +6085,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6415,7 +6415,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6430,7 +6430,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6445,7 +6445,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6460,7 +6460,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6475,7 +6475,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6490,7 +6490,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6505,7 +6505,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6520,7 +6520,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6535,7 +6535,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6550,7 +6550,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6565,7 +6565,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6580,7 +6580,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6910,7 +6910,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6925,7 +6925,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6940,7 +6940,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6955,7 +6955,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6970,7 +6970,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -6985,7 +6985,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7315,7 +7315,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7330,7 +7330,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7345,7 +7345,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7360,7 +7360,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7375,7 +7375,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7390,7 +7390,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7405,7 +7405,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7420,7 +7420,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7435,7 +7435,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7765,7 +7765,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7780,7 +7780,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7795,7 +7795,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7810,7 +7810,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7825,7 +7825,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7840,7 +7840,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7855,7 +7855,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7870,7 +7870,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -7885,7 +7885,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8215,7 +8215,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8230,7 +8230,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8245,7 +8245,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8260,7 +8260,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8275,7 +8275,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8290,7 +8290,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8305,7 +8305,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8320,7 +8320,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8335,7 +8335,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8350,7 +8350,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8365,7 +8365,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8380,7 +8380,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8710,7 +8710,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8725,7 +8725,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8740,7 +8740,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8755,7 +8755,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8770,7 +8770,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8785,7 +8785,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8800,7 +8800,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8815,7 +8815,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8830,7 +8830,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8845,7 +8845,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8860,7 +8860,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -8875,7 +8875,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"韧性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9205,7 +9205,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9220,7 +9220,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9235,7 +9235,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9250,7 +9250,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9265,7 +9265,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9280,7 +9280,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9295,7 +9295,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9310,7 +9310,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9325,7 +9325,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9340,7 +9340,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9355,7 +9355,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9370,7 +9370,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9700,7 +9700,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9715,7 +9715,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9730,7 +9730,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9745,7 +9745,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9760,7 +9760,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9775,7 +9775,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9790,7 +9790,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9805,7 +9805,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9820,7 +9820,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9835,7 +9835,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9850,7 +9850,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -9865,7 +9865,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10195,7 +10195,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10210,7 +10210,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10225,7 +10225,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10240,7 +10240,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10255,7 +10255,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10270,7 +10270,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10285,7 +10285,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10300,7 +10300,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10315,7 +10315,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10330,7 +10330,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10345,7 +10345,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   },
@@ -10360,7 +10360,7 @@
       },
       {
         "role": "assistant",
-        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"脆性断裂\",\"location\":null,\"confidence\":1.0}"
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null,\"confidence\":1.0}"
       }
     ]
   }
