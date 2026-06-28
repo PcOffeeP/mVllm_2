@@ -125,9 +125,7 @@ pip install -e ./LlamaFactory
 python3 pipeline/scripts/dataset_manager.py
 
 # ② 加载 MiniCPM processor，生成子视频与元数据（需 GPU/Linux 环境）
-python3 pipeline/scripts/subvideo_builder.py \
-    --model models/minicpm-v-4.5 \
-    --extract-frames
+python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.5 --extract-frames
 
 # ③ 子视频元数据 → ShareGPT 训练 JSON
 python3 pipeline/scripts/training_sample_builder.py
@@ -147,16 +145,17 @@ python3 pipeline/scripts/calibration.py
 
 #### 步骤 ② 参数说明
 
-| 参数 | 必传？ | 默认值 | 说明 |
-|------|--------|--------|------|
-| `--model` | **是**（模型路径非默认时） | `models/minicpmv4_5` | MiniCPM-V 4.5 模型目录；实际路径通常为 `models/minicpm-v-4.5` |
-| `--preprocessor` | 否 | `minicpm` | 当前只有 MiniCPM，不传即为默认值 |
-| `--extract-frames` | 否 | 不抽帧 | 加上后同时抽取子视频的采样帧图到 `data/04_frames/` |
-| `--fast` | 否 | 完整模式 | 快速模式：仅更新元数据，不重新编码 mp4 |
-| `--seed` | 否 | `42` | 随机种子，保持默认即可 |
-| `--skip-healthcheck` | 否 | 执行检查 | 首次建议不传，让脚本验证 processor 加载正常 |
+| 参数                   | 必传？             | 默认值                  | 说明                                                |
+| -------------------- | --------------- | -------------------- | ------------------------------------------------- |
+| `--model`            | **是**（模型路径非默认时） | `models/minicpmv4_5` | MiniCPM-V 4.5 模型目录；实际路径通常为 `models/minicpm-v-4.5` |
+| `--preprocessor`     | 否               | `minicpm`            | 当前只有 MiniCPM，不传即为默认值                              |
+| `--extract-frames`   | 否               | 不抽帧                  | 加上后同时抽取子视频的采样帧图到 `data/04_frames/`                |
+| `--fast`             | 否               | 完整模式                 | 快速模式：仅更新元数据，不重新编码 mp4                             |
+| `--seed`             | 否               | `42`                 | 随机种子，保持默认即可                                       |
+| `--skip-healthcheck` | 否               | 执行检查                 | 首次建议不传，让脚本验证 processor 加载正常                       |
 
 > **注意事项**：
+>
 > - 步骤 ② 依赖 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。
 > - `--model` 的默认路径是 `models/minicpmv4_5`，但实际模型文件夹通常是 `models/minicpm-v-4.5`，首次运行时建议显式指定。
 > - 步骤 ② 完成后，后续步骤才可继续。
@@ -247,10 +246,11 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 五字段协议通过 `strict_interval` 或 `fewshot_interval` prompt preset 启用，与训练数据的 assistant 输出格式一致。
 
 **合法组合规则**：
+
 - 七类断裂类型：`has_fracture=true`，`fracture_between=[i, i+1]`，`location=inside_gauge/outside_gauge`
 - 未断裂/未夹紧：`has_fracture=false`，`fracture_between=null`，`location=null`
 - 视频异常：`has_fracture=null`，`fracture_between=null`，`location=null`
-- `confidence` 始终为 0~1 数字
+- `confidence` 始终为 0\~1 数字
 
 ### 推理
 
@@ -295,6 +295,7 @@ python3 -m finetune.validation.run_inference \
 **支持的 split**: `fold_0_val`, `fold_1_val`, `fold_2_val`, `test`
 
 **重要**：
+
 - 基座模型和微调模型必须使用 **同一 prompt preset**。不要给基座模型加额外提示词。
 - Generation 参数固定为 `do_sample=False, num_beams=1, max_new_tokens=256`，不在正式评估中使用随机采样。
 - **帧映射生成**：test split 的视频帧映射从 `all_videos_tag.csv` 中的 `视频总帧数` 和 `视频帧率` 自动生成（匹配 MiniCPM processor 的均匀采样行为）。如果 CSV 元数据完整，test split 的 interval 评估可以正常运行。fold val split 继续使用 `subvideos_meta.json` 的完整帧映射。
@@ -321,7 +322,7 @@ python3 -m finetune.validation.evaluate_joint \
     --out-dir results/eval_joint_base
 ```
 
-可选 `--split` 参数过滤（从 split JSON 加载 video_id 集合）：
+可选 `--split` 参数过滤（从 split JSON 加载 video\_id 集合）：
 
 ```bash
 python3 -m finetune.validation.evaluate_time \
@@ -332,11 +333,11 @@ python3 -m finetune.validation.evaluate_time \
 
 **输出说明**：
 
-| 评估脚本 | JSON 输出 | CSV 输出 |
-|----------|-----------|----------|
-| `evaluate_time` | `time_metrics.json`（正式指标：`interval_metrics`；`deprecated_legacy_metrics` 仅用于向后兼容） | `interval_errors.csv`, `invalid_schema.csv`, `time_errors.csv`（legacy）, `time_confidence_buckets.csv`（legacy） |
-| `evaluate_type` | `type_metrics.json`（accuracy, macro_f1, fp/fn rates） | `type_per_class.csv`, `type_confusion_matrix.csv`, `invalid_schema.csv` |
-| `evaluate_joint` | `joint_metrics.json`（正式指标：`joint_interval_metrics`；`deprecated_legacy_metrics` 仅用于向后兼容） | `joint_interval_failures.csv`, `joint_failures.csv`（legacy）, `invalid_schema.csv` |
+| 评估脚本             | JSON 输出                                                                                 | CSV 输出                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `evaluate_time`  | `time_metrics.json`（正式指标：`interval_metrics`；`deprecated_legacy_metrics` 仅用于向后兼容）        | `interval_errors.csv`, `invalid_schema.csv`, `time_errors.csv`（legacy）, `time_confidence_buckets.csv`（legacy） |
+| `evaluate_type`  | `type_metrics.json`（accuracy, macro\_f1, fp/fn rates）                                   | `type_per_class.csv`, `type_confusion_matrix.csv`, `invalid_schema.csv`                                       |
+| `evaluate_joint` | `joint_metrics.json`（正式指标：`joint_interval_metrics`；`deprecated_legacy_metrics` 仅用于向后兼容） | `joint_interval_failures.csv`, `joint_failures.csv`（legacy）, `invalid_schema.csv`                             |
 
 > **正式报告指标**：所有 `time_metrics.json` 和 `joint_metrics.json` 中，请只引用 `interval_metrics` 和 `joint_interval_metrics` 作为正式指标。`deprecated_legacy_metrics` 子对象包含使用旧 prompt 协议（time/type 字段）的聚合指标，保留仅供向下兼容，不应在 interval 五字段协议评估中使用。
 
@@ -354,13 +355,13 @@ python3 -m finetune.validation.compare_models \
 
 **输出**：
 
-| 文件 | 说明 |
-|------|------|
-| `model_summary.json` | 所有模型的完整指标汇总 |
-| `delta_summary.json` | finetuned - base 的指标差值 |
-| `paired_samples.csv` | 逐 video_id 对比表（含 improvement/regression/same 标记） |
-| `by_type_delta.csv` | 按 gt_type 分组的准确率变化 |
-| `{model_name}_summary.json` | 单模型详细指标 |
+| 文件                          | 说明                                                |
+| --------------------------- | ------------------------------------------------- |
+| `model_summary.json`        | 所有模型的完整指标汇总                                       |
+| `delta_summary.json`        | finetuned - base 的指标差值                            |
+| `paired_samples.csv`        | 逐 video\_id 对比表（含 improvement/regression/same 标记） |
+| `by_type_delta.csv`         | 按 gt\_type 分组的准确率变化                               |
+| `{model_name}_summary.json` | 单模型详细指标                                           |
 
 `compare_models` 会自动校验所有输入是否覆盖同一批 `video_id`，不一致时报错。
 
