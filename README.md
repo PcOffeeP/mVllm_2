@@ -136,6 +136,37 @@ pip install -e ./LlamaFactory
 
 当前流程不会再用 PyAV 伪造这份映射，也不会在 processor 失败时静默回退。真实 MiniCPM processor 不可用时，子视频会直接失败，不会进入训练链路。
 
+### 尾部污染人工复核
+
+如果原视频末尾包含网站片尾、广告、水印或其他无关画面，且断裂标签落在最后几个采样帧之间，需要先剔除这些脏子视频，再生成训练 JSON。
+
+先筛出需要复核的高风险子视频：
+
+```bash
+python3 pipeline/scripts/audit_tail_contamination.py
+```
+
+脚本会生成：
+
+- `data/07_metadata/tail_contamination_audit.jsonl`：人工决策清单
+- `data/08_review/tail_contamination/`：每个高风险子视频的末尾图片和 `meta.json`
+
+人工检查图片后，只需要修改清单中的 `decision` 字段：
+
+- `review`：默认状态，不处理
+- `drop`：只剔除这一条 `subvideo_id`
+- `drop_source`：剔除同一个 `source_video` 下的所有子视频
+
+应用决策时默认输出新文件，不覆盖原始 metadata：
+
+```bash
+python3 pipeline/scripts/apply_tail_review_decisions.py \
+  --decisions data/07_metadata/tail_contamination_audit.jsonl \
+  --output-meta data/07_metadata/subvideos_meta.cleaned.json
+```
+
+确认结果后，可以用 cleaned metadata 生成训练 JSON，或加 `--in-place` 覆盖原 `subvideos_meta.json`。
+
 ### 帧契约
 
 MiniCPM-V-4.5 当前的训练帧抽取契约是：

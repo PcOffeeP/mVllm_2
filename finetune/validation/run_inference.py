@@ -297,7 +297,13 @@ def _load_full_frame_mappings(meta_path: Path) -> dict[str, list[dict[str, Any]]
     
     返回 {source_video: frames_list} 索引，其中每条 frame 为：
     {"index": int, "original_frame": int, "timestamp": float}
+
+    如果文件不存在，打印警告并返回空字典——调用方已有 fallback 逻辑处理缺失的映射。
     """
+    if not meta_path.exists():
+        print(f"[warn] subvideos meta not found at {meta_path}, "
+              f"will fall back to CSV metadata for frame mapping")
+        return {}
     data = json.loads(meta_path.read_text(encoding="utf-8"))
     full_videos: dict[str, list[dict[str, Any]]] = {}
     for entry in data.get("subvideos", []):
