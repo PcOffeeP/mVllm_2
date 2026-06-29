@@ -218,6 +218,40 @@ def _build_actual_frame_mapping(sub: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _validate_minicpm_fingerprint(subvideo_id: Any, fingerprint: str) -> None:
+    """Validate the structured MiniCPM frame-contract fingerprint."""
+    parts = fingerprint.split(":")
+    if len(parts) < 2 or parts[0] != "minicpmv4_5":
+        raise ValueError(f"{subvideo_id}: invalid MiniCPM processor fingerprint")
+
+    model_id = parts[1]
+    if not model_id or "=" in model_id:
+        raise ValueError(f"{subvideo_id}: MiniCPM processor fingerprint missing model id")
+
+    fields: dict[str, str] = {}
+    for part in parts[2:]:
+        if "=" not in part:
+            raise ValueError(f"{subvideo_id}: malformed MiniCPM processor fingerprint")
+        key, value = part.split("=", 1)
+        fields[key] = value
+
+    if fields.get("max_frames") != "8":
+        raise ValueError(f"{subvideo_id}: MiniCPM processor fingerprint must declare max_frames=8")
+
+    try:
+        video_fps = float(fields["video_fps"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(
+            f"{subvideo_id}: MiniCPM processor fingerprint must declare video_fps=2"
+        ) from exc
+    if video_fps != 2.0:
+        raise ValueError(f"{subvideo_id}: MiniCPM processor fingerprint must declare video_fps=2")
+
+    backend = fields.get("backend")
+    if backend not in {"transformers", "transformers-loaded"}:
+        raise ValueError(f"{subvideo_id}: invalid MiniCPM processor backend in fingerprint")
+
+
 def convert_subvideo_to_sample(
     sub: dict[str, Any],
 ) -> dict[str, Any]:
@@ -231,6 +265,8 @@ def convert_subvideo_to_sample(
         raise ValueError(
             f"{sub.get('subvideo_id')}: diagnostic processor fingerprint is forbidden"
         )
+    if "minicpm" in lowered_fingerprint:
+        _validate_minicpm_fingerprint(sub.get("subvideo_id"), processor_fingerprint)
     start_time = sub.get("start_time", 0.0)
     end_time = sub.get("end_time", 0.0)
     effective_frames = compute_effective_frames(sub)

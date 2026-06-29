@@ -116,6 +116,34 @@ pip install -e ./LlamaFactory
                                输出: data/07_metadata/calibration_report.json
 ```
 
+### 子视频元信息
+
+步骤 ② 生成的 `subvideos_meta.json` 记录的是“训练时真正会用到的子视频契约”，不是简单的裁剪日志。关键字段包括：
+
+- `video_path`：子视频实际文件路径
+- `start_time` / `end_time` / `start_frame` / `end_frame` / `duration`
+- `crop_type`、`source_video`、`selection_reason`
+- `has_fracture`、`fracture_between`、`type`、`location`
+- `processor_fingerprint`、`processor_info`
+- `actual_frame_mapping`、`sampled_frames`
+
+其中最关键的是 `actual_frame_mapping`。它同时保留两套坐标：
+
+- `original_frame` / `timestamp`：映射回源视频后的全局帧号和时间戳
+- `clip_frame` / `clip_timestamp`：裁剪后子视频内部的帧号和时间戳
+
+当前流程不会再用 PyAV 伪造这份映射，也不会在 processor 失败时静默回退。真实 MiniCPM processor 不可用时，子视频会直接失败，不会进入训练链路。
+
+### 帧契约
+
+MiniCPM-V-4.5 当前的训练帧抽取契约是：
+
+- `video_fps = 2.0`
+- `video_maxlen = 8`
+- 先对实际训练会读取的子视频文件按真实时长采样，再按 `np.linspace(...).astype(np.int32)` 选帧
+
+这意味着数据生成阶段必须和训练阶段读取的是同一个子视频文件，并且按同一套抽帧规则记录帧索引。不能再拿源视频窗口的近似帧号去替代真实训练帧映射。
+
 ### 完整复现命令
 
 以下命令从仓库根目录执行，按顺序依次运行：
@@ -158,7 +186,7 @@ python3 pipeline/scripts/calibration.py
 >
 > - 步骤 ② 依赖 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。
 > - `--model` 的默认路径是 `models/minicpmv4_5`，但实际模型文件夹通常是 `models/minicpm-v-4.5`，首次运行时建议显式指定。
-> - 步骤 ② 完成后，后续步骤才可继续。
+> - 步骤 ② 完成后，后续步骤才可继续。步骤 ③ 会拒绝旧的或不完整 `processor_fingerprint`，避免历史 `subvideos_meta.json` 混入训练。
 > - 步骤 ② 默认会编码 mp4 子视频到 `data/03_subvideos/`，可通过 `--fast` 跳过（仅更新元数据）。
 
 ### 子视频快速模式
@@ -207,6 +235,8 @@ python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold
 | 优化器           | paged\_adamw\_8bit                    | 节省显存                    |
 | 最大帧数          | 8 帧/视频                                | 与 processor contract 一致 |
 | 最大序列长度        | 2048                                  | <br />                  |
+
+训练时真正读取的是 `data/03_subvideos/` 下的子视频文件，训练 JSON 由 `data/07_metadata/subvideos_meta.json` 生成。也就是说，子视频生成阶段必须先把“实际会喂给 MiniCPM 的视频文件”和“对应帧映射”记录正确，训练阶段只是消费这些已冻结的元数据，不再重新猜帧。
 
 ### LoRA 合并
 
@@ -395,4 +425,3 @@ python3 -m pipeline.server_proxy \
 - **评估指标相关性**：时间定位精度与断裂类型分类存在耦合（时间误差大时类型分类必然不准）。
 - **数据版本管理**：数据版本依赖 git lfs 或手动同步；产物被 `.gitignore` 忽略，不提交。
 - **子视频生成依赖**：`subvideo_builder.py` 需要系统安装 `ffmpeg` / `ffprobe`。
-

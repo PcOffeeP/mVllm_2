@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import logging
 import json
+import math
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,7 @@ from pipeline.preprocessing.adapter import FrameMapping, ProcessorInfo, VideoPre
 
 import av
 import functools
+import numpy as np
 
 try:
     import transformers as _transformers_module
@@ -160,15 +162,18 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
 
     NAME = "minicpmv4_5"
     EXPECTED_MAX_FRAMES = 8
+    DEFAULT_VIDEO_FPS = 2.0
 
     def __init__(
         self,
         model_path_or_name: str,
         max_frames: int = EXPECTED_MAX_FRAMES,
+        video_fps: float = DEFAULT_VIDEO_FPS,
         processor: Any | None = None,
     ) -> None:
         self._model_path_or_name = model_path_or_name
         self._max_frames = max_frames
+        self._video_fps = video_fps
         self._processor = processor
         self._video_processor = (
             configure_processor_max_frames(processor, max_frames)
@@ -311,7 +316,11 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
     ) -> list[FrameMapping]:
         """对视频时间区间采样，返回帧映射列表。
 
-        仅使用真实顶层 ``processor`` 做帧选择。
+        帧选择复刻 LLaMA-Factory ``MiniCPMVPlugin._regularize_videos``：
+        ``floor(duration * video_fps)`` capped by ``video_maxlen``，再通过
+        ``np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)``
+        取帧。MiniCPM-V 4.5 的 processor 接收的是已解码帧列表，并不从
+        mp4 路径自行选择帧；这里仍会调用真实 processor 来校验编码路径。
         """
         frame_index_by_timestamp = self._actual_frame_index_map(video_path)
         container = av.open(video_path, "r")
@@ -362,12 +371,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         total_frames: int,
         frame_index_by_timestamp: dict[float, int],
     ) -> list[FrameMapping]:
-        """用顶层 processor 处理解码帧，返回真实帧号映射。
-
-        允许真实 processor 按其已锁定的 max_frames=8 选择帧；
-        通过逐帧独立调用 + 像素比对确认保留帧，
-        映射回解码帧号。不再静默回退到 pyav 均匀采样。
-        """
+        """按 LLaMA-Factory 采样契约选帧，再用顶层 processor 校验编码路径。"""
         # 1. 解码区间内的帧
         decoded_frames, decoded_indices, decoded_timestamps = self._decode_frame_range(
             container, video_stream, start_time, end_time, total_frames,
@@ -375,6 +379,16 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         )
         if not decoded_frames:
             return []
+
+        sample_positions = self._llamafactory_sample_positions(
+            total_frames=len(decoded_frames),
+            duration=end_time - start_time,
+            video_fps=self._video_fps,
+            video_maxlen=self._max_frames,
+        )
+        decoded_frames = [decoded_frames[i] for i in sample_positions]
+        decoded_indices = [decoded_indices[i] for i in sample_positions]
+        decoded_timestamps = [decoded_timestamps[i] for i in sample_positions]
 
         # 2. 调用真实顶层 processor（失败抛异常，不静默回退）
         try:
@@ -432,7 +446,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
 
         # 3. 确定帧映射
         if n == len(decoded_frames):
-            # processor 未二次采样，1:1 映射
+            # MiniCPM-V 4.5 路径下，processor 接收已采样帧列表，应为 1:1 映射。
             return [
                 FrameMapping(
                     input_index=i,
@@ -442,10 +456,26 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 for i in range(n)
             ]
 
-        # processor 做了抽帧，通过逐帧独立调用确认保留帧
+        # 兼容未来 processor 如有二次采样的情况，通过逐帧独立调用确认保留帧。
         return self._match_processor_frames(
             decoded_frames, decoded_indices, decoded_timestamps, selected_pixel_values, n,
         )
+
+    @staticmethod
+    def _llamafactory_sample_positions(
+        total_frames: int,
+        duration: float,
+        video_fps: float,
+        video_maxlen: int,
+    ) -> list[int]:
+        """Return frame positions selected by LLaMA-Factory's MiniCPM video path."""
+        if total_frames <= 0:
+            return []
+        sample_frames = max(1, math.floor(float(duration) * float(video_fps)))
+        sample_frames = min(total_frames, int(video_maxlen), sample_frames)
+        if sample_frames <= 1:
+            return [0]
+        return np.linspace(0, total_frames - 1, sample_frames).astype(np.int32).tolist()
 
 
     def _match_processor_frames(
@@ -669,6 +699,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         if file_hashes["preprocessor"]:
             parts.append(f"pre={file_hashes['preprocessor']}")
         parts.append(f"max_frames={self._max_frames}")
+        parts.append(f"video_fps={self._video_fps:g}")
         parts.append(f"backend={backend_flag}")
         return ":".join(parts)
 

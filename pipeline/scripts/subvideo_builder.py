@@ -30,8 +30,6 @@ import shutil
 import subprocess
 import sys
 
-import functools
-
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -319,80 +317,34 @@ def _processor_info(preprocessor: VideoPreprocessor | None) -> dict[str, Any] | 
     }
 
 
-@functools.lru_cache(maxsize=200)
-def _build_pts_frame_map(video_path: str) -> dict[float, int]:
-    """解码一次，缓存 PTS→帧号映射，后续候选直接复用。"""
-    import av
-    container = av.open(video_path, "r")
-    stream = next(s for s in container.streams if s.type == "video")
-    mapping: dict[float, int] = {}
-    for idx, frame in enumerate(container.decode(stream)):
-        if frame.pts is None:
-            continue
-        ts = round(float(frame.pts * stream.time_base), 9)
-        if ts not in mapping:
-            mapping[ts] = idx
-    container.close()
-    return mapping
-
-
-def _build_frame_mapping_pyav(
-    video_path: Path,
-    start_time: float,
-    end_time: float,
-) -> list[dict[str, Any]]:
-    """纯 PyAV 构建帧映射，无需 MiniCPM processor。"""
-    import av
-
-    # 使用缓存的 PTS→帧号映射，避免重复解码全视频
-    pts_to_frame = _build_pts_frame_map(str(video_path))
-
-    # 解码目标区间
-    container = av.open(str(video_path), "r")
-    stream = next(s for s in container.streams if s.type == "video")
-    time_base = float(stream.time_base)
-    seek_pts = int(max(0, start_time - 0.5) / time_base)
-    end_pts = int(end_time / time_base)
-    container.seek(seek_pts, stream=stream)
-
-    result: list[dict[str, Any]] = []
-    input_idx = 0
-    for packet in container.demux(stream):
-        for frame in packet.decode():
-            if frame.pts is None:
-                continue
-            if frame.pts > end_pts:
-                break
-            ts = float(frame.pts * time_base)
-            if start_time <= ts < end_time:
-                original = pts_to_frame.get(round(ts, 9))
-                if original is not None:
-                    result.append({
-                        "input_index": input_idx,
-                        "original_frame": original,
-                        "timestamp": round(ts, 4),
-                    })
-                    input_idx += 1
-    container.close()
-
-    # 均匀采样，确保不超过 max_frames=8（与 MiniCPM processor 行为一致）
-    max_frames = 8
-    if len(result) > max_frames:
-        total = len(result)
-        step = (total - 1) / (max_frames - 1)
-        sampled = []
-        for i in range(max_frames):
-            idx = min(total - 1, round(i * step))
-            item = result[idx].copy()
-            item["input_index"] = i
-            sampled.append(item)
-        result = sampled
-
-    return result
-
-
-# 统计 MiniCPM processor 降级为 PyAV 均匀采样的次数
-_preprocessor_fallback_count = 0
+def _validate_existing_processor_fingerprint(sub: dict[str, Any]) -> None:
+    """Reject stale MiniCPM metadata in fast mode before it can be rewritten."""
+    fingerprint = sub.get("processor_fingerprint")
+    if not isinstance(fingerprint, str) or "minicpm" not in fingerprint.lower():
+        raise RuntimeError(
+            f"{sub.get('subvideo_id')}: 快速模式缺少 MiniCPM processor_fingerprint"
+        )
+    parts = fingerprint.split(":")
+    if len(parts) < 5 or parts[0] != "minicpmv4_5":
+        raise RuntimeError(
+            f"{sub.get('subvideo_id')}: 快速模式发现旧 MiniCPM 指纹，必须完整重建"
+        )
+    fields = {}
+    for part in parts[2:]:
+        if "=" not in part:
+            raise RuntimeError(
+                f"{sub.get('subvideo_id')}: 快速模式发现损坏的 MiniCPM 指纹，必须完整重建"
+            )
+        key, value = part.split("=", 1)
+        fields[key] = value
+    if (
+        fields.get("max_frames") != "8"
+        or fields.get("video_fps") != "2"
+        or fields.get("backend") not in {"transformers", "transformers-loaded"}
+    ):
+        raise RuntimeError(
+            f"{sub.get('subvideo_id')}: 快速模式发现不完整 MiniCPM 指纹，必须完整重建"
+        )
 
 
 def _preprocessor_sample(
@@ -404,64 +356,81 @@ def _preprocessor_sample(
     """调用预处理器 sample 并转换为可序列化的帧映射字典列表。"""
     if preprocessor is None:
         return []
-    try:
-        mappings = preprocessor.sample(str(video_path), float(start_time), float(end_time))
-        return [
-            {
-                "input_index": m.input_index,
-                "original_frame": m.original_frame,
-                "timestamp": round(m.timestamp, 4),
-            }
-            for m in mappings
-        ]
-    except Exception as e:
-        global _preprocessor_fallback_count
-        _preprocessor_fallback_count += 1
-        logger.warning(
-            "MiniCPM processor sample failed for %s [%.2f-%.2f], "
-            "fallback to PyAV uniform sampling: %s",
-            video_path, start_time, end_time, e,
-        )
-        return _build_frame_mapping_pyav(video_path, start_time, end_time)
-
-
-def _try_adjust_window_with_preprocessor(
-    preprocessor: VideoPreprocessor,
-    video_path: Path,
-    event_frame: int,
-    start_time: float,
-    end_time: float,
-    duration: float | None,
-) -> tuple[list[dict[str, Any]], float, float] | None:
-    """当默认窗口无法产生合法 fracture_between 时，尝试 ±1s 调整。"""
-    candidates = [
-        (start_time - 1.0, end_time + 1.0),
-        (start_time - 1.0, end_time),
-        (start_time, end_time + 1.0),
-        (start_time + 1.0, end_time - 1.0),
-        (start_time + 1.0, end_time),
-        (start_time, end_time - 1.0),
-        (start_time - 1.0, end_time - 1.0),
-        (start_time + 1.0, end_time + 1.0),
+    mappings = preprocessor.sample(str(video_path), float(start_time), float(end_time))
+    return [
+        {
+            "input_index": m.input_index,
+            "original_frame": m.original_frame,
+            "timestamp": round(m.timestamp, 4),
+        }
+        for m in mappings
     ]
-    seen: set[tuple[float, float]] = set()
-    for st, et in candidates:
-        st = max(0.0, st)
-        if duration is not None:
-            et = min(duration, et)
-        if et <= st:
-            continue
-        key = (round(st, 4), round(et, 4))
-        if key in seen:
-            continue
-        seen.add(key)
-        try:
-            mapping = _preprocessor_sample(preprocessor, video_path, st, et)
-        except Exception:
-            continue
-        if compute_fracture_between(mapping, event_frame) is not None:
-            return mapping, st, et
-    return None
+
+
+def _video_duration(video_path: Path) -> float:
+    """Return the decoded stream duration used by LLaMA-Factory video sampling."""
+    import av
+
+    container = av.open(str(video_path), "r")
+    try:
+        stream = next(s for s in container.streams if s.type == "video")
+        if stream.duration is not None:
+            return float(stream.duration * stream.time_base)
+        if container.duration:
+            return float(container.duration) / 1_000_000.0
+    finally:
+        container.close()
+    raise RuntimeError(f"{video_path}: 无法读取视频时长")
+
+
+def _map_clip_mapping_to_source(
+    clip_mapping: list[dict[str, Any]],
+    *,
+    source_start_frame: int,
+    source_start_time: float,
+) -> list[dict[str, Any]]:
+    """Map frames sampled from the training clip back to source-video coordinates."""
+    mapped: list[dict[str, Any]] = []
+    first_clip_timestamp = next(
+        (
+            float(frame["timestamp"])
+            for frame in clip_mapping
+            if frame.get("timestamp") is not None
+        ),
+        0.0,
+    )
+    for frame in clip_mapping:
+        clip_frame = frame.get("original_frame")
+        clip_timestamp = frame.get("timestamp")
+        item = dict(frame)
+        item["clip_frame"] = clip_frame
+        item["clip_timestamp"] = clip_timestamp
+        if clip_frame is not None:
+            item["original_frame"] = int(source_start_frame) + int(clip_frame)
+        if clip_timestamp is not None:
+            item["timestamp"] = round(
+                float(source_start_time) + float(clip_timestamp) - first_clip_timestamp,
+                4,
+            )
+        mapped.append(item)
+    return mapped
+
+
+def _sample_training_video_mapping(
+    preprocessor: VideoPreprocessor | None,
+    video_path: Path,
+    *,
+    source_start_frame: int,
+    source_start_time: float,
+) -> list[dict[str, Any]]:
+    """Sample the exact video file passed to training and expose source-frame mapping."""
+    duration = _video_duration(video_path)
+    sampled = _preprocessor_sample(preprocessor, video_path, 0.0, duration)
+    return _map_clip_mapping_to_source(
+        sampled,
+        source_start_frame=source_start_frame,
+        source_start_time=source_start_time,
+    )
 
 
 def _base_subvideo_dict(
@@ -533,7 +502,6 @@ def build_focus_subvideos(
     video_id = rec["video_id"]
     fps = rec["fps"]
     total_frames = rec["total_frames"]
-    duration = rec.get("duration") or 0.0
     event_frame = _event_frame(rec)
     if event_frame is None or fps is None or total_frames is None:
         return subvideos
@@ -554,58 +522,49 @@ def build_focus_subvideos(
             start_time = start_frame / fps
             end_time = end_frame / fps
 
-            if preprocessor is not None:
-                if generate_media:
-                    try:
-                        sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
-                    except Exception as exc:
-                        EXCLUSIONS.append(
-                            {
-                                "subvideo_id": f"{video_id}_focus_{window}s_{int(ratio * 100):02d}pct",
-                                "source_video": video_id,
-                                "reason": f"预处理器采样失败: {exc}",
-                                "event_frame": event_frame,
-                                "window": window,
-                                "ratio": ratio,
-                            }
-                        )
-                        continue
-                else:
-                    sampled = []
-            else:
-                raise RuntimeError("正式数据构建必须提供真实视频预处理器")
-            fracture_between = compute_fracture_between(sampled, event_frame)
-
-            if fracture_between is None and preprocessor is not None and generate_media:
-                adjusted = _try_adjust_window_with_preprocessor(
-                    preprocessor, source_path, event_frame, start_time, end_time, duration
-                )
-                if adjusted is not None:
-                    sampled, start_time, end_time = adjusted
-                    start_frame = clamp(round(start_time * fps), 0, total_frames - 1)
-                    end_frame = clamp(round(end_time * fps), 0, total_frames - 1)
-                    fracture_between = compute_fracture_between(sampled, event_frame)
-
-            if generate_media and fracture_between is None:
-                EXCLUSIONS.append(
-                    {
-                        "subvideo_id": f"{video_id}_focus_{window}s_{int(ratio * 100):02d}pct",
-                        "source_video": video_id,
-                        "reason": "无法生成严格相邻的 fracture_between",
-                        "event_frame": event_frame,
-                        "window": window,
-                        "ratio": ratio,
-                    }
-                )
-                continue
-
             subvideo_id = f"{video_id}_focus_{window}s_{int(ratio * 100):02d}pct"
             subvideo_path = SUBVIDEO_DIR_DEFAULT / f"{subvideo_id}.mp4"
             gen_this = generate_media and (selected_ids is None or subvideo_id in selected_ids)
             frame_paths: list[str] = []
+            sampled: list[dict[str, Any]] = []
+            fracture_between = None
 
             if gen_this:
                 crop_video(source_path, subvideo_path, start_time, end_time)
+                if preprocessor is None:
+                    raise RuntimeError("正式数据构建必须提供真实视频预处理器")
+                try:
+                    sampled = _sample_training_video_mapping(
+                        preprocessor,
+                        subvideo_path,
+                        source_start_frame=start_frame,
+                        source_start_time=start_time,
+                    )
+                except Exception as exc:
+                    EXCLUSIONS.append(
+                        {
+                            "subvideo_id": subvideo_id,
+                            "source_video": video_id,
+                            "reason": f"预处理器采样失败: {exc}",
+                            "event_frame": event_frame,
+                            "window": window,
+                            "ratio": ratio,
+                        }
+                    )
+                    continue
+                fracture_between = compute_fracture_between(sampled, event_frame)
+                if fracture_between is None:
+                    EXCLUSIONS.append(
+                        {
+                            "subvideo_id": subvideo_id,
+                            "source_video": video_id,
+                            "reason": "无法生成严格相邻的 fracture_between",
+                            "event_frame": event_frame,
+                            "window": window,
+                            "ratio": ratio,
+                        }
+                    )
+                    continue
                 if extract_frames:
                     frame_dir = FRAME_DIR_DEFAULT / subvideo_id
                     frame_files = extract_sampled_frames(
@@ -667,28 +626,33 @@ def _build_clip_candidate(
     fingerprint = preprocessor.fingerprint() if preprocessor is not None else None
     info = _processor_info(preprocessor)
 
-    if preprocessor is not None:
-        if generate_media:
-            try:
-                sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
-            except Exception as exc:
-                EXCLUSIONS.append(
-                    {
-                        "subvideo_id": subvideo_id,
-                        "source_video": video_id,
-                        "reason": f"预处理器采样失败: {exc}",
-                        "crop_type": crop_type,
-                    }
-                )
-                return None
-        else:
-            sampled = []
-    else:
-        raise RuntimeError("正式数据构建必须提供真实视频预处理器")
-
     gen_this = generate_media and (selected_ids is None or subvideo_id in selected_ids)
+    sampled: list[dict[str, Any]] = []
     if gen_this:
         crop_video(source_path, subvideo_path, start_time, end_time)
+        if preprocessor is None:
+            raise RuntimeError("正式数据构建必须提供真实视频预处理器")
+        try:
+            sampled = _sample_training_video_mapping(
+                preprocessor,
+                subvideo_path,
+                source_start_frame=start_frame,
+                source_start_time=start_time,
+            )
+        except Exception as exc:
+            EXCLUSIONS.append(
+                {
+                    "subvideo_id": subvideo_id,
+                    "source_video": video_id,
+                    "reason": f"预处理器采样失败: {exc}",
+                    "crop_type": crop_type,
+                }
+            )
+            return None
+    elif preprocessor is None:
+        raise RuntimeError("正式数据构建必须提供真实视频预处理器")
+
+    if gen_this:
         if extract_frames:
             frame_dir = FRAME_DIR_DEFAULT / subvideo_id
             frame_files = extract_sampled_frames(
@@ -900,7 +864,7 @@ def build_full_subvideo(
     start_time = 0.0
     start_frame = 0
     end_frame = (total_frames - 1) if total_frames else None
-    end_time = (end_frame / fps) if total_frames and fps else duration
+    end_time = _video_duration(source_path) if source_path.exists() else duration
     frame_paths: list[str] = []
     sampled: list[dict[str, Any]] = []
     fingerprint = preprocessor.fingerprint() if preprocessor is not None else None
@@ -910,7 +874,12 @@ def build_full_subvideo(
         if preprocessor is not None:
             if generate_media:
                 try:
-                    sampled = _preprocessor_sample(preprocessor, source_path, start_time, end_time)
+                    sampled = _sample_training_video_mapping(
+                        preprocessor,
+                        source_path,
+                        source_start_frame=start_frame,
+                        source_start_time=start_time,
+                    )
                 except Exception as exc:
                     EXCLUSIONS.append(
                         {
@@ -932,16 +901,6 @@ def build_full_subvideo(
     event_frame = _event_frame(rec)
     if fracture_between is None and has_fracture_canonical is True and rec_type != VIDEO_ANOMALY_TYPE:
         fracture_between = compute_fracture_between(sampled, event_frame)
-        if fracture_between is None and preprocessor is not None and generate_media:
-            adjusted = _try_adjust_window_with_preprocessor(
-                preprocessor, source_path, event_frame, start_time, end_time, duration
-            )
-            if adjusted is not None:
-                sampled, start_time, end_time = adjusted
-                if fps is not None:
-                    start_frame = clamp(round(start_time * fps), 0, total_frames - 1)
-                    end_frame = clamp(round(end_time * fps), 0, total_frames - 1)
-                fracture_between = compute_fracture_between(sampled, event_frame)
         if generate_media and fracture_between is None:
             EXCLUSIONS.append(
                 {
@@ -977,14 +936,16 @@ def build_full_subvideo(
 def update_subvideo_metadata(sub: dict[str, Any], rec: dict[str, Any]) -> dict[str, Any]:
     """基于现有 mp4/frame 文件重新计算派生元数据（快速模式，不重编码）。"""
     sub = dict(sub)
+    _validate_existing_processor_fingerprint(sub)
     fps = rec.get("fps")
     total_frames = rec.get("total_frames")
     event_frame = _event_frame(rec)
 
     if sub.get("crop_type").startswith("full") and total_frames and fps:
         sub["end_frame"] = int(total_frames - 1)
-        sub["end_time"] = round(sub["end_frame"] / fps, 4)
-        sub["duration"] = sub["end_time"]
+        source_path = _source_video_path(rec)
+        sub["end_time"] = round(_video_duration(source_path), 4)
+        sub["duration"] = round(sub["end_time"] - float(sub.get("start_time", 0.0)), 4)
 
     has_fracture = sub.get("has_fracture_canonical", sub.get("has_fracture"))
     sampled = sub.get("actual_frame_mapping") or sub.get("sampled_frames")
@@ -1234,6 +1195,25 @@ def _generate_media_for_candidate(
     if not crop_type.startswith("full"):
         crop_video(source_path, subvideo_path, sub["start_time"], sub["end_time"])
 
+    if not sub.get("actual_frame_mapping"):
+        if preprocessor is None:
+            raise RuntimeError("正式数据构建必须提供真实视频预处理器")
+        sample_path = source_path if crop_type.startswith("full") else subvideo_path
+        sampled = _sample_training_video_mapping(
+            preprocessor,
+            sample_path,
+            source_start_frame=int(sub.get("start_frame", 0)),
+            source_start_time=float(sub.get("start_time", 0.0)),
+        )
+        if not sampled:
+            raise RuntimeError(
+                f"{sub.get('subvideo_id')}: MiniCPM/LLaMA-Factory frame mapping is empty"
+            )
+        sub["actual_frame_mapping"] = sampled
+        sub["sampled_frames"] = sampled
+        sub["processor_fingerprint"] = preprocessor.fingerprint()
+        sub["processor_info"] = _processor_info(preprocessor)
+
     if extract_frames:
         mapping = sub.get("actual_frame_mapping") or sub.get("sampled_frames") or []
         n = len(mapping)
@@ -1246,19 +1226,6 @@ def _generate_media_for_candidate(
             sub["frame_paths"] = [
                 str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files
             ]
-
-    # 补全 actual_frame_mapping（跳过 MiniCPM processor，只用 PyAV）
-    if not sub.get("actual_frame_mapping"):
-        try:
-            sampled = _build_frame_mapping_pyav(
-                source_path, sub["start_time"], sub["end_time"]
-            )
-            sub["actual_frame_mapping"] = sampled
-            sub["sampled_frames"] = sampled
-        except Exception as exc:
-            print(f"   ⚠️ PyAV 帧映射失败: {exc}")
-            sub["actual_frame_mapping"] = []
-            sub["sampled_frames"] = []
 
     # 补算 fracture_between（阶段 1 时 sampled=[] 导致 fracture_between=None）
     has_fracture = sub.get("has_fracture", sub.get("has_fracture_canonical"))
@@ -1506,12 +1473,6 @@ def main():
     }
     with open(args.output_meta, "w", encoding="utf-8") as f:
         json.dump(output_payload, f, ensure_ascii=False, indent=2, allow_nan=False)
-    if _preprocessor_fallback_count > 0:
-        logger.warning(
-            "总共有 %d 个子视频使用了 PyAV 均匀采样 fallback "
-            "（MiniCPM processor 失败）",
-            _preprocessor_fallback_count,
-        )
     print(f"完成：共 {len(all_subvideos)} 个子视频，元数据写入 {args.output_meta}")
 
 
