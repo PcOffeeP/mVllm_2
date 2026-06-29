@@ -167,6 +167,16 @@ python3 pipeline/scripts/apply_tail_review_decisions.py \
 
 确认结果后，可以用 cleaned metadata 生成训练 JSON，或加 `--in-place` 覆盖原 `subvideos_meta.json`。
 
+如果选择人工全量看每个子视频，也可以直接删除有问题样本对应的子视频文件或帧图片，然后让脚本按缺失媒体反向剔除 metadata：
+
+```bash
+python3 pipeline/scripts/prune_missing_review_media.py \
+  --require-frames \
+  --output-meta data/07_metadata/subvideos_meta.pruned.json
+```
+
+这会生成 `data/07_metadata/missing_review_media_prune.jsonl` 作为剔除报告。注意不要删除 `data/01_videos/` 下的原始视频；如果完整视频样本有问题，删除它对应的 `data/04_frames/<subvideo_id>/` 帧目录即可。
+
 ### 帧契约
 
 MiniCPM-V-4.5 当前的训练帧抽取契约是：
