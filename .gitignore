@@ -59,3 +59,7 @@ finetune/wandb/
 
 # macOS Trash
 .Trashes
+
+# 人工审核数据
+data/08_review/
+data/07_metadata/tail_contamination_audit.jsonl
