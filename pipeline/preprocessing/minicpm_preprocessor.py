@@ -410,16 +410,20 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         decoded_indices = [decoded_indices[i] for i in sample_positions]
         decoded_timestamps = [decoded_timestamps[i] for i in sample_positions]
 
-        # 2. 调用真实顶层 processor（失败抛异常，不静默回退）
+        # 2. 调用真实 image_processor，匹配 LLaMA-Factory MiniCPMVPlugin 视频路径。
+        image_processor = getattr(self._processor, "image_processor", None)
+        if image_processor is None:
+            raise RuntimeError("MiniCPM processor 不含 image_processor")
         try:
-            video_inputs = self._processor(
-                text="<image>./</image>" * len(decoded_frames),
-                images=decoded_frames,
+            video_inputs = image_processor(
+                [decoded_frames],
+                do_pad=True,
+                max_slice_nums=2,
                 return_tensors="pt",
             )
         except Exception as exc:
             raise RuntimeError(
-                f"processor 调用失败: {exc}"
+                f"image_processor 调用失败: {exc}"
             ) from exc
 
         # 4.5 输出 key 为 pixel_values；4.6 风格为 pixel_values_videos。
@@ -431,26 +435,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 "processor 输出不含 pixel_values_videos 或 pixel_values"
             )
 
-        shape = tuple(pixel_values.shape)
-        if len(shape) == 5:
-            # 4.6 风格: (B, T, C, H, W)
-            n = int(shape[1])
-            selected_pixel_values = pixel_values[0]
-        elif len(shape) == 4:
-            # 4.5 风格: (T, C, H, W)
-            n = int(shape[0])
-            selected_pixel_values = pixel_values
-        else:
-            raise RuntimeError(f"无法识别 pixel_values 形状: {shape}")
-        if n > self._max_frames:
-            raise RuntimeError(
-                f"processor 实际输出 {n} 帧，超过契约上限 {self._max_frames}"
-            )
-        if n > len(decoded_frames):
-            raise RuntimeError(
-                f"processor 输出帧数 {n} 大于解码帧数 {len(decoded_frames)}"
-            )
-        if n <= 0:
+        if not decoded_frames:
             return []
 
         try:
@@ -460,26 +445,18 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 self.last_tensor_digest = hashlib.sha256(
                     raw_tensor.view(dtype=torch.uint8).numpy().tobytes()
                 ).hexdigest()
-                self.last_tensor_shape = list(shape)
+                self.last_tensor_shape = list(pixel_values.shape)
         except ImportError:  # pragma: no cover - unit environment without torch
             pass
 
-        # 3. 确定帧映射
-        if n == len(decoded_frames):
-            # MiniCPM-V 4.5 路径下，processor 接收已采样帧列表，应为 1:1 映射。
-            return [
-                FrameMapping(
-                    input_index=i,
-                    original_frame=decoded_indices[i],
-                    timestamp=decoded_timestamps[i],
-                )
-                for i in range(n)
-            ]
-
-        # 兼容未来 processor 如有二次采样的情况，通过逐帧独立调用确认保留帧。
-        return self._match_processor_frames(
-            decoded_frames, decoded_indices, decoded_timestamps, selected_pixel_values, n,
-        )
+        return [
+            FrameMapping(
+                input_index=i,
+                original_frame=decoded_indices[i],
+                timestamp=decoded_timestamps[i],
+            )
+            for i in range(len(decoded_frames))
+        ]
 
     @staticmethod
     def _llamafactory_sample_positions(

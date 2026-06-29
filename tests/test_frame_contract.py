@@ -28,6 +28,48 @@ def test_llamafactory_sampling_positions_match_floor_fps_contract() -> None:
     ) == [0, 17, 34, 51, 68, 85, 102, 119]
 
 
+def test_minicpm_sample_uses_image_processor_video_path(monkeypatch) -> None:
+    class PixelValues:
+        shape = (1, 3, 3, 4, 4)
+
+    class ImageProcessor:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def __call__(self, videos, **kwargs):
+            self.calls.append((videos, kwargs))
+            return {"pixel_values": PixelValues()}
+
+    class Processor:
+        def __init__(self) -> None:
+            self.image_processor = ImageProcessor()
+
+        def __call__(self, *_args, **_kwargs):
+            raise AssertionError("top-level processor path must not be used")
+
+    processor = Processor()
+    preprocessor = MiniCPMVideoPreprocessor("models/minicpmv4_5", processor=processor)
+    frames = [object(), object(), object()]
+
+    monkeypatch.setattr(
+        MiniCPMVideoPreprocessor,
+        "_decode_frame_range",
+        lambda *_args, **_kwargs: (frames, [10, 20, 30], [1.0, 2.0, 3.0]),
+    )
+
+    mapping = preprocessor._sample_with_processor(
+        None, None, 0.0, 2.0, 3, {}
+    )
+
+    assert [m.original_frame for m in mapping] == [10, 20, 30]
+    assert processor.image_processor.calls == [
+        (
+            [frames],
+            {"do_pad": True, "max_slice_nums": 2, "return_tensors": "pt"},
+        )
+    ]
+
+
 def test_preprocessor_sample_fails_closed_without_pyav_fallback() -> None:
     class BrokenPreprocessor:
         def sample(self, *_args, **_kwargs):
