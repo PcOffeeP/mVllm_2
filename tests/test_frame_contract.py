@@ -90,6 +90,40 @@ def test_model_path_resolver_accepts_minicpm_directory_alias(tmp_path: Path) -> 
     assert Path(_resolve_model_path(str(requested))) == model_dir
 
 
+def test_extract_sampled_frames_exports_exact_mapping(monkeypatch, tmp_path: Path) -> None:
+    video = tmp_path / "clip.mp4"
+    video.write_bytes(b"placeholder")
+    output_dir = tmp_path / "frames"
+    output_dir.mkdir()
+    (output_dir / "frame_9999.jpg").write_bytes(b"stale")
+
+    commands = []
+
+    def fake_ffmpeg(cmd):
+        commands.append(cmd)
+        Path(cmd[-1]).write_bytes(b"jpg")
+
+    monkeypatch.setattr(subvideo_builder, "_run_ffmpeg_checked", fake_ffmpeg)
+
+    frames = subvideo_builder.extract_sampled_frames(
+        video,
+        output_dir,
+        [
+            {"input_index": 0, "clip_frame": 3, "original_frame": 103},
+            {"input_index": 1, "original_frame": 9},
+        ],
+    )
+
+    assert [path.name for path in frames] == ["frame_0000.jpg", "frame_0001.jpg"]
+    assert sorted(path.name for path in output_dir.glob("frame_*.jpg")) == [
+        "frame_0000.jpg",
+        "frame_0001.jpg",
+    ]
+    assert commands[0][commands[0].index("-vf") + 1] == "select=eq(n\\,3)"
+    assert commands[1][commands[1].index("-vf") + 1] == "select=eq(n\\,9)"
+    assert all("fps=" not in arg for cmd in commands for arg in cmd)
+
+
 def test_generate_media_fills_mapping_from_preprocessor(monkeypatch, tmp_path: Path) -> None:
     source = tmp_path / "source.mp4"
     clip = tmp_path / "clip.mp4"

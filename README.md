@@ -132,6 +132,8 @@ pip install -e ./LlamaFactory
 - `original_frame` / `timestamp`：映射回源视频后的全局帧号和时间戳
 - `clip_frame` / `clip_timestamp`：裁剪后子视频内部的帧号和时间戳
 
+如果使用 `--extract-frames`，`frame_paths` 中的图片会按 `actual_frame_mapping` 逐帧导出：裁剪子视频优先使用 `clip_frame`，完整视频使用同源坐标。图片数量必须和 `actual_frame_mapping` 条数一致，不再通过 ffmpeg `fps` 滤镜重新近似采样。
+
 当前流程不会再用 PyAV 伪造这份映射，也不会在 processor 失败时静默回退。真实 MiniCPM processor 不可用时，子视频会直接失败，不会进入训练链路。
 
 ### 帧契约

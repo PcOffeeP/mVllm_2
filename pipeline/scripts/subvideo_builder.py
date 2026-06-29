@@ -237,6 +237,13 @@ def _run_ffmpeg(args: list[str]) -> None:
     subprocess.run(args, capture_output=True, check=False)
 
 
+def _run_ffmpeg_checked(args: list[str]) -> None:
+    result = subprocess.run(args, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        raise RuntimeError(f"ffmpeg failed: {stderr}")
+
+
 def crop_video(input_path: Path, output_path: Path, start: float, end: float) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     duration = end - start
@@ -261,31 +268,46 @@ def copy_as_subvideo(input_path: Path, output_path: Path) -> None:
     shutil.copy2(str(input_path), str(output_path))
 
 
-def extract_sampled_frames(subvideo_path: Path, output_dir: Path, n: int, duration: float) -> list[Path]:
-    """使用 ffmpeg 的 fps filter 一次抽取与子视频时长对应的 N 帧。"""
+def _mapping_frame_index(frame: dict[str, Any]) -> int:
+    raw = frame.get("clip_frame")
+    if raw is None:
+        raw = frame.get("original_frame")
+    if raw is None:
+        raise RuntimeError(f"sampled frame missing frame index: {frame}")
+    return int(raw)
+
+
+def extract_sampled_frames(
+    video_path: Path,
+    output_dir: Path,
+    mapping: list[dict[str, Any]],
+) -> list[Path]:
+    """按 actual_frame_mapping 逐帧导出图片，保证图片与模型采样帧一一对应。"""
     output_dir.mkdir(parents=True, exist_ok=True)
-    if n <= 0:
+    for stale in output_dir.glob("frame_*.jpg"):
+        stale.unlink()
+
+    if not mapping:
         return []
-    if n == 1:
+
+    frame_files: list[Path] = []
+    for input_index, frame in enumerate(mapping):
+        frame_index = _mapping_frame_index(frame)
+        output_path = output_dir / f"frame_{input_index:04d}.jpg"
         cmd = [
-            "ffmpeg", "-y", "-i", str(subvideo_path),
-            "-vf", "select='eq(n,0)'",
-            "-vframes", "1",
+            "ffmpeg", "-y", "-i", str(video_path),
+            "-vf", f"select=eq(n\\,{frame_index})",
+            "-frames:v", "1",
             "-q:v", "2",
-            str(output_dir / "frame_%04d.jpg"),
+            str(output_path),
         ]
-    else:
-        fps_val = (n - 1) / duration
-        cmd = [
-            "ffmpeg", "-y", "-i", str(subvideo_path),
-            "-vf", f"fps={fps_val}:start_time=0",
-            "-vframes", str(n),
-            "-q:v", "2",
-            "-start_number", "0",
-            str(output_dir / "frame_%04d.jpg"),
-        ]
-    _run_ffmpeg(cmd)
-    return sorted(output_dir.glob("frame_*.jpg"))
+        _run_ffmpeg_checked(cmd)
+        if not output_path.exists():
+            raise RuntimeError(
+                f"{video_path}: failed to export mapped frame {frame_index}"
+            )
+        frame_files.append(output_path)
+    return frame_files
 
 
 def _source_video_path(rec: dict[str, Any]) -> Path:
@@ -568,7 +590,7 @@ def build_focus_subvideos(
                 if extract_frames:
                     frame_dir = FRAME_DIR_DEFAULT / subvideo_id
                     frame_files = extract_sampled_frames(
-                        subvideo_path, frame_dir, len(sampled), end_time - start_time
+                        subvideo_path, frame_dir, sampled
                     )
                     frame_paths = [str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files]
 
@@ -656,7 +678,7 @@ def _build_clip_candidate(
         if extract_frames:
             frame_dir = FRAME_DIR_DEFAULT / subvideo_id
             frame_files = extract_sampled_frames(
-                subvideo_path, frame_dir, len(sampled), end_time - start_time
+                subvideo_path, frame_dir, sampled
             )
             frame_paths = [str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files]
 
@@ -895,7 +917,7 @@ def build_full_subvideo(
             raise RuntimeError("正式数据构建必须提供真实视频预处理器")
         if extract_frames and generate_media:
             frame_dir = FRAME_DIR_DEFAULT / subvideo_id
-            frame_files = extract_sampled_frames(source_path, frame_dir, len(sampled), end_time)
+            frame_files = extract_sampled_frames(source_path, frame_dir, sampled)
             frame_paths = [str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files]
 
     event_frame = _event_frame(rec)
@@ -1221,7 +1243,7 @@ def _generate_media_for_candidate(
             frame_dir_out = frame_dir / sub["subvideo_id"]
             src_for_frames = source_path if crop_type.startswith("full") else subvideo_path
             frame_files = extract_sampled_frames(
-                src_for_frames, frame_dir_out, n, sub["duration"]
+                src_for_frames, frame_dir_out, mapping
             )
             sub["frame_paths"] = [
                 str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files
