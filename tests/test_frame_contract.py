@@ -5,7 +5,10 @@ from pathlib import Path
 import pytest
 
 from pipeline.preprocessing.adapter import FrameMapping
-from pipeline.preprocessing.minicpm_preprocessor import MiniCPMVideoPreprocessor
+from pipeline.preprocessing.minicpm_preprocessor import (
+    MiniCPMVideoPreprocessor,
+    _resolve_model_path,
+)
 from pipeline.scripts import subvideo_builder
 from pipeline.scripts.training_sample_builder import convert_subvideo_to_sample
 
@@ -34,6 +37,15 @@ def test_preprocessor_sample_fails_closed_without_pyav_fallback() -> None:
         subvideo_builder._preprocessor_sample(
             BrokenPreprocessor(), Path("missing.mp4"), 0.0, 1.0
         )
+
+
+def test_model_path_resolver_accepts_minicpm_directory_alias(tmp_path: Path) -> None:
+    model_dir = tmp_path / "models" / "minicpmv4_5"
+    model_dir.mkdir(parents=True)
+
+    requested = tmp_path / "models" / "minicpm-v-4.5"
+
+    assert Path(_resolve_model_path(str(requested))) == model_dir
 
 
 def test_generate_media_fills_mapping_from_preprocessor(monkeypatch, tmp_path: Path) -> None:

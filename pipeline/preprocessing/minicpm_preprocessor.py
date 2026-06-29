@@ -54,10 +54,30 @@ def _hash_model_files(model_path_or_name: str) -> dict[str, str | None]:
     return hashes
 
 
+def _resolve_model_path(model_path: str) -> str:
+    """Resolve common local MiniCPM directory aliases before calling transformers."""
+    path = Path(model_path)
+    if path.exists():
+        return str(path)
+
+    parent = path.parent
+    aliases = {
+        path.name.replace("-", "_").replace(".", "_"),
+        path.name.replace("-", "").replace(".", "_"),
+        path.name.replace("-", "").replace(".", ""),
+    }
+    for alias in aliases:
+        candidate = parent / alias
+        if candidate.exists():
+            return str(candidate)
+
+    return str(model_path)
+
+
 def _sanitize_model_path(model_path: str) -> str:
     """如果模型路径的目录名包含点号（会导致 trust_remote_code 模块导入失败），
     自动创建无点号的符号链接并返回新路径。如果链接已存在则复用。"""
-    path = Path(model_path).resolve()
+    path = Path(_resolve_model_path(model_path)).resolve()
     if not path.exists():
         return str(model_path)
     dir_name = path.name
@@ -171,7 +191,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         video_fps: float = DEFAULT_VIDEO_FPS,
         processor: Any | None = None,
     ) -> None:
-        self._model_path_or_name = model_path_or_name
+        self._model_path_or_name = _resolve_model_path(model_path_or_name)
         self._max_frames = max_frames
         self._video_fps = video_fps
         self._processor = processor

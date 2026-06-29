@@ -153,7 +153,7 @@ MiniCPM-V-4.5 当前的训练帧抽取契约是：
 python3 pipeline/scripts/dataset_manager.py
 
 # ② 加载 MiniCPM processor，生成子视频与元数据（需 GPU/Linux 环境）
-python3 pipeline/scripts/subvideo_builder.py --model models/minicpm-v-4.5 --extract-frames
+python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5 --extract-frames
 
 # ③ 子视频元数据 → ShareGPT 训练 JSON
 python3 pipeline/scripts/training_sample_builder.py
@@ -175,7 +175,7 @@ python3 pipeline/scripts/calibration.py
 
 | 参数                   | 必传？             | 默认值                  | 说明                                                |
 | -------------------- | --------------- | -------------------- | ------------------------------------------------- |
-| `--model`            | **是**（模型路径非默认时） | `models/minicpmv4_5` | MiniCPM-V 4.5 模型目录；实际路径通常为 `models/minicpm-v-4.5` |
+| `--model`            | **是**（模型路径非默认时） | `models/minicpmv4_5` | MiniCPM-V 4.5 模型目录；也兼容 `models/minicpm_v_4_5` 等本地别名 |
 | `--preprocessor`     | 否               | `minicpm`            | 当前只有 MiniCPM，不传即为默认值                              |
 | `--extract-frames`   | 否               | 不抽帧                  | 加上后同时抽取子视频的采样帧图到 `data/04_frames/`                |
 | `--fast`             | 否               | 完整模式                 | 快速模式：仅更新元数据，不重新编码 mp4                             |
@@ -185,7 +185,7 @@ python3 pipeline/scripts/calibration.py
 > **注意事项**：
 >
 > - 步骤 ② 依赖 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。
-> - `--model` 的默认路径是 `models/minicpmv4_5`，但实际模型文件夹通常是 `models/minicpm-v-4.5`，首次运行时建议显式指定。
+> - `--model` 的默认路径是 `models/minicpmv4_5`。如果本地目录名不同，建议显式指定；代码会兼容常见的 `minicpm_v_4_5` / `minicpm-v-4.5` 别名。
 > - 步骤 ② 完成后，后续步骤才可继续。步骤 ③ 会拒绝旧的或不完整 `processor_fingerprint`，避免历史 `subvideos_meta.json` 混入训练。
 > - 步骤 ② 默认会编码 mp4 子视频到 `data/03_subvideos/`，可通过 `--fast` 跳过（仅更新元数据）。
 
