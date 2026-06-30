@@ -10,10 +10,7 @@ from typing import Any
 
 from .config import (
     ALLOWED_TYPE_LABELS,
-    BASELINE_PROMPTS,
     DEFAULT_MODEL_DIRS,
-    FEWSHOT_EXAMPLES,
-    FEWSHOT_INTERVAL_EXAMPLES,
     FRACTURE_CLASSES,
     GROUND_TRUTH_CSV,
     GROUND_TRUTH_JSON,
@@ -21,10 +18,10 @@ from .config import (
     PROMPT_INSTRUCTION,
     PROMPT_PRESETS,
     SPLIT_DIR,
-    STRICT_PROMPTS,
     STRICT_INTERVAL_PROMPT,
     SUPPORTED_FOLDS,
     SUPPORTED_SPLITS,
+    SUPPORTED_TASKS,
     TEST_INPUTS_JSON,
     TEST_GROUND_TRUTH_JSON,
     TIME_THRESHOLD_SEC,
@@ -93,27 +90,24 @@ def parse_response_payload(text: Any) -> tuple[bool, dict[str, Any] | None]:
 
 
 def resolve_prompt_preset(task: str, prompt_preset: str) -> str:
+    """Resolve the effective prompt preset.
+
+    Only strict_interval is supported. It is used for the joint task; time/type
+    tasks are evaluated from the joint output schema.
+    """
     validate_task(task)
     validate_prompt_preset(prompt_preset)
-    if prompt_preset == "fewshot" and task == "time":
-        return "strict"
-    if prompt_preset in ("strict_interval", "fewshot_interval") and task in ("time", "type"):
-        return "strict"
-    return prompt_preset
+    return "strict_interval"
 
 
-def build_prompt(task: str, prompt_preset: str = "strict") -> tuple[str, str]:
+def build_prompt(task: str, prompt_preset: str = "strict_interval") -> tuple[str, str]:
+    """Build the prompt text for the given task.
+
+    Always returns the strict_interval joint prompt, regardless of the task.
+    The task parameter is kept for interface compatibility and validation.
+    """
     resolved_prompt_preset = resolve_prompt_preset(task, prompt_preset)
-    if resolved_prompt_preset == "baseline":
-        task_prompt = BASELINE_PROMPTS[task]
-    elif resolved_prompt_preset in ("strict_interval", "fewshot_interval"):
-        task_prompt = STRICT_INTERVAL_PROMPT["joint"]
-        if resolved_prompt_preset == "fewshot_interval":
-            task_prompt = f"{task_prompt}\n{FEWSHOT_INTERVAL_EXAMPLES}"
-    else:
-        task_prompt = STRICT_PROMPTS[task]
-        if resolved_prompt_preset == "fewshot":
-            task_prompt = f"{task_prompt}\n{FEWSHOT_EXAMPLES[task]}"
+    task_prompt = STRICT_INTERVAL_PROMPT["joint"]
     return resolved_prompt_preset, f"{PROMPT_INSTRUCTION}\n{task_prompt}"
 
 
@@ -1071,7 +1065,7 @@ def validate_fold(fold: int) -> None:
 
 
 def validate_task(task: str) -> None:
-    if task not in BASELINE_PROMPTS:
+    if task not in SUPPORTED_TASKS:
         raise ValueError(f"Unsupported task: {task}")
 
 

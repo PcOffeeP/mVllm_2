@@ -316,7 +316,7 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 }
 ```
 
-五字段协议通过 `strict_interval` 或 `fewshot_interval` prompt preset 启用，与训练数据的 assistant 输出格式一致。
+五字段协议通过 `strict_interval` prompt preset 启用，与训练数据的 assistant 输出格式一致。
 
 **合法组合规则**：
 
@@ -326,6 +326,16 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 - `confidence` 始终为 0\~1 数字
 
 ### 推理
+
+#### 任务类型
+
+`--task` 参数指定推理时模型需要输出的字段，支持 3 种任务：
+
+| Task | 输出字段 | 说明 |
+|------|---------|------|
+| `time` | `time` / `fracture_between`、`has_fracture` | 仅定位断裂时间/区间，不要求识别断裂类型 |
+| `type` | `type` | 仅分类断裂类型，不要求时间定位 |
+| `joint` | 全部字段 | 同时定位断裂时间/区间并识别断裂类型，是主要评估任务 |
 
 从项目根目录（`TensileAgent/`）运行：
 
@@ -363,6 +373,7 @@ python3 -m finetune.validation.run_inference \
     --fold 0 \
     --model-dir LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
     --output results/joint_fold0.jsonl
+
 ```
 
 **支持的 split**: `fold_0_val`, `fold_1_val`, `fold_2_val`, `test`

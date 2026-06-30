@@ -46,7 +46,7 @@ TIME_THRESHOLD_SEC = 2.0
 SUPPORTED_FOLDS = (0, 1, 2)
 SUPPORTED_SPLITS = ("fold_0_val", "fold_1_val", "fold_2_val", "test")
 SUPPORTED_TASKS = ("time", "type", "joint")
-PROMPT_PRESETS = ("baseline", "strict", "fewshot", "strict_interval", "fewshot_interval")
+PROMPT_PRESETS = ("strict_interval",)
 
 FRACTURE_CLASSES = (
     "韧性断裂",
@@ -67,36 +67,9 @@ NON_FRACTURE_CLASSES = (
 ALLOWED_TYPE_LABELS = FRACTURE_CLASSES + NON_FRACTURE_CLASSES
 
 PROMPT_INSTRUCTION = '任务：分析视频中材料的断裂。要求：仅以JSON格式输出，严禁任何文字解释。'
-BASELINE_PROMPTS = {
-    "time": '请仅输出断裂时间，格式为 {"time": "..."}。若未断裂、未夹紧、视频异常或无法判断，请输出 {"time": null}。',
-    "type": '请仅输出断裂模式，格式为 {"type": "..."}。',
-    "joint": '请仅输出断裂时间和断裂模式，格式为 {"time": "...", "type": "..."}。若无可用时间则 time 设为 null。',
-}
 
 TEST_INPUTS_JSON = DATA_DIR_ROOT / "06_merged" / "test_inputs.json"
 TEST_GROUND_TRUTH_JSON = DATA_DIR_ROOT / "06_merged" / "test_ground_truth.json"
-
-STRICT_PROMPTS = {
-    "time": (
-        '请仅输出单个 JSON 对象，格式严格为 {"time": "<float>s"} 或 {"time": null}。'
-        '只有在样本属于 未断裂、未夹紧、视频异常 或 无法判断 时，才允许输出 null。'
-        '禁止输出日期、年月日、时分秒、帧序号、clip/frame/image 等描述。'
-    ),
-    "type": (
-        '请仅输出单个 JSON 对象，格式严格为 {"type": "..."}。'
-        'type 只能从以下闭集标签中选择一个：'
-        "韧性断裂 / 脆性断裂 / 界面脱粘 / 齐根断裂 / 界面脱粘、齐根断裂 / 爆炸性断裂 / 半脆半韧断裂 / 未断裂 / 未夹紧 / 视频异常。"
-        '禁止输出闭集之外的标签或解释性文字。'
-    ),
-    "joint": (
-        '请仅输出单个 JSON 对象，格式严格为 {"time": "<float>s", "type": "..."} 或 {"time": null, "type": "..."}。'
-        'time 只能是带 s 后缀的秒数或 null；禁止输出日期、帧序号、clip/frame/image 等描述。'
-        '只有在样本属于 未断裂、未夹紧、视频异常 或 无法判断 时，time 才允许为 null。'
-        'type 只能从以下闭集标签中选择一个：'
-        "韧性断裂 / 脆性断裂 / 界面脱粘 / 齐根断裂 / 界面脱粘、齐根断裂 / 爆炸性断裂 / 半脆半韧断裂 / 未断裂 / 未夹紧 / 视频异常。"
-        '禁止输出数组、多行 JSON 或闭集之外的标签。'
-    ),
-}
 
 STRICT_INTERVAL_PROMPT = {
     "joint": (
@@ -123,28 +96,6 @@ STRICT_INTERVAL_PROMPT = {
         '只输出单个 JSON 对象，不要有任何其他文字。'
     ),
 }
-
-FEWSHOT_EXAMPLES = {
-    "type": (
-        '示例1输出：{"type": "韧性断裂"}\n'
-        '示例2输出：{"type": "视频异常"}'
-    ),
-    "joint": (
-        '示例1输出：{"time": "38.65s", "type": "韧性断裂"}\n'
-        '示例2输出：{"time": null, "type": "视频异常"}'
-    ),
-}
-
-FEWSHOT_INTERVAL_EXAMPLES = (
-    '示例1（正常断裂）：\n'
-    '{"has_fracture": true, "fracture_between": [3, 4], "type": "韧性断裂", "location": "inside_gauge", "confidence": 0.95}\n'
-    '示例2（未断裂）：\n'
-    '{"has_fracture": false, "fracture_between": null, "type": "未断裂", "location": null, "confidence": 0.98}\n'
-    '示例3（视频异常）：\n'
-    '{"has_fracture": null, "fracture_between": null, "type": "视频异常", "location": null, "confidence": 0.70}\n'
-    '示例4（脆性断裂，outside_gauge）：\n'
-    '{"has_fracture": true, "fracture_between": [5, 6], "type": "脆性断裂", "location": "outside_gauge", "confidence": 0.88}'
-)
 
 LABEL_ALIASES = {
     "grip-end fracture": "齐根断裂",

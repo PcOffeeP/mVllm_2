@@ -76,7 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-dir", default=None, help="Merged model directory. Defaults to configured path for the fold.")
     parser.add_argument("--model-name", default=None, help="Model name to embed in output records. Defaults to directory basename.")
     parser.add_argument("--video-root", default=str(DEFAULT_VIDEO_ROOT), help="Root directory containing the videos.")
-    parser.add_argument("--prompt-preset", default="strict", choices=PROMPT_PRESETS, help="Prompt strategy preset.")
+    parser.add_argument("--prompt-preset", default="strict_interval", choices=PROMPT_PRESETS, help="Prompt strategy preset.")
     parser.add_argument("--output", required=True, help="JSONL output path.")
     parser.add_argument("--max-samples", type=int, default=None, help="Limit samples for a dry-run.")
     return parser.parse_args()
@@ -404,9 +404,6 @@ def main() -> None:
     video_root = Path(args.video_root)
     output_path = Path(args.output)
     ensure_parent_dir(output_path)
-
-    if resolved_prompt_preset != args.prompt_preset:
-        print(f"[info] task={args.task} does not support fewshot directly, fallback to prompt preset={resolved_prompt_preset}")
 
     full_mappings = _load_full_frame_mappings(SUBVIDEOS_META_JSON)
     print(f"[info] loaded {len(full_mappings)} full video frame mappings from subvideos_meta.json")
