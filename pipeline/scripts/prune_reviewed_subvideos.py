@@ -101,11 +101,14 @@ def prune_reviewed_subvideos(
     report_path: Path,
     frame_dir_root: Path = FRAME_DIR_DEFAULT,
     project_root: Path = PROJECT_ROOT,
+    allow_partial_report: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """
     执行人工审核后的 metadata 清洗。
 
     返回 (kept_entries, dropped_entries, inconsistent_entries)。
+    若存在 inconsistent 条目，默认不写出 output_meta；指定
+    allow_partial_report=True 时仅写出 kept 条目。
     """
     subvideos, top_level = _load_subvideos(subvideos_meta)
 
@@ -149,7 +152,14 @@ def prune_reviewed_subvideos(
     )
 
     if inconsistent:
-        # 不一致状态下不写出 reviewed metadata，避免下游误用。
+        # 不一致状态下默认不写出 reviewed metadata，避免下游误用。
+        # 显式开启 --allow-partial-report 时，仅写出保留的条目供人工复核。
+        if allow_partial_report:
+            output_payload = dict(top_level)
+            output_payload["subvideos"] = kept
+            output_meta.write_text(
+                json.dumps(output_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
         return kept, dropped, inconsistent
 
     output_payload = dict(top_level)
@@ -165,6 +175,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="人工审核后清洗子视频元数据")
     parser.add_argument(
         "--subvideos-meta",
+        "--input-meta",
+        dest="subvideos_meta",
+        metavar="PATH",
         type=Path,
         default=SUBVIDEOS_META_DEFAULT,
         help="输入子视频元数据路径（默认：data/07_metadata/subvideos_meta.json）",
@@ -193,6 +206,11 @@ def main() -> int:
         default=PROJECT_ROOT,
         help="项目根目录，用于解析相对路径",
     )
+    parser.add_argument(
+        "--allow-partial-report",
+        action="store_true",
+        help="存在不一致样本时仍写出仅含 kept 条目的 output_meta",
+    )
     args = parser.parse_args()
 
     if not args.subvideos_meta.exists():
@@ -205,6 +223,7 @@ def main() -> int:
         report_path=args.report,
         frame_dir_root=args.frame_dir,
         project_root=args.project_root,
+        allow_partial_report=args.allow_partial_report,
     )
 
     print(

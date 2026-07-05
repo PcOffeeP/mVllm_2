@@ -290,6 +290,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="修复人工审核后的不一致媒体状态")
     parser.add_argument(
         "--subvideos-meta",
+        "--input-meta",
+        dest="subvideos_meta",
+        metavar="PATH",
         type=Path,
         default=SUBVIDEOS_META_DEFAULT,
         help="输入子视频元数据路径（默认：data/07_metadata/subvideos_meta.json）",

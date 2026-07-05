@@ -31,6 +31,7 @@ def _reviewed_sub(has_fracture: bool) -> dict:
         "has_fracture": has_fracture,
         "has_fracture_canonical": has_fracture,
         "selected_splits": ["fold_0_train"],
+        "processor_fingerprint": "minicpmv4_5:test:max_frames=8:video_fps=2:backend=transformers",
     }
 
 
@@ -302,6 +303,59 @@ def test_quality_check_single_error_for_corrupt_meta(tmp_path, monkeypatch):
         if e["check"] == "reviewed_ratio" and e["detail"] == "reviewed_metadata_invalid"
     ]
     assert len(reviewed_metadata_errors) == 1
+
+
+def test_quality_check_rejects_test_sharegpt_file(tmp_path, monkeypatch):
+    """Patch: merged 目录下不应存在 test.json。"""
+    merged = _make_merged_dir(tmp_path)
+    (merged / "test.json").write_text("[]", encoding="utf-8")
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(meta, {"subvideos": [_reviewed_sub(True), _reviewed_sub(False)]})
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "test_sharegpt" and e["detail"] == "test_sharegpt_file_exists"
+        for e in errors
+    )
+
+
+def test_quality_check_rejects_mock_processor_fingerprint(tmp_path, monkeypatch):
+    """Patch: label_reviewed 元数据中的 processor_fingerprint 不能含 mock。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(True),
+                    "processor_fingerprint": "mock:processor",
+                },
+                _reviewed_sub(False),
+            ]
+        },
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "processor_fingerprint"
+        and "mock" in e["detail"].lower()
+        for e in errors
+    )
 
 
 def test_reviewed_ratio_skips_unknown_and_val_only_splits(tmp_path, monkeypatch):

@@ -368,13 +368,33 @@ def _validate_fracture_between(
                 )
 
 
+def _validate_no_test_sharegpt(
+    merged_dir: Path,
+    errors: list[dict[str, Any]],
+) -> None:
+    """训练产物中不应存在 test ShareGPT 文件。"""
+    test_path = merged_dir / "test.json"
+    if test_path.exists():
+        errors.append(
+            {
+                "check": "test_sharegpt",
+                "detail": "test_sharegpt_file_exists",
+                "path": str(test_path),
+            }
+        )
+
+
 def _validate_processor_fingerprints(
     merged_dir: Path,
+    subvideos_meta_path: Path,
     errors: list[dict[str, Any]],
     warnings: list[dict[str, Any]],
 ) -> None:
     fingerprints: set[str] = set()
     mock_fingerprints: set[str] = set()
+    missing_fingerprints: list[str] = []
+
+    # 1. 扫描 merged JSON（若其中仍保留 fingerprint 字段）
     for path in sorted(merged_dir.glob("*.json")):
         if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
             continue
@@ -386,12 +406,62 @@ def _validate_processor_fingerprints(
                 continue
             fp = sample.get("processor_fingerprint")
             if fp is None:
-                continue  # ShareGPT 格式不含 processor_fingerprint，跳过
+                continue
             if _is_mock_fingerprint(fp):
                 mock_fingerprints.add(fp)
             else:
                 fingerprints.add(fp)
 
+    # 2. 以 label_reviewed 子视频元数据中的 fingerprint 为准
+    label_subs: list[dict[str, Any]] | None = None
+    if subvideos_meta_path.exists():
+        try:
+            raw = _load_json(subvideos_meta_path)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raw = None
+        if isinstance(raw, dict):
+            label_subs = raw.get("subvideos")
+        elif isinstance(raw, list):
+            label_subs = raw
+
+    if isinstance(label_subs, list):
+        for sub in label_subs:
+            if not isinstance(sub, dict):
+                continue
+            fp = sub.get("processor_fingerprint")
+            sub_id = sub.get("subvideo_id", "<unknown>")
+            if fp is None or not isinstance(fp, str) or not fp.strip():
+                missing_fingerprints.append(sub_id)
+                continue
+            if _is_mock_fingerprint(fp):
+                mock_fingerprints.add(fp)
+            else:
+                fingerprints.add(fp)
+    elif subvideos_meta_path.exists():
+        warnings.append(
+            {
+                "check": "processor_fingerprint",
+                "detail": "subvideos_meta_has_no_subvideo_list",
+                "path": str(subvideos_meta_path),
+            }
+        )
+    else:
+        warnings.append(
+            {
+                "check": "processor_fingerprint",
+                "detail": "subvideos_meta_missing_for_fingerprint_check",
+                "path": str(subvideos_meta_path),
+            }
+        )
+
+    if missing_fingerprints:
+        errors.append(
+            {
+                "check": "processor_fingerprint",
+                "detail": "missing_or_empty_processor_fingerprint",
+                "subvideo_ids": missing_fingerprints,
+            }
+        )
     if mock_fingerprints:
         errors.append(
             {
@@ -409,6 +479,14 @@ def _validate_processor_fingerprints(
                     "fingerprints": sorted(fingerprints),
                 }
             )
+    elif isinstance(label_subs, list) and label_subs:
+        errors.append(
+            {
+                "check": "processor_fingerprint",
+                "detail": "no_valid_processor_fingerprints_found",
+                "path": str(subvideos_meta_path),
+            }
+        )
 
 
 def _is_positive_sample(sample: dict[str, Any]) -> bool:
@@ -716,7 +794,8 @@ def run_quality_check(
         _validate_media_paths(merged_dir, test_inputs, errors, warnings, project_root)
         _validate_field_combinations(merged_dir, errors, warnings)
         _validate_fracture_between(merged_dir, errors, warnings)
-        _validate_processor_fingerprints(merged_dir, errors, warnings)
+        _validate_no_test_sharegpt(merged_dir, errors)
+        _validate_processor_fingerprints(merged_dir, subvideos_meta_path, errors, warnings)
         _validate_train_ratios(merged_dir, errors, warnings)
         _validate_no_cross_split_leakage(merged_dir, errors, warnings)
         _validate_test_input_isolation(merged_dir, errors, warnings)

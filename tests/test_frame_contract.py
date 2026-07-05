@@ -392,3 +392,54 @@ def test_label_review_contract_detects_frame_count_mismatch(tmp_path: Path, monk
     assert len(failed) == 1
     assert any("frame_file_count_mismatch" in r for r in failed[0]["reasons"])
     assert not out_path.exists()
+
+
+def test_label_review_fails_empty_actual_frame_mapping(tmp_path: Path) -> None:
+    from pipeline.scripts.review_subvideo_labels import review_subvideo_labels
+
+    subvideo_id = "empty_mapping"
+    data_dir = tmp_path / "data"
+    mp4 = data_dir / "03_subvideos" / f"{subvideo_id}.mp4"
+    frame_dir = data_dir / "04_frames" / subvideo_id
+    mp4.parent.mkdir(parents=True, exist_ok=True)
+    mp4.write_bytes(b"mp4")
+    frame_dir.mkdir(parents=True, exist_ok=True)
+    (frame_dir / "frame_0000.jpg").write_bytes(b"jpg")
+
+    meta_path = tmp_path / "subvideos_meta.reviewed.json"
+    out_path = tmp_path / "subvideos_meta.label_reviewed.json"
+    report_path = tmp_path / "report.json"
+    video_meta_path = tmp_path / "video_meta.json"
+
+    sub = {
+        "subvideo_id": subvideo_id,
+        "source_video": "video_0001",
+        "video_path": f"data/03_subvideos/{subvideo_id}.mp4",
+        "crop_type": "full_pos",
+        "has_fracture": True,
+        "has_fracture_canonical": True,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "actual_frame_mapping": [],
+        "processor_fingerprint": "minicpmv4_5:test:max_frames=8:video_fps=2:backend=transformers",
+    }
+    meta_path.write_text(json.dumps({"subvideos": [sub]}), encoding="utf-8")
+    video_meta_path.write_text(json.dumps([{
+        "video_id": "video_0001",
+        "type": "韧性断裂",
+        "has_fracture_canonical": True,
+        "location_canonical": "inside_gauge",
+    }]), encoding="utf-8")
+
+    passed, failed = review_subvideo_labels(
+        meta_path,
+        video_meta_path,
+        out_path,
+        report_path,
+        frame_dir_root=tmp_path / "data" / "04_frames",
+        project_root=tmp_path,
+    )
+
+    assert len(failed) == 1
+    assert any("empty_actual_frame_mapping" in r for r in failed[0]["reasons"])
+    assert not out_path.exists()

@@ -114,6 +114,7 @@ def _validate_media_contract(
     sub: dict[str, Any],
     frame_dir_root: Path,
     project_root: Path,
+    warnings: list[str],
 ) -> list[str]:
     """校验媒体契约，返回失败原因列表。"""
     errors: list[str] = []
@@ -132,6 +133,8 @@ def _validate_media_contract(
         errors.append("missing_processor_fingerprint")
     elif _is_mock_fingerprint(fingerprint):
         errors.append(f"mock_or_theoretical_fingerprint: {fingerprint}")
+    elif not sub.get("processor_info"):
+        warnings.append("processor_info_missing")
 
     video_path_rel = sub.get("video_path", "")
     video_path = (
@@ -146,6 +149,8 @@ def _validate_media_contract(
     if not frame_dir.exists():
         errors.append(f"missing_frame_dir: {frame_dir.name}")
     else:
+        if "frame_paths" not in sub:
+            warnings.append("frame_paths_field_missing")
         frame_files = sorted(frame_dir.glob("frame_*.jpg"))
         if len(frame_files) != len(mapping):
             errors.append(
@@ -308,6 +313,7 @@ def _validate_subvideo(
     video_meta: dict[str, Any],
     frame_dir_root: Path,
     project_root: Path,
+    warnings: list[str],
 ) -> dict[str, Any]:
     """单条子视频完整校验，返回包含 status 与 reasons 的字典。"""
     subvideo_id = sub.get("subvideo_id", "<unknown>")
@@ -326,7 +332,7 @@ def _validate_subvideo(
         result["reasons"].append("missing_source_video_meta")
         return result
 
-    errors = _validate_media_contract(sub, frame_dir_root, project_root)
+    errors = _validate_media_contract(sub, frame_dir_root, project_root, warnings)
     if errors:
         result["status"] = "failed"
         result["reasons"].extend(errors)
@@ -358,21 +364,26 @@ def review_subvideo_labels(
     report_path: Path,
     frame_dir_root: Path = FRAME_DIR_DEFAULT,
     project_root: Path = _PROJECT_ROOT,
+    write_invalid_output: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
     执行标签复检。
 
     返回 (passed_results, failed_results)。
-    若存在失败项，不写出 output_meta。
+    若存在失败项，默认不写出 output_meta；指定 write_invalid_output=True 时
+    仍会写出（包含失败原因标注，便于调试）。
     """
     subvideos, top_level = _load_subvideos(subvideos_meta)
     video_meta = _load_video_meta(video_meta_path)
 
     passed: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
+    warnings: list[str] = []
 
     for sub in subvideos:
-        result = _validate_subvideo(sub, video_meta, frame_dir_root, project_root)
+        result = _validate_subvideo(
+            sub, video_meta, frame_dir_root, project_root, warnings
+        )
         if result["status"] == "ok":
             passed.append(result)
         else:
@@ -394,6 +405,7 @@ def review_subvideo_labels(
         "status_counts": status_counts,
         "crop_type_counts": crop_counts,
         "source_type_counts": source_type_counts,
+        "warnings": warnings,
         "failed": failed,
         "passed_subvideo_ids": [r["subvideo_id"] for r in passed],
     }
@@ -404,6 +416,22 @@ def review_subvideo_labels(
     )
 
     if failed:
+        if write_invalid_output:
+            output_meta.parent.mkdir(parents=True, exist_ok=True)
+            output_payload = dict(top_level)
+            failures_by_id = {item["subvideo_id"]: item["reasons"] for item in failed}
+            annotated_subvideos = []
+            for sub in subvideos:
+                annotated = dict(sub)
+                reasons = failures_by_id.get(annotated.get("subvideo_id"))
+                if reasons:
+                    annotated["__review_failed_reasons"] = reasons
+                annotated_subvideos.append(annotated)
+            output_payload["subvideos"] = annotated_subvideos
+            output_meta.write_text(
+                json.dumps(output_payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
         return passed, failed
 
     output_meta.parent.mkdir(parents=True, exist_ok=True)
@@ -420,6 +448,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="子视频标签复检")
     parser.add_argument(
         "--subvideos-meta",
+        "--input-meta",
+        dest="subvideos_meta",
+        metavar="PATH",
         type=Path,
         default=SUBVIDEOS_META_DEFAULT,
         help="输入子视频元数据路径（默认：data/07_metadata/subvideos_meta.reviewed.json）",
@@ -454,6 +485,11 @@ def main() -> int:
         default=_PROJECT_ROOT,
         help="项目根目录，用于解析相对路径",
     )
+    parser.add_argument(
+        "--write-invalid-output",
+        action="store_true",
+        help="即使校验失败也写出 output_meta（用于调试）",
+    )
     args = parser.parse_args()
 
     if not args.subvideos_meta.exists():
@@ -470,6 +506,7 @@ def main() -> int:
         report_path=args.report,
         frame_dir_root=args.frame_dir,
         project_root=args.project_root,
+        write_invalid_output=args.write_invalid_output,
     )
 
     total = len(passed) + len(failed)
