@@ -725,6 +725,11 @@ def main():
     parser.add_argument("--test-ratio", type=float, default=0.2)
     parser.add_argument("--n-folds", type=int, default=3)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--debug-report",
+        action="store_true",
+        help="生成 inventory_report.json、stratified_split_decision_log.json、frame_index_validation.json 等诊断报告",
+    )
     parser.add_argument("--validation-samples", type=int, default=8)
     args = parser.parse_args()
 
@@ -744,14 +749,17 @@ def main():
     write_json(video_meta_path, records)
     print(f"写入: {video_meta_path} ({len(records)} 条)")
 
-    print("0-based 帧号校验...")
-    validations = validate_frames(
-        records, args.video_dir, args.metadata_dir,
-        n_samples=args.validation_samples, seed=args.seed,
-    )
-    validation_path = args.metadata_dir / "frame_index_validation.json"
-    write_json(validation_path, validations)
-    print(f"写入: {validation_path} ({len(validations)} 条抽样)")
+    if args.debug_report:
+        print("0-based 帧号校验...")
+        validations = validate_frames(
+            records, args.video_dir, args.metadata_dir,
+            n_samples=args.validation_samples, seed=args.seed,
+        )
+        validation_path = args.metadata_dir / "frame_index_validation.json"
+        write_json(validation_path, validations)
+        print(f"写入: {validation_path} ({len(validations)} 条抽样)")
+    else:
+        print("跳过诊断报告：未传入 --debug-report")
 
     print(
         f"分层划分: test_ratio={args.test_ratio}, n_folds={args.n_folds}, seed={args.seed}"
@@ -780,15 +788,18 @@ def main():
         write_json(split_path, data)
         print(f"写入: {split_path} ({len(ids)} 条)")
 
-    decision_path = args.metadata_dir / "stratified_split_decision_log.json"
-    write_json(decision_path, decision_log)
-    print(f"写入分层决策日志: {decision_path}")
+    if args.debug_report:
+        decision_path = args.metadata_dir / "stratified_split_decision_log.json"
+        write_json(decision_path, decision_log)
+        print(f"写入分层决策日志: {decision_path}")
 
-    print("生成库存报告...")
-    inventory_report = build_inventory_report(records, splits, decision_log)
-    inventory_path = args.metadata_dir / "inventory_report.json"
-    write_json(inventory_path, inventory_report)
-    print(f"写入库存报告: {inventory_path}")
+        print("生成库存报告...")
+        inventory_report = build_inventory_report(records, splits, decision_log)
+        inventory_path = args.metadata_dir / "inventory_report.json"
+        write_json(inventory_path, inventory_report)
+        print(f"写入库存报告: {inventory_path}")
+    else:
+        print("跳过分层决策日志与库存报告：未传入 --debug-report")
 
     print("生成测试清单 SHA-256...")
     manifest = build_test_manifest_sha256(splits)

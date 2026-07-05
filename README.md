@@ -87,95 +87,108 @@ pip install -e ./LlamaFactory
 
 ## 数据流水线
 
-从原始 CSV 标注到可训练的 ShareGPT JSON，共 **7 步**：
+从原始 CSV 标注到可训练的 ShareGPT JSON，主链路分为 **8 步**：
 
 ```
 原始视频 + CSV 标注
     │
     ├─① dataset_manager.py     读取 CSV → 构建 video_meta.json → 3-fold 分层划分
-    │                           输出: data/05_splits/, data/07_metadata/video_meta.json
+    │                           主输出: data/05_splits/, data/07_metadata/video_meta.json
     │
-    ├─② subvideo_builder.py    加载 MiniCPM processor → 生成候选子视频
-    │    3 阶段                  阶段1: 生成候选清单（全时长 + focus 窗口 + 负样本）
-    │                           阶段2: 按正:负 1:1~2:1 选样
-    │                           阶段3: 编码子视频 → data/03_subvideos/
-    │                           输出: data/07_metadata/subvideos_meta.json
+    ├─② subvideo_builder.py    跳过 test，仅为 train/val 生成训练候选子视频包
+    │                           输出: data/03_subvideos/, data/04_frames/,
+    │                                 data/07_metadata/subvideos_meta.json
     │
-    ├─③ training_sample_builder.py  子视频元数据 → ShareGPT JSON
+    ├─③ 人工审核                 人工查看 mp4 与采样帧图片，删除脏样本的 mp4 和帧目录
+    │
+    ├─④ prune_reviewed_subvideos.py
+    │                           根据人工删除结果清洗 subvideos_meta
+    │                           输出: data/07_metadata/subvideos_meta.reviewed.json
+    │
+    ├─⑤ review_subvideo_labels.py
+    │                           复检 full/focus/negative 等样本标签与帧映射
+    │                           输出: data/07_metadata/subvideos_meta.label_reviewed.json
+    │
+    ├─⑥ training_sample_builder.py  复检后的子视频元数据 → ShareGPT JSON
     │                                 输出: data/06_merged/fold_*_train.json / val.json
     │
-    ├─④ validate_no_oob.py     校验 fracture_between 与 start/end_frame 一致性
-    │
-    ├─⑤ quality_check.py       强制质量检查（路径存在性、字段合法性、leakage 检测等）
+    ├─⑦ validate_no_oob.py + quality_check.py
+    │                           校验 fracture_between、路径、字段、leakage、正负比例等
     │                           输出: data/07_metadata/quality_check_report.json
     │
-    ├─⑥ freeze_data_version.py 冻结数据版本（git commit、配置哈希、processor 指纹等）
+    ├─⑧ freeze_data_version.py 冻结数据版本（git commit、配置哈希、processor 指纹等）
     │                           输出: data/07_metadata/data_version_lock.json
     │
-    └─⑦ calibration.py         （可选）校验预处理适配层与 LLaMA-Factory 真实 batch 加载一致
+    └─可选 calibration.py       校验预处理适配层与 LLaMA-Factory 真实 batch 加载一致
                                输出: data/07_metadata/calibration_report.json
 ```
 
+步骤 ① 的 `inventory_report.json`、`stratified_split_decision_log.json` 和
+`frame_index_validation.json` 属于诊断/审计产物，不应成为训练数据主链路的必需输入。
+主链路只依赖 `video_meta.json` 与 `data/05_splits/` 下的 split 文件。
+
 ### 子视频元信息
 
-步骤 ② 生成的 `subvideos_meta.json` 记录的是“训练时真正会用到的子视频契约”，不是简单的裁剪日志。关键字段包括：
+步骤 ② 生成的 `subvideos_meta.json` 记录的是训练候选子视频契约，不是简单的裁剪日志。关键字段包括：
 
 - `video_path`：子视频实际文件路径
 - `start_time` / `end_time` / `start_frame` / `end_frame` / `duration`
 - `crop_type`、`source_video`、`selection_reason`
 - `has_fracture`、`fracture_between`、`type`、`location`
 - `processor_fingerprint`、`processor_info`
-- `actual_frame_mapping`、`sampled_frames`
+- `actual_frame_mapping`、`sampled_frames`、`frame_paths`
 
 其中最关键的是 `actual_frame_mapping`。它同时保留两套坐标：
 
 - `original_frame` / `timestamp`：映射回源视频后的全局帧号和时间戳
 - `clip_frame` / `clip_timestamp`：裁剪后子视频内部的帧号和时间戳
 
-如果使用 `--extract-frames`，`frame_paths` 中的图片会按 `actual_frame_mapping` 逐帧导出：裁剪子视频优先使用 `clip_frame`，完整视频使用同源坐标。图片数量必须和 `actual_frame_mapping` 条数一致，不再通过 ffmpeg `fps` 滤镜重新近似采样。
+步骤 ② 默认应导出采样帧图片到 `data/04_frames/<subvideo_id>/`，`frame_paths` 中的图片按 `actual_frame_mapping` 逐帧导出：裁剪子视频优先使用 `clip_frame`，完整视频使用同源坐标。图片数量必须和 `actual_frame_mapping` 条数一致，不再通过 ffmpeg `fps` 滤镜重新近似采样。
 
 当前流程不会再用 PyAV 伪造这份映射，也不会在 processor 失败时静默回退。真实 MiniCPM processor 不可用时，子视频会直接失败，不会进入训练链路。
 
-### 尾部污染人工复核
+### 人工审核与标签复检
 
-如果原视频末尾包含网站片尾、广告、水印或其他无关画面，且断裂标签落在最后几个采样帧之间，需要先剔除这些脏子视频，再生成训练 JSON。
+子视频和标签由代码生成，仍可能受到脏片尾、额外图像数据、非预期抽帧或标签边界偏差影响。因此 ShareGPT 训练 JSON 生成前必须经过人工审核和标签复检。
 
-先筛出需要复核的高风险子视频：
+人工审核以 `data/03_subvideos/*.mp4` 与 `data/04_frames/<subvideo_id>/` 为准：
 
-```bash
-python3 pipeline/scripts/audit_tail_contamination.py
-```
+- 保留样本：mp4 与对应帧目录都存在。
+- 删除样本：人工同时删除该样本的 mp4 与对应帧目录。
+- 不一致状态：只删除 mp4 或只删除帧目录时，不允许继续清洗 metadata，必须先修复。
 
-脚本会生成：
+不要删除 `data/01_videos/` 下的源视频。完整视频样本也需要有可审核的 `data/03_subvideos/<subvideo_id>.mp4` 或等价审核媒体；如果完整视频样本有问题，只删除该样本自己的审核媒体和帧目录。
 
-- `data/07_metadata/tail_contamination_audit.jsonl`：人工决策清单
-- `data/08_review/tail_contamination/`：每个高风险子视频的末尾图片和 `meta.json`
-
-人工检查图片后，只需要修改清单中的 `decision` 字段：
-
-- `review`：默认状态，不处理
-- `drop`：只剔除这一条 `subvideo_id`
-- `drop_source`：剔除同一个 `source_video` 下的所有子视频
-
-应用决策时默认输出新文件，不覆盖原始 metadata：
+人工审核后运行：
 
 ```bash
-python3 pipeline/scripts/apply_tail_review_decisions.py \
-  --decisions data/07_metadata/tail_contamination_audit.jsonl \
-  --output-meta data/07_metadata/subvideos_meta.cleaned.json
+python3 pipeline/scripts/prune_reviewed_subvideos.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.json \
+  --output-meta data/07_metadata/subvideos_meta.reviewed.json
 ```
 
-确认结果后，可以用 cleaned metadata 生成训练 JSON，或加 `--in-place` 覆盖原 `subvideos_meta.json`。
-
-如果选择人工全量看每个子视频，也可以直接删除有问题样本对应的子视频文件或帧图片，然后让脚本按缺失媒体反向剔除 metadata：
+如果出现 mp4/帧目录只缺一份的情况，先运行修复脚本补齐缺失媒体，再重新执行清洗：
 
 ```bash
-python3 pipeline/scripts/prune_missing_review_media.py \
-  --require-frames \
-  --output-meta data/07_metadata/subvideos_meta.pruned.json
+python3 pipeline/scripts/repair_review_media.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.json
 ```
 
-这会生成 `data/07_metadata/missing_review_media_prune.jsonl` 作为剔除报告。注意不要删除 `data/01_videos/` 下的原始视频；如果完整视频样本有问题，删除它对应的 `data/04_frames/<subvideo_id>/` 帧目录即可。
+随后进行标签复检：
+
+```bash
+python3 pipeline/scripts/review_subvideo_labels.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.reviewed.json \
+  --output-meta data/07_metadata/subvideos_meta.label_reviewed.json
+```
+
+标签复检规则：
+
+- full 原视频样本必须与 `video_meta.json` 中的治理后标签一致。
+- focus 正样本必须能用 `actual_frame_mapping` 和原视频事件帧重新算出相同的 `fracture_between`。
+- negative 样本必须保持 `has_fracture=false`、`fracture_between=null`、`location=null`。
+- 每条保留样本必须有非空 `actual_frame_mapping`，帧数不超过 8，帧图片数量与映射数量一致。
+- `视频异常`、`未夹紧` 等特殊类型按标签治理语义单独校验。
 
 ### 帧契约
 
@@ -196,21 +209,32 @@ MiniCPM-V-4.5 当前的训练帧抽取契约是：
 python3 pipeline/scripts/dataset_manager.py
 
 # ② 加载 MiniCPM processor，生成子视频与元数据（需 GPU/Linux 环境）
-python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5 --extract-frames
+python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
 
-# ③ 子视频元数据 → ShareGPT 训练 JSON
-python3 pipeline/scripts/training_sample_builder.py
+# ③ 人工审核 data/03_subvideos/ 与 data/04_frames/，删除脏样本的 mp4 和帧目录
 
-# ④ 校验 fracture_between 与帧范围一致性
+# ④ 根据人工审核结果清洗 metadata
+python3 pipeline/scripts/prune_reviewed_subvideos.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.json \
+  --output-meta data/07_metadata/subvideos_meta.reviewed.json
+
+# ⑤ 复检子视频标签
+python3 pipeline/scripts/review_subvideo_labels.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.reviewed.json \
+  --output-meta data/07_metadata/subvideos_meta.label_reviewed.json
+
+# ⑥ 子视频元数据 → ShareGPT 训练 JSON
+python3 pipeline/scripts/training_sample_builder.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
+
+# ⑦ 校验 fracture_between、路径、字段、数据泄漏
 python3 scripts/validate_no_oob.py
-
-# ⑤ 强制质量检查（路径、字段、数据泄漏）
 python3 pipeline/scripts/quality_check.py
 
-# ⑥ 冻结数据版本
+# ⑧ 冻结数据版本
 python3 pipeline/scripts/freeze_data_version.py
 
-# ⑦ （可选）校准检查
+# 可选：校准检查
 python3 pipeline/scripts/calibration.py
 ```
 
@@ -220,7 +244,7 @@ python3 pipeline/scripts/calibration.py
 | -------------------- | --------------- | -------------------- | ------------------------------------------------- |
 | `--model`            | **是**（模型路径非默认时） | `models/minicpmv4_5` | MiniCPM-V 4.5 模型目录；也兼容 `models/minicpm_v_4_5` 等本地别名 |
 | `--preprocessor`     | 否               | `minicpm`            | 当前只有 MiniCPM，不传即为默认值                              |
-| `--extract-frames`   | 否               | 不抽帧                  | 加上后同时抽取子视频的采样帧图到 `data/04_frames/`                |
+| `--extract-frames`   | 否               | 默认抽帧                 | 保留兼容参数；子视频生成应默认输出采样帧图到 `data/04_frames/`       |
 | `--fast`             | 否               | 完整模式                 | 快速模式：仅更新元数据，不重新编码 mp4                             |
 | `--seed`             | 否               | `42`                 | 随机种子，保持默认即可                                       |
 | `--skip-healthcheck` | 否               | 执行检查                 | 首次建议不传，让脚本验证 processor 加载正常                       |
@@ -229,7 +253,7 @@ python3 pipeline/scripts/calibration.py
 >
 > - 步骤 ② 依赖 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。
 > - `--model` 的默认路径是 `models/minicpmv4_5`。如果本地目录名不同，建议显式指定；代码会兼容常见的 `minicpm_v_4_5` / `minicpm-v-4.5` 别名。
-> - 步骤 ② 完成后，后续步骤才可继续。步骤 ③ 会拒绝旧的或不完整 `processor_fingerprint`，避免历史 `subvideos_meta.json` 混入训练。
+> - 步骤 ② 完成后，必须先经过人工审核、metadata 清洗与标签复检，再生成 ShareGPT 训练 JSON。
 > - 步骤 ② 默认会编码 mp4 子视频到 `data/03_subvideos/`，可通过 `--fast` 跳过（仅更新元数据）。
 
 ### 子视频快速模式
@@ -279,7 +303,7 @@ python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold
 | 最大帧数          | 8 帧/视频                                | 与 processor contract 一致 |
 | 最大序列长度        | 2048                                  | <br />                  |
 
-训练时真正读取的是 `data/03_subvideos/` 下的子视频文件，训练 JSON 由 `data/07_metadata/subvideos_meta.json` 生成。也就是说，子视频生成阶段必须先把“实际会喂给 MiniCPM 的视频文件”和“对应帧映射”记录正确，训练阶段只是消费这些已冻结的元数据，不再重新猜帧。
+训练时真正读取的是复检后 metadata 指向的视频文件，训练 JSON 由 `data/07_metadata/subvideos_meta.label_reviewed.json` 生成。也就是说，子视频生成和人工复检阶段必须先把“实际会喂给 MiniCPM 的视频文件”和“对应帧映射”记录正确，训练阶段只是消费这些已冻结的元数据，不再重新猜帧。
 
 ### LoRA 合并
 

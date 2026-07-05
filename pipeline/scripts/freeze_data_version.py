@@ -312,7 +312,7 @@ def _dir_size_bytes(path: Path) -> int:
 
 def run_freeze(
     merged_dir: Path = MERGED_V2_DIR,
-    subvideos_meta_path: Path = META_V2_DIR / "subvideos_meta.json",
+    subvideos_meta_path: Path = META_V2_DIR / "subvideos_meta.label_reviewed.json",
     video_meta_path: Path = META_V2_DIR / "video_meta.json",
     splits_dir: Path = SPLITS_V2_DIR,
     subvideo_dir: Path = SUBVIDEO_V2_DIR,
@@ -355,8 +355,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--subvideos-meta",
         type=Path,
-        default=META_V2_DIR / "subvideos_meta.json",
-        help="子视频元数据路径",
+        default=META_V2_DIR / "subvideos_meta.label_reviewed.json",
+        help="子视频元数据路径（默认：data/07_metadata/subvideos_meta.label_reviewed.json）",
     )
     parser.add_argument(
         "--video-meta",

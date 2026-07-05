@@ -21,7 +21,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 
-SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.json"
+SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.label_reviewed.json"
 VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "video_meta.json"
 SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "05_splits"
 OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "06_merged"
@@ -435,7 +435,11 @@ def build_all(
 ) -> dict[str, Any]:
     """核心构建入口：读取元数据、分组、写文件、返回统计信息。"""
     if not subvideos_meta.exists():
-        raise FileNotFoundError(f"子视频元数据不存在: {subvideos_meta}")
+        raise FileNotFoundError(
+            f"子视频元数据不存在: {subvideos_meta}\n"
+            "请先运行 pipeline/scripts/review_subvideo_labels.py 生成 label_reviewed 元数据，"
+            "或显式传入 --subvideos-meta 指定其它 metadata 文件。"
+        )
     if not splits_dir.exists():
         raise FileNotFoundError(f"划分目录不存在: {splits_dir}")
 

@@ -472,6 +472,100 @@ def _validate_train_ratios(
         )
 
 
+def _report_reviewed_ratio(
+    subvideos_meta_path: Path,
+    errors: list[dict[str, Any]],
+    allow_unreviewed_meta: bool = False,
+) -> dict[str, Any] | None:
+    """基于 label_reviewed 子视频元数据报告人工审核后正负样本比例。"""
+    if not subvideos_meta_path.exists():
+        errors.append({
+            "check": "reviewed_ratio",
+            "detail": "reviewed_metadata_missing",
+            "path": str(subvideos_meta_path),
+        })
+        return None
+    if not allow_unreviewed_meta and subvideos_meta_path.name != "subvideos_meta.label_reviewed.json":
+        errors.append({
+            "check": "reviewed_ratio",
+            "detail": "unreviewed_metadata_rejected",
+            "path": str(subvideos_meta_path),
+            "expected": "subvideos_meta.label_reviewed.json",
+        })
+        return None
+    try:
+        data = _load_json(subvideos_meta_path)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        errors.append({
+            "check": "reviewed_ratio",
+            "detail": "reviewed_metadata_invalid",
+            "path": str(subvideos_meta_path),
+            "error": f"metadata read error: {exc}",
+        })
+        return None
+    if isinstance(data, dict):
+        subvideos = data.get("subvideos")
+    elif isinstance(data, list):
+        subvideos = data
+    else:
+        subvideos = None
+
+    if not isinstance(subvideos, list):
+        errors.append({
+            "check": "reviewed_ratio",
+            "detail": "reviewed_metadata_invalid",
+            "path": str(subvideos_meta_path),
+        })
+        return None
+
+    pos = 0
+    neg = 0
+    for sub in subvideos:
+        if not isinstance(sub, dict):
+            continue
+        # 仅统计被选中的训练样本：selected_splits 中至少有一个以 _train 结尾，
+        # 且 has_fracture_canonical 不为 None（排除未知样本）。
+        selected = sub.get("selected_splits")
+        if selected is None:
+            continue
+        if not any(isinstance(s, str) and s.endswith("_train") for s in selected):
+            continue
+        if sub.get("has_fracture_canonical") is None:
+            continue
+        if is_positive_label(sub):
+            pos += 1
+        else:
+            neg += 1
+
+    total = pos + neg
+    ratio = pos / neg if neg else None
+    if ratio is not None:
+        ratio = round(ratio, 4)
+    result = {
+        "positive": pos,
+        "negative": neg,
+        "total": total,
+        "ratio": ratio,
+    }
+    if total == 0:
+        errors.append({"check": "reviewed_ratio", "detail": "no_reviewed_samples", **result})
+    elif pos == 0 or neg == 0:
+        errors.append({
+            "check": "reviewed_ratio",
+            "detail": "missing_positive_or_negative_samples",
+            **result,
+            "allowed": "0.5:1 ~ 2:1",
+        })
+    elif not (0.5 <= ratio <= 2.0):
+        errors.append({
+            "check": "reviewed_ratio",
+            "detail": "manual_review_ratio_out_of_range",
+            **result,
+            "allowed": "0.5:1 ~ 2:1",
+        })
+    return result
+
+
 def _validate_no_cross_split_leakage(
     merged_dir: Path,
     errors: list[dict[str, Any]],
@@ -570,7 +664,10 @@ def _validate_test_input_isolation(
 def _validate_exclusions(subvideos_meta_path: Path, errors: list[dict[str, Any]]) -> None:
     if not subvideos_meta_path.exists():
         return
-    data = _load_json(subvideos_meta_path)
+    try:
+        data = _load_json(subvideos_meta_path)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return
     if not isinstance(data, dict):
         return
     exclusions = data.get("exclusions", [])
@@ -597,9 +694,10 @@ def _validate_exclusions(subvideos_meta_path: Path, errors: list[dict[str, Any]]
 
 def run_quality_check(
     merged_dir: Path = MERGED_V2_DIR,
-    subvideos_meta_path: Path = META_V2_DIR / "subvideos_meta.json",
+    subvideos_meta_path: Path = META_V2_DIR / "subvideos_meta.label_reviewed.json",
     report_path: Path = REPORT_PATH,
     project_root: Path = _PROJECT_ROOT,
+    allow_unreviewed_meta: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """执行全部强制检查，返回 (errors, warnings, summary)。"""
     errors: list[dict[str, Any]] = []
@@ -624,12 +722,16 @@ def run_quality_check(
         _validate_test_input_isolation(merged_dir, errors, warnings)
 
     _validate_exclusions(subvideos_meta_path, errors)
+    reviewed_ratio = _report_reviewed_ratio(
+        subvideos_meta_path, errors, allow_unreviewed_meta=allow_unreviewed_meta
+    )
 
     summary = {
         "merged_dir": str(merged_dir),
         "subvideos_meta": str(subvideos_meta_path),
         "error_count": len(errors),
         "warning_count": len(warnings),
+        "reviewed_ratio": reviewed_ratio,
     }
     report = {
         "summary": summary,
@@ -652,8 +754,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--subvideos-meta",
         type=Path,
-        default=META_V2_DIR / "subvideos_meta.json",
-        help="子视频元数据路径（默认：data/07_metadata/subvideos_meta.json）",
+        default=META_V2_DIR / "subvideos_meta.label_reviewed.json",
+        help="子视频元数据路径（默认：data/07_metadata/subvideos_meta.label_reviewed.json）",
     )
     parser.add_argument(
         "--report",
@@ -667,6 +769,11 @@ def main(argv: list[str] | None = None) -> int:
         default=_PROJECT_ROOT,
         help="项目根目录，用于解析媒体路径",
     )
+    parser.add_argument(
+        "--allow-unreviewed-meta",
+        action="store_true",
+        help="允许使用非 label-reviewed 的 subvideos metadata（仅开发调试用）",
+    )
     args = parser.parse_args(argv)
 
     errors, warnings, summary = run_quality_check(
@@ -674,6 +781,7 @@ def main(argv: list[str] | None = None) -> int:
         subvideos_meta_path=args.subvideos_meta,
         report_path=args.report,
         project_root=args.project_root,
+        allow_unreviewed_meta=args.allow_unreviewed_meta,
     )
 
     print(f"Scanned: {summary['merged_dir']}")

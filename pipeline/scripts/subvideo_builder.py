@@ -15,7 +15,7 @@
 - 视频异常：仅完整视频。
 - 断裂前负样本：与事件保持 ≥1s 安全间隔。
 
-默认不抽帧；抽帧仅在 --extract-frames 时进行。
+默认抽帧；可用 --no-extract-frames 禁用。
 测试集视频不生成子视频。
 """
 
@@ -84,7 +84,7 @@ def _is_deprecated_post_event_negative(sub: dict[str, Any]) -> bool:
     return (
         sub.get("crop_type") == "neg_after"
         or sub.get("selection_reason") == "post_event_hard_negative"
-        or "neg_after" in str(sub.get("subvideo_id", ""))
+        or str(sub.get("subvideo_id", "")).endswith("neg_after")
     )
 
 
@@ -515,7 +515,7 @@ def build_focus_subvideos(
     rec: dict[str, Any],
     split_info: dict[str, Any],
     generate_media: bool = True,
-    extract_frames: bool = False,
+    extract_frames: bool = True,
     selected_ids: set[str] | None = None,
     preprocessor: VideoPreprocessor | None = None,
 ) -> list[dict[str, Any]]:
@@ -623,8 +623,8 @@ def _build_clip_candidate(
     end_time: float,
     subvideo_id: str,
     generate_media: bool,
-    extract_frames: bool,
-    selected_ids: set[str] | None,
+    extract_frames: bool = True,
+    selected_ids: set[str] | None = None,
     selection_reason: str | None = None,
     preprocessor: VideoPreprocessor | None = None,
 ) -> dict[str, Any] | None:
@@ -735,7 +735,7 @@ def build_neg_before_after(
     rec: dict[str, Any],
     split_info: dict[str, Any],
     generate_media: bool = True,
-    extract_frames: bool = False,
+    extract_frames: bool = True,
     selected_ids: set[str] | None = None,
     preprocessor: VideoPreprocessor | None = None,
 ) -> list[dict[str, Any]]:
@@ -791,7 +791,7 @@ def build_non_fracture_clips(
     rec: dict[str, Any],
     split_info: dict[str, Any],
     generate_media: bool = True,
-    extract_frames: bool = False,
+    extract_frames: bool = True,
     selected_ids: set[str] | None = None,
     preprocessor: VideoPreprocessor | None = None,
 ) -> list[dict[str, Any]]:
@@ -825,10 +825,10 @@ def build_full_subvideo(
     rec: dict[str, Any],
     split_info: dict[str, Any],
     generate_media: bool = True,
-    extract_frames: bool = False,
+    extract_frames: bool = True,
     preprocessor: VideoPreprocessor | None = None,
 ) -> dict[str, Any] | None:
-    """生成全时长样本元数据；不复制视频文件，video_path 指向源视频。"""
+    """生成全时长样本元数据；物化到 data/03_subvideos/<subvideo_id>.mp4。"""
     video_id = rec["video_id"]
     source_path = _source_video_path(rec)
     if not source_path.exists():
@@ -878,7 +878,7 @@ def build_full_subvideo(
         fracture_between = None
 
     subvideo_id = f"{video_id}_full"
-    original_video_path = Path("data") / "01_videos" / f"{video_id}.mp4"
+    subvideo_path = SUBVIDEO_DIR_DEFAULT / f"{subvideo_id}.mp4"
 
     fps = rec.get("fps")
     total_frames = rec.get("total_frames")
@@ -892,13 +892,16 @@ def build_full_subvideo(
     fingerprint = preprocessor.fingerprint() if preprocessor is not None else None
     info = _processor_info(preprocessor)
 
+    if generate_media and source_path.exists():
+        copy_as_subvideo(source_path, subvideo_path)
+
     if fps is not None and total_frames is not None and end_time is not None:
         if preprocessor is not None:
             if generate_media:
                 try:
                     sampled = _sample_training_video_mapping(
                         preprocessor,
-                        source_path,
+                        subvideo_path,
                         source_start_frame=start_frame,
                         source_start_time=start_time,
                     )
@@ -917,7 +920,7 @@ def build_full_subvideo(
             raise RuntimeError("正式数据构建必须提供真实视频预处理器")
         if extract_frames and generate_media:
             frame_dir = FRAME_DIR_DEFAULT / subvideo_id
-            frame_files = extract_sampled_frames(source_path, frame_dir, sampled)
+            frame_files = extract_sampled_frames(subvideo_path, frame_dir, sampled)
             frame_paths = [str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files]
 
     event_frame = _event_frame(rec)
@@ -935,7 +938,7 @@ def build_full_subvideo(
             return None
 
     sub = _base_subvideo_dict(
-        rec, split_info, subvideo_id, original_video_path,
+        rec, split_info, subvideo_id, subvideo_path,
         crop_type=crop_type,
         start_time=start_time, end_time=end_time or 0.0,
         start_frame=start_frame, end_frame=end_frame or 0,
@@ -965,8 +968,8 @@ def update_subvideo_metadata(sub: dict[str, Any], rec: dict[str, Any]) -> dict[s
 
     if sub.get("crop_type").startswith("full") and total_frames and fps:
         sub["end_frame"] = int(total_frames - 1)
-        source_path = _source_video_path(rec)
-        sub["end_time"] = round(_video_duration(source_path), 4)
+        video_path = _subvideo_output_path(sub)
+        sub["end_time"] = round(_video_duration(video_path), 4)
         sub["duration"] = round(sub["end_time"] - float(sub.get("start_time", 0.0)), 4)
 
     has_fracture = sub.get("has_fracture_canonical", sub.get("has_fracture"))
@@ -990,7 +993,7 @@ def build_subvideos_for_record(
     rec: dict[str, Any],
     split_info: dict[str, Any],
     generate_media: bool = True,
-    extract_frames: bool = False,
+    extract_frames: bool = True,
     selected_ids: set[str] | None = None,
     preprocessor: VideoPreprocessor | None = None,
 ) -> list[dict[str, Any]]:
@@ -1036,18 +1039,6 @@ def build_subvideos_for_record(
         results.extend(build_neg_before_after(rec, split_info, generate_media, extract_frames, selected_ids, preprocessor))
 
     return results
-
-
-def load_split_definitions(splits_dir: Path) -> dict[str, set[str]]:
-    """读取划分文件，返回 split_name -> video_id 集合。"""
-    split_defs: dict[str, set[str]] = {}
-    pattern = re.compile(r"^(fold_\d+_(?:train|val)|test)$")
-    for path in sorted(splits_dir.glob("*.json")):
-        if not pattern.match(path.stem):
-            continue
-        data = json.loads(path.read_text(encoding="utf-8"))
-        split_defs[path.stem] = set(data.get("video_ids", []))
-    return split_defs
 
 
 def _balance_global_by_video(
@@ -1188,8 +1179,8 @@ def _balance_global_by_video(
     print(f"[_balance_global_by_video] 最终正:{final_pos} 负:{final_neg} "
           f"比例:{final_ratio:.2f}")
     if not _ratio_ok(final_pos, final_neg):
-        print(f"[_balance_global_by_video] ⚠️ 无法达到 0.5~2.0 范围，"
-              f"采用最接近方案")
+        print("[_balance_global_by_video] ⚠️ 无法达到 0.5~2.0 范围，"
+              "采用最接近方案")
 
     return result
 
@@ -1206,7 +1197,7 @@ def _generate_media_for_candidate(
     sub: dict[str, Any],
     rec: dict[str, Any],
     frame_dir: Path,
-    extract_frames: bool = False,
+    extract_frames: bool = True,
     preprocessor: VideoPreprocessor | None = None,
 ) -> dict[str, Any]:
     """根据已生成的候选元数据，仅生成 mp4/帧图媒体文件。"""
@@ -1214,13 +1205,15 @@ def _generate_media_for_candidate(
     subvideo_path = _subvideo_output_path(sub)
     crop_type = sub["crop_type"]
 
-    if not crop_type.startswith("full"):
+    if crop_type.startswith("full"):
+        copy_as_subvideo(source_path, subvideo_path)
+    else:
         crop_video(source_path, subvideo_path, sub["start_time"], sub["end_time"])
 
     if not sub.get("actual_frame_mapping"):
         if preprocessor is None:
             raise RuntimeError("正式数据构建必须提供真实视频预处理器")
-        sample_path = source_path if crop_type.startswith("full") else subvideo_path
+        sample_path = subvideo_path
         sampled = _sample_training_video_mapping(
             preprocessor,
             sample_path,
@@ -1241,7 +1234,7 @@ def _generate_media_for_candidate(
         n = len(mapping)
         if n > 0:
             frame_dir_out = frame_dir / sub["subvideo_id"]
-            src_for_frames = source_path if crop_type.startswith("full") else subvideo_path
+            src_for_frames = subvideo_path
             frame_files = extract_sampled_frames(
                 src_for_frames, frame_dir_out, mapping
             )
@@ -1298,8 +1291,9 @@ def main():
     )
     parser.add_argument(
         "--extract-frames",
-        action="store_true",
-        help="为子视频抽取采样帧图（默认不抽帧）",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="为子视频抽取采样帧图（默认抽帧，可用 --no-extract-frames 禁用）",
     )
     parser.add_argument(
         "--fast",
@@ -1317,7 +1311,6 @@ def main():
     records = json.loads(args.video_meta.read_text(encoding="utf-8"))
     video_meta_dict = {r["video_id"]: r for r in records}
     split_mapping = load_splits(args.splits_dir)
-    split_defs = load_split_definitions(args.splits_dir)
 
     FOCUS_WINDOWS = [int(w) if w == int(w) else w for w in args.focus_windows]
     FOCUS_POSITIONS = args.focus_positions

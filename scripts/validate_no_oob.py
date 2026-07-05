@@ -15,6 +15,7 @@ META_DIR = DATA_DIR / "07_metadata"
 SPLITS_DIR = DATA_DIR / "05_splits"
 MERGED_DIR = DATA_DIR / "06_merged"
 SAMPLES_META_PATH = MERGED_DIR / "samples_meta.json"
+SUBVIDEOS_META_DEFAULT = META_DIR / "subvideos_meta.label_reviewed.json"
 
 FRACTURE_TYPES = {
     "韧性断裂",
@@ -235,9 +236,20 @@ def _validate_media_paths(subvideos: list[dict], errors: list) -> None:
 
 
 def main() -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="独立校验脚本：扫描数据产物合规性")
+    parser.add_argument(
+        "--subvideos-meta",
+        type=Path,
+        default=SUBVIDEOS_META_DEFAULT,
+        help="子视频元数据路径（默认：data/07_metadata/subvideos_meta.label_reviewed.json）",
+    )
+    args = parser.parse_args()
+
     errors: list[tuple[str, ...]] = []
 
-    meta_path = META_DIR / "subvideos_meta.json"
+    meta_path = args.subvideos_meta
     if not meta_path.exists():
         print(f"SKIP: generated subvideo metadata does not exist: {meta_path}")
         print("Run pipeline/scripts/subvideo_builder.py before validating generated artifacts.")
