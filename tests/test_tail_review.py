@@ -340,12 +340,19 @@ def test_label_review_passes_valid_full_positive(tmp_path, monkeypatch):
     sub["crop_type"] = "full_pos"
     sub["type"] = "韧性断裂"
     sub["location"] = "inside_gauge"
+    sub["actual_frame_mapping"] = [
+        {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+        {"input_index": 1, "original_frame": 10, "timestamp": 1.0},
+    ]
+    sub["fracture_between"] = [0, 1]
+    (_frame_dir(tmp_path) / "valid_full" / "frame_0001.jpg").write_bytes(b"jpg")
     _write_meta(meta_path, {"subvideos": [sub]})
     _write_meta(video_meta_path, [{
         "video_id": "video_0001",
         "type": "韧性断裂",
         "has_fracture_canonical": True,
         "location_canonical": "inside_gauge",
+        "event_frame_effective": 5,
     }])
 
     passed, failed = review_labels_module.review_subvideo_labels(
@@ -474,6 +481,71 @@ def test_full_positive_fracture_between_mismatch_fails(tmp_path, monkeypatch):
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert any(
         "full_positive_fracture_between_mismatch" in r
+        for item in report["failed"]
+        for r in item["reasons"]
+    )
+
+
+def test_full_positive_missing_event_frame_fails(tmp_path, monkeypatch):
+    meta_path = tmp_path / "subvideos_meta.reviewed.json"
+    out_path = tmp_path / "subvideos_meta.label_reviewed.json"
+    report_path = tmp_path / "report.json"
+    video_meta_path = tmp_path / "video_meta.json"
+
+    subvideo_id = "full_pos_missing_event"
+    data_dir = tmp_path / "data"
+    mp4 = data_dir / "03_subvideos" / f"{subvideo_id}.mp4"
+    frame_dir = data_dir / "04_frames" / subvideo_id
+    mp4.parent.mkdir(parents=True, exist_ok=True)
+    mp4.write_bytes(b"mp4")
+    frame_dir.mkdir(parents=True, exist_ok=True)
+
+    mapping = [
+        {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+        {"input_index": 1, "original_frame": 10, "timestamp": 1.0},
+        {"input_index": 2, "original_frame": 20, "timestamp": 2.0},
+        {"input_index": 3, "original_frame": 30, "timestamp": 3.0},
+    ]
+    for i in range(len(mapping)):
+        (frame_dir / f"frame_{i:04d}.jpg").write_bytes(b"jpg")
+
+    sub = {
+        "subvideo_id": subvideo_id,
+        "source_video": "video_0001",
+        "video_path": f"data/03_subvideos/{subvideo_id}.mp4",
+        "crop_type": "full_pos",
+        "has_fracture": True,
+        "has_fracture_canonical": True,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "location_canonical": "inside_gauge",
+        "fracture_between": [1, 2],
+        "actual_frame_mapping": mapping,
+        "processor_fingerprint": "minicpmv4_5:test:max_frames=8:video_fps=2:backend=transformers",
+    }
+    _write_meta(meta_path, {"subvideos": [sub]})
+    _write_meta(video_meta_path, [{
+        "video_id": "video_0001",
+        "type": "韧性断裂",
+        "has_fracture_canonical": True,
+        "location_canonical": "inside_gauge",
+    }])
+
+    monkeypatch.setattr(sys, "argv", [
+        "review_subvideo_labels.py",
+        "--subvideos-meta", str(meta_path),
+        "--video-meta", str(video_meta_path),
+        "--output-meta", str(out_path),
+        "--report", str(report_path),
+        "--frame-dir", str(_frame_dir(tmp_path)),
+        "--project-root", str(tmp_path),
+    ])
+    rc = review_labels_module.main()
+    assert rc != 0
+    assert not out_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert any(
+        "full_positive_missing_event_frame" in r
         for item in report["failed"]
         for r in item["reasons"]
     )
@@ -959,12 +1031,19 @@ def test_label_review_reports_warning_when_frame_paths_missing(tmp_path):
 
     sub = _make_subvideo(tmp_path, "warn_frames")
     sub.pop("frame_paths", None)
+    sub["actual_frame_mapping"] = [
+        {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+        {"input_index": 1, "original_frame": 10, "timestamp": 1.0},
+    ]
+    sub["fracture_between"] = [0, 1]
+    (_frame_dir(tmp_path) / "warn_frames" / "frame_0001.jpg").write_bytes(b"jpg")
     _write_meta(meta_path, {"subvideos": [sub]})
     _write_meta(video_meta_path, [{
         "video_id": "video_0001",
         "type": "韧性断裂",
         "has_fracture_canonical": True,
         "location_canonical": "inside_gauge",
+        "event_frame_effective": 5,
     }])
 
     passed, failed = review_labels_module.review_subvideo_labels(
@@ -1041,6 +1120,42 @@ def test_label_review_cli_accepts_input_meta_alias_and_write_invalid_output(tmp_
         "--frame-dir", str(_frame_dir(tmp_path)),
         "--project-root", str(tmp_path),
         "--write-invalid-output",
+    ])
+    rc = review_labels_module.main()
+    assert rc == 1
+    assert out_path.exists()
+
+
+def test_write_invalid_report_only_cli(tmp_path, monkeypatch):
+    meta_path = tmp_path / "subvideos_meta.reviewed.json"
+    out_path = tmp_path / "subvideos_meta.label_reviewed.json"
+    report_path = tmp_path / "report.json"
+    video_meta_path = tmp_path / "video_meta.json"
+
+    sub = _make_subvideo(tmp_path, "bad_neg")
+    sub["crop_type"] = "neg_before"
+    sub["has_fracture"] = False
+    sub["has_fracture_canonical"] = False
+    sub["fracture_between"] = [0, 1]
+    sub["type"] = "未断裂"
+    sub["location"] = None
+    sub["location_canonical"] = None
+    _write_meta(meta_path, {"subvideos": [sub]})
+    _write_meta(video_meta_path, [{
+        "video_id": "video_0001",
+        "type": "未断裂",
+        "has_fracture_canonical": False,
+    }])
+
+    monkeypatch.setattr(sys, "argv", [
+        "review_subvideo_labels.py",
+        "--input-meta", str(meta_path),
+        "--video-meta", str(video_meta_path),
+        "--output-meta", str(out_path),
+        "--report", str(report_path),
+        "--frame-dir", str(_frame_dir(tmp_path)),
+        "--project-root", str(tmp_path),
+        "--write-invalid-report-only",
     ])
     rc = review_labels_module.main()
     assert rc == 1

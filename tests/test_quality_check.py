@@ -26,8 +26,10 @@ def _make_reviewed_meta(tmp_path: Path) -> Path:
     return meta
 
 
-def _reviewed_sub(has_fracture: bool) -> dict:
+def _reviewed_sub(has_fracture: bool, source_video: str = "video_0001") -> dict:
     return {
+        "subvideo_id": f"{source_video}_sub",
+        "source_video": source_video,
         "has_fracture": has_fracture,
         "has_fracture_canonical": has_fracture,
         "selected_splits": ["fold_0_train"],
@@ -180,8 +182,17 @@ def test_reviewed_ratio_is_none_when_no_train_samples(tmp_path, monkeypatch):
     merged = _make_merged_dir(tmp_path)
     meta = _make_reviewed_meta(tmp_path)
     _write_meta(meta, {"subvideos": [
-        {"has_fracture": True, "has_fracture_canonical": True, "selected_splits": ["fold_0_val"]},
-        {"has_fracture_canonical": None, "selected_splits": ["fold_0_train"]},
+        {
+            "source_video": "video_val",
+            "has_fracture": True,
+            "has_fracture_canonical": True,
+            "selected_splits": ["fold_0_val"],
+        },
+        {
+            "source_video": "video_unknown",
+            "has_fracture_canonical": None,
+            "selected_splits": ["fold_0_train"],
+        },
     ]})
     monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
 
@@ -241,6 +252,71 @@ def test_quality_check_allows_unreviewed_meta_when_opt_in(tmp_path, monkeypatch)
 
     assert not any(
         e["check"] == "reviewed_ratio" and e["detail"] == "unreviewed_metadata_rejected"
+        for e in errors
+    )
+
+
+def test_quality_check_rejects_reviewed_train_val_source_leakage(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(True, "video_0001"),
+                    "selected_splits": ["fold_0_train"],
+                },
+                {
+                    **_reviewed_sub(False, "video_0001"),
+                    "subvideo_id": "video_0001_val_sub",
+                    "selected_splits": ["fold_0_val"],
+                },
+                _reviewed_sub(False, "video_0002"),
+            ]
+        },
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "cross_split_leakage"
+        and e["detail"] == "video_source_overlap_between_fold_0_train_and_fold_0_val"
+        and e["overlap"] == ["video_0001"]
+        for e in errors
+    )
+
+
+def test_quality_check_rejects_reviewed_train_test_source_leakage(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    (merged / "test_inputs.json").write_text(
+        json.dumps([{"id": "test_0001", "video_id": "video_0001"}]),
+        encoding="utf-8",
+    )
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {"subvideos": [_reviewed_sub(True, "video_0001"), _reviewed_sub(False, "video_0002")]},
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "cross_split_leakage"
+        and e["detail"] == "video_source_overlap_between_fold_0_train_and_test"
+        and e["overlap"] == ["video_0001"]
         for e in errors
     )
 
@@ -364,8 +440,17 @@ def test_reviewed_ratio_skips_unknown_and_val_only_splits(tmp_path, monkeypatch)
     meta = _make_reviewed_meta(tmp_path)
     _write_meta(meta, {"subvideos": [
         _reviewed_sub(True),
-        {"has_fracture": False, "has_fracture_canonical": False, "selected_splits": ["fold_0_val"]},
-        {"has_fracture_canonical": None, "selected_splits": ["fold_0_train"]},
+        {
+            "source_video": "video_val",
+            "has_fracture": False,
+            "has_fracture_canonical": False,
+            "selected_splits": ["fold_0_val"],
+        },
+        {
+            "source_video": "video_unknown",
+            "has_fracture_canonical": None,
+            "selected_splits": ["fold_0_train"],
+        },
     ]})
     monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
 
@@ -387,4 +472,3 @@ def test_reviewed_ratio_skips_unknown_and_val_only_splits(tmp_path, monkeypatch)
         and e["detail"] == "missing_positive_or_negative_samples"
         for e in errors
     )
-

@@ -234,10 +234,9 @@ def _validate_full_subvideo(
             errors.append(
                 f"positive_location_mismatch: sub={sub_location}, rec={rec_location}"
             )
-        if _event_frame(rec) is not None:
-            errors.extend(
-                _validate_positive_interval(sub, rec, reason_prefix="full_positive")
-            )
+        errors.extend(
+            _validate_positive_interval(sub, rec, reason_prefix="full_positive")
+        )
         return errors
 
     errors.append(f"unknown_source_type: {source_type}")
@@ -486,7 +485,8 @@ def main() -> int:
         help="项目根目录，用于解析相对路径",
     )
     parser.add_argument(
-        "--write-invalid-output",
+        "--write-invalid-output", "--write-invalid-report-only",
+        dest="write_invalid_output",
         action="store_true",
         help="即使校验失败也写出 output_meta（用于调试）",
     )

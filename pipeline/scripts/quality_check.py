@@ -550,12 +550,12 @@ def _validate_train_ratios(
         )
 
 
-def _report_reviewed_ratio(
+def _load_reviewed_subvideos(
     subvideos_meta_path: Path,
     errors: list[dict[str, Any]],
     allow_unreviewed_meta: bool = False,
-) -> dict[str, Any] | None:
-    """基于 label_reviewed 子视频元数据报告人工审核后正负样本比例。"""
+) -> list[dict[str, Any]] | None:
+    """读取人工审核后的子视频元数据；所有相关检查共享这一份解析结果。"""
     if not subvideos_meta_path.exists():
         errors.append({
             "check": "reviewed_ratio",
@@ -596,11 +596,20 @@ def _report_reviewed_ratio(
         })
         return None
 
+    return [sub for sub in subvideos if isinstance(sub, dict)]
+
+
+def _report_reviewed_ratio(
+    reviewed_subvideos: list[dict[str, Any]] | None,
+    errors: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """基于 label_reviewed 子视频元数据报告人工审核后正负样本比例。"""
+    if reviewed_subvideos is None:
+        return None
+
     pos = 0
     neg = 0
-    for sub in subvideos:
-        if not isinstance(sub, dict):
-            continue
+    for sub in reviewed_subvideos:
         # 仅统计被选中的训练样本：selected_splits 中至少有一个以 _train 结尾，
         # 且 has_fracture_canonical 不为 None（排除未知样本）。
         selected = sub.get("selected_splits")
@@ -642,6 +651,100 @@ def _report_reviewed_ratio(
             "allowed": "0.5:1 ~ 2:1",
         })
     return result
+
+
+def _selected_splits_from_reviewed_subvideo(sub: dict[str, Any]) -> list[str]:
+    selected = sub.get("selected_splits")
+    if isinstance(selected, list):
+        return [split for split in selected if isinstance(split, str) and split]
+
+    # 兼容旧 sidecar/中间产物：如果尚未落 selected_splits，则尽量从明确的
+    # fold assignment 字段恢复 split 名，保证检查能覆盖旧数据。
+    assignments = sub.get("fold_assignments")
+    if isinstance(assignments, list):
+        return [split for split in assignments if isinstance(split, str) and split]
+
+    fold = sub.get("fold")
+    if isinstance(fold, str) and fold:
+        return [fold]
+    return []
+
+
+def _validate_reviewed_split_leakage(
+    reviewed_subvideos: list[dict[str, Any]] | None,
+    merged_dir: Path,
+    errors: list[dict[str, Any]],
+) -> None:
+    if reviewed_subvideos is None:
+        return
+
+    split_sources: dict[str, set[str]] = defaultdict(set)
+    missing_source_ids: list[str] = []
+    missing_split_ids: list[str] = []
+
+    for sub in reviewed_subvideos:
+        sub_id = sub.get("subvideo_id", "<unknown>")
+        source = sub.get("source_video")
+        splits = _selected_splits_from_reviewed_subvideo(sub)
+        if not isinstance(source, str) or not source:
+            missing_source_ids.append(str(sub_id))
+            continue
+        if not splits:
+            missing_split_ids.append(str(sub_id))
+            continue
+        for split in splits:
+            split_sources[split].add(source)
+
+    test_inputs = _load_json(merged_dir / "test_inputs.json")
+    if isinstance(test_inputs, list):
+        for item in test_inputs:
+            if isinstance(item, dict):
+                src = item.get("video_id")
+                if isinstance(src, str) and src:
+                    split_sources["test"].add(src)
+
+    if missing_source_ids:
+        errors.append(
+            {
+                "check": "cross_split_leakage",
+                "detail": "reviewed_metadata_missing_source_video",
+                "subvideo_ids": missing_source_ids[:20],
+                "count": len(missing_source_ids),
+            }
+        )
+    if missing_split_ids:
+        errors.append(
+            {
+                "check": "cross_split_leakage",
+                "detail": "reviewed_metadata_missing_selected_splits",
+                "subvideo_ids": missing_split_ids[:20],
+                "count": len(missing_split_ids),
+            }
+        )
+
+    sets_to_check = [
+        ("fold_0_train", "fold_0_val"),
+        ("fold_1_train", "fold_1_val"),
+        ("fold_2_train", "fold_2_val"),
+        ("fold_0_train", "test"),
+        ("fold_0_val", "test"),
+        ("fold_1_train", "test"),
+        ("fold_1_val", "test"),
+        ("fold_2_train", "test"),
+        ("fold_2_val", "test"),
+    ]
+    for a, b in sets_to_check:
+        inter = split_sources[a] & split_sources[b]
+        if inter:
+            errors.append(
+                {
+                    "check": "cross_split_leakage",
+                    "detail": f"video_source_overlap_between_{a}_and_{b}",
+                    "overlap": sorted(inter)[:20],
+                    "count": len(inter),
+                    "source": "subvideos_meta.label_reviewed.json",
+                }
+            )
 
 
 def _validate_no_cross_split_leakage(
@@ -780,6 +883,9 @@ def run_quality_check(
     """执行全部强制检查，返回 (errors, warnings, summary)。"""
     errors: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
+    reviewed_subvideos = _load_reviewed_subvideos(
+        subvideos_meta_path, errors, allow_unreviewed_meta=allow_unreviewed_meta
+    )
 
     if not merged_dir.exists():
         errors.append(
@@ -798,12 +904,11 @@ def run_quality_check(
         _validate_processor_fingerprints(merged_dir, subvideos_meta_path, errors, warnings)
         _validate_train_ratios(merged_dir, errors, warnings)
         _validate_no_cross_split_leakage(merged_dir, errors, warnings)
+        _validate_reviewed_split_leakage(reviewed_subvideos, merged_dir, errors)
         _validate_test_input_isolation(merged_dir, errors, warnings)
 
     _validate_exclusions(subvideos_meta_path, errors)
-    reviewed_ratio = _report_reviewed_ratio(
-        subvideos_meta_path, errors, allow_unreviewed_meta=allow_unreviewed_meta
-    )
+    reviewed_ratio = _report_reviewed_ratio(reviewed_subvideos, errors)
 
     summary = {
         "merged_dir": str(merged_dir),
