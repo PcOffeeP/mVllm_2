@@ -28,7 +28,7 @@ finetune/
 ## 前置条件
 
 1. 下载基座模型到 `models/minicpm-v-4.5/`（见仓库根目录 `README.md`）。
-2. 按根目录 `README.md` 准备训练数据，生成 `data/06_merged/` 下的 JSON。
+2. 按根目录 `README.md` 准备训练数据：先完成人工媒体审核、`prune_reviewed_subvideos.py` 清洗和 `review_subvideo_labels.py` 标签复检，再由 `subvideos_meta.label_reviewed.json` 生成 `data/06_merged/` 下的 JSON。
 3. `finetune/dataset_info.json` 已注册 `tensile_video_3k*` / `tensile_video_interval_*` 数据集。
 
 ## 安装 LLaMA-Factory
@@ -59,6 +59,16 @@ python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold
 ```
 
 训练输出目录为 `LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k{0,1,2}`。必须通过 `train_with_contract.py` 启动，以便实际子处理器的 8 帧约束在每个训练进程中生效。
+
+训练前应确认根目录数据链路已经通过：
+
+```bash
+python3 scripts/validate_no_oob.py
+python3 pipeline/scripts/quality_check.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
+```
+
+`training_sample_builder.py`、`quality_check.py`、`validate_no_oob.py` 和 `freeze_data_version.py` 当前默认都使用 `data/07_metadata/subvideos_meta.label_reviewed.json`。不要用未经过人工审核和标签复检的 `subvideos_meta.json` 生成正式训练 JSON。
 
 ## 合并 LoRA
 

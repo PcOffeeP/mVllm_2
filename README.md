@@ -87,7 +87,8 @@ pip install -e ./LlamaFactory
 
 ## 数据流水线
 
-从原始 CSV 标注到可训练的 ShareGPT JSON，主链路分为 **8 步**：
+从原始 CSV 标注到可训练的 ShareGPT JSON，主链路分为 **8 个必需步骤**，另有
+1 个只在人工审核状态不一致时使用的可选修复步骤：
 
 ```
 原始视频 + CSV 标注
@@ -102,18 +103,25 @@ pip install -e ./LlamaFactory
     ├─③ 人工审核                 人工查看 mp4 与采样帧图片，删除脏样本的 mp4 和帧目录
     │
     ├─④ prune_reviewed_subvideos.py
-    │                           根据人工删除结果清洗 subvideos_meta
-    │                           输出: data/07_metadata/subvideos_meta.reviewed.json
+    │                           根据人工删除结果清洗 subvideos_meta；不一致状态会失败
+    │                           输出: data/07_metadata/subvideos_meta.reviewed.json,
+    │                                 data/07_metadata/manual_review_prune_report.json
+    │
+    ├─可选 repair_review_media.py
+    │                           只在 mp4/帧目录只缺一份时修复后重跑 ④
+    │                           输出: data/07_metadata/subvideos_meta.repaired.json,
+    │                                 data/07_metadata/manual_review_repair_report.json
     │
     ├─⑤ review_subvideo_labels.py
     │                           复检 full/focus/negative 等样本标签与帧映射
-    │                           输出: data/07_metadata/subvideos_meta.label_reviewed.json
+    │                           输出: data/07_metadata/subvideos_meta.label_reviewed.json,
+    │                                 data/07_metadata/subvideo_label_review_report.json
     │
     ├─⑥ training_sample_builder.py  复检后的子视频元数据 → ShareGPT JSON
     │                                 输出: data/06_merged/fold_*_train.json / val.json
     │
     ├─⑦ validate_no_oob.py + quality_check.py
-    │                           校验 fracture_between、路径、字段、leakage、正负比例等
+    │                           基于 label_reviewed metadata 校验区间、路径、字段、leakage、比例等
     │                           输出: data/07_metadata/quality_check_report.json
     │
     ├─⑧ freeze_data_version.py 冻结数据版本（git commit、配置哈希、processor 指纹等）
@@ -124,8 +132,9 @@ pip install -e ./LlamaFactory
 ```
 
 步骤 ① 的 `inventory_report.json`、`stratified_split_decision_log.json` 和
-`frame_index_validation.json` 属于诊断/审计产物，不应成为训练数据主链路的必需输入。
-主链路只依赖 `video_meta.json` 与 `data/05_splits/` 下的 split 文件。
+`frame_index_validation.json` 属于诊断/审计产物，当前只在传入 `--debug-report`
+时生成，不是训练数据主链路的必需输入。主链路只依赖 `video_meta.json` 与
+`data/05_splits/` 下的 split 文件。
 
 ### 子视频元信息
 
@@ -164,14 +173,22 @@ pip install -e ./LlamaFactory
 ```bash
 python3 pipeline/scripts/prune_reviewed_subvideos.py \
   --subvideos-meta data/07_metadata/subvideos_meta.json \
-  --output-meta data/07_metadata/subvideos_meta.reviewed.json
+  --output-meta data/07_metadata/subvideos_meta.reviewed.json \
+  --report data/07_metadata/manual_review_prune_report.json
 ```
 
 如果出现 mp4/帧目录只缺一份的情况，先运行修复脚本补齐缺失媒体，再重新执行清洗：
 
 ```bash
 python3 pipeline/scripts/repair_review_media.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.json
+  --subvideos-meta data/07_metadata/subvideos_meta.json \
+  --output-meta data/07_metadata/subvideos_meta.repaired.json \
+  --report data/07_metadata/manual_review_repair_report.json
+
+python3 pipeline/scripts/prune_reviewed_subvideos.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.repaired.json \
+  --output-meta data/07_metadata/subvideos_meta.reviewed.json \
+  --report data/07_metadata/manual_review_prune_report.json
 ```
 
 随后进行标签复检：
@@ -179,7 +196,8 @@ python3 pipeline/scripts/repair_review_media.py \
 ```bash
 python3 pipeline/scripts/review_subvideo_labels.py \
   --subvideos-meta data/07_metadata/subvideos_meta.reviewed.json \
-  --output-meta data/07_metadata/subvideos_meta.label_reviewed.json
+  --output-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --report data/07_metadata/subvideo_label_review_report.json
 ```
 
 标签复检规则：
@@ -208,6 +226,9 @@ MiniCPM-V-4.5 当前的训练帧抽取契约是：
 # ① 读取 CSV，生成视频元数据与 3-fold 划分
 python3 pipeline/scripts/dataset_manager.py
 
+# 如需额外审计报告，可加 --debug-report
+# python3 pipeline/scripts/dataset_manager.py --debug-report
+
 # ② 加载 MiniCPM processor，生成子视频与元数据（需 GPU/Linux 环境）
 python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
 
@@ -216,12 +237,24 @@ python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
 # ④ 根据人工审核结果清洗 metadata
 python3 pipeline/scripts/prune_reviewed_subvideos.py \
   --subvideos-meta data/07_metadata/subvideos_meta.json \
-  --output-meta data/07_metadata/subvideos_meta.reviewed.json
+  --output-meta data/07_metadata/subvideos_meta.reviewed.json \
+  --report data/07_metadata/manual_review_prune_report.json
+
+# 若上一步报告 mp4/帧目录不一致，先修复后重新清洗：
+# python3 pipeline/scripts/repair_review_media.py \
+#   --subvideos-meta data/07_metadata/subvideos_meta.json \
+#   --output-meta data/07_metadata/subvideos_meta.repaired.json \
+#   --report data/07_metadata/manual_review_repair_report.json
+# python3 pipeline/scripts/prune_reviewed_subvideos.py \
+#   --subvideos-meta data/07_metadata/subvideos_meta.repaired.json \
+#   --output-meta data/07_metadata/subvideos_meta.reviewed.json \
+#   --report data/07_metadata/manual_review_prune_report.json
 
 # ⑤ 复检子视频标签
 python3 pipeline/scripts/review_subvideo_labels.py \
   --subvideos-meta data/07_metadata/subvideos_meta.reviewed.json \
-  --output-meta data/07_metadata/subvideos_meta.label_reviewed.json
+  --output-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --report data/07_metadata/subvideo_label_review_report.json
 
 # ⑥ 子视频元数据 → ShareGPT 训练 JSON
 python3 pipeline/scripts/training_sample_builder.py \
@@ -229,10 +262,12 @@ python3 pipeline/scripts/training_sample_builder.py \
 
 # ⑦ 校验 fracture_between、路径、字段、数据泄漏
 python3 scripts/validate_no_oob.py
-python3 pipeline/scripts/quality_check.py
+python3 pipeline/scripts/quality_check.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
 
 # ⑧ 冻结数据版本
-python3 pipeline/scripts/freeze_data_version.py
+python3 pipeline/scripts/freeze_data_version.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
 
 # 可选：校准检查
 python3 pipeline/scripts/calibration.py
@@ -303,7 +338,7 @@ python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold
 | 最大帧数          | 8 帧/视频                                | 与 processor contract 一致 |
 | 最大序列长度        | 2048                                  | <br />                  |
 
-训练时真正读取的是复检后 metadata 指向的视频文件，训练 JSON 由 `data/07_metadata/subvideos_meta.label_reviewed.json` 生成。也就是说，子视频生成和人工复检阶段必须先把“实际会喂给 MiniCPM 的视频文件”和“对应帧映射”记录正确，训练阶段只是消费这些已冻结的元数据，不再重新猜帧。
+训练时真正读取的是复检后 metadata 指向的视频文件，训练 JSON 由 `data/07_metadata/subvideos_meta.label_reviewed.json` 生成。`training_sample_builder.py`、`quality_check.py`、`validate_no_oob.py` 和 `freeze_data_version.py` 当前都默认使用这份 label-reviewed metadata；如需临时检查未复检文件，必须显式传参，`quality_check.py` 还需要额外传入 `--allow-unreviewed-meta`。也就是说，子视频生成和人工复检阶段必须先把“实际会喂给 MiniCPM 的视频文件”和“对应帧映射”记录正确，训练阶段只是消费这些已冻结的元数据，不再重新猜帧。
 
 ### LoRA 合并
 
@@ -406,7 +441,7 @@ python3 -m finetune.validation.run_inference \
 
 - 基座模型和微调模型必须使用 **同一 prompt preset**。不要给基座模型加额外提示词。
 - Generation 参数固定为 `do_sample=False, num_beams=1, max_new_tokens=256`，不在正式评估中使用随机采样。
-- **帧映射生成**：test split 的视频帧映射从 `all_videos_tag.csv` 中的 `视频总帧数` 和 `视频帧率` 自动生成（匹配 MiniCPM processor 的均匀采样行为）。如果 CSV 元数据完整，test split 的 interval 评估可以正常运行。fold val split 继续使用 `subvideos_meta.json` 的完整帧映射。
+- **帧映射生成**：test split 的视频帧映射从 `all_videos_tag.csv` 中的 `视频总帧数` 和 `视频帧率` 自动生成（匹配 MiniCPM processor 的均匀采样行为）。如果 CSV 元数据完整，test split 的 interval 评估可以正常运行。fold val split 使用由 `subvideos_meta.label_reviewed.json` 生成的训练/验证 JSON 与冻结帧映射。
 - 如果本地没有远程视频文件（`data/01_videos/`），推理会因 `video_load_failed` 失败——这不是评估逻辑的缺陷。正式评估应在远程 4090 完整数据目录运行。
 
 ### 评估
@@ -492,7 +527,7 @@ python3 -m pipeline.server_proxy \
 ### 本地 Mac 开发注意事项
 
 - **媒体文件缺失**：本地 Mac 通常不包含远程视频文件（`data/01_videos/`）和子视频（`data/03_subvideos/`）。运行推理会因 `video_load_failed` 或 `frame_mapping_missing` 失败，这**不是**评估逻辑缺陷。
-- **数据文件可用**：`data/05_splits/`、`data/06_merged/`、`data/07_metadata/subvideos_meta.json` 等非媒体数据文件已在仓库中，`load_test_split_samples()` 等加载函数可在本地正常工作。
+- **数据文件可用**：`data/05_splits/`、`data/06_merged/`、`data/07_metadata/subvideos_meta.label_reviewed.json` 等非媒体数据文件可在仓库或同步产物中使用，`load_test_split_samples()` 等加载函数可在本地正常工作。
 - **评估脚本可本地运行**：只要有推理产出的 JSONL 文件，`evaluate_time/type/joint` 和 `compare_models` 可在本地 Mac 上运行。
 - **正式评估**：应在远程 4090 服务器上使用完整数据目录运行。
 

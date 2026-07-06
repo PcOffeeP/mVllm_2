@@ -3,9 +3,12 @@
 """
 训练样本构建器（五字段契约）
 
-将 ``data/07_metadata/subvideos_meta.json`` 中的子视频元数据转换为
-LLaMA-Factory ShareGPT 格式的多模态训练样本，并按 ``data/05_splits/``
-中的 video_id 集合分组输出到 ``data/06_merged/``。
+默认将 ``data/07_metadata/subvideos_meta.label_reviewed.json`` 中的复检后
+子视频元数据转换为 LLaMA-Factory ShareGPT 格式的多模态训练样本，并按
+``data/05_splits/`` 中的 video_id 集合分组输出到 ``data/06_merged/``。
+
+正式训练链路不应直接消费未经过人工审核和标签复检的
+``subvideos_meta.json``；调试时可显式传入 ``--subvideos-meta`` 覆盖。
 """
 
 from __future__ import annotations

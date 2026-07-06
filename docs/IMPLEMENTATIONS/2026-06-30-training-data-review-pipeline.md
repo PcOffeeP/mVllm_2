@@ -1,5 +1,20 @@
 # Training Data Review Pipeline Implementation
 
+## Current Status
+
+This refactor has been implemented in the current project state. The documented
+main path now uses reviewed metadata as the handoff point between data
+generation and training:
+
+- `dataset_manager.py` keeps diagnostic reports behind `--debug-report`.
+- `subvideo_builder.py` generates candidate media and sampled frame folders by default.
+- `prune_reviewed_subvideos.py` writes `subvideos_meta.reviewed.json` and a manual prune report.
+- `repair_review_media.py` is an optional recovery step for one-sided media deletion and writes `subvideos_meta.repaired.json` by default.
+- `review_subvideo_labels.py` writes `subvideos_meta.label_reviewed.json` and the label review report.
+- `training_sample_builder.py`, `quality_check.py`, `validate_no_oob.py`, and `freeze_data_version.py` default to `subvideos_meta.label_reviewed.json`.
+
+Use the root `README.md` as the current runbook for exact commands.
+
 ## Goal
 
 Refactor the training-data generation chain so generated subvideos are not converted directly into ShareGPT JSON. The new chain must insert a manual media review step and an automatic label review step after subvideo generation.
