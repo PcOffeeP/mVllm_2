@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -443,3 +444,118 @@ def test_label_review_fails_empty_actual_frame_mapping(tmp_path: Path) -> None:
     assert len(failed) == 1
     assert any("empty_actual_frame_mapping" in r for r in failed[0]["reasons"])
     assert not out_path.exists()
+
+
+def _make_focus_rec(
+    total_frames: int,
+    event_frame: int,
+    video_id: str = "focus_test",
+) -> dict[str, Any]:
+    return {
+        "video_id": video_id,
+        "video_path": "data/01_videos/focus_test.mp4",
+        "type": "韧性断裂",
+        "has_fracture_canonical": True,
+        "location": "inside_gauge",
+        "location_canonical": "inside_gauge",
+        "fps": 2.0,
+        "total_frames": total_frames,
+        "duration": total_frames / 2.0,
+        "event_frame_original": event_frame,
+        "event_frame_effective": None,
+    }
+
+
+def _find_focus(subvideos: list[dict[str, Any]], window: int, ratio: float) -> dict[str, Any] | None:
+    subvideo_id = f"focus_test_focus_{window}s_{int(ratio * 100):02d}pct"
+    for sub in subvideos:
+        if sub["subvideo_id"] == subvideo_id:
+            return sub
+    return None
+
+
+def test_focus_window_expands_toward_opposite_side() -> None:
+    """靠近边界时，窗口应优先向对侧扩展并保持目标长度。"""
+    fps = 2.0
+    window = 3
+    expected_length = round(window * fps)  # 6 frames
+
+    # 左侧越界：事件靠近开头，应向右侧扩展。
+    rec_left = _make_focus_rec(total_frames=20, event_frame=1)
+    subs_left = subvideo_builder.build_focus_subvideos(
+        rec_left, {"split": "train"}, generate_media=False
+    )
+    sub_left = _find_focus(subs_left, window, 0.5)
+    assert sub_left is not None
+    assert sub_left["end_frame"] - sub_left["start_frame"] == expected_length
+    assert sub_left["start_frame"] == 0
+    assert sub_left["end_frame"] == expected_length
+
+    # 右侧越界：事件靠近末尾，应向左侧扩展。
+    rec_right = _make_focus_rec(total_frames=20, event_frame=18)
+    subs_right = subvideo_builder.build_focus_subvideos(
+        rec_right, {"split": "train"}, generate_media=False
+    )
+    sub_right = _find_focus(subs_right, window, 0.5)
+    assert sub_right is not None
+    assert sub_right["end_frame"] - sub_right["start_frame"] == expected_length
+    assert sub_right["end_frame"] == 20
+    assert sub_right["start_frame"] == 20 - expected_length
+
+
+def test_focus_window_drops_when_both_sides_insufficient() -> None:
+    """视频剩余空间不足以容纳完整窗口时，该 focus 候选应被丢弃。"""
+    rec = _make_focus_rec(total_frames=5, event_frame=2)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    assert subs == []
+
+
+def test_focus_event_position_matches_intended_ratio() -> None:
+    """生成子视频的事件相对位置与预设 ratio 的偏差在允许误差内。"""
+    rec = _make_focus_rec(total_frames=100, event_frame=50)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    assert len(subs) == len(subvideo_builder.FOCUS_WINDOWS) * len(
+        subvideo_builder.FOCUS_POSITIONS
+    )
+    for sub in subs:
+        start = sub["start_frame"]
+        end = sub["end_frame"]
+        event = rec["event_frame_original"]
+        actual_ratio = (event - start) / (end - start)
+        intended_ratio = sub["event_position_ratio"]
+        assert actual_ratio == pytest.approx(intended_ratio, abs=0.06)
+
+
+def test_focus_3s_always_has_6_frames() -> None:
+    """所有 3 秒 focus 子视频的帧数恒为 6 帧（fps=2.0）。"""
+    rec = _make_focus_rec(total_frames=100, event_frame=50)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    focus_3s = [sub for sub in subs if sub["crop_type"] == "focus_3s"]
+    assert len(focus_3s) == len(subvideo_builder.FOCUS_POSITIONS)
+    for sub in focus_3s:
+        assert sub["end_frame"] - sub["start_frame"] == 6
+
+
+def test_focus_window_exactly_fits_video_length() -> None:
+    """total_frames == window * fps 的居中事件应生成完整窗口 [0, total_frames)，不被丢弃。"""
+    fps = 2.0
+    window = 3
+    total_frames = 6
+    event_frame = 3
+    expected_length = round(window * fps)  # 6 frames
+
+    rec = _make_focus_rec(total_frames=total_frames, event_frame=event_frame)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    sub = _find_focus(subs, window, 0.5)
+    assert sub is not None
+    assert sub["start_frame"] == 0
+    assert sub["end_frame"] == total_frames
+    assert sub["end_frame"] - sub["start_frame"] == expected_length

@@ -535,10 +535,30 @@ def build_focus_subvideos(
 
     for window in FOCUS_WINDOWS:
         for ratio in FOCUS_POSITIONS:
-            start_frame = event_frame - round(window * ratio * fps)
-            end_frame = event_frame + round(window * (1 - ratio) * fps)
-            start_frame = clamp(start_frame, 0, total_frames - 1)
-            end_frame = clamp(end_frame, 0, total_frames - 1)
+            desired_start = event_frame - round(window * ratio * fps)
+            desired_end = event_frame + round(window * (1 - ratio) * fps)
+
+            # 优先向对侧扩展，保持窗口长度与事件相对位置；无法容纳则丢弃。
+            if desired_start < 0:
+                shift = -desired_start
+                if desired_end + shift <= total_frames:
+                    start_frame = 0
+                    end_frame = desired_end + shift
+                else:
+                    continue
+            elif desired_end > total_frames:
+                shift = desired_end - total_frames
+                if desired_start - shift >= 0:
+                    start_frame = desired_start - shift
+                    end_frame = total_frames
+                else:
+                    continue
+            else:
+                start_frame = desired_start
+                end_frame = desired_end
+
+            start_frame = clamp(start_frame, 0, total_frames)
+            end_frame = clamp(end_frame, 0, total_frames)
             if start_frame >= end_frame:
                 continue
             start_time = start_frame / fps
