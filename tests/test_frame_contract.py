@@ -504,12 +504,14 @@ def test_focus_window_expands_toward_opposite_side() -> None:
 
 
 def test_focus_window_drops_when_both_sides_insufficient() -> None:
-    """视频剩余空间不足以容纳完整窗口时，该 focus 候选应被丢弃。"""
+    """视频剩余空间不足以容纳完整窗口时，普通 focus 候选应被丢弃。
+    自适应 focus 若满足最小窗口仍可生成。"""
     rec = _make_focus_rec(total_frames=5, event_frame=2)
     subs = subvideo_builder.build_focus_subvideos(
         rec, {"split": "train"}, generate_media=False
     )
-    assert subs == []
+    ordinary = [s for s in subs if not s.get("is_adaptive_focus")]
+    assert ordinary == [], "Ordinary focus should not fit in 5-frame video"
 
 
 def test_focus_event_position_matches_intended_ratio() -> None:
@@ -559,3 +561,177 @@ def test_focus_window_exactly_fits_video_length() -> None:
     assert sub["start_frame"] == 0
     assert sub["end_frame"] == total_frames
     assert sub["end_frame"] - sub["start_frame"] == expected_length
+
+
+def _find_adaptive(subvideos: list[dict[str, Any]], ratio: float) -> dict[str, Any] | None:
+    """Find an adaptive focus subvideo for the given ratio."""
+    for sub in subvideos:
+        if sub.get("is_adaptive_focus") and sub["event_position_ratio"] == ratio:
+            return sub
+    return None
+
+
+def test_ordinary_focus_crop_type_and_id_unchanged() -> None:
+    """Ordinary focus subvideo_id and crop_type must remain unchanged."""
+    rec = _make_focus_rec(total_frames=100, event_frame=50)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    for window in subvideo_builder.FOCUS_WINDOWS:
+        for ratio in subvideo_builder.FOCUS_POSITIONS:
+            sub = _find_focus(subs, window, ratio)
+            assert sub is not None, f"Missing ordinary focus for w={window} r={ratio}"
+            assert sub["subvideo_id"] == f"focus_test_focus_{window}s_{int(ratio * 100):02d}pct"
+            assert sub["crop_type"] == f"focus_{window}s"
+            assert sub.get("is_adaptive_focus") is None or sub["is_adaptive_focus"] is False
+
+
+def test_centered_event_no_adaptive() -> None:
+    """A well-centered event with strict-fit windows should NOT generate adaptive candidates."""
+    rec = _make_focus_rec(total_frames=100, event_frame=50)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    adaptive_subs = [s for s in subs if s.get("is_adaptive_focus")]
+    assert adaptive_subs == [], f"Unexpected adaptive focus: {[s['subvideo_id'] for s in adaptive_subs]}"
+
+
+def test_ratio_with_strict_fit_skips_adaptive() -> None:
+    """A ratio that has at least one strict-fit fixed window should not get an adaptive candidate."""
+    # total_frames=12, event_frame=6 → at ratio=0.5, 3s(6 frames) fits exactly in [0, 12)
+    rec = _make_focus_rec(total_frames=12, event_frame=6)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    # ratio=0.5 should have strict-fit (3s window fits exactly)
+    adaptive = _find_adaptive(subs, 0.5)
+    assert adaptive is None, f"ratio=0.5 should not get adaptive when strict-fit exists"
+
+
+def test_boundary_ratio_adds_adaptive() -> None:
+    """A left-boundary ratio with no strict-fit fixed window should get one adaptive."""
+    # event_frame=2, total_frames=60 → event at ~1s in a 30s video
+    total_frames = 60
+    event_frame = 2  # very close to start
+
+    rec = _make_focus_rec(total_frames=total_frames, event_frame=event_frame)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+
+    # Should have some ordinary focus (with shift) AND some adaptive
+    ordinary = [s for s in subs if not s.get("is_adaptive_focus")]
+    assert len(ordinary) > 0
+
+    # At least one ratio should have no strict-fit, producing adaptive
+    # ratio=0.5: event_frame=2, round(3*0.5*2)=3 → desired_start=-1 < 0 → no strict-fit
+    # max_window_frames = min(2/0.5, 58/0.5) = min(4, 116) = 4 → 2.0s >= 1.5s ✓
+    adaptive_05 = _find_adaptive(subs, 0.5)
+    assert adaptive_05 is not None, "ratio=0.5 should have adaptive for left-boundary event"
+
+    # Verify adaptive metadata
+    assert adaptive_05["is_adaptive_focus"] is True
+    assert adaptive_05["crop_type"] == "focus_adaptive"
+    assert "actual_focus_window_seconds" in adaptive_05
+    assert adaptive_05["actual_focus_window_seconds"] > 0
+    assert "_adaptive" in adaptive_05["subvideo_id"]
+
+
+def test_extreme_boundary_no_adaptive() -> None:
+    """Event extremely close to boundary with max_window < min_adaptive should NOT get adaptive."""
+    # event_frame=1, total_frames=60 → event at ~0.5s in a 30s video
+    # For ratio=0.5: max_window_frames = min(1/0.5, 59/0.5) = min(2, 118) = 2 → 1.0s < 1.5s
+    rec = _make_focus_rec(total_frames=60, event_frame=1)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    adaptive = _find_adaptive(subs, 0.5)
+    assert adaptive is None, "ratio=0.5 at extreme left boundary should NOT have adaptive"
+
+
+def test_adaptive_metadata_fields_present() -> None:
+    """Adaptive focus subvideos must include is_adaptive_focus, actual_focus_window_seconds, and event_position_ratio."""
+    rec = _make_focus_rec(total_frames=60, event_frame=2)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    adaptive_subs = [s for s in subs if s.get("is_adaptive_focus")]
+    assert len(adaptive_subs) > 0, "Expected at least one adaptive focus"
+
+    for sub in adaptive_subs:
+        assert sub.get("is_adaptive_focus") is True
+        assert "actual_focus_window_seconds" in sub
+        assert isinstance(sub["actual_focus_window_seconds"], (int, float))
+        assert sub["actual_focus_window_seconds"] > 0
+        assert "event_position_ratio" in sub
+        assert sub["event_position_ratio"] in subvideo_builder.FOCUS_POSITIONS
+        assert sub["crop_type"] == "focus_adaptive"
+        assert "_adaptive" in sub["subvideo_id"]
+
+
+def test_adaptive_ratio_frame_quantized_tolerance() -> None:
+    """Adaptive focus event_position_ratio should be within frame-quantized tolerance."""
+    rec = _make_focus_rec(total_frames=60, event_frame=2)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    adaptive_subs = [s for s in subs if s.get("is_adaptive_focus")]
+
+    for sub in adaptive_subs:
+        start = sub["start_frame"]
+        end = sub["end_frame"]
+        event = rec["event_frame_original"]
+        actual_ratio = (event - start) / (end - start)
+        intended_ratio = sub["event_position_ratio"]
+
+        # Frame-quantized tolerance: at most 1 frame offset in either direction
+        # Max error = (1/2) / window_frames * 2 = 1/window_frames
+        # Use a generous tolerance that accounts for small adaptive windows
+        window_frames = end - start
+        max_frame_error = 1.0 / window_frames if window_frames > 0 else 1.0
+        assert actual_ratio == pytest.approx(intended_ratio, abs=max(max_frame_error, 0.05))
+
+
+def test_at_most_one_adaptive_per_ratio() -> None:
+    """No ratio should have more than one adaptive focus candidate."""
+    rec = _make_focus_rec(total_frames=60, event_frame=2)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+    adaptive_subs = [s for s in subs if s.get("is_adaptive_focus")]
+    ratios_seen = set()
+    for sub in adaptive_subs:
+        r = sub["event_position_ratio"]
+        assert r not in ratios_seen, f"Duplicate adaptive focus for ratio {r}"
+        ratios_seen.add(r)
+
+
+def test_adaptive_generates_when_ordinary_focus_empty() -> None:
+    """A video too short for any ordinary fixed-window focus should still get adaptive candidates."""
+    # fps=2, total_frames=4 (2s), event_frame=2 (centered)
+    # Ordinary focus min window=3s=6 frames > 4 frames → no ordinary focus fits
+    # Adaptive: max_window_frames = min(2/0.5, 2/0.5) = 4 → 2.0s >= 1.5s → generates
+    rec = _make_focus_rec(total_frames=4, event_frame=2)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+
+    ordinary = [s for s in subs if not s.get("is_adaptive_focus")]
+    adaptive = [s for s in subs if s.get("is_adaptive_focus")]
+
+    # No ordinary focus should fit in a 4-frame (2s) video
+    assert len(ordinary) == 0, f"Expected 0 ordinary focus, got {len(ordinary)}"
+
+    # Centered event at ratio=0.5 should produce one adaptive candidate
+    assert len(adaptive) >= 1, "Expected at least one adaptive focus"
+    adaptive_05 = _find_adaptive(subs, 0.5)
+    assert adaptive_05 is not None, "ratio=0.5 should have adaptive"
+    assert adaptive_05["crop_type"] == "focus_adaptive"
+    assert adaptive_05["actual_focus_window_seconds"] == pytest.approx(2.0, abs=0.01)
+    assert "_adaptive" in adaptive_05["subvideo_id"]
+
+    # Verify ratio is roughly correct (frame-quantized)
+    start = adaptive_05["start_frame"]
+    end = adaptive_05["end_frame"]
+    actual_ratio = (rec["event_frame_original"] - start) / (end - start)
+    assert actual_ratio == pytest.approx(0.5, abs=0.06)

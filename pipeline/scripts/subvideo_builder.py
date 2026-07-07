@@ -55,6 +55,7 @@ SUBVIDEOS_META_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta
 
 FOCUS_WINDOWS = [3, 5, 10, 20]
 FOCUS_POSITIONS = [0.2, 0.35, 0.5, 0.65, 0.8]
+MIN_ADAPTIVE_WINDOW_SECONDS = 1.5  # 3 sampled frames / 2 fps minimum for meaningful focus
 NEG_CLIP_DURATIONS = [3, 5, 10, 20]
 VIDEO_MAXLEN = 8
 
@@ -533,10 +534,17 @@ def build_focus_subvideos(
     fingerprint = preprocessor.fingerprint() if preprocessor is not None else None
     info = _processor_info(preprocessor)
 
+    strict_fit_by_ratio: dict[float, bool] = {r: False for r in FOCUS_POSITIONS}
+
     for window in FOCUS_WINDOWS:
         for ratio in FOCUS_POSITIONS:
             desired_start = event_frame - round(window * ratio * fps)
             desired_end = event_frame + round(window * (1 - ratio) * fps)
+
+            # Track whether this ratio has any strict-fit fixed window.
+            # No boundary shift is needed; ratio still follows frame quantization.
+            if desired_start >= 0 and desired_end <= total_frames:
+                strict_fit_by_ratio[ratio] = True
 
             # 优先向对侧扩展，保持窗口长度与事件相对位置；无法容纳则丢弃。
             if desired_start < 0:
@@ -632,6 +640,113 @@ def build_focus_subvideos(
             sub["processor_fingerprint"] = fingerprint
             sub["processor_info"] = info
             subvideos.append(sub)
+
+    # Track B: Adaptive focus for ratios without any strict-fit fixed window
+    for ratio in FOCUS_POSITIONS:
+        if strict_fit_by_ratio[ratio]:
+            continue
+
+        # Maximum in-bounds window (in frames) that preserves target ratio
+        # Derived from: max_window = min(event_time / ratio, (duration - event_time) / (1 - ratio))
+        max_window_frames_real = min(
+            event_frame / ratio,
+            (total_frames - event_frame) / (1 - ratio),
+        )
+        max_window_frames = int(max_window_frames_real)
+        actual_window_seconds = max_window_frames / fps
+
+        if actual_window_seconds < MIN_ADAPTIVE_WINDOW_SECONDS:
+            continue
+
+        # Compute frame-aligned start/end using same rounding convention as ordinary focus
+        left_frames = round(max_window_frames * ratio)
+        start_frame = event_frame - left_frames
+        end_frame = start_frame + max_window_frames
+
+        start_frame = clamp(start_frame, 0, total_frames)
+        end_frame = clamp(end_frame, 0, total_frames)
+        if start_frame >= end_frame:
+            continue
+        start_time = start_frame / fps
+        end_time = end_frame / fps
+
+        subvideo_id = (
+            f"{video_id}_focus_{actual_window_seconds:.2f}s_"
+            f"{int(ratio * 100):02d}pct_adaptive"
+        )
+        subvideo_path = SUBVIDEO_DIR_DEFAULT / f"{subvideo_id}.mp4"
+        gen_this = generate_media and (selected_ids is None or subvideo_id in selected_ids)
+        frame_paths_adaptive: list[str] = []
+        sampled_adaptive: list[dict[str, Any]] = []
+        fracture_between_adaptive = None
+
+        if gen_this:
+            crop_video(source_path, subvideo_path, start_time, end_time)
+            if preprocessor is None:
+                raise RuntimeError("正式数据构建必须提供真实视频预处理器")
+            try:
+                sampled_adaptive = _sample_training_video_mapping(
+                    preprocessor,
+                    subvideo_path,
+                    source_start_frame=start_frame,
+                    source_start_time=start_time,
+                )
+            except Exception as exc:
+                EXCLUSIONS.append(
+                    {
+                        "subvideo_id": subvideo_id,
+                        "source_video": video_id,
+                        "reason": f"预处理器采样失败: {exc}",
+                        "event_frame": event_frame,
+                        "window": actual_window_seconds,
+                        "ratio": ratio,
+                    }
+                )
+                continue
+            fracture_between_adaptive = compute_fracture_between(sampled_adaptive, event_frame)
+            if fracture_between_adaptive is None:
+                EXCLUSIONS.append(
+                    {
+                        "subvideo_id": subvideo_id,
+                        "source_video": video_id,
+                        "reason": "无法生成严格相邻的 fracture_between",
+                        "event_frame": event_frame,
+                        "window": actual_window_seconds,
+                        "ratio": ratio,
+                    }
+                )
+                continue
+            if extract_frames:
+                frame_dir = FRAME_DIR_DEFAULT / subvideo_id
+                frame_files = extract_sampled_frames(
+                    subvideo_path, frame_dir, sampled_adaptive
+                )
+                frame_paths_adaptive = [
+                    str(Path(f).relative_to(PROJECT_ROOT / "data"))
+                    for f in frame_files
+                ]
+
+        sub = _base_subvideo_dict(
+            rec, split_info, subvideo_id, subvideo_path,
+            crop_type="focus_adaptive",
+            start_time=start_time, end_time=end_time,
+            start_frame=start_frame, end_frame=end_frame,
+            sampled=sampled_adaptive,
+            has_fracture=True,
+            ftype=rec["type"],
+            location=loc,
+            fracture_between=fracture_between_adaptive,
+            selection_reason="focus_positive",
+        )
+        sub["event_position_ratio"] = ratio
+        sub["is_adaptive_focus"] = True
+        sub["actual_focus_window_seconds"] = actual_window_seconds
+        sub["frame_paths"] = frame_paths_adaptive
+        sub["actual_frame_mapping"] = sampled_adaptive
+        sub["processor_fingerprint"] = fingerprint
+        sub["processor_info"] = info
+        subvideos.append(sub)
+
     return subvideos
 
 
