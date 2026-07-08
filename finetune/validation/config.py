@@ -44,9 +44,9 @@ DEFAULT_MODEL_DIRS = {
 VIDEO_MAX_FRAMES = 8
 TIME_THRESHOLD_SEC = 2.0
 SUPPORTED_FOLDS = (0, 1, 2)
-SUPPORTED_SPLITS = ("fold_0_val", "fold_1_val", "fold_2_val", "test")
+SUPPORTED_SPLITS = ("fold_0_val", "fold_1_val", "fold_2_val", "test", "test_subvideos")
 SUPPORTED_TASKS = ("time", "type", "joint")
-PROMPT_PRESETS = ("strict_interval",)
+PROMPT_PRESETS = ("strict_interval", "training_interval")
 
 FRACTURE_CLASSES = (
     "韧性断裂",
@@ -70,6 +70,8 @@ PROMPT_INSTRUCTION = '任务：分析视频中材料的断裂。要求：仅以J
 
 TEST_INPUTS_JSON = DATA_DIR_ROOT / "06_merged" / "test_inputs.json"
 TEST_GROUND_TRUTH_JSON = DATA_DIR_ROOT / "06_merged" / "test_ground_truth.json"
+TEST_SUBVIDEO_INPUTS_JSON = DATA_DIR_ROOT / "06_merged" / "test_subvideo_inputs.json"
+TEST_SUBVIDEO_GROUND_TRUTH_JSON = DATA_DIR_ROOT / "06_merged" / "test_subvideo_ground_truth.json"
 
 STRICT_INTERVAL_PROMPT = {
     "joint": (
@@ -96,6 +98,15 @@ STRICT_INTERVAL_PROMPT = {
         '只输出单个 JSON 对象，不要有任何其他文字。'
     ),
 }
+
+# Instruction text copied from the training samples after the training-side
+# <video> placeholder. In inference, run_inference.py inserts concrete image
+# placeholders before this text.
+TRAINING_INTERVAL_PROMPT = (
+    "请分析这段拉伸试验视频，判断是否存在断裂。视频将被处理为最多 8 帧，"
+    "请判断断裂发生在哪两帧之间。按 JSON 格式输出："
+    "has_fracture、fracture_between、type、location、confidence。"
+)
 
 LABEL_ALIASES = {
     "grip-end fracture": "齐根断裂",

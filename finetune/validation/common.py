@@ -24,7 +24,10 @@ from .config import (
     SUPPORTED_TASKS,
     TEST_INPUTS_JSON,
     TEST_GROUND_TRUTH_JSON,
+    TEST_SUBVIDEO_GROUND_TRUTH_JSON,
+    TEST_SUBVIDEO_INPUTS_JSON,
     TIME_THRESHOLD_SEC,
+    TRAINING_INTERVAL_PROMPT,
 )
 
 
@@ -92,21 +95,23 @@ def parse_response_payload(text: Any) -> tuple[bool, dict[str, Any] | None]:
 def resolve_prompt_preset(task: str, prompt_preset: str) -> str:
     """Resolve the effective prompt preset.
 
-    Only strict_interval is supported. It is used for the joint task; time/type
-    tasks are evaluated from the joint output schema.
+    time/type tasks are evaluated from the joint output schema, so both prompt
+    presets use the same output contract.
     """
     validate_task(task)
     validate_prompt_preset(prompt_preset)
-    return "strict_interval"
+    return prompt_preset
 
 
 def build_prompt(task: str, prompt_preset: str = "strict_interval") -> tuple[str, str]:
     """Build the prompt text for the given task.
 
-    Always returns the strict_interval joint prompt, regardless of the task.
-    The task parameter is kept for interface compatibility and validation.
+    strict_interval is the evaluation prompt; training_interval matches the
+    prompt text used during SFT data generation.
     """
     resolved_prompt_preset = resolve_prompt_preset(task, prompt_preset)
+    if resolved_prompt_preset == "training_interval":
+        return resolved_prompt_preset, TRAINING_INTERVAL_PROMPT
     task_prompt = STRICT_INTERVAL_PROMPT["joint"]
     return resolved_prompt_preset, f"{PROMPT_INSTRUCTION}\n{task_prompt}"
 
@@ -175,6 +180,13 @@ def load_test_video_names() -> list[str]:
     return [f"{video_id}.mp4" for video_id in split.get("video_ids", [])]
 
 
+def load_test_subvideo_names() -> list[str]:
+    if not TEST_SUBVIDEO_INPUTS_JSON.exists():
+        raise FileNotFoundError(f"Test subvideo inputs not found: {TEST_SUBVIDEO_INPUTS_JSON}")
+    inputs = json.loads(TEST_SUBVIDEO_INPUTS_JSON.read_text(encoding="utf-8"))
+    return [f"{item['video_id']}.mp4" for item in inputs]
+
+
 def load_fold_samples(fold: int, gt_map: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     videos = load_split_video_names(fold)
     missing = [name for name in videos if name not in gt_map]
@@ -194,17 +206,17 @@ def load_fold_samples(fold: int, gt_map: dict[str, dict[str, Any]]) -> list[dict
     return samples
 
 
-def load_test_inputs() -> list[dict[str, Any]]:
+def load_test_inputs(path: Path = TEST_INPUTS_JSON) -> list[dict[str, Any]]:
     """Load test video input metadata from test_inputs.json.
 
     Returns list of dicts with keys: id, video_id, video_path.
     """
-    if not TEST_INPUTS_JSON.exists():
-        raise FileNotFoundError(f"Test inputs not found: {TEST_INPUTS_JSON}")
-    return json.loads(TEST_INPUTS_JSON.read_text(encoding="utf-8"))
+    if not path.exists():
+        raise FileNotFoundError(f"Test inputs not found: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
-def load_test_ground_truth() -> dict[str, dict[str, Any]]:
+def load_test_ground_truth(path: Path = TEST_GROUND_TRUTH_JSON) -> dict[str, dict[str, Any]]:
     """Load test ground truth from test_ground_truth.json.
 
     Returns {video_id: record} mapping.
@@ -219,9 +231,9 @@ def load_test_ground_truth() -> dict[str, dict[str, Any]]:
       - gt_time_sec: float or None
       - time_available: bool
     """
-    if not TEST_GROUND_TRUTH_JSON.exists():
-        raise FileNotFoundError(f"Test ground truth not found: {TEST_GROUND_TRUTH_JSON}")
-    data = json.loads(TEST_GROUND_TRUTH_JSON.read_text(encoding="utf-8"))
+    if not path.exists():
+        raise FileNotFoundError(f"Test ground truth not found: {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
     result: dict[str, dict[str, Any]] = {}
     for item in data:
         vid = item["video_id"]
@@ -245,8 +257,12 @@ def load_test_ground_truth() -> dict[str, dict[str, Any]]:
         result[vid] = {
             "video_id": vid,
             "video_name": f"{vid}.mp4",
+            "source_video_id": item.get("source_video_id"),
+            "subvideo_id": item.get("subvideo_id"),
+            "crop_type": item.get("crop_type"),
             # For 视频异常, fracture presence is canonically unknown → use None
             "gt_has_fracture": None if gt_type == "视频异常" else item.get("has_fracture"),
+            "gt_fracture_between": item.get("fracture_between"),
             "gt_type": gt_type,
             "gt_location": item.get("location"),
             "gt_time_sec": gt_time_sec,
@@ -261,14 +277,17 @@ def load_test_ground_truth() -> dict[str, dict[str, Any]]:
     return result
 
 
-def load_test_split_samples() -> list[dict[str, Any]]:
+def load_test_split_samples(
+    inputs_path: Path = TEST_INPUTS_JSON,
+    ground_truth_path: Path = TEST_GROUND_TRUTH_JSON,
+) -> list[dict[str, Any]]:
     """Load test split samples combining test_inputs.json and test_ground_truth.json.
 
     Returns list of sample dicts compatible with load_fold_samples() output.
     Each sample has: video_id, video_name, video_path, gt_*, etc.
     """
-    test_inputs = load_test_inputs()
-    test_gt = load_test_ground_truth()
+    test_inputs = load_test_inputs(inputs_path)
+    test_gt = load_test_ground_truth(ground_truth_path)
 
     samples: list[dict[str, Any]] = []
     for inp in test_inputs:
@@ -278,11 +297,23 @@ def load_test_split_samples() -> list[dict[str, Any]]:
         gt = test_gt[vid]
         samples.append({
             "video_id": vid,
-            "video_name": f"{vid}.mp4",
+            "video_name": Path(inp.get("video_path", f"data/01_videos/{vid}.mp4")).name,
             "video_path": inp.get("video_path", f"data/01_videos/{vid}.mp4"),
+            "source_video_id": inp.get("source_video_id"),
+            "subvideo_id": inp.get("subvideo_id"),
+            "crop_type": inp.get("crop_type"),
+            "frame_mapping": inp.get("frame_mapping"),
+            "processor_fingerprint": inp.get("processor_fingerprint"),
             **gt,
         })
     return samples
+
+
+def load_test_subvideo_split_samples() -> list[dict[str, Any]]:
+    return load_test_split_samples(
+        TEST_SUBVIDEO_INPUTS_JSON,
+        TEST_SUBVIDEO_GROUND_TRUTH_JSON,
+    )
 
 
 def load_video_metadata() -> dict[str, dict[str, Any]]:

@@ -1,0 +1,3 @@
+video_id,json_valid,schema_valid,schema_errors,gt_type
+video_0011,True,False,"type '未断裂' requires has_fracture=false, got None",韧性断裂
+video_0062,True,False,"type '未断裂' requires has_fracture=false, got None",韧性断裂

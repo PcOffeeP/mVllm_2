@@ -1,0 +1,32 @@
+{
+  "per_fold": {
+    "None": {
+      "total_count": 22,
+      "count": 19,
+      "accuracy": 0.0,
+      "macro_precision": 0.0,
+      "macro_recall": 0.0,
+      "macro_f1": 0.0,
+      "false_positive_count": 0,
+      "false_positive_rate": 0.0,
+      "false_negative_count": 15,
+      "false_negative_rate": 0.789474,
+      "non_fracture_count": 3,
+      "fracture_count": 19
+    }
+  },
+  "overall": {
+    "total_count": 22,
+    "count": 19,
+    "accuracy": 0.0,
+    "macro_precision": 0.0,
+    "macro_recall": 0.0,
+    "macro_f1": 0.0,
+    "false_positive_count": 0,
+    "false_positive_rate": 0.0,
+    "false_negative_count": 15,
+    "false_negative_rate": 0.789474,
+    "non_fracture_count": 3,
+    "fracture_count": 19
+  }
+}

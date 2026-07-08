@@ -18,8 +18,7 @@ from .common import (
     load_fold_samples,
     load_ground_truth,
     load_test_split_samples,
-    load_test_inputs,
-    load_test_ground_truth,
+    load_test_subvideo_split_samples,
     load_video_metadata,
     normalize_prediction_label,
     parse_response_payload,
@@ -32,13 +31,12 @@ from .common import (
 )
 from .config import (
     BASE_MODEL_DIR,
+    DATA_DIR_ROOT,
     DEFAULT_VIDEO_ROOT,
     GROUND_TRUTH_JSON,
     PROMPT_PRESETS,
     SUBVIDEOS_META_JSON,
     SUPPORTED_SPLITS,
-    TEST_INPUTS_JSON,
-    TEST_GROUND_TRUTH_JSON,
     VIDEO_MAX_FRAMES,
 )
 from pipeline.preprocessing.minicpm_preprocessor import configure_processor_max_frames
@@ -384,6 +382,8 @@ def main() -> None:
     # Load samples based on split
     if split == "test":
         samples = load_test_split_samples()
+    elif split == "test_subvideos":
+        samples = load_test_subvideo_split_samples()
     else:
         # fold_*_val split
         gt_map = load_ground_truth(Path(GROUND_TRUTH_JSON))
@@ -409,7 +409,11 @@ def main() -> None:
     print(f"[info] loaded {len(full_mappings)} full video frame mappings from subvideos_meta.json")
 
     # Fill missing frame mappings from CSV metadata
-    missing_mapping = [s.get("video_id") for s in samples if s.get("video_id") not in full_mappings]
+    missing_mapping = [
+        s.get("video_id")
+        for s in samples
+        if not s.get("frame_mapping") and s.get("video_id") not in full_mappings
+    ]
     if missing_mapping:
         video_meta = load_video_metadata()
         generated = 0
@@ -430,7 +434,13 @@ def main() -> None:
 
     for sample in samples:
         video_id = sample["video_id"]
-        video_path = video_root / sample["video_name"]
+        sample_video_path = Path(sample.get("video_path") or sample["video_name"])
+        if sample_video_path.is_absolute():
+            video_path = sample_video_path
+        elif str(sample_video_path).startswith("data/"):
+            video_path = DATA_DIR_ROOT.parent / sample_video_path
+        else:
+            video_path = video_root / sample_video_path
 
         # Build record with ALL required fields (see specification)
         record = {
@@ -444,6 +454,9 @@ def main() -> None:
             "generation_config": dict(DEFAULT_GENERATION_CONFIG),
             "video_id": video_id,
             "video_path": str(video_path),
+            "source_video_id": sample.get("source_video_id"),
+            "subvideo_id": sample.get("subvideo_id"),
+            "crop_type": sample.get("crop_type"),
             "raw_output": "",
             "json_valid": False,
             "schema_valid": False,
@@ -459,7 +472,7 @@ def main() -> None:
             "pred_time_midpoint_sec": None,
             # GT fields
             "gt_has_fracture": sample.get("gt_has_fracture"),
-            "gt_fracture_between": None,  # Not available at video level
+            "gt_fracture_between": sample.get("gt_fracture_between"),
             "gt_type": sample.get("gt_type"),
             "gt_location": sample.get("gt_location"),
             "gt_time_sec": sample.get("gt_time_sec"),
@@ -479,8 +492,10 @@ def main() -> None:
             if not video_path.exists():
                 raise RuntimeError(f"Video not found: {video_path}")
 
-            # Get frame mapping
-            sampled_frames = full_mappings.get(video_id)
+            # Get frame mapping. Test subvideo artifacts carry the exact
+            # training-preprocessor frame mapping, so prefer that over fallback
+            # full-video mappings.
+            sampled_frames = sample.get("frame_mapping") or full_mappings.get(video_id)
             if sampled_frames is None:
                 record["failure_reason"] = "frame_mapping_missing"
                 record["preprocessing"] = {"max_frames": VIDEO_MAX_FRAMES, "frames": [], "frame_mapping_missing": True}
@@ -488,7 +503,7 @@ def main() -> None:
                 record["preprocessing"] = {
                     "max_frames": len(sampled_frames),
                     "frames": sampled_frames,
-                    "processor_fingerprint": "subvideos_meta_full",
+                    "processor_fingerprint": sample.get("processor_fingerprint") or "subvideos_meta_full",
                 }
 
             response_text, actual_timestamps = run_single_inference(model, processor, video_path, prompt)
@@ -517,12 +532,20 @@ def main() -> None:
                 record["schema_valid"] = schema_valid
                 record["schema_errors"] = "; ".join(schema_errors) if schema_errors else None
 
-                # Compute time range and midpoint from fracture_between + actual timestamps
-                # Only derive if schema_valid, otherwise the prediction is not reliable
+                # Compute time range and midpoint from fracture_between. Prefer
+                # artifact frame_mapping timestamps because test-subvideo GT is
+                # expressed in source-video time coordinates.
+                frame_timestamp_by_index = {
+                    int(frame.get("index")): frame.get("timestamp")
+                    for frame in (sampled_frames or [])
+                    if frame.get("index") is not None and frame.get("timestamp") is not None
+                }
+                frame_timestamps = actual_timestamps
+
                 if (
                     schema_valid
                     and record["pred_fracture_between"] is not None
-                    and len(actual_timestamps) > 0
+                    and (frame_timestamp_by_index or len(frame_timestamps) > 0)
                 ):
                     fb = record["pred_fracture_between"]
                     if (
@@ -530,14 +553,19 @@ def main() -> None:
                         and len(fb) == 2
                         and isinstance(fb[0], int)
                         and isinstance(fb[1], int)
-                        and 0 <= fb[0] < len(actual_timestamps)
-                        and 0 <= fb[1] <= len(actual_timestamps)
                     ):
-                        low = actual_timestamps[fb[0]]
-                        high = actual_timestamps[fb[1]]
-                        record["pred_time_range_sec"] = [low, high]
-                        record["pred_time_range"] = [low, high]  # Legacy compat
-                        record["pred_time_midpoint_sec"] = round((low + high) / 2, 6)
+                        if frame_timestamp_by_index:
+                            low = frame_timestamp_by_index.get(fb[0])
+                            high = frame_timestamp_by_index.get(fb[1])
+                        elif 0 <= fb[0] < len(frame_timestamps) and 0 <= fb[1] < len(frame_timestamps):
+                            low = frame_timestamps[fb[0]]
+                            high = frame_timestamps[fb[1]]
+                        else:
+                            low = high = None
+                        if low is not None and high is not None:
+                            record["pred_time_range_sec"] = [low, high]
+                            record["pred_time_range"] = [low, high]  # Legacy compat
+                            record["pred_time_midpoint_sec"] = round((low + high) / 2, 6)
 
                 # Legacy time field for backward compat
                 record["pred_time_raw"] = payload.get("time")

@@ -8,6 +8,7 @@ from .common import (
     compute_type_metrics,
     dump_summary_with_overall,
     load_split_video_names,
+    load_test_subvideo_names,
     load_test_video_names,
     read_jsonl,
     read_results_and_meta,
@@ -36,6 +37,8 @@ def _load_split_video_ids(split: str) -> set[str]:
     """Load video_id set from a named split; supports 'test' and 'fold_N_val'."""
     if split == "test":
         names = load_test_video_names()
+    elif split == "test_subvideos":
+        names = load_test_subvideo_names()
     elif split.startswith("fold_") and split.endswith("_val"):
         fold = int(split.split("_")[1])
         names = load_split_video_names(fold)
