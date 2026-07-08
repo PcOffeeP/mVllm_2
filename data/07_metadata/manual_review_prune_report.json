@@ -2,11 +2,10 @@
   "input_meta": "data/07_metadata/subvideos_meta.json",
   "output_meta": "data/07_metadata/subvideos_meta.reviewed.json",
   "total_entries": 1955,
-  "kept_count": 1746,
-  "dropped_count": 0,
-  "inconsistent_count": 209,
-  "dropped": [],
-  "inconsistent": [
+  "kept_count": 1749,
+  "dropped_count": 206,
+  "inconsistent_count": 0,
+  "dropped": [
     {
       "subvideo_id": "video_0012_focus_3s_20pct",
       "source_video": "video_0012",
@@ -15,8 +14,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_3s_35pct",
@@ -26,8 +25,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_3s_50pct",
@@ -37,8 +36,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_3s_65pct",
@@ -48,8 +47,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_3s_80pct",
@@ -59,8 +58,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_5s_20pct",
@@ -70,8 +69,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_5s_35pct",
@@ -81,8 +80,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_5s_50pct",
@@ -92,8 +91,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_5s_65pct",
@@ -103,8 +102,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_5s_80pct",
@@ -114,8 +113,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_10s_65pct",
@@ -125,8 +124,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_10s_80pct",
@@ -136,8 +135,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_5.90s_20pct_adaptive",
@@ -147,8 +146,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_7.27s_35pct_adaptive",
@@ -158,8 +157,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_9.47s_50pct_adaptive",
@@ -169,8 +168,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_13.50s_65pct_adaptive",
@@ -180,8 +179,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0012_focus_11.33s_80pct_adaptive",
@@ -191,8 +190,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_3s_20pct",
@@ -202,8 +201,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_3s_35pct",
@@ -213,8 +212,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_3s_50pct",
@@ -224,8 +223,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_3s_65pct",
@@ -235,8 +234,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_3s_80pct",
@@ -246,8 +245,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_5s_20pct",
@@ -257,8 +256,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_5s_35pct",
@@ -268,8 +267,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_5s_50pct",
@@ -279,8 +278,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_5s_65pct",
@@ -290,8 +289,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_5s_80pct",
@@ -301,8 +300,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_10s_65pct",
@@ -312,8 +311,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_10s_80pct",
@@ -323,8 +322,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_5.60s_20pct_adaptive",
@@ -334,8 +333,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_6.90s_35pct_adaptive",
@@ -345,8 +344,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_9.00s_50pct_adaptive",
@@ -356,8 +355,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_12.77s_65pct_adaptive",
@@ -367,8 +366,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0016_focus_10.37s_80pct_adaptive",
@@ -378,8 +377,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_3s_20pct",
@@ -389,8 +388,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_3s_35pct",
@@ -400,8 +399,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_3s_50pct",
@@ -411,8 +410,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_3s_65pct",
@@ -422,8 +421,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_3s_80pct",
@@ -433,8 +432,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_5s_20pct",
@@ -444,8 +443,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_5s_35pct",
@@ -455,8 +454,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_5s_50pct",
@@ -466,8 +465,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_5s_65pct",
@@ -477,8 +476,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_5s_80pct",
@@ -488,8 +487,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_10s_50pct",
@@ -499,8 +498,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_10s_65pct",
@@ -510,8 +509,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_10s_80pct",
@@ -521,8 +520,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_20s_80pct",
@@ -532,8 +531,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_7.27s_20pct_adaptive",
@@ -543,8 +542,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_8.97s_35pct_adaptive",
@@ -554,8 +553,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_11.67s_50pct_adaptive",
@@ -565,8 +564,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0024_focus_16.67s_65pct_adaptive",
@@ -576,8 +575,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_3s_20pct",
@@ -587,8 +586,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_3s_35pct",
@@ -598,8 +597,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_3s_50pct",
@@ -609,8 +608,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_3s_65pct",
@@ -620,8 +619,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_3s_80pct",
@@ -631,8 +630,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_5s_20pct",
@@ -642,8 +641,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_5s_35pct",
@@ -653,8 +652,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_5s_50pct",
@@ -664,8 +663,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_5s_65pct",
@@ -675,8 +674,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_5s_80pct",
@@ -686,8 +685,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_10s_20pct",
@@ -697,8 +696,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_10s_35pct",
@@ -708,8 +707,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_10s_50pct",
@@ -719,8 +718,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_10s_65pct",
@@ -730,8 +729,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_10s_80pct",
@@ -741,8 +740,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_20s_20pct",
@@ -752,8 +751,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_20s_35pct",
@@ -763,8 +762,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_20s_50pct",
@@ -774,8 +773,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_20s_65pct",
@@ -785,8 +784,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0029_focus_20s_80pct",
@@ -796,8 +795,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_3s_20pct",
@@ -807,8 +806,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_3s_35pct",
@@ -818,8 +817,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_3s_50pct",
@@ -829,8 +828,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_3s_65pct",
@@ -840,8 +839,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_3s_80pct",
@@ -851,8 +850,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_5s_20pct",
@@ -862,8 +861,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_5s_35pct",
@@ -873,8 +872,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_5s_50pct",
@@ -884,8 +883,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_5s_65pct",
@@ -895,8 +894,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_5s_80pct",
@@ -906,8 +905,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_10s_20pct",
@@ -917,8 +916,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_10s_35pct",
@@ -928,8 +927,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_10s_50pct",
@@ -939,8 +938,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_10s_65pct",
@@ -950,8 +949,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_10s_80pct",
@@ -961,8 +960,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_20s_20pct",
@@ -972,8 +971,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_20s_35pct",
@@ -983,8 +982,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_20s_50pct",
@@ -994,8 +993,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_20s_65pct",
@@ -1005,8 +1004,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0030_focus_20s_80pct",
@@ -1016,8 +1015,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_3s_20pct",
@@ -1027,8 +1026,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_3s_35pct",
@@ -1038,8 +1037,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_3s_50pct",
@@ -1049,8 +1048,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_3s_65pct",
@@ -1060,8 +1059,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_3s_80pct",
@@ -1071,8 +1070,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_5s_20pct",
@@ -1082,8 +1081,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_5s_35pct",
@@ -1093,8 +1092,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_5s_50pct",
@@ -1104,8 +1103,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_5s_65pct",
@@ -1115,8 +1114,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_5s_80pct",
@@ -1126,8 +1125,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_10s_35pct",
@@ -1137,8 +1136,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_10s_50pct",
@@ -1148,8 +1147,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_10s_65pct",
@@ -1159,8 +1158,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_10s_80pct",
@@ -1170,8 +1169,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_20s_80pct",
@@ -1181,8 +1180,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_8.57s_20pct_adaptive",
@@ -1192,8 +1191,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_10.53s_35pct_adaptive",
@@ -1203,8 +1202,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_13.73s_50pct_adaptive",
@@ -1214,8 +1213,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0049_focus_19.60s_65pct_adaptive",
@@ -1225,8 +1224,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0058_focus_3s_80pct",
@@ -1236,8 +1235,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0058_focus_1.53s_50pct_adaptive",
@@ -1247,8 +1246,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0058_focus_2.17s_65pct_adaptive",
@@ -1258,8 +1257,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0058_focus_3.83s_80pct_adaptive",
@@ -1269,8 +1268,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_3s_20pct",
@@ -1280,8 +1279,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_3s_35pct",
@@ -1291,8 +1290,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_3s_50pct",
@@ -1302,8 +1301,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_3s_65pct",
@@ -1313,8 +1312,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_3s_80pct",
@@ -1324,8 +1323,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_5s_20pct",
@@ -1335,8 +1334,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_5s_35pct",
@@ -1346,8 +1345,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_5s_50pct",
@@ -1357,8 +1356,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_5s_65pct",
@@ -1368,8 +1367,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_5s_80pct",
@@ -1379,8 +1378,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_10s_65pct",
@@ -1390,8 +1389,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_10s_80pct",
@@ -1401,8 +1400,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_20s_80pct",
@@ -1412,8 +1411,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_5.87s_20pct_adaptive",
@@ -1423,8 +1422,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_7.20s_35pct_adaptive",
@@ -1434,8 +1433,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_9.40s_50pct_adaptive",
@@ -1445,8 +1444,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0083_focus_13.40s_65pct_adaptive",
@@ -1456,19 +1455,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
-    },
-    {
-      "subvideo_id": "video_0094_full",
-      "source_video": "video_0094",
-      "video_path": "03_subvideos/video_0094_full.mp4",
-      "frame_dir": "data/04_frames/video_0094_full",
-      "video_exists": true,
-      "video_valid": true,
-      "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_3s_20pct",
@@ -1478,8 +1466,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_3s_35pct",
@@ -1489,8 +1477,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_3s_50pct",
@@ -1500,8 +1488,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_3s_65pct",
@@ -1511,8 +1499,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_3s_80pct",
@@ -1522,8 +1510,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_5s_20pct",
@@ -1533,8 +1521,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_5s_35pct",
@@ -1544,8 +1532,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_5s_50pct",
@@ -1555,8 +1543,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_5s_65pct",
@@ -1566,8 +1554,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_5s_80pct",
@@ -1577,8 +1565,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_10s_20pct",
@@ -1588,8 +1576,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_10s_35pct",
@@ -1599,8 +1587,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_10s_50pct",
@@ -1610,8 +1598,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_10s_65pct",
@@ -1621,8 +1609,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_10s_80pct",
@@ -1632,8 +1620,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_20s_65pct",
@@ -1643,8 +1631,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_20s_80pct",
@@ -1654,8 +1642,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_10.53s_20pct_adaptive",
@@ -1665,8 +1653,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_12.97s_35pct_adaptive",
@@ -1676,8 +1664,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0094_focus_16.87s_50pct_adaptive",
@@ -1687,19 +1675,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
-    },
-    {
-      "subvideo_id": "video_0096_full",
-      "source_video": "video_0096",
-      "video_path": "03_subvideos/video_0096_full.mp4",
-      "frame_dir": "data/04_frames/video_0096_full",
-      "video_exists": true,
-      "video_valid": true,
-      "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_3s_20pct",
@@ -1709,8 +1686,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_3s_35pct",
@@ -1720,8 +1697,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_3s_50pct",
@@ -1731,8 +1708,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_3s_65pct",
@@ -1742,8 +1719,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_3s_80pct",
@@ -1753,8 +1730,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_5s_20pct",
@@ -1764,8 +1741,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_5s_35pct",
@@ -1775,8 +1752,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_5s_50pct",
@@ -1786,8 +1763,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_5s_65pct",
@@ -1797,8 +1774,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_5s_80pct",
@@ -1808,8 +1785,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_10s_50pct",
@@ -1819,8 +1796,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_10s_65pct",
@@ -1830,8 +1807,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_10s_80pct",
@@ -1841,8 +1818,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_20s_80pct",
@@ -1852,8 +1829,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_6.43s_20pct_adaptive",
@@ -1863,8 +1840,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_7.93s_35pct_adaptive",
@@ -1874,8 +1851,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_10.33s_50pct_adaptive",
@@ -1885,8 +1862,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0096_focus_14.73s_65pct_adaptive",
@@ -1896,19 +1873,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
-    },
-    {
-      "subvideo_id": "video_0098_full",
-      "source_video": "video_0098",
-      "video_path": "03_subvideos/video_0098_full.mp4",
-      "frame_dir": "data/04_frames/video_0098_full",
-      "video_exists": true,
-      "video_valid": true,
-      "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_3s_20pct",
@@ -1918,8 +1884,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_3s_35pct",
@@ -1929,8 +1895,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_3s_50pct",
@@ -1940,8 +1906,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_3s_65pct",
@@ -1951,8 +1917,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_3s_80pct",
@@ -1962,8 +1928,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_5s_20pct",
@@ -1973,8 +1939,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_5s_35pct",
@@ -1984,8 +1950,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_5s_50pct",
@@ -1995,8 +1961,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_5s_65pct",
@@ -2006,8 +1972,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_5s_80pct",
@@ -2017,8 +1983,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_10s_50pct",
@@ -2028,8 +1994,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_10s_65pct",
@@ -2039,8 +2005,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_10s_80pct",
@@ -2050,8 +2016,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_20s_80pct",
@@ -2061,8 +2027,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_8.00s_20pct_adaptive",
@@ -2072,8 +2038,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_9.84s_35pct_adaptive",
@@ -2083,8 +2049,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_12.80s_50pct_adaptive",
@@ -2094,8 +2060,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0107_focus_18.28s_65pct_adaptive",
@@ -2105,8 +2071,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_3s_20pct",
@@ -2116,8 +2082,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_3s_35pct",
@@ -2127,8 +2093,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_3s_50pct",
@@ -2138,8 +2104,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_3s_65pct",
@@ -2149,8 +2115,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_3s_80pct",
@@ -2160,8 +2126,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_5s_20pct",
@@ -2171,8 +2137,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_5s_35pct",
@@ -2182,8 +2148,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_5s_50pct",
@@ -2193,8 +2159,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_5s_65pct",
@@ -2204,8 +2170,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_5s_80pct",
@@ -2215,8 +2181,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_10s_50pct",
@@ -2226,8 +2192,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_10s_65pct",
@@ -2237,8 +2203,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_10s_80pct",
@@ -2248,8 +2214,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_20s_80pct",
@@ -2259,8 +2225,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_6.64s_20pct_adaptive",
@@ -2270,8 +2236,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_8.16s_35pct_adaptive",
@@ -2281,8 +2247,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_10.64s_50pct_adaptive",
@@ -2292,8 +2258,8 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     },
     {
       "subvideo_id": "video_0109_focus_15.20s_65pct_adaptive",
@@ -2303,10 +2269,11 @@
       "video_exists": true,
       "video_valid": true,
       "frame_dir_exists": false,
-      "status": "inconsistent",
-      "reason": "missing_frames"
+      "status": "dropped",
+      "reason": "missing_frames_review_deleted"
     }
   ],
+  "inconsistent": [],
   "kept_subvideo_ids": [
     "video_0001_full",
     "video_0001_focus_3s_50pct",
@@ -3689,6 +3656,7 @@
     "video_0093_neg_before_20s_01",
     "video_0093_neg_before_20s_02",
     "video_0093_neg_before_20s_03",
+    "video_0094_full",
     "video_0094_neg_before_3s_01",
     "video_0094_neg_before_3s_02",
     "video_0094_neg_before_3s_03",
@@ -3701,6 +3669,7 @@
     "video_0094_neg_before_20s_01",
     "video_0094_neg_before_20s_02",
     "video_0094_neg_before_20s_03",
+    "video_0096_full",
     "video_0096_neg_before_3s_01",
     "video_0096_neg_before_3s_02",
     "video_0096_neg_before_3s_03",
@@ -3738,6 +3707,7 @@
     "video_0097_neg_before_20s_01",
     "video_0097_neg_before_20s_02",
     "video_0097_neg_before_20s_03",
+    "video_0098_full",
     "video_0098_focus_3s_20pct",
     "video_0098_focus_3s_35pct",
     "video_0098_focus_3s_50pct",
