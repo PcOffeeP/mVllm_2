@@ -229,7 +229,18 @@ python3 pipeline/scripts/dataset_manager.py
 # 如需额外审计报告，可加 --debug-report
 # python3 pipeline/scripts/dataset_manager.py --debug-report
 
-# ② 加载 MiniCPM processor，生成子视频与元数据（需 GPU/Linux 环境）
+# ②a 先跑小样本子视频生成，检查 adaptive focus、命名、帧映射和输出目录
+python3 pipeline/scripts/subvideo_builder.py \
+  --model models/minicpmv4_5 \
+  --sample-size 10 \
+  --sample-seed 42 \
+  --sample-boundary-weighted \
+  --sample-output-dir data/sample_subvideos
+
+# 检查 data/sample_subvideos/ 下的 sample_manifest.json、03_subvideos/、04_frames/。
+# 确认无问题后，再显式运行全量生成；sample 模式不会自动继续全量生成。
+
+# ②b 加载 MiniCPM processor，生成全量子视频与元数据（需 GPU/Linux 环境）
 python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
 
 # ③ 人工审核 data/03_subvideos/ 与 data/04_frames/，删除脏样本的 mp4 和帧目录
@@ -284,12 +295,49 @@ python3 pipeline/scripts/calibration.py
 | `--seed`             | 否               | `42`                 | 随机种子，保持默认即可                                       |
 | `--skip-healthcheck` | 否               | 执行检查                 | 首次建议不传，让脚本验证 processor 加载正常                       |
 
+#### 步骤 ② 小样本生成参数
+
+小样本模式用于在全量生成前先抽取一小批视频跑通子视频生成逻辑，尤其适合检查 adaptive focus、边界事件、文件命名、`crop_type`、帧映射和输出质量。只要传入 `--sample-size` 或 `--video-ids`，脚本就会进入 sample 模式，生成样本后直接退出，不会自动继续全量生成。
+
+默认 sample 输出写入 `data/sample_subvideos/`，结构为：
+
+- `data/sample_subvideos/03_subvideos/`：样本 mp4 子视频
+- `data/sample_subvideos/04_frames/`：样本采样帧图片
+- `data/sample_subvideos/sample_manifest.json`：样本清单、计数、输出路径和排除原因
+
+| 参数 | 必传？ | 默认值 | 说明 |
+| ---- | ------ | ------ | ---- |
+| `--sample-size` | 否 | 不启用 | 抽取多少个源视频生成小样本；传入时必须 `>= 1`，例如 `--sample-size 10` |
+| `--sample-seed` | 否 | `--seed` 的值 | 小样本抽样随机种子；同一输入和种子应得到同一批样本 |
+| `--sample-output-dir` | 否 | `data/sample_subvideos` | 小样本输出根目录；不会写入正式 `data/03_subvideos/`、`data/04_frames/` 或 `data/07_metadata/subvideos_meta.json` |
+| `--video-ids` | 否 | 不启用 | 显式指定要生成的小样本视频 ID；传入后只处理这些 ID，例如 `--video-ids VID001 VID002` |
+| `--sample-boundary-weighted` | 否 | 关闭 | 边界加权抽样，优先选择断裂时刻靠近开头/结尾、更容易触发 adaptive focus 的视频 |
+
+常用示例：
+
+```bash
+# 随机抽 10 个训练/验证视频，但优先覆盖边界事件
+python3 pipeline/scripts/subvideo_builder.py \
+  --model models/minicpmv4_5 \
+  --sample-size 10 \
+  --sample-seed 42 \
+  --sample-boundary-weighted \
+  --sample-output-dir data/sample_subvideos
+
+# 只生成指定视频的小样本，方便复现单个问题
+python3 pipeline/scripts/subvideo_builder.py \
+  --model models/minicpmv4_5 \
+  --video-ids VIDEO_ID_001 VIDEO_ID_002 \
+  --sample-output-dir data/sample_subvideos/debug_case
+```
+
 > **注意事项**：
 >
 > - 步骤 ② 依赖 MiniCPM 视频处理器（需 GPU / Linux 环境），在 macOS 上无法完整运行。
 > - `--model` 的默认路径是 `models/minicpmv4_5`。如果本地目录名不同，建议显式指定；代码会兼容常见的 `minicpm_v_4_5` / `minicpm-v-4.5` 别名。
 > - 步骤 ② 完成后，必须先经过人工审核、metadata 清洗与标签复检，再生成 ShareGPT 训练 JSON。
 > - 步骤 ② 默认会编码 mp4 子视频到 `data/03_subvideos/`，可通过 `--fast` 跳过（仅更新元数据）。
+> - 小样本模式只用于预检，不会写正式全量输出；全量生成必须在检查 sample 输出后单独显式运行。
 
 ### 子视频快速模式
 
