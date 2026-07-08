@@ -82,7 +82,7 @@ def test_prune_drops_both_missing(tmp_path, monkeypatch):
     assert out["subvideos"] == []
 
 
-def test_prune_fails_only_video_missing(tmp_path, monkeypatch):
+def test_prune_drops_only_video_missing(tmp_path, monkeypatch):
     meta_path = tmp_path / "subvideos_meta.json"
     out_path = tmp_path / "subvideos_meta.reviewed.json"
     report_path = tmp_path / "report.json"
@@ -95,11 +95,13 @@ def test_prune_fails_only_video_missing(tmp_path, monkeypatch):
         frame_dir_root=_frame_dir(tmp_path), project_root=tmp_path,
     )
 
-    assert len(inconsistent) == 1
-    assert not out_path.exists()
+    assert len(dropped) == 1
+    assert dropped[0]["reason"] == "missing_video_review_deleted"
+    assert len(inconsistent) == 0
+    assert out_path.exists()
 
 
-def test_prune_fails_only_frames_missing(tmp_path, monkeypatch):
+def test_prune_drops_only_frames_missing(tmp_path, monkeypatch):
     meta_path = tmp_path / "subvideos_meta.json"
     out_path = tmp_path / "subvideos_meta.reviewed.json"
     report_path = tmp_path / "report.json"
@@ -112,11 +114,13 @@ def test_prune_fails_only_frames_missing(tmp_path, monkeypatch):
         frame_dir_root=_frame_dir(tmp_path), project_root=tmp_path,
     )
 
-    assert len(inconsistent) == 1
-    assert not out_path.exists()
+    assert len(dropped) == 1
+    assert dropped[0]["reason"] == "missing_frames_review_deleted"
+    assert len(inconsistent) == 0
+    assert out_path.exists()
 
 
-def test_prune_cli_returns_nonzero_on_inconsistent(tmp_path, monkeypatch):
+def test_prune_cli_returns_zero_on_review_deleted_single_missing(tmp_path, monkeypatch):
     meta_path = tmp_path / "subvideos_meta.json"
     out_path = tmp_path / "subvideos_meta.reviewed.json"
     report_path = tmp_path / "report.json"
@@ -136,7 +140,8 @@ def test_prune_cli_returns_nonzero_on_inconsistent(tmp_path, monkeypatch):
         ],
     )
     rc = prune_reviewed_subvideos.main()
-    assert rc == 1
+    assert rc == 0
+    assert out_path.exists()
 
 
 def test_prune_preserves_top_level_fields(tmp_path, monkeypatch):
@@ -157,10 +162,11 @@ def test_prune_preserves_top_level_fields(tmp_path, monkeypatch):
     assert "candidates" in out
 
 
-def test_repair_regenerates_missing_frames(tmp_path, monkeypatch):
+def test_repair_skips_review_deleted_missing_frames(tmp_path, monkeypatch):
+    calls = []
     monkeypatch.setattr(
         repair_review_media.subvideo_builder, "extract_sampled_frames",
-        lambda video_path, output_dir, mapping: [output_dir / "frame_0000.jpg"],
+        lambda video_path, output_dir, mapping: calls.append((video_path, output_dir, mapping)),
     )
 
     meta_path = tmp_path / "subvideos_meta.json"
@@ -175,13 +181,15 @@ def test_repair_regenerates_missing_frames(tmp_path, monkeypatch):
         frame_dir_root=_frame_dir(tmp_path), project_root=tmp_path,
     )
 
-    assert len(repaired) == 1
+    assert len(repaired) == 0
     assert len(failed) == 0
-    out = json.loads(out_path.read_text(encoding="utf-8"))
-    assert out["subvideos"][0]["frame_paths"] == ["04_frames/repair_frames/frame_0000.jpg"]
+    assert calls == []
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["skipped_deleted_count"] == 1
+    assert report["skipped_deleted"][0]["reason"] == "missing_frames_review_deleted"
 
 
-def test_repair_regenerates_missing_cropped_video(tmp_path, monkeypatch):
+def test_repair_skips_review_deleted_missing_cropped_video(tmp_path, monkeypatch):
     calls = []
 
     def fake_crop(source, output, start, end):
@@ -210,13 +218,14 @@ def test_repair_regenerates_missing_cropped_video(tmp_path, monkeypatch):
         frame_dir_root=_frame_dir(tmp_path), project_root=tmp_path,
     )
 
-    assert len(repaired) == 1
+    assert len(repaired) == 0
     assert len(failed) == 0
-    assert calls[0][2] == 5.0
-    assert calls[0][3] == 8.0
+    assert calls == []
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["skipped_deleted"][0]["reason"] == "missing_video_review_deleted"
 
 
-def test_repair_copies_full_video(tmp_path, monkeypatch):
+def test_repair_skips_review_deleted_missing_full_video(tmp_path, monkeypatch):
     calls = []
 
     def fake_copy(source, output):
@@ -243,9 +252,9 @@ def test_repair_copies_full_video(tmp_path, monkeypatch):
         frame_dir_root=_frame_dir(tmp_path), project_root=tmp_path,
     )
 
-    assert len(repaired) == 1
+    assert len(repaired) == 0
     assert len(failed) == 0
-    assert calls[0][0] == source
+    assert calls == []
 
 
 def test_repair_treats_empty_video_as_missing(tmp_path):
@@ -286,9 +295,9 @@ def test_prune_empty_video_with_missing_frames_is_inconsistent(tmp_path):
         frame_dir_root=_frame_dir(tmp_path), project_root=tmp_path,
     )
 
-    assert len(inconsistent) == 1
-    assert inconsistent[0]["reason"] == "invalid_video"
-    assert len(dropped) == 0
+    assert len(inconsistent) == 0
+    assert len(dropped) == 1
+    assert dropped[0]["reason"] == "missing_frames_review_deleted"
 
 
 def test_prune_reports_empty_video_as_inconsistent(tmp_path):
@@ -326,8 +335,10 @@ def test_repair_reports_both_missing(tmp_path, monkeypatch):
     )
 
     assert len(repaired) == 0
-    assert len(failed) == 1
-    assert failed[0]["reason"] == "both_missing_not_repairable"
+    assert len(failed) == 0
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["skipped_deleted_count"] == 1
+    assert report["skipped_deleted"][0]["reason"] == "both_missing"
 
 
 def test_label_review_passes_valid_full_positive(tmp_path, monkeypatch):
@@ -640,7 +651,7 @@ def test_repair_default_does_not_overwrite_input(tmp_path, monkeypatch):
     assert expected_output.exists()
 
 
-def test_repair_unrepairable_exits_nonzero(tmp_path, monkeypatch):
+def test_repair_review_deleted_exits_zero(tmp_path, monkeypatch):
     meta_path = tmp_path / "subvideos_meta.json"
     report_path = tmp_path / "report.json"
 
@@ -655,9 +666,10 @@ def test_repair_unrepairable_exits_nonzero(tmp_path, monkeypatch):
         "--project-root", str(tmp_path),
     ])
     rc = repair_review_media.main()
-    assert rc != 0
+    assert rc == 0
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    assert len(report["failed"]) == 1
+    assert len(report["failed"]) == 0
+    assert len(report["skipped_deleted"]) == 1
     expected_output = tmp_path / "data" / "07_metadata" / "subvideos_meta.repaired.json"
     assert expected_output.exists()
 
@@ -682,6 +694,9 @@ def test_repair_reports_failure_when_output_video_not_created(tmp_path, monkeypa
     sub["start_time"] = 1.0
     sub["end_time"] = 2.0
     sub["video_path"] = "data/03_subvideos/repair_no_output.mp4"
+    invalid_mp4 = tmp_path / "data" / "03_subvideos" / "repair_no_output.mp4"
+    invalid_mp4.parent.mkdir(parents=True, exist_ok=True)
+    invalid_mp4.write_bytes(b"")
     _write_meta(meta_path, {"subvideos": [sub]})
 
     repaired, failed = repair_review_media.repair_review_media(
@@ -691,7 +706,7 @@ def test_repair_reports_failure_when_output_video_not_created(tmp_path, monkeypa
 
     assert len(repaired) == 0
     assert len(failed) == 1
-    assert "output video not created" in failed[0]["reason"]
+    assert "output video is empty" in failed[0]["reason"]
 
     monkeypatch.setattr(sys, "argv", [
         "repair_review_media.py",
@@ -704,7 +719,7 @@ def test_repair_reports_failure_when_output_video_not_created(tmp_path, monkeypa
     assert rc != 0
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["failed_count"] == 1
-    assert not (tmp_path / "data" / "03_subvideos" / "repair_no_output.mp4").exists()
+    assert (tmp_path / "data" / "03_subvideos" / "repair_no_output.mp4").exists()
 
 
 def test_label_review_rejects_deprecated_post_event_negative(tmp_path, monkeypatch):
@@ -772,6 +787,9 @@ def test_repair_fails_invalid_time_range(tmp_path, monkeypatch):
     sub["start_time"] = 5.0
     sub["end_time"] = 3.0
     sub["video_path"] = "data/03_subvideos/bad_range.mp4"
+    invalid_mp4 = tmp_path / "data" / "03_subvideos" / "bad_range.mp4"
+    invalid_mp4.parent.mkdir(parents=True, exist_ok=True)
+    invalid_mp4.write_bytes(b"")
     _write_meta(meta_path, {"subvideos": [sub]})
 
     repaired, failed = repair_review_media.repair_review_media(
@@ -1178,7 +1196,8 @@ def test_prune_allow_partial_report_writes_kept_only(tmp_path):
     )
 
     assert len(kept) == 1
-    assert len(inconsistent) == 1
+    assert len(dropped) == 1
+    assert len(inconsistent) == 0
     assert out_path.exists()
     out = json.loads(out_path.read_text(encoding="utf-8"))
     assert len(out["subvideos"]) == 1
@@ -1204,7 +1223,7 @@ def test_prune_allow_partial_report_cli_returns_nonzero(tmp_path, monkeypatch):
         "--allow-partial-report",
     ])
     rc = prune_reviewed_subvideos.main()
-    assert rc == 1
+    assert rc == 0
     assert out_path.exists()
     out = json.loads(out_path.read_text(encoding="utf-8"))
     assert len(out["subvideos"]) == 1

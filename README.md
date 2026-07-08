@@ -163,8 +163,8 @@ pip install -e ./LlamaFactory
 人工审核以 `data/03_subvideos/*.mp4` 与 `data/04_frames/<subvideo_id>/` 为准：
 
 - 保留样本：mp4 与对应帧目录都存在。
-- 删除样本：人工同时删除该样本的 mp4 与对应帧目录。
-- 不一致状态：只删除 mp4 或只删除帧目录时，不允许继续清洗 metadata，必须先修复。
+- 删除样本：人工删除该样本的 mp4 或对应帧目录即可，清洗脚本会从 metadata 中剔除该样本。
+- 不一致状态：mp4 文件仍存在但为空/无效且帧目录仍存在时，不允许继续清洗 metadata，必须先修复。
 
 不要删除 `data/01_videos/` 下的源视频。完整视频样本也需要有可审核的 `data/03_subvideos/<subvideo_id>.mp4` 或等价审核媒体；如果完整视频样本有问题，只删除该样本自己的审核媒体和帧目录。
 
@@ -177,7 +177,7 @@ python3 pipeline/scripts/prune_reviewed_subvideos.py \
   --report data/07_metadata/manual_review_prune_report.json
 ```
 
-如果出现 mp4/帧目录只缺一份的情况，先运行修复脚本补齐缺失媒体，再重新执行清洗：
+如果出现 mp4 文件仍存在但为空/无效等非人工删除状态，先运行修复脚本补齐异常媒体，再重新执行清洗。人工删除导致的 mp4 或帧目录缺失不会被修复脚本重新生成：
 
 ```bash
 python3 pipeline/scripts/repair_review_media.py \
@@ -243,7 +243,7 @@ python3 pipeline/scripts/subvideo_builder.py \
 # ②b 加载 MiniCPM processor，生成全量子视频与元数据（需 GPU/Linux 环境）
 python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
 
-# ③ 人工审核 data/03_subvideos/ 与 data/04_frames/，删除脏样本的 mp4 和帧目录
+# ③ 人工审核 data/03_subvideos/ 与 data/04_frames/，删除脏样本的 mp4 或帧目录
 
 # ④ 根据人工审核结果清洗 metadata
 python3 pipeline/scripts/prune_reviewed_subvideos.py \

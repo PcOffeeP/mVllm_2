@@ -4,8 +4,8 @@
 修复人工审核后的不一致媒体状态。
 
 检测并修复：
-- 只缺帧目录：根据现有 mp4 与 actual_frame_mapping 重新抽帧。
-- 只缺 mp4：根据源视频与 start_time/end_time 重新生成（完整视频则复制源视频）。
+- mp4 或帧目录任一缺失：视为人工审核删除，不再重新生成。
+- mp4 文件存在但为空且帧目录仍存在：尝试根据源视频重新生成。
 
 无法修复的情况写入报告，但不 fatal。
 """
@@ -88,18 +88,29 @@ def _classify_entry(
 
     if video_file_valid and frame_dir_exists:
         status = "ok"
-    elif not video_file_valid and frame_dir_exists:
-        status = "missing_video"
-    elif video_file_valid and not frame_dir_exists:
-        status = "missing_frames"
+        reason = "both_present"
+    elif not video_file_exists and not frame_dir_exists:
+        status = "review_deleted"
+        reason = "both_missing"
+    elif not video_file_exists:
+        status = "review_deleted"
+        reason = "missing_video_review_deleted"
+    elif not frame_dir_exists:
+        status = "review_deleted"
+        reason = "missing_frames_review_deleted"
+    elif not video_file_valid:
+        status = "invalid_video"
+        reason = "invalid_video"
     else:
-        status = "both_missing"
+        status = "unknown_media_state"
+        reason = "unknown_media_state"
 
     return {
         "subvideo_id": subvideo_id,
         "video_path": str(video_path),
         "frame_dir": str(frame_dir),
         "status": status,
+        "reason": reason,
         "video_exists": video_file_exists,
         "video_valid": video_file_valid,
         "frame_dir_exists": frame_dir_exists,
@@ -231,6 +242,7 @@ def repair_review_media(
 
     repaired: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
+    skipped_deleted: list[dict[str, Any]] = []
     ok_count = 0
 
     for sub in subvideos:
@@ -239,19 +251,19 @@ def repair_review_media(
         if status == "ok":
             ok_count += 1
             continue
-        if status == "both_missing":
-            failed.append(
+        if status == "review_deleted":
+            skipped_deleted.append(
                 {
                     "subvideo_id": cls["subvideo_id"],
                     "repaired": False,
-                    "reason": "both_missing_not_repairable",
+                    "reason": cls["reason"],
                 }
             )
             continue
 
         if status == "missing_frames":
             result = _repair_missing_frames(sub, frame_dir_root, project_root)
-        else:  # missing_video
+        else:  # invalid_video / legacy missing_video
             result = _repair_missing_video(sub, video_meta, project_root)
 
         if result["repaired"]:
@@ -265,8 +277,10 @@ def repair_review_media(
         "video_meta": str(video_meta_path) if video_meta_path else None,
         "ok_count": ok_count,
         "repaired_count": len(repaired),
+        "skipped_deleted_count": len(skipped_deleted),
         "failed_count": len(failed),
         "repaired": repaired,
+        "skipped_deleted": skipped_deleted,
         "failed": failed,
     }
 
@@ -345,12 +359,17 @@ def main() -> int:
         frame_dir_root=args.frame_dir,
         project_root=args.project_root,
     )
+    report_data = json.loads(args.report.read_text(encoding="utf-8"))
+    skipped_deleted = report_data.get("skipped_deleted", [])
 
     print(
-        f"修复完成: 成功 {len(repaired)} 条, 失败 {len(failed)} 条"
+        f"修复完成: 成功 {len(repaired)} 条, "
+        f"跳过人工删除 {len(skipped_deleted)} 条, 失败 {len(failed)} 条"
     )
     for item in repaired:
         print(f"  已修复 {item['subvideo_id']}: {item['reason']}")
+    for item in skipped_deleted:
+        print(f"  跳过 {item['subvideo_id']}: {item['reason']}")
     for item in failed:
         print(f"  失败 {item['subvideo_id']}: {item['reason']}", file=sys.stderr)
 

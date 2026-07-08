@@ -5,8 +5,8 @@
 
 规则：
 - mp4 与帧目录都存在：保留。
-- mp4 与帧目录都缺失：视为人工删除，从 metadata 中剔除。
-- 只缺 mp4 或只缺帧目录：不一致状态，非零退出并报告。
+- mp4 或帧目录任一缺失：视为人工删除，从 metadata 中剔除。
+- mp4 文件存在但为空且帧目录仍存在：不一致状态，非零退出并报告。
 """
 
 from __future__ import annotations
@@ -72,15 +72,21 @@ def _classify_entry(
     if video_file_valid and frame_dir_exists:
         status = "kept"
         reason = "both_present"
-    elif not video_file_valid and not video_file_exists and not frame_dir_exists:
+    elif not video_file_exists and not frame_dir_exists:
         status = "dropped"
         reason = "both_missing"
+    elif not video_file_exists:
+        status = "dropped"
+        reason = "missing_video_review_deleted"
+    elif not frame_dir_exists:
+        status = "dropped"
+        reason = "missing_frames_review_deleted"
     elif not video_file_valid:
         status = "inconsistent"
-        reason = "invalid_video" if video_file_exists else "missing_video"
+        reason = "invalid_video"
     else:
         status = "inconsistent"
-        reason = "missing_frames"
+        reason = "unknown_media_state"
 
     return {
         "subvideo_id": subvideo_id,
