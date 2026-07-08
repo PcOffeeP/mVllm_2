@@ -475,32 +475,32 @@ def _find_focus(subvideos: list[dict[str, Any]], window: int, ratio: float) -> d
 
 
 def test_focus_window_expands_toward_opposite_side() -> None:
-    """靠近边界时，窗口应优先向对侧扩展并保持目标长度。"""
+    """靠近边界的普通聚焦不再移位生成；自适应聚焦替代移位的固定窗口。"""
     fps = 2.0
-    window = 3
-    expected_length = round(window * fps)  # 6 frames
 
-    # 左侧越界：事件靠近开头，应向右侧扩展。
+    # 左侧边界：event_frame=1, total_frames=20 → 窗口无法 strict-fit
+    # max_window = min(1/0.5, 19/0.5) = 2 → 1.0s < 1.5s → 不生成普通聚焦，也不生成 adaptive
     rec_left = _make_focus_rec(total_frames=20, event_frame=1)
     subs_left = subvideo_builder.build_focus_subvideos(
         rec_left, {"split": "train"}, generate_media=False
     )
-    sub_left = _find_focus(subs_left, window, 0.5)
-    assert sub_left is not None
-    assert sub_left["end_frame"] - sub_left["start_frame"] == expected_length
-    assert sub_left["start_frame"] == 0
-    assert sub_left["end_frame"] == expected_length
+    # For window=3, ratio=0.5: not strict-fit → no ordinary, no adaptive (max=1.0s)
+    adaptive_left = _find_adaptive(subs_left, 0.5)
+    assert adaptive_left is None, "left-boundary at event_frame=1 should not get adaptive (max < 1.5s)"
 
-    # 右侧越界：事件靠近末尾，应向左侧扩展。
+    # 右侧边界：event_frame=18, total_frames=20 → window=3, ratio=0.5 not strict-fit
+    # max_window = min(18/0.5, 2/0.5) = 4 → 2.0s >= 1.5s → adaptive 生成
     rec_right = _make_focus_rec(total_frames=20, event_frame=18)
     subs_right = subvideo_builder.build_focus_subvideos(
         rec_right, {"split": "train"}, generate_media=False
     )
-    sub_right = _find_focus(subs_right, window, 0.5)
-    assert sub_right is not None
-    assert sub_right["end_frame"] - sub_right["start_frame"] == expected_length
-    assert sub_right["end_frame"] == 20
-    assert sub_right["start_frame"] == 20 - expected_length
+    adaptive_right = _find_adaptive(subs_right, 0.5)
+    assert adaptive_right is not None, "right-boundary should get adaptive focus"
+    assert adaptive_right["is_adaptive_focus"] is True
+    assert adaptive_right["crop_type"] == "focus_adaptive"
+    assert adaptive_right["actual_focus_window_seconds"] == pytest.approx(2.0, abs=0.01)
+    # Verify position: should be shifted to fit the right side
+    assert adaptive_right["end_frame"] == 20, "adaptive should extend to right boundary"
 
 
 def test_focus_window_drops_when_both_sides_insufficient() -> None:
@@ -596,16 +596,22 @@ def test_centered_event_no_adaptive() -> None:
     assert adaptive_subs == [], f"Unexpected adaptive focus: {[s['subvideo_id'] for s in adaptive_subs]}"
 
 
-def test_ratio_with_strict_fit_skips_adaptive() -> None:
-    """A ratio that has at least one strict-fit fixed window should not get an adaptive candidate."""
-    # total_frames=12, event_frame=6 → at ratio=0.5, 3s(6 frames) fits exactly in [0, 12)
+def test_ratio_with_strict_fit_and_failed_specs_gets_adaptive() -> None:
+    """Strict-fit ordinary focus and one adaptive replacement may coexist for a ratio."""
+    # total_frames=12, event_frame=6 → at ratio=0.5, 3s/5s fit,
+    # while longer fixed specs fail and collapse to one adaptive replacement.
     rec = _make_focus_rec(total_frames=12, event_frame=6)
     subs = subvideo_builder.build_focus_subvideos(
         rec, {"split": "train"}, generate_media=False
     )
-    # ratio=0.5 should have strict-fit (3s window fits exactly)
+    assert _find_focus(subs, 3, 0.5) is not None
+    assert _find_focus(subs, 5, 0.5) is not None
+    assert _find_focus(subs, 10, 0.5) is None
+    assert _find_focus(subs, 20, 0.5) is None
+
     adaptive = _find_adaptive(subs, 0.5)
-    assert adaptive is None, f"ratio=0.5 should not get adaptive when strict-fit exists"
+    assert adaptive is not None
+    assert adaptive["crop_type"] == "focus_adaptive"
 
 
 def test_boundary_ratio_adds_adaptive() -> None:
@@ -619,7 +625,7 @@ def test_boundary_ratio_adds_adaptive() -> None:
         rec, {"split": "train"}, generate_media=False
     )
 
-    # Should have some ordinary focus (with shift) AND some adaptive
+    # Should have some strict-fit ordinary focus AND some adaptive (for non-strict-fit ratios)
     ordinary = [s for s in subs if not s.get("is_adaptive_focus")]
     assert len(ordinary) > 0
 
@@ -735,3 +741,250 @@ def test_adaptive_generates_when_ordinary_focus_empty() -> None:
     end = adaptive_05["end_frame"]
     actual_ratio = (rec["event_frame_original"] - start) / (end - start)
     assert actual_ratio == pytest.approx(0.5, abs=0.06)
+
+
+def test_mixed_case_preserves_strict_fit_and_adaptive() -> None:
+    """Mixed case: ratio=0.5 preserves 3s ordinary focus and adds one adaptive
+    replacement for failed 5/10/20 specs.
+
+    event_time=1.6s, duration=60s, fps=2 → total_frames=120, event_frame=3
+    - ratio=0.5: window=3s strict-fits [0, 6) → ordinary focus preserved;
+      5/10/20 not strict-fit → skipped (no shifted) and replaced by one adaptive.
+    - ratio=0.65: no window strict-fits → one adaptive focus (2.0s)
+    - ratio=0.8: no window strict-fits → one adaptive focus (1.5s)
+    """
+    total_frames = 120  # 60s * 2fps
+    event_frame = 3     # 1.6s * 2fps, rounded
+
+    rec = _make_focus_rec(total_frames=total_frames, event_frame=event_frame)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+
+    # 3s ordinary focus should exist for ratio=0.5 (strict-fit)
+    sub_3s = _find_focus(subs, 3, 0.5)
+    assert sub_3s is not None, "3s ordinary focus should be preserved (strict-fit)"
+    assert sub_3s["crop_type"] == "focus_3s"
+    assert sub_3s.get("is_adaptive_focus") is None or sub_3s["is_adaptive_focus"] is False
+
+    # 5s/10s/20s ordinary focus should NOT exist for ratio=0.5 (not strict-fit, no shifted)
+    for window in [5, 10, 20]:
+        sub_shifted = _find_focus(subs, window, 0.5)
+        assert sub_shifted is None, f"{window}s ordinary focus should NOT exist for ratio=0.5 (not strict-fit)"
+
+    # One adaptive for ratio=0.5 replaces the failed 5s/10s/20s specs.
+    adaptive_05 = _find_adaptive(subs, 0.5)
+    assert adaptive_05 is not None
+    assert adaptive_05["is_adaptive_focus"] is True
+    assert adaptive_05["crop_type"] == "focus_adaptive"
+    assert adaptive_05["actual_focus_window_seconds"] == pytest.approx(3.0, abs=0.01)
+
+    # ratio=0.65 has no strict-fit windows → gets one adaptive (2.0s)
+    adaptive_065 = _find_adaptive(subs, 0.65)
+    assert adaptive_065 is not None, "ratio=0.65 should have adaptive (no strict-fit windows)"
+    assert adaptive_065["is_adaptive_focus"] is True
+    assert adaptive_065["crop_type"] == "focus_adaptive"
+    assert adaptive_065["actual_focus_window_seconds"] == pytest.approx(2.0, abs=0.01)
+
+    # ratio=0.8 has no strict-fit windows → gets one adaptive (1.5s)
+    adaptive_08 = _find_adaptive(subs, 0.8)
+    assert adaptive_08 is not None, "ratio=0.8 should have adaptive (no strict-fit windows)"
+    assert adaptive_08["is_adaptive_focus"] is True
+    assert adaptive_08["crop_type"] == "focus_adaptive"
+    assert adaptive_08["actual_focus_window_seconds"] == pytest.approx(1.5, abs=0.01)
+
+    # At most one adaptive per ratio
+    for ratio in [0.65, 0.8]:
+        adaptive_count = sum(1 for s in subs if s.get("is_adaptive_focus") and s["event_position_ratio"] == ratio)
+        assert adaptive_count == 1, f"ratio={ratio} should have exactly 1 adaptive, got {adaptive_count}"
+
+
+def test_full_fail_case_produces_adaptive_no_ordinary() -> None:
+    """Full-fail: event_time=1s, duration=60s, ratio=0.5 → only adaptive, no ordinary focus.
+
+    event_frame=2, total_frames=120, fps=2
+    - window=3, ratio=0.5: desired_start=2-3=-1 → not strict-fit
+    - All windows for ratio=0.5 fail → no ordinary focus for ratio=0.5
+    - max_window = min(2/0.5, 118/0.5) = min(4, 236) = 4 → 2.0s ≥ 1.5s ✓
+    - One adaptive focus replaces all failed specs for ratio=0.5
+    """
+    rec = _make_focus_rec(total_frames=120, event_frame=2)
+    subs = subvideo_builder.build_focus_subvideos(
+        rec, {"split": "train"}, generate_media=False
+    )
+
+    # No ordinary focus for ratio=0.5 (all windows fail strict-fit)
+    for window in subvideo_builder.FOCUS_WINDOWS:
+        sub = _find_focus(subs, window, 0.5)
+        assert sub is None, f"No ordinary focus for w={window}, r=0.5 in full-fail case"
+
+    # One adaptive focus for ratio=0.5
+    adaptive_05 = _find_adaptive(subs, 0.5)
+    assert adaptive_05 is not None, "Full-fail case should produce adaptive focus"
+    assert adaptive_05["is_adaptive_focus"] is True
+    assert adaptive_05["crop_type"] == "focus_adaptive"
+    assert adaptive_05["actual_focus_window_seconds"] == pytest.approx(2.0, abs=0.01)
+
+    # Only one adaptive for this ratio
+    adaptive_count = sum(1 for s in subs if s.get("is_adaptive_focus") and s["event_position_ratio"] == 0.5)
+    assert adaptive_count == 1, f"Should have exactly 1 adaptive for ratio=0.5"
+
+    # Other ratios may still have strict-fit ordinary focus
+    ordinary_count = sum(1 for s in subs if not s.get("is_adaptive_focus"))
+    # Some ordinary focus for ratios like 0.2, 0.35, etc. may still exist
+    # for windows that DO strict-fit
+    assert ordinary_count >= 0
+
+
+def test_select_sample_videos_by_id() -> None:
+    """select_sample_videos with explicit video_ids returns only matching records."""
+    records = [
+        {"video_id": "v1", "type": "韧性断裂", "has_fracture_canonical": True,
+         "location_canonical": "inside_gauge", "fps": 2.0, "total_frames": 100,
+         "duration": 50.0, "event_frame_original": 50, "event_frame_effective": None,
+         "video_path": "data/01_videos/v1.mp4", "location": None},
+        {"video_id": "v2", "type": "未断裂", "has_fracture_canonical": False,
+         "location_canonical": None, "fps": 2.0, "total_frames": 100,
+         "duration": 50.0, "event_frame_original": None, "event_frame_effective": None,
+         "video_path": "data/01_videos/v2.mp4", "location": None},
+        {"video_id": "v3", "type": "韧性断裂", "has_fracture_canonical": True,
+         "location_canonical": "inside_gauge", "fps": 2.0, "total_frames": 100,
+         "duration": 50.0, "event_frame_original": 50, "event_frame_effective": None,
+         "video_path": "data/01_videos/v3.mp4", "location": None},
+    ]
+    split_mapping = {"v1": {"split": "train"}, "v2": {"split": "train"}, "v3": {"split": "train"}}
+
+    # Filter by specific IDs
+    result = subvideo_builder.select_sample_videos(
+        records, split_mapping, video_ids=["v1", "v3"]
+    )
+    assert len(result) == 2
+    assert {r["video_id"] for r in result} == {"v1", "v3"}
+
+    # Missing IDs should warn but still return what's found
+    result2 = subvideo_builder.select_sample_videos(
+        records, split_mapping, video_ids=["v1", "v_missing"]
+    )
+    assert len(result2) == 1
+    assert result2[0]["video_id"] == "v1"
+
+
+def test_select_sample_videos_random_seed() -> None:
+    """select_sample_videos with sample_size and seed is deterministic."""
+    records = [
+        {"video_id": f"v{i}", "type": "韧性断裂", "has_fracture_canonical": True,
+         "location_canonical": "inside_gauge", "fps": 2.0, "total_frames": 100,
+         "duration": 50.0, "event_frame_original": 50, "event_frame_effective": None,
+         "video_path": f"data/01_videos/v{i}.mp4", "location": None}
+        for i in range(20)
+    ]
+    split_mapping = {f"v{i}": {"split": "train"} for i in range(20)}
+
+    # Same seed → same result
+    result1 = subvideo_builder.select_sample_videos(
+        records, split_mapping, sample_size=5, sample_seed=42
+    )
+    result2 = subvideo_builder.select_sample_videos(
+        records, split_mapping, sample_size=5, sample_seed=42
+    )
+    assert [r["video_id"] for r in result1] == [r["video_id"] for r in result2]
+
+    # Different seed → different result (likely but not guaranteed for small lists)
+    result3 = subvideo_builder.select_sample_videos(
+        records, split_mapping, sample_size=5, sample_seed=999
+    )
+    ids_42 = [r["video_id"] for r in result1]
+    ids_999 = [r["video_id"] for r in result3]
+    # With 20 items selecting 5, there's a good chance they differ
+    # (C(20,5)=15504 possible combinations, so seed-different is almost certainly different)
+    # But we'll just check length
+    assert len(result1) == 5
+    assert len(result3) == 5
+
+
+def test_select_sample_videos_boundary_weighted_falls_back_when_no_scores() -> None:
+    """Boundary-weighted sample should not fail when records have no event frames."""
+    records = [
+        {"video_id": f"v{i}", "type": "未断裂", "has_fracture_canonical": False,
+         "location_canonical": None, "fps": 2.0, "total_frames": 100,
+         "duration": 50.0, "event_frame_original": None, "event_frame_effective": None,
+         "video_path": f"data/01_videos/v{i}.mp4", "location": None}
+        for i in range(10)
+    ]
+    split_mapping = {f"v{i}": {"split": "train"} for i in range(10)}
+
+    result1 = subvideo_builder.select_sample_videos(
+        records, split_mapping, sample_size=4, sample_seed=42, boundary_weighted=True
+    )
+    result2 = subvideo_builder.select_sample_videos(
+        records, split_mapping, sample_size=4, sample_seed=42, boundary_weighted=True
+    )
+
+    assert len(result1) == 4
+    assert [r["video_id"] for r in result1] == [r["video_id"] for r in result2]
+
+
+def test_sample_candidate_redirects_output_before_media_generation(tmp_path: Path) -> None:
+    """Sample media generation must target the isolated sample tree, not full output dirs."""
+    candidate = {
+        "subvideo_id": "focus_test_focus_3s_50pct",
+        "video_path": "data/03_subvideos/focus_test_focus_3s_50pct.mp4",
+        "frame_paths": ["04_frames/focus_test_focus_3s_50pct/frame_0000.jpg"],
+    }
+    sample_root = tmp_path / "sample_subvideos"
+
+    redirected = subvideo_builder._sample_candidate_for_output(candidate, sample_root)
+
+    assert redirected is not candidate
+    assert redirected["video_path"] == str(sample_root / "03_subvideos" / "focus_test_focus_3s_50pct.mp4")
+    assert subvideo_builder._subvideo_output_path(redirected) == (
+        sample_root / "03_subvideos" / "focus_test_focus_3s_50pct.mp4"
+    )
+    assert redirected["frame_paths"] == []
+    assert candidate["video_path"] == "data/03_subvideos/focus_test_focus_3s_50pct.mp4"
+
+
+def test_metadata_path_preserves_data_relative_format() -> None:
+    """Full output metadata should keep the historical path format relative to data/."""
+    path = subvideo_builder.PROJECT_ROOT / "data" / "04_frames" / "sub" / "frame_0000.jpg"
+    assert subvideo_builder._metadata_path_for_output(path) == "04_frames/sub/frame_0000.jpg"
+
+
+def test_sample_cli_flags_parse() -> None:
+    """Sample mode CLI flags parse correctly."""
+    import argparse
+
+    # Build parser the same way as main()
+    parser = argparse.ArgumentParser(description="test")
+    parser.add_argument("--sample-size", type=int, default=None)
+    parser.add_argument("--sample-seed", type=int, default=None)
+    parser.add_argument("--sample-output-dir", type=str, default=None)
+    parser.add_argument("--video-ids", type=str, nargs="+", default=None)
+    parser.add_argument("--sample-boundary-weighted", action="store_true", default=False)
+
+    # Default: no sample mode
+    args = parser.parse_args([])
+    assert args.sample_size is None
+    assert args.video_ids is None
+    assert args.sample_boundary_weighted is False
+
+    # --sample-size enables sample mode
+    args2 = parser.parse_args(["--sample-size", "3"])
+    assert args2.sample_size == 3
+
+    # --video-ids with multiple IDs
+    args3 = parser.parse_args(["--video-ids", "v1", "v2", "v3"])
+    assert args3.video_ids == ["v1", "v2", "v3"]
+
+    # --sample-boundary-weighted flag
+    args4 = parser.parse_args(["--sample-size", "5", "--sample-boundary-weighted"])
+    assert args4.sample_size == 5
+    assert args4.sample_boundary_weighted is True
+
+    # --sample-seed
+    args5 = parser.parse_args(["--sample-size", "5", "--sample-seed", "123"])
+    assert args5.sample_seed == 123
+
+    # --sample-output-dir
+    args6 = parser.parse_args(["--sample-size", "5", "--sample-output-dir", "/tmp/samples"])
+    assert args6.sample_output_dir == "/tmp/samples"

@@ -25,6 +25,7 @@ import argparse
 import json
 import logging
 import math
+import random
 import re
 import shutil
 import subprocess
@@ -534,36 +535,20 @@ def build_focus_subvideos(
     fingerprint = preprocessor.fingerprint() if preprocessor is not None else None
     info = _processor_info(preprocessor)
 
-    strict_fit_by_ratio: dict[float, bool] = {r: False for r in FOCUS_POSITIONS}
+    has_failed_by_ratio: dict[float, bool] = {r: False for r in FOCUS_POSITIONS}
 
     for window in FOCUS_WINDOWS:
         for ratio in FOCUS_POSITIONS:
             desired_start = event_frame - round(window * ratio * fps)
             desired_end = event_frame + round(window * (1 - ratio) * fps)
 
-            # Track whether this ratio has any strict-fit fixed window.
-            # No boundary shift is needed; ratio still follows frame quantization.
-            if desired_start >= 0 and desired_end <= total_frames:
-                strict_fit_by_ratio[ratio] = True
+            if not (desired_start >= 0 and desired_end <= total_frames):
+                # Non-strict-fit: skip ordinary fixed focus; adaptive Track B handles it.
+                has_failed_by_ratio[ratio] = True
+                continue
 
-            # 优先向对侧扩展，保持窗口长度与事件相对位置；无法容纳则丢弃。
-            if desired_start < 0:
-                shift = -desired_start
-                if desired_end + shift <= total_frames:
-                    start_frame = 0
-                    end_frame = desired_end + shift
-                else:
-                    continue
-            elif desired_end > total_frames:
-                shift = desired_end - total_frames
-                if desired_start - shift >= 0:
-                    start_frame = desired_start - shift
-                    end_frame = total_frames
-                else:
-                    continue
-            else:
-                start_frame = desired_start
-                end_frame = desired_end
+            start_frame = desired_start
+            end_frame = desired_end
 
             start_frame = clamp(start_frame, 0, total_frames)
             end_frame = clamp(end_frame, 0, total_frames)
@@ -641,9 +626,9 @@ def build_focus_subvideos(
             sub["processor_info"] = info
             subvideos.append(sub)
 
-    # Track B: Adaptive focus for ratios without any strict-fit fixed window
+    # Track B: Adaptive focus for ratios with one or more failed fixed specs.
     for ratio in FOCUS_POSITIONS:
-        if strict_fit_by_ratio[ratio]:
+        if not has_failed_by_ratio[ratio]:
             continue
 
         # Maximum in-bounds window (in frames) that preserves target ratio
@@ -1322,10 +1307,34 @@ def _balance_global_by_video(
 
 def _subvideo_output_path(sub: dict[str, Any]) -> Path:
     """由子视频元数据中的相对路径解析出绝对输出路径。"""
-    rel = sub["video_path"]
+    rel = str(sub["video_path"])
+    path = Path(rel)
+    if path.is_absolute():
+        return path
     if rel.startswith("data/"):
         return PROJECT_ROOT / rel
     return PROJECT_ROOT / "data" / rel
+
+
+def _metadata_path_for_output(path: Path) -> str:
+    """Return a stable metadata path for generated media."""
+    try:
+        return str(path.relative_to(PROJECT_ROOT / "data"))
+    except ValueError:
+        pass
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _sample_candidate_for_output(sub: dict[str, Any], sample_output_dir: Path) -> dict[str, Any]:
+    """Copy a candidate and redirect its media output into the sample tree."""
+    sample_sub = dict(sub)
+    sample_video_path = sample_output_dir / "03_subvideos" / f"{sub['subvideo_id']}.mp4"
+    sample_sub["video_path"] = _metadata_path_for_output(sample_video_path)
+    sample_sub["frame_paths"] = []
+    return sample_sub
 
 
 def _generate_media_for_candidate(
@@ -1373,9 +1382,7 @@ def _generate_media_for_candidate(
             frame_files = extract_sampled_frames(
                 src_for_frames, frame_dir_out, mapping
             )
-            sub["frame_paths"] = [
-                str(Path(f).relative_to(PROJECT_ROOT / "data")) for f in frame_files
-            ]
+            sub["frame_paths"] = [_metadata_path_for_output(Path(f)) for f in frame_files]
 
     # 补算 fracture_between（阶段 1 时 sampled=[] 导致 fracture_between=None）
     has_fracture = sub.get("has_fracture", sub.get("has_fracture_canonical"))
@@ -1395,6 +1402,78 @@ def _generate_media_for_candidate(
                 f"{sub.get('subvideo_id')}: positive sample missing valid fracture_between"
             )
     return sub
+
+
+def select_sample_videos(
+    records: list[dict[str, Any]],
+    split_mapping: dict[str, dict[str, Any]],
+    sample_size: int | None = None,
+    sample_seed: int | None = None,
+    video_ids: list[str] | None = None,
+    boundary_weighted: bool = False,
+) -> list[dict[str, Any]]:
+    """Select a subset of video records for sample/smoke generation.
+
+    When video_ids is provided, only those videos are used (filtered by split_mapping).
+    When sample_size is provided, randomly select that many videos (with seed for reproducibility).
+    When boundary_weighted, prefer videos where the event is near a boundary (adaptive-prone).
+
+    Returns filtered list of records.
+    """
+    if video_ids is not None:
+        id_set = set(video_ids)
+        candidates = [r for r in records if r["video_id"] in id_set]
+        missing = id_set - {r["video_id"] for r in candidates}
+        if missing:
+            print(f"  警告: 以下 video_id 在 records 中未找到: {sorted(missing)}")
+        return candidates
+
+    # Filter to non-test records
+    train_val_records = [
+        r for r in records
+        if split_mapping.get(r["video_id"], {}).get("split") != "test"
+    ]
+
+    if sample_size is None or sample_size >= len(train_val_records):
+        return train_val_records
+
+    rng = random.Random(sample_seed if sample_seed is not None else 42)
+
+    if boundary_weighted:
+        # Prefer videos with events near boundaries (adaptive-prone)
+        # Score: how close the event is to the edge (higher = more boundary)
+        def _boundary_score(rec: dict[str, Any]) -> float:
+            event_frame = _event_frame(rec)
+            total = rec.get("total_frames")
+            if event_frame is None or total is None or total <= 0:
+                return 0.0
+            # Score = min(distance_to_start, distance_to_end) / total_frames
+            # Lower = closer to boundary = higher weight
+            dist_to_start = event_frame
+            dist_to_end = total - event_frame
+            min_dist = min(dist_to_start, dist_to_end)
+            return 1.0 - min_dist / total  # 1.0 = exactly on edge, 0.0 = perfectly centered
+
+        scores = [_boundary_score(r) for r in train_val_records]
+        # Normalize scores to weights (add small epsilon to avoid zero-weight)
+        total_score = sum(scores)
+        if total_score <= 0:
+            return rng.sample(train_val_records, min(sample_size, len(train_val_records)))
+        weights = [s / total_score for s in scores]
+
+        # Weighted random sample
+        indices = list(range(len(train_val_records)))
+        chosen_indices = rng.choices(indices, weights=weights, k=sample_size)
+        # Deduplicate while preserving weighted preference
+        chosen_indices = list(dict.fromkeys(chosen_indices))  # unique, order-preserving
+        if len(chosen_indices) < sample_size:
+            remaining = [i for i in indices if i not in chosen_indices]
+            rng.shuffle(remaining)
+            chosen_indices.extend(remaining[:sample_size - len(chosen_indices)])
+
+        return [train_val_records[i] for i in chosen_indices]
+    else:
+        return rng.sample(train_val_records, min(sample_size, len(train_val_records)))
 
 
 def main():
@@ -1440,17 +1519,171 @@ def main():
         action="store_true",
         help="跳过预处理器健康检查（处理器加载成功后直接开始构建子视频）",
     )
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        default=None,
+        help="样本模式：生成的样本数量（设置后启用样本模式，不执行完整生成）",
+    )
+    parser.add_argument(
+        "--sample-seed",
+        type=int,
+        default=None,
+        help="样本模式：随机采样种子（默认使用 --seed 值）",
+    )
+    parser.add_argument(
+        "--sample-output-dir",
+        type=Path,
+        default=None,
+        help="样本模式：样本输出目录（与完整生成隔离）",
+    )
+    parser.add_argument(
+        "--video-ids",
+        type=str,
+        nargs="+",
+        default=None,
+        help="样本模式：指定视频 ID 列表，只生成这些视频的样本",
+    )
+    parser.add_argument(
+        "--sample-boundary-weighted",
+        action="store_true",
+        default=False,
+        help="样本模式：边界加权采样，优先选择事件靠近边界的视频（更易触发 adaptive focus）",
+    )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
-
-    records = json.loads(args.video_meta.read_text(encoding="utf-8"))
-    video_meta_dict = {r["video_id"]: r for r in records}
-    split_mapping = load_splits(args.splits_dir)
+    if args.sample_size is not None and args.sample_size < 1:
+        parser.error("--sample-size must be >= 1 when provided")
 
     FOCUS_WINDOWS = [int(w) if w == int(w) else w for w in args.focus_windows]
     FOCUS_POSITIONS = args.focus_positions
     NEG_CLIP_DURATIONS = [int(w) if w == int(w) else w for w in args.neg_clip_durations]
     VIDEO_MAXLEN = 8
+
+    records = json.loads(args.video_meta.read_text(encoding="utf-8"))
+    video_meta_dict = {r["video_id"]: r for r in records}
+    split_mapping = load_splits(args.splits_dir)
+
+    # Sample / smoke mode: early exit before full generation
+    is_sample_mode = args.sample_size is not None or args.video_ids is not None
+    if is_sample_mode:
+        sample_seed = args.sample_seed if args.sample_seed is not None else args.seed
+        sample_output_dir = args.sample_output_dir or (PROJECT_ROOT / "data" / "sample_subvideos")
+        sample_records = select_sample_videos(
+            records, split_mapping,
+            sample_size=args.sample_size,
+            sample_seed=sample_seed,
+            video_ids=args.video_ids,
+            boundary_weighted=args.sample_boundary_weighted,
+        )
+        print(f"样本模式：选中 {len(sample_records)} 个视频")
+        if not sample_records:
+            print("样本模式：无符合条件的视频，跳过生成")
+            return
+        (sample_output_dir / "03_subvideos").mkdir(parents=True, exist_ok=True)
+        (sample_output_dir / "04_frames").mkdir(parents=True, exist_ok=True)
+
+        # Build preprocessor for sample generation
+        preprocessor_sample = _create_preprocessor(args.preprocessor, VIDEO_MAXLEN, args.model)
+        if not args.skip_healthcheck:
+            if not preprocessor_sample.healthcheck():
+                info = preprocessor_sample.get_info()
+                raise RuntimeError(f"预处理器健康检查失败: {info.name} ({info.backend})")
+        else:
+            print("跳过预处理器健康检查")
+        print(f"使用预处理器: {preprocessor_sample.get_info().name}, fingerprint={preprocessor_sample.fingerprint()}")
+
+        EXCLUSIONS.clear()
+        sample_candidates: list[dict[str, Any]] = []
+        
+        print("样本模式 - 阶段 1：生成候选子视频清单")
+        for rec in sample_records:
+            video_id = rec["video_id"]
+            split_info = split_mapping.get(video_id, {"split": "unknown", "fold": "unknown"})
+            print(f"  处理 {video_id}")
+            subs = build_subvideos_for_record(
+                rec, split_info, generate_media=False, extract_frames=False,
+                preprocessor=preprocessor_sample,
+            )
+            sample_candidates.extend(subs)
+        print(f"样本候选子视频：{len(sample_candidates)} 条")
+        
+        # Count by type for manifest
+        ordinary_focus_count = sum(1 for c in sample_candidates 
+                                   if c.get("crop_type", "").startswith("focus_")
+                                   and not c.get("is_adaptive_focus"))
+        adaptive_focus_count = sum(1 for c in sample_candidates if c.get("is_adaptive_focus"))
+        neg_count = sum(1 for c in sample_candidates if c.get("selection_reason", "").startswith("neg"))
+        full_count = sum(1 for c in sample_candidates if c.get("crop_type") == "full")
+
+        print("样本模式 - 阶段 2：生成选中子视频媒体...")
+        sample_selected_ids = {c["subvideo_id"] for c in sample_candidates}
+        sample_generated: list[dict[str, Any]] = []
+        total_sample = len(sample_selected_ids)
+        completed_sample = 0
+        
+        for cand in sample_candidates:
+            if cand["subvideo_id"] not in sample_selected_ids:
+                continue
+            rec = video_meta_dict.get(cand["source_video"])
+            if rec is None:
+                continue
+            sample_cand = _sample_candidate_for_output(cand, sample_output_dir)
+            completed_sample += 1
+            crop_type = cand.get("crop_type", "?")
+            start = cand.get("start_time", 0)
+            end = cand.get("end_time", 0)
+            print(f"  [{completed_sample}/{total_sample}] {cand['subvideo_id']} ({crop_type}, {start:.1f}s→{end:.1f}s)")
+            try:
+                sub = _generate_media_for_candidate(
+                    sample_cand, rec, sample_output_dir / "04_frames",
+                    extract_frames=args.extract_frames,
+                    preprocessor=preprocessor_sample,
+                )
+            except Exception as exc:
+                EXCLUSIONS.append({
+                    "subvideo_id": cand["subvideo_id"],
+                    "source_video": cand.get("source_video"),
+                    "reason": f"生成媒体失败: {exc}",
+                    "crop_type": crop_type,
+                })
+                print(f"   ⚠️ 跳过 {cand['subvideo_id']}: {exc}")
+                continue
+            sample_generated.append(sub)
+
+        # Write sample manifest
+        sample_output_dir.mkdir(parents=True, exist_ok=True)
+        
+        manifest = {
+            "mode": "sample",
+            "sample_size": args.sample_size,
+            "sample_seed": sample_seed,
+            "video_ids_specified": args.video_ids,
+            "boundary_weighted": args.sample_boundary_weighted,
+            "video_count_selected": len(sample_records),
+            "video_ids_selected": [r["video_id"] for r in sample_records],
+            "candidate_count": len(sample_candidates),
+            "generated_count": len(sample_generated),
+            "counts": {
+                "ordinary_focus": ordinary_focus_count,
+                "adaptive_focus": adaptive_focus_count,
+                "negative": neg_count,
+                "full": full_count,
+                "exclusions": len(EXCLUSIONS),
+            },
+            "exclusions": EXCLUSIONS,
+            "subvideos": sample_generated,
+            "candidates": sample_candidates,
+            "preprocessor_fingerprint": preprocessor_sample.fingerprint(),
+            "seed": sample_seed,
+        }
+        manifest_path = sample_output_dir / "sample_manifest.json"
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2, allow_nan=False)
+        print(f"样本模式完成：生成 {len(sample_generated)} 个子视频")
+        print(f"样本清单写入 {manifest_path}")
+        # Early exit - skip full generation
+        return
 
     preprocessor = _create_preprocessor(args.preprocessor, VIDEO_MAXLEN, args.model)
     if not args.skip_healthcheck:
