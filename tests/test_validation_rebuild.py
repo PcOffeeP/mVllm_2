@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
+import types
 
 from finetune.validation.datasets import EvalSample
 from finetune.validation import run_base_prompt_test
+from finetune.validation import model_runtime
 from finetune.validation.run_evaluation import evaluate_sample, main
 from finetune.validation.schema import parse_model_output, unavailable
 
@@ -212,3 +214,65 @@ def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monk
     assert comparison["sample_count"] == 1
     assert comparison["prompts"]["training"]["format_valid_rate"] == 1.0
     assert comparison["prompts"]["system"]["format_valid_rate"] == 1.0
+
+
+def test_model_runtime_keeps_minicpm_video_embedding_inputs(monkeypatch, tmp_path):
+    captured = {}
+
+    class FakeInputs(dict):
+        def to(self, device):
+            return self
+
+    class FakeProcessor:
+        tokenizer = object()
+
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            return "rendered prompt"
+
+        def __call__(self, **kwargs):
+            return FakeInputs(
+                {
+                    "input_ids": "ids",
+                    "attention_mask": "mask",
+                    "pixel_values": "pixels",
+                    "image_sizes": "processor-only",
+                    "temporal_ids": [[0, 0]],
+                    "image_bound": "bounds",
+                    "tgt_sizes": "sizes",
+                }
+            )
+
+    class FakeModel:
+        device = "cpu"
+
+        def generate(self, **kwargs):
+            captured.update(kwargs)
+            return ["{}"]
+
+    class FakeNoGrad:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(no_grad=lambda: FakeNoGrad()))
+
+    monkeypatch.setattr(
+        model_runtime,
+        "load_video_frames",
+        lambda video_path, max_frames: (["frame1", "frame2"], [[0, 0]], [0.0, 1.0]),
+        raising=False,
+    )
+
+    # run_model_on_video imports load_video_frames inside the function, so patch
+    # the imported module path instead of model_runtime globals.
+    import finetune.validation.video_loader as video_loader
+
+    monkeypatch.setattr(video_loader, "load_video_frames", lambda video_path, max_frames: (["frame1", "frame2"], [[0, 0]], [0.0, 1.0]))
+
+    assert model_runtime.run_model_on_video(FakeModel(), FakeProcessor(), tmp_path / "sample.mp4", "prompt") == "{}"
+    assert "image_sizes" not in captured
+    assert captured["temporal_ids"] == [[0, 0]]
+    assert captured["image_bound"] == "bounds"
+    assert captured["tgt_sizes"] == "sizes"

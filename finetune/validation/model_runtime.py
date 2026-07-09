@@ -48,8 +48,10 @@ def run_model_on_video(model: Any, processor: Any, video_path: Path, prompt: str
         use_image_id=False,
         return_tensors="pt",
     ).to(model.device)
-    for key in ("image_sizes", "temporal_ids", "image_bound", "tgt_sizes"):
-        inputs.pop(key, None)
+    # `image_sizes` is a processor-only helper that MiniCPM's _decode would pass
+    # through to the text LLM. Keep temporal_ids/image_bound/tgt_sizes: MiniCPM
+    # needs them to build video embeddings.
+    inputs.pop("image_sizes", None)
 
     with torch.no_grad():
         return model.generate(
