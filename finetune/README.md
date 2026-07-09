@@ -14,15 +14,14 @@ finetune/
 │   ├── minicpmv4_5_lora_sft_interval_fold1.yaml
 │   ├── minicpmv4_5_lora_sft_interval_fold2.yaml
 │   └── merge.yaml
-└── validation/                # 推理与评测脚本
-    ├── run_inference.py
-    ├── evaluate_joint.py
-    ├── evaluate_time.py
-    ├── evaluate_type.py
-    ├── prepare_ground_truth.py
-    ├── plot_type_confusion_matrix.py
-    ├── common.py
-    └── config.py
+└── validation/                # 直接返回评估架构
+    ├── run_evaluation.py      # 唯一主入口：选择数据集、模型地址、prompt 后运行评估
+    ├── datasets.py            # test/test_subvideos/fold_N_val 数据集加载
+    ├── prompts.py             # training / system 两版 prompt
+    ├── schema.py              # 五字段 JSON 格式校验与逐字段比较
+    ├── model_runtime.py       # MiniCPM 视频推理封装（训练机/GPU 使用）
+    ├── constants.py
+    └── video_loader.py
 ```
 
 ## 前置条件
@@ -128,6 +127,48 @@ git pull
 | `trainer_state.json` | `chat_template.json` |
 | `README.md` | `preprocessor_config.json` |
 
-## 验证与评测
+## 直接返回评估
 
-`finetune/validation/` 提供完整的推理与评测脚本，详细用法见各脚本的 `--help`。
+验证架构已重构为单一路径：只评估微调模型的直接返回，不再生成或依赖旧的 time/type/joint/compare 二次转换产物。
+每次评估只选择三项：
+
+1. 数据集：`test` / `test_subvideos` / `fold_0_val` / `fold_1_val` / `fold_2_val`。
+2. 微调后模型地址：`--model-dir`。
+3. Prompt 版本：`training` 或 `system`。
+
+训练机上直接运行模型并评估（需要模型、视频文件和 GPU）：
+
+```bash
+cd /path/to/mVllm_2/
+python -m finetune.validation.run_evaluation \
+  --dataset test_subvideos \
+  --model-dir /path/to/merged_or_adapter_model \
+  --prompt system \
+  --out-dir finetune/results/eval_test_subvideos_system
+```
+
+本机只评估已有预测 JSONL（不需要 GPU，用于复核训练机同步出的结果）：
+
+```bash
+python -m finetune.validation.run_evaluation \
+  --dataset test_subvideos \
+  --predictions finetune/results/direct_test_subvideos_system_prompt.jsonl \
+  --prompt system \
+  --out-dir finetune/results/eval_test_subvideos_system
+```
+
+输出文件：
+
+- `evaluation_summary.json`：整体格式合格率、直接预测正确率、五字段逐字段准确率。
+- `evaluation_records.jsonl`：逐样本 raw output、解析 payload、目标值、字段比较结果。
+- `failures.csv`：运行失败、格式不合格、预测错误样本。
+
+五字段协议固定为：
+
+- `has_fracture`
+- `fracture_between`
+- `type`
+- `location`
+- `confidence`
+
+`confidence` 没有人工 ground truth，评估只检查它是否为 `[0, 1]` 数字。若某个数据集缺少某个字段的 ground truth（例如全视频 `test` 当前缺少采样帧级 `fracture_between`），该字段会标记为 `unavailable` 并从该字段准确率中排除。

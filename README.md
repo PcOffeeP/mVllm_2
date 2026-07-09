@@ -407,7 +407,7 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 
 验证流程：推理 → 评估 → 模型对比。
 
-正式报告必须使用同一 `split`、同一 `prompt_preset`、同一 `generation` 参数，确保基座模型与微调模型在同一协议下可公平对比。
+正式报告必须使用同一 `dataset`、同一 `prompt`、同一 `generation` 参数，确保不同模型在同一协议下可公平对比。
 
 ### Prompt 协议
 
@@ -423,7 +423,7 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 }
 ```
 
-五字段协议通过 `strict_interval` prompt preset 启用，与训练数据的 assistant 输出格式一致。
+五字段协议由 `training` 和 `system` 两版 prompt 共同约束：`training` 与训练样本提示保持一致，`system` 额外强调字段取值和组合规则。
 
 **合法组合规则**：
 
@@ -432,129 +432,52 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 - 视频异常：`has_fracture=null`，`fracture_between=null`，`location=null`
 - `confidence` 始终为 0\~1 数字
 
-### 推理
+### 直接返回评估
 
-#### 任务类型
+测试架构已重构为单一路径：直接查看模型最终返回的五字段 JSON，不再做旧的 time/type/joint 二次转换评估。
 
-`--task` 参数指定推理时模型需要输出的字段，支持 3 种任务：
+每次评估只选择三项：
 
-| Task | 输出字段 | 说明 |
-|------|---------|------|
-| `time` | `time` / `fracture_between`、`has_fracture` | 仅定位断裂时间/区间，不要求识别断裂类型 |
-| `type` | `type` | 仅分类断裂类型，不要求时间定位 |
-| `joint` | 全部字段 | 同时定位断裂时间/区间并识别断裂类型，是主要评估任务 |
+1. `--dataset`：`test` / `test_subvideos` / `fold_0_val` / `fold_1_val` / `fold_2_val`
+2. `--model-dir`：微调后模型地址
+3. `--prompt`：`training`（训练时 prompt）或 `system`（带输出约束的 prompt）
 
-从项目根目录（`TensileAgent/`）运行：
+训练机上运行完整推理与评估（需要模型、视频文件和 GPU）：
 
 ```bash
-# 基座模型推理（test split）
-python3 -m finetune.validation.run_inference \
-    --task joint \
-    --split test \
-    --model-dir models/minicpm-v-4.5 \
-    --model-name base \
-    --prompt-preset strict_interval \
-    --output results/base_test.jsonl
-
-# 微调模型推理（fold_0 val split）
-python3 -m finetune.validation.run_inference \
-    --task joint \
-    --split fold_0_val \
+python3 -m finetune.validation.run_evaluation \
+    --dataset test_subvideos \
     --model-dir LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
-    --model-name finetuned_fold0 \
-    --prompt-preset strict_interval \
-    --output results/finetuned_fold0_val.jsonl
-
-# 微调模型推理（test split）
-python3 -m finetune.validation.run_inference \
-    --task joint \
-    --split test \
-    --model-dir LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
-    --model-name finetuned_test \
-    --prompt-preset strict_interval \
-    --output results/finetuned_test.jsonl
-
-# 兼容旧模式（fold 参数）
-python3 -m finetune.validation.run_inference \
-    --task joint \
-    --fold 0 \
-    --model-dir LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
-    --output results/joint_fold0.jsonl
-
+    --prompt system \
+    --out-dir results/eval_test_subvideos_system
 ```
 
-**支持的 split**: `fold_0_val`, `fold_1_val`, `fold_2_val`, `test`
-
-**重要**：
-
-- 基座模型和微调模型必须使用 **同一 prompt preset**。不要给基座模型加额外提示词。
-- Generation 参数固定为 `do_sample=False, num_beams=1, max_new_tokens=256`，不在正式评估中使用随机采样。
-- **帧映射生成**：test split 的视频帧映射从 `all_videos_tag.csv` 中的 `视频总帧数` 和 `视频帧率` 自动生成（匹配 MiniCPM processor 的均匀采样行为）。如果 CSV 元数据完整，test split 的 interval 评估可以正常运行。fold val split 使用由 `subvideos_meta.label_reviewed.json` 生成的训练/验证 JSON 与冻结帧映射。
-- 如果本地没有远程视频文件（`data/01_videos/`），推理会因 `video_load_failed` 失败——这不是评估逻辑的缺陷。正式评估应在远程 4090 完整数据目录运行。
-
-### 评估
-
-三种评估维度，均在项目根目录运行：
+本地 Mac 只复核已有预测 JSONL（不跑模型、不需要 GPU）：
 
 ```bash
-# 1. 时间定位评估（区间命中率、中点 MAE/MSE、within_1s/3s/5s）
-python3 -m finetune.validation.evaluate_time \
-    --inputs results/base_test.jsonl \
-    --out-dir results/eval_time_base
-
-# 2. 类型分类评估（Accuracy、Macro-F1、FP/FN 率、混淆矩阵）
-python3 -m finetune.validation.evaluate_type \
-    --inputs results/base_test.jsonl \
-    --out-dir results/eval_type_base
-
-# 3. 联合评估（interval 协议联合成功率、失败原因分布）
-python3 -m finetune.validation.evaluate_joint \
-    --inputs results/base_test.jsonl \
-    --out-dir results/eval_joint_base
+python3 -m finetune.validation.run_evaluation \
+    --dataset test_subvideos \
+    --predictions finetune/results/direct_test_subvideos_system.jsonl \
+    --prompt system \
+    --out-dir results/eval_test_subvideos_system
 ```
 
-可选 `--split` 参数过滤（从 split JSON 加载 video\_id 集合）：
+预测 JSONL 至少需要包含 `video_id` 和 `raw_output`；`raw_output` 是模型原始返回文本。
 
-```bash
-python3 -m finetune.validation.evaluate_time \
-    --inputs results/finetuned_fold0_val.jsonl \
-    --out-dir results/eval_time_fold0 \
-    --split fold_0_val
-```
+输出文件：
 
-**输出说明**：
+| 文件 | 说明 |
+| ---- | ---- |
+| `evaluation_summary.json` | 格式合格率、直接预测正确率、五字段逐字段准确率 |
+| `evaluation_records.jsonl` | 每个样本的 raw output、解析 payload、目标值、字段比较结果 |
+| `failures.csv` | 运行失败、格式不合格、预测错误样本 |
 
-| 评估脚本             | JSON 输出                                                                                 | CSV 输出                                                                                                        |
-| ---------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `evaluate_time`  | `time_metrics.json`（正式指标：`interval_metrics`；`deprecated_legacy_metrics` 仅用于向后兼容）        | `interval_errors.csv`, `invalid_schema.csv`, `time_errors.csv`（legacy）, `time_confidence_buckets.csv`（legacy） |
-| `evaluate_type`  | `type_metrics.json`（accuracy, macro\_f1, fp/fn rates）                                   | `type_per_class.csv`, `type_confusion_matrix.csv`, `invalid_schema.csv`                                       |
-| `evaluate_joint` | `joint_metrics.json`（正式指标：`joint_interval_metrics`；`deprecated_legacy_metrics` 仅用于向后兼容） | `joint_interval_failures.csv`, `joint_failures.csv`（legacy）, `invalid_schema.csv`                             |
+正式验收只看两类信息：
 
-> **正式报告指标**：所有 `time_metrics.json` 和 `joint_metrics.json` 中，请只引用 `interval_metrics` 和 `joint_interval_metrics` 作为正式指标。`deprecated_legacy_metrics` 子对象包含使用旧 prompt 协议（time/type 字段）的聚合指标，保留仅供向下兼容，不应在 interval 五字段协议评估中使用。
+- 返回格式是否满足五字段协议：`has_fracture`、`fracture_between`、`type`、`location`、`confidence`
+- 每个可评估字段的最终预测是否正确
 
-### 模型对比
-
-对比基座模型与微调模型在同一 split 上的性能差异：
-
-```bash
-python3 -m finetune.validation.compare_models \
-    --inputs \
-        base=results/base_test.jsonl \
-        finetuned=results/finetuned_test.jsonl \
-    --out-dir results/compare_test
-```
-
-**输出**：
-
-| 文件                          | 说明                                                |
-| --------------------------- | ------------------------------------------------- |
-| `model_summary.json`        | 所有模型的完整指标汇总                                       |
-| `delta_summary.json`        | finetuned - base 的指标差值                            |
-| `paired_samples.csv`        | 逐 video\_id 对比表（含 improvement/regression/same 标记） |
-| `by_type_delta.csv`         | 按 gt\_type 分组的准确率变化                               |
-| `{model_name}_summary.json` | 单模型详细指标                                           |
-
-`compare_models` 会自动校验所有输入是否覆盖同一批 `video_id`，不一致时报错。
+`confidence` 没有人工 ground truth，评估只检查它是否为 `[0, 1]` 数字。若数据集缺少某个字段的 ground truth，该字段会标记为 `unavailable` 并从该字段准确率中排除。
 
 ### 推理服务（同进程部署）
 
@@ -576,7 +499,7 @@ python3 -m pipeline.server_proxy \
 
 - **媒体文件缺失**：本地 Mac 通常不包含远程视频文件（`data/01_videos/`）和子视频（`data/03_subvideos/`）。运行推理会因 `video_load_failed` 或 `frame_mapping_missing` 失败，这**不是**评估逻辑缺陷。
 - **数据文件可用**：`data/05_splits/`、`data/06_merged/`、`data/07_metadata/subvideos_meta.label_reviewed.json` 等非媒体数据文件可在仓库或同步产物中使用，`load_test_split_samples()` 等加载函数可在本地正常工作。
-- **评估脚本可本地运行**：只要有推理产出的 JSONL 文件，`evaluate_time/type/joint` 和 `compare_models` 可在本地 Mac 上运行。
+- **评估脚本可本地运行**：只要有包含 `video_id` 和 `raw_output` 的预测 JSONL，`run_evaluation --predictions ...` 可在本地 Mac 上运行。
 - **正式评估**：应在远程 4090 服务器上使用完整数据目录运行。
 
 ## 已知限制

@@ -1,3 +1,0 @@
-video_id,json_valid,schema_valid,schema_errors,failure_reason
-video_0011,True,False,"type '未断裂' requires has_fracture=false, got None",time_unparseable
-video_0062,True,False,"type '未断裂' requires has_fracture=false, got None",time_unparseable
