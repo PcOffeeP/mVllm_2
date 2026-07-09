@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import types
@@ -7,7 +8,9 @@ import types
 from finetune.validation.datasets import EvalSample
 from finetune.validation import run_base_prompt_test
 from finetune.validation import model_runtime
+from finetune.validation import run_evaluation
 from finetune.validation.run_evaluation import evaluate_sample, main
+from finetune.validation.prompts import get_system_prompt, get_user_prompt
 
 
 def test_evaluate_sample_keeps_raw_output_without_schema_extraction():
@@ -70,6 +73,23 @@ def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):
         encoding="utf-8",
     )
     out_dir = tmp_path / "eval"
+
+    samples = [
+        EvalSample(
+            sample_id="video_0005_full",
+            video_id="video_0005_full",
+            video_path=tmp_path / "video_0005_full.mp4",
+            metadata={},
+        ),
+        EvalSample(
+            sample_id="video_0008_full",
+            video_id="video_0008_full",
+            video_path=tmp_path / "video_0008_full.mp4",
+            metadata={},
+        ),
+    ]
+    monkeypatch.setattr(run_evaluation, "load_dataset", lambda name, video_root=None: samples)
+
     monkeypatch.setattr(
         sys,
         "argv",
@@ -98,8 +118,58 @@ def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):
     assert (out_dir / "runtime_failures.csv").exists()
 
 
+def test_run_evaluation_passes_system_prompt_to_model_runtime(tmp_path, monkeypatch):
+    """Patch: run_evaluation 推理时应把 prompt_library 的 system prompt 传给 model_runtime。"""
+    out_dir = tmp_path / "eval"
+    sample = EvalSample(
+        sample_id="video_0001",
+        video_id="video_0001",
+        video_path=tmp_path / "video_0001.mp4",
+        metadata={},
+    )
+    sample.video_path.write_text("not a video", encoding="utf-8")
+
+    captured = {}
+
+    def fake_load_dataset(name, video_root=None):
+        return [sample]
+
+    def fake_load_model(model_dir):
+        return object(), object()
+
+    def fake_run_model_on_video(model, processor, video_path, prompt, system_prompt=None):
+        captured["system_prompt"] = system_prompt
+        captured["prompt"] = prompt
+        return "output"
+
+    monkeypatch.setattr(run_evaluation, "load_dataset", fake_load_dataset)
+    monkeypatch.setattr(run_evaluation, "load_model", fake_load_model)
+    monkeypatch.setattr(run_evaluation, "run_model_on_video", fake_run_model_on_video)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_evaluation",
+            "--dataset",
+            "test",
+            "--model-dir",
+            "/tmp/model",
+            "--prompt",
+            "training",
+            "--out-dir",
+            str(out_dir),
+        ],
+    )
+
+    main()
+
+    assert captured["system_prompt"] == get_system_prompt()
+    assert captured["prompt"] == get_user_prompt(0)
+
+
 def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monkeypatch):
-    calls = []
+    dataset_calls = []
+    runtime_calls = []
 
     sample = EvalSample(
         sample_id="video_0005",
@@ -110,13 +180,14 @@ def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monk
     sample.video_path.write_text("not a real video", encoding="utf-8")
 
     def fake_load_dataset(name, video_root=None):
-        calls.append((name, video_root))
+        dataset_calls.append((name, video_root))
         return [sample]
 
     def fake_load_model(model_dir):
         return object(), object()
 
-    def fake_run_model_on_video(model, processor, video_path, prompt_text):
+    def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):
+        runtime_calls.append({"prompt_text": prompt_text, "system_prompt": system_prompt})
         return json.dumps(
             {
                 "has_fracture": None,
@@ -145,12 +216,17 @@ def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monk
 
     run_base_prompt_test.main()
 
-    assert calls == [("test", None)]
+    assert dataset_calls == [("test", None)]
+    assert len(runtime_calls) == 2
     comparison = json.loads((tmp_path / "out" / "prompt_format_comparison.json").read_text(encoding="utf-8"))
     assert comparison["dataset"] == "test"
     assert comparison["sample_count"] == 1
+    assert comparison["system_prompt"] == get_system_prompt()
+    assert comparison["system_prompt_hash"] == hashlib.sha256(get_system_prompt().encode("utf-8")).hexdigest()
     assert comparison["prompts"]["training"]["raw_output_rate"] == 1.0
     assert comparison["prompts"]["system"]["raw_output_rate"] == 1.0
+    # Verify system_prompt was passed to runtime for both prompt variants.
+    assert all(call["system_prompt"] == get_system_prompt() for call in runtime_calls)
 
 
 def test_model_runtime_keeps_minicpm_video_embedding_inputs(monkeypatch, tmp_path):
@@ -213,3 +289,104 @@ def test_model_runtime_keeps_minicpm_video_embedding_inputs(monkeypatch, tmp_pat
     assert captured["temporal_ids"] == [[0, 0]]
     assert captured["image_bound"] == "bounds"
     assert captured["tgt_sizes"] == "sizes"
+
+
+def test_model_runtime_includes_system_prompt_when_provided(monkeypatch, tmp_path):
+    captured_messages = []
+
+    class FakeInputs(dict):
+        def to(self, device):
+            return self
+
+    class FakeProcessor:
+        tokenizer = object()
+
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            captured_messages.extend(messages)
+            return "rendered prompt"
+
+        def __call__(self, **kwargs):
+            return FakeInputs({"input_ids": "ids"})
+
+    class FakeModel:
+        device = "cpu"
+
+        def generate(self, **kwargs):
+            return ["output"]
+
+    class FakeNoGrad:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(no_grad=lambda: FakeNoGrad()))
+    import finetune.validation.video_loader as video_loader
+
+    monkeypatch.setattr(
+        video_loader,
+        "load_video_frames",
+        lambda video_path, max_frames: (["frame1"], [[0, 0]], [0.0]),
+    )
+
+    result = model_runtime.run_model_on_video(
+        FakeModel(),
+        FakeProcessor(),
+        tmp_path / "sample.mp4",
+        "user prompt",
+        system_prompt="system prompt",
+    )
+    assert result == "output"
+    assert captured_messages == [
+        {"role": "system", "content": "system prompt"},
+        {"role": "user", "content": "(<image>./</image>)\nuser prompt"},
+    ]
+
+
+def test_model_runtime_omits_system_prompt_when_none(monkeypatch, tmp_path):
+    captured_messages = []
+
+    class FakeInputs(dict):
+        def to(self, device):
+            return self
+
+    class FakeProcessor:
+        tokenizer = object()
+
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            captured_messages.extend(messages)
+            return "rendered prompt"
+
+        def __call__(self, **kwargs):
+            return FakeInputs({"input_ids": "ids"})
+
+    class FakeModel:
+        device = "cpu"
+
+        def generate(self, **kwargs):
+            return ["output"]
+
+    class FakeNoGrad:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(no_grad=lambda: FakeNoGrad()))
+    import finetune.validation.video_loader as video_loader
+
+    monkeypatch.setattr(
+        video_loader,
+        "load_video_frames",
+        lambda video_path, max_frames: (["frame1"], [[0, 0]], [0.0]),
+    )
+
+    result = model_runtime.run_model_on_video(
+        FakeModel(), FakeProcessor(), tmp_path / "sample.mp4", "user prompt"
+    )
+    assert result == "output"
+    assert captured_messages == [
+        {"role": "user", "content": "(<image>./</image>)\nuser prompt"},
+    ]

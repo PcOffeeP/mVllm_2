@@ -12,7 +12,15 @@ from pipeline.preprocessing.minicpm_preprocessor import (
     _resolve_model_path,
 )
 from pipeline.scripts import subvideo_builder
-from pipeline.scripts.training_sample_builder import convert_subvideo_to_sample
+from pipeline.scripts.training_sample_builder import convert_subvideo_to_sample, load_prompt_library
+
+
+@pytest.fixture
+def prompt_library():
+    """加载项目统一的 prompt 模板库。"""
+    return load_prompt_library(
+        Path(__file__).resolve().parents[1] / "pipeline" / "prompt_library.yaml"
+    )
 
 
 def test_llamafactory_sampling_positions_match_floor_fps_contract() -> None:
@@ -194,7 +202,7 @@ def test_generate_media_fills_mapping_from_preprocessor(monkeypatch, tmp_path: P
     assert result["processor_fingerprint"].startswith("minicpmv4_5:test")
 
 
-def test_training_sample_builder_rejects_legacy_minicpm_fingerprint() -> None:
+def test_training_sample_builder_rejects_legacy_minicpm_fingerprint(prompt_library) -> None:
     sub = {
         "subvideo_id": "legacy",
         "video_path": "data/01_videos/video_0001.mp4",
@@ -215,7 +223,7 @@ def test_training_sample_builder_rejects_legacy_minicpm_fingerprint() -> None:
     }
 
     with pytest.raises(ValueError, match="video_fps"):
-        convert_subvideo_to_sample(sub)
+        convert_subvideo_to_sample(sub, library=prompt_library)
 
 
 @pytest.mark.parametrize(
@@ -229,6 +237,7 @@ def test_training_sample_builder_rejects_legacy_minicpm_fingerprint() -> None:
 )
 def test_training_sample_builder_rejects_incomplete_or_wrong_minicpm_fingerprint(
     fingerprint: str,
+    prompt_library,
 ) -> None:
     sub = {
         "subvideo_id": "bad-fingerprint",
@@ -250,7 +259,7 @@ def test_training_sample_builder_rejects_incomplete_or_wrong_minicpm_fingerprint
     }
 
     with pytest.raises(ValueError):
-        convert_subvideo_to_sample(sub)
+        convert_subvideo_to_sample(sub, library=prompt_library)
 
 
 def test_default_extract_frames_is_true() -> None:
@@ -988,3 +997,160 @@ def test_sample_cli_flags_parse() -> None:
     # --sample-output-dir
     args6 = parser.parse_args(["--sample-size", "5", "--sample-output-dir", "/tmp/samples"])
     assert args6.sample_output_dir == "/tmp/samples"
+
+
+def _make_training_sub(
+    subvideo_id: str = "sub_test",
+    has_fracture: bool | None = False,
+    ftype: str = "未断裂",
+    fracture_between: list[int] | None = None,
+    location: str | None = None,
+) -> dict[str, Any]:
+    """构造一条符合 convert_subvideo_to_sample 最小输入要求的子视频。"""
+    return {
+        "subvideo_id": subvideo_id,
+        "video_path": f"data/03_subvideos/{subvideo_id}.mp4",
+        "source_video": "video_0001",
+        "processor_fingerprint": "minicpmv4_5:test:max_frames=8:video_fps=2:backend=transformers",
+        "actual_frame_mapping": [
+            {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+            {"input_index": 1, "original_frame": 10, "timestamp": 1.0},
+        ],
+        "has_fracture": has_fracture,
+        "has_fracture_canonical": has_fracture,
+        "fracture_between": fracture_between,
+        "type": ftype,
+        "location": location,
+        "location_canonical": location,
+        "source_type": ftype,
+        "source_location": location,
+    }
+
+
+def _parse_result(content: str) -> dict[str, Any]:
+    """从 assistant content 中提取并解析结果区 JSON。"""
+    assert "判断依据：" in content
+    assert "结果：" in content
+    result_part = content.split("结果：", 1)[1].strip()
+    return json.loads(result_part)
+
+
+def test_positive_sample_assistant_content_has_evidence_and_parsable_result(prompt_library) -> None:
+    """正样本 assistant target 包含判断依据、可解析结果区，且不包含 confidence。"""
+    sub = _make_training_sub(
+        subvideo_id="sub_pos",
+        has_fracture=True,
+        ftype="韧性断裂",
+        fracture_between=[2, 3],
+        location="inside_gauge",
+    )
+    sample = convert_subvideo_to_sample(sub, library=prompt_library)
+    assistant = sample["messages"][2]["content"]
+
+    assert "confidence" not in assistant.lower()
+    assert "判断依据：" in assistant
+    assert "结果：" in assistant
+
+    result = _parse_result(assistant)
+    assert set(result.keys()) == {"has_fracture", "fracture_between", "type", "location"}
+    assert result["has_fracture"] is True
+    assert result["fracture_between"] == [2, 3]
+    assert result["type"] == "韧性断裂"
+    assert result["location"] == "inside_gauge"
+
+
+def test_negative_sample_assistant_content_has_no_fracture(prompt_library) -> None:
+    """负样本 assistant target 结果区 has_fracture=False，且不包含 confidence。"""
+    sub = _make_training_sub(
+        subvideo_id="sub_neg",
+        has_fracture=False,
+        ftype="未断裂",
+        fracture_between=None,
+        location=None,
+    )
+    sample = convert_subvideo_to_sample(sub, library=prompt_library)
+    assistant = sample["messages"][2]["content"]
+
+    assert "confidence" not in assistant.lower()
+    assert "判断依据：" in assistant
+    assert "结果：" in assistant
+
+    result = _parse_result(assistant)
+    assert set(result.keys()) == {"has_fracture", "fracture_between", "type", "location"}
+    assert result["has_fracture"] is False
+    assert result["fracture_between"] is None
+    assert result["type"] == "未断裂"
+    assert result["location"] is None
+
+
+def test_anomaly_sample_assistant_content_structured_as_anomaly(prompt_library) -> None:
+    """视频异常样本（has_fracture=None）结果区保留 type=视频异常，结构正确。"""
+    sub = _make_training_sub(
+        subvideo_id="sub_anomaly",
+        has_fracture=None,
+        ftype="视频异常",
+        fracture_between=None,
+        location=None,
+    )
+    sample = convert_subvideo_to_sample(sub, library=prompt_library)
+    assistant = sample["messages"][2]["content"]
+
+    assert "confidence" not in assistant.lower()
+    assert "判断依据：" in assistant
+    assert "结果：" in assistant
+
+    result = _parse_result(assistant)
+    assert set(result.keys()) == {"has_fracture", "fracture_between", "type", "location"}
+    assert result["has_fracture"] is False
+    assert result["fracture_between"] is None
+    assert result["type"] == "视频异常"
+    assert result["location"] is None
+
+
+@pytest.mark.parametrize(
+    "has_fracture, fracture_between, expected_type",
+    [
+        (True, [2, 3], "未夹紧"),
+        (False, None, "未断裂"),
+        (None, None, "未断裂"),
+    ],
+)
+def test_unclamped_label_with_and_without_event(
+    has_fracture: bool | None,
+    fracture_between: list[int] | None,
+    expected_type: str,
+    prompt_library,
+) -> None:
+    """有事件标注的未夹紧保留为未夹紧；无事件标注的未夹紧降级为未断裂。"""
+    sub = _make_training_sub(
+        subvideo_id="sub_unclamped",
+        has_fracture=has_fracture,
+        ftype="未夹紧",
+        fracture_between=fracture_between,
+        location=None,
+    )
+    sample = convert_subvideo_to_sample(sub, library=prompt_library)
+    assistant = sample["messages"][2]["content"]
+
+    result = _parse_result(assistant)
+    assert result["type"] == expected_type
+    assert result["has_fracture"] == (has_fracture is True)
+
+
+def test_training_sample_messages_order_and_system_prompt(prompt_library) -> None:
+    """messages 顺序为 [system, user, assistant]，且 system content 来自模板库。"""
+    sub = _make_training_sub(subvideo_id="sub_msg")
+    sample = convert_subvideo_to_sample(sub, library=prompt_library)
+    messages = sample["messages"]
+
+    assert [m["role"] for m in messages] == ["system", "user", "assistant"]
+    assert messages[0]["content"] == prompt_library["system_prompt"]
+    assert "<video>" in messages[1]["content"]
+
+
+def test_training_sample_prompt_version_propagated_to_metadata(prompt_library) -> None:
+    """prompt_version 被写入样本 metadata。"""
+    sub = _make_training_sub(subvideo_id="sub_version")
+    sample = convert_subvideo_to_sample(sub, library=prompt_library)
+
+    assert sample["prompt_version"] == prompt_library["version"]

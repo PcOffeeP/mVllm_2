@@ -31,14 +31,17 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
     return processor, model
 
 
-def run_model_on_video(model: Any, processor: Any, video_path: Path, prompt: str) -> str:
+def run_model_on_video(model: Any, processor: Any, video_path: Path, prompt: str, system_prompt: str | None = None) -> str:
     import torch
 
     from .video_loader import load_video_frames
 
     frames, temporal_ids, _timestamps = load_video_frames(str(video_path), max_frames=VIDEO_MAX_FRAMES)
     image_tags = "".join("(<image>./</image>)" for _ in frames)
-    messages = [{"role": "user", "content": f"{image_tags}\n{prompt}"}]
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": f"{image_tags}\n{prompt}"})
     prompt_text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     inputs = processor(
         text=prompt_text,

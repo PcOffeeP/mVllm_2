@@ -381,6 +381,198 @@ def test_quality_check_single_error_for_corrupt_meta(tmp_path, monkeypatch):
     assert len(reviewed_metadata_errors) == 1
 
 
+def _make_sample(sid: str, content: str, prompt_version: str = "v1.0.0") -> dict:
+    return {
+        "id": sid,
+        "videos": [f"data/03_subvideos/{sid}.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {"role": "assistant", "content": content},
+        ],
+        "prompt_version": prompt_version,
+    }
+
+
+def _write_train_file(merged: Path, samples: list[dict]) -> None:
+    merged.mkdir(parents=True, exist_ok=True)
+    (merged / "test_inputs.json").write_text("[]", encoding="utf-8")
+    (merged / "fold_0_train.json").write_text(
+        json.dumps(samples, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def test_assistant_target_missing_evidence_section(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_bad",
+                    "review_status": "approved",
+                }
+            ]
+        },
+    )
+    bad = _make_sample(
+        "sub_bad",
+        '结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+    )
+    _write_train_file(merged, [bad])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "assistant_target" and e["detail"] == "missing_evidence_section"
+        for e in errors
+    )
+
+
+def test_assistant_target_rejects_confidence(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_bad",
+                    "review_status": "approved",
+                }
+            ]
+        },
+    )
+    bad = _make_sample(
+        "sub_bad",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null,"confidence":0.9}',
+    )
+    _write_train_file(merged, [bad])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "assistant_target" and e["detail"] == "confidence_field_present"
+        for e in errors
+    )
+
+
+def test_assistant_target_result_schema_mismatch(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_bad",
+                    "review_status": "approved",
+                }
+            ]
+        },
+    )
+    bad = _make_sample(
+        "sub_bad",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂"}',
+    )
+    _write_train_file(merged, [bad])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "assistant_target" and e["detail"] == "result_schema_mismatch"
+        for e in errors
+    )
+
+
+def test_prompt_version_mismatch(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_bad",
+                    "review_status": "approved",
+                }
+            ]
+        },
+    )
+    bad = _make_sample(
+        "sub_bad",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+        prompt_version="v0.0.0",
+    )
+    _write_train_file(merged, [bad])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "prompt_version" and e["detail"] == "prompt_version_mismatch"
+        for e in errors
+    )
+
+
+def test_review_status_not_approved(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_bad",
+                    "review_status": "dropped",
+                }
+            ]
+        },
+    )
+    sample = _make_sample(
+        "sub_bad",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+    )
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "review_status" and e["detail"] == "subvideo_not_approved"
+        for e in errors
+    )
+
+
 def test_quality_check_rejects_test_sharegpt_file(tmp_path, monkeypatch):
     """Patch: merged 目录下不应存在 test.json。"""
     merged = _make_merged_dir(tmp_path)
@@ -470,5 +662,52 @@ def test_reviewed_ratio_skips_unknown_and_val_only_splits(tmp_path, monkeypatch)
     assert any(
         e["check"] == "reviewed_ratio"
         and e["detail"] == "missing_positive_or_negative_samples"
+        for e in errors
+    )
+
+
+def test_quality_check_fails_when_prompt_library_missing(tmp_path, monkeypatch):
+    """Patch: 模板库缺失时应显式报错。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(meta, {"subvideos": [_reviewed_sub(True), _reviewed_sub(False)]})
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+        prompt_library_path=tmp_path / "nonexistent" / "prompt_library.yaml",
+    )
+
+    assert any(
+        e["check"] == "prompt_library"
+        and e["detail"] == "prompt_library_missing_or_unreadable"
+        for e in errors
+    )
+
+
+def test_quality_check_fails_when_prompt_library_missing_version(tmp_path, monkeypatch):
+    """Patch: 模板库缺少 version 字段时应显式报错。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(meta, {"subvideos": [_reviewed_sub(True), _reviewed_sub(False)]})
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    bad_library = tmp_path / "bad_prompt_library.yaml"
+    bad_library.write_text("system_prompt: test\n", encoding="utf-8")
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+        prompt_library_path=bad_library,
+    )
+
+    assert any(
+        e["check"] == "prompt_library"
+        and e["detail"] == "prompt_library_missing_version"
         for e in errors
     )

@@ -8,7 +8,12 @@ from typing import Any
 from .constants import PROJECT_ROOT, PROMPT_NAMES
 from .datasets import load_dataset
 from .model_runtime import load_model, run_model_on_video
-from .prompts import get_prompt
+from .prompts import (
+    get_prompt_library,
+    get_system_prompt,
+    get_system_prompt_hash,
+    get_user_prompt,
+)
 from .run_evaluation import evaluate_sample, summarize, write_outputs
 
 
@@ -37,15 +42,26 @@ def main() -> None:
     out_root.mkdir(parents=True, exist_ok=True)
 
     processor, model = load_model(args.model_dir)
+    library = get_prompt_library()
+    system_prompt = get_system_prompt(library)
+    system_prompt_hash = get_system_prompt_hash(library)
+
     comparison: dict[str, Any] = {
         "dataset": "test",
         "sample_count": len(samples),
         "model_dir": args.model_dir,
+        "system_prompt": system_prompt,
+        "system_prompt_hash": system_prompt_hash,
         "prompts": {},
     }
 
     for prompt_name in PROMPT_NAMES:
-        prompt_text = get_prompt(prompt_name)
+        if prompt_name == "training":
+            prompt_text = get_user_prompt(0, library)
+        elif prompt_name == "system":
+            prompt_text = get_system_prompt(library)
+        else:
+            raise ValueError(f"Unsupported prompt: {prompt_name}")
         records = []
         for sample in samples:
             if not sample.video_path.exists():
@@ -53,7 +69,9 @@ def main() -> None:
                 runtime_error = f"video not found: {sample.video_path}"
             else:
                 try:
-                    raw_output = run_model_on_video(model, processor, sample.video_path, prompt_text)
+                    raw_output = run_model_on_video(
+                        model, processor, sample.video_path, prompt_text, system_prompt=system_prompt
+                    )
                     runtime_error = None
                 except Exception as exc:
                     raw_output = ""
@@ -69,6 +87,8 @@ def main() -> None:
             prompt=prompt_name,
             prompt_text=prompt_text,
             predictions=None,
+            system_prompt=system_prompt,
+            system_prompt_hash=system_prompt_hash,
         )
         metrics = summarize(records)
         comparison["prompts"][prompt_name] = {

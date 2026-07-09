@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 """Generate subvideo-based test artifacts for inference.
 
-This mirrors the training-time subvideo input shape for the held-out test
-videos without changing the default training subvideo builder, which still
-skips test split records.
+This script integrates with the review UI workflow:
+
+1. It reads subvideo metadata (default: ``test_subvideos_meta.label_reviewed.json``
+   if it exists, otherwise ``test_subvideos_meta.json``).
+2. Use ``--metadata`` to explicitly point to another metadata file.
+3. In ``--strict`` mode (default), it blocks on ``unreviewed`` or
+   ``needs_regenerate`` samples and only exports ``approved`` samples.
+4. ``dropped`` samples are excluded from evaluation inputs and ground truth.
+5. If the input metadata has no ``review_status`` field, the original
+   behavior is preserved: all subvideos are exported.
+6. When review information is present, ``review_status`` and
+   ``reviewer_notes`` are preserved in the ground truth file for
+   downstream evaluation analysis.
+
+If the chosen metadata file does not exist, the script falls back to
+regenerating subvideos from ``video_meta.json`` (legacy behavior) and
+writes the metadata to ``--manifest``.
 """
 from __future__ import annotations
 
@@ -23,6 +37,80 @@ VIDEO_META_DEFAULT = ROOT / "data" / "07_metadata" / "video_meta.json"
 SPLITS_DIR_DEFAULT = ROOT / "data" / "05_splits"
 MERGED_DIR_DEFAULT = ROOT / "data" / "06_merged"
 MANIFEST_DEFAULT = ROOT / "data" / "07_metadata" / "test_subvideos_meta.json"
+LABEL_REVIEWED_META = ROOT / "data" / "07_metadata" / "test_subvideos_meta.label_reviewed.json"
+RAW_META_DEFAULT = ROOT / "data" / "07_metadata" / "test_subvideos_meta.json"
+
+
+STATUS_APPROVED = "approved"
+STATUS_DROPPED = "dropped"
+STATUS_NEEDS_REGENERATE = "needs_regenerate"
+STATUS_UNREVIEWED = "unreviewed"
+
+
+def _default_metadata_path() -> Path:
+    """Return label-reviewed metadata if it exists, otherwise the raw metadata."""
+    if LABEL_REVIEWED_META.exists():
+        return LABEL_REVIEWED_META
+    return RAW_META_DEFAULT
+
+
+def _load_subvideos_from_metadata(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Read subvideo metadata; supports a top-level dict or a plain list."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(raw, dict):
+        return raw.get("subvideos", []), raw
+    return raw, {}
+
+
+def _metadata_has_reviews(subvideos: list[dict[str, Any]]) -> bool:
+    """Return True if any subvideo record carries a review_status field."""
+    return any("review_status" in sub for sub in subvideos)
+
+
+def _filter_subvideos_by_review(
+    subvideos: list[dict[str, Any]],
+    strict: bool,
+) -> list[dict[str, Any]]:
+    """Keep only approved subvideos; drop dropped ones.
+
+    In strict mode, raise on any subvideo whose review_status is not
+    ``approved`` or ``dropped`` (e.g. ``unreviewed`` or ``needs_regenerate``).
+    In non-strict mode, such samples are skipped with a warning.
+
+    If the input metadata has no review_status at all, return the list
+    unchanged to preserve the original behavior.
+    """
+    if not _metadata_has_reviews(subvideos):
+        return subvideos
+
+    approved: list[dict[str, Any]] = []
+    skipped: list[tuple[str, str]] = []
+
+    for sub in subvideos:
+        status = sub.get("review_status")
+        sid = sub.get("subvideo_id", "<unknown>")
+        if status == STATUS_APPROVED:
+            approved.append(sub)
+        elif status == STATUS_DROPPED:
+            continue
+        else:
+            skipped.append((sid, status or "unreviewed"))
+
+    if strict and skipped:
+        raise RuntimeError(
+            f"--strict mode: {len(skipped)} subvideo(s) are not approved/dropped:\n"
+            + "\n".join(f"  {sid}: {status}" for sid, status in skipped)
+        )
+
+    if skipped:
+        print(
+            f"Warning: skipping {len(skipped)} subvideo(s) with non-approved status:",
+            file=sys.stderr,
+        )
+        for sid, status in skipped:
+            print(f"  {sid}: {status}", file=sys.stderr)
+
+    return approved
 
 
 def _event_time(rec: dict[str, Any]) -> float | None:
@@ -146,7 +234,7 @@ def _input_record(sub: dict[str, Any]) -> dict[str, Any]:
 def _ground_truth_record(sub: dict[str, Any], source: dict[str, Any]) -> dict[str, Any]:
     has_fracture = sub.get("has_fracture_canonical", sub.get("has_fracture"))
     event_time = _event_time(source) if has_fracture is True else None
-    return {
+    record: dict[str, Any] = {
         "video_id": sub["subvideo_id"],
         "subvideo_id": sub["subvideo_id"],
         "source_video_id": sub["source_video"],
@@ -166,14 +254,50 @@ def _ground_truth_record(sub: dict[str, Any], source: dict[str, Any]) -> dict[st
         "start_time": sub.get("start_time"),
         "end_time": sub.get("end_time"),
     }
+    # Preserve review fields for downstream evaluation analysis.
+    if "review_status" in sub:
+        record["review_status"] = sub["review_status"]
+    if "reviewer_notes" in sub:
+        record["reviewer_notes"] = sub["reviewer_notes"]
+    return record
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate subvideo test artifacts.")
+    parser = argparse.ArgumentParser(
+        description="Generate subvideo test artifacts from reviewed or raw metadata.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Use the default reviewed metadata (if available) or raw metadata
+  python scripts/generate_test_subvideo_artifacts.py
+
+  # Explicitly use reviewed metadata
+  python scripts/generate_test_subvideo_artifacts.py \\
+      --metadata data/07_metadata/test_subvideos_meta.label_reviewed.json
+
+  # Allow non-approved samples to be skipped without blocking (not for official eval)
+  python scripts/generate_test_subvideo_artifacts.py --no-strict
+        """.strip(),
+    )
     parser.add_argument("--video-meta", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--splits-dir", type=Path, default=SPLITS_DIR_DEFAULT)
     parser.add_argument("--merged-dir", type=Path, default=MERGED_DIR_DEFAULT)
     parser.add_argument("--manifest", type=Path, default=MANIFEST_DEFAULT)
+    parser.add_argument(
+        "--metadata",
+        type=Path,
+        default=None,
+        help="Input subvideo metadata path. "
+             "Defaults to test_subvideos_meta.label_reviewed.json if it exists, "
+             "otherwise test_subvideos_meta.json.",
+    )
+    parser.add_argument(
+        "--strict",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Strict mode: block export if any sample is unreviewed or needs_regenerate. "
+             "Dropped samples are always skipped. (default: on)",
+    )
     parser.add_argument(
         "--model",
         default=str(ROOT / "models" / "minicpmv4_5"),
@@ -203,8 +327,10 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
-    args = parse_args()
+def _generate_subvideos_from_split(
+    args: argparse.Namespace,
+) -> tuple[list[dict[str, Any]], list[str], str]:
+    """Generate subvideos from the test split when no metadata input exists."""
     if not args.video_meta.exists():
         raise FileNotFoundError(args.video_meta)
     split_path = args.splits_dir / "test.json"
@@ -219,7 +345,9 @@ def main() -> int:
     if missing:
         raise ValueError(f"test split video_id(s) missing from video_meta: {missing}")
 
-    preprocessor = builder._create_preprocessor(args.preprocessor, builder.VIDEO_MAXLEN, args.model)
+    preprocessor = builder._create_preprocessor(
+        args.preprocessor, builder.VIDEO_MAXLEN, args.model
+    )
     if not args.skip_healthcheck and not preprocessor.healthcheck():
         info = preprocessor.get_info()
         raise RuntimeError(f"preprocessor healthcheck failed: {info.name} ({info.backend})")
@@ -244,28 +372,81 @@ def main() -> int:
         )
         generated.extend(subs)
 
-    inputs = [_input_record(sub) for sub in generated]
-    gt = [_ground_truth_record(sub, by_video_id[sub["source_video"]]) for sub in generated]
+    return generated, test_ids, preprocessor.fingerprint()
+
+
+def main() -> int:
+    args = parse_args()
+    metadata_path = args.metadata or _default_metadata_path()
+
+    if metadata_path.exists():
+        print(f"Using existing subvideo metadata: {metadata_path}")
+        generated, top_level = _load_subvideos_from_metadata(metadata_path)
+        # Infer source test count from unique source videos in the metadata.
+        test_ids = sorted({sub["source_video"] for sub in generated if "source_video" in sub})
+        preprocessor_fingerprint = None
+        exclusions: list[dict[str, Any]] = []
+    elif args.metadata is not None:
+        # Explicit --metadata was requested but the file is missing: do not silently fall back.
+        raise FileNotFoundError(
+            f"Requested metadata file does not exist: {metadata_path}\n"
+            "If you want to generate subvideos from video_meta instead, "
+            "omit --metadata or create the metadata first."
+        )
+    else:
+        print(f"Metadata {metadata_path} not found; generating subvideos from {args.video_meta}")
+        generated, test_ids, preprocessor_fingerprint = _generate_subvideos_from_split(args)
+        top_level = {}
+        exclusions = list(builder.EXCLUSIONS)
+
+    # Apply review filtering when review_status is present.
+    used_subvideos = _filter_subvideos_by_review(generated, strict=args.strict)
+
+    if not args.video_meta.exists():
+        # Reading from metadata only; ground truth source fields will be partial.
+        by_video_id: dict[str, dict[str, Any]] = {}
+    else:
+        records = json.loads(args.video_meta.read_text(encoding="utf-8"))
+        by_video_id = {rec["video_id"]: rec for rec in records}
+
+    inputs = [_input_record(sub) for sub in used_subvideos]
+    gt = [
+        _ground_truth_record(sub, by_video_id.get(sub["source_video"], {}))
+        for sub in used_subvideos
+    ]
 
     args.merged_dir.mkdir(parents=True, exist_ok=True)
     inputs_path = args.merged_dir / "test_subvideo_inputs.json"
     gt_path = args.merged_dir / "test_subvideo_ground_truth.json"
-    inputs_path.write_text(json.dumps(inputs, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
-    gt_path.write_text(json.dumps(gt, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
+    inputs_path.write_text(
+        json.dumps(inputs, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
+    )
+    gt_path.write_text(
+        json.dumps(gt, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
+    )
 
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest = {
-        "mode": "test_subvideos",
-        "source_test_count": len(test_ids),
-        "generated_count": len(generated),
-        "metadata_only": args.metadata_only,
-        "preprocessor_fingerprint": preprocessor.fingerprint(),
-        "inputs_path": str(inputs_path.relative_to(ROOT)),
-        "ground_truth_path": str(gt_path.relative_to(ROOT)),
-        "exclusions": builder.EXCLUSIONS,
-        "subvideos": generated,
-    }
-    args.manifest.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
+    manifest: dict[str, Any] = dict(top_level)
+    manifest.update(
+        {
+            "mode": "test_subvideos",
+            "source_test_count": len(test_ids),
+            "generated_count": len(generated),
+            "exported_count": len(used_subvideos),
+            "metadata_only": args.metadata_only,
+            "review_filter_applied": _metadata_has_reviews(generated),
+            "strict": args.strict,
+            "inputs_path": str(inputs_path.relative_to(ROOT)),
+            "ground_truth_path": str(gt_path.relative_to(ROOT)),
+            "exclusions": exclusions,
+            "subvideos": generated,
+        }
+    )
+    if preprocessor_fingerprint is not None:
+        manifest["preprocessor_fingerprint"] = preprocessor_fingerprint
+    args.manifest.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
+    )
 
     print(f"Wrote {len(inputs)} inputs -> {inputs_path}")
     print(f"Wrote {len(gt)} ground-truth rows -> {gt_path}")

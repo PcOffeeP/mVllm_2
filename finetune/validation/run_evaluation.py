@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,14 @@ from typing import Any
 from .constants import CORE_FIELDS, GENERATION_CONFIG, PROMPT_NAMES, SUPPORTED_DATASETS
 from .datasets import EvalSample, load_dataset
 from .model_runtime import load_model, run_model_on_video
-from .prompts import get_prompt
+from .prompts import (
+    DEFAULT_PROMPT_LIBRARY_PATH,
+    get_prompt,
+    get_prompt_library,
+    get_prompt_version,
+    get_system_prompt,
+    get_user_prompt,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,12 +37,25 @@ def main() -> None:
     if args.predictions is None and args.model_dir is None:
         raise ValueError("--model-dir is required when --predictions is not provided")
 
+    library = get_prompt_library()
+    prompt_version = get_prompt_version(library)
+    system_prompt = get_system_prompt(library)
+    prompt_library_path = str(DEFAULT_PROMPT_LIBRARY_PATH)
+
+    if args.prompt == "training":
+        user_prompt_template_index = 0
+        prompt_text = get_user_prompt(user_prompt_template_index, library)
+    elif args.prompt == "system":
+        user_prompt_template_index = None
+        prompt_text = get_system_prompt(library)
+    else:
+        raise ValueError(f"Unsupported prompt: {args.prompt}")
+
     video_root = Path(args.video_root) if args.video_root else None
     samples = load_dataset(args.dataset, video_root=video_root)
     if args.max_samples is not None:
         samples = samples[: args.max_samples]
 
-    prompt_text = get_prompt(args.prompt)
     raw_outputs = _load_prediction_outputs(Path(args.predictions)) if args.predictions else None
     records: list[dict[str, Any]] = []
 
@@ -49,7 +70,7 @@ def main() -> None:
                 runtime_error = f"video not found: {sample.video_path}"
             else:
                 try:
-                    raw_output = run_model_on_video(model, processor, sample.video_path, prompt_text)
+                    raw_output = run_model_on_video(model, processor, sample.video_path, prompt_text, system_prompt=system_prompt)
                     runtime_error = None
                 except Exception as exc:
                     raw_output = ""
@@ -58,7 +79,7 @@ def main() -> None:
             raw_output = raw_outputs.get(sample.video_id, "")
             runtime_error = None if sample.video_id in raw_outputs else "prediction missing"
 
-        records.append(evaluate_sample(sample, raw_output, runtime_error))
+        records.append(evaluate_sample(sample, raw_output, runtime_error, prompt_version=prompt_version))
 
     write_outputs(
         out_dir=Path(args.out_dir),
@@ -68,17 +89,30 @@ def main() -> None:
         prompt=args.prompt,
         prompt_text=prompt_text,
         predictions=args.predictions,
+        prompt_version=prompt_version,
+        prompt_library_path=prompt_library_path,
+        system_prompt=system_prompt,
+        system_prompt_hash=hashlib.sha256(system_prompt.encode("utf-8")).hexdigest(),
+        user_prompt_template_index=user_prompt_template_index,
     )
 
 
-def evaluate_sample(sample: EvalSample, raw_output: str, runtime_error: str | None = None) -> dict[str, Any]:
+def evaluate_sample(
+    sample: EvalSample,
+    raw_output: str,
+    runtime_error: str | None = None,
+    prompt_version: str | None = None,
+) -> dict[str, Any]:
+    cleaned_output = str(raw_output or "").strip()
     return {
         "sample_id": sample.sample_id,
         "video_id": sample.video_id,
         "video_path": str(sample.video_path),
         "raw_output": raw_output,
         "runtime_error": runtime_error,
-        "raw_output_non_empty": bool(str(raw_output or "").strip()),
+        "raw_output_non_empty": bool(cleaned_output),
+        "has_result_section": "结果：" in cleaned_output,
+        "prompt_version": prompt_version,
         "metadata": sample.metadata,
     }
 
@@ -87,12 +121,15 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(records)
     runtime_error_count = sum(1 for record in records if record["runtime_error"])
     raw_output_count = sum(1 for record in records if record["raw_output_non_empty"])
+    has_result_section_count = sum(1 for record in records if record.get("has_result_section"))
     return {
         "total_samples": total,
         "runtime_error_count": runtime_error_count,
         "raw_output_count": raw_output_count,
         "raw_output_rate": _rate(raw_output_count, total),
         "empty_output_count": total - raw_output_count,
+        "has_result_section_count": has_result_section_count,
+        "has_result_section_rate": _rate(has_result_section_count, total),
         "notes": [
             "No automatic JSON/schema extraction is performed. Judge prompt quality from raw_output in evaluation_records.jsonl.",
             "Ground-truth metadata is included only as reference context for manual inspection.",
@@ -107,7 +144,12 @@ def write_outputs(
     model_dir: str | None,
     prompt: str,
     prompt_text: str,
-    predictions: str | None,
+    predictions: str | None = None,
+    prompt_version: str | None = None,
+    prompt_library_path: str | None = None,
+    system_prompt: str | None = None,
+    system_prompt_hash: str | None = None,
+    user_prompt_template_index: int | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     summary = {
@@ -115,6 +157,11 @@ def write_outputs(
         "model_dir": model_dir,
         "prompt": prompt,
         "prompt_text": prompt_text,
+        "prompt_version": prompt_version,
+        "prompt_library_path": prompt_library_path,
+        "system_prompt": system_prompt,
+        "system_prompt_hash": system_prompt_hash,
+        "user_prompt_template_index": user_prompt_template_index,
         "predictions": predictions,
         "generation_config": GENERATION_CONFIG,
         "metrics": summarize(records),

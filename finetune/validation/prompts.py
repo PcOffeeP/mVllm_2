@@ -1,36 +1,87 @@
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+from typing import Any
+
+import yaml
+
 from .constants import PROMPT_NAMES
 
-TRAINING_PROMPT = (
-    "请分析这段拉伸试验视频，判断是否存在断裂。视频将被处理为最多 8 帧，"
-    "请判断断裂发生在哪两帧之间。按 JSON 格式输出："
-    "has_fracture、fracture_between、type、location、confidence。"
-)
+DEFAULT_PROMPT_LIBRARY_PATH = Path(__file__).resolve().parents[2] / "pipeline" / "prompt_library.yaml"
 
-SYSTEM_PROMPT = (
-    "请分析这段拉伸试验视频，判断是否存在断裂。视频将被处理为最多 8 帧。\n"
-    "如果画面中发生断裂，请判断断裂发生在哪两个相邻采样帧之间。\n"
-    "只输出一个 JSON 对象，不要输出解释、Markdown 或代码块。\n"
-    "JSON 包含以下五个字段：\n"
-    "{\n"
-    '  "has_fracture": true 或 false,\n'
-    '  "fracture_between": [i, i+1] 或 null,\n'
-    '  "type": "断裂类型或未断裂",\n'
-    '  "location": "inside_gauge或outside_gauge或null",\n'
-    '  "confidence": 0到1之间的数字\n'
-    "}\n"
-    "重要要求：\n"
-    "- 如果 has_fracture 为 true，fracture_between 必须是 [0,1] 到 [6,7] 中的一个，不能为 null。\n"
-    "- 如果不确定具体区间，也请选择最可能的相邻帧区间。\n"
-    "- 只有确认没有断裂时，fracture_between 才输出 null。\n"
-    "- 先判断视频中是否发生断裂，再考虑 JSON 格式。"
-)
+_LIBRARY_CACHE: dict[Path, dict[str, Any]] = {}
+
+
+def _load_prompt_library(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(f"Prompt library not found: {path}")
+    with open(path, encoding="utf-8") as handle:
+        library = yaml.safe_load(handle)
+    if not isinstance(library, dict):
+        raise ValueError(f"Prompt library {path} must contain a YAML mapping")
+    for required_key in ("version", "system_prompt", "user_prompt_templates"):
+        if required_key not in library:
+            raise ValueError(f"Prompt library {path} missing required key: {required_key}")
+    return library
+
+
+def get_prompt_library(path: Path | str | None = None) -> dict[str, Any]:
+    """加载并返回 prompt 模板库。同一路径会被缓存。"""
+    resolved = Path(path) if path else DEFAULT_PROMPT_LIBRARY_PATH
+    if resolved not in _LIBRARY_CACHE:
+        _LIBRARY_CACHE[resolved] = _load_prompt_library(resolved)
+    return _LIBRARY_CACHE[resolved]
+
+
+def get_prompt_version(library: dict[str, Any] | None = None) -> str:
+    """返回 prompt 模板库版本。"""
+    lib = library or get_prompt_library()
+    return str(lib.get("version", ""))
+
+
+def get_system_prompt(library: dict[str, Any] | None = None) -> str:
+    """返回模板库中的 system prompt。"""
+    lib = library or get_prompt_library()
+    return str(lib.get("system_prompt", "")).strip()
+
+
+def get_system_prompt_hash(library: dict[str, Any] | None = None) -> str:
+    """返回 system prompt 的 SHA-256 哈希（用于版本一致性检查）。"""
+    return hashlib.sha256(get_system_prompt(library).encode("utf-8")).hexdigest()
+
+
+def get_user_prompt(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
+    """返回模板库中指定索引的 user prompt 模板。
+
+    训练使用 <video> 占位符让 LLaMA-Factory 替换为视频 token；评估阶段模型
+    runtime 已经单独传入图像，因此这里去掉占位符，仅保留语义等价的提问文本。
+    """
+    lib = library or get_prompt_library()
+    templates = lib.get("user_prompt_templates", [])
+    if not templates:
+        raise ValueError("Prompt library has no user_prompt_templates")
+    template = templates[template_index % len(templates)]
+    prompt = str(template.get("prompt", ""))
+    # 去掉 LLaMA-Factory 视频占位符；eval 的 model_runtime 自行拼接图像 tag。
+    prompt = prompt.replace("<video>", "")
+    return prompt.strip()
+
+
+def get_user_prompt_template_id(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
+    """返回指定索引 user prompt 模板的 template_id。"""
+    lib = library or get_prompt_library()
+    templates = lib.get("user_prompt_templates", [])
+    if not templates:
+        raise ValueError("Prompt library has no user_prompt_templates")
+    template = templates[template_index % len(templates)]
+    return str(template.get("template_id", ""))
 
 
 def get_prompt(name: str) -> str:
+    """向后兼容接口：'training' 对应第一个 user prompt，'system' 对应 system prompt。"""
     if name == "training":
-        return TRAINING_PROMPT
+        return get_user_prompt(0)
     if name == "system":
-        return SYSTEM_PROMPT
+        return get_system_prompt()
     raise ValueError(f"Unsupported prompt: {name}. Expected one of {PROMPT_NAMES}.")

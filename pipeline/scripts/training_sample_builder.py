@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-训练样本构建器（五字段契约）
+训练样本构建器（判断依据 + 四字段结果）
 
 默认将 ``data/07_metadata/subvideos_meta.label_reviewed.json`` 中的复检后
 子视频元数据转换为 LLaMA-Factory ShareGPT 格式的多模态训练样本，并按
 ``data/05_splits/`` 中的 video_id 集合分组输出到 ``data/06_merged/``。
+
+训练 assistant target 格式为：
+    判断依据：<1-3 句视觉证据说明>
+    结果：{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
 
 正式训练链路不应直接消费未经过人工审核和标签复检的
 ``subvideos_meta.json``；调试时可显式传入 ``--subvideos-meta`` 覆盖。
@@ -15,10 +19,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -28,6 +35,7 @@ SUBVIDEOS_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "subvideos_met
 VIDEO_META_DEFAULT = _PROJECT_ROOT / "data" / "07_metadata" / "video_meta.json"
 SPLITS_DIR_DEFAULT = _PROJECT_ROOT / "data" / "05_splits"
 OUTPUT_DIR_DEFAULT = _PROJECT_ROOT / "data" / "06_merged"
+PROMPT_LIBRARY_DEFAULT = _PROJECT_ROOT / "pipeline" / "prompt_library.yaml"
 
 
 FRACTURE_TYPES = {
@@ -67,6 +75,20 @@ def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2, allow_nan=False)
+
+
+def load_prompt_library(path: Path) -> dict[str, Any]:
+    """读取 prompt 模板库 YAML 文件。"""
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def select_user_prompt_template(library: dict[str, Any], index: int) -> str:
+    """根据索引循环选择一条 user prompt 模板（保留 <video> 占位符）。"""
+    templates = library.get("user_prompt_templates", [])
+    if not templates:
+        raise ValueError("prompt library 中缺少 user_prompt_templates")
+    return templates[index % len(templates)]["prompt"]
 
 
 def load_split_video_ids(splits_dir: Path) -> dict[str, set[str]]:
@@ -158,10 +180,12 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
         elif ftype == "视频异常":
             sub["type"] = "视频异常"
         else:
+            # 未知或不一致的正样本 type，按负样本输出。
             sub["type"] = "未断裂"
     elif has_fracture_canonical is None and ftype == "视频异常":
         sub["type"] = "视频异常"
     else:
+        # 无事件标注的“未夹紧”在此被降级为“未断裂”。
         sub["type"] = "未断裂"
 
     sub["has_fracture"] = has_fracture_canonical
@@ -185,17 +209,55 @@ def compute_effective_frames(sub: dict[str, Any]) -> int:
     return len(mapping)
 
 
+def _build_evidence_sentence(
+    has_fracture: bool,
+    ftype: str,
+    fracture_between: list[int, int] | None,
+    location: str | None,
+) -> str:
+    """根据标签生成 1-3 句视觉证据说明。"""
+    if ftype == "视频异常":
+        if has_fracture:
+            return "视频画面存在异常，但仍标记有断裂事件，区间信息不可靠。"
+        return "视频画面存在异常，无法可靠识别断裂事件。"
+
+    if has_fracture:
+        if ftype == "未夹紧":
+            return "夹持区域未形成有效标距，记录为夹紧异常事件。"
+
+        interval_text = (
+            f"采样帧 {fracture_between[0]} 与帧 {fracture_between[1]} 之间"
+            if fracture_between and len(fracture_between) == 2
+            else "未知相邻帧区间"
+        )
+        loc_text = {
+            "inside_gauge": "标距内",
+            "outside_gauge": "标距外",
+        }.get(location, location or "位置不明确")
+        return f"在 {interval_text} 观察到断裂形貌突变，呈现 {ftype} 特征，断裂位于 {loc_text}。"
+
+    return "在提供的采样帧序列中未观察到试样断裂，形貌保持连续。"
+
+
 def build_assistant_content(sub: dict[str, Any]) -> str:
-    """构造 assistant 输出的 JSON 字符串，严格五字段。"""
-    has_fracture = sub["has_fracture_canonical"]
-    output: dict[str, Any] = {
+    """构造 assistant 输出：判断依据 + 可解析 JSON 结果区（不含 confidence）。"""
+    has_fracture = bool(sub["has_fracture_canonical"])
+    ftype = sub["type"]
+    location = sub.get("location_canonical")
+    fracture_between = sub.get("fracture_between") if has_fracture else None
+
+    evidence = _build_evidence_sentence(has_fracture, ftype, fracture_between, location)
+
+    result: dict[str, Any] = {
         "has_fracture": has_fracture,
-        "fracture_between": sub.get("fracture_between") if has_fracture is True else None,
-        "type": sub["type"],
-        "location": sub["location_canonical"],
-        "confidence": sub.get("confidence", 1.0),
+        "fracture_between": fracture_between if has_fracture else None,
+        "type": ftype,
+        "location": location,
     }
-    return json.dumps(output, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    result_json = json.dumps(
+        result, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+    )
+    return f"判断依据：{evidence}\n结果：{result_json}"
 
 
 def _build_actual_frame_mapping(sub: dict[str, Any]) -> list[dict[str, Any]]:
@@ -257,6 +319,8 @@ def _validate_minicpm_fingerprint(subvideo_id: Any, fingerprint: str) -> None:
 
 def convert_subvideo_to_sample(
     sub: dict[str, Any],
+    library: dict[str, Any],
+    template_index: int = 0,
 ) -> dict[str, Any]:
     """将单条子视频元数据转换为 ShareGPT 训练样本。"""
     sub = _normalize_subvideo_labels(sub)
@@ -274,20 +338,20 @@ def convert_subvideo_to_sample(
     end_time = sub.get("end_time", 0.0)
     effective_frames = compute_effective_frames(sub)
 
-    user_content = (
-        "<video>\n请分析这段拉伸试验视频，判断是否存在断裂。"
-        "视频将被处理为最多 8 帧，请判断断裂发生在哪两帧之间。"
-        "按 JSON 格式输出：has_fracture、fracture_between、type、location、confidence。"
-    )
+    system_prompt = library.get("system_prompt", "")
+    user_content = select_user_prompt_template(library, template_index)
     assistant_content = build_assistant_content(sub)
+
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_content},
+        {"role": "assistant", "content": assistant_content},
+    ]
 
     sample: dict[str, Any] = {
         "id": sub["subvideo_id"],
         "videos": [_normalize_video_path(sub["video_path"])],
-        "messages": [
-            {"role": "user", "content": user_content},
-            {"role": "assistant", "content": assistant_content},
-        ],
+        "messages": messages,
         "has_fracture": sub["has_fracture_canonical"],
         "has_fracture_canonical": sub["has_fracture_canonical"],
         "fracture_between": sub.get("fracture_between"),
@@ -303,6 +367,7 @@ def convert_subvideo_to_sample(
         "processor_fingerprint": processor_fingerprint,
         "selection_reason": sub.get("selection_reason"),
         "exclusion_reason": sub.get("exclusion_reason"),
+        "prompt_version": library.get("version"),
     }
     return sample
 
@@ -311,15 +376,19 @@ def convert_subvideo_to_sample(
 def build_split_samples(
     subvideos: list[dict[str, Any]],
     split_video_ids: dict[str, set[str]],
+    library: dict[str, Any],
     seed: int = 42,
 ) -> dict[str, list[dict[str, Any]]]:
     """按当前划分将子视频分组并转换为训练样本（训练集做正负平衡，验证集保持完整）。"""
+    rng = random.Random(seed)
+    template_count = len(library.get("user_prompt_templates", []))
     by_split: dict[str, list[dict[str, Any]]] = {
         name: [] for name in split_video_ids if name != "test"
     }
     for sub in subvideos:
         src = sub["source_video"]
         selected_splits = set(sub.get("selected_splits", []))
+        template_index = rng.randint(0, template_count - 1) if template_count > 0 else 0
         for name, ids in split_video_ids.items():
             if name == "test":
                 continue
@@ -328,7 +397,7 @@ def build_split_samples(
             if selected_splits and name not in selected_splits:
                 continue
             by_split[name].append(
-                convert_subvideo_to_sample(sub)
+                convert_subvideo_to_sample(sub, library=library, template_index=template_index)
             )
 
     # 全局平衡已在 subvideo_builder 中完成，此处不再重复做 fold 级平衡
@@ -344,6 +413,7 @@ def _counter_to_dict(counter: Counter[Any], top_k: int | None = None) -> dict[st
 def compute_samples_meta(
     split_samples: dict[str, list[dict[str, Any]]],
     split_video_ids: dict[str, set[str]],
+    prompt_version: str | None = None,
 ) -> dict[str, Any]:
     """汇总每个 fold 的样本数、正负样本分布、视频来源分布等统计信息。"""
     split_meta: dict[str, Any] = {}
@@ -379,6 +449,7 @@ def compute_samples_meta(
         all_source_ids.update(s["source_video"] for s in samples)
 
     return {
+        "prompt_version": prompt_version,
         "total_samples": total_pos + total_neg,
         "total_video_sources": len(all_source_ids),
         "total_positive": total_pos,
@@ -434,6 +505,7 @@ def build_all(
     splits_dir: Path,
     output_dir: Path,
     video_meta_path: Path | None = None,
+    prompt_library_path: Path | None = None,
     seed: int = 42,
 ) -> dict[str, Any]:
     """核心构建入口：读取元数据、分组、写文件、返回统计信息。"""
@@ -445,6 +517,13 @@ def build_all(
         )
     if not splits_dir.exists():
         raise FileNotFoundError(f"划分目录不存在: {splits_dir}")
+
+    prompt_library_path = prompt_library_path or PROMPT_LIBRARY_DEFAULT
+    if not prompt_library_path.exists():
+        raise FileNotFoundError(f"prompt 模板库不存在: {prompt_library_path}")
+    library = load_prompt_library(prompt_library_path)
+    prompt_version = library.get("version", "unknown")
+    print(f"加载 prompt 模板库: {prompt_library_path} (version: {prompt_version})")
 
     print(f"读取子视频元数据: {subvideos_meta}")
     raw_subvideos = load_json(subvideos_meta)
@@ -460,7 +539,9 @@ def build_all(
         print(f"  {name}: {len(ids)} 个原始视频")
 
     print("构建训练样本...")
-    split_samples = build_split_samples(subvideos, split_video_ids, seed=seed)
+    split_samples = build_split_samples(
+        subvideos, split_video_ids, library=library, seed=seed
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, samples in split_samples.items():
@@ -489,7 +570,7 @@ def build_all(
             print(f"警告：未找到 video_meta，跳过测试清单生成: {vm_path}")
 
     print("汇总样本统计信息...")
-    samples_meta = compute_samples_meta(split_samples, split_video_ids)
+    samples_meta = compute_samples_meta(split_samples, split_video_ids, prompt_version=prompt_version)
     meta_path = output_dir / "samples_meta.json"
     write_json(meta_path, samples_meta)
     print(f"写入: {meta_path}")
@@ -505,6 +586,7 @@ def main() -> None:
     parser.add_argument("--video-meta", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--splits-dir", type=Path, default=SPLITS_DIR_DEFAULT)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR_DEFAULT)
+    parser.add_argument("--prompt-library", type=Path, default=PROMPT_LIBRARY_DEFAULT)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -513,6 +595,7 @@ def main() -> None:
         splits_dir=args.splits_dir,
         output_dir=args.output_dir,
         video_meta_path=args.video_meta,
+        prompt_library_path=args.prompt_library,
         seed=args.seed,
     )
 

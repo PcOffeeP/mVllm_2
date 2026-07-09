@@ -3,15 +3,31 @@
 
 读取 ``data/06_merged/`` 下的训练/验证/测试产物，执行强制检查并输出
 ``data/07_metadata/quality_check_report.json``。
+
+当前检查项：
+- 媒体路径存在性
+- assistant target 格式（判断依据 + 结果区 JSON，不含 confidence）
+- 结果区字段与 ``pipeline/prompt_library.yaml`` 的 ``target_schema`` 一致
+- ``prompt_version`` 一致性
+- 训练/验证样本对应子视频 ``review_status`` 为 approved
+- 字段组合与 frame 边界
+- 正负样本比例
+- 划分泄漏
+- 测试输入隔离
+- processor fingerprint 一致性
+- 排除项原因完整性
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
@@ -25,6 +41,7 @@ SPLITS_V2_DIR = DATA_DIR / "05_splits"
 MERGED_V2_DIR = DATA_DIR / "06_merged"
 
 REPORT_PATH = META_V2_DIR / "quality_check_report.json"
+PROMPT_LIBRARY_DEFAULT = _PROJECT_ROOT / "pipeline" / "prompt_library.yaml"
 
 FRACTURE_TYPES = {
     "韧性断裂",
@@ -90,6 +107,8 @@ LEGAL_COMBINATIONS = [
     },
 ]
 
+TARGET_SCHEMA_KEYS = {"has_fracture", "fracture_between", "type", "location"}
+
 
 def is_positive_label(obj: dict[str, Any]) -> bool:
     """统一正样本判断：以 has_fracture/has_fracture_canonical 为准。"""
@@ -112,17 +131,56 @@ def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _extract_assistant_output(sample: dict[str, Any]) -> dict[str, Any] | None:
+def _load_prompt_library(path: Path) -> dict[str, Any]:
+    """读取 prompt 模板库，失败时返回空字典。"""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except (FileNotFoundError, yaml.YAMLError, OSError):
+        return {}
+
+
+def _extract_assistant_text(sample: dict[str, Any]) -> str | None:
+    """提取 assistant 消息的原始文本内容。"""
     messages = sample.get("messages", [])
     for msg in messages:
         if isinstance(msg, dict) and msg.get("role") == "assistant":
             content = msg.get("content")
-            if not isinstance(content, str):
-                return None
-            try:
-                return json.loads(content)
-            except json.JSONDecodeError:
-                return None
+            if isinstance(content, str):
+                return content
+    return None
+
+
+def _extract_assistant_output(sample: dict[str, Any]) -> dict[str, Any] | None:
+    """从 assistant 消息中提取结果区 JSON 字典。
+
+    兼容旧版纯 JSON 格式和新版 ``判断依据 + 结果区`` 文本格式。
+    """
+    content = _extract_assistant_text(sample)
+    if content is None:
+        return None
+
+    # 先尝试旧版纯 JSON
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+
+    # 新版文本格式：解析 ``结果：`` 后的 JSON
+    if "结果：" in content:
+        result_part = content.split("结果：", 1)[1].strip()
+        # 结果区可能包含尾部说明，取第一个 JSON 对象/数组
+        try:
+            return json.loads(result_part)
+        except json.JSONDecodeError:
+            # 尝试取第一个完整的 JSON 对象
+            match = re.search(r"(\{.*\})", result_part, re.DOTALL)
+            if match:
+                try:
+                    return json.loads(match.group(1))
+                except json.JSONDecodeError:
+                    return None
+            return None
     return None
 
 
@@ -143,14 +201,11 @@ def _resolve_media_path(rel: str, project_root: Path) -> Path:
 
 
 def _matches_legal_combination(output: dict[str, Any]) -> bool:
+    """检查四字段结果区组合是否合法（不含 confidence）。"""
     hf = output.get("has_fracture")
     fb = output.get("fracture_between")
     ftype = output.get("type")
     loc = output.get("location")
-    conf = output.get("confidence")
-
-    if not isinstance(conf, (int, float)) or isinstance(conf, bool):
-        return False
 
     for combo in LEGAL_COMBINATIONS:
         if hf != combo["has_fracture"]:
@@ -248,11 +303,12 @@ def _validate_media_paths(
             )
 
 
-def _validate_field_combinations(
+def _validate_assistant_targets(
     merged_dir: Path,
     errors: list[dict[str, Any]],
     warnings: list[dict[str, Any]],
 ) -> None:
+    """检查训练样本 assistant target 格式、无 confidence、结果区可解析。"""
     for path in sorted(merged_dir.glob("*.json")):
         if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
             continue
@@ -262,24 +318,93 @@ def _validate_field_combinations(
         for sample in data:
             if not isinstance(sample, dict):
                 continue
+            text = _extract_assistant_text(sample)
+            if text is None:
+                errors.append(
+                    {
+                        "check": "assistant_target",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "missing_assistant_text",
+                    }
+                )
+                continue
+
+            if "判断依据：" not in text:
+                errors.append(
+                    {
+                        "check": "assistant_target",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "missing_evidence_section",
+                    }
+                )
+            if "结果：" not in text:
+                errors.append(
+                    {
+                        "check": "assistant_target",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "missing_result_section",
+                    }
+                )
+                continue
+
             output = _extract_assistant_output(sample)
             if output is None:
                 errors.append(
                     {
-                        "check": "field_combination",
+                        "check": "assistant_target",
                         "file": path.name,
                         "id": sample.get("id"),
-                        "detail": "assistant_content_not_valid_json",
+                        "detail": "result_json_not_parseable",
+                        "content_preview": text[:200],
                     }
                 )
                 continue
+
+            if not isinstance(output, dict):
+                errors.append(
+                    {
+                        "check": "assistant_target",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "result_not_a_dict",
+                        "output": output,
+                    }
+                )
+                continue
+
+            if "confidence" in output:
+                errors.append(
+                    {
+                        "check": "assistant_target",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "confidence_field_present",
+                    }
+                )
+
+            if set(output.keys()) != TARGET_SCHEMA_KEYS:
+                errors.append(
+                    {
+                        "check": "assistant_target",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "result_schema_mismatch",
+                        "expected": sorted(TARGET_SCHEMA_KEYS),
+                        "actual": sorted(output.keys()),
+                    }
+                )
+                continue
+
             if not _matches_legal_combination(output):
                 errors.append(
                     {
                         "check": "field_combination",
                         "file": path.name,
                         "id": sample.get("id"),
-                        "detail": "illegal_five_field_combination",
+                        "detail": "illegal_four_field_combination",
                         "output": output,
                     }
                 )
@@ -312,7 +437,7 @@ def _validate_fracture_between(
             if not isinstance(sample, dict):
                 continue
             output = _extract_assistant_output(sample)
-            if output is None:
+            if not isinstance(output, dict):
                 continue
             fb = output.get("fracture_between")
             if fb is None:
@@ -366,6 +491,56 @@ def _validate_fracture_between(
                         "value": fb,
                     }
                 )
+
+
+def _validate_prompt_version_consistency(
+    merged_dir: Path,
+    prompt_version: str | None,
+    errors: list[dict[str, Any]],
+) -> None:
+    """检查所有训练/验证样本的 prompt_version 一致且等于模板库 version。"""
+    seen_versions: set[str] = set()
+    for path in sorted(merged_dir.glob("*.json")):
+        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
+            continue
+        data = _load_json(path)
+        if not isinstance(data, list):
+            continue
+        for sample in data:
+            if not isinstance(sample, dict):
+                continue
+            pv = sample.get("prompt_version")
+            if pv is None:
+                errors.append(
+                    {
+                        "check": "prompt_version",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "missing_prompt_version",
+                    }
+                )
+                continue
+            seen_versions.add(pv)
+            if prompt_version is not None and pv != prompt_version:
+                errors.append(
+                    {
+                        "check": "prompt_version",
+                        "file": path.name,
+                        "id": sample.get("id"),
+                        "detail": "prompt_version_mismatch",
+                        "expected": prompt_version,
+                        "actual": pv,
+                    }
+                )
+
+    if len(seen_versions) > 1:
+        errors.append(
+            {
+                "check": "prompt_version",
+                "detail": "inconsistent_prompt_versions",
+                "versions": sorted(seen_versions),
+            }
+        )
 
 
 def _validate_no_test_sharegpt(
@@ -801,6 +976,45 @@ def _validate_no_cross_split_leakage(
             )
 
 
+def _validate_review_status(
+    merged_dir: Path,
+    reviewed_subvideos: list[dict[str, Any]] | None,
+    errors: list[dict[str, Any]],
+) -> None:
+    """检查训练/验证样本对应的子视频 review_status 必须为 approved。"""
+    if reviewed_subvideos is None:
+        return
+
+    review_status_by_id: dict[str, Any] = {}
+    for sub in reviewed_subvideos:
+        if isinstance(sub, dict):
+            review_status_by_id[sub.get("subvideo_id", "")] = sub.get("review_status")
+
+    for path in sorted(merged_dir.glob("*.json")):
+        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
+            continue
+        if not (path.stem.endswith("_train") or path.stem.endswith("_val")):
+            continue
+        data = _load_json(path)
+        if not isinstance(data, list):
+            continue
+        for sample in data:
+            if not isinstance(sample, dict):
+                continue
+            sid = sample.get("id")
+            status = review_status_by_id.get(sid)
+            if status != "approved":
+                errors.append(
+                    {
+                        "check": "review_status",
+                        "file": path.name,
+                        "id": sid,
+                        "detail": "subvideo_not_approved",
+                        "review_status": status,
+                    }
+                )
+
+
 def _validate_test_input_isolation(
     merged_dir: Path,
     errors: list[dict[str, Any]],
@@ -879,6 +1093,7 @@ def run_quality_check(
     report_path: Path = REPORT_PATH,
     project_root: Path = _PROJECT_ROOT,
     allow_unreviewed_meta: bool = False,
+    prompt_library_path: Path = PROMPT_LIBRARY_DEFAULT,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """执行全部强制检查，返回 (errors, warnings, summary)。"""
     errors: list[dict[str, Any]] = []
@@ -886,6 +1101,25 @@ def run_quality_check(
     reviewed_subvideos = _load_reviewed_subvideos(
         subvideos_meta_path, errors, allow_unreviewed_meta=allow_unreviewed_meta
     )
+
+    library = _load_prompt_library(prompt_library_path)
+    if not library:
+        errors.append(
+            {
+                "check": "prompt_library",
+                "detail": "prompt_library_missing_or_unreadable",
+                "path": str(prompt_library_path),
+            }
+        )
+    prompt_version = library.get("version")
+    if prompt_version is None:
+        errors.append(
+            {
+                "check": "prompt_library",
+                "detail": "prompt_library_missing_version",
+                "path": str(prompt_library_path),
+            }
+        )
 
     if not merged_dir.exists():
         errors.append(
@@ -898,13 +1132,15 @@ def run_quality_check(
     else:
         test_inputs = _load_json(merged_dir / "test_inputs.json")
         _validate_media_paths(merged_dir, test_inputs, errors, warnings, project_root)
-        _validate_field_combinations(merged_dir, errors, warnings)
+        _validate_assistant_targets(merged_dir, errors, warnings)
         _validate_fracture_between(merged_dir, errors, warnings)
+        _validate_prompt_version_consistency(merged_dir, prompt_version, errors)
         _validate_no_test_sharegpt(merged_dir, errors)
         _validate_processor_fingerprints(merged_dir, subvideos_meta_path, errors, warnings)
         _validate_train_ratios(merged_dir, errors, warnings)
         _validate_no_cross_split_leakage(merged_dir, errors, warnings)
         _validate_reviewed_split_leakage(reviewed_subvideos, merged_dir, errors)
+        _validate_review_status(merged_dir, reviewed_subvideos, errors)
         _validate_test_input_isolation(merged_dir, errors, warnings)
 
     _validate_exclusions(subvideos_meta_path, errors)
@@ -913,6 +1149,8 @@ def run_quality_check(
     summary = {
         "merged_dir": str(merged_dir),
         "subvideos_meta": str(subvideos_meta_path),
+        "prompt_library": str(prompt_library_path),
+        "prompt_version": prompt_version,
         "error_count": len(errors),
         "warning_count": len(warnings),
         "reviewed_ratio": reviewed_ratio,
@@ -928,7 +1166,19 @@ def run_quality_check(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="数据产物质量校验")
+    parser = argparse.ArgumentParser(
+        description="数据产物质量校验",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  %(prog)s
+
+  # 指定产物目录和 prompt 模板库
+  %(prog)s --merged-dir data/06_merged \
+      --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+      --prompt-library pipeline/prompt_library.yaml
+        """.strip(),
+    )
     parser.add_argument(
         "--merged-dir",
         type=Path,
@@ -958,6 +1208,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="允许使用非 label-reviewed 的 subvideos metadata（仅开发调试用）",
     )
+    parser.add_argument(
+        "--prompt-library",
+        type=Path,
+        default=PROMPT_LIBRARY_DEFAULT,
+        help="prompt 模板库路径（默认：pipeline/prompt_library.yaml）",
+    )
     args = parser.parse_args(argv)
 
     errors, warnings, summary = run_quality_check(
@@ -966,6 +1222,7 @@ def main(argv: list[str] | None = None) -> int:
         report_path=args.report,
         project_root=args.project_root,
         allow_unreviewed_meta=args.allow_unreviewed_meta,
+        prompt_library_path=args.prompt_library,
     )
 
     print(f"Scanned: {summary['merged_dir']}")

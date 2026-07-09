@@ -1,0 +1,61 @@
+version: "v1.0.0"
+
+system_prompt: >
+  你是一位材料力学视频分析助手。请根据提供的拉伸试验视频帧序列，基于画面中可见的形貌变化，判断试样是否发生断裂。
+  如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。
+  请只输出符合指定格式的回答，不要添加 Markdown 代码块或额外解释。
+
+user_prompt_templates:
+  - template_id: "zh_binary_and_interval"
+    prompt: |
+      <video>
+      请分析这段拉伸试验视频，判断试样是否存在断裂。如果存在断裂，请指出断裂发生在哪两个相邻采样帧之间，并说明断裂模式和断裂位置。
+  - template_id: "zh_mode_focus"
+    prompt: |
+      <video>
+      观察这段视频的采样帧序列，判断试样的断裂模式（例如韧性断裂、脆性断裂、界面脱粘等），并同时给出是否断裂、断裂区间以及断裂位置。
+  - template_id: "zh_location_focus"
+    prompt: |
+      <video>
+      请判断这段拉伸试验视频中，如果发生断裂，断裂位置是在标距内（inside_gauge）还是标距外（outside_gauge）？同时说明是否断裂、断裂区间及断裂模式。
+  - template_id: "zh_anomaly_aware"
+    prompt: |
+      <video>
+      请辨别这段视频中是否存在断裂、未夹紧、画面异常或无法判断的情况。如果存在断裂，请给出断裂区间、断裂模式和断裂位置。
+  - template_id: "zh_full_reasoning"
+    prompt: |
+      <video>
+      综合判断这段拉伸试验视频：试样是否断裂？若断裂，发生在哪两帧之间？属于何种断裂模式？断裂位置在哪里？请基于可见的视觉证据作答。
+  - template_id: "zh_concise"
+    prompt: |
+      <video>
+      这段视频里试样断了吗？如果断了，请说明发生在哪两个相邻采样帧之间、断裂模式和位置。
+
+target_format: |
+  判断依据：<1-3 句视觉证据说明>
+  结果：{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
+
+  示例（未夹紧）：
+  判断依据：夹持区域未形成有效标距，记录为夹紧异常事件。
+  结果：{"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null}
+
+  示例（未断裂）：
+  判断依据：在提供的采样帧序列中未观察到试样断裂，形貌保持连续。
+  结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}
+
+target_schema:
+  has_fracture:
+    type: boolean
+    description: 是否在视频中观察到试样断裂
+  fracture_between:
+    type: list[int, int] | null
+    description: 断裂发生的两个相邻采样帧索引，例如 [2, 3]；未断裂时为 null
+  type:
+    type: string
+    description: >
+      断裂类型。合法取值包括 7 种断裂类（"韧性断裂"、"脆性断裂"、"界面脱粘"、"齐根断裂"、"爆炸性断裂"、"半脆半韧断裂"、"界面脱粘、齐根断裂"）、
+      "未夹紧"、"视频异常" 或 "未断裂"。其中 "未夹紧" 仅在子视频被标注为夹紧异常且仍保留事件/区间标注时出现；
+      若未夹紧样本没有明确事件标注，导出流程会将其降级为 "未断裂"。
+  location:
+    type: string | null
+    description: 断裂位置，"inside_gauge" 或 "outside_gauge"；未断裂或无法判断时为 null
