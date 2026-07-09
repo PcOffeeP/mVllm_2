@@ -38,6 +38,10 @@ uv.lock
 # Data pipeline artifacts (numbered outputs, ignored; 01_videos and 02_annotations are not ignored)
 /data/03_subvideos/
 /data/04_frames/
+/data/06_merged/
+/data/07_metadata/*
+!/data/07_metadata/
+!/data/07_metadata/video_meta.json
 /data/08_runtime/
 
 .agents/skills/
@@ -63,3 +67,7 @@ finetune/wandb/
 # 人工审核数据
 data/08_review/
 data/07_metadata/tail_contamination_audit.jsonl
+
+# Fine-tuning generated outputs
+/finetune/results/
+/finetune/saves/
