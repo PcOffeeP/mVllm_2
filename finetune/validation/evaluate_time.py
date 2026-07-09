@@ -162,6 +162,8 @@ def main() -> None:
         )
     print(f"Wrote time evaluation artifacts to {out_dir}")
     print(f"  interval: midpoint_mae={interval_summary.get('midpoint_mae')}, interval_hit_rate={interval_summary.get('interval_hit_rate')}")
+    print(f"  frame_interval: fracture_between_accuracy={interval_summary.get('fracture_between_accuracy')}, "
+          f"matched={interval_summary.get('fracture_between_match_count')}/{interval_summary.get('fracture_between_available_count')}")
 
 
 if __name__ == "__main__":

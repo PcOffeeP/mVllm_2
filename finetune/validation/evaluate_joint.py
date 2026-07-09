@@ -144,6 +144,8 @@ def main() -> None:
     print(f"Wrote joint evaluation artifacts to {out_dir}")
     print(f"  legacy joint_success_rate={overall_legacy.get('joint_success_rate')}")
     print(f"  interval joint_success_rate={joint_interval_summary.get('joint_success_rate')}")
+    print(f"  frame_interval: fracture_between_accuracy={joint_interval_summary.get('fracture_between_accuracy')}, "
+          f"matched={joint_interval_summary.get('fracture_between_match_count')}/{joint_interval_summary.get('fracture_between_available_count')}")
     print(f"  failure_reasons={joint_interval_summary.get('failure_reasons')}")
 
 

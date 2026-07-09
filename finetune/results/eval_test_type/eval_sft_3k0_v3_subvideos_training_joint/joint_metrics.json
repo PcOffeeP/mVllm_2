@@ -1,0 +1,73 @@
+{
+  "per_fold": {
+    "test_subvideos": {
+      "joint_interval_metrics": {
+        "total_samples": 474,
+        "fracture_samples": 270,
+        "non_fracture_samples": 204,
+        "success_count": 0,
+        "joint_success_rate": 0.0,
+        "failure_count": 474,
+        "failure_reasons": {
+          "schema_invalid": 474
+        },
+        "fracture_between_available_count": 270,
+        "fracture_between_match_count": 44,
+        "fracture_between_accuracy": 0.162963
+      },
+      "deprecated_legacy_metrics": {
+        "count": 474,
+        "applicable_count": 270,
+        "excluded_no_gt_time": 204,
+        "json_valid_count": 270,
+        "time_within_threshold_count": 0,
+        "time_range_hit": 0.0,
+        "within_1s": 0.0,
+        "within_3s": 0.0,
+        "within_5s": 0.0,
+        "type_correct_count": 72,
+        "joint_success_count": 0,
+        "joint_success_rate": 0.0,
+        "failure_reasons": {
+          "time_unparseable": 270
+        },
+        "confidence_buckets": []
+      }
+    }
+  },
+  "overall": {
+    "joint_interval_metrics": {
+      "total_samples": 474,
+      "fracture_samples": 270,
+      "non_fracture_samples": 204,
+      "success_count": 0,
+      "joint_success_rate": 0.0,
+      "failure_count": 474,
+      "failure_reasons": {
+        "schema_invalid": 474
+      },
+      "fracture_between_available_count": 270,
+      "fracture_between_match_count": 44,
+      "fracture_between_accuracy": 0.162963
+    },
+    "deprecated_legacy_metrics": {
+      "count": 474,
+      "applicable_count": 270,
+      "excluded_no_gt_time": 204,
+      "json_valid_count": 270,
+      "time_within_threshold_count": 0,
+      "time_range_hit": 0.0,
+      "within_1s": 0.0,
+      "within_3s": 0.0,
+      "within_5s": 0.0,
+      "type_correct_count": 72,
+      "joint_success_count": 0,
+      "joint_success_rate": 0.0,
+      "failure_reasons": {
+        "time_unparseable": 270
+      },
+      "confidence_buckets": []
+    },
+    "_note": "'deprecated_legacy_metrics' uses the old time-threshold-based joint aggregator. For interval 5-field protocol evaluations, use 'joint_interval_metrics' as the primary metric source."
+  }
+}

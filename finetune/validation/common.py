@@ -710,12 +710,35 @@ def _is_valid_time_range(value: Any) -> bool:
     return True
 
 
+def _normalize_fracture_between(value: Any) -> tuple[int, int] | None:
+    """Normalize a fracture_between value to (low, high) ints if valid."""
+    if value is None:
+        return None
+    if isinstance(value, str) and value.strip().lower() in ("null", "none"):
+        return None
+    if isinstance(value, bool):
+        return None
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return None
+    try:
+        low_raw = value[0]
+        high_raw = value[1]
+        if isinstance(low_raw, bool) or isinstance(high_raw, bool):
+            return None
+        low = int(low_raw)
+        high = int(high_raw)
+    except (TypeError, ValueError):
+        return None
+    return (low, high)
+
+
 def compute_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Compute interval-based time localization metrics.
 
     Returns (summary_dict, error_rows_list).
 
     Metrics computed:
+    - fracture_between_accuracy: exact match of pred_fracture_between vs gt_fracture_between
     - interval_hit_rate: GT time falls within pred_time_range_sec
     - midpoint_mae: mean absolute error of pred_time_midpoint_sec vs gt_time_sec
     - midpoint_mse: mean squared error
@@ -723,7 +746,8 @@ def compute_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, A
     - unparseable_or_invalid_rate: samples with json_invalid, schema_invalid, or frame_mapping_missing
 
     Only samples with time_available=True and valid pred_time_midpoint_sec participate
-    in time metrics. All samples participate in schema/invalid metrics.
+    in time metrics. Frame-interval metrics use all records with a valid GT fracture_between.
+    All samples participate in schema/invalid metrics.
     """
     total = len(records)
     # Only records with valid JSON and valid schema can contribute to time metrics
@@ -752,6 +776,18 @@ def compute_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, A
     within_3s = 0
     within_5s = 0
     interval_hit = 0
+
+    # Frame-interval (fracture_between) exact match
+    fb_available = 0
+    fb_match = 0
+    for r in records:
+        gt_fb = _normalize_fracture_between(r.get("gt_fracture_between"))
+        if gt_fb is None:
+            continue
+        fb_available += 1
+        pred_fb = _normalize_fracture_between(r.get("pred_fracture_between"))
+        if pred_fb == gt_fb:
+            fb_match += 1
 
     for r in has_midpoint:
         gt_time = r["gt_time_sec"]
@@ -800,6 +836,9 @@ def compute_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[str, A
         "frame_mapping_missing_count": frame_missing,
         "unparseable_or_invalid_count": unparseable,
         "unparseable_or_invalid_rate": round(unparseable / total, 6) if total else 0.0,
+        "fracture_between_available_count": fb_available,
+        "fracture_between_match_count": fb_match,
+        "fracture_between_accuracy": round(fb_match / fb_available, 6) if fb_available else None,
     }
 
     return summary, errors_list
@@ -810,19 +849,31 @@ def compute_joint_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[
 
     joint_success = schema_valid AND:
       - has_fracture judgment correct (pred matches GT)
-      - If GT is fracture class: type correct AND interval hit
+      - If GT is fracture class: type correct AND (
+            pred_fracture_between == gt_fracture_between when both are available,
+            otherwise GT time falls within pred_time_range_sec)
       - If GT is non-fracture: prediction is valid AND no fracture_between produced
 
     Returns (summary_dict, failure_rows_list).
     """
     total = len(records)
     success_count = 0
+    fb_available = 0
+    fb_match = 0
     failure_rows: list[dict[str, Any]] = []
 
     fracture_samples = [r for r in records if r.get("gt_type") in FRACTURE_CLASSES]
     non_fracture_samples = [r for r in records if r.get("gt_type") not in FRACTURE_CLASSES]
 
     for r in records:
+        gt_type = r.get("gt_type")
+        gt_fb = _normalize_fracture_between(r.get("gt_fracture_between"))
+        if gt_type in FRACTURE_CLASSES and gt_fb is not None:
+            fb_available += 1
+            pred_fb = _normalize_fracture_between(r.get("pred_fracture_between"))
+            if pred_fb == gt_fb:
+                fb_match += 1
+
         if not r.get("schema_valid", False) or not r.get("json_valid", False):
             failure_rows.append({
                 "video_id": r.get("video_id"),
@@ -860,7 +911,21 @@ def compute_joint_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[
                 })
                 continue
 
-            # Interval hit (if time available)
+            # Interval hit: prefer exact frame-interval match, fall back to seconds range
+            gt_fb = _normalize_fracture_between(r.get("gt_fracture_between"))
+            pred_fb = _normalize_fracture_between(r.get("pred_fracture_between"))
+            if gt_fb is not None and pred_fb is not None:
+                if pred_fb == gt_fb:
+                    success_count += 1
+                else:
+                    failure_rows.append({
+                        "video_id": r.get("video_id"),
+                        "gt_type": gt_type,
+                        "failure_reason": "frame_interval_miss",
+                        "details": f"GT frames={gt_fb}, pred frames={pred_fb}",
+                    })
+                continue
+
             if r.get("time_available") and _is_valid_time_range(r.get("pred_time_range_sec")):
                 gt_time = r["gt_time_sec"]
                 tr = r["pred_time_range_sec"]
@@ -911,6 +976,9 @@ def compute_joint_interval_metrics(records: list[dict[str, Any]]) -> tuple[dict[
         "joint_success_rate": round(success_count / total, 6) if total else 0.0,
         "failure_count": len(failure_rows),
         "failure_reasons": dict(failure_reasons),
+        "fracture_between_available_count": fb_available,
+        "fracture_between_match_count": fb_match,
+        "fracture_between_accuracy": round(fb_match / fb_available, 6) if fb_available else None,
     }
 
     return summary, failure_rows
