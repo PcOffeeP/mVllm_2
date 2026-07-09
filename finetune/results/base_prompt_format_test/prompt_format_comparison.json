@@ -1,0 +1,25 @@
+{
+  "dataset": "test",
+  "sample_count": 22,
+  "model_dir": "models/minicpmv4_5",
+  "prompts": {
+    "training": {
+      "out_dir": "finetune/results/base_prompt_format_test/training",
+      "format_valid_rate": 0.0,
+      "format_valid_count": 0,
+      "runtime_error_count": 22,
+      "schema_error_counts": {
+        "empty output": 22
+      }
+    },
+    "system": {
+      "out_dir": "finetune/results/base_prompt_format_test/system",
+      "format_valid_rate": 0.0,
+      "format_valid_count": 0,
+      "runtime_error_count": 22,
+      "schema_error_counts": {
+        "empty output": 22
+      }
+    }
+  }
+}
