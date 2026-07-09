@@ -1,0 +1,23 @@
+{
+  "dataset": "test_subvideos",
+  "model_dir": "LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_v2_merged",
+  "prompt": "training",
+  "prompt_text": "请分析这段拉伸试验视频，判断是否存在断裂。视频将被处理为最多 8 帧，请判断断裂发生在哪两帧之间。按 JSON 格式输出：has_fracture、fracture_between、type、location、confidence。",
+  "predictions": null,
+  "generation_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 256
+  },
+  "metrics": {
+    "total_samples": 474,
+    "runtime_error_count": 0,
+    "raw_output_count": 474,
+    "raw_output_rate": 1.0,
+    "empty_output_count": 0,
+    "notes": [
+      "No automatic JSON/schema extraction is performed. Judge prompt quality from raw_output in evaluation_records.jsonl.",
+      "Ground-truth metadata is included only as reference context for manual inspection."
+    ]
+  }
+}
