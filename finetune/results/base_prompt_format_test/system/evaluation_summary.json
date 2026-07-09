@@ -11,17 +11,17 @@
   },
   "metrics": {
     "total_samples": 22,
-    "runtime_error_count": 22,
-    "format_valid_count": 0,
-    "format_valid_rate": 0.0,
-    "comparable_samples": 0,
-    "prediction_correct_count": 0,
-    "prediction_correct_rate": null,
+    "runtime_error_count": 0,
+    "format_valid_count": 6,
+    "format_valid_rate": 0.272727,
+    "comparable_samples": 6,
+    "prediction_correct_count": 1,
+    "prediction_correct_rate": 0.166667,
     "field_metrics": {
       "has_fracture": {
-        "checked_count": 0,
-        "correct_count": 0,
-        "accuracy": null
+        "checked_count": 6,
+        "correct_count": 1,
+        "accuracy": 0.166667
       },
       "fracture_between": {
         "checked_count": 0,
@@ -29,23 +29,31 @@
         "accuracy": null
       },
       "type": {
-        "checked_count": 0,
-        "correct_count": 0,
-        "accuracy": null
+        "checked_count": 6,
+        "correct_count": 1,
+        "accuracy": 0.166667
       },
       "location": {
-        "checked_count": 0,
-        "correct_count": 0,
-        "accuracy": null
+        "checked_count": 6,
+        "correct_count": 1,
+        "accuracy": 0.166667
       },
       "confidence": {
-        "checked_count": 0,
-        "correct_count": 0,
-        "accuracy": null
+        "checked_count": 6,
+        "correct_count": 6,
+        "accuracy": 1.0
       }
     },
     "schema_error_counts": {
-      "empty output": 22
+      "has_fracture must be true/false/null, got 'true'": 15,
+      "未断裂 requires has_fracture=false, got 'true'": 15,
+      "未断裂 requires fracture_between=null, got 'null'": 15,
+      "未断裂 requires location=null, got 'null'": 15,
+      "confidence must be a number, got '0'": 4,
+      "has_fracture must be true/false/null, got 'null'": 1,
+      "视频异常 requires has_fracture=null, got 'null'": 1,
+      "视频异常 requires fracture_between=null, got 'null'": 1,
+      "视频异常 requires location=null, got 'null'": 1
     },
     "notes": [
       "confidence has no ground-truth label; it is counted correct when it is a numeric value in [0, 1].",

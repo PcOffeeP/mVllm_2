@@ -7,18 +7,30 @@
       "out_dir": "finetune/results/base_prompt_format_test/training",
       "format_valid_rate": 0.0,
       "format_valid_count": 0,
-      "runtime_error_count": 22,
+      "runtime_error_count": 0,
       "schema_error_counts": {
-        "empty output": 22
+        "has_fracture must be true/false/null, got 'yes'": 19,
+        "type is not allowed: 'ductile fracture'": 20,
+        "confidence must be a number, got 'high'": 19,
+        "type is not allowed: 'tensile fracture'": 1,
+        "type is not allowed: 'cleavage'": 1
       }
     },
     "system": {
       "out_dir": "finetune/results/base_prompt_format_test/system",
-      "format_valid_rate": 0.0,
-      "format_valid_count": 0,
-      "runtime_error_count": 22,
+      "format_valid_rate": 0.272727,
+      "format_valid_count": 6,
+      "runtime_error_count": 0,
       "schema_error_counts": {
-        "empty output": 22
+        "has_fracture must be true/false/null, got 'true'": 15,
+        "未断裂 requires has_fracture=false, got 'true'": 15,
+        "未断裂 requires fracture_between=null, got 'null'": 15,
+        "未断裂 requires location=null, got 'null'": 15,
+        "confidence must be a number, got '0'": 4,
+        "has_fracture must be true/false/null, got 'null'": 1,
+        "视频异常 requires has_fracture=null, got 'null'": 1,
+        "视频异常 requires fracture_between=null, got 'null'": 1,
+        "视频异常 requires location=null, got 'null'": 1
       }
     }
   }

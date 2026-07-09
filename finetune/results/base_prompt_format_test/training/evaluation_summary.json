@@ -11,7 +11,7 @@
   },
   "metrics": {
     "total_samples": 22,
-    "runtime_error_count": 22,
+    "runtime_error_count": 0,
     "format_valid_count": 0,
     "format_valid_rate": 0.0,
     "comparable_samples": 0,
@@ -45,7 +45,11 @@
       }
     },
     "schema_error_counts": {
-      "empty output": 22
+      "has_fracture must be true/false/null, got 'yes'": 19,
+      "type is not allowed: 'ductile fracture'": 20,
+      "confidence must be a number, got 'high'": 19,
+      "type is not allowed: 'tensile fracture'": 1,
+      "type is not allowed: 'cleavage'": 1
     },
     "notes": [
       "confidence has no ground-truth label; it is counted correct when it is a numeric value in [0, 1].",

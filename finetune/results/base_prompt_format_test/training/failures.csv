@@ -1,23 +1,23 @@
 video_id,reason,runtime_error,format_valid,prediction_correct,schema_errors,has_fracture_correct,fracture_between_correct,type_correct,location_correct,confidence_correct
-video_0005,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,True,,False,True,False
-video_0008,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0010,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0011,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0018,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0019,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0025,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0032,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0037,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0038,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0041,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0062,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0063,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0069,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,True,,False,True,False
-video_0072,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0077,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0078,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0088,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0089,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0091,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
-video_0095,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,True,False
-video_0110,runtime_error,TypeError: 'NoneType' object is not iterable,False,False,empty output,False,,False,False,False
+video_0005,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0008,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0010,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0011,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0018,format_invalid,,False,False,type is not allowed: 'ductile fracture',True,,False,False,True
+video_0019,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0025,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0032,format_invalid,,False,False,type is not allowed: 'tensile fracture',True,,False,False,True
+video_0037,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0038,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0041,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0062,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0063,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0069,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0072,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0077,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0078,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0088,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0089,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0091,format_invalid,,False,False,type is not allowed: 'cleavage',True,,False,False,True
+video_0095,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
+video_0110,format_invalid,,False,False,"has_fracture must be true/false/null, got 'yes'; type is not allowed: 'ductile fracture'; confidence must be a number, got 'high'",False,,False,False,False
