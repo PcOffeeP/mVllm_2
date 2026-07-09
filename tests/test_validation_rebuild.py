@@ -8,80 +8,24 @@ from finetune.validation.datasets import EvalSample
 from finetune.validation import run_base_prompt_test
 from finetune.validation import model_runtime
 from finetune.validation.run_evaluation import evaluate_sample, main
-from finetune.validation.schema import parse_model_output, unavailable
 
 
-def test_schema_accepts_only_the_five_field_protocol():
-    result = parse_model_output(
-        json.dumps(
-            {
-                "has_fracture": True,
-                "fracture_between": [1, 2],
-                "type": "脆性断裂",
-                "location": "outside_gauge",
-                "confidence": 0.9,
-            },
-            ensure_ascii=False,
-        )
-    )
-
-    assert result.format_valid is True
-    assert result.payload["type"] == "脆性断裂"
-
-    invalid = parse_model_output(
-        json.dumps(
-            {
-                "has_fracture": True,
-                "fracture_between": [1, 3],
-                "type": "脆性断裂",
-                "location": "试样中部",
-                "confidence": 1.2,
-                "extra": "not allowed",
-            },
-            ensure_ascii=False,
-        )
-    )
-
-    assert invalid.json_valid is True
-    assert invalid.schema_valid is False
-    assert any("extra fields" in error for error in invalid.errors)
-    assert any("fracture_between" in error for error in invalid.errors)
-
-
-def test_evaluate_sample_reports_format_and_field_correctness():
+def test_evaluate_sample_keeps_raw_output_without_schema_extraction():
     sample = EvalSample(
         sample_id="sample_1",
         video_id="sample_1",
         video_path="/tmp/sample_1.mp4",
-        target={
-            "has_fracture": True,
-            "fracture_between": [1, 2],
-            "type": "脆性断裂",
-            "location": "outside_gauge",
-            "confidence": unavailable(),
-        },
-        metadata={},
+        metadata={"ground_truth": {"type": "脆性断裂"}},
     )
+    raw = '{"has_fracture": "yes", "fracture_between": "frame 1 and frame 2"}'
 
-    record = evaluate_sample(
-        sample,
-        json.dumps(
-            {
-                "has_fracture": True,
-                "fracture_between": [1, 2],
-                "type": "韧性断裂",
-                "location": "outside_gauge",
-                "confidence": 0.8,
-            },
-            ensure_ascii=False,
-        ),
-    )
+    record = evaluate_sample(sample, raw)
 
-    assert record["format_valid"] is True
-    assert record["field_results"]["has_fracture"]["correct"] is True
-    assert record["field_results"]["type"]["correct"] is False
-    assert record["field_results"]["confidence"]["expected"] == "number in [0, 1]"
-    assert record["prediction_correct"] is False
+    assert record["raw_output"] == raw
+    assert record["raw_output_non_empty"] is True
+    assert "schema_valid" not in record
+    assert "field_results" not in record
+    assert record["metadata"]["ground_truth"]["type"] == "脆性断裂"
 
 
 def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):
@@ -148,10 +92,10 @@ def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):
 
     summary = json.loads((out_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
     assert summary["metrics"]["total_samples"] == 2
-    assert summary["metrics"]["format_valid_rate"] == 1.0
-    assert summary["metrics"]["prediction_correct_rate"] == 1.0
+    assert summary["metrics"]["raw_output_rate"] == 1.0
+    assert summary["metrics"]["runtime_error_count"] == 0
     assert (out_dir / "evaluation_records.jsonl").exists()
-    assert (out_dir / "failures.csv").exists()
+    assert (out_dir / "runtime_failures.csv").exists()
 
 
 def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monkeypatch):
@@ -161,14 +105,7 @@ def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monk
         sample_id="video_0005",
         video_id="video_0005",
         video_path=tmp_path / "video_0005.mp4",
-        target={
-            "has_fracture": None,
-            "fracture_between": unavailable(),
-            "type": "视频异常",
-            "location": None,
-            "confidence": unavailable(),
-        },
-        metadata={},
+        metadata={"ground_truth": {"type": "视频异常"}},
     )
     sample.video_path.write_text("not a real video", encoding="utf-8")
 
@@ -212,8 +149,8 @@ def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monk
     comparison = json.loads((tmp_path / "out" / "prompt_format_comparison.json").read_text(encoding="utf-8"))
     assert comparison["dataset"] == "test"
     assert comparison["sample_count"] == 1
-    assert comparison["prompts"]["training"]["format_valid_rate"] == 1.0
-    assert comparison["prompts"]["system"]["format_valid_rate"] == 1.0
+    assert comparison["prompts"]["training"]["raw_output_rate"] == 1.0
+    assert comparison["prompts"]["system"]["raw_output_rate"] == 1.0
 
 
 def test_model_runtime_keeps_minicpm_video_embedding_inputs(monkeypatch, tmp_path):

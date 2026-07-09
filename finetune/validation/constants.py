@@ -22,16 +22,4 @@ GENERATION_CONFIG = {
     "max_new_tokens": 256,
 }
 
-FRACTURE_TYPES = (
-    "韧性断裂",
-    "脆性断裂",
-    "界面脱粘",
-    "齐根断裂",
-    "界面脱粘、齐根断裂",
-    "爆炸性断裂",
-    "半脆半韧断裂",
-)
-NON_FRACTURE_TYPES = ("未断裂", "未夹紧", "视频异常")
-ALLOWED_TYPES = FRACTURE_TYPES + NON_FRACTURE_TYPES
-ALLOWED_LOCATIONS = ("inside_gauge", "outside_gauge")
 CORE_FIELDS = ("has_fracture", "fracture_between", "type", "location", "confidence")

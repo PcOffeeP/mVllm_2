@@ -460,7 +460,7 @@ python3 -m finetune.validation.run_base_prompt_test \
     --out-dir results/base_prompt_format_test
 ```
 
-该命令会分别测试 `training` 和 `system` 两版 prompt。第一轮只看返回格式，不看预测准确率；主要检查 `format_valid_rate`、`schema_error_counts` 和逐样本 `raw_output`，再决定是否继续优化 prompt。
+该命令会分别测试 `training` 和 `system` 两版 prompt。第一轮直接看逐样本 `raw_output`，不使用自动 schema 提取结果判断 prompt 是否可用。
 
 本地 Mac 只复核已有预测 JSONL（不跑模型、不需要 GPU）：
 
@@ -478,16 +478,16 @@ python3 -m finetune.validation.run_evaluation \
 
 | 文件 | 说明 |
 | ---- | ---- |
-| `evaluation_summary.json` | 格式合格率、直接预测正确率、五字段逐字段准确率 |
-| `evaluation_records.jsonl` | 每个样本的 raw output、解析 payload、目标值、字段比较结果 |
-| `failures.csv` | 运行失败、格式不合格、预测错误样本 |
+| `evaluation_summary.json` | 样本数、运行失败数、非空原始输出数量与比例 |
+| `evaluation_records.jsonl` | 每个样本的 raw output、运行错误和 ground truth 参考元信息 |
+| `runtime_failures.csv` | 运行失败样本 |
 
-正式验收只看两类信息：
+正式验收直接查看模型原始返回：
 
 - 返回格式是否满足五字段协议：`has_fracture`、`fracture_between`、`type`、`location`、`confidence`
 - 每个可评估字段的最终预测是否正确
 
-`confidence` 没有人工 ground truth，评估只检查它是否为 `[0, 1]` 数字。若数据集缺少某个字段的 ground truth，该字段会标记为 `unavailable` 并从该字段准确率中排除。
+当前脚本不再自动解析 JSON/schema，也不自动判断五字段正确性；prompt 质量以 `evaluation_records.jsonl` 中模型原始返回为准。
 
 ### 推理服务（同进程部署）
 

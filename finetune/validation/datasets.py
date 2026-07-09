@@ -14,7 +14,6 @@ from .constants import (
     TEST_SUBVIDEO_GROUND_TRUTH_JSON,
     TEST_SUBVIDEO_INPUTS_JSON,
 )
-from .schema import unavailable
 
 
 @dataclass(frozen=True)
@@ -22,7 +21,6 @@ class EvalSample:
     sample_id: str
     video_id: str
     video_path: Path
-    target: dict[str, Any]
     metadata: dict[str, Any]
 
 
@@ -62,10 +60,9 @@ def _target_from_ground_truth(item: dict[str, Any]) -> dict[str, Any]:
         location = None
     return {
         "has_fracture": has_fracture,
-        "fracture_between": item.get("gt_fracture_between", item.get("fracture_between", unavailable())),
+        "fracture_between": item.get("gt_fracture_between", item.get("fracture_between")),
         "type": prediction_type,
         "location": location,
-        "confidence": unavailable(),
     }
 
 
@@ -83,8 +80,8 @@ def _load_test_dataset(inputs_path: Path, ground_truth_path: Path, video_root: P
                 sample_id=item.get("id", video_id),
                 video_id=video_id,
                 video_path=_resolve_video_path(item.get("video_path"), video_id, video_root),
-                target=_target_from_ground_truth(gt),
                 metadata={
+                    "ground_truth": _target_from_ground_truth(gt),
                     "source_video_id": item.get("source_video_id") or gt.get("source_video_id"),
                     "subvideo_id": item.get("subvideo_id") or gt.get("subvideo_id"),
                     "crop_type": item.get("crop_type") or gt.get("crop_type"),
@@ -111,8 +108,7 @@ def _load_fold_dataset(name: str, video_root: Path | None) -> list[EvalSample]:
                 sample_id=video_id,
                 video_id=video_id,
                 video_path=video_path,
-                target={**target, "confidence": unavailable()},
-                metadata={"source": str(path), "row_index": index},
+                metadata={"source": str(path), "row_index": index, "ground_truth": target},
             )
         )
     return samples

@@ -18,7 +18,6 @@ finetune/
     ├── run_evaluation.py      # 唯一主入口：选择数据集、模型地址、prompt 后运行评估
     ├── datasets.py            # test/test_subvideos/fold_N_val 数据集加载
     ├── prompts.py             # training / system 两版 prompt
-    ├── schema.py              # 五字段 JSON 格式校验与逐字段比较
     ├── model_runtime.py       # MiniCPM 视频推理封装（训练机/GPU 使用）
     ├── constants.py
     └── video_loader.py
@@ -161,7 +160,7 @@ python -m finetune.validation.run_base_prompt_test \
 - `base_prompt_format_test/system/evaluation_summary.json`
 - `base_prompt_format_test/prompt_format_comparison.json`
 
-这一步只看 `format_valid_rate`、`schema_error_counts` 和逐样本 `raw_output`，不以预测准确率作为 prompt 是否可用的主要判断。
+这一步只看逐样本 `raw_output` 和 `raw_output_rate`，不使用自动 schema 提取结果判断 prompt 是否可用。
 
 本机只评估已有预测 JSONL（不需要 GPU，用于复核训练机同步出的结果）：
 
@@ -175,9 +174,9 @@ python -m finetune.validation.run_evaluation \
 
 输出文件：
 
-- `evaluation_summary.json`：整体格式合格率、直接预测正确率、五字段逐字段准确率。
-- `evaluation_records.jsonl`：逐样本 raw output、解析 payload、目标值、字段比较结果。
-- `failures.csv`：运行失败、格式不合格、预测错误样本。
+- `evaluation_summary.json`：样本数、运行失败数、非空原始输出数量与比例。
+- `evaluation_records.jsonl`：逐样本 `raw_output`、运行错误和 ground truth 参考元信息。
+- `runtime_failures.csv`：运行失败样本。
 
 五字段协议固定为：
 
@@ -187,4 +186,4 @@ python -m finetune.validation.run_evaluation \
 - `location`
 - `confidence`
 
-`confidence` 没有人工 ground truth，评估只检查它是否为 `[0, 1]` 数字。若某个数据集缺少某个字段的 ground truth（例如全视频 `test` 当前缺少采样帧级 `fracture_between`），该字段会标记为 `unavailable` 并从该字段准确率中排除。
+当前脚本不再自动解析 JSON/schema，也不自动判断五字段正确性；prompt 质量以 `evaluation_records.jsonl` 中模型原始返回为准。

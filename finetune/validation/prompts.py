@@ -9,17 +9,22 @@ TRAINING_PROMPT = (
 )
 
 SYSTEM_PROMPT = (
-    "任务：分析视频中材料的断裂。只允许输出单个 JSON 对象，不得输出解释、Markdown 或代码块。\n"
-    "JSON 必须且只能包含五个字段：has_fracture、fracture_between、type、location、confidence。\n"
-    "字段约束：\n"
-    "- has_fracture: true、false 或 null。\n"
-    "- fracture_between: 断裂发生的相邻采样帧索引 [i, i+1]，i 范围 0-6；无断裂或异常时为 null。\n"
-    "- type: 只能是 韧性断裂 / 脆性断裂 / 界面脱粘 / 齐根断裂 / 界面脱粘、齐根断裂 / 爆炸性断裂 / 半脆半韧断裂 / 未断裂 / 未夹紧 / 视频异常。\n"
-    "- location: 断裂时只能是 inside_gauge 或 outside_gauge；无断裂或异常时为 null。\n"
-    "- confidence: 0 到 1 的数字。\n"
-    "组合规则：七类断裂必须 has_fracture=true 且给出 fracture_between 和 location；"
-    "未断裂/未夹紧必须 has_fracture=false 且 fracture_between/location 为 null；"
-    "视频异常必须 has_fracture=null 且 fracture_between/location 为 null。"
+    "请分析这段拉伸试验视频，判断是否存在断裂。视频将被处理为最多 8 帧。\n"
+    "如果画面中发生断裂，请判断断裂发生在哪两个相邻采样帧之间。\n"
+    "只输出一个 JSON 对象，不要输出解释、Markdown 或代码块。\n"
+    "JSON 包含以下五个字段：\n"
+    "{\n"
+    '  "has_fracture": true 或 false,\n'
+    '  "fracture_between": [i, i+1] 或 null,\n'
+    '  "type": "断裂类型或未断裂",\n'
+    '  "location": "inside_gauge或outside_gauge或null",\n'
+    '  "confidence": 0到1之间的数字\n'
+    "}\n"
+    "重要要求：\n"
+    "- 如果 has_fracture 为 true，fracture_between 必须是 [0,1] 到 [6,7] 中的一个，不能为 null。\n"
+    "- 如果不确定具体区间，也请选择最可能的相邻帧区间。\n"
+    "- 只有确认没有断裂时，fracture_between 才输出 null。\n"
+    "- 先判断视频中是否发生断裂，再考虑 JSON 格式。"
 )
 
 

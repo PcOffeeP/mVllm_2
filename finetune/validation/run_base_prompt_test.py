@@ -73,10 +73,10 @@ def main() -> None:
         metrics = summarize(records)
         comparison["prompts"][prompt_name] = {
             "out_dir": str(prompt_out_dir),
-            "format_valid_rate": metrics["format_valid_rate"],
-            "format_valid_count": metrics["format_valid_count"],
+            "raw_output_rate": metrics["raw_output_rate"],
+            "raw_output_count": metrics["raw_output_count"],
+            "empty_output_count": metrics["empty_output_count"],
             "runtime_error_count": metrics["runtime_error_count"],
-            "schema_error_counts": metrics["schema_error_counts"],
         }
 
     (out_root / "prompt_format_comparison.json").write_text(
