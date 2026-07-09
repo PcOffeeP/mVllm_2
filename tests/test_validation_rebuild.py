@@ -4,6 +4,7 @@ import json
 import sys
 
 from finetune.validation.datasets import EvalSample
+from finetune.validation import run_base_prompt_test
 from finetune.validation.run_evaluation import evaluate_sample, main
 from finetune.validation.schema import parse_model_output, unavailable
 
@@ -149,3 +150,65 @@ def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):
     assert summary["metrics"]["prediction_correct_rate"] == 1.0
     assert (out_dir / "evaluation_records.jsonl").exists()
     assert (out_dir / "failures.csv").exists()
+
+
+def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monkeypatch):
+    calls = []
+
+    sample = EvalSample(
+        sample_id="video_0005",
+        video_id="video_0005",
+        video_path=tmp_path / "video_0005.mp4",
+        target={
+            "has_fracture": None,
+            "fracture_between": unavailable(),
+            "type": "视频异常",
+            "location": None,
+            "confidence": unavailable(),
+        },
+        metadata={},
+    )
+    sample.video_path.write_text("not a real video", encoding="utf-8")
+
+    def fake_load_dataset(name, video_root=None):
+        calls.append((name, video_root))
+        return [sample]
+
+    def fake_load_model(model_dir):
+        return object(), object()
+
+    def fake_run_model_on_video(model, processor, video_path, prompt_text):
+        return json.dumps(
+            {
+                "has_fracture": None,
+                "fracture_between": None,
+                "type": "视频异常",
+                "location": None,
+                "confidence": 0.6,
+            },
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(run_base_prompt_test, "load_dataset", fake_load_dataset)
+    monkeypatch.setattr(run_base_prompt_test, "load_model", fake_load_model)
+    monkeypatch.setattr(run_base_prompt_test, "run_model_on_video", fake_run_model_on_video)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_base_prompt_test",
+            "--model-dir",
+            "/tmp/base-model",
+            "--out-dir",
+            str(tmp_path / "out"),
+        ],
+    )
+
+    run_base_prompt_test.main()
+
+    assert calls == [("test", None)]
+    comparison = json.loads((tmp_path / "out" / "prompt_format_comparison.json").read_text(encoding="utf-8"))
+    assert comparison["dataset"] == "test"
+    assert comparison["sample_count"] == 1
+    assert comparison["prompts"]["training"]["format_valid_rate"] == 1.0
+    assert comparison["prompts"]["system"]["format_valid_rate"] == 1.0

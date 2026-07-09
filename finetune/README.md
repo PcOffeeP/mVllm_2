@@ -147,6 +147,22 @@ python -m finetune.validation.run_evaluation \
   --out-dir finetune/results/eval_test_subvideos_system
 ```
 
+基座模型 prompt 格式测试使用 22 个原视频（`data/06_merged/test_inputs.json`），不使用 474 个子视频：
+
+```bash
+python -m finetune.validation.run_base_prompt_test \
+  --model-dir models/minicpm-v-4.5 \
+  --out-dir finetune/results/base_prompt_format_test
+```
+
+该命令会依次测试 `training` 和 `system` 两版 prompt，并输出：
+
+- `base_prompt_format_test/training/evaluation_summary.json`
+- `base_prompt_format_test/system/evaluation_summary.json`
+- `base_prompt_format_test/prompt_format_comparison.json`
+
+这一步只看 `format_valid_rate`、`schema_error_counts` 和逐样本 `raw_output`，不以预测准确率作为 prompt 是否可用的主要判断。
+
 本机只评估已有预测 JSONL（不需要 GPU，用于复核训练机同步出的结果）：
 
 ```bash

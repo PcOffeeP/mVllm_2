@@ -452,6 +452,16 @@ python3 -m finetune.validation.run_evaluation \
     --out-dir results/eval_test_subvideos_system
 ```
 
+基座模型 prompt 格式测试只使用 `test` 数据集的 22 个原视频，不使用生成后的子视频：
+
+```bash
+python3 -m finetune.validation.run_base_prompt_test \
+    --model-dir models/minicpm-v-4.5 \
+    --out-dir results/base_prompt_format_test
+```
+
+该命令会分别测试 `training` 和 `system` 两版 prompt。第一轮只看返回格式，不看预测准确率；主要检查 `format_valid_rate`、`schema_error_counts` 和逐样本 `raw_output`，再决定是否继续优化 prompt。
+
 本地 Mac 只复核已有预测 JSONL（不跑模型、不需要 GPU）：
 
 ```bash
