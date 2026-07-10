@@ -69,7 +69,8 @@ data/08_review/
 data/07_metadata/tail_contamination_audit.jsonl
 
 # 测试子视频
-data/sample_subvideos
+data/sample_subvideos/03_subvideos
+data/sample_subvideos/04_frames
 
 # Fine-tuning generated outputs
 /finetune/results/
