@@ -436,9 +436,10 @@ def main() -> None:
     project_root = args.project_root.resolve()
     output_path = _derive_output_path(metadata_path, args.output).resolve()
 
-    st.set_page_config(page_title="子视频人工审查", layout="wide")
-    st.title("子视频人工审查 UI")
-    st.caption(f"metadata: `{metadata_path}`  |  输出: `{output_path}`")
+    st.set_page_config(page_title="子视频审查", layout="wide")
+    with st.expander("配置信息", expanded=False):
+        st.write(f"metadata: `{metadata_path}`")
+        st.write(f"输出: `{output_path}`")
 
     if not metadata_path.exists():
         st.error(f"输入 metadata 不存在: {metadata_path}")
@@ -453,14 +454,16 @@ def main() -> None:
     decisions = _init_decisions(subvideos, output_path)
     counts = _status_counts(decisions)
 
-    # 实时统计
-    st.divider()
-    cols = st.columns(5)
-    cols[0].metric("总数", counts["total"])
-    cols[1].metric("未审查", counts["unreviewed"])
-    cols[2].metric("approved", counts["approved"])
-    cols[3].metric("dropped", counts["dropped"])
-    cols[4].metric("needs_regenerate", counts["needs_regenerate"])
+    if "current_subvideo_idx" not in st.session_state:
+        st.session_state.current_subvideo_idx = 0
+    if "current_frame_idx" not in st.session_state:
+        st.session_state.current_frame_idx = 0
+
+    # 实时统计，缩小显示
+    st.markdown(
+        f"**统计:** 总数: {counts['total']} | 未审查: {counts['unreviewed']} | "
+        f"✅ {counts['approved']} | 🗑️ {counts['dropped']} | 🔄 {counts['needs_regenerate']}"
+    )
     st.divider()
 
     left_col, mid_col, right_col = st.columns([1.2, 2.2, 1.6])
@@ -503,15 +506,27 @@ def main() -> None:
             st.info("没有符合当前筛选条件的子视频。")
             selected_sub = None
         else:
-            sub_by_id = {sub["subvideo_id"]: sub for sub in filtered}
-            selected_id = st.selectbox(
-                "选择子视频",
-                options=list(sub_by_id.keys()),
-                format_func=lambda sid: _format_option(sub_by_id[sid], decisions),
-                index=0,
-                key="selected_subvideo",
-            )
-            selected_sub = sub_by_id[selected_id]
+            # 保证索引不越界
+            if st.session_state.current_subvideo_idx >= len(filtered):
+                st.session_state.current_subvideo_idx = max(0, len(filtered) - 1)
+            elif st.session_state.current_subvideo_idx < 0:
+                st.session_state.current_subvideo_idx = 0
+                
+            selected_sub = filtered[st.session_state.current_subvideo_idx]
+            
+            st.write("点击快速切换:")
+            list_container = st.container(height=600)
+            with list_container:
+                for idx, sub in enumerate(filtered):
+                    btn_label = _format_option(sub, decisions)
+                    # 标识当前选中的项
+                    if idx == st.session_state.current_subvideo_idx:
+                        btn_label = f"➡️ {btn_label}"
+                        
+                    if st.button(btn_label, key=f"sel_btn_{sub['subvideo_id']}_{idx}", use_container_width=True):
+                        st.session_state.current_subvideo_idx = idx
+                        st.session_state.current_frame_idx = 0
+                        st.rerun()
 
     # ---------------------------- 中间：展示 ----------------------------
     if selected_sub is None:
@@ -536,14 +551,32 @@ def main() -> None:
         st.write("**采样帧展示**")
         frame_paths = _resolve_frame_paths(selected_sub, project_root)
         if frame_paths:
+            n_frames = len(frame_paths)
+            if st.session_state.current_frame_idx >= n_frames:
+                st.session_state.current_frame_idx = n_frames - 1
+            elif st.session_state.current_frame_idx < 0:
+                st.session_state.current_frame_idx = 0
+                
+            curr_f_idx = st.session_state.current_frame_idx
+            
             mapping = selected_sub.get("actual_frame_mapping") or selected_sub.get("sampled_frames") or []
-            captions: list[str] = []
-            for idx, _ in enumerate(frame_paths):
-                if idx < len(mapping) and "original_frame" in mapping[idx]:
-                    captions.append(f"frame {idx} (orig {mapping[idx]['original_frame']})")
-                else:
-                    captions.append(f"frame {idx}")
-            st.image([str(p) for p in frame_paths], caption=captions, use_container_width=True)
+            cap = f"frame {curr_f_idx} / {n_frames - 1}"
+            if curr_f_idx < len(mapping) and "original_frame" in mapping[curr_f_idx]:
+                cap += f" (orig {mapping[curr_f_idx]['original_frame']})"
+                
+            # 显示当前帧
+            st.image(str(frame_paths[curr_f_idx]), caption=cap, use_container_width=True)
+            
+            # 帧切换按钮
+            f_cols = st.columns([1, 1])
+            with f_cols[0]:
+                if st.button("⬅️ 上一帧", use_container_width=True, disabled=(curr_f_idx <= 0)):
+                    st.session_state.current_frame_idx -= 1
+                    st.rerun()
+            with f_cols[1]:
+                if st.button("下一帧 ➡️", use_container_width=True, disabled=(curr_f_idx >= n_frames - 1)):
+                    st.session_state.current_frame_idx += 1
+                    st.rerun()
         else:
             st.info("采样帧图片不存在，显示占位。")
 
@@ -552,44 +585,61 @@ def main() -> None:
             with st.expander("帧映射详情"):
                 st.json(mapping)
 
+        # 视频切换按钮放置在中部底端
+        st.divider()
+        nav_cols = st.columns([1, 1])
+        with nav_cols[0]:
+            if st.button("⏪ 审查上一个", use_container_width=True, disabled=(st.session_state.current_subvideo_idx <= 0)):
+                st.session_state.current_subvideo_idx -= 1
+                st.session_state.current_frame_idx = 0
+                st.rerun()
+        with nav_cols[1]:
+            if st.button("标注审查下一个 ⏩", use_container_width=True, disabled=(st.session_state.current_subvideo_idx >= len(filtered) - 1)):
+                st.session_state.current_subvideo_idx += 1
+                st.session_state.current_frame_idx = 0
+                st.rerun()
+
     # ---------------------------- 右侧：信息 + 编辑 ----------------------------
     with right_col:
-        st.subheader("子视频信息")
-        st.write(f"**subvideo_id:** `{sid}`")
-        st.write(f"**source_video:** {selected_sub.get('source_video', 'N/A')}")
-        st.write(f"**crop_type:** {selected_sub.get('crop_type', 'N/A')}")
-        st.write(f"**split / fold:** {selected_sub.get('split', 'N/A')} / {selected_sub.get('fold', 'N/A')}")
-        start_value = selected_sub.get("start_time")
-        end_value = selected_sub.get("end_time")
-        start_time = float(start_value) if start_value is not None else 0.0
-        end_time = float(end_value) if end_value is not None else 0.0
-        st.write(f"**时间区间:** {start_time:.3f}s – {end_time:.3f}s")
-        st.write(
-            f"**帧范围:** {selected_sub.get('start_frame', 'N/A')} – {selected_sub.get('end_frame', 'N/A')}"
-        )
-        st.write(f"**当前状态:** {STATUS_LABELS.get(current_status, '未审查')} {STATUS_EMOJI.get(current_status, '❓')}")
+        st.subheader("标签编辑区")
+        
+        with st.expander("子视频信息及原始标签", expanded=False):
+            st.write(f"**subvideo_id:** `{sid}`")
+            st.write(f"**source_video:** {selected_sub.get('source_video', 'N/A')}")
+            st.write(f"**crop_type:** {selected_sub.get('crop_type', 'N/A')}")
+            st.write(f"**split / fold:** {selected_sub.get('split', 'N/A')} / {selected_sub.get('fold', 'N/A')}")
+            start_value = selected_sub.get("start_time")
+            end_value = selected_sub.get("end_time")
+            start_time = float(start_value) if start_value is not None else 0.0
+            end_time = float(end_value) if end_value is not None else 0.0
+            st.write(f"**时间区间:** {start_time:.3f}s – {end_time:.3f}s")
+            st.write(
+                f"**帧范围:** {selected_sub.get('start_frame', 'N/A')} – {selected_sub.get('end_frame', 'N/A')}"
+            )
+            st.write(f"**当前状态:** {STATUS_LABELS.get(current_status, '未审查')} {STATUS_EMOJI.get(current_status, '❓')}")
 
-        risk, risk_reasons = compute_subvideo_risk(selected_sub)
-        risk_color = {
-            RISK_HIGH: "#ff4d4f",
-            RISK_MEDIUM: "#faad14",
-            RISK_LOW: "#52c41a",
-        }.get(risk, "#8c8c8c")
-        st.markdown(
-            f"**风险等级:** <span style='background-color:{risk_color}; "
-            f"color:white; padding:2px 8px; border-radius:4px;'>"
-            f"{RISK_EMOJI.get(risk, '⚪')} {RISK_LABELS.get(risk, '未知')}</span>",
-            unsafe_allow_html=True,
-        )
-        with st.expander("风险判定原因"):
-            for reason in risk_reasons:
-                st.write(f"- {reason}")
+            risk, risk_reasons = compute_subvideo_risk(selected_sub)
+            risk_color = {
+                RISK_HIGH: "#ff4d4f",
+                RISK_MEDIUM: "#faad14",
+                RISK_LOW: "#52c41a",
+            }.get(risk, "#8c8c8c")
+            st.markdown(
+                f"**风险等级:** <span style='background-color:{risk_color}; "
+                f"color:white; padding:2px 8px; border-radius:4px;'>"
+                f"{RISK_EMOJI.get(risk, '⚪')} {RISK_LABELS.get(risk, '未知')}</span>",
+                unsafe_allow_html=True,
+            )
+            if risk_reasons:
+                st.write("**风险判定原因:**")
+                for reason in risk_reasons:
+                    st.write(f"- {reason}")
 
-        if selected_sub.get("selection_reason"):
-            st.write(f"**selection_reason:** {selected_sub['selection_reason']}")
+            if selected_sub.get("selection_reason"):
+                st.write(f"**selection_reason:** {selected_sub['selection_reason']}")
 
-        st.write("**自动生成标签（original_labels）**")
-        st.json(decision["original_labels"])
+            st.write("**自动生成标签（original_labels）**")
+            st.json(decision["original_labels"])
 
         st.divider()
 
@@ -676,6 +726,12 @@ def main() -> None:
 
             _save_decisions(output_path, metadata_path, decisions)
             st.success(f"已保存为 {new_status}，并写入 {output_path}")
+            
+            # 自动跳转到下一个
+            if st.session_state.current_subvideo_idx < len(filtered) - 1:
+                st.session_state.current_subvideo_idx += 1
+                st.session_state.current_frame_idx = 0
+            
             st.rerun()
 
         # 显式保存按钮
