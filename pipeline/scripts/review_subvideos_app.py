@@ -437,6 +437,31 @@ def main() -> None:
     output_path = _derive_output_path(metadata_path, args.output).resolve()
 
     st.set_page_config(page_title="子视频审查", layout="wide")
+    
+    # 注入 CSS 控制元素高度和内边距，尽量一屏显示，避免上下滑动
+    st.markdown(
+        """
+        <style>
+        .block-container {
+            padding-top: 1.5rem;
+            padding-bottom: 1rem;
+        }
+        div[data-testid="stVideo"] video {
+            max-height: 250px;
+        }
+        div[data-testid="stImage"] img {
+            max-height: 350px;
+            object-fit: contain;
+        }
+        /* 使底部的间隔减小 */
+        div.stForm {
+            margin-bottom: 0rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    
     with st.expander("配置信息", expanded=False):
         st.write(f"metadata: `{metadata_path}`")
         st.write(f"输出: `{output_path}`")
@@ -515,7 +540,7 @@ def main() -> None:
             selected_sub = filtered[st.session_state.current_subvideo_idx]
             
             st.write("点击快速切换:")
-            list_container = st.container(height=600)
+            list_container = st.container(height=520)
             with list_container:
                 for idx, sub in enumerate(filtered):
                     btn_label = _format_option(sub, decisions)
@@ -656,33 +681,41 @@ def main() -> None:
                 has_index = has_options.index(has_default)
             except ValueError:
                 has_index = 2
-            edited_has_fracture = st.selectbox(
-                "has_fracture",
-                options=has_options,
-                index=has_index,
-                format_func=lambda x: "True" if x is True else ("False" if x is False else "None"),
-                key=f"has_fracture_{sid}",
-            )
-            edited_type = st.text_input(
-                "type",
-                value=str(base_labels.get("type") or ""),
-                key=f"type_{sid}",
-            )
-            edited_location = st.text_input(
-                "location",
-                value=str(base_labels.get("location") or ""),
-                key=f"location_{sid}",
-            )
-            fb_default = base_labels.get("fracture_between")
-            fb_text = st.text_input(
-                "fracture_between（JSON，如 [2,3] 或留空）",
-                value=json.dumps(fb_default) if fb_default is not None else "",
-                key=f"fracture_between_{sid}",
-            )
+            row1_cols = st.columns(2)
+            with row1_cols[0]:
+                edited_has_fracture = st.selectbox(
+                    "has_fracture",
+                    options=has_options,
+                    index=has_index,
+                    format_func=lambda x: "True" if x is True else ("False" if x is False else "None"),
+                    key=f"has_fracture_{sid}",
+                )
+            with row1_cols[1]:
+                fb_default = base_labels.get("fracture_between")
+                fb_text = st.text_input(
+                    "fracture_between（如 [2,3] 或留空）",
+                    value=json.dumps(fb_default) if fb_default is not None else "",
+                    key=f"fracture_between_{sid}",
+                )
+
+            row2_cols = st.columns(2)
+            with row2_cols[0]:
+                edited_type = st.text_input(
+                    "type",
+                    value=str(base_labels.get("type") or ""),
+                    key=f"type_{sid}",
+                )
+            with row2_cols[1]:
+                edited_location = st.text_input(
+                    "location",
+                    value=str(base_labels.get("location") or ""),
+                    key=f"location_{sid}",
+                )
 
             notes = st.text_area(
                 "reviewer_notes / 丢弃或重新生成原因",
                 value=decision.get("reviewer_notes", ""),
+                height=68,
                 key=f"notes_{sid}",
             )
 
