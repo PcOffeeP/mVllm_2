@@ -68,6 +68,9 @@ finetune/wandb/
 data/08_review/
 data/07_metadata/tail_contamination_audit.jsonl
 
+# 测试子视频
+data/sample_subvideos
+
 # Fine-tuning generated outputs
 /finetune/results/
 /finetune/saves/
