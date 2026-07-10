@@ -68,6 +68,28 @@ def get_user_prompt(template_index: int = 0, library: dict[str, Any] | None = No
     return prompt.strip()
 
 
+def get_inference_target_format(library: dict[str, Any] | None = None) -> str:
+    """返回推理目标格式（五字段，含 confidence）的文本说明。"""
+    lib = library or get_prompt_library()
+    return str(lib.get("inference_target_format", "")).strip()
+
+
+def get_inference_target_schema(library: dict[str, Any] | None = None) -> dict[str, Any]:
+    """返回推理目标 schema（五字段，含 confidence）。"""
+    lib = library or get_prompt_library()
+    return lib.get("inference_target_schema", {}) or {}
+
+
+def get_inference_user_prompt(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
+    """返回评估/推理使用的 user prompt，在训练问法基础上要求模型返回 confidence。"""
+    base = get_user_prompt(template_index, library)
+    target_format = get_inference_target_format(library)
+    prompt = f"{base}\n\n请按以下格式输出，并在结果 JSON 中包含 confidence 字段（0-1，表示你对判断的置信度）："
+    if target_format:
+        prompt = f"{prompt}\n{target_format}"
+    return prompt
+
+
 def get_user_prompt_template_id(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
     """返回指定索引 user prompt 模板的 template_id。"""
     lib = library or get_prompt_library()
@@ -79,9 +101,7 @@ def get_user_prompt_template_id(template_index: int = 0, library: dict[str, Any]
 
 
 def get_prompt(name: str) -> str:
-    """向后兼容接口：'training' 对应第一个 user prompt，'system' 对应 system prompt。"""
+    """向后兼容接口：'training' 对应含 confidence 的 inference user prompt。"""
     if name == "training":
-        return get_user_prompt(0)
-    if name == "system":
-        return get_system_prompt()
+        return get_inference_user_prompt(0)
     raise ValueError(f"Unsupported prompt: {name}. Expected one of {PROMPT_NAMES}.")

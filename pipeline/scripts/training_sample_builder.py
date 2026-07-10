@@ -48,6 +48,9 @@ FRACTURE_TYPES = {
     "界面脱粘、齐根断裂",
 }
 
+STATUS_APPROVED = "approved"
+STATUS_DROPPED = "dropped"
+
 SPLIT_NAMES = [
     "fold_0_train",
     "fold_0_val",
@@ -323,6 +326,13 @@ def convert_subvideo_to_sample(
     template_index: int = 0,
 ) -> dict[str, Any]:
     """将单条子视频元数据转换为 ShareGPT 训练样本。"""
+    sid = sub.get("subvideo_id", "<unknown>")
+    review_status = sub.get("review_status")
+    if review_status != STATUS_APPROVED:
+        raise ValueError(
+            f"{sid}: review_status={review_status!r} is not approved; "
+            "only approved subvideos may be converted to training samples"
+        )
     sub = _normalize_subvideo_labels(sub)
     processor_fingerprint = sub.get("processor_fingerprint")
     if not isinstance(processor_fingerprint, str) or not processor_fingerprint.strip():
@@ -368,9 +378,91 @@ def convert_subvideo_to_sample(
         "selection_reason": sub.get("selection_reason"),
         "exclusion_reason": sub.get("exclusion_reason"),
         "prompt_version": library.get("version"),
+        "metadata": {
+            "subvideo_id": sub["subvideo_id"],
+            "source_video": sub["source_video"],
+            "video_path": _normalize_video_path(sub["video_path"]),
+            "prompt_version": library.get("version"),
+            "review_status": sub.get("review_status"),
+            "reviewed_at": sub.get("reviewed_at"),
+            "fracture_between": sub.get("fracture_between"),
+            "location_canonical": sub["location_canonical"],
+            "type": sub["type"],
+            "has_fracture_canonical": sub["has_fracture_canonical"],
+            "actual_frame_mapping": _build_actual_frame_mapping(sub),
+        },
     }
     return sample
 
+
+
+def _validate_subvideo_review_status(subvideos: list[dict[str, Any]]) -> None:
+    """训练导出前置状态检查：所有子视频必须是 approved 或 dropped。
+
+    存在 unreviewed、needs_regenerate、状态缺失或非法状态时直接失败，
+    并列出问题子视频 ID，避免未审查样本被静默遗漏。
+    """
+    invalid: dict[str, list[str]] = {}
+    for sub in subvideos:
+        status = sub.get("review_status")
+        sid = sub.get("subvideo_id", "<unknown>")
+        if status == STATUS_APPROVED:
+            continue
+        if status == STATUS_DROPPED:
+            continue
+        bucket = status if status is not None else "<missing>"
+        invalid.setdefault(bucket, []).append(sid)
+
+    if invalid:
+        total = sum(len(sids) for sids in invalid.values())
+        details = "; ".join(
+            f"{status}: {sids}" for status, sids in sorted(invalid.items())
+        )
+        raise ValueError(
+            f"训练导出被阻塞：存在 {total} 条子视频状态不是 approved/dropped：{details}"
+        )
+
+
+def _is_valid_subvideo_id(sid: Any) -> bool:
+    """subvideo_id 必须是长度大于 0 的字符串，且不能是占位符。"""
+    return isinstance(sid, str) and bool(sid) and sid != "<unknown>"
+
+
+def _validate_excluded_subvideos(
+    excluded_subvideos: list[dict[str, Any]] | None,
+) -> None:
+    """训练导出前置状态检查：excluded_subvideos 每一项都是对象且 review_status == dropped。
+
+    非对象、缺失 subvideo_id/review_status、subvideo_id 无效、或 review_status 不是 dropped 都直接失败，
+    并列出所有问题项及其原因，避免非 dropped 样本被静默遗漏。
+    """
+    if not excluded_subvideos:
+        return
+
+    errors: list[str] = []
+    for rec in excluded_subvideos:
+        if not isinstance(rec, dict):
+            errors.append(f"非对象项: {rec!r}")
+            continue
+        sid = rec.get("subvideo_id", "<unknown>")
+        if "subvideo_id" not in rec:
+            errors.append(f"缺少 subvideo_id: {rec!r}")
+        elif not _is_valid_subvideo_id(sid):
+            errors.append(
+                f"{sid!r}: subvideo_id 无效，必须是长度大于 0 的字符串且不能为 <unknown>"
+            )
+        if "review_status" not in rec:
+            errors.append(f"{sid}: 缺少 review_status")
+        elif rec["review_status"] != STATUS_DROPPED:
+            errors.append(
+                f"{sid}: review_status={rec['review_status']!r} 不是 dropped"
+            )
+
+    if errors:
+        details = "; ".join(errors)
+        raise ValueError(
+            f"训练导出被阻塞：excluded_subvideos 中存在 {len(errors)} 条非法记录：{details}"
+        )
 
 
 def build_split_samples(
@@ -378,14 +470,26 @@ def build_split_samples(
     split_video_ids: dict[str, set[str]],
     library: dict[str, Any],
     seed: int = 42,
+    excluded_subvideos: list[dict[str, Any]] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """按当前划分将子视频分组并转换为训练样本（训练集做正负平衡，验证集保持完整）。"""
+    _validate_excluded_subvideos(excluded_subvideos)
+    _validate_subvideo_review_status(subvideos)
+
     rng = random.Random(seed)
     template_count = len(library.get("user_prompt_templates", []))
     by_split: dict[str, list[dict[str, Any]]] = {
         name: [] for name in split_video_ids if name != "test"
     }
     for sub in subvideos:
+        sid = sub.get("subvideo_id", "<unknown>")
+        review_status = sub.get("review_status")
+        if review_status == STATUS_DROPPED:
+            print(
+                f"信息：剔除 dropped 子视频 {sid}",
+                file=sys.stderr,
+            )
+            continue
         src = sub["source_video"]
         selected_splits = set(sub.get("selected_splits", []))
         template_index = rng.randint(0, template_count - 1) if template_count > 0 else 0
@@ -529,9 +633,12 @@ def build_all(
     raw_subvideos = load_json(subvideos_meta)
     if isinstance(raw_subvideos, dict):
         subvideos = raw_subvideos.get("subvideos", [])
+        excluded_subvideos = raw_subvideos.get("excluded_subvideos", [])
     else:
         subvideos = raw_subvideos
+        excluded_subvideos = []
     print(f"共 {len(subvideos)} 个子视频")
+    _validate_excluded_subvideos(excluded_subvideos)
 
     print(f"加载划分文件: {splits_dir}")
     split_video_ids = load_split_video_ids(splits_dir)
@@ -540,14 +647,18 @@ def build_all(
 
     print("构建训练样本...")
     split_samples = build_split_samples(
-        subvideos, split_video_ids, library=library, seed=seed
+        subvideos,
+        split_video_ids,
+        library=library,
+        seed=seed,
+        excluded_subvideos=excluded_subvideos,
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, samples in split_samples.items():
         out_path = output_dir / f"{name}.json"
         clean_samples = [
-            {k: v for k, v in s.items() if k in ("messages", "videos")}
+            {k: v for k, v in s.items() if k in ("messages", "videos", "metadata")}
             for s in samples
         ]
         write_json(out_path, clean_samples)

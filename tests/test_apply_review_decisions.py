@@ -208,3 +208,138 @@ def test_apply_label_corrections_approved_no_corrected_syncs_type_canonical(tmp_
     sub = out_data["subvideos"][0]
     assert sub["type"] == "current_type"
     assert sub["type_canonical"] == "current_type"
+
+
+def test_apply_label_corrections_output_only_includes_approved(tmp_path):
+    meta = tmp_path / "meta.json"
+    out = tmp_path / "out.json"
+
+    _write_json(
+        meta,
+        {
+            "review_decisions": {
+                "decisions": [
+                    {"subvideo_id": "sv_approved", "status": "approved"},
+                    {"subvideo_id": "sv_dropped", "status": "dropped"},
+                ]
+            },
+            "subvideos": [
+                {
+                    "subvideo_id": "sv_approved",
+                    "review_status": "approved",
+                    "type": "old_type",
+                    "corrected_labels": {"type": "corrected_type"},
+                },
+                {
+                    "subvideo_id": "sv_dropped",
+                    "review_status": "dropped",
+                    "type": "old_type",
+                },
+                {
+                    "subvideo_id": "sv_approved_no_correction",
+                    "review_status": "approved",
+                    "type": "current_type",
+                },
+            ],
+        },
+    )
+
+    summary = alc.apply_label_corrections(meta, out)
+    assert summary["approved_output"] == 2
+    assert summary["excluded"] == 1
+
+    out_data = json.loads(out.read_text())
+    assert len(out_data["subvideos"]) == 2
+    assert out_data["subvideos"][0]["subvideo_id"] == "sv_approved"
+    assert out_data["subvideos"][0]["type"] == "corrected_type"
+    assert out_data["subvideos"][1]["type"] == "current_type"
+
+    excluded_ids = {e["subvideo_id"] for e in out_data["excluded_subvideos"]}
+    assert excluded_ids == {"sv_dropped"}
+
+    assert "review_decisions" in out_data
+
+
+def test_apply_label_corrections_rejects_non_dropped_excluded(tmp_path):
+    meta = tmp_path / "meta.json"
+    out = tmp_path / "out.json"
+
+    _write_json(
+        meta,
+        {
+            "subvideos": [
+                {
+                    "subvideo_id": "sv_approved",
+                    "review_status": "approved",
+                    "type": "old_type",
+                    "corrected_labels": {"type": "corrected_type"},
+                },
+                {
+                    "subvideo_id": "sv_unreviewed",
+                    "review_status": "unreviewed",
+                    "type": "old_type",
+                },
+                {
+                    "subvideo_id": "sv_needs",
+                    "review_status": "needs_regenerate",
+                    "type": "old_type",
+                },
+                {
+                    "subvideo_id": "sv_bad",
+                    "review_status": "bad_status",
+                    "type": "old_type",
+                },
+                {
+                    "subvideo_id": "sv_missing",
+                    "type": "old_type",
+                },
+            ]
+        },
+    )
+
+    with pytest.raises(ValueError, match="excluded_subvideos"):
+        alc.apply_label_corrections(meta, out)
+
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("bad_item", [None, "not-a-dict"])
+def test_apply_label_corrections_rejects_non_object_excluded_subvideos(
+    tmp_path, bad_item
+):
+    """_validate_excluded_subvideos 必须拒绝非对象项，避免非法记录被静默忽略。"""
+    with pytest.raises(ValueError, match="非对象项"):
+        alc._validate_excluded_subvideos([bad_item])
+
+
+@pytest.mark.parametrize("bad_subvideo_id", [None, "", "<unknown>"])
+def test_apply_label_corrections_rejects_invalid_subvideo_id_in_excluded_subvideos(
+    tmp_path, bad_subvideo_id
+):
+    """非 approved 子视频的 subvideo_id 无效时，应拒绝写出 label_reviewed 文件。"""
+    meta = tmp_path / "meta.json"
+    out = tmp_path / "out.json"
+
+    _write_json(
+        meta,
+        {
+            "subvideos": [
+                {
+                    "subvideo_id": "sv_approved",
+                    "review_status": "approved",
+                    "type": "old_type",
+                    "corrected_labels": {"type": "corrected_type"},
+                },
+                {
+                    "subvideo_id": bad_subvideo_id,
+                    "review_status": "dropped",
+                    "type": "old_type",
+                },
+            ]
+        },
+    )
+
+    with pytest.raises(ValueError, match="subvideo_id"):
+        alc.apply_label_corrections(meta, out)
+
+    assert not out.exists()

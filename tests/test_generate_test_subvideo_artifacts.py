@@ -214,7 +214,7 @@ def test_explicit_missing_metadata_raises():
             _run_cli(tmp, argv)
 
 
-def test_raw_metadata_passthrough():
+def test_raw_metadata_non_strict_passthrough():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         meta_dir = _prepare(tmp)
@@ -245,13 +245,64 @@ def test_raw_metadata_passthrough():
             "--splits-dir", str(tmp / "05_splits"),
             "--skip-healthcheck",
             "--metadata-only",
-            "--strict",
+            "--no-strict",
         ]
         inputs, gt, manifest = _run_cli(tmp, argv)
         assert len(inputs) == 2
         assert len(gt) == 2
         assert "review_status" not in gt[0]
         assert manifest["review_filter_applied"] is False
+
+
+def test_raw_metadata_strict_blocks():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        meta_dir = _prepare(tmp)
+        metadata = {
+            "subvideos": [
+                {
+                    "subvideo_id": "sv1",
+                    "source_video": "v1",
+                    "video_path": "data/03_subvideos/sv1.mp4",
+                    "type": "韧性断裂",
+                    "has_fracture": True,
+                    "has_fracture_canonical": True,
+                },
+            ]
+        }
+        _write_json(meta_dir / "test_subvideos_meta.json", metadata)
+
+        argv = [
+            "--metadata", str(meta_dir / "test_subvideos_meta.json"),
+            "--video-meta", str(meta_dir / "video_meta.json"),
+            "--splits-dir", str(tmp / "05_splits"),
+            "--skip-healthcheck",
+            "--metadata-only",
+            "--strict",
+        ]
+        with pytest.raises(RuntimeError, match="Input metadata has no review_status"):
+            _run_cli(tmp, argv)
+
+
+def test_default_strict_missing_reviewed_raises():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        meta_dir = _prepare(tmp)
+        raw = {"subvideos": [{"subvideo_id": "sv_raw", "source_video": "v1", "video_path": "x.mp4", "type": "韧性断裂", "has_fracture": True}]}
+        _write_json(meta_dir / "test_subvideos_meta.json", raw)
+
+        gen.RAW_META_DEFAULT = meta_dir / "test_subvideos_meta.json"
+        gen.LABEL_REVIEWED_META = meta_dir / "test_subvideos_meta.label_reviewed.json"
+
+        argv = [
+            "--video-meta", str(meta_dir / "video_meta.json"),
+            "--splits-dir", str(tmp / "05_splits"),
+            "--skip-healthcheck",
+            "--metadata-only",
+            "--strict",
+        ]
+        with pytest.raises(FileNotFoundError, match="Reviewed metadata file not found"):
+            _run_cli(tmp, argv)
 
 
 def test_default_prefers_label_reviewed():

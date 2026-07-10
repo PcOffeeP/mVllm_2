@@ -38,6 +38,44 @@ LABEL_REVIEWED_META_DEFAULT = (
 )
 
 STATUS_APPROVED = "approved"
+STATUS_DROPPED = "dropped"
+
+
+def _is_valid_subvideo_id(sid: Any) -> bool:
+    """subvideo_id 必须是长度大于 0 的字符串，且不能是占位符。"""
+    return isinstance(sid, str) and bool(sid) and sid != "<unknown>"
+
+
+def _validate_excluded_subvideos(excluded_subvideos: list[dict[str, Any]]) -> None:
+    """在写出 label_reviewed metadata 前检查 excluded_subvideos 每一项都是对象且 review_status == dropped。
+
+    非对象、缺失 subvideo_id/review_status、subvideo_id 无效、或 review_status 不是 dropped 都直接失败，
+    并列出所有问题项及其原因，避免非法记录被静默忽略。
+    """
+    errors: list[str] = []
+    for rec in excluded_subvideos:
+        if not isinstance(rec, dict):
+            errors.append(f"非对象项: {rec!r}")
+            continue
+        sid = rec.get("subvideo_id", "<unknown>")
+        if "subvideo_id" not in rec:
+            errors.append(f"缺少 subvideo_id: {rec!r}")
+        elif not _is_valid_subvideo_id(sid):
+            errors.append(
+                f"{sid!r}: subvideo_id 无效，必须是长度大于 0 的字符串且不能为 <unknown>"
+            )
+        if "review_status" not in rec:
+            errors.append(f"{sid}: 缺少 review_status")
+        elif rec["review_status"] != STATUS_DROPPED:
+            errors.append(
+                f"{sid}: review_status={rec['review_status']!r} 不是 dropped"
+            )
+
+    if errors:
+        details = "; ".join(errors)
+        raise ValueError(
+            f"label_reviewed 导出被阻塞：excluded_subvideos 中存在 {len(errors)} 条非法记录：{details}"
+        )
 
 
 def _load_json(path: Path) -> Any:
@@ -140,15 +178,28 @@ def apply_label_corrections(
             if isinstance(rec, dict) and isinstance(rec.get("subvideo_id"), str):
                 decisions_by_id[rec["subvideo_id"]] = rec
 
+    approved_subvideos: list[dict[str, Any]] = []
+    excluded_subvideos: list[dict[str, Any]] = []
+    validation_errors: list[str] = []
     corrected_count = 0
     skipped_count = 0
 
     for sub in subvideos:
         if not isinstance(sub, dict):
             raise ValueError(f"{metadata_path}: subvideos 列表中存在非 dict 元素")
-        sid = sub.get("subvideo_id", "<unknown>")
+        sid = sub.get("subvideo_id")
         review_status = sub.get("review_status")
         if review_status != STATUS_APPROVED:
+            if not _is_valid_subvideo_id(sid):
+                validation_errors.append(
+                    f"{sid!r}: subvideo_id 无效，无法生成合法的 excluded_subvideos"
+                )
+                continue
+            excluded_subvideos.append({
+                "subvideo_id": sid,
+                "review_status": review_status,
+                "reason": "not_approved",
+            })
             skipped_count += 1
             continue
 
@@ -170,8 +221,19 @@ def apply_label_corrections(
         if "location" in sub:
             sub["location_canonical"] = location
 
+        approved_subvideos.append(sub)
+
+    if validation_errors:
+        details = "; ".join(validation_errors)
+        raise ValueError(
+            f"label_reviewed 导出被阻塞：发现 {len(validation_errors)} 条子视频无法生成合法的 excluded_subvideos：{details}"
+        )
+
+    _validate_excluded_subvideos(excluded_subvideos)
+
     output_payload = dict(top_level)
-    output_payload["subvideos"] = subvideos
+    output_payload["subvideos"] = approved_subvideos
+    output_payload["excluded_subvideos"] = excluded_subvideos
     output_payload["label_reviewed_at"] = datetime.now(timezone.utc).isoformat()
     output_payload["label_reviewed_by"] = "apply_label_corrections.py"
 
@@ -184,8 +246,10 @@ def apply_label_corrections(
     return {
         "output_path": str(output_path),
         "total": len(subvideos),
+        "approved_output": len(approved_subvideos),
         "corrected": corrected_count,
         "skipped": skipped_count,
+        "excluded": len(excluded_subvideos),
     }
 
 
@@ -231,6 +295,8 @@ def main() -> int:
     print(f"总计: {summary['total']} 条子视频")
     print(f"  已覆盖修正标签: {summary['corrected']}")
     print(f"  跳过（非 approved 或无 corrected_labels）: {summary['skipped']}")
+    print(f"  输出 approved 样本: {summary['approved_output']}")
+    print(f"  排除非 approved 样本: {summary['excluded']}")
     return 0
 
 

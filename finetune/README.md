@@ -15,9 +15,9 @@ finetune/
 │   ├── minicpmv4_5_lora_sft_interval_fold2.yaml
 │   └── merge.yaml
 └── validation/                # 直接返回评估架构
-    ├── run_evaluation.py      # 唯一主入口：选择数据集、模型地址、prompt 后运行评估
+    ├── run_evaluation.py      # 唯一主入口：选择数据集、模型地址后运行评估
     ├── datasets.py            # test/test_subvideos/fold_N_val 数据集加载
-    ├── prompts.py             # training / system 两版 prompt
+    ├── prompts.py             # inference user prompt（含 confidence）与 system prompt
     ├── model_runtime.py       # MiniCPM 视频推理封装（训练机/GPU 使用）
     ├── constants.py
     └── video_loader.py
@@ -129,11 +129,12 @@ git pull
 ## 直接返回评估
 
 验证架构已重构为单一路径：只评估微调模型的直接返回，不再生成或依赖旧的 time/type/joint/compare 二次转换产物。
-每次评估只选择三项：
+每次评估只选择两项：
 
 1. 数据集：`test` / `test_subvideos` / `fold_0_val` / `fold_1_val` / `fold_2_val`。
 2. 微调后模型地址：`--model-dir`。
-3. Prompt 版本：`training` 或 `system`。
+
+`run_evaluation.py` 不再接受 `--prompt` 参数；评估始终使用含 confidence 要求的 inference user prompt（对应原 `--prompt training`，即 `pipeline/prompt_library.yaml` 的第一个 user prompt 模板）。system prompt 仍会从 prompt library 读取并传给模型 runtime。
 
 训练机上直接运行模型并评估（需要模型、视频文件和 GPU）：
 
@@ -142,8 +143,7 @@ cd /path/to/mVllm_2/
 python -m finetune.validation.run_evaluation \
   --dataset test_subvideos \
   --model-dir /path/to/merged_or_adapter_model \
-  --prompt system \
-  --out-dir finetune/results/eval_test_subvideos_system
+  --out-dir finetune/results/eval_test_subvideos
 ```
 
 基座模型 prompt 格式测试使用 22 个原视频（`data/06_merged/test_inputs.json`），不使用 474 个子视频：
@@ -154,11 +154,12 @@ python -m finetune.validation.run_base_prompt_test \
   --out-dir finetune/results/base_prompt_format_test
 ```
 
-该命令会依次测试 `training` 和 `system` 两版 prompt，并输出：
+该命令使用含 confidence 的 inference user prompt 测试基座模型，并输出：
 
 - `base_prompt_format_test/training/evaluation_summary.json`
-- `base_prompt_format_test/system/evaluation_summary.json`
 - `base_prompt_format_test/prompt_format_comparison.json`
+
+`system prompt` 仍从 prompt library 传入，但不再作为可选的 `--prompt system` 选项。
 
 这一步只看逐样本 `raw_output` 和 `raw_output_rate`，不使用自动 schema 提取结果判断 prompt 是否可用。
 
@@ -167,9 +168,8 @@ python -m finetune.validation.run_base_prompt_test \
 ```bash
 python -m finetune.validation.run_evaluation \
   --dataset test_subvideos \
-  --predictions finetune/results/direct_test_subvideos_system_prompt.jsonl \
-  --prompt system \
-  --out-dir finetune/results/eval_test_subvideos_system
+  --predictions finetune/results/direct_test_subvideos.jsonl \
+  --out-dir finetune/results/eval_test_subvideos
 ```
 
 输出文件：

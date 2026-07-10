@@ -7,16 +7,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .constants import CORE_FIELDS, GENERATION_CONFIG, PROMPT_NAMES, SUPPORTED_DATASETS
+from .constants import CORE_FIELDS, GENERATION_CONFIG, SUPPORTED_DATASETS
 from .datasets import EvalSample, load_dataset
 from .model_runtime import load_model, run_model_on_video
 from .prompts import (
     DEFAULT_PROMPT_LIBRARY_PATH,
-    get_prompt,
+    get_inference_target_schema,
+    get_inference_user_prompt,
     get_prompt_library,
     get_prompt_version,
     get_system_prompt,
-    get_user_prompt,
 )
 
 
@@ -24,7 +24,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run direct 5-field model evaluation.")
     parser.add_argument("--dataset", required=True, choices=SUPPORTED_DATASETS)
     parser.add_argument("--model-dir", default=None, help="Finetuned/merged model directory. Required unless --predictions is used.")
-    parser.add_argument("--prompt", required=True, choices=PROMPT_NAMES)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--video-root", default=None)
     parser.add_argument("--predictions", default=None, help="Existing JSONL with video_id and raw_output; skips model inference.")
@@ -40,16 +39,11 @@ def main() -> None:
     library = get_prompt_library()
     prompt_version = get_prompt_version(library)
     system_prompt = get_system_prompt(library)
+    inference_target_schema = get_inference_target_schema(library)
     prompt_library_path = str(DEFAULT_PROMPT_LIBRARY_PATH)
 
-    if args.prompt == "training":
-        user_prompt_template_index = 0
-        prompt_text = get_user_prompt(user_prompt_template_index, library)
-    elif args.prompt == "system":
-        user_prompt_template_index = None
-        prompt_text = get_system_prompt(library)
-    else:
-        raise ValueError(f"Unsupported prompt: {args.prompt}")
+    user_prompt_template_index = 0
+    prompt_text = get_inference_user_prompt(user_prompt_template_index, library)
 
     video_root = Path(args.video_root) if args.video_root else None
     samples = load_dataset(args.dataset, video_root=video_root)
@@ -79,14 +73,22 @@ def main() -> None:
             raw_output = raw_outputs.get(sample.video_id, "")
             runtime_error = None if sample.video_id in raw_outputs else "prediction missing"
 
-        records.append(evaluate_sample(sample, raw_output, runtime_error, prompt_version=prompt_version))
+        records.append(
+            evaluate_sample(
+                sample,
+                raw_output,
+                runtime_error,
+                prompt_version=prompt_version,
+                target_schema=inference_target_schema,
+            )
+        )
 
     write_outputs(
         out_dir=Path(args.out_dir),
         records=records,
         dataset=args.dataset,
         model_dir=args.model_dir,
-        prompt=args.prompt,
+        prompt="training",
         prompt_text=prompt_text,
         predictions=args.predictions,
         prompt_version=prompt_version,
@@ -94,6 +96,7 @@ def main() -> None:
         system_prompt=system_prompt,
         system_prompt_hash=hashlib.sha256(system_prompt.encode("utf-8")).hexdigest(),
         user_prompt_template_index=user_prompt_template_index,
+        target_schema=inference_target_schema,
     )
 
 
@@ -102,6 +105,7 @@ def evaluate_sample(
     raw_output: str,
     runtime_error: str | None = None,
     prompt_version: str | None = None,
+    target_schema: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cleaned_output = str(raw_output or "").strip()
     return {
@@ -113,6 +117,7 @@ def evaluate_sample(
         "raw_output_non_empty": bool(cleaned_output),
         "has_result_section": "结果：" in cleaned_output,
         "prompt_version": prompt_version,
+        "target_schema": target_schema,
         "metadata": sample.metadata,
     }
 
@@ -150,6 +155,7 @@ def write_outputs(
     system_prompt: str | None = None,
     system_prompt_hash: str | None = None,
     user_prompt_template_index: int | None = None,
+    target_schema: dict[str, Any] | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     summary = {
@@ -162,6 +168,7 @@ def write_outputs(
         "system_prompt": system_prompt,
         "system_prompt_hash": system_prompt_hash,
         "user_prompt_template_index": user_prompt_template_index,
+        "target_schema": target_schema,
         "predictions": predictions,
         "generation_config": GENERATION_CONFIG,
         "metrics": summarize(records),

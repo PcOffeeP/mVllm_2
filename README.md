@@ -423,7 +423,7 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 }
 ```
 
-五字段协议由 `training` 和 `system` 两版 prompt 共同约束：`training` 与训练样本提示保持一致，`system` 额外强调字段取值和组合规则。
+五字段协议由评估默认使用的 inference user prompt 约束，该 prompt 在训练问法基础上要求模型输出 `confidence` 字段。`system prompt` 仍作为模型对话系统提示传入，但不再作为独立的 `--prompt` 评估选项。
 
 **合法组合规则**：
 
@@ -440,7 +440,8 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 
 1. `--dataset`：`test` / `test_subvideos` / `fold_0_val` / `fold_1_val` / `fold_2_val`
 2. `--model-dir`：微调后模型地址
-3. `--prompt`：`training`（训练时 prompt）或 `system`（带输出约束的 prompt）
+
+`run_evaluation.py` 不再接受 `--prompt` 参数，始终使用含 `confidence` 要求的 inference user prompt（对应原 `--prompt training`）。`system prompt` 仍会从 prompt library 读取并传给模型 runtime。
 
 训练机上运行完整推理与评估（需要模型、视频文件和 GPU）：
 
@@ -448,8 +449,7 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 python3 -m finetune.validation.run_evaluation \
     --dataset test_subvideos \
     --model-dir LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged \
-    --prompt system \
-    --out-dir results/eval_test_subvideos_system
+    --out-dir results/eval_test_subvideos
 ```
 
 基座模型 prompt 格式测试只使用 `test` 数据集的 22 个原视频，不使用生成后的子视频：
@@ -460,16 +460,15 @@ python3 -m finetune.validation.run_base_prompt_test \
     --out-dir results/base_prompt_format_test
 ```
 
-该命令会分别测试 `training` 和 `system` 两版 prompt。第一轮直接看逐样本 `raw_output`，不使用自动 schema 提取结果判断 prompt 是否可用。
+该命令会使用含 `confidence` 的 inference user prompt 测试基座模型，`system prompt` 仍从 prompt library 传入。第一轮直接看逐样本 `raw_output`，不使用自动 schema 提取结果判断 prompt 是否可用。
 
 本地 Mac 只复核已有预测 JSONL（不跑模型、不需要 GPU）：
 
 ```bash
 python3 -m finetune.validation.run_evaluation \
     --dataset test_subvideos \
-    --predictions finetune/results/direct_test_subvideos_system.jsonl \
-    --prompt system \
-    --out-dir results/eval_test_subvideos_system
+    --predictions finetune/results/direct_test_subvideos.jsonl \
+    --out-dir results/eval_test_subvideos
 ```
 
 预测 JSONL 至少需要包含 `video_id` 和 `raw_output`；`raw_output` 是模型原始返回文本。

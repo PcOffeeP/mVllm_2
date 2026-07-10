@@ -9,10 +9,10 @@ from .constants import PROJECT_ROOT, PROMPT_NAMES
 from .datasets import load_dataset
 from .model_runtime import load_model, run_model_on_video
 from .prompts import (
+    get_inference_user_prompt,
     get_prompt_library,
     get_system_prompt,
     get_system_prompt_hash,
-    get_user_prompt,
 )
 from .run_evaluation import evaluate_sample, summarize, write_outputs
 
@@ -22,7 +22,7 @@ DEFAULT_BASE_MODEL = PROJECT_ROOT / "models" / "minicpm-v-4.5"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the base model on the 22 original test videos with both prompt versions."
+        description="Run the base model on the original test videos with the confidence-bearing inference prompt."
     )
     parser.add_argument("--model-dir", default=str(DEFAULT_BASE_MODEL), help="Base model directory.")
     parser.add_argument("--out-dir", default="finetune/results/base_prompt_format_test")
@@ -56,12 +56,7 @@ def main() -> None:
     }
 
     for prompt_name in PROMPT_NAMES:
-        if prompt_name == "training":
-            prompt_text = get_user_prompt(0, library)
-        elif prompt_name == "system":
-            prompt_text = get_system_prompt(library)
-        else:
-            raise ValueError(f"Unsupported prompt: {prompt_name}")
+        prompt_text = get_inference_user_prompt(0, library)
         records = []
         for sample in samples:
             if not sample.video_path.exists():

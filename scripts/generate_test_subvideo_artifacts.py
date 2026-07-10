@@ -9,8 +9,11 @@ This script integrates with the review UI workflow:
 3. In ``--strict`` mode (default), it blocks on ``unreviewed`` or
    ``needs_regenerate`` samples and only exports ``approved`` samples.
 4. ``dropped`` samples are excluded from evaluation inputs and ground truth.
-5. If the input metadata has no ``review_status`` field, the original
-   behavior is preserved: all subvideos are exported.
+5. In ``--strict`` mode (default), the input metadata must already contain
+   ``review_status`` fields produced by the review UI. If no review status is
+   present, the script exits with an error. In ``--no-strict`` mode, metadata
+   without reviews is allowed as a compatibility fallback and all subvideos are
+   exported with a warning.
 6. When review information is present, ``review_status`` and
    ``reviewer_notes`` are preserved in the ground truth file for
    downstream evaluation analysis.
@@ -47,11 +50,19 @@ STATUS_NEEDS_REGENERATE = "needs_regenerate"
 STATUS_UNREVIEWED = "unreviewed"
 
 
-def _default_metadata_path() -> Path:
-    """Return label-reviewed metadata if it exists, otherwise the raw metadata."""
+def _default_metadata_path(strict: bool) -> Path:
+    """Return the default metadata path.
+
+    In strict mode, only the label-reviewed metadata is acceptable; if it is
+    missing, the caller must raise rather than silently fall back to raw
+    metadata. In non-strict mode, fall back to the raw metadata when the
+    reviewed file does not exist.
+    """
     if LABEL_REVIEWED_META.exists():
         return LABEL_REVIEWED_META
-    return RAW_META_DEFAULT
+    if not strict:
+        return RAW_META_DEFAULT
+    return LABEL_REVIEWED_META
 
 
 def _load_subvideos_from_metadata(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -73,14 +84,27 @@ def _filter_subvideos_by_review(
 ) -> list[dict[str, Any]]:
     """Keep only approved subvideos; drop dropped ones.
 
-    In strict mode, raise on any subvideo whose review_status is not
-    ``approved`` or ``dropped`` (e.g. ``unreviewed`` or ``needs_regenerate``).
-    In non-strict mode, such samples are skipped with a warning.
+    In strict mode, the input metadata must already contain review_status
+    fields from the UI review workflow. If no review status is present at all,
+    the script raises. Any sample whose review_status is not ``approved`` or
+    ``dropped`` (e.g. ``unreviewed`` or ``needs_regenerate``) also raises.
 
-    If the input metadata has no review_status at all, return the list
-    unchanged to preserve the original behavior.
+    In non-strict mode, metadata without reviews is allowed as a compatibility
+    fallback and all subvideos are exported with a warning. Non-approved samples
+    are skipped with a warning rather than blocking.
     """
     if not _metadata_has_reviews(subvideos):
+        if strict:
+            raise RuntimeError(
+                "Input metadata has no review_status. In strict mode, all test "
+                "subvideos must be reviewed through the UI before export. "
+                "Run the review UI first, or use --no-strict for debugging only."
+            )
+        print(
+            "Warning: input metadata has no review_status; exporting all subvideos "
+            "because --no-strict is set.",
+            file=sys.stderr,
+        )
         return subvideos
 
     approved: list[dict[str, Any]] = []
@@ -295,8 +319,9 @@ Examples:
         "--strict",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Strict mode: block export if any sample is unreviewed or needs_regenerate. "
-             "Dropped samples are always skipped. (default: on)",
+        help="Strict mode: require reviewed metadata and block export if any sample is "
+             "unreviewed or needs_regenerate. Dropped samples are always skipped. "
+             "(default: on)",
     )
     parser.add_argument(
         "--model",
@@ -377,7 +402,7 @@ def _generate_subvideos_from_split(
 
 def main() -> int:
     args = parse_args()
-    metadata_path = args.metadata or _default_metadata_path()
+    metadata_path = args.metadata or _default_metadata_path(strict=args.strict)
 
     if metadata_path.exists():
         print(f"Using existing subvideo metadata: {metadata_path}")
@@ -394,12 +419,19 @@ def main() -> int:
             "omit --metadata or create the metadata first."
         )
     else:
+        # Default metadata path was used and is missing.
+        if args.strict:
+            raise FileNotFoundError(
+                f"Reviewed metadata file not found: {metadata_path}\n"
+                "In strict mode, test subvideos must be reviewed through the UI "
+                "before export. Use --no-strict for debugging only."
+            )
         print(f"Metadata {metadata_path} not found; generating subvideos from {args.video_meta}")
         generated, test_ids, preprocessor_fingerprint = _generate_subvideos_from_split(args)
         top_level = {}
         exclusions = list(builder.EXCLUSIONS)
 
-    # Apply review filtering when review_status is present.
+    # Apply review filtering. In strict mode, metadata without review_status raises.
     used_subvideos = _filter_subvideos_by_review(generated, strict=args.strict)
 
     if not args.video_meta.exists():

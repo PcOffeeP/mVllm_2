@@ -93,6 +93,32 @@ def _load_test_dataset(inputs_path: Path, ground_truth_path: Path, video_root: P
     return samples
 
 
+def _parse_assistant_json(assistant_message: str) -> dict[str, Any]:
+    """Parse assistant target from training sample.
+
+    Supports the new format ``判断依据：...\n结果：{...}`` by extracting the JSON
+    after ``结果：``. Falls back to parsing the whole message as JSON for legacy
+    samples that only contain the JSON object.
+    """
+    content = assistant_message.strip()
+    if "结果：" in content:
+        json_part = content.split("结果：", 1)[1].strip()
+        try:
+            return json.loads(json_part)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Assistant result section is not valid JSON: {exc}\n"
+                f"Content after '结果：': {json_part[:500]}"
+            ) from exc
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Assistant message does not contain '结果：' and is not valid JSON: {exc}\n"
+            f"Content: {content[:500]}"
+        ) from exc
+
+
 def _load_fold_dataset(name: str, video_root: Path | None) -> list[EvalSample]:
     path = MERGED_DATA_DIR / f"{name}.json"
     records = _read_json(path)
@@ -100,7 +126,7 @@ def _load_fold_dataset(name: str, video_root: Path | None) -> list[EvalSample]:
     for index, record in enumerate(records):
         raw_video = record.get("videos", [None])[0]
         assistant_message = _assistant_content(record)
-        target = json.loads(assistant_message)
+        assistant_json = _parse_assistant_json(assistant_message)
         video_path = _resolve_video_path(raw_video, Path(raw_video or f"sample_{index}").stem, video_root)
         video_id = video_path.stem
         samples.append(
@@ -108,7 +134,13 @@ def _load_fold_dataset(name: str, video_root: Path | None) -> list[EvalSample]:
                 sample_id=video_id,
                 video_id=video_id,
                 video_path=video_path,
-                metadata={"source": str(path), "row_index": index, "ground_truth": target},
+                metadata={
+                    "source": str(path),
+                    "row_index": index,
+                    "ground_truth": assistant_json,
+                    "assistant_raw": assistant_message,
+                    "assistant_json": assistant_json,
+                },
             )
         )
     return samples

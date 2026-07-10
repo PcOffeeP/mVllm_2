@@ -256,6 +256,116 @@ def test_quality_check_allows_unreviewed_meta_when_opt_in(tmp_path, monkeypatch)
     )
 
 
+def test_quality_check_rejects_invalid_excluded_subvideo_id(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [_reviewed_sub(True), _reviewed_sub(False)],
+            "excluded_subvideos": [
+                {"subvideo_id": "<unknown>", "review_status": "dropped"}
+            ],
+        },
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "excluded_subvideos"
+        and e["detail"] == "invalid_subvideo_id"
+        and e["subvideo_id"] == "<unknown>"
+        for e in errors
+    )
+
+
+def test_quality_check_rejects_excluded_subvideo_without_dropped_status(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [_reviewed_sub(True), _reviewed_sub(False)],
+            "excluded_subvideos": [
+                {"subvideo_id": "video_0001_drop", "review_status": "approved"}
+            ],
+        },
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "excluded_subvideos"
+        and e["detail"] == "review_status_not_dropped"
+        and e["subvideo_id"] == "video_0001_drop"
+        for e in errors
+    )
+
+
+def test_quality_check_rejects_excluded_subvideos_not_a_list(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [_reviewed_sub(True), _reviewed_sub(False)],
+            "excluded_subvideos": {"subvideo_id": "video_0001_drop"},
+        },
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "excluded_subvideos"
+        and e["detail"] == "excluded_subvideos_not_a_list"
+        for e in errors
+    )
+
+
+def test_quality_check_rejects_excluded_subvideo_not_an_object(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [_reviewed_sub(True), _reviewed_sub(False)],
+            "excluded_subvideos": ["video_0001_drop"],
+        },
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert any(
+        e["check"] == "excluded_subvideos"
+        and e["detail"] == "excluded_subvideo_not_an_object"
+        for e in errors
+    )
+
+
 def test_quality_check_rejects_reviewed_train_val_source_leakage(tmp_path, monkeypatch):
     merged = _make_merged_dir(tmp_path)
     meta = _make_reviewed_meta(tmp_path)
@@ -711,3 +821,495 @@ def test_quality_check_fails_when_prompt_library_missing_version(tmp_path, monke
         and e["detail"] == "prompt_library_missing_version"
         for e in errors
     )
+
+
+def test_review_status_approved_authoritative_with_dropped_metadata_fails(tmp_path, monkeypatch):
+    """权威 approved，但 metadata.review_status=dropped，质量门失败。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_mismatch",
+                    "review_status": "approved",
+                }
+            ]
+        },
+    )
+    sample = _make_sample(
+        "sub_mismatch",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+    )
+    sample["metadata"] = {"subvideo_id": "sub_mismatch", "review_status": "dropped"}
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "review_status"
+        and e["detail"] == "metadata_review_status_mismatch"
+        for e in errors
+    )
+    assert any(
+        e["authoritative"] == "approved" and e["metadata"] == "dropped"
+        for e in errors
+        if e.get("check") == "review_status"
+        and e.get("detail") == "metadata_review_status_mismatch"
+    )
+
+
+def test_review_status_approved_authoritative_with_missing_metadata_passes(tmp_path, monkeypatch):
+    """权威 approved，metadata 不含 review_status 时允许通过（不视为不一致）。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_missing",
+                    "review_status": "approved",
+                }
+            ]
+        },
+    )
+    sample = _make_sample(
+        "sub_missing",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+    )
+    sample["metadata"] = {"subvideo_id": "sub_missing"}
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert not any(e["check"] == "review_status" for e in errors)
+
+
+def test_review_status_approved_authoritative_with_approved_metadata_passes(tmp_path, monkeypatch):
+    """权威 approved，metadata.review_status=approved，质量门通过。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_ok",
+                    "review_status": "approved",
+                }
+            ]
+        },
+    )
+    sample = _make_sample(
+        "sub_ok",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+    )
+    sample["metadata"] = {"subvideo_id": "sub_ok", "review_status": "approved"}
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert not any(e["check"] == "review_status" for e in errors)
+
+
+def test_quality_check_reads_prompt_version_from_sample_metadata(tmp_path, monkeypatch):
+    """优先从训练样本 metadata 读取 prompt_version。"""
+    merged = _make_merged_dir(tmp_path)
+    sample = _make_sample(
+        "sub_ok",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+        prompt_version="v0.0.0",  # 顶层错误，应被忽略
+    )
+    sample["metadata"] = {
+        "subvideo_id": "sub_ok",
+        "source_video": "video_0001",
+        "video_path": "data/03_subvideos/sub_ok.mp4",
+        "prompt_version": "v1.0.0",
+        "review_status": "approved",
+        "reviewed_at": "2026-07-09T12:00:00+00:00",
+        "fracture_between": None,
+        "location_canonical": None,
+        "type": "未断裂",
+        "has_fracture_canonical": False,
+    }
+    _write_train_file(merged, [sample])
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {"subvideos": [
+            {**_reviewed_sub(False), "subvideo_id": "sub_ok", "review_status": "approved"}
+        ]},
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert not any(e["check"] == "prompt_version" for e in errors)
+
+
+def test_quality_check_rejects_metadata_review_status_overriding_authoritative(
+    tmp_path, monkeypatch
+):
+    """metadata 中的 review_status 不能覆盖 label_reviewed 权威状态。"""
+    merged = _make_merged_dir(tmp_path)
+    sample = {
+        "id": "sub_ok",
+        "videos": ["data/03_subvideos/sub_ok.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {"role": "assistant", "content": '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
+        ],
+        "prompt_version": "v1.0.0",
+        "metadata": {
+            "subvideo_id": "sub_ok",
+            "source_video": "video_0001",
+            "video_path": "data/03_subvideos/sub_ok.mp4",
+            "prompt_version": "v1.0.0",
+            "review_status": "approved",
+            "reviewed_at": "2026-07-09T12:00:00+00:00",
+            "fracture_between": None,
+            "location_canonical": None,
+            "type": "未断裂",
+            "has_fracture_canonical": False,
+        },
+    }
+    _write_train_file(merged, [sample])
+    meta = _make_reviewed_meta(tmp_path)
+    # reviewed_meta 中记录为 dropped，metadata 中 approved，应报错且 mismatch 为 error
+    _write_meta(
+        meta,
+        {"subvideos": [
+            {**_reviewed_sub(False), "subvideo_id": "sub_ok", "review_status": "dropped"}
+        ]},
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "review_status" and e["detail"] == "subvideo_not_approved"
+        for e in errors
+    )
+    assert any(
+        e["check"] == "review_status"
+        and e["detail"] == "metadata_review_status_mismatch"
+        for e in errors
+    )
+
+
+def test_quality_check_fallback_to_reviewed_meta_for_review_status(tmp_path, monkeypatch):
+    """当样本没有 metadata 时，仍能从 reviewed_meta 回退读取 review_status。"""
+    merged = _make_merged_dir(tmp_path)
+    sample = _make_sample(
+        "sub_ok",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+    )
+    # 没有 metadata，依赖 reviewed_meta 的 review_status
+    _write_train_file(merged, [sample])
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {"subvideos": [
+            {**_reviewed_sub(False), "subvideo_id": "sub_ok", "review_status": "approved"}
+        ]},
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert not any(e["check"] == "review_status" for e in errors)
+
+
+def test_quality_check_fallback_to_reviewed_meta_when_metadata_missing_review_status(
+    tmp_path, monkeypatch
+):
+    """metadata 存在但缺少 review_status 时，应回退到 reviewed_meta。"""
+    merged = _make_merged_dir(tmp_path)
+    sample = _make_sample(
+        "sub_ok",
+        '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+    )
+    sample["metadata"] = {
+        "subvideo_id": "sub_ok",
+        "source_video": "video_0001",
+        "video_path": "data/03_subvideos/sub_ok.mp4",
+        "prompt_version": "v1.0.0",
+        "reviewed_at": "2026-07-09T12:00:00+00:00",
+        "fracture_between": None,
+        "location_canonical": None,
+        "type": "未断裂",
+        "has_fracture_canonical": False,
+    }
+    _write_train_file(merged, [sample])
+    (tmp_path / "data" / "03_subvideos").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "data" / "03_subvideos" / "sub_ok.mp4").write_bytes(b"")
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {"subvideos": [
+            {**_reviewed_sub(False), "subvideo_id": "sub_ok", "review_status": "approved"}
+        ]},
+    )
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert not any(e["check"] == "review_status" for e in errors)
+
+
+def test_quality_check_uses_actual_frame_mapping_from_metadata_for_boundary_check(
+    tmp_path, monkeypatch
+):
+    """fracture_between 边界检查应优先使用 metadata.actual_frame_mapping。"""
+    merged = _make_merged_dir(tmp_path)
+    (tmp_path / "data" / "03_subvideos").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "data" / "03_subvideos" / "sub_pos.mp4").write_bytes(b"")
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {"subvideos": [
+            {**_reviewed_sub(True), "subvideo_id": "sub_pos", "review_status": "approved"}
+        ]},
+    )
+    sample = _make_sample(
+        "sub_pos",
+        '判断依据：x\n结果：{"has_fracture":true,"fracture_between":[2,3],"type":"韧性断裂","location":"inside_gauge"}',
+    )
+    sample["metadata"] = {
+        "subvideo_id": "sub_pos",
+        "source_video": "video_0001",
+        "video_path": "data/03_subvideos/sub_pos.mp4",
+        "prompt_version": "v1.0.0",
+        "review_status": "approved",
+        "reviewed_at": "2026-07-09T12:00:00+00:00",
+        "fracture_between": [2, 3],
+        "location_canonical": "inside_gauge",
+        "type": "韧性断裂",
+        "has_fracture_canonical": True,
+        "actual_frame_mapping": [
+            {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+            {"input_index": 1, "original_frame": 10, "timestamp": 1.0},
+            {"input_index": 2, "original_frame": 20, "timestamp": 2.0},
+            {"input_index": 3, "original_frame": 30, "timestamp": 3.0},
+        ],
+    }
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert not any(e["check"] == "fracture_between" for e in errors)
+
+
+def test_quality_check_detects_out_of_bounds_fracture_between_from_metadata_mapping(
+    tmp_path, monkeypatch
+):
+    """metadata.actual_frame_mapping 长度不足时，越界 fracture_between 应被检测。"""
+    merged = _make_merged_dir(tmp_path)
+    (tmp_path / "data" / "03_subvideos").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "data" / "03_subvideos" / "sub_bad.mp4").write_bytes(b"")
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {"subvideos": [
+            {**_reviewed_sub(True), "subvideo_id": "sub_bad", "review_status": "approved"}
+        ]},
+    )
+    sample = _make_sample(
+        "sub_bad",
+        '判断依据：x\n结果：{"has_fracture":true,"fracture_between":[4,5],"type":"韧性断裂","location":"inside_gauge"}',
+    )
+    sample["metadata"] = {
+        "subvideo_id": "sub_bad",
+        "source_video": "video_0001",
+        "video_path": "data/03_subvideos/sub_bad.mp4",
+        "prompt_version": "v1.0.0",
+        "review_status": "approved",
+        "reviewed_at": "2026-07-09T12:00:00+00:00",
+        "fracture_between": [4, 5],
+        "location_canonical": "inside_gauge",
+        "type": "韧性断裂",
+        "has_fracture_canonical": True,
+        "actual_frame_mapping": [
+            {"input_index": 0, "original_frame": 0, "timestamp": 0.0},
+            {"input_index": 1, "original_frame": 10, "timestamp": 1.0},
+            {"input_index": 2, "original_frame": 20, "timestamp": 2.0},
+            {"input_index": 3, "original_frame": 30, "timestamp": 3.0},
+        ],
+    }
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "fracture_between" and e["detail"] == "out_of_bounds_or_not_adjacent"
+        for e in errors
+    )
+
+
+def test_review_status_metadata_approved_but_authoritative_dropped(tmp_path, monkeypatch):
+    """训练样本 metadata 自称 approved，但 label_reviewed 中是 dropped，应报错。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_bad",
+                    "review_status": "dropped",
+                }
+            ]
+        },
+    )
+    sample = {
+        "videos": ["data/03_subvideos/sub_bad.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {"role": "assistant", "content": '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
+        ],
+        "metadata": {
+            "subvideo_id": "sub_bad",
+            "review_status": "approved",
+        },
+    }
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "review_status" and e["detail"] == "subvideo_not_approved"
+        for e in errors
+    )
+    assert any(
+        e["check"] == "review_status"
+        and e["detail"] == "metadata_review_status_mismatch"
+        for e in errors
+    )
+
+
+def test_review_status_missing_in_authoritative_map(tmp_path, monkeypatch):
+    """权威映射中不存在该子视频时，质量门应报错。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(meta, {"subvideos": [_reviewed_sub(False)]})
+    sample = {
+        "videos": ["data/03_subvideos/unknown_sub.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {"role": "assistant", "content": '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
+        ],
+        "metadata": {
+            "subvideo_id": "unknown_sub",
+            "review_status": "approved",
+        },
+    }
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    assert any(
+        e["check"] == "review_status"
+        and e["detail"] == "subvideo_not_found_in_reviewed_meta"
+        for e in errors
+    )
+
+
+def test_sample_id_prefers_metadata_subvideo_id(tmp_path, monkeypatch):
+    """训练样本没有顶层 id 时，质量门错误信息中的 id 来自 metadata.subvideo_id。"""
+    merged = _make_merged_dir(tmp_path)
+    meta = _make_reviewed_meta(tmp_path)
+    _write_meta(
+        meta,
+        {
+            "subvideos": [
+                {
+                    **_reviewed_sub(False),
+                    "subvideo_id": "sub_meta",
+                    "review_status": "dropped",
+                }
+            ]
+        },
+    )
+    sample = {
+        "videos": ["data/03_subvideos/sub_meta.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {"role": "assistant", "content": '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
+        ],
+        "metadata": {
+            "subvideo_id": "sub_meta",
+        },
+    }
+    _write_train_file(merged, [sample])
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+    review_errors = [e for e in errors if e["check"] == "review_status"]
+    assert review_errors
+    assert all(e.get("id") == "sub_meta" for e in review_errors)

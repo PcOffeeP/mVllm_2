@@ -54,6 +54,7 @@ FRACTURE_TYPES = {
 }
 NON_FRACTURE_TYPES = {"未断裂", "未夹紧", "视频异常"}
 ALL_TYPES = FRACTURE_TYPES | NON_FRACTURE_TYPES
+STATUS_DROPPED = "dropped"
 
 LEGAL_COMBINATIONS = [
     # 1. 正常断裂且可定位
@@ -140,6 +141,14 @@ def _load_prompt_library(path: Path) -> dict[str, Any]:
         return {}
 
 
+def _sample_id(sample: dict[str, Any]) -> str | None:
+    """统一获取样本 id：优先顶层 ``id``，否则回退到 ``metadata.subvideo_id``。
+
+    训练样本导出后通常不再保留顶层 ``id``，因此实际多从 metadata 读取。
+    """
+    return sample.get("id") or sample.get("metadata", {}).get("subvideo_id")
+
+
 def _extract_assistant_text(sample: dict[str, Any]) -> str | None:
     """提取 assistant 消息的原始文本内容。"""
     messages = sample.get("messages", [])
@@ -192,6 +201,90 @@ def _is_mock_fingerprint(fp: Any) -> bool:
     if not isinstance(fp, str):
         return False
     return "mock" in fp.lower() or "theoretical" in fp.lower()
+
+
+def _is_valid_subvideo_id(sid: Any) -> bool:
+    """subvideo_id must be a non-empty string and not a placeholder."""
+    return isinstance(sid, str) and bool(sid) and sid != "<unknown>"
+
+
+def _validate_excluded_subvideos_metadata(
+    data: dict[str, Any],
+    subvideos_meta_path: Path,
+    errors: list[dict[str, Any]],
+) -> None:
+    """Validate top-level excluded_subvideos in reviewed metadata."""
+    if "excluded_subvideos" not in data:
+        return
+
+    excluded = data.get("excluded_subvideos")
+    if not isinstance(excluded, list):
+        errors.append(
+            {
+                "check": "excluded_subvideos",
+                "detail": "excluded_subvideos_not_a_list",
+                "path": str(subvideos_meta_path),
+            }
+        )
+        return
+
+    for idx, rec in enumerate(excluded):
+        if not isinstance(rec, dict):
+            errors.append(
+                {
+                    "check": "excluded_subvideos",
+                    "detail": "excluded_subvideo_not_an_object",
+                    "path": str(subvideos_meta_path),
+                    "index": idx,
+                    "record": rec,
+                }
+            )
+            continue
+
+        sid = rec.get("subvideo_id")
+        if "subvideo_id" not in rec:
+            errors.append(
+                {
+                    "check": "excluded_subvideos",
+                    "detail": "missing_subvideo_id",
+                    "path": str(subvideos_meta_path),
+                    "index": idx,
+                    "record": rec,
+                }
+            )
+        elif not _is_valid_subvideo_id(sid):
+            errors.append(
+                {
+                    "check": "excluded_subvideos",
+                    "detail": "invalid_subvideo_id",
+                    "path": str(subvideos_meta_path),
+                    "index": idx,
+                    "subvideo_id": sid,
+                }
+            )
+
+        if "review_status" not in rec:
+            errors.append(
+                {
+                    "check": "excluded_subvideos",
+                    "detail": "missing_review_status",
+                    "path": str(subvideos_meta_path),
+                    "index": idx,
+                    "subvideo_id": sid,
+                }
+            )
+        elif rec.get("review_status") != STATUS_DROPPED:
+            errors.append(
+                {
+                    "check": "excluded_subvideos",
+                    "detail": "review_status_not_dropped",
+                    "path": str(subvideos_meta_path),
+                    "index": idx,
+                    "subvideo_id": sid,
+                    "review_status": rec.get("review_status"),
+                    "expected": STATUS_DROPPED,
+                }
+            )
 
 
 def _resolve_media_path(rel: str, project_root: Path) -> Path:
@@ -251,7 +344,7 @@ def _validate_media_paths(
                     {
                         "check": "media_path",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "missing_video_path",
                     }
                 )
@@ -265,7 +358,7 @@ def _validate_media_paths(
                     {
                         "check": "media_path",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "missing_file",
                         "path": rel,
                         "resolved": str(full),
@@ -324,7 +417,7 @@ def _validate_assistant_targets(
                     {
                         "check": "assistant_target",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "missing_assistant_text",
                     }
                 )
@@ -335,7 +428,7 @@ def _validate_assistant_targets(
                     {
                         "check": "assistant_target",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "missing_evidence_section",
                     }
                 )
@@ -344,7 +437,7 @@ def _validate_assistant_targets(
                     {
                         "check": "assistant_target",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "missing_result_section",
                     }
                 )
@@ -356,7 +449,7 @@ def _validate_assistant_targets(
                     {
                         "check": "assistant_target",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "result_json_not_parseable",
                         "content_preview": text[:200],
                     }
@@ -368,7 +461,7 @@ def _validate_assistant_targets(
                     {
                         "check": "assistant_target",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "result_not_a_dict",
                         "output": output,
                     }
@@ -380,7 +473,7 @@ def _validate_assistant_targets(
                     {
                         "check": "assistant_target",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "confidence_field_present",
                     }
                 )
@@ -390,7 +483,7 @@ def _validate_assistant_targets(
                     {
                         "check": "assistant_target",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "result_schema_mismatch",
                         "expected": sorted(TARGET_SCHEMA_KEYS),
                         "actual": sorted(output.keys()),
@@ -403,7 +496,7 @@ def _validate_assistant_targets(
                     {
                         "check": "field_combination",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "illegal_four_field_combination",
                         "output": output,
                     }
@@ -415,7 +508,7 @@ def _validate_assistant_targets(
                     {
                         "check": "type_closed_set",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "invalid_type",
                         "type": ftype,
                     }
@@ -442,16 +535,31 @@ def _validate_fracture_between(
             fb = output.get("fracture_between")
             if fb is None:
                 continue
-            mapping = sample.get("actual_frame_mapping") or []
+            metadata = sample.get("metadata")
+            if isinstance(metadata, dict):
+                mapping = metadata.get("actual_frame_mapping") or []
+            else:
+                mapping = []
+            if not mapping:
+                mapping = sample.get("actual_frame_mapping") or []
             n = len(mapping)
             if n == 0:
-                continue  # ShareGPT 格式不含 actual_frame_mapping，边界校验跳过
+                warnings.append(
+                    {
+                        "check": "fracture_between",
+                        "file": path.name,
+                        "id": _sample_id(sample),
+                        "detail": "missing_actual_frame_mapping",
+                        "value": fb,
+                    }
+                )
+                continue
             if not isinstance(fb, list) or len(fb) != 2:
                 errors.append(
                     {
                         "check": "fracture_between",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "malformed",
                         "value": fb,
                     }
@@ -463,7 +571,7 @@ def _validate_fracture_between(
                     {
                         "check": "fracture_between",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "non_integer",
                         "value": fb,
                     }
@@ -474,7 +582,7 @@ def _validate_fracture_between(
                     {
                         "check": "fracture_between",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "out_of_bounds_or_not_adjacent",
                         "value": fb,
                         "frame_count": n,
@@ -486,7 +594,7 @@ def _validate_fracture_between(
                     {
                         "check": "fracture_between",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "not_strictly_adjacent",
                         "value": fb,
                     }
@@ -509,13 +617,17 @@ def _validate_prompt_version_consistency(
         for sample in data:
             if not isinstance(sample, dict):
                 continue
-            pv = sample.get("prompt_version")
+            metadata = sample.get("metadata")
+            if isinstance(metadata, dict):
+                pv = metadata.get("prompt_version")
+            else:
+                pv = sample.get("prompt_version")
             if pv is None:
                 errors.append(
                     {
                         "check": "prompt_version",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "missing_prompt_version",
                     }
                 )
@@ -526,7 +638,7 @@ def _validate_prompt_version_consistency(
                     {
                         "check": "prompt_version",
                         "file": path.name,
-                        "id": sample.get("id"),
+                        "id": _sample_id(sample),
                         "detail": "prompt_version_mismatch",
                         "expected": prompt_version,
                         "actual": pv,
@@ -758,6 +870,7 @@ def _load_reviewed_subvideos(
         return None
     if isinstance(data, dict):
         subvideos = data.get("subvideos")
+        _validate_excluded_subvideos_metadata(data, subvideos_meta_path, errors)
     elif isinstance(data, list):
         subvideos = data
     else:
@@ -980,15 +1093,23 @@ def _validate_review_status(
     merged_dir: Path,
     reviewed_subvideos: list[dict[str, Any]] | None,
     errors: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
 ) -> None:
-    """检查训练/验证样本对应的子视频 review_status 必须为 approved。"""
-    if reviewed_subvideos is None:
-        return
+    """检查训练/验证样本对应的子视频 review_status 必须为 approved。
 
+    以 ``subvideos_meta.label_reviewed.json``（``reviewed_subvideos``）为权威来源，
+    建立 ``subvideo_id -> review_status`` 映射。训练样本的 ``metadata.subvideo_id``
+    用于在权威映射中定位；样本自身 ``metadata.review_status`` 仅与权威状态交叉校验，
+    不能覆盖权威状态。
+    """
     review_status_by_id: dict[str, Any] = {}
-    for sub in reviewed_subvideos:
-        if isinstance(sub, dict):
-            review_status_by_id[sub.get("subvideo_id", "")] = sub.get("review_status")
+    if reviewed_subvideos is not None:
+        for sub in reviewed_subvideos:
+            if not isinstance(sub, dict):
+                continue
+            sid = sub.get("subvideo_id")
+            if isinstance(sid, str) and sid:
+                review_status_by_id[sid] = sub.get("review_status")
 
     for path in sorted(merged_dir.glob("*.json")):
         if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
@@ -1001,18 +1122,58 @@ def _validate_review_status(
         for sample in data:
             if not isinstance(sample, dict):
                 continue
-            sid = sample.get("id")
-            status = review_status_by_id.get(sid)
-            if status != "approved":
+            display_id = _sample_id(sample)
+            metadata = sample.get("metadata")
+            lookup_id = (
+                metadata.get("subvideo_id")
+                if isinstance(metadata, dict)
+                else None
+            ) or display_id
+            if not isinstance(lookup_id, str) or not lookup_id:
                 errors.append(
                     {
                         "check": "review_status",
                         "file": path.name,
-                        "id": sid,
-                        "detail": "subvideo_not_approved",
-                        "review_status": status,
+                        "id": display_id,
+                        "detail": "missing_subvideo_id",
                     }
                 )
+                continue
+            authoritative_status = review_status_by_id.get(lookup_id)
+            if authoritative_status is None:
+                errors.append(
+                    {
+                        "check": "review_status",
+                        "file": path.name,
+                        "id": display_id,
+                        "detail": "subvideo_not_found_in_reviewed_meta",
+                        "review_status": None,
+                    }
+                )
+                continue
+            if authoritative_status != "approved":
+                errors.append(
+                    {
+                        "check": "review_status",
+                        "file": path.name,
+                        "id": display_id,
+                        "detail": "subvideo_not_approved",
+                        "review_status": authoritative_status,
+                    }
+                )
+            if isinstance(metadata, dict) and "review_status" in metadata:
+                metadata_status = metadata["review_status"]
+                if metadata_status != authoritative_status:
+                    errors.append(
+                        {
+                            "check": "review_status",
+                            "file": path.name,
+                            "id": display_id,
+                            "detail": "metadata_review_status_mismatch",
+                            "authoritative": authoritative_status,
+                            "metadata": metadata_status,
+                        }
+                    )
 
 
 def _validate_test_input_isolation(
@@ -1140,7 +1301,7 @@ def run_quality_check(
         _validate_train_ratios(merged_dir, errors, warnings)
         _validate_no_cross_split_leakage(merged_dir, errors, warnings)
         _validate_reviewed_split_leakage(reviewed_subvideos, merged_dir, errors)
-        _validate_review_status(merged_dir, reviewed_subvideos, errors)
+        _validate_review_status(merged_dir, reviewed_subvideos, errors, warnings)
         _validate_test_input_isolation(merged_dir, errors, warnings)
 
     _validate_exclusions(subvideos_meta_path, errors)

@@ -59,3 +59,40 @@ target_schema:
   location:
     type: string | null
     description: 断裂位置，"inside_gauge" 或 "outside_gauge"；未断裂或无法判断时为 null
+
+# 说明：
+# - target_format / target_schema：训练目标格式，四字段，不含 confidence。
+# - inference_target_format / inference_target_schema：推理目标格式，五字段，包含 confidence，
+#   由模型根据可见证据自行判断。
+
+inference_target_format: |
+  判断依据：<1-3 句视觉证据说明>
+  结果：{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ..., "confidence": ...}
+
+  示例（未夹紧）：
+  判断依据：夹持区域未形成有效标距，记录为夹紧异常事件。
+  结果：{"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null,"confidence":0.7}
+
+  示例（未断裂）：
+  判断依据：在提供的采样帧序列中未观察到试样断裂，形貌保持连续。
+  结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null,"confidence":0.9}
+
+inference_target_schema:
+  has_fracture:
+    type: boolean
+    description: 是否在视频中观察到试样断裂
+  fracture_between:
+    type: list[int, int] | null
+    description: 断裂发生的两个相邻采样帧索引，例如 [2, 3]；未断裂时为 null
+  type:
+    type: string
+    description: >
+      断裂类型。合法取值包括 7 种断裂类（"韧性断裂"、"脆性断裂"、"界面脱粘"、"齐根断裂"、"爆炸性断裂"、"半脆半韧断裂"、"界面脱粘、齐根断裂"）、
+      "未夹紧"、"视频异常" 或 "未断裂"。其中 "未夹紧" 仅在子视频被标注为夹紧异常且仍保留事件/区间标注时出现；
+      若未夹紧样本没有明确事件标注，导出流程会将其降级为 "未断裂"。
+  location:
+    type: string | null
+    description: 断裂位置，"inside_gauge" 或 "outside_gauge"；未断裂或无法判断时为 null
+  confidence:
+    type: float
+    description: 模型对当前判断的置信度，取值 0-1，由模型根据可见证据自行判断

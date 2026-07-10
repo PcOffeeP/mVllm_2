@@ -12,7 +12,12 @@ from pipeline.preprocessing.minicpm_preprocessor import (
     _resolve_model_path,
 )
 from pipeline.scripts import subvideo_builder
-from pipeline.scripts.training_sample_builder import convert_subvideo_to_sample, load_prompt_library
+from pipeline.scripts.training_sample_builder import (
+    build_all,
+    build_split_samples,
+    convert_subvideo_to_sample,
+    load_prompt_library,
+)
 
 
 @pytest.fixture
@@ -202,7 +207,22 @@ def test_generate_media_fills_mapping_from_preprocessor(monkeypatch, tmp_path: P
     assert result["processor_fingerprint"].startswith("minicpmv4_5:test")
 
 
-def test_training_sample_builder_rejects_legacy_minicpm_fingerprint(prompt_library) -> None:
+def test_prompt_library_has_training_and_inference_target_schemas(prompt_library):
+    """训练 target 为四字段，推理 target 为五字段且含 confidence。"""
+    assert "target_format" in prompt_library
+    assert "target_schema" in prompt_library
+    assert "inference_target_format" in prompt_library
+    assert "inference_target_schema" in prompt_library
+
+    train_schema = prompt_library["target_schema"]
+    inference_schema = prompt_library["inference_target_schema"]
+    assert set(train_schema.keys()) == {"has_fracture", "fracture_between", "type", "location"}
+    assert set(inference_schema.keys()) == {"has_fracture", "fracture_between", "type", "location", "confidence"}
+
+    train_format = prompt_library["target_format"]
+    inference_format = prompt_library["inference_target_format"]
+    assert "confidence" not in train_format
+    assert "confidence" in inference_format
     sub = {
         "subvideo_id": "legacy",
         "video_path": "data/01_videos/video_0001.mp4",
@@ -220,6 +240,7 @@ def test_training_sample_builder_rejects_legacy_minicpm_fingerprint(prompt_libra
         "location_canonical": None,
         "source_type": "未断裂",
         "source_location": None,
+        "review_status": "approved",
     }
 
     with pytest.raises(ValueError, match="video_fps"):
@@ -256,6 +277,7 @@ def test_training_sample_builder_rejects_incomplete_or_wrong_minicpm_fingerprint
         "location_canonical": None,
         "source_type": "未断裂",
         "source_location": None,
+        "review_status": "approved",
     }
 
     with pytest.raises(ValueError):
@@ -1005,6 +1027,7 @@ def _make_training_sub(
     ftype: str = "未断裂",
     fracture_between: list[int] | None = None,
     location: str | None = None,
+    review_status: str = "approved",
 ) -> dict[str, Any]:
     """构造一条符合 convert_subvideo_to_sample 最小输入要求的子视频。"""
     return {
@@ -1024,6 +1047,7 @@ def _make_training_sub(
         "location_canonical": location,
         "source_type": ftype,
         "source_location": location,
+        "review_status": review_status,
     }
 
 
@@ -1149,8 +1173,244 @@ def test_training_sample_messages_order_and_system_prompt(prompt_library) -> Non
 
 
 def test_training_sample_prompt_version_propagated_to_metadata(prompt_library) -> None:
-    """prompt_version 被写入样本 metadata。"""
+    """prompt_version 被写入样本 metadata 与顶层字段。"""
     sub = _make_training_sub(subvideo_id="sub_version")
     sample = convert_subvideo_to_sample(sub, library=prompt_library)
 
     assert sample["prompt_version"] == prompt_library["version"]
+    assert sample["metadata"]["prompt_version"] == prompt_library["version"]
+
+
+def test_training_sample_has_traceability_metadata(prompt_library) -> None:
+    """训练样本包含可追溯 metadata 字段，用于质量门验证。"""
+    sub = _make_training_sub(
+        subvideo_id="sub_trace",
+        has_fracture=True,
+        ftype="韧性断裂",
+        fracture_between=[2, 3],
+        location="inside_gauge",
+        review_status="approved",
+    )
+    sub["reviewed_at"] = "2026-07-09T12:00:00+00:00"
+    sample = convert_subvideo_to_sample(sub, library=prompt_library)
+
+    assert "metadata" in sample
+    metadata = sample["metadata"]
+    assert metadata["subvideo_id"] == "sub_trace"
+    assert metadata["source_video"] == "video_0001"
+    assert metadata["video_path"] == "data/03_subvideos/sub_trace.mp4"
+    assert metadata["prompt_version"] == prompt_library["version"]
+    assert metadata["review_status"] == "approved"
+    assert metadata["reviewed_at"] == "2026-07-09T12:00:00+00:00"
+    assert metadata["fracture_between"] == [2, 3]
+    assert metadata["location_canonical"] == "inside_gauge"
+    assert metadata["type"] == "韧性断裂"
+    assert metadata["has_fracture_canonical"] is True
+    assert "actual_frame_mapping" in metadata
+    assert metadata["actual_frame_mapping"] == sub["actual_frame_mapping"]
+
+    # ShareGPT 核心字段保留
+    assert "messages" in sample
+    assert "videos" in sample
+
+
+def test_convert_subvideo_to_sample_rejects_non_approved(prompt_library) -> None:
+    """直接调用 convert_subvideo_to_sample 时，非 approved 样本必须被拒绝。"""
+    sub = _make_training_sub(subvideo_id="sub_dropped", review_status="dropped")
+
+    with pytest.raises(ValueError, match="review_status"):
+        convert_subvideo_to_sample(sub, library=prompt_library)
+
+
+def test_build_split_samples_drops_dropped_subvideos(
+    prompt_library,
+) -> None:
+    """build_split_samples 应剔除 dropped 子视频，approved 样本正常导出。"""
+    approved = _make_training_sub(subvideo_id="sub_approved", review_status="approved")
+    dropped = _make_training_sub(subvideo_id="sub_dropped", review_status="dropped")
+
+    split_video_ids = {"fold_0_train": {"video_0001"}}
+
+    split_samples = build_split_samples(
+        [approved, dropped],
+        split_video_ids,
+        library=prompt_library,
+        seed=42,
+    )
+
+    assert len(split_samples["fold_0_train"]) == 1
+    assert split_samples["fold_0_train"][0]["id"] == "sub_approved"
+
+
+@pytest.mark.parametrize("bad_status", ["unreviewed", "needs_regenerate", None])
+def test_build_split_samples_blocks_unallowed_status(
+    prompt_library,
+    bad_status: str | None,
+) -> None:
+    """unreviewed、needs_regenerate 或状态缺失时应阻止训练导出。"""
+    approved = _make_training_sub(subvideo_id="sub_approved", review_status="approved")
+    bad = _make_training_sub(
+        subvideo_id="sub_bad", review_status=bad_status
+    )
+
+    split_video_ids = {"fold_0_train": {"video_0001"}}
+
+    with pytest.raises(ValueError, match="sub_bad"):
+        build_split_samples(
+            [approved, bad],
+            split_video_ids,
+            library=prompt_library,
+            seed=42,
+        )
+
+
+def test_build_split_samples_blocks_non_dropped_excluded_subvideos(
+    prompt_library,
+) -> None:
+    """excluded_subvideos 中存在非 dropped 状态时应阻止训练导出，即使 subvideos 全为 approved。"""
+    approved = _make_training_sub(
+        subvideo_id="sub_approved", review_status="approved"
+    )
+
+    excluded = [
+        {"subvideo_id": "sub_unreviewed", "review_status": "unreviewed"},
+        {"subvideo_id": "sub_needs", "review_status": "needs_regenerate"},
+        {"subvideo_id": "sub_bad", "review_status": "bad_status"},
+        {"subvideo_id": "sub_missing"},
+    ]
+
+    split_video_ids = {"fold_0_train": {"video_0001"}}
+
+    with pytest.raises(ValueError, match="excluded_subvideos"):
+        build_split_samples(
+            [approved],
+            split_video_ids,
+            library=prompt_library,
+            seed=42,
+            excluded_subvideos=excluded,
+        )
+
+
+def test_build_split_samples_allows_dropped_excluded_subvideos(
+    prompt_library,
+) -> None:
+    """excluded_subvideos 全为 dropped 时允许训练导出。"""
+    approved = _make_training_sub(
+        subvideo_id="sub_approved", review_status="approved"
+    )
+
+    split_video_ids = {"fold_0_train": {"video_0001"}}
+
+    split_samples = build_split_samples(
+        [approved],
+        split_video_ids,
+        library=prompt_library,
+        seed=42,
+        excluded_subvideos=[
+            {"subvideo_id": "sub_dropped", "review_status": "dropped"}
+        ],
+    )
+
+    assert len(split_samples["fold_0_train"]) == 1
+    assert split_samples["fold_0_train"][0]["id"] == "sub_approved"
+
+
+@pytest.mark.parametrize("bad_item", [None, "not-a-dict"])
+def test_build_split_samples_rejects_non_object_excluded_subvideos(
+    prompt_library, bad_item
+) -> None:
+    """excluded_subvideos 中存在非对象项时应阻止训练导出。"""
+    approved = _make_training_sub(
+        subvideo_id="sub_approved", review_status="approved"
+    )
+    split_video_ids = {"fold_0_train": {"video_0001"}}
+
+    with pytest.raises(ValueError, match="非对象项"):
+        build_split_samples(
+            [approved],
+            split_video_ids,
+            library=prompt_library,
+            seed=42,
+            excluded_subvideos=[bad_item],
+        )
+
+
+@pytest.mark.parametrize("bad_subvideo_id", [None, "", "<unknown>"])
+def test_build_split_samples_rejects_invalid_subvideo_id_in_excluded_subvideos(
+    prompt_library, bad_subvideo_id
+) -> None:
+    """excluded_subvideos 中存在无效 subvideo_id 时应阻止训练导出。"""
+    approved = _make_training_sub(
+        subvideo_id="sub_approved", review_status="approved"
+    )
+
+    excluded = [{"subvideo_id": bad_subvideo_id, "review_status": "dropped"}]
+    split_video_ids = {"fold_0_train": {"video_0001"}}
+
+    with pytest.raises(ValueError, match="subvideo_id"):
+        build_split_samples(
+            [approved],
+            split_video_ids,
+            library=prompt_library,
+            seed=42,
+            excluded_subvideos=excluded,
+        )
+
+
+@pytest.mark.parametrize("bad_subvideo_id", [None, "", "<unknown>"])
+def test_build_all_rejects_invalid_subvideo_id_in_excluded_subvideos(
+    tmp_path: Path, bad_subvideo_id
+) -> None:
+    """build_all 对 excluded_subvideos 中无效 subvideo_id 失败。"""
+    meta = tmp_path / "subvideos_meta.label_reviewed.json"
+    splits_dir = tmp_path / "splits"
+    output_dir = tmp_path / "output"
+    prompt_library_path = (
+        Path(__file__).resolve().parents[1] / "pipeline" / "prompt_library.yaml"
+    )
+
+    meta.write_text(
+        json.dumps(
+            {
+                "subvideos": [
+                    {
+                        "subvideo_id": "sub_approved",
+                        "review_status": "approved",
+                        "type": "未断裂",
+                        "video_path": "data/03_subvideos/sub_approved.mp4",
+                        "source_video": "video_0001",
+                        "processor_fingerprint": "minicpmv4_5:test:max_frames=8:video_fps=2:backend=transformers",
+                        "actual_frame_mapping": [
+                            {
+                                "input_index": 0,
+                                "original_frame": 0,
+                                "timestamp": 0.0,
+                            }
+                        ],
+                        "has_fracture": False,
+                        "has_fracture_canonical": False,
+                        "fracture_between": None,
+                        "location": None,
+                        "location_canonical": None,
+                    }
+                ],
+                "excluded_subvideos": [
+                    {"subvideo_id": bad_subvideo_id, "review_status": "dropped"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    splits_dir.mkdir()
+    (splits_dir / "fold_0_train.json").write_text(
+        json.dumps({"video_ids": ["video_0001"]}), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="subvideo_id"):
+        build_all(
+            meta,
+            splits_dir,
+            output_dir,
+            prompt_library_path=prompt_library_path,
+        )

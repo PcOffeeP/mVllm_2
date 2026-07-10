@@ -72,6 +72,21 @@ STATUS_EMOJI = {
     STATUS_NEEDS_REGENERATE: "🔄",
 }
 
+RISK_HIGH = "high"
+RISK_MEDIUM = "medium"
+RISK_LOW = "low"
+RISK_OPTIONS = [RISK_HIGH, RISK_MEDIUM, RISK_LOW]
+RISK_LABELS = {
+    RISK_HIGH: "高",
+    RISK_MEDIUM: "中",
+    RISK_LOW: "低",
+}
+RISK_EMOJI = {
+    RISK_HIGH: "🔴",
+    RISK_MEDIUM: "🟡",
+    RISK_LOW: "🟢",
+}
+
 
 def _parse_args() -> argparse.Namespace:
     """解析命令行参数，兼容 streamlit run 与直接 python 运行。"""
@@ -252,6 +267,117 @@ def _status_counts(decisions: dict[str, dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def compute_subvideo_risk(sub: dict[str, Any]) -> tuple[str, list[str]]:
+    """基于子视频 metadata 计算审查风险等级及原因。
+
+    风险等级：
+    - high（高）：需要优先审查，可能存在标签错误或视频异常。
+    - medium（中）：存在边界或特殊情况，建议人工确认。
+    - low（低）：正常情况。
+
+    判定规则（按优先级短路）：
+    高：
+      1. is_abnormal 为 True（源视频存在 video_anomaly_kind，子视频可能不可靠）。
+      2. type 为 "视频异常"。
+      3. crop_type 以 "full_anomaly" 开头。
+      4. has_fracture_canonical 为 None（断裂状态未明确）。
+      5. has_fracture 与 has_fracture_canonical 不一致。
+      6. 全时长子视频 (crop_type 以 "full" 开头) 的源类型与 canonical 标签明显冲突：
+         - 源类型为断裂类型但 has_fracture_canonical 为 False；
+         - 源类型为 "未断裂" 但 has_fracture_canonical 为 True；
+         - 源类型为 "视频异常" 但 has_fracture_canonical 不为 None。
+    中：
+      1. type 为 "未夹紧" 且 has_fracture_canonical 为 True。
+      2. 非异常正样本 (has_fracture_canonical 为 True) 缺少 fracture_between。
+      3. fracture_between 接近采样帧边界：
+         - 区间起始于 0（接近起始边界）；
+         - 区间结束于最后一个采样帧索引（接近结束边界）。
+    低：
+      其他正常情况。
+
+    返回：
+        (risk_level, reasons)，其中 risk_level 为 RISK_HIGH / RISK_MEDIUM / RISK_LOW，
+        reasons 为触发该等级的所有原因列表。
+    """
+    reasons: list[str] = []
+
+    has_fracture = sub.get("has_fracture")
+    has_fracture_canonical = sub.get("has_fracture_canonical")
+    sub_type = sub.get("type")
+    source_type = sub.get("source_type")
+    is_abnormal = bool(sub.get("is_abnormal", False))
+    crop_type = sub.get("crop_type", "")
+    fracture_between = sub.get("fracture_between")
+
+    # 高风险：异常或不确定
+    if is_abnormal:
+        reasons.append("源视频被标记为异常 (is_abnormal=True)")
+    if sub_type == "视频异常":
+        reasons.append('子视频 type 为 "视频异常"')
+    if isinstance(crop_type, str) and crop_type.startswith("full_anomaly"):
+        reasons.append('crop_type 为异常视频全时长')
+    if has_fracture_canonical is None:
+        reasons.append("has_fracture_canonical 为 None，断裂状态不明确")
+    if (
+        has_fracture is not None
+        and has_fracture_canonical is not None
+        and has_fracture != has_fracture_canonical
+    ):
+        reasons.append(
+            f"自动生成 has_fracture({has_fracture}) 与 canonical 标签({has_fracture_canonical}) 不一致"
+        )
+
+    # 高风险：全时长子视频源类型与 canonical 标签冲突
+    if isinstance(crop_type, str) and crop_type.startswith("full"):
+        fracture_source_types = {
+            "韧性断裂",
+            "脆性断裂",
+            "界面脱粘",
+            "齐根断裂",
+            "爆炸性断裂",
+            "半脆半韧断裂",
+            "界面脱粘、齐根断裂",
+        }
+        if source_type in fracture_source_types and has_fracture_canonical is False:
+            reasons.append(
+                f"源视频类型为断裂({source_type})，但全时长子视频 canonical 为 False"
+            )
+        elif source_type == "未断裂" and has_fracture_canonical is True:
+            reasons.append("源视频类型为未断裂，但全时长子视频 canonical 为 True")
+        elif source_type == "视频异常" and has_fracture_canonical is not None:
+            reasons.append("源视频类型为视频异常，但全时长子视频 canonical 已确定")
+
+    if reasons:
+        return RISK_HIGH, reasons
+
+    # 中风险：特殊类型或边界情况
+    if sub_type == "未夹紧" and has_fracture_canonical is True:
+        reasons.append("未夹紧类型子视频被标记为断裂")
+    if (
+        has_fracture_canonical is True
+        and fracture_between is None
+        and sub_type != "视频异常"
+    ):
+        reasons.append("正样本子视频缺少 fracture_between")
+    if isinstance(fracture_between, (list, tuple)) and len(fracture_between) == 2:
+        mapping = sub.get("actual_frame_mapping") or sub.get("sampled_frames") or []
+        n = len(mapping)
+        if n >= 2:
+            if fracture_between[0] == 0:
+                reasons.append(
+                    f"fracture_between {list(fracture_between)} 接近采样帧起始边界"
+                )
+            if fracture_between[1] >= n - 1:
+                reasons.append(
+                    f"fracture_between {list(fracture_between)} 接近采样帧结束边界"
+                )
+
+    if reasons:
+        return RISK_MEDIUM, reasons
+
+    return RISK_LOW, ["标签与类型一致，未见明显异常"]
+
+
 def _format_option(sub: dict[str, Any], decisions: dict[str, dict[str, Any]]) -> str:
     """生成左侧列表中显示的子视频选项文本。"""
     sid = sub["subvideo_id"]
@@ -260,7 +386,10 @@ def _format_option(sub: dict[str, Any], decisions: dict[str, dict[str, Any]]) ->
     label = STATUS_LABELS.get(status, "未审查")
     source = sub.get("source_video", "N/A")
     crop = sub.get("crop_type", "N/A")
-    return f"{emoji} {sid}  |  {source}  |  {crop}  [{label}]"
+    risk, _ = compute_subvideo_risk(sub)
+    risk_emoji = RISK_EMOJI.get(risk, "⚪")
+    risk_label = RISK_LABELS.get(risk, "未知")
+    return f"{emoji} {risk_emoji} [{risk_label}] {sid}  |  {source}  |  {crop}  [{label}]"
 
 
 def _resolve_video_path(sub: dict[str, Any], project_root: Path) -> Path | None:
@@ -344,6 +473,12 @@ def main() -> None:
             options=["未审查", STATUS_APPROVED, STATUS_DROPPED, STATUS_NEEDS_REGENERATE],
             default=["未审查", STATUS_APPROVED, STATUS_DROPPED, STATUS_NEEDS_REGENERATE],
         )
+        risk_filter = st.multiselect(
+            "风险等级筛选",
+            options=RISK_OPTIONS,
+            default=RISK_OPTIONS,
+            format_func=lambda x: f"{RISK_EMOJI.get(x, '⚪')} {RISK_LABELS.get(x, x)}",
+        )
         search = st.text_input("搜索 subvideo_id / source_video", value="")
         search_lower = search.strip().lower()
 
@@ -353,6 +488,9 @@ def main() -> None:
             status = decisions[sid].get("status")
             label = STATUS_LABELS.get(status, "未审查")
             if label not in status_filter:
+                continue
+            risk, _ = compute_subvideo_risk(sub)
+            if risk not in risk_filter:
                 continue
             if search_lower and (
                 search_lower not in sid.lower()
@@ -430,6 +568,23 @@ def main() -> None:
             f"**帧范围:** {selected_sub.get('start_frame', 'N/A')} – {selected_sub.get('end_frame', 'N/A')}"
         )
         st.write(f"**当前状态:** {STATUS_LABELS.get(current_status, '未审查')} {STATUS_EMOJI.get(current_status, '❓')}")
+
+        risk, risk_reasons = compute_subvideo_risk(selected_sub)
+        risk_color = {
+            RISK_HIGH: "#ff4d4f",
+            RISK_MEDIUM: "#faad14",
+            RISK_LOW: "#52c41a",
+        }.get(risk, "#8c8c8c")
+        st.markdown(
+            f"**风险等级:** <span style='background-color:{risk_color}; "
+            f"color:white; padding:2px 8px; border-radius:4px;'>"
+            f"{RISK_EMOJI.get(risk, '⚪')} {RISK_LABELS.get(risk, '未知')}</span>",
+            unsafe_allow_html=True,
+        )
+        with st.expander("风险判定原因"):
+            for reason in risk_reasons:
+                st.write(f"- {reason}")
+
         if selected_sub.get("selection_reason"):
             st.write(f"**selection_reason:** {selected_sub['selection_reason']}")
 

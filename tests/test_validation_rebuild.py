@@ -4,13 +4,22 @@ import hashlib
 import json
 import sys
 import types
+from typing import Any
 
-from finetune.validation.datasets import EvalSample
+import pytest
+
+from finetune.validation.datasets import EvalSample, load_dataset
+import finetune.validation.datasets as datasets_module
 from finetune.validation import run_base_prompt_test
 from finetune.validation import model_runtime
 from finetune.validation import run_evaluation
 from finetune.validation.run_evaluation import evaluate_sample, main
-from finetune.validation.prompts import get_system_prompt, get_user_prompt
+from finetune.validation.prompts import (
+    get_inference_target_schema,
+    get_inference_user_prompt,
+    get_system_prompt,
+    get_user_prompt,
+)
 
 
 def test_evaluate_sample_keeps_raw_output_without_schema_extraction():
@@ -99,8 +108,6 @@ def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):
             "test_subvideos",
             "--predictions",
             str(predictions),
-            "--prompt",
-            "training",
             "--out-dir",
             str(out_dir),
             "--max-samples",
@@ -154,8 +161,6 @@ def test_run_evaluation_passes_system_prompt_to_model_runtime(tmp_path, monkeypa
             "test",
             "--model-dir",
             "/tmp/model",
-            "--prompt",
-            "training",
             "--out-dir",
             str(out_dir),
         ],
@@ -164,10 +169,68 @@ def test_run_evaluation_passes_system_prompt_to_model_runtime(tmp_path, monkeypa
     main()
 
     assert captured["system_prompt"] == get_system_prompt()
-    assert captured["prompt"] == get_user_prompt(0)
+    assert captured["prompt"] == get_inference_user_prompt(0)
+    assert "confidence" in captured["prompt"]
 
 
-def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monkeypatch):
+def test_run_evaluation_records_inference_target_schema_with_confidence(tmp_path, monkeypatch):
+    """评估输出应记录五字段推理 target_schema（含 confidence）。"""
+    out_dir = tmp_path / "eval"
+    predictions = tmp_path / "predictions.jsonl"
+    predictions.write_text(
+        json.dumps(
+            {
+                "video_id": "video_0001",
+                "raw_output": json.dumps(
+                    {
+                        "has_fracture": True,
+                        "fracture_between": [2, 3],
+                        "type": "韧性断裂",
+                        "location": "inside_gauge",
+                        "confidence": 0.85,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    sample = EvalSample(
+        sample_id="video_0001",
+        video_id="video_0001",
+        video_path=tmp_path / "video_0001.mp4",
+        metadata={},
+    )
+    monkeypatch.setattr(run_evaluation, "load_dataset", lambda name, video_root=None: [sample])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_evaluation",
+            "--dataset",
+            "test_subvideos",
+            "--predictions",
+            str(predictions),
+            "--out-dir",
+            str(out_dir),
+        ],
+    )
+
+    main()
+
+    summary = json.loads((out_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
+    assert "target_schema" in summary
+    schema = summary["target_schema"]
+    assert set(schema.keys()) == {"has_fracture", "fracture_between", "type", "location", "confidence"}
+    assert "confidence" in schema
+
+    records = [
+        json.loads(line)
+        for line in (out_dir / "evaluation_records.jsonl").read_text(encoding="utf-8").strip().split("\n")
+    ]
+    assert len(records) == 1
+    assert records[0].get("target_schema") == schema
     dataset_calls = []
     runtime_calls = []
 
@@ -217,15 +280,14 @@ def test_base_prompt_test_uses_test_dataset_and_writes_comparison(tmp_path, monk
     run_base_prompt_test.main()
 
     assert dataset_calls == [("test", None)]
-    assert len(runtime_calls) == 2
+    assert len(runtime_calls) == 1
     comparison = json.loads((tmp_path / "out" / "prompt_format_comparison.json").read_text(encoding="utf-8"))
     assert comparison["dataset"] == "test"
     assert comparison["sample_count"] == 1
     assert comparison["system_prompt"] == get_system_prompt()
     assert comparison["system_prompt_hash"] == hashlib.sha256(get_system_prompt().encode("utf-8")).hexdigest()
     assert comparison["prompts"]["training"]["raw_output_rate"] == 1.0
-    assert comparison["prompts"]["system"]["raw_output_rate"] == 1.0
-    # Verify system_prompt was passed to runtime for both prompt variants.
+    # Verify system_prompt was passed to runtime for the inference prompt variant.
     assert all(call["system_prompt"] == get_system_prompt() for call in runtime_calls)
 
 
@@ -390,3 +452,125 @@ def test_model_runtime_omits_system_prompt_when_none(monkeypatch, tmp_path):
     assert captured_messages == [
         {"role": "user", "content": "(<image>./</image>)\nuser prompt"},
     ]
+
+
+def test_run_evaluation_default_prompt_requires_confidence(tmp_path, monkeypatch):
+    """默认评估 prompt 必须是含 confidence 的 inference user prompt。"""
+    out_dir = tmp_path / "eval"
+    sample = EvalSample(
+        sample_id="video_0001",
+        video_id="video_0001",
+        video_path=tmp_path / "video_0001.mp4",
+        metadata={},
+    )
+
+    def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):
+        return "output"
+
+    monkeypatch.setattr(run_evaluation, "load_dataset", lambda name, video_root=None: [sample])
+    monkeypatch.setattr(run_evaluation, "load_model", lambda model_dir: (object(), object()))
+    monkeypatch.setattr(run_evaluation, "run_model_on_video", fake_run_model_on_video)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_evaluation",
+            "--dataset",
+            "test",
+            "--model-dir",
+            "/tmp/model",
+            "--out-dir",
+            str(out_dir),
+        ],
+    )
+
+    main()
+
+    summary = json.loads((out_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
+    assert summary["prompt"] == "training"
+    assert "confidence" in summary["prompt_text"]
+    assert summary["user_prompt_template_index"] == 0
+    assert "confidence" in summary["target_schema"]
+
+
+def test_parse_assistant_json_raises_on_invalid_content():
+    from finetune.validation.datasets import _parse_assistant_json
+
+    with pytest.raises(ValueError, match="结果："):
+        _parse_assistant_json("invalid content without json")
+
+
+def _make_fold_record(assistant_content: str, video_path: str = "data/01_videos/video_0001.mp4") -> dict[str, Any]:
+    return {
+        "id": "video_0001",
+        "videos": [video_path],
+        "messages": [
+            {"role": "system", "content": "system prompt"},
+            {"role": "user", "content": "user prompt"},
+            {"role": "assistant", "content": assistant_content},
+        ],
+        "metadata": {},
+    }
+
+
+def test_load_fold_dataset_parses_new_format_assistant(tmp_path, monkeypatch):
+    monkeypatch.setattr(datasets_module, "MERGED_DATA_DIR", tmp_path)
+    record = _make_fold_record(
+        "判断依据：在采样帧 3 与帧 4 之间观察到断裂形貌突变。\n"
+        '结果：{"has_fracture": true, "fracture_between": [3, 4], "type": "脆性断裂", "location": "inside_gauge"}'
+    )
+    (tmp_path / "fold_0_val.json").write_text(json.dumps([record], ensure_ascii=False), encoding="utf-8")
+
+    samples = load_dataset("fold_0_val")
+
+    assert len(samples) == 1
+    assert samples[0].video_id == "video_0001"
+    assert samples[0].metadata["ground_truth"] == {
+        "has_fracture": True,
+        "fracture_between": [3, 4],
+        "type": "脆性断裂",
+        "location": "inside_gauge",
+    }
+    assert "结果：" in samples[0].metadata["assistant_raw"]
+    assert samples[0].metadata["assistant_json"] == samples[0].metadata["ground_truth"]
+
+
+def test_load_fold_dataset_parses_legacy_json_assistant(tmp_path, monkeypatch):
+    monkeypatch.setattr(datasets_module, "MERGED_DATA_DIR", tmp_path)
+    record = _make_fold_record(
+        '{"has_fracture": false, "fracture_between": null, "type": "未断裂", "location": null}'
+    )
+    (tmp_path / "fold_1_val.json").write_text(json.dumps([record], ensure_ascii=False), encoding="utf-8")
+
+    samples = load_dataset("fold_1_val")
+
+    assert len(samples) == 1
+    assert samples[0].metadata["ground_truth"] == {
+        "has_fracture": False,
+        "fracture_between": None,
+        "type": "未断裂",
+        "location": None,
+    }
+    assert samples[0].metadata["assistant_raw"] == record["messages"][2]["content"]
+    assert samples[0].metadata["assistant_json"] == samples[0].metadata["ground_truth"]
+
+
+def test_run_evaluation_rejects_prompt_system(tmp_path, monkeypatch):
+    """--prompt system 已移除，传入应触发 argparse 错误。"""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_evaluation",
+            "--dataset",
+            "test",
+            "--model-dir",
+            "/tmp/model",
+            "--prompt",
+            "system",
+            "--out-dir",
+            str(tmp_path / "eval"),
+        ],
+    )
+    with pytest.raises(SystemExit):
+        main()
