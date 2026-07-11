@@ -7,6 +7,7 @@ import pytest
 
 from pipeline.scripts import merge_incremental_review_decisions as merge
 from pipeline.scripts import materialize_incremental_review_media as materialize
+from pipeline.scripts import append_incremental_failure_drops as failure_drops
 from pipeline.scripts import prepare_incremental_review_queue as queue
 from pipeline.scripts import review_subvideos_app as app
 
@@ -97,3 +98,26 @@ def test_materializer_matches_adaptive_candidate_after_duration_rename():
     candidate = {"subvideo_id": "video_0001_focus_3.00s_50pct_adaptive", "crop_type": "focus_adaptive", "event_position_ratio": 0.5}
 
     assert materialize._match_candidate(old, [candidate]) == candidate
+
+
+def test_append_failure_drops_only_allows_baseline_regenerate(tmp_path: Path):
+    baseline = tmp_path / "baseline.json"
+    queue_meta = tmp_path / "queue.json"
+    delta = tmp_path / "delta.json"
+    report = tmp_path / "report.json"
+    output = tmp_path / "resolved_delta.json"
+    _write(baseline, {"decisions": [_decision("sv_regen", "needs_regenerate")]})
+    _write(queue_meta, {"incremental_review_queue": {"queue_ids": ["sv_regen"]}})
+    _write(delta, {"decision_mode": "incremental_delta", "queue_ids": [], "decisions": []})
+    _write(report, {"failures": [{"subvideo_id": "sv_regen", "reason": "no_matching_candidate_after_source_update"}]})
+
+    summary = failure_drops.append_failure_drops(baseline, delta, queue_meta, report, output, "operator decision")
+
+    assert summary == {"total": 1, "added_dropped": 1}
+    result = json.loads(output.read_text(encoding="utf-8"))
+    record = result["decisions"][0]
+    assert record["status"] == "dropped"
+    assert "operator decision" in record["reviewer_notes"]
+    assert result["reviewed_ids"] == []
+    assert result["unreviewed_ids"] == []
+    assert result["failure_drop_append"]["failure_dropped_ids"] == ["sv_regen"]

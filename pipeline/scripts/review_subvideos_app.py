@@ -45,6 +45,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -202,11 +203,26 @@ def _load_existing_decisions(output_path: Path) -> dict[str, dict[str, Any]]:
 
 
 def _init_decisions(
-    subvideos: list[dict[str, Any]], output_path: Path, incremental_delta: bool = False
+    subvideos: list[dict[str, Any]],
+    output_path: Path,
+    incremental_delta: bool = False,
+    incremental_queue_key: str | None = None,
 ) -> dict[str, dict[str, Any]]:
     """初始化 session_state 中的 decisions，确保所有子视频都有记录。"""
     if "decisions" in st.session_state:
-        return st.session_state["decisions"]
+        if incremental_delta:
+            queue_ids = {sub.get("subvideo_id") for sub in subvideos}
+            if st.session_state.get("incremental_queue_key") != incremental_queue_key:
+                # 同一 Streamlit 进程切换 round 时不能带入上一轮的编辑状态。
+                del st.session_state["decisions"]
+            else:
+                st.session_state["decisions"] = {
+                    sid: rec for sid, rec in st.session_state["decisions"].items()
+                    if sid in queue_ids
+                }
+                return st.session_state["decisions"]
+        else:
+            return st.session_state["decisions"]
 
     decisions = _load_existing_decisions(output_path)
     if incremental_delta:
@@ -240,6 +256,8 @@ def _init_decisions(
                 decisions[sid]["original_labels"] = _snapshot_labels(sub)
 
     st.session_state["decisions"] = decisions
+    if incremental_delta:
+        st.session_state["incremental_queue_key"] = incremental_queue_key
     return decisions
 
 
@@ -261,9 +279,14 @@ def _save_decisions(
         rec["generated_at"] = generated_at
     payload: dict[str, Any] = {"decisions": reviewed}
     if incremental_delta:
+        materialized_queue_ids = sorted(decisions)
+        reviewed_ids = sorted(rec["subvideo_id"] for rec in reviewed)
         payload.update({
             "decision_mode": "incremental_delta",
-            "queue_ids": sorted(decisions),
+            "queue_ids": materialized_queue_ids,
+            "materialized_queue_ids": materialized_queue_ids,
+            "reviewed_ids": reviewed_ids,
+            "unreviewed_ids": sorted(set(materialized_queue_ids) - set(reviewed_ids)),
             "queue_input_sha256": (queue_info or {}).get("input_sha256"),
         })
     try:
@@ -509,7 +532,17 @@ def main() -> None:
         st.warning("输入 metadata 中未找到任何子视频记录。")
         st.stop()
 
-    decisions = _init_decisions(subvideos, output_path, incremental_delta=args.incremental_delta)
+    queue_key = None
+    if args.incremental_delta:
+        queue_key = hashlib.sha256(
+            json.dumps(queue_info, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+    decisions = _init_decisions(
+        subvideos,
+        output_path,
+        incremental_delta=args.incremental_delta,
+        incremental_queue_key=queue_key,
+    )
     counts = _status_counts(decisions)
 
     if "current_subvideo_idx" not in st.session_state:
@@ -709,6 +742,13 @@ def main() -> None:
 
             st.write("**自动生成标签（original_labels）**")
             st.json(decision["original_labels"])
+            st.write("**本轮已保存标签（corrected_labels）**")
+            if decision.get("corrected_labels") is None:
+                st.caption("尚未保存标签修正；当前有效标签等于 original_labels。")
+            else:
+                st.json(decision["corrected_labels"])
+            st.write("**当前有效标签**")
+            st.json(decision.get("corrected_labels") or decision["original_labels"])
 
         st.divider()
 

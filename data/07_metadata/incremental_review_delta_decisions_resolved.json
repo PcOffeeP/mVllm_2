@@ -1,0 +1,2950 @@
+{
+  "decisions": [
+    {
+      "subvideo_id": "video_0001_full",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:05:05.209601+00:00",
+      "reviewer_notes": "最后一帧画面无断裂时刻信息",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          6,
+          7
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0001_full",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T11:52:52.151025+00:00",
+        "reviewer_notes": "最后一帧画面未捕捉到断裂画面",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            6,
+            7
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0012_focus_10s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.309882+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_10s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:55:23.998430+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_10s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310016+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_10s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:55:29.227294+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_11.33s_80pct_adaptive",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:05:11.537742+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_11.33s_80pct_adaptive",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:57:16.504509+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_20pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310018+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_3s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:54:13.321812+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_35pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310019+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_3s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:54:20.811950+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310021+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_3s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:54:30.942685+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310023+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_3s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:54:36.838730+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310024+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_3s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:54:43.968695+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_20pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310025+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_5s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:54:52.121530+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_35pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310026+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_5s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:55:02.228934+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310027+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_5s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:55:08.131228+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310028+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_5s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:55:12.818772+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310028+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0012_focus_5s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T12:55:17.750462+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_10.37s_80pct_adaptive",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:05:15.192178+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_10.37s_80pct_adaptive",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:24:36.549738+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0016_focus_10s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310029+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_10s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:13:05.691525+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_10s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310030+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_10s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:13:10.136394+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_20pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310031+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_3s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:11:42.491547+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_35pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310032+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_3s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:11:49.697225+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310033+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_3s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:11:58.488155+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310034+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_3s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:12:04.423241+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310034+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_3s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:12:11.479839+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_5.60s_20pct_adaptive",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310036+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_5.60s_20pct_adaptive",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:13:16.260146+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_20pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310036+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_5s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:12:19.728251+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_35pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310037+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_5s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:12:28.405159+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310038+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_5s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:12:37.534853+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310039+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_5s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:12:55.127251+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310040+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0016_focus_5s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T13:12:59.908130+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0023_focus_3s_80pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:05:20.223033+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0023_focus_3s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:42:06.601758+00:00",
+        "reviewer_notes": "最后一帧画面不清楚",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0023_full",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:05:26.674185+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          6,
+          7
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          6,
+          7
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0023_full",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:41:27.314584+00:00",
+        "reviewer_notes": "最后一帧有杂画面",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            6,
+            7
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_3s_20pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:05:48.127595+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_3s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:46:36.279620+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_3s_35pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:06:03.594911+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_3s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:46:44.576675+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_3s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:07:23.865246+00:00",
+      "reviewer_notes": "画面不清晰",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_3s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:46:54.256047+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_3s_65pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:07:31.925246+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_3s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:47:02.045683+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_3s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:07:46.570776+00:00",
+      "reviewer_notes": "画面不清晰",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_3s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:47:10.323800+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_5s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:08:04.136578+00:00",
+      "reviewer_notes": "画面不清晰",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_5s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:48:57.645628+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_5s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:08:18.717827+00:00",
+      "reviewer_notes": "画面不清晰",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_5s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:49:50.289411+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0024_focus_5s_80pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:08:28.423134+00:00",
+      "reviewer_notes": "画面不清晰",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0024_focus_5s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T14:50:00.634328+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_20pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310041+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_10s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:35:40.499841+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_35pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310042+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_10s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:35:45.524862+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310043+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_10s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:35:52.056013+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_65pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:08:35.954048+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_10s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:35:59.074691+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_80pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:08:41.187993+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_10s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:36:04.126398+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_20pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310043+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_20s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:36:09.006633+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_35pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310044+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_20s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:36:15.011519+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_50pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310045+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_20s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:36:21.082494+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_65pct",
+      "status": "dropped",
+      "reviewed_at": "2026-07-11T15:36:51.310046+00:00",
+      "reviewer_notes": "用户决定：源事件更新后无法形成可审查候选，剔除旧样本; generation_failure=no_matching_candidate_after_source_update",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_20s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:36:29.039383+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      }
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_80pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:08:46.012540+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_20s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:36:35.524523+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_3s_20pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:08:48.696412+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_3s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:33:59.373957+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_3s_35pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:08:51.044076+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_3s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:05.955766+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_3s_50pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:08:53.924146+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_3s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:11.511935+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_3s_65pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:08:56.933354+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_3s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:17.774062+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_3s_80pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:00.463706+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_3s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:26.666502+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_5s_20pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:03.532537+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_5s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:35.407892+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_5s_35pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:06.151618+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_5s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:46.229414+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_5s_50pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:09.366135+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_5s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:51.266338+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_5s_65pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:12.936243+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_5s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:34:57.746042+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0029_focus_5s_80pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:16.965340+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "脆性断裂",
+        "location": "outside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0029_focus_5s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-10T15:35:05.178502+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "脆性断裂",
+          "location": "outside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_10s_20pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:40.755205+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_10s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:49:35.576896+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_10s_35pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:09:55.495621+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_10s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:38:05.944593+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_10s_50pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:10:12.328276+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_10s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:49:42.788798+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_10s_65pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:10:26.708526+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_10s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:38:12.143443+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_10s_80pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:10:39.008486+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_10s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:49:49.058187+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_20s_20pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:10:51.865203+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_20s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:38:19.729221+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_20s_35pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:11:05.842682+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_20s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:49:55.874275+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_20s_50pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:11:19.413810+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          3,
+          4
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_20s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:38:26.535820+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            3,
+            4
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_20s_65pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:11:34.221244+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          4,
+          5
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_20s_65pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:50:04.961220+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            4,
+            5
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_20s_80pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:11:51.021366+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          5,
+          6
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_20s_80pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:38:35.600184+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            5,
+            6
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_3s_20pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:12:05.227241+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_3s_20pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:47:47.180506+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_3s_35pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:12:17.503318+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          1,
+          2
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_3s_35pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:37:29.191101+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            1,
+            2
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    },
+    {
+      "subvideo_id": "video_0030_focus_3s_50pct",
+      "status": "approved",
+      "reviewed_at": "2026-07-11T15:12:39.987324+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": {
+        "has_fracture": false,
+        "type": "未断裂",
+        "location": null,
+        "fracture_between": null
+      },
+      "original_labels": {
+        "has_fracture": true,
+        "type": "韧性断裂",
+        "location": "inside_gauge",
+        "fracture_between": [
+          2,
+          3
+        ]
+      },
+      "baseline_decision": {
+        "subvideo_id": "video_0030_focus_3s_50pct",
+        "status": "needs_regenerate",
+        "reviewed_at": "2026-07-11T01:48:23.841169+00:00",
+        "reviewer_notes": "子视频未包含断裂时刻",
+        "corrected_labels": null,
+        "original_labels": {
+          "has_fracture": true,
+          "type": "韧性断裂",
+          "location": "inside_gauge",
+          "fracture_between": [
+            2,
+            3
+          ]
+        },
+        "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/subvideos_meta.json",
+        "generated_at": "2026-07-11T11:40:46.850886+00:00"
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/incremental_review_round_01_metadata.json",
+      "generated_at": "2026-07-11T15:12:41.924161+00:00"
+    }
+  ],
+  "decision_mode": "incremental_delta",
+  "queue_ids": [
+    "video_0001_full",
+    "video_0012_focus_11.33s_80pct_adaptive",
+    "video_0016_focus_10.37s_80pct_adaptive",
+    "video_0023_focus_3s_80pct",
+    "video_0023_full",
+    "video_0024_focus_3s_20pct",
+    "video_0024_focus_3s_35pct",
+    "video_0024_focus_3s_50pct",
+    "video_0024_focus_3s_65pct",
+    "video_0024_focus_3s_80pct",
+    "video_0024_focus_5s_50pct",
+    "video_0024_focus_5s_65pct",
+    "video_0024_focus_5s_80pct",
+    "video_0029_focus_10s_65pct",
+    "video_0029_focus_10s_80pct",
+    "video_0029_focus_20s_80pct",
+    "video_0029_focus_3s_20pct",
+    "video_0029_focus_3s_35pct",
+    "video_0029_focus_3s_50pct",
+    "video_0029_focus_3s_65pct",
+    "video_0029_focus_3s_80pct",
+    "video_0029_focus_5s_20pct",
+    "video_0029_focus_5s_35pct",
+    "video_0029_focus_5s_50pct",
+    "video_0029_focus_5s_65pct",
+    "video_0029_focus_5s_80pct",
+    "video_0030_focus_10s_20pct",
+    "video_0030_focus_10s_35pct",
+    "video_0030_focus_10s_50pct",
+    "video_0030_focus_10s_65pct",
+    "video_0030_focus_10s_80pct",
+    "video_0030_focus_20s_20pct",
+    "video_0030_focus_20s_35pct",
+    "video_0030_focus_20s_50pct",
+    "video_0030_focus_20s_65pct",
+    "video_0030_focus_20s_80pct",
+    "video_0030_focus_3s_20pct",
+    "video_0030_focus_3s_35pct",
+    "video_0030_focus_3s_50pct",
+    "video_0030_focus_3s_65pct",
+    "video_0030_focus_3s_80pct",
+    "video_0030_focus_5s_20pct",
+    "video_0030_focus_5s_35pct",
+    "video_0030_focus_5s_50pct",
+    "video_0030_focus_5s_65pct",
+    "video_0030_focus_5s_80pct",
+    "video_0033_full",
+    "video_0048_full",
+    "video_0061_full",
+    "video_0074_full",
+    "video_0076_focus_3s_20pct",
+    "video_0084_full",
+    "video_0103_focus_3s_35pct",
+    "video_0103_focus_3s_50pct",
+    "video_0103_focus_3s_65pct",
+    "video_0103_focus_3s_80pct",
+    "video_0103_focus_5s_65pct",
+    "video_0103_focus_5s_80pct",
+    "video_0108_focus_3s_20pct"
+  ],
+  "queue_input_sha256": {
+    "metadata": "549b33c7e0d969dc9a4645226429229d20feaeb2672be78f9e70b56295731dcc",
+    "baseline_decisions": "93b8e417385de7160dabfd9c4aa44eef068501da799ff815eeb4175b28cc35d2",
+    "video_meta": "3d2f0c5e3af65603ecd2490a061ff908659269e9072e3b365e217d30f05f951c"
+  },
+  "materialized_queue_ids": [
+    "video_0001_full",
+    "video_0012_focus_11.33s_80pct_adaptive",
+    "video_0016_focus_10.37s_80pct_adaptive",
+    "video_0023_focus_3s_80pct",
+    "video_0023_full",
+    "video_0024_focus_3s_20pct",
+    "video_0024_focus_3s_35pct",
+    "video_0024_focus_3s_50pct",
+    "video_0024_focus_3s_65pct",
+    "video_0024_focus_3s_80pct",
+    "video_0024_focus_5s_50pct",
+    "video_0024_focus_5s_65pct",
+    "video_0024_focus_5s_80pct",
+    "video_0029_focus_10s_65pct",
+    "video_0029_focus_10s_80pct",
+    "video_0029_focus_20s_80pct",
+    "video_0029_focus_3s_20pct",
+    "video_0029_focus_3s_35pct",
+    "video_0029_focus_3s_50pct",
+    "video_0029_focus_3s_65pct",
+    "video_0029_focus_3s_80pct",
+    "video_0029_focus_5s_20pct",
+    "video_0029_focus_5s_35pct",
+    "video_0029_focus_5s_50pct",
+    "video_0029_focus_5s_65pct",
+    "video_0029_focus_5s_80pct",
+    "video_0030_focus_10s_20pct",
+    "video_0030_focus_10s_35pct",
+    "video_0030_focus_10s_50pct",
+    "video_0030_focus_10s_65pct",
+    "video_0030_focus_10s_80pct",
+    "video_0030_focus_20s_20pct",
+    "video_0030_focus_20s_35pct",
+    "video_0030_focus_20s_50pct",
+    "video_0030_focus_20s_65pct",
+    "video_0030_focus_20s_80pct",
+    "video_0030_focus_3s_20pct",
+    "video_0030_focus_3s_35pct",
+    "video_0030_focus_3s_50pct",
+    "video_0030_focus_3s_65pct",
+    "video_0030_focus_3s_80pct",
+    "video_0030_focus_5s_20pct",
+    "video_0030_focus_5s_35pct",
+    "video_0030_focus_5s_50pct",
+    "video_0030_focus_5s_65pct",
+    "video_0030_focus_5s_80pct",
+    "video_0033_full",
+    "video_0048_full",
+    "video_0061_full",
+    "video_0074_full",
+    "video_0076_focus_3s_20pct",
+    "video_0084_full",
+    "video_0103_focus_3s_35pct",
+    "video_0103_focus_3s_50pct",
+    "video_0103_focus_3s_65pct",
+    "video_0103_focus_3s_80pct",
+    "video_0103_focus_5s_65pct",
+    "video_0103_focus_5s_80pct",
+    "video_0108_focus_3s_20pct"
+  ],
+  "reviewed_ids": [
+    "video_0001_full",
+    "video_0012_focus_11.33s_80pct_adaptive",
+    "video_0016_focus_10.37s_80pct_adaptive",
+    "video_0023_focus_3s_80pct",
+    "video_0023_full",
+    "video_0024_focus_3s_20pct",
+    "video_0024_focus_3s_35pct",
+    "video_0024_focus_3s_50pct",
+    "video_0024_focus_3s_65pct",
+    "video_0024_focus_3s_80pct",
+    "video_0024_focus_5s_50pct",
+    "video_0024_focus_5s_65pct",
+    "video_0024_focus_5s_80pct",
+    "video_0029_focus_10s_65pct",
+    "video_0029_focus_10s_80pct",
+    "video_0029_focus_20s_80pct",
+    "video_0029_focus_3s_20pct",
+    "video_0029_focus_3s_35pct",
+    "video_0029_focus_3s_50pct",
+    "video_0029_focus_3s_65pct",
+    "video_0029_focus_3s_80pct",
+    "video_0029_focus_5s_20pct",
+    "video_0029_focus_5s_35pct",
+    "video_0029_focus_5s_50pct",
+    "video_0029_focus_5s_65pct",
+    "video_0029_focus_5s_80pct",
+    "video_0030_focus_10s_20pct",
+    "video_0030_focus_10s_35pct",
+    "video_0030_focus_10s_50pct",
+    "video_0030_focus_10s_65pct",
+    "video_0030_focus_10s_80pct",
+    "video_0030_focus_20s_20pct",
+    "video_0030_focus_20s_35pct",
+    "video_0030_focus_20s_50pct",
+    "video_0030_focus_20s_65pct",
+    "video_0030_focus_20s_80pct",
+    "video_0030_focus_3s_20pct",
+    "video_0030_focus_3s_35pct",
+    "video_0030_focus_3s_50pct"
+  ],
+  "unreviewed_ids": [
+    "video_0030_focus_3s_65pct",
+    "video_0030_focus_3s_80pct",
+    "video_0030_focus_5s_20pct",
+    "video_0030_focus_5s_35pct",
+    "video_0030_focus_5s_50pct",
+    "video_0030_focus_5s_65pct",
+    "video_0030_focus_5s_80pct",
+    "video_0033_full",
+    "video_0048_full",
+    "video_0061_full",
+    "video_0074_full",
+    "video_0076_focus_3s_20pct",
+    "video_0084_full",
+    "video_0103_focus_3s_35pct",
+    "video_0103_focus_3s_50pct",
+    "video_0103_focus_3s_65pct",
+    "video_0103_focus_3s_80pct",
+    "video_0103_focus_5s_65pct",
+    "video_0103_focus_5s_80pct",
+    "video_0108_focus_3s_20pct"
+  ],
+  "failure_drop_append": {
+    "added": 32,
+    "failure_dropped_ids": [
+      "video_0012_focus_10s_65pct",
+      "video_0012_focus_10s_80pct",
+      "video_0012_focus_3s_20pct",
+      "video_0012_focus_3s_35pct",
+      "video_0012_focus_3s_50pct",
+      "video_0012_focus_3s_65pct",
+      "video_0012_focus_3s_80pct",
+      "video_0012_focus_5s_20pct",
+      "video_0012_focus_5s_35pct",
+      "video_0012_focus_5s_50pct",
+      "video_0012_focus_5s_65pct",
+      "video_0012_focus_5s_80pct",
+      "video_0016_focus_10s_65pct",
+      "video_0016_focus_10s_80pct",
+      "video_0016_focus_3s_20pct",
+      "video_0016_focus_3s_35pct",
+      "video_0016_focus_3s_50pct",
+      "video_0016_focus_3s_65pct",
+      "video_0016_focus_3s_80pct",
+      "video_0016_focus_5.60s_20pct_adaptive",
+      "video_0016_focus_5s_20pct",
+      "video_0016_focus_5s_35pct",
+      "video_0016_focus_5s_50pct",
+      "video_0016_focus_5s_65pct",
+      "video_0016_focus_5s_80pct",
+      "video_0029_focus_10s_20pct",
+      "video_0029_focus_10s_35pct",
+      "video_0029_focus_10s_50pct",
+      "video_0029_focus_20s_20pct",
+      "video_0029_focus_20s_35pct",
+      "video_0029_focus_20s_50pct",
+      "video_0029_focus_20s_65pct"
+    ],
+    "report": "data/07_metadata/incremental_review_round_01_report.json"
+  }
+}
