@@ -538,7 +538,7 @@ def main() -> None:
                 st.session_state.current_subvideo_idx = 0
                 
             selected_sub = filtered[st.session_state.current_subvideo_idx]
-            
+
             st.write("点击快速切换:")
             list_container = st.container(height=520)
             with list_container:
@@ -567,12 +567,6 @@ def main() -> None:
 
     with mid_col:
         st.subheader(sid)
-        video_path = _resolve_video_path(selected_sub, project_root)
-        if video_path is not None and video_path.exists():
-            st.video(str(video_path))
-        else:
-            st.info("子视频 mp4 文件不存在，无法播放。")
-
         st.write("**采样帧展示**")
         frame_paths = _resolve_frame_paths(selected_sub, project_root)
         if frame_paths:
@@ -604,6 +598,14 @@ def main() -> None:
                     st.rerun()
         else:
             st.info("采样帧图片不存在，显示占位。")
+
+        st.divider()
+        st.write("**子视频回放**")
+        video_path = _resolve_video_path(selected_sub, project_root)
+        if video_path is not None and video_path.exists():
+            st.video(str(video_path))
+        else:
+            st.info("子视频 mp4 文件不存在，无法播放。")
 
         mapping = selected_sub.get("actual_frame_mapping") or selected_sub.get("sampled_frames")
         if mapping:
@@ -759,11 +761,18 @@ def main() -> None:
 
             _save_decisions(output_path, metadata_path, decisions)
             st.success(f"已保存为 {new_status}，并写入 {output_path}")
-            
+
             # 自动跳转到下一个
-            if st.session_state.current_subvideo_idx < len(filtered) - 1:
-                st.session_state.current_subvideo_idx += 1
+            new_label = STATUS_LABELS.get(new_status, "未审查")
+            will_be_filtered_out = new_label not in status_filter
+
+            if will_be_filtered_out:
+                # 当前视频会被移出列表，下一个视频会自动补位到当前索引
                 st.session_state.current_frame_idx = 0
+            else:
+                if st.session_state.current_subvideo_idx < len(filtered) - 1:
+                    st.session_state.current_subvideo_idx += 1
+                    st.session_state.current_frame_idx = 0
             
             st.rerun()
 
