@@ -121,7 +121,7 @@ python pipeline/scripts/materialize_incremental_review_media.py \
 --reasons baseline_needs_regenerate approved_interval_conflict
 ```
 
-若生成报告含失败项，先处理失败原因；不要对缺媒体队列启动 UI。
+若生成报告含失败项，不要对缺媒体队列启动 UI。失败项必须先有明确处置：重新生成，或由数据负责人明确决定 `dropped`。后一种情况在第 6.4 节追加为带审计记录的 delta。
 
 ### 6.3 使用同一 UI 审查增量媒体
 
@@ -134,12 +134,29 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 
 增量模式只输出本轮 delta，不会覆盖历史基线。界面会显示历史决策和队列原因作为只读上下文。
 
-### 6.4 安全合并 delta
+### 6.4 将无法生成且已确认剔除的样本追加到 delta（按需）
+
+本轮若存在“无法形成可审查映射”的生成失败，且数据负责人决定剔除，**先完成所有实际生成媒体的人工审查**，再基于最新 UI delta 运行：
+
+```bash
+python pipeline/scripts/append_incremental_failure_drops.py \
+  --baseline data/07_metadata/subvideo_train_review_decisions.json \
+  --delta data/07_metadata/incremental_review_delta_decisions.json \
+  --queue data/07_metadata/incremental_review_queue_metadata.json \
+  --report data/07_metadata/incremental_review_round_01_report.json \
+  --output data/07_metadata/incremental_review_delta_decisions_resolved.json
+```
+
+这一步只将报告中的失败样本显式标为 `dropped`，并写入失败原因；它不覆盖历史基线。若所有生成都成功，或失败项将重新生成，则跳过本节，直接使用 UI 输出的 delta。
+
+### 6.5 安全合并最终 delta
+
+当第 6.4 节执行过时，合并 `*_resolved.json`；否则合并 UI 输出的 delta：
 
 ```bash
 python pipeline/scripts/merge_incremental_review_decisions.py \
   --baseline data/07_metadata/subvideo_train_review_decisions.json \
-  --delta data/07_metadata/incremental_review_delta_decisions.json \
+  --delta data/07_metadata/incremental_review_delta_decisions_resolved.json \
   --queue data/07_metadata/incremental_review_queue_metadata.json \
   --output data/07_metadata/subvideo_train_review_decisions_final.json
 ```
@@ -150,7 +167,7 @@ python pipeline/scripts/merge_incremental_review_decisions.py \
 --allow-approved-supersede
 ```
 
-每次增量轮次使用新的 `round_XX`、queue、delta 和 final 文件；不要复用输出路径。
+每次增量轮次使用新的 `round_XX`、queue、delta 和 final 文件；不要复用输出路径。一次已完成的历史人工审查不需要重做：只处理本轮 `needs_regenerate`、媒体失败或明确要求复核的样本。
 
 ## 7. 构建最终训练 metadata
 

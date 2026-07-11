@@ -192,16 +192,40 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 
 ### 导出训练数据并检查
 
-审核完成后，依次应用审核决策、生成训练样本并执行质量检查：
+全新项目的首次审核完成后，或当前项目的增量 delta 已安全合并为 final 决策后，依次应用审核决策、生成训练样本并执行质量检查。增量复审存在生成失败时，必须先按运行手册第 6.4 节将已确认剔除项追加到 resolved delta；不要直接合并不完整的 UI delta：
 
 ```bash
-python3 pipeline/scripts/apply_review_decisions.py
-python3 pipeline/scripts/apply_label_corrections.py
-python3 pipeline/scripts/training_sample_builder.py
+python pipeline/scripts/apply_review_decisions.py \
+  --metadata data/07_metadata/subvideos_meta.json \
+  --decisions data/07_metadata/subvideo_train_review_decisions_final.json \
+  --output data/07_metadata/subvideos_meta.reviewed.json \
+  --strict
 
-python3 scripts/validate_no_oob.py
-python3 pipeline/scripts/quality_check.py
-python3 pipeline/scripts/freeze_data_version.py
+python pipeline/scripts/apply_label_corrections.py \
+  --metadata data/07_metadata/subvideos_meta.reviewed.json \
+  --output data/07_metadata/subvideos_meta.label_reviewed.json
+
+python scripts/validate_no_oob.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
+
+python pipeline/scripts/training_sample_builder.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --video-meta data/07_metadata/video_meta.json \
+  --splits-dir data/05_splits \
+  --output-dir data/06_merged \
+  --seed 42
+
+python pipeline/scripts/quality_check.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --merged-dir data/06_merged
+
+python pipeline/scripts/freeze_data_version.py \
+  --merged-dir data/06_merged \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --video-meta data/07_metadata/video_meta.json \
+  --splits-dir data/05_splits \
+  --subvideo-dir data/03_subvideos \
+  --lock data/07_metadata/data_version_lock.json
 ```
 
 各脚本支持通过 `--help` 查看输入、输出和路径参数。

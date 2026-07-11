@@ -617,7 +617,7 @@ def build_all(
     if not subvideos_meta.exists():
         raise FileNotFoundError(
             f"子视频元数据不存在: {subvideos_meta}\n"
-            "请先运行 pipeline/scripts/review_subvideo_labels.py 生成 label_reviewed 元数据，"
+            "请先按数据运行手册执行 apply_review_decisions.py 和 apply_label_corrections.py，"
             "或显式传入 --subvideos-meta 指定其它 metadata 文件。"
         )
     if not splits_dir.exists():
