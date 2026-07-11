@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from pipeline.scripts import merge_incremental_review_decisions as merge
+from pipeline.scripts import materialize_incremental_review_media as materialize
 from pipeline.scripts import prepare_incremental_review_queue as queue
 from pipeline.scripts import review_subvideos_app as app
 
@@ -89,3 +90,10 @@ def test_incremental_ui_keeps_only_queue_delta_records(tmp_path: Path, monkeypat
 
     assert list(decisions) == ["sv_queue"]
     assert decisions["sv_queue"]["baseline_decision"]["status"] == "needs_regenerate"
+
+
+def test_materializer_matches_adaptive_candidate_after_duration_rename():
+    old = {"subvideo_id": "video_0001_focus_2.00s_50pct_adaptive", "crop_type": "focus_adaptive", "event_position_ratio": 0.5}
+    candidate = {"subvideo_id": "video_0001_focus_3.00s_50pct_adaptive", "crop_type": "focus_adaptive", "event_position_ratio": 0.5}
+
+    assert materialize._match_candidate(old, [candidate]) == candidate

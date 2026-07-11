@@ -22,11 +22,15 @@ samples or regenerate split assignments.
    source metadata, and frozen splits. It writes queue-only metadata and CSV
    with stable IDs, selection reasons, baseline decision snapshots, frame
    mappings, and input SHA-256 hashes. It does not write decisions or media.
-2. `review_subvideos_app.py --incremental-delta` opens only queue metadata.
+2. `materialize_incremental_review_media.py` uses the frozen queue and current
+   source metadata to regenerate only selected queue media into a versioned
+   directory. It preserves the historical queue ID for delta decisions even
+   when an adaptive candidate obtains a new generated media ID.
+3. `review_subvideos_app.py --incremental-delta` opens only queue metadata.
    It writes only a delta decision file and never loads or writes the complete
    baseline decision file. The UI displays the queue reason and baseline
    decision as read-only context.
-3. `merge_incremental_review_decisions.py` validates queue membership and
+4. `merge_incremental_review_decisions.py` validates queue membership and
    input hashes before producing a new final decision file. By default it may
    replace only `needs_regenerate` baseline decisions. Replacing an approved
    baseline decision requires `--allow-approved-supersede` and a non-empty
@@ -34,7 +38,7 @@ samples or regenerate split assignments.
 
 ## Non-goals
 
-- No full subvideo regeneration, media copying, or split recomputation.
+- No full subvideo regeneration or split recomputation.
 - No pixel-based automatic fracture detection.
 - No automatic modification of source CSV labels.
 
