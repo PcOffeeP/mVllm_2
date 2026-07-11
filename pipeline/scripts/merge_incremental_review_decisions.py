@@ -97,7 +97,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-approved-supersede", action="store_true")
     args = parser.parse_args()
-    summary = merge_incremental_review_decisions(**vars(args))
+    summary = merge_incremental_review_decisions(
+        baseline_path=args.baseline,
+        delta_path=args.delta,
+        queue_path=args.queue,
+        output_path=args.output,
+        allow_approved_supersede=args.allow_approved_supersede,
+    )
     print(f"写出合并决策: {summary['total']} 条，替换 {summary['replaced']} 条")
     return 0
 

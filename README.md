@@ -87,6 +87,8 @@ models/                       本地模型权重目录
 
 从原始标注到训练和评估，整体流程如下：
 
+> 从“只有原视频与 CSV 标注”开始执行、包含全量人工审查、增量复审、安全合并与最终训练数据导出的权威步骤，请阅读 [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)。本节只保留流程概览。
+
 ```text
 原始视频与标注
       │
@@ -157,6 +159,8 @@ pip install -e ./LlamaFactory
 ## 使用流程
 
 以下命令均从仓库根目录执行。
+
+完整执行时请以 [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md) 为准；它明确了何时冻结划分、何时只做增量复审，以及哪些步骤必须在训练电脑运行。
 
 ### 生成数据
 
@@ -278,6 +282,7 @@ LLaMA-Factory 自带测试需要额外的深度学习和 API 依赖，和项目�
 
 ## 相关文档
 
+- [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)（从原视频和 CSV 到最终训练数据的权威流程）
 - [微调数据、人工审核和评估重设计计划](docs/plans/2026-07-09-finetune-data-review-and-eval-redesign.md)
 - [训练数据审核流水线实现说明](docs/IMPLEMENTATIONS/2026-06-30-training-data-review-pipeline.md)
 - [训练说明](finetune/README.md)
