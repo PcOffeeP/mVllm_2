@@ -117,6 +117,11 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="审查决策输出路径（默认根据输入文件名推导）。",
     )
+    parser.add_argument(
+        "--incremental-delta",
+        action="store_true",
+        help="增量复审模式：metadata 必须是队列文件，输出仅含本轮 delta 决策。",
+    )
     return parser.parse_args(raw)
 
 
@@ -197,13 +202,16 @@ def _load_existing_decisions(output_path: Path) -> dict[str, dict[str, Any]]:
 
 
 def _init_decisions(
-    subvideos: list[dict[str, Any]], output_path: Path
+    subvideos: list[dict[str, Any]], output_path: Path, incremental_delta: bool = False
 ) -> dict[str, dict[str, Any]]:
     """初始化 session_state 中的 decisions，确保所有子视频都有记录。"""
     if "decisions" in st.session_state:
         return st.session_state["decisions"]
 
     decisions = _load_existing_decisions(output_path)
+    if incremental_delta:
+        queue_ids = {sub.get("subvideo_id") for sub in subvideos}
+        decisions = {sid: rec for sid, rec in decisions.items() if sid in queue_ids}
     for sub in subvideos:
         if not isinstance(sub, dict):
             st.error(f"子视频记录必须为 dict，得到 {type(sub).__name__}")
@@ -224,6 +232,8 @@ def _init_decisions(
                 "corrected_labels": None,
                 "original_labels": _snapshot_labels(sub),
             }
+            if incremental_delta and isinstance(sub.get("incremental_review"), dict):
+                decisions[sid]["baseline_decision"] = sub["incremental_review"].get("baseline_decision")
         else:
             # 保证 original_labels 字段存在，防止后续阶段 metadata 字段调整。
             if "original_labels" not in decisions[sid]:
@@ -234,7 +244,12 @@ def _init_decisions(
 
 
 def _save_decisions(
-    output_path: Path, metadata_path: Path, decisions: dict[str, dict[str, Any]]
+    output_path: Path,
+    metadata_path: Path,
+    decisions: dict[str, dict[str, Any]],
+    *,
+    incremental_delta: bool = False,
+    queue_info: dict[str, Any] | None = None,
 ) -> None:
     """将已审查的决策写入 JSON 文件。"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -244,7 +259,13 @@ def _save_decisions(
     for rec in reviewed:
         rec["source_metadata_file"] = source_metadata_file
         rec["generated_at"] = generated_at
-    payload = {"decisions": reviewed}
+    payload: dict[str, Any] = {"decisions": reviewed}
+    if incremental_delta:
+        payload.update({
+            "decision_mode": "incremental_delta",
+            "queue_ids": sorted(decisions),
+            "queue_input_sha256": (queue_info or {}).get("input_sha256"),
+        })
     try:
         output_path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False),
@@ -439,6 +460,11 @@ def main() -> None:
     project_root = args.project_root.resolve()
     output_path = _derive_output_path(metadata_path, args.output).resolve()
 
+    if args.incremental_delta and args.output is None:
+        parser_error = "--incremental-delta 必须显式提供 --output，避免覆盖历史完整决策"
+        st.error(parser_error)
+        st.stop()
+
     st.set_page_config(page_title="子视频审查", layout="wide")
     
     # 注入 CSS 控制元素高度和内边距，尽量一屏显示，避免上下滑动
@@ -474,12 +500,16 @@ def main() -> None:
         st.info("请确认路径正确后重新启动。")
         st.stop()
 
-    subvideos, _ = _load_subvideos(metadata_path)
+    subvideos, top_level = _load_subvideos(metadata_path)
+    queue_info = top_level.get("incremental_review_queue") if isinstance(top_level, dict) else None
+    if args.incremental_delta and not isinstance(queue_info, dict):
+        st.error("--incremental-delta 只能与 prepare_incremental_review_queue.py 输出的队列 metadata 一起使用")
+        st.stop()
     if not subvideos:
         st.warning("输入 metadata 中未找到任何子视频记录。")
         st.stop()
 
-    decisions = _init_decisions(subvideos, output_path)
+    decisions = _init_decisions(subvideos, output_path, incremental_delta=args.incremental_delta)
     counts = _status_counts(decisions)
 
     if "current_subvideo_idx" not in st.session_state:
@@ -651,6 +681,12 @@ def main() -> None:
             )
             st.write(f"**当前状态:** {STATUS_LABELS.get(current_status, '未审查')} {STATUS_EMOJI.get(current_status, '❓')}")
 
+            if args.incremental_delta and isinstance(selected_sub.get("incremental_review"), dict):
+                queue_context = selected_sub["incremental_review"]
+                st.write(f"**本轮复审原因:** {', '.join(queue_context.get('reasons', []))}")
+                st.write("**历史决策（只读）**")
+                st.json(queue_context.get("baseline_decision", {}))
+
             risk, risk_reasons = compute_subvideo_risk(selected_sub)
             risk_color = {
                 RISK_HIGH: "#ff4d4f",
@@ -765,7 +801,13 @@ def main() -> None:
             decision["reviewed_at"] = datetime.now(timezone.utc).isoformat()
             decision["reviewer_notes"] = notes
 
-            _save_decisions(output_path, metadata_path, decisions)
+            _save_decisions(
+                output_path,
+                metadata_path,
+                decisions,
+                incremental_delta=args.incremental_delta,
+                queue_info=queue_info,
+            )
             st.success(f"已保存为 {new_status}，并写入 {output_path}")
 
             # 自动跳转到下一个
@@ -785,7 +827,13 @@ def main() -> None:
         # 显式保存按钮
         st.divider()
         if st.button("立即保存到文件", key=f"save_button_{sid}"):
-            _save_decisions(output_path, metadata_path, decisions)
+            _save_decisions(
+                output_path,
+                metadata_path,
+                decisions,
+                incremental_delta=args.incremental_delta,
+                queue_info=queue_info,
+            )
             st.success(f"已保存到 {output_path}")
 
         # 导出当前决策摘要
