@@ -39,9 +39,6 @@ uv.lock
 /data/03_subvideos/
 /data/04_frames/
 /data/06_merged/
-/data/07_metadata/*
-!/data/07_metadata/subvideo_train_review_decisions.json
-!/data/07_metadata/video_meta.json
 /data/08_runtime/
 
 .agents/skills/
