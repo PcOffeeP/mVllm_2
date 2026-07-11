@@ -1,0 +1,45 @@
+﻿changed_interval_count,current_source_event_frame,manual_brackets_intersect,manual_cleared_interval_count,manual_event_frame_lower_exclusive,manual_event_frame_upper_inclusive,manual_interval_count,next_action,source_video,verification_counts
+1,1165,True,0,1172,1190,1,reannotate_source_event_frame_within_manual_bracket_then_regenerate_affected_focus,video_0001,{'manual_override_conflicts_current_source_event': 1}
+3,174,False,3,,,0,recheck_original_video_presence_and_event_frame,video_0002,{'unverifiable_source_event': 3}
+1,5512,True,0,5494,5511,1,reannotate_source_event_frame_within_manual_bracket_then_regenerate_affected_focus,video_0004,{'manual_override_conflicts_current_source_event': 1}
+1,5653,True,0,5635,5652,1,reannotate_source_event_frame_within_manual_bracket_then_regenerate_affected_focus,video_0009,{'manual_override_conflicts_current_source_event': 1}
+5,405,True,0,387,412,5,confirm_manual_source_label_change_before_accepting,video_0012,{'reviewed_matches_current_source_event': 5}
+1,144,True,0,140,158,1,confirm_manual_source_label_change_before_accepting,video_0014,{'reviewed_matches_current_source_event': 1}
+4,370,True,0,352,382,4,confirm_manual_source_label_change_before_accepting,video_0016,{'reviewed_matches_current_source_event': 4}
+1,6209,True,0,6206,6223,1,confirm_manual_source_label_change_before_accepting,video_0017,{'reviewed_matches_current_source_event': 1}
+1,771,True,0,754,771,1,confirm_manual_source_label_change_before_accepting,video_0020,{'reviewed_matches_current_source_event': 1}
+1,1713,True,0,1695,1713,1,confirm_manual_source_label_change_before_accepting,video_0022,{'reviewed_matches_current_source_event': 1}
+4,285,True,0,299,300,4,reannotate_source_event_frame_within_manual_bracket_then_regenerate_affected_focus,video_0023,"{'manual_override_conflicts_current_source_event': 3, 'reviewed_matches_current_source_event': 1}"
+13,972,False,0,1019,969,13,recheck_original_video_and_reconcile_inconsistent_manual_intervals,video_0024,"{'reviewed_matches_current_source_event': 4, 'neither_interval_matches_current_source_event': 8, 'manual_override_conflicts_current_source_event': 1}"
+2,5745,True,0,5647,5663,2,confirm_manual_source_label_change_before_accepting,video_0027,{'neither_interval_matches_current_source_event': 2}
+1,5180,True,0,4550,5309,1,confirm_manual_source_label_change_before_accepting,video_0029,{'reviewed_matches_current_source_event': 1}
+20,5388,False,20,,,0,recheck_original_video_presence_and_event_frame,video_0030,{'manual_override_conflicts_current_source_event': 20}
+2,152,True,0,158,173,2,reannotate_source_event_frame_within_manual_bracket_then_regenerate_affected_focus,video_0031,{'manual_override_conflicts_current_source_event': 2}
+2,1500,True,0,1491,1510,2,confirm_manual_source_label_change_before_accepting,video_0035,{'reviewed_matches_current_source_event': 2}
+1,1917,True,0,1911,1930,1,confirm_manual_source_label_change_before_accepting,video_0039,{'reviewed_matches_current_source_event': 1}
+7,5474,True,0,5472,5482,7,confirm_manual_source_label_change_before_accepting,video_0043,{'reviewed_matches_current_source_event': 7}
+1,5301,True,0,5298,5315,1,confirm_manual_source_label_change_before_accepting,video_0044,{'reviewed_matches_current_source_event': 1}
+1,5532,True,0,4800,5600,1,confirm_manual_source_label_change_before_accepting,video_0045,{'reviewed_matches_current_source_event': 1}
+1,654,True,0,649,669,1,confirm_manual_source_label_change_before_accepting,video_0048,{'reviewed_matches_current_source_event': 1}
+20,,False,20,,,0,recheck_original_video_presence_and_event_frame,video_0049,{'unverifiable_source_event': 20}
+5,,False,5,,,0,recheck_original_video_presence_and_event_frame,video_0058,{'unverifiable_source_event': 5}
+1,957,True,0,954,971,1,confirm_manual_source_label_change_before_accepting,video_0059,{'reviewed_matches_current_source_event': 1}
+1,1356,True,0,1355,1374,1,confirm_manual_source_label_change_before_accepting,video_0061,{'reviewed_matches_current_source_event': 1}
+2,24,True,0,21,39,2,confirm_manual_source_label_change_before_accepting,video_0065,{'reviewed_matches_current_source_event': 2}
+13,,False,13,,,0,recheck_original_video_presence_and_event_frame,video_0066,{'unverifiable_source_event': 13}
+6,4527,True,0,4542,4548,6,reannotate_source_event_frame_within_manual_bracket_then_regenerate_affected_focus,video_0070,{'manual_override_conflicts_current_source_event': 6}
+2,139,True,0,137,155,2,confirm_manual_source_label_change_before_accepting,video_0071,{'reviewed_matches_current_source_event': 2}
+12,5349,False,0,5352,5350,12,recheck_original_video_and_reconcile_inconsistent_manual_intervals,video_0076,"{'neither_interval_matches_current_source_event': 1, 'reviewed_matches_current_source_event': 11}"
+1,59,True,0,54,72,1,confirm_manual_source_label_change_before_accepting,video_0079,{'reviewed_matches_current_source_event': 1}
+1,,False,1,,,0,recheck_original_video_presence_and_event_frame,video_0083,{'unverifiable_source_event': 1}
+1,519,False,1,,,0,recheck_original_video_presence_and_event_frame,video_0090,{'manual_override_conflicts_current_source_event': 1}
+1,,False,1,,,0,recheck_original_video_presence_and_event_frame,video_0094,{'unverifiable_source_event': 1}
+1,,False,1,,,0,recheck_original_video_presence_and_event_frame,video_0096,{'unverifiable_source_event': 1}
+9,4884,False,9,,,0,recheck_original_video_presence_and_event_frame,video_0098,{'manual_override_conflicts_current_source_event': 9}
+1,3002,True,0,2985,3003,1,confirm_manual_source_label_change_before_accepting,video_0100,{'reviewed_matches_current_source_event': 1}
+1,5411,True,0,5397,5411,1,confirm_manual_source_label_change_before_accepting,video_0102,{'reviewed_matches_current_source_event': 1}
+12,4410,True,0,4408,4410,12,confirm_manual_source_label_change_before_accepting,video_0103,{'reviewed_matches_current_source_event': 12}
+1,3476,True,0,3462,3476,1,confirm_manual_source_label_change_before_accepting,video_0104,{'reviewed_matches_current_source_event': 1}
+1,,False,1,,,0,recheck_original_video_presence_and_event_frame,video_0106,{'unverifiable_source_event': 1}
+1,,False,1,,,0,recheck_original_video_presence_and_event_frame,video_0107,{'unverifiable_source_event': 1}
+14,4892,True,0,4891,4892,14,confirm_manual_source_label_change_before_accepting,video_0108,{'reviewed_matches_current_source_event': 14}
