@@ -1,0 +1,193 @@
+{
+  "generated": [
+    "video_0001_full",
+    "video_0012_focus_11.33s_80pct_adaptive",
+    "video_0016_focus_10.37s_80pct_adaptive",
+    "video_0023_focus_3s_80pct",
+    "video_0023_full",
+    "video_0024_focus_3s_20pct",
+    "video_0024_focus_3s_35pct",
+    "video_0024_focus_3s_50pct",
+    "video_0024_focus_3s_65pct",
+    "video_0024_focus_3s_80pct",
+    "video_0024_focus_5s_50pct",
+    "video_0024_focus_5s_65pct",
+    "video_0024_focus_5s_80pct",
+    "video_0029_focus_10s_65pct",
+    "video_0029_focus_10s_80pct",
+    "video_0029_focus_20s_80pct",
+    "video_0029_focus_3s_20pct",
+    "video_0029_focus_3s_35pct",
+    "video_0029_focus_3s_50pct",
+    "video_0029_focus_3s_65pct",
+    "video_0029_focus_3s_80pct",
+    "video_0029_focus_5s_20pct",
+    "video_0029_focus_5s_35pct",
+    "video_0029_focus_5s_50pct",
+    "video_0029_focus_5s_65pct",
+    "video_0029_focus_5s_80pct",
+    "video_0030_focus_10s_20pct",
+    "video_0030_focus_10s_35pct",
+    "video_0030_focus_10s_50pct",
+    "video_0030_focus_10s_65pct",
+    "video_0030_focus_10s_80pct",
+    "video_0030_focus_20s_20pct",
+    "video_0030_focus_20s_35pct",
+    "video_0030_focus_20s_50pct",
+    "video_0030_focus_20s_65pct",
+    "video_0030_focus_20s_80pct",
+    "video_0030_focus_3s_20pct",
+    "video_0030_focus_3s_35pct",
+    "video_0030_focus_3s_50pct",
+    "video_0030_focus_3s_65pct",
+    "video_0030_focus_3s_80pct",
+    "video_0030_focus_5s_20pct",
+    "video_0030_focus_5s_35pct",
+    "video_0030_focus_5s_50pct",
+    "video_0030_focus_5s_65pct",
+    "video_0030_focus_5s_80pct",
+    "video_0033_full",
+    "video_0048_full",
+    "video_0061_full",
+    "video_0074_full",
+    "video_0076_focus_3s_20pct",
+    "video_0084_full",
+    "video_0103_focus_3s_35pct",
+    "video_0103_focus_3s_50pct",
+    "video_0103_focus_3s_65pct",
+    "video_0103_focus_3s_80pct",
+    "video_0103_focus_5s_65pct",
+    "video_0103_focus_5s_80pct",
+    "video_0108_focus_3s_20pct"
+  ],
+  "failures": [
+    {
+      "subvideo_id": "video_0012_focus_10s_65pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_10s_80pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_20pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_35pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_50pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_65pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_3s_80pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_20pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_35pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_50pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_65pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0012_focus_5s_80pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_10s_65pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_10s_80pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_20pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_35pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_50pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_65pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_3s_80pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_5.60s_20pct_adaptive",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_20pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_35pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_50pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_65pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0016_focus_5s_80pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_20pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_35pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0029_focus_10s_50pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_20pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_35pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_50pct",
+      "reason": "no_matching_candidate_after_source_update"
+    },
+    {
+      "subvideo_id": "video_0029_focus_20s_65pct",
+      "reason": "no_matching_candidate_after_source_update"
+    }
+  ]
+}
