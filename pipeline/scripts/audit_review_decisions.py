@@ -35,7 +35,7 @@ ALL_LABELS = (*KEY_LABELS, "fracture_between")
 LEGAL_STATUSES = {"approved", "dropped", "needs_regenerate"}
 FRACTURE_TYPES = {
     "韧性断裂", "脆性断裂", "界面脱粘", "齐根断裂", "爆炸性断裂",
-    "半脆半韧断裂", "界面脱粘、齐根断裂",
+    "半脆半韧断裂", "界面脱粘、齐根断裂", "脆性断裂、齐根断裂",
 }
 LEGAL_TYPES = FRACTURE_TYPES | {"未断裂", "未夹紧", "视频异常"}
 LEGAL_LOCATIONS = {"inside_gauge", "outside_gauge", None}
@@ -153,6 +153,23 @@ def _recompute_interval(subvideo: dict[str, Any], event_frame: int | None) -> li
     return None
 
 
+def _interval_bounds(subvideo: dict[str, Any], interval: list[int] | None) -> dict[str, Any] | None:
+    """Return the original-frame/time bracket represented by an interval."""
+    if interval is None:
+        return None
+    mapping = subvideo.get("actual_frame_mapping") or subvideo.get("sampled_frames") or []
+    try:
+        left, right = mapping[interval[0]], mapping[interval[1]]
+        return {
+            "left_frame_exclusive": left["original_frame"],
+            "right_frame_inclusive": right["original_frame"],
+            "left_time_seconds": left.get("timestamp"),
+            "right_time_seconds": right.get("timestamp"),
+        }
+    except (IndexError, KeyError, TypeError):
+        return None
+
+
 def _changed(decision: dict[str, Any], field: str) -> bool:
     corrected = decision.get("corrected_labels")
     if not isinstance(corrected, dict) or field not in corrected:
@@ -198,6 +215,15 @@ def audit_review_decisions(
         subvideo_id = decision.get("subvideo_id", "")
         video_id = _source_video_id(subvideo_id)
         source = _source_labels(source_rows[video_id]) if video_id in source_rows else {}
+        governed_source = video_meta.get(video_id, {})
+        effective_event_frame = governed_source.get("event_frame_effective")
+        if effective_event_frame is None:
+            effective_event_frame = source.get("event_frame")
+        source_event_verifiable = (
+            effective_event_frame is not None
+            and governed_source.get("event_time_reliable") is True
+            and governed_source.get("has_fracture_canonical") is True
+        )
         crop_family = _crop_family(subvideo_id)
         corrected = decision.get("corrected_labels") or {}
         original = decision.get("original_labels") or {}
@@ -235,26 +261,80 @@ def audit_review_decisions(
         if _changed(decision, "fracture_between"):
             changed_counts["fracture_between"] += 1
             subvideo = subvideos.get(subvideo_id)
-            recomputed = _recompute_interval(subvideo, source.get("event_frame")) if subvideo else None
+            recomputed = _recompute_interval(subvideo, effective_event_frame) if subvideo else None
+            original_interval = original.get("fracture_between")
+            reviewed_interval = corrected.get("fracture_between")
+            if not subvideo:
+                verification = "blocked_missing_subvideos_meta"
+            elif not source_event_verifiable:
+                verification = "unverifiable_source_event"
+            elif recomputed == reviewed_interval:
+                verification = "reviewed_matches_current_source_event"
+            elif recomputed == original_interval:
+                verification = "manual_override_conflicts_current_source_event"
+            else:
+                verification = "neither_interval_matches_current_source_event"
             interval_changes.append({
                 "subvideo_id": subvideo_id,
                 "source_video": video_id,
                 "crop_family": crop_family,
-                "original_interval": original.get("fracture_between"),
-                "reviewed_interval": corrected.get("fracture_between"),
-                "source_event_time_seconds": source.get("event_time"),
-                "source_event_frame": source.get("event_frame"),
+                "original_interval": original_interval,
+                "reviewed_interval": reviewed_interval,
+                "source_event_time_seconds": governed_source.get("event_time", source.get("event_time")),
+                "source_event_frame": effective_event_frame,
+                "source_event_frame_origin": (
+                    "video_meta.event_frame_effective"
+                    if governed_source.get("event_frame_effective") is not None else "annotations.event_frame"
+                ),
+                "source_event_reliable": source_event_verifiable,
                 "source_annotation_fps": source.get("annotation_fps"),
                 "source_frame_time_seconds": (
                     source["event_frame"] / source["annotation_fps"]
                     if source.get("event_frame") is not None and source.get("annotation_fps") else None
                 ),
                 "recomputed_interval": recomputed,
-                "verification": (
-                    "verified" if subvideo and recomputed == corrected.get("fracture_between")
-                    else "conflict" if subvideo else "blocked_missing_subvideos_meta"
-                ),
+                "original_interval_bounds": _interval_bounds(subvideo, original_interval) if subvideo else None,
+                "reviewed_interval_bounds": _interval_bounds(subvideo, reviewed_interval) if subvideo else None,
+                "verification": verification,
             })
+
+    interval_source_queue: list[dict[str, Any]] = []
+    grouped_intervals: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in interval_changes:
+        grouped_intervals[item["source_video"]].append(item)
+    for video_id, rows in sorted(grouped_intervals.items()):
+        reviewed_bounds = [item["reviewed_interval_bounds"] for item in rows if item["reviewed_interval_bounds"]]
+        null_reviews = [item for item in rows if item["reviewed_interval"] is None]
+        lower = max((item["left_frame_exclusive"] for item in reviewed_bounds), default=None)
+        upper = min((item["right_frame_inclusive"] for item in reviewed_bounds), default=None)
+        bounds_intersect = lower is not None and upper is not None and lower < upper
+        if any(item["verification"] == "unverifiable_source_event" for item in rows):
+            next_action = "recheck_original_video_presence_and_event_frame"
+        elif null_reviews:
+            next_action = "recheck_original_video_presence_and_event_frame"
+        elif not bounds_intersect:
+            next_action = "recheck_original_video_and_reconcile_inconsistent_manual_intervals"
+        elif any(item["verification"] == "manual_override_conflicts_current_source_event" for item in rows):
+            next_action = "reannotate_source_event_frame_within_manual_bracket_then_regenerate_affected_focus"
+        else:
+            next_action = "confirm_manual_source_label_change_before_accepting"
+        interval_source_queue.append({
+            "source_video": video_id,
+            "changed_interval_count": len(rows),
+            "manual_interval_count": len(reviewed_bounds),
+            "manual_cleared_interval_count": len(null_reviews),
+            "current_source_event_frame": rows[0]["source_event_frame"],
+            "manual_event_frame_lower_exclusive": lower,
+            "manual_event_frame_upper_inclusive": upper,
+            "manual_brackets_intersect": bounds_intersect,
+            "verification_counts": dict(Counter(item["verification"] for item in rows)),
+            "next_action": next_action,
+        })
+
+    reviewed_ids = {str(decision.get("subvideo_id")) for decision in decisions}
+    metadata_only = [subvideo for sid, subvideo in subvideos.items() if sid not in reviewed_ids]
+    auto_approved_neg_before = [subvideo for subvideo in metadata_only if subvideo.get("crop_type") == "neg_before"]
+    unexpected_unreviewed = [subvideo for subvideo in metadata_only if subvideo.get("crop_type") != "neg_before"]
 
     temporal_checks: list[dict[str, Any]] = []
     for video_id, row in source_rows.items():
@@ -302,12 +382,17 @@ def audit_review_decisions(
         "integrity": {
             "decision_count": len(decisions), "unique_subvideo_count": len({d.get("subvideo_id") for d in decisions}),
             "duplicate_subvideo_ids": duplicate_ids, "invalid_status_subvideo_ids": invalid_statuses,
+            "metadata_subvideo_count": len(subvideos) if subvideos else None,
+            "metadata_only_count": len(metadata_only) if subvideos else None,
+            "auto_approved_neg_before_count": len(auto_approved_neg_before) if subvideos else None,
+            "unexpected_unreviewed_subvideo_ids": [subvideo["subvideo_id"] for subvideo in unexpected_unreviewed],
         },
         "status_counts": dict(sorted(status_counts.items())),
         "note_category_counts": dict(sorted(note_counts.items())),
         "changed_field_counts": dict(sorted(changed_counts.items())),
         "key_label_changes": key_changes,
         "fracture_interval_changes": interval_changes,
+        "fracture_interval_source_queue": interval_source_queue,
         "source_reannotation_required_video_ids": sorted(source_conflict_video_ids),
         "invalid_corrected_values": invalid_corrected_values,
         "regeneration_by_source_video": regenerate_by_video,
@@ -333,6 +418,7 @@ def audit_review_decisions(
 
     write_csv("review_key_label_change_queue.csv", key_changes)
     write_csv("review_fracture_interval_queue.csv", interval_changes)
+    write_csv("review_fracture_interval_source_queue.csv", interval_source_queue)
     write_csv("review_regeneration_queue.csv", regenerate_by_video)
     write_csv("review_source_time_frame_queue.csv", temporal_checks)
 
@@ -341,14 +427,14 @@ def audit_review_decisions(
         "# 人工审查决策审计报告", "",
         f"- 决策：{len(decisions)} 条；通过：{status_counts['approved']}；需重生成：{status_counts['needs_regenerate']}；丢弃：{status_counts['dropped']}。",
         f"- 关键标签变更：has_fracture {changed_counts['has_fracture']}，type {changed_counts['type']}，location {changed_counts['location']}。",
-        f"- 断裂帧区间变更：{len(interval_changes)} 条；因缺失 subvideos_meta.json 而尚不能重算的条目：{sum(x['verification'] == 'blocked_missing_subvideos_meta' for x in interval_changes)}。",
+        f"- 断裂帧区间变更：{len(interval_changes)} 条；人工区间与当前源事件帧冲突：{sum(x['verification'] == 'manual_override_conflicts_current_source_event' for x in interval_changes)}；可验证且一致：{sum(x['verification'] == 'reviewed_matches_current_source_event' for x in interval_changes)}；源事件本身不可验证：{sum(x['verification'] == 'unverifiable_source_event' for x in interval_changes)}。",
         f"- full/focus 子视频中与原始视频标签冲突、需回查原标注的视频：{len(source_conflict_video_ids)} 个。", 
         f"- 原始事件时间与帧号换算相差超过一帧的视频：{len(time_outliers)} 个。",
         "", "## 必须人工处理", "",
         "1. 逐项处理 `review_key_label_change_queue.csv` 中 `needs_source_confirmation=true` 的记录；确认后更新原始 CSV 或撤销子视频修正。",
-        "2. 在训练机补同步 `subvideos_meta.json` 后重跑本脚本，并处理 `review_fracture_interval_queue.csv` 中的 conflict；没有帧映射时不得将新的区间写回正式训练集。",
+        "2. 处理 `review_fracture_interval_source_queue.csv`：它将人工区间还原为原始帧范围；先在原视频中确定精确首断帧，再更新源标注并重新生成受影响 focus 子视频。",
         "3. `review_regeneration_queue.csv` 中 `must_recheck_original_event=true` 的源视频，须先复核原视频断裂时刻/帧号，再重生成。",
-        f"4. 已发现 {len(invalid_corrected_values)} 个非法修正值（含 `outside_guage`）；不得进入 canonical 标签。",
+        f"4. 已发现 {len(invalid_corrected_values)} 个非法修正值；不得进入 canonical 标签。",
         "", "## 自动化边界", "",
         "本报告只做可追溯的一致性核验，不从像素自动推断断裂时刻或类型。对于可变帧率风格 MP4，诊断必须使用 average FPS，不能用 r_frame_rate 直接换算。",
     ]

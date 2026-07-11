@@ -46,6 +46,7 @@ FRACTURE_TYPES = {
     "爆炸性断裂",
     "半脆半韧断裂",
     "界面脱粘、齐根断裂",
+    "脆性断裂、齐根断裂",
 }
 
 STATUS_APPROVED = "approved"

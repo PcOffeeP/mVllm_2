@@ -16567,7 +16567,7 @@
       "corrected_labels": {
         "has_fracture": true,
         "type": "韧性断裂",
-        "location": "outside_guage",
+        "location": "outside_gauge",
         "fracture_between": [
           6,
           7
@@ -38805,7 +38805,7 @@
       "corrected_labels": {
         "has_fracture": true,
         "type": "脆性断裂、齐根断裂",
-        "location": "outside_guage",
+        "location": "outside_gauge",
         "fracture_between": [
           6,
           7

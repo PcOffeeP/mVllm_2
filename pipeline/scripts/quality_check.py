@@ -51,6 +51,7 @@ FRACTURE_TYPES = {
     "爆炸性断裂",
     "半脆半韧断裂",
     "界面脱粘、齐根断裂",
+    "脆性断裂、齐根断裂",
 }
 NON_FRACTURE_TYPES = {"未断裂", "未夹紧", "视频异常"}
 ALL_TYPES = FRACTURE_TYPES | NON_FRACTURE_TYPES

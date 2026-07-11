@@ -24,13 +24,14 @@ def test_audit_flags_source_conflict_and_recomputes_interval(tmp_path):
         writer = csv.DictWriter(handle, fieldnames=["id", "has_fracture", "断裂模式", "断裂位置", "断裂时间点", "断裂帧数", "视频帧率", "视频时长", "视频总帧数"])
         writer.writeheader()
         writer.writerow({"id": "video_0001", "has_fracture": "TRUE", "断裂模式": "韧性断裂", "断裂位置": "inside_gauge", "断裂时间点": "1.0s", "断裂帧数": "10", "视频帧率": "10", "视频时长": "2", "视频总帧数": "20"})
-    _write_json(video_meta, [{"video_id": "video_0001", "video_path": "missing.mp4"}])
+    _write_json(video_meta, [{"video_id": "video_0001", "video_path": "missing.mp4", "event_frame_effective": 10, "event_time_reliable": True, "has_fracture_canonical": True}])
     _write_json(subvideos, {"subvideos": [{"subvideo_id": "video_0001_focus_3s_50pct", "actual_frame_mapping": [{"original_frame": 1}, {"original_frame": 7}, {"original_frame": 9}, {"original_frame": 12}]}]})
 
     report = audit_review_decisions(decisions, annotations, video_meta, output, subvideos)
 
     assert report["source_reannotation_required_video_ids"] == ["video_0001"]
-    assert report["fracture_interval_changes"][0]["verification"] == "verified"
+    assert report["fracture_interval_changes"][0]["verification"] == "reviewed_matches_current_source_event"
+    assert report["fracture_interval_source_queue"][0]["manual_brackets_intersect"] is True
     assert (output / "review_key_label_change_queue.csv").exists()
     assert (output / "review_decision_audit.md").exists()
 
@@ -43,7 +44,7 @@ def test_audit_blocks_unknown_type_and_location(tmp_path):
     _write_json(decisions, {"decisions": [{
         "subvideo_id": "video_0001_full", "status": "approved",
         "original_labels": {"type": "脆性断裂", "location": "outside_gauge"},
-        "corrected_labels": {"type": "脆性断裂、齐根断裂", "location": "outside_guage"},
+        "corrected_labels": {"type": "不存在的断裂类型", "location": "outside_guage"},
     }]})
     with annotations.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["id", "has_fracture", "断裂模式", "断裂位置", "断裂时间点", "断裂帧数", "视频帧率", "视频时长", "视频总帧数"])
