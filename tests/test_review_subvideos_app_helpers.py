@@ -150,3 +150,22 @@ def test_format_option_includes_status():
     text = app._format_option(sub, decisions)
     assert app.STATUS_EMOJI[app.STATUS_APPROVED] in text or app.STATUS_LABELS[app.STATUS_APPROVED] in text
     assert app.RISK_LABELS[app.RISK_LOW] in text
+
+
+def test_neg_before_does_not_create_a_manual_review_decision(tmp_path, monkeypatch):
+    monkeypatch.setattr(app.st, "session_state", {})
+    subvideos = [
+        _make_subvideo(
+            subvideo_id="sv_neg_before",
+            crop_type="neg_before",
+            has_fracture=False,
+            has_fracture_canonical=False,
+            sub_type="未断裂",
+        ),
+        _make_subvideo(subvideo_id="sv_manual", fracture_between=[3, 4]),
+    ]
+
+    decisions = app._init_decisions(subvideos, tmp_path / "decisions.json")
+
+    assert "sv_neg_before" not in decisions
+    assert decisions["sv_manual"]["status"] is None

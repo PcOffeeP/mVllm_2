@@ -69,6 +69,36 @@ def test_missing_status_strict_blocks(tmp_path):
         ard.apply_review_decisions(meta, dec, out, strict=True)
 
 
+def test_neg_before_is_auto_approved_without_a_manual_decision(tmp_path):
+    meta = tmp_path / "meta.json"
+    dec = tmp_path / "dec.json"
+    out = tmp_path / "out.json"
+
+    _write_json(
+        meta,
+        {
+            "subvideos": [
+                {
+                    "subvideo_id": "sv_neg_before",
+                    "crop_type": "neg_before",
+                    "has_fracture": False,
+                    "type": "未断裂",
+                },
+                {"subvideo_id": "sv_manual", "type": "韧性断裂"},
+            ]
+        },
+    )
+    _write_json(dec, {"decisions": [{"subvideo_id": "sv_manual", "status": "approved"}]})
+
+    summary = ard.apply_review_decisions(meta, dec, out, strict=True)
+
+    assert summary["blockers"] == []
+    assert summary["status_counts"]["approved"] == 2
+    sub = json.loads(out.read_text(encoding="utf-8"))["subvideos"][0]
+    assert sub["review_status"] == "approved"
+    assert sub["reviewed_at"] is None
+
+
 def test_missing_status_no_strict_marked_invalid(tmp_path):
     meta = tmp_path / "meta.json"
     dec = tmp_path / "dec.json"

@@ -171,6 +171,15 @@ def _apply_decision(
     """将决策应用到单条子视频记录；返回 blocker（若被阻塞）或 None。"""
     sid = sub.get("subvideo_id", "<unknown>")
 
+    # 断裂前生成的负样本不需要人工审查决策，但仍须在 reviewed metadata
+    # 中具有 approved 状态，以满足后续训练导出的统一前置条件。
+    if sub.get("crop_type") == "neg_before":
+        sub["review_status"] = STATUS_APPROVED
+        sub["reviewed_at"] = None
+        sub["reviewer_notes"] = "系统默认通过断裂前(neg_before)子视频，无需人工审查"
+        sub["original_labels"] = _snapshot_labels(sub)
+        return None
+
     if decision is None:
         if strict:
             return {

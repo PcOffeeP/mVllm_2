@@ -212,6 +212,9 @@ def _init_decisions(
         if not isinstance(sid, str) or not sid:
             st.error("子视频记录缺少有效的 subvideo_id")
             st.stop()
+        # 断裂前负样本由下游自动标记为 approved，不生成人工审核记录。
+        if sub.get("crop_type") == "neg_before":
+            continue
         if sid not in decisions:
             decisions[sid] = {
                 "subvideo_id": sid,
@@ -512,6 +515,9 @@ def main() -> None:
 
         filtered: list[dict[str, Any]] = []
         for sub in subvideos:
+            # 断裂前负样本无需人工审查，不显示在审核队列中。
+            if sub.get("crop_type") == "neg_before":
+                continue
             sid = sub["subvideo_id"]
             status = decisions[sid].get("status")
             label = STATUS_LABELS.get(status, "未审查")
