@@ -20,8 +20,8 @@
 | 冻结划分 | `data/05_splits/*.json` | 3-fold train/val 与 test 的源视频级划分 |
 | 候选媒体 | `data/03_subvideos/`、`data/04_frames/` | 子视频 MP4 与模型实际抽帧图 |
 | 候选元数据 | `data/07_metadata/subvideos_meta.json` | 裁剪、抽帧映射、自动标签、fold 信息 |
-| 人工基线 | `data/07_metadata/subvideo_train_review_decisions.json` | 全量人工审查决策；增量轮次中只读保留 |
-| 增量队列 | `data/07_metadata/incremental_review_queue_metadata.json` | 仅本轮需重审的样本清单 |
+| 人工基线 | `data/07_metadata/review_decisions/subvideo_train_review_decisions.json` | 全量人工审查决策；增量轮次中只读保留 |
+| 增量队列 | `data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json` | 仅本轮需重审的样本清单 |
 | 最终决策 | `data/07_metadata/subvideo_train_review_decisions_final.json` | 基线与所有 delta 安全合并后的决策 |
 | 最终元数据 | `data/07_metadata/subvideos_meta.label_reviewed.json` | 唯一允许输入训练样本导出的 metadata |
 | 训练数据 | `data/06_merged/` | 各 fold 的 ShareGPT 样本、测试输入、统计信息 |
@@ -72,7 +72,7 @@ python pipeline/scripts/subvideo_builder.py \
 ```bash
 streamlit run pipeline/scripts/review_subvideos_app.py -- \
   --metadata data/07_metadata/subvideos_meta.json \
-  --output data/07_metadata/subvideo_train_review_decisions.json
+  --output data/07_metadata/review_decisions/subvideo_train_review_decisions.json
 ```
 
 人工对每条非 `neg_before` 子视频设置：
@@ -92,10 +92,10 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 ```bash
 python pipeline/scripts/prepare_incremental_review_queue.py \
   --metadata data/07_metadata/subvideos_meta.json \
-  --decisions data/07_metadata/subvideo_train_review_decisions.json \
+  --decisions data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
   --video-meta data/07_metadata/video_meta.json \
-  --output-metadata data/07_metadata/incremental_review_queue_metadata.json \
-  --output-csv data/07_metadata/incremental_review_queue.csv \
+  --output-metadata data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
+  --output-csv data/07_metadata/incremental_review/round_01/incremental_review_queue.csv \
   --include-approved-interval-conflicts
 ```
 
@@ -107,11 +107,11 @@ python pipeline/scripts/prepare_incremental_review_queue.py \
 
 ```bash
 python pipeline/scripts/materialize_incremental_review_media.py \
-  --queue data/07_metadata/incremental_review_queue_metadata.json \
+  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
   --video-meta data/07_metadata/video_meta.json \
   --output-root data/08_incremental_review/round_01 \
-  --output-metadata data/07_metadata/incremental_review_round_01_metadata.json \
-  --report data/07_metadata/incremental_review_round_01_report.json \
+  --output-metadata data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
+  --report data/07_metadata/incremental_review/round_01/incremental_review_round_01_report.json \
   --model models/minicpmv4_5
 ```
 
@@ -127,9 +127,9 @@ python pipeline/scripts/materialize_incremental_review_media.py \
 
 ```bash
 streamlit run pipeline/scripts/review_subvideos_app.py -- \
-  --metadata data/07_metadata/incremental_review_round_01_metadata.json \
+  --metadata data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
   --incremental-delta \
-  --output data/07_metadata/incremental_review_delta_decisions.json
+  --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions.json
 ```
 
 增量模式只输出本轮 delta，不会覆盖历史基线。界面会显示历史决策和队列原因作为只读上下文。
@@ -140,11 +140,11 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 
 ```bash
 python pipeline/scripts/append_incremental_failure_drops.py \
-  --baseline data/07_metadata/subvideo_train_review_decisions.json \
-  --delta data/07_metadata/incremental_review_delta_decisions.json \
-  --queue data/07_metadata/incremental_review_queue_metadata.json \
-  --report data/07_metadata/incremental_review_round_01_report.json \
-  --output data/07_metadata/incremental_review_delta_decisions_resolved.json
+  --baseline data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
+  --delta data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions.json \
+  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
+  --report data/07_metadata/incremental_review/round_01/incremental_review_round_01_report.json \
+  --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json
 ```
 
 这一步只将报告中的失败样本显式标为 `dropped`，并写入失败原因；它不覆盖历史基线。若所有生成都成功，或失败项将重新生成，则跳过本节，直接使用 UI 输出的 delta。
@@ -155,9 +155,9 @@ python pipeline/scripts/append_incremental_failure_drops.py \
 
 ```bash
 python pipeline/scripts/merge_incremental_review_decisions.py \
-  --baseline data/07_metadata/subvideo_train_review_decisions.json \
-  --delta data/07_metadata/incremental_review_delta_decisions_resolved.json \
-  --queue data/07_metadata/incremental_review_queue_metadata.json \
+  --baseline data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
+  --delta data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json \
+  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
   --output data/07_metadata/subvideo_train_review_decisions_final.json
 ```
 

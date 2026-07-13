@@ -23,12 +23,12 @@
 运行示例：
     python pipeline/scripts/apply_review_decisions.py \
         --metadata data/07_metadata/subvideos_meta.json \
-        --decisions data/07_metadata/subvideo_train_review_decisions.json
+        --decisions data/07_metadata/review_decisions/subvideo_train_review_decisions.json
 
     # 非严格模式（允许未审查/needs_regenerate 通过）
     python pipeline/scripts/apply_review_decisions.py \
         --metadata data/07_metadata/subvideos_meta.json \
-        --decisions data/07_metadata/subvideo_train_review_decisions.json \
+        --decisions data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
         --no-strict
 """
 
@@ -304,11 +304,11 @@ def main() -> int:
         epilog="""
 示例:
   %(prog)s --metadata data/07_metadata/subvideos_meta.json \\
-      --decisions data/07_metadata/subvideo_train_review_decisions.json
+      --decisions data/07_metadata/review_decisions/subvideo_train_review_decisions.json
 
   # 允许未审查/needs_regenerate 通过（不推荐用于正式导出）
   %(prog)s --metadata data/07_metadata/subvideos_meta.json \\
-      --decisions data/07_metadata/subvideo_train_review_decisions.json --no-strict
+      --decisions data/07_metadata/review_decisions/subvideo_train_review_decisions.json --no-strict
         """.strip(),
     )
     parser.add_argument(
@@ -321,7 +321,7 @@ def main() -> int:
         "--decisions",
         type=Path,
         required=True,
-        help="审查决策文件路径（如 data/07_metadata/subvideo_train_review_decisions.json）。",
+        help="审查决策文件路径（如 data/07_metadata/review_decisions/subvideo_train_review_decisions.json）。",
     )
     parser.add_argument(
         "--output",

@@ -158,10 +158,10 @@ def prepare_incremental_review_queue(
 def main() -> int:
     parser = argparse.ArgumentParser(description="生成不覆盖历史决策的增量复审队列")
     parser.add_argument("--metadata", type=Path, default=PROJECT_ROOT / "data/07_metadata/subvideos_meta.json")
-    parser.add_argument("--decisions", type=Path, default=PROJECT_ROOT / "data/07_metadata/subvideo_train_review_decisions.json")
+    parser.add_argument("--decisions", type=Path, default=PROJECT_ROOT / "data/07_metadata/review_decisions/subvideo_train_review_decisions.json")
     parser.add_argument("--video-meta", type=Path, default=PROJECT_ROOT / "data/07_metadata/video_meta.json")
-    parser.add_argument("--output-metadata", type=Path, default=PROJECT_ROOT / "data/07_metadata/incremental_review_queue_metadata.json")
-    parser.add_argument("--output-csv", type=Path, default=PROJECT_ROOT / "data/07_metadata/incremental_review_queue.csv")
+    parser.add_argument("--output-metadata", type=Path, default=PROJECT_ROOT / "data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json")
+    parser.add_argument("--output-csv", type=Path, default=PROJECT_ROOT / "data/07_metadata/incremental_review/round_01/incremental_review_queue.csv")
     parser.add_argument("--include-approved-interval-conflicts", action="store_true")
     args = parser.parse_args()
     summary = prepare_incremental_review_queue(
