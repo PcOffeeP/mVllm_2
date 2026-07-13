@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-训练样本构建器（判断依据 + 四字段结果）
+训练样本构建器（四字段 JSON 结果）
 
 默认将 ``data/07_metadata/subvideos_meta.label_reviewed.json`` 中的复检后
 子视频元数据转换为 LLaMA-Factory ShareGPT 格式的多模态训练样本，并按
 ``data/05_splits/`` 中的 video_id 集合分组输出到 ``data/06_merged/``。
 
-训练 assistant target 格式为：
-    判断依据：<1-3 句视觉证据说明>
-    结果：{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
+训练 assistant target 为一个严格的四字段 JSON 对象：
+    {"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
 
 正式训练链路不应直接消费未经过人工审核和标签复检的
 ``subvideos_meta.json``；调试时可显式传入 ``--subvideos-meta`` 覆盖。
@@ -214,45 +213,13 @@ def compute_effective_frames(sub: dict[str, Any]) -> int:
     return len(mapping)
 
 
-def _build_evidence_sentence(
-    has_fracture: bool,
-    ftype: str,
-    fracture_between: list[int, int] | None,
-    location: str | None,
-) -> str:
-    """根据标签生成 1-3 句视觉证据说明。"""
-    if ftype == "视频异常":
-        if has_fracture:
-            return "视频画面存在异常，但仍标记有断裂事件，区间信息不可靠。"
-        return "视频画面存在异常，无法可靠识别断裂事件。"
-
-    if has_fracture:
-        if ftype == "未夹紧":
-            return "夹持区域未形成有效标距，记录为夹紧异常事件。"
-
-        interval_text = (
-            f"采样帧 {fracture_between[0]} 与帧 {fracture_between[1]} 之间"
-            if fracture_between and len(fracture_between) == 2
-            else "未知相邻帧区间"
-        )
-        loc_text = {
-            "inside_gauge": "标距内",
-            "outside_gauge": "标距外",
-        }.get(location, location or "位置不明确")
-        return f"在 {interval_text} 观察到断裂形貌突变，呈现 {ftype} 特征，断裂位于 {loc_text}。"
-
-    return "在提供的采样帧序列中未观察到试样断裂，形貌保持连续。"
-
-
 def build_assistant_content(sub: dict[str, Any]) -> str:
-    """构造 assistant 输出：判断依据 + 可解析 JSON 结果区（不含 confidence）。"""
+    """构造 assistant 输出：严格四字段 JSON（不含 confidence 或解释文本）。"""
     # ``None`` 对视频异常表示“无法判定”，必须原样写入 JSON，不能用 bool() 折叠为 False。
     has_fracture = sub["has_fracture_canonical"]
     ftype = sub["type"]
     location = sub.get("location_canonical")
     fracture_between = sub.get("fracture_between") if has_fracture is True else None
-
-    evidence = _build_evidence_sentence(has_fracture, ftype, fracture_between, location)
 
     result: dict[str, Any] = {
         "has_fracture": has_fracture,
@@ -263,7 +230,7 @@ def build_assistant_content(sub: dict[str, Any]) -> str:
     result_json = json.dumps(
         result, ensure_ascii=False, separators=(",", ":"), allow_nan=False
     )
-    return f"判断依据：{evidence}\n结果：{result_json}"
+    return result_json
 
 
 def _build_actual_frame_mapping(sub: dict[str, Any]) -> list[dict[str, Any]]:
@@ -361,41 +328,12 @@ def convert_subvideo_to_sample(
         {"role": "assistant", "content": assistant_content},
     ]
 
-    sample: dict[str, Any] = {
-        "id": sub["subvideo_id"],
+    # LlamaFactory OpenAI/ShareGPT 多模态训练只消费 messages 和 videos。
+    # 标签、审核状态、帧映射及来源信息只保留在 07_metadata，避免混入训练样本。
+    return {
         "videos": [_normalize_video_path(sub["video_path"])],
         "messages": messages,
-        "has_fracture": sub["has_fracture_canonical"],
-        "has_fracture_canonical": sub["has_fracture_canonical"],
-        "fracture_between": sub.get("fracture_between"),
-        "type": sub["type"],
-        "location": sub["location_canonical"],
-        "location_canonical": sub["location_canonical"],
-        "source_type": sub.get("source_type", sub["type"]),
-        "source_location": sub.get("source_location", sub["location"]),
-        "source_video": sub["source_video"],
-        "start_frame": sub.get("start_frame"),
-        "end_frame": sub.get("end_frame"),
-        "actual_frame_mapping": _build_actual_frame_mapping(sub),
-        "processor_fingerprint": processor_fingerprint,
-        "selection_reason": sub.get("selection_reason"),
-        "exclusion_reason": sub.get("exclusion_reason"),
-        "prompt_version": library.get("version"),
-        "metadata": {
-            "subvideo_id": sub["subvideo_id"],
-            "source_video": sub["source_video"],
-            "video_path": _normalize_video_path(sub["video_path"]),
-            "prompt_version": library.get("version"),
-            "review_status": sub.get("review_status"),
-            "reviewed_at": sub.get("reviewed_at"),
-            "fracture_between": sub.get("fracture_between"),
-            "location_canonical": sub["location_canonical"],
-            "type": sub["type"],
-            "has_fracture_canonical": sub["has_fracture_canonical"],
-            "actual_frame_mapping": _build_actual_frame_mapping(sub),
-        },
     }
-    return sample
 
 
 
@@ -517,25 +455,39 @@ def _counter_to_dict(counter: Counter[Any], top_k: int | None = None) -> dict[st
     return {str(k): int(v) for k, v in items}
 
 
+def _sample_output(sample: dict[str, Any]) -> dict[str, Any]:
+    """读取纯 JSON assistant target，用于训练外的统计汇总。"""
+    for message in sample.get("messages", []):
+        if message.get("role") == "assistant":
+            return json.loads(message["content"])
+    raise ValueError("training sample missing assistant message")
+
+
 def compute_samples_meta(
     split_samples: dict[str, list[dict[str, Any]]],
     split_video_ids: dict[str, set[str]],
+    source_by_video_path: dict[str, dict[str, Any]],
     prompt_version: str | None = None,
 ) -> dict[str, Any]:
-    """汇总每个 fold 的样本数、正负样本分布、视频来源分布等统计信息。"""
+    """汇总训练外统计；训练 JSON 本身不保留标签或追溯字段。"""
     split_meta: dict[str, Any] = {}
     total_pos = 0
     total_neg = 0
 
     for name, samples in split_samples.items():
-        pos = sum(1 for s in samples if is_positive_label(s))
+        outputs = [_sample_output(sample) for sample in samples]
+        provenance = [
+            source_by_video_path[sample["videos"][0]]
+            for sample in samples
+        ]
+        pos = sum(1 for output in outputs if output["has_fracture"] is True)
         neg = len(samples) - pos
         total_pos += pos
         total_neg += neg
 
-        source_dist = Counter(s["source_video"] for s in samples)
-        type_dist = Counter(s["type"] for s in samples)
-        source_type_dist = Counter(s["source_type"] for s in samples)
+        source_dist = Counter(sub["source_video"] for sub in provenance)
+        type_dist = Counter(output["type"] for output in outputs)
+        source_type_dist = Counter(sub.get("source_type", sub["type"]) for sub in provenance)
 
         pos_ratio = round(pos / len(samples), 4) if samples else 0.0
         neg_ratio = round(neg / len(samples), 4) if samples else 0.0
@@ -553,7 +505,10 @@ def compute_samples_meta(
 
     all_source_ids = set()
     for samples in split_samples.values():
-        all_source_ids.update(s["source_video"] for s in samples)
+        all_source_ids.update(
+            source_by_video_path[sample["videos"][0]]["source_video"]
+            for sample in samples
+        )
 
     return {
         "prompt_version": prompt_version,
@@ -660,11 +615,7 @@ def build_all(
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, samples in split_samples.items():
         out_path = output_dir / f"{name}.json"
-        clean_samples = [
-            {k: v for k, v in s.items() if k in ("messages", "videos", "metadata")}
-            for s in samples
-        ]
-        write_json(out_path, clean_samples)
+        write_json(out_path, samples)
         print(f"写入: {out_path} ({len(samples)} 条样本)")
 
     test_ids = split_video_ids.get("test", set())
@@ -684,7 +635,17 @@ def build_all(
             print(f"警告：未找到 video_meta，跳过测试清单生成: {vm_path}")
 
     print("汇总样本统计信息...")
-    samples_meta = compute_samples_meta(split_samples, split_video_ids, prompt_version=prompt_version)
+    source_by_video_path = {
+        _normalize_video_path(sub["video_path"]): sub
+        for sub in subvideos
+        if sub.get("review_status") == STATUS_APPROVED
+    }
+    samples_meta = compute_samples_meta(
+        split_samples,
+        split_video_ids,
+        source_by_video_path=source_by_video_path,
+        prompt_version=prompt_version,
+    )
     meta_path = output_dir / "samples_meta.json"
     write_json(meta_path, samples_meta)
     print(f"写入: {meta_path}")

@@ -37,6 +37,42 @@ def _reviewed_sub(has_fracture: bool, source_video: str = "video_0001") -> dict:
     }
 
 
+def test_pure_sharegpt_sample_contract_rejects_metadata_and_explanation(tmp_path):
+    """新训练 JSON 不允许 metadata，也不允许旧的解释/结果前缀。"""
+    merged = _make_merged_dir(tmp_path)
+    sample = {
+        "videos": ["data/03_subvideos/sub.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {"role": "assistant", "content": '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
+        ],
+        "metadata": {"source_video": "video_0001"},
+    }
+    _write_train_file(merged, [sample])
+    errors: list[dict] = []
+    quality_check._validate_assistant_targets(merged, errors, [])
+    assert any(e["check"] == "sample_schema" for e in errors)
+    assert any(e.get("detail") == "contains_removed_explanation_section" for e in errors)
+
+
+def test_pure_sharegpt_sample_contract_accepts_json_only(tmp_path):
+    """新契约仅允许 videos/messages 与严格四字段 JSON target。"""
+    merged = _make_merged_dir(tmp_path)
+    sample = {
+        "videos": ["data/03_subvideos/sub.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {"role": "assistant", "content": '{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
+        ],
+    }
+    _write_train_file(merged, [sample])
+    errors: list[dict] = []
+    quality_check._validate_assistant_targets(merged, errors, [])
+    assert errors == []
+
+
 def test_quality_check_defaults_to_label_reviewed_meta():
     default = inspect.signature(
         quality_check.run_quality_check

@@ -1052,15 +1052,14 @@ def _make_training_sub(
 
 
 def _parse_result(content: str) -> dict[str, Any]:
-    """从 assistant content 中提取并解析结果区 JSON。"""
-    assert "判断依据：" in content
-    assert "结果：" in content
-    result_part = content.split("结果：", 1)[1].strip()
-    return json.loads(result_part)
+    """assistant content 必须是严格的四字段 JSON。"""
+    assert "判断依据：" not in content
+    assert "结果：" not in content
+    return json.loads(content)
 
 
-def test_positive_sample_assistant_content_has_evidence_and_parsable_result(prompt_library) -> None:
-    """正样本 assistant target 包含判断依据、可解析结果区，且不包含 confidence。"""
+def test_positive_sample_assistant_content_is_pure_json(prompt_library) -> None:
+    """正样本 assistant target 是不含解释或 confidence 的 JSON。"""
     sub = _make_training_sub(
         subvideo_id="sub_pos",
         has_fracture=True,
@@ -1072,8 +1071,8 @@ def test_positive_sample_assistant_content_has_evidence_and_parsable_result(prom
     assistant = sample["messages"][2]["content"]
 
     assert "confidence" not in assistant.lower()
-    assert "判断依据：" in assistant
-    assert "结果：" in assistant
+    assert "判断依据：" not in assistant
+    assert "结果：" not in assistant
 
     result = _parse_result(assistant)
     assert set(result.keys()) == {"has_fracture", "fracture_between", "type", "location"}
@@ -1096,8 +1095,8 @@ def test_negative_sample_assistant_content_has_no_fracture(prompt_library) -> No
     assistant = sample["messages"][2]["content"]
 
     assert "confidence" not in assistant.lower()
-    assert "判断依据：" in assistant
-    assert "结果：" in assistant
+    assert "判断依据：" not in assistant
+    assert "结果：" not in assistant
 
     result = _parse_result(assistant)
     assert set(result.keys()) == {"has_fracture", "fracture_between", "type", "location"}
@@ -1120,8 +1119,8 @@ def test_anomaly_sample_assistant_content_structured_as_anomaly(prompt_library) 
     assistant = sample["messages"][2]["content"]
 
     assert "confidence" not in assistant.lower()
-    assert "判断依据：" in assistant
-    assert "结果：" in assistant
+    assert "判断依据：" not in assistant
+    assert "结果：" not in assistant
 
     result = _parse_result(assistant)
     assert set(result.keys()) == {"has_fracture", "fracture_between", "type", "location"}
@@ -1172,17 +1171,16 @@ def test_training_sample_messages_order_and_system_prompt(prompt_library) -> Non
     assert "<video>" in messages[1]["content"]
 
 
-def test_training_sample_prompt_version_propagated_to_metadata(prompt_library) -> None:
-    """prompt_version 被写入样本 metadata 与顶层字段。"""
+def test_training_sample_has_only_llamafactory_fields(prompt_library) -> None:
+    """训练样本只保留 LlamaFactory 所需的 videos 与 messages。"""
     sub = _make_training_sub(subvideo_id="sub_version")
     sample = convert_subvideo_to_sample(sub, library=prompt_library)
 
-    assert sample["prompt_version"] == prompt_library["version"]
-    assert sample["metadata"]["prompt_version"] == prompt_library["version"]
+    assert set(sample) == {"videos", "messages"}
 
 
-def test_training_sample_has_traceability_metadata(prompt_library) -> None:
-    """训练样本包含可追溯 metadata 字段，用于质量门验证。"""
+def test_training_sample_excludes_traceability_metadata(prompt_library) -> None:
+    """可追溯信息只在 07_metadata，训练样本不重复保存。"""
     sub = _make_training_sub(
         subvideo_id="sub_trace",
         has_fracture=True,
@@ -1194,24 +1192,10 @@ def test_training_sample_has_traceability_metadata(prompt_library) -> None:
     sub["reviewed_at"] = "2026-07-09T12:00:00+00:00"
     sample = convert_subvideo_to_sample(sub, library=prompt_library)
 
-    assert "metadata" in sample
-    metadata = sample["metadata"]
-    assert metadata["subvideo_id"] == "sub_trace"
-    assert metadata["source_video"] == "video_0001"
-    assert metadata["video_path"] == "data/03_subvideos/sub_trace.mp4"
-    assert metadata["prompt_version"] == prompt_library["version"]
-    assert metadata["review_status"] == "approved"
-    assert metadata["reviewed_at"] == "2026-07-09T12:00:00+00:00"
-    assert metadata["fracture_between"] == [2, 3]
-    assert metadata["location_canonical"] == "inside_gauge"
-    assert metadata["type"] == "韧性断裂"
-    assert metadata["has_fracture_canonical"] is True
-    assert "actual_frame_mapping" in metadata
-    assert metadata["actual_frame_mapping"] == sub["actual_frame_mapping"]
-
-    # ShareGPT 核心字段保留
-    assert "messages" in sample
-    assert "videos" in sample
+    assert set(sample) == {"messages", "videos"}
+    assert "metadata" not in sample
+    assert "source_video" not in sample
+    assert "has_fracture" not in sample
 
 
 def test_convert_subvideo_to_sample_rejects_non_approved(prompt_library) -> None:
@@ -1239,7 +1223,7 @@ def test_build_split_samples_drops_dropped_subvideos(
     )
 
     assert len(split_samples["fold_0_train"]) == 1
-    assert split_samples["fold_0_train"][0]["id"] == "sub_approved"
+    assert split_samples["fold_0_train"][0]["videos"] == ["data/03_subvideos/sub_approved.mp4"]
 
 
 @pytest.mark.parametrize("bad_status", ["unreviewed", "needs_regenerate", None])
@@ -1312,7 +1296,7 @@ def test_build_split_samples_allows_dropped_excluded_subvideos(
     )
 
     assert len(split_samples["fold_0_train"]) == 1
-    assert split_samples["fold_0_train"][0]["id"] == "sub_approved"
+    assert split_samples["fold_0_train"][0]["videos"] == ["data/03_subvideos/sub_approved.mp4"]
 
 
 @pytest.mark.parametrize("bad_item", [None, "not-a-dict"])

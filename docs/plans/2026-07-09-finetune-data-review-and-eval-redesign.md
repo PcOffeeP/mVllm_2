@@ -4,13 +4,13 @@
 
 优化目标是让微调模型理解拉伸断裂标签，而不是学习固定 JSON 输出。流程分三块：
 
-1. 训练样本改为多问法 + 解释型监督。
+1. 训练样本改为多问法 + 结构化 JSON 监督。
 2. 训练级和测试级子视频都进入同一套人工审查 UI。
 3. 评估先保持轻量，重点保存模型原始输出，并保证 prompt 与训练一致。
 
 默认决策：
 
-- 训练输出采用“判断依据 + 可解析结果区”。
+- 训练输出采用严格的四字段 JSON。
 - 训练 target 去掉 `confidence`。
 - 推理时仍要求模型自行返回 `confidence`。
 - 人工复查 UI 同时服务训练子视频和测试子视频。
@@ -32,8 +32,7 @@
 训练 assistant target 改为：
 
 ```text
-判断依据：<1-3 句视觉证据说明>
-结果：{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
+{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
 ```
 
 训练 target 不包含 `confidence`。推理时结果区包含 `confidence`，由模型根据可见证据自行判断。
@@ -146,7 +145,7 @@ test_subvideos_meta.json
 暂不优先做复杂自动指标，只保留基础检查：
 
 - raw output 是否非空。
-- 是否能找到 `结果：` 区。
+- 输出是否为可解析且字段完整的 JSON。
 - prompt 是否与训练模板版本一致。
 
 后续需要更严谨比较时，再扩展字段准确率、区间命中率、模式分类和位置判断等指标。
@@ -163,7 +162,7 @@ UI/审查流程测试：
 训练样本测试：
 
 - assistant target 不包含 `confidence`。
-- 每条样本包含判断依据和可解析结果区。
+- 每条样本只含 `videos`、`messages`，且 assistant target 是可解析 JSON。
 - prompt 变体来自统一模板源。
 
 测试评估流程测试：

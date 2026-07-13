@@ -6,7 +6,7 @@
 
 当前检查项：
 - 媒体路径存在性
-- assistant target 格式（判断依据 + 结果区 JSON，不含 confidence）
+- assistant target 为严格四字段 JSON（不含解释文本或 confidence）
 - 结果区字段与 ``pipeline/prompt_library.yaml`` 的 ``target_schema`` 一致
 - ``prompt_version`` 一致性
 - 训练/验证样本对应子视频 ``review_status`` 为 approved
@@ -143,11 +143,11 @@ def _load_prompt_library(path: Path) -> dict[str, Any]:
 
 
 def _sample_id(sample: dict[str, Any]) -> str | None:
-    """统一获取样本 id：优先顶层 ``id``，否则回退到 ``metadata.subvideo_id``。
-
-    训练样本导出后通常不再保留顶层 ``id``，因此实际多从 metadata 读取。
-    """
-    return sample.get("id") or sample.get("metadata", {}).get("subvideo_id")
+    """生成诊断 ID；训练样本不保存业务标签或 metadata。"""
+    videos = sample.get("videos")
+    if isinstance(videos, list) and videos and isinstance(videos[0], str):
+        return Path(videos[0]).stem
+    return None
 
 
 def _extract_assistant_text(sample: dict[str, Any]) -> str | None:
@@ -162,36 +162,15 @@ def _extract_assistant_text(sample: dict[str, Any]) -> str | None:
 
 
 def _extract_assistant_output(sample: dict[str, Any]) -> dict[str, Any] | None:
-    """从 assistant 消息中提取结果区 JSON 字典。
-
-    兼容旧版纯 JSON 格式和新版 ``判断依据 + 结果区`` 文本格式。
-    """
+    """从纯 JSON assistant target 中提取四字段结果。"""
     content = _extract_assistant_text(sample)
     if content is None:
         return None
 
-    # 先尝试旧版纯 JSON
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        pass
-
-    # 新版文本格式：解析 ``结果：`` 后的 JSON
-    if "结果：" in content:
-        result_part = content.split("结果：", 1)[1].strip()
-        # 结果区可能包含尾部说明，取第一个 JSON 对象/数组
-        try:
-            return json.loads(result_part)
-        except json.JSONDecodeError:
-            # 尝试取第一个完整的 JSON 对象
-            match = re.search(r"(\{.*\})", result_part, re.DOTALL)
-            if match:
-                try:
-                    return json.loads(match.group(1))
-                except json.JSONDecodeError:
-                    return None
-            return None
-    return None
+        return None
 
 
 def _is_adjacent_pair(value: Any) -> bool:
@@ -292,6 +271,13 @@ def _resolve_media_path(rel: str, project_root: Path) -> Path:
     if rel.startswith("data/"):
         return project_root / rel
     return project_root / "data" / rel
+
+
+def _video_path_key(value: Any) -> str | None:
+    """将 data/ 前缀差异归一化，用于训练样本和 metadata 的关联。"""
+    if not isinstance(value, str) or not value:
+        return None
+    return value.removeprefix("data/")
 
 
 def _matches_legal_combination(output: dict[str, Any]) -> bool:
@@ -402,7 +388,7 @@ def _validate_assistant_targets(
     errors: list[dict[str, Any]],
     warnings: list[dict[str, Any]],
 ) -> None:
-    """检查训练样本 assistant target 格式、无 confidence、结果区可解析。"""
+    """检查 LlamaFactory 样本仅含 messages/videos，target 为严格四字段 JSON。"""
     for path in sorted(merged_dir.glob("*.json")):
         if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
             continue
@@ -412,6 +398,17 @@ def _validate_assistant_targets(
         for sample in data:
             if not isinstance(sample, dict):
                 continue
+            unexpected_fields = set(sample) - {"messages", "videos"}
+            if unexpected_fields:
+                errors.append(
+                    {
+                        "check": "sample_schema",
+                        "file": path.name,
+                        "id": _sample_id(sample),
+                        "detail": "unexpected_top_level_fields",
+                        "fields": sorted(unexpected_fields),
+                    }
+                )
             text = _extract_assistant_text(sample)
             if text is None:
                 errors.append(
@@ -424,25 +421,15 @@ def _validate_assistant_targets(
                 )
                 continue
 
-            if "判断依据：" not in text:
+            if "判断依据：" in text or "结果：" in text:
                 errors.append(
                     {
                         "check": "assistant_target",
                         "file": path.name,
                         "id": _sample_id(sample),
-                        "detail": "missing_evidence_section",
+                        "detail": "contains_removed_explanation_section",
                     }
                 )
-            if "结果：" not in text:
-                errors.append(
-                    {
-                        "check": "assistant_target",
-                        "file": path.name,
-                        "id": _sample_id(sample),
-                        "detail": "missing_result_section",
-                    }
-                )
-                continue
 
             output = _extract_assistant_output(sample)
             if output is None:
@@ -518,9 +505,15 @@ def _validate_assistant_targets(
 
 def _validate_fracture_between(
     merged_dir: Path,
+    reviewed_subvideos: list[dict[str, Any]] | None,
     errors: list[dict[str, Any]],
     warnings: list[dict[str, Any]],
 ) -> None:
+    mappings_by_video = {
+        _video_path_key(sub.get("video_path")): sub.get("actual_frame_mapping") or []
+        for sub in reviewed_subvideos or []
+        if _video_path_key(sub.get("video_path")) is not None
+    }
     for path in sorted(merged_dir.glob("*.json")):
         if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
             continue
@@ -536,13 +529,9 @@ def _validate_fracture_between(
             fb = output.get("fracture_between")
             if fb is None:
                 continue
-            metadata = sample.get("metadata")
-            if isinstance(metadata, dict):
-                mapping = metadata.get("actual_frame_mapping") or []
-            else:
-                mapping = []
-            if not mapping:
-                mapping = sample.get("actual_frame_mapping") or []
+            videos = sample.get("videos")
+            video_path = videos[0] if isinstance(videos, list) and videos else None
+            mapping = mappings_by_video.get(_video_path_key(video_path), [])
             n = len(mapping)
             if n == 0:
                 warnings.append(
@@ -607,51 +596,18 @@ def _validate_prompt_version_consistency(
     prompt_version: str | None,
     errors: list[dict[str, Any]],
 ) -> None:
-    """检查所有训练/验证样本的 prompt_version 一致且等于模板库 version。"""
-    seen_versions: set[str] = set()
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
-        data = _load_json(path)
-        if not isinstance(data, list):
-            continue
-        for sample in data:
-            if not isinstance(sample, dict):
-                continue
-            metadata = sample.get("metadata")
-            if isinstance(metadata, dict):
-                pv = metadata.get("prompt_version")
-            else:
-                pv = sample.get("prompt_version")
-            if pv is None:
-                errors.append(
-                    {
-                        "check": "prompt_version",
-                        "file": path.name,
-                        "id": _sample_id(sample),
-                        "detail": "missing_prompt_version",
-                    }
-                )
-                continue
-            seen_versions.add(pv)
-            if prompt_version is not None and pv != prompt_version:
-                errors.append(
-                    {
-                        "check": "prompt_version",
-                        "file": path.name,
-                        "id": _sample_id(sample),
-                        "detail": "prompt_version_mismatch",
-                        "expected": prompt_version,
-                        "actual": pv,
-                    }
-                )
-
-    if len(seen_versions) > 1:
+    """通过训练外 samples_meta 验证导出时使用的 prompt library version。"""
+    samples_meta = _load_json(merged_dir / "samples_meta.json")
+    actual = samples_meta.get("prompt_version") if isinstance(samples_meta, dict) else None
+    if actual is None:
+        errors.append({"check": "prompt_version", "detail": "missing_samples_meta_version"})
+    elif prompt_version is not None and actual != prompt_version:
         errors.append(
             {
                 "check": "prompt_version",
-                "detail": "inconsistent_prompt_versions",
-                "versions": sorted(seen_versions),
+                "detail": "prompt_version_mismatch",
+                "expected": prompt_version,
+                "actual": actual,
             }
         )
 
@@ -1095,18 +1051,17 @@ def _validate_review_status(
     """检查训练/验证样本对应的子视频 review_status 必须为 approved。
 
     以 ``subvideos_meta.label_reviewed.json``（``reviewed_subvideos``）为权威来源，
-    建立 ``subvideo_id -> review_status`` 映射。训练样本的 ``metadata.subvideo_id``
-    用于在权威映射中定位；样本自身 ``metadata.review_status`` 仅与权威状态交叉校验，
-    不能覆盖权威状态。
+    建立 ``video_path -> review_status`` 映射。训练样本只含 videos/messages，
+    因此通过视频路径在权威 metadata 中定位。
     """
-    review_status_by_id: dict[str, Any] = {}
+    review_status_by_video: dict[str, Any] = {}
     if reviewed_subvideos is not None:
         for sub in reviewed_subvideos:
             if not isinstance(sub, dict):
                 continue
-            sid = sub.get("subvideo_id")
-            if isinstance(sid, str) and sid:
-                review_status_by_id[sid] = sub.get("review_status")
+            video_path = _video_path_key(sub.get("video_path"))
+            if video_path:
+                review_status_by_video[video_path] = sub.get("review_status")
 
     for path in sorted(merged_dir.glob("*.json")):
         if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
@@ -1120,30 +1075,26 @@ def _validate_review_status(
             if not isinstance(sample, dict):
                 continue
             display_id = _sample_id(sample)
-            metadata = sample.get("metadata")
-            lookup_id = (
-                metadata.get("subvideo_id")
-                if isinstance(metadata, dict)
-                else None
-            ) or display_id
-            if not isinstance(lookup_id, str) or not lookup_id:
+            videos = sample.get("videos")
+            lookup_video = videos[0] if isinstance(videos, list) and videos else None
+            if not isinstance(lookup_video, str) or not lookup_video:
                 errors.append(
                     {
                         "check": "review_status",
                         "file": path.name,
                         "id": display_id,
-                        "detail": "missing_subvideo_id",
+                        "detail": "missing_video_path",
                     }
                 )
                 continue
-            authoritative_status = review_status_by_id.get(lookup_id)
+            authoritative_status = review_status_by_video.get(_video_path_key(lookup_video))
             if authoritative_status is None:
                 errors.append(
                     {
                         "check": "review_status",
                         "file": path.name,
                         "id": display_id,
-                        "detail": "subvideo_not_found_in_reviewed_meta",
+                        "detail": "video_not_found_in_reviewed_meta",
                         "review_status": None,
                     }
                 )
@@ -1158,19 +1109,6 @@ def _validate_review_status(
                         "review_status": authoritative_status,
                     }
                 )
-            if isinstance(metadata, dict) and "review_status" in metadata:
-                metadata_status = metadata["review_status"]
-                if metadata_status != authoritative_status:
-                    errors.append(
-                        {
-                            "check": "review_status",
-                            "file": path.name,
-                            "id": display_id,
-                            "detail": "metadata_review_status_mismatch",
-                            "authoritative": authoritative_status,
-                            "metadata": metadata_status,
-                        }
-                    )
 
 
 def _validate_test_input_isolation(
@@ -1291,7 +1229,7 @@ def run_quality_check(
         test_inputs = _load_json(merged_dir / "test_inputs.json")
         _validate_media_paths(merged_dir, test_inputs, errors, warnings, project_root)
         _validate_assistant_targets(merged_dir, errors, warnings)
-        _validate_fracture_between(merged_dir, errors, warnings)
+        _validate_fracture_between(merged_dir, reviewed_subvideos, errors, warnings)
         _validate_prompt_version_consistency(merged_dir, prompt_version, errors)
         _validate_no_test_sharegpt(merged_dir, errors)
         _validate_processor_fingerprints(merged_dir, subvideos_meta_path, errors, warnings)

@@ -32,16 +32,13 @@ user_prompt_templates:
       这段视频里试样断了吗？如果断了，请说明发生在哪两个相邻采样帧之间、断裂模式和位置。
 
 target_format: |
-  判断依据：<1-3 句视觉证据说明>
-  结果：{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
+  {"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
 
   示例（未夹紧）：
-  判断依据：夹持区域未形成有效标距，记录为夹紧异常事件。
-  结果：{"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null}
+  {"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null}
 
   示例（未断裂）：
-  判断依据：在提供的采样帧序列中未观察到试样断裂，形貌保持连续。
-  结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}
+  {"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}
 
 target_schema:
   has_fracture:
@@ -66,16 +63,13 @@ target_schema:
 #   由模型根据可见证据自行判断。
 
 inference_target_format: |
-  判断依据：<1-3 句视觉证据说明>
-  结果：{"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ..., "confidence": ...}
+  {"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ..., "confidence": ...}
 
   示例（未夹紧）：
-  判断依据：夹持区域未形成有效标距，记录为夹紧异常事件。
-  结果：{"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null,"confidence":0.7}
+  {"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null,"confidence":0.7}
 
   示例（未断裂）：
-  判断依据：在提供的采样帧序列中未观察到试样断裂，形貌保持连续。
-  结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null,"confidence":0.9}
+  {"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null,"confidence":0.9}
 
 inference_target_schema:
   has_fracture:
