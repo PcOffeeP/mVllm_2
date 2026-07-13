@@ -444,7 +444,7 @@ def audit_review_decisions(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="审计已完成的子视频人工审查决策")
-    parser.add_argument("--decisions", type=Path, default=PROJECT_ROOT / "data/07_metadata/subvideo_train_review_decisions.json")
+    parser.add_argument("--decisions", type=Path, default=PROJECT_ROOT / "data/07_metadata/review_decisions/subvideo_train_review_decisions.json")
     parser.add_argument("--annotations", type=Path, default=PROJECT_ROOT / "data/02_annotations/all_videos_tag.csv")
     parser.add_argument("--video-meta", type=Path, default=PROJECT_ROOT / "data/07_metadata/video_meta.json")
     parser.add_argument("--subvideos-meta", type=Path, default=None, help="可选；提供后可重算 fracture_between")

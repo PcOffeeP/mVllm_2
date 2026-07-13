@@ -20,8 +20,8 @@
 | 冻结划分 | `data/05_splits/*.json` | 3-fold train/val 与 test 的源视频级划分 |
 | 候选媒体 | `data/03_subvideos/`、`data/04_frames/` | 子视频 MP4 与模型实际抽帧图 |
 | 候选元数据 | `data/07_metadata/subvideos_meta.json` | 裁剪、抽帧映射、自动标签、fold 信息 |
-| 人工基线 | `data/07_metadata/subvideo_train_review_decisions.json` | 全量人工审查决策；增量轮次中只读保留 |
-| 增量队列 | `data/07_metadata/incremental_review_queue_metadata.json` | 仅本轮需重审的样本清单 |
+| 人工基线 | `data/07_metadata/review_decisions/subvideo_train_review_decisions.json` | 全量人工审查决策；增量轮次中只读保留 |
+| 增量队列 | `data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json` | 仅本轮需重审的样本清单 |
 | 最终决策 | `data/07_metadata/subvideo_train_review_decisions_final.json` | 基线与所有 delta 安全合并后的决策 |
 | 最终元数据 | `data/07_metadata/subvideos_meta.label_reviewed.json` | 唯一允许输入训练样本导出的 metadata |
 | 训练数据 | `data/06_merged/` | 各 fold 的 ShareGPT 样本、测试输入、统计信息 |
@@ -72,7 +72,7 @@ python pipeline/scripts/subvideo_builder.py \
 ```bash
 streamlit run pipeline/scripts/review_subvideos_app.py -- \
   --metadata data/07_metadata/subvideos_meta.json \
-  --output data/07_metadata/subvideo_train_review_decisions.json
+  --output data/07_metadata/review_decisions/subvideo_train_review_decisions.json
 ```
 
 人工对每条非 `neg_before` 子视频设置：
@@ -92,10 +92,10 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 ```bash
 python pipeline/scripts/prepare_incremental_review_queue.py \
   --metadata data/07_metadata/subvideos_meta.json \
-  --decisions data/07_metadata/subvideo_train_review_decisions.json \
+  --decisions data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
   --video-meta data/07_metadata/video_meta.json \
-  --output-metadata data/07_metadata/incremental_review_queue_metadata.json \
-  --output-csv data/07_metadata/incremental_review_queue.csv \
+  --output-metadata data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
+  --output-csv data/07_metadata/incremental_review/round_01/incremental_review_queue.csv \
   --include-approved-interval-conflicts
 ```
 
@@ -107,11 +107,11 @@ python pipeline/scripts/prepare_incremental_review_queue.py \
 
 ```bash
 python pipeline/scripts/materialize_incremental_review_media.py \
-  --queue data/07_metadata/incremental_review_queue_metadata.json \
+  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
   --video-meta data/07_metadata/video_meta.json \
   --output-root data/08_incremental_review/round_01 \
-  --output-metadata data/07_metadata/incremental_review_round_01_metadata.json \
-  --report data/07_metadata/incremental_review_round_01_report.json \
+  --output-metadata data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
+  --report data/07_metadata/incremental_review/round_01/incremental_review_round_01_report.json \
   --model models/minicpmv4_5
 ```
 
@@ -127,9 +127,9 @@ python pipeline/scripts/materialize_incremental_review_media.py \
 
 ```bash
 streamlit run pipeline/scripts/review_subvideos_app.py -- \
-  --metadata data/07_metadata/incremental_review_round_01_metadata.json \
+  --metadata data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
   --incremental-delta \
-  --output data/07_metadata/incremental_review_delta_decisions.json
+  --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions.json
 ```
 
 增量模式只输出本轮 delta，不会覆盖历史基线。界面会显示历史决策和队列原因作为只读上下文。
@@ -140,11 +140,11 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 
 ```bash
 python pipeline/scripts/append_incremental_failure_drops.py \
-  --baseline data/07_metadata/subvideo_train_review_decisions.json \
-  --delta data/07_metadata/incremental_review_delta_decisions.json \
-  --queue data/07_metadata/incremental_review_queue_metadata.json \
-  --report data/07_metadata/incremental_review_round_01_report.json \
-  --output data/07_metadata/incremental_review_delta_decisions_resolved.json
+  --baseline data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
+  --delta data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions.json \
+  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
+  --report data/07_metadata/incremental_review/round_01/incremental_review_round_01_report.json \
+  --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json
 ```
 
 这一步只将报告中的失败样本显式标为 `dropped`，并写入失败原因；它不覆盖历史基线。若所有生成都成功，或失败项将重新生成，则跳过本节，直接使用 UI 输出的 delta。
@@ -155,9 +155,9 @@ python pipeline/scripts/append_incremental_failure_drops.py \
 
 ```bash
 python pipeline/scripts/merge_incremental_review_decisions.py \
-  --baseline data/07_metadata/subvideo_train_review_decisions.json \
-  --delta data/07_metadata/incremental_review_delta_decisions_resolved.json \
-  --queue data/07_metadata/incremental_review_queue_metadata.json \
+  --baseline data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
+  --delta data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json \
+  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
   --output data/07_metadata/subvideo_train_review_decisions_final.json
 ```
 
@@ -171,7 +171,13 @@ python pipeline/scripts/merge_incremental_review_decisions.py \
 
 ## 7. 构建最终训练 metadata
 
-先审计最终决策，确认没有未解决项：
+本节把“人工审查最终决策”转换成“唯一允许进入训练”的 metadata。整个过程分为三个必须串行执行的步骤：先审计、再严格应用决策、最后把人工修正标签写入训练字段。每一步都会生成新的文件，上一步失败不能进入下一步。
+
+---
+
+### 7.1 审计最终决策
+
+**命令**
 
 ```bash
 python pipeline/scripts/audit_review_decisions.py \
@@ -180,7 +186,58 @@ python pipeline/scripts/audit_review_decisions.py \
   --output-dir data/07_metadata/final_review_audit
 ```
 
-严格应用最终决策：
+**目的**
+
+只读审计，不修改任何数据。它检查最终决策文件里是否还有“未解决项”，把所有风险列成报告和 CSV 队列，供人工确认。
+
+**输入文件**
+
+- `subvideo_train_review_decisions_final.json`：第 6 节合并后的最终人工审查决策。
+- `subvideos_meta.json`：候选子视频元数据，包含自动标签、裁剪区间、帧映射等。
+- 脚本还会读取 CSV 标注和视频元数据（项目默认位置），用于交叉校验。
+
+**输出文件**
+
+全部写入 `data/07_metadata/final_review_audit/`：
+
+- JSON 报告：汇总审计结论和计数。
+- Markdown 摘要：便于直接阅读的整体说明。
+- 5 张 CSV 队列：关键标签变更、断裂区间变更、断裂区间按源视频聚合、需要重生成的源视频、时间-帧不一致清单。
+
+**参数含义**
+
+- `--decisions`：要审计的最终决策文件。
+- `--subvideos-meta`：候选子视频 metadata。如果省略，断裂区间校验会被阻塞，因为缺少区间对照。
+- `--output-dir`：审计报告输出目录。
+
+**检查内容（非技术读者可理解为“质量门清单”）**
+
+- 是否存在非法状态（如既非 approved 又非 dropped 的样本）。
+- 是否存在重复子视频。
+- 是否还有未审查样本。
+- `approved` 样本的关键标签是否被人工修改，修改是否有冲突。
+- 断裂区间是否需要重新计算。
+- 人工修正值是否合法。
+
+**谁来检查、检查什么**
+
+- 数据负责人/项目经理：先看 Markdown 摘要和 JSON 报告中的计数，确认没有“未解决项”。
+- 标注 QA：打开 5 张 CSV 队列，逐条确认关键标签变更、区间变更、时间-帧不一致是否可接受。
+- 注意：如果本机没有 `ffprobe`，FPS 诊断会缺失，但不会阻塞审计；其余检查仍正常执行。
+
+**失败处理**
+
+如果审计报告里出现未解决项，不要继续 7.2。根据报告类型处理：
+
+- 非法状态 / 未审查样本：回到第 6 节的人工审查或增量复审流程。
+- 断裂区间冲突：确认是源标签问题还是人工修正问题，必要时重新生成媒体或修正决策。
+- 需要重生成的源视频：进入第 6.2 节重新生成媒体，复审后再合并到 `subvideo_train_review_decisions_final.json`。
+
+---
+
+### 7.2 严格应用最终决策
+
+**命令**
 
 ```bash
 python pipeline/scripts/apply_review_decisions.py \
@@ -190,7 +247,48 @@ python pipeline/scripts/apply_review_decisions.py \
   --strict
 ```
 
-再把人工 corrected labels 覆盖为最终训练标签：
+**目的**
+
+把最终决策合并到候选子视频 metadata 里，输出“已应用人工决策”的 metadata。
+
+**输入文件**
+
+- `subvideos_meta.json`：候选子视频元数据。
+- `subvideo_train_review_decisions_final.json`：最终决策文件。
+
+**输出文件**
+
+- `subvideos_meta.reviewed.json`：已应用决策后的中间 metadata。
+
+**参数含义**
+
+- `--metadata`：候选子视频 metadata。
+- `--decisions`：要应用的最终决策文件。
+- `--output`：输出文件路径。
+- `--strict`：严格模式。如果存在 `needs_regenerate` 或 `unreviewed` 样本，脚本会失败并且不写输出文件。`--strict` 默认开启，正式训练数据不允许使用 `--no-strict`。
+
+**数据变换**
+
+- `approved` 样本：用人工修正的 `corrected_labels` 覆盖 `has_fracture`、`type`、`location`、`fracture_between` 等字段，这些字段会变成训练标签的来源。
+- `dropped` 样本：保留原标签，但后续会被排除在训练之外。
+- `needs_regenerate` 或 `unreviewed`：在 `--strict` 模式下会触发失败，脚本不会生成输出文件。
+
+**谁来检查**
+
+- 技术负责人：确认命令成功退出，输出文件已生成。
+- 数据负责人：抽查 `subvideos_meta.reviewed.json` 中的 `approved` 样本，确认人工修正字段已覆盖自动标签。
+
+**失败处理**
+
+- 如果 `--strict` 失败，说明还有 `needs_regenerate` 或 `unreviewed` 样本。**禁止绕过 `--strict`（即禁止使用 `--no-strict`）**。
+- 处理方式：回到第 6 节，完成所有 `needs_regenerate` 的增量生成与复审，或把这些样本明确标为 `dropped`。
+- 只有在重新审计通过后，才能再次运行 7.2。
+
+---
+
+### 7.3 生成最终训练标签
+
+**命令**
 
 ```bash
 python pipeline/scripts/apply_label_corrections.py \
@@ -198,7 +296,70 @@ python pipeline/scripts/apply_label_corrections.py \
   --output data/07_metadata/subvideos_meta.label_reviewed.json
 ```
 
-`--strict` 失败时不得绕过；应回到第 6 节，完成所有 `needs_regenerate` 或将其标为 `dropped`。
+**目的**
+
+从“已应用决策的 metadata”生成“唯一允许进入训练”的最终 metadata。它只保留 `approved` 样本，并把人工修正标签正式写入训练字段。
+
+**输入文件**
+
+- `subvideos_meta.reviewed.json`：7.2 的输出。
+
+**输出文件**
+
+- `subvideos_meta.label_reviewed.json`：最终训练 metadata，第 8 节所有训练导出命令必须使用此文件。
+
+**参数含义**
+
+- `--metadata`：上一步 `apply_review_decisions.py` 的输出。
+- `--output`：最终训练 metadata 输出路径。
+
+**数据变换**
+
+- 只保留 `approved` 样本进入训练集。
+- 把 `corrected_labels` 正式覆盖为训练标签（即 `has_fracture`、`type`、`location`、`fracture_between` 等最终训练字段）。
+- 非 `approved` 样本必须全部是 `dropped`，这些样本会被收集到 `excluded_subvideos` 中；如果还有其它状态，脚本会失败。
+
+**谁来检查**
+
+- 技术负责人：确认命令成功，输出文件存在。
+- 训练数据负责人：确认 `subvideos_meta.label_reviewed.json` 中只包含应进入训练的 `approved` 样本；检查 `excluded_subvideos` 是否包含所有 `dropped` 样本。
+
+**失败处理**
+
+如果本步骤失败，说明 7.2 没有成功执行（或 7.2 输出里仍有非 approved/dropped 样本）。此时必须回到 7.2，并确保 `--strict` 成功通过。
+
+---
+
+### 7.4 三个命令的串行依赖
+
+这三个命令必须按顺序执行，不能跳过、不能并行、不能倒序。
+
+1. **必须先审计**：
+   - 审计是只读检查，能在修改数据之前发现未解决项。如果直接应用决策，未审查或需要重生成的样本可能被错误地当作 approved 或 dropped 处理。
+   - 审计报告是进入下一步的凭证；报告不干净就继续，会导致训练数据混入不合格样本。
+
+2. **`--strict` 不可绕过**：
+   - `--strict` 保证“任何未决样本都会阻止输出文件生成”。如果绕过它（使用 `--no-strict`），`needs_regenerate` 或 `unreviewed` 样本可能带着不完整或错误的标签进入训练数据。
+   - 正式训练数据不允许使用 `--no-strict`。
+
+3. **上一步失败下一步不能执行**：
+   - `apply_label_corrections.py` 要求输入中的样本状态只能是 `approved` 或 `dropped`。
+   - 如果 7.2 的 `--strict` 失败，就不会有有效的 `subvideos_meta.reviewed.json`；此时运行 7.3 会因为存在非 approved/dropped 样本而失败。
+   - 即使 7.2 成功但审计报告未清空，也意味着数据质量门未通过，不应继续生成训练标签。
+
+---
+
+### 7.5 常见失败情况及处理方式
+
+| 失败现象 | 可能原因 | 处理方式 |
+|---|---|---|
+| 审计报告提示未解决项 | 存在非法状态、未审查样本、标签冲突或区间冲突 | 先回到第 6 节完成审查或重新生成媒体；重新合并最终决策后再审计 |
+| 审计提示缺少 `ffprobe` | 本机未安装 `ffprobe` | 安装 `ffprobe` 可获得 FPS 诊断；但缺少它不会阻塞审计，可继续 |
+| `apply_review_decisions.py` 报 `--strict` 失败 | 最终决策中仍有 `needs_regenerate` 或 `unreviewed` 样本 | 禁止用 `--no-strict` 绕过；回到第 6 节处理每个未决样本，直到全部变为 `approved` 或 `dropped` |
+| `apply_label_corrections.py` 失败 | 输入中存在非 approved/dropped 样本 | 回到 7.2，确认 `--strict` 成功且输出文件正确 |
+| 训练导入选项中出现非预期样本 | 误用了 `subvideos_meta.json` 或 `subvideos_meta.reviewed.json` | 第 8 节只能使用 `subvideos_meta.label_reviewed.json` |
+
+完成本节且 `subvideos_meta.label_reviewed.json` 已生成后，才进入第 8 节的训练数据导出与质量门。
 
 ## 8. 导出训练数据与质量门
 

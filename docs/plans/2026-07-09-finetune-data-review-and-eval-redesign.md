@@ -89,7 +89,7 @@ UI 支持两种输入：
 UI 写出 review decisions 文件：
 
 ```text
-data/07_metadata/subvideo_train_review_decisions.json
+data/07_metadata/review_decisions/subvideo_train_review_decisions.json
 data/07_metadata/subvideo_test_review_decisions.json
 ```
 

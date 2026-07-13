@@ -17,7 +17,7 @@
 
 输出路径：
     - 输入为 subvideos_meta.json 时，输出
-      data/07_metadata/subvideo_train_review_decisions.json
+      data/07_metadata/review_decisions/subvideo_train_review_decisions.json
     - 输入为 test_subvideos_meta.json 时，输出
       data/07_metadata/subvideo_test_review_decisions.json
 
@@ -157,7 +157,9 @@ def _derive_output_path(input_path: Path, output_override: Path | None) -> Path:
     stem = input_path.stem
     parent = input_path.parent
     if stem == "subvideos_meta":
-        return parent / "subvideo_train_review_decisions.json"
+        # 输入为 subvideos_meta.json，输出应放在 review_decisions/
+        metadata_dir = parent
+        return metadata_dir / "review_decisions" / "subvideo_train_review_decisions.json"
     if stem == "test_subvideos_meta":
         return parent / "subvideo_test_review_decisions.json"
     return parent / f"{stem}.review_decisions.json"
