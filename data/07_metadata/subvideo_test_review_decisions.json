@@ -1,0 +1,19 @@
+{
+  "decisions": [
+    {
+      "subvideo_id": "video_0005_full",
+      "status": "dropped",
+      "reviewed_at": "2026-07-13T11:13:07.148306+00:00",
+      "reviewer_notes": "",
+      "corrected_labels": null,
+      "original_labels": {
+        "has_fracture": null,
+        "type": "视频异常",
+        "location": null,
+        "fracture_between": null
+      },
+      "source_metadata_file": "/home/liuyang/文档/mVllm_2/data/07_metadata/test_subvideos_meta.json",
+      "generated_at": "2026-07-13T11:13:07.148356+00:00"
+    }
+  ]
+}

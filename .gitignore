@@ -69,6 +69,3 @@ data/07_metadata/tail_contamination_audit.jsonl
 data/sample_subvideos/03_subvideos
 data/sample_subvideos/04_frames
 
-# Fine-tuning generated outputs
-/finetune/results/
-/finetune/saves/
