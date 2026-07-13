@@ -28,7 +28,7 @@ preprocessing_num_workers: 4
 overwrite_cache: true
 
 # === output ===
-output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_v2
+output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_v3
 logging_steps: 5
 save_strategy: steps
 save_steps: 50
