@@ -1,38 +1,62 @@
 # 数据处理与训练运行手册
 
-本文件是本项目从零开始构建训练数据的唯一运行手册。适用起点为：只有原始视频、原始 CSV 标注和项目代码。所有命令从项目根目录运行；完整视频处理、MiniCPM 选帧和模型训练在训练电脑执行。
+本手册说明如何把原始拉伸视频和人工标注，转换为可安全用于模型训练的最终数据。所有命令从项目根目录执行。子视频生成、模型选帧、训练和完整评测必须在训练电脑执行；当前电脑只用于检查、审查、整理和导出已同步的结果。
 
-## 1. 核心原则
+## 1. 整条数据链
 
-1. 划分以源视频为单位，先冻结，再生成子视频；不得在人工审查后重新划分。
-2. 每个训练子视频必须有实际 MP4、实际抽帧图和 `actual_frame_mapping`。`fracture_between` 只对应这份实际映射。
-3. 人工 `approved` 标签是当前训练样本的最终标签；源视频标签用于生成下一轮媒体和追溯，不能静默覆盖人工标签。
-4. `dropped` 不进入训练；`needs_regenerate` 不得进入训练，必须完成增量生成和复审后才可转为 `approved` 或 `dropped`。
-5. 全量人工审查完成后，只能进行增量复审，不能因为少量问题重做全体 approved 样本。
+最终训练数据不是直接由原始 CSV 导出。它经过“源标签规范化—视频级划分—子视频和实际帧生成—人工审核—增量重审—最终标签验证—训练样本导出”几层处理。每层都解决一个不同的问题，并留下对应的可追溯文件。
 
-## 2. 目录与关键文件
+```mermaid
+flowchart TD
+  A["原始视频 + CSV 标注"] --> B["源元数据 video_meta.json冻结视频级 split"]
+  B --> C["候选子视频、MP4、实际抽帧subvideos_meta.json"]
+  C --> D["全量人工审查baseline decisions"]
+  D --> E{"是否有 needs_regenerate或明确需重审项？"}
+  E -- "是" --> F["增量队列 → 重生成媒体 → 增量审查 delta"]
+  F --> G["安全合并 final decisions"]
+  E -- "否" --> G
+  G --> H["只读审计"]
+  H --> I["严格应用人工决策验证修改过的断裂区间"]
+  I --> J["label_reviewed metadata仅保留可训练 approved 样本"]
+  J --> K["训练样本、质量检查、数据版本冻结"]
+```
 
-| 阶段 | 文件或目录 | 角色 |
-|---|---|---|
-| 输入 | `data/01_videos/` | 原始视频 |
-| 输入 | `data/02_annotations/all_videos_tag.csv` | 源视频标签：时间、帧号、类型、位置等 |
-| 冻结源元数据 | `data/07_metadata/video_meta.json` | CSV 规范化后的源标签；子视频生成使用它 |
-| 冻结划分 | `data/05_splits/*.json` | 3-fold train/val 与 test 的源视频级划分 |
-| 候选媒体 | `data/03_subvideos/`、`data/04_frames/` | 子视频 MP4 与模型实际抽帧图 |
-| 候选元数据 | `data/07_metadata/subvideos_meta.json` | 裁剪、抽帧映射、自动标签、fold 信息 |
-| 人工基线 | `data/07_metadata/review_decisions/subvideo_train_review_decisions.json` | 全量人工审查决策；增量轮次中只读保留 |
-| 增量队列 | `data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json` | 仅本轮需重审的样本清单 |
-| 最终决策 | `data/07_metadata/subvideo_train_review_decisions_final.json` | 基线与所有 delta 安全合并后的决策 |
-| 最终元数据 | `data/07_metadata/subvideos_meta.label_reviewed.json` | 唯一允许输入训练样本导出的 metadata |
-| 训练数据 | `data/06_merged/` | 各 fold 的 ShareGPT 样本、测试输入、统计信息 |
+这条链最终要交付的不是某个中间 JSON，而是以下三类结果：
 
-## 3. 从零开始：源标签与划分
+| 最终结果                                                  | 用途                                | 不能用什么替代                                                 |
+| ----------------------------------------------------- | --------------------------------- | ------------------------------------------------------- |
+| `data/07_metadata/subvideos_meta.label_reviewed.json` | 唯一允许输入训练样本导出的子视频 metadata         | 不能用原始 `subvideos_meta.json` 或仅应用审核的 `.reviewed.json` 替代 |
+| `data/06_merged/`                                     | 各 fold 的训练/验证 ShareGPT 样本、测试输入和统计 | 不能手工拼接或混用旧版本样本                                          |
+| `data/07_metadata/data_version_lock.json`             | 冻结本次训练数据的文件、划分和版本证据               | 不能在训练后静默修改其上游输入                                         |
 
-### 3.1 准备输入
+### 1.1 每一层解决什么问题
 
-确认原始视频文件名与 CSV 的 `video_path` 一致，CSV 至少包括断裂时间、断裂帧数、断裂模式、断裂位置、`has_fracture` 和 `is_abnormal`。
+1. **源元数据与划分**：把 CSV 中的断裂时间、帧号、类型和位置规范化，同时按原视频冻结 train/val/test，避免同一原视频的不同子视频泄漏到不同集合。
+2. **候选子视频与实际帧**：生成模型真正会看到的 MP4 和抽帧，并以 `actual_frame_mapping` 记录每个采样索引对应的原视频帧。`fracture_between` 只对这份映射有效。
+3. **人工基线审查**：人工判断子视频是否可用，并修正普通标签和区间标签。`approved`、`dropped`、`needs_regenerate` 是此时的业务状态。
+4. **增量重审**：只重新生成或复核有问题的子视频，历史基线保持不变；新增结论以 delta 的形式保存并安全合并。
+5. **最终区间验证**：普通人工标签直接进入后续流程；但人工改过的 `fracture_between` 必须能借助实际帧映射覆盖可靠的源事件帧，否则样本改为 `dropped`。这避免不同子视频映射到互相矛盾的真实断裂时刻。
+6. **训练导出与冻结**：只把通过上述门槛的 `approved` 样本导出为训练数据，再进行越界、路径、状态和版本检查。
 
-### 3.2 生成源元数据和固定划分
+## 2. 端到端执行顺序
+
+下表是日常执行时应遵循的顺序。首次建库执行第 1–3 步；已有人工基线时从第 4 步开始；只有完成第 7 步后才能训练。
+
+| 步骤 | 产生什么                                         | 为什么需要它             | 下一步读取它          |
+| -- | -------------------------------------------- | ------------------ | --------------- |
+| 1  | `video_meta.json`、`data/05_splits/`          | 规范源标签并冻结视频级划分      | 子视频生成、增量队列、区间验证 |
+| 2  | `subvideos_meta.json`、MP4、帧图                 | 建立模型输入与原视频帧之间的真实映射 | 人工审查、区间验证       |
+| 3  | 基线审查决策                                       | 人工决定候选样本的可用性和标签    | 增量队列或最终合并       |
+| 4  | 增量队列、重生成媒体、delta                             | 只处理未完成或冲突样本        | 安全合并            |
+| 5  | `subvideo_train_review_decisions_final.json` | 固化两轮及后续轮次的最终人工决策   | 审计、严格应用决策       |
+| 6  | `.reviewed.json`、`.label_reviewed.json`      | 应用人工标签并剔除不可验证的修改区间 | 训练样本导出          |
+| 7  | `data/06_merged/`、`data_version_lock.json`   | 输出训练文件并冻结可复现版本     | 训练与评测           |
+
+## 3. 按顺序执行的脚本说明
+
+### 步骤 1：规范源标签并冻结划分
+
+**输入**：`data/01_videos/`、`data/02_annotations/all_videos_tag.csv`。
 
 ```bash
 python pipeline/scripts/dataset_manager.py \
@@ -43,11 +67,19 @@ python pipeline/scripts/dataset_manager.py \
   --seed 42
 ```
 
-此命令是新数据集初始化步骤，会写出 `video_meta.json`、`data/05_splits/*.json` 和 `test_manifest_sha256.json`。一旦进入人工审查，必须冻结这些文件；后续只更新源标签用于增量媒体生成，不重新执行划分。
+**核心逻辑**：CSV 中的时间、帧号、类型和位置被规范化为 `video_meta.json`；划分按源视频完成，而不是按子视频完成。
 
-## 4. 从零开始：生成候选子视频与实际帧
+**输出**：
 
-先在训练电脑做小样本烟雾测试：
+- `data/07_metadata/video_meta.json`
+- `data/05_splits/*.json`
+- `data/07_metadata/test_manifest_sha256.json`
+
+**质量门**：一旦开始人工审查，不得重新执行此步骤来重分 split。后续源标签问题可以用于重生成媒体或追溯，但不得导致已冻结的视频级划分变化。
+
+### 步骤 2：生成候选子视频、媒体和实际帧映射
+
+先在训练电脑运行小样本烟雾测试：
 
 ```bash
 python pipeline/scripts/subvideo_builder.py \
@@ -56,18 +88,24 @@ python pipeline/scripts/subvideo_builder.py \
   --sample-output-dir data/sample_subvideos
 ```
 
-确认 sample manifest、MP4 和帧图正确后，完整生成：
+确认 MP4、帧图和 sample manifest 正确后，再完整生成：
 
 ```bash
 python pipeline/scripts/subvideo_builder.py \
   --model models/minicpmv4_5
 ```
 
-输出的 `subvideos_meta.json`、MP4、帧图必须一同保存。不要只同步 metadata；没有媒体就无法进行可信人工审查。
+**核心逻辑**：脚本裁剪 full/focus/负样本窗口，并保存模型处理器实际抽出的帧。`actual_frame_mapping` 中的每项记录“采样索引 → 子视频帧 → 原视频帧/时间”；训练、审核和断裂区间验证必须使用同一份映射。
 
-## 5. 全量人工审查：建立历史基线
+**输出**：
 
-启动 UI：
+- `data/03_subvideos/`：实际子视频 MP4。
+- `data/04_frames/`：实际抽帧图。
+- `data/07_metadata/subvideos_meta.json`：候选标签、裁剪参数、split、处理器指纹和实际映射。
+
+**质量门**：不要只同步 metadata 而遗漏 MP4 或帧图；没有实际媒体就无法可信地人工审核，也不能确认区间标签。
+
+### 步骤 3：建立全量人工审查基线
 
 ```bash
 streamlit run pipeline/scripts/review_subvideos_app.py -- \
@@ -75,19 +113,19 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
   --output data/07_metadata/review_decisions/subvideo_train_review_decisions.json
 ```
 
-人工对每条非 `neg_before` 子视频设置：
+审核人员为每个非 `neg_before` 子视频选择：
 
-- `approved`：可修改 `has_fracture`、`type`、`location`、`fracture_between`；这些人工值是训练标签。
-- `dropped`：排除训练。
-- `needs_regenerate`：不能进入训练，必须进入第 6 节。
+- `approved`：确认或修正 `has_fracture`、`type`、`location`、`fracture_between`。
+- `dropped`：该样本永不进入训练，但记录保留。
+- `needs_regenerate`：当前媒体或区间无法可靠判断，必须进入下一步的增量流程。
 
-`neg_before` 是断裂前负样本，系统自动批准，无需生成单独人工决策。
+**输出**：`data/07_metadata/review_decisions/subvideo_train_review_decisions.json`。这是历史基线，增量轮次只能读取它，不能用新的 UI 输出覆盖它。
 
-## 6. 增量复审：只处理未完成或明确冲突样本
+### 步骤 4：仅对问题样本进行增量重审
 
-### 6.1 生成只读复审队列
+此步骤的目标是避免重做全部 approved 样本。每轮使用新的 `round_XX` 目录、队列、媒体、delta 和报告；以下以 `round_01` 为例。
 
-默认只选 `needs_regenerate`。若本轮还要复核 approved 的帧区间冲突，显式加入开关：
+#### 4.1 建立只读增量队列
 
 ```bash
 python pipeline/scripts/prepare_incremental_review_queue.py \
@@ -99,11 +137,9 @@ python pipeline/scripts/prepare_incremental_review_queue.py \
   --include-approved-interval-conflicts
 ```
 
-该命令不改历史决策、不改 split、不生成媒体。
+默认队列针对 `needs_regenerate`；`--include-approved-interval-conflicts` 额外纳入明确需要复核的已批准区间。该脚本不改历史决策、不改 split、不生成媒体。
 
-### 6.2 只为队列重新生成媒体
-
-在训练电脑创建新的版本目录；不要覆盖历史 `data/03_subvideos` 或 `data/04_frames`：
+#### 4.2 只为队列生成新的媒体和映射
 
 ```bash
 python pipeline/scripts/materialize_incremental_review_media.py \
@@ -112,18 +148,15 @@ python pipeline/scripts/materialize_incremental_review_media.py \
   --output-root data/08_incremental_review/round_01 \
   --output-metadata data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
   --report data/07_metadata/incremental_review/round_01/incremental_review_round_01_report.json \
-  --model models/minicpmv4_5
+  --model models/minicpmv4_5 \
+  --reasons baseline_needs_regenerate approved_interval_conflict
 ```
 
-默认只生成 `baseline_needs_regenerate`。如需同时生成 approved 帧区间冲突样本：
+**输出**：版本化的 MP4/帧图、该轮实际映射 metadata 和生成报告。不得覆盖历史 `data/03_subvideos/` 或 `data/04_frames/`。
 
-```bash
---reasons baseline_needs_regenerate approved_interval_conflict
-```
+如果报告有生成失败项，不要对缺媒体样本启动 UI。要么在训练电脑修复并重生成，要么由数据负责人明确决定 `dropped`，并在 4.4 中写入 delta。
 
-若生成报告含失败项，不要对缺媒体队列启动 UI。失败项必须先有明确处置：重新生成，或由数据负责人明确决定 `dropped`。后一种情况在第 6.4 节追加为带审计记录的 delta。
-
-### 6.3 使用同一 UI 审查增量媒体
+#### 4.3 审查增量媒体并输出 delta
 
 ```bash
 streamlit run pipeline/scripts/review_subvideos_app.py -- \
@@ -132,11 +165,9 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
   --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions.json
 ```
 
-增量模式只输出本轮 delta，不会覆盖历史基线。界面会显示历史决策和队列原因作为只读上下文。
+增量模式只输出队列内样本的 delta，并带有基线决策作为只读上下文。不要把此输出写回历史完整决策文件。
 
-### 6.4 将无法生成且已确认剔除的样本追加到 delta（按需）
-
-本轮若存在“无法形成可审查映射”的生成失败，且数据负责人决定剔除，**先完成所有实际生成媒体的人工审查**，再基于最新 UI delta 运行：
+#### 4.4 记录无法生成但已决定剔除的项目（按需）
 
 ```bash
 python pipeline/scripts/append_incremental_failure_drops.py \
@@ -147,11 +178,11 @@ python pipeline/scripts/append_incremental_failure_drops.py \
   --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json
 ```
 
-这一步只将报告中的失败样本显式标为 `dropped`，并写入失败原因；它不覆盖历史基线。若所有生成都成功，或失败项将重新生成，则跳过本节，直接使用 UI 输出的 delta。
+仅当生成失败且已确认剔除时执行。它把失败原因写入 `dropped` delta，而不覆盖基线。
 
-### 6.5 安全合并最终 delta
+#### 4.5 安全合并为最终决策
 
-当第 6.4 节执行过时，合并 `*_resolved.json`；否则合并 UI 输出的 delta：
+若执行过 4.4，使用 `*_resolved.json`；否则使用 UI 的 delta：
 
 ```bash
 python pipeline/scripts/merge_incremental_review_decisions.py \
@@ -161,23 +192,9 @@ python pipeline/scripts/merge_incremental_review_decisions.py \
   --output data/07_metadata/subvideo_train_review_decisions_final.json
 ```
 
-默认不允许替换历史 `approved`。确实需要推翻已批准样本时，人工复审记录必须写明原因，且合并时显式传入：
+默认不允许覆盖历史 `approved`。确实需要推翻已批准结论时，delta 必须有人工理由，并显式加入 `--allow-approved-supersede`。输出的 final decisions 是后续所有质量门唯一读取的人工决策。
 
-```bash
---allow-approved-supersede
-```
-
-每次增量轮次使用新的 `round_XX`、queue、delta 和 final 文件；不要复用输出路径。一次已完成的历史人工审查不需要重做：只处理本轮 `needs_regenerate`、媒体失败或明确要求复核的样本。
-
-## 7. 构建最终训练 metadata
-
-本节把“人工审查最终决策”转换成“唯一允许进入训练”的 metadata。整个过程分为三个必须串行执行的步骤：先审计、再严格应用决策、最后把人工修正标签写入训练字段。每一步都会生成新的文件，上一步失败不能进入下一步。
-
----
-
-### 7.1 审计最终决策
-
-**命令**
+### 步骤 5：审计最终人工决策
 
 ```bash
 python pipeline/scripts/audit_review_decisions.py \
@@ -186,109 +203,44 @@ python pipeline/scripts/audit_review_decisions.py \
   --output-dir data/07_metadata/final_review_audit
 ```
 
-**目的**
+**目的**：只读检查最终决策是否有重复 ID、非法状态、未审查项、关键标签异常、断裂区间修改和源时间/帧号不一致。
 
-只读审计，不修改任何数据。它检查最终决策文件里是否还有“未解决项”，把所有风险列成报告和 CSV 队列，供人工确认。
+**输出**：JSON 总报告、Markdown 摘要和多张 CSV 队列（关键标签变化、断裂区间变化、按源视频聚合的区间问题、需重生成项、时间/帧检查）。
 
-**输入文件**
+**如何处理结果**：
 
-- `subvideo_train_review_decisions_final.json`：第 6 节合并后的最终人工审查决策。
-- `subvideos_meta.json`：候选子视频元数据，包含自动标签、裁剪区间、帧映射等。
-- 脚本还会读取 CSV 标注和视频元数据（项目默认位置），用于交叉校验。
+- 非法状态、未审查或 `needs_regenerate`：回到步骤 4，完成重生成和复审。
+- 人工改过的区间：不需要在此阶段手工猜测是否应保留；步骤 6 会基于实际映射和可靠源事件帧自动决定保留或 `dropped`，并留下证据。
+- 该审计不替代原视频像素级复核。若需确认真正首断帧，必须在训练电脑查看原视频，并重新走增量流程。
 
-**输出文件**
+### 步骤 6：生成唯一可训练的最终 metadata
 
-全部写入 `data/07_metadata/final_review_audit/`：
+本步骤有两个串行脚本：先严格应用决策并验证人工修改过的断裂区间，再把 `dropped` 样本移入排除记录并输出训练 metadata。
 
-- JSON 报告：汇总审计结论和计数。
-- Markdown 摘要：便于直接阅读的整体说明。
-- 5 张 CSV 队列：关键标签变更、断裂区间变更、断裂区间按源视频聚合、需要重生成的源视频、时间-帧不一致清单。
-
-**参数含义**
-
-- `--decisions`：要审计的最终决策文件。
-- `--subvideos-meta`：候选子视频 metadata。如果省略，断裂区间校验会被阻塞，因为缺少区间对照。
-- `--output-dir`：审计报告输出目录。
-
-**检查内容（非技术读者可理解为“质量门清单”）**
-
-- 是否存在非法状态（如既非 approved 又非 dropped 的样本）。
-- 是否存在重复子视频。
-- 是否还有未审查样本。
-- `approved` 样本的关键标签是否被人工修改，修改是否有冲突。
-- 断裂区间是否需要重新计算。
-- 人工修正值是否合法。
-
-**谁来检查、检查什么**
-
-- 数据负责人/项目经理：先看 Markdown 摘要和 JSON 报告中的计数，确认没有“未解决项”。
-- 标注 QA：打开 5 张 CSV 队列，逐条确认关键标签变更、区间变更、时间-帧不一致是否可接受。
-- 注意：如果本机没有 `ffprobe`，FPS 诊断会缺失，但不会阻塞审计；其余检查仍正常执行。
-
-**失败处理**
-
-如果审计报告里出现未解决项，不要继续 7.2。根据报告类型处理：
-
-- 非法状态 / 未审查样本：回到第 6 节的人工审查或增量复审流程。
-- 断裂区间冲突：确认是源标签问题还是人工修正问题，必要时重新生成媒体或修正决策。
-- 需要重生成的源视频：进入第 6.2 节重新生成媒体，复审后再合并到 `subvideo_train_review_decisions_final.json`。
-
----
-
-### 7.2 严格应用最终决策
-
-**命令**
+#### 6.1 应用决策并验证人工修改的断裂区间
 
 ```bash
 python pipeline/scripts/apply_review_decisions.py \
   --metadata data/07_metadata/subvideos_meta.json \
   --decisions data/07_metadata/subvideo_train_review_decisions_final.json \
+  --interval-verification-video-meta data/07_metadata/video_meta.json \
+  --interval-mapping-override data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
   --output data/07_metadata/subvideos_meta.reviewed.json \
   --strict
 ```
 
-**目的**
+**这个命令做两件事**：
 
-把最终决策合并到候选子视频 metadata 里，输出“已应用人工决策”的 metadata。
+1. 对 `approved` 样本应用人工普通标签和人工区间；`dropped` 保留为排除状态；`needs_regenerate` 或未审查样本在 `--strict` 下阻止输出。
+2. 检查所有跨基线/增量轮次发生过变化的 `fracture_between`：
+   - 最终区间借助当前或重生成后的 `actual_frame_mapping` 覆盖可靠的 `event_frame_effective` → 保持 `approved`；
+   - 最终区间为空、映射缺失/越界、源事件不可靠/缺失、或不覆盖源事件帧 → 自动转为 `dropped`。
 
-**输入文件**
+每个自动剔除项都带有 `interval_verification`，包括原区间、最终区间、映射来源、原视频帧边界、源事件帧和剔除原因。它是审查初始帧标注、子视频裁剪和实际抽帧流程的长期证据，不得删除。
 
-- `subvideos_meta.json`：候选子视频元数据。
-- `subvideo_train_review_decisions_final.json`：最终决策文件。
+**重生成媒体特别注意**：每一个有重生成媒体的 `round_XX` 都必须传入相应的 `--interval-mapping-override`。可重复传入多个轮次；后传入的同 ID 映射优先。遗漏该参数会使验证误用历史映射。
 
-**输出文件**
-
-- `subvideos_meta.reviewed.json`：已应用决策后的中间 metadata。
-
-**参数含义**
-
-- `--metadata`：候选子视频 metadata。
-- `--decisions`：要应用的最终决策文件。
-- `--output`：输出文件路径。
-- `--strict`：严格模式。如果存在 `needs_regenerate` 或 `unreviewed` 样本，脚本会失败并且不写输出文件。`--strict` 默认开启，正式训练数据不允许使用 `--no-strict`。
-
-**数据变换**
-
-- `approved` 样本：用人工修正的 `corrected_labels` 覆盖 `has_fracture`、`type`、`location`、`fracture_between` 等字段，这些字段会变成训练标签的来源。
-- `dropped` 样本：保留原标签，但后续会被排除在训练之外。
-- `needs_regenerate` 或 `unreviewed`：在 `--strict` 模式下会触发失败，脚本不会生成输出文件。
-
-**谁来检查**
-
-- 技术负责人：确认命令成功退出，输出文件已生成。
-- 数据负责人：抽查 `subvideos_meta.reviewed.json` 中的 `approved` 样本，确认人工修正字段已覆盖自动标签。
-
-**失败处理**
-
-- 如果 `--strict` 失败，说明还有 `needs_regenerate` 或 `unreviewed` 样本。**禁止绕过 `--strict`（即禁止使用 `--no-strict`）**。
-- 处理方式：回到第 6 节，完成所有 `needs_regenerate` 的增量生成与复审，或把这些样本明确标为 `dropped`。
-- 只有在重新审计通过后，才能再次运行 7.2。
-
----
-
-### 7.3 生成最终训练标签
-
-**命令**
+#### 6.2 输出训练级 metadata 和排除记录
 
 ```bash
 python pipeline/scripts/apply_label_corrections.py \
@@ -296,72 +248,15 @@ python pipeline/scripts/apply_label_corrections.py \
   --output data/07_metadata/subvideos_meta.label_reviewed.json
 ```
 
-**目的**
+**结果**：
 
-从“已应用决策的 metadata”生成“唯一允许进入训练”的最终 metadata。它只保留 `approved` 样本，并把人工修正标签正式写入训练字段。
+- `subvideos` 只保留 `approved` 样本，供训练导出使用；
+- 所有 `dropped` 样本进入 `excluded_subvideos`；
+- 因区间验证而剔除的样本会连同 `interval_verification` 一起进入 `excluded_subvideos`，因此样本不进训练，但问题证据完整保留。
 
-**输入文件**
+正式训练不得使用 `--no-strict`，也不得使用原始候选 metadata 或中间 `.reviewed.json` 替代 `.label_reviewed.json`。
 
-- `subvideos_meta.reviewed.json`：7.2 的输出。
-
-**输出文件**
-
-- `subvideos_meta.label_reviewed.json`：最终训练 metadata，第 8 节所有训练导出命令必须使用此文件。
-
-**参数含义**
-
-- `--metadata`：上一步 `apply_review_decisions.py` 的输出。
-- `--output`：最终训练 metadata 输出路径。
-
-**数据变换**
-
-- 只保留 `approved` 样本进入训练集。
-- 把 `corrected_labels` 正式覆盖为训练标签（即 `has_fracture`、`type`、`location`、`fracture_between` 等最终训练字段）。
-- 非 `approved` 样本必须全部是 `dropped`，这些样本会被收集到 `excluded_subvideos` 中；如果还有其它状态，脚本会失败。
-
-**谁来检查**
-
-- 技术负责人：确认命令成功，输出文件存在。
-- 训练数据负责人：确认 `subvideos_meta.label_reviewed.json` 中只包含应进入训练的 `approved` 样本；检查 `excluded_subvideos` 是否包含所有 `dropped` 样本。
-
-**失败处理**
-
-如果本步骤失败，说明 7.2 没有成功执行（或 7.2 输出里仍有非 approved/dropped 样本）。此时必须回到 7.2，并确保 `--strict` 成功通过。
-
----
-
-### 7.4 三个命令的串行依赖
-
-这三个命令必须按顺序执行，不能跳过、不能并行、不能倒序。
-
-1. **必须先审计**：
-   - 审计是只读检查，能在修改数据之前发现未解决项。如果直接应用决策，未审查或需要重生成的样本可能被错误地当作 approved 或 dropped 处理。
-   - 审计报告是进入下一步的凭证；报告不干净就继续，会导致训练数据混入不合格样本。
-
-2. **`--strict` 不可绕过**：
-   - `--strict` 保证“任何未决样本都会阻止输出文件生成”。如果绕过它（使用 `--no-strict`），`needs_regenerate` 或 `unreviewed` 样本可能带着不完整或错误的标签进入训练数据。
-   - 正式训练数据不允许使用 `--no-strict`。
-
-3. **上一步失败下一步不能执行**：
-   - `apply_label_corrections.py` 要求输入中的样本状态只能是 `approved` 或 `dropped`。
-   - 如果 7.2 的 `--strict` 失败，就不会有有效的 `subvideos_meta.reviewed.json`；此时运行 7.3 会因为存在非 approved/dropped 样本而失败。
-   - 即使 7.2 成功但审计报告未清空，也意味着数据质量门未通过，不应继续生成训练标签。
-
----
-
-### 7.5 常见失败情况及处理方式
-
-| 失败现象 | 可能原因 | 处理方式 |
-|---|---|---|
-| 审计报告提示未解决项 | 存在非法状态、未审查样本、标签冲突或区间冲突 | 先回到第 6 节完成审查或重新生成媒体；重新合并最终决策后再审计 |
-| 审计提示缺少 `ffprobe` | 本机未安装 `ffprobe` | 安装 `ffprobe` 可获得 FPS 诊断；但缺少它不会阻塞审计，可继续 |
-| `apply_review_decisions.py` 报 `--strict` 失败 | 最终决策中仍有 `needs_regenerate` 或 `unreviewed` 样本 | 禁止用 `--no-strict` 绕过；回到第 6 节处理每个未决样本，直到全部变为 `approved` 或 `dropped` |
-| `apply_label_corrections.py` 失败 | 输入中存在非 approved/dropped 样本 | 回到 7.2，确认 `--strict` 成功且输出文件正确 |
-| 训练导入选项中出现非预期样本 | 误用了 `subvideos_meta.json` 或 `subvideos_meta.reviewed.json` | 第 8 节只能使用 `subvideos_meta.label_reviewed.json` |
-
-完成本节且 `subvideos_meta.label_reviewed.json` 已生成后，才进入第 8 节的训练数据导出与质量门。
-
-## 8. 导出训练数据与质量门
+### 步骤 7：导出训练数据、执行质量门并冻结版本
 
 ```bash
 python scripts/validate_no_oob.py \
@@ -387,26 +282,34 @@ python pipeline/scripts/freeze_data_version.py \
   --lock data/07_metadata/data_version_lock.json
 ```
 
-注意：当前人工标签优先策略下，`review_subvideo_labels.py` 不应作为会覆盖人工类型/位置判断的最终门；它只能用于检查媒体、映射或源标签诊断。最终训练门使用审计、严格决策应用、越界检查和质量检查。
+四个门分别检查：
 
-## 9. 训练
+1. `validate_no_oob.py`：区间索引不越界，映射字段可用；
+2. `training_sample_builder.py`：从唯一训练级 metadata 生成各 fold 样本；
+3. `quality_check.py`：检查媒体路径、审核状态、映射、标签和排除记录；
+4. `freeze_data_version.py`：写入本轮训练的数据版本锁，记录输入与产物的一致性。
 
-只有第 8 节所有命令成功后，才在训练电脑启动训练。分别运行三个 fold：
+任一步失败都不能开始训练。修复后从失败步骤的上游重新执行，避免使用部分覆盖的 `data/06_merged/`。
+
+## 4. 训练与验收边界
+
+只有步骤 7 全部成功后，才能在训练电脑运行三个 fold 的训练配置：
 
 ```bash
 cd finetune
-
 python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
 python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold1.yaml
 python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2.yaml
 ```
 
-训练完成后，基于训练电脑实际产出的 checkpoint、adapter、评测预测和指标做验收；训练 loss 下降不能单独证明断裂识别效果。
+训练 loss 下降只能说明训练目标在收敛，不能单独证明断裂任务效果。实际验收必须使用训练电脑同步的预测、指标和 checkpoint/adapter 链路，至少检查：JSON/schema 合法率、`has_fracture`、type/location、interval/time 命中率、joint success，以及成功和失败预测样例。
 
-## 10. 禁止事项
+## 5. 不可绕过的规则
 
-- 人工审查后不要重新运行 `dataset_manager.py` 来重新划分当前训练集。
-- 不要把增量 UI 的输出指向历史完整决策文件。
-- 不要使用 `--no-strict` 生成正式训练数据。
-- 不要把 `needs_regenerate`、未审查样本或缺媒体样本带入训练。
-- 不要用源视频旧标签静默覆盖已 approved 的人工标签。
+- 不要在人工审查后重新运行 `dataset_manager.py` 来重新划分当前数据集。
+- 不要让增量 UI 覆盖历史完整决策文件；它只能写 delta。
+- 不要把 `needs_regenerate`、未审查、缺媒体或 `dropped` 样本带入训练。
+- 不要省略 `--interval-verification-video-meta`；对重生成媒体不要省略对应 `--interval-mapping-override`。
+- 不要把被 `interval_verification` 转为 `dropped` 的样本重新塞回训练。若要恢复，先在原视频确认事件帧，再重新生成、增量审查和合并。
+- 不要用源视频旧标签静默覆盖人工确认过的普通标签。
+
