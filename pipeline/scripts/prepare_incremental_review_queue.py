@@ -157,19 +157,21 @@ def prepare_incremental_review_queue(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="生成不覆盖历史决策的增量复审队列")
+    parser.add_argument("--round", required=True, help="本轮标识，如 round_01；多轮流程必须显式指定")
     parser.add_argument("--metadata", type=Path, default=PROJECT_ROOT / "data/07_metadata/subvideos_meta.json")
     parser.add_argument("--decisions", type=Path, default=PROJECT_ROOT / "data/07_metadata/review_decisions/subvideo_train_review_decisions.json")
     parser.add_argument("--video-meta", type=Path, default=PROJECT_ROOT / "data/07_metadata/video_meta.json")
-    parser.add_argument("--output-metadata", type=Path, default=PROJECT_ROOT / "data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json")
-    parser.add_argument("--output-csv", type=Path, default=PROJECT_ROOT / "data/07_metadata/incremental_review/round_01/incremental_review_queue.csv")
+    parser.add_argument("--output-metadata", type=Path, default=None, help="默认按 --round 推导")
+    parser.add_argument("--output-csv", type=Path, default=None, help="默认按 --round 推导")
     parser.add_argument("--include-approved-interval-conflicts", action="store_true")
     args = parser.parse_args()
+    round_dir = PROJECT_ROOT / "data/07_metadata/incremental_review" / args.round
     summary = prepare_incremental_review_queue(
         metadata_path=args.metadata,
         decisions_path=args.decisions,
         video_meta_path=args.video_meta,
-        output_metadata=args.output_metadata,
-        output_csv=args.output_csv,
+        output_metadata=args.output_metadata or round_dir / "incremental_review_queue_metadata.json",
+        output_csv=args.output_csv or round_dir / "incremental_review_queue.csv",
         include_approved_interval_conflicts=args.include_approved_interval_conflicts,
     )
     print(f"写出增量复审队列: {summary['queue_count']} 条; {summary['selection_counts']}")

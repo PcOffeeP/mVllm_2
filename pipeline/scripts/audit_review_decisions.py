@@ -444,11 +444,11 @@ def audit_review_decisions(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="审计已完成的子视频人工审查决策")
-    parser.add_argument("--decisions", type=Path, default=PROJECT_ROOT / "data/07_metadata/review_decisions/subvideo_train_review_decisions.json")
+    parser.add_argument("--decisions", type=Path, default=PROJECT_ROOT / "data/07_metadata/subvideo_train_review_decisions_final.json")
     parser.add_argument("--annotations", type=Path, default=PROJECT_ROOT / "data/02_annotations/all_videos_tag.csv")
     parser.add_argument("--video-meta", type=Path, default=PROJECT_ROOT / "data/07_metadata/video_meta.json")
-    parser.add_argument("--subvideos-meta", type=Path, default=None, help="可选；提供后可重算 fracture_between")
-    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "data/07_metadata/review_audit")
+    parser.add_argument("--subvideos-meta", type=Path, default=PROJECT_ROOT / "data/07_metadata/subvideos_meta.json", help="候选子视频映射 metadata（默认使用固定路径）")
+    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "data/07_metadata/final_review_audit")
     args = parser.parse_args()
     report = audit_review_decisions(args.decisions, args.annotations, args.video_meta, args.output_dir, args.subvideos_meta)
     print(f"审计完成：{report['integrity']['decision_count']} 条决策，报告目录：{args.output_dir}")

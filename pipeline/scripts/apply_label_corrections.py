@@ -199,6 +199,8 @@ def apply_label_corrections(
                 "subvideo_id": sid,
                 "review_status": review_status,
                 "reason": "not_approved",
+                **({"interval_verification": sub["interval_verification"]}
+                   if isinstance(sub.get("interval_verification"), dict) else {}),
             })
             skipped_count += 1
             continue

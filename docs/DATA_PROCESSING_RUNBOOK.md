@@ -52,6 +52,10 @@ flowchart TD
 | 6  | `.reviewed.json`、`.label_reviewed.json`      | 应用人工标签并剔除不可验证的修改区间 | 训练样本导出          |
 | 7  | `data/06_merged/`、`data_version_lock.json`   | 输出训练文件并冻结可复现版本     | 训练与评测           |
 
+### 命令参数约定
+
+固定的 `data/07_metadata` 输入和最终输出已经写入脚本默认值，因此在正常流程中不需要重复传入 `--metadata`、`--decisions`、`--video-meta`、`--output` 等稳定路径。只有会随着复审轮次变化的中间产物需要明确选择：增量准备、重生成媒体和失败追加使用 `--round round_XX`；最终应用决策时，对实际重生成过的轮次传入对应的 `--interval-mapping-override`。如需临时调试或迁移目录，仍可显式覆盖默认参数。
+
 ## 3. 按顺序执行的脚本说明
 
 ### 步骤 1：规范源标签并冻结划分
@@ -129,11 +133,7 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 
 ```bash
 python pipeline/scripts/prepare_incremental_review_queue.py \
-  --metadata data/07_metadata/subvideos_meta.json \
-  --decisions data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
-  --video-meta data/07_metadata/video_meta.json \
-  --output-metadata data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
-  --output-csv data/07_metadata/incremental_review/round_01/incremental_review_queue.csv \
+  --round round_01 \
   --include-approved-interval-conflicts
 ```
 
@@ -143,12 +143,7 @@ python pipeline/scripts/prepare_incremental_review_queue.py \
 
 ```bash
 python pipeline/scripts/materialize_incremental_review_media.py \
-  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
-  --video-meta data/07_metadata/video_meta.json \
-  --output-root data/08_incremental_review/round_01 \
-  --output-metadata data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
-  --report data/07_metadata/incremental_review/round_01/incremental_review_round_01_report.json \
-  --model models/minicpmv4_5 \
+  --round round_01 \
   --reasons baseline_needs_regenerate approved_interval_conflict
 ```
 
@@ -171,11 +166,7 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 
 ```bash
 python pipeline/scripts/append_incremental_failure_drops.py \
-  --baseline data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
-  --delta data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions.json \
-  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
-  --report data/07_metadata/incremental_review/round_01/incremental_review_round_01_report.json \
-  --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json
+  --round round_01
 ```
 
 仅当生成失败且已确认剔除时执行。它把失败原因写入 `dropped` delta，而不覆盖基线。
@@ -186,10 +177,8 @@ python pipeline/scripts/append_incremental_failure_drops.py \
 
 ```bash
 python pipeline/scripts/merge_incremental_review_decisions.py \
-  --baseline data/07_metadata/review_decisions/subvideo_train_review_decisions.json \
   --delta data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json \
-  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json \
-  --output data/07_metadata/subvideo_train_review_decisions_final.json
+  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json
 ```
 
 默认不允许覆盖历史 `approved`。确实需要推翻已批准结论时，delta 必须有人工理由，并显式加入 `--allow-approved-supersede`。输出的 final decisions 是后续所有质量门唯一读取的人工决策。
@@ -197,10 +186,7 @@ python pipeline/scripts/merge_incremental_review_decisions.py \
 ### 步骤 5：审计最终人工决策
 
 ```bash
-python pipeline/scripts/audit_review_decisions.py \
-  --decisions data/07_metadata/subvideo_train_review_decisions_final.json \
-  --subvideos-meta data/07_metadata/subvideos_meta.json \
-  --output-dir data/07_metadata/final_review_audit
+python pipeline/scripts/audit_review_decisions.py
 ```
 
 **目的**：只读检查最终决策是否有重复 ID、非法状态、未审查项、关键标签异常、断裂区间修改和源时间/帧号不一致。
@@ -221,12 +207,8 @@ python pipeline/scripts/audit_review_decisions.py \
 
 ```bash
 python pipeline/scripts/apply_review_decisions.py \
-  --metadata data/07_metadata/subvideos_meta.json \
-  --decisions data/07_metadata/subvideo_train_review_decisions_final.json \
-  --interval-verification-video-meta data/07_metadata/video_meta.json \
-  --interval-mapping-override data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
-  --output data/07_metadata/subvideos_meta.reviewed.json \
-  --strict
+  --interval-mapping-override \
+    data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json
 ```
 
 **这个命令做两件事**：
@@ -243,9 +225,7 @@ python pipeline/scripts/apply_review_decisions.py \
 #### 6.2 输出训练级 metadata 和排除记录
 
 ```bash
-python pipeline/scripts/apply_label_corrections.py \
-  --metadata data/07_metadata/subvideos_meta.reviewed.json \
-  --output data/07_metadata/subvideos_meta.label_reviewed.json
+python pipeline/scripts/apply_label_corrections.py
 ```
 
 **结果**：
@@ -259,27 +239,10 @@ python pipeline/scripts/apply_label_corrections.py \
 ### 步骤 7：导出训练数据、执行质量门并冻结版本
 
 ```bash
-python scripts/validate_no_oob.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
-
-python pipeline/scripts/training_sample_builder.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
-  --video-meta data/07_metadata/video_meta.json \
-  --splits-dir data/05_splits \
-  --output-dir data/06_merged \
-  --seed 42
-
-python pipeline/scripts/quality_check.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
-  --merged-dir data/06_merged
-
-python pipeline/scripts/freeze_data_version.py \
-  --merged-dir data/06_merged \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
-  --video-meta data/07_metadata/video_meta.json \
-  --splits-dir data/05_splits \
-  --subvideo-dir data/03_subvideos \
-  --lock data/07_metadata/data_version_lock.json
+python scripts/validate_no_oob.py
+python pipeline/scripts/training_sample_builder.py
+python pipeline/scripts/quality_check.py
+python pipeline/scripts/freeze_data_version.py
 ```
 
 四个门分别检查：
@@ -312,4 +275,3 @@ python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2
 - 不要省略 `--interval-verification-video-meta`；对重生成媒体不要省略对应 `--interval-mapping-override`。
 - 不要把被 `interval_verification` 转为 `dropped` 的样本重新塞回训练。若要恢复，先在原视频确认事件帧，再重新生成、增量审查和合并。
 - 不要用源视频旧标签静默覆盖人工确认过的普通标签。
-

@@ -152,21 +152,24 @@ def materialize_incremental_review_media(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="仅生成增量复审队列的媒体与帧图")
-    parser.add_argument("--queue", type=Path, required=True)
+    parser.add_argument("--round", required=True, help="本轮标识，如 round_01；多轮流程必须显式指定")
+    parser.add_argument("--queue", type=Path, default=None, help="默认按 --round 推导")
     parser.add_argument("--video-meta", type=Path, default=PROJECT_ROOT / "data/07_metadata/video_meta.json")
-    parser.add_argument("--output-root", type=Path, required=True, help="版本化输出根目录，如 data/08_incremental_review/round_01")
-    parser.add_argument("--output-metadata", type=Path, required=True)
-    parser.add_argument("--report", type=Path, required=True)
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--output-root", type=Path, default=None, help="默认按 --round 推导")
+    parser.add_argument("--output-metadata", type=Path, default=None, help="默认按 --round 推导")
+    parser.add_argument("--report", type=Path, default=None, help="默认按 --round 推导")
+    parser.add_argument("--model", default="models/minicpmv4_5")
     parser.add_argument("--reasons", nargs="+", default=["baseline_needs_regenerate"], help="默认只生成 needs_regenerate；传入 approved_interval_conflict 可扩展")
     parser.add_argument("--skip-healthcheck", action="store_true")
     args = parser.parse_args()
+    metadata_round_dir = PROJECT_ROOT / "data/07_metadata/incremental_review" / args.round
+    media_round_dir = PROJECT_ROOT / "data/08_incremental_review" / args.round
     summary = materialize_incremental_review_media(
-        queue_path=args.queue,
+        queue_path=args.queue or metadata_round_dir / "incremental_review_queue_metadata.json",
         video_meta_path=args.video_meta,
-        output_root=args.output_root,
-        output_metadata=args.output_metadata,
-        report_path=args.report,
+        output_root=args.output_root or media_round_dir,
+        output_metadata=args.output_metadata or metadata_round_dir / f"incremental_review_{args.round}_metadata.json",
+        report_path=args.report or metadata_round_dir / f"incremental_review_{args.round}_report.json",
         model=args.model,
         reasons=set(args.reasons) if args.reasons else None,
         skip_healthcheck=args.skip_healthcheck,

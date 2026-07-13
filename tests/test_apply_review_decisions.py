@@ -57,6 +57,34 @@ def test_apply_review_decisions_approved_syncs_type_canonical(tmp_path):
     assert sub["type_canonical"] == "new_type"
 
 
+def test_apply_review_drops_unverified_edited_fracture_interval(tmp_path):
+    meta, decisions, video_meta = (tmp_path / name for name in ("meta.json", "decisions.json", "video_meta.json"))
+    output = tmp_path / "out.json"
+    _write_json(meta, {"subvideos": [
+        {"subvideo_id": "video_0001_keep", "source_video": "video_0001", "actual_frame_mapping": [{"original_frame": 0}, {"original_frame": 10}, {"original_frame": 20}]},
+        {"subvideo_id": "video_0002_drop", "source_video": "video_0002", "actual_frame_mapping": [{"original_frame": 0}, {"original_frame": 10}, {"original_frame": 20}]},
+    ]})
+    _write_json(decisions, {"decisions": [
+        {"subvideo_id": "video_0001_keep", "status": "approved", "original_labels": {"fracture_between": [0, 1]}, "corrected_labels": {"fracture_between": [1, 2]}},
+        {"subvideo_id": "video_0002_drop", "status": "approved", "original_labels": {"fracture_between": [0, 1]}, "corrected_labels": {"fracture_between": None}},
+    ]})
+    _write_json(video_meta, [
+        {"video_id": "video_0001", "has_fracture_canonical": True, "event_time_reliable": True, "event_frame_effective": 15},
+        {"video_id": "video_0002", "has_fracture_canonical": True, "event_time_reliable": True, "event_frame_effective": 5},
+    ])
+
+    summary = ard.apply_review_decisions(
+        meta, decisions, output, strict=True,
+        interval_verification_video_meta_path=video_meta,
+    )
+
+    assert summary["interval_verification"] == {"retained": 1, "dropped": 1}
+    rows = {row["subvideo_id"]: row for row in json.loads(output.read_text())["subvideos"]}
+    assert rows["video_0001_keep"]["review_status"] == "approved"
+    assert rows["video_0002_drop"]["review_status"] == "dropped"
+    assert rows["video_0002_drop"]["interval_verification"]["reason"] == "missing_reviewed_interval"
+
+
 def test_missing_status_strict_blocks(tmp_path):
     meta = tmp_path / "meta.json"
     dec = tmp_path / "dec.json"

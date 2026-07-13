@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Any
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 def _load(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -71,16 +74,22 @@ def append_failure_drops(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="将增量生成失败样本显式追加为 dropped delta")
-    parser.add_argument("--baseline", type=Path, required=True)
-    parser.add_argument("--delta", type=Path, required=True)
-    parser.add_argument("--queue", type=Path, required=True)
-    parser.add_argument("--report", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--round", required=True, help="本轮标识，如 round_01；多轮流程必须显式指定")
+    parser.add_argument("--baseline", type=Path, default=PROJECT_ROOT / "data/07_metadata/review_decisions/subvideo_train_review_decisions.json")
+    parser.add_argument("--delta", type=Path, default=None, help="默认按 --round 推导")
+    parser.add_argument("--queue", type=Path, default=None, help="默认按 --round 推导")
+    parser.add_argument("--report", type=Path, default=None, help="默认按 --round 推导")
+    parser.add_argument("--output", type=Path, default=None, help="默认按 --round 推导")
     parser.add_argument("--note", default="用户决定：源事件更新后无法形成可审查候选，剔除旧样本")
     args = parser.parse_args()
+    round_dir = PROJECT_ROOT / "data/07_metadata/incremental_review" / args.round
     summary = append_failure_drops(
-        baseline_path=args.baseline, delta_path=args.delta, queue_path=args.queue,
-        report_path=args.report, output_path=args.output, note=args.note,
+        baseline_path=args.baseline,
+        delta_path=args.delta or round_dir / "incremental_review_delta_decisions.json",
+        queue_path=args.queue or round_dir / "incremental_review_queue_metadata.json",
+        report_path=args.report or round_dir / f"incremental_review_{args.round}_report.json",
+        output_path=args.output or round_dir / "incremental_review_delta_decisions_resolved.json",
+        note=args.note,
     )
     print(f"写出 delta: {summary['total']} 条，新增 dropped {summary['added_dropped']} 条")
     return 0

@@ -91,10 +91,10 @@ def merge_incremental_review_decisions(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="安全合并增量复审 delta 决策")
-    parser.add_argument("--baseline", type=Path, required=True)
+    parser.add_argument("--baseline", type=Path, default=PROJECT_ROOT / "data/07_metadata/review_decisions/subvideo_train_review_decisions.json")
     parser.add_argument("--delta", type=Path, required=True)
     parser.add_argument("--queue", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "data/07_metadata/subvideo_train_review_decisions_final.json")
     parser.add_argument("--allow-approved-supersede", action="store_true")
     args = parser.parse_args()
     summary = merge_incremental_review_decisions(
