@@ -409,6 +409,10 @@ def test_quality_check_rejects_reviewed_train_test_source_leakage(tmp_path, monk
         json.dumps([{"id": "test_0001", "video_id": "video_0001"}]),
         encoding="utf-8",
     )
+    (merged / "fold_0_train.json").write_text(
+        json.dumps([{"metadata": {"source_video": "video_0001"}}]),
+        encoding="utf-8",
+    )
     meta = _make_reviewed_meta(tmp_path)
     _write_meta(
         meta,

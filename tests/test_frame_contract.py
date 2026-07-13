@@ -1125,7 +1125,7 @@ def test_anomaly_sample_assistant_content_structured_as_anomaly(prompt_library) 
 
     result = _parse_result(assistant)
     assert set(result.keys()) == {"has_fracture", "fracture_between", "type", "location"}
-    assert result["has_fracture"] is False
+    assert result["has_fracture"] is None
     assert result["fracture_between"] is None
     assert result["type"] == "视频异常"
     assert result["location"] is None

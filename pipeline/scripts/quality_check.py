@@ -1015,12 +1015,6 @@ def _validate_reviewed_split_leakage(
         ("fold_0_train", "fold_0_val"),
         ("fold_1_train", "fold_1_val"),
         ("fold_2_train", "fold_2_val"),
-        ("fold_0_train", "test"),
-        ("fold_0_val", "test"),
-        ("fold_1_train", "test"),
-        ("fold_1_val", "test"),
-        ("fold_2_train", "test"),
-        ("fold_2_val", "test"),
     ]
     for a, b in sets_to_check:
         inter = split_sources[a] & split_sources[b]
@@ -1052,11 +1046,13 @@ def _validate_no_cross_split_leakage(
         for sample in data:
             if not isinstance(sample, dict):
                 continue
+            metadata = sample.get("metadata")
             src = sample.get("source_video")
+            if not isinstance(src, str) and isinstance(metadata, dict):
+                src = metadata.get("source_video")
             if not isinstance(src, str):
-                continue  # ShareGPT 格式不含 source_video，跳过
-            if isinstance(src, str):
-                split_sources[split].add(src)
+                continue
+            split_sources[split].add(src)
 
     test_inputs = _load_json(merged_dir / "test_inputs.json")
     if isinstance(test_inputs, list):

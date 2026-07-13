@@ -191,6 +191,7 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
     else:
         # 无事件标注的“未夹紧”在此被降级为“未断裂”。
         sub["type"] = "未断裂"
+        has_fracture_canonical = False
 
     sub["has_fracture"] = has_fracture_canonical
     sub["has_fracture_canonical"] = has_fracture_canonical
@@ -245,16 +246,17 @@ def _build_evidence_sentence(
 
 def build_assistant_content(sub: dict[str, Any]) -> str:
     """构造 assistant 输出：判断依据 + 可解析 JSON 结果区（不含 confidence）。"""
-    has_fracture = bool(sub["has_fracture_canonical"])
+    # ``None`` 对视频异常表示“无法判定”，必须原样写入 JSON，不能用 bool() 折叠为 False。
+    has_fracture = sub["has_fracture_canonical"]
     ftype = sub["type"]
     location = sub.get("location_canonical")
-    fracture_between = sub.get("fracture_between") if has_fracture else None
+    fracture_between = sub.get("fracture_between") if has_fracture is True else None
 
     evidence = _build_evidence_sentence(has_fracture, ftype, fracture_between, location)
 
     result: dict[str, Any] = {
         "has_fracture": has_fracture,
-        "fracture_between": fracture_between if has_fracture else None,
+        "fracture_between": fracture_between if has_fracture is True else None,
         "type": ftype,
         "location": location,
     }

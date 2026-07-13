@@ -239,8 +239,8 @@ python pipeline/scripts/apply_label_corrections.py
 ### 步骤 7：导出训练数据、执行质量门并冻结版本
 
 ```bash
-python scripts/validate_no_oob.py
 python pipeline/scripts/training_sample_builder.py
+python scripts/validate_no_oob.py
 python pipeline/scripts/quality_check.py
 python pipeline/scripts/freeze_data_version.py
 ```

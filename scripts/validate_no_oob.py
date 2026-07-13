@@ -168,6 +168,9 @@ def _validate_splits(splits: dict[str, set[str]], video_meta: list[dict], errors
 
 def _validate_train_ratio(errors: list) -> None:
     meta = _load_json(SAMPLES_META_PATH)
+    if not isinstance(meta, dict):
+        errors.append(("ratio", "samples_meta.json", "missing_or_invalid; run training_sample_builder.py first"))
+        return
     splits = meta.get("splits", {})
     pos = 0
     neg = 0
