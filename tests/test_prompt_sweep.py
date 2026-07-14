@@ -10,9 +10,9 @@ from finetune.validation import run_prompt_sweep
 def test_build_prompt_conditions_reuses_training_questions_without_examples() -> None:
     library = run_prompt_sweep.get_prompt_library()
 
-    conditions = run_prompt_sweep.build_prompt_conditions(library, [0], "system")
+    conditions = run_prompt_sweep.build_prompt_conditions(library, [0], "test")
 
-    assert [condition["prompt_id"] for condition in conditions] == ["zh_binary_and_interval__system"]
+    assert [condition["prompt_id"] for condition in conditions] == ["zh_binary_and_interval__test"]
     assert "confidence" not in conditions[0]["prompt_text"]
     assert "示例" not in conditions[0]["prompt_text"]
     assert "只能包含以下四个字段" not in conditions[0]["prompt_text"]
@@ -135,7 +135,7 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
             "--out-dir",
             str(out_dir),
             "--prompt",
-            "system",
+            "test",
         ],
     )
 
@@ -146,7 +146,7 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
     assert len(calls) == 2
     assert len(records) == 2
     assert {record["prompt_id"] for record in records} == {
-        "zh_binary_and_interval__system",
+        "zh_binary_and_interval__test",
     }
     assert summary["paired_design"] is True
     assert summary["sample_count"] == 2

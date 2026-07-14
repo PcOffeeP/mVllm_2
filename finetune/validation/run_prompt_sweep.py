@@ -2,8 +2,9 @@
 
 The sweep deliberately reuses the six training user prompts from
 ``pipeline/prompt_library.yaml``. ``--prompt user`` supplies no System Prompt;
-``--prompt system`` supplies the one editable ``test.system_prompt`` from that
-same library. It never uses the five-field inference prompt or its examples.
+``--prompt system`` supplies the formal training ``system_prompt``; and
+``--prompt test`` supplies the editable ``test.system_prompt``. It never uses
+the five-field inference prompt or its examples.
 
 Every selected video is evaluated with every selected prompt condition.  This
 is a paired comparison: prompt quality is therefore not confounded with video
@@ -28,6 +29,7 @@ from .prompts import (
     DEFAULT_PROMPT_LIBRARY_PATH,
     get_prompt_library,
     get_prompt_version,
+    get_system_prompt,
     get_test_system_prompt,
     get_user_prompt,
     get_user_prompt_template_id,
@@ -54,9 +56,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", required=True, help="New directory for prompt-sweep outputs.")
     parser.add_argument(
         "--prompt",
-        choices=("user", "system"),
+        choices=("user", "system", "test"),
         required=True,
-        help="user: no System Prompt; system: use test.system_prompt from the shared prompt library.",
+        help="user: no System Prompt; system: formal system_prompt; test: editable test.system_prompt.",
     )
     return parser.parse_args()
 
@@ -65,7 +67,7 @@ def build_prompt_conditions(
     library: dict[str, Any], template_indices: list[int], prompt_mode: str
 ) -> list[dict[str, Any]]:
     """Build one condition per existing training question for the chosen mode."""
-    output_protocol = OUTPUT_PROTOCOL_FOUR_FIELD if prompt_mode == "system" else OUTPUT_PROTOCOL_FREE_TEXT
+    output_protocol = OUTPUT_PROTOCOL_FOUR_FIELD if prompt_mode == "test" else OUTPUT_PROTOCOL_FREE_TEXT
     conditions: list[dict[str, str | int]] = []
     for template_index in template_indices:
         template_id = get_user_prompt_template_id(template_index, library)
@@ -374,7 +376,7 @@ def _write_summary(
         "notes": [
             "Every selected video is evaluated once per condition; do not compare prompt conditions using disjoint video groups.",
             "user mode intentionally has no System Prompt and is not automatically scored as a four-field result.",
-            "system mode reads only test.system_prompt from the shared prompt library.",
+            "system mode reads the formal training system_prompt; test mode reads the editable test.system_prompt.",
             "Video-abnormal ground truth (has_fracture=null) is excluded from has_fracture classification metrics.",
             "For test_subvideos, aggregate or bootstrap by source_video_id before treating differences as independent evidence.",
         ],
@@ -392,7 +394,12 @@ def main() -> None:
 
     library = get_prompt_library()
     conditions = build_prompt_conditions(library, [DEFAULT_TEMPLATE_INDEX], args.prompt)
-    system_prompt = get_test_system_prompt(library) if args.prompt == "system" else None
+    if args.prompt == "user":
+        system_prompt = None
+    elif args.prompt == "system":
+        system_prompt = get_system_prompt(library)
+    else:
+        system_prompt = get_test_system_prompt(library)
     system_prompt_hash = _sha256(system_prompt)
     samples = load_dataset(args.dataset)
     out_dir.mkdir(parents=True, exist_ok=True)
