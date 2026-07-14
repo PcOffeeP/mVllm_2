@@ -1,169 +1,136 @@
-# 微调配置目录
+# 微调与评估
 
-本目录仅存放 TensileAgent 项目专属的 LLaMA-Factory 微调配置与验证脚本。
-LLaMA-Factory 框架本身已迁移为仓库根目录的 Git submodule：`LlamaFactory/`。
+本目录包含 TensileAgent 的 MiniCPM-V LoRA 微调配置和直接输出评估脚本。LLaMA-Factory 位于仓库根目录的 `LlamaFactory/` 子模块。
 
-## 目录结构
+训练、GPU 推理和完整评测请在训练电脑执行；本机只适合查看或复核已同步的预测结果。
 
-```text
-finetune/
-├── dataset_info.json          # 项目数据集注册表
-├── README.md                  # 本说明
-├── MiniCPM/config/            # models/minicpm-v-4.5 3-fold LoRA SFT YAML 配置
-│   ├── minicpmv4_5_lora_sft_interval_fold0.yaml
-│   ├── minicpmv4_5_lora_sft_interval_fold1.yaml
-│   ├── minicpmv4_5_lora_sft_interval_fold2.yaml
-│   └── merge.yaml
-└── validation/                # 直接返回评估架构
-    ├── run_evaluation.py      # 唯一主入口：选择数据集、模型地址后运行评估
-    ├── datasets.py            # test/test_subvideos/fold_N_val 数据集加载
-    ├── prompts.py             # inference user prompt（含 confidence）与 system prompt
-    ├── model_runtime.py       # MiniCPM 视频推理封装（训练机/GPU 使用）
-    ├── constants.py
-    └── video_loader.py
-```
+## 开始前
 
-## 前置条件
+数据、基座模型、环境和人工审核的完整准备流程以仓库根目录 [README.md](../README.md) 为准。本说明只列出微调与评估所需的核心命令。
 
-1. 下载基座模型到 `models/minicpm-v-4.5/`（见仓库根目录 `README.md`）。
-2. 按根目录 `README.md` 准备训练数据：先完成人工媒体审核、`prune_reviewed_subvideos.py` 清洗和 `review_subvideo_labels.py` 标签复检，再由 `subvideos_meta.label_reviewed.json` 生成 `data/06_merged/` 下的 JSON。
-3. `finetune/dataset_info.json` 已注册 `tensile_video_3k*` / `tensile_video_interval_*` 数据集。
-
-## 安装 LLaMA-Factory
+安装训练依赖：
 
 ```bash
-cd LlamaFactory/
+cd LlamaFactory
 pip install -e ".[metrics]"
 pip install -r requirements/minicpm-v.txt
 ```
 
-## 启动训练
+## 训练 LoRA
 
-所有 YAML 中的相对路径均基于 `finetune/` 解析，因此训练与合并命令需在 `finetune/` 下执行：
+从 `finetune/` 运行。必须使用 `train_with_contract.py`，它会为训练进程安装 MiniCPM 的 8 帧处理器约束。
 
 ```bash
-cd finetune/
+cd finetune
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
-# Fold 0
+# 选择一个 fold 训练
 python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
-
-# Fold 1
-python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold1.yaml
-
-# Fold 2
-python3 train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2.yaml
 ```
 
-训练输出目录为 `LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k{0,1,2}`。必须通过 `train_with_contract.py` 启动，以便实际子处理器的 8 帧约束在每个训练进程中生效。
-
-训练前应确认根目录数据链路已经通过：
-
-```bash
-python3 scripts/validate_no_oob.py
-python3 pipeline/scripts/quality_check.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
-```
-
-`training_sample_builder.py`、`quality_check.py`、`validate_no_oob.py` 和 `freeze_data_version.py` 当前默认都使用 `data/07_metadata/subvideos_meta.label_reviewed.json`。不要用未经过人工审核和标签复检的 `subvideos_meta.json` 生成正式训练 JSON。
+将命令末尾的配置替换为 `fold1` 或 `fold2`，即可训练另外两个 fold。各配置中的 `output_dir` 是实际训练产物目录；请以 YAML 为准，不要手工猜测路径。
 
 ## 合并 LoRA
 
+编辑 `MiniCPM/config/merge.yaml` 中的 `adapter_name_or_path` 和 `export_dir`，使其对应要合并的 fold，然后执行：
+
 ```bash
-cd finetune/
+cd finetune
 llamafactory-cli export MiniCPM/config/merge.yaml
 ```
 
-合并后的完整模型输出到 `LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0_merged/`（默认对应 fold0，切换 fold 时请修改 `merge.yaml` 中的 `adapter_name_or_path` 与 `export_dir`）。
+合并后的目录可直接用于评估。训练输出中的 checkpoint 和 adapter 应保留在训练电脑；若需同步结果到仓库，建议只归档配置、指标、日志与曲线，不提交大型 checkpoint 或模型权重。
 
-## 归档训练结果
+## 测评：基座模型与微调模型对比
 
-训练输出位于 `LlamaFactory/saves/` 下，包含大量中间检查点与冗余文件。仅需将核心指标与配置归档到 `finetune/saves/`，通过 Git 同步到仓库。
+正式测评需要比较两种模型：基座模型和微调/合并后的模型；每种模型都必须覆盖以下两类测试内容：
 
-在训练机上执行归档（以 fold0 为例，fold1/fold2 替换目录名中的 `3k0` → `3k1`/`3k2`）：
+- `test`：22 个原始测试指示频。
+- `test_subvideos`：由这 22 个视频生成、并完成审核后导出的全部测试子视频（审核标记为 `dropped` 的样本不进入正式测评）。
 
-在仓库根目录执行：
+### 测试数据与训练数据是两条独立链路
+
+两条链路都以 `data/05_splits/test.json` 或训练 fold 划分为边界，但不共用子视频 metadata，也不能互相替代：
+
+| 用途 | 输入与生成范围 | 审核后产物 | 下游用途 |
+| --- | --- | --- | --- |
+| 训练 | 训练 fold 的视频生成候选子视频，记录在 `data/07_metadata/subvideos_meta.json` | `subvideos_meta.label_reviewed.json` | `training_sample_builder.py` 生成训练/验证 JSON |
+| 原始视频测试 | 只读取 `data/05_splits/test.json` 中的 22 个视频 | `data/06_merged/test_inputs.json`、`test_ground_truth.json` | `--dataset test` |
+| 测试子视频 | 首次生成时读取同一个 `test.json` 中的 22 个视频，生成候选子视频 | `test_subvideos_meta.label_reviewed.json`，以及 `test_subvideo_inputs.json`、`test_subvideo_ground_truth.json` | `--dataset test_subvideos` |
+
+因此，测试视频不会被送入训练样本构建器；训练子视频也不会被 `test_subvideos` 测评读取。
+
+### 先准备测试数据
+
+以下命令均从仓库根目录执行。先生成 22 个原始测试视频的评测清单：
 
 ```bash
-SRC=LlamaFactory/saves/minicpmv4_5/lora/sft_interval_3k0
-DST=finetune/saves/minicpmv4_5/lora/sft_interval_3k0
-mkdir -p "$DST"
-cp "$SRC"/all_results.json "$SRC"/train_results.json "$SRC"/eval_results.json \
-   "$SRC"/trainer_log.jsonl "$SRC"/training_loss.png "$SRC"/training_eval_loss.png \
-   "$SRC"/adapter_config.json "$SRC"/training_args.bin "$SRC"/trainer_state.json \
-   "$SRC"/README.md "$DST"/
+python scripts/generate_test_artifacts.py
 ```
 
-提交并推送（在仓库根目录执行）：
+首次生成并审核这 22 个测试视频的子视频（仅当 `data/07_metadata/test_subvideos_meta.json` 尚不存在时）：
 
 ```bash
-cd /path/to/mVllm_2/
-git add finetune/saves/
-git commit -m "chore(finetune): archive fold0 training results"
-git push
+# metadata 不存在时，此脚本在代码中固定读取 data/05_splits/test.json；不会遍历训练/验证视频。
+# --no-strict 仅用于首次生成尚未审核的候选媒体与 metadata。
+python scripts/generate_test_subvideo_artifacts.py --no-strict
+
+# 在审核 UI 中逐条标记 approved、dropped 或 needs_regenerate
+streamlit run pipeline/scripts/review_subvideos_app.py -- \
+  --metadata data/07_metadata/test_subvideos_meta.json
+
+# 将审核结论写回 metadata，并应用审核后的标签
+python pipeline/scripts/apply_review_decisions.py \
+  --metadata data/07_metadata/test_subvideos_meta.json \
+  --decisions data/07_metadata/subvideo_test_review_decisions.json \
+  --output data/07_metadata/test_subvideos_meta.reviewed.json \
+  --strict
+python pipeline/scripts/apply_label_corrections.py \
+  --metadata data/07_metadata/test_subvideos_meta.reviewed.json \
+  --output data/07_metadata/test_subvideos_meta.label_reviewed.json
+
+# 严格模式下导出正式测试输入；未审核或 needs_regenerate 的样本会阻止导出
+python scripts/generate_test_subvideo_artifacts.py \
+  --metadata data/07_metadata/test_subvideos_meta.label_reviewed.json
 ```
 
-本地 Mac 拉取归档：
+若有 `needs_regenerate` 样本，不得执行正式导出，也不要使用 `--no-strict` 的输出作为正式评测集。当前脚本在已有 `test_subvideos_meta.json` 时只会复用该 metadata，不能按单个样本重新生成媒体；需要先补齐该脚本的重生成能力，再完成复审和严格导出。正式导出前还必须确认测试 metadata 的每个 `source_video` 都属于 `data/05_splits/test.json`；当前脚本读取已有 metadata 时不会执行这项校验。
+
+### 核心测评命令
+
+在训练电脑上对一个模型和一个数据集运行：
 
 ```bash
-cd /path/to/mVllm_2/
-git pull
-```
-
-### 归档文件清单
-
-| ✅ 归档 | ❌ 跳过 |
-|---------|----------|
-| `all_results.json` | `checkpoint-*/`（中间检查点，体积大） |
-| `train_results.json` | `adapter_model.safetensors`（保留在 `LlamaFactory/saves/` 下用于合并 LoRA） |
-| `eval_results.json` | `optimizer.pt` |
-| `trainer_log.jsonl` | `scheduler.pt` |
-| `training_loss.png` | `added_tokens.json` |
-| `training_eval_loss.png` | `special_tokens_map.json` |
-| `adapter_config.json` | `tokenizer_config.json` |
-| `training_args.bin` | `tokenizer.json` |
-| `trainer_state.json` | `chat_template.json` |
-| `README.md` | `preprocessor_config.json` |
-
-## 直接返回评估
-
-验证架构已重构为单一路径：只评估微调模型的直接返回，不再生成或依赖旧的 time/type/joint/compare 二次转换产物。
-每次评估只选择两项：
-
-1. 数据集：`test` / `test_subvideos` / `fold_0_val` / `fold_1_val` / `fold_2_val`。
-2. 微调后模型地址：`--model-dir`。
-
-`run_evaluation.py` 不再接受 `--prompt` 参数；评估始终使用含 confidence 要求的 inference user prompt（对应原 `--prompt training`，即 `pipeline/prompt_library.yaml` 的第一个 user prompt 模板）。system prompt 仍会从 prompt library 读取并传给模型 runtime。
-
-训练机上直接运行模型并评估（需要模型、视频文件和 GPU）：
-
-```bash
-cd /path/to/mVllm_2/
+cd /path/to/mVllm_2
 python -m finetune.validation.run_evaluation \
-  --dataset test_subvideos \
-  --model-dir /path/to/merged_or_adapter_model \
-  --out-dir finetune/results/eval_test_subvideos
+  --dataset test \
+  --model-dir /path/to/model \
+  --out-dir finetune/results/model_test
 ```
 
-基座模型 prompt 格式测试使用 22 个原视频（`data/06_merged/test_inputs.json`），不使用 474 个子视频：
+基座模型与微调模型的对比，只需分别替换 `--model-dir` 后重复此命令；原始视频与子视频的对比，只需把 `--dataset test` 改为 `--dataset test_subvideos`。建议在 `--out-dir` 中分别标明模型和数据集，避免覆盖结果。
 
-```bash
-python -m finetune.validation.run_base_prompt_test \
-  --model-dir models/minicpm-v-4.5 \
-  --out-dir finetune/results/base_prompt_format_test
-```
+可调整的参数：
 
-该命令使用含 confidence 的 inference user prompt 测试基座模型，并输出：
+- `--dataset`：`test`（22 个原始测试视频）、`test_subvideos`（审核后测试子视频）；也可选 `fold_0_val`、`fold_1_val`、`fold_2_val` 做 fold 验证。
+- `--model-dir`：必填，除非改用 `--predictions`；可为基座模型、合并模型或可加载的 adapter 目录。
+- `--out-dir`：必填，评测结果目录。
+- `--video-root`：视频不在默认 `data/01_videos` 时指定根目录。
+- `--max-samples`：仅用于小规模冒烟测试。
+- `--predictions`：已有预测 JSONL 时跳过 GPU 推理并复核结果。
 
-- `base_prompt_format_test/training/evaluation_summary.json`
-- `base_prompt_format_test/prompt_format_comparison.json`
+当前评测脚本没有 `--prompt` 参数：它固定使用项目 prompt library 中的推理 user prompt 与 system prompt。因此“更换模型”和“更换数据集”是命令行可选项；如需比较不同 prompt，必须先修改 prompt library 或扩展评测脚本，不能把不存在的 prompt 参数写进 README。
 
-`system prompt` 仍从 prompt library 传入，但不再作为可选的 `--prompt system` 选项。
+每个输出目录包含：
 
-这一步只看逐样本 `raw_output` 和 `raw_output_rate`，不使用自动 schema 提取结果判断 prompt 是否可用。
+- `evaluation_summary.json`：样本数、运行失败数与非空输出率。
+- `evaluation_records.jsonl`：逐样本原始输出、错误和参考标签，是比较模型表现的主要依据。
+- `runtime_failures.csv`：推理失败样本。
 
-本机只评估已有预测 JSONL（不需要 GPU，用于复核训练机同步出的结果）：
+评估固定使用含 `confidence` 的推理 prompt，当前脚本不自动判定 JSON/schema 正确性。因此除比较运行失败率和非空输出率外，还应基于逐样本原始输出检查字段正确性、时间区间命中、联合成功率以及典型成功/失败样例。训练 loss 或 eval loss 的下降不能单独证明任务效果。
+
+本机已有训练电脑同步的预测 JSONL 时，可跳过 GPU 推理并复核单组结果：
 
 ```bash
 python -m finetune.validation.run_evaluation \
@@ -171,19 +138,3 @@ python -m finetune.validation.run_evaluation \
   --predictions finetune/results/direct_test_subvideos.jsonl \
   --out-dir finetune/results/eval_test_subvideos
 ```
-
-输出文件：
-
-- `evaluation_summary.json`：样本数、运行失败数、非空原始输出数量与比例。
-- `evaluation_records.jsonl`：逐样本 `raw_output`、运行错误和 ground truth 参考元信息。
-- `runtime_failures.csv`：运行失败样本。
-
-五字段协议固定为：
-
-- `has_fracture`
-- `fracture_between`
-- `type`
-- `location`
-- `confidence`
-
-当前脚本不再自动解析 JSON/schema，也不自动判断五字段正确性；prompt 质量以 `evaluation_records.jsonl` 中模型原始返回为准。
