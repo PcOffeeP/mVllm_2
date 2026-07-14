@@ -134,8 +134,6 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
             "/tmp/base",
             "--out-dir",
             str(out_dir),
-            "--template-indices",
-            "0,1",
             "--prompt",
             "system",
         ],
@@ -145,11 +143,10 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
 
     records = [json.loads(line) for line in (out_dir / "evaluation_records.jsonl").read_text().splitlines()]
     summary = json.loads((out_dir / "prompt_sweep_summary.json").read_text())
-    assert len(calls) == 4
-    assert len(records) == 4
+    assert len(calls) == 2
+    assert len(records) == 2
     assert {record["prompt_id"] for record in records} == {
         "zh_binary_and_interval__system",
-        "zh_mode_focus__system",
     }
     assert summary["paired_design"] is True
     assert summary["sample_count"] == 2

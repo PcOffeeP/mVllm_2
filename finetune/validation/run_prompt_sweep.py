@@ -36,6 +36,7 @@ from .prompts import (
 
 OUTPUT_PROTOCOL_FOUR_FIELD = "four_field_json"
 OUTPUT_PROTOCOL_FREE_TEXT = "free_text"
+DEFAULT_TEMPLATE_INDEX = 0
 
 # Kept solely as a diagnostic for the previously observed inference collapse.
 KNOWN_NEGATIVE_DEMONSTRATION = (
@@ -48,43 +49,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run every selected training prompt against every selected video (paired prompt sweep)."
     )
-    parser.add_argument("--dataset", required=True, choices=SUPPORTED_DATASETS)
+    parser.add_argument("--dataset", required=True, choices=SUPPORTED_DATASETS, help="Dataset to evaluate.")
     parser.add_argument("--model-dir", required=True, help="Base-model directory to load directly.")
     parser.add_argument("--out-dir", required=True, help="New directory for prompt-sweep outputs.")
-    parser.add_argument("--video-root", default=None)
     parser.add_argument(
         "--prompt",
         choices=("user", "system"),
-        default="system",
+        required=True,
         help="user: no System Prompt; system: use test.system_prompt from the shared prompt library.",
     )
-    parser.add_argument(
-        "--template-indices",
-        default="all",
-        help="Comma-separated indices from the existing training prompt library, or 'all' (default).",
-    )
-    parser.add_argument("--max-samples", type=int, default=None, help="Optional smoke-test cap applied before the sweep.")
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Append only missing (sample_id, prompt_id) pairs to an existing evaluation_records.jsonl.",
-    )
     return parser.parse_args()
-
-
-def parse_template_indices(value: str, template_count: int) -> list[int]:
-    if value.strip().lower() == "all":
-        return list(range(template_count))
-    try:
-        indices = [int(item.strip()) for item in value.split(",") if item.strip()]
-    except ValueError as exc:
-        raise ValueError("--template-indices must be 'all' or comma-separated integers") from exc
-    if not indices:
-        raise ValueError("--template-indices selected no templates")
-    invalid = [index for index in indices if index < 0 or index >= template_count]
-    if invalid:
-        raise ValueError(f"--template-indices out of range 0..{template_count - 1}: {invalid}")
-    return list(dict.fromkeys(indices))
 
 
 def build_prompt_conditions(
@@ -366,38 +340,6 @@ def _sha256(value: str | None) -> str | None:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def _load_existing_records(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
-        return []
-    records: list[dict[str, Any]] = []
-    with path.open(encoding="utf-8") as handle:
-        for line_number, line in enumerate(handle, start=1):
-            if not line.strip():
-                continue
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError as exc:
-                raise ValueError(f"{path}:{line_number} is not valid JSONL: {exc}") from exc
-    return records
-
-
-def _validate_resumable_records(
-    records: list[dict[str, Any]], conditions: list[dict[str, Any]], model_dir: str, system_prompt_hash: str | None
-) -> None:
-    """Prevent a resume from silently combining different prompt or model runs."""
-    expected_hashes = {str(condition["prompt_id"]): str(condition["prompt_hash"]) for condition in conditions}
-    for index, record in enumerate(records, start=1):
-        prompt_id = str(record.get("prompt_id"))
-        if prompt_id not in expected_hashes:
-            raise ValueError(f"Cannot resume: record {index} has prompt_id outside this sweep: {prompt_id}")
-        if record.get("prompt_hash") != expected_hashes[prompt_id]:
-            raise ValueError(f"Cannot resume: record {index} has a different prompt hash for {prompt_id}")
-        if record.get("model_dir") not in {None, model_dir}:
-            raise ValueError(f"Cannot resume: record {index} was created for another model_dir")
-        if record.get("system_prompt_hash") not in {None, system_prompt_hash}:
-            raise ValueError(f"Cannot resume: record {index} was created for another system prompt")
-
-
 def _write_summary(
     path: Path,
     records: list[dict[str, Any]],
@@ -445,33 +387,21 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     records_path = out_dir / "evaluation_records.jsonl"
     summary_path = out_dir / "prompt_sweep_summary.json"
-    if records_path.exists() and not args.resume:
-        raise FileExistsError(f"{records_path} already exists; use a new --out-dir or pass --resume")
+    if records_path.exists():
+        raise FileExistsError(f"{records_path} already exists; choose a new --out-dir")
 
     library = get_prompt_library()
-    template_indices = parse_template_indices(args.template_indices, len(library["user_prompt_templates"]))
-    conditions = build_prompt_conditions(library, template_indices, args.prompt)
+    conditions = build_prompt_conditions(library, [DEFAULT_TEMPLATE_INDEX], args.prompt)
     system_prompt = get_test_system_prompt(library) if args.prompt == "system" else None
     system_prompt_hash = _sha256(system_prompt)
-    samples = load_dataset(args.dataset, video_root=Path(args.video_root) if args.video_root else None)
-    if args.max_samples is not None:
-        samples = samples[: args.max_samples]
-
-    existing_records = _load_existing_records(records_path) if args.resume else []
-    _validate_resumable_records(existing_records, conditions, args.model_dir, system_prompt_hash)
-    completed_pairs = {
-        (str(record.get("sample_id")), str(record.get("prompt_id"))) for record in existing_records
-    }
+    samples = load_dataset(args.dataset)
     out_dir.mkdir(parents=True, exist_ok=True)
     processor, model = load_model(args.model_dir)
 
-    records = list(existing_records)
-    with records_path.open("a" if args.resume else "w", encoding="utf-8") as handle:
+    records: list[dict[str, Any]] = []
+    with records_path.open("w", encoding="utf-8") as handle:
         for condition in conditions:
             for sample in samples:
-                pair = (sample.sample_id, str(condition["prompt_id"]))
-                if pair in completed_pairs:
-                    continue
                 if not sample.video_path.exists():
                     raw_output = ""
                     runtime_error = f"video not found: {sample.video_path}"
