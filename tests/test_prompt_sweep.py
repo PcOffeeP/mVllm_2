@@ -24,6 +24,15 @@ def test_build_prompt_conditions_reuses_training_questions_without_examples() ->
     assert "只能包含以下四个字段" in conditions[1]["prompt_text"]
 
 
+def test_system_prompt_variants_are_read_from_the_shared_prompt_library() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+
+    prompt = run_prompt_sweep.get_system_prompt_by_id("label_contract_v1", library)
+
+    assert "has_fracture、fracture_between、type、location" in prompt
+    assert "示例" not in prompt
+
+
 def test_inspect_four_field_output_uses_project_legal_combinations() -> None:
     valid = run_prompt_sweep.inspect_four_field_output(
         '{"has_fracture":true,"fracture_between":[2,3],"type":"韧性断裂","location":"inside_gauge"}'

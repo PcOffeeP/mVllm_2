@@ -29,8 +29,10 @@ from .prompts import (
     DEFAULT_PROMPT_LIBRARY_PATH,
     get_prompt_library,
     get_prompt_version,
+    get_system_prompt_by_id,
     get_system_prompt,
     get_system_prompt_hash,
+    get_system_prompt_variant_ids,
     get_user_prompt,
     get_user_prompt_template_id,
 )
@@ -61,6 +63,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-dir", required=True, help="Base-model directory to load directly.")
     parser.add_argument("--out-dir", required=True, help="New directory for prompt-sweep outputs.")
     parser.add_argument("--video-root", default=None)
+    parser.add_argument(
+        "--system-prompt-id",
+        default="training_default",
+        help="training_default or an ID from system_prompt_variants in the shared prompt library.",
+    )
     parser.add_argument(
         "--template-indices",
         default="all",
@@ -361,7 +368,7 @@ def _load_existing_records(path: Path) -> list[dict[str, Any]]:
 
 
 def _validate_resumable_records(
-    records: list[dict[str, Any]], conditions: list[dict[str, str | int]], model_dir: str
+    records: list[dict[str, Any]], conditions: list[dict[str, str | int]], model_dir: str, system_prompt_hash: str
 ) -> None:
     """Prevent a resume from silently combining different prompt or model runs."""
     expected_hashes = {str(condition["prompt_id"]): str(condition["prompt_hash"]) for condition in conditions}
@@ -373,6 +380,8 @@ def _validate_resumable_records(
             raise ValueError(f"Cannot resume: record {index} has a different prompt hash for {prompt_id}")
         if record.get("model_dir") not in {None, model_dir}:
             raise ValueError(f"Cannot resume: record {index} was created for another model_dir")
+        if record.get("system_prompt_hash") not in {None, system_prompt_hash}:
+            raise ValueError(f"Cannot resume: record {index} was created for another system prompt")
 
 
 def _write_summary(
@@ -397,8 +406,9 @@ def _write_summary(
         "model_dir": args.model_dir,
         "prompt_library_path": str(DEFAULT_PROMPT_LIBRARY_PATH),
         "prompt_version": get_prompt_version(library),
+        "system_prompt_id": args.system_prompt_id,
         "system_prompt": system_prompt,
-        "system_prompt_hash": get_system_prompt_hash(library),
+        "system_prompt_hash": _sha256(system_prompt),
         "generation_config": GENERATION_CONFIG,
         "video_max_frames": VIDEO_MAX_FRAMES,
         "paired_design": True,
@@ -424,16 +434,22 @@ def main() -> None:
         raise FileExistsError(f"{records_path} already exists; use a new --out-dir or pass --resume")
 
     library = get_prompt_library()
+    available_system_prompt_ids = ("training_default", *get_system_prompt_variant_ids(library))
+    if args.system_prompt_id not in available_system_prompt_ids:
+        raise ValueError(
+            f"Unknown --system-prompt-id {args.system_prompt_id!r}; available: {available_system_prompt_ids}"
+        )
     template_indices = parse_template_indices(args.template_indices, len(library["user_prompt_templates"]))
     variants = parse_variants(args.variants)
     conditions = build_prompt_conditions(library, template_indices, variants)
-    system_prompt = get_system_prompt(library)
+    system_prompt = get_system_prompt_by_id(args.system_prompt_id, library)
+    system_prompt_hash = _sha256(system_prompt)
     samples = load_dataset(args.dataset, video_root=Path(args.video_root) if args.video_root else None)
     if args.max_samples is not None:
         samples = samples[: args.max_samples]
 
     existing_records = _load_existing_records(records_path) if args.resume else []
-    _validate_resumable_records(existing_records, conditions, args.model_dir)
+    _validate_resumable_records(existing_records, conditions, args.model_dir, system_prompt_hash)
     completed_pairs = {
         (str(record.get("sample_id")), str(record.get("prompt_id"))) for record in existing_records
     }
@@ -461,7 +477,8 @@ def main() -> None:
                         runtime_error = f"{type(exc).__name__}: {exc}"
                 record = evaluate_record(sample, condition, raw_output, runtime_error)
                 record["model_dir"] = args.model_dir
-                record["system_prompt_hash"] = get_system_prompt_hash(library)
+                record["system_prompt_id"] = args.system_prompt_id
+                record["system_prompt_hash"] = system_prompt_hash
                 records.append(record)
                 handle.write(json.dumps(record, ensure_ascii=False) + "\n")
                 handle.flush()
