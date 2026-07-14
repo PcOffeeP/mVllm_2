@@ -51,28 +51,13 @@ def get_system_prompt_hash(library: dict[str, Any] | None = None) -> str:
     return hashlib.sha256(get_system_prompt(library).encode("utf-8")).hexdigest()
 
 
-def get_system_prompt_variant_ids(library: dict[str, Any] | None = None) -> tuple[str, ...]:
-    """Return IDs for experimental system prompts in the shared prompt library."""
+def get_test_system_prompt(library: dict[str, Any] | None = None) -> str:
+    """Return the one editable System Prompt used by base-model prompt tests."""
     lib = library or get_prompt_library()
-    variants = lib.get("system_prompt_variants", {}) or {}
-    if not isinstance(variants, dict):
-        raise ValueError("system_prompt_variants must be a mapping when present")
-    return tuple(str(prompt_id) for prompt_id in variants)
-
-
-def get_system_prompt_by_id(prompt_id: str, library: dict[str, Any] | None = None) -> str:
-    """Return the training-default prompt or an explicit experimental variant."""
-    if prompt_id == "training_default":
-        return get_system_prompt(library)
-    lib = library or get_prompt_library()
-    variants = lib.get("system_prompt_variants", {}) or {}
-    try:
-        prompt = variants[prompt_id]
-    except KeyError as exc:
-        available = ("training_default", *get_system_prompt_variant_ids(lib))
-        raise ValueError(f"Unknown system prompt ID {prompt_id!r}; available: {available}") from exc
+    test_section = lib.get("test", {}) or {}
+    prompt = test_section.get("system_prompt") if isinstance(test_section, dict) else None
     if not isinstance(prompt, str) or not prompt.strip():
-        raise ValueError(f"System prompt variant {prompt_id!r} must be a non-empty string")
+        raise ValueError("prompt library test.system_prompt must be a non-empty string")
     return prompt.strip()
 
 

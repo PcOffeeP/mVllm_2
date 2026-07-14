@@ -1,10 +1,9 @@
-"""Run a paired prompt sweep for a single MiniCPM-V model.
+"""Run a paired user-vs-system prompt sweep for one MiniCPM-V model.
 
 The sweep deliberately reuses the six training user prompts from
-``pipeline/prompt_library.yaml``.  It does *not* use the inference prompt in
-``prompts.get_inference_user_prompt`` because that prompt adds a fifth
-``confidence`` field and two demonstrations, neither of which is part of the
-training output contract.
+``pipeline/prompt_library.yaml``. ``--prompt user`` supplies no System Prompt;
+``--prompt system`` supplies the one editable ``test.system_prompt`` from that
+same library. It never uses the five-field inference prompt or its examples.
 
 Every selected video is evaluated with every selected prompt condition.  This
 is a paired comparison: prompt quality is therefore not confounded with video
@@ -29,24 +28,14 @@ from .prompts import (
     DEFAULT_PROMPT_LIBRARY_PATH,
     get_prompt_library,
     get_prompt_version,
-    get_system_prompt_by_id,
-    get_system_prompt,
-    get_system_prompt_hash,
-    get_system_prompt_variant_ids,
+    get_test_system_prompt,
     get_user_prompt,
     get_user_prompt_template_id,
 )
 
 
-VARIANT_TRAINING_QUESTION = "training_question"
-VARIANT_FOUR_FIELD = "four_field"
-SUPPORTED_VARIANTS = (VARIANT_TRAINING_QUESTION, VARIANT_FOUR_FIELD)
-
-# This is intentionally a constraint only, not a few-shot example.  The
-# four-field order matches build_assistant_content() in training_sample_builder.
-FOUR_FIELD_CONSTRAINT = """只输出一个 JSON 对象，且只能包含以下四个字段：
-{"has_fracture":...,"fracture_between":...,"type":...,"location":...}
-不要输出解释、示例、Markdown 或其他字段。"""
+OUTPUT_PROTOCOL_FOUR_FIELD = "four_field_json"
+OUTPUT_PROTOCOL_FREE_TEXT = "free_text"
 
 # Kept solely as a diagnostic for the previously observed inference collapse.
 KNOWN_NEGATIVE_DEMONSTRATION = (
@@ -64,19 +53,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", required=True, help="New directory for prompt-sweep outputs.")
     parser.add_argument("--video-root", default=None)
     parser.add_argument(
-        "--system-prompt-id",
-        default="training_default",
-        help="training_default or an ID from system_prompt_variants in the shared prompt library.",
+        "--prompt",
+        choices=("user", "system"),
+        default="system",
+        help="user: no System Prompt; system: use test.system_prompt from the shared prompt library.",
     )
     parser.add_argument(
         "--template-indices",
         default="all",
         help="Comma-separated indices from the existing training prompt library, or 'all' (default).",
-    )
-    parser.add_argument(
-        "--variants",
-        default=f"{VARIANT_TRAINING_QUESTION},{VARIANT_FOUR_FIELD}",
-        help="Comma-separated variants: training_question, four_field.",
     )
     parser.add_argument("--max-samples", type=int, default=None, help="Optional smoke-test cap applied before the sweep.")
     parser.add_argument(
@@ -102,39 +87,26 @@ def parse_template_indices(value: str, template_count: int) -> list[int]:
     return list(dict.fromkeys(indices))
 
 
-def parse_variants(value: str) -> list[str]:
-    variants = [item.strip() for item in value.split(",") if item.strip()]
-    if not variants:
-        raise ValueError("--variants selected no variants")
-    invalid = [variant for variant in variants if variant not in SUPPORTED_VARIANTS]
-    if invalid:
-        raise ValueError(f"Unsupported variants {invalid}; expected one of {SUPPORTED_VARIANTS}")
-    return list(dict.fromkeys(variants))
-
-
 def build_prompt_conditions(
-    library: dict[str, Any], template_indices: list[int], variants: list[str]
-) -> list[dict[str, str | int]]:
-    """Build conditions from the training prompt library without its examples."""
+    library: dict[str, Any], template_indices: list[int], prompt_mode: str
+) -> list[dict[str, Any]]:
+    """Build one condition per existing training question for the chosen mode."""
+    output_protocol = OUTPUT_PROTOCOL_FOUR_FIELD if prompt_mode == "system" else OUTPUT_PROTOCOL_FREE_TEXT
     conditions: list[dict[str, str | int]] = []
     for template_index in template_indices:
         template_id = get_user_prompt_template_id(template_index, library)
-        training_question = get_user_prompt(template_index, library)
-        for variant in variants:
-            prompt_text = training_question
-            if variant == VARIANT_FOUR_FIELD:
-                prompt_text = f"{training_question}\n\n{FOUR_FIELD_CONSTRAINT}"
-            prompt_id = f"{template_id}__{variant}"
-            conditions.append(
-                {
-                    "prompt_id": prompt_id,
-                    "template_index": template_index,
-                    "template_id": template_id,
-                    "variant": variant,
-                    "prompt_text": prompt_text,
-                    "prompt_hash": _sha256(prompt_text),
-                }
-            )
+        prompt_text = get_user_prompt(template_index, library)
+        conditions.append(
+            {
+                "prompt_id": f"{template_id}__{prompt_mode}",
+                "template_index": template_index,
+                "template_id": template_id,
+                "variant": prompt_mode,
+                "output_protocol": output_protocol,
+                "prompt_text": prompt_text,
+                "prompt_hash": _sha256(prompt_text),
+            }
+        )
     return conditions
 
 
@@ -171,8 +143,23 @@ def inspect_four_field_output(raw_output: str) -> dict[str, Any]:
     return result
 
 
+def inspect_output(raw_output: str, output_protocol: str) -> dict[str, Any]:
+    if output_protocol == OUTPUT_PROTOCOL_FOUR_FIELD:
+        return inspect_four_field_output(raw_output)
+    if output_protocol == OUTPUT_PROTOCOL_FREE_TEXT:
+        return {
+            "json_valid": False,
+            "schema_valid": False,
+            "legal_combination_valid": False,
+            "parsed_output": None,
+            "parse_error": "free_text protocol is not automatically parsed",
+        }
+    raise ValueError(f"Unsupported output protocol {output_protocol!r}")
+
+
 def evaluate_record(sample: EvalSample, condition: dict[str, str | int], raw_output: str, runtime_error: str | None) -> dict[str, Any]:
-    inspection = inspect_four_field_output(raw_output)
+    output_protocol = str(condition.get("output_protocol", OUTPUT_PROTOCOL_FOUR_FIELD))
+    inspection = inspect_output(raw_output, output_protocol)
     return {
         "sample_id": sample.sample_id,
         "video_id": sample.video_id,
@@ -184,6 +171,7 @@ def evaluate_record(sample: EvalSample, condition: dict[str, str | int], raw_out
         "template_index": condition["template_index"],
         "template_id": condition["template_id"],
         "variant": condition["variant"],
+        "output_protocol": output_protocol,
         "prompt_text": condition["prompt_text"],
         "prompt_hash": condition["prompt_hash"],
         "raw_output": raw_output,
@@ -220,6 +208,17 @@ def summarize_condition(records: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _classification_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
     """Return has_fracture metrics, treating malformed output as an incorrect prediction."""
+    output_protocol = str(records[0].get("output_protocol", OUTPUT_PROTOCOL_FOUR_FIELD)) if records else OUTPUT_PROTOCOL_FOUR_FIELD
+    if output_protocol == OUTPUT_PROTOCOL_FREE_TEXT:
+        return {
+            "has_fracture_evaluable_count": 0,
+            "has_fracture_accuracy": None,
+            "has_fracture_precision": None,
+            "has_fracture_recall": None,
+            "has_fracture_f1": None,
+            "predicted_positive_rate": None,
+            **_empty_field_metrics(),
+        }
     evaluable = [
         record
         for record in records
@@ -309,6 +308,19 @@ def _field_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _empty_field_metrics() -> dict[str, Any]:
+    return {
+        "type_evaluable_count": 0,
+        "type_accuracy": None,
+        "location_evaluable_count": 0,
+        "location_accuracy": None,
+        "fracture_between_evaluable_count": 0,
+        "fracture_between_exact_match_rate": None,
+        "joint_evaluable_count": 0,
+        "joint_success_rate": None,
+    }
+
+
 def _field_accuracy(records: list[dict[str, Any]], field: str) -> float | None:
     correct = sum(
         isinstance(record.get("parsed_output"), dict)
@@ -348,7 +360,9 @@ def _ratio(numerator: int, denominator: int) -> float | None:
     return round(numerator / denominator, 6) if denominator else None
 
 
-def _sha256(value: str) -> str:
+def _sha256(value: str | None) -> str | None:
+    if value is None:
+        return None
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
@@ -368,7 +382,7 @@ def _load_existing_records(path: Path) -> list[dict[str, Any]]:
 
 
 def _validate_resumable_records(
-    records: list[dict[str, Any]], conditions: list[dict[str, str | int]], model_dir: str, system_prompt_hash: str
+    records: list[dict[str, Any]], conditions: list[dict[str, Any]], model_dir: str, system_prompt_hash: str | None
 ) -> None:
     """Prevent a resume from silently combining different prompt or model runs."""
     expected_hashes = {str(condition["prompt_id"]): str(condition["prompt_hash"]) for condition in conditions}
@@ -390,7 +404,7 @@ def _write_summary(
     conditions: list[dict[str, str | int]],
     args: argparse.Namespace,
     library: dict[str, Any],
-    system_prompt: str,
+    system_prompt: str | None,
 ) -> None:
     by_prompt: dict[str, list[dict[str, Any]]] = {str(condition["prompt_id"]): [] for condition in conditions}
     for record in records:
@@ -406,7 +420,7 @@ def _write_summary(
         "model_dir": args.model_dir,
         "prompt_library_path": str(DEFAULT_PROMPT_LIBRARY_PATH),
         "prompt_version": get_prompt_version(library),
-        "system_prompt_id": args.system_prompt_id,
+        "prompt_mode": args.prompt,
         "system_prompt": system_prompt,
         "system_prompt_hash": _sha256(system_prompt),
         "generation_config": GENERATION_CONFIG,
@@ -417,7 +431,8 @@ def _write_summary(
         "conditions": condition_summaries,
         "notes": [
             "Every selected video is evaluated once per condition; do not compare prompt conditions using disjoint video groups.",
-            "training_question is diagnostic only. four_field is the candidate protocol for later model comparisons.",
+            "user mode intentionally has no System Prompt and is not automatically scored as a four-field result.",
+            "system mode reads only test.system_prompt from the shared prompt library.",
             "Video-abnormal ground truth (has_fracture=null) is excluded from has_fracture classification metrics.",
             "For test_subvideos, aggregate or bootstrap by source_video_id before treating differences as independent evidence.",
         ],
@@ -434,15 +449,9 @@ def main() -> None:
         raise FileExistsError(f"{records_path} already exists; use a new --out-dir or pass --resume")
 
     library = get_prompt_library()
-    available_system_prompt_ids = ("training_default", *get_system_prompt_variant_ids(library))
-    if args.system_prompt_id not in available_system_prompt_ids:
-        raise ValueError(
-            f"Unknown --system-prompt-id {args.system_prompt_id!r}; available: {available_system_prompt_ids}"
-        )
     template_indices = parse_template_indices(args.template_indices, len(library["user_prompt_templates"]))
-    variants = parse_variants(args.variants)
-    conditions = build_prompt_conditions(library, template_indices, variants)
-    system_prompt = get_system_prompt_by_id(args.system_prompt_id, library)
+    conditions = build_prompt_conditions(library, template_indices, args.prompt)
+    system_prompt = get_test_system_prompt(library) if args.prompt == "system" else None
     system_prompt_hash = _sha256(system_prompt)
     samples = load_dataset(args.dataset, video_root=Path(args.video_root) if args.video_root else None)
     if args.max_samples is not None:
@@ -477,7 +486,7 @@ def main() -> None:
                         runtime_error = f"{type(exc).__name__}: {exc}"
                 record = evaluate_record(sample, condition, raw_output, runtime_error)
                 record["model_dir"] = args.model_dir
-                record["system_prompt_id"] = args.system_prompt_id
+                record["prompt_mode"] = args.prompt
                 record["system_prompt_hash"] = system_prompt_hash
                 records.append(record)
                 handle.write(json.dumps(record, ensure_ascii=False) + "\n")

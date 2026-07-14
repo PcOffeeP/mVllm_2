@@ -10,27 +10,30 @@ from finetune.validation import run_prompt_sweep
 def test_build_prompt_conditions_reuses_training_questions_without_examples() -> None:
     library = run_prompt_sweep.get_prompt_library()
 
-    conditions = run_prompt_sweep.build_prompt_conditions(
-        library, [0], [run_prompt_sweep.VARIANT_TRAINING_QUESTION, run_prompt_sweep.VARIANT_FOUR_FIELD]
-    )
+    conditions = run_prompt_sweep.build_prompt_conditions(library, [0], "system")
 
-    assert [condition["prompt_id"] for condition in conditions] == [
-        "zh_binary_and_interval__training_question",
-        "zh_binary_and_interval__four_field",
-    ]
+    assert [condition["prompt_id"] for condition in conditions] == ["zh_binary_and_interval__system"]
     assert "confidence" not in conditions[0]["prompt_text"]
     assert "示例" not in conditions[0]["prompt_text"]
-    assert "confidence" not in conditions[1]["prompt_text"]
-    assert "只能包含以下四个字段" in conditions[1]["prompt_text"]
+    assert "只能包含以下四个字段" not in conditions[0]["prompt_text"]
+    assert conditions[0]["output_protocol"] == "four_field_json"
 
 
-def test_system_prompt_variants_are_read_from_the_shared_prompt_library() -> None:
+def test_test_system_prompt_is_read_from_the_shared_prompt_library() -> None:
     library = run_prompt_sweep.get_prompt_library()
 
-    prompt = run_prompt_sweep.get_system_prompt_by_id("label_contract_v1", library)
+    prompt = run_prompt_sweep.get_test_system_prompt(library)
 
     assert "has_fracture、fracture_between、type、location" in prompt
     assert "示例" not in prompt
+
+
+def test_user_mode_uses_the_same_normal_question_without_structured_protocol() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    condition = run_prompt_sweep.build_prompt_conditions(library, [0], "user")[0]
+
+    assert condition["output_protocol"] == "free_text"
+    assert "请分析这段拉伸试验视频" in condition["prompt_text"]
 
 
 def test_inspect_four_field_output_uses_project_legal_combinations() -> None:
@@ -55,6 +58,7 @@ def test_summarize_condition_counts_malformed_as_incorrect_for_has_fracture() ->
         "template_index": 0,
         "template_id": "t",
         "variant": "four_field",
+        "output_protocol": "four_field_json",
         "prompt_text": "prompt",
         "prompt_hash": "hash",
     }
@@ -132,8 +136,8 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
             str(out_dir),
             "--template-indices",
             "0,1",
-            "--variants",
-            "four_field",
+            "--prompt",
+            "system",
         ],
     )
 
@@ -144,8 +148,8 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
     assert len(calls) == 4
     assert len(records) == 4
     assert {record["prompt_id"] for record in records} == {
-        "zh_binary_and_interval__four_field",
-        "zh_mode_focus__four_field",
+        "zh_binary_and_interval__system",
+        "zh_mode_focus__system",
     }
     assert summary["paired_design"] is True
     assert summary["sample_count"] == 2

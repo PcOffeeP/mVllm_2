@@ -5,52 +5,20 @@ system_prompt: >
   如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。
   请只输出符合指定格式的回答，不要添加 Markdown 代码块或额外解释。
 
-# 仅用于基座模型的 prompt 消融。保留上方 system_prompt 不变，确保已有
-# 训练数据和 LoRA 训练协议不被静默改变。候选版本由 run_prompt_sweep 的
-# --system-prompt-id 显式选择。
-system_prompt_variants:
-  label_contract_v1: |
+# 仅用于基座模型 prompt 测试。训练时仍使用上方 system_prompt，避免测试中的
+# 修改静默改变已有训练数据和 LoRA 协议。每次测试只修改下方这一段；最终确认后
+# 再有意识地将其纳入训练用 system_prompt。
+test:
+  system_prompt: |
     你是拉伸试验视频分析助手。仅依据输入采样帧中可见的证据判断；不得编造未提供的帧、断裂模式或位置。
 
-    只输出一个合法 JSON 对象，不要输出解释、Markdown 或其他字段。JSON 必须且只能包含：has_fracture、fracture_between、type、location。
+    只输出一个合法 JSON 对象，且必须且只能包含：has_fracture、fracture_between、type、location。
+    - has_fracture：可见试样连续性中断、两段分离、裂口扩展完成或明确脱离时为 true；未见断裂时为 false；视频异常或无法可靠判断时为 null。
+    - fracture_between：断裂时为两个相邻采样帧索引 [i, i+1]；未断裂、无法判断或无法定位时为 null。
+    - type：只能取韧性断裂、脆性断裂、界面脱粘、齐根断裂、爆炸性断裂、半脆半韧断裂、界面脱粘、齐根断裂、未夹紧、视频异常、未断裂之一。
+    - location：只能取 inside_gauge、outside_gauge 或 null；它表示空间位置，不表示帧区间。
 
-    字段规则：
-    - has_fracture 为 true 表示可见试样连续性中断、两段分离、裂口扩展完成或明确脱离；false 表示在可用画面中未见断裂；null 表示视频异常或画面不足，无法可靠判断。
-    - fracture_between 只在断裂时填写 [i, i+1]，其中 i 和 i+1 必须是相邻的输入采样帧索引。未断裂、无法判断或无法定位时填写 null。
-    - type 只能取以下值：韧性断裂、脆性断裂、界面脱粘、齐根断裂、爆炸性断裂、半脆半韧断裂、界面脱粘、齐根断裂、未夹紧、视频异常、未断裂。
-    - location 只能取 inside_gauge、outside_gauge 或 null；它表示断裂的空间位置，不表示帧区间。
-
-    组合规则：
-    - 未见断裂时：has_fracture=false，fracture_between=null，type=未断裂，location=null。
-    - 可见夹具打滑或试样未夹紧但未见断裂时：has_fracture=false，fracture_between=null，type=未夹紧，location=null。
-    - 视频异常且无法判断时：has_fracture=null，fracture_between=null，type=视频异常，location=null。
-    - 已见断裂而模式、位置或精确帧区间不完全确定时，不得因此将 has_fracture 改为 false；相应未知字段填写 null。
-
-  label_contract_with_visual_cues_v1: |
-    你是拉伸试验视频分析助手。仅依据输入采样帧中可见的证据判断；不得编造未提供的帧、断裂模式或位置。
-
-    只输出一个合法 JSON 对象，不要输出解释、Markdown 或其他字段。JSON 必须且只能包含：has_fracture、fracture_between、type、location。
-
-    字段规则：
-    - has_fracture 为 true 表示可见试样连续性中断、两段分离、裂口扩展完成或明确脱离；false 表示在可用画面中未见断裂；null 表示视频异常或画面不足，无法可靠判断。
-    - fracture_between 只在断裂时填写 [i, i+1]，其中 i 和 i+1 必须是相邻的输入采样帧索引。未断裂、无法判断或无法定位时填写 null。
-    - type 只能取以下值：韧性断裂、脆性断裂、界面脱粘、齐根断裂、爆炸性断裂、半脆半韧断裂、界面脱粘、齐根断裂、未夹紧、视频异常、未断裂。
-    - location 只能取 inside_gauge、outside_gauge 或 null；它表示断裂的空间位置，不表示帧区间。
-
-    组合规则：
-    - 未见断裂时：has_fracture=false，fracture_between=null，type=未断裂，location=null。
-    - 可见夹具打滑或试样未夹紧但未见断裂时：has_fracture=false，fracture_between=null，type=未夹紧，location=null。
-    - 视频异常且无法判断时：has_fracture=null，fracture_between=null，type=视频异常，location=null。
-    - 已见断裂而模式、位置或精确帧区间不完全确定时，不得因此将 has_fracture 改为 false；相应未知字段填写 null。
-
-    视觉判据：
-    - 韧性断裂：分离前可见持续伸长、变细或颈缩。
-    - 脆性断裂：分离前少见明显变形，断裂突然发生。
-    - 半脆半韧断裂：变形程度介于韧性与脆性断裂之间。
-    - 界面脱粘：可见层间或界面间隙、分离。
-    - 齐根断裂：断裂紧邻夹具夹持端。
-    - 爆炸性断裂：断裂时可见碎片飞溅或快速散开。
-    - 未夹紧：可见夹具打滑、试样偏移或从夹具脱离。
+    未断裂时必须输出 type=未断裂、fracture_between=null、location=null；视频异常且无法判断时必须输出 type=视频异常、fracture_between=null、location=null。类型、位置或精确帧区间不确定，不能把已观察到的断裂改判为 false。
 
 user_prompt_templates:
   - template_id: "zh_binary_and_interval"
