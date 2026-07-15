@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -129,6 +130,8 @@ def _load_fold_dataset(name: str, video_root: Path | None) -> list[EvalSample]:
         assistant_json = _parse_assistant_json(assistant_message)
         video_path = _resolve_video_path(raw_video, Path(raw_video or f"sample_{index}").stem, video_root)
         video_id = video_path.stem
+        source_match = re.match(r"(video_\d+)", video_id)
+        source_video_id = source_match.group(1) if source_match else None
         samples.append(
             EvalSample(
                 sample_id=video_id,
@@ -137,6 +140,8 @@ def _load_fold_dataset(name: str, video_root: Path | None) -> list[EvalSample]:
                 metadata={
                     "source": str(path),
                     "row_index": index,
+                    "source_video_id": source_video_id,
+                    "subvideo_id": video_id,
                     "ground_truth": assistant_json,
                     "assistant_raw": assistant_message,
                     "assistant_json": assistant_json,

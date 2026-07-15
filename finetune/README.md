@@ -45,10 +45,10 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 
 | 数据集 | 输入 | 产物 | 用途 |
 | --- | --- | --- | --- |
-| `test` | `data/05_splits/test.json` 中的 22 个源视频 | `test_inputs.json`、`test_ground_truth.json` | `--dataset test` |
+| `test` | `data/05_splits/test.json` 中的 21 个源视频 | `test_inputs.json`、`test_ground_truth.json` | `--dataset test` |
 | `test_subvideos` | 同一 `test.json` 生成的候选子视频 | `test_subvideos_meta.label_reviewed.json`、`test_subvideo_inputs.json`、`test_subvideo_ground_truth.json` | `--dataset test_subvideos` |
 
-所有命令从仓库根目录执行。先生成 22 个测试源视频的评测清单：
+所有命令从仓库根目录执行。先生成 21 个测试源视频的评测清单：
 
 ```bash
 python scripts/generate_test_artifacts.py
@@ -82,6 +82,128 @@ python scripts/generate_test_subvideo_artifacts.py \
 
 若有 `needs_regenerate` 样本，不得执行正式导出，也不要使用 `--no-strict` 的输出作为正式评测集。正式导出前确认测试 metadata 的每个 `source_video` 都属于 `data/05_splits/test.json`。
 
+## Prompt Engineering 与 Visual Evidence 实验
+
+这两类实验只在训练电脑运行。当前开发电脑负责脚本、静态测试、结果同步后的人工审阅，不负责模型加载、GPU 推理或完整 sweep。实验使用 `pipeline/prompt_library.yaml` 中独立的 `experiments` 配置，不会改变正式训练 `system_prompt`。
+
+### 训练电脑执行清单
+
+1. 同步代码、Fold 0 merged 数据和视频产物。
+2. 确认传入的是可由 Transformers 直接加载的基座或 merged 模型目录，并核对 checkpoint、adapter、merged metadata。
+3. 在仓库根目录运行本节的单元测试。
+4. 运行 Prompt Engineering 实验。
+5. 运行 Visual Evidence pilot。
+6. 打包两个完整结果目录并同步回当前开发电脑。
+7. 在开发电脑按 `manual_review_queue.csv` 做两阶段审阅。
+
+训练电脑的静态测试命令：
+
+```bash
+PYTHONPATH=. uv run pytest \
+  tests/test_prompt_sweep.py \
+  tests/test_validation_rebuild.py \
+  -q
+```
+
+### Prompt Engineering
+
+```bash
+python -m finetune.validation.run_prompt_sweep prompt \
+  --model-dir /path/to/current-merged-model
+```
+
+只有 `--model-dir` 必填。默认使用：
+
+- `fold_0_val`；
+- `natural`、`light`、`strict` 三个变体；
+- User Prompt seed `42`；
+- 8 个采样帧；
+- greedy decoding，`num_beams=1`；
+- `max_new_tokens=256`；
+- 自动创建 `finetune/results/prompt_sweep/prompt/<model-name>-<UTC timestamp>/`。
+
+`natural` 是无 System Prompt 的自由能力探针；`light` 只规定四字段 JSON；`strict` 在四字段基础上列出合法值和简短正向视觉判据。自由文本和 JSON 的格式结果不能直接等价比较。
+
+### Visual Evidence pilot
+
+```bash
+python -m finetune.validation.run_prompt_sweep evidence \
+  --model-dir /path/to/current-merged-model
+```
+
+默认在 Fold 0 的 17 个当前有效源视频中各选择一个固定样本，配对比较：
+
+- `light`：原四字段 JSON；
+- `light_evidence`：先输出自由文本字符串 `visual_evidence`，再输出原四字段；
+- 两个条件均使用 `max_new_tokens=512`；
+- 自动创建 `finetune/results/prompt_sweep/evidence/<model-name>-<UTC timestamp>/`。
+
+pilot manifest 由 source、目标标签和 `sha256("42:" + sample_id)` 确定，具体 sample ID 与 hash 会写入 `sample_manifest.json`。脚本还会导出模型实际收到的帧和 contact sheet，人工审阅不能用源视频代替这些输入帧。
+
+### 可选调试参数
+
+正式运行不需要传入以下参数；仅在调试时覆盖默认值：
+
+- `--out-dir`：指定一个尚不存在的输出目录；
+- `--dataset`：Prompt Engineering 调试时可切换到其他 fold validation；固定 evidence pilot 只支持 `fold_0_val`；
+- `--max-samples`：至少为 2，且脚本仍会保证 dry run 包含正负样本；
+- `--video-root`：媒体不在默认路径时使用；
+- `--user-prompt-seed`：默认 `42`，正式基线不要随意修改。
+
+变体、pilot manifest、最大帧数、generation config 和 token 上限由子命令固定，不作为常规 CLI 参数。旧 `--prompt user|system|test` 只作隐藏兼容入口并会发出弃用警告。
+
+### 自动预检与停止条件
+
+模型加载前，脚本会：
+
+- 检查 split、merged 数据、源视频覆盖和媒体文件；
+- 核对 Fold 0 split 与 `subvideos_meta.label_reviewed.json` 的选择结果；
+- 固化 Prompt、数据和模型 manifest；
+- 拒绝覆盖已有目录。
+
+当前同步产物存在一个必须先处理的覆盖问题：Fold 0 split 列出 30 个源视频，但 merged validation 只有 17 个源视频；其中部分缺失源仍有已审核子视频但保留了旧 split assignment。脚本会在加载模型前停止，并把详情写入 `sample_manifest.json`。训练电脑必须重新生成或重新同步一致的 Fold 0 artifact，不能绕过该检查。
+
+模型目录还必须包含可审计的来源文件。基座模型使用 `model_metadata.json`：
+
+```json
+{"model_kind":"base","base_model":"/path/to/base-model"}
+```
+
+LoRA 合并模型使用 `merge_metadata.json`，并写明实际来源：
+
+```json
+{
+  "model_kind": "merged",
+  "base_model": "/path/to/base-model",
+  "adapter_path": "/path/to/checkpoint-or-adapter",
+  "checkpoint_step": 1200
+}
+```
+
+脚本会拒绝 adapter-only、只有配置没有权重、缺少来源 metadata、base model 与 `config.json` 冲突的目录；并对所有实际模型权重文件逐一记录大小和 SHA256。训练机器打包 merged 模型时应同时复制上述 metadata，不能事后凭目录名猜测 checkpoint。
+
+模型加载后，脚本先对一个断裂和一个未断裂样本运行全部条件。dry run 为空或报错时不会启动完整 sweep。
+
+### 输出目录与审阅
+
+每次实验目录包含：
+
+- `experiment_manifest.json`：实验、Prompt、生成配置和代码版本；
+- `model_manifest.json`：实际模型路径、配置与关键文件 hash；
+- `sample_manifest.json`：样本、源视频、标签和数据覆盖审计；
+- `evaluation_records.jsonl`：逐样本原始输出、解析结果、token 数和采样时间戳；
+- `prompt_sweep_summary.json`：条件级格式、标签分布和配对翻转；
+- `source_level_summary.json`：按源视频汇总，不能把同源子视频视为独立样本；
+- `manual_review_queue.csv`：隐藏条件和 ground truth 的第一阶段审阅表；
+- `manual_review_key.json`：第二阶段解盲所需的条件、标签和解析结果；
+- `runtime_failures.csv`：预检、dry run 或逐样本失败；
+- `frames/`：模型实际收到的帧与 contact sheet；
+- `run_command.txt`：实际执行命令。
+
+人工审阅分两步：第一步只看实际输入帧和原始输出，检查格式、视觉依据、幻觉与自洽；第二步再用 `manual_review_key.json` 查看条件、ground truth 和最终四字段，检查标签合理性以及 evidence 是否支持结论。
+
+JSON/schema 合法、输出理由流畅或 loss 下降都不能证明模型使用了视觉信息。Prompt 与 evidence 实验只能在 Fold 0 上迭代；正式 21 源 test 必须等 Prompt、模型、schema、ROI、采样和生成参数全部冻结后再运行。
+
 ## 核心评估命令
 
 在训练电脑上对一个模型和一个数据集运行：
@@ -96,7 +218,7 @@ python -m finetune.validation.run_evaluation \
 
 参数说明：
 
-- `--dataset`：`test`（22 个测试源视频）、`test_subvideos`（审核后测试子视频），也可选 `fold_0_val`、`fold_1_val`、`fold_2_val`。
+- `--dataset`：`test`（21 个测试源视频）、`test_subvideos`（审核后测试子视频），也可选 `fold_0_val`、`fold_1_val`、`fold_2_val`。
 - `--model-dir`：必填，除非改用 `--predictions`；可为基座模型、合并模型或 adapter 目录。
 - `--out-dir`：必填，评测结果目录。
 - `--video-root`：视频不在默认 `data/01_videos` 时指定。
@@ -105,7 +227,7 @@ python -m finetune.validation.run_evaluation \
 
 基座模型与微调模型、源视频与子视频的对比，只需分别替换 `--model-dir` 和 `--dataset` 后重复运行。建议在 `--out-dir` 中分别标明模型和数据集，避免覆盖。
 
-当前评测脚本没有 `--prompt` 参数，固定使用项目 prompt library 中的推理 prompt。如需比较不同 prompt，先修改 prompt library 或扩展评测脚本。
+核心评测脚本固定使用项目 prompt library 中的推理 prompt。Prompt 对照实验使用上文的 `run_prompt_sweep prompt|evidence` 子命令。
 
 ## 关联文档
 

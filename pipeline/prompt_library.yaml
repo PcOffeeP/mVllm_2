@@ -20,6 +20,36 @@ test:
 
     未断裂时必须输出 type=未断裂、fracture_between=null、location=null；视频异常且无法判断时必须输出 type=视频异常、fracture_between=null、location=null。类型、位置或精确帧区间不确定，不能把已观察到的断裂改判为 false。
 
+# 仅供验证脚本使用。这里的变体不会改变上方正式训练 system_prompt，
+# 也不会进入训练样本导出流程。
+experiments:
+  prompt_engineering:
+    variants:
+      natural:
+        system_prompt: null
+        output_protocol: free_text
+      light:
+        system_prompt: |
+          你是拉伸试验视频分析助手。请根据输入采样帧完成判断。
+          只输出一个合法 JSON 对象，字段依次为 has_fracture、fracture_between、type、location，不要输出其他内容。
+        output_protocol: four_field_json
+      strict:
+        system_prompt: |
+          你是拉伸试验视频分析助手。请根据输入采样帧中可见的整体变化和断裂形貌完成判断。
+          只输出一个合法 JSON 对象，字段依次为 has_fracture、fracture_between、type、location。
+          has_fracture 可取 true、false 或 null。
+          fracture_between 可取两个相邻采样帧索引 [i, i+1] 或 null。
+          type 可取以下完整字符串之一：["韧性断裂", "脆性断裂", "界面脱粘", "齐根断裂", "爆炸性断裂", "半脆半韧断裂", "界面脱粘、齐根断裂", "脆性断裂、齐根断裂", "未夹紧", "视频异常", "未断裂"]。
+          location 可取 inside_gauge、outside_gauge 或 null。
+          韧性断裂通常伴随持续伸长、变细或颈缩；脆性断裂通常突然发生且先前变形较少；界面脱粘表现为界面间隙或分离；齐根断裂发生在夹具夹持端附近；爆炸性断裂伴随快速散开或碎片飞溅；未夹紧表现为打滑、偏移或从夹具脱离。
+        output_protocol: four_field_json
+      light_evidence:
+        system_prompt: |
+          你是拉伸试验视频分析助手。请根据输入采样帧完成判断。
+          只输出一个合法 JSON 对象，字段依次为 visual_evidence、has_fracture、fracture_between、type、location，不要输出其他内容。
+          visual_evidence 使用一个非空字符串：先描述视频整体变化过程，再分别说明 has_fracture、fracture_between、type、location 的判断依据。
+        output_protocol: evidence_first_json
+
 user_prompt_templates:
   - template_id: "zh_binary_and_interval"
     prompt: |

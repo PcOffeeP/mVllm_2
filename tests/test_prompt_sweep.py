@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
+
+import pytest
+from PIL import Image
 
 from finetune.validation.datasets import EvalSample
 from finetune.validation import run_prompt_sweep
+from finetune.validation import model_runtime
+from finetune.validation.model_runtime import ModelRunResult
 
 
 def test_build_prompt_conditions_reuses_training_questions_without_examples() -> None:
@@ -156,3 +162,269 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
         assert "template_index" not in record
     for condition in summary["conditions"]:
         assert "template_index" not in condition
+
+
+def test_new_cli_defaults_require_only_model_dir() -> None:
+    prompt = run_prompt_sweep.parse_args(["prompt", "--model-dir", "/models/current"])
+    evidence = run_prompt_sweep.parse_args(["evidence", "--model-dir", "/models/current"])
+
+    assert prompt.dataset == "fold_0_val"
+    assert prompt.variants == ("natural", "light", "strict")
+    assert prompt.user_prompt_seed == 42
+    assert prompt.max_new_tokens == 256
+    assert evidence.variants == ("light", "light_evidence")
+    assert evidence.max_new_tokens == 512
+    with pytest.raises(SystemExit):
+        run_prompt_sweep.parse_args(["prompt"])
+
+
+def test_stable_template_assignment_is_order_independent() -> None:
+    first = run_prompt_sweep.stable_template_index("sample-a", 42, 6)
+    assert first == run_prompt_sweep.stable_template_index("sample-a", 42, 6)
+    assert 0 <= first < 6
+
+
+def test_experiment_variants_do_not_change_training_system_prompt() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    training_prompt = run_prompt_sweep.get_system_prompt(library)
+    natural = run_prompt_sweep.build_variant_condition(library, "sample", "natural")
+    strict = run_prompt_sweep.build_variant_condition(library, "sample", "strict")
+
+    assert natural["system_prompt"] is None
+    assert strict["output_protocol"] == "four_field_json"
+    assert "confidence" not in strict["system_prompt"]
+    assert run_prompt_sweep.get_system_prompt(library) == training_prompt
+
+
+def test_strict_prompt_lists_each_legal_type_as_an_unambiguous_quoted_value() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    strict = library["experiments"]["prompt_engineering"]["variants"]["strict"]["system_prompt"]
+    listed = set(re.findall(r'"([^"]+)"', strict))
+
+    from pipeline.scripts.quality_check import ALL_TYPES
+
+    assert listed == ALL_TYPES
+    assert '"界面脱粘、齐根断裂"' in strict
+
+
+def test_inspect_evidence_output_keeps_core_labels_and_checks_order() -> None:
+    valid = run_prompt_sweep.inspect_evidence_output(
+        '{"visual_evidence":"整体伸长后在帧2和3间分离；四字段均据此判断。",'
+        '"has_fracture":true,"fracture_between":[2,3],"type":"韧性断裂","location":"inside_gauge"}'
+    )
+    reordered = run_prompt_sweep.inspect_evidence_output(
+        '{"has_fracture":false,"visual_evidence":"画面未见连续性中断。",'
+        '"fracture_between":null,"type":"未断裂","location":null}'
+    )
+    empty = run_prompt_sweep.inspect_evidence_output(
+        '{"visual_evidence":"","has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'
+    )
+
+    assert valid["schema_valid"] is True
+    assert valid["key_order_valid"] is True
+    assert valid["parsed_output"]["has_fracture"] is True
+    assert "visual_evidence" not in valid["parsed_output"]
+    assert reordered["schema_valid"] is True
+    assert reordered["key_order_valid"] is False
+    assert empty["schema_valid"] is False
+    assert empty["parse_error"] == "visual_evidence must be a non-empty string"
+
+
+def test_build_evidence_pilot_selects_one_sample_per_fixed_source() -> None:
+    samples = []
+    for source, (has_fracture, fracture_type) in run_prompt_sweep.PILOT_TARGETS.items():
+        for suffix in ("b", "a"):
+            samples.append(
+                EvalSample(
+                    sample_id=f"{source}_focus_{suffix}",
+                    video_id=f"{source}_focus_{suffix}",
+                    video_path=f"/tmp/{source}_focus_{suffix}.mp4",
+                    metadata={
+                        "source_video_id": source,
+                        "ground_truth": {"has_fracture": has_fracture, "type": fracture_type},
+                    },
+                )
+            )
+
+    selected = run_prompt_sweep.build_evidence_pilot(samples)
+
+    assert len(selected) == 17
+    assert {run_prompt_sweep.source_video_id(sample) for sample in selected} == set(run_prompt_sweep.PILOT_TARGETS)
+    assert selected == run_prompt_sweep.build_evidence_pilot(list(reversed(samples)))
+
+
+def test_model_manifest_requires_directly_loadable_config(tmp_path) -> None:
+    model_dir = tmp_path / "model"
+    model_dir.mkdir()
+    with pytest.raises(ValueError, match="config.json"):
+        run_prompt_sweep.build_model_manifest(str(model_dir))
+    (model_dir / "config.json").write_text('{"model_type":"minicpmv","_name_or_path":"base"}', encoding="utf-8")
+    metadata_path = model_dir / "model_metadata.json"
+    metadata_path.write_text('{"model_kind":"base","base_model":"base"}', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="no model"):
+        run_prompt_sweep.build_model_manifest(str(model_dir))
+    (model_dir / "model.safetensors").write_bytes(b"model-weights")
+    metadata_path.unlink()
+
+    with pytest.raises(ValueError, match="provenance metadata"):
+        run_prompt_sweep.build_model_manifest(str(model_dir))
+    metadata_path.write_text('{"model_kind":"base","base_model":"base"}', encoding="utf-8")
+
+    manifest = run_prompt_sweep.build_model_manifest(str(model_dir))
+
+    assert manifest["model_type"] == "minicpmv"
+    assert manifest["base_model"] == "base"
+    assert manifest["weight_file_count"] == 1
+    assert manifest["model_kind"] == "base"
+    assert manifest["weights"]["model.safetensors"]["size"] == 13
+    assert manifest["weights_hash"]
+
+
+def test_model_manifest_rejects_adapter_only_directory(tmp_path) -> None:
+    model_dir = tmp_path / "adapter"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text('{}', encoding="utf-8")
+    (model_dir / "adapter_config.json").write_text('{}', encoding="utf-8")
+    (model_dir / "adapter_model.safetensors").write_bytes(b"adapter")
+
+    with pytest.raises(ValueError, match="adapter-only"):
+        run_prompt_sweep.build_model_manifest(str(model_dir))
+
+
+def test_model_manifest_validates_merged_provenance(tmp_path) -> None:
+    model_dir = tmp_path / "merged"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        '{"model_type":"minicpmv","_name_or_path":"/models/base"}', encoding="utf-8"
+    )
+    (model_dir / "model-00001-of-00002.safetensors").write_bytes(b"part-1")
+    (model_dir / "model-00002-of-00002.safetensors").write_bytes(b"part-2")
+    (model_dir / "merge_metadata.json").write_text(
+        json.dumps(
+            {
+                "model_kind": "merged",
+                "base_model": "/models/base",
+                "adapter_path": "/checkpoints/fold0/checkpoint-1200",
+                "checkpoint_step": 1200,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = run_prompt_sweep.build_model_manifest(str(model_dir))
+
+    assert manifest["model_kind"] == "merged"
+    assert manifest["provenance"]["checkpoint_step"] == 1200
+    assert manifest["weight_file_count"] == 2
+
+
+def test_free_text_format_metrics_are_not_applicable() -> None:
+    sample = EvalSample(
+        sample_id="natural",
+        video_id="natural",
+        video_path="/tmp/natural.mp4",
+        metadata={"ground_truth": {"has_fracture": False}},
+    )
+    condition = {
+        "prompt_id": "natural",
+        "template_id": "t",
+        "variant": "natural",
+        "output_protocol": "free_text",
+        "prompt_text": "prompt",
+        "prompt_hash": "hash",
+    }
+    record = run_prompt_sweep.evaluate_record(sample, condition, "画面中未见断裂。", None)
+
+    metrics = run_prompt_sweep.summarize_condition([record])
+
+    assert metrics["format_evaluable_count"] == 0
+    assert metrics["json_valid_rate"] is None
+    assert metrics["schema_valid_rate"] is None
+    assert metrics["legal_combination_valid_rate"] is None
+
+
+def test_new_prompt_experiment_writes_manifests_and_source_summary(tmp_path, monkeypatch) -> None:
+    samples = [
+        EvalSample(
+            sample_id="video_0001_positive",
+            video_id="video_0001_positive",
+            video_path=tmp_path / "positive.mp4",
+            metadata={"source_video_id": "video_0001", "ground_truth": {"has_fracture": True, "type": "韧性断裂"}},
+        ),
+        EvalSample(
+            sample_id="video_0002_negative",
+            video_id="video_0002_negative",
+            video_path=tmp_path / "negative.mp4",
+            metadata={"source_video_id": "video_0002", "ground_truth": {"has_fracture": False, "type": "未断裂"}},
+        ),
+    ]
+    for sample in samples:
+        sample.video_path.write_text("placeholder", encoding="utf-8")
+    monkeypatch.setattr(run_prompt_sweep, "load_dataset", lambda name, video_root=None: samples)
+    monkeypatch.setattr(
+        run_prompt_sweep,
+        "build_dataset_coverage",
+        lambda samples, dataset: {
+            "dataset": dataset,
+            "sample_count": 2,
+            "merged_source_count": 2,
+            "merged_sources": ["video_0001", "video_0002"],
+            "split_path": None,
+            "split_source_count": None,
+            "split_sources": [],
+            "missing_from_merged": [],
+            "missing_source_audit": {},
+            "blocking_coverage_issues": [],
+            "unexpected_in_merged": [],
+        },
+    )
+    monkeypatch.setattr(run_prompt_sweep, "build_model_manifest", lambda model_dir: {"model_dir": model_dir})
+    monkeypatch.setattr(run_prompt_sweep, "load_model", lambda model_dir: (object(), object()))
+
+    def fake_run(*args, **kwargs):
+        frame_paths = []
+        frame_dir = kwargs.get("frame_dir")
+        if frame_dir is not None:
+            frame_dir.mkdir(parents=True)
+            frame_path = frame_dir / "frame_00_0.000s.png"
+            frame_path.write_bytes(b"png")
+            (frame_dir / "contact_sheet.png").write_bytes(b"png")
+            frame_paths = [str(frame_path)]
+        return ModelRunResult(
+            raw_output='{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+            sampled_timestamps=[0.0, 1.0],
+            generated_token_count=20,
+            hit_token_limit=False,
+            frame_paths=frame_paths,
+        )
+
+    monkeypatch.setattr(run_prompt_sweep, "run_model_on_video_detailed", fake_run)
+    out_dir = tmp_path / "new-sweep"
+    args = run_prompt_sweep.parse_args(
+        ["prompt", "--model-dir", "/models/current", "--out-dir", str(out_dir), "--max-samples", "2"]
+    )
+
+    result = run_prompt_sweep.run_experiment(args)
+
+    assert result == out_dir
+    assert (out_dir / "experiment_manifest.json").exists()
+    assert (out_dir / "source_level_summary.json").exists()
+    assert (out_dir / "manual_review_queue.csv").exists()
+    records = [json.loads(line) for line in (out_dir / "evaluation_records.jsonl").read_text().splitlines()]
+    assert len(records) == 6
+    assert {record["variant"] for record in records} == {"natural", "light", "strict"}
+    assert records[0]["frame_paths"] == ["frames/video_0001_positive/frame_00_0.000s.png"]
+    queue = (out_dir / "manual_review_queue.csv").read_text(encoding="utf-8")
+    assert str(out_dir) not in queue
+    assert "frames/video_0001_positive/contact_sheet.png" in queue
+
+
+def test_sampled_frame_export_writes_exact_frames_and_contact_sheet(tmp_path) -> None:
+    frames = [Image.new("RGB", (8, 6), "red"), Image.new("RGB", (8, 6), "blue")]
+
+    paths = model_runtime._write_sampled_frames(frames, [0.0, 1.25], tmp_path / "frames")
+
+    assert len(paths) == 2
+    assert (tmp_path / "frames" / "frame_00_0.000s.png").exists()
+    assert (tmp_path / "frames" / "contact_sheet.png").exists()
