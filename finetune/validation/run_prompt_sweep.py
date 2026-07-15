@@ -238,7 +238,13 @@ def _inspect_json_output(raw_output: str, expected_keys: list[str], evidence: bo
         core = parsed
     result["schema_valid"] = True
     result["parsed_output"] = core
-    result["legal_combination_valid"] = bool(_matches_legal_combination(core))
+    try:
+        result["legal_combination_valid"] = bool(_matches_legal_combination(core))
+    except (IndexError, KeyError, TypeError, ValueError):
+        # A JSON object can have the correct keys while carrying arbitrary model
+        # value types. Treat malformed values as an invalid combination; one bad
+        # generation must not terminate the complete sweep.
+        result["legal_combination_valid"] = False
     if not result["legal_combination_valid"]:
         result["parse_error"] = "illegal four-field value combination"
     return result
