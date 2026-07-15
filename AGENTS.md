@@ -1,5 +1,11 @@
 # Project Agent Instructions
 
+关联文档：
+
+- [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)
+- [finetune/README.md](finetune/README.md)
+- [README.md](README.md)
+
 ## 双机工作机制
 
 - 当前电脑用于项目开发、代码查看、结果文件检查、静态分析、文档整理和结论汇总。

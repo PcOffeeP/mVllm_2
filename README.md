@@ -1,61 +1,23 @@
 # TensileAgent
 
-> 材料拉伸试验视频断裂行为理解 —— 基于 MiniCPM-V-4.5 的视频微调、断裂区间定位与类型识别项目。
-
-TensileAgent 面向材料拉伸试验视频，利用视觉语言模型理解试样在加载过程中的形貌变化，判断试样是否断裂，并进一步识别断裂发生的时间区间、断裂模式和断裂位置。
-
-项目的核心不是对整段视频做一次简单分类，而是把视频转换为带有时间顺序的采样帧序列，建立“视觉证据—断裂区间—断裂属性”之间的对应关系。
+> 基于 MiniCPM-V-4.5 对材料拉伸试验视频进行断裂理解：判断是否断裂、定位断裂区间、识别断裂模式与位置。
 
 ## 项目目标
 
-项目希望解决以下问题：
+- 判断视频中是否发生试样断裂。
+- 定位断裂发生在哪两个相邻采样帧之间。
+- 区分韧性断裂、脆性断裂、界面脱粘等断裂模式。
+- 判断断裂发生在标距内还是标距外。
+- 识别未断裂、视频异常、未夹紧等特殊情况。
+- 输出严格的四字段 JSON，便于训练和评估解析。
 
-- 判断视频中是否发生试样断裂；
-- 定位断裂发生在哪两个相邻采样帧之间；
-- 区分韧性断裂、脆性断裂、界面脱粘等断裂模式；
-- 判断断裂发生在标距内还是标距外；
-- 识别未断裂、视频异常、未夹紧等特殊情况；
-- 输出严格的四字段 JSON，便于训练和评估稳定解析。
-
-训练阶段只使用四字段 JSON；推理和评估阶段可在相同 JSON 中增加模型对当前判断的 `confidence` 字段。
-
-## 方法概览
-
-### Frame-Interval 建模
-
-项目采用 frame-interval 作为时间定位的基本单位：
-
-1. 将拉伸试验视频按照统一的视觉处理契约抽取为有序帧序列；
-2. 使用相邻采样帧索引对 `[i, i+1]` 表示断裂发生的区间；
-3. 将断裂前后不同时间窗口裁剪为多个子视频；
-4. 根据子视频中的可见证据生成训练样本；
-5. 使用 3-fold 视频级划分进行训练和验证。
-
-这种方式比直接预测整段视频的单一标签更适合描述断裂发生的瞬间，也能使训练数据中的时间标注和模型实际看到的帧保持一致。
-
-### 统一 Prompt 与结构化监督
-
-训练和推理使用同一套 prompt 模板库：
-
-- 同一任务提供多种等价问法；
-- 覆盖断裂判断、断裂区间、断裂模式、断裂位置和异常情况；
-- 训练 target 不包含 `confidence`；
-- 推理 target 要求模型根据视觉证据给出 `confidence`；
-- 训练和评估记录 prompt 模板版本，便于复现实验。
-
-训练 JSON 每条样本只包含 LlamaFactory 所需的 `videos` 与 `messages`；原始标签、审核状态、帧映射和来源追溯均保留在 `data/07_metadata/`，不写入训练样本。
-
-Prompt 模板位于：
-
-```text
-pipeline/prompt_library.yaml
-```
+训练阶段只使用四字段 JSON；推理和评估可在相同 JSON 中增加 `confidence` 字段。
 
 ## 项目结构
 
 ```text
 pipeline/
-├── scripts/                  数据生成、审核、导出和质量检查
+├── scripts/                  数据生成、审核、导出、质量检查
 ├── preprocessing/            视频帧处理与 MiniCPM processor 适配
 ├── prompt_library.yaml       训练/推理共用的 prompt 模板库
 ├── server_proxy.py           同进程推理服务
@@ -64,11 +26,11 @@ pipeline/
 finetune/
 ├── train_with_contract.py    微调训练入口
 ├── MiniCPM/config/           训练与模型导出配置
-├── validation/               推理、评估和 prompt 测试
+├── validation/               推理、评估、prompt 测试
 └── dataset_info.json         LLaMA-Factory 数据集注册信息
 
 data/
-├── 01_videos/                原始视频
+├── 01_videos/                源视频
 ├── 02_annotations/           原始标注
 ├── 03_subvideos/             生成的子视频
 ├── 04_frames/                子视频采样帧
@@ -83,68 +45,11 @@ LlamaFactory/                 LLaMA-Factory 子模块
 models/                       本地模型权重目录
 ```
 
-视频、模型权重以及部分中间数据产物通常不纳入版本控制，需要在实验环境中准备或同步。
-
-## 数据流程
-
-从原始标注到训练和评估，整体流程如下：
-
-> 从“只有原视频与 CSV 标注”开始执行、包含全量人工审查、增量复审、安全合并与最终训练数据导出的权威步骤，请阅读 [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)。本节只保留流程概览。
-
-```text
-原始视频与标注
-      │
-      ▼
-元数据整理与 3-fold 划分
-      │
-      ▼
-训练级子视频与采样帧生成
-      │
-      ├── 训练级子视频人工审核
-      │
-      └── 测试级子视频生成与人工审核
-      │
-      ▼
-审核决策应用与标签修正
-      │
-      ▼
-训练样本 / 测试输入 / ground truth
-      │
-      ▼
-帧区间、标签、路径、版本和数据泄漏检查
-      │
-      ▼
-模型训练、合并与 raw-output 评估
-```
-
-### 子视频与帧映射
-
-每个子视频 metadata 会记录：
-
-- 源视频和子视频路径；
-- 起止时间、帧号和时长；
-- `crop_type` 与窗口选择原因；
-- 断裂标签、断裂区间、类型和位置；
-- processor 指纹；
-- 实际采样帧及其源视频/子视频坐标映射。
-
-子视频生成、帧抽取和训练读取必须遵守同一套处理契约，避免训练时重新抽帧后导致标注区间偏移。
-
-### 人工审核
-
-训练级和测试级子视频使用同一套本地审核 UI。审核人员可以查看视频、采样帧和窗口信息，并对标签进行确认或修改。
-
-审核结果包含三类状态：
-
-- `approved`：进入后续训练或评估；
-- `dropped`：保留媒体文件和记录，但从数据集合中剔除；
-- `needs_regenerate`：标记为需要重新生成，并阻止正式导出。
-
-审核决策文件分别用于训练级和测试级子视频，之后由导出脚本生成审核后的 metadata 和数据集。
+视频、模型权重和中间数据通常不纳入版本控制，需在实验环境中准备或同步。
 
 ## 环境准备
 
-项目推荐使用 Python 3.11、Conda 和 pip。训练和完整视频处理通常在 Linux/GPU 环境执行。
+推荐 Python 3.11、Conda、Linux/GPU 环境。
 
 ```bash
 git submodule update --init --recursive
@@ -156,32 +61,34 @@ pip install -r requirements.txt
 pip install -e ./LlamaFactory
 ```
 
-将 MiniCPM-V-4.5 基座模型放入 `models/`，或在运行脚本时通过参数指定模型目录。子视频生成还需要 `ffmpeg` 和 `ffprobe`。
+将 MiniCPM-V-4.5 基座模型放入 `models/`，或在脚本中通过 `--model` 指定。子视频生成需要 `ffmpeg` 和 `ffprobe`。
 
-## 使用流程
+## 快速开始
 
-以下命令均从仓库根目录执行。
+所有命令从仓库根目录执行。完整数据流程以 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md) 为准。
 
-完整执行时请以 [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md) 为准；它明确了何时冻结划分、何时只做增量复审，以及哪些步骤必须在训练电脑运行。
+### 1. 生成数据
 
-### 生成数据
+> 详细的子视频生成与数据流程见 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)。
+
+小样本验证：
 
 ```bash
-python3 pipeline/scripts/dataset_manager.py
-
-python3 pipeline/scripts/subvideo_builder.py \
+python pipeline/scripts/subvideo_builder.py \
   --model models/minicpmv4_5 \
   --sample-size 10 \
   --sample-output-dir data/sample_subvideos
 ```
 
-小样本确认无误后，再执行完整子视频生成：
+确认无误后完整生成：
 
 ```bash
-python3 pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
+python pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
 ```
 
-### 启动审核 UI
+### 2. 审核子视频
+
+> 详细的人工审核与增量复审流程见 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)。
 
 训练级子视频：
 
@@ -190,26 +97,28 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
   --metadata data/07_metadata/subvideos_meta.json
 ```
 
-测试级子视频使用测试 metadata 运行同一脚本。
+测试级子视频使用对应 metadata 运行同一脚本。
 
-### 导出训练数据并检查
+### 3. 导出训练数据
 
-全新项目的首次审核完成后，或当前项目的增量 delta 已安全合并为 final 决策后，依次应用审核决策、生成训练样本并执行质量检查。增量复审存在生成失败时，必须先按运行手册第 6.4 节将已确认剔除项追加到 resolved delta；不要直接合并不完整的 UI delta：
+> 详细的训练数据导出、质量检查与版本冻结步骤见 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)。
+
+首次审核完成或增量复审安全合并后，依次执行：
 
 ```bash
+# 将人工审核决定合并到子视频元数据
 python pipeline/scripts/apply_review_decisions.py \
   --metadata data/07_metadata/subvideos_meta.json \
   --decisions data/07_metadata/subvideo_train_review_decisions_final.json \
   --output data/07_metadata/subvideos_meta.reviewed.json \
   --strict
 
+# 应用人工复核后的标签修正
 python pipeline/scripts/apply_label_corrections.py \
   --metadata data/07_metadata/subvideos_meta.reviewed.json \
   --output data/07_metadata/subvideos_meta.label_reviewed.json
 
-python scripts/validate_no_oob.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
-
+# 根据元数据和划分构建训练样本
 python pipeline/scripts/training_sample_builder.py \
   --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
   --video-meta data/07_metadata/video_meta.json \
@@ -217,10 +126,16 @@ python pipeline/scripts/training_sample_builder.py \
   --output-dir data/06_merged \
   --seed 42
 
+# 检查帧索引是否超出子视频边界
+python scripts/validate_no_oob.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
+
+# 对训练样本执行质量检查
 python pipeline/scripts/quality_check.py \
   --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
   --merged-dir data/06_merged
 
+# 锁定当前数据版本并生成快照
 python pipeline/scripts/freeze_data_version.py \
   --merged-dir data/06_merged \
   --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
@@ -230,73 +145,54 @@ python pipeline/scripts/freeze_data_version.py \
   --lock data/07_metadata/data_version_lock.json
 ```
 
-各脚本支持通过 `--help` 查看输入、输出和路径参数。
+各脚本支持 `--help` 查看参数。
 
-## 模型训练
+### 4. 训练模型
 
-训练入口：
+> 详细的训练、合并与评估命令见 [finetune/README.md](finetune/README.md)。
 
 ```bash
 cd finetune
-python3 train_with_contract.py \
+python train_with_contract.py \
   MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
 ```
 
-项目采用 LoRA 微调和 3-fold 视频级划分。不同 fold 使用各自的 YAML 配置，训练参数以配置文件为准。训练完成后，可使用 LLaMA-Factory 的 export 配置将 LoRA adapter 合并为可直接推理的模型。
+项目采用 LoRA 微调和 3-fold 视频级划分。各 fold 配置不同，参数以 YAML 为准。
 
-## 模型评估
+### 5. 评估模型
 
-评估阶段主要保存模型原始返回，先保证输出协议和实验信息可追溯，再根据需要扩展自动指标。
+> 详细的评估命令与数据集说明见 [finetune/README.md](finetune/README.md)。
 
-评估结果包括：
-
-- `evaluation_records.jsonl`：逐样本 raw output、运行错误和参考信息；
-- `evaluation_summary.json`：数据集、模型路径、prompt 版本和 generation 配置；
-- `runtime_failures.csv`：推理失败记录。
-
-在训练机上运行模型评估：
+在训练机上运行：
 
 ```bash
-python3 -m finetune.validation.run_evaluation \
+python -m finetune.validation.run_evaluation \
   --dataset test \
   --model-dir /path/to/merged_model \
   --out-dir finetune/results/eval_test
 ```
 
-如果已有模型预测 JSONL，也可以在本地只复核评估输出：
+已有预测 JSONL 时，可本地复核：
 
 ```bash
-python3 -m finetune.validation.run_evaluation \
+python -m finetune.validation.run_evaluation \
   --dataset test \
   --predictions /path/to/predictions.jsonl \
   --out-dir finetune/results/eval_test
 ```
 
-评估数据包括两类：
-
-1. 原测试视频；
-2. 经过人工审核的测试级子视频。
-
-当前阶段重点检查 raw output 是否非空、是否包含结果区、prompt 版本是否一致。字段准确率、断裂区间命中率、断裂类型和位置指标可在数据和模型结果稳定后继续扩展。
-
 ## 推理服务
 
-项目提供同进程推理服务，将视频预处理、模型推理和结果返回封装在一起：
-
 ```bash
-python3 -m pipeline.server_proxy \
+python -m pipeline.server_proxy \
   --model /path/to/merged_model \
   --deployment-manifest /path/to/deployment_manifest.json
 ```
 
-部署清单用于记录 processor 版本、最大帧数等运行契约。
-
 ## 测试
 
-运行项目核心测试：
-
 ```bash
-python3 -m pytest -q \
+python -m pytest -q \
   tests/test_apply_review_decisions.py \
   tests/test_generate_test_subvideo_artifacts.py \
   tests/test_quality_check.py \
@@ -304,19 +200,22 @@ python3 -m pytest -q \
   tests/test_review_subvideos_app_helpers.py
 ```
 
-LLaMA-Factory 自带测试需要额外的深度学习和 API 依赖，和项目本身的轻量数据流水线测试分开运行。
+LLaMA-Factory 自带测试需要额外深度学习依赖，与项目数据流水线测试分开运行。
 
 ## 相关文档
 
-- [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)（从原视频和 CSV 到最终训练数据的权威流程）
-- [微调数据、人工审核和评估重设计计划](docs/plans/2026-07-09-finetune-data-review-and-eval-redesign.md)
-- [训练数据审核流水线实现说明](docs/IMPLEMENTATIONS/2026-06-30-training-data-review-pipeline.md)
-- [训练说明](finetune/README.md)
+- [Agent 工作说明](AGENTS.md)
+- [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)
+- [微调说明](finetune/README.md)
 - [Prompt 模板库](pipeline/prompt_library.yaml)
+- [人工审核后的再生成与复标规则](docs/REVIEW_REGENERATION_RULES.md)
+- [视觉归因与 ROI 优化方向](docs/VISUAL_GROUNDING_AND_ROI_OPTIMIZATION.md)
+- [材料拉伸断裂行为分类指南](assets/frac_mode.md)
+- [旧基线问题池](assets/question_pool.md)
 
 ## 运行边界
 
-- 数据生成、训练和完整推理依赖模型权重、视频媒体和相应运行环境；
-- 训练与 GPU 推理应在远程 Linux/4090 机器执行；
-- 本机可以进行代码检查、轻量测试和已有预测结果复核；
-- 评估结论应同时参考结构化指标、模型原始输出以及典型成功/失败样例，不能只依据 train loss 或 eval loss。
+- 数据生成、训练和完整推理依赖模型权重、视频媒体和运行环境。
+- 训练与 GPU 推理应在远程 Linux/GPU 机器执行。
+- 本机可进行代码检查、轻量测试和已有预测结果复核。
+- 评估应同时参考结构化指标、原始输出和典型成功/失败样例，不能只看 train loss 或 eval loss。

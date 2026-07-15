@@ -1,11 +1,14 @@
 # 旧基线问题池
 
 > 定位：旧直接预测基线的问题模板快照，仅供查阅。
-> 运行时权威来源：[`pipeline/config/question_pool.yaml`](../pipeline/config/question_pool.yaml)。
+> 当前 prompt 权威来源：[`pipeline/prompt_library.yaml`](../pipeline/prompt_library.yaml)。
+> 运行时问题池来源：[`pipeline/config/question_pool.yaml`](../pipeline/config/question_pool.yaml)。
 > `generate_questions.py`、`fill_answers.py` 和 `randomize_qs.py` 均直接读取 YAML，不读取本文档。
+>
+> 关联文档：[README.md](../README.md)。
 
-## 提问池
-### S1 : 中文-时间 (18条)
+## S1：中文-时间（18 条）
+
 - 试样在哪一秒断裂？
 - 断裂发生在第几秒？
 - 请问试样断裂的时间点是？
@@ -24,15 +27,17 @@
 - 请问破坏发生在第几秒？
 - 拉断的具体时间是？
 - 只输出断裂时间。
-### S2 : 中文-模式 (18条)
+
+## S2：中文-模式（18 条）
+
 - 试样的断裂方式是什么？
-- 这是什么类型的断裂？
+- 这是什么断裂模式？
 - 断裂模式属于哪一种？
 - 怎么断的？描述断裂形式。
 - 试样破坏模式是啥？
 - 给出断裂模式的术语名称。
 - 断裂属于韧性还是脆性？
-- 这是什么断裂类型？
+- 这是什么断裂模式？
 - 试样的破坏形式如何？
 - 只回答断裂模式。
 - 断裂后试样呈现什么特征？
@@ -41,28 +46,32 @@
 - 试样断裂的形态是？
 - 断裂模式名称是什么？
 - 如何分类这次断裂？
-- 断裂形式属于哪类？
-- 只告诉我断裂类型。
-### S3 : 中文-二者 (18条)
+- 断裂形式属于哪种？
+- 只告诉我断裂模式。
+
+## S3：中文-二者（18 条）
+
 - 试样在哪一秒断裂？断裂方式是什么？
 - 断裂时间和断裂模式分别是？
-- 请指出破坏发生的时刻和类型。
+- 请指出破坏发生的时刻和模式。
 - 何时断裂？如何断裂？
 - 告诉我断裂时间和断裂形式。
 - 断裂发生在第几秒？属于什么模式？
 - 给出断裂的时间和模式。
 - 试样何时断裂？断裂特征是什么？
 - 破坏时间与破坏方式？
-- 视频里第几秒断裂？什么类型？
+- 视频里第几秒断裂？什么模式？
 - 断裂瞬间的时间戳和模式名称。
 - 何时发生断裂？请描述断裂形态。
 - 试样断裂的时间和形式分别是？
 - 告诉我时间和断裂模式。
-- 断裂起始时刻和断裂类别？
+- 断裂起始时刻和断裂模式？
 - 何时拉断？怎么断的？
 - 输出断裂时间和断裂模式。
 - 第几秒断的？属于哪种破坏？
-### S4 : 英文-时间 (18条)
+
+## S4：英文-时间（18 条）
+
 - When does the specimen fracture?
 - At what second does the break occur?
 - What's the fracture timestamp?
@@ -81,9 +90,11 @@
 - Give the fracture time.
 - Time of failure?
 - When does it break?
-### S5 : 英文-模式 (18条)
+
+## S5：英文-模式（18 条）
+
 - What is the fracture mode?
-- Describe the fracture type.
+- Describe the fracture mode.
 - What's the failure pattern?
 - How did it break?
 - Identify the fracture style.
@@ -95,22 +106,24 @@
 - Describe the failure mode.
 - What does the fracture look like?
 - Fracture pattern?
-- Tell me the fracture type.
+- Tell me the fracture mode.
 - How would you categorize this break?
 - What failure mode does it show?
 - Describe the break pattern.
 - Only give the fracture mode.
-### 英文-二者 (18条)
+
+## S6：英文-二者（18 条）
+
 - When does fracture occur and what is the mode?
-- Give me the fracture time and its type.
+- Give me the fracture time and its mode.
 - What time does it break and how?
 - Report the fracture second and mode.
 - When and how does the specimen fail?
 - Time of fracture and failure description.
 - At what second does it break? What mode?
-- Identify the fracture moment and pattern. 
-- When is the break? What is the fracture type?
-- Fracture timestamp and mode, please. 
+- Identify the fracture moment and pattern.
+- When is the break? What is the fracture mode?
+- Fracture timestamp and mode, please.
 - Tell me when it fractures and how.
 - What time? What failure mode?
 - When does it fail and what's the mode?
@@ -119,3 +132,7 @@
 - When does breakage occur? Describe it.
 - Time and mode of fracture.
 - When? How? (fracture time & mode)
+
+## 关联文档
+
+- [README.md](../README.md)
