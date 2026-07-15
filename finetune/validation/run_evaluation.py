@@ -4,6 +4,7 @@ import argparse
 import csv
 import hashlib
 import json
+import random
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,7 @@ from .prompts import (
     get_prompt_library,
     get_prompt_version,
     get_system_prompt,
+    get_user_prompt_template_count,
 )
 
 
@@ -28,6 +30,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--video-root", default=None)
     parser.add_argument("--predictions", default=None, help="Existing JSONL with video_id and raw_output; skips model inference.")
     parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument(
+        "--user-prompt-seed",
+        type=int,
+        default=42,
+        help="Random seed for per-sample user prompt template selection.",
+    )
     return parser.parse_args()
 
 
@@ -42,8 +50,8 @@ def main() -> None:
     inference_target_schema = get_inference_target_schema(library)
     prompt_library_path = str(DEFAULT_PROMPT_LIBRARY_PATH)
 
-    user_prompt_template_index = 0
-    prompt_text = get_inference_user_prompt(user_prompt_template_index, library)
+    rng = random.Random(args.user_prompt_seed)
+    template_count = get_user_prompt_template_count(library)
 
     video_root = Path(args.video_root) if args.video_root else None
     samples = load_dataset(args.dataset, video_root=video_root)
@@ -57,7 +65,13 @@ def main() -> None:
     if raw_outputs is None:
         processor, model = load_model(args.model_dir)
 
+    summary_prompt_text = None
     for sample in samples:
+        user_prompt_template_index = rng.randrange(template_count)
+        prompt_text = get_inference_user_prompt(user_prompt_template_index, library)
+        if summary_prompt_text is None:
+            summary_prompt_text = prompt_text
+
         if raw_outputs is None:
             if not sample.video_path.exists():
                 raw_output = ""
@@ -83,19 +97,20 @@ def main() -> None:
             )
         )
 
+    summary_prompt_text = summary_prompt_text or get_inference_user_prompt(0, library)
+
     write_outputs(
         out_dir=Path(args.out_dir),
         records=records,
         dataset=args.dataset,
         model_dir=args.model_dir,
         prompt="training",
-        prompt_text=prompt_text,
+        prompt_text=summary_prompt_text,
         predictions=args.predictions,
         prompt_version=prompt_version,
         prompt_library_path=prompt_library_path,
         system_prompt=system_prompt,
         system_prompt_hash=hashlib.sha256(system_prompt.encode("utf-8")).hexdigest(),
-        user_prompt_template_index=user_prompt_template_index,
         target_schema=inference_target_schema,
     )
 
@@ -154,7 +169,6 @@ def write_outputs(
     prompt_library_path: str | None = None,
     system_prompt: str | None = None,
     system_prompt_hash: str | None = None,
-    user_prompt_template_index: int | None = None,
     target_schema: dict[str, Any] | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -167,7 +181,6 @@ def write_outputs(
         "prompt_library_path": prompt_library_path,
         "system_prompt": system_prompt,
         "system_prompt_hash": system_prompt_hash,
-        "user_prompt_template_index": user_prompt_template_index,
         "target_schema": target_schema,
         "predictions": predictions,
         "generation_config": GENERATION_CONFIG,

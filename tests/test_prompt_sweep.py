@@ -55,7 +55,6 @@ def test_inspect_four_field_output_uses_project_legal_combinations() -> None:
 def test_summarize_condition_counts_malformed_as_incorrect_for_has_fracture() -> None:
     condition = {
         "prompt_id": "p",
-        "template_index": 0,
         "template_id": "t",
         "variant": "four_field",
         "output_protocol": "four_field_json",
@@ -143,10 +142,17 @@ def test_main_runs_each_sample_for_each_selected_condition(tmp_path, monkeypatch
 
     records = [json.loads(line) for line in (out_dir / "evaluation_records.jsonl").read_text().splitlines()]
     summary = json.loads((out_dir / "prompt_sweep_summary.json").read_text())
-    assert len(calls) == 2
-    assert len(records) == 2
+    assert len(calls) == 12
+    assert len(records) == 12
     assert {record["prompt_id"] for record in records} == {
         "zh_binary_and_interval__test",
+        "zh_mode_focus__test",
+        "zh_location_focus__test",
+        "zh_anomaly_aware__test",
+        "zh_full_reasoning__test",
+        "zh_concise__test",
     }
-    assert summary["paired_design"] is True
-    assert summary["sample_count"] == 2
+    for record in records:
+        assert "template_index" not in record
+    for condition in summary["conditions"]:
+        assert "template_index" not in condition

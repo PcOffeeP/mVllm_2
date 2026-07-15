@@ -100,6 +100,16 @@ def get_inference_user_prompt(template_index: int = 0, library: dict[str, Any] |
     return prompt
 
 
+def get_user_prompt_template_count(library: dict[str, Any] | None = None) -> int:
+    """返回模板库中 user prompt 模板的数量。"""
+    lib = library or get_prompt_library()
+    templates = lib.get("user_prompt_templates", [])
+    count = len(templates)
+    if count == 0:
+        raise ValueError("Prompt library has no user_prompt_templates")
+    return count
+
+
 def get_user_prompt_template_id(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
     """返回指定索引 user prompt 模板的 template_id。"""
     lib = library or get_prompt_library()

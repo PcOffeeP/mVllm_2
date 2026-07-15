@@ -32,13 +32,13 @@ from .prompts import (
     get_system_prompt,
     get_test_system_prompt,
     get_user_prompt,
+    get_user_prompt_template_count,
     get_user_prompt_template_id,
 )
 
 
 OUTPUT_PROTOCOL_FOUR_FIELD = "four_field_json"
 OUTPUT_PROTOCOL_FREE_TEXT = "free_text"
-DEFAULT_TEMPLATE_INDEX = 0
 
 # Kept solely as a diagnostic for the previously observed inference collapse.
 KNOWN_NEGATIVE_DEMONSTRATION = (
@@ -75,7 +75,6 @@ def build_prompt_conditions(
         conditions.append(
             {
                 "prompt_id": f"{template_id}__{prompt_mode}",
-                "template_index": template_index,
                 "template_id": template_id,
                 "variant": prompt_mode,
                 "output_protocol": output_protocol,
@@ -144,7 +143,6 @@ def evaluate_record(sample: EvalSample, condition: dict[str, str | int], raw_out
         "subvideo_id": sample.metadata.get("subvideo_id"),
         "ground_truth": sample.metadata.get("ground_truth"),
         "prompt_id": condition["prompt_id"],
-        "template_index": condition["template_index"],
         "template_id": condition["template_id"],
         "variant": condition["variant"],
         "output_protocol": output_protocol,
@@ -393,7 +391,7 @@ def main() -> None:
         raise FileExistsError(f"{records_path} already exists; choose a new --out-dir")
 
     library = get_prompt_library()
-    conditions = build_prompt_conditions(library, [DEFAULT_TEMPLATE_INDEX], args.prompt)
+    conditions = build_prompt_conditions(library, list(range(get_user_prompt_template_count(library))), args.prompt)
     if args.prompt == "user":
         system_prompt = None
     elif args.prompt == "system":

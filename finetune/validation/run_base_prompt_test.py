@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ from .prompts import (
     get_prompt_library,
     get_system_prompt,
     get_system_prompt_hash,
+    get_user_prompt_template_count,
 )
 from .run_evaluation import evaluate_sample, summarize, write_outputs
 
@@ -28,6 +30,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", default="finetune/results/base_prompt_format_test")
     parser.add_argument("--video-root", default=None)
     parser.add_argument("--max-samples", type=int, default=None, help="Optional local smoke limit. Default uses all 22 original videos.")
+    parser.add_argument(
+        "--user-prompt-seed",
+        type=int,
+        default=42,
+        help="Random seed for per-sample user prompt template selection.",
+    )
     return parser.parse_args()
 
 
@@ -46,6 +54,9 @@ def main() -> None:
     system_prompt = get_system_prompt(library)
     system_prompt_hash = get_system_prompt_hash(library)
 
+    rng = random.Random(args.user_prompt_seed)
+    template_count = get_user_prompt_template_count(library)
+
     comparison: dict[str, Any] = {
         "dataset": "test",
         "sample_count": len(samples),
@@ -56,16 +67,20 @@ def main() -> None:
     }
 
     for prompt_name in PROMPT_NAMES:
-        prompt_text = get_inference_user_prompt(0, library)
         records = []
+        prompt_text = None
         for sample in samples:
+            template_index = rng.randrange(template_count)
+            sample_prompt_text = get_inference_user_prompt(template_index, library)
+            if prompt_text is None:
+                prompt_text = sample_prompt_text
             if not sample.video_path.exists():
                 raw_output = ""
                 runtime_error = f"video not found: {sample.video_path}"
             else:
                 try:
                     raw_output = run_model_on_video(
-                        model, processor, sample.video_path, prompt_text, system_prompt=system_prompt
+                        model, processor, sample.video_path, sample_prompt_text, system_prompt=system_prompt
                     )
                     runtime_error = None
                 except Exception as exc:
@@ -73,6 +88,7 @@ def main() -> None:
                     runtime_error = f"{type(exc).__name__}: {exc}"
             records.append(evaluate_sample(sample, raw_output, runtime_error))
 
+        prompt_text = prompt_text or get_inference_user_prompt(0, library)
         prompt_out_dir = out_root / prompt_name
         write_outputs(
             out_dir=prompt_out_dir,

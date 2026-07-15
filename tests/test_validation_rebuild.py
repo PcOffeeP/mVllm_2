@@ -18,7 +18,6 @@ from finetune.validation.prompts import (
     get_inference_target_schema,
     get_inference_user_prompt,
     get_system_prompt,
-    get_user_prompt,
 )
 
 
@@ -169,8 +168,8 @@ def test_run_evaluation_passes_system_prompt_to_model_runtime(tmp_path, monkeypa
     main()
 
     assert captured["system_prompt"] == get_system_prompt()
-    assert captured["prompt"] == get_inference_user_prompt(0)
     assert "confidence" in captured["prompt"]
+    assert captured["prompt"] in {get_inference_user_prompt(i) for i in range(6)}
 
 
 def test_run_evaluation_records_inference_target_schema_with_confidence(tmp_path, monkeypatch):
@@ -289,6 +288,8 @@ def test_run_evaluation_records_inference_target_schema_with_confidence(tmp_path
     assert comparison["prompts"]["training"]["raw_output_rate"] == 1.0
     # Verify system_prompt was passed to runtime for the inference prompt variant.
     assert all(call["system_prompt"] == get_system_prompt() for call in runtime_calls)
+    assert "confidence" in runtime_calls[0]["prompt_text"]
+    assert runtime_calls[0]["prompt_text"] in {get_inference_user_prompt(i) for i in range(6)}
 
 
 def test_model_runtime_keeps_minicpm_video_embedding_inputs(monkeypatch, tmp_path):
@@ -489,8 +490,101 @@ def test_run_evaluation_default_prompt_requires_confidence(tmp_path, monkeypatch
     summary = json.loads((out_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
     assert summary["prompt"] == "training"
     assert "confidence" in summary["prompt_text"]
-    assert summary["user_prompt_template_index"] == 0
     assert "confidence" in summary["target_schema"]
+
+
+def test_run_evaluation_same_seed_reproduces_template_sequence(tmp_path, monkeypatch):
+    """相同 seed 两次运行应产生相同的 per-sample 模板序列。"""
+    samples = [
+        EvalSample(
+            sample_id=f"video_{i:03d}",
+            video_id=f"video_{i:03d}",
+            video_path=tmp_path / f"video_{i:03d}.mp4",
+            metadata={},
+        )
+        for i in range(10)
+    ]
+    for sample in samples:
+        sample.video_path.write_text("not a video", encoding="utf-8")
+
+    library = run_evaluation.get_prompt_library()
+    text_to_index = {get_inference_user_prompt(i, library): i for i in range(run_evaluation.get_user_prompt_template_count(library))}
+    captured_runs: list[list[int]] = []
+
+    def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):
+        captured_runs[-1].append(text_to_index[prompt_text])
+        return "output"
+
+    monkeypatch.setattr(run_evaluation, "load_dataset", lambda name, video_root=None: samples)
+    monkeypatch.setattr(run_evaluation, "load_model", lambda model_dir: (object(), object()))
+    monkeypatch.setattr(run_evaluation, "run_model_on_video", fake_run_model_on_video)
+
+    for _ in range(2):
+        captured_runs.append([])
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "run_evaluation",
+                "--dataset",
+                "test",
+                "--model-dir",
+                "/tmp/model",
+                "--out-dir",
+                str(tmp_path / "eval"),
+                "--user-prompt-seed",
+                "42",
+            ],
+        )
+        main()
+
+    assert captured_runs[0] == captured_runs[1]
+
+
+def test_run_evaluation_uses_multiple_templates_from_pool(tmp_path, monkeypatch):
+    """多个样本运行时实际模板应来自 6 个模板之一，且不同样本可以使用不同模板。"""
+    samples = [
+        EvalSample(
+            sample_id=f"video_{i:03d}",
+            video_id=f"video_{i:03d}",
+            video_path=tmp_path / f"video_{i:03d}.mp4",
+            metadata={},
+        )
+        for i in range(20)
+    ]
+    for sample in samples:
+        sample.video_path.write_text("not a video", encoding="utf-8")
+
+    library = run_evaluation.get_prompt_library()
+    text_to_index = {get_inference_user_prompt(i, library): i for i in range(run_evaluation.get_user_prompt_template_count(library))}
+    used_indices: list[int] = []
+
+    def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):
+        used_indices.append(text_to_index[prompt_text])
+        return "output"
+
+    monkeypatch.setattr(run_evaluation, "load_dataset", lambda name, video_root=None: samples)
+    monkeypatch.setattr(run_evaluation, "load_model", lambda model_dir: (object(), object()))
+    monkeypatch.setattr(run_evaluation, "run_model_on_video", fake_run_model_on_video)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_evaluation",
+            "--dataset",
+            "test",
+            "--model-dir",
+            "/tmp/model",
+            "--out-dir",
+            str(tmp_path / "eval"),
+        ],
+    )
+
+    main()
+
+    template_count = run_evaluation.get_user_prompt_template_count(library)
+    assert all(0 <= i < template_count for i in used_indices)
+    assert len(set(used_indices)) > 1
 
 
 def test_parse_assistant_json_raises_on_invalid_content():
