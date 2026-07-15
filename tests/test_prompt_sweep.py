@@ -58,6 +58,18 @@ def test_inspect_four_field_output_uses_project_legal_combinations() -> None:
     assert invalid["legal_combination_valid"] is False
 
 
+def test_inspect_four_field_output_does_not_crash_on_model_value_type_errors() -> None:
+    malformed = run_prompt_sweep.inspect_four_field_output(
+        '{"has_fracture":true,"fracture_between":["3","4"],'
+        '"type":"韧性断裂","location":"inside_gauge"}'
+    )
+
+    assert malformed["json_valid"] is True
+    assert malformed["schema_valid"] is True
+    assert malformed["legal_combination_valid"] is False
+    assert malformed["parse_error"] == "illegal four-field value combination"
+
+
 def test_summarize_condition_counts_malformed_as_incorrect_for_has_fracture() -> None:
     condition = {
         "prompt_id": "p",
