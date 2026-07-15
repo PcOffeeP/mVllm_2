@@ -500,7 +500,7 @@ def build_dataset_coverage(samples: list[EvalSample], dataset: str) -> dict[str,
         "missing_from_merged": missing,
         "missing_source_audit": missing_audit,
         "blocking_coverage_issues": sorted(
-            source for source, audit in missing_audit.items() if audit.get("has_reviewed_subvideos")
+            source for source, audit in missing_audit.items() if audit.get("expected_split_present")
         ),
         "unexpected_in_merged": sorted(set(merged_sources) - set(split_sources)) if split_sources else [],
     }
@@ -523,12 +523,19 @@ def _audit_missing_sources(missing_sources: list[str], dataset: str) -> dict[str
                 for split in (row.get("selected_splits") or [])
             }
         )
+        expected_split_present = dataset in selected_splits
         audit[source] = {
             "has_reviewed_subvideos": bool(rows),
             "reviewed_subvideo_count": len(rows),
             "selected_splits": selected_splits,
-            "expected_split_present": dataset in selected_splits,
-            "reason": "stale_or_inconsistent_split_assignment" if rows else "no_reviewed_subvideos",
+            "expected_split_present": expected_split_present,
+            "reason": (
+                "selected_for_split_but_missing_from_merged"
+                if expected_split_present
+                else "reviewed_but_not_selected_for_split"
+                if rows
+                else "no_reviewed_subvideos"
+            ),
         }
     return audit
 

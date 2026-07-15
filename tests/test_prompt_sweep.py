@@ -253,6 +253,43 @@ def test_build_evidence_pilot_selects_one_sample_per_fixed_source() -> None:
     assert selected == run_prompt_sweep.build_evidence_pilot(list(reversed(samples)))
 
 
+def test_coverage_blocks_only_sources_selected_for_the_target_split(tmp_path, monkeypatch) -> None:
+    metadata_dir = tmp_path / "data" / "07_metadata"
+    splits_dir = tmp_path / "data" / "05_splits"
+    metadata_dir.mkdir(parents=True)
+    splits_dir.mkdir(parents=True)
+    (metadata_dir / "subvideos_meta.label_reviewed.json").write_text(
+        json.dumps(
+            {
+                "subvideos": [
+                    {"source_video": "video_elsewhere", "selected_splits": ["fold_0_train"]},
+                    {"source_video": "video_missing", "selected_splits": ["fold_0_val"]},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (splits_dir / "fold_0_val.json").write_text(
+        json.dumps({"video_ids": ["video_present", "video_elsewhere", "video_missing"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_prompt_sweep, "PROJECT_ROOT", tmp_path)
+    samples = [
+        EvalSample(
+            sample_id="video_present_focus",
+            video_id="video_present_focus",
+            video_path="/tmp/video_present_focus.mp4",
+            metadata={"source_video_id": "video_present"},
+        )
+    ]
+
+    coverage = run_prompt_sweep.build_dataset_coverage(samples, "fold_0_val")
+
+    assert coverage["blocking_coverage_issues"] == ["video_missing"]
+    assert coverage["missing_source_audit"]["video_elsewhere"]["reason"] == "reviewed_but_not_selected_for_split"
+    assert coverage["missing_source_audit"]["video_missing"]["reason"] == "selected_for_split_but_missing_from_merged"
+
+
 def test_model_manifest_requires_directly_loadable_config(tmp_path) -> None:
     model_dir = tmp_path / "model"
     model_dir.mkdir()

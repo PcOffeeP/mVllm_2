@@ -161,7 +161,7 @@ pilot manifest 由 source、目标标签和 `sha256("42:" + sample_id)` 确定�
 - 固化 Prompt、数据和模型 manifest；
 - 拒绝覆盖已有目录。
 
-当前同步产物存在一个必须先处理的覆盖问题：Fold 0 split 列出 30 个源视频，但 merged validation 只有 17 个源视频；其中部分缺失源仍有已审核子视频但保留了旧 split assignment。脚本会在加载模型前停止，并把详情写入 `sample_manifest.json`。训练电脑必须重新生成或重新同步一致的 Fold 0 artifact，不能绕过该检查。
+脚本会报告 Fold split 与 merged validation 的源视频覆盖差异，并把详情写入 `sample_manifest.json`。存在审核记录并不代表该源一定进入目标 fold；`selected_splits` 未包含目标 fold 的源只记录审计信息。只有 metadata 明确将源选入目标 fold、但 merged validation 仍缺失时，脚本才会在模型加载前停止，此时必须重新生成或重新同步一致的数据 artifact，不能绕过检查。
 
 模型目录还必须包含可审计的来源文件。基座模型使用 `model_metadata.json`：
 
