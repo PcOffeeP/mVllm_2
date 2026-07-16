@@ -1,5 +1,5 @@
 {
-  "dataset": "test",
+  "dataset": "test_subvideos",
   "model_dir": "models/minicpmv4_5",
   "prompt": "training",
   "prompt_text": "这段视频里试样断了吗？如果断了，请说明发生在哪两个相邻采样帧之间、断裂模式和位置。",
@@ -15,9 +15,9 @@
     "max_new_tokens": 256
   },
   "metrics": {
-    "total_samples": 21,
+    "total_samples": 431,
     "runtime_error_count": 0,
-    "raw_output_count": 21,
+    "raw_output_count": 431,
     "raw_output_rate": 1.0,
     "empty_output_count": 0,
     "has_result_section_count": 0,
