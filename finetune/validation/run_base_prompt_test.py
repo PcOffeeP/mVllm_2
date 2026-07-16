@@ -24,10 +24,20 @@ DEFAULT_BASE_MODEL = PROJECT_ROOT / "models" / "minicpm-v-4.5"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the base model on the original test videos with the medium variant system prompt and 4-field user prompt."
+        description="Run the base model on the original test videos with the medium variant system prompt and 4-field user prompt. "
+        "Use --dataset to switch between test splits (e.g. test or test_subvideos)."
     )
     parser.add_argument("--model-dir", default=str(DEFAULT_BASE_MODEL), help="Base model directory.")
-    parser.add_argument("--out-dir", default="finetune/results/base_prompt_format_test")
+    parser.add_argument(
+        "--dataset",
+        default="test",
+        help="Dataset split to evaluate (default: test). Supports test_subvideos.",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default="finetune/results/base_prompt_format_{dataset}",
+        help="Output directory. The {dataset} placeholder is replaced by the value of --dataset.",
+    )
     parser.add_argument("--video-root", default=None)
     parser.add_argument("--max-samples", type=int, default=None, help="Optional local smoke limit. Default uses all 22 original videos.")
     parser.add_argument(
@@ -42,11 +52,12 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     video_root = Path(args.video_root) if args.video_root else None
-    samples = load_dataset("test", video_root=video_root)
+    samples = load_dataset(args.dataset, video_root=video_root)
     if args.max_samples is not None:
         samples = samples[: args.max_samples]
 
-    out_root = Path(args.out_dir)
+    out_dir = args.out_dir.replace("{dataset}", args.dataset)
+    out_root = Path(out_dir)
     out_root.mkdir(parents=True, exist_ok=True)
 
     processor, model = load_model(args.model_dir)
@@ -58,7 +69,7 @@ def main() -> None:
     template_count = get_user_prompt_template_count(library)
 
     comparison: dict[str, Any] = {
-        "dataset": "test",
+        "dataset": args.dataset,
         "sample_count": len(samples),
         "model_dir": args.model_dir,
         "system_prompt": system_prompt,
@@ -93,7 +104,7 @@ def main() -> None:
         write_outputs(
             out_dir=prompt_out_dir,
             records=records,
-            dataset="test",
+            dataset=args.dataset,
             model_dir=args.model_dir,
             prompt=prompt_name,
             prompt_text=prompt_text,
