@@ -143,7 +143,13 @@ def _load_prompt_library(path: Path) -> dict[str, Any]:
 
 
 def _sample_id(sample: dict[str, Any]) -> str | None:
-    """生成诊断 ID；训练样本不保存业务标签或 metadata。"""
+    """生成诊断 ID；优先使用 metadata.subvideo_id，回退到视频路径 stem。"""
+    metadata = sample.get("metadata") or {}
+    if isinstance(metadata, dict):
+        sid = metadata.get("subvideo_id")
+        if isinstance(sid, str) and sid:
+            return sid
+
     videos = sample.get("videos")
     if isinstance(videos, list) and videos and isinstance(videos[0], str):
         return Path(videos[0]).stem
@@ -167,6 +173,9 @@ def _extract_assistant_output(sample: dict[str, Any]) -> dict[str, Any] | None:
     if content is None:
         return None
 
+    # 兼容旧格式：剥离 "结果：" 前缀
+    if isinstance(content, str) and "结果：" in content:
+        content = content.split("结果：", 1)[1]
     try:
         return json.loads(content)
     except json.JSONDecodeError:
@@ -422,14 +431,24 @@ def _validate_assistant_targets(
                 continue
 
             if "判断依据：" in text or "结果：" in text:
-                errors.append(
-                    {
-                        "check": "assistant_target",
-                        "file": path.name,
-                        "id": _sample_id(sample),
-                        "detail": "contains_removed_explanation_section",
-                    }
-                )
+                if "结果：" in text and "判断依据：" not in text:
+                    errors.append(
+                        {
+                            "check": "assistant_target",
+                            "file": path.name,
+                            "id": _sample_id(sample),
+                            "detail": "missing_evidence_section",
+                        }
+                    )
+                else:
+                    errors.append(
+                        {
+                            "check": "assistant_target",
+                            "file": path.name,
+                            "id": _sample_id(sample),
+                            "detail": "contains_removed_explanation_section",
+                        }
+                    )
 
             output = _extract_assistant_output(sample)
             if output is None:
@@ -529,9 +548,14 @@ def _validate_fracture_between(
             fb = output.get("fracture_between")
             if fb is None:
                 continue
-            videos = sample.get("videos")
-            video_path = videos[0] if isinstance(videos, list) and videos else None
-            mapping = mappings_by_video.get(_video_path_key(video_path), [])
+            metadata = sample.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            mapping = metadata.get("actual_frame_mapping")
+            if mapping is None:
+                videos = sample.get("videos")
+                video_path = videos[0] if isinstance(videos, list) and videos else None
+                mapping = mappings_by_video.get(_video_path_key(video_path), [])
             n = len(mapping)
             if n == 0:
                 warnings.append(
@@ -596,20 +620,56 @@ def _validate_prompt_version_consistency(
     prompt_version: str | None,
     errors: list[dict[str, Any]],
 ) -> None:
-    """通过训练外 samples_meta 验证导出时使用的 prompt library version。"""
+    """验证导出时使用的 prompt library version 一致。"""
     samples_meta = _load_json(merged_dir / "samples_meta.json")
-    actual = samples_meta.get("prompt_version") if isinstance(samples_meta, dict) else None
-    if actual is None:
-        errors.append({"check": "prompt_version", "detail": "missing_samples_meta_version"})
-    elif prompt_version is not None and actual != prompt_version:
-        errors.append(
-            {
-                "check": "prompt_version",
-                "detail": "prompt_version_mismatch",
-                "expected": prompt_version,
-                "actual": actual,
-            }
-        )
+    if isinstance(samples_meta, dict) and samples_meta.get("prompt_version") is not None:
+        actual = samples_meta["prompt_version"]
+        if prompt_version is not None and actual != prompt_version:
+            errors.append(
+                {
+                    "check": "prompt_version",
+                    "detail": "prompt_version_mismatch",
+                    "expected": prompt_version,
+                    "actual": actual,
+                }
+            )
+        return
+
+    # 没有 samples_meta.json 时按样本检查，metadata.prompt_version 优先于顶层
+    for path in sorted(merged_dir.glob("*.json")):
+        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
+            continue
+        data = _load_json(path)
+        if not isinstance(data, list):
+            continue
+        for sample in data:
+            if not isinstance(sample, dict):
+                continue
+            metadata = sample.get("metadata") or {}
+            if isinstance(metadata, dict):
+                actual = metadata.get("prompt_version") or sample.get("prompt_version")
+            else:
+                actual = sample.get("prompt_version")
+            if actual is None:
+                errors.append(
+                    {
+                        "check": "prompt_version",
+                        "detail": "missing_prompt_version",
+                        "file": path.name,
+                        "id": _sample_id(sample),
+                    }
+                )
+            elif prompt_version is not None and actual != prompt_version:
+                errors.append(
+                    {
+                        "check": "prompt_version",
+                        "detail": "prompt_version_mismatch",
+                        "expected": prompt_version,
+                        "actual": actual,
+                        "file": path.name,
+                        "id": _sample_id(sample),
+                    }
+                )
 
 
 def _validate_no_test_sharegpt(
@@ -1050,15 +1110,18 @@ def _validate_review_status(
 ) -> None:
     """检查训练/验证样本对应的子视频 review_status 必须为 approved。
 
-    以 ``subvideos_meta.label_reviewed.json``（``reviewed_subvideos``）为权威来源，
-    建立 ``video_path -> review_status`` 映射。训练样本只含 videos/messages，
-    因此通过视频路径在权威 metadata 中定位。
+    以 subvideo_id 为主键从 ``subvideos_meta.label_reviewed.json`` 建立权威
+    review_status 映射；reviewed_subvideo 缺少 subvideo_id 时回退到 video_path。
     """
+    review_status_by_subvideo_id: dict[str, Any] = {}
     review_status_by_video: dict[str, Any] = {}
     if reviewed_subvideos is not None:
         for sub in reviewed_subvideos:
             if not isinstance(sub, dict):
                 continue
+            sid = sub.get("subvideo_id")
+            if isinstance(sid, str) and sid:
+                review_status_by_subvideo_id[sid] = sub.get("review_status")
             video_path = _video_path_key(sub.get("video_path"))
             if video_path:
                 review_status_by_video[video_path] = sub.get("review_status")
@@ -1075,30 +1138,40 @@ def _validate_review_status(
             if not isinstance(sample, dict):
                 continue
             display_id = _sample_id(sample)
-            videos = sample.get("videos")
-            lookup_video = videos[0] if isinstance(videos, list) and videos else None
-            if not isinstance(lookup_video, str) or not lookup_video:
-                errors.append(
-                    {
-                        "check": "review_status",
-                        "file": path.name,
-                        "id": display_id,
-                        "detail": "missing_video_path",
-                    }
-                )
-                continue
-            authoritative_status = review_status_by_video.get(_video_path_key(lookup_video))
+            metadata = sample.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+
+            sid = metadata.get("subvideo_id")
+            if not isinstance(sid, str) or not sid:
+                videos = sample.get("videos")
+                video_path = videos[0] if isinstance(videos, list) and videos else None
+                if isinstance(video_path, str) and video_path:
+                    sid = Path(video_path).stem
+                else:
+                    sid = None
+
+            authoritative_status = None
+            if isinstance(sid, str) and sid:
+                authoritative_status = review_status_by_subvideo_id.get(sid)
+            if authoritative_status is None:
+                videos = sample.get("videos")
+                video_path = videos[0] if isinstance(videos, list) and videos else None
+                if isinstance(video_path, str) and video_path:
+                    authoritative_status = review_status_by_video.get(_video_path_key(video_path))
+
             if authoritative_status is None:
                 errors.append(
                     {
                         "check": "review_status",
                         "file": path.name,
                         "id": display_id,
-                        "detail": "video_not_found_in_reviewed_meta",
+                        "detail": "subvideo_not_found_in_reviewed_meta",
                         "review_status": None,
                     }
                 )
                 continue
+
             if authoritative_status != "approved":
                 errors.append(
                     {
@@ -1107,6 +1180,19 @@ def _validate_review_status(
                         "id": display_id,
                         "detail": "subvideo_not_approved",
                         "review_status": authoritative_status,
+                    }
+                )
+
+            metadata_review_status = metadata.get("review_status")
+            if metadata_review_status is not None and metadata_review_status != authoritative_status:
+                errors.append(
+                    {
+                        "check": "review_status",
+                        "file": path.name,
+                        "id": display_id,
+                        "detail": "metadata_review_status_mismatch",
+                        "authoritative": authoritative_status,
+                        "metadata": metadata_review_status,
                     }
                 )
 

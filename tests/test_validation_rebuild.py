@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import sys
 import types
@@ -15,10 +14,11 @@ from finetune.validation import model_runtime
 from finetune.validation import run_evaluation
 from finetune.validation.run_evaluation import evaluate_sample, main
 from finetune.validation.prompts import (
-    get_inference_target_schema,
-    get_inference_user_prompt,
-    get_system_prompt,
+    get_experiment_system_prompt,
+    get_experiment_system_prompt_hash,
+    get_user_prompt,
 )
+
 
 
 def test_evaluate_sample_keeps_raw_output_without_schema_extraction():
@@ -167,13 +167,13 @@ def test_run_evaluation_passes_system_prompt_to_model_runtime(tmp_path, monkeypa
 
     main()
 
-    assert captured["system_prompt"] == get_system_prompt()
-    assert "confidence" in captured["prompt"]
-    assert captured["prompt"] in {get_inference_user_prompt(i) for i in range(6)}
+    assert captured["system_prompt"] == get_experiment_system_prompt("medium")
+    assert "confidence" not in captured["prompt"]
+    assert captured["prompt"] in {get_user_prompt(i) for i in range(6)}
 
 
-def test_run_evaluation_records_inference_target_schema_with_confidence(tmp_path, monkeypatch):
-    """评估输出应记录五字段推理 target_schema（含 confidence）。"""
+def test_run_evaluation_records_target_schema_and_base_prompt_uses_medium(tmp_path, monkeypatch):
+    """评估输出应记录四字段 target_schema；base prompt 测试使用 medium system prompt 和 4-field user prompt。"""
     out_dir = tmp_path / "eval"
     predictions = tmp_path / "predictions.jsonl"
     predictions.write_text(
@@ -221,8 +221,8 @@ def test_run_evaluation_records_inference_target_schema_with_confidence(tmp_path
     summary = json.loads((out_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
     assert "target_schema" in summary
     schema = summary["target_schema"]
-    assert set(schema.keys()) == {"has_fracture", "fracture_between", "type", "location", "confidence"}
-    assert "confidence" in schema
+    assert set(schema.keys()) == {"has_fracture", "fracture_between", "type", "location"}
+    assert "confidence" not in schema
 
     records = [
         json.loads(line)
@@ -283,13 +283,13 @@ def test_run_evaluation_records_inference_target_schema_with_confidence(tmp_path
     comparison = json.loads((tmp_path / "out" / "prompt_format_comparison.json").read_text(encoding="utf-8"))
     assert comparison["dataset"] == "test"
     assert comparison["sample_count"] == 1
-    assert comparison["system_prompt"] == get_system_prompt()
-    assert comparison["system_prompt_hash"] == hashlib.sha256(get_system_prompt().encode("utf-8")).hexdigest()
+    assert comparison["system_prompt"] == get_experiment_system_prompt("medium")
+    assert comparison["system_prompt_hash"] == get_experiment_system_prompt_hash("medium")
     assert comparison["prompts"]["training"]["raw_output_rate"] == 1.0
-    # Verify system_prompt was passed to runtime for the inference prompt variant.
-    assert all(call["system_prompt"] == get_system_prompt() for call in runtime_calls)
-    assert "confidence" in runtime_calls[0]["prompt_text"]
-    assert runtime_calls[0]["prompt_text"] in {get_inference_user_prompt(i) for i in range(6)}
+    # Verify medium system_prompt was passed to runtime and the prompt is 4-field user prompt.
+    assert all(call["system_prompt"] == get_experiment_system_prompt("medium") for call in runtime_calls)
+    assert "confidence" not in runtime_calls[0]["prompt_text"]
+    assert runtime_calls[0]["prompt_text"] in {get_user_prompt(i) for i in range(6)}
 
 
 def test_model_runtime_keeps_minicpm_video_embedding_inputs(monkeypatch, tmp_path):
@@ -455,8 +455,8 @@ def test_model_runtime_omits_system_prompt_when_none(monkeypatch, tmp_path):
     ]
 
 
-def test_run_evaluation_default_prompt_requires_confidence(tmp_path, monkeypatch):
-    """默认评估 prompt 必须是含 confidence 的 inference user prompt。"""
+def test_run_evaluation_default_prompt_uses_four_field_user_prompt(tmp_path, monkeypatch):
+    """默认评估 prompt 应使用不含 confidence 的 4-field user prompt。"""
     out_dir = tmp_path / "eval"
     sample = EvalSample(
         sample_id="video_0001",
@@ -489,8 +489,9 @@ def test_run_evaluation_default_prompt_requires_confidence(tmp_path, monkeypatch
 
     summary = json.loads((out_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
     assert summary["prompt"] == "training"
-    assert "confidence" in summary["prompt_text"]
-    assert "confidence" in summary["target_schema"]
+    assert "confidence" not in summary["prompt_text"]
+    assert set(summary["target_schema"].keys()) == {"has_fracture", "fracture_between", "type", "location"}
+    assert "confidence" not in summary["target_schema"]
 
 
 def test_run_evaluation_same_seed_reproduces_template_sequence(tmp_path, monkeypatch):
@@ -508,7 +509,7 @@ def test_run_evaluation_same_seed_reproduces_template_sequence(tmp_path, monkeyp
         sample.video_path.write_text("not a video", encoding="utf-8")
 
     library = run_evaluation.get_prompt_library()
-    text_to_index = {get_inference_user_prompt(i, library): i for i in range(run_evaluation.get_user_prompt_template_count(library))}
+    text_to_index = {get_user_prompt(i, library): i for i in range(run_evaluation.get_user_prompt_template_count(library))}
     captured_runs: list[list[int]] = []
 
     def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):
@@ -556,7 +557,7 @@ def test_run_evaluation_uses_multiple_templates_from_pool(tmp_path, monkeypatch)
         sample.video_path.write_text("not a video", encoding="utf-8")
 
     library = run_evaluation.get_prompt_library()
-    text_to_index = {get_inference_user_prompt(i, library): i for i in range(run_evaluation.get_user_prompt_template_count(library))}
+    text_to_index = {get_user_prompt(i, library): i for i in range(run_evaluation.get_user_prompt_template_count(library))}
     used_indices: list[int] = []
 
     def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):

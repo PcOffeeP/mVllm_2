@@ -10,10 +10,10 @@ from .constants import PROJECT_ROOT, PROMPT_NAMES
 from .datasets import load_dataset
 from .model_runtime import load_model, run_model_on_video
 from .prompts import (
-    get_inference_user_prompt,
+    get_experiment_system_prompt,
+    get_experiment_system_prompt_hash,
     get_prompt_library,
-    get_system_prompt,
-    get_system_prompt_hash,
+    get_user_prompt,
     get_user_prompt_template_count,
 )
 from .run_evaluation import evaluate_sample, summarize, write_outputs
@@ -24,7 +24,7 @@ DEFAULT_BASE_MODEL = PROJECT_ROOT / "models" / "minicpm-v-4.5"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the base model on the original test videos with the confidence-bearing inference prompt."
+        description="Run the base model on the original test videos with the medium variant system prompt and 4-field user prompt."
     )
     parser.add_argument("--model-dir", default=str(DEFAULT_BASE_MODEL), help="Base model directory.")
     parser.add_argument("--out-dir", default="finetune/results/base_prompt_format_test")
@@ -51,8 +51,8 @@ def main() -> None:
 
     processor, model = load_model(args.model_dir)
     library = get_prompt_library()
-    system_prompt = get_system_prompt(library)
-    system_prompt_hash = get_system_prompt_hash(library)
+    system_prompt = get_experiment_system_prompt("medium", library)
+    system_prompt_hash = get_experiment_system_prompt_hash("medium", library)
 
     rng = random.Random(args.user_prompt_seed)
     template_count = get_user_prompt_template_count(library)
@@ -71,7 +71,7 @@ def main() -> None:
         prompt_text = None
         for sample in samples:
             template_index = rng.randrange(template_count)
-            sample_prompt_text = get_inference_user_prompt(template_index, library)
+            sample_prompt_text = get_user_prompt(template_index, library)
             if prompt_text is None:
                 prompt_text = sample_prompt_text
             if not sample.video_path.exists():
@@ -88,7 +88,7 @@ def main() -> None:
                     runtime_error = f"{type(exc).__name__}: {exc}"
             records.append(evaluate_sample(sample, raw_output, runtime_error))
 
-        prompt_text = prompt_text or get_inference_user_prompt(0, library)
+        prompt_text = prompt_text or get_user_prompt(0, library)
         prompt_out_dir = out_root / prompt_name
         write_outputs(
             out_dir=prompt_out_dir,

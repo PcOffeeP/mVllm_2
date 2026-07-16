@@ -51,6 +51,28 @@ def get_system_prompt_hash(library: dict[str, Any] | None = None) -> str:
     return hashlib.sha256(get_system_prompt(library).encode("utf-8")).hexdigest()
 
 
+def get_experiment_system_prompt(variant: str = "medium", library: dict[str, Any] | None = None) -> str:
+    """返回指定实验 variant 的 system prompt（默认 medium）。"""
+    lib = library or get_prompt_library()
+    experiments = lib.get("experiments", {}) or {}
+    prompt_engineering = experiments.get("prompt_engineering", {}) or {}
+    variants = prompt_engineering.get("variants", {}) or {}
+    variant_entry = variants.get(variant)
+    if not isinstance(variant_entry, dict):
+        raise ValueError(f"Prompt library missing experiments.prompt_engineering.variants.{variant}")
+    prompt = variant_entry.get("system_prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError(
+            f"experiments.prompt_engineering.variants.{variant}.system_prompt must be a non-empty string"
+        )
+    return prompt.strip()
+
+
+def get_experiment_system_prompt_hash(variant: str = "medium", library: dict[str, Any] | None = None) -> str:
+    """返回指定实验 variant system prompt 的 SHA-256 哈希。"""
+    return hashlib.sha256(get_experiment_system_prompt(variant, library).encode("utf-8")).hexdigest()
+
+
 def get_test_system_prompt(library: dict[str, Any] | None = None) -> str:
     """Return the one editable System Prompt used by base-model prompt tests."""
     lib = library or get_prompt_library()
@@ -88,6 +110,12 @@ def get_inference_target_schema(library: dict[str, Any] | None = None) -> dict[s
     """返回推理目标 schema（五字段，含 confidence）。"""
     lib = library or get_prompt_library()
     return lib.get("inference_target_schema", {}) or {}
+
+
+def get_target_schema(library: dict[str, Any] | None = None) -> dict[str, Any]:
+    """返回训练目标 schema（四字段，不含 confidence）。"""
+    lib = library or get_prompt_library()
+    return lib.get("target_schema", {}) or {}
 
 
 def get_inference_user_prompt(template_index: int = 0, library: dict[str, Any] | None = None) -> str:

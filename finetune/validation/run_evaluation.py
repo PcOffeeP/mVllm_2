@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import random
 from pathlib import Path
@@ -13,17 +12,19 @@ from .datasets import EvalSample, load_dataset
 from .model_runtime import load_model, run_model_on_video
 from .prompts import (
     DEFAULT_PROMPT_LIBRARY_PATH,
-    get_inference_target_schema,
-    get_inference_user_prompt,
+    get_experiment_system_prompt,
+    get_experiment_system_prompt_hash,
     get_prompt_library,
     get_prompt_version,
-    get_system_prompt,
+    get_target_schema,
+    get_user_prompt,
     get_user_prompt_template_count,
 )
 
 
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run direct 5-field model evaluation.")
+    parser = argparse.ArgumentParser(description="Run direct 4-field model evaluation.")
     parser.add_argument("--dataset", required=True, choices=SUPPORTED_DATASETS)
     parser.add_argument("--model-dir", default=None, help="Finetuned/merged model directory. Required unless --predictions is used.")
     parser.add_argument("--out-dir", required=True)
@@ -46,8 +47,9 @@ def main() -> None:
 
     library = get_prompt_library()
     prompt_version = get_prompt_version(library)
-    system_prompt = get_system_prompt(library)
-    inference_target_schema = get_inference_target_schema(library)
+    system_prompt = get_experiment_system_prompt("medium", library)
+    system_prompt_hash = get_experiment_system_prompt_hash("medium", library)
+    target_schema = get_target_schema(library)
     prompt_library_path = str(DEFAULT_PROMPT_LIBRARY_PATH)
 
     rng = random.Random(args.user_prompt_seed)
@@ -68,7 +70,7 @@ def main() -> None:
     summary_prompt_text = None
     for sample in samples:
         user_prompt_template_index = rng.randrange(template_count)
-        prompt_text = get_inference_user_prompt(user_prompt_template_index, library)
+        prompt_text = get_user_prompt(user_prompt_template_index, library)
         if summary_prompt_text is None:
             summary_prompt_text = prompt_text
 
@@ -93,11 +95,11 @@ def main() -> None:
                 raw_output,
                 runtime_error,
                 prompt_version=prompt_version,
-                target_schema=inference_target_schema,
+                target_schema=target_schema,
             )
         )
 
-    summary_prompt_text = summary_prompt_text or get_inference_user_prompt(0, library)
+    summary_prompt_text = summary_prompt_text or get_user_prompt(0, library)
 
     write_outputs(
         out_dir=Path(args.out_dir),
@@ -110,8 +112,8 @@ def main() -> None:
         prompt_version=prompt_version,
         prompt_library_path=prompt_library_path,
         system_prompt=system_prompt,
-        system_prompt_hash=hashlib.sha256(system_prompt.encode("utf-8")).hexdigest(),
-        target_schema=inference_target_schema,
+        system_prompt_hash=system_prompt_hash,
+        target_schema=target_schema,
     )
 
 
