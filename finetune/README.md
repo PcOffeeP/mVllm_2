@@ -115,14 +115,14 @@ python -m finetune.validation.run_prompt_sweep prompt \
 只有 `--model-dir` 必填。默认使用：
 
 - `fold_0_val`；
-- `light`、`medium`、`strict` 三个变体；
+- `light`、`medium_relaxed`、`medium` 三个变体；
 - User Prompt seed `42`；
 - 8 个采样帧；
 - greedy decoding，`num_beams=1`；
 - `max_new_tokens=256`；
 - 自动创建 `finetune/results/prompt_sweep/prompt/<model-name>-<UTC timestamp>/`。
 
-本轮实验 Prompt 版本为 `round_2_medium_contract`。`light` 只规定四字段 JSON；`medium` 进一步约束 JSON 类型、合法枚举和 `null` 用法，但不提供视觉判断标准；`strict` 使用与 medium 相同的输出契约，再增加简短正向视觉判据。这样 light/medium 用于观察结构约束效果，medium/strict 用于观察视觉判据是否压缩决策边界。上一轮使用的 `natural` 仍保留在 Prompt 库中供历史复现，但不再进入默认 sweep。正式训练 Prompt 及其顶层版本保持不变，实验版本会单独写入 `experiment_manifest.json`。
+本轮实验 Prompt 版本为 `round_3_relaxed_decision_boundary`。`light` 只规定四字段 JSON；`medium_relaxed` 约束 JSON 类型和合法枚举，但移除 false/null 的字段联动，并要求先独立判断 `has_fracture`，局部字段不确定不能自动把画面中已观察到的断裂改判为未断裂；`medium` 保留上一轮完整的 `null` 联动规则作为对照。这样 light/medium_relaxed 用于观察最小结构约束效果，medium_relaxed/medium 用于判断字段联动是否造成保守化。`natural`、`strict` 及上一轮 Evidence 变体仍保留在 Prompt 库中供历史复现，但不再进入默认 sweep。正式训练 Prompt 及其顶层版本保持不变，实验版本会单独写入 `experiment_manifest.json`。
 
 ### Visual Evidence pilot
 
@@ -133,8 +133,8 @@ python -m finetune.validation.run_prompt_sweep evidence \
 
 默认在 Fold 0 的 17 个当前有效源视频中各选择一个固定样本，配对比较：
 
-- `medium`：带字段类型、枚举和 `null` 约束的四字段 JSON；
-- `medium_evidence`：沿用同一最终字段协议，先输出自由文本字符串 `visual_evidence`；
+- `medium_relaxed`：带字段类型和枚举约束、但不强制字段联动的四字段 JSON；
+- `medium_relaxed_evidence`：沿用同一最终字段协议，先输出自由文本字符串 `visual_evidence`；
 - 两个条件均使用 `max_new_tokens=512`；
 - 自动创建 `finetune/results/prompt_sweep/evidence/<model-name>-<UTC timestamp>/`。
 

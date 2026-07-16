@@ -1,8 +1,8 @@
 """Run reproducible Prompt Engineering and visual-evidence experiments.
 
-The public CLI has two subcommands.  ``prompt`` compares light, medium and
-strict prompt variants on Fold 0 validation data.  ``evidence`` compares the
-medium four-field protocol with an evidence-first five-field protocol on a
+The public CLI has two subcommands.  ``prompt`` compares light, relaxed-medium
+and medium prompt variants on Fold 0 validation data.  ``evidence`` compares
+the relaxed-medium four-field protocol with an evidence-first protocol on a
 fixed, source-balanced pilot manifest.  GPU execution belongs on the training
 computer; parsing, manifest construction and summaries are intentionally
 testable without a model.
@@ -47,8 +47,8 @@ DEFAULT_DATASET = "fold_0_val"
 DEVELOPMENT_DATASETS = tuple(name for name in SUPPORTED_DATASETS if name.startswith("fold_") and name.endswith("_val"))
 DEFAULT_USER_PROMPT_SEED = 42
 EXPERIMENT_VARIANTS = {
-    "prompt": ("light", "medium", "strict"),
-    "evidence": ("medium", "medium_evidence"),
+    "prompt": ("light", "medium_relaxed", "medium"),
+    "evidence": ("medium_relaxed", "medium_relaxed_evidence"),
 }
 MAX_NEW_TOKENS = {"prompt": 256, "evidence": 512}
 

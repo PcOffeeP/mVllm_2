@@ -181,20 +181,20 @@ def test_new_cli_defaults_require_only_model_dir() -> None:
     evidence = run_prompt_sweep.parse_args(["evidence", "--model-dir", "/models/current"])
 
     assert prompt.dataset == "fold_0_val"
-    assert prompt.variants == ("light", "medium", "strict")
+    assert prompt.variants == ("light", "medium_relaxed", "medium")
     assert prompt.user_prompt_seed == 42
     assert prompt.max_new_tokens == 256
-    assert evidence.variants == ("medium", "medium_evidence")
+    assert evidence.variants == ("medium_relaxed", "medium_relaxed_evidence")
     assert evidence.max_new_tokens == 512
     with pytest.raises(SystemExit):
         run_prompt_sweep.parse_args(["prompt"])
 
 
-def test_round_two_experiment_prompt_version_is_separate_from_training_version() -> None:
+def test_round_three_experiment_prompt_version_is_separate_from_training_version() -> None:
     library = run_prompt_sweep.get_prompt_library()
 
     assert run_prompt_sweep.get_prompt_version(library) == "v1.0.0"
-    assert run_prompt_sweep.get_experiment_prompt_version(library) == "round_2_medium_contract"
+    assert run_prompt_sweep.get_experiment_prompt_version(library) == "round_3_relaxed_decision_boundary"
 
 
 def test_stable_template_assignment_is_order_independent() -> None:
@@ -250,6 +250,35 @@ def test_medium_evidence_keeps_explanations_out_of_final_fields() -> None:
     assert "所有解释文字只能写在 visual_evidence 中" in prompt
     assert "fracture_between 必须是两个相邻整数" in prompt
     assert "不能使用说明文字" in prompt
+
+
+def test_medium_relaxed_removes_linkage_but_keeps_typed_output_contract() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    medium = run_prompt_sweep.build_variant_condition(library, "sample", "medium")["system_prompt"]
+    relaxed = run_prompt_sweep.build_variant_condition(library, "sample", "medium_relaxed")["system_prompt"]
+
+    for required_clause in (
+        "必须是 JSON 的 true、false 或 null",
+        "两个相邻整数 [i, i+1] 或 null",
+        '"界面脱粘、齐根断裂"',
+        '"inside_gauge"、"outside_gauge" 或 null',
+    ):
+        assert required_clause in relaxed
+    assert "has_fracture 为 false 时" in medium
+    assert "has_fracture 为 false 时" not in relaxed
+    assert "请先依据画面独立判断 has_fracture" in relaxed
+    assert "仍应为 true" in relaxed
+
+
+def test_medium_relaxed_evidence_uses_the_same_relaxed_decision_rule() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    condition = run_prompt_sweep.build_variant_condition(library, "sample", "medium_relaxed_evidence")
+    prompt = condition["system_prompt"]
+
+    assert condition["output_protocol"] == "evidence_first_json"
+    assert "所有解释文字只能写在 visual_evidence 中" in prompt
+    assert "has_fracture 为 false 时" not in prompt
+    assert "请先依据画面独立判断 has_fracture" in prompt
 
 
 def test_strict_prompt_lists_each_legal_type_as_an_unambiguous_quoted_value() -> None:
@@ -507,10 +536,10 @@ def test_new_prompt_experiment_writes_manifests_and_source_summary(tmp_path, mon
     assert (out_dir / "source_level_summary.json").exists()
     assert (out_dir / "manual_review_queue.csv").exists()
     experiment_manifest = json.loads((out_dir / "experiment_manifest.json").read_text(encoding="utf-8"))
-    assert experiment_manifest["experiment_prompt_version"] == "round_2_medium_contract"
+    assert experiment_manifest["experiment_prompt_version"] == "round_3_relaxed_decision_boundary"
     records = [json.loads(line) for line in (out_dir / "evaluation_records.jsonl").read_text().splitlines()]
     assert len(records) == 6
-    assert {record["variant"] for record in records} == {"light", "medium", "strict"}
+    assert {record["variant"] for record in records} == {"light", "medium_relaxed", "medium"}
     assert records[0]["frame_paths"] == ["frames/video_0001_positive/frame_00_0.000s.png"]
     queue = (out_dir / "manual_review_queue.csv").read_text(encoding="utf-8")
     assert str(out_dir) not in queue
