@@ -6,13 +6,13 @@ table and tensor digest from that request's real model input, not a replay by a
 second processor.
 """
 
-from __future__ import annotations
-
 import argparse
 import base64
 import binascii
 import json
+import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +21,17 @@ from pipeline.server_adapter import wrap_response
 
 
 MAX_VIDEO_BYTES = 100 * 1024 * 1024
+logger = logging.getLogger(__name__)
+
+
+def _chat_model_args(model: str) -> dict[str, Any]:
+    """Return the fixed LLaMA-Factory settings required by MiniCPM-V."""
+    return {
+        "model_name_or_path": model,
+        "template": "minicpm_v",
+        "infer_backend": "huggingface",
+        "trust_remote_code": True,
+    }
 
 
 def _extract_video_data_url(payload: dict[str, Any]) -> str:
@@ -52,6 +63,67 @@ def _decode_mp4_data_url(data_url: str) -> bytes:
     return media
 
 
+def _replace_video_url(payload: dict[str, Any], replacement: str) -> None:
+    """Replace the single validated video URL in an OpenAI request payload."""
+    replaced = 0
+    for message in payload.get("messages", []):
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+        for item in content:
+            if not isinstance(item, dict) or item.get("type") != "video_url":
+                continue
+            item["video_url"] = {"url": replacement}
+            replaced += 1
+    if replaced != 1:
+        raise ValueError("request must contain exactly one video_url")
+
+
+def _describe_mm_value(value: Any) -> str:
+    """Return shape-only diagnostics for a multimodal processor value."""
+    shape = getattr(value, "shape", None)
+    if shape is not None:
+        return f"{type(value).__name__}(shape={tuple(shape)})"
+    if isinstance(value, list):
+        first = value[0] if value else None
+        first_shape = getattr(first, "shape", None)
+        if first_shape is not None:
+            return f"list(len={len(value)}, first_shape={tuple(first_shape)})"
+        if isinstance(first, list):
+            return f"list(len={len(value)}, first_list_len={len(first)})"
+        return f"list(len={len(value)}, first_type={type(first).__name__})"
+    return type(value).__name__
+
+
+def _install_mm_shape_diagnostics(chat_model: Any) -> None:
+    """Log only processor value shapes before LLaMA-Factory tensor conversion."""
+    plugin = chat_model.engine.template.mm_plugin
+    original = plugin.get_mm_inputs
+
+    def wrapped(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        result = original(*args, **kwargs)
+        skip_image_idx = result.get("skip_image_idx")
+        if (
+            isinstance(skip_image_idx, list)
+            and skip_image_idx
+            and all(isinstance(item, list) and not item for item in skip_image_idx)
+        ):
+            # LLaMA-Factory 4447137 indexes nested MiniCPM lists before
+            # checking whether the inner list is empty. MiniCPM-V 4.5 also
+            # rejects this unused generation kwarg, so omit it only when every
+            # batch member has an empty skip list.
+            result.pop("skip_image_idx")
+        logger.info(
+            "MiniCPM mm input shapes: %s",
+            {key: _describe_mm_value(value) for key, value in result.items()},
+        )
+        return result
+
+    plugin.get_mm_inputs = wrapped
+
+
 def create_integrated_app(chat_model: Any, deployment_info: dict[str, Any]):
     """Create an API around the same ChatModel/processor that is captured."""
     os.environ["API_VERBOSE"] = "0"
@@ -59,11 +131,13 @@ def create_integrated_app(chat_model: Any, deployment_info: dict[str, Any]):
         import asyncio
         from fastapi import FastAPI, HTTPException, Request
         from llamafactory.api.chat import create_chat_completion_response
+        from llamafactory.api.common import SAFE_MEDIA_PATH
         from llamafactory.api.protocol import ChatCompletionRequest
     except ImportError as exc:  # pragma: no cover - training-machine dependency
         raise RuntimeError("LLaMA-Factory and fastapi are required for the integrated service") from exc
 
     processor = chat_model.engine.processor
+    _install_mm_shape_diagnostics(chat_model)
     capture = configure_loaded_processor(processor, capture=True)
     assert capture is not None
     processor_version = processor.__class__.__name__
@@ -76,15 +150,34 @@ def create_integrated_app(chat_model: Any, deployment_info: dict[str, Any]):
     inference_lock = asyncio.Lock()
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(request: ChatCompletionRequest, raw_request: Request):
+    async def chat_completions(raw_request: Request):
         api_key = os.getenv("API_KEY")
         if api_key and raw_request.headers.get("authorization") != f"Bearer {api_key}":
             raise HTTPException(status_code=401, detail="Invalid API key")
-        if request.stream:
-            raise HTTPException(status_code=400, detail="streaming is not supported by the evidence endpoint")
+        temp_video_path: str | None = None
         try:
+            # ChatCompletionRequest is imported inside this factory because the
+            # local development machine does not install LLaMA-Factory. Parsing
+            # explicitly also avoids FastAPI resolving that local annotation as
+            # an incomplete forward reference on newer Pydantic releases.
+            payload = await raw_request.json()
+            media = _decode_mp4_data_url(_extract_video_data_url(payload))
+            Path(SAFE_MEDIA_PATH).mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                prefix="tensile_",
+                suffix=".mp4",
+                dir=SAFE_MEDIA_PATH,
+                delete=False,
+            ) as temp_video:
+                temp_video.write(media)
+                temp_video_path = temp_video.name
+            _replace_video_url(payload, temp_video_path)
+            request = ChatCompletionRequest.model_validate(payload)
+            if request.stream:
+                raise HTTPException(status_code=400, detail="streaming is not supported by the evidence endpoint")
             async with inference_lock:
-                capture.reset_capture()
+                capture.reset_capture(temp_video_path)
                 response = await create_chat_completion_response(request, chat_model)
                 actual = capture.last_capture
             if actual is None:
@@ -100,7 +193,11 @@ def create_integrated_app(chat_model: Any, deployment_info: dict[str, Any]):
         except HTTPException:
             raise
         except Exception as exc:
+            logger.exception("MiniCPM request failed after media localization")
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        finally:
+            if temp_video_path is not None:
+                Path(temp_video_path).unlink(missing_ok=True)
 
     return app
 
@@ -127,11 +224,7 @@ def main() -> int:
         from llamafactory.chat import ChatModel
     except ImportError as exc:  # pragma: no cover - training-machine dependency
         raise RuntimeError("LLaMA-Factory and uvicorn are required") from exc
-    chat_model = ChatModel({
-        "model_name_or_path": args.model,
-        "template": "minicpm_v",
-        "infer_backend": "huggingface",
-    })
+    chat_model = ChatModel(_chat_model_args(args.model))
     app = create_integrated_app(chat_model, deployment_info)
     uvicorn.run(app, host=args.host, port=args.port)
     return 0

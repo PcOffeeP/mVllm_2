@@ -255,7 +255,7 @@ def _try_load_llama_factory_batch(
     adapter_tensor_shape = capture_preprocessor.last_tensor_shape
     if adapter_tensor_digest is None or adapter_tensor_shape is None:
         raise RuntimeError("adapter did not expose its actual processed tensor digest")
-    capture_wrapper.reset_capture()
+    capture_wrapper.reset_capture(video_path)
 
     # ---- 3. 调用 _get_mm_inputs ----
     plugin = MiniCPMVPlugin()

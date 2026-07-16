@@ -6,6 +6,7 @@ import yaml
 
 from pipeline.production_contract import CONTRACT_PATH, load_production_contract, production_contract_hash
 from pipeline.server_adapter import wrap_response
+from pipeline.server_proxy import _chat_model_args, _replace_video_url
 
 
 def _processor_info() -> dict:
@@ -59,3 +60,40 @@ def test_server_adapter_rejects_contract_drift():
             info,
         )
 
+
+def test_server_proxy_enables_minicpm_remote_code():
+    args = _chat_model_args("/models/minicpm")
+    assert args["model_name_or_path"] == "/models/minicpm"
+    assert args["template"] == "minicpm_v"
+    assert args["infer_backend"] == "huggingface"
+    assert args["trust_remote_code"] is True
+
+
+def test_server_proxy_replaces_only_video_url():
+    payload = {
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "video_url", "video_url": {"url": "data:video/mp4;base64,AAAA"}},
+                {"type": "text", "text": "keep me"},
+            ],
+        }],
+    }
+    _replace_video_url(payload, "/safe/request.mp4")
+    assert payload["messages"][0]["content"] == [
+        {"type": "video_url", "video_url": {"url": "/safe/request.mp4"}},
+        {"type": "text", "text": "keep me"},
+    ]
+
+
+def test_server_proxy_rejects_multiple_video_urls():
+    payload = {
+        "messages": [{
+            "content": [
+                {"type": "video_url", "video_url": {"url": "first"}},
+                {"type": "video_url", "video_url": {"url": "second"}},
+            ],
+        }],
+    }
+    with pytest.raises(ValueError, match="exactly one video_url"):
+        _replace_video_url(payload, "/safe/request.mp4")
