@@ -1,8 +1,8 @@
 """Run reproducible Prompt Engineering and visual-evidence experiments.
 
-The public CLI has two subcommands.  ``prompt`` compares natural, light and
+The public CLI has two subcommands.  ``prompt`` compares light, medium and
 strict prompt variants on Fold 0 validation data.  ``evidence`` compares the
-light four-field protocol with an evidence-first five-field protocol on a
+medium four-field protocol with an evidence-first five-field protocol on a
 fixed, source-balanced pilot manifest.  GPU execution belongs on the training
 computer; parsing, manifest construction and summaries are intentionally
 testable without a model.
@@ -47,8 +47,8 @@ DEFAULT_DATASET = "fold_0_val"
 DEVELOPMENT_DATASETS = tuple(name for name in SUPPORTED_DATASETS if name.startswith("fold_") and name.endswith("_val"))
 DEFAULT_USER_PROMPT_SEED = 42
 EXPERIMENT_VARIANTS = {
-    "prompt": ("natural", "light", "strict"),
-    "evidence": ("light", "light_evidence"),
+    "prompt": ("light", "medium", "strict"),
+    "evidence": ("medium", "medium_evidence"),
 }
 MAX_NEW_TOKENS = {"prompt": 256, "evidence": 512}
 
@@ -129,6 +129,15 @@ def get_experiment_variants(library: dict[str, Any]) -> dict[str, dict[str, Any]
     if not isinstance(variants, dict):
         raise ValueError("prompt_library experiments.prompt_engineering.variants must be a mapping")
     return variants
+
+
+def get_experiment_prompt_version(library: dict[str, Any]) -> str:
+    experiments = library.get("experiments", {})
+    prompt_engineering = experiments.get("prompt_engineering", {}) if isinstance(experiments, dict) else {}
+    version = prompt_engineering.get("version") if isinstance(prompt_engineering, dict) else None
+    if not isinstance(version, str) or not version.strip():
+        raise ValueError("prompt_library experiments.prompt_engineering.version must be a non-empty string")
+    return version
 
 
 def stable_template_index(sample_id: str, seed: int, template_count: int) -> int:
@@ -682,6 +691,7 @@ def run_experiment(args: argparse.Namespace) -> Path:
         "variants": list(args.variants),
         "prompt_library_path": str(DEFAULT_PROMPT_LIBRARY_PATH),
         "prompt_version": get_prompt_version(library),
+        "experiment_prompt_version": get_experiment_prompt_version(library),
         "prompt_library_hash": _hash_file(DEFAULT_PROMPT_LIBRARY_PATH),
         "user_prompt_seed": args.user_prompt_seed,
         "video_max_frames": VIDEO_MAX_FRAMES,
@@ -814,6 +824,12 @@ def _write_outputs(
     by_variant: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records:
         by_variant[str(record["variant"])].append(record)
+    notes = [
+        "Treat source_video_id, not subvideo count, as the independent evidence unit.",
+        "Format validity does not prove visual grounding or task correctness.",
+    ]
+    if any(record.get("output_protocol") == OUTPUT_PROTOCOL_FREE_TEXT for record in records):
+        notes.insert(0, "Natural/free-text is a capability probe and is not directly schema-scored against JSON variants.")
     summary = {
         **experiment_manifest,
         "paired_design": True,
@@ -824,11 +840,7 @@ def _write_outputs(
             for variant, variant_records in sorted(by_variant.items())
         ],
         "paired_label_flips": _paired_label_flips(records),
-        "notes": [
-            "Natural/free-text is a capability probe and is not directly schema-scored against JSON variants.",
-            "Treat source_video_id, not subvideo count, as the independent evidence unit.",
-            "Format validity does not prove visual grounding or task correctness.",
-        ],
+        "notes": notes,
     }
     _write_json(out_dir / "prompt_sweep_summary.json", summary)
     _write_json(out_dir / "source_level_summary.json", _source_level_summary(records))

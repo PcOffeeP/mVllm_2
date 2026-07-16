@@ -181,13 +181,20 @@ def test_new_cli_defaults_require_only_model_dir() -> None:
     evidence = run_prompt_sweep.parse_args(["evidence", "--model-dir", "/models/current"])
 
     assert prompt.dataset == "fold_0_val"
-    assert prompt.variants == ("natural", "light", "strict")
+    assert prompt.variants == ("light", "medium", "strict")
     assert prompt.user_prompt_seed == 42
     assert prompt.max_new_tokens == 256
-    assert evidence.variants == ("light", "light_evidence")
+    assert evidence.variants == ("medium", "medium_evidence")
     assert evidence.max_new_tokens == 512
     with pytest.raises(SystemExit):
         run_prompt_sweep.parse_args(["prompt"])
+
+
+def test_round_two_experiment_prompt_version_is_separate_from_training_version() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+
+    assert run_prompt_sweep.get_prompt_version(library) == "v1.0.0"
+    assert run_prompt_sweep.get_experiment_prompt_version(library) == "round_2_medium_contract"
 
 
 def test_stable_template_assignment_is_order_independent() -> None:
@@ -208,10 +215,49 @@ def test_experiment_variants_do_not_change_training_system_prompt() -> None:
     assert run_prompt_sweep.get_system_prompt(library) == training_prompt
 
 
+def test_medium_constrains_only_output_contract_without_visual_criteria() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    medium = run_prompt_sweep.build_variant_condition(library, "sample", "medium")
+    prompt = medium["system_prompt"]
+
+    assert medium["output_protocol"] == "four_field_json"
+    assert "必须是 JSON 的 true、false 或 null" in prompt
+    assert "两个相邻整数 [i, i+1] 或 null" in prompt
+    assert '"界面脱粘、齐根断裂"' in prompt
+    assert '"inside_gauge"、"outside_gauge" 或 null' in prompt
+    assert "所有解释文字只能写在 visual_evidence" not in prompt
+    for visual_criterion in ("颈缩", "突然发生", "界面间隙", "碎片飞溅", "打滑"):
+        assert visual_criterion not in prompt
+
+
+def test_strict_adds_visual_criteria_to_the_medium_output_contract() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    medium = run_prompt_sweep.build_variant_condition(library, "sample", "medium")["system_prompt"]
+    strict = run_prompt_sweep.build_variant_condition(library, "sample", "strict")["system_prompt"]
+
+    for contract_clause in medium.splitlines():
+        assert contract_clause in strict
+    assert "颈缩" in strict
+    assert "界面间隙" in strict
+
+
+def test_medium_evidence_keeps_explanations_out_of_final_fields() -> None:
+    library = run_prompt_sweep.get_prompt_library()
+    condition = run_prompt_sweep.build_variant_condition(library, "sample", "medium_evidence")
+    prompt = condition["system_prompt"]
+
+    assert condition["output_protocol"] == "evidence_first_json"
+    assert "所有解释文字只能写在 visual_evidence 中" in prompt
+    assert "fracture_between 必须是两个相邻整数" in prompt
+    assert "不能使用说明文字" in prompt
+
+
 def test_strict_prompt_lists_each_legal_type_as_an_unambiguous_quoted_value() -> None:
     library = run_prompt_sweep.get_prompt_library()
     strict = library["experiments"]["prompt_engineering"]["variants"]["strict"]["system_prompt"]
-    listed = set(re.findall(r'"([^"]+)"', strict))
+    type_clause = re.search(r"type 必须是以下完整字符串之一：\[(.*?)\]", strict)
+    assert type_clause is not None
+    listed = set(re.findall(r'"([^"]+)"', type_clause.group(1)))
 
     from pipeline.scripts.quality_check import ALL_TYPES
 
@@ -460,9 +506,11 @@ def test_new_prompt_experiment_writes_manifests_and_source_summary(tmp_path, mon
     assert (out_dir / "experiment_manifest.json").exists()
     assert (out_dir / "source_level_summary.json").exists()
     assert (out_dir / "manual_review_queue.csv").exists()
+    experiment_manifest = json.loads((out_dir / "experiment_manifest.json").read_text(encoding="utf-8"))
+    assert experiment_manifest["experiment_prompt_version"] == "round_2_medium_contract"
     records = [json.loads(line) for line in (out_dir / "evaluation_records.jsonl").read_text().splitlines()]
     assert len(records) == 6
-    assert {record["variant"] for record in records} == {"natural", "light", "strict"}
+    assert {record["variant"] for record in records} == {"light", "medium", "strict"}
     assert records[0]["frame_paths"] == ["frames/video_0001_positive/frame_00_0.000s.png"]
     queue = (out_dir / "manual_review_queue.csv").read_text(encoding="utf-8")
     assert str(out_dir) not in queue

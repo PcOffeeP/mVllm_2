@@ -115,14 +115,14 @@ python -m finetune.validation.run_prompt_sweep prompt \
 只有 `--model-dir` 必填。默认使用：
 
 - `fold_0_val`；
-- `natural`、`light`、`strict` 三个变体；
+- `light`、`medium`、`strict` 三个变体；
 - User Prompt seed `42`；
 - 8 个采样帧；
 - greedy decoding，`num_beams=1`；
 - `max_new_tokens=256`；
 - 自动创建 `finetune/results/prompt_sweep/prompt/<model-name>-<UTC timestamp>/`。
 
-`natural` 是无 System Prompt 的自由能力探针；`light` 只规定四字段 JSON；`strict` 在四字段基础上列出合法值和简短正向视觉判据。自由文本和 JSON 的格式结果不能直接等价比较。
+本轮实验 Prompt 版本为 `round_2_medium_contract`。`light` 只规定四字段 JSON；`medium` 进一步约束 JSON 类型、合法枚举和 `null` 用法，但不提供视觉判断标准；`strict` 使用与 medium 相同的输出契约，再增加简短正向视觉判据。这样 light/medium 用于观察结构约束效果，medium/strict 用于观察视觉判据是否压缩决策边界。上一轮使用的 `natural` 仍保留在 Prompt 库中供历史复现，但不再进入默认 sweep。正式训练 Prompt 及其顶层版本保持不变，实验版本会单独写入 `experiment_manifest.json`。
 
 ### Visual Evidence pilot
 
@@ -133,8 +133,8 @@ python -m finetune.validation.run_prompt_sweep evidence \
 
 默认在 Fold 0 的 17 个当前有效源视频中各选择一个固定样本，配对比较：
 
-- `light`：原四字段 JSON；
-- `light_evidence`：先输出自由文本字符串 `visual_evidence`，再输出原四字段；
+- `medium`：带字段类型、枚举和 `null` 约束的四字段 JSON；
+- `medium_evidence`：沿用同一最终字段协议，先输出自由文本字符串 `visual_evidence`；
 - 两个条件均使用 `max_new_tokens=512`；
 - 自动创建 `finetune/results/prompt_sweep/evidence/<model-name>-<UTC timestamp>/`。
 
