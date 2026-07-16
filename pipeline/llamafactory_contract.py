@@ -38,6 +38,7 @@ class CapturingVideoProcessor:
         self._processor = processor
         self._owner_processor = owner_processor or processor
         self._source_path: str | None = None
+        self._selected_frames: list[FrameMapping] | None = None
         self._capturing = False
         self.last_capture: dict[str, Any] | None = None
 
@@ -62,6 +63,43 @@ class CapturingVideoProcessor:
     def reset_capture(self, source_path: str | None = None) -> None:
         self.last_capture = None
         self._source_path = source_path
+        self._selected_frames = None
+
+    def record_frame_selection(self, video_path: str, sample_indices: list[int]) -> None:
+        """Record the exact indices selected by LLaMA-Factory and their PTS."""
+        wanted = set(sample_indices)
+        frames: list[FrameMapping] = []
+        container = av.open(video_path, "r")
+        try:
+            stream = next(item for item in container.streams if item.type == "video")
+            fallback_fps = float(stream.average_rate) if stream.average_rate else 0.0
+            for frame_index, frame in enumerate(container.decode(stream)):
+                if frame_index not in wanted:
+                    continue
+                if frame.pts is not None:
+                    timestamp = float(frame.pts * stream.time_base)
+                elif fallback_fps > 0:
+                    timestamp = frame_index / fallback_fps
+                else:
+                    raise RuntimeError("selected frame lacks both PTS and average FPS")
+                frames.append(
+                    FrameMapping(
+                        input_index=len(frames),
+                        original_frame=frame_index,
+                        timestamp=timestamp,
+                    )
+                )
+        finally:
+            container.close()
+        if len(frames) != len(sample_indices):
+            raise RuntimeError("not all LLaMA-Factory selected frame indices were decoded")
+        self._selected_frames = frames
+
+    def record_selected_indices(self, sample_indices: list[int]) -> None:
+        """Resolve the indices returned by the actual plugin sampling call."""
+        if self._source_path is None:
+            raise RuntimeError("capture source path is not set")
+        self.record_frame_selection(self._source_path, sample_indices)
 
     def _capture(self, videos: Any, result: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(videos, list) or len(videos) != 1:
@@ -97,27 +135,29 @@ class CapturingVideoProcessor:
             if not 1 <= n <= 8:
                 raise RuntimeError("actual processor selected outside 1..8 frames")
 
-            matcher = object.__new__(MiniCPMVideoPreprocessor)
-            matcher._video_processor = self._processor
-            matcher._processor = self._owner_processor
-            matcher._max_frames = 8
-            frame_index_map = matcher._actual_frame_index_map(str(path))
-            container = av.open(str(path), "r")
-            try:
-                stream = next(item for item in container.streams if item.type == "video")
-                duration = (
-                    float(stream.duration * stream.time_base)
-                    if stream.duration is not None
-                    else float(container.duration or 0) / 1_000_000.0
-                )
-                decoded, indices, timestamps = matcher._decode_frame_range(
-                    container, stream, 0.0, duration, len(frame_index_map), frame_index_map
-                )
-            finally:
-                container.close()
-            if isinstance(media, list) and len(media) == n:
-                frames = self._match_actual_input_frames(media, decoded, indices, timestamps)
+            if isinstance(media, list):
+                if self._selected_frames is None or len(self._selected_frames) != n:
+                    raise RuntimeError("actual LLaMA-Factory frame selection was not captured")
+                frames = self._selected_frames
             else:
+                matcher = object.__new__(MiniCPMVideoPreprocessor)
+                matcher._video_processor = self._processor
+                matcher._processor = self._owner_processor
+                matcher._max_frames = 8
+                frame_index_map = matcher._actual_frame_index_map(str(path))
+                container = av.open(str(path), "r")
+                try:
+                    stream = next(item for item in container.streams if item.type == "video")
+                    duration = (
+                        float(stream.duration * stream.time_base)
+                        if stream.duration is not None
+                        else float(container.duration or 0) / 1_000_000.0
+                    )
+                    decoded, indices, timestamps = matcher._decode_frame_range(
+                        container, stream, 0.0, duration, len(frame_index_map), frame_index_map
+                    )
+                finally:
+                    container.close()
                 frames = matcher._match_processor_frames(decoded, indices, timestamps, selected, n)
 
         return {
@@ -128,51 +168,6 @@ class CapturingVideoProcessor:
             "tensor_digest": tensor_digest(pixel_values),
             "tensor_shape": list(shape),
         }
-
-    @staticmethod
-    def _match_actual_input_frames(
-        actual_frames: list[Any],
-        decoded_frames: list[Any],
-        decoded_indices: list[int],
-        decoded_timestamps: list[float],
-    ) -> list[FrameMapping]:
-        """Match the exact PIL frames passed to image_processor back to the MP4."""
-        import numpy as np
-
-        results: list[FrameMapping] = []
-        used: set[int] = set()
-        for input_index, actual in enumerate(actual_frames):
-            actual_array = np.asarray(actual.convert("RGB"), dtype=np.int16)
-            best_match = -1
-            best_diff = float("inf")
-            for decoded_index, decoded in enumerate(decoded_frames):
-                if decoded_index in used:
-                    continue
-                decoded_rgb = decoded.convert("RGB")
-                if decoded_rgb.size != actual.size:
-                    # Mirror BasePlugin._preprocess_image: the selected frame
-                    # is resized with PIL's default resampler before the actual
-                    # MiniCPM image_processor sees it.
-                    decoded_rgb = decoded_rgb.resize(actual.size)
-                decoded_array = np.asarray(decoded_rgb, dtype=np.int16)
-                diff = float(np.abs(actual_array - decoded_array).mean())
-                if diff < best_diff:
-                    best_diff = diff
-                    best_match = decoded_index
-            if best_match < 0 or best_diff > 1.0:
-                raise RuntimeError(
-                    f"actual processor frame {input_index} could not be matched exactly"
-                )
-            used.add(best_match)
-            results.append(
-                FrameMapping(
-                    input_index=input_index,
-                    original_frame=decoded_indices[best_match],
-                    timestamp=decoded_timestamps[best_match],
-                )
-            )
-        return results
-
 
 def configure_loaded_processor(processor: Any, *, capture: bool = False) -> CapturingVideoProcessor | None:
     """Set the actual child limit to 8 and optionally install exact capture."""

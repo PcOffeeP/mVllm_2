@@ -1,5 +1,6 @@
 import hashlib
 import json
+from fractions import Fraction
 
 import pytest
 import yaml
@@ -7,6 +8,7 @@ import yaml
 from pipeline.production_contract import CONTRACT_PATH, load_production_contract, production_contract_hash
 from pipeline.server_adapter import wrap_response
 from pipeline.server_proxy import _chat_model_args, _replace_video_url
+from pipeline.llamafactory_contract import CapturingVideoProcessor
 
 
 def _processor_info() -> dict:
@@ -97,3 +99,32 @@ def test_server_proxy_rejects_multiple_video_urls():
     }
     with pytest.raises(ValueError, match="exactly one video_url"):
         _replace_video_url(payload, "/safe/request.mp4")
+
+
+def test_capture_uses_selected_indices_not_frame_similarity(monkeypatch):
+    class Frame:
+        def __init__(self, pts):
+            self.pts = pts
+
+    class Stream:
+        type = "video"
+        time_base = Fraction(1, 30)
+        average_rate = Fraction(30, 1)
+
+    class Container:
+        streams = [Stream()]
+
+        def decode(self, _stream):
+            # The frames intentionally carry no image data: selection evidence
+            # must come from the plugin's indices, not visual similarity.
+            return iter([Frame(index) for index in range(6)])
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("pipeline.llamafactory_contract.av.open", lambda *_args, **_kwargs: Container())
+    capture = CapturingVideoProcessor(object())
+    capture.record_frame_selection("ignored.mp4", [0, 2, 5])
+
+    assert [frame.original_frame for frame in capture._selected_frames] == [0, 2, 5]
+    assert [frame.timestamp for frame in capture._selected_frames] == pytest.approx([0.0, 2 / 30, 5 / 30])

@@ -97,10 +97,16 @@ def _describe_mm_value(value: Any) -> str:
     return type(value).__name__
 
 
-def _install_mm_shape_diagnostics(chat_model: Any) -> None:
-    """Log only processor value shapes before LLaMA-Factory tensor conversion."""
+def _install_mm_shape_diagnostics(chat_model: Any, capture: Any) -> None:
+    """Capture plugin frame indices and normalize pinned MiniCPM inputs."""
     plugin = chat_model.engine.template.mm_plugin
     original = plugin.get_mm_inputs
+    original_get_video_sample_indices = plugin._get_video_sample_indices
+
+    def wrapped_get_video_sample_indices(stream: Any, *args: Any, **kwargs: Any) -> list[int]:
+        sample_indices = original_get_video_sample_indices(stream, *args, **kwargs)
+        capture.record_selected_indices(list(sample_indices))
+        return sample_indices
 
     def wrapped(*args: Any, **kwargs: Any) -> dict[str, Any]:
         result = original(*args, **kwargs)
@@ -122,6 +128,7 @@ def _install_mm_shape_diagnostics(chat_model: Any) -> None:
         return result
 
     plugin.get_mm_inputs = wrapped
+    plugin._get_video_sample_indices = wrapped_get_video_sample_indices
 
 
 def create_integrated_app(chat_model: Any, deployment_info: dict[str, Any]):
@@ -137,9 +144,9 @@ def create_integrated_app(chat_model: Any, deployment_info: dict[str, Any]):
         raise RuntimeError("LLaMA-Factory and fastapi are required for the integrated service") from exc
 
     processor = chat_model.engine.processor
-    _install_mm_shape_diagnostics(chat_model)
     capture = configure_loaded_processor(processor, capture=True)
     assert capture is not None
+    _install_mm_shape_diagnostics(chat_model, capture)
     processor_version = processor.__class__.__name__
     if deployment_info.get("processor_version") != processor_version:
         raise ValueError("deployment processor_version does not match the inference processor")
