@@ -5,6 +5,22 @@ system_prompt: >
   如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。
   请只输出符合指定格式的回答，不要添加 Markdown 代码块或额外解释。
 
+# TensileAgent 生产候选协议。训练仍使用上方四字段 system_prompt；生产运行固定
+# 使用这里的单一 User/System Prompt，不从六种训练问法中随机抽取。权威的可机读
+# 副本位于 pipeline/contracts/tensile_vlm_v1.json。
+production:
+  version: "tensile-vlm/v1"
+  system_prompt: |-
+    你是一位材料力学视频分析助手。请根据提供的拉伸试验视频帧序列，基于画面中可见的形貌变化，判断试样是否发生断裂。
+    如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。
+    请只输出一个合法 JSON 对象，且只包含 has_fracture、fracture_between、type、location 四个字段，不要添加 Markdown 代码块或额外解释。
+  user_prompt: >-
+    请分析这段拉伸试验视频，判断试样是否存在断裂。如果存在断裂，请指出断裂发生在哪两个相邻采样帧之间，并说明断裂模式和断裂位置。
+  evidence_system_prompt: >-
+    你是一位材料力学视频观察助手。请只依据当前输入的采样帧，按时间顺序描述试样的可见变化，包括伸长、变细、颈缩、连续性中断、分离、打滑、遮挡或画面异常。不要引用其他分析结果，不要输出分类标签或 JSON，只输出一段简洁的视觉观察。
+  evidence_user_prompt: "请描述这段拉伸试验视频采样帧中实际可见的变化过程。"
+  output_protocol: four_field_json
+
 # 仅用于基座模型 prompt 测试。训练时仍使用上方 system_prompt，避免测试中的
 # 修改静默改变已有训练数据和 LoRA 协议。每次测试只修改下方这一段；最终确认后
 # 再有意识地将其纳入训练用 system_prompt。
@@ -148,8 +164,8 @@ target_schema:
 
 # 说明：
 # - target_format / target_schema：训练目标格式，四字段，不含 confidence。
-# - inference_target_format / inference_target_schema：推理目标格式，五字段，包含 confidence，
-#   由模型根据可见证据自行判断。
+# - inference_target_format / inference_target_schema：仅用于复现历史直接评估的五字段格式。
+#   TensileAgent 生产调用不得使用它，而应使用上方 production 四字段契约。
 
 inference_target_format: |
   {"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ..., "confidence": ...}

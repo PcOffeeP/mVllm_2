@@ -183,6 +183,23 @@ python -m finetune.validation.run_evaluation \
 
 ## 推理服务
 
+生产调用使用 `pipeline/contracts/tensile_vlm_v1.json` 中的固定四字段 Prompt 契约。先取得当前契约身份，并把输出写入部署 manifest 的同名字段：
+
+```bash
+python -m pipeline.production_contract
+```
+
+`deployment_manifest.json` 除模型、processor 和运行环境信息外，必须包含：
+
+```json
+{
+  "contract_version": "tensile-vlm/v1",
+  "prompt_contract_hash": "上一步输出的 SHA256"
+}
+```
+
+可从 `pipeline/server_deployment_manifest.example.json` 复制完整模板。Prompt 或契约文件变化后必须重新生成 hash；TensileAgent 会在每轮响应中核对这两个字段，不一致时 fail closed。
+
 ```bash
 python -m pipeline.server_proxy \
   --model /path/to/merged_model \

@@ -654,7 +654,7 @@ def build_all(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="五字段契约训练样本构建器")
+    parser = argparse.ArgumentParser(description="四字段训练目标样本构建器")
     parser.add_argument(
         "--subvideos-meta", type=Path, default=SUBVIDEOS_META_DEFAULT
     )

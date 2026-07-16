@@ -243,7 +243,19 @@ python -m finetune.validation.run_evaluation \
 - `evaluation_records.jsonl`：逐样本原始输出、错误和参考标签，是模型对比的主要依据。
 - `runtime_failures.csv`：推理失败样本。
 
-评估固定使用含 `confidence` 的推理 prompt，当前脚本不自动判定 JSON/schema 正确性。因此除比较运行失败率和非空输出率外，还应基于原始输出检查字段正确性、时间区间命中、联合成功率以及典型成功/失败样例。训练 loss 或 eval loss 的下降不能单独证明任务效果。
+历史直接评估链路仍可复现含 `confidence` 的旧推理 prompt，但它不属于 TensileAgent 的生产视觉契约。生产调用固定使用 `pipeline/contracts/tensile_vlm_v1.json` 的四字段输出，confidence 由 Agent 依据多轮证据计算，不能从 MiniCPM 单轮输出复制。除比较运行失败率和非空输出率外，还应基于原始输出检查字段正确性、时间区间命中、联合成功率以及典型成功/失败样例。训练 loss 或 eval loss 的下降不能单独证明任务效果。
+
+## TensileAgent 生产契约
+
+权威 artifact 为 `pipeline/contracts/tensile_vlm_v1.json`，`pipeline/prompt_library.yaml` 的 `production` 区必须与其保持一致。生产主调用只使用一个固定 System/User Prompt，MiniCPM 输出严格四字段；需要视觉说明时，Agent 对同一 clip 和实际帧另行调用固定 Evidence Prompt，主调用标签不会传入 Evidence Prompt。
+
+训练机器启动代理服务前执行：
+
+```bash
+python -m pipeline.production_contract
+```
+
+将输出的 `contract_version` 和 `prompt_contract_hash` 填入基于 `pipeline/server_deployment_manifest.example.json` 创建的部署 manifest。服务端 adapter 会拒绝错误 hash，TensileAgent 也会对响应中的部署 metadata 再次校验。修改 Prompt、generation 配置、最大帧数或字段协议后，不得沿用旧 hash。
 
 本机已有同步的预测 JSONL 时，可跳过 GPU 推理：
 

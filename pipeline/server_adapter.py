@@ -26,7 +26,7 @@ wraps the actual child ``video_processor`` used by ChatModel and calls
 
 **Contract notes**
 - ``preprocessing`` is an **internal** extension. It never enters the model
-  prompt, the five-field JSON output, the decision-model context, or the
+  prompt, the four-field JSON output, the decision-model context, or the
   public result.
 - ``preprocessing`` 缺失或无效时 Agent 必须 fail closed，不能用本地均匀
   采样或理论 FPS 猜测替代。
@@ -37,6 +37,8 @@ from __future__ import annotations
 import uuid
 import math
 from typing import Any
+
+from pipeline.production_contract import load_production_contract, production_contract_hash
 
 
 def wrap_response(
@@ -83,6 +85,8 @@ def wrap_response(
         "config_fingerprint",
         "runtime_device",
         "runtime_dtype",
+        "contract_version",
+        "prompt_contract_hash",
     }
     missing_deployment = sorted(
         key
@@ -93,6 +97,11 @@ def wrap_response(
         raise ValueError(
             "processor_info missing deployment fields: " + ", ".join(missing_deployment)
         )
+    contract = load_production_contract()
+    if processor_info["contract_version"] != contract["contract_version"]:
+        raise ValueError("contract_version does not match the production contract")
+    if processor_info["prompt_contract_hash"] != production_contract_hash():
+        raise ValueError("prompt_contract_hash does not match the production contract")
     if not isinstance(video_frames, list) or not 1 <= len(video_frames) <= 8:
         raise ValueError("video_frames must contain between 1 and 8 actual frames")
 

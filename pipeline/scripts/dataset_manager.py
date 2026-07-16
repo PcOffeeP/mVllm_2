@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-模型微调数据管道：数据集管理器（五字段契约）
+模型微调数据管道：数据集管理器（四字段训练目标）
 
 功能：
 1. 读取 CSV 标注并保留所有原字段。
@@ -718,7 +718,7 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="五字段契约数据集管理器")
+    parser = argparse.ArgumentParser(description="四字段训练目标数据集管理器")
     parser.add_argument("--csv", type=Path, default=CSV_PATH_DEFAULT)
     parser.add_argument("--video-dir", type=Path, default=VIDEO_DIR_DEFAULT)
     parser.add_argument("--metadata-dir", type=Path, default=METADATA_DIR_DEFAULT)

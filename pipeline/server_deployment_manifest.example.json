@@ -8,5 +8,7 @@
   "artifact_version": "REPLACE_WITH_ADAPTER_OR_MERGED_MODEL_REVISION",
   "config_fingerprint": "REPLACE_WITH_SHA256",
   "runtime_device": "cuda:0",
-  "runtime_dtype": "bfloat16"
+  "runtime_dtype": "bfloat16",
+  "contract_version": "tensile-vlm/v1",
+  "prompt_contract_hash": "REPLACE_WITH_SHA256_OF_pipeline/contracts/tensile_vlm_v1.json"
 }
