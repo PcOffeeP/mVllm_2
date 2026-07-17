@@ -1,0 +1,1325 @@
+[
+  {
+    "subvideo_id": "video_0003_neg_before_3s_01",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_3s_02",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 11.1333,
+    "end_time": 14.1333
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_5s_01",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_5s_02",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 10.1333,
+    "end_time": 15.1333
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_5s_03",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 20.2333,
+    "end_time": 25.2333
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_10s_01",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_10s_02",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 7.6,
+    "end_time": 17.6
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_10s_03",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 15.2333,
+    "end_time": 25.2333
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_20s_01",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_20s_02",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 2.6333,
+    "end_time": 22.6
+  },
+  {
+    "subvideo_id": "video_0003_neg_before_20s_03",
+    "source_video": "video_0003",
+    "source_type": "脆性断裂",
+    "start_time": 5.2333,
+    "end_time": 25.2333
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_3s_01",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_3s_02",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 71.6667,
+    "end_time": 74.6667
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_5s_01",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_5s_02",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 70.6667,
+    "end_time": 75.6667
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_5s_03",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 141.3667,
+    "end_time": 146.3667
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_10s_01",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_10s_02",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 68.2,
+    "end_time": 78.2
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_10s_03",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 136.3667,
+    "end_time": 146.3667
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_20s_01",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_20s_02",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 63.2,
+    "end_time": 83.2
+  },
+  {
+    "subvideo_id": "video_0029_neg_before_20s_03",
+    "source_video": "video_0029",
+    "source_type": "脆性断裂",
+    "start_time": 126.3667,
+    "end_time": 146.3667
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_3s_01",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_3s_02",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 30.8333,
+    "end_time": 33.8333
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_5s_01",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_5s_02",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 29.8333,
+    "end_time": 34.8333
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_5s_03",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 59.6667,
+    "end_time": 64.6667
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_10s_01",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_10s_02",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 27.3333,
+    "end_time": 37.3333
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_10s_03",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 54.6667,
+    "end_time": 64.6667
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_20s_01",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_20s_02",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 22.3333,
+    "end_time": 42.3333
+  },
+  {
+    "subvideo_id": "video_0047_neg_before_20s_03",
+    "source_video": "video_0047",
+    "source_type": "脆性断裂",
+    "start_time": 44.6667,
+    "end_time": 64.6667
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_3s_01",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_3s_02",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 82.2667,
+    "end_time": 85.2667
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_5s_01",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_5s_02",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 81.2667,
+    "end_time": 86.2667
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_5s_03",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 162.5,
+    "end_time": 167.5
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_10s_01",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_10s_02",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 78.7333,
+    "end_time": 88.7333
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_10s_03",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 157.5,
+    "end_time": 167.5
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_20s_01",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_20s_02",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 73.7333,
+    "end_time": 93.7333
+  },
+  {
+    "subvideo_id": "video_0049_neg_before_20s_03",
+    "source_video": "video_0049",
+    "source_type": "脆性断裂",
+    "start_time": 147.5,
+    "end_time": 167.5
+  },
+  {
+    "subvideo_id": "video_0071_neg_before_3s_01",
+    "source_video": "video_0071",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0071_neg_before_3s_02",
+    "source_video": "video_0071",
+    "source_type": "脆性断裂",
+    "start_time": 0.2667,
+    "end_time": 3.2667
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_3s_01",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_3s_02",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 79.1333,
+    "end_time": 82.1333
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_5s_01",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_5s_02",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 78.1333,
+    "end_time": 83.1333
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_5s_03",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 156.2667,
+    "end_time": 161.2667
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_10s_01",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_10s_02",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 75.6333,
+    "end_time": 85.6333
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_10s_03",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 151.2667,
+    "end_time": 161.2667
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_20s_01",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_20s_02",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 70.6333,
+    "end_time": 90.6333
+  },
+  {
+    "subvideo_id": "video_0083_neg_before_20s_03",
+    "source_video": "video_0083",
+    "source_type": "脆性断裂",
+    "start_time": 141.2667,
+    "end_time": 161.2667
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_3s_01",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_3s_02",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 72.0667,
+    "end_time": 75.0667
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_5s_01",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_5s_02",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 71.0667,
+    "end_time": 76.0667
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_5s_03",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 142.1,
+    "end_time": 147.1
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_10s_01",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_10s_02",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 68.5333,
+    "end_time": 78.5333
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_10s_03",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 137.1,
+    "end_time": 147.1
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_20s_01",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_20s_02",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 63.5333,
+    "end_time": 83.5333
+  },
+  {
+    "subvideo_id": "video_0094_neg_before_20s_03",
+    "source_video": "video_0094",
+    "source_type": "脆性断裂",
+    "start_time": 127.1,
+    "end_time": 147.1
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_3s_01",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_3s_02",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 108.0,
+    "end_time": 111.0
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_5s_01",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_5s_02",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 107.0,
+    "end_time": 112.0
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_5s_03",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 214.0333,
+    "end_time": 219.0333
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_10s_01",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_10s_02",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 104.5333,
+    "end_time": 114.5333
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_10s_03",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 209.0333,
+    "end_time": 219.0333
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_20s_01",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_20s_02",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 99.5333,
+    "end_time": 119.5333
+  },
+  {
+    "subvideo_id": "video_0096_neg_before_20s_03",
+    "source_video": "video_0096",
+    "source_type": "脆性断裂",
+    "start_time": 199.0333,
+    "end_time": 219.0333
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_3s_01",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.001
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_3s_02",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 48.0827,
+    "end_time": 51.0837
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_5s_01",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0017
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_5s_02",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 47.0824,
+    "end_time": 52.084
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_5s_03",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 94.1647,
+    "end_time": 99.1664
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_10s_01",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0033
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_10s_02",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 44.5815,
+    "end_time": 54.5849
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_10s_03",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 89.1631,
+    "end_time": 99.1664
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_20s_01",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0067
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_20s_02",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 39.5799,
+    "end_time": 59.5865
+  },
+  {
+    "subvideo_id": "video_0100_neg_before_20s_03",
+    "source_video": "video_0100",
+    "source_type": "脆性断裂",
+    "start_time": 79.1597,
+    "end_time": 99.1664
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_3s_01",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.001
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_3s_02",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 74.3581,
+    "end_time": 77.3258
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_5s_01",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0017
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_5s_02",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 73.3578,
+    "end_time": 78.3261
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_5s_03",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 146.6822,
+    "end_time": 151.6839
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_10s_01",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0033
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_10s_02",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 70.857,
+    "end_time": 80.8269
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_10s_03",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 141.6806,
+    "end_time": 151.6839
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_20s_01",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0067
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_20s_02",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 65.8553,
+    "end_time": 85.8286
+  },
+  {
+    "subvideo_id": "video_0101_neg_before_20s_03",
+    "source_video": "video_0101",
+    "source_type": "脆性断裂",
+    "start_time": 131.6772,
+    "end_time": 151.6839
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_3s_01",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_3s_02",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 106.24,
+    "end_time": 109.24
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_5s_01",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_5s_02",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 105.24,
+    "end_time": 110.24
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_5s_03",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 210.48,
+    "end_time": 215.48
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_10s_01",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_10s_02",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 102.72,
+    "end_time": 112.72
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_10s_03",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 205.48,
+    "end_time": 215.48
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_20s_01",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_20s_02",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 97.76,
+    "end_time": 117.76
+  },
+  {
+    "subvideo_id": "video_0102_neg_before_20s_03",
+    "source_video": "video_0102",
+    "source_type": "脆性断裂",
+    "start_time": 195.48,
+    "end_time": 215.48
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_3s_01",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_3s_02",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 85.2,
+    "end_time": 88.16
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_5s_01",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_5s_02",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 84.16,
+    "end_time": 89.2
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_5s_03",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 168.36,
+    "end_time": 173.36
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_10s_01",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_10s_02",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 81.68,
+    "end_time": 91.68
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_10s_03",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 163.36,
+    "end_time": 173.36
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_20s_01",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_20s_02",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 76.68,
+    "end_time": 96.68
+  },
+  {
+    "subvideo_id": "video_0103_neg_before_20s_03",
+    "source_video": "video_0103",
+    "source_type": "脆性断裂",
+    "start_time": 153.36,
+    "end_time": 173.36
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_3s_01",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_3s_02",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 67.56,
+    "end_time": 70.56
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_5s_01",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_5s_02",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 66.56,
+    "end_time": 71.56
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_5s_03",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 133.08,
+    "end_time": 138.08
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_10s_01",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_10s_02",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 64.04,
+    "end_time": 74.04
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_10s_03",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 128.08,
+    "end_time": 138.08
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_20s_01",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_20s_02",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 59.04,
+    "end_time": 79.04
+  },
+  {
+    "subvideo_id": "video_0104_neg_before_20s_03",
+    "source_video": "video_0104",
+    "source_type": "脆性断裂",
+    "start_time": 118.08,
+    "end_time": 138.08
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_3s_01",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_3s_02",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 71.76,
+    "end_time": 74.8
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_5s_01",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_5s_02",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 70.8,
+    "end_time": 75.76
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_5s_03",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 141.56,
+    "end_time": 146.56
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_10s_01",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_10s_02",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 68.28,
+    "end_time": 78.28
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_10s_03",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 136.56,
+    "end_time": 146.56
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_20s_01",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_20s_02",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 63.28,
+    "end_time": 83.28
+  },
+  {
+    "subvideo_id": "video_0105_neg_before_20s_03",
+    "source_video": "video_0105",
+    "source_type": "脆性断裂",
+    "start_time": 126.56,
+    "end_time": 146.56
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_3s_01",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_3s_02",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 69.6,
+    "end_time": 72.6
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_5s_01",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_5s_02",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 68.6,
+    "end_time": 73.6
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_5s_03",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 137.2,
+    "end_time": 142.2
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_10s_01",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_10s_02",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 66.08,
+    "end_time": 76.08
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_10s_03",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 132.2,
+    "end_time": 142.2
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_20s_01",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_20s_02",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 61.08,
+    "end_time": 81.08
+  },
+  {
+    "subvideo_id": "video_0106_neg_before_20s_03",
+    "source_video": "video_0106",
+    "source_type": "脆性断裂",
+    "start_time": 122.2,
+    "end_time": 142.2
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_3s_01",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_3s_02",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 71.76,
+    "end_time": 74.76
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_5s_01",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_5s_02",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 70.76,
+    "end_time": 75.76
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_5s_03",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 141.52,
+    "end_time": 146.52
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_10s_01",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_10s_02",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 68.28,
+    "end_time": 78.28
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_10s_03",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 136.52,
+    "end_time": 146.52
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_20s_01",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_20s_02",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 63.28,
+    "end_time": 83.28
+  },
+  {
+    "subvideo_id": "video_0107_neg_before_20s_03",
+    "source_video": "video_0107",
+    "source_type": "脆性断裂",
+    "start_time": 126.52,
+    "end_time": 146.52
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_3s_01",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_3s_02",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 96.32,
+    "end_time": 99.32
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_5s_01",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_5s_02",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 95.32,
+    "end_time": 100.32
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_5s_03",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 190.64,
+    "end_time": 195.64
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_10s_01",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_10s_02",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 92.8,
+    "end_time": 102.8
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_10s_03",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 185.64,
+    "end_time": 195.64
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_20s_01",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_20s_02",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 87.84,
+    "end_time": 107.84
+  },
+  {
+    "subvideo_id": "video_0108_neg_before_20s_03",
+    "source_video": "video_0108",
+    "source_type": "脆性断裂",
+    "start_time": 175.64,
+    "end_time": 195.64
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_3s_01",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 3.0
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_3s_02",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 92.56,
+    "end_time": 95.56
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_5s_01",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 5.0
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_5s_02",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 91.56,
+    "end_time": 96.56
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_5s_03",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 183.12,
+    "end_time": 188.12
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_10s_01",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 10.0
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_10s_02",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 89.04,
+    "end_time": 99.04
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_10s_03",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 178.12,
+    "end_time": 188.12
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_20s_01",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 0.0,
+    "end_time": 20.0
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_20s_02",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 84.08,
+    "end_time": 104.08
+  },
+  {
+    "subvideo_id": "video_0109_neg_before_20s_03",
+    "source_video": "video_0109",
+    "source_type": "脆性断裂",
+    "start_time": 168.12,
+    "end_time": 188.12
+  }
+]
