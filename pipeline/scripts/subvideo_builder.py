@@ -879,6 +879,11 @@ def build_neg_before_after(
             subvideo_id = f"{video_id}_neg_before_{int(clip_len)}s_{idx:02d}"
             candidates.append(("neg_before", st, ed, subvideo_id, "pre_event_negative"))
 
+    # 脆性断裂（含脆性断裂、齐根断裂）：只保留最临近事件的一条 neg_before
+    if rec.get("type") in {"脆性断裂", "脆性断裂、齐根断裂"}:
+        if candidates:
+            candidates = [max(candidates, key=lambda x: (x[2], x[1]))]
+
     # 每源上限 12 条：优先保留近事件窗口
     if len(candidates) > 12:
         candidates = candidates[:12]

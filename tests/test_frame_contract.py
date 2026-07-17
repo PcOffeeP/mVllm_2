@@ -1398,3 +1398,59 @@ def test_build_all_rejects_invalid_subvideo_id_in_excluded_subvideos(
             output_dir,
             prompt_library_path=prompt_library_path,
         )
+
+
+def _make_neg_before_rec(fracture_type: str) -> dict[str, Any]:
+    """fps=2, total_frames=240, duration=120, event_frame=200 → event_time=100, region_end=99。"""
+    rec = _make_focus_rec(total_frames=240, event_frame=200)
+    rec["type"] = fracture_type
+    return rec
+
+
+def _run_build_neg_before(rec: dict[str, Any], monkeypatch) -> list[dict[str, Any]]:
+    class FakePreprocessor:
+        def fingerprint(self):
+            return "minicpmv4_5:test:max_frames=8:video_fps=2:backend=transformers"
+
+        def get_info(self):
+            return None
+
+    monkeypatch.setattr(subvideo_builder, "_processor_info", lambda _p: {"backend": "test"})
+    return subvideo_builder.build_neg_before_after(
+        rec,
+        {"split": "train"},
+        generate_media=False,
+        preprocessor=FakePreprocessor(),
+    )
+
+
+def test_neg_before_ductile_keeps_all_windows(monkeypatch) -> None:
+    """韧性断裂不去重：4 clip_len × 3 窗 = 恰好 12 条 neg_before。"""
+    subs = _run_build_neg_before(_make_neg_before_rec("韧性断裂"), monkeypatch)
+    assert len(subs) == 12
+    assert all(sub["crop_type"] == "neg_before" for sub in subs)
+
+
+def test_neg_before_brittle_dedup_keeps_closest_to_event(monkeypatch) -> None:
+    """脆性断裂只保留最临近事件的一条：胜者为 3s 第 3 窗，end_time≈99.0。"""
+    subs = _run_build_neg_before(_make_neg_before_rec("脆性断裂"), monkeypatch)
+    assert len(subs) == 1
+    assert subs[0]["subvideo_id"].endswith("_3s_03")
+    assert subs[0]["end_time"] == pytest.approx(99.0)
+
+
+def test_neg_before_brittle_compound_type_dedup(monkeypatch) -> None:
+    """复合类型「脆性断裂、齐根断裂」同样按脆性去重。"""
+    subs = _run_build_neg_before(_make_neg_before_rec("脆性断裂、齐根断裂"), monkeypatch)
+    assert len(subs) == 1
+    assert subs[0]["subvideo_id"].endswith("_3s_03")
+    assert subs[0]["end_time"] == pytest.approx(99.0)
+
+
+def test_pre_event_windows_respect_min_gap() -> None:
+    """_pre_event_windows 边界：所有窗口 ed <= event_time - 1.0。"""
+    assert subvideo_builder._pre_event_windows(duration=120.0, event_time=2.0, clip_len=3) == []
+    for event_time in (2.0, 10.5, 100.0):
+        for clip_len in subvideo_builder.NEG_CLIP_DURATIONS:
+            for _st, ed in subvideo_builder._pre_event_windows(120.0, event_time, clip_len):
+                assert ed <= event_time - 1.0
