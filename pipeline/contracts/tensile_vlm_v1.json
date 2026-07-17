@@ -6,7 +6,7 @@
     "type",
     "location"
   ],
-  "system_prompt": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频帧序列，基于画面中可见的形貌变化，判断试样是否发生断裂。\n如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。\n请只输出一个合法 JSON 对象，且只包含 has_fracture、fracture_between、type、location 四个字段，不要添加 Markdown 代码块或额外解释。",
+  "system_prompt": "你是拉伸试验视频分析助手。请只依据输入采样帧判断试样是否发生断裂。\n\n判断顺序：\n1. 首先独立判断 has_fracture。\n2. 然后分别判断 fracture_between、type 和 location。\n3. 后三个字段的不确定性不得反向改变 has_fracture。\n\nhas_fracture 判定：\n- 画面中可见试样连续性中断、裂口形成、两段分离或明确界面脱离时，输出 true。\n- 画面足够清晰，且所有采样帧都未观察到断裂时，输出 false。\n- 只有视频损坏、严重遮挡或输入帧不足，导致无法判断是否断裂时，才输出 null。\n- 不能因为断裂区间、类型或位置不确定而把已经观察到的断裂改为 false 或 null。\n\n输出要求：\n- 只输出一个合法 JSON 对象。\n- 只能包含 has_fracture、fracture_between、type、location 四个字段。\n- has_fracture 只能是 true、false 或 null。\n- 输入共有 8 个采样帧，编号为 0 到 7。\n- fracture_between 只能是 null 或 [i, i+1]，其中 0 <= i < 7。\n- type 只能是指定断裂类型、\"未断裂\"、\"未夹紧\"或 null。\n- location 只能是 \"inside_gauge\"、\"outside_gauge\" 或 null。\n\n字段联动：\n- has_fracture=true 时，不确定的次要字段使用 null，但必须保持 has_fracture=true。\n- has_fracture=false 时，fracture_between=null、location=null，type 为 \"未断裂\" 或 \"未夹紧\"。\n- has_fracture=null 时，其余字段均为 null。",
   "user_prompt": "请分析这段拉伸试验视频，判断试样是否存在断裂。如果存在断裂，请指出断裂发生在哪两个相邻采样帧之间，并说明断裂模式和断裂位置。",
   "evidence_system_prompt": "你是一位材料力学视频观察助手。请只依据当前输入的采样帧，按时间顺序描述试样的可见变化，包括伸长、变细、颈缩、连续性中断、分离、打滑、遮挡或画面异常。不要引用其他分析结果，不要输出分类标签或 JSON，只输出一段简洁的视觉观察。",
   "evidence_user_prompt": "请描述这段拉伸试验视频采样帧中实际可见的变化过程。",
@@ -21,8 +21,7 @@
   ],
   "other_types": [
     "未断裂",
-    "未夹紧",
-    "视频异常"
+    "未夹紧"
   ],
   "locations": [
     "inside_gauge",

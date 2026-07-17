@@ -72,6 +72,19 @@ PILOT_TARGETS: dict[str, tuple[bool | None, str]] = {
     "video_0042": (None, "视频异常"),
 }
 
+# Fracture type values for the new protocol (valid when has_fracture=True).
+FRACTURE_TYPES = {
+    "韧性断裂",
+    "脆性断裂",
+    "界面脱粘",
+    "齐根断裂",
+    "爆炸性断裂",
+    "半脆半韧断裂",
+    "界面脱粘、齐根断裂",
+    "脆性断裂、齐根断裂",
+}
+
+
 KNOWN_NEGATIVE_DEMONSTRATION = (
     '{"has_fracture":false,"fracture_between":null,"type":"未断裂",'
     '"location":null,"confidence":0.9}'
@@ -198,6 +211,14 @@ def build_prompt_conditions(
     return conditions
 
 
+def _is_valid_field_combination(output: dict[str, Any]) -> bool:
+    """Rule-based check for four-field output validity (new protocol).
+
+    Delegates to quality_check._matches_legal_combination for consistent logic.
+    """
+    return _matches_legal_combination(output)
+
+
 def inspect_four_field_output(raw_output: str) -> dict[str, Any]:
     return _inspect_json_output(raw_output, expected_keys=list(TARGET_SCHEMA_KEYS), evidence=False)
 
@@ -248,7 +269,7 @@ def _inspect_json_output(raw_output: str, expected_keys: list[str], evidence: bo
     result["schema_valid"] = True
     result["parsed_output"] = core
     try:
-        result["legal_combination_valid"] = bool(_matches_legal_combination(core))
+        result["legal_combination_valid"] = _is_valid_field_combination(core)
     except (IndexError, KeyError, TypeError, ValueError):
         # A JSON object can have the correct keys while carrying arbitrary model
         # value types. Treat malformed values as an invalid combination; one bad
@@ -406,33 +427,44 @@ def _classification_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _field_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
+    # All records with ground_truth dict are evaluable for field metrics.
+    # null in GT or pred is handled separately (not counted in exact match).
     type_records = [
         record
         for record in records
         if isinstance(record.get("ground_truth"), dict)
-        and isinstance(record["ground_truth"].get("type"), str)
-        and record["ground_truth"]["type"] != "视频异常"
+        and "type" in record["ground_truth"]
     ]
     location_records = [
         record
         for record in records
         if isinstance(record.get("ground_truth"), dict)
-        and record["ground_truth"].get("location") in {"inside_gauge", "outside_gauge"}
+        and "location" in record["ground_truth"]
     ]
     interval_records = [
         record
         for record in records
         if isinstance(record.get("ground_truth"), dict)
-        and isinstance(record["ground_truth"].get("fracture_between"), list)
+        and "fracture_between" in record["ground_truth"]
+    ]
+    # interval_null_rate: when GT has_fracture=True, how often is pred fracture_between null
+    fracture_gt_records = [
+        record
+        for record in records
+        if isinstance(record.get("ground_truth"), dict)
+        and record["ground_truth"].get("has_fracture") is True
     ]
     joint_records = [record for record in records if _joint_target_is_evaluable(record.get("ground_truth"))]
     return {
         "type_evaluable_count": len(type_records),
-        "type_accuracy": _field_accuracy(type_records, "type"),
+        "type_exact_match_rate": _field_exact_match_rate(type_records, "type"),
+        "type_null_rate": _field_null_rate(type_records, "type"),
         "location_evaluable_count": len(location_records),
-        "location_accuracy": _field_accuracy(location_records, "location"),
+        "location_exact_match_rate": _field_exact_match_rate(location_records, "location"),
+        "location_null_rate": _field_null_rate(location_records, "location"),
         "fracture_between_evaluable_count": len(interval_records),
-        "fracture_between_exact_match_rate": _field_accuracy(interval_records, "fracture_between"),
+        "fracture_between_exact_match_rate": _field_exact_match_rate(interval_records, "fracture_between"),
+        "fracture_between_null_rate": _field_null_rate(fracture_gt_records, "fracture_between"),
         "joint_evaluable_count": len(joint_records),
         "joint_success_rate": _joint_accuracy(joint_records),
     }
@@ -441,41 +473,88 @@ def _field_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
 def _empty_field_metrics() -> dict[str, Any]:
     return {
         "type_evaluable_count": 0,
-        "type_accuracy": None,
+        "type_exact_match_rate": None,
+        "type_null_rate": None,
         "location_evaluable_count": 0,
-        "location_accuracy": None,
+        "location_exact_match_rate": None,
+        "location_null_rate": None,
         "fracture_between_evaluable_count": 0,
         "fracture_between_exact_match_rate": None,
+        "fracture_between_null_rate": None,
         "joint_evaluable_count": 0,
         "joint_success_rate": None,
     }
 
 
-def _field_accuracy(records: list[dict[str, Any]], field: str) -> float | None:
-    correct = sum(
-        isinstance(record.get("parsed_output"), dict)
-        and record["parsed_output"].get(field) == record["ground_truth"].get(field)
-        for record in records
-    )
-    return _rate(correct, len(records))
+def _field_exact_match_rate(records: list[dict[str, Any]], field: str) -> float | None:
+    """Exact match rate: only count records where both GT and pred are non-null."""
+    valid = 0
+    correct = 0
+    for record in records:
+        pred = record.get("parsed_output")
+        if not isinstance(pred, dict):
+            continue
+        gt_val = record["ground_truth"].get(field)
+        pred_val = pred.get(field)
+        if gt_val is None or pred_val is None:
+            continue
+        valid += 1
+        if gt_val == pred_val:
+            correct += 1
+    return _rate(correct, valid)
+
+
+def _field_null_rate(records: list[dict[str, Any]], field: str) -> float | None:
+    """Proportion of evaluable records where pred field is null."""
+    null_count = 0
+    for record in records:
+        pred = record.get("parsed_output")
+        if not isinstance(pred, dict):
+            null_count += 1
+            continue
+        if pred.get(field) is None:
+            null_count += 1
+    return _rate(null_count, len(records))
 
 
 def _joint_target_is_evaluable(ground_truth: Any) -> bool:
-    if not isinstance(ground_truth, dict) or not isinstance(ground_truth.get("has_fracture"), bool):
+    """GT must have all four fields with non-null concrete values for joint scoring.
+
+    Any null field in GT excludes the record from the joint denominator.
+    """
+    if not isinstance(ground_truth, dict):
+        return False
+    if not isinstance(ground_truth.get("has_fracture"), bool):
         return False
     if not isinstance(ground_truth.get("type"), str):
         return False
-    return not (ground_truth["has_fracture"] is True and not isinstance(ground_truth.get("fracture_between"), list))
+    if not isinstance(ground_truth.get("location"), str):
+        return False
+    if not isinstance(ground_truth.get("fracture_between"), list):
+        return False
+    return True
 
 
 def _joint_accuracy(records: list[dict[str, Any]]) -> float | None:
+    """Joint success: all four fields non-null in pred and all match GT exactly.
+
+    Records where pred has any null field are excluded from the denominator.
+    GT is already guaranteed non-null by _joint_target_is_evaluable.
+    """
     fields = ("has_fracture", "fracture_between", "type", "location")
-    correct = sum(
-        isinstance(record.get("parsed_output"), dict)
-        and all(record["parsed_output"].get(field) == record["ground_truth"].get(field) for field in fields)
-        for record in records
-    )
-    return _rate(correct, len(records))
+    valid = 0
+    correct = 0
+    for record in records:
+        pred = record.get("parsed_output")
+        if not isinstance(pred, dict):
+            continue
+        # Pred must have all four fields non-null
+        if any(pred.get(f) is None for f in fields):
+            continue
+        valid += 1
+        if all(pred.get(f) == record["ground_truth"].get(f) for f in fields):
+            correct += 1
+    return _rate(correct, valid)
 
 
 def build_evidence_pilot(samples: list[EvalSample], seed: int = DEFAULT_USER_PROMPT_SEED) -> list[EvalSample]:

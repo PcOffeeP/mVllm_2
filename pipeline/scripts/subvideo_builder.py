@@ -985,7 +985,7 @@ def build_full_subvideo(
             ftype = "未夹紧"
             loc = None
             fracture_between = None
-            has_fracture_canonical = True  # 覆盖 L818 的 False
+            has_fracture_canonical = False  # 未夹紧样本 has_fracture 始终为 False
         else:
             crop_type = "full_not_clamped"
             ftype = "未夹紧"
