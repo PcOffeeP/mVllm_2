@@ -13,9 +13,8 @@ wheels/
 *.mp4
 *.mov
 
-# 本地模型权重（统一放在 models/ 下，由 models/README.md 说明）
+# 本地模型权重
 models/*
-!models/README.md
 
 # LLaMA-Factory 训练输出
 LlamaFactory/saves/
@@ -74,5 +73,3 @@ data/07_metadata/tail_contamination_audit.jsonl
 data/sample_subvideos/03_subvideos
 data/sample_subvideos/04_frames
 
-# 临时数据
-!finetune/results/prompt_sweep/prompt/sft_interval_3k0_v3_merged-20260717T040824Z
