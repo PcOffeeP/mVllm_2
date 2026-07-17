@@ -181,7 +181,8 @@ def _normalize_subvideo_labels(sub: dict[str, Any]) -> dict[str, Any]:
         elif ftype == "未夹紧":
             sub["type"] = "未夹紧"
         elif ftype == "视频异常":
-            sub["type"] = "视频异常"
+            # has_fracture=true + type="视频异常" 在新协议下非法；将 type 设为 null
+            sub["type"] = None
         else:
             # 未知或不一致的正样本 type，按负样本输出。
             sub["type"] = "未断裂"

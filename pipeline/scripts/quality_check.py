@@ -53,61 +53,16 @@ FRACTURE_TYPES = {
     "界面脱粘、齐根断裂",
     "脆性断裂、齐根断裂",
 }
-NON_FRACTURE_TYPES = {"未断裂", "未夹紧", "视频异常"}
+NON_FRACTURE_TYPES = {"未断裂", "未夹紧"}
 ALL_TYPES = FRACTURE_TYPES | NON_FRACTURE_TYPES
 STATUS_DROPPED = "dropped"
 
-LEGAL_COMBINATIONS = [
-    # 1. 正常断裂且可定位
-    {
-        "has_fracture": True,
-        "fracture_between": "adjacent_pair",
-        "type": FRACTURE_TYPES,
-        "location": {"inside_gauge", "outside_gauge"},
-    },
-    # 2. 确认未断裂
-    {
-        "has_fracture": False,
-        "fracture_between": {None},
-        "type": {"未断裂"},
-        "location": {None},
-    },
-    # 3. 未夹紧
-    {
-        "has_fracture": False,
-        "fracture_between": {None},
-        "type": {"未夹紧"},
-        "location": {None},
-    },
-    # 3b. 未夹紧但有事件标注（正样本）
-    {
-        "has_fracture": True,
-        "fracture_between": "adjacent_pair",
-        "type": {"未夹紧"},
-        "location": {None},
-    },
-    # 4. 视频异常，无法确定是否断裂
-    {
-        "has_fracture": None,
-        "fracture_between": {None},
-        "type": {"视频异常"},
-        "location": {None},
-    },
-    # 5. 视频异常，确认断裂但时间不可靠
-    {
-        "has_fracture": True,
-        "fracture_between": {None},
-        "type": {"视频异常"},
-        "location": {None},
-    },
-    # 7. 断裂类型视频的聚焦正样本（可定位但位置信息缺失）
-    {
-        "has_fracture": True,
-        "fracture_between": "adjacent_pair",
-        "type": FRACTURE_TYPES,
-        "location": {None},
-    },
-]
+# 合法字段组合规则（v2）：从枚举式改为规则式
+# - has_fracture=True → 各字段独立校验：fracture_between 可为 null 或相邻对，
+#   type 可为 null 或断裂类型，location 可为 null 或合法位置
+# - has_fracture=False → fracture_between=null, location=null, type∈{"未断裂","未夹紧"}
+# - has_fracture=null → 全 null
+# 旧格式中 "视频异常" 已被移除（用 null 替代）；仍出现的旧数据会被兼容性检查记录。
 
 TARGET_SCHEMA_KEYS = {"has_fracture", "fracture_between", "type", "location"}
 
@@ -290,30 +245,49 @@ def _video_path_key(value: Any) -> str | None:
 
 
 def _matches_legal_combination(output: dict[str, Any]) -> bool:
-    """检查四字段结果区组合是否合法（不含 confidence）。"""
+    """规则式检查四字段结果区组合是否合法（v2 协议）。
+
+    规则：
+    - has_fracture=True  → 各次要字段独立校验，不做交叉约束
+    - has_fracture=False → fracture_between=null, location=null, type∈{"未断裂","未夹紧"}
+    - has_fracture=None  → 全 null
+    """
     hf = output.get("has_fracture")
     fb = output.get("fracture_between")
     ftype = output.get("type")
     loc = output.get("location")
 
-    for combo in LEGAL_COMBINATIONS:
-        if hf != combo["has_fracture"]:
-            continue
-        expected_fb = combo["fracture_between"]
-        if expected_fb == "adjacent_pair":
-            if not _is_adjacent_pair(fb):
-                continue
-        elif expected_fb == {None}:
-            if fb is not None:
-                continue
-        else:
-            if fb != expected_fb:
-                continue
-        if ftype not in combo["type"]:
-            continue
-        if loc not in combo["location"]:
-            continue
+    if hf is True:
+        # fracture_between: null 或相邻对均可
+        if fb is not None and not _is_adjacent_pair(fb):
+            return False
+        # type: null 或合法断裂类型
+        if ftype is not None and ftype not in FRACTURE_TYPES:
+            return False
+        # location: null 或合法位置
+        if loc is not None and loc not in {"inside_gauge", "outside_gauge"}:
+            return False
         return True
+
+    if hf is False:
+        if fb is not None:
+            return False
+        if loc is not None:
+            return False
+        if ftype not in {"未断裂", "未夹紧"}:
+            return False
+        return True
+
+    if hf is None:
+        if fb is not None:
+            return False
+        if ftype is not None:
+            return False
+        if loc is not None:
+            return False
+        return True
+
+    # has_fracture 不是合法的 true/false/null
     return False
 
 
@@ -509,8 +483,22 @@ def _validate_assistant_targets(
                     }
                 )
 
+            # 兼容性检查：旧格式 "视频异常" 已被 null 替代
+            if output.get("type") == "视频异常":
+                warnings.append(
+                    {
+                        "check": "legacy_format",
+                        "file": path.name,
+                        "id": _sample_id(sample),
+                        "detail": "deprecated_type_value_video_anomaly",
+                        "value": "视频异常",
+                        "replacement": "null",
+                        "output": output,
+                    }
+                )
+
             ftype = output.get("type")
-            if ftype not in ALL_TYPES:
+            if ftype is not None and ftype not in ALL_TYPES:
                 errors.append(
                     {
                         "check": "type_closed_set",

@@ -1,9 +1,32 @@
 version: "v1.0.0"
 
-system_prompt: >
-  你是一位材料力学视频分析助手。请根据提供的拉伸试验视频帧序列，基于画面中可见的形貌变化，判断试样是否发生断裂。
-  如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。
-  请只输出符合指定格式的回答，不要添加 Markdown 代码块或额外解释。
+system_prompt: |-
+  你是拉伸试验视频分析助手。请只依据输入采样帧判断试样是否发生断裂。
+
+  判断顺序：
+  1. 首先独立判断 has_fracture。
+  2. 然后分别判断 fracture_between、type 和 location。
+  3. 后三个字段的不确定性不得反向改变 has_fracture。
+
+  has_fracture 判定：
+  - 画面中可见试样连续性中断、裂口形成、两段分离或明确界面脱离时，输出 true。
+  - 画面足够清晰，且所有采样帧都未观察到断裂时，输出 false。
+  - 只有视频损坏、严重遮挡或输入帧不足，导致无法判断是否断裂时，才输出 null。
+  - 不能因为断裂区间、类型或位置不确定而把已经观察到的断裂改为 false 或 null。
+
+  输出要求：
+  - 只输出一个合法 JSON 对象。
+  - 只能包含 has_fracture、fracture_between、type、location 四个字段。
+  - has_fracture 只能是 true、false 或 null。
+  - 输入共有 8 个采样帧，编号为 0 到 7。
+  - fracture_between 只能是 null 或 [i, i+1]，其中 0 <= i < 7。
+  - type 只能是指定断裂类型、"未断裂"、"未夹紧"或 null。
+  - location 只能是 "inside_gauge"、"outside_gauge" 或 null。
+
+  字段联动：
+  - has_fracture=true 时，不确定的次要字段使用 null，但必须保持 has_fracture=true。
+  - has_fracture=false 时，fracture_between=null、location=null，type 为 "未断裂" 或 "未夹紧"。
+  - has_fracture=null 时，其余字段均为 null。
 
 # TensileAgent 生产候选协议。训练仍使用上方四字段 system_prompt；生产运行固定
 # 使用这里的单一 User/System Prompt，不从六种训练问法中随机抽取。权威的可机读
@@ -11,9 +34,32 @@ system_prompt: >
 production:
   version: "tensile-vlm/v1"
   system_prompt: |-
-    你是一位材料力学视频分析助手。请根据提供的拉伸试验视频帧序列，基于画面中可见的形貌变化，判断试样是否发生断裂。
-    如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。
-    请只输出一个合法 JSON 对象，且只包含 has_fracture、fracture_between、type、location 四个字段，不要添加 Markdown 代码块或额外解释。
+    你是拉伸试验视频分析助手。请只依据输入采样帧判断试样是否发生断裂。
+
+    判断顺序：
+    1. 首先独立判断 has_fracture。
+    2. 然后分别判断 fracture_between、type 和 location。
+    3. 后三个字段的不确定性不得反向改变 has_fracture。
+
+    has_fracture 判定：
+    - 画面中可见试样连续性中断、裂口形成、两段分离或明确界面脱离时，输出 true。
+    - 画面足够清晰，且所有采样帧都未观察到断裂时，输出 false。
+    - 只有视频损坏、严重遮挡或输入帧不足，导致无法判断是否断裂时，才输出 null。
+    - 不能因为断裂区间、类型或位置不确定而把已经观察到的断裂改为 false 或 null。
+
+    输出要求：
+    - 只输出一个合法 JSON 对象。
+    - 只能包含 has_fracture、fracture_between、type、location 四个字段。
+    - has_fracture 只能是 true、false 或 null。
+    - 输入共有 8 个采样帧，编号为 0 到 7。
+    - fracture_between 只能是 null 或 [i, i+1]，其中 0 <= i < 7。
+    - type 只能是指定断裂类型、"未断裂"、"未夹紧"或 null。
+    - location 只能是 "inside_gauge"、"outside_gauge" 或 null。
+
+    字段联动：
+    - has_fracture=true 时，不确定的次要字段使用 null，但必须保持 has_fracture=true。
+    - has_fracture=false 时，fracture_between=null、location=null，type 为 "未断裂" 或 "未夹紧"。
+    - has_fracture=null 时，其余字段均为 null。
   user_prompt: >-
     请分析这段拉伸试验视频，判断试样是否存在断裂。如果存在断裂，请指出断裂发生在哪两个相邻采样帧之间，并说明断裂模式和断裂位置。
   evidence_system_prompt: >-
@@ -61,14 +107,33 @@ experiments:
           has_fracture 为 false 时，fracture_between 和 location 使用 null，type 使用 "未断裂" 或 "未夹紧"；has_fracture 为 null 时，fracture_between 和 location 使用 null，type 使用 "视频异常"。
         output_protocol: four_field_json
       medium_relaxed:
-        system_prompt: |
-          你是拉伸试验视频分析助手。请根据输入采样帧完成判断。
-          只输出一个合法 JSON 对象，字段依次为 has_fracture、fracture_between、type、location，不要输出其他内容。
-          has_fracture 必须是 JSON 的 true、false 或 null，不能使用字符串。
-          fracture_between 必须是两个相邻整数 [i, i+1] 或 null，不能使用说明文字。
-          type 必须是以下完整字符串之一：["韧性断裂", "脆性断裂", "界面脱粘", "齐根断裂", "爆炸性断裂", "半脆半韧断裂", "界面脱粘、齐根断裂", "脆性断裂、齐根断裂", "未夹紧", "视频异常", "未断裂"]。
-          location 必须是 "inside_gauge"、"outside_gauge" 或 null，不能使用其他位置描述。
-          请先依据画面独立判断 has_fracture。若画面已显示试样连续性中断或分离，即使断裂区间、类型或位置不确定，has_fracture 仍应为 true；其余字段在允许值内选择画面证据最支持的结果。
+        system_prompt: |-
+          你是拉伸试验视频分析助手。请只依据输入采样帧判断试样是否发生断裂。
+
+          判断顺序：
+          1. 首先独立判断 has_fracture。
+          2. 然后分别判断 fracture_between、type 和 location。
+          3. 后三个字段的不确定性不得反向改变 has_fracture。
+
+          has_fracture 判定：
+          - 画面中可见试样连续性中断、裂口形成、两段分离或明确界面脱离时，输出 true。
+          - 画面足够清晰，且所有采样帧都未观察到断裂时，输出 false。
+          - 只有视频损坏、严重遮挡或输入帧不足，导致无法判断是否断裂时，才输出 null。
+          - 不能因为断裂区间、类型或位置不确定而把已经观察到的断裂改为 false 或 null。
+
+          输出要求：
+          - 只输出一个合法 JSON 对象。
+          - 只能包含 has_fracture、fracture_between、type、location 四个字段。
+          - has_fracture 只能是 true、false 或 null。
+          - 输入共有 8 个采样帧，编号为 0 到 7。
+          - fracture_between 只能是 null 或 [i, i+1]，其中 0 <= i < 7。
+          - type 只能是指定断裂类型、"未断裂"、"未夹紧"或 null。
+          - location 只能是 "inside_gauge"、"outside_gauge" 或 null。
+
+          字段联动：
+          - has_fracture=true 时，不确定的次要字段使用 null，但必须保持 has_fracture=true。
+          - has_fracture=false 时，fracture_between=null、location=null，type 为 "未断裂" 或 "未夹紧"。
+          - has_fracture=null 时，其余字段均为 null。
         output_protocol: four_field_json
       strict:
         system_prompt: |
@@ -139,25 +204,31 @@ user_prompt_templates:
 target_format: |
   {"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}
 
-  示例（未夹紧）：
-  {"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null}
+  示例（正常断裂）：
+  {"has_fracture":true,"fracture_between":[2,3],"type":"韧性断裂","location":"inside_gauge"}
 
   示例（未断裂）：
   {"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}
 
+  示例（未夹紧）：
+  {"has_fracture":false,"fracture_between":null,"type":"未夹紧","location":null}
+
+  示例（无法判断）：
+  {"has_fracture":null,"fracture_between":null,"type":null,"location":null}
+
 target_schema:
   has_fracture:
     type: boolean | null
-    description: 是否在视频中观察到试样断裂；视频异常且无法判断时为 null
+    description: 是否在视频中观察到试样断裂；无法判断时为 null
   fracture_between:
     type: list[int, int] | null
-    description: 断裂发生的两个相邻采样帧索引，例如 [2, 3]；未断裂时为 null
+    description: 断裂发生的两个相邻采样帧索引，例如 [2, 3]；未断裂或无断裂时为 null
   type:
-    type: string
+    type: string | null
     description: >
-      断裂类型。合法取值包括 7 种断裂类（"韧性断裂"、"脆性断裂"、"界面脱粘"、"齐根断裂"、"爆炸性断裂"、"半脆半韧断裂"、"界面脱粘、齐根断裂"）、
-      "未夹紧"、"视频异常" 或 "未断裂"。其中 "未夹紧" 仅在子视频被标注为夹紧异常且仍保留事件/区间标注时出现；
-      若未夹紧样本没有明确事件标注，导出流程会将其降级为 "未断裂"。
+      断裂类型或状态。合法取值包括 7 种断裂类（"韧性断裂"、"脆性断裂"、"界面脱粘"、"齐根断裂"、"爆炸性断裂"、"半脆半韧断裂"、"界面脱粘、齐根断裂"）、
+      "未断裂"、"未夹紧" 或 null。其中 "未夹紧" 仅在子视频被标注为夹紧异常且仍保留事件/区间标注时出现；
+      若未夹紧样本没有明确事件标注，导出流程会将其降级为 "未断裂"；null 表示无法判断。
   location:
     type: string | null
     description: 断裂位置，"inside_gauge" 或 "outside_gauge"；未断裂或无法判断时为 null
@@ -170,25 +241,31 @@ target_schema:
 inference_target_format: |
   {"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ..., "confidence": ...}
 
-  示例（未夹紧）：
-  {"has_fracture":true,"fracture_between":[2,3],"type":"未夹紧","location":null,"confidence":0.7}
+  示例（正常断裂）：
+  {"has_fracture":true,"fracture_between":[2,3],"type":"韧性断裂","location":"inside_gauge","confidence":0.9}
 
   示例（未断裂）：
   {"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null,"confidence":0.9}
 
+  示例（未夹紧）：
+  {"has_fracture":false,"fracture_between":null,"type":"未夹紧","location":null,"confidence":0.8}
+
+  示例（无法判断）：
+  {"has_fracture":null,"fracture_between":null,"type":null,"location":null,"confidence":0.6}
+
 inference_target_schema:
   has_fracture:
     type: boolean | null
-    description: 是否在视频中观察到试样断裂；视频异常且无法判断时为 null
+    description: 是否在视频中观察到试样断裂；无法判断时为 null
   fracture_between:
     type: list[int, int] | null
-    description: 断裂发生的两个相邻采样帧索引，例如 [2, 3]；未断裂时为 null
+    description: 断裂发生的两个相邻采样帧索引，例如 [2, 3]；未断裂或无断裂时为 null
   type:
-    type: string
+    type: string | null
     description: >
-      断裂类型。合法取值包括 7 种断裂类（"韧性断裂"、"脆性断裂"、"界面脱粘"、"齐根断裂"、"爆炸性断裂"、"半脆半韧断裂"、"界面脱粘、齐根断裂"）、
-      "未夹紧"、"视频异常" 或 "未断裂"。其中 "未夹紧" 仅在子视频被标注为夹紧异常且仍保留事件/区间标注时出现；
-      若未夹紧样本没有明确事件标注，导出流程会将其降级为 "未断裂"。
+      断裂类型或状态。合法取值包括 7 种断裂类（"韧性断裂"、"脆性断裂"、"界面脱粘"、"齐根断裂"、"爆炸性断裂"、"半脆半韧断裂"、"界面脱粘、齐根断裂"）、
+      "未断裂"、"未夹紧" 或 null。其中 "未夹紧" 仅在子视频被标注为夹紧异常且仍保留事件/区间标注时出现；
+      若未夹紧样本没有明确事件标注，导出流程会将其降级为 "未断裂"；null 表示无法判断。
   location:
     type: string | null
     description: 断裂位置，"inside_gauge" 或 "outside_gauge"；未断裂或无法判断时为 null
