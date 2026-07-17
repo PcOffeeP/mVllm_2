@@ -73,3 +73,6 @@ data/07_metadata/tail_contamination_audit.jsonl
 # 测试子视频
 data/sample_subvideos/03_subvideos
 data/sample_subvideos/04_frames
+
+# 临时数据
+!finetune/results/prompt_sweep/prompt/sft_interval_3k0_v3_merged-20260717T040824Z
