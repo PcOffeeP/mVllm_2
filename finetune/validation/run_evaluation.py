@@ -3,22 +3,21 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import random
 from pathlib import Path
 from typing import Any
 
-from .constants import CORE_FIELDS, GENERATION_CONFIG, SUPPORTED_DATASETS
+from .constants import CORE_FIELDS, GENERATION_CONFIG, SUPPORTED_DATASETS, VIDEO_MAX_FRAMES
 from .datasets import EvalSample, load_dataset
 from .model_runtime import load_model, run_model_on_video
+from pipeline.output_normalizer import normalize_structured_output, validate_structured_output
 from .prompts import (
     DEFAULT_PROMPT_LIBRARY_PATH,
-    get_experiment_system_prompt,
-    get_experiment_system_prompt_hash,
     get_prompt_library,
     get_prompt_version,
+    get_system_prompt,
+    get_system_prompt_hash,
     get_target_schema,
     get_user_prompt,
-    get_user_prompt_template_count,
 )
 
 
@@ -31,12 +30,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--video-root", default=None)
     parser.add_argument("--predictions", default=None, help="Existing JSONL with video_id and raw_output; skips model inference.")
     parser.add_argument("--max-samples", type=int, default=None)
-    parser.add_argument(
-        "--user-prompt-seed",
-        type=int,
-        default=42,
-        help="Random seed for per-sample user prompt template selection.",
-    )
     return parser.parse_args()
 
 
@@ -47,13 +40,11 @@ def main() -> None:
 
     library = get_prompt_library()
     prompt_version = get_prompt_version(library)
-    system_prompt = get_experiment_system_prompt("medium", library)
-    system_prompt_hash = get_experiment_system_prompt_hash("medium", library)
+    system_prompt = get_system_prompt(library)
+    system_prompt_hash = get_system_prompt_hash(library)
+    prompt_text = get_user_prompt(library)
     target_schema = get_target_schema(library)
     prompt_library_path = str(DEFAULT_PROMPT_LIBRARY_PATH)
-
-    rng = random.Random(args.user_prompt_seed)
-    template_count = get_user_prompt_template_count(library)
 
     video_root = Path(args.video_root) if args.video_root else None
     samples = load_dataset(args.dataset, video_root=video_root)
@@ -67,13 +58,7 @@ def main() -> None:
     if raw_outputs is None:
         processor, model = load_model(args.model_dir)
 
-    summary_prompt_text = None
     for sample in samples:
-        user_prompt_template_index = rng.randrange(template_count)
-        prompt_text = get_user_prompt(user_prompt_template_index, library)
-        if summary_prompt_text is None:
-            summary_prompt_text = prompt_text
-
         if raw_outputs is None:
             if not sample.video_path.exists():
                 raw_output = ""
@@ -99,15 +84,13 @@ def main() -> None:
             )
         )
 
-    summary_prompt_text = summary_prompt_text or get_user_prompt(0, library)
-
     write_outputs(
         out_dir=Path(args.out_dir),
         records=records,
         dataset=args.dataset,
         model_dir=args.model_dir,
         prompt="training",
-        prompt_text=summary_prompt_text,
+        prompt_text=prompt_text,
         predictions=args.predictions,
         prompt_version=prompt_version,
         prompt_library_path=prompt_library_path,
@@ -125,6 +108,23 @@ def evaluate_sample(
     target_schema: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cleaned_output = str(raw_output or "").strip()
+    parsed_output = None
+    normalized_output = None
+    repair_flags: list[str] = []
+    parse_error = None
+    if cleaned_output:
+        try:
+            candidate = json.loads(cleaned_output)
+            if not isinstance(candidate, dict):
+                parse_error = "JSON value is not an object"
+            else:
+                parsed_output = candidate
+                normalized_output, repair_flags = normalize_structured_output(
+                    candidate,
+                    VIDEO_MAX_FRAMES,
+                )
+        except json.JSONDecodeError as exc:
+            parse_error = f"JSONDecodeError: {exc.msg}"
     return {
         "sample_id": sample.sample_id,
         "video_id": sample.video_id,
@@ -132,7 +132,16 @@ def evaluate_sample(
         "raw_output": raw_output,
         "runtime_error": runtime_error,
         "raw_output_non_empty": bool(cleaned_output),
-        "has_result_section": "结果：" in cleaned_output,
+        "json_valid": parsed_output is not None,
+        "parsed_output": parsed_output,
+        "normalized_output": normalized_output,
+        "normalization_repairs": repair_flags,
+        "normalized_valid": (
+            validate_structured_output(normalized_output, VIDEO_MAX_FRAMES)
+            if normalized_output is not None
+            else False
+        ),
+        "parse_error": parse_error,
         "prompt_version": prompt_version,
         "target_schema": target_schema,
         "metadata": sample.metadata,
@@ -143,18 +152,24 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(records)
     runtime_error_count = sum(1 for record in records if record["runtime_error"])
     raw_output_count = sum(1 for record in records if record["raw_output_non_empty"])
-    has_result_section_count = sum(1 for record in records if record.get("has_result_section"))
+    json_valid_count = sum(1 for record in records if record.get("json_valid"))
+    normalized_valid_count = sum(1 for record in records if record.get("normalized_valid"))
+    repaired_count = sum(1 for record in records if record.get("normalization_repairs"))
     return {
         "total_samples": total,
         "runtime_error_count": runtime_error_count,
         "raw_output_count": raw_output_count,
         "raw_output_rate": _rate(raw_output_count, total),
         "empty_output_count": total - raw_output_count,
-        "has_result_section_count": has_result_section_count,
-        "has_result_section_rate": _rate(has_result_section_count, total),
+        "json_valid_count": json_valid_count,
+        "json_valid_rate": _rate(json_valid_count, total),
+        "normalized_valid_count": normalized_valid_count,
+        "normalized_valid_rate": _rate(normalized_valid_count, total),
+        "repaired_count": repaired_count,
+        "repair_rate": _rate(repaired_count, total),
         "notes": [
-            "No automatic JSON/schema extraction is performed. Judge prompt quality from raw_output in evaluation_records.jsonl.",
-            "Ground-truth metadata is included only as reference context for manual inspection.",
+            "Raw protocol compliance and normalized output are recorded separately.",
+            "Ground-truth metadata is included as reference context for task-metric analysis.",
         ],
     }
 

@@ -6,8 +6,6 @@ from typing import Any
 
 import yaml
 
-from .constants import PROMPT_NAMES
-
 DEFAULT_PROMPT_LIBRARY_PATH = Path(__file__).resolve().parents[2] / "pipeline" / "prompt_library.yaml"
 
 _LIBRARY_CACHE: dict[Path, dict[str, Any]] = {}
@@ -20,14 +18,14 @@ def _load_prompt_library(path: Path) -> dict[str, Any]:
         library = yaml.safe_load(handle)
     if not isinstance(library, dict):
         raise ValueError(f"Prompt library {path} must contain a YAML mapping")
-    for required_key in ("version", "system_prompt", "user_prompt_templates"):
+    for required_key in ("version", "system_prompt", "user_prompt", "target_schema"):
         if required_key not in library:
             raise ValueError(f"Prompt library {path} missing required key: {required_key}")
     return library
 
 
 def get_prompt_library(path: Path | str | None = None) -> dict[str, Any]:
-    """加载并返回 prompt 模板库。同一路径会被缓存。"""
+    """Load the canonical two-prompt configuration."""
     resolved = Path(path) if path else DEFAULT_PROMPT_LIBRARY_PATH
     if resolved not in _LIBRARY_CACHE:
         _LIBRARY_CACHE[resolved] = _load_prompt_library(resolved)
@@ -35,121 +33,45 @@ def get_prompt_library(path: Path | str | None = None) -> dict[str, Any]:
 
 
 def get_prompt_version(library: dict[str, Any] | None = None) -> str:
-    """返回 prompt 模板库版本。"""
     lib = library or get_prompt_library()
     return str(lib.get("version", ""))
 
 
 def get_system_prompt(library: dict[str, Any] | None = None) -> str:
-    """返回模板库中的 system prompt。"""
     lib = library or get_prompt_library()
-    return str(lib.get("system_prompt", "")).strip()
+    return _required_prompt(lib, "system_prompt")
 
 
 def get_system_prompt_hash(library: dict[str, Any] | None = None) -> str:
-    """返回 system prompt 的 SHA-256 哈希（用于版本一致性检查）。"""
     return hashlib.sha256(get_system_prompt(library).encode("utf-8")).hexdigest()
 
 
-def get_experiment_system_prompt(variant: str = "medium", library: dict[str, Any] | None = None) -> str:
-    """返回指定实验 variant 的 system prompt（默认 medium）。"""
-    lib = library or get_prompt_library()
-    experiments = lib.get("experiments", {}) or {}
-    prompt_engineering = experiments.get("prompt_engineering", {}) or {}
-    variants = prompt_engineering.get("variants", {}) or {}
-    variant_entry = variants.get(variant)
-    if not isinstance(variant_entry, dict):
-        raise ValueError(f"Prompt library missing experiments.prompt_engineering.variants.{variant}")
-    prompt = variant_entry.get("system_prompt")
-    if not isinstance(prompt, str) or not prompt.strip():
-        raise ValueError(
-            f"experiments.prompt_engineering.variants.{variant}.system_prompt must be a non-empty string"
-        )
-    return prompt.strip()
+def get_user_prompt(
+    library: dict[str, Any] | None = None,
+    *,
+    include_video_placeholder: bool = False,
+) -> str:
+    """Return the single user prompt used by training, evaluation, and production.
 
-
-def get_experiment_system_prompt_hash(variant: str = "medium", library: dict[str, Any] | None = None) -> str:
-    """返回指定实验 variant system prompt 的 SHA-256 哈希。"""
-    return hashlib.sha256(get_experiment_system_prompt(variant, library).encode("utf-8")).hexdigest()
-
-
-def get_test_system_prompt(library: dict[str, Any] | None = None) -> str:
-    """Return the one editable System Prompt used by base-model prompt tests."""
-    lib = library or get_prompt_library()
-    test_section = lib.get("test", {}) or {}
-    prompt = test_section.get("system_prompt") if isinstance(test_section, dict) else None
-    if not isinstance(prompt, str) or not prompt.strip():
-        raise ValueError("prompt library test.system_prompt must be a non-empty string")
-    return prompt.strip()
-
-
-def get_user_prompt(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
-    """返回模板库中指定索引的 user prompt 模板。
-
-    训练使用 <video> 占位符让 LLaMA-Factory 替换为视频 token；评估阶段模型
-    runtime 已经单独传入图像，因此这里去掉占位符，仅保留语义等价的提问文本。
+    LLaMA-Factory training needs the ``<video>`` placeholder. The evaluation
+    runtime supplies image inputs separately, so its text prompt omits it.
     """
     lib = library or get_prompt_library()
-    templates = lib.get("user_prompt_templates", [])
-    if not templates:
-        raise ValueError("Prompt library has no user_prompt_templates")
-    template = templates[template_index % len(templates)]
-    prompt = str(template.get("prompt", ""))
-    # 去掉 LLaMA-Factory 视频占位符；eval 的 model_runtime 自行拼接图像 tag。
-    prompt = prompt.replace("<video>", "")
-    return prompt.strip()
+    prompt = _required_prompt(lib, "user_prompt")
+    return f"<video>\n{prompt}" if include_video_placeholder else prompt
 
 
-def get_inference_target_format(library: dict[str, Any] | None = None) -> str:
-    """返回推理目标格式（五字段，含 confidence）的文本说明。"""
-    lib = library or get_prompt_library()
-    return str(lib.get("inference_target_format", "")).strip()
-
-
-def get_inference_target_schema(library: dict[str, Any] | None = None) -> dict[str, Any]:
-    """返回推理目标 schema（五字段，含 confidence）。"""
-    lib = library or get_prompt_library()
-    return lib.get("inference_target_schema", {}) or {}
+def get_user_prompt_hash(library: dict[str, Any] | None = None) -> str:
+    return hashlib.sha256(get_user_prompt(library).encode("utf-8")).hexdigest()
 
 
 def get_target_schema(library: dict[str, Any] | None = None) -> dict[str, Any]:
-    """返回训练目标 schema（四字段，不含 confidence）。"""
     lib = library or get_prompt_library()
     return lib.get("target_schema", {}) or {}
 
 
-def get_inference_user_prompt(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
-    """返回评估/推理使用的 user prompt，在训练问法基础上要求模型返回 confidence。"""
-    base = get_user_prompt(template_index, library)
-    target_format = get_inference_target_format(library)
-    prompt = f"{base}\n\n请按以下格式输出，并在结果 JSON 中包含 confidence 字段（0-1，表示你对判断的置信度）："
-    if target_format:
-        prompt = f"{prompt}\n{target_format}"
-    return prompt
-
-
-def get_user_prompt_template_count(library: dict[str, Any] | None = None) -> int:
-    """返回模板库中 user prompt 模板的数量。"""
-    lib = library or get_prompt_library()
-    templates = lib.get("user_prompt_templates", [])
-    count = len(templates)
-    if count == 0:
-        raise ValueError("Prompt library has no user_prompt_templates")
-    return count
-
-
-def get_user_prompt_template_id(template_index: int = 0, library: dict[str, Any] | None = None) -> str:
-    """返回指定索引 user prompt 模板的 template_id。"""
-    lib = library or get_prompt_library()
-    templates = lib.get("user_prompt_templates", [])
-    if not templates:
-        raise ValueError("Prompt library has no user_prompt_templates")
-    template = templates[template_index % len(templates)]
-    return str(template.get("template_id", ""))
-
-
-def get_prompt(name: str) -> str:
-    """向后兼容接口：'training' 对应含 confidence 的 inference user prompt。"""
-    if name == "training":
-        return get_inference_user_prompt(0)
-    raise ValueError(f"Unsupported prompt: {name}. Expected one of {PROMPT_NAMES}.")
+def _required_prompt(library: dict[str, Any], key: str) -> str:
+    value = library.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Prompt library {key} must be a non-empty string")
+    return value.strip()

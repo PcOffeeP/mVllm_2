@@ -8,13 +8,19 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 
 CONTRACT_PATH = Path(__file__).with_name("contracts") / "tensile_vlm_v1.json"
+PROMPT_LIBRARY_PATH = Path(__file__).with_name("prompt_library.yaml")
 
 
 @lru_cache(maxsize=1)
 def load_production_contract() -> dict[str, Any]:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    prompt_library = yaml.safe_load(PROMPT_LIBRARY_PATH.read_text(encoding="utf-8"))
+    if not isinstance(prompt_library, dict):
+        raise RuntimeError("prompt library must be a YAML mapping")
     if contract.get("contract_version") != "tensile-vlm/v1":
         raise RuntimeError("unsupported production contract version")
     if contract.get("model_output_fields") != [
@@ -24,11 +30,21 @@ def load_production_contract() -> dict[str, Any]:
         "location",
     ]:
         raise RuntimeError("production contract must use the trained four-field order")
-    return contract
+    prompts = {}
+    for key in ("system_prompt", "user_prompt"):
+        value = prompt_library.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise RuntimeError(f"prompt library {key} must be a non-empty string")
+        prompts[key] = value.strip()
+    return {**contract, **prompts}
 
 
 def production_contract_hash() -> str:
-    return hashlib.sha256(CONTRACT_PATH.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    digest.update(CONTRACT_PATH.read_bytes())
+    digest.update(b"\0")
+    digest.update(PROMPT_LIBRARY_PATH.read_bytes())
+    return digest.hexdigest()
 
 
 if __name__ == "__main__":

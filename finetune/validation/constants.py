@@ -13,8 +13,6 @@ TEST_SUBVIDEO_INPUTS_JSON = MERGED_DATA_DIR / "test_subvideo_inputs.json"
 TEST_SUBVIDEO_GROUND_TRUTH_JSON = MERGED_DATA_DIR / "test_subvideo_ground_truth.json"
 
 SUPPORTED_DATASETS = ("test", "test_subvideos", "fold_0_val", "fold_1_val", "fold_2_val")
-PROMPT_NAMES = ("training",)
-
 VIDEO_MAX_FRAMES = 8
 GENERATION_CONFIG = {
     "do_sample": False,
@@ -22,4 +20,4 @@ GENERATION_CONFIG = {
     "max_new_tokens": 256,
 }
 
-CORE_FIELDS = ("has_fracture", "fracture_between", "type", "location", "confidence")
+CORE_FIELDS = ("has_fracture", "fracture_between", "type", "location")

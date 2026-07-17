@@ -207,22 +207,23 @@ def test_generate_media_fills_mapping_from_preprocessor(monkeypatch, tmp_path: P
     assert result["processor_fingerprint"].startswith("minicpmv4_5:test")
 
 
-def test_prompt_library_has_training_and_inference_target_schemas(prompt_library):
-    """训练 target 为四字段，推理 target 为五字段且含 confidence。"""
+def test_prompt_library_has_two_prompts_and_one_four_field_schema(prompt_library):
+    """训练、评估和生产共用唯一 System/User Prompt 与四字段 schema。"""
+    assert set(prompt_library).issuperset(
+        {"version", "system_prompt", "user_prompt", "target_format", "target_schema"}
+    )
+    assert "experiments" not in prompt_library
+    assert "production" not in prompt_library
+    assert "test" not in prompt_library
+    assert "user_prompt_templates" not in prompt_library
     assert "target_format" in prompt_library
     assert "target_schema" in prompt_library
-    assert "inference_target_format" in prompt_library
-    assert "inference_target_schema" in prompt_library
 
     train_schema = prompt_library["target_schema"]
-    inference_schema = prompt_library["inference_target_schema"]
     assert set(train_schema.keys()) == {"has_fracture", "fracture_between", "type", "location"}
-    assert set(inference_schema.keys()) == {"has_fracture", "fracture_between", "type", "location", "confidence"}
 
     train_format = prompt_library["target_format"]
-    inference_format = prompt_library["inference_target_format"]
     assert "confidence" not in train_format
-    assert "confidence" in inference_format
     sub = {
         "subvideo_id": "legacy",
         "video_path": "data/01_videos/video_0001.mp4",
@@ -1161,14 +1162,14 @@ def test_unclamped_label_with_and_without_event(
 
 
 def test_training_sample_messages_order_and_system_prompt(prompt_library) -> None:
-    """messages 顺序为 [system, user, assistant]，且 system content 来自模板库。"""
+    """messages 顺序固定，System/User 内容均来自唯一 Prompt 配置。"""
     sub = _make_training_sub(subvideo_id="sub_msg")
     sample = convert_subvideo_to_sample(sub, library=prompt_library)
     messages = sample["messages"]
 
     assert [m["role"] for m in messages] == ["system", "user", "assistant"]
     assert messages[0]["content"] == prompt_library["system_prompt"]
-    assert "<video>" in messages[1]["content"]
+    assert messages[1]["content"] == f"<video>\n{prompt_library['user_prompt']}"
 
 
 def test_training_sample_has_only_llamafactory_fields(prompt_library) -> None:

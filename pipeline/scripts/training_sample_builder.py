@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
 import sys
 from collections import Counter
 from pathlib import Path
@@ -86,12 +85,12 @@ def load_prompt_library(path: Path) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def select_user_prompt_template(library: dict[str, Any], index: int) -> str:
-    """根据索引循环选择一条 user prompt 模板（保留 <video> 占位符）。"""
-    templates = library.get("user_prompt_templates", [])
-    if not templates:
-        raise ValueError("prompt library 中缺少 user_prompt_templates")
-    return templates[index % len(templates)]["prompt"]
+def get_user_prompt(library: dict[str, Any]) -> str:
+    """返回唯一训练 User Prompt（保留 LLaMA-Factory 的 <video> 占位符）。"""
+    prompt = library.get("user_prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError("prompt library 中缺少非空 user_prompt")
+    return f"<video>\n{prompt.strip()}"
 
 
 def load_split_video_ids(splits_dir: Path) -> dict[str, set[str]]:
@@ -294,7 +293,6 @@ def _validate_minicpm_fingerprint(subvideo_id: Any, fingerprint: str) -> None:
 def convert_subvideo_to_sample(
     sub: dict[str, Any],
     library: dict[str, Any],
-    template_index: int = 0,
 ) -> dict[str, Any]:
     """将单条子视频元数据转换为 ShareGPT 训练样本。"""
     sid = sub.get("subvideo_id", "<unknown>")
@@ -320,7 +318,7 @@ def convert_subvideo_to_sample(
     effective_frames = compute_effective_frames(sub)
 
     system_prompt = library.get("system_prompt", "")
-    user_content = select_user_prompt_template(library, template_index)
+    user_content = get_user_prompt(library)
     assistant_content = build_assistant_content(sub)
 
     messages: list[dict[str, Any]] = [
@@ -418,8 +416,6 @@ def build_split_samples(
     _validate_excluded_subvideos(excluded_subvideos)
     _validate_subvideo_review_status(subvideos)
 
-    rng = random.Random(seed)
-    template_count = len(library.get("user_prompt_templates", []))
     by_split: dict[str, list[dict[str, Any]]] = {
         name: [] for name in split_video_ids if name != "test"
     }
@@ -434,7 +430,6 @@ def build_split_samples(
             continue
         src = sub["source_video"]
         selected_splits = set(sub.get("selected_splits", []))
-        template_index = rng.randint(0, template_count - 1) if template_count > 0 else 0
         for name, ids in split_video_ids.items():
             if name == "test":
                 continue
@@ -443,7 +438,7 @@ def build_split_samples(
             if selected_splits and name not in selected_splits:
                 continue
             by_split[name].append(
-                convert_subvideo_to_sample(sub, library=library, template_index=template_index)
+                convert_subvideo_to_sample(sub, library=library)
             )
 
     # 全局平衡已在 subvideo_builder 中完成，此处不再重复做 fold 级平衡

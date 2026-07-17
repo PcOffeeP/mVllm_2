@@ -531,7 +531,7 @@ def test_quality_check_single_error_for_corrupt_meta(tmp_path, monkeypatch):
     assert len(reviewed_metadata_errors) == 1
 
 
-def _make_sample(sid: str, content: str, prompt_version: str = "v1.0.0") -> dict:
+def _make_sample(sid: str, content: str, prompt_version: str = "v2.0.0") -> dict:
     return {
         "id": sid,
         "videos": [f"data/03_subvideos/{sid}.mp4"],
@@ -984,7 +984,7 @@ def test_quality_check_reads_prompt_version_from_sample_metadata(tmp_path, monke
         "subvideo_id": "sub_ok",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_ok.mp4",
-        "prompt_version": "v1.0.0",
+        "prompt_version": "v2.0.0",
         "review_status": "approved",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": None,
@@ -1024,12 +1024,12 @@ def test_quality_check_rejects_metadata_review_status_overriding_authoritative(
             {"role": "user", "content": "<video>"},
             {"role": "assistant", "content": '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
         ],
-        "prompt_version": "v1.0.0",
+        "prompt_version": "v2.0.0",
         "metadata": {
             "subvideo_id": "sub_ok",
             "source_video": "video_0001",
             "video_path": "data/03_subvideos/sub_ok.mp4",
-            "prompt_version": "v1.0.0",
+            "prompt_version": "v2.0.0",
             "review_status": "approved",
             "reviewed_at": "2026-07-09T12:00:00+00:00",
             "fracture_between": None,
@@ -1106,7 +1106,7 @@ def test_quality_check_fallback_to_reviewed_meta_when_metadata_missing_review_st
         "subvideo_id": "sub_ok",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_ok.mp4",
-        "prompt_version": "v1.0.0",
+        "prompt_version": "v2.0.0",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": None,
         "location_canonical": None,
@@ -1156,7 +1156,7 @@ def test_quality_check_uses_actual_frame_mapping_from_metadata_for_boundary_chec
         "subvideo_id": "sub_pos",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_pos.mp4",
-        "prompt_version": "v1.0.0",
+        "prompt_version": "v2.0.0",
         "review_status": "approved",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": [2, 3],
@@ -1204,7 +1204,7 @@ def test_quality_check_detects_out_of_bounds_fracture_between_from_metadata_mapp
         "subvideo_id": "sub_bad",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_bad.mp4",
-        "prompt_version": "v1.0.0",
+        "prompt_version": "v2.0.0",
         "review_status": "approved",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": [4, 5],

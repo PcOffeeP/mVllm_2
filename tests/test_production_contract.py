@@ -5,7 +5,12 @@ from fractions import Fraction
 import pytest
 import yaml
 
-from pipeline.production_contract import CONTRACT_PATH, load_production_contract, production_contract_hash
+from pipeline.production_contract import (
+    CONTRACT_PATH,
+    PROMPT_LIBRARY_PATH,
+    load_production_contract,
+    production_contract_hash,
+)
 from pipeline.server_adapter import wrap_response
 from pipeline.server_proxy import _chat_model_args, _replace_video_url
 from pipeline.llamafactory_contract import CapturingVideoProcessor
@@ -28,17 +33,22 @@ def _processor_info() -> dict:
     }
 
 
-def test_prompt_library_production_section_matches_artifact():
-    library = yaml.safe_load((CONTRACT_PATH.parents[1] / "prompt_library.yaml").read_text(encoding="utf-8"))
-    production = library["production"]
+def test_production_contract_reads_the_two_canonical_prompts():
+    library = yaml.safe_load(PROMPT_LIBRARY_PATH.read_text(encoding="utf-8"))
     contract = load_production_contract()
-    assert production["version"] == contract["contract_version"]
-    for field in ("system_prompt", "user_prompt", "evidence_system_prompt", "evidence_user_prompt"):
-        assert production[field].strip() == contract[field]
+    for field in ("system_prompt", "user_prompt"):
+        assert library[field].strip() == contract[field]
+    assert "production" not in library
+    assert "experiments" not in library
+    assert "test" not in library
 
 
-def test_contract_hash_is_file_sha256():
-    assert production_contract_hash() == hashlib.sha256(CONTRACT_PATH.read_bytes()).hexdigest()
+def test_contract_hash_covers_contract_and_prompt_library():
+    digest = hashlib.sha256()
+    digest.update(CONTRACT_PATH.read_bytes())
+    digest.update(b"\0")
+    digest.update(PROMPT_LIBRARY_PATH.read_bytes())
+    assert production_contract_hash() == digest.hexdigest()
 
 
 def test_server_adapter_emits_matching_contract_identity():

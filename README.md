@@ -11,7 +11,7 @@
 - 识别未断裂、视频异常、未夹紧等特殊情况。
 - 输出严格的四字段 JSON，便于训练和评估解析。
 
-训练阶段只使用四字段 JSON；推理和评估可在相同 JSON 中增加 `confidence` 字段。
+训练、推理和评估统一使用四字段 JSON；`confidence` 不由 MiniCPM 单轮输出。
 
 ## 项目结构
 
@@ -19,14 +19,14 @@
 pipeline/
 ├── scripts/                  数据生成、审核、导出、质量检查
 ├── preprocessing/            视频帧处理与 MiniCPM processor 适配
-├── prompt_library.yaml       训练/推理共用的 prompt 模板库
+├── prompt_library.yaml       唯一 System/User Prompt 配置
 ├── server_proxy.py           同进程推理服务
 └── llamafactory_contract.py  帧数和处理器契约
 
 finetune/
 ├── train_with_contract.py    微调训练入口
 ├── MiniCPM/config/           训练与模型导出配置
-├── validation/               推理、评估、prompt 测试
+├── validation/               推理与评估
 └── dataset_info.json         LLaMA-Factory 数据集注册信息
 
 data/
@@ -123,8 +123,7 @@ python pipeline/scripts/training_sample_builder.py \
   --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
   --video-meta data/07_metadata/video_meta.json \
   --splits-dir data/05_splits \
-  --output-dir data/06_merged \
-  --seed 42
+  --output-dir data/06_merged
 
 # 检查帧索引是否超出子视频边界
 python scripts/validate_no_oob.py \
@@ -183,7 +182,9 @@ python -m finetune.validation.run_evaluation \
 
 ## 推理服务
 
-生产调用使用 `pipeline/contracts/tensile_vlm_v1.json` 中的固定四字段 Prompt 契约。先取得当前契约身份，并把输出写入部署 manifest 的同名字段：
+生产调用使用 `pipeline/prompt_library.yaml` 中唯一的 System/User Prompt，并遵循
+`pipeline/contracts/tensile_vlm_v1.json` 的四字段协议。先取得覆盖两者的契约
+身份，并把输出写入部署 manifest 的同名字段：
 
 ```bash
 python -m pipeline.production_contract
@@ -224,7 +225,8 @@ LLaMA-Factory 自带测试需要额外深度学习依赖，与项目数据流水
 - [Agent 工作说明](AGENTS.md)
 - [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)
 - [微调说明](finetune/README.md)
-- [Prompt 模板库](pipeline/prompt_library.yaml)
+- [最终 Prompt 策略](docs/FINAL_PROMPT_POLICY.md)
+- [唯一 Prompt 配置](pipeline/prompt_library.yaml)
 - [人工审核后的再生成与复标规则](docs/REVIEW_REGENERATION_RULES.md)
 - [视觉归因与 ROI 优化方向](docs/VISUAL_GROUNDING_AND_ROI_OPTIMIZATION.md)
 - [材料拉伸断裂行为分类指南](assets/frac_mode.md)

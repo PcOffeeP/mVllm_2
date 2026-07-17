@@ -23,11 +23,6 @@ LlamaFactory/saves/
 # 验证脚本输出
 finetune/validation/results/
 
-# Prompt / Visual Evidence 实验运行产物（整体同步或归档，不进入 Git 历史）
-finetune/results/prompt_sweep/prompt/
-finetune/results/prompt_sweep/evidence/
-finetune/results/prompt_sweep/logs/
-
 # dependency lock files (not cross-platform)
 uv.lock
 
