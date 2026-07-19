@@ -229,6 +229,9 @@ python -m pipeline.server_proxy \
 分析和视觉证据都通过 `POST /v1/chat/completions`。服务只接受 artifact 中的固定
 Prompt；analysis 非法输出由服务端最多重试两次，Agent 客户端不追加动态纠错文本。
 
+全量模型在训练机上的前台/后台启动、预检、真实视频冒烟、TensileAgent 接入、停止和
+故障排查见 [全量模型推理服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)。
+
 ## 测试
 
 ```bash
