@@ -65,7 +65,7 @@ def main() -> None:
     if raw_outputs is None:
         processor, model = load_model(args.model_dir)
 
-    for sample in samples:
+    for index, sample in enumerate(samples, start=1):
         if raw_outputs is None:
             if not sample.video_path.exists():
                 raw_output = ""
@@ -111,6 +111,10 @@ def main() -> None:
                 generated_token_count=generated_token_count,
                 hit_token_limit=hit_token_limit,
             )
+        )
+        print(
+            f"progress={index}/{len(samples)} sample_id={sample.sample_id}",
+            flush=True,
         )
 
     write_outputs(

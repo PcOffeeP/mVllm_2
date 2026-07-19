@@ -140,7 +140,7 @@ def _normalize_type(
         return None
 
     if has_fracture is True:
-        if raw_val in ALLOWED_FRACTURE_TYPES:
+        if isinstance(raw_val, str) and raw_val in ALLOWED_FRACTURE_TYPES:
             return raw_val
         repairs.append(
             f"type={raw_val!r} is not a valid fracture type; set to None"
@@ -148,7 +148,7 @@ def _normalize_type(
         return None
 
     if has_fracture is False:
-        if raw_val in ALLOWED_NON_FRACTURE_TYPES:
+        if isinstance(raw_val, str) and raw_val in ALLOWED_NON_FRACTURE_TYPES:
             return raw_val
         repairs.append(
             f"type={raw_val!r} is not a non-fracture type; set to '未断裂'"
@@ -172,7 +172,7 @@ def _normalize_location(
         return None
 
     if has_fracture is True:
-        if raw_val in ALLOWED_LOCATIONS:
+        if isinstance(raw_val, str) and raw_val in ALLOWED_LOCATIONS:
             return raw_val
         repairs.append(
             f"location={raw_val!r} is not a valid location; set to None"
@@ -349,17 +349,21 @@ def validate_structured_output(normalized: dict, frame_count: int) -> bool:
 
     # type consistency
     if hf is True:
-        if t is not None and t not in ALLOWED_FRACTURE_TYPES:
+        if t is not None and (
+            not isinstance(t, str) or t not in ALLOWED_FRACTURE_TYPES
+        ):
             return False
     elif hf is False:
-        if t not in ALLOWED_NON_FRACTURE_TYPES:
+        if not isinstance(t, str) or t not in ALLOWED_NON_FRACTURE_TYPES:
             return False
     else:  # None
         if t is not None:
             return False
 
     # location consistency
-    if loc is not None and loc not in ALLOWED_LOCATIONS:
+    if loc is not None and (
+        not isinstance(loc, str) or loc not in ALLOWED_LOCATIONS
+    ):
         return False
     if hf is False and loc is not None:
         return False

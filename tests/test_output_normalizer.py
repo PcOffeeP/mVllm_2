@@ -68,6 +68,33 @@ class TestNormalizeStructuredOutput:
         assert normalized["type"] is None
         assert any("type" in r for r in repairs)
 
+    @pytest.mark.parametrize("bad_value", [["韧性断裂"], {"value": "韧性断裂"}])
+    def test_true_non_scalar_type_and_location_are_repaired(self, bad_value) -> None:
+        raw = {
+            "has_fracture": True,
+            "fracture_between": [2, 3],
+            "type": bad_value,
+            "location": bad_value,
+        }
+        normalized, repairs = normalize_structured_output(raw, FRAME_COUNT)
+        assert normalized["type"] is None
+        assert normalized["location"] is None
+        assert any("type" in repair for repair in repairs)
+        assert any("location" in repair for repair in repairs)
+
+    def test_false_non_scalar_type_is_repaired(self) -> None:
+        normalized, repairs = normalize_structured_output(
+            {
+                "has_fracture": False,
+                "fracture_between": None,
+                "type": ["未断裂"],
+                "location": None,
+            },
+            FRAME_COUNT,
+        )
+        assert normalized["type"] == "未断裂"
+        assert any("type" in repair for repair in repairs)
+
     # --- has_fracture=True: out-of-range fracture_between set to None -------
 
     @pytest.mark.parametrize(
@@ -311,6 +338,17 @@ class TestValidateStructuredOutput:
             "type": "韧性断裂",
             "location": "inside_gauge",
         }
+        assert validate_structured_output(d, FRAME_COUNT) is False
+
+    @pytest.mark.parametrize("field", ["type", "location"])
+    def test_non_scalar_membership_field_returns_false(self, field: str) -> None:
+        d = {
+            "has_fracture": True,
+            "fracture_between": [2, 3],
+            "type": "韧性断裂",
+            "location": "inside_gauge",
+        }
+        d[field] = ["unexpected"]
         assert validate_structured_output(d, FRAME_COUNT) is False
 
 
