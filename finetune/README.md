@@ -61,6 +61,28 @@ llamafactory-cli export MiniCPM/config/merge_fold0.yaml
 中的 checkpoint 和 adapter 应保留在训练电脑；若同步结果到仓库，建议只归档配置、
 指标、日志与曲线，不提交大型 checkpoint 或模型权重。
 
+## 全量训练
+
+三折交叉验证完成后，将三个 fold 的 train 和 validation 六份文件合并，并按 `videos`
+去重。测试源视频和测试子视频不进入全量训练数据。数据由固定发布版本确定性生成到
+`finetune/generated/full_training/`，该目录保留在训练机但不提交 Git。
+
+从仓库根目录执行：
+
+```bash
+python finetune/prepare_full_training_dataset.py \
+  --release-dir data/08_training_ready/v2.0.0-1dab1e5e \
+  --output-dir finetune/generated/full_training/v2_0_0_1dab1e5e_20260719
+
+python finetune/run_full_training_pipeline.py --validate-only
+python finetune/run_full_training_pipeline.py
+```
+
+`--validate-only` 必须确认三折交叉验证汇总、全量数据 provenance/hash、训练配置和输出
+目录均有效。正式流水线会依次使用 `MiniCPM/config/train_full.yaml` 训练、使用
+`MiniCPM/config/merge_full.yaml` 合并，并在隔离的 `test` 与 `test_subvideos` 上做最终
+评测。若目标训练目录、merged 目录或评测目录存在但产物不完整，流水线会拒绝覆盖。
+
 ## 准备测试数据
 
 测试数据有两条独立链路，都以 `data/05_splits/test.json` 为边界，但不共用子视频 metadata：
