@@ -51,6 +51,8 @@ nvidia-smi
 cd '/home/liuyang/文档/mVllm_2'
 
 export CUDA_VISIBLE_DEVICES=0
+export DISABLE_VERSION_CHECK=1
+export PYTHONPATH="$PWD/LlamaFactory/src:$PWD"
 export API_KEY='替换为随机长字符串'
 
 /home/liuyang/miniconda3/envs/cpm45/bin/python \
@@ -83,6 +85,8 @@ tmux new-session -d -s tensile-vlm \
   "cd '/home/liuyang/文档/mVllm_2' && \
    set -a && source finetune/run_logs/tensile_vlm_service.env && set +a && \
    export CUDA_VISIBLE_DEVICES=0 && \
+   export DISABLE_VERSION_CHECK=1 && \
+   export PYTHONPATH='/home/liuyang/文档/mVllm_2/LlamaFactory/src:/home/liuyang/文档/mVllm_2' && \
    exec /home/liuyang/miniconda3/envs/cpm45/bin/python \
    -m pipeline.server_proxy \
    --model LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged \
@@ -187,6 +191,9 @@ nvidia-smi
 - 预检 `401`：客户端没有使用与服务端一致的 `API_KEY`。
 - 预检 `422`：运行代码过旧或路由注入异常，先检查 Git 是否位于最新主线。
 - 启动时报 manifest 字段错误：不要删除字段；重新基于当前模型生成完整 10 字段配置。
+- 报告 `datasets>=2.16.0,<=4.0.0` 或导入了旧仓库的 LLaMA-Factory：确认已设置
+  `DISABLE_VERSION_CHECK=1`，且 `PYTHONPATH` 的第一项是当前仓库的
+  `LlamaFactory/src`。
 - CUDA OOM：确认没有训练/评测进程占卡；停止旧服务后再启动。
 - 请求 `422`：视频必须是一个 Base64 `video/mp4`，Prompt 必须与契约逐字一致。
 - 请求 `500`：查看 `finetune/run_logs/tensile_vlm_service.log`，同时检查模型加载日志、
