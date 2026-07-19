@@ -67,3 +67,45 @@ def test_run_freeze_accepts_provided_reviewed_meta(tmp_path):
 
     assert lock["version"] == "2.0.0"
     assert lock_path.exists()
+
+
+def test_sample_manifest_ignores_stale_subvideo_eval_artifacts(tmp_path):
+    merged = tmp_path / "data" / "06_merged"
+    merged.mkdir(parents=True)
+    for name in (
+        "fold_0_train.json",
+        "samples_meta.json",
+        "test_inputs.json",
+        "test_subvideo_inputs.json",
+        "test_subvideo_ground_truth.json",
+    ):
+        (merged / name).write_text("[]", encoding="utf-8")
+
+    manifest = freeze_data_version._collect_sample_manifest_sha256(merged)
+
+    assert manifest["count"] == 3
+    assert manifest["files"] == [
+        "fold_0_train.json",
+        "samples_meta.json",
+        "test_inputs.json",
+    ]
+
+
+def test_processor_fingerprints_ignore_subvideo_eval_artifacts(tmp_path):
+    merged = tmp_path / "data" / "06_merged"
+    merged.mkdir(parents=True)
+    (merged / "test_subvideo_inputs.json").write_text(
+        json.dumps([{"processor_fingerprint": "stale:absolute-path"}]),
+        encoding="utf-8",
+    )
+    reviewed_meta = tmp_path / "reviewed.json"
+    reviewed_meta.write_text(
+        json.dumps({"subvideos": [{"processor_fingerprint": "current:relative-path"}]}),
+        encoding="utf-8",
+    )
+
+    result = freeze_data_version._collect_processor_fingerprints(
+        merged, reviewed_meta
+    )
+
+    assert result["fingerprints"] == {"current:relative-path": 1}

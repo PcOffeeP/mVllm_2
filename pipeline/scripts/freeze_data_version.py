@@ -95,7 +95,12 @@ def _collect_split_manifest_sha256(splits_dir: Path) -> dict[str, Any]:
 def _collect_sample_manifest_sha256(merged_dir: Path) -> dict[str, Any]:
     if not merged_dir.exists():
         return {"count": 0, "sha256": None, "error": "merged directory not found"}
-    paths = [p for p in merged_dir.glob("*.json") if p.name != "test_ground_truth.json"]
+    expected_names = {
+        *(f"fold_{fold}_{split}.json" for fold in range(3) for split in ("train", "val")),
+        "samples_meta.json",
+        "test_inputs.json",
+    }
+    paths = [merged_dir / name for name in expected_names if (merged_dir / name).exists()]
     names = sorted(p.name for p in paths)
     return {
         "count": len(paths),
@@ -109,9 +114,12 @@ def _collect_processor_fingerprints(merged_dir: Path, subvideos_meta_path: Path)
     fingerprints: list[str] = []
 
     if merged_dir.exists():
-        for path in sorted(merged_dir.glob("*.json")):
-            if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-                continue
+        train_paths = (
+            merged_dir / f"fold_{fold}_{split}.json"
+            for fold in range(3)
+            for split in ("train", "val")
+        )
+        for path in sorted(path for path in train_paths if path.exists()):
             data = _load_json(path)
             if not isinstance(data, list):
                 continue

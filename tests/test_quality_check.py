@@ -73,6 +73,48 @@ def test_pure_sharegpt_sample_contract_accepts_json_only(tmp_path):
     assert errors == []
 
 
+def test_quality_check_accepts_v1_video_anomaly_contract(tmp_path):
+    """V1 协议规定 null 判定必须输出“视频异常”，其余字段为 null。"""
+    merged = _make_merged_dir(tmp_path)
+    sample = {
+        "videos": ["data/03_subvideos/sub.mp4"],
+        "messages": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "<video>"},
+            {
+                "role": "assistant",
+                "content": '{"has_fracture":null,"fracture_between":null,"type":"视频异常","location":null}',
+            },
+        ],
+    }
+    _write_train_file(merged, [sample])
+    errors: list[dict] = []
+    warnings: list[dict] = []
+
+    quality_check._validate_assistant_targets(merged, errors, warnings)
+
+    assert errors == []
+    assert warnings == []
+
+
+def test_quality_check_ignores_non_training_json_artifacts(tmp_path):
+    """评测输入和答案不是 ShareGPT 训练样本，不应套用训练 schema。"""
+    merged = _make_merged_dir(tmp_path)
+    (merged / "test_subvideo_inputs.json").write_text(
+        json.dumps([{"id": "eval-1", "video_path": "data/03_subvideos/eval.mp4"}]),
+        encoding="utf-8",
+    )
+    (merged / "test_subvideo_ground_truth.json").write_text(
+        json.dumps([{"id": "eval-1", "has_fracture": False}]),
+        encoding="utf-8",
+    )
+    errors: list[dict] = []
+
+    quality_check._validate_assistant_targets(merged, errors, [])
+
+    assert errors == []
+
+
 def test_quality_check_defaults_to_label_reviewed_meta():
     default = inspect.signature(
         quality_check.run_quality_check

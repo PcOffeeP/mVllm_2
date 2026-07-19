@@ -54,15 +54,20 @@ FRACTURE_TYPES = {
     "脆性断裂、齐根断裂",
 }
 NON_FRACTURE_TYPES = {"未断裂", "未夹紧"}
-ALL_TYPES = FRACTURE_TYPES | NON_FRACTURE_TYPES
+VIDEO_ANOMALY_TYPE = "视频异常"
+ALL_TYPES = FRACTURE_TYPES | NON_FRACTURE_TYPES | {VIDEO_ANOMALY_TYPE}
 STATUS_DROPPED = "dropped"
+TRAIN_SPLIT_FILENAMES = tuple(
+    f"fold_{fold}_{split}.json"
+    for fold in range(3)
+    for split in ("train", "val")
+)
 
-# 合法字段组合规则（v2）：从枚举式改为规则式
+# 合法字段组合规则（当前 V1 输出协议）：从枚举式改为规则式
 # - has_fracture=True → 各字段独立校验：fracture_between 可为 null 或相邻对，
 #   type 可为 null 或断裂类型，location 可为 null 或合法位置
 # - has_fracture=False → fracture_between=null, location=null, type∈{"未断裂","未夹紧"}
-# - has_fracture=null → 全 null
-# 旧格式中 "视频异常" 已被移除（用 null 替代）；仍出现的旧数据会被兼容性检查记录。
+# - has_fracture=null → type="视频异常"，其余字段为 null
 
 TARGET_SCHEMA_KEYS = {"has_fracture", "fracture_between", "type", "location"}
 
@@ -86,6 +91,15 @@ def _load_json(path: Path) -> Any:
     if not path.exists():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _iter_train_split_paths(merged_dir: Path):
+    """只返回本轮正式的三折训练/验证 ShareGPT 文件。"""
+    return (
+        merged_dir / name
+        for name in TRAIN_SPLIT_FILENAMES
+        if (merged_dir / name).exists()
+    )
 
 
 def _load_prompt_library(path: Path) -> dict[str, Any]:
@@ -245,12 +259,12 @@ def _video_path_key(value: Any) -> str | None:
 
 
 def _matches_legal_combination(output: dict[str, Any]) -> bool:
-    """规则式检查四字段结果区组合是否合法（v2 协议）。
+    """规则式检查四字段结果区组合是否合法（当前 V1 协议）。
 
     规则：
     - has_fracture=True  → 各次要字段独立校验，不做交叉约束
     - has_fracture=False → fracture_between=null, location=null, type∈{"未断裂","未夹紧"}
-    - has_fracture=None  → 全 null
+    - has_fracture=None  → type="视频异常"，其余字段为 null
     """
     hf = output.get("has_fracture")
     fb = output.get("fracture_between")
@@ -281,7 +295,7 @@ def _matches_legal_combination(output: dict[str, Any]) -> bool:
     if hf is None:
         if fb is not None:
             return False
-        if ftype is not None:
+        if ftype != VIDEO_ANOMALY_TYPE:
             return False
         if loc is not None:
             return False
@@ -299,9 +313,7 @@ def _validate_media_paths(
     project_root: Path,
 ) -> None:
     checked: set[str] = set()
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
+    for path in _iter_train_split_paths(merged_dir):
         data = _load_json(path)
         if not isinstance(data, list):
             continue
@@ -372,9 +384,7 @@ def _validate_assistant_targets(
     warnings: list[dict[str, Any]],
 ) -> None:
     """检查 LlamaFactory 样本仅含 messages/videos，target 为严格四字段 JSON。"""
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
+    for path in _iter_train_split_paths(merged_dir):
         data = _load_json(path)
         if not isinstance(data, list):
             continue
@@ -483,20 +493,6 @@ def _validate_assistant_targets(
                     }
                 )
 
-            # 兼容性检查：旧格式 "视频异常" 已被 null 替代
-            if output.get("type") == "视频异常":
-                warnings.append(
-                    {
-                        "check": "legacy_format",
-                        "file": path.name,
-                        "id": _sample_id(sample),
-                        "detail": "deprecated_type_value_video_anomaly",
-                        "value": "视频异常",
-                        "replacement": "null",
-                        "output": output,
-                    }
-                )
-
             ftype = output.get("type")
             if ftype is not None and ftype not in ALL_TYPES:
                 errors.append(
@@ -521,9 +517,7 @@ def _validate_fracture_between(
         for sub in reviewed_subvideos or []
         if _video_path_key(sub.get("video_path")) is not None
     }
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
+    for path in _iter_train_split_paths(merged_dir):
         data = _load_json(path)
         if not isinstance(data, list):
             continue
@@ -624,9 +618,7 @@ def _validate_prompt_version_consistency(
         return
 
     # 没有 samples_meta.json 时按样本检查，metadata.prompt_version 优先于顶层
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
+    for path in _iter_train_split_paths(merged_dir):
         data = _load_json(path)
         if not isinstance(data, list):
             continue
@@ -687,9 +679,7 @@ def _validate_processor_fingerprints(
     missing_fingerprints: list[str] = []
 
     # 1. 扫描 merged JSON（若其中仍保留 fingerprint 字段）
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
+    for path in _iter_train_split_paths(merged_dir):
         data = _load_json(path)
         if not isinstance(data, list):
             continue
@@ -1041,9 +1031,7 @@ def _validate_no_cross_split_leakage(
     warnings: list[dict[str, Any]],
 ) -> None:
     split_sources: dict[str, set[str]] = defaultdict(set)
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
+    for path in _iter_train_split_paths(merged_dir):
         data = _load_json(path)
         if not isinstance(data, list):
             continue
@@ -1115,9 +1103,7 @@ def _validate_review_status(
             if video_path:
                 review_status_by_video[video_path] = sub.get("review_status")
 
-    for path in sorted(merged_dir.glob("*.json")):
-        if path.name in {"samples_meta.json", "test_inputs.json", "test_ground_truth.json"}:
-            continue
+    for path in _iter_train_split_paths(merged_dir):
         if not (path.stem.endswith("_train") or path.stem.endswith("_val")):
             continue
         data = _load_json(path)
