@@ -21,15 +21,39 @@ flowchart TD
   L --> M["版本化发布到 08_training_ready"]
 ```
 
-## 最终交付物
+## 目录状态与消费边界
 
-| 文件 | 用途 | 不可替代 |
-| --- | --- | --- |
-| `data/07_metadata/subvideos_meta.label_reviewed.json` | 人工审核与标签修正后的权威基线 | 不能用原始 `subvideos_meta.json` 或 `.reviewed.json` 替代 |
-| `data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json` | 本轮在权威基线上筛选 `neg_before` 后的正式训练输入 | 必须由 `filter_reviewed_neg_before.py` 生成，不能手工删改 |
-| `data/06_merged/` | 待发布的训练/验证 ShareGPT 样本、测试输入和统计 | 这是构建工作区，不应直接作为训练入口 |
-| `data/07_metadata/data_version_lock.json` | 冻结本次训练数据的文件、划分和版本证据 | 不能在训练后静默修改其上游输入 |
-| `data/08_training_ready/<release_id>/` | 通过质量门、按用途分类且带逐文件哈希的训练交付物 | 正式训练只使用这里的已激活版本 |
+数据流程分为“处理工作区”和“已发布版本”两层。目录编号表示处理阶段，不代表目录中的
+每个文件都可以直接训练。
+
+| 目录 | 状态 | 谁写入 | 是否可直接训练/评估 |
+| --- | --- | --- | --- |
+| `data/03_subvideos/`–`data/05_splits/` | 生成与划分工作区 | 生成、划分脚本 | 否 |
+| `data/06_merged/` | 待发布构建工作区 | 训练/测试样本生成脚本 | 否 |
+| `data/07_metadata/` | 审核、检查、冻结过程证据 | 审核和质量门脚本 | 否 |
+| `data/08_training_ready/<release_id>/` | 不可覆盖的已发布版本 | 仅 `publish_training_release.py` | 是，但必须是当前激活版本 |
+
+必须明确以下行为：
+
+- 步骤 1–7 **不会**生成或更新 `08_training_ready`。
+- 只有步骤 8 的 `publish_training_release.py` 会创建新的 `08_training_ready/<release_id>`。
+- 在新一轮数据仍处于步骤 1–7 时，训练和本地评估继续指向上一次激活的发布版本，不会
+  误读尚未完成的 `06_merged`。
+- `--activate` 只在发布成功后切换
+  `finetune/dataset_info.json` 和 `finetune/active_data_release.json`。
+- `scripts/clear_data_outputs.py` 不清理 `08_training_ready`；旧发布版本作为历史训练证据
+  保留。
+
+## 关键产物及其身份
+
+| 文件 | 身份 | 用途 | 限制 |
+| --- | --- | --- | --- |
+| `data/07_metadata/subvideos_meta.label_reviewed.json` | 工作区权威审核基线 | 保存完整人工审核与标签修正结果 | 不能用原始或 `.reviewed.json` 替代 |
+| `data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json` | 工作区发布输入 | 本轮筛选后的训练级 metadata | 不能手工删改；尚不能直接训练 |
+| `data/06_merged/` | 工作区发布输入 | 六个 fold、两类测试文件和统计 | 不能作为训练或评估入口 |
+| `data/07_metadata/quality_check_report.json` | 发布门证据 | 证明选定工作区通过质量检查 | `error_count` 必须为 0 |
+| `data/07_metadata/data_version_lock.json` | 发布门证据 | 冻结输入、划分和样本清单哈希 | 冻结后不得再修改上游文件 |
+| `data/08_training_ready/<release_id>/` | 最终交付物 | 分类后的训练、验证、评估、metadata 和 manifest | 不可覆盖；正式消费只读已激活版本 |
 
 ## 端到端执行顺序
 
@@ -45,6 +69,17 @@ flowchart TD
 | 8 | `data/08_training_ready/<release_id>/` | 分类、校验并原子发布训练版本 | 训练与评测 |
 
 命令中的默认输入/输出路径已写入脚本默认值，正常流程不需要重复传入。只有随复审轮次变化的中间产物需要指定 `--round round_XX`。
+
+### 下一轮数据处理时的正常行为
+
+1. 开始处理前记录 `finetune/active_data_release.json`；它是当前仍可训练的旧版本。
+2. 按实际需要执行步骤 1–6。增量复审不应为图省事清空整个工作区。
+3. 步骤 7 可以重建或覆盖 `06_merged` 和本轮 `07_metadata` 报告，但不会影响旧的
+   `08_training_ready`。
+4. 步骤 7 四个命令全部成功后，才能执行步骤 8。
+5. 步骤 8 成功后会新增一个发布目录；带 `--activate` 时才把训练和评估切到新版本。
+6. 新版本激活后再开始训练。不要在步骤 1–7 期间手工改
+   `finetune/dataset_info.json` 指向工作区。
 
 ### 步骤 1：规范源标签并冻结划分
 
@@ -259,19 +294,37 @@ python pipeline/scripts/freeze_data_version.py \
 任一步失败都不能发布。修复后从失败步骤的上游重新执行，避免使用部分覆盖的
 `data/06_merged/`。
 
+**此时不会出现新的 `data/08_training_ready/<release_id>/`。** 质量检查通过和版本
+冻结只说明工作区具备发布资格，不能省略步骤 8，也不能直接启动训练。
+
 ### 步骤 8：发布并激活唯一训练版本
+
+**输入**：
+
+- `data/06_merged/`
+- `data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json`
+- `data/07_metadata/quality_check_report.json`
+- `data/07_metadata/data_version_lock.json`
 
 ```bash
 python pipeline/scripts/publish_training_release.py --activate
 ```
 
-默认版本名由 `data_version_lock.json` 的版本号和样本清单 SHA-256 前八位组成。发布器会：
+**输出**：
+
+- 新目录 `data/08_training_ready/<release_id>/`
+- 更新后的 `finetune/dataset_info.json`
+- 更新后的 `finetune/active_data_release.json`
+
+默认版本名由 `data_version_lock.json` 的版本号和样本清单 SHA-256 前八位组成，例如
+`v2.0.0-1dab1e5e`。发布器会：
 
 1. 确认质量报告 `error_count == 0`。
-2. 确认 `data/06_merged/` 与版本锁中的样本哈希一致。
-3. 要求六个 fold 文件完整，并要求每组评估输入和真值成对存在。
-4. 将最终文件分类复制到临时目录、逐文件校验 SHA-256，再原子改名。
-5. 拒绝覆盖同名版本；`--activate` 同步更新训练注册表和本地评估版本指针。
+2. 确认质量报告对应当前选择的 `06_merged` 和正式训练 metadata。
+3. 确认 `data/06_merged/` 与版本锁中的样本哈希一致。
+4. 要求六个 fold 文件完整，并要求每组评估输入和真值成对存在。
+5. 将最终文件分类复制到临时目录、逐文件校验 SHA-256，再原子改名。
+6. 拒绝覆盖同名版本；`--activate` 同步更新训练注册表和本地评估版本指针。
 
 发布目录的分类如下：
 
@@ -285,8 +338,55 @@ data/08_training_ready/<release_id>/
 └── manifest/                  版本锁与逐文件用途/hash 清单
 ```
 
+发布时的固定映射如下：
+
+| 工作区来源 | 发布后路径 | 正式用途 |
+| --- | --- | --- |
+| `06_merged/fold_N_train.json` | `datasets/train/fold_N.json` | fold N 训练 |
+| `06_merged/fold_N_val.json` | `datasets/validation/fold_N.json` | fold N 训练期验证和独立复核 |
+| `06_merged/test_inputs.json` | `datasets/evaluation/source_videos/inputs.json` | 源视频测试输入 |
+| `06_merged/test_ground_truth.json` | `datasets/evaluation/source_videos/ground_truth.json` | 源视频测试真值 |
+| `06_merged/test_subvideo_inputs.json` | `datasets/evaluation/subvideos/inputs.json` | 子视频测试输入 |
+| `06_merged/test_subvideo_ground_truth.json` | `datasets/evaluation/subvideos/ground_truth.json` | 子视频测试真值 |
+| `07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json` | `metadata/training_subvideos.json` | 发布版本的训练 metadata 与追溯证据 |
+| `06_merged/samples_meta.json` | `reports/sample_statistics.json` | 样本数量和分布统计 |
+| `07_metadata/quality_check_report.json` | `reports/quality_check.json` | 发布时质量门结果 |
+| `07_metadata/data_version_lock.json` | `manifest/data_version_lock.json` | 上游冻结证据 |
+| 发布脚本生成 | `manifest/release_manifest.json` | 文件用途、来源、大小与 SHA-256 |
+
 `data/06_merged/` 和 `data/07_metadata/` 保留为处理工作区与过程证据，不移动、不删除。
 当前激活版本记录在 `finetune/active_data_release.json`。
+
+#### 发布后的确认
+
+```bash
+cat finetune/active_data_release.json
+python -m json.tool \
+  data/08_training_ready/<release_id>/manifest/release_manifest.json
+```
+
+确认以下项目后才能训练：
+
+- `active_data_release.json` 中的 `release_id` 是本轮新版本。
+- manifest 的 `status` 为 `training_ready`、`immutable` 为 `true`。
+- manifest 的 `quality.error_count` 为 `0`。
+- `finetune/dataset_info.json` 六个数据集均指向同一个新版本目录。
+
+#### 重复版本和失败恢复
+
+- 若提示“release already exists”，表示默认 `release_id` 已存在。通常说明训练样本没有
+  变化，应停止并检查 `data_version_lock.json`，不要删除旧版本或强制覆盖。
+- 如果确有意发布一个样本哈希相同、但评估或正式 metadata 有计划变更的版本，可在确认
+  原因后显式使用 `--release-id <有意义的新版本名>`；仍然不能覆盖已有目录。
+- 如果目录已经发布成功，但 `--activate` 阶段失败，修复配置问题后单独激活：
+
+```bash
+python pipeline/scripts/publish_training_release.py \
+  --activate-existing <release_id>
+```
+
+- 如需临时回退到历史发布版本，也使用 `--activate-existing <旧 release_id>`，不复制、
+  不修改该版本中的文件。
 
 ## 训练与验收边界
 
@@ -309,3 +409,6 @@ python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2
 - 对重生成媒体不要省略 `--interval-verification-video-meta` 和对应 `--interval-mapping-override`。
 - 不要把被 `interval_verification` 转为 `dropped` 的样本重新塞回训练。若要恢复，先在源视频确认事件帧，再重新生成、增量审核和合并。
 - 不要用源视频旧标签静默覆盖人工确认过的普通标签。
+- 不要让训练或评估直接读取 `data/06_merged/`。
+- 不要手工覆盖或修改 `data/08_training_ready/<release_id>/` 中的文件。
+- 不要在步骤 7 未全部通过时运行发布脚本，也不要省略 `--activate` 后的版本确认。

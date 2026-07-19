@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""独立校验脚本：扫描 data/06_merged 与 07_metadata，验证新 interval 数据产物合规性。"""
+"""发布前校验：扫描 06_merged 工作区与 07_metadata，验证 interval 产物合规性。
+
+校验成功不会生成或激活 08_training_ready；仍需继续执行质量检查、版本冻结和发布。
+"""
 from __future__ import annotations
 
 import json

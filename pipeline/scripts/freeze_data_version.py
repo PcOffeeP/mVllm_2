@@ -2,7 +2,9 @@
 """数据版本冻结脚本。
 
 收集代码 commit、配置哈希、处理器指纹、输入/划分/样本清单哈希、统计报告与
-磁盘占用，输出 ``data/07_metadata/data_version_lock.json``。
+磁盘占用，输出 ``data/07_metadata/data_version_lock.json``。冻结只锁定
+``06_merged`` 工作区，不会自动发布或切换训练版本；下一步必须运行
+``publish_training_release.py --activate``。
 """
 from __future__ import annotations
 

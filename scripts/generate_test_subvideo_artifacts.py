@@ -17,6 +17,10 @@ This script integrates with the review UI workflow:
 6. When review information is present, ``review_status`` and
    ``reviewer_notes`` are preserved in the ground truth file for
    downstream evaluation analysis.
+7. Outputs are written to the ``data/06_merged`` build workspace. They become
+   formal evaluation artifacts only after quality checking, freezing, and
+   ``publish_training_release.py --activate`` copies them into
+   ``data/08_training_ready/<release_id>/datasets/evaluation/subvideos``.
 
 If the chosen metadata file does not exist, the script falls back to
 regenerating subvideos from ``video_meta.json`` (legacy behavior) and

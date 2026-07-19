@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Publish validated pipeline outputs as an immutable training-data release."""
+"""Publish validated pipeline outputs as an immutable training-data release.
+
+This is the only normal data-flow step that writes ``data/08_training_ready``.
+Steps that build, validate, or freeze ``06_merged`` do not publish automatically.
+"""
 
 from __future__ import annotations
 
@@ -408,7 +412,29 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="发布成功后，将训练和本地评估配置切换到该版本",
     )
+    parser.add_argument(
+        "--activate-existing",
+        metavar="RELEASE_ID",
+        help="不重新发布，只激活 08_training_ready 下已存在的指定版本",
+    )
     args = parser.parse_args(argv)
+
+    if args.activate and args.activate_existing:
+        parser.error("--activate 和 --activate-existing 不能同时使用")
+
+    if args.activate_existing:
+        try:
+            _validate_release_id(args.activate_existing)
+            release_dir = args.releases_dir / args.activate_existing
+            activate_release(release_dir)
+            manifest = _read_json(release_dir / "manifest" / "release_manifest.json")
+        except ReleaseError as exc:
+            print(f"激活失败: {exc}", file=sys.stderr)
+            return 1
+        print(f"训练数据版本已激活: {release_dir}")
+        print(f"  release_id: {manifest['release_id']}")
+        print("  active: true")
+        return 0
 
     try:
         release_dir, manifest = publish_release(

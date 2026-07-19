@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """数据产物质量校验脚本。
 
-读取 ``data/06_merged/`` 下的训练/验证/测试产物，执行强制检查并输出
-``data/07_metadata/quality_check_report.json``。
+读取构建工作区 ``data/06_merged/`` 下的训练/验证/测试产物，执行发布前强制检查并
+输出 ``data/07_metadata/quality_check_report.json``。检查通过只表示产物具备发布
+资格，不会自动生成 ``data/08_training_ready/``；随后仍需运行
+``publish_training_release.py --activate``。
 
 当前检查项：
 - 媒体路径存在性

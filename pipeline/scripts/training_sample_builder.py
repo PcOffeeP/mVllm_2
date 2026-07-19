@@ -6,6 +6,9 @@
 默认将 ``data/07_metadata/subvideos_meta.label_reviewed.json`` 中的复检后
 子视频元数据转换为 LLaMA-Factory ShareGPT 格式的多模态训练样本，并按
 ``data/05_splits/`` 中的 video_id 集合分组输出到 ``data/06_merged/``。
+``06_merged`` 是待校验、待冻结、待发布的构建工作区，不是正式训练入口；完整质量门
+通过后必须再运行 ``publish_training_release.py --activate``，正式训练只读取
+``data/08_training_ready/<release_id>/``。
 
 训练 assistant target 为一个严格的四字段 JSON 对象：
     {"has_fracture": ..., "fracture_between": ..., "type": ..., "location": ...}

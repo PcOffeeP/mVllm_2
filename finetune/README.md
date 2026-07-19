@@ -18,7 +18,22 @@ pip install -r requirements/minicpm-v.txt
 
 从 `finetune/` 运行。必须使用 `train_with_contract.py`，它会安装 MiniCPM 的 8 帧处理器约束。
 `dataset_info.json` 只指向 `data/08_training_ready/` 中当前激活的发布版本；
-版本身份见 `active_data_release.json`。不要直接把 `data/06_merged/` 配置为训练入口。
+版本身份见 `active_data_release.json`。这两个文件由
+`publish_training_release.py --activate` 同步维护，不要手工把
+`data/06_merged/` 配置为训练入口。
+
+训练前从仓库根目录确认当前版本：
+
+```bash
+cat finetune/active_data_release.json
+python -m json.tool \
+  data/08_training_ready/<release_id>/manifest/release_manifest.json
+```
+
+必须确认 manifest 的 `status` 为 `training_ready`、`quality.error_count` 为 `0`，并且
+`dataset_info.json` 中六个数据集指向同一个 `release_id`。若当前版本不正确，使用
+`python pipeline/scripts/publish_training_release.py --activate-existing <release_id>`
+切换，不要修改发布目录中的文件。
 
 ```bash
 cd finetune

@@ -154,7 +154,20 @@ python pipeline/scripts/publish_training_release.py --activate
 
 `03`–`07` 都属于数据处理工作区。只有
 `data/08_training_ready/<release_id>/` 中状态为 `training_ready` 的版本可供正式训练；
-当前版本记录在 `finetune/active_data_release.json`。各脚本支持 `--help` 查看参数。
+当前版本记录在 `finetune/active_data_release.json`。
+
+特别注意：前面的构建、校验和冻结命令不会自动写入 `08_training_ready`。每一轮数据处理
+都必须显式执行最后的发布命令；只有带 `--activate` 发布成功后，训练和评估才会切换到
+新版本。旧发布版本不会被覆盖，`scripts/clear_data_outputs.py` 也不会删除它们。若只需
+重新激活一个已经存在的版本：
+
+```bash
+python pipeline/scripts/publish_training_release.py \
+  --activate-existing <release_id>
+```
+
+各脚本支持 `--help` 查看参数。完整的下一轮运行顺序、重复版本处理和失败恢复规则见
+[数据处理运行手册](docs/DATA_PROCESSING_RUNBOOK.md)。
 
 ### 4. 训练模型
 

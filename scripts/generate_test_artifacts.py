@@ -2,7 +2,9 @@
 """生成 test split 的测试输入与 ground truth 文件，供基座模型独立测试使用。
 
 读取 data/05_splits/test.json + data/07_metadata/video_meta.json，
-输出 data/06_merged/test_inputs.json 与 test_ground_truth.json（标准 JSON 数组格式）。
+输出到构建工作区 data/06_merged/test_inputs.json 与 test_ground_truth.json
+（标准 JSON 数组格式）。这些文件经质量检查、冻结和发布后，才进入
+data/08_training_ready/<release_id>/datasets/evaluation/source_videos/。
 完全独立于 subvideos_meta.json，不依赖子视频生成管线。
 """
 from __future__ import annotations
