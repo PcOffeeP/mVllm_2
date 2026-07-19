@@ -272,6 +272,31 @@ def test_quality_check_rejects_unreviewed_meta(tmp_path, monkeypatch):
     )
 
 
+def test_quality_check_accepts_label_reviewed_derived_meta(tmp_path, monkeypatch):
+    merged = _make_merged_dir(tmp_path)
+    meta = (
+        tmp_path
+        / "data"
+        / "07_metadata"
+        / "subvideos_meta.filtered_neg_before.label_reviewed.json"
+    )
+    _write_meta(meta, {"subvideos": [_reviewed_sub(True), _reviewed_sub(False)]})
+    monkeypatch.setattr(quality_check, "_validate_train_ratios", lambda *args: None)
+
+    errors, _warnings, _summary = quality_check.run_quality_check(
+        merged_dir=merged,
+        subvideos_meta_path=meta,
+        report_path=tmp_path / "report.json",
+        project_root=tmp_path,
+    )
+
+    assert not any(
+        e["check"] == "reviewed_ratio"
+        and e["detail"] == "unreviewed_metadata_rejected"
+        for e in errors
+    )
+
+
 def test_quality_check_allows_unreviewed_meta_when_opt_in(tmp_path, monkeypatch):
     merged = _make_merged_dir(tmp_path)
     meta = tmp_path / "data" / "07_metadata" / "subvideos_meta.json"
@@ -531,7 +556,7 @@ def test_quality_check_single_error_for_corrupt_meta(tmp_path, monkeypatch):
     assert len(reviewed_metadata_errors) == 1
 
 
-def _make_sample(sid: str, content: str, prompt_version: str = "v2.0.0") -> dict:
+def _make_sample(sid: str, content: str, prompt_version: str = "v2.1.0") -> dict:
     return {
         "id": sid,
         "videos": [f"data/03_subvideos/{sid}.mp4"],
@@ -984,7 +1009,7 @@ def test_quality_check_reads_prompt_version_from_sample_metadata(tmp_path, monke
         "subvideo_id": "sub_ok",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_ok.mp4",
-        "prompt_version": "v2.0.0",
+        "prompt_version": "v2.1.0",
         "review_status": "approved",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": None,
@@ -1024,12 +1049,12 @@ def test_quality_check_rejects_metadata_review_status_overriding_authoritative(
             {"role": "user", "content": "<video>"},
             {"role": "assistant", "content": '判断依据：x\n结果：{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'},
         ],
-        "prompt_version": "v2.0.0",
+        "prompt_version": "v2.1.0",
         "metadata": {
             "subvideo_id": "sub_ok",
             "source_video": "video_0001",
             "video_path": "data/03_subvideos/sub_ok.mp4",
-            "prompt_version": "v2.0.0",
+            "prompt_version": "v2.1.0",
             "review_status": "approved",
             "reviewed_at": "2026-07-09T12:00:00+00:00",
             "fracture_between": None,
@@ -1106,7 +1131,7 @@ def test_quality_check_fallback_to_reviewed_meta_when_metadata_missing_review_st
         "subvideo_id": "sub_ok",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_ok.mp4",
-        "prompt_version": "v2.0.0",
+        "prompt_version": "v2.1.0",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": None,
         "location_canonical": None,
@@ -1156,7 +1181,7 @@ def test_quality_check_uses_actual_frame_mapping_from_metadata_for_boundary_chec
         "subvideo_id": "sub_pos",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_pos.mp4",
-        "prompt_version": "v2.0.0",
+        "prompt_version": "v2.1.0",
         "review_status": "approved",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": [2, 3],
@@ -1204,7 +1229,7 @@ def test_quality_check_detects_out_of_bounds_fracture_between_from_metadata_mapp
         "subvideo_id": "sub_bad",
         "source_video": "video_0001",
         "video_path": "data/03_subvideos/sub_bad.mp4",
-        "prompt_version": "v2.0.0",
+        "prompt_version": "v2.1.0",
         "review_status": "approved",
         "reviewed_at": "2026-07-09T12:00:00+00:00",
         "fracture_between": [4, 5],

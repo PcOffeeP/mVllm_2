@@ -16,14 +16,16 @@ flowchart TD
   G --> H["审计"]
   H --> I["应用决策并验证修改过的断裂区间"]
   I --> J["label_reviewed metadata"]
-  J --> K["训练样本 + 质量检查 + 版本冻结"]
+  J --> K["审核后 neg_before 筛选"]
+  K --> L["训练样本 + 质量检查 + 版本冻结"]
 ```
 
 ## 最终交付物
 
 | 文件 | 用途 | 不可替代 |
 | --- | --- | --- |
-| `data/07_metadata/subvideos_meta.label_reviewed.json` | 唯一允许输入训练样本导出的子视频 metadata | 不能用原始 `subvideos_meta.json` 或 `.reviewed.json` 替代 |
+| `data/07_metadata/subvideos_meta.label_reviewed.json` | 人工审核与标签修正后的权威基线 | 不能用原始 `subvideos_meta.json` 或 `.reviewed.json` 替代 |
+| `data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json` | 本轮在权威基线上筛选 `neg_before` 后的正式训练输入 | 必须由 `filter_reviewed_neg_before.py` 生成，不能手工删改 |
 | `data/06_merged/` | 各 fold 的训练/验证 ShareGPT 样本、测试输入和统计 | 不能手工拼接或混用旧版本样本 |
 | `data/07_metadata/data_version_lock.json` | 冻结本次训练数据的文件、划分和版本证据 | 不能在训练后静默修改其上游输入 |
 
@@ -36,7 +38,7 @@ flowchart TD
 | 3 | 基线审核决策 | 人工确认候选样本的可用性和标签 | 增量队列或最终合并 |
 | 4 | 增量队列、重生成媒体、delta | 只处理未完成或冲突样本 | 安全合并 |
 | 5 | `subvideo_train_review_decisions_final.json` | 固化最终人工决策 | 审计、应用决策 |
-| 6 | `.reviewed.json`、`.label_reviewed.json` | 应用标签并剔除不可验证的修改区间 | 训练样本导出 |
+| 6 | `.reviewed.json`、`.label_reviewed.json`、筛选后 `.label_reviewed.json` | 应用标签、剔除不可验证区间并执行审核后样本缩减 | 训练样本导出 |
 | 7 | `data/06_merged/`、`data_version_lock.json` | 输出训练文件并冻结版本 | 训练与评测 |
 
 命令中的默认输入/输出路径已写入脚本默认值，正常流程不需要重复传入。只有随复审轮次变化的中间产物需要指定 `--round round_XX`。
@@ -219,13 +221,29 @@ python pipeline/scripts/apply_label_corrections.py
 
 正式训练不得使用 `--no-strict`，也不得使用原始候选 metadata 或中间 `.reviewed.json` 替代 `.label_reviewed.json`。
 
+#### 6.3 筛选审核后的 `neg_before` 样本
+
+```bash
+python pipeline/scripts/filter_reviewed_neg_before.py \
+  --output-report data/07_metadata/filter_neg_before_dropped_report.json
+```
+
+正式输出为
+`data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json`。report 只记录被删
+样本，不能作为训练输入。该步骤必须在标签修正后执行，并保留原始
+`subvideos_meta.label_reviewed.json` 作为审核基线。
+
 ### 步骤 7：导出训练数据、执行质量门并冻结版本
 
 ```bash
-python pipeline/scripts/training_sample_builder.py
-python scripts/validate_no_oob.py
-python pipeline/scripts/quality_check.py
-python pipeline/scripts/freeze_data_version.py
+python pipeline/scripts/training_sample_builder.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
+python scripts/validate_no_oob.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
+python pipeline/scripts/quality_check.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
+python pipeline/scripts/freeze_data_version.py \
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
 ```
 
 四个门分别检查：

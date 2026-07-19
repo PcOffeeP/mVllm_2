@@ -118,26 +118,30 @@ python pipeline/scripts/apply_label_corrections.py \
   --metadata data/07_metadata/subvideos_meta.reviewed.json \
   --output data/07_metadata/subvideos_meta.label_reviewed.json
 
+# 在人工审核基线上缩减脆性断裂 neg_before 样本
+python pipeline/scripts/filter_reviewed_neg_before.py \
+  --output-report data/07_metadata/filter_neg_before_dropped_report.json
+
 # 根据元数据和划分构建训练样本
 python pipeline/scripts/training_sample_builder.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json \
   --video-meta data/07_metadata/video_meta.json \
   --splits-dir data/05_splits \
   --output-dir data/06_merged
 
 # 检查帧索引是否超出子视频边界
 python scripts/validate_no_oob.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
 
 # 对训练样本执行质量检查
 python pipeline/scripts/quality_check.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json \
   --merged-dir data/06_merged
 
 # 锁定当前数据版本并生成快照
 python pipeline/scripts/freeze_data_version.py \
   --merged-dir data/06_merged \
-  --subvideos-meta data/07_metadata/subvideos_meta.label_reviewed.json \
+  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json \
   --video-meta data/07_metadata/video_meta.json \
   --splits-dir data/05_splits \
   --subvideo-dir data/03_subvideos \

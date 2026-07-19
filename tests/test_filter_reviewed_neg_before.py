@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pipeline.scripts.filter_reviewed_neg_before import (
+    OUTPUT_META_DEFAULT,
     _find_brittle_missing_source_video,
     filter_subvideos,
     main,
@@ -35,6 +36,12 @@ def _neg_before(
 def _run_main(argv: list[str]) -> int:
     with patch.object(sys, "argv", ["filter_reviewed_neg_before.py"] + argv):
         return main()
+
+
+def test_default_output_is_formally_label_reviewed_metadata() -> None:
+    assert OUTPUT_META_DEFAULT.name == (
+        "subvideos_meta.filtered_neg_before.label_reviewed.json"
+    )
 
 
 def test_filter_brittle_keeps_only_closest_to_event() -> None:

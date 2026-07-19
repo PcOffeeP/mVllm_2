@@ -36,7 +36,10 @@ INPUT_META_DEFAULT = (
     PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.label_reviewed.json"
 )
 OUTPUT_META_DEFAULT = (
-    PROJECT_ROOT / "data" / "07_metadata" / "subvideos_meta.filtered_neg_before.json"
+    PROJECT_ROOT
+    / "data"
+    / "07_metadata"
+    / "subvideos_meta.filtered_neg_before.label_reviewed.json"
 )
 
 BRITTLE_DEDUP_TYPES = {"脆性断裂", "脆性断裂、齐根断裂"}
@@ -103,7 +106,7 @@ def main() -> int:
 
   # 指定输入/输出，并输出被丢弃子视频的报告
   %(prog)s --input-meta data/07_metadata/subvideos_meta.label_reviewed.json \\
-           --output-meta data/07_metadata/subvideos_meta.filtered_neg_before.json \\
+           --output-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json \\
            --output-report data/07_metadata/filter_neg_before_dropped_report.json
         """.strip(),
     )
@@ -117,7 +120,10 @@ def main() -> int:
         "--output-meta",
         type=Path,
         default=OUTPUT_META_DEFAULT,
-        help="输出筛选后元数据路径（默认：data/07_metadata/subvideos_meta.filtered_neg_before.json）",
+        help=(
+            "输出筛选后元数据路径（默认："
+            "data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json）"
+        ),
     )
     parser.add_argument(
         "--output-report",

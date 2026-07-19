@@ -855,12 +855,13 @@ def _load_reviewed_subvideos(
             "path": str(subvideos_meta_path),
         })
         return None
-    if not allow_unreviewed_meta and subvideos_meta_path.name != "subvideos_meta.label_reviewed.json":
+    is_label_reviewed = subvideos_meta_path.name.endswith(".label_reviewed.json")
+    if not allow_unreviewed_meta and not is_label_reviewed:
         errors.append({
             "check": "reviewed_ratio",
             "detail": "unreviewed_metadata_rejected",
             "path": str(subvideos_meta_path),
-            "expected": "subvideos_meta.label_reviewed.json",
+            "expected": "a metadata filename ending in .label_reviewed.json",
         })
         return None
     try:
