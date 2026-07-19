@@ -13,9 +13,8 @@ wheels/
 *.mp4
 *.mov
 
-# 本地模型权重（统一放在 models/ 下，由 models/README.md 说明）
+# 本地模型权重
 models/*
-!models/README.md
 
 # LLaMA-Factory 训练输出
 LlamaFactory/saves/
@@ -68,3 +67,4 @@ data/07_metadata/tail_contamination_audit.jsonl
 # 测试子视频
 data/sample_subvideos/03_subvideos
 data/sample_subvideos/04_frames
+
