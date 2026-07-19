@@ -35,8 +35,9 @@ data/
 ├── 03_subvideos/             生成的子视频
 ├── 04_frames/                子视频采样帧
 ├── 05_splits/                训练/验证/测试划分
-├── 06_merged/                训练和评估输入
-└── 07_metadata/              视频、子视频和数据版本元数据
+├── 06_merged/                待发布的训练/评估构建结果（中间工作区）
+├── 07_metadata/              审核、质量检查和版本冻结元数据（过程证据）
+└── 08_training_ready/        通过质量门的版本化训练交付物（训练唯一入口）
 
 scripts/                      独立校验与测试评估输入生成工具
 tests/                        项目测试
@@ -146,9 +147,14 @@ python pipeline/scripts/freeze_data_version.py \
   --splits-dir data/05_splits \
   --subvideo-dir data/03_subvideos \
   --lock data/07_metadata/data_version_lock.json
+
+# 发布并切换到不可覆盖的训练版本
+python pipeline/scripts/publish_training_release.py --activate
 ```
 
-各脚本支持 `--help` 查看参数。
+`03`–`07` 都属于数据处理工作区。只有
+`data/08_training_ready/<release_id>/` 中状态为 `training_ready` 的版本可供正式训练；
+当前版本记录在 `finetune/active_data_release.json`。各脚本支持 `--help` 查看参数。
 
 ### 4. 训练模型
 

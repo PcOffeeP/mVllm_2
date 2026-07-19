@@ -4,6 +4,7 @@
 受保护的目录（不会被触碰）：
 - data/01_videos/
 - data/02_annotations/
+- data/08_training_ready/（已发布、不可覆盖的训练版本）
 """
 
 import shutil
@@ -23,6 +24,7 @@ TARGET_DIRS = [
 PROTECTED_DIRS = [
     "data/01_videos/",
     "data/02_annotations/",
+    "data/08_training_ready/",
 ]
 
 

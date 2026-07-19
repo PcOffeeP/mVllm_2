@@ -1,0 +1,18 @@
+{
+  "summary": {
+    "merged_dir": "data/06_merged",
+    "subvideos_meta": "data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json",
+    "prompt_library": "/home/liuyang/文档/mVllm_2/pipeline/prompt_library.yaml",
+    "prompt_version": "v2.1.0",
+    "error_count": 0,
+    "warning_count": 0,
+    "reviewed_ratio": {
+      "positive": 847,
+      "negative": 679,
+      "total": 1526,
+      "ratio": 1.2474
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

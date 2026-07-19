@@ -1,7 +1,7 @@
 {
   "tensile_video_interval_fold0_train": {
-    "file_name": "../data/06_merged/fold_0_train.json",
-    "folder": "../data/06_merged",
+    "file_name": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/train/fold_0.json",
+    "folder": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/train",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -18,8 +18,8 @@
     }
   },
   "tensile_video_interval_fold0_val": {
-    "file_name": "../data/06_merged/fold_0_val.json",
-    "folder": "../data/06_merged",
+    "file_name": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/validation/fold_0.json",
+    "folder": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/validation",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -36,8 +36,8 @@
     }
   },
   "tensile_video_interval_fold1_train": {
-    "file_name": "../data/06_merged/fold_1_train.json",
-    "folder": "../data/06_merged",
+    "file_name": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/train/fold_1.json",
+    "folder": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/train",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -54,8 +54,8 @@
     }
   },
   "tensile_video_interval_fold1_val": {
-    "file_name": "../data/06_merged/fold_1_val.json",
-    "folder": "../data/06_merged",
+    "file_name": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/validation/fold_1.json",
+    "folder": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/validation",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -72,8 +72,8 @@
     }
   },
   "tensile_video_interval_fold2_train": {
-    "file_name": "../data/06_merged/fold_2_train.json",
-    "folder": "../data/06_merged",
+    "file_name": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/train/fold_2.json",
+    "folder": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/train",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
@@ -90,8 +90,8 @@
     }
   },
   "tensile_video_interval_fold2_val": {
-    "file_name": "../data/06_merged/fold_2_val.json",
-    "folder": "../data/06_merged",
+    "file_name": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/validation/fold_2.json",
+    "folder": "../data/08_training_ready/v2.0.0-1dab1e5e/datasets/validation",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",

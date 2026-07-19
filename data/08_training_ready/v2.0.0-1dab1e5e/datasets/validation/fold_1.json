@@ -1,0 +1,6348 @@
+[
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_5s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_10s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_20s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_5.20s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_6.40s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_8.33s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_focus_11.90s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0003_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_1.87s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[0,1],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_2.30s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_3.00s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_4.27s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_focus_7.50s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0007_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_5s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_10s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_6.67s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_8.20s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_10.13s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_7.77s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_focus_6.33s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0031_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_3.23s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[0,1],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_4.00s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_5.20s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_7.40s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_focus_13.00s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0033_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_5s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_10s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_10s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_20s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_6.67s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_8.20s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_10.67s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_focus_15.23s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0043_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0045_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"韧性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_5s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_10s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_10s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_10s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_10s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_20s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_20s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_20s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_20s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_focus_19.93s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0047_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_3.40s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_4.20s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_5.47s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_7.80s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_focus_13.67s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"齐根断裂\",\"location\":\"outside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0048_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0049_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_2.33s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[0,1],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_2.87s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_3.73s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_5.33s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_focus_9.27s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0051_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_5s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_10s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_20s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_5.17s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_6.33s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_8.27s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_focus_11.80s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"界面脱粘\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0053_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_4.10s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_5.07s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_6.60s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_9.40s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_focus_16.50s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0057_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_2.60s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[0,1],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_3.20s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_4.20s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_6.00s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_focus_10.50s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0068_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_5s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_10s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_20s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_5.00s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_6.13s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_8.00s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_focus_11.40s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"韧性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_3s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_3s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_5s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_5s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_5s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_10s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_10s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_10s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_20s_01.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_20s_02.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0073_neg_before_20s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0079_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0079_focus_1.58s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[0,1],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0079_focus_1.98s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[0,1],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0079_focus_2.57s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0079_focus_2.67s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0079_focus_2.18s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_2.00s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[0,1],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_2.43s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_3.20s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_4.57s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_focus_8.00s_80pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0101_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_full.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[6,7],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_3s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_3s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_3s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_3s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_3s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_5s_20pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_5s_35pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_5s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_5s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_5s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_10s_50pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_10s_65pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_10s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_20s_80pct.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[5,6],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_6.80s_20pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[1,2],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_8.36s_35pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[2,3],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_10.88s_50pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[3,4],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_focus_15.52s_65pct_adaptive.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":true,\"fracture_between\":[4,5],\"type\":\"脆性断裂\",\"location\":\"inside_gauge\"}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0105_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  },
+  {
+    "videos": [
+      "data/03_subvideos/video_0106_neg_before_3s_03.mp4"
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。"
+      },
+      {
+        "role": "user",
+        "content": "<video>\n请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。"
+      },
+      {
+        "role": "assistant",
+        "content": "{\"has_fracture\":false,\"fracture_between\":null,\"type\":\"未断裂\",\"location\":null}"
+      }
+    ]
+  }
+]

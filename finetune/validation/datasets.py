@@ -8,12 +8,12 @@ from typing import Any
 
 from .constants import (
     DEFAULT_VIDEO_ROOT,
-    MERGED_DATA_DIR,
     SUPPORTED_DATASETS,
     TEST_GROUND_TRUTH_JSON,
     TEST_INPUTS_JSON,
     TEST_SUBVIDEO_GROUND_TRUTH_JSON,
     TEST_SUBVIDEO_INPUTS_JSON,
+    VALIDATION_DATA_DIR,
 )
 
 
@@ -121,7 +121,10 @@ def _parse_assistant_json(assistant_message: str) -> dict[str, Any]:
 
 
 def _load_fold_dataset(name: str, video_root: Path | None) -> list[EvalSample]:
-    path = MERGED_DATA_DIR / f"{name}.json"
+    fold_match = re.fullmatch(r"fold_(\d+)_val", name)
+    if fold_match is None:
+        raise ValueError(f"Invalid validation dataset name: {name}")
+    path = VALIDATION_DATA_DIR / f"fold_{fold_match.group(1)}.json"
     records = _read_json(path)
     samples: list[EvalSample] = []
     for index, record in enumerate(records):

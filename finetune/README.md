@@ -17,6 +17,8 @@ pip install -r requirements/minicpm-v.txt
 ## 训练 LoRA
 
 从 `finetune/` 运行。必须使用 `train_with_contract.py`，它会安装 MiniCPM 的 8 帧处理器约束。
+`dataset_info.json` 只指向 `data/08_training_ready/` 中当前激活的发布版本；
+版本身份见 `active_data_release.json`。不要直接把 `data/06_merged/` 配置为训练入口。
 
 ```bash
 cd finetune
@@ -45,8 +47,8 @@ llamafactory-cli export MiniCPM/config/merge.yaml
 
 | 数据集 | 输入 | 产物 | 用途 |
 | --- | --- | --- | --- |
-| `test` | `data/05_splits/test.json` 中的 21 个源视频 | `test_inputs.json`、`test_ground_truth.json` | `--dataset test` |
-| `test_subvideos` | 同一 `test.json` 生成的候选子视频 | `test_subvideos_meta.label_reviewed.json`、`test_subvideo_inputs.json`、`test_subvideo_ground_truth.json` | `--dataset test_subvideos` |
+| `test` | `data/05_splits/test.json` 中的 21 个源视频 | 发布版本中的 `datasets/evaluation/source_videos/` | `--dataset test` |
+| `test_subvideos` | 同一 `test.json` 生成的候选子视频 | 发布版本中的 `datasets/evaluation/subvideos/` | `--dataset test_subvideos` |
 
 所有命令从仓库根目录执行。先生成 21 个测试源视频的评测清单：
 
@@ -80,7 +82,9 @@ python scripts/generate_test_subvideo_artifacts.py \
   --metadata data/07_metadata/test_subvideos_meta.label_reviewed.json
 ```
 
-若有 `needs_regenerate` 样本，不得执行正式导出，也不要使用 `--no-strict` 的输出作为正式评测集。正式导出前确认测试 metadata 的每个 `source_video` 都属于 `data/05_splits/test.json`。
+若有 `needs_regenerate` 样本，不得执行正式导出，也不要使用 `--no-strict` 的输出作为正式评测集。正式导出前确认测试 metadata 的每个 `source_video` 都属于 `data/05_splits/test.json`。完成质量检查与版本冻结后，必须通过
+`python pipeline/scripts/publish_training_release.py --activate` 发布，评估代码不会直接读取
+`data/06_merged/`。
 
 ## 最终 Prompt 策略
 

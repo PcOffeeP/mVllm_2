@@ -523,12 +523,12 @@ def _make_fold_record(assistant_content: str, video_path: str = "data/01_videos/
 
 
 def test_load_fold_dataset_parses_new_format_assistant(tmp_path, monkeypatch):
-    monkeypatch.setattr(datasets_module, "MERGED_DATA_DIR", tmp_path)
+    monkeypatch.setattr(datasets_module, "VALIDATION_DATA_DIR", tmp_path)
     record = _make_fold_record(
         "判断依据：在采样帧 3 与帧 4 之间观察到断裂形貌突变。\n"
         '结果：{"has_fracture": true, "fracture_between": [3, 4], "type": "脆性断裂", "location": "inside_gauge"}'
     )
-    (tmp_path / "fold_0_val.json").write_text(json.dumps([record], ensure_ascii=False), encoding="utf-8")
+    (tmp_path / "fold_0.json").write_text(json.dumps([record], ensure_ascii=False), encoding="utf-8")
 
     samples = load_dataset("fold_0_val")
 
@@ -545,11 +545,11 @@ def test_load_fold_dataset_parses_new_format_assistant(tmp_path, monkeypatch):
 
 
 def test_load_fold_dataset_parses_legacy_json_assistant(tmp_path, monkeypatch):
-    monkeypatch.setattr(datasets_module, "MERGED_DATA_DIR", tmp_path)
+    monkeypatch.setattr(datasets_module, "VALIDATION_DATA_DIR", tmp_path)
     record = _make_fold_record(
         '{"has_fracture": false, "fracture_between": null, "type": "未断裂", "location": null}'
     )
-    (tmp_path / "fold_1_val.json").write_text(json.dumps([record], ensure_ascii=False), encoding="utf-8")
+    (tmp_path / "fold_1.json").write_text(json.dumps([record], ensure_ascii=False), encoding="utf-8")
 
     samples = load_dataset("fold_1_val")
 

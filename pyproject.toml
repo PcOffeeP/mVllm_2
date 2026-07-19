@@ -8,3 +8,7 @@ dependencies = [
     "pandas>=3.0.3",
     "streamlit>=1.59.1",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

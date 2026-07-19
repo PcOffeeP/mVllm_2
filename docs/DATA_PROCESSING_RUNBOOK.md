@@ -18,6 +18,7 @@ flowchart TD
   I --> J["label_reviewed metadata"]
   J --> K["审核后 neg_before 筛选"]
   K --> L["训练样本 + 质量检查 + 版本冻结"]
+  L --> M["版本化发布到 08_training_ready"]
 ```
 
 ## 最终交付物
@@ -26,8 +27,9 @@ flowchart TD
 | --- | --- | --- |
 | `data/07_metadata/subvideos_meta.label_reviewed.json` | 人工审核与标签修正后的权威基线 | 不能用原始 `subvideos_meta.json` 或 `.reviewed.json` 替代 |
 | `data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json` | 本轮在权威基线上筛选 `neg_before` 后的正式训练输入 | 必须由 `filter_reviewed_neg_before.py` 生成，不能手工删改 |
-| `data/06_merged/` | 各 fold 的训练/验证 ShareGPT 样本、测试输入和统计 | 不能手工拼接或混用旧版本样本 |
+| `data/06_merged/` | 待发布的训练/验证 ShareGPT 样本、测试输入和统计 | 这是构建工作区，不应直接作为训练入口 |
 | `data/07_metadata/data_version_lock.json` | 冻结本次训练数据的文件、划分和版本证据 | 不能在训练后静默修改其上游输入 |
+| `data/08_training_ready/<release_id>/` | 通过质量门、按用途分类且带逐文件哈希的训练交付物 | 正式训练只使用这里的已激活版本 |
 
 ## 端到端执行顺序
 
@@ -39,7 +41,8 @@ flowchart TD
 | 4 | 增量队列、重生成媒体、delta | 只处理未完成或冲突样本 | 安全合并 |
 | 5 | `subvideo_train_review_decisions_final.json` | 固化最终人工决策 | 审计、应用决策 |
 | 6 | `.reviewed.json`、`.label_reviewed.json`、筛选后 `.label_reviewed.json` | 应用标签、剔除不可验证区间并执行审核后样本缩减 | 训练样本导出 |
-| 7 | `data/06_merged/`、`data_version_lock.json` | 输出训练文件并冻结版本 | 训练与评测 |
+| 7 | `data/06_merged/`、`data_version_lock.json` | 输出待发布文件并冻结版本 | 训练数据发布 |
+| 8 | `data/08_training_ready/<release_id>/` | 分类、校验并原子发布训练版本 | 训练与评测 |
 
 命令中的默认输入/输出路径已写入脚本默认值，正常流程不需要重复传入。只有随复审轮次变化的中间产物需要指定 `--round round_XX`。
 
@@ -253,11 +256,41 @@ python pipeline/scripts/freeze_data_version.py \
 3. `quality_check.py`：检查媒体路径、审核状态、映射、标签和排除记录。
 4. `freeze_data_version.py`：写入数据版本锁，记录输入与产物的一致性。
 
-任一步失败都不能开始训练。修复后从失败步骤的上游重新执行，避免使用部分覆盖的 `data/06_merged/`。
+任一步失败都不能发布。修复后从失败步骤的上游重新执行，避免使用部分覆盖的
+`data/06_merged/`。
+
+### 步骤 8：发布并激活唯一训练版本
+
+```bash
+python pipeline/scripts/publish_training_release.py --activate
+```
+
+默认版本名由 `data_version_lock.json` 的版本号和样本清单 SHA-256 前八位组成。发布器会：
+
+1. 确认质量报告 `error_count == 0`。
+2. 确认 `data/06_merged/` 与版本锁中的样本哈希一致。
+3. 要求六个 fold 文件完整，并要求每组评估输入和真值成对存在。
+4. 将最终文件分类复制到临时目录、逐文件校验 SHA-256，再原子改名。
+5. 拒绝覆盖同名版本；`--activate` 同步更新训练注册表和本地评估版本指针。
+
+发布目录的分类如下：
+
+```text
+data/08_training_ready/<release_id>/
+├── datasets/train/            正式训练集
+├── datasets/validation/       正式验证集
+├── datasets/evaluation/       独立评估输入与真值
+├── metadata/                  训练使用的唯一正式 metadata
+├── reports/                   样本统计与质量报告
+└── manifest/                  版本锁与逐文件用途/hash 清单
+```
+
+`data/06_merged/` 和 `data/07_metadata/` 保留为处理工作区与过程证据，不移动、不删除。
+当前激活版本记录在 `finetune/active_data_release.json`。
 
 ## 训练与验收边界
 
-只有步骤 7 全部成功后，才能在训练电脑运行三个 fold：
+只有步骤 8 发布并激活成功后，才能在训练电脑运行三个 fold：
 
 ```bash
 cd finetune
