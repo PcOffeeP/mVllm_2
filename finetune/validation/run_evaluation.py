@@ -6,10 +6,17 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .constants import CORE_FIELDS, GENERATION_CONFIG, SUPPORTED_DATASETS, VIDEO_MAX_FRAMES
+from .constants import (
+    ACTIVE_RELEASE_ID,
+    CORE_FIELDS,
+    GENERATION_CONFIG,
+    SUPPORTED_DATASETS,
+    VIDEO_MAX_FRAMES,
+)
 from .datasets import EvalSample, load_dataset
-from .model_runtime import load_model, run_model_on_video
+from .model_runtime import load_model, run_model_on_video_detailed
 from pipeline.output_normalizer import normalize_structured_output, validate_structured_output
+from .task_metrics import score_record, summarize_task_metrics
 from .prompts import (
     DEFAULT_PROMPT_LIBRARY_PATH,
     get_prompt_library,
@@ -63,16 +70,35 @@ def main() -> None:
             if not sample.video_path.exists():
                 raw_output = ""
                 runtime_error = f"video not found: {sample.video_path}"
+                sampled_timestamps = None
+                generated_token_count = None
+                hit_token_limit = None
             else:
                 try:
-                    raw_output = run_model_on_video(model, processor, sample.video_path, prompt_text, system_prompt=system_prompt)
+                    model_result = run_model_on_video_detailed(
+                        model,
+                        processor,
+                        sample.video_path,
+                        prompt_text,
+                        system_prompt=system_prompt,
+                    )
+                    raw_output = model_result.raw_output
+                    sampled_timestamps = model_result.sampled_timestamps
+                    generated_token_count = model_result.generated_token_count
+                    hit_token_limit = model_result.hit_token_limit
                     runtime_error = None
                 except Exception as exc:
                     raw_output = ""
                     runtime_error = f"{type(exc).__name__}: {exc}"
+                    sampled_timestamps = None
+                    generated_token_count = None
+                    hit_token_limit = None
         else:
             raw_output = raw_outputs.get(sample.video_id, "")
             runtime_error = None if sample.video_id in raw_outputs else "prediction missing"
+            sampled_timestamps = _timestamps_from_metadata(sample.metadata)
+            generated_token_count = None
+            hit_token_limit = None
 
         records.append(
             evaluate_sample(
@@ -81,6 +107,9 @@ def main() -> None:
                 runtime_error,
                 prompt_version=prompt_version,
                 target_schema=target_schema,
+                sampled_timestamps=sampled_timestamps,
+                generated_token_count=generated_token_count,
+                hit_token_limit=hit_token_limit,
             )
         )
 
@@ -106,6 +135,9 @@ def evaluate_sample(
     runtime_error: str | None = None,
     prompt_version: str | None = None,
     target_schema: dict[str, Any] | None = None,
+    sampled_timestamps: list[float] | None = None,
+    generated_token_count: int | None = None,
+    hit_token_limit: bool | None = None,
 ) -> dict[str, Any]:
     cleaned_output = str(raw_output or "").strip()
     parsed_output = None
@@ -125,7 +157,7 @@ def evaluate_sample(
                 )
         except json.JSONDecodeError as exc:
             parse_error = f"JSONDecodeError: {exc.msg}"
-    return {
+    record = {
         "sample_id": sample.sample_id,
         "video_id": sample.video_id,
         "video_path": str(sample.video_path),
@@ -142,10 +174,15 @@ def evaluate_sample(
             else False
         ),
         "parse_error": parse_error,
+        "sampled_timestamps": sampled_timestamps,
+        "generated_token_count": generated_token_count,
+        "hit_token_limit": hit_token_limit,
         "prompt_version": prompt_version,
         "target_schema": target_schema,
         "metadata": sample.metadata,
     }
+    record["task_scores"] = score_record(record)
+    return record
 
 
 def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -155,7 +192,7 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     json_valid_count = sum(1 for record in records if record.get("json_valid"))
     normalized_valid_count = sum(1 for record in records if record.get("normalized_valid"))
     repaired_count = sum(1 for record in records if record.get("normalization_repairs"))
-    return {
+    protocol_metrics = {
         "total_samples": total,
         "runtime_error_count": runtime_error_count,
         "raw_output_count": raw_output_count,
@@ -171,6 +208,10 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             "Raw protocol compliance and normalized output are recorded separately.",
             "Ground-truth metadata is included as reference context for task-metric analysis.",
         ],
+    }
+    return {
+        **protocol_metrics,
+        "task_metrics": summarize_task_metrics(records),
     }
 
 
@@ -190,6 +231,7 @@ def write_outputs(
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     summary = {
+        "active_release_id": ACTIVE_RELEASE_ID,
         "dataset": dataset,
         "model_dir": model_dir,
         "prompt": prompt,
@@ -255,6 +297,22 @@ def _write_runtime_failures_csv(path: Path, records: list[dict[str, Any]]) -> No
 
 def _rate(count: int, total: int) -> float | None:
     return round(count / total, 6) if total else None
+
+
+def _timestamps_from_metadata(metadata: dict[str, Any]) -> list[float] | None:
+    mapping = metadata.get("frame_mapping")
+    if not isinstance(mapping, list):
+        return None
+    timestamps: list[float] = []
+    for item in mapping:
+        if not isinstance(item, dict):
+            return None
+        raw = item.get("clip_timestamp", item.get("timestamp"))
+        try:
+            timestamps.append(round(float(raw), 6))
+        except (TypeError, ValueError):
+            return None
+    return timestamps
 
 
 if __name__ == "__main__":

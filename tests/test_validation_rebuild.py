@@ -12,6 +12,7 @@ import finetune.validation.datasets as datasets_module
 from finetune.validation import model_runtime
 from finetune.validation import run_evaluation
 from finetune.validation.run_evaluation import evaluate_sample, main
+from finetune.validation.task_metrics import summarize_task_metrics
 from finetune.validation.prompts import (
     get_system_prompt,
     get_system_prompt_hash,
@@ -59,6 +60,125 @@ def test_evaluate_sample_records_normalized_output_and_repairs():
     }
     assert record["normalized_valid"] is True
     assert any("string coerced" in repair for repair in record["normalization_repairs"])
+
+
+def test_task_metrics_score_fields_interval_time_and_joint():
+    sample = EvalSample(
+        sample_id="sample_1",
+        video_id="sample_1",
+        video_path="/tmp/sample_1.mp4",
+        metadata={
+            "ground_truth": {
+                "has_fracture": True,
+                "fracture_between": [2, 3],
+                "type": "脆性断裂",
+                "location": "outside_gauge",
+            },
+            "event_time": 14.0,
+            "start_time": 10.0,
+        },
+    )
+    record = evaluate_sample(
+        sample,
+        json.dumps(
+            {
+                "has_fracture": True,
+                "fracture_between": [2, 3],
+                "type": "脆性断裂",
+                "location": "outside_gauge",
+            },
+            ensure_ascii=False,
+        ),
+        sampled_timestamps=[0.0, 2.0, 3.0, 5.0],
+    )
+
+    metrics = summarize_task_metrics([record])
+
+    assert record["task_scores"]["target_event_time_sec"] == 4.0
+    assert record["task_scores"]["predicted_time_range_sec"] == [3.0, 5.0]
+    assert record["task_scores"]["time_hit"] is True
+    assert metrics["has_fracture_accuracy"] == 1.0
+    assert metrics["type_accuracy_positive"] == 1.0
+    assert metrics["location_accuracy_positive"] == 1.0
+    assert metrics["interval_exact_accuracy"] == 1.0
+    assert metrics["time_hit_rate"] == 1.0
+    assert metrics["joint_success_rate"] == 1.0
+
+
+def test_task_metrics_keep_invalid_outputs_in_denominator():
+    valid_sample = EvalSample(
+        sample_id="valid",
+        video_id="valid",
+        video_path="/tmp/valid.mp4",
+        metadata={
+            "ground_truth": {
+                "has_fracture": False,
+                "fracture_between": None,
+                "type": "未断裂",
+                "location": None,
+            }
+        },
+    )
+    invalid_sample = EvalSample(
+        sample_id="invalid",
+        video_id="invalid",
+        video_path="/tmp/invalid.mp4",
+        metadata={
+            "ground_truth": {
+                "has_fracture": True,
+                "fracture_between": [1, 2],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+            }
+        },
+    )
+    records = [
+        evaluate_sample(
+            valid_sample,
+            '{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+        ),
+        evaluate_sample(invalid_sample, "not json", runtime_error="model failed"),
+    ]
+
+    metrics = summarize_task_metrics(records)
+
+    assert metrics["scored_samples"] == 2
+    assert metrics["has_fracture_accuracy"] == 0.5
+    assert metrics["interval_exact_accuracy"] == 0.0
+    assert metrics["joint_success_rate"] == 0.5
+    assert metrics["has_fracture_confusion"] == {
+        "target=false|pred=false": 1,
+        "target=true|pred=invalid": 1,
+    }
+
+
+def test_task_metrics_credit_valid_fields_when_contract_is_incomplete():
+    sample = EvalSample(
+        sample_id="partial",
+        video_id="partial",
+        video_path="/tmp/partial.mp4",
+        metadata={
+            "ground_truth": {
+                "has_fracture": False,
+                "fracture_between": None,
+                "type": "未断裂",
+                "location": None,
+            }
+        },
+    )
+
+    record = evaluate_sample(
+        sample,
+        '{"has_fracture":false,"fracture_between":null,"type":null,"location":null}',
+    )
+    metrics = summarize_task_metrics([record])
+
+    assert record["normalized_valid"] is False
+    assert record["task_scores"]["contract_valid"] is False
+    assert metrics["has_fracture_accuracy"] == 1.0
+    assert metrics["type_accuracy"] == 0.0
+    assert metrics["location_accuracy"] == 1.0
+    assert metrics["joint_success_rate"] == 0.0
 
 
 def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):
@@ -168,11 +288,11 @@ def test_run_evaluation_passes_system_prompt_to_model_runtime(tmp_path, monkeypa
     def fake_run_model_on_video(model, processor, video_path, prompt, system_prompt=None):
         captured["system_prompt"] = system_prompt
         captured["prompt"] = prompt
-        return "output"
+        return model_runtime.ModelRunResult("output", [0.0], 1, False, [])
 
     monkeypatch.setattr(run_evaluation, "load_dataset", fake_load_dataset)
     monkeypatch.setattr(run_evaluation, "load_model", fake_load_model)
-    monkeypatch.setattr(run_evaluation, "run_model_on_video", fake_run_model_on_video)
+    monkeypatch.setattr(run_evaluation, "run_model_on_video_detailed", fake_run_model_on_video)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -431,11 +551,11 @@ def test_run_evaluation_default_prompt_uses_four_field_user_prompt(tmp_path, mon
     )
 
     def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):
-        return "output"
+        return model_runtime.ModelRunResult("output", [0.0], 1, False, [])
 
     monkeypatch.setattr(run_evaluation, "load_dataset", lambda name, video_root=None: [sample])
     monkeypatch.setattr(run_evaluation, "load_model", lambda model_dir: (object(), object()))
-    monkeypatch.setattr(run_evaluation, "run_model_on_video", fake_run_model_on_video)
+    monkeypatch.setattr(run_evaluation, "run_model_on_video_detailed", fake_run_model_on_video)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -477,11 +597,11 @@ def test_run_evaluation_uses_one_fixed_user_prompt(tmp_path, monkeypatch):
 
     def fake_run_model_on_video(model, processor, video_path, prompt_text, system_prompt=None):
         captured_prompts.append(prompt_text)
-        return "output"
+        return model_runtime.ModelRunResult("output", [0.0], 1, False, [])
 
     monkeypatch.setattr(run_evaluation, "load_dataset", lambda name, video_root=None: samples)
     monkeypatch.setattr(run_evaluation, "load_model", lambda model_dir: (object(), object()))
-    monkeypatch.setattr(run_evaluation, "run_model_on_video", fake_run_model_on_video)
+    monkeypatch.setattr(run_evaluation, "run_model_on_video_detailed", fake_run_model_on_video)
 
     monkeypatch.setattr(
         sys,

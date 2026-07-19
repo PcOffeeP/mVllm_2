@@ -1,0 +1,13 @@
+### model
+model_name_or_path: ../models/minicpm_v_4_5
+cache_dir: null
+adapter_name_or_path: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold1_20260719
+template: minicpm_v
+finetuning_type: lora
+trust_remote_code: true
+
+### export
+export_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold1_20260719_merged
+export_size: 2
+export_device: cpu
+export_legacy_format: false
