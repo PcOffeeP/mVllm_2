@@ -22,6 +22,10 @@ LlamaFactory/saves/
 # 验证脚本输出
 finetune/validation/results/
 
+# 诊断与 Prompt Sweep 生成产物
+/finetune/results/diagnostics/
+/finetune/results/prompt_sweep/
+
 # dependency lock files (not cross-platform)
 uv.lock
 
@@ -67,4 +71,3 @@ data/07_metadata/tail_contamination_audit.jsonl
 # 测试子视频
 data/sample_subvideos/03_subvideos
 data/sample_subvideos/04_frames
-
