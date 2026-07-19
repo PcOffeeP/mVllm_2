@@ -282,8 +282,7 @@ def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
         if api_key and raw_request.headers.get("authorization") != f"Bearer {api_key}":
             raise HTTPException(status_code=401, detail="Invalid API key")
 
-    @app.get("/v1/tensile/contract")
-    async def contract_preflight(raw_request: Request):
+    async def contract_preflight(raw_request):
         authorize(raw_request)
         return {
             "contract_version": contract["contract_version"],
@@ -292,8 +291,7 @@ def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
             "capabilities": {"analysis": True, "evidence": True},
         }
 
-    @app.post("/v1/chat/completions")
-    async def chat_completions(raw_request: Request):
+    async def chat_completions(raw_request):
         authorize(raw_request)
         temp_video_path: str | None = None
         try:
@@ -355,6 +353,16 @@ def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
         finally:
             if temp_video_path is not None:
                 Path(temp_video_path).unlink(missing_ok=True)
+
+    # ``Request`` is imported lazily inside this factory. With postponed
+    # annotations, older FastAPI versions cannot resolve a local ``Request``
+    # symbol while registering a decorated route and treat it as a query
+    # parameter instead. Attach the concrete runtime annotation before route
+    # registration so both old and new FastAPI releases inject the request.
+    contract_preflight.__annotations__["raw_request"] = Request
+    chat_completions.__annotations__["raw_request"] = Request
+    app.add_api_route("/v1/tensile/contract", contract_preflight, methods=["GET"])
+    app.add_api_route("/v1/chat/completions", chat_completions, methods=["POST"])
 
     return app
 
