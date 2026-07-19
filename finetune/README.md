@@ -65,7 +65,8 @@ llamafactory-cli export MiniCPM/config/merge_fold0.yaml
 
 三折交叉验证完成后，将三个 fold 的 train 和 validation 六份文件合并，并按 `videos`
 去重。测试源视频和测试子视频不进入全量训练数据。数据由固定发布版本确定性生成到
-`finetune/generated/full_training/`，该目录保留在训练机但不提交 Git。
+`finetune/generated/full_training/`。生成后的 dataset、registry 和 provenance 应作为
+独立的数据提交归档，不与交叉验证结果或训练代码混在同一个提交。
 
 从仓库根目录执行：
 

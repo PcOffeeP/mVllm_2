@@ -22,9 +22,6 @@ LlamaFactory/saves/
 # 训练流水线运行日志与 PID/状态文件（保留在训练机，不提交）
 /finetune/run_logs/
 
-# 可由固定数据发布版本确定性重建的全量训练数据
-/finetune/generated/full_training/
-
 # 验证脚本输出
 finetune/validation/results/
 
