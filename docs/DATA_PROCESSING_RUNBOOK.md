@@ -394,10 +394,13 @@ python pipeline/scripts/publish_training_release.py \
 
 ```bash
 cd finetune
-python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
-python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold1.yaml
-python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold2.yaml
+python train_with_contract.py MiniCPM/config/train_fold0.yaml
+python train_with_contract.py MiniCPM/config/train_fold1.yaml
+python train_with_contract.py MiniCPM/config/train_fold2.yaml
 ```
+
+启动前必须确认 YAML 中的数据发布版本及 `output_dir` 对应本轮运行批次。禁止复用
+指向历史输出目录或允许覆盖产物的旧配置。
 
 训练 loss 下降只说明训练目标收敛，不能单独证明断裂任务效果。实际验收必须使用训练电脑同步的预测、指标和 checkpoint/adapter 链路，至少检查：JSON/schema 合法率、`has_fracture`、type/location、interval/time 命中率、joint success，以及成功和失败预测样例。
 

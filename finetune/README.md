@@ -40,21 +40,26 @@ cd finetune
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
 
-python train_with_contract.py MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
+python train_with_contract.py \
+  MiniCPM/config/train_fold0.yaml
 ```
 
-替换为 `fold1` 或 `fold2` 训练另外两个 fold。各配置中的 `output_dir` 是实际训练产物目录，以 YAML 为准。
+替换为 `train_fold1.yaml` 或 `train_fold2.yaml` 训练另外两个 fold。配置中的数据发布
+版本和 `output_dir` 必须对应实际运行批次，不能沿用旧实验路径。训练入口默认拒绝
+覆盖已有目录。
 
 ## 合并 LoRA
 
-编辑 `MiniCPM/config/merge.yaml` 中的 `adapter_name_or_path` 和 `export_dir`，使其对应要合并的 fold，然后执行：
+使用与训练 fold 对应的固定 merge 配置：
 
 ```bash
 cd finetune
-llamafactory-cli export MiniCPM/config/merge.yaml
+llamafactory-cli export MiniCPM/config/merge_fold0.yaml
 ```
 
-合并后的目录可直接用于评估。训练输出中的 checkpoint 和 adapter 应保留在训练电脑；若同步结果到仓库，建议只归档配置、指标、日志与曲线，不提交大型 checkpoint 或模型权重。
+替换为 `fold1` 或 `fold2` 合并另外两个 fold。合并后的目录可直接用于评估。训练输出
+中的 checkpoint 和 adapter 应保留在训练电脑；若同步结果到仓库，建议只归档配置、
+指标、日志与曲线，不提交大型 checkpoint 或模型权重。
 
 ## 准备测试数据
 

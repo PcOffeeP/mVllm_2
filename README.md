@@ -176,10 +176,12 @@ python pipeline/scripts/publish_training_release.py \
 ```bash
 cd finetune
 python train_with_contract.py \
-  MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0.yaml
+  MiniCPM/config/train_fold0.yaml
 ```
 
-项目采用 LoRA 微调和 3-fold 视频级划分。各 fold 配置不同，参数以 YAML 为准。
+项目采用 LoRA 微调和 3-fold 视频级划分。训练配置使用稳定的用途命名，实验版本和
+运行批次由 YAML 内的发布标识及 `output_dir` 固定。不得复用旧实验的输出目录；各
+fold 参数和产物路径以对应 YAML 为准。
 
 ### 5. 评估模型
 
