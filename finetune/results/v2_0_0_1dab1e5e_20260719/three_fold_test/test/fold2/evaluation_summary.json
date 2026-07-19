@@ -1,0 +1,79 @@
+{
+  "active_release_id": "v2.0.0-1dab1e5e",
+  "dataset": "test",
+  "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold2_20260719_merged",
+  "prompt": "training",
+  "prompt_text": "请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。",
+  "prompt_version": "v2.1.0",
+  "prompt_library_path": "/home/liuyang/文档/mVllm_2/pipeline/prompt_library.yaml",
+  "system_prompt": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。",
+  "system_prompt_hash": "a98f7ffa0689367419de077b2d22a31b27ef6ba2936225a5cc03dcfde6b1807f",
+  "target_schema": {
+    "has_fracture": {
+      "type": "boolean | null",
+      "description": "是否在视频中观察到试样断裂；无法判断时为 null"
+    },
+    "fracture_between": {
+      "type": "list[int, int] | null",
+      "description": "断裂发生的两个相邻采样帧索引，例如 [2, 3]；未断裂或无法定位时为 null"
+    },
+    "type": {
+      "type": "string | null",
+      "description": "断裂类型或状态。合法取值包括 8 种断裂类（\"韧性断裂\"、\"脆性断裂\"、\"界面脱粘\"、\"齐根断裂\"、\"爆炸性断裂\"、\"半脆半韧断裂\"、\"界面脱粘、齐根断裂\"、\"脆性断裂、齐根断裂\"）、 \"未断裂\"、\"未夹紧\" 或 null。\n"
+    },
+    "location": {
+      "type": "string | null",
+      "description": "断裂位置，\"inside_gauge\"、\"outside_gauge\" 或 null"
+    }
+  },
+  "predictions": null,
+  "generation_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 256
+  },
+  "metrics": {
+    "total_samples": 21,
+    "runtime_error_count": 0,
+    "raw_output_count": 21,
+    "raw_output_rate": 1.0,
+    "empty_output_count": 0,
+    "json_valid_count": 21,
+    "json_valid_rate": 1.0,
+    "normalized_valid_count": 4,
+    "normalized_valid_rate": 0.190476,
+    "repaired_count": 4,
+    "repair_rate": 0.190476,
+    "notes": [
+      "Raw protocol compliance and normalized output are recorded separately.",
+      "Ground-truth metadata is included as reference context for task-metric analysis."
+    ],
+    "task_metrics": {
+      "scored_samples": 21,
+      "positive_samples": 17,
+      "has_fracture_accuracy": 0.333333,
+      "type_accuracy": 0.047619,
+      "type_accuracy_positive": 0.058824,
+      "location_accuracy": 0.190476,
+      "location_accuracy_positive": 0.0,
+      "interval_exact_accuracy": null,
+      "interval_scored_samples": 0,
+      "time_hit_rate": 0.0,
+      "time_scored_samples": 17,
+      "joint_success_rate": 0.0,
+      "has_fracture_confusion": {
+        "target=false|pred=false": 3,
+        "target=null|pred=false": 1,
+        "target=true|pred=false": 13,
+        "target=true|pred=true": 4
+      },
+      "notes": [
+        "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+        "Joint success additionally requires the complete normalized output contract to be valid.",
+        "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+        "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+        "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+      ]
+    }
+  }
+}

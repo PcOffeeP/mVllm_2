@@ -1,0 +1,498 @@
+{
+  "schema_version": "1.0",
+  "run_id": "v2_0_0_1dab1e5e_20260719",
+  "active_release_id": "v2.0.0-1dab1e5e",
+  "models": {
+    "fold0": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold0_20260719_merged",
+    "fold1": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold1_20260719_merged",
+    "fold2": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold2_20260719_merged"
+  },
+  "datasets": {
+    "test": {
+      "schema_version": "1.0",
+      "active_release_id": "v2.0.0-1dab1e5e",
+      "system_prompt_hash": "a98f7ffa0689367419de077b2d22a31b27ef6ba2936225a5cc03dcfde6b1807f",
+      "fold_count": 3,
+      "per_fold": {
+        "fold0": {
+          "dataset": "test",
+          "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold0_20260719_merged",
+          "metrics": {
+            "total_samples": 21,
+            "runtime_error_count": 0,
+            "raw_output_count": 21,
+            "raw_output_rate": 1.0,
+            "empty_output_count": 0,
+            "json_valid_count": 21,
+            "json_valid_rate": 1.0,
+            "normalized_valid_count": 4,
+            "normalized_valid_rate": 0.190476,
+            "repaired_count": 4,
+            "repair_rate": 0.190476,
+            "notes": [
+              "Raw protocol compliance and normalized output are recorded separately.",
+              "Ground-truth metadata is included as reference context for task-metric analysis."
+            ],
+            "task_metrics": {
+              "scored_samples": 21,
+              "positive_samples": 17,
+              "has_fracture_accuracy": 0.333333,
+              "type_accuracy": 0.0,
+              "type_accuracy_positive": 0.0,
+              "location_accuracy": 0.190476,
+              "location_accuracy_positive": 0.0,
+              "interval_exact_accuracy": null,
+              "interval_scored_samples": 0,
+              "time_hit_rate": 0.0,
+              "time_scored_samples": 17,
+              "joint_success_rate": 0.0,
+              "has_fracture_confusion": {
+                "target=false|pred=false": 3,
+                "target=null|pred=false": 1,
+                "target=true|pred=false": 13,
+                "target=true|pred=true": 4
+              },
+              "notes": [
+                "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+                "Joint success additionally requires the complete normalized output contract to be valid.",
+                "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+                "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+                "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+              ]
+            }
+          }
+        },
+        "fold1": {
+          "dataset": "test",
+          "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold1_20260719_merged",
+          "metrics": {
+            "total_samples": 21,
+            "runtime_error_count": 0,
+            "raw_output_count": 21,
+            "raw_output_rate": 1.0,
+            "empty_output_count": 0,
+            "json_valid_count": 21,
+            "json_valid_rate": 1.0,
+            "normalized_valid_count": 4,
+            "normalized_valid_rate": 0.190476,
+            "repaired_count": 4,
+            "repair_rate": 0.190476,
+            "notes": [
+              "Raw protocol compliance and normalized output are recorded separately.",
+              "Ground-truth metadata is included as reference context for task-metric analysis."
+            ],
+            "task_metrics": {
+              "scored_samples": 21,
+              "positive_samples": 17,
+              "has_fracture_accuracy": 0.333333,
+              "type_accuracy": 0.047619,
+              "type_accuracy_positive": 0.058824,
+              "location_accuracy": 0.190476,
+              "location_accuracy_positive": 0.0,
+              "interval_exact_accuracy": null,
+              "interval_scored_samples": 0,
+              "time_hit_rate": 0.0,
+              "time_scored_samples": 17,
+              "joint_success_rate": 0.0,
+              "has_fracture_confusion": {
+                "target=false|pred=false": 3,
+                "target=null|pred=false": 1,
+                "target=true|pred=false": 13,
+                "target=true|pred=true": 4
+              },
+              "notes": [
+                "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+                "Joint success additionally requires the complete normalized output contract to be valid.",
+                "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+                "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+                "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+              ]
+            }
+          }
+        },
+        "fold2": {
+          "dataset": "test",
+          "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold2_20260719_merged",
+          "metrics": {
+            "total_samples": 21,
+            "runtime_error_count": 0,
+            "raw_output_count": 21,
+            "raw_output_rate": 1.0,
+            "empty_output_count": 0,
+            "json_valid_count": 21,
+            "json_valid_rate": 1.0,
+            "normalized_valid_count": 4,
+            "normalized_valid_rate": 0.190476,
+            "repaired_count": 4,
+            "repair_rate": 0.190476,
+            "notes": [
+              "Raw protocol compliance and normalized output are recorded separately.",
+              "Ground-truth metadata is included as reference context for task-metric analysis."
+            ],
+            "task_metrics": {
+              "scored_samples": 21,
+              "positive_samples": 17,
+              "has_fracture_accuracy": 0.333333,
+              "type_accuracy": 0.047619,
+              "type_accuracy_positive": 0.058824,
+              "location_accuracy": 0.190476,
+              "location_accuracy_positive": 0.0,
+              "interval_exact_accuracy": null,
+              "interval_scored_samples": 0,
+              "time_hit_rate": 0.0,
+              "time_scored_samples": 17,
+              "joint_success_rate": 0.0,
+              "has_fracture_confusion": {
+                "target=false|pred=false": 3,
+                "target=null|pred=false": 1,
+                "target=true|pred=false": 13,
+                "target=true|pred=true": 4
+              },
+              "notes": [
+                "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+                "Joint success additionally requires the complete normalized output contract to be valid.",
+                "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+                "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+                "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+              ]
+            }
+          }
+        }
+      },
+      "macro_task_metrics": {
+        "has_fracture_accuracy": {
+          "folds_scored": 3,
+          "mean": 0.333333,
+          "pstdev": 0.0
+        },
+        "type_accuracy": {
+          "folds_scored": 3,
+          "mean": 0.031746,
+          "pstdev": 0.022448
+        },
+        "type_accuracy_positive": {
+          "folds_scored": 3,
+          "mean": 0.039216,
+          "pstdev": 0.02773
+        },
+        "location_accuracy": {
+          "folds_scored": 3,
+          "mean": 0.190476,
+          "pstdev": 0.0
+        },
+        "location_accuracy_positive": {
+          "folds_scored": 3,
+          "mean": 0.0,
+          "pstdev": 0.0
+        },
+        "interval_exact_accuracy": {
+          "folds_scored": 0,
+          "mean": null,
+          "pstdev": null
+        },
+        "time_hit_rate": {
+          "folds_scored": 3,
+          "mean": 0.0,
+          "pstdev": 0.0
+        },
+        "joint_success_rate": {
+          "folds_scored": 3,
+          "mean": 0.0,
+          "pstdev": 0.0
+        }
+      },
+      "pooled_metrics": {
+        "total_samples": 63,
+        "runtime_error_count": 0,
+        "raw_output_count": 63,
+        "raw_output_rate": 1.0,
+        "empty_output_count": 0,
+        "json_valid_count": 63,
+        "json_valid_rate": 1.0,
+        "normalized_valid_count": 12,
+        "normalized_valid_rate": 0.190476,
+        "repaired_count": 12,
+        "repair_rate": 0.190476,
+        "notes": [
+          "Raw protocol compliance and normalized output are recorded separately.",
+          "Ground-truth metadata is included as reference context for task-metric analysis."
+        ],
+        "task_metrics": {
+          "scored_samples": 63,
+          "positive_samples": 51,
+          "has_fracture_accuracy": 0.333333,
+          "type_accuracy": 0.031746,
+          "type_accuracy_positive": 0.039216,
+          "location_accuracy": 0.190476,
+          "location_accuracy_positive": 0.0,
+          "interval_exact_accuracy": null,
+          "interval_scored_samples": 0,
+          "time_hit_rate": 0.0,
+          "time_scored_samples": 51,
+          "joint_success_rate": 0.0,
+          "has_fracture_confusion": {
+            "target=false|pred=false": 9,
+            "target=null|pred=false": 3,
+            "target=true|pred=false": 39,
+            "target=true|pred=true": 12
+          },
+          "notes": [
+            "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+            "Joint success additionally requires the complete normalized output contract to be valid.",
+            "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+            "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+            "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+          ]
+        }
+      },
+      "total_records": 63,
+      "notes": [
+        "Macro metrics are unweighted means across folds with population standard deviation.",
+        "Pooled metrics are recomputed from all per-sample records and retain invalid outputs in denominators."
+      ]
+    },
+    "test_subvideos": {
+      "schema_version": "1.0",
+      "active_release_id": "v2.0.0-1dab1e5e",
+      "system_prompt_hash": "a98f7ffa0689367419de077b2d22a31b27ef6ba2936225a5cc03dcfde6b1807f",
+      "fold_count": 3,
+      "per_fold": {
+        "fold0": {
+          "dataset": "test_subvideos",
+          "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold0_20260719_merged",
+          "metrics": {
+            "total_samples": 431,
+            "runtime_error_count": 0,
+            "raw_output_count": 431,
+            "raw_output_rate": 1.0,
+            "empty_output_count": 0,
+            "json_valid_count": 431,
+            "json_valid_rate": 1.0,
+            "normalized_valid_count": 131,
+            "normalized_valid_rate": 0.303944,
+            "repaired_count": 131,
+            "repair_rate": 0.303944,
+            "notes": [
+              "Raw protocol compliance and normalized output are recorded separately.",
+              "Ground-truth metadata is included as reference context for task-metric analysis."
+            ],
+            "task_metrics": {
+              "scored_samples": 431,
+              "positive_samples": 213,
+              "has_fracture_accuracy": 0.638051,
+              "type_accuracy": 0.0,
+              "type_accuracy_positive": 0.0,
+              "location_accuracy": 0.5058,
+              "location_accuracy_positive": 0.0,
+              "interval_exact_accuracy": 0.065728,
+              "interval_scored_samples": 213,
+              "time_hit_rate": 0.051643,
+              "time_scored_samples": 213,
+              "joint_success_rate": 0.0,
+              "has_fracture_confusion": {
+                "target=false|pred=false": 181,
+                "target=false|pred=true": 37,
+                "target=true|pred=false": 119,
+                "target=true|pred=true": 94
+              },
+              "notes": [
+                "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+                "Joint success additionally requires the complete normalized output contract to be valid.",
+                "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+                "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+                "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+              ]
+            }
+          }
+        },
+        "fold1": {
+          "dataset": "test_subvideos",
+          "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold1_20260719_merged",
+          "metrics": {
+            "total_samples": 431,
+            "runtime_error_count": 0,
+            "raw_output_count": 431,
+            "raw_output_rate": 1.0,
+            "empty_output_count": 0,
+            "json_valid_count": 431,
+            "json_valid_rate": 1.0,
+            "normalized_valid_count": 122,
+            "normalized_valid_rate": 0.283063,
+            "repaired_count": 122,
+            "repair_rate": 0.283063,
+            "notes": [
+              "Raw protocol compliance and normalized output are recorded separately.",
+              "Ground-truth metadata is included as reference context for task-metric analysis."
+            ],
+            "task_metrics": {
+              "scored_samples": 431,
+              "positive_samples": 213,
+              "has_fracture_accuracy": 0.62645,
+              "type_accuracy": 0.0,
+              "type_accuracy_positive": 0.0,
+              "location_accuracy": 0.5058,
+              "location_accuracy_positive": 0.0,
+              "interval_exact_accuracy": 0.056338,
+              "interval_scored_samples": 213,
+              "time_hit_rate": 0.046948,
+              "time_scored_samples": 213,
+              "joint_success_rate": 0.0,
+              "has_fracture_confusion": {
+                "target=false|pred=false": 183,
+                "target=false|pred=true": 35,
+                "target=true|pred=false": 126,
+                "target=true|pred=true": 87
+              },
+              "notes": [
+                "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+                "Joint success additionally requires the complete normalized output contract to be valid.",
+                "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+                "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+                "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+              ]
+            }
+          }
+        },
+        "fold2": {
+          "dataset": "test_subvideos",
+          "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold2_20260719_merged",
+          "metrics": {
+            "total_samples": 431,
+            "runtime_error_count": 0,
+            "raw_output_count": 431,
+            "raw_output_rate": 1.0,
+            "empty_output_count": 0,
+            "json_valid_count": 431,
+            "json_valid_rate": 1.0,
+            "normalized_valid_count": 133,
+            "normalized_valid_rate": 0.308585,
+            "repaired_count": 133,
+            "repair_rate": 0.308585,
+            "notes": [
+              "Raw protocol compliance and normalized output are recorded separately.",
+              "Ground-truth metadata is included as reference context for task-metric analysis."
+            ],
+            "task_metrics": {
+              "scored_samples": 431,
+              "positive_samples": 213,
+              "has_fracture_accuracy": 0.638051,
+              "type_accuracy": 0.0,
+              "type_accuracy_positive": 0.0,
+              "location_accuracy": 0.5058,
+              "location_accuracy_positive": 0.0,
+              "interval_exact_accuracy": 0.075117,
+              "interval_scored_samples": 213,
+              "time_hit_rate": 0.056338,
+              "time_scored_samples": 213,
+              "joint_success_rate": 0.0,
+              "has_fracture_confusion": {
+                "target=false|pred=false": 180,
+                "target=false|pred=true": 38,
+                "target=true|pred=false": 118,
+                "target=true|pred=true": 95
+              },
+              "notes": [
+                "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+                "Joint success additionally requires the complete normalized output contract to be valid.",
+                "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+                "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+                "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+              ]
+            }
+          }
+        }
+      },
+      "macro_task_metrics": {
+        "has_fracture_accuracy": {
+          "folds_scored": 3,
+          "mean": 0.634184,
+          "pstdev": 0.005469
+        },
+        "type_accuracy": {
+          "folds_scored": 3,
+          "mean": 0.0,
+          "pstdev": 0.0
+        },
+        "type_accuracy_positive": {
+          "folds_scored": 3,
+          "mean": 0.0,
+          "pstdev": 0.0
+        },
+        "location_accuracy": {
+          "folds_scored": 3,
+          "mean": 0.5058,
+          "pstdev": 0.0
+        },
+        "location_accuracy_positive": {
+          "folds_scored": 3,
+          "mean": 0.0,
+          "pstdev": 0.0
+        },
+        "interval_exact_accuracy": {
+          "folds_scored": 3,
+          "mean": 0.065728,
+          "pstdev": 0.007666
+        },
+        "time_hit_rate": {
+          "folds_scored": 3,
+          "mean": 0.051643,
+          "pstdev": 0.003833
+        },
+        "joint_success_rate": {
+          "folds_scored": 3,
+          "mean": 0.0,
+          "pstdev": 0.0
+        }
+      },
+      "pooled_metrics": {
+        "total_samples": 1293,
+        "runtime_error_count": 0,
+        "raw_output_count": 1293,
+        "raw_output_rate": 1.0,
+        "empty_output_count": 0,
+        "json_valid_count": 1293,
+        "json_valid_rate": 1.0,
+        "normalized_valid_count": 386,
+        "normalized_valid_rate": 0.298531,
+        "repaired_count": 386,
+        "repair_rate": 0.298531,
+        "notes": [
+          "Raw protocol compliance and normalized output are recorded separately.",
+          "Ground-truth metadata is included as reference context for task-metric analysis."
+        ],
+        "task_metrics": {
+          "scored_samples": 1293,
+          "positive_samples": 639,
+          "has_fracture_accuracy": 0.634184,
+          "type_accuracy": 0.0,
+          "type_accuracy_positive": 0.0,
+          "location_accuracy": 0.5058,
+          "location_accuracy_positive": 0.0,
+          "interval_exact_accuracy": 0.065728,
+          "interval_scored_samples": 639,
+          "time_hit_rate": 0.051643,
+          "time_scored_samples": 639,
+          "joint_success_rate": 0.0,
+          "has_fracture_confusion": {
+            "target=false|pred=false": 544,
+            "target=false|pred=true": 110,
+            "target=true|pred=false": 363,
+            "target=true|pred=true": 276
+          },
+          "notes": [
+            "Field metrics credit each valid normalized field independently; missing or invalid fields remain incorrect.",
+            "Joint success additionally requires the complete normalized output contract to be valid.",
+            "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
+            "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
+            "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos."
+          ]
+        }
+      },
+      "total_records": 1293,
+      "notes": [
+        "Macro metrics are unweighted means across folds with population standard deviation.",
+        "Pooled metrics are recomputed from all per-sample records and retain invalid outputs in denominators."
+      ]
+    }
+  }
+}
