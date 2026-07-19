@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
   "code": {
-    "commit": "7704513a5320f7248364d0951fa129b78d2e7787",
+    "commit": "4cd8dcc0be26255b5b4b5fc89ba7223040e32b2c",
     "dirty": true
   },
   "config": {
@@ -18,19 +18,19 @@
     "python_version": "3.11.15 | packaged by conda-forge | (main, Jun 11 2026, 03:34:02) [GCC 14.3.0]",
     "transformers_version": "4.56.1",
     "torch_version": "2.5.1+cu124",
-    "av_version": "16.0.0"
+    "av_version": "17.1.0"
   },
   "processor": {
     "fingerprints": {
-      "minicpmv4_5:models/minicpmv4_5:cfg=1d6f6eb441da34dc:pre=5c0dbc92920ded23:max_frames=8:video_fps=2:backend=transformers-loaded": 1719
+      "minicpmv4_5:models/minicpmv4_5:cfg=1d6f6eb441da34dc:pre=5c0dbc92920ded23:max_frames=8:video_fps=2:backend=transformers-loaded": 1530
     },
     "dominant": "minicpmv4_5:models/minicpmv4_5:cfg=1d6f6eb441da34dc:pre=5c0dbc92920ded23:max_frames=8:video_fps=2:backend=transformers-loaded",
-    "count": 1719
+    "count": 1530
   },
   "input_video_manifest": {
     "count": 110,
     "sha256": "567f0e97ec00481e8d47fbe6fae47aa11d875c18466d4da6df69ec95dc1b8ae0",
-    "source": "/home/liuyang/文档/mVllm_2/data/07_metadata/video_meta.json"
+    "source": "data/07_metadata/video_meta.json"
   },
   "split_manifest": {
     "count": 7,
@@ -44,7 +44,7 @@
       "test.json"
     ],
     "sha256": "e7c873247868a9a42b76d8c64cd2086da2e533df8f7a456c23b0be1365e38885",
-    "source": "/home/liuyang/文档/mVllm_2/data/05_splits"
+    "source": "data/05_splits"
   },
   "sample_manifest": {
     "count": 8,
@@ -58,55 +58,55 @@
       "samples_meta.json",
       "test_inputs.json"
     ],
-    "sha256": "d7224b4e2fcdc3cbd39ca6370709f02712a137711e6569721bad0eb6ea5483f7",
-    "source": "/home/liuyang/文档/mVllm_2/data/06_merged"
+    "sha256": "1dab1e5ec9463ef1bdc7f6b3bd983111d56e360fa241768daf1b07598961c29d",
+    "source": "data/06_merged"
   },
   "statistics": {
-    "source": "/home/liuyang/文档/mVllm_2/data/06_merged/samples_meta.json",
+    "source": "data/06_merged/samples_meta.json",
     "summary": {
-      "total_samples": 4005,
+      "total_samples": 3537,
       "total_video_sources": 83,
       "total_positive": 2064,
-      "total_negative": 1941
+      "total_negative": 1473
     },
     "full_report": {
-      "prompt_version": "v1.0.0",
-      "total_samples": 4005,
+      "prompt_version": "v2.1.0",
+      "total_samples": 3537,
       "total_video_sources": 83,
       "total_positive": 2064,
-      "total_negative": 1941,
+      "total_negative": 1473,
       "splits": {
         "fold_0_train": {
-          "sample_count": 953,
+          "sample_count": 843,
           "video_source_count": 45,
           "positive_samples": 491,
-          "negative_samples": 462,
-          "positive_ratio": 0.5152,
-          "negative_ratio": 0.4848,
+          "negative_samples": 352,
+          "positive_ratio": 0.5824,
+          "negative_ratio": 0.4176,
           "source_distribution": {
-            "video_0047": 33,
             "video_0043": 31,
-            "video_0104": 31,
-            "video_0105": 31,
-            "video_0003": 30,
             "video_0017": 30,
             "video_0020": 30,
             "video_0053": 30,
             "video_0059": 30,
             "video_0073": 30,
-            "video_0108": 30,
             "video_0004": 29,
             "video_0028": 29,
             "video_0057": 28,
-            "video_0100": 27,
-            "video_0029": 26,
             "video_0033": 26,
             "video_0048": 26,
             "video_0027": 25,
-            "video_0040": 25
+            "video_0040": 25,
+            "video_0068": 25,
+            "video_0097": 25,
+            "video_0026": 23,
+            "video_0007": 22,
+            "video_0047": 22,
+            "video_0039": 21,
+            "video_0098": 21
           },
           "type_distribution": {
-            "未断裂": 462,
+            "未断裂": 352,
             "韧性断裂": 165,
             "脆性断裂": 159,
             "界面脱粘": 72,
@@ -117,7 +117,7 @@
           },
           "source_type_distribution": {
             "韧性断裂": 349,
-            "脆性断裂": 260,
+            "脆性断裂": 150,
             "界面脱粘": 120,
             "齐根断裂": 74,
             "界面脱粘、齐根断裂": 55,
@@ -129,33 +129,33 @@
           }
         },
         "fold_0_val": {
-          "sample_count": 324,
+          "sample_count": 289,
           "video_source_count": 17,
           "positive_samples": 179,
-          "negative_samples": 145,
-          "positive_ratio": 0.5525,
-          "negative_ratio": 0.4475,
+          "negative_samples": 110,
+          "positive_ratio": 0.6194,
+          "negative_ratio": 0.3806,
           "source_distribution": {
-            "video_0103": 32,
             "video_0044": 31,
-            "video_0102": 31,
             "video_0076": 30,
             "video_0081": 29,
             "video_0009": 28,
             "video_0006": 22,
             "video_0070": 22,
+            "video_0103": 21,
             "video_0001": 20,
             "video_0060": 20,
+            "video_0102": 20,
             "video_0015": 19,
             "video_0023": 12,
-            "video_0107": 12,
-            "video_0071": 7,
+            "video_0071": 5,
             "video_0075": 5,
             "video_0065": 3,
-            "video_0042": 1
+            "video_0042": 1,
+            "video_0107": 1
           },
           "type_distribution": {
-            "未断裂": 144,
+            "未断裂": 109,
             "韧性断裂": 61,
             "脆性断裂": 51,
             "界面脱粘": 35,
@@ -164,43 +164,43 @@
           },
           "source_type_distribution": {
             "韧性断裂": 124,
-            "脆性断裂": 90,
             "界面脱粘": 59,
+            "脆性断裂": 55,
             "齐根断裂": 50,
             "视频异常": 1
           }
         },
         "fold_1_train": {
-          "sample_count": 966,
+          "sample_count": 887,
           "video_source_count": 49,
           "positive_samples": 480,
-          "negative_samples": 486,
-          "positive_ratio": 0.4969,
-          "negative_ratio": 0.5031,
+          "negative_samples": 407,
+          "positive_ratio": 0.5411,
+          "negative_ratio": 0.4589,
           "source_distribution": {
-            "video_0103": 32,
             "video_0044": 31,
-            "video_0102": 31,
-            "video_0104": 31,
             "video_0017": 30,
             "video_0020": 30,
             "video_0059": 30,
             "video_0076": 30,
-            "video_0108": 30,
             "video_0004": 29,
             "video_0022": 29,
             "video_0080": 29,
             "video_0081": 29,
             "video_0009": 28,
             "video_0099": 27,
-            "video_0100": 27,
-            "video_0029": 26,
             "video_0027": 25,
             "video_0040": 25,
-            "video_0097": 25
+            "video_0097": 25,
+            "video_0026": 23,
+            "video_0006": 22,
+            "video_0070": 22,
+            "video_0039": 21,
+            "video_0098": 21,
+            "video_0103": 21
           },
           "type_distribution": {
-            "未断裂": 485,
+            "未断裂": 406,
             "韧性断裂": 161,
             "脆性断裂": 151,
             "界面脱粘": 70,
@@ -212,7 +212,7 @@
           },
           "source_type_distribution": {
             "韧性断裂": 388,
-            "脆性断裂": 204,
+            "脆性断裂": 125,
             "界面脱粘": 118,
             "齐根断裂": 80,
             "未断裂": 62,
@@ -224,17 +224,14 @@
           }
         },
         "fold_1_val": {
-          "sample_count": 400,
+          "sample_count": 334,
           "video_source_count": 18,
           "positive_samples": 223,
-          "negative_samples": 177,
-          "positive_ratio": 0.5575,
-          "negative_ratio": 0.4425,
+          "negative_samples": 111,
+          "positive_ratio": 0.6677,
+          "negative_ratio": 0.3323,
           "source_distribution": {
-            "video_0047": 33,
             "video_0043": 31,
-            "video_0105": 31,
-            "video_0003": 30,
             "video_0053": 30,
             "video_0073": 30,
             "video_0057": 28,
@@ -242,16 +239,19 @@
             "video_0048": 26,
             "video_0068": 25,
             "video_0007": 22,
-            "video_0101": 22,
+            "video_0047": 22,
+            "video_0105": 20,
+            "video_0003": 19,
             "video_0031": 18,
             "video_0051": 17,
-            "video_0049": 12,
-            "video_0106": 12,
+            "video_0101": 11,
             "video_0079": 6,
-            "video_0045": 1
+            "video_0045": 1,
+            "video_0049": 1,
+            "video_0106": 1
           },
           "type_distribution": {
-            "未断裂": 177,
+            "未断裂": 111,
             "韧性断裂": 83,
             "脆性断裂": 74,
             "界面脱粘": 37,
@@ -259,28 +259,22 @@
           },
           "source_type_distribution": {
             "韧性断裂": 148,
-            "脆性断裂": 146,
+            "脆性断裂": 80,
             "界面脱粘": 61,
             "齐根断裂": 44,
             "视频异常": 1
           }
         },
         "fold_2_train": {
-          "sample_count": 1007,
+          "sample_count": 873,
           "video_source_count": 52,
           "positive_samples": 528,
-          "negative_samples": 479,
-          "positive_ratio": 0.5243,
-          "negative_ratio": 0.4757,
+          "negative_samples": 345,
+          "positive_ratio": 0.6048,
+          "negative_ratio": 0.3952,
           "source_distribution": {
-            "video_0047": 33,
-            "video_0103": 32,
             "video_0043": 31,
             "video_0044": 31,
-            "video_0102": 31,
-            "video_0105": 31,
-            "video_0109": 31,
-            "video_0003": 30,
             "video_0017": 30,
             "video_0053": 30,
             "video_0073": 30,
@@ -292,10 +286,16 @@
             "video_0048": 26,
             "video_0027": 25,
             "video_0040": 25,
-            "video_0068": 25
+            "video_0068": 25,
+            "video_0026": 23,
+            "video_0006": 22,
+            "video_0007": 22,
+            "video_0047": 22,
+            "video_0070": 22,
+            "video_0074": 22
           },
           "type_distribution": {
-            "未断裂": 478,
+            "未断裂": 344,
             "韧性断裂": 189,
             "脆性断裂": 156,
             "界面脱粘": 72,
@@ -308,7 +308,7 @@
           },
           "source_type_distribution": {
             "韧性断裂": 374,
-            "脆性断裂": 291,
+            "脆性断裂": 157,
             "界面脱粘": 120,
             "齐根断裂": 94,
             "界面脱粘、齐根断裂": 55,
@@ -320,32 +320,32 @@
           }
         },
         "fold_2_val": {
-          "sample_count": 355,
+          "sample_count": 311,
           "video_source_count": 16,
           "positive_samples": 163,
-          "negative_samples": 192,
-          "positive_ratio": 0.4592,
-          "negative_ratio": 0.5408,
+          "negative_samples": 148,
+          "positive_ratio": 0.5241,
+          "negative_ratio": 0.4759,
           "source_distribution": {
-            "video_0104": 31,
             "video_0020": 30,
             "video_0059": 30,
-            "video_0108": 30,
             "video_0004": 29,
-            "video_0100": 27,
-            "video_0029": 26,
             "video_0097": 25,
             "video_0039": 21,
             "video_0098": 21,
+            "video_0104": 20,
             "video_0061": 19,
+            "video_0108": 19,
             "video_0035": 17,
+            "video_0100": 16,
+            "video_0029": 15,
             "video_0030": 13,
             "video_0034": 13,
             "video_0036": 13,
             "video_0052": 10
           },
           "type_distribution": {
-            "未断裂": 192,
+            "未断裂": 148,
             "脆性断裂": 71,
             "韧性断裂": 39,
             "界面脱粘": 35,
@@ -353,7 +353,7 @@
           },
           "source_type_distribution": {
             "韧性断裂": 116,
-            "脆性断裂": 114,
+            "脆性断裂": 70,
             "界面脱粘": 59,
             "未断裂": 36,
             "齐根断裂": 30
@@ -372,7 +372,7 @@
     }
   },
   "disk_usage_bytes": {
-    "03_subvideos": 7742153257,
-    "06_merged": 9630510
+    "03_subvideos": 8581116437,
+    "06_merged": 3731581
   }
 }
