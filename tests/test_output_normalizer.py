@@ -174,9 +174,9 @@ class TestNormalizeStructuredOutput:
         assert any("fracture_between" in r for r in repairs)
         assert any("location" in r for r in repairs)
 
-    # --- has_fracture=None: all fields forced None ---------------------------
+    # --- has_fracture=None: anomaly type is canonical ------------------------
 
-    def test_null_all_fields_forced_none(self) -> None:
+    def test_null_fields_use_video_anomaly(self) -> None:
         raw = {
             "has_fracture": None,
             "fracture_between": [2, 3],
@@ -186,9 +186,27 @@ class TestNormalizeStructuredOutput:
         normalized, repairs = normalize_structured_output(raw, FRAME_COUNT)
         assert normalized["has_fracture"] is None
         assert normalized["fracture_between"] is None
-        assert normalized["type"] is None
+        assert normalized["type"] == "视频异常"
         assert normalized["location"] is None
         assert len(repairs) > 0
+
+    def test_null_video_anomaly_is_preserved(self) -> None:
+        normalized, repairs = normalize_structured_output(
+            {
+                "has_fracture": None,
+                "fracture_between": None,
+                "type": "视频异常",
+                "location": None,
+            },
+            FRAME_COUNT,
+        )
+        assert normalized == {
+            "has_fracture": None,
+            "fracture_between": None,
+            "type": "视频异常",
+            "location": None,
+        }
+        assert repairs == []
 
     # --- String interval coercion -------------------------------------------
 
@@ -297,10 +315,19 @@ class TestValidateStructuredOutput:
         d = {
             "has_fracture": None,
             "fracture_between": None,
-            "type": None,
+            "type": "视频异常",
             "location": None,
         }
         assert validate_structured_output(d, FRAME_COUNT) is True
+
+    def test_null_without_video_anomaly_returns_false(self) -> None:
+        d = {
+            "has_fracture": None,
+            "fracture_between": None,
+            "type": None,
+            "location": None,
+        }
+        assert validate_structured_output(d, FRAME_COUNT) is False
 
     def test_missing_key_returns_false(self) -> None:
         d = {

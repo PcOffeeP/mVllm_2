@@ -4,8 +4,10 @@
 
 Prompt Engineering 阶段已经结束。项目只保留一个 `system_prompt` 和一个
 `user_prompt`，二者的唯一编辑入口均为
-`pipeline/prompt_library.yaml`。训练样本构建、核心评测和生产推理必须读取同一
-对 Prompt，不再维护 test、production、evidence 或 Prompt Sweep 变体副本。
+`pipeline/prompt_library.yaml`。训练样本构建和核心评测读取这一对 Prompt；
+`pipeline/contracts/tensile_vlm_v2.json` 将其逐字保存为生产 analysis 快照。
+生产运行时只读取该自包含 artifact。Evidence 使用 artifact 内独立的固定观察 Prompt，
+不进入训练数据，也不改变 analysis Prompt。
 
 最终 Prompt 逐字复用当前 merged 模型的训练分布：
 

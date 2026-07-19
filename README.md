@@ -207,30 +207,27 @@ python -m finetune.validation.run_evaluation \
 
 ## 推理服务
 
-生产调用使用 `pipeline/prompt_library.yaml` 中唯一的 System/User Prompt，并遵循
-`pipeline/contracts/tensile_vlm_v1.json` 的四字段协议。先取得覆盖两者的契约
-身份，并把输出写入部署 manifest 的同名字段：
+生产服务固定使用 `pipeline/contracts/tensile_vlm_v2.json`。其中 analysis Prompt
+是全量模型训练 Prompt 的版本化快照；服务启动和请求处理均不再动态读取 YAML。
+查看当前固定契约身份：
 
 ```bash
 python -m pipeline.production_contract
 ```
 
-`deployment_manifest.json` 除模型、processor 和运行环境信息外，必须包含：
-
-```json
-{
-  "contract_version": "tensile-vlm/v1",
-  "prompt_contract_hash": "上一步输出的 SHA256"
-}
-```
-
-可从 `pipeline/server_deployment_manifest.example.json` 复制完整模板。Prompt 或契约文件变化后必须重新生成 hash；TensileAgent 会在每轮响应中核对这两个字段，不一致时 fail closed。
+从 `pipeline/server_deployment_manifest.example.json` 复制启动配置并替换全部
+`REPLACE_*`。启动配置只写模型、adapter、processor、框架和运行环境；服务会从
+已验证的 artifact 注入 `contract_version` 与 `contract_hash`。TensileAgent 会先调用
+`GET /v1/tensile/contract` 固定部署快照，并逐轮检查漂移。
 
 ```bash
 python -m pipeline.server_proxy \
   --model /path/to/merged_model \
   --deployment-manifest /path/to/deployment_manifest.json
 ```
+
+分析和视觉证据都通过 `POST /v1/chat/completions`。服务只接受 artifact 中的固定
+Prompt；analysis 非法输出由服务端最多重试两次，Agent 客户端不追加动态纠错文本。
 
 ## 测试
 

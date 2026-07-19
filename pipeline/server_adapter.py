@@ -41,10 +41,25 @@ from typing import Any
 from pipeline.production_contract import load_production_contract, production_contract_hash
 
 
+DEPLOYMENT_FIELDS = {
+    "model_version",
+    "adapter_version",
+    "base_model_version",
+    "processor_version",
+    "llamafactory_version",
+    "transformers_version",
+    "config_fingerprint",
+    "runtime_device",
+    "runtime_dtype",
+    "contract_version",
+    "contract_hash",
+}
+
+
 def wrap_response(
     raw_response: dict[str, Any],
     video_frames: list[dict[str, Any]],
-    processor_info: dict[str, Any],
+    deployment_snapshot: dict[str, Any],
 ) -> dict[str, Any]:
     """Inject a ``preprocessing`` metadata block into an OpenAI-compatible
     ``ChatCompletion`` response.
@@ -60,9 +75,8 @@ def wrap_response(
         Each entry **must** contain ``index`` (int, 0-based frame index in
         the processor output) and ``timestamp`` (float, seconds in the
         source video).
-    processor_info:
-        Must contain ``processor_version``, ``max_frames=8`` and the complete
-        deployment-manifest fields shown in the module deployment example.
+    deployment_snapshot:
+        The frozen, complete 11-field public deployment identity.
 
     Returns
     -------
@@ -71,37 +85,23 @@ def wrap_response(
     """
     if not isinstance(raw_response, dict):
         raise TypeError("raw_response must be a dict")
-    version = processor_info.get("processor_version")
-    if not isinstance(version, str) or not version.strip() or version.lower() == "unknown":
-        raise ValueError("processor_version is required and must not be unknown")
-    if processor_info.get("max_frames") != 8:
-        raise ValueError("max_frames must be exactly 8")
-    deployment_keys = {
-        "model_version",
-        "transformers_version",
-        "llamafactory_version",
-        "base_model_version",
-        "artifact_version",
-        "config_fingerprint",
-        "runtime_device",
-        "runtime_dtype",
-        "contract_version",
-        "prompt_contract_hash",
-    }
-    missing_deployment = sorted(
+    if not isinstance(deployment_snapshot, dict) or set(deployment_snapshot) != DEPLOYMENT_FIELDS:
+        raise ValueError("deployment_snapshot must contain exactly the public 11 fields")
+    invalid_deployment = sorted(
         key
-        for key in deployment_keys
-        if not isinstance(processor_info.get(key), str) or not processor_info[key].strip()
+        for key in DEPLOYMENT_FIELDS
+        if not isinstance(deployment_snapshot.get(key), str)
+        or not deployment_snapshot[key].strip()
+        or deployment_snapshot[key].strip().lower() == "unknown"
+        or deployment_snapshot[key].startswith("REPLACE_")
     )
-    if missing_deployment:
-        raise ValueError(
-            "processor_info missing deployment fields: " + ", ".join(missing_deployment)
-        )
+    if invalid_deployment:
+        raise ValueError("deployment_snapshot has invalid fields: " + ", ".join(invalid_deployment))
     contract = load_production_contract()
-    if processor_info["contract_version"] != contract["contract_version"]:
+    if deployment_snapshot["contract_version"] != contract["contract_version"]:
         raise ValueError("contract_version does not match the production contract")
-    if processor_info["prompt_contract_hash"] != production_contract_hash():
-        raise ValueError("prompt_contract_hash does not match the production contract")
+    if deployment_snapshot["contract_hash"] != production_contract_hash():
+        raise ValueError("contract_hash does not match the production contract")
     if not isinstance(video_frames, list) or not 1 <= len(video_frames) <= 8:
         raise ValueError("video_frames must contain between 1 and 8 actual frames")
 
@@ -124,12 +124,10 @@ def wrap_response(
 
     preprocessing: dict[str, Any] = {
         "request_id": str(uuid.uuid4()),
-        "processor_version": version,
+        "processor_version": deployment_snapshot["processor_version"],
         "max_frames": 8,
         "frames": frames,
-        "deployment_manifest": {
-            key: processor_info[key] for key in sorted(deployment_keys)
-        },
+        "deployment_manifest": dict(deployment_snapshot),
     }
 
     wrapped = dict(raw_response)

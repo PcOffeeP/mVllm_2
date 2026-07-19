@@ -27,6 +27,8 @@ ALLOWED_FRACTURE_TYPES: set[str] = {
 
 ALLOWED_NON_FRACTURE_TYPES: set[str] = {"未断裂", "未夹紧"}
 
+ALLOWED_ANOMALY_TYPES: set[str] = {"视频异常"}
+
 ALLOWED_LOCATIONS: set[str] = {"inside_gauge", "outside_gauge"}
 
 # ---------------------------------------------------------------------------
@@ -156,9 +158,10 @@ def _normalize_type(
         return "未断裂"
 
     # has_fracture is None
-    if raw_val is not None:
-        repairs.append(f"type={raw_val!r} set to None (has_fracture is None)")
-    return None
+    if raw_val == "视频异常":
+        return raw_val
+    repairs.append(f"type={raw_val!r} set to '视频异常' (has_fracture is None)")
+    return "视频异常"
 
 
 def _normalize_location(
@@ -226,7 +229,7 @@ def normalize_structured_output(
 
     2. **``has_fracture`` is ``None``**
        - ``fracture_between`` → ``None``
-       - ``type`` → ``None``
+       - ``type`` → ``"视频异常"``
        - ``location`` → ``None``
 
     3. **``has_fracture`` is ``True``**
@@ -294,7 +297,7 @@ def normalize_structured_output(
     else:
         # Defensive: should not be reachable after _coerce_has_fracture
         fracture_between = None
-        type_val = None
+        type_val = "视频异常"
         location = None
 
     normalized: dict[str, Any] = {
@@ -357,7 +360,7 @@ def validate_structured_output(normalized: dict, frame_count: int) -> bool:
         if not isinstance(t, str) or t not in ALLOWED_NON_FRACTURE_TYPES:
             return False
     else:  # None
-        if t is not None:
+        if t not in ALLOWED_ANOMALY_TYPES:
             return False
 
     # location consistency

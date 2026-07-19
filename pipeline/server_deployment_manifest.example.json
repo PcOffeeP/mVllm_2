@@ -5,10 +5,8 @@
   "transformers_version": "REPLACE_WITH_INSTALLED_VERSION",
   "llamafactory_version": "REPLACE_WITH_GIT_COMMIT",
   "base_model_version": "REPLACE_WITH_MODEL_REVISION",
-  "artifact_version": "REPLACE_WITH_ADAPTER_OR_MERGED_MODEL_REVISION",
+  "adapter_version": "REPLACE_WITH_ADAPTER_OR_MERGED_MODEL_REVISION",
   "config_fingerprint": "REPLACE_WITH_SHA256",
   "runtime_device": "cuda:0",
-  "runtime_dtype": "bfloat16",
-  "contract_version": "tensile-vlm/v1",
-  "prompt_contract_hash": "REPLACE_WITH_SHA256_OF_pipeline/contracts/tensile_vlm_v1.json"
+  "runtime_dtype": "bfloat16"
 }

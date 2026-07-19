@@ -131,9 +131,10 @@ python scripts/generate_test_subvideo_artifacts.py \
 
 ## 最终 Prompt 策略
 
-Prompt Engineering 阶段已经结束。训练、核心评测和生产推理只使用
+Prompt Engineering 阶段已经结束。训练和核心评测只使用
 `pipeline/prompt_library.yaml` 顶部的一个 `system_prompt` 和一个
-`user_prompt`。这两个 Prompt 与当前 merged 模型的训练分布一致；后续修改只允许
+`user_prompt`。生产 artifact 会逐字保存这两个 Prompt 作为 analysis 快照。这两个
+Prompt 与当前 merged 模型的训练分布一致；后续修改只允许
 编辑这两个字段，不再维护 Prompt Sweep、Evidence Pilot、测试 Prompt 或生产
 Prompt 副本。
 
@@ -187,9 +188,10 @@ eval loss 的下降不能单独证明任务效果。
 
 ## TensileAgent 生产契约
 
-Prompt 文本的唯一权威来源是 `pipeline/prompt_library.yaml`。结构化字段、生成参数
-和视频帧数协议由 `pipeline/contracts/tensile_vlm_v1.json` 定义。生产契约 hash
-同时覆盖这两个文件，避免 Prompt 与协议漂移。
+训练与核心评测 Prompt 的唯一编辑入口是 `pipeline/prompt_library.yaml`。生产服务
+只加载自包含的 `pipeline/contracts/tensile_vlm_v2.json`；其中 analysis Prompt
+必须与当前 YAML 逐字一致，同时固定四字段 schema、异常语义、evidence Prompt、
+生成参数和视频帧数。
 
 训练机器启动代理服务前执行：
 
@@ -197,7 +199,10 @@ Prompt 文本的唯一权威来源是 `pipeline/prompt_library.yaml`。结构化
 python -m pipeline.production_contract
 ```
 
-将输出的 `contract_version` 和 `prompt_contract_hash` 填入基于 `pipeline/server_deployment_manifest.example.json` 创建的部署 manifest。服务端 adapter 会拒绝错误 hash，TensileAgent 也会对响应中的部署 metadata 再次校验。修改 Prompt、generation 配置、最大帧数或字段协议后，不得沿用旧 hash。
+基于 `pipeline/server_deployment_manifest.example.json` 创建启动配置，只填写模型、
+adapter、processor、框架和 runtime 身份，不得自行填写 contract 字段。服务会注入
+固定 `contract_version`/`contract_hash`；TensileAgent 会在预检和每轮响应中校验。
+修改 Prompt、generation、最大帧数或字段协议后必须发布新的 canonical artifact/hash。
 
 本机已有同步的预测 JSONL 时，可跳过 GPU 推理：
 

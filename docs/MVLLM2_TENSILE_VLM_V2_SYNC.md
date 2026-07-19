@@ -8,7 +8,7 @@
 
 ## 一、结论与实施顺序
 
-当前 `main` 分支仍运行 `tensile-vlm/v1`。迁移到 v2 的方向不变，但必须保留当前模型
+当前实施将生产服务迁移到 `tensile-vlm/v2`，并保留当前模型
 已经训练和使用的“视频异常”语义：
 
 ```json
@@ -20,7 +20,7 @@
 }
 ```
 
-因此不能直接复制 TensileAgent 当前 hash 为 `141887...9002` 的 v2 artifact；该版本要求
+旧 TensileAgent hash `141887...9002` 的 v2 artifact 要求
 `has_fracture=null` 时其余字段全部为 `null`，与本项目现状冲突。
 
 按以下顺序施工：
@@ -132,7 +132,7 @@ contract_hash
 hash 固定为：
 
 ```text
-5bb8548255ca59285794a20dfe52e10946ff6981ba7891b784228db7f3235e4e
+d26adabe7d7236fc3c5f15dcaa3a7eb7cbeb681102be2c926fe5f4c4b0111102
 ```
 
 hash 计算规则：
@@ -215,7 +215,7 @@ def canonical_contract_bytes(contract: dict[str, Any]) -> bytes:
 ```python
 CONTRACT_PATH = Path(__file__).with_name("contracts") / "tensile_vlm_v2.json"
 CONTRACT_VERSION = "tensile-vlm/v2"
-EXPECTED_CONTRACT_HASH = "5bb8548255ca59285794a20dfe52e10946ff6981ba7891b784228db7f3235e4e"
+EXPECTED_CONTRACT_HASH = "d26adabe7d7236fc3c5f15dcaa3a7eb7cbeb681102be2c926fe5f4c4b0111102"
 ```
 
 `load_production_contract()` 必须：
@@ -236,7 +236,7 @@ EXPECTED_CONTRACT_HASH = "5bb8548255ca59285794a20dfe52e10946ff6981ba7891b784228d
 ```json
 {
   "contract_version": "tensile-vlm/v2",
-  "contract_hash": "5bb8548255ca59285794a20dfe52e10946ff6981ba7891b784228db7f3235e4e"
+  "contract_hash": "d26adabe7d7236fc3c5f15dcaa3a7eb7cbeb681102be2c926fe5f4c4b0111102"
 }
 ```
 
@@ -314,7 +314,7 @@ GET /v1/tensile/contract
 ```json
 {
   "contract_version": "tensile-vlm/v2",
-  "contract_hash": "5bb8548255ca59285794a20dfe52e10946ff6981ba7891b784228db7f3235e4e",
+  "contract_hash": "d26adabe7d7236fc3c5f15dcaa3a7eb7cbeb681102be2c926fe5f4c4b0111102",
   "deployment_manifest": {
     "model_version": "...",
     "adapter_version": "...",
@@ -326,7 +326,7 @@ GET /v1/tensile/contract
     "runtime_device": "...",
     "runtime_dtype": "...",
     "contract_version": "tensile-vlm/v2",
-    "contract_hash": "5bb8548255ca59285794a20dfe52e10946ff6981ba7891b784228db7f3235e4e"
+    "contract_hash": "d26adabe7d7236fc3c5f15dcaa3a7eb7cbeb681102be2c926fe5f4c4b0111102"
   },
   "capabilities": {
     "analysis": true,
@@ -486,7 +486,7 @@ curl -s http://127.0.0.1:8000/v1/tensile/contract | python3 -m json.tool
 ```json
 {
   "contract_version": "tensile-vlm/v2",
-  "contract_hash": "5bb8548255ca59285794a20dfe52e10946ff6981ba7891b784228db7f3235e4e",
+  "contract_hash": "d26adabe7d7236fc3c5f15dcaa3a7eb7cbeb681102be2c926fe5f4c4b0111102",
   "model_output_fields": ["has_fracture", "fracture_between", "type", "location"],
   "model_output_schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -528,8 +528,8 @@ curl -s http://127.0.0.1:8000/v1/tensile/contract | python3 -m json.tool
   "anomaly_types": ["视频异常"],
   "locations": ["inside_gauge", "outside_gauge"],
   "analysis": {
-    "system_prompt": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频帧序列，基于画面中可见的形貌变化，判断试样是否发生断裂。 如果发生断裂，请指出断裂发生在哪两个相邻采样帧之间、断裂模式以及断裂位置。 请只输出符合指定格式的回答，不要添加 Markdown 代码块或额外解释。",
-    "user_prompt": "请分析这段拉伸试验视频，判断试样是否存在断裂。如果存在断裂，请指出断裂发生在哪两个相邻采样帧之间，并说明断裂模式和断裂位置。",
+    "system_prompt": "你是一位材料力学视频分析助手。请根据提供的拉伸试验视频，基于画面中的试样变化，判断试样的断裂信息。最后请输出JSON格式的回答。",
+    "user_prompt": "请判断试样是否断裂（has_fracture），并给出断裂帧区间（fracture_between）、断裂类型（type）和断裂位置（location）。",
     "retry_prompt": "上一轮输出不符合生产契约。请重新输出一个合法 JSON 对象，且只包含 has_fracture、fracture_between、type、location 四个字段，不要添加 Markdown 代码块或额外解释。",
     "generation": {"do_sample": false, "num_beams": 1, "temperature": 0.0, "max_new_tokens": 256}
   },
