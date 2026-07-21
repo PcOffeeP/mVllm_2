@@ -100,6 +100,19 @@ streamlit run pipeline/scripts/review_subvideos_app.py -- \
 
 测试级子视频使用对应 metadata 运行同一脚本。
 
+实验性的源视频固定 ROI 标注工具：
+
+```bash
+streamlit run pipeline/scripts/roi_annotation_app.py -- \
+  --metadata data/07_metadata/video_meta.json \
+  --output data/07_metadata/roi_decisions.json
+```
+
+该工具只保存 ROI / 不裁剪决定，不生成训练视频，也不修改当前激活的数据发布版本。
+全部 110 条决定完成后，使用
+`uv run python pipeline/scripts/freeze_roi_decisions.py --check-only` 校验，再去掉
+`--check-only` 冻结为不可覆盖的 ROI manifest。
+
 ### 3. 导出训练数据
 
 > 详细的训练数据导出、质量检查与版本冻结步骤见 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)。

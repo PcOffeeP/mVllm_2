@@ -68,6 +68,40 @@ flowchart TD
 | 7 | `data/06_merged/`、`data_version_lock.json` | 输出待发布文件并冻结版本 | 训练数据发布 |
 | 8 | `data/08_training_ready/<release_id>/` | 分类、校验并原子发布训练版本 | 训练与评测 |
 
+## ROI 标注工具 MVP（实验性，不进入现有发布链）
+
+源视频固定 ROI 的人工标注工具只生成独立决定文件，不会修改源视频、子视频 metadata、
+split 或 `08_training_ready`：
+
+```bash
+streamlit run pipeline/scripts/roi_annotation_app.py -- \
+  --metadata data/07_metadata/video_meta.json \
+  --output data/07_metadata/roi_decisions.json
+```
+
+工具支持视频播放、按时间滑块抽帧、上下左右裁剪比例、当前帧原图/ROI 对照、关键时刻
+预览，以及 `fixed_roi` / `no_crop` 决定。`approved` 保存前必须人工确认已检查关键时刻，
+并逐项确认上/下夹具、完整试样、位置判断和齐根判断所需信息均被保留。
+
+完成全部 110 条决定后先校验：
+
+```bash
+uv run python pipeline/scripts/freeze_roi_decisions.py --check-only
+```
+
+校验通过后冻结为不可覆盖的内容寻址 ROI manifest：
+
+```bash
+uv run python pipeline/scripts/freeze_roi_decisions.py
+```
+
+冻结输出中的 `development_roi.json` 与 `test_roi_audit.json` 按当前 89/21 源视频清单隔离。
+任一决定缺失、未 approved、源文件哈希变化或可见性检查未通过都会阻止冻结。
+
+`roi_decisions.json` 目前只是后续 ROI 媒体生成器的输入候选，**不能直接作为训练输入，
+也不代表生成了新的训练数据发布版本**。在实现版本化 ROI 媒体生成、重新抽帧、区间
+重算和质量门之前，不得手工把它接入 `training_sample_builder.py`。
+
 命令中的默认输入/输出路径已写入脚本默认值，正常流程不需要重复传入。只有随复审轮次变化的中间产物需要指定 `--round round_XX`。
 
 ### 下一轮数据处理时的正常行为

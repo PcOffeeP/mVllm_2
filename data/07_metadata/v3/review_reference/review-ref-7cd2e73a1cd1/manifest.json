@@ -1,0 +1,68 @@
+{
+  "artifacts": {
+    "build_report.json": {
+      "sha256": "989d2be4ed79d1a6adb1f1612dc0b75695796b3158a150d37984ccb1cced961f"
+    },
+    "conflicts.json": {
+      "sha256": "b524a81fc53883ee32bbf18b6aba33094f0ba69cfa2605f5fbbce01e1397610f"
+    },
+    "development_reference.json": {
+      "sha256": "b093461e385f6443b510b04302042833b031ef6df0f68ab132b9ab66a0bf73d9"
+    },
+    "quarantined_cross_split.json": {
+      "sha256": "697dd24ef5b80670c0d5d8a58254d1f00b6c8c08ce4d10804928a1808eedaed1"
+    },
+    "test_reference_audit.json": {
+      "sha256": "dd7712a0e36ba3808c3b20cac7e2473737e312ab8b2a7e70948c7fef4b565ef0"
+    }
+  },
+  "generated_at": "2026-07-20T13:23:30.086546+00:00",
+  "inputs": [
+    {
+      "bytes": 625,
+      "path": "data/05_splits/test.json",
+      "role": "test_manifest",
+      "sha256": "26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc"
+    },
+    {
+      "bytes": 197490,
+      "path": "data/07_metadata/subvideo_test_review_decisions.json",
+      "role": "test_review_decisions",
+      "sha256": "1acf6d97654747485e2418fe69b33ae356b571112e349ce7b0612fd9b9ded4fa"
+    },
+    {
+      "bytes": 2258520,
+      "path": "data/07_metadata/test_subvideos_meta.label_reviewed.json",
+      "role": "test_reviewed_metadata",
+      "sha256": "e9b03868e1fbab2bc9b019b869d09a847383160b1664eb569c69e306a4e6639a"
+    },
+    {
+      "bytes": 1244857,
+      "path": "data/07_metadata/subvideo_train_review_decisions_final.json",
+      "role": "train_review_decisions",
+      "sha256": "ef6297e8592d0ead4fbe861b5b396f8ae7cb6fdf093eb7a28028406fae49a7a5"
+    },
+    {
+      "bytes": 18442332,
+      "path": "data/07_metadata/subvideos_meta.label_reviewed.json",
+      "role": "train_reviewed_metadata",
+      "sha256": "1bedee7d9d00582ffd3457f57de54263a6adc60a78b3103122de0f78f6c656fa"
+    },
+    {
+      "bytes": 73338,
+      "path": "data/07_metadata/video_meta.json",
+      "role": "video_metadata",
+      "sha256": "3d2f0c5e3af65603ecd2490a061ff908659269e9072e3b365e217d30f05f951c"
+    }
+  ],
+  "reference_id": "review-ref-7cd2e73a1cd1",
+  "schema_version": "tensile-review-reference/v1",
+  "split_guard": {
+    "development_source_count": 89,
+    "overlap_count": 0,
+    "quarantined_record_count": 119,
+    "quarantined_source_count": 5,
+    "test_manifest_sha256": "26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc",
+    "test_source_count": 21
+  }
+}

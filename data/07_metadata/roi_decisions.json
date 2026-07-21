@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "roi_policy_version": "1.0",
+  "source_metadata_file": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/data/07_metadata/video_meta.json",
+  "generated_at": "2026-07-20T14:04:30.183102+00:00",
+  "decision_count": 1,
+  "decisions": [
+    {
+      "source_video_id": "video_0001",
+      "source_video_path": "data/01_videos/video_0001.mp4",
+      "mode": "fixed_roi",
+      "review_status": "approved",
+      "margins": {
+        "top": 0.05,
+        "right": 0.165,
+        "bottom": 0.1,
+        "left": 0.28
+      },
+      "normalized_box": {
+        "x": 0.28,
+        "y": 0.05,
+        "width": 0.555,
+        "height": 0.85
+      },
+      "pixel_box": {
+        "x": 128,
+        "y": 34,
+        "width": 252,
+        "height": 570
+      },
+      "source_resolution": [
+        456,
+        670
+      ],
+      "source_sha256": "5db06f47a3903b7ae25f95e3b128b2ed367b7029e2210c981d6876d262cacc0f",
+      "source_size_bytes": 7561197,
+      "source_mtime_ns": 1762256348000000000,
+      "reviewed_timestamps": [
+        0.0,
+        10.108,
+        20.217,
+        30.325,
+        38.683,
+        38.883,
+        39.083,
+        40.383
+      ],
+      "visibility_checks": {
+        "upper_grip_visible": true,
+        "lower_grip_visible": true,
+        "full_specimen_visible": true,
+        "location_judgable": true,
+        "root_break_judgable": true
+      },
+      "roi_policy_version": "1.0",
+      "reviewed_at": "2026-07-20T14:04:30.183047+00:00",
+      "reviewer_notes": ""
+    }
+  ]
+}
