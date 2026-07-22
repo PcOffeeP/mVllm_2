@@ -206,6 +206,7 @@ def load_media_plan(
     for video_id, source in source_cache.items():
         if _sha256_file(source["path"]) != source["expected_sha256"]:
             raise CandidateMediaError(f"{video_id}: ROI 源视频 SHA-256 不一致")
+        source["probe"] = probe_video(source["path"])
 
     identity = {
         "schema_version": MEDIA_SCHEMA_VERSION,
@@ -305,9 +306,9 @@ def _sample_mapping(
     clip_path: Path,
     candidate: Mapping[str, Any],
     source_record: Mapping[str, Any],
+    clip_duration: float,
 ) -> list[dict[str, Any]]:
-    clip_probe = probe_video(clip_path)
-    mappings = preprocessor.sample(str(clip_path), 0.0, clip_probe.duration)
+    mappings = preprocessor.sample(str(clip_path), 0.0, clip_duration)
     fps = source_record.get("fps")
     if isinstance(fps, bool) or not isinstance(fps, (int, float)) or float(fps) <= 0:
         raise CandidateMediaError(f"{candidate.get('source_video')}: ROI metadata fps 无效")
@@ -441,11 +442,17 @@ def _process_candidate(
                 f"{candidate_id}: ffmpeg 裁剪失败",
             )
             work_video = video_tmp
-        source_probe = probe_video(source_path)
+        source_probe = source.get("probe")
+        if not isinstance(source_probe, VideoProbe):
+            source_probe = probe_video(source_path)
         clip_probe = probe_video(work_video)
         _validate_clip_probe(source_probe, clip_probe, candidate)
         mapping = _sample_mapping(
-            preprocessor, work_video, candidate, source["record"]
+            preprocessor,
+            work_video,
+            candidate,
+            source["record"],
+            clip_probe.duration,
         )
         passed, reason = validate_actual_sampling_gate(
             candidate, mapping, source["record"]
