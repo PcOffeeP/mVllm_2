@@ -152,9 +152,40 @@ uv run python pipeline/scripts/build_v3_candidate_plan.py
 `data/03_subvideos_roi/<candidate_plan_id>/` 与 `data/04_frames_roi/<candidate_plan_id>/`。
 旧 `pipeline/scripts/subvideo_builder.py` 仍服务 v2 流程，不得直接作为 v3 候选结果运行。
 
-当前冻结候选计划为 `candidate-plan-00a346cdbdb4`：development 869 条、test audit 214 条，
-89/21 源视频全部覆盖且无交叉；development 中 119 条与可用历史审查完全一致，750 条进入
-`needs_review`。该批次 `media_generated=false`，不能作为已生成媒体或已完成人工审查的证据。
+当前批准的冻结候选计划为 `candidate-plan-ce36b9226be5`：development 1285 条、test audit
+332 条且无交叉；development 中 598 条“发生断裂/已断裂”必须人工复检，687 条“未断裂”
+只需自动媒体和边界门禁。4 个 development 与 1 个 test 的“未夹紧/视频异常”源只记录跳过
+原因，不生成“无法判断”子视频。该批次自身仍为 `media_generated=false`，不能作为已生成媒体
+或已完成人工审查的证据。
+
+在训练机生成媒体前先运行只读预检；该步骤会验证候选计划、ROI 源视频 SHA-256、MiniCPM
+处理器身份及 ffmpeg/ffprobe，但不会创建输出：
+
+```bash
+uv run python pipeline/scripts/materialize_v3_candidate_media.py --check-only
+```
+
+首次必须用隔离目录生成小样本，不能把部分结果写入正式全量目录：
+
+```bash
+uv run python pipeline/scripts/materialize_v3_candidate_media.py \
+  --limit 3 \
+  --video-output-root data/sample_v3_candidate_media/videos \
+  --frame-output-root data/sample_v3_candidate_media/frames \
+  --result-root data/sample_v3_candidate_media/results
+```
+
+确认三条媒体、实际帧映射和状态门禁后，再运行正式全量生成：
+
+```bash
+uv run python pipeline/scripts/materialize_v3_candidate_media.py
+```
+
+正式 MP4 写入 `data/03_subvideos_roi/<candidate_plan_id>/videos/`，实际 MiniCPM 抽帧写入
+`data/04_frames_roi/<candidate_plan_id>/`，结果 manifest、逐条 receipt、自动排除记录和人工复检
+队列写入 `data/07_metadata/v3/candidate_media_results/<candidate_media_id>/`。每条候选仅在帧数、
+帧率、解码、真实抽帧和状态门禁全部通过后原子发布；中断后可重跑，既有媒体必须与 receipt
+哈希完全一致。门禁失败的候选只记录排除原因，不进入人工复检队列。
 
 ### 下一轮数据处理时的正常行为
 
