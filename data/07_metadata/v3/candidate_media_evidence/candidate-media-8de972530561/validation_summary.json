@@ -1,0 +1,18 @@
+{
+  "candidate_media_id": "candidate-media-8de972530561",
+  "candidate_plan_id": "candidate-plan-ce36b9226be5",
+  "full_command_rerun_exit_code": 0,
+  "manifest_revalidated": true,
+  "media_counts": {
+    "mp4": 1617,
+    "sampled_frame_jpg": 10340
+  },
+  "media_sizes": {
+    "candidate_media_results": "25M",
+    "sampled_frames": "159M",
+    "subvideos": "183M"
+  },
+  "processor_backend": "transformers-loaded",
+  "training_host": "dell-Precision-3660",
+  "validation_status": "passed"
+}

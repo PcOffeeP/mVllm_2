@@ -1,0 +1,55 @@
+{
+  "artifacts": {
+    "development_materialized.json": {
+      "sha256": "33f4ce6d1112f1068f3e87b6bdb7b4e279d60e6205d2be74e292ef459db72511"
+    },
+    "generation_report.json": {
+      "sha256": "9f99a164400b2a515f194ea7e74d281ea76efb2b4146679379ac71edf622d12c"
+    },
+    "review_queue.json": {
+      "sha256": "ecaa8f4861ff51e379257b9c4071dec10bc96b945a850ce6be6de8237b5c177c"
+    },
+    "test_materialized_audit.json": {
+      "sha256": "c4078a997bab18331ea529cc4aafda82641aeac7a20eeafb93a81c7fe5e1dd49"
+    }
+  },
+  "counts": {
+    "development_manual_review": 598,
+    "development_passed": 1285,
+    "excluded": 0,
+    "passed": 1617,
+    "planned": 1617,
+    "test_audit_passed": 332
+  },
+  "frame_root": "data/04_frames_roi/candidate-plan-ce36b9226be5",
+  "full_scope": true,
+  "identity": {
+    "candidate_count": 1617,
+    "candidate_ids_sha256": "a0e132c06d2601f5ac8c4df45a78c64f0625591b574baa11b52d41c692bc8231",
+    "candidate_plan_id": "candidate-plan-ce36b9226be5",
+    "candidate_plan_manifest_sha256": "f0ab35d8908c19ca04586ac463470a4648a8b2343884d5ba57440279cdd7cf9b",
+    "encoding_profile": {
+      "audio": "dropped",
+      "crf": 23,
+      "pixel_format": "yuv420p",
+      "preset": "fast",
+      "selection": "source_frame_interval_half_open",
+      "timeline": "source_nominal_cfr_from_frame_ordinal",
+      "video_codec": "libx264"
+    },
+    "event_guard_seconds": 0.5,
+    "gate_version": "v3-actual-sampling-gate/1.0",
+    "processor_fingerprint": "minicpmv4_5:/home/liuyang/文档/mVllm_2/models/minicpmv4_5:cfg=1d6f6eb441da34dc:pre=5c0dbc92920ded23:max_frames=8:video_fps=2:backend=transformers-loaded",
+    "roi_media_id": "roi-media-84ea2bd3a052",
+    "roi_media_manifest_sha256": "5b8d11edcd6e49ca0182e09d96deef9fe64707039596bfe0e954c0f1dee31d47",
+    "schema_version": "tensile-v3-candidate-media/v1",
+    "scopes": [
+      "development",
+      "test_audit"
+    ]
+  },
+  "media_generated": true,
+  "media_id": "candidate-media-8de972530561",
+  "schema_version": "tensile-v3-candidate-media/v1",
+  "video_root": "data/03_subvideos_roi/candidate-plan-ce36b9226be5"
+}
