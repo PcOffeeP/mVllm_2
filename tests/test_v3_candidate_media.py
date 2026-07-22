@@ -105,9 +105,11 @@ def test_actual_sampling_gate(state, timestamps, expected, reason):
 
 
 def test_crop_command_uses_half_open_source_frame_interval(tmp_path: Path):
-    command = build_crop_command(tmp_path / "source.mp4", tmp_path / "out.mp4", _candidate())
+    command = build_crop_command(
+        tmp_path / "source.mp4", tmp_path / "out.mp4", _candidate(), "30/1"
+    )
     assert "-ss" not in command
-    assert "trim=start_frame=30:end_frame=90,setpts=PTS-STARTPTS" in command
+    assert "trim=start_frame=30:end_frame=90,setpts=N*1/(30*TB)" in command
 
 
 def test_clip_duration_allows_two_frame_vfr_container_variance():

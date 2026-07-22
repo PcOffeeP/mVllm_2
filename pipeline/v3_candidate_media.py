@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import functools
 import json
 import math
 import os
@@ -27,6 +28,7 @@ ENCODING_PROFILE = {
     "pixel_format": "yuv420p",
     "audio": "dropped",
     "selection": "source_frame_interval_half_open",
+    "timeline": "source_nominal_cfr_from_frame_ordinal",
 }
 MANUAL_REVIEW_STATES = frozenset({"发生断裂", "已断裂"})
 EVENT_GUARD_SECONDS = 0.5
@@ -234,12 +236,26 @@ def load_media_plan(
     }
 
 
-def build_crop_command(source: Path, output: Path, candidate: Mapping[str, Any]) -> list[str]:
+def build_crop_command(
+    source: Path,
+    output: Path,
+    candidate: Mapping[str, Any],
+    nominal_frame_rate: str,
+) -> list[str]:
     start_frame = int(candidate["start_frame"])
     end_frame = int(candidate["end_frame"])
     if start_frame < 0 or end_frame <= start_frame:
         raise CandidateMediaError(f"{candidate.get('candidate_id')}: 非法帧区间")
-    video_filter = f"trim=start_frame={start_frame}:end_frame={end_frame},setpts=PTS-STARTPTS"
+    try:
+        rate = Fraction(nominal_frame_rate)
+    except (ValueError, ZeroDivisionError) as exc:
+        raise CandidateMediaError("ROI 源视频标称帧率无效") from exc
+    if rate <= 0:
+        raise CandidateMediaError("ROI 源视频标称帧率必须为正数")
+    video_filter = (
+        f"trim=start_frame={start_frame}:end_frame={end_frame},"
+        f"setpts=N*{rate.denominator}/({rate.numerator}*TB)"
+    )
     return [
         "ffmpeg",
         "-nostdin",
@@ -309,26 +325,51 @@ def _sample_mapping(
     candidate: Mapping[str, Any],
     source_record: Mapping[str, Any],
     clip_duration: float,
+    source_path: Path,
 ) -> list[dict[str, Any]]:
     mappings = preprocessor.sample(str(clip_path), 0.0, clip_duration)
     fps = source_record.get("fps")
     if isinstance(fps, bool) or not isinstance(fps, (int, float)) or float(fps) <= 0:
         raise CandidateMediaError(f"{candidate.get('source_video')}: ROI metadata fps 无效")
-    source_start_time = int(candidate["start_frame"]) / float(fps)
+    source_timestamps = _source_frame_timestamps(str(source_path))
     result: list[dict[str, Any]] = []
     for mapping in mappings:
         clip_frame = int(mapping.original_frame)
         clip_timestamp = float(mapping.timestamp)
+        original_frame = int(candidate["start_frame"]) + clip_frame
+        if original_frame < 0 or original_frame >= len(source_timestamps):
+            raise CandidateMediaError(
+                f"{candidate.get('candidate_id')}: 实际抽帧映射越过 ROI 源帧范围"
+            )
         result.append(
             {
                 "input_index": int(mapping.input_index),
                 "clip_frame": clip_frame,
                 "clip_timestamp": round(clip_timestamp, 4),
-                "original_frame": int(candidate["start_frame"]) + clip_frame,
-                "timestamp": round(source_start_time + clip_timestamp, 4),
+                "original_frame": original_frame,
+                "timestamp": round(source_timestamps[original_frame], 4),
             }
         )
     return result
+
+
+@functools.lru_cache(maxsize=200)
+def _source_frame_timestamps(video_path: str) -> tuple[float, ...]:
+    import av
+
+    container = av.open(video_path, "r")
+    try:
+        stream = next(item for item in container.streams if item.type == "video")
+        timestamps: list[float] = []
+        for frame in container.decode(stream):
+            if frame.pts is None:
+                raise CandidateMediaError(f"ROI 源视频帧缺少 PTS: {video_path}")
+            timestamps.append(float(frame.pts * stream.time_base))
+    finally:
+        container.close()
+    if not timestamps or timestamps != sorted(timestamps):
+        raise CandidateMediaError(f"ROI 源视频 PTS 无效: {video_path}")
+    return tuple(timestamps)
 
 
 def validate_actual_sampling_gate(
@@ -434,19 +475,24 @@ def _process_candidate(
     video_tmp = final_video.with_name(f".{candidate_id}.{os.getpid()}.partial.mp4")
     frames_tmp = final_frames.with_name(f".{candidate_id}.{os.getpid()}.partial")
     source_path = Path(source["path"])
+    source_probe = source.get("probe")
+    if not isinstance(source_probe, VideoProbe):
+        source_probe = probe_video(source_path)
     reused_video = final_video.exists()
     reused_frames = final_frames.exists()
     try:
         work_video = final_video
         if not reused_video:
             _run_checked(
-                build_crop_command(source_path, video_tmp, candidate),
+                build_crop_command(
+                    source_path,
+                    video_tmp,
+                    candidate,
+                    source_probe.nominal_frame_rate,
+                ),
                 f"{candidate_id}: ffmpeg 裁剪失败",
             )
             work_video = video_tmp
-        source_probe = source.get("probe")
-        if not isinstance(source_probe, VideoProbe):
-            source_probe = probe_video(source_path)
         clip_probe = probe_video(work_video)
         _validate_clip_probe(source_probe, clip_probe, candidate)
         mapping = _sample_mapping(
@@ -455,6 +501,7 @@ def _process_candidate(
             candidate,
             source["record"],
             clip_probe.duration,
+            source_path,
         )
         passed, reason = validate_actual_sampling_gate(
             candidate, mapping, source["record"]
