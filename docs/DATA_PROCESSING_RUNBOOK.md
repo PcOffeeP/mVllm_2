@@ -149,6 +149,15 @@ uv run python pipeline/scripts/subvideo_builder.py \
 
 ### 下一轮数据处理时的正常行为
 
+在生成下一轮 ROI 子视频之前，跨仓目标输出已冻结为 `tensile-vlm/v3`。其权威 artifact 位于
+`pipeline/contracts/tensile_vlm_v3.json`，设计依据位于
+`docs/plans/2026-07-22-tensile-vlm-v3-contract-design.md`。该文件当前只是后续数据、训练和
+服务迁移的目标契约；现有 v2 训练发布和运行服务不得因它的加入而自动切换。
+
+训练机现有 `data/03_subvideos/`、历史审查和已激活 `08_training_ready` 发布继续保留。
+阶段 B 必须先生成内容寻址的候选计划和统计，dry-run 不编码 MP4；人工确认后，新媒体写入
+独立版本目录，不覆盖旧目录。新发布完成全部质量门并显式 `--activate` 前，训练仍使用旧激活版本。
+
 1. 开始处理前记录 `finetune/active_data_release.json`；它是当前仍可训练的旧版本。
 2. 按实际需要执行步骤 1–6。增量复审不应为图省事清空整个工作区。
 3. 步骤 7 可以重建或覆盖 `06_merged` 和本轮 `07_metadata` 报告，但不会影响旧的
