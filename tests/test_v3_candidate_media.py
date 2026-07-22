@@ -5,9 +5,10 @@ from pathlib import Path
 import pytest
 
 from pipeline.preprocessing import FrameMapping, ProcessorInfo, VideoPreprocessor
-from pipeline.roi_media import probe_video
+from pipeline.roi_media import VideoProbe, probe_video
 from pipeline.v3_candidate_media import (
     CandidateMediaError,
+    _validate_clip_probe,
     build_crop_command,
     materialize_media_plan,
     validate_actual_sampling_gate,
@@ -107,6 +108,14 @@ def test_crop_command_uses_half_open_source_frame_interval(tmp_path: Path):
     command = build_crop_command(tmp_path / "source.mp4", tmp_path / "out.mp4", _candidate())
     assert "-ss" not in command
     assert "trim=start_frame=30:end_frame=90,setpts=PTS-STARTPTS" in command
+
+
+def test_clip_duration_allows_two_frame_vfr_container_variance():
+    candidate = _candidate()
+    candidate.update({"start_frame": 0, "end_frame": 91, "duration": 3.0023})
+    source = VideoProbe(96, 128, "92/3", "30/1", 92, 3.0)
+    clip = VideoProbe(96, 128, "91/3", "30/1", 91, 2.966667)
+    _validate_clip_probe(source, clip, candidate)
 
 
 def _make_video(path: Path) -> None:

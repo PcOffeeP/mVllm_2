@@ -293,8 +293,10 @@ def _validate_clip_probe(
         raise CandidateMediaError("媒体标称帧率无效") from exc
     if not math.isclose(source_fps, clip_fps, rel_tol=1e-7, abs_tol=1e-9):
         raise CandidateMediaError("输出标称帧率与 ROI 源视频不一致")
-    expected_duration = expected_frames / source_fps
-    tolerance = max(0.04, 1.5 * source_probe.duration / source_probe.frame_count)
+    # ROI sources can be mildly VFR: frame count is authoritative, while the
+    # stream/container duration may differ by one or two nominal frame periods.
+    expected_duration = float(candidate["duration"])
+    tolerance = max(0.08, 2.5 / source_fps)
     if abs(clip_probe.duration - expected_duration) > tolerance:
         raise CandidateMediaError(
             f"输出时长错误: {clip_probe.duration:.6f} != {expected_duration:.6f}"
