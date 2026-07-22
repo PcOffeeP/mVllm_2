@@ -43,6 +43,7 @@ uv.lock
 
 # Data pipeline artifacts (numbered outputs, ignored; 01_videos and 02_annotations are not ignored)
 /data/03_subvideos/
+/data/03_roi_videos/
 /data/04_frames/
 /data/08_runtime/
 data/08_incremental_review
@@ -74,3 +75,4 @@ data/07_metadata/tail_contamination_audit.jsonl
 # 测试子视频
 data/sample_subvideos/03_subvideos
 data/sample_subvideos/04_frames
+/data/sample_roi_videos/
