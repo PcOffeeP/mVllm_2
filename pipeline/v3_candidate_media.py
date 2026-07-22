@@ -323,14 +323,24 @@ def _sample_mapping(
     preprocessor: VideoPreprocessor,
     clip_path: Path,
     candidate: Mapping[str, Any],
-    source_record: Mapping[str, Any],
     clip_duration: float,
     source_path: Path,
+    nominal_frame_rate: str,
 ) -> list[dict[str, Any]]:
+    try:
+        nominal_fps = float(Fraction(nominal_frame_rate))
+    except (ValueError, ZeroDivisionError) as exc:
+        raise CandidateMediaError("子视频标称帧率无效") from exc
+    clip_timestamps = _source_frame_timestamps(str(clip_path))
+    tolerance = max(1e-4, 0.01 / nominal_fps)
+    if any(
+        abs(timestamp - index / nominal_fps) > tolerance
+        for index, timestamp in enumerate(clip_timestamps)
+    ):
+        raise CandidateMediaError(
+            f"{candidate.get('candidate_id')}: 子视频 PTS 不符合标称 CFR 时间轴"
+        )
     mappings = preprocessor.sample(str(clip_path), 0.0, clip_duration)
-    fps = source_record.get("fps")
-    if isinstance(fps, bool) or not isinstance(fps, (int, float)) or float(fps) <= 0:
-        raise CandidateMediaError(f"{candidate.get('source_video')}: ROI metadata fps 无效")
     source_timestamps = _source_frame_timestamps(str(source_path))
     result: list[dict[str, Any]] = []
     for mapping in mappings:
@@ -499,9 +509,9 @@ def _process_candidate(
             preprocessor,
             work_video,
             candidate,
-            source["record"],
             clip_probe.duration,
             source_path,
+            source_probe.nominal_frame_rate,
         )
         passed, reason = validate_actual_sampling_gate(
             candidate, mapping, source["record"]
