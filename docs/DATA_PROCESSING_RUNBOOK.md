@@ -134,18 +134,27 @@ uv run python pipeline/scripts/materialize_roi_videos.py --workers 2
 只有单条视频通过分辨率、帧数、帧率和时长校验后才原子替换；中断后可重跑，已通过的媒体
 会校验并复用。`manifest.json` 出现才表示该批次完整完成。
 
-下一步生成子视频时必须显式传入版本化 ROI metadata，并使用隔离输出目录；不得覆盖上一轮：
+下一步先生成内容寻址的 v3 子视频候选计划；该 dry-run 只读取版本化 ROI metadata 和历史
+审查参考，不加载模型、不调用 ffmpeg、不创建 MP4 或帧图：
 
 ```bash
-uv run python pipeline/scripts/subvideo_builder.py \
-  --video-meta data/03_roi_videos/<roi_media_id>/video_meta.roi.json \
-  --subvideo-dir data/03_subvideos_roi/<roi_media_id> \
-  --frame-dir data/04_frames_roi/<roi_media_id> \
-  --output-meta data/07_metadata/v3/<roi_media_id>/subvideos_meta.json \
-  --model models/minicpmv4_5
+uv run python pipeline/scripts/build_v3_candidate_plan.py --dry-run
 ```
 
-命令中的默认输入/输出路径已写入脚本默认值，正常流程不需要重复传入。只有随复审轮次变化的中间产物需要指定 `--round round_XX`。
+确认统计后，不带 `--dry-run` 只物化不可覆盖的 metadata 计划到
+`data/07_metadata/v3/candidate_plans/<candidate_plan_id>/`。该命令仍不会生成媒体：
+
+```bash
+uv run python pipeline/scripts/build_v3_candidate_plan.py
+```
+
+实际 MP4 和帧图只能在候选计划人工确认后的后续步骤生成，并分别写入
+`data/03_subvideos_roi/<candidate_plan_id>/` 与 `data/04_frames_roi/<candidate_plan_id>/`。
+旧 `pipeline/scripts/subvideo_builder.py` 仍服务 v2 流程，不得直接作为 v3 候选结果运行。
+
+当前冻结候选计划为 `candidate-plan-00a346cdbdb4`：development 869 条、test audit 214 条，
+89/21 源视频全部覆盖且无交叉；development 中 119 条与可用历史审查完全一致，750 条进入
+`needs_review`。该批次 `media_generated=false`，不能作为已生成媒体或已完成人工审查的证据。
 
 ### 下一轮数据处理时的正常行为
 
