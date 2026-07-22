@@ -17,7 +17,11 @@ from pipeline.scripts.roi_annotation_app import (
     ROI_POLICY_VERSION,
     SCHEMA_VERSION,
     STATUS_APPROVED,
+    TARGET_ASPECT_HEIGHT,
+    TARGET_ASPECT_RATIO,
+    TARGET_ASPECT_WIDTH,
     VISIBILITY_CHECK_KEYS,
+    _normalized_from_pixel_box,
     normalized_box,
     pixel_box,
     source_state,
@@ -122,6 +126,12 @@ def _validate_decision(
     video_id = video["video_id"]
     if decision.get("review_status") != STATUS_APPROVED:
         raise RoiManifestError(f"{video_id}: ROI 尚未 approved")
+    if decision.get("roi_policy_version") != ROI_POLICY_VERSION:
+        raise RoiManifestError(
+            f"{video_id}: ROI 策略版本不是 {ROI_POLICY_VERSION}，必须重新复审"
+        )
+    if decision.get("target_aspect_ratio") != TARGET_ASPECT_RATIO:
+        raise RoiManifestError(f"{video_id}: target_aspect_ratio 必须是 {TARGET_ASPECT_RATIO}")
     mode = decision.get("mode")
     if mode not in {MODE_FIXED, MODE_NO_CROP}:
         raise RoiManifestError(f"{video_id}: 非法 ROI mode")
@@ -129,7 +139,7 @@ def _validate_decision(
     if not isinstance(margins, Mapping):
         raise RoiManifestError(f"{video_id}: 缺少 margins")
     try:
-        expected_normalized = normalized_box(margins)
+        normalized_box(margins)
     except ValueError as exc:
         raise RoiManifestError(f"{video_id}: {exc}") from exc
     if mode == MODE_FIXED and all(value == 0.0 for value in margins.values()):
@@ -145,10 +155,28 @@ def _validate_decision(
     ):
         raise RoiManifestError(f"{video_id}: source_resolution 无效")
     expected_pixel = pixel_box(margins, resolution[0], resolution[1])
+    expected_normalized = _normalized_from_pixel_box(
+        expected_pixel, resolution[0], resolution[1]
+    )
     if decision.get("normalized_box") != expected_normalized:
         raise RoiManifestError(f"{video_id}: normalized_box 与 margins 不一致")
     if decision.get("pixel_box") != expected_pixel:
         raise RoiManifestError(f"{video_id}: pixel_box 与 margins/source_resolution 不一致")
+    if mode == MODE_FIXED:
+        if decision.get("interaction_mode") != "drag_box":
+            raise RoiManifestError(f"{video_id}: fixed_roi 必须由拖拽裁剪框确认")
+        if decision.get("aspect_ratio_strategy") != "crop_exact":
+            raise RoiManifestError(f"{video_id}: fixed_roi 必须使用 crop_exact")
+        if (
+            expected_pixel["width"] * TARGET_ASPECT_HEIGHT
+            != expected_pixel["height"] * TARGET_ASPECT_WIDTH
+        ):
+            raise RoiManifestError(f"{video_id}: fixed_roi 像素框不是精确 {TARGET_ASPECT_RATIO}")
+    else:
+        if decision.get("interaction_mode") != "no_crop":
+            raise RoiManifestError(f"{video_id}: no_crop 的 interaction_mode 无效")
+        if decision.get("aspect_ratio_strategy") != "pad_to_target":
+            raise RoiManifestError(f"{video_id}: no_crop 必须使用 pad_to_target")
 
     timestamps = decision.get("reviewed_timestamps")
     if not isinstance(timestamps, list) or not timestamps:
@@ -339,4 +367,3 @@ def write_roi_manifest_bundle(
                 child.unlink()
             temp_dir.rmdir()
     return destination, True
-

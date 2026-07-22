@@ -1,0 +1,3781 @@
+{
+  "artifacts": {
+    "validation_report.json": {
+      "sha256": "d43c49bf6c4e74297bf36646e8e30d9940cf8cc2d34f2719ecc884a686b16de7"
+    },
+    "video_meta.roi.json": {
+      "sha256": "c3295710b247565404b011ff064b3f051e44a93d0337e84112e02f7bf8d067fa"
+    }
+  },
+  "encoding_profile": {
+    "audio": "dropped",
+    "crf": 23,
+    "frame_sync": "vsync_0_passthrough",
+    "pad_color": "black",
+    "pixel_format": "yuv420p",
+    "preset": "fast",
+    "video_codec": "libx264"
+  },
+  "identity": {
+    "encoding_profile": {
+      "audio": "dropped",
+      "crf": 23,
+      "frame_sync": "vsync_0_passthrough",
+      "pad_color": "black",
+      "pixel_format": "yuv420p",
+      "preset": "fast",
+      "video_codec": "libx264"
+    },
+    "roi_manifest_id": "roi-manifest-01be8c1ebb2d",
+    "roi_manifest_sha256": "938e4e3b82528f0fb005d1f7e842b6550910de3da1ff3dfe1f66eed2de97f053",
+    "schema_version": "tensile-roi-media/v1",
+    "selected_video_ids": [
+      "video_0001",
+      "video_0002",
+      "video_0003",
+      "video_0004",
+      "video_0005",
+      "video_0006",
+      "video_0007",
+      "video_0008",
+      "video_0009",
+      "video_0010",
+      "video_0011",
+      "video_0012",
+      "video_0013",
+      "video_0014",
+      "video_0015",
+      "video_0016",
+      "video_0017",
+      "video_0018",
+      "video_0019",
+      "video_0020",
+      "video_0021",
+      "video_0022",
+      "video_0023",
+      "video_0024",
+      "video_0025",
+      "video_0026",
+      "video_0027",
+      "video_0028",
+      "video_0029",
+      "video_0030",
+      "video_0031",
+      "video_0032",
+      "video_0033",
+      "video_0034",
+      "video_0035",
+      "video_0036",
+      "video_0037",
+      "video_0038",
+      "video_0039",
+      "video_0040",
+      "video_0041",
+      "video_0042",
+      "video_0043",
+      "video_0044",
+      "video_0045",
+      "video_0046",
+      "video_0047",
+      "video_0048",
+      "video_0049",
+      "video_0050",
+      "video_0051",
+      "video_0052",
+      "video_0053",
+      "video_0054",
+      "video_0055",
+      "video_0056",
+      "video_0057",
+      "video_0058",
+      "video_0059",
+      "video_0060",
+      "video_0061",
+      "video_0062",
+      "video_0063",
+      "video_0064",
+      "video_0065",
+      "video_0066",
+      "video_0067",
+      "video_0068",
+      "video_0069",
+      "video_0070",
+      "video_0071",
+      "video_0072",
+      "video_0073",
+      "video_0074",
+      "video_0075",
+      "video_0076",
+      "video_0077",
+      "video_0078",
+      "video_0079",
+      "video_0080",
+      "video_0081",
+      "video_0082",
+      "video_0083",
+      "video_0084",
+      "video_0085",
+      "video_0086",
+      "video_0087",
+      "video_0088",
+      "video_0089",
+      "video_0090",
+      "video_0091",
+      "video_0092",
+      "video_0093",
+      "video_0094",
+      "video_0095",
+      "video_0096",
+      "video_0097",
+      "video_0098",
+      "video_0099",
+      "video_0100",
+      "video_0101",
+      "video_0102",
+      "video_0103",
+      "video_0104",
+      "video_0105",
+      "video_0106",
+      "video_0107",
+      "video_0108",
+      "video_0109",
+      "video_0110"
+    ]
+  },
+  "roi_media_id": "roi-media-84ea2bd3a052",
+  "schema_version": "tensile-roi-media/v1",
+  "scope": "full",
+  "source_count": 110,
+  "videos": [
+    {
+      "duration": 40.433333,
+      "frame_count": 1213,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        456,
+        670
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0001.mp4",
+      "output_resolution": [
+        222,
+        296
+      ],
+      "output_sha256": "8433869765eee02384180c3f623d4ac4c9e609955cc9b55619d97ba107ba25b7",
+      "output_size_bytes": 477987,
+      "pixel_box": {
+        "height": 296,
+        "width": 222,
+        "x": 148,
+        "y": 162
+      },
+      "reused_existing": true,
+      "source_duration": 40.4333,
+      "source_frame_count": 1213,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "5db06f47a3903b7ae25f95e3b128b2ed367b7029e2210c981d6876d262cacc0f",
+      "source_video_id": "video_0001",
+      "source_video_path": "data/01_videos/video_0001.mp4",
+      "video_filter": "crop=222:296:148:162,setsar=1"
+    },
+    {
+      "duration": 6.466667,
+      "frame_count": 194,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        810,
+        898
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0002.mp4",
+      "output_resolution": [
+        474,
+        632
+      ],
+      "output_sha256": "3e781b63ecef7ff446440393ff3d97d8e75bef97950214d1e02d164c62baaca9",
+      "output_size_bytes": 100843,
+      "pixel_box": {
+        "height": 632,
+        "width": 474,
+        "x": 163,
+        "y": 138
+      },
+      "reused_existing": true,
+      "source_duration": 6.466633,
+      "source_frame_count": 194,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "b2dccaf9a98020d661adfd0665f8320436abd04a52ac87f8165184f157a24f29",
+      "source_video_id": "video_0002",
+      "source_video_path": "data/01_videos/video_0002.mp4",
+      "video_filter": "crop=474:632:163:138,setsar=1"
+    },
+    {
+      "duration": 30.4,
+      "frame_count": 912,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        518,
+        602
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0003.mp4",
+      "output_resolution": [
+        330,
+        440
+      ],
+      "output_sha256": "81ebaf15c754bd7526db9d48dc95207153d643aa579ce75c869aff4a4ae00aa7",
+      "output_size_bytes": 513339,
+      "pixel_box": {
+        "height": 440,
+        "width": 330,
+        "x": 85,
+        "y": 54
+      },
+      "reused_existing": true,
+      "source_duration": 30.4,
+      "source_frame_count": 912,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "efb2ba8f01e992fdf8e883d48f99e34f331e1ce2b2dec06bd30d3962439f8634",
+      "source_video_id": "video_0003",
+      "source_video_path": "data/01_videos/video_0003.mp4",
+      "video_filter": "crop=330:440:85:54,setsar=1"
+    },
+    {
+      "duration": 188.566667,
+      "frame_count": 5657,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0004.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "90067325bdc424c265729f2a7d4fec8ca01628686a26486014b693dd2664e446",
+      "output_size_bytes": 2273416,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 698,
+        "y": 196
+      },
+      "reused_existing": true,
+      "source_duration": 188.561667,
+      "source_frame_count": 5657,
+      "source_frame_rate": "56570000/1885617",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "c494ed9fb56c97f9aca35513f73738398e1ce71f9d5505212d54283a3ced68ea",
+      "source_video_id": "video_0004",
+      "source_video_path": "data/01_videos/video_0004.mp4",
+      "video_filter": "crop=144:192:698:196,setsar=1"
+    },
+    {
+      "duration": 30.0,
+      "frame_count": 900,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        530,
+        320
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0005.mp4",
+      "output_resolution": [
+        234,
+        312
+      ],
+      "output_sha256": "c0d87558271802bfeda20d274349bc248b3bd699ee26f8615b858449b79ad098",
+      "output_size_bytes": 311581,
+      "pixel_box": {
+        "height": 312,
+        "width": 234,
+        "x": 158,
+        "y": 2
+      },
+      "reused_existing": true,
+      "source_duration": 30.0,
+      "source_frame_count": 900,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "3cf4a3130516826ea01ba9e8c459fb7453ee12ac88ab914700766e8955f05b65",
+      "source_video_id": "video_0005",
+      "source_video_path": "data/01_videos/video_0005.mp4",
+      "video_filter": "crop=234:312:158:2,setsar=1"
+    },
+    {
+      "duration": 23.3,
+      "frame_count": 699,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1120,
+        880
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0006.mp4",
+      "output_resolution": [
+        426,
+        568
+      ],
+      "output_sha256": "4b0f3c65fbd87c4590ea02389cccca5e0098cb9cbbd7f3ec7494635c957f6f85",
+      "output_size_bytes": 1116297,
+      "pixel_box": {
+        "height": 568,
+        "width": 426,
+        "x": 381,
+        "y": 123
+      },
+      "reused_existing": true,
+      "source_duration": 23.3,
+      "source_frame_count": 699,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "cf205cb18b1fc41ca0c69f209d3c6071aa4624e9b1631ba7beec641efa0f68e0",
+      "source_video_id": "video_0006",
+      "source_video_path": "data/01_videos/video_0006.mp4",
+      "video_filter": "crop=426:568:381:123,setsar=1"
+    },
+    {
+      "duration": 51.0,
+      "frame_count": 1530,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        496,
+        688
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0007.mp4",
+      "output_resolution": [
+        306,
+        408
+      ],
+      "output_sha256": "d10ef57dabf311b866a67ae9ddc117c60b28183207372f7503e98b231a402864",
+      "output_size_bytes": 842602,
+      "pixel_box": {
+        "height": 408,
+        "width": 306,
+        "x": 98,
+        "y": 84
+      },
+      "reused_existing": true,
+      "source_duration": 51.0,
+      "source_frame_count": 1530,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "4ec61f34f807cd6962286d9163bab9006be4c19ffe42950bf4b7b22d00755a89",
+      "source_video_id": "video_0007",
+      "source_video_path": "data/01_videos/video_0007.mp4",
+      "video_filter": "crop=306:408:98:84,setsar=1"
+    },
+    {
+      "duration": 19.166667,
+      "frame_count": 575,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        924,
+        946
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0008.mp4",
+      "output_resolution": [
+        924,
+        1232
+      ],
+      "output_sha256": "02e0eb927b7d7c8cef3c479f335925dc3faabfbd29ba056ec6b77eeb4200a76d",
+      "output_size_bytes": 1777052,
+      "pixel_box": {
+        "height": 946,
+        "width": 924,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 19.166633,
+      "source_frame_count": 575,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "65de7c2a4a420fea4844c4469b45096169d6ba4f1fae817e6c647d2455059cae",
+      "source_video_id": "video_0008",
+      "source_video_path": "data/01_videos/video_0008.mp4",
+      "video_filter": "pad=924:1232:0:143:color=black,setsar=1"
+    },
+    {
+      "duration": 192.233333,
+      "frame_count": 5767,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0009.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "a2659da01cef87d4db1090110f0c0ba401a6164453688c17f1673feada2102af",
+      "output_size_bytes": 2847778,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 694,
+        "y": 189
+      },
+      "reused_existing": true,
+      "source_duration": 192.225467,
+      "source_frame_count": 5767,
+      "source_frame_rate": "43252500/1441691",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a6527fda3b2033506f841a65d75989748ea132fcdfd0ecbafc5389d0321242fd",
+      "source_video_id": "video_0009",
+      "source_video_path": "data/01_videos/video_0009.mp4",
+      "video_filter": "crop=150:200:694:189,setsar=1"
+    },
+    {
+      "duration": 27.066667,
+      "frame_count": 812,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        792,
+        722
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0010.mp4",
+      "output_resolution": [
+        396,
+        528
+      ],
+      "output_sha256": "7ee000e5d0d0f1810148884ad6078dca376199d9f740c6cadda6735fa83de59a",
+      "output_size_bytes": 820748,
+      "pixel_box": {
+        "height": 528,
+        "width": 396,
+        "x": 126,
+        "y": 134
+      },
+      "reused_existing": true,
+      "source_duration": 27.066633,
+      "source_frame_count": 812,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "1d322e040fa4e3ded407c482b920a07e045c4ff60abfe822636b8df769cad965",
+      "source_video_id": "video_0010",
+      "source_video_path": "data/01_videos/video_0010.mp4",
+      "video_filter": "crop=396:528:126:134,setsar=1"
+    },
+    {
+      "duration": 15.233333,
+      "frame_count": 457,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        494,
+        582
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0011.mp4",
+      "output_resolution": [
+        120,
+        160
+      ],
+      "output_sha256": "6c7da50a8d069820cedb1e65d2d6046113482e5f6f86138ef53a8f0c4575be5d",
+      "output_size_bytes": 80551,
+      "pixel_box": {
+        "height": 160,
+        "width": 120,
+        "x": 194,
+        "y": 240
+      },
+      "reused_existing": true,
+      "source_duration": 15.2333,
+      "source_frame_count": 457,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "f5efe80167cc56d04c1a80b7e682db6a71441477e6e8b060cee2d6aabe30b6b2",
+      "source_video_id": "video_0011",
+      "source_video_path": "data/01_videos/video_0011.mp4",
+      "video_filter": "crop=120:160:194:240,setsar=1"
+    },
+    {
+      "duration": 13.8,
+      "frame_count": 414,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        956,
+        890
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0012.mp4",
+      "output_resolution": [
+        552,
+        736
+      ],
+      "output_sha256": "f9d87dfcf802536c00dca9502927e3527ca7851d0e301f402dbd66dde4ddfaa1",
+      "output_size_bytes": 391727,
+      "pixel_box": {
+        "height": 736,
+        "width": 552,
+        "x": 292,
+        "y": 106
+      },
+      "reused_existing": true,
+      "source_duration": 13.8,
+      "source_frame_count": 414,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "8af4c663fcac23accbdef25cb0c6d1645dc8e60f2a37e9f4d860c9ab94811e67",
+      "source_video_id": "video_0012",
+      "source_video_path": "data/01_videos/video_0012.mp4",
+      "video_filter": "crop=552:736:292:106,setsar=1"
+    },
+    {
+      "duration": 43.133333,
+      "frame_count": 1294,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        532,
+        934
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0013.mp4",
+      "output_resolution": [
+        702,
+        936
+      ],
+      "output_sha256": "add7e4e9bc48d6e4d3b7c90f16cd08b2471d0da0b4049a94230560d147474bed",
+      "output_size_bytes": 910469,
+      "pixel_box": {
+        "height": 934,
+        "width": 532,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 43.1333,
+      "source_frame_count": 1294,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "b74602d3534f41292e8a857fb19e8b57007cf91119206822060e701c9568e8ae",
+      "source_video_id": "video_0013",
+      "source_video_path": "data/01_videos/video_0013.mp4",
+      "video_filter": "pad=702:936:85:1:color=black,setsar=1"
+    },
+    {
+      "duration": 5.333333,
+      "frame_count": 160,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        474,
+        816
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0014.mp4",
+      "output_resolution": [
+        444,
+        592
+      ],
+      "output_sha256": "4e73f3fab2dbb2f3c61e2146b8b0ad7abb689ea2813de8d12bc7c29b7b633026",
+      "output_size_bytes": 79582,
+      "pixel_box": {
+        "height": 592,
+        "width": 444,
+        "x": 14,
+        "y": 96
+      },
+      "reused_existing": true,
+      "source_duration": 5.3333,
+      "source_frame_count": 160,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "ecbef3988894e1afdb8dfe6270e2afba834746450a4336d5118b2d03b78d07e5",
+      "source_video_id": "video_0014",
+      "source_video_path": "data/01_videos/video_0014.mp4",
+      "video_filter": "crop=444:592:14:96,setsar=1"
+    },
+    {
+      "duration": 16.5,
+      "frame_count": 495,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        624,
+        962
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0015.mp4",
+      "output_resolution": [
+        726,
+        968
+      ],
+      "output_sha256": "49c859be5827ebc245197322a3ca4e01ffc826f85c3109d4828a79f27b914a8a",
+      "output_size_bytes": 1441173,
+      "pixel_box": {
+        "height": 962,
+        "width": 624,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 16.5,
+      "source_frame_count": 495,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "68f211cf5e5774a078263b5213ce75748e35a5a5c287cc14cc9a728a1ef3935c",
+      "source_video_id": "video_0015",
+      "source_video_path": "data/01_videos/video_0015.mp4",
+      "video_filter": "pad=726:968:51:3:color=black,setsar=1"
+    },
+    {
+      "duration": 12.8,
+      "frame_count": 384,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        498,
+        622
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0016.mp4",
+      "output_resolution": [
+        258,
+        344
+      ],
+      "output_sha256": "651f6b365bf97616081c4370c57368dea9f1816c9552390a4e37ab66f07ed57e",
+      "output_size_bytes": 215178,
+      "pixel_box": {
+        "height": 344,
+        "width": 258,
+        "x": 109,
+        "y": 121
+      },
+      "reused_existing": true,
+      "source_duration": 12.8,
+      "source_frame_count": 384,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "40fa9356ef32be1d7454bd744ea44275b9f809b949b689f19851752028d7067b",
+      "source_video_id": "video_0016",
+      "source_video_path": "data/01_videos/video_0016.mp4",
+      "video_filter": "crop=258:344:109:121,setsar=1"
+    },
+    {
+      "duration": 210.733333,
+      "frame_count": 6322,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0017.mp4",
+      "output_resolution": [
+        162,
+        216
+      ],
+      "output_sha256": "7e393b61d25eb223fed01487ee5fa3fab536c570d1c5859287a713c124fc8b26",
+      "output_size_bytes": 3161860,
+      "pixel_box": {
+        "height": 216,
+        "width": 162,
+        "x": 682,
+        "y": 178
+      },
+      "reused_existing": true,
+      "source_duration": 210.721733,
+      "source_frame_count": 6322,
+      "source_frame_rate": "31610000/1053609",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a18c4d9718b30e640da9430db90286be1b633a4314f840637a8972920fbc522b",
+      "source_video_id": "video_0017",
+      "source_video_path": "data/01_videos/video_0017.mp4",
+      "video_filter": "crop=162:216:682:178,setsar=1"
+    },
+    {
+      "duration": 147.133333,
+      "frame_count": 4414,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        544,
+        960
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0018.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "0b18b6c4577da732319d9668044b5ee9f60f9e1c4a2a2611a32b580f10fd433e",
+      "output_size_bytes": 1007596,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 230,
+        "y": 376
+      },
+      "reused_existing": true,
+      "source_duration": 147.133,
+      "source_frame_count": 4414,
+      "source_frame_rate": "4414000/147133",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "e24a6337a574c65d27e1ed82662d6bd72379cdae204c0b4646cee8bfc7637851",
+      "source_video_id": "video_0018",
+      "source_video_path": "data/01_videos/video_0018.mp4",
+      "video_filter": "crop=144:192:230:376,setsar=1"
+    },
+    {
+      "duration": 19.366667,
+      "frame_count": 581,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        720,
+        534
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0019.mp4",
+      "output_resolution": [
+        282,
+        376
+      ],
+      "output_sha256": "4fecafc10f1fb98e2ac5b91a0c727a2e85093c4e5a88e4b4e1040312a0c256d6",
+      "output_size_bytes": 573467,
+      "pixel_box": {
+        "height": 376,
+        "width": 282,
+        "x": 174,
+        "y": 117
+      },
+      "reused_existing": true,
+      "source_duration": 19.366633,
+      "source_frame_count": 581,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "eefd90138a9bcce15c676d91632f83ce53de4f33c01e01a9ebda28528727bfcd",
+      "source_video_id": "video_0019",
+      "source_video_path": "data/01_videos/video_0019.mp4",
+      "video_filter": "crop=282:376:174:117,setsar=1"
+    },
+    {
+      "duration": 30.633333,
+      "frame_count": 919,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        484,
+        524
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0020.mp4",
+      "output_resolution": [
+        216,
+        288
+      ],
+      "output_sha256": "ffa107b12cd7993b5c40793854881d4adefaddaf0c4a592c6a36343cd82d7935",
+      "output_size_bytes": 410207,
+      "pixel_box": {
+        "height": 288,
+        "width": 216,
+        "x": 143,
+        "y": 84
+      },
+      "reused_existing": true,
+      "source_duration": 30.6333,
+      "source_frame_count": 919,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "c19501ad365b24bb346c6db65c7ac38a77ca54aa8ea30a09e3138042875aa831",
+      "source_video_id": "video_0020",
+      "source_video_path": "data/01_videos/video_0020.mp4",
+      "video_filter": "crop=216:288:143:84,setsar=1"
+    },
+    {
+      "duration": 6.0,
+      "frame_count": 180,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        576,
+        1072
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0021.mp4",
+      "output_resolution": [
+        804,
+        1072
+      ],
+      "output_sha256": "4b13ba26bd72b64c58262683f2bb850ffd7163a40cba313390a258681295eb37",
+      "output_size_bytes": 252395,
+      "pixel_box": {
+        "height": 1072,
+        "width": 576,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 5.994633,
+      "source_frame_count": 180,
+      "source_frame_rate": "16875/562",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "660b7fd101548b44aabc72f1a7347c35002b79b1fdbe3be05e12773b8a4d958e",
+      "source_video_id": "video_0021",
+      "source_video_path": "data/01_videos/video_0021.mp4",
+      "video_filter": "pad=804:1072:114:0:color=black,setsar=1"
+    },
+    {
+      "duration": 61.133333,
+      "frame_count": 1834,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        488,
+        624
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0022.mp4",
+      "output_resolution": [
+        264,
+        352
+      ],
+      "output_sha256": "9f62a0b7bd10aca6c7a05635194bc2aadf5a2bd8d7451078f7ad5173b1963d6b",
+      "output_size_bytes": 1310965,
+      "pixel_box": {
+        "height": 352,
+        "width": 264,
+        "x": 108,
+        "y": 8
+      },
+      "reused_existing": true,
+      "source_duration": 61.1333,
+      "source_frame_count": 1834,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "1238f56279f441c07596c8b97f430699e14c7c7eb0b5ace1ad1f96daac057061",
+      "source_video_id": "video_0022",
+      "source_video_path": "data/01_videos/video_0022.mp4",
+      "video_filter": "crop=264:352:108:8,setsar=1"
+    },
+    {
+      "duration": 10.733333,
+      "frame_count": 322,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1100,
+        620
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0023.mp4",
+      "output_resolution": [
+        366,
+        488
+      ],
+      "output_sha256": "0edd34cea7c46597be7463045add870ce8fdac957451c109c2974de45b9c1f6d",
+      "output_size_bytes": 343152,
+      "pixel_box": {
+        "height": 488,
+        "width": 366,
+        "x": 307,
+        "y": 64
+      },
+      "reused_existing": true,
+      "source_duration": 10.7333,
+      "source_frame_count": 322,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a83992ce182d70820df9604ad04323de6c7fa4deaab38ed6aad4463cc62941f4",
+      "source_video_id": "video_0023",
+      "source_video_path": "data/01_videos/video_0023.mp4",
+      "video_filter": "crop=366:488:307:64,setsar=1"
+    },
+    {
+      "duration": 37.166667,
+      "frame_count": 1115,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        502,
+        610
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0024.mp4",
+      "output_resolution": [
+        174,
+        232
+      ],
+      "output_sha256": "07dce8bd5e07879395cb80c4fb1a485bf05784dfb67e3cb7d5f4399876147120",
+      "output_size_bytes": 347037,
+      "pixel_box": {
+        "height": 232,
+        "width": 174,
+        "x": 172,
+        "y": 100
+      },
+      "reused_existing": true,
+      "source_duration": 37.166633,
+      "source_frame_count": 1115,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "290f0327f8484df9d62a9894037a53476c35ffd68289986a745991eaf139cd2a",
+      "source_video_id": "video_0024",
+      "source_video_path": "data/01_videos/video_0024.mp4",
+      "video_filter": "crop=174:232:172:100,setsar=1"
+    },
+    {
+      "duration": 33.533333,
+      "frame_count": 1006,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        496,
+        446
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0025.mp4",
+      "output_resolution": [
+        270,
+        360
+      ],
+      "output_sha256": "22eed7a7df0f1bde9509ce190c5e04705facaec92464da61e0ae25097536666d",
+      "output_size_bytes": 542626,
+      "pixel_box": {
+        "height": 360,
+        "width": 270,
+        "x": 84,
+        "y": 86
+      },
+      "reused_existing": true,
+      "source_duration": 33.5333,
+      "source_frame_count": 1006,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "f4aa1cce767bdc5f0caacece5a422b25df1cd0d84f337d99471cef6eabf6f9ea",
+      "source_video_id": "video_0025",
+      "source_video_path": "data/01_videos/video_0025.mp4",
+      "video_filter": "crop=270:360:84:86,setsar=1"
+    },
+    {
+      "duration": 13.633333,
+      "frame_count": 409,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        834,
+        842
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0026.mp4",
+      "output_resolution": [
+        198,
+        264
+      ],
+      "output_sha256": "5145c438d6244812b581e77f7dd7f0c8a42a694c972836e89713c80ba5e69955",
+      "output_size_bytes": 112051,
+      "pixel_box": {
+        "height": 264,
+        "width": 198,
+        "x": 182,
+        "y": 370
+      },
+      "reused_existing": true,
+      "source_duration": 13.6333,
+      "source_frame_count": 409,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "f4ad507526880f5c16a1338dc3790b5e8ad83192da5d797d4ffdf732ad7bc671",
+      "source_video_id": "video_0026",
+      "source_video_path": "data/01_videos/video_0026.mp4",
+      "video_filter": "crop=198:264:182:370,setsar=1"
+    },
+    {
+      "duration": 191.5,
+      "frame_count": 5744,
+      "frame_rate": "11488/383",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0027.mp4",
+      "output_resolution": [
+        156,
+        208
+      ],
+      "output_sha256": "25a5220abdcb1667a45dab5e7d27b7db7f3384045ab9bb015f1dc957240b13ca",
+      "output_size_bytes": 2866665,
+      "pixel_box": {
+        "height": 208,
+        "width": 156,
+        "x": 690,
+        "y": 185
+      },
+      "reused_existing": true,
+      "source_duration": 191.489867,
+      "source_frame_count": 5744,
+      "source_frame_rate": "21540000/718087",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "30d2a22b2f2688cb6c0a1736fe7943f32e427b6d0ad15d1f68e84ea6e677166c",
+      "source_video_id": "video_0027",
+      "source_video_path": "data/01_videos/video_0027.mp4",
+      "video_filter": "crop=156:208:690:185,setsar=1"
+    },
+    {
+      "duration": 183.133333,
+      "frame_count": 5494,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        544,
+        960
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0028.mp4",
+      "output_resolution": [
+        174,
+        232
+      ],
+      "output_sha256": "27bfb3792a72b3ce691002a250208a26b77d7a20b907a96a247c9429b42f41a4",
+      "output_size_bytes": 1989618,
+      "pixel_box": {
+        "height": 232,
+        "width": 174,
+        "x": 208,
+        "y": 278
+      },
+      "reused_existing": true,
+      "source_duration": 183.133,
+      "source_frame_count": 5494,
+      "source_frame_rate": "5494000/183133",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "6227d92a49c59c93a24d38473cce978665c843e1e44f1e5154b072e758358cf8",
+      "source_video_id": "video_0028",
+      "source_video_path": "data/01_videos/video_0028.mp4",
+      "video_filter": "crop=174:232:208:278,setsar=1"
+    },
+    {
+      "duration": 177.0,
+      "frame_count": 5310,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0029.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "72dd1f454b93d41f2b19a1123efcbe78d046605197cbe414bdddf6ef79851165",
+      "output_size_bytes": 1756398,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 697,
+        "y": 314
+      },
+      "reused_existing": true,
+      "source_duration": 176.993767,
+      "source_frame_count": 5310,
+      "source_frame_rate": "26550000/884969",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "f74010b4eea1e2ab93411232c2ec8ab4e911e147a93202cff22fcffe1f85c815",
+      "source_video_id": "video_0029",
+      "source_video_path": "data/01_videos/video_0029.mp4",
+      "video_filter": "crop=144:192:697:314,setsar=1"
+    },
+    {
+      "duration": 208.766667,
+      "frame_count": 6263,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0030.mp4",
+      "output_resolution": [
+        138,
+        184
+      ],
+      "output_sha256": "b887410df88f9d0be69f44b06ef54805b364a2caf0468269a5899739996cc36f",
+      "output_size_bytes": 2244025,
+      "pixel_box": {
+        "height": 184,
+        "width": 138,
+        "x": 702,
+        "y": 312
+      },
+      "reused_existing": true,
+      "source_duration": 208.769433,
+      "source_frame_count": 6263,
+      "source_frame_rate": "46972500/1565771",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "601c897615581bd060128ad9598e32de2bd3c88928afb9402794996ed1e0831e",
+      "source_video_id": "video_0030",
+      "source_video_path": "data/01_videos/video_0030.mp4",
+      "video_filter": "crop=138:184:702:312,setsar=1"
+    },
+    {
+      "duration": 10.4,
+      "frame_count": 312,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        630,
+        374
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0031.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "c4fc1f215700d7259d65f3a2033016223bb3f6522bf95ceeea656db9f4f8fc6b",
+      "output_size_bytes": 62434,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 276,
+        "y": 86
+      },
+      "reused_existing": true,
+      "source_duration": 10.4,
+      "source_frame_count": 312,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "4e445b71db52dc8724f03efa9c3d9090782eb6b17a9f93b5dbe4caaf7b6109a4",
+      "source_video_id": "video_0031",
+      "source_video_path": "data/01_videos/video_0031.mp4",
+      "video_filter": "crop=144:192:276:86,setsar=1"
+    },
+    {
+      "duration": 4.533333,
+      "frame_count": 136,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        402,
+        726
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0032.mp4",
+      "output_resolution": [
+        228,
+        304
+      ],
+      "output_sha256": "14816b4725e10222696509e6129336129220f9deee9851ed380b010c8c7dc7a2",
+      "output_size_bytes": 19531,
+      "pixel_box": {
+        "height": 304,
+        "width": 228,
+        "x": 89,
+        "y": 217
+      },
+      "reused_existing": true,
+      "source_duration": 4.5333,
+      "source_frame_count": 136,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "5ecb645a73ac2ad373155ccb5544eec48e8f5ecd4c767255eddd919a3505842e",
+      "source_video_id": "video_0032",
+      "source_video_path": "data/01_videos/video_0032.mp4",
+      "video_filter": "crop=228:304:89:217,setsar=1"
+    },
+    {
+      "duration": 40.733333,
+      "frame_count": 1222,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        734,
+        808
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0033.mp4",
+      "output_resolution": [
+        258,
+        344
+      ],
+      "output_sha256": "72a529ac48b9f8eb2fd3b825e62a2b5fc649d4c49e0face296c5af29e293cffc",
+      "output_size_bytes": 467153,
+      "pixel_box": {
+        "height": 344,
+        "width": 258,
+        "x": 220,
+        "y": 214
+      },
+      "reused_existing": true,
+      "source_duration": 40.7333,
+      "source_frame_count": 1222,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "dd33db88e27328fb61cd0167ed3cf67013e3b96dd5af6dd0c62c66fe3cbdd9c1",
+      "source_video_id": "video_0033",
+      "source_video_path": "data/01_videos/video_0033.mp4",
+      "video_filter": "crop=258:344:220:214,setsar=1"
+    },
+    {
+      "duration": 65.833333,
+      "frame_count": 1975,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0034.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "3792f5716c0b2a5f6f739a7b78fae1f9a4254d60dc46e4610153d4b23ba39d1f",
+      "output_size_bytes": 542555,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 534,
+        "y": 234
+      },
+      "reused_existing": true,
+      "source_duration": 65.8412,
+      "source_frame_count": 1975,
+      "source_frame_rate": "750000/25003",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "9abd44c2c5eb703a7cd90306e328732b3a26c3d50334afe2321da96d841dc07c",
+      "source_video_id": "video_0034",
+      "source_video_path": "data/01_videos/video_0034.mp4",
+      "video_filter": "crop=150:200:534:234,setsar=1"
+    },
+    {
+      "duration": 50.4,
+      "frame_count": 1512,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        500,
+        646
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0035.mp4",
+      "output_resolution": [
+        426,
+        568
+      ],
+      "output_sha256": "71f5a77fae6851bf033d70a8834bf3a78b11e89fc0788a89497827b89b4d25bd",
+      "output_size_bytes": 1405445,
+      "pixel_box": {
+        "height": 568,
+        "width": 426,
+        "x": 18,
+        "y": 54
+      },
+      "reused_existing": true,
+      "source_duration": 50.4,
+      "source_frame_count": 1512,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "35534e693bdc7bb3f3106207231f4855567e70efa3c7cc05b3250c98c6f5b3b2",
+      "source_video_id": "video_0035",
+      "source_video_path": "data/01_videos/video_0035.mp4",
+      "video_filter": "crop=426:568:18:54,setsar=1"
+    },
+    {
+      "duration": 50.866667,
+      "frame_count": 1526,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0036.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "d3b168987d7cf8c6f945384196d6f58d80c75e5b1f1c64e128ad1a3ac7c0a232",
+      "output_size_bytes": 515725,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 536,
+        "y": 240
+      },
+      "reused_existing": true,
+      "source_duration": 50.8659,
+      "source_frame_count": 1526,
+      "source_frame_rate": "15260000/508659",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "47cda2d1eb5b8a3b74edd0555f057e58e9492d38fca57a6c98e232f278af131c",
+      "source_video_id": "video_0036",
+      "source_video_path": "data/01_videos/video_0036.mp4",
+      "video_filter": "crop=150:200:536:240,setsar=1"
+    },
+    {
+      "duration": 158.2,
+      "frame_count": 4746,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0037.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "afdca0caf345463cd0e32a828f6a0f023e3d6a4e2dc523151a928b5bc503c308",
+      "output_size_bytes": 2876404,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 690,
+        "y": 220
+      },
+      "reused_existing": true,
+      "source_duration": 158.209233,
+      "source_frame_count": 4746,
+      "source_frame_rate": "71190000/2373139",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "af7a0e66c2fd84fe2923d0291c757d27af6ea0f200b8e883862abc06481b3462",
+      "source_video_id": "video_0037",
+      "source_video_path": "data/01_videos/video_0037.mp4",
+      "video_filter": "crop=150:200:690:220,setsar=1"
+    },
+    {
+      "duration": 53.566667,
+      "frame_count": 1607,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        518,
+        610
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0038.mp4",
+      "output_resolution": [
+        192,
+        256
+      ],
+      "output_sha256": "ddcf3543b4a7095b9085905cdd9793fe4bbf6398992e8e3db6e3fcee585ca8c1",
+      "output_size_bytes": 945402,
+      "pixel_box": {
+        "height": 256,
+        "width": 192,
+        "x": 200,
+        "y": 112
+      },
+      "reused_existing": true,
+      "source_duration": 53.566633,
+      "source_frame_count": 1607,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "1e4426de823e35142cafc107cbcc51c5d45ba5b7ef90751033e965d6231762fe",
+      "source_video_id": "video_0038",
+      "source_video_path": "data/01_videos/video_0038.mp4",
+      "video_filter": "crop=192:256:200:112,setsar=1"
+    },
+    {
+      "duration": 65.066667,
+      "frame_count": 1952,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        732,
+        604
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0039.mp4",
+      "output_resolution": [
+        192,
+        256
+      ],
+      "output_sha256": "b8a6a6889d25b31f49c44d6f1d1d8727c594084bf99357ae4e08fa2882126c65",
+      "output_size_bytes": 644032,
+      "pixel_box": {
+        "height": 256,
+        "width": 192,
+        "x": 134,
+        "y": 218
+      },
+      "reused_existing": true,
+      "source_duration": 65.066633,
+      "source_frame_count": 1952,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "69f117387bcce6eec604b74444b42d2e46618a00ae7a03fdf6c3942ef995c513",
+      "source_video_id": "video_0039",
+      "source_video_path": "data/01_videos/video_0039.mp4",
+      "video_filter": "crop=192:256:134:218,setsar=1"
+    },
+    {
+      "duration": 27.366667,
+      "frame_count": 821,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        382,
+        384
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0040.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "23ae03b08aadc9a220cbb9e63e0678ed022ac08270619e63b90b38f56d7c3927",
+      "output_size_bytes": 64090,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 174,
+        "y": 113
+      },
+      "reused_existing": true,
+      "source_duration": 27.366633,
+      "source_frame_count": 821,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "3dcf2a131481cc0ae6f73674758e98025d51edf2c5b7b2d4516efc4520750b78",
+      "source_video_id": "video_0040",
+      "source_video_path": "data/01_videos/video_0040.mp4",
+      "video_filter": "crop=144:192:174:113,setsar=1"
+    },
+    {
+      "duration": 32.866667,
+      "frame_count": 986,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        304,
+        870
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0041.mp4",
+      "output_resolution": [
+        654,
+        872
+      ],
+      "output_sha256": "9e670e41cbef2d4a7ce915759f2e4a42c3e28b6b17ee99d2ad86baf03e0d62ce",
+      "output_size_bytes": 359851,
+      "pixel_box": {
+        "height": 870,
+        "width": 304,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 32.866633,
+      "source_frame_count": 986,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a5d7bf40ffdba7cf05a00726334f0880f4f0655636bd20c22439e91067cff599",
+      "source_video_id": "video_0041",
+      "source_video_path": "data/01_videos/video_0041.mp4",
+      "video_filter": "pad=654:872:175:1:color=black,setsar=1"
+    },
+    {
+      "duration": 41.033333,
+      "frame_count": 1231,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        406,
+        560
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0042.mp4",
+      "output_resolution": [
+        174,
+        232
+      ],
+      "output_sha256": "849984f781548517ea788cb91d3e43ebeee563112ce416870683d347dd701a16",
+      "output_size_bytes": 256366,
+      "pixel_box": {
+        "height": 232,
+        "width": 174,
+        "x": 106,
+        "y": 166
+      },
+      "reused_existing": true,
+      "source_duration": 41.0333,
+      "source_frame_count": 1231,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "c82d215f6d1ac9b987653cc6bda2ddd28ae1397bb9c7e1792c509a897d7364be",
+      "source_video_id": "video_0042",
+      "source_video_path": "data/01_videos/video_0042.mp4",
+      "video_filter": "crop=174:232:106:166,setsar=1"
+    },
+    {
+      "duration": 187.366667,
+      "frame_count": 5621,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0043.mp4",
+      "output_resolution": [
+        126,
+        168
+      ],
+      "output_sha256": "a9d9412d2e87f20869b9ce2892f92ebeccd635ebbe73f7a43ae7a10e7b77b527",
+      "output_size_bytes": 1869875,
+      "pixel_box": {
+        "height": 168,
+        "width": 126,
+        "x": 696,
+        "y": 234
+      },
+      "reused_existing": true,
+      "source_duration": 187.361567,
+      "source_frame_count": 5621,
+      "source_frame_rate": "3513125/117101",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a817e0b8a54d15662f7666a2a1717608ffa5b08ff38b768894c9f81d77ac5137",
+      "source_video_id": "video_0043",
+      "source_video_path": "data/01_videos/video_0043.mp4",
+      "video_filter": "crop=126:168:696:234,setsar=1"
+    },
+    {
+      "duration": 182.733333,
+      "frame_count": 5482,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0044.mp4",
+      "output_resolution": [
+        120,
+        160
+      ],
+      "output_sha256": "e02597d875bb2ff7dc445c0f9273fd9ac26c760fc9962aa0bd57de05a340d574",
+      "output_size_bytes": 1724181,
+      "pixel_box": {
+        "height": 160,
+        "width": 120,
+        "x": 701,
+        "y": 246
+      },
+      "reused_existing": true,
+      "source_duration": 182.721467,
+      "source_frame_count": 5482,
+      "source_frame_rate": "41115000/1370411",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "0a965cfd5ae2c8423277ccf791057cbddf2e4fe6b583379e980f993ee6211fb7",
+      "source_video_id": "video_0044",
+      "source_video_path": "data/01_videos/video_0044.mp4",
+      "video_filter": "crop=120:160:701:246,setsar=1"
+    },
+    {
+      "duration": 186.7,
+      "frame_count": 5601,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        492,
+        632
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0045.mp4",
+      "output_resolution": [
+        492,
+        656
+      ],
+      "output_sha256": "3f631e0b38223a56a3f3c9c57f9d31d8b14f8d7ea923fd61749ffbd4a744fe1d",
+      "output_size_bytes": 11199515,
+      "pixel_box": {
+        "height": 632,
+        "width": 492,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 186.7,
+      "source_frame_count": 5601,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "b41a4cfe6017f61041db51253c4cbf055e8d58b80d26e7af13cfa37f10225e87",
+      "source_video_id": "video_0045",
+      "source_video_path": "data/01_videos/video_0045.mp4",
+      "video_filter": "pad=492:656:0:12:color=black,setsar=1"
+    },
+    {
+      "duration": 5.866667,
+      "frame_count": 176,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        642,
+        1080
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0046.mp4",
+      "output_resolution": [
+        480,
+        640
+      ],
+      "output_sha256": "98e79eb6c5039de45cd217457268bb51649b51e41ee05106fde5c87a36bf0488",
+      "output_size_bytes": 110939,
+      "pixel_box": {
+        "height": 640,
+        "width": 480,
+        "x": 97,
+        "y": 192
+      },
+      "reused_existing": false,
+      "source_duration": 5.856,
+      "source_frame_count": 176,
+      "source_frame_rate": "5500/183",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "667b31d34899585a74d6dd605876fb63e200fcf89249985168a6f3350bf63933",
+      "source_video_id": "video_0046",
+      "source_video_path": "data/01_videos/video_0046.mp4",
+      "video_filter": "crop=480:640:97:192,setsar=1"
+    },
+    {
+      "duration": 81.633333,
+      "frame_count": 2449,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        244,
+        348
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0047.mp4",
+      "output_resolution": [
+        72,
+        96
+      ],
+      "output_sha256": "2a152701fc37ddca8cc44ecd8e8e0fe3138d29e0c98697bf8c49fba6a4e179d5",
+      "output_size_bytes": 102982,
+      "pixel_box": {
+        "height": 96,
+        "width": 72,
+        "x": 93,
+        "y": 145
+      },
+      "reused_existing": true,
+      "source_duration": 81.6333,
+      "source_frame_count": 2449,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "3d7fcc0c5b9c908b938f305979485066b88728f251ba0609bd41f44cfeb1e188",
+      "source_video_id": "video_0047",
+      "source_video_path": "data/01_videos/video_0047.mp4",
+      "video_filter": "crop=72:96:93:145,setsar=1"
+    },
+    {
+      "duration": 24.366667,
+      "frame_count": 731,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        466,
+        244
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0048.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "e4afa9dd0920fe9bab168b6d49ee4f67f2430073684338e8bc24c9f6ba238cb2",
+      "output_size_bytes": 119216,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 188,
+        "y": 14
+      },
+      "reused_existing": true,
+      "source_duration": 24.366633,
+      "source_frame_count": 731,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "4bc448b5fa24a9d49d1dcf73958b559093c04eb0a7bd06042ac5d4bf268cbfc2",
+      "source_video_id": "video_0048",
+      "source_video_path": "data/01_videos/video_0048.mp4",
+      "video_filter": "crop=150:200:188:14,setsar=1"
+    },
+    {
+      "duration": 175.366667,
+      "frame_count": 5261,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0049.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "d26b80791dd1353b821f0466400297eb54540dc88f44229948a8076d118cd2d4",
+      "output_size_bytes": 2370094,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 754,
+        "y": 346
+      },
+      "reused_existing": false,
+      "source_duration": 175.3622,
+      "source_frame_count": 5261,
+      "source_frame_rate": "26305000/876811",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "743b70a23dc07b207cb0b529f526aa0a0b645da71636dda99f46b7c0efd206b1",
+      "source_video_id": "video_0049",
+      "source_video_path": "data/01_videos/video_0049.mp4",
+      "video_filter": "crop=150:200:754:346,setsar=1"
+    },
+    {
+      "duration": 53.633333,
+      "frame_count": 1609,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        890,
+        698
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0050.mp4",
+      "output_resolution": [
+        414,
+        552
+      ],
+      "output_sha256": "89f533abd1cdd4eccfa1f89941ef4d5f25860d5c963cfda1a714f2061efa2e98",
+      "output_size_bytes": 828858,
+      "pixel_box": {
+        "height": 552,
+        "width": 414,
+        "x": 239,
+        "y": 136
+      },
+      "reused_existing": true,
+      "source_duration": 53.6333,
+      "source_frame_count": 1609,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "bae5b69d0be58e36b37871d812941adf8d1f70c029ce8e95643bb33faeddb9b0",
+      "source_video_id": "video_0050",
+      "source_video_path": "data/01_videos/video_0050.mp4",
+      "video_filter": "crop=414:552:239:136,setsar=1"
+    },
+    {
+      "duration": 9.3,
+      "frame_count": 279,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        934,
+        856
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0051.mp4",
+      "output_resolution": [
+        588,
+        784
+      ],
+      "output_sha256": "43bc6610cc65470f363741151cbbca1187c4718b88156863929b461db36c539f",
+      "output_size_bytes": 319137,
+      "pixel_box": {
+        "height": 784,
+        "width": 588,
+        "x": 146,
+        "y": 47
+      },
+      "reused_existing": true,
+      "source_duration": 9.3,
+      "source_frame_count": 279,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "5c66fae979208a4df808103895422e80cafe2a37657897452562f5a561d308d7",
+      "source_video_id": "video_0051",
+      "source_video_path": "data/01_videos/video_0051.mp4",
+      "video_filter": "crop=588:784:146:47,setsar=1"
+    },
+    {
+      "duration": 10.033333,
+      "frame_count": 301,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0052.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "06463b0bc79f71b536c4574bf4077b7600bfa107189d2180770d43a6f3d934ad",
+      "output_size_bytes": 57354,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 530,
+        "y": 234
+      },
+      "reused_existing": false,
+      "source_duration": 10.0334,
+      "source_frame_count": 301,
+      "source_frame_rate": "1505000/50167",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "5e8b4b97061e24c37c1095a8ec8dfa2b81feeb6563b4a0e4091727f661c8f4e6",
+      "source_video_id": "video_0052",
+      "source_video_path": "data/01_videos/video_0052.mp4",
+      "video_filter": "crop=150:200:530:234,setsar=1"
+    },
+    {
+      "duration": 152.3,
+      "frame_count": 4569,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0053.mp4",
+      "output_resolution": [
+        96,
+        128
+      ],
+      "output_sha256": "1653e603c78b5f2e9a3a461b6aa64d6db57c3c14d802f413cebceb5b57c306b3",
+      "output_size_bytes": 954812,
+      "pixel_box": {
+        "height": 128,
+        "width": 96,
+        "x": 727,
+        "y": 271
+      },
+      "reused_existing": false,
+      "source_duration": 152.289567,
+      "source_frame_count": 4569,
+      "source_frame_rate": "137070000/4568687",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "453d6cf42dee88d9839c73f559d2d085c6180fb0379eb4814e1dbb72012d723d",
+      "source_video_id": "video_0053",
+      "source_video_path": "data/01_videos/video_0053.mp4",
+      "video_filter": "crop=96:128:727:271,setsar=1"
+    },
+    {
+      "duration": 79.0,
+      "frame_count": 2370,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        424,
+        312
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0054.mp4",
+      "output_resolution": [
+        60,
+        80
+      ],
+      "output_sha256": "0f5cd2a4d7d7332c6ff3c29288e97d77b22ae1e81deeccbec52f6df526404926",
+      "output_size_bytes": 114406,
+      "pixel_box": {
+        "height": 80,
+        "width": 60,
+        "x": 188,
+        "y": 150
+      },
+      "reused_existing": true,
+      "source_duration": 79.0,
+      "source_frame_count": 2370,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "b3a838b69c81d583874e785ceeffd2dc47ede05bd2760a54e3a9aa1e8749ae59",
+      "source_video_id": "video_0054",
+      "source_video_path": "data/01_videos/video_0054.mp4",
+      "video_filter": "crop=60:80:188:150,setsar=1"
+    },
+    {
+      "duration": 9.7,
+      "frame_count": 291,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        640,
+        800
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0055.mp4",
+      "output_resolution": [
+        204,
+        272
+      ],
+      "output_sha256": "f037bc6188f9b061505b519a1e62419d7d9dfc181ad31fd43fe183ba333977a6",
+      "output_size_bytes": 118021,
+      "pixel_box": {
+        "height": 272,
+        "width": 204,
+        "x": 242,
+        "y": 242
+      },
+      "reused_existing": true,
+      "source_duration": 9.7,
+      "source_frame_count": 291,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "1ee734c1618caffb858ab68a80f942cc54f426802d752d985df0f73da2ad4837",
+      "source_video_id": "video_0055",
+      "source_video_path": "data/01_videos/video_0055.mp4",
+      "video_filter": "crop=204:272:242:242,setsar=1"
+    },
+    {
+      "duration": 73.6,
+      "frame_count": 2208,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0056.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "22f41592c4c82c6d9ac087088ba40922aff30948b5b2a64f221671fa5c9ef83c",
+      "output_size_bytes": 529283,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 535,
+        "y": 244
+      },
+      "reused_existing": false,
+      "source_duration": 73.6017,
+      "source_frame_count": 2208,
+      "source_frame_rate": "16560000/552013",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "698ee21d0a9a3b712e07a018985bf043a1b0cecb909e70b0d551694dafb1a6f7",
+      "source_video_id": "video_0056",
+      "source_video_path": "data/01_videos/video_0056.mp4",
+      "video_filter": "crop=144:192:535:244,setsar=1"
+    },
+    {
+      "duration": 37.8,
+      "frame_count": 1134,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        198,
+        474
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0057.mp4",
+      "output_resolution": [
+        174,
+        232
+      ],
+      "output_sha256": "2783aaa0a9c5921b98ed1df8312993766f03e1e7897e15fd530da49c8327603f",
+      "output_size_bytes": 388706,
+      "pixel_box": {
+        "height": 232,
+        "width": 174,
+        "x": 24,
+        "y": 163
+      },
+      "reused_existing": true,
+      "source_duration": 37.8,
+      "source_frame_count": 1134,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "3b7a1958c8e8c5c5c0fc62c37086ef04f4faf72c5e1aa826dbc36f7fd3d6eddc",
+      "source_video_id": "video_0057",
+      "source_video_path": "data/01_videos/video_0057.mp4",
+      "video_filter": "crop=174:232:24:163,setsar=1"
+    },
+    {
+      "duration": 5.9,
+      "frame_count": 177,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        638,
+        636
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0058.mp4",
+      "output_resolution": [
+        372,
+        496
+      ],
+      "output_sha256": "71f8bfd6e33fb343f26f18b74e762b4796a898605270387e5d60ddf290239e96",
+      "output_size_bytes": 161875,
+      "pixel_box": {
+        "height": 496,
+        "width": 372,
+        "x": 114,
+        "y": 92
+      },
+      "reused_existing": true,
+      "source_duration": 5.9,
+      "source_frame_count": 177,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "223e57d643e5ac75e49fbf3af1cc9d530cebf6add76aef6fcba6586a6f770e2e",
+      "source_video_id": "video_0058",
+      "source_video_path": "data/01_videos/video_0058.mp4",
+      "video_filter": "crop=372:496:114:92,setsar=1"
+    },
+    {
+      "duration": 35.666667,
+      "frame_count": 1070,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        478,
+        650
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0059.mp4",
+      "output_resolution": [
+        150,
+        200
+      ],
+      "output_sha256": "fbbd458541031949d994d603accb55cd602f56d927854910d5245c0f4e8d50a4",
+      "output_size_bytes": 293211,
+      "pixel_box": {
+        "height": 200,
+        "width": 150,
+        "x": 120,
+        "y": 184
+      },
+      "reused_existing": true,
+      "source_duration": 35.666633,
+      "source_frame_count": 1070,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "2fb8041b28a784ccb6f8fe82f8005e850fd0fcfb4eba6bb6a36c350a97ed9263",
+      "source_video_id": "video_0059",
+      "source_video_path": "data/01_videos/video_0059.mp4",
+      "video_filter": "crop=150:200:120:184,setsar=1"
+    },
+    {
+      "duration": 9.3,
+      "frame_count": 279,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        484,
+        730
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0060.mp4",
+      "output_resolution": [
+        186,
+        248
+      ],
+      "output_sha256": "1b7f0a391bc2fd25ccd1c28b6ead1e5f0f434e8455053a4a2114843ee9af8296",
+      "output_size_bytes": 93872,
+      "pixel_box": {
+        "height": 248,
+        "width": 186,
+        "x": 255,
+        "y": 342
+      },
+      "reused_existing": true,
+      "source_duration": 9.3,
+      "source_frame_count": 279,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "efb581f78fb2060df03b35c0d9057f95998e832d9f7e55ccbfb8d805fa2176da",
+      "source_video_id": "video_0060",
+      "source_video_path": "data/01_videos/video_0060.mp4",
+      "video_filter": "crop=186:248:255:342,setsar=1"
+    },
+    {
+      "duration": 46.5,
+      "frame_count": 1395,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        762,
+        766
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0061.mp4",
+      "output_resolution": [
+        432,
+        576
+      ],
+      "output_sha256": "b498b713484eff3ebfdb457f1075ad3a39c85f6e9ceaabca51454ccbe28a7b05",
+      "output_size_bytes": 954463,
+      "pixel_box": {
+        "height": 576,
+        "width": 432,
+        "x": 189,
+        "y": 100
+      },
+      "reused_existing": true,
+      "source_duration": 46.5,
+      "source_frame_count": 1395,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a9fed92365c27552e7885d2b480f7961fca08b2dadaf36d9dedb76291aeeb9f4",
+      "source_video_id": "video_0061",
+      "source_video_path": "data/01_videos/video_0061.mp4",
+      "video_filter": "crop=432:576:189:100,setsar=1"
+    },
+    {
+      "duration": 30.733333,
+      "frame_count": 922,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        498,
+        456
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0062.mp4",
+      "output_resolution": [
+        336,
+        448
+      ],
+      "output_sha256": "edb55a25dc6f6e69ad9f5c64153264b1ea68f89b7bd04ebdcdbe23f1015c8859",
+      "output_size_bytes": 924257,
+      "pixel_box": {
+        "height": 448,
+        "width": 336,
+        "x": 82,
+        "y": 5
+      },
+      "reused_existing": true,
+      "source_duration": 30.7333,
+      "source_frame_count": 922,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "775bbc946f2c77bc88d63c6ee14d69914d5f0612a72f69feda7883bd2f6ef6ee",
+      "source_video_id": "video_0062",
+      "source_video_path": "data/01_videos/video_0062.mp4",
+      "video_filter": "crop=336:448:82:5,setsar=1"
+    },
+    {
+      "duration": 154.4,
+      "frame_count": 4632,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0063.mp4",
+      "output_resolution": [
+        138,
+        184
+      ],
+      "output_sha256": "39d0231fc3aa04fd98acaa2ca713d40512181c5855babeccdb1a7c5b36b79bc4",
+      "output_size_bytes": 2009992,
+      "pixel_box": {
+        "height": 184,
+        "width": 138,
+        "x": 690,
+        "y": 216
+      },
+      "reused_existing": false,
+      "source_duration": 154.4015,
+      "source_frame_count": 4632,
+      "source_frame_rate": "69480000/2316023",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "4e0a085bdee37f56a181f939e3a971f55425c7744fac294b91c63cf6be821a88",
+      "source_video_id": "video_0063",
+      "source_video_path": "data/01_videos/video_0063.mp4",
+      "video_filter": "crop=138:184:690:216,setsar=1"
+    },
+    {
+      "duration": 74.933333,
+      "frame_count": 2248,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0064.mp4",
+      "output_resolution": [
+        180,
+        240
+      ],
+      "output_sha256": "d780297948b5cb0b1f2f676c23510a47fc9a8a8b6d1cff5ef5c6f862df3c126c",
+      "output_size_bytes": 949792,
+      "pixel_box": {
+        "height": 240,
+        "width": 180,
+        "x": 532,
+        "y": 212
+      },
+      "reused_existing": false,
+      "source_duration": 74.945267,
+      "source_frame_count": 2248,
+      "source_frame_rate": "33720000/1124179",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "938ba7dce32c0c776ca82c988440bd196bf504152bb444d204688fbbfb6e241b",
+      "source_video_id": "video_0064",
+      "source_video_path": "data/01_videos/video_0064.mp4",
+      "video_filter": "crop=180:240:532:212,setsar=1"
+    },
+    {
+      "duration": 2.633333,
+      "frame_count": 79,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        926,
+        896
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0065.mp4",
+      "output_resolution": [
+        654,
+        872
+      ],
+      "output_sha256": "90f5681bbbe66b81d141efe6903b7d780a3e04983bd79f6027d767f1a59cfb48",
+      "output_size_bytes": 133982,
+      "pixel_box": {
+        "height": 872,
+        "width": 654,
+        "x": 94,
+        "y": 16
+      },
+      "reused_existing": true,
+      "source_duration": 2.6333,
+      "source_frame_count": 79,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "6daa6f1e3cc8182c12501d1c2e4d35fdfea912fb0ce97448629357ca5f054530",
+      "source_video_id": "video_0065",
+      "source_video_path": "data/01_videos/video_0065.mp4",
+      "video_filter": "crop=654:872:94:16,setsar=1"
+    },
+    {
+      "duration": 36.1,
+      "frame_count": 1083,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        388,
+        442
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0066.mp4",
+      "output_resolution": [
+        204,
+        272
+      ],
+      "output_sha256": "0a3eeb29942a5d0ed1cb28f1d8850129e3637be6e2a86cc6b461b8996809e857",
+      "output_size_bytes": 580384,
+      "pixel_box": {
+        "height": 272,
+        "width": 204,
+        "x": 70,
+        "y": 86
+      },
+      "reused_existing": true,
+      "source_duration": 36.1,
+      "source_frame_count": 1083,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "3fccfd0febc3ac902a87f541854cee9b864741457a6ec668f28d4bf68a67a3e2",
+      "source_video_id": "video_0066",
+      "source_video_path": "data/01_videos/video_0066.mp4",
+      "video_filter": "crop=204:272:70:86,setsar=1"
+    },
+    {
+      "duration": 147.433333,
+      "frame_count": 4423,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        476,
+        744
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0067.mp4",
+      "output_resolution": [
+        558,
+        744
+      ],
+      "output_sha256": "fbbba3fce4e98c5c0330f0c1d5fe208be87da02d164912ab6762760ca6f9dc72",
+      "output_size_bytes": 953037,
+      "pixel_box": {
+        "height": 744,
+        "width": 476,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 147.4333,
+      "source_frame_count": 4423,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "42944ee33ddc25b5bd164222291e953810ac2ad91b28f33397e386919429fd1c",
+      "source_video_id": "video_0067",
+      "source_video_path": "data/01_videos/video_0067.mp4",
+      "video_filter": "pad=558:744:41:0:color=black,setsar=1"
+    },
+    {
+      "duration": 35.666667,
+      "frame_count": 1070,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        902,
+        710
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0068.mp4",
+      "output_resolution": [
+        384,
+        512
+      ],
+      "output_sha256": "ddcd70ff150bd81591fdb0b3ce562effd2cf9714be80f43c78bfd2e1d94a4d59",
+      "output_size_bytes": 1076910,
+      "pixel_box": {
+        "height": 512,
+        "width": 384,
+        "x": 295,
+        "y": 123
+      },
+      "reused_existing": true,
+      "source_duration": 35.666633,
+      "source_frame_count": 1070,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "e804abbd13f2fce01f606406b29429c8ca592c141a6c708389f2a0e38843a55c",
+      "source_video_id": "video_0068",
+      "source_video_path": "data/01_videos/video_0068.mp4",
+      "video_filter": "crop=384:512:295:123,setsar=1"
+    },
+    {
+      "duration": 192.1,
+      "frame_count": 5763,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        488,
+        542
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0069.mp4",
+      "output_resolution": [
+        156,
+        208
+      ],
+      "output_sha256": "f2031633271f84d21c287ef66b5712647c32a042a5b588e4658abd0e5891cbdf",
+      "output_size_bytes": 1227412,
+      "pixel_box": {
+        "height": 208,
+        "width": 156,
+        "x": 128,
+        "y": 189
+      },
+      "reused_existing": true,
+      "source_duration": 192.1,
+      "source_frame_count": 5763,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "880507300a05b2bbe98233a2a7a2495163aead03309e2d43bb460417ac7b8e04",
+      "source_video_id": "video_0069",
+      "source_video_path": "data/01_videos/video_0069.mp4",
+      "video_filter": "crop=156:208:128:189,setsar=1"
+    },
+    {
+      "duration": 154.3,
+      "frame_count": 4629,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        490,
+        678
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0070.mp4",
+      "output_resolution": [
+        288,
+        384
+      ],
+      "output_sha256": "b0fdf5e6c39f0329717baabcc7b6e0dc84e329fcc1da2f64af5aa9a821931863",
+      "output_size_bytes": 2839489,
+      "pixel_box": {
+        "height": 384,
+        "width": 288,
+        "x": 108,
+        "y": 192
+      },
+      "reused_existing": true,
+      "source_duration": 154.3,
+      "source_frame_count": 4629,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "fda5c9d6d2bc9cec8eb18e13d19a68ab3d87cb437dbf4bb1728466adcd30e109",
+      "source_video_id": "video_0070",
+      "source_video_path": "data/01_videos/video_0070.mp4",
+      "video_filter": "crop=288:384:108:192,setsar=1"
+    },
+    {
+      "duration": 5.233333,
+      "frame_count": 157,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        680,
+        650
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0071.mp4",
+      "output_resolution": [
+        684,
+        912
+      ],
+      "output_sha256": "3430d553dc41064bda7862af6ee78cb9ffb88d3e68cfe930bf13ac8831f7c1fc",
+      "output_size_bytes": 352040,
+      "pixel_box": {
+        "height": 650,
+        "width": 680,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 5.2333,
+      "source_frame_count": 157,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "df671e09b14b06443523cbe9f60efcd387c828519c27fee7ed209a3ee1fe9581",
+      "source_video_id": "video_0071",
+      "source_video_path": "data/01_videos/video_0071.mp4",
+      "video_filter": "pad=684:912:2:131:color=black,setsar=1"
+    },
+    {
+      "duration": 117.266667,
+      "frame_count": 3518,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        502,
+        628
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0072.mp4",
+      "output_resolution": [
+        168,
+        224
+      ],
+      "output_sha256": "50fa256a9c4d8f8653e844e9dae838cf132f48129b6c7f0f3c062078579d05c1",
+      "output_size_bytes": 1145604,
+      "pixel_box": {
+        "height": 224,
+        "width": 168,
+        "x": 192,
+        "y": 162
+      },
+      "reused_existing": true,
+      "source_duration": 117.266633,
+      "source_frame_count": 3518,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "0b8a3fa766f4d26cdae94620d486f5047c9028f3c56df84f224492887ca3275d",
+      "source_video_id": "video_0072",
+      "source_video_path": "data/01_videos/video_0072.mp4",
+      "video_filter": "crop=168:224:192:162,setsar=1"
+    },
+    {
+      "duration": 110.533333,
+      "frame_count": 3316,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        400,
+        402
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0073.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "c2699e3d4613d9b000ceef9ad2aa25b03b8dade49c81e76683a2dee1dd0010cb",
+      "output_size_bytes": 394043,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 91,
+        "y": 204
+      },
+      "reused_existing": true,
+      "source_duration": 110.5333,
+      "source_frame_count": 3316,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "9d8a3f38754d75a348142fe34f9ae490e84dd78ee30eee704eb99d770294b6e4",
+      "source_video_id": "video_0073",
+      "source_video_path": "data/01_videos/video_0073.mp4",
+      "video_filter": "crop=144:192:91:204,setsar=1"
+    },
+    {
+      "duration": 12.266667,
+      "frame_count": 368,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        574,
+        700
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0074.mp4",
+      "output_resolution": [
+        396,
+        528
+      ],
+      "output_sha256": "81f004a488b84dc7efceb9b45e3636e1a208d7156c01407bc4adc315d94d1857",
+      "output_size_bytes": 611824,
+      "pixel_box": {
+        "height": 528,
+        "width": 396,
+        "x": 96,
+        "y": 152
+      },
+      "reused_existing": true,
+      "source_duration": 12.266633,
+      "source_frame_count": 368,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "767d16f41132481f84a28b52369afbc48aca030d5bf59c53744f03d6e0581028",
+      "source_video_id": "video_0074",
+      "source_video_path": "data/01_videos/video_0074.mp4",
+      "video_filter": "crop=396:528:96:152,setsar=1"
+    },
+    {
+      "duration": 3.866667,
+      "frame_count": 116,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        498,
+        552
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0075.mp4",
+      "output_resolution": [
+        174,
+        232
+      ],
+      "output_sha256": "9ca7282651a305828cf0abf35d014b927670b458494e98888506ac97981521fd",
+      "output_size_bytes": 35164,
+      "pixel_box": {
+        "height": 232,
+        "width": 174,
+        "x": 143,
+        "y": 182
+      },
+      "reused_existing": true,
+      "source_duration": 3.866633,
+      "source_frame_count": 116,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "547b1a67653c9d23ee359c9287547a51928857415956fb0d9a8c06a973160315",
+      "source_video_id": "video_0075",
+      "source_video_path": "data/01_videos/video_0075.mp4",
+      "video_filter": "crop=174:232:143:182,setsar=1"
+    },
+    {
+      "duration": 184.3,
+      "frame_count": 5529,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0076.mp4",
+      "output_resolution": [
+        144,
+        192
+      ],
+      "output_sha256": "2f6c1be363ff4894c65d827d39a3fe819b733df8b27e6a1321d04d76aaac3f59",
+      "output_size_bytes": 2611237,
+      "pixel_box": {
+        "height": 192,
+        "width": 144,
+        "x": 692,
+        "y": 224
+      },
+      "reused_existing": false,
+      "source_duration": 184.305567,
+      "source_frame_count": 5529,
+      "source_frame_rate": "1151875/38397",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "3ce0e9336780b7c7e61f9b1545f159e1808aa9435d22220b61e65fa74f768e23",
+      "source_video_id": "video_0076",
+      "source_video_path": "data/01_videos/video_0076.mp4",
+      "video_filter": "crop=144:192:692:224,setsar=1"
+    },
+    {
+      "duration": 9.433333,
+      "frame_count": 283,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        176,
+        268
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0077.mp4",
+      "output_resolution": [
+        72,
+        96
+      ],
+      "output_sha256": "9d6256bcf386a66b44ce1dfa9e8ceff1ab3d21b323e5cf333f2f5c89259f732c",
+      "output_size_bytes": 51392,
+      "pixel_box": {
+        "height": 96,
+        "width": 72,
+        "x": 54,
+        "y": 118
+      },
+      "reused_existing": true,
+      "source_duration": 9.4333,
+      "source_frame_count": 283,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "e13bd160a97fd58adc74d438c619758b7b475c59409fb49aaa56e9b51fd15956",
+      "source_video_id": "video_0077",
+      "source_video_path": "data/01_videos/video_0077.mp4",
+      "video_filter": "crop=72:96:54:118,setsar=1"
+    },
+    {
+      "duration": 78.766667,
+      "frame_count": 2363,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        720,
+        1280
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0078.mp4",
+      "output_resolution": [
+        414,
+        552
+      ],
+      "output_sha256": "b0e78786e47027b9d426f3c211fd8829124e4393c56088ed70b2a5fb303d4e79",
+      "output_size_bytes": 3220176,
+      "pixel_box": {
+        "height": 552,
+        "width": 414,
+        "x": 155,
+        "y": 311
+      },
+      "reused_existing": false,
+      "source_duration": 78.766333,
+      "source_frame_count": 2363,
+      "source_frame_rate": "7089000/236299",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "6cd219c3b641a52bec72f0094c9ebce3a022ccf8670247aa71c36476a4664fbe",
+      "source_video_id": "video_0078",
+      "source_video_path": "data/01_videos/video_0078.mp4",
+      "video_filter": "crop=414:552:155:311,setsar=1"
+    },
+    {
+      "duration": 3.0,
+      "frame_count": 92,
+      "frame_rate": "92/3",
+      "input_resolution": [
+        440,
+        708
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0079.mp4",
+      "output_resolution": [
+        282,
+        376
+      ],
+      "output_sha256": "f1ee3ae7903b1c7b8431389ad02ab45da8874f7690d93ddbb7928857f045e86f",
+      "output_size_bytes": 17618,
+      "pixel_box": {
+        "height": 376,
+        "width": 282,
+        "x": 78,
+        "y": 170
+      },
+      "reused_existing": false,
+      "source_duration": 3.035633,
+      "source_frame_count": 92,
+      "source_frame_rate": "276000/9107",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a091ab29bcb4cd0937350994e3b8386dd019b935faf0b6655d4df29a64a79214",
+      "source_video_id": "video_0079",
+      "source_video_path": "data/01_videos/video_0079.mp4",
+      "video_filter": "crop=282:376:78:170,setsar=1"
+    },
+    {
+      "duration": 90.2,
+      "frame_count": 2706,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        516,
+        772
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0080.mp4",
+      "output_resolution": [
+        582,
+        776
+      ],
+      "output_sha256": "56956ad60f75bda881917bbb41d9111640a7a9aa4e76ebf4ba20158c6896de3d",
+      "output_size_bytes": 3649364,
+      "pixel_box": {
+        "height": 772,
+        "width": 516,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 90.2,
+      "source_frame_count": 2706,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "cc7ee195330b4ffc682a7551b55672333a3cd89a02a57617aa90208986a8cc9c",
+      "source_video_id": "video_0080",
+      "source_video_path": "data/01_videos/video_0080.mp4",
+      "video_filter": "pad=582:776:33:2:color=black,setsar=1"
+    },
+    {
+      "duration": 103.166667,
+      "frame_count": 3095,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        510,
+        682
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0081.mp4",
+      "output_resolution": [
+        252,
+        336
+      ],
+      "output_sha256": "043d8cc58a785f4ea6e245b8e785f0cf6ce478e6eda7902a8ad109a5ba4e3b8e",
+      "output_size_bytes": 3158932,
+      "pixel_box": {
+        "height": 336,
+        "width": 252,
+        "x": 135,
+        "y": 82
+      },
+      "reused_existing": true,
+      "source_duration": 103.166633,
+      "source_frame_count": 3095,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "dc267cbb9c92983d28b92be0b101ab019dc3b43917436d72a586bb9f941f231b",
+      "source_video_id": "video_0081",
+      "source_video_path": "data/01_videos/video_0081.mp4",
+      "video_filter": "crop=252:336:135:82,setsar=1"
+    },
+    {
+      "duration": 26.9,
+      "frame_count": 807,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        246,
+        370
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0082.mp4",
+      "output_resolution": [
+        210,
+        280
+      ],
+      "output_sha256": "47e5ce94bfd65b75287cffe3f58b75f2c0904708d52ec2a403a8c9ae4ecbdf71",
+      "output_size_bytes": 405663,
+      "pixel_box": {
+        "height": 280,
+        "width": 210,
+        "x": 22,
+        "y": 48
+      },
+      "reused_existing": true,
+      "source_duration": 26.9,
+      "source_frame_count": 807,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "81e8f24b73e46a555bf1b09a423f868b454154ac42729de53ae13751ee1dc7b3",
+      "source_video_id": "video_0082",
+      "source_video_path": "data/01_videos/video_0082.mp4",
+      "video_filter": "crop=210:280:22:48,setsar=1"
+    },
+    {
+      "duration": 166.966667,
+      "frame_count": 5009,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0083.mp4",
+      "output_resolution": [
+        192,
+        256
+      ],
+      "output_sha256": "ce6a2c859a0eabdf6c77900952520c026cb39ed4b5c9570a10f16fb289e529a3",
+      "output_size_bytes": 2963658,
+      "pixel_box": {
+        "height": 256,
+        "width": 192,
+        "x": 590,
+        "y": 184
+      },
+      "reused_existing": false,
+      "source_duration": 166.9614,
+      "source_frame_count": 5009,
+      "source_frame_rate": "150270000/5008843",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a30ffa7c4b445b0b53023392f4df28daa6f6538907892cd4e25b4039e6973dc3",
+      "source_video_id": "video_0083",
+      "source_video_path": "data/01_videos/video_0083.mp4",
+      "video_filter": "crop=192:256:590:184,setsar=1"
+    },
+    {
+      "duration": 8.233333,
+      "frame_count": 247,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        680,
+        846
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0084.mp4",
+      "output_resolution": [
+        336,
+        448
+      ],
+      "output_sha256": "73a5bfea7872ed6d3392ad0f7f855f1039805acb9d492c23b35261f0e611ce0f",
+      "output_size_bytes": 292146,
+      "pixel_box": {
+        "height": 448,
+        "width": 336,
+        "x": 160,
+        "y": 244
+      },
+      "reused_existing": true,
+      "source_duration": 8.2333,
+      "source_frame_count": 247,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "3a281b6aac3e0120b7f4506e72cd74937fa9ebebf658457cb0eea600300909c8",
+      "source_video_id": "video_0084",
+      "source_video_path": "data/01_videos/video_0084.mp4",
+      "video_filter": "crop=336:448:160:244,setsar=1"
+    },
+    {
+      "duration": 11.6,
+      "frame_count": 348,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        278,
+        326
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0085.mp4",
+      "output_resolution": [
+        162,
+        216
+      ],
+      "output_sha256": "06c54254573a569250e8a524e603e6d30752696ba5e7b95a83b020c047ecd7c0",
+      "output_size_bytes": 33814,
+      "pixel_box": {
+        "height": 216,
+        "width": 162,
+        "x": 64,
+        "y": 66
+      },
+      "reused_existing": true,
+      "source_duration": 11.6,
+      "source_frame_count": 348,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "5ac794b047cb3e429daa825ad4ee1a493c00a0f20eb3098aaf4a6190be96a761",
+      "source_video_id": "video_0085",
+      "source_video_path": "data/01_videos/video_0085.mp4",
+      "video_filter": "crop=162:216:64:66,setsar=1"
+    },
+    {
+      "duration": 78.166667,
+      "frame_count": 2345,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        398,
+        298
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0086.mp4",
+      "output_resolution": [
+        72,
+        96
+      ],
+      "output_sha256": "3ca0f544d6e42f22691709b38802eda5b50e604bbb80891b3e092b73f061051e",
+      "output_size_bytes": 145454,
+      "pixel_box": {
+        "height": 96,
+        "width": 72,
+        "x": 156,
+        "y": 136
+      },
+      "reused_existing": true,
+      "source_duration": 78.166633,
+      "source_frame_count": 2345,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "5218357315d9eba801c12bf37f24ffa67458407dde7a78f090a5c0d5e1a4a2dd",
+      "source_video_id": "video_0086",
+      "source_video_path": "data/01_videos/video_0086.mp4",
+      "video_filter": "crop=72:96:156:136,setsar=1"
+    },
+    {
+      "duration": 58.033333,
+      "frame_count": 1741,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0087.mp4",
+      "output_resolution": [
+        198,
+        264
+      ],
+      "output_sha256": "a998881d2ba127d8e5332dc57a296e04ee69fe2594743f2013542c02b1543a29",
+      "output_size_bytes": 870955,
+      "pixel_box": {
+        "height": 264,
+        "width": 198,
+        "x": 516,
+        "y": 210
+      },
+      "reused_existing": false,
+      "source_duration": 58.033267,
+      "source_frame_count": 1741,
+      "source_frame_rate": "26115000/870499",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "093c9be9122ee9ac88ab4b5284e82f2255ad717d0faef530ff62aa2540ff4e19",
+      "source_video_id": "video_0087",
+      "source_video_path": "data/01_videos/video_0087.mp4",
+      "video_filter": "crop=198:264:516:210,setsar=1"
+    },
+    {
+      "duration": 42.6,
+      "frame_count": 1278,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        486,
+        692
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0088.mp4",
+      "output_resolution": [
+        228,
+        304
+      ],
+      "output_sha256": "f3448a7c261089ce810dbeec73029c5bda61fdd7e72f08deaf1002b89e90ab13",
+      "output_size_bytes": 781503,
+      "pixel_box": {
+        "height": 304,
+        "width": 228,
+        "x": 186,
+        "y": 258
+      },
+      "reused_existing": true,
+      "source_duration": 42.6,
+      "source_frame_count": 1278,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "4bfe6ee2aaaf2a9ec73d6b33a3ddb0ecb7d0c1b4c15ff0dcde31550562eb74d6",
+      "source_video_id": "video_0088",
+      "source_video_path": "data/01_videos/video_0088.mp4",
+      "video_filter": "crop=228:304:186:258,setsar=1"
+    },
+    {
+      "duration": 20.666667,
+      "frame_count": 620,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        700,
+        914
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0089.mp4",
+      "output_resolution": [
+        414,
+        552
+      ],
+      "output_sha256": "1dbf4af0d972eeb8cd4734021431cc97e3be2843403320b3bd3d1932794e56f8",
+      "output_size_bytes": 384309,
+      "pixel_box": {
+        "height": 552,
+        "width": 414,
+        "x": 12,
+        "y": 224
+      },
+      "reused_existing": true,
+      "source_duration": 20.666633,
+      "source_frame_count": 620,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a3db786a6fd3f2b727f96dfb1dbabd9c079e6b26de2b0796d8c229c8a78e56b4",
+      "source_video_id": "video_0089",
+      "source_video_path": "data/01_videos/video_0089.mp4",
+      "video_filter": "crop=414:552:12:224,setsar=1"
+    },
+    {
+      "duration": 18.733333,
+      "frame_count": 562,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        490,
+        522
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0090.mp4",
+      "output_resolution": [
+        282,
+        376
+      ],
+      "output_sha256": "0b8cff9c53fc83ef7cc9f34bdc54a301cbcbe1013932605adf252de6843d96af",
+      "output_size_bytes": 430161,
+      "pixel_box": {
+        "height": 376,
+        "width": 282,
+        "x": 96,
+        "y": 44
+      },
+      "reused_existing": true,
+      "source_duration": 18.7333,
+      "source_frame_count": 562,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "adeb4fa3c89d9e0c5677a7894e01433aa0095ec23213ac963849b801697540eb",
+      "source_video_id": "video_0090",
+      "source_video_path": "data/01_videos/video_0090.mp4",
+      "video_filter": "crop=282:376:96:44,setsar=1"
+    },
+    {
+      "duration": 11.066667,
+      "frame_count": 332,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        610,
+        672
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0091.mp4",
+      "output_resolution": [
+        294,
+        392
+      ],
+      "output_sha256": "8faa67f0d2c074dc6ba5997ab2326eaa35d1015a779a04816c9a3144f8c2a312",
+      "output_size_bytes": 276555,
+      "pixel_box": {
+        "height": 392,
+        "width": 294,
+        "x": 180,
+        "y": 246
+      },
+      "reused_existing": true,
+      "source_duration": 11.066633,
+      "source_frame_count": 332,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "113b544cf3230640396985bfa1a2cb94faadfcb0e86ece4b7d567becf1db1bc8",
+      "source_video_id": "video_0091",
+      "source_video_path": "data/01_videos/video_0091.mp4",
+      "video_filter": "crop=294:392:180:246,setsar=1"
+    },
+    {
+      "duration": 16.866667,
+      "frame_count": 506,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        500,
+        382
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0092.mp4",
+      "output_resolution": [
+        222,
+        296
+      ],
+      "output_sha256": "cf67e7a359be0a7e1bd4cc362a4b18107757814db9fad9904334b99ef7e44cfc",
+      "output_size_bytes": 130247,
+      "pixel_box": {
+        "height": 296,
+        "width": 222,
+        "x": 91,
+        "y": 2
+      },
+      "reused_existing": true,
+      "source_duration": 16.866633,
+      "source_frame_count": 506,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "716b2d53981d9c2076b5771f687a3e4041498433a74c9b7ef83af67bd3d4c0bd",
+      "source_video_id": "video_0092",
+      "source_video_path": "data/01_videos/video_0092.mp4",
+      "video_filter": "crop=222:296:91:2,setsar=1"
+    },
+    {
+      "duration": 56.733333,
+      "frame_count": 1702,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        502,
+        866
+      ],
+      "mode": "no_crop",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0093.mp4",
+      "output_resolution": [
+        654,
+        872
+      ],
+      "output_sha256": "13d710af672c6c2e446a9e673ed86b5e756b5eb4deb51b274bb102c0ca8dd26c",
+      "output_size_bytes": 715962,
+      "pixel_box": {
+        "height": 866,
+        "width": 502,
+        "x": 0,
+        "y": 0
+      },
+      "reused_existing": true,
+      "source_duration": 56.7333,
+      "source_frame_count": 1702,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "d7c138b4fa74a6f38ba28c07a12739f8982ebc43804b6c4a2fbf277708ad1416",
+      "source_video_id": "video_0093",
+      "source_video_path": "data/01_videos/video_0093.mp4",
+      "video_filter": "pad=654:872:76:3:color=black,setsar=1"
+    },
+    {
+      "duration": 156.533333,
+      "frame_count": 4696,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0094.mp4",
+      "output_resolution": [
+        180,
+        240
+      ],
+      "output_sha256": "ec094a7e9c25758907e1d12cae900745a75defa09c92aba3bade89b389e755ee",
+      "output_size_bytes": 2081652,
+      "pixel_box": {
+        "height": 240,
+        "width": 180,
+        "x": 699,
+        "y": 338
+      },
+      "reused_existing": false,
+      "source_duration": 156.529633,
+      "source_frame_count": 4696,
+      "source_frame_rate": "14088000/469589",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "a3fb99178564297a190a4665c73ff9a0f455edcaf2408af3d22ae04f3cd8efab",
+      "source_video_id": "video_0094",
+      "source_video_path": "data/01_videos/video_0094.mp4",
+      "video_filter": "crop=180:240:699:338,setsar=1"
+    },
+    {
+      "duration": 140.866667,
+      "frame_count": 4226,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0095.mp4",
+      "output_resolution": [
+        156,
+        208
+      ],
+      "output_sha256": "3b2414dd58ee64e88162b5582d33993bd6cf1b0b0b911bbcb40c1ee3672f16d3",
+      "output_size_bytes": 931233,
+      "pixel_box": {
+        "height": 208,
+        "width": 156,
+        "x": 598,
+        "y": 350
+      },
+      "reused_existing": false,
+      "source_duration": 140.865767,
+      "source_frame_count": 4226,
+      "source_frame_rate": "21130000/704329",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "b50e7b5e2c028788d5bb7580cb3ecff81107e78422832ede4f3fc362555ad2d6",
+      "source_video_id": "video_0095",
+      "source_video_path": "data/01_videos/video_0095.mp4",
+      "video_filter": "crop=156:208:598:350,setsar=1"
+    },
+    {
+      "duration": 225.2,
+      "frame_count": 6756,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0096.mp4",
+      "output_resolution": [
+        222,
+        296
+      ],
+      "output_sha256": "63e6f5e80627cfaec5f3b6be5f7ef0e5d3ab716e7c24bc22d4c94e5feb6c17ea",
+      "output_size_bytes": 6055624,
+      "pixel_box": {
+        "height": 296,
+        "width": 222,
+        "x": 633,
+        "y": 62
+      },
+      "reused_existing": false,
+      "source_duration": 225.1857,
+      "source_frame_count": 6756,
+      "source_frame_rate": "50670000/1688893",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "6728b144a54e4c94ea2ebbed24dcdb7ddcd408707f0ffb72cde6bcd0d175576a",
+      "source_video_id": "video_0096",
+      "source_video_path": "data/01_videos/video_0096.mp4",
+      "video_filter": "crop=222:296:633:62,setsar=1"
+    },
+    {
+      "duration": 35.466667,
+      "frame_count": 1064,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        1054,
+        788
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0097.mp4",
+      "output_resolution": [
+        588,
+        784
+      ],
+      "output_sha256": "6ba45b4dd4120442bd37929b281ff8b2af014e7841d58348c06b89b2dbdf54ac",
+      "output_size_bytes": 3573360,
+      "pixel_box": {
+        "height": 784,
+        "width": 588,
+        "x": 240,
+        "y": 2
+      },
+      "reused_existing": true,
+      "source_duration": 35.466633,
+      "source_frame_count": 1064,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "ec23eb823380ddee37283c727b322615972a89cbc0a95276e4b9bc2ac7445efa",
+      "source_video_id": "video_0097",
+      "source_video_path": "data/01_videos/video_0097.mp4",
+      "video_filter": "crop=588:784:240:2,setsar=1"
+    },
+    {
+      "duration": 167.2,
+      "frame_count": 5016,
+      "frame_rate": "30/1",
+      "input_resolution": [
+        172,
+        250
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0098.mp4",
+      "output_resolution": [
+        90,
+        120
+      ],
+      "output_sha256": "b72094eeea1dc01ab67e47a206ad5d7dea5d7b443c2e5ca6884127fe2375f88f",
+      "output_size_bytes": 240520,
+      "pixel_box": {
+        "height": 120,
+        "width": 90,
+        "x": 4,
+        "y": 98
+      },
+      "reused_existing": true,
+      "source_duration": 167.2,
+      "source_frame_count": 5016,
+      "source_frame_rate": "30/1",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "e0cec396084c2223a9f97317b068f081ddf07ae0b5ad18041eae9882df5d3308",
+      "source_video_id": "video_0098",
+      "source_video_path": "data/01_videos/video_0098.mp4",
+      "video_filter": "crop=90:120:4:98,setsar=1"
+    },
+    {
+      "duration": 127.966667,
+      "frame_count": 3837,
+      "frame_rate": "115110/3839",
+      "input_resolution": [
+        544,
+        960
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0099.mp4",
+      "output_resolution": [
+        408,
+        544
+      ],
+      "output_sha256": "1706ac0b02b7cfe20033461c4d15dbe7152449489c05285d9c7967a4de96209f",
+      "output_size_bytes": 4340347,
+      "pixel_box": {
+        "height": 544,
+        "width": 408,
+        "x": 52,
+        "y": 174
+      },
+      "reused_existing": true,
+      "source_duration": 127.966667,
+      "source_frame_count": 3837,
+      "source_frame_rate": "115110/3839",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "fcfed01fa0c2283cead6e6db1957c1d35a0dead5dd5626ebeb48286b5a1a2c92",
+      "source_video_id": "video_0099",
+      "source_video_path": "data/01_videos/video_0099.mp4",
+      "video_filter": "crop=408:544:52:174,setsar=1"
+    },
+    {
+      "duration": 102.9,
+      "frame_count": 3086,
+      "frame_rate": "30860/1029",
+      "input_resolution": [
+        720,
+        1280
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0100.mp4",
+      "output_resolution": [
+        552,
+        736
+      ],
+      "output_sha256": "70d0b81c94ad78678feabc6798decf3d56de81236d238945c882e0be54f6a998",
+      "output_size_bytes": 6262670,
+      "pixel_box": {
+        "height": 736,
+        "width": 552,
+        "x": 4,
+        "y": 348
+      },
+      "reused_existing": true,
+      "source_duration": 102.9,
+      "source_frame_count": 3086,
+      "source_frame_rate": "30860/1029",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "79ad9d52ad9148bc12e946de390acc42c1ce0e6419b64e0220eb4bead9f89e09",
+      "source_video_id": "video_0100",
+      "source_video_path": "data/01_videos/video_0100.mp4",
+      "video_filter": "crop=552:736:4:348,setsar=1"
+    },
+    {
+      "duration": 154.3,
+      "frame_count": 4627,
+      "frame_rate": "46270/1543",
+      "input_resolution": [
+        544,
+        960
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "30/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0101.mp4",
+      "output_resolution": [
+        504,
+        672
+      ],
+      "output_sha256": "49c4743fd01731485263eb31e9627a3dd184407bfc69014cf296afccf235de61",
+      "output_size_bytes": 7841562,
+      "pixel_box": {
+        "height": 672,
+        "width": 504,
+        "x": 29,
+        "y": 150
+      },
+      "reused_existing": true,
+      "source_duration": 154.3,
+      "source_frame_count": 4627,
+      "source_frame_rate": "46270/1543",
+      "source_nominal_frame_rate": "30/1",
+      "source_sha256": "30a08789dd224b59d557f5851085b2172b2776c989906859e04d6a831fd36b84",
+      "source_video_id": "video_0101",
+      "source_video_path": "data/01_videos/video_0101.mp4",
+      "video_filter": "crop=504:672:29:150,setsar=1"
+    },
+    {
+      "duration": 221.76,
+      "frame_count": 5544,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0102.mp4",
+      "output_resolution": [
+        162,
+        216
+      ],
+      "output_sha256": "ae3d512ee2a81e001f34273fc5f5813aace08e100dc561adceab75c746f9e9a6",
+      "output_size_bytes": 3367533,
+      "pixel_box": {
+        "height": 216,
+        "width": 162,
+        "x": 664,
+        "y": 264
+      },
+      "reused_existing": true,
+      "source_duration": 221.76,
+      "source_frame_count": 5544,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "eef5b46be1ede3c5b8bcadd4afde6f903c076dac46d93ef5d71c55b1a68bd030",
+      "source_video_id": "video_0102",
+      "source_video_path": "data/01_videos/video_0102.mp4",
+      "video_filter": "crop=162:216:664:264,setsar=1"
+    },
+    {
+      "duration": 181.44,
+      "frame_count": 4536,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0103.mp4",
+      "output_resolution": [
+        186,
+        248
+      ],
+      "output_sha256": "54dda62c0e1492b332a11fb7bbe85789d5cc075679e2a528ff518af53c5f9ee5",
+      "output_size_bytes": 3164552,
+      "pixel_box": {
+        "height": 248,
+        "width": 186,
+        "x": 642,
+        "y": 236
+      },
+      "reused_existing": true,
+      "source_duration": 181.44,
+      "source_frame_count": 4536,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "7a9f2a8ec1196a822718dbd2acf722434aef50018deaf0960bd95df4c6701a31",
+      "source_video_id": "video_0103",
+      "source_video_path": "data/01_videos/video_0103.mp4",
+      "video_filter": "crop=186:248:642:236,setsar=1"
+    },
+    {
+      "duration": 144.28,
+      "frame_count": 3607,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0104.mp4",
+      "output_resolution": [
+        162,
+        216
+      ],
+      "output_sha256": "5f28efafb80ceac8e44b05fbf34b0dd22967f4a0e0087831f88dc4e527bb255b",
+      "output_size_bytes": 1867949,
+      "pixel_box": {
+        "height": 216,
+        "width": 162,
+        "x": 661,
+        "y": 261
+      },
+      "reused_existing": true,
+      "source_duration": 144.28,
+      "source_frame_count": 3607,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "b5c49ffa8999b17f30099ee4b618ac693d533372453d4806faff4ba0869f1bb2",
+      "source_video_id": "video_0104",
+      "source_video_path": "data/01_videos/video_0104.mp4",
+      "video_filter": "crop=162:216:661:261,setsar=1"
+    },
+    {
+      "duration": 153.0,
+      "frame_count": 3825,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0105.mp4",
+      "output_resolution": [
+        174,
+        232
+      ],
+      "output_sha256": "0f31d19b520aec7bacf87be7796844e923fa6f4312099308b9aebce18b5613be",
+      "output_size_bytes": 2029073,
+      "pixel_box": {
+        "height": 232,
+        "width": 174,
+        "x": 666,
+        "y": 254
+      },
+      "reused_existing": true,
+      "source_duration": 153.0,
+      "source_frame_count": 3825,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "ef9db13c762150921293e3fe1d9f41c66a1ec4c879e42737bcd5486470852a24",
+      "source_video_id": "video_0105",
+      "source_video_path": "data/01_videos/video_0105.mp4",
+      "video_filter": "crop=174:232:666:254,setsar=1"
+    },
+    {
+      "duration": 147.72,
+      "frame_count": 3693,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0106.mp4",
+      "output_resolution": [
+        192,
+        256
+      ],
+      "output_sha256": "2d78c0fe3a73f110f81fb4eb2aa28f4c28891368f3f5297060be83e8c0f3e978",
+      "output_size_bytes": 2434851,
+      "pixel_box": {
+        "height": 256,
+        "width": 192,
+        "x": 648,
+        "y": 239
+      },
+      "reused_existing": true,
+      "source_duration": 147.72,
+      "source_frame_count": 3693,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "7429427c9da023dae74922325c6db3181a539927d09607375bfa52df839a8606",
+      "source_video_id": "video_0106",
+      "source_video_path": "data/01_videos/video_0106.mp4",
+      "video_filter": "crop=192:256:648:239,setsar=1"
+    },
+    {
+      "duration": 153.92,
+      "frame_count": 3848,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0107.mp4",
+      "output_resolution": [
+        180,
+        240
+      ],
+      "output_sha256": "f95d8e0e3c56dd973d15281e4bc2d86a13ed646b9a37274b88da26ec2594d751",
+      "output_size_bytes": 2681900,
+      "pixel_box": {
+        "height": 240,
+        "width": 180,
+        "x": 655,
+        "y": 254
+      },
+      "reused_existing": true,
+      "source_duration": 153.92,
+      "source_frame_count": 3848,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "5c6e907c55cf1fcb31609e6f83185f875a59b10d2881d054199e1c80d62b47e9",
+      "source_video_id": "video_0107",
+      "source_video_path": "data/01_videos/video_0107.mp4",
+      "video_filter": "crop=180:240:655:254,setsar=1"
+    },
+    {
+      "duration": 200.68,
+      "frame_count": 5017,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0108.mp4",
+      "output_resolution": [
+        192,
+        256
+      ],
+      "output_sha256": "e488e92c786de2db110cc54a0187344a278dddebeac65c5eec1b7ecac668d6eb",
+      "output_size_bytes": 2930792,
+      "pixel_box": {
+        "height": 256,
+        "width": 192,
+        "x": 662,
+        "y": 236
+      },
+      "reused_existing": true,
+      "source_duration": 200.68,
+      "source_frame_count": 5017,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "79667e741f725cf0a66a0b0cd9bb5fe5c28c70b374ea7bfa002b65ef5129a5cf",
+      "source_video_id": "video_0108",
+      "source_video_path": "data/01_videos/video_0108.mp4",
+      "video_filter": "crop=192:256:662:236,setsar=1"
+    },
+    {
+      "duration": 194.44,
+      "frame_count": 4861,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0109.mp4",
+      "output_resolution": [
+        174,
+        232
+      ],
+      "output_sha256": "dca399e306e0fef09a81e1b135d10259140072d87e6abf2942d66bee1a451796",
+      "output_size_bytes": 2863993,
+      "pixel_box": {
+        "height": 232,
+        "width": 174,
+        "x": 664,
+        "y": 260
+      },
+      "reused_existing": true,
+      "source_duration": 194.44,
+      "source_frame_count": 4861,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "70091c9643ca0392c46f4769f27bf8d243fe331d40dd95978ef4a71ccae59667",
+      "source_video_id": "video_0109",
+      "source_video_path": "data/01_videos/video_0109.mp4",
+      "video_filter": "crop=174:232:664:260,setsar=1"
+    },
+    {
+      "duration": 181.4,
+      "frame_count": 4535,
+      "frame_rate": "25/1",
+      "input_resolution": [
+        1280,
+        720
+      ],
+      "mode": "fixed_roi",
+      "nominal_frame_rate": "25/1",
+      "output_path": "data/03_roi_videos/roi-media-84ea2bd3a052/videos/video_0110.mp4",
+      "output_resolution": [
+        192,
+        256
+      ],
+      "output_sha256": "09e398fc55e032d77fb451c9904197d7f45b5158f6f090e3f74776452931da81",
+      "output_size_bytes": 2992524,
+      "pixel_box": {
+        "height": 256,
+        "width": 192,
+        "x": 659,
+        "y": 252
+      },
+      "reused_existing": true,
+      "source_duration": 181.4,
+      "source_frame_count": 4535,
+      "source_frame_rate": "25/1",
+      "source_nominal_frame_rate": "25/1",
+      "source_sha256": "d48a9b3dd93134c1423402d767034d5e7670aacedececc05c8e715139c7341d8",
+      "source_video_id": "video_0110",
+      "source_video_path": "data/01_videos/video_0110.mp4",
+      "video_filter": "crop=192:256:659:252,setsar=1"
+    }
+  ]
+}

@@ -109,6 +109,7 @@ streamlit run pipeline/scripts/roi_annotation_app.py -- \
 ```
 
 该工具只保存 ROI / 不裁剪决定，不生成训练视频，也不修改当前激活的数据发布版本。
+当前 `fixed_roi` 裁剪框锁定为 `3:4`（宽:高）；`no_crop` 后续统一补边到 `3:4`。
 全部 110 条决定完成后，使用
 `uv run python pipeline/scripts/freeze_roi_decisions.py --check-only` 校验，再去掉
 `--check-only` 冻结为不可覆盖的 ROI manifest。

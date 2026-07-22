@@ -79,9 +79,13 @@ streamlit run pipeline/scripts/roi_annotation_app.py -- \
   --output data/07_metadata/roi_decisions.json
 ```
 
-工具支持视频播放、按时间滑块抽帧、上下左右裁剪比例、当前帧原图/ROI 对照、关键时刻
+工具支持视频播放、按时间滑块抽帧、直接平移/缩放红色裁剪框、当前帧原图/ROI 对照、关键时刻
 预览，以及 `fixed_roi` / `no_crop` 决定。`approved` 保存前必须人工确认已检查关键时刻，
 并逐项确认上/下夹具、完整试样、位置判断和齐根判断所需信息均被保留。
+
+ROI 策略 `1.2` 将 `fixed_roi` 红框锁定为精确 `3:4`（宽:高），红框内画面直接作为最终
+裁剪结果；保存时将组件坐标转换为源视频像素坐标。`no_crop` 保留全画面，后续生成媒体时
+统一 padding 到 `3:4`。策略 `1.0` 和 `1.1` 决定必须在新的可拖拽红框下重新人工确认。
 
 完成全部 110 条决定后先校验：
 
@@ -101,6 +105,45 @@ uv run python pipeline/scripts/freeze_roi_decisions.py
 `roi_decisions.json` 目前只是后续 ROI 媒体生成器的输入候选，**不能直接作为训练输入，
 也不代表生成了新的训练数据发布版本**。在实现版本化 ROI 媒体生成、重新抽帧、区间
 重算和质量门之前，不得手工把它接入 `training_sample_builder.py`。
+
+### 在训练机器物化 ROI 源视频
+
+ROI manifest 冻结后，在训练机器先做只读预检：
+
+```bash
+uv run python pipeline/scripts/materialize_roi_videos.py --check-only
+```
+
+小样本必须输出到隔离目录，不能写入正式全量目录：
+
+```bash
+uv run python pipeline/scripts/materialize_roi_videos.py \
+  --video-ids video_0001 video_0008 video_0100 \
+  --output-root data/sample_roi_videos \
+  --workers 1
+```
+
+确认固定 ROI、`no_crop` padding、帧数和帧率均通过后再完整生成：
+
+```bash
+uv run python pipeline/scripts/materialize_roi_videos.py --workers 2
+```
+
+正式输出位于 `data/03_roi_videos/<roi_media_id>/`，包括 110 条 ROI 源视频、
+`video_meta.roi.json`、`validation_report.json` 和最终 `manifest.json`。脚本先写临时文件，
+只有单条视频通过分辨率、帧数、帧率和时长校验后才原子替换；中断后可重跑，已通过的媒体
+会校验并复用。`manifest.json` 出现才表示该批次完整完成。
+
+下一步生成子视频时必须显式传入版本化 ROI metadata，并使用隔离输出目录；不得覆盖上一轮：
+
+```bash
+uv run python pipeline/scripts/subvideo_builder.py \
+  --video-meta data/03_roi_videos/<roi_media_id>/video_meta.roi.json \
+  --subvideo-dir data/03_subvideos_roi/<roi_media_id> \
+  --frame-dir data/04_frames_roi/<roi_media_id> \
+  --output-meta data/07_metadata/v3/<roi_media_id>/subvideos_meta.json \
+  --model models/minicpmv4_5
+```
 
 命令中的默认输入/输出路径已写入脚本默认值，正常流程不需要重复传入。只有随复审轮次变化的中间产物需要指定 `--round round_XX`。
 

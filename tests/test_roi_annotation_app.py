@@ -51,6 +51,45 @@ def test_pixel_box_is_in_bounds_with_even_dimensions():
     assert result["y"] + result["height"] <= 671
 
 
+def test_aspect_locked_geometry_expands_to_exact_three_by_four():
+    requested = {"top": 0.05, "right": 0.165, "bottom": 0.1, "left": 0.28}
+
+    margins, normalized, box = app.aspect_locked_geometry(requested, 456, 670)
+
+    assert box["width"] * 4 == box["height"] * 3
+    assert box["width"] % 2 == 0 and box["height"] % 2 == 0
+    assert box["width"] >= app.pixel_box(requested, 456, 670)["width"]
+    assert box["height"] >= app.pixel_box(requested, 456, 670)["height"]
+    assert normalized["width"] == round(box["width"] / 456, 6)
+    assert app.pixel_box(margins, 456, 670) == box
+
+
+def test_normalize_drag_box_returns_exact_even_three_by_four_pixels():
+    result = app.normalize_drag_box(
+        {"left": 23.7, "top": 30.2, "width": 431.5, "height": 575.8},
+        456,
+        670,
+    )
+
+    assert result["width"] * 4 == result["height"] * 3
+    assert result["width"] % 2 == 0 and result["height"] % 2 == 0
+    assert result["x"] >= 0 and result["y"] >= 0
+    assert result["x"] + result["width"] <= 456
+    assert result["y"] + result["height"] <= 670
+
+
+def test_initial_drag_box_expands_legacy_non_ratio_box():
+    existing = {
+        "pixel_box": {"x": 128, "y": 34, "width": 252, "height": 570},
+        "margins": {"top": 0.05, "right": 0.165, "bottom": 0.1, "left": 0.28},
+        "roi_policy_version": "1.0",
+    }
+
+    result = app.initial_drag_box(existing, 456, 670)
+
+    assert result == {"x": 24, "y": 31, "width": 432, "height": 576}
+
+
 def test_audit_timestamps_include_boundaries_and_event_neighborhood():
     timestamps = app.audit_timestamps(40.0, event_time=30.0)
 
@@ -91,6 +130,74 @@ def test_build_no_crop_decision_uses_full_frame(tmp_path: Path):
     assert decision["reviewer_notes"] == "不适合裁剪"
     assert decision["source_video_path"] == "data/01_videos/video_0001.mp4"
     assert decision["visibility_checks"] == _all_visible()
+    assert decision["target_aspect_ratio"] == "3:4"
+    assert decision["aspect_ratio_strategy"] == "pad_to_target"
+
+
+def test_fixed_roi_decision_saves_effective_three_by_four_box(tmp_path: Path):
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"fake-video")
+    requested = {"top": 0.05, "right": 0.165, "bottom": 0.1, "left": 0.28}
+
+    decision = app.build_decision(
+        video_id="video_0001",
+        video_path=video,
+        mode=app.MODE_FIXED,
+        review_status=app.STATUS_APPROVED,
+        margins=requested,
+        source_width=456,
+        source_height=670,
+        reviewed_timestamps=[0.0, 20.0],
+        source_sha256="f" * 64,
+        visibility_checks=_all_visible(),
+    )
+
+    assert decision["requested_margins"] == requested
+    assert decision["pixel_box"]["width"] * 4 == decision["pixel_box"]["height"] * 3
+    assert decision["target_aspect_ratio"] == "3:4"
+    assert decision["aspect_ratio_strategy"] == "crop_exact"
+    assert decision["roi_policy_version"] == "1.2"
+
+
+def test_drag_box_is_the_authoritative_saved_geometry(tmp_path: Path):
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"fake-video")
+    dragged = {"x": 24, "y": 31, "width": 432, "height": 576}
+    margins = app._margins_from_pixel_box(dragged, 456, 670)
+
+    decision = app.build_decision(
+        video_id="video_0001",
+        video_path=video,
+        mode=app.MODE_FIXED,
+        review_status=app.STATUS_APPROVED,
+        margins=margins,
+        pixel_box_override=dragged,
+        source_width=456,
+        source_height=670,
+        reviewed_timestamps=[0.0, 20.0],
+        source_sha256="1" * 64,
+        visibility_checks=_all_visible(),
+    )
+
+    assert decision["pixel_box"] == dragged
+    assert decision["interaction_mode"] == "drag_box"
+    assert decision["requested_margins"] == decision["margins"]
+
+
+def test_old_policy_decision_is_counted_as_outdated():
+    videos = [{"video_id": "video_0001"}]
+    decisions = {
+        "video_0001": {
+            "source_video_id": "video_0001",
+            "review_status": app.STATUS_APPROVED,
+            "roi_policy_version": "1.0",
+        }
+    }
+
+    counts = app._decision_counts(videos, decisions)
+
+    assert counts["approved"] == 0
+    assert counts["outdated_policy"] == 1
 
 
 def test_fixed_roi_cannot_be_all_zero(tmp_path: Path):

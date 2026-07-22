@@ -21,12 +21,14 @@ import os
 import subprocess
 import sys
 import tempfile
+from fractions import Fraction
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
 import streamlit as st
 from PIL import Image, ImageDraw
+from streamlit_cropper import st_cropper
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -34,7 +36,11 @@ VIDEO_META_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "video_meta.json"
 OUTPUT_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "roi_decisions.json"
 
 SCHEMA_VERSION = "1.0"
-ROI_POLICY_VERSION = "1.0"
+ROI_POLICY_VERSION = "1.2"
+LEGACY_ROI_POLICY_VERSIONS = {"1.0", "1.1"}
+TARGET_ASPECT_WIDTH = 3
+TARGET_ASPECT_HEIGHT = 4
+TARGET_ASPECT_RATIO = "3:4"
 MODE_FIXED = "fixed_roi"
 MODE_NO_CROP = "no_crop"
 VALID_MODES = {MODE_FIXED, MODE_NO_CROP}
@@ -119,6 +125,9 @@ def load_roi_payload(path: Path) -> dict[str, Any]:
         raise RoiValidationError(f"ROI 决定文件不是合法 JSON: {path}: {exc}") from exc
     if not isinstance(raw, dict) or not isinstance(raw.get("decisions"), list):
         raise RoiValidationError("ROI 决定文件必须是包含 decisions 数组的对象")
+    policy_version = raw.get("roi_policy_version")
+    if policy_version not in {ROI_POLICY_VERSION, *LEGACY_ROI_POLICY_VERSIONS}:
+        raise RoiValidationError(f"不支持的 roi_policy_version: {policy_version}")
     decision_ids: set[str] = set()
     for record in raw["decisions"]:
         if not isinstance(record, dict):
@@ -221,6 +230,143 @@ def pixel_box(
     return {"x": x, "y": y, "width": width, "height": height}
 
 
+def _margins_from_pixel_box(
+    box: Mapping[str, int], source_width: int, source_height: int
+) -> dict[str, float]:
+    return {
+        "top": round(int(box["y"]) / source_height, 6),
+        "right": round(
+            (source_width - int(box["x"]) - int(box["width"])) / source_width,
+            6,
+        ),
+        "bottom": round(
+            (source_height - int(box["y"]) - int(box["height"])) / source_height,
+            6,
+        ),
+        "left": round(int(box["x"]) / source_width, 6),
+    }
+
+
+def _normalized_from_pixel_box(
+    box: Mapping[str, int], source_width: int, source_height: int
+) -> dict[str, float]:
+    return {
+        "x": round(int(box["x"]) / source_width, 6),
+        "y": round(int(box["y"]) / source_height, 6),
+        "width": round(int(box["width"]) / source_width, 6),
+        "height": round(int(box["height"]) / source_height, 6),
+    }
+
+
+def normalize_drag_box(
+    box: Mapping[str, Any], source_width: int, source_height: int
+) -> dict[str, int]:
+    """Convert cropper coordinates to an in-bounds even-pixel exact 3:4 box."""
+    try:
+        left = float(box["left"] if "left" in box else box["x"])
+        top = float(box["top"] if "top" in box else box["y"])
+        width = float(box["width"])
+        height = float(box["height"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RoiValidationError("拖拽裁剪框坐标无效") from exc
+    if not all(math.isfinite(value) for value in (left, top, width, height)):
+        raise RoiValidationError("拖拽裁剪框坐标必须是有限数")
+    if width <= 0 or height <= 0:
+        raise RoiValidationError("拖拽裁剪框宽高必须为正数")
+
+    left = min(source_width, max(0.0, left))
+    top = min(source_height, max(0.0, top))
+    width = min(width, source_width - left)
+    height = min(height, source_height - top)
+    scale = math.floor(
+        min(width / TARGET_ASPECT_WIDTH, height / TARGET_ASPECT_HEIGHT)
+    )
+    scale -= scale % 2
+    if scale < 2:
+        raise RoiValidationError("拖拽裁剪框过小，无法形成偶数像素 3:4 ROI")
+    target_width = TARGET_ASPECT_WIDTH * scale
+    target_height = TARGET_ASPECT_HEIGHT * scale
+    center_x = left + width / 2.0
+    center_y = top + height / 2.0
+    x = min(
+        source_width - target_width,
+        max(0, round(center_x - target_width / 2.0)),
+    )
+    y = min(
+        source_height - target_height,
+        max(0, round(center_y - target_height / 2.0)),
+    )
+    return {"x": x, "y": y, "width": target_width, "height": target_height}
+
+
+def initial_drag_box(
+    existing: Mapping[str, Any] | None,
+    source_width: int,
+    source_height: int,
+) -> dict[str, int]:
+    """Return an existing ROI or a centered largest 3:4 box for the cropper."""
+    existing = existing or {}
+    saved = existing.get("pixel_box")
+    if isinstance(saved, Mapping):
+        try:
+            saved_width = int(saved["width"])
+            saved_height = int(saved["height"])
+            if (
+                saved_width * TARGET_ASPECT_HEIGHT
+                == saved_height * TARGET_ASPECT_WIDTH
+            ):
+                return normalize_drag_box(saved, source_width, source_height)
+        except (KeyError, TypeError, ValueError, RoiValidationError):
+            pass
+    margins = existing.get("margins")
+    if not isinstance(margins, Mapping):
+        margins = {key: 0.0 for key in MARGIN_KEYS}
+    return aspect_locked_geometry(margins, source_width, source_height)[2]
+
+
+def aspect_locked_geometry(
+    margins: Mapping[str, Any], source_width: int, source_height: int
+) -> tuple[dict[str, float], dict[str, float], dict[str, int]]:
+    """Expand the requested ROI to an exact even-pixel 3:4 box when possible.
+
+    Expansion is preferred so the user's requested specimen/grip region remains
+    inside the effective ROI. If the source bounds make expansion impossible,
+    the largest in-bounds 3:4 box is used around the requested center.
+    """
+    requested = pixel_box(margins, source_width, source_height)
+    max_scale = min(
+        source_width // TARGET_ASPECT_WIDTH,
+        source_height // TARGET_ASPECT_HEIGHT,
+    )
+    max_scale -= max_scale % 2
+    if max_scale < 2:
+        raise RoiValidationError("源视频分辨率无法容纳偶数像素的 3:4 ROI")
+
+    needed = math.ceil(
+        max(
+            requested["width"] / TARGET_ASPECT_WIDTH,
+            requested["height"] / TARGET_ASPECT_HEIGHT,
+        )
+    )
+    needed += needed % 2
+    scale = min(needed, max_scale)
+    target_width = TARGET_ASPECT_WIDTH * scale
+    target_height = TARGET_ASPECT_HEIGHT * scale
+
+    center_x = requested["x"] + requested["width"] / 2.0
+    center_y = requested["y"] + requested["height"] / 2.0
+    x = min(source_width - target_width, max(0, round(center_x - target_width / 2)))
+    y = min(source_height - target_height, max(0, round(center_y - target_height / 2)))
+    box = {"x": x, "y": y, "width": target_width, "height": target_height}
+    effective_margins = _margins_from_pixel_box(box, source_width, source_height)
+    normalized = _normalized_from_pixel_box(box, source_width, source_height)
+    if Fraction(target_width, target_height) != Fraction(
+        TARGET_ASPECT_WIDTH, TARGET_ASPECT_HEIGHT
+    ):
+        raise RoiValidationError("内部错误: ROI 未锁定为 3:4")
+    return effective_margins, normalized, box
+
+
 def audit_timestamps(duration: float, event_time: float | None = None) -> list[float]:
     if not math.isfinite(duration) or duration <= 0:
         return [0.0]
@@ -273,18 +419,41 @@ def build_decision(
     reviewer_notes: str = "",
     source_video_reference: str | None = None,
     visibility_checks: Mapping[str, Any] | None = None,
+    pixel_box_override: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if mode not in VALID_MODES:
         raise RoiValidationError(f"非法 ROI mode: {mode}")
     if review_status not in VALID_STATUSES:
         raise RoiValidationError(f"非法 review_status: {review_status}")
-    effective_margins = (
-        {key: 0.0 for key in MARGIN_KEYS}
-        if mode == MODE_NO_CROP
-        else normalize_margins(margins)
-    )
-    if mode == MODE_FIXED and all(value == 0.0 for value in effective_margins.values()):
+    requested_margins = normalize_margins(margins)
+    if mode == MODE_FIXED and all(value == 0.0 for value in requested_margins.values()):
         raise RoiValidationError("fixed_roi 至少需要裁剪一个方向；全画面请使用 no_crop")
+    if mode == MODE_NO_CROP:
+        effective_margins = {key: 0.0 for key in MARGIN_KEYS}
+        effective_normalized_box = normalized_box(effective_margins)
+        effective_pixel_box = pixel_box(
+            effective_margins, source_width, source_height
+        )
+        aspect_ratio_strategy = "pad_to_target"
+    else:
+        if pixel_box_override is not None:
+            effective_pixel_box = normalize_drag_box(
+                pixel_box_override, source_width, source_height
+            )
+            effective_margins = _margins_from_pixel_box(
+                effective_pixel_box, source_width, source_height
+            )
+            effective_normalized_box = _normalized_from_pixel_box(
+                effective_pixel_box, source_width, source_height
+            )
+            requested_margins = dict(effective_margins)
+        else:
+            (
+                effective_margins,
+                effective_normalized_box,
+                effective_pixel_box,
+            ) = aspect_locked_geometry(margins, source_width, source_height)
+        aspect_ratio_strategy = "crop_exact"
     if (
         not isinstance(source_sha256, str)
         or len(source_sha256) != 64
@@ -311,9 +480,19 @@ def build_decision(
         "source_video_path": source_video_reference or str(video_path),
         "mode": mode,
         "review_status": review_status,
+        "requested_margins": requested_margins,
         "margins": effective_margins,
-        "normalized_box": normalized_box(effective_margins),
-        "pixel_box": pixel_box(effective_margins, source_width, source_height),
+        "normalized_box": effective_normalized_box,
+        "pixel_box": effective_pixel_box,
+        "target_aspect_ratio": TARGET_ASPECT_RATIO,
+        "aspect_ratio_strategy": aspect_ratio_strategy,
+        "interaction_mode": (
+            "no_crop"
+            if mode == MODE_NO_CROP
+            else "drag_box"
+            if pixel_box_override is not None
+            else "legacy_margins"
+        ),
         "source_resolution": [source_width, source_height],
         "source_sha256": source_sha256,
         **state,
@@ -437,10 +616,18 @@ def _decision_counts(
     return {
         "total": len(videos),
         "approved": sum(
-            record.get("review_status") == STATUS_APPROVED for record in relevant
+            record.get("review_status") == STATUS_APPROVED
+            and record.get("roi_policy_version") == ROI_POLICY_VERSION
+            for record in relevant
         ),
         "needs_review": sum(
-            record.get("review_status") == STATUS_NEEDS_REVIEW for record in relevant
+            record.get("review_status") == STATUS_NEEDS_REVIEW
+            and record.get("roi_policy_version") == ROI_POLICY_VERSION
+            for record in relevant
+        ),
+        "outdated_policy": sum(
+            record.get("roi_policy_version") != ROI_POLICY_VERSION
+            for record in relevant
         ),
         "unreviewed": len(videos) - len(relevant),
     }
@@ -453,6 +640,8 @@ def _format_video_option(
     decision = decisions.get(video_id)
     if decision is None:
         prefix = "❓"
+    elif decision.get("roi_policy_version") != ROI_POLICY_VERSION:
+        prefix = "🔁"
     elif decision.get("review_status") == STATUS_APPROVED:
         prefix = "✅"
     else:
@@ -466,11 +655,8 @@ def _render_audit_previews(
     video_path: Path,
     mtime_ns: int,
     timestamps: list[float],
-    margins: Mapping[str, Any],
-    width: int,
-    height: int,
+    box: Mapping[str, int],
 ) -> None:
-    box = pixel_box(margins, width, height)
     columns = st.columns(min(4, max(1, len(timestamps))))
     for index, timestamp in enumerate(timestamps):
         with columns[index % len(columns)]:
@@ -508,7 +694,8 @@ def main() -> None:
     counts = _decision_counts(videos, decisions)
     st.write(
         f"总数 {counts['total']} · 未审查 {counts['unreviewed']} · "
-        f"✅ approved {counts['approved']} · 🟡 needs_review {counts['needs_review']}"
+        f"✅ approved {counts['approved']} · 🟡 needs_review {counts['needs_review']} · "
+        f"🔁 旧策略待复审 {counts['outdated_policy']}"
     )
 
     left, center, right = st.columns([1.1, 2.2, 1.5])
@@ -516,8 +703,8 @@ def main() -> None:
         st.subheader("源视频")
         state_filter = st.multiselect(
             "状态",
-            ["unreviewed", STATUS_APPROVED, STATUS_NEEDS_REVIEW],
-            default=["unreviewed", STATUS_APPROVED, STATUS_NEEDS_REVIEW],
+            ["unreviewed", STATUS_APPROVED, STATUS_NEEDS_REVIEW, "outdated_policy"],
+            default=["unreviewed", STATUS_APPROVED, STATUS_NEEDS_REVIEW, "outdated_policy"],
         )
         search = st.text_input("搜索 video_id / 类型").strip().lower()
         filtered: list[dict[str, Any]] = []
@@ -527,6 +714,8 @@ def main() -> None:
             state = (
                 "unreviewed" if decision is None else str(decision.get("review_status"))
             )
+            if decision is not None and decision.get("roi_policy_version") != ROI_POLICY_VERSION:
+                state = "outdated_policy"
             if state not in state_filter:
                 continue
             haystack = f"{video_id} {record.get('type', '')}".lower()
@@ -562,16 +751,22 @@ def main() -> None:
 
     if existing and not source_state_matches(existing, video_path):
         st.warning("源视频大小或修改时间与已保存决定不一致，请重新检查并保存。")
+    if existing and existing.get("roi_policy_version") != ROI_POLICY_VERSION:
+        st.warning(
+            f"该视频使用旧 ROI 策略 {existing.get('roi_policy_version')}；"
+            f"当前策略 {ROI_POLICY_VERSION} 要求直接拖拽固定 {TARGET_ASPECT_RATIO} 红框，"
+            "并以红框画面作为最终裁剪结果，必须重新检查并保存。"
+        )
 
     duration = float(info["duration"])
     width = int(info["width"])
     height = int(info["height"])
-    existing_margins = existing.get("margins") or {}
     existing_visibility = existing.get("visibility_checks") or {}
 
     with center:
         st.subheader(selected_id)
-        st.video(str(video_path))
+        with st.expander("原始视频播放", expanded=False):
+            st.video(str(video_path))
         timestamp = st.slider(
             "抽帧时间（可拖动）",
             min_value=0.0,
@@ -597,32 +792,15 @@ def main() -> None:
             format_func=lambda value: "固定 ROI" if value == MODE_FIXED else "不裁剪",
             key=f"mode_{selected_id}",
         )
-        margin_values: dict[str, float] = {}
-        labels = {
-            "top": "上方裁剪",
-            "right": "右侧裁剪",
-            "bottom": "下方裁剪",
-            "left": "左侧裁剪",
-        }
-        for key in MARGIN_KEYS:
-            default_percent = float(existing_margins.get(key, 0.0)) * 100.0
-            margin_values[key] = (
-                st.slider(
-                    f"{labels[key]} (%)",
-                    min_value=0.0,
-                    max_value=90.0,
-                    value=min(90.0, max(0.0, default_percent)),
-                    step=0.5,
-                    key=f"margin_{key}_{selected_id}",
-                    disabled=mode == MODE_NO_CROP,
-                )
-                / 100.0
-            )
-        if mode == MODE_NO_CROP:
-            margin_values = {key: 0.0 for key in MARGIN_KEYS}
+        if mode == MODE_FIXED:
+            st.caption("在中间画面上直接拖动或缩放红框；框的比例锁定为 3:4。")
+        else:
+            st.caption("保留完整画面，后续生成媒体时 padding 到 3:4。")
 
         status_options = [STATUS_APPROVED, STATUS_NEEDS_REVIEW]
         existing_status = existing.get("review_status")
+        if existing and existing.get("roi_policy_version") != ROI_POLICY_VERSION:
+            existing_status = STATUS_NEEDS_REVIEW
         review_status = st.selectbox(
             "审核状态",
             status_options,
@@ -654,7 +832,6 @@ def main() -> None:
         }
 
     try:
-        active_box = pixel_box(margin_values, width, height)
         current_frame = _extract_frame_cached(
             str(video_path), mtime_ns, round(float(timestamp), 3)
         )
@@ -664,40 +841,70 @@ def main() -> None:
         return
 
     with center:
-        preview_left, preview_right = st.columns(2)
-        with preview_left:
-            st.image(
-                draw_roi(current_frame, active_box),
-                caption=f"原图 + ROI · {timestamp:.2f}s",
-                width="stretch",
-            )
-        with preview_right:
-            st.image(
-                crop_image(current_frame, active_box),
-                caption=(
-                    f"ROI 预览 · {active_box['width']}×{active_box['height']} px"
+        if mode == MODE_FIXED:
+            default_box = initial_drag_box(existing, width, height)
+            st.markdown("**拖拽裁剪框（固定 3:4）**")
+            st.caption("拖动红框可平移，拖动边角可等比缩放；红框中的画面就是最终 ROI。")
+            raw_box = st_cropper(
+                current_frame,
+                realtime_update=True,
+                default_coords=(
+                    default_box["x"],
+                    default_box["x"] + default_box["width"],
+                    default_box["y"],
+                    default_box["y"] + default_box["height"],
                 ),
-                width="stretch",
+                box_color="#ff2d2d",
+                aspect_ratio=(TARGET_ASPECT_WIDTH, TARGET_ASPECT_HEIGHT),
+                return_type="box",
+                key=f"roi_cropper_{selected_id}",
+                should_resize_image=True,
+                stroke_width=3,
             )
+            active_box = normalize_drag_box(raw_box, width, height)
+            effective_margins = _margins_from_pixel_box(active_box, width, height)
+        else:
+            effective_margins = {key: 0.0 for key in MARGIN_KEYS}
+            active_box = pixel_box(effective_margins, width, height)
+            st.info("当前为不裁剪模式，下方预览使用全画面。")
+
+        with st.expander("当前帧 ROI 对照预览", expanded=False):
+            preview_left, preview_right = st.columns(2)
+            with preview_left:
+                st.image(
+                    draw_roi(current_frame, active_box),
+                    caption=f"原图 + ROI · {timestamp:.2f}s",
+                    width="stretch",
+                )
+            with preview_right:
+                st.image(
+                    crop_image(current_frame, active_box),
+                    caption=(
+                        f"ROI 预览 · {active_box['width']}×{active_box['height']} px"
+                    ),
+                    width="stretch",
+                )
 
         review_times = audit_timestamps(duration, selected.get("event_time"))
-        with st.expander("关键时刻 ROI 预览", expanded=True):
+        with st.expander("关键时刻 ROI 预览", expanded=False):
             st.caption("包含开头、25%、50%、75%、结尾，以及可靠事件时间附近。")
             _render_audit_previews(
                 video_path=video_path,
                 mtime_ns=mtime_ns,
                 timestamps=review_times,
-                margins=margin_values,
-                width=width,
-                height=height,
+                box=active_box,
             )
 
     with right:
         st.write(
             f"源分辨率：`{width}×{height}`  \n"
             f"输出框：`x={active_box['x']}, y={active_box['y']}, "
-            f"w={active_box['width']}, h={active_box['height']}`"
+            f"w={active_box['width']}, h={active_box['height']}`  \n"
+            f"目标比例：`{TARGET_ASPECT_RATIO}` · "
+            f"策略：`{'crop_exact' if mode == MODE_FIXED else 'pad_to_target'}`"
         )
+        if mode == MODE_FIXED:
+            st.caption("上述输出框是拖拽红框换算后的原始视频像素坐标。")
         reviewed = st.checkbox(
             "我已检查关键时刻预览",
             value=bool(existing.get("reviewed_timestamps")),
@@ -714,7 +921,7 @@ def main() -> None:
                         video_path=video_path,
                         mode=mode,
                         review_status=review_status,
-                        margins=margin_values,
+                        margins=effective_margins,
                         source_width=width,
                         source_height=height,
                         reviewed_timestamps=review_times if reviewed else [],
@@ -725,6 +932,7 @@ def main() -> None:
                             or f"data/01_videos/{selected_id}.mp4"
                         ),
                         visibility_checks=visibility_checks,
+                        pixel_box_override=active_box if mode == MODE_FIXED else None,
                     )
                     decisions[selected_id] = decision
                     save_roi_payload(

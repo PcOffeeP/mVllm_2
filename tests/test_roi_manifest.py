@@ -19,18 +19,20 @@ def _write(path, payload):
 
 
 def _decision(video_id, video_path, *, status=app.STATUS_APPROVED):
+    dragged_box = {"x": 148, "y": 162, "width": 222, "height": 296}
     return app.build_decision(
         video_id=video_id,
         video_path=video_path,
         mode=app.MODE_FIXED,
         review_status=status,
         margins={"top": 0.1, "right": 0.1, "bottom": 0.1, "left": 0.1},
-        source_width=100,
-        source_height=200,
+        source_width=456,
+        source_height=670,
         reviewed_timestamps=[0.0, 1.0, 2.0],
         source_sha256=hashlib.sha256(video_path.read_bytes()).hexdigest(),
         source_video_reference=f"data/01_videos/{video_id}.mp4",
         visibility_checks={key: True for key in app.VISIBILITY_CHECK_KEYS},
+        pixel_box_override=dragged_box,
     )
 
 
@@ -104,6 +106,34 @@ def test_freeze_rejects_failed_visibility_check(tmp_path):
     payload["decisions"][0]["visibility_checks"]["location_judgable"] = False
     _write(paths["decisions_path"], payload)
     with pytest.raises(RoiManifestError, match="location_judgable"):
+        build_roi_manifest_bundle(**paths)
+
+
+def test_freeze_rejects_old_roi_policy(tmp_path):
+    paths = _fixture(tmp_path)
+    payload = json.loads(paths["decisions_path"].read_text(encoding="utf-8"))
+    payload["decisions"][0]["roi_policy_version"] = "1.0"
+    _write(paths["decisions_path"], payload)
+    with pytest.raises(RoiManifestError, match="必须重新复审"):
+        build_roi_manifest_bundle(**paths)
+
+
+def test_freeze_rejects_non_three_by_four_fixed_box(tmp_path):
+    paths = _fixture(tmp_path)
+    payload = json.loads(paths["decisions_path"].read_text(encoding="utf-8"))
+    decision = payload["decisions"][0]
+    decision["pixel_box"]["width"] -= 2
+    _write(paths["decisions_path"], payload)
+    with pytest.raises(RoiManifestError, match="pixel_box"):
+        build_roi_manifest_bundle(**paths)
+
+
+def test_freeze_requires_fixed_roi_to_be_confirmed_by_drag_box(tmp_path):
+    paths = _fixture(tmp_path)
+    payload = json.loads(paths["decisions_path"].read_text(encoding="utf-8"))
+    payload["decisions"][0]["interaction_mode"] = "legacy_margins"
+    _write(paths["decisions_path"], payload)
+    with pytest.raises(RoiManifestError, match="拖拽裁剪框"):
         build_roi_manifest_bundle(**paths)
 
 
