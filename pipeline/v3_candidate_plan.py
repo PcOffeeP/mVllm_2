@@ -21,32 +21,20 @@ from pipeline.v3_labels import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PLAN_SCHEMA_VERSION = "tensile-subvideo-candidate-plan/v1"
-POLICY_VERSION = "v3-candidate-policy/1.0"
-TARGET_DURATIONS = (20.0, 10.0, 5.0, 3.0, 2.0)
+PLAN_SCHEMA_VERSION = "tensile-subvideo-candidate-plan/v2"
+POLICY_VERSION = "v3-candidate-policy/2.0"
+TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)
+EVENT_POSITIONS = (0.20, 0.35, 0.50, 0.65, 0.80)
 EVENT_GUARD_SECONDS = 0.5
 MIN_CANDIDATE_SECONDS = 1.0
 USABLE_REFERENCE_STATUSES = frozenset({"approved", "corrected"})
-
-TRANSITION_TEMPLATES = (
-    (20.0, 0.50),
-    (10.0, 0.35),
-    (10.0, 0.65),
-    (5.0, 0.50),
-    (3.0, 0.35),
-    (3.0, 0.65),
-    (2.0, 0.50),
-)
-STABLE_TEMPLATES = (
-    (20.0, 0.00),
-    (10.0, 0.50),
-    (5.0, 1.00),
-    (3.0, 0.25),
-    (3.0, 0.75),
-    (2.0, 0.50),
-)
-POST_EVENT_TEMPLATES = ((5.0, 0.00), (2.0, 1.00))
-UNKNOWN_TEMPLATES = ((20.0, 0.00), (10.0, 0.50), (5.0, 1.00))
+PROCESS_POSITIONS = (0.0, 0.5, 1.0)
+TRANSITION_CAP = 10
+BRITTLE_PRE_EVENT_CAP = 3
+DUCTILE_PRE_EVENT_CAP = 15
+OTHER_PRE_EVENT_CAP = 4
+POST_EVENT_CAP = 4
+NORMAL_NEGATIVE_CAP = 5
 
 STATE_SLUGS = {
     "未断裂": "pre",
@@ -328,11 +316,19 @@ def _window_in_region(
     target_duration: float,
     position: float,
 ) -> dict[str, Any] | None:
-    available = region_end - region_start
-    if available < target_duration or target_duration < MIN_CANDIDATE_SECONDS:
+    if target_duration < MIN_CANDIDATE_SECONDS:
         return None
-    start = region_start + (available - target_duration) * position
-    return _aligned_interval(record, start, start + target_duration)
+    fps = float(record["fps"])
+    region_start_frame = max(0, math.ceil(region_start * fps - 1e-9))
+    region_end_frame = min(
+        int(record["total_frames"]), math.floor(region_end * fps + 1e-9)
+    )
+    target_frames = max(1, round(target_duration * fps))
+    available_start_frames = region_end_frame - region_start_frame - target_frames
+    if available_start_frames < 0:
+        return None
+    start_frame = region_start_frame + round(available_start_frames * position)
+    return _interval_from_frames(record, start_frame, start_frame + target_frames)
 
 
 def _transition_window(
@@ -343,7 +339,8 @@ def _transition_window(
     if event is None or target_duration > duration:
         return None
     start = event - target_duration * event_ratio
-    start = max(0.0, min(duration - target_duration, start))
+    if start < 0.0 or start + target_duration > duration:
+        return None
     interval = _aligned_interval(record, start, start + target_duration)
     if interval is None or not (
         float(interval["start_time"]) < event < float(interval["end_time"])
@@ -352,16 +349,166 @@ def _transition_window(
     return interval
 
 
-def _pre_event_limit(record: Mapping[str, Any]) -> int:
-    mechanism = map_legacy_fracture_type(record.get("type")).fracture_mechanism
-    if mechanism == "脆性断裂":
-        return 3
+def _adaptive_transition_window(
+    record: Mapping[str, Any], event_ratio: float
+) -> dict[str, Any] | None:
+    duration = float(record["duration"])
+    event = _event_time(record)
+    if event is None:
+        return None
+    before_limit = event / event_ratio
+    after_limit = (duration - event) / (1.0 - event_ratio)
+    adaptive_duration = min(before_limit, after_limit)
+    if adaptive_duration < MIN_CANDIDATE_SECONDS:
+        return None
+    start = event - adaptive_duration * event_ratio
+    interval = _aligned_interval(record, start, start + adaptive_duration)
+    if interval is None or not (
+        float(interval["start_time"]) < event < float(interval["end_time"])
+    ):
+        return None
+    return interval
+
+
+def _normal_negative_window(
+    record: Mapping[str, Any], target_duration: float, center_ratio: float
+) -> dict[str, Any] | None:
+    duration = float(record["duration"])
+    if target_duration > duration:
+        return None
+    target_center = duration * center_ratio
+    start = max(0.0, min(duration - target_duration, target_center - target_duration / 2.0))
+    return _aligned_interval(record, start, start + target_duration)
+
+
+def _interval_from_frames(
+    record: Mapping[str, Any], start_frame: int, end_frame: int
+) -> dict[str, Any] | None:
+    fps = float(record["fps"])
+    total_frames = int(record["total_frames"])
+    duration = float(record["duration"])
+    if start_frame < 0 or end_frame > total_frames or end_frame <= start_frame:
+        return None
+    start_time = start_frame / fps
+    end_time = min(duration, end_frame / fps)
+    if end_time <= start_time:
+        return None
+    return {
+        "start_frame": start_frame,
+        "end_frame": end_frame,
+        "start_time": round(start_time, 4),
+        "end_time": round(end_time, 4),
+        "duration": round(end_time - start_time, 4),
+    }
+
+
+def _post_event_windows(record: Mapping[str, Any], post_start: float) -> list[dict[str, Any]]:
+    fps = float(record["fps"])
+    total_frames = int(record["total_frames"])
+    start_frame = max(0, math.ceil(post_start * fps - 1e-9))
+    available_frames = total_frames - start_frame
+    if available_frames / fps < MIN_CANDIDATE_SECONDS:
+        return []
+
+    full = _interval_from_frames(record, start_frame, total_frames)
+    if full is None:
+        return []
+    results = [dict(full, window_variant="post_event_full")]
+    length = float(full["duration"])
+    part_count = 3 if length >= 6.0 else 2 if length >= 3.0 else 1
+    if part_count == 1:
+        return results
+
+    quotient, remainder = divmod(available_frames, part_count)
+    cursor = start_frame
+    for index in range(part_count):
+        part_frames = quotient + (1 if index < remainder else 0)
+        end_frame = cursor + part_frames
+        part = _interval_from_frames(record, cursor, end_frame)
+        cursor = end_frame
+        if part is None or float(part["duration"]) < MIN_CANDIDATE_SECONDS:
+            return results[:1]
+        results.append(dict(part, window_variant=f"post_event_part_{index + 1}_of_{part_count}"))
+    return results
+
+
+def _skip_record(record: Mapping[str, Any], scope: str) -> dict[str, Any]:
+    video_id = str(record["video_id"])
+    kind, special_case = _source_kind(record)
+    if special_case == "未夹紧":
+        reason = "unclamped"
+    elif special_case == "视频异常":
+        reason = "video_abnormal"
+    elif kind == SOURCE_FRACTURE:
+        reason = "missing_reliable_event_time"
+    else:
+        reason = "state_not_derivable"
+    return {
+        "source_video": video_id,
+        "scope": scope,
+        "source_type": record.get("type"),
+        "skip_reason": reason,
+        "special_case": special_case,
+    }
+
+
+def _compatible_exact_count(
+    interval: Mapping[str, Any],
+    labels: Mapping[str, Any],
+    references: Iterable[Mapping[str, Any]],
+) -> int:
+    candidate = dict(interval)
+    candidate["candidate_v3_labels"] = labels
+    return sum(
+        1
+        for reference in references
+        if reference.get("review_status") in USABLE_REFERENCE_STATUSES
+        and _exact_frame_match(candidate, reference)
+        and reference.get("candidate_v3_labels") == labels
+    )
+
+
+def _transition_templates_for_source(
+    record: Mapping[str, Any], references: Iterable[Mapping[str, Any]]
+) -> list[tuple[float, float, dict[str, Any] | None]]:
+    labels = _candidate_labels(record, "发生断裂")
+    scored_shifts: list[tuple[int, int, list[tuple[float, float, dict[str, Any] | None]]]] = []
+    for shift in range(len(EVENT_POSITIONS)):
+        templates: list[tuple[float, float, dict[str, Any] | None]] = []
+        exact_count = 0
+        for index, target in enumerate(TARGET_DURATIONS):
+            ratio = EVENT_POSITIONS[(index + shift) % len(EVENT_POSITIONS)]
+            interval = _transition_window(record, target, ratio)
+            templates.append((target, ratio, interval))
+            if interval is not None:
+                exact_count += _compatible_exact_count(interval, labels, references)
+        scored_shifts.append((-exact_count, shift, templates))
+    scored_shifts.sort(key=lambda item: (item[0], item[1]))
+    selected = scored_shifts[:2]
+    return [template for _, _, group in selected for template in group]
+
+
+def _selected_pre_event_durations(
+    record: Mapping[str, Any], pre_end: float
+) -> tuple[str, list[float]]:
+    mapping = map_legacy_fracture_type(record.get("type"))
+    mechanism = mapping.fracture_mechanism
+    feasible = [target for target in TARGET_DURATIONS if target <= pre_end]
+    if mechanism in {"脆性断裂", "爆炸性断裂"}:
+        if len(feasible) <= BRITTLE_PRE_EVENT_CAP:
+            return "abrupt_end_aligned", feasible
+        middle = feasible[len(feasible) // 2]
+        return "abrupt_end_aligned", [feasible[0], middle, feasible[-1]]
     if mechanism in {"韧性断裂", "半脆半韧断裂"}:
-        return 6
-    return 4
+        return "process_front_middle_back", feasible
+    if len(feasible) == len(TARGET_DURATIONS):
+        feasible = [2.0, 5.0, 10.0, 20.0]
+    return "other_end_aligned", feasible[:OTHER_PRE_EVENT_CAP]
 
 
-def _raw_candidates_for_source(record: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _raw_candidates_for_source(
+    record: Mapping[str, Any], references: Iterable[Mapping[str, Any]] = ()
+) -> list[dict[str, Any]]:
     duration = float(record["duration"])
     kind, _ = _source_kind(record)
     event = _event_time(record)
@@ -376,6 +523,8 @@ def _raw_candidates_for_source(record: Mapping[str, Any]) -> list[dict[str, Any]
         role: str,
         target_duration: float,
         event_position_ratio: float | None = None,
+        duration_policy: str = "standard",
+        window_variant: str | None = None,
         role_limit: int | None = None,
     ) -> None:
         if interval is None or interval["duration"] < MIN_CANDIDATE_SECONDS:
@@ -386,7 +535,6 @@ def _raw_candidates_for_source(record: Mapping[str, Any]) -> list[dict[str, Any]
             "pre_event": "未断裂",
             "post_event": "已断裂",
             "stable_negative": "未断裂",
-            "unknown": "无法判断",
         }[role]
         if state != expected_state:
             return
@@ -401,66 +549,107 @@ def _raw_candidates_for_source(record: Mapping[str, Any]) -> list[dict[str, Any]
                 "window_role": role,
                 "target_duration_seconds": target_duration,
                 "event_position_ratio": event_position_ratio,
+                "duration_policy": duration_policy,
+                "window_variant": window_variant,
                 "candidate_v3_labels": _candidate_labels(record, state),
             }
         )
         results.append(item)
 
-    if duration <= max(TARGET_DURATIONS):
-        full = _aligned_interval(record, 0.0, duration)
-        if kind == SOURCE_FRACTURE and event_reliable:
-            role = "transition"
-            limit = len(TRANSITION_TEMPLATES)
-        elif kind == SOURCE_NO_FRACTURE:
-            role = "stable_negative"
-            limit = 6
-        else:
-            role = "unknown"
-            limit = 3
-        add(full, role=role, target_duration=duration, role_limit=limit)
-
     if kind == SOURCE_FRACTURE and event_reliable:
-        for target, ratio in TRANSITION_TEMPLATES:
+        templates = _transition_templates_for_source(record, references)
+        failed: list[tuple[int, float, int, float, float, dict[str, Any]]] = []
+        transition_labels = _candidate_labels(record, "发生断裂")
+        for order, (target, ratio, interval) in enumerate(templates):
+            if interval is None:
+                adaptive = _adaptive_transition_window(record, ratio)
+                if adaptive is not None:
+                    failed.append(
+                        (
+                            -_compatible_exact_count(adaptive, transition_labels, references),
+                            -float(adaptive["duration"]),
+                            order,
+                            target,
+                            ratio,
+                            adaptive,
+                        )
+                    )
+                continue
             add(
-                _transition_window(record, target, ratio),
+                interval,
                 role="transition",
                 target_duration=target,
                 event_position_ratio=ratio,
-                role_limit=len(TRANSITION_TEMPLATES),
+                role_limit=TRANSITION_CAP,
             )
+        if failed and role_counts["transition"] < TRANSITION_CAP:
+            _, _, _, target, ratio, adaptive = sorted(failed)[0]
+            add(
+                adaptive,
+                role="transition",
+                target_duration=target,
+                event_position_ratio=ratio,
+                duration_policy="adaptive",
+                window_variant="transition_adaptive",
+                role_limit=TRANSITION_CAP,
+            )
+
         assert event is not None
         pre_end = max(0.0, event - EVENT_GUARD_SECONDS)
-        pre_limit = _pre_event_limit(record)
-        for target, position in STABLE_TEMPLATES:
-            add(
-                _window_in_region(record, 0.0, pre_end, target, position),
-                role="pre_event",
-                target_duration=target,
-                role_limit=pre_limit,
-            )
+        pre_strategy, pre_durations = _selected_pre_event_durations(record, pre_end)
+        if pre_strategy == "process_front_middle_back":
+            for target in pre_durations:
+                for position in PROCESS_POSITIONS:
+                    add(
+                        _window_in_region(record, 0.0, pre_end, target, position),
+                        role="pre_event",
+                        target_duration=target,
+                        window_variant=(
+                            "pre_event_front"
+                            if position == 0.0
+                            else "pre_event_middle"
+                            if position == 0.5
+                            else "pre_event_back"
+                        ),
+                        role_limit=DUCTILE_PRE_EVENT_CAP,
+                    )
+        else:
+            for target in pre_durations:
+                add(
+                    _window_in_region(record, 0.0, pre_end, target, 1.0),
+                    role="pre_event",
+                    target_duration=target,
+                    window_variant=pre_strategy,
+                    role_limit=(
+                        BRITTLE_PRE_EVENT_CAP
+                        if pre_strategy == "abrupt_end_aligned"
+                        else OTHER_PRE_EVENT_CAP
+                    ),
+                )
+
         post_start = min(duration, event + EVENT_GUARD_SECONDS)
-        for target, position in POST_EVENT_TEMPLATES:
+        for interval in _post_event_windows(record, post_start):
             add(
-                _window_in_region(record, post_start, duration, target, position),
+                interval,
                 role="post_event",
-                target_duration=target,
-                role_limit=2,
+                target_duration=float(interval["duration"]),
+                duration_policy="adaptive",
+                window_variant=str(interval["window_variant"]),
+                role_limit=POST_EVENT_CAP,
             )
     elif kind == SOURCE_NO_FRACTURE:
-        for target, position in STABLE_TEMPLATES:
+        rotation = int(
+            hashlib.sha256(str(record["video_id"]).encode("utf-8")).hexdigest(), 16
+        ) % len(EVENT_POSITIONS)
+        for index, target in enumerate(TARGET_DURATIONS):
+            position = EVENT_POSITIONS[(index + rotation) % len(EVENT_POSITIONS)]
             add(
-                _window_in_region(record, 0.0, duration, target, position),
+                _normal_negative_window(record, target, position),
                 role="stable_negative",
                 target_duration=target,
-                role_limit=6,
-            )
-    else:
-        for target, position in UNKNOWN_TEMPLATES:
-            add(
-                _window_in_region(record, 0.0, duration, target, position),
-                role="unknown",
-                target_duration=target,
-                role_limit=3,
+                event_position_ratio=position,
+                window_variant="normal_negative_rotated",
+                role_limit=NORMAL_NEGATIVE_CAP,
             )
     return results
 
@@ -556,12 +745,22 @@ def _build_scope_candidates(
     reference_payload: Mapping[str, Any],
     scope: str,
     plan_id: str,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     references = _reference_index(reference_payload)
     candidates: list[dict[str, Any]] = []
+    skipped_sources: list[dict[str, Any]] = []
     for video_id in sorted(source_ids):
         record = records[video_id]
-        for raw in _raw_candidates_for_source(record):
+        kind, _ = _source_kind(record)
+        event_reliable = (
+            record.get("event_time_reliable") is True and _event_time(record) is not None
+        )
+        if kind not in {SOURCE_FRACTURE, SOURCE_NO_FRACTURE} or (
+            kind == SOURCE_FRACTURE and not event_reliable
+        ):
+            skipped_sources.append(_skip_record(record, scope))
+            continue
+        for raw in _raw_candidates_for_source(record, references.get(video_id, [])):
             labels = raw["candidate_v3_labels"]
             state = str(labels["clip_state"])
             candidate_id = (
@@ -588,28 +787,42 @@ def _build_scope_candidates(
                 "target_duration_seconds": raw["target_duration_seconds"],
                 "window_role": raw["window_role"],
                 "event_position_ratio": raw["event_position_ratio"],
+                "duration_policy": raw["duration_policy"],
+                "window_variant": raw["window_variant"],
                 "candidate_v3_labels": labels,
                 "source_type": record.get("type"),
                 "source_location": record.get("location_canonical"),
                 "roi_provenance": record.get("roi_provenance"),
             }
-            disposition, match = _match_reference(candidate, references.get(video_id, []))
-            candidate["review_disposition"] = disposition
+            _, match = _match_reference(candidate, references.get(video_id, []))
+            candidate["review_disposition"] = (
+                "manual_required"
+                if state in {"发生断裂", "已断裂"}
+                else "automatic_validation"
+            )
             candidate["reference_match"] = match
             candidates.append(candidate)
     ids = [item["candidate_id"] for item in candidates]
     if len(ids) != len(set(ids)):
         raise CandidatePlanError(f"{scope}: candidate_id 冲突")
-    return candidates
+    return candidates, skipped_sources
 
 
-def _statistics(candidates: list[dict[str, Any]], source_inventory: set[str]) -> dict[str, Any]:
+def _statistics(
+    candidates: list[dict[str, Any]],
+    source_inventory: set[str],
+    skipped_sources: list[dict[str, Any]],
+) -> dict[str, Any]:
     per_source = Counter(item["source_video"] for item in candidates)
     contributions = list(per_source.values())
     return {
         "source_inventory_count": len(source_inventory),
         "sources_with_candidates": len(per_source),
         "sources_without_candidates": sorted(source_inventory - set(per_source)),
+        "skipped_source_count": len(skipped_sources),
+        "skip_reason_counts": dict(
+            sorted(Counter(item["skip_reason"] for item in skipped_sources).items())
+        ),
         "candidate_count": len(candidates),
         "clip_state_counts": dict(
             sorted(Counter(item["candidate_v3_labels"]["clip_state"] for item in candidates).items())
@@ -652,16 +865,26 @@ def build_candidate_plan(inputs: Mapping[str, Any]) -> dict[str, Any]:
         "target_durations_seconds": list(TARGET_DURATIONS),
         "event_guard_seconds": EVENT_GUARD_SECONDS,
         "minimum_candidate_seconds": MIN_CANDIDATE_SECONDS,
-        "transition_templates": [list(item) for item in TRANSITION_TEMPLATES],
-        "stable_templates": [list(item) for item in STABLE_TEMPLATES],
-        "post_event_templates": [list(item) for item in POST_EVENT_TEMPLATES],
-        "unknown_templates": [list(item) for item in UNKNOWN_TEMPLATES],
-        "brittle_pre_event_cap": 3,
-        "ductile_pre_event_cap": 6,
-        "other_pre_event_cap": 4,
-        "post_event_cap": 2,
-        "normal_negative_cap": 6,
-        "unknown_cap": 3,
+        "event_positions": list(EVENT_POSITIONS),
+        "transition_rounds": 2,
+        "transition_cap": TRANSITION_CAP,
+        "transition_adaptive_cap": 1,
+        "transition_pairing": "two_distinct_cyclic_shifts_ranked_by_compatible_exact_matches",
+        "transition_adaptive_selection": "compatible_exact_then_longest_then_template_order",
+        "process_positions": list(PROCESS_POSITIONS),
+        "brittle_pre_event_cap": BRITTLE_PRE_EVENT_CAP,
+        "brittle_pre_event_selection": "shortest_floor_median_longest_end_aligned",
+        "ductile_pre_event_cap": DUCTILE_PRE_EVENT_CAP,
+        "ductile_pre_event_selection": "each_duration_front_middle_back",
+        "other_pre_event_cap": OTHER_PRE_EVENT_CAP,
+        "other_pre_event_all_feasible_selection": [2.0, 5.0, 10.0, 20.0],
+        "post_event_cap": POST_EVENT_CAP,
+        "post_event_partition_thresholds_seconds": [3.0, 6.0],
+        "post_event_partition_counts": [1, 2, 3],
+        "normal_negative_cap": NORMAL_NEGATIVE_CAP,
+        "normal_negative_positioning": "center_at_event_positions_rotated_by_video_id_sha256",
+        "unknown_candidates_generated": False,
+        "manual_review_states": ["发生断裂", "已断裂"],
     }
     identity = {
         "schema_version": PLAN_SCHEMA_VERSION,
@@ -669,14 +892,14 @@ def build_candidate_plan(inputs: Mapping[str, Any]) -> dict[str, Any]:
         "policy": policy,
     }
     plan_id = f"candidate-plan-{_content_hash(identity)[:12]}"
-    development = _build_scope_candidates(
+    development, development_skipped = _build_scope_candidates(
         inputs["records"],
         inputs["development_ids"],
         inputs["development_reference"],
         "development",
         plan_id,
     )
-    test = _build_scope_candidates(
+    test, test_skipped = _build_scope_candidates(
         inputs["records"],
         inputs["test_ids"],
         inputs["test_reference"],
@@ -688,8 +911,10 @@ def build_candidate_plan(inputs: Mapping[str, Any]) -> dict[str, Any]:
     if development_sources & test_sources:
         raise CandidatePlanError("候选计划发生 development/test 交叉")
     statistics = {
-        "development": _statistics(development, set(inputs["development_ids"])),
-        "test_audit": _statistics(test, set(inputs["test_ids"])),
+        "development": _statistics(
+            development, set(inputs["development_ids"]), development_skipped
+        ),
+        "test_audit": _statistics(test, set(inputs["test_ids"]), test_skipped),
     }
     return {
         "schema_version": PLAN_SCHEMA_VERSION,
@@ -697,9 +922,11 @@ def build_candidate_plan(inputs: Mapping[str, Any]) -> dict[str, Any]:
         "identity": identity,
         "input_paths": dict(inputs["input_paths"]),
         "development_candidates": development,
+        "development_skipped_sources": development_skipped,
         "test_candidate_audit": test,
+        "test_skipped_sources": test_skipped,
         "needs_review": [
-            item for item in development if item["review_disposition"] == "needs_review"
+            item for item in development if item["review_disposition"] == "manual_required"
         ],
         "statistics": statistics,
     }
@@ -714,43 +941,21 @@ def _atomic_write(path: Path, payload: Any) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _validate_existing_plan(destination: Path, plan: Mapping[str, Any]) -> None:
-    manifest = _load_json(destination / "manifest.json")
-    if not isinstance(manifest, dict) or manifest.get("identity") != plan.get("identity"):
-        raise CandidatePlanError(f"既有候选计划身份不一致: {destination}")
-    if manifest.get("input_paths") != plan.get("input_paths"):
-        raise CandidatePlanError(f"既有候选计划输入路径不一致: {destination}")
-    artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, Mapping):
-        raise CandidatePlanError("既有候选计划 manifest 缺少 artifacts")
-    for name, metadata in artifacts.items():
-        path = destination / name
-        if not path.is_file() or _sha256_file(path) != (metadata or {}).get("sha256"):
-            raise CandidatePlanError(f"既有候选计划 artifact 漂移: {name}")
-
-
-def materialize_candidate_plan(plan: Mapping[str, Any], output_root: Path) -> Path:
-    """Write only immutable metadata artifacts; no media paths are touched."""
-    destination = output_root / str(plan["plan_id"])
-    if (destination / "manifest.json").exists():
-        _validate_existing_plan(destination, plan)
-        return destination
-    if destination.exists():
-        raise CandidatePlanError(f"拒绝覆盖未完成的候选计划目录: {destination}")
-    destination.mkdir(parents=True)
-
-    payloads = {
+def _artifact_payloads(plan: Mapping[str, Any]) -> dict[str, Any]:
+    return {
         "development_candidates.json": {
             "schema_version": PLAN_SCHEMA_VERSION,
             "plan_id": plan["plan_id"],
             "scope": "development",
             "candidates": plan["development_candidates"],
+            "skipped_sources": plan["development_skipped_sources"],
         },
         "test_candidate_audit.json": {
             "schema_version": PLAN_SCHEMA_VERSION,
             "plan_id": plan["plan_id"],
             "scope": "test_audit",
             "candidates": plan["test_candidate_audit"],
+            "skipped_sources": plan["test_skipped_sources"],
         },
         "needs_review.json": {
             "schema_version": PLAN_SCHEMA_VERSION,
@@ -764,6 +969,42 @@ def materialize_candidate_plan(plan: Mapping[str, Any], output_root: Path) -> Pa
             "statistics": plan["statistics"],
         },
     }
+
+
+def _validate_existing_plan(destination: Path, plan: Mapping[str, Any]) -> None:
+    manifest = _load_json(destination / "manifest.json")
+    if not isinstance(manifest, dict) or manifest.get("identity") != plan.get("identity"):
+        raise CandidatePlanError(f"既有候选计划身份不一致: {destination}")
+    if manifest.get("input_paths") != plan.get("input_paths"):
+        raise CandidatePlanError(f"既有候选计划输入路径不一致: {destination}")
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, Mapping):
+        raise CandidatePlanError("既有候选计划 manifest 缺少 artifacts")
+    expected_payloads = _artifact_payloads(plan)
+    if set(artifacts) != set(expected_payloads):
+        raise CandidatePlanError("既有候选计划 artifact 清单与重算结果不一致")
+    for name, payload in expected_payloads.items():
+        path = destination / name
+        expected_hash = _content_hash(payload)
+        if (
+            not path.is_file()
+            or _sha256_file(path) != expected_hash
+            or (artifacts.get(name) or {}).get("sha256") != expected_hash
+        ):
+            raise CandidatePlanError(f"既有候选计划 artifact 漂移: {name}")
+
+
+def materialize_candidate_plan(plan: Mapping[str, Any], output_root: Path) -> Path:
+    """Write only immutable metadata artifacts; no media paths are touched."""
+    destination = output_root / str(plan["plan_id"])
+    if (destination / "manifest.json").exists():
+        _validate_existing_plan(destination, plan)
+        return destination
+    if destination.exists():
+        raise CandidatePlanError(f"拒绝覆盖未完成的候选计划目录: {destination}")
+    destination.mkdir(parents=True)
+
+    payloads = _artifact_payloads(plan)
     for name, payload in payloads.items():
         _atomic_write(destination / name, payload)
     artifacts = {
@@ -776,7 +1017,9 @@ def materialize_candidate_plan(plan: Mapping[str, Any], output_root: Path) -> Pa
         "input_paths": plan["input_paths"],
         "counts": {
             "development_candidates": len(plan["development_candidates"]),
+            "development_skipped_sources": len(plan["development_skipped_sources"]),
             "test_candidate_audit": len(plan["test_candidate_audit"]),
+            "test_skipped_sources": len(plan["test_skipped_sources"]),
             "development_needs_review": len(plan["needs_review"]),
         },
         "artifacts": artifacts,
