@@ -547,7 +547,7 @@ def validate_experiment_config(
 
 
 def validate_adapter_coverage(adapter_dir: Path, *, visual: bool) -> dict[str, Any]:
-    """Verify saved PEFT metadata proves the requested modules were trained."""
+    """Verify saved PEFT weights prove the requested modules were trained."""
     path = Path(adapter_dir) / "adapter_config.json"
     payload = _read_json(path)
     if not isinstance(payload, dict):
@@ -555,21 +555,41 @@ def validate_adapter_coverage(adapter_dir: Path, *, visual: bool) -> dict[str, A
     targets = payload.get("target_modules")
     if not isinstance(targets, list):
         raise VisualDataExperimentError("adapter target_modules 缺失")
-    visual_targets = [str(item) for item in targets if "vpm" in str(item)]
     modules_to_save = payload.get("modules_to_save") or []
     if not isinstance(modules_to_save, list):
         raise VisualDataExperimentError("adapter modules_to_save 非法")
-    saved_resampler = any("resampler" in str(item) for item in modules_to_save)
-    if visual and (not visual_targets or not saved_resampler):
+    weights_path = Path(adapter_dir) / "adapter_model.safetensors"
+    if not weights_path.is_file():
+        raise VisualDataExperimentError(
+            f"adapter safetensors 不存在: {weights_path}"
+        )
+    try:
+        from safetensors import safe_open
+
+        with safe_open(weights_path, framework="pt", device="cpu") as handle:
+            weight_keys = list(handle.keys())
+    except Exception as exc:
+        raise VisualDataExperimentError(
+            f"无法检查 adapter 权重: {exc}"
+        ) from exc
+    visual_weights = [key for key in weight_keys if ".vpm." in key]
+    resampler_weights = [key for key in weight_keys if ".resampler." in key]
+    saved_resampler = any(
+        "resampler" in str(item) for item in modules_to_save
+    )
+    if visual and (
+        not visual_weights or not resampler_weights or not saved_resampler
+    ):
         raise VisualDataExperimentError(
             "视觉 adapter 未同时覆盖 vpm 和 resampler"
         )
-    if not visual and (visual_targets or saved_resampler):
+    if not visual and (visual_weights or resampler_weights or saved_resampler):
         raise VisualDataExperimentError("语言对照意外包含视觉模块")
     return {
         "visual": visual,
         "target_module_count": len(targets),
-        "visual_target_module_count": len(visual_targets),
+        "visual_weight_count": len(visual_weights),
+        "resampler_weight_count": len(resampler_weights),
         "resampler_saved": saved_resampler,
     }
 
