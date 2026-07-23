@@ -54,8 +54,10 @@ models/                       本地模型权重目录
 - `tensile-vlm-v2-final`（`archive/v2`）封存 V2，只用于历史复现。
 - 两版大型数据不共用目录：V2 使用 `tensile-data/v2`，V4.1 使用
   `tensile-data/v4_1`。
-- 当前 V4.1 训练结束前不迁移正在读取的数据；完整切换步骤见
-  [V2/V4.1 数据隔离设计](docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)。
+- V2 数据已经冻结为只读；V4.1 数据处理默认使用独立 workspace。
+- 完整方案和迁移证据见
+  [隔离设计](docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)与
+  [迁移报告](docs/reports/2026-07-23-v2-v4-1-data-migration.md)。
 
 ## 环境准备
 
