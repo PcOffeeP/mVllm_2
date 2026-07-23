@@ -68,6 +68,18 @@ train/val 隔离、配置绑定和输出目录不可覆盖性。运行状态写�
 旧 `active_data_release.json` 和 V2 配置继续保留，用于复现历史实验；V4.1 训练不通过
 修改全局活动指针来接管它们。
 
+三折训练完成后，运行隔离的合并与完整验证集推理：
+
+```bash
+python finetune/run_v4_1_post_training.py --validate-only
+python finetune/run_v4_1_post_training.py
+```
+
+该流水线先合并三个 LoRA，再分别对对应 fold 的 validation 数据进行严格 V4.1 推理。
+逐样本结果实时追加到 JSONL，可在进程中断后从已完成样本续跑；最终汇总严格 JSON
+合法率、四字段准确率、联合准确率、`clip_state` 混淆表和运行失败记录。结果写入
+`finetune/results/v4_1_0_760050fad303_20260723/three_fold_validation/`。
+
 ## 合并 LoRA
 
 使用与训练 fold 对应的固定 merge 配置：
