@@ -10,8 +10,10 @@ from pipeline.data_roots import (
     initialize_root,
     initialize_workspace,
     load_config,
+    resolve_workspace_artifact,
     validate_root,
     validate_workspace,
+    workspace_relative_path,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,3 +82,17 @@ def test_workspace_links_stay_inside_version_root(tmp_path: Path) -> None:
     assert (workspace / "data/03_subvideos_roi").resolve() == (
         root / "processing/03_subvideos_roi"
     ).resolve()
+
+
+def test_remaps_frozen_absolute_data_path_without_following_symlink(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "v4_1/workspace"
+    old = Path("/old/machine/project/data/03_subvideos_roi/example.mp4")
+
+    mapped = resolve_workspace_artifact(old, workspace)
+
+    assert mapped == workspace / "data/03_subvideos_roi/example.mp4"
+    assert workspace_relative_path(mapped, workspace) == (
+        "data/03_subvideos_roi/example.mp4"
+    )

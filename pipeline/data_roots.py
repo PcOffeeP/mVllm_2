@@ -154,6 +154,36 @@ def workspace_root(
     ) / "workspace"
 
 
+def resolve_workspace_artifact(value: str | Path, workspace: Path) -> Path:
+    """Map frozen ``data/...`` paths into one version's workspace.
+
+    Historical manifests may contain an absolute path from the machine where
+    they were created.  Only the suffix beginning with ``data`` is portable;
+    all other absolute paths remain unchanged.
+    """
+    path = Path(value)
+    workspace = Path(workspace).absolute()
+    if not path.is_absolute():
+        return workspace / path
+    try:
+        path.absolute().relative_to(workspace)
+        return path
+    except ValueError:
+        pass
+    data_indexes = [index for index, part in enumerate(path.parts) if part == "data"]
+    if not data_indexes:
+        return path
+    suffix = Path(*path.parts[data_indexes[-1] :])
+    return workspace / suffix
+
+
+def workspace_relative_path(path: Path, workspace: Path) -> str:
+    try:
+        return str(Path(path).absolute().relative_to(Path(workspace).absolute()))
+    except ValueError as exc:
+        raise DataRootError(f"路径不属于版本 workspace: {path}") from exc
+
+
 def initialize_workspace(
     config: Mapping[str, Any],
     contract_version: str,

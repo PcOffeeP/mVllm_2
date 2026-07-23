@@ -16,6 +16,11 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline.data_roots import (
+    DataRootError,
+    resolve_workspace_artifact,
+    workspace_relative_path,
+)
 from pipeline.v3_review_workflow import sha256_file
 from pipeline.v4_1_labels import (
     V4_1_LABEL_FIELDS,
@@ -99,19 +104,17 @@ def _contract_identity(contract_path: Path) -> tuple[dict[str, Any], str]:
 def _relative_media_path(value: Any, project_root: Path, candidate_id: str) -> str:
     if not isinstance(value, str) or not value:
         raise V4_1TrainingReleaseError(f"{candidate_id}: video_path 不能为空")
-    path = Path(value)
-    resolved = path if path.is_absolute() else project_root / path
+    resolved = resolve_workspace_artifact(value, project_root)
     try:
-        return str(resolved.resolve().relative_to(project_root.resolve()))
-    except ValueError as exc:
+        return workspace_relative_path(resolved, project_root)
+    except DataRootError as exc:
         raise V4_1TrainingReleaseError(
             f"{candidate_id}: 媒体必须位于项目目录内: {resolved}"
         ) from exc
 
 
 def _verify_artifact(path_value: Any, expected_sha: Any, project_root: Path, label: str) -> Path:
-    path = Path(str(path_value))
-    resolved = path if path.is_absolute() else project_root / path
+    resolved = resolve_workspace_artifact(str(path_value), project_root)
     if not resolved.is_file():
         raise V4_1TrainingReleaseError(f"{label}不存在: {resolved}")
     actual = sha256_file(resolved)
@@ -191,7 +194,7 @@ def _load_materialized(
             timestamps.append(float(timestamp))
             verified_frames.append(
                 {
-                    "path": str(frame_path.resolve().relative_to(project_root.resolve())),
+                    "path": workspace_relative_path(frame_path, project_root),
                     "sha256": frame["sha256"],
                 }
             )
@@ -200,7 +203,7 @@ def _load_materialized(
         candidates.append(
             {
                 **item,
-                "_release_video_path": str(video.resolve().relative_to(project_root.resolve())),
+                "_release_video_path": workspace_relative_path(video, project_root),
                 "_release_frames": verified_frames,
                 "_sampled_timestamps": timestamps,
             }

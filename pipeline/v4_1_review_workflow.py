@@ -22,6 +22,7 @@ from pipeline.v4_1_labels import (
     migrate_v3_to_v4_1_labels,
     migrate_v4_labels,
 )
+from pipeline.data_roots import resolve_workspace_artifact
 from pipeline.v4_1_review_decisions import (
     REVIEW_SCHEMA_VERSION,
     build_review_payload,
@@ -81,8 +82,7 @@ def _contract_identity(contract_path: Path) -> tuple[str, str]:
 
 
 def _resolve_path(value: Any, project_root: Path) -> Path:
-    path = Path(str(value))
-    return path if path.is_absolute() else project_root / path
+    return resolve_workspace_artifact(str(value), project_root)
 
 
 def _validate_media(candidate: Mapping[str, Any], project_root: Path) -> dict[str, Any]:
@@ -262,8 +262,8 @@ def load_review_queue(
         or contract.get("file_sha256") != contract_file_sha256
     ):
         raise V4_1ReviewWorkflowError("v4.1 队列绑定的契约已漂移")
-    source_materialized = Path(str(source.get("materialized_path")))
-    source_manifest = Path(str(source.get("manifest_path")))
+    source_materialized = _resolve_path(source.get("materialized_path"), project_root)
+    source_manifest = _resolve_path(source.get("manifest_path"), project_root)
     if (
         sha256_file(source_materialized) != source.get("materialized_sha256")
         or sha256_file(source_manifest) != source.get("manifest_sha256")
