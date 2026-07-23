@@ -1,0 +1,159 @@
+"""Version-bound external data roots for frozen V2 and active V4.1 flows."""
+
+from __future__ import annotations
+
+import json
+import os
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Mapping
+
+MARKER_NAME = ".tensile-data-root.json"
+REQUIRED_DIRECTORIES = ("input", "processing", "releases")
+
+
+class DataRootError(ValueError):
+    """Raised when a data root does not match its declared contract."""
+
+
+def _read_object(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DataRootError(f"无法读取数据根配置: {path}") from exc
+    if not isinstance(value, dict):
+        raise DataRootError(f"数据根配置必须是 JSON object: {path}")
+    return value
+
+
+def load_config(path: Path) -> dict[str, Any]:
+    config = _read_object(Path(path))
+    if config.get("schema_version") != 1:
+        raise DataRootError("数据根配置 schema_version 必须为 1")
+    profiles = config.get("profiles")
+    if not isinstance(profiles, dict) or not profiles:
+        raise DataRootError("数据根配置缺少 profiles")
+
+    directories: set[str] = set()
+    for contract_version, profile in profiles.items():
+        if not isinstance(contract_version, str) or not isinstance(profile, dict):
+            raise DataRootError("profiles 中的契约和配置必须有效")
+        directory = profile.get("directory")
+        if (
+            not isinstance(directory, str)
+            or not directory
+            or Path(directory).name != directory
+        ):
+            raise DataRootError(f"{contract_version}: directory 必须是单层目录名")
+        if directory in directories:
+            raise DataRootError("不同契约不能共用同一个数据目录")
+        directories.add(directory)
+        if profile.get("lifecycle") not in {"active", "frozen"}:
+            raise DataRootError(f"{contract_version}: lifecycle 必须是 active 或 frozen")
+        if not isinstance(profile.get("git_ref"), str) or not profile["git_ref"]:
+            raise DataRootError(f"{contract_version}: 缺少 git_ref")
+    return config
+
+
+def resolve_data_home(
+    config: Mapping[str, Any],
+    *,
+    project_root: Path,
+    override: Path | None = None,
+) -> Path:
+    if override is not None:
+        return Path(override).expanduser().resolve()
+    env_name = config.get("data_home_env")
+    if isinstance(env_name, str) and os.environ.get(env_name):
+        return Path(os.environ[env_name]).expanduser().resolve()
+    default = config.get("default_data_home")
+    if not isinstance(default, str) or not default:
+        raise DataRootError("数据根配置缺少 default_data_home")
+    return (Path(project_root).resolve() / default).resolve()
+
+
+def profile_for(config: Mapping[str, Any], contract_version: str) -> dict[str, Any]:
+    profiles = config.get("profiles")
+    profile = profiles.get(contract_version) if isinstance(profiles, dict) else None
+    if not isinstance(profile, dict):
+        raise DataRootError(f"未配置的数据契约: {contract_version}")
+    return profile
+
+
+def version_root(
+    config: Mapping[str, Any],
+    contract_version: str,
+    *,
+    data_home: Path,
+) -> Path:
+    profile = profile_for(config, contract_version)
+    return Path(data_home).resolve() / profile["directory"]
+
+
+def initialize_root(
+    config: Mapping[str, Any],
+    contract_version: str,
+    *,
+    data_home: Path,
+) -> Path:
+    profile = profile_for(config, contract_version)
+    root = version_root(
+        config,
+        contract_version,
+        data_home=data_home,
+    )
+    root.mkdir(parents=True, exist_ok=True)
+    marker_path = root / MARKER_NAME
+    if marker_path.exists():
+        validate_root(
+            config,
+            contract_version,
+            data_home=data_home,
+        )
+    else:
+        marker = {
+            "schema_version": 1,
+            "contract_version": contract_version,
+            "git_ref": profile["git_ref"],
+            "lifecycle": profile["lifecycle"],
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        marker_path.write_text(
+            json.dumps(marker, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    for name in REQUIRED_DIRECTORIES:
+        (root / name).mkdir(exist_ok=True)
+    return root
+
+
+def validate_root(
+    config: Mapping[str, Any],
+    contract_version: str,
+    *,
+    data_home: Path,
+) -> dict[str, Any]:
+    profile = profile_for(config, contract_version)
+    root = version_root(config, contract_version, data_home=data_home)
+    marker_path = root / MARKER_NAME
+    marker = _read_object(marker_path)
+    expected = {
+        "schema_version": 1,
+        "contract_version": contract_version,
+        "git_ref": profile["git_ref"],
+        "lifecycle": profile["lifecycle"],
+    }
+    for field, value in expected.items():
+        if marker.get(field) != value:
+            raise DataRootError(
+                f"{marker_path}: {field}={marker.get(field)!r}，预期 {value!r}"
+            )
+    missing = [name for name in REQUIRED_DIRECTORIES if not (root / name).is_dir()]
+    if missing:
+        raise DataRootError(f"{root}: 缺少目录 {', '.join(missing)}")
+    return {
+        "contract_version": contract_version,
+        "root": str(root),
+        "git_ref": profile["git_ref"],
+        "lifecycle": profile["lifecycle"],
+    }

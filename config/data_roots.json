@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "data_home_env": "TENSILE_DATA_HOME",
+  "default_data_home": "../tensile-data",
+  "profiles": {
+    "tensile-vlm/v2": {
+      "directory": "v2",
+      "git_ref": "tensile-vlm-v2-final",
+      "lifecycle": "frozen"
+    },
+    "tensile-vlm/v4.1": {
+      "directory": "v4_1",
+      "git_ref": "main",
+      "lifecycle": "active"
+    }
+  }
+}

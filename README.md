@@ -48,6 +48,15 @@ models/                       本地模型权重目录
 
 视频、模型权重和中间数据通常不纳入版本控制，需在实验环境中准备或同步。
 
+## 当前版本边界
+
+- `main` 只继续维护 `tensile-vlm/v4.1`。
+- `tensile-vlm-v2-final`（`archive/v2`）封存 V2，只用于历史复现。
+- 两版大型数据不共用目录：V2 使用 `tensile-data/v2`，V4.1 使用
+  `tensile-data/v4_1`。
+- 当前 V4.1 训练结束前不迁移正在读取的数据；完整切换步骤见
+  [V2/V4.1 数据隔离设计](docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)。
+
 ## 环境准备
 
 推荐 Python 3.11、Conda、Linux/GPU 环境。
