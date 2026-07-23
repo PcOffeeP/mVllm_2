@@ -6,8 +6,8 @@ MVP 只写 ROI 决定文件，不生成裁剪媒体，也不修改现有训练�
 
 运行：
     streamlit run pipeline/scripts/roi_annotation_app.py -- \
-      --metadata data/07_metadata/video_meta.json \
-      --output data/07_metadata/roi_decisions.json
+      --metadata ../tensile-data/current/derived/metadata/video_meta.json \
+      --output ../tensile-data/current/derived/metadata/roi_decisions.json
 """
 
 from __future__ import annotations
@@ -30,10 +30,12 @@ import streamlit as st
 from PIL import Image, ImageDraw
 from streamlit_cropper import st_cropper
 
+from pipeline.current_data import current_data_paths
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-VIDEO_META_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "video_meta.json"
-OUTPUT_DEFAULT = PROJECT_ROOT / "data" / "07_metadata" / "roi_decisions.json"
+CURRENT_DATA = current_data_paths(PROJECT_ROOT)
+VIDEO_META_DEFAULT = CURRENT_DATA.metadata / "video_meta.json"
+OUTPUT_DEFAULT = CURRENT_DATA.metadata / "roi_decisions.json"
 
 SCHEMA_VERSION = "1.0"
 ROI_POLICY_VERSION = "1.2"
@@ -68,7 +70,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="源视频固定 ROI 人工标注工具")
     parser.add_argument("--metadata", type=Path, default=VIDEO_META_DEFAULT)
     parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT)
-    parser.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        default=CURRENT_DATA.compatibility_workspace,
+    )
     return parser.parse_args(raw)
 
 

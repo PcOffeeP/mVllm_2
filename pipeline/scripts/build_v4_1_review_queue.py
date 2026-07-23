@@ -16,13 +16,19 @@ from pipeline.v4_1_review_workflow import (
     build_v4_1_review_queue,
     save_v4_1_review_queue,
 )
+from pipeline.current_data import current_data_paths
 
 
 def main() -> None:
+    paths = current_data_paths(PROJECT_ROOT)
     parser = argparse.ArgumentParser()
     parser.add_argument("--materialized", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        default=paths.compatibility_workspace,
+    )
     parser.add_argument(
         "--contract",
         type=Path,
@@ -31,7 +37,7 @@ def main() -> None:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=PROJECT_ROOT / "data/07_metadata/v4_1/review_queues",
+        default=paths.metadata / "v4_1/review_queues",
     )
     args = parser.parse_args()
     payload = build_v4_1_review_queue(

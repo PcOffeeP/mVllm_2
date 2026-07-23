@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 import yaml
 
+from pipeline.current_data import current_data_paths
 from pipeline.v4_1_labels import V4_1_LABEL_FIELDS, canonicalize_v4_1_labels
 
 RELEASE_ID = "v4.1.0-760050fad303"
@@ -44,7 +45,7 @@ def _sha256(path: Path) -> str:
 
 
 def release_dir(project_root: Path) -> Path:
-    return Path(project_root) / "data/08_training_ready" / RELEASE_ID
+    return current_data_paths(project_root).training_releases / RELEASE_ID
 
 
 def validate_release(
@@ -54,6 +55,7 @@ def validate_release(
 ) -> dict[str, Any]:
     """Validate immutable release files, rows, labels, splits, and optional media."""
     project_root = Path(project_root).resolve()
+    media_root = current_data_paths(project_root).compatibility_workspace
     root = release_dir(project_root)
     manifest_path = root / "manifest/release_manifest.json"
     manifest = _read_json(manifest_path)
@@ -122,8 +124,9 @@ def validate_release(
                         f"fold_{fold}: train/val 重复候选媒体: {video_path}"
                     )
                 seen_videos.add(video_path)
-                if verify_media and not (project_root / video_path).is_file():
-                    raise V4_1FinetuneError(f"训练媒体不存在: {project_root / video_path}")
+                media_path = media_root / video_path
+                if verify_media and not media_path.is_file():
+                    raise V4_1FinetuneError(f"训练媒体不存在: {media_path}")
                 canonicalize_v4_1_labels(labels)
         if len(seen_videos) != EXPECTED_RELEASE_COUNTS["published_candidates"]:
             raise V4_1FinetuneError(
@@ -213,6 +216,14 @@ def validate_training_config(
         raise V4_1FinetuneError(
             f"{config_path.name}: dataset_dir 未绑定 {RELEASE_ID}"
         )
+    configured_media_dir = (
+        Path(config_path).parent.parent.parent / str(config.get("media_dir"))
+    ).resolve()
+    expected_media_dir = current_data_paths(project_root).compatibility_workspace.resolve()
+    if configured_media_dir != expected_media_dir:
+        raise V4_1FinetuneError(
+            f"{config_path.name}: media_dir 未绑定当前语义化数据 workspace"
+        )
     output_dir = str(config.get("output_dir") or "")
     if RELEASE_ID.replace(".", "_").replace("-", "_") not in output_dir:
         raise V4_1FinetuneError(
@@ -270,4 +281,3 @@ def summarize_v4_1_scores(scores: list[Mapping[str, Any]]) -> dict[str, Any]:
             for field in fields
         },
     }
-

@@ -18,26 +18,24 @@ from pipeline.v3_candidate_plan import (
     load_plan_inputs,
     materialize_candidate_plan,
 )
+from pipeline.current_data import current_data_paths
 
 
+CURRENT_DATA = current_data_paths(PROJECT_ROOT)
 DEFAULT_ROI_MEDIA_DIR = (
-    PROJECT_ROOT
-    / "data"
-    / "07_metadata"
+    CURRENT_DATA.metadata
     / "v3"
     / "roi_media_results"
     / "roi-media-84ea2bd3a052"
 )
 DEFAULT_REVIEW_REFERENCE_DIR = (
-    PROJECT_ROOT
-    / "data"
-    / "07_metadata"
+    CURRENT_DATA.metadata
     / "v3"
     / "review_reference"
     / "review-ref-7cd2e73a1cd1"
 )
 DEFAULT_CONTRACT = PROJECT_ROOT / "pipeline" / "contracts" / "tensile_vlm_v3.json"
-DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "07_metadata" / "v3" / "candidate_plans"
+DEFAULT_OUTPUT_ROOT = CURRENT_DATA.metadata / "v3" / "candidate_plans"
 
 
 def build_parser() -> argparse.ArgumentParser:

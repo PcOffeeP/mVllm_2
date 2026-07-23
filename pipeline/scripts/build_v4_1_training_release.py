@@ -12,13 +12,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from pipeline.data_roots import (
-    load_config,
-    resolve_data_home,
-    validate_workspace,
-    version_root,
-    workspace_root,
-)
+from pipeline.current_data import current_data_paths
+from pipeline.data_roots import load_config, validate_workspace
 from pipeline.v4_1_training_release import build_v4_1_training_release
 
 DATA_ROOT_CONFIG = PROJECT_ROOT / "config/data_roots.json"
@@ -42,44 +37,34 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--releases-dir", type=Path)
     args = parser.parse_args()
 
-    data_config = load_config(DATA_ROOT_CONFIG)
-    data_home = resolve_data_home(
-        data_config,
-        project_root=PROJECT_ROOT,
-        override=args.data_home,
+    paths = current_data_paths(
+        PROJECT_ROOT,
+        data_home=args.data_home,
     )
-    versioned_root = version_root(
-        data_config,
-        CONTRACT_VERSION,
-        data_home=data_home,
-    )
-    active_workspace = workspace_root(
-        data_config,
-        CONTRACT_VERSION,
-        data_home=data_home,
-    )
+    data_home = paths.root.parent
+    active_workspace = paths.compatibility_workspace
     media_root = (
-        active_workspace
-        / "data/07_metadata/v3/candidate_media_results/candidate-media-8de972530561"
+        paths.metadata
+        / "v3/candidate_media_results/candidate-media-8de972530561"
     )
     review_root = (
-        active_workspace
-        / "data/07_metadata/v4_1/review_decisions/v4-1-review-4a449c8d1193"
+        paths.metadata
+        / "v4_1/review_decisions/v4-1-review-4a449c8d1193"
     )
     args.data_home = data_home
     args.project_root = args.project_root or active_workspace
     args.materialized = args.materialized or media_root / "development_materialized.json"
     args.media_manifest = args.media_manifest or media_root / "manifest.json"
     args.queue = args.queue or (
-        active_workspace
-        / "data/07_metadata/v4_1/review_queues/"
+        paths.metadata
+        / "v4_1/review_queues/"
         "v4-1-review-4a449c8d1193/review_queue.json"
     )
     args.decisions = args.decisions or (
         review_root / "review-batch-9043bbe4c286/decisions.json"
     )
-    args.splits_dir = args.splits_dir or active_workspace / "data/05_splits"
-    args.releases_dir = args.releases_dir or versioned_root / "releases"
+    args.splits_dir = args.splits_dir or paths.splits
+    args.releases_dir = args.releases_dir or paths.training_releases
     return args
 
 

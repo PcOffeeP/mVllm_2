@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pipeline.preprocessing import MiniCPMVideoPreprocessor  # noqa: E402
+from pipeline.current_data import current_data_paths  # noqa: E402
 from pipeline.v3_candidate_media import (  # noqa: E402
     CandidateMediaError,
     load_media_plan,
@@ -23,17 +24,17 @@ from pipeline.v3_candidate_media import (  # noqa: E402
 
 
 DEFAULT_PLAN_ID = "candidate-plan-ce36b9226be5"
+CURRENT_DATA = current_data_paths(PROJECT_ROOT)
 DEFAULT_CANDIDATE_PLAN = (
-    PROJECT_ROOT / "data/07_metadata/v3/candidate_plans" / DEFAULT_PLAN_ID
+    CURRENT_DATA.metadata / "v3/candidate_plans" / DEFAULT_PLAN_ID
 )
 DEFAULT_ROI_MEDIA = (
-    PROJECT_ROOT
-    / "data/03_roi_videos/roi-media-84ea2bd3a052"
+    CURRENT_DATA.roi_videos / "roi-media-84ea2bd3a052"
 )
 DEFAULT_MODEL = PROJECT_ROOT / "models/minicpmv4_5"
-DEFAULT_VIDEO_OUTPUT_ROOT = PROJECT_ROOT / "data/03_subvideos_roi"
-DEFAULT_FRAME_OUTPUT_ROOT = PROJECT_ROOT / "data/04_frames_roi"
-DEFAULT_RESULT_ROOT = PROJECT_ROOT / "data/07_metadata/v3/candidate_media_results"
+DEFAULT_VIDEO_OUTPUT_ROOT = CURRENT_DATA.subvideos
+DEFAULT_FRAME_OUTPUT_ROOT = CURRENT_DATA.frames
+DEFAULT_RESULT_ROOT = CURRENT_DATA.metadata / "v3/candidate_media_results"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -96,7 +97,7 @@ def main() -> int:
         plan = load_media_plan(
             args.candidate_plan,
             args.roi_media,
-            PROJECT_ROOT,
+            CURRENT_DATA.compatibility_workspace,
             processor_fingerprint=fingerprint,
             scopes=scopes,
             candidate_ids=args.candidate_ids,

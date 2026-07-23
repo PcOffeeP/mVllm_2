@@ -4,34 +4,34 @@
   "default_data_home": "../tensile-data",
   "profiles": {
     "tensile-vlm/v2": {
-      "directory": "v2",
+      "directory": "archive",
       "git_ref": "tensile-vlm-v2-final",
       "lifecycle": "frozen",
       "workspace_links": {
-        "data/01_videos": "input/01_videos",
-        "data/02_annotations": "input/02_annotations",
-        "data/03_subvideos": "processing/03_subvideos",
-        "data/04_frames": "processing/04_frames",
-        "data/05_splits": "processing/05_splits",
-        "data/06_merged": "processing/06_merged",
-        "data/07_metadata": "processing/07_metadata",
-        "data/08_incremental_review": "processing/08_incremental_review",
-        "data/08_training_ready": "releases"
+        "data/01_videos": "source/videos",
+        "data/02_annotations": "source/annotations",
+        "data/03_subvideos": "derived/subvideos",
+        "data/04_frames": "derived/frames",
+        "data/05_splits": "source/splits",
+        "data/06_merged": "derived/merged",
+        "data/07_metadata": "derived/metadata",
+        "data/08_incremental_review": "derived/review_rounds",
+        "data/08_training_ready": "training_releases"
       }
     },
     "tensile-vlm/v4.1": {
-      "directory": "v4_1",
+      "directory": "current",
       "git_ref": "main",
       "lifecycle": "active",
       "workspace_links": {
-        "data/01_videos": "input/01_videos",
-        "data/02_annotations": "input/02_annotations",
-        "data/03_roi_videos": "processing/03_roi_videos",
-        "data/03_subvideos_roi": "processing/03_subvideos_roi",
-        "data/04_frames_roi": "processing/04_frames_roi",
-        "data/05_splits": "input/05_splits",
-        "data/07_metadata": "processing/07_metadata",
-        "data/08_training_ready": "releases"
+        "data/01_videos": "source/videos",
+        "data/02_annotations": "source/annotations",
+        "data/03_roi_videos": "derived/roi_videos",
+        "data/03_subvideos_roi": "derived/subvideos",
+        "data/04_frames_roi": "derived/frames",
+        "data/05_splits": "source/splits",
+        "data/07_metadata": "derived/metadata",
+        "data/08_training_ready": "training_releases"
       }
     }
   }

@@ -19,14 +19,15 @@ from pipeline.roi_media import (  # noqa: E402
     materialize_plan,
     require_tools,
 )
+from pipeline.current_data import current_data_paths  # noqa: E402
 
 
+CURRENT_DATA = current_data_paths(PROJECT_ROOT)
 DEFAULT_ROI_MANIFEST = (
-    PROJECT_ROOT
-    / "data/07_metadata/v3/roi_manifests/roi-manifest-01be8c1ebb2d"
+    CURRENT_DATA.metadata / "v3/roi_manifests/roi-manifest-01be8c1ebb2d"
 )
-DEFAULT_VIDEO_META = PROJECT_ROOT / "data/07_metadata/video_meta.json"
-DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data/03_roi_videos"
+DEFAULT_VIDEO_META = CURRENT_DATA.metadata / "video_meta.json"
+DEFAULT_OUTPUT_ROOT = CURRENT_DATA.roi_videos
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,7 +53,7 @@ def main() -> int:
         plan = load_generation_plan(
             args.roi_manifest,
             args.video_meta,
-            PROJECT_ROOT,
+            CURRENT_DATA.compatibility_workspace,
             selected_video_ids=args.video_ids,
         )
         summary = {

@@ -14,6 +14,11 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline.data_roots import (
+    DataRootError,
+    resolve_workspace_artifact,
+    workspace_portable_path,
+)
 from pipeline.preprocessing import MiniCPMVideoPreprocessor, VideoPreprocessor
 from pipeline.roi_media import VideoProbe, probe_video
 
@@ -84,8 +89,7 @@ def _atomic_write(path: Path, payload: Any) -> None:
 def _resolve_project_path(path_value: Any, project_root: Path) -> Path:
     if not isinstance(path_value, str) or not path_value:
         raise CandidateMediaError(f"无效项目路径: {path_value}")
-    path = Path(path_value)
-    return path if path.is_absolute() else project_root / path
+    return resolve_workspace_artifact(path_value, project_root)
 
 
 def _event_time(record: Mapping[str, Any]) -> float | None:
@@ -465,9 +469,9 @@ def _frame_artifacts(frame_dir: Path) -> list[dict[str, Any]]:
 
 def _portable(path: Path, project_root: Path) -> str:
     try:
-        return str(path.resolve().relative_to(project_root.resolve()))
-    except ValueError:
-        return str(path.resolve())
+        return workspace_portable_path(path, project_root)
+    except DataRootError as exc:
+        raise CandidateMediaError(f"输出路径不属于当前数据 workspace: {path}") from exc
 
 
 def _process_candidate(

@@ -38,6 +38,7 @@ MATERIALIZED_SCHEMA_VERSION = "tensile-v3-candidate-media/v1"
 TERMINAL_REVIEW_STATUSES = frozenset(
     {"approved", "corrected", "dropped", "needs_regenerate"}
 )
+CODE_ROOT = Path(__file__).resolve().parents[1]
 
 
 class V4_1ReviewWorkflowError(ValueError):
@@ -83,6 +84,24 @@ def _contract_identity(contract_path: Path) -> tuple[str, str]:
 
 def _resolve_path(value: Any, project_root: Path) -> Path:
     return resolve_workspace_artifact(str(value), project_root)
+
+
+def _resolve_contract_path(value: Any) -> Path:
+    """Resolve a contract recorded on this or another project checkout."""
+    path = Path(str(value))
+    if path.is_file():
+        return path
+    parts = path.parts
+    if "pipeline" in parts:
+        suffix = Path(*parts[parts.index("pipeline") :])
+        candidate = CODE_ROOT / suffix
+        if candidate.is_file():
+            return candidate
+    if not path.is_absolute():
+        candidate = CODE_ROOT / path
+        if candidate.is_file():
+            return candidate
+    return path
 
 
 def _validate_media(candidate: Mapping[str, Any], project_root: Path) -> dict[str, Any]:
@@ -255,7 +274,7 @@ def load_review_queue(
     contract = queue.get("contract")
     if not isinstance(source, Mapping) or not isinstance(contract, Mapping):
         raise V4_1ReviewWorkflowError("v4.1 队列缺少 source_media 或 contract")
-    contract_path = Path(str(contract.get("path")))
+    contract_path = _resolve_contract_path(contract.get("path"))
     contract_hash, contract_file_sha256 = _contract_identity(contract_path)
     if (
         contract.get("contract_hash") != contract_hash

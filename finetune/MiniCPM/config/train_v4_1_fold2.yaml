@@ -15,9 +15,9 @@ quantization_bit: null
 
 dataset: tensile_v4_1_fold2_train
 eval_dataset: tensile_v4_1_fold2_val
-dataset_dir: ../data/08_training_ready/v4.1.0-760050fad303
+dataset_dir: ../../tensile-data/current/training_releases/v4.1.0-760050fad303
 template: minicpm_v
-media_dir: ..
+media_dir: ../../tensile-data/current/.compat/workspace
 cutoff_len: 2048
 video_maxlen: 8
 preprocessing_num_workers: 4
@@ -51,4 +51,3 @@ optim: paged_adamw_8bit
 gradient_checkpointing: true
 ddp_timeout: 1800
 seed: 3407
-

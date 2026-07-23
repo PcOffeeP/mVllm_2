@@ -1,9 +1,0 @@
-{
-  "all_source_hashes_verified": true,
-  "all_temporal_contracts_verified": true,
-  "fixed_roi_count": 100,
-  "no_crop_count": 10,
-  "roi_media_id": "roi-media-84ea2bd3a052",
-  "schema_version": "tensile-roi-media/v1",
-  "source_count": 110
-}

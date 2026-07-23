@@ -13,6 +13,7 @@ from pipeline.data_roots import (
     resolve_workspace_artifact,
     validate_root,
     validate_workspace,
+    workspace_portable_path,
     workspace_relative_path,
 )
 
@@ -22,10 +23,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_committed_profiles_use_distinct_roots() -> None:
     config = load_config(ROOT / "config/data_roots.json")
 
-    assert config["profiles"]["tensile-vlm/v2"]["directory"] == "v2"
+    assert config["profiles"]["tensile-vlm/v2"]["directory"] == "archive"
     assert config["profiles"]["tensile-vlm/v2"]["git_ref"] == "tensile-vlm-v2-final"
     assert config["profiles"]["tensile-vlm/v2"]["lifecycle"] == "frozen"
-    assert config["profiles"]["tensile-vlm/v4.1"]["directory"] == "v4_1"
+    assert config["profiles"]["tensile-vlm/v4.1"]["directory"] == "current"
     assert config["profiles"]["tensile-vlm/v4.1"]["git_ref"] == "main"
     assert config["profiles"]["tensile-vlm/v4.1"]["lifecycle"] == "active"
 
@@ -80,19 +81,34 @@ def test_workspace_links_stay_inside_version_root(tmp_path: Path) -> None:
 
     assert result["link_count"] == 8
     assert (workspace / "data/03_subvideos_roi").resolve() == (
-        root / "processing/03_subvideos_roi"
+        root / "derived/subvideos"
     ).resolve()
 
 
 def test_remaps_frozen_absolute_data_path_without_following_symlink(
     tmp_path: Path,
 ) -> None:
-    workspace = tmp_path / "v4_1/workspace"
+    workspace = tmp_path / "current/.compat/workspace"
     old = Path("/old/machine/project/data/03_subvideos_roi/example.mp4")
 
     mapped = resolve_workspace_artifact(old, workspace)
 
     assert mapped == workspace / "data/03_subvideos_roi/example.mp4"
     assert workspace_relative_path(mapped, workspace) == (
+        "data/03_subvideos_roi/example.mp4"
+    )
+
+
+def test_maps_semantic_target_back_to_frozen_workspace_path(tmp_path: Path) -> None:
+    workspace = tmp_path / "current/.compat/workspace"
+    target = tmp_path / "current/derived/subvideos"
+    target.mkdir(parents=True)
+    link = workspace / "data/03_subvideos_roi"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(Path("../../../derived/subvideos"))
+    video = target / "example.mp4"
+    video.touch()
+
+    assert workspace_portable_path(video, workspace) == (
         "data/03_subvideos_roi/example.mp4"
     )

@@ -30,14 +30,18 @@ finetune/
 └── dataset_info.json         LLaMA-Factory 数据集注册信息
 
 data/
-├── 01_videos/                源视频
-├── 02_annotations/           原始标注
-├── 03_subvideos/             生成的子视频
-├── 04_frames/                子视频采样帧
-├── 05_splits/                训练/验证/测试划分
-├── 06_merged/                待发布的训练/评估构建结果（中间工作区）
-├── 07_metadata/              审核、质量检查和版本冻结元数据（过程证据）
-└── 08_training_ready/        通过质量门的版本化训练交付物（训练唯一入口）
+├── current -> tensile-data/current
+├── archive -> tensile-data/archive
+└── README.md                 数据目录说明
+
+tensile-data/current/
+├── source/                   原视频、原始标注和数据划分
+├── derived/
+│   ├── roi_videos/           ROI 视频
+│   ├── subvideos/            子视频
+│   ├── frames/               抽取帧
+│   └── metadata/             处理记录和审查结果
+└── training_releases/        冻结后可直接训练的数据版本
 
 scripts/                      独立校验与测试评估输入生成工具
 tests/                        项目测试
@@ -52,9 +56,10 @@ models/                       本地模型权重目录
 
 - `main` 只继续维护 `tensile-vlm/v4.1`。
 - `tensile-vlm-v2-final`（`archive/v2`）封存 V2，只用于历史复现。
-- 两版大型数据不共用目录：V2 使用 `tensile-data/v2`，V4.1 使用
-  `tensile-data/v4_1`。
-- V2 数据已经冻结为只读；V4.1 数据处理默认使用独立 workspace。
+- 两版大型数据不共用目录：旧版使用 `tensile-data/archive`，当前版使用
+  `tensile-data/current`。
+- 普通目录不携带版本编码；版本只保留在契约文件和冻结训练发布中。
+- 旧版数据已经冻结为只读；当前数据处理只写入 `current`。
 - 完整方案和迁移证据见
   [隔离设计](docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)与
   [迁移报告](docs/reports/2026-07-23-v2-v4-1-data-migration.md)。

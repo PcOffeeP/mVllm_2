@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 MARKER_NAME = ".tensile-data-root.json"
-REQUIRED_DIRECTORIES = ("input", "processing", "releases")
+REQUIRED_DIRECTORIES = ("source", "derived", "training_releases")
 
 
 class DataRootError(ValueError):
@@ -151,7 +151,7 @@ def workspace_root(
         config,
         contract_version,
         data_home=data_home,
-    ) / "workspace"
+    ) / ".compat" / "workspace"
 
 
 def resolve_workspace_artifact(value: str | Path, workspace: Path) -> Path:
@@ -184,6 +184,27 @@ def workspace_relative_path(path: Path, workspace: Path) -> str:
         raise DataRootError(f"路径不属于版本 workspace: {path}") from exc
 
 
+def workspace_portable_path(path: Path, workspace: Path) -> str:
+    """Return the frozen ``data/...`` identity for a semantic target."""
+    path = Path(path).absolute()
+    workspace = Path(workspace).absolute()
+    try:
+        return str(path.relative_to(workspace))
+    except ValueError:
+        pass
+    resolved = path.resolve()
+    for link in workspace.rglob("*"):
+        if not link.is_symlink():
+            continue
+        target = link.resolve()
+        try:
+            suffix = resolved.relative_to(target)
+        except ValueError:
+            continue
+        return str(link.relative_to(workspace) / suffix)
+    raise DataRootError(f"路径不属于版本 workspace: {path}")
+
+
 def initialize_workspace(
     config: Mapping[str, Any],
     contract_version: str,
@@ -198,7 +219,7 @@ def initialize_workspace(
         contract_version,
         data_home=data_home,
     )
-    workspace.mkdir(exist_ok=True)
+    workspace.mkdir(parents=True, exist_ok=True)
     for link_name, target_name in profile["workspace_links"].items():
         target = root / target_name
         if not target.exists():
@@ -210,9 +231,8 @@ def initialize_workspace(
         desired = Path(os.path.relpath(target, start=link.parent))
         if link.is_symlink():
             if link.readlink() != desired:
-                raise DataRootError(
-                    f"{contract_version}: workspace 链接漂移: {link}"
-                )
+                link.unlink()
+                link.symlink_to(desired, target_is_directory=target.is_dir())
         elif link.exists():
             raise DataRootError(
                 f"{contract_version}: workspace 路径不是符号链接: {link}"
