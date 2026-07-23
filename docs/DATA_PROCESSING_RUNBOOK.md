@@ -187,6 +187,32 @@ uv run python pipeline/scripts/materialize_v3_candidate_media.py
 帧率、解码、真实抽帧和状态门禁全部通过后原子发布；中断后可重跑，既有媒体必须与 receipt
 哈希完全一致。门禁失败的候选只记录排除原因，不进入人工复检队列。
 
+### v3 人工复检：先验收小样本
+
+`review_subvideos_app.py` 仍只服务旧 v2 metadata，不能读取本轮 v3 队列。先在训练机用三条
+候选验证专用 UI 的读取、播放、保存、重开和冻结；草稿与最终批次均写入独立的 media ID
+目录，不覆盖旧审查结果：
+
+```bash
+streamlit run pipeline/scripts/review_v3_candidates_app.py -- \
+  --queue data/07_metadata/v3/candidate_media_results/candidate-media-8de972530561/review_queue.json \
+  --manifest data/07_metadata/v3/candidate_media_results/candidate-media-8de972530561/manifest.json \
+  --review-reference data/07_metadata/v3/review_reference/review-ref-7cd2e73a1cd1/development_reference.json \
+  --limit 3 \
+  --reviewer-id <reviewer-id>
+```
+
+启动时工具会验证 queue 与 manifest 的身份、队列 SHA-256、全部候选 ID 和允许的人工状态，
+并验证本次选中候选的视频与帧图哈希。任一漂移都会拒绝启动。草稿按
+`media_id + 选定 candidate IDs hash` 隔离并原子保存，可关闭后重开续审；历史审查只读显示，
+不能自动批准。三条都有 `approved/corrected/dropped/needs_regenerate` 终态后，界面才允许
+冻结 `review-batch-<内容哈希>`，其中 `decisions.json` 必须能通过
+`pipeline/v3_review_decisions.py` 校验。
+
+小样本闭环确认无误后，去掉 `--limit 3` 启动完整 598 条队列。不得复用小样本草稿冒充全量
+结果；不同选定 candidate ID 集合会得到不同 workspace 身份。全量审查仍必须逐条形成终态，
+`needs_regenerate` 必须进入后续媒体重生成闭环，不能静默剔除。
+
 ### 下一轮数据处理时的正常行为
 
 在生成下一轮 ROI 子视频之前，跨仓目标输出已冻结为 `tensile-vlm/v3`。其权威 artifact 位于
