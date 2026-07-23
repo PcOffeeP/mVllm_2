@@ -517,6 +517,14 @@ def validate_experiment_config(
             )
     if visual and config.get("additional_target") != "resampler":
         raise VisualDataExperimentError("视觉实验必须保存 resampler")
+    if visual and (
+        config.get("quantization_bit") != 4
+        or config.get("quantization_method") != "bnb"
+        or config.get("optim") != "adamw_torch"
+    ):
+        raise VisualDataExperimentError(
+            "视觉实验必须使用 4-bit bnb 基座和 adamw_torch 优化器"
+        )
     if not visual and config.get("additional_target") is not None:
         raise VisualDataExperimentError("语言对照不得包含 additional_target")
     expected_train = (
