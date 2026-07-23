@@ -32,6 +32,22 @@ from pipeline.v3_review_workflow import (
     save_draft,
 )
 
+STATUS_FILTERS = {
+    "未审核": None,
+    "全部": "all",
+    "已批准": "approved",
+    "已修正": "corrected",
+    "已丢弃": "dropped",
+    "需重新生成": "needs_regenerate",
+}
+STATUS_EMOJI = {
+    None: "○",
+    "approved": "✓",
+    "corrected": "✎",
+    "dropped": "×",
+    "needs_regenerate": "↻",
+}
+
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
@@ -65,18 +81,131 @@ def _option_index(options: list[Any], value: Any) -> int:
         return 0
 
 
+def _decision_status(
+    candidate_id: str, decisions: dict[str, dict[str, Any]]
+) -> str | None:
+    decision = decisions.get(candidate_id)
+    return str(decision["review_status"]) if decision else None
+
+
+def review_counts(
+    candidate_ids: list[str], decisions: dict[str, dict[str, Any]]
+) -> dict[str, int]:
+    counts = {
+        "total": len(candidate_ids),
+        "reviewed": 0,
+        "remaining": 0,
+        "approved": 0,
+        "corrected": 0,
+        "dropped": 0,
+        "needs_regenerate": 0,
+    }
+    for candidate_id in candidate_ids:
+        status = _decision_status(candidate_id, decisions)
+        if status is None:
+            counts["remaining"] += 1
+        else:
+            counts["reviewed"] += 1
+            if status in counts:
+                counts[status] += 1
+    return counts
+
+
+def filter_candidate_ids(
+    candidates: list[dict[str, Any]],
+    decisions: dict[str, dict[str, Any]],
+    *,
+    status_filter: str,
+    source_filter: str | None,
+    search: str,
+) -> list[str]:
+    wanted_status = STATUS_FILTERS[status_filter]
+    query = search.strip().lower()
+    result: list[str] = []
+    for candidate in candidates:
+        candidate_id = str(candidate["candidate_id"])
+        source_video = str(candidate["source_video"])
+        status = _decision_status(candidate_id, decisions)
+        if wanted_status != "all" and status != wanted_status:
+            continue
+        if source_filter is not None and source_video != source_filter:
+            continue
+        if query and query not in candidate_id.lower() and query not in source_video.lower():
+            continue
+        result.append(candidate_id)
+    return result
+
+
+def next_unreviewed_id(
+    candidate_ids: list[str],
+    decisions: dict[str, dict[str, Any]],
+    *,
+    after_id: str | None = None,
+) -> str | None:
+    if not candidate_ids:
+        return None
+    start = 0
+    if after_id in candidate_ids:
+        start = candidate_ids.index(after_id) + 1
+    ordered = candidate_ids[start:] + candidate_ids[:start]
+    return next(
+        (
+            candidate_id
+            for candidate_id in ordered
+            if candidate_id not in decisions
+        ),
+        None,
+    )
+
+
+def _candidate_label(
+    candidate: dict[str, Any], decisions: dict[str, dict[str, Any]]
+) -> str:
+    candidate_id = str(candidate["candidate_id"])
+    status = _decision_status(candidate_id, decisions)
+    return (
+        f"{STATUS_EMOJI[status]} {candidate['source_video']} · "
+        f"{candidate.get('window_role', 'clip')} · "
+        f"{float(candidate['start_time']):.2f}–{float(candidate['end_time']):.2f}s"
+    )
+
+
+@st.cache_data(show_spinner="正在验证复检队列和媒体…")
+def _cached_review_queue(
+    queue_path: str,
+    manifest_path: str,
+    project_root: str,
+    candidate_ids: tuple[str, ...],
+    limit: int | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    return load_review_queue(
+        Path(queue_path),
+        manifest_path=Path(manifest_path),
+        project_root=Path(project_root),
+        candidate_ids=candidate_ids,
+        limit=limit,
+    )
+
+
+@st.cache_data(show_spinner=False)
+def _cached_reference_records(path: str | None) -> dict[str, dict[str, Any]]:
+    return load_reference_records(Path(path) if path is not None else None)
+
+
 def main() -> None:
     st.set_page_config(page_title="v3 人工复检", layout="wide")
     args = _parse_args()
     try:
-        identity, candidates = load_review_queue(
-            args.queue,
-            manifest_path=args.manifest,
-            project_root=args.project_root,
-            candidate_ids=args.candidate_id,
-            limit=args.limit,
+        identity, candidates = _cached_review_queue(
+            str(args.queue.resolve()),
+            str(args.manifest.resolve()),
+            str(args.project_root.resolve()),
+            tuple(args.candidate_id),
+            args.limit,
         )
-        references = load_reference_records(args.review_reference)
+        references = _cached_reference_records(
+            str(args.review_reference.resolve()) if args.review_reference else None
+        )
         default_draft, default_output_root = _default_paths(
             args.project_root.resolve(),
             identity["media_id"],
@@ -89,66 +218,177 @@ def main() -> None:
         st.error(str(exc))
         st.stop()
 
-    st.title("v3 候选媒体人工复检")
-    st.caption(
-        f"media_id={identity['media_id']} · 选定 {len(candidates)}/"
-        f"{identity['full_queue_count']} · 已完成 {len(decisions)}"
-    )
-    with st.expander("队列身份与隔离输出"):
-        st.json(identity)
-        st.write(f"草稿：`{draft_path}`")
-        st.write(f"冻结目录：`{output_root}`")
-
     candidate_index = {item["candidate_id"]: item for item in candidates}
     candidate_ids = identity["selected_candidate_ids"]
-    if "v3_review_candidate_id" not in st.session_state:
-        st.session_state.v3_review_candidate_id = next(
-            (item for item in candidate_ids if item not in decisions),
-            candidate_ids[0],
+    counts = review_counts(candidate_ids, decisions)
+    completed_batch: Path | None = None
+    freeze_error: str | None = None
+    if counts["remaining"] == 0:
+        try:
+            completed_batch = freeze_completed_batch(
+                output_root, identity, decisions
+            )
+        except (V3ReviewWorkflowError, ValueError, FileExistsError) as exc:
+            freeze_error = str(exc)
+
+    st.title("v3 人工复检")
+    metric_columns = st.columns(6)
+    for column, label, value in zip(
+        metric_columns,
+        ("总数", "已完成", "待审核", "批准", "修正", "需重生成"),
+        (
+            counts["total"],
+            counts["reviewed"],
+            counts["remaining"],
+            counts["approved"],
+            counts["corrected"],
+            counts["needs_regenerate"],
+        ),
+        strict=True,
+    ):
+        column.metric(label, value)
+    if completed_batch is not None:
+        st.success("全部候选已审核完成，结果已安全保存。")
+    elif freeze_error is not None:
+        st.warning(f"全部决定已保存，但最终汇总暂未完成：{freeze_error}")
+
+    with st.sidebar:
+        st.subheader("筛选")
+        status_filter = st.selectbox(
+            "审核状态",
+            list(STATUS_FILTERS),
+            index=0,
+            key="v3_status_filter",
         )
-    selected_id = st.selectbox(
-        "候选",
-        candidate_ids,
-        index=_option_index(
-            candidate_ids, st.session_state.v3_review_candidate_id
-        ),
-        format_func=lambda item: (
-            f"{'✅' if item in decisions else '❓'} {item} · "
-            f"{candidate_index[item]['candidate_v3_labels']['clip_state']}"
-        ),
+        source_options = [
+            None,
+            *sorted({str(item["source_video"]) for item in candidates}),
+        ]
+        source_filter = st.selectbox(
+            "源视频",
+            source_options,
+            format_func=lambda value: "全部源视频" if value is None else value,
+            key="v3_source_filter",
+        )
+        search = st.text_input(
+            "搜索候选或源视频",
+            key="v3_candidate_search",
+        )
+        with st.expander("技术信息（一般无需查看）", expanded=False):
+            st.caption(f"媒体批次：{identity['media_id']}")
+            st.caption(f"草稿：{draft_path}")
+            st.caption(f"结果目录：{output_root}")
+
+    filtered_ids = filter_candidate_ids(
+        candidates,
+        decisions,
+        status_filter=status_filter,
+        source_filter=source_filter,
+        search=search,
     )
-    st.session_state.v3_review_candidate_id = selected_id
+    if not filtered_ids:
+        st.info("当前筛选没有候选。请切换审核状态、源视频或清空搜索条件。")
+        return
+
+    if "v3_review_candidate_id" not in st.session_state:
+        st.session_state.v3_review_candidate_id = (
+            next_unreviewed_id(candidate_ids, decisions) or candidate_ids[0]
+        )
+    if st.session_state.v3_review_candidate_id not in filtered_ids:
+        st.session_state.v3_review_candidate_id = filtered_ids[0]
+
+    list_col, media_col, form_col = st.columns([0.8, 1.35, 1])
+    with list_col:
+        st.subheader(f"候选列表 · {len(filtered_ids)}")
+        selected_id = st.selectbox(
+            "选择候选",
+            filtered_ids,
+            index=_option_index(
+                filtered_ids, st.session_state.v3_review_candidate_id
+            ),
+            format_func=lambda item: _candidate_label(
+                candidate_index[item], decisions
+            ),
+            label_visibility="collapsed",
+        )
+        st.session_state.v3_review_candidate_id = selected_id
+        current_index = filtered_ids.index(selected_id)
+        previous_col, next_col = st.columns(2)
+        if previous_col.button(
+            "上一条",
+            disabled=current_index == 0,
+            use_container_width=True,
+        ):
+            st.session_state.v3_review_candidate_id = filtered_ids[
+                current_index - 1
+            ]
+            st.rerun()
+        if next_col.button(
+            "下一条",
+            disabled=current_index >= len(filtered_ids) - 1,
+            use_container_width=True,
+        ):
+            st.session_state.v3_review_candidate_id = filtered_ids[
+                current_index + 1
+            ]
+            st.rerun()
+        st.caption(f"{current_index + 1} / {len(filtered_ids)}")
+
     candidate = candidate_index[selected_id]
     existing = decisions.get(selected_id)
     historical_labels, historical_ids, historical_records = historical_context(
         candidate, references
     )
 
-    media_col, form_col = st.columns([1.35, 1])
     with media_col:
+        st.subheader(str(candidate["source_video"]))
+        st.caption(
+            f"{float(candidate['start_time']):.3f}s–"
+            f"{float(candidate['end_time']):.3f}s · "
+            f"{candidate.get('window_role', 'clip')}"
+        )
         st.video(candidate["_resolved_video_path"])
         frames = [item["path"] for item in candidate["_resolved_frames"]]
         if frames:
             st.image(frames, caption=[Path(item).name for item in frames])
-        with st.expander("实际帧映射"):
-            st.json(candidate["actual_frame_mapping"])
+        with st.expander("实际帧映射", expanded=False):
+            st.dataframe(
+                candidate["actual_frame_mapping"],
+                use_container_width=True,
+                hide_index=True,
+            )
 
     with form_col:
-        st.subheader(candidate["candidate_id"])
-        st.write(
-            f"`{candidate['source_video']}` · {candidate['start_time']:.3f}s–"
-            f"{candidate['end_time']:.3f}s · {candidate.get('window_role')}"
+        st.subheader("标签确认")
+        proposed = candidate["candidate_v3_labels"]
+        root_break_label = {
+            True: "齐根",
+            False: "非齐根",
+            None: "齐根未知",
+        }[proposed["root_break"]]
+        st.caption(
+            "系统建议："
+            f"{proposed['clip_state']} · "
+            f"{proposed['fracture_mechanism'] or '机制未知'} · "
+            f"{root_break_label} · "
+            f"{proposed['location'] or '位置未知'}"
         )
-        st.write("系统建议")
-        st.json(candidate["candidate_v3_labels"])
-        st.write("历史审查参考（只读，不自动批准）")
-        if historical_records:
-            st.json(historical_records)
-        else:
-            st.caption(f"未加载可用历史记录；候选引用 ID：{historical_ids or '无'}")
+        with st.expander(
+            f"历史参考 · {len(historical_records)} 条",
+            expanded=False,
+        ):
+            if historical_labels is not None:
+                st.caption("历史记录存在一致的 v3 标签建议。")
+                st.json(historical_labels, expanded=False)
+            elif historical_records:
+                st.caption("历史记录存在，但没有一致的 v3 标签建议。")
+            else:
+                st.caption("当前候选没有可用的历史参考。")
+            if historical_ids:
+                st.caption("参考 ID")
+                st.code("\n".join(historical_ids))
         if existing:
-            st.write("已保存决定")
-            st.json(existing)
+            st.info(f"当前已保存：{existing['review_status']}")
 
         base_labels = (
             existing.get("effective_labels")
@@ -191,12 +431,23 @@ def main() -> None:
                 ),
             )
             notes = st.text_area(
-                "reviewer_notes",
+                "备注（丢弃或重新生成时必填）",
                 value=str((existing or {}).get("reviewer_notes") or ""),
             )
-            approve = st.form_submit_button("批准当前标签", type="primary")
-            drop = st.form_submit_button("丢弃")
-            regenerate = st.form_submit_button("需要重新生成")
+            button_columns = st.columns(3)
+            approve = button_columns[0].form_submit_button(
+                "批准",
+                type="primary",
+                use_container_width=True,
+            )
+            drop = button_columns[1].form_submit_button(
+                "丢弃",
+                use_container_width=True,
+            )
+            regenerate = button_columns[2].form_submit_button(
+                "需重生成",
+                use_container_width=True,
+            )
 
         if approve or drop or regenerate:
             try:
@@ -229,25 +480,14 @@ def main() -> None:
             except (V3ReviewWorkflowError, ValueError) as exc:
                 st.error(str(exc))
                 st.stop()
-            st.success(f"已原子保存草稿：{draft_path}")
-            remaining = [item for item in candidate_ids if item not in decisions]
-            if remaining:
-                st.session_state.v3_review_candidate_id = remaining[0]
-            st.rerun()
-
-    st.divider()
-    remaining_count = len(candidate_ids) - len(decisions)
-    if st.button("冻结已完成的选定队列", disabled=remaining_count != 0):
-        try:
-            batch_dir = freeze_completed_batch(
-                output_root, identity, decisions
+            next_candidate = next_unreviewed_id(
+                candidate_ids,
+                decisions,
+                after_id=selected_id,
             )
-        except (V3ReviewWorkflowError, ValueError, FileExistsError) as exc:
-            st.error(str(exc))
-            st.stop()
-        st.success(f"已冻结不可覆盖批次：{batch_dir}")
-    if remaining_count:
-        st.info(f"还有 {remaining_count} 条未形成终态决定，暂不能冻结。")
+            if next_candidate is not None:
+                st.session_state.v3_review_candidate_id = next_candidate
+            st.rerun()
 
 
 if __name__ == "__main__":

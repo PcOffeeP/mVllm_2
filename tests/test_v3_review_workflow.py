@@ -6,6 +6,11 @@ from pathlib import Path
 
 import pytest
 
+from pipeline.scripts.review_v3_candidates_app import (
+    filter_candidate_ids,
+    next_unreviewed_id,
+    review_counts,
+)
 from pipeline.v3_review_decisions import validate_review_payload
 from pipeline.v3_review_workflow import (
     V3ReviewWorkflowError,
@@ -247,3 +252,58 @@ def test_streamlit_entrypoint_bootstraps_project_imports_from_other_cwd(tmp_path
     )
     assert result.returncode == 0, result.stderr
     assert "v3 候选媒体人工复检 UI" in result.stdout
+
+
+def test_workbench_filters_candidates_and_counts_terminal_statuses():
+    candidates = [
+        {"candidate_id": "c1", "source_video": "video_0001"},
+        {"candidate_id": "c2", "source_video": "video_0001"},
+        {"candidate_id": "c3", "source_video": "video_0002"},
+    ]
+    decisions = {
+        "c1": {"review_status": "approved"},
+        "c3": {"review_status": "needs_regenerate"},
+    }
+    assert review_counts(["c1", "c2", "c3"], decisions) == {
+        "total": 3,
+        "reviewed": 2,
+        "remaining": 1,
+        "approved": 1,
+        "corrected": 0,
+        "dropped": 0,
+        "needs_regenerate": 1,
+    }
+    assert filter_candidate_ids(
+        candidates,
+        decisions,
+        status_filter="未审核",
+        source_filter=None,
+        search="",
+    ) == ["c2"]
+    assert filter_candidate_ids(
+        candidates,
+        decisions,
+        status_filter="全部",
+        source_filter="video_0001",
+        search="C",
+    ) == ["c1", "c2"]
+    assert filter_candidate_ids(
+        candidates,
+        decisions,
+        status_filter="需重新生成",
+        source_filter=None,
+        search="video_0002",
+    ) == ["c3"]
+
+
+def test_workbench_next_unreviewed_wraps_after_current_candidate():
+    candidate_ids = ["c1", "c2", "c3", "c4"]
+    decisions = {
+        "c1": {"review_status": "approved"},
+        "c3": {"review_status": "approved"},
+    }
+    assert next_unreviewed_id(candidate_ids, decisions, after_id="c2") == "c4"
+    decisions["c4"] = {"review_status": "approved"}
+    assert next_unreviewed_id(candidate_ids, decisions, after_id="c4") == "c2"
+    decisions["c2"] = {"review_status": "approved"}
+    assert next_unreviewed_id(candidate_ids, decisions, after_id="c4") is None
