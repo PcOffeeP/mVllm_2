@@ -1,0 +1,57 @@
+{
+  "checks": {
+    "all_media_hashes_verified": true,
+    "contract_bound": true,
+    "frame_window_labels_are_authoritative": true,
+    "media_manifest_bound": true,
+    "only_stable_negatives_auto_admitted": true,
+    "review_queue_fully_decided": true,
+    "source_level_split_isolation": true
+  },
+  "counts": {
+    "automatic_unreviewed_candidates": 511,
+    "excluded_candidates": 10,
+    "human_approved": 583,
+    "human_corrected": 181,
+    "materialized_candidates": 1285,
+    "published_candidates": 1275,
+    "reviewed_candidates": 774,
+    "splits": {
+      "fold_0_train": 850,
+      "fold_0_val": 425,
+      "fold_1_train": 830,
+      "fold_1_val": 445,
+      "fold_2_train": 929,
+      "fold_2_val": 346
+    }
+  },
+  "distributions": {
+    "clip_state": {
+      "临界未断裂": 161,
+      "发生断裂": 441,
+      "已断裂": 106,
+      "未断裂": 567
+    },
+    "fracture_mechanism": {
+      "null": 573,
+      "半脆半韧断裂": 1,
+      "爆炸性断裂": 9,
+      "界面脱粘": 90,
+      "脆性断裂": 211,
+      "韧性断裂": 391
+    },
+    "fracture_site": {
+      "grip_root": 73,
+      "inside_gauge": 488,
+      "null": 585,
+      "outside_gauge_non_root": 129
+    },
+    "special_case": {
+      "null": 1275
+    }
+  },
+  "error_count": 0,
+  "schema_version": "tensile-training-quality/v4.1",
+  "status": "passed",
+  "warning_count": 0
+}
