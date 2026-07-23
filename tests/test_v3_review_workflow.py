@@ -1,5 +1,7 @@
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -229,3 +231,19 @@ def test_corrected_must_differ_and_drop_requires_notes(tmp_path):
             reviewer_notes="",
             reviewer_id=None,
         )
+
+
+def test_streamlit_entrypoint_bootstraps_project_imports_from_other_cwd(tmp_path):
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "pipeline/scripts/review_v3_candidates_app.py"
+    )
+    result = subprocess.run(
+        [sys.executable, str(script), "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "v3 候选媒体人工复检 UI" in result.stdout
