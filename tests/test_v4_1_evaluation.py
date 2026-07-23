@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from finetune.run_v4_1_evaluation import (
+    evaluation_succeeded,
     load_validation_samples,
     summarize_records,
 )
@@ -59,3 +60,12 @@ def test_summarizes_strict_metrics_and_confusion() -> None:
     assert summary["clip_state_confusion"]["发生断裂"]["发生断裂"] == 1
     assert summary["clip_state_confusion"]["发生断裂"]["__invalid__"] == 1
     assert summary["clip_state_confusion"]["未断裂"]["发生断裂"] == 1
+    assert evaluation_succeeded(summary) is False
+
+
+def test_evaluation_succeeds_when_inference_has_no_runtime_failures() -> None:
+    stable = _labels("未断裂")
+    summary = summarize_records([_record(stable, None)])
+
+    assert summary["strict_valid_rate"] == 0.0
+    assert evaluation_succeeded(summary) is True

@@ -85,10 +85,26 @@ def _merged_complete(fold: Fold) -> bool:
 
 
 def _evaluation_complete(fold: Fold) -> bool:
+    summary_path = fold.result_dir / "evaluation_summary.json"
+    records_path = fold.result_dir / "evaluation_records.jsonl"
+    failures_path = fold.result_dir / "runtime_failures.csv"
+    if not all(path.is_file() for path in (summary_path, records_path, failures_path)):
+        return False
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        record_count = sum(
+            bool(line.strip())
+            for line in records_path.read_text(encoding="utf-8").splitlines()
+        )
+    except (OSError, json.JSONDecodeError):
+        return False
+    total = summary.get("total_samples") if isinstance(summary, dict) else None
     return (
-        (fold.result_dir / "evaluation_summary.json").is_file()
-        and (fold.result_dir / "evaluation_records.jsonl").is_file()
-        and (fold.result_dir / "runtime_failures.csv").is_file()
+        isinstance(total, int)
+        and total > 0
+        and summary.get("sample_count") == total
+        and summary.get("runtime_failure_count") == 0
+        and record_count == total
     )
 
 

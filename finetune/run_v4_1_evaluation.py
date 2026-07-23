@@ -27,6 +27,7 @@ from finetune.validation.model_runtime import (
     load_model,
     run_model_on_video_detailed,
 )
+from pipeline.current_data import current_data_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "pipeline/contracts/tensile_vlm_v4_1.json"
@@ -147,7 +148,10 @@ def evaluate_one(
     sampled_timestamps: list[float] | None = None
     generated_token_count: int | None = None
     hit_token_limit: bool | None = None
-    video_path = ROOT / str(sample["video_path"])
+    video_path = (
+        current_data_paths(ROOT).compatibility_workspace
+        / str(sample["video_path"])
+    )
     try:
         result = run_model_on_video_detailed(
             model,
@@ -221,6 +225,15 @@ def summarize_records(records: list[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def evaluation_succeeded(summary: Mapping[str, Any]) -> bool:
+    total = summary.get("total_samples")
+    return (
+        isinstance(total, int)
+        and total > 0
+        and summary.get("runtime_failure_count") == 0
+    )
+
+
 def _write_final_outputs(
     out_dir: Path,
     identity: Mapping[str, Any],
@@ -273,8 +286,9 @@ def main() -> int:
     if len(existing) == len(samples):
         ordered = [existing[sample["candidate_id"]] for sample in samples]
         _write_final_outputs(args.out_dir, identity, ordered)
-        print(json.dumps(summarize_records(ordered), ensure_ascii=False, indent=2))
-        return 0
+        summary = summarize_records(ordered)
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        return 0 if evaluation_succeeded(summary) else 1
 
     processor, model = load_model(str(args.model_dir))
     analysis = contract["analysis"]
@@ -302,10 +316,10 @@ def main() -> int:
             )
     ordered = [existing[sample["candidate_id"]] for sample in samples]
     _write_final_outputs(args.out_dir, identity, ordered)
-    print(json.dumps(summarize_records(ordered), ensure_ascii=False, indent=2))
-    return 0
+    summary = summarize_records(ordered)
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    return 0 if evaluation_succeeded(summary) else 1
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
