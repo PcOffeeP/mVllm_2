@@ -10,6 +10,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline.current_data import current_data_paths
+from pipeline.data_roots import DataRootError, workspace_portable_path
+
 from pipeline.v3_labels import (
     SOURCE_FRACTURE,
     SOURCE_NO_FRACTURE,
@@ -70,7 +73,13 @@ def _portable_path(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(PROJECT_ROOT))
     except ValueError:
-        return str(path.resolve())
+        try:
+            return workspace_portable_path(
+                path,
+                current_data_paths(PROJECT_ROOT).compatibility_workspace,
+            )
+        except DataRootError:
+            return str(path.resolve())
 
 
 def _load_json(path: Path) -> Any:

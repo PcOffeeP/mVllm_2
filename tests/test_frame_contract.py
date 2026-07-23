@@ -317,6 +317,18 @@ def test_full_subvideo_materialized_to_03_subvideos(monkeypatch, tmp_path: Path)
     source = tmp_path / "data" / "01_videos" / "video_0001.mp4"
     source.parent.mkdir(parents=True)
     source.write_bytes(b"source")
+    monkeypatch.setattr(
+        subvideo_builder,
+        "SUBVIDEO_DIR_DEFAULT",
+        tmp_path / "data" / "03_subvideos",
+    )
+    monkeypatch.setattr(
+        subvideo_builder,
+        "FRAME_DIR_DEFAULT",
+        tmp_path / "data" / "04_frames",
+    )
+    monkeypatch.setattr(subvideo_builder, "PROJECT_ROOT", tmp_path)
+    subvideo_builder.SUBVIDEO_DIR_DEFAULT.mkdir(parents=True)
 
     copied = []
     def fake_copy(input_path: Path, output_path: Path) -> None:
