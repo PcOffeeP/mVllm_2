@@ -169,6 +169,41 @@ def _candidate_label(
     )
 
 
+def render_review_media(candidate: dict[str, Any]) -> None:
+    """Show the model-observed frames first and keep video as optional context."""
+    st.subheader(str(candidate["source_video"]))
+    st.caption(
+        f"{float(candidate['start_time']):.3f}s–"
+        f"{float(candidate['end_time']):.3f}s · "
+        f"{candidate.get('window_role', 'clip')}"
+    )
+    frames = [item["path"] for item in candidate["_resolved_frames"]]
+    timestamps = list(candidate["_actual_sampled_timestamps"])
+    st.markdown("#### 模型采样帧")
+    st.caption("请优先依据这些按时间顺序排列的画面审查。")
+    if frames:
+        frame_columns = st.columns(min(2, len(frames)))
+        for index, frame_path in enumerate(frames):
+            timestamp = timestamps[index] if index < len(timestamps) else None
+            caption = f"第 {index + 1} 帧"
+            if timestamp is not None:
+                caption += f" · {float(timestamp):.3f}s"
+            frame_columns[index % len(frame_columns)].image(
+                frame_path,
+                caption=caption,
+                use_container_width=True,
+            )
+    with st.expander("辅助查看：连续视频", expanded=False):
+        st.caption("仅在采样帧存在时序歧义时展开查看。")
+        st.video(candidate["_resolved_video_path"])
+    with st.expander("实际帧映射", expanded=False):
+        st.dataframe(
+            candidate["actual_frame_mapping"],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
 @st.cache_data(show_spinner="正在验证复检队列和媒体…")
 def _cached_review_queue(
     queue_path: str,
@@ -337,22 +372,7 @@ def main() -> None:
     )
 
     with media_col:
-        st.subheader(str(candidate["source_video"]))
-        st.caption(
-            f"{float(candidate['start_time']):.3f}s–"
-            f"{float(candidate['end_time']):.3f}s · "
-            f"{candidate.get('window_role', 'clip')}"
-        )
-        st.video(candidate["_resolved_video_path"])
-        frames = [item["path"] for item in candidate["_resolved_frames"]]
-        if frames:
-            st.image(frames, caption=[Path(item).name for item in frames])
-        with st.expander("实际帧映射", expanded=False):
-            st.dataframe(
-                candidate["actual_frame_mapping"],
-                use_container_width=True,
-                hide_index=True,
-            )
+        render_review_media(candidate)
 
     with form_col:
         st.subheader("标签确认")
