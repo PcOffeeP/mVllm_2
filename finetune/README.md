@@ -48,6 +48,26 @@ python train_with_contract.py \
 版本和 `output_dir` 必须对应实际运行批次，不能沿用旧实验路径。训练入口默认拒绝
 覆盖已有目录。
 
+### V4.1 隔离训练
+
+V4.1 发布 `v4.1.0-760050fad303` 使用帧窗口级四字段标签，不复用 V2 的活动数据注册、
+Prompt 或输出解析。三个训练配置直接绑定发布目录内的 `dataset_info.json`：
+
+```bash
+cd /path/to/mVllm_2
+python finetune/run_v4_1_three_fold_training.py --validate-only
+python finetune/run_v4_1_three_fold_training.py
+```
+
+流水线依次训练三个 fold，使用
+`train_v4_1_fold0.yaml`、`train_v4_1_fold1.yaml` 和
+`train_v4_1_fold2.yaml`。预检会逐文件验证发布哈希、1275 条媒体路径、V4.1 标签、
+train/val 隔离、配置绑定和输出目录不可覆盖性。运行状态写入
+`finetune/run_logs/three_fold_training_v4_1_0_760050fad303_20260723.json`。
+
+旧 `active_data_release.json` 和 V2 配置继续保留，用于复现历史实验；V4.1 训练不通过
+修改全局活动指针来接管它们。
+
 ## 合并 LoRA
 
 使用与训练 fold 对应的固定 merge 配置：
