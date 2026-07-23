@@ -14,9 +14,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from pipeline.data_roots import (
     initialize_root,
+    initialize_workspace,
     load_config,
     resolve_data_home,
     validate_root,
+    validate_workspace,
 )
 
 DEFAULT_CONFIG = PROJECT_ROOT / "config/data_roots.json"
@@ -24,7 +26,7 @@ DEFAULT_CONFIG = PROJECT_ROOT / "config/data_roots.json"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("init", "check"))
+    parser.add_argument("action", choices=("init", "check", "workspace"))
     parser.add_argument(
         "--contract",
         choices=("tensile-vlm/v2", "tensile-vlm/v4.1", "all"),
@@ -56,13 +58,24 @@ def main() -> int:
                 contract_version,
                 data_home=data_home,
             )
-        results.append(
-            validate_root(
+        elif args.action == "workspace":
+            initialize_workspace(
                 config,
                 contract_version,
                 data_home=data_home,
             )
+        result = validate_root(
+            config,
+            contract_version,
+            data_home=data_home,
         )
+        if args.action == "workspace":
+            result["workspace"] = validate_workspace(
+                config,
+                contract_version,
+                data_home=data_home,
+            )
+        results.append(result)
     print(
         json.dumps(
             {"data_home": str(data_home), "profiles": results},

@@ -6,12 +6,33 @@
     "tensile-vlm/v2": {
       "directory": "v2",
       "git_ref": "tensile-vlm-v2-final",
-      "lifecycle": "frozen"
+      "lifecycle": "frozen",
+      "workspace_links": {
+        "data/01_videos": "input/01_videos",
+        "data/02_annotations": "input/02_annotations",
+        "data/03_subvideos": "processing/03_subvideos",
+        "data/04_frames": "processing/04_frames",
+        "data/05_splits": "processing/05_splits",
+        "data/06_merged": "processing/06_merged",
+        "data/07_metadata": "processing/07_metadata",
+        "data/08_incremental_review": "processing/08_incremental_review",
+        "data/08_training_ready": "releases"
+      }
     },
     "tensile-vlm/v4.1": {
       "directory": "v4_1",
       "git_ref": "main",
-      "lifecycle": "active"
+      "lifecycle": "active",
+      "workspace_links": {
+        "data/01_videos": "input/01_videos",
+        "data/02_annotations": "input/02_annotations",
+        "data/03_roi_videos": "processing/03_roi_videos",
+        "data/03_subvideos_roi": "processing/03_subvideos_roi",
+        "data/04_frames_roi": "processing/04_frames_roi",
+        "data/05_splits": "input/05_splits",
+        "data/07_metadata": "processing/07_metadata",
+        "data/08_training_ready": "releases"
+      }
     }
   }
 }

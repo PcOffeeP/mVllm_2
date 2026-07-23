@@ -8,8 +8,10 @@ import pytest
 from pipeline.data_roots import (
     DataRootError,
     initialize_root,
+    initialize_workspace,
     load_config,
     validate_root,
+    validate_workspace,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,16 +20,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_committed_profiles_use_distinct_roots() -> None:
     config = load_config(ROOT / "config/data_roots.json")
 
-    assert config["profiles"]["tensile-vlm/v2"] == {
-        "directory": "v2",
-        "git_ref": "tensile-vlm-v2-final",
-        "lifecycle": "frozen",
-    }
-    assert config["profiles"]["tensile-vlm/v4.1"] == {
-        "directory": "v4_1",
-        "git_ref": "main",
-        "lifecycle": "active",
-    }
+    assert config["profiles"]["tensile-vlm/v2"]["directory"] == "v2"
+    assert config["profiles"]["tensile-vlm/v2"]["git_ref"] == "tensile-vlm-v2-final"
+    assert config["profiles"]["tensile-vlm/v2"]["lifecycle"] == "frozen"
+    assert config["profiles"]["tensile-vlm/v4.1"]["directory"] == "v4_1"
+    assert config["profiles"]["tensile-vlm/v4.1"]["git_ref"] == "main"
+    assert config["profiles"]["tensile-vlm/v4.1"]["lifecycle"] == "active"
 
 
 def test_initialize_and_validate_versioned_roots(tmp_path: Path) -> None:
@@ -59,3 +57,26 @@ def test_rejects_contract_mismatch(tmp_path: Path) -> None:
 
     with pytest.raises(DataRootError, match="contract_version"):
         validate_root(config, "tensile-vlm/v2", data_home=tmp_path)
+
+
+def test_workspace_links_stay_inside_version_root(tmp_path: Path) -> None:
+    config = load_config(ROOT / "config/data_roots.json")
+    root = initialize_root(config, "tensile-vlm/v4.1", data_home=tmp_path)
+    for target_name in config["profiles"]["tensile-vlm/v4.1"]["workspace_links"].values():
+        (root / target_name).mkdir(parents=True, exist_ok=True)
+
+    workspace = initialize_workspace(
+        config,
+        "tensile-vlm/v4.1",
+        data_home=tmp_path,
+    )
+    result = validate_workspace(
+        config,
+        "tensile-vlm/v4.1",
+        data_home=tmp_path,
+    )
+
+    assert result["link_count"] == 8
+    assert (workspace / "data/03_subvideos_roi").resolve() == (
+        root / "processing/03_subvideos_roi"
+    ).resolve()
