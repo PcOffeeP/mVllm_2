@@ -1,5 +1,9 @@
 # 材料拉伸视频模型的验证与优化方向
 
+> **定位说明。** 本文保留为长期研究方向和历史决策记录，不是当前 V4.1 数据、训练或
+> 部署操作手册。当前执行入口以仓库 README、`DATA_PROCESSING_RUNBOOK.md` 和
+> `finetune/README.md` 为准。
+
 关联文档：[README.md](../README.md)、[数据处理与训练运行手册](../docs/DATA_PROCESSING_RUNBOOK.md)。
 
 ## 文档定位

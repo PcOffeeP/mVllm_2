@@ -1,12 +1,25 @@
-# 微调与评估
+# V4.1 微调、合并与评测
 
-本目录包含 MiniCPM-V LoRA 微调配置和直接输出评估脚本。LLaMA-Factory 位于仓库根目录的 `LlamaFactory/` 子模块。评估准则与视觉验证方向见 [docs/VISUAL_GROUNDING_AND_ROI_OPTIMIZATION.md](../docs/VISUAL_GROUNDING_AND_ROI_OPTIMIZATION.md)。
+本目录维护 MiniCPM-V-4.5 的 V4.1 三折 LoRA 微调、模型合并和严格验证集推理。
+训练、模型合并和 GPU 推理必须在训练电脑执行；本机只复核代码和已同步的轻量结果。
 
-训练、GPU 推理和完整评测在训练电脑执行；本机只查看或复核已同步的预测结果。
+## 当前身份
 
-## 环境准备
+| 项目 | 值 |
+| --- | --- |
+| 契约 | `tensile-vlm/v4.1` |
+| 契约 hash | `47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937` |
+| 数据发布 | `v4.1.0-760050fad303` |
+| 发布路径 | `data/current/training_releases/v4.1.0-760050fad303` |
+| 发布样本 | 1275 |
+| 三折训练 | 已完成 |
+| 三折合并与验证推理 | 正在执行；是否完成以状态文件和各 fold 汇总为准 |
 
-数据、基座模型、环境和人工审核流程见仓库根目录 [README.md](../README.md)。微调额外依赖：
+V4.1 不使用旧 `finetune/active_data_release.json`、旧
+`finetune/dataset_info.json` 或 V2 Prompt 作为活动指针。三个训练配置直接绑定冻结发布
+中的 `dataset_info.json`，避免 V2/V4.1 串线。
+
+## 环境
 
 ```bash
 cd LlamaFactory
@@ -14,233 +27,144 @@ pip install -e ".[metrics]"
 pip install -r requirements/minicpm-v.txt
 ```
 
-## 训练 LoRA
-
-从 `finetune/` 运行。必须使用 `train_with_contract.py`，它会安装 MiniCPM 的 8 帧处理器约束。
-`dataset_info.json` 只指向 `data/08_training_ready/` 中当前激活的发布版本；
-版本身份见 `active_data_release.json`。这两个文件由
-`publish_training_release.py --activate` 同步维护，不要手工把
-`data/06_merged/` 配置为训练入口。
-
-训练前从仓库根目录确认当前版本：
+运行时需要：
 
 ```bash
-cat finetune/active_data_release.json
-python -m json.tool \
-  data/08_training_ready/<release_id>/manifest/release_manifest.json
-```
-
-必须确认 manifest 的 `status` 为 `training_ready`、`quality.error_count` 为 `0`，并且
-`dataset_info.json` 中六个数据集指向同一个 `release_id`。若当前版本不正确，使用
-`python pipeline/scripts/publish_training_release.py --activate-existing <release_id>`
-切换，不要修改发布目录中的文件。
-
-```bash
-cd finetune
 export DOWNSAMPLE_MODE=4x
 export DISABLE_VERSION_CHECK=1
-
-python train_with_contract.py \
-  MiniCPM/config/train_fold0.yaml
+export PYTHONPATH="$PWD/LlamaFactory/src:$PWD"
 ```
 
-替换为 `train_fold1.yaml` 或 `train_fold2.yaml` 训练另外两个 fold。配置中的数据发布
-版本和 `output_dir` 必须对应实际运行批次，不能沿用旧实验路径。训练入口默认拒绝
-覆盖已有目录。
+## 三折训练
 
-### V4.1 隔离训练
-
-V4.1 发布 `v4.1.0-760050fad303` 使用帧窗口级四字段标签，不复用 V2 的活动数据注册、
-Prompt 或输出解析。三个训练配置直接绑定发布目录内的 `dataset_info.json`：
+从仓库根目录执行：
 
 ```bash
-cd /path/to/mVllm_2
 python finetune/run_v4_1_three_fold_training.py --validate-only
 python finetune/run_v4_1_three_fold_training.py
 ```
 
-流水线依次训练三个 fold，使用
-`train_v4_1_fold0.yaml`、`train_v4_1_fold1.yaml` 和
-`train_v4_1_fold2.yaml`。预检会逐文件验证发布哈希、1275 条媒体路径、V4.1 标签、
-train/val 隔离、配置绑定和输出目录不可覆盖性。运行状态写入
-`finetune/run_logs/three_fold_training_v4_1_0_760050fad303_20260723.json`。
+预检会验证：
 
-旧 `active_data_release.json` 和 V2 配置继续保留，用于复现历史实验；V4.1 训练不通过
-修改全局活动指针来接管它们。
+- 数据根 marker 与 `tensile-vlm/v4.1` 一致；
+- 发布 manifest、契约版本和契约 hash 一致；
+- 1275 个媒体路径及其哈希可用；
+- 所有标签满足 V4.1 字段和联动约束；
+- 每个 fold 的 train/validation 按源视频隔离；
+- YAML 绑定正确，且不会覆盖已有训练目录。
 
-三折训练完成后，运行隔离的合并与完整验证集推理：
+对应配置：
+
+- `MiniCPM/config/train_v4_1_fold0.yaml`
+- `MiniCPM/config/train_v4_1_fold1.yaml`
+- `MiniCPM/config/train_v4_1_fold2.yaml`
+
+状态文件：
+
+`run_logs/three_fold_training_v4_1_0_760050fad303_20260723.json`
+
+三个输出目录分别为：
+
+- `LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260723_fold0`
+- `LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260723_fold1`
+- `LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260723_fold2`
+
+流水线拒绝覆盖不完整或身份不一致的输出目录。不要通过删除状态文件绕过产物检查。
+
+## 合并 LoRA 与严格验证集推理
+
+训练完成后运行：
 
 ```bash
 python finetune/run_v4_1_post_training.py --validate-only
 python finetune/run_v4_1_post_training.py
 ```
 
-该流水线先合并三个 LoRA，再分别对对应 fold 的 validation 数据进行严格 V4.1 推理。
-逐样本结果实时追加到 JSONL，可在进程中断后从已完成样本续跑；最终汇总严格 JSON
-合法率、四字段准确率、联合准确率、`clip_state` 混淆表和运行失败记录。结果写入
-`finetune/results/v4_1_0_760050fad303_20260723/three_fold_validation/`。
+流水线先合并三个 LoRA，再分别使用对应 fold 的 validation 数据进行严格 V4.1 推理。
+合并配置：
 
-## 合并 LoRA
+- `MiniCPM/config/merge_v4_1_fold0.yaml`
+- `MiniCPM/config/merge_v4_1_fold1.yaml`
+- `MiniCPM/config/merge_v4_1_fold2.yaml`
 
-使用与训练 fold 对应的固定 merge 配置：
+总状态文件：
 
-```bash
-cd finetune
-llamafactory-cli export MiniCPM/config/merge_fold0.yaml
+`run_logs/post_training_v4_1_0_760050fad303_20260723.json`
+
+结果目录：
+
+```text
+results/v4_1_0_760050fad303_20260723/three_fold_validation/
+├── fold0/
+├── fold1/
+└── fold2/
 ```
 
-替换为 `fold1` 或 `fold2` 合并另外两个 fold。合并后的目录可直接用于评估。训练输出
-中的 checkpoint 和 adapter 应保留在训练电脑；若同步结果到仓库，建议只归档配置、
-指标、日志与曲线，不提交大型 checkpoint 或模型权重。
+每个 fold 完成后必须包含：
 
-## 全量训练
+- `run_identity.json`
+- `evaluation_records.jsonl`
+- `evaluation_summary.json`
+- `runtime_failures.csv`
 
-三折交叉验证完成后，将三个 fold 的 train 和 validation 六份文件合并，并按 `videos`
-去重。测试源视频和测试子视频不进入全量训练数据。数据由固定发布版本确定性生成到
-`finetune/generated/full_training/`。生成后的 dataset、registry 和 provenance 应作为
-独立的数据提交归档，不与交叉验证结果或训练代码混在同一个提交。
+逐样本结果会实时追加到 JSONL。进程中断后可以用同一模型、数据和输出目录续跑；
+若 run identity 漂移，脚本会拒绝复用目录。
 
-从仓库根目录执行：
-
-```bash
-python finetune/prepare_full_training_dataset.py \
-  --release-dir data/08_training_ready/v2.0.0-1dab1e5e \
-  --output-dir finetune/generated/full_training/v2_0_0_1dab1e5e_20260719
-
-python finetune/run_full_training_pipeline.py --validate-only
-python finetune/run_full_training_pipeline.py
-```
-
-`--validate-only` 必须确认三折交叉验证汇总、全量数据 provenance/hash、训练配置和输出
-目录均有效。正式流水线会依次使用 `MiniCPM/config/train_full.yaml` 训练、使用
-`MiniCPM/config/merge_full.yaml` 合并，并在隔离的 `test` 与 `test_subvideos` 上做最终
-评测。若目标训练目录、merged 目录或评测目录存在但产物不完整，流水线会拒绝覆盖。
-
-## 准备测试数据
-
-测试数据有两条独立链路，都以 `data/05_splits/test.json` 为边界，但不共用子视频 metadata：
-
-| 数据集 | 输入 | 产物 | 用途 |
-| --- | --- | --- | --- |
-| `test` | `data/05_splits/test.json` 中的 21 个源视频 | 发布版本中的 `datasets/evaluation/source_videos/` | `--dataset test` |
-| `test_subvideos` | 同一 `test.json` 生成的候选子视频 | 发布版本中的 `datasets/evaluation/subvideos/` | `--dataset test_subvideos` |
-
-所有命令从仓库根目录执行。先生成 21 个测试源视频的评测清单：
+单独运行某个 fold：
 
 ```bash
-python scripts/generate_test_artifacts.py
+python -m finetune.run_v4_1_evaluation \
+  --fold 0 \
+  --model-dir /path/to/fold0_merged \
+  --out-dir finetune/results/<run>/fold0
 ```
 
-首次生成并审核测试子视频（仅当 `data/07_metadata/test_subvideos_meta.json` 不存在时）：
+`--max-samples` 只用于冒烟检查，不能把受限样本的结果作为完整 validation 验收。
 
-```bash
-# --no-strict 仅用于首次生成尚未审核的候选媒体与 metadata
-python scripts/generate_test_subvideo_artifacts.py --no-strict
+## 评测口径
 
-# 在审核 UI 中标记 approved / dropped / needs_regenerate
-streamlit run pipeline/scripts/review_subvideos_app.py -- \
-  --metadata data/07_metadata/test_subvideos_meta.json
+严格评测至少检查：
 
-# 应用审核结论
-python pipeline/scripts/apply_review_decisions.py \
-  --metadata data/07_metadata/test_subvideos_meta.json \
-  --decisions data/07_metadata/subvideo_test_review_decisions.json \
-  --output data/07_metadata/test_subvideos_meta.reviewed.json \
-  --strict
+- 运行失败数与严格 JSON/schema 合法率；
+- `clip_state`、`fracture_mechanism`、`fracture_site`、`special_case` 字段准确率；
+- 四字段联合准确率；
+- `clip_state` 混淆表和类别分布；
+- `临界未断裂` 是否被错误当成已发生断裂；
+- `inside_gauge`、`outside_gauge_non_root`、`grip_root` 的混淆；
+- 典型成功、失败和非法输出样例。
 
-python pipeline/scripts/apply_label_corrections.py \
-  --metadata data/07_metadata/test_subvideos_meta.reviewed.json \
-  --output data/07_metadata/test_subvideos_meta.label_reviewed.json
+训练 loss 和 eval loss 下降只能证明训练目标收敛。没有逐样本预测和任务指标时，不得
+声称模型已经达到可部署效果。
 
-# 严格模式下导出正式测试输入
-python scripts/generate_test_subvideo_artifacts.py \
-  --metadata data/07_metadata/test_subvideos_meta.label_reviewed.json
-```
+## 生产切换边界
 
-若有 `needs_regenerate` 样本，不得执行正式导出，也不要使用 `--no-strict` 的输出作为正式评测集。正式导出前确认测试 metadata 的每个 `source_video` 都属于 `data/05_splits/test.json`。完成质量检查与版本冻结后，必须通过
-`python pipeline/scripts/publish_training_release.py --activate` 发布，评估代码不会直接读取
-`data/06_merged/`。
+当前生产推理服务与 TensileAgent 仍运行 `tensile-vlm/v2`。完成 V4.1 三折评测后仍需：
 
-## 最终 Prompt 策略
+1. 根据任务指标选择 fold 模型，或按已批准方案准备全量训练；
+2. 冻结最终 V4.1 模型、processor、generation 与部署 manifest；
+3. 使服务端只接受 V4.1 artifact 中的 Prompt 和 schema；
+4. 同步升级 TensileAgent 的 HTTP 契约、搜索方向、证据聚合、Stub、Web 与测试；
+5. 完成真实视频联调和回滚验证。
 
-Prompt Engineering 阶段已经结束。训练和核心评测只使用
-`pipeline/prompt_library.yaml` 顶部的一个 `system_prompt` 和一个
-`user_prompt`。生产 artifact 会逐字保存这两个 Prompt 作为 analysis 快照。这两个
-Prompt 与当前 merged 模型的训练分布一致；后续修改只允许
-编辑这两个字段，不再维护 Prompt Sweep、Evidence Pilot、测试 Prompt 或生产
-Prompt 副本。
+不得把 V4.1 模型装入 V2 服务并继续宣称 `contract_version=tensile-vlm/v2`。
 
-模型原始输出必须经过 `pipeline/output_normalizer.py`。Prompt 负责视觉判断，
-Normalizer 负责字符串布尔、非法区间、非法类型和字段联动修复。最终选择依据和历史
-实验摘要见 [最终 Prompt 策略](../docs/FINAL_PROMPT_POLICY.md)。
+## V2 历史复现
 
-## 核心评估命令
+下列入口仅用于封存版本复现，不是 `main` 的当前训练说明：
 
-在训练电脑上对一个模型和一个数据集运行：
+- Git：`tensile-vlm-v2-final` 或 `archive/v2`
+- 数据：`data/archive/training_releases/v2.0.0-1dab1e5e`
+- 旧配置：`train_fold*.yaml`、`merge_fold*.yaml`、`train_full.yaml`、
+  `merge_full.yaml`
+- 旧评测：`finetune.validation.run_evaluation`
 
-```bash
-cd /path/to/mVllm_2
-python -m finetune.validation.run_evaluation \
-  --dataset test \
-  --model-dir /path/to/model \
-  --out-dir finetune/results/eval_test
-```
-
-参数说明：
-
-- `--dataset`：`test`（21 个测试源视频）、`test_subvideos`（审核后测试子视频），也可选 `fold_0_val`、`fold_1_val`、`fold_2_val`。
-- `--model-dir`：必填，除非改用 `--predictions`；可为基座模型、合并模型或 adapter 目录。
-- `--out-dir`：必填，评测结果目录。
-- `--video-root`：视频不在默认 `data/01_videos` 时指定。
-- `--max-samples`：仅用于小规模冒烟测试。
-- `--predictions`：已有预测 JSONL 时跳过 GPU 推理。
-
-基座模型与微调模型、源视频与子视频的对比，只需分别替换 `--model-dir` 和 `--dataset` 后重复运行。建议在 `--out-dir` 中分别标明模型和数据集，避免覆盖。
-
-核心评测脚本固定使用项目 Prompt 库中的唯一 System/User Prompt。
+进行 V2 复现时应切换到封存 Git 引用并使用 frozen 数据根，不要在 V4.1 主分支上混用
+旧活动指针。
 
 ## 关联文档
 
 - [仓库总览](../README.md)
 - [数据处理与训练运行手册](../docs/DATA_PROCESSING_RUNBOOK.md)
-- [视觉归因与 ROI 优化方向](../docs/VISUAL_GROUNDING_AND_ROI_OPTIMIZATION.md)
-
-## 评估输出
-
-每个输出目录包含：
-
-- `evaluation_summary.json`：样本数、运行失败数、原始 JSON 合法率、规范化合法率、修复率及任务指标。
-- `evaluation_records.jsonl`：逐样本原始输出、规范化输出、自动修复记录、错误和参考标签，是模型对比的主要依据。
-- `runtime_failures.csv`：推理失败样本。
-
-生产调用固定使用四字段输出；confidence 由 Agent 依据多轮证据计算，不能从
-MiniCPM 单轮输出复制。除比较运行失败率和非空输出率外，还应基于归一化输出检查
-字段正确性、时间区间命中、联合成功率以及典型成功/失败样例。训练 loss 或
-eval loss 的下降不能单独证明任务效果。
-
-## TensileAgent 生产契约
-
-训练与核心评测 Prompt 的唯一编辑入口是 `pipeline/prompt_library.yaml`。生产服务
-只加载自包含的 `pipeline/contracts/tensile_vlm_v2.json`；其中 analysis Prompt
-必须与当前 YAML 逐字一致，同时固定四字段 schema、异常语义、evidence Prompt、
-生成参数和视频帧数。
-
-训练机器启动代理服务前执行：
-
-```bash
-python -m pipeline.production_contract
-```
-
-基于 `pipeline/server_deployment_manifest.example.json` 创建启动配置，只填写模型、
-adapter、processor、框架和 runtime 身份，不得自行填写 contract 字段。服务会注入
-固定 `contract_version`/`contract_hash`；TensileAgent 会在预检和每轮响应中校验。
-修改 Prompt、generation、最大帧数或字段协议后必须发布新的 canonical artifact/hash。
-
-本机已有同步的预测 JSONL 时，可跳过 GPU 推理：
-
-```bash
-python -m finetune.validation.run_evaluation \
-  --dataset test_subvideos \
-  --predictions finetune/results/direct_test_subvideos.jsonl \
-  --out-dir finetune/results/eval_test_subvideos
-```
+- [数据隔离设计](../docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)
+- [迁移报告](../docs/reports/2026-07-23-v2-v4-1-data-migration.md)
+- [V2 生产推理服务运行手册](../docs/INFERENCE_SERVICE_RUNBOOK.md)

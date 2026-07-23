@@ -1,5 +1,9 @@
 # 人工审核后的再生成与复标规则
 
+> **历史 V2 审核规则。** 当前 V4.1 审查应使用
+> `pipeline/scripts/review_v4_candidates_app.py` 和
+> [V4.1 数据处理运行手册](DATA_PROCESSING_RUNBOOK.md)。本文仅用于封存数据复现。
+
 运行 `pipeline/scripts/audit_review_decisions.py` 生成审计队列后，按以下规则处理；该脚本不会修改原始标签或训练元数据。
 
 ## 决策标准
