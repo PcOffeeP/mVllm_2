@@ -667,7 +667,12 @@ def main() -> int:
                 "plan_dir": str(plan_dir),
                 "media_dir": str(media_dir),
                 "dataset_dir": str(dataset_root),
-                "manifest": manifest,
+                "experimental_only": manifest["experimental_only"],
+                "production_release": manifest["production_release"],
+                "counts": manifest["counts"],
+                "experimental_clip_state_counts": manifest[
+                    "experimental_clip_state_counts"
+                ],
             },
             ensure_ascii=False,
             indent=2,
