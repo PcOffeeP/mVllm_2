@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -116,7 +116,7 @@ def initialize_root(
             "contract_version": contract_version,
             "git_ref": profile["git_ref"],
             "lifecycle": profile["lifecycle"],
-            "created_at": datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
         marker_path.write_text(
             json.dumps(marker, ensure_ascii=False, indent=2) + "\n",
