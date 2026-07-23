@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -216,7 +218,29 @@ def test_committed_experiment_configs(
 
 def test_adapter_coverage_requires_visual_and_resampler(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    class FakeSafeTensor:
+        def __init__(self, path: Path) -> None:
+            self.path = path
+
+        def __enter__(self) -> "FakeSafeTensor":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def keys(self) -> list[str]:
+            return json.loads(self.path.read_text(encoding="utf-8"))
+
+    monkeypatch.setitem(
+        sys.modules,
+        "safetensors",
+        types.SimpleNamespace(
+            safe_open=lambda path, **_kwargs: FakeSafeTensor(Path(path))
+        ),
+    )
+
     adapter = tmp_path / "adapter"
     adapter.mkdir()
     (adapter / "adapter_config.json").write_text(
@@ -228,8 +252,21 @@ def test_adapter_coverage_requires_visual_and_resampler(
         ),
         encoding="utf-8",
     )
+    (adapter / "adapter_model.safetensors").write_text(
+        json.dumps(
+            [
+                (
+                    "base_model.model.vpm.encoder.0."
+                    "q_proj.lora_A.weight"
+                ),
+                "base_model.model.resampler.proj.weight",
+            ]
+        ),
+        encoding="utf-8",
+    )
     result = validate_adapter_coverage(adapter, visual=True)
-    assert result["visual_target_module_count"] == 1
+    assert result["visual_weight_count"] == 1
+    assert result["resampler_weight_count"] == 1
     assert result["resampler_saved"] is True
 
     (adapter / "adapter_config.json").write_text(
@@ -238,6 +275,12 @@ def test_adapter_coverage_requires_visual_and_resampler(
                 "target_modules": ["llm.q_proj"],
                 "modules_to_save": [],
             }
+        ),
+        encoding="utf-8",
+    )
+    (adapter / "adapter_model.safetensors").write_text(
+        json.dumps(
+            ["base_model.model.llm.q_proj.lora_A.weight"]
         ),
         encoding="utf-8",
     )
