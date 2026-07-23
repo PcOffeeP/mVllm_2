@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Streamlit UI for queue-bound v4 candidate review."""
+"""Streamlit UI for queue-bound v4.1 candidate review."""
 
 from __future__ import annotations
 
@@ -14,15 +14,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import streamlit as st
 
-from pipeline.v4_labels import (
+from pipeline.v4_1_labels import (
     CLIP_STATES,
-    FRACTURE_MECHANISMS,
-    FRACTURE_SITES,
-    SPECIAL_CASES,
-    canonicalize_v4_labels,
+    canonicalize_v4_1_labels,
 )
-from pipeline.v4_review_workflow import (
-    V4ReviewWorkflowError,
+from pipeline.v3_labels import FRACTURE_MECHANISMS, SPECIAL_CASES
+from pipeline.v4_labels import FRACTURE_SITES
+from pipeline.v4_1_review_workflow import (
+    V4_1ReviewWorkflowError,
     freeze_completed_batch,
     historical_context,
     load_draft,
@@ -53,7 +52,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
     if "--" in raw:
         raw = raw[raw.index("--") + 1 :]
-    parser = argparse.ArgumentParser(description="v4 候选媒体人工复检 UI")
+    parser = argparse.ArgumentParser(description="v4.1 候选媒体人工复检 UI")
     parser.add_argument("--queue", type=Path, required=True)
     parser.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
     parser.add_argument("--review-reference", type=Path)
@@ -68,7 +67,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def _default_paths(
     project_root: Path, queue_id: str, selected_ids_sha256: str
 ) -> tuple[Path, Path]:
-    root = project_root / "data/07_metadata/v4/review_decisions" / queue_id
+    root = project_root / "data/07_metadata/v4_1/review_decisions" / queue_id
     workspace = root / f"workspace-{selected_ids_sha256[:12]}"
     return workspace / "draft.json", root
 
@@ -225,7 +224,7 @@ def _cached_reference_records(path: str | None) -> dict[str, dict[str, Any]]:
 
 
 def main() -> None:
-    st.set_page_config(page_title="v4 人工复检", layout="wide")
+    st.set_page_config(page_title="v4.1 人工复检", layout="wide")
     args = _parse_args()
     try:
         identity, candidates = _cached_review_queue(
@@ -245,7 +244,7 @@ def main() -> None:
         draft_path = (args.draft or default_draft).resolve()
         output_root = (args.output_root or default_output_root).resolve()
         decisions = load_draft(draft_path, identity)
-    except (V4ReviewWorkflowError, ValueError) as exc:
+    except (V4_1ReviewWorkflowError, ValueError) as exc:
         st.error(str(exc))
         st.stop()
 
@@ -259,10 +258,10 @@ def main() -> None:
             completed_batch = freeze_completed_batch(
                 output_root, identity, decisions
             )
-        except (V4ReviewWorkflowError, ValueError, FileExistsError) as exc:
+        except (V4_1ReviewWorkflowError, ValueError, FileExistsError) as exc:
             freeze_error = str(exc)
 
-    st.title("v4 人工复检")
+    st.title("v4.1 人工复检")
     metric_columns = st.columns(6)
     for column, label, value in zip(
         metric_columns,
@@ -470,7 +469,7 @@ def main() -> None:
         if approve or drop or regenerate:
             try:
                 if approve:
-                    edited = canonicalize_v4_labels(
+                    edited = canonicalize_v4_1_labels(
                         {
                             "clip_state": clip_state,
                             "fracture_mechanism": fracture_mechanism,
@@ -494,7 +493,7 @@ def main() -> None:
                     reviewer_id=args.reviewer_id,
                 )
                 save_draft(draft_path, identity, decisions)
-            except (V4ReviewWorkflowError, ValueError) as exc:
+            except (V4_1ReviewWorkflowError, ValueError) as exc:
                 st.error(str(exc))
                 st.stop()
             next_candidate = next_unreviewed_id(
