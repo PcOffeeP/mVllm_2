@@ -15,7 +15,10 @@ lora_dropout: 0.25
 additional_target: resampler
 freeze_vision_tower: false
 freeze_multi_modal_projector: false
-quantization_bit: null
+quantization_bit: 4
+quantization_method: bnb
+double_quantization: true
+upcast_layernorm: true
 
 dataset: tensile_v4_1_fold0_train
 eval_dataset: tensile_v4_1_fold0_val
@@ -51,7 +54,7 @@ bf16: true
 max_grad_norm: 1.0
 weight_decay: 0.2
 adam_beta2: 0.95
-optim: paged_adamw_8bit
+optim: adamw_torch
 gradient_checkpointing: true
 ddp_timeout: 1800
 seed: 3407

@@ -113,7 +113,6 @@ def _read_object(path: Path) -> dict[str, Any]:
 
 def _runtime_env() -> dict[str, str]:
     env = os.environ.copy()
-    env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     env.update(
         {
             "WANDB_MODE": "offline",
