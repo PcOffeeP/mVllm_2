@@ -24,6 +24,7 @@ from finetune.v4_1_runtime import (
     validate_training_row,
 )
 from finetune.validation.model_runtime import (
+    FOUR_BIT_INFERENCE_PRECISION,
     load_model,
     run_model_on_video_detailed,
 )
@@ -107,7 +108,7 @@ def _run_identity(
         "sample_count": sample_count,
     }
     if quantization_bit is not None:
-        identity["inference_precision"] = f"bnb_{quantization_bit}bit_nf4"
+        identity["inference_precision"] = FOUR_BIT_INFERENCE_PRECISION
     return identity
 
 

@@ -7,6 +7,9 @@ from typing import Any
 from .constants import GENERATION_CONFIG, VIDEO_MAX_FRAMES
 from pipeline.preprocessing.minicpm_preprocessor import configure_processor_max_frames
 
+FOUR_BIT_INFERENCE_PRECISION = "bnb_4bit_nf4_resampler_bf16"
+FOUR_BIT_SKIP_MODULES = ("resampler",)
+
 
 @dataclass(frozen=True)
 class ModelRunResult:
@@ -52,6 +55,7 @@ def load_model(
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
             bnb_4bit_quant_storage=torch_dtype,
+            llm_int8_skip_modules=list(FOUR_BIT_SKIP_MODULES),
         )
     model = AutoModel.from_pretrained(
         model_path,
