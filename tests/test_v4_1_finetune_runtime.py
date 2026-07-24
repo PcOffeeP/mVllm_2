@@ -5,6 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from finetune.run_v4_1_visual_three_fold import (
+    FOLDS as VISUAL_FOLDS,
+    _validate_visual_config,
+)
 from finetune.v4_1_runtime import (
     CONTRACT_HASH,
     RELEASE_ID,
@@ -45,6 +49,16 @@ def test_committed_release_and_configs_are_v4_1_bound() -> None:
         assert config["eval_dataset"] == f"tensile_v4_1_fold{fold}_val"
 
 
+def test_formal_visual_configs_keep_release_and_safe_memory_recipe() -> None:
+    for fold in VISUAL_FOLDS:
+        config = _validate_visual_config(fold)
+        assert config["dataset"] == f"tensile_v4_1_fold{fold.index}_train"
+        assert config["freeze_vision_tower"] is False
+        assert config["additional_target"] == "resampler"
+        assert config["quantization_bit"] == 4
+        assert config["optim"] == "adamw_torch"
+
+
 def test_training_row_and_output_use_exact_four_fields() -> None:
     labels = _labels()
     row = {
@@ -82,4 +96,3 @@ def test_v4_1_metrics_score_fields_and_joint() -> None:
     assert summary["contract_valid_rate"] == 1.0
     assert summary["joint_correct_rate"] == 0.5
     assert summary["special_case_correct_rate"] == 1.0
-
