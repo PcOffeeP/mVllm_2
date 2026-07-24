@@ -61,6 +61,7 @@ class Fold:
 
 
 FOLDS = tuple(Fold(index) for index in range(3))
+EXPECTED_EVALUATION_COUNTS = {0: 425, 1: 445, 2: 346}
 
 
 def _runtime_env() -> dict[str, str]:
@@ -131,11 +132,12 @@ def _evaluation_complete(fold: Fold) -> bool:
         )
     except (OSError, json.JSONDecodeError):
         return False
+    expected = EXPECTED_EVALUATION_COUNTS[fold.index]
     return (
-        summary.get("sample_count") == 425
-        and summary.get("total_samples") == 425
+        summary.get("sample_count") == expected
+        and summary.get("total_samples") == expected
         and summary.get("runtime_failure_count") == 0
-        and records == 425
+        and records == expected
     )
 
 
