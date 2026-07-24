@@ -17,9 +17,22 @@ class ModelRunResult:
     frame_paths: list[str]
 
 
-def load_model(model_dir: str) -> tuple[Any, Any]:
+def load_model(
+    model_dir: str,
+    *,
+    quantization_bit: int | None = None,
+) -> tuple[Any, Any]:
     import torch
-    from transformers import AutoImageProcessor, AutoModel, AutoProcessor, AutoTokenizer
+    from transformers import (
+        AutoImageProcessor,
+        AutoModel,
+        AutoProcessor,
+        AutoTokenizer,
+        BitsAndBytesConfig,
+    )
+
+    if quantization_bit not in (None, 4):
+        raise ValueError("quantization_bit must be None or 4")
 
     model_path = _sanitize_model_path(model_dir)
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
@@ -31,12 +44,22 @@ def load_model(model_dir: str) -> tuple[Any, Any]:
         processor.chat_template = tokenizer.chat_template
 
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "auto"
+    model_kwargs: dict[str, Any] = {}
+    if quantization_bit == 4:
+        model_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch_dtype,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_quant_storage=torch_dtype,
+        )
     model = AutoModel.from_pretrained(
         model_path,
         trust_remote_code=True,
         torch_dtype=torch_dtype,
         device_map="auto",
         low_cpu_mem_usage=True,
+        **model_kwargs,
     ).eval()
     return processor, model
 

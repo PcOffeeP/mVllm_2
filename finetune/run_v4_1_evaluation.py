@@ -39,6 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-dir", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--max-samples", type=int)
+    parser.add_argument("--quantization-bit", type=int, choices=(4,))
     return parser.parse_args()
 
 
@@ -89,8 +90,14 @@ def load_validation_samples(fold: int) -> list[dict[str, Any]]:
     return samples
 
 
-def _run_identity(fold: int, model_dir: Path, sample_count: int) -> dict[str, Any]:
-    return {
+def _run_identity(
+    fold: int,
+    model_dir: Path,
+    sample_count: int,
+    *,
+    quantization_bit: int | None = None,
+) -> dict[str, Any]:
+    identity = {
         "schema_version": "tensile-v4.1-evaluation-run/v1",
         "release_id": RELEASE_ID,
         "contract_version": CONTRACT_VERSION,
@@ -99,6 +106,9 @@ def _run_identity(fold: int, model_dir: Path, sample_count: int) -> dict[str, An
         "model_dir": str(model_dir.resolve()),
         "sample_count": sample_count,
     }
+    if quantization_bit is not None:
+        identity["inference_precision"] = f"bnb_{quantization_bit}bit_nf4"
+    return identity
 
 
 def _prepare_output(out_dir: Path, identity: Mapping[str, Any]) -> Path:
@@ -277,7 +287,12 @@ def main() -> int:
         if args.max_samples <= 0:
             raise ValueError("--max-samples must be positive")
         samples = samples[: args.max_samples]
-    identity = _run_identity(args.fold, args.model_dir, len(samples))
+    identity = _run_identity(
+        args.fold,
+        args.model_dir,
+        len(samples),
+        quantization_bit=args.quantization_bit,
+    )
     records_path = _prepare_output(args.out_dir, identity)
     existing = _load_existing_records(records_path)
     expected_ids = {sample["candidate_id"] for sample in samples}
@@ -290,7 +305,10 @@ def main() -> int:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return 0 if evaluation_succeeded(summary) else 1
 
-    processor, model = load_model(str(args.model_dir))
+    processor, model = load_model(
+        str(args.model_dir),
+        quantization_bit=args.quantization_bit,
+    )
     analysis = contract["analysis"]
     with records_path.open("a", encoding="utf-8") as handle:
         for index, sample in enumerate(samples, start=1):
