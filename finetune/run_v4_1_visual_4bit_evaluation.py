@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -17,15 +18,22 @@ from finetune.run_v4_1_visual_three_fold import (
     RESULT_ROOT as BF16_RESULT_ROOT,
     RUN_ID,
 )
-from finetune.validation.model_runtime import FOUR_BIT_INFERENCE_PRECISION
+from finetune.validation.model_runtime import (
+    FOUR_BIT_ADAPTER_INFERENCE_PRECISION,
+    FOUR_BIT_INFERENCE_PRECISION,
+)
 from finetune.v4_1_runtime import RELEASE_ID, validate_release
 
 ROOT = Path(__file__).resolve().parents[1]
 FINETUNE = ROOT / "finetune"
-LOG_ROOT = FINETUNE / "run_logs" / RUN_ID / "four_bit_evaluation"
-RESULT_ROOT = FINETUNE / "results" / RUN_ID / "four_bit_validation"
+MERGED_LOG_ROOT = FINETUNE / "run_logs" / RUN_ID / "four_bit_evaluation"
+MERGED_RESULT_ROOT = FINETUNE / "results" / RUN_ID / "four_bit_validation"
+LOG_ROOT = MERGED_LOG_ROOT
+RESULT_ROOT = MERGED_RESULT_ROOT
 STATE_PATH = LOG_ROOT / "state.json"
 INFERENCE_PRECISION = FOUR_BIT_INFERENCE_PRECISION
+ADAPTER_DIRECT = False
+BASE_MODEL_DIR = ROOT / "models/minicpm_v_4_5"
 METRIC_NAMES = (
     "contract_valid_rate",
     "joint_correct_rate",
@@ -125,26 +133,55 @@ def _run_logged(command: list[str], log_path: Path) -> None:
         )
 
 
-def _evaluate(fold_index: int, model_dir: Path) -> None:
+def _configure_mode(*, adapter_direct: bool) -> None:
+    global ADAPTER_DIRECT
+    global INFERENCE_PRECISION
+    global LOG_ROOT
+    global RESULT_ROOT
+    global STATE_PATH
+    ADAPTER_DIRECT = adapter_direct
+    if adapter_direct:
+        INFERENCE_PRECISION = FOUR_BIT_ADAPTER_INFERENCE_PRECISION
+        LOG_ROOT = (
+            FINETUNE
+            / "run_logs"
+            / RUN_ID
+            / "four_bit_adapter_evaluation"
+        )
+        RESULT_ROOT = (
+            FINETUNE
+            / "results"
+            / RUN_ID
+            / "four_bit_adapter_validation"
+        )
+        STATE_PATH = LOG_ROOT / "state.json"
+    else:
+        INFERENCE_PRECISION = FOUR_BIT_INFERENCE_PRECISION
+        LOG_ROOT = MERGED_LOG_ROOT
+        RESULT_ROOT = MERGED_RESULT_ROOT
+        STATE_PATH = LOG_ROOT / "state.json"
+
+
+def _evaluate(fold_index: int, model_dir: Path, adapter_dir: Path) -> None:
     if _evaluation_complete(fold_index):
         return
     _write_state("running", f"fold{fold_index}_evaluating")
-    _run_logged(
-        [
-            sys.executable,
-            "-m",
-            "finetune.run_v4_1_evaluation",
-            "--fold",
-            str(fold_index),
-            "--model-dir",
-            str(model_dir),
-            "--out-dir",
-            str(_result_dir(fold_index)),
-            "--quantization-bit",
-            "4",
-        ],
-        LOG_ROOT / f"fold{fold_index}_evaluate.log",
-    )
+    command = [
+        sys.executable,
+        "-m",
+        "finetune.run_v4_1_evaluation",
+        "--fold",
+        str(fold_index),
+        "--model-dir",
+        str(BASE_MODEL_DIR if ADAPTER_DIRECT else model_dir),
+        "--out-dir",
+        str(_result_dir(fold_index)),
+        "--quantization-bit",
+        "4",
+    ]
+    if ADAPTER_DIRECT:
+        command.extend(("--adapter-dir", str(adapter_dir)))
+    _run_logged(command, LOG_ROOT / f"fold{fold_index}_evaluate.log")
     if not _evaluation_complete(fold_index):
         raise RuntimeError(f"fold{fold_index}: 4-bit 评测产物不完整")
 
@@ -358,14 +395,24 @@ def _write_summaries() -> tuple[Path, Path]:
     return summary_path, consistency_path
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--adapter-direct", action="store_true")
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
+    _configure_mode(adapter_direct=args.adapter_direct)
     RESULT_ROOT.mkdir(parents=True, exist_ok=True)
     validate_release(ROOT, verify_media=True)
     try:
         for fold in FOLDS:
             if not fold.merged_dir.is_dir():
                 raise RuntimeError(f"合并模型不存在: {fold.merged_dir}")
-            _evaluate(fold.index, fold.merged_dir)
+            if ADAPTER_DIRECT and not fold.adapter_dir.is_dir():
+                raise RuntimeError(f"adapter 不存在: {fold.adapter_dir}")
+            _evaluate(fold.index, fold.merged_dir, fold.adapter_dir)
         summary_path, consistency_path = _write_summaries()
     except Exception as exc:
         _write_state(
