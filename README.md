@@ -15,12 +15,17 @@
 | 冻结 V2 数据根 | `tensile-data/archive` |
 | V4.1 训练发布 | `v4.1.0-760050fad303`，1275 个样本 |
 | 三折 LoRA 训练 | 已完成 |
-| 三折模型合并与验证集推理 | 正在训练机执行，以状态文件和评测汇总为准 |
+| 正式视觉 LoRA 三折、BF16 合并与验证 | 已完成，1216 条，运行失败 0 |
+| 4-bit 一致性评估 | 两条路线均已完成；adapter-direct 作为后续独立部署候选 |
+| 当前模型结论 | 视觉方向有效，但断裂状态召回和契约合法率未达到生产门槛 |
 | 当前生产推理服务 | 仍为 `tensile-vlm/v2`，尚未切换到 V4.1 |
 | TensileAgent 运行时 | 仍为 V2，V4.1 只完成目标契约冻结 |
 
-V4.1 数据或模型产物存在，不等于生产服务和 Agent 已经迁移。切换前必须完成三折
-严格评测、模型选择或全量训练、部署 manifest、跨仓契约校验与 Agent 端整体迁移。
+当前正式视觉 BF16 的 `clip_state` 准确率为 49.67%，断裂相关三状态宏平均召回率为
+24.54%，`已断裂`召回率仅 9.00%；35 条输出因漏掉必填 `special_case` 字段而严格
+非法。V4.1 数据或模型产物存在，不等于生产服务和 Agent 已经迁移。下一轮必须先扩充
+经过人工审查的独立视觉证据并完成受控 fold0 实验，再决定是否进入完整三折、最终全量
+训练和部署。
 
 ## V4.1 视觉语义
 
@@ -140,6 +145,16 @@ python pipeline/scripts/build_v4_1_training_release.py
 
 训练和 GPU 推理只在训练电脑执行。本机用于代码检查、文档整理和已同步结果复核。
 
+当前正式视觉运行：
+
+- 运行 ID：`v4_1_0_760050fad303_20260724_visual`
+- 训练：4-bit bnb 基座、视觉塔 LoRA、完整训练并保存 `resampler`
+- 主评估：三个 merged BF16 模型
+- 量化评估：merged 后重新 4-bit，以及 4-bit 基座直挂原始 adapter
+- 轻量证据：[正式视觉运行证据冻结](docs/results/v4_1_0_760050fad303_20260724_visual/README.md)
+
+以下命令是上一轮语言层 LoRA 基线的复现入口，不是当前正式视觉运行的重跑命令：
+
 ```bash
 # 逐文件验证发布、媒体、标签、划分和输出目录
 python finetune/run_v4_1_three_fold_training.py --validate-only
@@ -169,6 +184,18 @@ python finetune/run_v4_1_post_training.py
 严格评测汇总 JSON/schema 合法率、四字段准确率、联合准确率、`clip_state` 混淆表和
 运行失败。训练 loss 或 eval loss 下降只证明训练目标收敛，不能单独证明任务效果。
 完整说明见 [微调与评估](finetune/README.md)。
+
+冻结现有正式视觉运行的轻量证据：
+
+```bash
+python finetune/freeze_v4_1_evidence.py \
+  --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
+  --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \
+  --release-manifest data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json \
+  --contract pipeline/contracts/tensile_vlm_v4_1.json \
+  --output-dir finetune/results/v4_1_0_760050fad303_20260724_visual/evidence_freeze \
+  --model-hash-mode full
+```
 
 ## 生产推理服务边界
 

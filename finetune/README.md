@@ -13,7 +13,9 @@
 | 发布路径 | `data/current/training_releases/v4.1.0-760050fad303` |
 | 发布样本 | 1275 |
 | 三折训练 | 已完成 |
-| 三折合并与验证推理 | 正在执行；是否完成以状态文件和各 fold 汇总为准 |
+| 正式视觉运行 | `v4_1_0_760050fad303_20260724_visual`，已完成 |
+| BF16 / 两种 4-bit 验证 | 均已完成，1216 条，运行失败 0 |
+| 当前结论 | 未通过生产效果验收，继续做数据覆盖和受控采样实验 |
 
 V4.1 不使用旧 `finetune/active_data_release.json`、旧
 `finetune/dataset_info.json` 或 V2 Prompt 作为活动指针。三个训练配置直接绑定冻结发布
@@ -35,7 +37,50 @@ export DISABLE_VERSION_CHECK=1
 export PYTHONPATH="$PWD/LlamaFactory/src:$PWD"
 ```
 
-## 三折训练
+## 正式视觉 LoRA 结果
+
+正式视觉运行启用视觉塔 LoRA，并完整训练和保存 `resampler`。为适配 24GB GPU，
+训练使用 4-bit bnb 基座、`adamw_torch`、batch size 1 和梯度累积 8；跨实验主评估
+仍统一使用 merged BF16。
+
+| 推理路线 | 首轮严格合法率 | 联合准确率 | 状态准确率 | 机制准确率 | 位置准确率 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| merged BF16 | 97.12% | 40.21% | 49.67% | 50.66% | 56.66% |
+| merged 后重新 4-bit | 98.19% | 34.87% | 47.53% | 48.68% | 51.23% |
+| 4-bit 基座直挂 adapter | 100.00% | 37.42% | 47.37% | 49.92% | 53.45% |
+
+BF16 的断裂相关三状态宏平均召回率为 24.54%，`已断裂`召回率为 9.00%。
+35 条严格非法输出全部漏掉必填 `special_case` 字段；没有运行异常或 token 截断。
+解析器不得自动补字段。
+
+验证目标中没有 `无法判断` 或非空 `special_case`，因此当前运行不能证明这些能力。
+完整逐折指标、非法输出和模型/结果哈希见
+[证据冻结报告](../docs/results/v4_1_0_760050fad303_20260724_visual/README.md)。
+
+若以后部署必须使用 4-bit，应优先评估“4-bit 基座 + 原始 adapter + BF16
+resampler”；该路线是独立模型变体，不能继承 BF16 验收结论。
+
+## 证据冻结
+
+训练机的大型权重和逐样本 JSONL 不进入 Git。使用以下命令为发布、契约、结果、基座、
+三个 adapter、三个 merged 模型和 processor/config 生成完整 SHA-256 索引：
+
+```bash
+python finetune/freeze_v4_1_evidence.py \
+  --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
+  --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \
+  --release-manifest data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json \
+  --contract pipeline/contracts/tensile_vlm_v4_1.json \
+  --output-dir finetune/results/v4_1_0_760050fad303_20260724_visual/evidence_freeze \
+  --model-hash-mode full
+```
+
+正式冻结必须使用 `--model-hash-mode full`。`metadata` 只用于单元测试，不能作为权重
+身份。
+
+## 上一轮语言层 LoRA 基线复现
+
+以下入口对应 `20260723` 语言层 LoRA 基线。当前正式视觉运行不得覆盖它。
 
 从仓库根目录执行：
 
@@ -71,7 +116,7 @@ python finetune/run_v4_1_three_fold_training.py
 
 流水线拒绝覆盖不完整或身份不一致的输出目录。不要通过删除状态文件绕过产物检查。
 
-## 合并 LoRA 与严格验证集推理
+## 上一轮语言层 LoRA 合并与严格验证集推理
 
 训练完成后运行：
 
@@ -138,13 +183,15 @@ python -m finetune.run_v4_1_evaluation \
 
 ## 生产切换边界
 
-当前生产推理服务与 TensileAgent 仍运行 `tensile-vlm/v2`。完成 V4.1 三折评测后仍需：
+当前生产推理服务与 TensileAgent 仍运行 `tensile-vlm/v2`。V4.1 首轮视觉三折虽已
+完成，但效果未通过生产验收；仍需：
 
-1. 根据任务指标选择 fold 模型，或按已批准方案准备全量训练；
-2. 冻结最终 V4.1 模型、processor、generation 与部署 manifest；
-3. 使服务端只接受 V4.1 artifact 中的 Prompt 和 schema；
-4. 同步升级 TensileAgent 的 HTTP 契约、搜索方向、证据聚合、Stub、Web 与测试；
-5. 完成真实视频联调和回滚验证。
+1. 扩充经过人工审查的独立视觉证据，并完成 source-aware fold0 学习曲线；
+2. 通过门槛后执行新发布的完整三折和最终全量训练；
+3. 冻结最终 V4.1 模型、processor、generation 与部署 manifest；
+4. 使服务端只接受 V4.1 artifact 中的 Prompt 和 schema；
+5. 同步升级 TensileAgent 的 HTTP 契约、搜索方向、证据聚合、Stub、Web 与测试；
+6. 完成真实视频联调和回滚验证。
 
 不得把 V4.1 模型装入 V2 服务并继续宣称 `contract_version=tensile-vlm/v2`。
 

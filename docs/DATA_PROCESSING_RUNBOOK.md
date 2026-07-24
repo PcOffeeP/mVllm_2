@@ -264,9 +264,15 @@ python finetune/run_v4_1_post_training.py
 
 详细说明和产物路径见 [V4.1 微调、合并与评测](../finetune/README.md)。
 
-三折训练完成不等于模型效果验收完成。必须等待三个 fold 的
-`evaluation_summary.json`、`evaluation_records.jsonl` 和 `runtime_failures.csv` 完整，
-再检查严格 schema 合法率、四字段准确率、联合准确率、混淆表和典型失败样例。
+2026-07-24 正式视觉 LoRA 三折、merged BF16 和两种 4-bit 验证已经完成，三个 fold
+共 1216 条且运行失败为 0。任务效果尚未通过生产验收：BF16 断裂相关三状态宏平均
+召回率为 24.54%，`已断裂`召回率为 9.00%，并有 35 条输出漏掉必填
+`special_case` 字段。当前结果和制品身份见
+[正式视觉运行证据冻结](results/v4_1_0_760050fad303_20260724_visual/README.md)。
+
+三折训练完成仍不等于模型效果验收完成。下一轮数据发布必须先补充经过人工审查的独立
+视觉证据和未覆盖的 `无法判断 / 未夹紧 / 视频异常`，再执行 source-aware fold0
+学习曲线；未通过门槛前不得迁移服务或 TensileAgent。
 
 ## 失败恢复
 
