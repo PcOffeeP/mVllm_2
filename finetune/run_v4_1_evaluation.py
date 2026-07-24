@@ -24,6 +24,7 @@ from finetune.v4_1_runtime import (
     validate_training_row,
 )
 from finetune.validation.model_runtime import (
+    FOUR_BIT_ADAPTER_INFERENCE_PRECISION,
     FOUR_BIT_INFERENCE_PRECISION,
     load_model,
     run_model_on_video_detailed,
@@ -41,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--max-samples", type=int)
     parser.add_argument("--quantization-bit", type=int, choices=(4,))
+    parser.add_argument("--adapter-dir", type=Path)
     return parser.parse_args()
 
 
@@ -97,6 +99,7 @@ def _run_identity(
     sample_count: int,
     *,
     quantization_bit: int | None = None,
+    adapter_dir: Path | None = None,
 ) -> dict[str, Any]:
     identity = {
         "schema_version": "tensile-v4.1-evaluation-run/v1",
@@ -107,8 +110,14 @@ def _run_identity(
         "model_dir": str(model_dir.resolve()),
         "sample_count": sample_count,
     }
+    if adapter_dir is not None:
+        identity["adapter_dir"] = str(adapter_dir.resolve())
     if quantization_bit is not None:
-        identity["inference_precision"] = FOUR_BIT_INFERENCE_PRECISION
+        identity["inference_precision"] = (
+            FOUR_BIT_ADAPTER_INFERENCE_PRECISION
+            if adapter_dir is not None
+            else FOUR_BIT_INFERENCE_PRECISION
+        )
     return identity
 
 
@@ -293,6 +302,7 @@ def main() -> int:
         args.model_dir,
         len(samples),
         quantization_bit=args.quantization_bit,
+        adapter_dir=args.adapter_dir,
     )
     records_path = _prepare_output(args.out_dir, identity)
     existing = _load_existing_records(records_path)
@@ -309,6 +319,7 @@ def main() -> int:
     processor, model = load_model(
         str(args.model_dir),
         quantization_bit=args.quantization_bit,
+        adapter_dir=str(args.adapter_dir) if args.adapter_dir else None,
     )
     analysis = contract["analysis"]
     with records_path.open("a", encoding="utf-8") as handle:

@@ -7,7 +7,10 @@ from typing import Any
 from .constants import GENERATION_CONFIG, VIDEO_MAX_FRAMES
 from pipeline.preprocessing.minicpm_preprocessor import configure_processor_max_frames
 
-FOUR_BIT_INFERENCE_PRECISION = "bnb_4bit_nf4_resampler_bf16"
+FOUR_BIT_INFERENCE_PRECISION = "bnb_4bit_nf4_merged_resampler_bf16"
+FOUR_BIT_ADAPTER_INFERENCE_PRECISION = (
+    "bnb_4bit_nf4_adapter_resampler_bf16"
+)
 FOUR_BIT_SKIP_MODULES = ("resampler",)
 
 
@@ -24,6 +27,7 @@ def load_model(
     model_dir: str,
     *,
     quantization_bit: int | None = None,
+    adapter_dir: str | None = None,
 ) -> tuple[Any, Any]:
     import torch
     from transformers import (
@@ -38,9 +42,12 @@ def load_model(
         raise ValueError("quantization_bit must be None or 4")
 
     model_path = _sanitize_model_path(model_dir)
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
-    AutoImageProcessor.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
-    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
+    processor_path = (
+        _sanitize_model_path(adapter_dir) if adapter_dir else model_path
+    )
+    tokenizer = AutoTokenizer.from_pretrained(processor_path, trust_remote_code=True, local_files_only=True)
+    AutoImageProcessor.from_pretrained(processor_path, trust_remote_code=True, local_files_only=True)
+    processor = AutoProcessor.from_pretrained(processor_path, trust_remote_code=True, local_files_only=True)
     processor.tokenizer = tokenizer
     configure_processor_max_frames(processor)
     if getattr(processor, "chat_template", None) is None and getattr(tokenizer, "chat_template", None) is not None:
@@ -64,7 +71,16 @@ def load_model(
         device_map="auto",
         low_cpu_mem_usage=True,
         **model_kwargs,
-    ).eval()
+    )
+    if adapter_dir is not None:
+        from peft import PeftModel
+
+        model = PeftModel.from_pretrained(
+            model,
+            _sanitize_model_path(adapter_dir),
+            is_trainable=False,
+        )
+    model = model.eval()
     return processor, model
 
 
