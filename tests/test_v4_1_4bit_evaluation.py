@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import finetune.run_v4_1_visual_4bit_evaluation as four_bit_runner
 from finetune.run_v4_1_evaluation import _run_identity
 from finetune.run_v4_1_visual_4bit_evaluation import compare_record_sets
 from finetune.validation.model_runtime import (
@@ -57,6 +58,22 @@ def test_four_bit_adapter_identity_records_unmerged_path(
         identity["inference_precision"]
         == FOUR_BIT_ADAPTER_INFERENCE_PRECISION
     )
+
+
+def test_adapter_direct_mode_uses_separate_result_identity() -> None:
+    try:
+        four_bit_runner._configure_mode(adapter_direct=True)
+
+        assert four_bit_runner.ADAPTER_DIRECT is True
+        assert (
+            four_bit_runner.INFERENCE_PRECISION
+            == FOUR_BIT_ADAPTER_INFERENCE_PRECISION
+        )
+        assert four_bit_runner.RESULT_ROOT.name == (
+            "four_bit_adapter_validation"
+        )
+    finally:
+        four_bit_runner._configure_mode(adapter_direct=False)
 
 
 def test_compare_record_sets_reports_normalized_agreement() -> None:
