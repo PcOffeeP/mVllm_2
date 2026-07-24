@@ -7,6 +7,7 @@ import pytest
 from finetune.run_v4_1_evaluation import _run_identity
 from finetune.run_v4_1_visual_4bit_evaluation import compare_record_sets
 from finetune.validation.model_runtime import (
+    FOUR_BIT_ADAPTER_INFERENCE_PRECISION,
     FOUR_BIT_INFERENCE_PRECISION,
     FOUR_BIT_SKIP_MODULES,
 )
@@ -37,6 +38,25 @@ def test_four_bit_identity_is_distinct_from_bf16(tmp_path: Path) -> None:
     assert "inference_precision" not in bf16
     assert four_bit["inference_precision"] == FOUR_BIT_INFERENCE_PRECISION
     assert FOUR_BIT_SKIP_MODULES == ("resampler",)
+
+
+def test_four_bit_adapter_identity_records_unmerged_path(
+    tmp_path: Path,
+) -> None:
+    adapter_dir = tmp_path / "adapter"
+    identity = _run_identity(
+        0,
+        tmp_path,
+        1,
+        quantization_bit=4,
+        adapter_dir=adapter_dir,
+    )
+
+    assert identity["adapter_dir"] == str(adapter_dir.resolve())
+    assert (
+        identity["inference_precision"]
+        == FOUR_BIT_ADAPTER_INFERENCE_PRECISION
+    )
 
 
 def test_compare_record_sets_reports_normalized_agreement() -> None:
