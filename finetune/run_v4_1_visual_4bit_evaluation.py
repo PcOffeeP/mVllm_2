@@ -17,6 +17,7 @@ from finetune.run_v4_1_visual_three_fold import (
     RESULT_ROOT as BF16_RESULT_ROOT,
     RUN_ID,
 )
+from finetune.validation.model_runtime import FOUR_BIT_INFERENCE_PRECISION
 from finetune.v4_1_runtime import RELEASE_ID, validate_release
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,7 +25,7 @@ FINETUNE = ROOT / "finetune"
 LOG_ROOT = FINETUNE / "run_logs" / RUN_ID / "four_bit_evaluation"
 RESULT_ROOT = FINETUNE / "results" / RUN_ID / "four_bit_validation"
 STATE_PATH = LOG_ROOT / "state.json"
-INFERENCE_PRECISION = "bnb_4bit_nf4"
+INFERENCE_PRECISION = FOUR_BIT_INFERENCE_PRECISION
 METRIC_NAMES = (
     "contract_valid_rate",
     "joint_correct_rate",

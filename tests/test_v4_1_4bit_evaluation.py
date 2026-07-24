@@ -6,6 +6,10 @@ import pytest
 
 from finetune.run_v4_1_evaluation import _run_identity
 from finetune.run_v4_1_visual_4bit_evaluation import compare_record_sets
+from finetune.validation.model_runtime import (
+    FOUR_BIT_INFERENCE_PRECISION,
+    FOUR_BIT_SKIP_MODULES,
+)
 
 
 def _record(state: str, timestamps: list[float] | None = None) -> dict:
@@ -31,7 +35,8 @@ def test_four_bit_identity_is_distinct_from_bf16(tmp_path: Path) -> None:
     )
 
     assert "inference_precision" not in bf16
-    assert four_bit["inference_precision"] == "bnb_4bit_nf4"
+    assert four_bit["inference_precision"] == FOUR_BIT_INFERENCE_PRECISION
+    assert FOUR_BIT_SKIP_MODULES == ("resampler",)
 
 
 def test_compare_record_sets_reports_normalized_agreement() -> None:
