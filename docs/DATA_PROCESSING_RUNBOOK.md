@@ -1,569 +1,311 @@
-# 数据处理与训练运行手册
+# V4.1 数据处理与训练发布运行手册
 
-说明如何将源拉伸视频和人工标注转换为可安全用于训练的最终数据。所有命令从项目根目录执行。子视频生成、模型选帧、训练和完整评测在训练电脑执行；当前电脑只做检查、审核、整理和导出已同步的结果。
+本文是 `main` 上当前 V4.1 数据链路的操作入口。V2/V3 的旧编号目录、旧审核 UI 和
+`publish_training_release.py --activate` 流程只用于历史复现，不是当前 V4.1 的正式路径。
+
+所有命令从 mVllm_2 仓库根目录执行。媒体物化、训练和 GPU 推理在训练电脑进行；本机
+可以检查配置、运行轻量校验、进行人工审查并复核已同步结果。
+
+## 当前基线
+
+| 项目 | 当前值 |
+| --- | --- |
+| 契约 | `tensile-vlm/v4.1` |
+| 契约 hash | `47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937` |
+| 数据根 | `tensile-data/current` |
+| 冻结发布 | `v4.1.0-760050fad303` |
+| 物化候选 | 1285 |
+| 人工审查 | 774 |
+| 自动稳定阴性 | 511 |
+| 排除 | 10 |
+| 正式训练样本 | 1275 |
+
+当前发布已完成并用于三折训练。除非数据内容确有更改，否则不要重复发布或覆盖它。
 
 ## 数据链
 
 ```mermaid
 flowchart TD
-  A["源视频 + CSV 标注"] --> B["video_meta.json + 05_splits/"]
-  B --> C["subvideos_meta.json + MP4 + 帧图"]
-  C --> D["全量人工审核基线"]
-  D --> E{"needs_regenerate 或需重审?"}
-  E -- "是" --> F["增量队列 → 重生成媒体 → 增量审查 delta"]
-  F --> G["安全合并为 final decisions"]
-  E -- "否" --> G
-  G --> H["审计"]
-  H --> I["应用决策并验证修改过的断裂区间"]
-  I --> J["label_reviewed metadata"]
-  J --> K["审核后 neg_before 筛选"]
-  K --> L["训练样本 + 质量检查 + 版本冻结"]
-  L --> M["版本化发布到 08_training_ready"]
+  A["source: 视频、标注、划分"] --> B["固定 ROI manifest"]
+  B --> C["ROI 视频"]
+  C --> D["内容寻址候选计划"]
+  D --> E["候选 MP4 + 实际 MiniCPM 帧"]
+  E --> F["V4.1 observed + incipient 审查队列"]
+  F --> G["帧画面优先的人工审查"]
+  E --> H["自动稳定阴性门禁"]
+  G --> I["冻结 review batch"]
+  H --> J["V4.1 发布构建"]
+  I --> J
+  J --> K["不可覆盖 training release"]
+  K --> L["三折训练"]
+  L --> M["合并 + 严格 validation 推理"]
 ```
 
-## 目录状态与消费边界
+## 目录与消费边界
 
-数据流程分为“处理工作区”和“已发布版本”两层。目录编号表示处理阶段，不代表目录中的
-每个文件都可以直接训练。
+```text
+tensile-data/current/
+├── source/
+│   ├── videos/
+│   ├── annotations/
+│   └── splits/
+├── derived/
+│   ├── roi_videos/
+│   ├── subvideos/
+│   ├── frames/
+│   └── metadata/
+├── training_releases/
+└── .compat/workspace/
+```
 
-| 目录 | 状态 | 谁写入 | 是否可直接训练/评估 |
-| --- | --- | --- | --- |
-| `data/03_subvideos/`–`data/05_splits/` | 生成与划分工作区 | 生成、划分脚本 | 否 |
-| `data/06_merged/` | 待发布构建工作区 | 训练/测试样本生成脚本 | 否 |
-| `data/07_metadata/` | 审核、检查、冻结过程证据 | 审核和质量门脚本 | 否 |
-| `data/08_training_ready/<release_id>/` | 不可覆盖的已发布版本 | 仅 `publish_training_release.py` | 是，但必须是当前激活版本 |
+| 区域 | 用途 | 可否直接训练 |
+| --- | --- | --- |
+| `source/` | 原视频、标注和源视频级划分 | 否 |
+| `derived/roi_videos/` | 固定 ROI 后的源视频 | 否 |
+| `derived/subvideos/` | 内容寻址候选 MP4 | 否 |
+| `derived/frames/` | 模型实际查看的帧画面 | 否 |
+| `derived/metadata/` | manifest、队列、审查和质量证据 | 否 |
+| `training_releases/<release_id>/` | 冻结且通过门禁的训练输入 | 是，只读 |
 
-必须明确以下行为：
+`.compat/workspace` 只为已冻结的 `data/...` 相对路径提供同版本兼容视图。新代码应优先
+通过 `pipeline.current_data` / `pipeline.data_roots` 解析路径，不要手工拼接旧编号目录。
 
-- 步骤 1–7 **不会**生成或更新 `08_training_ready`。
-- 只有步骤 8 的 `publish_training_release.py` 会创建新的 `08_training_ready/<release_id>`。
-- 在新一轮数据仍处于步骤 1–7 时，训练和本地评估继续指向上一次激活的发布版本，不会
-  误读尚未完成的 `06_merged`。
-- `--activate` 只在发布成功后切换
-  `finetune/dataset_info.json` 和 `finetune/active_data_release.json`。
-- `scripts/clear_data_outputs.py` 不清理 `08_training_ready`；旧发布版本作为历史训练证据
-  保留。
+## 第一步：验证数据根
 
-## 关键产物及其身份
+```bash
+python pipeline/scripts/manage_versioned_data_roots.py check --contract all
+python pipeline/scripts/manage_versioned_data_roots.py workspace \
+  --contract tensile-vlm/v4.1
+```
 
-| 文件 | 身份 | 用途 | 限制 |
-| --- | --- | --- | --- |
-| `data/07_metadata/subvideos_meta.label_reviewed.json` | 工作区权威审核基线 | 保存完整人工审核与标签修正结果 | 不能用原始或 `.reviewed.json` 替代 |
-| `data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json` | 工作区发布输入 | 本轮筛选后的训练级 metadata | 不能手工删改；尚不能直接训练 |
-| `data/06_merged/` | 工作区发布输入 | 六个 fold、两类测试文件和统计 | 不能作为训练或评估入口 |
-| `data/07_metadata/quality_check_report.json` | 发布门证据 | 证明选定工作区通过质量检查 | `error_count` 必须为 0 |
-| `data/07_metadata/data_version_lock.json` | 发布门证据 | 冻结输入、划分和样本清单哈希 | 冻结后不得再修改上游文件 |
-| `data/08_training_ready/<release_id>/` | 最终交付物 | 分类后的训练、验证、评估、metadata 和 manifest | 不可覆盖；正式消费只读已激活版本 |
+必须满足：
 
-## 端到端执行顺序
+- `current` marker 声明 `tensile-vlm/v4.1` 且 lifecycle 为 `active`；
+- `archive` marker 声明 `tensile-vlm/v2` 且 lifecycle 为 `frozen`；
+- 两个根目录不是同一位置；
+- V4.1 操作不会解析到 archive；
+- frozen V2 根不会接收写操作。
 
-| 步骤 | 产物 | 作用 | 下游输入 |
-| --- | --- | --- | --- |
-| 1 | `video_meta.json`、`data/05_splits/` | 规范源标签并冻结视频级划分 | 子视频生成、增量队列、区间验证 |
-| 2 | `subvideos_meta.json`、MP4、帧图 | 建立模型输入与源视频帧的真实映射 | 人工审核、区间验证 |
-| 3 | 基线审核决策 | 人工确认候选样本的可用性和标签 | 增量队列或最终合并 |
-| 4 | 增量队列、重生成媒体、delta | 只处理未完成或冲突样本 | 安全合并 |
-| 5 | `subvideo_train_review_decisions_final.json` | 固化最终人工决策 | 审计、应用决策 |
-| 6 | `.reviewed.json`、`.label_reviewed.json`、筛选后 `.label_reviewed.json` | 应用标签、剔除不可验证区间并执行审核后样本缩减 | 训练样本导出 |
-| 7 | `data/06_merged/`、`data_version_lock.json` | 输出待发布文件并冻结版本 | 训练数据发布 |
-| 8 | `data/08_training_ready/<release_id>/` | 分类、校验并原子发布训练版本 | 训练与评测 |
+新环境需要初始化时：
 
-## ROI 标注工具 MVP（实验性，不进入现有发布链）
+```bash
+python pipeline/scripts/manage_versioned_data_roots.py init --contract all
+```
 
-源视频固定 ROI 的人工标注工具只生成独立决定文件，不会修改源视频、子视频 metadata、
-split 或 `08_training_ready`：
+默认根目录是仓库同级 `tensile-data`；使用其他位置时显式设置
+`TENSILE_DATA_HOME` 或传入 `--data-home`。
+
+## 第二步：ROI 与候选媒体
+
+当前冻结批次已经完成这一步。新一轮数据变更时才重新执行，并且必须产生新的内容身份。
+
+### ROI 决定与冻结
 
 ```bash
 streamlit run pipeline/scripts/roi_annotation_app.py -- \
-  --metadata data/07_metadata/video_meta.json \
-  --output data/07_metadata/roi_decisions.json
-```
+  --metadata data/current/derived/metadata/video_meta.json \
+  --output data/current/derived/metadata/roi_decisions.json
 
-工具支持视频播放、按时间滑块抽帧、直接平移/缩放红色裁剪框、当前帧原图/ROI 对照、关键时刻
-预览，以及 `fixed_roi` / `no_crop` 决定。`approved` 保存前必须人工确认已检查关键时刻，
-并逐项确认上/下夹具、完整试样、位置判断和齐根判断所需信息均被保留。
-
-ROI 策略 `1.2` 将 `fixed_roi` 红框锁定为精确 `3:4`（宽:高），红框内画面直接作为最终
-裁剪结果；保存时将组件坐标转换为源视频像素坐标。`no_crop` 保留全画面，后续生成媒体时
-统一 padding 到 `3:4`。策略 `1.0` 和 `1.1` 决定必须在新的可拖拽红框下重新人工确认。
-
-完成全部 110 条决定后先校验：
-
-```bash
 uv run python pipeline/scripts/freeze_roi_decisions.py --check-only
-```
-
-校验通过后冻结为不可覆盖的内容寻址 ROI manifest：
-
-```bash
 uv run python pipeline/scripts/freeze_roi_decisions.py
 ```
 
-冻结输出中的 `development_roi.json` 与 `test_roi_audit.json` 按当前 89/21 源视频清单隔离。
-任一决定缺失、未 approved、源文件哈希变化或可见性检查未通过都会阻止冻结。
+人工必须确认关键时刻的上/下夹具、完整试样和位置判断信息均被保留。`fixed_roi` 使用
+3:4 裁剪框；`no_crop` 后续补边到 3:4。
 
-`roi_decisions.json` 目前只是后续 ROI 媒体生成器的输入候选，**不能直接作为训练输入，
-也不代表生成了新的训练数据发布版本**。在实现版本化 ROI 媒体生成、重新抽帧、区间
-重算和质量门之前，不得手工把它接入 `training_sample_builder.py`。
-
-### 在训练机器物化 ROI 源视频
-
-ROI manifest 冻结后，在训练机器先做只读预检：
+### 物化 ROI 视频
 
 ```bash
 uv run python pipeline/scripts/materialize_roi_videos.py --check-only
-```
 
-小样本必须输出到隔离目录，不能写入正式全量目录：
-
-```bash
+# 首次先输出到隔离的小样本目录
 uv run python pipeline/scripts/materialize_roi_videos.py \
   --video-ids video_0001 video_0008 video_0100 \
-  --output-root data/sample_roi_videos \
+  --output-root data/current/sample_roi_videos \
   --workers 1
-```
 
-确认固定 ROI、`no_crop` padding、帧数和帧率均通过后再完整生成：
-
-```bash
+# 小样本通过后再完整生成
 uv run python pipeline/scripts/materialize_roi_videos.py --workers 2
 ```
 
-正式输出位于 `data/03_roi_videos/<roi_media_id>/`，包括 110 条 ROI 源视频、
-`video_meta.roi.json`、`validation_report.json` 和最终 `manifest.json`。脚本先写临时文件，
-只有单条视频通过分辨率、帧数、帧率和时长校验后才原子替换；中断后可重跑，已通过的媒体
-会校验并复用。`manifest.json` 出现才表示该批次完整完成。
+只有最终 `manifest.json` 出现，才表示该批次完整完成。单条媒体通过分辨率、帧数、帧率
+和时长检查后才会原子发布。
 
-下一步先生成内容寻址的 v3 子视频候选计划；该 dry-run 只读取版本化 ROI metadata 和历史
-审查参考，不加载模型、不调用 ffmpeg、不创建 MP4 或帧图：
+### 候选计划与媒体
+
+当前 V4.1 发布沿用了已经冻结的 ROI 候选媒体批次
+`candidate-media-8de972530561`。候选计划和媒体物化脚本内部仍有 `v3` 历史命名，
+这是 provenance 路径，不代表当前契约退回 V3。
 
 ```bash
 uv run python pipeline/scripts/build_v3_candidate_plan.py --dry-run
-```
-
-确认统计后，不带 `--dry-run` 只物化不可覆盖的 metadata 计划到
-`data/07_metadata/v3/candidate_plans/<candidate_plan_id>/`。该命令仍不会生成媒体：
-
-```bash
 uv run python pipeline/scripts/build_v3_candidate_plan.py
-```
 
-实际 MP4 和帧图只能在候选计划人工确认后的后续步骤生成，并分别写入
-`data/03_subvideos_roi/<candidate_plan_id>/` 与 `data/04_frames_roi/<candidate_plan_id>/`。
-旧 `pipeline/scripts/subvideo_builder.py` 仍服务 v2 流程，不得直接作为 v3 候选结果运行。
-
-当前批准的冻结候选计划为 `candidate-plan-ce36b9226be5`：development 1285 条、test audit
-332 条且无交叉；development 中 598 条“发生断裂/已断裂”必须人工复检，687 条“未断裂”
-只需自动媒体和边界门禁。4 个 development 与 1 个 test 的“未夹紧/视频异常”源只记录跳过
-原因，不生成“无法判断”子视频。该批次自身仍为 `media_generated=false`，不能作为已生成媒体
-或已完成人工审查的证据。
-
-在训练机生成媒体前先运行只读预检；该步骤会验证候选计划、ROI 源视频 SHA-256、MiniCPM
-处理器身份及 ffmpeg/ffprobe，但不会创建输出：
-
-```bash
 uv run python pipeline/scripts/materialize_v3_candidate_media.py --check-only
-```
 
-首次必须用隔离目录生成小样本，不能把部分结果写入正式全量目录：
-
-```bash
+# 首次用隔离目录检查真实 MP4、帧映射和门禁
 uv run python pipeline/scripts/materialize_v3_candidate_media.py \
   --limit 3 \
-  --video-output-root data/sample_v3_candidate_media/videos \
-  --frame-output-root data/sample_v3_candidate_media/frames \
-  --result-root data/sample_v3_candidate_media/results
-```
+  --video-output-root data/current/sample_candidate_media/videos \
+  --frame-output-root data/current/sample_candidate_media/frames \
+  --result-root data/current/sample_candidate_media/results
 
-确认三条媒体、实际帧映射和状态门禁后，再运行正式全量生成：
-
-```bash
+# 小样本通过后再完整生成
 uv run python pipeline/scripts/materialize_v3_candidate_media.py
 ```
 
-正式 MP4 写入 `data/03_subvideos_roi/<candidate_plan_id>/videos/`，实际 MiniCPM 抽帧写入
-`data/04_frames_roi/<candidate_plan_id>/`，结果 manifest、逐条 receipt、自动排除记录和人工复检
-队列写入 `data/07_metadata/v3/candidate_media_results/<candidate_media_id>/`。每条候选仅在帧数、
-帧率、解码、真实抽帧和状态门禁全部通过后原子发布；中断后可重跑，既有媒体必须与 receipt
-哈希完全一致。门禁失败的候选只记录排除原因，不进入人工复检队列。
+候选只有在 MP4、解码、真实 MiniCPM 抽帧、时间映射和状态门禁全部通过后才可进入下游。
+禁止只同步 metadata 而遗漏视频或帧图。
 
-### v3 人工复检：先验收小样本
+## 第三步：构建 V4.1 审查队列
 
-`review_subvideos_app.py` 仍只服务旧 v2 metadata，不能读取本轮 v3 队列。先在训练机用三条
-候选验证专用 UI 的读取、播放、保存、重开和冻结；草稿与最终批次均写入独立的 media ID
-目录，不覆盖旧审查结果：
+V4.1 队列同时包含：
+
+- `observed`：当前帧窗口已看到发生或已经发生断裂；
+- `incipient`：尚未断裂，但当前窗口有明确的临界韧性断裂视觉征兆。
+
+普通稳定未断裂候选经过自动门禁后不进入人工队列。
 
 ```bash
-streamlit run pipeline/scripts/review_v3_candidates_app.py -- \
-  --queue data/07_metadata/v3/candidate_media_results/candidate-media-8de972530561/review_queue.json \
-  --manifest data/07_metadata/v3/candidate_media_results/candidate-media-8de972530561/manifest.json \
-  --review-reference data/07_metadata/v3/review_reference/review-ref-7cd2e73a1cd1/development_reference.json \
-  --limit 3 \
+python pipeline/scripts/build_v4_1_review_queue.py \
+  --materialized \
+    data/current/derived/metadata/v3/candidate_media_results/\
+candidate-media-8de972530561/development_materialized.json \
+  --manifest \
+    data/current/derived/metadata/v3/candidate_media_results/\
+candidate-media-8de972530561/manifest.json
+```
+
+当前冻结队列：
+
+`data/current/derived/metadata/v4_1/review_queues/v4-1-review-4a449c8d1193/review_queue.json`
+
+队列身份、候选集合、媒体 manifest 和契约任一漂移，都必须创建新队列，不能复用旧草稿。
+
+## 第四步：以帧画面为主进行人工审查
+
+```bash
+streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
+  --queue \
+    data/current/derived/metadata/v4_1/review_queues/\
+v4-1-review-4a449c8d1193/review_queue.json \
+  --manifest \
+    data/current/derived/metadata/v3/candidate_media_results/\
+candidate-media-8de972530561/manifest.json \
   --reviewer-id <reviewer-id>
 ```
 
-启动时工具会验证 queue 与 manifest 的身份、队列 SHA-256、全部候选 ID 和允许的人工状态，
-并验证本次选中候选的视频与帧图哈希。任一漂移都会拒绝启动。草稿按
-`media_id + 选定 candidate IDs hash` 隔离并原子保存，可关闭后重开续审；历史审查只读显示，
-不能自动批准。三条都有 `approved/corrected/dropped/needs_regenerate` 终态后，界面才允许
-冻结 `review-batch-<内容哈希>`，其中 `decisions.json` 必须能通过
-`pipeline/v3_review_decisions.py` 校验。
+审查原则：
 
-小样本闭环确认无误后，去掉 `--limit 3` 启动完整 598 条队列。不得复用小样本草稿冒充全量
-结果；不同选定 candidate ID 集合会得到不同 workspace 身份。全量审查仍必须逐条形成终态，
-`needs_regenerate` 必须进入后续媒体重生成闭环，不能静默剔除。
+- 默认折叠视频，优先审查模型实际加载的帧画面；
+- 当前帧窗口是标签权威来源，不用源视频旧标签覆盖人工帧级判断；
+- 同一源视频的重叠候选可以因可见信息不同而拥有不同标签；
+- 普通 `未断裂` 的其他字段必须为 `null`；
+- `临界未断裂` 可以携带 prospective 的机制和位置，但不能当作已断裂；
+- `grip_root` 是严重的夹具根部齐根断裂；
+- `outside_gauge_non_root` 是标距外、但并非齐根的非理想断裂位置；
+- 缺媒体、帧图漂移、无法可靠判断或需要重生成的候选不得静默批准。
 
-### 下一轮数据处理时的正常行为
+全部候选形成合法终态后，UI 才能冻结内容寻址的 review batch。当前冻结决策：
 
-在生成下一轮 ROI 子视频之前，跨仓目标输出已冻结为 `tensile-vlm/v3`。其权威 artifact 位于
-`pipeline/contracts/tensile_vlm_v3.json`，设计依据位于
-`docs/plans/2026-07-22-tensile-vlm-v3-contract-design.md`。该文件当前只是后续数据、训练和
-服务迁移的目标契约；现有 v2 训练发布和运行服务不得因它的加入而自动切换。
+`data/current/derived/metadata/v4_1/review_decisions/v4-1-review-4a449c8d1193/review-batch-9043bbe4c286/decisions.json`
 
-训练机现有 `data/03_subvideos/`、历史审查和已激活 `08_training_ready` 发布继续保留。
-阶段 B 必须先生成内容寻址的候选计划和统计，dry-run 不编码 MP4；人工确认后，新媒体写入
-独立版本目录，不覆盖旧目录。新发布完成全部质量门并显式 `--activate` 前，训练仍使用旧激活版本。
+## 第五步：构建不可覆盖的 V4.1 训练发布
 
-1. 开始处理前记录 `finetune/active_data_release.json`；它是当前仍可训练的旧版本。
-2. 按实际需要执行步骤 1–6。增量复审不应为图省事清空整个工作区。
-3. 步骤 7 可以重建或覆盖 `06_merged` 和本轮 `07_metadata` 报告，但不会影响旧的
-   `08_training_ready`。
-4. 步骤 7 四个命令全部成功后，才能执行步骤 8。
-5. 步骤 8 成功后会新增一个发布目录；带 `--activate` 时才把训练和评估切到新版本。
-6. 新版本激活后再开始训练。不要在步骤 1–7 期间手工改
-   `finetune/dataset_info.json` 指向工作区。
-
-### 步骤 1：规范源标签并冻结划分
-
-**输入**：`data/01_videos/`、`data/02_annotations/all_videos_tag.csv`。
+先确认默认输入仍指向要发布的批次：
 
 ```bash
-python pipeline/scripts/dataset_manager.py \
-  --csv data/02_annotations/all_videos_tag.csv \
-  --video-dir data/01_videos \
-  --metadata-dir data/07_metadata \
-  --splits-dir data/05_splits \
-  --seed 42
+python pipeline/scripts/build_v4_1_training_release.py
 ```
 
-**输出**：
+发布器会验证：
 
-- `data/07_metadata/video_meta.json`
-- `data/05_splits/*.json`
-- `data/07_metadata/test_manifest_sha256.json`
+- 当前数据根与 V4.1 marker；
+- contract version/hash；
+- materialized、media manifest、queue 和 decisions 的内容身份；
+- reviewed、automatic negative、excluded 三类候选互斥且合计正确；
+- 标签联动约束；
+- 媒体路径和哈希；
+- 源视频级三折隔离；
+- release ID 与内容一致；
+- 目标目录不存在，拒绝覆盖。
 
-**质量门**：一旦开始人工审核，不得重新运行此步骤来重分 split。
+当前输出：
 
-### 步骤 2：生成候选子视频、媒体和实际帧映射
+`data/current/training_releases/v4.1.0-760050fad303`
 
-小样本验证：
+发布清单：
+
+`data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json`
+
+当前 fold 数量：
+
+| 数据集 | 数量 |
+| --- | ---: |
+| Fold 0 train | 850 |
+| Fold 0 validation | 425 |
+| Fold 1 train | 830 |
+| Fold 1 validation | 445 |
+| Fold 2 train | 929 |
+| Fold 2 validation | 346 |
+
+如果脚本提示发布已经存在，应先比较 manifest 和上游哈希。不要删除旧发布后重建；
+数据确有变化时应得到新的内容寻址 release ID。
+
+## 第六步：三折训练与任务效果验收
 
 ```bash
-python pipeline/scripts/subvideo_builder.py \
-  --model models/minicpmv4_5 \
-  --sample-size 10 \
-  --sample-output-dir data/sample_subvideos
+python finetune/run_v4_1_three_fold_training.py --validate-only
+python finetune/run_v4_1_three_fold_training.py
+
+python finetune/run_v4_1_post_training.py --validate-only
+python finetune/run_v4_1_post_training.py
 ```
 
-确认无误后完整生成：
-
-```bash
-python pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
-```
-
-**输出**：
-
-- `data/03_subvideos/`：子视频 MP4。
-- `data/04_frames/`：实际抽帧图。
-- `data/07_metadata/subvideos_meta.json`：候选标签、裁剪参数、split、处理器指纹和实际映射。
-
-**质量门**：不要只同步 metadata 而遗漏 MP4 或帧图。没有实际媒体无法可信审核，也无法确认区间标签。
-
-### 步骤 3：建立全量人工审核基线
-
-```bash
-streamlit run pipeline/scripts/review_subvideos_app.py -- \
-  --metadata data/07_metadata/subvideos_meta.json \
-  --output data/07_metadata/review_decisions/subvideo_train_review_decisions.json
-```
-
-审核人员为每个非 `neg_before` 子视频选择：
-
-- `approved`：确认或修正标签和区间。
-- `dropped`：该样本不进入训练，但记录保留。
-- `needs_regenerate`：媒体或区间无法可靠判断，进入增量流程。
-
-**输出**：`data/07_metadata/review_decisions/subvideo_train_review_decisions.json`。这是历史基线，增量轮次只能读取，不能覆盖。
-
-### 步骤 4：仅对问题样本进行增量重审
-
-以 `round_01` 为例。每轮使用独立的目录、队列、媒体、delta 和报告。
-
-#### 4.1 建立只读增量队列
-
-```bash
-python pipeline/scripts/prepare_incremental_review_queue.py \
-  --round round_01 \
-  --include-approved-interval-conflicts
-```
-
-默认队列针对 `needs_regenerate`；`--include-approved-interval-conflicts` 额外纳入需复核的已批准区间。
-
-#### 4.2 只为队列生成新媒体和映射
-
-```bash
-python pipeline/scripts/materialize_incremental_review_media.py \
-  --round round_01 \
-  --reasons baseline_needs_regenerate approved_interval_conflict
-```
-
-**输出**：版本化的 MP4/帧图、该轮实际映射 metadata 和生成报告。不得覆盖历史 `data/03_subvideos/` 或 `data/04_frames/`。
-
-如果报告有生成失败项，不要对缺媒体样本启动 UI。要么在训练电脑修复并重生成，要么由数据负责人决定 `dropped`，并在 4.4 中写入 delta。
-
-#### 4.3 审查增量媒体并输出 delta
-
-```bash
-streamlit run pipeline/scripts/review_subvideos_app.py -- \
-  --metadata data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json \
-  --incremental-delta \
-  --output data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions.json
-```
-
-增量模式只输出队列内样本的 delta，基线决策只读。不要把此输出写回历史完整决策文件。
-
-#### 4.4 记录无法生成但已决定剔除的项目（按需）
-
-```bash
-python pipeline/scripts/append_incremental_failure_drops.py --round round_01
-```
-
-仅当生成失败且已确认剔除时执行。把失败原因写入 `dropped` delta，不覆盖基线。
-
-#### 4.5 安全合并为最终决策
-
-若执行过 4.4，使用 `*_resolved.json`；否则使用 UI 的 delta：
-
-```bash
-python pipeline/scripts/merge_incremental_review_decisions.py \
-  --delta data/07_metadata/incremental_review/round_01/incremental_review_delta_decisions_resolved.json \
-  --queue data/07_metadata/incremental_review/round_01/incremental_review_queue_metadata.json
-```
-
-默认不允许覆盖历史 `approved`。确实需要推翻已批准结论时，delta 必须有人工理由，并显式加入 `--allow-approved-supersede`。
-
-### 步骤 5：审计最终人工决策
-
-```bash
-python pipeline/scripts/audit_review_decisions.py
-```
-
-**目的**：只读检查最终决策是否有重复 ID、非法状态、未审查项、关键标签异常、断裂区间修改和源时间/帧号不一致。
-
-**输出**：默认写入 `data/07_metadata/final_review_audit/`：
-
-- `review_decision_audit.json`：JSON 总报告。
-- `review_decision_audit.md`：Markdown 摘要。
-- `review_key_label_change_queue.csv`：关键标签变化。
-- `review_fracture_interval_queue.csv`：断裂区间变化。
-- `review_fracture_interval_source_queue.csv`：按源视频聚合的区间问题。
-- `review_regeneration_queue.csv`：需重生成项。
-- `review_source_time_frame_queue.csv`：时间/帧检查。
-
-**处理结果**：
-
-- 非法状态、未审查或 `needs_regenerate`：回到步骤 4。
-- 人工改过的区间：步骤 6 会基于实际映射和可靠源事件帧自动决定保留或 `dropped`。
-- 该审计不替代源视频像素级复核。若需确认真正首断帧，必须在训练电脑查看源视频并重新走增量流程。
-
-### 步骤 6：生成唯一可训练的最终 metadata
-
-#### 6.1 应用决策并验证人工修改的断裂区间
-
-```bash
-python pipeline/scripts/apply_review_decisions.py \
-  --strict \
-  --interval-verification-video-meta data/07_metadata/video_meta.json \
-  --interval-mapping-override \
-  data/07_metadata/incremental_review/round_01/incremental_review_round_01_metadata.json
-```
-
-做两件事：
-
-1. 对 `approved` 样本应用人工标签和区间；`dropped` 保留为排除状态；`needs_regenerate` 或未审查样本在 `--strict` 下阻止输出。
-2. 检查所有发生过变化的 `fracture_between`：最终区间覆盖可靠源事件帧则保持 `approved`；否则自动转为 `dropped`。
-
-每个自动剔除项都带有 `interval_verification`，记录原区间、最终区间、映射来源、源视频帧边界、源事件帧和剔除原因。这是长期证据，不得删除。
-
-**注意**：每一个有重生成媒体的 `round_XX` 都必须传入对应的 `--interval-mapping-override`。可重复传入多个轮次，后传入的同 ID 映射优先。
-
-#### 6.2 输出训练级 metadata 和排除记录
-
-```bash
-python pipeline/scripts/apply_label_corrections.py
-```
-
-**结果**：
-
-- `subvideos` 只保留 `approved` 样本，供训练导出使用。
-- 所有 `dropped` 样本进入 `excluded_subvideos`。
-- 因区间验证剔除的样本连同 `interval_verification` 一起进入 `excluded_subvideos`。
-
-正式训练不得使用 `--no-strict`，也不得使用原始候选 metadata 或中间 `.reviewed.json` 替代 `.label_reviewed.json`。
-
-#### 6.3 筛选审核后的 `neg_before` 样本
-
-```bash
-python pipeline/scripts/filter_reviewed_neg_before.py \
-  --output-report data/07_metadata/filter_neg_before_dropped_report.json
-```
-
-正式输出为
-`data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json`。report 只记录被删
-样本，不能作为训练输入。该步骤必须在标签修正后执行，并保留原始
-`subvideos_meta.label_reviewed.json` 作为审核基线。
-
-### 步骤 7：导出训练数据、执行质量门并冻结版本
-
-```bash
-python pipeline/scripts/training_sample_builder.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
-python scripts/validate_no_oob.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
-python pipeline/scripts/quality_check.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
-python pipeline/scripts/freeze_data_version.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
-```
-
-四个门分别检查：
-
-1. `training_sample_builder.py`：从唯一训练级 metadata 生成各 fold 样本。
-2. `validate_no_oob.py`：区间索引不越界，映射字段可用。
-3. `quality_check.py`：检查媒体路径、审核状态、映射、标签和排除记录。
-4. `freeze_data_version.py`：写入数据版本锁，记录输入与产物的一致性。
-
-任一步失败都不能发布。修复后从失败步骤的上游重新执行，避免使用部分覆盖的
-`data/06_merged/`。
-
-**此时不会出现新的 `data/08_training_ready/<release_id>/`。** 质量检查通过和版本
-冻结只说明工作区具备发布资格，不能省略步骤 8，也不能直接启动训练。
-
-### 步骤 8：发布并激活唯一训练版本
-
-**输入**：
-
-- `data/06_merged/`
-- `data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json`
-- `data/07_metadata/quality_check_report.json`
-- `data/07_metadata/data_version_lock.json`
-
-```bash
-python pipeline/scripts/publish_training_release.py --activate
-```
-
-**输出**：
-
-- 新目录 `data/08_training_ready/<release_id>/`
-- 更新后的 `finetune/dataset_info.json`
-- 更新后的 `finetune/active_data_release.json`
-
-默认版本名由 `data_version_lock.json` 的版本号和样本清单 SHA-256 前八位组成，例如
-`v2.0.0-1dab1e5e`。发布器会：
-
-1. 确认质量报告 `error_count == 0`。
-2. 确认质量报告对应当前选择的 `06_merged` 和正式训练 metadata。
-3. 确认 `data/06_merged/` 与版本锁中的样本哈希一致。
-4. 要求六个 fold 文件完整，并要求每组评估输入和真值成对存在。
-5. 将最终文件分类复制到临时目录、逐文件校验 SHA-256，再原子改名。
-6. 拒绝覆盖同名版本；`--activate` 同步更新训练注册表和本地评估版本指针。
-
-发布目录的分类如下：
-
-```text
-data/08_training_ready/<release_id>/
-├── datasets/train/            正式训练集
-├── datasets/validation/       正式验证集
-├── datasets/evaluation/       独立评估输入与真值
-├── metadata/                  训练使用的唯一正式 metadata
-├── reports/                   样本统计与质量报告
-└── manifest/                  版本锁与逐文件用途/hash 清单
-```
-
-发布时的固定映射如下：
-
-| 工作区来源 | 发布后路径 | 正式用途 |
-| --- | --- | --- |
-| `06_merged/fold_N_train.json` | `datasets/train/fold_N.json` | fold N 训练 |
-| `06_merged/fold_N_val.json` | `datasets/validation/fold_N.json` | fold N 训练期验证和独立复核 |
-| `06_merged/test_inputs.json` | `datasets/evaluation/source_videos/inputs.json` | 源视频测试输入 |
-| `06_merged/test_ground_truth.json` | `datasets/evaluation/source_videos/ground_truth.json` | 源视频测试真值 |
-| `06_merged/test_subvideo_inputs.json` | `datasets/evaluation/subvideos/inputs.json` | 子视频测试输入 |
-| `06_merged/test_subvideo_ground_truth.json` | `datasets/evaluation/subvideos/ground_truth.json` | 子视频测试真值 |
-| `07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json` | `metadata/training_subvideos.json` | 发布版本的训练 metadata 与追溯证据 |
-| `06_merged/samples_meta.json` | `reports/sample_statistics.json` | 样本数量和分布统计 |
-| `07_metadata/quality_check_report.json` | `reports/quality_check.json` | 发布时质量门结果 |
-| `07_metadata/data_version_lock.json` | `manifest/data_version_lock.json` | 上游冻结证据 |
-| 发布脚本生成 | `manifest/release_manifest.json` | 文件用途、来源、大小与 SHA-256 |
-
-`data/06_merged/` 和 `data/07_metadata/` 保留为处理工作区与过程证据，不移动、不删除。
-当前激活版本记录在 `finetune/active_data_release.json`。
-
-#### 发布后的确认
-
-```bash
-cat finetune/active_data_release.json
-python -m json.tool \
-  data/08_training_ready/<release_id>/manifest/release_manifest.json
-```
-
-确认以下项目后才能训练：
-
-- `active_data_release.json` 中的 `release_id` 是本轮新版本。
-- manifest 的 `status` 为 `training_ready`、`immutable` 为 `true`。
-- manifest 的 `quality.error_count` 为 `0`。
-- `finetune/dataset_info.json` 六个数据集均指向同一个新版本目录。
-
-#### 重复版本和失败恢复
-
-- 若提示“release already exists”，表示默认 `release_id` 已存在。通常说明训练样本没有
-  变化，应停止并检查 `data_version_lock.json`，不要删除旧版本或强制覆盖。
-- 如果确有意发布一个样本哈希相同、但评估或正式 metadata 有计划变更的版本，可在确认
-  原因后显式使用 `--release-id <有意义的新版本名>`；仍然不能覆盖已有目录。
-- 如果目录已经发布成功，但 `--activate` 阶段失败，修复配置问题后单独激活：
-
-```bash
-python pipeline/scripts/publish_training_release.py \
-  --activate-existing <release_id>
-```
-
-- 如需临时回退到历史发布版本，也使用 `--activate-existing <旧 release_id>`，不复制、
-  不修改该版本中的文件。
-
-## 训练与验收边界
-
-只有步骤 8 发布并激活成功后，才能在训练电脑运行三个 fold：
-
-```bash
-cd finetune
-python train_with_contract.py MiniCPM/config/train_fold0.yaml
-python train_with_contract.py MiniCPM/config/train_fold1.yaml
-python train_with_contract.py MiniCPM/config/train_fold2.yaml
-```
-
-启动前必须确认 YAML 中的数据发布版本及 `output_dir` 对应本轮运行批次。禁止复用
-指向历史输出目录或允许覆盖产物的旧配置。
-
-训练 loss 下降只说明训练目标收敛，不能单独证明断裂任务效果。实际验收必须使用训练电脑同步的预测、指标和 checkpoint/adapter 链路，至少检查：JSON/schema 合法率、`has_fracture`、type/location、interval/time 命中率、joint success，以及成功和失败预测样例。
+详细说明和产物路径见 [V4.1 微调、合并与评测](../finetune/README.md)。
+
+2026-07-24 正式视觉 LoRA 三折、merged BF16 和两种 4-bit 验证已经完成，三个 fold
+共 1216 条且运行失败为 0。任务效果尚未通过生产验收：BF16 断裂相关三状态宏平均
+召回率为 24.54%，`已断裂`召回率为 9.00%，并有 35 条输出漏掉必填
+`special_case` 字段。当前结果和制品身份见
+[正式视觉运行证据冻结](results/v4_1_0_760050fad303_20260724_visual/README.md)。
+
+三折训练完成仍不等于模型效果验收完成。下一轮数据发布必须先补充经过人工审查的独立
+视觉证据和未覆盖的 `无法判断 / 未夹紧 / 视频异常`，再执行 source-aware fold0
+学习曲线；未通过门槛前不得迁移服务或 TensileAgent。
+
+## 失败恢复
+
+- 数据根检查失败：修复路径或 marker，不要用软链接把 current 指向 archive。
+- 媒体物化中断：使用同一内容身份重跑；脚本会校验并复用已完成产物。
+- 审查中断：从同一 queue-bound 草稿继续；不要复制别的队列草稿。
+- 冻结后发现标签错误：创建新队列、新 review batch 和新训练发布，不能改冻结文件。
+- 训练中断：依据训练状态和 LLaMA-Factory 产物恢复；不要覆盖身份不明的目录。
+- 评测中断：`evaluation_records.jsonl` 可续跑；run identity 不一致时使用新输出目录。
 
 ## 不可绕过的规则
 
-- 不要在人工审核后重新运行 `dataset_manager.py` 来重新划分当前数据集。
-- 不要让增量 UI 覆盖历史完整决策文件；它只能写 delta。
-- 不要把 `needs_regenerate`、未审查、缺媒体或 `dropped` 样本带入训练。
-- 对重生成媒体不要省略 `--interval-verification-video-meta` 和对应 `--interval-mapping-override`。
-- 不要把被 `interval_verification` 转为 `dropped` 的样本重新塞回训练。若要恢复，先在源视频确认事件帧，再重新生成、增量审核和合并。
-- 不要用源视频旧标签静默覆盖人工确认过的普通标签。
-- 不要让训练或评估直接读取 `data/06_merged/`。
-- 不要手工覆盖或修改 `data/08_training_ready/<release_id>/` 中的文件。
-- 不要在步骤 7 未全部通过时运行发布脚本，也不要省略 `--activate` 后的版本确认。
+- 不要向 `tensile-data/archive` 写入任何 V4.1 数据。
+- 不要把旧 `data/07_metadata` 或 `data/08_training_ready` 当成 V4.1 主入口。
+- 不要使用旧 `review_subvideos_app.py` 审查 V4.1 queue。
+- 不要让源视频初始标签静默覆盖帧窗口人工复标结果。
+- 不要把 `needs_regenerate`、缺媒体、哈希漂移或非法标签带入发布。
+- 不要覆盖冻结 review batch 或 training release。
+- 不要仅依据 train/eval loss 宣称任务效果达标。
+- 不要在 V4.1 服务和 Agent 整体迁移完成前替换现有 V2 生产服务。
+
+## 历史流程
+
+V2 的完整编号目录、增量复审、`publish_training_release.py --activate`、全量训练和
+V2 测试集评测都属于封存流程。需要复现时切换到 `tensile-vlm-v2-final` /
+`archive/v2` 并使用 `tensile-data/archive`，不要从 `main` 的当前说明拼接新旧命令。
+
+V3/V4 文档和 artifact 是 V4.1 形成过程中的设计与迁移证据，不是可部署运行时。
+
+## 关联文档
+
+- [仓库总览](../README.md)
+- [V4.1 微调、合并与评测](../finetune/README.md)
+- [数据隔离设计](plans/2026-07-23-v2-v4-1-data-isolation-design.md)
+- [迁移报告](reports/2026-07-23-v2-v4-1-data-migration.md)
+- [V4.1 临界未断裂契约设计](plans/2026-07-23-tensile-vlm-v4-1-incipient-fracture-design.md)

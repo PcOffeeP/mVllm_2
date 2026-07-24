@@ -1,295 +1,250 @@
-# TensileAgent
+# mVllm_2
 
-> 基于 MiniCPM-V-4.5 对材料拉伸试验视频进行断裂理解：判断是否断裂、定位断裂区间、识别断裂模式与位置。
+基于 MiniCPM-V-4.5 的材料拉伸视频数据、微调、评测与视觉服务仓库。
 
-## 项目目标
+## 当前状态（V4.1）
 
-- 判断视频中是否发生试样断裂。
-- 定位断裂发生在哪两个相邻采样帧之间。
-- 区分韧性断裂、脆性断裂、界面脱粘等断裂模式。
-- 判断断裂发生在标距内还是标距外。
-- 识别未断裂、视频异常、未夹紧等特殊情况。
-- 输出严格的四字段 JSON，便于训练和评估解析。
+`main` 当前只继续维护 `tensile-vlm/v4.1` 数据与训练链路。V2 已通过
+`tensile-vlm-v2-final` / `archive/v2` 封存，只用于历史复现。
 
-训练、推理和评估统一使用四字段 JSON；`confidence` 不由 MiniCPM 单轮输出。
+| 项目 | 当前状态 |
+| --- | --- |
+| 活跃契约 | `tensile-vlm/v4.1` |
+| 契约 hash | `47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937` |
+| 活跃数据根 | `tensile-data/current` |
+| 冻结 V2 数据根 | `tensile-data/archive` |
+| V4.1 训练发布 | `v4.1.0-760050fad303`，1275 个样本 |
+| 三折 LoRA 训练 | 已完成 |
+| 正式视觉 LoRA 三折、BF16 合并与验证 | 已完成，1216 条，运行失败 0 |
+| 4-bit 一致性评估 | 两条路线均已完成；adapter-direct 作为后续独立部署候选 |
+| 当前模型结论 | 视觉方向有效，但断裂状态召回和契约合法率未达到生产门槛 |
+| 当前生产推理服务 | 仍为 `tensile-vlm/v2`，尚未切换到 V4.1 |
+| TensileAgent 运行时 | 仍为 V2，V4.1 只完成目标契约冻结 |
 
-## 项目结构
+当前正式视觉 BF16 的 `clip_state` 准确率为 49.67%，断裂相关三状态宏平均召回率为
+24.54%，`已断裂`召回率仅 9.00%；35 条输出因漏掉必填 `special_case` 字段而严格
+非法。V4.1 数据或模型产物存在，不等于生产服务和 Agent 已经迁移。下一轮必须先扩充
+经过人工审查的独立视觉证据并完成受控 fold0 实验，再决定是否进入完整三折、最终全量
+训练和部署。
+
+## V4.1 视觉语义
+
+单个帧窗口输出四个字段：
+
+- `clip_state`：`未断裂`、`临界未断裂`、`发生断裂`、`已断裂`、`无法判断`。
+- `fracture_mechanism`：断裂机制；普通未断裂或无法判断时为 `null`。
+- `fracture_site`：`inside_gauge`、`outside_gauge_non_root`、`grip_root` 或 `null`。
+- `special_case`：特殊情况或 `null`。
+
+`临界未断裂`表示样本尚未断裂，但当前采样帧已有明确的韧性断裂临界征兆。此时机制与
+位置只是 prospective 线索，不能单独当作最终断裂结论。标签以当前帧窗口为权威；
+同一源视频的重叠片段可以因可见信息不同而拥有不同标签。
+
+权威 artifact：
+
+- `pipeline/contracts/tensile_vlm_v4_1.json`
+- `pipeline/v4_1_labels.py`
+- `finetune/v4_1_runtime.py`
+
+## 数据入口与版本隔离
+
+仓库中的 `data/` 不保存实际大型数据，只提供语义入口：
 
 ```text
-pipeline/
-├── scripts/                  数据生成、审核、导出、质量检查
-├── preprocessing/            视频帧处理与 MiniCPM processor 适配
-├── prompt_library.yaml       唯一 System/User Prompt 配置
-├── server_proxy.py           同进程推理服务
-└── llamafactory_contract.py  帧数和处理器契约
-
-finetune/
-├── train_with_contract.py    微调训练入口
-├── MiniCPM/config/           训练与模型导出配置
-├── validation/               推理与评估
-└── dataset_info.json         LLaMA-Factory 数据集注册信息
-
 data/
-├── current -> tensile-data/current
-├── archive -> tensile-data/archive
-└── README.md                 数据目录说明
+├── current -> ../../tensile-data/current
+├── archive -> ../../tensile-data/archive
+└── README.md
 
 tensile-data/current/
-├── source/                   原视频、原始标注和数据划分
+├── source/
+│   ├── videos/
+│   ├── annotations/
+│   └── splits/
 ├── derived/
-│   ├── roi_videos/           ROI 视频
-│   ├── subvideos/            子视频
-│   ├── frames/               抽取帧
-│   └── metadata/             处理记录和审查结果
-└── training_releases/        冻结后可直接训练的数据版本
-
-scripts/                      独立校验与测试评估输入生成工具
-tests/                        项目测试
-docs/                         项目计划和实现文档
-LlamaFactory/                 LLaMA-Factory 子模块
-models/                       本地模型权重目录
+│   ├── roi_videos/
+│   ├── subvideos/
+│   ├── frames/
+│   └── metadata/
+├── training_releases/
+└── .compat/workspace/
 ```
 
-视频、模型权重和中间数据通常不纳入版本控制，需在实验环境中准备或同步。
+默认外部根目录为仓库同级的 `tensile-data`，可用 `TENSILE_DATA_HOME` 覆盖。
+`config/data_roots.json` 是契约、生命周期和目录之间的唯一映射。
 
-## 当前版本边界
+初始化或检查数据入口：
 
-- `main` 只继续维护 `tensile-vlm/v4.1`。
-- `tensile-vlm-v2-final`（`archive/v2`）封存 V2，只用于历史复现。
-- 两版大型数据不共用目录：旧版使用 `tensile-data/archive`，当前版使用
-  `tensile-data/current`。
-- 普通目录不携带版本编码；版本只保留在契约文件和冻结训练发布中。
-- 旧版数据已经冻结为只读；当前数据处理只写入 `current`。
-- 完整方案和迁移证据见
-  [隔离设计](docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)与
-  [迁移报告](docs/reports/2026-07-23-v2-v4-1-data-migration.md)。
+```bash
+python pipeline/scripts/manage_versioned_data_roots.py init --contract all
+python pipeline/scripts/manage_versioned_data_roots.py check --contract all
+python pipeline/scripts/manage_versioned_data_roots.py workspace \
+  --contract tensile-vlm/v4.1
+```
 
-## 环境准备
+每个根目录必须带 `.tensile-data-root.json`。程序会拒绝把 V2 根用于 V4.1，也会拒绝
+向 frozen 的 V2 根写入新数据。`.compat/workspace` 只链接到同一版本的数据，用于兼容
+已冻结产物中的 `data/...` 相对路径。
 
-推荐 Python 3.11、Conda、Linux/GPU 环境。
+迁移设计、清单与校验结果：
+
+- [V2 封存与 V4.1 数据隔离设计](docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)
+- [V2 / V4.1 数据隔离迁移报告](docs/reports/2026-07-23-v2-v4-1-data-migration.md)
+- [数据目录说明](data/README.md)
+
+## 已冻结的 V4.1 训练发布
+
+发布目录：
+
+`data/current/training_releases/v4.1.0-760050fad303`
+
+发布清单：
+
+`data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json`
+
+已确认的统计：
+
+| 项目 | 数量 |
+| --- | ---: |
+| 物化候选 | 1285 |
+| 人工审查 | 774 |
+| 自动稳定阴性 | 511 |
+| 排除 | 10 |
+| 正式发布 | 1275 |
+| Fold 0 train / val | 850 / 425 |
+| Fold 1 train / val | 830 / 445 |
+| Fold 2 train / val | 929 / 346 |
+
+该发布是内容寻址、不可覆盖的训练输入。更正数据必须生成新的发布编号，不能直接修改
+现有发布目录。
+
+## V4.1 数据审查与发布
+
+当前批次已经完成审查和发布；以下命令用于复核或复现当前流程，不应覆盖冻结产物：
+
+```bash
+# 构建 observed + incipient 审查队列
+python pipeline/scripts/build_v4_1_review_queue.py \
+  --materialized <development_materialized.json> \
+  --manifest <candidate_media_manifest.json>
+
+# 以帧画面优先的 V4.1 UI 进行人工审查
+streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
+  --queue <review_queue.json> \
+  --manifest <candidate_media_manifest.json> \
+  --reviewer-id <reviewer-id>
+
+# 复核输入并生成不可覆盖的训练发布
+python pipeline/scripts/build_v4_1_training_release.py
+```
+
+正式路径、当前批次身份、恢复规则和不可绕过的质量门见
+[数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)。
+
+## V4.1 三折训练、合并与评测
+
+训练和 GPU 推理只在训练电脑执行。本机用于代码检查、文档整理和已同步结果复核。
+
+当前正式视觉运行：
+
+- 运行 ID：`v4_1_0_760050fad303_20260724_visual`
+- 训练：4-bit bnb 基座、视觉塔 LoRA、完整训练并保存 `resampler`
+- 主评估：三个 merged BF16 模型
+- 量化评估：merged 后重新 4-bit，以及 4-bit 基座直挂原始 adapter
+- 轻量证据：[正式视觉运行证据冻结](docs/results/v4_1_0_760050fad303_20260724_visual/README.md)
+
+以下命令是上一轮语言层 LoRA 基线的复现入口，不是当前正式视觉运行的重跑命令：
+
+```bash
+# 逐文件验证发布、媒体、标签、划分和输出目录
+python finetune/run_v4_1_three_fold_training.py --validate-only
+
+# 依次训练三个 fold
+python finetune/run_v4_1_three_fold_training.py
+
+# 训练完成后检查合并与评测前置条件
+python finetune/run_v4_1_post_training.py --validate-only
+
+# 合并三个 LoRA，并对各自 validation fold 做可恢复的严格推理
+python finetune/run_v4_1_post_training.py
+```
+
+训练配置：
+
+- `finetune/MiniCPM/config/train_v4_1_fold0.yaml`
+- `finetune/MiniCPM/config/train_v4_1_fold1.yaml`
+- `finetune/MiniCPM/config/train_v4_1_fold2.yaml`
+
+合并配置：
+
+- `finetune/MiniCPM/config/merge_v4_1_fold0.yaml`
+- `finetune/MiniCPM/config/merge_v4_1_fold1.yaml`
+- `finetune/MiniCPM/config/merge_v4_1_fold2.yaml`
+
+严格评测汇总 JSON/schema 合法率、四字段准确率、联合准确率、`clip_state` 混淆表和
+运行失败。训练 loss 或 eval loss 下降只证明训练目标收敛，不能单独证明任务效果。
+完整说明见 [微调与评估](finetune/README.md)。
+
+冻结现有正式视觉运行的轻量证据：
+
+```bash
+python finetune/freeze_v4_1_evidence.py \
+  --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
+  --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \
+  --release-manifest data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json \
+  --contract pipeline/contracts/tensile_vlm_v4_1.json \
+  --output-dir finetune/results/v4_1_0_760050fad303_20260724_visual/evidence_freeze \
+  --model-hash-mode full
+```
+
+## 生产推理服务边界
+
+当前生产服务仍固定使用 `pipeline/contracts/tensile_vlm_v2.json`。现有部署和
+TensileAgent 接入应继续遵循
+[V2 推理服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)，不得把 V4.1 训练模型直接放入
+V2 服务或伪造 V2 deployment manifest。
+
+V4.1 上线需要单独完成：
+
+1. 选定通过任务效果验收的 V4.1 模型；
+2. 发布与 V4.1 artifact 一致的服务端 schema、Prompt 和 manifest；
+3. 同步升级 TensileAgent schema、搜索语义、Stub、Verifier、Web 展示和端到端测试；
+4. 完成真实视频联调与回滚验证后再切换生产地址。
+
+## 环境
+
+推荐 Python 3.11、Conda 和 Linux/GPU 环境：
 
 ```bash
 git submodule update --init --recursive
-
 conda create -n mVllm2 python=3.11 pip -y
 conda activate mVllm2
-
 pip install -r requirements.txt
 pip install -e ./LlamaFactory
 ```
 
-将 MiniCPM-V-4.5 基座模型放入 `models/`，或在脚本中通过 `--model` 指定。子视频生成需要 `ffmpeg` 和 `ffprobe`。
+子视频处理需要 `ffmpeg` / `ffprobe`。MiniCPM-V-4.5 基座模型放在 `models/`，或通过
+具体运行配置指定。
 
-## 快速开始
+## 项目结构
 
-所有命令从仓库根目录执行。完整数据流程以 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md) 为准。
-
-### 1. 生成数据
-
-> 详细的子视频生成与数据流程见 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)。
-
-小样本验证：
-
-```bash
-python pipeline/scripts/subvideo_builder.py \
-  --model models/minicpmv4_5 \
-  --sample-size 10 \
-  --sample-output-dir data/sample_subvideos
+```text
+pipeline/      数据处理、V4.1 标签/契约、生产服务
+finetune/      三折训练、模型合并、严格评测
+data/          current/archive 语义入口
+config/        数据根配置
+docs/          运行手册、设计和迁移报告
+tests/         数据、契约和评测测试
+LlamaFactory/  LLaMA-Factory 子模块
+models/        本地模型目录
 ```
-
-确认无误后完整生成：
-
-```bash
-python pipeline/scripts/subvideo_builder.py --model models/minicpmv4_5
-```
-
-### 2. 审核子视频
-
-> 详细的人工审核与增量复审流程见 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)。
-
-训练级子视频：
-
-```bash
-streamlit run pipeline/scripts/review_subvideos_app.py -- \
-  --metadata data/07_metadata/subvideos_meta.json
-```
-
-测试级子视频使用对应 metadata 运行同一脚本。
-
-实验性的源视频固定 ROI 标注工具：
-
-```bash
-streamlit run pipeline/scripts/roi_annotation_app.py -- \
-  --metadata data/07_metadata/video_meta.json \
-  --output data/07_metadata/roi_decisions.json
-```
-
-该工具只保存 ROI / 不裁剪决定，不生成训练视频，也不修改当前激活的数据发布版本。
-当前 `fixed_roi` 裁剪框锁定为 `3:4`（宽:高）；`no_crop` 后续统一补边到 `3:4`。
-全部 110 条决定完成后，使用
-`uv run python pipeline/scripts/freeze_roi_decisions.py --check-only` 校验，再去掉
-`--check-only` 冻结为不可覆盖的 ROI manifest。
-
-### 3. 导出训练数据
-
-> 详细的训练数据导出、质量检查与版本冻结步骤见 [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)。
-
-首次审核完成或增量复审安全合并后，依次执行：
-
-```bash
-# 将人工审核决定合并到子视频元数据
-python pipeline/scripts/apply_review_decisions.py \
-  --metadata data/07_metadata/subvideos_meta.json \
-  --decisions data/07_metadata/subvideo_train_review_decisions_final.json \
-  --output data/07_metadata/subvideos_meta.reviewed.json \
-  --strict
-
-# 应用人工复核后的标签修正
-python pipeline/scripts/apply_label_corrections.py \
-  --metadata data/07_metadata/subvideos_meta.reviewed.json \
-  --output data/07_metadata/subvideos_meta.label_reviewed.json
-
-# 在人工审核基线上缩减脆性断裂 neg_before 样本
-python pipeline/scripts/filter_reviewed_neg_before.py \
-  --output-report data/07_metadata/filter_neg_before_dropped_report.json
-
-# 根据元数据和划分构建训练样本
-python pipeline/scripts/training_sample_builder.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json \
-  --video-meta data/07_metadata/video_meta.json \
-  --splits-dir data/05_splits \
-  --output-dir data/06_merged
-
-# 检查帧索引是否超出子视频边界
-python scripts/validate_no_oob.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json
-
-# 对训练样本执行质量检查
-python pipeline/scripts/quality_check.py \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json \
-  --merged-dir data/06_merged
-
-# 锁定当前数据版本并生成快照
-python pipeline/scripts/freeze_data_version.py \
-  --merged-dir data/06_merged \
-  --subvideos-meta data/07_metadata/subvideos_meta.filtered_neg_before.label_reviewed.json \
-  --video-meta data/07_metadata/video_meta.json \
-  --splits-dir data/05_splits \
-  --subvideo-dir data/03_subvideos \
-  --lock data/07_metadata/data_version_lock.json
-
-# 发布并切换到不可覆盖的训练版本
-python pipeline/scripts/publish_training_release.py --activate
-```
-
-`03`–`07` 都属于数据处理工作区。只有
-`data/08_training_ready/<release_id>/` 中状态为 `training_ready` 的版本可供正式训练；
-当前版本记录在 `finetune/active_data_release.json`。
-
-特别注意：前面的构建、校验和冻结命令不会自动写入 `08_training_ready`。每一轮数据处理
-都必须显式执行最后的发布命令；只有带 `--activate` 发布成功后，训练和评估才会切换到
-新版本。旧发布版本不会被覆盖，`scripts/clear_data_outputs.py` 也不会删除它们。若只需
-重新激活一个已经存在的版本：
-
-```bash
-python pipeline/scripts/publish_training_release.py \
-  --activate-existing <release_id>
-```
-
-各脚本支持 `--help` 查看参数。完整的下一轮运行顺序、重复版本处理和失败恢复规则见
-[数据处理运行手册](docs/DATA_PROCESSING_RUNBOOK.md)。
-
-### 4. 训练模型
-
-> 详细的训练、合并与评估命令见 [finetune/README.md](finetune/README.md)。
-
-```bash
-cd finetune
-python train_with_contract.py \
-  MiniCPM/config/train_fold0.yaml
-```
-
-项目采用 LoRA 微调和 3-fold 视频级划分。训练配置使用稳定的用途命名，实验版本和
-运行批次由 YAML 内的发布标识及 `output_dir` 固定。不得复用旧实验的输出目录；各
-fold 参数和产物路径以对应 YAML 为准。
-
-### 5. 评估模型
-
-> 详细的评估命令与数据集说明见 [finetune/README.md](finetune/README.md)。
-
-在训练机上运行：
-
-```bash
-python -m finetune.validation.run_evaluation \
-  --dataset test \
-  --model-dir /path/to/merged_model \
-  --out-dir finetune/results/eval_test
-```
-
-已有预测 JSONL 时，可本地复核：
-
-```bash
-python -m finetune.validation.run_evaluation \
-  --dataset test \
-  --predictions /path/to/predictions.jsonl \
-  --out-dir finetune/results/eval_test
-```
-
-## 推理服务
-
-生产服务固定使用 `pipeline/contracts/tensile_vlm_v2.json`。其中 analysis Prompt
-是全量模型训练 Prompt 的版本化快照；服务启动和请求处理均不再动态读取 YAML。
-查看当前固定契约身份：
-
-```bash
-python -m pipeline.production_contract
-```
-
-从 `pipeline/server_deployment_manifest.example.json` 复制启动配置并替换全部
-`REPLACE_*`。启动配置只写模型、adapter、processor、框架和运行环境；服务会从
-已验证的 artifact 注入 `contract_version` 与 `contract_hash`。TensileAgent 会先调用
-`GET /v1/tensile/contract` 固定部署快照，并逐轮检查漂移。
-
-```bash
-python -m pipeline.server_proxy \
-  --model /path/to/merged_model \
-  --deployment-manifest /path/to/deployment_manifest.json
-```
-
-分析和视觉证据都通过 `POST /v1/chat/completions`。服务只接受 artifact 中的固定
-Prompt；analysis 非法输出由服务端最多重试两次，Agent 客户端不追加动态纠错文本。
-
-全量模型在训练机上的前台/后台启动、预检、真实视频冒烟、TensileAgent 接入、停止和
-故障排查见 [全量模型推理服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)。
-
-## 测试
-
-```bash
-python -m pytest -q \
-  tests/test_apply_review_decisions.py \
-  tests/test_generate_test_subvideo_artifacts.py \
-  tests/test_quality_check.py \
-  tests/test_validation_rebuild.py \
-  tests/test_review_subvideos_app_helpers.py
-```
-
-LLaMA-Factory 自带测试需要额外深度学习依赖，与项目数据流水线测试分开运行。
 
 ## 相关文档
 
-- [Agent 工作说明](AGENTS.md)
 - [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)
-- [微调说明](finetune/README.md)
-- [最终 Prompt 策略](docs/FINAL_PROMPT_POLICY.md)
-- [唯一 Prompt 配置](pipeline/prompt_library.yaml)
-- [人工审核后的再生成与复标规则](docs/REVIEW_REGENERATION_RULES.md)
-- [视觉归因与 ROI 优化方向](docs/VISUAL_GROUNDING_AND_ROI_OPTIMIZATION.md)
-- [材料拉伸断裂行为分类指南](assets/frac_mode.md)
-- [旧基线问题池](assets/question_pool.md)
+- [微调与评估](finetune/README.md)
+- [V4.1 临界未断裂契约设计](docs/plans/2026-07-23-tensile-vlm-v4-1-incipient-fracture-design.md)
+- [Agent 工作说明](AGENTS.md)
 
-## 运行边界
-
-- 数据生成、训练和完整推理依赖模型权重、视频媒体和运行环境。
-- 训练与 GPU 推理应在远程 Linux/GPU 机器执行。
-- 本机可进行代码检查、轻量测试和已有预测结果复核。
-- 评估应同时参考结构化指标、原始输出和典型成功/失败样例，不能只看 train loss 或 eval loss。
+V2/V3 Prompt、旧审核和旧数据流水线文档只用于历史追溯。新工作应从本 README、
+V4.1 契约、当前数据运行手册和冻结发布清单开始。
