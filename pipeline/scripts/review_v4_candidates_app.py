@@ -313,6 +313,8 @@ def main() -> None:
         )
         with st.expander("技术信息（一般无需查看）", expanded=False):
             st.caption(f"V4 队列：{identity['queue_id']}")
+            if identity.get("review_scope") is not None:
+                st.caption(f"审查隔离域：{identity['review_scope']}")
             st.caption(f"草稿：{draft_path}")
             st.caption(f"结果目录：{output_root}")
 
@@ -373,6 +375,10 @@ def main() -> None:
 
     candidate = candidate_index[selected_id]
     existing = decisions.get(selected_id)
+    independent_review = (
+        identity.get("labels_are_truth") is False
+        and candidate.get("labels_are_truth") is False
+    )
     historical_labels, historical_ids, historical_records = historical_context(
         candidate, references
     )
@@ -389,12 +395,18 @@ def main() -> None:
             "grip_root": "夹具根部齐根",
             None: "位置未知",
         }
+        suggestion_prefix = (
+            "历史标签提示（不是真值）："
+            if independent_review
+            else "系统建议："
+        )
         st.caption(
-            "系统建议："
-            f"{proposed['clip_state']} · "
+            suggestion_prefix + f"{proposed['clip_state']} · "
             f"{proposed['fracture_mechanism'] or '机制未知'} · "
             f"{site_labels[proposed['fracture_site']]}"
         )
+        if independent_review:
+            st.warning("请仅依据当前采样帧独立选择四个字段，不能直接批准历史标签提示。")
         with st.expander(
             f"历史参考 · {len(historical_records)} 条",
             expanded=False,
@@ -412,13 +424,18 @@ def main() -> None:
         if existing:
             st.info(f"当前已保存：{existing['review_status']}")
 
-        base_labels = (
-            existing.get("effective_labels")
-            if existing and existing.get("effective_labels") is not None
-            else candidate["candidate_v4_labels"]
-        )
+        if existing and existing.get("effective_labels") is not None:
+            base_labels = existing["effective_labels"]
+        elif independent_review:
+            base_labels = None
+        else:
+            base_labels = candidate["candidate_v4_labels"]
         with st.form(f"v4-review-{selected_id}"):
-            clip_states = sorted(CLIP_STATES)
+            clip_states = (
+                [None, *sorted(CLIP_STATES)]
+                if independent_review
+                else sorted(CLIP_STATES)
+            )
             mechanisms = [None, *sorted(FRACTURE_MECHANISMS)]
             fracture_sites = [
                 None,
@@ -430,20 +447,30 @@ def main() -> None:
             clip_state = st.selectbox(
                 "clip_state",
                 clip_states,
-                index=_option_index(clip_states, base_labels["clip_state"]),
+                index=_option_index(
+                    clip_states,
+                    base_labels["clip_state"] if base_labels is not None else None,
+                ),
+                format_func=lambda value: "请选择状态" if value is None else value,
             )
             fracture_mechanism = st.selectbox(
                 "fracture_mechanism",
                 mechanisms,
                 index=_option_index(
-                    mechanisms, base_labels["fracture_mechanism"]
+                    mechanisms,
+                    (
+                        base_labels["fracture_mechanism"]
+                        if base_labels is not None
+                        else None
+                    ),
                 ),
             )
             fracture_site = st.selectbox(
                 "断裂位置",
                 fracture_sites,
                 index=_option_index(
-                    fracture_sites, base_labels["fracture_site"]
+                    fracture_sites,
+                    base_labels["fracture_site"] if base_labels is not None else None,
                 ),
                 format_func=lambda value: site_labels[value],
             )
@@ -451,8 +478,14 @@ def main() -> None:
                 "special_case",
                 special_cases,
                 index=_option_index(
-                    special_cases, base_labels["special_case"]
+                    special_cases,
+                    base_labels["special_case"] if base_labels is not None else None,
                 ),
+            )
+            independently_checked = st.checkbox(
+                "我已基于模型采样帧独立核对四个字段",
+                value=not independent_review,
+                disabled=not independent_review,
             )
             notes = st.text_area(
                 "备注（丢弃或重新生成时必填）",
@@ -476,6 +509,12 @@ def main() -> None:
         if approve or drop or regenerate:
             try:
                 if approve:
+                    if clip_state is None:
+                        raise V4_1ReviewWorkflowError("必须明确选择 clip_state")
+                    if independent_review and not independently_checked:
+                        raise V4_1ReviewWorkflowError(
+                            "必须确认已基于采样帧独立核对四个字段"
+                        )
                     edited = canonicalize_v4_1_labels(
                         {
                             "clip_state": clip_state,

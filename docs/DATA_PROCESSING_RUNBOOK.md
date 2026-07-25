@@ -189,9 +189,6 @@ streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
   --queue \
     data/current/derived/metadata/v4_1/review_queues/\
 v4-1-review-4a449c8d1193/review_queue.json \
-  --manifest \
-    data/current/derived/metadata/v3/candidate_media_results/\
-candidate-media-8de972530561/manifest.json \
   --reviewer-id <reviewer-id>
 ```
 
@@ -209,6 +206,43 @@ candidate-media-8de972530561/manifest.json \
 全部候选形成合法终态后，UI 才能冻结内容寻址的 review batch。当前冻结决策：
 
 `data/current/derived/metadata/v4_1/review_decisions/v4-1-review-4a449c8d1193/review-batch-9043bbe4c286/decisions.json`
+
+### 阶段 2 新增候选的隔离审查
+
+2026-07-25 阶段 1 有效视图审计已经完成。410 条开发候选和 332 条密封测试候选必须
+从同一冻结审计分别生成两个内容绑定的队列：
+
+```bash
+python pipeline/scripts/build_v4_1_phase2_review_queues.py \
+  --audit-manifest \
+    data/current/derived/metadata/v4_1/effective_view_audits/\
+phase1_verified/audit_manifest.json
+```
+
+命令会打印两个不同的 `queue_id` 和路径，但不会创建训练发布。分别使用输出路径启动
+审查界面：
+
+```bash
+streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
+  --queue <development_review_queue.json> \
+  --reviewer-id <reviewer-id>
+
+streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
+  --queue <sealed_test_review_queue.json> \
+  --reviewer-id <reviewer-id>
+```
+
+阶段 2 队列额外执行以下门禁：
+
+- 队列绑定阶段 1 审计、V4.1 契约、materialized 输入及其 SHA-256；
+- 开发与密封测试使用不同队列身份和草稿/决定目录；
+- 历史 V3 或自动标签只显示为提示，界面不预选 `clip_state`；
+- 审核者必须确认已经依据实际采样帧独立核对四个字段；
+- 普通 `未断裂` 测试候选不会被旧 observed/incipient 过滤逻辑排除；
+- 任一审计、媒体、帧图、候选集合或 scope 漂移都会拒绝加载。
+
+当前代码和真实 410/332 清单的只读预演已通过；正式队列尚未落盘，人工审查尚未开始。
+密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或模型选择。
 
 ## 第五步：构建不可覆盖的 V4.1 训练发布
 

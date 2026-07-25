@@ -22,7 +22,11 @@ from pipeline.v4_1_labels import (
     migrate_v3_to_v4_1_labels,
     migrate_v4_labels,
 )
-from pipeline.data_roots import resolve_workspace_artifact
+from pipeline.data_roots import (
+    DataRootError,
+    resolve_workspace_artifact,
+    workspace_portable_path,
+)
 from pipeline.v4_1_review_decisions import (
     REVIEW_SCHEMA_VERSION,
     build_review_payload,
@@ -32,8 +36,11 @@ from pipeline.v4_1_review_decisions import (
 )
 
 QUEUE_SCHEMA_VERSION = "tensile-v4.1-review-queue/v1"
+PHASE2_QUEUE_SCHEMA_VERSION = "tensile-v4.1-phase2-review-queue/v1"
 WORKSPACE_SCHEMA_VERSION = "tensile-review-workspace/v4.1"
 MIGRATION_POLICY_VERSION = "v4-to-v4.1-incipient/v1"
+PHASE2_REVIEW_POLICY_VERSION = "effective-view-human-review/v1"
+EFFECTIVE_VIEW_AUDIT_SCHEMA_VERSION = "tensile-vlm-v4.1-effective-view-audit/v1"
 MATERIALIZED_SCHEMA_VERSION = "tensile-v3-candidate-media/v1"
 TERMINAL_REVIEW_STATUSES = frozenset(
     {"approved", "corrected", "dropped", "needs_regenerate"}
@@ -257,6 +264,329 @@ def save_v4_1_review_queue(path: Path, payload: Mapping[str, Any]) -> bool:
     return True
 
 
+def _materialized_candidates(path: Path) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
+    payload = _load_json(path, "materialized candidates")
+    if (
+        not isinstance(payload, Mapping)
+        or payload.get("schema_version") != MATERIALIZED_SCHEMA_VERSION
+    ):
+        raise V4_1ReviewWorkflowError("materialized candidates schema_version 不匹配")
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list) or not all(
+        isinstance(item, Mapping) for item in candidates
+    ):
+        raise V4_1ReviewWorkflowError("materialized candidates 缺少 candidates")
+    candidate_ids = [item.get("candidate_id") for item in candidates]
+    if any(not isinstance(item, str) or not item for item in candidate_ids):
+        raise V4_1ReviewWorkflowError("materialized candidates 包含非法 candidate_id")
+    if len(candidate_ids) != len(set(candidate_ids)):
+        raise V4_1ReviewWorkflowError("materialized candidates candidate_id 重复")
+    return payload, candidates
+
+
+def _phase2_scope_input_name(scope: str) -> str:
+    names = {
+        "development": "experimental_materialized",
+        "sealed_test": "test_materialized",
+    }
+    try:
+        return names[scope]
+    except KeyError as exc:
+        raise V4_1ReviewWorkflowError(
+            f"phase2 review scope 非法: {scope!r}"
+        ) from exc
+
+
+def _portable_binding_path(path: Path, project_root: Path) -> str:
+    try:
+        return workspace_portable_path(path, project_root)
+    except DataRootError:
+        return str(Path(path).resolve())
+
+
+def _phase2_audit_scope(
+    audit: Mapping[str, Any],
+    *,
+    scope: str,
+) -> tuple[list[Mapping[str, Any]], Mapping[str, Any]]:
+    if audit.get("schema_version") != EFFECTIVE_VIEW_AUDIT_SCHEMA_VERSION:
+        raise V4_1ReviewWorkflowError("有效视图审计 schema_version 不匹配")
+    completion = audit.get("completion")
+    leakage = audit.get("leakage")
+    identity = audit.get("identity")
+    if (
+        not isinstance(completion, Mapping)
+        or completion.get("ready_for_human_review") is not True
+        or completion.get("creates_training_release") is not False
+    ):
+        raise V4_1ReviewWorkflowError("有效视图审计尚未达到人工审查门槛")
+    if not isinstance(leakage, Mapping) or leakage.get("passed") is not True:
+        raise V4_1ReviewWorkflowError("有效视图审计的开发/测试隔离未通过")
+    policy = identity.get("policy") if isinstance(identity, Mapping) else None
+    if (
+        not isinstance(policy, Mapping)
+        or policy.get("automatic_labels_are_truth") is not False
+        or policy.get("v3_test_labels_are_truth") is not False
+    ):
+        raise V4_1ReviewWorkflowError("有效视图审计未声明历史标签仅作提示")
+    queues = audit.get("review_queues")
+    rows = queues.get(scope) if isinstance(queues, Mapping) else None
+    if not isinstance(rows, list) or not all(isinstance(row, Mapping) for row in rows):
+        raise V4_1ReviewWorkflowError(f"有效视图审计缺少 {scope} 审查候选")
+    inputs = audit.get("inputs")
+    source = (
+        inputs.get(_phase2_scope_input_name(scope))
+        if isinstance(inputs, Mapping)
+        else None
+    )
+    if not isinstance(source, Mapping):
+        raise V4_1ReviewWorkflowError(f"有效视图审计缺少 {scope} 媒体输入")
+    return rows, source
+
+
+def build_phase2_review_queue(
+    *,
+    audit_manifest_path: Path,
+    scope: str,
+    project_root: Path,
+    contract_path: Path,
+) -> dict[str, Any]:
+    """Build one isolated human-review queue from the frozen Phase 1 audit."""
+    audit_manifest_path = Path(audit_manifest_path).resolve()
+    audit = _load_json(audit_manifest_path, "有效视图审计 manifest")
+    if not isinstance(audit, Mapping):
+        raise V4_1ReviewWorkflowError("有效视图审计 manifest 必须是对象")
+    audit_rows, source = _phase2_audit_scope(audit, scope=scope)
+    materialized_path = _resolve_path(source.get("path"), project_root)
+    materialized_sha256 = sha256_file(materialized_path)
+    if materialized_sha256 != source.get("sha256"):
+        raise V4_1ReviewWorkflowError(f"{scope} materialized 输入已漂移")
+    _, materialized = _materialized_candidates(materialized_path)
+    materialized_index = {
+        str(item["candidate_id"]): item for item in materialized
+    }
+    entries: list[dict[str, Any]] = []
+    for row in audit_rows:
+        candidate_id = str(row.get("candidate_id") or "")
+        source_candidate = materialized_index.get(candidate_id)
+        if source_candidate is None:
+            raise V4_1ReviewWorkflowError(
+                f"{scope} 审计候选不存在于 materialized 输入: {candidate_id}"
+            )
+        labels = canonicalize_v4_1_labels(row.get("labels"))
+        if row.get("review_scope") != scope or row.get("truth_status") != "unreviewed":
+            raise V4_1ReviewWorkflowError(
+                f"{candidate_id}: 审计候选 scope 或 truth_status 非法"
+            )
+        if (
+            row.get("source_video") != source_candidate.get("source_video")
+            or row.get("video_sha256") != source_candidate.get("video_sha256")
+            or row.get("actual_frame_mapping")
+            != source_candidate.get("actual_frame_mapping")
+        ):
+            raise V4_1ReviewWorkflowError(f"{candidate_id}: 审计候选媒体绑定漂移")
+        entries.append(
+            {
+                "candidate_id": candidate_id,
+                "candidate_v4_labels": labels,
+                "candidate_kind": "phase2_audit_candidate",
+                "review_scope": scope,
+                "labels_are_truth": False,
+                "effective_frame_signature": row.get(
+                    "effective_frame_signature"
+                ),
+            }
+        )
+    contract_hash, contract_file_sha256 = _contract_identity(contract_path)
+    seed = {
+        "audit_manifest_sha256": sha256_file(audit_manifest_path),
+        "audit_id": audit.get("audit_id"),
+        "scope": scope,
+        "materialized_sha256": materialized_sha256,
+        "contract_hash": contract_hash,
+        "review_policy_version": PHASE2_REVIEW_POLICY_VERSION,
+        "candidate_ids": [item["candidate_id"] for item in entries],
+    }
+    queue_id = f"v4-1-phase2-{scope}-{_sha256_bytes(canonical_json_bytes(seed))[:12]}"
+    return {
+        "schema_version": PHASE2_QUEUE_SCHEMA_VERSION,
+        "queue_id": queue_id,
+        "review_policy_version": PHASE2_REVIEW_POLICY_VERSION,
+        "review_scope": scope,
+        "labels_are_truth": False,
+        "contract": {
+            "path": str(Path(contract_path).resolve()),
+            "contract_hash": contract_hash,
+            "file_sha256": contract_file_sha256,
+        },
+        "source_audit": {
+            "path": _portable_binding_path(audit_manifest_path, project_root),
+            "sha256": sha256_file(audit_manifest_path),
+            "audit_id": audit.get("audit_id"),
+        },
+        "source_media": {
+            "materialized_path": _portable_binding_path(
+                materialized_path, project_root
+            ),
+            "materialized_sha256": materialized_sha256,
+            "media_id": _load_json(
+                materialized_path, "materialized candidates"
+            ).get("media_id"),
+        },
+        "candidate_count": len(entries),
+        "candidate_ids_sha256": _candidate_ids_sha256(
+            item["candidate_id"] for item in entries
+        ),
+        "candidates": entries,
+    }
+
+
+def _select_review_candidates(
+    joined: list[dict[str, Any]],
+    *,
+    candidate_ids: Iterable[str] | None,
+    limit: int | None,
+) -> tuple[list[dict[str, Any]], list[str], str]:
+    all_ids = [item["candidate_id"] for item in joined]
+    requested = list(candidate_ids or [])
+    if len(requested) != len(set(requested)):
+        raise V4_1ReviewWorkflowError("candidate_ids 不能重复")
+    index = {item["candidate_id"]: item for item in joined}
+    missing = [item for item in requested if item not in index]
+    if missing:
+        raise V4_1ReviewWorkflowError(f"指定 candidate_id 不在队列中: {missing}")
+    selected = [index[item] for item in requested] if requested else joined
+    if limit is not None:
+        if limit <= 0:
+            raise V4_1ReviewWorkflowError("limit 必须大于 0")
+        selected = selected[:limit]
+    selected_ids = [item["candidate_id"] for item in selected]
+    return selected, selected_ids, _candidate_ids_sha256(all_ids)
+
+
+def _load_phase2_review_queue(
+    queue_path: Path,
+    queue: Mapping[str, Any],
+    *,
+    project_root: Path,
+    candidate_ids: Iterable[str] | None,
+    limit: int | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    if queue.get("review_policy_version") != PHASE2_REVIEW_POLICY_VERSION:
+        raise V4_1ReviewWorkflowError("phase2 人工审查策略版本不匹配")
+    scope = str(queue.get("review_scope") or "")
+    _phase2_scope_input_name(scope)
+    if queue.get("labels_are_truth") is not False:
+        raise V4_1ReviewWorkflowError("phase2 队列必须声明历史标签不是真值")
+    contract = queue.get("contract")
+    source_audit = queue.get("source_audit")
+    source_media = queue.get("source_media")
+    if not all(
+        isinstance(item, Mapping)
+        for item in (contract, source_audit, source_media)
+    ):
+        raise V4_1ReviewWorkflowError("phase2 队列缺少 contract、audit 或 media 绑定")
+    contract_path = _resolve_contract_path(contract.get("path"))
+    contract_hash, contract_file_sha256 = _contract_identity(contract_path)
+    if (
+        contract.get("contract_hash") != contract_hash
+        or contract.get("file_sha256") != contract_file_sha256
+    ):
+        raise V4_1ReviewWorkflowError("phase2 队列绑定的契约已漂移")
+    audit_path = _resolve_path(source_audit.get("path"), project_root)
+    if sha256_file(audit_path) != source_audit.get("sha256"):
+        raise V4_1ReviewWorkflowError("phase2 队列绑定的审计 manifest 已漂移")
+    audit = _load_json(audit_path, "有效视图审计 manifest")
+    if not isinstance(audit, Mapping) or audit.get("audit_id") != source_audit.get(
+        "audit_id"
+    ):
+        raise V4_1ReviewWorkflowError("phase2 队列 audit_id 不匹配")
+    audit_rows, audit_source = _phase2_audit_scope(audit, scope=scope)
+    materialized_path = _resolve_path(
+        source_media.get("materialized_path"), project_root
+    )
+    materialized_sha256 = sha256_file(materialized_path)
+    if (
+        materialized_sha256 != source_media.get("materialized_sha256")
+        or materialized_sha256 != audit_source.get("sha256")
+    ):
+        raise V4_1ReviewWorkflowError("phase2 队列 materialized 输入已漂移")
+    payload, materialized = _materialized_candidates(materialized_path)
+    materialized_index = {
+        str(item["candidate_id"]): item for item in materialized
+    }
+    entries = queue.get("candidates")
+    if not isinstance(entries, list) or len(entries) != len(audit_rows):
+        raise V4_1ReviewWorkflowError("phase2 队列候选数量与审计清单不一致")
+    entry_index = {
+        str(item.get("candidate_id")): item
+        for item in entries
+        if isinstance(item, Mapping)
+    }
+    if len(entry_index) != len(entries):
+        raise V4_1ReviewWorkflowError("phase2 队列 candidate_id 非法或重复")
+    joined: list[dict[str, Any]] = []
+    for row in audit_rows:
+        candidate_id = str(row.get("candidate_id") or "")
+        entry = entry_index.get(candidate_id)
+        source_candidate = materialized_index.get(candidate_id)
+        if entry is None or source_candidate is None:
+            raise V4_1ReviewWorkflowError(
+                f"phase2 队列缺少审计候选: {candidate_id}"
+            )
+        labels = canonicalize_v4_1_labels(row.get("labels"))
+        if (
+            canonicalize_v4_1_labels(entry.get("candidate_v4_labels")) != labels
+            or entry.get("review_scope") != scope
+            or entry.get("labels_are_truth") is not False
+        ):
+            raise V4_1ReviewWorkflowError(f"{candidate_id}: phase2 标签提示或 scope 漂移")
+        if (
+            row.get("source_video") != source_candidate.get("source_video")
+            or row.get("video_sha256") != source_candidate.get("video_sha256")
+            or row.get("actual_frame_mapping")
+            != source_candidate.get("actual_frame_mapping")
+        ):
+            raise V4_1ReviewWorkflowError(f"{candidate_id}: phase2 媒体绑定漂移")
+        joined.append(
+            {
+                **_validate_media(source_candidate, project_root),
+                "candidate_v4_labels": labels,
+                "candidate_kind": "phase2_audit_candidate",
+                "review_scope": scope,
+                "labels_are_truth": False,
+                "effective_frame_signature": row.get(
+                    "effective_frame_signature"
+                ),
+            }
+        )
+    all_ids = [item["candidate_id"] for item in joined]
+    all_ids_sha256 = _candidate_ids_sha256(all_ids)
+    if queue.get("candidate_ids_sha256") != all_ids_sha256:
+        raise V4_1ReviewWorkflowError("phase2 candidate IDs 摘要不一致")
+    selected, selected_ids, _ = _select_review_candidates(
+        joined,
+        candidate_ids=candidate_ids,
+        limit=limit,
+    )
+    identity = {
+        "queue_schema_version": PHASE2_QUEUE_SCHEMA_VERSION,
+        "queue_id": queue["queue_id"],
+        "queue_path": str(queue_path),
+        "queue_sha256": sha256_file(queue_path),
+        "contract_hash": contract_hash,
+        "media_id": payload.get("media_id"),
+        "audit_id": audit["audit_id"],
+        "review_scope": scope,
+        "labels_are_truth": False,
+        "full_queue_count": len(joined),
+        "full_candidate_ids_sha256": all_ids_sha256,
+        "selected_candidate_ids": selected_ids,
+        "selected_candidate_ids_sha256": _candidate_ids_sha256(selected_ids),
+    }
+    return identity, selected
+
+
 def load_review_queue(
     queue_path: Path,
     *,
@@ -266,6 +596,17 @@ def load_review_queue(
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     queue_path = Path(queue_path).resolve()
     queue = _load_json(queue_path, "v4.1 review queue")
+    if (
+        isinstance(queue, Mapping)
+        and queue.get("schema_version") == PHASE2_QUEUE_SCHEMA_VERSION
+    ):
+        return _load_phase2_review_queue(
+            queue_path,
+            queue,
+            project_root=project_root,
+            candidate_ids=candidate_ids,
+            limit=limit,
+        )
     if not isinstance(queue, Mapping) or queue.get("schema_version") != QUEUE_SCHEMA_VERSION:
         raise V4_1ReviewWorkflowError(f"schema_version 必须是 {QUEUE_SCHEMA_VERSION}")
     if queue.get("migration_policy_version") != MIGRATION_POLICY_VERSION:
