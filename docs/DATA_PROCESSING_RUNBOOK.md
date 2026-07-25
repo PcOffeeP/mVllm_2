@@ -241,8 +241,15 @@ streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
 - 普通 `未断裂` 测试候选不会被旧 observed/incipient 过滤逻辑排除；
 - 任一审计、媒体、帧图、候选集合或 scope 漂移都会拒绝加载。
 
-当前代码和真实 410/332 清单的只读预演已通过；正式队列尚未落盘，人工审查尚未开始。
-密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或模型选择。
+2026-07-25 已正式生成并完整加载验证：
+
+- development：`v4-1-phase2-development-dc453f01fb23`，410 项、44 个源；
+- sealed test：`v4-1-phase2-sealed_test-a16926aca6d2`，332 项、20 个源。
+
+两队列的视频、采样帧和身份哈希均通过，源视频交集为空。轻量身份见
+[`docs/results/v4_1_phase2_review_queues/`](results/v4_1_phase2_review_queues/)。
+人工审查尚未开始。密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或
+模型选择。
 
 ## 第五步：构建不可覆盖的 V4.1 训练发布
 
