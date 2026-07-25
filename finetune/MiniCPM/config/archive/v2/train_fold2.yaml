@@ -1,5 +1,5 @@
 # Training release: v2.0.0-1dab1e5e
-# Run: 2026-07-19 fold 0 pipeline validation
+# Run: 2026-07-19 fold 2 pipeline validation
 
 # === model ===
 model_name_or_path: ../models/minicpm_v_4_5
@@ -18,8 +18,8 @@ lora_dropout: 0.25
 quantization_bit: null
 
 # === dataset ===
-dataset: tensile_video_interval_fold0_train
-eval_dataset: tensile_video_interval_fold0_val
+dataset: tensile_video_interval_fold2_train
+eval_dataset: tensile_video_interval_fold2_val
 dataset_dir: ../finetune
 template: minicpm_v
 media_dir: ..
@@ -29,7 +29,7 @@ preprocessing_num_workers: 4
 overwrite_cache: true
 
 # === output ===
-output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_fold0_20260719
+output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/archive/v2/sft_interval_v2_0_0_1dab1e5e_fold2_20260719
 logging_steps: 5
 save_strategy: steps
 save_steps: 50

@@ -14,7 +14,7 @@
 
 - Python 环境：`/home/liuyang/miniconda3/envs/cpm45/bin/python`
 - merged 模型：
-  `LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged`
+  `LlamaFactory/saves/minicpmv4_5/lora/archive/v2/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged`
 - 部署 manifest：`pipeline/deployments/full_training_v2.json`
 - 服务入口：`pipeline.server_proxy`
 - 默认端口：`8001`
@@ -63,7 +63,7 @@ export API_KEY='替换为随机长字符串'
 
 /home/liuyang/miniconda3/envs/cpm45/bin/python \
   -m pipeline.server_proxy \
-  --model LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged \
+  --model LlamaFactory/saves/minicpmv4_5/lora/archive/v2/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged \
   --deployment-manifest pipeline/deployments/full_training_v2.json \
   --host 127.0.0.1 \
   --port 8001
@@ -95,7 +95,7 @@ tmux new-session -d -s tensile-vlm \
    export PYTHONPATH='/home/liuyang/文档/mVllm_2/LlamaFactory/src:/home/liuyang/文档/mVllm_2' && \
    exec /home/liuyang/miniconda3/envs/cpm45/bin/python \
    -m pipeline.server_proxy \
-   --model LlamaFactory/saves/minicpmv4_5/lora/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged \
+   --model LlamaFactory/saves/minicpmv4_5/lora/archive/v2/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged \
    --deployment-manifest pipeline/deployments/full_training_v2.json \
    --host 0.0.0.0 --port 8001 \
    2>&1 | tee finetune/run_logs/tensile_vlm_service.log"

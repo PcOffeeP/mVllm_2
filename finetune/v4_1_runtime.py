@@ -209,7 +209,7 @@ def validate_training_config(
                 f"{config_path.name}: {field} 应为 {value!r}，实际 {config.get(field)!r}"
             )
     configured_dataset_dir = (
-        Path(config_path).parent.parent.parent / str(config.get("dataset_dir"))
+        Path(project_root) / "finetune" / str(config.get("dataset_dir"))
     ).resolve()
     expected_dataset_dir = release_dir(project_root).resolve()
     if configured_dataset_dir != expected_dataset_dir:
@@ -217,7 +217,7 @@ def validate_training_config(
             f"{config_path.name}: dataset_dir 未绑定 {RELEASE_ID}"
         )
     configured_media_dir = (
-        Path(config_path).parent.parent.parent / str(config.get("media_dir"))
+        Path(project_root) / "finetune" / str(config.get("media_dir"))
     ).resolve()
     expected_media_dir = current_data_paths(project_root).compatibility_workspace.resolve()
     if configured_media_dir != expected_media_dir:

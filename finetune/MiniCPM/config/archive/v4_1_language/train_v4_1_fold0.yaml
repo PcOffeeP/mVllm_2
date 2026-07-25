@@ -1,4 +1,4 @@
-# Data-only ablation. Experimental auto labels are not production data.
+# Immutable training release: v4.1.0-760050fad303
 model_name_or_path: ../models/minicpm_v_4_5
 cache_dir: null
 trust_remote_code: true
@@ -8,17 +8,14 @@ stage: sft
 do_train: true
 do_eval: true
 finetuning_type: lora
-lora_target: all
 lora_rank: 8
 lora_alpha: 16
 lora_dropout: 0.25
-freeze_vision_tower: true
-freeze_multi_modal_projector: true
 quantization_bit: null
 
-dataset: tensile_v4_1_exp_fold0_train
-eval_dataset: tensile_v4_1_exp_fold0_val
-dataset_dir: ../../tensile-data/current/derived/experiments/v4_1_subvideo_exp_v1/dataset
+dataset: tensile_v4_1_fold0_train
+eval_dataset: tensile_v4_1_fold0_val
+dataset_dir: ../../tensile-data/current/training_releases/v4.1.0-760050fad303
 template: minicpm_v
 media_dir: ../../tensile-data/current/.compat/workspace
 cutoff_len: 2048
@@ -26,7 +23,7 @@ video_maxlen: 8
 preprocessing_num_workers: 4
 overwrite_cache: true
 
-output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_subvideo_exp_v1_20260723_fold0_language
+output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold0
 logging_steps: 5
 save_strategy: steps
 save_steps: 50

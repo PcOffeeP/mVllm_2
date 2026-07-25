@@ -23,26 +23,30 @@ FINETUNE = ROOT / "finetune"
 RUN_ID = "v2_0_0_1dab1e5e_20260719"
 RELEASE_ID = "v2.0.0-1dab1e5e"
 LOG_DIR = FINETUNE / "run_logs"
-RESULT_ROOT = FINETUNE / "results" / RUN_ID / "full_training"
+RESULT_ROOT = FINETUNE / "results" / "archive" / "v2" / RUN_ID / "full_training"
 STATE_PATH = LOG_DIR / f"full_training_pipeline_{RUN_ID}.json"
 THREE_FOLD_STATE_PATH = LOG_DIR / f"three_fold_pipeline_{RUN_ID}.json"
 THREE_FOLD_SUMMARY_PATH = (
     FINETUNE
     / "results"
+    / "archive"
+    / "v2"
     / RUN_ID
     / "three_fold_full"
     / "three_fold_summary.json"
 )
 RELEASE_DIR = ROOT / "data" / "08_training_ready" / RELEASE_ID
 DATASET_DIR = FINETUNE / "generated" / "full_training" / RUN_ID
-TRAIN_CONFIG = FINETUNE / "MiniCPM" / "config" / "train_full.yaml"
-MERGE_CONFIG = FINETUNE / "MiniCPM" / "config" / "merge_full.yaml"
+TRAIN_CONFIG = FINETUNE / "MiniCPM" / "config" / "archive" / "v2" / "train_full.yaml"
+MERGE_CONFIG = FINETUNE / "MiniCPM" / "config" / "archive" / "v2" / "merge_full.yaml"
 RUN_DIR = (
     ROOT
     / "LlamaFactory"
     / "saves"
     / "minicpmv4_5"
     / "lora"
+    / "archive"
+    / "v2"
     / f"sft_interval_v2_0_0_1dab1e5e_full_20260719"
 )
 MERGED_DIR = RUN_DIR.with_name(f"{RUN_DIR.name}_merged")

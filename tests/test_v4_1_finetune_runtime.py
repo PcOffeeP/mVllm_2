@@ -41,7 +41,8 @@ def test_committed_release_and_configs_are_v4_1_bound() -> None:
     assert result["split_counts"]["fold_0_train"] == 850
     for fold in range(3):
         config = validate_training_config(
-            ROOT / f"finetune/MiniCPM/config/train_v4_1_fold{fold}.yaml",
+            ROOT
+            / f"finetune/MiniCPM/config/archive/v4_1_language/train_v4_1_fold{fold}.yaml",
             fold=fold,
             project_root=ROOT,
         )

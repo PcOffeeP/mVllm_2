@@ -169,17 +169,20 @@ python finetune/run_v4_1_post_training.py --validate-only
 python finetune/run_v4_1_post_training.py
 ```
 
-训练配置：
+上一轮语言层 LoRA 归档配置：
 
-- `finetune/MiniCPM/config/train_v4_1_fold0.yaml`
-- `finetune/MiniCPM/config/train_v4_1_fold1.yaml`
-- `finetune/MiniCPM/config/train_v4_1_fold2.yaml`
+- `finetune/MiniCPM/config/archive/v4_1_language/train_v4_1_fold0.yaml`
+- `finetune/MiniCPM/config/archive/v4_1_language/train_v4_1_fold1.yaml`
+- `finetune/MiniCPM/config/archive/v4_1_language/train_v4_1_fold2.yaml`
 
-合并配置：
+上一轮语言层 LoRA 合并配置：
 
-- `finetune/MiniCPM/config/merge_v4_1_fold0.yaml`
-- `finetune/MiniCPM/config/merge_v4_1_fold1.yaml`
-- `finetune/MiniCPM/config/merge_v4_1_fold2.yaml`
+- `finetune/MiniCPM/config/archive/v4_1_language/merge_v4_1_fold0.yaml`
+- `finetune/MiniCPM/config/archive/v4_1_language/merge_v4_1_fold1.yaml`
+- `finetune/MiniCPM/config/archive/v4_1_language/merge_v4_1_fold2.yaml`
+
+当前正式视觉配置位于
+`finetune/MiniCPM/config/active/v4_1_visual/`；完整分类见该目录的 `README.md`。
 
 严格评测汇总 JSON/schema 合法率、四字段准确率、联合准确率、`clip_state` 混淆表和
 运行失败。训练 loss 或 eval loss 下降只证明训练目标收敛，不能单独证明任务效果。
