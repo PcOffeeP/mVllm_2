@@ -11,21 +11,30 @@
 | --- | --- |
 | 活跃契约 | `tensile-vlm/v4.1` |
 | 契约 hash | `47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937` |
-| 活跃数据根 | `tensile-data/current` |
-| 冻结 V2 数据根 | `tensile-data/archive` |
-| V4.1 训练发布 | `v4.1.0-760050fad303`，1275 个样本 |
-| 三折 LoRA 训练 | 已完成 |
-| 正式视觉 LoRA 三折、BF16 合并与验证 | 已完成，1216 条，运行失败 0 |
-| 4-bit 一致性评估 | 两条路线均已完成；adapter-direct 作为后续独立部署候选 |
-| 当前模型结论 | 视觉方向有效，但断裂状态召回和契约合法率未达到生产门槛 |
-| 当前生产推理服务 | 仍为 `tensile-vlm/v2`，尚未切换到 V4.1 |
-| TensileAgent 运行时 | 仍为 V2，V4.1 只完成目标契约冻结 |
+| 数据基线 | `tensile-data/current` 中的不可变发布 `v4.1.0-760050fad303` |
+| 模型研发 | 已完成视觉 LoRA、BF16 和 4-bit 路线验证，确认视觉适配方向有效 |
+| 数据改进 | 已建立有效视图审计、开发候选与独立测试候选隔离流程 |
+| 当前结论 | 模型尚未通过生产效果验收，继续补充独立视觉证据并做受控实验 |
+| 生产边界 | 推理服务和 TensileAgent 继续使用 `tensile-vlm/v2` |
 
-当前正式视觉 BF16 的 `clip_state` 准确率为 49.67%，断裂相关三状态宏平均召回率为
-24.54%，`已断裂`召回率仅 9.00%；35 条输出因漏掉必填 `special_case` 字段而严格
-非法。V4.1 数据或模型产物存在，不等于生产服务和 Agent 已经迁移。下一轮必须先扩充
-经过人工审查的独立视觉证据并完成受控 fold0 实验，再决定是否进入完整三折、最终全量
-训练和部署。
+V4.1 当前是可继续迭代的研发链路，不是可直接替换 V2 的生产模型。详细实验指标、逐折
+结果和阶段性候选统计放在 `docs/results/` 与专项文档中；README 只维护总体状态、稳定
+身份和实际开发流程。
+
+## 核心思路与总体流程
+
+本项目以“帧窗口证据”为中心，而不是简单增加子视频数量。完整开发闭环如下：
+
+1. 先冻结契约、标签语义和数据根，避免不同版本的 Prompt、标签与媒体串线。
+2. 对模型实际采样帧做 source-aware 审计，识别重复视图、来源集中和跨 split 泄漏。
+3. 以实际帧画面进行人工审查；自动标签只作提示，人工结论才可成为训练真值。
+4. 将开发数据和独立测试数据分别发布为内容寻址、不可覆盖的版本。
+5. 先在固定 fold 上进行受控采样和学习曲线实验，只改变一个主要因素并与冻结基线比较。
+6. 方案通过后再运行完整三折、最终全量训练和一次独立测试验收，并冻结全部模型身份。
+7. 模型验收通过后，才同步升级推理服务与 TensileAgent，并完成联调和回滚验证。
+
+同一源视频可以贡献多个窗口，但不能把近重复帧当作独立视觉证据；三折用于选择方案，
+最终模型必须使用全部合格开发数据训练，并由从未参与调参的独立测试发布验收。
 
 ## V4.1 视觉语义
 
@@ -120,10 +129,16 @@ python pipeline/scripts/manage_versioned_data_roots.py workspace \
 
 ## V4.1 数据审查与发布
 
-当前批次已经完成审查和发布；以下命令用于复核或复现当前流程，不应覆盖冻结产物：
+当前冻结发布是训练与回归基线。新增媒体必须先经过有效视图审计和人工复审，再生成新的
+不可变发布；不得修改已有发布，也不得沿用旧视频级标签覆盖帧窗口结论。
 
 ```bash
-# 构建 observed + incipient 审查队列
+# 审计正式发布、开发候选与独立测试候选的实际采样视图
+python -m finetune.audit_v4_1_effective_views \
+  --test-materialized <test_materialized_audit.json> \
+  --output-dir <effective_view_audit_dir>
+
+# 从已物化媒体构建 V4.1 审查队列
 python pipeline/scripts/build_v4_1_review_queue.py \
   --materialized <development_materialized.json> \
   --manifest <candidate_media_manifest.json>
@@ -141,54 +156,28 @@ python pipeline/scripts/build_v4_1_training_release.py
 正式路径、当前批次身份、恢复规则和不可绕过的质量门见
 [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)。
 
-## V4.1 三折训练、合并与评测
+## 训练、评测与证据冻结
 
 训练和 GPU 推理只在训练电脑执行。本机用于代码检查、文档整理和已同步结果复核。
 
-当前正式视觉运行：
+正常训练开发顺序是：
 
-- 运行 ID：`v4_1_0_760050fad303_20260724_visual`
-- 训练：4-bit bnb 基座、视觉塔 LoRA、完整训练并保存 `resampler`
-- 主评估：三个 merged BF16 模型
-- 量化评估：merged 后重新 4-bit，以及 4-bit 基座直挂原始 adapter
-- 轻量证据：[正式视觉运行证据冻结](docs/results/v4_1_0_760050fad303_20260724_visual/README.md)
+1. 校验契约、发布清单、媒体哈希、标签和源视频级 split；
+2. 在固定 fold 上完成小规模或消融实验，预注册随机种子、指标与晋级门槛；
+3. 通过门槛后运行完整三折并生成统一的分类别、混淆矩阵和按源统计；
+4. 固定方案后使用全部开发数据训练最终模型；
+5. 在密封测试发布上执行一次验收，不根据测试结果继续调参；
+6. 冻结基座、adapter、processor、帧采样、生成参数、量化路径、代码和结果哈希。
 
-以下命令是上一轮语言层 LoRA 基线的复现入口，不是当前正式视觉运行的重跑命令：
-
-```bash
-# 逐文件验证发布、媒体、标签、划分和输出目录
-python finetune/run_v4_1_three_fold_training.py --validate-only
-
-# 依次训练三个 fold
-python finetune/run_v4_1_three_fold_training.py
-
-# 训练完成后检查合并与评测前置条件
-python finetune/run_v4_1_post_training.py --validate-only
-
-# 合并三个 LoRA，并对各自 validation fold 做可恢复的严格推理
-python finetune/run_v4_1_post_training.py
-```
-
-上一轮语言层 LoRA 归档配置：
-
-- `finetune/MiniCPM/config/archive/v4_1_language/train_v4_1_fold0.yaml`
-- `finetune/MiniCPM/config/archive/v4_1_language/train_v4_1_fold1.yaml`
-- `finetune/MiniCPM/config/archive/v4_1_language/train_v4_1_fold2.yaml`
-
-上一轮语言层 LoRA 合并配置：
-
-- `finetune/MiniCPM/config/archive/v4_1_language/merge_v4_1_fold0.yaml`
-- `finetune/MiniCPM/config/archive/v4_1_language/merge_v4_1_fold1.yaml`
-- `finetune/MiniCPM/config/archive/v4_1_language/merge_v4_1_fold2.yaml`
-
-当前正式视觉配置位于
-`finetune/MiniCPM/config/active/v4_1_visual/`；完整分类见该目录的 `README.md`。
+当前视觉训练配置位于 `finetune/MiniCPM/config/active/v4_1_visual/`；历史语言层、
+消融和 V2 配置分别保存在 `archive/` 与 `experiments/`，不得作为当前活动配置混用。
 
 严格评测汇总 JSON/schema 合法率、四字段准确率、联合准确率、`clip_state` 混淆表和
-运行失败。训练 loss 或 eval loss 下降只证明训练目标收敛，不能单独证明任务效果。
-完整说明见 [微调与评估](finetune/README.md)。
+分类别召回、按源分布及运行失败。训练 loss 或 eval loss 下降只证明训练目标收敛，
+不能单独证明任务效果；量化模型也必须作为独立变体验收。
 
-冻结现有正式视觉运行的轻量证据：
+大型权重、媒体和逐样本输出保留在训练机；Git 只保存可追溯的轻量摘要与哈希。冻结
+既有运行的入口如下：
 
 ```bash
 python finetune/freeze_v4_1_evidence.py \
@@ -199,6 +188,11 @@ python finetune/freeze_v4_1_evidence.py \
   --output-dir finetune/results/v4_1_0_760050fad303_20260724_visual/evidence_freeze \
   --model-hash-mode full
 ```
+
+精确的训练入口、恢复规则、历史运行身份和评测口径见
+[微调与评估](finetune/README.md)；当前视觉结果见
+[正式视觉证据冻结](docs/results/v4_1_0_760050fad303_20260724_visual/README.md)，有效视图
+审计见 [V4.1 有效视图审计](docs/V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md)。
 
 ## 生产推理服务边界
 
