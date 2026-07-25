@@ -1,0 +1,59 @@
+{
+  "schema_version": "tensile-v4.1-evaluation-run/v1",
+  "release_id": "v4.1.0-760050fad303",
+  "contract_version": "tensile-vlm/v4.1",
+  "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+  "fold": 1,
+  "model_dir": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+  "sample_count": 445,
+  "adapter_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold1",
+  "inference_precision": "bnb_4bit_nf4_adapter_resampler_bf16",
+  "total_samples": 445,
+  "runtime_failure_count": 0,
+  "strict_valid_count": 445,
+  "strict_valid_rate": 1.0,
+  "metrics": {
+    "total": 445,
+    "contract_valid_rate": 1.0,
+    "joint_correct_rate": 0.330337,
+    "clip_state_correct_rate": 0.442697,
+    "fracture_mechanism_correct_rate": 0.447191,
+    "fracture_site_correct_rate": 0.546067,
+    "special_case_correct_rate": 1.0
+  },
+  "target_clip_state_distribution": {
+    "临界未断裂": 64,
+    "发生断裂": 158,
+    "已断裂": 39,
+    "未断裂": 184
+  },
+  "prediction_clip_state_distribution": {
+    "临界未断裂": 98,
+    "发生断裂": 168,
+    "已断裂": 2,
+    "未断裂": 177
+  },
+  "clip_state_confusion": {
+    "临界未断裂": {
+      "临界未断裂": 21,
+      "发生断裂": 19,
+      "未断裂": 24
+    },
+    "发生断裂": {
+      "临界未断裂": 26,
+      "发生断裂": 85,
+      "未断裂": 47
+    },
+    "已断裂": {
+      "临界未断裂": 6,
+      "发生断裂": 18,
+      "未断裂": 15
+    },
+    "未断裂": {
+      "临界未断裂": 45,
+      "发生断裂": 46,
+      "已断裂": 2,
+      "未断裂": 91
+    }
+  }
+}
