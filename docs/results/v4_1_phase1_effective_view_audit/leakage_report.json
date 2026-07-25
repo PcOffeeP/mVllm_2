@@ -1,0 +1,2239 @@
+{
+  "audit_id": "effective-view-audit-eeb18caba8bd",
+  "leakage": {
+    "development_test_signature_overlap": [],
+    "development_test_source_overlap": [],
+    "fold_source_isolation": {
+      "development_sources": [
+        "video_0001",
+        "video_0003",
+        "video_0004",
+        "video_0006",
+        "video_0007",
+        "video_0009",
+        "video_0011",
+        "video_0012",
+        "video_0013",
+        "video_0014",
+        "video_0015",
+        "video_0016",
+        "video_0017",
+        "video_0020",
+        "video_0021",
+        "video_0022",
+        "video_0023",
+        "video_0024",
+        "video_0026",
+        "video_0027",
+        "video_0028",
+        "video_0029",
+        "video_0030",
+        "video_0031",
+        "video_0033",
+        "video_0034",
+        "video_0035",
+        "video_0036",
+        "video_0039",
+        "video_0040",
+        "video_0043",
+        "video_0044",
+        "video_0045",
+        "video_0046",
+        "video_0047",
+        "video_0048",
+        "video_0049",
+        "video_0050",
+        "video_0051",
+        "video_0052",
+        "video_0053",
+        "video_0054",
+        "video_0055",
+        "video_0056",
+        "video_0057",
+        "video_0059",
+        "video_0060",
+        "video_0061",
+        "video_0064",
+        "video_0065",
+        "video_0066",
+        "video_0068",
+        "video_0070",
+        "video_0071",
+        "video_0072",
+        "video_0073",
+        "video_0074",
+        "video_0075",
+        "video_0076",
+        "video_0077",
+        "video_0079",
+        "video_0080",
+        "video_0081",
+        "video_0083",
+        "video_0084",
+        "video_0085",
+        "video_0086",
+        "video_0090",
+        "video_0091",
+        "video_0092",
+        "video_0096",
+        "video_0097",
+        "video_0098",
+        "video_0099",
+        "video_0100",
+        "video_0101",
+        "video_0102",
+        "video_0103",
+        "video_0104",
+        "video_0105",
+        "video_0106",
+        "video_0107",
+        "video_0108",
+        "video_0109",
+        "video_0110"
+      ],
+      "folds": {
+        "fold_0": {
+          "overlapping_sources": [],
+          "train_source_count": 56,
+          "validation_source_count": 29
+        },
+        "fold_1": {
+          "overlapping_sources": [],
+          "train_source_count": 56,
+          "validation_source_count": 29
+        },
+        "fold_2": {
+          "overlapping_sources": [],
+          "train_source_count": 63,
+          "validation_source_count": 22
+        }
+      },
+      "passed": true,
+      "violation_count": 0,
+      "violations": []
+    },
+    "passed": true
+  },
+  "near_duplicate_clusters": [
+    {
+      "candidate_ids": [
+        "video_0028_v3_post_f005403-005449",
+        "video_0028_v41exp_post_event_f005403-005448"
+      ],
+      "cluster_id": "near-duplicate-03dbb30dd904",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0028"
+    },
+    {
+      "candidate_ids": [
+        "video_0027_v3_transition_f005564-005714",
+        "video_0027_v41exp_transition_f005584-005704"
+      ],
+      "cluster_id": "near-duplicate-0789acf5f229",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0027"
+    },
+    {
+      "candidate_ids": [
+        "video_0057_v3_transition_f000938-001088",
+        "video_0057_v41exp_transition_f000957-001077"
+      ],
+      "cluster_id": "near-duplicate-08ce9964f671",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0057"
+    },
+    {
+      "candidate_ids": [
+        "video_0068_v3_transition_f000948-001038",
+        "video_0068_v41exp_transition_f000958-001033"
+      ],
+      "cluster_id": "near-duplicate-09c0d9a23613",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0068"
+    },
+    {
+      "candidate_ids": [
+        "video_0027_v3_transition_f005617-005707",
+        "video_0027_v3_transition_f005630-005720",
+        "video_0027_v3_transition_f005641-005701",
+        "video_0027_v41exp_transition_f005632-005707"
+      ],
+      "cluster_id": "near-duplicate-0a7774850d02",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0027"
+    },
+    {
+      "candidate_ids": [
+        "video_0089_v3_transition_f000548-000620",
+        "video_0089_v3_transition_f000550-000610"
+      ],
+      "cluster_id": "near-duplicate-0de08eb762a7",
+      "cross_pool": false,
+      "member_count": 2,
+      "pools": [
+        "test_candidate"
+      ],
+      "source_video": "video_0089"
+    },
+    {
+      "candidate_ids": [
+        "video_0101_v3_transition_f004534-004624",
+        "video_0101_v3_transition_f004558-004618",
+        "video_0101_v41exp_transition_f004549-004624"
+      ],
+      "cluster_id": "near-duplicate-0f1744194724",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0101"
+    },
+    {
+      "candidate_ids": [
+        "video_0077_v3_transition_f000068-000218",
+        "video_0077_v41exp_transition_f000088-000208"
+      ],
+      "cluster_id": "near-duplicate-0f5f8d419edf",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0077"
+    },
+    {
+      "candidate_ids": [
+        "video_0053_v3_transition_f004400-004490",
+        "video_0053_v3_transition_f004413-004503",
+        "video_0053_v3_transition_f004424-004484",
+        "video_0053_v41exp_transition_f004415-004490"
+      ],
+      "cluster_id": "near-duplicate-0fbe0e315ff9",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0053"
+    },
+    {
+      "candidate_ids": [
+        "video_0030_v3_transition_f005290-005440",
+        "video_0030_v41exp_transition_f005310-005430"
+      ],
+      "cluster_id": "near-duplicate-104b3899529d",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0030"
+    },
+    {
+      "candidate_ids": [
+        "video_0108_v3_post_f004961-005017",
+        "video_0108_v41exp_post_event_f004955-005017"
+      ],
+      "cluster_id": "near-duplicate-1246ed175f8a",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0108"
+    },
+    {
+      "candidate_ids": [
+        "video_0108_v3_post_f004905-004961",
+        "video_0108_v41exp_post_event_f004905-004967"
+      ],
+      "cluster_id": "near-duplicate-13e3a1df0a83",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0108"
+    },
+    {
+      "candidate_ids": [
+        "video_0068_v3_transition_f000909-001059",
+        "video_0068_v41exp_transition_f000929-001049"
+      ],
+      "cluster_id": "near-duplicate-1875f57da007",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0068"
+    },
+    {
+      "candidate_ids": [
+        "video_0024_v3_transition_f000874-001024",
+        "video_0024_v41exp_transition_f000894-001014"
+      ],
+      "cluster_id": "near-duplicate-1946bde1d2b6",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0024"
+    },
+    {
+      "candidate_ids": [
+        "video_0051_v3_transition_f000164-000254",
+        "video_0051_v41exp_transition_f000174-000249"
+      ],
+      "cluster_id": "near-duplicate-1cfe8e04c7ec",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0051"
+    },
+    {
+      "candidate_ids": [
+        "video_0059_v3_transition_f000860-001010",
+        "video_0059_v41exp_transition_f000879-000999"
+      ],
+      "cluster_id": "near-duplicate-1d99c217f2d9",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0059"
+    },
+    {
+      "candidate_ids": [
+        "video_0024_v3_transition_f000927-001017",
+        "video_0024_v3_transition_f000940-001030",
+        "video_0024_v3_transition_f000951-001011",
+        "video_0024_v41exp_transition_f000942-001017"
+      ],
+      "cluster_id": "near-duplicate-1eca691a8642",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0024"
+    },
+    {
+      "candidate_ids": [
+        "video_0026_v3_transition_f000044-000409",
+        "video_0026_v3_transition_f000096-000396"
+      ],
+      "cluster_id": "near-duplicate-1ef16171a4d3",
+      "cross_pool": false,
+      "member_count": 2,
+      "pools": [
+        "released"
+      ],
+      "source_video": "video_0026"
+    },
+    {
+      "candidate_ids": [
+        "video_0024_v3_post_f001051-001115",
+        "video_0024_v41exp_post_event_f001039-001114"
+      ],
+      "cluster_id": "near-duplicate-214ad8c05b4e",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0024"
+    },
+    {
+      "candidate_ids": [
+        "video_0030_v3_transition_f005343-005433",
+        "video_0030_v3_transition_f005356-005446",
+        "video_0030_v3_transition_f005367-005427",
+        "video_0030_v41exp_transition_f005358-005433"
+      ],
+      "cluster_id": "near-duplicate-214f02ddc0de",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0030"
+    },
+    {
+      "candidate_ids": [
+        "video_0097_v3_transition_f000952-001042",
+        "video_0097_v3_transition_f000967-001027",
+        "video_0097_v3_transition_f000976-001036",
+        "video_0097_v41exp_transition_f000967-001042"
+      ],
+      "cluster_id": "near-duplicate-22802b6c4d94",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0097"
+    },
+    {
+      "candidate_ids": [
+        "video_0098_v3_transition_f004839-004929",
+        "video_0098_v3_transition_f004852-004942",
+        "video_0098_v3_transition_f004863-004923",
+        "video_0098_v41exp_transition_f004854-004929"
+      ],
+      "cluster_id": "near-duplicate-23b37256c4a2",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0098"
+    },
+    {
+      "candidate_ids": [
+        "video_0039_v3_transition_f001777-001952",
+        "video_0039_v41exp_transition_f001764-001944"
+      ],
+      "cluster_id": "near-duplicate-2446eaeb50f8",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0039"
+    },
+    {
+      "candidate_ids": [
+        "video_0031_v3_transition_f000054-000204",
+        "video_0031_v41exp_transition_f000074-000194"
+      ],
+      "cluster_id": "near-duplicate-25cb1e0200f8",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0031"
+    },
+    {
+      "candidate_ids": [
+        "video_0061_v3_transition_f001200-001395",
+        "video_0061_v41exp_transition_f001203-001383"
+      ],
+      "cluster_id": "near-duplicate-293e03289b3d",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0061"
+    },
+    {
+      "candidate_ids": [
+        "video_0098_v3_transition_f004786-004936",
+        "video_0098_v41exp_transition_f004806-004926"
+      ],
+      "cluster_id": "near-duplicate-29cb0e5b6ead",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0098"
+    },
+    {
+      "candidate_ids": [
+        "video_0020_v3_transition_f000674-000824",
+        "video_0020_v41exp_transition_f000693-000813"
+      ],
+      "cluster_id": "near-duplicate-2bba1cbef159",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0020"
+    },
+    {
+      "candidate_ids": [
+        "video_0068_v3_transition_f000962-001052",
+        "video_0068_v3_transition_f000977-001037",
+        "video_0068_v3_transition_f000986-001046",
+        "video_0068_v41exp_transition_f000977-001052"
+      ],
+      "cluster_id": "near-duplicate-2ceff108de0f",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0068"
+    },
+    {
+      "candidate_ids": [
+        "video_0016_v3_pre_f000000-000300",
+        "video_0016_v3_pre_f000027-000327",
+        "video_0016_v3_pre_f000054-000354"
+      ],
+      "cluster_id": "near-duplicate-2e6746945d72",
+      "cross_pool": false,
+      "member_count": 3,
+      "pools": [
+        "released"
+      ],
+      "source_video": "video_0016"
+    },
+    {
+      "candidate_ids": [
+        "video_0040_v3_transition_f000661-000811",
+        "video_0040_v41exp_transition_f000681-000801"
+      ],
+      "cluster_id": "near-duplicate-2e98ed3a5a32",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0040"
+    },
+    {
+      "candidate_ids": [
+        "video_0003_v3_transition_f000688-000838",
+        "video_0003_v41exp_transition_f000708-000828"
+      ],
+      "cluster_id": "near-duplicate-2f1126873c4e",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0003"
+    },
+    {
+      "candidate_ids": [
+        "video_0088_v3_transition_f001114-001278",
+        "video_0088_v3_transition_f001125-001275"
+      ],
+      "cluster_id": "near-duplicate-2f869a44212a",
+      "cross_pool": false,
+      "member_count": 2,
+      "pools": [
+        "test_candidate"
+      ],
+      "source_video": "video_0088"
+    },
+    {
+      "candidate_ids": [
+        "video_0109_v3_transition_f004695-004861",
+        "video_0109_v41exp_transition_f004706-004856"
+      ],
+      "cluster_id": "near-duplicate-3025e3f967b6",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0109"
+    },
+    {
+      "candidate_ids": [
+        "video_0109_v3_post_f004741-004861",
+        "video_0109_v41exp_post_event_f004741-004841",
+        "video_0109_v41exp_post_event_f004761-004861"
+      ],
+      "cluster_id": "near-duplicate-304c48b7f8bc",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0109"
+    },
+    {
+      "candidate_ids": [
+        "video_0059_v3_post_f000972-001021",
+        "video_0059_v41exp_post_event_f000972-001017"
+      ],
+      "cluster_id": "near-duplicate-30c5dac46a98",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0059"
+    },
+    {
+      "candidate_ids": [
+        "video_0020_v3_transition_f000726-000816",
+        "video_0020_v3_transition_f000740-000830",
+        "video_0020_v41exp_transition_f000741-000816"
+      ],
+      "cluster_id": "near-duplicate-3124ef609dba",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0020"
+    },
+    {
+      "candidate_ids": [
+        "video_0104_v3_post_f003548-003607",
+        "video_0104_v41exp_post_event_f003545-003607"
+      ],
+      "cluster_id": "near-duplicate-3554e30e0073",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0104"
+    },
+    {
+      "candidate_ids": [
+        "video_0004_v3_transition_f005467-005557",
+        "video_0004_v3_transition_f005480-005570",
+        "video_0004_v3_transition_f005491-005551",
+        "video_0004_v41exp_transition_f005482-005557"
+      ],
+      "cluster_id": "near-duplicate-35a99d662f4e",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0004"
+    },
+    {
+      "candidate_ids": [
+        "video_0043_v3_transition_f005442-005532",
+        "video_0043_v41exp_transition_f005444-005519"
+      ],
+      "cluster_id": "near-duplicate-3769b962c750",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0043"
+    },
+    {
+      "candidate_ids": [
+        "video_0040_v3_transition_f000714-000804",
+        "video_0040_v3_transition_f000729-000789",
+        "video_0040_v3_transition_f000738-000798",
+        "video_0040_v41exp_transition_f000729-000804"
+      ],
+      "cluster_id": "near-duplicate-3a1f66019180",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0040"
+    },
+    {
+      "candidate_ids": [
+        "video_0109_v3_transition_f004647-004772",
+        "video_0109_v41exp_transition_f004663-004763"
+      ],
+      "cluster_id": "near-duplicate-3a57e56b27e7",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0109"
+    },
+    {
+      "candidate_ids": [
+        "video_0045_v3_transition_f005487-005577",
+        "video_0045_v3_transition_f005500-005590",
+        "video_0045_v3_transition_f005511-005571",
+        "video_0045_v41exp_transition_f005502-005577"
+      ],
+      "cluster_id": "near-duplicate-3a6c65fec756",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0045"
+    },
+    {
+      "candidate_ids": [
+        "video_0045_v3_post_f005547-005601",
+        "video_0045_v41exp_post_event_f005547-005592",
+        "video_0045_v41exp_post_event_f005556-005601"
+      ],
+      "cluster_id": "near-duplicate-3e27e26ce562",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0045"
+    },
+    {
+      "candidate_ids": [
+        "video_0011_v3_transition_f000356-000446",
+        "video_0011_v3_transition_f000380-000440",
+        "video_0011_v41exp_transition_f000371-000446"
+      ],
+      "cluster_id": "near-duplicate-3f4b84d32d60",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0011"
+    },
+    {
+      "candidate_ids": [
+        "video_0086_v3_transition_f002230-002345",
+        "video_0086_v41exp_transition_f002220-002340"
+      ],
+      "cluster_id": "near-duplicate-403f9f30ed82",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0086"
+    },
+    {
+      "candidate_ids": [
+        "video_0100_v3_transition_f002905-003054",
+        "video_0100_v41exp_transition_f002924-003044"
+      ],
+      "cluster_id": "near-duplicate-4962ff7461de",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0100"
+    },
+    {
+      "candidate_ids": [
+        "video_0057_v3_transition_f000990-001080",
+        "video_0057_v3_transition_f001004-001094",
+        "video_0057_v3_transition_f001014-001074",
+        "video_0057_v41exp_transition_f001005-001080"
+      ],
+      "cluster_id": "near-duplicate-4c5e250e3a09",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0057"
+    },
+    {
+      "candidate_ids": [
+        "video_0011_v3_transition_f000304-000454",
+        "video_0011_v41exp_transition_f000323-000443"
+      ],
+      "cluster_id": "near-duplicate-4cfb07dc1c00",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0011"
+    },
+    {
+      "candidate_ids": [
+        "video_0029_v3_transition_f005135-005225",
+        "video_0029_v3_transition_f005148-005238",
+        "video_0029_v3_transition_f005159-005219",
+        "video_0029_v41exp_transition_f005150-005225"
+      ],
+      "cluster_id": "near-duplicate-4d6d4036fe7f",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0029"
+    },
+    {
+      "candidate_ids": [
+        "video_0109_v3_post_f004741-004801",
+        "video_0109_v41exp_post_event_f004741-004803"
+      ],
+      "cluster_id": "near-duplicate-4e1415e54b8d",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0109"
+    },
+    {
+      "candidate_ids": [
+        "video_0051_v3_transition_f000178-000268",
+        "video_0051_v3_transition_f000193-000253",
+        "video_0051_v3_transition_f000193-000279",
+        "video_0051_v3_transition_f000202-000262",
+        "video_0051_v41exp_transition_f000193-000268"
+      ],
+      "cluster_id": "near-duplicate-4e8c7735b40f",
+      "cross_pool": true,
+      "member_count": 5,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0051"
+    },
+    {
+      "candidate_ids": [
+        "video_0043_v3_post_f005489-005555",
+        "video_0043_v41exp_post_event_f005489-005564"
+      ],
+      "cluster_id": "near-duplicate-4fa834e608b5",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0043"
+    },
+    {
+      "candidate_ids": [
+        "video_0004_v3_post_f005592-005657",
+        "video_0004_v41exp_post_event_f005581-005656"
+      ],
+      "cluster_id": "near-duplicate-58d6ed4ae17f",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0004"
+    },
+    {
+      "candidate_ids": [
+        "video_0073_v3_post_f003264-003316",
+        "video_0073_v41exp_post_event_f003270-003315"
+      ],
+      "cluster_id": "near-duplicate-5a3c37598796",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0073"
+    },
+    {
+      "candidate_ids": [
+        "video_0068_v3_transition_f000887-001037",
+        "video_0068_v41exp_transition_f000854-001034",
+        "video_0068_v41exp_transition_f000905-001025"
+      ],
+      "cluster_id": "near-duplicate-5bf5a26f6310",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0068"
+    },
+    {
+      "candidate_ids": [
+        "video_0017_v3_transition_f006164-006254",
+        "video_0017_v3_transition_f006177-006267",
+        "video_0017_v3_transition_f006188-006248",
+        "video_0017_v41exp_transition_f006179-006254"
+      ],
+      "cluster_id": "near-duplicate-5d28e88ab9cd",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0017"
+    },
+    {
+      "candidate_ids": [
+        "video_0068_v3_post_f001022-001070",
+        "video_0068_v41exp_post_event_f001022-001067",
+        "video_0068_v41exp_post_event_f001024-001069"
+      ],
+      "cluster_id": "near-duplicate-5f32c702ea8e",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0068"
+    },
+    {
+      "candidate_ids": [
+        "video_0104_v3_transition_f003438-003514",
+        "video_0104_v3_transition_f003450-003525",
+        "video_0104_v41exp_transition_f003451-003514"
+      ],
+      "cluster_id": "near-duplicate-5f4ed1e8741c",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0104"
+    },
+    {
+      "candidate_ids": [
+        "video_0077_v3_transition_f000121-000211",
+        "video_0077_v3_transition_f000134-000224",
+        "video_0077_v3_transition_f000145-000205",
+        "video_0077_v41exp_transition_f000136-000211"
+      ],
+      "cluster_id": "near-duplicate-5f6f9a3b1fc1",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0077"
+    },
+    {
+      "candidate_ids": [
+        "video_0020_v3_post_f000786-000853",
+        "video_0020_v41exp_post_event_f000786-000861"
+      ],
+      "cluster_id": "near-duplicate-5f70a6d06ae1",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0020"
+    },
+    {
+      "candidate_ids": [
+        "video_0097_v3_post_f001012-001064",
+        "video_0097_v41exp_post_event_f001012-001057",
+        "video_0097_v41exp_post_event_f001018-001063"
+      ],
+      "cluster_id": "near-duplicate-62347f49a786",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0097"
+    },
+    {
+      "candidate_ids": [
+        "video_0031_v3_post_f000167-000240",
+        "video_0031_v41exp_post_event_f000167-000242"
+      ],
+      "cluster_id": "near-duplicate-62dbb34f0c7a",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0031"
+    },
+    {
+      "candidate_ids": [
+        "video_0104_v3_transition_f003443-003607",
+        "video_0104_v41exp_transition_f003453-003603"
+      ],
+      "cluster_id": "near-duplicate-64922e17c6c3",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0104"
+    },
+    {
+      "candidate_ids": [
+        "video_0104_v3_post_f003489-003548",
+        "video_0104_v41exp_post_event_f003489-003551"
+      ],
+      "cluster_id": "near-duplicate-6599990e05c7",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0104"
+    },
+    {
+      "candidate_ids": [
+        "video_0048_v3_transition_f000556-000706",
+        "video_0048_v41exp_transition_f000576-000696"
+      ],
+      "cluster_id": "near-duplicate-6624df02cf6e",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0048"
+    },
+    {
+      "candidate_ids": [
+        "video_0079_v3_transition_f000000-000091",
+        "video_0079_v41exp_transition_f000010-000086"
+      ],
+      "cluster_id": "near-duplicate-6c6107f81d9d",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0079"
+    },
+    {
+      "candidate_ids": [
+        "video_0109_v3_transition_f004690-004766",
+        "video_0109_v3_transition_f004702-004777",
+        "video_0109_v41exp_transition_f004703-004766"
+      ],
+      "cluster_id": "near-duplicate-6d71ff38f155",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0109"
+    },
+    {
+      "candidate_ids": [
+        "video_0033_v3_transition_f001047-001197",
+        "video_0033_v41exp_transition_f001066-001186"
+      ],
+      "cluster_id": "near-duplicate-6edfdb9d187d",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0033"
+    },
+    {
+      "candidate_ids": [
+        "video_0047_v3_transition_f001940-002090",
+        "video_0047_v41exp_transition_f001943-002123"
+      ],
+      "cluster_id": "near-duplicate-768644fff8fe",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0047"
+    },
+    {
+      "candidate_ids": [
+        "video_0091_v3_transition_f000236-000326",
+        "video_0091_v3_transition_f000260-000320",
+        "video_0091_v41exp_transition_f000251-000326"
+      ],
+      "cluster_id": "near-duplicate-78c6a449b4b7",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0091"
+    },
+    {
+      "candidate_ids": [
+        "video_0031_v3_transition_f000107-000197",
+        "video_0031_v3_transition_f000131-000191",
+        "video_0031_v41exp_transition_f000122-000197"
+      ],
+      "cluster_id": "near-duplicate-7b031ac193d5",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0031"
+    },
+    {
+      "candidate_ids": [
+        "video_0028_v3_transition_f005343-005433",
+        "video_0028_v3_transition_f005356-005446",
+        "video_0028_v3_transition_f005367-005427",
+        "video_0028_v41exp_transition_f005358-005433"
+      ],
+      "cluster_id": "near-duplicate-7bd5f4808f2a",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0028"
+    },
+    {
+      "candidate_ids": [
+        "video_0047_v3_transition_f001940-002000",
+        "video_0047_v41exp_transition_f001940-002015"
+      ],
+      "cluster_id": "near-duplicate-7be5fe6eb5e0",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0047"
+    },
+    {
+      "candidate_ids": [
+        "video_0050_v3_transition_f001514-001609",
+        "video_0050_v3_transition_f001518-001608"
+      ],
+      "cluster_id": "near-duplicate-7c1f3b855b8f",
+      "cross_pool": false,
+      "member_count": 2,
+      "pools": [
+        "released"
+      ],
+      "source_video": "video_0050"
+    },
+    {
+      "candidate_ids": [
+        "video_0007_v3_transition_f001437-001527",
+        "video_0007_v3_transition_f001461-001521",
+        "video_0007_v41exp_transition_f001452-001527"
+      ],
+      "cluster_id": "near-duplicate-7c80e9b65928",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0007"
+    },
+    {
+      "candidate_ids": [
+        "video_0084_v3_transition_f000093-000243",
+        "video_0084_v41exp_transition_f000060-000240",
+        "video_0084_v41exp_transition_f000111-000231"
+      ],
+      "cluster_id": "near-duplicate-7e23a0887c9e",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0084"
+    },
+    {
+      "candidate_ids": [
+        "video_0043_v3_post_f005555-005621",
+        "video_0043_v41exp_post_event_f005545-005620"
+      ],
+      "cluster_id": "near-duplicate-7e670031f1d1",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0043"
+    },
+    {
+      "candidate_ids": [
+        "video_0059_v3_post_f001021-001070",
+        "video_0059_v41exp_post_event_f001024-001069"
+      ],
+      "cluster_id": "near-duplicate-7f0004007648",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0059"
+    },
+    {
+      "candidate_ids": [
+        "video_0084_v3_transition_f000195-000247",
+        "video_0084_v41exp_transition_f000195-000240"
+      ],
+      "cluster_id": "near-duplicate-803109bd9b4b",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0084"
+    },
+    {
+      "candidate_ids": [
+        "video_0059_v3_transition_f000912-001002",
+        "video_0059_v3_transition_f000925-001015",
+        "video_0059_v3_transition_f000936-000996",
+        "video_0059_v41exp_transition_f000927-001002"
+      ],
+      "cluster_id": "near-duplicate-821e4bb99d3d",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0059"
+    },
+    {
+      "candidate_ids": [
+        "video_0029_v3_transition_f005082-005232",
+        "video_0029_v41exp_transition_f005102-005222"
+      ],
+      "cluster_id": "near-duplicate-8347a165fd12",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0029"
+    },
+    {
+      "candidate_ids": [
+        "video_0028_v3_transition_f005290-005440",
+        "video_0028_v41exp_transition_f005310-005430"
+      ],
+      "cluster_id": "near-duplicate-8840e2e74f8d",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0028"
+    },
+    {
+      "candidate_ids": [
+        "video_0051_v3_transition_f000125-000275",
+        "video_0051_v41exp_transition_f000145-000265"
+      ],
+      "cluster_id": "near-duplicate-88ab5b57ae4a",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0051"
+    },
+    {
+      "candidate_ids": [
+        "video_0020_v3_post_f000786-000919",
+        "video_0020_v41exp_post_event_f000786-000906",
+        "video_0020_v41exp_post_event_f000798-000918"
+      ],
+      "cluster_id": "near-duplicate-88df0a8efe01",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0020"
+    },
+    {
+      "candidate_ids": [
+        "video_0073_v3_transition_f003099-003249",
+        "video_0073_v41exp_transition_f003118-003238"
+      ],
+      "cluster_id": "near-duplicate-89708603b460",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0073"
+    },
+    {
+      "candidate_ids": [
+        "video_0017_v3_transition_f006111-006261",
+        "video_0017_v41exp_transition_f006131-006251"
+      ],
+      "cluster_id": "near-duplicate-89b420ef85d5",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0017"
+    },
+    {
+      "candidate_ids": [
+        "video_0077_v3_post_f000181-000232",
+        "video_0077_v41exp_post_event_f000181-000226"
+      ],
+      "cluster_id": "near-duplicate-8a801660a0ed",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0077"
+    },
+    {
+      "candidate_ids": [
+        "video_0031_v3_post_f000240-000312",
+        "video_0031_v41exp_post_event_f000237-000312"
+      ],
+      "cluster_id": "near-duplicate-8c56b1a85290",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0031"
+    },
+    {
+      "candidate_ids": [
+        "video_0020_v3_post_f000853-000919",
+        "video_0020_v41exp_post_event_f000843-000918"
+      ],
+      "cluster_id": "near-duplicate-8c6f3a2124c9",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0020"
+    },
+    {
+      "candidate_ids": [
+        "video_0097_v3_transition_f000899-001049",
+        "video_0097_v41exp_transition_f000919-001039"
+      ],
+      "cluster_id": "near-duplicate-8fe5aec8de6c",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0097"
+    },
+    {
+      "candidate_ids": [
+        "video_0026_v3_transition_f000238-000388",
+        "video_0026_v41exp_transition_f000258-000378"
+      ],
+      "cluster_id": "near-duplicate-9143241d7ca8",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0026"
+    },
+    {
+      "candidate_ids": [
+        "video_0004_v3_post_f005527-005592",
+        "video_0004_v41exp_post_event_f005527-005602"
+      ],
+      "cluster_id": "near-duplicate-92cfed8ec2dc",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0004"
+    },
+    {
+      "candidate_ids": [
+        "video_0108_v3_transition_f004854-004930",
+        "video_0108_v3_transition_f004866-004941",
+        "video_0108_v41exp_transition_f004867-004930"
+      ],
+      "cluster_id": "near-duplicate-932bfef8345a",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0108"
+    },
+    {
+      "candidate_ids": [
+        "video_0003_v3_post_f000857-000912",
+        "video_0003_v41exp_post_event_f000867-000912"
+      ],
+      "cluster_id": "near-duplicate-945335b48e85",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0003"
+    },
+    {
+      "candidate_ids": [
+        "video_0073_v3_transition_f003151-003241",
+        "video_0073_v3_transition_f003165-003255",
+        "video_0073_v3_transition_f003175-003235",
+        "video_0073_v41exp_transition_f003166-003241"
+      ],
+      "cluster_id": "near-duplicate-97b22cc80290",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0073"
+    },
+    {
+      "candidate_ids": [
+        "video_0040_v3_transition_f000639-000789",
+        "video_0040_v41exp_transition_f000606-000786",
+        "video_0040_v41exp_transition_f000657-000777"
+      ],
+      "cluster_id": "near-duplicate-9873cd17b237",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0040"
+    },
+    {
+      "candidate_ids": [
+        "video_0040_v3_post_f000774-000821",
+        "video_0040_v41exp_post_event_f000774-000819",
+        "video_0040_v41exp_post_event_f000775-000820"
+      ],
+      "cluster_id": "near-duplicate-9948f1791edc",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0040"
+    },
+    {
+      "candidate_ids": [
+        "video_0031_v3_post_f000167-000312",
+        "video_0031_v41exp_post_event_f000167-000287",
+        "video_0031_v41exp_post_event_f000192-000312"
+      ],
+      "cluster_id": "near-duplicate-9983dc843e74",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0031"
+    },
+    {
+      "candidate_ids": [
+        "video_0043_v3_transition_f005435-005495",
+        "video_0043_v41exp_transition_f005425-005500"
+      ],
+      "cluster_id": "near-duplicate-9ad9f4612089",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0043"
+    },
+    {
+      "candidate_ids": [
+        "video_0053_v3_transition_f004347-004497",
+        "video_0053_v41exp_transition_f004367-004487"
+      ],
+      "cluster_id": "near-duplicate-9f083e7d3a67",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0053"
+    },
+    {
+      "candidate_ids": [
+        "video_0024_v3_post_f000987-001051",
+        "video_0024_v41exp_post_event_f000987-001062"
+      ],
+      "cluster_id": "near-duplicate-a3c3cd5c9892",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0024"
+    },
+    {
+      "candidate_ids": [
+        "video_0028_v3_post_f005449-005494",
+        "video_0028_v41exp_post_event_f005448-005493"
+      ],
+      "cluster_id": "near-duplicate-a50d4677118a",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0028"
+    },
+    {
+      "candidate_ids": [
+        "video_0004_v3_transition_f005414-005564",
+        "video_0004_v41exp_transition_f005434-005554"
+      ],
+      "cluster_id": "near-duplicate-a559554ad59f",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0004"
+    },
+    {
+      "candidate_ids": [
+        "video_0033_v3_transition_f001100-001190",
+        "video_0033_v3_transition_f001113-001203",
+        "video_0033_v41exp_transition_f001114-001190"
+      ],
+      "cluster_id": "near-duplicate-ad65be93c6da",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0033"
+    },
+    {
+      "candidate_ids": [
+        "video_0097_v3_transition_f000877-001027",
+        "video_0097_v41exp_transition_f000844-001024",
+        "video_0097_v41exp_transition_f000895-001015"
+      ],
+      "cluster_id": "near-duplicate-adc51565814c",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0097"
+    },
+    {
+      "candidate_ids": [
+        "video_0045_v3_transition_f005434-005584",
+        "video_0045_v41exp_transition_f005454-005574"
+      ],
+      "cluster_id": "near-duplicate-ae1ed1d19314",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0045"
+    },
+    {
+      "candidate_ids": [
+        "video_0040_v3_transition_f000700-000790",
+        "video_0040_v41exp_transition_f000710-000785"
+      ],
+      "cluster_id": "near-duplicate-b0fce47f78c4",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0040"
+    },
+    {
+      "candidate_ids": [
+        "video_0003_v3_post_f000801-000857",
+        "video_0003_v41exp_post_event_f000801-000846"
+      ],
+      "cluster_id": "near-duplicate-b1a64c58b864",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0003"
+    },
+    {
+      "candidate_ids": [
+        "video_0010_v3_pre_f000000-000600",
+        "video_0010_v3_pre_f000057-000657",
+        "video_0010_v3_pre_f000114-000714"
+      ],
+      "cluster_id": "near-duplicate-b301bf380528",
+      "cross_pool": false,
+      "member_count": 3,
+      "pools": [
+        "test_candidate"
+      ],
+      "source_video": "video_0010"
+    },
+    {
+      "candidate_ids": [
+        "video_0104_v3_transition_f003395-003520",
+        "video_0104_v41exp_transition_f003411-003511"
+      ],
+      "cluster_id": "near-duplicate-b30678cdf00c",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0104"
+    },
+    {
+      "candidate_ids": [
+        "video_0053_v3_post_f004460-004515",
+        "video_0053_v41exp_post_event_f004460-004505"
+      ],
+      "cluster_id": "near-duplicate-b37f0eb9c405",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0053"
+    },
+    {
+      "candidate_ids": [
+        "video_0048_v3_transition_f000609-000699",
+        "video_0048_v3_transition_f000622-000712",
+        "video_0048_v3_transition_f000633-000693",
+        "video_0048_v41exp_transition_f000624-000699"
+      ],
+      "cluster_id": "near-duplicate-be735203b4bf",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0048"
+    },
+    {
+      "candidate_ids": [
+        "video_0108_v3_transition_f004811-004936",
+        "video_0108_v41exp_transition_f004827-004927"
+      ],
+      "cluster_id": "near-duplicate-c05ea5730636",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0108"
+    },
+    {
+      "candidate_ids": [
+        "video_0090_v3_transition_f000347-000562",
+        "video_0090_v41exp_transition_f000366-000546"
+      ],
+      "cluster_id": "near-duplicate-c0eaf0ecc4a3",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0090"
+    },
+    {
+      "candidate_ids": [
+        "video_0104_v3_post_f003489-003607",
+        "video_0104_v41exp_post_event_f003489-003589",
+        "video_0104_v41exp_post_event_f003507-003607"
+      ],
+      "cluster_id": "near-duplicate-c1a0bc8a8637",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0104"
+    },
+    {
+      "candidate_ids": [
+        "video_0100_v3_transition_f002957-003047",
+        "video_0100_v3_transition_f002970-003060",
+        "video_0100_v3_transition_f002981-003041",
+        "video_0100_v41exp_transition_f002972-003047"
+      ],
+      "cluster_id": "near-duplicate-c2079b48a52a",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0100"
+    },
+    {
+      "candidate_ids": [
+        "video_0109_v3_post_f004801-004861",
+        "video_0109_v41exp_post_event_f004799-004861"
+      ],
+      "cluster_id": "near-duplicate-c516313ad00d",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0109"
+    },
+    {
+      "candidate_ids": [
+        "video_0031_v3_transition_f000122-000272",
+        "video_0031_v41exp_transition_f000125-000305"
+      ],
+      "cluster_id": "near-duplicate-c53de1bf40ca",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0031"
+    },
+    {
+      "candidate_ids": [
+        "video_0105_v3_post_f003764-003825",
+        "video_0105_v41exp_post_event_f003763-003825"
+      ],
+      "cluster_id": "near-duplicate-ce627ba3eda0",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0105"
+    },
+    {
+      "candidate_ids": [
+        "video_0099_v3_transition_f003698-003788",
+        "video_0099_v3_transition_f003712-003802",
+        "video_0099_v3_transition_f003722-003782",
+        "video_0099_v41exp_transition_f003713-003788"
+      ],
+      "cluster_id": "near-duplicate-ce6786a0ec74",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0099"
+    },
+    {
+      "candidate_ids": [
+        "video_0045_v3_transition_f005256-005601",
+        "video_0045_v3_transition_f005292-005592"
+      ],
+      "cluster_id": "near-duplicate-cf0008a316cb",
+      "cross_pool": false,
+      "member_count": 2,
+      "pools": [
+        "released"
+      ],
+      "source_video": "video_0045"
+    },
+    {
+      "candidate_ids": [
+        "video_0097_v3_transition_f000938-001028",
+        "video_0097_v41exp_transition_f000948-001023"
+      ],
+      "cluster_id": "near-duplicate-d3bf8d8f12d8",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0097"
+    },
+    {
+      "candidate_ids": [
+        "video_0006_v3_pre_f000000-000600",
+        "video_0006_v3_pre_f000015-000615",
+        "video_0006_v3_pre_f000030-000630"
+      ],
+      "cluster_id": "near-duplicate-d3de9fecdf86",
+      "cross_pool": false,
+      "member_count": 3,
+      "pools": [
+        "released"
+      ],
+      "source_video": "video_0006"
+    },
+    {
+      "candidate_ids": [
+        "video_0004_v3_post_f005527-005657",
+        "video_0004_v41exp_post_event_f005527-005647",
+        "video_0004_v41exp_post_event_f005536-005656"
+      ],
+      "cluster_id": "near-duplicate-d42e0829feb5",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0004"
+    },
+    {
+      "candidate_ids": [
+        "video_0024_v3_post_f000987-001115",
+        "video_0024_v41exp_post_event_f000987-001107",
+        "video_0024_v41exp_post_event_f000994-001114"
+      ],
+      "cluster_id": "near-duplicate-d50cd6b4bbda",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0024"
+    },
+    {
+      "candidate_ids": [
+        "video_0026_v3_transition_f000291-000381",
+        "video_0026_v3_transition_f000304-000394",
+        "video_0026_v3_transition_f000315-000375",
+        "video_0026_v41exp_transition_f000306-000381"
+      ],
+      "cluster_id": "near-duplicate-d7929bd687ff",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0026"
+    },
+    {
+      "candidate_ids": [
+        "video_0047_v3_transition_f001911-002001",
+        "video_0047_v3_transition_f001931-001991",
+        "video_0047_v41exp_transition_f001921-001996"
+      ],
+      "cluster_id": "near-duplicate-d8a67a6ee1f4",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0047"
+    },
+    {
+      "candidate_ids": [
+        "video_0082_v3_pre_f000000-000600",
+        "video_0082_v3_pre_f000040-000640",
+        "video_0082_v3_pre_f000081-000681"
+      ],
+      "cluster_id": "near-duplicate-dbc0f397633c",
+      "cross_pool": false,
+      "member_count": 3,
+      "pools": [
+        "test_candidate"
+      ],
+      "source_video": "video_0082"
+    },
+    {
+      "candidate_ids": [
+        "video_0051_v3_transition_f000103-000253",
+        "video_0051_v41exp_transition_f000070-000250",
+        "video_0051_v41exp_transition_f000121-000241"
+      ],
+      "cluster_id": "near-duplicate-de13b8282036",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0051"
+    },
+    {
+      "candidate_ids": [
+        "video_0017_v3_post_f006224-006273",
+        "video_0017_v41exp_post_event_f006224-006269"
+      ],
+      "cluster_id": "near-duplicate-df869108f9e7",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0017"
+    },
+    {
+      "candidate_ids": [
+        "video_0043_v3_post_f005489-005621",
+        "video_0043_v41exp_post_event_f005489-005609",
+        "video_0043_v41exp_post_event_f005500-005620"
+      ],
+      "cluster_id": "near-duplicate-e0454a09e02c",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0043"
+    },
+    {
+      "candidate_ids": [
+        "video_0073_v3_post_f003212-003264",
+        "video_0073_v41exp_post_event_f003212-003257"
+      ],
+      "cluster_id": "near-duplicate-e1a6464ab873",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0073"
+    },
+    {
+      "candidate_ids": [
+        "video_0077_v3_post_f000232-000283",
+        "video_0077_v41exp_post_event_f000237-000282"
+      ],
+      "cluster_id": "near-duplicate-e27c069b472f",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0077"
+    },
+    {
+      "candidate_ids": [
+        "video_0105_v3_transition_f003663-003738",
+        "video_0105_v41exp_transition_f003664-003726"
+      ],
+      "cluster_id": "near-duplicate-e3e530046ea0",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0105"
+    },
+    {
+      "candidate_ids": [
+        "video_0017_v3_post_f006273-006322",
+        "video_0017_v41exp_post_event_f006276-006321"
+      ],
+      "cluster_id": "near-duplicate-e4b072e4dedb",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0017"
+    },
+    {
+      "candidate_ids": [
+        "video_0099_v3_post_f003759-003837",
+        "video_0099_v41exp_post_event_f003759-003834",
+        "video_0099_v41exp_post_event_f003761-003836"
+      ],
+      "cluster_id": "near-duplicate-e9d4c38bcbac",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0099"
+    },
+    {
+      "candidate_ids": [
+        "video_0084_v3_transition_f000155-000245",
+        "video_0084_v3_transition_f000174-000234",
+        "video_0084_v41exp_transition_f000165-000240"
+      ],
+      "cluster_id": "near-duplicate-eb706d92b2bc",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0084"
+    },
+    {
+      "candidate_ids": [
+        "video_0105_v3_post_f003702-003825",
+        "video_0105_v41exp_post_event_f003702-003802",
+        "video_0105_v41exp_post_event_f003725-003825"
+      ],
+      "cluster_id": "near-duplicate-ec942894f62c",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0105"
+    },
+    {
+      "candidate_ids": [
+        "video_0047_v3_transition_f001850-002000",
+        "video_0047_v41exp_transition_f001817-001997",
+        "video_0047_v41exp_transition_f001868-001988"
+      ],
+      "cluster_id": "near-duplicate-f0b8e5be71d3",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0047"
+    },
+    {
+      "candidate_ids": [
+        "video_0028_v3_post_f005403-005494",
+        "video_0028_v41exp_post_event_f005403-005478",
+        "video_0028_v41exp_post_event_f005418-005493"
+      ],
+      "cluster_id": "near-duplicate-f6942653c2f5",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0028"
+    },
+    {
+      "candidate_ids": [
+        "video_0031_v3_transition_f000113-000173",
+        "video_0031_v41exp_transition_f000103-000178"
+      ],
+      "cluster_id": "near-duplicate-f882206baecf",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0031"
+    },
+    {
+      "candidate_ids": [
+        "video_0065_v3_transition_f000000-000069",
+        "video_0065_v3_transition_f000003-000063"
+      ],
+      "cluster_id": "near-duplicate-fb0df31a1390",
+      "cross_pool": false,
+      "member_count": 2,
+      "pools": [
+        "released"
+      ],
+      "source_video": "video_0065"
+    },
+    {
+      "candidate_ids": [
+        "video_0003_v3_transition_f000741-000831",
+        "video_0003_v3_transition_f000754-000844",
+        "video_0003_v3_transition_f000765-000825",
+        "video_0003_v41exp_transition_f000756-000831"
+      ],
+      "cluster_id": "near-duplicate-fb71295ab7ae",
+      "cross_pool": true,
+      "member_count": 4,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0003"
+    },
+    {
+      "candidate_ids": [
+        "video_0057_v3_post_f001051-001134",
+        "video_0057_v41exp_post_event_f001051-001126",
+        "video_0057_v41exp_post_event_f001059-001134"
+      ],
+      "cluster_id": "near-duplicate-fb874312e1a9",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0057"
+    },
+    {
+      "candidate_ids": [
+        "video_0053_v3_post_f004515-004569",
+        "video_0053_v41exp_post_event_f004523-004568"
+      ],
+      "cluster_id": "near-duplicate-fcddca711339",
+      "cross_pool": true,
+      "member_count": 2,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0053"
+    },
+    {
+      "candidate_ids": [
+        "video_0108_v3_post_f004905-005017",
+        "video_0108_v41exp_post_event_f004905-005005",
+        "video_0108_v41exp_post_event_f004917-005017"
+      ],
+      "cluster_id": "near-duplicate-fecafc040268",
+      "cross_pool": true,
+      "member_count": 3,
+      "pools": [
+        "automatic_candidate",
+        "released"
+      ],
+      "source_video": "video_0108"
+    }
+  ],
+  "schema_version": "tensile-vlm-v4.1-effective-view-audit/v1"
+}
