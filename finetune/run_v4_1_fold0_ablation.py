@@ -22,8 +22,8 @@ from finetune.v4_1_runtime import validate_release
 
 ROOT = Path(__file__).resolve().parents[1]
 FINETUNE = ROOT / "finetune"
-CONFIG_DIR = FINETUNE / "MiniCPM/config"
-SAVE_ROOT = ROOT / "LlamaFactory/saves/minicpmv4_5/lora"
+CONFIG_DIR = FINETUNE / "MiniCPM/config/experiments/v4_1"
+SAVE_ROOT = ROOT / "LlamaFactory/saves/minicpmv4_5/lora/experiments/v4_1"
 RESULT_ROOT = (
     FINETUNE
     / "results/v4_1_0_760050fad303_20260723/fold0_ablation"

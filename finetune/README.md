@@ -100,9 +100,9 @@ python finetune/run_v4_1_three_fold_training.py
 
 对应配置：
 
-- `MiniCPM/config/train_v4_1_fold0.yaml`
-- `MiniCPM/config/train_v4_1_fold1.yaml`
-- `MiniCPM/config/train_v4_1_fold2.yaml`
+- `MiniCPM/config/archive/v4_1_language/train_v4_1_fold0.yaml`
+- `MiniCPM/config/archive/v4_1_language/train_v4_1_fold1.yaml`
+- `MiniCPM/config/archive/v4_1_language/train_v4_1_fold2.yaml`
 
 状态文件：
 
@@ -110,9 +110,9 @@ python finetune/run_v4_1_three_fold_training.py
 
 三个输出目录分别为：
 
-- `LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260723_fold0`
-- `LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260723_fold1`
-- `LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260723_fold2`
+- `LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold0`
+- `LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold1`
+- `LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold2`
 
 流水线拒绝覆盖不完整或身份不一致的输出目录。不要通过删除状态文件绕过产物检查。
 
@@ -128,9 +128,9 @@ python finetune/run_v4_1_post_training.py
 流水线先合并三个 LoRA，再分别使用对应 fold 的 validation 数据进行严格 V4.1 推理。
 合并配置：
 
-- `MiniCPM/config/merge_v4_1_fold0.yaml`
-- `MiniCPM/config/merge_v4_1_fold1.yaml`
-- `MiniCPM/config/merge_v4_1_fold2.yaml`
+- `MiniCPM/config/archive/v4_1_language/merge_v4_1_fold0.yaml`
+- `MiniCPM/config/archive/v4_1_language/merge_v4_1_fold1.yaml`
+- `MiniCPM/config/archive/v4_1_language/merge_v4_1_fold2.yaml`
 
 总状态文件：
 
@@ -201,8 +201,7 @@ python -m finetune.run_v4_1_evaluation \
 
 - Git：`tensile-vlm-v2-final` 或 `archive/v2`
 - 数据：`data/archive/training_releases/v2.0.0-1dab1e5e`
-- 旧配置：`train_fold*.yaml`、`merge_fold*.yaml`、`train_full.yaml`、
-  `merge_full.yaml`
+- 旧配置：`MiniCPM/config/archive/v2/`
 - 旧评测：`finetune.validation.run_evaluation`
 
 进行 V2 复现时应切换到封存 Git 引用并使用 frozen 数据根，不要在 V4.1 主分支上混用

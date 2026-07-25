@@ -32,7 +32,11 @@ class Fold:
 
     @property
     def run_dir(self) -> Path:
-        return ROOT / "LlamaFactory/saves/minicpmv4_5/lora" / self.run_name
+        return (
+            ROOT
+            / "LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language"
+            / self.run_name
+        )
 
     @property
     def merged_dir(self) -> Path:
@@ -40,7 +44,10 @@ class Fold:
 
     @property
     def merge_config(self) -> Path:
-        return FINETUNE / f"MiniCPM/config/merge_v4_1_fold{self.index}.yaml"
+        return (
+            FINETUNE
+            / f"MiniCPM/config/archive/v4_1_language/merge_v4_1_fold{self.index}.yaml"
+        )
 
     @property
     def result_dir(self) -> Path:

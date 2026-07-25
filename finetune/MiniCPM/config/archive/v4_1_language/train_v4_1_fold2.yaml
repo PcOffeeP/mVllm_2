@@ -13,8 +13,8 @@ lora_alpha: 16
 lora_dropout: 0.25
 quantization_bit: null
 
-dataset: tensile_v4_1_fold0_train
-eval_dataset: tensile_v4_1_fold0_val
+dataset: tensile_v4_1_fold2_train
+eval_dataset: tensile_v4_1_fold2_val
 dataset_dir: ../../tensile-data/current/training_releases/v4.1.0-760050fad303
 template: minicpm_v
 media_dir: ../../tensile-data/current/.compat/workspace
@@ -23,7 +23,7 @@ video_maxlen: 8
 preprocessing_num_workers: 4
 overwrite_cache: true
 
-output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260723_fold0
+output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold2
 logging_steps: 5
 save_strategy: steps
 save_steps: 50

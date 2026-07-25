@@ -20,7 +20,7 @@ FINETUNE = ROOT / "finetune"
 RUN_ID = "v2_0_0_1dab1e5e_20260719"
 RELEASE_ID = "v2.0.0-1dab1e5e"
 LOG_DIR = FINETUNE / "run_logs"
-RESULT_ROOT = FINETUNE / "results" / RUN_ID / "three_fold_test"
+RESULT_ROOT = FINETUNE / "results" / "archive" / "v2" / RUN_ID / "three_fold_test"
 STATE_PATH = LOG_DIR / f"three_fold_test_pipeline_{RUN_ID}.json"
 PID_PATH = LOG_DIR / f"three_fold_test_pipeline_{RUN_ID}.pid"
 DATASETS = ("test", "test_subvideos")
@@ -44,6 +44,8 @@ class FoldModel:
             / "saves"
             / "minicpmv4_5"
             / "lora"
+            / "archive"
+            / "v2"
             / f"{run_name}_merged"
         )
 

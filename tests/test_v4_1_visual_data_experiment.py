@@ -207,7 +207,7 @@ def test_committed_experiment_configs(
     augmented: bool,
 ) -> None:
     config = (
-        ROOT / "finetune/MiniCPM/config" / name
+        ROOT / "finetune/MiniCPM/config/experiments/v4_1" / name
     )
     validate_experiment_config(
         config,

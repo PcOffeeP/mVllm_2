@@ -35,11 +35,18 @@ class Fold:
 
     @property
     def run_dir(self) -> Path:
-        return ROOT / "LlamaFactory/saves/minicpmv4_5/lora" / self.run_name
+        return (
+            ROOT
+            / "LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language"
+            / self.run_name
+        )
 
     @property
     def config_path(self) -> Path:
-        return FINETUNE / f"MiniCPM/config/train_v4_1_fold{self.index}.yaml"
+        return (
+            FINETUNE
+            / f"MiniCPM/config/archive/v4_1_language/train_v4_1_fold{self.index}.yaml"
+        )
 
     @property
     def log_path(self) -> Path:
@@ -194,4 +201,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -19,7 +19,7 @@ FINETUNE = ROOT / "finetune"
 RUN_ID = "v2_0_0_1dab1e5e_20260719"
 RELEASE_ID = "v2.0.0-1dab1e5e"
 LOG_DIR = FINETUNE / "run_logs"
-RESULT_ROOT = FINETUNE / "results" / RUN_ID
+RESULT_ROOT = FINETUNE / "results" / "archive" / "v2" / RUN_ID
 STATE_PATH = LOG_DIR / f"three_fold_pipeline_{RUN_ID}.json"
 
 
@@ -37,7 +37,16 @@ class Fold:
 
     @property
     def run_dir(self) -> Path:
-        return ROOT / "LlamaFactory" / "saves" / "minicpmv4_5" / "lora" / self.run_name
+        return (
+            ROOT
+            / "LlamaFactory"
+            / "saves"
+            / "minicpmv4_5"
+            / "lora"
+            / "archive"
+            / "v2"
+            / self.run_name
+        )
 
     @property
     def merged_dir(self) -> Path:
@@ -45,11 +54,11 @@ class Fold:
 
     @property
     def training_config(self) -> str:
-        return f"MiniCPM/config/train_fold{self.index}.yaml"
+        return f"MiniCPM/config/archive/v2/train_fold{self.index}.yaml"
 
     @property
     def merge_config(self) -> str:
-        return f"MiniCPM/config/merge_fold{self.index}.yaml"
+        return f"MiniCPM/config/archive/v2/merge_fold{self.index}.yaml"
 
     @property
     def log_file(self) -> Path:

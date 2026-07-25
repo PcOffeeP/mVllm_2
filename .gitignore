@@ -16,18 +16,24 @@ wheels/
 # 本地模型权重
 models/*
 
-# LLaMA-Factory 训练输出
-LlamaFactory/saves/
+# LLaMA-Factory 训练输出；只保留目录说明文件
+LlamaFactory/saves/*
+!LlamaFactory/saves/minicpmv4_5/
+LlamaFactory/saves/minicpmv4_5/*
+!LlamaFactory/saves/minicpmv4_5/lora/
+LlamaFactory/saves/minicpmv4_5/lora/*
+!LlamaFactory/saves/minicpmv4_5/lora/README.md
 
-# 训练流水线运行日志与 PID/状态文件（保留在训练机，不提交）
-/finetune/run_logs/
+# 训练流水线运行日志与 PID/状态文件（保留在训练机，只提交说明）
+/finetune/run_logs/*
+!/finetune/run_logs/README.md
 
 # 验证脚本输出
 finetune/validation/results/
 
 # 诊断与 Prompt Sweep 生成产物
-/finetune/results/diagnostics/
-/finetune/results/prompt_sweep/
+/finetune/results/experiments/diagnostics/
+/finetune/results/experiments/prompt_sweep/
 
 # dependency lock files (not cross-platform)
 uv.lock

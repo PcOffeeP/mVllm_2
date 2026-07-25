@@ -23,7 +23,7 @@ from finetune.v4_1_runtime import (
 
 ROOT = Path(__file__).resolve().parents[1]
 FINETUNE = ROOT / "finetune"
-CONFIG_ROOT = FINETUNE / "MiniCPM/config"
+CONFIG_ROOT = FINETUNE / "MiniCPM/config/active/v4_1_visual"
 SAVE_ROOT = ROOT / "LlamaFactory/saves/minicpmv4_5/lora"
 RUN_ID = "v4_1_0_760050fad303_20260724_visual"
 LOG_ROOT = FINETUNE / "run_logs" / RUN_ID
