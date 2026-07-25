@@ -1,0 +1,166 @@
+{
+  "schema_version": "tensile-v4.1-visual-three-fold-summary/v1",
+  "run_id": "v4_1_0_760050fad303_20260724_visual",
+  "release_id": "v4.1.0-760050fad303",
+  "inference_precision": "bnb_4bit_nf4_adapter_resampler_bf16",
+  "fold_count": 3,
+  "total_samples": 1216,
+  "weighted_metrics": {
+    "contract_valid_rate": 1.0,
+    "joint_correct_rate": 0.374178,
+    "clip_state_correct_rate": 0.473684,
+    "fracture_mechanism_correct_rate": 0.499178,
+    "fracture_site_correct_rate": 0.534539,
+    "special_case_correct_rate": 1.0
+  },
+  "folds": [
+    {
+      "fold": 0,
+      "sample_count": 425,
+      "metrics": {
+        "total": 425,
+        "contract_valid_rate": 1.0,
+        "joint_correct_rate": 0.449412,
+        "clip_state_correct_rate": 0.517647,
+        "fracture_mechanism_correct_rate": 0.567059,
+        "fracture_site_correct_rate": 0.571765,
+        "special_case_correct_rate": 1.0
+      },
+      "target_clip_state_distribution": {
+        "临界未断裂": 57,
+        "发生断裂": 144,
+        "已断裂": 33,
+        "未断裂": 191
+      },
+      "prediction_clip_state_distribution": {
+        "临界未断裂": 63,
+        "发生断裂": 126,
+        "已断裂": 10,
+        "未断裂": 226
+      },
+      "clip_state_confusion": {
+        "临界未断裂": {
+          "临界未断裂": 16,
+          "发生断裂": 15,
+          "已断裂": 1,
+          "未断裂": 25
+        },
+        "发生断裂": {
+          "临界未断裂": 27,
+          "发生断裂": 60,
+          "已断裂": 5,
+          "未断裂": 52
+        },
+        "已断裂": {
+          "临界未断裂": 4,
+          "发生断裂": 16,
+          "已断裂": 4,
+          "未断裂": 9
+        },
+        "未断裂": {
+          "临界未断裂": 16,
+          "发生断裂": 35,
+          "未断裂": 140
+        }
+      }
+    },
+    {
+      "fold": 1,
+      "sample_count": 445,
+      "metrics": {
+        "total": 445,
+        "contract_valid_rate": 1.0,
+        "joint_correct_rate": 0.330337,
+        "clip_state_correct_rate": 0.442697,
+        "fracture_mechanism_correct_rate": 0.447191,
+        "fracture_site_correct_rate": 0.546067,
+        "special_case_correct_rate": 1.0
+      },
+      "target_clip_state_distribution": {
+        "临界未断裂": 64,
+        "发生断裂": 158,
+        "已断裂": 39,
+        "未断裂": 184
+      },
+      "prediction_clip_state_distribution": {
+        "临界未断裂": 98,
+        "发生断裂": 168,
+        "已断裂": 2,
+        "未断裂": 177
+      },
+      "clip_state_confusion": {
+        "临界未断裂": {
+          "临界未断裂": 21,
+          "发生断裂": 19,
+          "未断裂": 24
+        },
+        "发生断裂": {
+          "临界未断裂": 26,
+          "发生断裂": 85,
+          "未断裂": 47
+        },
+        "已断裂": {
+          "临界未断裂": 6,
+          "发生断裂": 18,
+          "未断裂": 15
+        },
+        "未断裂": {
+          "临界未断裂": 45,
+          "发生断裂": 46,
+          "已断裂": 2,
+          "未断裂": 91
+        }
+      }
+    },
+    {
+      "fold": 2,
+      "sample_count": 346,
+      "metrics": {
+        "total": 346,
+        "contract_valid_rate": 1.0,
+        "joint_correct_rate": 0.33815,
+        "clip_state_correct_rate": 0.459538,
+        "fracture_mechanism_correct_rate": 0.482659,
+        "fracture_site_correct_rate": 0.473988,
+        "special_case_correct_rate": 1.0
+      },
+      "target_clip_state_distribution": {
+        "临界未断裂": 40,
+        "发生断裂": 106,
+        "已断裂": 28,
+        "未断裂": 172
+      },
+      "prediction_clip_state_distribution": {
+        "临界未断裂": 40,
+        "发生断裂": 157,
+        "已断裂": 5,
+        "未断裂": 144
+      },
+      "clip_state_confusion": {
+        "临界未断裂": {
+          "临界未断裂": 10,
+          "发生断裂": 22,
+          "未断裂": 8
+        },
+        "发生断裂": {
+          "临界未断裂": 6,
+          "发生断裂": 60,
+          "已断裂": 1,
+          "未断裂": 39
+        },
+        "已断裂": {
+          "临界未断裂": 2,
+          "发生断裂": 16,
+          "已断裂": 1,
+          "未断裂": 9
+        },
+        "未断裂": {
+          "临界未断裂": 22,
+          "发生断裂": 59,
+          "已断裂": 3,
+          "未断裂": 88
+        }
+      }
+    }
+  ]
+}

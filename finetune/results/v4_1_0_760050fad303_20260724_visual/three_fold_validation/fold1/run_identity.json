@@ -1,0 +1,9 @@
+{
+  "schema_version": "tensile-v4.1-evaluation-run/v1",
+  "release_id": "v4.1.0-760050fad303",
+  "contract_version": "tensile-vlm/v4.1",
+  "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+  "fold": 1,
+  "model_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold1_merged",
+  "sample_count": 445
+}

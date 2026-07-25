@@ -35,6 +35,11 @@ finetune/validation/results/
 /finetune/results/experiments/diagnostics/
 /finetune/results/experiments/prompt_sweep/
 
+# 评测逐样本记录与一次性 smoke 输出只保留在训练机
+/finetune/results/**/evaluation_records.jsonl
+/finetune/results/**/four_bit*_smoke*/
+/finetune/results/**/runtime_failures.csv
+
 # dependency lock files (not cross-platform)
 uv.lock
 
