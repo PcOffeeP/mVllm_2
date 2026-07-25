@@ -1,0 +1,36 @@
+{
+  "audit_id": "effective-view-audit-eeb18caba8bd",
+  "coverage": {
+    "evidence_insufficient_no_special_case": {
+      "available_unmaterialized_source_count": 0,
+      "available_unmaterialized_sources": [],
+      "candidate_count": 0,
+      "candidate_ids": [],
+      "effective_source_count": 0,
+      "status": "unvalidated_capability",
+      "unique_effective_view_count": 0
+    },
+    "未夹紧": {
+      "available_unmaterialized_source_count": 0,
+      "available_unmaterialized_sources": [],
+      "candidate_count": 0,
+      "candidate_ids": [],
+      "effective_source_count": 0,
+      "status": "unvalidated_capability",
+      "unique_effective_view_count": 0
+    },
+    "视频异常": {
+      "available_unmaterialized_source_count": 1,
+      "available_unmaterialized_sources": [
+        "video_0005"
+      ],
+      "candidate_count": 0,
+      "candidate_ids": [],
+      "effective_source_count": 0,
+      "status": "source_available_needs_candidate_generation",
+      "unique_effective_view_count": 0
+    }
+  },
+  "schema_version": "tensile-vlm-v4.1-effective-view-audit/v1",
+  "scope": "development_and_sealed_test_candidates"
+}

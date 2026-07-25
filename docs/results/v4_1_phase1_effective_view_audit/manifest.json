@@ -1,0 +1,20 @@
+{
+  "artifacts": {
+    "audit_manifest.json": "b0b5d57c4fa2d818b7efd090efb203d528e0acbc79692192f9f446644ce85eb6",
+    "coverage_report.json": "0d08a632710dd6564042a0bc85cd55a6f32ad7c8844ffc42462f7f266e2bc037",
+    "development_review_candidates.json": "698f392417b18c6ce44793eddf4f44e1c1af1d3f17848ccc3e92e0abdabddc55",
+    "leakage_report.json": "fc68caf07dfd9fb82ddbe3384fbaac9f8d36ac1c4b24a6f58cc7004ac67f5610",
+    "sealed_test_review_candidates.json": "a361f23f70f2b23abacee7749a71d09ee12e5388ff8951ea5de8952d85ac86a8",
+    "unable_judgment_pool.json": "52eeb106998aaa242c485b84cb6c92735c3fffd1754e74c35f55fda73fc5bac4"
+  },
+  "audit_id": "effective-view-audit-eeb18caba8bd",
+  "completion": {
+    "all_candidates_have_effective_frame_signatures": true,
+    "creates_training_release": false,
+    "fold_and_test_leakage_check_passed": true,
+    "ready_for_human_review": true,
+    "review_queue_count": 742,
+    "test_media_integrity_passed": true
+  },
+  "schema_version": "tensile-vlm-v4.1-effective-view-audit/v1"
+}
