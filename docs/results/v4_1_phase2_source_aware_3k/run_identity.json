@@ -1,0 +1,21 @@
+{
+  "schema_version": "tensile-vlm-v4.1-source-aware-3k-lightweight-evidence/v1",
+  "status": "training_in_progress",
+  "stage": "B",
+  "run_id": "v4_1_phase2_source_aware_3k_dd89b70e9d63",
+  "training_code_commit": "f6ba152121d394141ddddaf73926e3a9c065d0a8",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+  "sampling_id": "source-aware-3k-dd89b70e9d63",
+  "sampling_manifest_sha256": "f7629ef943f81402978234405899749d0380603407a5fc2cf706710f839a9044",
+  "seeds": [
+    3407,
+    3411
+  ],
+  "rows_per_epoch": 3000,
+  "epochs": 3,
+  "total_exposures_per_seed": 9000,
+  "expected_optimizer_steps_per_seed": 1125,
+  "stage_b_passed": false,
+  "stage_c_authorized": false
+}
