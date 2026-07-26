@@ -1,0 +1,60 @@
+# Stage B coverage-first revision on immutable release v4.1.0-ecb5aeb9657c.
+model_name_or_path: ../models/minicpm_v_4_5
+cache_dir: null
+trust_remote_code: true
+flash_attn: sdpa
+
+stage: sft
+do_train: true
+do_eval: true
+finetuning_type: lora
+lora_target: all
+lora_rank: 8
+lora_alpha: 16
+lora_dropout: 0.25
+additional_target: resampler
+freeze_vision_tower: false
+freeze_multi_modal_projector: false
+quantization_bit: 4
+quantization_method: bnb
+double_quantization: true
+upcast_layernorm: true
+
+dataset: tensile_v4_1_phase2_3k_seed3411
+eval_dataset: tensile_v4_1_phase2_fold0_val
+dataset_dir: ../../tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-2a84e8b6cfc3
+template: minicpm_v
+media_dir: ../../tensile-data/current/.compat/workspace
+cutoff_len: 2048
+video_maxlen: 8
+preprocessing_num_workers: 4
+overwrite_cache: true
+
+output_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411
+logging_steps: 5
+save_strategy: steps
+save_steps: 50
+save_total_limit: 5
+eval_strategy: steps
+eval_steps: 50
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
+greater_is_better: false
+plot_loss: true
+overwrite_output_dir: false
+
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 0.000005
+num_train_epochs: 3
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+max_grad_norm: 1.0
+weight_decay: 0.2
+adam_beta2: 0.95
+optim: adamw_torch
+gradient_checkpointing: true
+ddp_timeout: 1800
+seed: 3411
