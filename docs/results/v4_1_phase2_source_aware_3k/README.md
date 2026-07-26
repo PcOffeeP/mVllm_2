@@ -64,3 +64,21 @@ full-hash 证据保留在训练机的内容寻址运行目录；两个 seed 完�
 runner 会拒绝接管不完整或身份漂移的训练/合并目录。已完成的 1125-step 训练、完整
 merged BF16 和 425 条零 runtime-failure 评测可幂等跳过。每个 seed 完成训练后必须
 先生成独立、不可变的 `training_run_manifest.json`，再进入 merge。
+
+### 中断恢复边界
+
+若 training 或 merge 进程异常退出：
+
+1. 读取 `state.json` 的 `orchestrator_pid`，确认该 PID 和对应子进程均已退出；
+2. 记录失败阶段、退出码、日志路径、原目录和当前 HEAD；
+3. 将不完整目录用同一文件系统内的原子 rename 移到
+   `LlamaFactory/saves/minicpmv4_5/lora/.quarantine/` 下的新时间戳目录；
+4. 保留 quarantine，不删除、不覆盖，并在原规范路径不存在后重新执行严格 preflight；
+5. 只有身份、媒体、配置 hash、GPU 和容量门再次通过后才重新启动。
+
+不得在 PID 仍存活时移动目录，也不得直接删除不完整 checkpoint 或 merged shards。
+这类 quarantine 是可恢复操作，不代表产物通过。
+
+严格评测采用不同恢复策略：`evaluation_records.jsonl` 每条写入后 `flush + fsync`，
+`run_identity.json` 不变时从已有 candidate 集继续；身份漂移、重复 candidate 或
+dataset 外 candidate 会失败，不得通过 quarantine 后混合两次评测身份。

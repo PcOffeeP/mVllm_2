@@ -17,6 +17,8 @@
   "epochs": 3,
   "total_exposures_per_seed": 9000,
   "expected_optimizer_steps_per_seed": 1125,
+  "incomplete_training_or_merge_recovery": "atomic_quarantine_after_pid_exit",
+  "evaluation_recovery": "identity_bound_jsonl_resume",
   "stage_b_passed": false,
   "stage_c_authorized": false
 }
