@@ -180,6 +180,8 @@ def _collect_result_files() -> dict[str, dict[str, Any]]:
             or training_payload.get("seed") != seed
             or training_payload.get("training_code_commit")
             != "f6ba152121d394141ddddaf73926e3a9c065d0a8"
+            or training_payload.get("launch_run_manifest_sha256")
+            != "9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6"
             or training_payload.get("actual_optimizer_steps") != 1125
         ):
             raise StageBEvidenceError(f"seed{seed} 训练 run manifest 非法")

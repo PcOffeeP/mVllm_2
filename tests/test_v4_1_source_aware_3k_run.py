@@ -136,6 +136,10 @@ def test_training_code_commit_is_frozen_in_run_manifest() -> None:
     assert runner.TRAINING_CODE_COMMIT == (
         "f6ba152121d394141ddddaf73926e3a9c065d0a8"
     )
+    assert payload["launch_run_manifest_sha256"] == (
+        runner.LAUNCH_RUN_MANIFEST_SHA256
+    )
+    runner._validate_launch_manifest_blob()
 
 
 def test_immutable_training_manifest_refuses_drift(tmp_path: Path) -> None:

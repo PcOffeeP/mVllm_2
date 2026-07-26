@@ -17,6 +17,8 @@ full-hash 证据保留在训练机的内容寻址运行目录；两个 seed 完�
 - run ID：`v4_1_phase2_source_aware_3k_dd89b70e9d63`
 - 实际训练启动代码 commit：
   `f6ba152121d394141ddddaf73926e3a9c065d0a8`
+- 启动时 run manifest SHA-256：
+  `9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6`
 - seeds：`3407`、`3411`
 
 每个 seed 使用同一份恰好 3000 行的确定性清单训练 3 epochs，共 9000 次样本曝光和

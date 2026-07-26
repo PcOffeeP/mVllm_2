@@ -2,6 +2,7 @@
   "schema_version": "tensile-vlm-v4.1-source-aware-3k-run/v1",
   "run_id": "v4_1_phase2_source_aware_3k_dd89b70e9d63",
   "training_code_commit": "f6ba152121d394141ddddaf73926e3a9c065d0a8",
+  "launch_run_manifest_sha256": "9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6",
   "release_id": "v4.1.0-ecb5aeb9657c",
   "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
   "sampling_id": "source-aware-3k-dd89b70e9d63",

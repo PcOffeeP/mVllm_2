@@ -32,6 +32,9 @@ RUN_MANIFEST_PATH = CONFIG_ROOT / "run_manifest.json"
 SAVE_ROOT = ROOT / "LlamaFactory/saves/minicpmv4_5/lora"
 RUN_ID = "v4_1_phase2_source_aware_3k_dd89b70e9d63"
 TRAINING_CODE_COMMIT = "f6ba152121d394141ddddaf73926e3a9c065d0a8"
+LAUNCH_RUN_MANIFEST_SHA256 = (
+    "9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6"
+)
 RELEASE_ID = "v4.1.0-ecb5aeb9657c"
 SAMPLING_ID = "source-aware-3k-dd89b70e9d63"
 SEEDS = (3407, 3411)
@@ -63,6 +66,26 @@ def _file_identity(path: Path) -> dict[str, Any]:
         "size_bytes": path.stat().st_size,
         "sha256": _sha256(path),
     }
+
+
+def _validate_launch_manifest_blob() -> None:
+    relative = RUN_MANIFEST_PATH.relative_to(ROOT)
+    result = subprocess.run(
+        ["git", "show", f"{TRAINING_CODE_COMMIT}:{relative}"],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise SourceAware3kRunError(
+            f"无法读取训练启动时 run manifest: {TRAINING_CODE_COMMIT}:{relative}"
+        )
+    actual = hashlib.sha256(result.stdout).hexdigest()
+    if actual != LAUNCH_RUN_MANIFEST_SHA256:
+        raise SourceAware3kRunError(
+            "训练启动时 run manifest blob SHA256 漂移: "
+            f"expected={LAUNCH_RUN_MANIFEST_SHA256}, actual={actual}"
+        )
 
 
 def _read_json(path: Path) -> Any:
@@ -179,6 +202,12 @@ def _freeze_training_run_manifest(seed: int) -> Path:
     run_manifest = _read_json(RUN_MANIFEST_PATH)
     if run_manifest.get("training_code_commit") != TRAINING_CODE_COMMIT:
         raise SourceAware3kRunError("训练启动 commit 与 run manifest 漂移")
+    if (
+        run_manifest.get("launch_run_manifest_sha256")
+        != LAUNCH_RUN_MANIFEST_SHA256
+    ):
+        raise SourceAware3kRunError("训练启动 run manifest SHA256 漂移")
+    _validate_launch_manifest_blob()
     seed_entry = (run_manifest.get("seeds") or {}).get(str(seed))
     if not isinstance(seed_entry, Mapping):
         raise SourceAware3kRunError(f"run manifest 缺少 seed{seed}")
@@ -226,6 +255,7 @@ def _freeze_training_run_manifest(seed: int) -> Path:
         "release_id": RELEASE_ID,
         "sampling_id": SAMPLING_ID,
         "training_code_commit": TRAINING_CODE_COMMIT,
+        "launch_run_manifest_sha256": LAUNCH_RUN_MANIFEST_SHA256,
         "run_manifest": {
             "path": str(RUN_MANIFEST_PATH.relative_to(ROOT)),
             **_file_identity(RUN_MANIFEST_PATH),
@@ -419,11 +449,14 @@ def _preflight(*, require_gpu: bool) -> dict[str, Any]:
         != "tensile-vlm-v4.1-source-aware-3k-run/v1"
         or manifest.get("run_id") != RUN_ID
         or manifest.get("training_code_commit") != TRAINING_CODE_COMMIT
+        or manifest.get("launch_run_manifest_sha256")
+        != LAUNCH_RUN_MANIFEST_SHA256
         or manifest.get("release_id") != RELEASE_ID
         or manifest.get("sampling_id") != SAMPLING_ID
         or manifest.get("expected_optimizer_steps_per_seed") != 1125
     ):
         raise SourceAware3kRunError("run manifest 身份或 optimizer steps 漂移")
+    _validate_launch_manifest_blob()
     paths = current_data_paths(ROOT)
     release = validate_release(
         ROOT,
