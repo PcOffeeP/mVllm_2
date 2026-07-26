@@ -19,9 +19,9 @@ CONFIG_ROOT = (
     / "finetune/MiniCPM/config/active"
     / "v4_1_source_aware_3k_coverage_first"
 )
-TRAINING_CODE_COMMIT = "4936381ef15fcf0d6dac3fee5af711a4678daa27"
+TRAINING_CODE_COMMIT = "fa894d52563416eed5b0f5d39a008bfb03cd8cd7"
 LAUNCH_RUN_MANIFEST_SHA256 = (
-    "dd2dfa855237720b685a78d188d3619d77cb6e9a4ee5d0603855ed2cab398021"
+    "0bf16a7b4658829b378cce1a70500abfae16489957f09356f12369ec50cede52"
 )
 
 
