@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -55,11 +57,20 @@ def test_coverage_first_run_manifest_binds_configs_and_single_change() -> None:
         assert RUN_ID in merge["export_dir"]
 
 
-def test_coverage_first_runner_entrypoints_exist() -> None:
+def test_coverage_first_runner_entrypoints_execute_directly() -> None:
     root = Path(__file__).resolve().parents[1] / "finetune"
     for name in (
         "run_v4_1_source_aware_3k_coverage_first.py",
         "monitor_v4_1_source_aware_3k_coverage_first.py",
         "analyze_v4_1_source_aware_3k_coverage_first.py",
     ):
-        assert (root / name).is_file()
+        path = root / name
+        assert path.is_file()
+        result = subprocess.run(
+            [sys.executable, str(path), "--help"],
+            cwd=root.parent,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
