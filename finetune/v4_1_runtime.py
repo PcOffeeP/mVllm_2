@@ -44,26 +44,28 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def release_dir(project_root: Path) -> Path:
-    return current_data_paths(project_root).training_releases / RELEASE_ID
+def release_dir(project_root: Path, release_id: str = RELEASE_ID) -> Path:
+    return current_data_paths(project_root).training_releases / release_id
 
 
 def validate_release(
     project_root: Path,
     *,
     verify_media: bool = False,
+    release_id: str = RELEASE_ID,
+    expected_counts: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     """Validate immutable release files, rows, labels, splits, and optional media."""
     project_root = Path(project_root).resolve()
     media_root = current_data_paths(project_root).compatibility_workspace
-    root = release_dir(project_root)
+    root = release_dir(project_root, release_id)
     manifest_path = root / "manifest/release_manifest.json"
     manifest = _read_json(manifest_path)
     if not isinstance(manifest, dict):
         raise V4_1FinetuneError("release manifest 必须是对象")
     expected_identity = {
         "schema_version": RELEASE_SCHEMA_VERSION,
-        "release_id": RELEASE_ID,
+        "release_id": release_id,
         "status": "training_ready",
         "immutable": True,
         "contract_version": CONTRACT_VERSION,
@@ -79,15 +81,38 @@ def validate_release(
     counts = manifest.get("counts")
     if not isinstance(counts, Mapping):
         raise V4_1FinetuneError("release manifest counts 缺失")
-    for field, expected in EXPECTED_RELEASE_COUNTS.items():
+    required_counts = (
+        EXPECTED_RELEASE_COUNTS
+        if expected_counts is None and release_id == RELEASE_ID
+        else dict(expected_counts or {})
+    )
+    for field, expected in required_counts.items():
         if counts.get(field) != expected:
             raise V4_1FinetuneError(
                 f"release count {field} 漂移: expected={expected}, actual={counts.get(field)}"
             )
 
     files = manifest.get("files")
-    if not isinstance(files, list) or len(files) != 9:
-        raise V4_1FinetuneError("release manifest files 必须包含 9 个受管文件")
+    if not isinstance(files, list):
+        raise V4_1FinetuneError("release manifest files 必须是列表")
+    required_paths = {
+        "dataset_info.json",
+        "metadata/training_candidates.json",
+        "reports/quality_report.json",
+        *(
+            f"datasets/{directory}/fold_{fold}.json"
+            for fold in range(3)
+            for directory in ("train", "validation")
+        ),
+    }
+    manifested_paths = {
+        item.get("path") for item in files if isinstance(item, Mapping)
+    }
+    if (
+        len(manifested_paths) != len(files)
+        or not required_paths <= manifested_paths
+    ):
+        raise V4_1FinetuneError("release manifest files 缺少受管文件或包含重复路径")
     for item in files:
         if not isinstance(item, Mapping) or not isinstance(item.get("path"), str):
             raise V4_1FinetuneError("release file manifest 非法")
@@ -128,14 +153,18 @@ def validate_release(
                 if verify_media and not media_path.is_file():
                     raise V4_1FinetuneError(f"训练媒体不存在: {media_path}")
                 canonicalize_v4_1_labels(labels)
-        if len(seen_videos) != EXPECTED_RELEASE_COUNTS["published_candidates"]:
+        published_count = counts.get("published_candidates")
+        if not isinstance(published_count, int) or published_count <= 0:
+            raise V4_1FinetuneError("release published_candidates 非法")
+        if len(seen_videos) != published_count:
             raise V4_1FinetuneError(
-                f"fold_{fold}: train+val 应覆盖 1275 条，实际 {len(seen_videos)}"
+                f"fold_{fold}: train+val 应覆盖 {published_count} 条，"
+                f"实际 {len(seen_videos)}"
             )
     if all_fold_counts != dict(counts.get("splits") or {}):
         raise V4_1FinetuneError("数据文件行数与 release manifest splits 不一致")
     return {
-        "release_id": RELEASE_ID,
+        "release_id": release_id,
         "contract_version": CONTRACT_VERSION,
         "contract_hash": CONTRACT_HASH,
         "release_dir": str(root),
