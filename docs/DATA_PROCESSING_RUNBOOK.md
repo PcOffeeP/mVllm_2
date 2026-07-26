@@ -219,18 +219,26 @@ python pipeline/scripts/build_v4_1_phase2_review_queues.py \
 phase1_verified/audit_manifest.json
 ```
 
-命令会打印两个不同的 `queue_id` 和路径，但不会创建训练发布。分别使用输出路径启动
-审查界面：
+命令会打印两个不同的 `queue_id` 和路径，但不会创建训练发布。若已有同契约、已冻结且
+校验通过的上一轮审查，必须先以上一轮为基准生成内容寻址的分流制品：
 
 ```bash
-streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
+python pipeline/scripts/route_v4_1_review_from_history.py \
   --queue <development_review_queue.json> \
-  --reviewer-id <reviewer-id>
+  --previous-decisions <previous_frozen_decisions.json> \
+  --current-draft <current_full_queue_draft.json>
 
 streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
-  --queue <sealed_test_review_queue.json> \
+  --queue <development_review_queue.json> \
+  --routing-manifest <routing_manifest.json> \
   --reviewer-id <reviewer-id>
 ```
+
+固定分流优先保留当前轮已有人工决定。上一轮整源均为 `approved`、同一
+`source_video + semantic_window_role` 只有一个标签共识且与当前提示一致时，记录为
+`historical_consensus`；只要上一轮同源出现 `corrected`、`dropped` 或
+`needs_regenerate`，或身份、角色、共识、提示不匹配，就进入 `manual_review`。
+历史沿用记录单独保存，不伪装成本轮人工批准。没有合格同源历史的队列仍全量人工审查。
 
 阶段 2 队列额外执行以下门禁：
 
@@ -246,10 +254,12 @@ streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
 - development：`v4-1-phase2-development-dc453f01fb23`，410 项、44 个源；
 - sealed test：`v4-1-phase2-sealed_test-a16926aca6d2`，332 项、20 个源。
 
-两队列的视频、采样帧和身份哈希均通过，源视频交集为空。轻量身份见
-[`docs/results/v4_1_phase2_review_queues/`](results/v4_1_phase2_review_queues/)。
-人工审查尚未开始。密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或
-模型选择。
+两队列的视频、采样帧和身份哈希均通过，源视频交集为空。2026-07-26 已按上一轮冻结
+batch 生成分流：development 为 `33 existing_human + 233 historical_consensus +
+144 manual_review`；sealed test 因无同源历史为 `332 manual_review`。原始队列和
+development 完整草稿均保持不变，阶段 2 尚无冻结 review batch。轻量身份和当前分流
+见 [`docs/results/v4_1_phase2_review_queues/`](results/v4_1_phase2_review_queues/)。
+密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或模型选择。
 
 ## 第五步：构建不可覆盖的 V4.1 训练发布
 

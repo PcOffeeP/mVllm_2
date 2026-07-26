@@ -143,10 +143,16 @@ python pipeline/scripts/build_v4_1_review_queue.py \
   --materialized <development_materialized.json> \
   --manifest <candidate_media_manifest.json>
 
-# 以帧画面优先的 V4.1 UI 进行人工审查
+# 有上一轮冻结审查时，先按历史基准生成只读分流制品
+python pipeline/scripts/route_v4_1_review_from_history.py \
+  --queue <review_queue.json> \
+  --previous-decisions <previous_frozen_decisions.json> \
+  --current-draft <current_full_queue_draft.json>
+
+# 以帧画面优先的 V4.1 UI 只审 manual_review 候选
 streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
   --queue <review_queue.json> \
-  --manifest <candidate_media_manifest.json> \
+  --routing-manifest <routing_manifest.json> \
   --reviewer-id <reviewer-id>
 
 # 复核输入并生成不可覆盖的训练发布
