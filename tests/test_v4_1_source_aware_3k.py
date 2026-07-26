@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from finetune.build_v4_1_source_aware_3k import (
+    COVERAGE_FIRST_POLICY_VERSION,
     HARD_NEGATIVES_PER_EPOCH,
     ROWS_PER_EPOCH,
     SIGNATURE_COUNT_CAP,
@@ -191,3 +192,63 @@ def test_fails_when_source_cap_cannot_supply_3000_rows(tmp_path: Path) -> None:
             seeds=(3407,),
             validate_only=True,
         )
+
+
+def test_builds_coverage_first_revision_without_overwriting_v1(
+    tmp_path: Path,
+) -> None:
+    release = _release(tmp_path)
+    output_root = tmp_path / "sampling"
+    original, _ = build_source_aware_3k(
+        release_dir=release,
+        media_root=tmp_path,
+        output_root=output_root,
+        seeds=(3407, 3411),
+    )
+
+    coverage_first, summary = build_source_aware_3k(
+        release_dir=release,
+        media_root=tmp_path,
+        output_root=output_root,
+        seeds=(3407, 3411),
+        policy_version=COVERAGE_FIRST_POLICY_VERSION,
+        coverage_first=True,
+    )
+
+    assert coverage_first != original
+    assert original.is_dir()
+    manifest = json.loads(
+        (coverage_first / "sampling_manifest.json").read_text()
+    )
+    assert manifest["policy_version"] == COVERAGE_FIRST_POLICY_VERSION
+    assert (
+        manifest["policy"]["other_state_policy"]
+        == "coverage_first_fixed_multiset"
+    )
+    assert (
+        manifest["plans"][0]["coverage_first"][
+            "canonical_multiset_sha256"
+        ]
+        == manifest["plans"][1]["coverage_first"][
+            "canonical_multiset_sha256"
+        ]
+    )
+    for plan in manifest["plans"]:
+        assert plan["state_counts"] == {
+            "临界未断裂": 450,
+            "发生断裂": 900,
+            "已断裂": 750,
+            "未断裂": 900,
+        }
+        assert plan["max_source_count"] <= SOURCE_COUNT_CAP
+        assert plan["max_signature_count"] <= SIGNATURE_COUNT_CAP
+    assert all(
+        item["state_counts"]
+        == {
+            "临界未断裂": 450,
+            "发生断裂": 900,
+            "已断裂": 750,
+            "未断裂": 900,
+        }
+        for item in summary["plans"]
+    )

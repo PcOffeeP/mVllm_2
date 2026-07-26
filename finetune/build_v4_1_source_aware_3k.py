@@ -29,6 +29,8 @@ SOURCE_SHARE_CAP = 0.05
 SOURCE_COUNT_CAP = int(ROWS_PER_EPOCH * SOURCE_SHARE_CAP)
 SIGNATURE_COUNT_CAP = 3
 DEFAULT_SEEDS = (3407, 3411)
+COVERAGE_FIRST_POLICY_VERSION = "source-aware-3k/1.1-coverage-first"
+COVERAGE_FIRST_SELECTION_SEED = 41701
 
 
 class SourceAware3kError(ValueError):
@@ -306,10 +308,108 @@ def _draw_quota(
     return selected, {"attempts": attempts, **dict(sorted(rejections.items()))}
 
 
+def _coverage_first_multiset(
+    candidates: Sequence[Mapping[str, Any]],
+) -> tuple[
+    list[Mapping[str, Any]],
+    dict[str, int],
+    Counter[str],
+    Counter[str],
+    dict[str, Any],
+]:
+    ordered = sorted(candidates, key=lambda item: str(item["candidate_id"]))
+    by_state: dict[str, list[Mapping[str, Any]]] = {}
+    for candidate in ordered:
+        state = str(candidate["labels"]["clip_state"])
+        by_state.setdefault(state, []).append(candidate)
+    other_states = sorted(state for state in by_state if state != "未断裂")
+    if len(other_states) != 3 or "未断裂" not in by_state:
+        raise SourceAware3kError(
+            "coverage-first 要求未断裂和恰好三个其他 clip_state"
+        )
+    frequent_state = max(
+        other_states,
+        key=lambda state: (len(by_state[state]), state),
+    )
+    other_quotas = {
+        state: min(
+            ROWS_PER_EPOCH // 4,
+            _pool_capacity(by_state[state]),
+        )
+        for state in other_states
+        if state != frequent_state
+    }
+    other_quotas[frequent_state] = (
+        OTHER_ROWS_PER_EPOCH - sum(other_quotas.values())
+    )
+    quotas = {
+        "未断裂": HARD_NEGATIVES_PER_EPOCH,
+        **other_quotas,
+    }
+    for state, quota in quotas.items():
+        capacity = _pool_capacity(by_state[state])
+        if capacity < quota:
+            raise SourceAware3kError(
+                f"{state} coverage-first 容量不足: "
+                f"capacity={capacity}, quota={quota}"
+            )
+    source_counts: Counter[str] = Counter()
+    signature_counts: Counter[str] = Counter()
+    candidate_counts: Counter[str] = Counter()
+    remaining = Counter(quotas)
+    selected: list[Mapping[str, Any]] = []
+    rng = np.random.Generator(np.random.PCG64(COVERAGE_FIRST_SELECTION_SEED))
+    layer_diagnostics = []
+    for layer in range(SIGNATURE_COUNT_CAP):
+        accepted = 0
+        source_rejections = 0
+        signature_rejections = 0
+        for raw_index in rng.permutation(len(ordered)):
+            candidate = ordered[int(raw_index)]
+            candidate_id = str(candidate["candidate_id"])
+            state = str(candidate["labels"]["clip_state"])
+            source = str(candidate["source_video"])
+            signature = str(candidate["effective_frame_signature"])
+            if remaining[state] <= 0 or candidate_counts[candidate_id] != layer:
+                continue
+            if source_counts[source] >= SOURCE_COUNT_CAP:
+                source_rejections += 1
+                continue
+            if signature_counts[signature] >= SIGNATURE_COUNT_CAP:
+                signature_rejections += 1
+                continue
+            selected.append(candidate)
+            remaining[state] -= 1
+            candidate_counts[candidate_id] += 1
+            source_counts[source] += 1
+            signature_counts[signature] += 1
+            accepted += 1
+        layer_diagnostics.append(
+            {
+                "layer": layer + 1,
+                "accepted": accepted,
+                "source_cap_rejections": source_rejections,
+                "signature_cap_rejections": signature_rejections,
+            }
+        )
+    if any(remaining.values()):
+        raise SourceAware3kError(
+            f"coverage-first 无法满足固定配额: remaining={dict(remaining)}"
+        )
+    return (
+        selected,
+        dict(sorted(quotas.items())),
+        source_counts,
+        signature_counts,
+        {"layers": layer_diagnostics},
+    )
+
+
 def _seed_plan(
     candidates: Sequence[Mapping[str, Any]],
     *,
     seed: int,
+    coverage_first: bool = False,
 ) -> dict[str, Any]:
     ordered = sorted(candidates, key=lambda item: str(item["candidate_id"]))
     negatives = [
@@ -336,35 +436,53 @@ def _seed_plan(
             f"total_source={total_source_capacity}"
         )
 
-    weights = _state_weights(others)
-    negative_probabilities = np.full(len(negatives), 1.0 / len(negatives))
-    other_values = np.array(
-        [weights[str(item["labels"]["clip_state"])] for item in others],
-        dtype=np.float64,
-    )
-    other_probabilities = other_values / other_values.sum()
     rng = np.random.Generator(np.random.PCG64(seed))
-    source_counts: Counter[str] = Counter()
-    signature_counts: Counter[str] = Counter()
-    negative_selected, negative_rejections = _draw_quota(
-        rng=rng,
-        pool=negatives,
-        probabilities=negative_probabilities,
-        quota=HARD_NEGATIVES_PER_EPOCH,
-        source_counts=source_counts,
-        signature_counts=signature_counts,
-    )
-    other_selected, other_rejections = _draw_quota(
-        rng=rng,
-        pool=others,
-        probabilities=other_probabilities,
-        quota=OTHER_ROWS_PER_EPOCH,
-        source_counts=source_counts,
-        signature_counts=signature_counts,
-    )
-    selected = negative_selected + other_selected
-    permutation = rng.permutation(len(selected))
-    sequence = [selected[int(index)] for index in permutation]
+    weights: dict[str, float] | None = None
+    state_quotas: dict[str, int] | None = None
+    if coverage_first:
+        (
+            selected,
+            state_quotas,
+            source_counts,
+            signature_counts,
+            coverage_diagnostics,
+        ) = _coverage_first_multiset(ordered)
+        permutation = rng.permutation(len(selected))
+        sequence = [selected[int(index)] for index in permutation]
+        negative_rejections = {}
+        other_rejections = {}
+    else:
+        negative_probabilities = np.full(
+            len(negatives),
+            1.0 / len(negatives),
+        )
+        source_counts = Counter()
+        signature_counts = Counter()
+        negative_selected, negative_rejections = _draw_quota(
+            rng=rng,
+            pool=negatives,
+            probabilities=negative_probabilities,
+            quota=HARD_NEGATIVES_PER_EPOCH,
+            source_counts=source_counts,
+            signature_counts=signature_counts,
+        )
+        weights = _state_weights(others)
+        other_values = np.array(
+            [weights[str(item["labels"]["clip_state"])] for item in others],
+            dtype=np.float64,
+        )
+        other_probabilities = other_values / other_values.sum()
+        other_selected, other_rejections = _draw_quota(
+            rng=rng,
+            pool=others,
+            probabilities=other_probabilities,
+            quota=OTHER_ROWS_PER_EPOCH,
+            source_counts=source_counts,
+            signature_counts=signature_counts,
+        )
+        selected = negative_selected + other_selected
+        permutation = rng.permutation(len(selected))
+        sequence = [selected[int(index)] for index in permutation]
     candidate_counts = Counter(str(item["candidate_id"]) for item in sequence)
     state_counts = Counter(str(item["labels"]["clip_state"]) for item in sequence)
     if (
@@ -374,7 +492,7 @@ def _seed_plan(
         or max(signature_counts.values()) > SIGNATURE_COUNT_CAP
     ):
         raise SourceAware3kError("生成后的 3k 清单违反固定配额或上限")
-    return {
+    plan = {
         "seed": seed,
         "rng": "numpy.random.PCG64",
         "candidate_sort": "candidate_id_ascending",
@@ -410,6 +528,22 @@ def _seed_plan(
         },
         "candidate_sequence": [str(item["candidate_id"]) for item in sequence],
     }
+    if coverage_first:
+        plan["coverage_first"] = {
+            "selection_seed": COVERAGE_FIRST_SELECTION_SEED,
+            "state_quotas": state_quotas,
+            "canonical_multiset_sha256": _sha256_bytes(
+                _canonical_bytes(
+                    sorted(
+                        Counter(
+                            str(item["candidate_id"]) for item in selected
+                        ).items()
+                    )
+                )
+            ),
+            **coverage_diagnostics,
+        }
+    return plan
 
 
 def _dataset_registry(seeds: Sequence[int]) -> dict[str, Any]:
@@ -482,6 +616,8 @@ def build_source_aware_3k(
     seeds: Sequence[int] = DEFAULT_SEEDS,
     verify_media: bool = False,
     validate_only: bool = False,
+    policy_version: str = POLICY_VERSION,
+    coverage_first: bool = False,
 ) -> tuple[Path, dict[str, Any]]:
     """Validate and optionally freeze both fixed-seed 3k sampling artifacts."""
     normalized_seeds = tuple(int(seed) for seed in seeds)
@@ -503,30 +639,52 @@ def build_source_aware_3k(
         media_root=media_root,
         verify_media=verify_media,
     )
-    plans = [_seed_plan(candidates, seed=seed) for seed in normalized_seeds]
+    if not isinstance(policy_version, str) or not policy_version:
+        raise SourceAware3kError("policy_version 必须是非空字符串")
+    plans = [
+        _seed_plan(
+            candidates,
+            seed=seed,
+            coverage_first=coverage_first,
+        )
+        for seed in normalized_seeds
+    ]
+    policy = {
+        "rows_per_epoch": ROWS_PER_EPOCH,
+        "epochs": EPOCHS,
+        "hard_negatives_per_epoch": HARD_NEGATIVES_PER_EPOCH,
+        "other_rows_per_epoch": OTHER_ROWS_PER_EPOCH,
+        "source_share_cap": SOURCE_SHARE_CAP,
+        "source_count_cap": SOURCE_COUNT_CAP,
+        "signature_count_cap": SIGNATURE_COUNT_CAP,
+    }
+    if not coverage_first:
+        policy["other_state_weight_formula"] = (
+            "clip((1/sqrt(state_frequency))/candidate_weighted_mean,0.5,3.0)"
+        )
+    else:
+        policy["other_state_policy"] = "coverage_first_fixed_multiset"
+        policy["selection_seed"] = COVERAGE_FIRST_SELECTION_SEED
+        policy["state_quotas"] = plans[0]["coverage_first"]["state_quotas"]
+        multiset_hashes = {
+            plan["coverage_first"]["canonical_multiset_sha256"]
+            for plan in plans
+        }
+        if len(multiset_hashes) != 1:
+            raise SourceAware3kError("coverage-first 双 seed 多重集身份不一致")
+        policy["canonical_multiset_sha256"] = multiset_hashes.pop()
     sampling_manifest = {
         "schema_version": SAMPLING_SCHEMA_VERSION,
-        "policy_version": POLICY_VERSION,
+        "policy_version": policy_version,
         "release_id": release_manifest["release_id"],
         "contract_hash": release_manifest["contract_hash"],
-        "policy": {
-            "rows_per_epoch": ROWS_PER_EPOCH,
-            "epochs": EPOCHS,
-            "hard_negatives_per_epoch": HARD_NEGATIVES_PER_EPOCH,
-            "other_rows_per_epoch": OTHER_ROWS_PER_EPOCH,
-            "other_state_weight_formula": (
-                "clip((1/sqrt(state_frequency))/candidate_weighted_mean,0.5,3.0)"
-            ),
-            "source_share_cap": SOURCE_SHARE_CAP,
-            "source_count_cap": SOURCE_COUNT_CAP,
-            "signature_count_cap": SIGNATURE_COUNT_CAP,
-        },
+        "policy": policy,
         "inputs": identities,
         "seeds": list(normalized_seeds),
         "plans": plans,
     }
     seed = {
-        "policy_version": POLICY_VERSION,
+        "policy_version": policy_version,
         "release_id": release_manifest["release_id"],
         "inputs": identities,
         "seeds": list(normalized_seeds),
