@@ -60,6 +60,8 @@ full-hash 证据保留在训练机的内容寻址运行目录；两个 seed 完�
   `python finetune/analyze_v4_1_source_aware_3k.py`
 - 证据冻结：
   `python finetune/freeze_v4_1_source_aware_3k_evidence.py`
+- Stage C 授权：
+  `python finetune/authorize_v4_1_stage_c.py --evidence-manifest <full-hash-manifest>`
 
 runner 会拒绝接管不完整或身份漂移的训练/合并目录。已完成的 1125-step 训练、完整
 merged BF16 和 425 条零 runtime-failure 评测可幂等跳过。每个 seed 完成训练后必须
@@ -82,3 +84,11 @@ merged BF16 和 425 条零 runtime-failure 评测可幂等跳过。每个 seed �
 严格评测采用不同恢复策略：`evaluation_records.jsonl` 每条写入后 `flush + fsync`，
 `run_identity.json` 不变时从已有 candidate 集继续；身份漂移、重复 candidate 或
 dataset 外 candidate 会失败，不得通过 quarantine 后混合两次评测身份。
+
+### Stage B → C 授权
+
+Stage C 不以人工判断或 README 状态启动。只有 `stage_b_gate_report.json` 明确显示
+两个 seed 全部通过，且 Stage B evidence 使用 full model hashes、两个 trainer state
+均为 1125 steps、两个视觉 adapter 均覆盖 VPM 和 resampler 时，授权器才生成不可变、
+内容寻址的 `stage_c_authorization.json`。Stage C 的任何 preflight 必须消费该授权；
+当前 `training_in_progress` 状态没有授权。
