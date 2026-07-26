@@ -31,6 +31,10 @@ from pipeline.v4_1_review_workflow import (
     new_decision,
     save_draft,
 )
+from pipeline.v4_1_review_routing import (
+    ReviewRoutingError,
+    load_manual_candidate_ids,
+)
 
 STATUS_FILTERS = {
     "未审核": None,
@@ -63,6 +67,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--review-reference", type=Path)
     parser.add_argument("--candidate-id", action="append", default=[])
+    parser.add_argument("--routing-manifest", type=Path)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--draft", type=Path)
     parser.add_argument("--output-root", type=Path)
@@ -233,10 +238,20 @@ def main() -> None:
     st.set_page_config(page_title="v4.1 人工复检", layout="wide")
     args = _parse_args()
     try:
+        if args.routing_manifest is not None and args.candidate_id:
+            raise V4_1ReviewWorkflowError(
+                "--routing-manifest 与 --candidate-id 不能同时使用"
+            )
+        candidate_ids = list(args.candidate_id)
+        if args.routing_manifest is not None:
+            candidate_ids = load_manual_candidate_ids(
+                args.routing_manifest,
+                queue_path=args.queue,
+            )
         identity, candidates = _cached_review_queue(
             str(args.queue.resolve()),
             str(args.project_root.resolve()),
-            tuple(args.candidate_id),
+            tuple(candidate_ids),
             args.limit,
         )
         references = _cached_reference_records(
@@ -251,7 +266,7 @@ def main() -> None:
         draft_path = (args.draft or default_draft).resolve()
         output_root = (args.output_root or default_output_root).resolve()
         decisions = load_draft(draft_path, identity)
-    except (V4_1ReviewWorkflowError, ValueError) as exc:
+    except (ReviewRoutingError, V4_1ReviewWorkflowError, ValueError) as exc:
         st.error(str(exc))
         st.stop()
 
