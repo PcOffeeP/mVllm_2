@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -84,3 +85,45 @@ def test_evaluation_complete_is_release_and_count_bound(
         encoding="utf-8",
     )
     assert runner._evaluation_complete(3407) is False
+
+
+def test_disk_preflight_accounts_for_pending_artifacts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(runner, "_training_complete", lambda seed: seed == 3407)
+    monkeypatch.setattr(runner, "_merged_complete", lambda seed: False)
+    expected = (
+        runner.ESTIMATED_ADAPTER_BYTES
+        + 2 * runner.ESTIMATED_MERGED_BYTES
+        + runner.DISK_RESERVE_BYTES
+    )
+    monkeypatch.setattr(
+        runner.shutil,
+        "disk_usage",
+        lambda path: SimpleNamespace(
+            total=500 * 1024**3,
+            used=100 * 1024**3,
+            free=expected,
+        ),
+    )
+
+    result = runner._disk_preflight()
+
+    assert result["required_bytes"] == expected
+    assert result["pending_adapter_count"] == 1
+    assert result["pending_merged_count"] == 2
+
+
+def test_disk_preflight_fails_before_launch_when_capacity_is_short(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(runner, "_training_complete", lambda seed: False)
+    monkeypatch.setattr(runner, "_merged_complete", lambda seed: False)
+    monkeypatch.setattr(
+        runner.shutil,
+        "disk_usage",
+        lambda path: SimpleNamespace(total=100, used=90, free=10),
+    )
+
+    with pytest.raises(runner.SourceAware3kRunError, match="容量不足"):
+        runner._disk_preflight()

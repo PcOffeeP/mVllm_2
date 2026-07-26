@@ -8,6 +8,7 @@ import hashlib
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -34,6 +35,9 @@ RELEASE_ID = "v4.1.0-ecb5aeb9657c"
 SAMPLING_ID = "source-aware-3k-dd89b70e9d63"
 SEEDS = (3407, 3411)
 EXPECTED_VALIDATION_COUNT = 425
+ESTIMATED_ADAPTER_BYTES = 8 * 1024**3
+ESTIMATED_MERGED_BYTES = 18 * 1024**3
+DISK_RESERVE_BYTES = 10 * 1024**3
 LOG_ROOT = FINETUNE / "run_logs" / RUN_ID
 RESULT_ROOT = FINETUNE / "results" / RUN_ID
 STATE_PATH = LOG_ROOT / "state.json"
@@ -270,6 +274,36 @@ def _gpu_preflight() -> dict[str, Any]:
     }
 
 
+def _disk_preflight() -> dict[str, Any]:
+    pending_adapters = sum(not _training_complete(seed) for seed in SEEDS)
+    pending_merged = sum(not _merged_complete(seed) for seed in SEEDS)
+    required = (
+        pending_adapters * ESTIMATED_ADAPTER_BYTES
+        + pending_merged * ESTIMATED_MERGED_BYTES
+        + DISK_RESERVE_BYTES
+    )
+    usage = shutil.disk_usage(SAVE_ROOT)
+    if usage.free < required:
+        raise SourceAware3kRunError(
+            "Stage B 剩余模型容量不足: "
+            f"free={usage.free}, required={required}, "
+            f"pending_adapters={pending_adapters}, "
+            f"pending_merged={pending_merged}"
+        )
+    return {
+        "filesystem_root": str(SAVE_ROOT.resolve()),
+        "total_bytes": usage.total,
+        "used_bytes": usage.used,
+        "free_bytes": usage.free,
+        "required_bytes": required,
+        "reserve_bytes": DISK_RESERVE_BYTES,
+        "pending_adapter_count": pending_adapters,
+        "pending_merged_count": pending_merged,
+        "estimated_adapter_bytes_each": ESTIMATED_ADAPTER_BYTES,
+        "estimated_merged_bytes_each": ESTIMATED_MERGED_BYTES,
+    }
+
+
 def _preflight(*, require_gpu: bool) -> dict[str, Any]:
     manifest = _read_json(RUN_MANIFEST_PATH)
     if (
@@ -360,6 +394,7 @@ def _preflight(*, require_gpu: bool) -> dict[str, Any]:
         "expected_optimizer_steps_per_seed": 1125,
         "llamafactory_cli": str(cli),
         "gpu": _gpu_preflight() if require_gpu else None,
+        "disk": _disk_preflight(),
         "seeds": rows,
     }
 
