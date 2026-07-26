@@ -43,6 +43,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-samples", type=int)
     parser.add_argument("--quantization-bit", type=int, choices=(4,))
     parser.add_argument("--adapter-dir", type=Path)
+    parser.add_argument("--release-id", default=RELEASE_ID)
     return parser.parse_args()
 
 
@@ -64,8 +65,12 @@ def _load_contract() -> dict[str, Any]:
     return contract
 
 
-def load_validation_samples(fold: int) -> list[dict[str, Any]]:
-    path = release_dir(ROOT) / f"datasets/validation/fold_{fold}.json"
+def load_validation_samples(
+    fold: int,
+    *,
+    release_id: str = RELEASE_ID,
+) -> list[dict[str, Any]]:
+    path = release_dir(ROOT, release_id) / f"datasets/validation/fold_{fold}.json"
     rows = _read_json(path)
     if not isinstance(rows, list):
         raise RuntimeError(f"validation dataset must be a list: {path}")
@@ -98,12 +103,13 @@ def _run_identity(
     model_dir: Path,
     sample_count: int,
     *,
+    release_id: str = RELEASE_ID,
     quantization_bit: int | None = None,
     adapter_dir: Path | None = None,
 ) -> dict[str, Any]:
     identity = {
         "schema_version": "tensile-v4.1-evaluation-run/v1",
-        "release_id": RELEASE_ID,
+        "release_id": release_id,
         "contract_version": CONTRACT_VERSION,
         "contract_hash": CONTRACT_HASH,
         "fold": fold,
@@ -290,9 +296,13 @@ def _write_final_outputs(
 
 def main() -> int:
     args = parse_args()
-    validate_release(ROOT, verify_media=True)
+    validate_release(
+        ROOT,
+        verify_media=True,
+        release_id=args.release_id,
+    )
     contract = _load_contract()
-    samples = load_validation_samples(args.fold)
+    samples = load_validation_samples(args.fold, release_id=args.release_id)
     if args.max_samples is not None:
         if args.max_samples <= 0:
             raise ValueError("--max-samples must be positive")
@@ -301,6 +311,7 @@ def main() -> int:
         args.fold,
         args.model_dir,
         len(samples),
+        release_id=args.release_id,
         quantization_bit=args.quantization_bit,
         adapter_dir=args.adapter_dir,
     )
