@@ -31,6 +31,7 @@ CONFIG_ROOT = FINETUNE / "MiniCPM/config/active/v4_1_source_aware_3k"
 RUN_MANIFEST_PATH = CONFIG_ROOT / "run_manifest.json"
 SAVE_ROOT = ROOT / "LlamaFactory/saves/minicpmv4_5/lora"
 RUN_ID = "v4_1_phase2_source_aware_3k_dd89b70e9d63"
+TRAINING_CODE_COMMIT = "f6ba152121d394141ddddaf73926e3a9c065d0a8"
 RELEASE_ID = "v4.1.0-ecb5aeb9657c"
 SAMPLING_ID = "source-aware-3k-dd89b70e9d63"
 SEEDS = (3407, 3411)
@@ -53,6 +54,15 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _file_identity(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise SourceAware3kRunError(f"运行身份文件不存在: {path}")
+    return {
+        "size_bytes": path.stat().st_size,
+        "sha256": _sha256(path),
+    }
 
 
 def _read_json(path: Path) -> Any:
@@ -141,6 +151,104 @@ def _training_complete(seed: int) -> bool:
     except SourceAware3kRunError:
         return False
     return state.get("global_step") == 1125
+
+
+def _write_immutable_json(path: Path, payload: Mapping[str, Any]) -> None:
+    content = (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    if path.exists():
+        if path.read_text(encoding="utf-8") != content:
+            raise SourceAware3kRunError(f"拒绝覆盖已有训练 run manifest: {path}")
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(content, encoding="utf-8")
+    temporary.replace(path)
+
+
+def _freeze_training_run_manifest(seed: int) -> Path:
+    if not _training_complete(seed):
+        raise SourceAware3kRunError(f"seed{seed} 尚未完成 1125 steps")
+    run_manifest = _read_json(RUN_MANIFEST_PATH)
+    if run_manifest.get("training_code_commit") != TRAINING_CODE_COMMIT:
+        raise SourceAware3kRunError("训练启动 commit 与 run manifest 漂移")
+    seed_entry = (run_manifest.get("seeds") or {}).get(str(seed))
+    if not isinstance(seed_entry, Mapping):
+        raise SourceAware3kRunError(f"run manifest 缺少 seed{seed}")
+    paths = current_data_paths(ROOT)
+    sampling_summary_path = (
+        paths.metadata
+        / "v4_1/source_aware_3k"
+        / SAMPLING_ID
+        / "summary.json"
+    )
+    sampling_summary = _read_json(sampling_summary_path)
+    plan = next(
+        (
+            item
+            for item in sampling_summary.get("plans") or []
+            if isinstance(item, Mapping) and item.get("seed") == seed
+        ),
+        None,
+    )
+    if not isinstance(plan, Mapping):
+        raise SourceAware3kRunError(f"sampling summary 缺少 seed{seed}")
+    root = adapter_dir(seed)
+    selected = {
+        "train_config": CONFIG_ROOT / str(seed_entry["train_config"]),
+        "trainer_state": root / "trainer_state.json",
+        "trainer_log": root / "trainer_log.jsonl",
+        "train_results": root / "train_results.json",
+        "adapter_config": root / "adapter_config.json",
+        "adapter_model": root / "adapter_model.safetensors",
+    }
+    files = {name: _file_identity(path) for name, path in selected.items()}
+    if files["train_config"]["sha256"] != seed_entry.get(
+        "train_config_sha256"
+    ):
+        raise SourceAware3kRunError(f"seed{seed} 训练配置 hash 漂移")
+    trainer_state = _read_json(selected["trainer_state"])
+    train_results = _read_json(selected["train_results"])
+    coverage = validate_adapter_coverage(root, visual=True)
+    completed_timestamp = max(path.stat().st_mtime for path in selected.values())
+    completed_at = datetime.fromtimestamp(completed_timestamp).astimezone()
+    payload = {
+        "schema_version": "tensile-vlm-v4.1-source-aware-3k-training-run/v1",
+        "run_id": RUN_ID,
+        "seed": seed,
+        "release_id": RELEASE_ID,
+        "sampling_id": SAMPLING_ID,
+        "training_code_commit": TRAINING_CODE_COMMIT,
+        "run_manifest": {
+            "path": str(RUN_MANIFEST_PATH.relative_to(ROOT)),
+            **_file_identity(RUN_MANIFEST_PATH),
+        },
+        "sampling_summary": {
+            "path_at_freeze": str(sampling_summary_path.resolve()),
+            **_file_identity(sampling_summary_path),
+        },
+        "sampling_sequence_sha256": plan.get("sequence_sha256"),
+        "expected_optimizer_steps": 1125,
+        "actual_optimizer_steps": trainer_state.get("global_step"),
+        "epochs": trainer_state.get("epoch"),
+        "best_model_checkpoint": trainer_state.get("best_model_checkpoint"),
+        "best_metric": trainer_state.get("best_metric"),
+        "train_runtime_seconds": train_results.get("train_runtime"),
+        "adapter_coverage": coverage,
+        "adapter_dir": str(root.resolve()),
+        "completed_at": completed_at.isoformat(timespec="seconds"),
+        "files": files,
+    }
+    output = RESULT_ROOT / f"seed{seed}" / "training_run_manifest.json"
+    _write_immutable_json(output, payload)
+    return output
 
 
 def _merged_complete(seed: int) -> bool:
@@ -310,6 +418,7 @@ def _preflight(*, require_gpu: bool) -> dict[str, Any]:
         manifest.get("schema_version")
         != "tensile-vlm-v4.1-source-aware-3k-run/v1"
         or manifest.get("run_id") != RUN_ID
+        or manifest.get("training_code_commit") != TRAINING_CODE_COMMIT
         or manifest.get("release_id") != RELEASE_ID
         or manifest.get("sampling_id") != SAMPLING_ID
         or manifest.get("expected_optimizer_steps_per_seed") != 1125
@@ -401,6 +510,7 @@ def _preflight(*, require_gpu: bool) -> dict[str, Any]:
 
 def _train(seed: int) -> None:
     if _training_complete(seed):
+        _freeze_training_run_manifest(seed)
         return
     _write_state("running", f"seed{seed}_training", seed=seed)
     _run_logged(
@@ -417,11 +527,13 @@ def _train(seed: int) -> None:
             f"seed{seed} 训练产物不完整或 global_step != 1125"
         )
     coverage = validate_adapter_coverage(adapter_dir(seed), visual=True)
+    training_run_manifest = _freeze_training_run_manifest(seed)
     _write_state(
         "running",
         f"seed{seed}_training_complete",
         seed=seed,
         adapter_coverage=coverage,
+        training_run_manifest=str(training_run_manifest),
     )
 
 

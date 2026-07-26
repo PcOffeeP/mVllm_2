@@ -127,3 +127,21 @@ def test_disk_preflight_fails_before_launch_when_capacity_is_short(
 
     with pytest.raises(runner.SourceAware3kRunError, match="容量不足"):
         runner._disk_preflight()
+
+
+def test_training_code_commit_is_frozen_in_run_manifest() -> None:
+    payload = json.loads(runner.RUN_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+    assert payload["training_code_commit"] == runner.TRAINING_CODE_COMMIT
+    assert runner.TRAINING_CODE_COMMIT == (
+        "f6ba152121d394141ddddaf73926e3a9c065d0a8"
+    )
+
+
+def test_immutable_training_manifest_refuses_drift(tmp_path: Path) -> None:
+    path = tmp_path / "training_run_manifest.json"
+    runner._write_immutable_json(path, {"seed": 3407})
+    runner._write_immutable_json(path, {"seed": 3407})
+
+    with pytest.raises(runner.SourceAware3kRunError, match="拒绝覆盖"):
+        runner._write_immutable_json(path, {"seed": 3411})

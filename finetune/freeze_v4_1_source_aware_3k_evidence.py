@@ -171,6 +171,21 @@ def _collect_result_files() -> dict[str, dict[str, Any]]:
     files[str(gate_path.relative_to(ROOT))] = _identity(gate_path)
     for seed in SEEDS:
         root = RESULT_ROOT / f"seed{seed}/fold0"
+        training_manifest = (
+            RESULT_ROOT / f"seed{seed}/training_run_manifest.json"
+        )
+        training_payload = _read_json(training_manifest)
+        if (
+            not isinstance(training_payload, Mapping)
+            or training_payload.get("seed") != seed
+            or training_payload.get("training_code_commit")
+            != "f6ba152121d394141ddddaf73926e3a9c065d0a8"
+            or training_payload.get("actual_optimizer_steps") != 1125
+        ):
+            raise StageBEvidenceError(f"seed{seed} 训练 run manifest 非法")
+        files[str(training_manifest.relative_to(ROOT))] = _identity(
+            training_manifest
+        )
         for name in (
             "run_identity.json",
             "evaluation_records.jsonl",
