@@ -74,3 +74,24 @@ def test_coverage_first_runner_entrypoints_execute_directly() -> None:
             check=False,
         )
         assert result.returncode == 0, result.stderr
+
+
+def test_coverage_first_configures_derived_state_path() -> None:
+    code = (
+        "from finetune.v4_1_source_aware_3k_coverage_first "
+        "import configure_runner; "
+        "r=configure_runner(); "
+        "print(r.STATE_PATH); print(r.LOG_ROOT / 'state.json')"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert len(lines) == 2
+    assert lines[0] == lines[1]
+    assert RUN_ID in lines[0]

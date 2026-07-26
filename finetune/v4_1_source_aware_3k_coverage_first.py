@@ -42,6 +42,7 @@ def configure_runner() -> Any:
     runner.LAUNCH_RUN_MANIFEST_SHA256 = LAUNCH_RUN_MANIFEST_SHA256
     runner.SAMPLING_ID = SAMPLING_ID
     runner.LOG_ROOT = ROOT / "finetune/run_logs" / RUN_ID
+    runner.STATE_PATH = runner.LOG_ROOT / "state.json"
     runner.RESULT_ROOT = ROOT / "finetune/results" / RUN_ID
     runner.build_source_aware_3k = _build_coverage_first
     return runner
