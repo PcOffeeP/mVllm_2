@@ -312,3 +312,46 @@ def test_rejects_drifted_media(tmp_path: Path) -> None:
 
     with pytest.raises(V4_1TrainingReleaseError, match="SHA-256 不一致"):
         _build(paths)
+
+
+def test_accepts_absolute_canonical_frame_paths_behind_workspace_links(
+    tmp_path: Path,
+) -> None:
+    paths = _fixture(tmp_path)
+    workspace_frames = tmp_path / "data/frames"
+    canonical_frames = tmp_path.parent / f"{tmp_path.name}-canonical/frames"
+    canonical_frames.parent.mkdir(parents=True, exist_ok=True)
+    workspace_frames.rename(canonical_frames)
+    workspace_frames.symlink_to(canonical_frames, target_is_directory=True)
+
+    materialized = json.loads(paths["materialized"].read_text())
+    for candidate in materialized["candidates"]:
+        for frame in candidate["frame_artifacts"]:
+            relative = Path(frame["path"]).relative_to("data/frames")
+            frame["path"] = str((canonical_frames / relative).resolve())
+    _write_json(paths["materialized"], materialized)
+    media_manifest = json.loads(paths["media_manifest"].read_text())
+    media_manifest["artifacts"][paths["materialized"].name]["sha256"] = _sha(
+        paths["materialized"]
+    )
+    _write_json(paths["media_manifest"], media_manifest)
+    paths["queue"].unlink()
+    save_v4_1_review_queue(
+        paths["queue"],
+        build_v4_1_review_queue(
+            materialized_path=paths["materialized"],
+            manifest_path=paths["media_manifest"],
+            project_root=tmp_path,
+            contract_path=paths["contract"],
+        ),
+    )
+
+    release_dir, _ = _build(paths)
+    metadata = json.loads(
+        (release_dir / "metadata/training_candidates.json").read_text()
+    )
+    assert all(
+        frame["path"].startswith("data/frames/")
+        for row in metadata["candidates"]
+        for frame in row["frames"]
+    )

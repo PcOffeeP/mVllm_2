@@ -19,7 +19,7 @@ from typing import Any, Iterable, Mapping
 from pipeline.data_roots import (
     DataRootError,
     resolve_workspace_artifact,
-    workspace_relative_path,
+    workspace_portable_path,
 )
 from pipeline.v3_review_workflow import sha256_file
 from pipeline.v4_1_labels import (
@@ -106,7 +106,7 @@ def _relative_media_path(value: Any, project_root: Path, candidate_id: str) -> s
         raise V4_1TrainingReleaseError(f"{candidate_id}: video_path 不能为空")
     resolved = resolve_workspace_artifact(value, project_root)
     try:
-        return workspace_relative_path(resolved, project_root)
+        return workspace_portable_path(resolved, project_root)
     except DataRootError as exc:
         raise V4_1TrainingReleaseError(
             f"{candidate_id}: 媒体必须位于项目目录内: {resolved}"
@@ -194,7 +194,7 @@ def _load_materialized(
             timestamps.append(float(timestamp))
             verified_frames.append(
                 {
-                    "path": workspace_relative_path(frame_path, project_root),
+                    "path": workspace_portable_path(frame_path, project_root),
                     "sha256": frame["sha256"],
                 }
             )
@@ -203,7 +203,7 @@ def _load_materialized(
         candidates.append(
             {
                 **item,
-                "_release_video_path": workspace_relative_path(video, project_root),
+                "_release_video_path": workspace_portable_path(video, project_root),
                 "_release_frames": verified_frames,
                 "_sampled_timestamps": timestamps,
             }
