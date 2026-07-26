@@ -63,6 +63,7 @@ def test_coverage_first_runner_entrypoints_execute_directly() -> None:
         "run_v4_1_source_aware_3k_coverage_first.py",
         "monitor_v4_1_source_aware_3k_coverage_first.py",
         "analyze_v4_1_source_aware_3k_coverage_first.py",
+        "analyze_v4_1_source_aware_3k_coverage_first_canary.py",
     ):
         path = root / name
         assert path.is_file()
