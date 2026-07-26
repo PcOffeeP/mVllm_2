@@ -1,0 +1,34 @@
+{
+  "schema_version": "tensile-vlm-v4.1-phase2-development-release-summary/v1",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+  "combined_review_id": "combined-review-decisions-b4ade2d3e526",
+  "combined_review_sha256": "0537ba7b783f3709fe7bd5c4eedc1a728a89e2c35b10cd1ba1987653d601c25a",
+  "base_release_id": "v4.1.0-760050fad303",
+  "base_release_manifest_sha256": "c7a5fe349137b5b5f1e37082ae69b0e5d175bf174e4a27b71061975afac3c036",
+  "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+  "code_commit": "97d36a90003957be3c13b5dbfc017452a308e54d",
+  "counts": {
+    "base_published_candidates": 1275,
+    "phase2_candidates": 410,
+    "existing_human": 33,
+    "historical_consensus": 233,
+    "manual_review": 144,
+    "phase2_admitted": 403,
+    "phase2_excluded": 7,
+    "published_candidates": 1678,
+    "fold_0_train": 1253,
+    "fold_0_validation": 425,
+    "fold_1_train": 1014,
+    "fold_1_validation": 664,
+    "fold_2_train": 1186,
+    "fold_2_validation": 492
+  },
+  "validation": {
+    "all_managed_file_hashes_verified": true,
+    "all_media_verified": true,
+    "source_isolation_passed": true,
+    "effective_frame_signature_isolation_passed": true,
+    "old_release_unchanged": true
+  }
+}

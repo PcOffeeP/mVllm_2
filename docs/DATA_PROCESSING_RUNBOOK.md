@@ -13,14 +13,16 @@
 | 契约 | `tensile-vlm/v4.1` |
 | 契约 hash | `47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937` |
 | 数据根 | `tensile-data/current` |
-| 冻结发布 | `v4.1.0-760050fad303` |
-| 物化候选 | 1285 |
-| 人工审查 | 774 |
-| 自动稳定阴性 | 511 |
-| 排除 | 10 |
-| 正式训练样本 | 1275 |
+| 当前 development 发布 | `v4.1.0-ecb5aeb9657c` |
+| 基础不可变发布 | `v4.1.0-760050fad303` |
+| 阶段 2 新物化候选 | 410 |
+| 阶段 2 当前人工决定 | 177 |
+| 阶段 2 历史一致沿用 | 233 |
+| 阶段 2 排除 | 7 |
+| 当前正式训练样本 | 1678 |
 
-当前发布已完成并用于三折训练。除非数据内容确有更改，否则不要重复发布或覆盖它。
+当前 development 发布已完成并通过训练 runtime 的完整媒体校验，供 source-aware 3k
+实验使用。基础发布已用于上一轮三折训练，两者都保持不可变；不得覆盖或删除后重建。
 
 ## 数据链
 
@@ -256,17 +258,32 @@ streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
 
 两队列的视频、采样帧和身份哈希均通过，源视频交集为空。2026-07-26 已按上一轮冻结
 batch 生成分流：development 为 `33 existing_human + 233 historical_consensus +
-144 manual_review`；sealed test 因无同源历史为 `332 manual_review`。原始队列和
-development 完整草稿均保持不变，阶段 2 尚无冻结 review batch。轻量身份和当前分流
-见 [`docs/results/v4_1_phase2_review_queues/`](results/v4_1_phase2_review_queues/)。
+144 manual_review`；sealed test 因无同源历史为 `332 manual_review`。development
+人工子队列已冻结为 `review-batch-7a7222b947da`，其中 118 corrected、19 approved、
+7 dropped；三类来源已合成为
+`combined-review-decisions-b4ade2d3e526`。sealed test 仍无冻结人工 batch。
+轻量身份和当前分流见
+[`docs/results/v4_1_phase2_review_queues/`](results/v4_1_phase2_review_queues/)；
+development 发布证据见
+[`docs/results/v4_1_phase2_development_release/`](results/v4_1_phase2_development_release/)。
 密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或模型选择。
 
 ## 第五步：构建不可覆盖的 V4.1 训练发布
 
-先确认默认输入仍指向要发布的批次：
+基础发布复现入口仍为：
 
 ```bash
 python pipeline/scripts/build_v4_1_training_release.py
+```
+
+阶段 2 development 发布必须先执行完整 preflight，再创建不可覆盖目录：
+
+```bash
+python pipeline/scripts/build_v4_1_phase2_training_release.py --validate-only
+python pipeline/scripts/build_v4_1_phase2_training_release.py
+python finetune/validate_v4_1_release.py \
+  --release-id v4.1.0-ecb5aeb9657c \
+  --verify-media
 ```
 
 发布器会验证：
@@ -281,24 +298,24 @@ python pipeline/scripts/build_v4_1_training_release.py
 - release ID 与内容一致；
 - 目标目录不存在，拒绝覆盖。
 
-当前输出：
+当前阶段 2 输出：
 
-`data/current/training_releases/v4.1.0-760050fad303`
+`data/current/training_releases/v4.1.0-ecb5aeb9657c`
 
 发布清单：
 
-`data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json`
+`data/current/training_releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json`
 
 当前 fold 数量：
 
 | 数据集 | 数量 |
 | --- | ---: |
-| Fold 0 train | 850 |
+| Fold 0 train | 1253 |
 | Fold 0 validation | 425 |
-| Fold 1 train | 830 |
-| Fold 1 validation | 445 |
-| Fold 2 train | 929 |
-| Fold 2 validation | 346 |
+| Fold 1 train | 1014 |
+| Fold 1 validation | 664 |
+| Fold 2 train | 1186 |
+| Fold 2 validation | 492 |
 
 如果脚本提示发布已经存在，应先比较 manifest 和上游哈希。不要删除旧发布后重建；
 数据确有变化时应得到新的内容寻址 release ID。

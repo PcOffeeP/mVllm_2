@@ -9,13 +9,14 @@
 | --- | --- |
 | 契约 | `tensile-vlm/v4.1` |
 | 契约 hash | `47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937` |
-| 数据发布 | `v4.1.0-760050fad303` |
-| 发布路径 | `data/current/training_releases/v4.1.0-760050fad303` |
-| 发布样本 | 1275 |
+| 当前 development 发布 | `v4.1.0-ecb5aeb9657c` |
+| 当前发布路径 | `data/current/training_releases/v4.1.0-ecb5aeb9657c` |
+| 当前发布样本 | 1678 |
+| 上一轮三折基础发布 | `v4.1.0-760050fad303`，1275 条 |
 | 三折训练 | 已完成 |
 | 正式视觉运行 | `v4_1_0_760050fad303_20260724_visual`，已完成 |
 | BF16 / 两种 4-bit 验证 | 均已完成，1216 条，运行失败 0 |
-| 当前结论 | 未通过生产效果验收，继续做数据覆盖和受控采样实验 |
+| 当前结论 | 新 development 发布已验证，进入 source-aware 3k；尚未通过生产效果验收 |
 
 V4.1 不使用旧 `finetune/active_data_release.json`、旧
 `finetune/dataset_info.json` 或 V2 Prompt 作为活动指针。三个训练配置直接绑定冻结发布
