@@ -1,0 +1,84 @@
+{
+  "schema_version": "tensile-vlm-v4.1-source-aware-3k-gate-summary/v1",
+  "status": "failed_development_gate",
+  "run_id": "v4_1_phase2_source_aware_3k_dd89b70e9d63",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "remote_gate_report_sha256": "6d557674446359ad3cad2ed517fb36eca9640ff472f5b859c034b55472f0d403",
+  "stage_b_passed": false,
+  "stage_c_authorized": false,
+  "sealed_labels_accessed": false,
+  "two_seed_mean_metrics": {
+    "fracture_three_state_macro_recall": 0.327663,
+    "four_state_macro_recall": 0.408705,
+    "已断裂_recall": 0.181818,
+    "未断裂_recall": 0.651833,
+    "joint_correct_rate": 0.387059,
+    "strict_valid_rate": 1.0
+  },
+  "seeds": [
+    {
+      "seed": 3407,
+      "passed": false,
+      "metrics": {
+        "fracture_three_state_macro_recall": 0.386508,
+        "four_state_macro_recall": 0.423389,
+        "已断裂_recall": 0.181818,
+        "未断裂_recall": 0.534031,
+        "joint_correct_rate": 0.362353,
+        "strict_valid_rate": 1.0,
+        "runtime_failure_count": 0
+      },
+      "loso_passed": true
+    },
+    {
+      "seed": 3411,
+      "passed": false,
+      "metrics": {
+        "fracture_three_state_macro_recall": 0.268818,
+        "four_state_macro_recall": 0.394022,
+        "已断裂_recall": 0.181818,
+        "未断裂_recall": 0.769634,
+        "joint_correct_rate": 0.411765,
+        "strict_valid_rate": 1.0,
+        "runtime_failure_count": 0
+      },
+      "loso_passed": false,
+      "loso_failed_sources": [
+        "video_0044",
+        "video_0070",
+        "video_0092"
+      ]
+    }
+  ],
+  "development_only_attribution": {
+    "checkpoint_selection_error": false,
+    "final_adapter_equals_best_checkpoint_200": true,
+    "observed_state_exposures_per_epoch": {
+      "seed3407": {
+        "临界未断裂": 342,
+        "发生断裂": 1221,
+        "已断裂": 537,
+        "未断裂": 900
+      },
+      "seed3411": {
+        "临界未断裂": 345,
+        "发生断裂": 1230,
+        "已断裂": 525,
+        "未断裂": 900
+      }
+    },
+    "hard_capacity_per_epoch": {
+      "临界未断裂": 351,
+      "发生断裂": 1677,
+      "已断裂": 564,
+      "未断裂": 1167
+    },
+    "next_single_variable_revision": "coverage-first shared candidate multiset with seed-specific ordering",
+    "next_state_exposures_per_epoch": {
+      "临界未断裂": 351,
+      "发生断裂": 1185,
+      "已断裂": 564,
+      "未断裂": 900
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": "tensile-vlm-v4.1-source-aware-3k-lightweight-evidence/v1",
-  "status": "training_in_progress",
+  "status": "failed_development_gate",
   "stage": "B",
   "run_id": "v4_1_phase2_source_aware_3k_dd89b70e9d63",
   "training_code_commit": "f6ba152121d394141ddddaf73926e3a9c065d0a8",
@@ -21,5 +21,8 @@
   "evaluation_recovery": "identity_bound_jsonl_resume",
   "stage_c_authorization_policy": "passed_two_seed_gates_plus_full_hash_evidence",
   "stage_b_passed": false,
-  "stage_c_authorized": false
+  "stage_c_authorized": false,
+  "gate_report_sha256": "6d557674446359ad3cad2ed517fb36eca9640ff472f5b859c034b55472f0d403",
+  "gate_summary": "stage_b_gate_summary.json",
+  "next_revision": "coverage_first_shared_multiset"
 }

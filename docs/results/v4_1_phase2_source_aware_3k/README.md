@@ -1,10 +1,11 @@
 # V4.1 phase-2 source-aware 3k
 
-> 状态：Stage B 训练中；尚未通过晋级门，不得进入 Stage C。
+> 状态：首次 Stage B 双 seed 已完成但未通过开发晋级门；Stage C 未授权。
 
 本目录冻结 Stage B 的轻量运行身份。训练、checkpoint、merged BF16、逐样本预测和
-full-hash 证据保留在训练机的内容寻址运行目录；两个 seed 完成并通过全部门槛后，
-再在此补充最终指标和证据 manifest 摘要。
+full-hash 证据保留在训练机的内容寻址运行目录。首次运行的失败指标已冻结为
+`stage_b_gate_summary.json`；原采样、模型和结果保持只读，后续修订使用新的内容寻址
+身份。
 
 ## 冻结输入
 
@@ -31,6 +32,28 @@ full-hash 证据保留在训练机的内容寻址运行目录；两个 seed 完�
 |---|---|---:|---:|
 | 3407 | `de0673b494e866e16bc0e17cde22de072750e9c0e4668bc85e134c63c8fedf15` | 3.6333% | 3 |
 | 3411 | `4bec24c3414786c9df9109c16d07c47e5ec087ec3cb2b6892301177003e1eba3` | 3.7000% | 3 |
+
+## 首次运行结论
+
+双 seed 均完成 1125 optimizer steps、视觉 adapter 覆盖、BF16 合并和 425 条严格
+fold0 评测，两个评测均为严格有效率 100%、runtime failure 0；但效果门未通过：
+
+- seed 3407：断裂三状态宏召回 38.6508%，四状态宏召回 42.3389%，`已断裂`
+  recall 18.1818%，`未断裂` recall 53.4031%，joint 36.2353%，LOSO 通过；
+- seed 3411：断裂三状态宏召回 26.8818%，四状态宏召回 39.4022%，`已断裂`
+  recall 18.1818%，`未断裂` recall 76.9634%，joint 41.1765%，LOSO 未通过；
+- 双 seed 均值为断裂三状态宏召回 32.7663%、四状态宏召回 40.8705%、
+  `已断裂` recall 18.1818%、`未断裂` recall 65.1833%、joint 38.7059%。
+
+最终 adapter 与各自 best checkpoint-200 的 SHA-256 完全一致，因此不是保存或模型选择
+错误。development-only 归因显示其余三种状态的每 epoch 曝光约为
+342/1221/537，Seed 间预测偏置明显。硬约束下每类最大合法曝光分别为
+351/1677/564/1167，因此“各 700 条”不可行且不得放宽 signature 上限。
+
+下一修订只改变候选选择策略：保留 900 条 `未断裂`，使用 coverage-first 的共享候选
+多重集，三个其他状态固定为 351/1185/564；每个候选至少覆盖两次，第三层补足配额，
+两个 Seed 只改变顺序而不改变候选重复次数。数据、两个 seed、LoRA、帧数、训练超参数、
+source/signature 上限、评测和晋级阈值全部不变。不得读取 sealed labels。
 
 ## 晋级门
 
@@ -91,7 +114,7 @@ Stage C 不以人工判断或 README 状态启动。只有 `stage_b_gate_report.
 两个 seed 全部通过，且 Stage B evidence 使用 full model hashes、两个 trainer state
 均为 1125 steps、两个视觉 adapter 均覆盖 VPM 和 resampler 时，授权器才生成不可变、
 内容寻址的 `stage_c_authorization.json`。Stage C 的任何 preflight 必须消费该授权；
-当前 `training_in_progress` 状态没有授权。
+当前 `failed_development_gate` 状态没有授权。
 
 最终 evidence manifest 必须分别记录 `training_code_commit` 和
 `evidence_freeze_code_commit`；后者仅表示执行哈希冻结器的代码版本，不能替代实际
