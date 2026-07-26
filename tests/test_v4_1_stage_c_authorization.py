@@ -42,6 +42,8 @@ def _evidence() -> dict:
         "release_id": RELEASE_ID,
         "sampling_id": SAMPLING_ID,
         "model_hash_mode": "full",
+        "training_code_commit": "f6ba152121d394141ddddaf73926e3a9c065d0a8",
+        "evidence_freeze_code_commit": "b" * 40,
         "trainer_states": {
             str(seed): {"global_step": 1125}
             for seed in SEEDS

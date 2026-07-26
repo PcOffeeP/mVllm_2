@@ -92,3 +92,7 @@ Stage C 不以人工判断或 README 状态启动。只有 `stage_b_gate_report.
 均为 1125 steps、两个视觉 adapter 均覆盖 VPM 和 resampler 时，授权器才生成不可变、
 内容寻址的 `stage_c_authorization.json`。Stage C 的任何 preflight 必须消费该授权；
 当前 `training_in_progress` 状态没有授权。
+
+最终 evidence manifest 必须分别记录 `training_code_commit` 和
+`evidence_freeze_code_commit`；后者仅表示执行哈希冻结器的代码版本，不能替代实际
+训练启动版本。

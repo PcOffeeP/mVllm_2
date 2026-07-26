@@ -86,9 +86,13 @@ def build_authorization(
         or evidence.get("release_id") != RELEASE_ID
         or evidence.get("sampling_id") != SAMPLING_ID
         or evidence.get("model_hash_mode") != "full"
+        or evidence.get("training_code_commit")
+        != "f6ba152121d394141ddddaf73926e3a9c065d0a8"
+        or not isinstance(evidence.get("evidence_freeze_code_commit"), str)
+        or len(evidence["evidence_freeze_code_commit"]) != 40
     ):
         raise StageCAuthorizationError(
-            "Stage B evidence 必须身份一致且使用 full model hashes"
+            "Stage B evidence 必须身份一致、区分训练/冻结代码且使用 full model hashes"
         )
     trainer_states = evidence.get("trainer_states")
     coverage = evidence.get("adapter_coverage")

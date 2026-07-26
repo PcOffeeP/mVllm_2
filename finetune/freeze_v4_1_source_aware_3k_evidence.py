@@ -298,7 +298,10 @@ def build_manifest(*, model_hash_mode: str) -> tuple[str, dict[str, Any]]:
         "run_id": RUN_ID,
         "release_id": RELEASE_ID,
         "sampling_id": SAMPLING_ID,
-        "training_repo_commit": _git_head(),
+        "training_code_commit": (
+            "f6ba152121d394141ddddaf73926e3a9c065d0a8"
+        ),
+        "evidence_freeze_code_commit": _git_head(),
         "model_hash_mode": model_hash_mode,
         "trainer_states": trainer_states,
         "adapter_coverage": adapter_coverage,
@@ -323,7 +326,10 @@ def build_manifest(*, model_hash_mode: str) -> tuple[str, dict[str, Any]]:
         "run_id": RUN_ID,
         "release_id": RELEASE_ID,
         "sampling_id": SAMPLING_ID,
-        "training_repo_commit": manifest["training_repo_commit"],
+        "training_code_commit": manifest["training_code_commit"],
+        "evidence_freeze_code_commit": manifest[
+            "evidence_freeze_code_commit"
+        ],
         "model_hash_mode": model_hash_mode,
         "sampling_aggregate_sha256": sampling["aggregate_sha256"],
         "run_files_aggregate_sha256": manifest["run_files_aggregate_sha256"],
