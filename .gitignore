@@ -39,6 +39,7 @@ finetune/validation/results/
 /finetune/results/**/evaluation_records.jsonl
 /finetune/results/**/four_bit*_smoke*/
 /finetune/results/**/runtime_failures.csv
+/finetune/results/**/*.restricted.json
 
 # dependency lock files (not cross-platform)
 uv.lock
