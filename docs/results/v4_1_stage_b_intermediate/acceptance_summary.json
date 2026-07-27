@@ -1,0 +1,42 @@
+{
+  "schema_version": "tensile-vlm-v4.1-stage-b-intermediate-summary/v1",
+  "status": "accepted_as_intermediate_with_known_limits",
+  "decision_id": "stage-b-intermediate-user-accepted-20260727",
+  "acceptance_id": "stage-b-intermediate-8e1fdb09f8e6",
+  "run_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+  "seed": 3407,
+  "runtime_contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+  "training_contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+  "acceptance_code_commit": "2d049afa3133845939f7fa7782bd58e4d9c2757f",
+  "acceptance_manifest": {
+    "remote_path": "finetune/results/v4_1_stage_b_intermediate_acceptances/stage-b-intermediate-8e1fdb09f8e6/intermediate_model_acceptance.json",
+    "size_bytes": 9947,
+    "sha256": "c31427bdebdffd49e83bb66fbeb663a992b69d36c56b477dc58b2e9080885cd1"
+  },
+  "artifact_gate": {
+    "actual_optimizer_steps": 1125,
+    "visual_weight_count": 324,
+    "resampler_weight_count": 13,
+    "evaluation_sample_count": 425,
+    "strict_valid_rate": 0.995294,
+    "runtime_failure_count": 0
+  },
+  "quality_gate": {
+    "original_stage_b_performance_gate_passed": false,
+    "leave_one_source_out_gate_passed": false,
+    "failed_gate_report_sha256": "f7b1ae6c41c85ab3e9ae01b87c8a78349bec255ac639254640526232b3655a71"
+  },
+  "full_model_hashes": {
+    "adapter_aggregate_sha256": "74842170d69a5a17f466a9f560db27cdc1aafde83730b71807d2996471d43aa7",
+    "merged_bf16_aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+    "combined_aggregate_sha256": "34a658cbfa955dafd11fbe131349415be0802c033ad37a5c7970110e89b4bd8c"
+  },
+  "authorization_scope": {
+    "stage_c_additional_training": false,
+    "stage_e_pre_acceptance_integration": true,
+    "stage_f_agent_integration": true,
+    "stage_d_independent_model_acceptance": false,
+    "production_alias": false
+  },
+  "sealed_labels_read": false
+}
