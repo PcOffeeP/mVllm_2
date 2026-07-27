@@ -1,0 +1,9 @@
+{
+  "authorization_id": "stage-d-authorization-bd99f9c8362f",
+  "claimed_at": "2026-07-27T08:46:33.098785+00:00",
+  "preparation_id": "stage-d-preparation-5cd1b3fa343c",
+  "purpose": "one_time_sealed_clip_evaluation",
+  "release_id": "v4.1-sealed-test-5546b8bf1ec3",
+  "run_id": "stage-d-run-da566a5644f8",
+  "schema_version": "tensile-vlm/stage-d-one-time-claim/v1"
+}

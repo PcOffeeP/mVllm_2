@@ -1,0 +1,126 @@
+{
+  "authorization": {
+    "authorized": false,
+    "required_schema_version": "tensile-vlm/stage-d-authorization/v1",
+    "scope": "one_time_sealed_clip_evaluation"
+  },
+  "code_commit": "370a9cec91e2586fcd6158b077ce1144245e2844",
+  "contract": {
+    "file": {
+      "path": "/home/liuyang/文档/mVllm_2/pipeline/contracts/tensile_vlm_v4_1.json",
+      "sha256": "9fa15b4a267c295727a9a99240b629b65a78508dcd5cc44887168d1878581331",
+      "size_bytes": 8149
+    },
+    "generation": {
+      "do_sample": false,
+      "max_new_tokens": 256,
+      "num_beams": 1,
+      "temperature": 0.0
+    },
+    "hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+    "version": "tensile-vlm/v4.1"
+  },
+  "created_at": "2026-07-27T16:27:11+08:00",
+  "execution": {
+    "evaluator": {
+      "path": "/home/liuyang/文档/mVllm_2/finetune/run_v4_1_evaluation.py",
+      "sha256": "82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e",
+      "size_bytes": 15417
+    },
+    "one_time_claim_required_before_first_model_call": true,
+    "output_root": "/home/liuyang/文档/mVllm_2/finetune/results/v4_1_stage_d_runs",
+    "pre_stage_g_visibility": "pass_fail_and_integrity_only",
+    "resume_policy": "same_identity_only",
+    "runner": {
+      "path": "/home/liuyang/文档/mVllm_2/finetune/run_v4_1_stage_d.py",
+      "sha256": "b5b7fb483aedf747deb834667fb2984f3a82a26c268b4ac0a1dde4ac457b6f7c",
+      "size_bytes": 8577
+    }
+  },
+  "identity_seed": {
+    "agent_acceptance_summary_sha256": "4a16444982d7446c34c78e01bc24d3b5db0c1927245f15709181feea72a23827",
+    "code_commit": "370a9cec91e2586fcd6158b077ce1144245e2844",
+    "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+    "deployment_summary_sha256": "23e554a1269c58f22f596a42703037b09c3ccb0d99683534b6b8271add54a28c",
+    "evaluator_sha256": "82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e",
+    "generation": {
+      "do_sample": false,
+      "max_new_tokens": 256,
+      "num_beams": 1,
+      "temperature": 0.0
+    },
+    "model_aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+    "release_id": "v4.1-sealed-test-5546b8bf1ec3",
+    "release_manifest_sha256": "b996f0540681066de0731ffcab5a0f760bc691fcb6e6bd1e687eb150b7b96e72",
+    "runner_sha256": "b5b7fb483aedf747deb834667fb2984f3a82a26c268b4ac0a1dde4ac457b6f7c",
+    "sample_count": 299,
+    "stage_b_acceptance_sha256": "c31427bdebdffd49e83bb66fbeb663a992b69d36c56b477dc58b2e9080885cd1",
+    "thresholds": {
+      "four_state_macro_recall": 0.4006,
+      "fracture_three_state_macro_recall": 0.3,
+      "joint_correct_rate": 0.3921,
+      "runtime_failure_count": 0,
+      "strict_valid_rate": 1.0,
+      "已断裂_recall": 0.15,
+      "未断裂_recall": 0.7
+    }
+  },
+  "model": {
+    "aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+    "disposition": "intermediate_development_model",
+    "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407_merged",
+    "precision": "BF16"
+  },
+  "preparation_id": "stage-d-preparation-1fcdc0c35902",
+  "schema_version": "tensile-vlm/stage-d-preparation/v1",
+  "sealed_test": {
+    "access_policy": {
+      "ground_truth": "restricted",
+      "one_time_evaluation_authorized": false,
+      "pre_stage_g_outputs": "aggregate_pass_fail_and_integrity_only",
+      "tuning_use": "forbidden"
+    },
+    "manifest_sha256": "b996f0540681066de0731ffcab5a0f760bc691fcb6e6bd1e687eb150b7b96e72",
+    "release_dir": "/home/liuyang/文档/tensile-data/current/sealed_test_releases/v4.1-sealed-test-5546b8bf1ec3",
+    "release_id": "v4.1-sealed-test-5546b8bf1ec3",
+    "sample_count": 299,
+    "source_count": 20
+  },
+  "stage_b": {
+    "acceptance_id": "stage-b-intermediate-8e1fdb09f8e6",
+    "manifest": {
+      "path": "/home/liuyang/文档/mVllm_2/finetune/results/v4_1_stage_b_intermediate_acceptances/stage-b-intermediate-8e1fdb09f8e6/intermediate_model_acceptance.json",
+      "sha256": "c31427bdebdffd49e83bb66fbeb663a992b69d36c56b477dc58b2e9080885cd1",
+      "size_bytes": 9947
+    },
+    "original_quality_gate_passed": false,
+    "stage_d_authorized_by_stage_b": false
+  },
+  "stage_e": {
+    "production_alias": false,
+    "summary": {
+      "path": "/home/liuyang/文档/mVllm_2/docs/results/v4_1_stage_e_pre_acceptance/deployment_summary.json",
+      "sha256": "23e554a1269c58f22f596a42703037b09c3ccb0d99683534b6b8271add54a28c",
+      "size_bytes": 2142
+    }
+  },
+  "stage_f": {
+    "agent_acceptance_id": "agent-acceptance-80c3c4fdc613",
+    "agent_runtime_commit": "f141d36114904fe7222dbd6076241fa46ba5b155",
+    "summary": {
+      "path": "/home/liuyang/文档/TensileAgent-acceptance/docs/results/v4_1_stage_f_pre_acceptance/acceptance_summary.json",
+      "sha256": "4a16444982d7446c34c78e01bc24d3b5db0c1927245f15709181feea72a23827",
+      "size_bytes": 1871
+    }
+  },
+  "status": "prepared_awaiting_one_time_authorization",
+  "thresholds": {
+    "four_state_macro_recall": 0.4006,
+    "fracture_three_state_macro_recall": 0.3,
+    "joint_correct_rate": 0.3921,
+    "runtime_failure_count": 0,
+    "strict_valid_rate": 1.0,
+    "已断裂_recall": 0.15,
+    "未断裂_recall": 0.7
+  }
+}

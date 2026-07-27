@@ -1,0 +1,37 @@
+{
+  "gates": {
+    "four_state_macro_recall": {
+      "passed": false
+    },
+    "fracture_three_state_macro_recall": {
+      "passed": false
+    },
+    "joint_correct_rate": {
+      "passed": false
+    },
+    "runtime_failure_count": {
+      "passed": true
+    },
+    "strict_valid_rate": {
+      "passed": true
+    },
+    "已断裂_recall": {
+      "passed": false
+    },
+    "未断裂_recall": {
+      "passed": true
+    }
+  },
+  "integrity": {
+    "record_count_matches_release": true,
+    "runtime_failure_zero": true,
+    "strict_contract_100_percent": true
+  },
+  "passed": false,
+  "run_id": "stage-d-run-da566a5644f8",
+  "schema_version": "tensile-vlm/stage-d-public-gate/v1",
+  "sealed_test_exposed": true,
+  "semantic_metrics_withheld_until_stage_g_complete": true,
+  "stage_g_may_start": true,
+  "status": "completed"
+}

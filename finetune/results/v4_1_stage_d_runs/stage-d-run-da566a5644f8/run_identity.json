@@ -1,0 +1,36 @@
+{
+  "identity": {
+    "authorization_id": "stage-d-authorization-bd99f9c8362f",
+    "code_commit": "f04ca7cb63cd1bbaa921b9dcd7fed3f4dada8d64",
+    "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+    "evaluator_sha256": "82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e",
+    "generation": {
+      "do_sample": false,
+      "max_new_tokens": 256,
+      "num_beams": 1,
+      "temperature": 0.0
+    },
+    "model_aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+    "model_runtime_sha256": "ee0b064760b717bb7ec66f6a58580ab412c524c077af4a219a19e805b50784ac",
+    "preparation_id": "stage-d-preparation-5cd1b3fa343c",
+    "release_id": "v4.1-sealed-test-5546b8bf1ec3",
+    "release_manifest_sha256": "b996f0540681066de0731ffcab5a0f760bc691fcb6e6bd1e687eb150b7b96e72",
+    "runner_sha256": "b5b7fb483aedf747deb834667fb2984f3a82a26c268b4ac0a1dde4ac457b6f7c",
+    "sample_count": 299,
+    "scoring_runtime_sha256": "6082e601e7490e70d6f175b17b4f566787aa02d93e050e3611fc31ad1aa12a0b",
+    "stage_d_runtime_sha256": "931fb805c888a2840a59c5af489d658c3528f3e67a966f1c9373f0cc556f5896",
+    "thresholds": {
+      "four_state_macro_recall": 0.4006,
+      "fracture_three_state_macro_recall": 0.3,
+      "joint_correct_rate": 0.3921,
+      "runtime_failure_count": 0,
+      "strict_valid_rate": 1.0,
+      "已断裂_recall": 0.15,
+      "未断裂_recall": 0.7
+    }
+  },
+  "run_id": "stage-d-run-da566a5644f8",
+  "schema_version": "tensile-vlm/stage-d-run/v1",
+  "status": "authorized_not_started",
+  "visibility_until_stage_g_complete": "pass_fail_and_integrity_only"
+}

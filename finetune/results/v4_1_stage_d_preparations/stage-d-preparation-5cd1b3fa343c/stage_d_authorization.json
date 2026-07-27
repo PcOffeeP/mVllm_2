@@ -1,0 +1,15 @@
+{
+  "authorization_id": "stage-d-authorization-bd99f9c8362f",
+  "authorized": true,
+  "authorized_at": "2026-07-27T08:45:49.366528+00:00",
+  "authorized_by": "pcoffeep",
+  "model_aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+  "one_time": true,
+  "preparation_id": "stage-d-preparation-5cd1b3fa343c",
+  "prepared_manifest_sha256": "f6fbbcb97fefdbee2ec85b33526e8db22968361f747e456e8cca1c9fe23af551",
+  "schema_version": "tensile-vlm/stage-d-authorization/v1",
+  "scope": "one_time_sealed_clip_evaluation",
+  "sealed_test_manifest_sha256": "b996f0540681066de0731ffcab5a0f760bc691fcb6e6bd1e687eb150b7b96e72",
+  "sealed_test_release_id": "v4.1-sealed-test-5546b8bf1ec3",
+  "user_authorization_reference": "2026-07-27 Codex user reply: 授权"
+}
