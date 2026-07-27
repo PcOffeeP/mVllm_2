@@ -11,12 +11,16 @@
 把后续训练拆成三个顺序严格、身份可验证的阶段：
 
 1. 在同一 fold0 上完成 seed3407 与 seed3411 的双随机种子稳定性测试；
-2. 稳定性通过后，完成 fold0、fold1、fold2 三折训练与留一折评测；
+2. 对双 seed 主比较失败只执行一次预注册第三 seed 仲裁；仲裁仍不能建立稳定性时，
+   将结论降级为 `stability_unresolved_record_only`，继续完成 fold0、fold1、fold2
+   三折训练与留一折评测；
 3. 三折完整结束后，使用全部 development 数据重新训练一个全量 LoRA，并与
    MiniCPM-V 4.5 基础模型合并为独立 BF16 模型，作为新的受控推理入口。
 
-本实施只把运行完整性和相对稳定性作为阻断门。原先设定的绝对性能目标继续完整计算和展示，
-但不再决定训练成功或失败，也不自动触发调参、数据修订或重新训练。
+本实施始终把运行与身份完整性作为硬阻断门。相对稳定性先执行双 seed 主比较，失败时只允许
+一次预注册第三 seed 仲裁；仲裁仍失败时完整保留结论并降级为记录项，不阻断三折与全量链路。
+原先设定的绝对性能目标继续完整计算和展示，但不再决定训练成功或失败，也不自动触发调参、
+数据修订或重复训练。
 
 ## 2. 当前基线
 
@@ -62,7 +66,7 @@ coverage-first seed3411 尚未训练。更早版本虽然存在三折 visual 模
 
 不采用。
 
-### 方案 C：完整性门和相对稳定性门阻断，绝对质量只记录
+### 方案 C：完整性硬门、一次稳定性仲裁和记录型降级
 
 它将三类结论分开：
 
@@ -70,7 +74,8 @@ coverage-first seed3411 尚未训练。更早版本虽然存在三折 visual 模
 - 双随机种子是否相近；
 - 模型绝对性能是多少。
 
-采用方案 C。
+采用方案 C。相对稳定性主比较通过时直接进入三折；主比较失败时增加一次固定 seed3413
+仲裁；仍无法建立稳定性时不再增加 seed、放宽阈值或调参，而是携带明确风险标记继续完成链路。
 
 ## 5. 统一术语与身份边界
 
@@ -131,7 +136,7 @@ MiniCPM-V 4.5 基础模型 + 全量 development LoRA → 独立 merged BF16
 任一项失败时停止当前阶段。纯基础设施故障可以在同一身份下按恢复边界续跑；数据、prompt、
 模型或 scorer 身份发生变化则必须建立新 run，不能把结果续接到旧身份。
 
-### 6.2 阻断门二：双随机种子相对稳定性
+### 6.2 双随机种子相对稳定性与一次性仲裁
 
 稳定性比较只使用 seed3407 与 seed3411 在同一 fold0 validation 上的冻结结果。采用以下
 预注册等价范围：
@@ -148,12 +153,20 @@ MiniCPM-V 4.5 基础模型 + 全量 development LoRA → 独立 merged BF16
 所有具备有效分母的相对指标必须同时满足等价范围。没有有效分母的细分指标必须标为
 `unavailable`，不得解释为通过；它们只进入诊断附录，不阻断双 seed。
 
-若相对稳定性未通过：
+若 seed3407 与 seed3411 的主比较未通过，先冻结主比较，再自动执行一次预注册 seed3413：
 
-- 冻结两次训练和比较报告；
-- 不把任一 seed 的绝对性能高低作为覆盖稳定性失败的理由；
-- 不自动调参或重训；
-- 不进入三折训练，等待维护者另行决定。
+- seed3413 必须与前两次使用相同 release、fold0、候选多重集、基础模型、prompt、scorer、
+  超参数和生成参数，只允许训练随机状态及候选顺序改变；
+- 不得根据主比较结果调参、修改数据、放宽阈值或选择新的性能门；
+- 完成后对 `3407↔3411`、`3407↔3413`、`3411↔3413` 三组 pair 使用同一原始门禁；
+- 若包含 seed3413 的至少一组新 pair 通过全部门禁，状态为
+  `fallback_pass_with_outlier`，记录未进入稳定 pair 的离群 seed 后进入三折；
+- 若没有任何 pair 通过，状态为 `stability_unresolved_record_only`，不再增加 seed，
+  但携带 `training_stability_not_established=true` 继续三折与全量训练；
+- 三种状态都不得用任一 seed 的绝对性能高低覆盖或改写稳定性事实。
+
+该降级只适用于拥有完整、同身份训练与评测产物的相对差异失败。运行未完成、runtime failure、
+candidate 错配、数据或模型身份漂移仍属于 6.1 的硬阻断，不得 record-only 放行。
 
 ### 6.3 非阻断门：绝对性能快照
 
@@ -192,14 +205,17 @@ MiniCPM-V 4.5 基础模型 + 全量 development LoRA → 独立 merged BF16
 5. 合并 seed3411 adapter 为独立 BF16。
 6. 使用与 seed3407 完全相同的 fold0 validation、scorer 和生成参数评测。
 7. 生成双 seed 逐样本配对比较、相对稳定性报告和绝对性能快照。
-8. 只有运行完整性与相对稳定性均通过，才授权阶段 2。
+8. 主比较失败时按 6.2 只执行一次 seed3413 仲裁。
+9. 运行完整性通过，且最终状态为 `primary_pass`、`fallback_pass_with_outlier` 或
+   `stability_unresolved_record_only` 时进入阶段 2；最后一种状态必须贯穿所有后续报告。
 
 ### 阶段 2：三折训练与验证
 
 1. 选择 seed3407 作为三折统一训练 seed。
 2. 当前 fold0/seed3407 仅在身份完全匹配时复用；不匹配则停止并报告，不能静默重训。
-3. 分别为 fold1 和 fold2 构建 coverage-first 训练 multiset。状态配额、source cap 和
-   signature cap 不能静默放宽；若某折容量不足，预检失败并停止。
+3. 分别为 fold1 和 fold2 构建 coverage-first 训练 multiset。状态配额必须使用预注册的
+   确定性容量约束重分配，且只由候选容量和固定算法决定；source cap 和 signature cap 不能
+   静默放宽。实际分配、目标偏差和原因必须写入 manifest。
 4. fold1、fold2 均从同一 MiniCPM-V 4.5 基础模型独立训练，不加载 fold0 权重。
 5. 每折完成 adapter、training manifest、merged BF16 和对应 validation 评测。
 6. 验证三折 validation 的 source 集合互斥，并验证每折 training/validation 无同源泄漏。
@@ -226,7 +242,8 @@ MiniCPM-V 4.5 基础模型 + 全量 development LoRA → 独立 merged BF16
 
 ### 阶段 4：受控推理入口切换
 
-1. 保持当前 seed3407 服务运行，先在新的 loopback 端口启动 full-development BF16。
+1. 单张 GPU 不并行加载两个 BF16 服务。先冻结当前 seed3407 服务命令、身份和回滚入口，
+   经维护者授权后受控停止旧服务，再在新的 loopback 端口串行启动 full-development BF16。
 2. 验证 contract、deployment identity、dtype、GPU、真实 development 视频调用和响应 schema。
 3. 本机通过 SSH tunnel 完成 TensileAgent contract、doctor、真实视频调用和断隧道
    fail-closed 验证。
@@ -286,6 +303,10 @@ absolute_performance_snapshot.json
 ```text
 paired_prediction_comparison.json
 relative_stability_gate.json
+dual_seed_stability_timeline.jsonl
+primary_stability_comparison.json
+fallback_stability_comparison.json
+final_stability_disposition.json
 ```
 
 三折追加：
@@ -313,7 +334,9 @@ Git 只同步代码、配置、测试、schema、轻量 manifest、完整性结�
 - 训练进程异常退出：保留日志和 checkpoint；只有 identity 与恢复策略匹配时才能续跑。
 - JSONL 尾部损坏：隔离损坏尾部，按模型、数据、scorer、生成参数和样本身份续跑。
 - 数据或配置漂移：当前 run 失败并冻结，不允许原目录覆盖。
-- 双 seed 相对稳定性失败：停止在阶段 1，不自动优化。
+- 双 seed 主比较失败：冻结主比较，只执行一次 seed3413 仲裁，不自动优化。
+- 第三 seed 仲裁仍失败：冻结 `stability_unresolved_record_only`，不增加 seed、不放宽阈值，
+  携带稳定性未建立标记继续后续链路。
 - 三折某一折运行完整性失败：停止在该折；已完成折保持只读，不生成伪三折汇总。
 - 某折绝对性能较低：如实记录，不阻断后续全量训练。
 - full-development 数据未做到全集覆盖：停止训练前预检。
@@ -331,9 +354,10 @@ Git 只同步代码、配置、测试、schema、轻量 manifest、完整性结�
 - full-development 每轮唯一候选覆盖率为 100%；
 - 历史绝对性能阈值只生成差值，不产生阻断失败；
 - 相对稳定性边界值、无效分母和逐样本不一致率；
+- 主比较通过、第三 seed 仲裁通过、仲裁仍失败但继续以及离群 seed 判定；
 - 视觉 adapter 覆盖、1125 steps 和 merged BF16 完整性；
 - 评测记录的 identity-bound 恢复；
-- 新旧服务并行预检、bundle 原子切换和回滚；
+- 单 GPU 串行服务预检、bundle 原子切换和回滚；
 - SSH tunnel 正常调用与断隧道 fail-closed。
 
 执行前验证至少包含：
@@ -353,7 +377,7 @@ git diff --check
 | 阶段 | 必须展示 |
 | --- | --- |
 | seed3411 训练 | 数据身份、步数、视觉覆盖、adapter、merge、运行完整性 |
-| 双 seed 比较 | 两 seed 的绝对指标、指标差值、预测不一致率、稳定性结论 |
+| 双 seed 比较 | 两/三 seed 的绝对指标、三组 pair 差值、预测不一致率、离群 seed、最终处置 |
 | 三折训练 | 每折数据量、source isolation、运行状态、逐折指标、均值和标准差 |
 | 全量训练 | development 全覆盖证明、步数、adapter、merged BF16、全文件哈希 |
 | 推理入口 | contract、deployment、真实视频调用、SSH tunnel、fail-closed、回滚 |
@@ -361,7 +385,7 @@ git diff --check
 任何表格都必须把以下三项分列，禁止合并为一个模糊的“通过/失败”：
 
 1. 运行完整性；
-2. 相对稳定性；
+2. 相对稳定性及最终处置状态；
 3. 绝对性能记录。
 
 ## 13. 授权边界
@@ -370,7 +394,8 @@ git diff --check
 
 1. 先只允许准备代码、测试、配置和 dry-run；
 2. 再明确授权启动 seed3411；
-3. 双 seed 稳定性报告通过后，才允许启动 fold1/fold2；
+3. 双 seed 主比较或一次性仲裁完成并冻结最终处置后，允许启动 fold1/fold2；若状态为
+   `stability_unresolved_record_only`，后续报告必须持续携带风险标记；
 4. 三折完整报告生成后，才允许启动 full-development；
 5. full-development 链路验证完成后，才允许切换当前推理入口。
 

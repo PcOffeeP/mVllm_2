@@ -17,8 +17,9 @@
   → 准备并冻结所有预注册身份
   → 等待启动训练的明确指令
   → fold0/seed3411
-  → 双 seed 稳定性比较
-  → 稳定性通过
+  → 双 seed 主稳定性比较
+  → 必要时一次性 seed3413 仲裁
+  → 冻结稳定性最终处置
   → fold1、fold2
   → 三折完整性与聚合
   → full-development
@@ -31,10 +32,10 @@
 
 - 重训现有 coverage-first fold0/seed3407；
 - 用历史绝对性能参考值阻断训练；
-- 在双 seed 稳定性失败后自动调参或继续三折；
+- 在双 seed 主比较失败后调参、放宽阈值或执行超过一次的兜底 seed；
 - 读取 sealed-test 标签或逐样本受限语义；
 - 将 fold0、fold1、fold2 adapter 或 merged model 互相合并；
-- 在 full-development 服务通过链路验证前停止当前 seed3407 服务；
+- 未冻结 seed3407 服务身份和回滚命令、或未获维护者授权时停止当前服务；
 - 将模型称为生产通过、独立测试通过或质量 final；
 - 高频轮询长训练、长评测或全视频批处理。
 
@@ -144,7 +145,11 @@ tests/test_v4_1_training_stability.py
     "strict_valid_rate": 1.0
   },
   "max_prediction_disagreement_rate": 0.1,
-  "require_zero_runtime_failures": true
+  "require_zero_runtime_failures": true,
+  "fallback_seed": 3413,
+  "max_fallback_seed_runs": 1,
+  "fallback_pass_rule": "any_new_pair_passes_all_original_limits",
+  "unresolved_action": "record_only_and_continue"
 }
 ```
 
@@ -152,7 +157,8 @@ tests/test_v4_1_training_stability.py
 
 - seed3407 `evaluation_records.jsonl`；
 - seed3411 `evaluation_records.jsonl`；
-- 两个 evaluation run identity；
+- 主比较失败时的 seed3413 `evaluation_records.jsonl`；
+- 两个或三个 evaluation run identity；
 - 冻结 scorer 身份；
 - 稳定性 policy。
 
@@ -162,6 +168,10 @@ tests/test_v4_1_training_stability.py
 paired_prediction_comparison.json
 relative_stability_gate.json
 absolute_performance_snapshot.json
+dual_seed_stability_timeline.jsonl
+primary_stability_comparison.json
+fallback_stability_comparison.json
+final_stability_disposition.json
 ```
 
 实现规则：
@@ -174,6 +184,15 @@ absolute_performance_snapshot.json
 - 绝对指标低于历史参考不得改变 gate 布尔值；
 - 分母为 0 时写 `available=false`，不能填 0 或判通过；
 - 输出必须记录输入文件 SHA-256、policy SHA-256、scorer identity 和生成时间。
+- timeline 必须以 append-only 事件记录 seed 启动/完成、输入身份、主比较、兜底比较和最终处置；
+- 主比较通过时最终状态为 `primary_pass`；
+- 主比较失败后只允许启动一次 seed3413，且不得改变数据、模型、prompt、scorer、超参数、
+  生成参数或原始相对阈值；
+- seed3413 完成后对三组 pair 使用相同算法；包含 seed3413 的任一新 pair 全部通过时，
+  最终状态为 `fallback_pass_with_outlier` 并记录离群 seed；
+- 三组 pair 均未通过时最终状态为 `stability_unresolved_record_only`，写入
+  `training_stability_not_established=true`，但 `continue_to_crossval=true`；
+- 只有运行/身份完整性失败时 `continue_to_crossval=false`，不得把无效运行降级为 record-only。
 
 测试至少覆盖：
 
@@ -185,6 +204,10 @@ absolute_performance_snapshot.json
 - 分母为 0 时输出 unavailable；
 - 10% 不一致率通过，超过 10% 失败；
 - 指标恰好等于边界时通过。
+- 主比较失败后最多启动一次 seed3413；
+- 新 pair 通过时正确标记离群 seed；
+- 三组 pair 均失败时冻结 unresolved 状态但允许继续；
+- runtime、candidate 或 run identity 无效时仍 fail closed。
 
 ### 批次 B：通用三折数据与配置构建器
 
@@ -245,6 +268,16 @@ run_manifest.json
 - source cap 和 signature cap 不得静默放宽；
 - seed3407 下配置、采样和输出完全可复现；
 - fold1/fold2 的 adapter 和结果目录不能与 fold0 或彼此重叠。
+
+当前 release 的旧 split 只有 80/85 个 development source、1581/1678 个 candidate 进入过
+validation，不能直接冻结为本轮三折身份。prepare 阶段必须在不修改 published candidate
+真值的前提下重新生成并冻结 source-level split，使全部 85 个 development source 恰好进入
+一个 validation fold。
+
+fold1 的旧固定状态配额中，“发生断裂”需求 1428、容量只有 1182，不能沿用旧配额。新 builder
+必须实现预注册的确定性容量约束重分配：先固定唯一覆盖，再仅根据各状态可用容量分配重复额度，
+保持总行数 3000，且不放宽 source/signature cap。目标配额、实际配额、偏差和重分配原因必须
+写入 sampling manifest；禁止根据模型性能结果选择配额。
 
 ### 批次 C：通用训练、merge、评测与监控 runner
 
@@ -547,11 +580,25 @@ seed3411 评测完整后执行：
 
 | 类别 | 内容 |
 | --- | --- |
-| 运行完整性 | 两 seed 步数、视觉覆盖、merge、评测条数、runtime failure |
-| 相对稳定性 | 六项差值、不一致率、逐项门和 overall |
-| 绝对性能 | 两 seed 指标、历史参考、差值、record-only 标记 |
+| 运行完整性 | 两/三 seed 步数、视觉覆盖、merge、评测条数、runtime failure |
+| 相对稳定性 | 主比较及必要时三组 pair 的差值、不一致率、逐项门和最终处置 |
+| 绝对性能 | 两/三 seed 指标、历史参考、差值、record-only 标记 |
 
-只有 `relative_stability_gate.json` 的 `overall=true` 才可进入 7.3。
+主比较完成后按以下状态机处置：
+
+1. `relative_stability_gate.json overall=true`：冻结 `primary_pass`，直接进入 7.3。
+2. 主比较运行完整但相对门失败：立即冻结主比较和当前 timeline，然后使用相同 fold0 身份、
+   配置和多重集启动一次 seed3413，依次完成 train、merge、evaluate。
+3. seed3413 完成后对 `3407↔3411`、`3407↔3413`、`3411↔3413` 生成同口径报告。
+4. 包含 seed3413 的任一新 pair 全部通过：冻结 `fallback_pass_with_outlier`，记录离群 seed，
+   进入 7.3。
+5. 三组 pair 均失败：冻结 `stability_unresolved_record_only` 和
+   `training_stability_not_established=true`，不再增加 seed、不调参、不放宽阈值，继续 7.3。
+6. 训练、merge、评测、candidate、runtime 或身份完整性失败：不允许 record-only 放行，
+   必须在同一身份恢复或停止并通知维护者。
+
+四个稳定性文件必须在每次状态变化时原子更新或 append-only 追加，禁止等整个流水线结束后才
+回填。逐样本预测留在训练机；Git 只提交无受限语义的轻量聚合结论。
 
 ### 7.3 fold1 与 fold2
 
@@ -605,7 +652,9 @@ fold1 完整结束前不得启动 fold2。fold2 完整结束后运行三折 anal
 
 ### 7.5 推理入口验证与切换
 
-不要直接替换 `127.0.0.1:8002`。先为 full-development 分配未占用 loopback 端口：
+单张 GPU 不并行加载两个 BF16 服务。训练启动前先冻结当前 seed3407 服务的 PID、完整命令、
+deployment/model identity、端口和回滚命令；经维护者授权后受控停止。full-development 完成后
+先为其分配未占用 loopback 端口进行串行验证：
 
 1. 用 deployment manifest 启动新服务；
 2. 验证 contract、model/deployment identity、BF16 和 GPU；
@@ -615,10 +664,10 @@ fold1 完整结束前不得启动 fold2。fold2 完整结束后运行三折 anal
 6. 主动断 tunnel，验证 fail closed 且无协议降级；
 7. 恢复 tunnel；
 8. 更新 delivery bundle 的 current 指针；
-9. 保留 previous bundle 和 seed3407 服务回滚命令；
+9. 保留 previous bundle、seed3407 模型和服务回滚命令；
 10. 再按 bundle 操作规程切换正式 loopback 端口引用。
 
-任何步骤失败都保持 seed3407 为当前入口，不重训 full-development。
+任何步骤失败都停止新服务并恢复 seed3407 为当前入口，不重训 full-development。
 
 ## 8. Automation 规则
 
@@ -645,7 +694,7 @@ automation 只有在以下情况下执行恢复：
 
 - 数据、模型、prompt、scorer 或 manifest 身份漂移；
 - GPU/磁盘故障无法在原身份下恢复；
-- 双 seed 相对稳定性失败；
+- 双 seed 或 seed3413 的运行/身份完整性失败且无法按原身份恢复；
 - full-development 全集覆盖无法满足；
 - 需要 sealed 数据、凭据、生产授权或不可恢复操作。
 
@@ -686,8 +735,10 @@ python -m pytest -q
 
 整个计划只有同时满足以下条件才算实施完成：
 
-- 双 seed 运行完整且相对稳定性通过；
-- 双 seed 绝对性能已记录但没有作为阻断门；
+- 双 seed 运行完整；主比较失败时最多一次 seed3413 仲裁也已完成；
+- 稳定性最终状态已冻结为 `primary_pass`、`fallback_pass_with_outlier` 或
+  `stability_unresolved_record_only`；
+- 两/三 seed 绝对性能已记录但没有作为阻断门；
 - fold0/fold1/fold2 三折运行完整、source isolation 和评测完整；
 - 三折绝对性能、均值和标准差已冻结为 record-only；
 - full-development 覆盖全部合法 development candidates；
@@ -709,9 +760,11 @@ python -m pytest -q
 /home/liuyang/文档/mVllm_2/docs/plans/
 2026-07-27-v4-1-dual-seed-three-fold-full-data-training-implementation.md
 
-严格按“实现与测试 → fold0 双 seed → 三折 → full-development → 新端口链路验证 →
-原子切换”的顺序推进。当前 seed3407 不得重训；历史绝对性能只记录，不阻断；双 seed
-相对稳定性是进入三折的唯一质量相关阻断门。三折模型不得互相合并，full-development 必须
-从 MiniCPM-V 4.5 基础模型重新训练。禁止读取 sealed 标签、提交大型或受限产物、停止当前
-推理服务或未经链路验证切换入口。长任务使用 ETA 驱动 automation，禁止高频忙等待。
+严格按“实现与测试 → fold0 双 seed → 必要时一次 seed3413 仲裁 → 三折 →
+full-development → 串行链路验证 → 原子切换”的顺序推进。当前 seed3407 不得重训；历史
+绝对性能只记录，不阻断。主比较失败时只执行一次预注册兜底；兜底仍失败则冻结
+stability_unresolved_record_only 并继续，不得调参或放宽阈值。三折模型不得互相合并，
+full-development 必须从 MiniCPM-V 4.5 基础模型重新训练。禁止读取 sealed 标签、提交大型
+或受限产物、在未冻结回滚身份时停止当前推理服务、或未经链路验证切换入口。长任务使用
+ETA 驱动 automation，禁止高频忙等待。
 ```
