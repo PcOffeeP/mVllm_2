@@ -19,8 +19,10 @@ CONFIG_ROOT = (
     / "finetune/MiniCPM/config/active"
     / "v4_1_source_aware_3k_prompt_clarified"
 )
-TRAINING_CODE_COMMIT = "__TO_BE_BOUND__"
-LAUNCH_RUN_MANIFEST_SHA256 = "__TO_BE_BOUND__"
+TRAINING_CODE_COMMIT = "d1a9a363585c84ad842e594e27b0f552cb3fc5ca"
+LAUNCH_RUN_MANIFEST_SHA256 = (
+    "87b4bfa7c17e5f86e3f8bdb5396a777bb6cb24be2f1e966305aefe02cb7dab7e"
+)
 
 
 def _build_prompt_clarified(**kwargs: Any) -> tuple[Path, dict[str, Any]]:
