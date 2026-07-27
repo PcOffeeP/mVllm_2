@@ -5,7 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from finetune.v4_1_stage_d_runtime import (
     build_preparation,
@@ -15,7 +20,6 @@ from finetune.v4_1_stage_d_runtime import (
 )
 from pipeline.current_data import current_data_paths
 
-ROOT = Path(__file__).resolve().parents[1]
 FINETUNE = ROOT / "finetune"
 MODEL_DIR = (
     ROOT

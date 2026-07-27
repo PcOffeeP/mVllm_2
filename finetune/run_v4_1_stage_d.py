@@ -6,8 +6,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, Mapping
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from finetune.run_v4_1_evaluation import (
     _load_contract,
@@ -27,7 +32,6 @@ from finetune.v4_1_stage_d_runtime import (
 )
 from finetune.validation.model_runtime import load_model
 
-ROOT = Path(__file__).resolve().parents[1]
 FINETUNE = ROOT / "finetune"
 
 
