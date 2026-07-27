@@ -48,3 +48,33 @@ def test_candidate_mismatch_duplicate_and_runtime_fail_closed(tmp_path: Path) ->
         compare_pair(dup, a, POLICY, left_seed=3407, right_seed=3411)
     gate = compare_pair(a, a, POLICY, left_seed=3407, right_seed=3411, runtime_failures={3411: 1})
     assert gate["overall"] is False
+
+
+def test_real_strict_evaluation_record_shape(tmp_path: Path) -> None:
+    values = [
+        {
+            "candidate_id": str(index),
+            "target": {"clip_state": "发生断裂" if index < 5 else "未断裂"},
+            "prediction": {"clip_state": "发生断裂" if index < 4 else "未断裂"},
+            "strict_valid": True,
+        }
+        for index in range(10)
+    ]
+    left = tmp_path / "left"
+    right = tmp_path / "right"
+    text = "".join(json.dumps(value, ensure_ascii=False) + "\n" for value in values)
+    left.write_text(text)
+    right.write_text(text)
+    policy = {
+        "relative_limits_percentage_points": {
+            "fracture_recall": 5.0,
+            "non_fracture_recall": 5.0,
+            "fracture_f1": 5.0,
+            "macro_f1": 5.0,
+            "strict_valid_rate": 1.0,
+        },
+        "max_prediction_disagreement_rate": 0.1,
+    }
+    gate = compare_pair(left, right, policy, left_seed=3407, right_seed=3411)
+    assert gate["overall"] is True
+    assert gate["metric_gates"]["fracture_recall"]["left"] == 0.8

@@ -60,7 +60,63 @@ def _prediction(record: Mapping[str, Any]) -> bool:
             return value
         if isinstance(value, Mapping) and isinstance(value.get("has_fracture"), bool):
             return bool(value["has_fracture"])
+        if isinstance(value, Mapping) and isinstance(value.get("clip_state"), str):
+            return value["clip_state"] in {"发生断裂", "已断裂"}
     raise StabilityError("record missing boolean fracture prediction")
+
+
+def _target(record: Mapping[str, Any]) -> bool:
+    value = record.get("target")
+    if isinstance(value, Mapping):
+        if isinstance(value.get("has_fracture"), bool):
+            return bool(value["has_fracture"])
+        if isinstance(value.get("clip_state"), str):
+            return value["clip_state"] in {"发生断裂", "已断裂"}
+    raise StabilityError("record missing target fracture state")
+
+
+def _aggregate_metrics(records: Mapping[str, Mapping[str, Any]]) -> dict[str, float | None]:
+    """Calculate the pre-registered binary metrics from strict eval records."""
+    # Synthetic unit fixtures may provide already-computed scalar metrics.
+    if all("target" not in record for record in records.values()):
+        names = ("fracture_recall", "non_fracture_recall", "fracture_f1", "macro_f1", "strict_valid_rate")
+        return {
+            name: (
+                sum(values) / len(values)
+                if (values := [v for record in records.values() if (v := _metric(record, name)) is not None])
+                else None
+            )
+            for name in names
+        }
+    tp = tn = fp = fn = 0
+    strict_valid = 0
+    for record in records.values():
+        target, predicted = _target(record), _prediction(record)
+        strict_valid += bool(record.get("strict_valid"))
+        if target and predicted:
+            tp += 1
+        elif target:
+            fn += 1
+        elif predicted:
+            fp += 1
+        else:
+            tn += 1
+    fracture_recall = tp / (tp + fn) if tp + fn else None
+    non_fracture_recall = tn / (tn + fp) if tn + fp else None
+    fracture_f1 = 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else None
+    non_fracture_f1 = 2 * tn / (2 * tn + fp + fn) if 2 * tn + fp + fn else None
+    macro_f1 = (
+        (fracture_f1 + non_fracture_f1) / 2
+        if fracture_f1 is not None and non_fracture_f1 is not None
+        else None
+    )
+    return {
+        "fracture_recall": fracture_recall,
+        "non_fracture_recall": non_fracture_recall,
+        "fracture_f1": fracture_f1,
+        "macro_f1": macro_f1,
+        "strict_valid_rate": strict_valid / len(records),
+    }
 
 
 def compare_pair(
@@ -77,16 +133,16 @@ def compare_pair(
         raise StabilityError("candidate sets differ")
     failures = runtime_failures or {}
     integrity = failures.get(left_seed, 0) == failures.get(right_seed, 0) == 0
+    left_metrics, right_metrics = _aggregate_metrics(left), _aggregate_metrics(right)
     metric_gates: dict[str, Any] = {}
     all_available = True
     all_pass = True
     for name, limit in policy["relative_limits_percentage_points"].items():
-        lv = [v for r in left.values() if (v := _metric(r, name)) is not None]
-        rv = [v for r in right.values() if (v := _metric(r, name)) is not None]
-        available = bool(lv) and bool(rv)
+        lv, rv = left_metrics.get(name), right_metrics.get(name)
+        available = lv is not None and rv is not None
         item: dict[str, Any] = {"available": available, "limit_percentage_points": limit}
         if available:
-            lmean, rmean = sum(lv) / len(lv), sum(rv) / len(rv)
+            lmean, rmean = float(lv), float(rv)
             delta = abs(lmean - rmean) * 100
             item.update(left=lmean, right=rmean, delta_percentage_points=delta, passed=delta <= float(limit) + 1e-12)
             all_pass = all_pass and bool(item["passed"])
