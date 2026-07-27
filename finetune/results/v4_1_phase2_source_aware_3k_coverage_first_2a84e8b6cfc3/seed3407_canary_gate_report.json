@@ -1,0 +1,1189 @@
+{
+  "schema_version": "tensile-vlm-v4.1-source-aware-3k-canary-gates/v1",
+  "run_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "seed": 3407,
+  "baseline": {
+    "run_id": "v4_1_0_760050fad303_20260724_visual",
+    "records_path": "/home/liuyang/文档/mVllm_2/finetune/results/v4_1_0_760050fad303_20260724_visual/three_fold_validation/fold0/evaluation_records.jsonl",
+    "records_sha256": "6f7af0403e240983dbcceeb67fbe5a7b6f2c26785c9cb5881c279d3764e0609c",
+    "metrics": {
+      "sample_count": 425,
+      "clip_state_recall": {
+        "临界未断裂": 0.298246,
+        "发生断裂": 0.381944,
+        "已断裂": 0.151515,
+        "未断裂": 0.801047
+      },
+      "fracture_three_state_macro_recall": 0.277235,
+      "four_state_macro_recall": 0.408188,
+      "已断裂_recall": 0.151515,
+      "未断裂_recall": 0.801047,
+      "joint_correct_rate": 0.421176,
+      "strict_valid_rate": 0.981176,
+      "runtime_failure_count": 0
+    }
+  },
+  "records_path": "/home/liuyang/文档/mVllm_2/finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_records.jsonl",
+  "records_sha256": "4c8ea6c3bc77bc9aa05681d8f7033cacd72da541209750ffdc8b2959ced715a5",
+  "metrics": {
+    "sample_count": 425,
+    "clip_state_recall": {
+      "临界未断裂": 0.491228,
+      "发生断裂": 0.263889,
+      "已断裂": 0.151515,
+      "未断裂": 0.675393
+    },
+    "fracture_three_state_macro_recall": 0.302211,
+    "four_state_macro_recall": 0.395506,
+    "已断裂_recall": 0.151515,
+    "未断裂_recall": 0.675393,
+    "joint_correct_rate": 0.4,
+    "strict_valid_rate": 0.995294,
+    "runtime_failure_count": 0
+  },
+  "absolute_gates": {
+    "fracture_three_state_macro_recall": {
+      "value": 0.302211,
+      "comparison": "at_least",
+      "threshold": 0.3272,
+      "passed": false
+    },
+    "four_state_macro_recall": {
+      "value": 0.395506,
+      "comparison": "at_least",
+      "threshold": 0.4382,
+      "passed": false
+    },
+    "已断裂_recall": {
+      "value": 0.151515,
+      "comparison": "at_least",
+      "threshold": 0.2015,
+      "passed": false
+    },
+    "未断裂_recall": {
+      "value": 0.675393,
+      "comparison": "at_least",
+      "threshold": 0.751,
+      "passed": false
+    },
+    "joint_correct_rate": {
+      "value": 0.4,
+      "comparison": "at_least",
+      "threshold": 0.4112,
+      "passed": false
+    },
+    "strict_valid_rate": {
+      "value": 0.995294,
+      "comparison": "at_least",
+      "threshold": 1.0,
+      "passed": false
+    },
+    "runtime_failure_count": {
+      "value": 0,
+      "comparison": "equals",
+      "threshold": 0,
+      "passed": true
+    }
+  },
+  "source_error_analysis": [
+    {
+      "source_video": "video_0001",
+      "sample_count": 19,
+      "target_distribution": {
+        "临界未断裂": 5,
+        "发生断裂": 3,
+        "已断裂": 1,
+        "未断裂": 10
+      },
+      "prediction_distribution": {
+        "临界未断裂": 1,
+        "发生断裂": 2,
+        "未断裂": 16
+      },
+      "clip_state_error_count": 7,
+      "joint_error_count": 7,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0006",
+      "sample_count": 21,
+      "target_distribution": {
+        "临界未断裂": 5,
+        "发生断裂": 5,
+        "已断裂": 1,
+        "未断裂": 10
+      },
+      "prediction_distribution": {
+        "临界未断裂": 13,
+        "未断裂": 8
+      },
+      "clip_state_error_count": 9,
+      "joint_error_count": 9,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0009",
+      "sample_count": 16,
+      "target_distribution": {
+        "发生断裂": 9,
+        "已断裂": 3,
+        "未断裂": 4
+      },
+      "prediction_distribution": {
+        "__invalid__": 1,
+        "发生断裂": 9,
+        "已断裂": 3,
+        "未断裂": 3
+      },
+      "clip_state_error_count": 5,
+      "joint_error_count": 13,
+      "strict_invalid_count": 1,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0013",
+      "sample_count": 16,
+      "target_distribution": {
+        "临界未断裂": 5,
+        "发生断裂": 1,
+        "未断裂": 10
+      },
+      "prediction_distribution": {
+        "临界未断裂": 9,
+        "未断裂": 7
+      },
+      "clip_state_error_count": 4,
+      "joint_error_count": 4,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0015",
+      "sample_count": 18,
+      "target_distribution": {
+        "临界未断裂": 4,
+        "发生断裂": 6,
+        "未断裂": 8
+      },
+      "prediction_distribution": {
+        "临界未断裂": 11,
+        "发生断裂": 6,
+        "未断裂": 1
+      },
+      "clip_state_error_count": 14,
+      "joint_error_count": 14,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0022",
+      "sample_count": 28,
+      "target_distribution": {
+        "临界未断裂": 9,
+        "发生断裂": 8,
+        "已断裂": 1,
+        "未断裂": 10
+      },
+      "prediction_distribution": {
+        "临界未断裂": 14,
+        "未断裂": 14
+      },
+      "clip_state_error_count": 17,
+      "joint_error_count": 17,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0023",
+      "sample_count": 9,
+      "target_distribution": {
+        "临界未断裂": 3,
+        "未断裂": 6
+      },
+      "prediction_distribution": {
+        "临界未断裂": 1,
+        "未断裂": 8
+      },
+      "clip_state_error_count": 4,
+      "joint_error_count": 4,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0044",
+      "sample_count": 17,
+      "target_distribution": {
+        "发生断裂": 10,
+        "已断裂": 3,
+        "未断裂": 4
+      },
+      "prediction_distribution": {
+        "发生断裂": 5,
+        "未断裂": 12
+      },
+      "clip_state_error_count": 11,
+      "joint_error_count": 13,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0046",
+      "sample_count": 8,
+      "target_distribution": {
+        "临界未断裂": 2,
+        "发生断裂": 2,
+        "未断裂": 4
+      },
+      "prediction_distribution": {
+        "临界未断裂": 7,
+        "未断裂": 1
+      },
+      "clip_state_error_count": 5,
+      "joint_error_count": 5,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0055",
+      "sample_count": 10,
+      "target_distribution": {
+        "发生断裂": 1,
+        "未断裂": 9
+      },
+      "prediction_distribution": {
+        "未断裂": 10
+      },
+      "clip_state_error_count": 1,
+      "joint_error_count": 1,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0056",
+      "sample_count": 5,
+      "target_distribution": {
+        "未断裂": 5
+      },
+      "prediction_distribution": {
+        "已断裂": 1,
+        "未断裂": 4
+      },
+      "clip_state_error_count": 1,
+      "joint_error_count": 1,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0060",
+      "sample_count": 11,
+      "target_distribution": {
+        "发生断裂": 7,
+        "已断裂": 1,
+        "未断裂": 3
+      },
+      "prediction_distribution": {
+        "临界未断裂": 1,
+        "发生断裂": 6,
+        "未断裂": 4
+      },
+      "clip_state_error_count": 3,
+      "joint_error_count": 8,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0065",
+      "sample_count": 4,
+      "target_distribution": {
+        "发生断裂": 3,
+        "已断裂": 1
+      },
+      "prediction_distribution": {
+        "已断裂": 4
+      },
+      "clip_state_error_count": 3,
+      "joint_error_count": 4,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0070",
+      "sample_count": 24,
+      "target_distribution": {
+        "临界未断裂": 5,
+        "发生断裂": 8,
+        "已断裂": 1,
+        "未断裂": 10
+      },
+      "prediction_distribution": {
+        "临界未断裂": 1,
+        "发生断裂": 8,
+        "未断裂": 15
+      },
+      "clip_state_error_count": 7,
+      "joint_error_count": 11,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0071",
+      "sample_count": 3,
+      "target_distribution": {
+        "发生断裂": 1,
+        "未断裂": 2
+      },
+      "prediction_distribution": {
+        "未断裂": 3
+      },
+      "clip_state_error_count": 1,
+      "joint_error_count": 1,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0072",
+      "sample_count": 24,
+      "target_distribution": {
+        "临界未断裂": 5,
+        "发生断裂": 8,
+        "已断裂": 1,
+        "未断裂": 10
+      },
+      "prediction_distribution": {
+        "临界未断裂": 1,
+        "发生断裂": 14,
+        "已断裂": 5,
+        "未断裂": 4
+      },
+      "clip_state_error_count": 14,
+      "joint_error_count": 14,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0074",
+      "sample_count": 20,
+      "target_distribution": {
+        "发生断裂": 8,
+        "已断裂": 3,
+        "未断裂": 9
+      },
+      "prediction_distribution": {
+        "未断裂": 20
+      },
+      "clip_state_error_count": 11,
+      "joint_error_count": 11,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0075",
+      "sample_count": 4,
+      "target_distribution": {
+        "发生断裂": 3,
+        "已断裂": 1
+      },
+      "prediction_distribution": {
+        "发生断裂": 2,
+        "未断裂": 2
+      },
+      "clip_state_error_count": 3,
+      "joint_error_count": 4,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0076",
+      "sample_count": 17,
+      "target_distribution": {
+        "发生断裂": 10,
+        "已断裂": 3,
+        "未断裂": 4
+      },
+      "prediction_distribution": {
+        "__invalid__": 1,
+        "发生断裂": 3,
+        "未断裂": 13
+      },
+      "clip_state_error_count": 12,
+      "joint_error_count": 14,
+      "strict_invalid_count": 1,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0080",
+      "sample_count": 27,
+      "target_distribution": {
+        "临界未断裂": 1,
+        "发生断裂": 9,
+        "已断裂": 3,
+        "未断裂": 14
+      },
+      "prediction_distribution": {
+        "未断裂": 27
+      },
+      "clip_state_error_count": 13,
+      "joint_error_count": 13,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0081",
+      "sample_count": 27,
+      "target_distribution": {
+        "临界未断裂": 5,
+        "发生断裂": 9,
+        "已断裂": 3,
+        "未断裂": 10
+      },
+      "prediction_distribution": {
+        "临界未断裂": 14,
+        "发生断裂": 2,
+        "未断裂": 11
+      },
+      "clip_state_error_count": 13,
+      "joint_error_count": 13,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0083",
+      "sample_count": 5,
+      "target_distribution": {
+        "未断裂": 5
+      },
+      "prediction_distribution": {
+        "未断裂": 5
+      },
+      "clip_state_error_count": 0,
+      "joint_error_count": 0,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0085",
+      "sample_count": 17,
+      "target_distribution": {
+        "发生断裂": 7,
+        "已断裂": 1,
+        "未断裂": 9
+      },
+      "prediction_distribution": {
+        "发生断裂": 2,
+        "已断裂": 6,
+        "未断裂": 9
+      },
+      "clip_state_error_count": 13,
+      "joint_error_count": 13,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0092",
+      "sample_count": 19,
+      "target_distribution": {
+        "临界未断裂": 8,
+        "发生断裂": 2,
+        "已断裂": 1,
+        "未断裂": 8
+      },
+      "prediction_distribution": {
+        "临界未断裂": 7,
+        "发生断裂": 5,
+        "未断裂": 7
+      },
+      "clip_state_error_count": 8,
+      "joint_error_count": 12,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0096",
+      "sample_count": 5,
+      "target_distribution": {
+        "未断裂": 5
+      },
+      "prediction_distribution": {
+        "发生断裂": 1,
+        "已断裂": 4
+      },
+      "clip_state_error_count": 5,
+      "joint_error_count": 5,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0102",
+      "sample_count": 13,
+      "target_distribution": {
+        "发生断裂": 10,
+        "未断裂": 3
+      },
+      "prediction_distribution": {
+        "临界未断裂": 3,
+        "已断裂": 8,
+        "未断裂": 2
+      },
+      "clip_state_error_count": 13,
+      "joint_error_count": 13,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0103",
+      "sample_count": 16,
+      "target_distribution": {
+        "发生断裂": 10,
+        "已断裂": 3,
+        "未断裂": 3
+      },
+      "prediction_distribution": {
+        "发生断裂": 2,
+        "已断裂": 12,
+        "未断裂": 2
+      },
+      "clip_state_error_count": 10,
+      "joint_error_count": 13,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0107",
+      "sample_count": 5,
+      "target_distribution": {
+        "未断裂": 5
+      },
+      "prediction_distribution": {
+        "临界未断裂": 4,
+        "发生断裂": 1
+      },
+      "clip_state_error_count": 5,
+      "joint_error_count": 5,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    },
+    {
+      "source_video": "video_0110",
+      "sample_count": 17,
+      "target_distribution": {
+        "发生断裂": 4,
+        "已断裂": 2,
+        "未断裂": 11
+      },
+      "prediction_distribution": {
+        "发生断裂": 16,
+        "已断裂": 1
+      },
+      "clip_state_error_count": 13,
+      "joint_error_count": 13,
+      "strict_invalid_count": 0,
+      "runtime_failure_count": 0
+    }
+  ],
+  "leave_one_source_out": {
+    "full_improvement": {
+      "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+      "metrics": [
+        "fracture_three_state_macro_recall",
+        "four_state_macro_recall",
+        "已断裂_recall"
+      ],
+      "deltas": {
+        "fracture_three_state_macro_recall": 0.024976,
+        "four_state_macro_recall": -0.012682,
+        "已断裂_recall": 0.0
+      },
+      "aggregate": 0.004098
+    },
+    "minimum_retention": -1.820156,
+    "required_minimum_retention": 0.5,
+    "passed": false,
+    "sources": [
+      {
+        "removed_source": "video_0001",
+        "remaining_sample_count": 406,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.030324,
+            "four_state_macro_recall": -0.010407,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.006639
+        },
+        "retention": 1.620059,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0006",
+        "remaining_sample_count": 404,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.029745,
+            "four_state_macro_recall": -0.012221,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.005841
+        },
+        "retention": 1.425329,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0009",
+        "remaining_sample_count": 409,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.02729,
+            "four_state_macro_recall": -0.010281,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.00567
+        },
+        "retention": 1.383602,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0013",
+        "remaining_sample_count": 409,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.030886,
+            "four_state_macro_recall": -0.005841,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.008348
+        },
+        "retention": 2.037091,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0015",
+        "remaining_sample_count": 407,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.034409,
+            "four_state_macro_recall": -0.00698,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.009143
+        },
+        "retention": 2.231088,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0022",
+        "remaining_sample_count": 397,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.020833,
+            "four_state_macro_recall": -0.01338,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.002484
+        },
+        "retention": 0.606149,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0023",
+        "remaining_sample_count": 416,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.02855,
+            "four_state_macro_recall": -0.009669,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.006294
+        },
+        "retention": 1.535871,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0044",
+        "remaining_sample_count": 408,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.017063,
+            "four_state_macro_recall": -0.019288,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": -0.000742
+        },
+        "retention": -0.181064,
+        "passed": false
+      },
+      {
+        "removed_source": "video_0046",
+        "remaining_sample_count": 417,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.016987,
+            "four_state_macro_recall": -0.015335,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.000551
+        },
+        "retention": 0.134456,
+        "passed": false
+      },
+      {
+        "removed_source": "video_0055",
+        "remaining_sample_count": 415,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024701,
+            "four_state_macro_recall": -0.014441,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.00342
+        },
+        "retention": 0.834553,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0056",
+        "remaining_sample_count": 420,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024976,
+            "four_state_macro_recall": -0.013526,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.003817
+        },
+        "retention": 0.93143,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0060",
+        "remaining_sample_count": 414,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.025398,
+            "four_state_macro_recall": -0.012866,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.004177
+        },
+        "retention": 1.019278,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0065",
+        "remaining_sample_count": 421,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024138,
+            "four_state_macro_recall": -0.01331,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.003609
+        },
+        "retention": 0.880673,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0070",
+        "remaining_sample_count": 401,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.026395,
+            "four_state_macro_recall": -0.013353,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.004347
+        },
+        "retention": 1.060761,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0071",
+        "remaining_sample_count": 422,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024701,
+            "four_state_macro_recall": -0.01322,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.003827
+        },
+        "retention": 0.93387,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0072",
+        "remaining_sample_count": 401,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.027338,
+            "four_state_macro_recall": -0.011264,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.005358
+        },
+        "retention": 1.307467,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0074",
+        "remaining_sample_count": 405,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.022661,
+            "four_state_macro_recall": -0.015971,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.00223
+        },
+        "retention": 0.544168,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0075",
+        "remaining_sample_count": 421,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024138,
+            "four_state_macro_recall": -0.013309,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.00361
+        },
+        "retention": 0.880918,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0076",
+        "remaining_sample_count": 408,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.027014,
+            "four_state_macro_recall": -0.013162,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.004617
+        },
+        "retention": 1.126647,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0080",
+        "remaining_sample_count": 398,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.0235,
+            "four_state_macro_recall": -0.016273,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.002409
+        },
+        "retention": 0.587848,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0081",
+        "remaining_sample_count": 398,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.005366,
+            "four_state_macro_recall": -0.027743,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": -0.007459
+        },
+        "retention": -1.820156,
+        "passed": false
+      },
+      {
+        "removed_source": "video_0083",
+        "remaining_sample_count": 420,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024976,
+            "four_state_macro_recall": -0.013526,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.003817
+        },
+        "retention": 0.93143,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0085",
+        "remaining_sample_count": 408,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.022965,
+            "four_state_macro_recall": -0.008875,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.004697
+        },
+        "retention": 1.146169,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0092",
+        "remaining_sample_count": 406,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.019211,
+            "four_state_macro_recall": -0.017012,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.000733
+        },
+        "retention": 0.178868,
+        "passed": false
+      },
+      {
+        "removed_source": "video_0096",
+        "remaining_sample_count": 420,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024976,
+            "four_state_macro_recall": -0.013526,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.003817
+        },
+        "retention": 0.93143,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0102",
+        "remaining_sample_count": 412,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.022039,
+            "four_state_macro_recall": -0.011396,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.003548
+        },
+        "retention": 0.865788,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0103",
+        "remaining_sample_count": 409,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.044427,
+            "four_state_macro_recall": 0.001406,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.015278
+        },
+        "retention": 3.72816,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0107",
+        "remaining_sample_count": 420,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.024976,
+            "four_state_macro_recall": -0.00815,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.005609
+        },
+        "retention": 1.368716,
+        "passed": true
+      },
+      {
+        "removed_source": "video_0110",
+        "remaining_sample_count": 408,
+        "improvement": {
+          "definition": "arithmetic_mean_pp_delta_of_primary_recall_metrics",
+          "metrics": [
+            "fracture_three_state_macro_recall",
+            "four_state_macro_recall",
+            "已断裂_recall"
+          ],
+          "deltas": {
+            "fracture_three_state_macro_recall": 0.023852,
+            "four_state_macro_recall": -0.015444,
+            "已断裂_recall": 0.0
+          },
+          "aggregate": 0.002803
+        },
+        "retention": 0.683992,
+        "passed": true
+      }
+    ]
+  },
+  "passed": false,
+  "next_action": "freeze_failure_and_continue_development_only_attribution"
+}
