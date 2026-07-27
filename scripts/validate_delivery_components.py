@@ -55,6 +55,40 @@ def validate_components(
         errors.append("service must remain loopback-only")
     if service.get("model_component_path") != "delivery/model_component.json":
         errors.append("service/model component binding mismatch")
+    policy = model.get("intermediate_delivery_policy", {})
+    if (
+        policy.get("primary_gate") != "artifact_and_runtime_chain"
+        or policy.get("performance_metrics_mode") != "record_only_non_blocking"
+        or policy.get("performance_thresholds_block_delivery") is not False
+        or policy.get("optimization_status") != "paused"
+        or policy.get("retraining_authorized") is not False
+    ):
+        errors.append("intermediate delivery performance policy is invalid")
+    artifact_gate = model.get("artifact_gate", {})
+    required_artifact_checks = (
+        "merged_bf16_present",
+        "expected_safetensors_shards_present",
+        "full_hash_verified",
+        "manifest_identity_verified",
+    )
+    if (
+        artifact_gate.get("passed") is not True
+        or not all(artifact_gate.get(name) is True for name in required_artifact_checks)
+    ):
+        errors.append("model artifact gate is incomplete")
+    runtime_gate = service.get("runtime_gate", {})
+    required_runtime_checks = (
+        "contract_identity_verified",
+        "deployment_identity_verified",
+        "loopback_only_verified",
+        "real_media_smoke_passed",
+        "v2_rollback_rehearsal_passed",
+    )
+    if (
+        runtime_gate.get("passed") is not True
+        or not all(runtime_gate.get(name) is True for name in required_runtime_checks)
+    ):
+        errors.append("service runtime gate is incomplete")
     for binding, owner in (
         (model.get("evidence", {}), "acceptance_summary"),
         (service.get("evidence", {}), "deployment_summary"),
