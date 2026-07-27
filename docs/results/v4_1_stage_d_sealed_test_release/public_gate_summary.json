@@ -1,0 +1,28 @@
+{
+  "schema_version": "tensile-vlm-stage-d-public-evidence/v1",
+  "run_id": "stage-d-run-da566a5644f8",
+  "authorization_id": "stage-d-authorization-bd99f9c8362f",
+  "authorization_sha256": "1113c778f615ee67be88c6cad28e312c353b894f61a1c1875f4209aa475f4cfe",
+  "claim_sha256": "f0a160360d37071220b56ed575f16c1cebc2ce0c9c27e46a1f41a298bd1b126b",
+  "public_gate_sha256": "e9ebe1f6ad32946a65a65589ce99121641ea150ad48e29212d083ded34039b88",
+  "status": "completed",
+  "sample_count": 299,
+  "integrity": {
+    "record_count_matches_release": true,
+    "runtime_failure_zero": true,
+    "strict_contract_100_percent": true
+  },
+  "gates": {
+    "fracture_three_state_macro_recall": false,
+    "four_state_macro_recall": false,
+    "已断裂_recall": false,
+    "未断裂_recall": true,
+    "joint_correct_rate": false,
+    "strict_valid_rate": true,
+    "runtime_failure_count": true
+  },
+  "passed": false,
+  "stage_g_may_start": true,
+  "sealed_test_exposed": true,
+  "restricted_semantic_metrics_withheld": true
+}

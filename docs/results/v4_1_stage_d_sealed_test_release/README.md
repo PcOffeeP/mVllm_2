@@ -36,3 +36,9 @@ runtime 均被独立哈希绑定。逐样本记录、完整指标和混淆信息
 完成前的公开
 gate 仅含完整性和逐门 pass/fail，不含数值、标签分布或 source-level 结果。缺少授权的
 训练机负向 preflight 已验证会在 claim 和模型调用前失败。
+
+2026-07-27 用户完成一次性授权后，`stage-d-run-da566a5644f8` 已生成精确 299 条
+记录。记录数、runtime failure 为零和严格契约 100% 三项完整性门均通过；整体质量门
+未通过。Stage G 完成前仍不公开任何数值指标、逐样本预测、类别分布、混淆矩阵或
+source-level 结果。只含预注册布尔门的轻量证据位于
+`public_gate_summary.json`。
