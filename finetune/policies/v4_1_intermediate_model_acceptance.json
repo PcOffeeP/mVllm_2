@@ -1,0 +1,38 @@
+{
+  "schema_version": "tensile-vlm-v4.1-stage-b-intermediate-policy/v1",
+  "decision_id": "stage-b-intermediate-user-accepted-20260727",
+  "decision_date": "2026-07-27",
+  "decision_basis": "user_directed_no_additional_retraining_for_current_version",
+  "stage_b_status": "accepted_as_intermediate_with_known_limits",
+  "source_run_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+  "seed": 3407,
+  "training_contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+  "runtime_contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+  "promoted_prompt_overlay_sha256": "4cd7b8336851414406943c72502199027b84fc674c0c5119f2d59c49454009af",
+  "training_run_manifest_sha256": "1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5",
+  "evaluation_records_sha256": "4c8ea6c3bc77bc9aa05681d8f7033cacd72da541209750ffdc8b2959ced715a5",
+  "failed_quality_gate_report_sha256": "f7b1ae6c41c85ab3e9ae01b87c8a78349bec255ac639254640526232b3655a71",
+  "minimum_artifact_gate": {
+    "actual_optimizer_steps": 1125,
+    "visual_weight_count": 324,
+    "resampler_weight_count": 13,
+    "evaluation_sample_count": 425,
+    "minimum_strict_valid_rate": 0.99,
+    "runtime_failure_count": 0
+  },
+  "authorization_scope": {
+    "stage_c_additional_training": false,
+    "stage_e_pre_acceptance_integration": true,
+    "stage_f_agent_integration": true,
+    "stage_d_independent_model_acceptance": false,
+    "production_alias": false
+  },
+  "quality_disclosure": {
+    "original_stage_b_performance_gate_passed": false,
+    "leave_one_source_out_gate_passed": false,
+    "designation": "intermediate_development_model",
+    "sealed_labels_read": false
+  }
+}

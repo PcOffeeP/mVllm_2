@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from finetune.v4_1_runtime import (
-    CONTRACT_HASH,
     CONTRACT_VERSION,
     RELEASE_ID,
     V4_1FinetuneError,
@@ -34,6 +33,9 @@ from pipeline.current_data import current_data_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "pipeline/contracts/tensile_vlm_v4_1.json"
+RUNTIME_CONTRACT_HASH = (
+    "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,10 +67,21 @@ def _load_contract(
     prompt_overlay_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     contract = _read_json(CONTRACT_PATH)
+    normalized = dict(contract) if isinstance(contract, Mapping) else {}
+    normalized.pop("contract_hash", None)
+    actual_hash = hashlib.sha256(
+        json.dumps(
+            normalized,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
     if (
         not isinstance(contract, dict)
         or contract.get("contract_version") != CONTRACT_VERSION
-        or contract.get("contract_hash") != CONTRACT_HASH
+        or contract.get("contract_hash") != actual_hash
+        or actual_hash != RUNTIME_CONTRACT_HASH
     ):
         raise RuntimeError("V4.1 contract identity drifted")
     analysis = contract.get("analysis")
@@ -85,7 +98,6 @@ def _load_contract(
         or overlay.get("schema_version")
         != "tensile-vlm-v4.1-analysis-prompt-overlay/v1"
         or overlay.get("base_contract_version") != CONTRACT_VERSION
-        or overlay.get("base_contract_hash") != CONTRACT_HASH
         or not isinstance(overlay.get("prompt_revision_id"), str)
         or not isinstance(overlay_analysis, Mapping)
         or not isinstance(overlay_analysis.get("system_prompt"), str)
@@ -93,11 +105,19 @@ def _load_contract(
         or overlay_analysis.get("generation") != analysis.get("generation")
     ):
         raise RuntimeError("V4.1 analysis prompt overlay identity drifted")
+    base_hash = overlay.get("base_contract_hash")
+    promoted_overlay = (
+        base_hash != actual_hash and dict(overlay_analysis) == dict(analysis)
+    )
+    if base_hash != actual_hash and not promoted_overlay:
+        raise RuntimeError("V4.1 analysis prompt overlay base contract drifted")
     revised = dict(contract)
     revised["analysis"] = dict(overlay_analysis)
     identity = {
         "prompt_revision_id": overlay["prompt_revision_id"],
         "prompt_overlay_sha256": _sha256(prompt_overlay_path),
+        "promoted_to_contract_hash": actual_hash,
+        "historical_base_contract_hash": base_hash,
     }
     return revised, identity
 
@@ -144,12 +164,13 @@ def _run_identity(
     quantization_bit: int | None = None,
     adapter_dir: Path | None = None,
     prompt_overlay_identity: Mapping[str, Any] | None = None,
+    contract_hash: str = RUNTIME_CONTRACT_HASH,
 ) -> dict[str, Any]:
     identity = {
         "schema_version": "tensile-v4.1-evaluation-run/v1",
         "release_id": release_id,
         "contract_version": CONTRACT_VERSION,
-        "contract_hash": CONTRACT_HASH,
+        "contract_hash": contract_hash,
         "fold": fold,
         "model_dir": str(model_dir.resolve()),
         "sample_count": sample_count,
@@ -357,6 +378,7 @@ def main() -> int:
         quantization_bit=args.quantization_bit,
         adapter_dir=args.adapter_dir,
         prompt_overlay_identity=prompt_overlay_identity,
+        contract_hash=str(contract["contract_hash"]),
     )
     records_path = _prepare_output(args.out_dir, identity)
     existing = _load_existing_records(records_path)

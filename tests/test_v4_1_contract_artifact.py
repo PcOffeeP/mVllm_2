@@ -6,7 +6,7 @@ from pipeline.v4_1_labels import CLIP_STATES, V4_1_LABEL_FIELDS
 
 
 PATH = Path(__file__).parents[1] / "pipeline/contracts/tensile_vlm_v4_1.json"
-EXPECTED_HASH = "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
+EXPECTED_HASH = "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab"
 
 
 def test_v4_1_contract_hash_and_fields():
@@ -35,4 +35,13 @@ def test_v4_1_contract_marks_incipient_summary_as_prospective():
         == "prospective"
     )
     assert "临界未断裂" in contract["analysis"]["user_prompt"]
-    assert "预测线索" in contract["analysis"]["user_prompt"]
+    assert "仍连续但已出现明显局部颈缩" in contract["analysis"]["user_prompt"]
+
+
+def test_v4_1_contract_promotes_temporal_enum_clarification():
+    contract = json.loads(PATH.read_text())
+    analysis = contract["analysis"]
+    assert "按时间顺序判断试样连续性" in analysis["user_prompt"]
+    assert "必须严格使用下列枚举原词" in analysis["system_prompt"]
+    assert "沿界面断裂" in analysis["user_prompt"]
+    assert "严格使用指定枚举原词" in analysis["retry_prompt"]

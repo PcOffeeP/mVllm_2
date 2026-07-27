@@ -29,7 +29,9 @@ def test_prompt_overlay_is_contract_bound_and_changes_only_instruction() -> None
     assert identity is not None
     assert identity["prompt_revision_id"] == overlay["prompt_revision_id"]
     assert contract["analysis"] == overlay["analysis"]
-    assert contract["contract_hash"] == overlay["base_contract_hash"]
+    assert contract["contract_hash"] == identity["promoted_to_contract_hash"]
+    assert overlay["base_contract_hash"] == identity["historical_base_contract_hash"]
+    assert contract["contract_hash"] != overlay["base_contract_hash"]
     assert overlay["changed_variable"] == "analysis_instruction_clarification"
 
     source = [

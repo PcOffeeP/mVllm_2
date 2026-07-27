@@ -11,7 +11,7 @@
 | 项目 | 当前值 |
 | --- | --- |
 | 契约 | `tensile-vlm/v4.1` |
-| 契约 hash | `47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937` |
+| 当前运行时契约 hash | `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab` |
 | 数据根 | `tensile-data/current` |
 | 当前 development 发布 | `v4.1.0-ecb5aeb9657c` |
 | 基础不可变发布 | `v4.1.0-760050fad303` |
