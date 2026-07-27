@@ -1,0 +1,17 @@
+{
+  "schema_version": "tensile-vlm-v4.1-training-stability-policy/v1",
+  "absolute_performance_mode": "record_only",
+  "relative_limits_percentage_points": {
+    "fracture_recall": 5.0,
+    "non_fracture_recall": 5.0,
+    "fracture_f1": 5.0,
+    "macro_f1": 5.0,
+    "strict_valid_rate": 1.0
+  },
+  "max_prediction_disagreement_rate": 0.1,
+  "require_zero_runtime_failures": true,
+  "fallback_seed": 3413,
+  "max_fallback_seed_runs": 1,
+  "fallback_pass_rule": "any_new_pair_passes_all_original_limits",
+  "unresolved_action": "record_only_and_continue"
+}
