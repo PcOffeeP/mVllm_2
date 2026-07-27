@@ -53,7 +53,7 @@ def _metric(record: Mapping[str, Any], name: str) -> float | None:
     return float(value)
 
 
-def _prediction(record: Mapping[str, Any]) -> bool:
+def _prediction(record: Mapping[str, Any]) -> bool | None:
     for key in ("predicted_has_fracture", "has_fracture_prediction", "prediction"):
         value = record.get(key)
         if isinstance(value, bool):
@@ -62,6 +62,8 @@ def _prediction(record: Mapping[str, Any]) -> bool:
             return bool(value["has_fracture"])
         if isinstance(value, Mapping) and isinstance(value.get("clip_state"), str):
             return value["clip_state"] in {"发生断裂", "已断裂"}
+    if record.get("prediction") is None and not record.get("strict_valid"):
+        return None
     raise StabilityError("record missing boolean fracture prediction")
 
 
@@ -88,12 +90,17 @@ def _aggregate_metrics(records: Mapping[str, Mapping[str, Any]]) -> dict[str, fl
             )
             for name in names
         }
-    tp = tn = fp = fn = 0
+    tp = tn = fp = fn = abstain_positive = abstain_negative = 0
     strict_valid = 0
     for record in records.values():
         target, predicted = _target(record), _prediction(record)
         strict_valid += bool(record.get("strict_valid"))
-        if target and predicted:
+        if predicted is None:
+            if target:
+                abstain_positive += 1
+            else:
+                abstain_negative += 1
+        elif target and predicted:
             tp += 1
         elif target:
             fn += 1
@@ -101,10 +108,18 @@ def _aggregate_metrics(records: Mapping[str, Mapping[str, Any]]) -> dict[str, fl
             fp += 1
         else:
             tn += 1
-    fracture_recall = tp / (tp + fn) if tp + fn else None
-    non_fracture_recall = tn / (tn + fp) if tn + fp else None
-    fracture_f1 = 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else None
-    non_fracture_f1 = 2 * tn / (2 * tn + fp + fn) if 2 * tn + fp + fn else None
+    fracture_recall = tp / (tp + fn + abstain_positive) if tp + fn + abstain_positive else None
+    non_fracture_recall = tn / (tn + fp + abstain_negative) if tn + fp + abstain_negative else None
+    fracture_f1 = (
+        2 * tp / (2 * tp + fp + fn + abstain_positive)
+        if 2 * tp + fp + fn + abstain_positive
+        else None
+    )
+    non_fracture_f1 = (
+        2 * tn / (2 * tn + fp + fn + abstain_negative)
+        if 2 * tn + fp + fn + abstain_negative
+        else None
+    )
     macro_f1 = (
         (fracture_f1 + non_fracture_f1) / 2
         if fracture_f1 is not None and non_fracture_f1 is not None
