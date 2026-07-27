@@ -29,6 +29,7 @@ from pipeline.current_data import current_data_paths
 FINETUNE = ROOT / "finetune"
 CONFIG_ROOT = FINETUNE / "MiniCPM/config/active/v4_1_source_aware_3k"
 RUN_MANIFEST_PATH = CONFIG_ROOT / "run_manifest.json"
+EVALUATION_EXTRA_ARGS: tuple[str, ...] = ()
 SAVE_ROOT = ROOT / "LlamaFactory/saves/minicpmv4_5/lora"
 RUN_ID = "v4_1_phase2_source_aware_3k_dd89b70e9d63"
 TRAINING_CODE_COMMIT = "f6ba152121d394141ddddaf73926e3a9c065d0a8"
@@ -600,8 +601,7 @@ def _evaluate(seed: int) -> None:
         seed=seed,
         result_dir=str(result_dir(seed)),
     )
-    _run_logged(
-        [
+    command = [
             sys.executable,
             "-m",
             "finetune.run_v4_1_evaluation",
@@ -613,7 +613,10 @@ def _evaluate(seed: int) -> None:
             str(merged_dir(seed)),
             "--out-dir",
             str(result_dir(seed)),
-        ],
+        ]
+    command.extend(EVALUATION_EXTRA_ARGS)
+    _run_logged(
+        command,
         LOG_ROOT / f"seed{seed}_evaluate.log",
         cwd=ROOT,
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import re
@@ -44,6 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--quantization-bit", type=int, choices=(4,))
     parser.add_argument("--adapter-dir", type=Path)
     parser.add_argument("--release-id", default=RELEASE_ID)
+    parser.add_argument("--analysis-prompt-overlay", type=Path)
     return parser.parse_args()
 
 
@@ -51,7 +53,17 @@ def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _load_contract() -> dict[str, Any]:
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_contract(
+    prompt_overlay_path: Path | None = None,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
     contract = _read_json(CONTRACT_PATH)
     if (
         not isinstance(contract, dict)
@@ -62,7 +74,32 @@ def _load_contract() -> dict[str, Any]:
     analysis = contract.get("analysis")
     if not isinstance(analysis, Mapping):
         raise RuntimeError("V4.1 contract analysis section is missing")
-    return contract
+    if prompt_overlay_path is None:
+        return contract, None
+    overlay = _read_json(prompt_overlay_path)
+    overlay_analysis = (
+        overlay.get("analysis") if isinstance(overlay, Mapping) else None
+    )
+    if (
+        not isinstance(overlay, Mapping)
+        or overlay.get("schema_version")
+        != "tensile-vlm-v4.1-analysis-prompt-overlay/v1"
+        or overlay.get("base_contract_version") != CONTRACT_VERSION
+        or overlay.get("base_contract_hash") != CONTRACT_HASH
+        or not isinstance(overlay.get("prompt_revision_id"), str)
+        or not isinstance(overlay_analysis, Mapping)
+        or not isinstance(overlay_analysis.get("system_prompt"), str)
+        or not isinstance(overlay_analysis.get("user_prompt"), str)
+        or overlay_analysis.get("generation") != analysis.get("generation")
+    ):
+        raise RuntimeError("V4.1 analysis prompt overlay identity drifted")
+    revised = dict(contract)
+    revised["analysis"] = dict(overlay_analysis)
+    identity = {
+        "prompt_revision_id": overlay["prompt_revision_id"],
+        "prompt_overlay_sha256": _sha256(prompt_overlay_path),
+    }
+    return revised, identity
 
 
 def load_validation_samples(
@@ -106,6 +143,7 @@ def _run_identity(
     release_id: str = RELEASE_ID,
     quantization_bit: int | None = None,
     adapter_dir: Path | None = None,
+    prompt_overlay_identity: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     identity = {
         "schema_version": "tensile-v4.1-evaluation-run/v1",
@@ -118,6 +156,8 @@ def _run_identity(
     }
     if adapter_dir is not None:
         identity["adapter_dir"] = str(adapter_dir.resolve())
+    if prompt_overlay_identity is not None:
+        identity["analysis_prompt_overlay"] = dict(prompt_overlay_identity)
     if quantization_bit is not None:
         identity["inference_precision"] = (
             FOUR_BIT_ADAPTER_INFERENCE_PRECISION
@@ -301,7 +341,9 @@ def main() -> int:
         verify_media=True,
         release_id=args.release_id,
     )
-    contract = _load_contract()
+    contract, prompt_overlay_identity = _load_contract(
+        args.analysis_prompt_overlay
+    )
     samples = load_validation_samples(args.fold, release_id=args.release_id)
     if args.max_samples is not None:
         if args.max_samples <= 0:
@@ -314,6 +356,7 @@ def main() -> int:
         release_id=args.release_id,
         quantization_bit=args.quantization_bit,
         adapter_dir=args.adapter_dir,
+        prompt_overlay_identity=prompt_overlay_identity,
     )
     records_path = _prepare_output(args.out_dir, identity)
     existing = _load_existing_records(records_path)
