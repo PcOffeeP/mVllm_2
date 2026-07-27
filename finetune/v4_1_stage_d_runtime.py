@@ -139,6 +139,21 @@ def git_commit_time(project_root: Path) -> str:
     return result.stdout.strip()
 
 
+def git_is_ancestor(
+    project_root: Path,
+    ancestor: str,
+    descendant: str = "HEAD",
+) -> bool:
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+        cwd=project_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
 def _verified_file(
     release_dir: Path,
     entry: Mapping[str, Any],
@@ -299,6 +314,8 @@ def build_preparation(
     contract_path: Path,
     runner_path: Path,
     evaluator_path: Path,
+    model_runtime_path: Path,
+    scoring_runtime_path: Path,
     output_root: Path,
     thresholds: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -375,6 +392,9 @@ def build_preparation(
         "contract_hash": declared_contract_hash,
         "runner_sha256": sha256_file(runner_path),
         "evaluator_sha256": sha256_file(evaluator_path),
+        "stage_d_runtime_sha256": sha256_file(Path(__file__)),
+        "model_runtime_sha256": sha256_file(model_runtime_path),
+        "scoring_runtime_sha256": sha256_file(scoring_runtime_path),
         "thresholds": effective_thresholds,
         "generation": dict(generation),
         "sample_count": len(candidates),
@@ -426,6 +446,11 @@ def build_preparation(
         "execution": {
             "runner": _artifact(runner_path, "Stage D runner"),
             "evaluator": _artifact(evaluator_path, "V4.1 evaluator"),
+            "stage_d_runtime": _artifact(Path(__file__), "Stage D runtime"),
+            "model_runtime": _artifact(model_runtime_path, "model runtime"),
+            "scoring_runtime": _artifact(
+                scoring_runtime_path, "V4.1 scoring runtime"
+            ),
             "output_root": str(Path(output_root).resolve()),
             "resume_policy": "same_identity_only",
             "one_time_claim_required_before_first_model_call": True,
@@ -514,8 +539,10 @@ def validate_authorization(
     )
     if (
         prepared.get("schema_version") != PREPARATION_SCHEMA_VERSION
-        or prepared.get("code_commit")
-        != git_head(Path(__file__).resolve().parents[1])
+        or not git_is_ancestor(
+            Path(__file__).resolve().parents[1],
+            str(prepared.get("code_commit") or ""),
+        )
         or authorization.get("schema_version") != AUTHORIZATION_SCHEMA_VERSION
         or authorization_id != expected_id
         or authorization.get("authorized") is not True
@@ -543,6 +570,9 @@ def validate_authorization(
         ("contract", "file"),
         ("execution", "runner"),
         ("execution", "evaluator"),
+        ("execution", "stage_d_runtime"),
+        ("execution", "model_runtime"),
+        ("execution", "scoring_runtime"),
     ):
         descriptor = require_mapping(
             require_mapping(prepared.get(section), f"prepared.{section}").get(
@@ -581,6 +611,15 @@ def build_run_identity(
         "contract_hash": prepared["contract"]["hash"],
         "runner_sha256": prepared["execution"]["runner"]["sha256"],
         "evaluator_sha256": prepared["execution"]["evaluator"]["sha256"],
+        "stage_d_runtime_sha256": prepared["execution"][
+            "stage_d_runtime"
+        ]["sha256"],
+        "model_runtime_sha256": prepared["execution"]["model_runtime"][
+            "sha256"
+        ],
+        "scoring_runtime_sha256": prepared["execution"][
+            "scoring_runtime"
+        ]["sha256"],
         "thresholds": prepared["thresholds"],
         "generation": prepared["contract"]["generation"],
         "sample_count": prepared["sealed_test"]["sample_count"],

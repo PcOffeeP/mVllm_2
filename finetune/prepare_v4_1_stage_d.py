@@ -96,6 +96,8 @@ def main() -> int:
         contract_path=args.contract,
         runner_path=FINETUNE / "run_v4_1_stage_d.py",
         evaluator_path=FINETUNE / "run_v4_1_evaluation.py",
+        model_runtime_path=FINETUNE / "validation/model_runtime.py",
+        scoring_runtime_path=FINETUNE / "v4_1_runtime.py",
         output_root=args.output_root,
     )
     path = (

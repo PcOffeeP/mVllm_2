@@ -179,8 +179,12 @@ def _preparation_fixture(tmp_path: Path) -> tuple[dict[str, object], Path]:
     _write_json(agent_path, agent)
     runner = tmp_path / "runner.py"
     evaluator = tmp_path / "evaluator.py"
+    model_runtime = tmp_path / "model_runtime.py"
+    scoring_runtime = tmp_path / "scoring_runtime.py"
     runner.write_text("runner\n", encoding="utf-8")
     evaluator.write_text("evaluator\n", encoding="utf-8")
+    model_runtime.write_text("model runtime\n", encoding="utf-8")
+    scoring_runtime.write_text("scoring runtime\n", encoding="utf-8")
     preparation = build_preparation(
         project_root=ROOT,
         release_dir=release_dir,
@@ -192,6 +196,8 @@ def _preparation_fixture(tmp_path: Path) -> tuple[dict[str, object], Path]:
         contract_path=contract_path,
         runner_path=runner,
         evaluator_path=evaluator,
+        model_runtime_path=model_runtime,
+        scoring_runtime_path=scoring_runtime,
         output_root=tmp_path / "runs",
     )
     prepared_path = tmp_path / "prepared.json"
