@@ -254,19 +254,33 @@ streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
 2026-07-25 已正式生成并完整加载验证：
 
 - development：`v4-1-phase2-development-dc453f01fb23`，410 项、44 个源；
-- sealed test：`v4-1-phase2-sealed_test-a16926aca6d2`，332 项、20 个源。
+- sealed test 初始队列：`v4-1-phase2-sealed_test-a16926aca6d2`，332 项、20 个源。
 
 两队列的视频、采样帧和身份哈希均通过，源视频交集为空。2026-07-26 已按上一轮冻结
 batch 生成分流：development 为 `33 existing_human + 233 historical_consensus +
 144 manual_review`；sealed test 因无同源历史为 `332 manual_review`。development
 人工子队列已冻结为 `review-batch-7a7222b947da`，其中 118 corrected、19 approved、
 7 dropped；三类来源已合成为
-`combined-review-decisions-b4ade2d3e526`。sealed test 仍无冻结人工 batch。
+`combined-review-decisions-b4ade2d3e526`。截至 2026-07-26，当时 sealed test 尚无
+冻结人工 batch。
 轻量身份和当前分流见
 [`docs/results/v4_1_phase2_review_queues/`](results/v4_1_phase2_review_queues/)；
 development 发布证据见
 [`docs/results/v4_1_phase2_development_release/`](results/v4_1_phase2_development_release/)。
 密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或模型选择。
+
+2026-07-27，canonical V4.1 analysis prompt 更新后，sealed test 在相同 audit、媒体、
+候选顺序和 candidate ID 上重新进行内容寻址，当前队列为
+`v4-1-phase2-sealed_test-4f66487a6315`。它与初始队列的唯一身份输入差异是 contract
+hash；旧队列和旧 routing 保留为历史对象，不再作为当前 Stage D 输入。
+
+当前 332 条已冻结为 `review-batch-6a8d94bd7675`：209 approved、90 corrected、
+33 dropped。专用发布器已生成受限、不可变的
+`v4.1-sealed-test-5546b8bf1ec3`，其中 299 条可验收候选仍覆盖全部 20 个独立源。
+完整性和哈希见
+[`docs/results/v4_1_stage_d_sealed_test_release/`](results/v4_1_stage_d_sealed_test_release/)。
+该发布的 one-time evaluation authorization 仍为 false；不得据此直接启动或重复运行
+sealed 推理。
 
 ## 第五步：构建不可覆盖的 V4.1 训练发布
 

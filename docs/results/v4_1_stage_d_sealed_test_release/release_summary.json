@@ -1,0 +1,44 @@
+{
+  "schema_version": "tensile-sealed-test-release-summary/v1",
+  "created_at": "2026-07-27T16:06:00+08:00",
+  "release": {
+    "release_id": "v4.1-sealed-test-5546b8bf1ec3",
+    "manifest_sha256": "b996f0540681066de0731ffcab5a0f760bc691fcb6e6bd1e687eb150b7b96e72",
+    "quality_report_sha256": "e3f9f30c8716a2c18af04690ba1cb7342d248cf25a9c537bd51d527e05b0cdfc",
+    "status": "ready_for_one_time_evaluation",
+    "one_time_evaluation_authorized": false
+  },
+  "review": {
+    "queue_id": "v4-1-phase2-sealed_test-4f66487a6315",
+    "queue_sha256": "4686b11073456903df439c8a94a062253af47e64bae062323f2e49e9be0565f5",
+    "review_batch_id": "review-batch-6a8d94bd7675",
+    "decisions_sha256": "7d1009c99b647f70610d07d924a6ddf4ee55e300e05ee0e7db5a20a8f2c5b495",
+    "summary_sha256": "c6bb9d7dca37a40045764e982d9679ffa07f82bf79687c1af1ca9d4fd61676fd"
+  },
+  "identity": {
+    "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+    "media_id": "candidate-media-53d068569a09",
+    "audit_id": "effective-view-audit-eeb18caba8bd",
+    "candidate_ids_sha256": "cc73a5f265a530a226605ddff155807daad8d9e61d1a40c097a118480cfe7ab7"
+  },
+  "counts": {
+    "review_queue_candidates": 332,
+    "approved": 209,
+    "corrected": 90,
+    "dropped": 33,
+    "needs_regenerate": 0,
+    "admitted_candidates": 299,
+    "excluded_candidates": 33,
+    "admitted_sources": 20,
+    "test_split_sources_without_candidates": 1
+  },
+  "checks": {
+    "review_batch_complete": true,
+    "queue_media_frame_identity_verified": true,
+    "development_source_isolation_verified": true,
+    "test_split_binding_verified": true,
+    "restricted_permissions_verified": true,
+    "sealed_semantics_not_exported": true,
+    "stage_d_inference_started": false
+  }
+}
