@@ -1,0 +1,12 @@
+{
+  "processor_version": "MiniCPMVProcessor",
+  "max_frames": 8,
+  "model_version": "v4.1-intermediate-stage-b-intermediate-8e1fdb09f8e6",
+  "transformers_version": "4.56.1",
+  "llamafactory_version": "0.9.6.dev0+git.4447137e08c1",
+  "base_model_version": "MiniCPM-V-4_5+config-sha256.1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+  "adapter_version": "coverage-first-seed3407-merged+aggregate-sha256.1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+  "config_fingerprint": "sha256:2b6c82b8fe27e7e59412a54050f96968861c1c4b165406b3bd6a21b82abbade1",
+  "runtime_device": "cuda:0",
+  "runtime_dtype": "bfloat16"
+}

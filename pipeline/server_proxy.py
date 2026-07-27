@@ -16,6 +16,8 @@ from pipeline.llamafactory_contract import configure_loaded_processor
 from pipeline.output_normalizer import normalize_structured_output, validate_structured_output
 from pipeline.production_contract import load_production_contract, production_contract_hash
 from pipeline.server_adapter import wrap_response
+from pipeline.v4_1_labels import canonicalize_v4_1_labels
+from pipeline.v4_1_production_contract import load_v4_1_production_contract
 
 
 MAX_VIDEO_BYTES = 100 * 1024 * 1024
@@ -65,14 +67,22 @@ def _validate_startup_config(config: Any) -> dict[str, Any]:
     return dict(config)
 
 
-def _deployment_snapshot(config: dict[str, Any]) -> dict[str, str]:
-    contract = load_production_contract()
+def _deployment_snapshot(
+    config: dict[str, Any],
+    contract: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    contract = contract or load_production_contract()
+    contract_hash = (
+        production_contract_hash()
+        if contract["contract_version"] == "tensile-vlm/v2"
+        else str(contract["contract_hash"])
+    )
     return {
         key: str(config[key])
         for key in sorted(STARTUP_FIELDS - {"max_frames"})
     } | {
         "contract_version": str(contract["contract_version"]),
-        "contract_hash": production_contract_hash(),
+        "contract_hash": contract_hash,
     }
 
 
@@ -193,10 +203,23 @@ def _assistant_content(response: Any) -> str:
     return str(getattr(choices[0].message, "content", "") or "")
 
 
-def _analysis_output_valid(content: str, frame_count: int = 8) -> bool:
+def _analysis_output_valid(
+    content: str,
+    frame_count: int = 8,
+    *,
+    contract_version: str = "tensile-vlm/v2",
+) -> bool:
     try:
         raw = json.loads(content)
     except (json.JSONDecodeError, TypeError, ValueError):
+        return False
+    if contract_version == "tensile-vlm/v4.1":
+        try:
+            canonicalize_v4_1_labels(raw)
+        except (TypeError, ValueError):
+            return False
+        return True
+    if contract_version != "tensile-vlm/v2":
         return False
     if not isinstance(raw, dict) or set(raw) != {
         "has_fracture",
@@ -253,7 +276,12 @@ def _install_mm_shape_diagnostics(chat_model: Any, capture: Any) -> None:
     plugin._get_video_sample_indices = wrapped_get_video_sample_indices
 
 
-def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
+def create_integrated_app(
+    chat_model: Any,
+    startup_config: dict[str, Any],
+    *,
+    contract: dict[str, Any] | None = None,
+):
     os.environ["API_VERBOSE"] = "0"
     try:
         import asyncio
@@ -265,8 +293,8 @@ def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
         raise RuntimeError("LLaMA-Factory and fastapi are required for the integrated service") from exc
 
     config = _validate_startup_config(startup_config)
-    contract = load_production_contract()
-    deployment = _deployment_snapshot(config)
+    contract = contract or load_production_contract()
+    deployment = _deployment_snapshot(config, contract)
     processor = chat_model.engine.processor
     capture = configure_loaded_processor(processor, capture=True)
     assert capture is not None
@@ -329,7 +357,10 @@ def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
                     response = await create_chat_completion_response(request, chat_model)
                     actual = capture.last_capture
                     content = _assistant_content(response)
-                    if mode == "evidence" or _analysis_output_valid(content):
+                    if mode == "evidence" or _analysis_output_valid(
+                        content,
+                        contract_version=str(contract["contract_version"]),
+                    ):
                         break
                     previous_output = content
             if response is None or actual is None:
@@ -338,7 +369,12 @@ def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
                 {"index": frame["index"], "timestamp": frame["timestamp"]}
                 for frame in actual["frames"]
             ]
-            wrapped = wrap_response(response.model_dump(mode="json"), frames, deployment)
+            wrapped = wrap_response(
+                response.model_dump(mode="json"),
+                frames,
+                deployment,
+                contract=contract,
+            )
             wrapped["preprocessing"]["tensor_digest"] = actual["tensor_digest"]
             wrapped["preprocessing"]["tensor_shape"] = actual["tensor_shape"]
             return wrapped
@@ -368,9 +404,14 @@ def create_integrated_app(chat_model: Any, startup_config: dict[str, Any]):
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Integrated MiniCPM tensile-vlm/v2 service")
+    parser = argparse.ArgumentParser(description="Integrated MiniCPM tensile VLM service")
     parser.add_argument("--model", required=True)
     parser.add_argument("--deployment-manifest", type=Path, required=True)
+    parser.add_argument(
+        "--contract-version",
+        choices=("tensile-vlm/v2", "tensile-vlm/v4.1"),
+        default="tensile-vlm/v2",
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8001)
     return parser.parse_args()
@@ -387,7 +428,12 @@ def main() -> int:
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("LLaMA-Factory and uvicorn are required") from exc
     chat_model = ChatModel(_chat_model_args(args.model))
-    app = create_integrated_app(chat_model, startup_config)
+    contract = (
+        load_v4_1_production_contract()
+        if args.contract_version == "tensile-vlm/v4.1"
+        else load_production_contract()
+    )
+    app = create_integrated_app(chat_model, startup_config, contract=contract)
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
 

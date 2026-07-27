@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from pipeline.production_contract import load_production_contract, production_contract_hash
+from pipeline.v4_1_production_contract import load_v4_1_production_contract
 
 
 def build_analysis_payload(video_bytes: bytes, contract: dict[str, Any]) -> dict[str, Any]:
@@ -65,9 +66,12 @@ def _request_json(
     return parsed
 
 
-def validate_preflight(preflight: dict[str, Any]) -> None:
-    contract = load_production_contract()
-    expected_hash = production_contract_hash()
+def validate_preflight(
+    preflight: dict[str, Any],
+    contract: dict[str, Any] | None = None,
+) -> None:
+    contract = contract or load_production_contract()
+    expected_hash = str(contract["contract_hash"])
     if preflight.get("contract_version") != contract["contract_version"]:
         raise RuntimeError("preflight contract_version does not match the local artifact")
     if preflight.get("contract_hash") != expected_hash:
@@ -81,7 +85,11 @@ def validate_preflight(preflight: dict[str, Any]) -> None:
         raise RuntimeError("deployment contract_hash does not match")
 
 
-def validate_analysis_response(response: dict[str, Any]) -> None:
+def validate_analysis_response(
+    response: dict[str, Any],
+    contract: dict[str, Any] | None = None,
+) -> None:
+    contract = contract or load_production_contract()
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
         raise RuntimeError("analysis response has no choices")
@@ -92,7 +100,10 @@ def validate_analysis_response(response: dict[str, Any]) -> None:
     if not isinstance(frames, list) or not 1 <= len(frames) <= 8:
         raise RuntimeError("analysis response has an invalid frame table")
     deployment = preprocessing.get("deployment_manifest")
-    if not isinstance(deployment, dict) or deployment.get("contract_hash") != production_contract_hash():
+    if (
+        not isinstance(deployment, dict)
+        or deployment.get("contract_hash") != contract["contract_hash"]
+    ):
         raise RuntimeError("analysis response deployment identity drifted")
 
 
@@ -101,6 +112,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--base-url", default="http://127.0.0.1:8001")
     parser.add_argument("--video", type=Path, required=True)
     parser.add_argument("--api-key-env", default="API_KEY")
+    parser.add_argument(
+        "--contract-version",
+        choices=("tensile-vlm/v2", "tensile-vlm/v4.1"),
+        default="tensile-vlm/v2",
+    )
     parser.add_argument("--timeout", type=float, default=300.0)
     return parser.parse_args()
 
@@ -111,21 +127,25 @@ def main() -> int:
         raise SystemExit(f"video does not exist: {args.video}")
     base_url = args.base_url.rstrip("/")
     api_key = os.getenv(args.api_key_env) or None
-    contract = load_production_contract()
+    contract = (
+        load_v4_1_production_contract()
+        if args.contract_version == "tensile-vlm/v4.1"
+        else load_production_contract()
+    )
 
     preflight = _request_json(
         f"{base_url}/v1/tensile/contract",
         api_key=api_key,
         timeout=args.timeout,
     )
-    validate_preflight(preflight)
+    validate_preflight(preflight, contract)
     response = _request_json(
         f"{base_url}/v1/chat/completions",
         api_key=api_key,
         payload=build_analysis_payload(args.video.read_bytes(), contract),
         timeout=args.timeout,
     )
-    validate_analysis_response(response)
+    validate_analysis_response(response, contract)
 
     summary = {
         "preflight": {

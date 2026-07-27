@@ -60,6 +60,8 @@ def wrap_response(
     raw_response: dict[str, Any],
     video_frames: list[dict[str, Any]],
     deployment_snapshot: dict[str, Any],
+    *,
+    contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Inject a ``preprocessing`` metadata block into an OpenAI-compatible
     ``ChatCompletion`` response.
@@ -97,10 +99,15 @@ def wrap_response(
     )
     if invalid_deployment:
         raise ValueError("deployment_snapshot has invalid fields: " + ", ".join(invalid_deployment))
-    contract = load_production_contract()
+    contract = contract or load_production_contract()
     if deployment_snapshot["contract_version"] != contract["contract_version"]:
         raise ValueError("contract_version does not match the production contract")
-    if deployment_snapshot["contract_hash"] != production_contract_hash():
+    expected_hash = (
+        production_contract_hash()
+        if contract["contract_version"] == "tensile-vlm/v2"
+        else contract.get("contract_hash")
+    )
+    if deployment_snapshot["contract_hash"] != expected_hash:
         raise ValueError("contract_hash does not match the production contract")
     if not isinstance(video_frames, list) or not 1 <= len(video_frames) <= 8:
         raise ValueError("video_frames must contain between 1 and 8 actual frames")
