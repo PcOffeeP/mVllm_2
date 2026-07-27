@@ -1,0 +1,64 @@
+{
+  "schema_version": "tensile-vlm-v4.1-stage-b-canary-failure-summary/v1",
+  "status": "failed_development_gate",
+  "stage_c_authorized": false,
+  "sealed_labels_read": false,
+  "run_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+  "seed": 3407,
+  "training": {
+    "global_step": 1125,
+    "visual_weight_count": 324,
+    "resampler_weight_count": 13,
+    "training_run_manifest_sha256": "1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5"
+  },
+  "evaluation": {
+    "sample_count": 425,
+    "records_sha256": "4c8ea6c3bc77bc9aa05681d8f7033cacd72da541209750ffdc8b2959ced715a5",
+    "strict_valid_rate": 0.995294,
+    "runtime_failure_count": 0,
+    "fracture_three_state_macro_recall": 0.302211,
+    "four_state_macro_recall": 0.395506,
+    "已断裂_recall": 0.151515,
+    "未断裂_recall": 0.675393,
+    "joint_correct_rate": 0.4
+  },
+  "gate_report": {
+    "sha256": "f7b1ae6c41c85ab3e9ae01b87c8a78349bec255ac639254640526232b3655a71",
+    "passed": false,
+    "failed_absolute_gates": [
+      "fracture_three_state_macro_recall",
+      "four_state_macro_recall",
+      "已断裂_recall",
+      "未断裂_recall",
+      "joint_correct_rate",
+      "strict_valid_rate"
+    ],
+    "leave_one_source_out": {
+      "passed": false,
+      "minimum_retention": -1.820156,
+      "failed_sources": [
+        "video_0044",
+        "video_0046",
+        "video_0081",
+        "video_0092"
+      ]
+    }
+  },
+  "development_only_attribution": {
+    "coverage_first_effect": "The shared coverage-first multiset reduced seed-order sampling variance but did not satisfy the fixed absolute or LOSO gates.",
+    "strict_invalid_outputs": [
+      {
+        "candidate_id": "video_0009_v3_post_f005668-005767",
+        "invalid_fracture_mechanism": "沿界面断裂"
+      },
+      {
+        "candidate_id": "video_0076_v3_post_f005447-005529",
+        "invalid_fracture_mechanism": "沿长度方向开裂"
+      }
+    ],
+    "next_single_variable": "Clarify the frozen analysis instruction with the complete legal fracture_mechanism and fracture_site vocabularies and an explicit temporal clip_state decision order, while preserving the release, coverage-first candidate multiset, thresholds, model, optimizer, LoRA, generation settings, and source/signature caps."
+  },
+  "next_action": "development_only_prompt_clarification_canary_seed3407"
+}
