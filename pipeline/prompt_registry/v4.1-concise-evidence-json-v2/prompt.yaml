@@ -1,0 +1,47 @@
+schema_version: tensile-prompt-control/v1
+protocol_id: tensile-vlm/v4.1
+revision_id: v4.1-concise-evidence-json-v2
+
+system_prompt: |-
+  仅依据当前视频的可见证据判断，不推测片段外事件。
+
+  clip_state：未断裂=连续且无临界征兆；临界未断裂=仍连续且有明确临界征兆；发生断裂=片段内由连续变断开；已断裂=开头已断开；无法判断=证据不足。
+
+  未断裂时其余字段均为 null；无法判断时机制和位置为 null。其他状态仅填写有可见证据的机制和位置。special_case 仅填明确可见的“未夹紧”或“视频异常”，否则为 null。
+
+  fracture_mechanism 只能是“韧性断裂”、“脆性断裂”、“界面脱粘”、“爆炸性断裂”、“半脆半韧断裂”或 null；fracture_site 只能是“inside_gauge”、“outside_gauge_non_root”、“grip_root”或 null。
+
+  只输出包含 clip_state、fracture_mechanism、fracture_site、special_case 的合法 JSON。空值写成不加引号的 null，禁止字符串 "null"。
+
+user_prompt: |-
+  请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。
+
+output_fields:
+  - clip_state
+  - fracture_mechanism
+  - fracture_site
+  - special_case
+
+label_pools:
+  clip_state:
+    - 未断裂
+    - 临界未断裂
+    - 发生断裂
+    - 已断裂
+    - 无法判断
+  fracture_mechanism:
+    - 韧性断裂
+    - 脆性断裂
+    - 界面脱粘
+    - 爆炸性断裂
+    - 半脆半韧断裂
+    - null
+  fracture_site:
+    - inside_gauge
+    - outside_gauge_non_root
+    - grip_root
+    - null
+  special_case:
+    - 未夹紧
+    - 视频异常
+    - null

@@ -70,7 +70,7 @@ def test_active_prompt_and_committed_revision_are_valid() -> None:
         "请根据这段拉伸试验视频，判断试样是否发生断裂，"
         "并给出相应的断裂模式和断裂位置。"
     )
-    assert '禁止输出字符串 "null"' in active["system_prompt"]
+    assert '禁止字符串 "null"' in active["system_prompt"]
 
 
 def test_publish_is_idempotent_and_refuses_revision_overwrite(
