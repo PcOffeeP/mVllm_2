@@ -1,5 +1,5 @@
 id: v4.1-prompt-minimal-v1-seed3411
-status: prepared
+status: training
 purpose: 验证简化决策指令是否降低标签偏置
 baseline: v4.1-coverage-first-seed3411
 change:
