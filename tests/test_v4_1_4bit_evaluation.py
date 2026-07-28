@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-import finetune.run_v4_1_visual_4bit_evaluation as four_bit_runner
+import finetune.archive.run_v4_1_visual_4bit_evaluation as four_bit_runner
 from finetune.run_v4_1_evaluation import _run_identity
-from finetune.run_v4_1_visual_4bit_evaluation import compare_record_sets
+from finetune.archive.run_v4_1_visual_4bit_evaluation import compare_record_sets
 from finetune.validation.model_runtime import (
     FOUR_BIT_ADAPTER_INFERENCE_PRECISION,
     FOUR_BIT_INFERENCE_PRECISION,

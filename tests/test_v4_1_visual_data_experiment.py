@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.build_v4_1_visual_data_experiment import (
+from finetune.archive.build_v4_1_visual_data_experiment import (
     ROOT,
     VisualDataExperimentError,
     build_experimental_dataset,

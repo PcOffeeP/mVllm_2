@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from finetune.freeze_v4_1_evidence import _invalid_analysis, _summarize_records
+from finetune.archive.freeze_v4_1_evidence import _invalid_analysis, _summarize_records
 
 
 def _record(

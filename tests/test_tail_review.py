@@ -5,8 +5,8 @@ import sys
 
 import pytest
 
-from pipeline.scripts import prune_reviewed_subvideos, repair_review_media
-from pipeline.scripts import review_subvideo_labels as review_labels_module
+from pipeline.scripts.archive import prune_reviewed_subvideos, repair_review_media
+from pipeline.scripts.archive import review_subvideo_labels as review_labels_module
 
 
 def _write_meta(path, payload):

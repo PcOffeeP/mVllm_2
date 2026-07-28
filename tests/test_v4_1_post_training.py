@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from finetune.run_v4_1_post_training import Fold, _evaluation_complete
-from finetune.run_v4_1_visual_three_fold import (
+from finetune.archive.run_v4_1_post_training import Fold, _evaluation_complete
+from finetune.archive.run_v4_1_visual_three_fold import (
     Fold as VisualFold,
     _evaluation_complete as visual_evaluation_complete,
 )

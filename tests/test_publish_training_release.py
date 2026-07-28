@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pipeline.scripts.publish_training_release import (
+from pipeline.scripts.archive.publish_training_release import (
     ReleaseError,
     activate_release,
     derive_release_id,

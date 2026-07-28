@@ -1,6 +1,6 @@
 import pytest
 
-from finetune.build_v4_1_crossval_coverage_first import build_fold, freeze_source_folds
+from finetune.archive.build_v4_1_crossval_coverage_first import build_fold, freeze_source_folds
 
 
 def sample():

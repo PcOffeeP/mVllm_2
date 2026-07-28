@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from pipeline.scripts import prune_reviewed_subvideos as prune
+from pipeline.scripts.archive import prune_reviewed_subvideos as prune
 
 
 def _write_meta(path: Path, payload: object) -> None:

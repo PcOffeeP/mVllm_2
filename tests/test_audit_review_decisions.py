@@ -2,7 +2,7 @@ import csv
 import json
 from pathlib import Path
 
-from pipeline.scripts.audit_review_decisions import audit_review_decisions
+from pipeline.scripts.archive.audit_review_decisions import audit_review_decisions
 
 
 def _write_json(path: Path, data: object) -> None:

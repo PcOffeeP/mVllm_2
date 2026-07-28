@@ -120,7 +120,7 @@ resampler”；该路线是独立模型变体，不能继承 BF16 验收结论�
 三个 adapter、三个 merged 模型和 processor/config 生成完整 SHA-256 索引：
 
 ```bash
-python finetune/freeze_v4_1_evidence.py \
+python finetune/archive/freeze_v4_1_evidence.py \
   --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
   --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \
   --release-manifest workspace/data/releases/v4.1.0-760050fad303/manifest/release_manifest.json \
@@ -139,8 +139,8 @@ python finetune/freeze_v4_1_evidence.py \
 从仓库根目录执行：
 
 ```bash
-python finetune/run_v4_1_three_fold_training.py --validate-only
-python finetune/run_v4_1_three_fold_training.py
+python finetune/archive/run_v4_1_three_fold_training.py --validate-only
+python finetune/archive/run_v4_1_three_fold_training.py
 ```
 
 预检会验证：
@@ -175,8 +175,8 @@ python finetune/run_v4_1_three_fold_training.py
 训练完成后运行：
 
 ```bash
-python finetune/run_v4_1_post_training.py --validate-only
-python finetune/run_v4_1_post_training.py
+python finetune/archive/run_v4_1_post_training.py --validate-only
+python finetune/archive/run_v4_1_post_training.py
 ```
 
 流水线先合并三个 LoRA，再分别使用对应 fold 的 validation 数据进行严格 V4.1 推理。

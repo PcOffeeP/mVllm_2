@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from pipeline.scripts import freeze_data_version
+from pipeline.scripts.archive import freeze_data_version
 
 
 def test_freeze_cli_defaults_to_label_reviewed_meta(tmp_path, monkeypatch):

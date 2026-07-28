@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.accept_v4_1_intermediate_model import (
+from finetune.archive.accept_v4_1_intermediate_model import (
     IntermediateAcceptanceError,
     build_acceptance,
 )

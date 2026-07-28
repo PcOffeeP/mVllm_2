@@ -11,8 +11,8 @@ from pipeline.preprocessing.minicpm_preprocessor import (
     MiniCPMVideoPreprocessor,
     _resolve_model_path,
 )
-from pipeline.scripts import subvideo_builder
-from pipeline.scripts.training_sample_builder import (
+from pipeline.scripts.archive import subvideo_builder
+from pipeline.scripts.archive.training_sample_builder import (
     build_all,
     build_split_samples,
     convert_subvideo_to_sample,
@@ -385,7 +385,7 @@ def test_full_subvideo_materialized_to_03_subvideos(monkeypatch, tmp_path: Path)
 
 
 def test_label_review_contract_detects_frame_count_mismatch(tmp_path: Path, monkeypatch) -> None:
-    from pipeline.scripts.review_subvideo_labels import review_subvideo_labels
+    from pipeline.scripts.archive.review_subvideo_labels import review_subvideo_labels
 
     subvideo_id = "contract_check"
     data_dir = tmp_path / "data"
@@ -440,7 +440,7 @@ def test_label_review_contract_detects_frame_count_mismatch(tmp_path: Path, monk
 
 
 def test_label_review_fails_empty_actual_frame_mapping(tmp_path: Path) -> None:
-    from pipeline.scripts.review_subvideo_labels import review_subvideo_labels
+    from pipeline.scripts.archive.review_subvideo_labels import review_subvideo_labels
 
     subvideo_id = "empty_mapping"
     data_dir = tmp_path / "data"

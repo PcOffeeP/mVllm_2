@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from finetune.v4_1_source_aware_3k_coverage_first import (
+from finetune.archive.v4_1_source_aware_3k_coverage_first import (
     CONFIG_ROOT,
     RUN_ID,
     SAMPLING_ID,
@@ -58,7 +58,7 @@ def test_coverage_first_run_manifest_binds_configs_and_single_change() -> None:
 
 
 def test_coverage_first_runner_entrypoints_execute_directly() -> None:
-    root = Path(__file__).resolve().parents[1] / "finetune"
+    root = Path(__file__).resolve().parents[1] / "finetune" / "archive"
     for name in (
         "run_v4_1_source_aware_3k_coverage_first.py",
         "monitor_v4_1_source_aware_3k_coverage_first.py",
@@ -79,7 +79,7 @@ def test_coverage_first_runner_entrypoints_execute_directly() -> None:
 
 def test_coverage_first_configures_derived_state_path() -> None:
     code = (
-        "from finetune.v4_1_source_aware_3k_coverage_first "
+        "from finetune.archive.v4_1_source_aware_3k_coverage_first "
         "import configure_runner; "
         "r=configure_runner(); "
         "print(r.STATE_PATH); print(r.LOG_ROOT / 'state.json')"

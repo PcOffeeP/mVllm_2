@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.v4_1_manifest_runtime import ManifestRuntimeError, atomic_json, launch_singleton, sha256_file
+from finetune.archive.v4_1_manifest_runtime import ManifestRuntimeError, atomic_json, launch_singleton, sha256_file
 
 
 def manifest(tmp_path: Path) -> Path:

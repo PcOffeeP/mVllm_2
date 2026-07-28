@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pipeline.scripts.review_v3_candidates_app import (
+from pipeline.scripts.archive.review_v3_candidates_app import (
     filter_candidate_ids,
     next_unreviewed_id,
     review_counts,
@@ -241,7 +241,7 @@ def test_corrected_must_differ_and_drop_requires_notes(tmp_path):
 def test_streamlit_entrypoint_bootstraps_project_imports_from_other_cwd(tmp_path):
     script = (
         Path(__file__).resolve().parents[1]
-        / "pipeline/scripts/review_v3_candidates_app.py"
+        / "pipeline/scripts/archive/review_v3_candidates_app.py"
     )
     result = subprocess.run(
         [sys.executable, str(script), "--help"],

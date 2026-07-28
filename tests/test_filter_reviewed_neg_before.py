@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from pipeline.scripts.filter_reviewed_neg_before import (
+from pipeline.scripts.archive.filter_reviewed_neg_before import (
     OUTPUT_META_DEFAULT,
     _find_brittle_missing_source_video,
     filter_subvideos,

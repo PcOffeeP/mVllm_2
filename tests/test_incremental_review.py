@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from pipeline.scripts import merge_incremental_review_decisions as merge
-from pipeline.scripts import materialize_incremental_review_media as materialize
-from pipeline.scripts import append_incremental_failure_drops as failure_drops
-from pipeline.scripts import prepare_incremental_review_queue as queue
-from pipeline.scripts import review_subvideos_app as app
+from pipeline.scripts.archive import merge_incremental_review_decisions as merge
+from pipeline.scripts.archive import materialize_incremental_review_media as materialize
+from pipeline.scripts.archive import append_incremental_failure_drops as failure_drops
+from pipeline.scripts.archive import prepare_incremental_review_queue as queue
+from pipeline.scripts.archive import review_subvideos_app as app
 
 
 def _write(path: Path, data: object) -> None:

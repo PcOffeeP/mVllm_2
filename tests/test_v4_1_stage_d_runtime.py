@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.v4_1_stage_d_runtime import (
+from finetune.archive.v4_1_stage_d_runtime import (
     AUTHORIZATION_SCHEMA_VERSION,
     DEFAULT_THRESHOLDS,
     PREPARATION_SCHEMA_VERSION,

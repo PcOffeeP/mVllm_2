@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-import finetune.run_v4_1_source_aware_3k as runner
+import finetune.archive.run_v4_1_source_aware_3k as runner
 from pipeline.current_data import current_data_paths
 
 

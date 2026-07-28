@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.freeze_v4_1_source_aware_3k_evidence import (
+from finetune.archive.freeze_v4_1_source_aware_3k_evidence import (
     StageBEvidenceError,
     _verify_gate_report,
     _verify_trainer_state,

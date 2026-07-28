@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pipeline.scripts import subvideo_builder as builder
+from pipeline.scripts.archive import subvideo_builder as builder
 
 VIDEO_META_DEFAULT = ROOT / "data" / "07_metadata" / "video_meta.json"
 SPLITS_DIR_DEFAULT = ROOT / "data" / "05_splits"

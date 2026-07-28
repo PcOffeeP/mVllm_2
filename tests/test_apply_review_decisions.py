@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "pipeline" / "scripts"
+SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "pipeline" / "scripts" / "archive"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import apply_label_corrections as alc

@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from pipeline.scripts import quality_check
+from pipeline.scripts.archive import quality_check
 
 
 def _write_meta(path: Path, payload: object) -> None:

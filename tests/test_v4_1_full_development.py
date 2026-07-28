@@ -1,4 +1,4 @@
-from finetune.build_v4_1_full_development import build_full_development
+from finetune.archive.build_v4_1_full_development import build_full_development
 
 
 def test_full_development_covers_every_candidate_once_before_repeats():

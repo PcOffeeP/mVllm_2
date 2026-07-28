@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-import finetune.monitor_v4_1_source_aware_3k as monitor
+import finetune.archive.monitor_v4_1_source_aware_3k as monitor
 
 
 def _write_log(root: Path, rows: list[dict]) -> None:

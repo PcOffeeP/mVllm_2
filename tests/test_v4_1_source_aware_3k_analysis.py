@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from finetune.analyze_v4_1_source_aware_3k import (
+from finetune.archive.analyze_v4_1_source_aware_3k import (
     _absolute_gate_results,
     _loso_analysis,
     _primary_improvement,

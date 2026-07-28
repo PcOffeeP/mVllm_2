@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from finetune.run_v4_1_visual_three_fold import (
+from finetune.archive.run_v4_1_visual_three_fold import (
     FOLDS as VISUAL_FOLDS,
 )
 from finetune.v4_1_runtime import (

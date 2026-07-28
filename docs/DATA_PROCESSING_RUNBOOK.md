@@ -328,11 +328,11 @@ python finetune/validate_v4_1_release.py \
 ## 第六步：三折训练与任务效果验收
 
 ```bash
-python finetune/run_v4_1_three_fold_training.py --validate-only
-python finetune/run_v4_1_three_fold_training.py
+python finetune/archive/run_v4_1_three_fold_training.py --validate-only
+python finetune/archive/run_v4_1_three_fold_training.py
 
-python finetune/run_v4_1_post_training.py --validate-only
-python finetune/run_v4_1_post_training.py
+python finetune/archive/run_v4_1_post_training.py --validate-only
+python finetune/archive/run_v4_1_post_training.py
 ```
 
 详细说明和产物路径见 [V4.1 微调、合并与评测](../finetune/README.md)。

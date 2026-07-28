@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from finetune.authorize_v4_1_stage_c import (
+from finetune.archive.authorize_v4_1_stage_c import (
     StageCAuthorizationError,
     _write_immutable,
     build_authorization,
 )
-from finetune.run_v4_1_source_aware_3k import (
+from finetune.archive.run_v4_1_source_aware_3k import (
     RELEASE_ID,
     RUN_ID,
     SAMPLING_ID,

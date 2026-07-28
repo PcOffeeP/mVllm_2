@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from finetune.prepare_v4_1_full_development_deployment import main
+from finetune.archive.prepare_v4_1_full_development_deployment import main
 
 
 def test_component_has_only_allowed_capability(tmp_path: Path):

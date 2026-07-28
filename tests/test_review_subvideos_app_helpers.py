@@ -6,7 +6,7 @@ They do not require a running Streamlit app.
 
 from __future__ import annotations
 
-from pipeline.scripts import review_subvideos_app as app
+from pipeline.scripts.archive import review_subvideos_app as app
 
 
 def _make_subvideo(

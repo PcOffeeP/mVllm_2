@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from finetune.v4_1_manifest_runtime import atomic_json, monitor, sha256_file
+from finetune.archive.v4_1_manifest_runtime import atomic_json, monitor, sha256_file
 
 
 def test_full_training_has_fixed_step_contract(tmp_path: Path):

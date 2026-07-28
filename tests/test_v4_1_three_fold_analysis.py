@@ -1,4 +1,4 @@
-from finetune.analyze_v4_1_three_fold import analyze
+from finetune.archive.analyze_v4_1_three_fold import analyze
 
 
 def test_absolute_metrics_do_not_gate_integrity():

@@ -182,7 +182,7 @@ python pipeline/scripts/build_v4_1_training_release.py
 既有运行的入口如下：
 
 ```bash
-python finetune/freeze_v4_1_evidence.py \
+python finetune/archive/freeze_v4_1_evidence.py \
   --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
   --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \
   --release-manifest workspace/data/releases/v4.1.0-760050fad303/manifest/release_manifest.json \

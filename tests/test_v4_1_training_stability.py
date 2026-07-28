@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.analyze_v4_1_training_stability import StabilityError, compare_pair, final_disposition
+from finetune.archive.analyze_v4_1_training_stability import StabilityError, compare_pair, final_disposition
 
 
 POLICY = {
