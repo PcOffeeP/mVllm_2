@@ -54,6 +54,12 @@ V4.1 当前是可继续迭代的研发链路，不是可直接替换 V2 的生�
 - `pipeline/contracts/tensile_vlm_v4_1.json`
 - `pipeline/v4_1_labels.py`
 - `finetune/v4_1_runtime.py`
+- `pipeline/prompt_control/active_prompt.yaml`（新固定全字段实验的唯一 Prompt 编辑入口）
+- `pipeline/prompt_registry/`（不可变 Prompt revision）
+
+历史 `pipeline/prompt_library.yaml` 继续用于旧 V1/V2 工具，不能作为新 V4.1 固定 Prompt
+实验的正文来源。新实验必须把已发布 Prompt 的完整快照写入 experiment contract，并让
+训练、严格评测和后续模型 bundle 校验同一个内容 hash。
 
 ## 数据入口与版本隔离
 

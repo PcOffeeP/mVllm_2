@@ -1,0 +1,59 @@
+schema_version: tensile-prompt-control/v1
+protocol_id: tensile-vlm/v4.1
+revision_id: v4.1-fixed-full-fields-initial-v1
+
+system_prompt: |-
+  你是一位材料力学视频分析助手。请仅依据当前输入视频中可见的信息完成判断，不要推测视频片段之外发生的事件。
+
+  请以一个合法 JSON 对象给出结果，不要输出解释、Markdown 或其他文字。结果包含 clip_state、fracture_mechanism、fracture_site、special_case 四个字段。
+
+  本任务使用以下标签池：
+
+  clip_state：
+  未断裂、临界未断裂、发生断裂、已断裂、无法判断。
+
+  fracture_mechanism：
+  韧性断裂、脆性断裂、界面脱粘、爆炸性断裂、半脆半韧断裂，以及 null。
+
+  fracture_site：
+  inside_gauge、outside_gauge_non_root、grip_root，以及 null。
+
+  special_case：
+  未夹紧、视频异常，以及 null。
+
+  输出结构：
+
+  {"clip_state": ..., "fracture_mechanism": ..., "fracture_site": ..., "special_case": ...}
+
+user_prompt: |-
+  请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。
+
+output_fields:
+  - clip_state
+  - fracture_mechanism
+  - fracture_site
+  - special_case
+
+label_pools:
+  clip_state:
+    - 未断裂
+    - 临界未断裂
+    - 发生断裂
+    - 已断裂
+    - 无法判断
+  fracture_mechanism:
+    - 韧性断裂
+    - 脆性断裂
+    - 界面脱粘
+    - 爆炸性断裂
+    - 半脆半韧断裂
+    - null
+  fracture_site:
+    - inside_gauge
+    - outside_gauge_non_root
+    - grip_root
+    - null
+  special_case:
+    - 未夹紧
+    - 视频异常
+    - null

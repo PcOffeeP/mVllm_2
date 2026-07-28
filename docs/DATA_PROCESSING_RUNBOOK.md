@@ -356,6 +356,24 @@ python finetune/run_v4_1_post_training.py
 视觉证据和未覆盖的 `无法判断 / 未夹紧 / 视频异常`，再执行 source-aware fold0
 学习曲线；未通过门槛前不得迁移服务或 TensileAgent。
 
+### 固定 Prompt 对照
+
+固定全字段 Prompt 对照不得修改 development release、seed3411 视频多重集、顺序、标签
+或 LoRA 超参数。先运行 Prompt 发布，再在训练机生成派生 bundle 和冻结 run manifest：
+
+```bash
+python -m pipeline.prompt_control validate \
+  --source pipeline/prompt_control/active_prompt.yaml
+python -m pipeline.prompt_control publish \
+  --source pipeline/prompt_control/active_prompt.yaml
+python finetune/build_v4_1_fixed_prompt_dataset.py
+python finetune/prepare_v4_1_fixed_prompt_run.py --bundle-dir <fixed_prompt_bundle>
+```
+
+训练、合并、评测命令以生成的 `run_manifest.json` 为准。严格评测必须传入该 bundle 内的
+`experiment_contract.json`；Prompt、release、sampling 或 schema 任一 hash 不一致时
+停止运行，不能回退到 `prompt_library.yaml`、仓库当前 contract Prompt 或临时 overlay。
+
 ## 失败恢复
 
 - 数据根检查失败：修复路径或 marker，不要用软链接把 current 指向 archive。

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol_id",
+    "revision_id",
+    "system_prompt",
+    "user_prompt",
+    "output_fields",
+    "label_pools"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tensile-prompt-control/v1"
+    },
+    "protocol_id": {
+      "const": "tensile-vlm/v4.1"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+    },
+    "system_prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "user_prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "output_fields": {
+      "const": [
+        "clip_state",
+        "fracture_mechanism",
+        "fracture_site",
+        "special_case"
+      ]
+    },
+    "label_pools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clip_state",
+        "fracture_mechanism",
+        "fracture_site",
+        "special_case"
+      ],
+      "properties": {
+        "clip_state": {
+          "type": "array",
+          "minItems": 5,
+          "uniqueItems": true
+        },
+        "fracture_mechanism": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true
+        },
+        "fracture_site": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true
+        },
+        "special_case": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

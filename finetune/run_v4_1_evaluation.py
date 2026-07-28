@@ -30,6 +30,8 @@ from finetune.validation.model_runtime import (
     run_model_on_video_detailed,
 )
 from pipeline.current_data import current_data_paths
+from pipeline.prompt_control import load_experiment_contract
+from pipeline.prompt_control.core import PromptControlError, sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "pipeline/contracts/tensile_vlm_v4_1.json"
@@ -47,7 +49,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--quantization-bit", type=int, choices=(4,))
     parser.add_argument("--adapter-dir", type=Path)
     parser.add_argument("--release-id", default=RELEASE_ID)
-    parser.add_argument("--analysis-prompt-overlay", type=Path)
+    prompt_group = parser.add_mutually_exclusive_group()
+    prompt_group.add_argument(
+        "--experiment-contract",
+        type=Path,
+        help="新 V4.1 实验必须使用的自包含 Prompt contract",
+    )
+    prompt_group.add_argument(
+        "--analysis-prompt-overlay",
+        type=Path,
+        help="仅用于复现历史 overlay 实验；新实验禁止使用",
+    )
     return parser.parse_args()
 
 
@@ -65,6 +77,8 @@ def _sha256(path: Path) -> str:
 
 def _load_contract(
     prompt_overlay_path: Path | None = None,
+    *,
+    experiment_contract_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     contract = _read_json(CONTRACT_PATH)
     normalized = dict(contract) if isinstance(contract, Mapping) else {}
@@ -87,6 +101,34 @@ def _load_contract(
     analysis = contract.get("analysis")
     if not isinstance(analysis, Mapping):
         raise RuntimeError("V4.1 contract analysis section is missing")
+    if prompt_overlay_path is not None and experiment_contract_path is not None:
+        raise RuntimeError("Prompt overlay 与 experiment contract 不能同时使用")
+    if experiment_contract_path is not None:
+        try:
+            experiment = load_experiment_contract(experiment_contract_path)
+        except PromptControlError as exc:
+            raise RuntimeError(str(exc)) from exc
+        if experiment.get("generation") != analysis.get("generation"):
+            raise RuntimeError("experiment contract generation 与 V4.1 contract 不一致")
+        prompt = experiment["prompt"]
+        revised = dict(contract)
+        revised["analysis"] = {
+            **dict(analysis),
+            "system_prompt": prompt["system_prompt"],
+            "user_prompt": prompt["user_prompt"],
+        }
+        identity = {
+            "schema_version": experiment["schema_version"],
+            "path": str(Path(experiment_contract_path).resolve()),
+            "file_sha256": sha256_file(Path(experiment_contract_path)),
+            "experiment_contract_sha256": experiment[
+                "experiment_contract_sha256"
+            ],
+            "prompt_revision_id": prompt["revision_id"],
+            "prompt_manifest_sha256": prompt["prompt_manifest_sha256"],
+            "prompt_content_sha256": prompt["prompt_content_sha256"],
+        }
+        return revised, identity
     if prompt_overlay_path is None:
         return contract, None
     overlay = _read_json(prompt_overlay_path)
@@ -164,6 +206,7 @@ def _run_identity(
     quantization_bit: int | None = None,
     adapter_dir: Path | None = None,
     prompt_overlay_identity: Mapping[str, Any] | None = None,
+    experiment_contract_identity: Mapping[str, Any] | None = None,
     contract_hash: str = RUNTIME_CONTRACT_HASH,
 ) -> dict[str, Any]:
     identity = {
@@ -179,6 +222,8 @@ def _run_identity(
         identity["adapter_dir"] = str(adapter_dir.resolve())
     if prompt_overlay_identity is not None:
         identity["analysis_prompt_overlay"] = dict(prompt_overlay_identity)
+    if experiment_contract_identity is not None:
+        identity["experiment_contract"] = dict(experiment_contract_identity)
     if quantization_bit is not None:
         identity["inference_precision"] = (
             FOUR_BIT_ADAPTER_INFERENCE_PRECISION
@@ -362,8 +407,9 @@ def main() -> int:
         verify_media=True,
         release_id=args.release_id,
     )
-    contract, prompt_overlay_identity = _load_contract(
-        args.analysis_prompt_overlay
+    contract, prompt_identity = _load_contract(
+        args.analysis_prompt_overlay,
+        experiment_contract_path=args.experiment_contract,
     )
     samples = load_validation_samples(args.fold, release_id=args.release_id)
     if args.max_samples is not None:
@@ -377,7 +423,12 @@ def main() -> int:
         release_id=args.release_id,
         quantization_bit=args.quantization_bit,
         adapter_dir=args.adapter_dir,
-        prompt_overlay_identity=prompt_overlay_identity,
+        prompt_overlay_identity=(
+            prompt_identity if args.analysis_prompt_overlay is not None else None
+        ),
+        experiment_contract_identity=(
+            prompt_identity if args.experiment_contract is not None else None
+        ),
         contract_hash=str(contract["contract_hash"]),
     )
     records_path = _prepare_output(args.out_dir, identity)

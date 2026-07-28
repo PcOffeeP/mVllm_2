@@ -22,6 +22,61 @@ V4.1 不使用旧 `finetune/active_data_release.json`、旧
 `finetune/dataset_info.json` 或 V2 Prompt 作为活动指针。三个训练配置直接绑定冻结发布
 中的 `dataset_info.json`，避免 V2/V4.1 串线。
 
+## 固定全字段 Prompt 受控实验
+
+新 Prompt 研发链路只允许编辑：
+
+`pipeline/prompt_control/active_prompt.yaml`
+
+校验并发布不可变 revision：
+
+```bash
+python -m pipeline.prompt_control validate \
+  --source pipeline/prompt_control/active_prompt.yaml
+
+python -m pipeline.prompt_control publish \
+  --source pipeline/prompt_control/active_prompt.yaml
+```
+
+初版 revision 为 `v4.1-fixed-full-fields-initial-v1`。registry 中的 `prompt.yaml` 与
+`manifest.json` 不可覆盖；同 revision 内容变化会直接失败。
+
+在训练机上从冻结的 coverage-first sampling 生成 seed3411 Prompt 对照 bundle：
+
+```bash
+python finetune/build_v4_1_fixed_prompt_dataset.py
+```
+
+该命令校验 source sampling 的全部受管文件，只保留 seed3411 的视频多重集、顺序和四字段
+assistant 标签，并把完整 Prompt snapshot 写入 `experiment_contract.json`。随后冻结训练
+配置和 run manifest：
+
+```bash
+python finetune/prepare_v4_1_fixed_prompt_run.py \
+  --bundle-dir /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/fixed_prompt/<bundle_id>
+```
+
+准备器以现有 seed3411 coverage-first YAML 为基线，只允许修改 dataset、eval dataset、
+dataset directory、adapter output 和 merged output 路径。LoRA 超参数、seed、epoch 和
+optimizer steps 必须保持不变。生成的 `run_manifest.json` 会冻结训练 JSON、registry、
+release、sampling、Prompt、experiment contract、配置、基础模型路径和代码 commit 身份，
+并给出训练、合并和严格评测命令。
+
+严格评测必须显式使用同一个 experiment contract：
+
+```bash
+python -m finetune.run_v4_1_evaluation \
+  --fold 0 \
+  --release-id v4.1.0-ecb5aeb9657c \
+  --model-dir /path/to/seed3411_merged \
+  --out-dir finetune/results/<run>/seed3411/fold0 \
+  --experiment-contract /path/to/fixed_prompt_bundle/experiment_contract.json
+```
+
+`--analysis-prompt-overlay` 仅保留给历史实验复现，不能用于新的固定 Prompt 实验。生产服务
+和 TensileAgent 仍维持 V2；本链路只提供 V4.1 模型 bundle 的 fail-closed Prompt/schema
+身份校验，不授予生产切换权限。
+
 ## 环境
 
 ```bash
