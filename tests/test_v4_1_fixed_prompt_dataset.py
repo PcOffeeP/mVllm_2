@@ -185,6 +185,9 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
         "--experiment-contract",
         str(bundle / "experiment_contract.json"),
     ]
+    assert manifest["environment"]["PYTHONPATH"].endswith(
+        f"/LlamaFactory/src:{Path(__file__).resolve().parents[1]}"
+    )
     assert sha256_file(config_dir / "train_seed3411.yaml") == manifest[
         "train_config"
     ]["sha256"]

@@ -274,6 +274,12 @@ def prepare_fixed_prompt_run(
                 str(experiment_path),
             ],
         },
+        "environment": {
+            "WANDB_MODE": "offline",
+            "DOWNSAMPLE_MODE": "4x",
+            "DISABLE_VERSION_CHECK": "1",
+            "PYTHONPATH": f"{ROOT / 'LlamaFactory/src'}:{ROOT}",
+        },
     }
     files = {
         f"train_seed{SEED}.yaml": train_bytes,
