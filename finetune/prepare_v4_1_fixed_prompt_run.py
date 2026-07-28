@@ -185,6 +185,10 @@ def prepare_fixed_prompt_run(
     baseline_config_root: Path = DEFAULT_BASELINE_ROOT,
     project_root: Path = ROOT,
     training_code_commit: str | None = None,
+    purpose: str = "验证简化决策指令是否降低标签偏置",
+    baseline: str = "v4.1-coverage-first-seed3411",
+    change_summary: str = "只保留视频证据、四字段标签池和 JSON 输出要求",
+    early_stopping_steps: int | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     """Freeze semantic configs without changing model hyperparameters."""
     experiment_id = validate_experiment_id(experiment_id)
@@ -210,6 +214,10 @@ def prepare_fixed_prompt_run(
         "media_dir": "workspace/data",
         "output_dir": _repo_relative(paths.adapter, project_root),
     }
+    if early_stopping_steps is not None:
+        if early_stopping_steps <= 0:
+            raise SourceAware3kError("early_stopping_steps 必须为正整数")
+        train["early_stopping_steps"] = early_stopping_steps
     merge = {
         **baseline_merge,
         "model_name_or_path": "models/minicpm_v_4_5",
@@ -226,7 +234,10 @@ def prepare_fixed_prompt_run(
         for key in set(merge) | set(baseline_merge)
         if merge.get(key) != baseline_merge.get(key)
     }
-    if train_differences != ALLOWED_TRAIN_CHANGES:
+    allowed_train_changes = set(ALLOWED_TRAIN_CHANGES)
+    if early_stopping_steps is not None:
+        allowed_train_changes.add("early_stopping_steps")
+    if train_differences != allowed_train_changes:
         raise SourceAware3kError(
             f"训练配置变化超出受控范围: {sorted(train_differences)}"
         )
@@ -290,6 +301,7 @@ def prepare_fixed_prompt_run(
         },
         "training_code_commit": training_code_commit or _git_commit(),
         "expected_optimizer_steps": expected_steps,
+        "early_stopping_steps": early_stopping_steps,
         "resolved_train_config": train,
         "train_config": {
             "path": "train.yaml",
@@ -338,15 +350,15 @@ def prepare_fixed_prompt_run(
     semantic = {
         "id": experiment_id,
         "status": "prepared",
-        "purpose": "验证简化决策指令是否降低标签偏置",
-        "baseline": "v4.1-coverage-first-seed3411",
+        "purpose": purpose,
+        "baseline": baseline,
         "change": {
             "type": "prompt",
-            "summary": "只保留视频证据、四字段标签池和 JSON 输出要求",
+            "summary": change_summary,
         },
-        "data_release": "dev-v4.1-20260728",
+        "data_release": experiment["release"]["release_id"],
         "seed": SEED,
-        "prompt_revision": "minimal-v1",
+        "prompt_revision": experiment["prompt"]["revision_id"],
     }
     files = {
         "experiment.yaml": yaml.safe_dump(
@@ -371,6 +383,19 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_BASELINE_ROOT,
     )
+    parser.add_argument(
+        "--purpose",
+        default="验证简化决策指令是否降低标签偏置",
+    )
+    parser.add_argument(
+        "--baseline",
+        default="v4.1-coverage-first-seed3411",
+    )
+    parser.add_argument(
+        "--change-summary",
+        default="只保留视频证据、四字段标签池和 JSON 输出要求",
+    )
+    parser.add_argument("--early-stopping-steps", type=int)
     return parser.parse_args()
 
 
@@ -381,6 +406,10 @@ def main() -> int:
         input_dir=args.input_dir or paths.input,
         experiment_id=args.experiment_id,
         baseline_config_root=args.baseline_config_root,
+        purpose=args.purpose,
+        baseline=args.baseline,
+        change_summary=args.change_summary,
+        early_stopping_steps=args.early_stopping_steps,
     )
     print(
         json.dumps(

@@ -22,7 +22,7 @@ from pipeline.prompt_control.core import sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
 ACTIVE = ROOT / "pipeline/prompt_control/active_prompt.yaml"
-REVISION = ROOT / "pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1"
+REVISION = ROOT / "pipeline/prompt_registry/v4.1-concise-evidence-json-v1"
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -63,9 +63,14 @@ def test_active_prompt_and_committed_revision_are_valid() -> None:
     prompt, manifest = load_prompt_revision(REVISION)
 
     assert active == prompt
-    assert manifest["revision_id"] == "v4.1-fixed-full-fields-initial-v1"
+    assert manifest["revision_id"] == "v4.1-concise-evidence-json-v1"
     assert manifest["source_path"] == "pipeline/prompt_control/active_prompt.yaml"
     assert manifest["prompt_yaml_sha256"] == sha256_file(REVISION / "prompt.yaml")
+    assert active["user_prompt"] == (
+        "请根据这段拉伸试验视频，判断试样是否发生断裂，"
+        "并给出相应的断裂模式和断裂位置。"
+    )
+    assert '禁止输出字符串 "null"' in active["system_prompt"]
 
 
 def test_publish_is_idempotent_and_refuses_revision_overwrite(
