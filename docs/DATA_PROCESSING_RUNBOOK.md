@@ -12,7 +12,7 @@
 | --- | --- |
 | 契约 | `tensile-vlm/v4.1` |
 | 当前运行时契约 hash | `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab` |
-| 数据根 | `tensile-data/current` |
+| 数据根 | `<repo>/workspace/data` |
 | 当前 development 发布 | `v4.1.0-ecb5aeb9657c` |
 | 基础不可变发布 | `v4.1.0-760050fad303` |
 | 阶段 2 新物化候选 | 410 |
@@ -46,7 +46,7 @@ flowchart TD
 ## 目录与消费边界
 
 ```text
-tensile-data/current/
+workspace/data/
 ├── source/
 │   ├── videos/
 │   ├── annotations/
@@ -56,8 +56,7 @@ tensile-data/current/
 │   ├── subvideos/
 │   ├── frames/
 │   └── metadata/
-├── training_releases/
-└── .compat/workspace/
+└── releases/
 ```
 
 | 区域 | 用途 | 可否直接训练 |
@@ -67,35 +66,27 @@ tensile-data/current/
 | `derived/subvideos/` | 内容寻址候选 MP4 | 否 |
 | `derived/frames/` | 模型实际查看的帧画面 | 否 |
 | `derived/metadata/` | manifest、队列、审查和质量证据 | 否 |
-| `training_releases/<release_id>/` | 冻结且通过门禁的训练输入 | 是，只读 |
+| `releases/<release_id>/` | 冻结且通过门禁的训练输入 | 是，只读 |
 
-`.compat/workspace` 只为已冻结的 `data/...` 相对路径提供同版本兼容视图。新代码应优先
-通过 `pipeline.current_data` / `pipeline.data_roots` 解析路径，不要手工拼接旧编号目录。
+活跃代码通过 `pipeline.current_data` 解析项目内物理目录；冻结产物中的旧 `data/...`
+相对媒体路径由纯路径映射兼容，不依赖软链接。
 
-## 第一步：验证数据根
+## 第一步：迁移或验证项目内数据
 
 ```bash
-python pipeline/scripts/manage_versioned_data_roots.py check --contract all
-python pipeline/scripts/manage_versioned_data_roots.py workspace \
-  --contract tensile-vlm/v4.1
+python pipeline/scripts/migrate_project_local_workspace.py --copy
+python pipeline/scripts/migrate_project_local_workspace.py
 ```
 
 必须满足：
 
-- `current` marker 声明 `tensile-vlm/v4.1` 且 lifecycle 为 `active`；
-- `archive` marker 声明 `tensile-vlm/v2` 且 lifecycle 为 `frozen`；
-- 两个根目录不是同一位置；
-- V4.1 操作不会解析到 archive；
-- frozen V2 根不会接收写操作。
+- 新目录是物理副本且不含软链接；
+- `source/`、`derived/` 和由旧 `training_releases/` 映射出的 `releases/` 齐全；
+- 文件数、总字节数和全部受管文件 SHA-256 一致；
+- 旧外部根保持不变，至少保留到一次真实训练和严格评测完成。
 
-新环境需要初始化时：
-
-```bash
-python pipeline/scripts/manage_versioned_data_roots.py init --contract all
-```
-
-默认根目录是仓库同级 `tensile-data`；使用其他位置时显式设置
-`TENSILE_DATA_HOME` 或传入 `--data-home`。
+`manage_versioned_data_roots.py`、marker、profile 和 `TENSILE_DATA_HOME` 只用于历史流程，
+不能作为 main 的活跃 V4.1 入口。
 
 ## 第二步：ROI 与候选媒体
 
@@ -105,8 +96,8 @@ python pipeline/scripts/manage_versioned_data_roots.py init --contract all
 
 ```bash
 streamlit run pipeline/scripts/roi_annotation_app.py -- \
-  --metadata data/current/derived/metadata/video_meta.json \
-  --output data/current/derived/metadata/roi_decisions.json
+  --metadata workspace/data/derived/metadata/video_meta.json \
+  --output workspace/data/derived/metadata/roi_decisions.json
 
 uv run python pipeline/scripts/freeze_roi_decisions.py --check-only
 uv run python pipeline/scripts/freeze_roi_decisions.py
@@ -171,16 +162,16 @@ V4.1 队列同时包含：
 ```bash
 python pipeline/scripts/build_v4_1_review_queue.py \
   --materialized \
-    data/current/derived/metadata/v3/candidate_media_results/\
+    workspace/data/derived/metadata/v3/candidate_media_results/\
 candidate-media-8de972530561/development_materialized.json \
   --manifest \
-    data/current/derived/metadata/v3/candidate_media_results/\
+    workspace/data/derived/metadata/v3/candidate_media_results/\
 candidate-media-8de972530561/manifest.json
 ```
 
 当前冻结队列：
 
-`data/current/derived/metadata/v4_1/review_queues/v4-1-review-4a449c8d1193/review_queue.json`
+`workspace/data/derived/metadata/v4_1/review_queues/v4-1-review-4a449c8d1193/review_queue.json`
 
 队列身份、候选集合、媒体 manifest 和契约任一漂移，都必须创建新队列，不能复用旧草稿。
 
@@ -189,7 +180,7 @@ candidate-media-8de972530561/manifest.json
 ```bash
 streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
   --queue \
-    data/current/derived/metadata/v4_1/review_queues/\
+    workspace/data/derived/metadata/v4_1/review_queues/\
 v4-1-review-4a449c8d1193/review_queue.json \
   --reviewer-id <reviewer-id>
 ```
@@ -207,7 +198,7 @@ v4-1-review-4a449c8d1193/review_queue.json \
 
 全部候选形成合法终态后，UI 才能冻结内容寻址的 review batch。当前冻结决策：
 
-`data/current/derived/metadata/v4_1/review_decisions/v4-1-review-4a449c8d1193/review-batch-9043bbe4c286/decisions.json`
+`workspace/data/derived/metadata/v4_1/review_decisions/v4-1-review-4a449c8d1193/review-batch-9043bbe4c286/decisions.json`
 
 ### 阶段 2 新增候选的隔离审查
 
@@ -217,7 +208,7 @@ v4-1-review-4a449c8d1193/review_queue.json \
 ```bash
 python pipeline/scripts/build_v4_1_phase2_review_queues.py \
   --audit-manifest \
-    data/current/derived/metadata/v4_1/effective_view_audits/\
+    workspace/data/derived/metadata/v4_1/effective_view_audits/\
 phase1_verified/audit_manifest.json
 ```
 
@@ -314,11 +305,11 @@ python finetune/validate_v4_1_release.py \
 
 当前阶段 2 输出：
 
-`data/current/training_releases/v4.1.0-ecb5aeb9657c`
+`workspace/data/releases/v4.1.0-ecb5aeb9657c`
 
 发布清单：
 
-`data/current/training_releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json`
+`workspace/data/releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json`
 
 当前 fold 数量：
 
@@ -356,7 +347,7 @@ python finetune/run_v4_1_post_training.py
 视觉证据和未覆盖的 `无法判断 / 未夹紧 / 视频异常`，再执行 source-aware fold0
 学习曲线；未通过门槛前不得迁移服务或 TensileAgent。
 
-### 固定 Prompt 对照
+### 语义 Prompt 对照
 
 固定全字段 Prompt 对照不得修改 development release、seed3411 视频多重集、顺序、标签
 或 LoRA 超参数。先运行 Prompt 发布，再在训练机生成派生 bundle 和冻结 run manifest：
@@ -367,16 +358,17 @@ python -m pipeline.prompt_control validate \
 python -m pipeline.prompt_control publish \
   --source pipeline/prompt_control/active_prompt.yaml
 python finetune/build_v4_1_fixed_prompt_dataset.py
-python finetune/prepare_v4_1_fixed_prompt_run.py --bundle-dir <fixed_prompt_bundle>
+python finetune/prepare_v4_1_fixed_prompt_run.py
 ```
 
-训练、合并、评测命令以生成的 `run_manifest.json` 为准。严格评测必须传入该 bundle 内的
+实验 ID 固定为 `v4.1-prompt-minimal-v1-seed3411`。训练、合并、评测命令以
+`finetune/experiments/<experiment-id>/manifest.json` 为准。严格评测必须传入 input 内的
 `experiment_contract.json`；Prompt、release、sampling 或 schema 任一 hash 不一致时
 停止运行，不能回退到 `prompt_library.yaml`、仓库当前 contract Prompt 或临时 overlay。
 
 ## 失败恢复
 
-- 数据根检查失败：修复路径或 marker，不要用软链接把 current 指向 archive。
+- 数据迁移校验失败：保留旧根，清理经核实的不完整暂存副本后重新复制；禁止用软链接。
 - 媒体物化中断：使用同一内容身份重跑；脚本会校验并复用已完成产物。
 - 审查中断：从同一 queue-bound 草稿继续；不要复制别的队列草稿。
 - 冻结后发现标签错误：创建新队列、新 review batch 和新训练发布，不能改冻结文件。

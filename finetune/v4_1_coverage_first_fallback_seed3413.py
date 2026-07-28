@@ -8,6 +8,7 @@ from typing import Any
 
 import finetune.run_v4_1_source_aware_3k as runner
 from finetune.v4_1_manifest_runtime import sha256_file
+from pipeline.current_data import current_data_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN_ID = "v4_1_phase2_coverage_first_fallback_seed3413"
@@ -17,8 +18,8 @@ CONFIG_ROOT = ROOT / "finetune/MiniCPM/config/active" / RUN_ID
 
 def _validate_fallback_sampling(**_: Any) -> tuple[Path, dict[str, Any]]:
     root = (
-        ROOT.parent
-        / "tensile-data/current/derived/metadata/v4_1/source_aware_3k"
+        current_data_paths(ROOT).metadata
+        / "v4_1/source_aware_3k"
         / SAMPLING_ID
     )
     summary_path = root / "summary.json"

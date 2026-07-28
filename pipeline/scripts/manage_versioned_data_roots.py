@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Initialize or validate isolated external data roots for V2 and V4.1."""
+"""Historical external-root utility; active V4.1 uses ``workspace/data``."""
 
 from __future__ import annotations
 

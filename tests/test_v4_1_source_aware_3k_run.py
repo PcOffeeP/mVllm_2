@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -8,12 +9,17 @@ import pytest
 import yaml
 
 import finetune.run_v4_1_source_aware_3k as runner
+from pipeline.current_data import current_data_paths
 
 
 def test_frozen_configs_match_stage_b_recipe() -> None:
     for seed in runner.SEEDS:
         path = runner.CONFIG_ROOT / f"train_seed{seed}.yaml"
         config = yaml.safe_load(path.read_text(encoding="utf-8"))
+        config["media_dir"] = os.path.relpath(
+            current_data_paths(runner.ROOT).root,
+            runner.FINETUNE,
+        )
         expected_dir = (
             runner.FINETUNE / str(config["dataset_dir"])
         ).resolve()

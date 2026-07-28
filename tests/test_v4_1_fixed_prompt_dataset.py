@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from finetune.build_v4_1_fixed_prompt_dataset import build_fixed_prompt_dataset
 from finetune.build_v4_1_source_aware_3k import SourceAware3kError
@@ -11,6 +12,7 @@ from finetune.prepare_v4_1_fixed_prompt_run import prepare_fixed_prompt_run
 from finetune.run_v4_1_evaluation import _load_contract
 from pipeline.prompt_control import load_experiment_contract
 from pipeline.prompt_control.core import sha256_file
+from pipeline.project_workspace import CURRENT_EXPERIMENT_ID
 
 ROOT = Path(__file__).resolve().parents[1]
 REVISION = ROOT / "pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1"
@@ -100,7 +102,8 @@ def test_builds_prompt_only_derivative_and_evaluation_loads_same_snapshot(
     output, summary = build_fixed_prompt_dataset(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
-        output_root=tmp_path / "output",
+        output_root=tmp_path / "workspace/runs",
+        project_root=tmp_path,
     )
     experiment_path = output / "experiment_contract.json"
     experiment = load_experiment_contract(experiment_path)
@@ -135,7 +138,8 @@ def test_builds_prompt_only_derivative_and_evaluation_loads_same_snapshot(
     repeated, repeated_summary = build_fixed_prompt_dataset(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
-        output_root=tmp_path / "output",
+        output_root=tmp_path / "workspace/runs",
+        project_root=tmp_path,
         validate_only=True,
     )
     assert repeated == output
@@ -150,7 +154,8 @@ def test_rejects_source_sampling_file_drift(tmp_path: Path) -> None:
         build_fixed_prompt_dataset(
             source_sampling_dir=source,
             prompt_revision_dir=REVISION,
-            output_root=tmp_path / "output",
+            output_root=tmp_path / "workspace/runs",
+            project_root=tmp_path,
         )
 
 
@@ -158,16 +163,16 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
     tmp_path: Path,
 ) -> None:
     source = _source_sampling(tmp_path, train_count=3000)
-    bundle, _ = build_fixed_prompt_dataset(
+    input_dir, _ = build_fixed_prompt_dataset(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
-        output_root=tmp_path / "output",
+        output_root=tmp_path / "workspace/runs",
+        project_root=tmp_path,
     )
     config_dir, manifest = prepare_fixed_prompt_run(
-        bundle_dir=bundle,
-        config_parent=tmp_path / "configs",
-        adapter_dir=tmp_path / "adapter",
-        merged_dir=tmp_path / "merged",
+        input_dir=input_dir,
+        experiment_id=CURRENT_EXPERIMENT_ID,
+        project_root=tmp_path,
         training_code_commit="test-commit",
     )
 
@@ -183,11 +188,20 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
     )
     assert manifest["commands"]["evaluate"][-2:] == [
         "--experiment-contract",
-        str(bundle / "experiment_contract.json"),
+        (
+            f"workspace/runs/{CURRENT_EXPERIMENT_ID}/"
+            "input/experiment_contract.json"
+        ),
     ]
     assert manifest["environment"]["PYTHONPATH"].endswith(
-        f"/LlamaFactory/src:{Path(__file__).resolve().parents[1]}"
+        f"/LlamaFactory/src:{tmp_path}"
     )
-    assert sha256_file(config_dir / "train_seed3411.yaml") == manifest[
+    assert config_dir == (
+        tmp_path / "finetune/experiments" / CURRENT_EXPERIMENT_ID
+    )
+    assert sha256_file(config_dir / "train.yaml") == manifest[
         "train_config"
     ]["sha256"]
+    semantic = yaml.safe_load((config_dir / "experiment.yaml").read_text())
+    assert semantic["id"] == CURRENT_EXPERIMENT_ID
+    assert manifest["experiment_id"] == CURRENT_EXPERIMENT_ID

@@ -26,7 +26,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--verify-media", action="store_true")
-    parser.add_argument("--data-home", type=Path)
     parser.add_argument("--release-id", default=RELEASE_ID)
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS))
@@ -43,7 +42,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    paths = current_data_paths(ROOT, data_home=args.data_home)
+    paths = current_data_paths(ROOT)
     output_root = args.output_root or (
         paths.metadata / "v4_1/source_aware_3k"
     )

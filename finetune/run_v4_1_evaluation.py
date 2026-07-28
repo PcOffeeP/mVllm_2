@@ -30,6 +30,7 @@ from finetune.validation.model_runtime import (
     run_model_on_video_detailed,
 )
 from pipeline.current_data import current_data_paths
+from pipeline.data_roots import resolve_workspace_artifact
 from pipeline.prompt_control import load_experiment_contract
 from pipeline.prompt_control.core import PromptControlError, sha256_file
 
@@ -280,9 +281,9 @@ def evaluate_one(
     sampled_timestamps: list[float] | None = None
     generated_token_count: int | None = None
     hit_token_limit: bool | None = None
-    video_path = (
-        current_data_paths(ROOT).compatibility_workspace
-        / str(sample["video_path"])
+    video_path = resolve_workspace_artifact(
+        str(sample["video_path"]),
+        current_data_paths(ROOT).compatibility_workspace,
     )
     try:
         result = run_model_on_video_detailed(

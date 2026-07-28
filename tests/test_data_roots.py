@@ -112,3 +112,15 @@ def test_maps_semantic_target_back_to_frozen_workspace_path(tmp_path: Path) -> N
     assert workspace_portable_path(video, workspace) == (
         "data/03_subvideos_roi/example.mp4"
     )
+
+
+def test_project_local_root_maps_frozen_paths_without_symlinks(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "workspace/data"
+    frozen = "data/03_subvideos_roi/example.mp4"
+    semantic = data_root / "derived/subvideos/example.mp4"
+
+    assert resolve_workspace_artifact(frozen, data_root) == semantic
+    assert workspace_portable_path(semantic, data_root) == frozen
+    assert not any(data_root.rglob("*"))

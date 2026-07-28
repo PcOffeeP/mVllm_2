@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare immutable seed3411 configs for one fixed-Prompt dataset bundle."""
+"""Prepare one semantic project-local V4.1 Prompt experiment."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import math
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -22,20 +23,34 @@ from finetune.build_v4_1_source_aware_3k import (  # noqa: E402
     SourceAware3kError,
     _pretty_bytes,
     _sha256_bytes,
-    _write_immutable_directory,
 )
 from pipeline.prompt_control import load_experiment_contract  # noqa: E402
 from pipeline.prompt_control.core import sha256_file  # noqa: E402
+from pipeline.project_workspace import (  # noqa: E402
+    CURRENT_EXPERIMENT_ID,
+    experiment_workspace_paths,
+    validate_experiment_id,
+)
 
 FINETUNE = ROOT / "finetune"
 DEFAULT_BASELINE_ROOT = (
     FINETUNE
     / "MiniCPM/config/active/v4_1_source_aware_3k_coverage_first"
 )
-DEFAULT_CONFIG_PARENT = FINETUNE / "MiniCPM/config/active"
 SEED = 3411
-ALLOWED_TRAIN_CHANGES = {"dataset", "eval_dataset", "dataset_dir", "output_dir"}
-ALLOWED_MERGE_CHANGES = {"adapter_name_or_path", "export_dir"}
+ALLOWED_TRAIN_CHANGES = {
+    "dataset",
+    "eval_dataset",
+    "dataset_dir",
+    "media_dir",
+    "model_name_or_path",
+    "output_dir",
+}
+ALLOWED_MERGE_CHANGES = {
+    "adapter_name_or_path",
+    "export_dir",
+    "model_name_or_path",
+}
 
 
 def _read_json(path: Path, label: str) -> dict[str, Any]:
@@ -69,29 +84,37 @@ def _git_commit() -> str:
     return result.stdout.strip()
 
 
-def _relative_to_finetune(path: Path) -> str:
-    return os.path.relpath(Path(path).resolve(), FINETUNE)
+def _repo_relative(path: Path, project_root: Path) -> str:
+    path = Path(path).resolve()
+    try:
+        return str(path.relative_to(Path(project_root).resolve()))
+    except ValueError as exc:
+        raise SourceAware3kError(f"路径不属于当前项目: {path}") from exc
 
 
-def _validate_bundle(bundle_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    bundle_dir = Path(bundle_dir).resolve()
-    summary = _read_json(bundle_dir / "summary.json", "fixed Prompt bundle summary")
-    experiment = load_experiment_contract(bundle_dir / "experiment_contract.json")
+def _validate_input(
+    input_dir: Path,
+    experiment_id: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    input_dir = Path(input_dir).resolve()
+    summary = _read_json(input_dir / "summary.json", "fixed Prompt input summary")
+    experiment = load_experiment_contract(input_dir / "experiment_contract.json")
     if (
         summary.get("schema_version")
         != "tensile-vlm-v4.1-fixed-prompt-dataset-summary/v1"
         or summary.get("status") != "ready"
         or summary.get("immutable") is not True
+        or summary.get("experiment_id") != experiment_id
         or summary.get("experiment_contract_sha256")
         != experiment.get("experiment_contract_sha256")
         or summary.get("train_row_count") != 3000
         or not isinstance(summary.get("validation_row_count"), int)
         or summary["validation_row_count"] <= 0
     ):
-        raise SourceAware3kError("fixed Prompt bundle 身份、行数或状态非法")
+        raise SourceAware3kError("fixed Prompt input 身份、行数或状态非法")
     entries = summary.get("files")
     if not isinstance(entries, list):
-        raise SourceAware3kError("fixed Prompt bundle files 缺失")
+        raise SourceAware3kError("fixed Prompt input files 缺失")
     required = {
         "dataset_info.json",
         "datasets/seed_3411.json",
@@ -101,65 +124,97 @@ def _validate_bundle(bundle_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     seen: set[str] = set()
     for entry in entries:
         if not isinstance(entry, Mapping) or not isinstance(entry.get("path"), str):
-            raise SourceAware3kError("fixed Prompt bundle file entry 非法")
+            raise SourceAware3kError("fixed Prompt input file entry 非法")
         relative = entry["path"]
-        path = (bundle_dir / relative).resolve()
-        if relative in seen or not path.is_relative_to(bundle_dir):
-            raise SourceAware3kError("fixed Prompt bundle 包含重复或越界路径")
+        path = (input_dir / relative).resolve()
+        if relative in seen or not path.is_relative_to(input_dir):
+            raise SourceAware3kError("fixed Prompt input 包含重复或越界路径")
         seen.add(relative)
         if (
             not path.is_file()
             or path.stat().st_size != entry.get("size_bytes")
             or sha256_file(path) != entry.get("sha256")
         ):
-            raise SourceAware3kError(f"fixed Prompt bundle 文件漂移: {path}")
+            raise SourceAware3kError(f"fixed Prompt input 文件漂移: {path}")
     if not required <= seen:
-        raise SourceAware3kError("fixed Prompt bundle 缺少受管文件")
+        raise SourceAware3kError("fixed Prompt input 缺少受管文件")
     return summary, experiment
+
+
+def _write_experiment_directory(
+    target: Path,
+    files: Mapping[str, bytes],
+) -> None:
+    if target.exists():
+        for relative, content in files.items():
+            path = target / relative
+            if not path.is_file() or path.read_bytes() != content:
+                raise SourceAware3kError(f"拒绝覆盖已有语义实验配置: {target}")
+        unexpected = {
+            str(path.relative_to(target))
+            for path in target.rglob("*")
+            if path.is_file()
+        } - set(files)
+        if unexpected:
+            raise SourceAware3kError(
+                f"语义实验目录包含未声明文件: {sorted(unexpected)}"
+            )
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.", dir=target.parent))
+    try:
+        for relative, content in files.items():
+            path = staging / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        os.replace(staging, target)
+    finally:
+        if staging.exists():
+            for path in sorted(staging.rglob("*"), reverse=True):
+                if path.is_file():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+            staging.rmdir()
 
 
 def prepare_fixed_prompt_run(
     *,
-    bundle_dir: Path,
+    input_dir: Path,
+    experiment_id: str = CURRENT_EXPERIMENT_ID,
     baseline_config_root: Path = DEFAULT_BASELINE_ROOT,
-    config_parent: Path = DEFAULT_CONFIG_PARENT,
-    adapter_dir: Path | None = None,
-    merged_dir: Path | None = None,
+    project_root: Path = ROOT,
     training_code_commit: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
-    """Freeze train/merge configs and a manifest without changing hyperparameters."""
-    bundle_dir = Path(bundle_dir).resolve()
-    summary, experiment = _validate_bundle(bundle_dir)
+    """Freeze semantic configs without changing model hyperparameters."""
+    experiment_id = validate_experiment_id(experiment_id)
+    project_root = Path(project_root).resolve()
+    paths = experiment_workspace_paths(project_root, experiment_id)
+    input_dir = Path(input_dir).resolve()
+    if input_dir != paths.input.resolve():
+        raise SourceAware3kError(
+            f"input 目录必须与 experiment ID 一致: {paths.input}"
+        )
+    summary, experiment = _validate_input(input_dir, experiment_id)
     baseline_config_root = Path(baseline_config_root)
     baseline_train_path = baseline_config_root / f"train_seed{SEED}.yaml"
     baseline_merge_path = baseline_config_root / f"merge_seed{SEED}.yaml"
     baseline_train = _read_yaml(baseline_train_path, "baseline train config")
     baseline_merge = _read_yaml(baseline_merge_path, "baseline merge config")
-    bundle_id = str(summary["bundle_id"])
-    run_id = f"v4_1_fixed_prompt_{bundle_id.removeprefix('v4.1-fixed-prompt-')}_seed3411"
-    adapter_dir = (
-        Path(adapter_dir)
-        if adapter_dir is not None
-        else ROOT
-        / "LlamaFactory/saves/minicpmv4_5/lora"
-        / f"sft_tensile_{run_id}"
-    )
-    merged_dir = (
-        Path(merged_dir)
-        if merged_dir is not None
-        else adapter_dir.with_name(f"{adapter_dir.name}_merged")
-    )
     train = {
         **baseline_train,
+        "model_name_or_path": "models/minicpm_v_4_5",
         "dataset": "tensile_v4_1_fixed_full_fields_seed3411",
         "eval_dataset": "tensile_v4_1_fixed_full_fields_fold0_val",
-        "dataset_dir": _relative_to_finetune(bundle_dir),
-        "output_dir": _relative_to_finetune(adapter_dir),
+        "dataset_dir": _repo_relative(paths.input, project_root),
+        "media_dir": "workspace/data",
+        "output_dir": _repo_relative(paths.adapter, project_root),
     }
     merge = {
         **baseline_merge,
-        "adapter_name_or_path": _relative_to_finetune(adapter_dir),
-        "export_dir": _relative_to_finetune(merged_dir),
+        "model_name_or_path": "models/minicpm_v_4_5",
+        "adapter_name_or_path": _repo_relative(paths.adapter, project_root),
+        "export_dir": _repo_relative(paths.merged, project_root),
     }
     train_differences = {
         key
@@ -179,10 +234,10 @@ def prepare_fixed_prompt_run(
         raise SourceAware3kError(
             f"合并配置变化超出受控范围: {sorted(merge_differences)}"
         )
-    rows = int(summary["train_row_count"])
-    accumulation = int(train["gradient_accumulation_steps"])
-    epochs = int(train["num_train_epochs"])
-    expected_steps = math.ceil(rows / accumulation) * epochs
+    expected_steps = math.ceil(
+        int(summary["train_row_count"])
+        / int(train["gradient_accumulation_steps"])
+    ) * int(train["num_train_epochs"])
     if train.get("seed") != SEED or expected_steps != 1125:
         raise SourceAware3kError("seed 或 optimizer steps 漂移")
     train_bytes = yaml.safe_dump(
@@ -195,24 +250,28 @@ def prepare_fixed_prompt_run(
         allow_unicode=True,
         sort_keys=False,
     ).encode("utf-8")
-    experiment_path = bundle_dir / "experiment_contract.json"
-    output = Path(config_parent) / run_id
-    result_dir = FINETUNE / "results" / run_id / "seed3411/fold0"
+    experiment_path = input_dir / "experiment_contract.json"
     manifest = {
-        "schema_version": "tensile-vlm-v4.1-fixed-prompt-run/v1",
+        "schema_version": "tensile-vlm-v4.1-semantic-experiment/v1",
         "immutable": True,
-        "run_id": run_id,
+        "experiment_id": experiment_id,
+        "status": "prepared",
         "seed": SEED,
-        "bundle_id": bundle_id,
-        "dataset_bundle_path": str(bundle_dir),
-        "dataset_registry_sha256": sha256_file(bundle_dir / "dataset_info.json"),
+        "paths": {
+            "input": _repo_relative(paths.input, project_root),
+            "adapter": _repo_relative(paths.adapter, project_root),
+            "merged": _repo_relative(paths.merged, project_root),
+            "evaluation": _repo_relative(paths.evaluation, project_root),
+            "logs": _repo_relative(paths.logs, project_root),
+        },
+        "dataset_registry_sha256": sha256_file(input_dir / "dataset_info.json"),
         "training_json_sha256": sha256_file(
-            bundle_dir / "datasets/seed_3411.json"
+            input_dir / "datasets/seed_3411.json"
         ),
         "validation_json_sha256": sha256_file(
-            bundle_dir / "datasets/fold_0_validation.json"
+            input_dir / "datasets/fold_0_validation.json"
         ),
-        "experiment_contract_path": str(experiment_path),
+        "input_identity_sha256": summary["input_identity_sha256"],
         "experiment_contract_file_sha256": sha256_file(experiment_path),
         "experiment_contract_sha256": experiment["experiment_contract_sha256"],
         "release": experiment["release"],
@@ -233,30 +292,23 @@ def prepare_fixed_prompt_run(
         "expected_optimizer_steps": expected_steps,
         "resolved_train_config": train,
         "train_config": {
-            "path": f"train_seed{SEED}.yaml",
+            "path": "train.yaml",
             "sha256": _sha256_bytes(train_bytes),
         },
         "merge_config": {
-            "path": f"merge_seed{SEED}.yaml",
+            "path": "merge.yaml",
             "sha256": _sha256_bytes(merge_bytes),
-        },
-        "adapter_dir": str(adapter_dir.resolve()),
-        "merged_dir": str(merged_dir.resolve()),
-        "evaluation": {
-            "fold": 0,
-            "expected_samples": summary["validation_row_count"],
-            "experiment_contract": str(experiment_path),
         },
         "commands": {
             "train": [
                 sys.executable,
-                str(FINETUNE / "train_with_contract.py"),
-                str(output / f"train_seed{SEED}.yaml"),
+                "finetune/train_with_contract.py",
+                f"finetune/experiments/{experiment_id}/train.yaml",
             ],
             "merge": [
                 "llamafactory-cli",
                 "export",
-                str(output / f"merge_seed{SEED}.yaml"),
+                f"finetune/experiments/{experiment_id}/merge.yaml",
             ],
             "evaluate": [
                 sys.executable,
@@ -267,51 +319,68 @@ def prepare_fixed_prompt_run(
                 "--release-id",
                 str(experiment["release"]["release_id"]),
                 "--model-dir",
-                str(merged_dir.resolve()),
+                _repo_relative(paths.merged, project_root),
                 "--out-dir",
-                str(result_dir),
+                _repo_relative(paths.evaluation, project_root),
                 "--experiment-contract",
-                str(experiment_path),
+                _repo_relative(experiment_path, project_root),
             ],
         },
         "environment": {
             "WANDB_MODE": "offline",
             "DOWNSAMPLE_MODE": "4x",
             "DISABLE_VERSION_CHECK": "1",
-            "PYTHONPATH": f"{ROOT / 'LlamaFactory/src'}:{ROOT}",
+            "PYTHONPATH": (
+                f"{project_root / 'LlamaFactory/src'}:{project_root}"
+            ),
         },
     }
-    files = {
-        f"train_seed{SEED}.yaml": train_bytes,
-        f"merge_seed{SEED}.yaml": merge_bytes,
-        "run_manifest.json": _pretty_bytes(manifest),
+    semantic = {
+        "id": experiment_id,
+        "status": "prepared",
+        "purpose": "验证简化决策指令是否降低标签偏置",
+        "baseline": "v4.1-coverage-first-seed3411",
+        "change": {
+            "type": "prompt",
+            "summary": "只保留视频证据、四字段标签池和 JSON 输出要求",
+        },
+        "data_release": "dev-v4.1-20260728",
+        "seed": SEED,
+        "prompt_revision": "minimal-v1",
     }
-    _write_immutable_directory(output, files=files, summary=manifest)
-    return output, manifest
+    files = {
+        "experiment.yaml": yaml.safe_dump(
+            semantic,
+            allow_unicode=True,
+            sort_keys=False,
+        ).encode("utf-8"),
+        "train.yaml": train_bytes,
+        "merge.yaml": merge_bytes,
+        "manifest.json": _pretty_bytes(manifest),
+    }
+    _write_experiment_directory(paths.git_dir, files)
+    return paths.git_dir, manifest
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle-dir", type=Path, required=True)
+    parser.add_argument("--experiment-id", default=CURRENT_EXPERIMENT_ID)
+    parser.add_argument("--input-dir", type=Path)
     parser.add_argument(
         "--baseline-config-root",
         type=Path,
         default=DEFAULT_BASELINE_ROOT,
     )
-    parser.add_argument("--config-parent", type=Path, default=DEFAULT_CONFIG_PARENT)
-    parser.add_argument("--adapter-dir", type=Path)
-    parser.add_argument("--merged-dir", type=Path)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    paths = experiment_workspace_paths(ROOT, args.experiment_id)
     output, manifest = prepare_fixed_prompt_run(
-        bundle_dir=args.bundle_dir,
+        input_dir=args.input_dir or paths.input,
+        experiment_id=args.experiment_id,
         baseline_config_root=args.baseline_config_root,
-        config_parent=args.config_parent,
-        adapter_dir=args.adapter_dir,
-        merged_dir=args.merged_dir,
     )
     print(
         json.dumps(

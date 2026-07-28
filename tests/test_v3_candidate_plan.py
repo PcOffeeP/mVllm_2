@@ -17,6 +17,11 @@ from pipeline.v3_candidate_plan import (
 )
 from pipeline.v3_labels import map_legacy_fracture_type
 
+pytestmark = pytest.mark.skipif(
+    not cli.DEFAULT_ROI_MEDIA_DIR.is_dir(),
+    reason="requires migrated project-local lightweight V3 fixtures",
+)
+
 
 def _real_inputs() -> dict:
     return load_plan_inputs(

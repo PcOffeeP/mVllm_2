@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from finetune.run_v4_1_evaluation import (
     evaluation_succeeded,
     load_validation_samples,
     summarize_records,
 )
-from finetune.v4_1_runtime import score_v4_1_prediction
+from finetune.v4_1_runtime import release_dir, score_v4_1_prediction
 
 
 def _labels(
@@ -37,6 +41,8 @@ def _record(
 
 
 def test_loads_committed_fold_validation_sets() -> None:
+    if not release_dir(Path(__file__).resolve().parents[1]).is_dir():
+        pytest.skip("project-local V4.1 workspace data is not present")
     assert len(load_validation_samples(0)) == 425
     assert len(load_validation_samples(1)) == 445
     assert len(load_validation_samples(2)) == 346

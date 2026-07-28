@@ -6,8 +6,8 @@ MVP 只写 ROI 决定文件，不生成裁剪媒体，也不修改现有训练�
 
 运行：
     streamlit run pipeline/scripts/roi_annotation_app.py -- \
-      --metadata ../tensile-data/current/derived/metadata/video_meta.json \
-      --output ../tensile-data/current/derived/metadata/roi_decisions.json
+      --metadata workspace/data/derived/metadata/video_meta.json \
+      --output workspace/data/derived/metadata/roi_decisions.json
 """
 
 from __future__ import annotations

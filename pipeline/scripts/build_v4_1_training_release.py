@@ -13,16 +13,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pipeline.current_data import current_data_paths
-from pipeline.data_roots import load_config, validate_workspace
 from pipeline.v4_1_training_release import build_v4_1_training_release
-
-DATA_ROOT_CONFIG = PROJECT_ROOT / "config/data_roots.json"
-CONTRACT_VERSION = "tensile-vlm/v4.1"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-home", type=Path)
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--materialized", type=Path)
     parser.add_argument("--media-manifest", type=Path)
@@ -37,11 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--releases-dir", type=Path)
     args = parser.parse_args()
 
-    paths = current_data_paths(
-        PROJECT_ROOT,
-        data_home=args.data_home,
-    )
-    data_home = paths.root.parent
+    paths = current_data_paths(PROJECT_ROOT)
     active_workspace = paths.compatibility_workspace
     media_root = (
         paths.metadata
@@ -51,7 +42,6 @@ def parse_args() -> argparse.Namespace:
         paths.metadata
         / "v4_1/review_decisions/v4-1-review-4a449c8d1193"
     )
-    args.data_home = data_home
     args.project_root = args.project_root or active_workspace
     args.materialized = args.materialized or media_root / "development_materialized.json"
     args.media_manifest = args.media_manifest or media_root / "manifest.json"
@@ -70,12 +60,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    data_config = load_config(DATA_ROOT_CONFIG)
-    validate_workspace(
-        data_config,
-        CONTRACT_VERSION,
-        data_home=args.data_home,
-    )
     release_dir, manifest = build_v4_1_training_release(
         project_root=args.project_root,
         materialized_path=args.materialized,

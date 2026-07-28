@@ -13,19 +13,14 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pipeline.current_data import current_data_paths
-from pipeline.data_roots import load_config, validate_workspace
 from pipeline.v4_1_phase2_training_release import (
     build_v4_1_phase2_training_release,
 )
-
-DATA_ROOT_CONFIG = PROJECT_ROOT / "config/data_roots.json"
-CONTRACT_VERSION = "tensile-vlm/v4.1"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--validate-only", action="store_true")
-    parser.add_argument("--data-home", type=Path)
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--base-release-dir", type=Path)
     parser.add_argument("--materialized", type=Path)
@@ -43,8 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--releases-dir", type=Path)
     args = parser.parse_args()
 
-    paths = current_data_paths(PROJECT_ROOT, data_home=args.data_home)
-    args.data_home = paths.root.parent
+    paths = current_data_paths(PROJECT_ROOT)
     args.project_root = args.project_root or paths.compatibility_workspace
     args.base_release_dir = args.base_release_dir or (
         paths.training_releases / "v4.1.0-760050fad303"
@@ -78,11 +72,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    validate_workspace(
-        load_config(DATA_ROOT_CONFIG),
-        CONTRACT_VERSION,
-        data_home=args.data_home,
-    )
     release_dir, manifest = build_v4_1_phase2_training_release(
         project_root=args.project_root,
         base_release_dir=args.base_release_dir,

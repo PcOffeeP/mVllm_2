@@ -10,7 +10,7 @@
 | 契约 | `tensile-vlm/v4.1` |
 | 当前运行时契约 hash | `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab` |
 | 当前 development 发布 | `v4.1.0-ecb5aeb9657c` |
-| 当前发布路径 | `data/current/training_releases/v4.1.0-ecb5aeb9657c` |
+| 当前发布路径 | `workspace/data/releases/v4.1.0-ecb5aeb9657c` |
 | 当前发布样本 | 1678 |
 | 上一轮三折基础发布 | `v4.1.0-760050fad303`，1275 条 |
 | 三折训练 | 已完成 |
@@ -41,26 +41,24 @@ python -m pipeline.prompt_control publish \
 初版 revision 为 `v4.1-fixed-full-fields-initial-v1`。registry 中的 `prompt.yaml` 与
 `manifest.json` 不可覆盖；同 revision 内容变化会直接失败。
 
-在训练机上从冻结的 coverage-first sampling 生成 seed3411 Prompt 对照 bundle：
+在训练机上从冻结的 coverage-first sampling 生成语义实验输入：
 
 ```bash
 python finetune/build_v4_1_fixed_prompt_dataset.py
 ```
 
 该命令校验 source sampling 的全部受管文件，只保留 seed3411 的视频多重集、顺序和四字段
-assistant 标签，并把完整 Prompt snapshot 写入 `experiment_contract.json`。随后冻结训练
-配置和 run manifest：
+assistant 标签，并把完整 Prompt snapshot 写入同一实验的 `input/`。随后生成 Git 管理的
+语义配置：
 
 ```bash
-python finetune/prepare_v4_1_fixed_prompt_run.py \
-  --bundle-dir /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/fixed_prompt/<bundle_id>
+python finetune/prepare_v4_1_fixed_prompt_run.py
 ```
 
-准备器以现有 seed3411 coverage-first YAML 为基线，只允许修改 dataset、eval dataset、
-dataset directory、adapter output 和 merged output 路径。LoRA 超参数、seed、epoch 和
-optimizer steps 必须保持不变。生成的 `run_manifest.json` 会冻结训练 JSON、registry、
-release、sampling、Prompt、experiment contract、配置、基础模型路径和代码 commit 身份，
-并给出训练、合并和严格评测命令。
+实验 ID 是 `v4.1-prompt-minimal-v1-seed3411`。Git 配置位于同名
+`finetune/experiments/` 目录，运行输入和输出位于同名 `workspace/runs/` 目录。LoRA
+超参数、seed、epoch 和 optimizer steps 保持不变；详细身份 hash 只保存在
+`manifest.json`，不编码到目录名。
 
 严格评测必须显式使用同一个 experiment contract：
 
@@ -125,7 +123,7 @@ resampler”；该路线是独立模型变体，不能继承 BF16 验收结论�
 python finetune/freeze_v4_1_evidence.py \
   --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
   --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \
-  --release-manifest data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json \
+  --release-manifest workspace/data/releases/v4.1.0-760050fad303/manifest/release_manifest.json \
   --contract pipeline/contracts/tensile_vlm_v4_1.json \
   --output-dir finetune/results/v4_1_0_760050fad303_20260724_visual/evidence_freeze \
   --model-hash-mode full

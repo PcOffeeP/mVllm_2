@@ -11,7 +11,7 @@
 | --- | --- |
 | 活跃契约 | `tensile-vlm/v4.1` |
 | 当前运行时契约 hash | `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab` |
-| 数据基线 | `tensile-data/current` 中的不可变发布 `v4.1.0-760050fad303` |
+| 数据基线 | `workspace/data/releases` 中的不可变 V4.1 发布 |
 | 模型研发 | 已完成视觉 LoRA、BF16 和 4-bit 路线验证，确认视觉适配方向有效 |
 | 数据改进 | 已建立有效视图审计、开发候选与独立测试候选隔离流程 |
 | 当前结论 | 模型尚未通过生产效果验收，继续补充独立视觉证据并做受控实验 |
@@ -63,43 +63,33 @@ V4.1 当前是可继续迭代的研发链路，不是可直接替换 V2 的生�
 
 ## 数据入口与版本隔离
 
-仓库中的 `data/` 不保存实际大型数据，只提供语义入口：
+活跃 V4.1 数据和运行产物使用项目内、Git 忽略的本地 workspace：
 
 ```text
-data/
-├── current -> ../../tensile-data/current
-├── archive -> ../../tensile-data/archive
-└── README.md
-
-tensile-data/current/
-├── source/
-│   ├── videos/
-│   ├── annotations/
-│   └── splits/
-├── derived/
-│   ├── roi_videos/
-│   ├── subvideos/
-│   ├── frames/
-│   └── metadata/
-├── training_releases/
-└── .compat/workspace/
+workspace/
+├── data/
+│   ├── source/
+│   ├── derived/
+│   └── releases/
+└── runs/<experiment-id>/
+    ├── input/
+    ├── adapter/
+    ├── merged/
+    ├── evaluation/
+    └── logs/
 ```
 
-默认外部根目录为仓库同级的 `tensile-data`，可用 `TENSILE_DATA_HOME` 覆盖。
-`config/data_roots.json` 是契约、生命周期和目录之间的唯一映射。
-
-初始化或检查数据入口：
+`pipeline.current_data` 固定解析 `<repo>/workspace/data`，不读取
+`TENSILE_DATA_HOME`、marker、profile 或 `.compat/workspace`。首次从旧根迁移时执行：
 
 ```bash
-python pipeline/scripts/manage_versioned_data_roots.py init --contract all
-python pipeline/scripts/manage_versioned_data_roots.py check --contract all
-python pipeline/scripts/manage_versioned_data_roots.py workspace \
-  --contract tensile-vlm/v4.1
+python pipeline/scripts/migrate_project_local_workspace.py --copy
+python pipeline/scripts/migrate_project_local_workspace.py
 ```
 
-每个根目录必须带 `.tensile-data-root.json`。程序会拒绝把 V2 根用于 V4.1，也会拒绝
-向 frozen 的 V2 根写入新数据。`.compat/workspace` 只链接到同一版本的数据，用于兼容
-已冻结产物中的 `data/...` 相对路径。
+迁移会把旧 `training_releases/` 物理复制为 `releases/`，并逐文件比较数量、字节数和
+SHA-256；不会创建软链接，也不会删除旧根。`config/data_roots.json` 与
+`manage_versioned_data_roots.py` 仅用于历史 V2/V4.1 外部根复现。
 
 迁移设计、清单与校验结果：
 
@@ -111,11 +101,11 @@ python pipeline/scripts/manage_versioned_data_roots.py workspace \
 
 发布目录：
 
-`data/current/training_releases/v4.1.0-760050fad303`
+`workspace/data/releases/v4.1.0-760050fad303`
 
 发布清单：
 
-`data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json`
+`workspace/data/releases/v4.1.0-760050fad303/manifest/release_manifest.json`
 
 已确认的统计：
 
@@ -195,7 +185,7 @@ python pipeline/scripts/build_v4_1_training_release.py
 python finetune/freeze_v4_1_evidence.py \
   --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
   --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \
-  --release-manifest data/current/training_releases/v4.1.0-760050fad303/manifest/release_manifest.json \
+  --release-manifest workspace/data/releases/v4.1.0-760050fad303/manifest/release_manifest.json \
   --contract pipeline/contracts/tensile_vlm_v4_1.json \
   --output-dir finetune/results/v4_1_0_760050fad303_20260724_visual/evidence_freeze \
   --model-hash-mode full

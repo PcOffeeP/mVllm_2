@@ -10,6 +10,20 @@ from typing import Any, Mapping
 
 MARKER_NAME = ".tensile-data-root.json"
 REQUIRED_DIRECTORIES = ("source", "derived", "training_releases")
+PROJECT_LOCAL_LEGACY_PATHS = {
+    "data/01_videos": "source/videos",
+    "data/02_annotations": "source/annotations",
+    "data/03_roi_videos": "derived/roi_videos",
+    "data/03_subvideos_roi": "derived/subvideos",
+    "data/03_subvideos": "derived/subvideos",
+    "data/04_frames": "derived/frames",
+    "data/04_frames_roi": "derived/frames",
+    "data/05_splits": "source/splits",
+    "data/06_merged": "derived/merged",
+    "data/07_metadata": "derived/metadata",
+    "data/08_incremental_review": "derived/review_rounds",
+    "data/08_training_ready": "releases",
+}
 
 
 class DataRootError(ValueError):
@@ -163,8 +177,13 @@ def resolve_workspace_artifact(value: str | Path, workspace: Path) -> Path:
     """
     path = Path(value)
     workspace = Path(workspace).absolute()
+    project_local = _is_project_local_data_root(workspace)
     if not path.is_absolute():
-        return workspace / path
+        return (
+            _resolve_project_local_legacy_path(path, workspace)
+            if project_local
+            else workspace / path
+        )
     try:
         path.absolute().relative_to(workspace)
         return path
@@ -174,7 +193,26 @@ def resolve_workspace_artifact(value: str | Path, workspace: Path) -> Path:
     if not data_indexes:
         return path
     suffix = Path(*path.parts[data_indexes[-1] :])
-    return workspace / suffix
+    return (
+        _resolve_project_local_legacy_path(suffix, workspace)
+        if project_local
+        else workspace / suffix
+    )
+
+
+def _resolve_project_local_legacy_path(path: Path, workspace: Path) -> Path:
+    """Resolve frozen numbered paths without creating compatibility symlinks."""
+    parts = path.parts
+    for legacy, semantic in PROJECT_LOCAL_LEGACY_PATHS.items():
+        legacy_parts = Path(legacy).parts
+        if parts[: len(legacy_parts)] == legacy_parts:
+            return workspace / semantic / Path(*parts[len(legacy_parts) :])
+    return workspace / path
+
+
+def _is_project_local_data_root(workspace: Path) -> bool:
+    workspace = Path(workspace)
+    return workspace.name == "data" and workspace.parent.name == "workspace"
 
 
 def workspace_relative_path(path: Path, workspace: Path) -> str:
@@ -188,6 +226,15 @@ def workspace_portable_path(path: Path, workspace: Path) -> str:
     """Return the frozen ``data/...`` identity for a semantic target."""
     path = Path(path).absolute()
     workspace = Path(workspace).absolute()
+    if _is_project_local_data_root(workspace):
+        resolved = path.resolve()
+        for legacy, semantic in PROJECT_LOCAL_LEGACY_PATHS.items():
+            target = (workspace / semantic).resolve()
+            try:
+                suffix = resolved.relative_to(target)
+            except ValueError:
+                continue
+            return str(Path(legacy) / suffix)
     try:
         return str(path.relative_to(workspace))
     except ValueError:

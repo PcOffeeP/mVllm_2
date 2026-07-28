@@ -9,6 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+# Project-local active V4.1 data, models, logs, and run outputs
+/workspace/
+
 # video files
 *.mp4
 *.mov

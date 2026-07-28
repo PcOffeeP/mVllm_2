@@ -29,6 +29,12 @@ from pipeline.prompt_control import (  # noqa: E402
     load_prompt_revision,
 )
 from pipeline.prompt_control.core import sha256_file  # noqa: E402
+from pipeline.data_roots import resolve_workspace_artifact  # noqa: E402
+from pipeline.project_workspace import (  # noqa: E402
+    CURRENT_EXPERIMENT_ID,
+    project_workspace_paths,
+    validate_experiment_id,
+)
 
 SCHEMA_VERSION = "tensile-vlm-v4.1-fixed-prompt-dataset/v1"
 SUMMARY_SCHEMA_VERSION = "tensile-vlm-v4.1-fixed-prompt-dataset-summary/v1"
@@ -99,6 +105,7 @@ def _rewrite_rows(
     *,
     system_prompt: str,
     user_prompt: str,
+    data_root: Path,
     label: str,
 ) -> list[dict[str, Any]]:
     if not isinstance(rows, list) or not rows:
@@ -107,8 +114,15 @@ def _rewrite_rows(
     for index, source_row in enumerate(rows):
         video_path, _ = validate_training_row(source_row, label, index)
         messages = source_row["messages"]
+        resolved_video = resolve_workspace_artifact(video_path, data_root)
+        try:
+            portable_video = str(resolved_video.relative_to(data_root))
+        except ValueError as exc:
+            raise SourceAware3kError(
+                f"{label}[{index}] 视频路径不属于项目 workspace/data"
+            ) from exc
         row = {
-            "videos": [video_path],
+            "videos": [portable_video],
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"<video>\n{user_prompt}"},
@@ -191,11 +205,15 @@ def build_fixed_prompt_dataset(
     source_sampling_dir: Path,
     prompt_revision_dir: Path,
     output_root: Path,
+    experiment_id: str = CURRENT_EXPERIMENT_ID,
+    project_root: Path = ROOT,
     release_dir: Path | None = None,
     validate_only: bool = False,
 ) -> tuple[Path, dict[str, Any]]:
     """Freeze a prompt-only derivative while preserving seed3411 media and labels."""
+    experiment_id = validate_experiment_id(experiment_id)
     source_summary, source_manifest = _validate_source_sampling(source_sampling_dir)
+    data_root = project_workspace_paths(project_root).data
     try:
         prompt, prompt_manifest = load_prompt_revision(prompt_revision_dir)
     except PromptControlError as exc:
@@ -286,6 +304,7 @@ def build_fixed_prompt_dataset(
         source_train_rows,
         system_prompt=prompt["system_prompt"],
         user_prompt=prompt["user_prompt"],
+        data_root=data_root,
         label="seed3411",
     )
     validation_rows = _rewrite_rows(
@@ -295,10 +314,12 @@ def build_fixed_prompt_dataset(
         ),
         system_prompt=prompt["system_prompt"],
         user_prompt=prompt["user_prompt"],
+        data_root=data_root,
         label="fold0_validation",
     )
     identity_seed = {
         "schema_version": SCHEMA_VERSION,
+        "experiment_id": experiment_id,
         "source_sampling_id": source_manifest["sampling_id"],
         "source_sampling_manifest_sha256": sampling_identity[
             "sampling_manifest_sha256"
@@ -308,7 +329,7 @@ def build_fixed_prompt_dataset(
         "prompt_revision_id": prompt["revision_id"],
         "prompt_content_sha256": prompt_manifest["prompt_content_sha256"],
     }
-    bundle_id = f"v4.1-fixed-prompt-{_sha256_bytes(_canonical_bytes(identity_seed))[:12]}"
+    input_identity_sha256 = _sha256_bytes(_canonical_bytes(identity_seed))
     files = {
         "dataset_info.json": _pretty_bytes(_dataset_registry()),
         "datasets/seed_3411.json": _pretty_bytes(train_rows),
@@ -327,7 +348,8 @@ def build_fixed_prompt_dataset(
         "schema_version": SUMMARY_SCHEMA_VERSION,
         "status": "ready",
         "immutable": True,
-        "bundle_id": bundle_id,
+        "experiment_id": experiment_id,
+        "input_identity_sha256": input_identity_sha256,
         "release": release_identity,
         "source_sampling": sampling_identity,
         "prompt_revision_id": prompt["revision_id"],
@@ -339,7 +361,7 @@ def build_fixed_prompt_dataset(
         "validation_row_count": len(validation_rows),
         "files": file_manifest,
     }
-    output_dir = Path(output_root) / bundle_id
+    output_dir = Path(output_root) / experiment_id / "input"
     if not validate_only or output_dir.exists():
         _write_immutable_directory(output_dir, files=files, summary=summary)
     return output_dir, summary
@@ -370,8 +392,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=paths.derived / "metadata/v4_1/fixed_prompt",
+        default=project_workspace_paths(ROOT).runs,
     )
+    parser.add_argument("--experiment-id", default=CURRENT_EXPERIMENT_ID)
     parser.add_argument("--validate-only", action="store_true")
     return parser.parse_args()
 
@@ -382,6 +405,7 @@ def main() -> int:
         source_sampling_dir=args.source_sampling_dir,
         prompt_revision_dir=args.prompt_revision_dir,
         output_root=args.output_root,
+        experiment_id=args.experiment_id,
         release_dir=args.release_dir,
         validate_only=args.validate_only,
     )
