@@ -1,0 +1,10 @@
+id: v4.1-prompt-minimal-v1-seed3411
+status: prepared
+purpose: 验证简化决策指令是否降低标签偏置
+baseline: v4.1-coverage-first-seed3411
+change:
+  type: prompt
+  summary: 只保留视频证据、四字段标签池和 JSON 输出要求
+data_release: dev-v4.1-20260728
+seed: 3411
+prompt_revision: minimal-v1
