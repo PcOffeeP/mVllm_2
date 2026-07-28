@@ -1,0 +1,62 @@
+{
+  "candidate_count": 425,
+  "generated_at": "2026-07-28T04:50:52+08:00",
+  "input_sha256": {
+    "3407": "4c8ea6c3bc77bc9aa05681d8f7033cacd72da541209750ffdc8b2959ced715a5",
+    "3411": "26073ce13b653bedf48f491d07d766ba47cb683e03b331a48e54470c2c0f6dfa"
+  },
+  "metric_gates": {
+    "fracture_f1": {
+      "available": true,
+      "delta_percentage_points": 7.599531615925059,
+      "left": 0.5311475409836065,
+      "limit_percentage_points": 5.0,
+      "passed": false,
+      "right": 0.6071428571428571
+    },
+    "fracture_recall": {
+      "available": true,
+      "delta_percentage_points": 11.864406779661019,
+      "left": 0.4576271186440678,
+      "limit_percentage_points": 5.0,
+      "passed": false,
+      "right": 0.576271186440678
+    },
+    "macro_f1": {
+      "available": true,
+      "delta_percentage_points": 3.9427242962571385,
+      "left": 0.6357395163481568,
+      "limit_percentage_points": 5.0,
+      "passed": true,
+      "right": 0.6751667593107282
+    },
+    "non_fracture_recall": {
+      "available": true,
+      "delta_percentage_points": 4.0322580645161255,
+      "left": 0.8104838709677419,
+      "limit_percentage_points": 5.0,
+      "passed": true,
+      "right": 0.7701612903225806
+    },
+    "strict_valid_rate": {
+      "available": true,
+      "delta_percentage_points": 0.47058823529412264,
+      "left": 0.9952941176470588,
+      "limit_percentage_points": 1.0,
+      "passed": true,
+      "right": 1.0
+    }
+  },
+  "overall": false,
+  "pair": [
+    3407,
+    3411
+  ],
+  "policy_sha256": "a51d82b5534f35ae76f6e49d8aeb91e5c5f4b7aec8d221e6eeb161e74d7de27f",
+  "prediction_disagreement_limit": 0.1,
+  "prediction_disagreement_passed": false,
+  "prediction_disagreement_rate": 0.1811764705882353,
+  "run_integrity": true,
+  "schema_version": "tensile-vlm-v4.1-relative-stability-gate/v1",
+  "scorer_identity": "run_v4_1_evaluation.py:82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e;contract:47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
+}

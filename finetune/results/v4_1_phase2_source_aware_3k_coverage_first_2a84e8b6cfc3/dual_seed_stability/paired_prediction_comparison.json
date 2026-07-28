@@ -1,0 +1,7 @@
+{
+  "candidate_count": 425,
+  "generated_at": "2026-07-28T04:50:52+08:00",
+  "policy_sha256": "a51d82b5534f35ae76f6e49d8aeb91e5c5f4b7aec8d221e6eeb161e74d7de27f",
+  "prediction_disagreement_rate": 0.1811764705882353,
+  "scorer_identity": "run_v4_1_evaluation.py:82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e;contract:47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
+}

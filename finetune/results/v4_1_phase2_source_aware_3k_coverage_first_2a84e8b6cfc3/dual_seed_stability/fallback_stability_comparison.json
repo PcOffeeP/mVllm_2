@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-07-28T13:34:06+08:00",
+  "identity_corrected": true,
+  "pairs": [
+    {
+      "candidate_count": 425,
+      "input_sha256": {
+        "3407": "067bca1c90b074fa8caad63b3b3f1981bb33880e746500291661c1e4fcae98a9",
+        "3413": "c7e19f9bdbd72d0fc532168fd0c51eaf54351c617b2a35da981a733a641e247b"
+      },
+      "metric_gates": {
+        "fracture_f1": {
+          "available": true,
+          "delta_percentage_points": 5.15469643948231,
+          "left": 0.5490196078431373,
+          "limit_percentage_points": 5.0,
+          "passed": false,
+          "right": 0.6005665722379604
+        },
+        "fracture_recall": {
+          "available": true,
+          "delta_percentage_points": 12.429378531073448,
+          "left": 0.4745762711864407,
+          "limit_percentage_points": 5.0,
+          "passed": false,
+          "right": 0.5988700564971752
+        },
+        "macro_f1": {
+          "available": true,
+          "delta_percentage_points": 1.0760610851690222,
+          "left": 0.647671568627451,
+          "limit_percentage_points": 5.0,
+          "passed": true,
+          "right": 0.6584321794791412
+        },
+        "non_fracture_recall": {
+          "available": true,
+          "delta_percentage_points": 10.080645161290324,
+          "left": 0.8185483870967742,
+          "limit_percentage_points": 5.0,
+          "passed": false,
+          "right": 0.717741935483871
+        },
+        "strict_valid_rate": {
+          "available": true,
+          "delta_percentage_points": 0.0,
+          "left": 1.0,
+          "limit_percentage_points": 1.0,
+          "passed": true,
+          "right": 1.0
+        }
+      },
+      "overall": false,
+      "pair": [
+        3407,
+        3413
+      ],
+      "prediction_disagreement_limit": 0.1,
+      "prediction_disagreement_passed": false,
+      "prediction_disagreement_rate": 0.1388235294117647,
+      "run_integrity": true,
+      "schema_version": "tensile-vlm-v4.1-relative-stability-gate/v1"
+    },
+    {
+      "candidate_count": 425,
+      "input_sha256": {
+        "3411": "26073ce13b653bedf48f491d07d766ba47cb683e03b331a48e54470c2c0f6dfa",
+        "3413": "c7e19f9bdbd72d0fc532168fd0c51eaf54351c617b2a35da981a733a641e247b"
+      },
+      "metric_gates": {
+        "fracture_f1": {
+          "available": true,
+          "delta_percentage_points": 0.6576284904896701,
+          "left": 0.6071428571428571,
+          "limit_percentage_points": 5.0,
+          "passed": true,
+          "right": 0.6005665722379604
+        },
+        "fracture_recall": {
+          "available": true,
+          "delta_percentage_points": 2.259887005649719,
+          "left": 0.576271186440678,
+          "limit_percentage_points": 5.0,
+          "passed": true,
+          "right": 0.5988700564971752
+        },
+        "macro_f1": {
+          "available": true,
+          "delta_percentage_points": 1.6734579831586993,
+          "left": 0.6751667593107282,
+          "limit_percentage_points": 5.0,
+          "passed": true,
+          "right": 0.6584321794791412
+        },
+        "non_fracture_recall": {
+          "available": true,
+          "delta_percentage_points": 5.241935483870963,
+          "left": 0.7701612903225806,
+          "limit_percentage_points": 5.0,
+          "passed": false,
+          "right": 0.717741935483871
+        },
+        "strict_valid_rate": {
+          "available": true,
+          "delta_percentage_points": 0.0,
+          "left": 1.0,
+          "limit_percentage_points": 1.0,
+          "passed": true,
+          "right": 1.0
+        }
+      },
+      "overall": false,
+      "pair": [
+        3411,
+        3413
+      ],
+      "prediction_disagreement_limit": 0.1,
+      "prediction_disagreement_passed": true,
+      "prediction_disagreement_rate": 0.09647058823529411,
+      "run_integrity": true,
+      "schema_version": "tensile-vlm-v4.1-relative-stability-gate/v1"
+    }
+  ],
+  "policy_sha256": "a51d82b5534f35ae76f6e49d8aeb91e5c5f4b7aec8d221e6eeb161e74d7de27f",
+  "scorer_identity": "run_v4_1_evaluation.py:82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e;runtime_contract:3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab"
+}

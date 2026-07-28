@@ -1,0 +1,34 @@
+{
+  "blocked_at": "2026-07-28T10:18:19+08:00",
+  "continue_to_crossval": false,
+  "identities": {
+    "seed3407": {
+      "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+      "fold": 0,
+      "release_id": "v4.1.0-ecb5aeb9657c",
+      "sample_count": 425
+    },
+    "seed3411": {
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "fold": 0,
+      "release_id": "v4.1.0-ecb5aeb9657c",
+      "sample_count": 425
+    },
+    "seed3413": {
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "fold": 0,
+      "release_id": "v4.1.0-ecb5aeb9657c",
+      "sample_count": 425
+    }
+  },
+  "invalidated_comparison_outputs": [
+    "primary_stability_comparison.json",
+    "relative_stability_gate.json",
+    "fallback_stability_comparison.json",
+    "final_stability_disposition.json"
+  ],
+  "reason": "evaluation_contract_hash_mismatch",
+  "required_resolution": "maintainer decision and identity-correct evidence; seed3407 must not be retrained",
+  "schema_version": "tensile-vlm-v4.1-stability-identity-block/v1",
+  "status": "integrity_blocked"
+}

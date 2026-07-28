@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-07-28T10:17:53+08:00",
+  "historical_reference": {
+    "fracture_recall": 0.5
+  },
+  "mode": "record_only",
+  "policy_sha256": "a51d82b5534f35ae76f6e49d8aeb91e5c5f4b7aec8d221e6eeb161e74d7de27f",
+  "scorer_identity": "run_v4_1_evaluation.py:82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e;contract:47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+  "seeds": {
+    "3407": {
+      "fracture_f1": 0.5311475409836065,
+      "fracture_recall": 0.4576271186440678,
+      "macro_f1": 0.6357395163481568,
+      "non_fracture_recall": 0.8104838709677419,
+      "strict_valid_rate": 0.9952941176470588
+    },
+    "3411": {
+      "fracture_f1": 0.6071428571428571,
+      "fracture_recall": 0.576271186440678,
+      "macro_f1": 0.6751667593107282,
+      "non_fracture_recall": 0.7701612903225806,
+      "strict_valid_rate": 1.0
+    },
+    "3413": {
+      "fracture_f1": 0.6005665722379604,
+      "fracture_recall": 0.5988700564971752,
+      "macro_f1": 0.6584321794791412,
+      "non_fracture_recall": 0.717741935483871,
+      "strict_valid_rate": 1.0
+    }
+  }
+}

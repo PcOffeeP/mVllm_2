@@ -1,0 +1,9 @@
+{
+  "continue_to_crossval": true,
+  "generated_at": "2026-07-28T13:34:06+08:00",
+  "identity_corrected": true,
+  "policy_sha256": "a51d82b5534f35ae76f6e49d8aeb91e5c5f4b7aec8d221e6eeb161e74d7de27f",
+  "scorer_identity": "run_v4_1_evaluation.py:82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e;runtime_contract:3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+  "status": "stability_unresolved_record_only",
+  "training_stability_not_established": true
+}
