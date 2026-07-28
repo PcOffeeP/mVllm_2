@@ -1,0 +1,16 @@
+{
+  "fields_and_labels_sha256": "e5b98aabefec8fb5c54f30a5d040594cda345628430032b08c532eb17ac68037",
+  "generated_at": "2026-07-28T21:41:33+08:00",
+  "immutable": true,
+  "prompt_content_sha256": "7fbb55d59548af56a486de501d187a2694e81257dd1936bbf13c85fdef6c6d6d",
+  "prompt_schema_version": "tensile-prompt-control/v1",
+  "prompt_yaml_sha256": "1bf9381e70a135d53a3d7097a397eda760ad6ccc4a58ff5a23d389503b65b4be",
+  "protocol_id": "tensile-vlm/v4.1",
+  "publishing_code_commit": "4c56f7c958b830e43e301739aa4d71b2eb1c1f99",
+  "revision_id": "v4.1-concise-evidence-json-v1",
+  "schema_version": "tensile-prompt-registry-manifest/v1",
+  "source_path": "pipeline/prompt_control/active_prompt.yaml",
+  "source_sha256": "1bf9381e70a135d53a3d7097a397eda760ad6ccc4a58ff5a23d389503b65b4be",
+  "system_prompt_sha256": "bc2fe237c677671d8bec1289141ced5c3c789e0205472b92ee84c4eb91cb8cb7",
+  "user_prompt_sha256": "440f7d14eb322fee85d357eb76b6217418c823c8029cf10485f4082aa4c45797"
+}
