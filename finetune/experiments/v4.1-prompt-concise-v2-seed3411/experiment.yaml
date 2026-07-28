@@ -1,0 +1,10 @@
+id: v4.1-prompt-concise-v2-seed3411
+status: prepared
+purpose: 验证精简且约束完整的证据Prompt是否恢复JSON合法率与状态辨别
+baseline: v4.1-prompt-minimal-v1-seed3411
+change:
+  type: prompt
+  summary: 压缩状态定义、字段联动与JSON null类型约束
+data_release: v4.1.0-ecb5aeb9657c
+seed: 3411
+prompt_revision: v4.1-concise-evidence-json-v2
