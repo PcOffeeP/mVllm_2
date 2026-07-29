@@ -1,0 +1,64 @@
+{
+  "schema_version": "tensile-vlm-v4.1-agent-pipeline-deployment-summary/v1",
+  "validated_at": "2026-07-29T10:35:00+08:00",
+  "status": "running_and_smoke_validated",
+  "designation": "intermediate_development_model",
+  "model_name": "v4.1-agent-pipeline-fold0-r1",
+  "origin_acceptance_id": "stage-b-intermediate-8e1fdb09f8e6",
+  "contract_version": "tensile-vlm/v4.1",
+  "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+  "artifacts": {
+    "current_path": "workspace/models/current",
+    "release_path": "workspace/models/releases/v4.1-agent-pipeline-fold0-r1",
+    "merged_aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+    "adapter_aggregate_sha256": "74842170d69a5a17f466a9f560db27cdc1aafde83730b71807d2996471d43aa7",
+    "full_hash_verification_passed": true
+  },
+  "runtime": {
+    "host": "127.0.0.1",
+    "port": 8002,
+    "model_argument": "workspace/models/current/merged",
+    "deployment_manifest": "pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json",
+    "runtime_device": "cuda:0",
+    "runtime_dtype": "bfloat16",
+    "production_alias": false
+  },
+  "real_media_service_smoke": {
+    "passed": true,
+    "strict_output_valid": true,
+    "request_id_present": true,
+    "actual_frame_table_present": true,
+    "tensor_digest_present": true,
+    "tensor_shape_present": true
+  },
+  "agent_pipeline_smoke": {
+    "workspace": "/home/liuyang/文档/TensileAgent-acceptance",
+    "doctor_passed": true,
+    "real_gpu_call_passed": true,
+    "result_schema": "tensile-agent/result/v4.1",
+    "response_status": "no_fracture",
+    "result_sha256": "14fa8991681d18fb77c82cb38fc1fed201ea3a5af3e6e11fc90d7e411bf6c5b2",
+    "deployment_identity_matched": true
+  },
+  "inventory_after_migration": {
+    "base_models": 1,
+    "merged_models": 22,
+    "adapter_roots": 23,
+    "checkpoints": 108,
+    "checkpoint_policy": "moved_with_adapter_not_deleted"
+  },
+  "historical_quality_status": {
+    "stage_b_passed": false,
+    "stage_c_completed": false,
+    "stage_d_passed": false,
+    "stage_g_passed": false,
+    "production_approved": false
+  },
+  "authorization_scope": {
+    "agent_pipeline": true,
+    "independent_model_acceptance": false,
+    "production_alias": false,
+    "retraining": false,
+    "checkpoint_deletion": false
+  }
+}
