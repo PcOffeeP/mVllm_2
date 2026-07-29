@@ -183,7 +183,15 @@ streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
   --reviewer-id <reviewer-id>
 
 # 复核输入并生成不可覆盖的训练发布
-python pipeline/scripts/build_v4_1_training_release.py
+python pipeline/scripts/build_v4_1_training_release.py \
+  --source-snapshot workspace/data/derived/metadata/source_snapshots/<source-id> \
+  --split-snapshot workspace/data/derived/metadata/split_snapshots/<split-id> \
+  --source-tree-sha256 <source-tree-sha256> \
+  --split-tree-sha256 <split-tree-sha256> \
+  --materialized <candidate-media>/development_materialized.json \
+  --media-manifest <candidate-media>/manifest.json \
+  --queue <review-queue>/review_queue.json \
+  --decisions <review-batch>/decisions.json
 ```
 
 正式路径、当前批次身份、恢复规则和不可绕过的质量门见

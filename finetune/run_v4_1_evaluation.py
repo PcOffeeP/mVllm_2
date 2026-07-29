@@ -16,6 +16,7 @@ from finetune.v4_1_runtime import (
     CONTRACT_HASH,
     CONTRACT_VERSION,
     RELEASE_ID,
+    RELEASE_SCHEMA_VERSION,
     V4_1FinetuneError,
     parse_v4_1_output,
     release_dir,
@@ -55,6 +56,10 @@ def parse_args() -> argparse.Namespace:
         "--expected-contract-hash",
         default=CONTRACT_HASH,
         help="待评测 release 必须绑定的训练契约 hash",
+    )
+    parser.add_argument(
+        "--expected-release-schema",
+        default=RELEASE_SCHEMA_VERSION,
     )
     prompt_group = parser.add_mutually_exclusive_group()
     prompt_group.add_argument(
@@ -414,6 +419,7 @@ def main() -> int:
         verify_media=True,
         release_id=args.release_id,
         expected_contract_hash=args.expected_contract_hash,
+        expected_schema_version=args.expected_release_schema,
     )
     contract, prompt_identity = _load_contract(
         args.analysis_prompt_overlay,

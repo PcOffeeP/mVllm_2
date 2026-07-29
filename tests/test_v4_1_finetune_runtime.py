@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -18,6 +19,10 @@ from finetune.v4_1_runtime import (
     summarize_v4_1_scores,
     validate_release,
     validate_training_row,
+    _validate_v2_snapshot_binding,
+)
+from pipeline.v4_1_training_release import (
+    canonical_release_identity_bytes,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +64,45 @@ def test_release_validation_uses_explicit_expected_contract_hash() -> None:
             ROOT,
             expected_contract_hash="0" * 64,
         )
+
+
+def test_v2_release_requires_complete_snapshot_provenance() -> None:
+    manifest = {
+        "source_snapshot_id": None,
+        "split_snapshot_id": None,
+        "provenance": {},
+    }
+    with pytest.raises(V4_1FinetuneError, match="snapshot binding"):
+        _validate_v2_snapshot_binding(manifest)
+
+    provenance = {
+        "data_version": "4.1.0",
+        "release_schema_version": "tensile-training-release/v4.1-v2",
+        "source_snapshot_id": "source-snapshot-0123456789ab",
+        "split_snapshot_id": "split-snapshot-0123456789ab",
+        "source_snapshot_tree_sha256": "1" * 64,
+        "split_snapshot_tree_sha256": "2" * 64,
+        "source_snapshot_manifest_sha256": "3" * 64,
+        "split_snapshot_manifest_sha256": "4" * 64,
+    }
+    canonical = canonical_release_identity_bytes(provenance)
+    valid = {
+        "source_snapshot_id": provenance["source_snapshot_id"],
+        "split_snapshot_id": provenance["split_snapshot_id"],
+        "provenance": provenance,
+        "release_id": (
+            "v4.1.0-" + hashlib.sha256(canonical).hexdigest()[:12]
+        ),
+    }
+    _validate_v2_snapshot_binding(valid)
+    attacked = json.loads(json.dumps(valid))
+    attacked["source_snapshot_id"] = "source-snapshot-fedcba987654"
+    attacked["provenance"]["source_snapshot_id"] = (
+        "source-snapshot-fedcba987654"
+    )
+    attacked["provenance"]["source_snapshot_tree_sha256"] = "f" * 64
+    with pytest.raises(V4_1FinetuneError, match="canonical identity"):
+        _validate_v2_snapshot_binding(attacked)
 
 
 def test_formal_visual_configs_keep_release_and_safe_memory_recipe() -> None:

@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=current.metadata / "v3/roi_manifests",
+        default=current.metadata_collection("roi_manifests"),
     )
     parser.add_argument(
         "--check-only",
@@ -59,8 +59,13 @@ def main() -> int:
             args.video_metadata = paths.metadata / "video_meta.json"
         if args.test_manifest == current.splits / "test.json":
             args.test_manifest = paths.splits / "test.json"
-        if args.output_root == current.metadata / "v3/roi_manifests":
-            args.output_root = paths.metadata / "v3/roi_manifests"
+        if args.output_root == current.metadata_collection("roi_manifests"):
+            args.output_root = paths.metadata_collection("roi_manifests")
+    args.output_root = paths.require_managed_output(
+        args.output_root,
+        paths.metadata_collection("roi_manifests"),
+        label="ROI manifest output",
+    )
     bundle = build_roi_manifest_bundle(
         decisions_path=args.decisions,
         video_metadata_path=args.video_metadata,

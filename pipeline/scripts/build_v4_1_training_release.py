@@ -20,42 +20,30 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path)
     parser.add_argument("--project-root", type=Path)
-    parser.add_argument("--materialized", type=Path)
-    parser.add_argument("--media-manifest", type=Path)
-    parser.add_argument("--queue", type=Path)
-    parser.add_argument("--decisions", type=Path)
+    parser.add_argument("--materialized", type=Path, required=True)
+    parser.add_argument("--media-manifest", type=Path, required=True)
+    parser.add_argument("--queue", type=Path, required=True)
+    parser.add_argument("--decisions", type=Path, required=True)
     parser.add_argument(
         "--contract",
         type=Path,
         default=PROJECT_ROOT / "pipeline/contracts/tensile_vlm_v4_1.json",
     )
-    parser.add_argument("--splits-dir", type=Path)
+    parser.add_argument("--source-snapshot", type=Path, required=True)
+    parser.add_argument("--split-snapshot", type=Path, required=True)
+    parser.add_argument("--source-tree-sha256", required=True)
+    parser.add_argument("--split-tree-sha256", required=True)
     parser.add_argument("--releases-dir", type=Path)
     args = parser.parse_args()
 
     paths = data_context_from_arg(PROJECT_ROOT, args.data_root)
-    active_workspace = paths.root
-    media_root = (
-        paths.metadata
-        / "v3/candidate_media_results/candidate-media-8de972530561"
-    )
-    review_root = (
-        paths.metadata
-        / "v4_1/review_decisions/v4-1-review-4a449c8d1193"
-    )
-    args.project_root = args.project_root or active_workspace
-    args.materialized = args.materialized or media_root / "development_materialized.json"
-    args.media_manifest = args.media_manifest or media_root / "manifest.json"
-    args.queue = args.queue or (
-        paths.metadata
-        / "v4_1/review_queues/"
-        "v4-1-review-4a449c8d1193/review_queue.json"
-    )
-    args.decisions = args.decisions or (
-        review_root / "review-batch-9043bbe4c286/decisions.json"
-    )
-    args.splits_dir = args.splits_dir or paths.splits
+    args.project_root = args.project_root or paths.root
     args.releases_dir = args.releases_dir or paths.training_releases
+    args.releases_dir = paths.require_managed_output(
+        args.releases_dir,
+        paths.training_releases,
+        label="training release output",
+    )
     return args
 
 
@@ -68,8 +56,13 @@ def main() -> int:
         queue_path=args.queue,
         decisions_path=args.decisions,
         contract_path=args.contract,
-        splits_dir=args.splits_dir,
+        splits_dir=args.split_snapshot,
         releases_dir=args.releases_dir,
+        source_snapshot_id=args.source_snapshot.name,
+        split_snapshot_id=args.split_snapshot.name,
+        source_snapshot_dir=args.source_snapshot,
+        expected_source_tree_hash=args.source_tree_sha256,
+        expected_split_tree_hash=args.split_tree_sha256,
     )
     print(
         json.dumps(

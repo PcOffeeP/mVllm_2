@@ -19,7 +19,9 @@ from typing import Any, Callable, Mapping
 
 from pipeline.current_data import DataContext
 
-SOURCE_SCHEMA_VERSION = "tensile-source-snapshot/v1"
+SOURCE_SCHEMA_VERSION = "tensile-source-snapshot/v2"
+LEGACY_SOURCE_SCHEMA_VERSION = "tensile-source-snapshot/v1"
+SPLIT_SCHEMA_VERSION = "tensile-split-snapshot/v1"
 SPLIT_POLICY_VERSION = "split-policy/v1"
 DEFAULT_EXPECTED_COUNT = 110
 DEFAULT_SEED = 42
@@ -90,6 +92,65 @@ def sha256_file(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def load_source_split_binding(
+    source_snapshot: Path,
+    split_snapshot: Path | None = None,
+) -> dict[str, Any]:
+    """Read a v2 snapshot pair or adapt one frozen v1 combined snapshot."""
+    source_snapshot = Path(source_snapshot)
+    source_manifest = source_snapshot / "source_manifest.json"
+    if source_manifest.is_file():
+        if split_snapshot is None:
+            raise SourceBootstrapError("source v2 必须显式提供 split snapshot")
+        source = json.loads(source_manifest.read_text(encoding="utf-8"))
+        split_path = Path(split_snapshot)
+        split = json.loads(
+            (split_path / "split_manifest.json").read_text(encoding="utf-8")
+        )
+        if (
+            source.get("schema_version") != SOURCE_SCHEMA_VERSION
+            or split.get("schema_version") != SPLIT_SCHEMA_VERSION
+            or split.get("source_snapshot_id")
+            != source.get("source_snapshot_id")
+        ):
+            raise SourceBootstrapError("source/split snapshot binding 不匹配")
+        return {
+            "layout": "semantic-pair-v2",
+            "source_snapshot_id": source["source_snapshot_id"],
+            "split_snapshot_id": split["split_snapshot_id"],
+            "source_snapshot": source_snapshot,
+            "split_snapshot": split_path,
+        }
+    inventory_path = source_snapshot / "source_inventory.json"
+    split_root = source_snapshot / "splits"
+    try:
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SourceBootstrapError("无法识别 source snapshot schema") from exc
+    if (
+        not isinstance(inventory, Mapping)
+        or inventory.get("schema_version") != LEGACY_SOURCE_SCHEMA_VERSION
+        or split_snapshot is not None
+        or not split_root.is_dir()
+    ):
+        raise SourceBootstrapError("legacy combined snapshot 结构非法")
+    split_files = sorted(split_root.glob("*.json"))
+    if not split_files:
+        raise SourceBootstrapError("legacy combined snapshot 缺少 splits")
+    split_identity = {
+        path.name: sha256_file(path) for path in split_files
+    }
+    digest = sha256_bytes(canonical_bytes(split_identity))
+    return {
+        "layout": "legacy-combined-v1",
+        "source_snapshot_id": inventory.get("source_snapshot_id")
+        or source_snapshot.name,
+        "split_snapshot_id": f"legacy-split-snapshot-{digest[:12]}",
+        "source_snapshot": source_snapshot,
+        "split_snapshot": split_root,
+    }
 
 
 def _read_csv(path: Path, required: tuple[str, ...]) -> list[dict[str, str]]:
@@ -541,6 +602,7 @@ def build_source_snapshot(
     *,
     expected_count: int = DEFAULT_EXPECTED_COUNT,
     probe: Callable[[Path], dict[str, Any]] = probe_video,
+    split_seed: int = DEFAULT_SEED,
 ) -> dict[str, Any]:
     tags, mappings, videos, material_differences = _validate_inputs(
         source,
@@ -644,7 +706,7 @@ def build_source_snapshot(
             )
 
     records.sort(key=lambda item: item["video_id"])
-    splits, decision = stratified_split(records)
+    splits, decision = stratified_split(records, seed=split_seed)
     normalized_tags = _normalized_rows(tags, key="id", columns=TAG_COLUMNS)
     normalized_mappings = _normalized_rows(
         mappings,
@@ -665,50 +727,96 @@ def build_source_snapshot(
             ),
         },
     }
-    identity = {
-        "schema_version": SOURCE_SCHEMA_VERSION,
-        "split_policy": SPLIT_POLICY_VERSION,
-        "videos": inventory,
-        "csv_contracts": csv_contracts,
-        "all_videos_tag": normalized_tags,
-        "video_mapping": normalized_mappings,
-        "splits": splits,
+    annotation_inventory = {
+        name: {
+            "sha256": sha256_file(source.annotations / name),
+            **csv_contracts[name],
+        }
+        for name in sorted(csv_contracts)
     }
-    digest = sha256_bytes(canonical_bytes(identity))
-    snapshot_id = f"source-snapshot-{digest[:12]}"
+    validation = {
+        "status": "passed",
+        "video_count": len(videos),
+        "tag_count": len(tags),
+        "mapping_count": len(mappings),
+        "material_difference_count": len(material_differences),
+        "material_differences": material_differences,
+        "media_difference_count": len(media_differences),
+        "media_differences": media_differences,
+        "warnings": warnings,
+    }
+    source_identity = {
+        "schema_version": SOURCE_SCHEMA_VERSION,
+        "videos": inventory,
+        "annotations": annotation_inventory,
+        "video_meta_sha256": sha256_bytes(canonical_bytes(records)),
+        "validation_report_sha256": sha256_bytes(
+            canonical_bytes(validation)
+        ),
+    }
+    source_digest = sha256_bytes(canonical_bytes(source_identity))
+    snapshot_id = f"source-snapshot-{source_digest[:12]}"
+    split_payloads = {
+        f"{name}.json": canonical_bytes(
+            _split_payload(name, video_ids, decision)
+        )
+        for name, video_ids in splits.items()
+    }
+    split_decision_bytes = canonical_bytes(decision)
+    member_ids_sha256 = sha256_bytes(
+        canonical_bytes(
+            {
+                name: sorted(video_ids)
+                for name, video_ids in sorted(splits.items())
+            }
+        )
+    )
+    split_seed = {
+        "schema_version": SPLIT_SCHEMA_VERSION,
+        "source_snapshot_id": snapshot_id,
+        "policy": {
+            "version": SPLIT_POLICY_VERSION,
+            "seed": split_seed,
+            "test_ratio": format(DEFAULT_TEST_RATIO, ".12g"),
+            "fold_count": DEFAULT_FOLDS,
+        },
+        "member_ids_sha256": member_ids_sha256,
+        "artifacts": {
+            "split_decision.json": {
+                "sha256": sha256_bytes(split_decision_bytes)
+            },
+            **{
+                name: {"sha256": sha256_bytes(content)}
+                for name, content in sorted(split_payloads.items())
+            },
+        },
+    }
+    split_digest = sha256_bytes(canonical_bytes(split_seed))
+    split_snapshot_id = f"split-snapshot-{split_digest[:12]}"
     return {
         "snapshot_id": snapshot_id,
-        "identity_sha256": digest,
+        "identity_sha256": source_digest,
+        "source_identity": source_identity,
+        "split_snapshot_id": split_snapshot_id,
+        "split_identity_sha256": split_digest,
+        "split_seed": split_seed,
         "video_meta": records,
         "splits": splits,
         "split_decision": decision,
         "inventory": {
             "schema_version": SOURCE_SCHEMA_VERSION,
             "source_snapshot_id": snapshot_id,
-            "identity_sha256": digest,
+            "identity_sha256": source_digest,
             "source_root": "source",
             "annotation_hashes": {
-                "all_videos_tag.csv": sha256_file(
-                    source.annotations / "all_videos_tag.csv"
-                ),
-                "video_mapping.csv": sha256_file(
-                    source.annotations / "video_mapping.csv"
-                ),
+                name: record["sha256"]
+                for name, record in annotation_inventory.items()
             },
             "csv_contracts": csv_contracts,
             "videos": inventory,
         },
-        "validation": {
-            "status": "passed",
-            "video_count": len(videos),
-            "tag_count": len(tags),
-            "mapping_count": len(mappings),
-            "material_difference_count": len(material_differences),
-            "material_differences": material_differences,
-            "media_difference_count": len(media_differences),
-            "media_differences": media_differences,
-            "warnings": warnings,
-        },
+        "annotation_inventory": annotation_inventory,
+        "validation": validation,
         "_source_files": {
             "videos": videos,
             "annotations": {
@@ -758,7 +866,7 @@ def _split_payload(
         "video_ids": video_ids,
         "count": len(video_ids),
         "method": "stratified_type_location_with_rare_pool_v2",
-        "seed": DEFAULT_SEED,
+        "seed": split_decision["seed"],
         "test_ratio": DEFAULT_TEST_RATIO,
         "fold": (
             int(name.split("_")[1]) if name.startswith("fold_") else None
@@ -768,20 +876,68 @@ def _split_payload(
     }
 
 
-def _expected_snapshot_files(
+def _source_snapshot_payload_files(
+    bundle: Mapping[str, Any],
+) -> dict[str, bytes]:
+    return {
+        "video_meta.json": canonical_bytes(bundle["video_meta"]),
+        "source_inventory.json": canonical_bytes(bundle["inventory"]),
+        "annotation_inventory.json": canonical_bytes(
+            bundle["annotation_inventory"]
+        ),
+        "validation_report.json": canonical_bytes(bundle["validation"]),
+    }
+
+
+def _source_snapshot_files(bundle: Mapping[str, Any]) -> dict[str, bytes]:
+    payloads = _source_snapshot_payload_files(bundle)
+    manifest = {
+        "schema_version": SOURCE_SCHEMA_VERSION,
+        "source_snapshot_id": bundle["snapshot_id"],
+        "identity_sha256": bundle["identity_sha256"],
+        "identity": bundle["source_identity"],
+        "artifacts": {
+            relative: {"sha256": sha256_bytes(content)}
+            for relative, content in sorted(payloads.items())
+        },
+    }
+    return {
+        "source_manifest.json": canonical_bytes(manifest),
+        **payloads,
+    }
+
+
+def _split_snapshot_payload_files(
     bundle: Mapping[str, Any],
 ) -> dict[str, bytes]:
     result = {
-        "video_meta.json": canonical_bytes(bundle["video_meta"]),
-        "source_inventory.json": canonical_bytes(bundle["inventory"]),
         "split_decision.json": canonical_bytes(bundle["split_decision"]),
-        "validation_report.json": canonical_bytes(bundle["validation"]),
     }
     for name, video_ids in bundle["splits"].items():
-        result[f"splits/{name}.json"] = canonical_bytes(
+        result[f"{name}.json"] = canonical_bytes(
             _split_payload(name, video_ids, bundle["split_decision"])
         )
     return result
+
+
+def _split_snapshot_files(bundle: Mapping[str, Any]) -> dict[str, bytes]:
+    payloads = _split_snapshot_payload_files(bundle)
+    expected_artifacts = bundle["split_seed"]["artifacts"]
+    actual_artifacts = {
+        relative: {"sha256": sha256_bytes(content)}
+        for relative, content in sorted(payloads.items())
+    }
+    if actual_artifacts != expected_artifacts:
+        raise SourceBootstrapError("split snapshot seed artifact hash 漂移")
+    manifest = {
+        **bundle["split_seed"],
+        "split_snapshot_id": bundle["split_snapshot_id"],
+        "identity_sha256": bundle["split_identity_sha256"],
+    }
+    return {
+        "split_manifest.json": canonical_bytes(manifest),
+        **payloads,
+    }
 
 
 def _validate_physical_file(
@@ -861,7 +1017,7 @@ def validate_materialized_source_snapshot(
             label=f"{name} staging annotation",
         )
 
-    expected_files = _expected_snapshot_files(bundle)
+    expected_files = _source_snapshot_files(bundle)
     actual_files = {
         path.relative_to(snapshot).as_posix()
         for path in snapshot.rglob("*")
@@ -872,7 +1028,7 @@ def validate_materialized_source_snapshot(
         for path in snapshot.rglob("*")
         if path.is_dir() and not path.is_symlink()
     }
-    if actual_files != set(expected_files) or actual_directories != {"splits"}:
+    if actual_files != set(expected_files) or actual_directories:
         raise SourceBootstrapError("source snapshot 文件集合漂移")
     for relative, content in expected_files.items():
         _validate_physical_file(
@@ -881,19 +1037,35 @@ def validate_materialized_source_snapshot(
             label=f"source snapshot {relative}",
         )
 
-    split_root = rebuild_root / "source/splits"
-    expected_splits = {
-        Path(relative).name: content
-        for relative, content in expected_files.items()
-        if relative.startswith("splits/")
+
+def validate_materialized_split_snapshot(
+    bundle: Mapping[str, Any],
+    split_snapshot: Path,
+) -> None:
+    if split_snapshot.is_symlink() or not split_snapshot.is_dir():
+        raise SourceBootstrapError(
+            f"split snapshot 必须是物理目录: {split_snapshot}"
+        )
+    if split_snapshot.name != bundle["split_snapshot_id"]:
+        raise SourceBootstrapError("split snapshot 目录 ID 不匹配")
+    expected_files = _split_snapshot_files(bundle)
+    actual_files = {
+        path.relative_to(split_snapshot).as_posix()
+        for path in split_snapshot.rglob("*")
+        if path.is_file() or path.is_symlink()
     }
-    if {path.name for path in split_root.iterdir()} != set(expected_splits):
-        raise SourceBootstrapError("staging source/splits 文件集合漂移")
-    for name, content in expected_splits.items():
+    actual_directories = {
+        path.relative_to(split_snapshot).as_posix()
+        for path in split_snapshot.rglob("*")
+        if path.is_dir() and not path.is_symlink()
+    }
+    if actual_files != set(expected_files) or actual_directories:
+        raise SourceBootstrapError("split snapshot 文件集合漂移")
+    for relative, content in expected_files.items():
         _validate_physical_file(
-            split_root / name,
+            split_snapshot / relative,
             expected_hash=sha256_bytes(content),
-            label=f"staging split {name}",
+            label=f"split snapshot {relative}",
         )
 
 
@@ -905,7 +1077,6 @@ def materialize_source_snapshot(bundle: Mapping[str, Any]) -> Path:
         rebuild_root / "source",
         rebuild_root / "source/videos",
         rebuild_root / "source/annotations",
-        rebuild_root / "source/splits",
         rebuild_root / "derived",
         rebuild_root / "derived/metadata",
         rebuild_root / "derived/metadata/source_snapshots",
@@ -946,8 +1117,7 @@ def materialize_source_snapshot(bundle: Mapping[str, Any]) -> Path:
         tempfile.mkdtemp(prefix=f".{bundle['snapshot_id']}.", dir=snapshot.parent)
     )
     try:
-        (temporary / "splits").mkdir()
-        for relative, content in _expected_snapshot_files(bundle).items():
+        for relative, content in _source_snapshot_files(bundle).items():
             destination = temporary / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(content)
@@ -956,9 +1126,36 @@ def materialize_source_snapshot(bundle: Mapping[str, Any]) -> Path:
         if temporary.exists():
             shutil.rmtree(temporary)
 
-    split_root = rebuild_root / "source/splits"
-    split_root.mkdir(parents=True, exist_ok=True)
-    for path in (snapshot / "splits").glob("*.json"):
-        _copy_verified(path, split_root / path.name, sha256_file(path))
     validate_materialized_source_snapshot(bundle, snapshot)
+    return snapshot
+
+
+def materialize_split_snapshot(bundle: Mapping[str, Any]) -> Path:
+    rebuild_root = Path(bundle["_rebuild_root"])
+    collection = rebuild_root / "derived/metadata/split_snapshots"
+    collection.mkdir(parents=True, exist_ok=True)
+    if collection.is_symlink() or not collection.is_dir():
+        raise SourceBootstrapError(
+            f"split snapshot collection 必须是物理目录: {collection}"
+        )
+    snapshot = collection / str(bundle["split_snapshot_id"])
+    if snapshot.exists():
+        validate_materialized_split_snapshot(bundle, snapshot)
+        return snapshot
+    temporary = Path(
+        tempfile.mkdtemp(
+            prefix=f".{bundle['split_snapshot_id']}.",
+            dir=collection,
+        )
+    )
+    try:
+        for relative, content in _split_snapshot_files(bundle).items():
+            destination = temporary / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(content)
+        os.rename(temporary, snapshot)
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+    validate_materialized_split_snapshot(bundle, snapshot)
     return snapshot

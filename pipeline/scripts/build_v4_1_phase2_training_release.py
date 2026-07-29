@@ -63,10 +63,16 @@ def parse_args() -> argparse.Namespace:
         "review-batch-7a7222b947da/decisions.json"
     )
     args.audit = args.audit or (
-        paths.metadata / "v4_1/effective_view_audits/phase1_verified/audit_manifest.json"
+        paths.metadata
+        / "v4_1/effective_view_audits/phase1_verified/audit_manifest.json"
     )
     args.splits_dir = args.splits_dir or paths.splits
     args.releases_dir = args.releases_dir or paths.training_releases
+    args.releases_dir = paths.require_managed_output(
+        args.releases_dir,
+        paths.training_releases,
+        label="phase2 release output",
+    )
     return args
 
 

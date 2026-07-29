@@ -9,7 +9,8 @@ from typing import Any
 
 FORBIDDEN = re.compile(
     r"data/current|data/01_videos|tensile-data/current|"
-    r"\.compat/workspace|TENSILE_DATA_HOME|/Users/|/home/"
+    r"\.compat/workspace|TENSILE_DATA_HOME|/Users/|/home/|"
+    r"metadata/v3|metadata/v4_1|workspace/data-rebuild"
 )
 TEXT_SUFFIXES = frozenset({".py", ".sh", ".yaml", ".yml", ".json", ".md"})
 
@@ -115,9 +116,15 @@ def scan_active_data_paths(
             path.read_text(encoding="utf-8").splitlines(),
             start=1,
         ):
-            for match in FORBIDDEN.finditer(line):
+            normalized = re.sub(r"""["'\s+()]""", "", line)
+            matched_tokens = {
+                match.group(0)
+                for candidate in (line, normalized)
+                for match in FORBIDDEN.finditer(candidate)
+            }
+            for token in sorted(matched_tokens):
                 match_count += 1
-                key = (relative, line_number, match.group(0))
+                key = (relative, line_number, token)
                 if key in keyed:
                     used.add(key)
                 else:
@@ -125,7 +132,7 @@ def scan_active_data_paths(
                         {
                             "path": relative,
                             "line": line_number,
-                            "match": match.group(0),
+                            "match": token,
                         }
                     )
     stale = [
