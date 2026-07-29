@@ -28,7 +28,10 @@ from typing import Any, Mapping
 
 import streamlit as st
 from PIL import Image, ImageDraw
-from streamlit_cropper import st_cropper
+try:
+    from streamlit_cropper import st_cropper
+except ModuleNotFoundError:  # Core pipeline validation must not depend on the UI plugin.
+    st_cropper = None
 
 from pipeline.current_data import (
     current_data_paths,
@@ -687,6 +690,11 @@ def _render_audit_previews(
 
 
 def main() -> None:
+    if st_cropper is None:
+        raise RuntimeError(
+            "ROI 标注 UI 需要可选依赖 streamlit-cropper；"
+            "核心重建与校验不需要该依赖"
+        )
     args = _parse_args()
     metadata_path = args.metadata.resolve()
     output_path = args.output.resolve()
