@@ -1,10 +1,27 @@
 {
   "schema_version": "tensile-checkpoint-policy/v1",
   "current_model": "v4.1-agent-pipeline-fold0-r1",
-  "current_training_adapter": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
-  "current_retention": [
-    "best",
-    "last"
+  "protected_experiments": [
+    {
+      "reason": "current_release_training_source",
+      "adapter": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
+      "retention": "all"
+    },
+    {
+      "reason": "latest_three_fold_analysis",
+      "adapter": "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold0/adapter",
+      "retention": "all"
+    },
+    {
+      "reason": "latest_three_fold_analysis",
+      "adapter": "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold1/adapter",
+      "retention": "all"
+    },
+    {
+      "reason": "latest_three_fold_analysis",
+      "adapter": "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold2/adapter",
+      "retention": "all"
+    }
   ],
   "completed_experiment_retention": [],
   "requirements": {
@@ -15,7 +32,8 @@
   },
   "notes": [
     "Checkpoint deletion does not delete the root adapter, merged model, metrics, logs, trainer state, or model identity.",
-    "The current release source retains best and last checkpoints for recovery and training-trajectory evidence.",
+    "The current release source retains every checkpoint for recovery and intermediate-learning analysis.",
+    "The latest prompt-concise three-fold run retains every checkpoint until its training trajectory has been fully analyzed.",
     "All other models are completed comparison or archive artifacts and retain root adapters plus merged models."
   ]
 }

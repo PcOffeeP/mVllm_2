@@ -40,13 +40,18 @@ def _experiment(root: Path, name: str, *, best: int | None) -> Path:
     return adapter
 
 
-def test_plan_keeps_best_and_last_only_for_current(tmp_path: Path) -> None:
+def test_plan_keeps_all_checkpoints_for_protected_experiments(tmp_path: Path) -> None:
     current = _experiment(tmp_path, "current", best=10)
     _experiment(tmp_path, "old", best=10)
     policy = {
         "schema_version": "tensile-checkpoint-policy/v1",
-        "current_training_adapter": str(current.relative_to(tmp_path)),
-        "current_retention": ["best", "last"],
+        "protected_experiments": [
+            {
+                "reason": "current_release_training_source",
+                "adapter": str(current.relative_to(tmp_path)),
+                "retention": "all",
+            }
+        ],
     }
 
     plan = build_plan(tmp_path, policy)
@@ -62,8 +67,7 @@ def test_apply_requires_exact_confirmation_and_detects_drift(
     current = _experiment(tmp_path, "current", best=10)
     policy = {
         "schema_version": "tensile-checkpoint-policy/v1",
-        "current_training_adapter": str(current.relative_to(tmp_path)),
-        "current_retention": [],
+        "protected_experiments": [],
     }
     plan = build_plan(tmp_path, policy)
     monkeypatch.setattr(

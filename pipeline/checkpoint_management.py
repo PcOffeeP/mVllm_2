@@ -99,7 +99,10 @@ def load_policy(path: Path) -> dict[str, Any]:
 
 def build_plan(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
     root = root.resolve()
-    current_adapter = root / policy["current_training_adapter"]
+    protected = {
+        (root / item["adapter"]).resolve(): item
+        for item in policy.get("protected_experiments", [])
+    }
     actions: list[dict[str, Any]] = []
     experiments: list[dict[str, Any]] = []
     for adapter in _adapter_roots(root):
@@ -121,13 +124,14 @@ def build_plan(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
             raise CheckpointManagementError(
                 f"root adapter 与 selected checkpoint 不一致: {adapter}"
             )
+        protection = protected.get(adapter.resolve())
         keep_names: set[str] = set()
-        if adapter.resolve() == current_adapter.resolve():
-            for selector in policy["current_retention"]:
-                if selector == "best" and best_name:
-                    keep_names.add(best_name)
-                elif selector == "last":
-                    keep_names.add(last_name)
+        if protection is not None:
+            if protection.get("retention") != "all":
+                raise CheckpointManagementError(
+                    f"未知的受保护实验保留模式: {protection}"
+                )
+            keep_names = {checkpoint.name for checkpoint in checkpoints}
         experiment_actions = []
         for checkpoint in checkpoints:
             identity = directory_identity(checkpoint)
@@ -136,7 +140,7 @@ def build_plan(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
                 "path": str(checkpoint.relative_to(root)),
                 "decision": decision,
                 "reason": (
-                    "current_release_best_or_last"
+                    str(protection["reason"])
                     if decision == "keep"
                     else "completed_experiment_root_adapter_and_merged_verified"
                 ),
@@ -151,6 +155,9 @@ def build_plan(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
                 "best_checkpoint": best_name,
                 "last_checkpoint": last_name,
                 "root_matches": selected_name,
+                "protection_reason": (
+                    protection.get("reason") if protection is not None else None
+                ),
                 "checkpoint_count": len(checkpoints),
                 "keep_count": sum(a["decision"] == "keep" for a in experiment_actions),
                 "delete_count": sum(

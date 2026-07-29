@@ -23,19 +23,27 @@ identities, or release manifests.
   frozen aggregate-hash checks.
 - No active training process was present during planning.
 
-## Retention decision
+## Superseded initial decision
 
-Keep two checkpoints for the training experiment that produced the current
-release `v4.1-agent-pipeline-fold0-r1`:
+The initial dry-run proposed retaining only best and last for the current
+release source. That proposal was rejected before deletion because checkpoints
+are also required for rapid retraining and analysis of intermediate learning
+ability.
 
-- `workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-250`
-  — best checkpoint and source of the saved root adapter.
-- `workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1125`
-  — last checkpoint, retained for recovery and trajectory comparison.
+No checkpoint was deleted under the superseded plan.
 
-Delete all checkpoints from the other 21 completed comparison/archive
-experiments. Their root adapters, merged models, metrics, logs, and identities
-remain available.
+## Final retention decision
+
+Retain every checkpoint and every other result file for:
+
+1. the training experiment that produced the current release
+   `v4.1-agent-pipeline-fold0-r1`;
+2. all three folds of the latest
+   `v4.1-prompt-concise-cv-v1-seed3411` run.
+
+Only checkpoint directories are deleted from the other completed experiments.
+Their root adapters, merged models, metrics, logs, trainer states, and model
+identities remain available.
 
 ## Dry-run result
 
@@ -43,18 +51,17 @@ remain available.
 | --- | ---: |
 | Experiments | 22 |
 | Checkpoints before cleanup | 108 |
-| Checkpoints retained | 2 |
-| Checkpoints proposed for deletion | 106 |
-| Retained logical bytes | 2,795,556,058 |
-| Proposed reclaimed logical bytes | 100,683,254,785 |
+| Checkpoints retained | 20 |
+| Checkpoints proposed for deletion | 88 |
+| Retained logical bytes | Recomputed by final machine plan |
+| Proposed reclaimed logical bytes | Recomputed by final machine plan |
 
 The machine-readable plan is stored on the training machine at:
 
 `finetune/run_logs/checkpoint_management_20260729/checkpoint_plan.json`
 
-Plan SHA256:
-
-`3d5cfbdb32786f8160ffe9c46714a5d965911bae96aa50e510911a700725b7a0`
+The plan file and SHA256 are replaced atomically when the corrected policy is
+executed on the training machine.
 
 ## Safety boundary
 
@@ -64,6 +71,6 @@ The cleanup tool defaults to planning only. Applying this exact plan requires:
 2. all target directory metadata fingerprints to remain unchanged;
 3. no detected training process;
 4. every target to be a non-symlink `workspace/**/checkpoint-<step>` directory;
-5. the exact confirmation string `DELETE-106-CHECKPOINTS`.
+5. an exact confirmation string containing the recomputed deletion count.
 
 No deletion was performed while producing this report.
