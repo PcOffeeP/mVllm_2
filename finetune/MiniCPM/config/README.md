@@ -4,7 +4,7 @@
 
 ```text
 config/
-├── active/v4_1_visual/       当前正式 V4.1 视觉 LoRA 三折配置
+├── active/v4_1_visual/       历史完整 V4.1 视觉 LoRA 三折对比配置
 ├── experiments/v4_1/        fold0 视觉与自动子视频扩充消融配置
 └── archive/
     ├── v4_1_language/        2026-07-23 V4.1 语言层 LoRA 基线

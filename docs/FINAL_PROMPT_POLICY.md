@@ -1,7 +1,7 @@
 # 最终 Prompt 策略
 
-> **历史 V2 文档。** 本文冻结 `tensile-vlm/v2` 的 Prompt 决策，只用于现有 V2
-> 生产服务和历史复现。V4.1 的权威 Prompt/schema 位于
+> **历史 V2 文档。** 本文冻结 `tensile-vlm/v2` 的 Prompt 决策，只用于 V2 回滚和
+> 历史复现；V2 不再是当前默认服务。V4.1 的权威 Prompt/schema 位于
 > `pipeline/contracts/tensile_vlm_v4_1.json`；不要把本文作为 V4.1 训练或部署入口。
 
 ## 决策

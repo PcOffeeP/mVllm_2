@@ -13,10 +13,11 @@
 | 当前发布路径 | `workspace/data/releases/v4.1.0-ecb5aeb9657c` |
 | 当前发布样本 | 1678 |
 | 上一轮三折基础发布 | `v4.1.0-760050fad303`，1275 条 |
-| 三折训练 | 已完成 |
+| 当前发布模型 | `v4.1-agent-pipeline-fold0-r1`，coverage-first seed3407 Fold0 |
+| 最新三折实验 | `v4.1-prompt-concise-cv-v1-seed3411`，三折均已完成 |
 | 正式视觉运行 | `v4_1_0_760050fad303_20260724_visual`，已完成 |
 | BF16 / 两种 4-bit 验证 | 均已完成，1216 条，运行失败 0 |
-| 当前结论 | 新 development 发布已验证，进入 source-aware 3k；尚未通过生产效果验收 |
+| 当前结论 | Agent 工程链路已通过；最新三折出现契约退化和类别坍缩，质量门仍失败 |
 
 V4.1 不使用旧 `finetune/active_data_release.json`、旧
 `finetune/dataset_info.json` 或 V2 Prompt 作为活动指针。三个训练配置直接绑定冻结发布
@@ -71,9 +72,60 @@ python -m finetune.run_v4_1_evaluation \
   --experiment-contract /path/to/fixed_prompt_bundle/experiment_contract.json
 ```
 
-`--analysis-prompt-overlay` 仅保留给历史实验复现，不能用于新的固定 Prompt 实验。生产服务
-和 TensileAgent 仍维持 V2；本链路只提供 V4.1 模型 bundle 的 fail-closed Prompt/schema
-身份校验，不授予生产切换权限。
+`--analysis-prompt-overlay` 仅保留给历史实验复现，不能用于新的固定 Prompt 实验。当前
+V4.1 中间服务和 TensileAgent 链路已经跑通，但固定 Prompt 实验仍必须使用 fail-closed
+的 Prompt/schema 身份校验；链路通过不授予 production approval。
+
+## 当前模型与实验资产
+
+训练产物不再长期散落在 `LlamaFactory/saves/`。统一规则如下：
+
+```text
+workspace/
+├── runs/<experiment-id>/             实验输入、checkpoint、adapter、merged、评测
+└── models/
+    ├── current                       当前发布指针
+    ├── releases/<model-name>/        人工确认的发布模型
+    └── archive/                      历史模型
+```
+
+当前发布模型：
+
+```text
+workspace/models/releases/v4.1-agent-pipeline-fold0-r1/
+├── adapter/
+├── merged/
+└── release-manifest.json
+```
+
+`workspace/models/current` 指向该目录。模型部署必须通过
+`pipeline/model_registry/current.json` 解析身份，不能从实验文件名猜测模型。
+
+最新三折实验位于：
+
+```text
+workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/
+├── fold0/
+├── fold1/
+└── fold2/
+```
+
+这组三折的训练、最佳 checkpoint 回载、合并和严格评测已完成，但结果没有晋级为发布
+模型：加权 contract 合法率为 79.63%，joint correct 为 32.07%，并出现明显“未断裂”
+类别坍缩。完整结论见
+[Concise Prompt 三折报告](../docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md)。
+
+Checkpoint 保留以“训练任务是否已完成分析”为边界：
+
+- 当前发布来源实验的 5 个 checkpoint 全部保留；
+- 最新 concise 三折的 15 个 checkpoint 全部保留；
+- 其他已完成实验仅保留 root adapter、merged 和结果证据。
+
+新训练不得在任务级分析完成前自动删除 checkpoint。管理入口：
+
+```bash
+python scripts/manage_checkpoints.py plan
+```
 
 ## 环境
 
@@ -162,11 +214,17 @@ python finetune/archive/run_v4_1_three_fold_training.py
 
 `run_logs/three_fold_training_v4_1_0_760050fad303_20260723.json`
 
-三个输出目录分别为：
+迁移后的三个受管输出目录分别为：
 
 - `LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold0`
 - `LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold1`
 - `LlamaFactory/saves/minicpmv4_5/lora/archive/v4_1_language/sft_tensile_v4_1_0_760050fad303_20260723_fold2`
+
+以上旧路径现在是兼容链接；权威物理路径位于：
+
+- `workspace/runs/archive/v4.1-language-cv-v1-seed3407/fold0`
+- `workspace/runs/archive/v4.1-language-cv-v1-seed3407/fold1`
+- `workspace/runs/archive/v4.1-language-cv-v1-seed3407/fold2`
 
 流水线拒绝覆盖不完整或身份不一致的输出目录。不要通过删除状态文件绕过产物检查。
 
@@ -235,19 +293,23 @@ python -m finetune.run_v4_1_evaluation \
 训练 loss 和 eval loss 下降只能证明训练目标收敛。没有逐样本预测和任务指标时，不得
 声称模型已经达到可部署效果。
 
-## 生产切换边界
+## 当前部署与质量边界
 
-当前生产推理服务与 TensileAgent 仍运行 `tensile-vlm/v2`。V4.1 首轮视觉三折虽已
-完成，但效果未通过生产验收；仍需：
+当前训练机已使用 `v4.1-agent-pipeline-fold0-r1` 启动 V4.1 中间服务，并通过真实媒体
+service smoke、TensileAgent doctor 和 Agent 调用。它解决的是“整个链路能否运行”的
+问题，不代表模型质量已经达标。
 
-1. 扩充经过人工审查的独立视觉证据，并完成 source-aware fold0 学习曲线；
-2. 通过门槛后执行新发布的完整三折和最终全量训练；
-3. 冻结最终 V4.1 模型、processor、generation 与部署 manifest；
-4. 使服务端只接受 V4.1 artifact 中的 Prompt 和 schema；
-5. 同步升级 TensileAgent 的 HTTP 契约、搜索方向、证据聚合、Stub、Web 与测试；
-6. 完成真实视频联调和回滚验证。
+下一轮优化仍需：
 
-不得把 V4.1 模型装入 V2 服务并继续宣称 `contract_version=tensile-vlm/v2`。
+1. 用保留的 checkpoint 分析类别坍缩和契约合法率随 step 的变化；
+2. 通过交叉 Prompt/采样对照隔离退化来源；
+3. 提升 `临界未断裂`、`发生断裂`、`已断裂` 的召回与四字段合法率；
+4. 通过完整三折门槛后再决定 full-data 训练；
+5. 独立测试只能在方案冻结后执行，不能用于继续调参；
+6. 新模型只有在证据优于当前发布模型时才能晋级并替换 `current`。
+
+当前模型仍是 Fold0 中间开发模型，不得宣称为 final、full-data、
+independent-test-passed 或 production-approved。
 
 ## V2 历史复现
 
@@ -267,4 +329,6 @@ python -m finetune.run_v4_1_evaluation \
 - [数据处理与训练运行手册](../docs/DATA_PROCESSING_RUNBOOK.md)
 - [数据隔离设计](../docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)
 - [迁移报告](../docs/reports/2026-07-23-v2-v4-1-data-migration.md)
-- [V2 生产推理服务运行手册](../docs/INFERENCE_SERVICE_RUNBOOK.md)
+- [当前推理服务运行手册](../docs/INFERENCE_SERVICE_RUNBOOK.md)
+- [模型资产生命周期设计](../docs/plans/2026-07-29-model-artifact-lifecycle-design.md)
+- [Checkpoint 清理报告](../docs/reports/2026-07-29-checkpoint-retention-plan.md)

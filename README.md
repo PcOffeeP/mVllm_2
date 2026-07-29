@@ -4,22 +4,24 @@
 
 ## 当前状态（V4.1）
 
-`main` 当前只继续维护 `tensile-vlm/v4.1` 数据与训练链路。V2 已通过
-`tensile-vlm-v2-final` / `archive/v2` 封存，只用于历史复现。
+`main` 当前维护 `tensile-vlm/v4.1` 的数据、训练、模型资产、推理服务和
+TensileAgent 联调链路。V2 已封存为回滚与历史复现对象，不再是当前默认服务。
 
 | 项目 | 当前状态 |
 | --- | --- |
 | 活跃契约 | `tensile-vlm/v4.1` |
 | 当前运行时契约 hash | `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab` |
-| 数据基线 | `workspace/data/releases` 中的不可变 V4.1 发布 |
-| 模型研发 | 已完成视觉 LoRA、BF16 和 4-bit 路线验证，确认视觉适配方向有效 |
-| 数据改进 | 已建立有效视图审计、开发候选与独立测试候选隔离流程 |
-| 当前结论 | 模型尚未通过生产效果验收，继续补充独立视觉证据并做受控实验 |
-| 生产边界 | 推理服务和 TensileAgent 继续使用 `tensile-vlm/v2` |
+| 数据基线 | `workspace/data/releases/` 中的不可变 V4.1 发布 |
+| 当前发布模型 | `v4.1-agent-pipeline-fold0-r1` |
+| 默认模型入口 | `workspace/models/current` |
+| 当前服务 | 训练机 `127.0.0.1:8002`，V4.1 loopback-only 中间开发服务 |
+| Agent 状态 | 真实媒体服务 smoke、TensileAgent doctor 和 Agent 调用链路均已通过 |
+| 最新完整三折 | `v4.1-prompt-concise-cv-v1-seed3411`，已训练、合并和严格评测 |
+| 当前结论 | 工程链路已跑通；模型质量门仍失败，不是最终或生产模型 |
 
-V4.1 当前是可继续迭代的研发链路，不是可直接替换 V2 的生产模型。详细实验指标、逐折
-结果和阶段性候选统计放在 `docs/results/` 与专项文档中；README 只维护总体状态、稳定
-身份和实际开发流程。
+当前工作的核心不再是“证明流程能否运行”，而是保留已经跑通的 Agent 链路基准，同时以
+受控实验改善输出契约合法率、类别坍缩和断裂相关状态召回。详细模型身份、实验指标和
+限制分别放在 `pipeline/model_registry/`、`docs/results/` 和专项报告中。
 
 ## 核心思路与总体流程
 
@@ -31,7 +33,10 @@ V4.1 当前是可继续迭代的研发链路，不是可直接替换 V2 的生�
 4. 将开发数据和独立测试数据分别发布为内容寻址、不可覆盖的版本。
 5. 先在固定 fold 上进行受控采样和学习曲线实验，只改变一个主要因素并与冻结基线比较。
 6. 方案通过后再运行完整三折、最终全量训练和一次独立测试验收，并冻结全部模型身份。
-7. 模型验收通过后，才同步升级推理服务与 TensileAgent，并完成联调和回滚验证。
+7. 实验模型先进入 `workspace/runs/`；只有人工确认用途和证据后，才晋级到
+   `workspace/models/releases/`。
+8. 发布模型通过 `workspace/models/current` 接入服务；服务和 Agent 联调通过不等于
+   模型质量门或生产验收通过。
 
 同一源视频可以贡献多个窗口，但不能把近重复帧当作独立视觉证据；三折用于选择方案，
 最终模型必须使用全部合格开发数据训练，并由从未参与调参的独立测试发布验收。
@@ -71,12 +76,16 @@ workspace/
 │   ├── source/
 │   ├── derived/
 │   └── releases/
-└── runs/<experiment-id>/
-    ├── input/
-    ├── adapter/
-    ├── merged/
-    ├── evaluation/
-    └── logs/
+├── runs/<experiment-id>/
+│   ├── input/
+│   ├── adapter/ 或 fold*/adapter/
+│   ├── merged/ 或 fold*/merged/
+│   ├── evaluation/
+│   └── logs/
+└── models/
+    ├── current -> releases/<model-name>
+    ├── releases/
+    └── archive/
 ```
 
 `pipeline.current_data` 固定解析 `<repo>/workspace/data`，不读取
@@ -97,17 +106,26 @@ SHA-256；不会创建软链接，也不会删除旧根。`config/data_roots.jso
 - [V2 / V4.1 数据隔离迁移报告](docs/reports/2026-07-23-v2-v4-1-data-migration.md)
 - [数据目录说明](data/README.md)
 
-## 已冻结的 V4.1 训练发布
+## V4.1 数据发布
 
-发布目录：
+当前 development 发布：
+
+`workspace/data/releases/v4.1.0-ecb5aeb9657c`
+
+该发布包含 1678 个唯一媒体，并被当前 coverage-first Fold0 模型和最新 concise Prompt
+三折实验使用。各折记录数：
+
+| Fold | Train | Validation |
+| --- | ---: | ---: |
+| 0 | 1253 | 425 |
+| 1 | 1014 | 664 |
+| 2 | 1186 | 492 |
+
+历史基础三折发布：
 
 `workspace/data/releases/v4.1.0-760050fad303`
 
-发布清单：
-
-`workspace/data/releases/v4.1.0-760050fad303/manifest/release_manifest.json`
-
-已确认的统计：
+基础发布统计：
 
 | 项目 | 数量 |
 | --- | ---: |
@@ -120,8 +138,9 @@ SHA-256；不会创建软链接，也不会删除旧根。`config/data_roots.jso
 | Fold 1 train / val | 830 / 445 |
 | Fold 2 train / val | 929 / 346 |
 
-该发布是内容寻址、不可覆盖的训练输入。更正数据必须生成新的发布编号，不能直接修改
-现有发布目录。
+两个发布都是内容寻址、不可覆盖的训练输入。更正数据必须生成新的发布编号，不能直接
+修改现有发布目录。跨 release 比较必须提供共同样本分析，不能把全量指标差异直接归因于
+Prompt 或训练策略。
 
 ## V4.1 数据审查与发布
 
@@ -196,19 +215,44 @@ python finetune/archive/freeze_v4_1_evidence.py \
 [正式视觉证据冻结](docs/results/v4_1_0_760050fad303_20260724_visual/README.md)，有效视图
 审计见 [V4.1 有效视图审计](docs/V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md)。
 
-## 生产推理服务边界
+## 模型资产与 checkpoint 生命周期
 
-当前生产服务仍固定使用 `pipeline/contracts/tensile_vlm_v2.json`。现有部署和
-TensileAgent 接入应继续遵循
-[V2 推理服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)，不得把 V4.1 训练模型直接放入
-V2 服务或伪造 V2 deployment manifest。
+模型名称固定使用：
 
-V4.1 上线需要单独完成：
+```text
+<协议版本>-<本轮核心要点>-<训练范围>-r<轮次>
+```
 
-1. 选定通过任务效果验收的 V4.1 模型；
-2. 发布与 V4.1 artifact 一致的服务端 schema、Prompt 和 manifest；
-3. 同步升级 TensileAgent schema、搜索语义、Stub、Verifier、Web 展示和端到端测试；
-4. 完成真实视频联调与回滚验证后再切换生产地址。
+实验 ID 用来描述实验变量；模型名用来描述保留权重的身份，二者不得混用。所有新训练先写
+入 `workspace/runs/<experiment-id>/`，不能再把 `LlamaFactory/saves/` 当作长期模型库。
+晋级、替换和回滚通过 Git 管理的 `pipeline/model_registry/` 与训练机发布目录共同完成。
+
+Checkpoint 是实验过程资产，不是发布模型。当前策略：
+
+- 当前发布模型来源实验保留全部 checkpoint；
+- 最新 `v4.1-prompt-concise-cv-v1-seed3411` 三折保留全部 checkpoint，供中间能力分析；
+- 其他已完成实验已删除 checkpoint，但保留 root adapter、merged、评测、日志和身份文件；
+- 新训练在分析完成前不得自动清理 checkpoint。
+
+详见[模型资产生命周期设计](docs/plans/2026-07-29-model-artifact-lifecycle-design.md)与
+[Checkpoint 清理报告](docs/reports/2026-07-29-checkpoint-retention-plan.md)。
+
+## 当前推理服务边界
+
+当前默认推理入口是中间开发模型 `v4.1-agent-pipeline-fold0-r1`，运行时使用
+`tensile-vlm/v4.1` 契约和 `workspace/models/current/merged`。训练机服务只监听
+`127.0.0.1:8002`，TensileAgent 通过受控本机访问或 SSH tunnel 调用。
+
+该模型完成了训练、合并、部署和 Agent 链路验证，但仍有明确限制：
+
+- 仅 Fold0；
+- 不是最新三折最优模型；
+- 不是 full-data final；
+- 历史模型质量门未通过；
+- 未获得 production approval。
+
+V2 保留为历史回滚对象。启动、预检、真实视频 smoke 和停止方式见
+[推理服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)。
 
 ## 环境
 
@@ -228,9 +272,10 @@ pip install -e ./LlamaFactory
 ## 项目结构
 
 ```text
-pipeline/      数据处理、V4.1 标签/契约、生产服务
+pipeline/      数据处理、V4.1 契约、模型注册表与推理服务
 finetune/      三折训练、模型合并、严格评测
-data/          current/archive 语义入口
+workspace/     训练机本地数据、实验运行和模型资产（Git 忽略）
+data/          旧外部数据根的兼容入口
 config/        数据根配置
 docs/          运行手册、设计和迁移报告
 tests/         数据、契约和评测测试
@@ -240,8 +285,13 @@ models/        本地模型目录
 
 ## 相关文档
 
+- [当前项目状态与开发原则](docs/CURRENT_PROJECT_STATUS.md)
 - [数据处理与训练运行手册](docs/DATA_PROCESSING_RUNBOOK.md)
 - [微调与评估](finetune/README.md)
+- [推理服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)
+- [当前模型部署证据](docs/results/v4_1_agent_pipeline_fold0_r1/README.md)
+- [最新三折结果](docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md)
+- [模型资产生命周期设计](docs/plans/2026-07-29-model-artifact-lifecycle-design.md)
 - [V4.1 临界未断裂契约设计](docs/plans/2026-07-23-tensile-vlm-v4-1-incipient-fracture-design.md)
 - [Agent 工作说明](AGENTS.md)
 
