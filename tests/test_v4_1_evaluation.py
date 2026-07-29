@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from finetune.run_v4_1_evaluation import (
     evaluation_succeeded,
     load_validation_samples,
+    parse_args,
     summarize_records,
 )
 from finetune.v4_1_runtime import release_dir, score_v4_1_prediction
@@ -46,6 +48,28 @@ def test_loads_committed_fold_validation_sets() -> None:
     assert len(load_validation_samples(0)) == 425
     assert len(load_validation_samples(1)) == 445
     assert len(load_validation_samples(2)) == 346
+
+
+def test_cli_accepts_explicit_release_contract_hash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_v4_1_evaluation.py",
+            "--fold",
+            "0",
+            "--model-dir",
+            "model",
+            "--out-dir",
+            "out",
+            "--expected-contract-hash",
+            "new-contract-hash",
+        ],
+    )
+
+    assert parse_args().expected_contract_hash == "new-contract-hash"
 
 
 def test_summarizes_strict_metrics_and_confusion() -> None:

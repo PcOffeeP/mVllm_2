@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from finetune.v4_1_runtime import (
+    CONTRACT_HASH,
     CONTRACT_VERSION,
     RELEASE_ID,
     V4_1FinetuneError,
@@ -50,6 +51,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--quantization-bit", type=int, choices=(4,))
     parser.add_argument("--adapter-dir", type=Path)
     parser.add_argument("--release-id", default=RELEASE_ID)
+    parser.add_argument(
+        "--expected-contract-hash",
+        default=CONTRACT_HASH,
+        help="待评测 release 必须绑定的训练契约 hash",
+    )
     prompt_group = parser.add_mutually_exclusive_group()
     prompt_group.add_argument(
         "--experiment-contract",
@@ -407,6 +413,7 @@ def main() -> int:
         ROOT,
         verify_media=True,
         release_id=args.release_id,
+        expected_contract_hash=args.expected_contract_hash,
     )
     contract, prompt_identity = _load_contract(
         args.analysis_prompt_overlay,
