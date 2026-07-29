@@ -75,29 +75,6 @@ python -m finetune.run_v4_1_evaluation \
 和 TensileAgent 仍维持 V2；本链路只提供 V4.1 模型 bundle 的 fail-closed Prompt/schema
 身份校验，不授予生产切换权限。
 
-## 当前三折对应的全量 development 输入
-
-当前三折实验 `v4.1-prompt-concise-cv-v1-seed3411` 使用
-`v4.1-concise-evidence-json-v2` Prompt、seed3411 和 2 epoch recipe。三折完成并确认
-采用该 recipe 后，在训练机生成对应的全量 development 数据与配置：
-
-```bash
-python finetune/build_v4_1_full_development_dataset.py
-python finetune/prepare_v4_1_full_development_run.py
-```
-
-实验 ID 为 `v4.1-prompt-concise-full-v1-seed3411`。数据构建器直接读取冻结 release 的
-published development candidate 集，并用每个 fold 的 train/validation 并集做一致性
-校验；每个候选每轮至少出现一次，剩余额度才进入受 source/signature 上限约束的平衡重复
-层。它不读取 sealed/held-out 数据。
-
-生成的数据位于
-`workspace/runs/v4.1-prompt-concise-full-v1-seed3411/input/`，Git 管理的训练与合并配置
-位于 `finetune/experiments/v4.1-prompt-concise-full-v1-seed3411/`。全量训练从
-MiniCPM-V 4.5 基座重新开始，不合并三折 adapter；配置关闭 validation、early stopping
-和 best-checkpoint 选择，固定训练 2 epoch、750 optimizer steps。以上两个命令只准备
-输入和配置，不会启动训练。
-
 ## 环境
 
 ```bash
