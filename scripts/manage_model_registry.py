@@ -21,6 +21,7 @@ from pipeline.model_registry import (  # noqa: E402
 
 
 def _inventory(root: Path) -> dict[str, Any]:
+    base = (root / "models/minicpmv4_5").resolve()
     roots = [
         root / "models",
         root / "workspace",
@@ -34,17 +35,18 @@ def _inventory(root: Path) -> dict[str, Any]:
         if not scan_root.is_dir():
             continue
         for index in scan_root.rglob("model.safetensors.index.json"):
-            merged.add(index.parent.resolve())
+            model_dir = index.parent.resolve()
+            if model_dir != base:
+                merged.add(model_dir)
         for adapter in scan_root.rglob("adapter_model.safetensors"):
             parent = adapter.parent.resolve()
             if parent.name.startswith("checkpoint-"):
                 checkpoints.add(parent)
             else:
                 adapter_roots.add(parent)
-    base = root / "models/minicpmv4_5"
     return {
         "schema_version": "tensile-model-registry/inventory/v1",
-        "base_models": [str(base.resolve())] if base.is_dir() else [],
+        "base_models": [str(base)] if base.is_dir() else [],
         "merged_models": [str(path) for path in sorted(merged)],
         "adapter_roots": [str(path) for path in sorted(adapter_roots)],
         "checkpoints": [str(path) for path in sorted(checkpoints)],
