@@ -283,7 +283,7 @@ def evaluate_one(
     hit_token_limit: bool | None = None
     video_path = resolve_workspace_artifact(
         str(sample["video_path"]),
-        current_data_paths(ROOT).compatibility_workspace,
+        current_data_paths(ROOT).root,
     )
     try:
         result = run_model_on_video_detailed(

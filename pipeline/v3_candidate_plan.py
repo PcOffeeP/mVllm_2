@@ -10,9 +10,6 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from pipeline.current_data import current_data_paths
-from pipeline.data_roots import DataRootError, workspace_portable_path
-
 from pipeline.v3_labels import (
     SOURCE_FRACTURE,
     SOURCE_NO_FRACTURE,
@@ -69,17 +66,24 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _portable_path(path: Path) -> str:
-    try:
-        return str(path.resolve().relative_to(PROJECT_ROOT))
-    except ValueError:
+def _portable_path(path: Path, data_root: Path | None = None) -> str:
+    if data_root is not None:
         try:
-            return workspace_portable_path(
-                path,
-                current_data_paths(PROJECT_ROOT).compatibility_workspace,
-            )
-        except DataRootError:
-            return str(path.resolve())
+            relative = path.resolve().relative_to(Path(data_root).resolve())
+        except ValueError:
+            pass
+        else:
+            if relative.parts and relative.parts[0] in {
+                "source",
+                "derived",
+                "releases",
+            }:
+                return relative.as_posix()
+            raise CandidatePlanError(f"输入不是受管语义路径: {path}")
+    try:
+        return path.resolve().relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        raise CandidatePlanError(f"输入路径无法转换为稳定身份: {path}")
 
 
 def _load_json(path: Path) -> Any:
@@ -154,6 +158,8 @@ def load_plan_inputs(
     roi_media_dir: Path,
     review_reference_dir: Path,
     contract_path: Path,
+    *,
+    data_root: Path | None = None,
 ) -> dict[str, Any]:
     """Load and verify all lightweight inputs required by the dry-run planner."""
     roi_media_dir = roi_media_dir.resolve()
@@ -247,12 +253,18 @@ def load_plan_inputs(
             "tensile_vlm_v3_contract_sha256": contract_hash,
         },
         "input_paths": {
-            "roi_media_manifest": _portable_path(roi_manifest_path),
-            "roi_metadata": _portable_path(roi_metadata_path),
-            "review_reference_manifest": _portable_path(reference_manifest_path),
-            "development_reference": _portable_path(development_path),
-            "test_reference_audit": _portable_path(test_path),
-            "tensile_vlm_v3_contract": _portable_path(contract_path),
+            "roi_media_manifest": _portable_path(roi_manifest_path, data_root),
+            "roi_metadata": _portable_path(roi_metadata_path, data_root),
+            "review_reference_manifest": _portable_path(
+                reference_manifest_path, data_root
+            ),
+            "development_reference": _portable_path(
+                development_path, data_root
+            ),
+            "test_reference_audit": _portable_path(test_path, data_root),
+            "tensile_vlm_v3_contract": _portable_path(
+                contract_path, data_root
+            ),
         },
     }
 

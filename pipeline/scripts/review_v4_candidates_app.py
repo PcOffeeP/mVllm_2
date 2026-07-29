@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import streamlit as st
 
-from pipeline.current_data import current_data_paths
+from pipeline.current_data import data_context_from_arg
 from pipeline.v4_1_labels import (
     CLIP_STATES,
     canonicalize_v4_1_labels,
@@ -57,14 +57,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
     if "--" in raw:
         raw = raw[raw.index("--") + 1 :]
-    paths = current_data_paths(PROJECT_ROOT)
     parser = argparse.ArgumentParser(description="v4.1 候选媒体人工复检 UI")
+    parser.add_argument("--data-root", type=Path)
     parser.add_argument("--queue", type=Path, required=True)
-    parser.add_argument(
-        "--project-root",
-        type=Path,
-        default=paths.compatibility_workspace,
-    )
+    parser.add_argument("--project-root", type=Path)
     parser.add_argument("--review-reference", type=Path)
     parser.add_argument("--candidate-id", action="append", default=[])
     parser.add_argument("--routing-manifest", type=Path)
@@ -72,7 +68,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--draft", type=Path)
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--reviewer-id")
-    return parser.parse_args(raw)
+    args = parser.parse_args(raw)
+    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    args.project_root = args.project_root or context.root
+    args._data_context = context
+    return args
 
 
 def _default_paths(
@@ -257,7 +257,7 @@ def main() -> None:
         references = _cached_reference_records(
             str(args.review_reference.resolve()) if args.review_reference else None
         )
-        review_root = current_data_paths(PROJECT_ROOT).metadata / "v4_1/review_decisions"
+        review_root = args._data_context.metadata / "v4_1/review_decisions"
         default_draft, default_output_root = _default_paths(
             review_root,
             identity["queue_id"],

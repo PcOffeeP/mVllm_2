@@ -18,36 +18,31 @@ from pipeline.v3_candidate_plan import (
     load_plan_inputs,
     materialize_candidate_plan,
 )
-from pipeline.current_data import current_data_paths
+from pipeline.current_data import current_data_context, data_context_from_arg
 
 
-CURRENT_DATA = current_data_paths(PROJECT_ROOT)
+CURRENT_DATA = current_data_context(PROJECT_ROOT)
 DEFAULT_ROI_MEDIA_DIR = (
     CURRENT_DATA.metadata
-    / "v3"
-    / "roi_media_results"
-    / "roi-media-84ea2bd3a052"
+    / "v3/roi_media_results/roi-media-84ea2bd3a052"
 )
 DEFAULT_REVIEW_REFERENCE_DIR = (
     CURRENT_DATA.metadata
-    / "v3"
-    / "review_reference"
-    / "review-ref-7cd2e73a1cd1"
+    / "v3/review_reference/review-ref-7cd2e73a1cd1"
 )
 DEFAULT_CONTRACT = PROJECT_ROOT / "pipeline" / "contracts" / "tensile_vlm_v3.json"
-DEFAULT_OUTPUT_ROOT = CURRENT_DATA.metadata / "v3" / "candidate_plans"
+DEFAULT_OUTPUT_ROOT = CURRENT_DATA.metadata / "v3/candidate_plans"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="生成 v3 子视频候选计划和统计；不会生成 MP4 或帧图"
     )
-    parser.add_argument("--roi-media-dir", type=Path, default=DEFAULT_ROI_MEDIA_DIR)
-    parser.add_argument(
-        "--review-reference-dir", type=Path, default=DEFAULT_REVIEW_REFERENCE_DIR
-    )
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--roi-media-dir", type=Path)
+    parser.add_argument("--review-reference-dir", type=Path)
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
-    parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    parser.add_argument("--output-root", type=Path)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -58,8 +53,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
+    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    args.roi_media_dir = args.roi_media_dir or (
+        context.metadata
+        / "v3/roi_media_results/roi-media-84ea2bd3a052"
+    )
+    args.review_reference_dir = args.review_reference_dir or (
+        context.metadata / "v3/review_reference/review-ref-7cd2e73a1cd1"
+    )
+    args.output_root = args.output_root or context.metadata / "v3/candidate_plans"
     inputs = load_plan_inputs(
-        args.roi_media_dir, args.review_reference_dir, args.contract
+        args.roi_media_dir,
+        args.review_reference_dir,
+        args.contract,
+        data_root=context.root,
     )
     plan = build_candidate_plan(inputs)
     summary = {

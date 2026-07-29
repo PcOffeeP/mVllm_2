@@ -352,6 +352,7 @@ def build_v4_1_training_release(
     contract_path: Path,
     splits_dir: Path,
     releases_dir: Path,
+    source_snapshot_id: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     """Validate all inputs and publish one deterministic immutable release."""
     project_root = Path(project_root).resolve()
@@ -544,6 +545,10 @@ def build_v4_1_training_release(
             files["metadata/training_candidates.json"]
         ),
     }
+    if source_snapshot_id is not None:
+        if not source_snapshot_id.startswith("source-snapshot-"):
+            raise V4_1TrainingReleaseError("source_snapshot_id 格式非法")
+        seed["source_snapshot_id"] = source_snapshot_id
     release_digest = _sha256_bytes(_canonical_bytes(seed))[:12]
     release_id = f"v{DATA_VERSION}-{release_digest}"
     file_manifest = [
@@ -565,6 +570,7 @@ def build_v4_1_training_release(
         "source_review_batch_id": decisions["batch_id"],
         "source_queue_id": queue_identity["queue_id"],
         "source_media_id": media_manifest["media_id"],
+        "source_snapshot_id": source_snapshot_id,
         "counts": quality["counts"],
         "provenance": seed,
         "files": file_manifest,

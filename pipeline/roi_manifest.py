@@ -7,10 +7,10 @@ import json
 import os
 import tempfile
 from collections import Counter
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+from pipeline.current_data import resolve_data_artifact
 from pipeline.scripts.roi_annotation_app import (
     MODE_FIXED,
     MODE_NO_CROP,
@@ -27,7 +27,7 @@ from pipeline.scripts.roi_annotation_app import (
     source_state,
 )
 
-ROI_MANIFEST_SCHEMA_VERSION = "tensile-roi-manifest/v1"
+ROI_MANIFEST_SCHEMA_VERSION = "tensile-roi-manifest/v2"
 
 
 class RoiManifestError(ValueError):
@@ -110,10 +110,9 @@ def _resolve_source_path(
     raw = (
         decision.get("source_video_path")
         or video.get("video_path")
-        or f"data/01_videos/{video['video_id']}.mp4"
+        or f"source/videos/{video['video_id']}.mp4"
     )
-    path = Path(str(raw))
-    return path if path.is_absolute() else project_root / path
+    return resolve_data_artifact(str(raw), project_root)
 
 
 def _validate_decision(
@@ -198,8 +197,6 @@ def _validate_decision(
     current_state = source_state(source_path)
     if decision.get("source_size_bytes") != current_state["source_size_bytes"]:
         raise RoiManifestError(f"{video_id}: 源视频大小已变化")
-    if decision.get("source_mtime_ns") != current_state["source_mtime_ns"]:
-        raise RoiManifestError(f"{video_id}: 源视频修改时间已变化")
     recorded_hash = decision.get("source_sha256")
     if not isinstance(recorded_hash, str) or len(recorded_hash) != 64:
         raise RoiManifestError(f"{video_id}: source_sha256 无效")
@@ -322,7 +319,6 @@ def build_roi_manifest_bundle(
             name: {"sha256": _content_hash(payload)}
             for name, payload in sorted(artifacts.items())
         },
-        "generated_at": generated_at or datetime.now(timezone.utc).isoformat(),
     }
     return {"manifest.json": manifest, **artifacts}
 
@@ -342,15 +338,7 @@ def write_roi_manifest_bundle(
             path = destination / name
             if not path.exists():
                 raise FileExistsError(f"拒绝覆盖已有 ROI manifest: {destination}")
-            if name == "manifest.json":
-                existing = _load_json(path)
-                existing_without_time = dict(existing)
-                requested_without_time = dict(payload)
-                existing_without_time.pop("generated_at", None)
-                requested_without_time.pop("generated_at", None)
-                identical = existing_without_time == requested_without_time
-            else:
-                identical = path.read_bytes() == _canonical_bytes(payload)
+            identical = path.read_bytes() == _canonical_bytes(payload)
             if not identical:
                 raise FileExistsError(f"拒绝覆盖已有 ROI manifest: {destination}")
         return destination, False

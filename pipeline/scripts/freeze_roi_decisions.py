@@ -13,31 +13,32 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pipeline.roi_manifest import build_roi_manifest_bundle, write_roi_manifest_bundle
-from pipeline.current_data import current_data_paths
+from pipeline.current_data import data_context_from_arg
 
 
 def build_parser() -> argparse.ArgumentParser:
-    paths = current_data_paths(PROJECT_ROOT)
+    current = data_context_from_arg(PROJECT_ROOT, None)
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-root", type=Path)
     parser.add_argument(
         "--decisions",
         type=Path,
-        default=paths.metadata / "roi_decisions.json",
+        default=current.metadata / "roi_decisions.json",
     )
     parser.add_argument(
         "--video-metadata",
         type=Path,
-        default=paths.metadata / "video_meta.json",
+        default=current.metadata / "video_meta.json",
     )
     parser.add_argument(
         "--test-manifest",
         type=Path,
-        default=paths.splits / "test.json",
+        default=current.splits / "test.json",
     )
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=paths.metadata / "v3/roi_manifests",
+        default=current.metadata / "v3/roi_manifests",
     )
     parser.add_argument(
         "--check-only",
@@ -49,12 +50,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    paths = current_data_paths(PROJECT_ROOT)
+    paths = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    current = data_context_from_arg(PROJECT_ROOT, None)
+    if args.data_root is not None:
+        if args.decisions == current.metadata / "roi_decisions.json":
+            args.decisions = paths.metadata / "roi_decisions.json"
+        if args.video_metadata == current.metadata / "video_meta.json":
+            args.video_metadata = paths.metadata / "video_meta.json"
+        if args.test_manifest == current.splits / "test.json":
+            args.test_manifest = paths.splits / "test.json"
+        if args.output_root == current.metadata / "v3/roi_manifests":
+            args.output_root = paths.metadata / "v3/roi_manifests"
     bundle = build_roi_manifest_bundle(
         decisions_path=args.decisions,
         video_metadata_path=args.video_metadata,
         test_manifest_path=args.test_manifest,
-        project_root=paths.compatibility_workspace,
+        project_root=paths.root,
     )
     report = {**bundle["validation_report.json"], "check_only": args.check_only}
     if not args.check_only:

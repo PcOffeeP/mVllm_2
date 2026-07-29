@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
 
     paths = current_data_paths(PROJECT_ROOT)
-    args.project_root = args.project_root or paths.compatibility_workspace
+    args.project_root = args.project_root or paths.root
     args.base_release_dir = args.base_release_dir or (
         paths.training_releases / "v4.1.0-760050fad303"
     )

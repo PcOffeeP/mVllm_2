@@ -58,7 +58,7 @@ def validate_release(
 ) -> dict[str, Any]:
     """Validate immutable release files, rows, labels, splits, and optional media."""
     project_root = Path(project_root).resolve()
-    media_root = current_data_paths(project_root).compatibility_workspace
+    media_root = current_data_paths(project_root).root
     root = release_dir(project_root, release_id)
     manifest_path = root / "manifest/release_manifest.json"
     manifest = _read_json(manifest_path)
@@ -249,7 +249,7 @@ def validate_training_config(
     configured_media_dir = (
         Path(project_root) / "finetune" / str(config.get("media_dir"))
     ).resolve()
-    expected_media_dir = current_data_paths(project_root).compatibility_workspace.resolve()
+    expected_media_dir = current_data_paths(project_root).root.resolve()
     if configured_media_dir != expected_media_dir:
         raise V4_1FinetuneError(
             f"{config_path.name}: media_dir 未绑定当前语义化数据 workspace"

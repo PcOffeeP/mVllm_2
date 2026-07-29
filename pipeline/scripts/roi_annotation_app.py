@@ -30,7 +30,11 @@ import streamlit as st
 from PIL import Image, ImageDraw
 from streamlit_cropper import st_cropper
 
-from pipeline.current_data import current_data_paths
+from pipeline.current_data import (
+    current_data_paths,
+    data_context_from_arg,
+    resolve_data_artifact,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CURRENT_DATA = current_data_paths(PROJECT_ROOT)
@@ -68,14 +72,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     if "--" in raw:
         raw = raw[raw.index("--") + 1 :]
     parser = argparse.ArgumentParser(description="源视频固定 ROI 人工标注工具")
-    parser.add_argument("--metadata", type=Path, default=VIDEO_META_DEFAULT)
-    parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT)
-    parser.add_argument(
-        "--project-root",
-        type=Path,
-        default=CURRENT_DATA.compatibility_workspace,
-    )
-    return parser.parse_args(raw)
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--metadata", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--project-root", type=Path)
+    args = parser.parse_args(raw)
+    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    args.metadata = args.metadata or context.metadata / "video_meta.json"
+    args.output = args.output or context.metadata / "roi_decisions.json"
+    args.project_root = args.project_root or context.root
+    return args
 
 
 def utc_now() -> str:
@@ -113,9 +119,10 @@ def load_video_metadata(path: Path) -> list[dict[str, Any]]:
 
 
 def resolve_video_path(record: Mapping[str, Any], project_root: Path) -> Path:
-    raw = record.get("video_path") or f"data/01_videos/{record['video_id']}.mp4"
-    path = Path(str(raw))
-    return path if path.is_absolute() else project_root / path
+    raw = record.get("video_path") or (
+        f"source/videos/{record['video_id']}.mp4"
+    )
+    return resolve_data_artifact(str(raw), project_root)
 
 
 def load_roi_payload(path: Path) -> dict[str, Any]:
@@ -935,7 +942,7 @@ def main() -> None:
                         reviewer_notes=notes,
                         source_video_reference=str(
                             selected.get("video_path")
-                            or f"data/01_videos/{selected_id}.mp4"
+                            or f"source/videos/{selected_id}.mp4"
                         ),
                         visibility_checks=visibility_checks,
                         pixel_box_override=active_box if mode == MODE_FIXED else None,

@@ -807,7 +807,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--media-root",
         type=Path,
-        default=paths.compatibility_workspace,
+        default=paths.root,
         help="相对媒体路径的根目录；提供后校验测试候选视频与帧哈希",
     )
     parser.add_argument("--output-dir", type=Path, required=True)

@@ -14,6 +14,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline.current_data import resolve_data_artifact
 
 ROI_MEDIA_SCHEMA_VERSION = "tensile-roi-media/v1"
 ENCODING_PROFILE = {
@@ -278,8 +279,10 @@ def load_generation_plan(
     for video_id in sorted(selected):
         decision = decisions[video_id]
         video = videos[video_id]
-        raw_path = Path(str(decision.get("source_video_path") or video.get("video_path")))
-        source_path = raw_path if raw_path.is_absolute() else project_root / raw_path
+        source_path = resolve_data_artifact(
+            str(decision.get("source_video_path") or video.get("video_path")),
+            project_root,
+        )
         if not source_path.is_file():
             raise RoiMediaError(f"{video_id}: 源视频不存在: {source_path}")
         if _sha256_file(source_path) != decision.get("source_sha256"):

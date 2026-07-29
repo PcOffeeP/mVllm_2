@@ -19,24 +19,17 @@ from pipeline.roi_media import (  # noqa: E402
     materialize_plan,
     require_tools,
 )
-from pipeline.current_data import current_data_paths  # noqa: E402
-
-
-CURRENT_DATA = current_data_paths(PROJECT_ROOT)
-DEFAULT_ROI_MANIFEST = (
-    CURRENT_DATA.metadata / "v3/roi_manifests/roi-manifest-01be8c1ebb2d"
-)
-DEFAULT_VIDEO_META = CURRENT_DATA.metadata / "video_meta.json"
-DEFAULT_OUTPUT_ROOT = CURRENT_DATA.roi_videos
+from pipeline.current_data import data_context_from_arg  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="从冻结 ROI 清单生成保持原时间轴的 3:4 源视频"
     )
-    parser.add_argument("--roi-manifest", type=Path, default=DEFAULT_ROI_MANIFEST)
-    parser.add_argument("--video-meta", type=Path, default=DEFAULT_VIDEO_META)
-    parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--roi-manifest", type=Path)
+    parser.add_argument("--video-meta", type=Path)
+    parser.add_argument("--output-root", type=Path)
     parser.add_argument("--video-ids", nargs="+", default=None)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument(
@@ -49,11 +42,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    args.roi_manifest = args.roi_manifest or (
+        context.metadata / "v3/roi_manifests/roi-manifest-01be8c1ebb2d"
+    )
+    args.video_meta = args.video_meta or context.metadata / "video_meta.json"
+    args.output_root = args.output_root or context.roi_videos
     try:
         plan = load_generation_plan(
             args.roi_manifest,
             args.video_meta,
-            CURRENT_DATA.compatibility_workspace,
+            context.root,
             selected_video_ids=args.video_ids,
         )
         summary = {

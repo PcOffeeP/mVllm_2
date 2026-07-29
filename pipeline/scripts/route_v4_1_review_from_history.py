@@ -27,7 +27,7 @@ def main() -> None:
     parser.add_argument(
         "--project-root",
         type=Path,
-        default=paths.compatibility_workspace,
+        default=paths.root,
     )
     parser.add_argument(
         "--output-root",

@@ -230,7 +230,11 @@ def _fixture(tmp_path: Path) -> dict[str, Path]:
     }
 
 
-def _build(paths: dict[str, Path]) -> tuple[Path, dict[str, object]]:
+def _build(
+    paths: dict[str, Path],
+    *,
+    source_snapshot_id: str | None = None,
+) -> tuple[Path, dict[str, object]]:
     return build_v4_1_training_release(
         project_root=paths["project_root"],
         materialized_path=paths["materialized"],
@@ -240,6 +244,7 @@ def _build(paths: dict[str, Path]) -> tuple[Path, dict[str, object]]:
         contract_path=paths["contract"],
         splits_dir=paths["splits"],
         releases_dir=paths["releases"],
+        source_snapshot_id=source_snapshot_id,
     )
 
 
@@ -264,6 +269,20 @@ def test_builds_deterministic_immutable_release(tmp_path: Path) -> None:
     repeated_dir, repeated_manifest = _build(paths)
     assert repeated_dir == release_dir
     assert repeated_manifest == manifest
+
+
+def test_release_can_bind_source_snapshot_directly(tmp_path: Path) -> None:
+    paths = _fixture(tmp_path)
+    _, manifest = _build(
+        paths,
+        source_snapshot_id="source-snapshot-0123456789ab",
+    )
+
+    assert manifest["source_snapshot_id"] == "source-snapshot-0123456789ab"
+    assert (
+        manifest["provenance"]["source_snapshot_id"]
+        == "source-snapshot-0123456789ab"
+    )
 
 
 def test_rejects_non_negative_automatic_candidate(tmp_path: Path) -> None:

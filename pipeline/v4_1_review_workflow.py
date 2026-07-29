@@ -93,9 +93,18 @@ def _resolve_path(value: Any, project_root: Path) -> Path:
     return resolve_workspace_artifact(str(value), project_root)
 
 
-def _resolve_contract_path(value: Any) -> Path:
+def _resolve_contract_path(
+    value: Any,
+    project_root: Path | None = None,
+) -> Path:
     """Resolve a contract recorded on this or another project checkout."""
     path = Path(str(value))
+    if path.is_absolute() and path.is_file():
+        return path
+    if not path.is_absolute() and project_root is not None:
+        candidate = Path(project_root) / path
+        if candidate.is_file():
+            return candidate
     if path.is_file():
         return path
     parts = path.parts
@@ -109,6 +118,29 @@ def _resolve_contract_path(value: Any) -> Path:
         if candidate.is_file():
             return candidate
     return path
+
+
+def _portable_identity_path(path: Path, data_root: Path) -> str:
+    resolved = Path(path).resolve()
+    try:
+        relative = resolved.relative_to(Path(data_root).resolve())
+    except ValueError:
+        try:
+            return resolved.relative_to(CODE_ROOT).as_posix()
+        except ValueError as exc:
+            raise V4_1ReviewWorkflowError(
+                f"路径无法转换为稳定身份: {path}"
+            ) from exc
+    semantic_root = Path(data_root).name == "data" and (
+        Path(data_root).parent.name == "workspace"
+        or Path(data_root).parent.parent.name == "data-rebuild"
+    )
+    if semantic_root and (
+        not relative.parts
+        or relative.parts[0] not in {"source", "derived", "releases"}
+    ):
+        raise V4_1ReviewWorkflowError(f"路径不是受管语义路径: {path}")
+    return relative.as_posix()
 
 
 def _validate_media(candidate: Mapping[str, Any], project_root: Path) -> dict[str, Any]:
@@ -229,14 +261,18 @@ def build_v4_1_review_queue(
         "queue_id": queue_id,
         "migration_policy_version": MIGRATION_POLICY_VERSION,
         "contract": {
-            "path": str(Path(contract_path).resolve()),
+            "path": _portable_identity_path(contract_path, project_root),
             "contract_hash": contract_hash,
             "file_sha256": contract_file_sha256,
         },
         "source_media": {
-            "materialized_path": str(Path(materialized_path).resolve()),
+            "materialized_path": _portable_identity_path(
+                materialized_path, project_root
+            ),
             "materialized_sha256": sha256_file(materialized_path),
-            "manifest_path": str(Path(manifest_path).resolve()),
+            "manifest_path": _portable_identity_path(
+                manifest_path, project_root
+            ),
             "manifest_sha256": sha256_file(manifest_path),
             "media_id": payload["media_id"],
         },
@@ -486,7 +522,10 @@ def _load_phase2_review_queue(
         for item in (contract, source_audit, source_media)
     ):
         raise V4_1ReviewWorkflowError("phase2 队列缺少 contract、audit 或 media 绑定")
-    contract_path = _resolve_contract_path(contract.get("path"))
+    contract_path = _resolve_contract_path(
+        contract.get("path"),
+        project_root,
+    )
     contract_hash, contract_file_sha256 = _contract_identity(contract_path)
     if (
         contract.get("contract_hash") != contract_hash
@@ -615,7 +654,10 @@ def load_review_queue(
     contract = queue.get("contract")
     if not isinstance(source, Mapping) or not isinstance(contract, Mapping):
         raise V4_1ReviewWorkflowError("v4.1 队列缺少 source_media 或 contract")
-    contract_path = _resolve_contract_path(contract.get("path"))
+    contract_path = _resolve_contract_path(
+        contract.get("path"),
+        project_root,
+    )
     contract_hash, contract_file_sha256 = _contract_identity(contract_path)
     if (
         contract.get("contract_hash") != contract_hash

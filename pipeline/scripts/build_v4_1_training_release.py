@@ -12,12 +12,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from pipeline.current_data import current_data_paths
+from pipeline.current_data import data_context_from_arg
 from pipeline.v4_1_training_release import build_v4_1_training_release
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-root", type=Path)
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--materialized", type=Path)
     parser.add_argument("--media-manifest", type=Path)
@@ -32,8 +33,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--releases-dir", type=Path)
     args = parser.parse_args()
 
-    paths = current_data_paths(PROJECT_ROOT)
-    active_workspace = paths.compatibility_workspace
+    paths = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    active_workspace = paths.root
     media_root = (
         paths.metadata
         / "v3/candidate_media_results/candidate-media-8de972530561"

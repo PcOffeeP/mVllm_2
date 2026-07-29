@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pipeline.preprocessing import MiniCPMVideoPreprocessor  # noqa: E402
-from pipeline.current_data import current_data_paths  # noqa: E402
+from pipeline.current_data import data_context_from_arg  # noqa: E402
 from pipeline.v3_candidate_media import (  # noqa: E402
     CandidateMediaError,
     load_media_plan,
@@ -24,25 +24,16 @@ from pipeline.v3_candidate_media import (  # noqa: E402
 
 
 DEFAULT_PLAN_ID = "candidate-plan-ce36b9226be5"
-CURRENT_DATA = current_data_paths(PROJECT_ROOT)
-DEFAULT_CANDIDATE_PLAN = (
-    CURRENT_DATA.metadata / "v3/candidate_plans" / DEFAULT_PLAN_ID
-)
-DEFAULT_ROI_MEDIA = (
-    CURRENT_DATA.roi_videos / "roi-media-84ea2bd3a052"
-)
 DEFAULT_MODEL = PROJECT_ROOT / "models/minicpmv4_5"
-DEFAULT_VIDEO_OUTPUT_ROOT = CURRENT_DATA.subvideos
-DEFAULT_FRAME_OUTPUT_ROOT = CURRENT_DATA.frames
-DEFAULT_RESULT_ROOT = CURRENT_DATA.metadata / "v3/candidate_media_results"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="从冻结 v3 候选计划生成版本化 MP4、真实 MiniCPM 抽帧和门禁结果"
     )
-    parser.add_argument("--candidate-plan", type=Path, default=DEFAULT_CANDIDATE_PLAN)
-    parser.add_argument("--roi-media", type=Path, default=DEFAULT_ROI_MEDIA)
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--candidate-plan", type=Path)
+    parser.add_argument("--roi-media", type=Path)
     parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
     parser.add_argument(
         "--scope",
@@ -51,9 +42,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--candidate-ids", nargs="+", default=None)
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--video-output-root", type=Path, default=DEFAULT_VIDEO_OUTPUT_ROOT)
-    parser.add_argument("--frame-output-root", type=Path, default=DEFAULT_FRAME_OUTPUT_ROOT)
-    parser.add_argument("--result-root", type=Path, default=DEFAULT_RESULT_ROOT)
+    parser.add_argument("--video-output-root", type=Path)
+    parser.add_argument("--frame-output-root", type=Path)
+    parser.add_argument("--result-root", type=Path)
     parser.add_argument(
         "--check-only",
         action="store_true",
@@ -69,12 +60,14 @@ def _is_subset(args: argparse.Namespace) -> bool:
 def _require_isolated_subset_outputs(args: argparse.Namespace) -> None:
     if not _is_subset(args):
         return
-    defaults = {
-        args.video_output_root.resolve() == DEFAULT_VIDEO_OUTPUT_ROOT.resolve(),
-        args.frame_output_root.resolve() == DEFAULT_FRAME_OUTPUT_ROOT.resolve(),
-        args.result_root.resolve() == DEFAULT_RESULT_ROOT.resolve(),
-    }
-    if True in defaults:
+    if any(
+        value is None
+        for value in (
+            args.video_output_root,
+            args.frame_output_root,
+            args.result_root,
+        )
+    ):
         raise CandidateMediaError(
             "子集/小样本生成必须同时指定隔离的 --video-output-root、"
             "--frame-output-root 和 --result-root"
@@ -84,11 +77,30 @@ def _require_isolated_subset_outputs(args: argparse.Namespace) -> None:
 def main() -> int:
     args = build_parser().parse_args()
     try:
+        _require_isolated_subset_outputs(args)
+        context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+        args.candidate_plan = args.candidate_plan or (
+            context.metadata / "v3/candidate_plans" / DEFAULT_PLAN_ID
+        )
+        args.roi_media = args.roi_media or (
+            context.roi_videos / "roi-media-84ea2bd3a052"
+        )
+        args.video_output_root = args.video_output_root or context.subvideos
+        args.frame_output_root = args.frame_output_root or context.frames
+        args.result_root = args.result_root or (
+            context.metadata / "v3/candidate_media_results"
+        )
         require_tools()
         processor = MiniCPMVideoPreprocessor(
-            model_path_or_name=str(args.model), max_frames=8
+            model_path_or_name=str(args.model),
+            max_frames=8,
+            eager_load=not args.check_only,
         )
-        fingerprint = processor.fingerprint()
+        fingerprint = processor.fingerprint(
+            backend_override=(
+                "transformers-loaded" if args.check_only else None
+            )
+        )
         scopes = (
             ("development", "test_audit")
             if args.scope == "all"
@@ -97,7 +109,7 @@ def main() -> int:
         plan = load_media_plan(
             args.candidate_plan,
             args.roi_media,
-            CURRENT_DATA.compatibility_workspace,
+            context.root,
             processor_fingerprint=fingerprint,
             scopes=scopes,
             candidate_ids=args.candidate_ids,
@@ -114,7 +126,6 @@ def main() -> int:
         if args.check_only:
             print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
-        _require_isolated_subset_outputs(args)
         destination = materialize_media_plan(
             plan,
             model_path=str(args.model),

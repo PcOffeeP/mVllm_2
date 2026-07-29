@@ -14,6 +14,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline.current_data import resolve_data_artifact
 from pipeline.data_roots import (
     DataRootError,
     resolve_workspace_artifact,
@@ -89,7 +90,7 @@ def _atomic_write(path: Path, payload: Any) -> None:
 def _resolve_project_path(path_value: Any, project_root: Path) -> Path:
     if not isinstance(path_value, str) or not path_value:
         raise CandidateMediaError(f"无效项目路径: {path_value}")
-    return resolve_workspace_artifact(path_value, project_root)
+    return resolve_data_artifact(path_value, project_root)
 
 
 def _event_time(record: Mapping[str, Any]) -> float | None:
@@ -456,10 +457,17 @@ def _export_frames(clip_path: Path, output_dir: Path, mapping: list[Mapping[str,
             raise CandidateMediaError(f"抽帧输出不存在: {output_path}")
 
 
-def _frame_artifacts(frame_dir: Path) -> list[dict[str, Any]]:
+def _frame_artifacts(
+    frame_dir: Path,
+    project_root: Path | None = None,
+) -> list[dict[str, Any]]:
     return [
         {
-            "path": str(path),
+            "path": (
+                _portable(path, project_root)
+                if project_root is not None
+                else str(path)
+            ),
             "sha256": _sha256_file(path),
             "size_bytes": path.stat().st_size,
         }
@@ -554,7 +562,10 @@ def _process_candidate(
                 "sampling_gate": {"version": GATE_VERSION, "status": "passed"},
                 "video_sha256": _sha256_file(final_video),
                 "video_size_bytes": final_video.stat().st_size,
-                "frame_artifacts": _frame_artifacts(final_frames),
+                "frame_artifacts": _frame_artifacts(
+                    final_frames,
+                    project_root,
+                ),
                 "reused_existing_video": reused_video,
                 "reused_existing_frames": reused_frames,
             }

@@ -9,6 +9,7 @@ from pipeline.roi_manifest import (
     build_roi_manifest_bundle,
     write_roi_manifest_bundle,
 )
+from pipeline.data_rebuild import tree_inventory
 from pipeline.scripts import roi_annotation_app as app
 
 
@@ -153,9 +154,24 @@ def test_manifest_write_is_idempotent_and_non_overwriting(tmp_path):
     destination, created = write_roi_manifest_bundle(tmp_path / "out", bundle)
     assert created is True
     assert write_roi_manifest_bundle(tmp_path / "out", bundle) == (destination, False)
-    retry = json.loads(json.dumps(bundle))
-    retry["manifest.json"]["generated_at"] = "2026-07-21T00:00:00+00:00"
-    assert write_roi_manifest_bundle(tmp_path / "out", retry) == (destination, False)
     changed = {**bundle, "validation_report.json": {"changed": True}}
     with pytest.raises(FileExistsError, match="拒绝覆盖"):
         write_roi_manifest_bundle(tmp_path / "out", changed)
+
+
+def test_manifest_bundle_is_identical_across_clean_runs(tmp_path):
+    paths = _fixture(tmp_path / "inputs")
+    first = build_roi_manifest_bundle(
+        **{**paths, "generated_at": "2026-07-20T00:00:00+00:00"}
+    )
+    second = build_roi_manifest_bundle(
+        **{**paths, "generated_at": "2026-07-21T00:00:00+00:00"}
+    )
+
+    assert first == second
+    first_dir, _ = write_roi_manifest_bundle(tmp_path / "run-a", first)
+    second_dir, _ = write_roi_manifest_bundle(tmp_path / "run-b", second)
+    assert (
+        tree_inventory(first_dir)["tree_sha256"]
+        == tree_inventory(second_dir)["tree_sha256"]
+    )

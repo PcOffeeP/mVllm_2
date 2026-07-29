@@ -190,6 +190,8 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         max_frames: int = EXPECTED_MAX_FRAMES,
         video_fps: float = DEFAULT_VIDEO_FPS,
         processor: Any | None = None,
+        *,
+        eager_load: bool = True,
     ) -> None:
         self._model_path_or_name = _resolve_model_path(model_path_or_name)
         self._max_frames = max_frames
@@ -205,7 +207,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
         self.last_tensor_shape: list[int] | None = None
 
         # 尝试预加载；忽略 Mac 上可预见的失败
-        if processor is None:
+        if processor is None and eager_load:
             self._try_load_processor()
 
     # ------------------------------------------------------------------
@@ -655,7 +657,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
             raise RuntimeError("视频不包含可解码帧")
         return mapping
 
-    def fingerprint(self) -> str:
+    def fingerprint(self, *, backend_override: str | None = None) -> str:
         """返回包含模型权重/版本可验证信息的配置指纹。
 
         指纹包含：处理器名称、模型路径/名称、关键模型配置文件
@@ -670,7 +672,7 @@ class MiniCPMVideoPreprocessor(VideoPreprocessor):
                 抛出明确错误说明缺少的文件，避免在配置文件缺失时生成
                 不可区分的退化指纹。
         """
-        backend_flag = (
+        backend_flag = backend_override or (
             "transformers-loaded"
             if self._processor_loaded
             else "transformers"
