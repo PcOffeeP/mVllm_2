@@ -13,6 +13,7 @@ from pipeline.project_workspace import (
     experiment_workspace_paths,
     project_workspace_paths,
     validate_experiment_id,
+    validate_model_output_path,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,4 +67,18 @@ def test_project_workspace_has_no_environment_dependency(
     before = dict(os.environ)
     paths = project_workspace_paths(tmp_path)
     assert paths.data == tmp_path.resolve() / "workspace/data"
+    assert paths.models == tmp_path.resolve() / "workspace/models"
+    assert paths.model_releases == paths.models / "releases"
+    assert paths.model_archive == paths.models / "archive"
     assert dict(os.environ) == before
+
+
+def test_model_outputs_must_stay_under_workspace_runs(tmp_path: Path) -> None:
+    expected = tmp_path / "workspace/runs/experiment/fold0/adapter"
+    assert validate_model_output_path(tmp_path, expected) == expected.resolve()
+
+    with pytest.raises(ProjectWorkspaceError, match="workspace/runs"):
+        validate_model_output_path(
+            tmp_path,
+            "LlamaFactory/saves/minicpmv4_5/lora/model",
+        )

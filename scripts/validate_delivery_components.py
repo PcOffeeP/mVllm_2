@@ -7,11 +7,15 @@ import argparse
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from pipeline.model_registry import load_model_manifest  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -55,6 +59,23 @@ def validate_components(
         errors.append("service must remain loopback-only")
     if service.get("model_component_path") != "delivery/model_component.json":
         errors.append("service/model component binding mismatch")
+    registry_path = root / str(model.get("registry_manifest_path", ""))
+    try:
+        registry = load_model_manifest(registry_path)
+    except (OSError, ValueError):
+        registry = {}
+        errors.append("model registry manifest is invalid")
+    if (
+        model.get("model_name") != registry.get("model_name")
+        or model.get("component_name") != registry.get("model_name")
+        or model.get("artifact", {}).get("managed_remote_path")
+        != registry.get("artifacts", {}).get("merged", {}).get("managed_path")
+        or model.get("artifact", {}).get("aggregate_sha256")
+        != registry.get("artifacts", {}).get("merged", {}).get(
+            "aggregate_sha256"
+        )
+    ):
+        errors.append("model component/registry binding mismatch")
     policy = model.get("intermediate_delivery_policy", {})
     if (
         policy.get("primary_gate") != "artifact_and_runtime_chain"

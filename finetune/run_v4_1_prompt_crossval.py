@@ -15,6 +15,11 @@ from typing import Any
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from pipeline.project_workspace import validate_model_output_path  # noqa: E402
+
 FOLDS = (0, 1, 2)
 
 
@@ -61,7 +66,7 @@ def run(experiment_id: str, *, validate_only: bool = False) -> dict[str, Any]:
     for fold in FOLDS:
         config_path = config_dir / f"train_fold{fold}.yaml"
         config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-        output_dir = ROOT / str(config["output_dir"])
+        output_dir = validate_model_output_path(ROOT, str(config["output_dir"]))
         if output_dir.exists() and not _completed(output_dir):
             raise RuntimeError(f"Fold{fold} output 已存在但不完整: {output_dir}")
         record = {

@@ -31,6 +31,9 @@ class ProjectWorkspacePaths:
     root: Path
     data: Path
     runs: Path
+    models: Path
+    model_releases: Path
+    model_archive: Path
 
 
 @dataclass(frozen=True)
@@ -53,7 +56,23 @@ def project_workspace_paths(project_root: Path) -> ProjectWorkspacePaths:
         root=root,
         data=root / "data",
         runs=root / "runs",
+        models=root / "models",
+        model_releases=root / "models/releases",
+        model_archive=root / "models/archive",
     )
+
+
+def validate_model_output_path(project_root: Path, value: Path | str) -> Path:
+    workspace = project_workspace_paths(project_root)
+    path = Path(value)
+    if not path.is_absolute():
+        path = workspace.repo_root / path
+    path = path.resolve()
+    if workspace.runs != path and workspace.runs not in path.parents:
+        raise ProjectWorkspaceError(
+            f"训练模型输出必须位于 workspace/runs/: {path}"
+        )
+    return path
 
 
 def experiment_workspace_paths(
