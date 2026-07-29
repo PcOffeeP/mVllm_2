@@ -3,6 +3,9 @@
 本文是 `main` 上当前 V4.1 数据链路的操作入口。V2/V3 的旧编号目录、旧审核 UI 和
 `publish_training_release.py --activate` 流程只用于历史复现，不是当前 V4.1 的正式路径。
 
+训练机 `derived/metadata/` 中各历史版本目录、语义 collection 和正式 release 的区别，
+见 [Workspace 元数据目录说明](WORKSPACE_METADATA_GUIDE.md)。
+
 所有命令从 mVllm_2 仓库根目录执行。媒体物化、训练和 GPU 推理在训练电脑进行；本机
 可以检查配置、运行轻量校验、进行人工审查并复核已同步结果。
 
