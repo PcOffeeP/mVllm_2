@@ -276,6 +276,18 @@ def _estimate_candidate_media_bytes(
     return final_bytes + temporary_peak
 
 
+def _candidate_space_requirement(
+    existing_parts: tuple[int | None, ...],
+    clean_estimate: int,
+) -> int:
+    existing_total = (
+        sum(int(value) for value in existing_parts)
+        if all(value is not None for value in existing_parts)
+        else 0
+    )
+    return max(clean_estimate, existing_total)
+
+
 def _find_frozen_decisions(root: Path) -> Path | None:
     candidates = sorted(Path(root).glob("*/decisions.json"))
     if not candidates:
@@ -538,15 +550,13 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             / str(media_plan["media_id"])
         ),
     )
-    existing_candidate_bytes = (
-        sum(int(value) for value in existing_candidate_parts)
-        if all(value is not None for value in existing_candidate_parts)
-        else None
+    candidate_required_bytes = _candidate_space_requirement(
+        existing_candidate_parts,
+        _estimate_candidate_media_bytes(plan, inputs, roi_media),
     )
     _space_guard(
         run_root,
-        existing_candidate_bytes
-        or _estimate_candidate_media_bytes(plan, inputs, roi_media),
+        candidate_required_bytes,
     )
     media_result = materialize_media_plan(
         media_plan,

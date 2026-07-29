@@ -19,6 +19,8 @@ from pipeline.data_rebuild import (
 import pipeline.scripts.rebuild_v4_1_data as rebuild_cli
 import pipeline.data_rebuild as rebuild_module
 from pipeline.scripts.rebuild_v4_1_data import (
+    _artifact_bytes,
+    _candidate_space_requirement,
     _estimate_candidate_media_bytes,
     _space_guard,
 )
@@ -241,6 +243,19 @@ def test_candidate_space_estimate_uses_plan_duration_frames_and_temp(
     monkeypatch.setattr("shutil.disk_usage", lambda _: Usage())
     with pytest.raises(DataRebuildError, match="空间不足"):
         _space_guard(tmp_path / "run", required)
+
+
+def test_incomplete_existing_candidate_dirs_cannot_reduce_space_guard(
+    tmp_path: Path,
+) -> None:
+    parts = []
+    for name in ("videos", "frames", "media"):
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "partial").write_bytes(b"x")
+        parts.append(_artifact_bytes(directory))
+
+    assert _candidate_space_requirement(tuple(parts), 1_092_072) == 1_092_072
 
 
 def test_resume_rejects_runtime_provenance_drift(tmp_path: Path) -> None:
