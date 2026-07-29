@@ -1,0 +1,78 @@
+{
+  "commands": {
+    "merge": [
+      "llamafactory-cli",
+      "export",
+      "finetune/experiments/v4.1-prompt-concise-full-v1-seed3411/merge.yaml"
+    ],
+    "train": [
+      "/home/liuyang/miniconda3/envs/cpm45/bin/python",
+      "finetune/train_with_contract.py",
+      "finetune/experiments/v4.1-prompt-concise-full-v1-seed3411/train.yaml"
+    ]
+  },
+  "dataset": {
+    "published_candidate_count": 1678,
+    "repeat_count": 1322,
+    "rows_per_epoch": 3000,
+    "unique_coverage_rate": 1.0
+  },
+  "experiment_contract_file_sha256": "a7dc57954ffc54876c15c6a1db0ff582c253c4f4f8d3a96dbdeb6d14c0de3fbc",
+  "experiment_contract_sha256": "771953e22a558241fadfb3f7c98b81faef068050db4ca6ae08c07e6f13ff54da",
+  "experiment_id": "v4.1-prompt-concise-full-v1-seed3411",
+  "immutable": true,
+  "input_identity_sha256": "dcf10b2c4556495405f1daf6f76de199603febe52a4a37cba8c67104d1aa7e81",
+  "merge_config": {
+    "path": "merge.yaml",
+    "sha256": "b04dd417018d29e9b6f8e641b52988e31f4e980395fb66674a389136d539a9fe"
+  },
+  "parent_crossval_experiment_id": "v4.1-prompt-concise-cv-v1-seed3411",
+  "paths": {
+    "adapter": "workspace/runs/v4.1-prompt-concise-full-v1-seed3411/adapter",
+    "input": "workspace/runs/v4.1-prompt-concise-full-v1-seed3411/input",
+    "logs": "workspace/runs/v4.1-prompt-concise-full-v1-seed3411/logs",
+    "merged": "workspace/runs/v4.1-prompt-concise-full-v1-seed3411/merged"
+  },
+  "prompt": {
+    "prompt_content_sha256": "0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db",
+    "prompt_manifest_sha256": "de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d",
+    "revision_id": "v4.1-concise-evidence-json-v2"
+  },
+  "recipe": {
+    "additional_target": "resampler",
+    "checkpoint_selection": "final_step_750",
+    "early_stopping_enabled": false,
+    "expected_optimizer_steps": 750,
+    "freeze_multi_modal_projector": false,
+    "freeze_vision_tower": false,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 5e-06,
+    "lora_alpha": 16,
+    "lora_dropout": 0.25,
+    "lora_rank": 8,
+    "num_train_epochs": 2,
+    "seed": 3411,
+    "validation_enabled": false,
+    "weight_decay": 0.2
+  },
+  "release": {
+    "release_id": "v4.1.0-ecb5aeb9657c",
+    "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+    "training_candidates_sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf"
+  },
+  "sampling": {
+    "candidate_ids_sha256": "cd75eea08e13dee385944d3b5cf9137b4278ea451b39669aa0709333f6e3101b",
+    "candidate_multiset_sha256": "eb626e1fb40fe62241a71a3eee32c348e75f78f9adf4f63a57778a5cc6bc4fb2",
+    "candidate_sequence_sha256": "1b5640d56e1305dfee28267e5452677260c5478908ee9daed09343dc2c8db9d0",
+    "sampling_id": "v4.1-prompt-concise-full-v1-seed3411-published-development",
+    "sampling_manifest_sha256": "3f4912c7263721067a3253d92ca4f9ba5fa8039642190e3b3fd717983eb51515",
+    "seed": 3411
+  },
+  "schema_version": "tensile-vlm-v4.1-full-development-run/v2",
+  "status": "prepared",
+  "train_config": {
+    "path": "train.yaml",
+    "sha256": "29909134c73becba9831d160582f9d2f26cf4734fcb1ac9b05090838d041b20b"
+  },
+  "training_code_commit": "4a56ff7010ced45411993eeec52032da2032a558"
+}

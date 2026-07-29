@@ -1,0 +1,10 @@
+id: v4.1-prompt-concise-full-v1-seed3411
+status: prepared
+purpose: 使用三折确认的 Prompt 与训练 recipe 训练全量 development LoRA
+baseline: v4.1-prompt-concise-cv-v1-seed3411
+change:
+  type: training_scope
+  summary: 从三折切换为全量 development；无 validation；固定最终 step750
+data_release: v4.1.0-ecb5aeb9657c
+seed: 3411
+prompt_revision: v4.1-concise-evidence-json-v2
