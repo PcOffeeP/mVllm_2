@@ -44,3 +44,19 @@ def test_performance_thresholds_cannot_block_intermediate_delivery(
     monkeypatch.setattr(validator, "_load", load_with_blocking_performance)
     report = validator.validate_components(root)
     assert "intermediate delivery performance policy is invalid" in report["errors"]
+
+
+def test_model_component_must_bind_current_registry(monkeypatch) -> None:
+    root = Path(__file__).resolve().parents[1]
+    original_load = validator._load
+
+    def load_with_wrong_registry_binding(path: Path):
+        value = original_load(path)
+        if path.name == "model_component.json":
+            value = copy.deepcopy(value)
+            value["model_name"] = "v4.1-wrong-fold0-r1"
+        return value
+
+    monkeypatch.setattr(validator, "_load", load_with_wrong_registry_binding)
+    report = validator.validate_components(root)
+    assert "model component/registry binding mismatch" in report["errors"]

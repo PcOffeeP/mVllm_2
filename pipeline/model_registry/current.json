@@ -1,0 +1,6 @@
+{
+  "schema_version": "tensile-model-registry/current/v1",
+  "model_name": "v4.1-agent-pipeline-fold0-r1",
+  "manifest_path": "pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json",
+  "aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c"
+}
