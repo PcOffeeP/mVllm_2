@@ -1,0 +1,21 @@
+{
+  "schema_version": "tensile-checkpoint-policy/v1",
+  "current_model": "v4.1-agent-pipeline-fold0-r1",
+  "current_training_adapter": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
+  "current_retention": [
+    "best",
+    "last"
+  ],
+  "completed_experiment_retention": [],
+  "requirements": {
+    "root_adapter_present": true,
+    "merged_model_present": true,
+    "root_adapter_matches_selected_checkpoint": true,
+    "training_process_absent": true
+  },
+  "notes": [
+    "Checkpoint deletion does not delete the root adapter, merged model, metrics, logs, trainer state, or model identity.",
+    "The current release source retains best and last checkpoints for recovery and training-trajectory evidence.",
+    "All other models are completed comparison or archive artifacts and retain root adapters plus merged models."
+  ]
+}
