@@ -69,11 +69,6 @@ def main() -> None:
     args.output_root = (
         args.output_root or context.metadata_collection("candidate_plans")
     )
-    args.output_root = context.require_managed_output(
-        args.output_root,
-        context.metadata_collection("candidate_plans"),
-        label="candidate plan output",
-    )
     inputs = load_plan_inputs(
         args.roi_media_dir,
         args.review_reference_dir,
@@ -91,6 +86,11 @@ def main() -> None:
         "media_generated": False,
     }
     if not args.dry_run:
+        args.output_root = context.require_managed_output(
+            args.output_root,
+            context.metadata_collection("candidate_plans"),
+            label="candidate plan output",
+        )
         destination = materialize_candidate_plan(plan, args.output_root)
         summary["output_dir"] = str(destination)
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
