@@ -39,7 +39,6 @@ from pipeline.metadata_artifacts import (  # noqa: E402
     validate_metadata_artifact,
 )
 from pipeline.roi_manifest import (  # noqa: E402
-    ROI_MANIFEST_SCHEMA_VERSION,
     build_roi_manifest_bundle,
     write_roi_manifest_bundle,
 )
@@ -352,12 +351,27 @@ def _check_current_chain(current: Any) -> dict[str, Any]:
     }
     matches: list[tuple[Path, dict[str, Any]]] = []
     for artifact_id in metadata_artifact_ids(current, "roi_manifests"):
+        declared_schemas = {
+            str(
+                load_json_object(
+                    root / artifact_id / "manifest.json",
+                    "ROI manifest discovery",
+                ).get("schema_version")
+            )
+            for root in current.metadata_read_roots("roi_manifests")
+            if (root / artifact_id).exists()
+            or (root / artifact_id).is_symlink()
+        }
+        if len(declared_schemas) != 1 or "None" in declared_schemas:
+            raise DataRebuildError(
+                f"ROI manifest schema discovery 冲突: {artifact_id}"
+            )
         manifest_path = (
             resolve_metadata_artifact(
                 current,
                 collection="roi_manifests",
                 artifact_id=artifact_id,
-                expected_schema=ROI_MANIFEST_SCHEMA_VERSION,
+                expected_schema=declared_schemas.pop(),
             )
             / "manifest.json"
         )
