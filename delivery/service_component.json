@@ -15,8 +15,8 @@
     "production_alias": false
   },
   "evidence": {
-    "deployment_summary_path": "docs/results/v4_1_stage_e_pre_acceptance/deployment_summary.json",
-    "deployment_summary_sha256": "23e554a1269c58f22f596a42703037b09c3ccb0d99683534b6b8271add54a28c",
+    "deployment_summary_path": "docs/results/v4_1_agent_pipeline_fold0_r1/deployment_summary.json",
+    "deployment_summary_sha256": "6d295c6a2f05294a00c3b13172b33b1a3cbb5766dfac22f7fb0f13d204d9c5a3",
     "real_media_smoke_passed": true,
     "v2_rollback_rehearsal_passed": true
   },
