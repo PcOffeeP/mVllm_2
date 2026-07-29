@@ -27,6 +27,7 @@ from pipeline.scripts.rebuild_v4_1_data import (
     _candidate_space_requirement,
     _estimate_candidate_media_bytes,
     _space_guard,
+    _roi_discovered_schema,
 )
 from pipeline.source_bootstrap import canonical_bytes, sha256_file
 from pipeline.v4_1_training_release import (
@@ -537,6 +538,46 @@ def test_candidate_space_estimate_uses_plan_duration_frames_and_temp(
     monkeypatch.setattr("shutil.disk_usage", lambda _: Usage())
     with pytest.raises(DataRebuildError, match="空间不足"):
         _space_guard(tmp_path / "run", required)
+
+
+def test_roi_schema_discovery_dispatches_v1_v2_and_rejects_unknown(
+    tmp_path: Path,
+) -> None:
+    context = current_data_context(tmp_path)
+
+    def write(root: Path, artifact_id: str, schema: str) -> None:
+        directory = root / artifact_id
+        directory.mkdir(parents=True)
+        (directory / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": schema,
+                    "roi_manifest_id": artifact_id,
+                }
+            )
+        )
+
+    legacy_root = context.legacy_metadata_collection("roi_manifests")
+    semantic_root = context.metadata_collection("roi_manifests")
+    write(legacy_root, "roi-manifest-v1", "tensile-roi-manifest/v1")
+    write(semantic_root, "roi-manifest-v2", "tensile-roi-manifest/v2")
+    write(semantic_root, "roi-manifest-unknown", "tensile-roi-manifest/v999")
+
+    assert (
+        _roi_discovered_schema(context, "roi-manifest-v1")
+        == "tensile-roi-manifest/v1"
+    )
+    assert (
+        _roi_discovered_schema(context, "roi-manifest-v2")
+        == "tensile-roi-manifest/v2"
+    )
+    with pytest.raises(DataRebuildError, match="不受支持"):
+        _roi_discovered_schema(context, "roi-manifest-unknown")
+
+    write(legacy_root, "roi-manifest-conflict", "tensile-roi-manifest/v1")
+    write(semantic_root, "roi-manifest-conflict", "tensile-roi-manifest/v2")
+    with pytest.raises(DataRebuildError, match="冲突"):
+        _roi_discovered_schema(context, "roi-manifest-conflict")
 
 
 def test_incomplete_existing_candidate_dirs_cannot_reduce_space_guard(
