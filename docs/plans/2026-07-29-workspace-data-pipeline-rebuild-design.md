@@ -476,9 +476,10 @@ uv run python pipeline/scripts/rebuild_v4_1_data.py --check-only
 
 ### 8.3 双机 Git 协调门禁
 
-本轮已确认两端共同基线均为 `38ab65e9...`，两个不同 `HEAD` 的 tree 均为
-`71df35fb...`。这说明内容等价，但 commit identity 不等价；不能把“同 tree”当作已经
-同步。
+本轮通过直接 fetch 训练机 ref 确认：两端 merge-base 为 `c87d5828...`，两侧各有 10 个
+独有提交；`git log --cherry-pick` 没有剩余项，说明 10 对 patch 等价，两个不同 `HEAD`
+的 tree 均为 `71df35fb...`。这说明内容等价，但 commit identity 不等价；不能把“同
+tree”当作已经同步。
 
 实施前固定执行以下非破坏性协调流程：
 
