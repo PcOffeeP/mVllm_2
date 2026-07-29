@@ -19,9 +19,9 @@ double_quantization: true
 upcast_layernorm: true
 dataset: tensile_v4_1_phase2_3k_seed3413
 eval_dataset: tensile_v4_1_phase2_fold0_val
-dataset_dir: /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-coverage-first-fallback-seed3413
+dataset_dir: ../workspace/data/derived/metadata/v4_1/source_aware_3k/source-aware-3k-coverage-first-fallback-seed3413
 template: minicpm_v
-media_dir: ../../tensile-data/current/.compat/workspace
+media_dir: ../workspace/data
 cutoff_len: 2048
 video_maxlen: 8
 preprocessing_num_workers: 4

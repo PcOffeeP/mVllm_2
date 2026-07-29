@@ -18,13 +18,13 @@
   "seeds": {
     "3407": {
       "train_config": "train_seed3407.yaml",
-      "train_config_sha256": "036c9c69f9d79ca837214f1a796d426f7ac7dec1078c11055eed25a866ad8bd9",
+      "train_config_sha256": "d3fd4000fb593c64fa653261fafda118651de2268b59195c6b94f8e46a89cac3",
       "merge_config": "merge_seed3407.yaml",
       "merge_config_sha256": "cd2d0dfcef2decbfb7b91db61893d734bd23927060e5d2d3d9c04ba76b037c6a"
     },
     "3411": {
       "train_config": "train_seed3411.yaml",
-      "train_config_sha256": "bfe20def016b144a1e2aea0b7ed82d13620d4aa8baa34462b9f4307c07834def",
+      "train_config_sha256": "162feb83a162fd73109ec13dca21f21a0489e348b533051d4d8c4ba0a47e3cac",
       "merge_config": "merge_seed3411.yaml",
       "merge_config_sha256": "28a93aa390331ae1079fcee56daa917d73308b8a287acfd2c6dcf553065095f2"
     }

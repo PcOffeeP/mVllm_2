@@ -22,9 +22,9 @@ upcast_layernorm: true
 
 dataset: tensile_v4_1_fold1_train
 eval_dataset: tensile_v4_1_fold1_val
-dataset_dir: ../../tensile-data/current/training_releases/v4.1.0-760050fad303
+dataset_dir: ../workspace/data/releases/v4.1.0-760050fad303
 template: minicpm_v
-media_dir: ../../tensile-data/current/.compat/workspace
+media_dir: ../workspace/data
 cutoff_len: 2048
 video_maxlen: 8
 preprocessing_num_workers: 4

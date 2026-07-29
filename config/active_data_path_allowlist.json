@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "path": "pipeline/data_roots.py",
+      "line": 14,
+      "match": "data/01_videos",
+      "reason": "Central legacy-to-semantic mapping table."
+    },
+    {
+      "path": "pipeline/scripts/migrate_project_local_workspace.py",
+      "line": 144,
+      "match": "tensile-data/current",
+      "reason": "One-time read-only migration source default."
+    },
+    {
+      "path": "README.md",
+      "line": 104,
+      "match": "TENSILE_DATA_HOME",
+      "reason": "Documentation explicitly states that the legacy mechanism is inactive."
+    },
+    {
+      "path": "README.md",
+      "line": 104,
+      "match": ".compat/workspace",
+      "reason": "Documentation explicitly states that the legacy mechanism is inactive."
+    },
+    {
+      "path": "docs/DATA_PROCESSING_RUNBOOK.md",
+      "line": 108,
+      "match": "TENSILE_DATA_HOME",
+      "reason": "Runbook explicitly marks the legacy mechanism as historical."
+    },
+    {
+      "path": "pipeline/active_data_path_guard.py",
+      "line": 11,
+      "match": "data/current",
+      "reason": "The scanner must declare the forbidden token."
+    },
+    {
+      "path": "pipeline/active_data_path_guard.py",
+      "line": 11,
+      "match": "data/01_videos",
+      "reason": "The scanner must declare the forbidden token."
+    },
+    {
+      "path": "pipeline/active_data_path_guard.py",
+      "line": 11,
+      "match": "tensile-data/current",
+      "reason": "The scanner must declare the forbidden token."
+    },
+    {
+      "path": "pipeline/active_data_path_guard.py",
+      "line": 12,
+      "match": ".compat/workspace",
+      "reason": "The scanner must declare the forbidden token."
+    },
+    {
+      "path": "pipeline/active_data_path_guard.py",
+      "line": 12,
+      "match": "TENSILE_DATA_HOME",
+      "reason": "The scanner must declare the forbidden token."
+    },
+    {
+      "path": "pipeline/active_data_path_guard.py",
+      "line": 12,
+      "match": "/Users/",
+      "reason": "The scanner must declare the forbidden token."
+    },
+    {
+      "path": "pipeline/active_data_path_guard.py",
+      "line": 12,
+      "match": "/home/",
+      "reason": "The scanner must declare the forbidden token."
+    }
+  ]
+}

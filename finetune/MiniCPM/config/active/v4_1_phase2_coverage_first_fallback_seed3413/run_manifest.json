@@ -15,7 +15,7 @@
       "merge_config": "merge_seed3413.yaml",
       "merge_config_sha256": "b5712a5718c61b528c94a0cea19ee6adc03a9f6fe4bbf3d7b77161ca65ef8e7d",
       "train_config": "train_seed3413.yaml",
-      "train_config_sha256": "9a3f974d06a543ccee82219b9a64f60f577617806e8f37e9ebe18cc10c449a59"
+      "train_config_sha256": "dbb7b9d9a3dc119b3d4e86c3de77a6d8ea1b7cf1e080929ebb5bacf1c6344a88"
     }
   },
   "training_code_commit": "629e40ff526fc53392969fc5b543fb2e16bf8761"

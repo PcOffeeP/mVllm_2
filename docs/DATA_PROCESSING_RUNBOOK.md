@@ -6,6 +6,26 @@
 所有命令从 mVllm_2 仓库根目录执行。媒体物化、训练和 GPU 推理在训练电脑进行；本机
 可以检查配置、运行轻量校验、进行人工审查并复核已同步结果。
 
+全链路 clean-room 重建统一使用：
+
+```bash
+python pipeline/scripts/rebuild_v4_1_data.py \
+  --source-data-root workspace/data \
+  --run-root workspace/data-rebuild/<rebuild-id> \
+  --roi-mode reuse \
+  --review-mode reuse
+```
+
+人工模式必须显式把对应 mode 改为 `review`。编排器会保存 waiting 状态并打印 UI 命令，
+人工完成后使用同一参数恢复。验收完成后，单独执行：
+
+```bash
+python pipeline/scripts/rebuild_v4_1_data.py promote \
+  --run-root workspace/data-rebuild/<rebuild-id>
+```
+
+release 最后晋级；外部旧数据不会被该命令删除。
+
 ## 当前基线
 
 | 项目 | 当前值 |
@@ -114,7 +134,7 @@ uv run python pipeline/scripts/materialize_roi_videos.py --check-only
 # 首次先输出到隔离的小样本目录
 uv run python pipeline/scripts/materialize_roi_videos.py \
   --video-ids video_0001 video_0008 video_0100 \
-  --output-root data/current/sample_roi_videos \
+  --output-root workspace/data/derived/sample_roi_videos \
   --workers 1
 
 # 小样本通过后再完整生成
@@ -139,9 +159,9 @@ uv run python pipeline/scripts/materialize_v3_candidate_media.py --check-only
 # 首次用隔离目录检查真实 MP4、帧映射和门禁
 uv run python pipeline/scripts/materialize_v3_candidate_media.py \
   --limit 3 \
-  --video-output-root data/current/sample_candidate_media/videos \
-  --frame-output-root data/current/sample_candidate_media/frames \
-  --result-root data/current/sample_candidate_media/results
+  --video-output-root workspace/data/derived/sample_candidate_media/videos \
+  --frame-output-root workspace/data/derived/sample_candidate_media/frames \
+  --result-root workspace/data/derived/sample_candidate_media/results
 
 # 小样本通过后再完整生成
 uv run python pipeline/scripts/materialize_v3_candidate_media.py

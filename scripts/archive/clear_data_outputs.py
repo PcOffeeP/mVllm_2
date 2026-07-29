@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""安全清空指定的数据产物目录，保留目录本身。
+"""历史编号目录清理工具；不得用于当前 workspace/data。
 
 受保护的目录（不会被触碰）：
 - data/01_videos/

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成 test split 的测试输入与 ground truth 文件，供基座模型独立测试使用。
+"""历史编号目录的 test artifact 生成器；不得用于当前 V4.1。
 
 读取 data/05_splits/test.json + data/07_metadata/video_meta.json，
 输出到构建工作区 data/06_merged/test_inputs.json 与 test_ground_truth.json
