@@ -5,7 +5,7 @@
 ```text
 results/
 ├── README.md
-├── v4_1_0_760050fad303_20260724_visual/  当前正式 V4.1 视觉三折结果
+├── v4_1_0_760050fad303_20260724_visual/  历史视觉三折对比结果
 ├── v4_1_0_760050fad303_20260723/         V4.1 基线与消融证据
 ├── archive/
 │   ├── v2/                               已封存 V2 结果
@@ -18,7 +18,9 @@ results/
 ## 根目录
 
 根目录只保留仍被正式证据链或当前 V4.1 对比实验直接引用的版本化运行。
-`v4_1_0_760050fad303_20260724_visual` 是当前正式视觉运行，路径和内容都不得随意修改。
+`v4_1_0_760050fad303_20260724_visual` 是历史完整视觉三折对比基准，路径和内容都不得
+随意修改。最新 prompt-concise 三折结果位于对应 `workspace/runs/` 的 evaluation
+目录，Git 中的权威摘要位于 `docs/results/v4_1_prompt_concise_cv_v1_seed3411/`。
 `v4_1_0_760050fad303_20260723` 保留上一轮语言基线及 fold0 消融的证据关系。
 
 ## archive
@@ -34,7 +36,8 @@ results/
 
 ## 安全规则
 
-- 不在这里存放模型权重；模型统一位于 `LlamaFactory/saves/minicpmv4_5/lora/`。
+- 不在这里存放模型权重；实验权重统一位于 `workspace/runs/`，发布权重位于
+  `workspace/models/releases/`。
 - 不覆盖已有版本化运行；新运行使用新的 run ID。
 - 发布或迁移正式结果前先生成完整 SHA-256 证据索引。
 - 历史 JSON 中记录的绝对路径是运行时快照，迁移目录不会改写这类原始证据。

@@ -343,9 +343,14 @@ python finetune/archive/run_v4_1_post_training.py
 `special_case` 字段。当前结果和制品身份见
 [正式视觉运行证据冻结](results/v4_1_0_760050fad303_20260724_visual/README.md)。
 
-三折训练完成仍不等于模型效果验收完成。下一轮数据发布必须先补充经过人工审查的独立
-视觉证据和未覆盖的 `无法判断 / 未夹紧 / 视频异常`，再执行 source-aware fold0
-学习曲线；未通过门槛前不得迁移服务或 TensileAgent。
+2026-07-29 又完成了 `v4.1-prompt-concise-cv-v1-seed3411` 三折训练、最佳 checkpoint
+回载、合并和 1581 条严格评测。早停行为符合预期，但加权合法率只有 79.63%，并出现
+“未断裂”类别坍缩；该实验没有晋级为发布模型。其全部 15 个 checkpoint 保留，用于
+分析合法率、类别分布和中间学习能力随 step 的变化。
+
+三折训练完成仍不等于模型效果验收完成。当前已经使用
+`v4.1-agent-pipeline-fold0-r1` 跑通 V4.1 服务和 TensileAgent 工程链路，但该发布仅用于
+稳定演示和后续联调，不改变模型质量门失败的事实。
 
 ### 语义 Prompt 对照
 
@@ -373,6 +378,7 @@ python finetune/prepare_v4_1_fixed_prompt_run.py
 - 审查中断：从同一 queue-bound 草稿继续；不要复制别的队列草稿。
 - 冻结后发现标签错误：创建新队列、新 review batch 和新训练发布，不能改冻结文件。
 - 训练中断：依据训练状态和 LLaMA-Factory 产物恢复；不要覆盖身份不明的目录。
+- 训练完成但任务尚未分析：保留全部 checkpoint；不能只因已有 merged 就自动删除。
 - 评测中断：`evaluation_records.jsonl` 可续跑；run identity 不一致时使用新输出目录。
 
 ## 不可绕过的规则
@@ -384,7 +390,7 @@ python finetune/prepare_v4_1_fixed_prompt_run.py
 - 不要把 `needs_regenerate`、缺媒体、哈希漂移或非法标签带入发布。
 - 不要覆盖冻结 review batch 或 training release。
 - 不要仅依据 train/eval loss 宣称任务效果达标。
-- 不要在 V4.1 服务和 Agent 整体迁移完成前替换现有 V2 生产服务。
+- 不要把当前 V4.1 中间服务描述为 production，也不要用 Agent 链路通过替代模型质量验收。
 
 ## 历史流程
 

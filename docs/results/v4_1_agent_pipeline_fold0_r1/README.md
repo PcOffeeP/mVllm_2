@@ -10,5 +10,7 @@
 和 adapter 均通过完整聚合哈希校验，真实拉伸 MP4 服务冒烟与 TensileAgent 开发冒烟
 通过。历史 Stage B、Stage D 和 Stage G 质量结论未改变。
 
-Checkpoint 本轮仅随实验 adapter 迁移到 `workspace/runs/`，没有删除；清理策略将在
-后续单独执行。
+Checkpoint 已按研究价值重新分类：当前发布来源实验的 5 个 checkpoint 全部保留；
+最新 prompt-concise 三折的 15 个 checkpoint 全部保留；其他已完成实验只清理
+checkpoint，root adapter、merged、评测、日志和身份文件继续保留。清理后训练机共有
+20 个 checkpoint，可用空间约 155 GiB。

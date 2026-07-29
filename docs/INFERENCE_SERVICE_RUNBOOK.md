@@ -1,30 +1,33 @@
-# 全量模型推理服务运行手册
+# V4.1 中间推理服务运行手册
 
-> **版本边界（2026-07-23）**
->
-> 本文只描述当前仍在使用的 `tensile-vlm/v2` 生产服务。V4.1 数据发布和三折训练已经
-> 完成，但模型合并、严格评测、服务 artifact 和 TensileAgent 运行时迁移尚未全部完成。
-> 在正式切换前，不要用 V4.1 模型替换本文的 V2 模型或伪造 V2 deployment manifest。
+> 当前状态：`v4.1-agent-pipeline-fold0-r1` 已在训练机完成模型哈希校验、真实媒体
+> service smoke 和 TensileAgent 调用验证。它是 loopback-only 中间开发服务，不是
+> production deployment。
 
-本文用于在训练机 `100.70.83.68` 上手动启动、验证和停止
-`tensile-vlm/v2` 推理服务。所有命令均在
+本文用于在训练机 `100.70.83.68` 上启动、检查和停止当前 V4.1 推理服务。所有命令均在
 `/home/liuyang/文档/mVllm_2` 下执行。
 
-## 1. 固定部署对象
+## 1. 当前部署身份
 
-- Python 环境：`/home/liuyang/miniconda3/envs/cpm45/bin/python`
-- merged 模型：
-  `LlamaFactory/saves/minicpmv4_5/lora/archive/v2/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged`
-- 部署 manifest：`pipeline/deployments/full_training_v2.json`
-- 服务入口：`pipeline.server_proxy`
-- 默认端口：`8001`
-- 契约：`tensile-vlm/v2`
-- 契约 hash：
-  `d26adabe7d7236fc3c5f15dcaa3a7eb7cbeb681102be2c926fe5f4c4b0111102`
+| 项目 | 值 |
+| --- | --- |
+| 模型名 | `v4.1-agent-pipeline-fold0-r1` |
+| 模型入口 | `workspace/models/current/merged` |
+| 发布目录 | `workspace/models/releases/v4.1-agent-pipeline-fold0-r1` |
+| 契约 | `tensile-vlm/v4.1` |
+| 契约 hash | `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab` |
+| merged aggregate | `1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c` |
+| Python | `/home/liuyang/miniconda3/envs/cpm45/bin/python` |
+| 服务地址 | `127.0.0.1:8002` |
+| 访问策略 | loopback / SSH tunnel only |
+| production alias | 否 |
 
-manifest 中的 `config_fingerprint` 是 merged 模型 `config.json` 的 SHA256。
-更换模型、checkpoint、框架版本、运行精度或显卡后，必须新建 manifest，不能沿用
-当前部署身份。
+部署配置：
+
+`pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json`
+
+配置文件名保留原 Stage B 来源身份，文件内容中的当前模型身份已经更新为
+`v4.1-agent-pipeline-fold0-r1`。历史报告中的旧路径和 acceptance ID 不做回写。
 
 ## 2. 启动前检查
 
@@ -33,25 +36,28 @@ cd '/home/liuyang/文档/mVllm_2'
 
 git status --short
 nvidia-smi
+ss -ltnp | grep ':8002 ' || true
+
+python3 scripts/manage_model_registry.py validate --verify-hashes
 
 /home/liuyang/miniconda3/envs/cpm45/bin/python \
-  -m pipeline.production_contract
-
-/home/liuyang/miniconda3/envs/cpm45/bin/python \
-  -m pytest tests/test_production_contract.py \
-  tests/test_smoke_tensile_vlm_service.py -q
+  -m pytest \
+  tests/test_model_registry.py \
+  tests/test_delivery_components.py \
+  tests/test_v4_1_service_contract.py -q
 ```
 
 必须确认：
 
-1. 没有其他训练、merge 或评测进程占用 GPU；
-2. Git 工作区没有不明确的修改；
-3. 契约命令输出的版本和 hash 与本文一致；
-4. 模型目录和 manifest 均存在。
+1. 没有训练、merge 或评测进程占用模型目录；
+2. `workspace/models/current` 指向注册表声明的 release；
+3. adapter 和 merged aggregate hash 与 release manifest 一致；
+4. 8002 没有被其他服务占用；
+5. GPU 空间足以加载 BF16 merged 模型。
+
+不要从 `LlamaFactory/saves/` 选择“看起来最新”的目录启动服务。
 
 ## 3. 前台启动
-
-首次验证建议只监听本机：
 
 ```bash
 cd '/home/liuyang/文档/mVllm_2'
@@ -63,146 +69,176 @@ export API_KEY='替换为随机长字符串'
 
 /home/liuyang/miniconda3/envs/cpm45/bin/python \
   -m pipeline.server_proxy \
-  --model LlamaFactory/saves/minicpmv4_5/lora/archive/v2/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged \
-  --deployment-manifest pipeline/deployments/full_training_v2.json \
+  --model workspace/models/current/merged \
+  --deployment-manifest pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json \
+  --contract-version tensile-vlm/v4.1 \
   --host 127.0.0.1 \
-  --port 8001
+  --port 8002
 ```
 
-模型加载完成并出现 Uvicorn listening 日志后，再打开另一个 SSH 终端进行验证。
-不要把 `API_KEY` 写入 Git、命令日志或本文。
+API key 只能保存在训练机权限 `0600` 的运行环境文件或当前 shell 中，不能提交到 Git。
 
 ## 4. 后台启动
 
-先建立仅当前用户可读的环境文件：
+当前运行目录：
+
+`finetune/run_logs/v4_1_agent_pipeline_fold0_r1`
+
+先创建凭据文件：
 
 ```bash
 cd '/home/liuyang/文档/mVllm_2'
-mkdir -p finetune/run_logs
+mkdir -p finetune/run_logs/v4_1_agent_pipeline_fold0_r1
 umask 077
 printf 'API_KEY=%s\n' '替换为随机长字符串' \
-  > finetune/run_logs/tensile_vlm_service.env
+  > finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.env
+chmod 600 finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.env
 ```
 
-然后使用 `tmux`：
+使用 tmux 启动：
 
 ```bash
-tmux new-session -d -s tensile-vlm \
+tmux new-session -d -s v4-1-agent-pipeline-r1 \
   "cd '/home/liuyang/文档/mVllm_2' && \
-   set -a && source finetune/run_logs/tensile_vlm_service.env && set +a && \
+   set -a && source finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.env && set +a && \
    export CUDA_VISIBLE_DEVICES=0 && \
    export DISABLE_VERSION_CHECK=1 && \
    export PYTHONPATH='/home/liuyang/文档/mVllm_2/LlamaFactory/src:/home/liuyang/文档/mVllm_2' && \
    exec /home/liuyang/miniconda3/envs/cpm45/bin/python \
    -m pipeline.server_proxy \
-   --model LlamaFactory/saves/minicpmv4_5/lora/archive/v2/sft_interval_v2_0_0_1dab1e5e_full_20260719_merged \
-   --deployment-manifest pipeline/deployments/full_training_v2.json \
-   --host 0.0.0.0 --port 8001 \
-   2>&1 | tee finetune/run_logs/tensile_vlm_service.log"
+   --model workspace/models/current/merged \
+   --deployment-manifest pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json \
+   --contract-version tensile-vlm/v4.1 \
+   --host 127.0.0.1 --port 8002 \
+   2>&1 | tee finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.log"
 ```
 
-查看日志和会话：
+确认启动：
 
 ```bash
 tmux ls
-tmux capture-pane -pt tensile-vlm -S -100
+tail -n 50 finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.log
+ss -ltnp | grep ':8002 '
 nvidia-smi
 ```
 
-`0.0.0.0` 仅用于让另一台机器上的 TensileAgent 访问。此模式必须设置
-`API_KEY`，并通过主机防火墙或可信内网限制端口 `8001`。
-
-## 5. 预检
+## 5. 契约预检
 
 ```bash
 set -a
-source finetune/run_logs/tensile_vlm_service.env
+source finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.env
 set +a
 
 curl --fail --silent --show-error \
   -H "Authorization: Bearer ${API_KEY}" \
-  http://127.0.0.1:8001/v1/tensile/contract \
+  http://127.0.0.1:8002/v1/tensile/contract \
   | /home/liuyang/miniconda3/envs/cpm45/bin/python -m json.tool
 ```
 
-返回值必须包含：
+返回值必须同时包含正确的：
 
-- `contract_version=tensile-vlm/v2`
-- 固定 `contract_hash`
-- `analysis=true`、`evidence=true`
-- 完整 11 字段 `deployment_manifest`
+- `contract_version` 和 `contract_hash`；
+- `model_version=v4.1-agent-pipeline-fold0-r1`；
+- merged aggregate hash；
+- processor、transformers、LLaMA-Factory、device 和 dtype 身份。
 
-TensileAgent 在正式调用前也会执行同样的预检；身份不一致时应 fail closed。
+任何身份漂移都应 fail closed，不能只依据 HTTP 200 判断服务可用。
 
-## 6. 真实视频冒烟
-
-仓库提供了自动构造固定 Prompt 和 Base64 MP4 请求的脚本：
+## 6. 真实媒体 smoke
 
 ```bash
 set -a
-source finetune/run_logs/tensile_vlm_service.env
+source finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.env
 set +a
 
 /home/liuyang/miniconda3/envs/cpm45/bin/python \
   -m pipeline.scripts.smoke_tensile_vlm_service \
-  --base-url http://127.0.0.1:8001 \
-  --video data/08_incremental_review/round_01/03_subvideos/video_0029_focus_3s_80pct.mp4
+  --base-url http://127.0.0.1:8002 \
+  --video data/archive/.compat/workspace/data/08_incremental_review/round_01/03_subvideos/video_0029_focus_3s_80pct.mp4 \
+  --contract-version tensile-vlm/v4.1
 ```
 
-成功输出必须同时包含：
+成功必须同时证明：
 
-- 四字段模型原始 JSON；
-- `request_id`；
-- 真实采样帧和时间戳；
-- `tensor_digest`、`tensor_shape`；
-- 与预检一致的部署身份。
+- 输出满足 V4.1 严格四字段；
+- request ID 存在；
+- 实际帧表存在；
+- tensor digest 和 tensor shape 存在；
+- 响应中的 deployment identity 与预检一致。
 
-训练 loss 或 HTTP 200 不能单独证明服务可用；以上证据链缺失时不得接入 Agent。
+Smoke 只验证服务与契约链路，不是模型任务效果验收。
 
 ## 7. TensileAgent 接入
 
-在 TensileAgent 运行环境中配置：
+TensileAgent 预验收配置：
+
+`agent/config.v4_1.pre_acceptance.yaml`
+
+当 Agent 与服务在同一训练机上运行时：
 
 ```bash
-export INFERENCE_BASE_URL='http://100.70.83.68:8001/v1'
-export INFERENCE_API_KEY='与训练机 API_KEY 相同的值'
-export INFERENCE_MODEL='tensile-vlm'
+cd '/home/liuyang/文档/TensileAgent-acceptance'
+
+set -a
+source '/home/liuyang/文档/mVllm_2/finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.env'
+set +a
+export INFERENCE_API_KEY="${API_KEY}"
+
+/home/liuyang/miniconda3/envs/agent/bin/python \
+  -m agent.doctor \
+  --config agent/config.v4_1.pre_acceptance.yaml
 ```
 
-也可以在 TensileAgent 配置的 `backend.api_url` 和 `backend.model` 中写入同样的
-URL 与模型名；配置文件优先于 `INFERENCE_BASE_URL`。服务 URL 必须包含 `/v1`，
-并指向本服务，不能直接指向未包装的 LLaMA-Factory OpenAI 接口。
+跨机器接入必须通过 SSH tunnel，不能把 8002 直接暴露为生产接口。Agent doctor 成功后
+才允许启动任务；不得自动回退到 V2。
 
-## 8. 停止和重启
+## 8. 停止与重启
 
 正常停止：
 
 ```bash
-tmux send-keys -t tensile-vlm C-c
-tmux kill-session -t tensile-vlm
+tmux send-keys -t v4-1-agent-pipeline-r1 C-c
+tmux ls
 ```
 
-确认端口和 GPU 已释放：
+等待会话正常退出后确认：
 
 ```bash
-ss -ltnp | grep ':8001' || true
+ss -ltnp | grep ':8002 ' || true
 nvidia-smi
 ```
 
-重启前必须先确认旧服务已退出。不要同时启动第二个服务实例，也不要用 `kill -9`
-作为常规停止方式。
+更换 current 模型时，先停止服务，再验证新 release 的完整 hash、deployment manifest 和
+Agent 兼容性；不能在服务运行中原地覆盖 release 目录。
 
-## 9. 常见故障
+## 9. V2 历史回滚
 
-- 预检 `401`：客户端没有使用与服务端一致的 `API_KEY`。
-- 预检 `422`：运行代码过旧或路由注入异常，先检查 Git 是否位于最新主线。
-- 启动时报 manifest 字段错误：不要删除字段；重新基于当前模型生成完整 10 字段配置。
-- 报告 `datasets>=2.16.0,<=4.0.0` 或导入了旧仓库的 LLaMA-Factory：确认已设置
-  `DISABLE_VERSION_CHECK=1`，且 `PYTHONPATH` 的第一项是当前仓库的
-  `LlamaFactory/src`。
-- CUDA OOM：确认没有训练/评测进程占卡；停止旧服务后再启动。
-- 请求 `422`：视频必须是一个 Base64 `video/mp4`，Prompt 必须与契约逐字一致。
-- 请求 `500`：查看 `finetune/run_logs/tensile_vlm_service.log`，同时检查模型加载日志、
-  视频解码和采样证据；不要在对外响应中暴露视频内容或本机路径。
-- Agent 拒绝响应：比较预检和响应中的 `contract_version`、`contract_hash`、
-  `deployment_manifest`、帧表与 tensor 证据，禁止绕过校验。
+V2 只作为历史回滚对象：
+
+- merged：
+  `workspace/models/archive/v2/v2.0.0-1dab1e5e-20260719/full/merged`
+- manifest：`pipeline/deployments/full_training_v2.json`
+- contract：`tensile-vlm/v2`
+
+回滚时必须停止 V4.1、释放 GPU，再用独立端口和 V2 契约启动；不能同时把 V2 权重声明为
+V4.1，也不能在同一个 Agent 任务中静默降级。
+
+## 10. 当前限制
+
+当前部署只证明：
+
+- 模型文件完整；
+- V4.1 Prompt/schema 身份闭合；
+- 服务可以处理真实视频；
+- TensileAgent 可以调用该服务。
+
+它不证明：
+
+- 模型通过 Stage B、Stage D 或 Stage G 质量门；
+- 模型是完整三折最优结果；
+- 模型使用全量 development data 训练；
+- 模型通过独立测试；
+- 模型可作为生产模型发布。
+
+当前证据见
+[V4.1 Agent pipeline Fold0 R1](results/v4_1_agent_pipeline_fold0_r1/README.md)。

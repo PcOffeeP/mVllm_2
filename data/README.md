@@ -1,54 +1,82 @@
 # 数据入口
 
-这里不再保存实际数据，只提供两个清晰入口：
+当前 V4.1 数据的权威本地根是：
 
-- `current`：`tensile-vlm/v4.1` 当前使用的数据处理链路。
-- `archive`：冻结的 `tensile-vlm/v2` 数据处理链路，只用于复现。
+`<repo>/workspace/data`
 
-实际数据保存在仓库外的 `tensile-data` 目录中，避免原视频、帧画面和训练产物进入 Git。
+`data/` 不再保存实际训练数据，也不是新代码的解析入口。这里的 `current`、`archive`
+以及仓库外 `tensile-data` 只保留为历史兼容视图，供冻结 V2/V4.1 证据复现。
 
-## current 的目录含义
+## 当前项目内 workspace
 
-- `source/videos`：原视频
-- `source/annotations`：原始标注
-- `source/splits`：数据集划分
-- `derived/roi_videos`：裁剪后的 ROI 视频
-- `derived/subvideos`：子视频
-- `derived/frames`：抽取帧
-- `derived/metadata`：处理记录与审查结果
-- `training_releases`：冻结后可直接训练的数据版本
-
-普通目录名称不携带版本编码。只有冻结训练数据和契约文件保留明确版本号，
-用于确认训练时实际使用的是哪一版数据。
-
-## 配置与校验
-
-默认外部数据目录是仓库同级的 `tensile-data`，可通过
-`TENSILE_DATA_HOME` 指定其他位置。`config/data_roots.json` 是契约、生命周期和
-目录之间的唯一映射。
-
-```bash
-python pipeline/scripts/manage_versioned_data_roots.py init --contract all
-python pipeline/scripts/manage_versioned_data_roots.py check --contract all
-python pipeline/scripts/manage_versioned_data_roots.py workspace \
-  --contract tensile-vlm/v4.1
+```text
+workspace/data/
+├── source/
+│   ├── videos/
+│   ├── annotations/
+│   └── splits/
+├── derived/
+│   ├── roi_videos/
+│   ├── subvideos/
+│   ├── frames/
+│   └── metadata/
+└── releases/
+    └── <immutable-release-id>/
 ```
 
-每个外部根目录都有 `.tensile-data-root.json` marker。代码在读写前会验证 marker：
+目录职责：
 
-- V4.1 只能访问 `current`；
-- V2 只能访问 `archive`；
-- `archive` 的生命周期为 `frozen`，不得写入新输入或新发布；
-- 两个根目录不得指向同一位置。
+- `source/`：原视频、原始标注和源级划分；
+- `derived/`：可以由来源与处理身份重新生成的派生产物；
+- `releases/`：内容寻址、不可覆盖、可直接绑定训练配置的数据发布。
 
-隐藏目录 `.compat/workspace` 提供旧 `data/...` 相对路径的兼容视图，但所有链接只会
-指向本版本自己的语义目录，不会跨版本串线。
+`pipeline.current_data` 固定解析 `<repo>/workspace/data`，不会读取
+`TENSILE_DATA_HOME`、marker、profile 或 `.compat/workspace`。新训练、审查和发布代码
+不得重新依赖仓库外数据根。
 
 ## 当前冻结发布
 
-- V4.1：`current/training_releases/v4.1.0-760050fad303`
-- V2：`archive/training_releases/v2.0.0-1dab1e5e`
+- 基础三折发布：`workspace/data/releases/v4.1.0-760050fad303`
+- 当前 development 发布：`workspace/data/releases/v4.1.0-ecb5aeb9657c`
 
-发布目录不可覆盖。需要修正数据时必须创建新发布，不能直接编辑已经冻结的文件。
-迁移清单和 checksum 证据见
-[`docs/reports/2026-07-23-v2-v4-1-data-migration.md`](../docs/reports/2026-07-23-v2-v4-1-data-migration.md)。
+发布目录不可覆盖。需要修正标签、媒体或 split 时，必须创建新的内容身份和 release ID。
+
+## 从旧数据根迁移
+
+旧 V4.1 数据根为仓库同级 `tensile-data/current`。迁移只需要执行一次：
+
+```bash
+python pipeline/scripts/migrate_project_local_workspace.py --copy
+python pipeline/scripts/migrate_project_local_workspace.py
+```
+
+第一条命令物理复制受管数据，第二条执行只读复核。迁移会比较文件数、总字节和逐文件
+SHA-256；不会以软链接替代新 workspace，也不会删除旧根。
+
+迁移完成后：
+
+- `workspace/data` 是当前权威根；
+- `tensile-data/current` 是未删除的旧副本；
+- 历史 JSON 中的绝对路径继续作为运行快照保留；
+- `config/data_roots.json` 与 `manage_versioned_data_roots.py` 只用于历史复现。
+
+## V2 历史数据
+
+V2 冻结数据仍位于旧 archive 语义根，只用于回滚与复现：
+
+`tensile-data/archive/training_releases/v2.0.0-1dab1e5e`
+
+不得向 V2 archive 写入 V4.1 数据，也不得把 V2 的 `training_releases/` 重新设为当前活动
+发布。
+
+## 安全规则
+
+- 原始媒体和大型派生产物不进入 Git；
+- 不直接修改 `workspace/data/releases/<release-id>`；
+- 不把源视频级标签静默覆盖到人工复审后的帧窗口标签；
+- 不在同一实验中混用不同 release、Prompt revision 或 contract hash；
+- 新实验必须把数据 release 和 manifest hash 写入 experiment contract；
+- 删除旧数据根必须单独获得授权，不能因为迁移校验通过就自动清理。
+
+迁移证据见
+[项目内 Workspace 迁移报告](../docs/reports/2026-07-28-project-local-workspace-migration.md)。
