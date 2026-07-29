@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from pipeline.source_bootstrap import canonical_bytes
+from pipeline.data_rebuild import tree_inventory
 from pipeline.v4_1_review_decisions import build_review_payload, save_review_payload
 from pipeline.v4_1_review_workflow import (
     build_v4_1_review_queue,
@@ -14,9 +16,11 @@ from pipeline.v4_1_review_workflow import (
     save_v4_1_review_queue,
 )
 from pipeline.v4_1_training_release import (
+    RELEASE_SCHEMA_VERSION_V2,
     V4_1TrainingReleaseError,
     build_v4_1_training_release,
 )
+from finetune.v4_1_runtime import _validate_v2_snapshot_binding
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -234,7 +238,18 @@ def _build(
     paths: dict[str, Path],
     *,
     source_snapshot_id: str | None = None,
+    split_snapshot_id: str | None = None,
+    source_snapshot_dir: Path | None = None,
+    expected_source_tree_hash: str | None = None,
+    expected_split_tree_hash: str | None = None,
 ) -> tuple[Path, dict[str, object]]:
+    if source_snapshot_dir is not None:
+        expected_source_tree_hash = expected_source_tree_hash or str(
+            tree_inventory(source_snapshot_dir)["tree_sha256"]
+        )
+        expected_split_tree_hash = expected_split_tree_hash or str(
+            tree_inventory(paths["splits"])["tree_sha256"]
+        )
     return build_v4_1_training_release(
         project_root=paths["project_root"],
         materialized_path=paths["materialized"],
@@ -245,7 +260,64 @@ def _build(
         splits_dir=paths["splits"],
         releases_dir=paths["releases"],
         source_snapshot_id=source_snapshot_id,
+        split_snapshot_id=split_snapshot_id,
+        source_snapshot_dir=source_snapshot_dir,
+        expected_source_tree_hash=expected_source_tree_hash,
+        expected_split_tree_hash=expected_split_tree_hash,
     )
+
+
+def _semantic_snapshots(paths: dict[str, Path]) -> tuple[Path, Path]:
+    source_identity = {
+        "schema_version": "tensile-source-snapshot/v2",
+        "fixture": "source",
+    }
+    source_digest = hashlib.sha256(canonical_bytes(source_identity)).hexdigest()
+    source_id = f"source-snapshot-{source_digest[:12]}"
+    source_dir = paths["project_root"] / "snapshots" / source_id
+    source_payload = source_dir / "video_meta.json"
+    _write_json(source_payload, [])
+    _write_json(
+        source_dir / "source_manifest.json",
+        {
+            "schema_version": "tensile-source-snapshot/v2",
+            "source_snapshot_id": source_id,
+            "identity_sha256": source_digest,
+            "identity": source_identity,
+            "artifacts": {
+                "video_meta.json": {"sha256": _sha(source_payload)}
+            },
+        },
+    )
+
+    split_dir = paths["splits"]
+    decision = split_dir / "split_decision.json"
+    _write_json(decision, {"seed": 42})
+    artifacts = {
+        path.name: {"sha256": _sha(path)}
+        for path in sorted(split_dir.glob("*.json"))
+    }
+    split_seed = {
+        "schema_version": "tensile-split-snapshot/v1",
+        "source_snapshot_id": source_id,
+        "policy": {"version": "fixture", "seed": 42},
+        "member_ids_sha256": "fixture",
+        "artifacts": artifacts,
+    }
+    split_digest = hashlib.sha256(canonical_bytes(split_seed)).hexdigest()
+    split_id = f"split-snapshot-{split_digest[:12]}"
+    split_target = split_dir.with_name(split_id)
+    split_dir.rename(split_target)
+    _write_json(
+        split_target / "split_manifest.json",
+        {
+            **split_seed,
+            "split_snapshot_id": split_id,
+            "identity_sha256": split_digest,
+        },
+    )
+    paths["splits"] = split_target
+    return source_dir, split_target
 
 
 def test_builds_deterministic_immutable_release(tmp_path: Path) -> None:
@@ -277,13 +349,91 @@ def test_release_can_bind_source_snapshot_directly(tmp_path: Path) -> None:
         paths,
         source_snapshot_id="source-snapshot-0123456789ab",
     )
-
     assert manifest["source_snapshot_id"] == "source-snapshot-0123456789ab"
     assert (
         manifest["provenance"]["source_snapshot_id"]
         == "source-snapshot-0123456789ab"
     )
 
+
+def test_semantic_release_binds_source_and_split_snapshots(
+    tmp_path: Path,
+) -> None:
+    paths = _fixture(tmp_path)
+    source_dir, split_dir = _semantic_snapshots(paths)
+
+    _, manifest = _build(
+        paths,
+        source_snapshot_id=source_dir.name,
+        split_snapshot_id=split_dir.name,
+        source_snapshot_dir=source_dir,
+    )
+
+    assert manifest["schema_version"] == RELEASE_SCHEMA_VERSION_V2
+    assert manifest["source_snapshot_id"] == source_dir.name
+    assert manifest["split_snapshot_id"] == split_dir.name
+    assert manifest["provenance"]["release_schema_version"] == (
+        RELEASE_SCHEMA_VERSION_V2
+    )
+    assert len(
+        manifest["provenance"]["source_snapshot_manifest_sha256"]
+    ) == 64
+    assert len(
+        manifest["provenance"]["split_snapshot_manifest_sha256"]
+    ) == 64
+    _validate_v2_snapshot_binding(manifest)
+
+
+def test_semantic_release_rejects_partial_or_swapped_snapshot_binding(
+    tmp_path: Path,
+) -> None:
+    paths = _fixture(tmp_path)
+    source_dir, split_dir = _semantic_snapshots(paths)
+
+    with pytest.raises(V4_1TrainingReleaseError, match="同时绑定"):
+        _build(
+            paths,
+            source_snapshot_id=source_dir.name,
+            split_snapshot_id=split_dir.name,
+        )
+
+    manifest_path = split_dir / "split_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["source_snapshot_id"] = "source-snapshot-000000000000"
+    _write_json(manifest_path, manifest)
+    with pytest.raises(V4_1TrainingReleaseError, match="校验失败|不匹配"):
+        _build(
+            paths,
+            source_snapshot_id=source_dir.name,
+            split_snapshot_id=split_dir.name,
+            source_snapshot_dir=source_dir,
+        )
+
+
+def test_semantic_release_uses_frozen_external_tree_anchor(
+    tmp_path: Path,
+) -> None:
+    paths = _fixture(tmp_path)
+    source_dir, split_dir = _semantic_snapshots(paths)
+    frozen_source_tree = str(tree_inventory(source_dir)["tree_sha256"])
+    frozen_split_tree = str(tree_inventory(split_dir)["tree_sha256"])
+    _write_json(source_dir / "video_meta.json", [{"drift": True}])
+    manifest_path = source_dir / "source_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["artifacts"]["video_meta.json"]["sha256"] = _sha(
+        source_dir / "video_meta.json"
+    )
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(V4_1TrainingReleaseError, match="外部锚点"):
+        _build(
+            paths,
+            source_snapshot_id=source_dir.name,
+            split_snapshot_id=split_dir.name,
+            source_snapshot_dir=source_dir,
+            expected_source_tree_hash=frozen_source_tree,
+            expected_split_tree_hash=frozen_split_tree,
+        )
 
 def test_rejects_non_negative_automatic_candidate(tmp_path: Path) -> None:
     paths = _fixture(tmp_path)

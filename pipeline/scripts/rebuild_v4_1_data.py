@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from pipeline.current_data import (  # noqa: E402
     current_data_context,
     data_context_for_root,
+    resume_staging_context,
 )
 from pipeline.data_rebuild import (  # noqa: E402
     DataRebuildError,
@@ -32,7 +33,13 @@ from pipeline.data_rebuild import (  # noqa: E402
     tree_inventory,
     update_state,
 )
+from pipeline.metadata_artifacts import (  # noqa: E402
+    metadata_artifact_ids,
+    resolve_metadata_artifact,
+    validate_metadata_artifact,
+)
 from pipeline.roi_manifest import (  # noqa: E402
+    ROI_MANIFEST_SCHEMA_VERSION,
     build_roi_manifest_bundle,
     write_roi_manifest_bundle,
 )
@@ -46,6 +53,7 @@ from pipeline.source_bootstrap import (  # noqa: E402
     SourceBootstrapError,
     build_source_snapshot,
     current_source_fingerprint,
+    materialize_split_snapshot,
     materialize_source_snapshot,
     sha256_file,
 )
@@ -55,9 +63,12 @@ from pipeline.v3_candidate_plan import (  # noqa: E402
     materialize_candidate_plan,
 )
 from pipeline.v4_1_review_workflow import (  # noqa: E402
+    WORKSPACE_SCHEMA_VERSION,
     build_v4_1_review_queue,
     save_v4_1_review_queue,
 )
+from pipeline.review_evidence import REFERENCE_SCHEMA_VERSION  # noqa: E402
+from pipeline.v3_candidate_media import MEDIA_SCHEMA_VERSION  # noqa: E402
 from pipeline.v4_1_training_release import (  # noqa: E402
     build_v4_1_training_release,
 )
@@ -297,6 +308,38 @@ def _find_frozen_decisions(root: Path) -> Path | None:
     return candidates[0]
 
 
+def _resolve_frozen_decisions(current: Any, queue_id: str) -> Path:
+    roots = [
+        root / queue_id
+        for root in current.metadata_read_roots("review_decisions")
+    ]
+    present = [root for root in roots if root.exists() or root.is_symlink()]
+    if not present:
+        raise DataRebuildError(
+            "review reuse 身份不匹配；当前数据根没有同 queue_id 冻结决定"
+        )
+    validated: list[tuple[Path, dict[str, Any]]] = []
+    for root in present:
+        decisions = _find_frozen_decisions(root)
+        if decisions is None:
+            raise DataRebuildError(f"review decisions collection 非法: {root}")
+        result = validate_metadata_artifact(
+            decisions.parent,
+            collection="review_decisions",
+            artifact_id=decisions.parent.name,
+            expected_schema=WORKSPACE_SCHEMA_VERSION,
+            managed_root=root.parent,
+        )
+        validated.append((decisions, result))
+    if (
+        len(validated) == 2
+        and validated[0][1]["tree_sha256"]
+        != validated[1][1]["tree_sha256"]
+    ):
+        raise DataRebuildError("新旧 review decisions 同 queue_id 内容冲突")
+    return validated[0][0]
+
+
 def _check_current_chain(current: Any) -> dict[str, Any]:
     expected_inputs = {
         "decisions_sha256": sha256_file(
@@ -308,9 +351,16 @@ def _check_current_chain(current: Any) -> dict[str, Any]:
         "test_manifest_sha256": sha256_file(current.splits / "test.json"),
     }
     matches: list[tuple[Path, dict[str, Any]]] = []
-    for manifest_path in sorted(
-        (current.metadata / "v3/roi_manifests").glob("*/manifest.json")
-    ):
+    for artifact_id in metadata_artifact_ids(current, "roi_manifests"):
+        manifest_path = (
+            resolve_metadata_artifact(
+                current,
+                collection="roi_manifests",
+                artifact_id=artifact_id,
+                expected_schema=ROI_MANIFEST_SCHEMA_VERSION,
+            )
+            / "manifest.json"
+        )
         manifest = load_json_object(manifest_path, "current ROI manifest")
         inputs = manifest.get("inputs")
         if isinstance(inputs, dict) and all(
@@ -358,7 +408,7 @@ def _source_stage(
     roi_mode: str,
     review_mode: str,
     runtime_identity: dict[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any], Path]:
+) -> tuple[dict[str, Any], dict[str, Any], Path, Path]:
     bundle = build_source_snapshot(
         current,
         rebuild,
@@ -400,6 +450,7 @@ def _source_stage(
         / str(bundle["snapshot_id"])
     )
     snapshot = materialize_source_snapshot(bundle)
+    split_snapshot = materialize_split_snapshot(bundle)
     state = _record_stage(
         run_root,
         state,
@@ -410,9 +461,14 @@ def _source_stage(
             "source_snapshot_tree_sha256": tree_inventory(snapshot)[
                 "tree_sha256"
             ],
+            "split_snapshot_id": bundle["split_snapshot_id"],
+            "split_snapshot": str(split_snapshot),
+            "split_snapshot_tree_sha256": tree_inventory(split_snapshot)[
+                "tree_sha256"
+            ],
         },
     )
-    return state, bundle, snapshot
+    return state, bundle, snapshot, split_snapshot
 
 
 def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
@@ -420,6 +476,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     rebuild, run_root = rebuild_paths(PROJECT_ROOT, args.run_root)
     existing_state_path = run_root / "control/rebuild.json"
     if existing_state_path.exists():
+        resume_staging_context(PROJECT_ROOT, run_root, _git_commit())
         existing_state = load_json_object(
             existing_state_path,
             "rebuild state",
@@ -436,7 +493,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             raise DataRebuildError(
                 "promoted state 缺少完成 provenance；请重跑 promote 恢复"
             )
-    state, source_bundle, snapshot = _source_stage(
+    state, source_bundle, snapshot, split_snapshot = _source_stage(
         current,
         rebuild,
         run_root,
@@ -446,7 +503,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         runtime_identity=_runtime_identity(args),
     )
     video_meta = snapshot / "video_meta.json"
-    test_split = snapshot / "splits/test.json"
+    test_split = split_snapshot / "test.json"
 
     staged_decisions = rebuild.metadata / "roi_decisions.json"
     if args.roi_mode == "reuse":
@@ -472,7 +529,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         project_root=rebuild.root,
     )
     roi_manifest, _ = write_roi_manifest_bundle(
-        rebuild.metadata / "v3/roi_manifests",
+        rebuild.metadata_collection("roi_manifests"),
         roi_bundle,
     )
     state = _record_stage(
@@ -497,10 +554,10 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     existing_roi_bytes = _artifact_bytes(
         current.roi_videos / str(roi_plan["media_id"])
     )
-    reference_source = (
-        current.metadata
-        / "v3/review_reference"
-        / args.review_reference_id
+    reference_source = current.metadata_artifact_path(
+        "review_reference",
+        args.review_reference_id,
+        expected_schema=REFERENCE_SCHEMA_VERSION,
     )
     reference_bytes = _artifact_bytes(reference_source)
     if reference_bytes is None:
@@ -526,8 +583,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     reference = (
-        rebuild.metadata
-        / "v3/review_reference"
+        rebuild.metadata_collection("review_reference")
         / args.review_reference_id
     )
     _copy_tree(reference_source, reference)
@@ -540,7 +596,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     plan = build_candidate_plan(inputs)
     plan_dir = materialize_candidate_plan(
         plan,
-        rebuild.metadata / "v3/candidate_plans",
+        rebuild.metadata_collection("candidate_plans"),
     )
 
     from pipeline.preprocessing import MiniCPMVideoPreprocessor
@@ -563,9 +619,11 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         _artifact_bytes(current.subvideos / plan["plan_id"]),
         _artifact_bytes(current.frames / plan["plan_id"]),
         _artifact_bytes(
-            current.metadata
-            / "v3/candidate_media_results"
-            / str(media_plan["media_id"])
+            current.metadata_artifact_path(
+                "candidate_media_results",
+                str(media_plan["media_id"]),
+                expected_schema=MEDIA_SCHEMA_VERSION,
+            )
         ),
     )
     candidate_required_bytes = _candidate_space_requirement(
@@ -581,7 +639,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         model_path=str(args.model),
         video_output_root=rebuild.subvideos,
         frame_output_root=rebuild.frames,
-        result_root=rebuild.metadata / "v3/candidate_media_results",
+        result_root=rebuild.metadata_collection("candidate_media_results"),
         preprocessor=processor,
     )
     state = _record_stage(
@@ -608,28 +666,20 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         / "pipeline/contracts/tensile_vlm_v4_1.json",
     )
     queue_path = (
-        rebuild.metadata
-        / "v4_1/review_queues"
+        rebuild.metadata_collection("review_queues")
         / str(queue["queue_id"])
         / "review_queue.json"
     )
     save_v4_1_review_queue(queue_path, queue)
     staged_review_root = (
-        rebuild.metadata
-        / "v4_1/review_decisions"
+        rebuild.metadata_collection("review_decisions")
         / str(queue["queue_id"])
     )
     if args.review_mode == "reuse":
-        current_review_root = (
-            current.metadata
-            / "v4_1/review_decisions"
-            / str(queue["queue_id"])
+        existing = _resolve_frozen_decisions(
+            current,
+            str(queue["queue_id"]),
         )
-        existing = _find_frozen_decisions(current_review_root)
-        if existing is None:
-            raise DataRebuildError(
-                "review reuse 身份不匹配；当前数据根没有同 queue_id 冻结决定"
-            )
         _copy_tree(existing.parent, staged_review_root / existing.parent.name)
     decisions = _find_frozen_decisions(staged_review_root)
     if decisions is None:
@@ -672,9 +722,17 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         decisions_path=decisions,
         contract_path=PROJECT_ROOT
         / "pipeline/contracts/tensile_vlm_v4_1.json",
-        splits_dir=snapshot / "splits",
+        splits_dir=split_snapshot,
         releases_dir=rebuild.training_releases,
         source_snapshot_id=str(source_bundle["snapshot_id"]),
+        split_snapshot_id=str(source_bundle["split_snapshot_id"]),
+        source_snapshot_dir=snapshot,
+        expected_source_tree_hash=str(
+            state["artifacts"]["source_snapshot_tree_sha256"]
+        ),
+        expected_split_tree_hash=str(
+            state["artifacts"]["split_snapshot_tree_sha256"]
+        ),
     )
     state = _record_stage(
         run_root,
@@ -692,12 +750,18 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         (
             "source_snapshot",
             snapshot,
-            current.metadata / "source_snapshots" / snapshot.name,
+            current.metadata_collection("source_snapshots") / snapshot.name,
+        ),
+        (
+            "split_snapshot",
+            split_snapshot,
+            current.metadata_collection("split_snapshots")
+            / split_snapshot.name,
         ),
         (
             "roi_manifest",
             roi_manifest,
-            current.metadata / "v3/roi_manifests" / roi_manifest.name,
+            current.metadata_collection("roi_manifests") / roi_manifest.name,
         ),
         (
             "roi_media",
@@ -707,7 +771,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         (
             "candidate_plan",
             plan_dir,
-            current.metadata / "v3/candidate_plans" / plan_dir.name,
+            current.metadata_collection("candidate_plans") / plan_dir.name,
         ),
         (
             "candidate_videos",
@@ -722,22 +786,19 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         (
             "candidate_media",
             media_result,
-            current.metadata
-            / "v3/candidate_media_results"
+            current.metadata_collection("candidate_media_results")
             / media_result.name,
         ),
         (
             "review_queue",
             queue_path.parent,
-            current.metadata
-            / "v4_1/review_queues"
+            current.metadata_collection("review_queues")
             / queue_path.parent.name,
         ),
         (
             "review_decisions",
             decisions.parent,
-            current.metadata
-            / "v4_1/review_decisions"
+            current.metadata_collection("review_decisions")
             / queue_path.parent.name
             / decisions.parent.name,
         ),

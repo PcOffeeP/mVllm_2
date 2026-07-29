@@ -32,3 +32,25 @@ def test_guard_reports_new_violation(tmp_path: Path) -> None:
     assert result["violations"] == [
         {"path": "pipeline/new.py", "line": 1, "match": "data/current"}
     ]
+
+
+def test_guard_detects_runtime_concatenated_versioned_writer(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pipeline").mkdir()
+    (tmp_path / "pipeline/new.py").write_text(
+        'output = metadata / "v4_1" / "review_queues"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config/active_data_path_allowlist.json").write_text(
+        json.dumps({"schema_version": 1, "entries": []}),
+        encoding="utf-8",
+    )
+
+    result = scan_active_data_paths(tmp_path)
+
+    assert result["status"] == "failed"
+    assert result["violations"] == [
+        {"path": "pipeline/new.py", "line": 1, "match": "metadata/v4_1"}
+    ]

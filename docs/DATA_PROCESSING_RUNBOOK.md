@@ -11,7 +11,7 @@
 ```bash
 python pipeline/scripts/rebuild_v4_1_data.py \
   --source-data-root workspace/data \
-  --run-root workspace/data-rebuild/<rebuild-id> \
+  --run-root workspace/data-staging/<run-id> \
   --roi-mode reuse \
   --review-mode reuse
 ```
@@ -21,7 +21,7 @@ python pipeline/scripts/rebuild_v4_1_data.py \
 
 ```bash
 python pipeline/scripts/rebuild_v4_1_data.py promote \
-  --run-root workspace/data-rebuild/<rebuild-id>
+  --run-root workspace/data-staging/<run-id>
 ```
 
 release 最后晋级；外部旧数据不会被该命令删除。
@@ -76,6 +76,14 @@ workspace/data/
 │   ├── subvideos/
 │   ├── frames/
 │   └── metadata/
+│       ├── source_snapshots/
+│       ├── split_snapshots/
+│       ├── roi_manifests/
+│       ├── candidate_plans/
+│       ├── candidate_media_results/
+│       ├── review_reference/
+│       ├── review_queues/
+│       └── review_decisions/
 └── releases/
 ```
 
@@ -90,6 +98,11 @@ workspace/data/
 
 活跃代码通过 `pipeline.current_data` 解析项目内物理目录；冻结产物中的旧 `data/...`
 相对媒体路径由纯路径映射兼容，不依赖软链接。
+
+新 run 只写上述无版本语义目录。已有 `metadata/v3/`、`metadata/v4_1/` 和
+`workspace/data-rebuild/` 不移动、不改写；读取时按精确 artifact ID 优先解析语义
+目录，没有对应 ID 才回退旧目录。source snapshot v2 只绑定视频、标注和探测结果，
+数据划分单独冻结在 split snapshot v1；新 release 必须同时记录二者的 ID 和 tree hash。
 
 ## 第一步：迁移或验证项目内数据
 
@@ -295,11 +308,21 @@ sealed 推理。
 
 ## 第五步：构建不可覆盖的 V4.1 训练发布
 
-基础发布复现入口仍为：
+新语义发布入口必须显式绑定 source/split snapshot 和审核输入：
 
 ```bash
-python pipeline/scripts/build_v4_1_training_release.py
+python pipeline/scripts/build_v4_1_training_release.py \
+  --source-snapshot workspace/data/derived/metadata/source_snapshots/<source-id> \
+  --split-snapshot workspace/data/derived/metadata/split_snapshots/<split-id> \
+  --source-tree-sha256 <state-frozen-source-tree-sha256> \
+  --split-tree-sha256 <state-frozen-split-tree-sha256> \
+  --materialized <candidate-media>/development_materialized.json \
+  --media-manifest <candidate-media>/manifest.json \
+  --queue <review-queue>/review_queue.json \
+  --decisions <review-batch>/decisions.json
 ```
+
+旧基础发布的无参数复现方式属于历史流程，不得用于创建新 release。
 
 阶段 2 development 发布必须先执行完整 preflight，再创建不可覆盖目录：
 

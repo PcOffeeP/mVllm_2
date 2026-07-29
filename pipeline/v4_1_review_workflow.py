@@ -133,7 +133,8 @@ def _portable_identity_path(path: Path, data_root: Path) -> str:
             ) from exc
     semantic_root = Path(data_root).name == "data" and (
         Path(data_root).parent.name == "workspace"
-        or Path(data_root).parent.parent.name == "data-rebuild"
+        or Path(data_root).parent.parent.name
+        in {"data-rebuild", "data-staging"}
     )
     if semantic_root and (
         not relative.parts

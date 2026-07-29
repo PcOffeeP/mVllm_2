@@ -35,6 +35,7 @@ from pipeline.v4_1_review_workflow import (
 )
 
 RELEASE_SCHEMA_VERSION = "tensile-training-release/v4.1"
+RELEASE_SCHEMA_VERSION_V2 = "tensile-training-release/v4.1-v2"
 QUALITY_SCHEMA_VERSION = "tensile-training-quality/v4.1"
 TRAINING_CANDIDATES_SCHEMA_VERSION = "tensile-training-candidates/v4.1"
 DATA_VERSION = "4.1.0"
@@ -58,7 +59,7 @@ def _read_json(path: Path, label: str) -> Any:
         raise V4_1TrainingReleaseError(f"{label}不是合法 JSON: {path}: {exc}") from exc
 
 
-def _canonical_bytes(value: Any) -> bytes:
+def canonical_release_identity_bytes(value: Any) -> bytes:
     return (
         json.dumps(
             value,
@@ -69,6 +70,10 @@ def _canonical_bytes(value: Any) -> bytes:
         )
         + "\n"
     ).encode("utf-8")
+
+
+def _canonical_bytes(value: Any) -> bytes:
+    return canonical_release_identity_bytes(value)
 
 
 def _pretty_bytes(value: Any) -> bytes:
@@ -353,9 +358,79 @@ def build_v4_1_training_release(
     splits_dir: Path,
     releases_dir: Path,
     source_snapshot_id: str | None = None,
+    split_snapshot_id: str | None = None,
+    source_snapshot_dir: Path | None = None,
+    expected_source_tree_hash: str | None = None,
+    expected_split_tree_hash: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     """Validate all inputs and publish one deterministic immutable release."""
     project_root = Path(project_root).resolve()
+    semantic_snapshot_mode = (
+        split_snapshot_id is not None or source_snapshot_dir is not None
+    )
+    if semantic_snapshot_mode and not all(
+        value is not None
+        for value in (
+            source_snapshot_id,
+            split_snapshot_id,
+            source_snapshot_dir,
+            expected_source_tree_hash,
+            expected_split_tree_hash,
+        )
+    ):
+        raise V4_1TrainingReleaseError(
+            "semantic release 必须同时绑定 source/split snapshot"
+        )
+    snapshot_bindings: dict[str, Any] = {}
+    if semantic_snapshot_mode:
+        from pipeline.metadata_artifacts import (
+            MetadataArtifactError,
+            validate_metadata_artifact,
+        )
+        from pipeline.source_bootstrap import (
+            SOURCE_SCHEMA_VERSION,
+            SPLIT_SCHEMA_VERSION,
+        )
+
+        try:
+            source_validation = validate_metadata_artifact(
+                Path(source_snapshot_dir),
+                collection="source_snapshots",
+                artifact_id=str(source_snapshot_id),
+                expected_schema=SOURCE_SCHEMA_VERSION,
+                expected_tree_hash=expected_source_tree_hash,
+                managed_root=Path(source_snapshot_dir).parent,
+            )
+            split_validation = validate_metadata_artifact(
+                Path(splits_dir),
+                collection="split_snapshots",
+                artifact_id=str(split_snapshot_id),
+                expected_schema=SPLIT_SCHEMA_VERSION,
+                expected_tree_hash=expected_split_tree_hash,
+                managed_root=Path(splits_dir).parent,
+            )
+        except MetadataArtifactError as exc:
+            raise V4_1TrainingReleaseError(
+                f"snapshot binding 校验失败: {exc}"
+            ) from exc
+        split_manifest = split_validation["manifest"]
+        if split_manifest.get("source_snapshot_id") != source_snapshot_id:
+            raise V4_1TrainingReleaseError(
+                "split snapshot 绑定的 source snapshot 不匹配"
+            )
+        snapshot_bindings = {
+            "release_schema_version": RELEASE_SCHEMA_VERSION_V2,
+            "source_snapshot_id": source_snapshot_id,
+            "source_snapshot_tree_sha256": source_validation["tree_sha256"],
+            "source_snapshot_manifest_sha256": sha256_file(
+                Path(source_snapshot_dir) / "source_manifest.json"
+            ),
+            "split_snapshot_id": split_snapshot_id,
+            "split_snapshot_tree_sha256": split_validation["tree_sha256"],
+            "split_snapshot_manifest_sha256": sha256_file(
+                Path(splits_dir) / "split_manifest.json"
+            ),
+        }
     contract, contract_file_sha256 = _contract_identity(contract_path)
     media_manifest, candidates = _load_materialized(
         materialized_path, media_manifest_path, project_root
@@ -548,7 +623,7 @@ def build_v4_1_training_release(
     if source_snapshot_id is not None:
         if not source_snapshot_id.startswith("source-snapshot-"):
             raise V4_1TrainingReleaseError("source_snapshot_id 格式非法")
-        seed["source_snapshot_id"] = source_snapshot_id
+        seed.update(snapshot_bindings or {"source_snapshot_id": source_snapshot_id})
     release_digest = _sha256_bytes(_canonical_bytes(seed))[:12]
     release_id = f"v{DATA_VERSION}-{release_digest}"
     file_manifest = [
@@ -560,7 +635,11 @@ def build_v4_1_training_release(
         for relative, content in sorted(files.items())
     ]
     manifest = {
-        "schema_version": RELEASE_SCHEMA_VERSION,
+        "schema_version": (
+            RELEASE_SCHEMA_VERSION_V2
+            if semantic_snapshot_mode
+            else RELEASE_SCHEMA_VERSION
+        ),
         "release_id": release_id,
         "status": "training_ready",
         "immutable": True,
@@ -571,6 +650,7 @@ def build_v4_1_training_release(
         "source_queue_id": queue_identity["queue_id"],
         "source_media_id": media_manifest["media_id"],
         "source_snapshot_id": source_snapshot_id,
+        "split_snapshot_id": split_snapshot_id,
         "counts": quality["counts"],
         "provenance": seed,
         "files": file_manifest,

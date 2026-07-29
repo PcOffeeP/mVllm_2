@@ -42,7 +42,14 @@ def main() -> None:
     args = parser.parse_args()
     paths = data_context_from_arg(PROJECT_ROOT, args.data_root)
     args.project_root = args.project_root or paths.root
-    args.output_root = args.output_root or paths.metadata / "v4_1/review_queues"
+    args.output_root = (
+        args.output_root or paths.metadata_collection("review_queues")
+    )
+    args.output_root = paths.require_managed_output(
+        args.output_root,
+        paths.metadata_collection("review_queues"),
+        label="review queue output",
+    )
     payload = build_v4_1_review_queue(
         materialized_path=args.materialized,
         manifest_path=args.manifest,

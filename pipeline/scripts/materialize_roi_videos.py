@@ -20,6 +20,7 @@ from pipeline.roi_media import (  # noqa: E402
     require_tools,
 )
 from pipeline.current_data import data_context_from_arg  # noqa: E402
+from pipeline.roi_manifest import ROI_MANIFEST_SCHEMA_VERSION  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,10 +45,19 @@ def main() -> int:
     args = build_parser().parse_args()
     context = data_context_from_arg(PROJECT_ROOT, args.data_root)
     args.roi_manifest = args.roi_manifest or (
-        context.metadata / "v3/roi_manifests/roi-manifest-01be8c1ebb2d"
+        context.metadata_artifact_path(
+            "roi_manifests",
+            "roi-manifest-01be8c1ebb2d",
+            expected_schema=ROI_MANIFEST_SCHEMA_VERSION,
+        )
     )
     args.video_meta = args.video_meta or context.metadata / "video_meta.json"
     args.output_root = args.output_root or context.roi_videos
+    args.output_root = context.require_managed_output(
+        args.output_root,
+        context.roi_videos,
+        label="ROI media output",
+    )
     try:
         plan = load_generation_plan(
             args.roi_manifest,

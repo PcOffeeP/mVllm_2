@@ -38,9 +38,14 @@ def main() -> None:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=paths.metadata / "v4_1/review_queues",
+        default=paths.metadata_collection("review_queues"),
     )
     args = parser.parse_args()
+    args.output_root = paths.require_managed_output(
+        args.output_root,
+        paths.metadata_collection("review_queues"),
+        label="phase2 review queue output",
+    )
 
     outputs: dict[str, dict[str, object]] = {}
     for scope in ("development", "sealed_test"):

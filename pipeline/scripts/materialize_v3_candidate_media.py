@@ -21,6 +21,7 @@ from pipeline.v3_candidate_media import (  # noqa: E402
     materialize_media_plan,
     require_tools,
 )
+from pipeline.v3_candidate_plan import PLAN_SCHEMA_VERSION  # noqa: E402
 
 
 DEFAULT_PLAN_ID = "candidate-plan-ce36b9226be5"
@@ -80,7 +81,11 @@ def main() -> int:
         _require_isolated_subset_outputs(args)
         context = data_context_from_arg(PROJECT_ROOT, args.data_root)
         args.candidate_plan = args.candidate_plan or (
-            context.metadata / "v3/candidate_plans" / DEFAULT_PLAN_ID
+            context.metadata_artifact_path(
+                "candidate_plans",
+                DEFAULT_PLAN_ID,
+                expected_schema=PLAN_SCHEMA_VERSION,
+            )
         )
         args.roi_media = args.roi_media or (
             context.roi_videos / "roi-media-84ea2bd3a052"
@@ -88,7 +93,22 @@ def main() -> int:
         args.video_output_root = args.video_output_root or context.subvideos
         args.frame_output_root = args.frame_output_root or context.frames
         args.result_root = args.result_root or (
-            context.metadata / "v3/candidate_media_results"
+            context.metadata_collection("candidate_media_results")
+        )
+        args.video_output_root = context.require_managed_output(
+            args.video_output_root,
+            context.subvideos,
+            label="candidate video output",
+        )
+        args.frame_output_root = context.require_managed_output(
+            args.frame_output_root,
+            context.frames,
+            label="candidate frame output",
+        )
+        args.result_root = context.require_managed_output(
+            args.result_root,
+            context.metadata_collection("candidate_media_results"),
+            label="candidate metadata output",
         )
         require_tools()
         processor = MiniCPMVideoPreprocessor(

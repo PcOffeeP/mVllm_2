@@ -32,14 +32,24 @@ def main() -> None:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=paths.metadata / "v4_1/review_routes",
+        default=paths.metadata / "review_routes",
     )
     parser.add_argument(
         "--review-decisions-root",
         type=Path,
-        default=paths.metadata / "v4_1/review_decisions",
+        default=paths.metadata_collection("review_decisions"),
     )
     args = parser.parse_args()
+    args.output_root = paths.require_managed_output(
+        args.output_root,
+        paths.metadata / "review_routes",
+        label="review route output",
+    )
+    args.review_decisions_root = paths.require_managed_output(
+        args.review_decisions_root,
+        paths.metadata_collection("review_decisions"),
+        label="review decisions output",
+    )
     route_dir, manifest = build_history_review_route(
         queue_path=args.queue,
         previous_decisions_path=args.previous_decisions,

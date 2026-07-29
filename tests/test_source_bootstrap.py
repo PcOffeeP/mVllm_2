@@ -13,6 +13,8 @@ from pipeline.source_bootstrap import (
     TAG_COLUMNS,
     SourceBootstrapError,
     build_source_snapshot,
+    materialize_split_snapshot,
+    load_source_split_binding,
     materialize_source_snapshot,
     stratified_split,
 )
@@ -100,7 +102,7 @@ def test_source_snapshot_is_deterministic_and_materializes_isolated_copy(
     current = current_data_context(project)
     rebuild = data_context_for_root(
         project,
-        project / "workspace/data-rebuild/rebuild-test/data",
+        project / "workspace/data-staging/rebuild-test/data",
     )
 
     first = build_source_snapshot(
@@ -117,6 +119,7 @@ def test_source_snapshot_is_deterministic_and_materializes_isolated_copy(
     )
 
     assert first["snapshot_id"] == second["snapshot_id"]
+    assert first["split_snapshot_id"] == second["split_snapshot_id"]
     assert first["validation"]["material_difference_count"] == 1
     assert set(first["splits"]) == {
         "test",
@@ -128,12 +131,43 @@ def test_source_snapshot_is_deterministic_and_materializes_isolated_copy(
         "fold_2_val",
     }
     destination = materialize_source_snapshot(first)
+    split_destination = materialize_split_snapshot(first)
     assert destination.name == first["snapshot_id"]
+    assert split_destination.name == first["split_snapshot_id"]
     assert len(list(rebuild.videos.glob("*.mp4"))) == 9
     assert not any(path.is_symlink() for path in rebuild.root.rglob("*"))
     metadata = json.loads((destination / "video_meta.json").read_text())
     assert metadata[0]["video_path"] == "source/videos/video_0001.mp4"
+    assert not (destination / "splits").exists()
+    assert (split_destination / "test.json").is_file()
     assert materialize_source_snapshot(second) == destination
+    assert materialize_split_snapshot(second) == split_destination
+
+
+def test_source_and_split_identities_are_independent(tmp_path: Path) -> None:
+    project = tmp_path / "repo"
+    _fixture(project)
+    current = current_data_context(project)
+    staging = data_context_for_root(
+        project,
+        project / "workspace/data-staging/rebuild-test/data",
+    )
+    first = build_source_snapshot(
+        current,
+        staging,
+        expected_count=9,
+        probe=_probe,
+    )
+    second = build_source_snapshot(
+        current,
+        staging,
+        expected_count=9,
+        probe=_probe,
+        split_seed=43,
+    )
+
+    assert first["snapshot_id"] == second["snapshot_id"]
+    assert first["split_snapshot_id"] != second["split_snapshot_id"]
 
 
 def test_source_snapshot_resume_rejects_metadata_drift(tmp_path: Path) -> None:
@@ -143,7 +177,7 @@ def test_source_snapshot_resume_rejects_metadata_drift(tmp_path: Path) -> None:
         current_data_context(project),
         data_context_for_root(
             project,
-            project / "workspace/data-rebuild/rebuild-test/data",
+            project / "workspace/data-staging/rebuild-test/data",
         ),
         expected_count=9,
         probe=_probe,
@@ -160,7 +194,7 @@ def test_source_snapshot_resume_rejects_staged_symlink(tmp_path: Path) -> None:
     _fixture(project)
     rebuild = data_context_for_root(
         project,
-        project / "workspace/data-rebuild/rebuild-test/data",
+        project / "workspace/data-staging/rebuild-test/data",
     )
     bundle = build_source_snapshot(
         current_data_context(project),
@@ -190,7 +224,7 @@ def test_source_snapshot_rejects_duplicate_tag_id(tmp_path: Path) -> None:
             current_data_context(project),
             data_context_for_root(
                 project,
-                project / "workspace/data-rebuild/rebuild-test/data",
+                project / "workspace/data-staging/rebuild-test/data",
             ),
             expected_count=3,
             probe=_probe,
@@ -339,3 +373,35 @@ def test_historical_split_membership_golden() -> None:
             + b"\n"
         )
         assert hashlib.sha256(membership).hexdigest() == expected_hash
+
+
+def test_legacy_combined_snapshot_adapter_is_read_only(tmp_path: Path) -> None:
+    snapshot = tmp_path / "source-snapshot-legacy"
+    (snapshot / "splits").mkdir(parents=True)
+    (snapshot / "source_inventory.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "tensile-source-snapshot/v1",
+                "source_snapshot_id": snapshot.name,
+            }
+        )
+    )
+    (snapshot / "splits/test.json").write_text(
+        json.dumps({"video_ids": ["video_0001"]})
+    )
+    before = {
+        path.relative_to(snapshot).as_posix(): path.read_bytes()
+        for path in snapshot.rglob("*")
+        if path.is_file()
+    }
+
+    binding = load_source_split_binding(snapshot)
+
+    assert binding["layout"] == "legacy-combined-v1"
+    assert binding["source_snapshot_id"] == snapshot.name
+    assert binding["split_snapshot_id"].startswith("legacy-split-snapshot-")
+    assert before == {
+        path.relative_to(snapshot).as_posix(): path.read_bytes()
+        for path in snapshot.rglob("*")
+        if path.is_file()
+    }

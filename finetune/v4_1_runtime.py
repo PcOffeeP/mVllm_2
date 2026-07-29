@@ -13,11 +13,15 @@ import yaml
 from pipeline.current_data import current_data_paths
 from pipeline.data_roots import resolve_workspace_artifact
 from pipeline.v4_1_labels import V4_1_LABEL_FIELDS, canonicalize_v4_1_labels
+from pipeline.v4_1_training_release import (
+    canonical_release_identity_bytes,
+)
 
 RELEASE_ID = "v4.1.0-760050fad303"
 CONTRACT_VERSION = "tensile-vlm/v4.1"
 CONTRACT_HASH = "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
 RELEASE_SCHEMA_VERSION = "tensile-training-release/v4.1"
+RELEASE_SCHEMA_VERSION_V2 = "tensile-training-release/v4.1-v2"
 EXPECTED_RELEASE_COUNTS = {
     "published_candidates": 1275,
     "excluded_candidates": 10,
@@ -49,6 +53,50 @@ def release_dir(project_root: Path, release_id: str = RELEASE_ID) -> Path:
     return current_data_paths(project_root).training_releases / release_id
 
 
+def _validate_v2_snapshot_binding(manifest: Mapping[str, Any]) -> None:
+    source_snapshot_id = manifest.get("source_snapshot_id")
+    split_snapshot_id = manifest.get("split_snapshot_id")
+    provenance = manifest.get("provenance")
+    if (
+        not isinstance(source_snapshot_id, str)
+        or not source_snapshot_id.startswith("source-snapshot-")
+        or not isinstance(split_snapshot_id, str)
+        or not split_snapshot_id.startswith("split-snapshot-")
+        or not isinstance(provenance, Mapping)
+        or provenance.get("release_schema_version")
+        != RELEASE_SCHEMA_VERSION_V2
+        or provenance.get("source_snapshot_id") != source_snapshot_id
+        or provenance.get("split_snapshot_id") != split_snapshot_id
+    ):
+        raise V4_1FinetuneError(
+            "release v2 缺少有效 source/split snapshot binding"
+        )
+    for field in (
+        "source_snapshot_tree_sha256",
+        "split_snapshot_tree_sha256",
+        "source_snapshot_manifest_sha256",
+        "split_snapshot_manifest_sha256",
+    ):
+        value = provenance.get(field)
+        if (
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(character not in "0123456789abcdef" for character in value)
+        ):
+            raise V4_1FinetuneError(
+                f"release v2 provenance {field} 无效"
+            )
+    data_version = provenance.get("data_version")
+    if not isinstance(data_version, str) or not data_version:
+        raise V4_1FinetuneError("release v2 provenance data_version 无效")
+    canonical_seed = canonical_release_identity_bytes(dict(provenance))
+    expected_release_id = (
+        f"v{data_version}-{hashlib.sha256(canonical_seed).hexdigest()[:12]}"
+    )
+    if manifest.get("release_id") != expected_release_id:
+        raise V4_1FinetuneError("release v2 canonical identity 漂移")
+
+
 def validate_release(
     project_root: Path,
     *,
@@ -56,6 +104,7 @@ def validate_release(
     release_id: str = RELEASE_ID,
     expected_counts: Mapping[str, int] | None = None,
     expected_contract_hash: str = CONTRACT_HASH,
+    expected_schema_version: str = RELEASE_SCHEMA_VERSION,
 ) -> dict[str, Any]:
     """Validate immutable release files, rows, labels, splits, and optional media."""
     project_root = Path(project_root).resolve()
@@ -66,7 +115,7 @@ def validate_release(
     if not isinstance(manifest, dict):
         raise V4_1FinetuneError("release manifest 必须是对象")
     expected_identity = {
-        "schema_version": RELEASE_SCHEMA_VERSION,
+        "schema_version": expected_schema_version,
         "release_id": release_id,
         "status": "training_ready",
         "immutable": True,
@@ -80,6 +129,8 @@ def validate_release(
                 f"release manifest {field} 漂移: "
                 f"expected={expected!r}, actual={manifest.get(field)!r}"
             )
+    if expected_schema_version == RELEASE_SCHEMA_VERSION_V2:
+        _validate_v2_snapshot_binding(manifest)
     counts = manifest.get("counts")
     if not isinstance(counts, Mapping):
         raise V4_1FinetuneError("release manifest counts 缺失")

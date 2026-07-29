@@ -257,14 +257,24 @@ def main() -> None:
         references = _cached_reference_records(
             str(args.review_reference.resolve()) if args.review_reference else None
         )
-        review_root = args._data_context.metadata / "v4_1/review_decisions"
+        review_root = args._data_context.metadata_collection(
+            "review_decisions"
+        )
         default_draft, default_output_root = _default_paths(
             review_root,
             identity["queue_id"],
             identity["selected_candidate_ids_sha256"],
         )
-        draft_path = (args.draft or default_draft).resolve()
-        output_root = (args.output_root or default_output_root).resolve()
+        draft_path = args._data_context.require_managed_output(
+            args.draft or default_draft,
+            review_root,
+            label="review draft output",
+        )
+        output_root = args._data_context.require_managed_output(
+            args.output_root or default_output_root,
+            review_root,
+            label="review decisions output",
+        )
         decisions = load_draft(draft_path, identity)
     except (ReviewRoutingError, V4_1ReviewWorkflowError, ValueError) as exc:
         st.error(str(exc))

@@ -19,6 +19,7 @@ from pipeline.v3_candidate_plan import (
     materialize_candidate_plan,
 )
 from pipeline.current_data import current_data_context, data_context_from_arg
+from pipeline.review_evidence import REFERENCE_SCHEMA_VERSION
 
 
 CURRENT_DATA = current_data_context(PROJECT_ROOT)
@@ -27,11 +28,11 @@ DEFAULT_ROI_MEDIA_DIR = (
     / "v3/roi_media_results/roi-media-84ea2bd3a052"
 )
 DEFAULT_REVIEW_REFERENCE_DIR = (
-    CURRENT_DATA.metadata
-    / "v3/review_reference/review-ref-7cd2e73a1cd1"
+    CURRENT_DATA.legacy_metadata_collection("review_reference")
+    / "review-ref-7cd2e73a1cd1"
 )
 DEFAULT_CONTRACT = PROJECT_ROOT / "pipeline" / "contracts" / "tensile_vlm_v3.json"
-DEFAULT_OUTPUT_ROOT = CURRENT_DATA.metadata / "v3/candidate_plans"
+DEFAULT_OUTPUT_ROOT = CURRENT_DATA.metadata_collection("candidate_plans")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -59,9 +60,20 @@ def main() -> None:
         / "v3/roi_media_results/roi-media-84ea2bd3a052"
     )
     args.review_reference_dir = args.review_reference_dir or (
-        context.metadata / "v3/review_reference/review-ref-7cd2e73a1cd1"
+        context.metadata_artifact_path(
+            "review_reference",
+            "review-ref-7cd2e73a1cd1",
+            expected_schema=REFERENCE_SCHEMA_VERSION,
+        )
     )
-    args.output_root = args.output_root or context.metadata / "v3/candidate_plans"
+    args.output_root = (
+        args.output_root or context.metadata_collection("candidate_plans")
+    )
+    args.output_root = context.require_managed_output(
+        args.output_root,
+        context.metadata_collection("candidate_plans"),
+        label="candidate plan output",
+    )
     inputs = load_plan_inputs(
         args.roi_media_dir,
         args.review_reference_dir,
