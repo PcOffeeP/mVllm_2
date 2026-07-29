@@ -298,14 +298,32 @@ def _find_frozen_decisions(root: Path) -> Path | None:
 
 
 def _check_current_chain(current: Any) -> dict[str, Any]:
-    roi_bundle = build_roi_manifest_bundle(
-        decisions_path=current.metadata / "roi_decisions.json",
-        video_metadata_path=current.metadata / "video_meta.json",
-        test_manifest_path=current.splits / "test.json",
-        project_root=current.root,
-    )
-    roi_id = roi_bundle["manifest.json"]["roi_manifest_id"]
-    existing_roi = current.metadata / "v3/roi_manifests" / roi_id
+    expected_inputs = {
+        "decisions_sha256": sha256_file(
+            current.metadata / "roi_decisions.json"
+        ),
+        "video_metadata_sha256": sha256_file(
+            current.metadata / "video_meta.json"
+        ),
+        "test_manifest_sha256": sha256_file(current.splits / "test.json"),
+    }
+    matches: list[tuple[Path, dict[str, Any]]] = []
+    for manifest_path in sorted(
+        (current.metadata / "v3/roi_manifests").glob("*/manifest.json")
+    ):
+        manifest = load_json_object(manifest_path, "current ROI manifest")
+        inputs = manifest.get("inputs")
+        if isinstance(inputs, dict) and all(
+            inputs.get(key) == value
+            for key, value in expected_inputs.items()
+        ):
+            matches.append((manifest_path.parent, manifest))
+    if len(matches) != 1:
+        raise DataRebuildError(
+            f"当前 ROI manifest 身份匹配数必须为 1，实际为 {len(matches)}"
+        )
+    existing_roi, existing_manifest = matches[0]
+    roi_id = str(existing_manifest["roi_manifest_id"])
     roi_plan = load_generation_plan(
         existing_roi,
         current.metadata / "video_meta.json",
