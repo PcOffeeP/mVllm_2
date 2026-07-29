@@ -46,6 +46,21 @@ def test_committed_release_and_configs_are_v4_1_bound() -> None:
     assert result["split_counts"]["fold_0_train"] == 850
 
 
+def test_release_validation_uses_explicit_expected_contract_hash() -> None:
+    if not (
+        ROOT
+        / "workspace/data/releases"
+        / RELEASE_ID
+    ).is_dir():
+        pytest.skip("project-local V4.1 workspace data is not present")
+
+    with pytest.raises(V4_1FinetuneError, match="contract_hash 漂移"):
+        validate_release(
+            ROOT,
+            expected_contract_hash="0" * 64,
+        )
+
+
 def test_formal_visual_configs_keep_release_and_safe_memory_recipe() -> None:
     for fold in VISUAL_FOLDS:
         config = yaml.safe_load(fold.train_config.read_text(encoding="utf-8"))

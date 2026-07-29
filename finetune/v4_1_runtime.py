@@ -55,6 +55,7 @@ def validate_release(
     verify_media: bool = False,
     release_id: str = RELEASE_ID,
     expected_counts: Mapping[str, int] | None = None,
+    expected_contract_hash: str = CONTRACT_HASH,
 ) -> dict[str, Any]:
     """Validate immutable release files, rows, labels, splits, and optional media."""
     project_root = Path(project_root).resolve()
@@ -70,7 +71,7 @@ def validate_release(
         "status": "training_ready",
         "immutable": True,
         "contract_version": CONTRACT_VERSION,
-        "contract_hash": CONTRACT_HASH,
+        "contract_hash": expected_contract_hash,
         "label_semantics": "frame_window_authoritative",
     }
     for field, expected in expected_identity.items():
@@ -167,7 +168,7 @@ def validate_release(
     return {
         "release_id": release_id,
         "contract_version": CONTRACT_VERSION,
-        "contract_hash": CONTRACT_HASH,
+        "contract_hash": expected_contract_hash,
         "release_dir": str(root),
         "media_verified": verify_media,
         "split_counts": all_fold_counts,
