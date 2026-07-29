@@ -282,6 +282,20 @@ def _move_and_link(source: Path, target: Path, *, apply: bool) -> str:
     return "migrated"
 
 
+def _ensure_current_link(current: Path, release_root: Path) -> str:
+    if current.is_symlink():
+        if current.resolve() != release_root.resolve():
+            raise MigrationError(f"current 兼容链接目标错误: {current}")
+        return "already_current"
+    if current.exists():
+        raise MigrationError(f"current 路径已存在: {current}")
+    current.symlink_to(
+        _relative_link(current, release_root),
+        target_is_directory=True,
+    )
+    return "created"
+
+
 def _write_identity(move: ModelMove, *, apply: bool) -> None:
     if not apply:
         return
@@ -420,11 +434,9 @@ def migrate(*, apply: bool) -> dict[str, Any]:
         )
     if apply:
         current = ROOT / "workspace/models/current"
-        if current.exists() or current.is_symlink():
-            raise MigrationError(f"current 路径已存在: {current}")
-        current.symlink_to(
-            f"releases/{CURRENT_MODEL}",
-            target_is_directory=True,
+        _ensure_current_link(
+            current,
+            ROOT / f"workspace/models/releases/{CURRENT_MODEL}",
         )
     return {
         "schema_version": "tensile-model-registry/migration/v1",
