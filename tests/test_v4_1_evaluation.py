@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import finetune.run_v4_1_evaluation as evaluation_cli
 from finetune.run_v4_1_evaluation import (
     evaluation_succeeded,
     load_validation_samples,
@@ -70,6 +71,48 @@ def test_cli_accepts_explicit_release_contract_hash(
     )
 
     assert parse_args().expected_contract_hash == "new-contract-hash"
+
+
+def test_main_forwards_release_contract_hash_before_model_loading(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_v4_1_evaluation.py",
+            "--fold",
+            "0",
+            "--model-dir",
+            "model",
+            "--out-dir",
+            "out",
+            "--release-id",
+            "rebuilt-release",
+            "--expected-contract-hash",
+            "new-contract-hash",
+        ],
+    )
+    captured: dict[str, object] = {}
+
+    def validate_release(*args: object, **kwargs: object) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr(evaluation_cli, "validate_release", validate_release)
+    monkeypatch.setattr(
+        evaluation_cli,
+        "_load_contract",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("stop-before-model")),
+    )
+
+    with pytest.raises(RuntimeError, match="stop-before-model"):
+        evaluation_cli.main()
+
+    assert captured == {
+        "verify_media": True,
+        "release_id": "rebuilt-release",
+        "expected_contract_hash": "new-contract-hash",
+    }
 
 
 def test_summarizes_strict_metrics_and_confusion() -> None:
