@@ -52,16 +52,17 @@ identities remain available.
 | Experiments | 22 |
 | Checkpoints before cleanup | 108 |
 | Checkpoints retained | 20 |
-| Checkpoints proposed for deletion | 88 |
-| Retained logical bytes | Recomputed by final machine plan |
-| Proposed reclaimed logical bytes | Recomputed by final machine plan |
+| Checkpoints deleted | 88 |
+| Retained logical bytes | 27,955,371,079 |
+| Reclaimed logical bytes | 75,523,439,764 |
 
 The machine-readable plan is stored on the training machine at:
 
 `finetune/run_logs/checkpoint_management_20260729/checkpoint_plan.json`
 
-The plan file and SHA256 are replaced atomically when the corrected policy is
-executed on the training machine.
+Final plan SHA256:
+
+`6b92c70fd84e994e0c0a58ce5bd5320d5e557a2902373319941492c0f4eaf3df`
 
 ## Safety boundary
 
@@ -71,6 +72,26 @@ The cleanup tool defaults to planning only. Applying this exact plan requires:
 2. all target directory metadata fingerprints to remain unchanged;
 3. no detected training process;
 4. every target to be a non-symlink `workspace/**/checkpoint-<step>` directory;
-5. an exact confirmation string containing the recomputed deletion count.
+5. the exact confirmation string `DELETE-88-CHECKPOINTS`.
 
-No deletion was performed while producing this report.
+## Execution result
+
+The corrected plan was executed after explicit authorization to delete
+checkpoints belonging to the other completed training tasks.
+
+- Deleted checkpoint directories: 88.
+- Remaining checkpoint directories: 20.
+- Each of the four protected adapters retains all five checkpoints.
+- Remaining merged models: 22.
+- Remaining adapter roots: 23, including the release adapter copy.
+- Current release full artifact hash verification: passed.
+- Inference service `127.0.0.1:8002`: still running after cleanup.
+- Training-machine free space increased from approximately 85 GiB to 155 GiB.
+
+The machine-readable execution report is stored at:
+
+`finetune/run_logs/checkpoint_management_20260729/cleanup_report.json`
+
+Execution report SHA256:
+
+`1da14b1864b8dda815d3ed7b49d2a41f87c6a23d815f2053d8eb12edc9e56879`
