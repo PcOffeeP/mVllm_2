@@ -28,6 +28,7 @@ from pipeline.scripts.roi_annotation_app import (
 )
 
 ROI_MANIFEST_SCHEMA_VERSION = "tensile-roi-manifest/v2"
+LEGACY_ROI_MANIFEST_SCHEMA_VERSION = "tensile-roi-manifest/v1"
 
 
 class RoiManifestError(ValueError):
