@@ -251,7 +251,9 @@ ALL_MOVES = MOVES + _visual_moves() + _ablation_moves() + _language_moves() + _v
 
 
 def _path(value: str) -> Path:
-    result = (ROOT / value).resolve()
+    # Keep the final path component unresolved so an already-created
+    # compatibility symlink can still be recognized on a repeated run.
+    result = Path(os.path.abspath(ROOT / value))
     if ROOT != result and ROOT not in result.parents:
         raise MigrationError(f"路径逃逸项目目录: {value}")
     return result
@@ -311,16 +313,32 @@ def _copy_current_release(*, apply: bool) -> dict[str, Any]:
     release_root = ROOT / f"workspace/models/releases/{CURRENT_MODEL}"
     release_adapter = release_root / "adapter"
     release_merged = release_root / "merged"
+    if release_root.exists():
+        for name, path in (
+            ("adapter", release_adapter),
+            ("merged", release_merged),
+        ):
+            if not path.is_dir():
+                raise MigrationError(f"current release {name} 不完整: {path}")
+            actual = artifact_identity(path)["aggregate_sha256"]
+            expected = manifest["artifacts"][name]["aggregate_sha256"]
+            if actual != expected:
+                raise MigrationError(
+                    f"current {name} hash 不一致: expected={expected}, actual={actual}"
+                )
+        return {
+            "model_name": CURRENT_MODEL,
+            "release_root": str(release_root),
+            "status": "already_copied_and_verified",
+        }
     if not apply:
         return {
             "model_name": CURRENT_MODEL,
             "source_adapter": str(source_adapter),
             "source_merged": str(source_merged),
             "release_root": str(release_root),
-            "status": "ready" if not release_root.exists() else "exists",
+            "status": "ready",
         }
-    if release_root.exists():
-        raise MigrationError(f"current release 目标已存在: {release_root}")
     release_root.mkdir(parents=True)
     shutil.copytree(source_merged, release_merged)
     release_adapter.mkdir()
@@ -364,7 +382,15 @@ def migrate(*, apply: bool) -> dict[str, Any]:
             release_merged = ROOT / (
                 f"workspace/models/releases/{CURRENT_MODEL}/merged"
             )
-            if apply:
+            already_linked = (
+                source_merged.is_symlink()
+                and target_merged.is_symlink()
+                and source_merged.resolve() == release_merged.resolve()
+                and target_merged.resolve() == release_merged.resolve()
+            )
+            if already_linked:
+                merged_status = "already_linked_to_release"
+            elif apply:
                 target_merged.parent.mkdir(parents=True, exist_ok=True)
                 target_merged.symlink_to(
                     _relative_link(target_merged, release_merged),
