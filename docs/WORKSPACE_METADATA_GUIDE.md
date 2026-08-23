@@ -146,7 +146,7 @@ workspace/data/releases/<release-id>/
 ## 相关文档
 
 - [数据处理与训练发布运行手册](DATA_PROCESSING_RUNBOOK.md)
-- [数据 staging 与语义化元数据路径设计](plans/2026-07-29-data-staging-semantic-paths-design.md)
-- [项目内 workspace 设计](plans/2026-07-28-project-local-workspace-design.md)
-- [项目内 workspace 迁移报告](reports/2026-07-28-project-local-workspace-migration.md)
+- 数据 staging 与语义化元数据路径设计（文档已归档，见 git 历史）
+- 项目内 workspace 设计（文档已归档，见 git 历史）
+- 项目内 workspace 迁移报告（文档已归档，见 git 历史）
 

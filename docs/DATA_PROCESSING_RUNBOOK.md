@@ -450,6 +450,6 @@ V3/V4 文档和 artifact 是 V4.1 形成过程中的设计与迁移证据，不�
 
 - [仓库总览](../README.md)
 - [V4.1 微调、合并与评测](../finetune/README.md)
-- [数据隔离设计](plans/2026-07-23-v2-v4-1-data-isolation-design.md)
-- [迁移报告](reports/2026-07-23-v2-v4-1-data-migration.md)
-- [V4.1 临界未断裂契约设计](plans/2026-07-23-tensile-vlm-v4-1-incipient-fracture-design.md)
+- 数据隔离设计（文档已归档，见 git 历史）
+- 迁移报告（文档已归档，见 git 历史）
+- V4.1 临界未断裂契约设计（文档已归档，见 git 历史）

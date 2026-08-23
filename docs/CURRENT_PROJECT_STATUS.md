@@ -83,6 +83,27 @@ pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
 
 ## 当前开发理念
 
+### 开发闭环
+
+本项目以“帧窗口证据”为中心，而不是简单增加子视频数量。完整开发闭环如下：
+
+1. **定义任务契约**：冻结输入媒体约束、输出字段、枚举、Prompt 和生成参数。
+2. **治理原始视频**：记录来源、实验编号、标注、ROI 和源视频级 split。
+3. **生成帧窗口证据**：物化子视频与实际采样帧，避免把近重复画面当作独立证据。
+4. **人工审查标签**：自动规则只负责候选分流，人工结论才可以进入冻结发布。
+5. **发布训练数据**：开发数据与独立测试数据分别形成内容寻址、不可覆盖的 release。
+6. **运行受控实验**：先在固定 fold 隔离单一变量，并保存完整 checkpoint 学习轨迹。
+7. **执行严格评测**：检查 schema 合法率、字段准确率、状态召回、混淆矩阵和失败样例。
+8. **完成三折选择**：只有跨 fold 稳定的方案才进入全量训练候选。
+9. **管理模型生命周期**：实验产物进入 `workspace/runs/`，人工确认后才能晋级为 release。
+10. **交付推理服务**：服务从 `workspace/models/current` 加载发布模型，并校验完整身份。
+
+同一源视频可以贡献多个窗口，但不能把近重复帧当作独立视觉证据；三折用于选择方案，
+最终模型必须使用全部合格开发数据训练，并由从未参与调参的独立测试发布验收。
+
+工程链路验收和模型质量验收相互独立：模型可以成功训练、合并、部署和被 Agent 调用，
+但仍可能因为类别坍缩、契约非法或断裂召回不足而不能作为最终模型。
+
 ### 1. 先固定身份，再比较效果
 
 每个实验必须冻结：
@@ -172,8 +193,9 @@ Checkpoint 同时服务于：
 - [仓库总览](../README.md)
 - [微调、合并与评测](../finetune/README.md)
 - [数据处理运行手册](DATA_PROCESSING_RUNBOOK.md)
+- [V4.1 数据发布](V4_1_DATA_RELEASES.md)
 - [推理服务运行手册](INFERENCE_SERVICE_RUNBOOK.md)
-- [模型资产生命周期](plans/2026-07-29-model-artifact-lifecycle-design.md)
-- [Checkpoint 清理报告](reports/2026-07-29-checkpoint-retention-plan.md)
+- 模型资产生命周期（文档已归档，见 git 历史）
+- Checkpoint 清理报告（文档已归档，见 git 历史）
 - [当前发布模型证据](results/v4_1_agent_pipeline_fold0_r1/README.md)
 - [最新三折结果](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)
