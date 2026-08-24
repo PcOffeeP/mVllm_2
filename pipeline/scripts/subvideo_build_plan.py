@@ -23,10 +23,6 @@ from pipeline.review_evidence import REFERENCE_SCHEMA_VERSION
 
 
 CURRENT_DATA = current_data_context(PROJECT_ROOT)
-DEFAULT_ROI_MEDIA_DIR = (
-    CURRENT_DATA.metadata
-    / "v3/roi_media_results/roi-media-84ea2bd3a052"
-)
 DEFAULT_REVIEW_REFERENCE_DIR = (
     CURRENT_DATA.legacy_metadata_collection("review_reference")
     / "review-ref-7cd2e73a1cd1"
@@ -56,8 +52,7 @@ def main() -> None:
     args = build_parser().parse_args()
     context = data_context_from_arg(PROJECT_ROOT, args.data_root)
     args.roi_media_dir = args.roi_media_dir or (
-        context.metadata
-        / "v3/roi_media_results/roi-media-84ea2bd3a052"
+        context.roi_videos / "roi-media-84ea2bd3a052"
     )
     args.review_reference_dir = args.review_reference_dir or (
         context.metadata_artifact_path(
