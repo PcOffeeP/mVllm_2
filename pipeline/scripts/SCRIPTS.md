@@ -15,6 +15,7 @@
 | `build_v4_1_training_release.py` | 构建基础 V4.1 发布 |
 | `build_v4_1_phase2_training_release.py` | 构建阶段 2 发布 |
 | `rebuild_v4_1_data.py` | 运行、恢复或晋升隔离的 V4.1 数据重建；`--source-only` 会初始化 run state（写 `run_root/control/rebuild.json`）并将 roi/review 模式烘焙为不可变身份，同一 run-root 续跑完整流水线时必须使用相同模式，否则需换 run-root；`--check-only` 仅校验输入并打印身份（不写文件） |
+| `build_artifact_index.py` | 扫描各产物集合目录的 `index.json`，生成数据根 `INDEX.md` 全局总览；支持 `--data-root`。当前覆盖 staging 侧与 `roi_manifests`/`roi_videos`；`promote` 尚未把 `index.json` 从 source/split 快照传播到正式 workspace 集合。 |
 | `smoke_tensile_vlm_service.py` | 检查当前推理服务 |
 
 其他旧命令统一放在 [`archive/`](archive/README.md)。

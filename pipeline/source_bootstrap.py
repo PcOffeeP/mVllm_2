@@ -17,6 +17,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
+from pipeline import artifact_index
 from pipeline.current_data import DataContext
 
 SOURCE_SCHEMA_VERSION = "tensile-source-snapshot/v2"
@@ -1069,6 +1070,50 @@ def validate_materialized_split_snapshot(
         )
 
 
+def _append_source_snapshot_index(
+    bundle: Mapping[str, Any],
+    collection_dir: Path,
+) -> None:
+    validation = bundle["validation"]
+    artifact_index.append_entry(
+        collection_dir,
+        {
+            "id": str(bundle["snapshot_id"]),
+            "created_at": artifact_index.utc_now(),
+            "step": "source",
+            "inputs": {},
+            "stats": {
+                "video_count": validation["video_count"],
+                "tag_count": validation["tag_count"],
+                "mapping_count": validation["mapping_count"],
+                "material_difference_count": validation["material_difference_count"],
+                "media_difference_count": validation["media_difference_count"],
+            },
+            "note": "Source snapshot",
+        },
+    )
+
+
+def _append_split_snapshot_index(
+    bundle: Mapping[str, Any],
+    collection_dir: Path,
+) -> None:
+    artifact_index.append_entry(
+        collection_dir,
+        {
+            "id": str(bundle["split_snapshot_id"]),
+            "created_at": artifact_index.utc_now(),
+            "step": "source",
+            "inputs": {"source_snapshot": str(bundle["snapshot_id"])},
+            "stats": {
+                "fold_count": bundle["split_decision"]["n_folds"],
+                "test_count": len(bundle["splits"]["test"]),
+            },
+            "note": "Split snapshot",
+        },
+    )
+
+
 def materialize_source_snapshot(bundle: Mapping[str, Any]) -> Path:
     rebuild_root = Path(bundle["_rebuild_root"])
     source_files = bundle["_source_files"]
@@ -1111,22 +1156,24 @@ def materialize_source_snapshot(bundle: Mapping[str, Any]) -> Path:
     )
     if snapshot.exists():
         validate_materialized_source_snapshot(bundle, snapshot)
-        return snapshot
-    snapshot.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(
-        tempfile.mkdtemp(prefix=f".{bundle['snapshot_id']}.", dir=snapshot.parent)
-    )
-    try:
-        for relative, content in _source_snapshot_files(bundle).items():
-            destination = temporary / relative
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(content)
-        os.rename(temporary, snapshot)
-    finally:
-        if temporary.exists():
-            shutil.rmtree(temporary)
+    else:
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        temporary = Path(
+            tempfile.mkdtemp(prefix=f".{bundle['snapshot_id']}.", dir=snapshot.parent)
+        )
+        try:
+            for relative, content in _source_snapshot_files(bundle).items():
+                destination = temporary / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(content)
+            os.rename(temporary, snapshot)
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
 
-    validate_materialized_source_snapshot(bundle, snapshot)
+        validate_materialized_source_snapshot(bundle, snapshot)
+
+    _append_source_snapshot_index(bundle, snapshot.parent)
     return snapshot
 
 
@@ -1141,21 +1188,23 @@ def materialize_split_snapshot(bundle: Mapping[str, Any]) -> Path:
     snapshot = collection / str(bundle["split_snapshot_id"])
     if snapshot.exists():
         validate_materialized_split_snapshot(bundle, snapshot)
-        return snapshot
-    temporary = Path(
-        tempfile.mkdtemp(
-            prefix=f".{bundle['split_snapshot_id']}.",
-            dir=collection,
+    else:
+        temporary = Path(
+            tempfile.mkdtemp(
+                prefix=f".{bundle['split_snapshot_id']}.",
+                dir=collection,
+            )
         )
-    )
-    try:
-        for relative, content in _split_snapshot_files(bundle).items():
-            destination = temporary / relative
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(content)
-        os.rename(temporary, snapshot)
-    finally:
-        if temporary.exists():
-            shutil.rmtree(temporary)
-    validate_materialized_split_snapshot(bundle, snapshot)
+        try:
+            for relative, content in _split_snapshot_files(bundle).items():
+                destination = temporary / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(content)
+            os.rename(temporary, snapshot)
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+        validate_materialized_split_snapshot(bundle, snapshot)
+
+    _append_split_snapshot_index(bundle, collection)
     return snapshot

@@ -4,6 +4,20 @@
 
 ## 待处理
 
+### promote 不传播 index.json
+
+- **关联主题**：核心链路节点 2（数据快照）与 `promote`（`pipeline/data_rebuild.py`）。
+- **开发者期望**：正式 workspace 集合应保留与 staging 侧一致的 `index.json`，使 `build_artifact_index.py` 全局总览覆盖 source/split 快照。
+- **当前实现**：`promote` 只拷贝产物目录内容，不传播 `index.json`，导致 source/split 快照索引在正式 workspace 集合永远缺失。
+- **存在差异**：全局产物索引当前只能反映 staging 侧与 `roi_manifests`/`roi_videos` 的状态，source/split 快照在正式 workspace 中不可见。
+- **影响**：`build_artifact_index.py` 输出的总览不完整；需在 `promote` 阶段显式复制或重建对应 `index.json`。
+- **代码依据**：
+  - `pipeline/data_rebuild.py`（promote 逻辑）
+  - `pipeline/artifact_index.py`
+  - `pipeline/scripts/build_artifact_index.py`
+- **待决定或后续动作**：在 `promote` 阶段增加 `index.json` 的拷贝/重建逻辑，并补充跨 workspace 索引一致性校验。
+- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
+
 ### rebuild 流水线预存状态机缺陷
 
 - **关联主题**：核心链路节点 2（数据快照 / ROI 子视频重建）与 `rebuild_v4_1_data.py` 状态机。
