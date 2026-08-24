@@ -4,6 +4,19 @@
 
 ## 待处理
 
+### rebuild 流水线预存状态机缺陷
+
+- **关联主题**：核心链路节点 2（数据快照 / ROI 子视频重建）与 `rebuild_v4_1_data.py` 状态机。
+- **开发者期望**：完整 rebuild 流水线 review 模式下应能从 `source_snapshotted` 正常进入 `waiting_for_roi_review`。
+- **当前实现**：当 `roi_decisions.json` 未预置时，流程在 `rebuild_v4_1_data.py` 中因 `source_snapshotted -> waiting_for_roi_review` 状态跳转不在 `pipeline/data_rebuild.py` 的 `ALLOWED_TRANSITIONS` 内而崩溃（`rebuild_v4_1_data.py:541` 触发，`data_rebuild.py:46-59` 校验）。
+- **存在差异**：该缺陷在 HEAD 上即可复现，非本次变更引入；本次仅文档记录，未修复代码逻辑。
+- **影响**：review 模式下首次运行必须预置 `roi_decisions.json`，否则 fail-closed；需在单独立项中修复状态机允许此合法跳转或调整初始化顺序。
+- **代码依据**：
+  - `pipeline/scripts/rebuild_v4_1_data.py`
+  - `pipeline/data_rebuild.py`
+- **待决定或后续动作**：单独立项修复 rebuild 流水线状态机，允许 `source_snapshotted -> waiting_for_roi_review` 跳转或保证 review 阶段启动前已加载/生成 `roi_decisions.json`。
+- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
+
 ### 当前发布模型质量门未通过
 
 - **关联主题**：核心链路节点 9（模型注册表晋级 + delivery 门禁校验）与节点 8（严格评测）。

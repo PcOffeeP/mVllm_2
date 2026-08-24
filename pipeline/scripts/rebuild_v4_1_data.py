@@ -56,8 +56,11 @@ from pipeline.source_bootstrap import (  # noqa: E402
     current_source_fingerprint,
     materialize_split_snapshot,
     materialize_source_snapshot,
+    probe_video,
     sha256_file,
 )
+
+_probe_video = probe_video
 from pipeline.v3_candidate_plan import (  # noqa: E402
     build_candidate_plan,
     load_plan_inputs,
@@ -438,6 +441,7 @@ def _source_stage(
         current,
         rebuild,
         expected_count=expected_count,
+        probe=_probe_video,
     )
     fingerprint = current_source_fingerprint(
         current,
@@ -850,12 +854,13 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run")
     run.add_argument("--source-data-root", type=Path, default=PROJECT_ROOT / "workspace/data")
     run.add_argument("--run-root", type=Path, required=True)
-    run.add_argument("--roi-mode", choices=("reuse", "review"), required=True)
-    run.add_argument("--review-mode", choices=("reuse", "review"), required=True)
+    run.add_argument("--roi-mode", choices=("reuse", "review"))
+    run.add_argument("--review-mode", choices=("reuse", "review"))
     run.add_argument("--review-reference-id", default=DEFAULT_REVIEW_REFERENCE_ID)
     run.add_argument("--model", type=Path, default=DEFAULT_MODEL)
     run.add_argument("--workers", type=int, default=2)
     run.add_argument("--expected-count", type=int, default=DEFAULT_EXPECTED_COUNT)
+    run.add_argument("--source-only", action="store_true")
     run.add_argument("--check-only", action="store_true")
 
     promote_parser = subparsers.add_parser("promote")
@@ -891,7 +896,57 @@ def main() -> int:
                 raise DataRebuildError(
                     "source-data-root 必须是当前 workspace/data"
                 )
-            if args.check_only:
+            if args.source_only:
+                if args.roi_mode is None:
+                    args.roi_mode = "review"
+                if args.review_mode is None:
+                    args.review_mode = "review"
+                if args.check_only:
+                    rebuild = data_context_for_root(
+                        PROJECT_ROOT,
+                        Path(args.run_root) / "data",
+                    )
+                    bundle = build_source_snapshot(
+                        current,
+                        rebuild,
+                        expected_count=args.expected_count,
+                        probe=_probe_video,
+                    )
+                    result = {
+                        "status": "source_validated",
+                        "check_only": True,
+                        "source_snapshot_id": bundle["snapshot_id"],
+                        "identity_sha256": bundle["identity_sha256"],
+                        "validation": bundle["validation"],
+                        "split_counts": {
+                            name: len(ids)
+                            for name, ids in bundle["splits"].items()
+                        },
+                    }
+                else:
+                    rebuild, run_root = rebuild_paths(
+                        PROJECT_ROOT, args.run_root
+                    )
+                    state, bundle, snapshot, split_snapshot = _source_stage(
+                        current,
+                        rebuild,
+                        run_root,
+                        expected_count=args.expected_count,
+                        roi_mode=args.roi_mode,
+                        review_mode=args.review_mode,
+                        runtime_identity=_runtime_identity(args),
+                    )
+                    result = {
+                        "status": "source_snapshotted",
+                        "source_only": True,
+                        "source_snapshot_id": bundle["snapshot_id"],
+                        "identity_sha256": bundle["identity_sha256"],
+                        "source_snapshot": str(snapshot),
+                        "split_snapshot_id": bundle["split_snapshot_id"],
+                        "split_snapshot": str(split_snapshot),
+                        "state": state["state"],
+                    }
+            elif args.check_only:
                 rebuild = data_context_for_root(
                     PROJECT_ROOT,
                     Path(args.run_root) / "data",
@@ -900,6 +955,7 @@ def main() -> int:
                     current,
                     rebuild,
                     expected_count=args.expected_count,
+                    probe=_probe_video,
                 )
                 result = {
                     "status": "source_validated",
@@ -908,6 +964,10 @@ def main() -> int:
                     "current_chain": _check_current_chain(current),
                 }
             else:
+                if args.roi_mode is None or args.review_mode is None:
+                    raise DataRebuildError(
+                        "--roi-mode 和 --review-mode 为完整流水线所必需"
+                    )
                 result = _run_pipeline(args)
         else:
             build_parser().print_help()
