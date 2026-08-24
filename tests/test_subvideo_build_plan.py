@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from pipeline.scripts import build_v3_candidate_plan as cli
+from pipeline.scripts import subvideo_build_plan as cli
 from pipeline.v3_candidate_plan import (
     EVENT_GUARD_SECONDS,
     EVENT_POSITIONS,
@@ -17,15 +17,17 @@ from pipeline.v3_candidate_plan import (
 )
 from pipeline.v3_labels import map_legacy_fracture_type
 
+EXPECTED_ROI_MEDIA_DIR = cli.CURRENT_DATA.roi_videos / "roi-media-84ea2bd3a052"
+
 pytestmark = pytest.mark.skipif(
-    not cli.DEFAULT_ROI_MEDIA_DIR.is_dir(),
+    not EXPECTED_ROI_MEDIA_DIR.is_dir(),
     reason="requires migrated project-local lightweight V3 fixtures",
 )
 
 
 def _real_inputs() -> dict:
     return load_plan_inputs(
-        cli.DEFAULT_ROI_MEDIA_DIR,
+        EXPECTED_ROI_MEDIA_DIR,
         cli.DEFAULT_REVIEW_REFERENCE_DIR,
         cli.DEFAULT_CONTRACT,
     )
@@ -264,7 +266,7 @@ def test_dry_run_cli_does_not_create_output_directory(
     monkeypatch.setattr(
         "sys.argv",
         [
-            "build_v3_candidate_plan.py",
+            "subvideo_build_plan.py",
             "--dry-run",
             "--output-root",
             str(output_root),

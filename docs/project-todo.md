@@ -48,7 +48,7 @@
 
 - **关联主题**：核心链路节点 3（候选帧窗口计划与物化）。
 - **开发者期望**：V4.1 数据链路的模块和脚本命名应清晰表达其当前用途，避免开发者误以为仍在使用 V3 契约。
-- **当前实现**：候选物化核心模块仍命名为 `pipeline/v3_candidate_plan.py`、`pipeline/v3_candidate_media.py`、`scripts/build_v3_candidate_plan.py`、`scripts/materialize_v3_candidate_media.py`。这些模块在 V4.1 中继续承担候选计划与媒体物化职责，只是沿用了历史 provenance 路径名。
+- **当前实现**：候选物化核心模块仍命名为 `pipeline/v3_candidate_plan.py`、`pipeline/v3_candidate_media.py`、`scripts/subvideo_build_plan.py`、`scripts/materialize_v3_candidate_media.py`。这些模块在 V4.1 中继续承担候选计划与媒体物化职责，只是沿用了历史 provenance 路径名。
 - **存在差异**：命名暗示 V3，实际服务于 V4.1；README/AGENTS/RUNBOOK 虽已说明，但代码级命名未改。
 - **影响**：新开发者容易误解链路阶段；需要额外依赖文档说明。
 - **代码依据**：

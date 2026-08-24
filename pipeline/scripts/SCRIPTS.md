@@ -6,7 +6,7 @@
 | `roi_annotation_app.py` | 标注 ROI |
 | `freeze_roi_decisions.py` | 冻结 ROI 决定 |
 | `materialize_roi_videos.py` | 生成 ROI 视频 |
-| `build_v3_candidate_plan.py` | 生成当前沿用的候选计划 |
+| `subvideo_build_plan.py` | 生成当前沿用的候选计划 |
 | `materialize_v3_candidate_media.py` | 生成候选视频与实际采样帧 |
 | `build_v4_1_review_queue.py` | 生成 V4.1 审核队列 |
 | `build_v4_1_phase2_review_queues.py` | 生成阶段 2 隔离队列 |

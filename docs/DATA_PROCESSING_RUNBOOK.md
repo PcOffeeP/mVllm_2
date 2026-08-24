@@ -167,8 +167,8 @@ uv run python pipeline/scripts/materialize_roi_videos.py --workers 2
 这是 provenance 路径，不代表当前契约退回 V3。
 
 ```bash
-uv run python pipeline/scripts/build_v3_candidate_plan.py --dry-run
-uv run python pipeline/scripts/build_v3_candidate_plan.py
+uv run python pipeline/scripts/subvideo_build_plan.py --dry-run
+uv run python pipeline/scripts/subvideo_build_plan.py
 
 uv run python pipeline/scripts/materialize_v3_candidate_media.py --check-only
 
