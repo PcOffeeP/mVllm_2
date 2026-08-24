@@ -14,6 +14,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline import artifact_index
 from pipeline.current_data import resolve_data_artifact
 
 ROI_MEDIA_SCHEMA_VERSION = "tensile-roi-media/v1"
@@ -414,6 +415,28 @@ def validate_existing_bundle(destination: Path, plan: Mapping[str, Any]) -> None
             raise RoiMediaError(f"既有 ROI media artifact 哈希无效: {name}")
 
 
+def _append_roi_media_index(
+    collection_dir: Path,
+    plan: Mapping[str, Any],
+    report: Mapping[str, Any],
+) -> None:
+    artifact_index.append_entry(
+        collection_dir,
+        {
+            "id": str(plan["media_id"]),
+            "created_at": artifact_index.utc_now(),
+            "step": "roi",
+            "inputs": {"roi_manifest": str(plan["identity"]["roi_manifest_id"])},
+            "stats": {
+                "source_count": report["source_count"],
+                "fixed_roi_count": report["fixed_roi_count"],
+                "no_crop_count": report["no_crop_count"],
+            },
+            "note": "ROI-normalized media",
+        },
+    )
+
+
 def materialize_plan(
     plan: Mapping[str, Any],
     output_root: Path,
@@ -426,6 +449,8 @@ def materialize_plan(
     final_manifest = destination / "manifest.json"
     if final_manifest.exists():
         validate_existing_bundle(destination, plan)
+        report = _load_json(destination / "validation_report.json")
+        _append_roi_media_index(output_root, plan, report)
         return destination
     destination.mkdir(parents=True, exist_ok=True)
 
@@ -502,6 +527,7 @@ def materialize_plan(
     temporary_manifest = destination / ".manifest.json.partial"
     temporary_manifest.write_bytes(_canonical_bytes(manifest))
     os.replace(temporary_manifest, final_manifest)
+    _append_roi_media_index(output_root, plan, report)
     return destination
 
 

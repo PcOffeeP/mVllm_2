@@ -10,6 +10,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping
 
+from pipeline import artifact_index
 from pipeline.current_data import resolve_data_artifact
 from pipeline.scripts.roi_annotation_app import (
     MODE_FIXED,
@@ -342,6 +343,7 @@ def write_roi_manifest_bundle(
             identical = path.read_bytes() == _canonical_bytes(payload)
             if not identical:
                 raise FileExistsError(f"拒绝覆盖已有 ROI manifest: {destination}")
+        _append_roi_manifest_index(output_root, bundle)
         return destination, False
 
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -355,4 +357,29 @@ def write_roi_manifest_bundle(
             for child in temp_dir.iterdir():
                 child.unlink()
             temp_dir.rmdir()
+    _append_roi_manifest_index(output_root, bundle)
     return destination, True
+
+
+def _append_roi_manifest_index(
+    output_root: Path,
+    bundle: Mapping[str, Any],
+) -> None:
+    manifest = bundle["manifest.json"]
+    report = bundle["validation_report.json"]
+    artifact_index.append_entry(
+        output_root,
+        {
+            "id": str(manifest["roi_manifest_id"]),
+            "created_at": artifact_index.utc_now(),
+            "step": "roi",
+            "inputs": dict(manifest["inputs"]),
+            "stats": {
+                "total_source_count": report["total_source_count"],
+                "development_source_count": report["development_source_count"],
+                "test_source_count": report["test_source_count"],
+                "mode_counts": report["mode_counts"],
+            },
+            "note": "ROI manifest bundle",
+        },
+    )
