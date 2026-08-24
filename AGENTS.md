@@ -41,3 +41,21 @@
 - 断裂检测模型的实际验收应至少查看：JSON/schema 合法率、`has_fracture` 准确性、type/location 指标、interval/time 命中率、joint success rate、典型预测样例和失败样例。
 - 对 LoRA/merged 模型做结论前，应确认实际加载的模型路径、checkpoint step、adapter 文件、metadata 和评测结果彼此一致。
 - 如果训练目录中的 metadata 指向旧实验、缺少 adapter/checkpoint，或评测结果无法对应到当前模型，应优先指出产物链路问题，而不是给出正向效果结论。
+
+## 命名规范
+
+总原则：会"被修改"的东西不带版本号；只"新增不修改"的不可变产物必须带版本号/标识。历史版本一律从 git 历史获取，禁止 `_old`/`_v2`/`_bak` 类后缀。
+
+1. 脚本命名：`<阶段前缀>_<动作>_<对象>.py`，阶段前缀对应项目主流程：
+   - `source_`（初始数据划分）、`roi_`（ROI 标注/冻结/物化）、`subvideo_`（子视频生成）、`review_`（人工审查）、`release_`（数据发布）、`train_`（Prompt 准备与训练）、`eval_`（测评）、`serve_`（模型发布与推理）；
+   - 动作用词表：build_ / prepare_ / run_ / validate_ / audit_ / freeze_ / materialize_ / monitor_ / smoke_ / route_；
+   - 脚本服务哪个契约由代码内加载的契约文件声明，不由文件名声明；
+   - 被取代的脚本直接删除（git 历史即归档）；
+   - 每个脚本目录配同目录 SCRIPTS.md 索引。
+2. 分支命名：`<类型>/<主题>[-<补充>]`，全小写连字符；类型限定：feat/ fix/ refactor/ data/ exp/ docs/ chore/；数据轮次用 `data/<yyyymm>-round<N>`（日期+轮次，不挂协议版本）；main 是唯一长期分支，其余短命合并即删。
+3. 不可变产物 ID（沿用现有格式）：
+   - 数据 release：`v<协议版本>-<内容哈希>`（如 v4.1.0-ecb5aeb9657c）
+   - 契约：`tensile_vlm_v<版本>.json`
+   - Prompt revision：`v<协议>-<描述>-r<N>`
+   - 模型 release：`v<协议>-<描述>-fold<N>-r<N>`
+   - 实验：`v<协议>-<主题>-v<N>-seed<N>`
