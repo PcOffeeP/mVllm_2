@@ -76,7 +76,7 @@ python pipeline/scripts/migrate_project_local_workspace.py
 
 迁移会把旧 `training_releases/` 物理复制为 `releases/`，并逐文件比较数量、字节数和
 SHA-256；不会创建软链接，也不会删除旧根。`config/data_roots.json` 与
-`manage_versioned_data_roots.py` 仅用于历史 V2/V4.1 外部根复现。
+manage_versioned_data_roots.py（已归档，见 git 历史）仅用于历史 V2/V4.1 外部根复现。
 
 更详细的数据入口、迁移设计与校验结果见 [数据处理与训练发布运行手册](DATA_PROCESSING_RUNBOOK.md)
 以及：

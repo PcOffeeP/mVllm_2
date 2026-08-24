@@ -121,7 +121,7 @@ python pipeline/scripts/migrate_project_local_workspace.py
 - 文件数、总字节数和全部受管文件 SHA-256 一致；
 - 旧外部根保持不变，至少保留到一次真实训练和严格评测完成。
 
-`manage_versioned_data_roots.py`、marker、profile 和 `TENSILE_DATA_HOME` 只用于历史流程，
+manage_versioned_data_roots.py（已归档，见 git 历史）、marker、profile 和 `TENSILE_DATA_HOME` 只用于历史流程，
 不能作为 main 的活跃 V4.1 入口。
 
 ## 第二步：ROI 与候选媒体

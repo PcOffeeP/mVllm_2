@@ -19,9 +19,11 @@
 | BF16 / 两种 4-bit 验证 | 均已完成，1216 条，运行失败 0 |
 | 当前结论 | Agent 工程链路已通过；最新三折出现契约退化和类别坍缩，质量门仍失败 |
 
-V4.1 不使用旧 `finetune/active_data_release.json`、旧
-`finetune/dataset_info.json` 或 V2 Prompt 作为活动指针。三个训练配置直接绑定冻结发布
-中的 `dataset_info.json`，避免 V2/V4.1 串线。
+V4.1 不使用旧的 V2 `finetune/active_data_release.json` 指针（已退役），也不使用旧
+`finetune/dataset_info.json` 或 V2 Prompt 作为活动指针。当前 V4.1 的活跃指针为
+`finetune/active_data_release.json`，指向
+`workspace/data/releases/v4.1.0-ecb5aeb9657c`。三个训练配置直接绑定冻结发布中的
+`dataset_info.json`，避免 V2/V4.1 串线。
 
 ## 固定全字段 Prompt 受控实验
 
@@ -172,6 +174,7 @@ resampler”；该路线是独立模型变体，不能继承 BF16 验收结论�
 三个 adapter、三个 merged 模型和 processor/config 生成完整 SHA-256 索引：
 
 ```bash
+# 已归档，见 git 历史
 python finetune/archive/freeze_v4_1_evidence.py \
   --run-root finetune/results/v4_1_0_760050fad303_20260724_visual \
   --ablation-root finetune/results/v4_1_0_760050fad303_20260723/fold0_ablation \

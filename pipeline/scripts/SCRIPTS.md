@@ -14,6 +14,8 @@
 | `review_v4_candidates_app.py` | 打开当前审核界面 |
 | `build_v4_1_training_release.py` | 构建基础 V4.1 发布 |
 | `build_v4_1_phase2_training_release.py` | 构建阶段 2 发布 |
+| `bootstrap_v4_1_source.py` | 校验 V4.1 源输入并创建隔离源快照 |
+| `rebuild_v4_1_data.py` | 运行、恢复或晋升隔离的 V4.1 数据重建 |
 | `smoke_tensile_vlm_service.py` | 检查当前推理服务 |
 
 其他旧命令统一放在 [`archive/`](archive/README.md)。

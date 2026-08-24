@@ -217,7 +217,7 @@ V2 只作为历史回滚对象：
 
 - merged：
   `workspace/models/archive/v2/v2.0.0-1dab1e5e-20260719/full/merged`
-- manifest：`pipeline/deployments/full_training_v2.json`
+- manifest：pipeline/deployments/full_training_v2.json（已归档，见 git 历史）
 - contract：`tensile-vlm/v2`
 
 回滚时必须停止 V4.1、释放 GPU，再用独立端口和 V2 契约启动；不能同时把 V2 权重声明为

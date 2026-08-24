@@ -31,9 +31,6 @@ LlamaFactory/saves/minicpmv4_5/lora/*
 /finetune/run_logs/*
 !/finetune/run_logs/README.md
 
-# 验证脚本输出
-finetune/validation/results/
-
 # 诊断与 Prompt Sweep 生成产物
 /finetune/results/experiments/diagnostics/
 /finetune/results/experiments/prompt_sweep/

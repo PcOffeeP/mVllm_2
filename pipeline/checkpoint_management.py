@@ -190,7 +190,7 @@ def _assert_no_training_process() -> None:
         capture_output=True,
         text=True,
     )
-    markers = ("llamafactory-cli train", "torchrun", "run_v4_1_prompt_crossval.py")
+    markers = ("llamafactory-cli train", "torchrun", "train_with_contract.py")
     active = [line for line in result.stdout.splitlines() if any(x in line for x in markers)]
     if active:
         raise CheckpointManagementError("检测到训练进程，拒绝删除 checkpoint")
