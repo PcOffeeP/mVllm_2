@@ -1,7 +1,7 @@
 # mVllm_2 Project Guide
 
 <!-- explain-project
-verified_commit: f8522587284a522b700ef0511ceff326619c7034
+verified_commit: 42df410f74ac8a817a5080c7868f89b5c7c9ca98
 verified_worktree: clean（本次仅更新 project-guide.md；指纹已排除该文件）
 -->
 
@@ -58,6 +58,50 @@ Prompt revision 注册 + 固定 Prompt 训练集构建
 - **Phase 2 脚本**：`build_v4_1_phase2_review_queues.py` 和 `build_v4_1_phase2_training_release.py` 用于在阶段 1 审计后对 development 做进一步隔离审查并生成新的 release；当前 active release `v4.1.0-ecb5aeb9657c` 即 Phase 2 release，基础 release `v4.1.0-760050fad303` 保持冻结。
 - **单一 orchestrator**：日常复跑可用 `rebuild_v4_1_data.py run --run-root <staging> --roi-mode reuse --review-mode reuse` 一次性完成 1→5；RUNBOOK 和各独立脚本用于分步调试或小样本验证。
 
+## ROI 标注与物化重点展开
+
+**输入**：来自第 1 步的源视频与 `video_meta.json`（source snapshot 产物），以及 `split_snapshots/<id>/test.json`（冻结阶段需要）。
+
+**三个脚本职责与调用顺序**：
+
+1. `pipeline/scripts/roi_annotation_app.py`：Streamlit UI，读取 `video_meta.json` 与源视频，人工选择 `fixed_roi`（拖拽锁定 3:4 红框）或 `no_crop`（保留全画面），确认可见性检查后写出 `workspace/data/derived/metadata/roi_decisions.json`。
+2. `pipeline/scripts/freeze_roi_decisions.py`：校验 `roi_decisions.json` 的完整覆盖、策略版本、几何一致性、可见性、源视频 SHA-256，并按 `test.json` 将决定切分为 `development_roi.json` 与 `test_roi_audit.json`，生成内容寻址的 `roi_manifests/<roi-manifest-id>/`。
+3. `pipeline/scripts/materialize_roi_videos.py`：读取冻结的 ROI manifest，用 ffmpeg 为每个决定物化 3:4 的 ROI 源视频，输出到 `workspace/data/derived/roi_videos/<roi-media-id>/`。
+
+`rebuild_v4_1_data.py run` 在 `_run_pipeline` 中按上述顺序封装了冻结、物化两个阶段（`roi_validated` → `roi_media_ready`），`--roi-mode reuse` 可复用已标注的 `roi_decisions.json`。
+
+**人工决定内容**：不是画任意框，而是二选一：
+
+- `fixed_roi`：在源画面上拖拽锁定为 3:4 的红框，最终按 `pixel_box` 精确裁剪；策略为 `crop_exact`。
+- `no_crop`：保留完整画面，后续用黑边 padding 到 3:4；策略为 `pad_to_target`。
+
+批准前必须勾选 5 项可见性检查（上下夹具、完整试样、位置可判、齐根断裂可判），并检查关键时刻预览。
+
+**roi_decisions.json 单条决定字段**：`source_video_id`、`source_video_path`、`mode`、`review_status`、请求的 `requested_margins` 与生效的 `margins`、`normalized_box`、`pixel_box`、`target_aspect_ratio`（固定为 `3:4`）、`aspect_ratio_strategy`（`crop_exact` 或 `pad_to_target`）、`interaction_mode`（`drag_box` 或 `no_crop`）、`source_resolution`、`source_sha256`、`source_size_bytes`、`source_mtime_ns`、`reviewed_timestamps`、`visibility_checks`、`roi_policy_version`、`reviewed_at`、`reviewer_notes`。
+
+**冻结产出结构**（`roi_manifests/<roi-manifest-id>/`）：
+
+- `manifest.json`：身份哈希、split guard（dev/test 数量与重叠校验）、各 artifact 哈希。
+- `roi_decisions.frozen.json`：带 `roi_manifest_id` 的完整决定副本。
+- `development_roi.json`：dev 集合（默认 89 条）的 ROI 决定。
+- `test_roi_audit.json`：test 集合（默认 21 条）的 ROI 决定，用于审计而非训练。
+- `validation_report.json`：总数、dev/test 数量、模式计数、哈希校验结果。
+
+冻结强校验规则包括：110 条全覆盖、无重复、全部 `approved`、策略版本匹配、`fixed_roi` 必须精确 3:4 偶像素、`no_crop` 边距全零、可见性全通过、源视频 SHA-256 一致。
+
+**物化规则**：
+
+- `fixed_roi`：ffmpeg `crop=w:h:x:y,setsar=1`，按冻结的 `pixel_box` 裁剪。
+- `no_crop`：ffmpeg `pad=target_w:target_h:x:y:color=black,setsar=1`，计算最小能包住源画面的偶数 3:4 canvas。
+- 编码：H.264 / yuv420p、`-vsync 0` 保持帧同步、`-an` 丢弃音频、`-crf 23 -preset fast`。
+- 时间轴：校验输出帧数、标称帧率、时长与源一致，不改变播放速度。
+- 产物目录：`workspace/data/derived/roi_videos/<roi-media-id>/videos/<video_id>.mp4`，以及 `video_meta.roi.json`、`validation_report.json`、`manifest.json`。
+- 幂等性：`materialize_plan` 先检查目标目录是否存在且 identity/hash 一致；一致则复用，不一致则报错或重新生成。
+
+**执行位置**：标注 UI 在 Mac 上运行（Streamlit + 本地 ffprobe 抽帧）；冻结是轻量 JSON 校验，均可运行；物化依赖 ffmpeg、读写大视频、多线程，设计在训练机/Linux 上运行。本机 `workspace/` 目前无 ROI 产物，大产物需从训练机同步。
+
+**与上下游接口**：上游是第 1 步的 source snapshot / split snapshot；下游子视频生成读取 `roi_videos/<roi-media-id>/video_meta.roi.json` 与 `videos/<video_id>.mp4`，作为 candidate plan 的输入。
+
 ## 子视频生成重点展开
 
 **输入**：不是原始视频，而是 `workspace/data/derived/roi_videos/<roi-media-id>/videos/<video_id>.mp4`（经 ROI 归一化后的 3:4 源视频）及其 `video_meta.roi.json`。`load_plan_inputs()` 还会校验 review reference split（必须 89/21）和 `pipeline/contracts/tensile_vlm_v3.json`。
@@ -100,10 +144,11 @@ Prompt revision 注册 + 固定 Prompt 训练集构建
 
 ### 2. 数据快照 / ROI 子视频重建
 
-- **拥有**：`pipeline/scripts/rebuild_v4_1_data.py` 主导整个 rebuild 流水线。
-- **接收**：source snapshot、ROI manifest。
-- **产出**：ROI 子视频、帧目录、各阶段 state/artifact 记录。
-- **下一站**：进入候选计划。
+- **拥有**：`pipeline/scripts/rebuild_v4_1_data.py` 主导整个 rebuild 流水线；`pipeline/roi_manifest.py` 负责冻结校验；`pipeline/roi_media.py` 负责物化。
+- **接收**：source snapshot 的 `video_meta.json`、split snapshot 的 `test.json`、人工产出的 `roi_decisions.json`。
+- **产出**：冻结的 `roi_manifests/<roi-manifest-id>/`、物化后的 `roi_videos/<roi-media-id>/`（含 3:4 源视频与 `video_meta.roi.json`）。
+- **关键规则**：冻结必须完整覆盖 110 个视频且按 dev/test 切分；物化保留原时间轴与帧率；`fixed_roi` 精确裁剪 3:4，`no_crop` 黑边 padding 到 3:4。
+- **下一站**：进入候选帧窗口计划。
 
 ### 3. 候选帧窗口计划与物化
 
