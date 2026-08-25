@@ -4,6 +4,19 @@
 
 ## 待处理
 
+### 历史 v3 契约哈希不可复现
+
+- **关联主题**：核心链路节点 3（候选帧窗口计划与物化）与历史训练产物溯源。
+- **开发者期望**：仓库中已提交的 `pipeline/contracts/tensile_vlm_v3.json` 应与训练机历史 manifest 记录的契约 hash 逐字节一致，以便复现历史候选计划。
+- **当前实现**：训练机历史 manifest 记录的 v3 契约 hash 为 `3f9f82...`，而仓库当前已提交版本的 `pipeline/contracts/tensile_vlm_v3.json` hash 为 `e963cdd...`，两者不符。
+- **存在差异**：生成历史 plan 时工作区存在未提交的契约改动，该版本契约内容未进入仓库，导致无法逐字节复现历史 plan 的内容寻址身份。
+- **影响**：历史 plan 的 `plan_id` / manifest hash 无法在当前仓库直接复现；内容寻址链本身仍可保证血缘与输出一致性，但严格逐字节复现缺失中间契约版本。
+- **代码依据**：
+  - `pipeline/contracts/tensile_vlm_v3.json`
+  - 训练机历史 manifest 中的契约 hash 记录
+- **待决定或后续动作**：将该缺口记录为已知可复现性限制；如需严格复现历史 plan，需找回或重建当时工作区未提交的契约版本。
+- **记录版本**：`e027e82e04d5a0f5ffb05b5d4d6d0ad1fa75ee85`
+
 ### promote 不传播 index.json
 
 - **关联主题**：核心链路节点 2（数据快照）与 `promote`（`pipeline/data_rebuild.py`）。

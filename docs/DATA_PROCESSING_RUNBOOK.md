@@ -1,455 +1,384 @@
-# V4.1 数据处理与训练发布运行手册
+# V4.1 数据处理运行手册
 
-本文是 `main` 上当前 V4.1 数据链路的操作入口。V2/V3 的旧编号目录、旧审核 UI 和
-`publish_training_release.py --activate` 流程只用于历史复现，不是当前 V4.1 的正式路径。
+> 本文只描述如何运行当前项目的数据处理链路，不记录任何一次具体运行的状态、基线或历史发布。状态性内容见 `docs/results/` 与 `docs/project-guide.md`。
 
-训练机 `derived/metadata/` 中各历史版本目录、语义 collection 和正式 release 的区别，
-见 [Workspace 元数据目录说明](WORKSPACE_METADATA_GUIDE.md)。
+## 1. 适用范围与假设
 
-所有命令从 mVllm_2 仓库根目录执行。媒体物化、训练和 GPU 推理在训练电脑进行；本机
-可以检查配置、运行轻量校验、进行人工审查并复核已同步结果。
+- 目标读者：首次跑通 V4.1 数据处理链路的人。
+- 代码根目录：`<repo>`（本仓库根目录）。所有命令均从 `<repo>` 执行。
+- 机器分工：
+  - **Mac（uv 环境）**：ROI 标注、人工审查、轻量校验与队列构建。
+  - **训练机（Conda `agent` 环境）**：ROI 视频物化、候选媒体物化、重计算、训练发布构建。
+- 当前契约：`pipeline/contracts/tensile_vlm_v4_1.json`。
+- Prompt 管理：`pipeline/prompt_control/active_prompt.yaml`。
 
-全链路 clean-room 重建统一使用：
+## 2. 前置准备
 
-```bash
-python pipeline/scripts/rebuild_data.py \
-  --source-data-root workspace/data \
-  --run-root workspace/data-staging/<run-id> \
-  --roi-mode reuse \
-  --review-mode reuse
-```
+### 2.1 运行环境
 
-人工模式必须显式把对应 mode 改为 `review`。编排器会保存 waiting 状态并打印 UI 命令，
-人工完成后使用同一参数恢复。验收完成后，单独执行：
+- **Mac**：仓库已配置 `uv`。运行前先确保依赖可用：
+  ```bash
+  uv sync
+  ```
+  关键依赖：`streamlit`、`streamlit-cropper==0.3.1`。
+- **训练机**：激活 Conda `agent` 环境；确保 `ffmpeg` / `ffprobe` 在 `PATH` 中；模型目录 `models/minicpmv4_5` 已就位。
 
-```bash
-python pipeline/scripts/rebuild_data.py promote \
-  --run-root workspace/data-staging/<run-id>
-```
+### 2.2 数据放置约定
 
-release 最后晋级；外部旧数据不会被该命令删除。
-
-## 当前基线
-
-| 项目 | 当前值 |
-| --- | --- |
-| 契约 | `tensile-vlm/v4.1` |
-| 当前运行时契约 hash | `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab` |
-| 数据根 | `<repo>/workspace/data` |
-| 当前 development 发布 | `v4.1.0-ecb5aeb9657c` |
-| 基础不可变发布 | `v4.1.0-760050fad303` |
-| 阶段 2 新物化候选 | 410 |
-| 阶段 2 当前人工决定 | 177 |
-| 阶段 2 历史一致沿用 | 233 |
-| 阶段 2 排除 | 7 |
-| 当前正式训练样本 | 1678 |
-
-当前 development 发布已完成并通过训练 runtime 的完整媒体校验，供 source-aware 3k
-实验使用。基础发布已用于上一轮三折训练，两者都保持不可变；不得覆盖或删除后重建。
-
-## 数据链
-
-```mermaid
-flowchart TD
-  A["source: 视频、标注、划分"] --> B["固定 ROI manifest"]
-  B --> C["ROI 视频"]
-  C --> D["内容寻址候选计划"]
-  D --> E["候选 MP4 + 实际 MiniCPM 帧"]
-  E --> F["V4.1 observed + incipient 审查队列"]
-  F --> G["帧画面优先的人工审查"]
-  E --> H["自动稳定阴性门禁"]
-  G --> I["冻结 review batch"]
-  H --> J["V4.1 发布构建"]
-  I --> J
-  J --> K["不可覆盖 training release"]
-  K --> L["三折训练"]
-  L --> M["合并 + 严格 validation 推理"]
-```
-
-## 目录与消费边界
+数据统一放在项目内 `workspace/data/`（Git 忽略）。首次运行前，确保：
 
 ```text
 workspace/data/
 ├── source/
-│   ├── videos/
-│   ├── annotations/
-│   └── splits/
-├── derived/
-│   ├── roi_videos/
-│   ├── subvideos/
-│   ├── frames/
-│   └── metadata/
-│       ├── source_snapshots/
-│       ├── split_snapshots/
-│       ├── roi_manifests/
-│       ├── candidate_plans/
-│       ├── candidate_media_results/
-│       ├── review_reference/
-│       ├── review_queues/
-│       └── review_decisions/
-└── releases/
+│   ├── videos/        # 原始 MP4
+│   ├── annotations/     # 原始标注
+│   └── splits/          # train/test 划分 JSON
+└── derived/metadata/
+    └── video_meta.json  # 源视频元数据（由源数据提供或从旧系统迁移）
 ```
 
-| 区域 | 用途 | 可否直接训练 |
+> 注意：`source/videos`、`source/annotations`、`source/splits` 与 `derived/metadata/video_meta.json` 是下游所有脚本的输入前提。
+
+## 3. 流程总览
+
+```mermaid
+flowchart LR
+  A[1. 源数据迁移/校验] --> B[2. ROI 标注、冻结与物化]
+  B --> C[3. 候选计划与候选媒体物化]
+  C --> D[4. 审查队列与人工审查]
+  D --> E[5. 训练发布构建]
+  E --> F[6. 产物索引导出]
+```
+
+六步一句话：先校验并放置源数据，再固定 ROI 并裁剪源视频，随后生成候选片段与实际帧，再经人工审查后构建不可覆盖的训练发布，最后导出产物索引。
+
+## 4. 逐步操作
+
+以下命令中的 `<...>` 为每次运行实际生成的 ID 或路径，由上游脚本输出或 `workspace/data/INDEX.md` / 各集合 `index.json` 查询得到。
+
+### Step 1：迁移并校验源数据
+
+- **目的**：把源数据物理复制到项目内 `workspace/data/`，并校验完整性。
+- **机器**：数据所在机器（通常是训练机，Conda `agent` 环境）。
+- **命令**：
+  ```bash
+  # 复制并校验
+  python pipeline/scripts/source_migrate_workspace.py --copy
+  # 仅校验已复制的目录
+  python pipeline/scripts/source_migrate_workspace.py
+  ```
+  可选显式指定源根：
+  ```bash
+  python pipeline/scripts/source_migrate_workspace.py \
+    --source-root /path/to/tensile-data/current \
+    --destination-root workspace/data \
+    --copy
+  ```
+- **产物位置**：`workspace/data/source/{videos,annotations,splits}`。
+- **验收/检查**：校验通过会输出 JSON，包含文件数、总字节数、SHA-256 一致性。失败时保留旧根，清理不完整副本后重试，禁止用软链接。
+- **进入下一步条件**：两次校验均成功，且 `derived/metadata/video_meta.json` 已就位。
+
+### Step 2：ROI 标注、冻结与物化
+
+#### 2.1 标注 ROI
+
+- **目的**：在源视频上标定固定 ROI（上/下夹具、完整试样）。
+- **机器**：Mac（uv 环境，streamlit-cropper 仅 Mac 依赖中已配置）。
+- **命令**：
+  ```bash
+  uv run streamlit run pipeline/scripts/roi_annotation_app.py -- \
+    --data-root workspace/data \
+    --metadata workspace/data/derived/metadata/video_meta.json \
+    --output workspace/data/derived/metadata/roi_decisions.json
+  ```
+- **产物位置**：`workspace/data/derived/metadata/roi_decisions.json`。
+- **验收/检查**：UI 中每个视频的关键时刻必须包含上/下夹具、完整试样和位置判断。
+- **进入下一步条件**：所有源视频完成标注并保存。
+
+#### 2.2 冻结 ROI 决定
+
+- **目的**：把 ROI 决定打包成不可变的 ROI manifest。
+- **机器**：Mac（轻量校验）。
+- **命令**：
+  ```bash
+  uv run python pipeline/scripts/roi_freeze_decisions.py --check-only
+  uv run python pipeline/scripts/roi_freeze_decisions.py
+  ```
+  若使用非默认数据根，加 `--data-root <path>`。
+- **产物位置**：`workspace/data/derived/metadata/roi_manifests/<roi-manifest-id>/`。
+- **验收/检查**：`--check-only` 输出校验报告；正式运行后目录中出现 `manifest.json` 且 `roi_manifest_id` 已打印。
+- **进入下一步条件**：无校验错误，且已知 `<roi-manifest-id>`。
+
+#### 2.3 物化 ROI 视频
+
+- **目的**：按 ROI manifest 裁剪出保持原时间轴的 3:4 源视频。
+- **机器**：训练机（ffmpeg 重计算）。
+- **命令**：
+  ```bash
+  # 先只校验生成计划
+  python pipeline/scripts/roi_materialize_videos.py \
+    --data-root workspace/data \
+    --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
+    --video-meta workspace/data/derived/metadata/video_meta.json \
+    --check-only
+
+  # 小样本试跑（必须指定隔离目录）
+  python pipeline/scripts/roi_materialize_videos.py \
+    --data-root workspace/data \
+    --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
+    --video-meta workspace/data/derived/metadata/video_meta.json \
+    --video-ids video_0001 video_0008 \
+    --output-root workspace/data/derived/roi_videos/sample_roi_videos \
+    --workers 1
+
+  # 全量生成
+  python pipeline/scripts/roi_materialize_videos.py \
+    --data-root workspace/data \
+    --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
+    --video-meta workspace/data/derived/metadata/video_meta.json \
+    --workers 2
+  ```
+- **产物位置**：`workspace/data/derived/roi_videos/<roi-media-id>/`。
+- **验收/检查**：目录中出现 `manifest.json`；单条媒体通过分辨率、帧数、帧率、时长检查。
+- **进入下一步条件**：`manifest.json` 存在，且已知 `<roi-media-id>`。
+
+### Step 3：候选计划与候选媒体物化
+
+#### 3.1 生成候选计划
+
+- **目的**：基于 ROI 视频和 review reference 生成内容寻址的候选计划。
+- **机器**：Mac 或训练机（轻量计算）。
+- **命令**：
+  ```bash
+  # 先只打印计划身份与统计
+  uv run python pipeline/scripts/subvideo_build_plan.py \
+    --data-root workspace/data \
+    --roi-media-dir workspace/data/derived/roi_videos/<roi-media-id> \
+    --review-reference-dir workspace/data/derived/metadata/review_reference/<review-ref-id> \
+    --dry-run
+
+  # 正式生成
+  uv run python pipeline/scripts/subvideo_build_plan.py \
+    --data-root workspace/data \
+    --roi-media-dir workspace/data/derived/roi_videos/<roi-media-id> \
+    --review-reference-dir workspace/data/derived/metadata/review_reference/<review-ref-id> \
+    --output-root workspace/data/derived/metadata/candidate_plans
+  ```
+
+> 注意：候选计划步骤固定使用 v3 契约（脚本默认值），v4.1 契约从审查/发布环节开始使用；因此 `subvideo_build_plan.py` 不需要也不应显式传入 `--contract pipeline/contracts/tensile_vlm_v4_1.json`。
+
+- **产物位置**：`workspace/data/derived/metadata/candidate_plans/<plan-id>/`。
+- **验收/检查**：`--dry-run` 输出 `plan_id`、development 候选数、需审查数；正式运行后目录中出现 `manifest.json`。
+- **进入下一步条件**：计划已生成，且已知 `<plan-id>`。
+
+#### 3.2 物化候选媒体
+
+- **目的**：生成候选 MP4、实际 MiniCPM 抽帧和门禁结果。
+- **机器**：训练机（Conda `agent` 环境，GPU/模型推理）。
+- **命令**：
+  ```bash
+  # 先只校验输入与身份
+  python pipeline/scripts/subvideo_materialize_media.py \
+    --data-root workspace/data \
+    --candidate-plan workspace/data/derived/metadata/candidate_plans/<plan-id> \
+    --roi-media workspace/data/derived/roi_videos/<roi-media-id> \
+    --check-only
+
+  # 小样本试跑（必须同时指定隔离目录）
+  python pipeline/scripts/subvideo_materialize_media.py \
+    --data-root workspace/data \
+    --candidate-plan workspace/data/derived/metadata/candidate_plans/<plan-id> \
+    --roi-media workspace/data/derived/roi_videos/<roi-media-id> \
+    --limit 3 \
+    --video-output-root workspace/data/derived/subvideos/sample_candidate_media \
+    --frame-output-root workspace/data/derived/frames/sample_candidate_media \
+    --result-root workspace/data/derived/metadata/candidate_media_results/sample_candidate_media
+
+  # 全量生成
+  python pipeline/scripts/subvideo_materialize_media.py \
+    --data-root workspace/data \
+    --candidate-plan workspace/data/derived/metadata/candidate_plans/<plan-id> \
+    --roi-media workspace/data/derived/roi_videos/<roi-media-id>
+  ```
+- **产物位置**：
+  - `workspace/data/derived/subvideos/<candidate-media-id>/`
+  - `workspace/data/derived/frames/<candidate-media-id>/`
+  - `workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/`
+- **验收/检查**：`manifest.json` 与 `development_materialized.json` 均已生成；MP4、解码、抽帧、时间映射、状态门禁全部通过。
+- **进入下一步条件**：`<candidate-media-id>` 已知，且 `development_materialized.json` 存在。
+
+### Step 4：审查队列与人工审查
+
+#### 4.1 构建审查队列
+
+- **目的**：把 materialized 候选组织成 V4.1 审查队列（`observed` / `incipient`）。
+- **机器**：Mac（轻量）。
+- **命令**：
+  ```bash
+  uv run python pipeline/scripts/review_build_queue.py \
+    --data-root workspace/data \
+    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
+    --manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
+    --contract pipeline/contracts/tensile_vlm_v4_1.json \
+    --output-root workspace/data/derived/metadata/review_queues
+  ```
+- **产物位置**：`workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json`。
+- **验收/检查**：输出 `queue_id`、`candidate_count`、`observed_count`、`incipient_count`。
+- **进入下一步条件**：队列文件已生成，且已知 `<queue-id>`。
+
+#### 4.2 人工审查
+
+- **目的**：逐候选确认标签（优先看帧画面而非源视频）。
+- **机器**：Mac（uv 环境 + streamlit）。
+- **命令**：
+  ```bash
+  uv run streamlit run pipeline/scripts/review_candidates_app.py -- \
+    --data-root workspace/data \
+    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
+    --reviewer-id <reviewer-id>
+  ```
+  若使用历史分流，加 `--routing-manifest`：
+  ```bash
+  uv run streamlit run pipeline/scripts/review_candidates_app.py -- \
+    --data-root workspace/data \
+    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
+    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
+    --reviewer-id <reviewer-id>
+  ```
+- **产物位置**：默认保存到 `workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json`。
+- **验收/检查**：UI 状态全部为 `approved`、`corrected`、`dropped` 或 `needs_regenerate`；没有 `remaining`。
+- **进入下一步条件**：全部候选形成合法终态，且已知 `<batch-id>`。
+
+#### 4.3 （可选）阶段 2 隔离队列与历史分流
+
+- **目的**：当存在阶段 1 审计和上一轮冻结决策时，生成开发/密封测试隔离队列，并按历史决定分流以减少重复人工审查。
+- **机器**：Mac（轻量）。
+- **命令**：
+  ```bash
+  # 从阶段 1 审计生成两个隔离队列
+  uv run python pipeline/scripts/review_build_phase2_queues.py \
+    --audit-manifest workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
+    --contract pipeline/contracts/tensile_vlm_v4_1.json \
+    --output-root workspace/data/derived/metadata/review_queues
+
+  # 基于上一轮冻结决策分流
+  uv run python pipeline/scripts/review_route_from_history.py \
+    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
+    --previous-decisions workspace/data/derived/metadata/review_decisions/<prev-queue-id>/<prev-batch-id>/decisions.json \
+    --output-root workspace/data/derived/metadata/review_routes
+  ```
+- **产物位置**：新队列目录 + `workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json`。
+- **验收/检查**：队列身份、候选集合、契约 hash 与审计一致；分流后进入 UI 的候选为 `manual_review` 子集。
+- **进入下一步条件**：分流产物已知，且后续发布使用分流后的人工决定。
+
+### Step 5：构建训练发布
+
+- **目的**：把审查决定物化为不可覆盖的训练 release。
+- **机器**：训练机（Conda `agent` 环境）。
+- **命令**：
+  ```bash
+  python pipeline/scripts/release_build.py \
+    --data-root workspace/data \
+    --source-snapshot workspace/data/derived/metadata/source_snapshots/<source-snapshot-id> \
+    --split-snapshot workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
+    --source-tree-sha256 <source-tree-sha256> \
+    --split-tree-sha256 <split-tree-sha256> \
+    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
+    --media-manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
+    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
+    --decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
+    --contract pipeline/contracts/tensile_vlm_v4_1.json
+  ```
+  阶段 2 发布先验证再发布：
+  ```bash
+  python pipeline/scripts/release_build_phase2.py --validate-only \
+    --project-root . \
+    --base-release-dir workspace/data/releases/<base-release-id> \
+    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
+    --media-manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
+    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
+    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
+    --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
+    --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
+    --contract pipeline/contracts/tensile_vlm_v4_1.json
+
+  python pipeline/scripts/release_build_phase2.py \
+    --project-root . \
+    --base-release-dir workspace/data/releases/<base-release-id> \
+    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
+    --media-manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
+    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
+    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
+    --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
+    --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
+    --contract pipeline/contracts/tensile_vlm_v4_1.json
+  ```
+- **产物位置**：`workspace/data/releases/<release-id>/`。
+- **验收/检查**：脚本输出 `release_id`、`status`、`counts`；目标目录必须不存在，否则拒绝覆盖。
+- **进入下一步条件**：`manifest/release_manifest.json` 已生成，且已知 `<release-id>`。
+
+### Step 6：生成产物索引
+
+- **目的**：汇总各产物集合的 `index.json`，生成全局可读的 `INDEX.md`。
+- **机器**：Mac 或训练机。
+- **命令**：
+  ```bash
+  python pipeline/scripts/build_artifact_index.py
+  # 或在非默认数据根上运行
+  python pipeline/scripts/build_artifact_index.py --data-root /path/to/data
+  ```
+- **产物位置**：`workspace/data/INDEX.md`。
+- **验收/检查**：`INDEX.md` 列出 source/split 快照、ROI manifest、候选媒体、队列、决定、release 等集合。
+- **进入下一步条件**：索引生成成功，可供下游查找 artifact ID。
+
+## 5. 产物索引说明
+
+- 每个产物集合目录（如 `roi_manifests`、`candidate_media_results`、`review_queues`、`review_decisions`、`releases`）会自动维护各自的 `index.json`。
+- `pipeline/scripts/build_artifact_index.py` 读取这些 `index.json`，生成 `workspace/data/INDEX.md` 全局总览。
+- 下游命令中所有 `<...-id>` 都可以从对应集合的 `index.json` 或 `INDEX.md` 查到。
+
+## 6. 故障处理
+
+| 现象 | 含义 | 处理 |
 | --- | --- | --- |
-| `source/` | 原视频、标注和源视频级划分 | 否 |
-| `derived/roi_videos/` | 固定 ROI 后的源视频 | 否 |
-| `derived/subvideos/` | 内容寻址候选 MP4 | 否 |
-| `derived/frames/` | 模型实际查看的帧画面 | 否 |
-| `derived/metadata/` | manifest、队列、审查和质量证据 | 否 |
-| `releases/<release_id>/` | 冻结且通过门禁的训练输入 | 是，只读 |
-
-活跃代码通过 `pipeline.current_data` 解析项目内物理目录；冻结产物中的旧 `data/...`
-相对媒体路径由纯路径映射兼容，不依赖软链接。
-
-新 run 只写上述无版本语义目录。已有 `metadata/v3/`、`metadata/v4_1/` 和
-`workspace/data-rebuild/` 不移动、不改写；读取时按精确 artifact ID 优先解析语义
-目录，没有对应 ID 才回退旧目录。source snapshot v2 只绑定视频、标注和探测结果，
-数据划分单独冻结在 split snapshot v1；新 release 必须同时记录二者的 ID 和 tree hash。
-
-## 第一步：迁移或验证项目内数据
-
-```bash
-python pipeline/scripts/source_migrate_workspace.py --copy
-python pipeline/scripts/source_migrate_workspace.py
-```
-
-必须满足：
-
-- 新目录是物理副本且不含软链接；
-- `source/`、`derived/` 和由旧 `training_releases/` 映射出的 `releases/` 齐全；
-- 文件数、总字节数和全部受管文件 SHA-256 一致；
-- 旧外部根保持不变，至少保留到一次真实训练和严格评测完成。
-
-manage_versioned_data_roots.py（已归档，见 git 历史）、marker、profile 和 `TENSILE_DATA_HOME` 只用于历史流程，
-不能作为 main 的活跃 V4.1 入口。
-
-## 第二步：ROI 与候选媒体
-
-当前冻结批次已经完成这一步。新一轮数据变更时才重新执行，并且必须产生新的内容身份。
-
-### ROI 决定与冻结
-
-```bash
-streamlit run pipeline/scripts/roi_annotation_app.py -- \
-  --metadata workspace/data/derived/metadata/video_meta.json \
-  --output workspace/data/derived/metadata/roi_decisions.json
-
-uv run python pipeline/scripts/roi_freeze_decisions.py --check-only
-uv run python pipeline/scripts/roi_freeze_decisions.py
-```
-
-人工必须确认关键时刻的上/下夹具、完整试样和位置判断信息均被保留。`fixed_roi` 使用
-3:4 裁剪框；`no_crop` 后续补边到 3:4。
-
-### 物化 ROI 视频
-
-```bash
-uv run python pipeline/scripts/roi_materialize_videos.py --check-only
-
-# 首次先输出到隔离的小样本目录
-uv run python pipeline/scripts/roi_materialize_videos.py \
-  --video-ids video_0001 video_0008 video_0100 \
-  --output-root workspace/data/derived/sample_roi_videos \
-  --workers 1
-
-# 小样本通过后再完整生成
-uv run python pipeline/scripts/roi_materialize_videos.py --workers 2
-```
-
-只有最终 `manifest.json` 出现，才表示该批次完整完成。单条媒体通过分辨率、帧数、帧率
-和时长检查后才会原子发布。
-
-### 候选计划与媒体
-
-当前 V4.1 发布沿用了已经冻结的 ROI 候选媒体批次
-`candidate-media-8de972530561`。候选计划和媒体物化脚本内部仍有 `v3` 历史命名，
-这是 provenance 路径，不代表当前契约退回 V3。
-
-```bash
-uv run python pipeline/scripts/subvideo_build_plan.py --dry-run
-uv run python pipeline/scripts/subvideo_build_plan.py
-
-uv run python pipeline/scripts/subvideo_materialize_media.py --check-only
-
-# 首次用隔离目录检查真实 MP4、帧映射和门禁
-uv run python pipeline/scripts/subvideo_materialize_media.py \
-  --limit 3 \
-  --video-output-root workspace/data/derived/sample_candidate_media/videos \
-  --frame-output-root workspace/data/derived/sample_candidate_media/frames \
-  --result-root workspace/data/derived/sample_candidate_media/results
-
-# 小样本通过后再完整生成
-uv run python pipeline/scripts/subvideo_materialize_media.py
-```
-
-候选只有在 MP4、解码、真实 MiniCPM 抽帧、时间映射和状态门禁全部通过后才可进入下游。
-禁止只同步 metadata 而遗漏视频或帧图。
-
-## 第三步：构建 V4.1 审查队列
-
-V4.1 队列同时包含：
-
-- `observed`：当前帧窗口已看到发生或已经发生断裂；
-- `incipient`：尚未断裂，但当前窗口有明确的临界韧性断裂视觉征兆。
-
-普通稳定未断裂候选经过自动门禁后不进入人工队列。
-
-```bash
-python pipeline/scripts/review_build_queue.py \
-  --materialized \
-    workspace/data/derived/metadata/v3/candidate_media_results/\
-candidate-media-8de972530561/development_materialized.json \
-  --manifest \
-    workspace/data/derived/metadata/v3/candidate_media_results/\
-candidate-media-8de972530561/manifest.json
-```
-
-当前冻结队列：
-
-`workspace/data/derived/metadata/v4_1/review_queues/v4-1-review-4a449c8d1193/review_queue.json`
-
-队列身份、候选集合、媒体 manifest 和契约任一漂移，都必须创建新队列，不能复用旧草稿。
-
-## 第四步：以帧画面为主进行人工审查
-
-```bash
-streamlit run pipeline/scripts/review_candidates_app.py -- \
-  --queue \
-    workspace/data/derived/metadata/v4_1/review_queues/\
-v4-1-review-4a449c8d1193/review_queue.json \
-  --reviewer-id <reviewer-id>
-```
-
-审查原则：
-
-- 默认折叠视频，优先审查模型实际加载的帧画面；
-- 当前帧窗口是标签权威来源，不用源视频旧标签覆盖人工帧级判断；
-- 同一源视频的重叠候选可以因可见信息不同而拥有不同标签；
-- 普通 `未断裂` 的其他字段必须为 `null`；
-- `临界未断裂` 可以携带 prospective 的机制和位置，但不能当作已断裂；
-- `grip_root` 是严重的夹具根部齐根断裂；
-- `outside_gauge_non_root` 是标距外、但并非齐根的非理想断裂位置；
-- 缺媒体、帧图漂移、无法可靠判断或需要重生成的候选不得静默批准。
-
-全部候选形成合法终态后，UI 才能冻结内容寻址的 review batch。当前冻结决策：
-
-`workspace/data/derived/metadata/v4_1/review_decisions/v4-1-review-4a449c8d1193/review-batch-9043bbe4c286/decisions.json`
-
-### 阶段 2 新增候选的隔离审查
-
-2026-07-25 阶段 1 有效视图审计已经完成。410 条开发候选和 332 条密封测试候选必须
-从同一冻结审计分别生成两个内容绑定的队列：
-
-```bash
-python pipeline/scripts/review_build_phase2_queues.py \
-  --audit-manifest \
-    workspace/data/derived/metadata/v4_1/effective_view_audits/\
-phase1_verified/audit_manifest.json
-```
-
-命令会打印两个不同的 `queue_id` 和路径，但不会创建训练发布。若已有同契约、已冻结且
-校验通过的上一轮审查，必须先以上一轮为基准生成内容寻址的分流制品：
-
-```bash
-python pipeline/scripts/review_route_from_history.py \
-  --queue <development_review_queue.json> \
-  --previous-decisions <previous_frozen_decisions.json> \
-  --current-draft <current_full_queue_draft.json>
-
-streamlit run pipeline/scripts/review_candidates_app.py -- \
-  --queue <development_review_queue.json> \
-  --routing-manifest <routing_manifest.json> \
-  --reviewer-id <reviewer-id>
-```
-
-固定分流优先保留当前轮已有人工决定。上一轮整源均为 `approved`、同一
-`source_video + semantic_window_role` 只有一个标签共识且与当前提示一致时，记录为
-`historical_consensus`；只要上一轮同源出现 `corrected`、`dropped` 或
-`needs_regenerate`，或身份、角色、共识、提示不匹配，就进入 `manual_review`。
-历史沿用记录单独保存，不伪装成本轮人工批准。没有合格同源历史的队列仍全量人工审查。
-
-阶段 2 队列额外执行以下门禁：
-
-- 队列绑定阶段 1 审计、V4.1 契约、materialized 输入及其 SHA-256；
-- 开发与密封测试使用不同队列身份和草稿/决定目录；
-- 历史 V3 或自动标签只显示为提示，界面不预选 `clip_state`；
-- 审核者必须确认已经依据实际采样帧独立核对四个字段；
-- 普通 `未断裂` 测试候选不会被旧 observed/incipient 过滤逻辑排除；
-- 任一审计、媒体、帧图、候选集合或 scope 漂移都会拒绝加载。
-
-2026-07-25 已正式生成并完整加载验证：
-
-- development：`v4-1-phase2-development-dc453f01fb23`，410 项、44 个源；
-- sealed test 初始队列：`v4-1-phase2-sealed_test-a16926aca6d2`，332 项、20 个源。
-
-两队列的视频、采样帧和身份哈希均通过，源视频交集为空。2026-07-26 已按上一轮冻结
-batch 生成分流：development 为 `33 existing_human + 233 historical_consensus +
-144 manual_review`；sealed test 因无同源历史为 `332 manual_review`。development
-人工子队列已冻结为 `review-batch-7a7222b947da`，其中 118 corrected、19 approved、
-7 dropped；三类来源已合成为
-`combined-review-decisions-b4ade2d3e526`。截至 2026-07-26，当时 sealed test 尚无
-冻结人工 batch。
-轻量身份和当前分流见
-[`docs/results/v4_1_phase2_review_queues/`](results/v4_1_phase2_review_queues/)；
-development 发布证据见
-[`docs/results/v4_1_phase2_development_release/`](results/v4_1_phase2_development_release/)。
-密封测试决定冻结后必须继续隔离，不能用于训练、采样、学习曲线或模型选择。
-
-2026-07-27，canonical V4.1 analysis prompt 更新后，sealed test 在相同 audit、媒体、
-候选顺序和 candidate ID 上重新进行内容寻址，当前队列为
-`v4-1-phase2-sealed_test-4f66487a6315`。它与初始队列的唯一身份输入差异是 contract
-hash；旧队列和旧 routing 保留为历史对象，不再作为当前 Stage D 输入。
-
-当前 332 条已冻结为 `review-batch-6a8d94bd7675`：209 approved、90 corrected、
-33 dropped。专用发布器已生成受限、不可变的
-`v4.1-sealed-test-5546b8bf1ec3`，其中 299 条可验收候选仍覆盖全部 20 个独立源。
-完整性和哈希见
-[`docs/results/v4_1_stage_d_sealed_test_release/`](results/v4_1_stage_d_sealed_test_release/)。
-该发布的 one-time evaluation authorization 仍为 false；不得据此直接启动或重复运行
-sealed 推理。
-
-## 第五步：构建不可覆盖的 V4.1 训练发布
-
-新语义发布入口必须显式绑定 source/split snapshot 和审核输入：
-
-```bash
-python pipeline/scripts/release_build.py \
-  --source-snapshot workspace/data/derived/metadata/source_snapshots/<source-id> \
-  --split-snapshot workspace/data/derived/metadata/split_snapshots/<split-id> \
-  --source-tree-sha256 <state-frozen-source-tree-sha256> \
-  --split-tree-sha256 <state-frozen-split-tree-sha256> \
-  --materialized <candidate-media>/development_materialized.json \
-  --media-manifest <candidate-media>/manifest.json \
-  --queue <review-queue>/review_queue.json \
-  --decisions <review-batch>/decisions.json
-```
-
-旧基础发布的无参数复现方式属于历史流程，不得用于创建新 release。
-
-阶段 2 development 发布必须先执行完整 preflight，再创建不可覆盖目录：
-
-```bash
-python pipeline/scripts/release_build_phase2.py --validate-only
-python pipeline/scripts/release_build_phase2.py
-python finetune/release_validate.py \
-  --release-id v4.1.0-ecb5aeb9657c \
-  --verify-media
-```
-
-发布器会验证：
-
-- 当前数据根与 V4.1 marker；
-- contract version/hash；
-- materialized、media manifest、queue 和 decisions 的内容身份；
-- reviewed、automatic negative、excluded 三类候选互斥且合计正确；
-- 标签联动约束；
-- 媒体路径和哈希；
-- 源视频级三折隔离；
-- release ID 与内容一致；
-- 目标目录不存在，拒绝覆盖。
-
-当前阶段 2 输出：
-
-`workspace/data/releases/v4.1.0-ecb5aeb9657c`
-
-发布清单：
-
-`workspace/data/releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json`
-
-当前 fold 数量：
-
-| 数据集 | 数量 |
-| --- | ---: |
-| Fold 0 train | 1253 |
-| Fold 0 validation | 425 |
-| Fold 1 train | 1014 |
-| Fold 1 validation | 664 |
-| Fold 2 train | 1186 |
-| Fold 2 validation | 492 |
-
-如果脚本提示发布已经存在，应先比较 manifest 和上游哈希。不要删除旧发布后重建；
-数据确有变化时应得到新的内容寻址 release ID。
-
-## 第六步：三折训练与任务效果验收
-
-```bash
-python finetune/archive/run_v4_1_three_fold_training.py --validate-only
-python finetune/archive/run_v4_1_three_fold_training.py
-
-python finetune/archive/run_v4_1_post_training.py --validate-only
-python finetune/archive/run_v4_1_post_training.py
-```
-
-详细说明和产物路径见 [V4.1 微调、合并与评测](../finetune/README.md)。
-
-2026-07-24 正式视觉 LoRA 三折、merged BF16 和两种 4-bit 验证已经完成，三个 fold
-共 1216 条且运行失败为 0。任务效果尚未通过生产验收：BF16 断裂相关三状态宏平均
-召回率为 24.54%，`已断裂`召回率为 9.00%，并有 35 条输出漏掉必填
-`special_case` 字段。当前结果和制品身份见
-[正式视觉运行证据冻结](results/v4_1_0_760050fad303_20260724_visual/README.md)。
-
-2026-07-29 又完成了 `v4.1-prompt-concise-cv-v1-seed3411` 三折训练、最佳 checkpoint
-回载、合并和 1581 条严格评测。早停行为符合预期，但加权合法率只有 79.63%，并出现
-“未断裂”类别坍缩；该实验没有晋级为发布模型。其全部 15 个 checkpoint 保留，用于
-分析合法率、类别分布和中间学习能力随 step 的变化。
-
-三折训练完成仍不等于模型效果验收完成。当前已经使用
-`v4.1-agent-pipeline-fold0-r1` 跑通 V4.1 服务和 TensileAgent 工程链路，但该发布仅用于
-稳定演示和后续联调，不改变模型质量门失败的事实。
-
-### 语义 Prompt 对照
-
-固定全字段 Prompt 对照不得修改 development release、seed3411 视频多重集、顺序、标签
-或 LoRA 超参数。先运行 Prompt 发布，再在训练机生成派生 bundle 和冻结 run manifest：
-
-```bash
-python -m pipeline.prompt_control validate \
-  --source pipeline/prompt_control/active_prompt.yaml
-python -m pipeline.prompt_control publish \
-  --source pipeline/prompt_control/active_prompt.yaml
-python finetune/train_build_dataset.py
-python finetune/train_prepare_run.py
-```
-
-实验 ID 固定为 `v4.1-prompt-minimal-v1-seed3411`。训练、合并、评测命令以
-`finetune/experiments/<experiment-id>/manifest.json` 为准。严格评测必须传入 input 内的
-`experiment_contract.json`；Prompt、release、sampling 或 schema 任一 hash 不一致时
-停止运行，不能回退到 `prompt_library.yaml`、仓库当前 contract Prompt 或临时 overlay。
-
-## 失败恢复
-
-- 数据迁移校验失败：保留旧根，清理经核实的不完整暂存副本后重新复制；禁止用软链接。
-- 媒体物化中断：使用同一内容身份重跑；脚本会校验并复用已完成产物。
-- 审查中断：从同一 queue-bound 草稿继续；不要复制别的队列草稿。
-- 冻结后发现标签错误：创建新队列、新 review batch 和新训练发布，不能改冻结文件。
-- 训练中断：依据训练状态和 LLaMA-Factory 产物恢复；不要覆盖身份不明的目录。
-- 训练完成但任务尚未分析：保留全部 checkpoint；不能只因已有 merged 就自动删除。
-- 评测中断：`evaluation_records.jsonl` 可续跑；run identity 不一致时使用新输出目录。
-
-## 不可绕过的规则
-
-- 不要向 `tensile-data/archive` 写入任何 V4.1 数据。
-- 不要把旧 `data/07_metadata` 或 `data/08_training_ready` 当成 V4.1 主入口。
-- 不要使用旧 `review_subvideos_app.py` 审查 V4.1 queue。
-- 不要让源视频初始标签静默覆盖帧窗口人工复标结果。
+| `DataRootError: ... 必须位于 ...` | 输出路径不在受管集合目录内 | 检查 `--output-root` 是否在 `workspace/data/derived/metadata/<collection>` 或 `workspace/data/releases` 下。 |
+| `目标目录已存在` / 拒绝覆盖 | releases 与冻结产物不可覆盖 | 若确实要重新生成，使用新的 `<run-id>` / `<release-id>`，不要删除旧目录。 |
+| `identity_sha256` / `tree_sha256` 不匹配 | 上游身份漂移 | 重新确认输入 artifact ID 与 hash；不要手动改冻结文件。 |
+| `staging state 的 schema/layout/root/Git 身份不匹配` | `rebuild_data.py` 恢复时 Git commit 或目录结构不一致 | 在同一 Git 版本下用同一 `run-root` 恢复，否则新建 run-root。 |
+| `视频 metadata 不存在` | `derived/metadata/video_meta.json` 缺失 | 先补齐源数据或迁移旧 metadata。 |
+| `ffmpeg/ffprobe 未找到` | 训练机缺少媒体工具 | 安装 ffmpeg 并确保在 PATH 中。 |
+| 审查 UI 中候选 `remaining > 0` | 还有未审核候选 | 继续审查，直到全部形成终态。 |
+
+## 7. 不该做的事（速查）
+
+- 不要把旧 `data/07_metadata`、`data/08_training_ready`、`review_subvideos_app.py` 当成 V4.1 主入口。
+- 不要删除或覆盖已冻结的 ROI manifest、review batch、candidate media、training release。
 - 不要把 `needs_regenerate`、缺媒体、哈希漂移或非法标签带入发布。
-- 不要覆盖冻结 review batch 或 training release。
-- 不要仅依据 train/eval loss 宣称任务效果达标。
-- 不要把当前 V4.1 中间服务描述为 production，也不要用 Agent 链路通过替代模型质量验收。
+- 不要让源视频初始标签静默覆盖帧窗口人工复标结果。
+- 不要把训练完成本身等同于任务效果验收通过。
 
-## 历史流程
+## 8. 编排器模式（可选）
 
-V2 的完整编号目录、增量复审、`publish_training_release.py --activate`、全量训练和
-V2 测试集评测都属于封存流程。需要复现时切换到 `tensile-vlm-v2-final` /
-`archive/v2` 并使用 `tensile-data/archive`，不要从 `main` 的当前说明拼接新旧命令。
+如果你希望用一个命令跑隔离的完整重建，可以使用 orchestrator：
 
-V3/V4 文档和 artifact 是 V4.1 形成过程中的设计与迁移证据，不是可部署运行时。
+```bash
+# 首次或完整重建
+python pipeline/scripts/rebuild_data.py run \
+  --source-data-root workspace/data \
+  --run-root workspace/data-staging/<run-id> \
+  --roi-mode review \
+  --review-mode review
 
-## 关联文档
+# 仅校验源数据身份
+python pipeline/scripts/rebuild_data.py run \
+  --source-data-root workspace/data \
+  --run-root workspace/data-staging/<run-id> \
+  --source-only \
+  --check-only
 
-- [仓库总览](../README.md)
-- [V4.1 微调、合并与评测](../finetune/README.md)
-- 数据隔离设计（文档已归档，见 git 历史）
-- 迁移报告（文档已归档，见 git 历史）
-- V4.1 临界未断裂契约设计（文档已归档，见 git 历史）
+# 把 staging 产物晋级到 workspace/data
+python pipeline/scripts/rebuild_data.py promote \
+  --run-root workspace/data-staging/<run-id>
+```
+
+> 注意：同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
