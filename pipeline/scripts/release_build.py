@@ -12,11 +12,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from pipeline import artifact_resolver
 from pipeline.current_data import data_context_from_arg
+from pipeline.data_rebuild import tree_inventory
 from pipeline.v4_1_training_release import build_v4_1_training_release
 
 
-def parse_args() -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path)
     parser.add_argument("--project-root", type=Path)
@@ -29,21 +31,45 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=PROJECT_ROOT / "pipeline/contracts/tensile_vlm_v4_1.json",
     )
-    parser.add_argument("--source-snapshot", type=Path, required=True)
-    parser.add_argument("--split-snapshot", type=Path, required=True)
-    parser.add_argument("--source-tree-sha256", required=True)
-    parser.add_argument("--split-tree-sha256", required=True)
+    parser.add_argument("--source-snapshot", type=Path, default=None)
+    parser.add_argument("--split-snapshot", type=Path, default=None)
+    parser.add_argument("--source-tree-sha256", default=None)
+    parser.add_argument("--split-tree-sha256", default=None)
     parser.add_argument("--releases-dir", type=Path)
-    args = parser.parse_args()
+    return parser
 
-    paths = data_context_from_arg(PROJECT_ROOT, args.data_root)
-    args.project_root = args.project_root or paths.root
-    args.releases_dir = args.releases_dir or paths.training_releases
-    args.releases_dir = paths.require_managed_output(
+
+def _resolve_inputs(args: argparse.Namespace, context) -> None:
+    args.project_root = args.project_root or context.root
+    args.source_snapshot = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("source_snapshots"),
+        args.source_snapshot,
+    )
+    args.split_snapshot = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("split_snapshots"),
+        args.split_snapshot,
+    )
+    if args.source_tree_sha256 is None:
+        args.source_tree_sha256 = tree_inventory(args.source_snapshot)[
+            "tree_sha256"
+        ]
+    if args.split_tree_sha256 is None:
+        args.split_tree_sha256 = tree_inventory(args.split_snapshot)[
+            "tree_sha256"
+        ]
+    args.releases_dir = args.releases_dir or context.training_releases
+    args.releases_dir = context.require_managed_output(
         args.releases_dir,
-        paths.training_releases,
+        context.training_releases,
         label="training release output",
     )
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    _resolve_inputs(args, context)
     return args
 
 

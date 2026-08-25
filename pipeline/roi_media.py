@@ -14,7 +14,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from pipeline import artifact_index
+from pipeline import artifact_index, artifact_resolver
 from pipeline.current_data import resolve_data_artifact
 
 ROI_MEDIA_SCHEMA_VERSION = "tensile-roi-media/v1"
@@ -451,6 +451,7 @@ def materialize_plan(
         validate_existing_bundle(destination, plan)
         report = _load_json(destination / "validation_report.json")
         _append_roi_media_index(output_root, plan, report)
+        artifact_resolver.update_latest(output_root, str(plan["media_id"]))
         return destination
     destination.mkdir(parents=True, exist_ok=True)
 
@@ -528,6 +529,7 @@ def materialize_plan(
     temporary_manifest.write_bytes(_canonical_bytes(manifest))
     os.replace(temporary_manifest, final_manifest)
     _append_roi_media_index(output_root, plan, report)
+    artifact_resolver.update_latest(output_root, str(plan["media_id"]))
     return destination
 
 

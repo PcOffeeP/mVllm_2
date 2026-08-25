@@ -14,6 +14,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline import artifact_index, artifact_resolver
 from pipeline.current_data import resolve_data_artifact
 from pipeline.data_roots import (
     DataRootError,
@@ -641,6 +642,24 @@ def _validate_complete_result(
             raise CandidateMediaError(f"既有完整媒体或 receipt 漂移: {path.name}")
 
 
+def _append_candidate_media_index(
+    result_root: Path, manifest: Mapping[str, Any]
+) -> None:
+    artifact_index.append_entry(
+        result_root,
+        {
+            "id": manifest["media_id"],
+            "created_at": artifact_index.utc_now(),
+            "step": "candidate_media",
+            "inputs": {
+                "candidate_plan_id": manifest["identity"]["candidate_plan_id"],
+            },
+            "stats": manifest.get("counts", {}),
+            "note": "v3 candidate media result",
+        },
+    )
+
+
 def materialize_media_plan(
     plan: Mapping[str, Any],
     *,
@@ -659,6 +678,8 @@ def materialize_media_plan(
         if not isinstance(manifest, dict):
             raise CandidateMediaError("既有完整媒体 manifest 格式无效")
         _validate_complete_result(result_dir, manifest, plan)
+        _append_candidate_media_index(result_root, manifest)
+        artifact_resolver.update_latest(result_root, manifest["media_id"])
         return result_dir
 
     processor = preprocessor or MiniCPMVideoPreprocessor(
@@ -760,4 +781,6 @@ def materialize_media_plan(
         "media_generated": True,
     }
     _atomic_write(result_dir / "manifest.json", manifest)
+    _append_candidate_media_index(result_root, manifest)
+    artifact_resolver.update_latest(result_root, manifest["media_id"])
     return result_dir

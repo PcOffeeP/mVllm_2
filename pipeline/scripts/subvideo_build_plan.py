@@ -20,6 +20,7 @@ from pipeline.v3_candidate_plan import (
 )
 from pipeline.current_data import current_data_context, data_context_from_arg
 from pipeline.review_evidence import REFERENCE_SCHEMA_VERSION
+from pipeline import artifact_resolver
 
 
 CURRENT_DATA = current_data_context(PROJECT_ROOT)
@@ -36,10 +37,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="生成 v3 子视频候选计划和统计；不会生成 MP4 或帧图"
     )
     parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--roi-media-dir", type=Path)
+    parser.add_argument("--roi-media-dir", type=Path, default=None)
     parser.add_argument("--review-reference-dir", type=Path)
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
-    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--output-root", type=Path, default=None)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -48,11 +49,10 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
-    args = build_parser().parse_args()
-    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
-    args.roi_media_dir = args.roi_media_dir or (
-        context.roi_videos / "roi-media-84ea2bd3a052"
+def _resolve_inputs(args: argparse.Namespace, context) -> None:
+    args.roi_media_dir = artifact_resolver.resolve_cli_artifact_path(
+        context.roi_videos,
+        args.roi_media_dir,
     )
     args.review_reference_dir = args.review_reference_dir or (
         context.metadata_artifact_path(
@@ -61,9 +61,15 @@ def main() -> None:
             expected_schema=REFERENCE_SCHEMA_VERSION,
         )
     )
-    args.output_root = (
-        args.output_root or context.metadata_collection("candidate_plans")
+    args.output_root = args.output_root or context.metadata_collection(
+        "candidate_plans"
     )
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    _resolve_inputs(args, context)
     inputs = load_plan_inputs(
         args.roi_media_dir,
         args.review_reference_dir,

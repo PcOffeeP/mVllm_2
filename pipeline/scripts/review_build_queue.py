@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from pipeline import artifact_resolver
 from pipeline.v4_1_review_workflow import (
     build_v4_1_review_queue,
     save_v4_1_review_queue,
@@ -19,11 +20,11 @@ from pipeline.v4_1_review_workflow import (
 from pipeline.current_data import data_context_from_arg
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--materialized", type=Path, required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--materialized", type=Path, default=None)
+    parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument(
         "--project-root",
         type=Path,
@@ -39,15 +40,33 @@ def main() -> None:
         type=Path,
         default=None,
     )
-    args = parser.parse_args()
-    paths = data_context_from_arg(PROJECT_ROOT, args.data_root)
-    args.project_root = args.project_root or paths.root
-    args.output_root = (
-        args.output_root or paths.metadata_collection("review_queues")
+    return parser
+
+
+def _resolve_inputs(args: argparse.Namespace, context) -> None:
+    args.project_root = args.project_root or context.root
+    args.materialized = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("candidate_media_results"),
+        args.materialized,
+        artifact_subpath="development_materialized.json",
     )
-    args.output_root = paths.require_managed_output(
+    args.manifest = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("candidate_media_results"),
+        args.manifest,
+        artifact_subpath="manifest.json",
+    )
+    if args.output_root is None:
+        args.output_root = context.metadata_collection("review_queues")
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+    context = data_context_from_arg(PROJECT_ROOT, args.data_root)
+    _resolve_inputs(args, context)
+    args.output_root = context.require_managed_output(
         args.output_root,
-        paths.metadata_collection("review_queues"),
+        context.metadata_collection("review_queues"),
         label="review queue output",
     )
     payload = build_v4_1_review_queue(

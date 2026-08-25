@@ -59,7 +59,7 @@
    - Prompt revision：`v<协议>-<描述>-r<N>`
    - 模型 release：`v<协议>-<描述>-fold<N>-r<N>`
    - 实验：`v<协议>-<主题>-v<N>-seed<N>`
-4. 不可变产物集合目录必须配 `index.json`（由生成脚本自动维护）；全局总览由 `build_artifact_index.py` 扫描各集合目录的 `index.json` 生成。同一集合目录同一时刻只允许一个写入进程（当前调用链为顺序执行），并发写入会导致条目静默丢失。当前索引覆盖 staging 侧与 `roi_manifests`/`roi_videos`；`promote` 尚未把 `index.json` 从 source/split 快照传播到正式 workspace 集合，为已知待办。
+4. 不可变产物集合目录必须配 `index.json`（由生成脚本自动维护）；生成脚本在追加 `index.json` 后原子写入 `LATEST` 指针文件，记录当前产物完整 ID。解析模块按 `None（读 LATEST） → 完整 ID → 短哈希前缀` 三层解析，失败时明确提示“先运行生成步骤或显式传入产物 ID”。全局总览由 `build_artifact_index.py` 扫描各集合目录的 `index.json` 生成。同一集合目录同一时刻只允许一个写入进程（当前调用链为顺序执行），并发写入会导致条目静默丢失。当前索引覆盖 staging 侧与 `roi_manifests`/`roi_videos`/`candidate_plans`/`candidate_media_results`；`promote` 尚未把 `index.json` 从 source/split 快照传播到正式 workspace 集合，为已知待办。LATEST 语义为最近一次物化或复用触碰的产物。
 
 ## 文档与审查纪律
 

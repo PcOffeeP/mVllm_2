@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from pipeline import artifact_resolver
 from pipeline.preprocessing import MiniCPMVideoPreprocessor  # noqa: E402
 from pipeline.current_data import data_context_from_arg  # noqa: E402
 from pipeline.v3_candidate_media import (  # noqa: E402
@@ -21,10 +22,8 @@ from pipeline.v3_candidate_media import (  # noqa: E402
     materialize_media_plan,
     require_tools,
 )
-from pipeline.v3_candidate_plan import PLAN_SCHEMA_VERSION  # noqa: E402
 
 
-DEFAULT_PLAN_ID = "candidate-plan-ce36b9226be5"
 DEFAULT_MODEL = PROJECT_ROOT / "models/minicpmv4_5"
 
 
@@ -33,8 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="从冻结 v3 候选计划生成版本化 MP4、真实 MiniCPM 抽帧和门禁结果"
     )
     parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--candidate-plan", type=Path)
-    parser.add_argument("--roi-media", type=Path)
+    parser.add_argument("--candidate-plan", type=Path, default=None)
+    parser.add_argument("--roi-media", type=Path, default=None)
     parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
     parser.add_argument(
         "--scope",
@@ -52,6 +51,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="验证输入、源媒体、处理器身份和输出身份，但不生成媒体",
     )
     return parser
+
+
+def _resolve_inputs(args: argparse.Namespace, context) -> None:
+    args.candidate_plan = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("candidate_plans"),
+        args.candidate_plan,
+    )
+    args.roi_media = artifact_resolver.resolve_cli_artifact_path(
+        context.roi_videos,
+        args.roi_media,
+    )
 
 
 def _is_subset(args: argparse.Namespace) -> bool:
@@ -80,16 +90,7 @@ def main() -> int:
     try:
         _require_isolated_subset_outputs(args)
         context = data_context_from_arg(PROJECT_ROOT, args.data_root)
-        args.candidate_plan = args.candidate_plan or (
-            context.metadata_artifact_path(
-                "candidate_plans",
-                DEFAULT_PLAN_ID,
-                expected_schema=PLAN_SCHEMA_VERSION,
-            )
-        )
-        args.roi_media = args.roi_media or (
-            context.roi_videos / "roi-media-84ea2bd3a052"
-        )
+        _resolve_inputs(args, context)
         args.video_output_root = args.video_output_root or context.subvideos
         args.frame_output_root = args.frame_output_root or context.frames
         args.result_root = args.result_root or (
@@ -154,7 +155,9 @@ def main() -> int:
             result_root=args.result_root,
             preprocessor=processor,
         )
-        manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (destination / "manifest.json").read_text(encoding="utf-8")
+        )
         summary["destination"] = str(destination)
         summary["counts"] = manifest["counts"]
         summary["media_generated"] = True
