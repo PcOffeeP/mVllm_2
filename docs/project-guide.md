@@ -1,7 +1,7 @@
 # mVllm_2 Project Guide
 
 <!-- explain-project
-verified_commit: 42df410f74ac8a817a5080c7868f89b5c7c9ca98
+verified_commit: 116d66af7777b5eb114b9cacbc664bda6ccf1ad0
 verified_worktree: clean（本次仅更新 project-guide.md；指纹已排除该文件）
 -->
 
@@ -104,32 +104,70 @@ Prompt revision 注册 + 固定 Prompt 训练集构建
 
 ## 子视频生成重点展开
 
-**输入**：不是原始视频，而是 `workspace/data/derived/roi_videos/<roi-media-id>/videos/<video_id>.mp4`（经 ROI 归一化后的 3:4 源视频）及其 `video_meta.roi.json`。`load_plan_inputs()` 还会校验 review reference split（必须 89/21）和 `pipeline/contracts/tensile_vlm_v3.json`。
+**输入**：不是原始视频，而是 ROI 物化产物 `workspace/data/derived/roi_videos/<roi-media-id>/videos/<video_id>.mp4`（3:4 源视频）及其 `video_meta.roi.json`。`load_plan_inputs()` 还会校验 review reference 的 split（必须 89 development / 21 test， inventories 无交叉且完整覆盖 ROI metadata）和 `pipeline/contracts/tensile_vlm_v3.json` 的 contract hash。`subvideo_build_plan.py` 默认指向 `roi-media-84ea2bd3a052` 与 `review-ref-7cd2e73a1cd1`，这些 ID 与基础发布 `v4.1.0-760050fad303` 的上游一致。
 
-**生成规则定义位置**：规则直接写在 `pipeline/v3_candidate_plan.py` 中，政策版本为 `v3-candidate-policy/2.0`。关键常量（源码确认）：
+**两个脚本的分工（计划与物化分离）**：
+- `subvideo_build_plan.py` 只做轻量元数据计划：读入 ROI media、review reference、contract，按硬编码策略计算所有候选窗口，输出 `candidate_plans/<plan_id>/`（`manifest.json`、`development_candidates.json`、`test_candidate_audit.json`、`needs_review.json`、`statistics.json`）。**不写 MP4/帧**，`media_generated=false`。
+- `materialize_v3_candidate_media.py` 做重执行：读入冻结的 plan，用 ffmpeg 裁剪每个候选的 MP4，再用真实 MiniCPM-V processor 采样并导出 JPG，同时运行 sampling gate；输出 `subvideos/<plan_id>/videos/`、`frames/<plan_id>/<candidate_id>/`、`candidate_media_results/<media_id>/`（含 `development_materialized.json`、`test_materialized_audit.json`、`review_queue.json`、`generation_report.json`、`manifest.json` 及每条候选的 receipt）。
+- 分离意图：plan 是确定性的轻量 dry-run 产物，可重复、可审查、可内容寻址；物化涉及大视频 I/O 与模型处理，允许按 `--scope` / `--candidate-ids` / `--limit` 做子集生成，也便于在训练机上隔离运行。
+
+**生成规则定义位置**：规则硬编码在 `pipeline/v3_candidate_plan.py`（`POLICY_VERSION = "v3-candidate-policy/2.0"`，第 23 行）。关键常量（第 24–35 行）：
 - 目标时长 `TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)` 秒；
 - 断裂事件附近窗口位置 `EVENT_POSITIONS = (0.20, 0.35, 0.50, 0.65, 0.80)`；
 - 事件禁区 `EVENT_GUARD_SECONDS = 0.5`；
 - 最小候选时长 `MIN_CANDIDATE_SECONDS = 1.0`；
-- 各类上限：`TRANSITION_CAP=10`、`BRITTLE_PRE_EVENT_CAP=3`、`DUCTILE_PRE_EVENT_CAP=15`、`OTHER_PRE_EVENT_CAP=4`、`POST_EVENT_CAP=4`、`NORMAL_NEGATIVE_CAP=5`。
+- 上限：`TRANSITION_CAP=10`、`BRITTLE_PRE_EVENT_CAP=3`、`DUCTILE_PRE_EVENT_CAP=15`、`OTHER_PRE_EVENT_CAP=4`、`POST_EVENT_CAP=4`、`NORMAL_NEGATIVE_CAP=5`。
 
-**每个输入视频产出什么**：
-- 对断裂且 `event_time_reliable` 的源视频：
-  - `transition`（发生断裂）：最多 10 个，按断裂事件附近窗口生成；
-  - `pre_event`（未断裂）：脆性 3 个、韧性最多 15 个、其他 4 个；
-  - `post_event`（已断裂）：最多 4 个，含整体与分区窗口；
-- 对非断裂源视频：
-  - `stable_negative`（未断裂）：最多 5 个，位置按 video_id hash 旋转选取；
-- 未夹紧/视频异常/缺少可靠 event_time 的源视频被记录到 `*_skipped_sources.json`，不产生候选。
+**四类候选语义与时间窗口计算**（代码位置：`v3_candidate_plan.py` `_raw_candidates_for_source` 约第 335 行起）：
+- 先由 `_source_kind()` 判断源视频是「断裂 / 非断裂 / 未夹紧 / 视频异常」；只有断裂且 `event_time_reliable=True` 才有 transition/pre/post；未夹紧、视频异常或缺少可靠 event_time 的源视频被写入 `*_skipped_sources.json`，不产生候选。
+- `transition`（`clip_state=发生断裂`）：窗口必须满足 `start_time < event < end_time`。对 `TARGET_DURATIONS` 中每个目标时长，取 `EVENT_POSITIONS` 的事件位置比例（如 0.5 表示事件位于窗口正中），生成标准窗口；随后按与历史 reference 的“相同帧区间 + 相同标签”兼容数量排序，选取两个循环位移（cyclic shift），合计上限 `TRANSITION_CAP=10`。若标准窗口放不下，则使用 `_adaptive_transition_window` 自适应选择一个能放下的最大时长（仍保持同一事件比例），最多额外 1 个（`transition_adaptive_cap: 1`）。
+- `pre_event`（`clip_state=未断裂`，断裂前的源）：窗口必须完全位于 `event - EVENT_GUARD_SECONDS` 之前。策略按断裂机制分三种：
+  - 脆性/爆炸性断裂 → `abrupt_end_aligned`，取最短、中位数、最长三个可行时长，上限 3；
+  - 韧性/半脆半韧断裂 → `process_front_middle_back`，对每个可行时长都在前、中、后三个位置采样，上限 15；
+  - 其他 → `other_end_aligned`，取可行时长前 4 个，上限 4。
+- `post_event`（`clip_state=已断裂`，断裂后的源）：窗口从 `event + EVENT_GUARD_SECONDS` 开始。先生成「整体」窗口；若整体时长 ≥3s 则分为 2 段，≥6s 则分为 3 段；每段都 ≥`MIN_CANDIDATE_SECONDS`，合计上限 `POST_EVENT_CAP=4`。
+- `stable_negative`（`clip_state=未断裂`，非断裂源）：对 `TARGET_DURATIONS` 中每个目标时长，以视频总时长的不同比例为中心生成窗口，中心比例按 `video_id` SHA-256 hash 对 `EVENT_POSITIONS` 做旋转选取，上限 `NORMAL_NEGATIVE_CAP=5`。
+- 同一 `(start_frame, end_frame, clip_state)` 去重；窗口实际帧数由 `_aligned_interval()` 按源视频 fps 对齐。
 
-**候选命名与目录结构**：
-- candidate_id = `<video_id>_v3_<state>_f<start_frame>-<end_frame>`；
-- 计划目录：`workspace/data/derived/metadata/candidate_plans/<plan_id>/`；
-- 子视频：`workspace/data/derived/subvideos/<plan_id>/videos/<candidate_id>.mp4`；
-- 采样帧：`workspace/data/derived/frames/<plan_id>/<candidate_id>/frame_0000.jpg` … `frame_0007.jpg`（MiniCPM `max_frames=8`）。
+**每个源视频产出多少条候选**：没有固定条数，取决于源时长、event_time 位置、断裂机制与历史 reference 匹配情况。上限由各类 CAP 控制；reference 的「兼容 exact 匹配」会影响 transition 的位移选择，但不改变上限。`statistics.json` 会记录每个 source 的实际贡献数。
+
+**candidate_id 与 plan_id 生成**：
+- `candidate_id = "{video_id}_v3_{STATE_SLUGS[state]}_f{start_frame:06d}-{end_frame:06d}"`（`STATE_SLUGS` 映射：`未断裂→pre`、`发生断裂→transition`、`已断裂→post`、`无法判断→unknown`），见 `_build_scope_candidates` 约第 474 行。
+- `plan_id = "candidate-plan-{sha256(identity)[:12]}"`，`identity` 包含 schema_version、输入 manifests/contract 的 SHA-256、以及完整 policy 字典（`v3_candidate_plan.py` `build_candidate_plan` 约第 523 行）。因此 plan 是内容寻址的：输入或策略任一变化都会产生新 plan_id。
+- `media_id = "candidate-media-{sha256(identity)[:12]}"`，`identity` 包含 plan_id、plan manifest hash、ROI media_id、processor fingerprint、encoding profile、gate version、scopes、候选集合 hash（`v3_candidate_media.py` `load_media_plan` 约第 149 行）。
+- 幂等/覆盖：`subvideo_build_plan.py` 写计划前若目录已存在，则逐文件校验 identity、input_paths、artifact hashes，完全一致才复用，否则报错（`materialize_candidate_plan` 约第 583 行）。`materialize_v3_candidate_media.py` 同样：若 `result_dir/manifest.json` 已存在则完整校验 identity、artifact hashes、receipts 及媒体文件 hash；单条候选若 receipt 已存在且媒体未漂移则复用（`_validate_complete_result`、`_process_candidate` 约第 448/388 行）。**拒绝覆盖**。
+
+**采样帧（frames）何时、如何生成，谁消费**：
+- 帧不是计划阶段生成，而是在 `materialize_v3_candidate_media.py` 的 `_process_candidate()` 中生成。对每个通过 probe 校验的 clip，调用 `MiniCPMVideoPreprocessor.sample()`（`max_frames=8`、`video_fps=2.0`），采样数 = `min(8, floor(duration * 2.0))`，再用 `np.linspace` 在解码帧中均匀取位（`pipeline/preprocessing/minicpm_preprocessor.py` 第 320–340 行）。因此帧数不一定是 8：2s Clip 约 4 帧，5s 及以上最多 8 帧。
+- 然后用 ffmpeg `select=eq(n\,{clip_frame})` 把每个采样帧导出为 `frame_{input_index:04d}.jpg`（`v3_candidate_media.py` `_export_frames` 约第 416 行）。
+- `actual_frame_mapping` 记录 `input_index → clip_frame → original_frame → 源视频 timestamp`，写入 materialized candidate 和 receipt。
+- 下游：`build_v4_1_review_queue.py` / `review_v4_candidates_app.py` 读取 materialized 结果里的帧路径；训练时 LLaMA-Factory / MiniCPM 实际看到的输入就是这组采样帧（以及对应的 `actual_frame_mapping`），而不是任意抽帧或完整子视频。
+
+**gate 规则**：
+- 第一层是 clip probe 校验：`v3_candidate_media.py` `_validate_clip_probe` 约第 282 行，检查输出帧数、分辨率、fps、时长与源一致。
+- 第二层是 actual sampling gate：`validate_actual_sampling_gate` 约第 335 行，检查：
+  - 采样帧非空且 `input_index` 连续、`clip_frame` 单调无重复、timestamp 单调；
+  - `transition` 必须至少有一帧在 event 前、一帧在 event 后；
+  - `pre_event` 若源有断裂，则所有采样 timestamp 必须 ≤ `event - EVENT_GUARD_SECONDS`；
+  - `post_event` 所有采样 timestamp 必须 ≥ `event + EVENT_GUARD_SECONDS`。
+- 未通过 gate 的候选写入 `generation_report.json` 的 `excluded` 列表，不进入 `development_materialized.json` 和 `review_queue.json`。
+- `review_queue.json` 只在 gate 通过的 development 候选中，挑选 `clip_state ∈ {"发生断裂", "已断裂"}` 的条目（`v3_candidate_media.py` `MANUAL_REVIEW_STATES`，约第 34 行）。
+
+**candidate_media_results 与 candidate_plans/subvideos 的关系**：
+- `candidate_plans/<plan_id>/`：纯元数据计划，无媒体，可以被多次物化（例如换 processor 或子集）但本身不绑定处理器身份。
+- `subvideos/<plan_id>/videos/` 与 `frames/<plan_id>/<candidate_id>/`：实际媒体文件，按 plan_id 组织。
+- `candidate_media_results/<media_id>/`：一次具体物化运行的完整证据包，包括 identity、每条候选的 receipt、gate 结果、`actual_frame_mapping`、视频/帧 hash、以及汇总 manifest。它是 plan → review queue / training release 之间的桥接层。
+
+**运行机器**：
+- `subvideo_build_plan.py` 是轻量 JSON 计算，Mac 或训练机均可运行；`--dry-run` 模式下不创建目录，只打印身份与统计。
+- `materialize_v3_candidate_media.py` 需要 ffmpeg、MiniCPM model、大视频读写，且实际调用 transformers processor，**设计在训练机/Linux 上运行**；Mac 只能跑 `--check-only`（验证输入、源媒体、processor fingerprint 和输出身份，不生成媒体）。
+
+**现状：哪个 plan_id/media_id 是当前 release 的上游**：
+- 基础不可变发布 `v4.1.0-760050fad303` 的上游是默认脚本指向的 `candidate-plan-ce36b9226be5` + `candidate-media-8de972530561`（`materialize_v3_candidate_media.py` 默认 `DEFAULT_PLAN_ID`；RUNBOOK 与 `audit_v4_1_effective_views.py` 默认值交叉印证）。`v3` 命名前缀即来自此脚本。
+- 当前活跃 Phase 2 release `v4.1.0-ecb5aeb9657c` 额外引入了 410 条实验候选，其产物路径指向 `candidate-plan-v41exp-c99cd2894bb0` + `candidate-media-b442478052cd`（`docs/results/v4_1_phase1_effective_view_audit/audit_manifest.json`、`pipeline/scripts/build_v4_1_phase2_training_release.py` 默认值）。**仓库当前脚本中未找到生成 `v41exp` 候选的入口**（`grep -R v41exp` 仅在结果文档与测试 fixture 中出现），这是第 3 步脚本与当前最新发布上游之间的一个未验证缺口。
 
 **与审查步骤的接口**：
-- `materialize_v3_candidate_media.py` 物化后会生成 `candidate_media_results/<media_id>/review_queue.json`，其中只包含 development 中 `clip_state` 为「发生断裂」或「已断裂」的候选；
+- `materialize_v3_candidate_media.py` 物化后产出 `candidate_media_results/<media_id>/review_queue.json`，其中只包含 development 中 gate 通过且 `clip_state` 为「发生断裂」或「已断裂」的候选；
 - `build_v4_1_review_queue.py` 读取 `development_materialized.json` + `manifest.json`，按 V4.1 contract 校验并生成 `workspace/data/derived/metadata/review_queues/<queue_id>/review_queue.json`；
 - `review_v4_candidates_app.py` 消费该 queue，把人工决定写入 `workspace/data/derived/metadata/review_decisions/<queue_id>/<batch_id>/decisions.json`；
 - `build_v4_1_training_release.py` 汇总 approved/corrected 决定，生成不可覆盖的 `workspace/data/releases/<release-id>/`。
@@ -229,3 +267,4 @@ Prompt revision 注册 + 固定 Prompt 训练集构建
 - 当前唯一发布模型 `v4.1-agent-pipeline-fold0-r1` 已通过工程链路，但 Stage B/D/G 质量门未通过，不是 production-ready 最终模型。
 - 最新三折实验 `v4.1-prompt-concise-cv-v1-seed3411` 已跑通全流程，但出现类别坍缩、契约非法和断裂状态召回不足，未晋级 release。
 - 本机无法运行训练、GPU 推理和完整评测；缺少产物时应标记为“证据不足”。
+- 第 3 步当前仓库脚本（`subvideo_build_plan.py` / `materialize_v3_candidate_media.py`）可验证默认 `candidate-plan-ce36b9226be5` / `candidate-media-8de972530561` 的生成逻辑，但活跃 Phase 2 release 额外使用的 `candidate-plan-v41exp-c99cd2894bb0` / `candidate-media-b442478052cd` 的生成入口未在当前脚本/模块中找到，属于未验证缺口。
