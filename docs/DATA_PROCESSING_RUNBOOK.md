@@ -8,7 +8,7 @@
 - 代码根目录：`<repo>`（本仓库根目录）。所有命令均从 `<repo>` 执行。
 - 机器分工：
   - **Mac（uv 环境）**：ROI 标注、人工审查、轻量校验与队列构建。
-  - **训练机（Conda `agent` 环境）**：ROI 视频物化、候选媒体物化、重计算、训练发布构建。
+  - **训练机（Conda  环境）**：ROI 视频物化、候选媒体物化、重计算、训练发布构建。
 - 当前契约：`pipeline/contracts/tensile_vlm_v4_1.json`。
 - Prompt 管理：`pipeline/prompt_control/active_prompt.yaml`。
 
@@ -37,7 +37,7 @@ workspace/data/
     └── video_meta.json  # 源视频元数据（由源数据提供或从旧系统迁移）
 ```
 
-> 注意：`source/videos`、`source/annotations`、`source/splits` 与 `derived/metadata/video_meta.json` 是下游所有脚本的输入前提。
+> 注意：`source/videos`、`source/annotations`、`source/splits` 是生成快照的前提；生成 source snapshot 后，下游脚本以 `derived/metadata/source_snapshots/<id>/video_meta.json` 为权威视频元数据输入。
 
 ## 3. 流程总览
 
@@ -50,16 +50,20 @@ flowchart LR
   E --> F[6. 产物索引导出]
 ```
 
-六步一句话：先校验并放置源数据，再固定 ROI 并裁剪源视频，随后生成候选片段与实际帧，再经人工审查后构建不可覆盖的训练发布，最后导出产物索引。
+六步一句话：先校验、放置源数据并生成 source/split 快照，再固定 ROI 并裁剪源视频，随后生成候选片段与实际帧，再经人工审查后构建不可覆盖的训练发布，最后导出产物索引。
 
 ## 4. 逐步操作
 
 以下命令中的 `<...>` 为每次运行实际生成的 ID 或路径，由上游脚本输出或 `workspace/data/INDEX.md` / 各集合 `index.json` 查询得到。
 
-### Step 1：迁移并校验源数据
+### Step 1：迁移源数据并生成快照
+
+本步骤分为两段：① 把源数据放置到 `workspace/data` 并做迁移校验；② 生成 source/split 快照。只有完成 ① 后才能进入 ②。
+
+#### 1.1 数据放置与迁移校验（前置）
 
 - **目的**：把源数据物理复制到项目内 `workspace/data/`，并校验完整性。
-- **机器**：数据所在机器（通常是训练机，Conda `agent` 环境）。
+- **机器**：数据所在机器（通常是训练机，Conda  环境）。
 - **命令**：
   ```bash
   # 复制并校验
@@ -76,9 +80,42 @@ flowchart LR
   ```
 - **产物位置**：`workspace/data/source/{videos,annotations,splits}`。
 - **验收/检查**：校验通过会输出 JSON，包含文件数、总字节数、SHA-256 一致性。失败时保留旧根，清理不完整副本后重试，禁止用软链接。
-- **进入下一步条件**：两次校验均成功，且 `derived/metadata/video_meta.json` 已就位。
+- **进入下一步条件**：两次校验均成功，源数据已就位。
+
+#### 1.2 快照生成
+
+- **目的**：物化不可变的 source snapshot 与 split snapshot（含视频元数据与训练/测试划分）。
+- **机器**：训练机（Conda  环境）。
+- **命令**：
+  ```bash
+  # 仅校验源数据身份与拆分计划
+  python pipeline/scripts/rebuild_data.py run \
+    --source-data-root workspace/data \
+    --run-root workspace/data-staging/<run-id> \
+    --source-only \
+    --check-only
+
+  # 真正物化快照到 staging run-root
+  python pipeline/scripts/rebuild_data.py run \
+    --source-data-root workspace/data \
+    --run-root workspace/data-staging/<run-id> \
+    --source-only
+
+  # 把 staging 产物晋级到 workspace/data
+  python pipeline/scripts/rebuild_data.py promote \
+    --run-root workspace/data-staging/<run-id>
+  ```
+- **产物位置**：
+  - `workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/`
+    - 含 `video_meta.json`、`source_manifest.json` 等
+  - `workspace/data/derived/metadata/split_snapshots/<split-snapshot-id>/`
+    - 含 `fold_0/1/2` 的 `train.json` / `val.json` 以及 `test.json`
+- **验收/检查**：`run --source-only` 输出 `source_snapshotted` 状态、`source_snapshot_id`、`split_snapshot_id`；快照目录已生成且 `source_snapshots/<id>/` 含 `video_meta.json`，`split_snapshots/<id>/` 含 splits。
+- **进入下一步条件**：已知 `<source-snapshot-id>` 与 `<split-snapshot-id>`，且快照已晋级到 `workspace/data`。
 
 ### Step 2：ROI 标注、冻结与物化
+
+> 注意：本步骤使用的 `video_meta.json` 来自 Step 1 生成的 source snapshot（`workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json`），不再使用旧路径 `derived/metadata/video_meta.json`。
 
 #### 2.1 标注 ROI
 
@@ -88,7 +125,7 @@ flowchart LR
   ```bash
   uv run streamlit run pipeline/scripts/roi_annotation_app.py -- \
     --data-root workspace/data \
-    --metadata workspace/data/derived/metadata/video_meta.json \
+    --metadata workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --output workspace/data/derived/metadata/roi_decisions.json
   ```
 - **产物位置**：`workspace/data/derived/metadata/roi_decisions.json`。
@@ -119,14 +156,14 @@ flowchart LR
   python pipeline/scripts/roi_materialize_videos.py \
     --data-root workspace/data \
     --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
-    --video-meta workspace/data/derived/metadata/video_meta.json \
+    --video-meta workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --check-only
 
   # 小样本试跑（必须指定隔离目录）
   python pipeline/scripts/roi_materialize_videos.py \
     --data-root workspace/data \
     --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
-    --video-meta workspace/data/derived/metadata/video_meta.json \
+    --video-meta workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --video-ids video_0001 video_0008 \
     --output-root workspace/data/derived/roi_videos/sample_roi_videos \
     --workers 1
@@ -135,7 +172,7 @@ flowchart LR
   python pipeline/scripts/roi_materialize_videos.py \
     --data-root workspace/data \
     --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
-    --video-meta workspace/data/derived/metadata/video_meta.json \
+    --video-meta workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --workers 2
   ```
 - **产物位置**：`workspace/data/derived/roi_videos/<roi-media-id>/`。
@@ -174,7 +211,7 @@ flowchart LR
 #### 3.2 物化候选媒体
 
 - **目的**：生成候选 MP4、实际 MiniCPM 抽帧和门禁结果。
-- **机器**：训练机（Conda `agent` 环境，GPU/模型推理）。
+- **机器**：训练机（Conda环境，GPU/模型推理）。
 - **命令**：
   ```bash
   # 先只校验输入与身份
@@ -274,8 +311,12 @@ flowchart LR
 ### Step 5：构建训练发布
 
 - **目的**：把审查决定物化为不可覆盖的训练 release。
-- **机器**：训练机（Conda `agent` 环境）。
+- **机器**：训练机（Conda  环境）。
 - **命令**：
+  > 参数来源说明：
+  >
+  > - `--source-snapshot` / `--split-snapshot` 分别指向 Step 1 生成的 source/split 快照目录。
+  > - `--source-tree-sha256` / `--split-tree-sha256` 为对应快照目录的内容树哈希；`release_build.py` 内部会通过 `tree_inventory` 重新计算并校验。手动获取时可查看 orchestrator staging 目录 `control/rebuild.json` 中的 `source_snapshot_tree_sha256` / `split_snapshot_tree_sha256`，或使用 `pipeline.data_rebuild.tree_inventory` 计算。
   ```bash
   python pipeline/scripts/release_build.py \
     --data-root workspace/data \
@@ -328,26 +369,27 @@ flowchart LR
   python pipeline/scripts/build_artifact_index.py --data-root /path/to/data
   ```
 - **产物位置**：`workspace/data/INDEX.md`。
-- **验收/检查**：`INDEX.md` 列出 source/split 快照、ROI manifest、候选媒体、队列、决定、release 等集合。
+- **验收/检查**：`INDEX.md` 当前列出 `source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos` 四类集合；候选媒体、队列、决定、release 等集合后续接入。
 - **进入下一步条件**：索引生成成功，可供下游查找 artifact ID。
 
 ## 5. 产物索引说明
 
-- 每个产物集合目录（如 `roi_manifests`、`candidate_media_results`、`review_queues`、`review_decisions`、`releases`）会自动维护各自的 `index.json`。
+- 当前 `build_artifact_index.py` 维护并读取以下 4 个产物集合的 `index.json`：`source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos`。
 - `pipeline/scripts/build_artifact_index.py` 读取这些 `index.json`，生成 `workspace/data/INDEX.md` 全局总览。
-- 下游命令中所有 `<...-id>` 都可以从对应集合的 `index.json` 或 `INDEX.md` 查到。
+- 候选媒体、审查队列、决定、release 等其他集合尚未接入全局索引，将在后续版本中支持。
+- 下游命令中 `<...-id>` 可从已接入集合的 `index.json` 或 `INDEX.md` 查到。
 
 ## 6. 故障处理
 
-| 现象 | 含义 | 处理 |
-| --- | --- | --- |
-| `DataRootError: ... 必须位于 ...` | 输出路径不在受管集合目录内 | 检查 `--output-root` 是否在 `workspace/data/derived/metadata/<collection>` 或 `workspace/data/releases` 下。 |
-| `目标目录已存在` / 拒绝覆盖 | releases 与冻结产物不可覆盖 | 若确实要重新生成，使用新的 `<run-id>` / `<release-id>`，不要删除旧目录。 |
-| `identity_sha256` / `tree_sha256` 不匹配 | 上游身份漂移 | 重新确认输入 artifact ID 与 hash；不要手动改冻结文件。 |
-| `staging state 的 schema/layout/root/Git 身份不匹配` | `rebuild_data.py` 恢复时 Git commit 或目录结构不一致 | 在同一 Git 版本下用同一 `run-root` 恢复，否则新建 run-root。 |
-| `视频 metadata 不存在` | `derived/metadata/video_meta.json` 缺失 | 先补齐源数据或迁移旧 metadata。 |
-| `ffmpeg/ffprobe 未找到` | 训练机缺少媒体工具 | 安装 ffmpeg 并确保在 PATH 中。 |
-| 审查 UI 中候选 `remaining > 0` | 还有未审核候选 | 继续审查，直到全部形成终态。 |
+| 现象                                             | 含义                                        | 处理                                                                                                   |
+| ---------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `DataRootError: ... 必须位于 ...`                  | 输出路径不在受管集合目录内                             | 检查 `--output-root` 是否在 `workspace/data/derived/metadata/<collection>` 或 `workspace/data/releases` 下。 |
+| `目标目录已存在` / 拒绝覆盖                               | releases 与冻结产物不可覆盖                        | 若确实要重新生成，使用新的 `<run-id>` / `<release-id>`，不要删除旧目录。                                                   |
+| `identity_sha256` / `tree_sha256` 不匹配          | 上游身份漂移                                    | 重新确认输入 artifact ID 与 hash；不要手动改冻结文件。                                                                 |
+| `staging state 的 schema/layout/root/Git 身份不匹配` | `rebuild_data.py` 恢复时 Git commit 或目录结构不一致 | 在同一 Git 版本下用同一 `run-root` 恢复，否则新建 run-root。                                                          |
+| `视频 metadata 不存在`                              | source snapshot 中 `video_meta.json` 缺失    | 回到 Step 1 检查源数据并重新生成 source snapshot。                                                                |
+| `ffmpeg/ffprobe 未找到`                           | 训练机缺少媒体工具                                 | 安装 ffmpeg 并确保在 PATH 中。                                                                               |
+| 审查 UI 中候选 `remaining > 0`                      | 还有未审核候选                                   | 继续审查，直到全部形成终态。                                                                                       |
 
 ## 7. 不该做的事（速查）
 
@@ -359,7 +401,7 @@ flowchart LR
 
 ## 8. 编排器模式（可选）
 
-如果你希望用一个命令跑隔离的完整重建，可以使用 orchestrator：
+如果你希望用一个命令跑隔离重建，可以使用 orchestrator：
 
 ```bash
 # 首次或完整重建
@@ -376,9 +418,20 @@ python pipeline/scripts/rebuild_data.py run \
   --source-only \
   --check-only
 
+# 物化 source/split 快照到 staging（不进入后续 ROI/审查/发布）
+python pipeline/scripts/rebuild_data.py run \
+  --source-data-root workspace/data \
+  --run-root workspace/data-staging/<run-id> \
+  --source-only
+
 # 把 staging 产物晋级到 workspace/data
 python pipeline/scripts/rebuild_data.py promote \
   --run-root workspace/data-staging/<run-id>
 ```
 
-> 注意：同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
+> 注意：
+>
+> - `run --source-only` 会真实生成 source/split 快照，但产物留在 `run-root` 的 staging data 中，需要执行 `promote` 才能落入 `workspace/data`。
+> - `run --source-only --check-only` 仅做校验，不写入快照。
+> - 同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
+
