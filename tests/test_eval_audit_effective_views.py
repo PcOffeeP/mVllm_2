@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.audit_v4_1_effective_views import (
+from finetune.eval_audit_effective_views import (
     EffectiveViewAuditError,
     effective_frame_identity,
     near_duplicate_clusters,

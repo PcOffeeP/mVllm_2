@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from finetune.monitor_training_run import latest_trainer_state
+from finetune.train_monitor_run import latest_trainer_state
 
 
 def _write_state(path: Path, step: int) -> None:

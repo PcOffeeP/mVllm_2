@@ -1,7 +1,7 @@
 import copy
 from pathlib import Path
 
-import scripts.validate_delivery_components as validator
+import scripts.serve_validate_delivery as validator
 
 
 def test_current_delivery_components_are_internally_valid() -> None:

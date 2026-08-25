@@ -3,7 +3,7 @@ import base64
 import pytest
 
 from pipeline.production_contract import load_production_contract, production_contract_hash
-from pipeline.scripts.smoke_tensile_vlm_service import (
+from pipeline.scripts.serve_smoke import (
     build_analysis_payload,
     validate_analysis_response,
     validate_preflight,

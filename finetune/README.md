@@ -46,7 +46,7 @@ python -m pipeline.prompt_control publish \
 在训练机上从冻结的 coverage-first sampling 生成语义实验输入：
 
 ```bash
-python finetune/build_v4_1_fixed_prompt_dataset.py
+python finetune/train_build_dataset.py
 ```
 
 该命令校验 source sampling 的全部受管文件，只保留 seed3411 的视频多重集、顺序和四字段
@@ -54,7 +54,7 @@ assistant 标签，并把完整 Prompt snapshot 写入同一实验的 `input/`�
 语义配置：
 
 ```bash
-python finetune/prepare_v4_1_fixed_prompt_run.py
+python finetune/train_prepare_run.py
 ```
 
 实验 ID 是 `v4.1-prompt-minimal-v1-seed3411`。Git 配置位于同名
@@ -65,7 +65,7 @@ python finetune/prepare_v4_1_fixed_prompt_run.py
 严格评测必须显式使用同一个 experiment contract：
 
 ```bash
-python -m finetune.run_v4_1_evaluation \
+python -m finetune.eval_run \
   --fold 0 \
   --release-id v4.1.0-ecb5aeb9657c \
   --model-dir /path/to/seed3411_merged \
@@ -125,7 +125,7 @@ Checkpoint 保留以“训练任务是否已完成分析”为边界：
 新训练不得在任务级分析完成前自动删除 checkpoint。管理入口：
 
 ```bash
-python scripts/manage_checkpoints.py plan
+python scripts/serve_manage_checkpoints.py plan
 ```
 
 ## 环境
@@ -272,7 +272,7 @@ results/v4_1_0_760050fad303_20260723/three_fold_validation/
 单独运行某个 fold：
 
 ```bash
-python -m finetune.run_v4_1_evaluation \
+python -m finetune.eval_run \
   --fold 0 \
   --model-dir /path/to/fold0_merged \
   --out-dir finetune/results/<run>/fold0

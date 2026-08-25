@@ -4,7 +4,7 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "pipeline" / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-import freeze_roi_decisions as cli
+import roi_freeze_decisions as cli
 
 
 def test_parser_defaults():

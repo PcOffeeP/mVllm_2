@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from pipeline.scripts import review_v4_candidates_app as app
+from pipeline.scripts import review_candidates_app as app
 
 
 class _Column:

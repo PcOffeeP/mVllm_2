@@ -6,7 +6,7 @@ V4.1 真值。
 ## 正式入口
 
 ```bash
-python -m finetune.audit_v4_1_effective_views \
+python -m finetune.eval_audit_effective_views \
   --test-materialized \
   /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/\
 test_audit_candidate_media_results/candidate-media-53d068569a09/\

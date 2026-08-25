@@ -20,9 +20,9 @@ from pipeline.data_rebuild import (
     tree_inventory,
     update_state,
 )
-import pipeline.scripts.rebuild_v4_1_data as rebuild_cli
+import pipeline.scripts.rebuild_data as rebuild_cli
 import pipeline.data_rebuild as rebuild_module
-from pipeline.scripts.rebuild_v4_1_data import (
+from pipeline.scripts.rebuild_data import (
     _artifact_bytes,
     _candidate_space_requirement,
     _estimate_candidate_media_bytes,

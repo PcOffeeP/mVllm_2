@@ -81,7 +81,7 @@ JSON/contract 合法率、四字段正确率、joint correct、状态召回和�
 | evaluation-time repository HEAD | `0225d934fc6ad62394df8e2d61eb2a80a50bfc34` |
 
 从 frozen config commit 到 evaluation-time HEAD，
-`finetune/run_v4_1_evaluation.py`、基础 V4.1 contract、模型推理 runtime 和 Prompt
+`finetune/eval_run.py`、基础 V4.1 contract、模型推理 runtime 和 Prompt
 control 目录没有 diff。评测期间 evaluator 和 contract 没有随其他提交漂移。
 
 三折配置位于：

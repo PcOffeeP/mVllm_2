@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from finetune.build_v4_1_source_aware_3k import (
+from finetune.train_build_source_aware_dataset import (
     COVERAGE_FIRST_POLICY_VERSION,
     HARD_NEGATIVES_PER_EPOCH,
     ROWS_PER_EPOCH,

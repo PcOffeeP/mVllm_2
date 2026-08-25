@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-import pipeline.scripts.rebuild_v4_1_data as rebuild_cli
+import pipeline.scripts.rebuild_data as rebuild_cli
 from pipeline.current_data import current_data_context
 from pipeline.source_bootstrap import (
     MAPPING_COLUMNS,
@@ -100,7 +100,7 @@ def _run_rebuild(
         sys,
         "argv",
         [
-            "rebuild_v4_1_data.py",
+            "rebuild_data.py",
             "run",
             "--run-root",
             str(run_root),

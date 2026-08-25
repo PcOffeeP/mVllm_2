@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from finetune.build_v4_1_source_aware_3k import (  # noqa: E402
+from finetune.train_build_source_aware_dataset import (  # noqa: E402
     SourceAware3kError,
     _canonical_bytes,
     _pretty_bytes,

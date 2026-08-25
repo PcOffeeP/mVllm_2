@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from pipeline.scripts.migrate_project_local_workspace import (
+from pipeline.scripts.source_migrate_workspace import (
     WorkspaceMigrationError,
     inventory,
     migrate,

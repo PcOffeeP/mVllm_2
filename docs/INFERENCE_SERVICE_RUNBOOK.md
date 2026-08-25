@@ -38,12 +38,12 @@ git status --short
 nvidia-smi
 ss -ltnp | grep ':8002 ' || true
 
-python3 scripts/manage_model_registry.py validate --verify-hashes
+python3 scripts/serve_manage_model_registry.py validate --verify-hashes
 
 /home/liuyang/miniconda3/envs/cpm45/bin/python \
   -m pytest \
   tests/test_model_registry.py \
-  tests/test_delivery_components.py \
+  tests/test_serve_validate_delivery.py \
   tests/test_v4_1_service_contract.py -q
 ```
 
@@ -152,7 +152,7 @@ source finetune/run_logs/v4_1_agent_pipeline_fold0_r1/service.env
 set +a
 
 /home/liuyang/miniconda3/envs/cpm45/bin/python \
-  -m pipeline.scripts.smoke_tensile_vlm_service \
+  -m pipeline.scripts.serve_smoke \
   --base-url http://127.0.0.1:8002 \
   --video data/archive/.compat/workspace/data/08_incremental_review/round_01/03_subvideos/video_0029_focus_3s_80pct.mp4 \
   --contract-version tensile-vlm/v4.1
