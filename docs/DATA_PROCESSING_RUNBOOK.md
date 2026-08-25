@@ -12,7 +12,7 @@
 全链路 clean-room 重建统一使用：
 
 ```bash
-python pipeline/scripts/rebuild_v4_1_data.py \
+python pipeline/scripts/rebuild_data.py \
   --source-data-root workspace/data \
   --run-root workspace/data-staging/<run-id> \
   --roi-mode reuse \
@@ -23,7 +23,7 @@ python pipeline/scripts/rebuild_v4_1_data.py \
 人工完成后使用同一参数恢复。验收完成后，单独执行：
 
 ```bash
-python pipeline/scripts/rebuild_v4_1_data.py promote \
+python pipeline/scripts/rebuild_data.py promote \
   --run-root workspace/data-staging/<run-id>
 ```
 
@@ -110,8 +110,8 @@ workspace/data/
 ## 第一步：迁移或验证项目内数据
 
 ```bash
-python pipeline/scripts/migrate_project_local_workspace.py --copy
-python pipeline/scripts/migrate_project_local_workspace.py
+python pipeline/scripts/source_migrate_workspace.py --copy
+python pipeline/scripts/source_migrate_workspace.py
 ```
 
 必须满足：
@@ -135,8 +135,8 @@ streamlit run pipeline/scripts/roi_annotation_app.py -- \
   --metadata workspace/data/derived/metadata/video_meta.json \
   --output workspace/data/derived/metadata/roi_decisions.json
 
-uv run python pipeline/scripts/freeze_roi_decisions.py --check-only
-uv run python pipeline/scripts/freeze_roi_decisions.py
+uv run python pipeline/scripts/roi_freeze_decisions.py --check-only
+uv run python pipeline/scripts/roi_freeze_decisions.py
 ```
 
 人工必须确认关键时刻的上/下夹具、完整试样和位置判断信息均被保留。`fixed_roi` 使用
@@ -145,16 +145,16 @@ uv run python pipeline/scripts/freeze_roi_decisions.py
 ### 物化 ROI 视频
 
 ```bash
-uv run python pipeline/scripts/materialize_roi_videos.py --check-only
+uv run python pipeline/scripts/roi_materialize_videos.py --check-only
 
 # 首次先输出到隔离的小样本目录
-uv run python pipeline/scripts/materialize_roi_videos.py \
+uv run python pipeline/scripts/roi_materialize_videos.py \
   --video-ids video_0001 video_0008 video_0100 \
   --output-root workspace/data/derived/sample_roi_videos \
   --workers 1
 
 # 小样本通过后再完整生成
-uv run python pipeline/scripts/materialize_roi_videos.py --workers 2
+uv run python pipeline/scripts/roi_materialize_videos.py --workers 2
 ```
 
 只有最终 `manifest.json` 出现，才表示该批次完整完成。单条媒体通过分辨率、帧数、帧率
@@ -170,17 +170,17 @@ uv run python pipeline/scripts/materialize_roi_videos.py --workers 2
 uv run python pipeline/scripts/subvideo_build_plan.py --dry-run
 uv run python pipeline/scripts/subvideo_build_plan.py
 
-uv run python pipeline/scripts/materialize_v3_candidate_media.py --check-only
+uv run python pipeline/scripts/subvideo_materialize_media.py --check-only
 
 # 首次用隔离目录检查真实 MP4、帧映射和门禁
-uv run python pipeline/scripts/materialize_v3_candidate_media.py \
+uv run python pipeline/scripts/subvideo_materialize_media.py \
   --limit 3 \
   --video-output-root workspace/data/derived/sample_candidate_media/videos \
   --frame-output-root workspace/data/derived/sample_candidate_media/frames \
   --result-root workspace/data/derived/sample_candidate_media/results
 
 # 小样本通过后再完整生成
-uv run python pipeline/scripts/materialize_v3_candidate_media.py
+uv run python pipeline/scripts/subvideo_materialize_media.py
 ```
 
 候选只有在 MP4、解码、真实 MiniCPM 抽帧、时间映射和状态门禁全部通过后才可进入下游。
@@ -196,7 +196,7 @@ V4.1 队列同时包含：
 普通稳定未断裂候选经过自动门禁后不进入人工队列。
 
 ```bash
-python pipeline/scripts/build_v4_1_review_queue.py \
+python pipeline/scripts/review_build_queue.py \
   --materialized \
     workspace/data/derived/metadata/v3/candidate_media_results/\
 candidate-media-8de972530561/development_materialized.json \
@@ -214,7 +214,7 @@ candidate-media-8de972530561/manifest.json
 ## 第四步：以帧画面为主进行人工审查
 
 ```bash
-streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
+streamlit run pipeline/scripts/review_candidates_app.py -- \
   --queue \
     workspace/data/derived/metadata/v4_1/review_queues/\
 v4-1-review-4a449c8d1193/review_queue.json \
@@ -242,7 +242,7 @@ v4-1-review-4a449c8d1193/review_queue.json \
 从同一冻结审计分别生成两个内容绑定的队列：
 
 ```bash
-python pipeline/scripts/build_v4_1_phase2_review_queues.py \
+python pipeline/scripts/review_build_phase2_queues.py \
   --audit-manifest \
     workspace/data/derived/metadata/v4_1/effective_view_audits/\
 phase1_verified/audit_manifest.json
@@ -252,12 +252,12 @@ phase1_verified/audit_manifest.json
 校验通过的上一轮审查，必须先以上一轮为基准生成内容寻址的分流制品：
 
 ```bash
-python pipeline/scripts/route_v4_1_review_from_history.py \
+python pipeline/scripts/review_route_from_history.py \
   --queue <development_review_queue.json> \
   --previous-decisions <previous_frozen_decisions.json> \
   --current-draft <current_full_queue_draft.json>
 
-streamlit run pipeline/scripts/review_v4_candidates_app.py -- \
+streamlit run pipeline/scripts/review_candidates_app.py -- \
   --queue <development_review_queue.json> \
   --routing-manifest <routing_manifest.json> \
   --reviewer-id <reviewer-id>
@@ -314,7 +314,7 @@ sealed 推理。
 新语义发布入口必须显式绑定 source/split snapshot 和审核输入：
 
 ```bash
-python pipeline/scripts/build_v4_1_training_release.py \
+python pipeline/scripts/release_build.py \
   --source-snapshot workspace/data/derived/metadata/source_snapshots/<source-id> \
   --split-snapshot workspace/data/derived/metadata/split_snapshots/<split-id> \
   --source-tree-sha256 <state-frozen-source-tree-sha256> \
@@ -330,9 +330,9 @@ python pipeline/scripts/build_v4_1_training_release.py \
 阶段 2 development 发布必须先执行完整 preflight，再创建不可覆盖目录：
 
 ```bash
-python pipeline/scripts/build_v4_1_phase2_training_release.py --validate-only
-python pipeline/scripts/build_v4_1_phase2_training_release.py
-python finetune/validate_v4_1_release.py \
+python pipeline/scripts/release_build_phase2.py --validate-only
+python pipeline/scripts/release_build_phase2.py
+python finetune/release_validate.py \
   --release-id v4.1.0-ecb5aeb9657c \
   --verify-media
 ```
@@ -408,8 +408,8 @@ python -m pipeline.prompt_control validate \
   --source pipeline/prompt_control/active_prompt.yaml
 python -m pipeline.prompt_control publish \
   --source pipeline/prompt_control/active_prompt.yaml
-python finetune/build_v4_1_fixed_prompt_dataset.py
-python finetune/prepare_v4_1_fixed_prompt_run.py
+python finetune/train_build_dataset.py
+python finetune/train_prepare_run.py
 ```
 
 实验 ID 固定为 `v4.1-prompt-minimal-v1-seed3411`。训练、合并、评测命令以

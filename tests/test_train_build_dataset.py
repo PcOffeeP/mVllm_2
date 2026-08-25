@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from finetune.build_v4_1_fixed_prompt_dataset import build_fixed_prompt_dataset
-from finetune.build_v4_1_source_aware_3k import SourceAware3kError
-from finetune.prepare_v4_1_fixed_prompt_run import prepare_fixed_prompt_run
-from finetune.run_v4_1_evaluation import _load_contract
+from finetune.train_build_dataset import build_fixed_prompt_dataset
+from finetune.train_build_source_aware_dataset import SourceAware3kError
+from finetune.train_prepare_run import prepare_fixed_prompt_run
+from finetune.eval_run import _load_contract
 from pipeline.prompt_control import load_experiment_contract
 from pipeline.prompt_control.core import sha256_file
 from pipeline.project_workspace import CURRENT_EXPERIMENT_ID

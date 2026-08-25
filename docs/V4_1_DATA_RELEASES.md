@@ -70,8 +70,8 @@ workspace/
 首次从旧根迁移时执行：
 
 ```bash
-python pipeline/scripts/migrate_project_local_workspace.py --copy
-python pipeline/scripts/migrate_project_local_workspace.py
+python pipeline/scripts/source_migrate_workspace.py --copy
+python pipeline/scripts/source_migrate_workspace.py
 ```
 
 迁移会把旧 `training_releases/` 物理复制为 `releases/`，并逐文件比较数量、字节数和

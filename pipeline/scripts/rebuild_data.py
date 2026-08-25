@@ -719,7 +719,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             artifacts={
                 "review_queue": str(queue_path),
                 "review_command": (
-                    "streamlit run pipeline/scripts/review_v4_candidates_app.py -- "
+                    "streamlit run pipeline/scripts/review_candidates_app.py -- "
                     f"--data-root {rebuild.root} --queue {queue_path}"
                 ),
             },

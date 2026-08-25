@@ -52,9 +52,9 @@ source、密封测试来源、有效帧签名和近重复视图隔离门均通�
 训练机实际执行：
 
 ```bash
-python pipeline/scripts/build_v4_1_phase2_training_release.py --validate-only
-python pipeline/scripts/build_v4_1_phase2_training_release.py
-python finetune/validate_v4_1_release.py \
+python pipeline/scripts/release_build_phase2.py --validate-only
+python pipeline/scripts/release_build_phase2.py
+python finetune/release_validate.py \
   --release-id v4.1.0-ecb5aeb9657c \
   --verify-media
 ```

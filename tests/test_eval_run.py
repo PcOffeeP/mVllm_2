@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-import finetune.run_v4_1_evaluation as evaluation_cli
-from finetune.run_v4_1_evaluation import (
+import finetune.eval_run as evaluation_cli
+from finetune.eval_run import (
     evaluation_succeeded,
     load_validation_samples,
     parse_args,
@@ -58,7 +58,7 @@ def test_cli_accepts_explicit_release_contract_hash(
         sys,
         "argv",
         [
-            "run_v4_1_evaluation.py",
+            "eval_run.py",
             "--fold",
             "0",
             "--model-dir",
@@ -80,7 +80,7 @@ def test_main_forwards_release_contract_hash_before_model_loading(
         sys,
         "argv",
         [
-            "run_v4_1_evaluation.py",
+            "eval_run.py",
             "--fold",
             "0",
             "--model-dir",

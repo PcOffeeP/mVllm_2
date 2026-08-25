@@ -48,7 +48,7 @@
 
 1. 脚本命名：`<阶段前缀>_<动作>_<对象>.py`，阶段前缀对应项目主流程：
    - `source_`（初始数据划分）、`roi_`（ROI 标注/冻结/物化）、`subvideo_`（子视频生成）、`review_`（人工审查）、`release_`（数据发布）、`train_`（Prompt 准备与训练）、`eval_`（测评）、`serve_`（模型发布与推理）；
-   - 动作用词表：build_ / prepare_ / run_ / validate_ / audit_ / freeze_ / materialize_ / monitor_ / smoke_ / route_；
+   - 动作用词表：build_ / prepare_ / run_ / validate_ / audit_ / freeze_ / materialize_ / monitor_ / smoke_ / route_ / rebuild_ / manage_；
    - 脚本服务哪个契约由代码内加载的契约文件声明，不由文件名声明；
    - 被取代的脚本直接删除（git 历史即归档）；
    - 每个脚本目录配同目录 SCRIPTS.md 索引。
