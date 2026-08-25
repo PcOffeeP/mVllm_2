@@ -19,8 +19,8 @@ from pipeline.roi_media import (  # noqa: E402
     materialize_plan,
     require_tools,
 )
+from pipeline import artifact_resolver
 from pipeline.current_data import data_context_from_arg  # noqa: E402
-from pipeline.roi_manifest import ROI_MANIFEST_SCHEMA_VERSION  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -28,9 +28,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="从冻结 ROI 清单生成保持原时间轴的 3:4 源视频"
     )
     parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--roi-manifest", type=Path)
-    parser.add_argument("--video-meta", type=Path)
-    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--roi-manifest", type=Path, default=None)
+    parser.add_argument("--video-meta", type=Path, default=None)
+    parser.add_argument("--output-root", type=Path, default=None)
     parser.add_argument("--video-ids", nargs="+", default=None)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument(
@@ -41,18 +41,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _resolve_inputs(args: argparse.Namespace, context) -> None:
+    args.roi_manifest = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("roi_manifests"),
+        args.roi_manifest,
+    )
+    args.video_meta = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("source_snapshots"),
+        args.video_meta,
+        artifact_subpath="video_meta.json",
+    )
+    if args.output_root is None:
+        args.output_root = context.roi_videos
+
+
 def main() -> int:
     args = build_parser().parse_args()
     context = data_context_from_arg(PROJECT_ROOT, args.data_root)
-    args.roi_manifest = args.roi_manifest or (
-        context.metadata_artifact_path(
-            "roi_manifests",
-            "roi-manifest-01be8c1ebb2d",
-            expected_schema=ROI_MANIFEST_SCHEMA_VERSION,
-        )
-    )
-    args.video_meta = args.video_meta or context.metadata / "video_meta.json"
-    args.output_root = args.output_root or context.roi_videos
+    _resolve_inputs(args, context)
     args.output_root = context.require_managed_output(
         args.output_root,
         context.roi_videos,

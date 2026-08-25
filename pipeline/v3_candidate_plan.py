@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline import artifact_index, artifact_resolver
 from pipeline.v3_labels import (
     SOURCE_FRACTURE,
     SOURCE_NO_FRACTURE,
@@ -1015,11 +1016,38 @@ def _validate_existing_plan(destination: Path, plan: Mapping[str, Any]) -> None:
             raise CandidatePlanError(f"既有候选计划 artifact 漂移: {name}")
 
 
+def _append_candidate_plan_index(
+    output_root: Path, plan: Mapping[str, Any]
+) -> None:
+    artifact_index.append_entry(
+        output_root,
+        {
+            "id": plan["plan_id"],
+            "created_at": artifact_index.utc_now(),
+            "step": "candidate_plan",
+            "inputs": {
+                "roi_media_id": plan["identity"]["inputs"]["roi_media_id"],
+                "review_reference_id": plan["identity"]["inputs"][
+                    "review_reference_id"
+                ],
+            },
+            "stats": {
+                "development_candidates": len(plan["development_candidates"]),
+                "test_candidate_audit": len(plan["test_candidate_audit"]),
+                "development_needs_review": len(plan["needs_review"]),
+            },
+            "note": "v3 candidate plan",
+        },
+    )
+
+
 def materialize_candidate_plan(plan: Mapping[str, Any], output_root: Path) -> Path:
     """Write only immutable metadata artifacts; no media paths are touched."""
     destination = output_root / str(plan["plan_id"])
     if (destination / "manifest.json").exists():
         _validate_existing_plan(destination, plan)
+        _append_candidate_plan_index(output_root, plan)
+        artifact_resolver.update_latest(output_root, plan["plan_id"])
         return destination
     if destination.exists():
         raise CandidatePlanError(f"拒绝覆盖未完成的候选计划目录: {destination}")
@@ -1047,4 +1075,6 @@ def materialize_candidate_plan(plan: Mapping[str, Any], output_root: Path) -> Pa
         "media_generated": False,
     }
     _atomic_write(destination / "manifest.json", manifest)
+    _append_candidate_plan_index(output_root, plan)
+    artifact_resolver.update_latest(output_root, plan["plan_id"])
     return destination

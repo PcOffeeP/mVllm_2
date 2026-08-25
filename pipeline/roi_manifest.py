@@ -10,7 +10,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping
 
-from pipeline import artifact_index
+from pipeline import artifact_index, artifact_resolver
 from pipeline.current_data import resolve_data_artifact
 from pipeline.scripts.roi_annotation_app import (
     MODE_FIXED,
@@ -344,6 +344,7 @@ def write_roi_manifest_bundle(
             if not identical:
                 raise FileExistsError(f"拒绝覆盖已有 ROI manifest: {destination}")
         _append_roi_manifest_index(output_root, bundle)
+        artifact_resolver.update_latest(output_root, str(bundle["manifest.json"]["roi_manifest_id"]))
         return destination, False
 
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -358,6 +359,7 @@ def write_roi_manifest_bundle(
                 child.unlink()
             temp_dir.rmdir()
     _append_roi_manifest_index(output_root, bundle)
+    artifact_resolver.update_latest(output_root, str(bundle["manifest.json"]["roi_manifest_id"]))
     return destination, True
 
 

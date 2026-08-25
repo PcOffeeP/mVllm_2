@@ -52,7 +52,43 @@ flowchart LR
 
 六步一句话：先校验、放置源数据并生成 source/split 快照，再固定 ROI 并裁剪源视频，随后生成候选片段与实际帧，再经人工审查后构建不可覆盖的训练发布，最后导出产物索引。
 
-## 4. 逐步操作
+## 4. 产物 ID 与回溯
+
+本流程中大部分下游脚本都支持通过产物 ID 指定上游输入，而不必总是使用最近一次产物。解析规则如下：
+
+- **不传 ID**：脚本自动使用目标集合的 `LATEST` 指针，即当前 index 中最新物化或最新被触碰的世代。
+- **短哈希前缀**：传入 ID 的前缀，脚本在目标集合的 `index.json` 中查找唯一匹配项。例如 `<roi-manifest-旧哈希前缀>` 可命中以该前缀开头的 ROI manifest，但若前缀同时匹配多个候选则会报错。
+- **完整 ID**：传入完整产物 ID，脚本做精确匹配。
+
+查询可用 ID 的入口：
+
+- 已接入全局索引的集合（`source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos`）：查看 `workspace/data/INDEX.md` 或对应集合的 `index.json`。
+- 尚未接入全局索引的集合（候选媒体、审查队列、决定、release 等）：查看各自集合目录下的 `index.json`。
+
+回溯示例（以下 ID 均为占位格式，请替换为实际查询到的 ID）：
+
+```bash
+# 显式指定 ROI manifest 与 source snapshot，而非使用 LATEST
+uv run python pipeline/scripts/roi_materialize_videos.py \
+  --data-root workspace/data \
+  --roi-manifest <roi-manifest-旧哈希前缀> \
+  --video-meta <source-snapshot-旧哈希前缀> \
+  --workers 2
+
+# 显式指定候选计划与 ROI 媒体，重新物化候选媒体
+python pipeline/scripts/subvideo_materialize_media.py \
+  --data-root workspace/data \
+  --candidate-plan <candidate-plan-旧哈希前缀> \
+  --roi-media <roi-media-旧哈希前缀>
+```
+
+注意事项：
+
+- 中段词不会命中。例如只写 `media` 或 `roi` 会被当成完整 ID 或前缀处理，通常无法匹配任何候选并报错；请使用足够长度的前缀或完整 ID。
+- `LATEST` 指针可能失效：如果对应集合的 `index.json` 被重建、清空或对应世代被移除，再次使用 `LATEST` 会报 `LATEST 指针 '...' 已失效，不在当前 index 候选集中`。
+- 前缀若匹配多个候选，会报 `产物选择器 '...' 存在多义匹配，候选: ...`，此时应改用更长的前缀或完整 ID。
+
+## 5. 逐步操作
 
 以下命令中的 `<...>` 为每次运行实际生成的 ID 或路径，由上游脚本输出或 `workspace/data/INDEX.md` / 各集合 `index.json` 查询得到。
 
@@ -116,6 +152,8 @@ flowchart LR
 ### Step 2：ROI 标注、冻结与物化
 
 > 注意：本步骤使用的 `video_meta.json` 来自 Step 1 生成的 source snapshot（`workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json`），不再使用旧路径 `derived/metadata/video_meta.json`。
+>
+> 阶段 2 已接入 LATEST 指针：`roi_freeze_decisions.py` 与 `roi_materialize_videos.py` 的 source/split/ROI 产物参数不传 ID 时，默认自动解析对应集合的 LATEST 指针；也可显式传入完整 ID 或短前缀（详见「产物 ID 与回溯」）。
 
 #### 2.1 标注 ROI
 
@@ -137,6 +175,7 @@ flowchart LR
 - **目的**：把 ROI 决定打包成不可变的 ROI manifest。
 - **机器**：Mac（轻量校验）。
 - **命令**：
+  > 不传 `--video-metadata` / `--test-manifest` 时，脚本默认从 `source_snapshots` / `split_snapshots` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   uv run python pipeline/scripts/roi_freeze_decisions.py --check-only
   uv run python pipeline/scripts/roi_freeze_decisions.py
@@ -151,19 +190,16 @@ flowchart LR
 - **目的**：按 ROI manifest 裁剪出保持原时间轴的 3:4 源视频。
 - **机器**：训练机（ffmpeg 重计算）。
 - **命令**：
+  > 不传 `--roi-manifest` / `--video-meta` 时，脚本默认从 `roi_manifests` / `source_snapshots` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   # 先只校验生成计划
   python pipeline/scripts/roi_materialize_videos.py \
     --data-root workspace/data \
-    --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
-    --video-meta workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --check-only
 
   # 小样本试跑（必须指定隔离目录）
   python pipeline/scripts/roi_materialize_videos.py \
     --data-root workspace/data \
-    --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
-    --video-meta workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --video-ids video_0001 video_0008 \
     --output-root workspace/data/derived/roi_videos/sample_roi_videos \
     --workers 1
@@ -171,8 +207,6 @@ flowchart LR
   # 全量生成
   python pipeline/scripts/roi_materialize_videos.py \
     --data-root workspace/data \
-    --roi-manifest workspace/data/derived/metadata/roi_manifests/<roi-manifest-id> \
-    --video-meta workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --workers 2
   ```
 - **产物位置**：`workspace/data/derived/roi_videos/<roi-media-id>/`。
@@ -181,23 +215,24 @@ flowchart LR
 
 ### Step 3：候选计划与候选媒体物化
 
+> 阶段 2 已接入 LATEST 指针：`subvideo_build_plan.py` 的 `--roi-media-dir`、`subvideo_materialize_media.py` 的 `--candidate-plan` / `--roi-media` 不传时默认解析对应集合的 LATEST 指针；也可显式传入完整 ID 或短前缀（详见「产物 ID 与回溯」）。
+
 #### 3.1 生成候选计划
 
 - **目的**：基于 ROI 视频和 review reference 生成内容寻址的候选计划。
 - **机器**：Mac 或训练机（轻量计算）。
 - **命令**：
+  > 不传 `--roi-media-dir` 时，脚本默认从 `roi_videos` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   # 先只打印计划身份与统计
   uv run python pipeline/scripts/subvideo_build_plan.py \
     --data-root workspace/data \
-    --roi-media-dir workspace/data/derived/roi_videos/<roi-media-id> \
     --review-reference-dir workspace/data/derived/metadata/review_reference/<review-ref-id> \
     --dry-run
 
   # 正式生成
   uv run python pipeline/scripts/subvideo_build_plan.py \
     --data-root workspace/data \
-    --roi-media-dir workspace/data/derived/roi_videos/<roi-media-id> \
     --review-reference-dir workspace/data/derived/metadata/review_reference/<review-ref-id> \
     --output-root workspace/data/derived/metadata/candidate_plans
   ```
@@ -213,19 +248,16 @@ flowchart LR
 - **目的**：生成候选 MP4、实际 MiniCPM 抽帧和门禁结果。
 - **机器**：训练机（Conda环境，GPU/模型推理）。
 - **命令**：
+  > 不传 `--candidate-plan` / `--roi-media` 时，脚本默认从 `candidate_plans` / `roi_videos` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   # 先只校验输入与身份
   python pipeline/scripts/subvideo_materialize_media.py \
     --data-root workspace/data \
-    --candidate-plan workspace/data/derived/metadata/candidate_plans/<plan-id> \
-    --roi-media workspace/data/derived/roi_videos/<roi-media-id> \
     --check-only
 
   # 小样本试跑（必须同时指定隔离目录）
   python pipeline/scripts/subvideo_materialize_media.py \
     --data-root workspace/data \
-    --candidate-plan workspace/data/derived/metadata/candidate_plans/<plan-id> \
-    --roi-media workspace/data/derived/roi_videos/<roi-media-id> \
     --limit 3 \
     --video-output-root workspace/data/derived/subvideos/sample_candidate_media \
     --frame-output-root workspace/data/derived/frames/sample_candidate_media \
@@ -233,9 +265,7 @@ flowchart LR
 
   # 全量生成
   python pipeline/scripts/subvideo_materialize_media.py \
-    --data-root workspace/data \
-    --candidate-plan workspace/data/derived/metadata/candidate_plans/<plan-id> \
-    --roi-media workspace/data/derived/roi_videos/<roi-media-id>
+    --data-root workspace/data
   ```
 - **产物位置**：
   - `workspace/data/derived/subvideos/<candidate-media-id>/`
@@ -251,11 +281,10 @@ flowchart LR
 - **目的**：把 materialized 候选组织成 V4.1 审查队列（`observed` / `incipient`）。
 - **机器**：Mac（轻量）。
 - **命令**：
+  > 不传 `--materialized` / `--manifest` 时，脚本默认从 `candidate_media_results` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   uv run python pipeline/scripts/review_build_queue.py \
     --data-root workspace/data \
-    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
-    --manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
     --contract pipeline/contracts/tensile_vlm_v4_1.json \
     --output-root workspace/data/derived/metadata/review_queues
   ```
@@ -313,17 +342,10 @@ flowchart LR
 - **目的**：把审查决定物化为不可覆盖的训练 release。
 - **机器**：训练机（Conda  环境）。
 - **命令**：
-  > 参数来源说明：
-  >
-  > - `--source-snapshot` / `--split-snapshot` 分别指向 Step 1 生成的 source/split 快照目录。
-  > - `--source-tree-sha256` / `--split-tree-sha256` 为对应快照目录的内容树哈希；`release_build.py` 内部会通过 `tree_inventory` 重新计算并校验。手动获取时可查看 orchestrator staging 目录 `control/rebuild.json` 中的 `source_snapshot_tree_sha256` / `split_snapshot_tree_sha256`，或使用 `pipeline.data_rebuild.tree_inventory` 计算。
+  > 阶段 2 已接入 LATEST 指针：`--source-snapshot` / `--split-snapshot` 不传时默认从 `source_snapshots` / `split_snapshots` 的 LATEST 指针解析；`--source-tree-sha256` / `--split-tree-sha256` 不传时由脚本自动用 `tree_inventory` 从解析后的快照目录计算（详见「产物 ID 与回溯」）。
   ```bash
   python pipeline/scripts/release_build.py \
     --data-root workspace/data \
-    --source-snapshot workspace/data/derived/metadata/source_snapshots/<source-snapshot-id> \
-    --split-snapshot workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
-    --source-tree-sha256 <source-tree-sha256> \
-    --split-tree-sha256 <split-tree-sha256> \
     --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
     --media-manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
     --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
@@ -372,14 +394,14 @@ flowchart LR
 - **验收/检查**：`INDEX.md` 当前列出 `source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos` 四类集合；候选媒体、队列、决定、release 等集合后续接入。
 - **进入下一步条件**：索引生成成功，可供下游查找 artifact ID。
 
-## 5. 产物索引说明
+## 6. 产物索引说明
 
 - 当前 `build_artifact_index.py` 维护并读取以下 4 个产物集合的 `index.json`：`source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos`。
 - `pipeline/scripts/build_artifact_index.py` 读取这些 `index.json`，生成 `workspace/data/INDEX.md` 全局总览。
 - 候选媒体、审查队列、决定、release 等其他集合尚未接入全局索引，将在后续版本中支持。
 - 下游命令中 `<...-id>` 可从已接入集合的 `index.json` 或 `INDEX.md` 查到。
 
-## 6. 故障处理
+## 7. 故障处理
 
 | 现象                                             | 含义                                        | 处理                                                                                                   |
 | ---------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -390,8 +412,11 @@ flowchart LR
 | `视频 metadata 不存在`                              | source snapshot 中 `video_meta.json` 缺失    | 回到 Step 1 检查源数据并重新生成 source snapshot。                                                                |
 | `ffmpeg/ffprobe 未找到`                           | 训练机缺少媒体工具                                 | 安装 ffmpeg 并确保在 PATH 中。                                                                               |
 | 审查 UI 中候选 `remaining > 0`                      | 还有未审核候选                                   | 继续审查，直到全部形成终态。                                                                                       |
+| `LATEST 指针 '...' 已失效，不在当前 index 候选集中`      | 目标集合的 `index.json` 中不存在 `LATEST` 标记，或对应世代已被移除/重建 | 用 `build_artifact_index.py` 重建索引；若仍需旧世代，查询 `INDEX.md` 或对应 `index.json` 后显式传入完整 ID 或唯一前缀（见 §4）。 |
+| `产物选择器 '...' 存在多义匹配，候选: ...`              | 传入的短前缀同时命中多个候选                           | 改用更长的前缀或完整 ID，直到唯一匹配。                                                                           |
+| 想使用旧世代，但脚本默认走了 LATEST                     | 未显式指定 ID，目标集合默认使用 LATEST 指针         | 查询目标集合的 `index.json` / `INDEX.md`，在命令中显式传入旧世代完整 ID 或唯一前缀。                                  |
 
-## 7. 不该做的事（速查）
+## 8. 不该做的事（速查）
 
 - 不要把旧 `data/07_metadata`、`data/08_training_ready`、`review_subvideos_app.py` 当成 V4.1 主入口。
 - 不要删除或覆盖已冻结的 ROI manifest、review batch、candidate media、training release。
@@ -399,7 +424,7 @@ flowchart LR
 - 不要让源视频初始标签静默覆盖帧窗口人工复标结果。
 - 不要把训练完成本身等同于任务效果验收通过。
 
-## 8. 编排器模式（可选）
+## 9. 编排器模式（可选）
 
 如果你希望用一个命令跑隔离重建，可以使用 orchestrator：
 

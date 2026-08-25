@@ -6,6 +6,7 @@ import pytest
 
 from pipeline.preprocessing import FrameMapping, ProcessorInfo, VideoPreprocessor
 from pipeline.roi_media import VideoProbe, probe_video
+from pipeline import artifact_index, artifact_resolver
 from pipeline.v3_candidate_media import (
     CandidateMediaError,
     _validate_clip_probe,
@@ -148,6 +149,7 @@ def _media_plan(tmp_path: Path) -> dict:
     _make_video(source_path)
     identity = {
         "schema_version": "test",
+        "candidate_plan_id": "candidate-plan-test",
         "processor_fingerprint": "fake:v1",
         "candidate_count": 1,
     }
@@ -251,3 +253,49 @@ def test_processor_identity_mismatch_fails_closed(tmp_path: Path):
             result_root=tmp_path / "results",
             preprocessor=FakePreprocessor([], fingerprint="fake:other"),
         )
+
+
+def test_materialize_media_plan_appends_index_and_latest(tmp_path: Path) -> None:
+    plan = _media_plan(tmp_path)
+    processor = FakePreprocessor(
+        [
+            FrameMapping(0, 0, 0.0),
+            FrameMapping(1, 30, 1.0),
+            FrameMapping(2, 59, 1.9667),
+        ]
+    )
+    result_root = tmp_path / "results"
+    destination = materialize_media_plan(
+        plan,
+        model_path="unused",
+        video_output_root=tmp_path / "videos",
+        frame_output_root=tmp_path / "frames",
+        result_root=result_root,
+        preprocessor=processor,
+    )
+    manifest = json.loads(
+        (destination / "manifest.json").read_text(encoding="utf-8")
+    )
+
+    index = artifact_index.read_index(result_root)
+    assert [entry["id"] for entry in index] == [manifest["media_id"]]
+    assert index[0]["stats"] == manifest["counts"]
+    latest = (result_root / artifact_resolver.LATEST_FILENAME).read_text(
+        encoding="utf-8"
+    ).strip()
+    assert latest == manifest["media_id"]
+
+    # Idempotent rerun keeps the same latest/index state.
+    materialize_media_plan(
+        plan,
+        model_path="unused",
+        video_output_root=tmp_path / "videos",
+        frame_output_root=tmp_path / "frames",
+        result_root=result_root,
+        preprocessor=processor,
+    )
+    assert (
+        result_root / artifact_resolver.LATEST_FILENAME
+    ).read_text(encoding="utf-8").strip() == manifest["media_id"]
+    assert len(artifact_index.read_index(result_root)) == 1
+

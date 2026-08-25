@@ -17,7 +17,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from pipeline import artifact_index
+from pipeline import artifact_index, artifact_resolver
 from pipeline.current_data import DataContext
 
 SOURCE_SCHEMA_VERSION = "tensile-source-snapshot/v2"
@@ -1092,6 +1092,7 @@ def _append_source_snapshot_index(
             "note": "Source snapshot",
         },
     )
+    artifact_resolver.update_latest(collection_dir, str(bundle["snapshot_id"]))
 
 
 def _append_split_snapshot_index(
@@ -1111,6 +1112,9 @@ def _append_split_snapshot_index(
             },
             "note": "Split snapshot",
         },
+    )
+    artifact_resolver.update_latest(
+        collection_dir, str(bundle["split_snapshot_id"])
     )
 
 
