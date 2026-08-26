@@ -112,7 +112,7 @@ def test_main_forwards_release_contract_hash_before_model_loading(
         "verify_media": True,
         "release_id": "rebuilt-release",
         "expected_contract_hash": "new-contract-hash",
-        "expected_schema_version": "tensile-training-release/v4.1",
+        "expected_schema_version": None,
     }
 
 

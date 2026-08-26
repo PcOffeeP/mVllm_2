@@ -774,40 +774,46 @@ def write_audit(output_dir: Path, audit: Mapping[str, Any]) -> Path:
     return output_dir
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _default_audit_paths() -> dict[str, Path]:
     paths = current_data_paths(ROOT)
-    release = paths.training_releases / RELEASE_ID
-    base_media = (
-        paths.metadata
-        / "v3/candidate_media_results/candidate-media-8de972530561"
-        / "development_materialized.json"
-    )
-    experimental_media = (
-        paths.metadata
-        / "v4_1/experiments/candidate_media_results/candidate-media-b442478052cd"
-        / "development_materialized.json"
-    )
-    test_plan = (
-        paths.metadata
-        / "v3/candidate_plans/candidate-plan-ce36b9226be5"
-        / "test_candidate_audit.json"
-    )
+    return {
+        "release_dir": paths.training_releases / RELEASE_ID,
+        "base_materialized": (
+            paths.metadata
+            / "v3/candidate_media_results/candidate-media-8de972530561"
+            / "development_materialized.json"
+        ),
+        "experimental_materialized": (
+            paths.metadata
+            / "v4_1/experiments/candidate_media_results/candidate-media-b442478052cd"
+            / "development_materialized.json"
+        ),
+        "test_plan": (
+            paths.metadata
+            / "v3/candidate_plans/candidate-plan-ce36b9226be5"
+            / "test_candidate_audit.json"
+        ),
+        "media_root": paths.root,
+    }
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="审计 V4.1 正式发布、自动候选和密封测试候选的有效视觉证据"
     )
-    parser.add_argument("--release-dir", type=Path, default=release)
-    parser.add_argument("--base-materialized", type=Path, default=base_media)
+    parser.add_argument("--release-dir", type=Path, default=None)
+    parser.add_argument("--base-materialized", type=Path, default=None)
     parser.add_argument(
         "--experimental-materialized",
         type=Path,
-        default=experimental_media,
+        default=None,
     )
-    parser.add_argument("--test-plan", type=Path, default=test_plan)
+    parser.add_argument("--test-plan", type=Path, default=None)
     parser.add_argument("--test-materialized", type=Path, default=None)
     parser.add_argument(
         "--media-root",
         type=Path,
-        default=paths.root,
+        default=None,
         help="相对媒体路径的根目录；提供后校验测试候选视频与帧哈希",
     )
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -826,14 +832,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    defaults = _default_audit_paths()
+    release_dir = args.release_dir or defaults["release_dir"]
+    base_materialized = args.base_materialized or defaults["base_materialized"]
+    experimental_materialized = (
+        args.experimental_materialized or defaults["experimental_materialized"]
+    )
+    test_plan = args.test_plan or defaults["test_plan"]
+    media_root = args.media_root or defaults["media_root"]
     try:
         audit = build_audit(
-            release_dir=args.release_dir,
-            base_materialized_path=args.base_materialized,
-            experimental_materialized_path=args.experimental_materialized,
+            release_dir=release_dir,
+            base_materialized_path=base_materialized,
+            experimental_materialized_path=experimental_materialized,
             test_materialized_path=args.test_materialized,
-            test_plan_path=args.test_plan,
-            media_root=args.media_root,
+            test_plan_path=test_plan,
+            media_root=media_root,
             near_duplicate_iou=args.near_duplicate_iou,
             max_source_share=args.max_source_share,
         )

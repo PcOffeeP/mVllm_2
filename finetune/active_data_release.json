@@ -1,5 +1,7 @@
 {
   "release_id": "v4.1.0-ecb5aeb9657c",
   "release_dir": "workspace/data/releases/v4.1.0-ecb5aeb9657c",
-  "manifest": "workspace/data/releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json"
+  "manifest": "workspace/data/releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json",
+  "expected_contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+  "expected_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b"
 }

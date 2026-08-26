@@ -4,6 +4,20 @@
 
 ## 待处理
 
+### 训练机首跑需实证 release 指针钉扎值
+
+- **关联主题**：核心链路节点 5（training release）与节点 9（模型注册表晋级）。
+- **开发者期望**：在挂载真实 workspace 的训练机上首次运行时，应通过 `python finetune/release_validate.py` 校验当前 `finetune/active_data_release.json` 中的钉扎 `expected_contract_hash`（`ba61695c...`）与真实 `release_manifest.json` 的契约 hash 字节完全一致。
+- **当前实现**：指针文件中的钉扎值已在代码中写入，但尚未在训练机真实 manifest 上实证跑通。
+- **存在差异**：本地/CI 测试使用显式传入期望值的方式跳过指针校验，不能替代训练机对真实钉扎值的实证。
+- **影响**：若钉扎值与真实 manifest 字节不一致，训练/评测入口将 fail-closed。
+- **代码依据**：
+  - `finetune/active_data_release.json`
+  - `finetune/release_validate.py`
+  - `finetune/v4_1_runtime.py`（`validate_release` / `load_release_expectations`）
+- **待决定或后续动作**：训练机首跑后确认 `python finetune/release_validate.py` 通过，并记录验证结果。
+- **记录版本**：`0ffecb3a`
+
 ### 历史 v3 契约哈希不可复现
 
 - **关联主题**：核心链路节点 3（候选帧窗口计划与物化）与历史训练产物溯源。
@@ -97,6 +111,20 @@
   - `docs/CURRENT_PROJECT_STATUS.md`
   - `pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json`（`full_data_final: false`）
 - **待决定或后续动作**：在质量门问题解决后，规划全量训练与独立测试 release。
+- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
+
+### release 指针文件更新自动化
+
+- **关联主题**：核心链路节点 5（training release）与节点 9（模型注册表晋级）。
+- **开发者期望**：每次 `release_build` 完成后，`finetune/active_data_release.json` 中的 `release_id` 与 `expected_contract_hash` 应自动更新为刚发布 release 的钉扎值，避免手动维护导致遗漏或自证化攻击窗口。
+- **当前实现**：指针文件更新为手动步骤，reviewer 已确认当前为手动写入 `expected_contract_hash`，存在更新延迟或错配风险。
+- **存在差异**：release 构建流程不自动回填 git 跟踪的指针文件，依赖人工核对 docs/results 中的冻结 manifest 摘要。
+- **影响**：若指针未随 release 更新，训练/评测入口将 fail-closed 或验证失败；手动操作也更容易出现 copy-paste 错误。
+- **代码依据**：
+  - `finetune/active_data_release.json`
+  - `finetune/v4_1_runtime.py`（`_load_active_release_pointer` / `load_release_expectations`）
+  - `pipeline/scripts/release_build_phase2.py`（release_build 入口）
+- **待决定或后续动作**：在 `release_build_phase2` 完成阶段自动覆写 `finetune/active_data_release.json` 的 `release_id` 与 `expected_contract_hash`，并补充校验确保与刚生成的 manifest 一致。
 - **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
 
 ## 待确认
