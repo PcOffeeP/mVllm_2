@@ -117,19 +117,23 @@ def load_release_expectations(
             f"release manifest 缺失: {manifest_path}；"
             "评测/验证必须在挂载 workspace 的训练机上执行"
         )
-    actual_manifest_sha256 = _sha256(manifest_path)
+    try:
+        manifest_bytes = manifest_path.read_bytes()
+    except OSError as exc:
+        raise V4_1FinetuneError(
+            f"无法读取 release manifest {manifest_path}；"
+            "评测/验证必须在挂载 workspace 的训练机上执行"
+        ) from exc
+    actual_manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
     if actual_manifest_sha256 != expected_manifest_sha256:
         raise V4_1FinetuneError(
             f"release manifest sha256 漂移: "
             f"pointer={expected_manifest_sha256!r}, actual={actual_manifest_sha256!r}"
         )
     try:
-        manifest = _read_json(manifest_path)
-    except V4_1FinetuneError as exc:
-        raise V4_1FinetuneError(
-            f"无法读取 release manifest {manifest_path}；"
-            "评测/验证必须在挂载 workspace 的训练机上执行"
-        ) from exc
+        manifest = json.loads(manifest_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise V4_1FinetuneError(f"无法读取 JSON {manifest_path}: {exc}") from exc
     if not isinstance(manifest, dict):
         raise V4_1FinetuneError("release manifest 必须是对象")
     contract_hash = manifest.get("contract_hash")
@@ -221,7 +225,12 @@ def validate_release(
     expected_contract_hash: str | None = None,
     expected_schema_version: str | None = None,
 ) -> dict[str, Any]:
-    """Validate immutable release files, rows, labels, splits, and optional media."""
+    """Validate immutable release files, rows, labels, splits, and optional media.
+
+    If both ``expected_counts`` and ``expected_contract_hash`` are supplied by
+    the caller, the pointer pinning check is skipped entirely. This
+    short-circuit is intended for tests and should not be used in production.
+    """
     project_root = Path(project_root).resolve()
     resolved_release_id = release_id or RELEASE_ID
     resolved_schema_version = expected_schema_version or RELEASE_SCHEMA_VERSION
