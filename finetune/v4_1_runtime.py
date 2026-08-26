@@ -17,21 +17,114 @@ from pipeline.v4_1_training_release import (
     canonical_release_identity_bytes,
 )
 
-RELEASE_ID = "v4.1.0-760050fad303"
 CONTRACT_VERSION = "tensile-vlm/v4.1"
-CONTRACT_HASH = "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
-RELEASE_SCHEMA_VERSION = "tensile-training-release/v4.1"
-RELEASE_SCHEMA_VERSION_V2 = "tensile-training-release/v4.1-v2"
-EXPECTED_RELEASE_COUNTS = {
-    "published_candidates": 1275,
-    "excluded_candidates": 10,
-    "reviewed_candidates": 774,
-    "automatic_unreviewed_candidates": 511,
-}
 
 
 class V4_1FinetuneError(ValueError):
     """Raised when V4.1 training inputs or configs drift."""
+
+
+def _load_active_release_id() -> str:
+    pointer_path = Path(__file__).with_name("active_data_release.json")
+    try:
+        data = json.loads(pointer_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise V4_1FinetuneError(
+            f"无法读取 release pointer {pointer_path}: {exc}"
+        ) from exc
+    release_id = data.get("release_id")
+    if not isinstance(release_id, str) or not release_id:
+        raise V4_1FinetuneError(
+            f"release pointer {pointer_path} 缺少有效 release_id"
+        )
+    return release_id
+
+
+RELEASE_ID = _load_active_release_id()
+RELEASE_SCHEMA_VERSION = "tensile-training-release/v4.1"
+RELEASE_SCHEMA_VERSION_V2 = "tensile-training-release/v4.1-v2"
+
+
+def _load_active_release_pointer(project_root: Path | None = None) -> dict[str, Any]:
+    """Load the git-tracked release pointer and verify the pinned trust anchor.
+
+    The pointer carries the expected_contract_hash that was frozen when the
+    release was promoted. It must be present and complete; a missing field is
+    treated as a configuration error and fails closed.
+    """
+    project_root = (
+        project_root
+        if project_root is not None
+        else Path(__file__).resolve().parents[1]
+    ).resolve()
+    pointer_path = project_root / "finetune/active_data_release.json"
+    try:
+        pointer = _read_json(pointer_path)
+    except V4_1FinetuneError as exc:
+        raise V4_1FinetuneError(
+            f"无法读取 release pointer {pointer_path}: {exc}"
+        ) from exc
+    if not isinstance(pointer, dict):
+        raise V4_1FinetuneError(f"release pointer {pointer_path} 必须是对象")
+    expected_contract_hash = pointer.get("expected_contract_hash")
+    if (
+        not isinstance(expected_contract_hash, str)
+        or len(expected_contract_hash) != 64
+    ):
+        raise V4_1FinetuneError(
+            f"release pointer {pointer_path} 缺少有效 expected_contract_hash 字段；"
+            "请在 release_build 后补全该钉扎值，否则无法防御 manifest 自证化篡改"
+        )
+    return pointer
+
+
+def load_release_expectations(
+    project_root: Path | str | None = None,
+    release_id: str | None = None,
+) -> dict[str, Any]:
+    """Load the frozen contract_hash and counts from a release manifest.
+
+    Reads from workspace/data/releases/<release_id>/manifest/release_manifest.json
+    and verifies the manifest's contract_hash against the pinned value stored in
+    finetune/active_data_release.json. Raises V4_1FinetuneError when the pointer
+    is incomplete or when the manifest has drifted (e.g. through tampering).
+    """
+    resolved_release_id = release_id or RELEASE_ID
+    project_root = Path(
+        project_root
+        if project_root is not None
+        else Path(__file__).resolve().parents[1]
+    ).resolve()
+    pointer = _load_active_release_pointer(project_root)
+    expected_contract_hash = pointer["expected_contract_hash"]
+    manifest_path = (
+        release_dir(project_root, resolved_release_id)
+        / "manifest/release_manifest.json"
+    )
+    try:
+        manifest = _read_json(manifest_path)
+    except V4_1FinetuneError as exc:
+        raise V4_1FinetuneError(
+            f"无法读取 release manifest {manifest_path}；"
+            "评测/验证必须在挂载 workspace 的训练机上执行"
+        ) from exc
+    if not isinstance(manifest, dict):
+        raise V4_1FinetuneError("release manifest 必须是对象")
+    contract_hash = manifest.get("contract_hash")
+    if not isinstance(contract_hash, str) or len(contract_hash) != 64:
+        raise V4_1FinetuneError("release manifest contract_hash 无效")
+    if contract_hash != expected_contract_hash:
+        raise V4_1FinetuneError(
+            f"release manifest contract_hash 漂移: "
+            f"pointer={expected_contract_hash!r}, actual={contract_hash!r}"
+        )
+    counts = manifest.get("counts")
+    if not isinstance(counts, dict):
+        raise V4_1FinetuneError("release manifest counts 缺失")
+    return {
+        "contract_hash": expected_contract_hash,
+        "counts": counts,
+    }
 
 
 def _read_json(path: Path) -> Any:
@@ -101,22 +194,32 @@ def validate_release(
     project_root: Path,
     *,
     verify_media: bool = False,
-    release_id: str = RELEASE_ID,
+    release_id: str | None = None,
     expected_counts: Mapping[str, int] | None = None,
-    expected_contract_hash: str = CONTRACT_HASH,
-    expected_schema_version: str = RELEASE_SCHEMA_VERSION,
+    expected_contract_hash: str | None = None,
+    expected_schema_version: str | None = None,
 ) -> dict[str, Any]:
     """Validate immutable release files, rows, labels, splits, and optional media."""
     project_root = Path(project_root).resolve()
+    resolved_release_id = release_id or RELEASE_ID
+    resolved_schema_version = expected_schema_version or RELEASE_SCHEMA_VERSION
+    if expected_contract_hash is None or expected_counts is None:
+        expectations = load_release_expectations(
+            project_root, resolved_release_id
+        )
+        if expected_contract_hash is None:
+            expected_contract_hash = expectations["contract_hash"]
+        if expected_counts is None:
+            expected_counts = expectations["counts"]
     media_root = current_data_paths(project_root).root
-    root = release_dir(project_root, release_id)
+    root = release_dir(project_root, resolved_release_id)
     manifest_path = root / "manifest/release_manifest.json"
     manifest = _read_json(manifest_path)
     if not isinstance(manifest, dict):
         raise V4_1FinetuneError("release manifest 必须是对象")
     expected_identity = {
-        "schema_version": expected_schema_version,
-        "release_id": release_id,
+        "schema_version": resolved_schema_version,
+        "release_id": resolved_release_id,
         "status": "training_ready",
         "immutable": True,
         "contract_version": CONTRACT_VERSION,
@@ -129,16 +232,12 @@ def validate_release(
                 f"release manifest {field} 漂移: "
                 f"expected={expected!r}, actual={manifest.get(field)!r}"
             )
-    if expected_schema_version == RELEASE_SCHEMA_VERSION_V2:
+    if resolved_schema_version == RELEASE_SCHEMA_VERSION_V2:
         _validate_v2_snapshot_binding(manifest)
     counts = manifest.get("counts")
     if not isinstance(counts, Mapping):
         raise V4_1FinetuneError("release manifest counts 缺失")
-    required_counts = (
-        EXPECTED_RELEASE_COUNTS
-        if expected_counts is None and release_id == RELEASE_ID
-        else dict(expected_counts or {})
-    )
+    required_counts = dict(expected_counts or {})
     for field, expected in required_counts.items():
         if counts.get(field) != expected:
             raise V4_1FinetuneError(
@@ -217,7 +316,7 @@ def validate_release(
     if all_fold_counts != dict(counts.get("splits") or {}):
         raise V4_1FinetuneError("数据文件行数与 release manifest splits 不一致")
     return {
-        "release_id": release_id,
+        "release_id": resolved_release_id,
         "contract_version": CONTRACT_VERSION,
         "contract_hash": expected_contract_hash,
         "release_dir": str(root),

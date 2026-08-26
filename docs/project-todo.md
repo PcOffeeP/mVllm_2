@@ -99,6 +99,20 @@
 - **待决定或后续动作**：在质量门问题解决后，规划全量训练与独立测试 release。
 - **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
 
+### release 指针文件更新自动化
+
+- **关联主题**：核心链路节点 5（training release）与节点 9（模型注册表晋级）。
+- **开发者期望**：每次 `release_build` 完成后，`finetune/active_data_release.json` 中的 `release_id` 与 `expected_contract_hash` 应自动更新为刚发布 release 的钉扎值，避免手动维护导致遗漏或自证化攻击窗口。
+- **当前实现**：指针文件更新为手动步骤，reviewer 已确认当前为手动写入 `expected_contract_hash`，存在更新延迟或错配风险。
+- **存在差异**：release 构建流程不自动回填 git 跟踪的指针文件，依赖人工核对 docs/results 中的冻结 manifest 摘要。
+- **影响**：若指针未随 release 更新，训练/评测入口将 fail-closed 或验证失败；手动操作也更容易出现 copy-paste 错误。
+- **代码依据**：
+  - `finetune/active_data_release.json`
+  - `finetune/v4_1_runtime.py`（`_load_active_release_pointer` / `load_release_expectations`）
+  - `pipeline/scripts/release_build_phase2.py`（release_build 入口）
+- **待决定或后续动作**：在 `release_build_phase2` 完成阶段自动覆写 `finetune/active_data_release.json` 的 `release_id` 与 `expected_contract_hash`，并补充校验确保与刚生成的 manifest 一致。
+- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
+
 ## 待确认
 
 （暂无）

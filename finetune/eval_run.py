@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from finetune.v4_1_runtime import (
-    CONTRACT_HASH,
     CONTRACT_VERSION,
     RELEASE_ID,
     RELEASE_SCHEMA_VERSION,
@@ -35,12 +34,11 @@ from pipeline.current_data import current_data_paths
 from pipeline.data_roots import resolve_workspace_artifact
 from pipeline.prompt_control import load_experiment_contract
 from pipeline.prompt_control.core import PromptControlError, sha256_file
+from pipeline.v4_1_production_contract import EXPECTED_CONTRACT_HASH
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "pipeline/contracts/tensile_vlm_v4_1.json"
-RUNTIME_CONTRACT_HASH = (
-    "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab"
-)
+RUNTIME_CONTRACT_HASH = EXPECTED_CONTRACT_HASH
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,15 +49,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-samples", type=int)
     parser.add_argument("--quantization-bit", type=int, choices=(4,))
     parser.add_argument("--adapter-dir", type=Path)
-    parser.add_argument("--release-id", default=RELEASE_ID)
+    parser.add_argument("--release-id", default=None)
     parser.add_argument(
         "--expected-contract-hash",
-        default=CONTRACT_HASH,
+        default=None,
         help="待评测 release 必须绑定的训练契约 hash",
     )
     parser.add_argument(
         "--expected-release-schema",
-        default=RELEASE_SCHEMA_VERSION,
+        default=None,
     )
     prompt_group = parser.add_mutually_exclusive_group()
     prompt_group.add_argument(
@@ -179,9 +177,9 @@ def _load_contract(
 def load_validation_samples(
     fold: int,
     *,
-    release_id: str = RELEASE_ID,
+    release_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    path = release_dir(ROOT, release_id) / f"datasets/validation/fold_{fold}.json"
+    path = release_dir(ROOT, release_id or RELEASE_ID) / f"datasets/validation/fold_{fold}.json"
     rows = _read_json(path)
     if not isinstance(rows, list):
         raise RuntimeError(f"validation dataset must be a list: {path}")
@@ -214,7 +212,7 @@ def _run_identity(
     model_dir: Path,
     sample_count: int,
     *,
-    release_id: str = RELEASE_ID,
+    release_id: str | None = None,
     quantization_bit: int | None = None,
     adapter_dir: Path | None = None,
     prompt_overlay_identity: Mapping[str, Any] | None = None,
@@ -223,7 +221,7 @@ def _run_identity(
 ) -> dict[str, Any]:
     identity = {
         "schema_version": "tensile-v4.1-evaluation-run/v1",
-        "release_id": release_id,
+        "release_id": release_id or RELEASE_ID,
         "contract_version": CONTRACT_VERSION,
         "contract_hash": contract_hash,
         "fold": fold,
