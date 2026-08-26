@@ -288,7 +288,8 @@ def main() -> None:
     if counts["remaining"] == 0:
         try:
             completed_batch = freeze_completed_batch(
-                output_root, identity, decisions
+                output_root, identity, decisions,
+                collection_dir=args._data_context.metadata_collection("review_decisions"),
             )
         except (V4_1ReviewWorkflowError, ValueError, FileExistsError) as exc:
             freeze_error = str(exc)

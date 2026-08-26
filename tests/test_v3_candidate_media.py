@@ -9,6 +9,8 @@ from pipeline.roi_media import VideoProbe, probe_video
 from pipeline import artifact_index, artifact_resolver
 from pipeline.v3_candidate_media import (
     CandidateMediaError,
+    _append_frame_index,
+    _append_subvideo_index,
     _validate_clip_probe,
     build_crop_command,
     materialize_media_plan,
@@ -265,11 +267,13 @@ def test_materialize_media_plan_appends_index_and_latest(tmp_path: Path) -> None
         ]
     )
     result_root = tmp_path / "results"
+    video_root = tmp_path / "videos"
+    frame_root = tmp_path / "frames"
     destination = materialize_media_plan(
         plan,
         model_path="unused",
-        video_output_root=tmp_path / "videos",
-        frame_output_root=tmp_path / "frames",
+        video_output_root=video_root,
+        frame_output_root=frame_root,
         result_root=result_root,
         preprocessor=processor,
     )
@@ -289,8 +293,8 @@ def test_materialize_media_plan_appends_index_and_latest(tmp_path: Path) -> None
     materialize_media_plan(
         plan,
         model_path="unused",
-        video_output_root=tmp_path / "videos",
-        frame_output_root=tmp_path / "frames",
+        video_output_root=video_root,
+        frame_output_root=frame_root,
         result_root=result_root,
         preprocessor=processor,
     )
@@ -298,4 +302,102 @@ def test_materialize_media_plan_appends_index_and_latest(tmp_path: Path) -> None
         result_root / artifact_resolver.LATEST_FILENAME
     ).read_text(encoding="utf-8").strip() == manifest["media_id"]
     assert len(artifact_index.read_index(result_root)) == 1
+
+
+def test_subvideo_and_frame_indexes_updated(tmp_path: Path) -> None:
+    plan = _media_plan(tmp_path)
+    processor = FakePreprocessor(
+        [
+            FrameMapping(0, 0, 0.0),
+            FrameMapping(1, 30, 1.0),
+            FrameMapping(2, 59, 1.9667),
+        ]
+    )
+    result_root = tmp_path / "results"
+    video_root = tmp_path / "videos"
+    frame_root = tmp_path / "frames"
+    materialize_media_plan(
+        plan,
+        model_path="unused",
+        video_output_root=video_root,
+        frame_output_root=frame_root,
+        result_root=result_root,
+        preprocessor=processor,
+    )
+    manifest = json.loads(
+        (result_root / "candidate-media-test" / "manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    plan_id = manifest["identity"]["candidate_plan_id"]
+
+    subvideo_index = artifact_index.read_index(video_root)
+    assert len(subvideo_index) == 1
+    assert subvideo_index[0]["id"] == plan_id
+    assert subvideo_index[0]["step"] == "subvideo"
+    assert subvideo_index[0]["inputs"]["candidate_plan_id"] == plan_id
+    assert subvideo_index[0]["inputs"]["media_id"] == manifest["media_id"]
+    assert subvideo_index[0]["stats"]["video_count"] == 1
+    assert (
+        video_root / artifact_resolver.LATEST_FILENAME
+    ).read_text(encoding="utf-8").strip() == plan_id
+
+    frame_index = artifact_index.read_index(frame_root)
+    assert len(frame_index) == 1
+    assert frame_index[0]["id"] == plan_id
+    assert frame_index[0]["step"] == "frame"
+    assert frame_index[0]["stats"]["frame_count"] == 3
+    assert (
+        frame_root / artifact_resolver.LATEST_FILENAME
+    ).read_text(encoding="utf-8").strip() == plan_id
+
+    # Idempotent rerun keeps the same latest/index state.
+    materialize_media_plan(
+        plan,
+        model_path="unused",
+        video_output_root=video_root,
+        frame_output_root=frame_root,
+        result_root=result_root,
+        preprocessor=processor,
+    )
+    assert len(artifact_index.read_index(video_root)) == 1
+    assert len(artifact_index.read_index(frame_root)) == 1
+
+
+def test_subvideo_and_frame_index_helpers(tmp_path: Path) -> None:
+    manifest = {
+        "media_id": "candidate-media-test",
+        "identity": {
+            "candidate_plan_id": "candidate-plan-test",
+            "roi_media_id": "roi-media-test",
+        },
+        "counts": {
+            "planned": 2,
+            "passed": 1,
+            "excluded": 1,
+        },
+    }
+    video_root = tmp_path / "videos"
+    frame_root = tmp_path / "frames"
+    (video_root / "candidate-plan-test" / "videos").mkdir(parents=True)
+    (video_root / "candidate-plan-test" / "videos" / "clip.mp4").write_bytes(b"v")
+    (frame_root / "candidate-plan-test" / "clip").mkdir(parents=True)
+    for i in range(3):
+        (frame_root / "candidate-plan-test" / "clip" / f"frame_{i:04d}.jpg").write_bytes(
+            b"f"
+        )
+
+    _append_subvideo_index(video_root, manifest)
+    _append_frame_index(frame_root, manifest)
+
+    subvideo_index = artifact_index.read_index(video_root)
+    assert subvideo_index[0]["id"] == "candidate-plan-test"
+    assert subvideo_index[0]["step"] == "subvideo"
+    assert subvideo_index[0]["stats"]["video_count"] == 1
+    assert subvideo_index[0]["stats"]["passed"] == 1
+
+    frame_index = artifact_index.read_index(frame_root)
+    assert frame_index[0]["id"] == "candidate-plan-test"
+    assert frame_index[0]["step"] == "frame"
+    assert frame_index[0]["stats"]["frame_count"] == 3
 

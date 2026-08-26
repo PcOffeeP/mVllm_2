@@ -17,6 +17,13 @@ COLLECTIONS: tuple[tuple[str, Path], ...] = (
     ("split_snapshots", Path("derived/metadata/split_snapshots")),
     ("roi_manifests", Path("derived/metadata/roi_manifests")),
     ("roi_videos", Path("derived/roi_videos")),
+    ("candidate_plans", Path("derived/metadata/candidate_plans")),
+    ("candidate_media_results", Path("derived/metadata/candidate_media_results")),
+    ("subvideos", Path("derived/subvideos")),
+    ("frames", Path("derived/frames")),
+    ("review_queues", Path("derived/metadata/review_queues")),
+    ("review_decisions", Path("derived/metadata/review_decisions")),
+    ("training_releases", Path("releases")),
 )
 
 

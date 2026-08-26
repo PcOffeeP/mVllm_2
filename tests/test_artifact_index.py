@@ -379,6 +379,36 @@ def test_roi_media_appends_index_entry(tmp_path: Path, monkeypatch: pytest.Monke
     assert entry["stats"]["source_count"] == 1
 
 
+def test_build_index_cli_includes_new_collections(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    collections = {
+        "derived/subvideos": ("subvideo-plan-abc123", "subvideo"),
+        "derived/frames": ("frame-plan-abc123", "frame"),
+        "derived/metadata/review_queues": ("v4-1-review-abc123", "review"),
+        "derived/metadata/review_decisions": ("review-batch-abc123", "review"),
+        "releases": ("v4.1.0-abc123", "release"),
+    }
+    for relative, (artifact_id, step) in collections.items():
+        collection_dir = data_root / relative
+        collection_dir.mkdir(parents=True)
+        artifact_index.append_entry(
+            collection_dir,
+            {
+                "id": artifact_id,
+                "created_at": "2026-07-20T02:00:00+00:00",
+                "step": step,
+                "inputs": {"upstream": "upstream-id"},
+                "stats": {"count": 1},
+            },
+        )
+
+    assert main(["--data-root", str(data_root)]) == 0
+
+    content = (data_root / "INDEX.md").read_text(encoding="utf-8")
+    for artifact_id, _ in collections.values():
+        assert artifact_id in content
+
+
 def test_build_index_cli_generates_index_markdown(tmp_path: Path) -> None:
     data_root = tmp_path / "data"
     source_dir = data_root / "derived/metadata/source_snapshots"

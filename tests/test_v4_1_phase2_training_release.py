@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from pipeline import artifact_index, artifact_resolver
 from pipeline.v3_review_workflow import sha256_file
 from pipeline.v4_1_phase2_training_release import (
     build_v4_1_phase2_training_release,
@@ -482,3 +483,19 @@ def test_phase2_preflight_and_publish_are_deterministic(tmp_path: Path) -> None:
     )
     assert metadata["candidate_count"] == 4
     assert all(row.get("effective_frame_signature") for row in metadata["candidates"])
+
+    index = artifact_index.read_index(paths["releases"])
+    assert len(index) == 1
+    assert index[0]["id"] == manifest["release_id"]
+    assert index[0]["step"] == "release"
+    assert index[0]["inputs"]["queue_id"] == manifest["source_queue_id"]
+    assert index[0]["inputs"]["review_batch_id"] == manifest["source_review_batch_id"]
+    assert index[0]["inputs"]["media_id"] == manifest["source_media_id"]
+    assert (
+        paths["releases"] / artifact_resolver.LATEST_FILENAME
+    ).read_text(encoding="utf-8").strip() == manifest["release_id"]
+
+    # Idempotent rerun keeps the same index state.
+    _, same_manifest = _build(paths, validate_only=False)
+    assert same_manifest == manifest
+    assert len(artifact_index.read_index(paths["releases"])) == 1

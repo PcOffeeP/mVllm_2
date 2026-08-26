@@ -903,7 +903,7 @@ def build_v4_1_phase2_training_release(
     }
     release_dir = Path(releases_dir) / release_id
     if not validate_only:
-        _write_release(release_dir, files, manifest)
+        _write_release(release_dir, files, manifest, collection_dir=releases_dir)
         if sha256_file(Path(base_release_dir) / "manifest/release_manifest.json") != base_manifest_sha256:
             raise V4_1TrainingReleaseError("增量发布期间基础发布 manifest 发生漂移")
     return release_dir, manifest

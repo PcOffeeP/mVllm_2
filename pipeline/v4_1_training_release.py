@@ -28,6 +28,7 @@ from pipeline.v4_1_labels import (
     migrate_v3_to_v4_1_labels,
 )
 from pipeline.v4_1_review_decisions import validate_review_payload
+from pipeline import artifact_index, artifact_resolver
 from pipeline.v4_1_review_workflow import (
     MATERIALIZED_SCHEMA_VERSION,
     QUEUE_SCHEMA_VERSION,
@@ -310,6 +311,8 @@ def _write_release(
     release_dir: Path,
     files: Mapping[str, bytes],
     manifest: Mapping[str, Any],
+    *,
+    collection_dir: Path | str | None = None,
 ) -> None:
     release_dir.parent.mkdir(parents=True, exist_ok=True)
     if release_dir.exists():
@@ -323,6 +326,8 @@ def _write_release(
             path = release_dir / relative
             if not path.is_file() or path.read_bytes() != content:
                 raise V4_1TrainingReleaseError(f"已有发布文件漂移: {path}")
+        if collection_dir is not None:
+            _append_training_release_index(collection_dir, manifest)
         return
 
     staging = Path(
@@ -345,6 +350,39 @@ def _write_release(
                 elif path.is_dir():
                     path.rmdir()
             staging.rmdir()
+    if collection_dir is not None:
+        _append_training_release_index(collection_dir, manifest)
+
+
+def _append_training_release_index(
+    collection_dir: Path | str,
+    manifest: Mapping[str, Any],
+) -> None:
+    release_id = str(manifest["release_id"])
+    artifact_index.append_entry(
+        collection_dir,
+        {
+            "id": release_id,
+            "created_at": artifact_index.utc_now(),
+            "step": "release",
+            "inputs": {
+                "queue_id": manifest.get("source_queue_id"),
+                "review_batch_id": manifest.get("source_review_batch_id"),
+                "media_id": manifest.get("source_media_id"),
+                "base_release_id": manifest.get("base_release_id"),
+                "combined_review_id": manifest.get("combined_review_id"),
+                "source_snapshot_id": manifest.get("source_snapshot_id"),
+                "split_snapshot_id": manifest.get("split_snapshot_id"),
+            },
+            "stats": {
+                "published_candidates": manifest["counts"]["published_candidates"],
+                "excluded_candidates": manifest["counts"]["excluded_candidates"],
+                "reviewed_candidates": manifest["counts"].get("reviewed_candidates"),
+            },
+            "note": "v4.1 training release",
+        },
+    )
+    artifact_resolver.update_latest(collection_dir, release_id)
 
 
 def build_v4_1_training_release(
@@ -656,5 +694,5 @@ def build_v4_1_training_release(
         "files": file_manifest,
     }
     release_dir = Path(releases_dir) / release_id
-    _write_release(release_dir, files, manifest)
+    _write_release(release_dir, files, manifest, collection_dir=releases_dir)
     return release_dir, manifest
