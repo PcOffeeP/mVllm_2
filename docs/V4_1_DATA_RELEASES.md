@@ -67,7 +67,7 @@ workspace/
     └── archive/
 ```
 
-首次从旧根迁移时执行：
+首次从旧根迁移时执行（脚本已删除，见 git 历史）：
 
 ```bash
 python pipeline/scripts/source_migrate_workspace.py --copy
@@ -83,4 +83,4 @@ manage_versioned_data_roots.py（已归档，见 git 历史）仅用于历史 V2
 
 - V2 封存与 V4.1 数据隔离设计（文档已归档，见 git 历史）
 - V2 / V4.1 数据隔离迁移报告（文档已归档，见 git 历史）
-- [数据目录说明](../data/README.md)
+- [项目实现与数据约定说明](./project-guide.md)
