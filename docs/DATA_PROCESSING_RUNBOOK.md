@@ -34,10 +34,10 @@ workspace/data/
 │   ├── videos/        # 原始 MP4
 │   └── annotations/   # 原始标注
 └── derived/metadata/
-    └── video_meta.json  # 由 Step 1 生成，当前链路不在前置数据中出现
+    └── video_meta.json  # 遗留路径，当前链路不生成；权威视频元数据为 source snapshot 内 video_meta.json
 ```
 
-> 注意：`source/videos`、`source/annotations` 是生成快照的前提；`source/splits` 是旧系统遗留路径，当前 V4.1 链路已不读取，划分由 `build_source_snapshot` 在生成快照时按确定性策略内部产出。生成 source snapshot 后，下游脚本以 `derived/metadata/source_snapshots/<id>/video_meta.json` 为权威视频元数据输入。
+> 注意：`source/videos`、`source/annotations` 是生成快照的前提；`source/splits` 是旧系统遗留路径，source 快照生成不再读取 source/splits，划分由 `build_source_snapshot` 在生成快照时按确定性策略内部产出。生成 source snapshot 后，下游脚本以 `derived/metadata/source_snapshots/<id>/video_meta.json` 为权威视频元数据输入。
 
 ## 3. 流程总览
 
@@ -174,7 +174,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
   | 参数 | 性质 | 默认值 | 说明 |
   | --- | --- | --- | --- |
   | `--data-root` | 可选 | `workspace/data` | - |
-  | `--metadata` | 可选 | `derived/metadata/video_meta.json` | **推荐显式传入 Step 1 的 source snapshot 路径** |
+  | `--metadata` | **必填（默认指向遗留路径，勿依赖）** | `derived/metadata/video_meta.json` | 必须显式传入 Step 1 的 source snapshot 路径 |
   | `--output` | 可选 | `derived/metadata/roi_decisions.json` | ROI 决定保存路径 |
   | `--project-root` | 可选 | 当前数据根 | 通常不需要传 |
 
@@ -483,6 +483,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
     --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
     --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
+    --splits-dir workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
     --contract pipeline/contracts/tensile_vlm_v4_1.json
 
   python pipeline/scripts/release_build_phase2.py \
@@ -494,6 +495,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
     --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
     --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
+    --splits-dir workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
     --contract pipeline/contracts/tensile_vlm_v4_1.json
   ```
 - **参数**（`release_build_phase2.py`）：
@@ -510,7 +512,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
   | `--manual-decisions` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
   | `--audit` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
   | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
-  | `--splits-dir` | 可选 | `source/splits`（遗留） | 通常不传 |
+  | `--splits-dir` | 可选 | `source/splits`（遗留） | 缺省指向遗留路径，新链路必须显式传入 split snapshot 目录 |
   | `--releases-dir` | 可选 | `training_releases` | - |
 
 - **产物位置**：`workspace/data/releases/<release-id>/`。
