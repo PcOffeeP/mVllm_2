@@ -383,6 +383,10 @@ def activate_release(release_dir: Path, project_root: Path = PROJECT_ROOT) -> No
         dataset_info[dataset_name]["folder"] = str(relative_from_finetune.parent)
 
     active_release_path = project_root / "finetune" / "active_data_release.json"
+    # WARNING: this script regenerates the runtime pointer and therefore strips
+    # the pinned trust anchors (expected_contract_hash / expected_manifest_sha256).
+    # After release_build, manually backfill both fields from the corresponding
+    # release_summary.json before the pointer is considered production-frozen.
     active_release = {
         "release_id": manifest.get("release_id"),
         "release_dir": str(release_relative),

@@ -39,14 +39,22 @@ def _pointer(
     *,
     release_id: str = RELEASE_ID,
     contract_hash: str,
+    expected_manifest_sha256: str | None = None,
+    manifest: dict[str, object] | None = None,
 ) -> Path:
     """Create an isolated copy of the release pointer under project_root."""
-    pointer = {
+    if expected_manifest_sha256 is None and manifest is not None:
+        expected_manifest_sha256 = hashlib.sha256(
+            json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
+        ).hexdigest()
+    pointer: dict[str, object] = {
         "release_id": release_id,
         "release_dir": f"workspace/data/releases/{release_id}",
         "manifest": f"workspace/data/releases/{release_id}/manifest/release_manifest.json",
         "expected_contract_hash": contract_hash,
     }
+    if expected_manifest_sha256 is not None:
+        pointer["expected_manifest_sha256"] = expected_manifest_sha256
     pointer_path = project_root / "finetune/active_data_release.json"
     _write_json(pointer_path, pointer)
     return pointer_path
@@ -109,12 +117,16 @@ def test_load_release_expectations_reads_frozen_manifest(
         "automatic_unreviewed_candidates": 766,
     }
     contract_hash = "47e393" + "0" * 58
-    _pointer(tmp_path, release_id=release_id, contract_hash=contract_hash)
-    _write_manifest(
-        tmp_path,
-        release_id,
-        _manifest(release_id, contract_hash=contract_hash, counts=counts),
+    manifest_payload = _manifest(
+        release_id, contract_hash=contract_hash, counts=counts
     )
+    _pointer(
+        tmp_path,
+        release_id=release_id,
+        contract_hash=contract_hash,
+        manifest=manifest_payload,
+    )
+    _write_manifest(tmp_path, release_id, manifest_payload)
 
     expectations = load_release_expectations(
         project_root=tmp_path,
@@ -129,18 +141,81 @@ def test_load_release_expectations_contract_hash_drift_fail_closed(
     tmp_path: Path,
 ) -> None:
     release_id = "v4.1.0-testmanifest"
-    _pointer(tmp_path, release_id=release_id, contract_hash="47e393" + "0" * 58)
-    _write_manifest(
-        tmp_path,
+    contract_hash = "47e393" + "0" * 58
+    manifest_payload = _manifest(
         release_id,
-        _manifest(
-            release_id,
-            contract_hash="deadbeef" + "0" * 56,
-            counts={"published_candidates": 1678},
-        ),
+        contract_hash="deadbeef" + "0" * 56,
+        counts={"published_candidates": 1678},
     )
+    _pointer(
+        tmp_path,
+        release_id=release_id,
+        contract_hash=contract_hash,
+        manifest=manifest_payload,
+    )
+    _write_manifest(tmp_path, release_id, manifest_payload)
 
     with pytest.raises(V4_1FinetuneError, match="contract_hash 漂移"):
+        load_release_expectations(
+            project_root=tmp_path,
+            release_id=release_id,
+        )
+
+
+def test_load_release_expectations_manifest_sha256_drift_fail_closed(
+    tmp_path: Path,
+) -> None:
+    """Tampering counts/files while keeping contract_hash must fail on manifest hash."""
+    release_id = "v4.1.0-testmanifest"
+    contract_hash = "47e393" + "0" * 58
+    original_manifest = _manifest(
+        release_id,
+        contract_hash=contract_hash,
+        counts={"published_candidates": 1678},
+    )
+    _pointer(
+        tmp_path,
+        release_id=release_id,
+        contract_hash=contract_hash,
+        manifest=original_manifest,
+    )
+    _write_manifest(tmp_path, release_id, original_manifest)
+
+    # Tamper the manifest file on disk: change counts and add a fake file entry
+    # while preserving the contract_hash field, simulating a self-certification attack.
+    manifest_path = (
+        tmp_path
+        / "workspace/data/releases"
+        / release_id
+        / "manifest/release_manifest.json"
+    )
+    tampered = json.loads(manifest_path.read_text(encoding="utf-8"))
+    tampered["counts"] = {"published_candidates": 9999}
+    tampered["files"] = [{"path": "dataset_info.json", "size_bytes": 0, "sha256": "0" * 64}]
+    _write_json(manifest_path, tampered)
+
+    with pytest.raises(V4_1FinetuneError, match="manifest sha256 漂移"):
+        load_release_expectations(
+            project_root=tmp_path,
+            release_id=release_id,
+        )
+
+
+def test_load_release_expectations_missing_manifest_sha256_fail_closed(
+    tmp_path: Path,
+) -> None:
+    release_id = "v4.1.0-testmanifest"
+    pointer = {
+        "release_id": release_id,
+        "release_dir": f"workspace/data/releases/{release_id}",
+        "manifest": f"workspace/data/releases/{release_id}/manifest/release_manifest.json",
+        "expected_contract_hash": "47e393" + "0" * 58,
+    }
+    _write_json(tmp_path / "finetune/active_data_release.json", pointer)
+
+    with pytest.raises(
+        V4_1FinetuneError, match="expected_manifest_sha256"
+    ):
         load_release_expectations(
             project_root=tmp_path,
             release_id=release_id,
@@ -171,7 +246,17 @@ def test_load_release_expectations_fails_closed_without_workspace(
     tmp_path: Path,
 ) -> None:
     release_id = "v4.1.0-missing"
-    _pointer(tmp_path, release_id=release_id, contract_hash="47e393" + "0" * 58)
+    manifest_payload = _manifest(
+        release_id,
+        contract_hash="47e393" + "0" * 58,
+        counts={"published_candidates": 1678},
+    )
+    _pointer(
+        tmp_path,
+        release_id=release_id,
+        contract_hash="47e393" + "0" * 58,
+        manifest=manifest_payload,
+    )
 
     with pytest.raises(
         V4_1FinetuneError, match="必须在挂载 workspace 的训练机上执行"
@@ -187,16 +272,18 @@ def test_validate_release_contract_hash_drift_fail_closed(
 ) -> None:
     release_id = "v4.1.0-testmanifest"
     contract_hash = "47e393" + "0" * 58
-    _pointer(tmp_path, release_id=release_id, contract_hash=contract_hash)
-    _write_manifest(
-        tmp_path,
+    manifest_payload = _manifest(
         release_id,
-        _manifest(
-            release_id,
-            contract_hash=contract_hash,
-            counts={"published_candidates": 1678},
-        ),
+        contract_hash=contract_hash,
+        counts={"published_candidates": 1678},
     )
+    _pointer(
+        tmp_path,
+        release_id=release_id,
+        contract_hash=contract_hash,
+        manifest=manifest_payload,
+    )
+    _write_manifest(tmp_path, release_id, manifest_payload)
 
     with pytest.raises(V4_1FinetuneError, match="contract_hash 漂移"):
         validate_release(
@@ -213,16 +300,18 @@ def test_validate_release_counts_drift_fail_closed(
 ) -> None:
     release_id = "v4.1.0-testmanifest"
     contract_hash = "47e393" + "0" * 58
-    _pointer(tmp_path, release_id=release_id, contract_hash=contract_hash)
-    _write_manifest(
-        tmp_path,
+    manifest_payload = _manifest(
         release_id,
-        _manifest(
-            release_id,
-            contract_hash=contract_hash,
-            counts={"published_candidates": 1678},
-        ),
+        contract_hash=contract_hash,
+        counts={"published_candidates": 1678},
     )
+    _pointer(
+        tmp_path,
+        release_id=release_id,
+        contract_hash=contract_hash,
+        manifest=manifest_payload,
+    )
+    _write_manifest(tmp_path, release_id, manifest_payload)
 
     with pytest.raises(V4_1FinetuneError, match="published_candidates 漂移"):
         validate_release(

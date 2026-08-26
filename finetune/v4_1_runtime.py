@@ -75,6 +75,16 @@ def _load_active_release_pointer(project_root: Path | None = None) -> dict[str, 
             f"release pointer {pointer_path} 缺少有效 expected_contract_hash 字段；"
             "请在 release_build 后补全该钉扎值，否则无法防御 manifest 自证化篡改"
         )
+    expected_manifest_sha256 = pointer.get("expected_manifest_sha256")
+    if (
+        not isinstance(expected_manifest_sha256, str)
+        or len(expected_manifest_sha256) != 64
+    ):
+        raise V4_1FinetuneError(
+            f"release pointer {pointer_path} 缺少有效 expected_manifest_sha256 字段；"
+            "请在 release_build 后从对应 release_summary.json 的 "
+            "release_manifest_sha256 字段回填，否则无法防御 manifest 自证化篡改"
+        )
     return pointer
 
 
@@ -97,10 +107,22 @@ def load_release_expectations(
     ).resolve()
     pointer = _load_active_release_pointer(project_root)
     expected_contract_hash = pointer["expected_contract_hash"]
+    expected_manifest_sha256 = pointer["expected_manifest_sha256"]
     manifest_path = (
         release_dir(project_root, resolved_release_id)
         / "manifest/release_manifest.json"
     )
+    if not manifest_path.is_file():
+        raise V4_1FinetuneError(
+            f"release manifest 缺失: {manifest_path}；"
+            "评测/验证必须在挂载 workspace 的训练机上执行"
+        )
+    actual_manifest_sha256 = _sha256(manifest_path)
+    if actual_manifest_sha256 != expected_manifest_sha256:
+        raise V4_1FinetuneError(
+            f"release manifest sha256 漂移: "
+            f"pointer={expected_manifest_sha256!r}, actual={actual_manifest_sha256!r}"
+        )
     try:
         manifest = _read_json(manifest_path)
     except V4_1FinetuneError as exc:

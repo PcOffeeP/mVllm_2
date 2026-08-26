@@ -20,8 +20,10 @@
 | 当前结论 | Agent 工程链路已通过；最新三折出现契约退化和类别坍缩，质量门仍失败 |
 
 `finetune/active_data_release.json` 路径沿用自 V2，但旧内容已删除，现为当前 V4.1
-活跃指针，指向 `workspace/data/releases/v4.1.0-ecb5aeb9657c`。V4.1 不再使用旧
-`finetune/dataset_info.json` 或 V2 Prompt 作为活动指针；三个训练配置直接绑定冻结发布中的
+活跃指针，指向 `workspace/data/releases/v4.1.0-ecb5aeb9657c`。release 后必须手动回填
+`expected_contract_hash` 与 `expected_manifest_sha256`（值取自对应
+`release_summary.json` 的 `contract_hash` / `release_manifest_sha256` 字段），否则默认
+校验会 fail-closed。V4.1 不再使用旧 `finetune/dataset_info.json` 或 V2 Prompt 作为活动指针；三个训练配置直接绑定冻结发布中的
 `dataset_info.json`，避免 V2/V4.1 串线。
 
 ## 固定全字段 Prompt 受控实验
