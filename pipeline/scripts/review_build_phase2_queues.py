@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from pipeline.current_data import current_data_paths
 from pipeline.v4_1_review_workflow import (
+    append_review_queue_index,
     build_phase2_review_queue,
     save_v4_1_review_queue,
 )
@@ -57,6 +58,7 @@ def main() -> None:
         )
         output = args.output_root / payload["queue_id"] / "review_queue.json"
         save_v4_1_review_queue(output, payload)
+        append_review_queue_index(args.output_root, payload)
         outputs[scope] = {
             "queue_id": payload["queue_id"],
             "candidate_count": payload["candidate_count"],

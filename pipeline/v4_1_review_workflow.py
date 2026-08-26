@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from pipeline import artifact_index, artifact_resolver
 from pipeline.v3_review_workflow import (
     historical_context as v3_historical_context,
     load_reference_records,
@@ -944,10 +945,55 @@ def save_draft(
     return payload
 
 
+def append_review_queue_index(collection_dir: Path | str, payload: Mapping[str, Any]) -> None:
+    """Append an index entry for a v4.1 review queue and update LATEST.
+
+    Works for both phase1 observed/incipient queues and phase2 audit-derived
+    queues. Idempotent via artifact_index.append_entry.
+    """
+    if "queue_id" not in payload or payload["queue_id"] is None:
+        raise ValueError("review queue payload 必须包含非空 queue_id")
+    queue_id = str(payload["queue_id"])
+    source_media = payload.get("source_media")
+    if not isinstance(source_media, Mapping):
+        source_media = {}
+    source_audit = payload.get("source_audit")
+    inputs: dict[str, Any] = {
+        "media_id": source_media.get("media_id"),
+        "materialized_sha256": source_media.get("materialized_sha256"),
+        "manifest_sha256": source_media.get("manifest_sha256"),
+    }
+    if isinstance(source_audit, Mapping):
+        inputs["audit_id"] = source_audit.get("audit_id")
+        inputs["audit_sha256"] = source_audit.get("sha256")
+    scope = payload.get("review_scope")
+    if scope is not None:
+        inputs["scope"] = scope
+    stats: dict[str, Any] = {"candidate_count": payload.get("candidate_count", 0)}
+    if "observed_count" in payload:
+        stats["observed_count"] = payload["observed_count"]
+    if "incipient_count" in payload:
+        stats["incipient_count"] = payload["incipient_count"]
+    artifact_index.append_entry(
+        collection_dir,
+        {
+            "id": queue_id,
+            "created_at": artifact_index.utc_now(),
+            "step": "review",
+            "inputs": inputs,
+            "stats": stats,
+            "note": "v4.1 review queue",
+        },
+    )
+    artifact_resolver.update_latest(collection_dir, queue_id)
+
+
 def freeze_completed_batch(
     output_root: Path,
     queue_identity: Mapping[str, Any],
     decisions: Mapping[str, Mapping[str, Any]],
+    *,
+    collection_dir: Path | str | None = None,
 ) -> Path:
     expected_ids = list(queue_identity["selected_candidate_ids"])
     if set(decisions) != set(expected_ids):
@@ -987,4 +1033,36 @@ def freeze_completed_batch(
             raise FileExistsError(f"拒绝覆盖已有审查摘要: {summary_path}")
     else:
         _atomic_replace(summary_path, summary)
+    if collection_dir is not None:
+        _append_review_decisions_index(collection_dir, summary, queue_identity)
     return batch_dir
+
+
+def _append_review_decisions_index(
+    collection_dir: Path | str,
+    summary: Mapping[str, Any],
+    queue_identity: Mapping[str, Any],
+) -> None:
+    batch_id = str(summary["batch_id"])
+    artifact_index.append_entry(
+        collection_dir,
+        {
+            "id": batch_id,
+            "created_at": artifact_index.utc_now(),
+            "step": "review",
+            "inputs": {
+                "queue_id": queue_identity.get("queue_id"),
+                "media_id": queue_identity.get("media_id"),
+                "contract_hash": queue_identity.get("contract_hash"),
+                "selected_candidate_count": len(
+                    queue_identity.get("selected_candidate_ids", [])
+                ),
+            },
+            "stats": {
+                "decision_count": summary["decision_count"],
+                "status_counts": summary["status_counts"],
+            },
+            "note": "v4.1 review decision batch",
+        },
+    )
+    artifact_resolver.update_latest(collection_dir, batch_id)

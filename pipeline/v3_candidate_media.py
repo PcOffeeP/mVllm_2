@@ -660,6 +660,64 @@ def _append_candidate_media_index(
     )
 
 
+def _artifact_counts(
+    root: Path, plan_id: str
+) -> dict[str, int]:
+    video_dir = root / plan_id / "videos"
+    video_count = len(list(video_dir.glob("*.mp4"))) if video_dir.is_dir() else 0
+    frame_dir = root / plan_id
+    frame_count = (
+        len(list(frame_dir.rglob("frame_*.jpg"))) if frame_dir.is_dir() else 0
+    )
+    return {"video_count": video_count, "frame_count": frame_count}
+
+
+def _append_subvideo_index(
+    subvideo_root: Path, manifest: Mapping[str, Any]
+) -> None:
+    plan_id = str(manifest["identity"]["candidate_plan_id"])
+    counts = _artifact_counts(subvideo_root, plan_id)
+    artifact_index.append_entry(
+        subvideo_root,
+        {
+            "id": plan_id,
+            "created_at": artifact_index.utc_now(),
+            "step": "subvideo",
+            "inputs": {
+                "candidate_plan_id": plan_id,
+                "media_id": manifest["media_id"],
+                "roi_media_id": manifest["identity"].get("roi_media_id"),
+            },
+            "stats": {**manifest.get("counts", {}), **counts},
+            "note": "v3 candidate subvideos",
+        },
+    )
+    artifact_resolver.update_latest(subvideo_root, plan_id)
+
+
+def _append_frame_index(
+    frame_root: Path, manifest: Mapping[str, Any]
+) -> None:
+    plan_id = str(manifest["identity"]["candidate_plan_id"])
+    counts = _artifact_counts(frame_root, plan_id)
+    artifact_index.append_entry(
+        frame_root,
+        {
+            "id": plan_id,
+            "created_at": artifact_index.utc_now(),
+            "step": "frame",
+            "inputs": {
+                "candidate_plan_id": plan_id,
+                "media_id": manifest["media_id"],
+                "roi_media_id": manifest["identity"].get("roi_media_id"),
+            },
+            "stats": {**manifest.get("counts", {}), **counts},
+            "note": "v3 candidate frames",
+        },
+    )
+    artifact_resolver.update_latest(frame_root, plan_id)
+
+
 def materialize_media_plan(
     plan: Mapping[str, Any],
     *,
@@ -680,6 +738,8 @@ def materialize_media_plan(
         _validate_complete_result(result_dir, manifest, plan)
         _append_candidate_media_index(result_root, manifest)
         artifact_resolver.update_latest(result_root, manifest["media_id"])
+        _append_subvideo_index(video_output_root, manifest)
+        _append_frame_index(frame_output_root, manifest)
         return result_dir
 
     processor = preprocessor or MiniCPMVideoPreprocessor(
@@ -783,4 +843,6 @@ def materialize_media_plan(
     _atomic_write(result_dir / "manifest.json", manifest)
     _append_candidate_media_index(result_root, manifest)
     artifact_resolver.update_latest(result_root, manifest["media_id"])
+    _append_subvideo_index(video_output_root, manifest)
+    _append_frame_index(frame_output_root, manifest)
     return result_dir

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
+from pipeline import artifact_index, artifact_resolver
 from pipeline.source_bootstrap import canonical_bytes
 from pipeline.data_rebuild import tree_inventory
 from pipeline.v4_1_review_decisions import build_review_payload, save_review_payload
@@ -341,6 +343,63 @@ def test_builds_deterministic_immutable_release(tmp_path: Path) -> None:
     repeated_dir, repeated_manifest = _build(paths)
     assert repeated_dir == release_dir
     assert repeated_manifest == manifest
+
+
+def test_release_appends_index_and_latest(tmp_path: Path) -> None:
+    paths = _fixture(tmp_path)
+    release_dir, manifest = _build(paths)
+    releases = paths["releases"]
+
+    index = artifact_index.read_index(releases)
+    assert len(index) == 1
+    assert index[0]["id"] == manifest["release_id"]
+    assert index[0]["step"] == "release"
+    assert index[0]["inputs"]["queue_id"] == manifest["source_queue_id"]
+    assert index[0]["inputs"]["review_batch_id"] == manifest["source_review_batch_id"]
+    assert index[0]["inputs"]["media_id"] == manifest["source_media_id"]
+    assert (
+        index[0]["stats"]["published_candidates"]
+        == manifest["counts"]["published_candidates"]
+    )
+    latest = (
+        releases / artifact_resolver.LATEST_FILENAME
+    ).read_text(encoding="utf-8").strip()
+    assert latest == manifest["release_id"]
+
+    # Idempotent rerun keeps the same index state.
+    _, same_manifest = _build(paths)
+    assert same_manifest == manifest
+    assert len(artifact_index.read_index(releases)) == 1
+    assert (
+        releases / artifact_resolver.LATEST_FILENAME
+    ).read_text(encoding="utf-8").strip() == manifest["release_id"]
+
+
+def test_existing_release_rerun_backfills_index(tmp_path: Path) -> None:
+    """Re-running a release that already exists without an index must backfill it."""
+    paths = _fixture(tmp_path)
+    release_dir, manifest = _build(paths)
+
+    # Simulate a release directory that predates the collection index.
+    releases_without_index = tmp_path / "data/releases_without_index"
+    shutil.copytree(release_dir, releases_without_index / release_dir.name)
+    assert not (releases_without_index / "index.json").exists()
+
+    paths["releases"] = releases_without_index
+    rerun_dir, rerun_manifest = _build(paths)
+    assert rerun_dir == releases_without_index / release_dir.name
+    assert rerun_manifest == manifest
+
+    index = artifact_index.read_index(releases_without_index)
+    assert len(index) == 1
+    assert index[0]["id"] == manifest["release_id"]
+    assert index[0]["step"] == "release"
+    latest = (
+        (releases_without_index / artifact_resolver.LATEST_FILENAME)
+        .read_text(encoding="utf-8")
+        .strip()
+    )
+    assert latest == manifest["release_id"]
 
 
 def test_release_can_bind_source_snapshot_directly(tmp_path: Path) -> None:
