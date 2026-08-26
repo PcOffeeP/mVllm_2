@@ -2,7 +2,6 @@
 
 | 文件 | 作用 |
 | --- | --- |
-| `source_migrate_workspace.py` | 迁移并校验项目内数据目录 |
 | `roi_annotation_app.py` | 标注 ROI |
 | `roi_freeze_decisions.py` | 冻结 ROI 决定 |
 | `roi_materialize_videos.py` | 生成 ROI 视频 |

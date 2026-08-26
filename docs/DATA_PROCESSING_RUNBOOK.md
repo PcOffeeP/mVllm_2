@@ -92,33 +92,12 @@ python pipeline/scripts/subvideo_materialize_media.py \
 
 以下命令中的 `<...>` 为每次运行实际生成的 ID 或路径，由上游脚本输出或 `workspace/data/INDEX.md` / 各集合 `index.json` 查询得到。
 
-### Step 1：迁移源数据并生成快照
+### Step 1：源数据就位并生成快照
 
-本步骤分为两段：① 把源数据放置到 `workspace/data` 并做迁移校验；② 生成 source/split 快照。只有完成 ① 后才能进入 ②。
+本步骤假设源数据已按 [`data/README.md`](../data/README.md) 的约定放置到
+`workspace/data/source/{videos,annotations,splits}`。直接生成 source/split 快照。
 
-#### 1.1 数据放置与迁移校验（前置）
-
-- **目的**：把源数据物理复制到项目内 `workspace/data/`，并校验完整性。
-- **机器**：数据所在机器（通常是训练机，Conda  环境）。
-- **命令**：
-  ```bash
-  # 复制并校验
-  python pipeline/scripts/source_migrate_workspace.py --copy
-  # 仅校验已复制的目录
-  python pipeline/scripts/source_migrate_workspace.py
-  ```
-  可选显式指定源根：
-  ```bash
-  python pipeline/scripts/source_migrate_workspace.py \
-    --source-root /path/to/tensile-data/current \
-    --destination-root workspace/data \
-    --copy
-  ```
-- **产物位置**：`workspace/data/source/{videos,annotations,splits}`。
-- **验收/检查**：校验通过会输出 JSON，包含文件数、总字节数、SHA-256 一致性。失败时保留旧根，清理不完整副本后重试，禁止用软链接。
-- **进入下一步条件**：两次校验均成功，源数据已就位。
-
-#### 1.2 快照生成
+#### 1.1 快照生成
 
 - **目的**：物化不可变的 source snapshot 与 split snapshot（含视频元数据与训练/测试划分）。
 - **机器**：训练机（Conda  环境）。
