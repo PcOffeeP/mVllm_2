@@ -94,7 +94,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
 
 ### Step 1：源数据就位并生成快照
 
-本步骤假设源数据已按 [`data/README.md`](../data/README.md) 的约定放置到
+本步骤假设源数据已按 `docs/project-guide.md` 中「初始数据」列的约定（110 个 MP4、CSV 列、89/21 split）放置到
 `workspace/data/source/{videos,annotations,splits}`。直接生成 source/split 快照。
 
 #### 1.1 快照生成
