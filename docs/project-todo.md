@@ -127,6 +127,19 @@
 - **待决定或后续动作**：在 `release_build_phase2` 完成阶段自动覆写 `finetune/active_data_release.json` 的 `release_id` 与 `expected_contract_hash`，并补充校验确保与刚生成的 manifest 一致。
 - **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
 
+### roi_annotation_app.py --metadata 默认路径失效
+
+- **关联主题**：核心链路节点 2（ROI 标注）与 source snapshot 索引。
+- **开发者期望**：`roi_annotation_app.py` 启动时应自动解析 `source_snapshots` 的 LATEST，并指向其 `video_meta.json`，无需用户手动拼路径。
+- **当前实现**：`--metadata` 默认值为 `derived/metadata/video_meta.json`，该路径当前链路不生成，仅为失效遗留路径。
+- **存在差异**：默认参数已不可直接运行；用户必须每次显式传入 source snapshot 内的 `video_meta.json` 路径或完整 ID/前缀。
+- **影响**：首次运行或切换数据时容易遗漏，且与 RUNBOOK Step 2.1 将其标记为必填一致。
+- **代码依据**：
+  - `pipeline/scripts/roi_annotation_app.py`（`--metadata` 默认值）
+  - `pipeline/scripts/build_artifact_index.py` / `pipeline/artifact_index.py`（`source_snapshots` LATEST 解析）
+- **待决定或后续动作**：将 `--metadata` 默认值改为解析 `source_snapshots` LATEST 并指向其 `video_meta.json`，同时保留显式传入路径/ID 的能力。
+- **记录版本**：`f6881883`
+
 ## 待确认
 
 （暂无）

@@ -6,6 +6,7 @@
 
 - 目标读者：首次跑通 V4.1 数据处理链路的人。
 - 代码根目录：`<repo>`（本仓库根目录）。所有命令均从 `<repo>` 执行。
+- 数据根目录：多数脚本 `--data-root` 默认使用 `<repo>/workspace/data`，正文中显式写出 `--data-root workspace/data` 仅为可读性，可省略。
 - 机器分工：
   - **Mac（uv 环境）**：ROI 标注、人工审查、轻量校验与队列构建。
   - **训练机（Conda  环境）**：ROI 视频物化、候选媒体物化、重计算、训练发布构建。
@@ -31,13 +32,12 @@
 workspace/data/
 ├── source/
 │   ├── videos/        # 原始 MP4
-│   ├── annotations/     # 原始标注
-│   └── splits/          # train/test 划分 JSON
+│   └── annotations/   # 原始标注
 └── derived/metadata/
-    └── video_meta.json  # 源视频元数据（由源数据提供或从旧系统迁移）
+    └── video_meta.json  # 遗留路径，当前链路不生成；权威视频元数据为 source snapshot 内 video_meta.json
 ```
 
-> 注意：`source/videos`、`source/annotations`、`source/splits` 是生成快照的前提；生成 source snapshot 后，下游脚本以 `derived/metadata/source_snapshots/<id>/video_meta.json` 为权威视频元数据输入。
+> 注意：`source/videos`、`source/annotations` 是生成快照的前提；`source/splits` 是旧系统遗留路径，source 快照生成不再读取 source/splits，划分由 `build_source_snapshot` 在生成快照时按确定性策略内部产出。生成 source snapshot 后，下游脚本以 `derived/metadata/source_snapshots/<id>/video_meta.json` 为权威视频元数据输入。
 
 ## 3. 流程总览
 
@@ -90,18 +90,26 @@ python pipeline/scripts/subvideo_materialize_media.py \
 
 ## 5. 逐步操作
 
-以下命令中的 `<...>` 为每次运行实际生成的 ID 或路径，由上游脚本输出或 `workspace/data/INDEX.md` / 各集合 `index.json` 查询得到。
+以下命令中的 `<...>` 为每次运行实际生成的 ID 或路径。按性质分为三类：
+
+1. **脚本输出，可从 `INDEX.md` / `index.json` / 脚本输出中查询**：`<source-snapshot-id>`、`<split-snapshot-id>`、`<roi-manifest-id>`、`<roi-media-id>`、`<candidate-media-id>`、`<candidate-plan-id>`、`<queue-id>`、`<route-id>`、`<release-id>` 等。
+2. **用户自定**：`<run-id>` 是你自己起的 staging 目录名（如 `2024-08-26-test`），用来隔离一次 `rebuild_data.py` 的 staging 产物；`<reviewer-id>` 是审查人工号/名称，仅写入审计元数据。
+3. **审查 UI 生成**：`<batch-id>` 在 `review_candidates_app.py` 中随着保存/冻结审查结果自动生成，**不能**从 `INDEX.md` 提前查询。
+
+`source/split/ROI manifest/ROI media` 等 ID 均为脚本按内容哈希自动计算，不是你输入的参数。
 
 ### Step 1：源数据就位并生成快照
 
-本步骤假设源数据已按 `docs/project-guide.md` 中「初始数据」列的约定（110 个 MP4、CSV 列、89/21 split）放置到
-`workspace/data/source/{videos,annotations,splits}`。直接生成 source/split 快照。
+本步骤假设源数据已按 `docs/project-guide.md` 中「初始数据」列的约定放置到
+`workspace/data/source/{videos,annotations}`（110 个 MP4、CSV 列）。 split 由脚本内部按确定性策略生成：当前数据下近似 89/21 的 train/test 比例，以及 3 折 stratified split，均为脚本输出，不是输入约束。直接生成 source/split 快照。
 
 #### 1.1 快照生成
 
 - **目的**：物化不可变的 source snapshot 与 split snapshot（含视频元数据与训练/测试划分）。
 - **机器**：训练机（Conda  环境）。
 - **命令**：
+  > `<run-id>` 是你自己起的 staging 目录名（如 `run-2024-08-26`），用来把一次 `rebuild_data.py` 的产物隔离在 `workspace/data-staging/<run-id>`；只有执行 `promote` 后，source/split 快照才会正式落入 `workspace/data`。
+
   ```bash
   # 仅校验源数据身份与拆分计划
   python pipeline/scripts/rebuild_data.py run \
@@ -120,11 +128,27 @@ python pipeline/scripts/subvideo_materialize_media.py \
   python pipeline/scripts/rebuild_data.py promote \
     --run-root workspace/data-staging/<run-id>
   ```
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--run-root` | **必填** | - | staging 目录，用户自定；建议每次新起一个名字 |
+  | `--source-data-root` | 可选 | `workspace/data` | 必须等于当前数据根 |
+  | `--source-only` | 开关 | 关闭 | 只跑 source/split 快照，不进入 ROI/审查/发布 |
+  | `--check-only` | 开关 | 关闭 | 只校验，不写快照 |
+  | `--roi-mode` | 可选 | `--source-only` 时自动补 `review` | 完整流水线必填 |
+  | `--review-mode` | 可选 | `--source-only` 时自动补 `review` | 完整流水线必填 |
+  | `--review-reference-id` | 可选 | `review-ref-7cd2e73a1cd1` | - |
+  | `--model` | 可选 | `models/minicpmv4_5` | - |
+  | `--workers` | 可选 | `2` | - |
+  | `--expected-count` | 可选 | `110` | 源视频期望数量 |
+
+  `promote` 子命令：`--run-root` 必填，`--expected-count` 默认 `110`。
 - **产物位置**：
   - `workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/`
     - 含 `video_meta.json`、`source_manifest.json` 等
   - `workspace/data/derived/metadata/split_snapshots/<split-snapshot-id>/`
-    - 含 `fold_0/1/2` 的 `train.json` / `val.json` 以及 `test.json`
+    - 含 `split_manifest.json`、`split_decision.json`、`test.json`、`fold_0_train.json`、`fold_0_val.json`、`fold_1_train.json`、`fold_1_val.json`、`fold_2_train.json`、`fold_2_val.json`
 - **验收/检查**：`run --source-only` 输出 `source_snapshotted` 状态、`source_snapshot_id`、`split_snapshot_id`；快照目录已生成且 `source_snapshots/<id>/` 含 `video_meta.json`，`split_snapshots/<id>/` 含 splits。
 - **进入下一步条件**：已知 `<source-snapshot-id>` 与 `<split-snapshot-id>`，且快照已晋级到 `workspace/data`。
 
@@ -145,6 +169,15 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --metadata workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
     --output workspace/data/derived/metadata/roi_decisions.json
   ```
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--metadata` | **必填（默认指向遗留路径，勿依赖）** | `derived/metadata/video_meta.json` | 必须显式传入 Step 1 的 source snapshot 路径 |
+  | `--output` | 可选 | `derived/metadata/roi_decisions.json` | ROI 决定保存路径 |
+  | `--project-root` | 可选 | 当前数据根 | 通常不需要传 |
+
 - **产物位置**：`workspace/data/derived/metadata/roi_decisions.json`。
 - **验收/检查**：UI 中每个视频的关键时刻必须包含上/下夹具、完整试样和位置判断。
 - **进入下一步条件**：所有源视频完成标注并保存。
@@ -154,12 +187,22 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：把 ROI 决定打包成不可变的 ROI manifest。
 - **机器**：Mac（轻量校验）。
 - **命令**：
-  > 不传 `--video-metadata` / `--test-manifest` 时，脚本默认从 `source_snapshots` / `split_snapshots` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   uv run python pipeline/scripts/roi_freeze_decisions.py --check-only
   uv run python pipeline/scripts/roi_freeze_decisions.py
   ```
   若使用非默认数据根，加 `--data-root <path>`。
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--decisions` | 可选 | `derived/metadata/roi_decisions.json` | ROI 决定输入 |
+  | `--video-metadata` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST 指向的 `video_meta.json` | 可传完整 ID / 短前缀 / 路径 |
+  | `--test-manifest` | 可选，缺省自动取 LATEST | `split_snapshots` 的 LATEST 指向的 `test.json` | 可传完整 ID / 短前缀 / 路径 |
+  | `--output-root` | 可选 | `derived/metadata/roi_manifests` | - |
+  | `--check-only` | 开关 | 关闭 | 只校验摘要，不写冻结目录 |
+
 - **产物位置**：`workspace/data/derived/metadata/roi_manifests/<roi-manifest-id>/`。
 - **验收/检查**：`--check-only` 输出校验报告；正式运行后目录中出现 `manifest.json` 且 `roi_manifest_id` 已打印。
 - **进入下一步条件**：无校验错误，且已知 `<roi-manifest-id>`。
@@ -169,7 +212,6 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：按 ROI manifest 裁剪出保持原时间轴的 3:4 源视频。
 - **机器**：训练机（ffmpeg 重计算）。
 - **命令**：
-  > 不传 `--roi-manifest` / `--video-meta` 时，脚本默认从 `roi_manifests` / `source_snapshots` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   # 先只校验生成计划
   python pipeline/scripts/roi_materialize_videos.py \
@@ -188,6 +230,18 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --data-root workspace/data \
     --workers 2
   ```
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--roi-manifest` | 可选，缺省自动取 LATEST | `roi_manifests` 的 LATEST 指向的 `manifest.json` | 可传完整 ID / 短前缀 / 路径 |
+  | `--video-meta` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST 指向的 `video_meta.json` | 可传完整 ID / 短前缀 / 路径 |
+  | `--output-root` | 可选 | `derived/roi_videos` | 小样本试跑时必须改隔离目录 |
+  | `--video-ids` | 可选 | 全部视频 | 仅小样本试跑用 |
+  | `--workers` | 可选 | `2` | - |
+  | `--check-only` | 开关 | 关闭 | 只校验计划，不调用 ffmpeg |
+
 - **产物位置**：`workspace/data/derived/roi_videos/<roi-media-id>/`。
 - **验收/检查**：目录中出现 `manifest.json`；单条媒体通过分辨率、帧数、帧率、时长检查。
 - **进入下一步条件**：`manifest.json` 存在，且已知 `<roi-media-id>`。
@@ -201,7 +255,6 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：基于 ROI 视频和 review reference 生成内容寻址的候选计划。
 - **机器**：Mac 或训练机（轻量计算）。
 - **命令**：
-  > 不传 `--roi-media-dir` 时，脚本默认从 `roi_videos` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   # 先只打印计划身份与统计
   uv run python pipeline/scripts/subvideo_build_plan.py \
@@ -216,7 +269,17 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --output-root workspace/data/derived/metadata/candidate_plans
   ```
 
-> 注意：候选计划步骤固定使用 v3 契约（脚本默认值），v4.1 契约从审查/发布环节开始使用；因此 `subvideo_build_plan.py` 不需要也不应显式传入 `--contract pipeline/contracts/tensile_vlm_v4_1.json`。
+  > 注意：候选计划步骤固定使用 v3 契约（脚本默认值），v4.1 契约从审查/发布环节开始使用；因此 `subvideo_build_plan.py` 不需要也不应显式传入 `--contract pipeline/contracts/tensile_vlm_v4_1.json`。
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--roi-media-dir` | 可选，缺省自动取 LATEST | `roi_videos` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
+  | `--review-reference-dir` | 可选 | `derived/metadata/review_reference/review-ref-7cd2e73a1cd1` | v3 review reference |
+  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v3.json` | 不要改成 v4.1 |
+  | `--output-root` | 可选 | `derived/metadata/candidate_plans` | - |
+  | `--dry-run` | 开关 | 关闭 | 只计算统计，不写目录 |
 
 - **产物位置**：`workspace/data/derived/metadata/candidate_plans/<plan-id>/`。
 - **验收/检查**：`--dry-run` 输出 `plan_id`、development 候选数、需审查数；正式运行后目录中出现 `manifest.json`。
@@ -227,7 +290,6 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：生成候选 MP4、实际 MiniCPM 抽帧和门禁结果。
 - **机器**：训练机（Conda环境，GPU/模型推理）。
 - **命令**：
-  > 不传 `--candidate-plan` / `--roi-media` 时，脚本默认从 `candidate_plans` / `roi_videos` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   # 先只校验输入与身份
   python pipeline/scripts/subvideo_materialize_media.py \
@@ -246,6 +308,22 @@ python pipeline/scripts/subvideo_materialize_media.py \
   python pipeline/scripts/subvideo_materialize_media.py \
     --data-root workspace/data
   ```
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--candidate-plan` | 可选，缺省自动取 LATEST | `candidate_plans` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
+  | `--roi-media` | 可选，缺省自动取 LATEST | `roi_videos` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
+  | `--model` | 可选 | `models/minicpmv4_5` | - |
+  | `--scope` | 可选 | `all` | `development` / `test_audit` / `all` |
+  | `--candidate-ids` | 可选 | - | 指定只物化部分 candidate |
+  | `--limit` | 可选 | - | 小样本试跑限制数量 |
+  | `--video-output-root` | 可选 | `derived/subvideos` | 子集试跑时必须改隔离目录 |
+  | `--frame-output-root` | 可选 | `derived/frames` | 子集试跑时必须改隔离目录 |
+  | `--result-root` | 可选 | `derived/metadata/candidate_media_results` | 子集试跑时必须改隔离目录 |
+  | `--check-only` | 开关 | 关闭 | 只校验，不生成媒体 |
+
 - **产物位置**：
   - `workspace/data/derived/subvideos/<candidate-media-id>/`
   - `workspace/data/derived/frames/<candidate-media-id>/`
@@ -260,13 +338,23 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：把 materialized 候选组织成 V4.1 审查队列（`observed` / `incipient`）。
 - **机器**：Mac（轻量）。
 - **命令**：
-  > 不传 `--materialized` / `--manifest` 时，脚本默认从 `candidate_media_results` 的 LATEST 指针解析（详见「产物 ID 与回溯」）。
   ```bash
   uv run python pipeline/scripts/review_build_queue.py \
     --data-root workspace/data \
     --contract pipeline/contracts/tensile_vlm_v4_1.json \
     --output-root workspace/data/derived/metadata/review_queues
   ```
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--materialized` | 可选，缺省自动取 LATEST | `candidate_media_results` 的 LATEST 指向的 `development_materialized.json` | 可传完整 ID / 短前缀 / 路径 |
+  | `--manifest` | 可选，缺省自动取 LATEST | `candidate_media_results` 的 LATEST 指向的 `manifest.json` | 可传完整 ID / 短前缀 / 路径 |
+  | `--project-root` | 可选 | 项目根目录 | - |
+  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
+  | `--output-root` | 可选 | `derived/metadata/review_queues` | - |
+
 - **产物位置**：`workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json`。
 - **验收/检查**：输出 `queue_id`、`candidate_count`、`observed_count`、`incipient_count`。
 - **进入下一步条件**：队列文件已生成，且已知 `<queue-id>`。
@@ -276,6 +364,8 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：逐候选确认标签（优先看帧画面而非源视频）。
 - **机器**：Mac（uv 环境 + streamlit）。
 - **命令**：
+  > `<reviewer-id>` 为用户自定的人工标识（如姓名/工号）；`<batch-id>` 由审查 UI 在保存/冻结时自动生成，不能从 `INDEX.md` 提前查询。
+
   ```bash
   uv run streamlit run pipeline/scripts/review_candidates_app.py -- \
     --data-root workspace/data \
@@ -290,7 +380,22 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
     --reviewer-id <reviewer-id>
   ```
-- **产物位置**：默认保存到 `workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json`。
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--queue` | **必填** | - | 审查队列 JSON 路径 |
+  | `--reviewer-id` | **必填** | - | 用户自定审查人标识 |
+  | `--project-root` | 可选 | 项目根目录 | - |
+  | `--review-reference` | 可选 | - | - |
+  | `--candidate-id` | 可选 | - | 可重复，指定只审部分 candidate |
+  | `--routing-manifest` | 可选 | - | 历史分流 manifest 路径 |
+  | `--limit` | 可选 | - | 只审前 N 条 |
+  | `--draft` | 可选 | - | 断点续审草稿 |
+  | `--output-root` | 可选 | `derived/metadata/review_decisions` | - |
+
+- **产物位置**：默认保存到 `workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json`（`<batch-id>` 由 UI 生成）。
 - **验收/检查**：UI 状态全部为 `approved`、`corrected`、`dropped` 或 `needs_regenerate`；没有 `remaining`。
 - **进入下一步条件**：全部候选形成合法终态，且已知 `<batch-id>`。
 
@@ -312,6 +417,26 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --previous-decisions workspace/data/derived/metadata/review_decisions/<prev-queue-id>/<prev-batch-id>/decisions.json \
     --output-root workspace/data/derived/metadata/review_routes
   ```
+- **参数**（`review_build_phase2_queues.py`）：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--audit-manifest` | **必填** | - | 阶段 1 审计 manifest 路径 |
+  | `--project-root` | 可选 | 项目根目录 | - |
+  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
+  | `--output-root` | 可选 | `derived/metadata/review_queues` | - |
+
+- **参数**（`review_route_from_history.py`）：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--queue` | **必填** | - | 当前队列 JSON 路径 |
+  | `--previous-decisions` | **必填** | - | 上一轮 decisions.json 路径 |
+  | `--current-draft` | 可选 | - | 当前审查草稿 |
+  | `--project-root` | 可选 | 项目根目录 | - |
+  | `--output-root` | 可选 | `derived/metadata/review_routes` | - |
+  | `--review-decisions-root` | 可选 | `derived/metadata/review_decisions` | - |
+
 - **产物位置**：新队列目录 + `workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json`。
 - **验收/检查**：队列身份、候选集合、契约 hash 与审计一致；分流后进入 UI 的候选为 `manual_review` 子集。
 - **进入下一步条件**：分流产物已知，且后续发布使用分流后的人工决定。
@@ -321,7 +446,6 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：把审查决定物化为不可覆盖的训练 release。
 - **机器**：训练机（Conda  环境）。
 - **命令**：
-  > 阶段 2 已接入 LATEST 指针：`--source-snapshot` / `--split-snapshot` 不传时默认从 `source_snapshots` / `split_snapshots` 的 LATEST 指针解析；`--source-tree-sha256` / `--split-tree-sha256` 不传时由脚本自动用 `tree_inventory` 从解析后的快照目录计算（详见「产物 ID 与回溯」）。
   ```bash
   python pipeline/scripts/release_build.py \
     --data-root workspace/data \
@@ -331,6 +455,23 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
     --contract pipeline/contracts/tensile_vlm_v4_1.json
   ```
+- **参数**（`release_build.py`）：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | `workspace/data` | - |
+  | `--project-root` | 可选 | 当前数据根 | 通常传 `.` |
+  | `--materialized` | **必填** | - | `candidate_media_results` 的 `development_materialized.json` |
+  | `--media-manifest` | **必填** | - | `candidate_media_results` 的 `manifest.json` |
+  | `--queue` | **必填** | - | 审查队列 JSON |
+  | `--decisions` | **必填** | - | 审查决定 JSON |
+  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
+  | `--source-snapshot` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
+  | `--split-snapshot` | 可选，缺省自动取 LATEST | `split_snapshots` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
+  | `--source-tree-sha256` | 可选 | 从解析后的 source snapshot 自动计算 | 通常不传 |
+  | `--split-tree-sha256` | 可选 | 从解析后的 split snapshot 自动计算 | 通常不传 |
+  | `--releases-dir` | 可选 | `training_releases` | - |
+
   阶段 2 发布先验证再发布：
   ```bash
   python pipeline/scripts/release_build_phase2.py --validate-only \
@@ -342,6 +483,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
     --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
     --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
+    --splits-dir workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
     --contract pipeline/contracts/tensile_vlm_v4_1.json
 
   python pipeline/scripts/release_build_phase2.py \
@@ -353,8 +495,26 @@ python pipeline/scripts/subvideo_materialize_media.py \
     --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
     --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
     --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
+    --splits-dir workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
     --contract pipeline/contracts/tensile_vlm_v4_1.json
   ```
+- **参数**（`release_build_phase2.py`）：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--validate-only` | 开关 | 关闭 | 只验证，不发布 |
+  | `--project-root` | 可选 | 当前数据根 | 通常传 `.` |
+  | `--base-release-dir` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
+  | `--materialized` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
+  | `--media-manifest` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
+  | `--queue` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
+  | `--routing-manifest` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
+  | `--manual-decisions` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
+  | `--audit` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
+  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
+  | `--splits-dir` | 可选 | `source/splits`（遗留） | 缺省指向遗留路径，新链路必须显式传入 split snapshot 目录 |
+  | `--releases-dir` | 可选 | `training_releases` | - |
+
 - **产物位置**：`workspace/data/releases/<release-id>/`。
 - **验收/检查**：脚本输出 `release_id`、`status`、`counts`；目标目录必须不存在，否则拒绝覆盖。
 - **进入下一步条件**：`manifest/release_manifest.json` 已生成，且已知 `<release-id>`。
@@ -369,6 +529,12 @@ python pipeline/scripts/subvideo_materialize_media.py \
   # 或在非默认数据根上运行
   python pipeline/scripts/build_artifact_index.py --data-root /path/to/data
   ```
+- **参数**：
+
+  | 参数 | 性质 | 默认值 | 说明 |
+  | --- | --- | --- | --- |
+  | `--data-root` | 可选 | 当前项目 current data root | - |
+
 - **产物位置**：`workspace/data/INDEX.md`。
 - **验收/检查**：`INDEX.md` 当前列出 `source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos` 四类集合；候选媒体、队列、决定、release 等集合后续接入。
 - **进入下一步条件**：索引生成成功，可供下游查找 artifact ID。
@@ -405,7 +571,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
 
 ## 9. 编排器模式（可选）
 
-如果你希望用一个命令跑隔离重建，可以使用 orchestrator：
+如果你希望用一个命令跑隔离重建，可以使用 orchestrator。`<run-id>` 与 Step 1.1 相同，是你自定的 staging 目录名。
 
 ```bash
 # 首次或完整重建
