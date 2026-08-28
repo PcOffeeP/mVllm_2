@@ -6,8 +6,11 @@ MVP 只写 ROI 决定文件，不生成裁剪媒体，也不修改现有训练�
 
 运行：
     streamlit run pipeline/scripts/roi_annotation_app.py -- \
-      --metadata workspace/data/derived/metadata/video_meta.json \
+      --metadata <source_snapshot_id> \
       --output workspace/data/derived/metadata/roi_decisions.json
+
+未指定 --metadata 时，默认从 source_snapshots 集合的 LATEST 指针解析
+video_meta.json。
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ try:
 except ModuleNotFoundError:  # Core pipeline validation must not depend on the UI plugin.
     st_cropper = None
 
+from pipeline import artifact_resolver
 from pipeline.current_data import (
     current_data_paths,
     data_context_from_arg,
@@ -41,7 +45,6 @@ from pipeline.current_data import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CURRENT_DATA = current_data_paths(PROJECT_ROOT)
-VIDEO_META_DEFAULT = CURRENT_DATA.metadata / "video_meta.json"
 OUTPUT_DEFAULT = CURRENT_DATA.metadata / "roi_decisions.json"
 
 SCHEMA_VERSION = "1.0"
@@ -81,7 +84,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--project-root", type=Path)
     args = parser.parse_args(raw)
     context = data_context_from_arg(PROJECT_ROOT, args.data_root)
-    args.metadata = args.metadata or context.metadata / "video_meta.json"
+    args.metadata = artifact_resolver.resolve_cli_artifact_path(
+        context.metadata_collection("source_snapshots"),
+        args.metadata,
+        artifact_subpath="video_meta.json",
+    )
     args.output = args.output or context.metadata / "roi_decisions.json"
     args.project_root = args.project_root or context.root
     return args

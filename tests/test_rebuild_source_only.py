@@ -257,3 +257,54 @@ def test_full_pipeline_still_requires_roi_and_review_modes(
 
     assert rc == 1
     assert "错误:" in err
+
+
+def _read_rebuild_state(run_root: Path) -> dict:
+    return json.loads((run_root / "control/rebuild.json").read_text())
+
+
+def test_review_mode_first_run_enters_waiting_for_roi_review(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # #4-B (integration): review 模式首次运行且没有预置 roi_decisions.json
+    # 时必须正常进入 waiting_for_roi_review 等待人工标注，而非 fail-closed
+    # 因 DataRebuildError("非法状态跳转") 崩溃。main() 契约：等待态返回 0，
+    # 错误返回 1。
+    project = _make_source_project(tmp_path)
+    run_root = project / "workspace/data-staging/run-test"
+
+    rc, parsed, err = _run_rebuild(
+        monkeypatch,
+        capsys,
+        project,
+        run_root,
+        "--roi-mode",
+        "review",
+        "--review-mode",
+        "review",
+    )
+
+    assert rc == 0, f"review 首跑应正常进入等待态而非失败: rc={rc} err={err!r}"
+    assert parsed["state"] == "waiting_for_roi_review"
+    state = _read_rebuild_state(run_root)
+    assert state["state"] == "waiting_for_roi_review"
+    assert "roi_annotation_app.py" in state["artifacts"]["roi_review_command"]
+    assert not (run_root / "data/derived/metadata/roi_decisions.json").exists()
+
+    # 复跑幂等：保持 waiting_for_roi_review，不崩溃、不回退。
+    rc2, parsed2, err2 = _run_rebuild(
+        monkeypatch,
+        capsys,
+        project,
+        run_root,
+        "--roi-mode",
+        "review",
+        "--review-mode",
+        "review",
+    )
+
+    assert rc2 == 0, f"复跑应保持幂等: rc={rc2} err={err2!r}"
+    assert parsed2["state"] == "waiting_for_roi_review"
+    assert _read_rebuild_state(run_root)["state"] == "waiting_for_roi_review"

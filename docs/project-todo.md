@@ -31,33 +31,6 @@
 - **待决定或后续动作**：将该缺口记录为已知可复现性限制；如需严格复现历史 plan，需找回或重建当时工作区未提交的契约版本。
 - **记录版本**：`e027e82e04d5a0f5ffb05b5d4d6d0ad1fa75ee85`
 
-### promote 不传播 index.json
-
-- **关联主题**：核心链路节点 2（数据快照）与 `promote`（`pipeline/data_rebuild.py`）。
-- **开发者期望**：正式 workspace 集合应保留与 staging 侧一致的 `index.json`，使 `build_artifact_index.py` 全局总览覆盖 source/split 快照。
-- **当前实现**：`promote` 只拷贝产物目录内容，不传播 `index.json`，导致 source/split 快照索引在正式 workspace 集合永远缺失。
-- **存在差异**：全局产物索引当前只能反映 staging 侧与 `roi_manifests`/`roi_videos` 的状态，source/split 快照在正式 workspace 中不可见。
-- **影响**：`build_artifact_index.py` 输出的总览不完整；需在 `promote` 阶段显式复制或重建对应 `index.json`。
-- **代码依据**：
-  - `pipeline/data_rebuild.py`（promote 逻辑）
-  - `pipeline/artifact_index.py`
-  - `pipeline/scripts/build_artifact_index.py`
-- **待决定或后续动作**：在 `promote` 阶段增加 `index.json` 的拷贝/重建逻辑，并补充跨 workspace 索引一致性校验。
-- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
-
-### rebuild 流水线预存状态机缺陷
-
-- **关联主题**：核心链路节点 2（数据快照 / ROI 子视频重建）与 `rebuild_data.py` 状态机。
-- **开发者期望**：完整 rebuild 流水线 review 模式下应能从 `source_snapshotted` 正常进入 `waiting_for_roi_review`。
-- **当前实现**：当 `roi_decisions.json` 未预置时，流程在 `rebuild_data.py` 中因 `source_snapshotted -> waiting_for_roi_review` 状态跳转不在 `pipeline/data_rebuild.py` 的 `ALLOWED_TRANSITIONS` 内而崩溃（`rebuild_data.py:541` 触发，`data_rebuild.py:46-59` 校验）。
-- **存在差异**：该缺陷在 HEAD 上即可复现，非本次变更引入；本次仅文档记录，未修复代码逻辑。
-- **影响**：review 模式下首次运行必须预置 `roi_decisions.json`，否则 fail-closed；需在单独立项中修复状态机允许此合法跳转或调整初始化顺序。
-- **代码依据**：
-  - `pipeline/scripts/rebuild_data.py`
-  - `pipeline/data_rebuild.py`
-- **待决定或后续动作**：单独立项修复 rebuild 流水线状态机，允许 `source_snapshotted -> waiting_for_roi_review` 跳转或保证 review 阶段启动前已加载/生成 `roi_decisions.json`。
-- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
-
 ### 当前发布模型质量门未通过
 
 - **关联主题**：核心链路节点 9（模型注册表晋级 + delivery 门禁校验）与节点 8（严格评测）。
@@ -127,23 +100,42 @@
 - **待决定或后续动作**：在 `release_build_phase2` 完成阶段自动覆写 `finetune/active_data_release.json` 的 `release_id` 与 `expected_contract_hash`，并补充校验确保与刚生成的 manifest 一致。
 - **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`
 
-### roi_annotation_app.py --metadata 默认路径失效
-
-- **关联主题**：核心链路节点 2（ROI 标注）与 source snapshot 索引。
-- **开发者期望**：`roi_annotation_app.py` 启动时应自动解析 `source_snapshots` 的 LATEST，并指向其 `video_meta.json`，无需用户手动拼路径。
-- **当前实现**：`--metadata` 默认值为 `derived/metadata/video_meta.json`，该路径当前链路不生成，仅为失效遗留路径。
-- **存在差异**：默认参数已不可直接运行；用户必须每次显式传入 source snapshot 内的 `video_meta.json` 路径或完整 ID/前缀。
-- **影响**：首次运行或切换数据时容易遗漏，且与 RUNBOOK Step 2.1 将其标记为必填一致。
-- **代码依据**：
-  - `pipeline/scripts/roi_annotation_app.py`（`--metadata` 默认值）
-  - `pipeline/scripts/build_artifact_index.py` / `pipeline/artifact_index.py`（`source_snapshots` LATEST 解析）
-- **待决定或后续动作**：将 `--metadata` 默认值改为解析 `source_snapshots` LATEST 并指向其 `video_meta.json`，同时保留显式传入路径/ID 的能力。
-- **记录版本**：`f6881883`
-
 ## 待确认
 
 （暂无）
 
 ## 已解决
 
-（只记录由代码变更解决并经过核对的事项；当前本轮首次创建，尚未记录。）
+（只记录由代码变更解决并经过核对的事项。以下三项已通过代码变更修复并经全量测试与独立 reviewer 复验。）
+
+### promote 不传播 index.json
+
+- **关联主题**：核心链路节点 2（数据快照）与 `promote`（`pipeline/data_rebuild.py`）。
+- **解决情况**：`promote` 已在互斥锁内、状态落盘前为 `source_snapshots`/`split_snapshots` 集合写入 `index.json` + LATEST（复用 `artifact_index.append_entry` / `artifact_resolver.update_latest`）；两段式先校验后写入防半写；重入幂等（`append_entry` 内建同 id 同内容跳过，`created_at` 沿用）；缺 payload 文件或必要 key 时 fail-closed（`DataRebuildError`）。
+- **验证**：全量测试 `uv run pytest tests/ -q` → 682 passed, 12 skipped；新增行为级测试覆盖 `_update_snapshot_collection_indexes`。
+- **代码依据**：
+  - `pipeline/data_rebuild.py`（`_update_snapshot_collection_indexes`）
+  - `pipeline/artifact_index.py`
+  - `pipeline/scripts/build_artifact_index.py`
+- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`（修复在未提交工作区中验证，尚未提交为独立 commit）
+
+### rebuild 流水线预存状态机缺陷
+
+- **关联主题**：核心链路节点 2（数据快照 / ROI 子视频重建）与 `rebuild_data.py` 状态机。
+- **解决情况**：`pipeline/data_rebuild.py` 的 `ALLOWED_TRANSITIONS` 中 `source_snapshotted` 已增加 `waiting_for_roi_review`；review 模式首跑（无预置 `roi_decisions.json`）可正常进入等待人工标注（rc=0），复跑幂等。
+- **验证**：全量测试 `uv run pytest tests/ -q` → 682 passed, 12 skipped；新增行为级测试覆盖该合法状态跳转与首跑/复跑幂等。
+- **代码依据**：
+  - `pipeline/scripts/rebuild_data.py`
+  - `pipeline/data_rebuild.py`
+- **记录版本**：`ca6311dd3def65aa3dee2081cbe31de2770c5439`（修复在未提交工作区中验证，尚未提交为独立 commit）
+
+### roi_annotation_app.py --metadata 默认路径失效
+
+- **关联主题**：核心链路节点 2（ROI 标注）与 source snapshot 索引。
+- **解决情况**：`_parse_args` 已复用 `artifact_resolver.resolve_cli_artifact_path` 解析 `source_snapshots` 集合 LATEST 的 `video_meta.json`；支持显式路径/ID/前缀；无 LATEST 或前缀歧义时 fail-closed（`ValueError`）。已同步 `docs/DATA_PROCESSING_RUNBOOK.md` 与模块 docstring。
+- **残余风险**：`ValueError` 在 streamlit 下呈现为裸 traceback（呈现层 UX 问题，已裁决为可接受的残余风险）。
+- **验证**：全量测试 `uv run pytest tests/ -q` → 682 passed, 12 skipped；新增行为级测试覆盖默认路径解析。
+- **代码依据**：
+  - `pipeline/scripts/roi_annotation_app.py`（`_parse_args`）
+  - `pipeline/scripts/build_artifact_index.py` / `pipeline/artifact_index.py`（`source_snapshots` LATEST 解析）
+- **记录版本**：`f6881883`（修复在未提交工作区中验证，尚未提交为独立 commit）

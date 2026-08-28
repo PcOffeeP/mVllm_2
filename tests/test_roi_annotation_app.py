@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from pipeline import artifact_index, artifact_resolver
 from pipeline.scripts import roi_annotation_app as app
 
 
@@ -295,6 +296,112 @@ def test_save_payload_preserves_multiple_decisions_atomically(tmp_path: Path):
         "video_0002",
     ]
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+# --- TODO #10: _parse_args 默认 --metadata 必须解析 source_snapshots LATEST ---
+
+
+def _staging_app_context(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> tuple[Path, Path]:
+    """构造 workspace/data-staging/run10/data 上下文并隔离 app.PROJECT_ROOT。
+
+    返回 (data_root, source_snapshots collection_dir)。
+    """
+    project_root = tmp_path / "proj"
+    data_root = project_root / "workspace" / "data-staging" / "run10" / "data"
+    collection = data_root / "derived" / "metadata" / "source_snapshots"
+    collection.mkdir(parents=True)
+    monkeypatch.setattr(app, "PROJECT_ROOT", project_root)
+    return data_root, collection
+
+
+def _add_source_snapshot(collection: Path, artifact_id: str) -> None:
+    artifact_dir = collection / artifact_id
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "video_meta.json").write_text("[]", encoding="utf-8")
+    artifact_index.append_entry(
+        collection,
+        {
+            "id": artifact_id,
+            "created_at": artifact_index.utc_now(),
+            "step": "source",
+            "inputs": {},
+            "stats": {},
+        },
+    )
+
+
+def test_parse_args_default_metadata_resolves_source_snapshots_latest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """TODO #10-A: 未显式 --metadata 时解析 LATEST 的 video_meta.json。"""
+    data_root, collection = _staging_app_context(monkeypatch, tmp_path)
+    artifact_id = "source-abcdef123456"
+    _add_source_snapshot(collection, artifact_id)
+    artifact_resolver.update_latest(collection, artifact_id)
+
+    args = app._parse_args(["--data-root", str(data_root)])
+
+    assert args.metadata == collection / artifact_id / "video_meta.json"
+    # 失效遗留路径不得再作为默认
+    assert args.metadata != data_root / "derived" / "metadata" / "video_meta.json"
+
+
+def test_parse_args_explicit_metadata_path_passes_through(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """TODO #10-B①: 显式文件路径原样透传（既有行为 characterization 基线）。"""
+    data_root, _ = _staging_app_context(monkeypatch, tmp_path)
+    explicit = tmp_path / "custom" / "video_meta.json"
+    explicit.parent.mkdir(parents=True)
+    explicit.write_text("[]", encoding="utf-8")
+
+    args = app._parse_args(
+        ["--data-root", str(data_root), "--metadata", str(explicit)]
+    )
+
+    assert args.metadata == explicit
+
+
+def test_parse_args_metadata_snapshot_id_prefix_resolves(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """TODO #10-B②: --metadata <快照 ID 短前缀> 解析到其 video_meta.json。"""
+    data_root, collection = _staging_app_context(monkeypatch, tmp_path)
+    artifact_id = "source-abcdef123456"
+    _add_source_snapshot(collection, artifact_id)
+
+    args = app._parse_args(
+        ["--data-root", str(data_root), "--metadata", "abcdef"]
+    )
+
+    assert args.metadata == collection / artifact_id / "video_meta.json"
+
+
+def test_parse_args_without_latest_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """TODO #10-B③: 集合无 LATEST 时 fail-closed，不静默回退旧路径。"""
+    data_root, collection = _staging_app_context(monkeypatch, tmp_path)
+    _add_source_snapshot(collection, "source-abcdef123456")
+
+    with pytest.raises(ValueError, match="LATEST"):
+        app._parse_args(["--data-root", str(data_root)])
+
+
+def test_parse_args_ambiguous_metadata_prefix_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """TODO #10-B③: ID 前缀歧义时报错，不静默取第一个。"""
+    data_root, collection = _staging_app_context(monkeypatch, tmp_path)
+    _add_source_snapshot(collection, "source-abcdef111111")
+    _add_source_snapshot(collection, "source-abcdef222222")
+
+    with pytest.raises(ValueError, match="多义"):
+        app._parse_args(
+            ["--data-root", str(data_root), "--metadata", "abcdef"]
+        )
 
 
 def test_source_state_change_invalidates_existing_decision(tmp_path: Path):

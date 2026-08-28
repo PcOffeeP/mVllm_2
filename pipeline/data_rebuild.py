@@ -10,6 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
+from pipeline import artifact_index, artifact_resolver
 from pipeline.current_data import (
     DataContext,
     SEMANTIC_STAGING_LAYOUT,
@@ -46,7 +47,7 @@ STATES = (
 ALLOWED_TRANSITIONS = {
     "initialized": {"source_validated"},
     "source_validated": {"source_snapshotted"},
-    "source_snapshotted": {"roi_validated"},
+    "source_snapshotted": {"roi_validated", "waiting_for_roi_review"},
     "roi_validated": {"waiting_for_roi_review", "roi_media_ready"},
     "waiting_for_roi_review": {"roi_media_ready"},
     "roi_media_ready": {"candidate_media_ready"},
@@ -543,6 +544,148 @@ def _entry_hash(path: Path) -> str:
     return str(tree_inventory(path)["tree_sha256"])
 
 
+def _update_snapshot_collection_indexes(
+    prepared: Iterable[tuple[dict[str, Any], Path, Path, str, str]],
+) -> None:
+    """Update source/split snapshot collection indexes after promotion moves.
+
+    Must be called while the promote lock is held and after the snapshot
+    directories have been moved to their formal workspace targets.  Reads
+    stats from the target snapshot directory (the staging source may already
+    have been removed on re-entry).
+    """
+    by_name: dict[str, Path] = {}
+    for entry, _source, target, _expected_hash, _status in prepared:
+        by_name[str(entry["name"])] = target
+
+    source_target = by_name.get("source_snapshot")
+    split_target = by_name.get("split_snapshot")
+
+    # Fail-closed: validate all required payload files and keys before
+    # writing any index entries, so promote never leaves a partial index.
+    if source_target is not None and source_target.is_dir():
+        report_path = source_target / "validation_report.json"
+        if not report_path.is_file():
+            raise DataRebuildError(
+                "source snapshot 缺少 payload 文件: validation_report.json"
+            )
+        report = load_json_object(
+            report_path, "source validation report"
+        )
+        for key in (
+            "video_count",
+            "tag_count",
+            "mapping_count",
+            "material_difference_count",
+            "media_difference_count",
+        ):
+            if key not in report:
+                raise DataRebuildError(
+                    f"validation_report.json 缺少必要 key: {key}"
+                )
+
+    if (
+        split_target is not None
+        and split_target.is_dir()
+        and source_target is not None
+    ):
+        decision_path = split_target / "split_decision.json"
+        test_path = split_target / "test.json"
+        if not decision_path.is_file():
+            raise DataRebuildError(
+                "split snapshot 缺少 payload 文件: split_decision.json"
+            )
+        if not test_path.is_file():
+            raise DataRebuildError(
+                "split snapshot 缺少 payload 文件: test.json"
+            )
+        decision = load_json_object(
+            decision_path, "split decision"
+        )
+        if "n_folds" not in decision:
+            raise DataRebuildError(
+                "split_decision.json 缺少必要 key: n_folds"
+            )
+        test_payload = load_json_object(test_path, "split test")
+        test_ids = test_payload.get("video_ids")
+        if isinstance(test_ids, list):
+            test_count = len(test_ids)
+        elif isinstance(test_payload.get("count"), int):
+            test_count = test_payload["count"]
+        else:
+            raise DataRebuildError(
+                "split test.json 缺少可解析的 video_ids 或 count"
+            )
+
+    if source_target is not None and source_target.is_dir():
+        report = load_json_object(
+            source_target / "validation_report.json",
+            "source validation report",
+        )
+        source_stats = {
+            key: report[key]
+            for key in (
+                "video_count",
+                "tag_count",
+                "mapping_count",
+                "material_difference_count",
+                "media_difference_count",
+            )
+        }
+        artifact_index.append_entry(
+            source_target.parent,
+            {
+                "id": source_target.name,
+                "created_at": artifact_index.utc_now(),
+                "step": "source",
+                "inputs": {},
+                "stats": source_stats,
+                "note": "Source snapshot",
+            },
+        )
+        artifact_resolver.update_latest(
+            source_target.parent, source_target.name
+        )
+
+    if (
+        split_target is not None
+        and split_target.is_dir()
+        and source_target is not None
+    ):
+        decision = load_json_object(
+            split_target / "split_decision.json", "split decision"
+        )
+        test_payload = load_json_object(
+            split_target / "test.json", "split test"
+        )
+        test_ids = test_payload.get("video_ids")
+        if isinstance(test_ids, list):
+            test_count = len(test_ids)
+        elif isinstance(test_payload.get("count"), int):
+            test_count = test_payload["count"]
+        else:
+            raise DataRebuildError(
+                "split test.json 缺少可解析的 video_ids 或 count"
+            )
+        artifact_index.append_entry(
+            split_target.parent,
+            {
+                "id": split_target.name,
+                "created_at": artifact_index.utc_now(),
+                "step": "source",
+                "inputs": {"source_snapshot": source_target.name},
+                "stats": {
+                    "fold_count": decision["n_folds"],
+                    "test_count": test_count,
+                },
+                "note": "Split snapshot",
+            },
+        )
+        artifact_resolver.update_latest(
+            split_target.parent, split_target.name
+        )
+
+
 def _validate_promotion_entry_paths(
     name: str,
     source: str,
@@ -787,6 +930,7 @@ def promote(
                 journal[key] for key in sorted(journal)
             ]
             atomic_json(manifest_path, manifest)
+        _update_snapshot_collection_indexes(prepared)
         manifest["status"] = "promoted"
         atomic_json(manifest_path, manifest)
         promoted_state = update_state(

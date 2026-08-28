@@ -174,9 +174,11 @@ python pipeline/scripts/subvideo_materialize_media.py \
   | 参数 | 性质 | 默认值 | 说明 |
   | --- | --- | --- | --- |
   | `--data-root` | 可选 | `workspace/data` | - |
-  | `--metadata` | **必填（默认指向遗留路径，勿依赖）** | `derived/metadata/video_meta.json` | 必须显式传入 Step 1 的 source snapshot 路径 |
+  | `--metadata` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST 指向的 `video_meta.json` | 可传完整 ID / 短前缀 / 路径（不再指向遗留路径） |
   | `--output` | 可选 | `derived/metadata/roi_decisions.json` | ROI 决定保存路径 |
   | `--project-root` | 可选 | 当前数据根 | 通常不需要传 |
+
+  > 说明：`--metadata` 现在为可选，缺省时自动解析 `source_snapshots` 集合的 `LATEST` 指针，指向该快照内的 `video_meta.json`；显式传入时支持路径（原样透传）或快照 ID / 前缀（自动解析）。若 `source_snapshots` 无 `LATEST` 或前缀存在多义匹配，脚本会抛错终止（fail-closed），不会静默回退遗留路径 `derived/metadata/video_meta.json`；此时请先运行 Step 1 生成 source snapshot，或显式传入 Step 1 产出的快照路径/ID。
 
 - **产物位置**：`workspace/data/derived/metadata/roi_decisions.json`。
 - **验收/检查**：UI 中每个视频的关键时刻必须包含上/下夹具、完整试样和位置判断。

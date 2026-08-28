@@ -9,6 +9,7 @@ import pytest
 from pipeline.current_data import current_data_context
 from pipeline.data_roots import DataRootError
 from pipeline.data_rebuild import (
+    ALLOWED_TRANSITIONS,
     DataRebuildError,
     PROMOTION_PREFIXES,
     append_jsonl,
@@ -34,6 +35,18 @@ from pipeline.v4_1_training_release import (
     RELEASE_SCHEMA_VERSION_V2,
     canonical_release_identity_bytes,
 )
+
+
+# 快照 payload 统计常量（真实 bootstrap 形态；供多个 fixture 共用）
+_SOURCE_STATS = {
+    "video_count": 2,
+    "tag_count": 3,
+    "mapping_count": 2,
+    "material_difference_count": 0,
+    "media_difference_count": 1,
+}
+_SPLIT_N_FOLDS = 5
+_SPLIT_TEST_IDS = ["video-a", "video-b"]
 
 
 def _formal_gate_artifacts(data: Path) -> tuple[Path, Path, str]:
@@ -207,6 +220,36 @@ def _ready_run(project: Path) -> tuple[Path, dict[str, str]]:
             (artifact / "manifest.json").write_text(
                 json.dumps({"artifact": name}) + "\n"
             )
+            # 测试修正（reviewer P2 后续）：真实链路中 source_bootstrap
+            # 无条件生成快照 payload；fixture 须携带真实形态 payload，
+            # 以便 promote 的索引重建 fail-closed 语义可成立。
+            if name == "source_snapshot":
+                (artifact / "validation_report.json").write_text(
+                    json.dumps(
+                        {"status": "passed", **_SOURCE_STATS},
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+            elif name == "split_snapshot":
+                (artifact / "split_decision.json").write_text(
+                    json.dumps(
+                        {"n_folds": _SPLIT_N_FOLDS, "seed": 42},
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+                (artifact / "test.json").write_text(
+                    json.dumps(
+                        {
+                            "split": "test",
+                            "video_ids": list(_SPLIT_TEST_IDS),
+                            "count": len(_SPLIT_TEST_IDS),
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
         entries.append(
             (
                 name,
@@ -733,3 +776,468 @@ def test_promote_recovers_missing_completion_record(
     )
     assert recovered["status"] == "promoted"
     assert has_completed_stage_record(run, "promoted")
+
+
+# --- Defect #4: review 模式首跑 source_snapshotted -> waiting_for_roi_review ---
+
+
+def test_update_state_allows_source_snapshotted_to_waiting_for_roi_review(
+    tmp_path: Path,
+) -> None:
+    # #4-A: review 模式首次运行（无 staged roi_decisions.json）需要从
+    # source_snapshotted 直接跳入 waiting_for_roi_review 等待人工标注。
+    state = {"state": "source_snapshotted"}
+
+    updated = update_state(tmp_path, state, "waiting_for_roi_review")
+
+    assert updated["state"] == "waiting_for_roi_review"
+
+
+def test_update_state_rejects_promoted_to_waiting_for_roi_review(
+    tmp_path: Path,
+) -> None:
+    # #4-A 过宽实现护栏：promoted 不得允许跳入 waiting_for_roi_review。
+    with pytest.raises(DataRebuildError, match="状态不能回退|非法状态跳转"):
+        update_state(tmp_path, {"state": "promoted"}, "waiting_for_roi_review")
+
+
+@pytest.mark.parametrize(
+    ("current", "target", "legal"),
+    (
+        ("roi_validated", "waiting_for_roi_review", True),
+        ("waiting_for_roi_review", "roi_media_ready", True),
+        ("source_snapshotted", "roi_validated", True),
+        ("initialized", "waiting_for_roi_review", False),
+        ("source_validated", "waiting_for_roi_review", False),
+        ("roi_validated", "candidate_media_ready", False),
+        ("candidate_media_ready", "promoted", False),
+        ("waiting_for_roi_review", "candidate_media_ready", False),
+    ),
+)
+def test_allowed_transitions_roi_review_boundaries_guard(
+    tmp_path: Path, current: str, target: str, legal: bool
+) -> None:
+    # #4-C 回归护栏：既有 ALLOWED_TRANSITIONS 边界不变；所有用例均为
+    # STATES 中的前向或同级目标，隔离 ALLOWED_TRANSITIONS 而非回退检查。
+    if legal:
+        assert target in ALLOWED_TRANSITIONS[current]
+        updated = update_state(tmp_path, {"state": current}, target)
+        assert updated["state"] == target
+    else:
+        assert target not in ALLOWED_TRANSITIONS[current]
+        assert current in ALLOWED_TRANSITIONS
+        with pytest.raises(DataRebuildError, match="非法状态跳转"):
+            update_state(tmp_path, {"state": current}, target)
+
+
+# --- TODO #3: promote 须传播 source/split 集合 index.json 与 LATEST ---
+
+
+def _ready_run_with_snapshot_payloads(
+    project: Path,
+) -> tuple[Path, dict[str, str]]:
+    """ready_to_promote staging with bootstrap-shaped snapshot payloads.
+
+    source snapshot 目录携带 validation_report.json（含计数统计），
+    split snapshot 目录携带 split_decision.json 与 test.json（真实布局），
+    以便 promote 能从被晋级快照内容构造 index entry 的 stats 字段。
+    """
+    run = project / "workspace/data-staging/rebuild-test"
+    current = current_data_context(project)
+    current.root.mkdir(parents=True)
+    source_fingerprint = {"source_snapshot_id": "source-snapshot-test"}
+    state = initialize_state(
+        project,
+        run,
+        roi_mode="reuse",
+        review_mode="reuse",
+        source_identity=source_fingerprint,
+        git_commit="abc123",
+    )
+    data = run / "data"
+    decisions, release, release_id = _formal_gate_artifacts(data)
+    final_artifacts = {
+        "review_decisions": str(decisions),
+        "review_decisions_tree_sha256": tree_inventory(decisions.parent)[
+            "tree_sha256"
+        ],
+        "release": str(release),
+        "release_id": release_id,
+        "release_tree_sha256": tree_inventory(release)["tree_sha256"],
+    }
+    for stage in (
+        "source_validated",
+        "source_snapshotted",
+        "roi_validated",
+        "roi_media_ready",
+        "candidate_media_ready",
+        "review_validated",
+        "release_validated",
+    ):
+        outputs = final_artifacts if stage == "release_validated" else {}
+        state = update_state(run, state, stage, artifacts=outputs)
+        append_jsonl(
+            run / "control/commands.jsonl",
+            {
+                "schema_version": "tensile-v4.1-stage-completion/v1",
+                "stage": stage,
+                "record_status": "completed",
+                "git_commit": "abc123",
+                "outputs": outputs,
+            },
+        )
+        if stage == "release_validated":
+            append_jsonl(
+                run / "control/commands.jsonl",
+                {
+                    "schema_version": "tensile-v4.1-stage-completion/v1",
+                    "stage": stage,
+                    "record_status": "completed",
+                    "git_commit": "abc123",
+                    "outputs": outputs,
+                },
+            )
+    entries = []
+    for name, prefix in PROMOTION_PREFIXES.items():
+        leaf = (
+            "source-snapshot-test"
+            if name == "source_snapshot"
+            else release_id
+            if name == "release"
+            else f"queue-test/{decisions.parent.name}"
+            if name == "review_decisions"
+            else f"{name}-test"
+        )
+        artifact = data / prefix / leaf
+        if name not in {"review_decisions", "release"}:
+            artifact.mkdir(parents=True)
+            if name == "source_snapshot":
+                (artifact / "source_manifest.json").write_text(
+                    json.dumps({"artifact": name}) + "\n"
+                )
+                (artifact / "validation_report.json").write_text(
+                    json.dumps(
+                        {"status": "passed", **_SOURCE_STATS},
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+            elif name == "split_snapshot":
+                (artifact / "split_manifest.json").write_text(
+                    json.dumps({"artifact": name}) + "\n"
+                )
+                (artifact / "split_decision.json").write_text(
+                    json.dumps(
+                        {"n_folds": _SPLIT_N_FOLDS, "seed": 42},
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+                (artifact / "test.json").write_text(
+                    json.dumps(
+                        {
+                            "split": "test",
+                            "video_ids": list(_SPLIT_TEST_IDS),
+                            "count": len(_SPLIT_TEST_IDS),
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+            else:
+                (artifact / "manifest.json").write_text(
+                    json.dumps({"artifact": name}) + "\n"
+                )
+        entries.append((name, artifact, current.root / prefix / leaf))
+    build_promotion_manifest(
+        project,
+        run,
+        entries,
+        release_name="release",
+        source_fingerprint=source_fingerprint,
+        git_commit="abc123",
+    )
+    state = update_state(run, state, "ready_to_promote")
+    append_jsonl(
+        run / "control/commands.jsonl",
+        {
+            "schema_version": "tensile-v4.1-stage-completion/v1",
+            "stage": "ready_to_promote",
+            "record_status": "completed",
+            "git_commit": "abc123",
+            "outputs": {},
+        },
+    )
+    assert state["state"] == "ready_to_promote"
+    return run, source_fingerprint
+
+
+def test_promote_writes_snapshot_collection_indexes(
+    tmp_path: Path,
+) -> None:
+    """TODO #3-A: promote 后正式 source/split 集合具备 index entry 与 LATEST。"""
+    from pipeline.artifact_index import read_index
+
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+
+    promote(
+        project,
+        run,
+        expected_git_commit="abc123",
+        current_source_fingerprint=fingerprint,
+    )
+
+    current = current_data_context(project)
+    source_collection = current.metadata_collection("source_snapshots")
+    split_collection = current.metadata_collection("split_snapshots")
+
+    source_ids = [
+        entry["id"] for entry in read_index(source_collection)
+    ]
+    assert source_ids == ["source-snapshot-test"]
+    source_entry = read_index(source_collection)[0]
+    assert source_entry["step"] == "source"
+    assert source_entry["inputs"] == {}
+    assert source_entry["stats"] == _SOURCE_STATS
+    assert (
+        (source_collection / "LATEST").read_text().strip()
+        == "source-snapshot-test"
+    )
+
+    split_ids = [entry["id"] for entry in read_index(split_collection)]
+    assert split_ids == ["split_snapshot-test"]
+    split_entry = read_index(split_collection)[0]
+    assert split_entry["step"] == "source"
+    assert split_entry["inputs"] == {
+        "source_snapshot": "source-snapshot-test"
+    }
+    assert split_entry["stats"] == {
+        "fold_count": _SPLIT_N_FOLDS,
+        "test_count": len(_SPLIT_TEST_IDS),
+    }
+    assert (
+        (split_collection / "LATEST").read_text().strip()
+        == "split_snapshot-test"
+    )
+
+
+def test_promote_index_updates_are_idempotent_on_reentry(
+    tmp_path: Path,
+) -> None:
+    """TODO #3-B: already_present 重入不重复追加 entry、不改变 LATEST。"""
+    from pipeline.artifact_index import read_index
+
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+
+    promote(
+        project,
+        run,
+        expected_git_commit="abc123",
+        current_source_fingerprint=fingerprint,
+    )
+    current = current_data_context(project)
+    source_collection = current.metadata_collection("source_snapshots")
+    split_collection = current.metadata_collection("split_snapshots")
+    source_before = read_index(source_collection)
+    split_before = read_index(split_collection)
+    source_latest_before = (source_collection / "LATEST").read_text()
+    split_latest_before = (split_collection / "LATEST").read_text()
+
+    repeated = promote(
+        project,
+        run,
+        expected_git_commit="abc123",
+        current_source_fingerprint=fingerprint,
+    )
+    assert all(
+        item["status"] == "already_present"
+        for item in repeated["journal"]
+    )
+
+    assert [entry["id"] for entry in read_index(source_collection)] == [
+        "source-snapshot-test"
+    ]
+    assert [entry["id"] for entry in read_index(split_collection)] == [
+        "split_snapshot-test"
+    ]
+    assert read_index(source_collection) == source_before
+    assert read_index(split_collection) == split_before
+    assert (source_collection / "LATEST").read_text() == (
+        source_latest_before
+    )
+    assert (split_collection / "LATEST").read_text() == split_latest_before
+
+
+def test_promote_index_updates_fail_when_promote_lock_held(
+    tmp_path: Path,
+) -> None:
+    """TODO #3-C: 互斥锁被占用时 promote 报错，不静默丢失索引更新。"""
+    import fcntl
+
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+    current = current_data_context(project)
+    lock_path = current.root / ".locks/v4-1-promote.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with lock_path.open("a+b") as lock_handle:
+        fcntl.flock(
+            lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB
+        )
+        with pytest.raises(DataRebuildError, match="互斥锁"):
+            promote(
+                project,
+                run,
+                expected_git_commit="abc123",
+                current_source_fingerprint=fingerprint,
+            )
+        assert not (
+            current.metadata_collection("source_snapshots")
+            / "index.json"
+        ).exists()
+        assert not (
+            current.metadata_collection("split_snapshots") / "index.json"
+        ).exists()
+
+
+# --- Reviewer P2/P3-a: promote 索引重建必须 fail-closed（DataRebuildError） ---
+
+
+def _staging_snapshot(run: Path, name: str) -> Path:
+    """定位 ready_to_promote staging 中的 source/split 快照目录。"""
+    prefix = PROMOTION_PREFIXES[name]
+    leaf = (
+        "source-snapshot-test"
+        if name == "source_snapshot"
+        else f"{name}-test"
+    )
+    return run / "data" / prefix / leaf
+
+
+def _refresh_promotion_entry_hash(run: Path, artifact: Path, name: str) -> None:
+    """fixture 破坏 payload 后重算 promotion manifest 中对应 entry 的 tree hash。
+
+    以便 promote 的哈希校验通过、缺陷恰好落在索引重建 fail-closed 路径，
+    而不是被更早的「晋级源缺失或漂移」拦截。
+    """
+    manifest_path = run / "control/promotion.json"
+    manifest = json.loads(manifest_path.read_text())
+    for entry in manifest["entries"]:
+        if entry["name"] == name:
+            entry["tree_sha256"] = tree_inventory(artifact)["tree_sha256"]
+    manifest_path.write_text(json.dumps(manifest))
+
+
+def _promote_ready(
+    project: Path,
+    run: Path,
+    fingerprint: dict[str, str],
+) -> dict:
+    return promote(
+        project,
+        run,
+        expected_git_commit="abc123",
+        current_source_fingerprint=fingerprint,
+    )
+
+
+def test_promote_fails_closed_when_source_validation_report_missing(
+    tmp_path: Path,
+) -> None:
+    """P2: source 快照缺 validation_report.json → fail-closed，不静默 promoted。"""
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+    artifact = _staging_snapshot(run, "source_snapshot")
+    (artifact / "validation_report.json").unlink()
+    _refresh_promotion_entry_hash(run, artifact, "source_snapshot")
+
+    with pytest.raises(DataRebuildError, match="validation_report"):
+        _promote_ready(project, run, fingerprint)
+
+    # promote 不得静默置 promoted、不得留下已晋级快照。
+    state = json.loads((run / "control/rebuild.json").read_text())
+    assert state["state"] != "promoted"
+    current = current_data_context(project)
+    assert not (
+        current.metadata_collection("source_snapshots") / "index.json"
+    ).exists()
+
+
+def test_promote_fails_closed_when_split_decision_missing(
+    tmp_path: Path,
+) -> None:
+    """P2: split 快照缺 split_decision.json → fail-closed。"""
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+    artifact = _staging_snapshot(run, "split_snapshot")
+    (artifact / "split_decision.json").unlink()
+    _refresh_promotion_entry_hash(run, artifact, "split_snapshot")
+
+    with pytest.raises(DataRebuildError, match="split_decision"):
+        _promote_ready(project, run, fingerprint)
+
+    state = json.loads((run / "control/rebuild.json").read_text())
+    assert state["state"] != "promoted"
+    current = current_data_context(project)
+    assert not (
+        current.metadata_collection("split_snapshots") / "index.json"
+    ).exists()
+
+
+def test_promote_fails_closed_when_split_test_json_missing(
+    tmp_path: Path,
+) -> None:
+    """P2: split 快照缺 test.json → fail-closed。"""
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+    artifact = _staging_snapshot(run, "split_snapshot")
+    (artifact / "test.json").unlink()
+    _refresh_promotion_entry_hash(run, artifact, "split_snapshot")
+
+    with pytest.raises(DataRebuildError, match="test\\.json"):
+        _promote_ready(project, run, fingerprint)
+
+    state = json.loads((run / "control/rebuild.json").read_text())
+    assert state["state"] != "promoted"
+
+
+def test_promote_fails_closed_when_validation_report_missing_key(
+    tmp_path: Path,
+) -> None:
+    """P3-a: validation_report.json 缺必要 key → DataRebuildError（非 KeyError）。"""
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+    artifact = _staging_snapshot(run, "source_snapshot")
+    report_path = artifact / "validation_report.json"
+    report = json.loads(report_path.read_text())
+    del report["video_count"]
+    report_path.write_text(json.dumps(report, sort_keys=True) + "\n")
+    _refresh_promotion_entry_hash(run, artifact, "source_snapshot")
+
+    with pytest.raises(DataRebuildError, match="video_count"):
+        _promote_ready(project, run, fingerprint)
+
+    state = json.loads((run / "control/rebuild.json").read_text())
+    assert state["state"] != "promoted"
+
+
+def test_promote_fails_closed_when_split_decision_missing_key(
+    tmp_path: Path,
+) -> None:
+    """P3-a: split_decision.json 缺 n_folds → DataRebuildError（非 KeyError）。"""
+    project = tmp_path / "repo"
+    run, fingerprint = _ready_run_with_snapshot_payloads(project)
+    artifact = _staging_snapshot(run, "split_snapshot")
+    decision_path = artifact / "split_decision.json"
+    decision = json.loads(decision_path.read_text())
+    del decision["n_folds"]
+    decision_path.write_text(json.dumps(decision, sort_keys=True) + "\n")
+    _refresh_promotion_entry_hash(run, artifact, "split_snapshot")
+
+    with pytest.raises(DataRebuildError, match="n_folds"):
+        _promote_ready(project, run, fingerprint)
+
+    state = json.loads((run / "control/rebuild.json").read_text())
+    assert state["state"] != "promoted"
