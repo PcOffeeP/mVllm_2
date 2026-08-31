@@ -1,0 +1,2830 @@
+{
+  "captured_at": "2026-08-31T07:33:04.665098+00:00",
+  "host": "dell-Precision-3660",
+  "root": "/home/liuyang/文档/mVllm_2",
+  "git_head": "f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52",
+  "git_status": "",
+  "scope": [
+    "workspace/runs",
+    "workspace/models"
+  ],
+  "limits": [
+    "No GPU work, no remote writes, no weight hashing, no sealed-test records read.",
+    "File presence is not weight integrity verification; absent paths do not prove deletion."
+  ],
+  "runs": [
+    {
+      "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413",
+      "total_bytes": 17884552894,
+      "allocated_bytes": 17884733440,
+      "non_weight_bytes": 32225902,
+      "weights": [
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00002-of-00010.safetensors",
+          "bytes": 1929470832,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785203463028372884,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00006-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785203465384395894,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00003-of-00010.safetensors",
+          "bytes": 1929470856,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785203463620378668,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00008-of-00010.safetensors",
+          "bytes": 1644265032,
+          "allocated_bytes": 1644269568,
+          "mtime_ns": 1785203466580407568,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00001-of-00010.safetensors",
+          "bytes": 1914228064,
+          "allocated_bytes": 1914232832,
+          "mtime_ns": 1785203462432367059,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00010-of-00010.safetensors",
+          "bytes": 258632328,
+          "allocated_bytes": 258633728,
+          "mtime_ns": 1785203471740457864,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00005-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785203464796390153,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00004-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785203464220384529,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00007-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785203465968401595,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00009-of-00010.safetensors",
+          "bytes": 1997939416,
+          "allocated_bytes": 1997946880,
+          "mtime_ns": 1785203470616446917,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785202978298969825,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785202978402971181,
+          "nlink": 1
+        }
+      ]
+    },
+    {
+      "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407",
+      "total_bytes": 7465493651,
+      "allocated_bytes": 7465840640,
+      "non_weight_bytes": 96165194,
+      "weights": [
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785111359186057389,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785111359262057487,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1100/scheduler.pt",
+          "bytes": 1064,
+          "allocated_bytes": 4096,
+          "mtime_ns": 1785111083990289875,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1100/optimizer.pt",
+          "bytes": 921340333,
+          "allocated_bytes": 921346048,
+          "mtime_ns": 1785111083990289875,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1100/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785111083246292405,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1100/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785111083330292119,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1050/scheduler.pt",
+          "bytes": 1064,
+          "allocated_bytes": 4096,
+          "mtime_ns": 1785110339001419898,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1050/optimizer.pt",
+          "bytes": 921340333,
+          "allocated_bytes": 921346048,
+          "mtime_ns": 1785110339001419898,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1050/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785110338057410236,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1050/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785110338141411095,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1125/scheduler.pt",
+          "bytes": 1064,
+          "allocated_bytes": 4096,
+          "mtime_ns": 1785111357722055524,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1125/optimizer.pt",
+          "bytes": 921340333,
+          "allocated_bytes": 921346048,
+          "mtime_ns": 1785111357722055524,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1125/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785111356998054611,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1125/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785111357074054706,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-250/scheduler.pt",
+          "bytes": 1064,
+          "allocated_bytes": 4096,
+          "mtime_ns": 1785098315948653193,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-250/optimizer.pt",
+          "bytes": 921340333,
+          "allocated_bytes": 921346048,
+          "mtime_ns": 1785098315948653193,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-250/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785098315160646857,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-250/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785098315240647500,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1000/scheduler.pt",
+          "bytes": 1064,
+          "allocated_bytes": 4096,
+          "mtime_ns": 1785109590814195463,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1000/optimizer.pt",
+          "bytes": 921340333,
+          "allocated_bytes": 921346048,
+          "mtime_ns": 1785109590814195463,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1000/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785109590010188454,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1000/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785109590090189153,
+          "nlink": 1
+        }
+      ]
+    },
+    {
+      "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411",
+      "total_bytes": 17884555690,
+      "allocated_bytes": 17884733440,
+      "non_weight_bytes": 32228698,
+      "weights": [
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00002-of-00010.safetensors",
+          "bytes": 1929470832,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785183673897004560,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00006-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785183675989025953,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00003-of-00010.safetensors",
+          "bytes": 1929470856,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785183674409009796,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00008-of-00010.safetensors",
+          "bytes": 1644265032,
+          "allocated_bytes": 1644269568,
+          "mtime_ns": 1785183677033036631,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00001-of-00010.safetensors",
+          "bytes": 1914228064,
+          "allocated_bytes": 1914232832,
+          "mtime_ns": 1785183673376999244,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00010-of-00010.safetensors",
+          "bytes": 258632328,
+          "allocated_bytes": 258633728,
+          "mtime_ns": 1785183681217079450,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00005-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785183675461020553,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00004-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785183674941015235,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00007-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785183676497031149,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00009-of-00010.safetensors",
+          "bytes": 1997939416,
+          "allocated_bytes": 1997946880,
+          "mtime_ns": 1785183680685074004,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785183353433849179,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785183353533850118,
+          "nlink": 1
+        }
+      ]
+    },
+    {
+      "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407",
+      "total_bytes": 17884553987,
+      "allocated_bytes": 17884733440,
+      "non_weight_bytes": 32226995,
+      "weights": [
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00002-of-00010.safetensors",
+          "bytes": 1929470832,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785072805129430537,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00006-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785072807217440253,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00003-of-00010.safetensors",
+          "bytes": 1929470856,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785072805661433010,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00008-of-00010.safetensors",
+          "bytes": 1644265032,
+          "allocated_bytes": 1644269568,
+          "mtime_ns": 1785072808165444672,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00001-of-00010.safetensors",
+          "bytes": 1914228064,
+          "allocated_bytes": 1914232832,
+          "mtime_ns": 1785072804605428102,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00010-of-00010.safetensors",
+          "bytes": 258632328,
+          "allocated_bytes": 258633728,
+          "mtime_ns": 1785072812285463930,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00005-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785072806705437869,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00004-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785072806201435523,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00007-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785072807721442601,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00009-of-00010.safetensors",
+          "bytes": 1997939416,
+          "allocated_bytes": 1997946880,
+          "mtime_ns": 1785072811645460933,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785072025660637807,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785072025736637428,
+          "nlink": 1
+        }
+      ]
+    },
+    {
+      "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411",
+      "total_bytes": 17884554346,
+      "allocated_bytes": 17884733440,
+      "non_weight_bytes": 32227354,
+      "weights": [
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00002-of-00010.safetensors",
+          "bytes": 1929470832,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785091643902823189,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00006-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785091645998845557,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00003-of-00010.safetensors",
+          "bytes": 1929470856,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785091644422828738,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00008-of-00010.safetensors",
+          "bytes": 1644265032,
+          "allocated_bytes": 1644269568,
+          "mtime_ns": 1785091646958855801,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00001-of-00010.safetensors",
+          "bytes": 1914228064,
+          "allocated_bytes": 1914232832,
+          "mtime_ns": 1785091643342817213,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00010-of-00010.safetensors",
+          "bytes": 258632328,
+          "allocated_bytes": 258633728,
+          "mtime_ns": 1785091647574862375,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00005-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785091645474839965,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00004-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785091644954834416,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00007-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785091646510851020,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00009-of-00010.safetensors",
+          "bytes": 1997939416,
+          "allocated_bytes": 1997946880,
+          "mtime_ns": 1785091647502861607,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785091073252734245,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/training_args.bin",
+          "bytes": 6136,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785091073332735099,
+          "nlink": 1
+        }
+      ]
+    },
+    {
+      "path": "workspace/runs/v4.1-prompt-concise-v1-seed3411",
+      "total_bytes": 6788159,
+      "allocated_bytes": 6811648,
+      "non_weight_bytes": 6788159,
+      "weights": []
+    },
+    {
+      "path": "workspace/runs/v4.1-prompt-concise-v2-seed3411",
+      "total_bytes": 5238989,
+      "allocated_bytes": 5246976,
+      "non_weight_bytes": 5238989,
+      "weights": []
+    },
+    {
+      "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411",
+      "total_bytes": 17891030047,
+      "allocated_bytes": 17891258368,
+      "non_weight_bytes": 38703183,
+      "weights": [
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00002-of-00010.safetensors",
+          "bytes": 1929470832,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785244005265266995,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00006-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785244007345364678,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00003-of-00010.safetensors",
+          "bytes": 1929470856,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785244005777291067,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00008-of-00010.safetensors",
+          "bytes": 1644265032,
+          "allocated_bytes": 1644269568,
+          "mtime_ns": 1785244008409414535,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00001-of-00010.safetensors",
+          "bytes": 1914228064,
+          "allocated_bytes": 1914232832,
+          "mtime_ns": 1785244004745242529,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00010-of-00010.safetensors",
+          "bytes": 258632328,
+          "allocated_bytes": 258633728,
+          "mtime_ns": 1785244012469604100,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00005-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785244006817339911,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00004-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785244006309316060,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00007-of-00010.safetensors",
+          "bytes": 1929470888,
+          "allocated_bytes": 1929478144,
+          "mtime_ns": 1785244007853388495,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00009-of-00010.safetensors",
+          "bytes": 1997939416,
+          "allocated_bytes": 1997946880,
+          "mtime_ns": 1785244011993581940,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/adapter_model.safetensors",
+          "bytes": 460430776,
+          "allocated_bytes": 460435456,
+          "mtime_ns": 1785243718376430964,
+          "nlink": 1
+        },
+        {
+          "path": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/training_args.bin",
+          "bytes": 6008,
+          "allocated_bytes": 8192,
+          "mtime_ns": 1785243718496431665,
+          "nlink": 1
+        }
+      ]
+    }
+  ],
+  "symlinks": [
+    {
+      "path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged",
+      "target": "../../../models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+      "resolved": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+      "exists": true
+    },
+    {
+      "path": "workspace/models/current",
+      "target": "releases/v4.1-agent-pipeline-fold0-r1",
+      "resolved": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1",
+      "exists": true
+    }
+  ],
+  "metadata": {
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/model_identity.json": {
+      "file_sha256": "f72ceeec62a36b019021dcfab7f3c0ec27b9817d63e775e1423476541e7267c0",
+      "bytes": 612,
+      "content": {
+        "adapter_path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter",
+        "checkpoint_count": 5,
+        "lifecycle_status": "evaluated",
+        "merged_path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged",
+        "model_name": "v4.1-sampling-source-aware-fold0-r2",
+        "schema_version": "tensile-model-registry/local-identity/v1",
+        "source_adapter_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3411",
+        "source_merged_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3411_merged"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/eval_results.json": {
+      "file_sha256": "c249cb01a8722a885f8710b8c382b14eeea4ded4ec05de3c5b8357b64c4edaad",
+      "bytes": 161,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.056790076196193695,
+        "eval_runtime": 203.49,
+        "eval_samples_per_second": 2.089,
+        "eval_steps_per_second": 2.089
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/trainer_state.json": {
+      "file_sha256": "a8d0c11f4a3a4c3edc27de4a23d2b0fa894a43e09ed78d13dd1af2c162ae146e",
+      "bytes": 43830,
+      "content": {
+        "best_global_step": 200,
+        "best_metric": 0.056790076196193695,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3411/checkpoint-200",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.290303547592635e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/all_results.json": {
+      "file_sha256": "c20776b0d7e90075fc3cb8968549d542ec0460c434db8b43859d959733badba7",
+      "bytes": 350,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.056790076196193695,
+        "eval_runtime": 203.49,
+        "eval_samples_per_second": 2.089,
+        "eval_steps_per_second": 2.089,
+        "total_flos": 3.290303547592635e+17,
+        "train_loss": 0.04884681291609175,
+        "train_runtime": 16861.6903,
+        "train_samples_per_second": 0.534,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/train_results.json": {
+      "file_sha256": "9bbf6d9c2f5bcb923177ba2189d80454157b5fe124da947143ed24e33f9fe56b",
+      "bytes": 209,
+      "content": {
+        "epoch": 3.0,
+        "total_flos": 3.290303547592635e+17,
+        "train_loss": 0.04884681291609175,
+        "train_runtime": 16861.6903,
+        "train_samples_per_second": 0.534,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_config.json": {
+      "file_sha256": "1407baffb6163ab585ef9862f0cefaf58d3a9414d7b363e8061bde069f7232fa",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "k_proj",
+          "fc2",
+          "down_proj",
+          "fc1",
+          "gate_proj",
+          "out_proj",
+          "o_proj",
+          "kv_proj",
+          "v_proj",
+          "up_proj",
+          "q_proj"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-concise-v2-seed3411/input/summary.json": {
+      "file_sha256": "2d46f24f163254adfd2996c4a496e43508617ab41219405cc6dd5ded30b818bb",
+      "bytes": 1907,
+      "content": {
+        "experiment_contract_sha256": "c2fb762a5e1f69841ff24f9c8d95fde213509abb82475d8dc214d2b10c6d5c95",
+        "experiment_id": "v4.1-prompt-concise-v2-seed3411",
+        "files": [
+          {
+            "path": "dataset_info.json",
+            "sha256": "cebd5e780b46c21445cebf8453a36ee9d1c42ac2d4470d74ba4b47a67b8d341f",
+            "size_bytes": 918
+          },
+          {
+            "path": "datasets/fold_0_validation.json",
+            "sha256": "d67cff2de679f9aa692abb16da405a80b2d1c920f00e06cd59432f9981abca86",
+            "size_bytes": 646163
+          },
+          {
+            "path": "datasets/seed_3411.json",
+            "sha256": "df8abf34209d3f85296b034b31ef82fac41b8d15b3b1396d94bf3980180ca140",
+            "size_bytes": 4586772
+          },
+          {
+            "path": "experiment_contract.json",
+            "sha256": "3505e75fad12a9c4b85bddda5d70ff1039cd7e46f76a465503f474976ac415af",
+            "size_bytes": 3229
+          }
+        ],
+        "immutable": true,
+        "input_identity_sha256": "d0977daa165802900650f186c515bfe8027c6f14b374398040b257fed7d70148",
+        "prompt_content_sha256": "0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db",
+        "prompt_revision_id": "v4.1-concise-evidence-json-v2",
+        "release": {
+          "release_id": "v4.1.0-ecb5aeb9657c",
+          "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+          "training_candidates_sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf"
+        },
+        "schema_version": "tensile-vlm-v4.1-fixed-prompt-dataset-summary/v1",
+        "source_sampling": {
+          "candidate_sequence_sha256": "9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9",
+          "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+          "sampling_manifest_sha256": "d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038",
+          "seed": 3411,
+          "video_sequence_sha256": "d36b2ab2b9cf8cb5da8e0fb5cc49cf2413d1727599d02e1fc3ca063ca98b22b0"
+        },
+        "status": "ready",
+        "train_row_count": 3000,
+        "validation_row_count": 425
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-concise-v2-seed3411/input/experiment_contract.json": {
+      "file_sha256": "3505e75fad12a9c4b85bddda5d70ff1039cd7e46f76a465503f474976ac415af",
+      "bytes": 3229,
+      "content": {
+        "base_contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "base_contract_version": "tensile-vlm/v4.1",
+        "experiment_contract_sha256": "c2fb762a5e1f69841ff24f9c8d95fde213509abb82475d8dc214d2b10c6d5c95",
+        "generation": {
+          "do_sample": false,
+          "max_new_tokens": 256,
+          "num_beams": 1,
+          "temperature": 0.0
+        },
+        "immutable": true,
+        "prompt": {
+          "label_pools": {
+            "clip_state": [
+              "未断裂",
+              "临界未断裂",
+              "发生断裂",
+              "已断裂",
+              "无法判断"
+            ],
+            "fracture_mechanism": [
+              "韧性断裂",
+              "脆性断裂",
+              "界面脱粘",
+              "爆炸性断裂",
+              "半脆半韧断裂",
+              null
+            ],
+            "fracture_site": [
+              "inside_gauge",
+              "outside_gauge_non_root",
+              "grip_root",
+              null
+            ],
+            "special_case": [
+              "未夹紧",
+              "视频异常",
+              null
+            ]
+          },
+          "output_fields": [
+            "clip_state",
+            "fracture_mechanism",
+            "fracture_site",
+            "special_case"
+          ],
+          "prompt_content_sha256": "0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db",
+          "prompt_manifest_sha256": "de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d",
+          "protocol_id": "tensile-vlm/v4.1",
+          "revision_id": "v4.1-concise-evidence-json-v2",
+          "schema_version": "tensile-prompt-control/v1",
+          "system_prompt": "仅依据当前视频的可见证据判断，不推测片段外事件。\n\nclip_state：未断裂=连续且无临界征兆；临界未断裂=仍连续且有明确临界征兆；发生断裂=片段内由连续变断开；已断裂=开头已断开；无法判断=证据不足。\n\n未断裂时其余字段均为 null；无法判断时机制和位置为 null。其他状态仅填写有可见证据的机制和位置。special_case 仅填明确可见的“未夹紧”或“视频异常”，否则为 null。\n\nfracture_mechanism 只能是“韧性断裂”、“脆性断裂”、“界面脱粘”、“爆炸性断裂”、“半脆半韧断裂”或 null；fracture_site 只能是“inside_gauge”、“outside_gauge_non_root”、“grip_root”或 null。\n\n只输出包含 clip_state、fracture_mechanism、fracture_site、special_case 的合法 JSON。空值写成不加引号的 null，禁止字符串 \"null\"。",
+          "user_prompt": "请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。"
+        },
+        "release": {
+          "release_id": "v4.1.0-ecb5aeb9657c",
+          "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+          "training_candidates_sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf"
+        },
+        "sampling": {
+          "candidate_sequence_sha256": "9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9",
+          "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+          "sampling_manifest_sha256": "d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038",
+          "seed": 3411,
+          "video_sequence_sha256": "d36b2ab2b9cf8cb5da8e0fb5cc49cf2413d1727599d02e1fc3ca063ca98b22b0"
+        },
+        "schema_version": "tensile-vlm-v4.1-experiment-contract/v1"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/model_identity.json": {
+      "file_sha256": "7672c57d1cb382dc6d220e117811ab6df1e6cc9cbe61218fd08ec6256e7042cf",
+      "bytes": 648,
+      "content": {
+        "adapter_path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter",
+        "checkpoint_count": 5,
+        "lifecycle_status": "evaluated",
+        "merged_path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged",
+        "model_name": "v4.1-sampling-coverage-first-fold0-r1",
+        "schema_version": "tensile-model-registry/local-identity/v1",
+        "source_adapter_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411",
+        "source_merged_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/eval_results.json": {
+      "file_sha256": "4f4189c605a7974eafe4fbdb2af51fd8119a9899cdcc008af58164d58886043b",
+      "bytes": 162,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.05516669899225235,
+        "eval_runtime": 203.8471,
+        "eval_samples_per_second": 2.085,
+        "eval_steps_per_second": 2.085
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/trainer_state.json": {
+      "file_sha256": "6b306cfcdf8d4fdeb9f3527065465a7e757acc92ba170f4ba9c4d53cdaaf0fc6",
+      "bytes": 43849,
+      "content": {
+        "best_global_step": 200,
+        "best_metric": 0.05516669899225235,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411/checkpoint-200",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.2751485157262e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/all_results.json": {
+      "file_sha256": "62f7de1202cdd9c5120c73b19788e1a5ae17d93f0e79d36eb5d0974ed466c812",
+      "bytes": 348,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.05516669899225235,
+        "eval_runtime": 203.8471,
+        "eval_samples_per_second": 2.085,
+        "eval_steps_per_second": 2.085,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.0503090049723008,
+        "train_runtime": 16790.3818,
+        "train_samples_per_second": 0.536,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/train_results.json": {
+      "file_sha256": "b38d78c3c3a602e1cd8fb27462fb24a9aa2313343286cc2cfb01eba3809ca1e4",
+      "bytes": 206,
+      "content": {
+        "epoch": 3.0,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.0503090049723008,
+        "train_runtime": 16790.3818,
+        "train_samples_per_second": 0.536,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_config.json": {
+      "file_sha256": "a5c745fb27cbefe6625e096b86cca1b77b686816e05e12cbf14dbb8c75f3e496",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "gate_proj",
+          "k_proj",
+          "o_proj",
+          "down_proj",
+          "v_proj",
+          "out_proj",
+          "kv_proj",
+          "fc1",
+          "up_proj",
+          "fc2",
+          "q_proj"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/input/summary.json": {
+      "file_sha256": "0f18f7320089c0354f0cd5b17e90186b50bed30010196bed9be2fda041eab6cb",
+      "bytes": 1911,
+      "content": {
+        "experiment_contract_sha256": "ddec9c90dd8cfb2cc55d094929d556c2685ce429b4daa580b1b6949c08762123",
+        "experiment_id": "v4.1-prompt-minimal-v1-seed3411",
+        "files": [
+          {
+            "path": "dataset_info.json",
+            "sha256": "cebd5e780b46c21445cebf8453a36ee9d1c42ac2d4470d74ba4b47a67b8d341f",
+            "size_bytes": 918
+          },
+          {
+            "path": "datasets/fold_0_validation.json",
+            "sha256": "998fd1730847529cc8cf92cafc202f62064630ed541cbf617545c521f8cffb89",
+            "size_bytes": 621938
+          },
+          {
+            "path": "datasets/seed_3411.json",
+            "sha256": "34c3c0f035aa4e06adb5b70d193775f0a4411634927a6ad72b0fd9a793428a7d",
+            "size_bytes": 4415772
+          },
+          {
+            "path": "experiment_contract.json",
+            "sha256": "ccf53b73c0bcfaf4fb0e551321eafa942c2b784f79e459457dd06c76ab2523ca",
+            "size_bytes": 3176
+          }
+        ],
+        "immutable": true,
+        "input_identity_sha256": "a6f74dfc88ed4a17a023b55fbf8959a080b952a43142acd2ac66927cd70aa1ae",
+        "prompt_content_sha256": "2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3",
+        "prompt_revision_id": "v4.1-fixed-full-fields-initial-v1",
+        "release": {
+          "release_id": "v4.1.0-ecb5aeb9657c",
+          "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+          "training_candidates_sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf"
+        },
+        "schema_version": "tensile-vlm-v4.1-fixed-prompt-dataset-summary/v1",
+        "source_sampling": {
+          "candidate_sequence_sha256": "9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9",
+          "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+          "sampling_manifest_sha256": "d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038",
+          "seed": 3411,
+          "video_sequence_sha256": "d36b2ab2b9cf8cb5da8e0fb5cc49cf2413d1727599d02e1fc3ca063ca98b22b0"
+        },
+        "status": "ready",
+        "train_row_count": 3000,
+        "validation_row_count": 425
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/input/experiment_contract.json": {
+      "file_sha256": "ccf53b73c0bcfaf4fb0e551321eafa942c2b784f79e459457dd06c76ab2523ca",
+      "bytes": 3176,
+      "content": {
+        "base_contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "base_contract_version": "tensile-vlm/v4.1",
+        "experiment_contract_sha256": "ddec9c90dd8cfb2cc55d094929d556c2685ce429b4daa580b1b6949c08762123",
+        "generation": {
+          "do_sample": false,
+          "max_new_tokens": 256,
+          "num_beams": 1,
+          "temperature": 0.0
+        },
+        "immutable": true,
+        "prompt": {
+          "label_pools": {
+            "clip_state": [
+              "未断裂",
+              "临界未断裂",
+              "发生断裂",
+              "已断裂",
+              "无法判断"
+            ],
+            "fracture_mechanism": [
+              "韧性断裂",
+              "脆性断裂",
+              "界面脱粘",
+              "爆炸性断裂",
+              "半脆半韧断裂",
+              null
+            ],
+            "fracture_site": [
+              "inside_gauge",
+              "outside_gauge_non_root",
+              "grip_root",
+              null
+            ],
+            "special_case": [
+              "未夹紧",
+              "视频异常",
+              null
+            ]
+          },
+          "output_fields": [
+            "clip_state",
+            "fracture_mechanism",
+            "fracture_site",
+            "special_case"
+          ],
+          "prompt_content_sha256": "2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3",
+          "prompt_manifest_sha256": "04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0",
+          "protocol_id": "tensile-vlm/v4.1",
+          "revision_id": "v4.1-fixed-full-fields-initial-v1",
+          "schema_version": "tensile-prompt-control/v1",
+          "system_prompt": "你是一位材料力学视频分析助手。请仅依据当前输入视频中可见的信息完成判断，不要推测视频片段之外发生的事件。\n\n请以一个合法 JSON 对象给出结果，不要输出解释、Markdown 或其他文字。结果包含 clip_state、fracture_mechanism、fracture_site、special_case 四个字段。\n\n本任务使用以下标签池：\n\nclip_state：\n未断裂、临界未断裂、发生断裂、已断裂、无法判断。\n\nfracture_mechanism：\n韧性断裂、脆性断裂、界面脱粘、爆炸性断裂、半脆半韧断裂，以及 null。\n\nfracture_site：\ninside_gauge、outside_gauge_non_root、grip_root，以及 null。\n\nspecial_case：\n未夹紧、视频异常，以及 null。\n\n输出结构：\n\n{\"clip_state\": ..., \"fracture_mechanism\": ..., \"fracture_site\": ..., \"special_case\": ...}",
+          "user_prompt": "请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。"
+        },
+        "release": {
+          "release_id": "v4.1.0-ecb5aeb9657c",
+          "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+          "training_candidates_sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf"
+        },
+        "sampling": {
+          "candidate_sequence_sha256": "9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9",
+          "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+          "sampling_manifest_sha256": "d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038",
+          "seed": 3411,
+          "video_sequence_sha256": "d36b2ab2b9cf8cb5da8e0fb5cc49cf2413d1727599d02e1fc3ca063ca98b22b0"
+        },
+        "schema_version": "tensile-vlm-v4.1-experiment-contract/v1"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/eval_results.json": {
+      "file_sha256": "5e888281c2095f4df5caefa03affa22b6fe6f23e3baa37e94d3c812b38b901af",
+      "bytes": 162,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.06288376450538635,
+        "eval_runtime": 202.0596,
+        "eval_samples_per_second": 2.103,
+        "eval_steps_per_second": 2.103
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/trainer_state.json": {
+      "file_sha256": "aeb019a3e598ffc46a76e8caa2ef135c9380845526cc9d3912bca4b588eaafbb",
+      "bytes": 43694,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.06288376450538635,
+        "best_model_checkpoint": "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/checkpoint-250",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 2.93829670322996e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/all_results.json": {
+      "file_sha256": "ed99eaaa78478b44805440033c2c74304114d6179fc3ac360b22fd8f5215b212",
+      "bytes": 350,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.06288376450538635,
+        "eval_runtime": 202.0596,
+        "eval_samples_per_second": 2.103,
+        "eval_steps_per_second": 2.103,
+        "total_flos": 2.93829670322996e+17,
+        "train_loss": 0.06303395788299127,
+        "train_runtime": 16490.5132,
+        "train_samples_per_second": 0.546,
+        "train_steps_per_second": 0.068
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/train_results.json": {
+      "file_sha256": "bcf3c346c35921593c7d9752cbf9c14f42a1a5e3376f8f0b15fe42f113f321be",
+      "bytes": 208,
+      "content": {
+        "epoch": 3.0,
+        "total_flos": 2.93829670322996e+17,
+        "train_loss": 0.06303395788299127,
+        "train_runtime": 16490.5132,
+        "train_samples_per_second": 0.546,
+        "train_steps_per_second": 0.068
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/adapter_config.json": {
+      "file_sha256": "8be9c0a83f6103cd0994f35f9f27e1d086f6749db5f9c74e2e65e8a3c46ef86c",
+      "bytes": 1168,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "lora_ga_config": null,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.19.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "o_proj",
+          "down_proj",
+          "fc2",
+          "gate_proj",
+          "kv_proj",
+          "v_proj",
+          "up_proj",
+          "q_proj",
+          "out_proj",
+          "fc1",
+          "k_proj"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_bdlora": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json": {
+      "file_sha256": "ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836",
+      "bytes": 2226,
+      "content": {
+        "schema_version": "tensile-v4.1-evaluation-run/v1",
+        "release_id": "v4.1.0-ecb5aeb9657c",
+        "contract_version": "tensile-vlm/v4.1",
+        "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "fold": 0,
+        "model_dir": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged",
+        "sample_count": 425,
+        "experiment_contract": {
+          "schema_version": "tensile-vlm-v4.1-experiment-contract/v1",
+          "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/input/experiment_contract.json",
+          "file_sha256": "ccf53b73c0bcfaf4fb0e551321eafa942c2b784f79e459457dd06c76ab2523ca",
+          "experiment_contract_sha256": "ddec9c90dd8cfb2cc55d094929d556c2685ce429b4daa580b1b6949c08762123",
+          "prompt_revision_id": "v4.1-fixed-full-fields-initial-v1",
+          "prompt_manifest_sha256": "04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0",
+          "prompt_content_sha256": "2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3"
+        },
+        "total_samples": 425,
+        "runtime_failure_count": 0,
+        "strict_valid_count": 366,
+        "strict_valid_rate": 0.861176,
+        "metrics": {
+          "total": 425,
+          "contract_valid_rate": 0.861176,
+          "joint_correct_rate": 0.24,
+          "clip_state_correct_rate": 0.350588,
+          "fracture_mechanism_correct_rate": 0.388235,
+          "fracture_site_correct_rate": 0.397647,
+          "special_case_correct_rate": 0.861176
+        },
+        "target_clip_state_distribution": {
+          "临界未断裂": 57,
+          "发生断裂": 144,
+          "已断裂": 33,
+          "未断裂": 191
+        },
+        "prediction_clip_state_distribution": {
+          "__invalid__": 59,
+          "发生断裂": 195,
+          "已断裂": 47,
+          "未断裂": 124
+        },
+        "clip_state_confusion": {
+          "临界未断裂": {
+            "__invalid__": 13,
+            "发生断裂": 20,
+            "已断裂": 2,
+            "未断裂": 22
+          },
+          "发生断裂": {
+            "__invalid__": 12,
+            "发生断裂": 83,
+            "已断裂": 21,
+            "未断裂": 28
+          },
+          "已断裂": {
+            "__invalid__": 1,
+            "发生断裂": 16,
+            "已断裂": 4,
+            "未断裂": 12
+          },
+          "未断裂": {
+            "__invalid__": 33,
+            "发生断裂": 76,
+            "已断裂": 20,
+            "未断裂": 62
+          }
+        }
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/evaluation/run_identity.json": {
+      "file_sha256": "54854591df1b646b6fa69578ccd5f06c922e37208e96ef01f0d996bbd007d7a6",
+      "bytes": 1027,
+      "content": {
+        "schema_version": "tensile-v4.1-evaluation-run/v1",
+        "release_id": "v4.1.0-ecb5aeb9657c",
+        "contract_version": "tensile-vlm/v4.1",
+        "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "fold": 0,
+        "model_dir": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged",
+        "sample_count": 425,
+        "experiment_contract": {
+          "schema_version": "tensile-vlm-v4.1-experiment-contract/v1",
+          "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/input/experiment_contract.json",
+          "file_sha256": "ccf53b73c0bcfaf4fb0e551321eafa942c2b784f79e459457dd06c76ab2523ca",
+          "experiment_contract_sha256": "ddec9c90dd8cfb2cc55d094929d556c2685ce429b4daa580b1b6949c08762123",
+          "prompt_revision_id": "v4.1-fixed-full-fields-initial-v1",
+          "prompt_manifest_sha256": "04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0",
+          "prompt_content_sha256": "2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3"
+        }
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-minimal-v1-seed3411/evaluation/evidence_manifest.json": {
+      "file_sha256": "49edbf37119b5e1784e5b10ee731b56834a7e9f8c47c1e9272be0b98ebe5ee56",
+      "bytes": 6097,
+      "content": {
+        "schema_version": "v4.1-semantic-experiment-evidence/v1",
+        "experiment_id": "v4.1-prompt-minimal-v1-seed3411",
+        "merged_files": [
+          {
+            "path": "Modelfile",
+            "bytes": 424,
+            "sha256": "95d2a815e542d15e9f7a4feeab46402d7f8cef3b63ba3c26a5c4d9f6e70f8e9f"
+          },
+          {
+            "path": "added_tokens.json",
+            "bytes": 2862,
+            "sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f"
+          },
+          {
+            "path": "chat_template.jinja",
+            "bytes": 4229,
+            "sha256": "56786063c90f9f67402d4d9af27f5c17f206467d577dc04d6dcfee2d57c8a2f0"
+          },
+          {
+            "path": "config.json",
+            "bytes": 2440,
+            "sha256": "2b6c82b8fe27e7e59412a54050f96968861c1c4b165406b3bd6a21b82abbade1"
+          },
+          {
+            "path": "configuration_minicpm.py",
+            "bytes": 3288,
+            "sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45"
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 276,
+            "sha256": "b7ba498b309c1b46b7da2d5ae7699bc608bca1a6e2cad1ae0bab2959c535e7a0"
+          },
+          {
+            "path": "image_processing_minicpmv.py",
+            "bytes": 20757,
+            "sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7"
+          },
+          {
+            "path": "merges.txt",
+            "bytes": 1671853,
+            "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+          },
+          {
+            "path": "model-00001-of-00010.safetensors",
+            "bytes": 1914228064,
+            "sha256": "8698259e09800f87af5c756ac9c0ff387f6381f3a312928f4a1ad4d6056f9644"
+          },
+          {
+            "path": "model-00002-of-00010.safetensors",
+            "bytes": 1929470832,
+            "sha256": "491d5ec29b1b8166b570f3ca7d3d857c05811c5aed812f81eebd27a587c1f197"
+          },
+          {
+            "path": "model-00003-of-00010.safetensors",
+            "bytes": 1929470856,
+            "sha256": "1311766a12a1e37cc6e35495e71e0d6a7aec90df012c9e8ee7e242baab0a62ca"
+          },
+          {
+            "path": "model-00004-of-00010.safetensors",
+            "bytes": 1929470888,
+            "sha256": "be32147042e66975b6356ad0378dead3576f5638516a02efd2ad71cc2e0bcd48"
+          },
+          {
+            "path": "model-00005-of-00010.safetensors",
+            "bytes": 1929470888,
+            "sha256": "3f2863b87cc3665a71353e0347110cba324dc555880f65ad7e307ce6204d6b24"
+          },
+          {
+            "path": "model-00006-of-00010.safetensors",
+            "bytes": 1929470888,
+            "sha256": "6c9e1553525a5ef68e45ab4be265360e4858c1b6696dee6edeec33055bec2931"
+          },
+          {
+            "path": "model-00007-of-00010.safetensors",
+            "bytes": 1929470888,
+            "sha256": "0fd9f5838b0a3450b1cdfaa205d2dabdf3c3c035c1564edb49b1c990766337cd"
+          },
+          {
+            "path": "model-00008-of-00010.safetensors",
+            "bytes": 1644265032,
+            "sha256": "eb01583057eef1391cab0e166ea0c827bf42d6e87324d3646e945943e4ab3195"
+          },
+          {
+            "path": "model-00009-of-00010.safetensors",
+            "bytes": 1997939416,
+            "sha256": "aa0bc73b26974427292a478080e2925c54252e466bfdff704e9ff0bed2c1e945"
+          },
+          {
+            "path": "model-00010-of-00010.safetensors",
+            "bytes": 258632328,
+            "sha256": "8411207262d27cfc09c041992bb0be1c748c8f2cfb993465dcf9e12ffd87d4f7"
+          },
+          {
+            "path": "model.safetensors.index.json",
+            "bytes": 72209,
+            "sha256": "39760fa6d7171527eaf19fe8830717b2cc5e2eaadaa677d0375595cb54c01095"
+          },
+          {
+            "path": "modeling_minicpmv.py",
+            "bytes": 18609,
+            "sha256": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10"
+          },
+          {
+            "path": "modeling_navit_siglip.py",
+            "bytes": 41835,
+            "sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa"
+          },
+          {
+            "path": "preprocessor_config.json",
+            "bytes": 934,
+            "sha256": "0de71dc9a792f99a6ca9270f4d5b28b632b488c89d8a8ea42dac346fe43e858a"
+          },
+          {
+            "path": "processing_minicpmv.py",
+            "bytes": 11026,
+            "sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd"
+          },
+          {
+            "path": "processor_config.json",
+            "bytes": 127,
+            "sha256": "67cf814ee0c745e7f4de82606d2e0a7ea3b2f8879845a4566f0b37c4a164496b"
+          },
+          {
+            "path": "resampler.py",
+            "bytes": 11732,
+            "sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be"
+          },
+          {
+            "path": "special_tokens_map.json",
+            "bytes": 2450,
+            "sha256": "447547e6205a50dad31cc19dcc3344bbef4e03c8aa6d428067e6cc671d72703b"
+          },
+          {
+            "path": "tokenization_minicpmv_fast.py",
+            "bytes": 1647,
+            "sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736"
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11437868,
+            "sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b"
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 21542,
+            "sha256": "8bd65a16f51ab20577cfdc54d5de224450540e48f1a18578c4207b3615b862d3"
+          },
+          {
+            "path": "vocab.json",
+            "bytes": 2776833,
+            "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+          }
+        ],
+        "merged_total_bytes": 17407993021,
+        "key_files": {
+          "adapter/adapter_model.safetensors": {
+            "bytes": 460430776,
+            "sha256": "55c8e446af827cfb8c2c3cb0ac1aed8dc88bffb9641fb2713fc188dbb3df3e18"
+          },
+          "adapter/adapter_config.json": {
+            "bytes": 1168,
+            "sha256": "8be9c0a83f6103cd0994f35f9f27e1d086f6749db5f9c74e2e65e8a3c46ef86c"
+          },
+          "adapter/trainer_state.json": {
+            "bytes": 43694,
+            "sha256": "aeb019a3e598ffc46a76e8caa2ef135c9380845526cc9d3912bca4b588eaafbb"
+          },
+          "evaluation/evaluation_records.jsonl": {
+            "bytes": 432796,
+            "sha256": "a32f3e30c494af3ee424ad29a77f3db4f5f664bb966dc88048ed572bee313300"
+          },
+          "evaluation/evaluation_summary.json": {
+            "bytes": 2226,
+            "sha256": "ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836"
+          },
+          "evaluation/run_identity.json": {
+            "bytes": 1027,
+            "sha256": "54854591df1b646b6fa69578ccd5f06c922e37208e96ef01f0d996bbd007d7a6"
+          },
+          "input/experiment_contract.json": {
+            "bytes": 3176,
+            "sha256": "ccf53b73c0bcfaf4fb0e551321eafa942c2b784f79e459457dd06c76ab2523ca"
+          }
+        }
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/model_identity.json": {
+      "file_sha256": "83cc641cdb441cb3766694fe1916da3d4d3325009409df3edab565528020ef5b",
+      "bytes": 637,
+      "content": {
+        "adapter_path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
+        "checkpoint_count": 5,
+        "lifecycle_status": "current",
+        "merged_path": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged",
+        "model_name": "v4.1-agent-pipeline-fold0-r1",
+        "schema_version": "tensile-model-registry/local-identity/v1",
+        "source_adapter_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407",
+        "source_merged_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407_merged"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/eval_results.json": {
+      "file_sha256": "aac7ff7ea41cabfb429ea2bda000e36b8e277c21c05982cfb8d4debb017b443d",
+      "bytes": 163,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.054742854088544846,
+        "eval_runtime": 203.5864,
+        "eval_samples_per_second": 2.088,
+        "eval_steps_per_second": 2.088
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/trainer_state.json": {
+      "file_sha256": "6855109d36b2cb3981f4560e4e1e91e1e72a4184fb541fd7c924f0217368d10b",
+      "bytes": 43857,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.054742854088544846,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.2751485157262e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/all_results.json": {
+      "file_sha256": "d3fecdc634306014ba775b6a26c70bc16500d69313af4629982d5293aff47d18",
+      "bytes": 350,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.054742854088544846,
+        "eval_runtime": 203.5864,
+        "eval_samples_per_second": 2.088,
+        "eval_steps_per_second": 2.088,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.05080636104799083,
+        "train_runtime": 16797.2917,
+        "train_samples_per_second": 0.536,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/train_results.json": {
+      "file_sha256": "89bf51381e28f4905caf45c476ed3ac0554f4db407890a4af7df79d06cf90c7c",
+      "bytes": 207,
+      "content": {
+        "epoch": 3.0,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.05080636104799083,
+        "train_runtime": 16797.2917,
+        "train_samples_per_second": 0.536,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_config.json": {
+      "file_sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "up_proj",
+          "v_proj",
+          "fc1",
+          "k_proj",
+          "q_proj",
+          "o_proj",
+          "gate_proj",
+          "out_proj",
+          "down_proj",
+          "fc2"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1100/trainer_state.json": {
+      "file_sha256": "24cc0ed89af004741685a934da1c00b721add7cb402cf02361f02e1a526ae712",
+      "bytes": 42776,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.054742854088544846,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+        "epoch": 2.9333333333333336,
+        "eval_steps": 50,
+        "global_step": 1100,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": false
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.202276303140864e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1100/adapter_config.json": {
+      "file_sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "up_proj",
+          "v_proj",
+          "fc1",
+          "k_proj",
+          "q_proj",
+          "o_proj",
+          "gate_proj",
+          "out_proj",
+          "down_proj",
+          "fc2"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1050/trainer_state.json": {
+      "file_sha256": "cc80e2edd2d08bae11073373a9093c79d5c29424b5895cded99132f328cecbb6",
+      "bytes": 40833,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.054742854088544846,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+        "epoch": 2.8,
+        "eval_steps": 50,
+        "global_step": 1050,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": false
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.057411796875863e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1050/adapter_config.json": {
+      "file_sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "up_proj",
+          "v_proj",
+          "fc1",
+          "k_proj",
+          "q_proj",
+          "o_proj",
+          "gate_proj",
+          "out_proj",
+          "down_proj",
+          "fc2"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1125/trainer_state.json": {
+      "file_sha256": "8957b67e77ada24084916436ada06c7933e958de6fe05ad5f33b045b6873d2f8",
+      "bytes": 43608,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.054742854088544846,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.2751485157262e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1125/adapter_config.json": {
+      "file_sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "up_proj",
+          "v_proj",
+          "fc1",
+          "k_proj",
+          "q_proj",
+          "o_proj",
+          "gate_proj",
+          "out_proj",
+          "down_proj",
+          "fc2"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-250/trainer_state.json": {
+      "file_sha256": "f083c16c90df1856fc8c509f8fb73ee874bce1b92ad3f82bf70d0568669a6fbe",
+      "bytes": 10408,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.054742854088544846,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+        "epoch": 0.6666666666666666,
+        "eval_steps": 50,
+        "global_step": 250,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": false
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 7.27480811682862e+16,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-250/adapter_config.json": {
+      "file_sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "up_proj",
+          "v_proj",
+          "fc1",
+          "k_proj",
+          "q_proj",
+          "o_proj",
+          "gate_proj",
+          "out_proj",
+          "down_proj",
+          "fc2"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1000/trainer_state.json": {
+      "file_sha256": "d7942755e51350a331d4b739eff29f97216c2dcdb0d9b96029714cdf94f34022",
+      "bytes": 38935,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.054742854088544846,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+        "epoch": 2.6666666666666665,
+        "eval_steps": 50,
+        "global_step": 1000,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": false
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 2.912166254299031e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/checkpoint-1000/adapter_config.json": {
+      "file_sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "up_proj",
+          "v_proj",
+          "fc1",
+          "k_proj",
+          "q_proj",
+          "o_proj",
+          "gate_proj",
+          "out_proj",
+          "down_proj",
+          "fc2"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/model_identity.json": {
+      "file_sha256": "b375bec9efd65efa6253586eac11e5446ebc792fa389f0c7f28c663093b8db45",
+      "bytes": 626,
+      "content": {
+        "adapter_path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter",
+        "checkpoint_count": 5,
+        "lifecycle_status": "evaluated",
+        "merged_path": "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged",
+        "model_name": "v4.1-sampling-fallback-fold0-r1",
+        "schema_version": "tensile-model-registry/local-identity/v1",
+        "source_adapter_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_coverage_first_fallback_seed3413_seed3413",
+        "source_merged_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_coverage_first_fallback_seed3413_seed3413_merged"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/eval_results.json": {
+      "file_sha256": "cddf21987e443d9955ed0100ea30cd91fc9b33a33f0781dc55fdc2aa01777e46",
+      "bytes": 162,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.05644860491156578,
+        "eval_runtime": 202.8985,
+        "eval_samples_per_second": 2.095,
+        "eval_steps_per_second": 2.095
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/trainer_state.json": {
+      "file_sha256": "2988842a843d7f935785c6f88af2eb0b6f90ee76db7f2751eefa41c7d421f3bf",
+      "bytes": 43809,
+      "content": {
+        "best_global_step": 200,
+        "best_metric": 0.05644860491156578,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_coverage_first_fallback_seed3413_seed3413/checkpoint-200",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.2751485157262e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/all_results.json": {
+      "file_sha256": "b5d3c69b40681f473587510921a588177ed36c32693a70f30b82c49bdcaf1a46",
+      "bytes": 349,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.05644860491156578,
+        "eval_runtime": 202.8985,
+        "eval_samples_per_second": 2.095,
+        "eval_steps_per_second": 2.095,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.05061702129120628,
+        "train_runtime": 16769.6197,
+        "train_samples_per_second": 0.537,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/train_results.json": {
+      "file_sha256": "48115984f226cbde5bdc02d2288f0609569dbf5ebe7d939a359da8c48ade4865",
+      "bytes": 207,
+      "content": {
+        "epoch": 3.0,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.05061702129120628,
+        "train_runtime": 16769.6197,
+        "train_samples_per_second": 0.537,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_config.json": {
+      "file_sha256": "c0c93c9d0331ab221967e9f26b40def81533fcb5f9d9ff6b3fdaac163332d578",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "q_proj",
+          "up_proj",
+          "gate_proj",
+          "down_proj",
+          "k_proj",
+          "fc1",
+          "out_proj",
+          "fc2",
+          "v_proj",
+          "o_proj"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/model_identity.json": {
+      "file_sha256": "2fa089bbaa7bf520dd5becabd5656efa778a651d0b8a971209e5ca162439f7b0",
+      "bytes": 612,
+      "content": {
+        "adapter_path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter",
+        "checkpoint_count": 5,
+        "lifecycle_status": "evaluated",
+        "merged_path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged",
+        "model_name": "v4.1-sampling-source-aware-fold0-r1",
+        "schema_version": "tensile-model-registry/local-identity/v1",
+        "source_adapter_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407",
+        "source_merged_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407_merged"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/eval_results.json": {
+      "file_sha256": "be7f99770296db570bf8f8ab5764532ba9b3817403c64f08da2331db4864a296",
+      "bytes": 162,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.05644451826810837,
+        "eval_runtime": 203.1682,
+        "eval_samples_per_second": 2.092,
+        "eval_steps_per_second": 2.092
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/trainer_state.json": {
+      "file_sha256": "2a5001b69ab73b8cb09f408876e1bc3bbba8a26d96babf762e380bd086ce6639",
+      "bytes": 43842,
+      "content": {
+        "best_global_step": 200,
+        "best_metric": 0.05644451826810837,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407/checkpoint-200",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.274948177046784e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/all_results.json": {
+      "file_sha256": "1a1ac57e12cc570f54f2bf4520a01db9ff2448171582c4d9c9a526bdd58b8efb",
+      "bytes": 352,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.05644451826810837,
+        "eval_runtime": 203.1682,
+        "eval_samples_per_second": 2.092,
+        "eval_steps_per_second": 2.092,
+        "total_flos": 3.274948177046784e+17,
+        "train_loss": 0.049997158099767854,
+        "train_runtime": 16730.6081,
+        "train_samples_per_second": 0.538,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/train_results.json": {
+      "file_sha256": "9fbf7f9714845c8661d2968694d594816e5b1a5bfec7b83817aa41c1dbbe2795",
+      "bytes": 210,
+      "content": {
+        "epoch": 3.0,
+        "total_flos": 3.274948177046784e+17,
+        "train_loss": 0.049997158099767854,
+        "train_runtime": 16730.6081,
+        "train_samples_per_second": 0.538,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_config.json": {
+      "file_sha256": "f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "v_proj",
+          "q_proj",
+          "down_proj",
+          "out_proj",
+          "fc1",
+          "gate_proj",
+          "up_proj",
+          "fc2",
+          "kv_proj",
+          "o_proj",
+          "k_proj"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-concise-v1-seed3411/input/summary.json": {
+      "file_sha256": "333d4de33b5c7380af47099039ed1434ea388010ce2dadf12bc8b26da6c4d6a3",
+      "bytes": 1907,
+      "content": {
+        "experiment_contract_sha256": "b9a54e4ef0a47201c7d4d38ad56afce4218c4f375fc21742639e980046960a08",
+        "experiment_id": "v4.1-prompt-concise-v1-seed3411",
+        "files": [
+          {
+            "path": "dataset_info.json",
+            "sha256": "cebd5e780b46c21445cebf8453a36ee9d1c42ac2d4470d74ba4b47a67b8d341f",
+            "size_bytes": 918
+          },
+          {
+            "path": "datasets/fold_0_validation.json",
+            "sha256": "7114ae2efdb796d5a8d782d3dd6391ae8951357682c9609d1465e0a3958b7227",
+            "size_bytes": 837413
+          },
+          {
+            "path": "datasets/seed_3411.json",
+            "sha256": "c5e8f78d8e156007800d464d87d1051c93483d16c513568073eafabb9b258f06",
+            "size_bytes": 5936772
+          },
+          {
+            "path": "experiment_contract.json",
+            "sha256": "ebd9d73b88bf9b88987e099877e91d303d508d45c470012ab3afda98787fc1c4",
+            "size_bytes": 3679
+          }
+        ],
+        "immutable": true,
+        "input_identity_sha256": "a18ac8767a8ecfa661fa651453ce703da485d2012991a63b22acfb90c86bbff7",
+        "prompt_content_sha256": "7fbb55d59548af56a486de501d187a2694e81257dd1936bbf13c85fdef6c6d6d",
+        "prompt_revision_id": "v4.1-concise-evidence-json-v1",
+        "release": {
+          "release_id": "v4.1.0-ecb5aeb9657c",
+          "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+          "training_candidates_sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf"
+        },
+        "schema_version": "tensile-vlm-v4.1-fixed-prompt-dataset-summary/v1",
+        "source_sampling": {
+          "candidate_sequence_sha256": "9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9",
+          "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+          "sampling_manifest_sha256": "d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038",
+          "seed": 3411,
+          "video_sequence_sha256": "d36b2ab2b9cf8cb5da8e0fb5cc49cf2413d1727599d02e1fc3ca063ca98b22b0"
+        },
+        "status": "ready",
+        "train_row_count": 3000,
+        "validation_row_count": 425
+      },
+      "log_history_omitted": false
+    },
+    "workspace/runs/v4.1-prompt-concise-v1-seed3411/input/experiment_contract.json": {
+      "file_sha256": "ebd9d73b88bf9b88987e099877e91d303d508d45c470012ab3afda98787fc1c4",
+      "bytes": 3679,
+      "content": {
+        "base_contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "base_contract_version": "tensile-vlm/v4.1",
+        "experiment_contract_sha256": "b9a54e4ef0a47201c7d4d38ad56afce4218c4f375fc21742639e980046960a08",
+        "generation": {
+          "do_sample": false,
+          "max_new_tokens": 256,
+          "num_beams": 1,
+          "temperature": 0.0
+        },
+        "immutable": true,
+        "prompt": {
+          "label_pools": {
+            "clip_state": [
+              "未断裂",
+              "临界未断裂",
+              "发生断裂",
+              "已断裂",
+              "无法判断"
+            ],
+            "fracture_mechanism": [
+              "韧性断裂",
+              "脆性断裂",
+              "界面脱粘",
+              "爆炸性断裂",
+              "半脆半韧断裂",
+              null
+            ],
+            "fracture_site": [
+              "inside_gauge",
+              "outside_gauge_non_root",
+              "grip_root",
+              null
+            ],
+            "special_case": [
+              "未夹紧",
+              "视频异常",
+              null
+            ]
+          },
+          "output_fields": [
+            "clip_state",
+            "fracture_mechanism",
+            "fracture_site",
+            "special_case"
+          ],
+          "prompt_content_sha256": "7fbb55d59548af56a486de501d187a2694e81257dd1936bbf13c85fdef6c6d6d",
+          "prompt_manifest_sha256": "3bd9c1d70697f05375f2c1a0d870c105ad42a2ebbe3f074fd06b2186dd6d1367",
+          "protocol_id": "tensile-vlm/v4.1",
+          "revision_id": "v4.1-concise-evidence-json-v1",
+          "schema_version": "tensile-prompt-control/v1",
+          "system_prompt": "你是一位材料力学视频分析助手。只能依据当前视频片段中实际可见的信息判断，不得推测片段之外的事件。\n\nclip_state：\n- 未断裂：试样保持连续，且没有明确的临界断裂征兆。\n- 临界未断裂：试样仍连续，但已出现明确可见的临界断裂征兆。\n- 发生断裂：片段中直接看到试样由连续变为断开。\n- 已断裂：片段开始时试样已经断开。\n- 无法判断：关键区域或证据不足，无法可靠判断。\n\n先判断 clip_state，再填写其他字段。clip_state 为“未断裂”时，其余字段必须为 null；为“无法判断”时，fracture_mechanism 和 fracture_site 必须为 null。其他状态只有在存在可见证据时才填写断裂机制和位置，否则为 null。special_case 只能在明确看到“未夹紧”或“视频异常”时填写，否则为 null。\n\nfracture_mechanism 只能是“韧性断裂”、“脆性断裂”、“界面脱粘”、“爆炸性断裂”、“半脆半韧断裂”或 null。\nfracture_site 只能是“inside_gauge”、“outside_gauge_non_root”、“grip_root”或 null。\n\n只输出一个合法 JSON 对象，且必须包含 clip_state、fracture_mechanism、fracture_site、special_case 四个字段。空值必须使用不加引号的 JSON null，禁止输出字符串 \"null\"。",
+          "user_prompt": "请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。"
+        },
+        "release": {
+          "release_id": "v4.1.0-ecb5aeb9657c",
+          "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+          "training_candidates_sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf"
+        },
+        "sampling": {
+          "candidate_sequence_sha256": "9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9",
+          "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+          "sampling_manifest_sha256": "d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038",
+          "seed": 3411,
+          "video_sequence_sha256": "d36b2ab2b9cf8cb5da8e0fb5cc49cf2413d1727599d02e1fc3ca063ca98b22b0"
+        },
+        "schema_version": "tensile-vlm-v4.1-experiment-contract/v1"
+      },
+      "log_history_omitted": false
+    },
+    "workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/eval_results.json": {
+      "file_sha256": "aac7ff7ea41cabfb429ea2bda000e36b8e277c21c05982cfb8d4debb017b443d",
+      "bytes": 163,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.054742854088544846,
+        "eval_runtime": 203.5864,
+        "eval_samples_per_second": 2.088,
+        "eval_steps_per_second": 2.088
+      },
+      "log_history_omitted": false
+    },
+    "workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/trainer_state.json": {
+      "file_sha256": "6855109d36b2cb3981f4560e4e1e91e1e72a4184fb541fd7c924f0217368d10b",
+      "bytes": 43857,
+      "content": {
+        "best_global_step": 250,
+        "best_metric": 0.054742854088544846,
+        "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+        "epoch": 3.0,
+        "eval_steps": 50,
+        "global_step": 1125,
+        "is_hyper_param_search": false,
+        "is_local_process_zero": true,
+        "is_world_process_zero": true,
+        "logging_steps": 5,
+        "max_steps": 1125,
+        "num_input_tokens_seen": 0,
+        "num_train_epochs": 3,
+        "save_steps": 50,
+        "stateful_callbacks": {
+          "TrainerControl": {
+            "args": {
+              "should_epoch_stop": false,
+              "should_evaluate": false,
+              "should_log": false,
+              "should_save": true,
+              "should_training_stop": true
+            },
+            "attributes": {}
+          }
+        },
+        "total_flos": 3.2751485157262e+17,
+        "train_batch_size": 1,
+        "trial_name": null,
+        "trial_params": null
+      },
+      "log_history_omitted": true
+    },
+    "workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/all_results.json": {
+      "file_sha256": "d3fecdc634306014ba775b6a26c70bc16500d69313af4629982d5293aff47d18",
+      "bytes": 350,
+      "content": {
+        "epoch": 3.0,
+        "eval_loss": 0.054742854088544846,
+        "eval_runtime": 203.5864,
+        "eval_samples_per_second": 2.088,
+        "eval_steps_per_second": 2.088,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.05080636104799083,
+        "train_runtime": 16797.2917,
+        "train_samples_per_second": 0.536,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/train_results.json": {
+      "file_sha256": "89bf51381e28f4905caf45c476ed3ac0554f4db407890a4af7df79d06cf90c7c",
+      "bytes": 207,
+      "content": {
+        "epoch": 3.0,
+        "total_flos": 3.2751485157262e+17,
+        "train_loss": 0.05080636104799083,
+        "train_runtime": 16797.2917,
+        "train_samples_per_second": 0.536,
+        "train_steps_per_second": 0.067
+      },
+      "log_history_omitted": false
+    },
+    "workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/adapter_config.json": {
+      "file_sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+      "bytes": 1123,
+      "content": {
+        "alora_invocation_tokens": null,
+        "alpha_pattern": {},
+        "arrow_config": null,
+        "auto_mapping": null,
+        "base_model_name_or_path": "../models/minicpm_v_4_5",
+        "bias": "none",
+        "corda_config": null,
+        "ensure_weight_tying": false,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 16,
+        "lora_bias": false,
+        "lora_dropout": 0.25,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": [
+          "resampler"
+        ],
+        "peft_type": "LORA",
+        "peft_version": "0.18.1",
+        "qalora_group_size": 16,
+        "r": 8,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "kv_proj",
+          "up_proj",
+          "v_proj",
+          "fc1",
+          "k_proj",
+          "q_proj",
+          "o_proj",
+          "gate_proj",
+          "out_proj",
+          "down_proj",
+          "fc2"
+        ],
+        "target_parameters": null,
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_qalora": false,
+        "use_rslora": false
+      },
+      "log_history_omitted": false
+    }
+  },
+  "concise_cv_expected_path_exists": false
+}

@@ -19,6 +19,7 @@
 | --- | --- | --- | --- | --- |
 | 先做的前置 | TEST-POLICY | 明确后续独立测试策略 | 待处理 | 已有一次性评测的公开证据 |
 | 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 待处理 | 可先只读整理开发证据；执行实验前明确测试隔离边界和授权 |
+| 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | MODEL-DIAG 权重依赖、完整证据备份、显式删除授权 |
 | 发布前配套 | RELEASE-POINTER | 安全更新并激活数据 release 指针 | 待处理 | 下一次数据 release 切换前完成 |
 | 后续训练 | FINAL-TRAIN | 全量开发数据训练最终候选 | 阻塞 | 开发侧三折验收通过、TEST-POLICY 策略确定及训练授权 |
 | 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、约定的独立验收及其他适用质量门 |
@@ -28,6 +29,15 @@
 MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独立验收才允许训练最终候选。新发现改变依赖时，同步本表和条目并说明原因。
 
 ## 待处理与阻塞事项
+
+### MODEL-ARCHIVE — 中间模型证据归档与权重清理准备
+
+- **状态/来源**：进行中（主 Agent）；用户要求验证能否保留历次训练参数和结果后清除训练机 run 下模型文件。本轮仅验证，无删除授权。
+- **已证实事实与差距**：2026-08-31 训练机 `workspace/runs` 约 90.253 GiB；原清单漏列两组 source-aware，concise-cv 约定路径不存在；r1 来源仍有 5 个 checkpoint，merged 为发布库软链接。5 组未发布模型 merged 权重合计约 80.988 GiB，各 root LoRA 约 439.1 MiB。原清单不足以放行删除；当前快照未哈希权重，未归档原始预测和完整训练日志。
+- **依赖**：MODEL-DIAG 对历史/当前模型和阶段 checkpoint 的需求；当前发布模型及 `pipeline/checkpoint_policy.json` 保护边界。权重清理不隐含取消诊断任务。
+- **下一动作**：按 MODEL_INVENTORY 第 8 节归档实际配置、模型/数据/Prompt/评测身份、完整日志和原始预测、文件哈希及备份校验；查 concise-cv 备份或迁移位置。逐 run 确定仅留研究记录还是保留 adapter 以便重新合并，形成显式候选清单后取得删除授权。保留 adapter 的方案先验证准确基座与合并链路，不以直挂 4-bit 代替 merged BF16。
+- **验收标准**：每模型每 fold 有可核查的原始配置和结果链、缺失证据明确、归档已备份并校验；清理路径不跟随链接误入发布库，不删除在用模型和未完成诊断所需文件；训练机按获准清单执行并记录删除前后体量、保留文件完整性及对应机器提交。完成可行性审查不等于归档或删除完成。
+- **证据/版本/验证限制**：[模型清单](MODEL_INVENTORY.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；本轮 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
 
 ### TEST-POLICY — 明确后续独立测试策略
 
@@ -47,7 +57,7 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
   2. 从已有开发验证集构建固定、按状态和 source 分层的 canary 清单，确认每个被测模型对应 fold 的训练排除关系；先重算既有记录，再做历史/当前模型与历史/当前 Prompt 的交叉推理对照。
   3. 对保留 checkpoint 做阶段性严格评测，定位字段遗漏和类别偏置开始的 step；保持样本、评分器和生成参数可比较，原始输出与评分结果分开保存。
   4. 根据诊断分别调整 Prompt、采样配额或训练日程，冻结其他因素；单折筛选后扩展到三折。组合修改另列候选，不作为单变量归因证据。
-- **入口与产物**：既有输入和权重在训练机 `workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/`；[eval_run.py](../finetune/eval_run.py) 读取指定 fold、model-dir 和适用 experiment-contract，向独立 out-dir 写 `run_identity.json`、`evaluation_records.jsonl`、`evaluation_summary.json`。`--max-samples` 只截取样本，不等于分层抽样；先核对/补齐按冻结清单选样的能力，不能假称 CLI 已支持。
+- **入口与产物**：既有报告约定输入和权重路径为训练机 `workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/`，但 2026-08-31 只读检查该路径不存在（见 MODEL-ARCHIVE 快照），需先查备份/迁移位置；依赖这些权重的推理与阶段 checkpoint 评测暂不能执行，已有报告整理仍可推进。[eval_run.py](../finetune/eval_run.py) 读取指定 fold、model-dir 和适用 experiment-contract，向独立 out-dir 写 `run_identity.json`、`evaluation_records.jsonl`、`evaluation_summary.json`。`--max-samples` 只截取样本，不等于分层抽样；先核对/补齐按冻结清单选样的能力，不能假称 CLI 已支持。
 - **准备与执行边界**：[脚本索引](../finetune/SCRIPTS.md) 中的 `train_build_dataset.py`、`train_prepare_run.py`、`train_with_contract.py` 分别负责数据包、配置与训练；前两者含固定 fold/seed/3000 行约束。执行者须核对能否表达目标对照，任务单列出实际数据包、配置、checkpoint/merged 生成与评测路径；缺能力先实现，不复用默认值或覆盖旧实验。本条不是已验证可直接运行的全量命令。
 - **依赖/边界**：开发集只读整理不等待 TEST-POLICY 裁决；实验执行前明确测试隔离规则、冻结开发侧阈值并核对授权。现有交付配置记录 optimization paused / retraining unauthorized，本次文档维护不代表恢复训练授权。不使用 sealed-test 调参，不补字段伪造合法率，不删除诊断所需 checkpoint。
 - **验收标准**：身份链一致、原始预测可追溯，根因分清事实与假设；报告四字段合法率/正确率、各状态召回、macro recall、joint correct、分布和失败样例；单变量结果可比较，三折达到预定开发侧标准后才放行 FINAL-TRAIN。仅完成诊断时记录阶段结果，不宣称效果改进已完成。
@@ -141,6 +151,8 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **残余**：Streamlit 显示原始 ValueError traceback 是此前接受的呈现层风险；本轮未重新验收 UI。
 
 ## 最近维护记录
+
+- 2026-08-31 模型清理可行性核查：新增 MODEL-ARCHIVE，修正 MODEL-DIAG 的远端权重路径现状；保留既有 holdout 决策及其他未提交修改。仅只读检查远端，补充清单和本地证据；本轮没有归档全部原始产物或删除权重。下一步在任何清理前先完成证据备份与诊断依赖裁决，原独立测试准备与 MODEL-DIAG 主线不因此取消。
 
 - 2026-08-31：承接前序 Agent 关闭的指针验收和 v3 误报；余下五个原事项按依赖重排，其中独立测试/full-data 拆成两个任务，质量门保留为总目标；新发现 DOC-INDEX，另记 SKILL-FEEDBACK；修正命名、哈希、提交和证据边界。此次仅维护 AGENTS.md 与本文件，提交可用 `git log -- AGENTS.md docs/project-todo.md` 追溯。
 - 本轮文档验证：独立 reviewer 结论通过、无可执行问题；31 个本地 Markdown 链接路径有效，13 个任务标识唯一，`git diff --check` 通过。核查仅覆盖文档及引用的本地代码/公开产物，不代表重新验收远端任务或模型质量。
