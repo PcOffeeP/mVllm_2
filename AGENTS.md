@@ -2,6 +2,7 @@
 
 关联文档：
 
+- [docs/project-todo.md](docs/project-todo.md)：唯一项目任务台账与下一步入口。
 - [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)
 - [finetune/README.md](finetune/README.md)
 - [README.md](README.md)
@@ -38,7 +39,7 @@
 ## 训练结果验收口径
 
 - `train_loss` / `eval_loss` 下降只能证明训练目标收敛，不能单独证明模型任务效果好。
-- 断裂检测模型的实际验收应至少查看：JSON/schema 合法率、`has_fracture` 准确性、type/location 指标、interval/time 命中率、joint success rate、典型预测样例和失败样例。
+- 按被评模型的冻结契约验收。当前 V4.1 至少查看 JSON/contract 合法率、`clip_state` / `fracture_mechanism` / `fracture_site` / `special_case` 正确率、各状态召回、joint correct、典型预测与失败样例；历史契约的 `has_fracture`、type/location、interval/time 指标仅在其契约要求时使用，不混用口径。
 - 对 LoRA/merged 模型做结论前，应确认实际加载的模型路径、checkpoint step、adapter 文件、metadata 和评测结果彼此一致。
 - 如果训练目录中的 metadata 指向旧实验、缺少 adapter/checkpoint，或评测结果无法对应到当前模型，应优先指出产物链路问题，而不是给出正向效果结论。
 
@@ -59,7 +60,18 @@
    - Prompt revision：`v<协议>-<描述>-r<N>`
    - 模型 release：`v<协议>-<描述>-fold<N>-r<N>`
    - 实验：`v<协议>-<主题>-v<N>-seed<N>`
-4. 不可变产物集合目录必须配 `index.json`（由生成脚本自动维护）；生成脚本在追加 `index.json` 后原子写入 `LATEST` 指针文件，记录当前产物完整 ID。解析模块按 `None（读 LATEST） → 完整 ID → 短哈希前缀` 三层解析，失败时明确提示“先运行生成步骤或显式传入产物 ID”。全局总览由 `build_artifact_index.py` 扫描各集合目录的 `index.json` 生成。同一集合目录同一时刻只允许一个写入进程（当前调用链为顺序执行），并发写入会导致条目静默丢失。当前索引覆盖 staging 侧与 `source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos`、`candidate_plans`、`candidate_media_results`、`subvideos`、`frames`、`review_queues`、`review_decisions`、`training_releases`；`promote` 尚未把 `index.json` 从 source/split 快照传播到正式 workspace 集合，为已知待办。`review_decisions` 集合的索引可解析但目录层级深（queue_id/workspace-hash/batch），resolver 不能按 ID 直接解析其路径——该限制已知，当前无脚本这样用。LATEST 语义为最近一次物化或复用触碰的产物。
+4. 不可变产物集合目录必须配 `index.json`（由生成脚本自动维护）；追加索引后原子写入 `LATEST`，记录完整产物 ID。解析顺序为 `None（读 LATEST） → 完整 ID → 短哈希前缀`；失败时提示“先运行生成步骤或显式传入产物 ID”。`build_artifact_index.py` 从各集合索引生成全局总览。同一集合仅允许一个写入进程，避免并发覆盖；LATEST 表示最近一次物化或复用触碰的产物。`review_decisions` 目录层级为 queue_id/workspace-hash/batch，索引可解析，但 resolver 不能按 ID 直接解析路径，调用方不得假定支持。具体覆盖范围以实现为准，已修复缺陷与待办状态统一记录在 TODO，避免在本文件重复维护。
+
+## TODO 执行与维护
+
+本节规定项目内的持续维护规则；具体任务、优先级与证据只放在 `docs/project-todo.md`。主 Agent 负责汇总和最终更新，执行其他任务的 Agent 同样必须交接状态与新发现，不能把维护留给最初创建文档的 skill。
+
+1. **开始前**：读 TODO 的“下一步”及目标条目，核对相关代码、产物和 Git 修改；保留其他 Agent 的未提交工作。按依赖选择可执行任务，排序变化写明原因；任务标识固定，不因移动、关闭或重开而改号。
+2. **条目内容**：每个未关闭任务写明状态、来源/用户目标、已证实事实与差距、依赖、下一动作、验收标准、证据位置和验证限制。状态使用“待处理 / 进行中 / 阻塞 / 待确认 / 已解决 / 已关闭（误报或取消）”；进行中注明执行者，阻塞注明解除条件。建议阈值与假设不得冒充用户决定或既定要求。
+3. **迭代发现**：执行中发现与目标相关且有证据的新问题，先合并重复项，否则新建标识并关联发现它的任务；不确定的问题放“待确认”。阻塞当前验收的写成前置，其余排队，不静默扩大当前实现范围。记录新任务不等于获得重训、测试集使用或其他受限操作的授权。
+4. **完成与交接**：逐项核对验收标准，记录变更、执行机器/代码版本、验证命令与结果、证据路径、独立审查结论（适用时）和残余风险，再更新状态及下一步。实现完成但缺真实环境证据时保留未关闭状态；误报可凭调查证据关闭，取消须注明用户决定。引用前序 Agent 的验证必须注明来源，不写成本轮复跑。提交版本已知后及时更新；同次提交的记录可用 `git log -- <相关文件>` 追溯，禁止拿问题发现版本冒充修复版本。
+5. **同步与裁决**：任务拆分后保留原目标和父子依赖，完成子任务不自动完成上层验收。同步执行顺序表、条目与受影响文档，已关闭项保留简短结论和证据，详细历史查 Git。业务阈值、测试集复用等需要用户决定时提出具体问题；能独立推进的准备工作继续做。审查、提交及跨机操作沿用本文件其他规则，不另建重复流程。
+6. **Skill 反馈**：本项目 TODO 起源于 Pi Agent 的 `explain-project` skill。当前“发现—调查—执行—验证—更新—再发现”的循环是项目规则，不宣称是该 skill 已有工作流。实际使用中暴露的模板/证据/状态管理问题，记录到 TODO 的“Skill 改进候选”，写明案例、现有规则、候选调整与适用边界；只有用户明确要求修改 skill 时，才核对其当时版本并针对性改进，不能把项目特例直接写成通用规则。
 
 ## 文档与审查纪律
 
