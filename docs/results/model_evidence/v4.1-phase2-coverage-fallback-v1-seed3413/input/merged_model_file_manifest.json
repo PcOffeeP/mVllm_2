@@ -1,0 +1,163 @@
+{
+  "base_model": "MiniCPM-V 4.5",
+  "dtype": "bfloat16",
+  "files": [
+    {
+      "path": "Modelfile",
+      "sha256": "95d2a815e542d15e9f7a4feeab46402d7f8cef3b63ba3c26a5c4d9f6e70f8e9f",
+      "size_bytes": 424
+    },
+    {
+      "path": "added_tokens.json",
+      "sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+      "size_bytes": 2862
+    },
+    {
+      "path": "chat_template.jinja",
+      "sha256": "56786063c90f9f67402d4d9af27f5c17f206467d577dc04d6dcfee2d57c8a2f0",
+      "size_bytes": 4229
+    },
+    {
+      "path": "config.json",
+      "sha256": "2b6c82b8fe27e7e59412a54050f96968861c1c4b165406b3bd6a21b82abbade1",
+      "size_bytes": 2440
+    },
+    {
+      "path": "configuration_minicpm.py",
+      "sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+      "size_bytes": 3288
+    },
+    {
+      "path": "generation_config.json",
+      "sha256": "b7ba498b309c1b46b7da2d5ae7699bc608bca1a6e2cad1ae0bab2959c535e7a0",
+      "size_bytes": 276
+    },
+    {
+      "path": "image_processing_minicpmv.py",
+      "sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+      "size_bytes": 20757
+    },
+    {
+      "path": "merges.txt",
+      "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+      "size_bytes": 1671853
+    },
+    {
+      "path": "model-00001-of-00010.safetensors",
+      "sha256": "f7cc0e255e9bf0dcb4b7fa6c98c7945175b857ce16872cbeb4cab08e941a0187",
+      "size_bytes": 1914228064
+    },
+    {
+      "path": "model-00002-of-00010.safetensors",
+      "sha256": "76312f3f5dafbc929aea3193882a77cb378cede67d98329cd9736887f9f8d76d",
+      "size_bytes": 1929470832
+    },
+    {
+      "path": "model-00003-of-00010.safetensors",
+      "sha256": "98c970f9370e9419754de7564d017e990d0162fa3d8d81f6bc11b7188ddc10f8",
+      "size_bytes": 1929470856
+    },
+    {
+      "path": "model-00004-of-00010.safetensors",
+      "sha256": "b1fbf0c80b536a39f7b722c4a2e3cffa56c52956f95f01c643d62ced18d420d0",
+      "size_bytes": 1929470888
+    },
+    {
+      "path": "model-00005-of-00010.safetensors",
+      "sha256": "8ed2390ab8e6ff4b86241d2c6685e46bd2a17b54ef8acdc4a7f5d13d8a91b4e0",
+      "size_bytes": 1929470888
+    },
+    {
+      "path": "model-00006-of-00010.safetensors",
+      "sha256": "a0c6e58def9d2d0cc1faaeeb0fbcfa94c1911fc300286662ada2b8a7fd7bcc93",
+      "size_bytes": 1929470888
+    },
+    {
+      "path": "model-00007-of-00010.safetensors",
+      "sha256": "2c7e923a8f7a395ce5338e25b293e2446cb5aa024dd708ac6e3a0c23e0b7c188",
+      "size_bytes": 1929470888
+    },
+    {
+      "path": "model-00008-of-00010.safetensors",
+      "sha256": "a9ecb474354a1790fa67e8473e375c55c46b38b7da0a0bd1297c2dcdf359ec79",
+      "size_bytes": 1644265032
+    },
+    {
+      "path": "model-00009-of-00010.safetensors",
+      "sha256": "ac88ed6b687189a67d76287d294d024faa100f4854f46c803c6b60546e6ca0e0",
+      "size_bytes": 1997939416
+    },
+    {
+      "path": "model-00010-of-00010.safetensors",
+      "sha256": "94cc3db7809c5e1d052e3b089f2d11a19e5f1dafdf197239b795a30c55c9cf0b",
+      "size_bytes": 258632328
+    },
+    {
+      "path": "model.safetensors.index.json",
+      "sha256": "39760fa6d7171527eaf19fe8830717b2cc5e2eaadaa677d0375595cb54c01095",
+      "size_bytes": 72209
+    },
+    {
+      "path": "modeling_minicpmv.py",
+      "sha256": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10",
+      "size_bytes": 18609
+    },
+    {
+      "path": "modeling_navit_siglip.py",
+      "sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+      "size_bytes": 41835
+    },
+    {
+      "path": "preprocessor_config.json",
+      "sha256": "0de71dc9a792f99a6ca9270f4d5b28b632b488c89d8a8ea42dac346fe43e858a",
+      "size_bytes": 934
+    },
+    {
+      "path": "processing_minicpmv.py",
+      "sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+      "size_bytes": 11026
+    },
+    {
+      "path": "processor_config.json",
+      "sha256": "67cf814ee0c745e7f4de82606d2e0a7ea3b2f8879845a4566f0b37c4a164496b",
+      "size_bytes": 127
+    },
+    {
+      "path": "resampler.py",
+      "sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+      "size_bytes": 11732
+    },
+    {
+      "path": "special_tokens_map.json",
+      "sha256": "447547e6205a50dad31cc19dcc3344bbef4e03c8aa6d428067e6cc671d72703b",
+      "size_bytes": 2450
+    },
+    {
+      "path": "tokenization_minicpmv_fast.py",
+      "sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+      "size_bytes": 1647
+    },
+    {
+      "path": "tokenizer.json",
+      "sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+      "size_bytes": 11437868
+    },
+    {
+      "path": "tokenizer_config.json",
+      "sha256": "8bd65a16f51ab20577cfdc54d5de224450540e48f1a18578c4207b3615b862d3",
+      "size_bytes": 21542
+    },
+    {
+      "path": "vocab.json",
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "size_bytes": 2776833
+    }
+  ],
+  "generated_at": "2026-07-28T10:01:51+08:00",
+  "immutable": true,
+  "run_id": "v4_1_phase2_coverage_first_fallback_seed3413",
+  "schema_version": "tensile-vlm-v4.1-merged-model-file-manifest/v1",
+  "seed": 3413,
+  "shard_count": 10,
+  "weight_tensor_count": 849
+}

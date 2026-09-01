@@ -1,0 +1,10 @@
+{
+  "adapter_path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter",
+  "checkpoint_count": 5,
+  "lifecycle_status": "evaluated",
+  "merged_path": "workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged",
+  "model_name": "v4.1-sampling-source-aware-fold0-r1",
+  "schema_version": "tensile-model-registry/local-identity/v1",
+  "source_adapter_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407",
+  "source_merged_path": "LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407_merged"
+}

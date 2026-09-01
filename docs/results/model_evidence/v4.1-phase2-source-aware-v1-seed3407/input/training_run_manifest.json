@@ -1,0 +1,61 @@
+{
+  "actual_optimizer_steps": 1125,
+  "adapter_coverage": {
+    "resampler_saved": true,
+    "resampler_weight_count": 13,
+    "target_module_count": 11,
+    "visual": true,
+    "visual_weight_count": 324
+  },
+  "adapter_dir": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407",
+  "best_metric": 0.05644451826810837,
+  "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407/checkpoint-200",
+  "completed_at": "2026-07-26T21:20:25+08:00",
+  "epochs": 3.0,
+  "expected_optimizer_steps": 1125,
+  "files": {
+    "adapter_config": {
+      "sha256": "f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03",
+      "size_bytes": 1123
+    },
+    "adapter_model": {
+      "sha256": "13d56ca4010ded03bd1b9570ffc72ef47f57ab5c3f3cbc3a45ee2b9e6c573616",
+      "size_bytes": 460430776
+    },
+    "train_config": {
+      "sha256": "ab7582d68f3e82ec73a1a3749815001a3b50dc5c3ac759e79ab5af85eda50d46",
+      "size_bytes": 1516
+    },
+    "train_results": {
+      "sha256": "9fbf7f9714845c8661d2968694d594816e5b1a5bfec7b83817aa41c1dbbe2795",
+      "size_bytes": 210
+    },
+    "trainer_log": {
+      "sha256": "6091ba35a1712456edc96e35aff9e97d030103abda25462f4a56472cd4479eab",
+      "size_bytes": 46979
+    },
+    "trainer_state": {
+      "sha256": "2a5001b69ab73b8cb09f408876e1bc3bbba8a26d96babf762e380bd086ce6639",
+      "size_bytes": 43842
+    }
+  },
+  "launch_run_manifest_sha256": "9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "run_id": "v4_1_phase2_source_aware_3k_dd89b70e9d63",
+  "run_manifest": {
+    "path": "finetune/MiniCPM/config/active/v4_1_source_aware_3k/run_manifest.json",
+    "sha256": "cc957a99ccaa8e641bfe177f5777653c20ec5bfa01423a0648a649857bc8b18b",
+    "size_bytes": 1358
+  },
+  "sampling_id": "source-aware-3k-dd89b70e9d63",
+  "sampling_sequence_sha256": "de0673b494e866e16bc0e17cde22de072750e9c0e4668bc85e134c63c8fedf15",
+  "sampling_summary": {
+    "path_at_freeze": "/home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-dd89b70e9d63/summary.json",
+    "sha256": "82057e3aa840b562b88bba10e4403e92fc5b45917101ca064063c906577bee1d",
+    "size_bytes": 2137
+  },
+  "schema_version": "tensile-vlm-v4.1-source-aware-3k-training-run/v1",
+  "seed": 3407,
+  "train_runtime_seconds": 16730.6081,
+  "training_code_commit": "f6ba152121d394141ddddaf73926e3a9c065d0a8"
+}

@@ -1,16 +1,31 @@
-# V4.1 数据处理运行手册
+<!-- DOCUMENT-CONTRACT
+Purpose: 为项目当前受支持的数据处理链路提供可持续维护、可执行且可验证的端到端运行指南。
+Audience: 需要首次跑通、复现或维护项目数据处理链路的开发者和操作人员。
+Scope: 覆盖源数据快照、ROI、候选媒体、人工审查、训练数据发布、产物索引及其跨机器执行边界。
+Must Preserve:
+- 手册的标题和长期定位不绑定某一链路版本；当前支持版本与主要适用契约集中声明，版本特有差异在相关步骤中明确标注。
+- 每个流程环节都给出可追溯的入口、主要输入与产物、执行机器、验收检查和进入下一步的条件。
+- 冻结产物与 release 不可覆盖；上游产物选择和身份必须可追溯，并明确保留各产物集合的解析与路径边界。
+- 区分本机轻量操作与训练机重计算或 GPU 操作，不暗示本机能够复现训练机任务。
+Non-goals:
+- 记录某次运行状态、历史发布基线或实验结果。
+- 说明模型训练、评测和部署流程。
+-->
+
+# 数据处理运行手册
 
 > 本文只描述如何运行当前项目的数据处理链路，不记录任何一次具体运行的状态、基线或历史发布。状态性内容见 `docs/results/` 与 `docs/project-guide.md`。
 
-## 1. 适用范围与假设
+## 1. 适用范围、当前版本与假设
 
-- 目标读者：首次跑通 V4.1 数据处理链路的人。
+- 目标读者：首次跑通、复现或维护当前受支持数据处理链路的人。
+- 当前数据处理链路版本：**4.1**。本文中的命令、默认值、目录和产物说明均以 4.1 为当前执行基线；版本升级时继续维护本手册，并同步更新本条、适用契约、版本特有路径、命令和验收条件，而不是因版本号另建一份平行主手册。
 - 代码根目录：`<repo>`（本仓库根目录）。所有命令均从 `<repo>` 执行。
 - 数据根目录：多数脚本 `--data-root` 默认使用 `<repo>/workspace/data`，正文中显式写出 `--data-root workspace/data` 仅为可读性，可省略。
 - 机器分工：
   - **Mac（uv 环境）**：ROI 标注、人工审查、轻量校验与队列构建。
   - **训练机（Conda  环境）**：ROI 视频物化、候选媒体物化、重计算、训练发布构建。
-- 当前契约：`pipeline/contracts/tensile_vlm_v4_1.json`。
+- 当前审查与发布契约：`pipeline/contracts/tensile_vlm_v4_1.json`。候选计划阶段仍使用 v3 契约，具体边界见 Step 3.1。
 - Prompt 管理：`pipeline/prompt_control/active_prompt.yaml`。
 
 ## 2. 前置准备
@@ -337,7 +352,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
 
 #### 4.1 构建审查队列
 
-- **目的**：把 materialized 候选组织成 V4.1 审查队列（`observed` / `incipient`）。
+- **目的**：把 materialized 候选组织成当前 4.1 链路的审查队列（`observed` / `incipient`）。
 - **机器**：Mac（轻量）。
 - **命令**：
   ```bash
@@ -565,7 +580,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
 
 ## 8. 不该做的事（速查）
 
-- 不要把旧 `data/07_metadata`、`data/08_training_ready`、`review_subvideos_app.py` 当成 V4.1 主入口。
+- 不要把旧 `data/07_metadata`、`data/08_training_ready`、`review_subvideos_app.py` 当成当前数据处理链路的主入口。
 - 不要删除或覆盖已冻结的 ROI manifest、review batch、candidate media、training release。
 - 不要把 `needs_regenerate`、缺媒体、哈希漂移或非法标签带入发布。
 - 不要让源视频初始标签静默覆盖帧窗口人工复标结果。
@@ -607,3 +622,8 @@ python pipeline/scripts/rebuild_data.py promote \
 > - `run --source-only --check-only` 仅做校验，不写入快照。
 > - 同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
 
+<!-- DECISION-LOG
+D001 — 将本文维护为不绑定版本号的数据处理主手册，并在正文集中声明当前支持的链路版本。
+Why: 数据处理链路后续可能升级；把版本号写入标题会让长期入口与 4.1 偶然耦合，容易产生平行手册或遗留过期入口。
+Trade-off: 版本升级时必须同时核对当前版本声明、版本特有路径、命令、默认值和验收条件，不能只修改版本号。
+-->
