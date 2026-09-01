@@ -2,27 +2,26 @@
 
 本文件是项目持续维护的任务台账，记录用户目标、当前差距、执行顺序和验证结果。维护规则见 [AGENTS.md](../AGENTS.md#todo-执行与维护)，不另建平行 TODO。
 
-- 更新日期：2026-08-31。
+- 更新日期：随“最近维护记录”持续更新，不以文件头日期代替记录。
 - 本轮依据：本地基线 `8acaf2cf`、当前源码/已同步公开结果，以及用户确认已完成的前序 Agent 调查记录。前序对本文件的未提交修改已纳入；本轮只整理文档，没有连接训练机或重跑实验。
 - 主 Agent 汇总并维护，其他执行 Agent 按 AGENTS.md 交接证据和新发现。任务标识固定，不随排序改变。
 
 ## 下一步与执行顺序
 
-**下一项先执行 TEST-POLICY：只读核查已使用的独立测试集和后续验收规则，形成可裁决方案；随后把主要技术工作投入 MODEL-DIAG。** 历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
+**下一项先执行 HOLDOUT-BUILD：构建并授权一个未使用的 holdout 测试集，作为最终模型独立验收的前置，同时继续 MODEL-DIAG。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
 
-1. 核对 sealed-test 公开结果与既有授权/使用记录，写清现有测试集的允许用途、复测条件及是否需要新的未使用测试集；不得读取受限语义结果或重新推理。
-2. 需要用户裁决时，提交具体方案及影响；等待期间继续整理 MODEL-DIAG 的开发集证据和训练机任务单，不停住独立准备工作。
-3. 先核三折模型身份与原始预测，再做无需重训的推理对照，最后考虑单变量训练。任何新推理/训练开始前，明确机器、输入、输出、资源和既有授权范围。
-4. 开发侧三折方案稳定并冻结后，才进入全量最终训练、独立验收和模型晋级。新数据 release 切换前完成 RELEASE-POINTER；沿用现有 release 时它不阻塞首轮诊断。
+1. 构建并授权未使用 holdout 测试集：隔离独立于开发/调参的 source，按已冻结阈值发布 sealed-test release，走预注册 + 一次性授权 + claim 流程；不得读取或混用现有 sealed-test 的受限语义结果。本步单独执行，不隐含于“策略已确定”。
+2. 持续整理 MODEL-DIAG 的开发集证据和训练机任务单：先核三折模型身份与原始预测，再做无需重训的推理对照，最后考虑单变量训练。任何新推理/训练开始前，明确机器、输入、输出、资源和既有授权范围。
+3. 开发侧三折方案稳定、holdout 构建就绪并冻结后，才进入全量最终训练、独立验收和模型晋级。新数据 release 切换前完成 RELEASE-POINTER；沿用现有 release 时它不阻塞首轮诊断。
 
 | 顺序/定位 | 固定标识 | 任务 | 状态 | 依赖或触发条件 |
 | --- | --- | --- | --- | --- |
-| 先做的前置 | TEST-POLICY | 明确后续独立测试策略 | 待处理 | 已有一次性评测的公开证据 |
+| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用 holdout 测试集 | 待处理 | TEST-POLICY 已确定策略；作为 FINAL-TRAIN / MODEL-QUALITY 独立验收的前置 |
 | 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 待处理 | 可先只读整理开发证据；执行实验前明确测试隔离边界和授权 |
 | 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | MODEL-DIAG 权重依赖、完整证据备份、显式删除授权 |
 | 发布前配套 | RELEASE-POINTER | 安全更新并激活数据 release 指针 | 待处理 | 下一次数据 release 切换前完成 |
-| 后续训练 | FINAL-TRAIN | 全量开发数据训练最终候选 | 阻塞 | 开发侧三折验收通过、TEST-POLICY 策略确定及训练授权 |
-| 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、约定的独立验收及其他适用质量门 |
+| 后续训练 | FINAL-TRAIN | 全量开发数据训练最终候选 | 阻塞 | 开发侧三折验收通过、holdout 测试集就绪及训练授权 |
+| 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、holdout 独立验收及其他适用质量门 |
 | 文档收尾 | DOC-INDEX | 修正脚本索引的过期缺陷描述 | 待处理 | 本轮新发现，不阻塞模型诊断 |
 | 低优先级 | CONTRACT-NAMING | 澄清候选规划与训练发布的契约边界 | 待处理 | 先解释真实用途，再决定是否兼容重命名 |
 
@@ -37,16 +36,20 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **依赖**：MODEL-DIAG 对历史/当前模型和阶段 checkpoint 的需求；当前发布模型及 `pipeline/checkpoint_policy.json` 保护边界。权重清理不隐含取消诊断任务。
 - **下一动作**：按 MODEL_INVENTORY 第 8 节归档实际配置、模型/数据/Prompt/评测身份、完整日志和原始预测、文件哈希及备份校验；查 concise-cv 备份或迁移位置。逐 run 确定仅留研究记录还是保留 adapter 以便重新合并，形成显式候选清单后取得删除授权。保留 adapter 的方案先验证准确基座与合并链路，不以直挂 4-bit 代替 merged BF16。
 - **验收标准**：每模型每 fold 有可核查的原始配置和结果链、缺失证据明确、归档已备份并校验；清理路径不跟随链接误入发布库，不删除在用模型和未完成诊断所需文件；训练机按获准清单执行并记录删除前后体量、保留文件完整性及对应机器提交。完成可行性审查不等于归档或删除完成。
-- **证据/版本/验证限制**：[模型清单](MODEL_INVENTORY.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；本轮 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
+- **证据/版本/验证限制**：[模型清单](MODEL_INVENTORY.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)、[模型归档证据包索引](results/model_evidence/README.md)、[试点证据包`v4.1-prompt-minimal-v1-seed3411`](results/model_evidence/v4.1-prompt-minimal-v1-seed3411/README.md)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；本轮 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
 
-### TEST-POLICY — 明确后续独立测试策略
+### HOLDOUT-BUILD — 构建并授权未使用 holdout 测试集
 
-- **状态/来源**：待处理；从原“独立测试 release 与 full-data final”拆出，保留最终模型由未参与调参的独立数据验收的用户目标。
-- **事实与差距**：`v4.1-sealed-test-5546b8bf1ec3` 已创建；公开结果记录 `stage-d-run-da566a5644f8` 完成 299 条评测、整体未通过、`sealed_test_exposed: true`，详细语义指标仍受限。缺少的是后续验收策略，不是从零创建已有测试 release；已执行不等于全部标签泄漏，也不能再称为从未使用。
-- **下一动作**：核对公开结果、预注册协议及授权/claim 记录，形成现有测试集允许用途、复测条件、是否另备未使用 holdout 的决策稿。需要用户裁决时写明方案及影响，不读取受限预测或标签来帮助选择。
-- **依赖/边界**：只读核查可立即开始；新测试集构建、一次性评测或复测须遵循明确授权，不能由本任务推定。
-- **验收标准**：记录选定策略、决定依据、适用模型、source 隔离要求、阈值冻结时点、授权条件和最终证据输出位置；若需新测试 release，另建前置任务，列明数据来源、人工审查、发布入口与产物，不把构建隐含在“策略已确定”中。
-- **证据/限制**：[公开结果](results/v4_1_stage_d_sealed_test_release/public_gate_summary.json)、[阶段记录](results/v4_1_stage_d_sealed_test_release/README.md)；历史身份、授权和 claim 位于 `finetune/results/v4_1_stage_d_*` 对应目录。这里只引用公开 pass/fail 与完整性信息；训练机当前状态未在本轮核实。
+- **状态/来源**：待处理；由 TEST-POLICY 关闭时拆出，作为 FINAL-TRAIN / MODEL-QUALITY 的前置。目标是构建一个未参与开发/调参的 holdout 测试集，用于最终候选模型的独立验收。
+- **事实与差距**：现有唯一 sealed-test `v4.1-sealed-test-5546b8bf1ec3` 已暴露且一次性，不复测不调参；本地与训练机均无未使用 holdout。需要一个新的、未使用的 holdout 测试集及其对应授权链路。
+- **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。
+- **人工审查**：对候选样本执行有效视图/剪裁人工审查（对应 `review_*` 流程），核对批次与 source 分层，形成冻结的 review batch 后再生成 release。
+- **发布入口**：沿用 sealed-test release 构建流程，生成 release manifest、`sealed_ground_truth`、`quality_report` 等产物，并校验契约、清单、帧哈希与权限，再写入 index/LATEST。
+- **授权流程**：预注册一次性授权 + one-time claim，沿用现有 stage_d 流程；授权条件 `one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，首次模型调用前原子写入 claim，只允许同一 run identity 恢复。
+- **阈值**：沿用 `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
+- **依赖/边界**：本任务只负责构建、审查、发布与授权一个未使用 holdout，不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。
+- **验收标准**：新的未使用 holdout release 已构建并经人工审查，source 隔离与 test-split binding 校验通过，manifest/ground-truth/quality_report 与授权 claim 齐备、可追溯；为 FINAL-TRAIN / MODEL-QUALITY 的独立验收提供就绪入口。
+- **证据/限制**：产物落位按现有约定记录于 `docs/results/` 对应新目录与 `finetune/results/v4_1_stage_d_*` 式授权/claim/run 目录；本轮仅登记任务，未实际构建 holdout。
 
 ### MODEL-DIAG — 诊断并改善三折类别坍缩与契约退化
 
@@ -59,7 +62,7 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
   4. 根据诊断分别调整 Prompt、采样配额或训练日程，冻结其他因素；单折筛选后扩展到三折。组合修改另列候选，不作为单变量归因证据。
 - **入口与产物**：既有报告约定输入和权重路径为训练机 `workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/`，但 2026-08-31 只读检查该路径不存在（见 MODEL-ARCHIVE 快照），需先查备份/迁移位置；依赖这些权重的推理与阶段 checkpoint 评测暂不能执行，已有报告整理仍可推进。[eval_run.py](../finetune/eval_run.py) 读取指定 fold、model-dir 和适用 experiment-contract，向独立 out-dir 写 `run_identity.json`、`evaluation_records.jsonl`、`evaluation_summary.json`。`--max-samples` 只截取样本，不等于分层抽样；先核对/补齐按冻结清单选样的能力，不能假称 CLI 已支持。
 - **准备与执行边界**：[脚本索引](../finetune/SCRIPTS.md) 中的 `train_build_dataset.py`、`train_prepare_run.py`、`train_with_contract.py` 分别负责数据包、配置与训练；前两者含固定 fold/seed/3000 行约束。执行者须核对能否表达目标对照，任务单列出实际数据包、配置、checkpoint/merged 生成与评测路径；缺能力先实现，不复用默认值或覆盖旧实验。本条不是已验证可直接运行的全量命令。
-- **依赖/边界**：开发集只读整理不等待 TEST-POLICY 裁决；实验执行前明确测试隔离规则、冻结开发侧阈值并核对授权。现有交付配置记录 optimization paused / retraining unauthorized，本次文档维护不代表恢复训练授权。不使用 sealed-test 调参，不补字段伪造合法率，不删除诊断所需 checkpoint。
+- **依赖/边界**：开发集只读整理不等待 HOLDOUT-BUILD；实验执行前明确测试隔离规则、冻结开发侧阈值并核对授权。现有交付配置记录 optimization paused / retraining unauthorized，本次文档维护不代表恢复训练授权。不使用 sealed-test 调参，不补字段伪造合法率，不删除诊断所需 checkpoint。
 - **验收标准**：身份链一致、原始预测可追溯，根因分清事实与假设；报告四字段合法率/正确率、各状态召回、macro recall、joint correct、分布和失败样例；单变量结果可比较，三折达到预定开发侧标准后才放行 FINAL-TRAIN。仅完成诊断时记录阶段结果，不宣称效果改进已完成。
 - **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[项目状态](CURRENT_PROJECT_STATUS.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；本轮未复算训练机原始预测。
 
@@ -77,19 +80,19 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 - **状态/来源**：阻塞；从原“独立测试 release 与 full-data final”拆出，是 MODEL-QUALITY 的前置。
 - **事实与差距**：当前发布模型只用 Fold0，`full_data_final: false`；development release 有 1678 条发布候选。候选数不自动等于最终训练行数，训练资格与采样策略仍须冻结。
-- **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、TEST-POLICY 策略确定并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
+- **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、HOLDOUT-BUILD 就绪（未使用 holdout 已构建并授权）并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
 - **入口与产物**：先核对现有数据构建/配置入口的 Fold0 限制，准备全量数据包和配置；`finetune/train_with_contract.py` 消费训练 YAML，保存 adapter/checkpoint；再用经核实的合并入口生成 merged 身份，交 MODEL-QUALITY 验收。全量准备与合并命令须在任务单核实，缺失能力作为前置实现，不编造现成脚本。
 - **验收标准**：全部合格开发数据按冻结方案纳入，未混入测试来源；真实训练/合并完成，模型与数据/配置/代码/哈希可追溯，保存最终候选及轻量 manifest。完成本项不自动获得 production approval。
 - **证据/限制**：[开发 release 摘要](results/v4_1_phase2_development_release/release_summary.json)、[当前模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[训练说明](../finetune/README.md)；本轮无全量最终模型证据。
 
 ### MODEL-QUALITY — 最终模型质量验收与晋级
 
-- **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、TEST-POLICY、FINAL-TRAIN。
+- **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、RELEASE-POINTER、FINAL-TRAIN、HOLDOUT-BUILD。
 - **事实与差距**：`v4.1-agent-pipeline-fold0-r1` 已用于工程链路验证，但 Stage B/D/G 标志均为 false，`production_approved: false`。标志为 false 不等于每一门都已执行失败，须查各门证据。
 - **下一动作**：核对适用质量门、阈值和证据要求并落实到子任务；最终候选和测试前置齐备后，按授权协议完成独立验收及其他质量门，再决定晋级。
 - **入口与产物**：参照 [发布证据](results/v4_1_agent_pipeline_fold0_r1/README.md) 和 [服务手册](INFERENCE_SERVICE_RUNBOOK.md) 核对执行入口；冻结报告和模型哈希，经注册表发布新身份并同步 delivery，核对服务加载对象。缺可执行入口则先补任务单/实现，不把历史归档命令写成现成流程。
 - **验收标准**：预定质量门与身份校验均有证据，模型/报告/注册表/delivery/服务一致；新候选不覆盖旧模型历史结论，工程成功不能替代质量通过。
-- **证据/限制**：[交付配置](../delivery/model_component.json)、[模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json) 及 TEST-POLICY 公开结果；目前不满足最终交付标准。
+- **证据/限制**：[交付配置](../delivery/model_component.json)、[模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json) 及现有 sealed-test 公开结果；目前不满足最终交付标准。
 
 ### DOC-INDEX — 修正脚本索引的过期缺陷描述
 
@@ -119,7 +122,24 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ## 已解决与已关闭
 
-以下区分前序 Agent 的记录与本轮核查；不统一声称所有事项都经过本轮全量测试或远端复验。前两项由用户确认完成，本轮保留关闭状态。
+以下区分前序 Agent 的记录与本轮核查；不统一声称所有事项都经过本轮全量测试或远端复验。前两项由用户确认完成，本轮保留关闭状态；TEST-POLICY 本轮由用户裁决后关闭。
+
+### RUNBOOK-CONTRACT — 数据处理运行手册初始契约化与版本解耦：已解决
+
+- **结果**：为 [数据处理运行手册](DATA_PROCESSING_RUNBOOK.md) 补建独立、精简的 Document Contract；标题和长期定位不再绑定特定链路版本，正文集中声明当前数据处理链路版本为 4.1，并保留候选计划使用 v3、审查与发布使用 v4.1 的真实契约边界。README 导航已同步。
+- **文档决定**：文档级 Decision Log 的 D001 记录继续维护单一、不带版本号的主手册；版本升级时同步核对版本声明、版本特有路径、命令、默认值和验收条件，不只替换版本号，也不另建平行主手册。
+- **证据/验证限制**：本地 `git diff --check`、两个治理块唯一性与本地 Markdown 链接检查通过；脚本默认值静态核对支持 v3/v4.1 边界。独立 reviewer 首轮发现 Contract 将统一 resolver 能力错误泛化到 `review_decisions` 的 P2，修正为保留各集合解析与路径边界后复审通过、无剩余可执行问题；reviewer 另执行 2 个相关测试，结果 `2 passed`。本轮未连接训练机，未运行 GPU、媒体物化或完整发布链路，不能据此宣称重新认证了手册中的全部既有命令。
+
+### TEST-POLICY — 后续独立测试策略已确定：已关闭
+
+- **关闭依据/用户裁决**：用户按建议执行① 新建未使用 holdout 测试集（是）；② 现有 sealed-test 不复测（否）；③ 新 holdout 阈值沿用已冻结值。策略据此确定，本任务关闭。
+- **选定策略**：最终候选模型的独立验收采用新建的、未使用的 holdout 测试集；现有唯一 sealed-test `v4.1-sealed-test-5546b8bf1ec3` 仅作历史参考/回归监控，不复测、不调参。
+- **决定依据**：唯一 sealed-test 已暴露且一次性（`passed: false`、`sealed_test_exposed: true`，预注册用途 `one_time_sealed_clip_evaluation`、约束 `tuning_use: forbidden`、`one_time: true`、`resume_policy: same_identity_only`）；本地 `finetune/results/v4_1_stage_d_claims/` 与训练机 `sealed_test_releases/` 均只有这一个 release，无未使用 holdout（两路独立证据印证）。
+- **适用模型**：最终候选模型（FINAL-TRAIN 产出的候选）。
+- **source 隔离要求**：沿用 `development_source_isolation_verified: true`、`test_split_binding_verified: true`，holdout 数据须独立于开发/调参的 source。
+- **阈值冻结时点**：沿用 preparation `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
+- **授权条件**：`one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，沿用现有 stage_d 预注册一次性授权 + claim 流程。
+- **证据/限制**：现有 sealed-test 证据位于 [公开结果](results/v4_1_stage_d_sealed_test_release/public_gate_summary.json)、[阶段记录](results/v4_1_stage_d_sealed_test_release/README.md) 及 `finetune/results/v4_1_stage_d_*`（授权/claim/run）；新 holdout 证据位置由 HOLDOUT-BUILD 任务执行时定义。本项只记录策略与依据，不执行推理或调参。
 
 ### REL-VERIFY — 训练机 release 指针实证：已解决
 
@@ -152,7 +172,10 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ## 最近维护记录
 
+- 2026-09-01 数据处理运行手册初始契约化：新增 Document Contract 和文档级 D001，将手册定位与 4.1 版本号解耦，在正文声明 4.1 为当前执行基线并同步 README 导航；接受 reviewer 关于 `review_decisions` resolver 例外的 P2，修正 Contract 后复审通过。仅修改文档，不连接训练机或执行数据处理。
+
 - 2026-08-31 模型清理可行性核查：新增 MODEL-ARCHIVE，修正 MODEL-DIAG 的远端权重路径现状；保留既有 holdout 决策及其他未提交修改。仅只读检查远端，补充清单和本地证据；本轮没有归档全部原始产物或删除权重。下一步在任何清理前先完成证据备份与诊断依赖裁决，原独立测试准备与 MODEL-DIAG 主线不因此取消。
 
+- 本轮：承接 TEST-POLICY 裁决并关闭该任务，记录选定策略与决定依据（新建未使用 holdout、现有 sealed-test 不复测不调参）；新增前置任务 HOLDOUT-BUILD 入“待处理与阻塞事项”并列入执行顺序表；同步更新下一步、FINAL-TRAIN / MODEL-QUALITY / MODEL-DIAG 的依赖表述。本轮仅维护本文件，未连接训练机或重跑实验，不新增日期/时间。
 - 2026-08-31：承接前序 Agent 关闭的指针验收和 v3 误报；余下五个原事项按依赖重排，其中独立测试/full-data 拆成两个任务，质量门保留为总目标；新发现 DOC-INDEX，另记 SKILL-FEEDBACK；修正命名、哈希、提交和证据边界。此次仅维护 AGENTS.md 与本文件，提交可用 `git log -- AGENTS.md docs/project-todo.md` 追溯。
 - 本轮文档验证：独立 reviewer 结论通过、无可执行问题；31 个本地 Markdown 链接路径有效，13 个任务标识唯一，`git diff --check` 通过。核查仅覆盖文档及引用的本地代码/公开产物，不代表重新验收远端任务或模型质量。

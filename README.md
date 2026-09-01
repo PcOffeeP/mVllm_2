@@ -108,13 +108,14 @@ models/        本地模型目录
 | 文档 | 内容 |
 | --- | --- |
 | [docs/CURRENT_PROJECT_STATUS.md](docs/CURRENT_PROJECT_STATUS.md) | 当前项目状态、发布模型身份、最新实验结果、开发原则 |
-| [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md) | V4.1 数据链路完整操作手册 |
+| [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md) | 当前数据处理链路的完整操作手册（正文声明当前支持版本） |
 | [docs/V4_1_DATA_RELEASES.md](docs/V4_1_DATA_RELEASES.md) | 当前与历史 development release 统计与说明 |
 | [docs/INFERENCE_SERVICE_RUNBOOK.md](docs/INFERENCE_SERVICE_RUNBOOK.md) | 当前中间推理服务启动与运维 |
 | [finetune/README.md](finetune/README.md) | 微调、合并、评测与证据冻结 |
 | [docs/V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md](docs/V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md) | V4.1 有效视图审计 |
 | [docs/results/v4_1_agent_pipeline_fold0_r1/README.md](docs/results/v4_1_agent_pipeline_fold0_r1/README.md) | 当前发布模型部署证据 |
 | [docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md](docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md) | 最新三折实验结果 |
+| [docs/results/model_evidence/README.md](docs/results/model_evidence/README.md) | 模型归档证据包引导索引（查找模型测试结果入口） |
 | [AGENTS.md](AGENTS.md) | Agent 工作说明与双机纪律 |
 
 V2/V3 Prompt、旧审核和旧数据流水线文档只用于历史追溯。新工作应从本 README、

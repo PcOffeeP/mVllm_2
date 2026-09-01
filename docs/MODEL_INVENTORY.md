@@ -166,6 +166,8 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 每个实际训练模型、每个 fold 单独绑定以下证据；摘要中无空间展开的内容保留原文件并链接，不增加多份重复叙述。
 
+> 已归档证据包统一位于 [模型归档证据包索引](results/model_evidence/README.md)，按 `model_id/` 存放于 `docs/results/model_evidence/`。该链接**仅作为证据定位入口**，索引内已有目录不等于归档已完整、也不等于清理已放行；能否删除仍以本节归档验收条件与 TODO 的 MODEL-ARCHIVE 显式授权为准。
+
 | 信息 | 最小留存内容 |
 | --- | --- |
 | 模型身份 | experiment/model ID、fold/seed、基座精确 revision 与哈希、训练代码 commit/未提交补丁、根 adapter/merged/选中 checkpoint 的文件 SHA-256、历史路径→当前路径映射 |
