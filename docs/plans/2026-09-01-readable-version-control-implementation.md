@@ -4,14 +4,15 @@
 >
 > 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。
 >
-> 最近更新时间：2026-09-02（按审查发现落实 10 项 P1/P2 修订，scope 前移后 B8/B9 前置依赖、Batch 总表与提交边界同步更新；本轮落实 1 项 P2 + 2 项 P3 最小修订；2026-09-02 用户批准 batch 计划，B0 进入 in_progress），已完成 AGENTS.md 分域改写、ARCHITECTURE.md 骨架（含 Document Contract）与 B0 状态更新，git 提交待 executor 执行）。
+> 最近更新时间：2026-09-02（B2 完成并回填状态，B3 进入 in_progress，tester 正在编写 RED 测试）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
 
 ## 1. 基线事实
 
 以下为实施开始前已核验的基线，作为各 batch 验收与回滚的参照。
 
-- **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control` 已创建，当前无任何提交（HEAD 与 main 相同）。
+- **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control`，当前 HEAD `6482bed3`，已有提交 `a5bfca1b`（B0-1）、`a37f4acc`（B0-2 文档基座）、`6482bed3`（B1 依赖基座）。
 - **修改前测试基线**：`uv run pytest tests/ -q` → `682 passed, 12 skipped, 0 failed`。12 个 skip 全部为 fastapi 未安装 / V3 fixtures / V4.1 workspace 数据缺失，属稳定已知跳过。
+- **当前回归对照基线（B1 后）**：`uv run pytest tests/ -q` → `683 passed, 11 skipped, 0 failed`。原 fastapi 相关 skip 转为 13 个真实通过（随 B1 安装依赖）；本分支后续各 batch 以此为回归对照基线。
 - **依赖现状**：`pyproject.toml` + `uv.lock`（uv 管理，Python 3.11.14）；`dvc`、`mlflow` 均未声明、未安装；`requirements.txt`（训练机 Conda）亦无二者。
 - **文档现状**：项目根无 `ARCHITECTURE.md`；`docs/adr/` 不存在；`docs/plans/` 仅设计文档（当前未跟踪，B0 纳入跟踪）。
 - **需保护**：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读保留。
@@ -69,9 +70,9 @@
 
 ### B0 — 基线固化与最小治理时序
 
-- **状态**：in_progress
+- **状态**：completed
 - **开始时间**：2026-09-02
-- **当前动作**：B0 文档起草（用户已批准 batch 计划）——将设计文档、本实施文档、TODO 总条目纳入本分支首批提交范围；已完成根 `AGENTS.md` 分域改写（新旧体系边界、versioning 规则、提交信息约定、legacy 适用范围标注）、新建根 `ARCHITECTURE.md` 骨架（含 Document Contract）并更新本台账 B0 状态；git 提交由后续 executor 执行。
+- **当前动作**：B0 已完成并回填。提交 `a5bfca1b`（docs: 纳入设计文档与实施台账，新增 TODO 总任务）与 `a37f4acc`（docs: AGENTS 分域改写 + ARCHITECTURE 骨架）；提交前检查（无意外文件/无秘密/无大文件/`git diff --check`）全部通过，`stash@{0}` 完好。
 - **目标**：把设计文档、本实施文档、TODO 总条目作为本分支首批提交固化，并在规则层完成最小治理改写与架构骨架，形成后续 batch 的基线。
 - **包含范围**：
   - 提交 `docs/plans/2026-09-01-readable-version-control-design.md`、本实施文档、`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
@@ -87,13 +88,15 @@
 - **回滚点**：分支基点 `cc59312c`。
 - **风险与阻塞条件**：用户未批准 batch 计划则阻塞；提交信息约定/治理规则未确认则阻塞。
 - **预计提交边界**：2–3 个原子提交（文档）。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：修改文件清单：`docs/plans/2026-09-01-readable-version-control-design.md`、本实施台账、`docs/project-todo.md`、`AGENTS.md`、`ARCHITECTURE.md`；验证结果：提交前检查（无意外文件/无秘密/无大文件/`git diff --check`）全部通过，`stash@{0}` 完好；审查结论：reviewer 核对通过；提交哈希：`a5bfca1b`、`a37f4acc`；残余风险：无新增。
 
 ### B1 — 依赖基座
 
-- **状态**：pending
+- **状态**：completed
+- **开始时间**：2026-09-02
+- **当前动作**：B1 已完成并回填。提交 `6482bed3`（chore: 新增 dvc 与 mlflow 项目级依赖）；冒烟验证在 pandas 3 下通过，新测试基线 `683 passed / 11 skipped / 0 failed`。
 - **目标**：为 DVC 与 MLflow 建立依赖基座，且不破坏现有测试基线。
-- **包含范围**：`pyproject.toml` 增加 `dvc>=3,<4`、`mlflow>=2,<3`（含 sqlalchemy 支持 SQLite backend）；`requirements.txt` 同步声明；`uv lock` 更新并安装验证。
+- **包含范围**（实际实施）：`pyproject.toml` 增加 `dvc>=3,<4`、`mlflow>=3,<4`，并新增 `[tool.uv] override-dependencies = ["pandas>=3.0.3"]`（mlflow 2/3.x 均硬依赖 `pandas<3`，与项目 `pandas>=3.0.3` 冲突——此方案偏离原计划 `mlflow>=2,<3`，记录于 §6.5）；dev 组新增 httpx2（starlette 1.3.1 TestClient 所需）；`requirements.txt` 同步声明；`uv lock` 更新并安装验证。
 - **排除范围**：不初始化正式 DVC remote；不启动 MLflow 服务。
 - **前置依赖**：B0 完成。
 - **将修改的模块/文档**：`pyproject.toml`、`requirements.txt`、`uv.lock`。
@@ -104,11 +107,13 @@
 - **回滚点**：B0 提交。
 - **风险与阻塞条件**：dvc/mlflow 与现有依赖（如 pandas/streamlit）版本冲突。
 - **预计提交边界**：1 个提交（依赖文件）。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：修改文件清单：`pyproject.toml`、`requirements.txt`、`uv.lock`；验证结果：`uv run python -c "import dvc, mlflow"` 成功，测试 `683 passed / 11 skipped / 0 failed`；MLflow 3 冒烟——SQLite tracking、嵌套子 Run（`mlflow.start_run(parent_run_id=..., nested=True)`）、search_runs DataFrame、Registry alias（set_registered_model_alias/get_model_version_by_alias）在 pandas 3 下全部可用；安装版本：dvc 3.67.1、mlflow 3.15.2、pandas 3.0.3；审查结论：reviewer 核对通过；提交哈希：`6482bed3`；残余风险：mlflow 依赖偏离原计划及 `requirements.txt` 冻结条目不一致，见 §6.5。
 
 ### B2 — 可读身份与状态机核心
 
-- **状态**：pending
+- **状态**：completed
+- **开始时间**：2026-09-02
+- **当前动作**：B2 已完成并回填。`versioning/ids.py`、`versioning/state.py` 与 `versioning/__init__.py` 已实现，`tests/versioning/` 331 例全绿；提交哈希待提交后补录。
 - **目标**：建立五类可读身份解析/生成/严格校验，以及 workflow_state 状态机核心。
 - **包含范围**：
   - `versioning/ids.py`：data/prompt/train/model/eval 五类 ID 解析、生成、严格校验；拒绝 `final`/`new`/`fixed`/`latest`/日期/seed/fold/checkpoint/自由文本后缀；禁止短前缀/模糊匹配/隐式 latest。
@@ -124,11 +129,11 @@
 - **回滚点**：B1 提交。
 - **风险与阻塞条件**：状态转换表与设计文档 §5.3/§10 不一致。
 - **预计提交边界**：1 个提交（模块 + 测试）。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：修改文件清单：`versioning/__init__.py`、`versioning/ids.py`、`versioning/state.py`、`tests/versioning/test_ids.py`、`tests/versioning/test_state.py`；验证结果：`tests/versioning/` 287→331 passed，全量 `1014 passed / 11 skipped / 0 failed`；审查结论：reviewer 发现 1 P2 + 2 P3（尾随换行 / bool / 字符串异常），均已修复并补 44 个回归用例，复审通过；提交哈希：待提交后补录；残余风险：无新增。
 
 ### B3 — 数据封存与 release 管理
 
-- **状态**：pending
+- **状态**：in_progress
 - **目标**：实现数据 working→release_staging→sealed 生命周期与 release.yaml 管理。
 - **包含范围**：
   - `versioning/data_release.py`：working→release_staging→sealed 生命周期；`release.yaml` schema；seal 后 payload 与身份字段只增不改；仅允许受控修改 `status` 与可选 `replacement`；非法重用/覆盖/状态逆转 fail-closed。
@@ -343,16 +348,16 @@
 
 ### 6.1 当前 batch
 
-- **当前 batch**：B0（in_progress，文档起草进行中）。
+- **当前 batch**：B3（in_progress，tester 编写 RED 测试中）。
 
 ### 6.2 Batch 状态表
 
 | Batch | 状态 | 提交哈希 | 备注 |
 | --- | --- | --- | --- |
-| B0 | in_progress | — | B0 文档起草完成，待 executor 提交 |
-| B1 | pending | — | — |
-| B2 | pending | — | — |
-| B3 | pending | — | — |
+| B0 | completed | a5bfca1b, a37f4acc | B0 基线固化完成 |
+| B1 | completed | 6482bed3 | B1 依赖基座完成（残余风险见 §6.5） |
+| B2 | completed | 待提交后补录 | B2 身份与状态机完成 |
+| B3 | in_progress | — | 编写数据封存与 release 管理 RED 测试中 |
 | B4 | pending | — | — |
 | B5 | pending | — | — |
 | B6 | pending | — | — |
@@ -363,13 +368,14 @@
 | B11 | pending | — | — |
 | B12 | pending | — | — |
 
-### 6.3 提交映射表（空表待填）
+### 6.3 提交映射表
 
 | Batch | 提交哈希 | 提交信息摘要 | 涉及文件 |
 | --- | --- | --- | --- |
-| B0 | — | — | — |
-| B1 | — | — | — |
-| B2 | — | — | — |
+| B0 | a5bfca1b | docs: 纳入设计文档与实施台账，新增 TODO 总任务 | docs/plans、docs/project-todo.md |
+| B0 | a37f4acc | docs: AGENTS 分域改写 + ARCHITECTURE 骨架 | AGENTS.md、ARCHITECTURE.md |
+| B1 | 6482bed3 | chore: 新增 dvc 与 mlflow 项目级依赖 | pyproject.toml、requirements.txt、uv.lock |
+| B2 | 待提交后补录 | — | versioning/__init__.py、ids.py、state.py、tests/versioning/ |
 | B3 | — | — | — |
 | B4 | — | — | — |
 | B5 | — | — | — |
@@ -387,21 +393,21 @@
 
 ### 6.5 残余风险
 
-- 依赖安装（B1）可能引入版本冲突。
+- **B1 残留风险**：mlflow 2.x 与 3.x 均硬依赖 `pandas<3`，与项目 `pandas>=3.0.3` 冲突，最终采用 `mlflow>=3,<4` + `[tool.uv] override-dependencies = ["pandas>=3.0.3"]`，偏离原计划 `mlflow>=2,<3`；`requirements.txt` 既有 `fastapi==0.138.0`/`starlette==0.52.1` 冻结条目与 uv 解析版本（0.141.1/1.3.1）不一致（训练机 Conda 用，本轮不处理）。
 - 文档整合与一致性复核（B11）与真实代码的一致性依赖 reviewer 逐条核查。
 - 本分支仅为核心基础设施，正式迁移（旧对象映射、训练机操作、真实数据/模型迁移、merge/push）需另行授权。
 
 ### 6.6 下一步
 
-- 等待用户对 batch 计划的一次性批准后，执行 B0 基线固化。
+- 继续执行并完成 B3（数据封存与 release 管理，RED 测试编写中）。
 
 ### 6.7 新接收者恢复工作所需最小上下文
 
-- 分支：`refactor/readable-version-control`，HEAD `cc59312c`，无提交。
+- 分支：`refactor/readable-version-control`，HEAD `6482bed3`（B1 提交）。
 - 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（只读，不得修改）。
 - 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
 - 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
-- 测试基线：`682 passed, 12 skipped, 0 failed`。
+- 测试基线（B1 后回归对照）：`683 passed, 11 skipped, 0 failed`。
 - 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
 - 提交信息约定：含"以上commit由codex生成。"。
 - 禁止：git 写操作（获批前）、merge、push、训练机操作、真实数据/模型迁移。

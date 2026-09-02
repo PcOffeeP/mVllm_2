@@ -50,10 +50,13 @@ Non-goals:
   - Git：源码、Prompt、配置、文档、DVC 轻量文件与 MLflow 导出的 manifest；
   - DVC：数据 pipeline 与数据产物；
   - MLflow：训练运行、实际参数、模型、指标、测评与运行状态。
+- **已实现能力（B2，身份与状态机）**：
+  - **可读身份模块 `versioning/ids.py`**：五类可读身份 data/prompt/train/model/eval 的 `v<协议>-r<N>` 完整版本名解析、校验与构造；严格拒绝 latest、短前缀、后缀与隐式选择，`\Z` 锚定禁止尾随换行等额外字符。
+  - **状态机模块 `versioning/state.py`**：`WorkflowState` 六态（prepared/running/partial/failed/completed/archived）合法转换表；`RunStatus` 与 workflow_state 固定组合校验；`RecordValidity`（valid/invalid）不可逆（invalid 不得复活）；`DataStatus` 三态（active/superseded/invalid）与引用语义（仅 active 可建新引用，invalid 禁止一切引用）。
 
 ## 5. 当前实现范围
 
-- **无。** 可读版本控制新体系尚处于 B0 起步阶段，尚未产生 `versioning/` 代码或可运行入口实现；本文 §4 全部为在建目标，不作已实现理解。
+- **B2 完成（身份与状态机）**：`versioning/ids.py`（五类可读身份解析/校验/生成）与 `versioning/state.py`（workflow_state 状态机）已实现，`tests/versioning/` 331 例全绿。§4 其余内容仍为在建目标，不作已实现理解。
 
 ## 6. 尚未迁移的 legacy 边界
 
