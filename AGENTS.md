@@ -22,6 +22,12 @@
 - 每完成一个可独立验证步骤，在实际产出机器完成必要校验并原子化 `git commit`；提交前检查范围、`git diff --check` 和必要测试。跨机步骤分别提交代码/流程与轻量 manifest、哈希或报告，大型及敏感产物不入 Git。
 - 默认禁止 `git push`；仅在用户明确授权并确认两端状态、提交内容及目标远端分支后推送，不默认强制推送。
 
+## 提交信息约定
+
+- 所有 Agent 创建的提交，提交信息必须包含单独一行：`以上commit由codex生成。`
+- 禁止修改全局 Git 身份配置（user.name / user.email 等）。
+- 默认禁止 `git push` / `git merge`；仅存在用户明确授权并确认两端状态、提交内容及目标分支后执行，不默认强制推送或合并。
+
 ## 训练机 SSH 连接
 
 - SSH 目标：`100.70.83.68`
@@ -43,9 +49,22 @@
 - 对 LoRA/merged 模型做结论前，应确认实际加载的模型路径、checkpoint step、adapter 文件、metadata 和评测结果彼此一致。
 - 如果训练目录中的 metadata 指向旧实验、缺少 adapter/checkpoint，或评测结果无法对应到当前模型，应优先指出产物链路问题，而不是给出正向效果结论。
 
+## 新旧体系边界
+
+- 旧链路：`pipeline/`、`finetune/` 下的现有入口为尚未迁移的 legacy 路径。其既有规则（含下文"命名规范"中标注为 legacy 的条款）维持原样，不得切换、删除、重构或批量改名，直至正式迁移完成。
+- 新体系：入口为顶层包 `versioning/`，启动方式 `python -m versioning`。本轮在分支 `refactor/readable-version-control` 上建设核心基础设施。
+
+## 新体系（versioning）规则
+
+- versioning 入口必须使用五类可读身份：data / prompt / train / model / eval 的 `v<协议>-r<N>` 族完整版本名。
+- 新体系内禁止哈希版本身份、集合 `index.json`、`LATEST` 指针、短哈希前缀解析以及隐式"当前版本"选择。
+- 缺少必要参数或引用不合法时立即停止（fail-closed），不自动回退或猜测。
+
 ## 命名规范
 
 总原则：会"被修改"的东西不带版本号；只"新增不修改"的不可变产物必须带版本号/标识。历史版本一律从 git 历史获取，禁止 `_old`/`_v2`/`_bak` 类后缀。
+
+> legacy 适用范围：下文第 3 条中的内容哈希 ID 格式，以及第 4 条的集合 `index.json`、`LATEST` 指针与短哈希前缀解析条款，仅适用于 legacy 旧链路（`pipeline/`、`finetune/` 现有入口），直至正式迁移完成；新体系 `versioning/` 入口不得使用这些机制，必须改用"新旧体系边界"所述的五类可读版本身份。
 
 1. 脚本命名：`<阶段前缀>_<动作>_<对象>.py`，阶段前缀对应项目主流程：
    - `source_`（初始数据划分）、`roi_`（ROI 标注/冻结/物化）、`subvideo_`（子视频生成）、`review_`（人工审查）、`release_`（数据发布）、`train_`（Prompt 准备与训练）、`eval_`（测评）、`serve_`（模型发布与推理）；
