@@ -65,6 +65,8 @@ Non-goals:
   - **release_validate 真实校验**：`release_validate` 真实调用 `assert_payload_sealed` 与 `validate_training_reference` 两项校验，报告先落盘 `data/reports/<version>.validation.json` 再按结果 fail-closed，不硬编码通过。
 - **已实现能力（B5，Prompt 版本与冻结）**：
   - **`versioning/prompts.py`**：Prompt 版本注册、不可变性与训练 input 冻结副本——正式 Prompt 单一权威位置 `records/prompts/prompt-v<协议>-r<N>.yaml`（Git 跟踪、不可覆盖）；训练时仅从该位置冻结复制到 `workspace/runs/train-v.../input/prompt.yaml`，不形成第二套正式位置、不扫描历史目录猜测当前 Prompt、单一状态权威；冻结副本与源结构不一致 / 篡改检测 fail-closed。
+- **已实现能力（B6，MLflow 训练记录）**：
+  - **`versioning/mlflow_train.py`**：train-v 父 Run + fold0/1/2 嵌套子 Run（`mlflow.parentRunId`）的 MLflow 训练记录模型；父 Run 记录共同输入 tags（data_version/prompt_version/git_commit/base_model）与 config params，三折汇总指标写父 Run；`workflow_state`↔原生 RunStatus 固定组合（委托 `versioning.state`）；受控恢复（FAILED/KILLED 子 Run 经原 Run ID 恢复 RUNNING，不新建）；completed 晋级门（全部必需 fold FINISHED + summary_complete）；`record_validity=invalid` 下游拒绝（`validate_train_for_promotion`）；读取 fail-closed（篡改 workflow_state/run_status 组合或 record_validity 值域拒绝）；store 句柄寻址双隔离（`TrainRecordStore` 独立 tracking_uri，不依赖全局 tracking 状态）。
 
 ## 5. 当前实现范围
 
@@ -72,7 +74,8 @@ Non-goals:
 - **B3 完成（数据封存与 holdout 安全）**：`versioning/data_release.py`（release 生命周期、seal 不可变、status 语义、训练引用门）与 `versioning/holdout.py`（holdout 隔离、pre_registration、一次性 claim）已实现，新增 138 例测试（含 8 个审查修复回归用例）；`tests/versioning/` 共 469 例全绿。
 - **B4 完成（DVC pipeline 七阶段与最小 CLI）**：根 `dvc.yaml`（七阶段固定顺序、依赖链、review_import 外部人工输入依赖、release 依赖 review_import、release outs 固定路径 `data/release_payload` + `data/release_pointer.json`，无 `data/releases` out / persist，版本经 DVC params 注入）、`versioning/data_pipeline.py`（七阶段真实转换、上游 digest 贯穿 manifest、审查关卡 ReviewGateError、审查 `content_sha256` 绑定、release_validate 真实校验 + fail-closed）、`versioning/cli.py` + `versioning/__main__.py`（`python -m versioning data <stage>`，release 必填显式 `--version`，fail-closed exit code）已实现；新增 54 例测试（test_data_pipeline 34 + test_dvc_pipeline 20）；`tests/versioning/` 共 523 例全绿。
 - **B5 完成（Prompt 版本与冻结）**：`versioning/prompts.py`（records/prompts 单一权威、训练 input 冻结副本、篡改检测；create_prompt 显式版本纪律、suggest_next_id 仅建议）已实现；新增 `test_prompts.py` 99 例全绿；`tests/versioning/` 共 622 例全绿，全量 `1305 passed / 11 skipped / 0 failed`。
-- §4 其余内容（B6 起各批次）仍为在建目标，不作已实现理解。
+- **B6 完成（MLflow 训练记录）**：`versioning/mlflow_train.py`（train 父 Run + fold0/1/2 嵌套子 Run、workflow_state↔RunStatus 固定组合、受控恢复、completed 晋级门、invalid 下游拒绝、读取 fail-closed、store 句柄双隔离）已实现；新增 `test_mlflow_train.py` 137 例全绿；`tests/versioning/` 共 760 例全绿，全量 `1443 passed / 11 skipped / 0 failed`。
+- §4 其余内容（B7 起各批次）仍为在建目标，不作已实现理解。
 
 ## 6. 尚未迁移的 legacy 边界
 
