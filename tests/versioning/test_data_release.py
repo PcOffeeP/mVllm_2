@@ -40,13 +40,26 @@
         # 依据 root/working、root/release_staging、root/releases 下的目录存在性判定；
         # 三处皆无 -> ReleaseNotFound；多处同时存在（布局损坏）-> DataReleaseError。
 
-    def stage_release(root: Path, working_name: str, protocol: str) -> str
-        # working/<working_name> -> release_staging/<version>（移动，working 目录消失）。
-        # version = versioning.ids.suggest_next_id("data", protocol,
-        #     existing=releases/ 与 release_staging/ 下既有目录名)；
-        # staging 与 sealed 共同占用序号，不同 protocol 独立计数。
-        # working/<working_name> 不存在（含已转出、逆转尝试）-> versioning.state.IllegalTransition
-        # protocol 非法 -> versioning.ids.InvalidIdentifier
+    def stage_release(root: Path, working_name: str, protocol: str, *,
+                      version: str) -> str
+        # working/<working_name> -> release_staging/<version>（移动，working 目录消失），
+        # 返回规范化完整版本 ID。
+        # 【第三轮契约修订：显式版本纪律（§9/§11.6）】version 为 keyword-only 必填，
+        # 系统不再自动分配 rN（不得静默决定版本号）：缺失 -> TypeError；
+        # None / 非字符串 / 非完整 data ID -> versioning.ids.InvalidIdentifier；
+        # protocol 标签（可带命名空间，如 tensile-vlm/v4.1）的裸协议段必须等于
+        # version 的协议段，不符 -> InvalidIdentifier。调用方自行用
+        # versioning.ids.suggest_next_id("data", <裸协议段>, existing=releases/ 与
+        # release_staging/ 下既有目录名) 取得建议（staging 与 sealed 共同占用
+        # 序号，不同 protocol 独立计数），核对后显式传入。
+        # fail-closed 顺序（钉死，与 seal_release 对称）：
+        #   1) version/protocol 参数校验（InvalidIdentifier）先于一切文件系统操作；
+        #   2) releases/<version> 或 release_staging/<version> 已存在
+        #      -> ReleaseConflict（同 ID 冲突拒绝，原对象不动；先于 working 检查）；
+        #   3) working/<working_name> 不存在（含已转出、逆转尝试）
+        #      -> versioning.state.IllegalTransition；
+        #   4) 原子移动完成版本预留（§9），并保存原始 protocol 标签侧写，
+        #      供 seal_release 在 protocol=None 时作为默认值。
 
     def seal_release(root: Path, version: str, *, purpose: str, description: str,
                      sample_count: int, source_batches: Sequence[str],
@@ -100,7 +113,9 @@
         # purpose == holdout 或 training_allowed 非 True -> ReferenceNotAllowed；
         # 仅 active 且 training_allowed 的 development release 放行（不抛异常）。
 
-当前 ``versioning.data_release`` 尚不存在，本文件全部用例应为 RED（ModuleNotFoundError）。
+第三轮契约修订（显式版本纪律，§9/§11.6）时 production 仍为旧自动递增契约：
+所有 stage_release 显式版本用例应为 RED（``TypeError: unexpected keyword
+argument 'version'`` / 同 ID 冲突未拒绝等），详见各测试 docstring。
 所有用例只在 pytest ``tmp_path`` 下构造目录，不触碰 workspace/ 真实数据。
 """
 
@@ -129,7 +144,7 @@ from versioning.data_release import (
     update_release_status,
     validate_training_reference,
 )
-from versioning.ids import InvalidIdentifier
+from versioning.ids import InvalidIdentifier, suggest_next_id
 from versioning.state import (
     DataStatus,
     IllegalTransition,
@@ -184,11 +199,27 @@ def _seal_kwargs(**overrides: object) -> dict:
     return kwargs
 
 
+def _bare_protocol(label: str) -> str:
+    """取 protocol 标签的裸协议段（可带命名空间，如 tensile-vlm/v4.1 -> v4.1）。"""
+    return label.rsplit("/", 1)[-1]
+
+
+def _existing_versions(root: Path) -> list[str]:
+    """收集 releases/ 与 release_staging/ 下既有版本目录名（建议函数的 existing 输入）。"""
+    existing: list[str] = []
+    for parent in (root / "releases", root / "release_staging"):
+        if parent.is_dir():
+            existing.extend(child.name for child in parent.iterdir() if child.is_dir())
+    return existing
+
+
 def _seal_development(
     root: Path, working_name: str = "round-001", protocol: str = "v4.1", **overrides: object
 ) -> tuple[str, Path]:
+    """建议-显式传入两段式封存 development release（显式版本纪律的规范调用形态）。"""
     _make_working(root, working_name)
-    version = stage_release(root, working_name, protocol)
+    suggested = suggest_next_id("data", _bare_protocol(protocol), _existing_versions(root))
+    version = stage_release(root, working_name, protocol, version=suggested)
     release_dir = seal_release(root, version, **_seal_kwargs(**overrides))
     return version, release_dir
 
@@ -215,7 +246,10 @@ class TestLifecycle:
         working = _make_working(root, "round-001")
         assert lifecycle_state(root, "round-001") is ReleaseLifecycle.WORKING
 
-        version = stage_release(root, "round-001", "v4.1")
+        # 建议-显式传入两段式：调用方先取建议值，核对后显式指定目标版本
+        suggested = suggest_next_id("data", "v4.1", _existing_versions(root))
+        assert suggested == "data-v4.1-r1"
+        version = stage_release(root, "round-001", "v4.1", version=suggested)
         assert version == "data-v4.1-r1"
         assert not working.exists()
         assert (root / "release_staging" / version).is_dir()
@@ -240,10 +274,13 @@ class TestLifecycle:
 
     def test_restaging_after_stage_rejected(self, root: Path) -> None:
         _make_working(root, "round-001")
-        stage_release(root, "round-001", "v4.1")
-        # 已离开 working 态，重复 / 逆转 stage 拒绝
+        stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
+        # 已离开 working 态，重复 / 逆转 stage 拒绝；用不冲突的新显式版本
+        # 隔离本语义（建议值 r2 佐证 staging 占用序号）
+        suggested = suggest_next_id("data", "v4.1", _existing_versions(root))
+        assert suggested == "data-v4.1-r2"
         with pytest.raises(IllegalTransition):
-            stage_release(root, "round-001", "v4.1")
+            stage_release(root, "round-001", "v4.1", version=suggested)
         assert (
             lifecycle_state(root, "data-v4.1-r1") is ReleaseLifecycle.RELEASE_STAGING
         )
@@ -260,35 +297,124 @@ class TestLifecycle:
         with pytest.raises(IllegalTransition):
             seal_release(root, "data-v4.1-r1", **_seal_kwargs())
 
-    def test_stage_invalid_protocol_rejected(self, root: Path) -> None:
-        _make_working(root, "round-001")
+
+class TestStageExplicitVersion:
+    """显式版本纪律（§9/§11.6）：stage_release 不得静默分配版本号。
+
+    第三轮契约修订：创建版本时调用方必须显式给出完整版本号；系统可建议
+    下一个 rN（suggest_next_id 独立建议函数），但绝不能静默决定。原
+    ``test_stage_invalid_protocol_rejected`` 的拒绝语义由本类
+    ``test_protocol_segment_mismatch_rejected`` 覆盖（含非法 protocol 标签）。
+    """
+
+    def test_missing_version_rejected(self, root: Path) -> None:
+        working = _make_working(root, "round-001")
+        # version 为 keyword-only 必填：缺失 -> TypeError
+        with pytest.raises(TypeError):
+            stage_release(root, "round-001", "v4.1")
+        # None -> InvalidIdentifier（非字符串版本 ID）
         with pytest.raises(InvalidIdentifier):
-            stage_release(root, "round-001", "banana")
+            stage_release(root, "round-001", "v4.1", version=None)
+        # fail-closed：working 原样保留，staging/releases 不产生任何条目
+        assert working.is_dir()
+        assert not any((root / "release_staging").iterdir())
+        assert not any((root / "releases").iterdir())
+
+    def test_invalid_version_rejected(self, root: Path) -> None:
+        working = _make_working(root, "round-001")
+        for bad in ("data-v4.1", "data-v4.1-r0", "model-v4.1-r1", "not-a-version", ""):
+            with pytest.raises(InvalidIdentifier):
+                stage_release(root, "round-001", "v4.1", version=bad)
+        with pytest.raises(InvalidIdentifier):
+            stage_release(root, "round-001", "v4.1", version=123)
+        assert working.is_dir()
+        assert not any((root / "release_staging").iterdir())
+
+    def test_protocol_segment_mismatch_rejected(self, root: Path) -> None:
+        working = _make_working(root, "round-001")
+        # version 协议段与 protocol 标签裸段不符 -> InvalidIdentifier
+        with pytest.raises(InvalidIdentifier):
+            stage_release(root, "round-001", "v4.1", version="data-v5-r1")
+        with pytest.raises(InvalidIdentifier):
+            stage_release(root, "round-001", "tensile-vlm/v5", version="data-v4.1-r1")
+        # 非法 protocol 标签（无合法裸段可匹配）同样拒绝
+        with pytest.raises(InvalidIdentifier):
+            stage_release(root, "round-001", "banana", version="data-v4.1-r1")
+        assert working.is_dir()
+        assert not any((root / "release_staging").iterdir())
+
+    def test_conflict_with_staging_rejected(self, root: Path) -> None:
+        _make_working(root, "round-001")
+        stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
+        working = _make_working(root, "round-002")
+        # 同名 staging 已存在 -> ReleaseConflict（同 ID 冲突拒绝）
+        with pytest.raises(ReleaseConflict):
+            stage_release(root, "round-002", "v4.1", version="data-v4.1-r1")
+        # 原对象不动：staging 仅一个 r1，round-002 仍在 working
+        assert sorted(p.name for p in (root / "release_staging").iterdir()) == [
+            "data-v4.1-r1"
+        ]
+        assert working.is_dir()
+
+    def test_conflict_with_sealed_rejected(self, root: Path) -> None:
+        version, release_dir = _seal_development(root)
+        working = _make_working(root, "round-002")
+        # 同名正式版本已存在 -> ReleaseConflict，不得覆盖
+        with pytest.raises(ReleaseConflict):
+            stage_release(root, "round-002", "v4.1", version=version)
+        assert (
+            release_dir / "datasets" / "labels.jsonl"
+        ).read_text(encoding="utf-8") == '{"id": 1}\n'
+        assert not (root / "release_staging" / version).exists()
+        assert working.is_dir()
+
+    def test_conflict_checked_before_working_transition(self, root: Path) -> None:
+        # fail-closed 顺序钉死（与 seal_release 对称）：同 ID 冲突
+        # （ReleaseConflict）先于 working 生命周期检查（IllegalTransition）
+        _make_working(root, "round-001")
+        stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
+        # round-001 已转出 working，且 version r1 已被 staging 占用
+        with pytest.raises(ReleaseConflict):
+            stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
 
 
 class TestSeal:
-    def test_revision_increments_within_same_protocol(self, root: Path) -> None:
+    def test_suggest_then_stage_revision_progresses(self, root: Path) -> None:
+        """建议-显式传入两段式：staging 与 sealed 共同占用序号（原递增语义保留）。
+
+        系统不再自动分配：建议值正确性仍可断言（r1/r2/r3），但进入
+        staging 的版本必须是调用方核对后显式传入的那个。
+        """
         _make_working(root, "round-001")
-        v1 = stage_release(root, "round-001", "v4.1")
+        v1_suggested = suggest_next_id("data", "v4.1", _existing_versions(root))
+        assert v1_suggested == "data-v4.1-r1"
+        v1 = stage_release(root, "round-001", "v4.1", version=v1_suggested)
         assert v1 == "data-v4.1-r1"
         seal_release(root, v1, **_seal_kwargs())
 
         _make_working(root, "round-002")
-        v2 = stage_release(root, "round-002", "v4.1")
+        v2_suggested = suggest_next_id("data", "v4.1", _existing_versions(root))
+        assert v2_suggested == "data-v4.1-r2"
+        v2 = stage_release(root, "round-002", "v4.1", version=v2_suggested)
         assert v2 == "data-v4.1-r2"
 
         # staging 中尚未封存的版本同样占用序号
         _make_working(root, "round-003")
-        v3 = stage_release(root, "round-003", "v4.1")
+        v3_suggested = suggest_next_id("data", "v4.1", _existing_versions(root))
+        assert v3_suggested == "data-v4.1-r3"
+        v3 = stage_release(root, "round-003", "v4.1", version=v3_suggested)
         assert v3 == "data-v4.1-r3"
 
     def test_revision_counted_independently_per_protocol(self, root: Path) -> None:
         _make_working(root, "round-001")
-        v1 = stage_release(root, "round-001", "v4.1")
+        v1 = stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
         seal_release(root, v1, **_seal_kwargs())
 
         _make_working(root, "round-002")
-        assert stage_release(root, "round-002", "v5") == "data-v5-r1"
+        # 不同 protocol 独立计数：建议值为 data-v5-r1，显式传入后落位
+        suggested = suggest_next_id("data", "v5", _existing_versions(root))
+        assert suggested == "data-v5-r1"
+        assert stage_release(root, "round-002", "v5", version=suggested) == "data-v5-r1"
 
     def test_seal_writes_release_yaml_identity_and_initial_status(
         self, root: Path
@@ -330,7 +456,7 @@ class TestSeal:
 
     def test_seal_rejects_non_data_or_malformed_version(self, root: Path) -> None:
         _make_working(root, "round-001")
-        stage_release(root, "round-001", "v4.1")
+        stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
         with pytest.raises(InvalidIdentifier):
             seal_release(root, "model-v4.1-r1", **_seal_kwargs())
         with pytest.raises(InvalidIdentifier):
@@ -342,7 +468,7 @@ class TestSeal:
         # P2-2 回归：封存步骤中途失败时 releases/ 不留半成品目录，
         # staging 保持完好，且解除故障后重试 seal 可成功封存。
         _make_working(root, "round-001")
-        version = stage_release(root, "round-001", "v4.1")
+        version = stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
         staging = root / "release_staging" / version
         release_dir = root / "releases" / version
 
@@ -471,7 +597,7 @@ class TestReleaseSchema:
 
     def test_load_unsealed_version_rejected(self, root: Path) -> None:
         _make_working(root, "round-001")
-        version = stage_release(root, "round-001", "v4.1")
+        version = stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
         with pytest.raises(ReleaseNotFound):
             load_release_metadata(root, version)
 
@@ -558,7 +684,7 @@ class TestControlledStatusUpdate:
 
     def test_unsealed_or_unknown_version_rejected(self, root: Path) -> None:
         _make_working(root, "round-001")
-        staged = stage_release(root, "round-001", "v4.1")
+        staged = stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
         with pytest.raises(ReleaseNotFound):
             update_release_status(root, staged, "invalid")
         with pytest.raises(ReleaseNotFound):
@@ -649,6 +775,6 @@ class TestTrainingReferenceGate:
 
     def test_unsealed_staging_rejected(self, root: Path) -> None:
         _make_working(root, "round-001")
-        version = stage_release(root, "round-001", "v4.1")
+        version = stage_release(root, "round-001", "v4.1", version="data-v4.1-r1")
         with pytest.raises(ReferenceNotAllowed):
             validate_training_reference(root, version)

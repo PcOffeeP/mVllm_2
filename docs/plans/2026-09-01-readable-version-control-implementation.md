@@ -4,7 +4,7 @@
 >
 > 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。
 >
-> 最近更新时间：2026-09-02（B3 完成并回填状态，B4 进入 in_progress，tester 正在设计 DVC pipeline RED 测试）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`，B2 提交 `30519042`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
+> 最近更新时间：2026-09-02（B4 台账修正回填——原误置 completed，实际经两轮 reviewer 修复与显式版本纪律改造后真实完成，B3 补充合规修正说明，B5 完成回填，B6 进入 in_progress）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`，B2 提交 `30519042`，B3 提交 `9de8acbb`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
 
 ## 1. 基线事实
 
@@ -12,7 +12,7 @@
 
 - **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control`，当前 HEAD `30519042`（B2），已有提交 `a5bfca1b`（B0-1）、`a37f4acc`（B0-2 文档基座）、`6482bed3`（B1 依赖基座）、`30519042`（B2 身份与状态机）。
 - **修改前测试基线**：`uv run pytest tests/ -q` → `682 passed, 12 skipped, 0 failed`。12 个 skip 全部为 fastapi 未安装 / V3 fixtures / V4.1 workspace 数据缺失，属稳定已知跳过。
-- **当前回归对照基线（B3 后）**：`uv run pytest tests/ -q` → `1144 passed, 11 skipped, 0 failed`。本分支后续各 batch 以此为回归对照基线。
+- **当前回归对照基线（B5 后）**：`uv run pytest tests/ -q` → `1305 passed, 11 skipped, 0 failed`。本分支后续各 batch 以此为回归对照基线。
 - **依赖现状**：`pyproject.toml` + `uv.lock`（uv 管理，Python 3.11.14）；`dvc`、`mlflow` 均未声明、未安装；`requirements.txt`（训练机 Conda）亦无二者。
 - **文档现状**：项目根无 `ARCHITECTURE.md`；`docs/adr/` 不存在；`docs/plans/` 仅设计文档（当前未跟踪，B0 纳入跟踪）。
 - **需保护**：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读保留。
@@ -135,7 +135,7 @@
 
 - **状态**：completed
 - **开始时间**：2026-09-02
-- **当前动作**：B3 已完成并回填。`versioning/data_release.py`（release 生命周期、seal 不可变、status 语义、训练引用门）与 `versioning/holdout.py`（holdout 隔离、pre_registration、一次性 claim）已实现；`tests/versioning/test_data_release.py`、`test_holdout.py` 新增 130 例（含 8 个审查修复回归用例）；全量 `1144 passed / 11 skipped / 0 failed`；独立审查 3 P2 + 1 P3 修复后复审关闭、复审新增 1 P3（`create_claim` executor 校验）修复闭环中（待主 Agent 核对）；残余风险为 seal chmod 窗口（见完成回填）。
+- **当前动作**：B3 已完成并回填。`versioning/data_release.py`（release 生命周期、seal 不可变、status 语义、训练引用门）与 `versioning/holdout.py`（holdout 隔离、pre_registration、一次性 claim）已实现；`tests/versioning/test_data_release.py`、`test_holdout.py` 新增 138 例（含 8 个审查修复回归用例）；全量 `1144 passed / 11 skipped / 0 failed`；独立审查 3 P2 + 1 P3 修复后复审关闭、复审新增 1 P3（`create_claim` executor 校验）已修复并补 3 个参数化回归用例，复审已闭环；提交 `9de8acbb`；残余风险为 seal chmod 窗口（见完成回填）。
 - **目标**：实现数据 working→release_staging→sealed 生命周期与 release.yaml 管理与 holdout 一次性 claim 安全边界。
 - **包含范围**：
   - `versioning/data_release.py`：working→release_staging→sealed 生命周期；`release.yaml` schema；seal 后 payload 与身份字段只增不改；仅允许受控修改 `status` 与可选 `replacement`；非法重用/覆盖/状态逆转 fail-closed。
@@ -152,11 +152,13 @@
 - **回滚点**：B2 提交。
 - **风险与阻塞条件**：release.yaml schema 与设计文档 §5.1 不一致。
 - **预计提交边界**：1 个提交。
-- **完成后填**：修改文件清单：`versioning/data_release.py`、`versioning/holdout.py`、`tests/versioning/test_data_release.py`、`tests/versioning/test_holdout.py`；验证结果：`tests/versioning/` 461 例全绿（B3 新增 130 例，含 8 个审查修复回归用例），全量 `uv run pytest tests/ -q` → `1144 passed / 11 skipped / 0 failed`；审查结论：独立审查 3 P2 + 1 P3 修复后复审关闭、复审新增 1 P3（`create_claim` executor 校验）修复闭环中（待主 Agent 核对）；提交哈希：待提交后补录；残余风险：seal 流程在 release rename 后最后一步 chmod 失败存在短暂不一致窗口——非静默（可检出）、不可重试，已接受记录。
+- **完成后填**：修改文件清单：`versioning/data_release.py`、`versioning/holdout.py`、`tests/versioning/test_data_release.py`、`tests/versioning/test_holdout.py`；验证结果：`tests/versioning/` 469 例全绿（B3 新增 138 例，含 8 个审查修复回归用例），全量 `uv run pytest tests/ -q` → `1144 passed / 11 skipped / 0 failed`；审查结论：独立审查 3 P2 + 1 P3 修复后复审关闭、复审新增 1 P3（`create_claim` executor 校验）已修复并补 3 个参数化回归用例，复审已闭环；提交哈希：`9de8acbb`；残余风险：seal 流程在 release rename 后最后一步 chmod 失败存在短暂不一致窗口——非静默（可检出）、不可重试，已接受记录。后注（合规修正说明）：B3 中 `stage_release` 的行为经后续合规修正提交调整——其 `version` 参数改为显式必传、不接受缺省或建议值（显式版本纪律，见设计 §9/§11.6），该修正不改动 B3 已回填的封存与不可变语义。
 
 ### B4 — DVC pipeline 七阶段
 
-- **状态**：in_progress
+- **状态**：completed（台账修正——此前误置 completed，实际经两轮 reviewer 修复 3 个 P2 与显式版本纪律改造后才真实完成，提交哈希待补录）
+- **开始时间**：2026-09-02
+- **当前动作**：B4 已完成并回填（台账修正）。根 `dvc.yaml`（七阶段固定顺序、依赖链、review_import 外部人工输入依赖、release 依赖 review_import、release outs 固定路径 `data/release_payload` + `data/release_pointer.json`，无 `data/releases` out / persist，版本号经 DVC params 注入 `${release_version}`）、`versioning/data_pipeline.py`（七阶段真实转换、上游 digest 贯穿 manifest、审查 `content_sha256` 绑定、release_validate 真实校验 + fail-closed）、`versioning/cli.py` + `versioning/__main__.py`（`python -m versioning data <stage>`，release 必填显式 `--version`，fail-closed exit code）已实现；`tests/versioning/test_data_pipeline.py`（34 例）+ `test_dvc_pipeline.py`（20 例）共 54 例全绿；`tests/versioning/` 共 523 例全绿。经两轮 reviewer 修复：修正测试缺陷（DVC run-cache 断言排除 `.dvc` 内部；fixture 时序改先 repro review_export）并退回/修复 production/dvc.yaml 缺陷（digest 传播、persist outs 等 3 个 P2）；随后实施显式版本纪律改造（release/stage_release 显式版本）。
 - **目标**：在仓库根 `dvc.yaml` 表达七阶段数据 pipeline，并实现真实最小转换。
 - **包含范围**：
   - 根 `dvc.yaml`：source/roi/subvideo/review_export/review_import/release/release_validate 七阶段。
@@ -176,11 +178,12 @@
 - **回滚点**：B3 提交。
 - **风险与阻塞条件**：DVC 版本行为差异、临时仓库初始化失败。
 - **预计提交边界**：1–2 个提交。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：修改文件清单：`dvc.yaml`、`versioning/__main__.py`、`versioning/cli.py`、`versioning/data_pipeline.py`、`tests/versioning/test_data_pipeline.py`、`tests/versioning/test_dvc_pipeline.py`；验证结果：`tests/versioning/` 523 例全绿（B4 新增 54 例：test_data_pipeline 34 + test_dvc_pipeline 20），全量 `uv run pytest tests/ -q` → `1305 passed / 11 skipped / 0 failed`（含 B5）；审查结论：台账修正——原误置 completed，实际经两轮 reviewer 修复 3 个 P2（digest 传播、persist outs 等，含 release outs 改为固定 `data/release_payload` + 指针、去除 persist、版本经 params 注入）与显式版本纪律改造后才真实完成；B3 封存语义不受影响；提交哈希：待提交后补录；残余风险：无新增。
 
 ### B5 — Prompt 版本与冻结
 
-- **状态**：pending
+- **状态**：completed（哈希待补录）
+- **当前动作**：B5 已完成并回填。`versioning/prompts.py`（328 行，records/prompts 单一权威、训练 input 冻结副本、篡改检测；create_prompt 显式版本纪律、suggest_next_id 仅建议）与 `tests/versioning/test_prompts.py`（99 例）已实现全绿；全量 `1305 passed / 11 skipped / 0 failed`。提交哈希待补录。
 - **目标**：实现 Prompt 版本契约与训练 input 冻结副本。
 - **包含范围**：
   - `versioning/prompts.py` + `records/prompts/` 目录契约（正式 Prompt 单一位置 `records/prompts/prompt-v<协议>-r<N>.yaml`，Git 跟踪）。
@@ -196,11 +199,12 @@
 - **回滚点**：B4 提交。
 - **风险与阻塞条件**：Prompt 契约与设计文档 §5.2 不一致。
 - **预计提交边界**：1 个提交。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：修改文件清单：`versioning/prompts.py`、`records/prompts/`（正式 Prompt 单一位置）、`tests/versioning/test_prompts.py`；验证结果：`test_prompts.py` 99 例全绿，`tests/versioning/` 共 622 例全绿，全量 `uv run pytest tests/ -q` → `1305 passed / 11 skipped / 0 failed`；审查结论：reviewer 在 B5 发现显式版本纪律 P2，作为统一改造（create_prompt/stage_release/run_release 显式完整版本号、suggest_next_id 仅建议）随各模块修正落实；提交哈希：待提交后补录；残余风险：无新增。
 
 ### B6 — MLflow 训练记录
 
-- **状态**：pending
+- **状态**：in_progress
+- **当前动作**：B6 进入 in_progress。
 - **目标**：实现 train-v 父 Run + 三折子 Run 的 MLflow 训练记录与状态映射。
 - **包含范围**：
   - `versioning/mlflow_train.py`：一个 train-v 对应一个父 Run，fold 为子 Run；父 Run 记录共同输入/配置/Git commit。
@@ -350,7 +354,7 @@
 
 ### 6.1 当前 batch
 
-- **当前 batch**：B4（in_progress，tester 正在设计 DVC pipeline 七阶段 RED 测试）。
+- **当前 batch**：B6（in_progress，MLflow 训练记录）。
 
 ### 6.2 Batch 状态表
 
@@ -359,10 +363,10 @@
 | B0 | completed | a5bfca1b, a37f4acc | B0 基线固化完成 |
 | B1 | completed | 6482bed3 | B1 依赖基座完成（残余风险见 §6.5） |
 | B2 | completed | 30519042 | B2 身份与状态机完成 |
-| B3 | completed | 待提交后补录 | B3 数据封存与 holdout 安全完成（seal chmod 窗口见 §6.5） |
-| B4 | in_progress | — | tester 设计 DVC pipeline RED 测试中 |
-| B5 | pending | — | — |
-| B6 | pending | — | — |
+| B3 | completed | 9de8acbb | B3 数据封存与 holdout 安全完成（seal chmod 窗口见 §6.5） |
+| B4 | completed | 待提交后补录 | B4 DVC pipeline 七阶段完成（台账修正回填） |
+| B5 | completed | 待提交后补录 | B5 Prompt 版本与冻结完成 |
+| B6 | in_progress | — | — |
 | B7 | pending | — | — |
 | B8 | pending | — | — |
 | B9 | pending | — | — |
@@ -378,8 +382,8 @@
 | B0 | a37f4acc | docs: AGENTS 分域改写 + ARCHITECTURE 骨架 | AGENTS.md、ARCHITECTURE.md |
 | B1 | 6482bed3 | chore: 新增 dvc 与 mlflow 项目级依赖 | pyproject.toml、requirements.txt、uv.lock |
 | B2 | 30519042 | feat(versioning): 新增可读身份与状态机核心模块 | versioning/__init__.py、ids.py、state.py、tests/versioning/ |
-| B3 | 待提交后补录 | — | versioning/data_release.py、holdout.py、tests/versioning/test_data_release.py、test_holdout.py |
-| B4 | — | — | — |
+| B3 | 9de8acbb | feat(versioning): 新增数据封存 release 管理与 holdout 安全模块 | versioning/data_release.py、holdout.py、tests/versioning/test_data_release.py、test_holdout.py |
+| B4 | 待提交后补录 | — | dvc.yaml、versioning/__main__.py、cli.py、data_pipeline.py、tests/versioning/test_data_pipeline.py、test_dvc_pipeline.py |
 | B5 | — | — | — |
 | B6 | — | — | — |
 | B7 | — | — | — |
@@ -402,15 +406,15 @@
 
 ### 6.6 下一步
 
-- 继续执行并完成 B4（DVC pipeline 七阶段与最小 CLI，tester 正在设计 RED 测试）。
+- 继续执行并完成 B6（MLflow 训练记录）。
 
 ### 6.7 新接收者恢复工作所需最小上下文
 
-- 分支：`refactor/readable-version-control`，HEAD `30519042`（B2 提交）。
+- 分支：`refactor/readable-version-control`，HEAD `9de8acbb`（B3 提交；B4/B5 已实现、待提交回填）。
 - 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（只读，不得修改）。
 - 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
 - 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
-- 测试基线（B3 后回归对照）：`1144 passed, 11 skipped, 0 failed`。
+- 测试基线（B5 后回归对照）：`1305 passed, 11 skipped, 0 failed`。
 - 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
 - 提交信息约定：含"以上commit由codex生成。"。
 - 禁止：git 写操作（获批前）、merge、push、训练机操作、真实数据/模型迁移。

@@ -170,8 +170,9 @@ def _seal_kwargs(**overrides: object) -> dict:
 
 
 def _seal_holdout(root: Path, working_name: str = "round-holdout") -> tuple[str, Path]:
+    # 显式版本纪律（§9/§11.6）：stage_release 不再自动分配，核对后显式指定 r1
     _make_working(root, working_name)
-    version = stage_release(root, working_name, "v4.1")
+    version = stage_release(root, working_name, "v4.1", version="data-v4.1-r1")
     release_dir = seal_release(root, version, **_seal_kwargs(purpose="holdout"))
     return version, release_dir
 
@@ -228,7 +229,8 @@ class TestHoldoutTrainingGate:
         self, root: Path
     ) -> None:
         _make_working(root, "round-holdout")
-        version = stage_release(root, "round-holdout", "v4.1")
+        # 显式版本纪律（§9/§11.6）：显式指定目标版本 r1
+        version = stage_release(root, "round-holdout", "v4.1", version="data-v4.1-r1")
         with pytest.raises(ReleaseSchemaError):
             seal_release(
                 root,

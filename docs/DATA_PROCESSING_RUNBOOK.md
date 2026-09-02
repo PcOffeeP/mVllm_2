@@ -622,6 +622,68 @@ python pipeline/scripts/rebuild_data.py promote \
 > - `run --source-only --check-only` 仅做校验，不写入快照。
 > - 同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
 
+## 10. 新体系（versioning）DVC pipeline（在建，本轮不切换）
+
+> 本章节描述可读版本控制新体系（`refactor/readable-version-control` 分支）当前已实现的 DVC 数据 pipeline 入口。**legacy 六步流程（§3–§9）仍为现役**，本章节为新体系入口，本轮不切换正式流程。新体系当前仅实现数据 pipeline 阶段；训练/测评/物化等子命令留待后续批次（B10）整合扩展。
+
+### 10.1 前置条件
+
+- 仓库已配置 `uv`；运行前先 `uv sync` 确保依赖可用（含 `dvc`）。
+- 新体系数据 pipeline 由仓库根 `dvc.yaml` 声明，命令统一走 `python -m versioning data <stage>`。
+- 数据批次目录约定：原始输入在 `data/raw/<batch>/`，阶段产物在 `data/working/<batch>/`，正式封存版本在 `data/releases/`。
+
+### 10.2 七阶段含义
+
+| 阶段 | 作用 |
+| --- | --- |
+| source | 整理原始文件并写入 `source_manifest.json` |
+| roi | 为每个 source 视频生成确定性 ROI manifest |
+| subvideo | 每视频生成 2 条确定性子视频记录 |
+| review_export | 导出审查包 `items.jsonl`，覆盖全部 clip |
+| review_import | 回收并校验人工审查结果，通过则写入 `review_decisions.json` |
+| release | 组装 accepted payload 并封存为正式数据版本，写 `release_pointer.json` |
+| release_validate | 只报告：验证正式数据是否满足训练入口要求，不启动训练 |
+
+阶段固定顺序 source→roi→subvideo→review_export→review_import→release→release_validate；相邻阶段经 outs/deps 闭合衔接。
+
+### 10.3 dvc.yaml 位置与结构
+
+- 根 `dvc.yaml`（仓库根目录）声明七阶段 pipeline。
+- `review_import` 消费外部人工审查结果 `data/review_results/<batch>.yaml`（不由任何阶段产物提供，关卡显式）；`release` 依赖 `review_import` 产物，审查未回收或结论不通过时 release 及下游不可执行。
+- `release` 的 outs 为固定路径 `data/release_payload`（可整体重建的普通 out）+ `data/release_pointer.json`（指针，普通 out）；**无 `data/releases` out、无 persist**。版本号经 DVC params 注入：阶段 `cmd` 使用 `--version ${release_version}` 并声明 `params: [release_version]`；操作者显式编辑根 `params.yaml` 指定目标版本。
+
+### 10.4 命令用法
+
+```bash
+python -m versioning data <stage> [--root DIR] [--batch NAME] \
+  [--version ID] [--protocol P] [--purpose P] [--results FILE]
+```
+
+- `<stage>` 必填，必须属于七阶段之一；缺参 / 非法 stage / 阶段失败均非零退出（fail-closed）。
+- `--root` 项目根目录（默认当前目录）；`--batch` 数据批次名（默认 `batch-001`）。
+- `--version` 在 `release` / `release_validate` 时显式指定目标版本（`release` 必填，缺省即 fail-closed 阻断，体现显式版本纪律）；`--protocol` / `--purpose` 仅 `release` 时使用；`--results` 仅 `review_import` 时显式指定审查结果 YAML 路径。注意：`release_validate` 不接收 `--batch`；dvc.yaml 中 `release` 阶段的目标版本由根 `params.yaml` 的 `release_version` 经 DVC params 注入 `${release_version}`。
+
+### 10.5 人工审查关卡操作
+
+1. 运行到 `review_export`，生成审查包 `data/working/<batch>/review/review_package/items.jsonl`。
+2. 人工审查后，把审查结果写入 `data/review_results/<batch>.yaml`（含 `batch`、`approved`、`decisions`、`content_sha256` 四键；`decisions` 每项含 `clip_id` 与 `verdict`，verdict 为 `accept`/`reject`，clip_id 集合须与导出 clip 集合一致；`content_sha256` 须为 64 位十六进制摘要且与当前 subvideo manifest 内容哈希一致，用于把审查结论绑定到所审内容）。
+3. 运行 `review_import` 回收并校验审查结果；通过则写 `review_decisions.json`，未回收 / 格式错 / `content_sha256` 不符 / 结论不通过时非零退出阻断。
+
+### 10.6 release / release_validate 行为
+
+- `release`：固定 out `data/release_payload`（accepted clips 汇总，普通 out，可重建）+ 正式封存版本 `data/releases/data-v<协议>-r<N>/`（含 `release.yaml` + `README.md`，payload 在 `payload/` 子目录，DVC 仓库内经 `dvc add` 生成 `payload.dvc` 纳入管理），并写 `data/release_pointer.json`；目标版本必须显式指定（缺省即 fail-closed 阻断），审查未回收 / 审查摘要与当前内容绑定不一致时非零退出阻断。`release` 阶段 cmd 通过 `${release_version}` param 接收目标版本。
+- `release_validate`：真实调用 `assert_payload_sealed` 与 `validate_training_reference` 两项校验，报告先落盘 `data/reports/<version>.validation.json` 再按结果 fail-closed，不硬编码通过，也不启动训练。
+
+### 10.7 outs 边界与封存目录
+
+- `release` 阶段 outs 为固定路径 `data/release_payload`（普通 out，可整体重建）+ `data/release_pointer.json`（指针，普通 out）；不含 `data/releases` out，也不使用 persist。
+- 正式封存版本 `data/releases/<version>/` 不是 DVC pipeline out：其 `release.yaml` 与 `README.md` 属 Git 跟踪边界（保持可写、受控更新），`payload/` 子目录在 DVC 仓库内经 `dvc add` 生成 `payload.dvc` 指针纳入版本控制；payload 封存只读（去写位），DVC 重跑不触碰既有版本目录。
+
+### 10.8 本地 fixture 验证方式
+
+- 集成测试在 `tmp_path` 初始化临时 DVC 仓库（`dvc init --no-scm`），跑通七阶段 fixture 闭环；审查缺失 / 不通过时 pipeline 阻断、回收通过后放行；输入变化后 `dvc status` 报告过期但不自动重跑（D035），手动 `dvc repro` 产生新 data 版本；临时 local remote push→删本地 cache 与产物→pull 完整恢复。
+- 测试命令：`uv run pytest tests/versioning/test_data_pipeline.py tests/versioning/test_dvc_pipeline.py -q`（54 例）。
+
 <!-- DECISION-LOG
 D001 — 将本文维护为不绑定版本号的数据处理主手册，并在正文集中声明当前支持的链路版本。
 Why: 数据处理链路后续可能升级；把版本号写入标题会让长期入口与 4.1 偶然耦合，容易产生平行手册或遗留过期入口。

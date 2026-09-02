@@ -13,7 +13,7 @@ from typing import Any, Mapping, Sequence
 
 import yaml
 
-from versioning.ids import InvalidIdentifier, parse_data_id, suggest_next_id
+from versioning.ids import InvalidIdentifier, parse_data_id
 from versioning.state import (
     DataStatus,
     IllegalTransition,
@@ -135,35 +135,43 @@ def _extract_version_protocol(protocol: str) -> str:
     return candidate
 
 
-def stage_release(root: Path, working_name: str, protocol: str) -> str:
-    """working -> release_staging，分配下一个版本号。
+def stage_release(
+    root: Path, working_name: str, protocol: str, *, version: str
+) -> str:
+    """working -> release_staging，以显式 version 占号。
 
     Raises:
         IllegalTransition: working 目录不存在（已转出 / 逆转尝试）。
-        InvalidIdentifier: protocol 非法。
+        InvalidIdentifier: version 或 protocol 非法 / 协议段不符。
+        ReleaseConflict: releases/ 或 release_staging/ 同名已存在。
     """
+    parsed = parse_data_id(version)
+    full_id = str(parsed)
+
+    version_protocol = _extract_version_protocol(protocol)
+    if version_protocol != parsed.protocol:
+        raise InvalidIdentifier(
+            f"protocol 标签裸段 {version_protocol!r} 与版本协议段 {parsed.protocol!r} 不符"
+        )
+
+    target = _staging_dir(root, full_id)
+    release_target = _release_dir(root, full_id)
+    if target.exists() or release_target.exists():
+        raise ReleaseConflict(f"release 已存在: {full_id!r}")
+
     working = _working_dir(root, working_name)
     if not working.is_dir():
         raise IllegalTransition(
             f"无法 stage，working 目录不存在: {working_name!r}"
         )
 
-    version_protocol = _extract_version_protocol(protocol)
-
-    existing: list[str] = []
-    for parent in (root / "releases", root / "release_staging"):
-        if parent.is_dir():
-            existing.extend(child.name for child in parent.iterdir() if child.is_dir())
-
-    version = suggest_next_id("data", version_protocol, existing)
-    target = _staging_dir(root, version)
     target.parent.mkdir(parents=True, exist_ok=True)
     working.rename(target)
 
     # 保存原始 protocol 标签，供 seal_release 在 protocol=None 时作为默认值。
     (target / _PROTOCOL_SIDECAR).write_text(protocol, encoding="utf-8")
 
-    return version
+    return full_id
 
 
 def _validate_release_identity_fields(

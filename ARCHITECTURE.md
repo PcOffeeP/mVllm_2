@@ -50,18 +50,29 @@ Non-goals:
   - Git：源码、Prompt、配置、文档、DVC 轻量文件与 MLflow 导出的 manifest；
   - DVC：数据 pipeline 与数据产物；
   - MLflow：训练运行、实际参数、模型、指标、测评与运行状态。
+  - **显式版本纪律（全体系规则，设计 §9/§11.6）**：面向身份写入与状态晋级的关键操作（如 `create_prompt`、`stage_release`、`run_release`）一律要求显式传入完整版本号，缺省/猜测即 fail-closed 拒绝；`suggest_next_id` 仅为建议函数，供操作者取用后再显式传入，不自动采用。
 - **已实现能力（B2，身份与状态机）**：
   - **可读身份模块 `versioning/ids.py`**：五类可读身份 data/prompt/train/model/eval 的 `v<协议>-r<N>` 完整版本名解析、校验与构造；严格拒绝 latest、短前缀、后缀与隐式选择，`\Z` 锚定禁止尾随换行等额外字符。
   - **状态机模块 `versioning/state.py`**：`WorkflowState` 六态（prepared/running/partial/failed/completed/archived）合法转换表；`RunStatus` 与 workflow_state 固定组合校验；`RecordValidity`（valid/invalid）不可逆（invalid 不得复活）；`DataStatus` 三态（active/superseded/invalid）与引用语义（仅 active 可建新引用，invalid 禁止一切引用）。
 - **已实现能力（B3，数据封存与 holdout 安全）**：
   - **数据 release 生命周期 `versioning/data_release.py`**：数据版本 working→release_staging→sealed 生命周期与 `release.yaml` schema；seal 原子封存并强制不可变（payload 与身份字段只读、移除写权限），非法重用/覆盖/状态逆转 fail-closed；仅受控修改 `status` 与可选 `replacement`；status 语义（`active` 可建新训练/测评引用、`superseded` 仅恢复历史引用、`invalid` 禁止一切新引用）；训练引用门校验 `validate_training_reference`。
   - **holdout 安全 `versioning/holdout.py`**：`purpose: holdout` 数据强制 `training_allowed: false`；`sealed_ground_truth/` 隔离结构；`pre_registration.yaml` 预登记结构；`authorization/claim.yaml` 全局一次性 claim（创建、同身份恢复、一次性消费、fail-closed 拒绝重复消费/覆盖已有 claim/已消费授权重用）。
+- **已实现能力（B4，DVC pipeline 七阶段与最小 CLI）**：
+  - **根 `dvc.yaml`**：七阶段固定顺序 source→roi→subvideo→review_export→review_import→release→release_validate；相邻阶段经 outs/deps 闭合衔接；`review_import` 消费外部人工审查结果 `data/review_results/<batch>.yaml`（不含于任何阶段产物，关卡显式，审查摘要与所审内容 digest 绑定）；`release` 依赖 `review_import` 产物，审查未回收或结论不通过时 release 及下游不可执行；`release_validate` 只报告不启动训练。`release` 的 outs 为固定路径 `data/release_payload`（可整体重建的普通 out）+ `data/release_pointer.json`（指针，普通 out），**无 `data/releases` out、无 persist**；目标版本经 DVC params 注入——阶段 `cmd` 用 `--version ${release_version}` 并声明 `params: [release_version]`，操作者显式编辑根 `params.yaml`。
+  - **数据 pipeline 模块 `versioning/data_pipeline.py`**：七阶段真实最小转换（非占位）；上游内容 digest 沿链贯穿 manifest，使 DVC out-hash 沿链传播；审查关卡 `ReviewGateError` fail-closed；审查结果 YAML 的 `content_sha256`（64 位摘要）与所审内容绑定，release 复核 decisions 绑定摘要与当前内容一致才放行；release 组装 accepted payload 后封存为正式数据版本并写 `release_pointer.json`。
+  - **封存目录形态**：正式版本 `data/releases/<version>/` 含 `release.yaml` + `README.md` + `payload/` 子目录；`release.yaml` 与 `README.md` 属 Git 跟踪边界（保持可写、受控更新），`payload/` 在 DVC 仓库内经 `dvc add` 生成 `payload.dvc` 指针纳入管理；payload 封存只读（去写位）。
+  - **最小 CLI `versioning/cli.py` + `versioning/__main__.py`**：`python -m versioning data <stage> [--root DIR] [--batch NAME] [--version ID] [--protocol P] [--purpose P] [--results FILE]`；仅 `data` 子命令供 dvc.yaml 调用；缺参/非法 stage/阶段失败均非零退出（fail-closed）；`release` 必填显式 `--version`；train/eval/model/backup 子命令留待 B10 整合扩展。
+  - **release_validate 真实校验**：`release_validate` 真实调用 `assert_payload_sealed` 与 `validate_training_reference` 两项校验，报告先落盘 `data/reports/<version>.validation.json` 再按结果 fail-closed，不硬编码通过。
+- **已实现能力（B5，Prompt 版本与冻结）**：
+  - **`versioning/prompts.py`**：Prompt 版本注册、不可变性与训练 input 冻结副本——正式 Prompt 单一权威位置 `records/prompts/prompt-v<协议>-r<N>.yaml`（Git 跟踪、不可覆盖）；训练时仅从该位置冻结复制到 `workspace/runs/train-v.../input/prompt.yaml`，不形成第二套正式位置、不扫描历史目录猜测当前 Prompt、单一状态权威；冻结副本与源结构不一致 / 篡改检测 fail-closed。
 
 ## 5. 当前实现范围
 
 - **B2 完成（身份与状态机）**：`versioning/ids.py`（五类可读身份解析/校验/生成）与 `versioning/state.py`（workflow_state 状态机）已实现，共 331 例测试。
-- **B3 完成（数据封存与 holdout 安全）**：`versioning/data_release.py`（release 生命周期、seal 不可变、status 语义、训练引用门）与 `versioning/holdout.py`（holdout 隔离、pre_registration、一次性 claim）已实现，新增 130 例测试（含 8 个审查修复回归用例）；`tests/versioning/` 共 461 例全绿，全量 `1144 passed / 11 skipped / 0 failed`。
-- §4 其余内容（B4 起各批次）仍为在建目标，不作已实现理解。
+- **B3 完成（数据封存与 holdout 安全）**：`versioning/data_release.py`（release 生命周期、seal 不可变、status 语义、训练引用门）与 `versioning/holdout.py`（holdout 隔离、pre_registration、一次性 claim）已实现，新增 138 例测试（含 8 个审查修复回归用例）；`tests/versioning/` 共 469 例全绿。
+- **B4 完成（DVC pipeline 七阶段与最小 CLI）**：根 `dvc.yaml`（七阶段固定顺序、依赖链、review_import 外部人工输入依赖、release 依赖 review_import、release outs 固定路径 `data/release_payload` + `data/release_pointer.json`，无 `data/releases` out / persist，版本经 DVC params 注入）、`versioning/data_pipeline.py`（七阶段真实转换、上游 digest 贯穿 manifest、审查关卡 ReviewGateError、审查 `content_sha256` 绑定、release_validate 真实校验 + fail-closed）、`versioning/cli.py` + `versioning/__main__.py`（`python -m versioning data <stage>`，release 必填显式 `--version`，fail-closed exit code）已实现；新增 54 例测试（test_data_pipeline 34 + test_dvc_pipeline 20）；`tests/versioning/` 共 523 例全绿。
+- **B5 完成（Prompt 版本与冻结）**：`versioning/prompts.py`（records/prompts 单一权威、训练 input 冻结副本、篡改检测；create_prompt 显式版本纪律、suggest_next_id 仅建议）已实现；新增 `test_prompts.py` 99 例全绿；`tests/versioning/` 共 622 例全绿，全量 `1305 passed / 11 skipped / 0 failed`。
+- §4 其余内容（B6 起各批次）仍为在建目标，不作已实现理解。
 
 ## 6. 尚未迁移的 legacy 边界
 
