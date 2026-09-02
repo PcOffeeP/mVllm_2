@@ -4,15 +4,15 @@
 >
 > 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。
 >
-> 最近更新时间：2026-09-02（B2 完成并回填状态，B3 进入 in_progress，tester 正在编写 RED 测试）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
+> 最近更新时间：2026-09-02（B3 完成并回填状态，B4 进入 in_progress，tester 正在设计 DVC pipeline RED 测试）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`，B2 提交 `30519042`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
 
 ## 1. 基线事实
 
 以下为实施开始前已核验的基线，作为各 batch 验收与回滚的参照。
 
-- **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control`，当前 HEAD `6482bed3`，已有提交 `a5bfca1b`（B0-1）、`a37f4acc`（B0-2 文档基座）、`6482bed3`（B1 依赖基座）。
+- **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control`，当前 HEAD `30519042`（B2），已有提交 `a5bfca1b`（B0-1）、`a37f4acc`（B0-2 文档基座）、`6482bed3`（B1 依赖基座）、`30519042`（B2 身份与状态机）。
 - **修改前测试基线**：`uv run pytest tests/ -q` → `682 passed, 12 skipped, 0 failed`。12 个 skip 全部为 fastapi 未安装 / V3 fixtures / V4.1 workspace 数据缺失，属稳定已知跳过。
-- **当前回归对照基线（B1 后）**：`uv run pytest tests/ -q` → `683 passed, 11 skipped, 0 failed`。原 fastapi 相关 skip 转为 13 个真实通过（随 B1 安装依赖）；本分支后续各 batch 以此为回归对照基线。
+- **当前回归对照基线（B3 后）**：`uv run pytest tests/ -q` → `1144 passed, 11 skipped, 0 failed`。本分支后续各 batch 以此为回归对照基线。
 - **依赖现状**：`pyproject.toml` + `uv.lock`（uv 管理，Python 3.11.14）；`dvc`、`mlflow` 均未声明、未安装；`requirements.txt`（训练机 Conda）亦无二者。
 - **文档现状**：项目根无 `ARCHITECTURE.md`；`docs/adr/` 不存在；`docs/plans/` 仅设计文档（当前未跟踪，B0 纳入跟踪）。
 - **需保护**：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读保留。
@@ -113,7 +113,7 @@
 
 - **状态**：completed
 - **开始时间**：2026-09-02
-- **当前动作**：B2 已完成并回填。`versioning/ids.py`、`versioning/state.py` 与 `versioning/__init__.py` 已实现，`tests/versioning/` 331 例全绿；提交哈希待提交后补录。
+- **当前动作**：B2 已完成并回填。`versioning/ids.py`、`versioning/state.py` 与 `versioning/__init__.py` 已实现，`tests/versioning/` 331 例全绿；提交 `30519042`。
 - **目标**：建立五类可读身份解析/生成/严格校验，以及 workflow_state 状态机核心。
 - **包含范围**：
   - `versioning/ids.py`：data/prompt/train/model/eval 五类 ID 解析、生成、严格校验；拒绝 `final`/`new`/`fixed`/`latest`/日期/seed/fold/checkpoint/自由文本后缀；禁止短前缀/模糊匹配/隐式 latest。
@@ -129,12 +129,14 @@
 - **回滚点**：B1 提交。
 - **风险与阻塞条件**：状态转换表与设计文档 §5.3/§10 不一致。
 - **预计提交边界**：1 个提交（模块 + 测试）。
-- **完成后填**：修改文件清单：`versioning/__init__.py`、`versioning/ids.py`、`versioning/state.py`、`tests/versioning/test_ids.py`、`tests/versioning/test_state.py`；验证结果：`tests/versioning/` 287→331 passed，全量 `1014 passed / 11 skipped / 0 failed`；审查结论：reviewer 发现 1 P2 + 2 P3（尾随换行 / bool / 字符串异常），均已修复并补 44 个回归用例，复审通过；提交哈希：待提交后补录；残余风险：无新增。
+- **完成后填**：修改文件清单：`versioning/__init__.py`、`versioning/ids.py`、`versioning/state.py`、`tests/versioning/test_ids.py`、`tests/versioning/test_state.py`；验证结果：`tests/versioning/` 287→331 passed，全量 `1014 passed / 11 skipped / 0 failed`；审查结论：reviewer 发现 1 P2 + 2 P3（尾随换行 / bool / 字符串异常），均已修复并补 44 个回归用例，复审通过；提交哈希：`30519042`；残余风险：无新增。
 
 ### B3 — 数据封存与 release 管理
 
-- **状态**：in_progress
-- **目标**：实现数据 working→release_staging→sealed 生命周期与 release.yaml 管理。
+- **状态**：completed
+- **开始时间**：2026-09-02
+- **当前动作**：B3 已完成并回填。`versioning/data_release.py`（release 生命周期、seal 不可变、status 语义、训练引用门）与 `versioning/holdout.py`（holdout 隔离、pre_registration、一次性 claim）已实现；`tests/versioning/test_data_release.py`、`test_holdout.py` 新增 130 例（含 8 个审查修复回归用例）；全量 `1144 passed / 11 skipped / 0 failed`；独立审查 3 P2 + 1 P3 修复后复审关闭、复审新增 1 P3（`create_claim` executor 校验）修复闭环中（待主 Agent 核对）；残余风险为 seal chmod 窗口（见完成回填）。
+- **目标**：实现数据 working→release_staging→sealed 生命周期与 release.yaml 管理与 holdout 一次性 claim 安全边界。
 - **包含范围**：
   - `versioning/data_release.py`：working→release_staging→sealed 生命周期；`release.yaml` schema；seal 后 payload 与身份字段只增不改；仅允许受控修改 `status` 与可选 `replacement`；非法重用/覆盖/状态逆转 fail-closed。
   - status 语义：`active` 可建新训练/测评；`superseded` 仅恢复历史引用；`invalid` 禁止一切新引用。
@@ -150,11 +152,11 @@
 - **回滚点**：B2 提交。
 - **风险与阻塞条件**：release.yaml schema 与设计文档 §5.1 不一致。
 - **预计提交边界**：1 个提交。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：修改文件清单：`versioning/data_release.py`、`versioning/holdout.py`、`tests/versioning/test_data_release.py`、`tests/versioning/test_holdout.py`；验证结果：`tests/versioning/` 461 例全绿（B3 新增 130 例，含 8 个审查修复回归用例），全量 `uv run pytest tests/ -q` → `1144 passed / 11 skipped / 0 failed`；审查结论：独立审查 3 P2 + 1 P3 修复后复审关闭、复审新增 1 P3（`create_claim` executor 校验）修复闭环中（待主 Agent 核对）；提交哈希：待提交后补录；残余风险：seal 流程在 release rename 后最后一步 chmod 失败存在短暂不一致窗口——非静默（可检出）、不可重试，已接受记录。
 
 ### B4 — DVC pipeline 七阶段
 
-- **状态**：pending
+- **状态**：in_progress
 - **目标**：在仓库根 `dvc.yaml` 表达七阶段数据 pipeline，并实现真实最小转换。
 - **包含范围**：
   - 根 `dvc.yaml`：source/roi/subvideo/review_export/review_import/release/release_validate 七阶段。
@@ -348,7 +350,7 @@
 
 ### 6.1 当前 batch
 
-- **当前 batch**：B3（in_progress，tester 编写 RED 测试中）。
+- **当前 batch**：B4（in_progress，tester 正在设计 DVC pipeline 七阶段 RED 测试）。
 
 ### 6.2 Batch 状态表
 
@@ -356,9 +358,9 @@
 | --- | --- | --- | --- |
 | B0 | completed | a5bfca1b, a37f4acc | B0 基线固化完成 |
 | B1 | completed | 6482bed3 | B1 依赖基座完成（残余风险见 §6.5） |
-| B2 | completed | 待提交后补录 | B2 身份与状态机完成 |
-| B3 | in_progress | — | 编写数据封存与 release 管理 RED 测试中 |
-| B4 | pending | — | — |
+| B2 | completed | 30519042 | B2 身份与状态机完成 |
+| B3 | completed | 待提交后补录 | B3 数据封存与 holdout 安全完成（seal chmod 窗口见 §6.5） |
+| B4 | in_progress | — | tester 设计 DVC pipeline RED 测试中 |
 | B5 | pending | — | — |
 | B6 | pending | — | — |
 | B7 | pending | — | — |
@@ -375,8 +377,8 @@
 | B0 | a5bfca1b | docs: 纳入设计文档与实施台账，新增 TODO 总任务 | docs/plans、docs/project-todo.md |
 | B0 | a37f4acc | docs: AGENTS 分域改写 + ARCHITECTURE 骨架 | AGENTS.md、ARCHITECTURE.md |
 | B1 | 6482bed3 | chore: 新增 dvc 与 mlflow 项目级依赖 | pyproject.toml、requirements.txt、uv.lock |
-| B2 | 待提交后补录 | — | versioning/__init__.py、ids.py、state.py、tests/versioning/ |
-| B3 | — | — | — |
+| B2 | 30519042 | feat(versioning): 新增可读身份与状态机核心模块 | versioning/__init__.py、ids.py、state.py、tests/versioning/ |
+| B3 | 待提交后补录 | — | versioning/data_release.py、holdout.py、tests/versioning/test_data_release.py、test_holdout.py |
 | B4 | — | — | — |
 | B5 | — | — | — |
 | B6 | — | — | — |
@@ -394,20 +396,21 @@
 ### 6.5 残余风险
 
 - **B1 残留风险**：mlflow 2.x 与 3.x 均硬依赖 `pandas<3`，与项目 `pandas>=3.0.3` 冲突，最终采用 `mlflow>=3,<4` + `[tool.uv] override-dependencies = ["pandas>=3.0.3"]`，偏离原计划 `mlflow>=2,<3`；`requirements.txt` 既有 `fastapi==0.138.0`/`starlette==0.52.1` 冻结条目与 uv 解析版本（0.141.1/1.3.1）不一致（训练机 Conda 用，本轮不处理）。
+- **B3 残留风险**：seal 流程在 release rename 后最后一步 chmod 写权限移除失败会留下未完全封存窗口；该失败非静默（可检出）、不可重试，已接受记录，不做自动重试。
 - 文档整合与一致性复核（B11）与真实代码的一致性依赖 reviewer 逐条核查。
 - 本分支仅为核心基础设施，正式迁移（旧对象映射、训练机操作、真实数据/模型迁移、merge/push）需另行授权。
 
 ### 6.6 下一步
 
-- 继续执行并完成 B3（数据封存与 release 管理，RED 测试编写中）。
+- 继续执行并完成 B4（DVC pipeline 七阶段与最小 CLI，tester 正在设计 RED 测试）。
 
 ### 6.7 新接收者恢复工作所需最小上下文
 
-- 分支：`refactor/readable-version-control`，HEAD `6482bed3`（B1 提交）。
+- 分支：`refactor/readable-version-control`，HEAD `30519042`（B2 提交）。
 - 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（只读，不得修改）。
 - 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
 - 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
-- 测试基线（B1 后回归对照）：`683 passed, 11 skipped, 0 failed`。
+- 测试基线（B3 后回归对照）：`1144 passed, 11 skipped, 0 failed`。
 - 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
 - 提交信息约定：含"以上commit由codex生成。"。
 - 禁止：git 写操作（获批前）、merge、push、训练机操作、真实数据/模型迁移。

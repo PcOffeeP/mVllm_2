@@ -53,10 +53,15 @@ Non-goals:
 - **已实现能力（B2，身份与状态机）**：
   - **可读身份模块 `versioning/ids.py`**：五类可读身份 data/prompt/train/model/eval 的 `v<协议>-r<N>` 完整版本名解析、校验与构造；严格拒绝 latest、短前缀、后缀与隐式选择，`\Z` 锚定禁止尾随换行等额外字符。
   - **状态机模块 `versioning/state.py`**：`WorkflowState` 六态（prepared/running/partial/failed/completed/archived）合法转换表；`RunStatus` 与 workflow_state 固定组合校验；`RecordValidity`（valid/invalid）不可逆（invalid 不得复活）；`DataStatus` 三态（active/superseded/invalid）与引用语义（仅 active 可建新引用，invalid 禁止一切引用）。
+- **已实现能力（B3，数据封存与 holdout 安全）**：
+  - **数据 release 生命周期 `versioning/data_release.py`**：数据版本 working→release_staging→sealed 生命周期与 `release.yaml` schema；seal 原子封存并强制不可变（payload 与身份字段只读、移除写权限），非法重用/覆盖/状态逆转 fail-closed；仅受控修改 `status` 与可选 `replacement`；status 语义（`active` 可建新训练/测评引用、`superseded` 仅恢复历史引用、`invalid` 禁止一切新引用）；训练引用门校验 `validate_training_reference`。
+  - **holdout 安全 `versioning/holdout.py`**：`purpose: holdout` 数据强制 `training_allowed: false`；`sealed_ground_truth/` 隔离结构；`pre_registration.yaml` 预登记结构；`authorization/claim.yaml` 全局一次性 claim（创建、同身份恢复、一次性消费、fail-closed 拒绝重复消费/覆盖已有 claim/已消费授权重用）。
 
 ## 5. 当前实现范围
 
-- **B2 完成（身份与状态机）**：`versioning/ids.py`（五类可读身份解析/校验/生成）与 `versioning/state.py`（workflow_state 状态机）已实现，`tests/versioning/` 331 例全绿。§4 其余内容仍为在建目标，不作已实现理解。
+- **B2 完成（身份与状态机）**：`versioning/ids.py`（五类可读身份解析/校验/生成）与 `versioning/state.py`（workflow_state 状态机）已实现，共 331 例测试。
+- **B3 完成（数据封存与 holdout 安全）**：`versioning/data_release.py`（release 生命周期、seal 不可变、status 语义、训练引用门）与 `versioning/holdout.py`（holdout 隔离、pre_registration、一次性 claim）已实现，新增 130 例测试（含 8 个审查修复回归用例）；`tests/versioning/` 共 461 例全绿，全量 `1144 passed / 11 skipped / 0 failed`。
+- §4 其余内容（B4 起各批次）仍为在建目标，不作已实现理解。
 
 ## 6. 尚未迁移的 legacy 边界
 
