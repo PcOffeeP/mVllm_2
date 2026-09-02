@@ -1,0 +1,427 @@
+# 可读版本控制架构实施台账（refactor/readable-version-control）
+
+> 文档定位：本文件是 `refactor/readable-version-control` 分支的**实施台账**，记录本分支分批实施"可读版本控制架构"核心基础设施的批次计划、状态跟踪与恢复上下文。它不是项目级 TODO（项目级任务台账见 `docs/project-todo.md`），也不是架构权威（架构权威见设计文档）。
+>
+> 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。
+>
+> 最近更新时间：2026-09-02（按审查发现落实 10 项 P1/P2 修订，scope 前移后 B8/B9 前置依赖、Batch 总表与提交边界同步更新；本轮落实 1 项 P2 + 2 项 P3 最小修订；2026-09-02 用户批准 batch 计划，B0 进入 in_progress），已完成 AGENTS.md 分域改写、ARCHITECTURE.md 骨架（含 Document Contract）与 B0 状态更新，git 提交待 executor 执行）。
+
+## 1. 基线事实
+
+以下为实施开始前已核验的基线，作为各 batch 验收与回滚的参照。
+
+- **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control` 已创建，当前无任何提交（HEAD 与 main 相同）。
+- **修改前测试基线**：`uv run pytest tests/ -q` → `682 passed, 12 skipped, 0 failed`。12 个 skip 全部为 fastapi 未安装 / V3 fixtures / V4.1 workspace 数据缺失，属稳定已知跳过。
+- **依赖现状**：`pyproject.toml` + `uv.lock`（uv 管理，Python 3.11.14）；`dvc`、`mlflow` 均未声明、未安装；`requirements.txt`（训练机 Conda）亦无二者。
+- **文档现状**：项目根无 `ARCHITECTURE.md`；`docs/adr/` 不存在；`docs/plans/` 仅设计文档（当前未跟踪，B0 纳入跟踪）。
+- **需保护**：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读保留。
+- **命名规范冲突**：`AGENTS.md` 现有"命名规范"仍强制哈希 ID / `index.json` / `LATEST` / 短哈希解析，与设计文档 §2.13 冲突，将在 B0 治理时序中做规则级最小改写（legacy 旧入口维持原规则原样，新 `versioning` 入口改用可读身份）；"以上commit由codex生成。"提交信息约定目前未写入任何文档，将补入 `AGENTS.md`。
+
+## 2. 本轮范围边界
+
+**本轮 = 核心基础设施**，包含：
+
+- 独立新入口（`python -m versioning`）；
+- 五类可读身份（data/prompt/train/model/eval）与状态机核心；
+- 数据封存与 release 管理；
+- DVC 七阶段 pipeline；
+- Prompt 版本与冻结；
+- MLflow 训练/测评记录；
+- manifest 单向导出；
+- Registry alias 与物化；
+- 离线备份基础规则；
+- 文档体系；
+- 测试。
+
+**明确排除（本轮不做）**：
+
+- 旧对象映射（历史哈希产物到可读版本的迁移映射）；
+- 删除旧哈希代码（`LATEST`、短前缀解析、内容哈希身份生成、集合 `index.json`）；
+- 训练机操作（真实路径预检、SSH、GPU、真实数据/模型迁移）；
+- 真实数据/模型迁移；
+- merge / push。
+
+## 3. 新体系技术选型约定
+
+- **新顶层 Python 包**：`versioning/`，与 `pipeline/`、`finetune/` 平级；测试在 `tests/versioning/`；统一入口 `python -m versioning`。
+- **新 DVC pipeline**：仓库根 `dvc.yaml`（旧链路无 DVC，无冲突）。
+- **MLflow**：使用本地 SQLite + 本地 artifact store；测试一律用 `tmp_path` 临时实例，不连正式 remote、不启动常驻服务。
+
+## 4. Batch 总表
+
+| Batch | 一句话目标 |
+| --- | --- |
+| B0 | 基线固化与最小治理时序：提交文档基座 + AGENTS.md 分域改写 + ARCHITECTURE.md 骨架 |
+| B1 | 依赖基座：声明并安装 dvc/mlflow，保持测试基线 |
+| B2 | 可读身份与状态机核心：五类 ID 解析/校验 + workflow_state 状态机 |
+| B3 | 数据封存、release 管理与 holdout 安全：working→release_staging→sealed + 一次性 claim |
+| B4 | DVC pipeline 七阶段与最小 CLI：根 dvc.yaml + 真实最小实现 + stale 验证 + 人工审查关卡 |
+| B5 | Prompt 版本与冻结：records/prompts 正式位置 + 训练 input 冻结副本 |
+| B6 | MLflow 训练记录：train-v 父 Run + 三折子 Run + 状态映射 |
+| B7 | MLflow 测评与 train/eval manifest 导出：eval-v + holdout 鉴权 + fold 绑定校验 |
+| B8 | Model Registry、物化与晋级门：mVllm2 + alias gate + 原子物化 + offline_backup_scope 状态 |
+| B9 | 离线备份 catalog 与恢复：backup_catalog 原子维护 + 复制验证 + SQLite/artifact 联合恢复 |
+| B10 | 独立入口与端到端闭环：整合扩展统一 CLI + holdout 鉴权接线 + 全链路 fixture 测试 |
+| B11 | 文档最终整合与一致性复核：交叉一致性、链接、对照真实代码核查 |
+| B12 | 最终复核与收尾：全量测试、对抗式复核、关闭标准执行、实施文档收尾 |
+
+## 5. 各 Batch 小节
+
+### B0 — 基线固化与最小治理时序
+
+- **状态**：in_progress
+- **开始时间**：2026-09-02
+- **当前动作**：B0 文档起草（用户已批准 batch 计划）——将设计文档、本实施文档、TODO 总条目纳入本分支首批提交范围；已完成根 `AGENTS.md` 分域改写（新旧体系边界、versioning 规则、提交信息约定、legacy 适用范围标注）、新建根 `ARCHITECTURE.md` 骨架（含 Document Contract）并更新本台账 B0 状态；git 提交由后续 executor 执行。
+- **目标**：把设计文档、本实施文档、TODO 总条目作为本分支首批提交固化，并在规则层完成最小治理改写与架构骨架，形成后续 batch 的基线。
+- **包含范围**：
+  - 提交 `docs/plans/2026-09-01-readable-version-control-design.md`、本实施文档、`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
+  - **最小治理改写（根 `AGENTS.md`）**：明确分域——legacy 旧入口维持原规则原样；新 `versioning` 入口必须使用可读身份，不再使用哈希 ID / `index.json` / `LATEST` / 短哈希解析；并补入提交信息约定"以上commit由codex生成。"。此步只做规则级最小修改，保持简洁，不重写旧链路说明。
+  - **创建根 `ARCHITECTURE.md` 初始骨架（含 Document Contract）**：起草前阅读并遵循 `/Users/pcoffeep/.pi/agent/skills/doc-contract/SKILL.md`；只描述当前真实状态——legacy 链路为现役、新体系在建、系统边界与三工具（Git/DVC/MLflow）职责；标注"当前实现范围"为空/在建。
+- **排除范围**：不修改任何代码；不触碰 `stash@{0}`；不 merge、不 push；`AGENTS.md` 仅做规则级最小修改，不重写旧链路内容。
+- **前置依赖**：用户对 batch 计划的一次性批准。
+- **将修改的模块/文档**：`docs/plans/`（纳入跟踪）、`docs/project-todo.md`、`AGENTS.md`（最小治理改写）、`ARCHITECTURE.md`（新建骨架，含 Document Contract）。
+- **可观察完成结果**：`git log` 新增 2–3 个原子提交（提交信息含"以上commit由codex生成。"）；`AGENTS.md` 已完成分域最小治理改写；`ARCHITECTURE.md` 骨架与 Document Contract 已建立并描述当前真实状态。
+- **测试与验收命令**：`git log --oneline -3`；`git diff --check`；确认提交范围仅含上述文档；reviewer 核对 `AGENTS.md` 分域规则与 `ARCHITECTURE.md` 骨架。
+- **失败路径/反向检查**：若提交范围混入代码或无关文件，回退并重做；若治理改写误伤 legacy 旧入口规则或新入口未改用可读身份，视为失败；若 `stash@{0}` 被触碰，立即停止并报告。
+- **独立复核要求**：reviewer 核对提交内容、`AGENTS.md` 分域规则与 `ARCHITECTURE.md` 骨架是否符合 Document Contract。
+- **回滚点**：分支基点 `cc59312c`。
+- **风险与阻塞条件**：用户未批准 batch 计划则阻塞；提交信息约定/治理规则未确认则阻塞。
+- **预计提交边界**：2–3 个原子提交（文档）。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B1 — 依赖基座
+
+- **状态**：pending
+- **目标**：为 DVC 与 MLflow 建立依赖基座，且不破坏现有测试基线。
+- **包含范围**：`pyproject.toml` 增加 `dvc>=3,<4`、`mlflow>=2,<3`（含 sqlalchemy 支持 SQLite backend）；`requirements.txt` 同步声明；`uv lock` 更新并安装验证。
+- **排除范围**：不初始化正式 DVC remote；不启动 MLflow 服务。
+- **前置依赖**：B0 完成。
+- **将修改的模块/文档**：`pyproject.toml`、`requirements.txt`、`uv.lock`。
+- **可观察完成结果**：`uv run python -c "import dvc, mlflow"` 成功；`uv run pytest tests/ -q` 仍 `682 passed / 0 failed`。
+- **测试与验收命令**：`uv run python -c "import dvc, mlflow"`；`uv run pytest tests/ -q`。
+- **失败路径/反向检查**：若依赖安装破坏现有测试或引入版本冲突，回退依赖变更并报告。
+- **独立复核要求**：reviewer 核对依赖声明与安装结果。
+- **回滚点**：B0 提交。
+- **风险与阻塞条件**：dvc/mlflow 与现有依赖（如 pandas/streamlit）版本冲突。
+- **预计提交边界**：1 个提交（依赖文件）。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B2 — 可读身份与状态机核心
+
+- **状态**：pending
+- **目标**：建立五类可读身份解析/生成/严格校验，以及 workflow_state 状态机核心。
+- **包含范围**：
+  - `versioning/ids.py`：data/prompt/train/model/eval 五类 ID 解析、生成、严格校验；拒绝 `final`/`new`/`fixed`/`latest`/日期/seed/fold/checkpoint/自由文本后缀；禁止短前缀/模糊匹配/隐式 latest。
+  - `versioning/state.py`：`workflow_state`（prepared/running/partial/failed/completed/archived）；`record_validity`（valid/invalid）；data status（active/superseded/invalid）；合法转换表与 `IllegalTransition` 等异常。
+  - 测试 `tests/versioning/test_ids.py`、`test_state.py`：成功路径 + 全部非法转换反向测试。
+- **排除范围**：不实现数据封存、DVC、MLflow 等下游逻辑。
+- **前置依赖**：B1。
+- **将修改的模块/文档**：`versioning/ids.py`、`versioning/state.py`、`tests/versioning/test_ids.py`、`tests/versioning/test_state.py`，并同步本实施台账 B2 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：五类 ID 合法/非法用例全部通过；状态机合法转换与全部非法转换反向用例通过。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`。
+- **失败路径/反向检查**：非法 ID 被接受、非法状态转换被放行、短前缀/隐式 latest 未被拒绝，均视为失败。
+- **独立复核要求**：reviewer（身份与状态机）。
+- **回滚点**：B1 提交。
+- **风险与阻塞条件**：状态转换表与设计文档 §5.3/§10 不一致。
+- **预计提交边界**：1 个提交（模块 + 测试）。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B3 — 数据封存与 release 管理
+
+- **状态**：pending
+- **目标**：实现数据 working→release_staging→sealed 生命周期与 release.yaml 管理。
+- **包含范围**：
+  - `versioning/data_release.py`：working→release_staging→sealed 生命周期；`release.yaml` schema；seal 后 payload 与身份字段只增不改；仅允许受控修改 `status` 与可选 `replacement`；非法重用/覆盖/状态逆转 fail-closed。
+  - status 语义：`active` 可建新训练/测评；`superseded` 仅恢复历史引用；`invalid` 禁止一切新引用。
+  - **holdout 安全边界（fixture-only）**：`purpose: holdout` 数据版本的 `training_allowed: false` 强制；`sealed_ground_truth/` 权限隔离结构；`authorization/claim.yaml` 全局一次性 claim（创建、同身份恢复、重复消费拒绝、覆盖已有 claim 拒绝、已消费授权不得再当可用授权）；`pre_registration.yaml` 结构。
+  - `tmp_path` fixture 测试 + holdout 反向测试（未授权引用 holdout / 重复消费 claim / 覆盖已有 claim 均被拒绝）。
+- **排除范围**：不实现 DVC 阶段、不连接真实数据；holdout 实现仅限 fixture/临时环境，不触碰真实 ground truth。
+- **前置依赖**：B2。
+- **将修改的模块/文档**：`versioning/data_release.py`、`versioning/authorization.py`（claim/pre_registration）、`versioning/_sealed_ground_truth.py`（或同批内对应模块）、`tests/versioning/test_data_release.py`、`tests/versioning/test_holdout.py`，并同步本实施台账 B3 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：seal 后身份字段不可改、payload 只读；非法覆盖/重用/状态逆转被拒绝；`purpose: holdout` 数据强制 `training_allowed: false`；一次性 claim 的创建/恢复/重复消费/覆盖语义正确；status 语义按设计生效。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`。
+- **失败路径/反向检查**：seal 后字段可改、payload 可写、非法状态逆转放行，均视为失败；不同执行身份或不同 eval/model/data/split 四元组的 claim 恢复被拒绝。
+- **独立复核要求**：reviewer（不可变性）。
+- **回滚点**：B2 提交。
+- **风险与阻塞条件**：release.yaml schema 与设计文档 §5.1 不一致。
+- **预计提交边界**：1 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B4 — DVC pipeline 七阶段
+
+- **状态**：pending
+- **目标**：在仓库根 `dvc.yaml` 表达七阶段数据 pipeline，并实现真实最小转换。
+- **包含范围**：
+  - 根 `dvc.yaml`：source/roi/subvideo/review_export/review_import/release/release_validate 七阶段。
+  - 命令调用 `python -m versioning data ...` 子命令的真实最小实现（对 fixture 数据做真实文件转换，非占位）。
+  - 人工审查为显式关卡：review_export 产物后流程停止；review_import 校验审查结果文件完整性与通过标记；未回收或校验失败时 release 必须非零退出阻断；release_validate 只报告不启动训练。
+  - **最小 CLI 所有权**：`versioning/__main__.py` / `versioning/cli.py` 在 B4 创建，仅含 `data` 子命令供 dvc.yaml 调用；train/eval/model/backup 子命令留待 B10 整合扩展。
+  - **DVC stale 验证**：DVC 只报告 stale 不自动执行；参数/代码/输入变化后 `dvc status` 能识别过期。
+  - **临时 local remote 校验测试**：push→删除本地对象→pull→恢复校验，只用 `tmp_path` 临时 remote，不连正式 remote。
+  - 集成测试：在 `tmp_path` 初始化临时 DVC 仓库跑通七阶段 fixture 闭环 + 审查缺失阻断反向测试；临时 local remote 恢复反向测试。
+- **排除范围**：不连正式 remote；不启动训练。
+- **前置依赖**：B1、B2、B3。
+- **将修改的模块/文档**：`dvc.yaml`、`versioning/__main__.py`、`versioning/cli.py`（最小 `data` 子命令）、`versioning/` 相关 data 子命令、`tests/versioning/test_dvc_pipeline.py`、`tests/versioning/test_cli_data.py`，并同步本实施台账 B4 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：七阶段 fixture 闭环跑通；审查缺失时 release 非零退出阻断；release_validate 只报告不启动训练；DVC 对 stale 只报告不自动执行且 `dvc status` 能识别参数/代码/输入变化导致的过期；临时 local remote push→删对象→pull 能恢复。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`；临时 DVC 仓库内 `dvc repro` 相关阶段。
+- **失败路径/反向检查**：审查未回收仍放行 release、release_validate 触发训练、阶段顺序错误，均视为失败。
+- **独立复核要求**：reviewer（pipeline 关卡）。
+- **回滚点**：B3 提交。
+- **风险与阻塞条件**：DVC 版本行为差异、临时仓库初始化失败。
+- **预计提交边界**：1–2 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B5 — Prompt 版本与冻结
+
+- **状态**：pending
+- **目标**：实现 Prompt 版本契约与训练 input 冻结副本。
+- **包含范围**：
+  - `versioning/prompts.py` + `records/prompts/` 目录契约（正式 Prompt 单一位置 `records/prompts/prompt-v<协议>-r<N>.yaml`，Git 跟踪）。
+  - 训练输入冻结明确副本 freeze 操作：训练时仅从 `records/prompts/` 冻结复制到 `workspace/runs/train-v.../input/prompt.yaml`；不得形成第二套 Prompt 正式位置；禁止扫描历史目录猜测当前 Prompt；单一状态权威。
+  - 测试：解析、冻结副本一致性、非法引用拒绝。
+- **排除范围**：不实现训练执行。
+- **前置依赖**：B2。
+- **将修改的模块/文档**：`versioning/prompts.py`、`records/prompts/`（正式 Prompt 单一位置）、`tests/versioning/test_prompts.py`，并同步本实施台账 B5 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：正式 Prompt 文件不可覆盖；冻结副本与 Git 声明版本结构化一致；非法引用被拒绝。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`。
+- **失败路径/反向检查**：冻结副本与源不一致仍放行、非法引用被接受、扫描历史目录猜测当前 Prompt，均视为失败。
+- **独立复核要求**：reviewer（Prompt 契约）。
+- **回滚点**：B4 提交。
+- **风险与阻塞条件**：Prompt 契约与设计文档 §5.2 不一致。
+- **预计提交边界**：1 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B6 — MLflow 训练记录
+
+- **状态**：pending
+- **目标**：实现 train-v 父 Run + 三折子 Run 的 MLflow 训练记录与状态映射。
+- **包含范围**：
+  - `versioning/mlflow_train.py`：一个 train-v 对应一个父 Run，fold 为子 Run；父 Run 记录共同输入/配置/Git commit。
+  - `workflow_state` 与原生 RunStatus 固定映射表执行；prepared→running→completed→archived 与 running↔partial↔failed 转换校验；partial/failed 只能受控恢复回 running。
+  - 父 Run completed 需全部必需 fold FINISHED 且汇总完整；不完整 fold 不得晋级模型。
+  - 集成测试用 `tmp_path` SQLite + artifact store。
+- **排除范围**：不实现模型晋级、不连接正式 MLflow。
+- **前置依赖**：B1、B2。
+- **将修改的模块/文档**：`versioning/mlflow_train.py`、`tests/versioning/test_mlflow_train.py`，并同步本实施台账 B6 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：父子 Run 关系完整；状态映射与非法组合拒绝正确；不完整 fold 不晋级。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`。
+- **失败路径/反向检查**：非法状态组合放行、不完整 fold 晋级、partial/failed 直接改 completed，均视为失败。
+- **独立复核要求**：reviewer（状态机）。
+- **回滚点**：B5 提交。
+- **风险与阻塞条件**：MLflow 原生状态与 workflow_state 映射与设计文档 §5.3 不一致。
+- **预计提交边界**：1–2 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B7 — MLflow 测评与 train/eval manifest 单向导出
+
+- **状态**：pending
+- **目标**：实现 eval-v 测评记录与 train/eval manifest 单向导出（model manifest 移入 B8）。
+- **包含范围**：
+  - `versioning/mlflow_eval.py`：eval-v 独立父 Run，显式引用模型/数据/配置/Git commit；`record_validity=invalid` 对象被下游拒绝。
+  - `versioning/manifest.py`：train/eval manifest 最小字段；只能从 MLflow 单向导出；幂等重导。
+  - 三类更正路径：导出器格式错误→幂等重导；可变运行标签→只改 MLflow；正式事实错误→旧对象 invalid + 新建版本。
+  - 测试覆盖导出可复现性与更正路径。
+  - **holdout 授权校验**：正式 eval 在创建引用 holdout 的 eval 版本前校验——无有效 claim 或无 pre_registration 时拒绝创建；训练入口对 `purpose: holdout` 数据一律 fail-closed 拒绝。
+- **排除范围**：不实现 Registry 物化；model manifest 导出不在本批（B8）。
+- **前置依赖**：B6（消除与 B8 的 manifest 循环依赖；本批不再依赖 B8）。
+- **将修改的模块/文档**：`versioning/mlflow_eval.py`、`versioning/manifest.py`（train/eval）、`versioning/mock_train_entry.py` 或同批训练入口鉴权接线、`tests/versioning/test_mlflow_eval.py`、`tests/versioning/test_manifest.py`、`tests/versioning/test_holdout_auth.py`，并同步本实施台账 B7 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：train/eval manifest 最小字段正确、导出可复现、幂等重导；三类更正路径行为正确；invalid 对象被下游拒绝；single-fold / cross-validation / full-data 三种 scope 分开校验，cross-validation 严格绑定 fold0–fold2 子 Run（每 fold 对应模型 artifact、数据 split、样本数、records/failures 路径），缺失/重复/错配/额外 fold 均拒绝封存，aggregate 输入集合必须与声明 fold 集合完全一致；eval manifest 只能从通过上述校验的完成 Run 导出；对 holdout 的 eval 无有效 claim/pre_registration 时拒绝创建。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`。
+- **失败路径/反向检查**：非完成 Run 导出、人工修改未检测、正式事实错误未走 invalid+新版本，均视为失败；cross-validation 的 fold 缺失/重复/错配/额外、aggregate 与声明 fold 不一致仍导出、无授权引用 holdout 仍建 eval、对 holdout 训练入口放行，均视为失败。
+- **独立复核要求**：reviewer（manifest）。
+- **回滚点**：B6 提交。
+- **风险与阻塞条件**：manifest 字段与设计文档 §2.6/§5.3-5.5 不一致。
+- **预计提交边界**：1–2 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B8 — Model Registry、物化与 alias 晋级门/备份范围
+
+- **状态**：pending
+- **目标**：实现唯一 Registered Model `mVllm2`、models/current 原子物化、统一 alias mutation gate，并把 `offline_backup_scope` 状态及单向升级规则纳入本批。
+- **包含范围**：
+  - `versioning/registry.py`：唯一 Registered Model `mVllm2`；`model-v<协议>-r<N>` 映射唯一数值 Model Version；`model_id` tag 全 Registry 唯一且注册后不改绑；candidate/production alias 仅逻辑路由。
+  - `versioning/materialize.py`：models/current 物化缓存：临时目录下载 + 校验后原子替换；alias 与物化不一致/断链/半物化/错误 manifest 拒绝启动；`service_mode development|production` 显式校验。
+  - **model manifest**：在临时 Registry 真实 Model Version 注册完成后导出并验证全部字段（registered_model、数值 Model Version、source_run_id、source_scope、artifacts、deploy_target）；消除 B7↔B8 循环依赖。
+  - **统一 alias mutation gate**：设置 candidate 前必须先写 scope=adapter；设置 production 前必须先升级 scope=production_bundle 且通过规定质量门并取得用户批准标记；所有 alias 修改必须经此 gate，禁止绕过。gate 校验：来源训练 record_validity=valid、原生 RunStatus=FINISHED、workflow_state∈{completed,archived}、必需 fold 与汇总完整、模型有唯一 deploy_target。
+  - **offline_backup_scope 状态与单向升级规则**（由 B9 前移）：仅允许 缺失→adapter→production_bundle 单向升级，不得降级/清除。
+  - 测试用临时 Registry。
+- **排除范围**：不连接正式 MLflow、不加载真实模型。
+- **前置依赖**：B6、B7（model manifest 依赖 B6 的训练 Run（source_run_id）与 B7 的 manifest 导出基础设施）。
+- **将修改的模块/文档**：`versioning/registry.py`、`versioning/materialize.py`、`versioning/manifest.py`（model manifest 增量）、`versioning/scope.py`（offline_backup_scope 状态，或同批对应模块）、`tests/versioning/test_registry.py`、`tests/versioning/test_materialize.py`、`tests/versioning/test_manifest_model.py`、`tests/versioning/test_scope.py`，并同步本实施台账 B8 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：model_id 唯一且不改绑；alias 仅逻辑路由；物化原子替换；不一致/断链/半物化拒绝启动；service_mode 显式校验；alias gate 全路径生效（先 scope=adapter 再 candidate、先 scope=production_bundle 且质量门+批准再 production）；`offline_backup_scope` 单向升级正确且不可降级/清除。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`。
+- **失败路径/反向检查**：alias 与物化不一致仍启动、半物化目标出现、service_mode 缺失仍启动、三折模型组成为 current，均视为失败；负向测试：先设 alias 后写 scope、无效训练晋级 candidate/production、未批准 production、无 deploy_target、scope 降级/清除仍被允许，均视为失败。
+- **独立复核要求**：reviewer（alias/物化）。
+- **回滚点**：B7 提交。
+- **风险与阻塞条件**：物化原子替换与设计文档 §7 不一致。
+- **预计提交边界**：1–2 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B9 — 离线备份 catalog 与恢复规则
+
+- **状态**：pending
+- **目标**：实现离线备份的 backup_catalog 管理、复制验证与恢复规则（`offline_backup_scope` 状态已前移至 B8，本批只消费它）。
+- **包含范围**：
+  - `versioning/backup.py`：`offline_backup_scope`（B8 前移的状态及单向规则）确定源集合 = 全部正式数据 + 带范围 tag 的模型，按历史最高范围确定；执行复制并验证。
+  - `backup_catalog.yaml` schema：对象 ID/类型/来源/时间/范围/verified；catalog 存在但文件缺失/损坏不能判定完成；catalog 可从实际对象重建；备份成功不自动删源。
+  - **catalog 原子维护**：临时文件写入+校验后原子替换并保留上一份可读快照；每次运行对 catalog 全部既有对象重新核对实际文件。
+  - **恢复规则**：SQLite 一致性快照备份；SQLite 与 artifact store 联合恢复；恢复后验证——可查询父子 Run、指标、Model Version、alias 和 artifact。
+  - fixture 测试 + 恢复验证测试，全部用临时目录/临时 MLflow store，不连真实硬盘/训练机。
+- **排除范围**：不连接真实移动硬盘、不执行真实备份；不实现/扩展 `offline_backup_scope` 状态机（已在 B8）。
+- **前置依赖**：B3、B8（`offline_backup_scope` 状态与单向规则来自 B8）。
+- **将修改的模块/文档**：`versioning/backup.py`、`tests/versioning/test_backup.py`、`tests/versioning/test_restore.py`，并同步本实施台账 B9 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：源集合按历史最高范围确定；catalog 存在但文件缺失不判完成；catalog 可重建、原子替换并保留上一份快照、每次核对实际文件；备份成功不删源；SQLite 与 artifact store 联合恢复后可查询父子 Run、指标、Model Version、alias 和 artifact。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`。
+- **失败路径/反向检查**：源集合范围计算错误、catalog 存在即判完成、catalog 原子替换/快照失效、备份成功删源、恢复后无法查询父子 Run/指标/Model Version/alias/artifact、SQLite 与 artifact store 联合恢复不一致，均视为失败。
+- **独立复核要求**：reviewer（备份与恢复规则）。
+- **回滚点**：B8 提交。
+- **风险与阻塞条件**：backup_catalog schema 与设计文档 §2.11 不一致。
+- **预计提交边界**：1 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B10 — 独立入口与端到端闭环
+
+- **状态**：pending
+- **目标**：建立统一 CLI 入口并跑通端到端 fixture 闭环。
+- **包含范围**：
+  - **整合并扩展统一 CLI**（在 B4 的 `versioning/__main__.py` / `cli.py` 最小 `data` 子命令基础上整合训练/测评/物化/备份全部子命令）：data/prompt/train/eval/model/backup 子命令，显式版本参数，缺参即停并提示。
+  - **holdout 鉴权接线**：把 B3（holdout 一次性 claim / pre_registration）与 B7（eval 授权校验、训练 fail-closed）的校验接线到 data/train/eval 子命令。
+  - 端到端 fixture 测试：data release→prompt 冻结→train 记录→model 注册→eval→manifest 导出→backup catalog 全链路临时环境闭环；
+  - holdout 反向端到端测试：无授权引用 holdout 建 eval / 对 holdout 数据触发训练均被拒绝。
+- **排除范围**：不连接真实环境。
+- **前置依赖**：B2–B9。
+- **将修改的模块/文档**：`versioning/__main__.py`、`versioning/cli.py`（B4 最小入口的整合扩展）、`tests/versioning/test_cli.py`、`tests/versioning/test_e2e.py`、`tests/versioning/test_cli_holdout.py`，并同步本实施台账 B10 状态与 `ARCHITECTURE.md` 对应章节增量。
+- **可观察完成结果**：统一入口各子命令可用；缺参即停并提示；data/train/eval 子命令已接线 holdout 鉴权；端到端 fixture 闭环跑通；holdout 反向端到端用例通过。
+- **测试与验收命令**：`uv run pytest tests/versioning/ -q`；`python -m versioning --help`。
+- **失败路径/反向检查**：缺参仍继续、子命令不可用、端到端链路中断、鉴权未接线/反向用例被放行，均视为失败。
+- **独立复核要求**：reviewer（入口与闭环）。
+- **回滚点**：B9 提交。
+- **风险与阻塞条件**：子命令与设计文档 §7 显式版本纪律不一致。
+- **预计提交边界**：1 个提交。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B11 — 文档最终整合与一致性复核
+
+- **状态**：pending
+- **目标**：文档最终整合与一致性复核。不再承担新文档主体的补写（治理骨架已在 B0、各 batch 已完成同批文档），只做交叉一致性、链接、与真实代码对照核查及收尾润色。
+- **包含范围**：
+  - 更新 `README.md`（新入口最短路径与文档导航）。
+  - 新建 `docs/adr/`（ADR-0001 记录采用可读版本控制总体决策及关键子决策索引）。
+  - 对各 batch 已同批完成的文档做交叉一致性整合：`docs/DATA_PROCESSING_RUNBOOK.md`（新 DVC pipeline 章节）、`finetune/README.md`（新 MLflow 记录章节）、相关 `SCRIPTS.md` 增补。
+  - 对 `ARCHITECTURE.md`（B0 骨架）做增量同步与收尾润色，与真实代码交叉核对，必要时更新"当前实现范围"。
+  - 交叉一致性、Markdown 链接检查、与真实代码/测试证据对照核查。
+- **排除范围**：不补写 `ARCHITECTURE.md`/`AGENTS.md` 新主体（主体与治理已在 B0）；不删除旧链路代码；不迁移真实产物。
+- **前置依赖**：B0–B10（文档须对照真实代码）。
+- **将修改的模块/文档**：`README.md`、`docs/adr/ADR-0001.md`、`docs/DATA_PROCESSING_RUNBOOK.md`、`finetune/README.md`、相关 `SCRIPTS.md`、`ARCHITECTURE.md`（B0 骨架增量同步）。
+- **可观察完成结果**：文档与真实代码一致；交叉一致性、链接检查通过；ADR-0001 已建立；`ARCHITECTURE.md` 骨架已同步至当前实现范围。
+- **测试与验收命令**：Markdown 链接检查；`git diff --check`；reviewer 对照真实代码逐条核查。
+- **失败路径/反向检查**：文档与代码不一致、链接断裂、交叉冲突未消除，均视为失败。
+- **独立复核要求**：所有新建/重写的权威文档由 reviewer 对照真实代码逐条独立核查。
+- **回滚点**：B10 提交。
+- **风险与阻塞条件**：文档与真实代码不一致。
+- **预计提交边界**：2–3 个提交（按文档职责拆分）。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+### B12 — 最终复核与收尾
+
+- **状态**：pending
+- **目标**：全量复核、处理 findings、收尾实施文档。
+- **包含范围**：全量 `uv run pytest tests/ -q`、`git diff --check`、Markdown 链接检查、YAML/JSON 校验、未跟踪产物/大文件检查；reviewer 对整个分支最终对抗式复核；findings 处理；实施文档收尾（完整提交映射）；向用户提交合并建议（不 merge、不 push）。
+- **排除范围**：不 merge、不 push；不执行训练机操作。
+- **前置依赖**：B0–B11。
+- **将修改的模块/文档**：本实施文档（收尾）。
+- **可观察完成结果**：全量测试通过；静态检查通过；reviewer 无未解决 P0/P1；所有 actionable findings 均已修复，或已记录理由、影响与验证限制；实施文档含完整提交映射；合并建议已提交用户。
+- **测试与验收命令**：`uv run pytest tests/ -q`；`git diff --check`；Markdown 链接检查；YAML/JSON 校验。
+- **失败路径/反向检查**：存在未关闭 P0/P1、测试回归、文档与代码不一致；影响已确认完成标准的未修复 P2 仍被接受；未记录理由/影响/验证限制而保留的 finding，均视为未完成。
+- **独立复核要求**：reviewer 对整个分支最终对抗式复核。
+- **回滚点**：B11 提交。
+- **风险与阻塞条件**：需用户重大取舍的 finding 未暂停请示、回归未修复。
+- **预计提交边界**：1 个提交（文档收尾）。
+- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+
+## 6. 状态跟踪与恢复
+
+### 6.1 当前 batch
+
+- **当前 batch**：B0（in_progress，文档起草进行中）。
+
+### 6.2 Batch 状态表
+
+| Batch | 状态 | 提交哈希 | 备注 |
+| --- | --- | --- | --- |
+| B0 | in_progress | — | B0 文档起草完成，待 executor 提交 |
+| B1 | pending | — | — |
+| B2 | pending | — | — |
+| B3 | pending | — | — |
+| B4 | pending | — | — |
+| B5 | pending | — | — |
+| B6 | pending | — | — |
+| B7 | pending | — | — |
+| B8 | pending | — | — |
+| B9 | pending | — | — |
+| B10 | pending | — | — |
+| B11 | pending | — | — |
+| B12 | pending | — | — |
+
+### 6.3 提交映射表（空表待填）
+
+| Batch | 提交哈希 | 提交信息摘要 | 涉及文件 |
+| --- | --- | --- | --- |
+| B0 | — | — | — |
+| B1 | — | — | — |
+| B2 | — | — | — |
+| B3 | — | — | — |
+| B4 | — | — | — |
+| B5 | — | — | — |
+| B6 | — | — | — |
+| B7 | — | — | — |
+| B8 | — | — | — |
+| B9 | — | — | — |
+| B10 | — | — | — |
+| B11 | — | — | — |
+| B12 | — | — | — |
+
+### 6.4 未解决问题
+
+- 无（当前无已确认未解决问题）。
+
+### 6.5 残余风险
+
+- 依赖安装（B1）可能引入版本冲突。
+- 文档整合与一致性复核（B11）与真实代码的一致性依赖 reviewer 逐条核查。
+- 本分支仅为核心基础设施，正式迁移（旧对象映射、训练机操作、真实数据/模型迁移、merge/push）需另行授权。
+
+### 6.6 下一步
+
+- 等待用户对 batch 计划的一次性批准后，执行 B0 基线固化。
+
+### 6.7 新接收者恢复工作所需最小上下文
+
+- 分支：`refactor/readable-version-control`，HEAD `cc59312c`，无提交。
+- 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（只读，不得修改）。
+- 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
+- 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
+- 测试基线：`682 passed, 12 skipped, 0 failed`。
+- 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
+- 提交信息约定：含"以上commit由codex生成。"。
+- 禁止：git 写操作（获批前）、merge、push、训练机操作、真实数据/模型迁移。
+
+## 7. 停止与升级条件
+
+（P1-4、P2-10 关闭标准）任一情况发生即暂停并报告用户，不继续推进：
+
+- 工作区归属不明修改（如 `stash@{0}` 被触碰或出现来源不明的未提交改动）；
+- 分支来源不明；
+- 设计/代码重大冲突（本文件与设计文档或真实代码不一致且无法裁决）；
+- 必须改旧链路（超出本轮"只读保留旧链路"边界）；
+- 需正式数据/训练机（真实数据、GPU、SSH、训练机操作）；
+- 未授权高风险操作（删除、覆盖、系统级依赖变更、merge、push）；
+- 明显回归（测试基线被破坏且无法解释）；
+- 无法闭环（某 batch 无法达到可观察完成结果）；
+- 系统级依赖变更（超出 B1 声明的 dvc/mlflow 范围）；
+- 秘密泄露风险；
+- reviewer P0/P1 未关闭；
+- batch 范围扩大（超出本轮核心基础设施边界）；
+- 无法保护现有工作（旧链路代码或正式产物面临被覆盖/删除风险）。
+
+**B12 关闭标准补充**：所有 actionable findings 必须修复；不修复的 finding 必须记录理由、影响与验证限制；影响已确认完成标准的 P2 不得接受；仅非阻断残余风险可经明确记录保留；需用户重大取舍时暂停并请示。

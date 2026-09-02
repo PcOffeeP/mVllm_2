@@ -110,6 +110,15 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **验收标准**：模块说明、imports、SCRIPTS.md 和流程文档一致；若重命名，验证既有调用与历史产物兼容性，不意外改变内容寻址身份。
 - **证据/限制**：[候选计划](../pipeline/v3_candidate_plan.py)、[候选物化](../pipeline/v3_candidate_media.py)、[重建入口](../pipeline/scripts/rebuild_data.py)；尚未实施澄清或重命名。
 
+### VERSION-CONTROL-MIGRATION — 建立可读版本控制核心基础设施
+
+- **状态/来源**：进行中；用户目标是在 `refactor/readable-version-control` 分支分批实现"可读版本控制架构"核心基础设施。
+- **当前阶段**：分支 `refactor/readable-version-control` 实施中（HEAD `cc59312c`，无提交）。
+- **本轮范围**：仅为核心基础设施（独立新入口 + 五类可读身份 + 数据封存 + DVC 七阶段 + Prompt 冻结 + MLflow 训练/测评记录 + manifest 单向导出 + Registry alias/物化 + 离线备份基础规则 + 文档体系 + 测试），非正式迁移。
+- **实施台账**：[docs/plans/2026-09-01-readable-version-control-implementation.md](plans/2026-09-01-readable-version-control-implementation.md)。
+- **总体验收标准摘要**：新入口独立可运行；关键失败路径被拒；文档与代码一致；未 merge/push。
+- **后续正式迁移**：旧对象映射、删除旧哈希代码、训练机操作、真实数据/模型迁移、merge/push 需单独授权。
+
 ## Skill 改进候选（待确认，不属于当前实现范围）
 
 ### SKILL-FEEDBACK — 用实际迭代案例评估 explain-project 的维护能力
