@@ -451,7 +451,7 @@ def seal_release(
     return release_dir
 
 
-def _seal_payload(release_dir: Path) -> None:
+def seal_payload(release_dir: Path) -> None:
     """递归去除 payload 写权限，保留受控更新通道。"""
     for child in release_dir.iterdir():
         name = child.name
@@ -462,6 +462,10 @@ def _seal_payload(release_dir: Path) -> None:
     # release.yaml/README.md 仍可通过自身写权限修改。
     current = release_dir.stat().st_mode
     release_dir.chmod(current & ~0o222)
+
+
+# 兼容别名：历史调用方使用私有名 _seal_payload。
+_seal_payload = seal_payload
 
 
 def _remove_write_permissions(path: Path) -> None:
