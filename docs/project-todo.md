@@ -133,6 +133,12 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 以下区分前序 Agent 的记录与本轮核查；不统一声称所有事项都经过本轮全量测试或远端复验。前两项由用户确认完成，本轮保留关闭状态；TEST-POLICY 本轮由用户裁决后关闭。
 
+### AGENT-INSTRUCTIONS — Codex/Pi 共用指令契约修正：已解决
+
+- **结果**：项目根 `AGENTS.md` 补建 Document Contract；新体系身份明确为 `<kind>-v<协议>-r<N>`，legacy ID/index 规则整体限定到 `pipeline/`、`finetune/` 旧入口；提交尾注按 Codex/Pi 真实执行平台区分；临时分支状态、SSH 明细、评测字段明细和 skill 起源历史从长期根指令移出或下沉，委派要求改为平台无关的结果约束。`ARCHITECTURE.md` 的三处身份简写同步修正。
+- **Pi 配套**：Pi 用户级 `SYSTEM.md` 增加项目约束传递字段和 Gate；Pi 用户级 `AGENTS.md` 的平台名称修正；新增真实可发现的 `visual_designer` 角色及配置。该角色可执行本地工具支持的 SVG、Mermaid、HTML/Canvas、程序化图表和位图处理，缺少专用生成能力时必须明确 blocked，不冒充完成。
+- **证据/限制**：`versioning` 身份测试、Markdown 链接检查、Document Contract/Decision Log 唯一性、Pi JSON/frontmatter 静态校验及 `git diff --check` 作为本轮验收；未连接训练机，未启动真实 Pi 模型会话，也未执行图片生成任务。Pi 用户级文件位于仓库外，不随项目 Git 提交同步到其他机器。
+
 ### RUNBOOK-CONTRACT — 数据处理运行手册初始契约化与版本解耦：已解决
 
 - **结果**：为 [数据处理运行手册](DATA_PROCESSING_RUNBOOK.md) 补建独立、精简的 Document Contract；标题和长期定位不再绑定特定链路版本，正文集中声明当前数据处理链路版本为 4.1，并保留候选计划使用 v3、审查与发布使用 v4.1 的真实契约边界。README 导航已同步。
@@ -180,6 +186,8 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **残余**：Streamlit 显示原始 ValueError traceback 是此前接受的呈现层风险；本轮未重新验收 UI。
 
 ## 最近维护记录
+
+- 2026-09-03 Agent 指令双平台修正：依据独立审查修正项目根 AGENTS 的版本身份、legacy 分域、提交归因、作用域和委派表述，并同步 ARCHITECTURE 与 project-guide；Pi 用户级编排增加项目约束传递 Gate 和可发现的 visual_designer。仅做本机文档/配置与静态验证，不连接训练机、不运行真实 Pi 子任务。
 
 - 2026-09-01 数据处理运行手册初始契约化：新增 Document Contract 和文档级 D001，将手册定位与 4.1 版本号解耦，在正文声明 4.1 为当前执行基线并同步 README 导航；接受 reviewer 关于 `review_decisions` resolver 例外的 P2，修正 Contract 后复审通过。仅修改文档，不连接训练机或执行数据处理。
 

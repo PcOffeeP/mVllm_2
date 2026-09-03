@@ -1,10 +1,26 @@
+<!-- DOCUMENT-CONTRACT
+Purpose: 规定所有在 mVllm_2 仓库工作的 Agent 必须遵守的项目级执行、安全、证据与交接约束。
+Scope: 双机边界、Git 与授权纪律、新旧体系路由、任务台账维护及权威文档核查；平台专属编排由各 Agent 的用户级配置负责。
+Must Preserve:
+- GPU、完整评测和长时间数据处理只在训练机执行；证据不足时不得用本机轻量检查冒充真实效果。
+- legacy 旧链路与 versioning 新体系必须分域，versioning 仅接受五类完整可读身份并 fail-closed。
+- Agent 提交必须准确标明实际执行平台；push、merge 和远程高风险操作必须遵守明确授权边界。
+- docs/project-todo.md 是唯一项目任务台账，状态、证据、依赖和交接必须可追溯。
+Non-goals:
+- 不保存临时分支、HEAD、当前任务状态或实施批次。
+- 不展开 SSH、评测指标或其他已有权威文档负责的低频操作细节。
+- 不规定 Codex、Pi 或其他平台内部的 subagent 编排实现。
+-->
+
 # Project Agent Instructions
 
 关联文档：
 
 - [docs/project-todo.md](docs/project-todo.md)：唯一项目任务台账与下一步入口。
+- [docs/project-guide.md](docs/project-guide.md)：项目流程、双机角色与训练机连接信息。
 - [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)
 - [finetune/README.md](finetune/README.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
 - [README.md](README.md)
 
 ## 双机工作机制
@@ -20,51 +36,40 @@
 
 - 两台机器是同一项目的独立 Git 工作区。操作或同步前分别检查分支、`HEAD`、`git status` 和两端独有提交，禁止覆盖未提交修改或未经检查强制对齐。
 - 每完成一个可独立验证步骤，在实际产出机器完成必要校验并原子化 `git commit`；提交前检查范围、`git diff --check` 和必要测试。跨机步骤分别提交代码/流程与轻量 manifest、哈希或报告，大型及敏感产物不入 Git。
-- 默认禁止 `git push`；仅在用户明确授权并确认两端状态、提交内容及目标远端分支后推送，不默认强制推送。
+- 默认禁止 `git push` / `git merge`；仅在用户明确授权并确认两端状态、提交内容及目标远端分支后执行，不默认强制推送或合并。
 
 ## 提交信息约定
 
-- 所有 Agent 创建的提交，提交信息必须包含单独一行：`以上commit由codex生成。`
+- Agent 创建的提交必须以单独一行准确标明实际执行平台：Codex 使用 `以上commit由codex生成。`，Pi 使用 `以上commit由Pi生成。`；禁止使用其他 Agent 的名称进行归因。
 - 禁止修改全局 Git 身份配置（user.name / user.email 等）。
-- 默认禁止 `git push` / `git merge`；仅存在用户明确授权并确认两端状态、提交内容及目标分支后执行，不默认强制推送或合并。
 
-## 训练机 SSH 连接
+## 训练机操作
 
-- SSH 目标：`100.70.83.68`
-- SSH 用户：`liuyang`
-- SSH 端口：`22`
-- 系统主机名：`dell-Precision-3660`
-- 远程用户目录：`/home/liuyang`
-- 远程项目目录：`/home/liuyang/文档/mVllm_2`
-- 本机 `~/.ssh/config` 已配置上述目标和用户；认证使用本机已有的 OpenSSH 密钥或 SSH agent，不在仓库中保存私钥、口令或其他凭据。
-- 交互连接命令：`ssh 100.70.83.68`
-- 在项目目录执行单条命令：`ssh 100.70.83.68 "cd '/home/liuyang/文档/mVllm_2' && <command>"`
-- 需要训练、GPU 推理、完整评测或长时间数据处理时，通过该 SSH 连接在训练机执行；连接前先明确命令、输入、输出位置和预计资源占用。
+- 连接信息、远程项目路径和命令格式以 [docs/project-guide.md](docs/project-guide.md#双机工作流) 为准；认证只使用本机已有的 OpenSSH 密钥或 SSH agent，不在仓库中保存私钥、口令或其他凭据。
+- 需要训练、GPU 推理、完整评测或长时间数据处理时，通过 SSH 在训练机执行；连接前先明确命令、输入、输出位置和预计资源占用。
 - 默认只操作远程项目目录及明确指定的训练产物。删除或覆盖远程文件、修改系统配置、安装系统级依赖、停止已有任务等高风险操作，必须先获得用户明确授权。
 
 ## 训练结果验收口径
 
 - `train_loss` / `eval_loss` 下降只能证明训练目标收敛，不能单独证明模型任务效果好。
-- 按被评模型的冻结契约验收。当前 V4.1 至少查看 JSON/contract 合法率、`clip_state` / `fracture_mechanism` / `fracture_site` / `special_case` 正确率、各状态召回、joint correct、典型预测与失败样例；历史契约的 `has_fracture`、type/location、interval/time 指标仅在其契约要求时使用，不混用口径。
+- 按被评模型的冻结契约和 [finetune/README.md](finetune/README.md) 中的严格评测口径验收；不得在不同契约之间混用字段或指标。
 - 对 LoRA/merged 模型做结论前，应确认实际加载的模型路径、checkpoint step、adapter 文件、metadata 和评测结果彼此一致。
 - 如果训练目录中的 metadata 指向旧实验、缺少 adapter/checkpoint，或评测结果无法对应到当前模型，应优先指出产物链路问题，而不是给出正向效果结论。
 
 ## 新旧体系边界
 
 - 旧链路：`pipeline/`、`finetune/` 下的现有入口为尚未迁移的 legacy 路径。其既有规则（含下文"命名规范"中标注为 legacy 的条款）维持原样，不得切换、删除、重构或批量改名，直至正式迁移完成。
-- 新体系：入口为顶层包 `versioning/`，启动方式 `python -m versioning`。本轮在分支 `refactor/readable-version-control` 上建设核心基础设施。
+- 新体系入口为顶层包 `versioning/`，启动方式为 `python -m versioning`；当前实施状态见 [可读版本控制实施台账](docs/plans/2026-09-01-readable-version-control-implementation.md)。
 
 ## 新体系（versioning）规则
 
-- versioning 入口必须使用五类可读身份：data / prompt / train / model / eval 的 `v<协议>-r<N>` 族完整版本名。
+- versioning 入口必须使用 `<kind>-v<协议>-r<N>` 完整版本名，其中 `kind` 仅限 data / prompt / train / model / eval。
 - 新体系内禁止哈希版本身份、集合 `index.json`、`LATEST` 指针、短哈希前缀解析以及隐式"当前版本"选择。
 - 缺少必要参数或引用不合法时立即停止（fail-closed），不自动回退或猜测。
 
-## 命名规范
+## 仓库级命名规范
 
 总原则：会"被修改"的东西不带版本号；只"新增不修改"的不可变产物必须带版本号/标识。历史版本一律从 git 历史获取，禁止 `_old`/`_v2`/`_bak` 类后缀。
-
-> legacy 适用范围：下文第 3 条中的内容哈希 ID 格式，以及第 4 条的集合 `index.json`、`LATEST` 指针与短哈希前缀解析条款，仅适用于 legacy 旧链路（`pipeline/`、`finetune/` 现有入口），直至正式迁移完成；新体系 `versioning/` 入口不得使用这些机制，必须改用"新旧体系边界"所述的五类可读版本身份。
 
 1. 脚本命名：`<阶段前缀>_<动作>_<对象>.py`，阶段前缀对应项目主流程：
    - `source_`（初始数据划分）、`roi_`（ROI 标注/冻结/物化）、`subvideo_`（子视频生成）、`review_`（人工审查）、`release_`（数据发布）、`train_`（Prompt 准备与训练）、`eval_`（测评）、`serve_`（模型发布与推理）；
@@ -73,13 +78,18 @@
    - 被取代的脚本直接删除（git 历史即归档）；
    - 每个脚本目录配同目录 SCRIPTS.md 索引。
 2. 分支命名：`<类型>/<主题>[-<补充>]`，全小写连字符；类型限定：feat/ fix/ refactor/ data/ exp/ docs/ chore/；数据轮次用 `data/<yyyymm>-round<N>`（日期+轮次，不挂协议版本）；main 是唯一长期分支，其余短命合并即删。
-3. 不可变产物 ID（沿用现有格式）：
+
+## Legacy 不可变产物与索引规则
+
+本节仅适用于 `pipeline/`、`finetune/` 下尚未迁移的现有入口，直至正式迁移完成；不得用于 `versioning/`。
+
+1. 不可变产物 ID（沿用现有格式）：
    - 数据 release：`v<协议版本>-<内容哈希>`（如 v4.1.0-ecb5aeb9657c）
    - 契约：`tensile_vlm_v<版本>.json`
    - Prompt revision：`v<协议>-<描述>-r<N>`
    - 模型 release：`v<协议>-<描述>-fold<N>-r<N>`
    - 实验：`v<协议>-<主题>-v<N>-seed<N>`
-4. 不可变产物集合目录必须配 `index.json`（由生成脚本自动维护）；追加索引后原子写入 `LATEST`，记录完整产物 ID。解析顺序为 `None（读 LATEST） → 完整 ID → 短哈希前缀`；失败时提示“先运行生成步骤或显式传入产物 ID”。`build_artifact_index.py` 从各集合索引生成全局总览。同一集合仅允许一个写入进程，避免并发覆盖；LATEST 表示最近一次物化或复用触碰的产物。`review_decisions` 目录层级为 queue_id/workspace-hash/batch，索引可解析，但 resolver 不能按 ID 直接解析路径，调用方不得假定支持。具体覆盖范围以实现为准，已修复缺陷与待办状态统一记录在 TODO，避免在本文件重复维护。
+2. 不可变产物集合目录必须配 `index.json`（由生成脚本自动维护）；追加索引后原子写入 `LATEST`，记录完整产物 ID。解析顺序为 `None（读 LATEST） → 完整 ID → 短哈希前缀`；失败时提示“先运行生成步骤或显式传入产物 ID”。`build_artifact_index.py` 从各集合索引生成全局总览。同一集合仅允许一个写入进程，避免并发覆盖；LATEST 表示最近一次物化或复用触碰的产物。`review_decisions` 目录层级为 queue_id/workspace-hash/batch，索引可解析，但 resolver 不能按 ID 直接解析路径，调用方不得假定支持。具体覆盖范围以实现为准，已修复缺陷与待办状态统一记录在 TODO，避免在本文件重复维护。
 
 ## TODO 执行与维护
 
@@ -90,11 +100,18 @@
 3. **迭代发现**：执行中发现与目标相关且有证据的新问题，先合并重复项，否则新建标识并关联发现它的任务；不确定的问题放“待确认”。阻塞当前验收的写成前置，其余排队，不静默扩大当前实现范围。记录新任务不等于获得重训、测试集使用或其他受限操作的授权。
 4. **完成与交接**：逐项核对验收标准，记录变更、执行机器/代码版本、验证命令与结果、证据路径、独立审查结论（适用时）和残余风险，再更新状态及下一步。实现完成但缺真实环境证据时保留未关闭状态；误报可凭调查证据关闭，取消须注明用户决定。引用前序 Agent 的验证必须注明来源，不写成本轮复跑。提交版本已知后及时更新；同次提交的记录可用 `git log -- <相关文件>` 追溯，禁止拿问题发现版本冒充修复版本。
 5. **同步与裁决**：任务拆分后保留原目标和父子依赖，完成子任务不自动完成上层验收。同步执行顺序表、条目与受影响文档，已关闭项保留简短结论和证据，详细历史查 Git。业务阈值、测试集复用等需要用户决定时提出具体问题；能独立推进的准备工作继续做。审查、提交及跨机操作沿用本文件其他规则，不另建重复流程。
-6. **Skill 反馈**：本项目 TODO 起源于 Pi Agent 的 `explain-project` skill。当前“发现—调查—执行—验证—更新—再发现”的循环是项目规则，不宣称是该 skill 已有工作流。实际使用中暴露的模板/证据/状态管理问题，记录到 TODO 的“Skill 改进候选”，写明案例、现有规则、候选调整与适用边界；只有用户明确要求修改 skill 时，才核对其当时版本并针对性改进，不能把项目特例直接写成通用规则。
 
 ## 文档与审查纪律
 
 1. 权威操作类文档（如 RUNBOOK、部署手册）的新建或整体重写，必须执行两段式：撰写 → 独立核查（由不同 Agent 对照实际代码逐条验证），不得仅凭作者自验入库。
-2. 派发任务时，上下文分为「背景事实」与「验收标准」两个区域；结构性、完整性要求必须写入验收标准，不得只放在背景事实中。
+2. 派发任务时必须明确区分已确认的背景事实与验收标准；结构性、完整性要求必须写入验收标准，不得只作为背景说明。
 3. 重写/新建流程类文档的验收标准必须包含链路完整性检查：目标流程每个环节的入口脚本与产物在文档中可追溯（无"从天而降"的参数或产物）。
 4. 表述规范：在各种文档中或向用户表述时，禁止使用「节点几」这类内部抽象表达（如「节点5」「节点9」）；应直接使用模型训练整个链路中对应的流程名称，例如人工审查、数据发布、模型训练。
+
+<!-- DECISION-LOG
+D001 — 仓库级 Instruction 同时服务 Codex 与 Pi，提交尾注按真实执行平台区分。
+Why: 固定写成 Codex 会错误归因 Pi 的提交，破坏提交历史的来源审计。
+
+D002 — 新旧版本身份规则在根 Instruction 中显式分域，legacy 细节不得用于 versioning。
+Why: 两套入口迁移期间并存，而 versioning 的解析器只接受 `<kind>-v<协议>-r<N>` 完整身份。
+-->

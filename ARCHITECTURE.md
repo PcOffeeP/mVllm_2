@@ -3,7 +3,7 @@ Purpose: 描述 mVllm_2 仓库当前真实系统组成与边界，作为仓库�
 Scope: 系统边界与双机角色、现役 legacy 链路指向、在建新体系职责划分与当前实现范围、未迁移 legacy 边界、文档导航；不展开运行细节。
 Must Preserve:
 - 只描述当前真实状态；在建目标一律标注"在建"，禁止把目标设计写成已实现。
-- 新体系入口 `versioning/` 使用五类可读身份（data/prompt/train/model/eval `v<协议>-r<N>` 族）；哈希 `index.json`/`LATEST`/短哈希前缀仅属 legacy 旧链路。
+- 新体系入口 `versioning/` 使用五类 `<kind>-v<协议>-r<N>` 完整可读身份，其中 `kind` 为 data/prompt/train/model/eval；哈希 `index.json`/`LATEST`/短哈希前缀仅属 legacy 旧链路。
 - 双机边界：训练/推理/正式版本写入在训练机，本机只做开发、轻量验证与文档；本机产物视为从训练机同步的结果。
 Non-goals:
 - 不重复 README/RUNBOOK 的运行细节、命令与步骤。
@@ -45,14 +45,14 @@ Non-goals:
 可读版本控制新体系正在 `refactor/readable-version-control` 分支逐步落地，当前均为目标描述：
 
 - **入口（在建）**：顶层包 `versioning/`，统一启动方式 `python -m versioning`。
-- **身份（在建）**：五类可读身份 data / prompt / train / model / eval 的 `v<协议>-r<N>` 族完整版本名；新体系不使用哈希 ID、集合 `index.json`、`LATEST` 指针、短哈希前缀解析或隐式当前版本选择。
+- **身份（在建）**：五类 `<kind>-v<协议>-r<N>` 完整版本名，其中 `kind` 为 data / prompt / train / model / eval；新体系不使用哈希 ID、集合 `index.json`、`LATEST` 指针、短哈希前缀解析或隐式当前版本选择。
 - **职责划分（在建）**：
   - Git：源码、Prompt、配置、文档、DVC 轻量文件与 MLflow 导出的 manifest；
   - DVC：数据 pipeline 与数据产物；
   - MLflow：训练运行、实际参数、模型、指标、测评与运行状态。
   - **显式版本纪律（全体系规则，设计 §9/§11.6）**：面向身份写入与状态晋级的关键操作（如 `create_prompt`、`stage_release`、`run_release`）一律要求显式传入完整版本号，缺省/猜测即 fail-closed 拒绝；`suggest_next_id` 仅为建议函数，供操作者取用后再显式传入，不自动采用。
 - **已实现能力（B2，身份与状态机）**：
-  - **可读身份模块 `versioning/ids.py`**：五类可读身份 data/prompt/train/model/eval 的 `v<协议>-r<N>` 完整版本名解析、校验与构造；严格拒绝 latest、短前缀、后缀与隐式选择，`\Z` 锚定禁止尾随换行等额外字符。
+  - **可读身份模块 `versioning/ids.py`**：五类 `<kind>-v<协议>-r<N>` 完整版本名的解析、校验与构造，其中 `kind` 为 data/prompt/train/model/eval；严格拒绝 latest、短前缀、后缀与隐式选择，`\Z` 锚定禁止尾随换行等额外字符。
   - **状态机模块 `versioning/state.py`**：`WorkflowState` 六态（prepared/running/partial/failed/completed/archived）合法转换表；`RunStatus` 与 workflow_state 固定组合校验；`RecordValidity`（valid/invalid）不可逆（invalid 不得复活）；`DataStatus` 三态（active/superseded/invalid）与引用语义（仅 active 可建新引用，invalid 禁止一切引用）。
 - **已实现能力（B3，数据封存与 holdout 安全）**：
   - **数据 release 生命周期 `versioning/data_release.py`**：数据版本 working→release_staging→sealed 生命周期与 `release.yaml` schema；seal 原子封存并强制不可变（payload 与身份字段只读、移除写权限），非法重用/覆盖/状态逆转 fail-closed；仅受控修改 `status` 与可选 `replacement`；status 语义（`active` 可建新训练/测评引用、`superseded` 仅恢复历史引用、`invalid` 禁止一切新引用）；训练引用门校验 `validate_training_reference`。

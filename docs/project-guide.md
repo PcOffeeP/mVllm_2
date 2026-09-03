@@ -258,6 +258,14 @@ Prompt revision 注册 + 固定 Prompt 训练集构建
 - 训练机（Linux/GPU，SSH 100.70.83.68）：Conda，负责训练、GPU 推理、完整评测、重数据处理。
 - 本机看到的大量训练产物是从训练机同步过来的结果，不应默认本机能复现实验。
 
+训练机连接信息：
+
+- SSH 用户与端口：`liuyang@100.70.83.68:22`，系统主机名 `dell-Precision-3660`。
+- 远程用户目录：`/home/liuyang`；远程项目目录：`/home/liuyang/文档/mVllm_2`。
+- 交互连接：`ssh 100.70.83.68`。
+- 在远程项目目录执行单条命令：`ssh 100.70.83.68 "cd '/home/liuyang/文档/mVllm_2' && <command>"`。
+- 本机 SSH config 已配置目标和用户；认证只使用现有 OpenSSH 密钥或 SSH agent，不在仓库中保存凭据。
+
 ### workspace 是产物层
 
 `workspace/` 被 Git 忽略，存放数据、实验运行、模型资产。代码与轻量 manifest 入 Git，大型产物与一次性评测记录不入 Git。
