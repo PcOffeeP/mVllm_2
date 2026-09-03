@@ -4,7 +4,7 @@
 >
 > 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。
 >
-> 最近更新时间：2026-09-02（B8 完成回填——Model Registry、物化与晋级门实现并全绿，提交哈希待 B8 提交后补录；B9 进入 in_progress；回归对照基线更新至 2009/11/0；B6/B7 提交哈希补录）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`，B2 提交 `30519042`，B3 提交 `9de8acbb`，B4 提交 `ae0bcef0`，B5 提交 `345510a6`，B6 提交 `f43d56c6`、`dd992f01`，B7 提交 `3fdb920c`、`0441d385`，显式版本纪律修正提交 `6b0d53bf`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
+> 最近更新时间：2026-09-03（B9 完成回填——离线备份 catalog 与恢复实现并全绿，提交哈希待 B9 提交后补录；B10 进入 in_progress；回归对照基线更新至 2043/11/0；B8 提交哈希补录 c1f515d7+a350c8cc）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`，B2 提交 `30519042`，B3 提交 `9de8acbb`，B4 提交 `ae0bcef0`，B5 提交 `345510a6`，B6 提交 `f43d56c6`、`dd992f01`，B7 提交 `3fdb920c`、`0441d385`，B8 提交 `c1f515d7`、`a350c8cc`，显式版本纪律修正提交 `6b0d53bf`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
 
 ## 1. 基线事实
 
@@ -12,7 +12,7 @@
 
 - **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control`，当前 HEAD `30519042`（B2），已有提交 `a5bfca1b`（B0-1）、`a37f4acc`（B0-2 文档基座）、`6482bed3`（B1 依赖基座）、`30519042`（B2 身份与状态机）。
 - **修改前测试基线**：`uv run pytest tests/ -q` → `682 passed, 12 skipped, 0 failed`。12 个 skip 全部为 fastapi 未安装 / V3 fixtures / V4.1 workspace 数据缺失，属稳定已知跳过。
-- **当前回归对照基线（B8 后）**：`uv run pytest tests/ -q` → `2009 passed, 11 skipped, 0 failed`（含 P3-1 冲突残留回归用例，已随 B4 提交入库）。本分支后续各 batch 以此为回归对照基线。
+- **当前回归对照基线（B9 后）**：`uv run pytest tests/ -q` → `2043 passed, 11 skipped, 0 failed`（含 P3-1 冲突残留回归用例，已随 B4 提交入库）。本分支后续各 batch 以此为回归对照基线。
 - **依赖现状**：`pyproject.toml` + `uv.lock`（uv 管理，Python 3.11.14）；`dvc`、`mlflow` 均未声明、未安装；`requirements.txt`（训练机 Conda）亦无二者。
 - **文档现状**：项目根无 `ARCHITECTURE.md`；`docs/adr/` 不存在；`docs/plans/` 仅设计文档（当前未跟踪，B0 纳入跟踪）。
 - **需保护**：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读保留。
@@ -273,8 +273,8 @@
 
 ### B9 — 离线备份 catalog 与恢复规则
 
-- **状态**：in_progress
-- **当前动作**：B9 进入 in_progress（当前 batch）。实施顺序：先 backup.py（`offline_backup_scope` 消费、源集合按历史最高范围确定、复制验证），再 backup_catalog.yaml schema + catalog 原子维护 + 恢复规则；随后同步台账与架构文档。
+- **状态**：completed（提交哈希待补录——B9 提交后由主 Agent 补录或下一批补录）
+- **当前动作**：B9 已完成并回填。`versioning/backup.py`（enumerate_backup_sources scope tag 驱动、create_backup 真实复制 + 落盘前全量校验含 SQLite integrity_check + 差异修复 + 原子替换 + prev 快照、load/verify/restore 零副作用 + 目标冲突拒绝 + 灾难恢复 + 封存权限重放）与 `versioning/data_release.py`（seal_payload 提升公开 API，保留 `_seal_payload` 别名）已实现；`tests/versioning/test_backup.py` 34 例全绿；全量 `2043 passed / 11 skipped / 0 failed`。审查两轮（1 P1 + 2 P2 + 5 P3）全部修复并补 8 个回归用例（突变验证证明敏感），闭环。
 - **目标**：实现离线备份的 backup_catalog 管理、复制验证与恢复规则（`offline_backup_scope` 状态已前移至 B8，本批只消费它）。
 - **包含范围**：
   - `versioning/backup.py`：`offline_backup_scope`（B8 前移的状态及单向规则）确定源集合 = 全部正式数据 + 带范围 tag 的模型，按历史最高范围确定；执行复制并验证。
@@ -292,11 +292,11 @@
 - **回滚点**：B8 提交。
 - **风险与阻塞条件**：backup_catalog schema 与设计文档 §2.11 不一致。
 - **预计提交边界**：1 个提交。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：修改文件清单：`versioning/backup.py`、`versioning/data_release.py`（seal_payload 公开化）、`tests/versioning/test_backup.py`；验证结果：`test_backup.py` 34 例全绿，全量 `uv run pytest tests/ -q` → `2043 passed / 11 skipped / 0 failed`；审查结论：两轮审查（1 P1 + 2 P2 + 5 P3）全部修复并补 8 个回归用例（突变验证证明敏感），闭环；提交哈希：待补录（B9 提交后由主 Agent 补录或下一批补录）；残余风险：无新增。
 
 ### B10 — 独立入口与端到端闭环
 
-- **状态**：pending
+- **状态**：in_progress
 - **目标**：建立统一 CLI 入口并跑通端到端 fixture 闭环。
 - **包含范围**：
   - **整合并扩展统一 CLI**（在 B4 的 `versioning/__main__.py` / `cli.py` 最小 `data` 子命令基础上整合训练/测评/物化/备份全部子命令）：data/prompt/train/eval/model/backup 子命令，显式版本参数，缺参即停并提示。
@@ -358,7 +358,7 @@
 
 ### 6.1 当前 batch
 
-- **当前 batch**：B9（in_progress，离线备份 catalog 与恢复规则）。
+- **当前 batch**：B10（in_progress，独立入口与端到端闭环）。
 
 ### 6.2 Batch 状态表
 
@@ -372,9 +372,9 @@
 | B5 | completed | 345510a6 | B5 Prompt 版本与冻结完成（显式版本纪律修正提交 6b0d53bf 归入 B4/B5 审查闭环） |
 | B6 | completed | f43d56c6, dd992f01 | B6 MLflow 训练记录完成 |
 | B7 | completed | 3fdb920c, 0441d385 | B7 MLflow 测评与 manifest 单向导出完成 |
-| B8 | completed | 待补录 | B8 Registry + 晋级门 + 物化完成（含 offline_backup_scope，提交哈希待补录） |
-| B9 | in_progress | — | 实施 B9 离线备份 catalog 与恢复规则 |
-| B10 | pending | — | — |
+| B8 | completed | c1f515d7, a350c8cc | B8 Registry + 晋级门 + 物化完成（含 offline_backup_scope） |
+| B9 | completed | 待补录 | B9 离线备份 catalog 与恢复完成（提交哈希待补录） |
+| B10 | in_progress | — | 实施 B10 独立入口与端到端闭环 |
 | B11 | pending | — | — |
 | B12 | pending | — | — |
 
@@ -394,8 +394,9 @@
 | B6 | dd992f01 | docs: 同步 B6 MLflow 训练记录文档与实施台账 | 文档同步 |
 | B7 | 3fdb920c | feat(versioning): MLflow 测评与 manifest 单向导出 | versioning/mlflow_eval.py、versioning/manifest.py、tests/versioning/test_mlflow_eval.py、test_manifest.py |
 | B7 | 0441d385 | docs: 同步 B7 MLflow 测评与 manifest 文档及实施台账 | 文档同步 |
-| B8 | 待补录 | 待 B8 提交后补录 | versioning/registry.py、tests/versioning/test_registry.py、test_materialize.py |
-| B9 | — | — | — |
+| B8 | c1f515d7 | feat(versioning): Model Registry、晋级门与物化 | versioning/registry.py、tests/versioning/test_registry.py、test_materialize.py |
+| B8 | a350c8cc | docs: 同步 B8 Registry/晋级门/物化文档及实施台账 | 文档同步 |
+| B9 | 待补录 | 待 B9 提交后补录 | versioning/backup.py、versioning/data_release.py、tests/versioning/test_backup.py |
 | B10 | — | — | — |
 | B11 | — | — | — |
 | B12 | — | — | — |
@@ -415,19 +416,19 @@
 
 ### 6.6 下一步
 
-- 继续执行并完成 B9（离线备份 catalog 与恢复规则）。
+- 继续执行并完成 B10（独立入口与端到端闭环）。
 
 ### 6.7 新接收者恢复工作所需最小上下文
 
-- 分支：`refactor/readable-version-control`，HEAD `0441d385`（B6 实现 `f43d56c6`、B6 文档/台账同步 `dd992f01`、B7 实现 `3fdb920c`、B7 文档/台账同步 `0441d385`、B3 `9de8acbb`、B4 `ae0bcef0`、B5 `345510a6` 均已回填；B8 实现提交哈希待补录，HEAD 待对应提交后更新）。
+- 分支：`refactor/readable-version-control`，HEAD `a350c8cc`（B6 实现 `f43d56c6`、B6 文档/台账同步 `dd992f01`、B7 实现 `3fdb920c`、B7 文档/台账同步 `0441d385`、B8 实现 `c1f515d7`、B8 文档/台账同步 `a350c8cc`、B3 `9de8acbb`、B4 `ae0bcef0`、B5 `345510a6` 均已回填；B9 实现提交哈希待补录，HEAD 待对应提交后更新）。
 - 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（只读，不得修改）。
 - 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
 - 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
-- 测试基线（B8 后回归对照）：`2009 passed, 11 skipped, 0 failed`（含 P3-1 冲突残留回归用例，已随 B4 提交入库）。
+- 测试基线（B9 后回归对照）：`2043 passed, 11 skipped, 0 failed`（含 P3-1 冲突残留回归用例，已随 B4 提交入库）。
 - 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
 - 提交信息约定：含"以上commit由codex生成。"。
 - 禁止：git 写操作（获批前）、merge、push、训练机操作、真实数据/模型迁移。
-- 下一动作（B9）：实现 `versioning/backup.py`（`offline_backup_scope` 消费、源集合按历史最高范围确定、复制验证）+ `backup_catalog.yaml` schema（对象 ID/类型/来源/时间/范围/verified、catalog 存在但文件缺失不判完成、可从实际对象重建、备份成功不删源）+ catalog 原子维护（临时文件写入+校验后原子替换并保留上一份可读快照、每次核对全部既有对象）+ 恢复规则（SQLite 一致性快照备份、SQLite 与 artifact store 联合恢复、恢复后验证父子 Run/指标/Model Version/alias/artifact）；随后同步 B9 台账与架构文档。
+- 下一动作（B10）：整合并扩展统一 CLI（在 B4 的 `versioning/__main__.py` / `cli.py` 最小 `data` 子命令基础上整合 data/prompt/train/eval/model/backup 全部子命令，显式版本参数、缺参即停并提示）；holdout 鉴权接线（B3 一次性 claim / pre_registration 与 B7 eval 授权校验、训练 fail-closed 接线到 data/train/eval 子命令）；端到端 fixture 测试（data release→prompt 冻结→train 记录→model 注册→eval→manifest 导出→backup catalog 全链路临时环境闭环）+ holdout 反向端到端测试；随后同步 B10 台账与架构文档。
 
 ## 7. 停止与升级条件
 

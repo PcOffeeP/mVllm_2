@@ -72,6 +72,9 @@ Non-goals:
   - **`versioning/manifest.py`**（492 行）：四段聚合 manifest（data/prompt/train/eval）**单向导出**证据文件与发布门；build 先定身份（ID 先行）再逐段（data→prompt→train→eval）加门并校验跨段链路一致；validate 严格键集合 + 值域 + 跨段一致性；export 幂等重导或冲突拒绝，且单向（不反向修改任何源对象）。
 - **已实现能力（B8，Model Registry、物化与晋级门）**：
   - **`versioning/registry.py`**（636 行）：唯一 Registered Model `mVllm2` 的 Model Registry 与晋级门。`register_model` 按 parse→冲突→train 晋级门→eval passed 门→关联校验→`create_model_version` 绑定 tags 的顺序执行，注册不设 alias；alias 唯一路由（candidate/production，无隐式最新，latest/prod 域门先拒）；`approve_model_for_production`（production_approved + 门在线复验 + eval 关联校验）；`offline_backup_scope` 单向粘性（缺失→adapter→production_bundle，不得降级/清除）；`mark_model_invalid` 单向（invalid 不可复活）；`materialize_model`（`models/<model_id>/{artifacts,materialized.yaml}`，幂等 / 分歧拒覆盖 / 单向 / 确定性）。
+- **已实现能力（B9，离线备份 catalog 与恢复）**：
+  - **`versioning/backup.py`**：离线备份 catalog 与恢复。`enumerate_backup_sources`（scope tag 驱动、物化目录为模型备份源、fail-closed）；`create_backup`（真实复制 + 落盘前全量校验含 SQLite integrity_check + 差异修复 + 原子替换 + prev 快照）；`load_backup_catalog` / `verify_backup` / `restore_backup`（零副作用、目标冲突拒绝、灾难恢复 + 封存权限重放）。
+  - **`versioning/data_release.py`**：`seal_payload` 提升为公开 API（保留 `_seal_payload` 兼容别名）。
 
 ## 5. 当前实现范围
 
@@ -82,7 +85,8 @@ Non-goals:
 - **B6 完成（MLflow 训练记录）**：`versioning/mlflow_train.py`（train 父 Run + fold0/1/2 嵌套子 Run、workflow_state↔RunStatus 固定组合、受控恢复、completed 晋级门、invalid 下游拒绝、读取 fail-closed、store 句柄双隔离）已实现；新增 `test_mlflow_train.py` 137 例全绿；`tests/versioning/` 共 760 例全绿，全量 `1443 passed / 11 skipped / 0 failed`。
 - **B7 完成（MLflow 测评与 manifest 单向导出）**：`versioning/mlflow_eval.py`（eval 独立父 Run、显式 eval_id、五引用 tags、holdout 鉴权 verify 不消费、三 scope fold 绑定、aggregate 输入集合==观测集合、结论门 invalid 优先、读取 fail-closed 注入防护、受控恢复原 Run ID）与 `versioning/manifest.py`（四段单向导出：build ID 先行→data/prompt/train/eval 门+链路一致、validate 严格键集合+值域+跨段、export 幂等+冲突+单向）已实现；新增 `test_mlflow_eval.py` 223 例 + `test_manifest.py` 200 例全绿；`tests/versioning/` 共 1183 例全绿，全量 `1866 passed / 11 skipped / 0 failed`。
 - **B8 完成（Model Registry、物化与晋级门）**：`versioning/registry.py`（唯一 Registered Model `mVllm2`、register_model 晋级门链、alias 唯一路由、approve 门在线复验、offline_backup_scope 单向粘性、mark_model_invalid 单向、materialize_model 原子物化）已实现；新增 `test_registry.py` + `test_materialize.py` 共 143 例全绿；全量 `2009 passed / 11 skipped / 0 failed`。
-- §4 其余内容（B9 起各批次）仍为在建目标，不作已实现理解。
+- **B9 完成（离线备份 catalog 与恢复）**：`versioning/backup.py`（enumerate_backup_sources scope tag 驱动、create_backup 真实复制 + 落盘前全量校验含 SQLite integrity_check + 差异修复 + 原子替换 + prev 快照、load/verify/restore 零副作用 + 目标冲突拒绝 + 灾难恢复 + 封存权限重放）与 `versioning/data_release.py`（seal_payload 提升公开 API，保留别名）已实现；新增 `test_backup.py` 34 例全绿；全量 `2043 passed / 11 skipped / 0 failed`。
+- §4 其余内容（B10 起各批次）仍为在建目标，不作已实现理解。
 
 ## 6. 尚未迁移的 legacy 边界
 
