@@ -67,6 +67,9 @@ Non-goals:
   - **`versioning/prompts.py`**：Prompt 版本注册、不可变性与训练 input 冻结副本——正式 Prompt 单一权威位置 `records/prompts/prompt-v<协议>-r<N>.yaml`（Git 跟踪、不可覆盖）；训练时仅从该位置冻结复制到 `workspace/runs/train-v.../input/prompt.yaml`，不形成第二套正式位置、不扫描历史目录猜测当前 Prompt、单一状态权威；冻结副本与源结构不一致 / 篡改检测 fail-closed。
 - **已实现能力（B6，MLflow 训练记录）**：
   - **`versioning/mlflow_train.py`**：train-v 父 Run + fold0/1/2 嵌套子 Run（`mlflow.parentRunId`）的 MLflow 训练记录模型；父 Run 记录共同输入 tags（data_version/prompt_version/git_commit/base_model）与 config params，三折汇总指标写父 Run；`workflow_state`↔原生 RunStatus 固定组合（委托 `versioning.state`）；受控恢复（FAILED/KILLED 子 Run 经原 Run ID 恢复 RUNNING，不新建）；completed 晋级门（全部必需 fold FINISHED + summary_complete）；`record_validity=invalid` 下游拒绝（`validate_train_for_promotion`）；读取 fail-closed（篡改 workflow_state/run_status 组合或 record_validity 值域拒绝）；store 句柄寻址双隔离（`TrainRecordStore` 独立 tracking_uri，不依赖全局 tracking 状态）。
+- **已实现能力（B7，MLflow 测评与 manifest 单向导出）**：
+  - **`versioning/mlflow_eval.py`**（865 行）：eval-v 独立父 Run（独立实验，D023）的 MLflow 测评记录模型；显式 `eval_id` 定位；父 Run 记录五引用 tags（model_id / model_version_number / data_version / config / git_commit）与 scope/outcome/summary 等标签；**holdout 鉴权 fail-closed**（verify 语义不消费授权 claim）；三种 scope（single_fold / cross_validation / full）fold 绑定校验，cross_validation 严格绑定 fold0/1/2 子 Run（每 fold 对应 model_artifact/data_split/sample_count/records/failures），缺失/重复/错配/额外 fold 及 aggregate 输入集合≠声明 fold 集合均拒绝封存；`record_validity=invalid` 下游拒绝（结论门 invalid 优先）；读取 fail-closed（注入防护，严格校验父/子 Run 标签组合与值域）；受控恢复保留原 Run ID 不新建。
+  - **`versioning/manifest.py`**（492 行）：四段聚合 manifest（data/prompt/train/eval）**单向导出**证据文件与发布门；build 先定身份（ID 先行）再逐段（data→prompt→train→eval）加门并校验跨段链路一致；validate 严格键集合 + 值域 + 跨段一致性；export 幂等重导或冲突拒绝，且单向（不反向修改任何源对象）。
 
 ## 5. 当前实现范围
 
@@ -75,7 +78,8 @@ Non-goals:
 - **B4 完成（DVC pipeline 七阶段与最小 CLI）**：根 `dvc.yaml`（七阶段固定顺序、依赖链、review_import 外部人工输入依赖、release 依赖 review_import、release outs 固定路径 `data/release_payload` + `data/release_pointer.json`，无 `data/releases` out / persist，版本经 DVC params 注入）、`versioning/data_pipeline.py`（七阶段真实转换、上游 digest 贯穿 manifest、审查关卡 ReviewGateError、审查 `content_sha256` 绑定、release_validate 真实校验 + fail-closed）、`versioning/cli.py` + `versioning/__main__.py`（`python -m versioning data <stage>`，release 必填显式 `--version`，fail-closed exit code）已实现；新增 54 例测试（test_data_pipeline 34 + test_dvc_pipeline 20）；`tests/versioning/` 共 523 例全绿。
 - **B5 完成（Prompt 版本与冻结）**：`versioning/prompts.py`（records/prompts 单一权威、训练 input 冻结副本、篡改检测；create_prompt 显式版本纪律、suggest_next_id 仅建议）已实现；新增 `test_prompts.py` 99 例全绿；`tests/versioning/` 共 622 例全绿，全量 `1305 passed / 11 skipped / 0 failed`。
 - **B6 完成（MLflow 训练记录）**：`versioning/mlflow_train.py`（train 父 Run + fold0/1/2 嵌套子 Run、workflow_state↔RunStatus 固定组合、受控恢复、completed 晋级门、invalid 下游拒绝、读取 fail-closed、store 句柄双隔离）已实现；新增 `test_mlflow_train.py` 137 例全绿；`tests/versioning/` 共 760 例全绿，全量 `1443 passed / 11 skipped / 0 failed`。
-- §4 其余内容（B7 起各批次）仍为在建目标，不作已实现理解。
+- **B7 完成（MLflow 测评与 manifest 单向导出）**：`versioning/mlflow_eval.py`（eval 独立父 Run、显式 eval_id、五引用 tags、holdout 鉴权 verify 不消费、三 scope fold 绑定、aggregate 输入集合==观测集合、结论门 invalid 优先、读取 fail-closed 注入防护、受控恢复原 Run ID）与 `versioning/manifest.py`（四段单向导出：build ID 先行→data/prompt/train/eval 门+链路一致、validate 严格键集合+值域+跨段、export 幂等+冲突+单向）已实现；新增 `test_mlflow_eval.py` 223 例 + `test_manifest.py` 200 例全绿；`tests/versioning/` 共 1183 例全绿，全量 `1866 passed / 11 skipped / 0 failed`。
+- §4 其余内容（B8 起各批次）仍为在建目标，不作已实现理解。
 
 ## 6. 尚未迁移的 legacy 边界
 
