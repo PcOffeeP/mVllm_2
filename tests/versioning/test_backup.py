@@ -254,6 +254,7 @@ from versioning.registry import (
     MATERIALIZED_METADATA_FILE,
     ModelRegistryStore,
     approve_model_for_production,
+    finalize_model_evaluation,
     get_model,
     get_model_by_alias,
     materialize_model,
@@ -423,16 +424,19 @@ def world(
         _create_prompt_version(prompts_root, version)
 
     train1 = _train_chain(train_store, TRAIN_ID, PROMPT_VERSION)
+    register_model(registry, MODEL_ID, train_id=TRAIN_ID)
     _eval_chain(eval_store, data_root, EVAL_ID, MODEL_ID, model_version_number=1)
-    register_model(registry, MODEL_ID, train_id=TRAIN_ID, eval_id=EVAL_ID)
+    finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
 
     train2 = _train_chain(train_store, BUNDLED_TRAIN_ID, PROMPT_VERSION)
+    register_model(registry, BUNDLED_MODEL_ID, train_id=BUNDLED_TRAIN_ID)
     _eval_chain(eval_store, data_root, BUNDLED_EVAL_ID, BUNDLED_MODEL_ID, model_version_number=2)
-    register_model(registry, BUNDLED_MODEL_ID, train_id=BUNDLED_TRAIN_ID, eval_id=BUNDLED_EVAL_ID)
+    finalize_model_evaluation(registry, BUNDLED_MODEL_ID, eval_id=BUNDLED_EVAL_ID)
 
     _train_chain(train_store, UNSCOPED_TRAIN_ID, UNSCOPED_PROMPT_VERSION)
+    register_model(registry, UNSCOPED_MODEL_ID, train_id=UNSCOPED_TRAIN_ID)
     _eval_chain(eval_store, data_root, UNSCOPED_EVAL_ID, UNSCOPED_MODEL_ID, model_version_number=3)
-    register_model(registry, UNSCOPED_MODEL_ID, train_id=UNSCOPED_TRAIN_ID, eval_id=UNSCOPED_EVAL_ID)
+    finalize_model_evaluation(registry, UNSCOPED_MODEL_ID, eval_id=UNSCOPED_EVAL_ID)
 
     # 粘性备份范围（B8 前移状态）：r1→adapter，r2→production_bundle；r3 不设。
     set_offline_backup_scope(registry, MODEL_ID, "adapter")

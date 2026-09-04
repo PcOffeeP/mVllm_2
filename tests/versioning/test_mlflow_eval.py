@@ -367,6 +367,7 @@ versioning.data_release 真实封存于 ``tmp_path``，不启动服务、不连�
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -424,6 +425,15 @@ from versioning.mlflow_eval import (
     resume_eval_fold_run,
     transition_eval_state,
     validate_eval_for_conclusion,
+)
+from versioning.mlflow_train import (
+    create_fold_run as create_train_fold_run,
+    create_train_run,
+    end_fold_run as end_train_fold_run,
+    log_fold_metrics as log_train_fold_metrics,
+    log_train_summary,
+    open_train_store,
+    transition_train_state,
 )
 from versioning.state import (
     ALLOWED_RUN_STATUSES,
@@ -561,6 +571,7 @@ def data_root(tmp_path: Path) -> Path:
 def holdout_root(tmp_path: Path) -> Path:
     """已封存 purpose=holdout data-v4.1-r9 的 release 根（含隔离子目录）。"""
     root = _make_data_base(tmp_path)
+    _seal_data(root, DATA_VERSION, purpose="development")
     _seal_data(root, HOLDOUT_DATA_VERSION, purpose="holdout")
     return root
 
@@ -620,7 +631,70 @@ def _create(
         "executor": None,
     }
     inputs.update(overrides)
+    _ensure_registry_model(
+        store,
+        data_root,
+        inputs["model_id"],
+        inputs["model_version_number"],
+    )
     return create_eval_run(store, eval_id, **inputs)
+
+
+def _ensure_registry_model(
+    store: EvalRecordStore,
+    data_root: Path,
+    model_id: str,
+    model_version_number: int,
+) -> None:
+    """低层 eval 用例显式准备其所引用的 Registry 数值版本。"""
+    if (
+        not isinstance(model_id, str)
+        or not isinstance(model_version_number, int)
+        or isinstance(model_version_number, bool)
+        or model_version_number < 1
+    ):
+        return
+    client = _client(store)
+    try:
+        client.get_registered_model("mVllm2")
+    except Exception:
+        client.create_registered_model("mVllm2")
+    existing = list(client.search_model_versions("name='mVllm2'"))
+    by_number = {int(item.version): item for item in existing}
+    while model_version_number not in by_number:
+        next_number = len(by_number) + 1
+        next_model_id = model_id if next_number == model_version_number else f"model-v4.1-r{900 + next_number}"
+        train_id = f"train-v4.1-r{800 + next_number}"
+        train_store = open_train_store(store.root)
+        train = create_train_run(
+            train_store,
+            train_id,
+            data_version=DATA_VERSION,
+            prompt_version="prompt-v4.1-r1",
+            git_commit=GIT_COMMIT,
+            base_model="base/model",
+            config={"epochs": 1},
+        )
+        for fold in REQUIRED_FOLDS:
+            create_train_fold_run(train_store, train_id, fold)
+            log_train_fold_metrics(train_store, train_id, fold, {"loss": 0.1})
+            end_train_fold_run(train_store, train_id, fold, "FINISHED")
+        log_train_summary(train_store, train_id, {"mean_loss": 0.1})
+        train = transition_train_state(train_store, train_id, "completed")
+        created = client.create_model_version(
+            name="mVllm2",
+            source=train_store.artifact_location,
+            run_id=train.run_id,
+            tags={
+                "model_id": next_model_id,
+                "train_id": train_id,
+                "data_version": DATA_VERSION,
+                "prompt_version": "prompt-v4.1-r1",
+                "git_commit": GIT_COMMIT,
+                "record_validity": "valid",
+            },
+        )
+        by_number[int(created.version)] = created
 
 
 def _create_fold(
@@ -788,6 +862,7 @@ def _holdout_release_dir(holdout_root: Path) -> Path:
 def _acquire_holdout_claim(
     holdout_root: Path,
     *,
+    pre_registration: Path | None = None,
     eval_id: str = EVAL_ID,
     model_id: str = MODEL_ID,
     data_version: str = HOLDOUT_DATA_VERSION,
@@ -805,6 +880,11 @@ def _acquire_holdout_claim(
             split=split,
         ),
         executor,
+        pre_registration_sha256=(
+            hashlib.sha256(pre_registration.read_bytes()).hexdigest()
+            if pre_registration is not None and pre_registration.is_file()
+            else "0" * 64
+        ),
     )
 
 
@@ -956,6 +1036,23 @@ class TestEvalRecordStore:
 
 
 class TestCreateEvalRun:
+    def test_direct_api_rejects_missing_registry_model(
+        self, store: EvalRecordStore, data_root: Path
+    ) -> None:
+        with pytest.raises(IllegalEvalRecord, match="Registry"):
+            create_eval_run(
+                store,
+                EVAL_ID,
+                model_id=MODEL_ID,
+                model_version_number=MODEL_VERSION_NUMBER,
+                data_version=DATA_VERSION,
+                config=CONFIG,
+                git_commit=GIT_COMMIT,
+                scope="cross_validation",
+                data_root=data_root,
+            )
+        assert _all_runs(store) == []
+
     def test_create_records_explicit_id_references_and_tags(
         self, store: EvalRecordStore, data_root: Path
     ) -> None:
@@ -1982,6 +2079,73 @@ class TestStateDiscipline:
         with pytest.raises(IllegalStateCombination):
             validate_eval_for_conclusion(store, EVAL_ID)
 
+    def test_complete_retries_after_outcome_write_failure(
+        self,
+        store: EvalRecordStore,
+        data_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        record = _create(store, data_root)
+        _finish_folds(store)
+        _aggregate(store)
+        original = MlflowClient.set_tag
+        failed = False
+
+        def fail_outcome_once(client, run_id, key, value, *args, **kwargs):
+            nonlocal failed
+            if key == OUTCOME_TAG and not failed:
+                failed = True
+                raise RuntimeError("injected outcome write failure")
+            return original(client, run_id, key, value, *args, **kwargs)
+
+        monkeypatch.setattr(MlflowClient, "set_tag", fail_outcome_once)
+        with pytest.raises(RuntimeError):
+            transition_eval_state(store, EVAL_ID, "completed", outcome="passed")
+        raw = _raw_run(store, record.run_id)
+        assert raw.data.tags[WORKFLOW_STATE_TAG] == "running"
+        assert raw.info.status == "RUNNING"
+
+        completed = transition_eval_state(store, EVAL_ID, "completed", outcome="passed")
+        assert (completed.workflow_state, completed.run_status, completed.outcome) == (
+            "completed",
+            "FINISHED",
+            "passed",
+        )
+
+    def test_complete_repairs_completed_running_after_terminate_failure(
+        self,
+        store: EvalRecordStore,
+        data_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        record = _create(store, data_root)
+        _finish_folds(store)
+        _aggregate(store)
+        original = MlflowClient.set_terminated
+        failed = False
+
+        def fail_terminate_once(client, run_id, *args, **kwargs):
+            nonlocal failed
+            if run_id == record.run_id and not failed:
+                failed = True
+                raise RuntimeError("injected terminate failure")
+            return original(client, run_id, *args, **kwargs)
+
+        monkeypatch.setattr(MlflowClient, "set_terminated", fail_terminate_once)
+        with pytest.raises(RuntimeError):
+            transition_eval_state(store, EVAL_ID, "completed", outcome="passed")
+        raw = _raw_run(store, record.run_id)
+        assert raw.data.tags[WORKFLOW_STATE_TAG] == "completed"
+        assert raw.data.tags[OUTCOME_TAG] == "passed"
+        assert raw.info.status == "RUNNING"
+
+        completed = transition_eval_state(store, EVAL_ID, "completed", outcome="passed")
+        assert (completed.workflow_state, completed.run_status, completed.outcome) == (
+            "completed",
+            "FINISHED",
+            "passed",
+        )
+
     @pytest.mark.parametrize(
         ("source", "target"),
         [
@@ -2451,8 +2615,8 @@ class TestHoldoutAuthorization:
         self, store: EvalRecordStore, holdout_root: Path, tmp_path: Path
     ) -> None:
         # 正向：staging 先 acquire 全局 claim，再创建 eval 记录
-        _acquire_holdout_claim(holdout_root)
         pre = _write_pre_registration(tmp_path / "pre.yaml")
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
 
         record = _create(store, holdout_root, **_holdout_inputs(pre))
 
@@ -2471,7 +2635,8 @@ class TestHoldoutAuthorization:
         self, store: EvalRecordStore, holdout_root: Path, tmp_path: Path
     ) -> None:
         # 已消费 claim 不得再当可用授权（holdout.ClaimConsumed 语义）
-        _acquire_holdout_claim(holdout_root)
+        pre = _write_pre_registration(tmp_path / "pre.yaml")
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
         authorization = _holdout_release_dir(holdout_root) / "authorization"
         mark_claim_consumed(
             authorization,
@@ -2482,9 +2647,8 @@ class TestHoldoutAuthorization:
                 split=HOLDOUT_SPLIT,
             ),
             EXECUTOR,
+            pre_registration_sha256=hashlib.sha256(pre.read_bytes()).hexdigest(),
         )
-        pre = _write_pre_registration(tmp_path / "pre.yaml")
-
         with pytest.raises(HoldoutAuthorizationError):
             _create(store, holdout_root, **_holdout_inputs(pre))
         assert _all_runs(store) == []
@@ -2507,8 +2671,10 @@ class TestHoldoutAuthorization:
         create_overrides: dict,
     ) -> None:
         # §5.6：四元组任一字段不同都拒绝，且不创建第二个 claim
-        _acquire_holdout_claim(holdout_root, **claim_kwargs)
         pre = _write_pre_registration(tmp_path / "pre.yaml")
+        _acquire_holdout_claim(
+            holdout_root, pre_registration=pre, **claim_kwargs
+        )
         inputs = _holdout_inputs(pre)
         inputs.update(create_overrides)
 
@@ -2520,8 +2686,8 @@ class TestHoldoutAuthorization:
         self, store: EvalRecordStore, holdout_root: Path, tmp_path: Path
     ) -> None:
         # §5.6：新进程必须携带并验证原执行身份
-        _acquire_holdout_claim(holdout_root)
         pre = _write_pre_registration(tmp_path / "pre.yaml")
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
         inputs = _holdout_inputs(pre)
         inputs["executor"] = "runner-B"
 
@@ -2532,8 +2698,8 @@ class TestHoldoutAuthorization:
     def test_holdout_pre_registration_missing_rejected(
         self, store: EvalRecordStore, holdout_root: Path, tmp_path: Path
     ) -> None:
-        _acquire_holdout_claim(holdout_root)
         missing = tmp_path / "staging" / "pre_registration.yaml"  # 文件不存在
+        _acquire_holdout_claim(holdout_root, pre_registration=missing)
 
         with pytest.raises(HoldoutAuthorizationError):
             _create(store, holdout_root, **_holdout_inputs(missing))
@@ -2561,8 +2727,8 @@ class TestHoldoutAuthorization:
         self, store: EvalRecordStore, holdout_root: Path, tmp_path: Path
     ) -> None:
         # pre_registration 内容非法（one_time 非 True）-> fail-closed
-        _acquire_holdout_claim(holdout_root)
         pre = _write_pre_registration(tmp_path / "pre.yaml", one_time=False)
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
 
         with pytest.raises(HoldoutAuthorizationError):
             _create(store, holdout_root, **_holdout_inputs(pre))
@@ -2572,10 +2738,10 @@ class TestHoldoutAuthorization:
         self, store: EvalRecordStore, holdout_root: Path, tmp_path: Path
     ) -> None:
         # pre_registration 冻结的四元组与本次创建不一致 -> fail-closed
-        _acquire_holdout_claim(holdout_root)
         pre = _write_pre_registration(
             tmp_path / "pre.yaml", model_version=OTHER_MODEL_ID
         )
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
 
         with pytest.raises(HoldoutAuthorizationError):
             _create(store, holdout_root, **_holdout_inputs(pre))
@@ -2587,8 +2753,8 @@ class TestHoldoutAuthorization:
         # claim 四元组需要单一 split：holdout eval 必带 split（语义决策点 8）。
         # 用 cross_validation 隔离该规则（该 scope 平时可缺省 split，缺 split
         # 的唯一拒绝理由就是 holdout 鉴权）
-        _acquire_holdout_claim(holdout_root)
         pre = _write_pre_registration(tmp_path / "pre.yaml")
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
         inputs = _holdout_inputs(pre)
         inputs["scope"] = "cross_validation"
         inputs["split"] = None
@@ -2600,8 +2766,8 @@ class TestHoldoutAuthorization:
     def test_holdout_executor_argument_required(
         self, store: EvalRecordStore, holdout_root: Path, tmp_path: Path
     ) -> None:
-        _acquire_holdout_claim(holdout_root)
         pre = _write_pre_registration(tmp_path / "pre.yaml")
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
         inputs = _holdout_inputs(pre)
         inputs["executor"] = None
 
@@ -2614,10 +2780,10 @@ class TestHoldoutAuthorization:
     ) -> None:
         # 一次性：claim 属 eval-v4.1-r1；即使为 eval-v4.1-r2 另备一份
         # pre_registration，claim 四元组仍不匹配 -> 拒绝，且不产生第二个 claim
-        _acquire_holdout_claim(holdout_root)
         pre_r2 = _write_pre_registration(
             tmp_path / "pre.yaml", eval_version=OTHER_EVAL_ID
         )
+        _acquire_holdout_claim(holdout_root, pre_registration=pre_r2)
         inputs = _holdout_inputs(pre_r2)
 
         with pytest.raises(HoldoutAuthorizationError):
@@ -2701,12 +2867,19 @@ class TestFullEvalLifecycle:
     ) -> None:
         # §5.6 全链路：预注册 -> 全局一次性 claim -> eval 记录 -> 汇总 ->
         # completed(passed) -> 结论门放行
-        _acquire_holdout_claim(holdout_root)
         pre = _write_pre_registration(tmp_path / "pre.yaml")
+        _acquire_holdout_claim(holdout_root, pre_registration=pre)
         record = _create(store, holdout_root, **_holdout_inputs(pre))
 
         log_eval_summary(store, EVAL_ID, SUMMARY_METRICS)
-        completed = transition_eval_state(store, EVAL_ID, "completed", outcome="passed")
+        completed = transition_eval_state(
+            store,
+            EVAL_ID,
+            "completed",
+            outcome="passed",
+            pre_registration=pre,
+            executor=EXECUTOR,
+        )
 
         assert completed.outcome == "passed"
         assert completed.scope == "full"
@@ -2721,6 +2894,8 @@ class TestFullEvalLifecycle:
         assert raw.data.tags["data_version"] == HOLDOUT_DATA_VERSION
         assert raw.data.tags["outcome"] == "passed"
         assert raw.data.tags["summary_complete"] == "true"
+        authorization = _holdout_release_dir(holdout_root) / "authorization"
+        assert (authorization / "consumed.yaml").is_file()
 
     def test_recovery_flow_completes_after_controlled_resume(
         self, store: EvalRecordStore, data_root: Path

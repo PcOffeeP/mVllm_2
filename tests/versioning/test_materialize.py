@@ -133,6 +133,7 @@ from versioning.registry import (
     ModelRegistryStore,
     RegisteredModelRecord,
     RegistryModelNotFound,
+    finalize_model_evaluation,
     mark_model_invalid,
     materialize_model,
     open_registry_store,
@@ -270,9 +271,10 @@ def golden(
 ) -> RegisteredModelRecord:
     """黄金链：train completed（含真实 artifacts）+ eval passed + 已注册。"""
     train = _complete_training(train_store)
+    register_model(registry, MODEL_ID, train_id=TRAIN_ID)
     _pass_eval(eval_store, data_root)
     _log_train_artifacts(registry, train.run_id, tmp_path)
-    return register_model(registry, MODEL_ID, train_id=TRAIN_ID, eval_id=EVAL_ID)
+    return finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
 
 
 def _client(

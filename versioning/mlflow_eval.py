@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -15,15 +16,23 @@ from typing import Any, Mapping
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient
 
-from versioning.data_release import load_release_metadata
+from versioning.data_release import load_release_metadata, validate_training_reference
 from versioning.holdout import (
     ClaimIdentity,
     ClaimNotFound,
     HoldoutError,
+    acquire_claim,
     load_claim,
     load_pre_registration,
+    mark_claim_consumed,
+    validate_holdout_layout,
+    validate_claim_consumed,
 )
 from versioning.ids import parse_data_id, parse_eval_id, parse_model_id
+from versioning.mlflow_train import (
+    TrainRecordStore,
+    validate_train_for_promotion,
+)
 from versioning.state import (
     ALLOWED_RUN_STATUSES,
     IllegalStateCombination,
@@ -60,6 +69,11 @@ DATA_SPLIT_TAG: str = "data_split"
 SAMPLE_COUNT_TAG: str = "sample_count"
 RECORDS_TAG: str = "records"
 FAILURES_TAG: str = "failures"
+PRE_REGISTRATION_PATH_TAG: str = "pre_registration_path"
+PRE_REGISTRATION_SHA256_TAG: str = "pre_registration_sha256"
+HOLDOUT_AUTHORIZATION_DIR_TAG: str = "holdout_authorization_dir"
+HOLDOUT_EXECUTOR_TAG: str = "holdout_executor"
+REGISTERED_MODEL_NAME: str = "mVllm2"
 
 
 class MLflowEvalError(ValueError):
@@ -139,6 +153,10 @@ class EvalRunRecord:
     outcome: str | None
     metrics: Mapping[str, float]
     folds: Mapping[int, EvalFoldRecord]
+    pre_registration_path: str | None
+    pre_registration_sha256: str | None
+    holdout_authorization_dir: str | None
+    holdout_executor: str | None
 
 
 def _client(store: EvalRecordStore) -> MlflowClient:
@@ -273,10 +291,17 @@ def _validate_aggregate_folds_tag(value: str) -> None:
         _parse_fold_tag(item)
 
 
-def _validate_parent_tags(run: Any) -> None:
+def _validate_parent_tags(
+    run: Any, *, allow_completed_running_recovery: bool = False
+) -> None:
     """读取 fail-closed：校验父 Run 组合与各类 tag 值域/可解析性。"""
     tags = run.data.tags
-    validate_workflow_run_status(tags.get(WORKFLOW_STATE_TAG), run.info.status)
+    if not (
+        allow_completed_running_recovery
+        and tags.get(WORKFLOW_STATE_TAG) == WorkflowState.COMPLETED.value
+        and run.info.status == "RUNNING"
+    ):
+        validate_workflow_run_status(tags.get(WORKFLOW_STATE_TAG), run.info.status)
 
     validity = tags.get(RECORD_VALIDITY_TAG)
     if validity not in (RecordValidity.VALID.value, RecordValidity.INVALID.value):
@@ -321,6 +346,28 @@ def _validate_parent_tags(run: Any) -> None:
         if scope != "cross_validation":
             raise IllegalEvalRecord("aggregate_folds 仅允许出现在 cross_validation")
         _validate_aggregate_folds_tag(aggregate_folds)
+
+    prereg_path = tags.get(PRE_REGISTRATION_PATH_TAG)
+    prereg_sha256 = tags.get(PRE_REGISTRATION_SHA256_TAG)
+    authorization_dir = tags.get(HOLDOUT_AUTHORIZATION_DIR_TAG)
+    executor = tags.get(HOLDOUT_EXECUTOR_TAG)
+    holdout_values = (prereg_path, prereg_sha256, authorization_dir, executor)
+    if any(value is None for value in holdout_values) and any(
+        value is not None for value in holdout_values
+    ):
+        raise IllegalEvalRecord("holdout 预注册、摘要、授权目录与 executor 必须同时存在或缺失")
+    if prereg_path is not None:
+        _validate_non_empty_string(prereg_path, "pre_registration_path")
+        if len(prereg_sha256) != 64:
+            raise IllegalEvalRecord("pre_registration_sha256 必须是 64 位十六进制摘要")
+        try:
+            int(prereg_sha256, 16)
+        except ValueError as exc:
+            raise IllegalEvalRecord(
+                "pre_registration_sha256 必须是 64 位十六进制摘要"
+            ) from exc
+        _validate_non_empty_string(authorization_dir, "holdout_authorization_dir")
+        _validate_non_empty_string(executor, "holdout_executor")
 
 
 def _validate_child_tags(run: Any) -> None:
@@ -403,6 +450,10 @@ def _build_eval_record(store: EvalRecordStore, run: Any) -> EvalRunRecord:
         outcome=tags.get(OUTCOME_TAG),
         metrics=dict(run.data.metrics),
         folds=folds,
+        pre_registration_path=tags.get(PRE_REGISTRATION_PATH_TAG),
+        pre_registration_sha256=tags.get(PRE_REGISTRATION_SHA256_TAG),
+        holdout_authorization_dir=tags.get(HOLDOUT_AUTHORIZATION_DIR_TAG),
+        holdout_executor=tags.get(HOLDOUT_EXECUTOR_TAG),
     )
 
 
@@ -425,7 +476,7 @@ def _authorize_holdout(
     split: str | None,
     pre_registration: Path | None,
     executor: str | None,
-) -> None:
+) -> tuple[str, str, str, str]:
     """holdout 数据鉴权：claim + pre_registration 校验。"""
     if not split:
         raise HoldoutAuthorizationError("holdout 测评必须声明 split")
@@ -435,7 +486,8 @@ def _authorize_holdout(
         raise HoldoutAuthorizationError("holdout 测评必须提供 executor")
 
     try:
-        pre = load_pre_registration(Path(pre_registration))
+        prereg_path = Path(pre_registration).resolve()
+        pre = load_pre_registration(prereg_path)
     except HoldoutError as exc:
         raise HoldoutAuthorizationError(f"预注册校验失败: {exc}") from exc
 
@@ -465,9 +517,67 @@ def _authorize_holdout(
     if claim.identity != expected or claim.executor != executor:
         raise HoldoutAuthorizationError("claim 四元组或 executor 不一致")
 
+    prereg_sha256 = hashlib.sha256(prereg_path.read_bytes()).hexdigest()
+    if claim.pre_registration_sha256 != prereg_sha256:
+        raise HoldoutAuthorizationError("claim 绑定的 pre_registration 摘要不一致")
+
     consumed_path = authorization_dir / "consumed.yaml"
     if consumed_path.exists():
         raise HoldoutAuthorizationError("claim 已消费")
+    return str(prereg_path), prereg_sha256, str(authorization_dir.resolve()), executor
+
+
+def _validate_registry_reference(
+    client: MlflowClient,
+    store: EvalRecordStore,
+    data_root: Path,
+    model_id: str,
+    model_version_number: int,
+) -> None:
+    """正式 eval 必须引用在线仍满足 train/data 门的完整 Registry 版本。"""
+    try:
+        version = client.get_model_version(
+            REGISTERED_MODEL_NAME, str(model_version_number)
+        )
+    except Exception as exc:
+        raise IllegalEvalRecord(
+            f"Registry 中不存在 {REGISTERED_MODEL_NAME} version={model_version_number}"
+        ) from exc
+    if version.tags.get(MODEL_ID_TAG) != model_id:
+        raise IllegalEvalRecord("Registry 数值 Model Version 与 model_id 不匹配")
+    if version.tags.get(RECORD_VALIDITY_TAG) != RecordValidity.VALID.value:
+        raise IllegalEvalRecord("Registry Model Version 无效或缺少有效性标记")
+    required_tags = ("train_id", DATA_VERSION_TAG, "prompt_version", GIT_COMMIT_TAG)
+    if any(not version.tags.get(key) for key in required_tags):
+        raise IllegalEvalRecord("Registry Model Version 缺少训练来源绑定")
+    matches = [
+        item
+        for item in client.search_model_versions(f"name='{REGISTERED_MODEL_NAME}'")
+        if item.tags.get(MODEL_ID_TAG) == model_id
+    ]
+    if len(matches) != 1 or int(matches[0].version) != model_version_number:
+        raise IllegalEvalRecord("model_id 在 Registry 中缺失、重复或数值版本不一致")
+    experiment = client.get_experiment_by_name("mVllm2-training")
+    if experiment is None:
+        raise IllegalEvalRecord("Registry 引用的训练实验不存在")
+    train_store = TrainRecordStore(
+        root=store.root,
+        tracking_uri=store.tracking_uri,
+        experiment_id=experiment.experiment_id,
+        artifact_location=store.artifact_location,
+    )
+    try:
+        train = validate_train_for_promotion(train_store, version.tags["train_id"])
+        validate_training_reference(data_root, train.data_version)
+    except Exception as exc:
+        raise IllegalEvalRecord(f"Registry 训练来源门拒绝: {exc}") from exc
+    if (
+        train.data_version != version.tags[DATA_VERSION_TAG]
+        or train.prompt_version != version.tags["prompt_version"]
+        or train.git_commit != version.tags[GIT_COMMIT_TAG]
+        or train.run_id != version.run_id
+    ):
+        raise IllegalEvalRecord("Registry Model Version 与训练来源绑定不一致")
 
 
 def create_eval_run(
@@ -503,8 +613,13 @@ def create_eval_run(
     except Exception as exc:
         raise IllegalEvalRecord(f"无法加载 data release: {exc}") from exc
 
+    prereg_binding: tuple[str, str] | None = None
     if meta.purpose == "holdout":
-        _authorize_holdout(
+        try:
+            validate_holdout_layout(Path(data_root) / "releases" / data_version)
+        except HoldoutError as exc:
+            raise HoldoutAuthorizationError(f"holdout 布局校验失败: {exc}") from exc
+        prereg_binding = _authorize_holdout(
             data_root,
             data_version,
             eval_id,
@@ -515,6 +630,10 @@ def create_eval_run(
         )
 
     client = _client(store)
+    _validate_registry_reference(
+        client, store, Path(data_root), model_id, model_version_number
+    )
+
     try:
         _search_parent(client, store.experiment_id, eval_id)
     except EvalRecordNotFound:
@@ -535,6 +654,11 @@ def create_eval_run(
     }
     if split is not None:
         tags[SPLIT_TAG] = split
+    if prereg_binding is not None:
+        tags[PRE_REGISTRATION_PATH_TAG] = prereg_binding[0]
+        tags[PRE_REGISTRATION_SHA256_TAG] = prereg_binding[1]
+        tags[HOLDOUT_AUTHORIZATION_DIR_TAG] = prereg_binding[2]
+        tags[HOLDOUT_EXECUTOR_TAG] = prereg_binding[3]
 
     run = client.create_run(
         experiment_id=store.experiment_id,
@@ -777,6 +901,66 @@ def log_eval_aggregate(
     return _build_eval_record(store, client.get_run(run.info.run_id))
 
 
+def _consume_holdout_for_completion(
+    run: Any,
+    *,
+    pre_registration: Path | None,
+    executor: str | None,
+) -> None:
+    """在 MLflow 完成状态写入前验证并发布 holdout 一次性消费标记。"""
+    tags = run.data.tags
+    stored_path = tags.get(PRE_REGISTRATION_PATH_TAG)
+    stored_digest = tags.get(PRE_REGISTRATION_SHA256_TAG)
+    authorization_value = tags.get(HOLDOUT_AUTHORIZATION_DIR_TAG)
+    stored_executor = tags.get(HOLDOUT_EXECUTOR_TAG)
+
+    if stored_path is None:
+        if pre_registration is not None or executor is not None:
+            raise IllegalEvalRecord("非 holdout eval 不接受 pre_registration/executor")
+        return
+
+    if pre_registration is None or executor is None:
+        raise IllegalEvalRecord("holdout eval complete 必须提供 pre_registration 与 executor")
+    if executor is not None and executor != stored_executor:
+        raise IllegalEvalRecord("executor 与 eval 创建时冻结值不一致")
+
+    try:
+        actual_digest = hashlib.sha256(Path(pre_registration).read_bytes()).hexdigest()
+    except Exception as exc:
+        raise IllegalEvalRecord(f"无法复验 pre_registration: {exc}") from exc
+    if actual_digest != stored_digest:
+        raise IllegalEvalRecord("pre_registration 内容与 eval 创建时冻结摘要不一致")
+
+    identity = ClaimIdentity(
+        eval_version=tags[EVAL_ID_TAG],
+        model_version=tags[MODEL_ID_TAG],
+        data_version=tags[DATA_VERSION_TAG],
+        split=tags.get(SPLIT_TAG, ""),
+    )
+    authorization_dir = Path(authorization_value)
+    consumed_path = authorization_dir / "consumed.yaml"
+    if consumed_path.exists():
+        validate_claim_consumed(
+            authorization_dir,
+            identity,
+            stored_executor,
+            pre_registration_sha256=stored_digest,
+        )
+        return
+    acquire_claim(
+        authorization_dir,
+        identity,
+        stored_executor,
+        pre_registration_sha256=stored_digest,
+    )
+    mark_claim_consumed(
+        authorization_dir,
+        identity,
+        stored_executor,
+        pre_registration_sha256=stored_digest,
+    )
+
+
 def transition_eval_state(
     store: EvalRecordStore,
     eval_id: str,
@@ -784,13 +968,51 @@ def transition_eval_state(
     *,
     run_status: str | None = None,
     outcome: str | None = None,
+    pre_registration: Path | None = None,
+    executor: str | None = None,
 ) -> EvalRunRecord:
-    """父 Run workflow_state 与原生 RunStatus 一起转换；completed 需过晋级门。"""
+    """转换 eval 状态；completed 同时提交 holdout 消费并可恢复半提交。"""
     client = _client(store)
     run = _search_parent(client, store.experiment_id, eval_id)
+    requested_state = WorkflowState(target)
+
+    raw_state = run.data.tags.get(WORKFLOW_STATE_TAG)
+    if (
+        requested_state == WorkflowState.COMPLETED
+        and raw_state == WorkflowState.COMPLETED.value
+        and run.info.status == "RUNNING"
+    ):
+        if outcome is None or outcome not in OUTCOMES:
+            raise IllegalEvalRecord(f"completed 必须显式 outcome ∈ {OUTCOMES}: {outcome!r}")
+        _validate_parent_tags(run, allow_completed_running_recovery=True)
+
+        # completed 写入采用 outcome → workflow_state → RunStatus。若上次在
+        # workflow_state 后中断，raw Run 会是 completed/RUNNING；识别同一
+        # 目标后只补齐缺失步骤，不把其他非法组合当作可恢复。
+        raw_outcome = run.data.tags.get(OUTCOME_TAG)
+        _check_completion_gate(
+            client, store, run.info.run_id, run.data.tags[SCOPE_TAG]
+        )
+        _consume_holdout_for_completion(
+            run,
+            pre_registration=pre_registration,
+            executor=executor,
+        )
+        if raw_outcome not in (None, outcome):
+            raise IllegalEvalRecord("已完成 eval 的 outcome 不得改写")
+        if raw_outcome is None:
+            client.set_tag(run.info.run_id, OUTCOME_TAG, outcome)
+        if run.info.status == "RUNNING":
+            client.set_terminated(run.info.run_id, status="FINISHED")
+        elif run.info.status != "FINISHED":
+            raise IllegalStateCombination(
+                f"completed 半提交不接受 RunStatus={run.info.status!r}"
+            )
+        return _build_eval_record(store, client.get_run(run.info.run_id))
+
     record = _build_eval_record(store, run)
     current_state = WorkflowState(record.workflow_state)
-    target_state = transition_workflow_state(current_state, target)
+    target_state = transition_workflow_state(current_state, requested_state)
 
     if target_state == WorkflowState.COMPLETED:
         if outcome is None or outcome not in OUTCOMES:
@@ -817,10 +1039,15 @@ def transition_eval_state(
 
     if target_state == WorkflowState.COMPLETED:
         _check_completion_gate(client, store, run.info.run_id, record.scope)
+        _consume_holdout_for_completion(
+            run,
+            pre_registration=pre_registration,
+            executor=executor,
+        )
 
-    client.set_tag(run.info.run_id, WORKFLOW_STATE_TAG, target_state.value)
     if target_state == WorkflowState.COMPLETED:
         client.set_tag(run.info.run_id, OUTCOME_TAG, outcome)
+    client.set_tag(run.info.run_id, WORKFLOW_STATE_TAG, target_state.value)
 
     if target_state == WorkflowState.RUNNING:
         client.update_run(run.info.run_id, status=target_status)
@@ -829,6 +1056,23 @@ def transition_eval_state(
 
     updated = client.get_run(run.info.run_id)
     return _build_eval_record(store, updated)
+
+
+def validate_eval_for_completion(
+    store: EvalRecordStore,
+    eval_id: str,
+    *,
+    outcome: str,
+) -> EvalRunRecord:
+    """无副作用预检 completed 转换，供跨 MLflow/claim 提交流程使用。"""
+    client = _client(store)
+    run = _search_parent(client, store.experiment_id, eval_id)
+    record = _build_eval_record(store, run)
+    transition_workflow_state(WorkflowState(record.workflow_state), WorkflowState.COMPLETED)
+    if outcome not in OUTCOMES:
+        raise IllegalEvalRecord(f"completed 必须显式 outcome ∈ {OUTCOMES}: {outcome!r}")
+    _check_completion_gate(client, store, run.info.run_id, record.scope)
+    return record
 
 
 def mark_eval_invalid(store: EvalRecordStore, eval_id: str) -> EvalRunRecord:

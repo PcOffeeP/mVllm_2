@@ -18,16 +18,16 @@
   进入 production 前设为 ``production_bundle``；范围只允许
   缺失→adapter→production_bundle 单向升级，不得因 alias 切走或一次备份
   完成而降级或清除。
-- §6 + §10（model 行）：模型引用一个已完成训练版本；模型晋级门 =
-  train 晋级（B6 ``validate_train_for_promotion`` 全部门条件）+ 关联 eval
-  结论 ``passed``，缺任一 fail-closed（本批契约细化，见语义决策点 1）。
-- §9 + §11.6：显式版本纪律——model_id/train_id/eval_id 必须显式给出并经
+- §5.4 + D040：train 门通过后先创建无 ``eval_id`` 的 staging Model Version；
+  正式 eval 精确引用该数值版本，passed 后再单向绑定 ``eval_id``；两个活动
+  alias 均拒绝未完成绑定的模型。
+- §9 + §11.6：显式版本纪律——model_id/train_id 及 finalize 的 eval_id 必须显式给出并经
   ``versioning.ids`` 解析；同名冲突立即停止，不比较内容、不自动选择下一个
   编号。
 - §13.1：``mVllm2`` 中 model_id 与数值 Model Version 一一对应，
   candidate/production alias 只能指向其中的有效版本。
-- §11.4：模型晋级失败时停留在 staging，不进入 Registry；已登记模型不得
-  删除后以同一版本重试，修正内容时使用新的 model 版本。
+- §11.4：train 门失败时不登记；eval 未通过时保留为无 alias 的 Registry
+  staging 证据；已登记模型不得删除后以同一版本重试。
 
 预期 production API（供 viber 对照实现，模块 ``versioning.registry``）::
 
@@ -95,7 +95,7 @@
         registered_model: str       # "mVllm2"
         run_id: str                 # source train 父 Run MLflow ID
         train_id: str
-        eval_id: str
+        eval_id: str | None         # staging 时缺失；finalize 后不可改绑
         data_version: str           # 取自 train 父 Run（§5.4 训练输入）
         prompt_version: str         # 取自 train 父 Run
         git_commit: str             # 取自 train 父 Run
@@ -104,12 +104,11 @@
         production_approved: bool          # tag "production_approved"=="true" 时为 True
         aliases: tuple[str, ...]    # 当前指向该数值版本的别名，按字母序
 
-    # ——— 注册（晋级门：train 晋级 + 关联 eval passed，缺任一 fail-closed）———
-    def register_model(store, model_id: str, *, train_id: str,
-                       eval_id: str) -> RegisteredModelRecord
-        # 校验顺序钉死：
-        # 1) model_id 经 versioning.ids.parse_model_id、train_id/eval_id 经
-        #    parse_train_id/parse_eval_id 校验（缺省/None/latest/短前缀/跨
+    # ——— 两阶段登记：register 固定模型实体，finalize 绑定 passed eval ———
+    def register_model(store, model_id: str, *,
+                       train_id: str) -> RegisteredModelRecord
+        # 1) model_id 经 versioning.ids.parse_model_id、train_id 经
+        #    parse_train_id 校验（缺省/None/latest/短前缀/跨
         #    类别/r0/前导零/非字符串/含引号注入样式 -> InvalidIdentifier；
         #    模块不存在任何自动分配下一版本号的分支，§9/§11.6）；
         # 2) 同名冲突：mVllm2 下已有 model_id tag 相同的数值版本 ->
@@ -118,27 +117,31 @@
         #    B6 validate_train_for_promotion 等价校验（不存在/invalid/
         #    workflow_state 非 completed|archived/必需 fold 缺失或未
         #    FINISHED/无三折汇总 -> PromotionGateRejected）；
-        # 4) eval 门：在 eval 实验按 eval_id tag 检索父 Run 并执行 B7
-        #    validate_eval_for_conclusion 等价校验，且 outcome 必须 ==
-        #    "passed"（不存在/invalid/非 completed|archived/结构不完整/
-        #    outcome=failed 或缺失 -> PromotionGateRejected；质量未达标的
-        #    failed 是有效证据但不晋级）；
-        # 5) 关联校验：eval 父 Run 的 model_id tag 必须等于被注册 model_id
-        #    （不一致 -> PromotionGateRejected）；
-        # 6) 全部通过：create_model_version(mVllm2, source=train 父 Run 的
+        # 4) 全部通过：create_model_version(mVllm2, source=train 父 Run 的
         #    artifact_uri, run_id=train 父 Run ID) 并写 tags：model_id/
-        #    train_id/eval_id/data_version/prompt_version/git_commit（值
+        #    train_id/data_version/prompt_version/git_commit（值
         #    一律取自 train 快照）/record_validity="valid"；不写
         #    offline_backup_scope、production_approved tag（未声明即缺省）；
-        #    不设置任何 alias、不新建任何 Run；返回快照。
+        #    不设置 eval_id/alias、不新建任何 Run；返回 staging 快照。
+
+    def validate_model_for_evaluation(store, model_id: str,
+                                      model_version_number: int) -> RegisteredModelRecord
+        # 正式 eval 创建门：模型存在且 valid、数值版本精确匹配、来源 train
+        # 在线晋级门仍通过；猜号、错号、缺失或 invalid 均 fail-closed。
+
+    def finalize_model_evaluation(store, model_id: str, *,
+                                  eval_id: str) -> RegisteredModelRecord
+        # eval 必须 completed|archived、valid、outcome=passed，并同时匹配
+        # model_id 与数值 Model Version；只写 eval_id，同一值幂等且禁止改绑。
 
     # ——— 读取（fail-closed）———
     def get_model(store, model_id: str) -> RegisteredModelRecord
         # 按 model_id tag 在 mVllm2 下检索数值版本：不存在 ->
         #    RegistryModelNotFound；多个数值版本声称同一 model_id（人工或
         #    异常操作）-> IllegalRegistryRecord；读取 fail-closed：
-        #    model_id/train_id/eval_id/data_version/prompt_version 必须经
+        #    model_id/train_id/data_version/prompt_version 必须经
         #    versioning.ids 对应解析器校验、git_commit 非空、
+        #    eval_id 缺失或为合法完整 eval ID、
         #    record_validity ∈ {valid,invalid}、offline_backup_scope 缺失或
         #    ∈ BACKUP_SCOPES、production_approved 缺失或 == "true"（任何
         #    篡改 -> IllegalRegistryRecord）；返回审计快照（invalid 亦照实
@@ -179,8 +182,8 @@
         #    alias 之前必须已写入粘性范围）：candidate 要求 scope ∈
         #    {adapter, production_bundle}、production 要求 scope ==
         #    production_bundle（缺失或不足 -> PromotionGateRejected）；
-        #    alias=production 还要求 PRODUCTION_APPROVED_TAG=="true" 且
-        #    eval 质量门在线复验通过（缺失/失败 -> PromotionGateRejected）；
+        #    两个 alias 都要求已 finalize 且 eval 质量门在线复验通过；
+        #    alias=production 还要求 PRODUCTION_APPROVED_TAG=="true"；
         #    train 门在线复验（失败 -> PromotionGateRejected）；全部通过则
         #    set_registered_model_alias 绑定或显式切换（重复指向同目标幂等），
         #    不改写任何 Model Version tags；返回目标模型快照（aliases 更新）。
@@ -207,21 +210,18 @@
         #    RegistryModelNotFound、目标分歧 -> IllegalRegistryRecord。
 
 语义决策点（测试侧钉定，供实现对照）：
-    1. 晋级门位置：register_model 的门 = train 晋级 + 关联 eval 结论 passed
-       （任务契约要点 1）。设计 §2.9 中 candidate 的"准备测评/正在验证"阶段
-       属于 staging/物化服务批次，不在本批 Registry 契约内；因此本批
-       candidate 与 production 的差别 = offline_backup_scope + 用户批准 +
-       质量门，二者都只指向已通过 eval 的已注册模型。
+    1. register_model 只执行 train 晋级门并创建 Registry staging 实体；
+       正式 eval 精确引用该数值版本，finalize 再绑定 passed 结论；candidate
+       与 production 都只指向已 finalize 的模型。
     2. offline_backup_scope 值域 = {"adapter", "production_bundle"}（权威
        设计 §2.11/D036 与实施台账 B8"缺失→adapter→production_bundle 单向
        升级"）。任务要点 4 括注的（data/prompt/train/model/eval 选择性
        子集）不是本 tag 的值域：五类记录按范围展开属 B9 备份消费方职责；
        测试以 BAD_SCOPES 显式拒绝全部五类名与组合串。
-    3. 关联校验 = eval 父 Run 的 model_id tag 必须等于被注册 model_id；
+    3. 关联校验 = eval 父 Run 的 model_id 与 model_version_number 必须同时
+       匹配被 finalize 模型的可读身份和实际数值版本；
        B7 eval Run 不记录 source_train，train↔eval 血缘不做机器交叉校验，
-       权威绑定由模型 tags（train_id + eval_id）承担；eval.model_version_
-       number 不在注册时交叉核对（B7 创建 eval 时 Registry 尚不存在，数值
-       版本无法预知，语义决策点 4 的 source/run_id 绑定为权威）。
+       权威绑定由模型 tags（train_id + eval_id）与 eval 的精确模型引用承担。
     4. 模型 tags 的 data_version/prompt_version/git_commit 一律取自 train
        父 Run（validate_train_for_promotion 快照），不取 eval（测试以
        TRAIN_GIT_COMMIT != EVAL_GIT_COMMIT 钉死来源）。
@@ -272,6 +272,7 @@ from versioning.mlflow_eval import (
     MODEL_ID_TAG as EVAL_MODEL_ID_TAG,
     EvalRecordStore,
     EvalRunRecord,
+    IllegalEvalRecord,
     create_eval_fold_run,
     create_eval_run,
     end_eval_fold_run,
@@ -317,6 +318,7 @@ from versioning.registry import (
     RegistryModelNotFound,
     approve_model_for_production,
     delete_alias,
+    finalize_model_evaluation,
     get_model,
     get_model_by_alias,
     mark_model_invalid,
@@ -324,6 +326,7 @@ from versioning.registry import (
     register_model,
     set_alias,
     set_offline_backup_scope,
+    validate_model_for_evaluation,
 )
 from versioning.state import IllegalTransition
 
@@ -394,7 +397,6 @@ BAD_TRAIN_IDS = [
 ]
 
 BAD_EVAL_IDS = [
-    None,
     "latest",
     "eval-v4.1",
     "model-v4.1-r1",
@@ -521,8 +523,9 @@ def golden(
 ) -> RegisteredModelRecord:
     """黄金晋级链上的已注册 model-v4.1-r1（version=1）。"""
     _complete_training(train_store)
+    register_model(registry, MODEL_ID, train_id=TRAIN_ID)
     _pass_eval(eval_store, data_root)
-    return register_model(registry, MODEL_ID, train_id=TRAIN_ID, eval_id=EVAL_ID)
+    return finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
 
 
 def _client(
@@ -568,13 +571,18 @@ def _pass_eval(
     eval_id: str = EVAL_ID,
     model_id: str = MODEL_ID,
     outcome: str = "passed",
+    model_version_number: int | None = None,
 ) -> EvalRunRecord:
     """single_fold 正式测评 completed + 显式 outcome（B7 合法路径）。"""
     create_eval_run(
         eval_store,
         eval_id,
         model_id=model_id,
-        model_version_number=1,
+        model_version_number=(
+            model_version_number
+            if model_version_number is not None
+            else (2 if model_id == OTHER_MODEL_ID else 1)
+        ),
         data_version=DATA_VERSION,
         config=CONFIG,
         git_commit=EVAL_GIT_COMMIT,
@@ -594,9 +602,8 @@ def _register(
     model_id: str = MODEL_ID,
     *,
     train_id: str = TRAIN_ID,
-    eval_id: str = EVAL_ID,
 ) -> RegisteredModelRecord:
-    return register_model(registry, model_id, train_id=train_id, eval_id=eval_id)
+    return register_model(registry, model_id, train_id=train_id)
 
 
 def _golden_register(
@@ -609,10 +616,17 @@ def _golden_register(
     train_id: str = TRAIN_ID,
     eval_id: str = EVAL_ID,
 ) -> RegisteredModelRecord:
-    """完整黄金链：train completed + eval passed + 注册（显式三元组）。"""
+    """完整黄金链：train completed → staging register → eval passed → finalize。"""
     _complete_training(train_store, train_id)
-    _pass_eval(eval_store, data_root, eval_id=eval_id, model_id=model_id)
-    return register_model(registry, model_id, train_id=train_id, eval_id=eval_id)
+    staged = register_model(registry, model_id, train_id=train_id)
+    _pass_eval(
+        eval_store,
+        data_root,
+        eval_id=eval_id,
+        model_id=model_id,
+        model_version_number=staged.version,
+    )
+    return finalize_model_evaluation(registry, model_id, eval_id=eval_id)
 
 
 def _stable_entity_view(entity) -> tuple:
@@ -735,6 +749,54 @@ class TestRegistryStore:
 class TestRegisterModelGate:
     """register_model：显式三元组、六绑定 tags、门 fail-closed、同名冲突。"""
 
+    def test_two_phase_registration_requires_passed_eval_before_candidate(
+        self,
+        registry: ModelRegistryStore,
+        train_store: TrainRecordStore,
+        eval_store: EvalRecordStore,
+        data_root: Path,
+    ) -> None:
+        _complete_training(train_store)
+        staged = register_model(registry, MODEL_ID, train_id=TRAIN_ID)
+        assert staged.eval_id is None
+        assert staged.version == 1
+        assert validate_model_for_evaluation(registry, MODEL_ID, 1) == staged
+
+        set_offline_backup_scope(registry, MODEL_ID, "adapter")
+        with pytest.raises(PromotionGateRejected):
+            set_alias(registry, MODEL_ID, "candidate")
+
+        _pass_eval(eval_store, data_root)
+        finalized = finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+        assert finalized.eval_id == EVAL_ID
+        assert finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID) == finalized
+        assert set_alias(registry, MODEL_ID, "candidate").aliases == ("candidate",)
+
+    def test_eval_reference_and_finalize_require_exact_numeric_version(
+        self,
+        registry: ModelRegistryStore,
+        train_store: TrainRecordStore,
+        eval_store: EvalRecordStore,
+        data_root: Path,
+    ) -> None:
+        _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
+        _complete_training(train_store, OTHER_TRAIN_ID)
+        second = register_model(registry, OTHER_MODEL_ID, train_id=OTHER_TRAIN_ID)
+        assert second.version == 2
+
+        with pytest.raises(PromotionGateRejected):
+            validate_model_for_evaluation(registry, OTHER_MODEL_ID, 1)
+        with pytest.raises(IllegalEvalRecord):
+            _pass_eval(
+                eval_store,
+                data_root,
+                eval_id=OTHER_EVAL_ID,
+                model_id=OTHER_MODEL_ID,
+                model_version_number=1,
+            )
+        assert get_model(registry, OTHER_MODEL_ID).eval_id is None
+
     def test_register_golden_path_record_and_raw_binding(
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
@@ -813,11 +875,12 @@ class TestRegisterModelGate:
     ) -> None:
         # §10 completed|archived 均放行（train 与 eval 两侧同规则）
         _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         _pass_eval(eval_store, data_root)
         transition_train_state(train_store, TRAIN_ID, "archived")
         transition_eval_state(eval_store, EVAL_ID, "archived")
 
-        record = register_model(registry, MODEL_ID, train_id=TRAIN_ID, eval_id=EVAL_ID)
+        record = finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
         assert record.record_validity == "valid"
         assert record.version == 1
 
@@ -855,9 +918,8 @@ class TestRegisterModelGate:
         bad_model_id,
     ) -> None:
         _complete_training(train_store)
-        _pass_eval(eval_store, data_root)
         with pytest.raises(InvalidIdentifier):
-            register_model(registry, bad_model_id, train_id=TRAIN_ID, eval_id=EVAL_ID)
+            register_model(registry, bad_model_id, train_id=TRAIN_ID)
         assert _raw_model_versions(registry) == []
 
     @pytest.mark.parametrize("bad_train_id", BAD_TRAIN_IDS)
@@ -870,13 +932,12 @@ class TestRegisterModelGate:
         bad_train_id,
     ) -> None:
         _complete_training(train_store)
-        _pass_eval(eval_store, data_root)
         with pytest.raises(InvalidIdentifier):
-            register_model(registry, MODEL_ID, train_id=bad_train_id, eval_id=EVAL_ID)
+            register_model(registry, MODEL_ID, train_id=bad_train_id)
         assert _raw_model_versions(registry) == []
 
     @pytest.mark.parametrize("bad_eval_id", BAD_EVAL_IDS)
-    def test_register_rejects_malformed_eval_id(
+    def test_finalize_rejects_malformed_eval_id(
         self,
         registry: ModelRegistryStore,
         train_store: TrainRecordStore,
@@ -885,10 +946,11 @@ class TestRegisterModelGate:
         bad_eval_id,
     ) -> None:
         _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         _pass_eval(eval_store, data_root)
         with pytest.raises(InvalidIdentifier):
-            register_model(registry, MODEL_ID, train_id=TRAIN_ID, eval_id=bad_eval_id)
-        assert _raw_model_versions(registry) == []
+            finalize_model_evaluation(registry, MODEL_ID, eval_id=bad_eval_id)
+        assert get_model(registry, MODEL_ID).eval_id is None
 
     @pytest.mark.parametrize("malformed", MALFORMED_QUOTED_MODEL_IDS)
     def test_register_and_get_reject_quoted_injection_ids(
@@ -900,7 +962,7 @@ class TestRegisterModelGate:
         # P3 同型回归：读/写入口先 parse_model_id——不泄漏 MlflowException、
         # 不静默当作"不存在"，一律 InvalidIdentifier
         with pytest.raises(InvalidIdentifier):
-            register_model(registry, malformed, train_id=TRAIN_ID, eval_id=EVAL_ID)
+            register_model(registry, malformed, train_id=TRAIN_ID)
         with pytest.raises(InvalidIdentifier):
             get_model(registry, malformed)
 
@@ -912,7 +974,6 @@ class TestRegisterModelGate:
         data_root: Path,
     ) -> None:
         _make_train(train_store)  # 仅创建父 Run（running/RUNNING）
-        _pass_eval(eval_store, data_root)
         with pytest.raises(PromotionGateRejected):
             _register(registry)
         assert _raw_model_versions(registry) == []
@@ -931,7 +992,6 @@ class TestRegisterModelGate:
     ) -> None:
         _make_train(train_store)
         transition_train_state(train_store, TRAIN_ID, state, run_status=run_status)
-        _pass_eval(eval_store, data_root)
         with pytest.raises(PromotionGateRejected):
             _register(registry)
         assert _raw_model_versions(registry) == []
@@ -944,10 +1004,43 @@ class TestRegisterModelGate:
         data_root: Path,
     ) -> None:
         _complete_training(train_store)
-        _pass_eval(eval_store, data_root)
         mark_train_invalid(train_store, TRAIN_ID)
         with pytest.raises(PromotionGateRejected):
             _register(registry)
+        assert _raw_model_versions(registry) == []
+
+    def test_register_rejects_completed_train_that_references_holdout(
+        self,
+        registry: ModelRegistryStore,
+        train_store: TrainRecordStore,
+        data_root: Path,
+    ) -> None:
+        holdout_version = "data-v4.1-r9"
+        working = data_root / "working" / "round-holdout"
+        working.mkdir(parents=True)
+        (working / "clip.bin").write_bytes(b"holdout")
+        stage_release(
+            data_root, "round-holdout", "v4.1", version=holdout_version
+        )
+        seal_release(
+            data_root,
+            holdout_version,
+            purpose="holdout",
+            description="registry 训练引用反向测试",
+            sample_count=1,
+            source_batches=["fixture"],
+            splits={"test": {"train": 0, "validation": 1}},
+        )
+        _make_train(train_store, data_version=holdout_version)
+        for fold in (0, 1, 2):
+            create_fold_run(train_store, TRAIN_ID, fold)
+            log_fold_metrics(train_store, TRAIN_ID, fold, TRAIN_FOLD_METRICS)
+            end_fold_run(train_store, TRAIN_ID, fold, "FINISHED")
+        log_train_summary(train_store, TRAIN_ID, TRAIN_SUMMARY_METRICS)
+        transition_train_state(train_store, TRAIN_ID, "completed")
+
+        with pytest.raises(PromotionGateRejected, match="可训练 development"):
+            register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         assert _raw_model_versions(registry) == []
 
     def test_register_rejects_missing_train(
@@ -956,24 +1049,21 @@ class TestRegisterModelGate:
         eval_store: EvalRecordStore,
         data_root: Path,
     ) -> None:
-        _pass_eval(eval_store, data_root)
         with pytest.raises(PromotionGateRejected):
-            register_model(
-                registry, MODEL_ID, train_id=UNKNOWN_TRAIN_ID, eval_id=EVAL_ID
-            )
+            register_model(registry, MODEL_ID, train_id=UNKNOWN_TRAIN_ID)
         assert _raw_model_versions(registry) == []
 
-    def test_register_rejects_missing_eval(
+    def test_finalize_rejects_missing_eval(
         self,
         registry: ModelRegistryStore,
         train_store: TrainRecordStore,
+        data_root: Path,
     ) -> None:
         _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         with pytest.raises(PromotionGateRejected):
-            register_model(
-                registry, MODEL_ID, train_id=TRAIN_ID, eval_id=UNKNOWN_EVAL_ID
-            )
-        assert _raw_model_versions(registry) == []
+            finalize_model_evaluation(registry, MODEL_ID, eval_id=UNKNOWN_EVAL_ID)
+        assert get_model(registry, MODEL_ID).eval_id is None
 
     def test_register_rejects_running_eval(
         self,
@@ -983,6 +1073,7 @@ class TestRegisterModelGate:
         data_root: Path,
     ) -> None:
         _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         create_eval_run(
             eval_store,
             EVAL_ID,
@@ -996,8 +1087,8 @@ class TestRegisterModelGate:
             data_root=data_root,
         )  # 仅创建（running/RUNNING）
         with pytest.raises(PromotionGateRejected):
-            _register(registry)
-        assert _raw_model_versions(registry) == []
+            finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+        assert get_model(registry, MODEL_ID).eval_id is None
 
     def test_register_rejects_failed_outcome_eval(
         self,
@@ -1008,10 +1099,11 @@ class TestRegisterModelGate:
     ) -> None:
         # §5.5/§10：质量未达标的 outcome=failed 是有效证据，但不允许晋级
         _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         _pass_eval(eval_store, data_root, outcome="failed")
         with pytest.raises(PromotionGateRejected):
-            _register(registry)
-        assert _raw_model_versions(registry) == []
+            finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+        assert get_model(registry, MODEL_ID).eval_id is None
 
     def test_register_rejects_invalid_eval(
         self,
@@ -1021,11 +1113,12 @@ class TestRegisterModelGate:
         data_root: Path,
     ) -> None:
         _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         _pass_eval(eval_store, data_root)
         mark_eval_invalid(eval_store, EVAL_ID)
         with pytest.raises(PromotionGateRejected):
-            _register(registry)
-        assert _raw_model_versions(registry) == []
+            finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+        assert get_model(registry, MODEL_ID).eval_id is None
 
     def test_register_rejects_eval_for_other_model(
         self,
@@ -1036,21 +1129,19 @@ class TestRegisterModelGate:
     ) -> None:
         # 关联校验：eval 的 model_id tag 指向另一个模型时不允许注册本模型
         _complete_training(train_store)
-        _pass_eval(eval_store, data_root, model_id=OTHER_MODEL_ID)
-        with pytest.raises(PromotionGateRejected):
-            _register(registry)
-        assert _raw_model_versions(registry) == []
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
+        with pytest.raises(IllegalEvalRecord):
+            _pass_eval(eval_store, data_root, model_id=OTHER_MODEL_ID)
+        assert get_model(registry, MODEL_ID).eval_id is None
 
     def test_register_duplicate_model_id_conflicts_before_gates(
         self,
         golden: RegisteredModelRecord,
         registry: ModelRegistryStore,
     ) -> None:
-        # §11.6 同名立即停止：冲突检测优先于晋级门（即便 eval 缺失也报冲突）
+        # §11.6 同名立即停止：冲突检测优先于 train 晋级门。
         with pytest.raises(ModelVersionConflict):
-            register_model(
-                registry, MODEL_ID, train_id=TRAIN_ID, eval_id=UNKNOWN_EVAL_ID
-            )
+            register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         # 原数值版本不动、不新增版本
         assert len(_raw_model_versions(registry)) == 1
         original = _raw_model_version(registry, 1)
@@ -1176,6 +1267,18 @@ class TestRecordValidity:
         mark_model_invalid(registry, MODEL_ID)
         # §13.1：alias 只能指向有效版本，路由读 fail-closed
         with pytest.raises(InvalidModelRecord):
+            get_model_by_alias(registry, "candidate")
+
+    def test_routing_read_rechecks_finalized_eval_online(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        eval_store: EvalRecordStore,
+    ) -> None:
+        set_offline_backup_scope(registry, MODEL_ID, "adapter")
+        set_alias(registry, MODEL_ID, "candidate")
+        mark_eval_invalid(eval_store, EVAL_ID)
+        with pytest.raises(PromotionGateRejected):
             get_model_by_alias(registry, "candidate")
 
     def test_alias_and_approve_reject_invalid_model(

@@ -48,8 +48,10 @@ stages:
       - data/release_payload
       - data/release_pointer.json
   release_validate:
-    cmd: python -m versioning data release_validate --root . --batch batch-001
+    cmd: python -m versioning data release_validate --root . --batch batch-001 --version ${release_version}
     deps:
       - data/release_pointer.json
+    params:
+      - release_version
     outs:
       - data/reports

@@ -118,6 +118,7 @@ from versioning.holdout import (
     PreRegistrationError,
     acquire_claim,
     create_claim,
+    freeze_pre_registration,
     load_claim,
     load_pre_registration,
     mark_claim_consumed,
@@ -216,6 +217,29 @@ def _valid_pre_registration_dict(**overrides: object) -> dict:
     }
     data.update(overrides)
     return data
+
+
+def test_freeze_pre_registration_is_read_only_and_idempotent(tmp_path: Path) -> None:
+    source = tmp_path / "input.yaml"
+    source.write_text(
+        yaml.safe_dump(_valid_pre_registration_dict()), encoding="utf-8"
+    )
+    target = freeze_pre_registration(
+        source, tmp_path / "evaluations", "eval-v4.1-r1"
+    )
+    assert target == (
+        tmp_path
+        / "evaluations"
+        / "staging"
+        / "eval-v4.1-r1"
+        / "authorization"
+        / "pre_registration.yaml"
+    )
+    assert target.read_bytes() == source.read_bytes()
+    assert target.stat().st_mode & 0o222 == 0
+    assert freeze_pre_registration(
+        source, tmp_path / "evaluations", "eval-v4.1-r1"
+    ) == target
 
 
 class TestHoldoutTrainingGate:
@@ -505,6 +529,35 @@ class TestOneTimeClaim:
         mark_claim_consumed(authorization, _identity(), "runner-A")
         with pytest.raises(ClaimConsumedError):
             mark_claim_consumed(authorization, _identity(), "runner-A")
+
+    def test_consume_publish_failure_leaves_no_partial_marker(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        authorization = _make_authorization_dir(tmp_path)
+        acquire_claim(authorization, _identity(), "runner-A")
+
+        def fail_link(*args, **kwargs):
+            raise OSError("injected atomic publish failure")
+
+        monkeypatch.setattr("versioning.holdout.os.link", fail_link)
+        with pytest.raises(OSError):
+            mark_claim_consumed(authorization, _identity(), "runner-A")
+        assert not (authorization / "consumed.yaml").exists()
+        assert not list(authorization.glob(".consumed.*.tmp"))
+
+    def test_claim_publish_failure_leaves_no_partial_claim(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        authorization = _make_authorization_dir(tmp_path)
+
+        def fail_link(*args, **kwargs):
+            raise OSError("injected atomic publish failure")
+
+        monkeypatch.setattr("versioning.holdout.os.link", fail_link)
+        with pytest.raises(OSError):
+            create_claim(authorization, _identity(), "runner-A")
+        assert not (authorization / "claim.yaml").exists()
+        assert not list(authorization.glob(".claim.*.tmp"))
 
     def test_consume_with_mismatched_identity_rejected(self, tmp_path: Path) -> None:
         authorization = _make_authorization_dir(tmp_path)

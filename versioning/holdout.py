@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -82,6 +83,7 @@ class HoldoutClaim:
 
     identity: ClaimIdentity
     executor: str
+    pre_registration_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -213,8 +215,23 @@ def _validate_claim_identity(identity: ClaimIdentity) -> None:
         raise ClaimError("split 必须是非空字符串")
 
 
-def _claim_to_dict(identity: ClaimIdentity, executor: str) -> dict[str, Any]:
-    return {
+def _validate_pre_registration_sha256(value: str | None) -> None:
+    if value is None:
+        return
+    if not isinstance(value, str) or len(value) != 64:
+        raise ClaimError("pre_registration_sha256 必须是 64 位十六进制摘要")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise ClaimError("pre_registration_sha256 必须是 64 位十六进制摘要") from exc
+
+
+def _claim_to_dict(
+    identity: ClaimIdentity,
+    executor: str,
+    pre_registration_sha256: str | None,
+) -> dict[str, Any]:
+    payload = {
         "identity": {
             "eval_version": identity.eval_version,
             "model_version": identity.model_version,
@@ -223,6 +240,64 @@ def _claim_to_dict(identity: ClaimIdentity, executor: str) -> dict[str, Any]:
         },
         "executor": executor,
     }
+    if pre_registration_sha256 is not None:
+        payload["pre_registration_sha256"] = pre_registration_sha256
+    return payload
+
+
+def _publish_read_only_exclusive(target: Path, payload: bytes) -> None:
+    """完整落盘后独占发布只读文件；失败不暴露半写最终路径。"""
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            fd = -1
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+            os.fchmod(stream.fileno(), 0o444)
+        os.link(temporary_path, target)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        temporary_path.unlink(missing_ok=True)
+
+
+def freeze_pre_registration(
+    source: Path, evaluations_root: Path, eval_version: str
+) -> Path:
+    """把预注册原子冻结到 evaluations/staging/<eval>/authorization/。"""
+    parse_eval_id(eval_version)
+    source = Path(source)
+    try:
+        payload = source.read_bytes()
+    except Exception as exc:
+        raise PreRegistrationError(f"无法读取 pre_registration: {source}") from exc
+    parsed = load_pre_registration(source)
+    if parsed.eval_version != eval_version:
+        raise PreRegistrationError("pre_registration eval_version 与目标不一致")
+
+    target = (
+        Path(evaluations_root)
+        / "staging"
+        / eval_version
+        / "authorization"
+        / "pre_registration.yaml"
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if target.read_bytes() == payload:
+            return target
+        raise PreRegistrationError(f"已冻结预注册内容冲突: {target}")
+    try:
+        _publish_read_only_exclusive(target, payload)
+    except FileExistsError:
+        if target.read_bytes() == payload:
+            return target
+        raise PreRegistrationError(f"已冻结预注册内容冲突: {target}")
+    return target
 
 
 def _load_claim_dict(authorization_dir: Path) -> dict[str, Any]:
@@ -256,7 +331,13 @@ def _dict_to_claim(raw: Mapping[str, Any]) -> HoldoutClaim:
     if not isinstance(executor, str) or not executor:
         raise ClaimError("executor 必须是非空字符串")
 
-    return HoldoutClaim(identity=identity, executor=executor)
+    pre_registration_sha256 = raw.get("pre_registration_sha256")
+    _validate_pre_registration_sha256(pre_registration_sha256)
+    return HoldoutClaim(
+        identity=identity,
+        executor=executor,
+        pre_registration_sha256=pre_registration_sha256,
+    )
 
 
 def _expected_data_version(authorization_dir: Path) -> str:
@@ -265,7 +346,11 @@ def _expected_data_version(authorization_dir: Path) -> str:
 
 
 def create_claim(
-    authorization_dir: Path, identity: ClaimIdentity, executor: str
+    authorization_dir: Path,
+    identity: ClaimIdentity,
+    executor: str,
+    *,
+    pre_registration_sha256: str | None = None,
 ) -> Path:
     """原子创建 claim.yaml，去写位。
 
@@ -277,6 +362,7 @@ def create_claim(
     _validate_claim_identity(identity)
     if not isinstance(executor, str) or not executor:
         raise ClaimError("executor 必须是非空字符串")
+    _validate_pre_registration_sha256(pre_registration_sha256)
 
     expected_data = _expected_data_version(authorization_dir)
     if identity.data_version != expected_data:
@@ -287,24 +373,17 @@ def create_claim(
     authorization_dir.mkdir(parents=True, exist_ok=True)
     claim_path = authorization_dir / "claim.yaml"
 
-    fd = -1
     try:
-        fd = os.open(
-            str(claim_path),
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-            0o444,
+        _publish_read_only_exclusive(
+            claim_path,
+            yaml.safe_dump(
+                _claim_to_dict(identity, executor, pre_registration_sha256)
+            ).encode("utf-8"),
         )
-        data_bytes = yaml.safe_dump(
-            _claim_to_dict(identity, executor)
-        ).encode("utf-8")
-        os.write(fd, data_bytes)
     except FileExistsError as exc:
         raise ClaimExistsError(
             f"claim.yaml 已存在: {claim_path}"
         ) from exc
-    finally:
-        if fd >= 0:
-            os.close(fd)
 
     return claim_path
 
@@ -325,13 +404,24 @@ def load_claim(authorization_dir: Path) -> HoldoutClaim:
 
 
 def _claims_match(
-    stored: HoldoutClaim, identity: ClaimIdentity, executor: str
+    stored: HoldoutClaim,
+    identity: ClaimIdentity,
+    executor: str,
+    pre_registration_sha256: str | None,
 ) -> bool:
-    return stored.identity == identity and stored.executor == executor
+    return (
+        stored.identity == identity
+        and stored.executor == executor
+        and stored.pre_registration_sha256 == pre_registration_sha256
+    )
 
 
 def acquire_claim(
-    authorization_dir: Path, identity: ClaimIdentity, executor: str
+    authorization_dir: Path,
+    identity: ClaimIdentity,
+    executor: str,
+    *,
+    pre_registration_sha256: str | None = None,
 ) -> HoldoutClaim:
     """首次模型调用前的全局一次性授权入口。
 
@@ -343,12 +433,22 @@ def acquire_claim(
     _validate_claim_identity(identity)
     if not isinstance(executor, str) or not executor:
         raise ClaimError("executor 必须是非空字符串")
+    _validate_pre_registration_sha256(pre_registration_sha256)
 
     claim_path = authorization_dir / "claim.yaml"
 
     if not claim_path.is_file():
-        create_claim(authorization_dir, identity, executor)
-        return HoldoutClaim(identity=identity, executor=executor)
+        create_claim(
+            authorization_dir,
+            identity,
+            executor,
+            pre_registration_sha256=pre_registration_sha256,
+        )
+        return HoldoutClaim(
+            identity=identity,
+            executor=executor,
+            pre_registration_sha256=pre_registration_sha256,
+        )
 
     try:
         stored = load_claim(authorization_dir)
@@ -356,7 +456,7 @@ def acquire_claim(
         # 已存在但不可解析：fail-closed，拒绝当作可恢复。
         raise
 
-    if not _claims_match(stored, identity, executor):
+    if not _claims_match(stored, identity, executor, pre_registration_sha256):
         raise ClaimConflictError(
             "claim 身份/执行者与既有 claim 不一致"
         )
@@ -369,7 +469,11 @@ def acquire_claim(
 
 
 def mark_claim_consumed(
-    authorization_dir: Path, identity: ClaimIdentity, executor: str
+    authorization_dir: Path,
+    identity: ClaimIdentity,
+    executor: str,
+    *,
+    pre_registration_sha256: str | None = None,
 ) -> Path:
     """正式 eval 完成后登记一次性消费状态。
 
@@ -381,10 +485,11 @@ def mark_claim_consumed(
     _validate_claim_identity(identity)
     if not isinstance(executor, str) or not executor:
         raise ClaimError("executor 必须是非空字符串")
+    _validate_pre_registration_sha256(pre_registration_sha256)
 
     stored = load_claim(authorization_dir)
 
-    if not _claims_match(stored, identity, executor):
+    if not _claims_match(stored, identity, executor, pre_registration_sha256):
         raise ClaimConflictError(
             "claim 身份/执行者与既有 claim 不一致"
         )
@@ -393,21 +498,60 @@ def mark_claim_consumed(
     if consumed_path.exists():
         raise ClaimConsumedError("claim 已被消费，不得重复消费")
 
-    consumed_path.write_text(
-        yaml.safe_dump(
-            {
-                "identity": {
-                    "eval_version": identity.eval_version,
-                    "model_version": identity.model_version,
-                    "data_version": identity.data_version,
-                    "split": identity.split,
-                },
-                "executor": executor,
-            }
-        ),
-        encoding="utf-8",
-    )
-    # 消费标记同样只读。
-    consumed_path.chmod(0o444)
+    payload = yaml.safe_dump(
+        {
+            "identity": {
+                "eval_version": identity.eval_version,
+                "model_version": identity.model_version,
+                "data_version": identity.data_version,
+                "split": identity.split,
+            },
+            "executor": executor,
+            **(
+                {"pre_registration_sha256": pre_registration_sha256}
+                if pre_registration_sha256 is not None
+                else {}
+            ),
+        }
+    ).encode("utf-8")
 
+    # 同目录临时 inode 完整落盘后再以 hard-link 的独占语义发布：写入中断
+    # 不会暴露半截 consumed.yaml，并发完成也不能覆盖已有消费标记。
+    try:
+        _publish_read_only_exclusive(consumed_path, payload)
+    except FileExistsError as exc:
+        raise ClaimConsumedError("claim 已被消费，不得重复消费") from exc
+
+    return consumed_path
+
+
+def validate_claim_consumed(
+    authorization_dir: Path,
+    identity: ClaimIdentity,
+    executor: str,
+    *,
+    pre_registration_sha256: str | None = None,
+) -> Path:
+    """校验 consumed.yaml 与不可变 claim 完全一致，不修改任何文件。"""
+    _validate_claim_identity(identity)
+    if not isinstance(executor, str) or not executor:
+        raise ClaimError("executor 必须是非空字符串")
+    _validate_pre_registration_sha256(pre_registration_sha256)
+
+    stored = load_claim(authorization_dir)
+    if not _claims_match(stored, identity, executor, pre_registration_sha256):
+        raise ClaimConflictError("claim 身份/执行者/预注册摘要不一致")
+
+    consumed_path = authorization_dir / "consumed.yaml"
+    if not consumed_path.is_file():
+        raise ClaimNotFound(f"consumed.yaml 不存在: {authorization_dir}")
+    try:
+        raw = yaml.safe_load(consumed_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ClaimError(f"无法解析 consumed.yaml: {exc}") from exc
+    if not isinstance(raw, Mapping):
+        raise ClaimError("consumed.yaml 顶层必须是映射")
+    consumed = _dict_to_claim(raw)
+    if not _claims_match(consumed, identity, executor, pre_registration_sha256):
+        raise ClaimConflictError("consumed.yaml 与 claim 身份不一致")
     return consumed_path

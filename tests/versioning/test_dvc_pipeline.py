@@ -45,8 +45,8 @@ tests/versioning/test_data_pipeline.py 的 docstring 为准）。
        #   缺失 -> 非零退出（argparse exit 2 语义），不产生任何 release；
        #   非法值（非完整 data ID / 协议段与 --protocol 裸段不符）
        #   -> 非零退出（exit 1，InvalidIdentifier）。
-       #   --version 仅对 release 必填；release_validate 仍可选（指针发现：
-       #   校验是只读报告，不分配版本，不受显式纪律约束）。
+       #   --version 对 release 与 release_validate 均必填；统一 CLI 不通过
+       #   指针发现隐式选择版本。
 
 3. 临时 DVC 仓库集成（``dvc init --no-scm``，tmp_path 内，禁止连正式 remote）：
    七阶段 fixture 闭环；审查缺失/不通过时 pipeline 阻断、回收通过后放行；
@@ -424,7 +424,7 @@ class TestCliData:
         assert not (release_dir / "accepted_clips.json").exists()
         # 固定路径 payload out（DVC 普通 out）
         assert (root / "data" / "release_payload" / "accepted_clips.json").is_file()
-        proc = cli("release_validate")
+        proc = cli("release_validate", "--version", "data-v4.1-r1")
         assert proc.returncode == 0, proc.stderr
         assert (
             root / "data" / "reports" / "data-v4.1-r1.validation.json"
@@ -546,7 +546,7 @@ class TestCliData:
         )
         payload_file.chmod(payload_file.stat().st_mode | 0o200)
 
-        proc = cli("release_validate")
+        proc = cli("release_validate", "--version", "data-v4.1-r1")
         assert proc.returncode != 0, "封存被破坏的 release 必须 fail-closed"
         report = json.loads(
             (
@@ -628,8 +628,9 @@ def _dvc_yaml(batch: str = BATCH) -> dict:
                 ],
             },
             "release_validate": {
-                "cmd": cmd("release_validate"),
+                "cmd": cmd("release_validate", "--version", "${release_version}"),
                 "deps": ["data/release_pointer.json"],
+                "params": ["release_version"],
                 "outs": ["data/reports"],
             },
         }

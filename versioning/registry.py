@@ -14,6 +14,7 @@ import yaml
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
+from versioning.data_release import validate_training_reference
 from versioning.ids import (
     parse_data_id,
     parse_eval_id,
@@ -99,6 +100,7 @@ class ModelRegistryStore:
     registered_model: str
     train_experiment_id: str
     eval_experiment_id: str
+    data_root: Path
 
 
 @dataclass(frozen=True)
@@ -110,7 +112,7 @@ class RegisteredModelRecord:
     registered_model: str
     run_id: str
     train_id: str
-    eval_id: str
+    eval_id: str | None
     data_version: str
     prompt_version: str
     git_commit: str
@@ -168,9 +170,16 @@ def _search_experiment(client: MlflowClient, name: str) -> str:
     return experiment.experiment_id
 
 
-def open_registry_store(root: Path) -> ModelRegistryStore:
+def open_registry_store(
+    root: Path, *, data_root: Path | None = None
+) -> ModelRegistryStore:
     """创建（缺失时）本地 SQLite + artifact store，复用/新建 mVllm2-training/mVllm2-evaluation 实验与 mVllm2 Registered Model。"""
     root = Path(root)
+    if data_root is None:
+        if root.name == "mlflow" and root.parent.name == "workspace":
+            data_root = root.parent.parent / "data"
+        else:
+            data_root = root.parent / "data"
     root.mkdir(parents=True, exist_ok=True)
     artifact_path = root / "artifacts"
     artifact_path.mkdir(parents=True, exist_ok=True)
@@ -189,6 +198,7 @@ def open_registry_store(root: Path) -> ModelRegistryStore:
         registered_model=REGISTERED_MODEL_NAME,
         train_experiment_id=train_experiment_id,
         eval_experiment_id=eval_experiment_id,
+        data_root=Path(data_root),
     )
 
 
@@ -230,10 +240,11 @@ def _validate_model_version_tags(version: Any, *, expected_model_id: str | None 
         raise IllegalRegistryRecord(f"train_id tag 非法: {train_id!r}") from exc
 
     eval_id = tags.get(EVAL_ID_TAG)
-    try:
-        parse_eval_id(eval_id)
-    except Exception as exc:
-        raise IllegalRegistryRecord(f"eval_id tag 非法: {eval_id!r}") from exc
+    if eval_id is not None:
+        try:
+            parse_eval_id(eval_id)
+        except Exception as exc:
+            raise IllegalRegistryRecord(f"eval_id tag 非法: {eval_id!r}") from exc
 
     data_version = tags.get(DATA_VERSION_TAG)
     try:
@@ -276,7 +287,7 @@ def _build_record(version: Any) -> RegisteredModelRecord:
         registered_model=version.name,
         run_id=version.run_id,
         train_id=tags[TRAIN_ID_TAG],
-        eval_id=tags[EVAL_ID_TAG],
+        eval_id=tags.get(EVAL_ID_TAG),
         data_version=tags[DATA_VERSION_TAG],
         prompt_version=tags[PROMPT_VERSION_TAG],
         git_commit=tags[GIT_COMMIT_TAG],
@@ -300,6 +311,25 @@ def get_model(store: ModelRegistryStore, model_id: str) -> RegisteredModelRecord
     """按 model_id 检索审计快照；invalid 亦返回。"""
     version = _get_model_version(store, model_id)
     return _build_record(version)
+
+
+def validate_model_for_evaluation(
+    store: ModelRegistryStore,
+    model_id: str,
+    model_version_number: int,
+) -> RegisteredModelRecord:
+    """正式 eval 创建门：模型存在、有效、数值版本精确匹配且训练记录仍合格。"""
+    if not isinstance(model_version_number, int) or isinstance(model_version_number, bool):
+        raise IllegalRegistryRecord("model_version_number 必须是正整数")
+    record = get_model(store, model_id)
+    if record.record_validity == RecordValidity.INVALID.value:
+        raise InvalidModelRecord(f"model {model_id} 已 invalid")
+    if record.version != model_version_number:
+        raise PromotionGateRejected(
+            f"model {model_id} 的数值版本是 {record.version}，不是 {model_version_number}"
+        )
+    _run_train_gate(store, record.train_id)
+    return record
 
 
 def _resolve_alias(client: MlflowClient, alias: str) -> Any:
@@ -326,13 +356,34 @@ def get_model_by_alias(store: ModelRegistryStore, alias: str) -> RegisteredModel
     record = _build_record(version)
     if record.record_validity == RecordValidity.INVALID.value:
         raise InvalidModelRecord(f"alias {alias!r} 指向 invalid 模型")
+    if record.eval_id is None:
+        raise PromotionGateRejected(f"alias {alias!r} 指向未 finalize 模型")
+    if alias == "candidate" and record.offline_backup_scope not in {
+        "adapter",
+        "production_bundle",
+    }:
+        raise PromotionGateRejected("candidate alias 目标缺少有效备份范围")
+    if alias == "production" and (
+        record.offline_backup_scope != "production_bundle"
+        or not record.production_approved
+    ):
+        raise PromotionGateRejected("production alias 目标缺少范围或批准")
+    _run_train_gate(store, record.train_id)
+    eval_record = _run_eval_gate(store, record.eval_id, require_passed=True)
+    if (
+        eval_record.model_id != record.model_id
+        or eval_record.model_version_number != record.version
+    ):
+        raise PromotionGateRejected("alias 目标的 eval 与模型身份或数值版本不一致")
     return record
 
 
 def _run_train_gate(store: ModelRegistryStore, train_id: str) -> Any:
     """train 晋级门；成功返回记录，失败包装为 PromotionGateRejected。"""
     try:
-        return validate_train_for_promotion(_train_store(store), train_id)
+        record = validate_train_for_promotion(_train_store(store), train_id)
+        validate_training_reference(store.data_root, record.data_version)
+        return record
     except (
         TrainRecordNotFound,
         InvalidTrainRecord,
@@ -368,12 +419,10 @@ def register_model(
     model_id: str,
     *,
     train_id: str,
-    eval_id: str,
 ) -> RegisteredModelRecord:
-    """注册模型：显式三元组 → 冲突检查 → train 门 → eval passed 门 → 关联校验 → 创建数值版本。"""
+    """登记 staging 模型，先得到供正式 eval 精确引用的数值版本。"""
     parse_model_id(model_id)
     parse_train_id(train_id)
-    parse_eval_id(eval_id)
 
     client = _client(store)
 
@@ -388,21 +437,11 @@ def register_model(
     # 3) train 晋级门
     train_record = _run_train_gate(store, train_id)
 
-    # 4) eval passed 门
-    eval_record = _run_eval_gate(store, eval_id, require_passed=True)
-
-    # 5) 关联校验：eval.model_id == 被注册 model_id
-    if eval_record.model_id != model_id:
-        raise PromotionGateRejected(
-            f"eval model_id {eval_record.model_id!r} 与注册 model_id {model_id!r} 不一致"
-        )
-
     # 6) 创建数值版本
     run = client.get_run(train_record.run_id)
     tags = {
         MODEL_ID_TAG: model_id,
         TRAIN_ID_TAG: train_record.train_id,
-        EVAL_ID_TAG: eval_record.eval_id,
         DATA_VERSION_TAG: train_record.data_version,
         PROMPT_VERSION_TAG: train_record.prompt_version,
         GIT_COMMIT_TAG: train_record.git_commit,
@@ -415,6 +454,47 @@ def register_model(
         tags=tags,
     )
     return _build_record(version)
+
+
+def finalize_model_evaluation(
+    store: ModelRegistryStore,
+    model_id: str,
+    *,
+    eval_id: str,
+) -> RegisteredModelRecord:
+    """把已通过且精确引用该数值 Model Version 的 eval 绑定到 staging 模型。"""
+    parse_model_id(model_id)
+    parse_eval_id(eval_id)
+
+    client = _client(store)
+    version = _fetch_version_by_model_id(client, model_id)
+    _validate_model_version_tags(version, expected_model_id=model_id)
+    record = _build_record(version)
+    if record.record_validity == RecordValidity.INVALID.value:
+        raise InvalidModelRecord(f"model {model_id} 已 invalid")
+    if record.eval_id is not None and record.eval_id != eval_id:
+        raise ModelVersionConflict(
+            f"model {model_id} 已绑定 eval {record.eval_id}，不得改绑 {eval_id}"
+        )
+
+    eval_record = _run_eval_gate(store, eval_id, require_passed=True)
+    if eval_record.model_id != model_id:
+        raise PromotionGateRejected(
+            f"eval model_id {eval_record.model_id!r} 与 model {model_id!r} 不一致"
+        )
+    if eval_record.model_version_number != record.version:
+        raise PromotionGateRejected(
+            "eval 引用的 MLflow 数值 Model Version "
+            f"{eval_record.model_version_number} 与实际版本 {record.version} 不一致"
+        )
+    if record.eval_id == eval_id:
+        return record
+
+    client.set_model_version_tag(
+        REGISTERED_MODEL_NAME, str(record.version), EVAL_ID_TAG, eval_id
+    )
+    updated = client.get_model_version(REGISTERED_MODEL_NAME, str(record.version))
+    return _build_record(updated)
 
 
 def set_offline_backup_scope(
@@ -468,6 +548,8 @@ def approve_model_for_production(
 
     train_id = record.train_id
     eval_id = record.eval_id
+    if eval_id is None:
+        raise PromotionGateRejected(f"model {model_id} 尚未绑定通过的正式 eval")
 
     _run_train_gate(store, train_id)
     eval_record = _run_eval_gate(store, eval_id, require_passed=True)
@@ -476,6 +558,10 @@ def approve_model_for_production(
     if eval_record.model_id != model_id:
         raise PromotionGateRejected(
             f"eval model_id {eval_record.model_id!r} 与批准 model_id {model_id!r} 不一致"
+        )
+    if eval_record.model_version_number != record.version:
+        raise PromotionGateRejected(
+            "eval 引用的 MLflow 数值 Model Version 与被批准模型不一致"
         )
 
     if record.production_approved:
@@ -522,12 +608,19 @@ def set_alias(
                 "production alias 要求已批准"
             )
 
-    # train 门在线复验
-    _run_train_gate(store, record.train_id)
+    if record.eval_id is None:
+        raise PromotionGateRejected(
+            f"{alias} alias 要求模型已绑定通过的正式 eval"
+        )
 
-    # production 额外复验 eval passed
-    if alias == "production":
-        _run_eval_gate(store, record.eval_id, require_passed=True)
+    # train / eval 门在线复验
+    _run_train_gate(store, record.train_id)
+    eval_record = _run_eval_gate(store, record.eval_id, require_passed=True)
+    if (
+        eval_record.model_id != record.model_id
+        or eval_record.model_version_number != record.version
+    ):
+        raise PromotionGateRejected("eval 与模型可读身份或数值版本绑定不一致")
 
     client.set_registered_model_alias(
         REGISTERED_MODEL_NAME, alias, str(record.version)
