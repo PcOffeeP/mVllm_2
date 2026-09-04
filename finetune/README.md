@@ -315,6 +315,31 @@ service smoke、TensileAgent doctor 和 Agent 调用。它解决的是“整个�
 当前模型仍是 Fold0 中间开发模型，不得宣称为 final、full-data、
 independent-test-passed 或 production-approved。
 
+## 可读版本控制新体系的训练与测评记录
+
+`refactor/readable-version-control` 分支提供独立的 `python -m versioning` 入口，用于在
+MLflow 本地 store 中记录可读训练与测评身份；它尚未替换本文件前述 legacy 训练命令，也不在
+Mac 上执行真实 GPU 训练或推理。
+
+- `train create train-v...` 先校验封存 data release 和已冻结 Prompt，再创建训练父 Run；
+  `fold-start` / `fold-end` 管理 fold0–fold2 子 Run，`summary` 写三折汇总，全部完成后才能
+  `complete`。
+- `eval create eval-v...` 创建独立测评父 Run；single-fold、cross-validation、full 三种
+  scope 分别执行各自的 fold/汇总完整性门。holdout 额外要求把预注册原子冻结到 eval
+  staging 稳定路径，并以完整内容摘要绑定全局一次性 claim；完成测评时消费该 claim，只有
+  同一身份、executor 与摘要可以恢复。
+- `model register model-v...` 在关联 train 完整后先登记 staging Model Version；`eval create`
+  必须精确引用它的可读身份与 MLflow 数值版本，eval passed 后再执行 `model finalize
+  model-v... --eval-version eval-v...` 单向绑定结论。candidate/production alias 均拒绝未
+  finalize 的模型；备份范围、批准和物化也只通过显式子命令推进，不存在隐式最新模型。
+- `eval manifest` 从封存 data、正式 Prompt、已完成 train 和 eval 结论单向导出轻量证据，
+  并要求模型已绑定当前 eval、`source_train` 与模型登记的 train 完全一致；
+  不反向修改 MLflow。`backup create/verify/restore` 只处理显式路径，并拒绝覆盖恢复目标。
+
+参数清单运行 `python -m versioning <领域> --help` 查看。模块与命令索引见
+[`versioning/SCRIPTS.md`](../versioning/SCRIPTS.md)，架构边界见
+[`ARCHITECTURE.md`](../ARCHITECTURE.md)。
+
 ## V2 历史复现
 
 下列入口仅用于封存版本复现，不是 `main` 的当前训练说明：
@@ -331,8 +356,5 @@ independent-test-passed 或 production-approved。
 
 - [仓库总览](../README.md)
 - [数据处理与训练运行手册](../docs/DATA_PROCESSING_RUNBOOK.md)
-- [数据隔离设计](../docs/plans/2026-07-23-v2-v4-1-data-isolation-design.md)
-- [迁移报告](../docs/reports/2026-07-23-v2-v4-1-data-migration.md)
 - [当前推理服务运行手册](../docs/INFERENCE_SERVICE_RUNBOOK.md)
-- [模型资产生命周期设计](../docs/plans/2026-07-29-model-artifact-lifecycle-design.md)
-- [Checkpoint 清理报告](../docs/reports/2026-07-29-checkpoint-retention-plan.md)
+- 历史数据隔离、模型资产生命周期与 checkpoint 清理文档已在提交 `d964eeb5` 归档；需要时从 Git 历史查阅。

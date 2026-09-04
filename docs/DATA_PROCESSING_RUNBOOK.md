@@ -622,9 +622,9 @@ python pipeline/scripts/rebuild_data.py promote \
 > - `run --source-only --check-only` 仅做校验，不写入快照。
 > - 同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
 
-## 10. 新体系（versioning）DVC pipeline（在建，本轮不切换）
+## 10. 新体系（versioning）DVC pipeline（已实现，本轮不切换）
 
-> 本章节描述可读版本控制新体系（`refactor/readable-version-control` 分支）当前已实现的 DVC 数据 pipeline 入口。**legacy 六步流程（§3–§9）仍为现役**，本章节为新体系入口，本轮不切换正式流程。新体系当前仅实现数据 pipeline 阶段；训练/测评/物化等子命令留待后续批次（B10）整合扩展。
+> 本章节描述可读版本控制新体系（`refactor/readable-version-control` 分支）已经实现的 DVC 数据 pipeline 入口。**legacy 六步流程（§3–§9）仍为现役**，本章节为新体系入口，本轮不切换正式流程。统一 CLI 还提供 Prompt、训练、测评、模型和备份命令，但不代表训练机或真实产物已经迁移。
 
 ### 10.1 前置条件
 
@@ -683,6 +683,13 @@ python -m versioning data <stage> [--root DIR] [--batch NAME] \
 
 - 集成测试在 `tmp_path` 初始化临时 DVC 仓库（`dvc init --no-scm`），跑通七阶段 fixture 闭环；审查缺失 / 不通过时 pipeline 阻断、回收通过后放行；输入变化后 `dvc status` 报告过期但不自动重跑（D035），手动 `dvc repro` 产生新 data 版本；临时 local remote push→删本地 cache 与产物→pull 完整恢复。
 - 测试命令：`uv run pytest tests/versioning/test_data_pipeline.py tests/versioning/test_dvc_pipeline.py -q`（54 例）。
+
+### 10.9 holdout claim 与训练边界
+
+- `python -m versioning data claim` 只接受已经封存且 `purpose: holdout` 的完整 data 版本，并要求显式给出 `--pre-registration`、`--eval-version`、`--model-version`、`--split` 与 `--executor`；命令先核对预注册与四元组、校验 holdout 隔离布局，再把预注册原子冻结为只读的 `evaluations/staging/<eval>/authorization/pre_registration.yaml`，最后把该冻结文件的完整 SHA-256 与身份一起原子写入 release 的 `authorization/claim.yaml`。规则或阈值发生任何内容变化都会被拒绝。
+- `python -m versioning train create` 在创建 MLflow Run 前在线执行数据训练引用门；`purpose: holdout`、`training_allowed: false` 或 `status: invalid` 均直接拒绝。
+- holdout 的 `eval create` 还必须显式提供匹配的 `--pre-registration` 与 `--executor`，并把稳定审计路径和内容摘要记录到 eval Run；`eval complete` 必须再次显式提供预注册与 executor，按摘要核对冻结内容和 claim，在完成门通过后先原子落 `consumed.yaml`，再以可恢复顺序提交 MLflow 的 `workflow_state` 与原生 RunStatus。同一内容在另一台机器上的绝对路径可以不同；消费写入或状态提交中断时，同一完整身份和 executor 可以安全重试，任何内容或身份漂移均拒绝且不创建第二份 claim。
+- 完整参数以各子命令 `--help` 为准；所有正式版本均使用完整 `<kind>-v<协议>-r<N>` 身份，不接受隐式 latest 或短前缀。
 
 <!-- DECISION-LOG
 D001 — 将本文维护为不绑定版本号的数据处理主手册，并在正文集中声明当前支持的链路版本。

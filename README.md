@@ -32,6 +32,22 @@
 
 详情见 [当前项目状态与开发原则](docs/CURRENT_PROJECT_STATUS.md)。
 
+## 可读版本控制新体系
+
+`refactor/readable-version-control` 分支已实现独立的核心基础设施入口：
+
+```bash
+python -m versioning --help
+```
+
+该入口按 `data`、`prompt`、`train`、`eval`、`model`、`backup` 六个领域组织命令，
+正式身份必须显式使用 `data-v4.1-rN`、`prompt-v4.1-rN`、`train-v4.1-rN`、
+`model-v4.1-rN`、`eval-v4.1-rN` 形式，不提供隐式 latest 或短前缀解析。
+架构和完整命令边界见 [ARCHITECTURE.md](ARCHITECTURE.md)；设计依据见
+[可读版本控制架构设计](docs/plans/2026-09-01-readable-version-control-design.md)。
+
+新体系尚未替换 `pipeline/`、`finetune/` 的 legacy 正式链路，也未执行训练机或真实产物迁移。
+
 ## V4.1 视觉契约（简要）
 
 单个帧窗口输出四个字段：
@@ -94,6 +110,7 @@ pip install -e ./LlamaFactory
 ```text
 pipeline/      数据处理、V4.1 契约、模型注册表与推理服务
 finetune/      三折训练、模型合并、严格评测
+versioning/    独立可读版本控制核心基础设施与统一 CLI
 workspace/     训练机本地数据、实验运行和模型资产（Git 忽略）
 data/          旧外部数据根的兼容入口
 config/        数据根配置
@@ -116,6 +133,8 @@ models/        本地模型目录
 | [docs/results/v4_1_agent_pipeline_fold0_r1/README.md](docs/results/v4_1_agent_pipeline_fold0_r1/README.md) | 当前发布模型部署证据 |
 | [docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md](docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md) | 最新三折实验结果 |
 | [docs/results/model_evidence/README.md](docs/results/model_evidence/README.md) | 模型归档证据包引导索引（查找模型测试结果入口） |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 新旧体系边界、可读版本控制职责与实现范围 |
+| [docs/adr/ADR-0001.md](docs/adr/ADR-0001.md) | 采用可读版本控制及 Git/DVC/MLflow 职责边界的决策记录 |
 | [AGENTS.md](AGENTS.md) | Agent 工作说明与双机纪律 |
 
 V2/V3 Prompt、旧审核和旧数据流水线文档只用于历史追溯。新工作应从本 README、
