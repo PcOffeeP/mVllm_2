@@ -977,19 +977,62 @@ def transition_eval_state(
     requested_state = WorkflowState(target)
 
     raw_state = run.data.tags.get(WORKFLOW_STATE_TAG)
+    raw_outcome = run.data.tags.get(OUTCOME_TAG)
+
+    # completed 按 outcome → workflow_state → RunStatus 提交。只要 outcome
+    # 已经落盘，就已跨过第一个提交点：结论必须锁定，异结论重试在任何后续
+    # 写入或 holdout 消费前拒绝；同结论则从当前提交点继续恢复。
+    if (
+        requested_state == WorkflowState.COMPLETED
+        and raw_outcome is not None
+        and raw_state in {
+            WorkflowState.RUNNING.value,
+            WorkflowState.COMPLETED.value,
+        }
+        and run.info.status in {"RUNNING", "FINISHED"}
+    ):
+        if outcome is None or outcome not in OUTCOMES:
+            raise IllegalEvalRecord(f"completed 必须显式 outcome ∈ {OUTCOMES}: {outcome!r}")
+        if raw_outcome not in OUTCOMES:
+            raise IllegalEvalRecord(f"父 Run outcome 非法: {raw_outcome!r}")
+        if raw_outcome != outcome:
+            raise IllegalEvalRecord("已提交 eval 的 outcome 不得改写")
+        _validate_parent_tags(
+            run,
+            allow_completed_running_recovery=(
+                raw_state == WorkflowState.COMPLETED.value
+                and run.info.status == "RUNNING"
+            ),
+        )
+        _check_completion_gate(
+            client, store, run.info.run_id, run.data.tags[SCOPE_TAG]
+        )
+        _consume_holdout_for_completion(
+            run,
+            pre_registration=pre_registration,
+            executor=executor,
+        )
+        if raw_state == WorkflowState.RUNNING.value:
+            client.set_tag(
+                run.info.run_id, WORKFLOW_STATE_TAG, WorkflowState.COMPLETED.value
+            )
+        if run.info.status == "RUNNING":
+            client.set_terminated(run.info.run_id, status="FINISHED")
+        return _build_eval_record(store, client.get_run(run.info.run_id))
+
     if (
         requested_state == WorkflowState.COMPLETED
         and raw_state == WorkflowState.COMPLETED.value
-        and run.info.status == "RUNNING"
+        and run.info.status in {"RUNNING", "FINISHED"}
     ):
         if outcome is None or outcome not in OUTCOMES:
             raise IllegalEvalRecord(f"completed 必须显式 outcome ∈ {OUTCOMES}: {outcome!r}")
         _validate_parent_tags(run, allow_completed_running_recovery=True)
 
         # completed 写入采用 outcome → workflow_state → RunStatus。若上次在
-        # workflow_state 后中断，raw Run 会是 completed/RUNNING；识别同一
-        # 目标后只补齐缺失步骤，不把其他非法组合当作可恢复。
-        raw_outcome = run.data.tags.get(OUTCOME_TAG)
+        # workflow_state 后中断，raw Run 会是 completed/RUNNING；若服务端已
+        # 提交 FINISHED 但客户端丢失响应，则重试会看到 completed/FINISHED。
+        # 两种情形都只在结论和 holdout 消费凭据完全一致时幂等恢复。
         _check_completion_gate(
             client, store, run.info.run_id, run.data.tags[SCOPE_TAG]
         )
@@ -1004,10 +1047,6 @@ def transition_eval_state(
             client.set_tag(run.info.run_id, OUTCOME_TAG, outcome)
         if run.info.status == "RUNNING":
             client.set_terminated(run.info.run_id, status="FINISHED")
-        elif run.info.status != "FINISHED":
-            raise IllegalStateCombination(
-                f"completed 半提交不接受 RunStatus={run.info.status!r}"
-            )
         return _build_eval_record(store, client.get_run(run.info.run_id))
 
     record = _build_eval_record(store, run)

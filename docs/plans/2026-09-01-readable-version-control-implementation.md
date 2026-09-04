@@ -4,7 +4,7 @@
 >
 > 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。
 >
-> 最近更新时间：2026-09-03（B9 完成回填——离线备份 catalog 与恢复实现并全绿，提交哈希待 B9 提交后补录；B10 进入 in_progress；回归对照基线更新至 2043/11/0；B8 提交哈希补录 c1f515d7+a350c8cc）。B0 提交 `a5bfca1b`、`a37f4acc`，B1 提交 `6482bed3`，B2 提交 `30519042`，B3 提交 `9de8acbb`，B4 提交 `ae0bcef0`，B5 提交 `345510a6`，B6 提交 `f43d56c6`、`dd992f01`，B7 提交 `3fdb920c`、`0441d385`，B8 提交 `c1f515d7`、`a350c8cc`，显式版本纪律修正提交 `6b0d53bf`；提交映射见 §6.3，新的回归对照测试基线见 §1 与 §6.7。
+> 最近更新时间：2026-09-04（B9 提交补录 `0da89585`、`115d14f5`；B10 初版提交 `5d0b30a1` 后因最终 reviewer 发现并发 Registry、完成状态幂等及 B8 遗漏能力而重新打开；B11 文档提交 `0506142a`、`8fdc1011`，现随代码修复继续一致性复核；B12 进行中）。当前修复前整仓 pytest 已输出 `2066 passed / 11 skipped / 0 failed`，但进程在摘要后未自行退出并由主 Agent 中断，故只作为调查基线，最终验收必须重跑并取得正常退出。完整提交映射见 §6.3，当前 findings 见 §6.4。
 
 ## 1. 基线事实
 
@@ -12,7 +12,7 @@
 
 - **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control`，当前 HEAD `30519042`（B2），已有提交 `a5bfca1b`（B0-1）、`a37f4acc`（B0-2 文档基座）、`6482bed3`（B1 依赖基座）、`30519042`（B2 身份与状态机）。
 - **修改前测试基线**：`uv run pytest tests/ -q` → `682 passed, 12 skipped, 0 failed`。12 个 skip 全部为 fastapi 未安装 / V3 fixtures / V4.1 workspace 数据缺失，属稳定已知跳过。
-- **当前回归对照基线（B9 后）**：`uv run pytest tests/ -q` → `2043 passed, 11 skipped, 0 failed`（含 P3-1 冲突残留回归用例，已随 B4 提交入库）。本分支后续各 batch 以此为回归对照基线。
+- **当前回归对照基线（B10 初版后）**：`PYTHONWARNINGS=ignore .venv/bin/python -m pytest -q tests` 已输出 `2066 passed, 11 skipped, 0 failed`；该次进程在 pytest 摘要后未自行退出并被中断，只作为修复前调查基线，不作为 B12 最终通过证据。B9 的最后一次正常退出基线仍为 `2043 passed, 11 skipped, 0 failed`。
 - **依赖现状**：`pyproject.toml` + `uv.lock`（uv 管理，Python 3.11.14）；`dvc`、`mlflow` 均未声明、未安装；`requirements.txt`（训练机 Conda）亦无二者。
 - **文档现状**：项目根无 `ARCHITECTURE.md`；`docs/adr/` 不存在；`docs/plans/` 仅设计文档（当前未跟踪，B0 纳入跟踪）。
 - **需保护**：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读保留。
@@ -296,7 +296,7 @@
 
 ### B10 — 独立入口与端到端闭环
 
-- **状态**：in_progress
+- **状态**：in_progress（初版已提交，因最终复核发现闭环遗漏而重新打开）
 - **目标**：建立统一 CLI 入口并跑通端到端 fixture 闭环。
 - **包含范围**：
   - **整合并扩展统一 CLI**（在 B4 的 `versioning/__main__.py` / `cli.py` 最小 `data` 子命令基础上整合训练/测评/物化/备份全部子命令）：data/prompt/train/eval/model/backup 子命令，显式版本参数，缺参即停并提示。
@@ -313,11 +313,11 @@
 - **回滚点**：B9 提交。
 - **风险与阻塞条件**：子命令与设计文档 §7 显式版本纪律不一致。
 - **预计提交边界**：1 个提交。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填（初版）**：修改文件：`.gitignore`、`dvc.yaml`、`versioning/cli.py`、`versioning/holdout.py`、`versioning/mlflow_eval.py`、`versioning/registry.py`、相关测试；`tests/versioning/` → `1383 passed`；提交 `5d0b30a1`。最终 reviewer 后续发现三项阻断闭环：Registry 同 model_id 并发登记与 eval 并发 finalize 可产生重复/覆盖；服务端已完成但客户端丢响应时 eval completed 重试不幂等；B8 计划中的 model manifest、唯一 deploy_target gate、`models/current` 原子物化与 service_mode 校验未完整实现。上述问题正在 B12 修复，未关闭前 B10 不恢复 completed。
 
 ### B11 — 文档最终整合与一致性复核
 
-- **状态**：pending
+- **状态**：in_progress（文档主体已提交，等待 reopened 代码修复后再次一致性核查）
 - **目标**：文档最终整合与一致性复核。不再承担新文档主体的补写（治理骨架已在 B0、各 batch 已完成同批文档），只做交叉一致性、链接、与真实代码对照核查及收尾润色。
 - **包含范围**：
   - 更新 `README.md`（新入口最短路径与文档导航）。
@@ -335,11 +335,11 @@
 - **回滚点**：B10 提交。
 - **风险与阻塞条件**：文档与真实代码不一致。
 - **预计提交边界**：2–3 个提交（按文档职责拆分）。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填（阶段记录）**：架构/设计/ADR 提交 `0506142a`；README、RUNBOOK、finetune 与 `versioning/SCRIPTS.md` 提交 `8fdc1011`；9 个目标文档链接检查、`dvc.yaml`/`params.yaml` YAML 解析及 JSON 检查通过。reviewer 对照 B8 台账发现文档声明能力尚未完全落地，因此 B11 保持进行中，待修复后重检。
 
 ### B12 — 最终复核与收尾
 
-- **状态**：pending
+- **状态**：in_progress（最终 reviewer findings 修复中）
 - **目标**：全量复核、处理 findings、收尾实施文档。
 - **包含范围**：全量 `uv run pytest tests/ -q`、`git diff --check`、Markdown 链接检查、YAML/JSON 校验、未跟踪产物/大文件检查；reviewer 对整个分支最终对抗式复核；findings 处理；实施文档收尾（完整提交映射）；向用户提交合并建议（不 merge、不 push）。
 - **排除范围**：不 merge、不 push；不执行训练机操作。
@@ -358,7 +358,7 @@
 
 ### 6.1 当前 batch
 
-- **当前 batch**：B10（in_progress，独立入口与端到端闭环）。
+- **当前 batch**：B12（in_progress；修复最终 reviewer findings，并据此重新验收 B10/B11）。
 
 ### 6.2 Batch 状态表
 
@@ -373,10 +373,10 @@
 | B6 | completed | f43d56c6, dd992f01 | B6 MLflow 训练记录完成 |
 | B7 | completed | 3fdb920c, 0441d385 | B7 MLflow 测评与 manifest 单向导出完成 |
 | B8 | completed | c1f515d7, a350c8cc | B8 Registry + 晋级门 + 物化完成（含 offline_backup_scope） |
-| B9 | completed | 待补录 | B9 离线备份 catalog 与恢复完成（提交哈希待补录） |
-| B10 | in_progress | — | 实施 B10 独立入口与端到端闭环 |
-| B11 | pending | — | — |
-| B12 | pending | — | — |
+| B9 | completed | 0da89585, 115d14f5 | B9 离线备份 catalog、恢复与文档同步完成 |
+| B10 | in_progress | 5d0b30a1 | 初版完成后因最终复核发现闭环遗漏而重新打开 |
+| B11 | in_progress | 0506142a, 8fdc1011 | 文档主体已提交；等待修复后再次对照真实代码 |
+| B12 | in_progress | — | 十一项 reviewer findings 已复审关闭；R11 后完整 versioning 1399 passed，整仓最终回归中 |
 
 ### 6.3 提交映射表
 
@@ -396,14 +396,26 @@
 | B7 | 0441d385 | docs: 同步 B7 MLflow 测评与 manifest 文档及实施台账 | 文档同步 |
 | B8 | c1f515d7 | feat(versioning): Model Registry、晋级门与物化 | versioning/registry.py、tests/versioning/test_registry.py、test_materialize.py |
 | B8 | a350c8cc | docs: 同步 B8 Registry/晋级门/物化文档及实施台账 | 文档同步 |
-| B9 | 待补录 | 待 B9 提交后补录 | versioning/backup.py、versioning/data_release.py、tests/versioning/test_backup.py |
-| B10 | — | — | — |
-| B11 | — | — | — |
+| B9 | 0da89585 | feat(versioning): 离线备份 catalog 与恢复 | versioning/backup.py、versioning/data_release.py、tests/versioning/test_backup.py |
+| B9 | 115d14f5 | docs: 同步 B9 备份 catalog/恢复文档及实施台账 | 文档同步 |
+| B10 | 5d0b30a1 | feat(versioning): 完成统一入口与端到端安全闭环（初版，最终复核后 reopened） | .gitignore、dvc.yaml、versioning/、tests/versioning/ |
+| B11 | 0506142a | docs: 收敛可读版本控制架构与决策 | ARCHITECTURE.md、设计文档、ADR-0001 |
+| B11 | 8fdc1011 | docs: 补齐统一入口与运行导航 | README、RUNBOOK、finetune/README、versioning/SCRIPTS.md |
 | B12 | — | — | — |
 
-### 6.4 未解决问题
+### 6.4 审查 findings 与处理
 
-- 无（当前无已确认未解决问题）。
+- **B12-R1（已修复并复审关闭）**：Registry 的“查重→创建”及“读取 eval 绑定→写 tag”不是并发事务。现全部 Registry mutation 共用进程内锁 + POSIX 文件锁；同一 model_id 并发登记恰一成功，不同 eval 并发 finalize 不覆盖首个绑定。
+- **B12-R2（已修复并复审关闭）**：eval 完成状态在“服务端已提交 FINISHED、客户端丢失响应”后重试不幂等。现仅当 outcome、完整身份及 holdout 消费凭据一致时 completed/FINISHED 恢复成功，任何差异拒绝。
+- **B12-R3（已修复并复审关闭）**：补齐严格 model manifest、`source_scope/artifacts/deploy_target` 门、alias 精确 `models/current` 原子物化及必填 `service_mode` 校验；E2E 先导出 model manifest，三折模型拒绝 alias/current。
+- **B12-R4（已修复并复审关闭，P1）**：model layout 现要求 `artifacts/<scope>/...` 规范安全相对路径并拒绝 `.`；model manifest、物化与备份逐项核对实际 artifact，失败不切 current/不发布 catalog。
+- **B12-R5（已修复并复审关闭，P2）**：`offline_backup_scope` 及 approve/alias/invalid 等 Registry mutation 统一纳入同一 Registry 写锁；并发升级不得降级。
+- **B12-R6（已修复并复审关闭，P2）**：`models/current` 临时下载只先检查 deploy target，其他声明 artifact 缺失时会在报错前留下半物化目录，后续重试持续失败。已改为临时目录的 metadata、全部声明 artifact 与 deploy target 均通过后才发布，失败清理临时目录；已补反向用例。
+- **B12-R7（已修复并复审关闭，P2）**：服务启动校验只检查 current 所指目录的内容，未要求其精确位于 `models/materialized/<alias model_id>`，外部人工目录可伪造通过。已增加受控根与精确目标校验，外部手工 symlink 反向用例已通过。
+- **B12-R8（已修复并复审关闭，P2）**：model manifest 初次导出为 check-then-write，并发异内容可双成功、后写覆盖。train/eval 与 model manifest 现统一采用临时文件完整落盘 + 排他硬链接发布；目标已存在时仅同字节幂等，异内容冲突；并发异内容回归钉定恰一成功一冲突。
+- **B12-R9（已修复并复审关闭，P1/P2）**：一是 eval 在 outcome 已写、workflow_state 写入失败后允许异 outcome 重试覆盖；现任一合法 outcome 一旦落盘即锁定，同结论恢复、异结论在任何后续写入/holdout 消费前拒绝。二是 adapter 范围此前复制完整模型目录并夹带 merged；现模型备份按 scope 白名单复制，adapter 仅保留 materialized 身份资料和声明 adapter，production_bundle 保留声明 adapter+merged，正式 eval 证据仍由同批 MLflow store 承载。两类反向用例已补。
+- **B12-R10（已修复并复审关闭，P1）**：首次范围裁剪只处理 model 对象，仍遗漏两条灾难恢复链路：model manifest 未进入 catalog，恢复后引用悬空；固定 MLflow store 又整树夹带 adapter 模型的 merged。现每个 scoped model 的严格 manifest 明确进入其 catalog 并恢复到原 `records/models/<id>/manifest.yaml`；MLflow store 改为 SQLite + scoped model 声明的训练 artifact + 已绑定正式 eval artifact 白名单，adapter 对应 train run 的 merged 在整个 backup_root 中均不存在，production_bundle 的 merged 保留。灾难恢复用例继续验证 manifest，并在恢复后执行 `materialize_current` 与 `validate_service_current`。
+- **B12-R11（已修复并复审关闭，P1）**：备份从枚举 scope/白名单到复制 SQLite 与发布 catalog 未持有同一 Registry 快照，期间粘性 scope 升级可生成“catalog=adapter、备份 SQLite=production_bundle、merged 缺失”的自相矛盾成功备份。现暴露共用的 Registry snapshot lock，`create_backup` 在同一跨进程临界区内完成枚举、所有复制、复验和 catalog 发布；所有 Registry mutation 均使用同一把锁。barrier 回归与 reviewer 独立双进程攻击均证明写入会被快照锁阻塞。
 
 ### 6.5 残余风险
 
@@ -411,24 +423,24 @@
 - **B3 残留风险**：seal 流程在 release rename 后最后一步 chmod 写权限移除失败会留下未完全封存窗口；该失败非静默（可检出）、不可重试，已接受记录，不做自动重试。
 - **B6 残留风险**：`summary_complete` 晋级门仅检查 tag 存在性（不校验值）；父 Run 状态写回（tag + RunStatus）非原子，存在瞬时窗口；读取缺 tag 时抛 `KeyError` 而非域异常；MLflow 行为绑定 3.15.2（B1 安装版本）。均非阻断，已接受记录。
 - **B7 残留风险（与 B6 同源累积）**：eval 读取 fail-closed 与结论门（invalid 优先）依赖 tag 组合与值域校验，父 Run 状态写回/结论标记非原子存在瞬时窗口；manifest 校验绑定 digest 严格性与 export 单向性、依赖 MLflow 3.15.2 行为。均非阻断，已接受记录。
-- 文档整合与一致性复核（B11）与真实代码的一致性依赖 reviewer 逐条核查。
+- 文件系统与 MLflow 之间不存在真实跨资源原子事务；当前实现采用不可覆盖证据、固定提交顺序与同身份幂等恢复，最终复核须覆盖各中断点。
 - 本分支仅为核心基础设施，正式迁移（旧对象映射、训练机操作、真实数据/模型迁移、merge/push）需另行授权。
 
 ### 6.6 下一步
 
-- 继续执行并完成 B10（独立入口与端到端闭环）。
+- 等待整仓最终回归正常退出，随后回填 B10–B12 与 `docs/project-todo.md`、提交并复核提交映射；不 merge、不 push。
 
 ### 6.7 新接收者恢复工作所需最小上下文
 
-- 分支：`refactor/readable-version-control`，HEAD `a350c8cc`（B6 实现 `f43d56c6`、B6 文档/台账同步 `dd992f01`、B7 实现 `3fdb920c`、B7 文档/台账同步 `0441d385`、B8 实现 `c1f515d7`、B8 文档/台账同步 `a350c8cc`、B3 `9de8acbb`、B4 `ae0bcef0`、B5 `345510a6` 均已回填；B9 实现提交哈希待补录，HEAD 待对应提交后更新）。
-- 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（只读，不得修改）。
+- 分支：`refactor/readable-version-control`，已提交 HEAD `8fdc1011`；工作区含 B12 reviewer findings 修复与本台账增量，尚未提交。B9 `0da89585`/`115d14f5`、B10 初版 `5d0b30a1`、B11 `0506142a`/`8fdc1011` 已补录。
+- 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（D040/D041 已随已确认两阶段模型生命周期和稳定预注册冻结路径更新）。
 - 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
 - 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
-- 测试基线（B9 后回归对照）：`2043 passed, 11 skipped, 0 failed`（含 P3-1 冲突残留回归用例，已随 B4 提交入库）。
+- 测试基线：B9 最后正常退出为 `2043 passed, 11 skipped, 0 failed`；B10 初版后整仓输出 `2066 passed, 11 skipped, 0 failed`，但摘要后进程未自行退出并被中断，不算 B12 最终证据；R11 后 `tests/versioning/` 已正常退出为 `1399 passed`。
 - 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
 - 提交信息约定：含"以上commit由codex生成。"。
-- 禁止：git 写操作（获批前）、merge、push、训练机操作、真实数据/模型迁移。
-- 下一动作（B10）：整合并扩展统一 CLI（在 B4 的 `versioning/__main__.py` / `cli.py` 最小 `data` 子命令基础上整合 data/prompt/train/eval/model/backup 全部子命令，显式版本参数、缺参即停并提示）；holdout 鉴权接线（B3 一次性 claim / pre_registration 与 B7 eval 授权校验、训练 fail-closed 接线到 data/train/eval 子命令）；端到端 fixture 测试（data release→prompt 冻结→train 记录→model 注册→eval→manifest 导出→backup catalog 全链路临时环境闭环）+ holdout 反向端到端测试；随后同步 B10 台账与架构文档。
+- 禁止：merge、push、训练机操作、真实数据/模型迁移。
+- 下一动作：等待整仓 pytest 正常退出，完成 B10–B12 与项目 TODO 收尾并提交；reviewer 已确认 R1–R11 无剩余 P0–P3 actionable finding。
 
 ## 7. 停止与升级条件
 

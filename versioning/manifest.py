@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+
+import yaml
 
 from versioning.data_release import (
     ImmutableReleaseError,
@@ -34,6 +38,7 @@ from versioning.mlflow_train import (
 )
 from versioning.state import StateMachineError
 from versioning.prompts import PromptNotFound, PromptSchemaError, load_prompt
+from versioning.registry import ModelRegistryStore, RegisteredModelRecord, get_model
 
 MANIFEST_VERSION: str = "1"
 
@@ -58,6 +63,37 @@ class ManifestSchemaError(ManifestError):
 
 class ManifestConflict(ManifestError):
     """export_manifest 目标已存在且字节不同于本次 payload。"""
+
+
+def _publish_immutable(target: Path, payload: bytes, *, label: str) -> Path:
+    """以排他硬链接发布不可变文件；并发同内容幂等、异内容冲突。"""
+    target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp = target.parent / f".{target.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    try:
+        with temp.open("xb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temp, target)
+        except FileExistsError:
+            try:
+                existing = target.read_bytes()
+            except Exception as exc:
+                raise ManifestConflict(f"目标 {target} 已存在但无法读取: {exc}") from exc
+            if existing != payload:
+                raise ManifestConflict(f"目标 {target} 已存在且{label}内容不同")
+        return target
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+_MODEL_MANIFEST_KEYS = {
+    "version", "protocol", "state", "record_validity", "registered_model",
+    "mlflow_model_version", "source_run_id", "source_training", "source_scope",
+    "base_model", "data_version", "prompt_version", "artifacts", "deploy_target",
+}
 
 
 @dataclass(frozen=True)
@@ -475,19 +511,103 @@ def export_manifest(
     payload = build_manifest(data=data, prompt=prompt, train=train, eval=eval)
     payload_bytes = payload.encode("utf-8")
 
-    target = Path(target)
-    target.parent.mkdir(parents=True, exist_ok=True)
+    return _publish_immutable(target, payload_bytes, label="内容与本次 manifest ")
 
-    if target.exists():
-        try:
-            existing = target.read_bytes()
-        except Exception as exc:
-            raise ManifestReferenceError(f"无法读取已存在目标: {exc}") from exc
-        if existing != payload_bytes:
-            raise ManifestConflict(
-                f"目标 {target} 已存在且内容与本次 manifest 不同"
-            )
-        return target
 
-    target.write_bytes(payload_bytes)
-    return target
+def _model_manifest_mapping(record: RegisteredModelRecord) -> dict[str, Any]:
+    """从 Registry 权威快照构造确定性 model manifest。"""
+    protocol = parse_model_id(record.model_id).protocol
+    return {
+        "version": record.model_id,
+        "protocol": f"tensile-vlm/{protocol.removeprefix('v')}",
+        "state": "sealed",
+        "record_validity": record.record_validity,
+        "registered_model": record.registered_model,
+        "mlflow_model_version": record.version,
+        "source_run_id": record.run_id,
+        "source_training": record.train_id,
+        "source_scope": record.source_scope,
+        "base_model": record.base_model,
+        "data_version": record.data_version,
+        "prompt_version": record.prompt_version,
+        "artifacts": record.artifacts,
+        "deploy_target": record.deploy_target,
+    }
+
+
+def validate_model_manifest(payload: str) -> dict[str, Any]:
+    """严格校验 model manifest 的 schema、值域和部署目标唯一性。"""
+    if not isinstance(payload, str):
+        raise ManifestSchemaError("model manifest payload 必须是字符串")
+    try:
+        obj = yaml.safe_load(payload)
+    except Exception as exc:
+        raise ManifestSchemaError(f"model manifest YAML 非法: {exc}") from exc
+    if not isinstance(obj, dict) or set(obj) != _MODEL_MANIFEST_KEYS:
+        raise ManifestSchemaError("model manifest 顶层键集合非法")
+    try:
+        parsed = parse_model_id(obj["version"])
+        parse_train_id(obj["source_training"])
+        parse_data_id(obj["data_version"])
+        parse_prompt_id(obj["prompt_version"])
+    except (InvalidIdentifier, KeyError) as exc:
+        raise ManifestSchemaError(f"model manifest 身份非法: {exc}") from exc
+    if obj["protocol"] != f"tensile-vlm/{parsed.protocol.removeprefix('v')}":
+        raise ManifestSchemaError("model manifest protocol 与 version 不一致")
+    if obj["state"] != "sealed" or obj["record_validity"] not in {"valid", "invalid"}:
+        raise ManifestSchemaError("model manifest state/record_validity 非法")
+    if obj["registered_model"] != "mVllm2":
+        raise ManifestSchemaError("model manifest registered_model 非法")
+    if isinstance(obj["mlflow_model_version"], bool) or not isinstance(obj["mlflow_model_version"], int) or obj["mlflow_model_version"] < 1:
+        raise ManifestSchemaError("mlflow_model_version 必须是正整数")
+    for key in ("source_run_id", "base_model"):
+        if not isinstance(obj[key], str) or not obj[key]:
+            raise ManifestSchemaError(f"{key} 必须是非空字符串")
+    scope = obj["source_scope"]
+    artifacts = obj["artifacts"]
+    if scope not in _ALLOWED_EVAL_SCOPE or not isinstance(artifacts, dict):
+        raise ManifestSchemaError("source_scope/artifacts 非法")
+    expected = {"single_fold": {"fold0"}, "cross_validation": {"fold0", "fold1", "fold2"}, "full": {"full"}}[scope]
+    if set(artifacts) != expected:
+        raise ManifestSchemaError("artifacts 与 source_scope 不一致")
+    paths: set[str] = set()
+    for name, entries in artifacts.items():
+        if not isinstance(entries, dict) or not entries:
+            raise ManifestSchemaError(f"artifacts.{name} 必须是非空 mapping")
+        for path in entries.values():
+            parts = Path(path).parts if isinstance(path, str) else ()
+            if (
+                not isinstance(path, str)
+                or not path
+                or Path(path).is_absolute()
+                or ".." in parts
+                or "." in parts
+                or len(parts) < 3
+                or parts[0] != "artifacts"
+                or parts[1] != name
+            ):
+                raise ManifestSchemaError("artifact 路径必须是安全相对路径")
+            paths.add(path)
+    deploy_target = obj["deploy_target"]
+    if scope == "cross_validation":
+        if deploy_target is not None:
+            raise ManifestSchemaError("cross_validation deploy_target 必须为 null")
+    elif not isinstance(deploy_target, str) or deploy_target not in paths:
+        raise ManifestSchemaError("deploy_target 必须唯一引用 artifacts 路径")
+    return obj
+
+
+def build_model_manifest(store: ModelRegistryStore, model_id: str) -> str:
+    """从真实 Registry Model Version 单向构造 model manifest YAML。"""
+    obj = _model_manifest_mapping(get_model(store, model_id))
+    payload = yaml.safe_dump(obj, sort_keys=True, allow_unicode=True)
+    validate_model_manifest(payload)
+    return payload
+
+
+def export_model_manifest(
+    target: Path, *, store: ModelRegistryStore, model_id: str
+) -> Path:
+    """幂等导出 model manifest；既有内容不同则拒绝覆盖。"""
+    payload = build_model_manifest(store, model_id).encode("utf-8")
+    return _publish_immutable(target, payload, label="model manifest ")

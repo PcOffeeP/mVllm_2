@@ -2112,6 +2112,61 @@ class TestStateDiscipline:
             "passed",
         )
 
+    def test_complete_locks_outcome_after_workflow_write_failure(
+        self,
+        store: EvalRecordStore,
+        data_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        record = _create(store, data_root)
+        _finish_folds(store)
+        _aggregate(store)
+        original = MlflowClient.set_tag
+        failed = False
+
+        def fail_workflow_once(client, run_id, key, value, *args, **kwargs):
+            nonlocal failed
+            if key == WORKFLOW_STATE_TAG and value == "completed" and not failed:
+                failed = True
+                raise RuntimeError("injected workflow write failure")
+            return original(client, run_id, key, value, *args, **kwargs)
+
+        monkeypatch.setattr(MlflowClient, "set_tag", fail_workflow_once)
+        with pytest.raises(RuntimeError, match="workflow write failure"):
+            transition_eval_state(store, EVAL_ID, "completed", outcome="passed")
+        raw = _raw_run(store, record.run_id)
+        assert raw.data.tags[WORKFLOW_STATE_TAG] == "running"
+        assert raw.data.tags[OUTCOME_TAG] == "passed"
+        assert raw.info.status == "RUNNING"
+
+        with pytest.raises(IllegalEvalRecord, match="outcome 不得改写"):
+            transition_eval_state(store, EVAL_ID, "completed", outcome="failed")
+        assert _raw_run(store, record.run_id).data.tags[OUTCOME_TAG] == "passed"
+
+        completed = transition_eval_state(store, EVAL_ID, "completed", outcome="passed")
+        assert (completed.workflow_state, completed.run_status, completed.outcome) == (
+            "completed",
+            "FINISHED",
+            "passed",
+        )
+
+    def test_complete_is_idempotent_after_server_committed_finished(
+        self, store: EvalRecordStore, data_root: Path
+    ) -> None:
+        """服务端已提交、客户端丢响应后的同结论重试只读成功。"""
+        _create(store, data_root)
+        _finish_folds(store)
+        _aggregate(store)
+        first = transition_eval_state(
+            store, EVAL_ID, "completed", outcome="passed"
+        )
+        retried = transition_eval_state(
+            store, EVAL_ID, "completed", outcome="passed"
+        )
+        assert retried == first
+        with pytest.raises(IllegalEvalRecord, match="outcome 不得改写"):
+            transition_eval_state(store, EVAL_ID, "completed", outcome="failed")
+
     def test_complete_repairs_completed_running_after_terminate_failure(
         self,
         store: EvalRecordStore,
@@ -2153,7 +2208,6 @@ class TestStateDiscipline:
             ("failed", "completed"),
             ("completed", "running"),
             ("completed", "partial"),
-            ("completed", "completed"),  # 自环
             ("archived", "completed"),
             ("archived", "running"),
             ("running", "prepared"),  # prepared=无 Run，不存在回退入口

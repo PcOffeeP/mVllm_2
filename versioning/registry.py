@@ -5,7 +5,13 @@
 
 from __future__ import annotations
 
+import fcntl
+import json
+import os
 import shutil
+import threading
+import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -58,12 +64,20 @@ GIT_COMMIT_TAG: str = "git_commit"
 RECORD_VALIDITY_TAG: str = "record_validity"
 OFFLINE_BACKUP_SCOPE_TAG: str = "offline_backup_scope"
 PRODUCTION_APPROVED_TAG: str = "production_approved"
+SOURCE_SCOPE_TAG: str = "source_scope"
+ARTIFACTS_TAG: str = "artifacts"
+DEPLOY_TARGET_TAG: str = "deploy_target"
+BASE_MODEL_TAG: str = "base_model"
+SOURCE_SCOPES: tuple[str, ...] = ("single_fold", "cross_validation", "full")
 
 MATERIALIZED_METADATA_FILE: str = "materialized.yaml"
 MATERIALIZED_ARTIFACTS_DIR: str = "artifacts"
 
 TRAIN_EXPERIMENT_NAME: str = "mVllm2-training"
 EVAL_EXPERIMENT_NAME: str = "mVllm2-evaluation"
+REGISTRY_LOCK_FILE: str = ".registry.lock"
+_LOCAL_LOCKS_GUARD = threading.Lock()
+_LOCAL_LOCKS: dict[str, threading.RLock] = {}
 
 
 class MLflowRegistryError(ValueError):
@@ -116,10 +130,38 @@ class RegisteredModelRecord:
     data_version: str
     prompt_version: str
     git_commit: str
+    base_model: str
+    source_scope: str
+    artifacts: dict[str, dict[str, str]]
+    deploy_target: str | None
     record_validity: str
     offline_backup_scope: str | None
     production_approved: bool
     aliases: tuple[str, ...]
+
+
+@contextmanager
+def _registry_write_lock(store: ModelRegistryStore):
+    """串行化 Registry 的读改写事务，阻止同 ID 重复创建或绑定覆盖。"""
+    lock_path = store.root / REGISTRY_LOCK_FILE
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    key = str(lock_path.resolve())
+    with _LOCAL_LOCKS_GUARD:
+        local_lock = _LOCAL_LOCKS.setdefault(key, threading.RLock())
+    with local_lock:
+        with lock_path.open("a+b") as handle:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def registry_snapshot_lock(store: ModelRegistryStore):
+    """冻结 Registry 写入，供需要跨多文件的一致性只读快照使用。"""
+    with _registry_write_lock(store):
+        yield
 
 
 def _client(store: ModelRegistryStore | TrainRecordStore | EvalRecordStore) -> MlflowClient:
@@ -149,6 +191,62 @@ def _validate_non_empty_string(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value:
         raise IllegalRegistryRecord(f"{name} 必须是非空字符串: {value!r}")
     return value
+
+
+def _validate_model_layout(
+    source_scope: Any,
+    artifacts: Any,
+    deploy_target: Any,
+) -> tuple[str, dict[str, dict[str, str]], str | None]:
+    """校验模型产物范围；只有唯一部署目标的单折/full 模型可路由。"""
+    if source_scope not in SOURCE_SCOPES:
+        raise IllegalRegistryRecord(f"source_scope 非法: {source_scope!r}")
+    if not isinstance(artifacts, dict) or not artifacts:
+        raise IllegalRegistryRecord("artifacts 必须是非空 mapping")
+    normalized: dict[str, dict[str, str]] = {}
+    for scope_name, entries in artifacts.items():
+        if not isinstance(scope_name, str) or not scope_name:
+            raise IllegalRegistryRecord("artifacts scope 必须是非空字符串")
+        if not isinstance(entries, dict) or not entries:
+            raise IllegalRegistryRecord(f"artifacts.{scope_name} 必须是非空 mapping")
+        normalized[scope_name] = {}
+        for kind, path in entries.items():
+            if not isinstance(kind, str) or not kind or not isinstance(path, str) or not path:
+                raise IllegalRegistryRecord("artifact 名称和路径必须是非空字符串")
+            parts = Path(path).parts
+            if (
+                Path(path).is_absolute()
+                or ".." in parts
+                or "." in parts
+                or len(parts) < 3
+                or parts[0] != "artifacts"
+                or parts[1] != scope_name
+            ):
+                raise IllegalRegistryRecord(
+                    "artifact 路径必须位于 "
+                    f"artifacts/{scope_name}/... 且为规范安全相对路径: {path!r}"
+                )
+            normalized[scope_name][kind] = path
+
+    expected = {
+        "single_fold": {"fold0"},
+        "cross_validation": {"fold0", "fold1", "fold2"},
+        "full": {"full"},
+    }[source_scope]
+    if set(normalized) != expected:
+        raise IllegalRegistryRecord(
+            f"artifacts scope {sorted(normalized)} 与 source_scope={source_scope!r} 不一致"
+        )
+    all_paths = {path for entries in normalized.values() for path in entries.values()}
+    if source_scope == "cross_validation":
+        if deploy_target is not None:
+            raise IllegalRegistryRecord("cross_validation 的 deploy_target 必须为 null")
+        return source_scope, normalized, None
+    if not isinstance(deploy_target, str) or not deploy_target:
+        raise IllegalRegistryRecord(f"{source_scope} 必须有唯一 deploy_target")
+    if deploy_target not in all_paths:
+        raise IllegalRegistryRecord("deploy_target 必须精确引用 artifacts 中的一个路径")
+    return source_scope, normalized, deploy_target
 
 
 def _search_registered_model(client: MlflowClient) -> Any:
@@ -259,6 +357,15 @@ def _validate_model_version_tags(version: Any, *, expected_model_id: str | None 
         raise IllegalRegistryRecord(f"prompt_version tag 非法: {prompt_version!r}") from exc
 
     _validate_non_empty_string(tags.get(GIT_COMMIT_TAG), "git_commit")
+    _validate_non_empty_string(tags.get(BASE_MODEL_TAG), "base_model")
+
+    try:
+        artifacts = json.loads(tags.get(ARTIFACTS_TAG, ""))
+    except Exception as exc:
+        raise IllegalRegistryRecord("artifacts tag 不是合法 JSON") from exc
+    _validate_model_layout(
+        tags.get(SOURCE_SCOPE_TAG), artifacts, tags.get(DEPLOY_TARGET_TAG)
+    )
 
     record_validity = tags.get(RECORD_VALIDITY_TAG)
     if record_validity not in (RecordValidity.VALID.value, RecordValidity.INVALID.value):
@@ -291,6 +398,10 @@ def _build_record(version: Any) -> RegisteredModelRecord:
         data_version=tags[DATA_VERSION_TAG],
         prompt_version=tags[PROMPT_VERSION_TAG],
         git_commit=tags[GIT_COMMIT_TAG],
+        base_model=tags[BASE_MODEL_TAG],
+        source_scope=tags[SOURCE_SCOPE_TAG],
+        artifacts=json.loads(tags[ARTIFACTS_TAG]),
+        deploy_target=tags.get(DEPLOY_TARGET_TAG),
         record_validity=tags[RECORD_VALIDITY_TAG],
         offline_backup_scope=tags.get(OFFLINE_BACKUP_SCOPE_TAG),
         production_approved=tags.get(PRODUCTION_APPROVED_TAG) == "true",
@@ -358,6 +469,10 @@ def get_model_by_alias(store: ModelRegistryStore, alias: str) -> RegisteredModel
         raise InvalidModelRecord(f"alias {alias!r} 指向 invalid 模型")
     if record.eval_id is None:
         raise PromotionGateRejected(f"alias {alias!r} 指向未 finalize 模型")
+    if record.deploy_target is None or record.source_scope == "cross_validation":
+        raise PromotionGateRejected(
+            f"alias {alias!r} 指向没有唯一 deploy_target 的模型"
+        )
     if alias == "candidate" and record.offline_backup_scope not in {
         "adapter",
         "production_bundle",
@@ -419,41 +534,56 @@ def register_model(
     model_id: str,
     *,
     train_id: str,
+    source_scope: str = "single_fold",
+    artifacts: dict[str, dict[str, str]] | None = None,
+    deploy_target: str | None = "artifacts/fold0/adapter",
 ) -> RegisteredModelRecord:
     """登记 staging 模型，先得到供正式 eval 精确引用的数值版本。"""
     parse_model_id(model_id)
     parse_train_id(train_id)
-
-    client = _client(store)
-
-    # 2) 同名冲突优先于门
-    try:
-        _fetch_version_by_model_id(client, model_id)
-    except RegistryModelNotFound:
-        pass
-    else:
-        raise ModelVersionConflict(f"model {model_id} 已存在")
-
-    # 3) train 晋级门
-    train_record = _run_train_gate(store, train_id)
-
-    # 6) 创建数值版本
-    run = client.get_run(train_record.run_id)
-    tags = {
-        MODEL_ID_TAG: model_id,
-        TRAIN_ID_TAG: train_record.train_id,
-        DATA_VERSION_TAG: train_record.data_version,
-        PROMPT_VERSION_TAG: train_record.prompt_version,
-        GIT_COMMIT_TAG: train_record.git_commit,
-        RECORD_VALIDITY_TAG: RecordValidity.VALID.value,
-    }
-    version = client.create_model_version(
-        name=REGISTERED_MODEL_NAME,
-        source=run.info.artifact_uri,
-        run_id=train_record.run_id,
-        tags=tags,
+    if artifacts is None:
+        artifacts = {
+            "fold0": {
+                "adapter": "artifacts/fold0/adapter",
+            }
+        }
+    source_scope, artifacts, deploy_target = _validate_model_layout(
+        source_scope, artifacts, deploy_target
     )
-    return _build_record(version)
+
+    with _registry_write_lock(store):
+        client = _client(store)
+
+        # 同名检查与创建必须在同一进程间锁内，MLflow tag 本身没有唯一约束。
+        try:
+            _fetch_version_by_model_id(client, model_id)
+        except RegistryModelNotFound:
+            pass
+        else:
+            raise ModelVersionConflict(f"model {model_id} 已存在")
+
+        train_record = _run_train_gate(store, train_id)
+        run = client.get_run(train_record.run_id)
+        tags = {
+            MODEL_ID_TAG: model_id,
+            TRAIN_ID_TAG: train_record.train_id,
+            DATA_VERSION_TAG: train_record.data_version,
+            PROMPT_VERSION_TAG: train_record.prompt_version,
+            GIT_COMMIT_TAG: train_record.git_commit,
+            BASE_MODEL_TAG: train_record.base_model,
+            SOURCE_SCOPE_TAG: source_scope,
+            ARTIFACTS_TAG: json.dumps(artifacts, sort_keys=True, separators=(",", ":")),
+            RECORD_VALIDITY_TAG: RecordValidity.VALID.value,
+        }
+        if deploy_target is not None:
+            tags[DEPLOY_TARGET_TAG] = deploy_target
+        version = client.create_model_version(
+            name=REGISTERED_MODEL_NAME,
+            source=run.info.artifact_uri,
+            run_id=train_record.run_id,
+            tags=tags,
+        )
+        return _build_record(version)
 
 
 def finalize_model_evaluation(
@@ -466,35 +596,36 @@ def finalize_model_evaluation(
     parse_model_id(model_id)
     parse_eval_id(eval_id)
 
-    client = _client(store)
-    version = _fetch_version_by_model_id(client, model_id)
-    _validate_model_version_tags(version, expected_model_id=model_id)
-    record = _build_record(version)
-    if record.record_validity == RecordValidity.INVALID.value:
-        raise InvalidModelRecord(f"model {model_id} 已 invalid")
-    if record.eval_id is not None and record.eval_id != eval_id:
-        raise ModelVersionConflict(
-            f"model {model_id} 已绑定 eval {record.eval_id}，不得改绑 {eval_id}"
-        )
+    with _registry_write_lock(store):
+        client = _client(store)
+        version = _fetch_version_by_model_id(client, model_id)
+        _validate_model_version_tags(version, expected_model_id=model_id)
+        record = _build_record(version)
+        if record.record_validity == RecordValidity.INVALID.value:
+            raise InvalidModelRecord(f"model {model_id} 已 invalid")
+        if record.eval_id is not None and record.eval_id != eval_id:
+            raise ModelVersionConflict(
+                f"model {model_id} 已绑定 eval {record.eval_id}，不得改绑 {eval_id}"
+            )
 
-    eval_record = _run_eval_gate(store, eval_id, require_passed=True)
-    if eval_record.model_id != model_id:
-        raise PromotionGateRejected(
-            f"eval model_id {eval_record.model_id!r} 与 model {model_id!r} 不一致"
-        )
-    if eval_record.model_version_number != record.version:
-        raise PromotionGateRejected(
-            "eval 引用的 MLflow 数值 Model Version "
-            f"{eval_record.model_version_number} 与实际版本 {record.version} 不一致"
-        )
-    if record.eval_id == eval_id:
-        return record
+        eval_record = _run_eval_gate(store, eval_id, require_passed=True)
+        if eval_record.model_id != model_id:
+            raise PromotionGateRejected(
+                f"eval model_id {eval_record.model_id!r} 与 model {model_id!r} 不一致"
+            )
+        if eval_record.model_version_number != record.version:
+            raise PromotionGateRejected(
+                "eval 引用的 MLflow 数值 Model Version "
+                f"{eval_record.model_version_number} 与实际版本 {record.version} 不一致"
+            )
+        if record.eval_id == eval_id:
+            return record
 
-    client.set_model_version_tag(
-        REGISTERED_MODEL_NAME, str(record.version), EVAL_ID_TAG, eval_id
-    )
-    updated = client.get_model_version(REGISTERED_MODEL_NAME, str(record.version))
-    return _build_record(updated)
+        client.set_model_version_tag(
+            REGISTERED_MODEL_NAME, str(record.version), EVAL_ID_TAG, eval_id
+        )
+        updated = client.get_model_version(REGISTERED_MODEL_NAME, str(record.version))
+        return _build_record(updated)
 
 
 def set_offline_backup_scope(
@@ -507,31 +638,32 @@ def set_offline_backup_scope(
     if not isinstance(scope, str) or scope not in set(BACKUP_SCOPES):
         raise IllegalRegistryRecord(f"非法 offline_backup_scope: {scope!r}")
 
-    client = _client(store)
-    version = _fetch_version_by_model_id(client, model_id)
-    _validate_model_version_tags(version, expected_model_id=model_id)
+    with _registry_write_lock(store):
+        client = _client(store)
+        version = _fetch_version_by_model_id(client, model_id)
+        _validate_model_version_tags(version, expected_model_id=model_id)
 
-    current = version.tags.get(OFFLINE_BACKUP_SCOPE_TAG)
-    if current == scope:
-        return _build_record(version)
+        current = version.tags.get(OFFLINE_BACKUP_SCOPE_TAG)
+        if current == scope:
+            return _build_record(version)
 
-    if current is None and scope in {"adapter", "production_bundle"}:
-        pass
-    elif current == "adapter" and scope == "production_bundle":
-        pass
-    else:
-        raise IllegalTransition(
-            f"非法 offline_backup_scope 转换: {current!r} -> {scope!r}"
+        if current is None and scope in {"adapter", "production_bundle"}:
+            pass
+        elif current == "adapter" and scope == "production_bundle":
+            pass
+        else:
+            raise IllegalTransition(
+                f"非法 offline_backup_scope 转换: {current!r} -> {scope!r}"
+            )
+
+        client.set_model_version_tag(
+            REGISTERED_MODEL_NAME, str(version.version), OFFLINE_BACKUP_SCOPE_TAG, scope
         )
-
-    client.set_model_version_tag(
-        REGISTERED_MODEL_NAME, str(version.version), OFFLINE_BACKUP_SCOPE_TAG, scope
-    )
-    updated = client.get_model_version(REGISTERED_MODEL_NAME, str(version.version))
-    return _build_record(updated)
+        updated = client.get_model_version(REGISTERED_MODEL_NAME, str(version.version))
+        return _build_record(updated)
 
 
-def approve_model_for_production(
+def _approve_model_for_production_locked(
     store: ModelRegistryStore,
     model_id: str,
 ) -> RegisteredModelRecord:
@@ -574,7 +706,16 @@ def approve_model_for_production(
     return _build_record(updated)
 
 
-def set_alias(
+def approve_model_for_production(
+    store: ModelRegistryStore,
+    model_id: str,
+) -> RegisteredModelRecord:
+    """串行批准，避免与 invalid、scope 或 alias 更新交错。"""
+    with _registry_write_lock(store):
+        return _approve_model_for_production_locked(store, model_id)
+
+
+def _set_alias_locked(
     store: ModelRegistryStore,
     model_id: str,
     alias: str,
@@ -590,6 +731,10 @@ def set_alias(
 
     if record.record_validity == RecordValidity.INVALID.value:
         raise InvalidModelRecord(f"model {model_id} 已 invalid")
+    if record.deploy_target is None or record.source_scope == "cross_validation":
+        raise PromotionGateRejected(
+            f"{alias} alias 只接受具有唯一 deploy_target 的单折或 full 模型"
+        )
 
     # scope 前置门
     scope = record.offline_backup_scope
@@ -629,7 +774,19 @@ def set_alias(
     return _build_record(updated)
 
 
-def delete_alias(store: ModelRegistryStore, alias: str) -> RegisteredModelRecord:
+def set_alias(
+    store: ModelRegistryStore,
+    model_id: str,
+    alias: str,
+) -> RegisteredModelRecord:
+    """串行更新 alias，使全部在线门与最终路由写入成为同一临界区。"""
+    with _registry_write_lock(store):
+        return _set_alias_locked(store, model_id, alias)
+
+
+def _delete_alias_locked(
+    store: ModelRegistryStore, alias: str
+) -> RegisteredModelRecord:
     """删除 alias；未设置 fail-closed。"""
     alias = _validate_alias(alias)
 
@@ -648,7 +805,13 @@ def delete_alias(store: ModelRegistryStore, alias: str) -> RegisteredModelRecord
     )
 
 
-def mark_model_invalid(
+def delete_alias(store: ModelRegistryStore, alias: str) -> RegisteredModelRecord:
+    """串行删除 alias，避免与设置、批准或 invalid 更新交错。"""
+    with _registry_write_lock(store):
+        return _delete_alias_locked(store, alias)
+
+
+def _mark_model_invalid_locked(
     store: ModelRegistryStore,
     model_id: str,
 ) -> RegisteredModelRecord:
@@ -669,6 +832,15 @@ def mark_model_invalid(
     return _build_record(updated)
 
 
+def mark_model_invalid(
+    store: ModelRegistryStore,
+    model_id: str,
+) -> RegisteredModelRecord:
+    """串行置 invalid，确保 alias/批准门不会与有效性变更交错。"""
+    with _registry_write_lock(store):
+        return _mark_model_invalid_locked(store, model_id)
+
+
 def _build_materialized_payload(record: RegisteredModelRecord) -> dict[str, Any]:
     """构造 materialized.yaml 的确定性 mapping。"""
     return {
@@ -684,6 +856,31 @@ def _build_materialized_payload(record: RegisteredModelRecord) -> dict[str, Any]
         "offline_backup_scope": record.offline_backup_scope,
         "manifest": f"records/models/{record.model_id}/manifest.yaml",
     }
+
+
+def validate_materialized_artifacts(
+    record: RegisteredModelRecord, materialized_root: Path
+) -> None:
+    """逐项验证 Registry 声明的 artifact 在物化根中真实存在且有内容。"""
+    root = Path(materialized_root).resolve()
+    for entries in record.artifacts.values():
+        for declared in entries.values():
+            target = (root / declared).resolve()
+            if root not in target.parents:
+                raise IllegalRegistryRecord(f"artifact 路径越出物化根: {declared!r}")
+            if not target.exists():
+                raise IllegalRegistryRecord(f"声明 artifact 不存在: {declared}")
+            if target.is_dir() and not any(path.is_file() for path in target.rglob("*")):
+                raise IllegalRegistryRecord(f"声明 artifact 目录为空: {declared}")
+
+    if record.deploy_target is not None:
+        deploy = (root / record.deploy_target).resolve()
+        if root not in deploy.parents or not deploy.exists():
+            raise IllegalRegistryRecord(
+                f"deploy_target 不存在或越出物化根: {record.deploy_target}"
+            )
+        if deploy.is_dir() and not any(path.is_file() for path in deploy.rglob("*")):
+            raise IllegalRegistryRecord(f"deploy_target 目录为空: {record.deploy_target}")
 
 
 def materialize_model(
@@ -716,18 +913,30 @@ def materialize_model(
         if existing.get("mlflow_model_version") != record.version:
             raise IllegalRegistryRecord("既有目标 mlflow_model_version 与 Registry 分歧")
 
-    payload = _build_materialized_payload(record)
-    payload_text = yaml.safe_dump(payload, sort_keys=True, allow_unicode=True)
-    payload_bytes = payload_text.encode("utf-8")
+    payload_bytes = yaml.safe_dump(
+        _build_materialized_payload(record), sort_keys=True, allow_unicode=True
+    ).encode("utf-8")
 
-    # 导出 artifact 树
-    artifact_dst = target / MATERIALIZED_ARTIFACTS_DIR
+    models_root = Path(models_root)
+    models_root.mkdir(parents=True, exist_ok=True)
     artifact_src = Path(client.download_artifacts(run_id=record.run_id, path=""))
-    if artifact_src.exists():
-        shutil.copytree(artifact_src, artifact_dst, dirs_exist_ok=True)
-    else:
-        artifact_dst.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{model_id}.", dir=models_root))
+    try:
+        artifact_dst = staging / MATERIALIZED_ARTIFACTS_DIR
+        if artifact_src.exists():
+            shutil.copytree(artifact_src, artifact_dst, dirs_exist_ok=True)
+        else:
+            artifact_dst.mkdir(parents=True, exist_ok=True)
+        (staging / MATERIALIZED_METADATA_FILE).write_bytes(payload_bytes)
+        validate_materialized_artifacts(record, staging)
 
-    # 写/覆盖 materialized.yaml（同键幂等时字节相等）
-    metadata_path.write_bytes(payload_bytes)
+        if target.exists():
+            shutil.copytree(artifact_dst, target / MATERIALIZED_ARTIFACTS_DIR, dirs_exist_ok=True)
+            metadata_path.write_bytes(payload_bytes)
+        else:
+            os.replace(staging, target)
+            staging = Path()
+    finally:
+        if staging != Path():
+            shutil.rmtree(staging, ignore_errors=True)
     return target

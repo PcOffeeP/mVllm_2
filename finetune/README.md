@@ -332,9 +332,16 @@ Mac 上执行真实 GPU 训练或推理。
   必须精确引用它的可读身份与 MLflow 数值版本，eval passed 后再执行 `model finalize
   model-v... --eval-version eval-v...` 单向绑定结论。candidate/production alias 均拒绝未
   finalize 的模型；备份范围、批准和物化也只通过显式子命令推进，不存在隐式最新模型。
+- model 登记还要显式声明 `source_scope`、artifacts 清单和唯一 `deploy_target`；三折模型组的
+  `deploy_target` 必须为空，不能进入 candidate/production。`model manifest` 先从 Registry
+  单向导出严格 manifest；随后 `model current --alias ... --service-mode ...` 才能在完整下载、
+  manifest 与精确数值版本校验后原子切换 `workspace/models/current`。生产模式只接受
+  production alias，缺参、断链或内容不一致均拒绝启动。
 - `eval manifest` 从封存 data、正式 Prompt、已完成 train 和 eval 结论单向导出轻量证据，
   并要求模型已绑定当前 eval、`source_train` 与模型登记的 train 完全一致；
   不反向修改 MLflow。`backup create/verify/restore` 只处理显式路径，并拒绝覆盖恢复目标。
+- 离线备份的 `adapter` 范围只复制身份资料和声明 adapter，不夹带 merged；只有
+  `production_bundle` 才复制声明的 adapter 与 merged，正式评测证据随 MLflow store 保存。
 
 参数清单运行 `python -m versioning <领域> --help` 查看。模块与命令索引见
 [`versioning/SCRIPTS.md`](../versioning/SCRIPTS.md)，架构边界见

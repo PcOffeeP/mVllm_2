@@ -121,11 +121,10 @@ catalog YAML schema（backup_catalog.yaml，原子替换目标）::
        offline_backup_scope tag 的模型、作用域模型引用的 prompt 版本（完整
        身份资料）、恰一个 MLflow store。未被引用、或只被未设范围模型引用的
        prompt 不进入源集合；working/ 中未封存数据不进入源集合。
-    2. 模型备份源钉定为物化目录 models/<model_id>/（materialize_model 产物，
-       含 artifacts/ 与 materialized.yaml）；未物化的作用域模型 fail-closed。
-       production_bundle 的 merged 权重与正式测评证据由物化目录 + MLflow
-       store 对象共同承载，本批不引入独立证据对象类型，也不复制 Git 权威的
-       manifest（其位置由 materialized.yaml 的 manifest 链接声明）。
+    2. 模型备份源钉定为物化目录 models/<model_id>/（materialize_model 产物）；
+       未物化的作用域模型 fail-closed。adapter 只复制 materialized.yaml、严格
+       model manifest 与声明 adapter；production_bundle 复制声明 adapter+merged。
+       manifest 随 model catalog 明确入备并恢复到 Git 工作区原相对路径。
     3. 历史最高范围：直接消费 registry 的 offline_backup_scope tag（B8 已钉定
        单向粘性升级）；枚举 / catalog / 修复一律按 tag 决定范围，不依据当前
        alias 反推历史角色；scope 升级后未重新物化（物化声明与 tag 分歧）时
@@ -137,7 +136,8 @@ catalog YAML schema（backup_catalog.yaml，原子替换目标）::
     5. SQLite 一致性快照机制不钉死（raw copy 或 sqlite3 backup API 均可）；
        钉结果：备份的 mlflow.db 必须是可查询的有效 SQLite
        （PRAGMA integrity_check == ok、runs 表可查），允许与源文件字节不同；
-       除 mlflow.db 外全部备份文件与源字节一致（真实复制）。
+       MLflow artifact store 仅复制作用域模型按范围声明的训练 artifact 与其已
+       绑定正式 eval artifact，adapter 对应 train run 不得夹带 merged。
     6. 修复语义：catalog 条目对应文件被篡改/缺失时，verify/restore 一律
        fail-closed；下一次 create_backup 把完整性失败对象从源重复制修复
        （D036 修复/重备份集合）。额外对象（catalog 与源集合之外的文件）
@@ -182,6 +182,7 @@ import hashlib
 import os
 import shutil
 import sqlite3
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -249,6 +250,8 @@ from versioning.mlflow_train import (
     open_train_store,
     transition_train_state,
 )
+from versioning.manifest import export_model_manifest, validate_model_manifest
+from versioning.materialize import materialize_current, validate_service_current
 from versioning.prompts import create_prompt, load_prompt, prompt_path
 from versioning.registry import (
     MATERIALIZED_METADATA_FILE,
@@ -424,12 +427,24 @@ def world(
         _create_prompt_version(prompts_root, version)
 
     train1 = _train_chain(train_store, TRAIN_ID, PROMPT_VERSION)
+    model_artifacts = {
+        "fold0": {
+            "adapter": "artifacts/fold0/adapter",
+            "merged": "artifacts/fold0/merged",
+        }
+    }
     register_model(registry, MODEL_ID, train_id=TRAIN_ID)
     _eval_chain(eval_store, data_root, EVAL_ID, MODEL_ID, model_version_number=1)
     finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
 
     train2 = _train_chain(train_store, BUNDLED_TRAIN_ID, PROMPT_VERSION)
-    register_model(registry, BUNDLED_MODEL_ID, train_id=BUNDLED_TRAIN_ID)
+    register_model(
+        registry,
+        BUNDLED_MODEL_ID,
+        train_id=BUNDLED_TRAIN_ID,
+        artifacts=model_artifacts,
+        deploy_target="artifacts/fold0/merged",
+    )
     _eval_chain(eval_store, data_root, BUNDLED_EVAL_ID, BUNDLED_MODEL_ID, model_version_number=2)
     finalize_model_evaluation(registry, BUNDLED_MODEL_ID, eval_id=BUNDLED_EVAL_ID)
 
@@ -448,6 +463,16 @@ def world(
     _log_train_artifacts(registry, train2.run_id, tmp_path)
     materialize_model(registry, MODEL_ID, models_root)
     materialize_model(registry, BUNDLED_MODEL_ID, models_root)
+    export_model_manifest(
+        prompts_root / "records" / "models" / MODEL_ID / "manifest.yaml",
+        store=registry,
+        model_id=MODEL_ID,
+    )
+    export_model_manifest(
+        prompts_root / "records" / "models" / BUNDLED_MODEL_ID / "manifest.yaml",
+        store=registry,
+        model_id=BUNDLED_MODEL_ID,
+    )
 
     return World(
         mlflow_root=registry.root,
@@ -683,17 +708,26 @@ def _assert_backup_bytes_match_source(backup_root: Path, entry: BackupObjectEntr
         backup_file = backup_root / BACKUP_DIR_PROMPTS / f"{entry.object_id}.yaml"
         assert backup_file.read_bytes() == Path(entry.source).read_bytes()
     elif entry.object_type == OBJECT_TYPE_MODEL:
-        expected = _tree_digests(Path(entry.source))
-        actual = _tree_digests(backup_root / BACKUP_DIR_MODELS / entry.object_id)
-        assert actual == expected
+        metadata = yaml.safe_load(
+            (Path(entry.source) / MATERIALIZED_METADATA_FILE).read_text(encoding="utf-8")
+        )
+        for file_entry in entry.files:
+            relative = _object_rel(entry, file_entry.path)
+            if relative == "manifest.yaml":
+                source_file = Path(entry.source).parent.parent / metadata["manifest"]
+            else:
+                source_file = Path(entry.source) / relative
+            assert source_file.is_file()
+            assert _sha256_bytes(source_file.read_bytes()) == file_entry.sha256
     elif entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
         source_files = _tree_digests(Path(entry.source))
         backup_files = _tree_digests(backup_root / BACKUP_DIR_MLFLOW)
-        assert set(backup_files) == set(source_files)
-        for rel, sha in source_files.items():
+        assert set(backup_files) <= set(source_files)
+        assert "mlflow.db" in backup_files
+        for rel, sha in backup_files.items():
             if rel == "mlflow.db":
                 continue  # 一致性快照允许字节不同，有效性由 SQLite 查询钉定
-            assert backup_files[rel] == sha, rel
+            assert source_files[rel] == sha, rel
         connection = sqlite3.connect(backup_root / BACKUP_DIR_MLFLOW / "mlflow.db")
         try:
             assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
@@ -765,6 +799,7 @@ def _install_copy_spies(
 ) -> None:
     """记录全部真实复制调用的目标路径（树复制 + 单文件复制）。"""
     original_tree = backup_module._copy_tree_atomic_replace
+    original_selected_tree = backup_module._copy_selected_tree_atomic_replace
     original_file = backup_module._copy_file_preserve
 
     def tree_spy(src: Path, dst: Path) -> None:
@@ -775,7 +810,14 @@ def _install_copy_spies(
         calls["file"].append(Path(dst))
         original_file(src, dst)
 
+    def selected_tree_spy(source: BackupSource, dst: Path) -> None:
+        calls["tree"].append(Path(dst))
+        original_selected_tree(source, dst)
+
     monkeypatch.setattr(backup_module, "_copy_tree_atomic_replace", tree_spy)
+    monkeypatch.setattr(
+        backup_module, "_copy_selected_tree_atomic_replace", selected_tree_spy
+    )
     monkeypatch.setattr(backup_module, "_copy_file_preserve", file_spy)
 
 
@@ -789,11 +831,11 @@ def _install_mlflow_copy_corruption(
     大小不变、sha 与 catalog 条目自洽 → 只有落盘前的 SQLite PRAGMA
     integrity_check / 可查询性校验能拒绝它。
     """
-    original_tree = backup_module._copy_tree_atomic_replace
+    original_tree = backup_module._copy_selected_tree_atomic_replace
     mlflow_dst = Path(backup_root) / BACKUP_DIR_MLFLOW
 
-    def corrupting_copy(src: Path, dst: Path) -> None:
-        original_tree(src, dst)
+    def corrupting_copy(source: BackupSource, dst: Path) -> None:
+        original_tree(source, dst)
         if Path(dst) == mlflow_dst:
             db_path = mlflow_dst / "mlflow.db"
             _make_writable(db_path)
@@ -801,7 +843,9 @@ def _install_mlflow_copy_corruption(
             data[:16] = b"\x00" * 16
             db_path.write_bytes(bytes(data))
 
-    monkeypatch.setattr(backup_module, "_copy_tree_atomic_replace", corrupting_copy)
+    monkeypatch.setattr(
+        backup_module, "_copy_selected_tree_atomic_replace", corrupting_copy
+    )
 
 
 # —————————————————— T1 契约常量 ——————————————————
@@ -958,12 +1002,79 @@ class TestEnumerateBackupSources:
         )
         assert model_source.scope == "production_bundle"
 
+    def test_enumerate_rejects_dangling_model_manifest(
+        self, world: World, registry: ModelRegistryStore
+    ) -> None:
+        manifest = (
+            world.prompts_root / "records" / "models" / MODEL_ID / "manifest.yaml"
+        )
+        manifest.unlink()
+        with pytest.raises(BackupSourceSetError, match="manifest 缺失"):
+            enumerate_backup_sources(registry, **_source_args(world))
+
 
 # —————————————————— T3 备份生成与 catalog ——————————————————
 
 
 class TestCreateBackup:
     """create_backup：真实复制、确定性 catalog、原子替换 + 上一份快照、单向性。"""
+
+    def test_missing_declared_model_artifact_is_zero_side_effect_failure(
+        self, world: World, registry: ModelRegistryStore, backup_root: Path
+    ) -> None:
+        shutil.rmtree(
+            world.models_root / MODEL_ID / "artifacts" / "fold0" / "adapter"
+        )
+        with pytest.raises(BackupSourceSetError, match="声明 artifact"):
+            create_backup(registry, **_backup_args(world, backup_root))
+        assert not backup_root.exists()
+
+    def test_scope_upgrade_cannot_interleave_with_registry_snapshot(
+        self,
+        world: World,
+        registry: ModelRegistryStore,
+        backup_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        original = backup_module._repair_or_copy
+        upgrade_errors: list[Exception] = []
+        upgrade_thread: threading.Thread | None = None
+
+        def upgrade() -> None:
+            try:
+                set_offline_backup_scope(registry, MODEL_ID, "production_bundle")
+            except Exception as exc:  # pragma: no cover - 断言负责暴露线程异常
+                upgrade_errors.append(exc)
+
+        def intercept(source, root, existing):
+            nonlocal upgrade_thread
+            if source.object_id == MLFLOW_STORE_OBJECT_ID:
+                upgrade_thread = threading.Thread(target=upgrade)
+                upgrade_thread.start()
+                upgrade_thread.join(timeout=0.2)
+                assert upgrade_thread.is_alive(), "scope 写入绕过了备份快照锁"
+            return original(source, root, existing)
+
+        monkeypatch.setattr(backup_module, "_repair_or_copy", intercept)
+        catalog = create_backup(registry, **_backup_args(world, backup_root))
+        assert upgrade_thread is not None
+        upgrade_thread.join(timeout=5)
+        assert not upgrade_thread.is_alive()
+        assert upgrade_errors == []
+        assert _entry(catalog, MODEL_ID).scope == "adapter"
+
+        connection = sqlite3.connect(backup_root / BACKUP_DIR_MLFLOW / "mlflow.db")
+        try:
+            scopes = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT value FROM model_version_tags "
+                    "WHERE key = 'offline_backup_scope'"
+                )
+            }
+        finally:
+            connection.close()
+        assert scopes == {"adapter", "production_bundle"}
 
     def test_create_backup_copies_objects_and_builds_catalog(
         self, world: World, registry: ModelRegistryStore, backup_root: Path
@@ -994,6 +1105,33 @@ class TestCreateBackup:
         # 备份范围按历史最高 scope tag
         assert _entry(catalog, MODEL_ID).scope == "adapter"
         assert _entry(catalog, BUNDLED_MODEL_ID).scope == "production_bundle"
+        adapter_paths = {file.path for file in _entry(catalog, MODEL_ID).files}
+        bundled_paths = {
+            file.path for file in _entry(catalog, BUNDLED_MODEL_ID).files
+        }
+        assert not any("/merged/" in path for path in adapter_paths)
+        assert any("/adapter/" in path for path in adapter_paths)
+        assert any("/merged/" in path for path in bundled_paths)
+
+        client = MlflowClient(tracking_uri=registry.tracking_uri)
+        adapter_run_id = get_train_run(open_train_store(registry.root), TRAIN_ID).run_id
+        bundled_run_id = get_train_run(
+            open_train_store(registry.root), BUNDLED_TRAIN_ID
+        ).run_id
+        adapter_artifact_root = Path(
+            client.get_run(adapter_run_id).info.artifact_uri.removeprefix("file://")
+        )
+        bundled_artifact_root = Path(
+            client.get_run(bundled_run_id).info.artifact_uri.removeprefix("file://")
+        )
+        adapter_merged = (
+            adapter_artifact_root / "fold0" / "merged"
+        ).relative_to(registry.root)
+        bundled_merged = (
+            bundled_artifact_root / "fold0" / "merged"
+        ).relative_to(registry.root)
+        assert not (backup_root / BACKUP_DIR_MLFLOW / adapter_merged).exists()
+        assert (backup_root / BACKUP_DIR_MLFLOW / bundled_merged).is_dir()
         assert _entry(catalog, DATA_VERSION).scope == SCOPE_DATA_RELEASE
         assert _entry(catalog, PROMPT_VERSION).scope == SCOPE_PROMPT
         assert _entry(catalog, MLFLOW_STORE_OBJECT_ID).scope == SCOPE_MLFLOW_STORE
@@ -1371,8 +1509,14 @@ class TestRestoreBackup:
 
         # 灾难前快照：字节级期望 + train 父 Run ID（artifact 自愈验证用）
         release_digests = _tree_digests(world.data_root / "releases" / DATA_VERSION)
-        model_digests = _tree_digests(world.models_root / MODEL_ID)
-        artifact_digests = _tree_digests(world.mlflow_root / "artifacts")
+        model_digests = {
+            path: digest
+            for path, digest in _tree_digests(
+                backup_root / BACKUP_DIR_MODELS / MODEL_ID
+            ).items()
+            if path != "manifest.yaml"
+        }
+        artifact_digests = _tree_digests(backup_root / BACKUP_DIR_MLFLOW / "artifacts")
         prompt_bytes = prompt_path(world.prompts_root, PROMPT_VERSION).read_bytes()
         train_run_id = get_train_run(
             open_train_store(world.mlflow_root), TRAIN_ID
@@ -1437,6 +1581,12 @@ class TestRestoreBackup:
         assert metadata["model_id"] == MODEL_ID
         assert metadata["offline_backup_scope"] == "adapter"
         assert not (world.models_root / UNSCOPED_MODEL_ID).exists()
+        restored_manifest = (
+            world.prompts_root / "records" / "models" / MODEL_ID / "manifest.yaml"
+        )
+        assert validate_model_manifest(restored_manifest.read_text(encoding="utf-8"))[
+            "version"
+        ] == MODEL_ID
 
         # ——— MLflow store：SQLite + artifact 联合恢复，全部既有模块可重开 ———
         restored_registry = open_registry_store(world.mlflow_root)
@@ -1448,6 +1598,20 @@ class TestRestoreBackup:
             get_model_by_alias(restored_registry, "production").model_id
             == BUNDLED_MODEL_ID
         )
+        materialize_current(
+            restored_registry,
+            alias="candidate",
+            service_mode="development",
+            models_root=world.models_root,
+            records_root=world.prompts_root,
+        )
+        assert validate_service_current(
+            restored_registry,
+            alias="candidate",
+            service_mode="development",
+            models_root=world.models_root,
+            records_root=world.prompts_root,
+        ).model_id == MODEL_ID
 
         # 父子 Run 与指标：train completed、三折 FINISHED、指标可查
         train = get_train_run(open_train_store(world.mlflow_root), TRAIN_ID)
@@ -1669,9 +1833,9 @@ class TestDifferentialRepair:
         assert set(stats_after[MODEL_ID]) == set(stats_before[MODEL_ID])
         for rel, (ino, _mtime) in stats_before[MODEL_ID].items():
             assert stats_after[MODEL_ID][rel][0] != ino, rel
-        assert _tree_digests(backup_root / BACKUP_DIR_MODELS / MODEL_ID) == _tree_digests(
-            world.models_root / MODEL_ID
-        )
+        repaired = _entry(second, MODEL_ID)
+        _assert_backup_bytes_match_source(backup_root, repaired)
+        assert not any("/merged/" in file.path for file in repaired.files)
         assert verify_backup(backup_root)
 
         # 修复对象条目时间戳刷新；健康对象条目原样复用（backed_up_at 不变）

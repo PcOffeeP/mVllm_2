@@ -32,7 +32,9 @@ from versioning.manifest import (
     PromptRecordRef,
     TrainRecordRef,
     export_manifest,
+    export_model_manifest,
 )
+from versioning.materialize import materialize_current, validate_service_current
 from versioning.mlflow_eval import (
     create_eval_fold_run,
     create_eval_run,
@@ -197,10 +199,13 @@ def _build_parser() -> argparse.ArgumentParser:
             "approve",
             "alias",
             "materialize",
+            "manifest",
+            "current",
+            "validate-current",
             "show",
         ),
     )
-    model.add_argument("model_version", help="显式完整 model 版本")
+    model.add_argument("model_version", nargs="?", help="显式完整 model 版本")
     _add_root(model)
     _add_store(model)
     model.add_argument("--train-version", help="来源 train 版本")
@@ -208,6 +213,16 @@ def _build_parser() -> argparse.ArgumentParser:
     model.add_argument("--backup-scope", choices=("adapter", "production_bundle"))
     model.add_argument("--alias", choices=("candidate", "production"))
     model.add_argument("--models-root", type=Path, help="物化目标根目录")
+    model.add_argument(
+        "--source-scope", choices=("single_fold", "cross_validation", "full")
+    )
+    model.add_argument("--artifacts", type=Path, help="模型 artifacts YAML mapping")
+    model.add_argument("--deploy-target", help="唯一部署 artifact 路径")
+    model.add_argument("--target", type=Path, help="model manifest 输出路径")
+    model.add_argument("--records-root", type=Path, help="Git records 所在项目根")
+    model.add_argument(
+        "--service-mode", choices=("development", "production")
+    )
 
     backup = commands.add_parser("backup", help="创建、校验或恢复离线备份")
     backup.add_argument("action", choices=("create", "verify", "restore"))
@@ -572,20 +587,33 @@ def _handle_eval(args: argparse.Namespace) -> Any:
 
 
 def _handle_model(args: argparse.Namespace) -> Any:
+    if args.action not in {"current", "validate-current"} and args.model_version is None:
+        raise CLIUsageError("缺少显式完整 model 版本")
     if args.action == "register":
-        _required(args, "train_version")
+        _required(args, "train_version", "source_scope", "artifacts")
+        if args.source_scope != "cross_validation":
+            _required(args, "deploy_target")
+        elif args.deploy_target is not None:
+            raise CLIUsageError("cross_validation 不接受 --deploy-target")
     elif args.action == "finalize":
         _required(args, "eval_version")
     elif args.action == "scope":
         _required(args, "backup_scope")
     elif args.action == "alias":
         _required(args, "alias")
+    elif args.action == "manifest":
+        _required(args, "target")
+    elif args.action in {"current", "validate-current"}:
+        _required(args, "alias", "service_mode")
     store = open_registry_store(_store_path(args), data_root=args.root / "data")
     if args.action == "register":
         return register_model(
             store,
             args.model_version,
             train_id=args.train_version,
+            source_scope=args.source_scope,
+            artifacts=_load_mapping(args.artifacts, "artifacts"),
+            deploy_target=args.deploy_target,
         )
     if args.action == "finalize":
         return finalize_model_evaluation(
@@ -603,6 +631,32 @@ def _handle_model(args: argparse.Namespace) -> Any:
             or args.root / "workspace" / "models" / "materialized"
         )
         return {"path": materialize_model(store, args.model_version, target_root)}
+    if args.action == "manifest":
+        return {
+            "path": export_model_manifest(
+                args.target, store=store, model_id=args.model_version
+            )
+        }
+    if args.action in {"current", "validate-current"}:
+        models_root = args.models_root or args.root / "workspace" / "models"
+        records_root = args.records_root or args.root
+        if args.action == "current":
+            return {
+                "path": materialize_current(
+                    store,
+                    alias=args.alias,
+                    service_mode=args.service_mode,
+                    models_root=models_root,
+                    records_root=records_root,
+                )
+            }
+        return validate_service_current(
+            store,
+            alias=args.alias,
+            service_mode=args.service_mode,
+            models_root=models_root,
+            records_root=records_root,
+        )
     return get_model(store, args.model_version)
 
 

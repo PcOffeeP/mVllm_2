@@ -259,6 +259,9 @@
 
 from __future__ import annotations
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
 from pathlib import Path
 
 import pytest
@@ -1702,3 +1705,118 @@ class TestAliasManagement:
         for alias in ("candidate", "production"):
             with pytest.raises(RegistryModelNotFound):
                 get_model_by_alias(registry, alias)
+
+
+class TestRegistryConcurrentTransactions:
+    """最终复核回归：Registry tag 无唯一约束，读改写必须由应用锁串行化。"""
+
+    def test_same_model_id_concurrent_register_creates_exactly_one_version(
+        self,
+        registry: ModelRegistryStore,
+        train_store: TrainRecordStore,
+        data_root: Path,
+    ) -> None:
+        _complete_training(train_store)
+        start = threading.Barrier(2)
+
+        def worker():
+            start.wait()
+            try:
+                return register_model(registry, MODEL_ID, train_id=TRAIN_ID)
+            except Exception as exc:
+                return exc
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: worker(), range(2)))
+
+        assert sum(isinstance(item, RegisteredModelRecord) for item in results) == 1, results
+        assert sum(isinstance(item, ModelVersionConflict) for item in results) == 1
+        assert len(_raw_model_versions(registry)) == 1
+        assert get_model(registry, MODEL_ID).version == 1
+
+    def test_competing_eval_finalize_cannot_overwrite_first_binding(
+        self,
+        registry: ModelRegistryStore,
+        train_store: TrainRecordStore,
+        eval_store: EvalRecordStore,
+        data_root: Path,
+    ) -> None:
+        _complete_training(train_store)
+        staged = register_model(registry, MODEL_ID, train_id=TRAIN_ID)
+        _pass_eval(
+            eval_store, data_root, eval_id=EVAL_ID,
+            model_version_number=staged.version,
+        )
+        _pass_eval(
+            eval_store, data_root, eval_id=OTHER_EVAL_ID,
+            model_version_number=staged.version,
+        )
+        start = threading.Barrier(2)
+
+        def worker(eval_id: str):
+            start.wait()
+            try:
+                return finalize_model_evaluation(registry, MODEL_ID, eval_id=eval_id)
+            except Exception as exc:
+                return exc
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(worker, (EVAL_ID, OTHER_EVAL_ID)))
+
+        assert sum(isinstance(item, RegisteredModelRecord) for item in results) == 1
+        assert sum(isinstance(item, ModelVersionConflict) for item in results) == 1
+        bound = get_model(registry, MODEL_ID).eval_id
+        assert bound in {EVAL_ID, OTHER_EVAL_ID}
+
+    def test_cross_validation_model_has_no_deployable_alias(
+        self,
+        registry: ModelRegistryStore,
+        train_store: TrainRecordStore,
+        eval_store: EvalRecordStore,
+        data_root: Path,
+    ) -> None:
+        _complete_training(train_store)
+        staged = register_model(
+            registry,
+            MODEL_ID,
+            train_id=TRAIN_ID,
+            source_scope="cross_validation",
+            artifacts={
+                f"fold{fold}": {"adapter": f"artifacts/fold{fold}/adapter"}
+                for fold in (0, 1, 2)
+            },
+            deploy_target=None,
+        )
+        _pass_eval(
+            eval_store, data_root, model_version_number=staged.version
+        )
+        finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+        set_offline_backup_scope(registry, MODEL_ID, "adapter")
+        with pytest.raises(PromotionGateRejected, match="唯一 deploy_target"):
+            set_alias(registry, MODEL_ID, "candidate")
+
+    def test_concurrent_backup_scope_never_downgrades(
+        self,
+        registry: ModelRegistryStore,
+        train_store: TrainRecordStore,
+        data_root: Path,
+    ) -> None:
+        _complete_training(train_store)
+        register_model(registry, MODEL_ID, train_id=TRAIN_ID)
+        start = threading.Barrier(2)
+
+        def worker(scope: str):
+            start.wait()
+            try:
+                return set_offline_backup_scope(registry, MODEL_ID, scope)
+            except Exception as exc:
+                return exc
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(worker, ("adapter", "production_bundle")))
+
+        assert get_model(registry, MODEL_ID).offline_backup_scope == "production_bundle"
+        assert all(
+            isinstance(item, (RegisteredModelRecord, IllegalTransition))
+            for item in results
+        )

@@ -15,12 +15,15 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+from urllib.parse import unquote, urlparse
 
 import yaml
 from mlflow.tracking import MlflowClient
 
 from versioning.data_release import seal_payload
 from versioning.ids import parse_data_id
+from versioning.manifest import ManifestError, validate_model_manifest
+from versioning.mlflow_eval import get_eval_run, open_eval_store
 from versioning.prompts import prompt_path
 from versioning.registry import (
     MODEL_ID_TAG,
@@ -28,6 +31,8 @@ from versioning.registry import (
     REGISTERED_MODEL_NAME,
     ModelRegistryStore,
     get_model,
+    registry_snapshot_lock,
+    validate_materialized_artifacts,
 )
 
 BACKUP_CATALOG_FILENAME: str = "backup_catalog.yaml"
@@ -91,6 +96,8 @@ class BackupSource:
     object_type: str
     scope: str
     source: Path
+    include_paths: tuple[str, ...] | None = None
+    manifest_source: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -149,6 +156,19 @@ def _is_sha256(value: object) -> bool:
 
 def _client(store: ModelRegistryStore) -> MlflowClient:
     return MlflowClient(tracking_uri=store.tracking_uri)
+
+
+def _run_artifact_root(store: ModelRegistryStore, artifact_uri: str) -> Path:
+    """把本地 MLflow artifact URI 解析为 store 内受控目录。"""
+    parsed = urlparse(artifact_uri)
+    if parsed.scheme not in {"", "file"}:
+        raise BackupSourceSetError(f"离线备份不接受远程 artifact URI: {artifact_uri}")
+    raw = unquote(parsed.path) if parsed.scheme == "file" else artifact_uri
+    artifact_root = Path(raw).resolve()
+    store_root = store.root.resolve()
+    if store_root not in artifact_root.parents:
+        raise BackupSourceSetError("MLflow artifact URI 越出受控 store 根")
+    return artifact_root
 
 
 def _tree_files(root: Path) -> set[str]:
@@ -242,6 +262,74 @@ def _copy_tree_atomic_replace(src: Path, dst: Path) -> None:
             shutil.rmtree(temp)
 
 
+def _selected_tree_digests(source: BackupSource) -> dict[str, str]:
+    """返回源对象实际应进入备份的白名单文件摘要。"""
+    result = _tree_digests(source.source) if source.include_paths is None else {}
+    if source.include_paths is not None:
+        for relative in source.include_paths:
+            selected = source.source / relative
+            if selected.is_file():
+                result[relative] = _sha256_file(selected)
+            elif selected.is_dir():
+                for path in sorted(selected.rglob("*")):
+                    if path.is_file():
+                        result[path.relative_to(source.source).as_posix()] = _sha256_file(path)
+            else:
+                raise BackupSourceSetError(f"备份白名单路径缺失: {relative}")
+    if source.manifest_source is not None:
+        if not source.manifest_source.is_file():
+            raise BackupSourceSetError("模型 manifest 备份源缺失")
+        result["manifest.yaml"] = _sha256_file(source.manifest_source)
+    return result
+
+
+def _copy_selected_tree_atomic_replace(source: BackupSource, dst: Path) -> None:
+    """只复制对象白名单，并在完整校验后原子替换目标。"""
+    if source.include_paths is None:
+        _copy_tree_atomic_replace(source.source, dst)
+        return
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    temp = Path(tempfile.mkdtemp(prefix=f".tmp.{dst.name}.", dir=dst.parent))
+    old = dst.parent / f".old.{dst.name}.{os.getpid()}"
+    try:
+        for relative in source.include_paths:
+            src = source.source / relative
+            target = temp / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if src.is_dir():
+                shutil.copytree(src, target, copy_function=shutil.copy2)
+            elif src.is_file():
+                shutil.copy2(src, target)
+            else:
+                raise BackupSourceSetError(f"备份白名单路径缺失: {relative}")
+        if source.manifest_source is not None:
+            shutil.copy2(source.manifest_source, temp / "manifest.yaml")
+        if _selected_tree_digests(source) != _tree_digests(temp):
+            raise BackupIntegrityError("模型范围白名单复制与源不一致")
+        if dst.exists():
+            _make_writable(dst)
+            if old.exists():
+                _make_writable(old)
+                shutil.rmtree(old)
+            os.replace(dst, old)
+            try:
+                os.replace(temp, dst)
+            except Exception:
+                if not dst.exists() and old.exists():
+                    os.replace(old, dst)
+                raise
+            else:
+                _make_writable(old)
+                shutil.rmtree(old)
+        else:
+            os.replace(temp, dst)
+    finally:
+        if temp.exists():
+            _make_writable(temp)
+            shutil.rmtree(temp)
+
+
 def _copy_file_preserve(src: Path, dst: Path) -> None:
     """逐字节复制文件；需要时让父目录可写。"""
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -283,8 +371,8 @@ def _enumerate_data_releases(data_root: Path) -> list[BackupSource]:
 
 def _enumerate_scoped_models(
     store: ModelRegistryStore, models_root: Path, prompts_root: Path
-) -> tuple[list[BackupSource], set[str]]:
-    """返回作用域模型源列表 + 需要备份的 prompt 版本集合。"""
+) -> tuple[list[BackupSource], set[str], set[str]]:
+    """返回作用域模型、prompt 版本与 MLflow 文件白名单。"""
     client = _client(store)
     models_root = Path(models_root)
     prompts_root = Path(prompts_root)
@@ -297,6 +385,7 @@ def _enumerate_scoped_models(
 
     model_sources: list[BackupSource] = []
     prompt_versions: set[str] = set()
+    mlflow_paths: set[str] = {"mlflow.db"}
 
     for version in scoped_versions:
         model_id = version.tags.get(MODEL_ID_TAG)
@@ -335,6 +424,48 @@ def _enumerate_scoped_models(
                 f"与 Registry tag {record.offline_backup_scope!r} 分歧"
             )
 
+        manifest_ref = metadata.get("manifest")
+        if (
+            not isinstance(manifest_ref, str)
+            or not manifest_ref
+            or Path(manifest_ref).is_absolute()
+            or ".." in Path(manifest_ref).parts
+        ):
+            raise BackupSourceSetError("物化模型的 manifest 引用必须是安全相对路径")
+        manifest_path = prompts_root / manifest_ref
+        if not manifest_path.is_file():
+            raise BackupSourceSetError(
+                f"作用域模型 {model_id!r} 的 manifest 缺失: {manifest_path}"
+            )
+        try:
+            manifest = validate_model_manifest(
+                manifest_path.read_text(encoding="utf-8")
+            )
+        except (OSError, ManifestError) as exc:
+            raise BackupSourceSetError(
+                f"作用域模型 {model_id!r} 的 manifest 非法"
+            ) from exc
+        expected_manifest = {
+            "version": record.model_id,
+            "mlflow_model_version": record.version,
+            "source_run_id": record.run_id,
+            "source_training": record.train_id,
+            "source_scope": record.source_scope,
+            "artifacts": record.artifacts,
+            "deploy_target": record.deploy_target,
+        }
+        for key, value in expected_manifest.items():
+            if manifest.get(key) != value:
+                raise BackupSourceSetError(
+                    f"作用域模型 {model_id!r} 的 manifest.{key} 与 Registry 分歧"
+                )
+        try:
+            validate_materialized_artifacts(record, materialized_dir)
+        except Exception as exc:
+            raise BackupSourceSetError(
+                f"作用域模型 {model_id!r} 的声明 artifact 缺失或非法"
+            ) from exc
+
         prompt_version = record.prompt_version
         prompt_file = prompt_path(prompts_root, prompt_version)
         if not prompt_file.is_file():
@@ -342,17 +473,59 @@ def _enumerate_scoped_models(
                 f"作用域模型 {model_id!r} 引用的 prompt {prompt_version!r} 缺失: {prompt_file}"
             )
 
+        selected_artifacts = {
+            path
+            for entries in record.artifacts.values()
+            for kind, path in entries.items()
+            if record.offline_backup_scope == "production_bundle" or kind == "adapter"
+        }
+        if record.offline_backup_scope == "adapter" and not selected_artifacts:
+            raise BackupSourceSetError(
+                f"作用域模型 {model_id!r} 未声明可供 adapter 备份的 adapter artifact"
+            )
+
+        train_run = client.get_run(record.run_id)
+        train_artifact_root = _run_artifact_root(store, train_run.info.artifact_uri)
+        for declared in selected_artifacts:
+            relative_in_run = Path(*Path(declared).parts[1:])
+            selected_source = train_artifact_root / relative_in_run
+            if not selected_source.exists():
+                raise BackupSourceSetError(
+                    f"模型 {model_id!r} 的 MLflow 声明 artifact 缺失: {declared}"
+                )
+            mlflow_paths.add(
+                selected_source.resolve().relative_to(store.root.resolve()).as_posix()
+            )
+
+        # 正式 eval 的文件证据按该模型精确绑定的父/子 Run 纳入；指标与 tags
+        # 保存在同批 SQLite。未绑定 eval 的 adapter 仍可备份训练产物。
+        if record.eval_id is not None:
+            evaluation = get_eval_run(open_eval_store(store.root), record.eval_id)
+            eval_run_ids = {evaluation.run_id, *(fold.run_id for fold in evaluation.folds.values())}
+            for run_id in eval_run_ids:
+                eval_artifact_root = _run_artifact_root(
+                    store, client.get_run(run_id).info.artifact_uri
+                )
+                if eval_artifact_root.exists() and any(
+                    path.is_file() for path in eval_artifact_root.rglob("*")
+                ):
+                    mlflow_paths.add(
+                        eval_artifact_root.relative_to(store.root.resolve()).as_posix()
+                    )
+
         model_sources.append(
             BackupSource(
                 object_id=model_id,
                 object_type=OBJECT_TYPE_MODEL,
                 scope=record.offline_backup_scope,
                 source=materialized_dir,
+                include_paths=tuple(sorted({"materialized.yaml", *selected_artifacts})),
+                manifest_source=manifest_path,
             )
         )
         prompt_versions.add(prompt_version)
 
-    return model_sources, prompt_versions
+    return model_sources, prompt_versions, mlflow_paths
 
 
 def enumerate_backup_sources(
@@ -370,7 +543,7 @@ def enumerate_backup_sources(
     sources: list[BackupSource] = []
     sources.extend(_enumerate_data_releases(data_root))
 
-    model_sources, prompt_versions = _enumerate_scoped_models(
+    model_sources, prompt_versions, mlflow_paths = _enumerate_scoped_models(
         store, models_root, prompts_root
     )
     sources.extend(model_sources)
@@ -391,6 +564,7 @@ def enumerate_backup_sources(
             object_type=OBJECT_TYPE_MLFLOW_STORE,
             scope=SCOPE_MLFLOW_STORE,
             source=Path(store.root),
+            include_paths=tuple(sorted(mlflow_paths)),
         )
     )
 
@@ -446,12 +620,12 @@ def _backup_object(source: BackupSource, backup_root: Path) -> BackupObjectEntry
         )
     elif source.object_type == OBJECT_TYPE_MODEL:
         dst = backup_root / BACKUP_DIR_MODELS / source.object_id
-        _copy_tree_atomic_replace(source.source, dst)
+        _copy_selected_tree_atomic_replace(source, dst)
         prefix = f"{BACKUP_DIR_MODELS}/{source.object_id}"
         files = _build_file_entries(dst, prefix)
     elif source.object_type == OBJECT_TYPE_MLFLOW_STORE:
         dst = backup_root / BACKUP_DIR_MLFLOW
-        _copy_tree_atomic_replace(source.source, dst)
+        _copy_selected_tree_atomic_replace(source, dst)
         files = _build_file_entries(dst, BACKUP_DIR_MLFLOW)
     else:
         raise BackupError(f"未知对象类型: {source.object_type!r}")
@@ -744,7 +918,7 @@ def _repair_or_copy(
     else:
         if (
             dst.exists()
-            and _tree_digests(source.source) == _tree_digests(dst)
+            and _selected_tree_digests(source) == _tree_digests(dst)
             and _entry_files_match_disk(backup_root, existing_entry)
         ):
             return _build_object_entry(
@@ -762,7 +936,7 @@ def _repair_or_copy(
                 raise BackupIntegrityError("prompt 临时复制校验失败")
             os.replace(tmp, dst)
             return _prompt_entry(dst, source)
-        _copy_tree_atomic_replace(source.source, dst)
+        _copy_selected_tree_atomic_replace(source, dst)
     except Exception as exc:
         raise BackupIntegrityError(
             f"修复对象 {source.object_id!r} 失败: {exc}"
@@ -844,7 +1018,7 @@ def verify_backup(backup_root: Path) -> BackupCatalog:
     return catalog
 
 
-def create_backup(
+def _create_backup_locked(
     store: ModelRegistryStore,
     *,
     data_root: Path,
@@ -854,14 +1028,14 @@ def create_backup(
 ) -> BackupCatalog:
     """真实复制、复验修复、原子 catalog 写入；失败不改写盘上 catalog。"""
     backup_root = Path(backup_root)
-    backup_root.mkdir(parents=True, exist_ok=True)
-
+    # 先完整校验源集合，避免源无效时创建空备份目录。
     sources = enumerate_backup_sources(
         store,
         data_root=data_root,
         prompts_root=prompts_root,
         models_root=models_root,
     )
+    backup_root.mkdir(parents=True, exist_ok=True)
 
     old_catalog: BackupCatalog | None = None
     old_catalog_path = backup_root / BACKUP_CATALOG_FILENAME
@@ -906,6 +1080,25 @@ def create_backup(
     return new_catalog
 
 
+def create_backup(
+    store: ModelRegistryStore,
+    *,
+    data_root: Path,
+    prompts_root: Path,
+    models_root: Path,
+    backup_root: Path,
+) -> BackupCatalog:
+    """在 Registry 一致性快照锁内完成枚举、复制、复验与 catalog 发布。"""
+    with registry_snapshot_lock(store):
+        return _create_backup_locked(
+            store,
+            data_root=data_root,
+            prompts_root=prompts_root,
+            models_root=models_root,
+            backup_root=backup_root,
+        )
+
+
 def _target_exists_for_object(
     entry: BackupObjectEntry,
     *,
@@ -919,7 +1112,16 @@ def _target_exists_for_object(
     if entry.object_type == OBJECT_TYPE_PROMPT:
         return prompt_path(prompts_root, entry.object_id).exists()
     if entry.object_type == OBJECT_TYPE_MODEL:
-        return (Path(models_root) / entry.object_id).exists()
+        return (
+            (Path(models_root) / entry.object_id).exists()
+            or (
+                Path(prompts_root)
+                / "records"
+                / "models"
+                / entry.object_id
+                / "manifest.yaml"
+            ).exists()
+        )
     if entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
         root = Path(mlflow_root)
         return root.exists() and any(root.iterdir())
@@ -951,6 +1153,16 @@ def _restore_object(
         src = backup_root / BACKUP_DIR_MODELS / entry.object_id
         dst = Path(models_root) / entry.object_id
         _copy_tree_preserve(src, dst)
+        bundled_manifest = dst / "manifest.yaml"
+        manifest_target = (
+            Path(prompts_root)
+            / "records"
+            / "models"
+            / entry.object_id
+            / "manifest.yaml"
+        )
+        _copy_file_preserve(bundled_manifest, manifest_target)
+        bundled_manifest.unlink()
     elif entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
         src = backup_root / BACKUP_DIR_MLFLOW
         dst = Path(mlflow_root)

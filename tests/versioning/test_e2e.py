@@ -135,11 +135,27 @@ def test_full_fixture_lifecycle_through_unified_cli(tmp_path: Path) -> None:
     _run("train", "summary", "train-v4.1-r1", *train_base, "--metrics", str(metrics))
     _run("train", "complete", "train-v4.1-r1", *train_base)
     adapter = root / "adapter.bin"
+    merged = root / "model.bin"
     adapter.write_bytes(b"fixture-adapter")
+    merged.write_bytes(b"fixture-merged")
     train_store = open_train_store(store)
     train_record = get_train_run(train_store, "train-v4.1-r1")
-    MlflowClient(tracking_uri=train_store.tracking_uri).log_artifact(
-        train_record.run_id, str(adapter), artifact_path="adapter"
+    artifact_client = MlflowClient(tracking_uri=train_store.tracking_uri)
+    artifact_client.log_artifact(
+        train_record.run_id, str(adapter), artifact_path="fold0/adapter"
+    )
+    artifact_client.log_artifact(
+        train_record.run_id, str(merged), artifact_path="fold0/merged"
+    )
+
+    model_artifacts = _yaml(
+        root / "model-artifacts.yaml",
+        {
+            "fold0": {
+                "adapter": "artifacts/fold0/adapter",
+                "merged": "artifacts/fold0/merged",
+            }
+        },
     )
 
     model_base = ("--root", str(root), "--store", str(store))
@@ -150,7 +166,27 @@ def test_full_fixture_lifecycle_through_unified_cli(tmp_path: Path) -> None:
         *model_base,
         "--train-version",
         "train-v4.1-r1",
+        "--source-scope",
+        "single_fold",
+        "--artifacts",
+        str(model_artifacts),
+        "--deploy-target",
+        "artifacts/fold0/merged",
     )
+    bad_artifacts = _yaml(
+        root / "bad-model-artifacts.yaml",
+        {"fold0": {"merged": "."}},
+    )
+    assert main([
+        "model", "register", "model-v4.1-r2", *model_base,
+        "--train-version", "train-v4.1-r1",
+        "--source-scope", "single_fold",
+        "--artifacts", str(bad_artifacts),
+        "--deploy-target", ".",
+    ]) == 1
+    assert len(MlflowClient(tracking_uri=train_store.tracking_uri).search_model_versions(
+        "name='mVllm2'"
+    )) == 1
 
     eval_base = ("--root", str(root), "--store", str(store))
     _run(
@@ -169,9 +205,11 @@ def test_full_fixture_lifecycle_through_unified_cli(tmp_path: Path) -> None:
         "--git-commit",
         "fixture-commit",
         "--scope",
-        "cross_validation",
+        "single_fold",
+        "--split",
+        "validation/fold0",
     )
-    for fold in range(3):
+    for fold in (0,):
         _run(
             "eval",
             "fold-start",
@@ -200,16 +238,7 @@ def test_full_fixture_lifecycle_through_unified_cli(tmp_path: Path) -> None:
             "--metrics",
             str(metrics),
         )
-    _run(
-        "eval",
-        "aggregate",
-        "eval-v4.1-r1",
-        *eval_base,
-        "--folds",
-        "0,1,2",
-        "--metrics",
-        str(metrics),
-    )
+    _run("eval", "summary", "eval-v4.1-r1", *eval_base, "--metrics", str(metrics))
     _run("eval", "complete", "eval-v4.1-r1", *eval_base, "--outcome", "passed")
 
     _run(
@@ -228,9 +257,18 @@ def test_full_fixture_lifecycle_through_unified_cli(tmp_path: Path) -> None:
         "--backup-scope",
         "adapter",
     )
-    _run("model", "materialize", "model-v4.1-r1", *model_base)
+    model_manifest = root / "records" / "models" / "model-v4.1-r1" / "manifest.yaml"
+    _run(
+        "model", "manifest", "model-v4.1-r1", *model_base,
+        "--target", str(model_manifest),
+    )
     _run("model", "alias", "model-v4.1-r1", *model_base, "--alias", "candidate")
+    _run(
+        "model", "current", *model_base,
+        "--alias", "candidate", "--service-mode", "development",
+    )
     assert get_model_by_alias(open_registry_store(store), "candidate").model_id == "model-v4.1-r1"
+    assert (root / "workspace" / "models" / "current").resolve().name == "model-v4.1-r1"
 
     result_refs = _yaml(root / "result-refs.yaml", {"summary": "results/summary.json"})
     manifest = root / "records" / "evaluations" / "eval-v4.1-r1" / "manifest.yaml"

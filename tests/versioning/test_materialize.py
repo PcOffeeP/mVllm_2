@@ -96,11 +96,16 @@ test_materialize.py 仅为可读性，二者共享同一实现模块）。
 from __future__ import annotations
 
 import hashlib
+import json
+import shutil
+import threading
 from pathlib import Path
 
 import pytest
 import yaml
 from mlflow.tracking import MlflowClient
+import versioning.materialize as materialize_module
+import versioning.manifest as manifest_module
 
 from versioning.data_release import seal_release, stage_release
 from versioning.ids import InvalidIdentifier
@@ -125,7 +130,15 @@ from versioning.mlflow_train import (
     open_train_store,
     transition_train_state,
 )
+from versioning.manifest import (
+    ManifestConflict,
+    ManifestReferenceError,
+    export_model_manifest,
+    validate_model_manifest,
+)
+from versioning.materialize import materialize_current, validate_service_current
 from versioning.registry import (
+    ARTIFACTS_TAG,
     MATERIALIZED_ARTIFACTS_DIR,
     MATERIALIZED_METADATA_FILE,
     IllegalRegistryRecord,
@@ -138,6 +151,7 @@ from versioning.registry import (
     materialize_model,
     open_registry_store,
     register_model,
+    set_alias,
     set_offline_backup_scope,
 )
 
@@ -564,3 +578,257 @@ class TestMaterializeModel:
 
         # 导出目录确已产生（证明只读断言不是空转）
         assert (models_root / MODEL_ID / MATERIALIZED_ARTIFACTS_DIR).is_dir()
+
+
+class TestModelManifestAndCurrent:
+    """B8 遗漏回归：严格 model manifest 与 alias 精确 current 缓存。"""
+
+    def _publish_candidate(
+        self,
+        registry: ModelRegistryStore,
+        records_root: Path,
+    ) -> Path:
+        set_offline_backup_scope(registry, MODEL_ID, "adapter")
+        target = records_root / "records" / "models" / MODEL_ID / "manifest.yaml"
+        export_model_manifest(target, store=registry, model_id=MODEL_ID)
+        set_alias(registry, MODEL_ID, "candidate")
+        return target
+
+    def test_model_manifest_and_current_round_trip(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        models_root: Path,
+    ) -> None:
+        records_root = models_root.parent
+        manifest = self._publish_candidate(registry, records_root)
+        parsed = validate_model_manifest(manifest.read_text(encoding="utf-8"))
+        assert parsed["version"] == MODEL_ID
+        assert parsed["mlflow_model_version"] == golden.version
+        assert parsed["source_run_id"] == golden.run_id
+        assert parsed["deploy_target"] == "artifacts/fold0/adapter"
+
+        current = materialize_current(
+            registry,
+            alias="candidate",
+            service_mode="development",
+            models_root=models_root,
+            records_root=records_root,
+        )
+        assert current.is_symlink()
+        assert current.resolve().name == MODEL_ID
+        validated = validate_service_current(
+            registry,
+            alias="candidate",
+            service_mode="development",
+            models_root=models_root,
+            records_root=records_root,
+        )
+        assert validated.version == golden.version
+
+    def test_missing_manifest_rejected_without_switching_old_current(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        models_root: Path,
+    ) -> None:
+        set_offline_backup_scope(registry, MODEL_ID, "adapter")
+        set_alias(registry, MODEL_ID, "candidate")
+        old = models_root / "materialized" / "old-model"
+        old.mkdir(parents=True)
+        models_root.mkdir(parents=True, exist_ok=True)
+        (models_root / "current").symlink_to(Path("materialized") / "old-model")
+
+        with pytest.raises(ManifestReferenceError, match="缺少 model manifest"):
+            materialize_current(
+                registry,
+                alias="candidate",
+                service_mode="development",
+                models_root=models_root,
+                records_root=models_root.parent,
+            )
+        assert (models_root / "current").resolve() == old.resolve()
+
+    def test_download_failure_preserves_old_current(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        models_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        records_root = models_root.parent
+        self._publish_candidate(registry, records_root)
+        old = models_root / "materialized" / "old-model"
+        old.mkdir(parents=True)
+        (models_root / "current").symlink_to(Path("materialized") / "old-model")
+
+        def fail_download(*args, **kwargs):
+            raise RuntimeError("injected download failure")
+
+        monkeypatch.setattr(MlflowClient, "download_artifacts", fail_download)
+        with pytest.raises(RuntimeError, match="download failure"):
+            materialize_current(
+                registry,
+                alias="candidate",
+                service_mode="development",
+                models_root=models_root,
+                records_root=records_root,
+            )
+        assert (models_root / "current").resolve() == old.resolve()
+        assert not (models_root / "materialized" / MODEL_ID).exists()
+
+    def test_missing_non_deploy_artifact_leaves_no_materialized_target(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        models_root: Path,
+    ) -> None:
+        artifacts = {
+            "fold0": {
+                "adapter": "artifacts/fold0/adapter",
+                "merged": "artifacts/fold0/merged",
+            }
+        }
+        _client(registry).set_model_version_tag(
+            "mVllm2", str(golden.version), ARTIFACTS_TAG, json.dumps(artifacts)
+        )
+        records_root = models_root.parent
+        self._publish_candidate(registry, records_root)
+
+        with pytest.raises(ManifestReferenceError, match="merged"):
+            materialize_current(
+                registry,
+                alias="candidate",
+                service_mode="development",
+                models_root=models_root,
+                records_root=records_root,
+            )
+        assert not (models_root / "materialized" / MODEL_ID).exists()
+        assert not (models_root / "current").exists()
+
+    def test_service_mode_and_manifest_mismatch_fail_closed(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        models_root: Path,
+    ) -> None:
+        records_root = models_root.parent
+        manifest = self._publish_candidate(registry, records_root)
+        with pytest.raises(ManifestReferenceError, match="production 模式"):
+            materialize_current(
+                registry,
+                alias="candidate",
+                service_mode="production",
+                models_root=models_root,
+                records_root=records_root,
+            )
+
+        payload = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+        payload["mlflow_model_version"] = golden.version + 1
+        manifest.write_text(yaml.safe_dump(payload, sort_keys=True), encoding="utf-8")
+        with pytest.raises(ManifestReferenceError, match="mlflow_model_version"):
+            materialize_current(
+                registry,
+                alias="candidate",
+                service_mode="development",
+                models_root=models_root,
+                records_root=records_root,
+            )
+
+    def test_post_switch_revalidation_failure_restores_old_current(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        models_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        records_root = models_root.parent
+        self._publish_candidate(registry, records_root)
+        old = models_root / "materialized" / "old-model"
+        old.mkdir(parents=True)
+        (models_root / "current").symlink_to(Path("materialized") / "old-model")
+
+        def reject_after_switch(*args, **kwargs):
+            raise ManifestReferenceError("injected final alias drift")
+
+        monkeypatch.setattr(
+            materialize_module, "validate_service_current", reject_after_switch
+        )
+        with pytest.raises(ManifestReferenceError, match="alias drift"):
+            materialize_current(
+                registry,
+                alias="candidate",
+                service_mode="development",
+                models_root=models_root,
+                records_root=records_root,
+            )
+        assert (models_root / "current").resolve() == old.resolve()
+
+    def test_service_validation_rejects_external_manual_target(
+        self,
+        golden: RegisteredModelRecord,
+        registry: ModelRegistryStore,
+        models_root: Path,
+        tmp_path: Path,
+    ) -> None:
+        records_root = models_root.parent
+        self._publish_candidate(registry, records_root)
+        current = materialize_current(
+            registry,
+            alias="candidate",
+            service_mode="development",
+            models_root=models_root,
+            records_root=records_root,
+        )
+        expected = current.resolve()
+        external = tmp_path / "manually-selected"
+        shutil.copytree(expected, external)
+        current.unlink()
+        current.symlink_to(external)
+
+        with pytest.raises(ManifestReferenceError, match="精确指向"):
+            validate_service_current(
+                registry,
+                alias="candidate",
+                service_mode="development",
+                models_root=models_root,
+                records_root=records_root,
+            )
+
+    def test_concurrent_model_manifest_publish_is_immutable(
+        self,
+        registry: ModelRegistryStore,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        barrier = threading.Barrier(2)
+        target = tmp_path / "manifest.yaml"
+        outcomes: list[str] = []
+
+        def fake_build(store, model_id):
+            barrier.wait()
+            return f"version: {model_id}\n"
+
+        def publish(model_id: str) -> None:
+            try:
+                export_model_manifest(target, store=registry, model_id=model_id)
+            except ManifestConflict:
+                outcomes.append("conflict")
+            else:
+                outcomes.append("ok")
+
+        monkeypatch.setattr(manifest_module, "build_model_manifest", fake_build)
+        threads = [
+            threading.Thread(target=publish, args=(MODEL_ID,)),
+            threading.Thread(target=publish, args=(OTHER_MODEL_ID,)),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert sorted(outcomes) == ["conflict", "ok"]
+        assert target.read_text(encoding="utf-8") in {
+            f"version: {MODEL_ID}\n",
+            f"version: {OTHER_MODEL_ID}\n",
+        }
