@@ -4,13 +4,13 @@
 >
 > 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。
 >
-> 最近更新时间：2026-09-04（B9 提交补录 `0da89585`、`115d14f5`；B10 初版提交 `5d0b30a1` 后因最终 reviewer 发现并发 Registry、完成状态幂等及 B8 遗漏能力而重新打开；B11 文档提交 `0506142a`、`8fdc1011`，现随代码修复继续一致性复核；B12 进行中）。当前修复前整仓 pytest 已输出 `2066 passed / 11 skipped / 0 failed`，但进程在摘要后未自行退出并由主 Agent 中断，故只作为调查基线，最终验收必须重跑并取得正常退出。完整提交映射见 §6.3，当前 findings 见 §6.4。
+> 最近更新时间：2026-09-04（B0–B12 全部完成）。B10 初版 `5d0b30a1` 后的最终复核发现 11 项问题，已由修复提交 `9965dc1b` 闭环；B11 文档提交为 `0506142a`、`8fdc1011` 并随修复同步；最终 `tests/versioning/` 为 `1399 passed`，整仓为 `2082 passed / 11 skipped / 0 failed`，两者均正常退出。reviewer 最终复审无剩余 P0–P3 actionable finding。完整提交映射见 §6.3，findings 处理见 §6.4。
 
 ## 1. 基线事实
 
 以下为实施开始前已核验的基线，作为各 batch 验收与回滚的参照。
 
-- **分支与提交**：基线分支 `main`，HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；新分支 `refactor/readable-version-control`，当前 HEAD `30519042`（B2），已有提交 `a5bfca1b`（B0-1）、`a37f4acc`（B0-2 文档基座）、`6482bed3`（B1 依赖基座）、`30519042`（B2 身份与状态机）。
+- **分支与提交（实施起点）**：基线分支 `main`，起点 HEAD `cc59312c6d72891bd0a03c70e8a6b759f97cbd74`；实施分支 `refactor/readable-version-control`。本行只记录开工基线，当前完成态与完整提交链见 §6。
 - **修改前测试基线**：`uv run pytest tests/ -q` → `682 passed, 12 skipped, 0 failed`。12 个 skip 全部为 fastapi 未安装 / V3 fixtures / V4.1 workspace 数据缺失，属稳定已知跳过。
 - **当前回归对照基线（B10 初版后）**：`PYTHONWARNINGS=ignore .venv/bin/python -m pytest -q tests` 已输出 `2066 passed, 11 skipped, 0 failed`；该次进程在 pytest 摘要后未自行退出并被中断，只作为修复前调查基线，不作为 B12 最终通过证据。B9 的最后一次正常退出基线仍为 `2043 passed, 11 skipped, 0 failed`。
 - **依赖现状**：`pyproject.toml` + `uv.lock`（uv 管理，Python 3.11.14）；`dvc`、`mlflow` 均未声明、未安装；`requirements.txt`（训练机 Conda）亦无二者。
@@ -203,7 +203,7 @@
 
 ### B6 — MLflow 训练记录
 
-- **状态**：completed（提交哈希待补录——B6 提交后由主 Agent 补录或下一批补录）
+- **状态**：completed
 - **当前动作**：B6 已完成并回填。`versioning/mlflow_train.py`（584 行）已实现，`tests/versioning/test_mlflow_train.py` 137 例全绿；全量 `1443 passed / 11 skipped / 0 failed`。审查 2 P2 + 1 P3 均修复并补 22 个回归用例；残余风险见完成回填。
 - **目标**：实现 train-v 父 Run + 三折子 Run 的 MLflow 训练记录与状态映射。
 - **包含范围**：
@@ -221,12 +221,12 @@
 - **回滚点**：B5 提交。
 - **风险与阻塞条件**：MLflow 原生状态与 workflow_state 映射与设计文档 §5.3 不一致。
 - **预计提交边界**：1–2 个提交。
-- **完成后填**：修改文件清单：`versioning/mlflow_train.py`、`tests/versioning/test_mlflow_train.py`；验证结果：`test_mlflow_train.py` 137 例全绿，`tests/versioning/` 共 760 例全绿，全量 `uv run pytest tests/ -q` → `1443 passed / 11 skipped / 0 failed`；审查结论：reviewer 发现 2 P2（invalid 优先序、私有 helper 耦合）+ 1 P3（读路径 ID 校验），均修复并补 22 个回归用例，闭环；提交哈希：待补录（B6 提交后由主 Agent 补录或下一批补录）；残余风险：summary_complete 仅查 tag 存在性、状态写回非原子瞬时窗口、缺 tag 抛 KeyError 而非域异常、MLflow 版本行为绑定 3.15.2（见 §6.5）。
+- **完成后填**：修改文件清单：`versioning/mlflow_train.py`、`tests/versioning/test_mlflow_train.py`；验证结果：`test_mlflow_train.py` 137 例全绿，`tests/versioning/` 共 760 例全绿，全量 `uv run pytest tests/ -q` → `1443 passed / 11 skipped / 0 failed`；审查结论：reviewer 发现 2 P2（invalid 优先序、私有 helper 耦合）+ 1 P3（读路径 ID 校验），均修复并补 22 个回归用例，闭环；提交哈希：`f43d56c6`（实现）、`dd992f01`（文档同步）；残余风险：summary_complete 仅查 tag 存在性、状态写回非原子瞬时窗口、缺 tag 抛 KeyError 而非域异常、MLflow 版本行为绑定 3.15.2（见 §6.5）。
 
 ### B7 — MLflow 测评与 train/eval manifest 单向导出
 
-- **状态**：in_progress
-- **当前动作**：B7 进入 in_progress。tester 正在设计 eval/manifest RED 测试（`tests/versioning/test_mlflow_eval.py` 等，可能并行写入，不属于 writer 范围）。
+- **状态**：completed
+- **当前动作**：B7 已完成并回填。MLflow eval、train/eval manifest 单向导出、holdout 授权门及其反向测试已落地；提交 `3fdb920c`（实现）与 `0441d385`（文档同步）。
 - **目标**：实现 eval-v 测评记录与 train/eval manifest 单向导出（model manifest 移入 B8）。
 - **包含范围**：
   - `versioning/mlflow_eval.py`：eval-v 独立父 Run，显式引用模型/数据/配置/Git commit；`record_validity=invalid` 对象被下游拒绝。
@@ -244,11 +244,11 @@
 - **回滚点**：B6 提交。
 - **风险与阻塞条件**：manifest 字段与设计文档 §2.6/§5.3-5.5 不一致。
 - **预计提交边界**：1–2 个提交。
-- **完成后填**：修改文件清单：`versioning/mlflow_eval.py`、`versioning/manifest.py`、`tests/versioning/test_mlflow_eval.py`、`tests/versioning/test_manifest.py`；验证结果：`test_mlflow_eval.py` 223 例 + `test_manifest.py` 200 例全绿（含 18 个审查修复回归用例及其 RED 有效性证明），`tests/versioning/` 共 1183 例全绿，全量 `uv run pytest tests/ -q` → `1866 passed / 11 skipped / 0 failed`；审查结论：B7a 2 P2（aggregate 写前校验、list 观测校验对齐）+ B7b 1 P2（_train_gate 异常包装）+ 1 健壮性（严格 hex），全部修复并补 18 个回归用例（含 RED 有效性证明），4 P2 闭环；提交哈希：待补录（B7 提交后由主 Agent 补录或下一批补录）；残余风险：B7 与 B6 同源累积——读取/结论门依赖 tag 组合与值域校验（非原子瞬时窗口）、manifest 校验绑定 digest 严格性与 MLflow 3.15.2 行为（见 §6.5）。
+- **完成后填**：修改文件清单：`versioning/mlflow_eval.py`、`versioning/manifest.py`、`tests/versioning/test_mlflow_eval.py`、`tests/versioning/test_manifest.py`；验证结果：`test_mlflow_eval.py` 223 例 + `test_manifest.py` 200 例全绿（含 18 个审查修复回归用例及其 RED 有效性证明），`tests/versioning/` 共 1183 例全绿，全量 `uv run pytest tests/ -q` → `1866 passed / 11 skipped / 0 failed`；审查结论：B7a 2 P2（aggregate 写前校验、list 观测校验对齐）+ B7b 1 P2（_train_gate 异常包装）+ 1 健壮性（严格 hex），全部修复并补 18 个回归用例（含 RED 有效性证明），4 P2 闭环；提交哈希：`3fdb920c`（实现）、`0441d385`（文档同步）；残余风险：B7 与 B6 同源累积——读取/结论门依赖 tag 组合与值域校验（非原子瞬时窗口）、manifest 校验绑定 digest 严格性与 MLflow 3.15.2 行为（见 §6.5）。
 
 ### B8 — Model Registry、物化与 alias 晋级门/备份范围
 
-- **状态**：completed（提交哈希待补录——B8 提交后由主 Agent 补录或下一批补录）
+- **状态**：completed
 - **开始时间**：2026-09-02
 - **当前动作**：B8 已完成并回填。`versioning/registry.py`（636 行）已实现，`tests/versioning/test_registry.py` + `test_materialize.py` 共 143 例全绿；全量 `2009 passed / 11 skipped / 0 failed`。审查 1 P2（approve 缺 eval 关联校验，fail-open）已修复并补回归（变异测试证明）；覆盖缺口（materialize model_id 分歧）已补。
 - **目标**：实现唯一 Registered Model `mVllm2`、models/current 原子物化、统一 alias mutation gate，并把 `offline_backup_scope` 状态及单向升级规则纳入本批。
@@ -269,11 +269,11 @@
 - **回滚点**：B7 提交。
 - **风险与阻塞条件**：物化原子替换与设计文档 §7 不一致。
 - **预计提交边界**：1–2 个提交。
-- **完成后填**：修改文件清单：`versioning/registry.py`、`tests/versioning/test_registry.py`、`tests/versioning/test_materialize.py`；验证结果：`test_registry.py` + `test_materialize.py` 共 143 例全绿，全量 `uv run pytest tests/ -q` → `2009 passed / 11 skipped / 0 failed`；审查结论：1 P2（approve 缺 eval 关联校验，fail-open）已修复并补回归（变异测试证明），覆盖缺口（materialize model_id 分歧）已补，闭环；提交哈希：待补录（B8 提交后由主 Agent 补录或下一批补录）；残余风险：无新增。
+- **完成后填**：修改文件清单：`versioning/registry.py`、`tests/versioning/test_registry.py`、`tests/versioning/test_materialize.py`；验证结果：`test_registry.py` + `test_materialize.py` 共 143 例全绿，全量 `uv run pytest tests/ -q` → `2009 passed / 11 skipped / 0 failed`；审查结论：1 P2（approve 缺 eval 关联校验，fail-open）已修复并补回归（变异测试证明），覆盖缺口（materialize model_id 分歧）已补，闭环；提交哈希：`c1f515d7`（实现）、`a350c8cc`（文档同步）；残余风险：无新增。
 
 ### B9 — 离线备份 catalog 与恢复规则
 
-- **状态**：completed（提交哈希待补录——B9 提交后由主 Agent 补录或下一批补录）
+- **状态**：completed
 - **当前动作**：B9 已完成并回填。`versioning/backup.py`（enumerate_backup_sources scope tag 驱动、create_backup 真实复制 + 落盘前全量校验含 SQLite integrity_check + 差异修复 + 原子替换 + prev 快照、load/verify/restore 零副作用 + 目标冲突拒绝 + 灾难恢复 + 封存权限重放）与 `versioning/data_release.py`（seal_payload 提升公开 API，保留 `_seal_payload` 别名）已实现；`tests/versioning/test_backup.py` 34 例全绿；全量 `2043 passed / 11 skipped / 0 failed`。审查两轮（1 P1 + 2 P2 + 5 P3）全部修复并补 8 个回归用例（突变验证证明敏感），闭环。
 - **目标**：实现离线备份的 backup_catalog 管理、复制验证与恢复规则（`offline_backup_scope` 状态已前移至 B8，本批只消费它）。
 - **包含范围**：
@@ -292,11 +292,11 @@
 - **回滚点**：B8 提交。
 - **风险与阻塞条件**：backup_catalog schema 与设计文档 §2.11 不一致。
 - **预计提交边界**：1 个提交。
-- **完成后填**：修改文件清单：`versioning/backup.py`、`versioning/data_release.py`（seal_payload 公开化）、`tests/versioning/test_backup.py`；验证结果：`test_backup.py` 34 例全绿，全量 `uv run pytest tests/ -q` → `2043 passed / 11 skipped / 0 failed`；审查结论：两轮审查（1 P1 + 2 P2 + 5 P3）全部修复并补 8 个回归用例（突变验证证明敏感），闭环；提交哈希：待补录（B9 提交后由主 Agent 补录或下一批补录）；残余风险：无新增。
+- **完成后填**：修改文件清单：`versioning/backup.py`、`versioning/data_release.py`（seal_payload 公开化）、`tests/versioning/test_backup.py`；验证结果：`test_backup.py` 34 例全绿，全量 `uv run pytest tests/ -q` → `2043 passed / 11 skipped / 0 failed`；审查结论：两轮审查（1 P1 + 2 P2 + 5 P3）全部修复并补 8 个回归用例（突变验证证明敏感），闭环；提交哈希：`0da89585`（实现）、`115d14f5`（文档同步）；残余风险：无新增。
 
 ### B10 — 独立入口与端到端闭环
 
-- **状态**：in_progress（初版已提交，因最终复核发现闭环遗漏而重新打开）
+- **状态**：completed
 - **目标**：建立统一 CLI 入口并跑通端到端 fixture 闭环。
 - **包含范围**：
   - **整合并扩展统一 CLI**（在 B4 的 `versioning/__main__.py` / `cli.py` 最小 `data` 子命令基础上整合训练/测评/物化/备份全部子命令）：data/prompt/train/eval/model/backup 子命令，显式版本参数，缺参即停并提示。
@@ -313,11 +313,11 @@
 - **回滚点**：B9 提交。
 - **风险与阻塞条件**：子命令与设计文档 §7 显式版本纪律不一致。
 - **预计提交边界**：1 个提交。
-- **完成后填（初版）**：修改文件：`.gitignore`、`dvc.yaml`、`versioning/cli.py`、`versioning/holdout.py`、`versioning/mlflow_eval.py`、`versioning/registry.py`、相关测试；`tests/versioning/` → `1383 passed`；提交 `5d0b30a1`。最终 reviewer 后续发现三项阻断闭环：Registry 同 model_id 并发登记与 eval 并发 finalize 可产生重复/覆盖；服务端已完成但客户端丢响应时 eval completed 重试不幂等；B8 计划中的 model manifest、唯一 deploy_target gate、`models/current` 原子物化与 service_mode 校验未完整实现。上述问题正在 B12 修复，未关闭前 B10 不恢复 completed。
+- **完成后填**：初版修改 `.gitignore`、`dvc.yaml`、统一 CLI、holdout 接线及 E2E 测试，提交 `5d0b30a1`；最终复核发现的 Registry 并发、eval 恢复、严格 model manifest、唯一 deploy target、alias/current 与备份闭环由 `9965dc1b` 修复。最终 `tests/versioning/` → `1399 passed`，整仓 → `2082 passed / 11 skipped`，均正常退出；reviewer 最终复审通过。
 
 ### B11 — 文档最终整合与一致性复核
 
-- **状态**：in_progress（文档主体已提交，等待 reopened 代码修复后再次一致性核查）
+- **状态**：completed
 - **目标**：文档最终整合与一致性复核。不再承担新文档主体的补写（治理骨架已在 B0、各 batch 已完成同批文档），只做交叉一致性、链接、与真实代码对照核查及收尾润色。
 - **包含范围**：
   - 更新 `README.md`（新入口最短路径与文档导航）。
@@ -335,11 +335,11 @@
 - **回滚点**：B10 提交。
 - **风险与阻塞条件**：文档与真实代码不一致。
 - **预计提交边界**：2–3 个提交（按文档职责拆分）。
-- **完成后填（阶段记录）**：架构/设计/ADR 提交 `0506142a`；README、RUNBOOK、finetune 与 `versioning/SCRIPTS.md` 提交 `8fdc1011`；9 个目标文档链接检查、`dvc.yaml`/`params.yaml` YAML 解析及 JSON 检查通过。reviewer 对照 B8 台账发现文档声明能力尚未完全落地，因此 B11 保持进行中，待修复后重检。
+- **完成后填**：架构/设计/ADR 提交 `0506142a`；README、RUNBOOK、finetune 与 `versioning/SCRIPTS.md` 提交 `8fdc1011`；`9965dc1b` 同步最终实现差异。9 个目标文档本地链接检查、`dvc.yaml`/`params.yaml` YAML 解析、172 个 tracked JSON 解析、CLI help 与 `git diff --check` 全部通过；reviewer 已对照最终代码复审通过。
 
 ### B12 — 最终复核与收尾
 
-- **状态**：in_progress（最终 reviewer findings 修复中）
+- **状态**：completed
 - **目标**：全量复核、处理 findings、收尾实施文档。
 - **包含范围**：全量 `uv run pytest tests/ -q`、`git diff --check`、Markdown 链接检查、YAML/JSON 校验、未跟踪产物/大文件检查；reviewer 对整个分支最终对抗式复核；findings 处理；实施文档收尾（完整提交映射）；向用户提交合并建议（不 merge、不 push）。
 - **排除范围**：不 merge、不 push；不执行训练机操作。
@@ -352,13 +352,13 @@
 - **回滚点**：B11 提交。
 - **风险与阻塞条件**：需用户重大取舍的 finding 未暂停请示、回归未修复。
 - **预计提交边界**：1 个提交（文档收尾）。
-- **完成后填**：修改文件清单 / 验证结果 / 审查结论 / 提交哈希 / 残余风险。
+- **完成后填**：`9965dc1b` 修改 Registry/eval/manifest/materialize/backup/CLI、相关测试及同步文档，关闭 §6.4 的 R1–R11；最终 `tests/versioning/` `1399 passed`，整仓 `2082 passed / 11 skipped`，均正常退出；9 文档链接、2 YAML、172 tracked JSON、编译、CLI help、diff/未跟踪/大文件检查通过。reviewer 独立执行 622 项相关套件、37 项最终备份套件、聚焦回归与跨进程文件锁攻击，结论为无剩余 P0–P3 actionable finding。最终台账与项目 TODO 收尾由本文件最后一次文档提交（`git log -- docs/plans/2026-09-01-readable-version-control-implementation.md docs/project-todo.md` 可追溯）完成。残余风险仅为 §6.5 的实机验证限制。
 
 ## 6. 状态跟踪与恢复
 
 ### 6.1 当前 batch
 
-- **当前 batch**：B12（in_progress；修复最终 reviewer findings，并据此重新验收 B10/B11）。
+- **当前 batch**：B12（completed；B0–B12 核心基础设施实施与最终复核全部完成）。
 
 ### 6.2 Batch 状态表
 
@@ -374,9 +374,9 @@
 | B7 | completed | 3fdb920c, 0441d385 | B7 MLflow 测评与 manifest 单向导出完成 |
 | B8 | completed | c1f515d7, a350c8cc | B8 Registry + 晋级门 + 物化完成（含 offline_backup_scope） |
 | B9 | completed | 0da89585, 115d14f5 | B9 离线备份 catalog、恢复与文档同步完成 |
-| B10 | in_progress | 5d0b30a1 | 初版完成后因最终复核发现闭环遗漏而重新打开 |
-| B11 | in_progress | 0506142a, 8fdc1011 | 文档主体已提交；等待修复后再次对照真实代码 |
-| B12 | in_progress | — | 十一项 reviewer findings 已复审关闭；R11 后完整 versioning 1399 passed，整仓最终回归中 |
+| B10 | completed | 5d0b30a1, 9965dc1b | 统一入口与端到端闭环完成，最终复核问题已关闭 |
+| B11 | completed | 0506142a, 8fdc1011, 9965dc1b | 文档与最终代码一致性复核通过 |
+| B12 | completed | 9965dc1b | R1–R11 已修复并复审关闭；最终全量与静态验收通过 |
 
 ### 6.3 提交映射表
 
@@ -401,7 +401,7 @@
 | B10 | 5d0b30a1 | feat(versioning): 完成统一入口与端到端安全闭环（初版，最终复核后 reopened） | .gitignore、dvc.yaml、versioning/、tests/versioning/ |
 | B11 | 0506142a | docs: 收敛可读版本控制架构与决策 | ARCHITECTURE.md、设计文档、ADR-0001 |
 | B11 | 8fdc1011 | docs: 补齐统一入口与运行导航 | README、RUNBOOK、finetune/README、versioning/SCRIPTS.md |
-| B12 | — | — | — |
+| B12 | 9965dc1b | fix(versioning): 补齐模型交付与并发安全闭环 | Registry/eval/manifest/materialize/backup/CLI、相关测试与同步文档 |
 
 ### 6.4 审查 findings 与处理
 
@@ -424,15 +424,16 @@
 - **B6 残留风险**：`summary_complete` 晋级门仅检查 tag 存在性（不校验值）；父 Run 状态写回（tag + RunStatus）非原子，存在瞬时窗口；读取缺 tag 时抛 `KeyError` 而非域异常；MLflow 行为绑定 3.15.2（B1 安装版本）。均非阻断，已接受记录。
 - **B7 残留风险（与 B6 同源累积）**：eval 读取 fail-closed 与结论门（invalid 优先）依赖 tag 组合与值域校验，父 Run 状态写回/结论标记非原子存在瞬时窗口；manifest 校验绑定 digest 严格性与 export 单向性、依赖 MLflow 3.15.2 行为。均非阻断，已接受记录。
 - 文件系统与 MLflow 之间不存在真实跨资源原子事务；当前实现采用不可覆盖证据、固定提交顺序与同身份幂等恢复，最终复核须覆盖各中断点。
+- Registry/backup 的 `fcntl.flock` 已在当前 macOS 以独立双进程攻击验证阻塞，但尚未在 Linux 训练机 smoke；真实移动硬盘容量不足、中断恢复及真实 adapter/merged 加载恢复也未在本轮执行。
 - 本分支仅为核心基础设施，正式迁移（旧对象映射、训练机操作、真实数据/模型迁移、merge/push）需另行授权。
 
 ### 6.6 下一步
 
-- 等待整仓最终回归正常退出，随后回填 B10–B12 与 `docs/project-todo.md`、提交并复核提交映射；不 merge、不 push。
+- 本分支核心基础设施已完成。下一阶段是单独授权的正式迁移：旧对象映射、训练机/Linux smoke、真实 adapter/merged 与移动硬盘恢复演练、旧链路退役、merge/push；本轮不自动进入这些工作。
 
 ### 6.7 新接收者恢复工作所需最小上下文
 
-- 分支：`refactor/readable-version-control`，已提交 HEAD `8fdc1011`；工作区含 B12 reviewer findings 修复与本台账增量，尚未提交。B9 `0da89585`/`115d14f5`、B10 初版 `5d0b30a1`、B11 `0506142a`/`8fdc1011` 已补录。
+- 分支：`refactor/readable-version-control`，核心修复 HEAD `9965dc1b`；最终台账/TODO 收尾提交由 `git log --` 追溯。B0–B12 完整映射见 §6.3。
 - 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（D040/D041 已随已确认两阶段模型生命周期和稳定预注册冻结路径更新）。
 - 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
 - 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
@@ -440,7 +441,7 @@
 - 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
 - 提交信息约定：含"以上commit由codex生成。"。
 - 禁止：merge、push、训练机操作、真实数据/模型迁移。
-- 下一动作：等待整仓 pytest 正常退出，完成 B10–B12 与项目 TODO 收尾并提交；reviewer 已确认 R1–R11 无剩余 P0–P3 actionable finding。
+- 下一动作：等待用户决定是否另行授权正式迁移、训练机实机验证或合并/推送；核心基础设施不再有未完成 batch。
 
 ## 7. 停止与升级条件
 

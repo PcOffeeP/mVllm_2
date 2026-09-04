@@ -3,7 +3,7 @@
 本文件是项目持续维护的任务台账，记录用户目标、当前差距、执行顺序和验证结果。维护规则见 [AGENTS.md](../AGENTS.md#todo-执行与维护)，不另建平行 TODO。
 
 - 更新日期：随“最近维护记录”持续更新，不以文件头日期代替记录。
-- 本轮依据：本地基线 `8acaf2cf`、当前源码/已同步公开结果，以及用户确认已完成的前序 Agent 调查记录。前序对本文件的未提交修改已纳入；本轮只整理文档，没有连接训练机或重跑实验。
+- 本轮依据：可读版本控制核心修复提交 `9965dc1b`、当前源码与本机最终回归，以及既有任务各自注明日期/机器的证据。前序对本文件的未提交修改已保留；本轮未连接训练机，未执行真实模型/数据迁移、merge 或 push。
 - 主 Agent 汇总并维护，其他执行 Agent 按 AGENTS.md 交接证据和新发现。任务标识固定，不随排序改变。
 
 ## 下一步与执行顺序
@@ -24,6 +24,7 @@
 | 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、holdout 独立验收及其他适用质量门 |
 | 文档收尾 | DOC-INDEX | 修正脚本索引的过期缺陷描述 | 待处理 | 本轮新发现，不阻塞模型诊断 |
 | 低优先级 | CONTRACT-NAMING | 澄清候选规划与训练发布的契约边界 | 待处理 | 先解释真实用途，再决定是否兼容重命名 |
+| 后续迁移 | VERSION-CONTROL-FORMAL-MIGRATION | 正式迁移可读版本控制体系 | 待确认 | 核心基础设施已完成；范围、训练机操作、legacy 退役、merge/push 均需另行授权 |
 
 MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独立验收才允许训练最终候选。新发现改变依赖时，同步本表和条目并说明原因。
 
@@ -110,14 +111,13 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **验收标准**：模块说明、imports、SCRIPTS.md 和流程文档一致；若重命名，验证既有调用与历史产物兼容性，不意外改变内容寻址身份。
 - **证据/限制**：[候选计划](../pipeline/v3_candidate_plan.py)、[候选物化](../pipeline/v3_candidate_media.py)、[重建入口](../pipeline/scripts/rebuild_data.py)；尚未实施澄清或重命名。
 
-### VERSION-CONTROL-MIGRATION — 建立可读版本控制核心基础设施
+### VERSION-CONTROL-FORMAL-MIGRATION — 正式迁移可读版本控制体系
 
-- **状态/来源**：进行中；用户目标是在 `refactor/readable-version-control` 分支分批实现"可读版本控制架构"核心基础设施。
-- **当前阶段**：分支 `refactor/readable-version-control` 实施中（HEAD `cc59312c`，无提交）。
-- **本轮范围**：仅为核心基础设施（独立新入口 + 五类可读身份 + 数据封存 + DVC 七阶段 + Prompt 冻结 + MLflow 训练/测评记录 + manifest 单向导出 + Registry alias/物化 + 离线备份基础规则 + 文档体系 + 测试），非正式迁移。
-- **实施台账**：[docs/plans/2026-09-01-readable-version-control-implementation.md](plans/2026-09-01-readable-version-control-implementation.md)。
-- **总体验收标准摘要**：新入口独立可运行；关键失败路径被拒；文档与代码一致；未 merge/push。
-- **后续正式迁移**：旧对象映射、删除旧哈希代码、训练机操作、真实数据/模型迁移、merge/push 需单独授权。
+- **状态/来源**：待确认；由 VERSION-CONTROL-MIGRATION 核心基础设施完成后拆出，尚未获得正式迁移、训练机操作、旧链路退役、merge 或 push 授权。
+- **已证实事实与差距**：`versioning/` 核心入口及本机测试已完成，但 legacy `pipeline/`、`finetune/` 仍按旧规则运行；未建立旧对象到五类可读身份的正式映射，未在 Linux 训练机验证跨进程锁，未用真实 adapter/merged、正式数据或移动硬盘做恢复演练。
+- **下一动作/依赖**：用户确认迁移范围与顺序后，先只读盘点两台机器的分支、HEAD、未提交改动和真实对象，形成映射与回滚方案；再单独授权训练机 smoke、真实恢复演练、调用方切换和旧链路退役。merge/push 继续单独确认。
+- **验收标准**：旧对象映射可追溯且无隐式 latest；训练机/Linux 锁与真实产物恢复通过；调用方全部显式使用完整身份；旧链路退役不丢历史；两端 Git 状态、提交与备份证据核对完成。完成核心基础设施不自动满足本项。
+- **证据/限制**：[实施台账](plans/2026-09-01-readable-version-control-implementation.md)、[架构说明](../ARCHITECTURE.md)、[项目指南](project-guide.md)。当前仅登记后续任务，不执行训练机、迁移、删除、merge 或 push。
 
 ## Skill 改进候选（待确认，不属于当前实现范围）
 
@@ -132,6 +132,13 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 ## 已解决与已关闭
 
 以下区分前序 Agent 的记录与本轮核查；不统一声称所有事项都经过本轮全量测试或远端复验。前两项由用户确认完成，本轮保留关闭状态；TEST-POLICY 本轮由用户裁决后关闭。
+
+### VERSION-CONTROL-MIGRATION — 可读版本控制核心基础设施：已解决
+
+- **结果**：`refactor/readable-version-control` 已完成 B0–B12。新增独立 `python -m versioning` 六领域入口、五类完整可读身份、数据封存与 DVC 七阶段、Prompt 冻结、MLflow train/eval、不可覆盖 manifest、唯一 `mVllm2` Registry、严格 model layout 与 alias/current、分级离线备份及灾难恢复；legacy 入口保持不变。
+- **最终证据**：核心修复提交 `9965dc1b`；`tests/versioning/` `1399 passed`，整仓 `2082 passed / 11 skipped`，均正常退出；9 个目标 Markdown 本地链接、2 个 YAML、172 个 tracked JSON、编译、CLI help、diff/未跟踪/大文件检查通过。独立 reviewer 对 R1–R11 执行相关套件、故障注入、备份恢复与跨进程锁攻击，结论为无剩余 P0–P3 actionable finding。完整提交与 finding 证据见[实施台账](plans/2026-09-01-readable-version-control-implementation.md)。
+- **验证限制**：未连接训练机，未执行 GPU/真实模型/正式数据/真实移动硬盘操作；`fcntl.flock` 已在当前 macOS 双进程验证，Linux 训练机 smoke 尚未执行。未 merge、未 push、未正式迁移或删除 legacy。
+- **后续拆分**：正式迁移另记 VERSION-CONTROL-FORMAL-MIGRATION，需用户单独确认范围与授权；其未开始不影响本核心基础设施任务关闭。
 
 ### AGENT-INSTRUCTIONS — Codex/Pi 共用指令契约修正：已解决
 
@@ -186,6 +193,8 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **残余**：Streamlit 显示原始 ValueError traceback 是此前接受的呈现层风险；本轮未重新验收 UI。
 
 ## 最近维护记录
+
+- 2026-09-04 可读版本控制核心基础设施收尾：关闭 VERSION-CONTROL-MIGRATION，记录 `9965dc1b`、本机 `1399` 项新体系测试与整仓 `2082 passed / 11 skipped`、最终 reviewer R1–R11 闭环和实机验证限制；拆出待确认的 VERSION-CONTROL-FORMAL-MIGRATION。本轮未连接训练机，未 merge、push、迁移或删除 legacy。
 
 - 2026-09-03 Agent 指令双平台修正：依据独立审查修正项目根 AGENTS 的版本身份、legacy 分域、提交归因、作用域和委派表述，并同步 ARCHITECTURE 与 project-guide；Pi 用户级编排增加项目约束传递 Gate。仅做本机文档/配置与静态验证，不连接训练机、不运行真实 Pi 子任务。
 
