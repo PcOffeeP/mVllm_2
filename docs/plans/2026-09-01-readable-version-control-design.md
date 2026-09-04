@@ -11,6 +11,7 @@ Must Preserve:
 - 不设置独立 `status.yaml`，不建立 YAML 与 MLflow 的双向同步或重复事实来源；训练实际输入保存在 `input/`，运行指标与大型产物由 MLflow 管理。
 - 每项已确认约束在实施时必须落入权威文档、机器可读契约、程序校验或测试证据，不允许只存在于设计讨论或聊天记录中。
 - MLflow Model Registry 使用稳定 Registered Model `mVllm2` 和 `candidate`/`production` 两个可变别名；正式模型沿用 `model-v<协议>-r<N>` ID并映射到唯一数值 Model Version，`models/current` 只缓存 alias 精确目标。
+- 模型采用两阶段登记：训练完成后先创建无 `eval_id` 的 staging Model Version，正式 eval 必须精确引用其可读身份与数值版本；eval 通过后才绑定 `eval_id`，未绑定通过结论的模型不得进入 candidate/production。
 - 设计最终确认后，迁移才可在独立分支实施；本机和训练机验证通过后仍需用户明确决定是否合并。
 Non-goals:
 - 本次架构不引入 Hydra、W&B、lakeFS 或其他额外配置/实验平台；采用普通 YAML、DVC 与 MLflow，不为未来工具预建兼容层。
@@ -20,7 +21,7 @@ Non-goals:
 
 # 可读版本控制架构设计
 
-> 状态：设计已确认，尚未实施。采用 DVC 管理数据 pipeline 和数据产物，采用 Git/YAML 定义运行、MLflow 记录实际结果，并由 MLflow 单向导出轻量 manifest 到 Git；MLflow 使用内部 SQLite 并按需提供页面。实施必须另行建立分支、完成双机验证，并在合并前取得用户明确确认。
+> 状态：设计已确认，核心基础设施已在独立分支实现，正式链路与真实产物尚未迁移。采用 DVC 管理数据 pipeline 和数据产物，采用 Git/YAML 定义运行、MLflow 记录实际结果，并由 MLflow 单向导出轻量 manifest 到 Git；MLflow 使用内部 SQLite 并按需提供页面。正式迁移仍须完成双机验证，并在合并前取得用户明确确认。
 
 > 模型命名：经过语义化长名称和 p/d/t 短编号两轮讨论后，用户决定回到最初的 `model-v<协议>-r<N>` 方案。名称只承担模型类别、契约和顺序身份，基础模型、Prompt、数据、核心训练参数、训练 Run、fold、seed 与内部唯一性全部在 `manifest.yaml` 和 MLflow 中展示。
 
@@ -186,7 +187,7 @@ DVC 的执行策略固定为“自动发现、手动执行”：
 ### 2.9 已确认的 Model Registry 别名
 
 - 项目只建立一个稳定的 MLflow Registered Model，名称为 `mVllm2`；每个 `model-v<协议>-r<N>` 映射为其中一个不可变的数值 Model Version，并以 `model_id` tag 保存可读模型 ID。
-- `candidate` 指向当前准备测评、正在验证或等待晋级决定的候选模型。
+- Registry 中无 alias 的 staging Model Version 表示准备测评或正在验证；`candidate` 只指向已绑定 passed eval、正在等待生产晋级决定的候选模型。
 - `production` 指向当前已通过规定质量门并经用户批准用于正式推理的模型。
 - 两个别名均属于稳定 Registered Model `mVllm2`，指向其中一个数值 Model Version；它们是项目唯一逻辑路由，不承担不可变模型身份，切换别名不得改写原模型记录。
 - 普通 checkpoint 不进入 Model Registry。正式模型 ID 沿用 `model-v<协议>-r<N>`；ID 本身不展开训练路线、fold 或 seed。
@@ -500,7 +501,9 @@ MLflow Registered Model: mVllm2
             └── merged/
 ```
 
-一个可读模型版本映射为 `mVllm2` 下一个可长期保留的数值 Model Version，可以是单折模型、三折模型组或 full-data 模型。`model_id` tag 在整个 Registered Model 中必须唯一；注册后不得把该数值版本改绑到另一个可读模型 ID。三折模型组在同一个版本的 `artifacts/fold0`、`fold1`、`fold2` 下保存，不为每个 fold 单独分配 model 版本。full-data 模型使用 `artifacts/full/`。该结构与“一次完整训练及三折共用一个 train 版本”保持一致。`workspace/models/materialized/model-v...` 只是从该权威对象生成的本地部署副本，可以重新物化，不能反向修改 Registry 模型。
+一个可读模型版本映射为 `mVllm2` 下一个可长期保留的数值 Model Version，可以是单折模型、三折模型组或 full-data 模型。登记采用两阶段：完成且有效的 train 先创建带 `model_id`、`train_id` 和冻结训练输入、但尚无 `eval_id` 的 staging Model Version；正式 eval 创建时必须在线核对该 `model_id` 已存在、有效且 MLflow 数值 Model Version 精确匹配。eval 完整结束且 `outcome: passed` 后，finalize 操作才把该 `eval_id` 单向绑定到原 Model Version。绑定不得改写或更换，未绑定通过结论的 staging 模型不得设置 candidate/production alias。
+
+`model_id` tag 在整个 Registered Model 中必须唯一；注册后不得把该数值版本改绑到另一个可读模型 ID。三折模型组在同一个版本的 `artifacts/fold0`、`fold1`、`fold2` 下保存，不为每个 fold 单独分配 model 版本。full-data 模型使用 `artifacts/full/`。该结构与“一次完整训练及三折共用一个 train 版本”保持一致。`workspace/models/materialized/model-v...` 只是从该权威对象生成的本地部署副本，可以重新物化，不能反向修改 Registry 模型。
 
 模型决定长期保留后，MLflow 将来源和产物索引导出到 Git 跟踪的 `records/models/model-v4.1-r1/manifest.yaml`：
 
@@ -610,7 +613,7 @@ evaluations/staging/eval-v4.1-rN/
 └── evaluation.yaml
 ```
 
-`pre_registration.yaml` 在接触受限真值前冻结完整 eval 版本、model 版本、data 版本、split、评价规则、阈值、`one_time: true`、`tuning_use: forbidden` 和恢复规则。首次模型调用前，系统必须在该 holdout data 版本自己的 `authorization/claim.yaml` 中原子创建全局 claim，绑定相同的四元组和一次执行身份；把 claim 放在 eval staging 内不能阻止另一 eval 版本再次消费，因此不作为权威位置。holdout 已有 claim 时，只有完整 eval/model/data/split 四元组、claim 中的一次执行身份以及允许恢复的运行状态全部一致，才可作为同一运行恢复；新进程必须携带并验证原执行身份。任一字段不同都拒绝，且不得创建第二个 claim 或覆盖原 claim。完成后正式 eval 保存 claim 的只读副本或可读引用，holdout 目录中的原 claim 永久保留。
+`pre_registration.yaml` 在接触受限真值前冻结完整 eval 版本、model 版本、data 版本、split、评价规则、阈值、`one_time: true`、`tuning_use: forbidden` 和恢复规则。统一入口先把操作者提供的预注册内容原子冻结到上述 eval staging 稳定路径并设为只读，再以完整 SHA-256 绑定 claim；MLflow 保存该稳定审计路径和摘要。首次模型调用前，系统必须在该 holdout data 版本自己的 `authorization/claim.yaml` 中原子创建全局 claim，绑定相同的四元组、预注册摘要和一次执行身份；把 claim 放在 eval staging 内不能阻止另一 eval 版本再次消费，因此不作为权威位置。holdout 已有 claim 时，只有完整 eval/model/data/split 四元组、预注册摘要、claim 中的一次执行身份以及允许恢复的运行状态全部一致，才可作为同一运行恢复；新进程必须携带并验证原执行身份。跨机器恢复以冻结内容摘要为一致性标准，不要求机器本地绝对路径相同。任一身份或内容不同都拒绝，且不得创建第二个 claim 或覆盖原 claim。完成门先原子写入永久只读的消费证据，再以可恢复顺序提交 MLflow 项目状态和原生状态；正式 eval 保存 claim 的只读副本或可读引用，holdout 目录中的原 claim 永久保留。
 
 模型推理阶段只读 holdout 媒体；评分阶段在授权边界内读取 `sealed_ground_truth/`。预注册、claim、权限、访问日志和 aggregate-only 的预公开限制继续保留，但身份字段改用完整可读版本，不使用哈希。现有已暴露 sealed-test 只作为历史证据，不得在迁移时伪装成新的未使用 holdout，也不把旧 claim 转换成可再次使用状态。
 
@@ -668,7 +671,7 @@ Prompt 版本：prompt-v4.1-r1
 
 ## 8. 封存机制与不可覆盖规则
 
-不同对象按自身生命周期正式化，不宣称五类对象共用一套状态机：数据为 `working → release_staging → sealed`；Prompt 为“Git 中新增不可变正式文件 → 训练 input 冻结副本”；训练为“原子预留版本 → 冻结 input → MLflow running/completed”；模型为 `staging → MLflow Registered Model`；测评为 `workspace staging → MLflow running/completed → 导出正式 manifest`。
+不同对象按自身生命周期正式化，不宣称五类对象共用一套状态机：数据为 `working → release_staging → sealed`；Prompt 为“Git 中新增不可变正式文件 → 训练 input 冻结副本”；训练为“原子预留版本 → 冻结 input → MLflow running/completed”；模型为“训练完成 → Registry staging Model Version → 正式 eval 精确引用 → passed 后绑定 eval → candidate/production”；测评为 `workspace staging → MLflow running/completed → 导出正式 manifest`。
 
 封存前检查：
 
@@ -715,7 +718,7 @@ Prompt 版本：prompt-v4.1-r1
 | data | DVC 正式对象及 `release.yaml` 的身份字段 | 同一 `release.yaml` 中由 Git 留痕的 `active/superseded/invalid` | `active` 可创建新训练和新测评；`superseded` 只允许恢复或复现已经明确引用它的历史训练；`invalid` 只保留历史证据，禁止训练、续跑和正式测评 |
 | prompt | Git 中的 `records/prompts/prompt-v...yaml` 与训练 `input/` 冻结副本 | 无可变状态 | 新训练只接受显式存在的正式 Prompt 文件，并验证冻结副本内容一致 |
 | train | 冻结 input 与 MLflow Run | MLflow 原生 RunStatus + `workflow_state`/`record_validity` tags | 模型晋级只接受 `record_validity: valid`、原生 `FINISHED`、项目 `completed|archived` 且所有子 Run 完整的父 Run |
-| model | `mVllm2` 中数值 Model Version、唯一 `model_id` tag、权重及导出 manifest | `mVllm2` 的 Registry aliases、`record_validity` 和其他 Model Version tags | 开发可用有效 `candidate`；生产只使用有效 `production`，并校验 alias 指向的数值版本与 manifest 完全一致 |
+| model | `mVllm2` 中数值 Model Version、唯一 `model_id` tag、来源 train、通过后单向绑定的 `eval_id`、权重及导出 manifest | `mVllm2` 的 Registry aliases、`record_validity` 和其他 Model Version tags | staging 可供正式 eval 精确引用；只有绑定了同一数值版本的 passed eval 后才能进入有效 `candidate`，生产只使用获批的有效 `production` |
 | eval | MLflow 正式测评 Run 及导出 manifest | MLflow 原生 RunStatus + `record_validity`/结论 tags | 只有执行完整且 `record_validity: valid` 的正式测评可形成当前结论；`outcome: failed` 仍是有效质量证据 |
 
 出现新数据或新 Prompt 时，旧训练和旧模型不会自动失效；它们只属于旧血缘。是否需要新训练由用户决定。Registry 别名或允许变化的 MLflow 标签不得覆盖旧 Run 的实际输入、模型内容或测评结论；正式事实错误时按更正策略将旧对象标记 `record_validity: invalid` 并创建新的可读版本，而不是原地改写旧事实。
@@ -738,7 +741,7 @@ staging 保持非正式状态。数据只有在 DVC 发布完成、`release.yaml
 
 ### 11.4 模型晋级失败
 
-失败模型停留在 staging，不能进入 MLflow Model Registry，也不能被 `models/current` 指向。已登记的正式 MLflow 模型不得删除后以同一版本重试；修正内容时使用新的 model 版本。
+训练门不通过时不得登记 Model Version。已经登记但正式 eval 未通过的模型保留为无活动 alias 的 staging 证据，不得进入 candidate/production，也不能被 `models/current` 指向；不得删除后以同一版本重试。权重或来源需要修正时使用新的 model 版本。
 
 ### 11.5 正式测评失败
 
@@ -1024,4 +1027,12 @@ Trade-off: 实现必须原子维护原生状态与 tag 的合法组合，并拒�
 D039 — 正式事实错误不原地修正：旧 MLflow 对象标记 `record_validity: invalid`，manifest 只更新有效性与替代引用，实际修正创建新的可读版本和 MLflow 对象。
 Why: 区分导出器错误、可变路由和正式事实错误，才能同时保持 MLflow 权威、Git 可见的失效信息和不可变实验血缘。
 Trade-off: Git 中会保留已失效但可审计的旧 manifest；任何下游入口都必须在线核对 MLflow `record_validity`，不能只凭旧文件存在放行。
+
+D040 — 模型采用两阶段 Registry 生命周期：完成训练先登记 staging Model Version，正式 eval 精确引用其可读身份与数值版本，passed 后再单向绑定 `eval_id`；candidate/production 均要求该绑定有效。
+Why: “eval 必须引用真实 Registry Model Version”与“模型注册必须先有 passed eval”会形成无法执行的生命周期闭环；先固定模型实体再测评，既消除闭环，也阻止测评后替换被测权重。
+Trade-off: Registry 中会保留未通过或尚未完成正式测评的 staging Model Version；它们只保留证据，不能获得活动 alias。
+
+D041 — holdout 预注册由统一入口原子冻结到 eval staging 稳定路径，claim 和 MLflow 以完整内容摘要绑定；跨机器恢复比较身份与摘要，不绑定机器本地绝对路径。
+Why: 用户提供的临时路径既不适合作为长期审计位置，也会破坏双机恢复；稳定副本提供可追溯证据，摘要则同时阻止内容漂移并允许相同内容在不同机器恢复。
+Trade-off: 预注册冻结后规则或阈值的任何变化都必须创建新的 eval 身份；文件系统消费证据与 MLflow 状态仍通过显式可恢复顺序协调，而不是假装存在跨系统原子事务。
 -->
