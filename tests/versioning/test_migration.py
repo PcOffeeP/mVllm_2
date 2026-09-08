@@ -212,6 +212,17 @@ manifest payload 文件哈希 provenance 门，先写测试）—— 批级只�
 7. 零写入：legacy 源树与旧 active pointers 逐字节不变；
 8. 本切片不做真实转换、凭证、恢复。
 
+T14-P3 补丁切片（reviewer 对 T14 的 P3，先写测试）—— 批级只读预检
+解析 manifest ``files[]`` 声明的 payload 路径时遇到 symlink loop（或
+其他路径解析异常）必须 fail-closed 经报告通道返回该对象 blocked +
+整批 blocked + 非空 reasons，不得让 ``RuntimeError`` / ``OSError``
+穿透 precheck_data_migration 入口（当前 production 的
+``payload_file.resolve()`` 只被 ``except OSError`` 包裹，而本机
+Python 3.11.14 的 resolve() 把 ELOOP 转成 ``RuntimeError: Symlink
+loop from ...`` -> 穿透）；零写入，legacy 源（含 loop fixture）与旧
+active pointers 逐字节不变；正常 payload 哈希匹配的对象仍 ready（门
+不得反向过宽）。
+
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
     def precheck_prompt_migration(root: Path, mapping_item: Mapping[str, object]) -> object
@@ -290,7 +301,10 @@ manifest payload 文件哈希 provenance 门，先写测试）—— 批级只�
         #   （fail-closed，按对象归因），匹配保持 ready；该门是 manifest
         #   自洽性/内容完整性机制，ready 不等于训练机真实 payload 已
         #   验证，不得就此升级映射项来源状态；报告不绑定任何凭证字段
-        #   （D2 格式/位置未裁决）。
+        #   （D2 格式/位置未裁决）；T14-P3 起：payload 路径解析异常
+        #   （如 declared 路径 symlink loop）同样 fail-closed 经报告
+        #   通道 blocked（该对象 + 整批 + 非空 reasons，按对象归因），
+        #   不得让 RuntimeError / OSError 穿透预检入口。
 
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
@@ -352,7 +366,11 @@ files[] 声明的每个 payload 文件按文件字节复算 sha256 与声明值�
 目录之外、文件仍存在）即该对象 blocked + 整批 blocked + 按对象归因
 + 非空 reasons + 零写入 + legacy 源与旧 pointers 不变；manifest 自
 洽性/内容完整性机制不等于训练机真实 payload 已验证，r1 无钉扎不伪
-造 verified）；以上切片之外不实现/不要求
+造 verified）、T14-P3 payload 路径 symlink loop fail-closed（reviewer
+对 T14 的 P3：manifest files[] 声明的 payload 路径解析成环时不得
+让 RuntimeError / OSError 穿透预检入口，必须经报告通道该对象
+blocked + 整批 blocked + 非空 reasons + 零写入，正常哈希匹配对象
+仍 ready）；以上切片之外不实现/不要求
 data 真实转换、data blocked 反向其余场景（身份契约收紧、legacy 源
 release 目录/manifest 缺失、声明的 payload 文件缺失——该存在性分支
 由既有 production 检查 blocked，本文件未单列用例钉定）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
@@ -388,6 +406,7 @@ pipeline/、finetune/；legacy 树为按 M0 证据布局重建的合成 fixture
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib
 import importlib.util
@@ -4111,4 +4130,307 @@ def test_data_batch_precheck_payload_file_hash_provenance_gate(
         "manifest 自洽性/内容完整性机制，不等于训练机真实 payload 已验"
         "证，source_verified / source_payload_complete 必须保持 M0 事实"
         "分级（r1 无钉扎不伪造 verified）"
+    )
+
+
+# ---------------------------------------------------------------------------
+# T14-P3：data 批级预检 payload 路径 symlink loop fail-closed（reviewer 对
+# T14 的 P3）—— manifest files[] 声明的 payload 路径解析成环时不得让
+# RuntimeError / OSError 穿透预检入口，必须经报告通道该对象 blocked +
+# 整批 blocked + 非空 reasons + 零写入；正常哈希匹配对象仍 ready（先写
+# 测试，不改 production）
+# ---------------------------------------------------------------------------
+
+# symlink loop 落点：复用 T14 的篡改目标 datasets/train/fold_0.json ——
+# manifest files[] 已声明该路径，其 sha256 / size_bytes 为原始真实
+# payload 字节的声明值（fixture 布局期已定，不依赖读取 loop）。
+_SYMLINK_LOOP_PAYLOAD_REL = _TAMPERED_PAYLOAD_REL
+
+# 两节点环的第二链路名（manifest 未声明的 fixture 条目：只用于构成
+# fold_0.json -> fold_0.loop_alias.json -> fold_0.json 间接环；预检只按
+# 声明 entry 定位 payload，不受该额外条目影响）。
+_SYMLINK_LOOP_ALIAS_REL = "datasets/train/fold_0.loop_alias.json"
+
+
+def _replace_declared_payload_with_symlink_loop(
+    root: Path, source_id: str, *, two_node: bool
+) -> None:
+    """把 manifest 声明的 payload 文件原位替换成 symlink loop（不改 manifest）。
+
+    self-loop：``fold_0.json -> fold_0.json``；two-node loop：
+    ``fold_0.json -> fold_0.loop_alias.json -> fold_0.json``（间接环，
+    钉死只识别“路径直接自指”的补丁形态）。manifest 不被改写：声明的
+    path / size_bytes / sha256 仍为原始真实 payload 的值 —— 声明
+    sha256 与 loop 无关，blocked 只能由路径解析异常（fail-closed）归
+    因，不得夹带“哈希字段缺失 / 声明值异常”类旁路失败。
+    """
+    loop_file = _payload_file_of(root, source_id, _SYMLINK_LOOP_PAYLOAD_REL)
+    loop_file.unlink()
+    if two_node:
+        alias_file = _payload_file_of(root, source_id, _SYMLINK_LOOP_ALIAS_REL)
+        loop_file.symlink_to(alias_file)
+        alias_file.symlink_to(loop_file)
+    else:
+        loop_file.symlink_to(loop_file)
+
+
+@pytest.mark.parametrize(
+    "loop_shape",
+    [
+        pytest.param("self_loop", id="self_referential_loop_batch_blocked"),
+        pytest.param("two_node_loop", id="two_node_indirect_loop_batch_blocked"),
+    ],
+)
+def test_data_batch_precheck_payload_symlink_loop_fail_closed(
+    tmp_path: Path, loop_shape: str
+) -> None:
+    r"""declared payload 路径是 symlink loop -> blocked 报告，不得穿透异常。
+
+    T14-P3 behavior（本切片，reviewer 对 T14 的 P3，先写测试）—— 批级
+    只读预检在解析 manifest files[] 声明的 payload 路径时遇到 symlink
+    loop（或其他路径解析异常）必须 fail-closed：
+    1. 不抛异常：``RuntimeError`` / ``OSError`` 不得穿透
+       precheck_data_migration 入口（当前 production 的
+       ``payload_file.resolve()`` 在本机 Python 3.11.14 上把 ELOOP 转
+       成 ``RuntimeError: Symlink loop from ...``，而其 ``except
+       OSError`` 不捕获 RuntimeError —— 本切片 RED 起点）；
+    2. 该对象 blocked + 整批 blocked（D2）+ 非空 reasons + 按对象归
+       因（fail-closed 结论必须经 T11/T14 已绑定的报告返回通道给出）；
+    3. 零写入：不删除 / 修复 loop，不重建 payload，不创建目标 /
+       生命周期 / records 条目，legacy 源树（含 loop fixture）与旧
+       active pointers 逐字节不变；
+    4. 正常 payload 哈希匹配的非失败对象（r2，批内第一位、已钉扎）仍
+       ready —— 门不得反向过宽，也不得把整批一律 blocked 了事。
+
+    fixture：复用 T11–T14 双对象 fixture（两条已确认 data 映射 + 三
+    份 legacy release + 旧数据 / Prompt 活动指针）；r1（批内第二位、
+    无钉扎）的 declared payload ``datasets/train/fold_0.json`` 被原位
+    替换成 symlink loop，manifest 不动 —— 声明 sha256 是原始真实
+    payload 字节的哈希（fixture 布局期已定，不依赖读取 loop），故
+    blocked 只能由路径解析异常归因；两条映射 target_path 保持空闲
+    （隔离目标冲突分支），r2 manifest 声明哈希与 payload 实际字节
+    自洽、T13 指针门保持匹配（blocked 不得与其他门混同）。失败对象
+    选 r1（无钉扎、第二位）同时钉死“只对已钉扎活动 release 做路径
+    异常处理”的错误补丁。两个参数分别用自指环与两节点间接环，钉死
+    只识别“路径直接自指”（readlink 与自身比较）的补丁形态。
+
+    捕获的合理但错误实现：
+    - 当前 production（RED 起点）：_check_legacy_data_source 对
+      ``payload_file.resolve()`` 只 ``except OSError``，Python 3.11.14
+      的 resolve() 把 symlink loop 转成 RuntimeError -> 穿透
+      precheck_data_migration -> no-leak 守卫判失败（本用例预期 RED
+      的 failure signature）；
+    - 吞掉解析异常后跳过该 entry / 当作 payload 已验证 -> 误 ready ->
+      status 断言失败；
+    - 吞掉解析异常后“顺手修复”fixture（删除 loop、重建 payload、改
+      写 manifest）-> 全树快照断言失败；
+    - 只识别路径直接自指（readlink 与自身比较），不追多链路环 ->
+      two_node_loop 参数仍穿透或误判 -> 失败；
+    - blocked 不带 reasons / 不按对象归因 / 把 r2 一并 blocked ->
+      reasons / 对象报告断言失败；
+    - 以未类型化异常替代报告 -> 异常直接传播判失败（守卫点名
+      RuntimeError / OSError，其余按原始 traceback 失败 —— 报告通
+      道违约不因异常类型不同而豁免）。
+
+    范围边界（本切片不绑定）：路径穿越（``..``）与绝对路径拒绝已由
+    T14 钉定；真实转换（migrate_data_*）、凭证（D2 格式/位置未裁
+    决）、恢复、训练机真实 payload 验证结论不在本切片。
+    """
+    _write_legacy_data_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+
+    r1_manifest_file = _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R1)
+    r2_manifest_file = _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2)
+    data_pointer_file = tmp_path / _DATA_POINTER_REL
+    prompt_pointer = (
+        tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    )
+    loop_file = _payload_file_of(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1, _SYMLINK_LOOP_PAYLOAD_REL
+    )
+
+    # 前置事实（替换前）：manifest files[] 已声明该 payload 路径，声明
+    # sha256 / size_bytes 随原始真实 payload 字节自洽 —— 声明值在
+    # fixture 布局期已定，不依赖读取 loop。
+    manifest = json.loads(r1_manifest_file.read_text(encoding="utf-8"))
+    entry = _manifest_files_entry(manifest, _SYMLINK_LOOP_PAYLOAD_REL)
+    original_payload_bytes = loop_file.read_bytes()
+    assert hashlib.sha256(original_payload_bytes).hexdigest() == entry[
+        "sha256"
+    ], (
+        "fixture 前置事实失败：声明的 sha256 必须是原始真实 payload 字节"
+        "的哈希（声明值不依赖读取 loop）"
+    )
+    assert len(original_payload_bytes) == entry["size_bytes"], (
+        "fixture 前置事实失败：声明的 size_bytes 必须与原始真实 payload "
+        "字节一致"
+    )
+
+    # 场景化改写（fixture 布局写好之后的唯一变量）：declared payload
+    # 文件原位替换成 symlink loop；manifest 不动。
+    _replace_declared_payload_with_symlink_loop(
+        tmp_path,
+        CONFIRMED_DATA_SOURCE_R1,
+        two_node=loop_shape == "two_node_loop",
+    )
+
+    # 前置事实：loop 真实生效 —— declared path 是 symlink，且沿链接
+    # stat 必然 ELOOP（OS 级路径解析异常事实，不依赖具体 Python 版本
+    # 对 resolve() 的异常化口径）。
+    assert loop_file.is_symlink(), (
+        "fixture 前置事实失败：declared payload 路径必须被替换成 symlink"
+    )
+    with pytest.raises(OSError) as loop_excinfo:
+        loop_file.stat()
+    assert loop_excinfo.value.errno == errno.ELOOP, (
+        "fixture 前置事实失败：declared payload 路径必须解析成 symlink "
+        f"loop（stat ELOOP）：实际 errno={loop_excinfo.value.errno!r}"
+    )
+    if loop_shape == "two_node_loop":
+        assert _payload_file_of(
+            tmp_path, CONFIRMED_DATA_SOURCE_R1, _SYMLINK_LOOP_ALIAS_REL
+        ).is_symlink(), (
+            "fixture 前置事实失败：two-node loop 的第二链路必须真实存在"
+        )
+
+    # 前置事实：manifest files[] 仍原样声明该 loop 路径（本切片不触碰
+    # manifest），entry 与替换前逐字段相等。
+    manifest_after = json.loads(r1_manifest_file.read_text(encoding="utf-8"))
+    assert _manifest_files_entry(
+        manifest_after, _SYMLINK_LOOP_PAYLOAD_REL
+    ) == entry, (
+        "fixture 前置事实失败：manifest 声明 entry 必须保持原样（声明值"
+        "不依赖读取 loop，blocked 只能由路径解析异常归因）"
+    )
+
+    # 前置事实（对齐 T11/T13/T14）：批序 r2 第一位、r1 第二位（失败
+    # 对象在批内第二位）；两条映射 target_path 空闲（隔离目标冲突分支）。
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ], "fixture 前置事实失败：批序必须为 r2 第一位、r1 第二位（失败对象在第二位）"
+    for item in mapping_items:
+        assert not (tmp_path / str(item["target_path"])).exists(), (
+            "fixture 前置事实失败：两条映射的 target_path 必须保持空闲，"
+            "隔离目标冲突分支（blocked 只能由 payload 路径解析异常归因）"
+        )
+
+    # 前置事实：r2（非失败对象）声明哈希随 payload 实际字节自洽、T13
+    # 指针门保持匹配 —— blocked 不得与其他门混同。
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2
+    )
+    r1_manifest_bytes_on_disk = r1_manifest_file.read_bytes()
+    r2_manifest_bytes_on_disk = r2_manifest_file.read_bytes()
+    pointer_bytes_on_disk = data_pointer_file.read_bytes()
+    pointer = json.loads(pointer_bytes_on_disk.decode("utf-8"))
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        r2_manifest_bytes_on_disk
+    ).hexdigest(), (
+        "fixture 前置事实失败：活动指针 expected_manifest_sha256 必须与 "
+        "r2 manifest 文件字节复算哈希自洽（T13 指针门保持绿，blocked 只"
+        "能由本切片 payload 路径 loop 归因）"
+    )
+
+    before = _snapshot_tree(tmp_path)
+
+    precheck_data = _resolve_data_precheck_entry()
+    assert precheck_data is not None, (
+        "批级数据迁移只读预检行为缺失：versioning.migration 未提供 "
+        "precheck_data_migration 入口（当前 behavior 未实现）"
+    )
+
+    # no-leak 守卫：路径解析异常必须 fail-closed 经报告通道给出，不得
+    # 以异常穿透替代（T11/T14 已绑定返回契约）。
+    try:
+        report = precheck_data(tmp_path, mapping_items)
+    except (RuntimeError, OSError) as exc:
+        pytest.fail(
+            f"payload 路径含 symlink loop（{loop_shape}）时，批级只读预检"
+            f"不得抛 {type(exc).__name__}: {exc} —— 路径解析异常必须 "
+            "fail-closed 经报告通道返回该对象 blocked + 整批 blocked + "
+            "非空 reasons（T11/T14 已绑定返回契约）"
+        )
+
+    # 1：整批 blocked + 非空 reasons（fail-closed）。
+    assert report.status == "blocked", (
+        f"declared payload 路径解析成 symlink loop（{loop_shape}）时，"
+        "批级只读预检必须该对象 blocked 且整批 blocked（fail-closed，经"
+        "报告通道）：实际 "
+        f"status={getattr(report, 'status', None)!r}，"
+        f"reasons={getattr(report, 'reasons', None)!r}"
+    )
+    assert report.reasons, _BLOCKED_REASONS_REQUIRED_MSG
+
+    # 2：逐对象归因 —— 恰好两条；r1（loop 所在对象，批内第二位、无
+    #    钉扎）blocked + 非空 reasons；r2（正常 payload 哈希匹配，第一
+    #    位、已钉扎）保持 ready —— 门不得反向过宽。
+    object_reports = list(report.object_reports)
+    assert len(object_reports) == 2, (
+        "批级报告必须包含恰好两条逐对象报告（两条已确认映射）：实际 "
+        f"{len(object_reports)} 条"
+    )
+    reports_by_source = {
+        obj_report.source_legacy_id: obj_report for obj_report in object_reports
+    }
+    assert set(reports_by_source) == {
+        CONFIRMED_DATA_SOURCE_R1,
+        CONFIRMED_DATA_SOURCE_R2,
+    }, (
+        "逐对象报告必须恰覆盖两条已确认映射的 source_legacy_id：实际 "
+        f"{sorted(reports_by_source)}"
+    )
+    r1_report = reports_by_source[CONFIRMED_DATA_SOURCE_R1]
+    r2_report = reports_by_source[CONFIRMED_DATA_SOURCE_R2]
+    assert r1_report.status == "blocked", (
+        "payload 路径解析成 symlink loop 必须按对象归因到 "
+        f"{CONFIRMED_DATA_SOURCE_R1}（批内第二位、无钉扎 —— 门不因对象"
+        f"位置或钉扎状态豁免）：实际 status={r1_report.status!r}，"
+        f"reasons={getattr(r1_report, 'reasons', None)!r}"
+    )
+    assert r1_report.reasons, (
+        f"{CONFIRMED_DATA_SOURCE_R1} 的 blocked 对象报告必须携带非空 "
+        "reasons（fail-closed 拒因按对象可观察，不得静默 blocked）"
+    )
+    assert r2_report.status == "ready", (
+        f"{CONFIRMED_DATA_SOURCE_R2} 的逐对象报告应为 ready（其 manifest "
+        "声明哈希与 payload 实际字节自洽 —— 正常 payload 哈希匹配仍 "
+        f"ready，门不得反向过宽）：实际 {r2_report.status!r}，"
+        f"reasons={getattr(r2_report, 'reasons', None)!r}"
+    )
+
+    # 3：零写入 —— 不创建目标 / 生命周期 / records 条目；全树无任何
+    #    新增/修改/删除；blocked 不得“顺手修复”loop / manifest / 指针。
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists(), (
+            f"批级只读预检不得创建目标根 {forbidden!r}"
+        )
+    assert _snapshot_tree(tmp_path) == before, (
+        "批级只读预检必须零写入：payload 路径 symlink loop 只 blocked，"
+        "不删除 / 修复 loop，不重建 payload，不创建目标 / 生命周期 / "
+        "records 条目，不改 legacy 源树与旧 active pointers"
+    )
+
+    # 4：legacy 源（含 loop fixture）与旧 active pointers 逐字节保持场景
+    #    态（全树快照已全局钉定；显式重读钉死 loop、manifest 与指针本
+    #    身不被预检触碰）。
+    assert loop_file.is_symlink(), (
+        "批级只读预检不得删除 / 替换 symlink loop fixture"
+    )
+    assert r1_manifest_file.read_bytes() == r1_manifest_bytes_on_disk
+    assert r2_manifest_file.read_bytes() == r2_manifest_bytes_on_disk
+    assert data_pointer_file.read_bytes() == pointer_bytes_on_disk, (
+        "批级只读预检不得修复 / 改写旧数据活动指针（含 blocked 场景）"
+    )
+    assert (
+        yaml.safe_load(prompt_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+
+    # 5：不就地修改传入映射项（T11/T14 同口径：source_verified /
+    #    source_payload_complete 保持 M0 事实分级，不得升级）。
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "批级只读预检不得就地改写传入映射项（source_verified / "
+        "source_payload_complete 保持 M0 事实分级）"
     )

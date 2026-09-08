@@ -224,8 +224,16 @@ def _check_legacy_data_source(
         payload_file = release_dir / declared_path
         try:
             resolved = payload_file.resolve()
-        except OSError:
-            resolved = payload_file.absolute()
+        except (OSError, RuntimeError) as exc:
+            # fail-closed：路径解析异常（含 symlink loop，Python 3.11
+            # 的 resolve() 将 ELOOP 转成 RuntimeError）一律拒绝，不
+            # 用 absolute() 回退弱化越界检查。
+            errors.append(
+                "legacy 源 manifest files 条目 path 无法解析"
+                "（fail-closed）: "
+                f"{declared_path!r}: {exc}"
+            )
+            continue
         if not resolved.is_relative_to(release_root):
             errors.append(
                 "legacy 源 manifest files 条目 path 解析后越出 legacy "
@@ -377,8 +385,8 @@ def precheck_data_migration(
     整批 ``status`` 为 ready 当且仅当全部对象报告 ready。全程零写入：
     不创建 ``<root>/data``、working、release_staging、records 或任何目标
     条目，不修改 legacy 源树、旧 active pointers 或传入映射项；报告只经
-    返回值给出。真实转换、payload 内容 provenance 门、凭证与恢复不在本
-    切片内。
+    返回值给出。manifest payload 文件哈希门已在当前实现内；训练机真实
+    payload 验证、真实转换、凭证与恢复不在本切片内。
     """
     root = Path(root)
     try:
