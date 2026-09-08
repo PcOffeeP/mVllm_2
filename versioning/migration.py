@@ -27,7 +27,7 @@ from typing import Any, Mapping
 
 import yaml
 
-from versioning.ids import InvalidIdentifier, parse_prompt_id
+from versioning.ids import InvalidIdentifier, parse_data_id, parse_prompt_id
 from versioning.prompts import (
     PromptConflict,
     PromptError,
@@ -45,6 +45,18 @@ _PROMPT_PROTOCOL = "v4.1"
 _LEGACY_PROMPT_REGISTRY = Path("pipeline") / "prompt_registry"
 
 _LEGACY_REQUIRED_FILES = ("manifest.json", "prompt.yaml")
+
+# M0 object-mapping.yaml data_mapping 声明的 data 协议：已确认目标为
+# data-v4.1-r1 / data-v4.1-r2，协议段 v4.1。目标身份协议必须与此精确相等。
+_DATA_PROTOCOL = "v4.1"
+
+# D1 用户确认的 data 目标生命周期字段取值。
+_DATA_TARGET_STATUSES = ("active", "superseded")
+
+# legacy data release 相对根的路径模板（source-inventory.yaml data_releases）。
+_LEGACY_DATA_RELEASES = Path("workspace") / "data" / "releases"
+_LEGACY_DATA_MANIFEST = Path("manifest") / "release_manifest.json"
+_LEGACY_DATA_REQUIRED_FILES = (_LEGACY_DATA_MANIFEST,)
 
 # legacy prompt_content_sha256 的 payload 字段（权威 recipe，
 # pipeline/prompt_control/core.py::prompt_content_sha256；不含 revision_id）。
@@ -67,6 +79,215 @@ class PromptMigrationPrecheckReport:
     target_identity: str = ""
     target_path: str = ""
     reasons: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class DataMigrationObjectPrecheckReport:
+    """批级只读预检的逐对象报告（按 source_legacy_id 归因）。"""
+
+    status: str  # "ready" 或 "blocked"
+    source_legacy_id: str = ""
+    target_identity: str = ""
+    target_path: str = ""
+    reasons: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class DataMigrationPrecheckReport:
+    """data 迁移批级只读预检报告（仅经返回值给出，不落盘）。"""
+
+    status: str  # "ready" 或 "blocked"
+    object_reports: tuple[DataMigrationObjectPrecheckReport, ...] = field(
+        default_factory=tuple
+    )
+    reasons: tuple[str, ...] = field(default_factory=tuple)
+
+
+def _data_identity_errors(identity: object) -> list[str]:
+    """fail-closed 校验 data 候选目标身份；返回错误列表（空 = 合法）。"""
+    if not isinstance(identity, str) or not identity:
+        return ["candidate_target_identity 缺失或非字符串"]
+    errors: list[str] = []
+    if identity in {"LATEST", "latest"} or identity.endswith("LATEST"):
+        errors.append("禁止 LATEST / 隐式最新身份")
+    try:
+        parsed = parse_data_id(identity)
+    except InvalidIdentifier:
+        errors.append(
+            f"目标身份 {identity!r} 不符合 <kind>-v<协议>-r<N> 完整身份格式"
+        )
+    else:
+        if parsed.protocol != _DATA_PROTOCOL:
+            errors.append(
+                f"目标身份 {identity!r} 协议 {parsed.protocol!r} 与映射声明的 "
+                f"data 协议 {_DATA_PROTOCOL!r} 不一致"
+            )
+    return errors
+
+
+def _data_target_status_errors(mapping_item: Mapping[str, object]) -> list[str]:
+    """校验 D1 用户确认字段 target_status / replacement（fail-closed）。"""
+    errors: list[str] = []
+    target_status = mapping_item.get("target_status")
+    if target_status not in _DATA_TARGET_STATUSES:
+        errors.append(
+            f"target_status={target_status!r} 非法：data 迁移仅接受 "
+            f"{_DATA_TARGET_STATUSES}"
+        )
+        return errors
+    if target_status == "superseded":
+        replacement = mapping_item.get("replacement")
+        if not isinstance(replacement, str) or not replacement:
+            errors.append(
+                "target_status 为 superseded 时 replacement 缺失或非字符串"
+            )
+        else:
+            errors.extend(_data_identity_errors(replacement))
+    return errors
+
+
+def _check_legacy_data_source(
+    root: Path, mapping_item: Mapping[str, object]
+) -> list[str]:
+    """检查 legacy data 源 manifest 与声明 payload 存在性（只读，fail-closed）。
+
+    按映射项的 source_legacy_id 定位
+    ``workspace/data/releases/<source_legacy_id>``（不扫描 releases 目录，
+    未映射 sibling 不参与本对象报告）；manifest/release_manifest.json 必须
+    存在且其 release_id 与源身份一致；manifest files 声明的 payload 文件
+    必须存在。本切片不做 payload 内容 provenance 门（不复算 files 哈希），
+    training_observed 等来源状态也不得升级为 payload 已验证。
+    """
+    errors: list[str] = []
+    source_id = mapping_item.get("source_legacy_id")
+    if not isinstance(source_id, str) or not source_id:
+        return errors
+    release_dir = root / _LEGACY_DATA_RELEASES / source_id
+    for required in _LEGACY_DATA_REQUIRED_FILES:
+        if not (release_dir / required).is_file():
+            errors.append(
+                f"legacy 源必需文件缺失：{(release_dir / required).relative_to(root)}"
+            )
+    if errors:
+        return errors
+    manifest_file = release_dir / _LEGACY_DATA_MANIFEST
+    try:
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [f"legacy 源 release_manifest.json 无法解析: {exc}"]
+    if not isinstance(manifest, Mapping):
+        return ["legacy 源 release_manifest.json 顶层必须是 mapping"]
+    if manifest.get("release_id") != source_id:
+        errors.append(
+            f"legacy 源 manifest release_id={manifest.get('release_id')!r} "
+            f"与源身份 {source_id!r} 不一致"
+        )
+    files = manifest.get("files")
+    if not isinstance(files, list) or not files:
+        errors.append("legacy 源 release_manifest.json 缺少非空 files 声明")
+        return errors
+    for entry in files:
+        if not isinstance(entry, Mapping) or not isinstance(entry.get("path"), str):
+            errors.append("legacy 源 manifest files 条目缺少 path 声明")
+            continue
+        payload_file = release_dir / entry["path"]
+        if not payload_file.is_file():
+            errors.append(
+                f"legacy 源声明的 payload 文件缺失：{payload_file.relative_to(root)}"
+            )
+    return errors
+
+
+def precheck_data_migration(
+    root: Path, mapping_items: Any
+) -> DataMigrationPrecheckReport:
+    """对已确认 data 映射批执行只读迁移预检（T11）。
+
+    逐映射项（按 source_legacy_id 定位源，不扫描未映射 sibling）校验：
+      1. 映射项 ``status`` 为 ``user_confirmed``（消费 M0 确认状态，fail-closed）；
+      2. 候选目标身份为合法 ``data-v<协议>-r<N>`` 完整身份且协议为 v4.1；
+      3. D1 用户确认字段：``target_status`` 为 active / superseded；
+         superseded 时 ``replacement`` 为合法 data 身份；
+      4. legacy 源 ``workspace/data/releases/<source_legacy_id>`` 的
+         manifest/release_manifest.json 存在、release_id 与源身份一致、
+         声明的 payload 文件齐全（只验存在性，不做内容 provenance 门）；
+      5. 目标无冲突（``<root>/<target_path>`` 与 ``records/`` 下同身份条目
+         均不存在）。
+
+    整批 ``status`` 为 ready 当且仅当全部对象报告 ready。全程零写入：
+    不创建 ``<root>/data``、working、release_staging、records 或任何目标
+    条目，不修改 legacy 源树、旧 active pointers 或传入映射项；报告只经
+    返回值给出。真实转换、payload 内容 provenance 门、凭证与恢复不在本
+    切片内。
+    """
+    root = Path(root)
+    try:
+        items = list(mapping_items)
+    except TypeError:
+        items = []
+    batch_errors: list[str] = []
+    if not items:
+        batch_errors.append("data 映射批为空：预检需至少一条映射项")
+
+    object_reports: list[DataMigrationObjectPrecheckReport] = []
+    for mapping_item in items:
+        if not isinstance(mapping_item, Mapping):
+            object_reports.append(
+                DataMigrationObjectPrecheckReport(
+                    status="blocked",
+                    reasons=("映射项必须是 mapping",),
+                )
+            )
+            continue
+        errors: list[str] = []
+        if mapping_item.get("status") != _CONFIRMED_STATUS:
+            errors.append(
+                f"映射项 status={mapping_item.get('status')!r} 未确认：只读预检仅接受 "
+                f"{_CONFIRMED_STATUS!r}（fail-closed，pending/unknown 不得当 confirmed）"
+            )
+        source_id = mapping_item.get("source_legacy_id")
+        if not isinstance(source_id, str) or not source_id:
+            errors.append("source_legacy_id 缺失或非字符串")
+        errors.extend(
+            _data_identity_errors(mapping_item.get("candidate_target_identity"))
+        )
+        errors.extend(_data_target_status_errors(mapping_item))
+        target_path = mapping_item.get("target_path")
+        if not isinstance(target_path, str) or not target_path:
+            errors.append("target_path 缺失或非字符串")
+
+        if isinstance(source_id, str) and source_id:
+            errors.extend(_check_legacy_data_source(root, mapping_item))
+        errors.extend(_check_target_conflict(root, mapping_item))
+
+        object_reports.append(
+            DataMigrationObjectPrecheckReport(
+                status="blocked" if errors else "ready",
+                source_legacy_id=source_id if isinstance(source_id, str) else "",
+                target_identity=(
+                    mapping_item["candidate_target_identity"]
+                    if isinstance(mapping_item.get("candidate_target_identity"), str)
+                    else ""
+                ),
+                target_path=target_path if isinstance(target_path, str) else "",
+                reasons=tuple(errors),
+            )
+        )
+
+    all_ready = (
+        not batch_errors
+        and all(obj.status == "ready" for obj in object_reports)
+    )
+    reasons = tuple(batch_errors) + tuple(
+        reason
+        for obj in object_reports
+        for reason in obj.reasons
+    )
+    return DataMigrationPrecheckReport(
+        status="ready" if all_ready else "blocked",
+        object_reports=tuple(object_reports),
+        reasons=reasons,
+    )
 
 
 def _identity_errors(identity: object) -> list[str]:

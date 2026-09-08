@@ -110,6 +110,30 @@ PASS（转为中断安全回归钉），不得为此制造无意义 production �
 不在本切片 —— 重跑是对 migrate_prompt 的全新调用；data 复制中断、
 history-summary、CLI 亦不在本切片。
 
+T11 behavior（本切片，主 Agent 选定，数据迁移批级只读预检 ready，
+先写测试）—— 对 M0 已确认的两条 data 映射
+（object-mapping.yaml data_mapping.items，用户 2026-09-07 确认；
+D1：r1 superseded、replacement=data-v4.1-r2；r2 active）执行批级只读
+预检：
+- ``v4.1.0-760050fad303`` -> ``data-v4.1-r1``（target_status
+  ``superseded``，replacement ``data-v4.1-r2``）；
+- ``v4.1.0-ecb5aeb9657c`` -> ``data-v4.1-r2``（target_status ``active``）；
+预检必须返回整批 ``ready`` 并包含逐对象报告（每条按 source_legacy_id
+归因、target_identity / target_path 与映射一致、对象级 status ==
+"ready"；未映射 sibling release 不得进入对象报告 —— 实现必须按映射项
+定位源，不得扫描全 releases 目录）；全程零写入：不创建 ``<root>/data``、
+working、release_staging、records 或任何目标条目；legacy 源树
+（workspace/data/releases/）与旧 active pointers
+（finetune/active_data_release.json、pipeline/prompt_control/
+active_prompt.yaml）逐字节不变；ready 不得依赖 payload 已验证 ——
+映射项的 source_verified / source_payload_complete 保持 M0 事实分级
+（verified_local / training_observed），预检不得据此阻塞（本切片不做
+payload 内容 provenance 门），也不得就地改写映射项把来源状态伪造成
+payload 已验证。本切片不做真实转换、provenance 门、凭证（D2 凭证
+格式/位置未裁决，预检报告不绑定任何凭证字段）或中断恢复；blocked
+反向（任一对象不合格 -> 整批 blocked，D2 已确认语义）留待配套反向
+切片。
+
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
     def precheck_prompt_migration(root: Path, mapping_item: Mapping[str, object]) -> object
@@ -148,6 +172,27 @@ history-summary、CLI 亦不在本切片。
         #   文件（保留在 M0 object-mapping 与后续 history-summary）；
         #   不修改传入映射项。
 
+    def precheck_data_migration(root: Path, mapping_items: Sequence[Mapping[str, object]]) -> object
+        # T11 批级只读预检：mapping_items 为 object-mapping.yaml
+        #   data_mapping.items 的解析结果（两条已确认映射；本用例逐字段
+        #   镜像 M0 证据，含 status: "user_confirmed"、target_status、
+        #   replacement（r1 条目）与 source_verified /
+        #   source_payload_complete 事实分级）。逐对象校验映射项确认状态、
+        #   候选目标身份合法性（data 完整身份 <kind>-v<协议>-r<N>）、
+        #   legacy 源 workspace/data/releases/<source_legacy_id>/ 的
+        #   manifest/release_manifest.json 与 payload 存在性、目标无冲突
+        #   （<root>/data 不存在等），返回批级只读报告：
+        #   report.status（"ready" / "blocked"，任一对象不合格即整批
+        #   blocked，fail-closed）+ report.object_reports（逐对象报告
+        #   序列，每条含 source_legacy_id / target_identity /
+        #   target_path / status；未映射 release 不得出现）。
+        # 预检全程零写入：不创建 <root>/data、working、release_staging、
+        #   records 或任何目标条目，不改 legacy 源树与旧 active pointers，
+        #   不写任何报告/缓存文件（报告只经返回值给出）；不就地修改传入
+        #   映射项（不得把 training_observed 等来源状态伪造成 payload
+        #   已验证）；ready 不依赖 payload 已验证（payload 内容 provenance
+        #   门不在本切片）；报告不绑定任何凭证字段（D2 格式/位置未裁决）。
+
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
 ``import versioning.migration``，pytest 会在 collection 阶段以
@@ -160,10 +205,15 @@ ModuleNotFoundError 失败，测试体完全不执行——按本轮 RED Gate �
 钉出"只读预检行为缺失"：失败发生在 fixture 构建、前置事实断言与全树
 快照真实执行之后，映射到当前 behavior 未实现，而非 import 机制错误。
 T6（真实转换切片）同口径：migration 模块已存在但 migrate_prompt 入口
-缺失时，仍由测试内惰性解析 + 显式 AssertionError 钉出"真实转换行为
-缺失"，不让 AttributeError / 原始 import 错误成为 RED。
+缺失时，仍由测试内惰性解析 + 显式 AssertionError 钉出“真实转换行为
+缺失”，不让 AttributeError / 原始 import 错误成为 RED。
+T11（数据批级预检切片）同口径：migration 模块已存在而
+precheck_data_migration 入口缺失时，仍由测试内惰性解析 + 显式
+AssertionError 钉出“批级只读预检行为缺失”，不让原始 import 错误或
+AttributeError 成为 RED。
 
-范围边界：本文件只覆盖 Prompt 迁移 —— T1 ready 正向最小切面、
+范围边界：本文件只覆盖 Prompt 迁移（T1–T10）与 T11 数据迁移批级只读
+预检 ready 正向切面 —— T1 ready 正向最小切面、
 T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同身份非
 标准文件形式回归、T5 身份契约收紧、T6 真实转换最小切片（创建
 正式 prompt-v4.1-r1 + 同身份重转换不覆盖）、T7 真实转换异常分流
@@ -180,8 +230,12 @@ TypeError 穿透 precheck 入口，零写入）、T10 目标创建中断安全
 pointers 逐字节不动；恢复正常后重跑同一转换成功创建完整
 prompt-v4.1-r1 且与无中断基线 records/ 子树逐字节一致；注入点为
 当前 production 的 Path.write_text，写机制变更时注入点随实际写
-路径维护，行为契约不变）；以上切片之外不实现/不要求
-data 迁移、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
+路径维护，行为契约不变）、T11 数据迁移批级只读预检 ready 正向
+（两条已确认 data 映射整批 ready + 逐对象报告 + 零写入 + legacy
+源树与旧 active pointers 逐字节不变 + 不就地改写映射项；ready 不
+依赖 payload 已验证）；以上切片之外不实现/不要求
+data 真实转换、data blocked 反向（含身份契约收紧、源文件缺失、
+目标冲突、payload provenance 门）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
 T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
@@ -2146,3 +2200,559 @@ def test_migrate_prompt_interrupted_target_write_leaves_no_partial_object_and_re
     # 重跑后 legacy 源与旧 active pointers 仍逐字节不动。
     after_rerun = _snapshot_tree(interrupted_root)
     _assert_non_records_unchanged(before_interrupted, after_rerun)
+
+
+# ---------------------------------------------------------------------------
+# T11：数据迁移批级只读预检 —— 两条已确认 data 映射整批 ready + 逐对象
+# 报告 + 零写入（M1a data precheck ready 切片，先写测试）
+# ---------------------------------------------------------------------------
+
+# M0 object-mapping.yaml data_mapping.items 的两条已确认映射（用户
+# 2026-09-07 确认；D1：r1 superseded + replacement=data-v4.1-r2；
+# r2 active）。R1 源为较旧 base release，R2 源为较新 Phase2 release
+# （活动指针指向的 release）。
+CONFIRMED_DATA_SOURCE_R1 = "v4.1.0-760050fad303"
+CONFIRMED_DATA_TARGET_R1 = "data-v4.1-r1"
+CONFIRMED_DATA_SOURCE_R2 = "v4.1.0-ecb5aeb9657c"
+CONFIRMED_DATA_TARGET_R2 = "data-v4.1-r2"
+# 未映射 sibling release（不在 data_mapping.items 中；合成 12-hex 旧哈希
+# 身份，布局与两份已确认源同构）：钉死实现必须按映射项定位源、不得扫描
+# 全 releases 目录（要求全目录都有映射 / 把 sibling 一并写入对象报告的
+# 实现必被本切片捕获）。
+UNMAPPED_DATA_SIBLING = "v4.1.0-0a1b2c3d4e5f"
+
+# 批级只读预检必须保持不存在的目标根（M0：本机 <root>/data、records
+# 均不存在）；working / release_staging 为数据 release 生命周期目录名
+# （versioning/data_release.py），records/ 为新体系正式对象根。
+_PRECHECK_FORBIDDEN_ROOTS = ("data", "working", "release_staging", "records")
+
+
+def _fixture_pretty_json_bytes(value: Any) -> bytes:
+    """合成 fixture 的 pretty JSON 字节（口径镜像真实 release manifest 写出）。
+
+    与 pipeline/v4_1_training_release.py::_pretty_bytes 相同：
+    json.dumps(..., ensure_ascii=False, indent=2, sort_keys=True,
+    allow_nan=False) + "\\n"。fixture 独立镜像写出口径而非 import
+    production，使 manifest 布局漂移先在 fixture 前置事实上暴露。
+    """
+    return (
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _synthetic_data_contract_hash() -> str:
+    """合成 contract_hash（64-hex；结构对齐真实 v4.1 contract_hash 字段，值非真实契约）。"""
+    return hashlib.sha256(
+        "tensile-vlm/v4.1 合成 fixture contract（非真实训练机契约）".encode(
+            "utf-8"
+        )
+    ).hexdigest()
+
+
+def _legacy_data_payload_files(
+    release_id: str, contract_hash: str, *, phase2: bool
+) -> dict[str, bytes]:
+    """合成但结构镜像真实 v4.1 训练 release payload 的文件集合。
+
+    真实 release（pipeline/v4_1_training_release.py /
+    v4_1_phase2_training_release.py 写出）的 payload 布局为
+    metadata/training_candidates.json、datasets/{train,validation}/
+    fold_N.json 与 reports/quality_report.json；Phase2 增量 release 另含
+    metadata/combined_review_decisions.json。本 fixture 字段值合成、内容
+    逐 release 嵌入 release_id（三份 release 的 payload 字节互不相同，
+    使“读错源 / 从 sibling 补齐”的实现可捕获），结构与上述事实字段
+    一致。
+    """
+    candidates = {
+        "schema_version": "tensile-training-candidates/v4.1",
+        "contract_hash": contract_hash,
+        "candidates": [
+            {
+                "candidate_id": f"{release_id}-cand-{index:03d}",
+                "scope": "development",
+                "labels": {
+                    "clip_state": "未断裂",
+                    "fracture_mechanism": None,
+                    "fracture_site": None,
+                    "special_case": None,
+                },
+            }
+            for index in range(3)
+        ],
+        "excluded": [],
+        "candidate_count": 3,
+        "excluded_count": 0,
+    }
+    files: dict[str, bytes] = {
+        "metadata/training_candidates.json": _fixture_pretty_json_bytes(
+            candidates
+        ),
+        "reports/quality_report.json": _fixture_pretty_json_bytes(
+            {
+                "release_id": release_id,
+                "contract_hash": contract_hash,
+                "counts": {"published_candidates": 3, "excluded_candidates": 0},
+            }
+        ),
+    }
+    if phase2:
+        files["metadata/combined_review_decisions.json"] = (
+            _fixture_pretty_json_bytes(
+                {
+                    "schema_version": "tensile-vlm-v4.1-combined-review/v1",
+                    "combined_id": f"combined-{release_id}-fixture",
+                    "release_id": release_id,
+                }
+            )
+        )
+    for fold in range(3):
+        for split, directory in (("train", "train"), ("val", "validation")):
+            files[f"datasets/{directory}/fold_{fold}.json"] = (
+                _fixture_pretty_json_bytes(
+                    {
+                        "release_id": release_id,
+                        "fold": fold,
+                        "split": split,
+                        "samples": [
+                            f"{release_id}-cand-{index:03d}" for index in range(3)
+                        ],
+                    }
+                )
+            )
+    return files
+
+
+def _write_legacy_data_release(
+    root: Path,
+    release_id: str,
+    *,
+    contract_hash: str,
+    base_release_id: str | None = None,
+) -> bytes:
+    """在 workspace/data/releases/<release_id> 下写入合成 legacy data release。
+
+    镜像 M0 source-inventory.yaml data_releases 证据布局：
+    ``<release_id>/manifest/release_manifest.json`` + payload。manifest
+    字段名与事实字段对齐真实 v4_1_training_release /
+    v4_1_phase2_training_release 写出的 release_manifest.json（base
+    release 含 source_snapshot_id / split_snapshot_id；Phase2 增量
+    release 含 base_release_id / combined_review_id）；files 声明值按
+    本 fixture 实际 payload 字节复算（path / size_bytes / sha256），
+    保持源内自洽（真实声明值见训练机 payload；fixture 字段值合成）。
+    返回 manifest 字节。
+    """
+    release_dir = root / "workspace" / "data" / "releases" / release_id
+    payload = _legacy_data_payload_files(
+        release_id, contract_hash, phase2=base_release_id is not None
+    )
+    for relative, content in payload.items():
+        target = release_dir / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+
+    manifest: dict[str, Any] = {
+        "schema_version": "tensile-training-release/v4.1",
+        "release_id": release_id,
+        "status": "training_ready",
+        "immutable": True,
+        "contract_version": "tensile-vlm/v4.1",
+        "contract_hash": contract_hash,
+        "label_semantics": "frame_window_authoritative",
+        "source_review_batch_id": f"review-batch-{release_id}-fixture",
+        "source_queue_id": f"queue-{release_id}-fixture",
+        "source_media_id": f"media-{release_id}-fixture",
+        "counts": {
+            "published_candidates": 3,
+            "excluded_candidates": 0,
+            "reviewed_candidates": 3,
+        },
+        "provenance": {
+            "data_version": "4.1.0",
+            "contract_hash": contract_hash,
+            "release_id": release_id,
+        },
+        "files": [
+            {
+                "path": relative,
+                "size_bytes": len(content),
+                "sha256": hashlib.sha256(content).hexdigest(),
+            }
+            for relative, content in sorted(payload.items())
+        ],
+    }
+    if base_release_id is None:
+        manifest["source_snapshot_id"] = None
+        manifest["split_snapshot_id"] = None
+    else:
+        manifest["base_release_id"] = base_release_id
+        manifest["combined_review_id"] = f"combined-{release_id}-fixture"
+        manifest["provenance"]["base_release_id"] = base_release_id
+
+    manifest_path = release_dir / "manifest" / "release_manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_bytes = _fixture_pretty_json_bytes(manifest)
+    manifest_path.write_bytes(manifest_bytes)
+    return manifest_bytes
+
+
+def _write_legacy_data_layout(root: Path) -> bytes:
+    """构建 T11 批级预检的完整 legacy fixture（M0 证据布局）。
+
+    包含：
+    - 两条已确认映射的 legacy data release：v4.1.0-760050fad303
+      （较旧 base release）与 v4.1.0-ecb5aeb9657c（较新 Phase2
+      release，base_release_id 指向 760050fad303，镜像 M0
+      source-inventory / model_registry origin.release_id 事实）；
+    - 未映射 sibling release v4.1.0-0a1b2c3d4e5f（完整同构布局，
+      不在映射中）；
+    - 旧数据活动指针 ``finetune/active_data_release.json``（镜像 M0
+      pinned_by 事实；expected_manifest_sha256 / expected_contract_hash
+      随合成活动 release manifest 复算，保持指针与源内自洽 —— 真实声明值
+      见 M0 pin_facts，fixture 值随合成内容）；
+    - 旧 Prompt 活动指针 ``pipeline/prompt_control/active_prompt.yaml``
+      （声明 legacy revision_id；数据预检不得触碰）。
+
+    返回活动 release（ecb5aeb9657c）的 manifest 字节。
+    """
+    contract_hash = _synthetic_data_contract_hash()
+    _write_legacy_data_release(
+        root, CONFIRMED_DATA_SOURCE_R1, contract_hash=contract_hash
+    )
+    active_manifest_bytes = _write_legacy_data_release(
+        root,
+        CONFIRMED_DATA_SOURCE_R2,
+        contract_hash=contract_hash,
+        base_release_id=CONFIRMED_DATA_SOURCE_R1,
+    )
+    _write_legacy_data_release(
+        root, UNMAPPED_DATA_SIBLING, contract_hash=contract_hash
+    )
+
+    data_pointer = root / "finetune" / "active_data_release.json"
+    data_pointer.parent.mkdir(parents=True, exist_ok=True)
+    data_pointer.write_text(
+        json.dumps(
+            {
+                "release_id": CONFIRMED_DATA_SOURCE_R2,
+                "release_dir": (
+                    f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R2}"
+                ),
+                "manifest": (
+                    f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R2}"
+                    "/manifest/release_manifest.json"
+                ),
+                "expected_contract_hash": contract_hash,
+                "expected_manifest_sha256": hashlib.sha256(
+                    active_manifest_bytes
+                ).hexdigest(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    active_prompt_pointer = (
+        root / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    )
+    active_prompt_pointer.parent.mkdir(parents=True, exist_ok=True)
+    active_prompt_pointer.write_bytes(
+        _legacy_prompt_yaml_full(CONFIRMED_PROMPT_SOURCE_ID)
+    )
+
+    return active_manifest_bytes
+
+
+def _confirmed_data_mapping_items() -> list[dict[str, Any]]:
+    """逐字段镜像 M0 object-mapping.yaml data_mapping.items 的两条已确认条目。
+
+    含 D1 用户确认字段（r1 条目 target_status superseded + replacement
+    data-v4.1-r2；r2 条目 target_status active）。YAML 标量解析为字符串
+    （status: user_confirmed -> "user_confirmed"）；source_verified /
+    source_payload_complete 保持 M0 事实分级（verified_local /
+    training_observed），不由 fixture 伪造成 payload 已验证。字段集与值
+    与 M0 证据一致（含 D1 字段），使实现必须按真实证据结构消费映射批。
+    """
+    return [
+        {
+            "source_legacy_id": CONFIRMED_DATA_SOURCE_R2,
+            "role": "当前活动数据 release（活动指针）",
+            "source_verified": "verified_local",
+            "source_inventory": (
+                f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R2}"
+            ),
+            "source_payload_complete": "training_observed",
+            "candidate_target_identity": CONFIRMED_DATA_TARGET_R2,
+            "target_path": "data/releases/data-v4.1-r2/release.yaml",
+            "status": "user_confirmed",
+            "target_status": "active",
+            "confirmed_by_user_date": "2026-09-07",
+            "conflict_check": (
+                "本机 <root>/data 不存在 → 当前无目标冲突；目标机器根下 "
+                "data/ 需在迁移前复验"
+            ),
+            "preserve_state": [
+                (
+                    "release.yaml 的 status / purpose / training_allowed / "
+                    "splits / source_batches"
+                ),
+                "payload 封存（去写位）保持不变",
+                "source_batches 记录原始批次，不回填伪造",
+            ],
+            "notes": "活动 release。已确认 → data-v4.1-r2（较新的 Phase2 release）。",
+        },
+        {
+            "source_legacy_id": CONFIRMED_DATA_SOURCE_R1,
+            "role": "历史并存的非活动数据 release",
+            "source_verified": "training_observed",
+            "source_inventory": (
+                f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R1}"
+            ),
+            "source_payload_complete": "training_observed",
+            "candidate_target_identity": CONFIRMED_DATA_TARGET_R1,
+            "target_path": "data/releases/data-v4.1-r1/release.yaml",
+            "status": "user_confirmed",
+            "target_status": "superseded",
+            "replacement": CONFIRMED_DATA_TARGET_R2,
+            "confirmed_by_user_date": "2026-09-07",
+            "conflict_check": "同上：本机 <root>/data 不存在；目标机器根下复验",
+            "preserve_state": [
+                "release.yaml 状态字段",
+                "payload 封存只读",
+            ],
+            "notes": "非活动。已确认 → data-v4.1-r1（较旧的上一轮基础 release）。",
+        },
+    ]
+
+
+def _resolve_data_precheck_entry() -> Any:
+    """惰性解析 T11 批级只读预检入口；模块或入口缺失时返回 None。
+
+    RED Gate 设计（与 _resolve_precheck_entry /
+    _resolve_prompt_migration_entry 同口径）：migration 模块已存在而
+    precheck_data_migration 入口缺失时返回 None，由调用方以显式行为断言
+    钉出“批级只读预检行为缺失”，不让原始 import 错误 / AttributeError
+    成为 RED。
+    """
+    spec = importlib.util.find_spec("versioning.migration")
+    if spec is None:
+        return None
+    module = importlib.import_module("versioning.migration")
+    return getattr(module, "precheck_data_migration", None)
+
+
+def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
+    tmp_path: Path,
+) -> None:
+    r"""已确认两条 data 映射的批级只读预检：整批 ready + 逐对象报告 + 零写入。
+
+    T11 behavior（数据迁移批级只读预检 ready 切片，主 Agent 选定，先写
+    测试）—— 对 M0 已确认的两条 data 映射（D1 用户确认）：
+    - ``v4.1.0-760050fad303`` -> ``data-v4.1-r1``（target_status
+      ``superseded``，replacement ``data-v4.1-r2``）；
+    - ``v4.1.0-ecb5aeb9657c`` -> ``data-v4.1-r2``（target_status
+      ``active``）；
+    执行批级只读预检时必须：
+    1. 返回整批 ``ready``（报告经返回值给出，与 T1 绑定的报告通道
+       同口径）；
+    2. 报告包含逐对象结果：恰好两条对象报告，按 source_legacy_id 可
+       归因，每条 target_identity / target_path 与映射一致且对象级
+       status == "ready"（未映射 sibling 不得进入对象报告 —— 实现
+       必须按映射项定位源，不得扫描全 releases 目录）；
+    3. 零写入：不创建 ``<root>/data``、working、release_staging、
+       records 或任何目标条目，全树无任何新增/修改/删除；
+    4. legacy 源树（workspace/data/releases/ 下三份 release，含未映射
+       sibling）与旧 active pointers
+       （finetune/active_data_release.json、pipeline/prompt_control/
+       active_prompt.yaml）逐字节不变，旧指针仍声明 legacy 身份；
+    5. 不就地修改传入映射项：source_verified / source_payload_complete
+       保持 M0 事实分级（verified_local / training_observed），预检
+       不得把 training_observed 等来源状态伪造成 payload 已验证 ——
+       ready 也不得依赖 payload 已验证（本切片不做 payload 内容
+       provenance 门）。
+
+    fixture（M0 证据布局，合成内容）：workspace/data/releases/
+    <legacy-id>/manifest/release_manifest.json + payload（metadata/
+    training_candidates.json、datasets/train|validation/fold_N.json、
+    reports/quality_report.json；Phase2 release 另含 metadata/
+    combined_review_decisions.json 与 base_release_id）；manifest files
+    声明值按 fixture 实际 payload 字节复算保持源内自洽；活动指针
+    expected_manifest_sha256 随合成 manifest 复算自洽。
+
+    捕获的合理但错误实现：
+    - 入口缺失（当前 production —— RED 起点）：versioning.migration
+      无 precheck_data_migration -> 惰性解析返回 None，显式
+      AssertionError 钉出“批级只读预检行为缺失”（不让原始 import
+      错误 / AttributeError 成为 RED）；
+    - 只做单对象预检或只返回批级标志（object_reports 缺失 / 只有一条）
+      -> 对象报告数量断言失败；
+    - 扫描全 releases 目录：要求所有 release 都有映射（未映射 sibling
+      导致误 blocked）或把 sibling 一并写进对象报告（三条）-> ready
+      断言或数量断言失败；
+    - 从错误位置读源（root/releases、workspace/releases 等）-> 源
+      不存在误 blocked -> ready 断言失败；
+    - 预检即真实转换（创建 <root>/data/releases/<target>/release.yaml、
+      working / release_staging、records）-> 目标根存在性断言 +
+      全树快照断言失败；
+    - 预检时改写 legacy 源（规范化 manifest、重建 payload、去写位）或
+      旧 active pointers -> 全树快照断言失败 + 指针身份断言失败；
+    - 把 training_observed 当作确认门槛或 payload 已验证要求（ready
+      依赖 payload 完整性验证）-> 对合法 M0 状态输入误 blocked ->
+      ready 断言失败；
+    - 就地改写映射项（把 source_payload_complete 升级成 verified 等）
+      -> 映射项不变断言失败；
+    - 以异常替代报告返回 / 写报告文件到磁盘 -> 报告通道与零写入断言
+      失败。
+
+    范围边界（本切片不绑定）：blocked 反向行为（任一对象不合格 ->
+    整批 blocked + reasons，D2 已确认语义，留待配套反向切片）、目标
+    身份契约收紧（kind != data、协议不匹配）、legacy 源必需文件缺失
+    反向、目标冲突反向、payload 内容 provenance 门（复算 manifest
+    files 哈希）、真实转换（migrate_data_*）、凭证（D2 格式/位置未
+    裁决，报告不绑定任何凭证字段）与中断恢复。
+    """
+    active_manifest_bytes = _write_legacy_data_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+
+    # fixture 前置事实（对齐 M0 证据）：两条已确认源 + 未映射 sibling
+    # 各含 manifest/release_manifest.json 与全部声明的 payload 文件
+    # （manifest release_id / status 自洽）；旧数据指针声明活动 release
+    # 并绑定合成 manifest 字节；旧 Prompt 指针声明 legacy revision_id；
+    # 目标根（data / records 及生命周期目录 working / release_staging）
+    # 均不存在。
+    releases_root = tmp_path / "workspace" / "data" / "releases"
+    for source_id in (
+        CONFIRMED_DATA_SOURCE_R1,
+        CONFIRMED_DATA_SOURCE_R2,
+        UNMAPPED_DATA_SIBLING,
+    ):
+        release_dir = releases_root / source_id
+        manifest_file = release_dir / "manifest" / "release_manifest.json"
+        assert manifest_file.is_file(), (
+            f"fixture 前置事实失败：legacy release manifest 缺失 {manifest_file}"
+        )
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        assert manifest["release_id"] == source_id
+        assert manifest["status"] == "training_ready"
+        assert manifest["files"], (
+            f"fixture 前置事实失败：{source_id} 的 manifest files 不能为空"
+        )
+        for entry in manifest["files"]:
+            payload_file = release_dir / entry["path"]
+            assert payload_file.is_file(), (
+                f"fixture 前置事实失败：声明的 payload 文件缺失 {payload_file}"
+            )
+    data_pointer = tmp_path / "finetune" / "active_data_release.json"
+    pointer = json.loads(data_pointer.read_text(encoding="utf-8"))
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        active_manifest_bytes
+    ).hexdigest(), (
+        "fixture 前置事实失败：活动指针 expected_manifest_sha256 必须与合成"
+        "活动 release manifest 字节自洽"
+    )
+    assert pointer["expected_contract_hash"] == _synthetic_data_contract_hash()
+    prompt_pointer = (
+        tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    )
+    assert (
+        yaml.safe_load(prompt_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists()
+
+    before = _snapshot_tree(tmp_path)
+
+    precheck_data = _resolve_data_precheck_entry()
+    assert precheck_data is not None, (
+        "批级数据迁移只读预检行为缺失：versioning.migration 未提供 "
+        "precheck_data_migration 入口（当前 behavior 未实现）"
+    )
+
+    report = precheck_data(tmp_path, mapping_items)
+
+    # 1：整批 ready（报告只经返回值给出，不落盘、不打印替代）。
+    assert report.status == "ready", (
+        "两条已确认 data 映射的批级只读预检应返回整批 ready：实际 "
+        f"status={getattr(report, 'status', None)!r}"
+    )
+
+    # 2：逐对象报告 —— 恰好两条，按 source_legacy_id 归因，对象级
+    #    ready，target_identity / target_path 与映射一致；未映射
+    #    sibling 不得进入对象报告。
+    object_reports = list(report.object_reports)
+    assert len(object_reports) == 2, (
+        "批级报告必须包含恰好两条逐对象报告（两条已确认映射）：实际 "
+        f"{len(object_reports)} 条"
+    )
+    reports_by_source = {
+        obj_report.source_legacy_id: obj_report for obj_report in object_reports
+    }
+    assert set(reports_by_source) == {
+        CONFIRMED_DATA_SOURCE_R1,
+        CONFIRMED_DATA_SOURCE_R2,
+    }, (
+        "逐对象报告必须恰覆盖两条已确认映射的 source_legacy_id：实际 "
+        f"{sorted(reports_by_source)}"
+    )
+    expected_targets = {
+        CONFIRMED_DATA_SOURCE_R1: (
+            CONFIRMED_DATA_TARGET_R1,
+            "data/releases/data-v4.1-r1/release.yaml",
+        ),
+        CONFIRMED_DATA_SOURCE_R2: (
+            CONFIRMED_DATA_TARGET_R2,
+            "data/releases/data-v4.1-r2/release.yaml",
+        ),
+    }
+    for source_id, obj_report in reports_by_source.items():
+        target_identity, target_path = expected_targets[source_id]
+        assert obj_report.status == "ready", (
+            f"{source_id} 的逐对象报告应为 ready：实际 "
+            f"{getattr(obj_report, 'status', None)!r}"
+        )
+        assert obj_report.target_identity == target_identity, (
+            f"{source_id} 的逐对象报告 target_identity 应为 "
+            f"{target_identity!r}：实际 {obj_report.target_identity!r}"
+        )
+        assert obj_report.target_path == target_path, (
+            f"{source_id} 的逐对象报告 target_path 应为 "
+            f"{target_path!r}：实际 {obj_report.target_path!r}"
+        )
+
+    # 3：零写入 —— 不创建 <root>/data、working、release_staging、
+    #    records 或任何目标条目；全树无任何新增/修改/删除（含 staging、
+    #    报告/缓存文件）。
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists(), (
+            f"批级只读预检不得创建目标根 {forbidden!r}"
+        )
+    assert _snapshot_tree(tmp_path) == before, (
+        "批级只读预检必须零写入：不创建 <root>/data、working、staging、"
+        "records 或任何目标条目，不产生报告/缓存文件，不改 legacy 源树"
+    )
+
+    # 4：legacy 源树与旧 active pointers 逐字节不变（全树快照已全局钉
+    #    定）；旧指针仍声明 legacy 身份，不得被切换到新身份。
+    assert (
+        json.loads(data_pointer.read_text(encoding="utf-8"))["release_id"]
+        == CONFIRMED_DATA_SOURCE_R2
+    )
+    assert (
+        yaml.safe_load(prompt_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+
+    # 5：不就地修改传入映射项 —— source_verified /
+    #    source_payload_complete 保持 M0 事实分级（verified_local /
+    #    training_observed），不得被伪造成 payload 已验证。
+    assert mapping_items == _confirmed_data_mapping_items()
