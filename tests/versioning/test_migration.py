@@ -75,7 +75,12 @@ T2 blocked 反向四类场景，以及 T3 目标冲突精确身份边界回归�
 不要求真实转换、data 迁移、history-summary、CLI、恢复逻辑（冲突场景
 只断言 blocked 与零写入，不断言任何恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
-revision 上限、kind 限定为 prompt 等更细身份规则留给后续身份收紧切片。
+revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
+后续身份收紧切片。T5（本文件身份收紧切片，reviewer 对 2a927d14
+身份校验复用通用 parse_version_id 的发现）：通用合法性不等于契约
+匹配 —— 合法五类 versioning ID 但 kind 非 prompt（data-v4.1-r1 等）、
+或协议与映射声明的 Prompt 协议（M0 确认目标 prompt-v4.1-r1 -> v4.1）
+不符（prompt-v4.2-r1、前缀陷阱 prompt-v4.10-r1）一律 blocked。
 T3（reviewer 对 2a927d14 的 P3 边界备注）：目标冲突检测必须按精确
 身份判断 —— 已有 ``records/prompts/prompt-v4.1-r10.yaml``（不同身份，
 字符串上以 ``prompt-v4.1-r1`` 为前缀）不得阻塞目标 ``prompt-v4.1-r1``
@@ -382,6 +387,84 @@ def test_precheck_blocks_forbidden_target_identity(
     _write_legacy_prompt_registry(tmp_path)
     mapping_item = _confirmed_prompt_mapping_item()
     mapping_item["candidate_target_identity"] = bad_identity
+
+    assert not (tmp_path / "records").exists()
+    before = _snapshot_tree(tmp_path)
+
+    _run_blocked_precheck(tmp_path, mapping_item)
+
+    assert not (tmp_path / "records").exists()
+    assert _snapshot_tree(tmp_path) == before
+
+
+# ---------------------------------------------------------------------------
+# T5：身份收紧 —— 合法 versioning ID 但不符 Prompt 迁移契约 -> blocked
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "contract_violating_identity",
+    [
+        pytest.param("data-v4.1-r1", id="wrong_kind_data"),
+        pytest.param("train-v4.1-r1", id="wrong_kind_train"),
+        pytest.param("model-v4.1-r1", id="wrong_kind_model"),
+        pytest.param("eval-v4.1-r1", id="wrong_kind_eval"),
+        pytest.param("prompt-v4.2-r1", id="wrong_protocol_v4_2"),
+        pytest.param("prompt-v4.10-r1", id="wrong_protocol_v4_10"),
+    ],
+)
+def test_precheck_blocks_target_identity_mismatching_prompt_contract(
+    tmp_path: Path, contract_violating_identity: str
+) -> None:
+    """合法 versioning ID 但不符 Prompt 迁移契约 -> blocked + 零写入（fail-closed）。
+
+    身份收紧口径（本切片 behavior，M1a 最小身份契约切片）：Prompt 只读
+    预检的目标身份不仅要通过 versioning/ids.py 的通用合法性解析（五类完整
+    ``<kind>-v<协议>-r<N>``），还必须与 Prompt 迁移契约本身匹配：
+    - kind 必须是 prompt：``data-v4.1-r1`` 等其余四类的合法 ID 一律不得
+      被 Prompt precheck 接受为 ready；
+    - 协议必须与映射声明的 Prompt 协议一致：M0 object-mapping.yaml 中
+      用户确认的 Prompt 目标是 ``prompt-v4.1-r1``（协议 v4.1），协议
+      不同的合法 ID 不符契约。
+
+    通用合法性 ≠ 契约匹配（本切片要钉住的实现缺陷，reviewer 已复现）：
+    ``parse_version_id`` 对五类 kind 一律放行，当前实现复用它，因此
+    ``data-v4.1-r1`` 会被 Prompt precheck 误判为 ready；kind 专属的
+    权威口径在 ids.py 中已存在（``parse_prompt_id`` / kind 白名单）。
+
+    代表例（target_path 保持合法不动，使 blocked 只能由身份字段引起）：
+    - wrong_kind_data：``data-v4.1-r1`` —— M0 同文件 data_mapping.items
+      的已确认数据目标值，最 plausible 的映射串行复制错误；也是
+      reviewer 复现的现行为缺陷（当前实现误返回 ready）；
+    - wrong_kind_train / wrong_kind_model / wrong_kind_eval：其余三类
+      合法 ID，钉死“kind 必须是 prompt”是白名单语义，而非只拒 data 的
+      黑名单；
+    - wrong_protocol_v4_2：``prompt-v4.2-r1`` —— kind 合法、协议不是
+      映射声明的 v4.1；
+    - wrong_protocol_v4_10：``prompt-v4.10-r1`` —— 协议 ``v4.10`` 在
+      字符串上以 ``v4.1`` 为前缀（与 T3/T4 的 r1/r10 前缀陷阱同类），
+      钉死协议必须精确等于 v4.1，不得以前缀/包含匹配放行。
+
+    捕获的合理但错误实现：
+    - 只复用 ``parse_version_id`` 通用合法性、不做契约匹配（当前实现
+      ——RED 起点）-> 全部参数失败（ready 误判）；
+    - kind 黑名单式校验（只拒 data、其余放行）-> train/model/eval
+      参数失败；
+    - 只查 kind 不查协议（kind 合法即放行）-> 两个 wrong_protocol
+      参数失败；
+    - 协议前缀/包含匹配（``"v4.1" in identity`` 或 startswith）->
+      wrong_protocol_v4_10 参数失败（v4.10 含前缀 v4.1 被误放行）；
+    - 不读 candidate_target_identity、从 target_path 文件名反推身份 ->
+      本用例 target_path 合法而身份字段不符契约，反推实现误返回 ready；
+    - 身份不符契约时“顺手规范化”（写入、改名或生成目标文件）->
+      零写入断言失败；
+    - blocked 不带 reasons -> reasons 断言失败。
+    revision 不在本切片口径内（不测试 prompt-v4.1-r2 等仅 revision 不同
+    的输入）；r0、revision 上限等更细身份规则仍留后续切片。
+    """
+    _write_legacy_prompt_registry(tmp_path)
+    mapping_item = _confirmed_prompt_mapping_item()
+    mapping_item["candidate_target_identity"] = contract_violating_identity
 
     assert not (tmp_path / "records").exists()
     before = _snapshot_tree(tmp_path)

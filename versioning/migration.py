@@ -18,10 +18,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
-from versioning.ids import InvalidIdentifier, parse_version_id
+from versioning.ids import InvalidIdentifier, parse_prompt_id
 
 # M0 object-mapping.yaml 中"用户已逐项确认"的状态值。
 _CONFIRMED_STATUS = "user_confirmed"
+
+# M0 object-mapping.yaml prompt_mapping 声明的 Prompt 协议：已确认目标为
+# prompt-v4.1-r1，协议段 v4.1。目标身份协议必须与此精确相等。
+_PROMPT_PROTOCOL = "v4.1"
 
 # legacy Prompt registry 相对根的路径模板（source-inventory.yaml）。
 _LEGACY_PROMPT_REGISTRY = Path("pipeline") / "prompt_registry"
@@ -44,7 +48,9 @@ def _identity_errors(identity: object) -> list[str]:
     """fail-closed 校验候选目标身份；返回错误列表（空 = 合法）。
 
     复用 versioning/ids.py 的权威解析口径（五类完整身份、revision 从 1
-    开始且无前导零），避免在本地复制一套会漂移的正则。
+    开始且无前导零），并在通用合法性之上追加 Prompt 迁移契约匹配：
+    kind 必须是 prompt（kind 专属解析器白名单语义），协议必须与 M0 映射
+    声明的 v4.1 精确相等（不做前缀/包含匹配）。
     """
     if not isinstance(identity, str) or not identity:
         return ["candidate_target_identity 缺失或非字符串"]
@@ -52,9 +58,15 @@ def _identity_errors(identity: object) -> list[str]:
     if identity in {"LATEST", "latest"} or identity.endswith("LATEST"):
         errors.append("禁止 LATEST / 隐式最新身份")
     try:
-        parse_version_id(identity)
+        parsed = parse_prompt_id(identity)
     except InvalidIdentifier:
         errors.append(f"目标身份 {identity!r} 不符合 <kind>-v<协议>-r<N> 完整身份格式")
+    else:
+        if parsed.protocol != _PROMPT_PROTOCOL:
+            errors.append(
+                f"目标身份 {identity!r} 协议 {parsed.protocol!r} 与映射声明的 "
+                f"Prompt 协议 {_PROMPT_PROTOCOL!r} 不一致"
+            )
     return errors
 
 
