@@ -58,6 +58,19 @@ _LEGACY_DATA_RELEASES = Path("workspace") / "data" / "releases"
 _LEGACY_DATA_MANIFEST = Path("manifest") / "release_manifest.json"
 _LEGACY_DATA_REQUIRED_FILES = (_LEGACY_DATA_MANIFEST,)
 
+# 旧数据活动指针相对根路径（M0 source-inventory pinned_by 事实：活动
+# data release 被该指针钉扎；非活动 release pinned_by: ~，无钉扎）。
+_LEGACY_DATA_ACTIVE_POINTER = Path("finetune") / "active_data_release.json"
+
+# 指针 provenance 门必需字段：release_id 必须钉扎映射项声明的
+# source_legacy_id；expected_manifest_sha256 是钉扎时的
+# workspace/data/releases/<source_legacy_id>/manifest/release_manifest.json
+# 文件字节 SHA-256（复算比对口径，非 canonical JSON、非 payload 哈希）。
+_LEGACY_DATA_POINTER_REQUIRED_FIELDS = (
+    "release_id",
+    "expected_manifest_sha256",
+)
+
 # legacy prompt_content_sha256 的 payload 字段（权威 recipe，
 # pipeline/prompt_control/core.py::prompt_content_sha256；不含 revision_id）。
 _LEGACY_CONTENT_HASH_PAYLOAD_FIELDS = (
@@ -198,6 +211,90 @@ def _check_legacy_data_source(
     return errors
 
 
+def _check_pinned_manifest_provenance(
+    root: Path, mapping_item: Mapping[str, object]
+) -> list[str]:
+    """已钉扎 legacy manifest provenance 门（只读，fail-closed）。
+
+    仅对带钉扎证据的映射项启用：M0 source-inventory pinned_by 事实钉扎
+    的是活动 data release（映射 target_status ``active``），非活动
+    release（``superseded``）pinned_by: ~，无钉扎 —— 门对无钉扎映射项
+    不适用（不阻塞，也不伪造 verified/passed）。门对带钉扎映射项：
+      1. 读取旧数据活动指针 ``finetune/active_data_release.json``；
+      2. 指针 ``release_id`` 必须精确等于该映射项的 ``source_legacy_id``
+         （钉扎未映射 sibling 或错误源 = 不符）；
+      3. 按文件字节独立复算
+         ``workspace/data/releases/<source_legacy_id>/manifest/
+         release_manifest.json`` 的 SHA-256（不 import legacy
+         pipeline / finetune 代码，独立镜像自算；不用 canonical JSON、
+         目录哈希或 payload 哈希，不回读 manifest 声明值自比）；
+      4. 与指针 ``expected_manifest_sha256`` 比对。
+
+    指针缺失、非 JSON、顶层非 mapping、必需字段缺失、release_id 不符或
+    哈希不匹配均返回错误（fail-closed）。全程只读，不修复指针、不重建
+    manifest、不就地修改传入映射项。
+    """
+    if mapping_item.get("target_status") != "active":
+        return []
+    source_id = mapping_item.get("source_legacy_id")
+    if not isinstance(source_id, str) or not source_id:
+        return []
+
+    pointer_file = root / _LEGACY_DATA_ACTIVE_POINTER
+    if not pointer_file.is_file():
+        return [
+            "旧数据活动指针缺失："
+            f"{_LEGACY_DATA_ACTIVE_POINTER}（已钉扎活动 release 的 "
+            "manifest provenance 无法核验，fail-closed）"
+        ]
+    try:
+        pointer = json.loads(pointer_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [
+            f"旧数据活动指针 {_LEGACY_DATA_ACTIVE_POINTER} 非 JSON / "
+            f"无法解析（manifest provenance 无法核验，fail-closed）: {exc}"
+        ]
+    if not isinstance(pointer, Mapping):
+        return [
+            "旧数据活动指针顶层必须是 mapping（manifest provenance "
+            "无法核验，fail-closed）"
+        ]
+    missing = [
+        name for name in _LEGACY_DATA_POINTER_REQUIRED_FIELDS if name not in pointer
+    ]
+    if missing:
+        return [
+            "旧数据活动指针缺少必需字段: "
+            + ", ".join(missing)
+            + "（manifest provenance 无法核验，fail-closed）"
+        ]
+    pointer_release_id = pointer["release_id"]
+    if pointer_release_id != source_id:
+        return [
+            "旧数据活动指针未钉扎该映射项声明的源："
+            f"指针 release_id={pointer_release_id!r} 与映射项 "
+            f"source_legacy_id={source_id!r} 不符（fail-closed）"
+        ]
+    expected = pointer["expected_manifest_sha256"]
+    manifest_file = root / _LEGACY_DATA_RELEASES / source_id / _LEGACY_DATA_MANIFEST
+    if not manifest_file.is_file():
+        # legacy 源必需文件缺失由 _check_legacy_data_source 归因，此处不再重复。
+        return []
+    try:
+        recomputed = hashlib.sha256(manifest_file.read_bytes()).hexdigest()
+    except OSError as exc:
+        return [
+            f"钉扎的 legacy release manifest 文件字节无法读取（fail-closed）: {exc}"
+        ]
+    if recomputed != expected:
+        return [
+            "已钉扎 legacy manifest provenance 不一致：按 manifest 文件字节"
+            f"复算 SHA-256={recomputed} 与指针 expected_manifest_sha256 "
+            f"{expected} 不匹配（fail-closed）"
+        ]
+    return []
+
+
 def precheck_data_migration(
     root: Path, mapping_items: Any
 ) -> DataMigrationPrecheckReport:
@@ -213,7 +310,16 @@ def precheck_data_migration(
          声明的 payload 文件齐全（只验存在性，不做内容 provenance 门）；
       5. 目标无冲突（``<root>/<target_path>`` 已存在、``records/`` 下或
          data 正式对象根（target_path 的对象目录层，如
-         ``data/releases/``）下同身份条目存在均 blocked）。
+         ``data/releases/``）下同身份条目存在均 blocked）；
+      6. 已钉扎 manifest provenance 门（T13）：target_status ``active``
+         的映射项（M0 pinned_by 钉扎）经旧数据活动指针
+         ``finetune/active_data_release.json`` 核验 —— 指针
+         ``release_id`` 必须等于该映射项 ``source_legacy_id``，且
+         ``workspace/data/releases/<source_legacy_id>/manifest/
+         release_manifest.json`` 文件字节 SHA-256 必须与指针
+         ``expected_manifest_sha256`` 匹配；指针缺失 / 非 JSON / 字段
+         缺失 / release_id 不符 / 哈希不匹配即该对象 blocked；无钉扎
+         映射项不适用本门（不阻塞、不伪造 verified）。
 
     整批 ``status`` 为 ready 当且仅当全部对象报告 ready。全程零写入：
     不创建 ``<root>/data``、working、release_staging、records 或任何目标
@@ -261,6 +367,7 @@ def precheck_data_migration(
             errors.extend(_check_legacy_data_source(root, mapping_item))
         errors.extend(_check_target_conflict(root, mapping_item))
         errors.extend(_check_data_root_conflict(root, mapping_item))
+        errors.extend(_check_pinned_manifest_provenance(root, mapping_item))
 
         object_reports.append(
             DataMigrationObjectPrecheckReport(
