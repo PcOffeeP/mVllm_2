@@ -33,6 +33,7 @@ data_mapping:
       candidate_target_identity: "data-v4.1-r2"    # user_confirmed
       target_path: "data/releases/data-v4.1-r2/release.yaml"
       status: user_confirmed          # 用户 2026-09-07 确认：较新版本 → r2
+      target_status: active            # D1 用户确认：data-v4.1-r2 为 active
       confirmed_by_user_date: "2026-09-07"
       conflict_check: "本机 <root>/data 不存在 → 当前无目标冲突；目标机器根下 data/ 需在迁移前复验"
       preserve_state:
@@ -48,6 +49,8 @@ data_mapping:
       candidate_target_identity: "data-v4.1-r1"    # user_confirmed
       target_path: "data/releases/data-v4.1-r1/release.yaml"
       status: user_confirmed          # 用户 2026-09-07 确认：较旧版本 → r1
+      target_status: superseded        # D1 用户确认：data-v4.1-r1 为 superseded
+      replacement: "data-v4.1-r2"      # D1 用户确认：r1 的替代对象为 r2
       confirmed_by_user_date: "2026-09-07"
       conflict_check: "同上：本机 <root>/data 不存在；目标机器根下复验"
       preserve_state:
@@ -57,6 +60,27 @@ data_mapping:
   open_user_questions: []
   resolution_notes:
     - "Q1 (2026-09-07 用户确认): ecb5aeb9657c 为较新 Phase2 release → data-v4.1-r2；760050fad303 为较旧 base release → data-v4.1-r1。"
+    - "D1 (2026-09-07 用户确认，推荐方案 A): data-v4.1-r1 状态为 superseded，replacement=data-v4.1-r2；data-v4.1-r2 状态为 active。"
+
+# ---------------------------------------------------------------
+# D2. 多对象转换中断恢复语义（用户确认的目标语义，非已完成实现）
+# ---------------------------------------------------------------
+interruption_recovery:
+  status: user_confirmed          # 用户 2026-09-07 确认的目标语义
+  confirmed_by_user_date: "2026-09-07"
+  scope: "多对象转换（data release 等）中断后重跑同一转换时的恢复行为"
+  semantics:
+    - "预检阶段全量检查：任一对象缺失/冲突/身份不合格即整体拒绝，零写入。"
+    - "写入阶段按对象独立写入。"
+    - "每个对象写入时生成可核实凭证。"
+    - "中断后重跑同一次转换时，凭证匹配的已完成对象跳过，未完成对象继续。"
+    - "凭证不匹配或无法核实时停止，不覆盖、不自动改号。"
+  notes: "以上为已确认的目标语义，不代表当前代码已实现；实现状态需另行核实。"
+  not_confirmed:
+    - "训练机 payload 完整性（未验证）"
+    - "Q4 数据根（训练机版本化 data 根未落地）"
+    - "I/O 预算"
+    - "凭证的具体格式/存储位置（未裁决）"
 
 # ---------------------------------------------------------------
 # B. Prompt 迁移（M1 范围：一版 Prompt）
