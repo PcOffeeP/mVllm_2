@@ -1,0 +1,171 @@
+# M0 源对象清单（source inventory）
+# 任务：2026-09-07-readable-version-control-migration · M0
+# 目的：为 M1 迁移转换准备"可人工核对"的源对象证据草稿。
+#
+# 证据分级约定：
+# - verified_local      : 本机文件直接读取核实。
+# - training_observed   : 训练机只读调查观察到（见 docs/results/version-control-migration-20260907.md），
+#                         但本机无该物理文件，完整性与内容未在本机复验。
+# - not_verified        : 存在性/完整性当前无法由本机或已有只读证据确认。
+# - unknown / gap       : 已知缺口或缺失位置，需进一步核对。
+#
+# 本文件只做清点，不定义迁移目标；目标映射见 object-mapping.yaml。
+# 不得把"文件存在"当成完整性或加载通过。
+
+inventory_schema: tensile-migration/source-inventory/v1
+task_id: "2026-09-07-readable-version-control-migration"
+baseline_commit_observed: "1b0d5823"   # 基础设施承接点（plan 声明）
+local_main_tip: "cc59312c"            # 2026-09-07 刷新后的本地 main（调查记录）
+codeup_main: "f1b7d8a3"               # Codeup main（比本地落后，非分叉）
+data_releases:
+  - source_id: "v4.1.0-ecb5aeb9657c"
+    evidence_level: training_observed
+    legacy_source_path: "workspace/data/releases/v4.1.0-ecb5aeb9657c"   # 相对项目根（训练机）
+    local_path: "workspace/data"                                        # 本机不存在（NOT PRESENT，见备注）
+    pinned_by: "finetune/active_data_release.json"                      # verified_local
+    pin_facts:
+      - "release_dir: workspace/data/releases/v4.1.0-ecb5aeb9657c"
+      - "manifest: workspace/data/releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json"
+      - "expected_contract_hash: 47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
+      - "expected_manifest_sha256: ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b"
+    observed_activity: "训练机活动指针与本机一致选择此 release（调查记录）"
+    notes: "活动数据 release。训练机发现 manifest；payload 全量完整性未验证（仅有限深度目录检查）。"
+  - source_id: "v4.1.0-760050fad303"
+    evidence_level: training_observed
+    legacy_source_path: "workspace/data/releases/v4.1.0-760050fad303"    # 相对项目根（训练机）
+    local_path: "workspace/data"                                         # 本机不存在
+    pinned_by: ~
+    pin_facts: []
+    notes: "与 ecb5aeb 并存于训练机 releases 目录，发现 manifest；非活动指针，payload 完整性未验证。"
+pipeline_prompt_registry:
+  - source_id: "v4.1-concise-evidence-json-v2"
+    evidence_level: verified_local
+    source_path: "pipeline/prompt_registry/v4.1-concise-evidence-json-v2/{manifest.json,prompt.yaml}"
+    active: true
+    active_declared_in: "pipeline/prompt_control/active_prompt.yaml"     # verified_local
+    active_revision_id: "v4.1-concise-evidence-json-v2"
+    manifest_facts:
+      - "protocol_id: tensile-vlm/v4.1"
+      - "prompt_content_sha256: 0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db"
+      - "publishing_code_commit: 98f0476d50138a7577e65426338a44a1baaec040"
+    notes: "当前活动 Prompt。训练机 active_prompt.yaml 亦声明此 revision（调查记录）。"
+  - source_id: "v4.1-concise-evidence-json-v1"
+    evidence_level: verified_local
+    source_path: "pipeline/prompt_registry/v4.1-concise-evidence-json-v1/{manifest.json,prompt.yaml}"
+    active: false
+    active_declared_in: ~
+    manifest_facts:
+      - "protocol_id: tensile-vlm/v4.1"
+      - "prompt_content_sha256: 7fbb55d59548af56a486de501d187a2694e81257dd1936bbf13c85fdef6c6d6d"
+      - "publishing_code_commit: 4c56f7c958b830e43e301739aa4d71b2eb1c1f99"
+    notes: "历史 Prompt。仅 registry 存在，不表示它曾作为某训练的实际冻结输入。"
+  - source_id: "v4.1-fixed-full-fields-initial-v1"
+    evidence_level: verified_local
+    source_path: "pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/{manifest.json,prompt.yaml}"
+    active: false
+    active_declared_in: ~
+    manifest_facts:
+      - "protocol_id: tensile-vlm/v4.1"
+      - "prompt_content_sha256: 2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3"
+      - "publishing_code_commit: 4999ae0191c1473642163ed421649b29805beddf"
+    notes: "历史 Prompt。"
+model_registry:
+  - source_id: "v4.1-agent-pipeline-fold0-r1"
+    evidence_level: verified_local
+    current_pointer: "pipeline/model_registry/current.json"              # verified_local
+    release_manifest: "pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json"
+    manifest_facts:
+      - "protocol_version: v4.1"
+      - "contract: tensile-vlm/v4.1, sha256 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab"
+      - "origin.release_id: v4.1.0-ecb5aeb9657c"
+      - "origin: fold0, seed3407, coverage-first, optimizer_steps 1125"
+      - "lifecycle_status: current"
+      - "production_approved: false"
+      - "limitations: [single_fold_only, not_full_data_final, not_production_approved, quality_gates_not_passed]"
+      - "artifacts.adapter.managed_path: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter"
+      - "artifacts.merged.managed_path: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged"
+      - "artifacts.merged.aggregate_sha256: 1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c"
+    notes: "物理权重在训练机（本机 workspace/models 目录不存在）→ 存在不证明加载/质量/服务运行。"
+delivery_components:
+  - source_id: "delivery/model_component.json"
+    evidence_level: verified_local
+    facts:
+      - "model_name: v4.1-agent-pipeline-fold0-r1"
+      - "production_approved: false"
+      - "full_data_final: false"
+      - "quality_status.stage_b/c/d/g all false"
+      - "artifact_gate.passed: true（merged_bf16_present / shards / full_hash_verified / manifest_identity_verified）"
+      - "intermediate_delivery_policy.retraining_authorized: false"
+    notes: "false 不自动等于'已执行失败'；artifact_gate.passed 是既有记录，本机未复跑哈希。"
+  - source_id: "delivery/service_component.json"
+    evidence_level: verified_local
+    facts:
+      - "source_repository_commit: 1c4eda2194c1cc56f107d9bef13ee7a159623692"
+      - "runtime.host: 127.0.0.1; port 8002; production_alias false"
+      - "runtime_gate.passed: true（既有记录；本机未复验）"
+    notes: "记录为 loopback-only。不表示服务进程当前在运行。"
+  - source_id: "pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json"
+    evidence_level: verified_local
+    facts:
+      - "model_version: v4.1-agent-pipeline-fold0-r1"
+      - "base_model_version: MiniCPM-V-4_5+config-sha256.1d6f6e..."
+      - "adapter_version: v4.1-agent-pipeline-fold0-r1+aggregate-sha256.1f75e4..."
+      - "runtime_device: cuda:0; runtime_dtype: bfloat16; max_frames 8"
+    notes: "历史部署清单快照（2026-07-28）。不表示当前服务运行中。"
+base_model:
+  - source_id: "models/minicpm-v-4.5/"
+    evidence_level: verified_local
+    path: "models/minicpm-v-4.5/"
+    facts:
+      - "含 model.safetensors.index.json, config.json 等；base 模型文件清单存在"
+    notes: "存在即基座文件在；不验证模型可加载或推理成功。"
+local_run_evidence:
+  - source_id: "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/tentative_model_selection.json"
+    evidence_level: verified_local
+    facts:
+      - "status: tentative_not_quality_approved"
+      - "release_id: v4.1.0-ecb5aeb9657c; prompt_revision: v4.1-concise-evidence-json-v2"
+      - "best_checkpoint_step: 225; adapter/merged 路径引用 fold0"
+      - "quality_approved: false; production_approved: false; full_development_training_cancelled: true"
+    notes: "计划选型草稿，非质量通过证据。其引用的 fold0/adapter 与 merged 本机不存在。"
+  - source_id: "docs/results/model_evidence/ 下五个模型证据目录"
+    evidence_level: verified_local
+    dirs:
+      - "v4.1-prompt-minimal-v1-seed3411"
+      - "v4.1-phase2-source-aware-v1-seed3407"
+      - "v4.1-phase2-source-aware-v1-seed3411"
+      - "v4.1-phase2-coverage-first-v1-seed3411"
+      - "v4.1-phase2-coverage-fallback-v1-seed3413"
+    notes: "索引 README 称'仅一个试点'，但目录实际存在 5 个 → 待确认哪些是真实归档、哪些需迁移。目录存在不证明归档/恢复链完整。"
+training_machine_run_evidence:   # 以下来自训练机只读调查记录，均 training_observed
+  weight_runs:
+    items:
+      - run_id: "v4.1-phase2-source-aware-v1-seed3407"
+        observed: "fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"
+      - run_id: "v4.1-phase2-source-aware-v1-seed3411"
+        observed: "fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"
+      - run_id: "v4.1-phase2-coverage-first-v1-seed3411"
+        observed: "fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"
+      - run_id: "v4.1-phase2-coverage-fallback-v1-seed3413"
+        observed: "fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"
+      - run_id: "v4.1-prompt-minimal-v1-seed3411"
+        observed: "run 根下有 adapter 与 10 个 merged 分片，有归档目录；结构与 fold0 子目录模式不同"
+      - run_id: "v4.1-phase2-coverage-first-v1-seed3407"
+        observed: "fold0 有 adapter，保留 checkpoint-250/1000/1050/1100/1125；merged 是指向发布模型的软链接"
+    notes: "run 目录存在不等于完成训练；merge 软链接的来源链须单独核对。全部未验证权重完整性与哈希。"
+  prepare_only_runs:
+    items:
+      - run_id: "v4.1-prompt-concise-v1/seed3411"
+        observed: "发现 input 资料；未发现权重"
+        migration_meaning: "按准备资料调查，不能导入为 completed 训练，也不能保留为模型。"
+      - run_id: "v4.1-prompt-concise-v2/seed3411"
+        observed: "发现 input 资料；未发现权重"
+        migration_meaning: "同上。"
+  known_gap:
+    items:
+      - expected_run: "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411"
+        observed: "训练机预期路径不存在"
+        meaning: "不能断言模型在整台训练机上不存在；需沿历史报告定位。"
+versioning_store_state:
+  - note: "新体系 MLflow store 本机位于 workspace/mlflow/mlflow.db（存在）。本机未打开 store，因此其内已注册 model/train/eval 记录当前为 not_verified。"
+    data_root_note: "新体系数据根为 <root>/data（本机不存在）；prompt 正式存储根为 <root>/records/prompts（本机不存在）；evaluations 根为 <root>/evaluations（本机不存在）。"

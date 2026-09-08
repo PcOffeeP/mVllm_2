@@ -1,0 +1,123 @@
+# M0 对象映射候选（object mapping）
+# 任务：2026-09-07-readable-version-control-migration · M0
+#
+# 重要边界（来自 Plan 与 AGENTS.md）：
+# - 迁移只针对"两个数据版本 + 一版 Prompt"；模型/训练/评测为历史资料整理（history-summary），
+#   不在本映射中分配正式目标身份，也不伪造 completed 记录。
+# - 所有 target_identity 均为"候选"，必须经用户逐项人工核对后才能写入正式路径；
+#   未经确认不得写入，冲突不自动改号，缺失源不补造。
+# - 新体系身份统一为 <kind>-v<协议>-r<N>，禁止 LATEST / 短哈希 / 隐式最新。
+# - legacy 的 <协议>-<内容哈希> data 版本、<协议>-<描述>-r<N> prompt 版本均为旧哈希身份，
+#   仅作源对象记录，不进入新体系输出。
+
+mapping_schema: tensile-migration/object-mapping/v1
+task_id: "2026-09-07-readable-version-control-migration"
+status_field_legend:
+  - "verified_local        = 本机文件直接核实的事实"
+  - "pending_user_check    = 候选目标/归属需用户确认，未生效，禁止写入"
+  - "user_confirmed        = 用户已逐项确认的归属/目标身份，可作 M1 固定验收输入（不代表 payload/完整性已验证）"
+  - "not_verified          = 完整性/存在性未确认"
+  - "unknown / gap         = 已知缺失或需进一步定位"
+
+# ---------------------------------------------------------------
+# A. 数据 release 转换（M1 范围：两个数据版本）
+# ---------------------------------------------------------------
+data_mapping:
+  scope_note: "源在训练机 workspace/data/releases（legacy 哈希名）；目标在新体系 <root>/data/releases/<full-id>（release.yaml）。"
+  items:
+    - source_legacy_id: "v4.1.0-ecb5aeb9657c"
+      role: "当前活动数据 release（活动指针）"
+      source_verified: verified_local        # 活动指针事实已核实（active_data_release.json）
+      source_inventory: "workspace/data/releases/v4.1.0-ecb5aeb9657c"  # 训练机观察
+      source_payload_complete: training_observed   # manifest 存在，payload 全量未验证
+      candidate_target_identity: "data-v4.1-r2"    # user_confirmed
+      target_path: "data/releases/data-v4.1-r2/release.yaml"
+      status: user_confirmed          # 用户 2026-09-07 确认：较新版本 → r2
+      confirmed_by_user_date: "2026-09-07"
+      conflict_check: "本机 <root>/data 不存在 → 当前无目标冲突；目标机器根下 data/ 需在迁移前复验"
+      preserve_state:
+        - "release.yaml 的 status / purpose / training_allowed / splits / source_batches"
+        - "payload 封存（去写位）保持不变"
+        - "source_batches 记录原始批次，不回填伪造"
+      notes: "活动 release。已确认 → data-v4.1-r2（较新的 Phase2 release）。"
+    - source_legacy_id: "v4.1.0-760050fad303"
+      role: "历史并存的非活动数据 release"
+      source_verified: training_observed
+      source_inventory: "workspace/data/releases/v4.1.0-760050fad303"
+      source_payload_complete: training_observed
+      candidate_target_identity: "data-v4.1-r1"    # user_confirmed
+      target_path: "data/releases/data-v4.1-r1/release.yaml"
+      status: user_confirmed          # 用户 2026-09-07 确认：较旧版本 → r1
+      confirmed_by_user_date: "2026-09-07"
+      conflict_check: "同上：本机 <root>/data 不存在；目标机器根下复验"
+      preserve_state:
+        - "release.yaml 状态字段"
+        - "payload 封存只读"
+      notes: "非活动。已确认 → data-v4.1-r1（较旧的上一轮基础 release）。"
+  open_user_questions: []
+  resolution_notes:
+    - "Q1 (2026-09-07 用户确认): ecb5aeb9657c 为较新 Phase2 release → data-v4.1-r2；760050fad303 为较旧 base release → data-v4.1-r1。"
+
+# ---------------------------------------------------------------
+# B. Prompt 迁移（M1 范围：一版 Prompt）
+# ---------------------------------------------------------------
+prompt_mapping:
+  scope_note: "源在 pipeline/prompt_registry/<旧名>；目标在新体系 <root>/records/prompts/<full-id>.yaml。M1 只转换一版 Prompt。"
+  items:
+    - source_legacy_id: "v4.1-concise-evidence-json-v2"
+      role: "当前活动 Prompt（活动指针，本地与训练机一致）"
+      source_verified: verified_local
+      candidate_target_identity: "prompt-v4.1-r1"     # user_confirmed
+      target_path: "records/prompts/prompt-v4.1-r1.yaml"
+      status: user_confirmed           # 用户 2026-09-07 确认：当前活动 Prompt → prompt-v4.1-r1
+      confirmed_by_user_date: "2026-09-07"
+      conflict_check: "本机 <root>/records 不存在 → 当前无目标冲突"
+      preserve_state:
+        - "system_prompt / user_prompt / output_fields 逐字段一致"
+        - "源 manifest 中 prompt_content_sha256 / publishing_code_commit 记录进 history-summary"
+      notes: "最可能为 M1 迁移的'一版 Prompt'，但需用户确认（不能由活动指针推断历史训练输入）。"
+  registry_versions_not_migrating:
+    - note: "其余两版（concise-v1、fixed-full-fields-initial-v1）用户确认仅进入 history-summary，不迁移为新的正式 Prompt 身份；历史引用不能替换为当前 Prompt。"
+  open_user_questions: []
+  resolution_notes:
+    - "Q2 (2026-09-07 用户确认): 当前活动 v4.1-concise-evidence-json-v2 → prompt-v4.1-r1；历史 Prompt 仅进入 history-summary。"
+
+# ---------------------------------------------------------------
+# C. 模型 / 训练 / 评测 —— 历史整理范围，非转换目标
+# ---------------------------------------------------------------
+model_train_eval_history:
+  scope_note: "这些对象不分配新的 model/train/eval 正式身份，仅提取核心事实写入 history-summary。不得把历史 summary 转成 passed，不为复用导出器伪造 completed Run。"
+  entries:
+    - source_id: "v4.1-agent-pipeline-fold0-r1"
+      verified: verified_local
+      inventory_ref: "source-inventory.yaml -> model_registry"
+      history_only: true
+      target_identity: "none (history-only)"
+      status: user_confirmed            # 用户 2026-09-07 确认：仅 history-summary，不分配新身份
+      confirmed_by_user_date: "2026-09-07"
+      notes: "既有 registry release manifest。production_approved=false；quality quality_gates_not_passed。"
+    - source_id: "六个有权重历史 run（见 source-inventory training_machine_run_evidence）"
+      verified: training_observed
+      history_only: true
+      target_identity: "none (history-only)"
+      history_decision: user_confirmed  # 用户 2026-09-07 确认：仅 history-summary，不分配新身份
+      confirmed_by_user_date: "2026-09-07"
+      status: not_verified              # 权重完整性、合并软链接来源链仍未验证（不等于用户确认通过）
+      notes: "不能当作 completed 训练；prompt-concise-v1/v2 仅准备资料，不得导入为模型。"
+    - source_id: "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411"
+      verified: verified_local（tentative_model_selection.json）
+      history_only: true
+      target_identity: "none"
+      status: user_confirmed            # 用户 2026-09-07 确认：仅 history-summary，不分配新身份
+      confirmed_by_user_date: "2026-09-07"
+      notes: "训练机对应 run 路径缺失（known gap）。草稿 selection 非质量通过证据，仍非已验证通过。"
+
+# ---------------------------------------------------------------
+# D. 全局冲突与写入前检查（所有 target）
+# ---------------------------------------------------------------
+global_pre_write_checks:
+  - "目标 <root>/data、<root>/records、<root>/evaluations 在正式写入前必须逐个复验不存在同名正式对象（本机当前均不存在）。"
+  - "目标机器（训练机）的版本化 data 根尚未落地（/data/mVllm_2 不存在，见调查记录），迁移写入位置需在 M2 前明确，不由本任务决定。"
+  - "不覆盖 legacy 正式产物：历史 manifest、active_data_release.json、model_registry/current.json、旧模型 release manifest 作为历史证据保留。"
+  - "所有 pending_user_check 目标在用户确认前一律 not_verified，禁止写入或标记 verified/passed。"
+  - "Q4（训练机数据根与 I/O 预算）用户明确暂不裁决，后续调查后再定；本文件保持 pending/not_verified，未写成已确认。"
