@@ -69,6 +69,27 @@ ready 的拒绝通道必须按失败类别可辨）：
    不是对方实例），ready 转换与 target_path 被占用的既有行为不回归
    （T6 selector 复跑钉定）。
 
+T8 behavior（本切片，主 Agent 选定，legacy prompt 内容哈希保真门，
+先写测试）—— Prompt 只读预检必须增加 legacy 源内容 provenance
+一致性门：
+1. 读取 legacy 源 ``pipeline/prompt_registry/<source_legacy_id>/prompt.yaml``；
+2. 按权威 recipe 复算 ``prompt_content_sha256``：payload 字段为
+   schema_version / protocol_id / system_prompt / user_prompt /
+   output_fields / label_pools（不含 revision_id），经
+   ``json.dumps(..., ensure_ascii=False, sort_keys=True,
+   separators=(",", ":"), allow_nan=False).encode("utf-8")`` canonical
+   化后取 sha256（权威定义 ``pipeline/prompt_control/core.py::
+   prompt_content_sha256``，已对三份真实 manifest：
+   v4.1-concise-evidence-json-v1 / v2、v4.1-fixed-full-fields-initial-v1
+   离线复现匹配）；
+3. 与 legacy ``manifest.json`` 声明的 ``prompt_content_sha256`` 比对；
+4. 不匹配 -> ``blocked`` + 非空 reasons + 零写入（fail-closed）；
+5. 匹配 -> 保持 ``ready``（T1 正向行为不回归）；
+6. 该哈希是 legacy 源 provenance 校验，不要求写入迁移目标（T6 目标
+   键集断言继续钉定）；``prompt_yaml_sha256``（原始 prompt.yaml 文件
+   字节哈希）是另一套哈希，不得混用或互相替代；
+7. 既有三字段迁移行为（T6）不变。
+
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
     def precheck_prompt_migration(root: Path, mapping_item: Mapping[str, object]) -> object
@@ -82,8 +103,14 @@ ready 的拒绝通道必须按失败类别可辨）：
         #   确认映射 + 源必需文件齐全 + 目标无冲突 -> status == "ready"。
         # 预检全程零写入：不创建 records/、records/prompts/、staging 或任何目标条目，
         #   不改 legacy 源，不写任何报告/缓存文件（报告只经返回值给出）。
-        # 本切片不要求预检复算 legacy prompt_content_sha256：
-        #   内容保真校验（含哈希 recipe 定义）属于真实转换切片。
+        # T8 起（本文件内容哈希保真切片），预检还必须增加 legacy 源内容
+        #   provenance 一致性门：按权威 recipe（pipeline/prompt_control/
+        #   core.py::prompt_content_sha256；六字段 canonical JSON payload，
+        #   不含 revision_id）从 legacy prompt.yaml 复算
+        #   prompt_content_sha256，与 manifest 声明值比对——不匹配 ->
+        #   blocked + 非空 reasons（fail-closed），匹配 -> 保持 ready；
+        #   prompt_yaml_sha256（原始文件字节哈希）是另一套哈希，不得混用；
+        #   该门不要求把哈希写入迁移目标。
         # 预检不得把 pending/unknown 当 confirmed：该拒绝行为属于配套反向用例切片，
         #   本测试只喂入 status == "user_confirmed" 的映射项，不覆盖拒绝路径。
 
@@ -119,11 +146,15 @@ T6（真实转换切片）同口径：migration 模块已存在但 migrate_promp
 范围边界：本文件只覆盖 Prompt 迁移 —— T1 ready 正向最小切面、
 T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同身份非
 标准文件形式回归、T5 身份契约收紧、T6 真实转换最小切片（创建
-正式 prompt-v4.1-r1 + 同身份重转换不覆盖），以及 T7 真实转换异常
-分流（映射/身份/源文件域错误经 PromptMigrationBlocked、records/
-同身份占用经 PromptConflict，两路零写入）；T6/T7 之外不实现/不要求
-data 迁移、history-summary、CLI、恢复逻辑、内容哈希复算（冲突场景
-只断言 blocked 与零写入，不断言任何恢复行为）。T2 身份场景只绑定
+正式 prompt-v4.1-r1 + 同身份重转换不覆盖）、T7 真实转换异常分流
+（映射/身份/源文件域错误经 PromptMigrationBlocked、records/ 同
+身份占用经 PromptConflict，两路零写入），以及 T8 legacy prompt
+内容哈希保真门（precheck 按权威 recipe 复算 prompt_content_sha256
+与 manifest 声明值比对：匹配保持 ready、被篡改 blocked + 非空
+reasons + 零写入；该哈希是 legacy 源 provenance 校验，不写入迁移
+目标，T6 三字段迁移行为不变）；T8 之外不实现/不要求 data 迁移、
+history-summary、CLI、恢复逻辑（冲突场景只断言 blocked 与零写入，
+不断言任何恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
 后续身份收紧切片。T5（本文件身份收紧切片，reviewer 对 2a927d14
@@ -172,35 +203,117 @@ CONFIRMED_PROMPT_TARGET_ID = "prompt-v4.1-r1"
 HISTORY_SIBLING_SOURCE_ID = "v4.1-concise-evidence-json-v1"
 
 
-def _legacy_prompt_yaml() -> bytes:
-    """合成但 schema 对齐 M0 preserve_state 的 legacy prompt.yaml 字节。
+def _prompt_content_sha256_of_yaml(prompt_yaml: bytes) -> str:
+    """按权威 recipe 从 prompt.yaml 字节复算 legacy prompt_content_sha256。
 
-    字段名取 object-mapping.yaml preserve_state（system_prompt /
-    user_prompt / output_fields 逐字段一致）；output_fields 取
-    finetune/README.md 记载的 v4.1 真实四字段。
+    权威 recipe（pipeline/prompt_control/core.py::prompt_content_sha256，
+    即 _prompt_identity_payload + _canonical_bytes 的组合）：payload 字段
+    为 schema_version / protocol_id / system_prompt / user_prompt /
+    output_fields / label_pools（不含 revision_id），经
+    json.dumps(..., ensure_ascii=False, sort_keys=True,
+    separators=(",", ":"), allow_nan=False).encode("utf-8") canonical
+    化后取 sha256。该 recipe 已对三份真实 manifest
+    （v4.1-concise-evidence-json-v1 / v2、v4.1-fixed-full-fields-initial-v1）
+    离线复现匹配。prompt_yaml_sha256（prompt.yaml 原始文件字节的
+    sha256）是另一套哈希，不得与本值混用或互相替代。本 fixture 独立
+    镜像 recipe 而非 import production，使 production recipe 漂移会先
+    在 fixture 前置事实上暴露（复算值 != manifest 声明值）。
+    """
+    prompt = yaml.safe_load(prompt_yaml)
+    payload = {
+        "schema_version": prompt["schema_version"],
+        "protocol_id": prompt["protocol_id"],
+        "system_prompt": prompt["system_prompt"],
+        "user_prompt": prompt["user_prompt"],
+        "output_fields": prompt["output_fields"],
+        "label_pools": prompt["label_pools"],
+    }
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _legacy_prompt_yaml_full(source_id: str) -> bytes:
+    """合成但结构镜像真实 legacy prompt.yaml / active_prompt.yaml 的完整字节。
+
+    真实文件（pipeline/prompt_registry/<id>/prompt.yaml 与
+    pipeline/prompt_control/active_prompt.yaml，M0 verified_local）顶层
+    字段为 schema_version / protocol_id / revision_id / system_prompt /
+    user_prompt / output_fields / label_pools；registry prompt.yaml 与
+    活动指针文件逐字节相同（manifest source_sha256 == prompt_yaml_sha256）。
+    本 fixture 字段值合成，但结构与上述事实字段一致；output_fields 取
+    finetune/README.md 记载的 v4.1 真实四字段；system_prompt 内嵌源
+    标记，使"读错源"（扫全 registry、取历史 sibling）的实现无法通过
+    结构化相等断言（已确认源与 sibling 内容必须不同）。T8 起（fixture
+    recipe 修正）本 builder 是全部 legacy registry fixture 的唯一
+    prompt.yaml 来源：权威 recipe 复算需要 schema_version / label_pools
+    等全部 payload 字段，旧预检 fixture 的三字段极简 prompt.yaml
+    （system_prompt / user_prompt / output_fields）无法支撑内容哈希门。
     """
     return (
-        "system_prompt: 你是判定材料拉伸断裂行为的视觉模型。\n"
+        "schema_version: tensile-prompt-control/v1\n"
+        "protocol_id: tensile-vlm/v4.1\n"
+        f"revision_id: {source_id}\n"
+        "\n"
+        f"system_prompt: 你是判定材料拉伸断裂行为的视觉模型。"
+        f"（合成 fixture，源 {source_id}；仅依据当前视频的可见证据判断）\n"
         "user_prompt: 请逐字段输出 JSON 判定结果。\n"
         "output_fields:\n"
         "  - clip_state\n"
         "  - fracture_mechanism\n"
         "  - fracture_site\n"
         "  - special_case\n"
+        "\n"
+        "label_pools:\n"
+        "  clip_state:\n"
+        "    - 未断裂\n"
+        "    - 临界未断裂\n"
+        "    - 发生断裂\n"
+        "    - 已断裂\n"
+        "    - 无法判断\n"
+        "  fracture_mechanism:\n"
+        "    - 韧性断裂\n"
+        "    - 脆性断裂\n"
+        "    - 界面脱粘\n"
+        "    - 爆炸性断裂\n"
+        "    - 半脆半韧断裂\n"
+        "    - null\n"
+        "  fracture_site:\n"
+        "    - inside_gauge\n"
+        "    - outside_gauge_non_root\n"
+        "    - grip_root\n"
+        "    - null\n"
+        "  special_case:\n"
+        "    - 未夹紧\n"
+        "    - 视频异常\n"
+        "    - null\n"
     ).encode("utf-8")
 
 
-def _write_legacy_prompt_registry(root: Path) -> Path:
-    """在模拟仓库根下按 M0 证据布局构建 legacy Prompt registry。
+def _write_legacy_registry_entries(root: Path) -> bytes:
+    """在模拟仓库根下按 M0 证据布局写入 legacy Prompt registry 两个条目。
 
     镜像 source-inventory.yaml pipeline_prompt_registry：每个
-    ``<source_id>/`` 下恰有 manifest.json 与 prompt.yaml。
-    manifest 字段名与事实字段对齐 source-inventory manifest_facts；
-    prompt_content_sha256 按 fixture 自身 prompt.yaml 字节计算以保持自洽
-    （真实值见 M0 证据；本切片不要求实现复算该哈希）。
+    ``<source_id>/`` 下恰有 manifest.json 与 prompt.yaml（已确认源 +
+    历史 sibling，prompt.yaml 内容逐源不同）。manifest 字段名与事实
+    字段对齐 source-inventory manifest_facts；prompt_content_sha256
+    按权威 recipe（_prompt_content_sha256_of_yaml，权威定义
+    pipeline/prompt_control/core.py）从该条目自身 prompt.yaml 复算，
+    保持源内自洽（真实声明值见 M0 证据 manifest_facts；fixture 字段值
+    合成，声明值随合成内容）。fixture 修正说明（至 fdb34d12 的旧
+    实现）：旧 fixture 曾把 prompt_content_sha256 写成 prompt.yaml
+    全文件字节 sha256——那是 prompt_yaml_sha256 口径，不是内容哈希；
+    T8 门一旦落地，该错值会让全部 ready 用例被误 blocked，故先于新
+    测试修正。
+
+    返回已确认源 prompt.yaml 的字节。
     """
     registry = root / "pipeline" / "prompt_registry"
-    prompt_bytes = _legacy_prompt_yaml()
     source_commits = {
         CONFIRMED_PROMPT_SOURCE_ID: "98f0476d50138a7577e65426338a44a1baaec040",
         HISTORY_SIBLING_SOURCE_ID: "4c56f7c958b830e43e301739aa4d71b2eb1c1f99",
@@ -208,17 +321,30 @@ def _write_legacy_prompt_registry(root: Path) -> Path:
     for source_id, publishing_commit in source_commits.items():
         entry = registry / source_id
         entry.mkdir(parents=True, exist_ok=True)
+        prompt_bytes = _legacy_prompt_yaml_full(source_id)
         (entry / "prompt.yaml").write_bytes(prompt_bytes)
         manifest = {
             "protocol_id": "tensile-vlm/v4.1",
-            "prompt_content_sha256": hashlib.sha256(prompt_bytes).hexdigest(),
+            "prompt_content_sha256": _prompt_content_sha256_of_yaml(prompt_bytes),
             "publishing_code_commit": publishing_commit,
         }
         (entry / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-    return registry / CONFIRMED_PROMPT_SOURCE_ID
+    return (registry / CONFIRMED_PROMPT_SOURCE_ID / "prompt.yaml").read_bytes()
+
+
+def _write_legacy_prompt_registry(root: Path) -> Path:
+    """构建 legacy Prompt registry fixture，返回已确认源条目路径。
+
+    registry 两条目经 _write_legacy_registry_entries 写入（manifest 的
+    prompt_content_sha256 按权威 recipe 复算，源内自洽）；供 T1/T2/T3/
+    T4/T5/T7 预检与转换异常用例消费，T8 内容哈希保真门在此 fixture
+    上绑定匹配/篡改两类行为。
+    """
+    _write_legacy_registry_entries(root)
+    return root / "pipeline" / "prompt_registry" / CONFIRMED_PROMPT_SOURCE_ID
 
 
 def _confirmed_prompt_mapping_item() -> dict[str, Any]:
@@ -277,69 +403,16 @@ def _resolve_precheck_entry() -> Any:
     return getattr(module, "precheck_prompt_migration", None)
 
 
-def _legacy_prompt_yaml_full(source_id: str) -> bytes:
-    """合成但结构镜像真实 legacy prompt.yaml / active_prompt.yaml 的完整字节。
-
-    真实文件（pipeline/prompt_registry/<id>/prompt.yaml 与
-    pipeline/prompt_control/active_prompt.yaml，M0 verified_local）顶层
-    字段为 schema_version / protocol_id / revision_id / system_prompt /
-    user_prompt / output_fields / label_pools；registry prompt.yaml 与
-    活动指针文件逐字节相同（manifest source_sha256 == prompt_yaml_sha256）。
-    本 fixture 字段值合成，但结构与上述事实字段一致；output_fields 取
-    finetune/README.md 记载的 v4.1 真实四字段；system_prompt 内嵌源
-    标记，使"读错源"（扫全 registry、取历史 sibling）的实现无法通过
-    结构化相等断言（已确认源与 sibling 内容必须不同）。
-    """
-    return (
-        "schema_version: tensile-prompt-control/v1\n"
-        "protocol_id: tensile-vlm/v4.1\n"
-        f"revision_id: {source_id}\n"
-        "\n"
-        f"system_prompt: 你是判定材料拉伸断裂行为的视觉模型。"
-        f"（合成 fixture，源 {source_id}；仅依据当前视频的可见证据判断）\n"
-        "user_prompt: 请逐字段输出 JSON 判定结果。\n"
-        "output_fields:\n"
-        "  - clip_state\n"
-        "  - fracture_mechanism\n"
-        "  - fracture_site\n"
-        "  - special_case\n"
-        "\n"
-        "label_pools:\n"
-        "  clip_state:\n"
-        "    - 未断裂\n"
-        "    - 临界未断裂\n"
-        "    - 发生断裂\n"
-        "    - 已断裂\n"
-        "    - 无法判断\n"
-        "  fracture_mechanism:\n"
-        "    - 韧性断裂\n"
-        "    - 脆性断裂\n"
-        "    - 界面脱粘\n"
-        "    - 爆炸性断裂\n"
-        "    - 半脆半韧断裂\n"
-        "    - null\n"
-        "  fracture_site:\n"
-        "    - inside_gauge\n"
-        "    - outside_gauge_non_root\n"
-        "    - grip_root\n"
-        "    - null\n"
-        "  special_case:\n"
-        "    - 未夹紧\n"
-        "    - 视频异常\n"
-        "    - null\n"
-    ).encode("utf-8")
-
-
 def _write_full_legacy_prompt_layout(root: Path) -> bytes:
     """构建 T6 真实转换切片的完整 legacy fixture（M0 证据布局）。
 
     包含：
-    - 已确认源 ``pipeline/prompt_registry/v4.1-concise-evidence-json-v2/``
-      下 prompt.yaml 与 manifest.json（manifest 的 prompt_content_sha256
-      按 fixture 自身 prompt.yaml 字节计算，保持自洽，供后续内容哈希
-      保真切片消费）；
-    - 历史 sibling ``v4.1-concise-evidence-json-v1/``（M0：仅进
-      history-summary，不迁移；prompt.yaml 内容与已确认源不同）；
+    - legacy Prompt registry 两条目（已确认源 + 历史 sibling），经
+      _write_legacy_registry_entries 写入：prompt.yaml 为结构镜像真实
+      legacy 源的七字段合成内容（逐源不同），manifest 的
+      prompt_content_sha256 按权威 recipe 从该条目自身 prompt.yaml 复算，
+      保持源内自洽，供 T8 内容哈希保真门消费（sibling M0：仅进
+      history-summary，不迁移，prompt.yaml 内容与已确认源不同）；
     - 旧 Prompt 活动指针 ``pipeline/prompt_control/active_prompt.yaml``
       （与已确认源 prompt.yaml 逐字节相同，镜像 manifest
       source_sha256 == prompt_yaml_sha256 事实，声明 revision_id 为
@@ -349,33 +422,7 @@ def _write_full_legacy_prompt_layout(root: Path) -> bytes:
 
     返回已确认源 prompt.yaml 的字节，供结构化相等断言直接消费。
     """
-    confirmed_bytes = _legacy_prompt_yaml_full(CONFIRMED_PROMPT_SOURCE_ID)
-    sibling_bytes = _legacy_prompt_yaml_full(HISTORY_SIBLING_SOURCE_ID)
-
-    registry = root / "pipeline" / "prompt_registry"
-    source_commits = {
-        CONFIRMED_PROMPT_SOURCE_ID: (
-            confirmed_bytes,
-            "98f0476d50138a7577e65426338a44a1baaec040",
-        ),
-        HISTORY_SIBLING_SOURCE_ID: (
-            sibling_bytes,
-            "4c56f7c958b830e43e301739aa4d71b2eb1c1f99",
-        ),
-    }
-    for source_id, (prompt_bytes, publishing_commit) in source_commits.items():
-        entry = registry / source_id
-        entry.mkdir(parents=True, exist_ok=True)
-        (entry / "prompt.yaml").write_bytes(prompt_bytes)
-        manifest = {
-            "protocol_id": "tensile-vlm/v4.1",
-            "prompt_content_sha256": hashlib.sha256(prompt_bytes).hexdigest(),
-            "publishing_code_commit": publishing_commit,
-        }
-        (entry / "manifest.json").write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+    confirmed_bytes = _write_legacy_registry_entries(root)
 
     active_pointer = root / "pipeline" / "prompt_control" / "active_prompt.yaml"
     active_pointer.parent.mkdir(parents=True, exist_ok=True)
@@ -1412,4 +1459,220 @@ def test_migrate_prompt_records_identity_occupation_raises_prompt_conflict(
     # 改名/覆盖/清理既有占用条目；全树逐字节不变。
     assert not (tmp_path / str(mapping_item["target_path"])).exists()
     assert occupied.read_bytes() == _EXISTING_TARGET_BYTES
+    assert _snapshot_tree(tmp_path) == before
+
+
+# ---------------------------------------------------------------------------
+# T8：legacy prompt 内容哈希保真门 —— precheck 换权威 recipe 复算
+# prompt_content_sha256 并与 manifest 声明值比对（M1a 内容 provenance 切片，
+# 先写失败测试）
+# ---------------------------------------------------------------------------
+
+
+def test_precheck_prompt_content_sha256_match_returns_ready(tmp_path: Path) -> None:
+    r"""prompt_content_sha256 复算匹配 -> 只读预检保持 ready + 零写入。
+
+    T8 behavior（正向，主 Agent 选定）：Prompt 只读预检增加 legacy 源
+    内容 provenance 一致性门 —— 按 pipeline/prompt_control/core.py 的
+    权威 recipe（六字段 canonical JSON payload：schema_version /
+    protocol_id / system_prompt / user_prompt / output_fields /
+    label_pools，不含 revision_id）从 legacy prompt.yaml 复算
+    ``prompt_content_sha256``，与 manifest 声明值一致时必须保持 T1 的
+    ready 行为（内容哈希门不得对合法 legacy 源误伤）。
+
+    fixture 前置事实同时钉死两套哈希口径的可区分性：manifest 声明值
+    按权威 recipe 复算，且 != prompt.yaml 原始文件字节的 sha256
+    （prompt_yaml_sha256 口径），也与历史 sibling 的内容哈希不同。
+    因此任何混用两套哈希、复算读错源、或 canonical 化偏离权威
+    recipe（误含 revision_id、漏 sort_keys / separators、
+    ensure_ascii=True、放开 allow_nan 等）的实现都会在本合法输入上
+    复算出不同值 -> 误 blocked -> 本用例失败。
+
+    捕获的合理但错误实现：
+    - 完全不实现内容哈希门（当前 production）-> 本正向输入与"无门"
+      实现同判 ready，本用例不可区分（预期 PASS，非 RED）；RED 证据
+      由配套 test_precheck_blocks_prompt_content_sha256_mismatch 给出。
+      本用例的价值在门实现后转为 recipe/过严回归钉；
+    - 混用 prompt_yaml_sha256 口径（按文件字节复算内容哈希）->
+      复算值 != 声明值 -> 误 blocked -> status 断言失败；
+    - 复算读错哈希来源（历史 sibling 的 prompt.yaml / active pointer /
+      manifest 自身）-> 与已确认源声明值不匹配 -> 误 blocked ->
+      status 断言失败；
+    - 匹配时顺手写入（缓存复算值、规范化 legacy 源、写报告文件）->
+      全树快照断言失败；
+    - 匹配时 fail-closed（blocked 或抛错替代报告）-> status 断言失败。
+    """
+    source_entry = _write_legacy_prompt_registry(tmp_path)
+
+    # 前置事实：manifest 声明值 == 权威 recipe 复算值（合法 legacy 源）；
+    # 且 != prompt.yaml 文件字节 sha256（两套哈希口径可区分）；
+    # 且 != 历史 sibling 的内容哈希（读错源可捕获）。
+    prompt_bytes = (source_entry / "prompt.yaml").read_bytes()
+    manifest = json.loads(
+        (source_entry / "manifest.json").read_text(encoding="utf-8")
+    )
+    declared = manifest["prompt_content_sha256"]
+    assert declared == _prompt_content_sha256_of_yaml(prompt_bytes), (
+        "fixture 前置事实失败：manifest 声明值必须等于按权威 recipe "
+        "复算的 prompt_content_sha256"
+    )
+    assert declared != hashlib.sha256(prompt_bytes).hexdigest(), (
+        "fixture 前置事实失败：prompt_content_sha256 必须与 prompt.yaml "
+        "文件字节 sha256（prompt_yaml_sha256 口径）不同，否则两套哈希"
+        "口径不可区分"
+    )
+    sibling_prompt = (
+        tmp_path
+        / "pipeline"
+        / "prompt_registry"
+        / HISTORY_SIBLING_SOURCE_ID
+        / "prompt.yaml"
+    ).read_bytes()
+    assert _prompt_content_sha256_of_yaml(sibling_prompt) != declared, (
+        "fixture 前置事实失败：已确认源与历史 sibling 的内容哈希必须"
+        "不同（否则读错源不可捕获）"
+    )
+    assert not (tmp_path / "records").exists()
+
+    before = _snapshot_tree(tmp_path)
+
+    precheck = _resolve_precheck_entry()
+    assert precheck is not None, (
+        "只读 Prompt 迁移预检行为缺失：versioning.migration 未提供 "
+        "precheck_prompt_migration 入口（当前 behavior 未实现）"
+    )
+    report = precheck(tmp_path, _confirmed_prompt_mapping_item())
+
+    assert report.status == "ready", (
+        f"prompt_content_sha256 复算匹配的合法 legacy 源必须保持 ready"
+        f"（内容 provenance 门不得误伤）：实际 status={report.status!r}，"
+        f"reasons={report.reasons!r}"
+    )
+
+    # 目标根零写入 + 全树零写入（复算/比对本身不得有任何写副作用）。
+    assert not (tmp_path / "records").exists()
+    assert _snapshot_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "tamper_kind",
+    [
+        pytest.param(
+            "declared_yaml_file_bytes_hash", id="declared_yaml_file_bytes_hash"
+        ),
+        pytest.param(
+            "declared_sibling_content_hash", id="declared_sibling_content_hash"
+        ),
+        pytest.param(
+            "prompt_yaml_content_modified", id="prompt_yaml_content_modified"
+        ),
+    ],
+)
+def test_precheck_blocks_prompt_content_sha256_mismatch(
+    tmp_path: Path, tamper_kind: str
+) -> None:
+    r"""prompt_content_sha256 复算值与 manifest 声明值不匹配 -> blocked + 零写入。
+
+    T8 behavior（反向，主 Agent 选定，先写失败测试）：只读预检必须
+    fail-closed 地校验 legacy 源内容 provenance —— 按权威 recipe（见
+    _prompt_content_sha256_of_yaml）从 legacy prompt.yaml 复算
+    prompt_content_sha256，与 manifest 声明值不匹配时返回 blocked
+    （非空 reasons）且零写入。三个篡改场景的映射项、候选身份、
+    target_path 与 records/ 均保持合法，使 blocked 只能由内容哈希门
+    引起（隔离变量）：
+    - declared_yaml_file_bytes_hash：manifest 声明值被换成 prompt.yaml
+      原始文件字节的 sha256 —— 既是声明值篡改（与权威 recipe 复算值
+      不匹配），也是错误 recipe 陷阱：按文件字节口径复算的实现会
+      在此得到"匹配" -> 误 ready -> 本参数失败。该口径正是本轮
+      fixture 修正前 fixture 自己写错的哈希（prompt.yaml 全文件字节
+      sha256 误当 prompt_content_sha256），钉死不得回退；
+    - declared_sibling_content_hash：声明值被换成历史 sibling 的真实
+      内容哈希（复制错 manifest 行的 plausible 篡改形态；值本身是
+      well-formed sha256，钉死"只校验声明值格式合法就放行"的实现）；
+    - prompt_yaml_content_modified：prompt.yaml 的 system_prompt 被篡改
+      而 manifest 声明值保持原值（provenance 反向漂移：内容已变、
+      声明未更新）。
+
+    捕获的合理但错误实现：
+    - 完全不复算内容哈希（当前 production —— RED 起点）：预检只查
+      文件存在性，三个参数全部误 ready -> status 断言失败；
+    - 只从 manifest 回读声明值与自身比对（无复算参与）-> 三个参数
+      全部误 ready -> status 断言失败；
+    - 按文件字节口径复算 -> declared_yaml_file_bytes_hash 参数复算值
+      == 被篡改的声明值 -> 误 ready -> 本参数失败；
+    - 只校验声明值是 64-hex 格式、不与复算值比对 ->
+      declared_sibling_content_hash 参数误 ready -> 本参数失败；
+    - 复算 payload 字段缺失/多余（漏 label_pools、误含 revision_id）
+      或 canonical 化偏离权威 recipe -> 复算口径漂移：合法输入误
+      blocked（正向用例失败）或篡改输入漏检（对应参数失败）；
+    - 不匹配时"顺手修复"（改写 manifest / prompt.yaml、重建源条目、
+      写缓存）-> 全树快照断言失败；
+    - 不匹配时以未类型化异常替代报告 -> T1 已绑定报告返回通道，
+      _run_blocked_precheck 判失败；
+    - blocked 不带 reasons -> reasons 断言失败。
+
+    RED Gate：本用例编写时 versioning.migration 的
+    precheck_prompt_migration 尚未实现内容哈希门（只查映射/身份/
+    源文件存在性/目标冲突），三个参数均预期失败（status='ready'
+    误判），即有效 RED；门实现后本用例转为篡改回归钉。
+    """
+    source_entry = _write_legacy_prompt_registry(tmp_path)
+    manifest_path = source_entry / "manifest.json"
+    prompt_path = source_entry / "prompt.yaml"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    prompt_bytes = prompt_path.read_bytes()
+
+    if tamper_kind == "declared_yaml_file_bytes_hash":
+        manifest["prompt_content_sha256"] = (
+            hashlib.sha256(prompt_bytes).hexdigest()
+        )
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    elif tamper_kind == "declared_sibling_content_hash":
+        sibling_manifest = json.loads(
+            (
+                tmp_path
+                / "pipeline"
+                / "prompt_registry"
+                / HISTORY_SIBLING_SOURCE_ID
+                / "manifest.json"
+            ).read_text(encoding="utf-8")
+        )
+        manifest["prompt_content_sha256"] = sibling_manifest[
+            "prompt_content_sha256"
+        ]
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    else:
+        tampered = prompt_bytes.replace(
+            "视觉模型".encode("utf-8"),
+            "视觉模型（prompt.yaml 内容被篡改，manifest 声明值未更新）".encode(
+                "utf-8"
+            ),
+        )
+        assert tampered != prompt_bytes, "fixture 前置事实失败：内容篡改必须生效"
+        prompt_path.write_bytes(tampered)
+
+    # 前置事实：篡改后按权威 recipe 复算的值必与 manifest 声明值不匹配
+    # （mismatch 真实存在，且只能由内容哈希门捕获）。
+    recomputed = _prompt_content_sha256_of_yaml(prompt_path.read_bytes())
+    declared = json.loads(manifest_path.read_text(encoding="utf-8"))[
+        "prompt_content_sha256"
+    ]
+    assert recomputed != declared, (
+        "fixture 前置事实失败：篡改必须造成复算值与声明值不匹配"
+    )
+    assert not (tmp_path / "records").exists()
+
+    before = _snapshot_tree(tmp_path)
+
+    _run_blocked_precheck(tmp_path, _confirmed_prompt_mapping_item())
+
+    # 零写入：不创建 records/，不改被篡改的 legacy 源（含 manifest /
+    # prompt.yaml 本身），全树逐字节不变。
+    assert not (tmp_path / "records").exists()
     assert _snapshot_tree(tmp_path) == before

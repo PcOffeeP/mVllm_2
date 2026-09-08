@@ -19,9 +19,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping
+from typing import Any, Mapping
 
 import yaml
 
@@ -43,6 +45,17 @@ _PROMPT_PROTOCOL = "v4.1"
 _LEGACY_PROMPT_REGISTRY = Path("pipeline") / "prompt_registry"
 
 _LEGACY_REQUIRED_FILES = ("manifest.json", "prompt.yaml")
+
+# legacy prompt_content_sha256 的 payload 字段（权威 recipe，
+# pipeline/prompt_control/core.py::prompt_content_sha256；不含 revision_id）。
+_LEGACY_CONTENT_HASH_PAYLOAD_FIELDS = (
+    "schema_version",
+    "protocol_id",
+    "system_prompt",
+    "user_prompt",
+    "output_fields",
+    "label_pools",
+)
 
 
 @dataclass(frozen=True)
@@ -101,6 +114,64 @@ def _validate_mapping_item(mapping_item: Mapping[str, object]) -> list[str]:
     return errors
 
 
+def _check_legacy_provenance(source_entry: Path) -> list[str]:
+    """复算 legacy 源 prompt_content_sha256 并与 manifest 声明值比对。
+
+    按权威 recipe（pipeline/prompt_control/core.py::prompt_content_sha256）
+    从 legacy prompt.yaml 取六字段 payload（schema_version / protocol_id /
+    system_prompt / user_prompt / output_fields / label_pools，不含
+    revision_id），经 json.dumps(ensure_ascii=False, sort_keys=True,
+    separators=(",", ":"), allow_nan=False).encode("utf-8") canonical 化后
+    取 sha256；与 manifest.json 声明的 prompt_content_sha256 比对，不匹配
+    或任一步无法完成（解析失败、缺字段、声明值缺失/非字符串）均返回错误
+    列表（fail-closed）。这是 legacy 源 provenance 校验：不复用
+    prompt_yaml_sha256 文件字节口径，不回读声明值自比，不写入迁移目标。
+    """
+    prompt_file = source_entry / "prompt.yaml"
+    manifest_file = source_entry / "manifest.json"
+    try:
+        prompt = yaml.safe_load(prompt_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [f"legacy 源 prompt.yaml 无法解析，无法复算内容哈希: {exc}"]
+    if not isinstance(prompt, Mapping):
+        return ["legacy 源 prompt.yaml 顶层必须是 mapping，无法复算内容哈希"]
+    missing = [
+        name for name in _LEGACY_CONTENT_HASH_PAYLOAD_FIELDS if name not in prompt
+    ]
+    if missing:
+        return [
+            "legacy 源 prompt.yaml 缺少内容哈希 payload 字段: "
+            + ", ".join(missing)
+        ]
+    payload = {
+        name: prompt[name] for name in _LEGACY_CONTENT_HASH_PAYLOAD_FIELDS
+    }
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    recomputed = hashlib.sha256(canonical).hexdigest()
+
+    try:
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [f"legacy 源 manifest.json 无法解析，无法读取声明内容哈希: {exc}"]
+    if not isinstance(manifest, Mapping):
+        return ["legacy 源 manifest.json 顶层必须是 mapping，无法读取声明内容哈希"]
+    declared = manifest.get("prompt_content_sha256")
+    if not isinstance(declared, str) or not declared:
+        return ["legacy 源 manifest.json 缺少 prompt_content_sha256 声明值"]
+    if recomputed != declared:
+        return [
+            "legacy 源内容 provenance 不一致：按权威 recipe 复算的 "
+            f"prompt_content_sha256={recomputed} 与 manifest 声明值 {declared} 不匹配"
+        ]
+    return []
+
+
 def _check_target_conflict(root: Path, mapping_item: Mapping[str, object]) -> list[str]:
     """检查目标是否已存在冲突条目；目标根不存在视为无冲突（只读，不创建）。"""
     errors: list[str] = []
@@ -137,7 +208,10 @@ def precheck_prompt_migration(
       2. 候选目标身份为合法 ``<kind>-v<协议>-r<N>`` 完整身份；
       3. legacy 源必需文件
          ``pipeline/prompt_registry/<source_legacy_id>/{manifest.json,prompt.yaml}``
-         均存在；
+         均存在；文件齐全时复算 legacy 源 ``prompt_content_sha256``
+         （权威 recipe：六字段 canonical JSON payload，不含 revision_id）
+         并与 manifest 声明值比对（fail-closed，不匹配即 blocked；该哈希
+         不写入迁移目标）；
       4. 目标无冲突（``<root>/<target_path>`` 与 ``records/`` 下同身份条目均不存在）。
 
     全程只读：不创建目录、不写文件、不修改 legacy 源；报告只经返回值给出。
@@ -161,10 +235,18 @@ def precheck_prompt_migration(
     source_id = mapping_item.get("source_legacy_id")
     if isinstance(source_id, str) and source_id:
         source_entry = root / _LEGACY_PROMPT_REGISTRY / source_id
-        for name in _LEGACY_REQUIRED_FILES:
-            required = source_entry / name
-            if not required.is_file():
-                errors.append(f"legacy 源必需文件缺失：{required.relative_to(root)}")
+        required_missing = any(
+            not (source_entry / name).is_file() for name in _LEGACY_REQUIRED_FILES
+        )
+        if required_missing:
+            for name in _LEGACY_REQUIRED_FILES:
+                required = source_entry / name
+                if not required.is_file():
+                    errors.append(f"legacy 源必需文件缺失：{required.relative_to(root)}")
+        else:
+            # 源必需文件齐全：复算 prompt_content_sha256 与 manifest 声明值
+            # 比对（T8 内容 provenance 一致性门，fail-closed）。
+            errors.extend(_check_legacy_provenance(source_entry))
 
     errors.extend(_check_target_conflict(root, mapping_item))
 
