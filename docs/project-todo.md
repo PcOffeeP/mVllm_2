@@ -113,11 +113,15 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ### VERSION-CONTROL-FORMAL-MIGRATION — 正式迁移可读版本控制体系
 
-- **状态/来源**：待确认；由 VERSION-CONTROL-MIGRATION 核心基础设施完成后拆出，尚未获得正式迁移、训练机操作、旧链路退役、merge 或 push 授权。
-- **已证实事实与差距**：`versioning/` 核心入口及本机测试已完成，但 legacy `pipeline/`、`finetune/` 仍按旧规则运行；未建立旧对象到五类可读身份的正式映射，未在 Linux 训练机验证跨进程锁，未用真实 adapter/merged、正式数据或移动硬盘做恢复演练。
-- **下一动作/依赖**：用户确认迁移范围与顺序后，先只读盘点两台机器的分支、HEAD、未提交改动和真实对象，形成映射与回滚方案；再单独授权训练机 smoke、真实恢复演练、调用方切换和旧链路退役。merge/push 继续单独确认。
-- **验收标准**：旧对象映射可追溯且无隐式 latest；训练机/Linux 锁与真实产物恢复通过；调用方全部显式使用完整身份；旧链路退役不丢历史；两端 Git 状态、提交与备份证据核对完成。完成核心基础设施不自动满足本项。
-- **证据/限制**：[实施台账](plans/2026-09-01-readable-version-control-implementation.md)、[架构说明](../ARCHITECTURE.md)、[项目指南](project-guide.md)。当前仅登记后续任务，不执行训练机、迁移、删除、merge 或 push。
+- **状态/来源**：进行中（M1a）；由 VERSION-CONTROL-MIGRATION 核心基础设施完成后拆出。用户授权建立 Task Artifact，Intent 已确认提交 `3dae30a0`，Spec 已确认提交 `6996d35d`，Plan 已确认并提交 `11e54b31`；当前处于 M1a（Prompt 迁移预检）进行中，merge/push 继续单独授权。
+- **任务关联**：[Intent](tasks/2026-09-07-readable-version-control-migration/intent.md)、[Spec](tasks/2026-09-07-readable-version-control-migration/spec.md)、[Plan](tasks/2026-09-07-readable-version-control-migration/plan.md)（已确认提交 `11e54b31`）。任务分支为 `refactor/2026-09-07-readable-version-control-migration`，由用户确认重命名原分支并保留历史，承接基线 `1b0d5823`。原 B0–B12 台账中的旧分支名作为历史记录保留。
+- **已确认范围**：迁移两个已发布数据版本和当前一版 Prompt `v4.1-concise-evidence-json-v2`；历史模型保留身份、核心训练参数及已有指标，不要求补齐全部历史信息。所有活动入口完成切换，保持单一正式写入者及不可抹去新事实的恢复规则。candidate/production 门禁不变；无合格模型时实际服务入口拒绝启动是允许状态，不要求历史开发模型继续服务。
+- **规划发现**：`versioning/data_pipeline.py` 当前从文件名派生 ROI、固定生成两条 clip 记录，尚未承接真实媒体语义；训练 CLI 管理 Run 状态，真实执行器接线仍需完成。Plan 的 M3/M4 明确覆盖这两处差距，不能沿用 B0–B12 测试宣称真实业务已接入。
+- **现场证据**：2026-09-07 网络恢复后只读调查成功；当时远端干净 `main@f1b7d8a3`，origin 为 Codeup。两个 release、三个 Prompt registry 目录、八个 run、五个历史归档目录和一个发布模型目录可见；六组 run 有 adapter，两个 concise run 仅见准备资料；concise-cv 预期路径不存在，`/data/mVllm_2` 尚未建立。完整观察及扫描边界见[调查记录](results/version-control-migration-20260907.md)，提交 `821e5953`。未验证权重哈希、加载、数据完整性或历史原始记录完整性，尚未分配新正式身份；无远端写入。
+- **已证实事实与差距**：M0 证据已提交 `cb8531c1`，包含 source inventory、object mapping、entrypoint map。M1a 已完成 Prompt migration precheck 三个小提交：`2a927d14`（Prompt 只读预检 ready + fail-closed 基础）、`d4753754`（目标冲突按精确身份边界匹配）、`e9256059`（Prompt 目标身份 kind/protocol 契约收紧）。当前权威验证 `tests/versioning` 1426 passed。M1a 真实转换、data 迁移、history-summary、CLI、中断恢复尚未完成；Q4 训练机数据根与 I/O 预算仍 pending。legacy `pipeline/`、`finetune/` 仍按旧规则运行；未在 Linux 训练机验证跨进程锁，未用真实 adapter/merged、正式数据或移动硬盘做恢复演练。
+- **下一动作/依赖**：继续 M1a 剩余工作（真实转换、data 迁移、history-summary、CLI、中断恢复），再按 M0–M8 分批推进；实际对象写入另需人工核对映射。merge/push、停止远端进程、系统权限变更及真实重训练/完整评测不包含在计划的实施授权中。
+- **验收标准**：按已确认 Spec 核对两个数据版本及一版 Prompt 的内容保持、历史关联可查询、所有活动入口接管、单写与恢复不丢事实、训练机真实环境证据、文档及独立审查。Codeup 为发布依据，最终交付覆盖相对 Codeup main 的完整差异。
+- **证据/限制**：[实施台账](plans/2026-09-01-readable-version-control-implementation.md)、[架构说明](../ARCHITECTURE.md)、[项目指南](project-guide.md)。真实移动硬盘恢复允许单独保持未完成，但不能宣称真实备份可恢复；无合格模型时真实模型加载/推理成功仍记未验证。当前处于 M1a 进行中，未完成真实转换/数据迁移/训练机验证，不得宣称迁移已完成或伪造真实 payload/GPU 验证。
 
 ## Skill 改进候选（待确认，不属于当前实现范围）
 
