@@ -211,8 +211,9 @@ def precheck_data_migration(
       4. legacy 源 ``workspace/data/releases/<source_legacy_id>`` 的
          manifest/release_manifest.json 存在、release_id 与源身份一致、
          声明的 payload 文件齐全（只验存在性，不做内容 provenance 门）；
-      5. 目标无冲突（``<root>/<target_path>`` 与 ``records/`` 下同身份条目
-         均不存在）。
+      5. 目标无冲突（``<root>/<target_path>`` 已存在、``records/`` 下或
+         data 正式对象根（target_path 的对象目录层，如
+         ``data/releases/``）下同身份条目存在均 blocked）。
 
     整批 ``status`` 为 ready 当且仅当全部对象报告 ready。全程零写入：
     不创建 ``<root>/data``、working、release_staging、records 或任何目标
@@ -259,6 +260,7 @@ def precheck_data_migration(
         if isinstance(source_id, str) and source_id:
             errors.extend(_check_legacy_data_source(root, mapping_item))
         errors.extend(_check_target_conflict(root, mapping_item))
+        errors.extend(_check_data_root_conflict(root, mapping_item))
 
         object_reports.append(
             DataMigrationObjectPrecheckReport(
@@ -400,6 +402,40 @@ def _check_legacy_provenance(source_entry: Path) -> list[str]:
             f"prompt_content_sha256={recomputed} 与 manifest 声明值 {declared} 不匹配"
         ]
     return []
+
+
+def _check_data_root_conflict(
+    root: Path, mapping_item: Mapping[str, object]
+) -> list[str]:
+    """检查 data 正式对象根上的同身份条目冲突（只读，不创建）。
+
+    按映射 target_path 定位 data 正式对象根（如 target_path
+    ``data/releases/data-v4.1-r1/release.yaml`` 的对象根为
+    ``data/releases/``，即 target_path 上溯两层：对象目录层之上），同
+    身份目录（即使缺少 release.yaml）或同身份文件形式（``name ==
+    identity or name.startswith(identity + ".")``，覆盖无扩展名与复合
+    扩展名等非标准形式）即冲突；仅按精确身份判定，``data-v4.1-r10``
+    等同前缀但 revision 不同的邻居是不同身份，不构成冲突。data 根不
+    存在视为无冲突。
+    """
+    errors: list[str] = []
+    identity = mapping_item.get("candidate_target_identity")
+    target_rel = mapping_item.get("target_path")
+    if not isinstance(identity, str) or not isinstance(target_rel, str):
+        return errors
+    data_root_rel = Path(target_rel).parent.parent
+    if str(data_root_rel) in ("", "."):
+        return errors
+    data_root = root / data_root_rel
+    if not data_root.is_dir():
+        return errors
+    for existing in sorted(data_root.iterdir()):
+        if existing.name == identity or existing.name.startswith(f"{identity}."):
+            errors.append(
+                f"data 正式对象根已存在同身份条目：{existing.relative_to(root)}"
+            )
+            break
+    return errors
 
 
 def _check_target_conflict(root: Path, mapping_item: Mapping[str, object]) -> list[str]:

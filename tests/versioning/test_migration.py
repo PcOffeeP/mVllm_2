@@ -132,7 +132,36 @@ payload 内容 provenance 门），也不得就地改写映射项把来源状态
 payload 已验证。本切片不做真实转换、provenance 门、凭证（D2 凭证
 格式/位置未裁决，预检报告不绑定任何凭证字段）或中断恢复；blocked
 反向（任一对象不合格 -> 整批 blocked，D2 已确认语义）留待配套反向
-切片。
+切片（data 目标冲突 blocked 边界由 T12 覆盖，其余反向场景仍留待后续
+切片）。
+
+T12 behavior（本切片，reviewer 对 T11 的 P2，data 预检目标冲突边界，
+先写测试）—— precheck_data_migration 的目标冲突检测必须在 data
+正式对象根（映射 target_path ``data/releases/data-v4.1-rN/release.yaml``
+的对象目录层 ``data/releases/``）上按精确身份进行，不得只复用 Prompt
+的 ``_check_target_conflict``（只扫 records/；data 正式对象不在 records/
+下，data 根下同身份目录/文件对当前实现不可见 -> 误判 ready）。复用 T11
+双对象 data fixture（两条已确认映射 + 三份 legacy release + 旧数据/
+Prompt 活动指针），两条映射声明的 target_path 文件均保持空闲（隔离
+target_path 占用分支，结论只能由 data 根同身份扫描决定）：
+1. 已存在 ``data/releases/data-v4.1-r1/`` 同身份目录（即使缺少
+   release.yaml）-> 整批 blocked；
+2. 已存在同身份非标准文件形式（如 ``data/releases/data-v4.1-r1.yaml``）
+   -> 整批 blocked（同身份不允许以任何文件形式占用，防改名冲突）；
+3. ``data/releases/data-v4.1-r10/`` 等更高 revision 邻居是不同身份
+   （versioning/ids.py 权威解析口径，字符串前缀不等于同身份），不得
+   误阻塞 ``data-v4.1-r1`` -> 整批 ready（修复不得反向过宽，与 T3/T4
+   同口径）；
+4. 任一对象冲突即整批 blocked（D2）：冲突经逐对象报告归因（blocked
+   对象 status == "blocked" + 非空 reasons，非冲突对象保持 ready），
+   冲突对象在第一位与第二位映射条目各出现至少一次（钉死只检查首条/
+   末条映射的实现）；
+5. 全程零写入：不覆盖/改名/清理既有条目，不创建目标、生命周期、
+   records 条目，legacy 源树与旧 active pointers 逐字节不变，不就地
+   修改传入映射项；fixture 只在 pytest tmp_path 下按映射指定的
+   ``data/releases/...`` 目标布局模拟 data 正式对象根，不把 data 根
+   写成训练机真实路径。本切片不做真实转换、provenance 门、凭证或
+   恢复。
 
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
@@ -181,7 +210,11 @@ payload 已验证。本切片不做真实转换、provenance 门、凭证（D2 �
         #   候选目标身份合法性（data 完整身份 <kind>-v<协议>-r<N>）、
         #   legacy 源 workspace/data/releases/<source_legacy_id>/ 的
         #   manifest/release_manifest.json 与 payload 存在性、目标无冲突
-        #   （<root>/data 不存在等），返回批级只读报告：
+        #   （T12 起目标冲突判定必须覆盖 data 正式对象根 data/releases/：
+        #   映射 target_path 文件、data/releases/<身份>/ 同身份目录 ——
+        #   即使缺少 release.yaml —— 与 data/releases/ 下同身份文件形式
+        #   （<身份>.yaml 等）任一存在即冲突；data-v4.1-r10 等更高
+        #   revision 邻居是不同身份，不构成冲突），返回批级只读报告：
         #   report.status（"ready" / "blocked"，任一对象不合格即整批
         #   blocked，fail-closed）+ report.object_reports（逐对象报告
         #   序列，每条含 source_legacy_id / target_identity /
@@ -233,9 +266,13 @@ prompt-v4.1-r1 且与无中断基线 records/ 子树逐字节一致；注入点�
 路径维护，行为契约不变）、T11 数据迁移批级只读预检 ready 正向
 （两条已确认 data 映射整批 ready + 逐对象报告 + 零写入 + legacy
 源树与旧 active pointers 逐字节不变 + 不就地改写映射项；ready 不
-依赖 payload 已验证）；以上切片之外不实现/不要求
-data 真实转换、data blocked 反向（含身份契约收紧、源文件缺失、
-目标冲突、payload provenance 门）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
+依赖 payload 已验证）、T12 data 预检目标冲突边界（reviewer 对 T11
+的 P2：data 正式对象根 data/releases/ 上同身份目录 —— 即使缺少
+release.yaml —— 与同身份非标准文件形式必须整批 blocked + 冲突经逐
+对象报告归因 + 零写入、legacy 源与旧 active pointers 不变；r10 等
+更高 revision 邻居不得误阻塞）；以上切片之外不实现/不要求
+data 真实转换、data blocked 反向其余场景（身份契约收紧、源文件
+缺失、payload provenance 门）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
 T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
@@ -2755,4 +2792,300 @@ def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
     # 5：不就地修改传入映射项 —— source_verified /
     #    source_payload_complete 保持 M0 事实分级（verified_local /
     #    training_observed），不得被伪造成 payload 已验证。
+    assert mapping_items == _confirmed_data_mapping_items()
+
+
+# ---------------------------------------------------------------------------
+# T12：data 预检目标冲突边界（reviewer 对 T11 的 P2）—— data 正式对象根
+# 上的同身份目录 / 非标准文件形式必须整批 blocked，更高 revision 邻居
+# 不得误阻塞（先写测试，不改 production）
+# ---------------------------------------------------------------------------
+
+# data 正式对象根下既有条目的哨兵字节：预检只报告冲突，不得覆盖、
+# 改名、删除或追加既有条目（同身份条目以任何形式占用即冲突）。
+_EXISTING_DATA_ROOT_ENTRY_BYTES = (
+    b"<existing data release root entry: must not be touched>"
+)
+
+
+@pytest.mark.parametrize(
+    (
+        "existing_rel_path",
+        "existing_kind",
+        "conflicting_source_id",
+        "expected_status",
+    ),
+    [
+        pytest.param(
+            "data/releases/data-v4.1-r1",
+            "dir",
+            CONFIRMED_DATA_SOURCE_R1,
+            "blocked",
+            id="second_item_same_identity_dir_without_release_yaml",
+        ),
+        pytest.param(
+            "data/releases/data-v4.1-r1.yaml",
+            "file",
+            CONFIRMED_DATA_SOURCE_R1,
+            "blocked",
+            id="second_item_same_identity_nonstandard_file",
+        ),
+        pytest.param(
+            "data/releases/data-v4.1-r2.yaml",
+            "file",
+            CONFIRMED_DATA_SOURCE_R2,
+            "blocked",
+            id="first_item_same_identity_nonstandard_file",
+        ),
+        pytest.param(
+            "data/releases/data-v4.1-r10",
+            "dir",
+            None,
+            "ready",
+            id="higher_revision_prefix_neighbor_dir_not_conflict",
+        ),
+    ],
+)
+def test_data_batch_precheck_target_conflict_on_data_release_root(
+    tmp_path: Path,
+    existing_rel_path: str,
+    existing_kind: str,
+    conflicting_source_id: str | None,
+    expected_status: str,
+) -> None:
+    r"""data 批级只读预检必须在 data 正式对象根上按精确身份检测目标冲突。
+
+    T12 behavior（本切片，reviewer 对 T11 的 P2，先写测试）—— 当前
+    production 的 precheck_data_migration 复用 Prompt 的
+    ``_check_target_conflict``：只检查映射 target_path 文件占用与
+    ``records/`` 下同身份条目，而 data 正式对象根是
+    ``data/releases/``（映射 target_path ``data/releases/data-v4.1-rN/
+    release.yaml`` 的对象目录层），data 根下同身份目录 / 文件对当前
+    实现不可见 -> 误判 ready。行为口径（Spec「正式写入与失败恢复」+
+    M0 global_pre_write_checks：目标写入前复验不存在同名正式对象；
+    D2：任一对象不合格 -> 整批 blocked）：
+
+    1. 已存在 ``data/releases/data-v4.1-r1/`` 同身份目录（即使缺少
+       release.yaml，映射声明的 target_path 文件保持空闲）-> 整批
+       blocked；
+    2. 已存在同身份非标准文件形式（如 ``data/releases/
+       data-v4.1-r1.yaml``）-> 整批 blocked（同身份不允许以任何文件
+       形式占用，防改名冲突，与 T4 同口径）；
+    3. ``data/releases/data-v4.1-r10/`` 等更高 revision 邻居是不同
+       身份（versioning/ids.py 权威解析口径：revision 10 != 1，
+       字符串前缀不等于同身份），不得误阻塞 ``data-v4.1-r1`` ->
+       整批 ready（与 T3 同口径，修复不得反向过宽）；
+    4. 任一对象冲突即整批 blocked（D2）：冲突经逐对象报告归因
+       （blocked 对象 status == "blocked" + 非空 reasons，非冲突对象
+       保持 ready），冲突对象在第一位与第二位映射条目各出现至少一次；
+    5. 全程零写入 + legacy 源树 / 旧 active pointers 逐字节不变 +
+       不就地修改传入映射项。
+
+    四个场景全部复用 T11 双对象 fixture（两条已确认 data 映射 + 三份
+    legacy release + 旧数据 / Prompt 活动指针），且两条映射声明的
+    target_path 文件均保持空闲，使预检结论只能由 data 正式对象根上
+    的同身份扫描路径决定（隔离 target_path 占用分支与 legacy 源分
+    支）；两个“空目录”参数（r1 同身份冲突 vs r10 邻居）唯一差异是
+    目录名，钉死判定必须按精确身份而非目录内容；fixture 只在 pytest
+    tmp_path 下按映射指定的 ``data/releases/...`` 目标布局模拟 data
+    正式对象根，不把 data 根写成训练机真实路径（legacy 源树仍为
+    workspace/data/releases/ 的合成 fixture）。
+
+    捕获的合理但错误实现：
+    - 沿用 Prompt 的 _check_target_conflict（只扫 records/；data 正
+      式对象不在 records/ 下）-> 三个 blocked 参数全部误判 ready ->
+      status 断言失败（本切片 RED 起点）；
+    - 只检查第一条映射条目 -> r1 条目（第二位）的两个冲突参数误判
+      ready；只检查末位 / 第二条 -> r2 条目（第一位）参数误判 ready；
+    - 只认 target_path 文件或 release.yaml 存在性、不认同身份空目
+      录 -> same_identity_dir_without_release_yaml 失败；
+    - 只认目录形式不认文件形式（或以 Path.stem 判定同身份 —— 会被
+      身份中 v4.1 的点号截断）-> 对应 nonstandard_file 参数失败；
+    - 前缀匹配判定同身份（startswith(identity)，data-v4.1-r10 是
+      data-v4.1-r1 的字符串前缀）->
+      higher_revision_prefix_neighbor_dir_not_conflict 误判 blocked
+      （T3/T4 回归重演）；
+    - 冲突时自动改号放行 / 覆盖 / 改名 / 清理既有条目 -> status 或
+      哨兵字节与全树快照断言失败；
+    - blocked 不带 reasons、逐对象归因缺失或把非冲突对象一并
+      blocked -> reasons / 对象报告断言失败；
+    - 预检即真实转换（创建目标 release、working、release_staging、
+      records）-> 全树快照断言失败。
+
+    范围边界（本切片不绑定）：data 身份契约收紧（kind != data、协议
+    不匹配）、legacy 源文件缺失、payload 内容 provenance 门、真实转换
+    （migrate_data_*）、凭证（D2 格式/位置未裁决，报告不绑定任何凭证
+    字段）与中断恢复；target_path 文件本身被占用（release.yaml 已存
+    在）的分支已由既有 target_path 占用语义覆盖，本切片不重复。
+    """
+    active_manifest_bytes = _write_legacy_data_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+
+    # fixture 前置事实：映射批顺序为 r2 条目（第一位）-> r1 条目（第
+    # 二位）；r1 冲突场景即“冲突对象放在第二位”（钉死只检查首条映射
+    # 的实现），r2 冲突场景钉死只检查末位/第二条的实现。
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ]
+
+    # 在 data 正式对象根（映射 target_path 指定的 data/releases/ 布局）
+    # 下放置既有条目：dir 场景为空目录（即使缺少 release.yaml），file
+    # 场景为哨兵字节文件。
+    existing = tmp_path / existing_rel_path
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    if existing_kind == "dir":
+        existing.mkdir()
+    else:
+        existing.write_bytes(_EXISTING_DATA_ROOT_ENTRY_BYTES)
+
+    # fixture 前置事实（对齐 T11）：三份 legacy release 的 manifest 存
+    # 在；既有条目按指定形式存在；两条映射声明的 target_path 文件均
+    # 保持空闲（冲突只能经 data 正式对象根上的同身份扫描发现，隔离
+    # target_path 占用分支）；旧数据指针绑定活动 release manifest 字
+    # 节；旧 Prompt 指针声明 legacy revision_id。
+    releases_root = tmp_path / "workspace" / "data" / "releases"
+    for source_id in (
+        CONFIRMED_DATA_SOURCE_R1,
+        CONFIRMED_DATA_SOURCE_R2,
+        UNMAPPED_DATA_SIBLING,
+    ):
+        manifest_file = releases_root / source_id / "manifest" / "release_manifest.json"
+        assert manifest_file.is_file(), (
+            f"fixture 前置事实失败：legacy release manifest 缺失 {manifest_file}"
+        )
+    if existing_kind == "dir":
+        assert existing.is_dir()
+        assert not any(existing.iterdir()), (
+            f"fixture 前置事实失败：dir 场景的既有条目必须为空目录 "
+            f"（即使缺少 release.yaml）：{existing_rel_path}"
+        )
+    else:
+        assert existing.read_bytes() == _EXISTING_DATA_ROOT_ENTRY_BYTES
+    for item in mapping_items:
+        assert not (tmp_path / str(item["target_path"])).exists(), (
+            "fixture 前置事实失败：两条映射的 target_path 必须保持空闲，"
+            "隔离 target_path 占用分支（冲突只能经 data 正式对象根上的"
+            "同身份扫描发现）"
+        )
+    data_pointer = tmp_path / "finetune" / "active_data_release.json"
+    pointer = json.loads(data_pointer.read_text(encoding="utf-8"))
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        active_manifest_bytes
+    ).hexdigest(), (
+        "fixture 前置事实失败：活动指针 expected_manifest_sha256 必须与"
+        "合成活动 release manifest 字节自洽"
+    )
+    prompt_pointer = (
+        tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    )
+    assert (
+        yaml.safe_load(prompt_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+
+    before = _snapshot_tree(tmp_path)
+
+    precheck_data = _resolve_data_precheck_entry()
+    assert precheck_data is not None, (
+        "批级数据迁移只读预检行为缺失：versioning.migration 未提供 "
+        "precheck_data_migration 入口（当前 behavior 未实现）"
+    )
+
+    report = precheck_data(tmp_path, mapping_items)
+
+    # 1：整批结论（D2：任一对象冲突 -> 整批 blocked；更高 revision 邻
+    #    居是不同身份，不构成冲突 -> 整批 ready）。
+    if expected_status == "blocked":
+        assert report.status == "blocked", (
+            f"data 正式对象根下已存在同身份条目（{existing_rel_path}；映射"
+            f"声明的 target_path 文件保持空闲，records/ 亦不存在），预检"
+            f"必须在 data 正式对象根上按精确身份检测目标冲突并整批 "
+            f"blocked（D2）：实际 status={report.status!r}，"
+            f"reasons={report.reasons!r}"
+        )
+        assert report.reasons, _BLOCKED_REASONS_REQUIRED_MSG
+    else:
+        assert report.status == "ready", (
+            f"已有更高 revision 的同前缀邻居（{existing_rel_path}，"
+            f"data-v4.1-r10 与 data-v4.1-r1 是不同身份，字符串前缀不等于"
+            f"同身份）不构成目标冲突，整批预检应为 ready：实际 "
+            f"status={report.status!r}，reasons={report.reasons!r}"
+        )
+
+    # 2：逐对象报告 —— 恰好两条（未映射 sibling 不得进入），冲突经
+    #    blocked 对象 + 非空 reasons 可观察，非冲突对象保持 ready。
+    object_reports = list(report.object_reports)
+    assert len(object_reports) == 2, (
+        "批级报告必须包含恰好两条逐对象报告（两条已确认映射）：实际 "
+        f"{len(object_reports)} 条"
+    )
+    reports_by_source = {
+        obj_report.source_legacy_id: obj_report for obj_report in object_reports
+    }
+    assert set(reports_by_source) == {
+        CONFIRMED_DATA_SOURCE_R1,
+        CONFIRMED_DATA_SOURCE_R2,
+    }, (
+        "逐对象报告必须恰覆盖两条已确认映射的 source_legacy_id：实际 "
+        f"{sorted(reports_by_source)}"
+    )
+    for source_id, obj_report in reports_by_source.items():
+        if source_id == conflicting_source_id:
+            assert obj_report.status == "blocked", (
+                f"{source_id} 的逐对象报告应为 blocked（data 正式对象根同"
+                f"身份冲突必须按对象归因）：实际 {obj_report.status!r}"
+            )
+            assert obj_report.reasons, (
+                f"{source_id} 的 blocked 对象报告必须携带非空 reasons"
+                "（fail-closed 拒因按对象可观察，不得静默 blocked 或只给"
+                "批级标志）"
+            )
+        else:
+            assert obj_report.status == "ready", (
+                f"{source_id} 的逐对象报告应为 ready（该映射项与 legacy 源"
+                f"本身合格，整批 blocked 仅由冲突对象归因）：实际 "
+                f"{obj_report.status!r}，reasons={obj_report.reasons!r}"
+            )
+
+    # 3：零写入 —— 不创建 records、生命周期目录（working /
+    #    release_staging，含 data 根下）或任何目标条目；全树无任何
+    #    新增/修改/删除（含报告/缓存文件）。
+    for forbidden in (
+        "records",
+        "working",
+        "release_staging",
+        "data/working",
+        "data/release_staging",
+    ):
+        assert not (tmp_path / forbidden).exists(), (
+            f"批级只读预检不得创建 {forbidden!r}"
+        )
+    assert _snapshot_tree(tmp_path) == before, (
+        "批级只读预检必须零写入：同身份冲突只 blocked，不覆盖、不改名、"
+        "不清理既有条目，不创建目标 / 生命周期 / records 条目，不改 "
+        "legacy 源树与旧 active pointers"
+    )
+
+    # 4：既有条目逐字节保持（file 形式哨兵字节不变；dir 形式仍为空目
+    #    录）；旧 active pointers 仍声明 legacy 身份（全树快照已全局钉
+    #    定逐字节不变）。
+    if existing_kind == "file":
+        assert existing.read_bytes() == _EXISTING_DATA_ROOT_ENTRY_BYTES
+    else:
+        assert existing.is_dir()
+        assert not any(existing.iterdir())
+    assert (
+        json.loads(data_pointer.read_text(encoding="utf-8"))["release_id"]
+        == CONFIRMED_DATA_SOURCE_R2
+    )
+    assert (
+        yaml.safe_load(prompt_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+
+    # 5：不就地修改传入映射项（T11 同口径：source_verified /
+    #    source_payload_complete 保持 M0 事实分级，不得伪造成 payload
+    #    已验证）。
     assert mapping_items == _confirmed_data_mapping_items()
