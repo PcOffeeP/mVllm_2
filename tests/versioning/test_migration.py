@@ -152,8 +152,11 @@ T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同
 内容哈希保真门（precheck 按权威 recipe 复算 prompt_content_sha256
 与 manifest 声明值比对：匹配保持 ready、被篡改 blocked + 非空
 reasons + 零写入；该哈希是 legacy 源 provenance 校验，不写入迁移
-目标，T6 三字段迁移行为不变）；T8 之外不实现/不要求 data 迁移、
-history-summary、CLI、恢复逻辑（冲突场景只断言 blocked 与零写入，
+目标，T6 三字段迁移行为不变）、T9 内容哈希门 NaN/Inf 边界
+（provenance payload 含 YAML .nan/.inf 特殊浮点字面量时 canonical
+化失败必须经报告通道 blocked + 非空 reasons，不得让 ValueError/
+TypeError 穿透 precheck 入口，零写入）；以上切片之外不实现/不要求
+data 迁移、history-summary、CLI、恢复逻辑（冲突场景只断言 blocked 与零写入，
 不断言任何恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
@@ -170,7 +173,15 @@ T3（reviewer 对 2a927d14 的 P3 边界备注）：目标冲突检测必须按�
 ``stem == identity`` 只认标准单后缀 ``.yaml`` 形式，对同身份的无
 扩展名（``prompt-v4.1-r1``）、备份后缀（``prompt-v4.1-r1.yaml.bak``）
 与复合后缀（``prompt-v4.1-r1.tar.gz``）文件全部误放行；同身份必须
-以任何文件形式 blocked，r10 同前缀邻居同时保持 ready。所有用例只在
+以任何文件形式 blocked，r10 同前缀邻居同时保持 ready。T9（本文件
+内容哈希门 NaN/Inf 边界切片，主 Agent 选定）：legacy prompt.yaml 的
+provenance payload 含 YAML 特殊浮点字面量 ``.nan`` / ``.inf`` 时
+（PyYAML 解析为 float nan/inf，权威 recipe 的
+json.dumps(..., allow_nan=False) canonical 化必然抛 ValueError，对该
+payload 无法产出任何合法哈希），预检必须 fail-closed 经报告通道返回
+blocked + 非空 reasons，不得让 ValueError/TypeError 穿透
+precheck_prompt_migration；零写入、legacy 源不变；合法 Prompt 仍
+ready（既有正向用例钉定，本切片不改其判定）。所有用例只在
 pytest ``tmp_path`` 下模拟仓库根，不触碰真实 records/、workspace/、
 pipeline/、finetune/；legacy 树为按 M0 证据布局重建的合成 fixture
 （字段值合成、结构与事实字段对齐 M0 证据）。
@@ -182,6 +193,7 @@ import hashlib
 import importlib
 import importlib.util
 import json
+import math
 import shutil
 from pathlib import Path
 from typing import Any
@@ -1674,5 +1686,152 @@ def test_precheck_blocks_prompt_content_sha256_mismatch(
 
     # 零写入：不创建 records/，不改被篡改的 legacy 源（含 manifest /
     # prompt.yaml 本身），全树逐字节不变。
+    assert not (tmp_path / "records").exists()
+    assert _snapshot_tree(tmp_path) == before
+
+
+# ---------------------------------------------------------------------------
+# T9：内容哈希门 NaN/Inf 边界 —— provenance payload 含 YAML .nan/.inf 特殊
+# 浮点字面量时，canonical 化失败必须经报告通道 blocked（不得泄漏
+# ValueError/TypeError），零写入
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "nan_inf_literal",
+    [
+        pytest.param(".nan", id="nan_literal_in_payload"),
+        pytest.param(".inf", id="inf_literal_in_payload"),
+    ],
+)
+def test_precheck_blocks_nan_inf_in_provenance_payload(
+    tmp_path: Path, nan_inf_literal: str
+) -> None:
+    """payload 含 .nan/.inf -> blocked 报告 + 非空 reasons + 零写入，不得泄漏 ValueError/TypeError。
+
+    T9 behavior（主 Agent 选定，内容哈希门 NaN/Inf 边界切片，先写
+    失败测试）：legacy prompt.yaml 的 provenance payload 含 YAML 特殊
+    浮点字面量 ``.nan`` / ``.inf`` 时，PyYAML 将其解析为 float nan /
+    inf（非字符串、非 None），权威 recipe 的 canonical 化
+    ``json.dumps(..., allow_nan=False)`` 对该 payload 必然抛
+    ``ValueError: Out of range float values are not JSON compliant``
+    —— 即权威 recipe 对该 payload 根本无法产出任何合法哈希。
+    precheck_prompt_migration 必须把这一失败 fail-closed 成报告：
+    ``status == "blocked"`` + 非空 reasons（与 T1 绑定的返回通道），
+    不得让 ValueError/TypeError 穿透预检入口；同时零写入、legacy 源
+    逐字节保持注入后状态。合法 Prompt 的 ready 行为不被本切片改变
+    （既有正向用例钉定：T1 ready 正向切面与 T8 匹配保持 ready 用例，
+    本切片不新增也不修改 ready 判定）。
+
+    注入点（最 plausible 的混入形态）：真实 v4.1 label_pools 以不加
+    引号的 ``null`` 作空值标记（fixture 已镜像），把已确认源
+    prompt.yaml 中首个 ``null`` 标记（fracture_mechanism 池末位）改写
+    成 ``.nan`` / ``.inf``。manifest 保持原样 —— 声明值仍是原合法内容
+    的哈希，即“内容被写坏后声明值未更新”的真实漂移形态（与 T8
+    prompt_yaml_content_modified 同构）。因此 blocked 可由 canonical
+    化失败或复算值不匹配任一 fail-closed 路径给出；本用例钉住的新
+    行为是：该失败必须经报告通道给出，而不是以异常穿透替代。
+
+    捕获的合理但错误实现：
+    - 当前 production（RED 起点）：_check_legacy_provenance 对
+      json.dumps(..., allow_nan=False) 的 ValueError 无捕获，异常
+      穿透 precheck_prompt_migration -> 显式 no-leak 守卫判失败
+      （本用例预期 RED 的 failure signature）；
+    - canonical 化失败被当“复算通过”静默放行（吞异常后跳过内容
+      哈希门）-> 误 ready -> status 断言失败；
+    - 把 NaN/Inf 规范化成 None 后再复算：规范化后 payload 与原合法
+      内容逐字段相等，复算值 == manifest 声明值（fixture 特意保持
+      原内容声明值）-> 误 ready -> status 断言失败（payload 确实
+      含 .nan/.inf，行为上必须 blocked）；
+    - blocked 不带 reasons -> reasons 断言失败；
+    - 拒绝时“顺手修复”（改写 prompt.yaml / manifest、清理重建源条
+      目、写缓存或报告文件、创建 records/ 或 staging）-> 零写入与
+      全树快照断言失败；
+    - 以 ValueError/TypeError 之外的未类型化异常替代报告 -> 异常
+      直接传播判失败（守卫显式点名行为禁止的两类异常，其余按原始
+      traceback 失败 —— 报告通道违约不因异常类型不同而豁免）。
+
+    边界备注（本用例不钉定的形态）：放宽 canonical 化
+    （allow_nan=True 让 ValueError 消失）在“manifest 声明值保持原
+    内容哈希”的本 fixture 下，会因复算值（含 NaN/Infinity token 的
+    伪 canonical JSON）与声明值不匹配而同样 blocked，与本用例结论
+    一致，不构成额外判据；“声明值恰好对上宽松口径”的放行形态不在
+    本切片（legacy 工具链的权威 recipe 对 NaN payload 无法产出任何
+    声明值，该组合只能出自伪造 manifest，留待后续切片按需钉定）。
+
+    RED Gate：本用例编写时 precheck 的内容哈希门对非 JSON 兼容
+    payload 泄漏 ValueError（json.dumps allow_nan=False 未捕获），
+    两个参数均预期在 no-leak 守卫处失败 —— 有效 RED；canonical 化
+    失败转报告通道的实现落地后，本用例转为 NaN/Inf 边界回归钉。
+    """
+    source_entry = _write_legacy_prompt_registry(tmp_path)
+    prompt_file = source_entry / "prompt.yaml"
+    original_bytes = prompt_file.read_bytes()
+    tampered = original_bytes.replace(
+        "    - null\n".encode("utf-8"),
+        f"    - {nan_inf_literal}\n".encode("utf-8"),
+        1,
+    )
+    assert tampered != original_bytes, (
+        "fixture 前置事实失败：label_pools null 标记注入必须真实改写 "
+        "prompt.yaml"
+    )
+    prompt_file.write_bytes(tampered)
+
+    # 前置事实 1：PyYAML 把 .nan/.inf 解析为 float nan/inf（非字符串、
+    # 非 None），注入真实落在 provenance payload 内（fracture_mechanism
+    # 池末位标记）。
+    parsed = yaml.safe_load(prompt_file.read_bytes())
+    injected = parsed["label_pools"]["fracture_mechanism"][-1]
+    assert isinstance(injected, float) and (
+        math.isnan(injected) or math.isinf(injected)
+    ), (
+        f"fixture 前置事实失败：{nan_inf_literal!r} 必须被 PyYAML 解析为 "
+        f"float nan/inf：实际 {injected!r}"
+    )
+    # 前置事实 2：六字段 payload 在注入后仍可解析、字段齐全，但按权威
+    # recipe canonical 化必然抛 ValueError（allow_nan=False）—— 正是当
+    # 前 production 泄漏的异常源头；权威 recipe 对该 payload 无法产出
+    # 任何合法哈希。
+    with pytest.raises(ValueError):
+        _prompt_content_sha256_of_yaml(prompt_file.read_bytes())
+    # 前置事实 3：manifest 保持原合法内容的声明值（内容写坏后声明值
+    # 未更新），与原内容复算值自洽。
+    manifest = json.loads(
+        (source_entry / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["prompt_content_sha256"] == _prompt_content_sha256_of_yaml(
+        original_bytes
+    ), "fixture 前置事实失败：manifest 声明值必须保持原合法内容的哈希"
+
+    assert not (tmp_path / "records").exists()
+    before = _snapshot_tree(tmp_path)
+
+    precheck = _resolve_precheck_entry()
+    assert precheck is not None, (
+        "只读 Prompt 迁移预检行为缺失：versioning.migration 未提供 "
+        "precheck_prompt_migration 入口（当前 behavior 未实现）"
+    )
+    mapping_item = _confirmed_prompt_mapping_item()
+
+    try:
+        report = precheck(tmp_path, mapping_item)
+    except (ValueError, TypeError) as exc:
+        pytest.fail(
+            f"provenance payload 含 {nan_inf_literal!r} 时，只读预检不得抛 "
+            f"{type(exc).__name__}: {exc} —— canonical 化失败必须 "
+            f"fail-closed 经报告通道返回 blocked + 非空 reasons"
+            "（T1 已绑定返回契约）"
+        )
+
+    assert report.status == "blocked", (
+        f"provenance payload 含 {nan_inf_literal!r} 时预检必须 fail-closed "
+        f"返回 blocked：实际 status={report.status!r}"
+    )
+    assert report.reasons, _BLOCKED_REASONS_REQUIRED_MSG
+
+    # 零写入：目标根不创建；legacy 源（含被注入 .nan/.inf 的 prompt.yaml
+    # 与未更新的 manifest）逐字节保持注入后状态 —— 预检不得“顺手修复”
+    # 坏值、改写声明值或产生任何 staging/缓存/报告文件。
     assert not (tmp_path / "records").exists()
     assert _snapshot_tree(tmp_path) == before

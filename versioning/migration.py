@@ -146,13 +146,22 @@ def _check_legacy_provenance(source_entry: Path) -> list[str]:
     payload = {
         name: prompt[name] for name in _LEGACY_CONTENT_HASH_PAYLOAD_FIELDS
     }
-    canonical = json.dumps(
-        payload,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode("utf-8")
+    try:
+        canonical = json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except (ValueError, TypeError) as exc:
+        # canonical 化失败（如 YAML 特殊浮点 .nan/.inf 非 JSON 兼容）
+        # fail-closed：权威 recipe 对该 payload 无法产出任何合法哈希，
+        # 返回错误列表经报告通道 blocked，不穿透 ValueError/TypeError。
+        return [
+            "legacy 源 prompt.yaml 内容哈希 payload 无法 canonical 化"
+            f"（非 JSON 兼容值，权威 recipe 无法复算）: {exc}"
+        ]
     recomputed = hashlib.sha256(canonical).hexdigest()
 
     try:
