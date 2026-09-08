@@ -1,15 +1,20 @@
 """迁移模块：显式区分只读预检与真实转换。
 
-当前只提供已确认 Prompt 映射的只读迁移预检
-:func:`precheck_prompt_migration`：先验证映射项（含用户确认状态）、
-目标身份合法性与 legacy 源必需文件，再检查目标无冲突，返回只读报告。
+提供已确认 Prompt 映射的两段入口：
+- :func:`precheck_prompt_migration`：只读预检，先验证映射项（含用户确认
+  状态）、目标身份合法性与 legacy 源必需文件，再检查目标无冲突，返回
+  只读报告；
+- :func:`migrate_prompt`：对已确认映射执行真实转换，读取 legacy 源
+  ``system_prompt`` / ``user_prompt`` / ``output_fields``，经
+  ``versioning.prompts.create_prompt`` 的既有创建/校验语义创建正式
+  Prompt，返回完整 prompt ID。
 
 约束（根 AGENTS.md / M0 证据）：
 - versioning 完整身份 ``<kind>-v<协议>-r<N>``；fail-closed；
   禁止旧哈希身份、LATEST、短哈希前缀与隐式最新。
 - 预检全程零写入：不创建 ``records/``、staging 或任何目标条目，
   不修改 legacy 源；报告只经返回值给出。
-- 真实转换、history-summary、冲突恢复等不在本切片内。
+- history-summary、冲突恢复等不在本切片内。
 """
 
 from __future__ import annotations
@@ -18,7 +23,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
+import yaml
+
 from versioning.ids import InvalidIdentifier, parse_prompt_id
+from versioning.prompts import (
+    PromptConflict,
+    PromptError,
+    create_prompt,
+)
 
 # M0 object-mapping.yaml 中"用户已逐项确认"的状态值。
 _CONFIRMED_STATUS = "user_confirmed"
@@ -157,3 +169,74 @@ def precheck_prompt_migration(
     errors.extend(_check_target_conflict(root, mapping_item))
 
     return report(errors)
+
+
+class PromptMigrationBlocked(PromptError):
+    """迁移预检未通过（映射/身份/源文件类域错误）；拒绝转换，不做任何写入。"""
+
+
+def migrate_prompt(root: Path, mapping_item: Mapping[str, object]) -> str:
+    """对已确认 Prompt 映射执行真实转换，返回创建的完整 prompt ID。
+
+    先经 :func:`precheck_prompt_migration` 做只读预检：
+    - 非 ready 且原因为映射项/身份/legacy 源文件类域错误时，抛
+      ``PromptMigrationBlocked``（fail-closed，零写入）；
+    - 非 ready 且仅目标冲突时，复用 ``create_prompt`` 的既有
+      ``PromptConflict`` 语义拒绝（不覆盖、不自动改号）。
+
+    ready 时从映射指定的 legacy 源
+    ``pipeline/prompt_registry/<source_legacy_id>/prompt.yaml`` 读取
+    ``system_prompt`` / ``user_prompt`` / ``output_fields``，经
+    ``create_prompt``（含 ``parse_prompt_definition`` 校验）在
+    ``records/prompts/<完整身份>.yaml`` 创建正式 Prompt。不写入
+    provenance / label_pools / revision_id 等非标准字段；不修改
+    legacy 源、旧 active pointers 或传入映射项。
+    """
+    root = Path(root)
+    report = precheck_prompt_migration(root, mapping_item)
+    if report.status != "ready":
+        conflict_errors = _check_target_conflict(root, mapping_item)
+        if not conflict_errors or any(
+            reason not in conflict_errors for reason in report.reasons
+        ):
+            raise PromptMigrationBlocked(
+                "Prompt 迁移预检未通过：" + "；".join(report.reasons)
+            )
+        # 仅目标冲突：target_path 冲突交给 create_prompt 自然抛出
+        # PromptConflict；records/ 下同身份条目（target_path 空闲）同样
+        # 经 PromptConflict 拒绝，不得绕过改名冲突静默创建。
+        target_rel = mapping_item.get("target_path")
+        if not isinstance(target_rel, str) or not (root / target_rel).exists():
+            raise PromptConflict("；".join(report.reasons))
+
+    identity = mapping_item["candidate_target_identity"]
+    parsed = parse_prompt_id(identity)  # 预检已校验，此处必为完整 prompt ID
+    source_id = mapping_item["source_legacy_id"]
+    source_prompt = (
+        root / _LEGACY_PROMPT_REGISTRY / source_id / "prompt.yaml"
+    )
+    try:
+        raw = yaml.safe_load(source_prompt.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise PromptMigrationBlocked(
+            f"legacy 源 prompt.yaml 无法解析: {exc}"
+        ) from exc
+    if not isinstance(raw, Mapping):
+        raise PromptMigrationBlocked("legacy 源 prompt.yaml 顶层必须是 mapping")
+    try:
+        system_prompt = raw["system_prompt"]
+        user_prompt = raw["user_prompt"]
+        output_fields = raw["output_fields"]
+    except KeyError as exc:
+        raise PromptMigrationBlocked(
+            f"legacy 源 prompt.yaml 缺少必需字段: {exc}"
+        ) from exc
+
+    return create_prompt(
+        root,
+        parsed.protocol,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        output_fields=output_fields,
+        version=identity,
+    )

@@ -40,6 +40,22 @@ legacy 源零改动。blocked 结论必须经与 T1 相同的报告返回通道�
    同身份条目（M0 global_pre_write_checks"不存在同名正式对象"逐个复验）；
    冲突只 blocked，不覆盖、不自动改号，不触发任何恢复/转换。
 
+T6 behavior（本切片，主 Agent 选定）—— Prompt 真实转换最小切片：
+对已确认映射 ``v4.1-concise-evidence-json-v2`` -> ``prompt-v4.1-r1``
+执行真实转换时：
+1. 在新 versioning 存储创建正式 Prompt ``prompt-v4.1-r1``
+   （``records/prompts/prompt-v4.1-r1.yaml``）；
+2. 转换后的 system_prompt / user_prompt / output_fields 与 legacy 源
+   结构化相等（逐字段、保序）；
+3. legacy 源树逐字节不变；
+4. 旧 active pointers（pipeline/prompt_control/active_prompt.yaml、
+   finetune/active_data_release.json）不被修改，仍声明 legacy 身份；
+5. 同身份目标已存在时不覆盖（经既有 Prompt 冲突域通道拒绝）；
+6. 复用既有 Prompt 创建/校验语义，不直接伪造目标文件；
+7. 本切片不做 data 转换、history-summary、CLI、中断恢复，也不复算
+   legacy prompt_content_sha256（内容哈希保真属后续切片）；provenance
+   不写入非标准目标字段（保留在 M0 object-mapping 与后续 history-summary）。
+
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
     def precheck_prompt_migration(root: Path, mapping_item: Mapping[str, object]) -> object
@@ -58,6 +74,20 @@ legacy 源零改动。blocked 结论必须经与 T1 相同的报告返回通道�
         # 预检不得把 pending/unknown 当 confirmed：该拒绝行为属于配套反向用例切片，
         #   本测试只喂入 status == "user_confirmed" 的映射项，不覆盖拒绝路径。
 
+    def migrate_prompt(root: Path, mapping_item: Mapping[str, object]) -> str
+        # T6 真实转换：消费与 precheck 相同形状的映射项（M0 证据结构），
+        #   读取 legacy 源 pipeline/prompt_registry/<source_legacy_id>/prompt.yaml
+        #   的 system_prompt / user_prompt / output_fields，经既有 Prompt
+        #   创建/校验语义（versioning.prompts.create_prompt /
+        #   parse_prompt_definition）在 records/prompts/<完整身份>.yaml 创建
+        #   正式 Prompt，返回创建的完整 prompt ID（"prompt-v4.1-r1"）。
+        #   目标已存在等冲突经既有 Prompt 域错误通道拒绝（PromptConflict，
+        #   即 create_prompt 同名冲突语义），不覆盖、不自动改号；
+        #   legacy 源与旧 active pointers 逐字节不变；provenance
+        #   （prompt_content_sha256 / publishing_code_commit 等）不写入目标
+        #   文件（保留在 M0 object-mapping 与后续 history-summary）；
+        #   不修改传入映射项。
+
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
 ``import versioning.migration``，pytest 会在 collection 阶段以
@@ -69,10 +99,15 @@ ModuleNotFoundError 失败，测试体完全不执行——按本轮 RED Gate �
 （本机 Python 3.11.14 已验证）。入口缺失时由本测试的显式 AssertionError
 钉出"只读预检行为缺失"：失败发生在 fixture 构建、前置事实断言与全树
 快照真实执行之后，映射到当前 behavior 未实现，而非 import 机制错误。
+T6（真实转换切片）同口径：migration 模块已存在但 migrate_prompt 入口
+缺失时，仍由测试内惰性解析 + 显式 AssertionError 钉出"真实转换行为
+缺失"，不让 AttributeError / 原始 import 错误成为 RED。
 
-范围边界：本文件只覆盖 Prompt 只读预检 —— T1 ready 正向最小切面、
-T2 blocked 反向四类场景，以及 T3 目标冲突精确身份边界回归；不实现/
-不要求真实转换、data 迁移、history-summary、CLI、恢复逻辑（冲突场景
+范围边界：本文件只覆盖 Prompt 迁移 —— T1 ready 正向最小切面、
+T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同身份非
+标准文件形式回归、T5 身份契约收紧，以及 T6 真实转换最小切片（创建
+正式 prompt-v4.1-r1 + 同身份重转换不覆盖）；T6 之外不实现/不要求
+data 迁移、history-summary、CLI、恢复逻辑、内容哈希复算（冲突场景
 只断言 blocked 与零写入，不断言任何恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
@@ -106,6 +141,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
+
+from versioning.prompts import (
+    PROMPT_REQUIRED_FIELDS,
+    PromptConflict,
+    load_prompt,
+    prompt_path,
+)
 
 CONFIRMED_PROMPT_SOURCE_ID = "v4.1-concise-evidence-json-v2"
 CONFIRMED_PROMPT_TARGET_ID = "prompt-v4.1-r1"
@@ -217,6 +260,153 @@ def _resolve_precheck_entry() -> Any:
         return None
     module = importlib.import_module("versioning.migration")
     return getattr(module, "precheck_prompt_migration", None)
+
+
+def _legacy_prompt_yaml_full(source_id: str) -> bytes:
+    """合成但结构镜像真实 legacy prompt.yaml / active_prompt.yaml 的完整字节。
+
+    真实文件（pipeline/prompt_registry/<id>/prompt.yaml 与
+    pipeline/prompt_control/active_prompt.yaml，M0 verified_local）顶层
+    字段为 schema_version / protocol_id / revision_id / system_prompt /
+    user_prompt / output_fields / label_pools；registry prompt.yaml 与
+    活动指针文件逐字节相同（manifest source_sha256 == prompt_yaml_sha256）。
+    本 fixture 字段值合成，但结构与上述事实字段一致；output_fields 取
+    finetune/README.md 记载的 v4.1 真实四字段；system_prompt 内嵌源
+    标记，使"读错源"（扫全 registry、取历史 sibling）的实现无法通过
+    结构化相等断言（已确认源与 sibling 内容必须不同）。
+    """
+    return (
+        "schema_version: tensile-prompt-control/v1\n"
+        "protocol_id: tensile-vlm/v4.1\n"
+        f"revision_id: {source_id}\n"
+        "\n"
+        f"system_prompt: 你是判定材料拉伸断裂行为的视觉模型。"
+        f"（合成 fixture，源 {source_id}；仅依据当前视频的可见证据判断）\n"
+        "user_prompt: 请逐字段输出 JSON 判定结果。\n"
+        "output_fields:\n"
+        "  - clip_state\n"
+        "  - fracture_mechanism\n"
+        "  - fracture_site\n"
+        "  - special_case\n"
+        "\n"
+        "label_pools:\n"
+        "  clip_state:\n"
+        "    - 未断裂\n"
+        "    - 临界未断裂\n"
+        "    - 发生断裂\n"
+        "    - 已断裂\n"
+        "    - 无法判断\n"
+        "  fracture_mechanism:\n"
+        "    - 韧性断裂\n"
+        "    - 脆性断裂\n"
+        "    - 界面脱粘\n"
+        "    - 爆炸性断裂\n"
+        "    - 半脆半韧断裂\n"
+        "    - null\n"
+        "  fracture_site:\n"
+        "    - inside_gauge\n"
+        "    - outside_gauge_non_root\n"
+        "    - grip_root\n"
+        "    - null\n"
+        "  special_case:\n"
+        "    - 未夹紧\n"
+        "    - 视频异常\n"
+        "    - null\n"
+    ).encode("utf-8")
+
+
+def _write_full_legacy_prompt_layout(root: Path) -> bytes:
+    """构建 T6 真实转换切片的完整 legacy fixture（M0 证据布局）。
+
+    包含：
+    - 已确认源 ``pipeline/prompt_registry/v4.1-concise-evidence-json-v2/``
+      下 prompt.yaml 与 manifest.json（manifest 的 prompt_content_sha256
+      按 fixture 自身 prompt.yaml 字节计算，保持自洽，供后续内容哈希
+      保真切片消费）；
+    - 历史 sibling ``v4.1-concise-evidence-json-v1/``（M0：仅进
+      history-summary，不迁移；prompt.yaml 内容与已确认源不同）；
+    - 旧 Prompt 活动指针 ``pipeline/prompt_control/active_prompt.yaml``
+      （与已确认源 prompt.yaml 逐字节相同，镜像 manifest
+      source_sha256 == prompt_yaml_sha256 事实，声明 revision_id 为
+      legacy id）；
+    - 旧数据活动指针 ``finetune/active_data_release.json``（镜像 M0
+      pinned_by 事实；Prompt 转换不得触碰）。
+
+    返回已确认源 prompt.yaml 的字节，供结构化相等断言直接消费。
+    """
+    confirmed_bytes = _legacy_prompt_yaml_full(CONFIRMED_PROMPT_SOURCE_ID)
+    sibling_bytes = _legacy_prompt_yaml_full(HISTORY_SIBLING_SOURCE_ID)
+
+    registry = root / "pipeline" / "prompt_registry"
+    source_commits = {
+        CONFIRMED_PROMPT_SOURCE_ID: (
+            confirmed_bytes,
+            "98f0476d50138a7577e65426338a44a1baaec040",
+        ),
+        HISTORY_SIBLING_SOURCE_ID: (
+            sibling_bytes,
+            "4c56f7c958b830e43e301739aa4d71b2eb1c1f99",
+        ),
+    }
+    for source_id, (prompt_bytes, publishing_commit) in source_commits.items():
+        entry = registry / source_id
+        entry.mkdir(parents=True, exist_ok=True)
+        (entry / "prompt.yaml").write_bytes(prompt_bytes)
+        manifest = {
+            "protocol_id": "tensile-vlm/v4.1",
+            "prompt_content_sha256": hashlib.sha256(prompt_bytes).hexdigest(),
+            "publishing_code_commit": publishing_commit,
+        }
+        (entry / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+    active_pointer = root / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    active_pointer.parent.mkdir(parents=True, exist_ok=True)
+    active_pointer.write_bytes(confirmed_bytes)
+
+    data_pointer = root / "finetune" / "active_data_release.json"
+    data_pointer.parent.mkdir(parents=True, exist_ok=True)
+    data_pointer.write_text(
+        json.dumps(
+            {
+                "release_id": "v4.1.0-ecb5aeb9657c",
+                "release_dir": "workspace/data/releases/v4.1.0-ecb5aeb9657c",
+                "manifest": (
+                    "workspace/data/releases/v4.1.0-ecb5aeb9657c"
+                    "/manifest/release_manifest.json"
+                ),
+                "expected_contract_hash": (
+                    "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
+                ),
+                "expected_manifest_sha256": (
+                    "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b"
+                ),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    return confirmed_bytes
+
+
+def _resolve_prompt_migration_entry() -> Any:
+    """惰性解析 T6 真实转换入口；模块或入口缺失时返回 None。
+
+    RED Gate 设计（与 _resolve_precheck_entry 同口径）：migration 模块
+    已存在而 migrate_prompt 入口缺失时返回 None，由调用方以显式行为
+    断言钉出"真实转换行为缺失"，不让 AttributeError / 原始 import
+    错误成为 RED。
+    """
+    spec = importlib.util.find_spec("versioning.migration")
+    if spec is None:
+        return None
+    module = importlib.import_module("versioning.migration")
+    return getattr(module, "migrate_prompt", None)
 
 
 def test_confirmed_prompt_mapping_precheck_returns_ready_without_writes(
@@ -782,3 +972,198 @@ def test_precheck_blocks_same_identity_nonstandard_file_forms(
     # 既有条目逐字节保持；全树零写入（ready 场景亦不得创建任何新条目）。
     assert occupied.read_bytes() == _EXISTING_TARGET_BYTES
     assert _snapshot_tree(tmp_path) == before
+
+
+# ---------------------------------------------------------------------------
+# T6：真实转换 —— 已确认 Prompt 映射创建正式 prompt-v4.1-r1
+# ---------------------------------------------------------------------------
+
+
+def test_confirmed_prompt_mapping_real_conversion_creates_formal_prompt(
+    tmp_path: Path,
+) -> None:
+    r"""已确认 Prompt 映射的真实转换：创建正式 prompt-v4.1-r1、保真且零越界。
+
+    当前 behavior（M1a Prompt 真实转换最小切片）—— 对已确认映射
+    ``v4.1-concise-evidence-json-v2`` -> ``prompt-v4.1-r1`` 执行真实转换：
+    1. 在新 versioning 存储创建正式 Prompt ``prompt-v4.1-r1``
+       （records/prompts/prompt-v4.1-r1.yaml）；
+    2. 转换后的 system_prompt / user_prompt / output_fields 与 legacy 源
+       结构化相等（逐字段、保序）；
+    3. legacy 源树逐字节不变；
+    4. 旧 active pointers（pipeline/prompt_control/active_prompt.yaml 与
+       finetune/active_data_release.json）不被修改，仍声明 legacy 身份；
+    5. 同身份目标已存在时不覆盖（经既有 Prompt 冲突域通道拒绝）；
+    6. 复用既有 Prompt 创建/校验语义（load_prompt 全契约读回），
+       不直接伪造目标文件；
+    7. 不产生 data 转换 / history-summary / CLI / 中断恢复副作用。
+
+    捕获的合理但错误实现：
+    - 字节复制 legacy prompt.yaml 到目标位置（身份不改）-> 目标缺
+      ``version: prompt-v4.1-r1`` 且携带 schema_version / protocol_id /
+      revision_id / label_pools 等 legacy 字段，load_prompt 抛
+      PromptSchemaError（version 字段缺失/与文件名不一致），键集断言
+      同时失败；
+    - 字段丢失 / 内容截断 / output_fields 乱序或误取 label_pools 键 ->
+      结构化相等断言失败（output_fields 与真实 v4.1 四字段逐项相等且
+      保序）；
+    - 读错源（扫全 registry、取历史 sibling、从其他文件拼字段）->
+      sibling 的 system_prompt 与已确认源不同（fixture 内嵌源标记），
+      结构化相等断言失败；
+    - 修改 legacy 源（改写 prompt.yaml / manifest.json）或旧 active
+      pointers（切换 active_prompt.yaml 指向新身份、动数据指针）->
+      既有条目逐字节对比失败，revision_id / release_id 显式断言失败；
+    - 覆盖已存在正式对象（同身份重转换静默成功、覆盖、自动改号 r2、
+      清理重建）-> pytest.raises(PromptConflict) 失败，或目标字节/全树
+      快照断言失败；
+    - 绕过既有创建语义伪造目标文件（不经 schema/身份校验直接写盘）->
+      load_prompt 完整契约读回失败（version 字段与文件名一致、五必填
+      字段齐全且值合法），或键集 != PROMPT_REQUIRED_FIELDS；
+    - provenance 写入目标文件（prompt_content_sha256 /
+      publishing_code_commit 等非标准字段）-> 键集断言失败（provenance
+      保留在 M0 object-mapping 与后续 history-summary，不进目标）；
+    - 顺手产生本切片外副作用（history-summary 文件、staging、records/
+      下别名或 current 指针、sibling 的正式目标、报告/缓存文件）->
+      新增条目集合恰为目标文件路径及其目录的断言失败；
+    - 就地修改传入映射项（M0 证据的内存镜像）-> 映射项不变断言失败；
+    - 对合法已确认输入 fail-closed（抛错或未创建目标）-> 返回值与目标
+      存在性断言失败。
+
+    冲突拒绝通道的绑定说明：真实转换是写入操作，与只读预检的报告通道
+    （T1 已绑定 status 属性返回）不同；既有 Prompt 创建语义（create_prompt）
+    对同名正式对象一致抛 PromptConflict（versioning/prompts.py 域错误），
+    本切片按"复用既有创建语义"绑定该通道——不覆盖、不自动改号、不静默
+    成功。中断后的恢复/续传语义不在本切片（spec：仅能恢复可证实属于同
+    一操作的未完成工作），故重转换按冲突停止，而非幂等续传。
+
+    RED Gate：本测试编写时 versioning.migration 尚无 migrate_prompt 入口；
+    测试内惰性解析入口并以显式 AssertionError 钉出"真实转换行为缺失"，
+    失败发生在 fixture 构建、前置事实断言与全树快照真实执行之后，
+    不让原始 ImportError/ModuleNotFoundError/AttributeError 成为 RED。
+    """
+    mapping_item = _confirmed_prompt_mapping_item()
+    confirmed_prompt_bytes = _write_full_legacy_prompt_layout(tmp_path)
+
+    # fixture 前置事实（对齐 M0 证据）：已确认源必需文件齐全；历史
+    # sibling 完整且内容与已确认源不同（读错源可捕获）；活动指针与
+    # 已确认源逐字节相同并声明 legacy 身份；数据指针声明 legacy
+    # release；目标根不存在；映射 target_path 与权威 prompt_path 一致。
+    confirmed_entry = (
+        tmp_path / "pipeline" / "prompt_registry" / CONFIRMED_PROMPT_SOURCE_ID
+    )
+    assert (confirmed_entry / "manifest.json").is_file()
+    assert (confirmed_entry / "prompt.yaml").is_file()
+    legacy_raw = yaml.safe_load(confirmed_prompt_bytes)
+    assert legacy_raw["revision_id"] == CONFIRMED_PROMPT_SOURCE_ID
+    assert legacy_raw["output_fields"] == [
+        "clip_state",
+        "fracture_mechanism",
+        "fracture_site",
+        "special_case",
+    ]
+    sibling_prompt = (
+        tmp_path
+        / "pipeline"
+        / "prompt_registry"
+        / HISTORY_SIBLING_SOURCE_ID
+        / "prompt.yaml"
+    )
+    sibling_raw = yaml.safe_load(sibling_prompt.read_bytes())
+    assert sibling_raw["system_prompt"] != legacy_raw["system_prompt"]
+    active_pointer = tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    assert active_pointer.read_bytes() == confirmed_prompt_bytes
+    data_pointer = tmp_path / "finetune" / "active_data_release.json"
+    assert (
+        json.loads(data_pointer.read_text(encoding="utf-8"))["release_id"]
+        == "v4.1.0-ecb5aeb9657c"
+    )
+    assert not (tmp_path / "records").exists()
+    assert prompt_path(tmp_path, CONFIRMED_PROMPT_TARGET_ID) == tmp_path / str(
+        mapping_item["target_path"]
+    )
+
+    before = _snapshot_tree(tmp_path)
+
+    migrate_prompt = _resolve_prompt_migration_entry()
+    assert migrate_prompt is not None, (
+        "真实 Prompt 迁移转换行为缺失：versioning.migration 未提供 "
+        "migrate_prompt 入口（当前 behavior 未实现）"
+    )
+
+    created = migrate_prompt(tmp_path, mapping_item)
+    assert created == CONFIRMED_PROMPT_TARGET_ID, (
+        f"真实转换应返回创建的完整 prompt ID {CONFIRMED_PROMPT_TARGET_ID!r}："
+        f"实际 {created!r}"
+    )
+
+    # 1+6：目标经既有 Prompt 契约可完整读回（version 字段与文件名一致、
+    # 五必填字段齐全且值合法）——字节复制或绕过校验伪造的文件无法通过。
+    target_file = (
+        tmp_path / "records" / "prompts" / f"{CONFIRMED_PROMPT_TARGET_ID}.yaml"
+    )
+    assert target_file.is_file()
+    converted = load_prompt(tmp_path, CONFIRMED_PROMPT_TARGET_ID)
+    assert converted.version == CONFIRMED_PROMPT_TARGET_ID
+
+    # 2：三字段与 legacy 源结构化相等（逐字段、保序；与真实 v4.1 四字段
+    # 一致——fixture 前置事实已钉死源值）。
+    assert converted.system_prompt == legacy_raw["system_prompt"]
+    assert converted.user_prompt == legacy_raw["user_prompt"]
+    assert converted.output_fields == tuple(legacy_raw["output_fields"])
+    assert converted.output_fields == (
+        "clip_state",
+        "fracture_mechanism",
+        "fracture_site",
+        "special_case",
+    )
+
+    # 键集恰为标准 prompt 字段：provenance（prompt_content_sha256 /
+    # publishing_code_commit）与 legacy 字段（schema_version / protocol_id /
+    # revision_id / label_pools）均不得写入目标文件。
+    target_raw = yaml.safe_load(target_file.read_text(encoding="utf-8"))
+    assert set(target_raw) == set(PROMPT_REQUIRED_FIELDS), (
+        f"目标文件键集必须恰为标准 prompt 字段 {PROMPT_REQUIRED_FIELDS}："
+        f"实际 {sorted(target_raw)}"
+    )
+
+    # 3+4：既有条目（legacy 源树 + 旧 active pointers）逐字节不变，无删除、
+    # 无修改；旧指针仍声明 legacy 身份。
+    after = _snapshot_tree(tmp_path)
+    changed = [
+        rel for rel, content in before.items() if after.get(rel) != content
+    ]
+    assert not changed, (
+        f"真实转换不得修改或删除任何既有条目（legacy 源与旧 active "
+        f"pointers 逐字节不变）：{sorted(changed)}"
+    )
+    assert (
+        yaml.safe_load(active_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+    assert (
+        json.loads(data_pointer.read_text(encoding="utf-8"))["release_id"]
+        == "v4.1.0-ecb5aeb9657c"
+    )
+
+    # 7：新增条目恰为目标文件及其目录——无 staging、无报告/缓存文件、
+    # 无 history-summary、无 records/ 别名或 current 指针、无历史
+    # sibling 的正式目标、无 provenance sidecar。
+    added = set(after) - set(before)
+    assert added == {
+        "records",
+        "records/prompts",
+        str(mapping_item["target_path"]),
+    }, f"真实转换只应新增目标文件及其目录：实际新增 {sorted(added)}"
+
+    # 5：同身份重转换必须经既有 Prompt 冲突域通道拒绝（PromptConflict，
+    # 即 create_prompt 同名冲突语义）——不覆盖、不自动改号、不清理重建、
+    # 不静默成功；目标与全树保持第一次转换后的状态。
+    first_target_bytes = target_file.read_bytes()
+    after_first = _snapshot_tree(tmp_path)
+    with pytest.raises(PromptConflict):
+        migrate_prompt(tmp_path, mapping_item)
+    assert target_file.read_bytes() == first_target_bytes
+    assert _snapshot_tree(tmp_path) == after_first
+
+    # 映射项是 M0 证据的内存镜像：真实转换不得就地修改。
+    assert mapping_item == _confirmed_prompt_mapping_item()
