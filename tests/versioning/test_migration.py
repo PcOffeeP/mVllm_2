@@ -90,6 +90,26 @@ T8 behavior（本切片，主 Agent 选定，legacy prompt 内容哈希保真门
    字节哈希）是另一套哈希，不得混用或互相替代；
 7. 既有三字段迁移行为（T6）不变。
 
+T10 behavior（本切片，主 Agent 选定，M1a 中断安全小行为切片，先写
+测试）—— Prompt 真实转换的目标创建过程被中断/失败时不得留下半写入
+正式对象：注入“写入已真实开始、未完成”的中断（对当前 production
+create_prompt 的目标写调用点 Path.write_text 写入非空严格前缀字节后
+抛 OSError，模拟写盘中途崩溃 / IO 错误；写入前即失败的注入不产生
+残骸、无法区分原子与非原子实现，故不采用），断言：
+1. 目标路径无任何文件 —— 半写/空写残骸同样禁止，正式对象只在完整
+   写入后才“存在”；半写残骸既破坏“目标无冲突”预检口径（records/
+   下同身份条目以任何文件形式占用即冲突），又让同一转换的重跑被
+   create_prompt 的同名冲突语义（PromptConflict）拒绝；
+2. legacy 源与旧 active pointers 逐字节不动（records/ 之外零变化）；
+3. 恢复正常写入后，在不改映射与源内容的前提下重跑同一转换，必须
+   成功创建完整 prompt-v4.1-r1（load_prompt 全契约读回），且结果与
+   无中断基线逐字节一致（records/ 整棵子树比对）。
+若 production 已具备原子写入/失败清理语义，本切片允许 Unexpected
+PASS（转为中断安全回归钉），不得为此制造无意义 production 修改。
+自动恢复/续传（识别“同一转换”的已提交事实、凭证绑定映射与源内容）
+不在本切片 —— 重跑是对 migrate_prompt 的全新调用；data 复制中断、
+history-summary、CLI 亦不在本切片。
+
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
     def precheck_prompt_migration(root: Path, mapping_item: Mapping[str, object]) -> object
@@ -155,9 +175,14 @@ reasons + 零写入；该哈希是 legacy 源 provenance 校验，不写入迁�
 目标，T6 三字段迁移行为不变）、T9 内容哈希门 NaN/Inf 边界
 （provenance payload 含 YAML .nan/.inf 特殊浮点字面量时 canonical
 化失败必须经报告通道 blocked + 非空 reasons，不得让 ValueError/
-TypeError 穿透 precheck 入口，零写入）；以上切片之外不实现/不要求
-data 迁移、history-summary、CLI、恢复逻辑（冲突场景只断言 blocked 与零写入，
-不断言任何恢复行为）。T2 身份场景只绑定
+TypeError 穿透 precheck 入口，零写入）、T10 目标创建中断安全
+（目标写中途被中断不得留下半写入正式对象；legacy 源与旧 active
+pointers 逐字节不动；恢复正常后重跑同一转换成功创建完整
+prompt-v4.1-r1 且与无中断基线 records/ 子树逐字节一致；注入点为
+当前 production 的 Path.write_text，写机制变更时注入点随实际写
+路径维护，行为契约不变）；以上切片之外不实现/不要求
+data 迁移、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
+T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
 后续身份收紧切片。T5（本文件身份收紧切片，reviewer 对 2a927d14
@@ -1835,3 +1860,289 @@ def test_precheck_blocks_nan_inf_in_provenance_payload(
     # 坏值、改写声明值或产生任何 staging/缓存/报告文件。
     assert not (tmp_path / "records").exists()
     assert _snapshot_tree(tmp_path) == before
+
+
+# ---------------------------------------------------------------------------
+# T10：中断安全 —— 目标创建过程被中断不得留下半写入正式对象；恢复
+# 正常后重跑同一转换成功且与无中断基线逐字节一致（M1a 小行为切片，
+# 先写测试）
+# ---------------------------------------------------------------------------
+
+
+class _SimulatedMidWriteInterruption(OSError):
+    """模拟目标正式对象写入中途被中断（进程崩溃 / IO 错误的代表性形态）。"""
+
+
+def _install_mid_write_interruption(
+    monkeypatch: pytest.MonkeyPatch, struck_writes: list[Path]
+) -> None:
+    """安装期间中断所有 ``Path.write_text``：先落盘非空严格前缀，再抛 OSError。
+
+    中断形态取“写入已真实开始但未完成”的最小代表：把 data 的非空严格
+    前缀写入目标文件并 flush 落盘，然后抛 ``_SimulatedMidWriteInterruption``
+    —— 模拟进程写盘中途崩溃 / 磁盘 IO 错误。写入开始前即失败的注入
+    不产生任何残骸，无法区分原子与非原子实现，故不采用。每次被中断
+    的写入路径记入 struck_writes，供调用方断言“中断确实命中了目标创建
+    过程中的真实写入”（注入失效时显式失败，而非空洞通过）。
+
+    注入点契约：拦截当前 production ``versioning.prompts.create_prompt``
+    写正式对象的实际调用点 ``Path.write_text``。若实现更换写机制
+    （如临时文件 + rename），本注入可能不再命中 —— struck_writes 为
+    空时由调用方的前置断言先失败，提示注入点随实际写路径维护；行为
+    契约（无半写正式对象 + 重跑成功 + 与基线一致）不随写机制改变。
+    """
+
+    def interrupting_write_text(
+        self: Path,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int:
+        cut = max(1, len(data) // 2)
+        with open(
+            self,
+            "w",
+            encoding=encoding or "utf-8",
+            errors=errors,
+            newline=newline,
+        ) as handle:
+            handle.write(data[:cut])
+            handle.flush()
+        struck_writes.append(self)
+        raise _SimulatedMidWriteInterruption(
+            f"simulated interruption mid-write of formal object: {self}"
+        )
+
+    monkeypatch.setattr(Path, "write_text", interrupting_write_text)
+
+
+def _records_subtree(snapshot: dict[str, bytes]) -> dict[str, bytes]:
+    """从整树快照取 records/ 子树（含 ``records`` 目录条目自身）。"""
+    return {
+        rel: content
+        for rel, content in snapshot.items()
+        if rel == "records" or rel.startswith("records/")
+    }
+
+
+def _non_records(snapshot: dict[str, bytes]) -> dict[str, bytes]:
+    """从整树快照取 records/ 之外的条目（legacy 源树 + 旧 active pointers）。"""
+    return {
+        rel: content
+        for rel, content in snapshot.items()
+        if not (rel == "records" or rel.startswith("records/"))
+    }
+
+
+def _assert_non_records_unchanged(
+    before: dict[str, bytes], after: dict[str, bytes]
+) -> None:
+    """断言 records/ 之外零新增/删除/修改（legacy 源与旧指针逐字节不动）。"""
+    before_kept = _non_records(before)
+    after_kept = _non_records(after)
+    changed = sorted(
+        {rel for rel in before_kept if after_kept.get(rel) != before_kept[rel]}
+        | {rel for rel in after_kept if rel not in before_kept}
+    )
+    assert not changed, (
+        "真实转换（含中断失败路径）不得修改、删除或新增 records/ 之外的"
+        f"任何条目（legacy 源与旧 active pointers 逐字节不变）：变化 {changed}"
+    )
+
+
+def test_migrate_prompt_interrupted_target_write_leaves_no_partial_object_and_rerun_matches_baseline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """中断目标写 -> 无半写正式对象、legacy/指针不动；恢复后重跑成功且与基线一致。
+
+    T10 behavior（M1a 中断安全小行为切片，主 Agent 选定，先写测试）——
+    已确认映射 ``v4.1-concise-evidence-json-v2`` -> ``prompt-v4.1-r1``
+    的真实转换在目标创建过程中被中断（写入已真实开始、未完成）时：
+    1. 不得在目标路径留下半写入正式对象：目标文件必须不存在（半写 /
+       空写残骸同样是“半写入正式对象” —— 正式对象只在完整写入后才
+       “存在”；残骸既破坏“目标无冲突”预检口径，又让同一转换的重跑
+       被 create_prompt 同名冲突语义拒绝）；
+    2. legacy 源与旧 active pointers 逐字节不动（records/ 之外零变化；
+       旧指针仍声明 legacy 身份）；
+    3. 恢复正常写入后，在不改映射与源内容的前提下重跑同一转换，必须
+       成功创建完整 ``prompt-v4.1-r1``（load_prompt 全契约读回），且
+       结果与无中断基线逐字节一致（records/ 整棵子树比对）。
+
+    注入方式：monkeypatch ``Path.write_text``（当前 production
+    create_prompt 的目标写调用点）写入非空严格前缀字节后抛 OSError
+    —— 模拟写盘中途崩溃 / 磁盘 IO 错误；前置断言 struck_writes 非空，
+    钉死中断确实命中目标创建过程中的真实写入（注入失效 -> 显式失败，
+    而非空洞通过）。
+
+    基线对照：并行双根 fixture（baseline / interrupted，字节级同构，
+    fixture 前置断言钉死）；baseline 根不受注入干净转换一次，
+    interrupted 根走 中断 -> 断言 -> 恢复 -> 重跑；重跑结果与 baseline
+    的 records/ 子树逐字节比对。
+
+    捕获的合理但错误实现：
+    - 直接写目标且失败留残（当前 production —— RED 起点：
+      create_prompt 直接 ``target.write_text``，无失败清理/原子写入，
+      中断后目标路径留下半写文件）-> 断言 1 失败（有效 RED 的
+      failure signature）；残骸同时让重跑被 PromptConflict 拒绝 ——
+      即使跳过断言 1，重跑成功断言也会失败；
+    - 重跑覆盖残骸（重跑发现半写文件后静默覆盖重建）-> 断言 1 已先
+      失败：半写正式对象在中断后即已存在；且“覆盖”破坏 T6 绑定的
+      同身份不覆盖语义（重跑对既有正式对象必须 PromptConflict 拒绝）；
+    - 失败时“顺手”修改 legacy 状态（改写源 prompt.yaml / manifest、
+      切换旧 active pointers 指向新身份、动数据指针）-> 断言 2 失败
+      （records/ 外全树逐字节对比 + 指针身份显式断言）；
+    - 吞掉中断异常伪造成功返回（清理后正常返回“已创建”）->
+      pytest.raises(Exception) 守卫失败：中断必须以失败显式暴露，
+      不得伪造创建成功；
+    - 中断失败误报为目标冲突（抛 PromptConflict）-> 通道守卫失败：
+      中断前不存在任何身份占用，PromptConflict 语义是“不覆盖、不
+      重试”，与本行为“重跑应成功”直接矛盾；
+    - 重跑绕过校验伪造目标（不经 parse_prompt_definition / 与基线
+      不同字节）-> load_prompt 全契约读回失败，或与基线 records/
+      子树逐字节比对失败；
+    - 映射项被就地修改（重跑消费被第一次尝试改写的映射）-> 重跑前
+      的 mapping_item 不变断言失败。
+
+    TDD 口径 / Unexpected PASS 判据：本用例编写时 create_prompt 为直接
+    写入、无失败清理，中断必留半写残骸 -> 预期有效 RED（failure
+    signature 见断言 1 消息）；若 production 已具备原子写入 / 失败清理
+    语义，本用例转为 Unexpected PASS（中断安全回归钉），不得为此制造
+    无意义 production 修改。恢复/续传语义（识别“同一转换”的已提交事实、
+    凭证绑定映射与源内容）不在本切片 —— 重跑是对 migrate_prompt 的
+    全新调用；data 复制中断、history-summary、CLI 亦不在本切片。
+    """
+    baseline_root = tmp_path / "baseline"
+    interrupted_root = tmp_path / "interrupted"
+
+    mapping_item = _confirmed_prompt_mapping_item()
+    confirmed_bytes = _write_full_legacy_prompt_layout(baseline_root)
+    assert _write_full_legacy_prompt_layout(interrupted_root) == confirmed_bytes
+    # fixture 前置事实：双根字节级同构；两根目标目录均不存在；映射
+    # target_path 与权威 prompt_path 一致。
+    assert _snapshot_tree(baseline_root) == _snapshot_tree(interrupted_root)
+    assert not (baseline_root / "records").exists()
+    assert not (interrupted_root / "records").exists()
+    assert prompt_path(baseline_root, CONFIRMED_PROMPT_TARGET_ID) == (
+        baseline_root / str(mapping_item["target_path"])
+    )
+    assert prompt_path(interrupted_root, CONFIRMED_PROMPT_TARGET_ID) == (
+        interrupted_root / str(mapping_item["target_path"])
+    )
+
+    migrate_prompt = _resolve_prompt_migration_entry()
+    assert migrate_prompt is not None, (
+        "真实 Prompt 迁移转换行为缺失：versioning.migration 未提供 "
+        "migrate_prompt 入口（当前 behavior 未实现）"
+    )
+
+    before_interrupted = _snapshot_tree(interrupted_root)
+
+    # ---- 无中断基线：baseline 根不受注入，干净转换一次 ----
+    created = migrate_prompt(baseline_root, mapping_item)
+    assert created == CONFIRMED_PROMPT_TARGET_ID, (
+        f"基线转换应返回完整 prompt ID {CONFIRMED_PROMPT_TARGET_ID!r}："
+        f"实际 {created!r}"
+    )
+    baseline_converted = load_prompt(baseline_root, CONFIRMED_PROMPT_TARGET_ID)
+    assert baseline_converted.version == CONFIRMED_PROMPT_TARGET_ID
+    legacy_raw = yaml.safe_load(confirmed_bytes)
+    assert baseline_converted.system_prompt == legacy_raw["system_prompt"]
+    assert baseline_converted.user_prompt == legacy_raw["user_prompt"]
+    assert baseline_converted.output_fields == tuple(legacy_raw["output_fields"])
+    baseline_records = _records_subtree(_snapshot_tree(baseline_root))
+    assert set(baseline_records) == {
+        "records",
+        "records/prompts",
+        str(mapping_item["target_path"]),
+    }, f"基线转换应恰新增目标文件及其目录：实际 {sorted(baseline_records)}"
+
+    # ---- 中断注入 + 中断尝试 ----
+    struck_writes: list[Path] = []
+    _install_mid_write_interruption(monkeypatch, struck_writes)
+
+    with pytest.raises(Exception) as excinfo:
+        migrate_prompt(interrupted_root, mapping_item)
+
+    # 中断必须显式以失败暴露，不得吞掉异常伪造“已创建”成功返回
+    # （fail-closed）。中断的具体异常通道不在本切片绑定 —— 它是操作
+    # 失败而非预检拒绝；此处只钉“必须失败”。
+    assert not isinstance(excinfo.value, PromptConflict), (
+        "目标创建中途被中断不是身份占用拒绝（中断前 records/ 无任何"
+        "同身份条目、target_path 空闲）：不得以 PromptConflict 误报"
+        " —— 该通道语义是“不覆盖、不重试”，与本行为“恢复后重跑应"
+        "成功”直接矛盾"
+    )
+    # 前置事实：中断确实命中目标创建过程中的至少一次真实写入 ——
+    # 注入失效（如实现更换写机制）时显式失败，而非空洞通过。
+    assert struck_writes, (
+        "中断注入未命中任何写入：注入点与目标创建的实际写路径不符，"
+        "本用例前提失效（注入点需随写机制更新，行为契约不变）"
+    )
+
+    # 1）无半写入正式对象：目标路径必须不存在任何文件 —— 半写/空写
+    #    残骸同样是“半写入正式对象”（正式对象只在完整写入后才存在）；
+    #    残骸还会让重跑被 create_prompt 同名冲突语义拒绝。
+    target_file = prompt_path(interrupted_root, CONFIRMED_PROMPT_TARGET_ID)
+    assert not target_file.exists(), (
+        f"被中断的真实转换不得在目标路径留下半写入正式对象：实际存在 "
+        f"{target_file}（{target_file.stat().st_size} 字节，前 120 字节 "
+        f"{target_file.read_bytes()[:120]!r}）—— 半写残骸破坏“目标无冲突”"
+        "预检口径，并让同一转换的重跑以 PromptConflict 拒绝"
+    )
+
+    # 2）legacy 源与旧 active pointers 逐字节不动（records/ 之外零变化；
+    #    records/ 内允许仅目录级残留 —— 目录不是正式对象且不阻塞重跑）。
+    after_interrupted = _snapshot_tree(interrupted_root)
+    _assert_non_records_unchanged(before_interrupted, after_interrupted)
+    active_pointer = (
+        interrupted_root / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    )
+    assert (
+        yaml.safe_load(active_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+    data_pointer = interrupted_root / "finetune" / "active_data_release.json"
+    assert (
+        json.loads(data_pointer.read_text(encoding="utf-8"))["release_id"]
+        == "v4.1.0-ecb5aeb9657c"
+    )
+
+    # ---- 恢复正常写入，重跑同一转换 ----
+    monkeypatch.undo()
+    # 不改映射（同一映射对象未被中断的尝试修改）与源内容（上一步已钉
+    # legacy 逐字节不变）。
+    assert mapping_item == _confirmed_prompt_mapping_item()
+
+    created = migrate_prompt(interrupted_root, mapping_item)
+    assert created == CONFIRMED_PROMPT_TARGET_ID, (
+        f"恢复正常后重跑同一转换应成功创建完整 prompt ID "
+        f"{CONFIRMED_PROMPT_TARGET_ID!r}（无残骸阻塞）：实际 {created!r}"
+    )
+
+    # 重跑结果经既有 Prompt 全契约可读回，三字段与 legacy 源结构化相等。
+    rerun_converted = load_prompt(interrupted_root, CONFIRMED_PROMPT_TARGET_ID)
+    assert rerun_converted.version == CONFIRMED_PROMPT_TARGET_ID
+    assert rerun_converted.system_prompt == legacy_raw["system_prompt"]
+    assert rerun_converted.user_prompt == legacy_raw["user_prompt"]
+    assert rerun_converted.output_fields == tuple(legacy_raw["output_fields"])
+
+    # 3）重跑结果与无中断基线逐字节一致：records/ 整棵子树相等
+    #    （目标文件字节相同，且无任何额外残留条目）。
+    rerun_records = _records_subtree(_snapshot_tree(interrupted_root))
+    only_baseline = sorted(set(baseline_records) - set(rerun_records))
+    only_rerun = sorted(set(rerun_records) - set(baseline_records))
+    differing = sorted(
+        rel
+        for rel in set(baseline_records) & set(rerun_records)
+        if baseline_records[rel] != rerun_records[rel]
+    )
+    assert not (only_baseline or only_rerun or differing), (
+        "重跑创建的正式对象必须与无中断基线逐字节一致（records/ 整棵"
+        f"子树）：仅基线有 {only_baseline}，仅重跑有 {only_rerun}，"
+        f"字节不同 {differing}"
+    )
+
+    # 重跑后 legacy 源与旧 active pointers 仍逐字节不动。
+    after_rerun = _snapshot_tree(interrupted_root)
+    _assert_non_records_unchanged(before_interrupted, after_rerun)

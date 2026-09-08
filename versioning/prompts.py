@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import itertools
+import os
 import shutil
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -18,6 +20,8 @@ from versioning.ids import (
     parse_prompt_id,
     parse_train_id,
 )
+
+_TMP_WRITE_COUNTER = itertools.count(1)
 
 PROMPT_REQUIRED_FIELDS: tuple[str, ...] = (
     "version",
@@ -209,10 +213,22 @@ def create_prompt(
     parse_prompt_definition(content)
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(
-        yaml.safe_dump(content, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
+    # 原子写入：先写同目录临时文件，成功后 rename 为正式目标。写入
+    # 中途失败（中断 / IO 错误）时删除临时文件并原样向上抛 —— 目标
+    # 路径不留半写入正式对象，重跑不被残骸阻塞。临时文件名不含目标
+    # 身份前缀（以 "." 开头），不触发 records/ 下同身份冲突扫描。
+    tmp = target.parent / (
+        f".create-prompt-{os.getpid()}-{next(_TMP_WRITE_COUNTER)}.tmp"
     )
+    try:
+        tmp.write_text(
+            yaml.safe_dump(content, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        os.replace(tmp, target)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
     return version
 
