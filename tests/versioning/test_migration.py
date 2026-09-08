@@ -190,6 +190,28 @@ pinned_by: ~，无钉扎）：
 7. 预检不得修复/改写指针或 legacy manifest；本切片不做 manifest
    files 声明的 payload 文件哈希复算门、真实转换、凭证或恢复。
 
+T14 behavior（本切片，主 Agent 选定，data 批级只读预检 legacy
+manifest payload 文件哈希 provenance 门，先写测试）—— 批级只读预检
+必须复算 legacy manifest 声明的 payload 文件哈希（对每个映射项，
+不只对已钉扎活动 release —— T13 是指针钉扎的 manifest 文件字节门，
+本切片是 manifest 自洽性/内容完整性门）：
+1. 对每个映射项读取
+   ``workspace/data/releases/<source_legacy_id>/manifest/
+   release_manifest.json``；
+2. 对 manifest ``files[]`` 中声明的每个 payload 文件，按文件字节
+   独立复算 SHA-256（测试与实现均不 import legacy ``pipeline`` /
+   ``finetune`` 代码，独立镜像自算）；
+3. 与声明的 ``sha256`` 值比对；
+4. 任一文件缺失、哈希字段缺失、哈希不匹配或路径异常（如指向
+   release 目录之外的穿越路径）时，该对象 blocked，且整批 blocked
+   （fail-closed）+ 非空 reasons + 按对象归因；
+5. 匹配时保持 ready（门不得反向过宽）；
+6. 该门是 manifest 自洽性/内容完整性机制，不等于训练机真实
+   payload 已验证：不把 r1 的无钉扎状态伪造成 verified，映射项
+   source_verified / source_payload_complete 保持 M0 事实分级；
+7. 零写入：legacy 源树与旧 active pointers 逐字节不变；
+8. 本切片不做真实转换、凭证、恢复。
+
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
     def precheck_prompt_migration(root: Path, mapping_item: Mapping[str, object]) -> object
@@ -261,10 +283,14 @@ pinned_by: ~，无钉扎）：
         #   不写任何报告/缓存文件（报告只经返回值给出）；不就地修改传入
         #   映射项（不得把 training_observed 等来源状态伪造成 payload
         #   已验证；T13 门也不得给无钉扎映射项伪造 verified/passed）；
-        #   ready 不依赖 payload 文件已验证（manifest files 声明的
-        #   payload 文件哈希复算门不在本文件；T13 只绑定指针钉扎的
-        #   manifest 文件字节 provenance）；报告不绑定任何凭证字段（D2
-        #   格式/位置未裁决）。
+        #   T14 起预检还必须复算 manifest files[] 声明的 payload 文件
+        #   哈希：对每个映射项（含无钉扎对象）逐 entry 按文件字节独立
+        #   复算 SHA-256 与声明 sha256 比对 —— 文件缺失、哈希字段缺失、
+        #   哈希不匹配或路径异常即该对象 blocked 且整批 blocked
+        #   （fail-closed，按对象归因），匹配保持 ready；该门是 manifest
+        #   自洽性/内容完整性机制，ready 不等于训练机真实 payload 已
+        #   验证，不得就此升级映射项来源状态；报告不绑定任何凭证字段
+        #   （D2 格式/位置未裁决）。
 
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
@@ -285,9 +311,10 @@ precheck_data_migration 入口缺失时，仍由测试内惰性解析 + 显式
 AssertionError 钉出“批级只读预检行为缺失”，不让原始 import 错误或
 AttributeError 成为 RED。
 
-范围边界：本文件只覆盖 Prompt 迁移（T1–T10）与 T11–T13 数据迁移批级
+范围边界：本文件只覆盖 Prompt 迁移（T1–T10）与 T11–T14 数据迁移批级
 只读预检切面（ready 正向、目标冲突边界、已钉扎 manifest provenance
-门）—— T1 ready 正向最小切面、
+门、manifest files 声明的 payload 文件哈希复算门）—— T1 ready 正向
+最小切面、
 T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同身份非
 标准文件形式回归、T5 身份契约收紧、T6 真实转换最小切片（创建
 正式 prompt-v4.1-r1 + 同身份重转换不覆盖）、T7 真实转换异常分流
@@ -317,10 +344,18 @@ manifest provenance 门（指针 finetune/active_data_release.json 钉扎
 manifest 文件字节复算 sha256 与指针 expected_manifest_sha256 比对，
 匹配保持 ready；指针缺失/非 JSON/字段缺失/ID 不符/哈希不匹配整批
 blocked + 按对象归因 + 零写入 + 指针与 legacy 源不变；r1 无钉扎
-不阻塞、不伪造 verified/passed；首位与末位篡改双向钉定）；以上切片
-之外不实现/不要求
-data 真实转换、data blocked 反向其余场景（身份契约收紧、源文件
-缺失、manifest files 声明的 payload 文件哈希复算门）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
+不阻塞、不伪造 verified/passed；首位与末位篡改双向钉定）、T14 data
+批级预检 legacy manifest payload 文件哈希 provenance 门（manifest
+files[] 声明的每个 payload 文件按文件字节复算 sha256 与声明值比对：
+匹配保持 ready；r1（批内第二位）与 r2（第一位）payload 字节被等长
+篡改双向钉定，entry 缺 sha256 字段或 path 穿越异常（指向 release
+目录之外、文件仍存在）即该对象 blocked + 整批 blocked + 按对象归因
++ 非空 reasons + 零写入 + legacy 源与旧 pointers 不变；manifest 自
+洽性/内容完整性机制不等于训练机真实 payload 已验证，r1 无钉扎不伪
+造 verified）；以上切片之外不实现/不要求
+data 真实转换、data blocked 反向其余场景（身份契约收紧、legacy 源
+release 目录/manifest 缺失、声明的 payload 文件缺失——该存在性分支
+由既有 production 检查 blocked，本文件未单列用例钉定）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
 T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
@@ -3591,4 +3626,489 @@ def test_data_batch_precheck_pinned_manifest_provenance_gate(
         "批级只读预检不得就地改写传入映射项：无钉扎映射项的 "
         "source_verified / source_payload_complete 必须保持 M0 事实分级，"
         "不得伪造成 verified/passed"
+    )
+
+
+# ---------------------------------------------------------------------------
+# T14：data 批级预检 legacy manifest payload 文件哈希 provenance 门 ——
+# manifest files[] 声明的每个 payload 文件按文件字节复算 SHA-256 与声明
+# sha256 比对；文件缺失、哈希字段缺失、哈希不匹配或路径异常即该对象
+# blocked 且整批 blocked；匹配保持 ready（manifest 自洽性/内容完整性
+# 机制，不等于训练机真实 payload 已验证）（先写测试，不改 production）
+# ---------------------------------------------------------------------------
+
+# payload 篡改目标：两份已映射 release 的 manifest files[] 均声明的
+# datasets/train/fold_0.json（顶层 "fold": 0 字段）。
+_TAMPERED_PAYLOAD_REL = "datasets/train/fold_0.json"
+# 等长字节篡改标记/替换：字节改变、长度不变（size_bytes 声明保持自
+# 洽）、JSON 仍合法 —— blocked 只能由哈希复算不匹配归因。
+_PAYLOAD_TAMPER_MARKER = b'"fold": 0'
+_PAYLOAD_TAMPER_REPLACEMENT = b'"fold": 9'
+# 缺失哈希字段场景的目标 entry（path / size_bytes 保留，仅删 sha256；
+# payload 文件仍在 —— 隔离“文件缺失”分支）。
+_MISSING_SHA256_ENTRY_REL = "reports/quality_report.json"
+# 路径异常场景的目标 entry：path 被改写为指向另一 release 内同名
+# payload 的穿越路径（该文件真实存在 —— 隔离“文件缺失”分支；声明
+# sha256 保留原值，复算必然不匹配）。
+_PATH_ANOMALY_ENTRY_REL = "metadata/training_candidates.json"
+
+
+def _payload_file_of(root: Path, source_id: str, relative_path: str) -> Path:
+    """legacy release 声明 payload 文件的绝对路径（M0 布局）。"""
+    return root / "workspace" / "data" / "releases" / source_id / relative_path
+
+
+def _assert_payload_declared_hashes_self_consistent(
+    root: Path, source_id: str
+) -> None:
+    """fixture 前置事实：manifest files[] 声明哈希随 payload 实际字节自洽。
+
+    独立镜像门口径复算（不 import legacy pipeline / finetune 代码）：
+    逐 entry 读 payload 文件字节，复算 sha256 / size 与声明值比对。使
+    “fixture 的 manifest 声明哈希由合成 payload 实际字节独立复算”成为
+    可断言的 fixture 事实而非构建代码的口头约定；ready 正向对照不得
+    因 fixture 自身错值被误 blocked。
+    """
+    manifest = json.loads(
+        _manifest_file_of(root, source_id).read_text(encoding="utf-8")
+    )
+    release_dir = root / "workspace" / "data" / "releases" / source_id
+    for entry in manifest["files"]:
+        payload_file = release_dir / entry["path"]
+        assert payload_file.is_file(), (
+            f"fixture 前置事实失败：{source_id} 声明的 payload 文件缺失 "
+            f"{payload_file}"
+        )
+        content = payload_file.read_bytes()
+        assert len(content) == entry["size_bytes"], (
+            f"fixture 前置事实失败：{source_id} 的 {entry['path']} 声明 "
+            f"size_bytes={entry['size_bytes']} 与实际 {len(content)} 不符"
+        )
+        assert hashlib.sha256(content).hexdigest() == entry["sha256"], (
+            f"fixture 前置事实失败：{source_id} 的 {entry['path']} 声明 "
+            f"sha256 与 payload 实际字节复算值不符"
+        )
+
+
+def _tamper_declared_payload_file(root: Path, source_id: str) -> bytes:
+    """对 manifest 声明的 payload 文件做等长字节篡改，返回篡改后字节。
+
+    把 ``datasets/train/fold_0.json`` 顶层 ``"fold": 0`` 改成
+    ``"fold": 9``：字节改变、长度不变（size_bytes 声明保持自洽）、
+    JSON 仍合法（不引入“文件损坏/无法解析”类旁路失败）。manifest 声明
+    值与旧指针不动，blocked 只能由哈希复算不匹配归因。
+    """
+    payload_file = _payload_file_of(root, source_id, _TAMPERED_PAYLOAD_REL)
+    original = payload_file.read_bytes()
+    assert _PAYLOAD_TAMPER_MARKER in original, (
+        f"fixture 前置事实失败：{source_id} 的 {_TAMPERED_PAYLOAD_REL} 应含"
+        f"顶层字段标记 {_PAYLOAD_TAMPER_MARKER!r}"
+    )
+    tampered = original.replace(
+        _PAYLOAD_TAMPER_MARKER, _PAYLOAD_TAMPER_REPLACEMENT, 1
+    )
+    assert len(tampered) == len(original) and tampered != original, (
+        "fixture 前置事实失败：篡改必须改变字节且保持等长"
+    )
+    payload_file.write_bytes(tampered)
+    return tampered
+
+
+def _rewrite_legacy_release_manifest(
+    root: Path, source_id: str, manifest: dict[str, Any]
+) -> bytes:
+    """按 fixture manifest 写出口径重写 legacy release manifest，返回字节。
+
+    与 _write_legacy_data_release 的 manifest 写出口径一致（pretty JSON
+    + 尾随换行），供 T14 manifest 篡改场景构造变体；返回字节供预检后
+    断言 manifest 逐字节不变（只读预检不得修复/改写 manifest）。
+    """
+    manifest_bytes = _fixture_pretty_json_bytes(manifest)
+    _manifest_file_of(root, source_id).write_bytes(manifest_bytes)
+    return manifest_bytes
+
+
+def _manifest_files_entry(manifest: dict[str, Any], path: str) -> dict[str, Any]:
+    """取 manifest files[] 中指定 path 的 entry（不存在即前置事实失败）。"""
+    for entry in manifest["files"]:
+        if entry["path"] == path:
+            return entry
+    raise AssertionError(
+        f"fixture 前置事实失败：manifest files[] 中不存在 path={path!r} 的 entry"
+    )
+
+
+@pytest.mark.parametrize(
+    ("scenario", "expected_status", "failing_source_id"),
+    [
+        pytest.param(
+            "payload_files_match",
+            "ready",
+            None,
+            id="payload_files_match_ready",
+        ),
+        pytest.param(
+            "r1_payload_bytes_tampered",
+            "blocked",
+            CONFIRMED_DATA_SOURCE_R1,
+            id="r1_payload_hash_tampered_second_position_batch_blocked",
+        ),
+        pytest.param(
+            "r2_payload_bytes_tampered",
+            "blocked",
+            CONFIRMED_DATA_SOURCE_R2,
+            id="r2_payload_hash_tampered_first_position_batch_blocked",
+        ),
+        pytest.param(
+            "r1_manifest_entry_missing_sha256_field",
+            "blocked",
+            CONFIRMED_DATA_SOURCE_R1,
+            id="manifest_entry_missing_sha256_field_second_position_batch_blocked",
+        ),
+        pytest.param(
+            "r1_manifest_entry_path_traversal_anomaly",
+            "blocked",
+            CONFIRMED_DATA_SOURCE_R1,
+            id="manifest_entry_path_anomaly_second_position_batch_blocked",
+        ),
+    ],
+)
+def test_data_batch_precheck_payload_file_hash_provenance_gate(
+    tmp_path: Path,
+    scenario: str,
+    expected_status: str,
+    failing_source_id: str | None,
+) -> None:
+    r"""data 批级只读预检必须复算 legacy manifest 声明的 payload 文件哈希。
+
+    T14 behavior（本切片，主 Agent 选定，先写测试）—— 批级只读预检
+    对每个映射项（不只对已钉扎活动 release —— T13 是指针钉扎的
+    manifest 文件字节门，本切片是 manifest 自洽性/内容完整性门）：
+    1. 读取 ``workspace/data/releases/<source_legacy_id>/manifest/
+       release_manifest.json``；
+    2. 对 manifest ``files[]`` 声明的每个 payload 文件按文件字节独立
+       复算 SHA-256（fixture 与实现均不 import legacy ``pipeline`` /
+       ``finetune`` 代码，独立镜像自算）；
+    3. 与声明 ``sha256`` 比对；
+    4. 任一文件缺失、哈希字段缺失、哈希不匹配或路径异常（如指向
+       release 目录之外的穿越路径）-> 该对象 blocked，且整批 blocked
+       （D2 fail-closed）+ 非空 reasons + 按对象归因；
+    5. 匹配 -> 保持整批 ready（门不得反向过宽）；
+    6. 该门是 manifest 自洽性/内容完整性机制，不等于训练机真实
+       payload 已验证：r1 的无钉扎状态（M0 pinned_by: ~）不得被伪
+       造成 verified，映射项 source_verified / source_payload_complete
+       保持 M0 事实分级 —— 本测试不绑真实训练机 payload 验证结论；
+    7. 零写入：legacy 源树（含被篡改的 fixture 字节）与旧 active
+       pointers 逐字节不变，不就地修改传入映射项。
+
+    五个参数全部复用 T11–T13 双对象 fixture（两条已确认 data 映射 +
+    三份 legacy release + 旧数据 / Prompt 活动指针），manifest files[]
+    声明哈希由合成 payload 实际字节独立复算自洽（前置事实断言钉
+    定）；两条映射声明的 target_path 保持空闲、T13 指针门在全部场景
+    保持匹配（r2 manifest 文件字节不被任何场景改动 —— 前置事实钉
+    定），blocked 结论只能由本切片的 payload 文件哈希门归因。篡改只
+    发生在 fixture 布局写好之后：
+    - payload_files_match：fixture 原样 -> ready 正向对照（钉死门不
+      得反向过宽：声明哈希全部匹配时不得阻塞）；
+    - r1_payload_bytes_tampered（失败对象在批内第二位）：r1 源
+      ``datasets/train/fold_0.json`` 被等长字节篡改（``"fold": 0`` ->
+      ``"fold": 9``；size_bytes 声明保持自洽、JSON 仍合法），manifest
+      声明值与指针不动 -> 复算必然不匹配 -> blocked；r1 无钉扎，T13
+      指针门不适用 —— 同时钉死门不得只覆盖已钉扎对象；
+    - r2_payload_bytes_tampered（失败对象在第一位）：对已钉扎活动
+      release r2 的同一 payload 文件做相同篡改 —— manifest 文件字节
+      不动，T13 指针门保持匹配，blocked 只能由本门归因；
+    - r1_manifest_entry_missing_sha256_field（失败对象在第二位）：
+      r1 manifest 的 ``reports/quality_report.json`` entry 缺 sha256
+      字段（path / size_bytes 保留、payload 文件仍在）-> 无法复算比
+      对即 fail-closed blocked；
+    - r1_manifest_entry_path_traversal_anomaly（失败对象在第二位）：
+      r1 manifest 的 ``metadata/training_candidates.json`` entry path
+      被改写为指向 r2 release 内同名 payload 的穿越路径（该文件真实
+      存在 —— 隔离“文件缺失”分支；当前存在性检查对穿越路径放行
+      -> 误 ready），声明 sha256 保留原值 -> 复算不匹配/路径异常 ->
+      blocked。
+
+    捕获的合理但错误实现：
+    - 不复算 payload 哈希、只验存在性（当前 production —— RED 起点）：
+      4 个 blocked 参数全部误判 ready -> 整批 status 断言失败；
+    - 只复算已钉扎活动 release 的 payload / 只检查首位或末位映射项
+      -> 对应位置参数误判 ready；
+    - 回读 manifest 声明值自比、用 size_bytes 或 canonical JSON 替代
+      文件字节哈希、或把 payload 哈希与 manifest 文件字节哈希（T13
+      口径）互相替代 -> 篡改参数误判 ready 或 ready 对照误 blocked；
+    - entry 缺 sha256 字段时静默跳过 / 默认放行 -> 缺失字段参数误
+      判 ready；
+    - 对指向 release 目录之外的穿越路径静默跳过该 entry（不阻塞）
+      -> 路径异常参数误判 ready；
+    - blocked 时修复 manifest / 重建 payload / 写报告缓存文件 ->
+      全树快照断言失败；
+    - 就地改写映射项把 r1 无钉扎状态伪造成 verified、或把 ready
+      绑定“训练机 payload 已验证”-> 映射项不变断言失败。
+
+    范围边界（本切片不绑定）：真实转换（migrate_data_*）、凭证（D2
+    格式/位置未裁决）、恢复、训练机真实 payload 验证结论；声明的
+    payload 文件缺失分支由既有存在性检查 blocked（production 已覆
+    盖），本切片不单列用例；expected_contract_hash 门不在本切片。
+    """
+    _write_legacy_data_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+
+    r1_manifest_file = _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R1)
+    r2_manifest_file = _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2)
+    data_pointer_file = tmp_path / _DATA_POINTER_REL
+    prompt_pointer = (
+        tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml"
+    )
+
+    # 场景化篡改（fixture 布局写好之后的唯一变量）。
+    if scenario == "r1_payload_bytes_tampered":
+        _tamper_declared_payload_file(tmp_path, CONFIRMED_DATA_SOURCE_R1)
+    elif scenario == "r2_payload_bytes_tampered":
+        _tamper_declared_payload_file(tmp_path, CONFIRMED_DATA_SOURCE_R2)
+    elif scenario == "r1_manifest_entry_missing_sha256_field":
+        manifest = json.loads(r1_manifest_file.read_text(encoding="utf-8"))
+        entry = _manifest_files_entry(manifest, _MISSING_SHA256_ENTRY_REL)
+        del entry["sha256"]
+        _rewrite_legacy_release_manifest(
+            tmp_path, CONFIRMED_DATA_SOURCE_R1, manifest
+        )
+    elif scenario == "r1_manifest_entry_path_traversal_anomaly":
+        manifest = json.loads(r1_manifest_file.read_text(encoding="utf-8"))
+        entry = _manifest_files_entry(manifest, _PATH_ANOMALY_ENTRY_REL)
+        entry["path"] = (
+            f"../{CONFIRMED_DATA_SOURCE_R2}/{_PATH_ANOMALY_ENTRY_REL}"
+        )
+        _rewrite_legacy_release_manifest(
+            tmp_path, CONFIRMED_DATA_SOURCE_R1, manifest
+        )
+    elif scenario != "payload_files_match":
+        raise AssertionError(f"未知 T14 场景参数：{scenario!r}")
+
+    r1_manifest_bytes_on_disk = r1_manifest_file.read_bytes()
+    r2_manifest_bytes_on_disk = r2_manifest_file.read_bytes()
+    pointer_bytes_on_disk = data_pointer_file.read_bytes()
+
+    # fixture 前置事实（对齐 T11/T13）：三份 legacy release manifest
+    # 存在；批序 r2 第一位、r1 第二位（r1 场景即失败对象在批内第二
+    # 位）；两条映射的 target_path 保持空闲（隔离目标冲突分支）。
+    for source_id in (
+        CONFIRMED_DATA_SOURCE_R1,
+        CONFIRMED_DATA_SOURCE_R2,
+        UNMAPPED_DATA_SIBLING,
+    ):
+        assert _manifest_file_of(tmp_path, source_id).is_file(), (
+            "fixture 前置事实失败：legacy release manifest 缺失 "
+            f"{_manifest_file_of(tmp_path, source_id)}"
+        )
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ], "fixture 前置事实失败：批序必须为 r2 第一位、r1 第二位（失败对象在第二位）"
+    for item in mapping_items:
+        assert not (tmp_path / str(item["target_path"])).exists(), (
+            "fixture 前置事实失败：两条映射的 target_path 必须保持空闲，"
+            "隔离目标冲突分支（blocked 结论只能由 payload 哈希门归因）"
+        )
+
+    # 前置事实：T13 指针 provenance 门在全部场景保持匹配（r2 manifest
+    # 文件字节不被任何 T14 场景改动）—— blocked 不得与 T13 门混同。
+    pointer = json.loads(pointer_bytes_on_disk.decode("utf-8"))
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        r2_manifest_bytes_on_disk
+    ).hexdigest(), (
+        "fixture 前置事实失败：活动指针 expected_manifest_sha256 必须与 "
+        "r2 manifest 文件字节复算哈希自洽（T13 指针门保持绿，blocked 只"
+        "能由本切片 payload 哈希门归因）"
+    )
+
+    # 前置事实：未篡改对象的 manifest 声明哈希随 payload 实际字节独立
+    # 复算自洽（ready 对象的合法性钉定）。
+    for source_id in (CONFIRMED_DATA_SOURCE_R2, CONFIRMED_DATA_SOURCE_R1):
+        if failing_source_id is None or source_id != failing_source_id:
+            _assert_payload_declared_hashes_self_consistent(tmp_path, source_id)
+
+    # 场景专属前置事实：篡改必须真实生效，且失败只能由 payload 文件哈希
+    # 门归因（不得夹带其他失败来源）。
+    if scenario in ("r1_payload_bytes_tampered", "r2_payload_bytes_tampered"):
+        assert failing_source_id is not None
+        tampered_file = _payload_file_of(
+            tmp_path, failing_source_id, _TAMPERED_PAYLOAD_REL
+        )
+        manifest = json.loads(
+            _manifest_file_of(tmp_path, failing_source_id).read_text(
+                encoding="utf-8"
+            )
+        )
+        entry = _manifest_files_entry(manifest, _TAMPERED_PAYLOAD_REL)
+        tampered_bytes = tampered_file.read_bytes()
+        original_bytes = tampered_bytes.replace(
+            _PAYLOAD_TAMPER_REPLACEMENT, _PAYLOAD_TAMPER_MARKER, 1
+        )
+        assert hashlib.sha256(original_bytes).hexdigest() == entry["sha256"], (
+            "fixture 前置事实失败：篡改前 payload 字节复算哈希必须与 "
+            "manifest 声明 sha256 一致（blocked 只能由篡改归因）"
+        )
+        assert len(tampered_bytes) == entry["size_bytes"], (
+            "fixture 前置事实失败：篡改必须等长（size_bytes 声明保持自"
+            "洽，blocked 不得由尺寸比对归因）"
+        )
+        assert hashlib.sha256(tampered_bytes).hexdigest() != entry["sha256"], (
+            "fixture 前置事实失败：篡改后 payload 字节复算哈希必须与 "
+            "manifest 声明 sha256 不一致"
+        )
+        assert isinstance(json.loads(tampered_bytes), dict), (
+            "fixture 前置事实失败：篡改后 payload 必须仍为合法 JSON"
+            "（不引入解析类旁路失败）"
+        )
+    elif scenario == "r1_manifest_entry_missing_sha256_field":
+        manifest = json.loads(r1_manifest_bytes_on_disk.decode("utf-8"))
+        entry = _manifest_files_entry(manifest, _MISSING_SHA256_ENTRY_REL)
+        assert "sha256" not in entry, (
+            "fixture 前置事实失败：该 entry 必须缺 sha256 字段"
+        )
+        assert isinstance(entry.get("path"), str), (
+            "fixture 前置事实失败：缺哈希字段场景必须保留 path 声明，使 "
+            "blocked 只能由 sha256 字段缺失归因"
+        )
+        assert _payload_file_of(
+            tmp_path, CONFIRMED_DATA_SOURCE_R1, _MISSING_SHA256_ENTRY_REL
+        ).is_file(), (
+            "fixture 前置事实失败：缺哈希字段场景的 payload 文件必须仍在"
+            "（blocked 不得由文件缺失归因）"
+        )
+    elif scenario == "r1_manifest_entry_path_traversal_anomaly":
+        manifest = json.loads(r1_manifest_bytes_on_disk.decode("utf-8"))
+        anomalous_path = (
+            f"../{CONFIRMED_DATA_SOURCE_R2}/{_PATH_ANOMALY_ENTRY_REL}"
+        )
+        entry = _manifest_files_entry(manifest, anomalous_path)
+        r1_release_dir = (
+            tmp_path
+            / "workspace"
+            / "data"
+            / "releases"
+            / CONFIRMED_DATA_SOURCE_R1
+        )
+        resolved = r1_release_dir / anomalous_path
+        assert resolved.is_file(), (
+            "fixture 前置事实失败：穿越路径指向的文件必须真实存在（隔离"
+            "“文件缺失”分支，blocked 只能由路径异常/哈希不匹配归因）"
+        )
+        assert not resolved.resolve().is_relative_to(
+            r1_release_dir.resolve()
+        ), (
+            "fixture 前置事实失败：异常 path 必须指向 r1 release 目录之外"
+        )
+        assert hashlib.sha256(resolved.read_bytes()).hexdigest() != entry[
+            "sha256"
+        ], (
+            "fixture 前置事实失败：穿越指向文件复算哈希必须与该 entry 声"
+            "明 sha256 不一致"
+        )
+
+    before = _snapshot_tree(tmp_path)
+
+    precheck_data = _resolve_data_precheck_entry()
+    assert precheck_data is not None, (
+        "批级数据迁移只读预检行为缺失：versioning.migration 未提供 "
+        "precheck_data_migration 入口（当前 behavior 未实现）"
+    )
+
+    report = precheck_data(tmp_path, mapping_items)
+
+    # 1：整批结论（fail-closed：任一映射项的 payload 文件哈希门失败 ->
+    #    整批 blocked；全部匹配 -> ready，门不得反向过宽）。
+    if expected_status == "blocked":
+        assert report.status == "blocked", (
+            f"legacy manifest payload 文件哈希 provenance 门失效"
+            f"（scenario={scenario}）：manifest files[] 声明的 payload 文"
+            "件按文件字节复算 SHA-256 与声明 sha256 不匹配 / 字段缺失 / "
+            "路径异常时，批级只读预检必须该对象 blocked 且整批 blocked"
+            "（fail-closed，零写入）：实际 "
+            f"status={getattr(report, 'status', None)!r}，"
+            f"reasons={getattr(report, 'reasons', None)!r}"
+        )
+        assert report.reasons, _BLOCKED_REASONS_REQUIRED_MSG
+    else:
+        assert report.status == "ready", (
+            "两条已确认映射的 manifest files[] 声明哈希全部随 payload 实"
+            "际字节复算匹配时，批级只读预检应保持整批 ready（门不得反向"
+            "过宽，ready 亦不得被升级为训练机真实 payload 已验证）：实际 "
+            f"status={getattr(report, 'status', None)!r}，"
+            f"reasons={getattr(report, 'reasons', None)!r}"
+        )
+
+    # 2：逐对象报告 —— 恰好两条（未映射 sibling 不得进入）；门失败按
+    #    对象归因；非失败对象保持 ready（其 manifest 声明哈希与 payload
+    #    实际字节自洽，前置事实已钉定）。
+    object_reports = list(report.object_reports)
+    assert len(object_reports) == 2, (
+        "批级报告必须包含恰好两条逐对象报告（两条已确认映射）：实际 "
+        f"{len(object_reports)} 条"
+    )
+    reports_by_source = {
+        obj_report.source_legacy_id: obj_report for obj_report in object_reports
+    }
+    assert set(reports_by_source) == {
+        CONFIRMED_DATA_SOURCE_R1,
+        CONFIRMED_DATA_SOURCE_R2,
+    }, (
+        "逐对象报告必须恰覆盖两条已确认映射的 source_legacy_id：实际 "
+        f"{sorted(reports_by_source)}"
+    )
+    for source_id, obj_report in reports_by_source.items():
+        if failing_source_id is not None and source_id == failing_source_id:
+            assert obj_report.status == "blocked", (
+                f"payload 文件哈希门失败必须按对象归因到 {source_id}：实际"
+                f" status={obj_report.status!r}，"
+                f"reasons={getattr(obj_report, 'reasons', None)!r}"
+            )
+            assert obj_report.reasons, (
+                f"{source_id} 的 blocked 对象报告必须携带非空 reasons（fail-"
+                "closed 拒因按对象可观察，不得静默 blocked）"
+            )
+        else:
+            assert obj_report.status == "ready", (
+                f"{source_id} 的逐对象报告应为 ready（其 manifest 声明哈希"
+                "与 payload 实际字节自洽，整批 blocked 仅由失败对象归"
+                f"因）：实际 {obj_report.status!r}，"
+                f"reasons={getattr(obj_report, 'reasons', None)!r}"
+            )
+
+    # 3：零写入 —— 不创建 <root>/data、working、release_staging、
+    #    records 或任何目标条目；全树无任何新增/修改/删除（含报告/
+    #    缓存文件）；blocked 不得修复 manifest / 重建 payload。
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists(), (
+            f"批级只读预检不得创建目标根 {forbidden!r}"
+        )
+    assert _snapshot_tree(tmp_path) == before, (
+        "批级只读预检必须零写入：payload 文件哈希门失败只 blocked，不修"
+        "复 manifest、不重建 payload，不创建目标 / 生命周期 / records 条"
+        "目，不改 legacy 源树与旧 active pointers"
+    )
+
+    # 4：legacy 源与旧 active pointers 逐字节保持场景态（全树快照已全局
+    #    钉定；显式重读钉死被篡改对象与指针本身不被预检触碰）。
+    assert r1_manifest_file.read_bytes() == r1_manifest_bytes_on_disk
+    assert r2_manifest_file.read_bytes() == r2_manifest_bytes_on_disk
+    assert data_pointer_file.read_bytes() == pointer_bytes_on_disk, (
+        "批级只读预检不得修复 / 改写旧数据活动指针（含 blocked 场景）"
+    )
+    assert (
+        yaml.safe_load(prompt_pointer.read_bytes())["revision_id"]
+        == CONFIRMED_PROMPT_SOURCE_ID
+    )
+
+    # 5：不就地修改传入映射项 —— payload 文件哈希校验是 manifest 自洽
+    #    性/内容完整性机制，不等于训练机真实 payload 已验证：r1 的无钉
+    #    扎状态（M0 pinned_by: ~）不得被伪造成 verified，r2 的
+    #    verified_local / r1 的 training_observed 均不得升级。
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "批级只读预检不得就地改写传入映射项：payload 文件哈希校验是 "
+        "manifest 自洽性/内容完整性机制，不等于训练机真实 payload 已验"
+        "证，source_verified / source_payload_complete 必须保持 M0 事实"
+        "分级（r1 无钉扎不伪造 verified）"
     )

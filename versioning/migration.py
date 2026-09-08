@@ -162,14 +162,23 @@ def _data_target_status_errors(mapping_item: Mapping[str, object]) -> list[str]:
 def _check_legacy_data_source(
     root: Path, mapping_item: Mapping[str, object]
 ) -> list[str]:
-    """检查 legacy data 源 manifest 与声明 payload 存在性（只读，fail-closed）。
+    """检查 legacy data 源 manifest 与声明 payload 内容完整性（只读，fail-closed）。
 
     按映射项的 source_legacy_id 定位
     ``workspace/data/releases/<source_legacy_id>``（不扫描 releases 目录，
     未映射 sibling 不参与本对象报告）；manifest/release_manifest.json 必须
-    存在且其 release_id 与源身份一致；manifest files 声明的 payload 文件
-    必须存在。本切片不做 payload 内容 provenance 门（不复算 files 哈希），
-    training_observed 等来源状态也不得升级为 payload 已验证。
+    存在且其 release_id 与源身份一致；manifest files 声明的每个 payload
+    文件（manifest 自洽性/内容完整性门）必须：
+      - ``path`` 为安全的相对路径（拒绝绝对路径、``..`` 穿越与解析后
+        越出 legacy release 根的路径，fail-closed 且在读取前拒绝）；
+      - 文件存在；
+      - ``sha256`` 字段存在且为字符串；
+      - 按文件字节独立复算 SHA-256 与声明值精确比对（不用 canonical
+        JSON、size_bytes 或声明值自比替代文件字节哈希；不复用 T13 指针
+        门的 manifest 文件字节口径）。
+
+    该门是 manifest 自洽性/内容完整性机制，不等于训练机真实 payload
+    已验证：training_observed 等来源状态不得升级为 payload 已验证。
     """
     errors: list[str] = []
     source_id = mapping_item.get("source_legacy_id")
@@ -199,14 +208,55 @@ def _check_legacy_data_source(
     if not isinstance(files, list) or not files:
         errors.append("legacy 源 release_manifest.json 缺少非空 files 声明")
         return errors
+    release_root = release_dir.resolve()
     for entry in files:
         if not isinstance(entry, Mapping) or not isinstance(entry.get("path"), str):
             errors.append("legacy 源 manifest files 条目缺少 path 声明")
             continue
-        payload_file = release_dir / entry["path"]
+        declared_path = entry["path"]
+        path_obj = Path(declared_path)
+        if path_obj.is_absolute() or ".." in path_obj.parts:
+            errors.append(
+                "legacy 源 manifest files 条目 path 异常："
+                f"{declared_path!r}（拒绝绝对路径与 .. 穿越）"
+            )
+            continue
+        payload_file = release_dir / declared_path
+        try:
+            resolved = payload_file.resolve()
+        except OSError:
+            resolved = payload_file.absolute()
+        if not resolved.is_relative_to(release_root):
+            errors.append(
+                "legacy 源 manifest files 条目 path 解析后越出 legacy "
+                f"release 根：{declared_path!r}"
+            )
+            continue
         if not payload_file.is_file():
             errors.append(
                 f"legacy 源声明的 payload 文件缺失：{payload_file.relative_to(root)}"
+            )
+            continue
+        declared_hash = entry.get("sha256")
+        if not isinstance(declared_hash, str) or not declared_hash:
+            errors.append(
+                "legacy 源 manifest files 条目缺少 sha256 声明："
+                f"{declared_path!r}"
+            )
+            continue
+        try:
+            recomputed = hashlib.sha256(payload_file.read_bytes()).hexdigest()
+        except OSError as exc:
+            errors.append(
+                f"legacy 源声明的 payload 文件无法读取（fail-closed）: "
+                f"{declared_path!r}: {exc}"
+            )
+            continue
+        if recomputed != declared_hash:
+            errors.append(
+                "legacy 源 payload 文件哈希不匹配："
+                f"{declared_path!r} 按文件字节复算 SHA-256={recomputed} "
+                f"与 manifest 声明 sha256 {declared_hash} 不一致"
             )
     return errors
 
@@ -307,7 +357,10 @@ def precheck_data_migration(
          superseded 时 ``replacement`` 为合法 data 身份；
       4. legacy 源 ``workspace/data/releases/<source_legacy_id>`` 的
          manifest/release_manifest.json 存在、release_id 与源身份一致、
-         声明的 payload 文件齐全（只验存在性，不做内容 provenance 门）；
+         声明的 payload 文件路径安全（拒绝绝对路径 / ``..`` 穿越 / 解析后
+         越出 release 根）且齐全，并按文件字节复算每个声明 payload 文件
+         的 SHA-256 与 manifest 声明 sha256 比对（manifest 自洽性/内容
+         完整性门，fail-closed；不等于训练机真实 payload 已验证）；
       5. 目标无冲突（``<root>/<target_path>`` 已存在、``records/`` 下或
          data 正式对象根（target_path 的对象目录层，如
          ``data/releases/``）下同身份条目存在均 blocked）；
