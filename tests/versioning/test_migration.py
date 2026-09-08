@@ -56,6 +56,19 @@ T6 behavior（本切片，主 Agent 选定）—— Prompt 真实转换最小切
    legacy prompt_content_sha256（内容哈希保真属后续切片）；provenance
    不写入非标准目标字段（保留在 M0 object-mapping 与后续 history-summary）。
 
+T7 behavior（本切片，reviewer 对 1a7f011d 的 P3 缺口补齐，先写测试）——
+migrate_prompt 的异常类型分流必须稳定（真实转换是写入入口，预检非
+ready 的拒绝通道必须按失败类别可辨）：
+1. 预检非 ready 且原因为映射项/候选身份/legacy 源文件类域错误时，
+   必须抛 ``PromptMigrationBlocked``（迁移域错误通道），且零写入；
+   域错误与目标冲突并存时域错误通道优先（仍 PromptMigrationBlocked）；
+2. 预检非 ready 仅因 records/ 下同身份条目占用（映射 target_path 空闲）
+   时，必须抛 ``PromptConflict``（复用既有 Prompt 冲突域通道），且零
+   写入——不得绕过改名冲突在空闲 target_path 静默创建正式对象；
+3. 两条异常通道互斥可辨（PromptMigrationBlocked 与 PromptConflict 互
+   不是对方实例），ready 转换与 target_path 被占用的既有行为不回归
+   （T6 selector 复跑钉定）。
+
 预期 production API（供实现对照，模块 ``versioning.migration``）::
 
     def precheck_prompt_migration(root: Path, mapping_item: Mapping[str, object]) -> object
@@ -105,8 +118,10 @@ T6（真实转换切片）同口径：migration 模块已存在但 migrate_promp
 
 范围边界：本文件只覆盖 Prompt 迁移 —— T1 ready 正向最小切面、
 T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同身份非
-标准文件形式回归、T5 身份契约收紧，以及 T6 真实转换最小切片（创建
-正式 prompt-v4.1-r1 + 同身份重转换不覆盖）；T6 之外不实现/不要求
+标准文件形式回归、T5 身份契约收紧、T6 真实转换最小切片（创建
+正式 prompt-v4.1-r1 + 同身份重转换不覆盖），以及 T7 真实转换异常
+分流（映射/身份/源文件域错误经 PromptMigrationBlocked、records/
+同身份占用经 PromptConflict，两路零写入）；T6/T7 之外不实现/不要求
 data 迁移、history-summary、CLI、恢复逻辑、内容哈希复算（冲突场景
 只断言 blocked 与零写入，不断言任何恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
@@ -1167,3 +1182,234 @@ def test_confirmed_prompt_mapping_real_conversion_creates_formal_prompt(
 
     # 映射项是 M0 证据的内存镜像：真实转换不得就地修改。
     assert mapping_item == _confirmed_prompt_mapping_item()
+
+
+# ---------------------------------------------------------------------------
+# T7：真实转换异常分流 —— 域错误经 PromptMigrationBlocked、records/ 同
+# 身份占用经 PromptConflict 拒绝，两路均零写入（reviewer 对 1a7f011d 的 P3）
+# ---------------------------------------------------------------------------
+
+
+def _resolve_prompt_migration_blocked_type() -> Any:
+    """惰性解析迁移域错误异常类；模块或类缺失时返回 None。
+
+    RED Gate 设计（与 _resolve_precheck_entry /
+    _resolve_prompt_migration_entry 同口径）：不让原始 ImportError /
+    AttributeError 成为 RED，由调用方以显式断言钉出“迁移域错误
+    异常通道缺失”。
+    """
+    spec = importlib.util.find_spec("versioning.migration")
+    if spec is None:
+        return None
+    module = importlib.import_module("versioning.migration")
+    return getattr(module, "PromptMigrationBlocked", None)
+
+
+@pytest.mark.parametrize(
+    "block_kind",
+    [
+        pytest.param("mapping_status_pending", id="mapping_status_pending"),
+        pytest.param("identity_legacy_old", id="identity_legacy_old"),
+        pytest.param("source_manifest_missing", id="source_manifest_missing"),
+        pytest.param(
+            "mapping_pending_plus_records_occupation",
+            id="mapping_pending_plus_records_occupation",
+        ),
+    ],
+)
+def test_migrate_prompt_domain_errors_raise_prompt_migration_blocked(
+    tmp_path: Path, block_kind: str
+) -> None:
+    """预检非 ready 且含映射/身份/源文件类域错误 -> PromptMigrationBlocked + 零写入。
+
+    T7 behavior（reviewer 对 1a7f011d 的 P3 缺口，先写测试）：migrate_prompt
+    是写入入口，预检非 ready 的拒绝必须按失败类别分流 —— 映射项未确认
+    （status != user_confirmed）、候选目标身份非法/不符 Prompt 迁移契约、
+    legacy 源必需文件缺失三类域错误必须经迁移域错误通道
+    ``PromptMigrationBlocked`` 拒绝（fail-closed），且零写入；域错误与
+    目标冲突并存时域错误通道优先（仍 PromptMigrationBlocked），不得因
+    同时存在冲突而改走 PromptConflict 通道。
+
+    四个代表场景（各自保持映射 target_path 空闲，隔离 target_path 冲突
+    分支；前三者各取一类域错误代表例，域内其余形式已由 T2/T5 在预检层
+    钉定，本用例只钉真实转换入口的分流通道）：
+    - mapping_status_pending：映射 status 为 pending_user_check（映射类；
+      M0 status_field_legend“未生效，禁止写入”）；
+    - identity_legacy_old：候选目标身份复用 legacy prompt 旧身份
+      （v4.1-concise-evidence-json-v2；身份类，T2 legacy_prompt_old_identity
+      同款输入）；
+    - source_manifest_missing：legacy 源 manifest.json 缺失（源文件类；
+      T2 manifest_missing 同款输入）；
+    - mapping_pending_plus_records_occupation：status 未确认 + records/
+      下已存在同身份条目（域错误与冲突并存 -> 域错误通道优先）。
+
+    前置锚定：同一输入的只读预检必须 blocked（预检口径由 T2/T5 钉定，
+    此处只锚定 T7 分流的触发前提成立；预检零写入由 T1/T2 钉定）。
+
+    捕获的合理但错误实现：
+    - 域错误笼统抛 PromptError / ValueError（不定义迁移域错误通道）
+      -> pytest.raises(PromptMigrationBlocked) 失败；
+    - 域错误误走冲突通道（一律抛 PromptConflict）-> raises 断言失败
+      （PromptConflict 不是 PromptMigrationBlocked 子类）；
+    - 把 PromptMigrationBlocked 实现为 PromptConflict 子类（通道合并，
+      调用方 except PromptConflict 会吞掉域错误拒绝）-> isinstance 守卫
+      断言失败；
+    - 预检非 ready 仍继续转换（blocked 当警告跳过、先创建目标/staging
+      再抛错、“创建后回滚”不彻底）-> raises 断言失败（无异常抛出）或
+      全树快照断言失败：拒绝路径同样零写入；
+    - 混合场景见冲突即抛 PromptConflict（域错误不优先）->
+      mapping_pending_plus_records_occupation 参数失败；
+    - 拒绝时改写 legacy 源 / 清理或改名既有 records/ 条目 ->
+      全树快照断言失败。
+
+    TDD 口径：本用例先于运行写入（1a7f011d 已含分流实现）；允许
+    Unexpected PASS —— 分流行为已满足时本用例为回归钉定，不触发任何
+    production 修改。
+    """
+    _write_legacy_prompt_registry(tmp_path)
+    mapping_item = _confirmed_prompt_mapping_item()
+    occupied: Path | None = None
+    if block_kind == "mapping_status_pending":
+        mapping_item["status"] = "pending_user_check"
+    elif block_kind == "identity_legacy_old":
+        mapping_item["candidate_target_identity"] = CONFIRMED_PROMPT_SOURCE_ID
+    elif block_kind == "source_manifest_missing":
+        manifest = (
+            tmp_path
+            / "pipeline"
+            / "prompt_registry"
+            / CONFIRMED_PROMPT_SOURCE_ID
+            / "manifest.json"
+        )
+        manifest.unlink()
+        assert not manifest.is_file()
+    else:
+        # mapping_pending_plus_records_occupation：域错误与目标冲突并存。
+        mapping_item["status"] = "pending_user_check"
+        occupied = (
+            tmp_path / "records" / "archive" / f"{CONFIRMED_PROMPT_TARGET_ID}.yaml"
+        )
+        occupied.parent.mkdir(parents=True)
+        occupied.write_bytes(_EXISTING_TARGET_BYTES)
+
+    # 前置事实：映射 target_path 空闲（拒绝不得由 target_path 冲突引起）；
+    # 混合场景下 records/ 同身份占用条目已存在。
+    assert not (tmp_path / str(mapping_item["target_path"])).exists()
+    if occupied is not None:
+        assert occupied.is_file()
+
+    # 前置锚定：同一输入的只读预检必须 blocked。
+    _run_blocked_precheck(tmp_path, mapping_item)
+
+    before = _snapshot_tree(tmp_path)
+
+    migrate_prompt = _resolve_prompt_migration_entry()
+    assert migrate_prompt is not None, (
+        "真实 Prompt 迁移转换行为缺失：versioning.migration 未提供 "
+        "migrate_prompt 入口（当前 behavior 未实现）"
+    )
+    blocked_type = _resolve_prompt_migration_blocked_type()
+    assert blocked_type is not None, (
+        "Prompt 迁移域错误异常通道缺失：versioning.migration 未定义 "
+        "PromptMigrationBlocked（当前 behavior 未实现）"
+    )
+
+    with pytest.raises(blocked_type) as excinfo:
+        migrate_prompt(tmp_path, mapping_item)
+
+    # 两条异常通道互斥可辨：域错误拒绝不得误走冲突通道。
+    assert not isinstance(excinfo.value, PromptConflict), (
+        "映射/身份/源文件类域错误必须经 PromptMigrationBlocked 拒绝，"
+        "不得误走 PromptConflict 冲突通道"
+    )
+
+    # 零写入：全树逐字节不变 —— 不创建 records/、目标条目或 staging，
+    # 不改 legacy 源；混合场景下既有占用条目哨兵字节保持原样。
+    assert _snapshot_tree(tmp_path) == before
+    if occupied is not None:
+        assert occupied.read_bytes() == _EXISTING_TARGET_BYTES
+    else:
+        assert not (tmp_path / "records").exists()
+
+
+def test_migrate_prompt_records_identity_occupation_raises_prompt_conflict(
+    tmp_path: Path,
+) -> None:
+    """预检非 ready 仅因 records/ 同身份占用（target_path 空闲）-> PromptConflict + 零写入。
+
+    T7 behavior（reviewer 对 1a7f011d 的 P3 缺口，先写测试）：映射项、
+    候选身份、legacy 源全部合格，映射 target_path 空闲，但 records/ 下
+    已存在同身份条目（records/archive/prompt-v4.1-r1.yaml，防改名冲突，
+    与 T2 same_identity_in_records 同构）时，migrate_prompt 不得绕过同
+    身份占用在空闲 target_path 静默创建正式对象，必须复用既有 Prompt
+    冲突域通道 ``PromptConflict`` 拒绝（与 target_path 被占用时
+    create_prompt 的同名冲突语义同通道），且零写入。
+
+    与 T6 冲突切片的分工：T6 已绑定 target_path 被同身份正式对象占用
+    -> 重转换 PromptConflict 不覆盖；本用例补齐另一支占用形态 ——
+    占用在 records/ 他处、target_path 空闲。若实现只依赖 create_prompt
+    的目标文件存在性检查，本场景会被静默绕过（在 target_path 创建
+    第二个同身份正式对象），因此“target_path 不得被创建”是本用例的
+    核心断言。
+
+    前置锚定：同一输入的只读预检必须 blocked（T2
+    same_identity_in_records 同口径；预检口径本身由 T2/T3/T4 钉定）。
+
+    捕获的合理但错误实现：
+    - 不做 records/ 同身份扫描、只依赖 create_prompt 目标文件存在性
+      检查 -> 在空闲 target_path 静默创建正式对象：raises 断言失败
+      （未抛 PromptConflict）且 target_path 存在性断言失败；
+    - 误走迁移域错误通道（抛 PromptMigrationBlocked）-> raises 断言
+      失败（PromptMigrationBlocked 不是 PromptConflict 子类）；
+    - 冲突时自动改号（r2）继续转换 -> raises 断言失败（未抛冲突异常）；
+    - 冲突时改名/移动/删除既有占用条目或新增任何文件 -> 哨兵字节与
+      全树快照断言失败。
+
+    TDD 口径：本用例先于运行写入（1a7f011d 已含分流实现）；允许
+    Unexpected PASS —— 分流行为已满足时本用例为回归钉定，不触发任何
+    production 修改。
+    """
+    _write_legacy_prompt_registry(tmp_path)
+    mapping_item = _confirmed_prompt_mapping_item()
+    occupied = (
+        tmp_path / "records" / "archive" / f"{CONFIRMED_PROMPT_TARGET_ID}.yaml"
+    )
+    occupied.parent.mkdir(parents=True)
+    occupied.write_bytes(_EXISTING_TARGET_BYTES)
+
+    # 前置事实：records/ 下已存在同身份条目；映射指定的 target_path
+    # 空闲 —— 映射、身份、legacy 源全部合格，blocked 只能由同身份占用
+    # 引起。
+    assert occupied.is_file()
+    assert not (tmp_path / str(mapping_item["target_path"])).exists()
+
+    # 前置锚定：同一输入的只读预检必须 blocked。
+    _run_blocked_precheck(tmp_path, mapping_item)
+
+    before = _snapshot_tree(tmp_path)
+
+    migrate_prompt = _resolve_prompt_migration_entry()
+    assert migrate_prompt is not None, (
+        "真实 Prompt 迁移转换行为缺失：versioning.migration 未提供 "
+        "migrate_prompt 入口（当前 behavior 未实现）"
+    )
+
+    with pytest.raises(PromptConflict) as excinfo:
+        migrate_prompt(tmp_path, mapping_item)
+
+    # 两条异常通道互斥可辨：仅冲突拒绝不得误走迁移域错误通道
+    # （PromptMigrationBlocked 类缺失时该守卫由域错误用例的显式断言
+    # 兜底；守卫同时把“PromptMigrationBlocked 被实现为 PromptConflict
+    # 子类”的通道合并错误判失败）。
+    blocked_type = _resolve_prompt_migration_blocked_type()
+    if blocked_type is not None:
+        assert not isinstance(excinfo.value, blocked_type), (
+            "仅 records/ 同身份占用（target_path 空闲）的冲突必须经 "
+            "PromptConflict 拒绝，不得误走 PromptMigrationBlocked 通道"
+        )
+
+    # 零写入：不得绕过改名冲突静默在 target_path 创建正式对象，也不得
+    # 改名/覆盖/清理既有占用条目；全树逐字节不变。
+    assert not (tmp_path / str(mapping_item["target_path"])).exists()
+    assert occupied.read_bytes() == _EXISTING_TARGET_BYTES
+    assert _snapshot_tree(tmp_path) == before
