@@ -70,15 +70,24 @@ ModuleNotFoundError 失败，测试体完全不执行——按本轮 RED Gate �
 钉出"只读预检行为缺失"：失败发生在 fixture 构建、前置事实断言与全树
 快照真实执行之后，映射到当前 behavior 未实现，而非 import 机制错误。
 
-范围边界：本文件只覆盖 Prompt 只读预检 —— T1 ready 正向最小切面与
-T2 blocked 反向四类场景；不实现/不要求真实转换、data 迁移、
-history-summary、CLI、恢复逻辑（冲突场景只断言 blocked 与零写入，
-不断言任何恢复行为）。T2 身份场景只绑定 behavior 列举的禁用形式
-（旧哈希、LATEST、短哈希、前导零）；r0、revision 上限、kind 限定为
-prompt 等更细身份规则留给后续身份收紧切片。所有用例只在 pytest
-``tmp_path`` 下模拟仓库根，不触碰真实 records/、workspace/、pipeline/、
-finetune/；legacy 树为按 M0 证据布局重建的合成 fixture（字段值合成、
-结构与事实字段对齐 M0 证据）。
+范围边界：本文件只覆盖 Prompt 只读预检 —— T1 ready 正向最小切面、
+T2 blocked 反向四类场景，以及 T3 目标冲突精确身份边界回归；不实现/
+不要求真实转换、data 迁移、history-summary、CLI、恢复逻辑（冲突场景
+只断言 blocked 与零写入，不断言任何恢复行为）。T2 身份场景只绑定
+behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
+revision 上限、kind 限定为 prompt 等更细身份规则留给后续身份收紧切片。
+T3（reviewer 对 2a927d14 的 P3 边界备注）：目标冲突检测必须按精确
+身份判断 —— 已有 ``records/prompts/prompt-v4.1-r10.yaml``（不同身份，
+字符串上以 ``prompt-v4.1-r1`` 为前缀）不得阻塞目标 ``prompt-v4.1-r1``
+的只读预检；真正同身份的 records/ 下条目仍必须 blocked。T4（reviewer
+对 F1 修复的 P2 回归）：同身份判定不得依赖 ``Path.stem`` ——
+``stem == identity`` 只认标准单后缀 ``.yaml`` 形式，对同身份的无
+扩展名（``prompt-v4.1-r1``）、备份后缀（``prompt-v4.1-r1.yaml.bak``）
+与复合后缀（``prompt-v4.1-r1.tar.gz``）文件全部误放行；同身份必须
+以任何文件形式 blocked，r10 同前缀邻居同时保持 ready。所有用例只在
+pytest ``tmp_path`` 下模拟仓库根，不触碰真实 records/、workspace/、
+pipeline/、finetune/；legacy 树为按 M0 证据布局重建的合成 fixture
+（字段值合成、结构与事实字段对齐 M0 证据）。
 """
 
 from __future__ import annotations
@@ -491,5 +500,202 @@ def test_precheck_blocks_existing_target_conflict(
     _run_blocked_precheck(tmp_path, mapping_item)
 
     # 既有正式对象逐字节保持（不覆盖、不改名、不删除、不追加），全树零写入。
+    assert occupied.read_bytes() == _EXISTING_TARGET_BYTES
+    assert _snapshot_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    ("existing_rel_path", "expected_status"),
+    [
+        pytest.param(
+            "records/prompts/prompt-v4.1-r10.yaml",
+            "ready",
+            id="higher_revision_prefix_neighbor_not_conflict",
+        ),
+        pytest.param(
+            "records/archive/prompt-v4.1-r1.yaml",
+            "blocked",
+            id="exact_same_identity_elsewhere_still_conflict",
+        ),
+    ],
+)
+def test_precheck_target_conflict_matches_exact_identity(
+    tmp_path: Path, existing_rel_path: str, expected_status: str
+) -> None:
+    """目标冲突检测必须按精确身份判断（reviewer P3 边界回归，先写失败测试）。
+
+    边界事实：``prompt-v4.1-r10`` 与 ``prompt-v4.1-r1`` 是两个不同身份
+    （revision 10 ≠ 1，versioning/ids.py 权威解析口径），但字符串上
+    ``prompt-v4.1-r1`` 恰是 ``prompt-v4.1-r10`` 的前缀（加一个 "0"）。
+    两个场景的映射 target_path（records/prompts/prompt-v4.1-r1.yaml）
+    均保持空闲，使预检结论只能由 records/ 下同身份条目扫描路径决定
+    （隔离 target_path 占用分支）：
+    - higher_revision_prefix_neighbor_not_conflict：已有
+      ``records/prompts/prompt-v4.1-r10.yaml``（不同身份、同前缀邻居）
+      -> 预检必须 ``ready``；
+    - exact_same_identity_elsewhere_still_conflict：已有
+      ``records/archive/prompt-v4.1-r1.yaml``（精确同身份，位于
+      target_path 之外）-> 预检仍必须 ``blocked``（与 T2
+      same_identity_in_records 同口径，钉死修复不得反向过宽）。
+
+    捕获的合理但错误实现：
+    - 前缀匹配判定同身份（rglob(f"{identity}*")，prompt-v4.1-r1*
+      会命中 prompt-v4.1-r10.yaml / r11 / r100…）->
+      higher_revision_prefix_neighbor_not_conflict 参数失败；
+    - 修复反向过宽（不再扫描 records/ 下同身份条目，或把任何既有
+      前缀邻居都放行、同身份也放行）->
+      exact_same_identity_elsewhere_still_conflict 参数失败；
+    - ready 场景下顺手创建目标/staging 条目 -> 全树快照断言失败；
+    - blocked 场景下清理/改名/覆盖既有条目 -> 哨兵字节与全树快照
+      断言失败；
+    - blocked 不带 reasons -> reasons 断言失败。
+    """
+    _write_legacy_prompt_registry(tmp_path)
+    mapping_item = _confirmed_prompt_mapping_item()
+    occupied = tmp_path / existing_rel_path
+    occupied.parent.mkdir(parents=True)
+    occupied.write_bytes(_EXISTING_TARGET_BYTES)
+
+    # 前置事实：既有条目存在；映射指定的 target_path 空闲（两场景同构，
+    # 差异只在既有条目的身份是否精确等于目标身份）。
+    assert occupied.is_file()
+    assert not (tmp_path / str(mapping_item["target_path"])).exists()
+
+    before = _snapshot_tree(tmp_path)
+
+    precheck = _resolve_precheck_entry()
+    assert precheck is not None, (
+        "只读 Prompt 迁移预检行为缺失：versioning.migration 未提供 "
+        "precheck_prompt_migration 入口（当前 behavior 未实现）"
+    )
+    report = precheck(tmp_path, mapping_item)
+
+    if expected_status == "blocked":
+        assert report.status == "blocked", (
+            f"records/ 下已存在精确同身份条目，预检必须 fail-closed 返回 "
+            f"blocked：实际 status={report.status!r}"
+        )
+        assert report.reasons, _BLOCKED_REASONS_REQUIRED_MSG
+    else:
+        assert report.status == "ready", (
+            f"已有不同身份的同前缀邻居条目（revision 不同）不构成目标冲突，"
+            f"预检应为 ready：实际 status={report.status!r}，"
+            f"reasons={report.reasons!r}"
+        )
+
+    # 既有条目逐字节保持；全树零写入（ready 场景亦不得创建任何新条目）。
+    assert occupied.read_bytes() == _EXISTING_TARGET_BYTES
+    assert _snapshot_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    ("existing_rel_path", "expected_status"),
+    [
+        pytest.param(
+            "records/prompts/prompt-v4.1-r10.yaml",
+            "ready",
+            id="higher_revision_prefix_neighbor_still_ready",
+        ),
+        pytest.param(
+            "records/archive/prompt-v4.1-r1",
+            "blocked",
+            id="same_identity_no_extension_blocked",
+        ),
+        pytest.param(
+            "records/archive/prompt-v4.1-r1.yaml.bak",
+            "blocked",
+            id="same_identity_backup_extension_blocked",
+        ),
+        pytest.param(
+            "records/archive/prompt-v4.1-r1.tar.gz",
+            "blocked",
+            id="same_identity_compound_extension_blocked",
+        ),
+    ],
+)
+def test_precheck_blocks_same_identity_nonstandard_file_forms(
+    tmp_path: Path, existing_rel_path: str, expected_status: str
+) -> None:
+    """同身份非标准文件形式条目必须 blocked（F1 修复的 P2 回归，先写失败测试）。
+
+    Reviewer 对 F1 修复（``existing.stem == identity`` 精确判定）的 P2
+    回归证据（本机 venv Python 3.11.14 实测复核，结论与 reviewer 一致、
+    stem 具体值以实测为准）：``Path.stem`` 只按最后一个点切割文件名 ——
+    - ``Path('prompt-v4.1-r1').stem == 'prompt-v4'``（身份中 v4.1 的点
+      使唯一“后缀”被解析为 ``'.1-r1'``，无扩展名文件的身份被截断）；
+    - ``Path('prompt-v4.1-r1.yaml.bak').stem == 'prompt-v4.1-r1.yaml'``
+      （stem 只剥离最后一个后缀 ``.bak``）；
+    - ``Path('prompt-v4.1-r1.tar.gz').stem == 'prompt-v4.1-r1.tar'``
+      （同上，只剥离 ``.gz``）。
+    因此 ``stem == identity`` 对这三类“同身份、不同文件形式”全部误判
+    为不同身份 -> 误放行。行为口径（与 T3 及 T2 same_identity_in_records
+    同源，M0 global_pre_write_checks“不存在同名正式对象”逐个复验）：
+    同身份不允许以任何文件形式占用 records/（防改名冲突），文件形式
+    （无扩展名 / 备份后缀 / 复合后缀）不改变身份判定；r10 等 revision
+    不同的同前缀邻居仍是不同身份，必须保持 ready（F1 修复成果不得被
+    本切片反向回退）。
+
+    四个场景（映射 target_path records/prompts/prompt-v4.1-r1.yaml 均
+    保持空闲，使预检结论只能由 records/ 下同身份条目扫描路径决定，
+    隔离 target_path 占用分支）：
+    - higher_revision_prefix_neighbor_still_ready：已有
+      ``records/prompts/prompt-v4.1-r10.yaml`` -> ready；
+    - same_identity_no_extension_blocked：已有
+      ``records/archive/prompt-v4.1-r1``（无扩展名）-> blocked；
+    - same_identity_backup_extension_blocked：已有
+      ``records/archive/prompt-v4.1-r1.yaml.bak`` -> blocked；
+    - same_identity_compound_extension_blocked：已有
+      ``records/archive/prompt-v4.1-r1.tar.gz`` -> blocked。
+
+    捕获的合理但错误实现：
+    - 沿用 ``existing.stem == identity``（只认标准单后缀 .yaml 形式）
+      -> 三个 blocked 参数全部失败（stem 被点号切割后 != identity）；
+    - 只比较整文件名 == identity（无扩展名形式反而通过、标准 .yaml
+      形式误放行）-> 与 T3 exact_same_identity_elsewhere_still_conflict
+      联合捕获两类形式；
+    - 修复反向过宽：为覆盖非标准形式退回前缀匹配
+      （rglob(f"{identity}*")，会命中 prompt-v4.1-r10.yaml / r11…）->
+      higher_revision_prefix_neighbor_still_ready 参数失败（F1 回归
+      重演）；
+    - ready 场景顺手创建目标/staging 条目 -> 全树快照断言失败；
+    - blocked 场景清理/改名/覆盖既有条目 -> 哨兵字节与全树快照断言
+      失败；
+    - blocked 不带 reasons -> reasons 断言失败。
+    """
+    _write_legacy_prompt_registry(tmp_path)
+    mapping_item = _confirmed_prompt_mapping_item()
+    occupied = tmp_path / existing_rel_path
+    occupied.parent.mkdir(parents=True)
+    occupied.write_bytes(_EXISTING_TARGET_BYTES)
+
+    # 前置事实：既有条目以指定文件形式存在；映射指定的 target_path 空闲
+    # （四个场景同构，差异只在既有条目的身份/文件形式是否构成冲突）。
+    assert occupied.is_file()
+    assert not (tmp_path / str(mapping_item["target_path"])).exists()
+
+    before = _snapshot_tree(tmp_path)
+
+    precheck = _resolve_precheck_entry()
+    assert precheck is not None, (
+        "只读 Prompt 迁移预检行为缺失：versioning.migration 未提供 "
+        "precheck_prompt_migration 入口（当前 behavior 未实现）"
+    )
+    report = precheck(tmp_path, mapping_item)
+
+    if expected_status == "blocked":
+        assert report.status == "blocked", (
+            f"records/ 下已存在同身份条目的非标准文件形式"
+            f"（{existing_rel_path}），同身份不得以任何文件形式占用，预检"
+            f"必须 fail-closed 返回 blocked：实际 status={report.status!r}"
+        )
+        assert report.reasons, _BLOCKED_REASONS_REQUIRED_MSG
+    else:
+        assert report.status == "ready", (
+            f"已有不同身份的同前缀邻居条目（revision 不同）不构成目标冲突，"
+            f"预检应为 ready：实际 status={report.status!r}，"
+            f"reasons={report.reasons!r}"
+        )
+
+    # 既有条目逐字节保持；全树零写入（ready 场景亦不得创建任何新条目）。
     assert occupied.read_bytes() == _EXISTING_TARGET_BYTES
     assert _snapshot_tree(tmp_path) == before

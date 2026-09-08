@@ -90,10 +90,16 @@ def _check_target_conflict(root: Path, mapping_item: Mapping[str, object]) -> li
         return errors
     records_root = root / "records"
     if records_root.is_dir():
-        # 同身份不允许以任何文件形式占用（防改名冲突）。
-        for existing in sorted(records_root.rglob(f"{identity}*")):
-            errors.append(f"records/ 下已存在同身份条目：{existing.relative_to(root)}")
-            break
+        # 同身份不允许以任何文件形式占用（防改名冲突）。仅按精确身份判定
+        # （文件名等于身份，或以"身份."为前缀）：prompt-v4.1-r10 等
+        # revision 不同的同前缀邻居是不同身份，不构成冲突；同时覆盖
+        # 无扩展名（r1）与复合扩展名（r1.yaml.bak、r1.tar.gz）等非标准形式。
+        for existing in sorted(records_root.rglob("*")):
+            if existing.is_file() and (
+                existing.name == identity or existing.name.startswith(f"{identity}.")
+            ):
+                errors.append(f"records/ 下已存在同身份条目：{existing.relative_to(root)}")
+                break
     return errors
 
 
