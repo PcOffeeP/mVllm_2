@@ -21,18 +21,26 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
 
+from versioning.data_release import (
+    load_release_metadata,
+    parse_release_metadata,
+    seal_payload,
+)
 from versioning.ids import InvalidIdentifier, parse_data_id, parse_prompt_id
 from versioning.prompts import (
     PromptConflict,
     PromptError,
     create_prompt,
 )
+from versioning.state import DataStatus
 
 # M0 object-mapping.yaml 中"用户已逐项确认"的状态值。
 _CONFIRMED_STATUS = "user_confirmed"
@@ -756,3 +764,321 @@ def migrate_prompt(root: Path, mapping_item: Mapping[str, object]) -> str:
         output_fields=output_fields,
         version=identity,
     )
+
+
+# ---------------------------------------------------------------------------
+# T15：data 真实转换（单对象 active 最小切片）
+# ---------------------------------------------------------------------------
+
+# committed migration receipt 相对目标根的路径目录；每条映射一份
+# ``<target_identity>.receipt.yaml``。
+_MIGRATION_RECEIPTS_DIR = Path("migration_receipts")
+
+_RECEIPT_COMMITTED_STATUS = "committed"
+
+# legacy manifest 中映射到 source_batches 的原始批次标识字段（M0
+# object-mapping preserve_state：source_batches 记录原始批次，不回填伪造）。
+_LEGACY_SOURCE_BATCH_FIELDS = (
+    "source_review_batch_id",
+    "source_queue_id",
+    "source_media_id",
+)
+
+# legacy manifest counts.splits 的声明键口径：fold_N_train -> train、
+# fold_N_val -> validation（fold 名取 fold_N 前缀）。
+_SPLIT_TRAIN_SUFFIX = "_train"
+_SPLIT_VAL_SUFFIX = "_val"
+
+
+class DataMigrationBlocked(Exception):
+    """data 迁移拒绝通道：预检未通过或命中本切片未覆盖场景。
+
+    fail-closed：任何写入前抛出，不遗留半写入目标对象。
+    """
+
+
+def _derive_release_splits(raw_splits: object) -> dict[str, dict[str, int]]:
+    """从 legacy manifest counts.splits 声明值派生 release.yaml splits。
+
+    声明键 ``fold_N_train`` / ``fold_N_val`` 分别映射为 fold ``fold_N``
+    的 ``train`` / ``validation`` 计数（语义取自 manifest 声明值，不重算）。
+    """
+    if not isinstance(raw_splits, Mapping) or not raw_splits:
+        raise DataMigrationBlocked(
+            "legacy manifest counts.splits 缺失或为空，无法派生 splits"
+        )
+    splits: dict[str, dict[str, int]] = {}
+    for key, value in raw_splits.items():
+        if not isinstance(key, str) or not key:
+            raise DataMigrationBlocked(
+                f"legacy manifest counts.splits 键非法: {key!r}"
+            )
+        if key.endswith(_SPLIT_TRAIN_SUFFIX):
+            fold, part = key[: -len(_SPLIT_TRAIN_SUFFIX)], "train"
+        elif key.endswith(_SPLIT_VAL_SUFFIX):
+            fold, part = key[: -len(_SPLIT_VAL_SUFFIX)], "validation"
+        else:
+            raise DataMigrationBlocked(
+                "legacy manifest counts.splits 键不符合 "
+                f"fold_N_train/fold_N_val 口径: {key!r}"
+            )
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise DataMigrationBlocked(
+                f"legacy manifest counts.splits[{key!r}] 必须是非负整数"
+            )
+        fold_splits = splits.setdefault(fold, {})
+        if part in fold_splits:
+            raise DataMigrationBlocked(
+                f"legacy manifest counts.splits 对 fold {fold!r} 重复声明 {part!r}"
+            )
+        fold_splits[part] = value
+    for fold, fold_splits in splits.items():
+        if set(fold_splits) != {"train", "validation"}:
+            raise DataMigrationBlocked(
+                f"legacy manifest counts.splits 对 fold {fold!r} 缺少 train/"
+                "validation 之一"
+            )
+    return splits
+
+
+def _build_release_data(
+    identity: str,
+    source_id: str,
+    manifest: Mapping[str, object],
+    mapping_item: Mapping[str, object],
+) -> dict[str, Any]:
+    """从 legacy manifest 声明值构造目标 release.yaml 数据（不重算、不伪造）。
+
+    语义字段全部读取 legacy manifest：protocol 取 contract_version、
+    sample_count 取 counts.published_candidates、splits 取 counts.splits
+    声明值、source_batches 取原始批次标识；purpose/training_allowed 按
+    legacy 训练 release（manifest status training_ready）的正式映射固定为
+    development/true；status 按映射 target_status（active 无 replacement）。
+    """
+    if manifest.get("status") != "training_ready":
+        raise DataMigrationBlocked(
+            f"legacy manifest status={manifest.get('status')!r} 的真实转换不在"
+            "本切片内（仅覆盖 training_ready 训练 release）"
+        )
+    protocol = manifest.get("contract_version")
+    if not isinstance(protocol, str) or not protocol:
+        raise DataMigrationBlocked("legacy manifest contract_version 缺失或非字符串")
+    counts = manifest.get("counts")
+    if not isinstance(counts, Mapping):
+        raise DataMigrationBlocked("legacy manifest counts 缺失或不是 mapping")
+    sample_count = counts.get("published_candidates")
+    if (
+        not isinstance(sample_count, int)
+        or isinstance(sample_count, bool)
+        or sample_count < 0
+    ):
+        raise DataMigrationBlocked(
+            "legacy manifest counts.published_candidates 必须是非负整数"
+        )
+    splits = _derive_release_splits(counts.get("splits"))
+    source_batches = [
+        manifest.get(name) for name in _LEGACY_SOURCE_BATCH_FIELDS
+    ]
+    if any(
+        not isinstance(batch, str) or not batch for batch in source_batches
+    ):
+        raise DataMigrationBlocked(
+            "legacy manifest 原始批次标识（source_review_batch_id / "
+            "source_queue_id / source_media_id）缺失或非字符串"
+        )
+    target_status = mapping_item.get("target_status")
+    return {
+        "version": identity,
+        "protocol": protocol,
+        "state": "sealed",
+        "purpose": "development",
+        "training_allowed": True,
+        "description": f"自 legacy data release {source_id} 迁移",
+        "sample_count": sample_count,
+        "source_batches": source_batches,
+        "splits": splits,
+        "status": DataStatus(target_status).value,
+    }
+
+
+def _release_content_digest(release_dir: Path) -> str:
+    """按钉定口径复算目标 release 内容摘要。
+
+    对 release 目录下全部文件按相对 POSIX 路径升序，拼接
+    ``<rel>\n<sha256(file bytes)>\n`` 行后取 UTF-8 字节的 SHA-256。
+    """
+    lines = "".join(
+        f"{relative}\n{hashlib.sha256(data).hexdigest()}\n"
+        for relative, data in sorted(
+            (
+                (path.relative_to(release_dir).as_posix(), path.read_bytes())
+                for path in release_dir.rglob("*")
+                if path.is_file()
+            ),
+            key=lambda item: item[0],
+        )
+    )
+    return hashlib.sha256(lines.encode("utf-8")).hexdigest()
+
+
+def _migrate_single_data_release(
+    root: Path, mapping_item: Mapping[str, object]
+) -> Path:
+    """对单条已确认映射执行 data 真实转换，返回写入的 receipt 路径。"""
+    source_id = mapping_item["source_legacy_id"]
+    identity = mapping_item["candidate_target_identity"]
+    target_rel = mapping_item["target_path"]
+    target_status = mapping_item["target_status"]
+
+    legacy_release_dir = root / _LEGACY_DATA_RELEASES / source_id
+    manifest_file = legacy_release_dir / _LEGACY_DATA_MANIFEST
+    manifest_bytes = manifest_file.read_bytes()
+    source_manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+    manifest = json.loads(manifest_bytes.decode("utf-8"))
+    if not isinstance(manifest, Mapping):
+        raise DataMigrationBlocked("legacy 源 release_manifest.json 顶层必须是 mapping")
+    files = manifest.get("files")
+    if not isinstance(files, list) or not all(
+        isinstance(entry, Mapping) and isinstance(entry.get("path"), str)
+        for entry in files
+    ):
+        raise DataMigrationBlocked("legacy 源 release_manifest.json files 声明非法")
+
+    # 写入前 re-validation（P2-2）：预检通过与写入之间存在 TOCTOU 窗口，
+    # 写入时重新读取的 manifest 可以不再是预检验证过的那份。在任何目标
+    # 目录/文件写入前，对当前 manifest 重跑与预检同口径的
+    # _check_legacy_data_source（files[] 路径安全 + payload 存在性 + 哈希），
+    # 任一不满足即 fail-closed 拒绝，不创建目标目录、不留半写 release、
+    # 不写 receipt。
+    source_errors = _check_legacy_data_source(root, mapping_item)
+    if source_errors:
+        raise DataMigrationBlocked(
+            "写入前 manifest/payload re-validation 未通过（fail-closed，零写入）："
+            + "；".join(source_errors)
+        )
+
+    release_data = _build_release_data(identity, source_id, manifest, mapping_item)
+    # 落盘前经既有 data release 校验语义（parse_release_metadata：schema、
+    # 字段值域、身份一致性）接受。
+    parse_release_metadata(release_data)
+
+    release_dir = root / Path(target_rel).parent
+    release_dir.mkdir(parents=True, exist_ok=True)
+    # payload 逐字节复制（保持文件集合与字节一致，不规范化、不重算）。
+    for entry in files:
+        declared_path = entry["path"]
+        payload_target = release_dir / declared_path
+        payload_target.parent.mkdir(parents=True, exist_ok=True)
+        payload_target.write_bytes((legacy_release_dir / declared_path).read_bytes())
+    (release_dir / "release.yaml").write_text(
+        yaml.safe_dump(release_data, sort_keys=False), encoding="utf-8"
+    )
+
+    # 目标对象完整写入后经既有读取语义端到端验证（version 与目录一致等）。
+    meta = load_release_metadata(release_dir.parent.parent, identity)
+    if meta.status is not DataStatus.ACTIVE:
+        raise DataMigrationBlocked(
+            f"目标 release 验证失败：status={meta.status!r} 非 active"
+        )
+
+    # release.yaml 写入与 metadata 验证完成后、digest/receipt 写入前，经
+    # 既有封存语义（seal_payload：release.yaml/README.md/authorization 保留
+    # 写位、其余 payload 条目与 release 根去写位）使声明的 state: sealed
+    # 与位级事实一致；封存仅作用于 release 目录子树，不波及 release 外部
+    # 的 migration_receipts/ 与 legacy 源。digest/receipt 后续只读目标内容。
+    seal_payload(release_dir)
+
+    # operation_id：确定性哈希，绑定映射 source/target/status 与
+    # source_manifest_sha256（同一转换的重跑产出同一 operation_id）。
+    operation_payload = {
+        "source_legacy_id": source_id,
+        "target_identity": identity,
+        "target_status": target_status,
+        "source_manifest_sha256": source_manifest_sha256,
+    }
+    operation_id = "data-migration-" + hashlib.sha256(
+        json.dumps(
+            operation_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+    # 目标完整写入并验证后原子写入 committed receipt（八字段契约，无多余键）。
+    receipt = {
+        "operation_id": operation_id,
+        "source_legacy_id": source_id,
+        "target_identity": identity,
+        "target_path": target_rel,
+        "source_manifest_sha256": source_manifest_sha256,
+        "target_release_digest": _release_content_digest(release_dir),
+        "status": _RECEIPT_COMMITTED_STATUS,
+        "written_at": datetime.now(timezone.utc).isoformat(),
+    }
+    receipt_dir = root / _MIGRATION_RECEIPTS_DIR
+    receipt_dir.mkdir(parents=True, exist_ok=True)
+    receipt_path = receipt_dir / f"{identity}.receipt.yaml"
+    tmp_path = receipt_dir / f".{identity}.receipt.yaml.tmp"
+    try:
+        tmp_path.write_text(
+            yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8"
+        )
+        os.replace(tmp_path, receipt_path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+    return receipt_path
+
+
+def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
+    """对已确认 data 映射批执行真实转换（T15 单对象 active 最小切片）。
+
+    先经 :func:`precheck_data_migration` 做整批只读预检：非 ready 抛
+    ``DataMigrationBlocked``（fail-closed，零写入）。ready 后对每条映射
+    在目标 root（可注入，表示目标数据根）下创建正式 data release
+    （``<target_path>`` 对象目录：release.yaml + 与 legacy 源逐字节一致
+    的 manifest files[] 声明 payload），语义字段取 legacy manifest 声明值
+    （不重算、不伪造），status 按映射 target_status；目标对象完整写入并
+    经既有读取语义（``load_release_metadata``）验证后，在
+    ``migration_receipts/<target_identity>.receipt.yaml`` 原子写入
+    committed receipt（operation_id / source_legacy_id / target_identity /
+    target_path / source_manifest_sha256 / target_release_digest / status /
+    written_at 八字段）。legacy 源与旧 active pointers 逐字节不变；不写
+    records/、working、release_staging、不触发 DVC、不就地修改传入映射项。
+
+    本切片仅覆盖 ``target_status == "active"`` 的单对象/逐条转换；r1
+    superseded 与 replacement 语义、批级恢复、凭证失配拒绝、重跑幂等跳过
+    不在本切片（越界输入在写入前即 fail-closed 拒绝）。
+
+    返回写入的 receipt 路径序列（与映射批同序；返回值契约本切片不绑定）。
+    """
+    root = Path(root)
+    try:
+        items = list(mapping_items)
+    except TypeError:
+        items = []
+
+    report = precheck_data_migration(root, items)
+    if report.status != "ready":
+        raise DataMigrationBlocked(
+            "data 迁移预检未通过（fail-closed，零写入）：" + "；".join(report.reasons)
+        )
+    if not items:
+        raise DataMigrationBlocked("data 映射批为空：无转换对象")
+
+    # 任何写入前先拒绝本切片未覆盖的 target_status（当前仅 active；
+    # superseded / replacement 语义留待后续切片），避免批内半写入。
+    for mapping_item in items:
+        if not isinstance(mapping_item, Mapping):
+            raise DataMigrationBlocked("映射项必须是 mapping")
+        if mapping_item.get("target_status") != DataStatus.ACTIVE.value:
+            raise DataMigrationBlocked(
+                f"target_status={mapping_item.get('target_status')!r} 的真实转换"
+                "不在本切片内（仅覆盖 active）"
+            )
+
+    receipt_paths: list[Path] = []
+    for mapping_item in items:
+        receipt_paths.append(_migrate_single_data_release(root, mapping_item))
+    return tuple(receipt_paths)
