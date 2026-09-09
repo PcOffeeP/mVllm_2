@@ -9431,3 +9431,691 @@ def test_migrate_data_interrupted_dual_object_batch_rerun_skips_completed_r2_and
     assert mapping_items == _confirmed_data_mapping_items(), (
         "中断 + 恢复重跑不得就地改写传入映射项（M0 事实分级保持不变）"
     )
+
+
+# ---------------------------------------------------------------------------
+# T19-P2：reviewer 对 T19 的 P2 —— 完整目标 + 缺失/失配 receipt 的批级
+# 重跑必须干净 fail-closed：经 DataMigrationBlocked 拒绝且零写入，不得把
+# 完整目标误判为可恢复半写并退化为 PermissionError（先写测试，不改
+# production）
+# ---------------------------------------------------------------------------
+
+
+# r1 receipt 各篡改场景的字段变体值（单一变量：仅被篡改字段偏离第一次
+# 转换写入的 committed 契约值，其余七字段保持原值；值均为“另一份合法
+# 凭证也长这样”的形态，使拒绝只能由凭证失配归因，不得由字段格式归
+# 因）。
+_TAMPERED_RECEIPT_STATUS = "in_progress"
+_TAMPERED_RECEIPT_OPERATION_ID = "data-migration-" + "0" * 64
+_TAMPERED_RECEIPT_TARGET_RELEASE_DIGEST = "f" * 64
+
+
+def _tamper_r1_committed_receipt(root: Path, scenario: str) -> None:
+    r"""对已提交的 r1 committed receipt 施加缺失/内容篡改（单一变量）。
+
+    按 scenario 施加本切片唯一的状态扰动，全程不触碰 r1/r2 目标 release、
+    legacy 源、旧 active pointers 与其余任何条目：
+    - ``receipt_missing``：删除 ``migration_receipts/data-v4.1-r1.receipt.yaml``
+      （完整目标 + receipt 缺失）；
+    - ``receipt_status_tampered`` / ``receipt_operation_id_tampered`` /
+      ``receipt_target_release_digest_tampered``：receipt 文件仍存在但对应
+      字段被篡改（committed -> in_progress / 另一 64-hex operation_id /
+      另一 64-hex target_release_digest），其余七字段保持原值。
+
+    内容篡改经 yaml.safe_load + safe_dump(sort_keys=False) 往返重写（与
+    production receipt 写出口径一致，written_at 以带引号字符串写出、
+    往返字节稳定），使篡改后的文件与原 committed receipt 恰在被篡改
+    字段一处不同；被篡改的 receipt 必须保持可解析的八字段映射，使下
+    方重跑的拒绝只能由凭证失配归因，不得由解析失败归因。
+    """
+    receipt_file = (
+        root / "migration_receipts" / f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    assert receipt_file.is_file(), (
+        "fixture 前置事实失败：篡改入口要求 r1 committed receipt 先存在"
+    )
+    if scenario == "receipt_missing":
+        receipt_file.unlink()
+        return
+    receipt = yaml.safe_load(receipt_file.read_text(encoding="utf-8"))
+    assert isinstance(receipt, dict) and set(receipt) == set(_RECEIPT_FIELDS), (
+        "fixture 前置事实失败：r1 committed receipt 必须是八字段契约映射"
+    )
+    if scenario == "receipt_status_tampered":
+        receipt["status"] = _TAMPERED_RECEIPT_STATUS
+    elif scenario == "receipt_operation_id_tampered":
+        receipt["operation_id"] = _TAMPERED_RECEIPT_OPERATION_ID
+    elif scenario == "receipt_target_release_digest_tampered":
+        receipt["target_release_digest"] = (
+            _TAMPERED_RECEIPT_TARGET_RELEASE_DIGEST
+        )
+    else:
+        raise AssertionError(f"未知 receipt 扰动场景: {scenario!r}")
+    receipt_file.write_text(
+        yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8"
+    )
+
+
+@pytest.mark.parametrize(
+    "receipt_scenario",
+    [
+        pytest.param("receipt_missing", id="r1_receipt_missing"),
+        pytest.param(
+            "receipt_status_tampered", id="r1_receipt_status_tampered"
+        ),
+        pytest.param(
+            "receipt_operation_id_tampered",
+            id="r1_receipt_operation_id_tampered",
+        ),
+        pytest.param(
+            "receipt_target_release_digest_tampered",
+            id="r1_receipt_target_release_digest_tampered",
+        ),
+    ],
+)
+def test_migrate_data_completed_batch_rerun_with_missing_or_tampered_receipt_fails_closed(
+    tmp_path: Path, receipt_scenario: str
+) -> None:
+    r"""完整目标 + 缺失/失配 receipt 的批级重跑：干净 fail-closed，不退化为 PermissionError。
+
+    T19-P2 behavior（reviewer 对 T19 的 P2，本切片先写测试，不改
+    production）—— T19 的中断恢复把“未完成对象的半写目标”判为可恢复
+    （_resumable_partial_release：现存内容为期望字节的前缀即允许重建），
+    但“完整目标 + receipt 缺失/失配”时同一判定会把完整目标误判为可恢复
+    半写（完整内容恰为期望字节的（自反）前缀）：目标冲突被放宽、重跑
+    进入重建路径，而已封存 payload（T15-P2-1 去写位 0o444）的首个写即
+    PermissionError —— 拒绝通道从 DataMigrationBlocked 退化为操作系统
+    权限异常，既非干净 fail-closed，也把完整目标的处置系于文件权限位的
+    偶然事实，还掩盖了“凭证缺失/失配”这一真实归因。本切片钉定：复用
+    T17/T18/T19 双对象 fixture 完整执行双对象批转换（r2 active + r1
+    superseded/replacement=data-v4.1-r2）、同映射完成态重跑成功后，对
+    r1 的 committed receipt 施加缺失或内容篡改（r1 目标完整保留：经既有
+    语义读回为 superseded 正式对象、封存事实保持），同 root、同映射、
+    同 legacy 源再次调用 ``migrate_data(root, mapping_items)`` 时：
+    1. 必须经 ``DataMigrationBlocked``（或其子类）fail-closed 拒绝 ——
+       不得成功返回（不得把该重跑当“已完成跳过”，也不得自愈重建/
+       “修复” receipt 后当成功），不得把拒绝通道错位成 PermissionError
+       或任何其他异常；
+    2. 拒绝必须是写入前的只读判定：异常的 cause/context 链中不得出现
+       PermissionError（“先尝试重建、在已封存 payload 上写失败后再转译”
+       的实现不得通过 —— 权限位是偶然事实：目标一旦未封存，同一实现
+       就会真的重写完整 release）；
+    3. fail-closed 拒绝零写入：完整 r1/r2 目标 release 子树逐字节不变、
+       目标侧 mtime 与权限位不变（不得“先解封再重建”）；缺失的
+       receipt 不得被重建、被篡改的 receipt 不得被覆盖/“修复”；剩余
+       receipt（未被扰动的 r2 receipt）逐字节不变（含 written_at /
+       status committed）；不产生 data-v4.1-r3 等新身份；data/releases/
+       与 migration_receipts/ 精确内容不变；
+    4. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
+       子树逐字节不变；旧指针仍声明 legacy 身份）；不就地修改传入映射项；
+    5. 前置对照（T18 既有行为）：扰动前同 root、同映射的完成态重跑必须
+       成功跳过且零变化 —— 完整 receipt 下的正常幂等跳过不被本切片破
+       坏，重跑的拒绝只能由 receipt 缺失/失配归因；
+    6. 末尾对照（拒绝不得过宽/不得破坏完成态）：把 r1 receipt 恢复为
+       第一次转换写入的原字节后，同 root、同映射的完成态重跑必须重新
+       成功跳过且零变化（T18 既有幂等行为）。
+
+    fixture：复用 T19 场景 helper ``_write_interrupt_scenario_layout``
+    （T17/T18 同款布局与注入：三份 legacy release + 旧数据/Prompt 活动
+    指针 + r2/r1 counts 场景注入 + 指针 manifest 哈希随注入重写；两条
+    映射来自 ``_confirmed_data_mapping_items``，D2 推荐顺序 r2 先于
+    r1），使本切片与 T17/T18/T19 在同一事实基线上叠加。receipt 扰动由
+    ``_tamper_r1_committed_receipt`` 施加（receipt_missing / status 篡
+    改 / operation_id 篡改 / target_release_digest 篡改四场景参数化，
+    均为单一变量扰动）。
+
+    RED Gate 设计说明（T19-P2）：migrate_data 入口、DataMigrationBlocked
+    拒绝通道、T17 双对象批终态、T18 完成态幂等跳过与 T19 半写恢复均
+    已存在（第一次完整转换与同映射 T18 重跑成功均为 fixture 前置事
+    实，失败即 T17/T18 回归而非本切片 RED），RED 不经入口缺失分支给
+    出 —— 当前 production 对“完整目标 + receipt 缺失/失配”的重跑：
+    _verified_completed_receipt 判 r1 未完成，_resumable_partial_release
+    把完整 r1 目标误判为可恢复半写（完整内容为期望字节的自反前缀），
+    precheck 冲突经 allow_existing 放宽后 r1 进入重建路径，已封存
+    payload 0o444 的首个写（datasets/train/fold_0.json）即抛
+    PermissionError；本用例把该通道错位转成显式行为 AssertionError
+    钉出“完整目标 + 缺失/失配 receipt 的批级重跑未干净 fail-closed”
+    （原始 PermissionError 经 cause 链保留，不得直接充当 RED 结论）；
+    若当前实现已满足（DataMigrationBlocked + 零写入），本用例为
+    Unexpected PASS（fail-closed 回归钉），不得为此制造无意义 production
+    修改。
+
+    捕获的合理但错误实现：
+    - 当前 production（RED 起点）：完整目标被判可恢复半写 -> 重建尝试
+      -> 已封存 payload 首个写 PermissionError -> 通道错位 AssertionError
+      （cause 链保留 PermissionError）；
+    - “自愈重建”：重跑发现目标完整后重建缺失 receipt / 覆写被篡改
+      receipt 并成功返回 -> “未 fail-closed 拒绝”显式 AssertionError
+      （缺失 receipt 被重建 / 被篡改 receipt 被修复亦经零写入断言暴
+      露）；
+    - “先解封再重建”：去除 payload 写位后重写完整 release（字节恰好
+      相同）-> 权限位快照 / mtime 断言失败；
+    - “写失败后转译”：尝试重建、捕获 PermissionError 再包装成
+      DataMigrationBlocked -> cause/context 链 PermissionError 断言失败
+      （处置系于权限位偶然事实，目标未封存时即真的重写完整 release）；
+    - 其他通道错位（ValueError / KeyError / OSError 等未类型化异常替
+      代 DataMigrationBlocked）-> 通道错位 AssertionError；
+    - 拒绝时顺手改写 release / receipt / legacy 源 / 旧 pointers / 就地
+      改写传入映射项 -> 全树快照零变化 / 指针 / 映射项断言失败；
+    - 拒绝过宽：扰动前的同映射 T18 重跑或恢复 receipt 后的末尾对照也被
+      拒 -> 前置/末尾对照断言失败（T18 selector 同步回归可见）。
+
+    范围边界（本切片不绑定）：拒绝信息文本与 GREEN 判定“完整目标”的
+    具体机制（receipt 核实失败后如何区分完整目标与半写残骸）；半写残
+    骸的可恢复重建（T19 既有行为，本切片不得回归 —— T19 selector 保
+    持绿即非回归，不在此重钉）；映射字段变更的完成态失配（T18-P2 已
+    钉）；批内乱序输入、migrate_data 返回值契约、CLI、DVC、训练机真实
+    路径。
+
+    Binding（证据绑定，供复跑核对）：
+    - 测试文件：``tests/versioning/test_migration.py``（本切片仅新增本
+      用例与配套 fixture helper，不改 production）。
+    - 命令：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_migrate_data_completed_batch_rerun_with_missing_or_tampered_receipt_fails_closed``
+    - RED failure signature：恰四个失败用例（四个参数化场景
+      r1_receipt_missing / r1_receipt_status_tampered /
+      r1_receipt_operation_id_tampered /
+      r1_receipt_target_release_digest_tampered 各一），失败信息为
+      AssertionError “完整目标 + 缺失/失配 receipt 的批级重跑拒绝通道
+      错位：migrate_data 对双对象批（r1 目标完整保留 + r1 receipt 缺失/
+      被篡改…）的同 root、同映射、同 legacy 源重跑必须经
+      DataMigrationBlocked（或其子类）fail-closed 拒绝，实际抛出
+      PermissionError…”，cause 链为原始 PermissionError（“[Errno 13]
+      Permission denied: …/data/releases/data-v4.1-r1/datasets/train/
+      fold_0.json”）；fixture 前置事实（第一次完整转换成功、同映射
+      T18 重跑成功零变化、r1 完整目标可读回且封存、receipt 扰动就位）
+      全部不失败；T17/T18/T18-P2/T19 selector 保持通过。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （``[tool.pytest.ini_options] testpaths / pythonpath`` 解析依赖该
+      文件）。
+    """
+    # ---- fixture：T17/T18/T19 同款布局与 counts 场景注入 + 指针 manifest
+    #      哈希随注入重写（_write_interrupt_scenario_layout，同一事实基
+    #      线：r2 published_candidates 7、r1 为 11）。----
+    _write_interrupt_scenario_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+    r2_mapping, r1_mapping = mapping_items
+
+    # ---- fixture 前置事实（注入自洽 + D1/D2 镜像 + 目标根空闲）。----
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1
+    )
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2
+    )
+    pointer = json.loads((tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8"))
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "fixture 前置事实失败：旧数据活动指针必须钉扎 r2 映射声明的源"
+    )
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2).read_bytes()
+    ).hexdigest(), (
+        "fixture 前置事实失败：注入后指针 expected_manifest_sha256 必须"
+        "与 r2 manifest 文件字节复算哈希自洽（T13 钉扎门保持绿）"
+    )
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ], "fixture 前置事实失败：双对象映射批必须按 D2 推荐顺序 r2 先于 r1 排列"
+    assert r2_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R2
+    assert r2_mapping["target_status"] == "active", (
+        "fixture 前置事实失败：r2 映射 target_status 必须为 active（D1）"
+    )
+    assert "replacement" not in r2_mapping, (
+        "fixture 前置事实失败：r2 映射不得携带 replacement（D1）"
+    )
+    assert r1_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R1
+    assert r1_mapping["target_status"] == "superseded", (
+        "fixture 前置事实失败：r1 映射 target_status 必须为 superseded（D1）"
+    )
+    assert r1_mapping["replacement"] == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r1 映射 replacement 必须为 data-v4.1-r2（D1）"
+    )
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists(), (
+            f"fixture 前置事实失败：目标根 {forbidden!r} 必须保持空闲"
+        )
+
+    migrate_data = _resolve_migrate_data_entry()
+    assert migrate_data is not None, (
+        "双对象批 data 真实迁移入口缺失：versioning.migration 未提供 "
+        "migrate_data 入口（T17 既有行为不可用，本切片 fixture 前置事实"
+        "失败）"
+    )
+    blocked_exc = getattr(
+        importlib.import_module("versioning.migration"),
+        "DataMigrationBlocked",
+        None,
+    )
+    assert blocked_exc is not None, (
+        "data 迁移拒绝通道缺失：versioning.migration 未提供 "
+        "DataMigrationBlocked（fail-closed 必须经既有迁移拒绝通道给出，"
+        "本切片 fixture 前置事实失败）"
+    )
+
+    # ---- 行为前提构造：第一次完整双对象批转换（T17 既有行为；完整目标
+    #      是本切片重跑语义的前提，该处失败是 T17 回归而非本切片 RED）。----
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "fixture 前置事实失败：当前 migrate_data 必须先成功完成双对"
+            "象批的第一次完整转换（T17 既有双对象批终态行为；原始异常经"
+            f"cause 链保留）：{exc!r}"
+        ) from exc
+
+    # 完成态前置事实：两个正式 release 与两份 committed receipt 均已存
+    # 在（r1/r2 目标完整 —— 本切片“完整目标 + receipt 缺失/失配”场景
+    # 的目标侧基线）。
+    r2_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R2
+    r1_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R1
+    assert r2_release_dir.is_dir(), (
+        "fixture 前置事实失败：r2 正式 release 必须已创建（完成态前提）"
+    )
+    assert r1_release_dir.is_dir(), (
+        "fixture 前置事实失败：r1 正式 release 必须已创建（完成态前提）"
+    )
+    r2_meta = load_release_metadata(tmp_path / "data", CONFIRMED_DATA_TARGET_R2)
+    assert r2_meta.version == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r2 必须经既有语义读回为 data-v4.1-r2"
+    )
+    assert r2_meta.status is DataStatus.ACTIVE, (
+        "fixture 前置事实失败：r2 必须经既有语义读回为 active 正式对象"
+    )
+    r1_meta = load_release_metadata(tmp_path / "data", CONFIRMED_DATA_TARGET_R1)
+    assert r1_meta.version == CONFIRMED_DATA_TARGET_R1, (
+        "fixture 前置事实失败：r1 必须经既有语义读回为 data-v4.1-r1"
+    )
+    assert r1_meta.status is DataStatus.SUPERSEDED, (
+        "fixture 前置事实失败：r1 必须经既有语义读回为 superseded 正式"
+        "对象"
+    )
+    assert r1_meta.replacement == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r1 已提交事实的 replacement 必须为 "
+        f"{CONFIRMED_DATA_TARGET_R2!r}"
+    )
+    r2_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    r1_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    assert r2_receipt_file.is_file(), (
+        "fixture 前置事实失败：r2 committed receipt 必须已写入（完成态"
+        "前提）"
+    )
+    assert r1_receipt_file.is_file(), (
+        "fixture 前置事实失败：r1 committed receipt 必须已写入（完成态"
+        "前提）"
+    )
+
+    # ---- 捕获完成态基线：全树字节快照 + 目标子树/receipt 字节 + receipt
+    #      解析值 + 目标侧 mtime_ns 与权限位（“零写入”的次级判据）。----
+    completed_tree = _snapshot_tree(tmp_path)
+    r2_content_baseline = _release_content_files(r2_release_dir)
+    r1_content_baseline = _release_content_files(r1_release_dir)
+    assert "release.yaml" in r2_content_baseline, (
+        "fixture 前置事实失败：r2 目标 release 必须含 release.yaml"
+    )
+    assert "release.yaml" in r1_content_baseline, (
+        "fixture 前置事实失败：r1 目标 release 必须含 release.yaml"
+    )
+    r2_receipt_bytes = r2_receipt_file.read_bytes()
+    r1_receipt_bytes = r1_receipt_file.read_bytes()
+    r1_receipt_baseline = yaml.safe_load(r1_receipt_bytes)
+    r2_receipt_baseline = yaml.safe_load(r2_receipt_bytes)
+    for identity, receipt_baseline in (
+        (CONFIRMED_DATA_TARGET_R2, r2_receipt_baseline),
+        (CONFIRMED_DATA_TARGET_R1, r1_receipt_baseline),
+    ):
+        assert isinstance(receipt_baseline, dict), (
+            f"fixture 前置事实失败：{identity} 的 receipt 必须是 YAML 顶层映射"
+        )
+        assert set(receipt_baseline) == set(_RECEIPT_FIELDS), (
+            f"fixture 前置事实失败：{identity} 的完成态基线 receipt 键集必须"
+            f"恰为八字段契约：实际 {sorted(receipt_baseline)}"
+        )
+        assert receipt_baseline["status"] == "committed", (
+            f"fixture 前置事实失败：{identity} 的完成态基线 receipt 必须为 "
+            "committed"
+        )
+        assert isinstance(receipt_baseline["written_at"], str) and (
+            receipt_baseline["written_at"]
+        ), (
+            f"fixture 前置事实失败：{identity} 的 receipt.written_at 必须是"
+            "非空字符串（重跑不变断言的比对基线）"
+        )
+
+    # ---- 前置对照（行为项 5，T18 既有行为）：同 root、同映射、同 legacy
+    #      源的完成态重跑必须成功跳过且零变化 —— 失败即 T18 回归而非本
+    #      切片 RED；该对照与下方扰动重跑构成单一变量对照（唯一差异是
+    #      r1 receipt 缺失/失配）。----
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "fixture 前置事实失败：同 root、同映射、同 legacy 源的完成态"
+            "重跑必须成功跳过（T18 既有幂等跳过行为回归，非本切片 RED；"
+            f"原始异常经 cause 链保留）：{exc!r}"
+        ) from exc
+    assert _snapshot_tree(tmp_path) == completed_tree, (
+        "fixture 前置事实失败：同映射完成态重跑必须零变化（T18 既有幂等"
+        "跳过行为回归：目标 release / receipt / legacy 源不得有任何字节"
+        "或键集变化）"
+    )
+
+    # ---- 行为前提构造：对 r1 committed receipt 施加缺失/内容篡改（唯一
+    #      扰动；r1 目标完整保留）。----
+    _tamper_r1_committed_receipt(tmp_path, receipt_scenario)
+
+    # 扰动后前置事实：r1 完整目标保留 —— 内容与完成态基线逐字节一致、经
+    # 既有语义读回为 superseded 正式对象、封存事实保持（PermissionError
+    # 退化的机制前提：payload 已按 T15-P2-1 去写位 0o444）；receipt 扰动
+    # 就位且为唯一差异。
+    assert _release_content_files(r1_release_dir) == r1_content_baseline, (
+        "fixture 前置事实失败：receipt 扰动不得触碰 r1 完整目标（扰动"
+        "后 r1 release 必须与完成态基线逐字节一致）"
+    )
+    r1_meta_tampered = load_release_metadata(
+        tmp_path / "data", CONFIRMED_DATA_TARGET_R1
+    )
+    assert r1_meta_tampered.status is DataStatus.SUPERSEDED, (
+        "fixture 前置事实失败：r1 完整目标必须仍可经既有语义读回为 "
+        "superseded 正式对象（“完整目标 + receipt 缺失/失配”的目标侧"
+        "前提）"
+    )
+    try:
+        assert_payload_sealed(r1_release_dir)
+    except Exception as exc:
+        raise AssertionError(
+            "fixture 前置事实失败：r1 完整目标的封存事实必须保持（既有"
+            f"只读门 assert_payload_sealed 通过）：{exc!r}"
+        ) from exc
+    if receipt_scenario == "receipt_missing":
+        assert not r1_receipt_file.is_file(), (
+            "fixture 前置事实失败：receipt_missing 场景要求 r1 receipt "
+            "确实被删除"
+        )
+        expected_receipts_listing = [f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"]
+    else:
+        assert r1_receipt_file.is_file(), (
+            "fixture 前置事实失败：receipt 篡改场景要求 r1 receipt 文件"
+            "仍存在（内容被篡改而非被删除）"
+        )
+        tampered_r1_receipt_bytes = r1_receipt_file.read_bytes()
+        tampered_r1_receipt = yaml.safe_load(
+            tampered_r1_receipt_bytes.decode("utf-8")
+        )
+        assert isinstance(tampered_r1_receipt, dict), (
+            "fixture 前置事实失败：被篡改的 r1 receipt 必须仍可解析为 "
+            "YAML 顶层映射（重跑的拒绝只能由凭证失配归因，不得由解析失"
+            "败归因）"
+        )
+        tampered_field = {
+            "receipt_status_tampered": "status",
+            "receipt_operation_id_tampered": "operation_id",
+            "receipt_target_release_digest_tampered": "target_release_digest",
+        }[receipt_scenario]
+        tampered_value = {
+            "receipt_status_tampered": _TAMPERED_RECEIPT_STATUS,
+            "receipt_operation_id_tampered": _TAMPERED_RECEIPT_OPERATION_ID,
+            "receipt_target_release_digest_tampered": (
+                _TAMPERED_RECEIPT_TARGET_RELEASE_DIGEST
+            ),
+        }[receipt_scenario]
+        assert tampered_r1_receipt[tampered_field] == tampered_value, (
+            f"fixture 前置事实失败：被篡改的 r1 receipt.{tampered_field} "
+            f"必须为 {tampered_value!r}：实际 {tampered_r1_receipt[tampered_field]!r}"
+        )
+        assert {
+            key: value
+            for key, value in tampered_r1_receipt.items()
+            if key != tampered_field
+        } == {
+            key: value
+            for key, value in r1_receipt_baseline.items()
+            if key != tampered_field
+        }, (
+            "fixture 前置事实失败：被篡改的 r1 receipt 除被篡改字段外必须"
+            "与其余七字段保持原值（单一变量扰动）"
+        )
+        assert tampered_r1_receipt_bytes != r1_receipt_bytes, (
+            "fixture 前置事实失败：篡改必须确实改变 r1 receipt 字节"
+        )
+        expected_receipts_listing = [
+            f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml",
+            f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml",
+        ]
+
+    # 扰动后基线：fail-closed 拒绝“零写入”判定的比对快照（含扰动自身
+    # 的效果；缺失模式下 r1 receipt 不在键集中）。
+    tampered_tree = _snapshot_tree(tmp_path)
+    tampered_target_side_mtime = _snapshot_target_side_mtime_ns(tmp_path)
+    tampered_modes = _snapshot_modes(tmp_path)
+
+    # ---- 行为：同 root、同映射、同 legacy 源重跑同一 migrate_data。----
+    # RED Gate：当前 production 把“完整目标 + receipt 缺失/失配”经
+    # _resumable_partial_release 误判为可恢复半写，冲突经 allow_existing
+    # 放宽后进入重建路径，已封存 payload 的首个写即 PermissionError ——
+    # 本用例把该通道错位转成显式行为 AssertionError 钉出“未干净
+    # fail-closed”，原始异常经 cause 链保留；若当前实现已满足
+    # （DataMigrationBlocked + 零写入），本用例为 Unexpected PASS
+    # （fail-closed 回归钉）。
+    blocked_error: BaseException | None = None
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except blocked_exc as exc:
+        blocked_error = exc
+    except Exception as exc:
+        raise AssertionError(
+            "完整目标 + 缺失/失配 receipt 的批级重跑拒绝通道错位："
+            "migrate_data 对双对象批（r1 目标完整保留 + r1 receipt 缺失/"
+            f"被篡改，场景 {receipt_scenario!r}）的同 root、同映射、同 "
+            "legacy 源重跑必须经 DataMigrationBlocked（或其子类）"
+            "fail-closed 拒绝，实际抛出 "
+            f"{type(exc).__name__}（不得把完整目标误判为可恢复半写并退化"
+            "为 PermissionError：那既非干净 fail-closed，也把完整目标的处"
+            "置系于已封存 payload 权限位的偶然事实，还掩盖了凭证缺失/失"
+            "配的真实归因；原始异常经 cause 链保留）："
+            f"{exc!r}"
+        ) from exc
+    assert blocked_error is not None, (
+        "完整目标 + 缺失/失配 receipt 的批级重跑未 fail-closed 拒绝"
+        "（静默成功）：migrate_data 对双对象批（r1 目标完整保留 + r1 "
+        f"receipt 缺失/被篡改，场景 {receipt_scenario!r}）的同 root、同"
+        "映射、同 legacy 源重跑成功返回 —— 完整目标在凭证缺失/失配时既"
+        "不得被当“已完成对象”跳过，也不得被自愈重建 receipt 后当成功"
+        "（缺失的 receipt 被重建、被篡改的 receipt 被修复均在下方零写入"
+        "断言暴露）；本切片要求干净 fail-closed：经 DataMigrationBlocked "
+        "拒绝且零写入"
+    )
+
+    # 行为项 2：拒绝必须是写入前的只读判定 —— cause/context 链不得含
+    # PermissionError（“先尝试重建、写失败后转译”把完整目标的处置系于
+    # 文件系统权限位的偶然事实：目标一旦未封存，同一实现就会真的重写
+    # 完整 release）。
+    chain_types: list[str] = []
+    chain_cursor: BaseException | None = blocked_error
+    visited_chain: set[int] = set()
+    while chain_cursor is not None and id(chain_cursor) not in visited_chain:
+        visited_chain.add(id(chain_cursor))
+        chain_types.append(type(chain_cursor).__name__)
+        next_cause = chain_cursor.__cause__
+        chain_cursor = (
+            next_cause if next_cause is not None else chain_cursor.__context__
+        )
+    assert "PermissionError" not in chain_types, (
+        "完整目标 + 缺失/失配 receipt 的 fail-closed 拒绝退化为 "
+        "PermissionError 转译：DataMigrationBlocked 的异常 cause/context "
+        f"链中检出 PermissionError（链 {chain_types}）—— 拒绝必须是写入"
+        "前的只读判定，不得经“重建尝试 -> 已封存 payload 写失败 -> 转译”"
+        "给出（权限位是偶然事实：目标未封存时同一实现会真的重写完整 "
+        "release）"
+    )
+
+    # ---- 行为项 3/4：fail-closed 拒绝必须零写入 —— 全树与扰动后基线完
+    #      全一致（完整目标 / 剩余 receipt / legacy 源 / 旧 pointers 逐字
+    #      节不变、无新增/删除条目、不产生新身份）。----
+    after_tree = _snapshot_tree(tmp_path)
+    assert set(after_tree) == set(tampered_tree), (
+        "fail-closed 拒绝必须零写入：不得新增或删除任何条目（缺失的 "
+        "receipt 不得被重建、不产生 data-v4.1-r3 等新身份、不写报告/"
+        "缓存/records、不删除既有条目）：实际新增 "
+        f"{sorted(set(after_tree) - set(tampered_tree))}，实际删除 "
+        f"{sorted(set(tampered_tree) - set(after_tree))}"
+    )
+    changed_entries = sorted(
+        key
+        for key, value in tampered_tree.items()
+        if after_tree[key] != value
+    )
+    assert not changed_entries, (
+        "fail-closed 拒绝必须零写入：不得改动任何条目（完整 r1/r2 目标 "
+        "release 子树、剩余 receipt、legacy 源与旧 active pointers 逐字节"
+        "不变；不得重建/覆盖/“修复”被扰动的 receipt）：实际改动 "
+        f"{changed_entries}"
+    )
+
+    # 完整目标逐字节不变（显式重复全树结论，使该行为项在失败信息中可
+    # 读归因）。
+    assert _release_content_files(r1_release_dir) == r1_content_baseline, (
+        "fail-closed 拒绝不得重写完整的 data/releases/data-v4.1-r1"
+        "（receipt 缺失/失配不得触发对完整目标的重建或“修复”写入）"
+    )
+    assert _release_content_files(r2_release_dir) == r2_content_baseline, (
+        "fail-closed 拒绝不得重写 data/releases/data-v4.1-r2（未被扰动的"
+        "已完成对象同样零重写）"
+    )
+
+    # receipt 状态保持扰动原样：缺失的不得被重建、被篡改的不得被覆盖/
+    # “修复”；剩余 r2 receipt 逐字节不变（含 written_at / status
+    # committed）。
+    if receipt_scenario == "receipt_missing":
+        assert not r1_receipt_file.is_file(), (
+            "fail-closed 拒绝不得重建缺失的 r1 receipt（凭证缺口必须经 "
+            "DataMigrationBlocked 显式暴露，不得被自愈补齐后当成功跳过）"
+        )
+    else:
+        assert r1_receipt_file.read_bytes() == tampered_r1_receipt_bytes, (
+            "fail-closed 拒绝不得覆盖/“修复”被篡改的 r1 receipt（失配凭"
+            "证必须经 DataMigrationBlocked 显式暴露，不得被重写回 "
+            "committed 契约值后当成功跳过）"
+        )
+        tampered_r1_receipt_after = yaml.safe_load(
+            r1_receipt_file.read_text(encoding="utf-8")
+        )
+        assert tampered_r1_receipt_after == tampered_r1_receipt, (
+            "被篡改的 r1 receipt 内容在 fail-closed 拒绝后必须保持扰动"
+            "原样（含被篡改字段值；不重算 digest、不刷新 written_at）"
+        )
+    assert r2_receipt_file.read_bytes() == r2_receipt_bytes, (
+        "fail-closed 拒绝不得重写 r2 receipt（剩余凭证逐字节不变，含 "
+        "written_at）"
+    )
+    r2_receipt_after = yaml.safe_load(r2_receipt_file.read_text(encoding="utf-8"))
+    assert r2_receipt_after == r2_receipt_baseline, (
+        "r2 receipt 内容在 fail-closed 拒绝后必须不变（八字段逐一相等，"
+        "不重算 digest、不刷新时间戳）"
+    )
+    assert r2_receipt_after["written_at"] == r2_receipt_baseline["written_at"], (
+        "r2 receipt.written_at 在 fail-closed 拒绝后必须不变（凭证未被重写）"
+    )
+    assert r2_receipt_after["status"] == "committed", (
+        "r2 receipt.status 在 fail-closed 拒绝后必须仍为 committed"
+    )
+
+    # 无新身份 —— data/releases/ 恰含 r1、r2；migration_receipts/ 恰含
+    # 各场景扰动后的 receipt 集合。
+    releases_root = tmp_path / "data" / "releases"
+    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+        CONFIRMED_DATA_TARGET_R1,
+        CONFIRMED_DATA_TARGET_R2,
+    ], (
+        "fail-closed 拒绝不得产生任何新身份/新条目（不覆盖、不自动改"
+        f"号）：data/releases/ 必须恰含 {CONFIRMED_DATA_TARGET_R1} 与 "
+        f"{CONFIRMED_DATA_TARGET_R2}"
+    )
+    assert not (tmp_path / "data" / "releases" / "data-v4.1-r3").exists(), (
+        "fail-closed 拒绝不得自动改号到 data-v4.1-r3"
+    )
+    receipts_root = tmp_path / "migration_receipts"
+    actual_receipts_listing = [
+        entry.name for entry in sorted(receipts_root.iterdir())
+    ]
+    assert actual_receipts_listing == expected_receipts_listing, (
+        "migration_receipts/ 必须恰含各场景扰动后的 receipt 集合（拒绝"
+        "不新增/不重建/不删除凭证）：实际 "
+        f"{actual_receipts_listing}，期望 {expected_receipts_listing}"
+    )
+
+    # 无重写的次级判据：目标侧全部条目 mtime_ns 不变；权限位不变（不重
+    # 新封存、不改写位、不得“先解封再重建”）。
+    assert _snapshot_target_side_mtime_ns(tmp_path) == tampered_target_side_mtime, (
+        "fail-closed 拒绝不得触碰目标侧任何条目元数据（data/ 与 "
+        "migration_receipts/ 子树全部条目 mtime_ns 必须不变；字节恰好"
+        "相同的重写也会更新 mtime）"
+    )
+    assert _snapshot_modes(tmp_path) == tampered_modes, (
+        "fail-closed 拒绝不得改动任何条目权限位（不重新封存、不改写位、"
+        "不得先解封再重建完整目标）"
+    )
+
+    # legacy 源和旧 pointers 不变（全树快照已钉定；此处显式钉旧指针仍
+    # 声明 legacy 身份，使失败信息可读归因）。
+    data_pointer_after = json.loads(
+        (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    assert data_pointer_after["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "fail-closed 拒绝不得切换旧数据活动指针（仍声明 legacy 身份）"
+    )
+    prompt_pointer_after = yaml.safe_load(
+        (tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml")
+        .read_bytes()
+    )
+    assert prompt_pointer_after["revision_id"] == CONFIRMED_PROMPT_SOURCE_ID, (
+        "fail-closed 拒绝不得切换旧 Prompt 活动指针（仍声明 legacy "
+        "revision_id）"
+    )
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "fail-closed 拒绝不得就地改写传入映射项（M0 事实分级保持不变）"
+    )
+
+    # ---- 末尾对照（行为项 6，拒绝不得过宽/不得破坏完成态）：把 r1
+    #      receipt 恢复为第一次转换写入的原字节后，同 root、同映射的
+    #      完成态重跑必须重新成功跳过且零变化（T18 既有幂等行为）——
+    #      拒绝只能由 receipt 缺失/失配归因。----
+    r1_receipt_file.write_bytes(r1_receipt_bytes)
+    assert _snapshot_tree(tmp_path) == completed_tree, (
+        "末尾对照前提失败：恢复 r1 receipt 原字节后，整树必须回到完成态"
+        "基线（fail-closed 拒绝未破坏完成态；任何残留改动都在此暴露）"
+    )
+    restored_target_side_mtime = _snapshot_target_side_mtime_ns(tmp_path)
+    restored_modes = _snapshot_modes(tmp_path)
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "拒绝过宽或完成态被破坏：恢复 r1 receipt 原字节（第一次转换"
+            "写入的 committed 契约值）后的同 root、同映射完成态重跑必须"
+            "重新成功跳过（T18 既有幂等行为；若此处失败，说明前述 "
+            "fail-closed 拒绝破坏了完成态凭证，或拒绝条件过宽到拒绝了"
+            f"凭证匹配的正常重跑；原始异常经 cause 链保留）：{exc!r}"
+        ) from exc
+    assert _snapshot_tree(tmp_path) == completed_tree, (
+        "恢复 r1 receipt 后的完成态重跑必须零变化（T18 既有幂等跳过行为："
+        "目标 release / receipt / legacy 源不得有任何字节或键集变化）"
+    )
+    assert _snapshot_target_side_mtime_ns(tmp_path) == restored_target_side_mtime, (
+        "恢复 r1 receipt 后的完成态重跑不得重写目标侧任何条目（幂等跳"
+        "过：data/ 与 migration_receipts/ 子树全部条目 mtime_ns 不变）"
+    )
+    assert _snapshot_modes(tmp_path) == restored_modes, (
+        "恢复 r1 receipt 后的完成态重跑不得改动任何条目权限位（不重新"
+        "封存、不改写位）"
+    )

@@ -1101,13 +1101,18 @@ def _resumable_partial_release(
     精确 dump 字节），目录内每个现存文件必须满足：
       - 相对路径落在期望条目集合内（外来条目一律拒绝）；
       - 现存内容为对应期望字节的（严格）前缀 —— 即恰为本转换写入途中
-        落盘的部分字节（完整条目或空文件同样可接受：前者与期望一致，
-        后者是写入尚未开始的合法中间态）。
+        落盘的部分字节（空文件同样可接受：写入尚未开始的合法中间态）。
 
-    目录不存在（无残留）返回 False（无冲突需放宽，走常规预检）。期望
-    内容无法复算（manifest 不可解析、payload 缺失、release 数据非法）
-    或任一现存文件非前缀（外来/被篡改内容）返回 False —— 调用方退回
-    既有 fail-closed 预检路径拒绝恢复，不覆盖外来对象。全程只读。
+    仅当目标确实存在可观察的“不完整”证据时才允许恢复：至少一个期望
+    文件缺失，或至少一个现存文件是期望字节的严格前缀（短于期望）。
+    空目标目录（无任何现存文件）与完整目标（全部现存文件恰为期望字节、
+    期望条目齐全）均返回 False —— 完整目标不得被误判为可恢复半写（其
+    内容恰为期望字节的自反前缀），应退回既有 fail-closed 预检冲突门以
+    DataMigrationBlocked 拒绝，不得经恢复路径重建已封存目标。目录不存
+    在（无残留）返回 False（无冲突需放宽，走常规预检）。期望内容无法
+    复算（manifest 不可解析、payload 缺失、release 数据非法）或任一现存
+    文件非前缀（外来/被篡改内容）返回 False —— 调用方退回既有 fail-closed
+    预检路径拒绝恢复，不覆盖外来对象。全程只读。
     """
     source_id = mapping_item.get("source_legacy_id")
     identity = mapping_item.get("candidate_target_identity")
@@ -1155,6 +1160,8 @@ def _resumable_partial_release(
         return False
 
     try:
+        present: set[str] = set()
+        partial_evidence = False
         for path in sorted(release_dir.rglob("*")):
             if not path.is_file():
                 continue
@@ -1162,11 +1169,24 @@ def _resumable_partial_release(
             want = expected.get(rel)
             if want is None:
                 return False
-            if not want.startswith(path.read_bytes()):
+            data = path.read_bytes()
+            if not want.startswith(data):
                 return False
+            if len(data) < len(want):
+                partial_evidence = True
+            present.add(rel)
+        if not present:
+            # 空目标目录：无可观察的部分写入证据，不视为可恢复半写。
+            return False
+        if any(rel not in present for rel in expected):
+            # 期望文件缺失：目标确未完成，是可恢复的半写证据。
+            partial_evidence = True
     except OSError:
         return False
-    return True
+    # 完整目标（全部现存文件恰为期望字节且期望条目齐全）不是半写：返回
+    # False，由既有 fail-closed 预检冲突门以 DataMigrationBlocked 拒绝，
+    # 不得经恢复路径重建已封存目标。
+    return partial_evidence
 
 
 def _migrate_single_data_release(
