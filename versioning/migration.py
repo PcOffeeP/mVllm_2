@@ -943,6 +943,127 @@ def _release_content_digest(release_dir: Path) -> str:
     return hashlib.sha256(lines.encode("utf-8")).hexdigest()
 
 
+def _derive_operation_id(
+    source_id: str,
+    identity: str,
+    target_status: object,
+    source_manifest_sha256: str,
+    replacement: object = None,
+) -> str:
+    """派生确定性 operation_id：绑定映射 source/target/status/replacement
+    与 source_manifest_sha256（同一转换的重跑产出同一 operation_id）。
+
+    真实转换写入 receipt 与完成态重跑核实 receipt 共用本口径，保证
+    “写入的凭证”与“核实的凭证”逐字段可比。superseded 映射的
+    replacement 纳入 payload：完成态重跑时 replacement 变更即导致
+    operation_id 失配，退回既有 fail-closed 预检路径（active 映射
+    replacement 为 None，payload 含 null 字段，口径一致）。
+    """
+    operation_payload = {
+        "source_legacy_id": source_id,
+        "target_identity": identity,
+        "target_status": target_status,
+        "replacement": replacement,
+        "source_manifest_sha256": source_manifest_sha256,
+    }
+    return "data-migration-" + hashlib.sha256(
+        json.dumps(
+            operation_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _verified_completed_receipt(
+    root: Path, mapping_item: Mapping[str, object]
+) -> Path | None:
+    """核实单条映射的 committed receipt 与当前映射/源/目标一致（只读）。
+
+    逐字段核实（全部匹配才返回 receipt 路径，任一不符返回 None，
+    fail-closed，不覆盖、不重做）：
+      - 映射项为已确认 status，source_legacy_id / candidate_target_identity /
+        target_path 均为非空字符串，target_status 在本切片覆盖范围；
+      - ``migration_receipts/<target_identity>.receipt.yaml`` 存在、可解析、
+        顶层为 mapping、status 为 committed；
+      - receipt 的 source_legacy_id / target_identity / target_path 与映射
+        项精确相等；
+      - legacy manifest 文件字节复算 SHA-256 与 receipt 的
+        source_manifest_sha256 相等；
+      - 按写入口径重算 operation_id（映射 source/target/status +
+        source_manifest_sha256）与 receipt 的 operation_id 相等；
+      - 目标 release 目录存在，且按钉定口径复算的内容摘要与 receipt 的
+        target_release_digest 相等。
+
+    全程只读：不写 receipt、不修复指针、不修改 legacy 源或传入映射项。
+    receipt 缺失 / 不可解析 / 任一字段不匹配均视为“未完成或不匹配”，
+    由调用方退回既有 fail-closed precheck 路径（不得覆盖、不得跳过）。
+    """
+    if mapping_item.get("status") != _CONFIRMED_STATUS:
+        return None
+    source_id = mapping_item.get("source_legacy_id")
+    identity = mapping_item.get("candidate_target_identity")
+    target_rel = mapping_item.get("target_path")
+    target_status = mapping_item.get("target_status")
+    if not all(
+        isinstance(value, str) and value
+        for value in (source_id, identity, target_rel)
+    ):
+        return None
+    if target_status not in _DATA_TARGET_STATUSES:
+        return None
+
+    receipt_path = root / _MIGRATION_RECEIPTS_DIR / f"{identity}.receipt.yaml"
+    if not receipt_path.is_file():
+        return None
+    try:
+        receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(receipt, Mapping):
+        return None
+    if receipt.get("status") != _RECEIPT_COMMITTED_STATUS:
+        return None
+
+    manifest_file = (
+        root / _LEGACY_DATA_RELEASES / source_id / _LEGACY_DATA_MANIFEST
+    )
+    try:
+        source_manifest_sha256 = hashlib.sha256(
+            manifest_file.read_bytes()
+        ).hexdigest()
+    except OSError:
+        return None
+    if receipt.get("source_manifest_sha256") != source_manifest_sha256:
+        return None
+    if receipt.get("operation_id") != _derive_operation_id(
+        source_id,
+        identity,
+        target_status,
+        source_manifest_sha256,
+        mapping_item.get("replacement"),
+    ):
+        return None
+    if receipt.get("source_legacy_id") != source_id:
+        return None
+    if receipt.get("target_identity") != identity:
+        return None
+    if receipt.get("target_path") != target_rel:
+        return None
+
+    release_dir = root / Path(target_rel).parent
+    if not release_dir.is_dir():
+        return None
+    try:
+        release_digest = _release_content_digest(release_dir)
+    except OSError:
+        return None
+    if receipt.get("target_release_digest") != release_digest:
+        return None
+    return receipt_path
+
+
 def _migrate_single_data_release(
     root: Path, mapping_item: Mapping[str, object]
 ) -> Path:
@@ -1030,22 +1151,14 @@ def _migrate_single_data_release(
     # 的 migration_receipts/ 与 legacy 源。digest/receipt 后续只读目标内容。
     seal_payload(release_dir)
 
-    # operation_id：确定性哈希，绑定映射 source/target/status 与
-    # source_manifest_sha256（同一转换的重跑产出同一 operation_id）。
-    operation_payload = {
-        "source_legacy_id": source_id,
-        "target_identity": identity,
-        "target_status": target_status,
-        "source_manifest_sha256": source_manifest_sha256,
-    }
-    operation_id = "data-migration-" + hashlib.sha256(
-        json.dumps(
-            operation_payload,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-    ).hexdigest()
+    # operation_id：确定性哈希（共享派生口径，见 _derive_operation_id）。
+    operation_id = _derive_operation_id(
+        source_id,
+        identity,
+        target_status,
+        source_manifest_sha256,
+        mapping_item.get("replacement"),
+    )
 
     # 目标完整写入并验证后原子写入 committed receipt（八字段契约，无多余键）。
     receipt = {
@@ -1092,9 +1205,15 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
     本切片覆盖 ``target_status`` 为 ``active`` / ``superseded`` 的单对象/
     逐条转换：superseded 目标按映射声明写入 replacement，且 replacement
     必须在写入前解析为目标 root 中已有的正式 release（fail-closed，零
-    写入拒绝悬空引用）；active 目标不得携带 replacement。批级恢复、凭证
-    失配拒绝、重跑幂等跳过不在本切片（越界输入在写入前即 fail-closed
-    拒绝）。
+    写入拒绝悬空引用）；active 目标不得携带 replacement。
+
+    完成态批级重跑幂等跳过（T18）：在预检前逐对象只读核实 committed
+    receipt 与映射、operation_id、legacy manifest 文件字节 SHA-256、目标
+    release 内容摘要全部匹配；批内全部对象核实匹配时整批只读跳过
+    （返回既有 receipt 路径，零写入、不重写 release/receipt、不产生新
+    身份）。任一对象 receipt 缺失或不匹配即退回既有 fail-closed 预检
+    路径（不覆盖、不自动改号）。批内部分完成/中断恢复、凭证失配拒绝
+    不在本切片。
 
     返回写入的 receipt 路径序列（与映射批同序；返回值契约本切片不绑定）。
     """
@@ -1103,6 +1222,22 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
         items = list(mapping_items)
     except TypeError:
         items = []
+
+    # T18：完成态批级重跑幂等跳过。批非空且逐对象 committed receipt 与
+    # 映射/源/目标全部核实验证匹配时，整批只读跳过：不重写 release 或
+    # receipt（written_at/mtime 不变）、不产生新身份、不触碰 legacy 源。
+    # 任一对象 receipt 缺失/不匹配（含 receipt 被篡改、legacy 源被改动、
+    # 目标被改动）均不进入本分支，退回下方既有 fail-closed 预检路径。
+    if items and all(
+        isinstance(item, Mapping) and _verified_completed_receipt(root, item)
+        for item in items
+    ):
+        return tuple(
+            root
+            / _MIGRATION_RECEIPTS_DIR
+            / f"{item['candidate_target_identity']}.receipt.yaml"
+            for item in items
+        )
 
     report = precheck_data_migration(root, items)
     if report.status != "ready":

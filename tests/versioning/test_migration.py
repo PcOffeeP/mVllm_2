@@ -352,8 +352,19 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   读门）—— release 根与全部 payload 文件/目录去全部写位、
         #   release.yaml 保留创建时写位（sealed 后受控更新通道）；
         #   receipt 与 migration_receipts/ 是 release 外部迁移控制文
-        #   件/目录，不随封存去写位。批级恢复、凭证失配拒绝、重跑
-        #   幂等跳过不在本切片。
+        #   件/目录，不随封存去写位。T18 起：完成态批级重跑必须幂等
+        #   跳过 —— 双对象批完整转换后，同 root、同映射、同 legacy
+        #   源的第二次 migrate_data 调用必须成功（不把已完成的
+        #   r1/r2 当外来冲突拒绝），两对象识别为已完成并跳过：两个
+        #   目标 release 子树与两份 receipt 逐字节不变（含 written_at）、
+        #   目标侧零重写、不产生 data-v4.1-r3 等新身份、legacy 源与旧
+        #   active pointers 不变；跳过的报告通道与返回值不绑定。批级
+        #   恢复（中断后未完成对象继续）、凭证失配拒绝仍不在本切片。
+        #   T18-P2 起（reviewer 对 T18 的 P2）：该完成态核实必须绑定
+        #   superseded 映射的 replacement —— 映射声明的 replacement 与
+        #   已提交事实（第一次转换写入的目标 release / receipt）不符
+        #   时不得静默跳过，必须经 DataMigrationBlocked fail-closed 拒绝
+        #   且零写入。
 
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
@@ -390,10 +401,30 @@ DataMigrationBlocked 拒绝通道与 T15 单对象 r2 转换均已存在时，RE
 换阶段的既有 fail-closed 拒绝钉出：本文件把该拒绝转成显式行为
 AssertionError（原始 DataMigrationBlocked 经 cause 链保留，不得直接
 充当 RED 结论）。
+T18（完成态批级重跑幂等切片）同口径补充：migrate_data 入口、
+DataMigrationBlocked 拒绝通道与 T17 双对象批终态均已存在（第一次完
+整转换为 fixture 前置事实，失败即 T17 回归而非本切片 RED）时，RED
+不经入口缺失分支给出 —— 当前 production 的 precheck 把已完成的
+r1/r2 判为目标冲突，第二次调用被 DataMigrationBlocked 拒绝（完成对象
+被当外来冲突）；本文件把该拒绝转成显式行为 AssertionError 钉出
+"完成态批级重跑幂等跳过行为缺失"（原始 DataMigrationBlocked 经 cause
+链保留，不得直接充当 RED 结论）。
+T18-P2（reviewer 对 T18 的 P2，replacement 绑定补丁切片）同口径补
+充：migrate_data 入口、DataMigrationBlocked 拒绝通道、T17 双对象批终
+态与 T18 完成态幂等跳过均已存在（第一次完整转换与同映射重跑成功均
+为 fixture 前置事实，失败即 T17/T18 回归而非本切片 RED）时，RED 不
+经入口缺失分支给出 —— 当前 production 的完成态核实口径（receipt 逐
+字段比对 + operation_id 派生 payload source/target/status +
+source_manifest_sha256 + target_release_digest）不含 superseded 映射
+的 replacement，r1 映射 replacement 变更后的第二次 migrate_data 调用
+静默跳过成功返回；本文件把该静默跳过转成显式行为 AssertionError
+钉出"完成态重跑 receipt 核实未绑定 superseded 映射的 replacement"，
+拒绝通道错位（原始未类型化异常替代 DataMigrationBlocked）同样经显
+式 AssertionError + cause 链转译（不得直接充当 RED 结论）。
 
 范围边界：本文件只覆盖 Prompt 迁移（T1–T10）、T11–T14 数据迁移批级
 只读预检切面（ready 正向、目标冲突边界、已钉扎 manifest provenance
-门、manifest files 声明的 payload 文件哈希复算门）与 T15–T16 单对象
+门、manifest files 声明的 payload 文件哈希复算门）与 T15–T18 单对象/批级
 data 真实转换切面 —— T1 ready 正向
 最小切面、
 T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同身份非
@@ -486,11 +517,35 @@ validate_training_reference 对 r2 放行、对 r1 拒绝（ReferenceNotAllowed�
 两份 committed receipt（八字段、双对象凭证互不相同、两处哈希独立复
 算核实）；目标根恰含两个 release 与两份 receipt；未映射 sibling 不被
 转换；legacy 源与旧 active pointers 逐字节不变；不做中断恢复、凭证
-失配、重跑幂等；批内乱序输入（r1 先于 r2）的写入顺序行为不绑定）；
+失配、重跑幂等；批内乱序输入（r1 先于 r2）的写入顺序行为不绑定）、
+T18 完成态批级重跑幂等跳过切片（复用 T17 双对象 fixture：第一次完
+整双对象批转换后，同 root、同映射、同 legacy 源的第二次 migrate_data
+调用必须成功 —— 不把已完成的 r1/r2 正式对象当成外来冲突拒绝；两个
+对象都识别为已完成并跳过：两个目标 release 子树与两份 receipt 逐字
+节不变（含 written_at）、目标侧 mtime 与权限位零变化、不产生
+data-v4.1-r3 等新身份、legacy 源与旧 active pointers 不变、不就地修改
+映射项；跳过的报告通道与 migrate_data 返回值不绑定；不做中断恢复 ——
+批内存在未完成对象时的"继续"语义与凭证失配拒绝不在本切片）、
+T18-P2 完成态重跑 receipt 核实 replacement 绑定切片（reviewer 对 T18
+的 P2，先写测试，不改 production：复用 T17/T18 双对象 fixture，第一
+次完整双对象批转换 + 同映射幂等重跑成功后，仅把 r1 映射（superseded）
+的 replacement 从 data-v4.1-r2 变更为另一完整 data 身份 data-v4.1-r9
+—— 空目标根上 precheck-ready 的格式合法变体，保持同 root、同
+legacy 源 —— 再次 migrate_data 调用必须经 DataMigrationBlocked
+fail-closed 拒绝，不得静默跳过；既有两个 release 与两份 receipt 逐字
+节不变（含 written_at）、零新增/删除条目（不产生 data-v4.1-r9 /
+data-v4.1-r3 等新身份）、目标侧 mtime 与权限位零变化、legacy 源与旧
+active pointers 不变、不就地修改传入映射项；恢复原 replacement 后的
+同映射重跑仍成功跳过（拒绝不得过宽到拒绝一切完成态重跑）；核实纳
+入 replacement 的具体机制与拒绝信息文本不绑定；映射其他字段
+（target_status / target_path / source_legacy_id /
+candidate_target_identity）的完成态失配已由 T18 既有核实口径覆盖
+（receipt 逐字段比对 + operation_id 绑定 target_status），receipt 自身
+被篡改的拒绝分支与批内部分完成恢复仍不在本切片）；
 以上切片之外
 不实现/不要求
 data 真实转换的其余行为（批级多对象乱序写入顺序、
-批级恢复、凭证失配拒绝、重跑幂等跳过）、data blocked 反向其余场景（身份契约收紧、legacy 源
+批级恢复（中断后未完成对象继续）、凭证失配拒绝）、data blocked 反向其余场景（身份契约收紧、legacy 源
 release 目录/manifest 缺失、声明的 payload 文件缺失——该存在性分支
 由既有 production 检查 blocked，本文件未单列用例钉定）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
 T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
@@ -7283,4 +7338,1087 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
     )
     assert mapping_items == _confirmed_data_mapping_items(), (
         "双对象批真实转换不得就地改写传入映射项（M0 事实分级保持不变）"
+    )
+
+
+# ---------------------------------------------------------------------------
+# T18：完成态批级重跑幂等跳过 —— 双对象批完整转换后，同 root、同映射、
+# 同 legacy 源的第二次 migrate_data 调用必须成功并对已完成的 r1/r2 跳过：
+# 零重写、receipt written_at 不变、无新身份（D2 已确认语义；先写测试，
+# 不改 production）
+# ---------------------------------------------------------------------------
+
+
+def _snapshot_target_side_mtime_ns(root: Path) -> dict[str, int]:
+    """目标侧（data/ 与 migration_receipts/ 子树全部条目）的 mtime_ns 快照。
+
+    完成态重跑“无重写”的次级可观察判据：幂等跳过不写任何字节、不触碰
+    任何元数据；“逐字节重写同一内容”在字节层与快照不可区分，但重写
+    必然更新 mtime（receipt 侧另有 written_at 双保险；payload 已按
+    T15-P2-1 封存去写位 0o444，重写会直接 PermissionError）。
+    """
+    snapshot: dict[str, int] = {}
+    for subtree in ("data", "migration_receipts"):
+        subtree_root = root / subtree
+        snapshot[subtree] = subtree_root.stat().st_mtime_ns
+        for path in sorted(subtree_root.rglob("*")):
+            snapshot[
+                path.relative_to(root).as_posix()
+            ] = path.stat().st_mtime_ns
+    return snapshot
+
+
+def test_migrate_data_completed_dual_object_batch_rerun_skips_completed_objects_idempotently(
+    tmp_path: Path,
+) -> None:
+    r"""完成态批级重跑：双对象批完整转换后再次调用同一 migrate_data 幂等跳过。
+
+    T18 behavior（本切片，主 Agent 选定，先写测试，不改 production）——
+    D2 已确认：中断/重跑同一次转换时，凭证匹配的已完成对象跳过，未完成
+    对象继续；完成态重跑应幂等，不覆盖、不改号。本切片钉完成态批级重跑
+    （批内两对象均已完成）：复用 T17 双对象 fixture 完整执行一次双对象
+    批转换后，使用相同 root、相同映射、相同 legacy 源再次调用同一
+    ``migrate_data(root, mapping_items)`` 时：
+    1. 调用必须成功 —— 不得把已有 r1/r2 正式对象与 receipt 当成外来
+       冲突而拒绝（当前实现的 precheck 目标冲突门会把已完成的
+       data-v4.1-r1/r2 判为冲突并以 DataMigrationBlocked 拒绝，即本
+       切片 RED 起点）；
+    2. 两个对象都识别为已完成并跳过 —— 可观察判据：第二次调用前后
+       目标侧零变化（下方 3/4/5 与全树快照、mtime、权限位断言），
+       “跳过”不写任何字节；
+    3. ``data/releases/data-v4.1-r1`` 与 ``data-v4.1-r2`` 内容逐字节
+       不变（目标子树逐文件字节比对 + 全树快照）；
+    4. 两份 receipt 内容逐字节不变，``written_at`` 不变（重跑不得刷新
+       凭证时间戳或重算 digest），status 仍为 committed；
+    5. 不产生 ``data-v4.1-r3`` 或其他新身份（data/releases/ 恰含 r1、
+       r2 两个正式对象；migration_receipts/ 恰含两份 receipt；全树无
+       任何新增/删除条目）；
+    6. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
+       子树逐字节不变；旧指针仍声明 legacy 身份，不得被切换）；
+    7. 本切片不做中断恢复（批内存在未完成对象时的“继续”语义）、凭
+       证失配（跳过判定的凭证不匹配分支）、migrate_data 返回值契约
+       （T15 起不绑定，跳过时返回什么不绑定）与跳过报告通道（跳过
+       是否/如何向调用方报告不绑定 —— 但不得写盘）。
+
+    “识别为已完成并跳过”的绑定方式（行为项 2）：完成态重跑的零变化是
+    可观察事实 —— 两个目标 release 子树与两份 receipt 在第二次调用前
+    后逐字节一致（含 written_at），目标侧全部条目 mtime_ns 与权限位不
+    变。“逐字节重写同一内容”无法从字节层区分，故辅以 mtime_ns 钉定
+    （重写必然更新 mtime；receipt 重写则 written_at/mtime 双重暴露）；
+    payload 已按 T15-P2-1 封存去写位（0o444），重写还会直接
+    PermissionError。
+
+    fixture：复用 T17 双对象 fixture（``_write_legacy_data_layout`` 三
+    份 legacy release + 旧数据/Prompt 活动指针 + 两条映射来自
+    ``_confirmed_data_mapping_items``，D2 推荐顺序 r2 先于 r1）+
+    T15/T16 同款 counts 场景注入与指针 manifest 哈希随注入重写（不注
+    入则 production 共享写入口径 ``_derive_release_splits`` 在写入前
+    因 counts.splits 缺失拒绝，第一次转换无法完成，测试到不了完成态
+    重跑点）；注入值与 T17 完全一致（r2 published_candidates 7、r1 为
+    11），使两切片在同一事实基线上叠加。
+
+    RED Gate 设计说明（T18）：migrate_data 入口、DataMigrationBlocked
+    拒绝通道与 T17 双对象批终态均已存在（第一次完整转换成功是 fixture
+    前置事实，失败即 T17 回归而非本切片 RED），RED 不经入口缺失分支
+    给出 —— 当前 production 的 precheck_data_migration 对已完成 r1/r2
+    命中目标冲突门（目标条目已存在 + data 正式对象根同身份条目），
+    migrate_data 以 DataMigrationBlocked 拒绝第二次调用，把已完成的
+    正式对象当成外来冲突；本用例把该拒绝转成显式行为 AssertionError
+    钉出“完成态批级重跑幂等跳过行为缺失”（原始 DataMigrationBlocked
+    经 cause 链保留，不得直接充当 RED 结论）；若当前实现已满足（调用
+    成功 + 零变化），本用例为 Unexpected PASS（完成态重跑幂等回归钉），
+    不得为此制造无意义 production 修改。
+
+    捕获的合理但错误实现：
+    - 当前 production（RED 起点）：第二次调用被 precheck 目标冲突门拒
+      绝（已完成的 r1/r2 被当外来冲突）-> 显式行为 AssertionError；
+    - “重跑即重做”：重写 release/receipt（即使字节恰好相同）->
+      receipt written_at 变化 / 目标侧 mtime 变化 / 已封存 payload
+      0o444 重写 PermissionError -> 对应断言失败；
+    - “冲突即改号”：自动改号到 data-v4.1-r3 等新身份继续转换 ->
+      data/releases/ 精确内容断言 + 全树快照零变化断言失败；
+    - 只跳过首条/末条映射（另一对象仍被拒或重做）-> 调用失败或快照
+      变化断言失败；
+    - 重跑顺手触碰 legacy 源或旧 active pointers（切换指针、改写
+      manifest/payload）-> 子树逐字节比对失败；
+    - 重跑写盘报告/缓存（跳过清单、日志、临时文件）-> 全树快照零变
+      化断言失败；就地修改传入映射项 -> 映射项不变断言失败。
+
+    Binding（证据绑定，供复跑核对）：
+    - 命令：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_migrate_data_completed_dual_object_batch_rerun_skips_completed_objects_idempotently``
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （``[tool.pytest.ini_options] testpaths / pythonpath`` 解析依赖该
+      文件）。
+    - RED failure signature：恰一个失败用例，失败信息为 AssertionError
+      “完成态批级重跑幂等跳过行为缺失：migrate_data 对完成态双对象批
+      …把已完成的 r1/r2 正式对象当成外来冲突拒绝或失败…”，cause 链
+      为原始 DataMigrationBlocked（“data 迁移预检未通过（fail-closed，
+      零写入）：目标条目已存在，冲突时停止（不覆盖、不自动改号）：
+      data/releases/data-v4.1-r2/release.yaml；data 正式对象根已存在
+      同身份条目：data/releases/data-v4.1-r2；…（r1 同构两条）…”）；
+      fixture 前置事实（第一次转换成功、两个 release 与两份 committed
+      receipt 存在）全部不失败。
+    """
+    # ---- fixture：双对象布局 + r2/r1 counts 场景注入 + 指针哈希随注入
+    #      重写（T17 同款：共享写入口径真实可达，第一次完整转换才能
+    #      完成，测试才能到达完成态重跑点）。----
+    _write_legacy_data_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+    r2_mapping, r1_mapping = mapping_items
+
+    r2_manifest = json.loads(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2).read_text(
+            encoding="utf-8"
+        )
+    )
+    r2_manifest["counts"] = {
+        "published_candidates": 7,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 5,
+            "fold_0_val": 2,
+            "fold_1_train": 6,
+            "fold_1_val": 4,
+            "fold_2_train": 7,
+            "fold_2_val": 1,
+        },
+    }
+    r2_manifest_bytes = _rewrite_legacy_release_manifest(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2, r2_manifest
+    )
+    pointer = json.loads(
+        (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    pointer["expected_manifest_sha256"] = hashlib.sha256(
+        r2_manifest_bytes
+    ).hexdigest()
+    _rewrite_legacy_data_pointer(tmp_path, pointer)
+
+    r1_manifest = json.loads(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R1).read_text(
+            encoding="utf-8"
+        )
+    )
+    r1_manifest["counts"] = {
+        "published_candidates": 11,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 9,
+            "fold_0_val": 4,
+            "fold_1_train": 8,
+            "fold_1_val": 2,
+            "fold_2_train": 10,
+            "fold_2_val": 3,
+        },
+    }
+    _rewrite_legacy_release_manifest(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1, r1_manifest
+    )
+
+    # ---- fixture 前置事实（注入自洽 + D1/D2 镜像 + 目标根空闲）----
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1
+    )
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2
+    )
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "fixture 前置事实失败：旧数据活动指针必须钉扎 r2 映射声明的源"
+    )
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2).read_bytes()
+    ).hexdigest(), (
+        "fixture 前置事实失败：注入后指针 expected_manifest_sha256 必须"
+        "与 r2 manifest 文件字节复算哈希自洽（T13 钉扎门保持绿）"
+    )
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ], "fixture 前置事实失败：双对象映射批必须按 D2 推荐顺序 r2 先于 r1 排列"
+    assert r2_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R2
+    assert r2_mapping["target_status"] == "active", (
+        "fixture 前置事实失败：r2 映射 target_status 必须为 active（D1）"
+    )
+    assert "replacement" not in r2_mapping, (
+        "fixture 前置事实失败：r2 映射不得携带 replacement（D1）"
+    )
+    assert r1_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R1
+    assert r1_mapping["target_status"] == "superseded", (
+        "fixture 前置事实失败：r1 映射 target_status 必须为 superseded"
+        "（D1 用户确认）"
+    )
+    assert r1_mapping["replacement"] == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r1 映射 replacement 必须为 data-v4.1-r2"
+        "（D1 用户确认）"
+    )
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists(), (
+            f"fixture 前置事实失败：目标根 {forbidden!r} 必须保持空闲"
+        )
+
+    migrate_data = _resolve_migrate_data_entry()
+    assert migrate_data is not None, (
+        "双对象批 data 真实迁移入口缺失：versioning.migration 未提供 "
+        "migrate_data 入口（T17 既有行为不可用，本切片 fixture 前置事实"
+        "失败）"
+    )
+
+    # ---- 行为前提构造：第一次完整双对象批转换（T17 既有行为；完成态
+    #      是本切片重跑语义的前提，该处失败是 T17 回归而非本切片 RED）。----
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "fixture 前置事实失败：当前 migrate_data 必须先成功完成双对"
+            "象批的第一次完整转换（T17 既有双对象批终态行为；原始异常经"
+            f"cause 链保留）：{exc!r}"
+        ) from exc
+
+    # 完成态前置事实：两个正式 release 与两份 committed receipt 均已存
+    # 在（批内两对象都已完成 —— 本切片钉完成态批的重跑；未完成对象的
+    # “继续”语义不在本切片）。
+    r2_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R2
+    r1_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R1
+    assert r2_release_dir.is_dir(), (
+        "fixture 前置事实失败：r2 正式 release 必须已创建（完成态前提）"
+    )
+    assert r1_release_dir.is_dir(), (
+        "fixture 前置事实失败：r1 正式 release 必须已创建（完成态前提）"
+    )
+    r2_meta = load_release_metadata(tmp_path / "data", CONFIRMED_DATA_TARGET_R2)
+    assert r2_meta.version == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r2 必须经既有语义读回为 data-v4.1-r2"
+    )
+    assert r2_meta.status is DataStatus.ACTIVE, (
+        "fixture 前置事实失败：r2 必须经既有语义读回为 active 正式对象"
+    )
+    r1_meta = load_release_metadata(tmp_path / "data", CONFIRMED_DATA_TARGET_R1)
+    assert r1_meta.version == CONFIRMED_DATA_TARGET_R1, (
+        "fixture 前置事实失败：r1 必须经既有语义读回为 data-v4.1-r1"
+    )
+    assert r1_meta.status is DataStatus.SUPERSEDED, (
+        "fixture 前置事实失败：r1 必须经既有语义读回为 superseded 正式"
+        "对象"
+    )
+    r2_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    r1_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    assert r2_receipt_file.is_file(), (
+        "fixture 前置事实失败：r2 committed receipt 必须已写入（完成态"
+        "前提）"
+    )
+    assert r1_receipt_file.is_file(), (
+        "fixture 前置事实失败：r1 committed receipt 必须已写入（完成态"
+        "前提）"
+    )
+
+    # ---- 捕获完成态基线：全树字节快照 + 目标子树/receipt 字节 +
+    #      receipt 解析值（written_at 基线）+ 目标侧 mtime_ns 与权限位
+    #      （“无重写”的次级判据）。----
+    completed_tree = _snapshot_tree(tmp_path)
+    r2_target_content = _release_content_files(r2_release_dir)
+    r1_target_content = _release_content_files(r1_release_dir)
+    assert "release.yaml" in r2_target_content, (
+        "fixture 前置事实失败：r2 目标 release 必须含 release.yaml"
+    )
+    assert "release.yaml" in r1_target_content, (
+        "fixture 前置事实失败：r1 目标 release 必须含 release.yaml"
+    )
+    r2_receipt_bytes = r2_receipt_file.read_bytes()
+    r1_receipt_bytes = r1_receipt_file.read_bytes()
+    r2_receipt_baseline = yaml.safe_load(r2_receipt_bytes)
+    r1_receipt_baseline = yaml.safe_load(r1_receipt_bytes)
+    for identity, receipt_baseline in (
+        (CONFIRMED_DATA_TARGET_R2, r2_receipt_baseline),
+        (CONFIRMED_DATA_TARGET_R1, r1_receipt_baseline),
+    ):
+        assert isinstance(receipt_baseline, dict), (
+            f"fixture 前置事实失败：{identity} 的 receipt 必须是 YAML 顶层映射"
+        )
+        assert receipt_baseline.get("status") == "committed", (
+            f"fixture 前置事实失败：{identity} 的完成态基线 receipt 必须为 "
+            "committed"
+        )
+        assert isinstance(receipt_baseline.get("written_at"), str) and (
+            receipt_baseline["written_at"]
+        ), (
+            f"fixture 前置事实失败：{identity} 的 receipt.written_at 必须是"
+            "非空字符串（重跑不变断言的比对基线）"
+        )
+    target_side_mtime_baseline = _snapshot_target_side_mtime_ns(tmp_path)
+    modes_baseline = _snapshot_modes(tmp_path)
+
+    # ---- 行为：第二次调用同一 migrate_data（相同 root、相同映射批、
+    #      相同 legacy 源；完成态批级重跑）。----
+    # RED Gate：当前 production 的 precheck 把已完成的 r1/r2 判为目标冲
+    # 突（目标条目已存在 + data 正式对象根同身份条目）并以
+    # DataMigrationBlocked 拒绝第二次调用 —— 本用例把该拒绝转成显式
+    # 行为 AssertionError 钉出“完成态批级重跑幂等跳过行为缺失”，原始
+    # 异常经 cause 链保留；若当前实现已满足（调用成功 + 零变化），本
+    # 用例为 Unexpected PASS（完成态重跑幂等回归钉）。
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "完成态批级重跑幂等跳过行为缺失：migrate_data 对完成态双对象"
+            "批（r2 active + r1 superseded/replacement="
+            f"{CONFIRMED_DATA_TARGET_R2}，D2 推荐顺序 r2 先于 r1，第一次完"
+            "整转换已成功）的同 root、同映射、同 legacy 源第二次调用把已"
+            "完成的 r1/r2 正式对象当成外来冲突拒绝或失败（本切片要求凭"
+            "证匹配的已完成对象跳过：调用成功、零重写、零新身份、两份"
+            "receipt 及 written_at 逐字节不变；原始异常经 cause 链保留）："
+            f"{exc!r}"
+        ) from exc
+
+    # ---- 行为项 1+2：调用成功已钉定（不把已有 r1/r2 当外来冲突拒
+    #      绝）；跳过的可观察判据是下方零变化断言（无重写即跳过，而非
+    #      重做）。----
+
+    # 3/4/5/6：第二次调用后全树零变化 —— 目标子树与 receipt 逐字节不
+    # 变、legacy 源与旧 pointers 不变、无任何新增/删除条目（不产生
+    # data-v4.1-r3 等新身份、不写跳过报告/缓存/records、不触发 DVC 均
+    # 由全树键集与逐键字节比对钉定）。
+    rerun_tree = _snapshot_tree(tmp_path)
+    assert set(rerun_tree) == set(completed_tree), (
+        "完成态批级重跑不得新增或删除任何条目（不产生 data-v4.1-r3 等"
+        "新身份、不写跳过报告/缓存/records/生命周期目录、不删除既有条"
+        "目）：实际新增 "
+        f"{sorted(set(rerun_tree) - set(completed_tree))}，实际删除 "
+        f"{sorted(set(completed_tree) - set(rerun_tree))}"
+    )
+    changed_entries = sorted(
+        key
+        for key, value in completed_tree.items()
+        if rerun_tree[key] != value
+    )
+    assert not changed_entries, (
+        "完成态批级重跑不得改动任何条目（两个目标 release 子树、两份 "
+        "receipt、legacy 源与旧 active pointers 逐字节不变）：实际改动 "
+        f"{changed_entries}"
+    )
+
+    # 3：两个目标 release 子树内容逐字节不变（显式重复全树结论，使该行
+    #    为项在失败信息中可读归因）。
+    assert _release_content_files(r2_release_dir) == r2_target_content, (
+        "完成态批级重跑不得重写 data/releases/data-v4.1-r2（已完成对象"
+        "跳过：逐文件字节必须与第一次转换后完全一致）"
+    )
+    assert _release_content_files(r1_release_dir) == r1_target_content, (
+        "完成态批级重跑不得重写 data/releases/data-v4.1-r1（已完成对象"
+        "跳过：逐文件字节必须与第一次转换后完全一致）"
+    )
+
+    # 4：两份 receipt 内容逐字节不变，written_at 不变（幂等跳过不重写凭
+    #    证、不刷新时间戳、不重算 digest），status 仍为 committed。
+    assert r2_receipt_file.read_bytes() == r2_receipt_bytes, (
+        "完成态批级重跑不得重写 r2 receipt（凭证逐字节不变，含 "
+        "written_at）"
+    )
+    assert r1_receipt_file.read_bytes() == r1_receipt_bytes, (
+        "完成态批级重跑不得重写 r1 receipt（凭证逐字节不变，含 "
+        "written_at）"
+    )
+    r2_receipt_after = yaml.safe_load(
+        r2_receipt_file.read_text(encoding="utf-8")
+    )
+    r1_receipt_after = yaml.safe_load(
+        r1_receipt_file.read_text(encoding="utf-8")
+    )
+    for identity, receipt_after, receipt_baseline in (
+        (CONFIRMED_DATA_TARGET_R2, r2_receipt_after, r2_receipt_baseline),
+        (CONFIRMED_DATA_TARGET_R1, r1_receipt_after, r1_receipt_baseline),
+    ):
+        assert receipt_after == receipt_baseline, (
+            f"{identity} 的 receipt 内容在完成态重跑后必须不变（八字段"
+            "逐一相等，不重算 digest、不改身份字段）"
+        )
+        assert receipt_after["written_at"] == receipt_baseline["written_at"], (
+            f"{identity} 的 receipt.written_at 在完成态重跑后必须不变"
+            "（幂等跳过不重写凭证；written_at 变化即重跑重做了转换）"
+        )
+        assert receipt_after["status"] == "committed", (
+            f"{identity} 的 receipt.status 在完成态重跑后必须仍为 "
+            "committed"
+        )
+
+    # 5：无新身份 —— data/releases/ 恰含 r1、r2 两个正式对象（不产生
+    #    data-v4.1-r3）；migration_receipts/ 恰含两份 receipt。
+    releases_root = tmp_path / "data" / "releases"
+    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+        CONFIRMED_DATA_TARGET_R1,
+        CONFIRMED_DATA_TARGET_R2,
+    ], (
+        "完成态批级重跑不得产生 data-v4.1-r3 或任何其他新身份/新条目"
+        "（不覆盖、不自动改号）：data/releases/ 必须恰含 "
+        f"{CONFIRMED_DATA_TARGET_R1} 与 {CONFIRMED_DATA_TARGET_R2}"
+    )
+    assert not (
+        tmp_path / "data" / "releases" / "data-v4.1-r3"
+    ).exists(), "完成态批级重跑不得自动改号到 data-v4.1-r3"
+    receipts_root = tmp_path / "migration_receipts"
+    assert [
+        entry.name for entry in sorted(receipts_root.iterdir())
+    ] == [
+        f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml",
+        f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml",
+    ], "migration_receipts/ 必须恰含 r1 与 r2 两份 receipt（重跑不新增凭证）"
+
+    # 无重写（行为项 2 的次级判据）：目标侧全部条目 mtime_ns 不变 ——
+    # “逐字节重写同一内容”在字节层不可区分，mtime 是其可观察痕迹
+    # （receipt 侧另有 written_at 双保险；payload 已封存 0o444，重写会
+    # 直接 PermissionError）。
+    assert _snapshot_target_side_mtime_ns(tmp_path) == (
+        target_side_mtime_baseline
+    ), (
+        "完成态批级重跑不得重写目标侧任何条目（跳过不触碰元数据："
+        "data/ 与 migration_receipts/ 子树全部条目 mtime_ns 必须不变；"
+        "字节恰好相同的重写也会更新 mtime）"
+    )
+    # 权限位不变：重跑不得重新封存/改写位（含 legacy 侧与目标侧）。
+    assert _snapshot_modes(tmp_path) == modes_baseline, (
+        "完成态批级重跑不得改动任何条目权限位（不重新封存、不改写位）"
+    )
+
+    # 6：legacy 源和旧 pointers 不变（全树快照已钉定；此处显式钉旧指针
+    #    仍声明 legacy 身份，使失败信息可读归因）。
+    data_pointer_after = json.loads(
+        (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    assert data_pointer_after["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "完成态批级重跑不得切换旧数据活动指针（仍声明 legacy 身份）"
+    )
+    prompt_pointer_after = yaml.safe_load(
+        (tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml")
+        .read_bytes()
+    )
+    assert prompt_pointer_after["revision_id"] == CONFIRMED_PROMPT_SOURCE_ID, (
+        "完成态批级重跑不得切换旧 Prompt 活动指针（仍声明 legacy "
+        "revision_id）"
+    )
+
+    # 两次调用之间映射批不被就地修改（M0 事实分级保持不变）。
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "完成态批级重跑不得就地改写传入映射项（M0 事实分级保持不变）"
+    )
+
+
+# ---------------------------------------------------------------------------
+# T18-P2：reviewer 对 T18 的 P2 —— 完成态重跑的 receipt 核实必须绑定
+# superseded 映射的 replacement：映射 replacement 变更后不得静默跳过，
+# 必须经 DataMigrationBlocked fail-closed 拒绝（先写测试，不改 production）
+# ---------------------------------------------------------------------------
+
+
+# r1 映射 replacement 的变更目标：格式合法的完整 data 身份（kind data、
+# 协议 v4.1、revision 9 —— 空目标根上 precheck-ready 的变体），但目标
+# root 下不存在该正式对象，且与第一次转换写入的已提交事实
+# （r1 release.yaml replacement=data-v4.1-r2）不同。
+_CHANGED_R1_REPLACEMENT = "data-v4.1-r9"
+
+
+def _dual_object_batch_with_changed_r1_replacement() -> list[dict[str, Any]]:
+    """双对象映射批的 r1 replacement 变体（与 M0 证据镜像批恰一处不同）。
+
+    逐字段镜像 _confirmed_data_mapping_items（两条已确认映射，D2 推荐
+    顺序 r2 先于 r1），唯一差异：r1 条目（superseded）的 replacement
+    从 data-v4.1-r2 改为 _CHANGED_R1_REPLACEMENT（data-v4.1-r9）。
+    返回全新对象；前置 precheck 对照与行为调用各自独立取用，不经
+    production 就地改写互相污染。
+    """
+    items = _confirmed_data_mapping_items()
+    r1_item = items[1]
+    assert r1_item["source_legacy_id"] == CONFIRMED_DATA_SOURCE_R1, (
+        "fixture 前置事实失败：双对象映射批第二位必须是 r1 条目"
+        "（D2 推荐顺序 r2 先于 r1）"
+    )
+    r1_item["replacement"] = _CHANGED_R1_REPLACEMENT
+    return items
+
+
+def test_migrate_data_completed_batch_rerun_with_changed_replacement_fails_closed(
+    tmp_path: Path,
+) -> None:
+    r"""完成态重跑遇 superseded 映射 replacement 变更：fail-closed 拒绝，不得静默跳过。
+
+    T18-P2 behavior（reviewer 对 T18 的 P2，本切片先写测试，不改
+    production）—— T18 的完成态幂等跳过以“receipt 核实与当前映射/
+    源/目标全部匹配”为前提，但当前核实口径（receipt 逐字段比对 +
+    operation_id 派生 payload source/target/status +
+    source_manifest_sha256 + target_release_digest）不含 superseded 映射
+    的 replacement —— r1 映射 replacement 变更后重跑会静默跳过，映射
+    声明与已提交事实（r1 release.yaml replacement=data-v4.1-r2）不符
+    的事实不被发现。本切片钉定：复用 T17/T18 双对象 fixture，第一次
+    完整双对象批转换（r2 active + r1 superseded/replacement=
+    data-v4.1-r2）成功、同映射幂等重跑成功后，仅把 r1 映射的
+    replacement 从 data-v4.1-r2 变更为另一完整 data 身份
+    data-v4.1-r9（空目标根上 precheck-ready 的格式合法变体 —— 后续
+    拒绝不得由身份格式/源/映射结构归因），保持同 root、同 legacy 源，
+    再次调用 ``migrate_data(root, mapping_items)`` 时：
+    1. 必须经 ``DataMigrationBlocked``（或其子类）fail-closed 拒绝 ——
+       不得静默跳过（成功返回即本切片 RED 起点：当前 production 的
+       核实不绑定 replacement，r1 变更后整批仍被识别为已完成并跳过）；
+    2. 既有两个目标 release 与两份 receipt 逐字节不变（含
+       written_at / status committed）—— 拒绝不得覆盖、不得改写、不
+       得重算 digest，也不得顺手把 r1 release.yaml 的 replacement 改写
+       成新映射值；
+    3. 零新增/删除条目：不产生 data-v4.1-r9 / data-v4.1-r3 等新身份
+       （data/releases/ 恰含 r1、r2；migration_receipts/ 恰含两份
+       receipt；目标侧 mtime 与权限位零变化 —— 无任何重写痕迹）；
+    4. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
+       子树逐字节不变；旧指针仍声明 legacy 身份）；
+    5. 不就地修改传入映射项（原批与变更批都不被 production 改写）；
+    6. 拒绝的具体机制（核实口径如何纳入 replacement —— receipt 新
+       字段 / operation_id 派生 / 目标 release.yaml 比对）与拒绝信息
+       文本不绑定，行为只钉 fail-closed 通道 + 零写入；
+    7. 相同 replacement 的正常 T18 重跑仍成功跳过：同映射重跑（本用
+       例内的前置对照）与恢复原 replacement 后的重跑（末尾对照）都
+       必须成功且零变化 —— 拒绝只能由 replacement 变更归因，不得过
+       宽到拒绝一切完成态重跑。
+
+    fixture：复用 T17/T18 双对象 fixture（_write_legacy_data_layout
+    三份 legacy release + 旧数据/Prompt 活动指针 + 两条映射来自
+    _confirmed_data_mapping_items，D2 推荐顺序 r2 先于 r1）+ T15/T16/
+    T17 同款 counts 场景注入与指针 manifest 哈希随注入重写（不注入则
+    共享写入口径 _derive_release_splits 在写入前因 counts.splits 缺失
+    拒绝，第一次转换无法完成，测试到不了完成态重跑点）；注入值与
+    T17/T18 完全一致（r2 published_candidates 7、r1 为 11），使三切片
+    在同一事实基线上叠加。
+
+    RED Gate 设计说明（T18-P2）：migrate_data 入口、DataMigrationBlocked
+    拒绝通道、T17 双对象批终态与 T18 完成态幂等跳过均已存在（第一次
+    完整转换与同映射重跑成功均为 fixture 前置事实，失败即 T17/T18 回
+    归而非本切片 RED），RED 不经入口缺失分支给出 —— 当前 production
+    的完成态核实不绑定 replacement，r1 映射 replacement 变更
+    （data-v4.1-r2 -> data-v4.1-r9）后的第二次 migrate_data 调用静默
+    跳过成功返回；本用例把该静默跳过转成显式行为 AssertionError 钉
+    出“完成态重跑 receipt 核实未绑定 superseded 映射的 replacement”
+    （拒绝通道错位 —— 原始未类型化异常替代 DataMigrationBlocked ——
+    同样经显式 AssertionError + cause 链转译，不得直接充当 RED 结论）。
+
+    捕获的合理但错误实现：
+    - 当前 production（RED 起点）：核实不含 replacement -> r1 变更后
+      整批仍识别为已完成 -> 静默跳过成功返回 -> 显式行为
+      AssertionError；
+    - 拒绝通道错位：以原始未类型化异常（ValueError / KeyError /
+      PermissionError 等）替代 DataMigrationBlocked -> 通道错位
+      AssertionError（cause 链保留原始异常）；
+    - 拒绝前/拒绝时有写入：改写 release / receipt（即使字节恰好相同
+      也更新 mtime）或顺手封存/改权限位 -> 全树快照 / receipt 字节 /
+      mtime / 权限位断言失败；
+    - 拒绝时顺手“修复”：改写 r1 release.yaml 的 replacement 使其匹配
+      新映射 / 重写 receipt -> 零写入断言失败；
+    - 自动改号继续转换（把 r1 转成 data-v4.1-r3，或为 data-v4.1-r9
+      创建正式对象/凭证）-> data/releases/ 与 migration_receipts/ 精确
+      内容 + 全树快照断言失败；
+    - 拒绝过宽：一切完成态重跑都被拒（同映射重跑 / 恢复原
+      replacement 的重跑也失败）-> 前置对照或末尾对照断言失败（T18
+      selector 同步回归可见）；
+    - 拒绝归因错位：把变更批在空目标根上判 blocked（要求 replacement
+      预先存在等）-> 前置 precheck-ready 断言失败（T17 已钉 precheck
+      不要求 replacement 预先存在）；
+    - 触碰 legacy 源或旧 active pointers / 就地改写传入映射项 -> 子树
+      逐字节比对 / 映射项不变断言失败。
+
+    范围边界（本切片不绑定）：核实纳入 replacement 的具体机制与拒绝信
+    息文本；映射其他字段（target_status / target_path /
+    source_legacy_id / candidate_target_identity）的完成态失配（已由
+    T18 既有核实口径覆盖：receipt 逐字段比对 + operation_id 绑定
+    target_status）；receipt 自身字段被篡改的拒绝分支；批内部分完成/
+    中断恢复（“继续”语义）；replacement 变更为非法身份格式（预检身份
+    门已覆盖）；active 映射携带 replacement 的完成态重跑；CLI、DVC、
+    训练机真实路径。
+
+    Binding（证据绑定，供复跑核对）：
+    - 命令：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_migrate_data_completed_batch_rerun_with_changed_replacement_fails_closed``
+    - RED failure signature：恰一个失败用例（本 selector），失败信息
+      为 AssertionError “完成态重跑 receipt 核实未绑定 superseded 映
+      射的 replacement（静默跳过）：r1 映射 replacement 从 data-v4.1-r2
+      变更为 data-v4.1-r9 后，migrate_data 对完成态双对象批的同
+      root、同 legacy 源第二次调用成功返回、未 fail-closed 拒绝 …”；
+      fixture 前置事实（变更批空目标根 precheck ready、第一次转换成
+      功、完成态基线、同映射重跑成功零变化）全部不失败；T17/T18 既
+      有 selector 保持通过。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （``[tool.pytest.ini_options] testpaths / pythonpath`` 解析依赖该
+      文件）。
+    """
+    # ---- fixture：双对象布局 + r2/r1 counts 场景注入 + 指针哈希随注入
+    #      重写（T17/T18 同款：共享写入口径真实可达，第一次完整转换
+    #      才能完成，测试才能到达完成态重跑点）。----
+    _write_legacy_data_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+    r2_mapping, r1_mapping = mapping_items
+
+    r2_manifest = json.loads(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2).read_text(
+            encoding="utf-8"
+        )
+    )
+    r2_manifest["counts"] = {
+        "published_candidates": 7,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 5,
+            "fold_0_val": 2,
+            "fold_1_train": 6,
+            "fold_1_val": 4,
+            "fold_2_train": 7,
+            "fold_2_val": 1,
+        },
+    }
+    r2_manifest_bytes = _rewrite_legacy_release_manifest(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2, r2_manifest
+    )
+    pointer = json.loads(
+        (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    pointer["expected_manifest_sha256"] = hashlib.sha256(
+        r2_manifest_bytes
+    ).hexdigest()
+    _rewrite_legacy_data_pointer(tmp_path, pointer)
+
+    r1_manifest = json.loads(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R1).read_text(
+            encoding="utf-8"
+        )
+    )
+    r1_manifest["counts"] = {
+        "published_candidates": 11,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 9,
+            "fold_0_val": 4,
+            "fold_1_train": 8,
+            "fold_1_val": 2,
+            "fold_2_train": 10,
+            "fold_2_val": 3,
+        },
+    }
+    _rewrite_legacy_release_manifest(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1, r1_manifest
+    )
+
+    # ---- fixture 前置事实（注入自洽 + D1/D2 镜像 + 目标根空闲）。----
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1
+    )
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2
+    )
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "fixture 前置事实失败：旧数据活动指针必须钉扎 r2 映射声明的源"
+    )
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2).read_bytes()
+    ).hexdigest(), (
+        "fixture 前置事实失败：注入后指针 expected_manifest_sha256 必须"
+        "与 r2 manifest 文件字节复算哈希自洽（T13 钉扎门保持绿）"
+    )
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ], "fixture 前置事实失败：双对象映射批必须按 D2 推荐顺序 r2 先于 r1 排列"
+    assert r2_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R2
+    assert r2_mapping["target_status"] == "active", (
+        "fixture 前置事实失败：r2 映射 target_status 必须为 active（D1）"
+    )
+    assert "replacement" not in r2_mapping, (
+        "fixture 前置事实失败：r2 映射不得携带 replacement（D1）"
+    )
+    assert r1_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R1
+    assert r1_mapping["target_status"] == "superseded", (
+        "fixture 前置事实失败：r1 映射 target_status 必须为 superseded"
+        "（D1 用户确认）"
+    )
+    assert r1_mapping["replacement"] == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r1 映射 replacement 必须为 data-v4.1-r2"
+        "（D1 用户确认；本切片的变更基线）"
+    )
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists(), (
+            f"fixture 前置事实失败：目标根 {forbidden!r} 必须保持空闲"
+        )
+
+    precheck = _resolve_data_precheck_entry()
+    assert precheck is not None, (
+        "批级只读预检行为缺失：versioning.migration 未提供 "
+        "precheck_data_migration 入口（T11 既有行为不可用，本切片 "
+        "fixture 前置事实失败）"
+    )
+
+    # ---- 前置对照（归因隔离）：replacement 变体批在空目标根上整批
+    #      precheck ready —— data-v4.1-r9 是格式合法的完整 data 身份
+    #      （T17 已钉 precheck 不要求 replacement 预先存在），变体批
+    #      在完成态的任何拒绝只能由 receipt 核实归因，不得由身份格式
+    #      / 源 / 映射结构归因。----
+    variant_items = _dual_object_batch_with_changed_r1_replacement()
+    variant_precheck_report = precheck(tmp_path, variant_items)
+    assert variant_precheck_report.status == "ready", (
+        "fixture 前置事实失败：r1 replacement 变体批（replacement="
+        f"{_CHANGED_R1_REPLACEMENT}，格式合法完整 data 身份）在空目标根"
+        "上必须整批 precheck ready —— 完成态场景的拒绝只能由 receipt "
+        "核实归因，不得由身份格式/源/映射结构归因（实际 "
+        f"{variant_precheck_report.status!r}，"
+        f"reasons={variant_precheck_report.reasons!r}）"
+    )
+
+    migrate_data = _resolve_migrate_data_entry()
+    assert migrate_data is not None, (
+        "双对象批 data 真实迁移入口缺失：versioning.migration 未提供 "
+        "migrate_data 入口（T17 既有行为不可用，本切片 fixture 前置事实"
+        "失败）"
+    )
+    blocked_exc = getattr(
+        importlib.import_module("versioning.migration"),
+        "DataMigrationBlocked",
+        None,
+    )
+    assert blocked_exc is not None, (
+        "data 迁移拒绝通道缺失：versioning.migration 未提供 "
+        "DataMigrationBlocked（fail-closed 必须经既有迁移拒绝通道给出，"
+        "本切片 fixture 前置事实失败）"
+    )
+
+    # ---- 行为前提构造：第一次完整双对象批转换（T17 既有行为；完成态
+    #      是本切片重跑语义的前提，该处失败是 T17 回归而非本切片 RED）。----
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "fixture 前置事实失败：当前 migrate_data 必须先成功完成双对"
+            "象批的第一次完整转换（T17 既有双对象批终态行为；原始异常经"
+            f"cause 链保留）：{exc!r}"
+        ) from exc
+
+    # 完成态前置事实：两个正式 release 与两份 committed receipt 均已存
+    # 在；r1 已提交事实为 replacement=data-v4.1-r2（本切片变更将偏离的
+    # 基线事实）。
+    r2_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R2
+    r1_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R1
+    assert r2_release_dir.is_dir(), (
+        "fixture 前置事实失败：r2 正式 release 必须已创建（完成态前提）"
+    )
+    assert r1_release_dir.is_dir(), (
+        "fixture 前置事实失败：r1 正式 release 必须已创建（完成态前提）"
+    )
+    r1_meta = load_release_metadata(tmp_path / "data", CONFIRMED_DATA_TARGET_R1)
+    assert r1_meta.version == CONFIRMED_DATA_TARGET_R1, (
+        "fixture 前置事实失败：r1 必须经既有语义读回为 data-v4.1-r1"
+    )
+    assert r1_meta.status is DataStatus.SUPERSEDED, (
+        "fixture 前置事实失败：r1 必须经既有语义读回为 superseded 正式"
+        "对象"
+    )
+    assert r1_meta.replacement == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r1 已提交事实的 replacement 必须为 "
+        f"{CONFIRMED_DATA_TARGET_R2!r}（第一次转换写入的 release.yaml "
+        "声明值；本切片的变更将偏离该已提交事实）"
+    )
+    r2_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    r1_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    assert r2_receipt_file.is_file(), (
+        "fixture 前置事实失败：r2 committed receipt 必须已写入（完成态"
+        "前提）"
+    )
+    assert r1_receipt_file.is_file(), (
+        "fixture 前置事实失败：r1 committed receipt 必须已写入（完成态"
+        "前提）"
+    )
+
+    # ---- 捕获完成态基线：全树字节快照 + 目标子树/receipt 字节 +
+    #      receipt 解析值（written_at 基线）+ 目标侧 mtime_ns 与权限位。----
+    completed_tree = _snapshot_tree(tmp_path)
+    r2_content_baseline = _release_content_files(r2_release_dir)
+    r1_content_baseline = _release_content_files(r1_release_dir)
+    assert "release.yaml" in r2_content_baseline, (
+        "fixture 前置事实失败：r2 目标 release 必须含 release.yaml"
+    )
+    assert "release.yaml" in r1_content_baseline, (
+        "fixture 前置事实失败：r1 目标 release 必须含 release.yaml"
+    )
+    r2_receipt_bytes = r2_receipt_file.read_bytes()
+    r1_receipt_bytes = r1_receipt_file.read_bytes()
+    receipt_baselines = {
+        CONFIRMED_DATA_TARGET_R2: yaml.safe_load(r2_receipt_bytes),
+        CONFIRMED_DATA_TARGET_R1: yaml.safe_load(r1_receipt_bytes),
+    }
+    for identity, receipt_baseline in receipt_baselines.items():
+        assert isinstance(receipt_baseline, dict), (
+            f"fixture 前置事实失败：{identity} 的 receipt 必须是 YAML 顶层映射"
+        )
+        assert receipt_baseline.get("status") == "committed", (
+            f"fixture 前置事实失败：{identity} 的完成态基线 receipt 必须为 "
+            "committed"
+        )
+        assert isinstance(receipt_baseline.get("written_at"), str) and (
+            receipt_baseline["written_at"]
+        ), (
+            f"fixture 前置事实失败：{identity} 的 receipt.written_at 必须是"
+            "非空字符串（重跑不变断言的比对基线）"
+        )
+    target_side_mtime_baseline = _snapshot_target_side_mtime_ns(tmp_path)
+    modes_baseline = _snapshot_modes(tmp_path)
+
+    # ---- 前置对照（T18 既有行为）：同映射完成态重跑必须成功跳过且零
+    #      变化 —— 失败即 T18 回归而非本切片 RED；该对照与下方变更重
+    #      跑构成单一变量对照（唯一差异是 r1 replacement）。----
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "fixture 前置事实失败：同 root、同映射、同 legacy 源的完成态"
+            "重跑必须成功跳过（T18 既有幂等跳过行为回归，非本切片 RED；"
+            f"原始异常经 cause 链保留）：{exc!r}"
+        ) from exc
+    assert _snapshot_tree(tmp_path) == completed_tree, (
+        "fixture 前置事实失败：同映射完成态重跑必须零变化（T18 既有幂等"
+        "跳过行为回归：目标 release / receipt / legacy 源不得有任何字节"
+        "或键集变化）"
+    )
+
+    # ---- 行为：仅变更 r1 映射的 replacement（data-v4.1-r2 ->
+    #      data-v4.1-r9；同 root、同 legacy 源、批内其余字段逐字段不
+    #      变），再次调用 migrate_data。----
+    rerun_items = _dual_object_batch_with_changed_r1_replacement()
+    assert rerun_items[0] == mapping_items[0], (
+        "fixture 前置事实失败：变更批的 r2 条目必须与原批逐字段一致"
+        "（单一变量对照：唯一差异只能是 r1 replacement）"
+    )
+    assert {
+        key: value
+        for key, value in rerun_items[1].items()
+        if key != "replacement"
+    } == {
+        key: value
+        for key, value in mapping_items[1].items()
+        if key != "replacement"
+    }, (
+        "fixture 前置事实失败：变更批的 r1 条目除 replacement 外必须与"
+        "原批逐字段一致（单一变量对照）"
+    )
+    assert rerun_items[1]["replacement"] == _CHANGED_R1_REPLACEMENT, (
+        "fixture 前置事实失败：变更批 r1 replacement 必须为 "
+        f"{_CHANGED_R1_REPLACEMENT!r}"
+    )
+
+    # RED Gate：当前 production 的完成态核实不绑定 replacement，变更后
+    # 的重跑静默跳过成功返回 —— 本用例把该静默跳过转成显式行为
+    # AssertionError 钉出“完成态重跑 receipt 核实未绑定 superseded 映射
+    # 的 replacement”；拒绝通道错位（原始未类型化异常替代
+    # DataMigrationBlocked）同样经显式 AssertionError + cause 链转译，
+    # 不得直接充当 RED 结论。
+    blocked_error: BaseException | None = None
+    try:
+        migrate_data(tmp_path, rerun_items)
+    except blocked_exc as exc:
+        blocked_error = exc
+    except Exception as exc:
+        raise AssertionError(
+            "完成态重跑 replacement 变更的拒绝通道错位：migrate_data 对 "
+            "r1 映射 replacement 变更（data-v4.1-r2 -> "
+            f"{_CHANGED_R1_REPLACEMENT}）的完成态批级重跑必须经 "
+            "DataMigrationBlocked（或其子类）fail-closed 拒绝，实际抛出 "
+            f"{type(exc).__name__}（原始异常经 cause 链保留）：{exc!r}"
+        ) from exc
+    assert blocked_error is not None, (
+        "完成态重跑 receipt 核实未绑定 superseded 映射的 replacement"
+        "（静默跳过）：r1 映射 replacement 从 "
+        f"{CONFIRMED_DATA_TARGET_R2} 变更为 {_CHANGED_R1_REPLACEMENT} 后，"
+        "migrate_data 对完成态双对象批（第一次完整转换已成功、同映射重"
+        "跑已成功跳过、唯一差异为 r1 replacement）的同 root、同 legacy "
+        "源第二次调用成功返回、未 fail-closed 拒绝 —— 与已提交事实"
+        f"（r1 release.yaml replacement={CONFIRMED_DATA_TARGET_R2}、两份 "
+        "committed receipt）不符的映射变更被静默跳过；本切片要求完成态 "
+        "receipt 核实绑定 superseded 映射的 replacement：失配必须经 "
+        "DataMigrationBlocked fail-closed 拒绝且零写入"
+    )
+
+    # ---- 2/3/4/5：fail-closed 拒绝必须零写入 —— 全树零变化（目标
+    #      release / receipt / legacy 源 / 旧 pointers 逐字节不变、无新
+    #      增/删除条目、不产生新身份）。----
+    after_tree = _snapshot_tree(tmp_path)
+    assert set(after_tree) == set(completed_tree), (
+        "fail-closed 拒绝必须零写入：不得新增或删除任何条目（不产生 "
+        f"{_CHANGED_R1_REPLACEMENT} / data-v4.1-r3 等新身份、不写报告/"
+        "缓存/records、不删除既有条目）：实际新增 "
+        f"{sorted(set(after_tree) - set(completed_tree))}，实际删除 "
+        f"{sorted(set(completed_tree) - set(after_tree))}"
+    )
+    changed_entries = sorted(
+        key
+        for key, value in completed_tree.items()
+        if after_tree[key] != value
+    )
+    assert not changed_entries, (
+        "fail-closed 拒绝必须零写入：不得改动任何条目（两个目标 release "
+        "子树、两份 receipt、legacy 源与旧 active pointers 逐字节不变；"
+        f"不得顺手改写 r1 release.yaml 的 replacement 或重写 receipt）："
+        f"实际改动 {changed_entries}"
+    )
+
+    # 2：既有两个目标 release 子树逐字节不变（显式重复全树结论，使该行
+    #    为项在失败信息中可读归因）。
+    assert _release_content_files(r2_release_dir) == r2_content_baseline, (
+        "fail-closed 拒绝不得重写 data/releases/data-v4.1-r2（既有正式"
+        "对象逐文件字节不变）"
+    )
+    assert _release_content_files(r1_release_dir) == r1_content_baseline, (
+        "fail-closed 拒绝不得重写 data/releases/data-v4.1-r1（既有正式"
+        "对象逐文件字节不变；不得顺手把 release.yaml 的 replacement 改"
+        "写成新映射值）"
+    )
+
+    # 2：两份 receipt 逐字节不变（含 written_at），status 仍 committed。
+    assert r2_receipt_file.read_bytes() == r2_receipt_bytes, (
+        "fail-closed 拒绝不得重写 r2 receipt（凭证逐字节不变，含 "
+        "written_at）"
+    )
+    assert r1_receipt_file.read_bytes() == r1_receipt_bytes, (
+        "fail-closed 拒绝不得重写 r1 receipt（凭证逐字节不变，含 "
+        "written_at；不得重算 digest 或刷新时间戳）"
+    )
+    for identity, receipt_file in (
+        (CONFIRMED_DATA_TARGET_R2, r2_receipt_file),
+        (CONFIRMED_DATA_TARGET_R1, r1_receipt_file),
+    ):
+        receipt_after = yaml.safe_load(receipt_file.read_text(encoding="utf-8"))
+        receipt_baseline = receipt_baselines[identity]
+        assert receipt_after == receipt_baseline, (
+            f"{identity} 的 receipt 内容在 fail-closed 拒绝后必须不变"
+            "（八字段逐一相等，不重算 digest、不改身份字段）"
+        )
+        assert receipt_after["written_at"] == receipt_baseline["written_at"], (
+            f"{identity} 的 receipt.written_at 在 fail-closed 拒绝后必须"
+            "不变（凭证未被重写）"
+        )
+        assert receipt_after["status"] == "committed", (
+            f"{identity} 的 receipt.status 在 fail-closed 拒绝后必须仍为 "
+            "committed"
+        )
+
+    # 3：无新身份 —— data/releases/ 恰含 r1、r2（不产生 data-v4.1-r9 /
+    #    data-v4.1-r3）；migration_receipts/ 恰含两份 receipt。
+    releases_root = tmp_path / "data" / "releases"
+    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+        CONFIRMED_DATA_TARGET_R1,
+        CONFIRMED_DATA_TARGET_R2,
+    ], (
+        "fail-closed 拒绝不得产生任何新身份/新条目（不覆盖、不自动改"
+        f"号，不得为 {_CHANGED_R1_REPLACEMENT} 创建正式对象）："
+        "data/releases/ 必须恰含 "
+        f"{CONFIRMED_DATA_TARGET_R1} 与 {CONFIRMED_DATA_TARGET_R2}"
+    )
+    assert not (
+        tmp_path / "data" / "releases" / _CHANGED_R1_REPLACEMENT
+    ).exists(), (
+        f"fail-closed 拒绝不得为变更 replacement {_CHANGED_R1_REPLACEMENT!r}"
+        "创建任何正式对象或目标条目"
+    )
+    assert not (
+        tmp_path / "data" / "releases" / "data-v4.1-r3"
+    ).exists(), "fail-closed 拒绝不得自动改号到 data-v4.1-r3"
+    receipts_root = tmp_path / "migration_receipts"
+    assert [
+        entry.name for entry in sorted(receipts_root.iterdir())
+    ] == [
+        f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml",
+        f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml",
+    ], "migration_receipts/ 必须恰含 r1 与 r2 两份 receipt（拒绝不新增凭证）"
+
+    # 无重写的次级判据：目标侧全部条目 mtime_ns 不变；权限位不变（不重
+    # 新封存、不改写位，含 legacy 侧与目标侧 —— 同映射重跑对照若有字
+    # 节恰好相同的重写同样在此暴露）。
+    assert _snapshot_target_side_mtime_ns(tmp_path) == (
+        target_side_mtime_baseline
+    ), (
+        "fail-closed 拒绝不得触碰目标侧任何条目元数据（data/ 与 "
+        "migration_receipts/ 子树全部条目 mtime_ns 必须不变；字节恰好相"
+        "同的重写也会更新 mtime）"
+    )
+    assert _snapshot_modes(tmp_path) == modes_baseline, (
+        "fail-closed 拒绝不得改动任何条目权限位（不重新封存、不改写位）"
+    )
+
+    # 4：legacy 源和旧 pointers 不变（全树快照已钉定；此处显式钉旧指针
+    #    仍声明 legacy 身份，使失败信息可读归因）。
+    data_pointer_after = json.loads(
+        (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    assert data_pointer_after["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "fail-closed 拒绝不得切换旧数据活动指针（仍声明 legacy 身份）"
+    )
+    prompt_pointer_after = yaml.safe_load(
+        (tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml")
+        .read_bytes()
+    )
+    assert prompt_pointer_after["revision_id"] == CONFIRMED_PROMPT_SOURCE_ID, (
+        "fail-closed 拒绝不得切换旧 Prompt 活动指针（仍声明 legacy "
+        "revision_id）"
+    )
+
+    # 5：不就地修改传入映射项（原批与变更批都不被改写；变更批与全新构
+    #    造的期望变体逐字段相等）。
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "fail-closed 拒绝不得就地改写传入映射项（原批 M0 事实分级保持"
+        "不变）"
+    )
+    assert rerun_items == _dual_object_batch_with_changed_r1_replacement(), (
+        "fail-closed 拒绝不得就地改写传入的变更批（r1 replacement 变更"
+        "必须保持调用方声明的值，不得被 production 回填成已提交事实）"
+    )
+
+    # ---- 末尾对照（行为项 7，防拒绝过宽）：恢复原 replacement
+    #      （data-v4.1-r2）后，同 root、同 legacy 源的完成态重跑必须仍
+    #      成功跳过且零变化 —— 拒绝只能由 replacement 失配归因；前述
+    #      fail-closed 拒绝不得破坏完成态，也不得过宽到拒绝凭证匹配
+    #      的正常重跑。----
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "拒绝过宽或完成态被破坏：恢复原 replacement（"
+            f"{CONFIRMED_DATA_TARGET_R2}）后的同映射完成态重跑必须仍成功"
+            "跳过（T18 既有幂等行为；若此处失败，说明前述 fail-closed 拒"
+            "绝破坏了完成态凭证，或拒绝条件过宽到拒绝了凭证匹配的正常"
+            f"重跑；原始异常经 cause 链保留）：{exc!r}"
+        ) from exc
+    assert _snapshot_tree(tmp_path) == completed_tree, (
+        "恢复原 replacement 后的完成态重跑必须零变化（T18 既有幂等跳过"
+        "行为：目标 release / receipt / legacy 源不得有任何字节或键集变"
+        "化）"
+    )
+    assert _snapshot_target_side_mtime_ns(tmp_path) == (
+        target_side_mtime_baseline
+    ), (
+        "恢复原 replacement 后的完成态重跑不得重写目标侧任何条目（幂等"
+        "跳过：data/ 与 migration_receipts/ 子树全部条目 mtime_ns 不变）"
+    )
+    assert _snapshot_modes(tmp_path) == modes_baseline, (
+        "恢复原 replacement 后的完成态重跑不得改动任何条目权限位（不重"
+        "新封存、不改写位）"
     )
