@@ -322,9 +322,10 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   不得让 RuntimeError / OSError 穿透预检入口。
 
     def migrate_data(root: Path, mapping_items: Sequence[Mapping[str, object]]) -> object
-        # T15/T16 批级真实转换（写入阶段按对象独立写入；T15 钉单对象
-        #   r2 active 正向行为、T16 钉单对象 r1 superseded 正向行为，
-        #   返回值不绑定）：消费与
+        # T15/T16/T17 批级真实转换（写入阶段按对象独立写入；T15 钉单
+        #   对象 r2 active 正向行为、T16 钉单对象 r1 superseded 正向
+        #   行为、T17 钉双对象批（r2+r1 一次调用，D2 推荐顺序 r2 先于
+        #   r1）终态与 replacement 同批可解析，返回值不绑定）：消费与
         #   precheck_data_migration 相同形状的映射批。对每条已确认映射
         #   在目标 root（可注入，表示目标数据根；真实取值 /data/mVllm_2
         #   —— Q4 用户确认，本测试只传 pytest tmp_path，不创建训练机
@@ -477,9 +478,18 @@ receipt（八字段与 T15 同语义，两处哈希独立复算核实）；语�
 manifest 声明值（fixture 注入与 payload 可复算值、r2 声明值均不同的
 counts 钉定语义溯源与读错源）；legacy 源与旧 active pointers 逐字节
 不变，既有 r2 正式对象与 receipt 不被触碰；不做批级恢复、凭证失配、
-重跑幂等）；以上切片之外
+重跑幂等）、T17 双对象批转换终态切片（一次 migrate_data 调用传入
+r2+r1 两条已确认映射（D2 推荐顺序 r2 先于 r1）：两个正式 release 创
+建并保留 —— r2 active（replacement 不存在）、r1 superseded 且
+replacement=data-v4.1-r2 在同一次调用内解析为既有正式 active r2；
+validate_training_reference 对 r2 放行、对 r1 拒绝（ReferenceNotAllowed）；
+两份 committed receipt（八字段、双对象凭证互不相同、两处哈希独立复
+算核实）；目标根恰含两个 release 与两份 receipt；未映射 sibling 不被
+转换；legacy 源与旧 active pointers 逐字节不变；不做中断恢复、凭证
+失配、重跑幂等；批内乱序输入（r1 先于 r2）的写入顺序行为不绑定）；
+以上切片之外
 不实现/不要求
-data 真实转换的其余行为（批级多对象写入顺序、
+data 真实转换的其余行为（批级多对象乱序写入顺序、
 批级恢复、凭证失配拒绝、重跑幂等跳过）、data blocked 反向其余场景（身份契约收紧、legacy 源
 release 目录/manifest 缺失、声明的 payload 文件缺失——该存在性分支
 由既有 production 检查 blocked，本文件未单列用例钉定）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
@@ -6553,4 +6563,724 @@ def test_migrate_data_single_r1_superseded_mapping_creates_superseded_release_wi
     ], "migration_receipts/ 必须恰含 r1 与 r2 两份 receipt"
     assert r1_mapping == _confirmed_r1_mapping_item(), (
         "真实转换不得就地改写传入映射项（M0 事实分级保持不变）"
+    )
+
+
+# ---------------------------------------------------------------------------
+# T17：双对象批转换终态 —— 一次 migrate_data 调用传入 r2+r1 两条映射
+#（D2 推荐顺序 r2 先于 r1）创建两个正式 release + 两份 committed
+# receipt，replacement 在同一次调用内可解析（先写测试，不改 production）
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_receipts(
+    tmp_path: Path,
+) -> None:
+    r"""双对象批（r2 active + r1 superseded）一次 migrate_data 调用的终态。
+
+    T17 behavior（本切片，主 Agent 选定，先写测试，不改 production）——
+    对包含 r2 与 r1 的完整批（一次调用传入两条映射，D2 推荐顺序 r2
+    先于 r1 —— r2 条目在前、r1 条目在后）执行一次
+    ``migrate_data(root, mapping_items)`` 时：
+    1. 创建并保留两个正式 release（data/releases/data-v4.1-r2/ 与
+       data/releases/data-v4.1-r1/，payload 各与自身 legacy 源逐文件
+       字节一致，目标内容恰为 release.yaml + 各自 manifest files[]
+       声明的 payload 文件集合）；
+    2. r2 为 active（经既有 load_release_metadata 读回；replacement
+       不存在，release.yaml 不携带 replacement 键）；
+    3. r1 为 superseded，replacement 为映射声明的 data-v4.1-r2 且可
+       解析 —— 在目标 root 下解析为既有正式 active r2（replacement 在
+       同一次调用内可解析：批内 r2 先行写入后 r1 的 replacement 解析
+       必须成功，不得要求 replacement 在调用前已存在，也不得在批内
+       悬空）；
+    4. ``validate_training_reference`` 对 r2 放行、对 r1 拒绝
+       （ReferenceNotAllowed）；
+    5. 两份 receipt 均为 committed（八字段契约、双对象凭证互不相同、
+       两处哈希独立复算核实）；
+    6. 目标根恰有两个 release（data/releases/ 恰含 data-v4.1-r1 与
+       data-v4.1-r2）和两份 receipt（migration_receipts/ 恰含两份
+       receipt）；
+    7. 未映射 sibling（v4.1.0-0a1b2c3d4e5f，不在映射批内）不被转换；
+    8. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
+       子树逐字节不变；旧指针仍声明 legacy 身份）；
+    9. 本切片不做中断恢复、凭证失配、重跑幂等（批内乱序输入
+       （r1 先于 r2）的写入顺序行为不绑定）。
+
+    fixture：复用 T11 双对象 data fixture（三份 legacy release + 旧
+    数据 / Prompt 活动指针，两条映射来自 _confirmed_data_mapping_items，
+    r2 在前 —— D2 推荐顺序）+ T15/T16 同款 counts 场景注入（r2 注入
+    published_candidates 7、r1 注入 11，与 payload 可复算值 3 互相不同
+    —— 双对象批内语义溯源可观察：从 payload 重算或对象间读错源
+    （r1 取 r2 manifest、r2 取 r1 manifest）必被捕获；共享写入口径对
+    两对象真实可达 —— fixture 基线 manifest 无 counts.splits，不注入
+    则正确实现也会在写入前被无关门拒绝，测试永远无法 GREEN）。注入只
+    改 counts：files[] 声明哈希不动（T14 门保持绿）；r2 指针
+    expected_manifest_sha256 随注入后 manifest 字节复算更新（T13 钉扎
+    门保持绿）；r1 无钉扎（M0 pinned_by: ~），无需改写指针。
+
+    RED Gate 设计说明（T17）：migrate_data 入口与 DataMigrationBlocked
+    拒绝通道均已存在（T15/T16 既有），且当前 production 的批级实现
+    （precheck 整批通过后按映射序逐对象写入 + superseded 写入前
+    replacement 在目标 root 内解析）若已满足本切片终态，则本测试为
+    Unexpected PASS（转为双对象批终态回归钉），不得为此制造无意义
+    production 修改；若实现拒绝或失败，本测试把该拒绝/失败转成显式
+    行为 AssertionError 钉出"双对象批转换终态行为缺失"（原始异常经
+    cause 链保留，不得直接充当 RED 结论）。
+
+    捕获的合理但错误实现：
+    - 批级实现只处理首条映射（或单条映射）：r1 的正式 release /
+      receipt 缺失 -> 存在性与精确内容断言失败；
+    - precheck 阶段要求 replacement 在调用前已存在（把 T16 的"写入前
+      replacement 解析"错误前移到整批预检）：空目标根上的双对象批整批
+      blocked -> 前置事实 precheck-ready 断言失败；
+    - 批内不保证 r2 先于 r1 写入（按任意顺序但 r1 的 replacement 解析
+      发生在 r2 写入前 / 或批内对象间互相污染）-> r1 转换被拒或悬空
+      -> 显式行为 AssertionError；
+    - receipt 双对象串写（两份 receipt 同 operation_id / 哈希取错源
+      / r1 receipt 携带 r2 身份字段）-> 逐 receipt 字段与互不相同断言
+      失败；
+    - 语义字段从 payload 重算或对象间读错源（r1 与 r2 注入声明值故意
+      不同）-> sample_count / splits 比对失败；
+    - 转换未映射 sibling（扫描全 releases 目录而非按映射定位）->
+      data/releases/ 精确内容断言失败；
+    - 转换触碰 legacy 源或旧 active pointers -> 子树逐字节比对失败；
+    - 写 records/ / 生命周期目录 / .dvc / 就地修改映射项 -> 对应断言
+      失败。
+
+    Binding（证据绑定，供复跑核对）：
+    - 命令：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_migrate_data_dual_object_batch_creates_both_releases_and_committed_receipts``
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （``[tool.pytest.ini_options] testpaths / pythonpath`` 解析依赖该
+      文件）。
+    """
+    # ---- fixture：双对象布局 + r2/r1 counts 场景注入 + 指针哈希随注入
+    #      重写（T15/T16 同款：两对象的共享写入口径真实可达，双对象批
+    #      内语义溯源可观察）。----
+    _write_legacy_data_layout(tmp_path)
+    mapping_items = _confirmed_data_mapping_items()
+    r2_mapping, r1_mapping = mapping_items
+
+    r2_manifest = json.loads(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2).read_text(
+            encoding="utf-8"
+        )
+    )
+    r2_manifest["counts"] = {
+        "published_candidates": 7,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 5,
+            "fold_0_val": 2,
+            "fold_1_train": 6,
+            "fold_1_val": 4,
+            "fold_2_train": 7,
+            "fold_2_val": 1,
+        },
+    }
+    r2_manifest_bytes = _rewrite_legacy_release_manifest(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2, r2_manifest
+    )
+    pointer = json.loads(
+        (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    pointer["expected_manifest_sha256"] = hashlib.sha256(
+        r2_manifest_bytes
+    ).hexdigest()
+    _rewrite_legacy_data_pointer(tmp_path, pointer)
+
+    r1_manifest = json.loads(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R1).read_text(
+            encoding="utf-8"
+        )
+    )
+    r1_manifest["counts"] = {
+        "published_candidates": 11,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 9,
+            "fold_0_val": 4,
+            "fold_1_train": 8,
+            "fold_1_val": 2,
+            "fold_2_train": 10,
+            "fold_2_val": 3,
+        },
+    }
+    _rewrite_legacy_release_manifest(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1, r1_manifest
+    )
+
+    # ---- fixture 前置事实（注入自洽 + 区分力 + D1/D2 镜像 + 目标根空闲）----
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R1
+    )
+    _assert_payload_declared_hashes_self_consistent(
+        tmp_path, CONFIRMED_DATA_SOURCE_R2
+    )
+    assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "fixture 前置事实失败：旧数据活动指针必须钉扎 r2 映射声明的源"
+    )
+    assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+        _manifest_file_of(tmp_path, CONFIRMED_DATA_SOURCE_R2).read_bytes()
+    ).hexdigest(), (
+        "fixture 前置事实失败：注入后指针 expected_manifest_sha256 必须"
+        "与 r2 manifest 文件字节复算哈希自洽（T13 钉扎门保持绿）"
+    )
+    # 注入区分力：r1 声明值 11、r2 声明值 7、payload 可复算值 3 互不相
+    # 同 —— 双对象批内"语义字段取各自 manifest 声明值（不重算、不读错
+    # 源、对象间不串写）"可观察。
+    r1_payload_candidates = json.loads(
+        _payload_file_of(
+            tmp_path,
+            CONFIRMED_DATA_SOURCE_R1,
+            "metadata/training_candidates.json",
+        ).read_text(encoding="utf-8")
+    )
+    assert len(r1_payload_candidates["candidates"]) == 3, (
+        "fixture 前置事实失败：r1 payload 候选数应为 3（注入区分力的"
+        "payload 侧事实）"
+    )
+    r1_fold_0_train = json.loads(
+        _payload_file_of(
+            tmp_path, CONFIRMED_DATA_SOURCE_R1, "datasets/train/fold_0.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert len(r1_fold_0_train["samples"]) == 3, (
+        "fixture 前置事实失败：r1 payload fold 文件样本数应为 3"
+    )
+    assert r1_manifest["counts"]["published_candidates"] != len(
+        r1_payload_candidates["candidates"]
+    ), "fixture 前置事实失败：r1 注入声明值必须与 payload 可复算值不同"
+    assert r2_manifest["counts"]["published_candidates"] != len(
+        r1_payload_candidates["candidates"]
+    ), "fixture 前置事实失败：r2 注入声明值必须与 payload 可复算值不同"
+    assert r1_manifest["counts"]["published_candidates"] != (
+        r2_manifest["counts"]["published_candidates"]
+    ), (
+        "fixture 前置事实失败：r1 与 r2 注入声明值必须不同（对象间读错"
+        "源可观察）"
+    )
+    assert r1_manifest["counts"]["splits"]["fold_0_train"] != len(
+        r1_fold_0_train["samples"]
+    ), "fixture 前置事实失败：r1 注入 splits 声明值必须与 payload 可复算值不同"
+    # D2 推荐顺序：批内 r2 在前、r1 在后（一次调用传入两条映射）。
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ], "fixture 前置事实失败：双对象映射批必须按 D2 推荐顺序 r2 先于 r1 排列"
+    # D1 镜像：r2 active（不携带 replacement）；r1 superseded +
+    # replacement=data-v4.1-r2。
+    assert r2_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R2
+    assert r2_mapping["target_status"] == "active", (
+        "fixture 前置事实失败：r2 映射 target_status 必须为 active（D1）"
+    )
+    assert "replacement" not in r2_mapping, (
+        "fixture 前置事实失败：r2 映射不得携带 replacement（D1）"
+    )
+    assert r1_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R1
+    assert r1_mapping["target_status"] == "superseded", (
+        "fixture 前置事实失败：r1 映射 target_status 必须为 superseded"
+        "（D1 用户确认）"
+    )
+    assert r1_mapping["replacement"] == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r1 映射 replacement 必须为 data-v4.1-r2"
+        "（D1 用户确认）"
+    )
+    for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+        assert not (tmp_path / forbidden).exists(), (
+            f"fixture 前置事实失败：目标根 {forbidden!r} 必须保持空闲"
+        )
+
+    # 前置事实：空目标根上的双对象批整批 precheck ready —— precheck 不
+    # 得要求 replacement 在调用前已存在（T16 的"写入前 replacement 解
+    # 析"不得被错误前移到整批预检）；migrate_data 的任何拒绝/失败只能
+    # 由写入阶段的行为归因。
+    precheck = _resolve_data_precheck_entry()
+    assert precheck is not None, (
+        "批级只读预检行为缺失：versioning.migration 未提供 "
+        "precheck_data_migration 入口（当前 behavior 未实现）"
+    )
+    dual_precheck_report = precheck(tmp_path, mapping_items)
+    assert dual_precheck_report.status == "ready", (
+        "fixture 前置事实失败：双对象映射批（r2+r1，D2 推荐顺序）的只读"
+        f"预检必须整批 ready（实际 {dual_precheck_report.status!r}，"
+        f"reasons={dual_precheck_report.reasons!r}）—— 空目标根上不得"
+        "要求 replacement 预先存在"
+    )
+
+    before = _snapshot_tree(tmp_path)
+
+    migrate_data = _resolve_migrate_data_entry()
+    assert migrate_data is not None, (
+        "双对象批 data 真实迁移入口缺失：versioning.migration 未提供 "
+        "migrate_data 入口（当前 behavior 未实现）"
+    )
+
+    # ---- 行为：一次调用传入两条映射（D2 推荐顺序 r2 先于 r1）。----
+    # RED Gate：当前 production 若拒绝或失败，本用例把该拒绝/失败转成
+    # 显式行为 AssertionError 钉出"双对象批转换终态行为缺失"，原始异常
+    # 经 cause 链保留，不得直接充当 RED 结论；若当前实现已满足，本用例
+    # 为 Unexpected PASS（双对象批终态回归钉）。
+    try:
+        migrate_data(tmp_path, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "双对象批转换终态行为缺失：migrate_data 对 precheck-ready 的"
+            "双对象映射批（r2 active + r1 superseded/replacement="
+            f"{CONFIRMED_DATA_TARGET_R2}，D2 推荐顺序 r2 先于 r1）在真实"
+            "转换阶段拒绝或失败（本切片要求一次调用创建两个正式 release"
+            " 与两份 committed receipt；原始异常经 cause 链保留）：{exc!r}"
+        ) from exc
+
+    # 1：创建并保留两个正式 release；payload 与各自 legacy 源逐文件
+    #    字节一致（目标内容恰为 release.yaml + 各自 manifest files[]
+    #    声明的 payload 文件集合，不夹带非最小行为文件）。
+    r2_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R2
+    r1_release_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_TARGET_R1
+    assert r2_release_dir.is_dir(), (
+        f"双对象批真实转换必须在目标 root 下创建正式 release：{r2_release_dir}"
+    )
+    assert r1_release_dir.is_dir(), (
+        f"双对象批真实转换必须在目标 root 下创建正式 release：{r1_release_dir}"
+    )
+    r2_content = _release_content_files(r2_release_dir)
+    r1_content = _release_content_files(r1_release_dir)
+
+    r2_declared_payload_paths = sorted(
+        entry["path"] for entry in r2_manifest["files"]
+    )
+    assert set(r2_content) == {"release.yaml"} | set(
+        r2_declared_payload_paths
+    ), (
+        "r2 目标 release 内容必须恰为 release.yaml + r2 legacy manifest "
+        f"声明的 payload 文件集合：实际 {sorted(r2_content)}"
+    )
+    r2_legacy_release_root = (
+        tmp_path / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
+    )
+    for relative in r2_declared_payload_paths:
+        legacy_bytes = (r2_legacy_release_root / relative).read_bytes()
+        assert r2_content[relative] == legacy_bytes, (
+            f"r2 目标 payload 文件 {relative} 必须与 legacy 源逐字节一致"
+            f"（fixture 语义：源 SHA-256 为 "
+            f"{hashlib.sha256(legacy_bytes).hexdigest()}）"
+        )
+
+    r1_declared_payload_paths = sorted(
+        entry["path"] for entry in r1_manifest["files"]
+    )
+    assert set(r1_content) == {"release.yaml"} | set(
+        r1_declared_payload_paths
+    ), (
+        "r1 目标 release 内容必须恰为 release.yaml + r1 legacy manifest "
+        f"声明的 payload 文件集合：实际 {sorted(r1_content)}"
+    )
+    r1_legacy_release_root = (
+        tmp_path / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R1
+    )
+    for relative in r1_declared_payload_paths:
+        legacy_bytes = (r1_legacy_release_root / relative).read_bytes()
+        assert r1_content[relative] == legacy_bytes, (
+            f"r1 目标 payload 文件 {relative} 必须与 legacy 源逐字节一致"
+            f"（fixture 语义：源 SHA-256 为 "
+            f"{hashlib.sha256(legacy_bytes).hexdigest()}）"
+        )
+
+    # 2：r2 为 active（经既有读取/校验语义读回；replacement 不存在），
+    #    语义字段取 r2 manifest 声明值（注入值 7 —— 与 r1 注入值 11、
+    #    payload 可复算值 3 均不同，对象间读错源必被捕获）。
+    r2_meta = load_release_metadata(tmp_path / "data", CONFIRMED_DATA_TARGET_R2)
+    assert r2_meta.version == CONFIRMED_DATA_TARGET_R2, (
+        f"r2 release.yaml 的 version 必须为 {CONFIRMED_DATA_TARGET_R2!r}"
+        f"（新体系完整身份，不得沿用 legacy 哈希身份）：实际 "
+        f"{r2_meta.version!r}"
+    )
+    assert r2_meta.status is DataStatus.ACTIVE, (
+        f"r2 release.yaml 的 status 必须为 active（映射 target_status，D1）"
+        f"：实际 {r2_meta.status!r}"
+    )
+    assert r2_meta.replacement is None, (
+        "active r2 不得携带 replacement（replacement 仅 superseded 时允许）"
+    )
+    r2_release_raw = yaml.safe_load(r2_content["release.yaml"])
+    assert isinstance(r2_release_raw, dict), (
+        "r2 release.yaml 顶层必须是映射"
+    )
+    assert r2_release_raw["status"] == "active", (
+        "r2 release.yaml 的原始 status 字段必须为 active：实际 "
+        f"{r2_release_raw.get('status')!r}"
+    )
+    assert "replacement" not in r2_release_raw, (
+        "active r2 的 release.yaml 不得残留 replacement 键"
+    )
+    assert r2_meta.protocol == r2_manifest["contract_version"], (
+        "r2 release.yaml 的 protocol 必须取 r2 legacy manifest 的 "
+        f"contract_version 声明值 {r2_manifest['contract_version']!r}："
+        f"实际 {r2_meta.protocol!r}"
+    )
+    assert r2_meta.purpose == "development", (
+        "legacy 训练 release（manifest status training_ready）的正式映射 "
+        f"purpose 必须为 development：实际 {r2_meta.purpose!r}"
+    )
+    assert r2_meta.training_allowed is True, (
+        "development 训练 release 的 training_allowed 必须为 true：实际 "
+        f"{r2_meta.training_allowed!r}"
+    )
+    assert r2_meta.sample_count == (
+        r2_manifest["counts"]["published_candidates"]
+    ), (
+        "r2 sample_count 必须取 r2 legacy manifest counts."
+        f"published_candidates 声明值 "
+        f"{r2_manifest['counts']['published_candidates']}，不得从 payload "
+        "重算或读错源（fixture 注入的声明值与 payload 可复算值、r1 注入"
+        "声明值故意不同）"
+    )
+    expected_r2_splits = {
+        f"fold_{fold}": {
+            "train": r2_manifest["counts"]["splits"][f"fold_{fold}_train"],
+            "validation": r2_manifest["counts"]["splits"][f"fold_{fold}_val"],
+        }
+        for fold in range(3)
+    }
+    assert dict(r2_meta.splits) == expected_r2_splits, (
+        "r2 splits 必须取 r2 legacy manifest counts.splits 声明值"
+        "（fold_N_train -> train、fold_N_val -> validation），不得从 "
+        "payload 重算或读错源（fixture 注入的声明值与 payload 可复算值、"
+        f"r1 注入声明值故意不同）：实际 {dict(r2_meta.splits)!r}"
+    )
+    assert set(r2_meta.source_batches) == {
+        r2_manifest["source_review_batch_id"],
+        r2_manifest["source_queue_id"],
+        r2_manifest["source_media_id"],
+    }, (
+        "r2 source_batches 必须记录 r2 legacy manifest 声明的原始批次标识"
+        f"（不回填伪造、不读错源）：实际 {sorted(r2_meta.source_batches)}"
+    )
+
+    # 3：r1 为 superseded，replacement 为映射声明的 data-v4.1-r2 且可解
+    #    析 —— 在目标 root 下解析为既有正式 active r2（同一次调用内可
+    #    解析，不得悬空）；语义字段取 r1 manifest 声明值（注入值 11）。
+    r1_meta = load_release_metadata(tmp_path / "data", CONFIRMED_DATA_TARGET_R1)
+    assert r1_meta.version == CONFIRMED_DATA_TARGET_R1, (
+        f"r1 release.yaml 的 version 必须为 {CONFIRMED_DATA_TARGET_R1!r}"
+        f"（新体系完整身份，不得沿用 legacy 哈希身份）：实际 "
+        f"{r1_meta.version!r}"
+    )
+    assert r1_meta.status is DataStatus.SUPERSEDED, (
+        "r1 release.yaml 的 status 必须为 superseded（映射 target_status，"
+        f"D1 用户确认）：实际 {r1_meta.status!r}"
+    )
+    assert r1_meta.replacement == CONFIRMED_DATA_TARGET_R2, (
+        "r1 release.yaml 的 replacement 必须为映射声明的 "
+        f"{CONFIRMED_DATA_TARGET_R2!r}（D1 用户确认）：实际 "
+        f"{r1_meta.replacement!r}"
+    )
+    r1_release_raw = yaml.safe_load(r1_content["release.yaml"])
+    assert isinstance(r1_release_raw, dict), (
+        "r1 release.yaml 顶层必须是映射"
+    )
+    assert r1_release_raw["status"] == "superseded", (
+        "r1 release.yaml 的原始 status 字段必须为 superseded：实际 "
+        f"{r1_release_raw.get('status')!r}"
+    )
+    assert r1_release_raw["replacement"] == CONFIRMED_DATA_TARGET_R2, (
+        "r1 release.yaml 必须携带 replacement 键且值为 data-v4.1-r2：实际 "
+        f"{r1_release_raw.get('replacement')!r}"
+    )
+    replacement_meta = load_release_metadata(
+        tmp_path / "data", r1_meta.replacement
+    )
+    assert replacement_meta.version == CONFIRMED_DATA_TARGET_R2, (
+        "superseded r1 的 replacement 必须可解析：在目标 root 下解析为"
+        f"既有正式对象 {CONFIRMED_DATA_TARGET_R2!r}（同一次调用内写入的 "
+        "r2，不得要求调用前已存在，也不得悬空）：实际解析为 "
+        f"{replacement_meta.version!r}"
+    )
+    assert replacement_meta.status is DataStatus.ACTIVE, (
+        "superseded r1 的 replacement 必须解析为既有正式 active r2（不得"
+        f"是悬空引用或非 active 对象）：实际 status={replacement_meta.status!r}"
+    )
+    assert r1_meta.protocol == r1_manifest["contract_version"], (
+        "r1 release.yaml 的 protocol 必须取 r1 legacy manifest 的 "
+        f"contract_version 声明值 {r1_manifest['contract_version']!r}："
+        f"实际 {r1_meta.protocol!r}"
+    )
+    assert r1_meta.purpose == "development", (
+        "legacy 训练 release（manifest status training_ready）的正式映射 "
+        f"purpose 必须为 development：实际 {r1_meta.purpose!r}"
+    )
+    assert r1_meta.training_allowed is True, (
+        "development 训练 release 的 training_allowed 必须为 true（拒绝新"
+        "引用只能由 superseded 状态归因，不得伪造成不可训练语义）：实际 "
+        f"{r1_meta.training_allowed!r}"
+    )
+    assert r1_meta.sample_count == (
+        r1_manifest["counts"]["published_candidates"]
+    ), (
+        "r1 sample_count 必须取 r1 legacy manifest counts."
+        f"published_candidates 声明值 "
+        f"{r1_manifest['counts']['published_candidates']}，不得从 payload "
+        "重算、伪造或读错源（fixture 注入的声明值与 payload 可复算值、r2 "
+        "注入声明值故意不同）"
+    )
+    expected_r1_splits = {
+        f"fold_{fold}": {
+            "train": r1_manifest["counts"]["splits"][f"fold_{fold}_train"],
+            "validation": r1_manifest["counts"]["splits"][f"fold_{fold}_val"],
+        }
+        for fold in range(3)
+    }
+    assert dict(r1_meta.splits) == expected_r1_splits, (
+        "r1 splits 必须取 r1 legacy manifest counts.splits 声明值"
+        "（fold_N_train -> train、fold_N_val -> validation），不得从 "
+        "payload 重算或读错源（fixture 注入的声明值与 payload 可复算值、"
+        f"r2 注入声明值故意不同）：实际 {dict(r1_meta.splits)!r}"
+    )
+    assert set(r1_meta.source_batches) == {
+        r1_manifest["source_review_batch_id"],
+        r1_manifest["source_queue_id"],
+        r1_manifest["source_media_id"],
+    }, (
+        "r1 source_batches 必须记录 r1 legacy manifest 声明的原始批次标识"
+        f"（不回填伪造、不读错源）：实际 {sorted(r1_meta.source_batches)}"
+    )
+
+    # 4：训练引用门 —— active r2 放行，superseded r1 拒绝新引用
+    #    （ReferenceNotAllowed）。
+    validate_training_reference(tmp_path / "data", CONFIRMED_DATA_TARGET_R2)
+    with pytest.raises(ReferenceNotAllowed):
+        validate_training_reference(tmp_path / "data", CONFIRMED_DATA_TARGET_R1)
+
+    # 5：两份 receipt 均为 committed（八字段契约、两处哈希独立复算核实、
+    #    双对象凭证互不相同 —— 每对象一份独立 receipt，不得串写）。
+    r2_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    r1_receipt_file = (
+        tmp_path
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    assert r2_receipt_file.is_file(), (
+        "双对象批真实转换必须在目标对象完整写入并验证后创建 r2 "
+        f"committed receipt：{r2_receipt_file}"
+    )
+    assert r1_receipt_file.is_file(), (
+        "双对象批真实转换必须在目标对象完整写入并验证后创建 r1 "
+        f"committed receipt：{r1_receipt_file}"
+    )
+    r2_receipt = yaml.safe_load(r2_receipt_file.read_text(encoding="utf-8"))
+    r1_receipt = yaml.safe_load(r1_receipt_file.read_text(encoding="utf-8"))
+    for receipt, identity, source_id, mapping, content in (
+        (
+            r2_receipt,
+            CONFIRMED_DATA_TARGET_R2,
+            CONFIRMED_DATA_SOURCE_R2,
+            r2_mapping,
+            r2_content,
+        ),
+        (
+            r1_receipt,
+            CONFIRMED_DATA_TARGET_R1,
+            CONFIRMED_DATA_SOURCE_R1,
+            r1_mapping,
+            r1_content,
+        ),
+    ):
+        assert isinstance(receipt, dict), (
+            "migration receipt 必须是 YAML 顶层映射"
+        )
+        assert set(receipt) == set(_RECEIPT_FIELDS), (
+            "receipt 键集必须恰为八字段契约（operation_id / "
+            "source_legacy_id / target_identity / target_path / "
+            "source_manifest_sha256 / target_release_digest / status / "
+            f"written_at，不夹带映射项 dump 或其他非契约字段）：实际 "
+            f"{sorted(receipt)}"
+        )
+        assert isinstance(receipt["operation_id"], str) and receipt[
+            "operation_id"
+        ], (
+            "receipt.operation_id 必须是非空字符串（本切片不绑定其格式；"
+            "凭证绑定与重跑跳过逻辑留待后续切片）"
+        )
+        assert receipt["source_legacy_id"] == source_id, (
+            f"receipt.source_legacy_id 必须为 {source_id!r}：实际 "
+            f"{receipt['source_legacy_id']!r}"
+        )
+        assert receipt["target_identity"] == identity, (
+            f"receipt.target_identity 必须为 {identity!r}：实际 "
+            f"{receipt['target_identity']!r}"
+        )
+        assert receipt["target_path"] == mapping["target_path"], (
+            "receipt.target_path 必须与映射项声明的 target_path 一致：实际 "
+            f"{receipt['target_path']!r}"
+        )
+        assert receipt["source_manifest_sha256"] == hashlib.sha256(
+            _manifest_file_of(tmp_path, source_id).read_bytes()
+        ).hexdigest(), (
+            f"receipt.source_manifest_sha256 必须与 {source_id!r} legacy 源"
+            " manifest 文件字节哈希一致（文件字节口径，非 canonical JSON / "
+            "目录哈希 / 声明值自比；下方全树快照保证该字节与转换前一致）"
+        )
+        assert receipt["target_release_digest"] == (
+            _recompute_target_release_digest(content)
+        ), (
+            f"receipt.target_release_digest 必须能由 {identity!r} 目标 "
+            "release 内容按 T15 钉定口径复算验证（目标全部文件按相对 "
+            "POSIX 路径升序拼接 <rel>/<sha256> 行后的整体 SHA-256）；"
+            "digest 绑定半成品快照、串写另一对象内容或漏算文件的实现必"
+            "被捕获"
+        )
+        assert receipt["status"] == "committed", (
+            f"receipt.status 必须为 committed：实际 {receipt['status']!r}"
+        )
+        assert isinstance(receipt["written_at"], str) and receipt["written_at"], (
+            "receipt.written_at 必须是非空字符串（本切片不绑定精确值与格式）"
+        )
+    # 双对象凭证互不相同：每对象一份独立 receipt（operation_id 与
+    # target_release_digest 均不得跨对象串写/复用）。
+    assert r2_receipt["operation_id"] != r1_receipt["operation_id"], (
+        "双对象批内两份 receipt 的 operation_id 必须互不相同（每对象一份"
+        "独立凭证，不得串写）"
+    )
+    assert (
+        r2_receipt["target_release_digest"] != r1_receipt["target_release_digest"]
+    ), (
+        "双对象批内两份 receipt 的 target_release_digest 必须互不相同"
+        "（各自绑定自身目标内容）"
+    )
+
+    # 6：目标根恰有两个 release 和两份 receipt（不夹带未映射 sibling
+    #    的目标条目/凭证，无任何第三对象）。
+    releases_root = tmp_path / "data" / "releases"
+    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+        CONFIRMED_DATA_TARGET_R1,
+        CONFIRMED_DATA_TARGET_R2,
+    ], (
+        "data/releases/ 必须恰含批内两个正式对象 data-v4.1-r1 与 "
+        "data-v4.1-r2（不夹带未映射 sibling 或任何第三对象）"
+    )
+    receipts_root = tmp_path / "migration_receipts"
+    assert [
+        entry.name for entry in sorted(receipts_root.iterdir())
+    ] == [
+        f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml",
+        f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml",
+    ], (
+        "migration_receipts/ 必须恰含批内两份 receipt（不得夹带批外凭证）"
+    )
+
+    # 7：未映射 sibling 不被转换（实现必须按映射项定位源与目标，不得
+    #    扫描全 releases 目录把 sibling 一并转换；sibling 的 legacy 源
+    #    逐字节不变由第 8 项 legacy 快照钉定）。
+    assert not (
+        tmp_path / "data" / "releases" / UNMAPPED_DATA_SIBLING
+    ).exists(), (
+        "未映射 sibling release 不得被转换（不得在 data/releases/ 下产生"
+        f"任何 {UNMAPPED_DATA_SIBLING!r} 相关目标条目）"
+    )
+    assert not any(
+        UNMAPPED_DATA_SIBLING in receipt_name
+        for receipt_name in (
+            r2_receipt_file.name,
+            r1_receipt_file.name,
+        )
+    ), "未映射 sibling 不得产生任何 receipt"
+
+    # 8：legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
+    #    子树逐字节不变；旧指针仍声明 legacy 身份，不得被切换到新身份）；
+    #    新增条目只允许落在两个目标 release 目录子树与两份 receipt；
+    #    不写 records、不触发 DVC、不就地修改传入映射项。
+    after = _snapshot_tree(tmp_path)
+    for subtree in ("workspace/", "finetune/", "pipeline/"):
+        before_subtree = {
+            key: value for key, value in before.items() if key.startswith(subtree)
+        }
+        after_subtree = {
+            key: value for key, value in after.items() if key.startswith(subtree)
+        }
+        assert after_subtree == before_subtree, (
+            f"双对象批真实转换不得改动 {subtree} 子树（legacy 源与旧 "
+            "active pointers 逐字节不变；不改写、不规范化、不去写位）"
+        )
+    data_pointer_after = json.loads(
+        (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    assert data_pointer_after["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "旧数据活动指针必须仍声明 legacy 身份，不得被切换到新身份"
+    )
+    prompt_pointer_after = yaml.safe_load(
+        (tmp_path / "pipeline" / "prompt_control" / "active_prompt.yaml")
+        .read_bytes()
+    )
+    assert prompt_pointer_after["revision_id"] == CONFIRMED_PROMPT_SOURCE_ID, (
+        "旧 Prompt 活动指针必须仍声明 legacy revision_id"
+    )
+    new_keys = set(after) - set(before)
+    r1_release_root_rel = f"data/releases/{CONFIRMED_DATA_TARGET_R1}"
+    r2_release_root_rel = f"data/releases/{CONFIRMED_DATA_TARGET_R2}"
+    r1_receipt_rel = (
+        f"migration_receipts/{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    r2_receipt_rel = (
+        f"migration_receipts/{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    assert all(
+        key == "data"
+        or key == "data/releases"
+        or key == r1_release_root_rel
+        or key == r2_release_root_rel
+        or key.startswith(f"{r1_release_root_rel}/")
+        or key.startswith(f"{r2_release_root_rel}/")
+        or key == "migration_receipts"
+        or key == r1_receipt_rel
+        or key == r2_receipt_rel
+        for key in new_keys
+    ), (
+        "双对象批真实转换只允许新增两个目标 release 目录子树（含目录"
+        f"条目）与两份 receipt：实际新增 {sorted(new_keys)}"
+    )
+    assert not set(before) - set(after), (
+        "双对象批真实转换不得删除/移动任何既有条目（legacy 源与旧 "
+        "active pointers）"
+    )
+    for key, value in before.items():
+        assert after[key] == value, (
+            f"双对象批真实转换不得改动既有条目 {key!r}（legacy 源与旧 "
+            "active pointers 逐字节不变；不改写、不规范化、不去写位）"
+        )
+    before_top_levels = {key.split("/", 1)[0] for key in before}
+    after_top_levels = {key.split("/", 1)[0] for key in after}
+    assert after_top_levels - before_top_levels == {
+        "data",
+        "migration_receipts",
+    }, (
+        "双对象批真实转换只允许新增目标 data 根与 receipt 目录（目标数据"
+        "根必须以可注入 root 表示；本用例只传 pytest tmp_path，不触碰真实"
+        f"/data）：实际新增 {sorted(after_top_levels - before_top_levels)}"
+    )
+    for forbidden in (
+        "records",
+        "working",
+        "release_staging",
+        "data/working",
+        "data/release_staging",
+    ):
+        assert not (tmp_path / forbidden).exists(), (
+            f"双对象批真实转换不得创建 {forbidden!r}"
+        )
+    assert not any(key.endswith(".dvc") for key in after), (
+        "双对象批真实转换不得触发 DVC（不得产生任何 .dvc 文件）"
+    )
+    assert ".gitignore" not in after_top_levels, (
+        "双对象批真实转换不得创建或改写 .gitignore（DVC 接入不在本切片）"
+    )
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "双对象批真实转换不得就地改写传入映射项（M0 事实分级保持不变）"
     )
