@@ -853,7 +853,8 @@ def _build_release_data(
     sample_count 取 counts.published_candidates、splits 取 counts.splits
     声明值、source_batches 取原始批次标识；purpose/training_allowed 按
     legacy 训练 release（manifest status training_ready）的正式映射固定为
-    development/true；status 按映射 target_status（active 无 replacement）。
+    development/true；status 按映射 target_status：superseded 携带映射声明
+    的 replacement，active 不得携带 replacement（fail-closed）。
     """
     if manifest.get("status") != "training_ready":
         raise DataMigrationBlocked(
@@ -887,6 +888,27 @@ def _build_release_data(
             "source_queue_id / source_media_id）缺失或非字符串"
         )
     target_status = mapping_item.get("target_status")
+    replacement = mapping_item.get("replacement")
+    if target_status == DataStatus.SUPERSEDED.value:
+        release_data: dict[str, Any] = {
+            "version": identity,
+            "protocol": protocol,
+            "state": "sealed",
+            "purpose": "development",
+            "training_allowed": True,
+            "description": f"自 legacy data release {source_id} 迁移",
+            "sample_count": sample_count,
+            "source_batches": source_batches,
+            "splits": splits,
+            "status": DataStatus.SUPERSEDED.value,
+            "replacement": replacement,
+        }
+        return release_data
+    if replacement is not None:
+        raise DataMigrationBlocked(
+            "active release 不得携带 replacement（replacement 仅 superseded "
+            "时允许）"
+        )
     return {
         "version": identity,
         "protocol": protocol,
@@ -897,7 +919,7 @@ def _build_release_data(
         "sample_count": sample_count,
         "source_batches": source_batches,
         "splits": splits,
-        "status": DataStatus(target_status).value,
+        "status": DataStatus.ACTIVE.value,
     }
 
 
@@ -957,9 +979,28 @@ def _migrate_single_data_release(
             + "；".join(source_errors)
         )
 
+    # superseded 目标：replacement 必须指向目标 root 中已有的正式 release
+    # （fail-closed：任何目标目录/文件写入前核验，悬空引用零写入拒绝）。
+    if target_status == DataStatus.SUPERSEDED.value:
+        replacement = mapping_item.get("replacement")
+        if not isinstance(replacement, str) or not replacement:
+            raise DataMigrationBlocked(
+                "target_status 为 superseded 时 replacement 缺失或非字符串"
+            )
+        # load_release_metadata 的 root 为 releases/ 的上一层（即 target_path
+        # 上溯三层：release.yaml -> 对象目录 -> releases/ -> data 根）。
+        replacement_root = root / Path(target_rel).parent.parent.parent
+        try:
+            load_release_metadata(replacement_root, replacement)
+        except Exception as exc:
+            raise DataMigrationBlocked(
+                f"replacement={replacement!r} 在目标 root 下不可解析为既有"
+                f"正式 release（fail-closed，零写入）: {exc}"
+            ) from exc
+
     release_data = _build_release_data(identity, source_id, manifest, mapping_item)
     # 落盘前经既有 data release 校验语义（parse_release_metadata：schema、
-    # 字段值域、身份一致性）接受。
+    # 字段值域、身份一致性、replacement 规则）接受。
     parse_release_metadata(release_data)
 
     release_dir = root / Path(target_rel).parent
@@ -976,9 +1017,10 @@ def _migrate_single_data_release(
 
     # 目标对象完整写入后经既有读取语义端到端验证（version 与目录一致等）。
     meta = load_release_metadata(release_dir.parent.parent, identity)
-    if meta.status is not DataStatus.ACTIVE:
+    expected_status = DataStatus(target_status)
+    if meta.status is not expected_status:
         raise DataMigrationBlocked(
-            f"目标 release 验证失败：status={meta.status!r} 非 active"
+            f"目标 release 验证失败：status={meta.status!r} 非 {expected_status.value}"
         )
 
     # release.yaml 写入与 metadata 验证完成后、digest/receipt 写入前，经
@@ -1047,9 +1089,12 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
     written_at 八字段）。legacy 源与旧 active pointers 逐字节不变；不写
     records/、working、release_staging、不触发 DVC、不就地修改传入映射项。
 
-    本切片仅覆盖 ``target_status == "active"`` 的单对象/逐条转换；r1
-    superseded 与 replacement 语义、批级恢复、凭证失配拒绝、重跑幂等跳过
-    不在本切片（越界输入在写入前即 fail-closed 拒绝）。
+    本切片覆盖 ``target_status`` 为 ``active`` / ``superseded`` 的单对象/
+    逐条转换：superseded 目标按映射声明写入 replacement，且 replacement
+    必须在写入前解析为目标 root 中已有的正式 release（fail-closed，零
+    写入拒绝悬空引用）；active 目标不得携带 replacement。批级恢复、凭证
+    失配拒绝、重跑幂等跳过不在本切片（越界输入在写入前即 fail-closed
+    拒绝）。
 
     返回写入的 receipt 路径序列（与映射批同序；返回值契约本切片不绑定）。
     """
@@ -1067,15 +1112,16 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
     if not items:
         raise DataMigrationBlocked("data 映射批为空：无转换对象")
 
-    # 任何写入前先拒绝本切片未覆盖的 target_status（当前仅 active；
-    # superseded / replacement 语义留待后续切片），避免批内半写入。
+    # 任何写入前先拒绝本切片未覆盖的 target_status（当前覆盖 active /
+    # superseded；其余状态留待后续切片），避免批内半写入。
     for mapping_item in items:
         if not isinstance(mapping_item, Mapping):
             raise DataMigrationBlocked("映射项必须是 mapping")
-        if mapping_item.get("target_status") != DataStatus.ACTIVE.value:
+        target_status = mapping_item.get("target_status")
+        if target_status not in _DATA_TARGET_STATUSES:
             raise DataMigrationBlocked(
-                f"target_status={mapping_item.get('target_status')!r} 的真实转换"
-                "不在本切片内（仅覆盖 active）"
+                f"target_status={target_status!r} 的真实转换"
+                "不在本切片内（仅覆盖 active / superseded）"
             )
 
     receipt_paths: list[Path] = []
