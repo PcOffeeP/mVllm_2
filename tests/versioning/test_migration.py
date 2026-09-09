@@ -541,11 +541,31 @@ active pointers 不变、不就地修改传入映射项；恢复原 replacement 
 （target_status / target_path / source_legacy_id /
 candidate_target_identity）的完成态失配已由 T18 既有核实口径覆盖
 （receipt 逐字段比对 + operation_id 绑定 target_status），receipt 自身
-被篡改的拒绝分支与批内部分完成恢复仍不在本切片）；
+被篡改的拒绝分支与批内部分完成恢复仍不在本切片）、T19 批内部分完成的
+中断恢复切片（先写测试，不改 production：复用 T17/T18 双对象 fixture 与
+并行双根（baseline / interrupted，fixture 字节级同构，baseline 根不受
+注入干净转换一次）：对双对象批 [r2, r1]（D2 推荐顺序 r2 先于 r1）开始
+转换，monkeypatch 在第二个对象 r1 的目标写入中途注入失败（仅命中
+data/releases/data-v4.1-r1/ 子树内的 Path.write_bytes /
+Path.write_text：写入非空严格前缀落盘后抛 OSError）—— 第一次调用必须
+显式失败（struck_writes 非空钉死注入确实命中）；r2 作为已完成对象保留
+（完整正式 release + committed receipt），r1 不得留下可被误认为正式完成
+的对象（既有读取语义不能把 r1 读回为正式 release）且无 r1 committed
+receipt；legacy 源与旧 pointers 逐字节不变；恢复注入后同 root、同映
+射、同 legacy 源重跑必须成功：跳过凭证匹配的已完成 r2（release 与
+receipt 逐字节不变、written_at 不刷新、r2 侧 mtime 不动）、继续并完
+成 r1；最终两个目标 release 与无中断 baseline 逐文件字节一致，receipt
+与 baseline 逐字段语义相等（written_at 记录各自写入时刻、单独排除，
+其余七字段含确定性 operation_id / target_release_digest 必须相等）；
+r1 读回为 superseded、replacement 解析为既有 active r2、语义字段取
+manifest 声明值、封存事实保持；无新身份、不写 records / 生命周期目
+录 / .dvc、不就地修改映射项；本切片不做凭证失配拒绝、乱序批输入、
+migrate_data 返回值契约与跳过/继续的报告通道）；
 以上切片之外
 不实现/不要求
 data 真实转换的其余行为（批级多对象乱序写入顺序、
-批级恢复（中断后未完成对象继续）、凭证失配拒绝）、data blocked 反向其余场景（身份契约收紧、legacy 源
+批级恢复的其余形态（批内首个对象写入中途即中断的零完成对象恢复、
+中断残骸清理/保留策略）、凭证失配拒绝）、data blocked 反向其余场景（身份契约收紧、legacy 源
 release 目录/manifest 缺失、声明的 payload 文件缺失——该存在性分支
 由既有 production 检查 blocked，本文件未单列用例钉定）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
 T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
@@ -594,6 +614,7 @@ import pytest
 import yaml
 
 from versioning.data_release import (
+    DataReleaseError,
     ImmutableReleaseError,
     assert_payload_sealed,
     load_release_metadata,
@@ -8421,4 +8442,992 @@ def test_migrate_data_completed_batch_rerun_with_changed_replacement_fails_close
     assert _snapshot_modes(tmp_path) == modes_baseline, (
         "恢复原 replacement 后的完成态重跑不得改动任何条目权限位（不重"
         "新封存、不改写位）"
+    )
+
+
+# ---------------------------------------------------------------------------
+# T19：批内部分完成的中断恢复 —— 双对象批（D2 推荐顺序 r2 先于 r1）在第
+# 二个对象 r1 的目标写入中途被中断后，同 root、同映射、同 legacy 源的重
+# 跑必须跳过凭证匹配的已完成 r2、继续并完成 r1，最终状态与无中断
+# baseline 的正式 release / receipt 语义一致（D2 已确认语义；先写测试，
+# 不改 production）
+# ---------------------------------------------------------------------------
+
+
+class _TargetWriteInterruptionControl:
+    """r1 目标写中断注入的开关：armed 期间持续命中 r1 目标子树内的写入。"""
+
+    def __init__(self) -> None:
+        self.armed = True
+
+
+def _install_r1_target_mid_write_interruption(
+    monkeypatch: pytest.MonkeyPatch,
+    r1_release_dir: Path,
+    struck_writes: list[Path],
+) -> _TargetWriteInterruptionControl:
+    r"""安装 r1 目标写入中途中断：先落盘非空严格前缀，再抛 OSError。
+
+    中断形态与 T10 同口径（“写入已真实开始、未完成”的最小代表）：把当前
+    写入数据的非空严格前缀写入目标文件并 flush 落盘，然后抛
+    ``_SimulatedMidWriteInterruption`` —— 模拟进程写盘中途崩溃 / 磁盘 IO
+    错误；写入开始前即失败的注入不产生残骸、无法区分原子与非原子实现，
+    故不采用。与 T10 的全局 ``Path.write_text`` 中断不同，本注入只命中
+    ``r1_release_dir`` 子树内的 ``Path.write_bytes`` / ``Path.write_text``
+    （r2 的目标写入、r2 receipt 写入与其余写入均原样放行），使双对象批内
+    “r2 完整完成后、r1 写入中途”的批内部分完成状态可构造。armed 期间每
+    次命中写入都中断（防实现捕获首次失败后继续写完其余文件）；恢复
+    （armed=False）后写回原语义。每次被中断的写入路径记入
+    struck_writes，供调用方断言“中断确实命中 r1 目标创建过程中的真实写入”
+    （注入失效时显式失败，而非空洞通过）。
+
+    注入点契约：拦截当前 production
+    ``versioning.migration._migrate_single_data_release`` 写 r1 目标的实际
+    调用点 ``Path.write_bytes``（payload 逐文件复制）与
+    ``Path.write_text``（release.yaml）。若实现更换写机制（如临时文件 +
+    rename、shutil.copyfile），本注入可能不再命中 —— struck_writes 为空
+    时由调用方的前置断言先失败，提示注入点随实际写路径维护；行为契约
+    （第一次调用显式失败 + r2 完成保留 + r1 无正式完成对象 + 重跑跳过
+    r2 完成 r1 + 终态与 baseline 一致）不随写机制改变。
+    """
+    control = _TargetWriteInterruptionControl()
+    original_write_bytes = Path.write_bytes
+    original_write_text = Path.write_text
+
+    def _strike(self: Path, data_bytes: bytes) -> None:
+        cut = max(1, len(data_bytes) // 2)
+        with open(self, "wb") as handle:
+            handle.write(data_bytes[:cut])
+            handle.flush()
+        struck_writes.append(self)
+        raise _SimulatedMidWriteInterruption(
+            f"simulated interruption mid-write of r1 target entry: {self}"
+        )
+
+    def interrupting_write_bytes(self: Path, data: bytes) -> int:
+        if control.armed and self.is_relative_to(r1_release_dir):
+            _strike(self, bytes(data))
+        return original_write_bytes(self, data)
+
+    def interrupting_write_text(
+        self: Path,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int:
+        if control.armed and self.is_relative_to(r1_release_dir):
+            _strike(
+                self,
+                data.encode(
+                    encoding=encoding or "utf-8", errors=errors or "strict"
+                ),
+            )
+        return original_write_text(
+            self, data, encoding=encoding, errors=errors, newline=newline
+        )
+
+    monkeypatch.setattr(Path, "write_bytes", interrupting_write_bytes)
+    monkeypatch.setattr(Path, "write_text", interrupting_write_text)
+    return control
+
+
+def _write_interrupt_scenario_layout(root: Path) -> None:
+    """构建本切片双根共用的场景 fixture（T17/T18 同款布局与注入）。
+
+    与 T17/T18 完全同款：``_write_legacy_data_layout`` 三份 legacy release
+    + 旧数据/Prompt 活动指针 + r2/r1 counts 场景注入（r2
+    published_candidates 7、r1 为 11，与 payload 可复算值 3 互相不同 ——
+    双对象批内语义溯源可观察）+ r2 指针 expected_manifest_sha256 随注入后
+    manifest 字节复算重写。不注入则共享写入口径 ``_derive_release_splits``
+    在写入前因 counts.splits 缺失拒绝，r2 无法完成，测试到不了 r1 中断点；
+    注入只改 counts：files[] 声明哈希不动（T14 门保持绿），指针哈希随注入
+    复算（T13 钉扎门保持绿）。注入值与 T17/T18 完全一致，使各切片在同一
+    事实基线上叠加。
+    """
+    _write_legacy_data_layout(root)
+    r2_manifest = json.loads(
+        _manifest_file_of(root, CONFIRMED_DATA_SOURCE_R2).read_text(
+            encoding="utf-8"
+        )
+    )
+    r2_manifest["counts"] = {
+        "published_candidates": 7,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 5,
+            "fold_0_val": 2,
+            "fold_1_train": 6,
+            "fold_1_val": 4,
+            "fold_2_train": 7,
+            "fold_2_val": 1,
+        },
+    }
+    r2_manifest_bytes = _rewrite_legacy_release_manifest(
+        root, CONFIRMED_DATA_SOURCE_R2, r2_manifest
+    )
+    pointer = json.loads((root / _DATA_POINTER_REL).read_text(encoding="utf-8"))
+    pointer["expected_manifest_sha256"] = hashlib.sha256(
+        r2_manifest_bytes
+    ).hexdigest()
+    _rewrite_legacy_data_pointer(root, pointer)
+
+    r1_manifest = json.loads(
+        _manifest_file_of(root, CONFIRMED_DATA_SOURCE_R1).read_text(
+            encoding="utf-8"
+        )
+    )
+    r1_manifest["counts"] = {
+        "published_candidates": 11,
+        "excluded_candidates": 0,
+        "reviewed_candidates": 3,
+        "splits": {
+            "fold_0_train": 9,
+            "fold_0_val": 4,
+            "fold_1_train": 8,
+            "fold_1_val": 2,
+            "fold_2_train": 10,
+            "fold_2_val": 3,
+        },
+    }
+    _rewrite_legacy_release_manifest(root, CONFIRMED_DATA_SOURCE_R1, r1_manifest)
+
+
+def _legacy_side_of(snapshot: dict[str, bytes]) -> dict[str, bytes]:
+    """从整树快照取 legacy 侧条目（workspace/、finetune/、pipeline/ 子树）。"""
+    return {
+        rel: content
+        for rel, content in snapshot.items()
+        if rel.split("/", 1)[0] in ("workspace", "finetune", "pipeline")
+    }
+
+
+def _assert_legacy_side_unchanged(
+    before: dict[str, bytes], after: dict[str, bytes]
+) -> None:
+    """断言 legacy 侧（源树 + 旧 active pointers）零新增/删除/修改。"""
+    before_side = _legacy_side_of(before)
+    after_side = _legacy_side_of(after)
+    changed = sorted(
+        {rel for rel in before_side if after_side.get(rel) != before_side[rel]}
+        | {rel for rel in after_side if rel not in before_side}
+    )
+    assert not changed, (
+        "data 迁移（含中断失败路径与恢复重跑）不得修改、删除或新增 "
+        "workspace/、finetune/、pipeline/ 子树的任何条目（legacy 源与旧 "
+        f"active pointers 逐字节不变）：变化 {changed}"
+    )
+
+
+def _snapshot_r2_completed_side_mtime_ns(root: Path) -> dict[str, int]:
+    """已完成 r2 侧（r2 release 子树 + r2 receipt）全部条目的 mtime_ns 快照。
+
+    中断恢复重跑“跳过已完成对象”的次级可观察判据：跳过不写任何字节、不
+    触碰任何元数据；“逐字节重写同一内容”在字节层与快照不可区分，但重写
+    必然更新 mtime（receipt 侧另有 written_at 双保险；payload 已按
+    T15-P2-1 封存去写位 0o444，重写会直接 PermissionError）。
+    """
+    snapshot: dict[str, int] = {}
+    r2_release_dir = root / "data" / "releases" / CONFIRMED_DATA_TARGET_R2
+    snapshot[f"data/releases/{CONFIRMED_DATA_TARGET_R2}"] = (
+        r2_release_dir.stat().st_mtime_ns
+    )
+    for path in sorted(r2_release_dir.rglob("*")):
+        snapshot[
+            f"data/releases/{CONFIRMED_DATA_TARGET_R2}/"
+            f"{path.relative_to(r2_release_dir).as_posix()}"
+        ] = path.stat().st_mtime_ns
+    r2_receipt = (
+        root / "migration_receipts" / f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    snapshot[f"migration_receipts/{r2_receipt.name}"] = (
+        r2_receipt.stat().st_mtime_ns
+    )
+    return snapshot
+
+
+def _assert_receipt_semantics_match_baseline(
+    receipt: Any, baseline_receipt: Any, identity: str
+) -> None:
+    r"""断言 receipt 与无中断 baseline 同对象 receipt 语义一致（除时间字段）。
+
+    receipt 的 ``written_at`` 记录凭证写入时刻：中断恢复重跑与 baseline
+    各自独立写入，允许不同（单独排除，仅要求非空字符串）。其余七字段
+    （operation_id / source_legacy_id / target_identity / target_path /
+    source_manifest_sha256 / target_release_digest / status）必须逐一相等
+    —— operation_id 是绑定映射（source/target/status/replacement）与源
+    manifest 字节的确定性凭证（“重跑同一次转换”），digest 绑定目标全部
+    内容；二者相等即“最终状态与无中断 baseline 的 receipt 语义一致”。
+    """
+    assert isinstance(receipt, dict), (
+        f"{identity} 的 receipt 必须是 YAML 顶层映射：实际 "
+        f"{type(receipt).__name__}"
+    )
+    assert isinstance(baseline_receipt, dict), (
+        f"fixture 前置事实失败：baseline 的 {identity} receipt 必须是 YAML "
+        "顶层映射"
+    )
+    assert set(receipt) == set(_RECEIPT_FIELDS), (
+        f"{identity} 的 receipt 键集必须恰为八字段契约（不夹带非契约字段）："
+        f"实际 {sorted(receipt)}"
+    )
+    assert set(baseline_receipt) == set(_RECEIPT_FIELDS), (
+        f"fixture 前置事实失败：baseline 的 {identity} receipt 键集必须恰为"
+        f"八字段契约：实际 {sorted(baseline_receipt)}"
+    )
+    assert receipt["status"] == "committed", (
+        f"{identity} 的 receipt.status 必须为 committed：实际 "
+        f"{receipt['status']!r}"
+    )
+    for field in _RECEIPT_FIELDS:
+        if field == "written_at":
+            continue
+        assert receipt[field] == baseline_receipt[field], (
+            f"{identity} 的 receipt.{field} 必须与无中断 baseline 一致（同一次"
+            "转换的重跑；written_at 之外的字段语义必须逐字段相等）：实际 "
+            f"{receipt[field]!r}，baseline {baseline_receipt[field]!r}"
+        )
+    for source_label, value in (
+        ("重跑终态", receipt["written_at"]),
+        ("baseline", baseline_receipt["written_at"]),
+    ):
+        assert isinstance(value, str) and value, (
+            f"{identity} 的 receipt.written_at（{source_label}）必须是非空字符"
+            "串（两侧写入时刻允许不同，不得缺失）"
+        )
+
+
+def test_migrate_data_interrupted_dual_object_batch_rerun_skips_completed_r2_and_continues_r1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r"""批内部分完成的中断恢复：重跑跳过已完成 r2、继续完成 r1，终态与 baseline 一致。
+
+    T19 behavior（本切片，主 Agent 选定，先写测试，不改 production）——
+    D2 已确认：预检全量 fail-closed；写入按对象独立；逐对象生成可核实凭
+    证；中断后重跑同一次转换，凭证匹配的已完成对象跳过，未完成对象继续；
+    凭证不匹配或无法核实即停止，不覆盖、不改号。本切片钉批内部分完成的
+    最小恢复切面：对双对象批 [r2, r1]（D2 推荐顺序 r2 先于 r1）开始转换，
+    在第二个对象 r1 的写入过程中注入失败时：
+    1. 第一次调用必须显式失败（注入确实命中 r1 目标写入：写入已真实开
+       始、未完成 —— 非空严格前缀落盘后抛 OSError，struck_writes 非空）；
+    2. r2 作为已完成对象保留：data/releases/data-v4.1-r2 完整正式
+       release（经既有语义读回 active、封存事实保持）与 committed
+       receipt（八字段契约）均在，不被 r1 的中断波及；
+    3. r1 不得留下可被误认为正式完成的对象（既有读取语义
+       load_release_metadata 不能把 r1 读回为正式 release），且无 r1
+       committed receipt；
+    4. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
+       子树逐字节不变）；
+    5. 恢复注入后，用相同 root、相同映射、相同 legacy 源重跑同一
+       ``migrate_data``：必须成功 —— 跳过凭证匹配的已完成 r2（release
+       与 receipt 逐字节不变、written_at 不刷新、r2 侧 mtime 不动），
+       继续并完成 r1；
+    6. 最终状态与无中断 baseline 的正式 release 和 receipt 语义一致：
+       两个目标 release 与 baseline 逐文件字节一致（含 release.yaml 与
+       全部 payload）；receipt 与 baseline 逐字段语义相等（written_at
+       记录各自写入时刻、单独排除；其余七字段含确定性 operation_id /
+       target_release_digest 必须相等）；r1 经既有语义读回为
+       superseded、replacement 解析为既有 active r2、语义字段取 r1
+       manifest 声明值（注入值 11）、封存事实保持；
+       validate_training_reference 对 r2 放行、对 r1 拒绝；
+    7. 无新身份：data/releases/ 恰含 r1、r2 两个正式对象，
+       migration_receipts/ 恰含两份 receipt，不产生 data-v4.1-r3 等新身
+       份；不写 records/、生命周期目录、.dvc；不就地修改传入映射项；
+    8. 本切片不做凭证失配拒绝（receipt 被篡改 / 映射变更后的重跑拒绝分
+       支，T18-P2 已钉 replacement 变更分支）、批内乱序输入（r1 先于
+       r2）、migrate_data 返回值契约、跳过/继续的报告通道与 CLI、DVC、
+       训练机真实路径。
+
+    fixture：并行双根（baseline / interrupted），各自复用 T17/T18 双对象
+    fixture（``_write_legacy_data_layout`` 三份 legacy release + 旧数据/
+    Prompt 活动指针 + 两条映射来自 ``_confirmed_data_mapping_items``，D2
+    推荐顺序 r2 先于 r1）+ T15/T16/T17/T18 同款 counts 场景注入与指针
+    manifest 哈希随注入重写（``_write_interrupt_scenario_layout``，注入值
+    与 T17/T18 完全一致：r2 published_candidates 7、r1 为 11）；双根
+    fixture 前置断言字节级同构。baseline 根不受注入干净转换一次（T17 既
+    有行为，失败即 T17 回归而非本切片 RED），其终态即本切片的最终状态对
+    照基线；interrupted 根走 中断 -> 断言 -> 恢复 -> 重跑。
+
+    注入方式：monkeypatch ``Path.write_bytes`` / ``Path.write_text``（当
+    前 production ``_migrate_single_data_release`` 写 r1 目标的实际调用
+    点），仅对 data/releases/data-v4.1-r1/ 子树内的写入生效：写入非空严
+    格前缀字节后抛 ``_SimulatedMidWriteInterruption`` —— 模拟写盘中途崩
+    溃 / 磁盘 IO 错误；前置断言 struck_writes 非空且全部落在 r1 目标子
+    树内，钉死中断确实命中第二个对象的写入过程（注入失效 -> 显式失败，
+    而非空洞通过）。
+
+    RED Gate 设计说明（T19）：migrate_data 入口、DataMigrationBlocked 拒
+    绝通道、T17 双对象批终态与 T18 完成态批级重跑幂等跳过均已存在
+    （baseline 完整转换成功、第一次调用被中断命中且显式失败、r2 完成保
+    留、r1 无正式完成对象均为 fixture 前置事实，失败即既有切片回归而非
+    本切片 RED），RED 不经入口缺失分支给出 —— 当前 production 的
+    precheck_data_migration 对部分完成态重跑把已完成的 r2 判为目标冲突
+    （目标条目已存在 + data 正式对象根同身份条目）、把 r1 半写目标目录
+    判为 data 根同身份冲突，migrate_data 以 DataMigrationBlocked 拒绝重
+    跑（既有 T18 幂等跳过分支只覆盖“批内全部对象已完成”的整批跳过，不
+    做逐对象跳过 + 继续）；本用例把该拒绝转成显式行为 AssertionError
+    钉出“批内部分完成的中断恢复行为缺失”（原始 DataMigrationBlocked 经
+    cause 链保留，不得直接充当 RED 结论）；若当前实现已满足（重跑成功 +
+    跳过 r2 + 完成 r1 + 终态与 baseline 一致），本用例为 Unexpected PASS
+    （转为中断恢复回归钉），不得为此制造无意义 production 修改。
+
+    捕获的合理但错误实现：
+    - 当前 production（RED 起点）：重跑被 precheck 目标冲突门拒绝（已完
+      成 r2 被当外来冲突；r1 半写目录被判 data 根同身份冲突）-> 显式行为
+      AssertionError；
+    - “整批重做”：重跑重写 r2 release / receipt（即使字节恰好相同）->
+      r2 receipt written_at 变化 / r2 侧 mtime 变化 / 已封存 payload
+      0o444 重写 PermissionError -> 对应断言失败；
+    - “冲突即改号”：自动改号到 data-v4.1-r3 等新身份继续 -> 目标根精确
+      内容 + 全树快照断言失败；
+    - 只跳过不继续（r1 未完成即返回“成功”）-> r1 release / receipt 缺失
+      或与 baseline 不一致 -> 存在性与对照断言失败；
+    - 只继续不跳过（r2 被重做或重跑整体被拒）-> r2 receipt 字节 / mtime
+      断言失败或重跑失败；
+    - 继续时读错源 / 从 payload 重算语义字段（r1 注入声明值 11 与
+      payload 可复算值 3、r2 注入声明值 7 故意不同）-> sample_count /
+      splits 对照断言失败；
+    - r1 凭证与 r2 串写或 digest 绑定半成品快照 -> receipt 键集 / 独立
+      复算 / baseline 对照断言失败；
+    - 中断被吞掉后第一次调用“成功”返回 -> 第一次调用显式失败断言失败
+      （批内部分完成状态不可构造）；
+    - 重跑顺手触碰 legacy 源或旧 active pointers（切换指针、改写
+      manifest/payload、去写位）-> legacy 侧逐字节比对失败；
+    - 重跑写盘报告/缓存（跳过清单、日志、临时文件）-> 全树快照新增条目
+      断言失败；就地修改传入映射项 -> 映射项不变断言失败。
+
+    Binding（证据绑定，供复跑核对）：
+    - 测试文件：``tests/versioning/test_migration.py``（本切片仅新增本用
+      例与配套 fixture helper，不改 production）。
+    - 命令：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_migrate_data_interrupted_dual_object_batch_rerun_skips_completed_r2_and_continues_r1``
+    - RED failure signature：恰一个失败用例（本 selector），失败信息为
+      AssertionError “批内部分完成的中断恢复行为缺失：migrate_data 对双
+      对象批（r2 已完成保留 + r1 写入中途被中断）的同 root、同映射、同
+      legacy 源重跑把已完成的 r2 当成外来冲突拒绝（或因 r1 半写目标冲
+      突拒绝、或失败于其他原因）…”，cause 链为原始
+      DataMigrationBlocked（“data 迁移预检未通过（fail-closed，零写
+      入）：目标条目已存在，冲突时停止（不覆盖、不自动改号）：
+      data/releases/data-v4.1-r2/release.yaml；data 正式对象根已存在
+      同身份条目：data/releases/data-v4.1-r2；data 正式对象根已存在
+      同身份条目：data/releases/data-v4.1-r1”）；fixture 前置事实（双根
+      同构、baseline 完整转换成功、第一次调用被中断命中且显式失败、
+      r2 完成保留、r1 无正式完成对象、legacy 不变）全部不失败。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （``[tool.pytest.ini_options] testpaths / pythonpath`` 解析依赖该
+      文件）。
+    """
+    # ---- fixture：并行双根（baseline / interrupted），字节级同构断言钉死。----
+    baseline_root = tmp_path / "baseline"
+    interrupted_root = tmp_path / "interrupted"
+    _write_interrupt_scenario_layout(baseline_root)
+    _write_interrupt_scenario_layout(interrupted_root)
+    assert _snapshot_tree(baseline_root) == _snapshot_tree(interrupted_root), (
+        "fixture 前置事实失败：baseline 与 interrupted 双根 fixture 必须字"
+        "节级同构（同布局、同 counts 注入、同指针；最终状态对照的可比性前"
+        "提）"
+    )
+    for root in (baseline_root, interrupted_root):
+        _assert_payload_declared_hashes_self_consistent(
+            root, CONFIRMED_DATA_SOURCE_R1
+        )
+        _assert_payload_declared_hashes_self_consistent(
+            root, CONFIRMED_DATA_SOURCE_R2
+        )
+        pointer = json.loads(
+            (root / _DATA_POINTER_REL).read_text(encoding="utf-8")
+        )
+        assert pointer["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+            "fixture 前置事实失败：旧数据活动指针必须钉扎 r2 映射声明的源"
+        )
+        assert pointer["expected_manifest_sha256"] == hashlib.sha256(
+            _manifest_file_of(root, CONFIRMED_DATA_SOURCE_R2).read_bytes()
+        ).hexdigest(), (
+            "fixture 前置事实失败：注入后指针 expected_manifest_sha256 必须"
+            "与 r2 manifest 文件字节复算哈希自洽（T13 钉扎门保持绿）"
+        )
+        for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
+            assert not (root / forbidden).exists(), (
+                f"fixture 前置事实失败：目标根 {forbidden!r} 必须保持空闲"
+            )
+    mapping_items = _confirmed_data_mapping_items()
+    r2_mapping, r1_mapping = mapping_items
+    assert [item["source_legacy_id"] for item in mapping_items] == [
+        CONFIRMED_DATA_SOURCE_R2,
+        CONFIRMED_DATA_SOURCE_R1,
+    ], "fixture 前置事实失败：双对象映射批必须按 D2 推荐顺序 r2 先于 r1 排列"
+    assert r2_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R2
+    assert r2_mapping["target_status"] == "active", (
+        "fixture 前置事实失败：r2 映射 target_status 必须为 active（D1）"
+    )
+    assert "replacement" not in r2_mapping, (
+        "fixture 前置事实失败：r2 映射不得携带 replacement（D1）"
+    )
+    assert r1_mapping["candidate_target_identity"] == CONFIRMED_DATA_TARGET_R1
+    assert r1_mapping["target_status"] == "superseded", (
+        "fixture 前置事实失败：r1 映射 target_status 必须为 superseded（D1）"
+    )
+    assert r1_mapping["replacement"] == CONFIRMED_DATA_TARGET_R2, (
+        "fixture 前置事实失败：r1 映射 replacement 必须为 data-v4.1-r2（D1）"
+    )
+    r2_manifest = json.loads(
+        _manifest_file_of(interrupted_root, CONFIRMED_DATA_SOURCE_R2).read_text(
+            encoding="utf-8"
+        )
+    )
+    r1_manifest = json.loads(
+        _manifest_file_of(interrupted_root, CONFIRMED_DATA_SOURCE_R1).read_text(
+            encoding="utf-8"
+        )
+    )
+    r2_declared_payload_paths = sorted(
+        entry["path"] for entry in r2_manifest["files"]
+    )
+    r1_declared_payload_paths = sorted(
+        entry["path"] for entry in r1_manifest["files"]
+    )
+
+    migrate_data = _resolve_migrate_data_entry()
+    assert migrate_data is not None, (
+        "双对象批 data 真实迁移入口缺失：versioning.migration 未提供 "
+        "migrate_data 入口（T17 既有行为不可用，本切片 fixture 前置事实失"
+        "败）"
+    )
+    precheck = _resolve_data_precheck_entry()
+    assert precheck is not None, (
+        "批级只读预检行为缺失：versioning.migration 未提供 "
+        "precheck_data_migration 入口（T11 既有行为不可用，本切片 fixture "
+        "前置事实失败）"
+    )
+    dual_precheck_report = precheck(interrupted_root, mapping_items)
+    assert dual_precheck_report.status == "ready", (
+        "fixture 前置事实失败：空目标根上双对象批（r2+r1，D2 推荐顺序）的"
+        f"只读预检必须整批 ready（实际 {dual_precheck_report.status!r}，"
+        f"reasons={dual_precheck_report.reasons!r}）—— 第一次调用的失败只"
+        "能由注入中断归因"
+    )
+
+    # ---- baseline：无中断完整转换（T17 既有行为；本切片最终状态对照）。----
+    baseline_items = _confirmed_data_mapping_items()
+    try:
+        migrate_data(baseline_root, baseline_items)
+    except Exception as exc:
+        raise AssertionError(
+            "fixture 前置事实失败：无中断 baseline 的双对象批完整转换必须成"
+            "功（T17 既有双对象批终态行为回归，非本切片 RED；原始异常经 "
+            f"cause 链保留）：{exc!r}"
+        ) from exc
+    assert baseline_items == _confirmed_data_mapping_items(), (
+        "fixture 前置事实失败：baseline 完整转换不得就地改写传入映射项"
+    )
+    baseline_r2_release_dir = (
+        baseline_root / "data" / "releases" / CONFIRMED_DATA_TARGET_R2
+    )
+    baseline_r1_release_dir = (
+        baseline_root / "data" / "releases" / CONFIRMED_DATA_TARGET_R1
+    )
+    baseline_r2_content = _release_content_files(baseline_r2_release_dir)
+    baseline_r1_content = _release_content_files(baseline_r1_release_dir)
+    assert set(baseline_r2_content) == {"release.yaml"} | set(
+        r2_declared_payload_paths
+    ), (
+        "fixture 前置事实失败：baseline r2 目标 release 内容必须恰为 "
+        "release.yaml + r2 manifest 声明的 payload 文件集合"
+    )
+    assert set(baseline_r1_content) == {"release.yaml"} | set(
+        r1_declared_payload_paths
+    ), (
+        "fixture 前置事实失败：baseline r1 目标 release 内容必须恰为 "
+        "release.yaml + r1 manifest 声明的 payload 文件集合"
+    )
+    baseline_r2_receipt_file = (
+        baseline_root
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    baseline_r1_receipt_file = (
+        baseline_root
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    assert (
+        baseline_r2_receipt_file.is_file()
+        and baseline_r1_receipt_file.is_file()
+    ), (
+        "fixture 前置事实失败：baseline 完整转换必须写入两份 committed "
+        "receipt"
+    )
+    baseline_r2_receipt = yaml.safe_load(
+        baseline_r2_receipt_file.read_text(encoding="utf-8")
+    )
+    baseline_r1_receipt = yaml.safe_load(
+        baseline_r1_receipt_file.read_text(encoding="utf-8")
+    )
+    for identity, receipt in (
+        (CONFIRMED_DATA_TARGET_R2, baseline_r2_receipt),
+        (CONFIRMED_DATA_TARGET_R1, baseline_r1_receipt),
+    ):
+        assert isinstance(receipt, dict), (
+            f"fixture 前置事实失败：baseline {identity} receipt 必须是 YAML "
+            "顶层映射"
+        )
+        assert set(receipt) == set(_RECEIPT_FIELDS), (
+            f"fixture 前置事实失败：baseline {identity} receipt 键集必须恰为"
+            f"八字段契约：实际 {sorted(receipt)}"
+        )
+        assert receipt["status"] == "committed", (
+            f"fixture 前置事实失败：baseline {identity} receipt 必须为 "
+            "committed"
+        )
+        assert isinstance(receipt["written_at"], str) and receipt["written_at"], (
+            f"fixture 前置事实失败：baseline {identity} receipt.written_at 必"
+            "须是非空字符串"
+        )
+
+    # ---- 行为前提构造：安装 r1 目标写中途中断（armed 期间持续命中）。----
+    interrupted_before = _snapshot_tree(interrupted_root)
+    r1_release_dir = (
+        interrupted_root / "data" / "releases" / CONFIRMED_DATA_TARGET_R1
+    )
+    struck_writes: list[Path] = []
+    interruption = _install_r1_target_mid_write_interruption(
+        monkeypatch, r1_release_dir, struck_writes
+    )
+
+    # ---- 行为 1：第一次调用必须显式失败（r1 写入中途被中断命中）。----
+    first_call_error: BaseException | None = None
+    try:
+        migrate_data(interrupted_root, mapping_items)
+    except Exception as exc:
+        first_call_error = exc
+    assert first_call_error is not None, (
+        "双对象批第一次调用必须在 r1 写入中途注入失败后显式失败（中断不得"
+        "被吞掉后当作成功返回：r1 未完成而第一次调用成功返回，与“r1 写入过"
+        "程中被中断”的前提矛盾，批内部分完成状态不可构造）"
+    )
+    assert struck_writes, (
+        "中断注入失效：第一次调用的 r1 目标写入未被命中（struck_writes 为"
+        "空 —— 注入点需随实际写路径维护：当前 production 经 "
+        "Path.write_bytes 逐文件复制 r1 payload、Path.write_text 写 "
+        "release.yaml；行为契约不随写机制改变，但本测试要求中断确实发生在"
+        "第二个对象的写入过程中，而非空洞通过）"
+    )
+    assert all(
+        path.is_relative_to(r1_release_dir) for path in struck_writes
+    ), (
+        "中断注入命中范围异常：被中断的写入必须全部落在 r1 目标子树 "
+        f"data/releases/{CONFIRMED_DATA_TARGET_R1}/ 内（不得误伤 r2 目标写"
+        f"入或 receipt 写入）：实际 {sorted(struck_writes)}"
+    )
+
+    # ---- 行为 2：r2 作为已完成对象保留（完整正式 release + committed
+    #      receipt，不被 r1 的中断波及）。----
+    r2_release_dir = (
+        interrupted_root / "data" / "releases" / CONFIRMED_DATA_TARGET_R2
+    )
+    r2_receipt_file = (
+        interrupted_root
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    r1_receipt_file = (
+        interrupted_root
+        / "migration_receipts"
+        / f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    assert r2_release_dir.is_dir(), (
+        "中断后 r2 必须作为已完成对象保留：data/releases/data-v4.1-r2 正式"
+        "release 目录必须存在（批必须按 D2 推荐顺序 r2 先完成；r2 缺失即"
+        "实现未先行完成 r2，或中断未发生在第二个对象的写入阶段）"
+    )
+    interrupted_r2_content = _release_content_files(r2_release_dir)
+    assert set(interrupted_r2_content) == {"release.yaml"} | set(
+        r2_declared_payload_paths
+    ), (
+        "中断后保留的 r2 目标 release 内容必须恰为 release.yaml + r2 "
+        f"manifest 声明的 payload 文件集合：实际 {sorted(interrupted_r2_content)}"
+    )
+    r2_meta_after_interrupt = load_release_metadata(
+        interrupted_root / "data", CONFIRMED_DATA_TARGET_R2
+    )
+    assert r2_meta_after_interrupt.version == CONFIRMED_DATA_TARGET_R2, (
+        "中断后保留的 r2 必须经既有语义读回为 data-v4.1-r2"
+    )
+    assert r2_meta_after_interrupt.status is DataStatus.ACTIVE, (
+        "中断后保留的 r2 必须经既有语义读回为 active 正式对象"
+    )
+    try:
+        assert_payload_sealed(r2_release_dir)
+    except Exception as exc:
+        raise AssertionError(
+            "中断后保留的 r2 封存事实必须保持（既有只读门 "
+            f"assert_payload_sealed 通过；T15-P2-1 既有行为回归）：{exc!r}"
+        ) from exc
+    assert r2_receipt_file.is_file(), (
+        "中断后 r2 的 committed receipt 必须已写入（r2 是已完成对象，逐对"
+        "象生成可核实凭证）"
+    )
+    interrupted_r2_receipt_bytes = r2_receipt_file.read_bytes()
+    interrupted_r2_receipt = yaml.safe_load(interrupted_r2_receipt_bytes)
+    assert isinstance(interrupted_r2_receipt, dict), (
+        "中断后 r2 receipt 必须是 YAML 顶层映射"
+    )
+    assert set(interrupted_r2_receipt) == set(_RECEIPT_FIELDS), (
+        "中断后 r2 receipt 键集必须恰为八字段契约：实际 "
+        f"{sorted(interrupted_r2_receipt)}"
+    )
+    assert interrupted_r2_receipt["status"] == "committed", (
+        "中断后 r2 receipt 必须为 committed（已完成对象的凭证）"
+    )
+    r2_completed_side_mtime = _snapshot_r2_completed_side_mtime_ns(interrupted_root)
+
+    # ---- 行为 3：r1 不得留下可被误认为正式完成的对象，且无 committed
+    #      receipt。----
+    try:
+        load_release_metadata(interrupted_root / "data", CONFIRMED_DATA_TARGET_R1)
+    except DataReleaseError:
+        pass
+    except Exception as exc:
+        raise AssertionError(
+            "中断后 r1 不得留下可被误认为正式完成的对象：既有读取语义对 r1 "
+            "的拒绝必须是 data release 域错误（ReleaseNotFound / "
+            f"ReleaseSchemaError 等），实际 {type(exc).__name__}（原始异常经"
+            f" cause 链保留）：{exc!r}"
+        ) from exc
+    else:
+        raise AssertionError(
+            "中断后 r1 不得留下可被误认为正式完成的对象：load_release_metadata"
+            f" 竟把 {CONFIRMED_DATA_TARGET_R1!r} 读回为正式 release（中断必须"
+            "发生在 r1 完整写入并验证之前，半写残骸不得呈现为正式完成对象）"
+        )
+    assert not r1_receipt_file.is_file(), (
+        "中断后不得存在 r1 committed receipt（receipt 只在目标完整写入并验"
+        "证后写入；存在即与“r1 未完成”矛盾）"
+    )
+
+    # ---- 行为 4：legacy 源和旧 pointers 不变（第一次中断失败路径）。----
+    _assert_legacy_side_unchanged(
+        interrupted_before, _snapshot_tree(interrupted_root)
+    )
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "中断失败路径不得就地改写传入映射项（M0 事实分级保持不变）"
+    )
+
+    # ---- 行为 5：恢复注入后重跑（相同 root、相同映射、相同 legacy 源）。----
+    interruption.armed = False
+    # RED Gate：当前 production 的 precheck 把已完成的 r2 判为目标冲突、
+    # 把 r1 半写目录判为 data 根同身份冲突，重跑以 DataMigrationBlocked 拒
+    # 绝 —— 本用例把该拒绝转成显式行为 AssertionError 钉出“批内部分完成
+    # 的中断恢复行为缺失”，原始异常经 cause 链保留；若当前实现已满足（重
+    # 跑成功 + 跳过 r2 + 完成 r1 + 终态与 baseline 一致），本用例为
+    # Unexpected PASS（中断恢复回归钉）。
+    try:
+        migrate_data(interrupted_root, mapping_items)
+    except Exception as exc:
+        raise AssertionError(
+            "批内部分完成的中断恢复行为缺失：migrate_data 对双对象批（r2 已"
+            "完成保留 + r1 写入中途被中断）的同 root、同映射、同 legacy 源重"
+            "跑把已完成的 r2 当成外来冲突拒绝（或因 r1 半写目标冲突拒绝、或"
+            "失败于其他原因）—— 本切片要求凭证匹配的已完成对象跳过、未完成"
+            "对象继续并完成：重跑必须成功、r2 零重写、r1 完成且最终状态与无"
+            "中断 baseline 的正式 release 和 receipt 语义一致（原始异常经 "
+            f"cause 链保留）：{exc!r}"
+        ) from exc
+
+    # ---- 行为 5a：跳过已完成 r2 —— receipt 与 release 逐字节不变（含
+    #      written_at）、r2 侧 mtime 不动（“跳过”不写任何字节）。----
+    assert r2_receipt_file.read_bytes() == interrupted_r2_receipt_bytes, (
+        "重跑不得重写已完成 r2 的 receipt（凭证逐字节不变，含 written_at；"
+        "跳过即不重写、不刷新时间戳、不重算 digest）"
+    )
+    final_r2_receipt = yaml.safe_load(r2_receipt_file.read_text(encoding="utf-8"))
+    assert final_r2_receipt == interrupted_r2_receipt, (
+        "重跑后 r2 receipt 八字段内容必须与中断后保留状态逐一相等"
+    )
+    assert final_r2_receipt["written_at"] == interrupted_r2_receipt["written_at"], (
+        "重跑后 r2 receipt.written_at 必须不变（跳过已完成对象不重写凭证；"
+        "written_at 变化即重跑重做了 r2）"
+    )
+    assert _release_content_files(r2_release_dir) == interrupted_r2_content, (
+        "重跑不得重写已完成 r2 的正式 release（逐文件字节与中断后保留状态"
+        "完全一致；已封存 payload 0o444，重写会直接 PermissionError）"
+    )
+    assert _snapshot_r2_completed_side_mtime_ns(interrupted_root) == (
+        r2_completed_side_mtime
+    ), (
+        "重跑不得触碰已完成 r2 侧任何条目元数据（r2 release 子树与 r2 "
+        "receipt 全部条目 mtime_ns 必须不变；字节恰好相同的重写也会更新 "
+        "mtime）"
+    )
+
+    # ---- 行为 5b/6：继续并完成 r1 —— 与无中断 baseline 逐文件字节一致。----
+    assert r1_release_dir.is_dir(), (
+        "重跑必须完成 r1 正式 release：data/releases/data-v4.1-r1"
+    )
+    final_r1_content = _release_content_files(r1_release_dir)
+    assert set(final_r1_content) == {"release.yaml"} | set(
+        r1_declared_payload_paths
+    ), (
+        "重跑完成的 r1 目标 release 内容必须恰为 release.yaml + r1 manifest "
+        "声明的 payload 文件集合（半写残骸被完整内容取代，不夹带非最小行为文"
+        f"件）：实际 {sorted(final_r1_content)}"
+    )
+    r1_byte_diff = sorted(
+        relative
+        for relative in set(final_r1_content) | set(baseline_r1_content)
+        if final_r1_content.get(relative) != baseline_r1_content.get(relative)
+    )
+    assert not r1_byte_diff, (
+        "重跑完成的 r1 目标 release 必须与无中断 baseline 逐文件字节一致"
+        "（中断恢复的“继续”必须到达与干净转换相同的正式终态）：字节不一致"
+        f"的文件 {r1_byte_diff}"
+    )
+
+    # r1 receipt：八字段契约 + 两处哈希独立复算核实 + 与 baseline 语义
+    # 一致（written_at 单独排除）。
+    assert r1_receipt_file.is_file(), (
+        "重跑完成后必须写入 r1 committed receipt（未完成对象的凭证在对象"
+        "完整写入并验证后产生）"
+    )
+    final_r1_receipt = yaml.safe_load(r1_receipt_file.read_text(encoding="utf-8"))
+    assert isinstance(final_r1_receipt, dict), (
+        "重跑写入的 r1 receipt 必须是 YAML 顶层映射"
+    )
+    assert set(final_r1_receipt) == set(_RECEIPT_FIELDS), (
+        "重跑写入的 r1 receipt 键集必须恰为八字段契约（不夹带映射项 dump 或"
+        f"非契约字段）：实际 {sorted(final_r1_receipt)}"
+    )
+    assert final_r1_receipt["status"] == "committed", (
+        "重跑写入的 r1 receipt.status 必须为 committed：实际 "
+        f"{final_r1_receipt['status']!r}"
+    )
+    assert final_r1_receipt["source_legacy_id"] == CONFIRMED_DATA_SOURCE_R1, (
+        "r1 receipt.source_legacy_id 必须为 "
+        f"{CONFIRMED_DATA_SOURCE_R1!r}：实际 "
+        f"{final_r1_receipt['source_legacy_id']!r}"
+    )
+    assert final_r1_receipt["target_identity"] == CONFIRMED_DATA_TARGET_R1, (
+        "r1 receipt.target_identity 必须为 "
+        f"{CONFIRMED_DATA_TARGET_R1!r}：实际 "
+        f"{final_r1_receipt['target_identity']!r}"
+    )
+    assert final_r1_receipt["target_path"] == r1_mapping["target_path"], (
+        "r1 receipt.target_path 必须与映射项声明的 target_path 一致：实际 "
+        f"{final_r1_receipt['target_path']!r}"
+    )
+    assert final_r1_receipt["source_manifest_sha256"] == hashlib.sha256(
+        _manifest_file_of(interrupted_root, CONFIRMED_DATA_SOURCE_R1).read_bytes()
+    ).hexdigest(), (
+        "r1 receipt.source_manifest_sha256 必须与 r1 legacy 源 manifest 文件"
+        "字节哈希一致（文件字节口径，非 canonical JSON / 目录哈希 / 声明值"
+        "自比；下方 legacy 快照保证该字节与转换前一致）"
+    )
+    assert final_r1_receipt["target_release_digest"] == (
+        _recompute_target_release_digest(final_r1_content)
+    ), (
+        "r1 receipt.target_release_digest 必须能由重跑完成的 r1 目标 release"
+        "内容按 T15 钉定口径复算验证（目标全部文件按相对 POSIX 路径升序拼接"
+        "<rel>/<sha256> 行后的整体 SHA-256；digest 绑定半成品快照或漏算文件"
+        "的实现必被捕获）"
+    )
+    _assert_receipt_semantics_match_baseline(
+        final_r1_receipt, baseline_r1_receipt, CONFIRMED_DATA_TARGET_R1
+    )
+    _assert_receipt_semantics_match_baseline(
+        final_r2_receipt, baseline_r2_receipt, CONFIRMED_DATA_TARGET_R2
+    )
+    assert (
+        final_r1_receipt["operation_id"] != final_r2_receipt["operation_id"]
+    ), (
+        "r1 与 r2 的 receipt operation_id 必须互不相同（每对象一份独立凭证，"
+        "不得串写）"
+    )
+    assert (
+        final_r1_receipt["target_release_digest"]
+        != final_r2_receipt["target_release_digest"]
+    ), (
+        "r1 与 r2 的 receipt target_release_digest 必须互不相同（各自绑定自"
+        "身目标内容）"
+    )
+
+    # r2 终态与 baseline 逐文件字节一致（中断 + 恢复重跑不得使已完成对象
+    # 偏离干净转换终态；与上方“中断后保留内容不变”链合成 r2 全程无偏离）。
+    assert _release_content_files(r2_release_dir) == baseline_r2_content, (
+        "最终 r2 正式 release 必须与无中断 baseline 逐文件字节一致"
+    )
+
+    # r1 语义读回（与 baseline 同语义）：superseded、replacement 解析为既有
+    # active r2、语义字段取 r1 manifest 声明值、封存事实保持。
+    r1_meta = load_release_metadata(
+        interrupted_root / "data", CONFIRMED_DATA_TARGET_R1
+    )
+    assert r1_meta.version == CONFIRMED_DATA_TARGET_R1, (
+        f"r1 release.yaml 的 version 必须为 {CONFIRMED_DATA_TARGET_R1!r}（新"
+        f"体系完整身份，不得沿用 legacy 哈希身份）：实际 {r1_meta.version!r}"
+    )
+    assert r1_meta.status is DataStatus.SUPERSEDED, (
+        "r1 release.yaml 的 status 必须为 superseded（映射 target_status，"
+        f"D1 用户确认）：实际 {r1_meta.status!r}"
+    )
+    assert r1_meta.replacement == CONFIRMED_DATA_TARGET_R2, (
+        "r1 release.yaml 的 replacement 必须为映射声明的 "
+        f"{CONFIRMED_DATA_TARGET_R2!r}（D1 用户确认）：实际 "
+        f"{r1_meta.replacement!r}"
+    )
+    replacement_meta = load_release_metadata(
+        interrupted_root / "data", r1_meta.replacement
+    )
+    assert replacement_meta.version == CONFIRMED_DATA_TARGET_R2, (
+        "重跑完成的 r1 replacement 必须可解析：在目标 root 下解析为既有正式"
+        f"对象 {CONFIRMED_DATA_TARGET_R2!r}（批内 r2 先行完成，恢复继续的 r1 "
+        f"不得悬空）：实际解析为 {replacement_meta.version!r}"
+    )
+    assert replacement_meta.status is DataStatus.ACTIVE, (
+        "重跑完成的 r1 replacement 必须解析为既有正式 active r2（不得是悬空"
+        f"引用或非 active 对象）：实际 status={replacement_meta.status!r}"
+    )
+    assert r1_meta.protocol == r1_manifest["contract_version"], (
+        "r1 release.yaml 的 protocol 必须取 r1 legacy manifest 的 "
+        f"contract_version 声明值 {r1_manifest['contract_version']!r}：实际 "
+        f"{r1_meta.protocol!r}"
+    )
+    assert r1_meta.purpose == "development", (
+        "legacy 训练 release（manifest status training_ready）的正式映射 "
+        f"purpose 必须为 development：实际 {r1_meta.purpose!r}"
+    )
+    assert r1_meta.training_allowed is True, (
+        "development 训练 release 的 training_allowed 必须为 true（拒绝新引"
+        f"用只能由 superseded 状态归因）：实际 {r1_meta.training_allowed!r}"
+    )
+    assert r1_meta.sample_count == (
+        r1_manifest["counts"]["published_candidates"]
+    ), (
+        "r1 sample_count 必须取 r1 legacy manifest counts.published_candidates"
+        f" 声明值 {r1_manifest['counts']['published_candidates']}，不得从 "
+        "payload 重算、伪造或读错源（fixture 注入声明值与 payload 可复算值 "
+        "3、r2 注入声明值故意不同）"
+    )
+    expected_r1_splits = {
+        f"fold_{fold}": {
+            "train": r1_manifest["counts"]["splits"][f"fold_{fold}_train"],
+            "validation": r1_manifest["counts"]["splits"][f"fold_{fold}_val"],
+        }
+        for fold in range(3)
+    }
+    assert dict(r1_meta.splits) == expected_r1_splits, (
+        "r1 splits 必须取 r1 legacy manifest counts.splits 声明值"
+        "（fold_N_train -> train、fold_N_val -> validation），不得从 payload"
+        f" 重算或读错源：实际 {dict(r1_meta.splits)!r}"
+    )
+    assert set(r1_meta.source_batches) == {
+        r1_manifest["source_review_batch_id"],
+        r1_manifest["source_queue_id"],
+        r1_manifest["source_media_id"],
+    }, (
+        "r1 source_batches 必须记录 r1 legacy manifest 声明的原始批次标识"
+        f"（不回填伪造、不读错源）：实际 {sorted(r1_meta.source_batches)}"
+    )
+    try:
+        assert_payload_sealed(r1_release_dir)
+    except Exception as exc:
+        raise AssertionError(
+            "重跑完成的 r1 封存事实必须与 baseline 一致（既有只读门 "
+            "assert_payload_sealed 通过；state: sealed 必须与事实一致）："
+            f"{exc!r}"
+        ) from exc
+
+    # 训练引用门（正式 release 语义一致）：active r2 放行，superseded r1
+    # 拒绝新引用。
+    validate_training_reference(
+        interrupted_root / "data", CONFIRMED_DATA_TARGET_R2
+    )
+    with pytest.raises(ReferenceNotAllowed):
+        validate_training_reference(
+            interrupted_root / "data", CONFIRMED_DATA_TARGET_R1
+        )
+
+    # ---- 行为 7：无新身份 —— 目标根恰含两个正式对象与两份 receipt。----
+    releases_root = interrupted_root / "data" / "releases"
+    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+        CONFIRMED_DATA_TARGET_R1,
+        CONFIRMED_DATA_TARGET_R2,
+    ], (
+        "中断 + 恢复重跑不得产生 data-v4.1-r3 或任何其他新身份/新条目（不覆"
+        "盖、不自动改号；未映射 sibling 不得被转换）：data/releases/ 必须恰"
+        f"含 {CONFIRMED_DATA_TARGET_R1} 与 {CONFIRMED_DATA_TARGET_R2}"
+    )
+    assert not (releases_root / "data-v4.1-r3").exists(), (
+        "中断 + 恢复重跑不得自动改号到 data-v4.1-r3"
+    )
+    assert not (releases_root / UNMAPPED_DATA_SIBLING).exists(), (
+        "未映射 sibling release 不得被转换（不得在 data/releases/ 下产生"
+        f"任何 {UNMAPPED_DATA_SIBLING!r} 相关目标条目）"
+    )
+    receipts_root = interrupted_root / "migration_receipts"
+    assert [entry.name for entry in sorted(receipts_root.iterdir())] == [
+        f"{CONFIRMED_DATA_TARGET_R1}.receipt.yaml",
+        f"{CONFIRMED_DATA_TARGET_R2}.receipt.yaml",
+    ], "migration_receipts/ 必须恰含 r1 与 r2 两份 receipt（重跑不新增凭证）"
+
+    # ---- 行为 4（重跑后）+ 全局零越界：legacy 侧不变、新增条目只允许两
+    #      个目标 release 子树与两份 receipt。----
+    final_tree = _snapshot_tree(interrupted_root)
+    _assert_legacy_side_unchanged(interrupted_before, final_tree)
+    new_keys = set(final_tree) - set(interrupted_before)
+    r1_release_root_rel = f"data/releases/{CONFIRMED_DATA_TARGET_R1}"
+    r2_release_root_rel = f"data/releases/{CONFIRMED_DATA_TARGET_R2}"
+    r1_receipt_rel = (
+        f"migration_receipts/{CONFIRMED_DATA_TARGET_R1}.receipt.yaml"
+    )
+    r2_receipt_rel = (
+        f"migration_receipts/{CONFIRMED_DATA_TARGET_R2}.receipt.yaml"
+    )
+    assert all(
+        key == "data"
+        or key == "data/releases"
+        or key == r1_release_root_rel
+        or key == r2_release_root_rel
+        or key.startswith(f"{r1_release_root_rel}/")
+        or key.startswith(f"{r2_release_root_rel}/")
+        or key == "migration_receipts"
+        or key == r1_receipt_rel
+        or key == r2_receipt_rel
+        for key in new_keys
+    ), (
+        "中断 + 恢复重跑全程只允许新增两个目标 release 目录子树（含目录条"
+        f"目）与两份 receipt（不写跳过报告/缓存/records/生命周期目录）：实际"
+        f"新增 {sorted(new_keys)}"
+    )
+    for forbidden in (
+        "records",
+        "working",
+        "release_staging",
+        "data/working",
+        "data/release_staging",
+    ):
+        assert not (interrupted_root / forbidden).exists(), (
+            f"中断 + 恢复重跑不得创建 {forbidden!r}"
+        )
+    assert not any(key.endswith(".dvc") for key in final_tree), (
+        "中断 + 恢复重跑不得触发 DVC（不得产生任何 .dvc 文件）"
+    )
+    data_pointer_after = json.loads(
+        (interrupted_root / _DATA_POINTER_REL).read_text(encoding="utf-8")
+    )
+    assert data_pointer_after["release_id"] == CONFIRMED_DATA_SOURCE_R2, (
+        "中断 + 恢复重跑不得切换旧数据活动指针（仍声明 legacy 身份）"
+    )
+    prompt_pointer_after = yaml.safe_load(
+        (interrupted_root / "pipeline" / "prompt_control" / "active_prompt.yaml")
+        .read_bytes()
+    )
+    assert prompt_pointer_after["revision_id"] == CONFIRMED_PROMPT_SOURCE_ID, (
+        "中断 + 恢复重跑不得切换旧 Prompt 活动指针（仍声明 legacy "
+        "revision_id）"
+    )
+    assert mapping_items == _confirmed_data_mapping_items(), (
+        "中断 + 恢复重跑不得就地改写传入映射项（M0 事实分级保持不变）"
     )

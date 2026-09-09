@@ -25,7 +25,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Collection, Mapping
 
 import yaml
 
@@ -362,7 +362,10 @@ def _check_pinned_manifest_provenance(
 
 
 def precheck_data_migration(
-    root: Path, mapping_items: Any
+    root: Path,
+    mapping_items: Any,
+    *,
+    allow_existing_target_identities: Collection[str] = (),
 ) -> DataMigrationPrecheckReport:
     """对已确认 data 映射批执行只读迁移预检（T11）。
 
@@ -395,6 +398,11 @@ def precheck_data_migration(
     条目，不修改 legacy 源树、旧 active pointers 或传入映射项；报告只经
     返回值给出。manifest payload 文件哈希门已在当前实现内；训练机真实
     payload 验证、真实转换、凭证与恢复不在本切片内。
+
+    ``allow_existing_target_identities`` 仅供批内部分完成的中断恢复内部
+    使用（migrate_data）：对凭证核实匹配的已完成对象或经验证的本转换
+    部分写入对象，其目标存在 / data 正式对象根同身份冲突不阻塞恢复；
+    默认空集合，外部调用行为不变（fail-closed）。
     """
     root = Path(root)
     try:
@@ -434,8 +442,19 @@ def precheck_data_migration(
 
         if isinstance(source_id, str) and source_id:
             errors.extend(_check_legacy_data_source(root, mapping_item))
-        errors.extend(_check_target_conflict(root, mapping_item))
-        errors.extend(_check_data_root_conflict(root, mapping_item))
+        allow_existing = (
+            isinstance(mapping_item.get("candidate_target_identity"), str)
+            and mapping_item["candidate_target_identity"]
+            in allow_existing_target_identities
+        )
+        errors.extend(
+            _check_target_conflict(
+                root, mapping_item, allow_existing_target=allow_existing
+            )
+        )
+        errors.extend(
+            _check_data_root_conflict(root, mapping_item, allow_existing=allow_existing)
+        )
         errors.extend(_check_pinned_manifest_provenance(root, mapping_item))
 
         object_reports.append(
@@ -581,7 +600,7 @@ def _check_legacy_provenance(source_entry: Path) -> list[str]:
 
 
 def _check_data_root_conflict(
-    root: Path, mapping_item: Mapping[str, object]
+    root: Path, mapping_item: Mapping[str, object], *, allow_existing: bool = False
 ) -> list[str]:
     """检查 data 正式对象根上的同身份条目冲突（只读，不创建）。
 
@@ -603,7 +622,7 @@ def _check_data_root_conflict(
     if str(data_root_rel) in ("", "."):
         return errors
     data_root = root / data_root_rel
-    if not data_root.is_dir():
+    if allow_existing or not data_root.is_dir():
         return errors
     for existing in sorted(data_root.iterdir()):
         if existing.name == identity or existing.name.startswith(f"{identity}."):
@@ -614,15 +633,22 @@ def _check_data_root_conflict(
     return errors
 
 
-def _check_target_conflict(root: Path, mapping_item: Mapping[str, object]) -> list[str]:
-    """检查目标是否已存在冲突条目；目标根不存在视为无冲突（只读，不创建）。"""
+def _check_target_conflict(
+    root: Path, mapping_item: Mapping[str, object], *, allow_existing_target: bool = False
+) -> list[str]:
+    """检查目标是否已存在冲突条目；目标根不存在视为无冲突（只读，不创建）。
+
+    ``allow_existing_target`` 仅供中断恢复内部使用：为 True 时跳过
+    ``<root>/<target_path>`` 已存在检查（调用方已另行核实该目标为已完成
+    对象或经验证的本转换部分写入），records/ 下同身份检查仍然执行。
+    """
     errors: list[str] = []
     identity = mapping_item.get("candidate_target_identity")
     target_rel = mapping_item.get("target_path")
     if not isinstance(identity, str) or not isinstance(target_rel, str):
         return errors
     target = root / target_rel
-    if target.exists():
+    if target.exists() and not allow_existing_target:
         errors.append(f"目标条目已存在，冲突时停止（不覆盖、不自动改号）：{target_rel}")
         return errors
     records_root = root / "records"
@@ -1064,6 +1090,85 @@ def _verified_completed_receipt(
     return receipt_path
 
 
+def _resumable_partial_release(
+    root: Path, mapping_item: Mapping[str, object]
+) -> bool:
+    """核实半写目标目录是本转换的部分写入（只读，fail-closed）。
+
+    批内对象写入中途中断后，目标对象目录可能残留部分写入的条目。本函数
+    判定该残留可否作为“未完成对象”安全重建：按当前映射与 legacy 源复算
+    期望写入内容（manifest files[] 声明 payload 逐字节 + release.yaml 的
+    精确 dump 字节），目录内每个现存文件必须满足：
+      - 相对路径落在期望条目集合内（外来条目一律拒绝）；
+      - 现存内容为对应期望字节的（严格）前缀 —— 即恰为本转换写入途中
+        落盘的部分字节（完整条目或空文件同样可接受：前者与期望一致，
+        后者是写入尚未开始的合法中间态）。
+
+    目录不存在（无残留）返回 False（无冲突需放宽，走常规预检）。期望
+    内容无法复算（manifest 不可解析、payload 缺失、release 数据非法）
+    或任一现存文件非前缀（外来/被篡改内容）返回 False —— 调用方退回
+    既有 fail-closed 预检路径拒绝恢复，不覆盖外来对象。全程只读。
+    """
+    source_id = mapping_item.get("source_legacy_id")
+    identity = mapping_item.get("candidate_target_identity")
+    target_rel = mapping_item.get("target_path")
+    if not all(
+        isinstance(value, str) and value
+        for value in (source_id, identity, target_rel)
+    ):
+        return False
+    release_dir = root / Path(target_rel).parent
+    if not release_dir.is_dir():
+        return False
+
+    legacy_release_dir = root / _LEGACY_DATA_RELEASES / source_id
+    try:
+        manifest_bytes = (legacy_release_dir / _LEGACY_DATA_MANIFEST).read_bytes()
+        manifest = json.loads(manifest_bytes.decode("utf-8"))
+    except Exception:
+        return False
+    if not isinstance(manifest, Mapping):
+        return False
+    files = manifest.get("files")
+    if not isinstance(files, list) or not all(
+        isinstance(entry, Mapping) and isinstance(entry.get("path"), str)
+        for entry in files
+    ):
+        return False
+
+    expected: dict[str, bytes] = {}
+    for entry in files:
+        declared_path = entry["path"]
+        try:
+            expected[declared_path] = (
+                legacy_release_dir / declared_path
+            ).read_bytes()
+        except OSError:
+            return False
+    try:
+        release_data = _build_release_data(identity, source_id, manifest, mapping_item)
+        parse_release_metadata(release_data)
+        expected["release.yaml"] = yaml.safe_dump(
+            release_data, sort_keys=False
+        ).encode("utf-8")
+    except Exception:
+        return False
+
+    try:
+        for path in sorted(release_dir.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(release_dir).as_posix()
+            want = expected.get(rel)
+            if want is None:
+                return False
+            if not want.startswith(path.read_bytes()):
+                return False
+    except OSError:
+        return False
+    return True
+
+
 def _migrate_single_data_release(
     root: Path, mapping_item: Mapping[str, object]
 ) -> Path:
@@ -1212,8 +1317,15 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
     release 内容摘要全部匹配；批内全部对象核实匹配时整批只读跳过
     （返回既有 receipt 路径，零写入、不重写 release/receipt、不产生新
     身份）。任一对象 receipt 缺失或不匹配即退回既有 fail-closed 预检
-    路径（不覆盖、不自动改号）。批内部分完成/中断恢复、凭证失配拒绝
-    不在本切片。
+    路径（不覆盖、不自动改号）。
+
+    批内部分完成的中断恢复（T19）：批非全部完成时，逐对象复用
+    :func:`_verified_completed_receipt` 识别已完成项（receipt 全字段
+    核实匹配）—— 这些对象跳过（不重写 release/receipt，返回既有 receipt
+    路径），其目标存在冲突不阻塞恢复；未完成对象继续执行转换。未完成
+    对象的半写目标仅在 :func:`_resumable_partial_release` 证明其为按
+    当前映射/legacy 源的本转换部分写入时允许重建，否则退回既有
+    fail-closed 预检拒绝（不覆盖外来对象）。凭证失配拒绝分支不在本切片。
 
     返回写入的 receipt 路径序列（与映射批同序；返回值契约本切片不绑定）。
     """
@@ -1239,7 +1351,42 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
             for item in items
         )
 
-    report = precheck_data_migration(root, items)
+    # T19：批内部分完成的中断恢复 —— 逐对象识别已完成项。committed
+    # receipt 经全字段核实匹配的对象记为已完成（跳过、零重写）；其余为
+    # 未完成对象。已完成项的目标存在冲突不阻塞恢复；未完成项的半写目标
+    # 仅在可证明为本转换部分写入（现存内容为按当前映射/legacy 源期望
+    # 字节的前缀）时允许重建，无法核实则退回下方 fail-closed 预检拒绝。
+    verified_completed: dict[str, Path] = {}
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        identity = item.get("candidate_target_identity")
+        receipt_path = _verified_completed_receipt(root, item)
+        if receipt_path is not None and isinstance(identity, str):
+            verified_completed[identity] = receipt_path
+    resumable_identities: set[str] = set()
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        identity = item.get("candidate_target_identity")
+        if (
+            isinstance(identity, str)
+            and identity not in verified_completed
+            and _resumable_partial_release(root, item)
+        ):
+            resumable_identities.add(identity)
+
+    # 无已完成/可恢复对象（常见新转换路径）时按既有双参调用口径调用，
+    # 保持与预检入口的既有调用契约一致。
+    if verified_completed or resumable_identities:
+        report = precheck_data_migration(
+            root,
+            items,
+            allow_existing_target_identities=set(verified_completed)
+            | resumable_identities,
+        )
+    else:
+        report = precheck_data_migration(root, items)
     if report.status != "ready":
         raise DataMigrationBlocked(
             "data 迁移预检未通过（fail-closed，零写入）：" + "；".join(report.reasons)
@@ -1261,5 +1408,10 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
 
     receipt_paths: list[Path] = []
     for mapping_item in items:
+        identity = mapping_item.get("candidate_target_identity")
+        if isinstance(identity, str) and identity in verified_completed:
+            # 已完成对象：凭证匹配，跳过（不重写 release/receipt）。
+            receipt_paths.append(verified_completed[identity])
+            continue
         receipt_paths.append(_migrate_single_data_release(root, mapping_item))
     return tuple(receipt_paths)
