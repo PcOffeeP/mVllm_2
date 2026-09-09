@@ -79,7 +79,7 @@ interruption_recovery:
     - "凭证不匹配或无法核实时停止，不覆盖、不自动改号。"
   notes: "以上为已确认的目标语义，不代表当前代码已实现；实现状态需另行核实。"
   not_confirmed:
-    - "Q4 数据根已确认（/data/mVllm_2，user_confirmed），但目录尚未创建、权限待准备（见 q4_data_root）"
+    - "Q4 数据根已确认（/data/mVllm_2，user_confirmed），目录已创建且只读验证可写（见 q4_data_root）；真实迁移写入仍未执行"
     - "I/O 预算"
     - "凭证的具体格式/存储位置（未裁决）"
 
@@ -90,11 +90,22 @@ q4_data_root:
   status: user_confirmed          # 用户 2026-09-07 确认选择 A
   confirmed_by_user_date: "2026-09-07"
   selected_root: "/data/mVllm_2"
+  preparation:
+    method: "用户手动 sudo"
+    steps:
+      - "sudo mkdir -p /data/mVllm_2"
+      - "sudo chown -R liuyang:liuyang /data/mVllm_2"
+  verification:
+    method: "只读 SSH"
+    command: "ls -ld /data/mVllm_2 && test -w /data/mVllm_2 && test -x /data/mVllm_2"
+    exit_status: 0
+    output: "drwxr-xr-x 2 liuyang liuyang 4096 9月 9 09:45 /data/mVllm_2"
+    result: "目录存在、属主正确、可写、可进入"
   limitation:
-    - "当前 /data/mVllm_2 尚不存在"
-    - "/data root 属主，普通用户无写权限"
-    - "正式写入前仍需一次性目录准备与权限确认"
-  notes: "Q4 数据根选择已确认，但目录落地与权限仍待准备；不代表真实迁移写入已执行。"
+    - "真实迁移写入仍未执行"
+    - "receipt 具体实现仍待 TDD"
+    - "模型/run/训练/评测仍未验证"
+  notes: "Q4 数据根已创建且只读验证可写；不代表真实迁移写入已执行或 payload 已迁移。"
 
 # ---------------------------------------------------------------
 # B. Prompt 迁移（M1 范围：一版 Prompt）
@@ -155,7 +166,7 @@ model_train_eval_history:
 # ---------------------------------------------------------------
 global_pre_write_checks:
   - "目标 <root>/data、<root>/records、<root>/evaluations 在正式写入前必须逐个复验不存在同名正式对象（本机当前均不存在）。"
-  - "目标机器（训练机）的版本化 data 根已确认选择 /data/mVllm_2（user_confirmed），但目录尚未创建、权限待准备（见 q4_data_root）；迁移写入位置需在 M2 前完成目录准备与权限确认，不由本任务决定。"
+  - "目标机器（训练机）的版本化 data 根已确认选择 /data/mVllm_2（user_confirmed），目录已创建且只读验证可写（见 q4_data_root）；真实迁移写入仍未执行，迁移写入位置需在 M2 前完成，不由本任务决定。"
   - "不覆盖 legacy 正式产物：历史 manifest、active_data_release.json、model_registry/current.json、旧模型 release manifest 作为历史证据保留。"
   - "所有 pending_user_check 目标在用户确认前一律 not_verified，禁止写入或标记 verified/passed。"
-  - "Q4 数据根已确认（/data/mVllm_2，user_confirmed），但目录尚未创建、权限待准备；I/O 预算仍待后续调查后再定。"
+  - "Q4 数据根已确认（/data/mVllm_2，user_confirmed），目录已创建且只读验证可写；真实迁移写入仍未执行；I/O 预算仍待后续调查后再定。"

@@ -41,11 +41,17 @@
 - `finetune/active_data_release.json` 指向 r2（`v4.1.0-ecb5aeb9657c`）。
 - `expected_manifest_sha256` 与实际 manifest SHA-256 完全一致（`ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b`）。
 
-## 5. Q4 数据根选择（用户确认）
+## 5. Q4 数据根选择与准备（用户确认）
 
 - 用户已确认 Q4 数据根选择 A：`/data/mVllm_2`。
-- 当前 `/data/mVllm_2` 尚不存在；`/data` root 属主，普通用户无写权限。
-- 正式写入前仍需一次性目录准备与权限确认。
+- 目录准备由用户手动 sudo 完成：
+  - `sudo mkdir -p /data/mVllm_2`
+  - `sudo chown -R liuyang:liuyang /data/mVllm_2`
+- 随后以只读 SSH 验证（exit 0）：
+  - `ls -ld /data/mVllm_2 && test -w /data/mVllm_2 && test -x /data/mVllm_2`
+  - 输出：`drwxr-xr-x 2 liuyang liuyang 4096 9月 9 09:45 /data/mVllm_2`
+- 结论：`/data/mVllm_2` 存在、属主正确、可写、可进入。
+- 限制：真实迁移写入仍未执行；receipt 具体实现仍待 TDD；模型/run/训练/评测仍未验证。
 
 ## 6. 未执行项（明确保留）
 
