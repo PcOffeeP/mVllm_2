@@ -29,7 +29,8 @@ data_mapping:
       role: "当前活动数据 release（活动指针）"
       source_verified: verified_local        # 活动指针事实已核实（active_data_release.json）
       source_inventory: "workspace/data/releases/v4.1.0-ecb5aeb9657c"  # 训练机观察
-      source_payload_complete: training_observed   # manifest 存在，payload 全量未验证
+      source_payload_complete: verified_remote   # 完整 payload hash 已验证（见 verification.md）
+      manifest_sha256: "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b"
       candidate_target_identity: "data-v4.1-r2"    # user_confirmed
       target_path: "data/releases/data-v4.1-r2/release.yaml"
       status: user_confirmed          # 用户 2026-09-07 确认：较新版本 → r2
@@ -45,7 +46,8 @@ data_mapping:
       role: "历史并存的非活动数据 release"
       source_verified: training_observed
       source_inventory: "workspace/data/releases/v4.1.0-760050fad303"
-      source_payload_complete: training_observed
+      source_payload_complete: verified_remote   # 完整 payload hash 已验证（见 verification.md）
+      manifest_sha256: "c7a5fe349137b5b5f1e37082ae69b0e5d175bf174e4a27b71061975afac3c036"
       candidate_target_identity: "data-v4.1-r1"    # user_confirmed
       target_path: "data/releases/data-v4.1-r1/release.yaml"
       status: user_confirmed          # 用户 2026-09-07 确认：较旧版本 → r1
@@ -77,10 +79,22 @@ interruption_recovery:
     - "凭证不匹配或无法核实时停止，不覆盖、不自动改号。"
   notes: "以上为已确认的目标语义，不代表当前代码已实现；实现状态需另行核实。"
   not_confirmed:
-    - "训练机 payload 完整性（未验证）"
-    - "Q4 数据根（训练机版本化 data 根未落地）"
+    - "Q4 数据根已确认（/data/mVllm_2，user_confirmed），但目录尚未创建、权限待准备（见 q4_data_root）"
     - "I/O 预算"
     - "凭证的具体格式/存储位置（未裁决）"
+
+# ---------------------------------------------------------------
+# Q4. 训练机数据根（用户确认）
+# ---------------------------------------------------------------
+q4_data_root:
+  status: user_confirmed          # 用户 2026-09-07 确认选择 A
+  confirmed_by_user_date: "2026-09-07"
+  selected_root: "/data/mVllm_2"
+  limitation:
+    - "当前 /data/mVllm_2 尚不存在"
+    - "/data root 属主，普通用户无写权限"
+    - "正式写入前仍需一次性目录准备与权限确认"
+  notes: "Q4 数据根选择已确认，但目录落地与权限仍待准备；不代表真实迁移写入已执行。"
 
 # ---------------------------------------------------------------
 # B. Prompt 迁移（M1 范围：一版 Prompt）
@@ -141,7 +155,7 @@ model_train_eval_history:
 # ---------------------------------------------------------------
 global_pre_write_checks:
   - "目标 <root>/data、<root>/records、<root>/evaluations 在正式写入前必须逐个复验不存在同名正式对象（本机当前均不存在）。"
-  - "目标机器（训练机）的版本化 data 根尚未落地（/data/mVllm_2 不存在，见调查记录），迁移写入位置需在 M2 前明确，不由本任务决定。"
+  - "目标机器（训练机）的版本化 data 根已确认选择 /data/mVllm_2（user_confirmed），但目录尚未创建、权限待准备（见 q4_data_root）；迁移写入位置需在 M2 前完成目录准备与权限确认，不由本任务决定。"
   - "不覆盖 legacy 正式产物：历史 manifest、active_data_release.json、model_registry/current.json、旧模型 release manifest 作为历史证据保留。"
   - "所有 pending_user_check 目标在用户确认前一律 not_verified，禁止写入或标记 verified/passed。"
-  - "Q4（训练机数据根与 I/O 预算）用户明确暂不裁决，后续调查后再定；本文件保持 pending/not_verified，未写成已确认。"
+  - "Q4 数据根已确认（/data/mVllm_2，user_confirmed），但目录尚未创建、权限待准备；I/O 预算仍待后续调查后再定。"

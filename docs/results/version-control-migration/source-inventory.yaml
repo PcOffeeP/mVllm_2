@@ -4,6 +4,8 @@
 #
 # 证据分级约定：
 # - verified_local      : 本机文件直接读取核实。
+# - verified_remote     : 训练机只读调研 + 完整 payload hash 已验证（见 verification.md）。
+#                         仅覆盖 data release 的 payload/hash；不扩大为模型/训练/run 已验证。
 # - training_observed   : 训练机只读调查观察到（见 docs/results/version-control-migration-20260907.md），
 #                         但本机无该物理文件，完整性与内容未在本机复验。
 # - not_verified        : 存在性/完整性当前无法由本机或已有只读证据确认。
@@ -19,7 +21,9 @@ local_main_tip: "cc59312c"            # 2026-09-07 刷新后的本地 main（调
 codeup_main: "f1b7d8a3"               # Codeup main（比本地落后，非分叉）
 data_releases:
   - source_id: "v4.1.0-ecb5aeb9657c"
-    evidence_level: training_observed
+    evidence_level: verified_remote   # 训练机只读调研 + 完整 payload hash 已验证（见 verification.md）
+    payload_hash_verified: true       # 11 个声明文件，13,743,509 bytes，全部 SHA-256 匹配
+    manifest_sha256: "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b"
     legacy_source_path: "workspace/data/releases/v4.1.0-ecb5aeb9657c"   # 相对项目根（训练机）
     local_path: "workspace/data"                                        # 本机不存在（NOT PRESENT，见备注）
     pinned_by: "finetune/active_data_release.json"                      # verified_local
@@ -29,14 +33,16 @@ data_releases:
       - "expected_contract_hash: 47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937"
       - "expected_manifest_sha256: ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b"
     observed_activity: "训练机活动指针与本机一致选择此 release（调查记录）"
-    notes: "活动数据 release。训练机发现 manifest；payload 全量完整性未验证（仅有限深度目录检查）。"
+    notes: "活动数据 release。manifest schema 完整（path/sha256/size_bytes 无缺失、无 unsafe paths、无 symlink）；完整 payload hash 已验证，无缺失/未声明文件、无 mismatch。"
   - source_id: "v4.1.0-760050fad303"
-    evidence_level: training_observed
+    evidence_level: verified_remote   # 训练机只读调研 + 完整 payload hash 已验证（见 verification.md）
+    payload_hash_verified: true       # 9 个声明文件，9,819,900 bytes，全部 SHA-256 匹配
+    manifest_sha256: "c7a5fe349137b5b5f1e37082ae69b0e5d175bf174e4a27b71061975afac3c036"
     legacy_source_path: "workspace/data/releases/v4.1.0-760050fad303"    # 相对项目根（训练机）
     local_path: "workspace/data"                                         # 本机不存在
     pinned_by: ~
     pin_facts: []
-    notes: "与 ecb5aeb 并存于训练机 releases 目录，发现 manifest；非活动指针，payload 完整性未验证。"
+    notes: "与 ecb5aeb 并存于训练机 releases 目录。manifest schema 完整；完整 payload hash 已验证，无缺失/未声明文件、无 mismatch。非活动指针。"
 pipeline_prompt_registry:
   - source_id: "v4.1-concise-evidence-json-v2"
     evidence_level: verified_local
