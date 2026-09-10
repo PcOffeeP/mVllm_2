@@ -402,9 +402,28 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   system_prompt / user_prompt / output_fields），不重算、不伪
         #   造、不取 sibling。全程纯构建零写入：不写 history-summary 文
         #   件、不创建 records/ 或任何目标条目、不改 legacy 源、不就地修
-        #   改传入 entries。unknown / 缺失资料形态、未确认 entry 的
-        #   blocked 反向、多 entry 批量、history-summary 文件写入与 CLI
-        #   不在本切片。
+        #   改传入 entries。H2/H3 起（M1b 非法输入 fail-closed 反向最小
+        #   切片）入口对非法输入必须 fail-closed 拒绝，不得静默构建文档
+        #   （含 entries 为空的文档）：
+        #   - entry ``status`` 白名单式只认 ``user_confirmed``（M0
+        #     status_field_legend 唯一“用户已逐项确认”口径；
+        #     pending_user_check / unknown / not_verified /
+        #     verified_local（source_verified 事实分级，非确认门槛）/
+        #     status 字段缺失一律拒绝）；
+        #   - entry 不得夹带候选正式身份 ``candidate_target_identity``
+        #     （如 prompt-v4.1-r1 / model-v4.1-r1：历史 entry history_only，
+        #     仅进 history-summary，不迁移、不分配任何新正式身份）；
+        #   - entry 不得声明 ``passed: true``（M0：不得把历史 summary
+        #     转成 passed；pending 目标在用户确认前禁止写入或标记
+        #     verified/passed）；
+        #   - ``entries=None`` 与非可迭代输入必须拒绝，不得静默返回空
+        #     文档；可迭代但元素非 mapping（如字符串）同样拒绝；
+        #   - 全部拒绝经明确域错误（PromptMigrationBlocked 等 versioning
+        #     域错误类型）或 blocked 报告通道给出，携带非空拒因，不得抛
+        #     未类型化异常；拒绝零写入（legacy 源与全树逐字节不变）、
+        #     不就地修改传入 entries；合法已确认 entry 对照仍正常构建。
+        #   unknown / 缺失资料形态、多 entry 批量、history-summary 文件
+        #   写入与 CLI 不在本切片。
 
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
@@ -480,6 +499,18 @@ H1（M1b history-summary 第一个切片，单条已确认历史 Prompt entry �
 入口缺失时，仍由测试内惰性解析 + 显式 AssertionError 钉出
 “history-summary 纯构建行为缺失”，不让原始 import 错误或
 AttributeError 成为 RED。
+H2/H3（M1b history-summary 非法输入 fail-closed 反向最小切片）同
+口径补充：build_history_summary 入口已存在（H1 已 GREEN），RED 不
+经入口缺失分支给出 —— 由当前对非法输入（entry status 非
+user_confirmed / 夹带 candidate_target_identity 候选正式身份 /
+声明 passed: true / entries=None 与非可迭代）静默构建文档（含空
+文档）的显式行为 AssertionError 钉出“history-summary 非法输入
+fail-closed 行为缺失”；拒绝若以未类型化异常（TypeError 等直接穿
+透）给出，同样经显式 AssertionError + cause 链转译，不让原始未类
+型化异常直接充当 RED 结论。entries 为可迭代但元素非 mapping
+（字符串）的场景当前实现已经明确域错误通道 fail-closed，记录为
+Unexpected PASS（回归钉），不当 RED；合法已确认 entry 的正向构
+建由既有 H1 selector 复跑钉定（合法对照仍通过）。
 
 范围边界：本文件只覆盖 Prompt 迁移（T1–T10）、T11–T14 数据迁移批级
 只读预检切面（ready 正向、目标冲突边界、已钉扎 manifest provenance
@@ -753,10 +784,23 @@ data 真实转换的其余行为（批级多对象乱序写入顺序、
 in_progress、成功后原子转 committed，不另立 credential 目录））、data blocked 反向其余场景（身份契约收紧、legacy 源
 release 目录/manifest 缺失、声明的 payload 文件缺失——该存在性分支
 由既有 production 检查 blocked，本文件未单列用例钉定）、history-
-summary 的其余切面（H1 只钉单条已确认 prompt_history entry 的纯构
-建正向：unknown/缺失资料形态、pending/未确认 entry 的 blocked 反
-向、多 entry 批量与混合完整/缺失资料、history-summary 文件写入、
-CLI 均不在本切片）、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
+summary 的其余切面（H1 钉单条已确认 prompt_history entry 的纯构
+建正向；H2/H3 钉非法输入 fail-closed 反向最小切片 —— entry
+status 非 user_confirmed（pending_user_check / unknown /
+not_verified / verified_local 事实分级误当确认门槛 / 字段缺失，
+白名单式只认 user_confirmed）、夹带候选正式身份
+
+candidate_target_identity（prompt-v4.1-r1 / model-v4.1-r1 等五族
+完整身份；历史 entry history_only，不分配新正式身份）、声明
+passed: true（M0：不得把历史 summary 转成 passed）、entries=None
+与非可迭代输入（不得静默返回空文档），以及未确认+夹带身份、
+声明 passed+夹带身份两类组合（各门相互独立）—— 一律经明确域错
+误或 blocked 报告通道拒绝 + 非空拒因 + 零写入（legacy 源与全树逐
+字节不变）+ 不就地修改传入 entries，合法已确认 entry 对照仍正常
+构建（H1 selector 复跑钉定）；可迭代但元素非 mapping 的 entries
+当前已经明确域错误通道 fail-closed，记为 Unexpected PASS 回归钉；
+unknown/缺失资料形态、多 entry 批量与混合完整/缺失资料、
+history-summary 文件写入、CLI 均不在本切片）、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
 T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
@@ -813,6 +857,7 @@ from versioning.ids import is_valid_version_id
 from versioning.prompts import (
     PROMPT_REQUIRED_FIELDS,
     PromptConflict,
+    PromptError,
     load_prompt,
     prompt_path,
 )
@@ -14374,3 +14419,422 @@ def test_confirmed_prompt_history_entry_builds_history_summary_document_without_
     assert entry == _confirmed_prompt_history_entry(), (
         "全程不得就地改写传入 entry（H1 输入事实保持不变）"
     )
+
+
+# ---------------------------------------------------------------------------
+# H2/H3：history-summary —— 非法输入 fail-closed 反向最小切片（先写测试，
+# 不改 production）
+# ---------------------------------------------------------------------------
+
+# H2/H3 拒绝通道可接受的明确域错误类型名（versioning.migration 内）。
+# build_history_summary 是 H1 已绑定的纯构建入口（文档只经返回值给出），
+# 非法输入的拒绝经 H1 已文档化的 PromptMigrationBlocked 域错误通道给出；
+# DataMigrationBlocked 与 versioning.prompts.PromptError 亦为 versioning
+# 域内明确域错误，一并接受（后续切片新增专用拒绝类型时由
+# _is_history_summary_domain_error 的模块/命名口径兜底接受）。
+_HISTORY_DOMAIN_ERROR_NAMES = ("PromptMigrationBlocked", "DataMigrationBlocked")
+
+
+def _is_history_summary_domain_error(exc: BaseException) -> bool:
+    """判定异常是否为 versioning 域内明确域错误（拒绝通道合规性）。
+
+    接受两类通道：
+    - versioning.migration 内已定义的迁移域错误类型
+      （PromptMigrationBlocked / DataMigrationBlocked）或
+      versioning.prompts 的 PromptError 族（含 PromptMigrationBlocked
+      的既有基类）；
+    - 后续切片在 versioning 域内新增的专用拒绝类型（类型名含
+      ``Blocked`` 或以 ``Error`` 结尾，且定义于 ``versioning.*`` 模块）。
+
+    builtins / os 等处的未类型化异常（TypeError、ValueError、KeyError、
+    AttributeError、OSError、RuntimeError 等直接穿透）一律不是合规
+    拒绝通道。
+    """
+    spec = importlib.util.find_spec("versioning.migration")
+    if spec is not None:
+        migration = importlib.import_module("versioning.migration")
+        for name in _HISTORY_DOMAIN_ERROR_NAMES:
+            domain_type = getattr(migration, name, None)
+            if isinstance(domain_type, type) and isinstance(exc, domain_type):
+                return True
+    if isinstance(exc, PromptError):
+        return True
+    exc_type = type(exc)
+    return exc_type.__module__.startswith("versioning.") and (
+        "Blocked" in exc_type.__name__ or exc_type.__name__.endswith("Error")
+    )
+
+
+def _expect_history_summary_fail_closed(
+    build: Any, root: Path, entries: Any
+) -> str:
+    """调用 build_history_summary 并断言非法输入 fail-closed，返回非空拒因。
+
+    拒绝必须经明确域错误或 blocked 报告通道给出：
+    - 抛出异常：异常必须是 versioning 域内明确域错误
+      （_is_history_summary_domain_error），不得是未类型化异常直接穿透
+      —— 未类型化异常经 AssertionError + cause 链转译判失败；异常消息
+      必须非空（可读拒因，不得静默拒绝）；
+    - 返回值：必须是携带 status == "blocked" 且非空 reasons 的 blocked
+      报告（mapping 或带 status / reasons 属性的报告对象均可）。
+
+    返回 history-summary 文档（含 entries 为空的文档）即未拒绝：
+    断言失败 —— 不得对非法输入静默构建文档，也不得静默返回空文档。
+    """
+    try:
+        result = build(root, entries)
+    except Exception as exc:
+        if not _is_history_summary_domain_error(exc):
+            raise AssertionError(
+                "非法 history 输入的拒绝必须经明确域错误（PromptMigrationBlocked "
+                "等 versioning 域错误）或 blocked 报告通道给出，不得抛未"
+                f"类型化异常直接穿透：实际 {type(exc).__module__}."
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
+        assert str(exc).strip(), (
+            "fail-closed 拒绝必须携带非空拒因（明确域错误消息非空），"
+            "不得静默拒绝"
+        )
+        return str(exc)
+    if isinstance(result, Mapping) and "history_summary_schema" in result:
+        entry_count = len(result.get("entries") or [])
+        raise AssertionError(
+            "非法 history 输入必须 fail-closed 拒绝，不得静默构建 "
+            "history-summary 文档（含 entries 为空的文档）：实际返回 "
+            f"schema={result.get('history_summary_schema')!r}、"
+            f"entries={entry_count} 条的文档"
+        )
+    if isinstance(result, Mapping):
+        status = result.get("status")
+        reasons = result.get("reasons")
+    else:
+        status = getattr(result, "status", None)
+        reasons = getattr(result, "reasons", None)
+    assert status == "blocked", (
+        "非法 history 输入必须 fail-closed：抛明确域错误或返回 "
+        f"status == 'blocked' 的报告；实际返回 {type(result).__name__!r}，"
+        f"status={status!r}"
+    )
+    reason_items = [str(reason) for reason in reasons] if reasons else []
+    assert reason_items, (
+        "blocked 报告必须携带非空 reasons（可读拒因）：fail-closed 拒绝"
+        "不得静默"
+    )
+    return "；".join(reason_items)
+
+
+def _history_entry_with_violation(violation: str) -> dict[str, Any]:
+    """按 violation 构造携带非法字段的 history entry（H2/H3 输入）。
+
+    基于 H1 已确认 entry（_confirmed_prompt_history_entry：status
+    user_confirmed、不携带 candidate_target_identity / passed）单变量
+    扰动：除 violation 指定字段外其余字段保持合法取值，使拒绝只能由
+    该非法字段引起（隔离变量，legacy 源始终齐全）。组合参数
+    （pending+candidate、passed+candidate）钉定各门相互独立，不得只检
+    查其一而漏过另一类夹带。
+    """
+    entry = _confirmed_prompt_history_entry()
+    if violation == "status_pending_user_check":
+        entry["status"] = "pending_user_check"
+    elif violation == "status_unknown":
+        entry["status"] = "unknown"
+    elif violation == "status_not_verified":
+        entry["status"] = "not_verified"
+    elif violation == "status_verified_local_fact_grading":
+        entry["status"] = "verified_local"
+    elif violation == "status_missing":
+        del entry["status"]
+    elif violation == "candidate_prompt_identity":
+        entry["candidate_target_identity"] = CONFIRMED_PROMPT_TARGET_ID
+    elif violation == "candidate_model_identity":
+        entry["candidate_target_identity"] = "model-v4.1-r1"
+    elif violation == "passed_true":
+        entry["passed"] = True
+    elif violation == "pending_status_plus_candidate_identity":
+        entry["status"] = "pending_user_check"
+        entry["candidate_target_identity"] = CONFIRMED_PROMPT_TARGET_ID
+    elif violation == "passed_true_plus_candidate_identity":
+        entry["passed"] = True
+        entry["candidate_target_identity"] = "model-v4.1-r1"
+    else:
+        raise AssertionError(f"未知 violation {violation!r}")
+    return entry
+
+
+def _assert_legal_history_entry_still_builds(build: Any, root: Path) -> None:
+    """合法对照（H2/H3 反向门不得反向过宽）：已确认 entry 仍正常构建。
+
+    完整 H1 正向契约由既有 H1 selector 复跑钉定；此处只做每参数内的
+    轻量对照，证明 fixture 与入口通道可用，非法输入的拒绝只能由该
+    非法字段 / 非法 entries 形态引起，且反向门不得误伤合法已确认
+    entry（对一切输入一律拒绝不是合规 fail-closed）。
+    """
+    legal_document = build(root, [_confirmed_prompt_history_entry()])
+    legal_entries = (
+        legal_document.get("entries") if isinstance(legal_document, Mapping) else None
+    )
+    assert isinstance(legal_entries, list) and len(legal_entries) == 1, (
+        "反向门不得反向过宽：合法已确认 prompt_history entry 必须仍正常"
+        "构建恰含一条 entry 的 history-summary 文档（H1 正向行为不回归）；"
+        f"实际 {type(legal_document).__name__} / entries={legal_entries!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "violation",
+    [
+        pytest.param("status_pending_user_check", id="status_pending_user_check"),
+        pytest.param("status_unknown", id="status_unknown"),
+        pytest.param("status_not_verified", id="status_not_verified"),
+        pytest.param(
+            "status_verified_local_fact_grading",
+            id="status_verified_local_mistaken_as_confirmation",
+        ),
+        pytest.param("status_missing", id="status_field_missing"),
+        pytest.param("candidate_prompt_identity", id="candidate_prompt_identity"),
+        pytest.param("candidate_model_identity", id="candidate_model_identity"),
+        pytest.param("passed_true", id="passed_true_declaration"),
+        pytest.param(
+            "pending_status_plus_candidate_identity",
+            id="pending_status_plus_candidate_identity",
+        ),
+        pytest.param(
+            "passed_true_plus_candidate_identity",
+            id="passed_true_plus_candidate_identity",
+        ),
+    ],
+)
+def test_history_summary_rejects_unconfirmed_or_smuggled_entries_fail_closed(
+    tmp_path: Path, violation: str
+) -> None:
+    r"""未确认 / 夹带候选正式身份 / 声明 passed 的 history entry 必须被
+    fail-closed 拒绝：明确域错误 + 非空拒因 + 零写入 + 输入不变
+    （H2/H3，M1b history-summary 非法输入反向最小切片，先写测试，不
+    改 production）。
+
+    H2/H3 behavior —— 对携带非法字段的 history entry（fixture 与 H1 同
+    一套：_write_full_history_prompt_registry 完整三条目 legacy
+    registry，声明源 v4.1-concise-evidence-json-v1 始终齐全）调用
+    ``build_history_summary(root, [entry])`` 必须：
+    1. fail-closed 拒绝（H2 三类 entry 级非法输入）：
+       - entry ``status`` 不是 ``user_confirmed``：pending_user_check
+         （M0 status_field_legend“未生效，禁止写入”）、unknown（已知
+         缺失）、not_verified（完整性/存在性未确认）、verified_local
+         （source_verified 的事实分级，不是确认门槛）、status 字段缺
+         失 —— 白名单式只认 user_confirmed，不得黑名单式只拒已知
+         pending 值；
+       - entry 夹带候选正式身份 ``candidate_target_identity``：历史
+         entry 是 history_only（M0 registry_versions_not_migrating /
+         model_train_eval_history：仅进 history-summary，不分配任何
+         新正式身份），夹带 prompt-v4.1-r1（Prompt 迁移目标身份）或
+         model-v4.1-r1（五族完整身份）即试图把 history entry 伪装成
+         迁移条目 / 伪造身份 —— 必须拒绝（即使 status 保持
+         user_confirmed）；
+       - entry 声明 ``passed: true``：M0 model_train_eval_history
+         scope_note“不得把历史 summary 转成 passed”、
+         global_pre_write_checks“禁止写入或标记 verified/passed” ——
+         entry 不得自我声明通过状态（即使 status 保持
+         user_confirmed）；
+       - 组合参数（pending + candidate / passed + candidate）钉定各门
+         相互独立：不得只检查 status 而放行夹带身份，也不得只查身份
+         键而放行 passed 声明；
+    2. 拒绝经明确域错误（PromptMigrationBlocked 等 versioning 域错
+       误）或 blocked 报告通道给出，携带非空拒因，不得抛未类型化异常
+       （TypeError / ValueError / KeyError / AttributeError / OSError
+       等直接穿透不是合规拒绝）；
+    3. 不得静默构建文档：返回 history-summary 文档（含声明源事实的
+       entry）即未拒绝，判失败 —— 不得为未确认 / 夹带身份 / 声明
+       passed 的 entry 构建 history-summary 条目；
+    4. 零写入：全树逐字节不变（legacy 源不变、不写 history-summary 文
+       件、不创建 records/ 或任何目标条目）；
+    5. 不就地修改传入 entry。
+
+    fixture 隔离：entry 的 source_legacy_id 指向的 legacy 源
+    manifest.json / prompt.yaml 始终存在且事实齐全（H1 fixture 前置事
+    实），使拒绝只能由非法 entry 字段引起，不得由源缺失混入；合法对
+    照（同 fixture 下 H1 已确认 entry）仍正常构建 —— 反向门不得反向
+    过宽（对一切输入一律拒绝不是合规 fail-closed），H1 完整正向契约
+    由既有 H1 selector 复跑钉定。
+
+    RED Gate 设计（H2/H3）：build_history_summary 入口已存在（H1 已
+    GREEN），RED 不经入口缺失分支给出 —— 当前实现对全部 10 个参数
+    静默构建文档（fail-closed 行为缺失），由
+    _expect_history_summary_fail_closed 的显式 AssertionError（“不得静默构建 history-summary
+    文档”）钉出“history-summary 非法输入 fail-closed 行为缺失”；
+    拒绝若以未类型化异常给出，同样经 AssertionError + cause 链转译。
+
+    捕获的合理但错误实现：
+    - 不读 entry status 字段（当前实现）-> 全部 status 参数静默构建文
+      档，判失败；
+    - 黑名单式 status 校验（只拒 pending_user_check）-> unknown /
+      not_verified / verified_local / status_field_missing 参数失败；
+    - 只检查 status、不检查夹带身份键 -> candidate_prompt_identity /
+      candidate_model_identity 参数静默构建文档，判失败；
+    - 只按 kind 判断（凡 prompt_history 一律放行）-> passed_true /
+      组合参数失败；
+    - 对合法已确认 entry 也拒绝（反向过宽）-> 合法对照断言失败；
+    - 拒绝时抛未类型化异常（TypeError 等）-> 通道合规性断言失败
+      （cause 链保留原始异常）；
+    - 静默拒绝（异常消息为空）-> 非空拒因断言失败；
+    - 拒绝路径写盘（history-summary 文件、records/、staging）-> 全树
+      快照对比失败；
+    - 就地改写传入 entry -> 输入不变断言失败。
+    """
+    _write_full_history_prompt_registry(tmp_path)
+    declared_entry_dir = (
+        tmp_path / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    )
+
+    # ---- fixture 前置事实（对齐 H1）：声明源齐全，拒绝只能由非法
+    #      entry 字段引起；目标根不存在。----
+    assert (declared_entry_dir / "manifest.json").is_file(), (
+        "fixture 前置事实失败：已确认历史源 manifest.json 必须存在"
+    )
+    assert (declared_entry_dir / "prompt.yaml").is_file(), (
+        "fixture 前置事实失败：已确认历史源 prompt.yaml 必须存在"
+    )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    entry = _history_entry_with_violation(violation)
+    expected_entry = _history_entry_with_violation(violation)
+
+    before = _snapshot_tree(tmp_path)
+
+    # ---- 合法对照：反向门不得反向过宽（合法已确认 entry 仍构建）。----
+    _assert_legal_history_entry_still_builds(build, tmp_path)
+
+    # ---- 行为 1/2/3：fail-closed 拒绝 + 明确域错误/blocked 通道 +
+    #      非空拒因 + 不静默构建文档。----
+    _expect_history_summary_fail_closed(build, tmp_path, [entry])
+
+    # ---- 行为 4：零写入 —— 全树逐字节不变（legacy 源不变、不写
+    #      history-summary 文件、不创建任何目标条目）。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "fail-closed 拒绝必须零写入：全树快照逐字节不变（不写 "
+        "history-summary 文件、不创建 records/ 或任何目标条目、不改 "
+        "legacy 源）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "拒绝路径不得创建 records/ 或任何正式对象条目（不分配新正式身份）"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "拒绝路径不得写入 history-summary 文件（文档只经返回值给出）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"拒绝路径不得落盘任何 history-summary 命名文件：发现 {path}"
+        )
+
+    # ---- 行为 5：不就地修改传入 entry。----
+    assert entry == expected_entry, (
+        "全程不得就地改写传入 entry（H2/H3 输入事实保持不变）"
+    )
+
+
+@pytest.mark.parametrize(
+    "illegal_entries",
+    [
+        pytest.param(None, id="entries_none"),
+        pytest.param(42, id="entries_non_iterable_int"),
+        pytest.param("abc", id="entries_iterable_of_non_mappings"),
+    ],
+)
+def test_history_summary_rejects_none_and_non_iterable_entries_fail_closed(
+    tmp_path: Path, illegal_entries: Any
+) -> None:
+    r"""entries=None 与非可迭代输入必须被 fail-closed 拒绝，不得静默
+    返回空文档：明确域错误 + 非空拒因 + 零写入 + legacy 不变（H2/H3，
+    M1b history-summary 非法输入反向最小切片，先写测试，不改
+    production）。
+
+    H2/H3 behavior —— 对非法 ``entries`` 输入调用
+    ``build_history_summary(root, entries)`` 必须：
+    1. ``entries=None`` 与非可迭代输入（如整数）fail-closed 拒绝：
+       不得静默返回 entries 为空的 history-summary 文档（空文档会被
+       调用方当作“无历史需整理”消费，掩盖输入错误）；
+    2. 可迭代但元素非 mapping（如字符串，元素为字符）同样拒绝：不
+       得把非 mapping 元素当 entry 构建文档（当前实现已经
+       PromptMigrationBlocked 域错误通道拒绝 —— 本参数为 Unexpected
+       PASS 回归钉，钉定该通道不得回归为未类型化异常或静默空文档）；
+    3. 拒绝经明确域错误（PromptMigrationBlocked 等 versioning 域错
+       误）或 blocked 报告通道给出，携带非空拒因，不得抛未类型化异常
+       （TypeError / ValueError 等直接穿透不是合规拒绝）；
+    4. 零写入：全树逐字节不变（legacy 源不变、不写 history-summary
+       文件、不创建 records/ 或任何目标条目）。
+
+    fixture 与合法对照同
+    test_history_summary_rejects_unconfirmed_or_smuggled_entries_fail_
+    closed：声明源齐全 + 合法已确认 entry
+    仍正常构建，使拒绝只能由 entries 形态引起，且反向门不得反向过宽。
+
+    RED Gate 设计（H2/H3）：当前实现把 list(entries) 的 TypeError 静
+    默吞掉（items = []），对 None / 42 返回 entries 为空的文档 ——
+    由 _expect_history_summary_fail_closed 的显式 AssertionError（“不
+    得静默构建 history-summary 文档（含 entries 为空的文档）”）钉出
+    RED；entries_iterable_of_non_mappings 参数当前已 fail-closed，记
+    为 Unexpected PASS。
+
+    捕获的合理但错误实现：
+    - 吞掉 TypeError 静默返回空文档（当前实现）-> entries_none /
+      entries_non_iterable_int 参数判失败；
+    - 让 list() 的原始 TypeError 直接穿透 -> 通道合规性断言失败
+      （未类型化异常，cause 链保留）；
+    - 把 None 当“空批”返回 ready 文档 -> 同第一类，判失败；
+    - 对合法 entry 列表也拒绝（反向过宽）-> 合法对照断言失败；
+    - 静默拒绝（空消息）-> 非空拒因断言失败；
+    - 拒绝路径写盘 -> 全树快照对比失败。
+    """
+    _write_full_history_prompt_registry(tmp_path)
+    declared_entry_dir = (
+        tmp_path / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    )
+
+    # ---- fixture 前置事实（对齐 H1）：声明源齐全、目标根不存在。----
+    assert (declared_entry_dir / "manifest.json").is_file(), (
+        "fixture 前置事实失败：已确认历史源 manifest.json 必须存在"
+    )
+    assert (declared_entry_dir / "prompt.yaml").is_file(), (
+        "fixture 前置事实失败：已确认历史源 prompt.yaml 必须存在"
+    )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    before = _snapshot_tree(tmp_path)
+
+    # ---- 合法对照：反向门不得反向过宽（合法已确认 entry 仍构建）。----
+    _assert_legal_history_entry_still_builds(build, tmp_path)
+
+    # ---- 行为 1/2/3：fail-closed 拒绝 + 明确域错误/blocked 通道 +
+    #      非空拒因 + 不静默返回空文档。----
+    _expect_history_summary_fail_closed(build, tmp_path, illegal_entries)
+
+    # ---- 行为 4：零写入 —— 全树逐字节不变（legacy 源不变、不写
+    #      history-summary 文件、不创建任何目标条目）。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "fail-closed 拒绝必须零写入：全树快照逐字节不变（不写 "
+        "history-summary 文件、不创建 records/ 或任何目标条目、不改 "
+        "legacy 源）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "拒绝路径不得创建 records/ 或任何正式对象条目"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "拒绝路径不得写入 history-summary 文件（文档只经返回值给出）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"拒绝路径不得落盘任何 history-summary 命名文件：发现 {path}"
+        )

@@ -1657,8 +1657,33 @@ def _build_history_summary_entry(
     不扫描 registry；事实值取声明源文件值并携带来源 provenance。缺失/
     不可解析源 fail-closed 抛 :class:`PromptMigrationBlocked`（零写入），
     unknown / 未确认 entry 的 blocked 反向切片不在本切片内。
+
+    H2/H3 fail-closed 门（先于任何 legacy 源读取，零写入拒绝）：
+      - entry ``status`` 必须是 ``user_confirmed``（白名单式，未知 /
+        缺失 / 事实分级状态一律拒绝）；
+      - entry 不得携带 ``candidate_target_identity`` 键（history entry
+        是 history_only，不分配任何新正式身份）；
+      - entry 不得声明 ``passed: true``（不得把历史 summary 转成
+        passed / 自我声明通过状态）。
     """
     source_id = entry.get("source_legacy_id")
+    status = entry.get("status")
+    if status != _CONFIRMED_STATUS:
+        raise PromptMigrationBlocked(
+            f"history entry status={status!r} 未确认：history-summary 仅接受 "
+            f"{_CONFIRMED_STATUS!r}（fail-closed，pending/unknown/事实分级 "
+            "不得当 confirmed）"
+        )
+    if "candidate_target_identity" in entry:
+        raise PromptMigrationBlocked(
+            "history entry 夹带 candidate_target_identity：历史 entry 是 "
+            "history_only，不分配任何新正式身份（fail-closed）"
+        )
+    if entry.get("passed") is True:
+        raise PromptMigrationBlocked(
+            "history entry 声明 passed: true：不得把历史 summary 转成 "
+            "passed 或自我声明通过状态（fail-closed）"
+        )
     if not isinstance(source_id, str) or not source_id:
         raise PromptMigrationBlocked(
             "history entry 缺少 source_legacy_id：无法定位 legacy 源"
@@ -1744,16 +1769,21 @@ def build_history_summary(
     条目、不就地修改传入 entries。
 
     全程纯构建零写入：不写 history-summary 文件、不创建 records/ 或任
-    何目标条目、不改 legacy 源，文档只经返回值给出。缺失/不可解析源
-    fail-closed 抛 :class:`PromptMigrationBlocked`；unknown / 缺失资料形
-    态、未确认 entry 的 blocked 反向、多 entry 批量、文件写入与 CLI 不
-    在本切片。
+    何目标条目、不改 legacy 源，文档只经返回值给出。缺失/不可解析源、
+    未确认 entry（status 非 ``user_confirmed``）、夹带
+    ``candidate_target_identity`` 键、声明 ``passed: true``、非法
+    ``entries``（None / 不可迭代 / 元素非 mapping）均 fail-closed 抛
+    :class:`PromptMigrationBlocked`；unknown / 缺失资料形态、多 entry
+    批量、文件写入与 CLI 不在本切片。
     """
     root = Path(root)
     try:
         items = list(entries)
-    except TypeError:
-        items = []
+    except TypeError as exc:
+        raise PromptMigrationBlocked(
+            "history entries 缺失或不可迭代：history-summary 构建需要可迭"
+            f"代的 entry 序列（fail-closed，不静默返回空文档）: {exc}"
+        ) from exc
     for item in items:
         if not isinstance(item, Mapping):
             raise PromptMigrationBlocked(
