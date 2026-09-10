@@ -1635,6 +1635,25 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
 # H1 history-summary 文档 schema（M1b 纯构建，文档只经返回值给出，不落盘）。
 _HISTORY_SUMMARY_SCHEMA = "tensile-migration/history-summary/v1"
 
+# H5 prepare-only run 历史条目的固定分类与核心训练参数字段族
+# （Spec「核心历史信息的最低内容」）。prepare-only run 只有准备资料
+# （输入 / prepared-config-untrained），无训练执行记录，全部核心训练
+# 参数以字段级 unknown 进入 facts，绝不把 planned 参数登记为已知值。
+_PREPARE_ONLY_RUN_KIND = "prepare_only_run"
+_PREPARED_ONLY_TRAINING_STATUS = "prepared_only"
+_PREPARE_ONLY_RUN_SOURCE_ROOT = Path("workspace") / "runs"
+_PREPARE_ONLY_CORE_TRAIN_PARAMS = (
+    "seed",
+    "learning_rate",
+    "epochs",
+    "effective_batch_size",
+    "optimizer",
+    "precision",
+    "lora_rank",
+    "lora_alpha",
+    "lora_target_modules",
+)
+
 # H1 历史 entry 的必需已知事实与来源文件对应：manifest-only 事实指回
 # manifest.json、prompt.yaml-only 事实指回 prompt.yaml（字段级 provenance
 # 口径；protocol_id 两源均有，取 manifest 声明值）。事实值一律取 legacy
@@ -1700,6 +1719,12 @@ def _build_history_summary_entry(
     kind = entry.get("kind")
     if not isinstance(kind, str) or not kind:
         raise PromptMigrationBlocked("history entry 缺少 kind：无法构建文档条目")
+
+    # H5 按 kind 分流：prepare-only run 是允许的历史查询记录（仅进
+    # history-summary，不是训练执行事实），走独立构建路径 —— 不读
+    # prompt registry 源，也不扫描 workspace/runs/ 的 sibling。
+    if kind == _PREPARE_ONLY_RUN_KIND:
+        return _build_prepare_only_run_history_entry(source_id)
 
     source_rel_dir = _LEGACY_PROMPT_REGISTRY / source_id
     manifest_file = Path(root) / source_rel_dir / "manifest.json"
@@ -1812,6 +1837,40 @@ def _build_history_summary_entry(
         "original_id": source_id,
         "history_only": True,
         "formal_identity": "none",
+        "facts": facts,
+    }
+
+
+def _build_prepare_only_run_history_entry(source_id: str) -> dict[str, Any]:
+    """构建 prepare-only run 历史条目（H5，纯构建零写入）。
+
+    保留原始 run ID（含 "/"），分类保持 kind ``prepare_only_run`` 与
+    ``training_status: prepared_only``（准备资料不是训练执行事实，不得
+    输出 completed 等完成语义）；``formal_identity: none``，不派生 model
+    等任何概念条目，不分配正式身份。核心训练参数一律字段级 unknown：
+    planned 配置（prepared-config-untrained 的 seed / learning_rate 等）
+    是准备资料，不是训练执行事实，不读取、不登记为已知值；unknown 事实
+    携带非空 unknown_reason 与指回声明 run 源（workspace/runs/<run_id>）
+    的 attempted_source，不从 sibling run 取任何内容、不扫描 runs 目录。
+    """
+    attempted = (_PREPARE_ONLY_RUN_SOURCE_ROOT / source_id).as_posix()
+    facts = {
+        name: {
+            "unknown_reason": (
+                f"prepare-only run {source_id} 仅有准备资料，无训练执行记录："
+                f"{name} 不得取自 planned 配置登记为训练事实"
+            ),
+            "attempted_source": attempted,
+        }
+        for name in _PREPARE_ONLY_CORE_TRAIN_PARAMS
+    }
+    return {
+        "entry_id": f"history-{_PREPARE_ONLY_RUN_KIND}-{source_id}",
+        "kind": _PREPARE_ONLY_RUN_KIND,
+        "original_id": source_id,
+        "history_only": True,
+        "formal_identity": "none",
+        "training_status": _PREPARED_ONLY_TRAINING_STATUS,
         "facts": facts,
     }
 
