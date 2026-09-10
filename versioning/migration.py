@@ -1882,9 +1882,18 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     参数全部字段级 unknown（缺席不可观察，缺失不伪装成已知值），且不
     输出 weights_observed / completed / not_completed / prepared_only
     等无证据分类。声明 run 源存在但 fold0 内 adapter / merged 均无权重
-    命名文件（完全无权重证据）时维持 fail-closed 抛
-    :class:`PromptMigrationBlocked`（该分流方向留待裁决，不伪造已知事
-    实、不降级静默构建）；run 根权重结构等其余形态不在本切片。
+    命名文件（完全无权重证据）时 entry 照常构建、整批不 blocked：结构
+    事实按观察输出已知 False（目录可读、判定确定，是观察到的缺席，不
+    是 unknown），核心训练参数保持字段级 unknown，且不输出
+    weights_observed / completed / not_completed / prepared_only 等无
+    证据分类（"无权重"不等于"训练未完成"，不伪造已知事实、不降级静默
+    分类）；声明权重结构组件缺失（fold0 存在但 adapter / merged 目录
+    缺失，Reviewer P2：目录缺席不可观察）时对应事实进入字段级 unknown
+    （非空 unknown_reason 指明缺失的声明位置 + 指回声明 run 源的
+    attempted_source，不携带非 None value、不携带观察 provenance），可读
+    目录事实仍按观察输出（可读无权重 -> 已知 False），且因不可完整观察
+    不输出 training_status 键（部分结构观察不足以支撑 evidence-derived
+    分类，Reviewer P3）；run 根权重结构等其余形态不在本切片。
     """
     run_rel = _PREPARE_ONLY_RUN_SOURCE_ROOT / source_id
     run_dir = root / run_rel
@@ -1930,19 +1939,37 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         }
     adapter_dir = fold_dir / "adapter"
     merged_dir = fold_dir / "merged"
-    adapter_present = adapter_dir.is_dir() and any(
-        path.is_file() for path in adapter_dir.rglob("*.safetensors")
+    # H6d：区分目录存在性与权重文件存在性（Reviewer P2）—— 声明的
+    # adapter / merged 目录缺失（预期路径不存在）是缺席不可观察：对应
+    # 事实进入字段级 unknown（非空 unknown_reason 指明缺失的声明位置 +
+    # 指回声明 run 源的 attempted_source），不得标为已知 False、provenance
+    # 不得声称观察到不存在的目录；目录可读时权重存在性按 H6c 口径只认
+    # 顶层 *.safetensors（可读无权重目录仍是观察到的缺席，已知 False）。
+    adapter_dir_exists = adapter_dir.is_dir()
+    merged_dir_exists = merged_dir.is_dir()
+    # H6c：adapter 与 merged 权重存在性同口径 —— 只认声明目录顶层
+    # *.safetensors（统一深度口径：M0 观察的 adapter 导出与 merged 分
+    # 片均为目录顶层文件；嵌套 / checkpoint 层权重不得伪造 *_present）。
+    adapter_weights_present = adapter_dir_exists and any(
+        path.is_file() for path in adapter_dir.glob("*.safetensors")
     )
-    merged_present = merged_dir.is_dir() and any(
+    merged_weights_present = merged_dir_exists and any(
         path.is_file() for path in merged_dir.glob("*.safetensors")
     )
-    if not (adapter_present or merged_present):
-        raise PromptMigrationBlocked(
-            f"weight run {source_id} 的声明源 {fold_rel.as_posix()} 内未观察到"
-            " adapter / merged 权重存在性证据：无法支撑 "
-            f"{ _WEIGHT_RUN_OBSERVED_TRAINING_STATUS!r} 分类（fail-closed，"
-            "不输出无证据声明）"
-        )
+    weight_evidence_present = adapter_weights_present or merged_weights_present
+    weight_structure_fully_observable = adapter_dir_exists and merged_dir_exists
+
+    def _missing_dir_fact(component: str) -> dict[str, Any]:
+        # 缺失目录事实：不携带非 None value，不携带观察 provenance。
+        return {
+            "unknown_reason": (
+                f"weight run {source_id} 声明的 fold0/{component} 目录"
+                f" {fold_rel.as_posix()}/{component} 缺失（预期路径不存在），"
+                f"{component} 存在性无法经只读观察取得：目录缺席不可观察，缺"
+                "失不伪装成已知值，也不从 sibling 取内容"
+            ),
+            "attempted_source": run_rel.as_posix(),
+        }
 
     def _observed_fact(value: object, observed_rel: Path) -> dict[str, Any]:
         return {
@@ -1955,8 +1982,16 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
 
     facts: dict[str, dict[str, Any]] = {
         "fold_scope": _observed_fact("fold0", fold_rel),
-        "adapter_present": _observed_fact(adapter_present, fold_rel / "adapter"),
-        "merged_present": _observed_fact(merged_present, fold_rel / "merged"),
+        "adapter_present": (
+            _observed_fact(adapter_weights_present, fold_rel / "adapter")
+            if adapter_dir_exists
+            else _missing_dir_fact("adapter")
+        ),
+        "merged_present": (
+            _observed_fact(merged_weights_present, fold_rel / "merged")
+            if merged_dir_exists
+            else _missing_dir_fact("merged")
+        ),
     }
     for name in _PREPARE_ONLY_CORE_TRAIN_PARAMS:
         facts[name] = {
@@ -1968,15 +2003,25 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
             ),
             "attempted_source": run_rel.as_posix(),
         }
-    return {
+    entry: dict[str, Any] = {
         "entry_id": f"history-{_WEIGHT_RUN_KIND}-{source_id}",
         "kind": _WEIGHT_RUN_KIND,
         "original_id": source_id,
         "history_only": True,
         "formal_identity": "none",
-        "training_status": _WEIGHT_RUN_OBSERVED_TRAINING_STATUS,
         "facts": facts,
     }
+    # H6c：完全无权重证据（adapter / merged 顶层均无权重命名文件）时
+    # 不输出任何 training_status 分类（无证据的 weights_observed /
+    # completed / not_completed / prepared_only 均为伪造声明），entry
+    # 以观察到的缺席事实保留；存在任一顶层权重证据时维持 M0 分类。
+    # H6d：声明权重结构组件缺失（adapter / merged 任一目录缺失，不可完
+    # 整观察）时部分结构观察不足以支撑 evidence-derived 分类，同样不输出
+    # training_status 键（不得由另一半可读目录的权重证据输出
+    # weights_observed）。
+    if weight_structure_fully_observable and weight_evidence_present:
+        entry["training_status"] = _WEIGHT_RUN_OBSERVED_TRAINING_STATUS
+    return entry
 
 
 def _build_prepare_only_run_history_entry(source_id: str) -> dict[str, Any]:
