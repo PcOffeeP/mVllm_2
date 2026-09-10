@@ -452,8 +452,34 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   目（不为 run 分配任何新正式身份）；保留原始 run ID 与来源；
         #   不伪造训练完成、权重、评测或通过状态；纯构建零写入、不扫
         #   描 sibling、合法 prompt_history entry 不回归。
-        #   多 entry 批量、weight-run/eval/model 历史条目、history-
-        #   summary 文件写入与 CLI 不在本切片。
+        #   H6a（M1b weight run 历史条目第一切片）起，kind ``weight_run``
+        #   的已确认 run entry（M0
+        #   training_machine_run_evidence.weight_runs 首条
+        #   ``v4.1-phase2-source-aware-v1-seed3407``：训练机只读观察
+        #   "fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"）
+        #   不得走 prompt registry 源路径，也不得 fail-closed 拒绝使
+        #   entry 消失（M0 把有权重 run 列为仅进 history-summary 的允许
+        #   历史记录）：entry 输出 evidence-derived ``training_status:
+        #   "weights_observed"``（M0 明确"run 目录存在不等于完成训练"、
+        #   object-mapping"不能当作 completed 训练" —— 不得输出
+        #   completed，也不得输出 not_completed 等同样无证据的负向声
+        #   明）；M0 结构观察分解出的已知事实 fold_scope == "fold0" 与
+        #   adapter_present / merged_present == True（Spec「模型身份」
+        #   最小内容的 fold 或全量范围 + 权重位置及存在性；{value,
+        #   source} 形态，来源 provenance 指回声明 run 源）；核心训练参
+        #   数（与 H5 同族九字段）保持字段级 unknown（M0 未记录 weight
+        #   run 的任何参数值，声明 run 的 evidence_archive 内容未经核实
+        #   —— 调查记录"归档尚未证明完整"；unknown 事实携带非空
+        #   unknown_reason 与指回声明 run 源的 attempted_source，不携带
+        #   非 None value）；不声明训练完成、通过、评测结果、model 正
+        #   式身份或权重完整性/哈希验证（M0："全部未验证权重完整性与哈
+        #   希"；与 H5 相反，权重存在性命名族键允许携带存在性值 ——
+        #   权重存在是 M0 观察事实）；纯构建零写入、不扫描 sibling；
+        #   合法 prompt_history 与 prepare_only_run entry 不回归。其余
+        #   weight run 结构形态（run 根结构、merged 软链接来源链）、声
+        #   明 run 源缺失（known gap）、有证据的核心训练参数提取（已
+        #   核实归档 manifest）、多 entry 批量、eval/model 历史条目、
+        #   history-summary 文件写入与 CLI 不在本切片（留 H6b 及后续）。
 
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
@@ -571,6 +597,20 @@ training_status 断言的显式 AssertionError 钉出“prepare-only run
 失），同样经本切片的 try/except 转译为显式行为 AssertionError（原
 始域错误经 cause 链保留）钉出同一 RED 结论；合法 prompt_history
 entry 的正向构建由既有 H1 selector 复跑钉定（合法对照仍通过）。
+H6a（M1b weight run 历史条目第一切片，单个已确认 weight_run entry
+的历史字段提取）同口径补充：build_history_summary 入口已存在（H1
+已 GREEN），RED 不经入口缺失分支给出 —— 当前实现不按 kind 分流到
+run 历史路径（对 weight_run 仍走 prompt registry 源路径），对已确认
+weight_run entry 静默构建无 training_status、无 fold/weights 已知
+事实、无核心训练参数事实的 prompt 形态文档（六个 prompt 事实全部
+unknown，attempted_source 指向不存在的 pipeline/prompt_registry/
+<run_id>/），由 training_status 断言的显式 AssertionError 钉出
+“weight run 历史条目行为缺失”；若实现改为对该 kind fail-closed 拒
+绝（有权重 run 是 M0 明确允许保留的简明历史记录，拒绝会使 entry 消
+失），同样经本切片的 try/except 转译为显式行为 AssertionError（原
+始域错误经 cause 链保留）钉出同一 RED 结论；合法 prompt_history 与
+prepare_only_run entry 的正向构建由既有 H1/H5 selector 复跑钉定
+（合法对照仍通过）。
 
 范围边界：本文件只覆盖 Prompt 迁移（T1–T10）、T11–T14 数据迁移批级
 只读预检切面（ready 正向、目标冲突边界、已钉扎 manifest provenance
@@ -16464,4 +16504,830 @@ def test_confirmed_prepare_only_run_entry_not_registered_as_training_fact(
     # ---- 不就地修改传入 entry。----
     assert entry == expected_entry, (
         "全程不得就地改写传入 entry（H5 输入事实保持不变）"
+    )
+
+
+# ---------------------------------------------------------------------------
+# H6a：history-summary —— 单条已确认 weight_run entry 的历史字段提取
+#（M1b，先写测试，不改 production）
+# ---------------------------------------------------------------------------
+#
+# H6a behavior（本切片，主 Agent 选定，M1b history-summary weight run
+# 第一切片，先写测试，不改 production）—— 对已确认 weight run 历史条
+# 目只登记有证据的事实（Spec：简明历史记录不冒充完整正式运行或质量通
+# 过；M0 evidence：source-inventory.yaml
+# training_machine_run_evidence.weight_runs 首条
+# v4.1-phase2-source-aware-v1-seed3407，训练机只读观察"fold0 有 adapter
+# 与 10 个 merged 分片，有 evidence_archive"；notes："run 目录存在不等
+# 于完成训练……全部未验证权重完整性与哈希"；object-mapping
+# model_train_eval_history：不能当作 completed 训练）：
+# 1. entry 必须进入 history-summary 文档，不得 fail-closed 拒绝使
+#    entry 消失（M0 把六个有权重 run 列为仅进 history-summary 的允许
+#    历史记录，用户已确认 history_decision）；
+# 2. 保留原始 run ID 与分类：original_id 保留 M0 记录的原始 run ID；
+#    kind 保持 "weight_run"（有权重 run 分类，不得误归 prepare_only_
+#    run 或 prompt 形态）；
+# 3. training_status 为 evidence-derived "weights_observed"：M0 观察
+#    到权重存在，训练完成状态被 M0 明确排除（"run 目录存在不等于完成
+#    训练"、"不能当作 completed 训练"）—— 不得输出 completed，也不得
+#    输出 not_completed 等同样无证据的负向声明（"不等于完成"不等于
+#    "未完成"）；唯一有证据的分类是"观察到权重存在"本身（M0 weight_
+#    runs 分组名 / "有 adapter 与 10 个 merged 分片"）；
+# 4. M0 结构观察分解出的已知事实（Spec「模型身份」最小内容：fold 或
+#    全量范围 + 权重位置及存在性）：fold_scope == "fold0"、
+#    adapter_present is True、merged_present is True（{value, source}
+#    形态，source 为非空 mapping 且指回声明 run 源；权重事实的
+#    source 须指回观察到它们的 fold0 位置）；
+# 5. 核心训练参数（Spec「核心训练参数」九字段族，与 H5 同族）全部字
+#    段级 unknown：M0 未记录 weight run 的任何核心训练参数值，声明
+#    run 的 evidence_archive 内容未经 M0 核实（调查记录："归档尚未证
+#    明完整"），fixture 中声明 run 内不存在任何参数来源文件；unknown
+#    事实携带非空 unknown_reason 与指回声明 run 源的
+#    attempted_source，不携带非 None value；参数名反走私：任何名字
+#    含参数 token 的事实不得携带已知值（sibling prepare-only run 的
+#    planned seed 3411 与 sibling 归档 manifest 的合成参数不得进入）；
+# 6. 不声明训练完成、通过、评测结果、model 正式身份或权重完整性 /
+#    哈希验证：completed / passed / eval / model / verif / hash /
+#    integrity / checksum / sha 命名族键不得携带存在性值（M0：全部未
+#    验证权重完整性与哈希；不得把历史 summary 转成 passed；不为 run
+#    分配任何新正式身份）。与 H5 相反，weights / adapter / merged /
+#    checkpoint / safetensors 命名族键允许携带存在性值 —— 权重存在
+#    是本 run 的 M0 观察事实；
+# 7. 不扫描 sibling：entries 恰含声明的一条；未声明 sibling（两个
+#    prepare-only run、run 根结构 weight run、三个 prompt registry
+#    条目）的 ID 不得进入文档任何字符串；不取 sibling 结构事实
+#    （run 根结构 sibling 无 fold0/，取错结构必被 fold_scope 断言捕
+#    获）；
+# 8. 不分配任何新正式身份：文档内任何字符串值都不是
+#    <kind>-v<协议>-r<N> 正式身份；
+# 9. 纯构建零写入：全树快照逐字节不变（不写 history-summary 文件、
+#    不创建 records/ 或任何目标条目、不改 legacy 源树含
+#    workspace/runs/ 权重与准备资料）；不就地修改传入 entry；
+# 10. 合法已确认 prompt_history 与 prepare_only_run entry 对照仍正常
+#     构建（H1/H5 正向不回归，新增 run 分类不得反向过宽）。
+# 其余 weight run 结构形态（prompt-minimal run 根结构声明、
+# coverage-first seed3407 的 merged 软链接来源链）、声明 run 源缺失
+# （known gap：concise-cv 预期路径不存在）、有证据的核心训练参数提取
+# （已核实归档 training_run_manifest）、多 entry 批量、eval/model 历
+# 史条目（H9/H10）、history-summary 文件写入与 CLI 不在本切片（H6b
+# 及后续）。
+
+# M0 source-inventory.yaml training_machine_run_evidence.weight_runs 首
+# 条真实 run（训练机只读调查 training_observed："fold0 有 adapter 与
+# 10 个 merged 分片，有 evidence_archive"）。本切片声明该 run 一条
+# entry；其余五个 weight run 保持未声明 sibling。该 run 与 H5 fixture
+# 的 WEIGHT_RUN_SIBLING_ID 是同一真实 run —— H5 把它作为未声明
+# sibling 钉死扫描，H6a 把它声明为 entry 钉死提取。
+WEIGHT_RUN_DECLARED_ID = WEIGHT_RUN_SIBLING_ID
+
+# M0 weight_runs 第 5 条真实 run（"run 根下有 adapter 与 10 个 merged
+# 分片，有归档目录；结构与 fold0 子目录模式不同"）。作为未声明
+# sibling 写入 fixture：权重直接位于 run 根（无 fold0/ 子目录），
+# 扫描 workspace/runs/ 或从 sibling 取结构事实的实现必被捕获。
+WEIGHT_RUN_ROOT_SIBLING_ID = "v4.1-prompt-minimal-v1-seed3411"
+
+# Spec「核心训练参数」九字段族（与 H5 同族共享常量）：M0 对 weight run
+# 只记录目录结构观察，未记录任何核心训练参数值，这些参数必须以字段级
+# unknown 进入文档；有证据的参数提取（已核实的归档 manifest）属 H6b。
+WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS = PREPARE_ONLY_CORE_TRAIN_PARAM_FACTS
+
+# M0 对已声明 run 的结构观察（"fold0 有 adapter 与 10 个 merged 分片，
+# 有 evidence_archive"）分解出的已知事实名（Spec「模型身份」最小内容的
+# fold 或全量范围 + 权重位置及存在性）。
+WEIGHT_RUN_FOLD_SCOPE_FACT = "fold_scope"
+WEIGHT_RUN_ADAPTER_PRESENT_FACT = "adapter_present"
+WEIGHT_RUN_MERGED_PRESENT_FACT = "merged_present"
+WEIGHT_RUN_KNOWN_FACTS = (
+    WEIGHT_RUN_FOLD_SCOPE_FACT,
+    WEIGHT_RUN_ADAPTER_PRESENT_FACT,
+    WEIGHT_RUN_MERGED_PRESENT_FACT,
+)
+
+# H6a evidence-derived training_status 分类值：M0 把这组 run 归类为
+# "有权重历史 run"（weight_runs 分组），观察事实是权重存在；训练完成
+# 状态被 M0 明确排除（"run 目录存在不等于完成训练"、"不能当作
+# completed 训练"）—— 既不能输出 completed（无证据的完成声明），也不
+# 能输出 not_completed（"不等于完成"不等于"未完成"，负向声明同样无证
+# 据），唯一有证据的分类是"观察到权重存在"本身。
+WEIGHT_RUN_TRAINING_STATUS = "weights_observed"
+
+# 参数名反走私 token（与 H5 同口径）：facts 内名字含这些 token 的事实
+# 一律不得携带已知值（防止实现从 sibling prepare-only run 的 planned
+# 配置或 sibling 归档 manifest 登记参数，含改用 configured_seed /
+# num_train_epochs 等名字）。
+_H6_PARAM_NAME_TOKENS = _H5_PARAM_NAME_TOKENS
+
+# 数据 / Prompt 引用反走私 token：M0 未记录该 run 的数据或 Prompt 引用
+# （调查记录："仍需逐训练核对实际冻结 Prompt，不能由 active Prompt 推
+# 断历史输入"），名字含这些 token 的事实若存在只能为字段级 unknown，
+# 防止从 sibling prepare-only run 的 input 资料（dataset_info.json 的
+# release_id 等）走私已知引用。
+_H6_REFERENCE_NAME_TOKENS = ("prompt", "release", "dataset", "data", "split")
+
+# H6a 禁止存在性声明的命名族 token：训练完成（completed：run 目录存
+# 在不等于完成训练）、通过（passed：不得把历史 summary 转成 passed）、
+# 评测（eval：已有评估指标属后续切片）、model 正式身份（不为 run 分配
+# 任何新正式身份）与权重完整性 / 哈希验证（M0：全部未验证权重完整性与
+# 哈希；含 sha256 命名族）。weights / adapter / merged / checkpoint /
+# safetensors 命名族不在禁止列表 —— 与 H5 相反，权重存在性是本 run 的
+# M0 观察事实。
+_H6_CLAIM_KEY_TOKENS = (
+    "completed",
+    "passed",
+    "eval",
+    "model",
+    "verif",
+    "hash",
+    "integrity",
+    "checksum",
+    "sha",
+)
+
+
+def _write_weight_run_root_sibling_layout(root: Path) -> None:
+    """H6a fixture：镜像 M0 weight_runs 第 5 条的 run 根结构 sibling。
+
+    未声明 sibling weight run ``v4.1-prompt-minimal-v1-seed3411``：M0
+    观察为"run 根下有 adapter 与 10 个 merged 分片，有归档目录；结构
+    与 fold0 子目录模式不同" —— 权重直接位于 run 根下（无 fold0/ 子目
+    录）。归档目录内放一份合成 training_run_manifest.json（结构镜像
+    docs/results/model_evidence/*/input/training_run_manifest.json 的
+    真实归档 manifest 字段集，字段值合成、seed 与任何真实 run 都不
+    同），作为"从 sibling 归档取参数"实现的诱饵：已声明 run 的
+    evidence_archive 保持为空目录（M0 未核实归档内容），任何已知参数
+    值都只可能来自 sibling。字段值合成（非真实资料），结构与事实字段
+    对齐 M0 证据。
+    """
+    run_dir = root / "workspace" / "runs" / WEIGHT_RUN_ROOT_SIBLING_ID
+    (run_dir / "adapter").mkdir(parents=True, exist_ok=True)
+    (run_dir / "adapter" / "adapter_model.safetensors").write_bytes(
+        f"<synthetic adapter bytes: {WEIGHT_RUN_ROOT_SIBLING_ID}>".encode("utf-8")
+    )
+    (run_dir / "merged").mkdir(parents=True, exist_ok=True)
+    for shard_index in range(1, 11):
+        (
+            run_dir / "merged" / f"model-{shard_index:05d}-of-00010.safetensors"
+        ).write_bytes(
+            (
+                f"<synthetic merged shard {shard_index}/10: "
+                f"{WEIGHT_RUN_ROOT_SIBLING_ID}>"
+            ).encode("utf-8")
+        )
+    (run_dir / "evidence_archive").mkdir(parents=True, exist_ok=True)
+    (run_dir / "evidence_archive" / "training_run_manifest.json").write_bytes(
+        _fixture_pretty_json_bytes(
+            {
+                "schema_version": (
+                    "tensile-vlm-v4.1-training-run/v1-fixture-bait"
+                ),
+                "run_id": WEIGHT_RUN_ROOT_SIBLING_ID,
+                "seed": 9999,
+                "learning_rate": 9e-05,
+                "epochs": 9.0,
+                "effective_batch_size": 99,
+                "optimizer": "adamw_fixture",
+                "precision": "fp32_fixture",
+                "lora_rank": 99,
+                "lora_alpha": 99,
+                "lora_target_modules": ["fixture_module"],
+                "actual_optimizer_steps": 9999,
+                "completed_at": "2026-01-01T00:00:00+08:00",
+            }
+        )
+    )
+
+
+def _confirmed_weight_run_entry() -> dict[str, Any]:
+    """逐字段镜像 M0 证据结构的已确认 weight_run entry（H6a 输入）。
+
+    kind 为 M0 对齐的 ``weight_run``（source-inventory
+    training_machine_run_evidence.weight_runs 的分组名）；
+    source_legacy_id 为 M0 记录的首条原始 run ID（不带 "/"，与
+    prepare-only run 的 ``<experiment>/seed<N>`` 形态不同）；observed
+    逐字取 M0 观察记录；status ``user_confirmed``（M0 object-mapping
+    model_train_eval_history 的 history_decision：用户确认六个有权重
+    run 仅进 history-summary，不分配任何新正式身份），由入口自身读
+    取该字段消费；source_verified 保持 ``training_observed`` 事实分
+    级（M0 训练机只读调查），与确认状态分离。entry 不携带
+    candidate_target_identity / passed。
+    """
+    return {
+        "kind": "weight_run",
+        "source_legacy_id": WEIGHT_RUN_DECLARED_ID,
+        "role": (
+            "有权重历史 run（M0 weight_runs 首条：历史模型候选，"
+            "需继续验证来源和归档完整性）"
+        ),
+        "source_verified": "training_observed",
+        "history_only": True,
+        "status": "user_confirmed",
+        "confirmed_by_user_date": "2026-09-07",
+        "observed": (
+            "fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"
+        ),
+        "notes": (
+            "M0 source-inventory weight_runs notes：run 目录存在不等于完"
+            "成训练；全部未验证权重完整性与哈希。object-mapping "
+            "model_train_eval_history：不能当作 completed 训练。"
+        ),
+    }
+
+
+def _assert_h6_fact_is_unknown(fact: Any, *, name: str, run_id: str) -> None:
+    """断言 weight run 事实为 H4/H5 同口径字段级 unknown 形态。"""
+    assert isinstance(fact, Mapping), (
+        f"weight run 的事实 {name} 必须以 mapping 形态进入字段级 unknown"
+        f"（携带 unknown_reason / attempted_source）：实际 {type(fact).__name__!r}"
+    )
+    reason = fact.get("unknown_reason")
+    assert isinstance(reason, str) and reason.strip(), (
+        f"weight run 的事实 {name} 必须携带非空字符串 unknown_reason（M0 "
+        f"未记录该字段值，缺失原因不得静默）：实际 {reason!r}"
+    )
+    attempted = fact.get("attempted_source")
+    attempted_text = " ".join(_document_string_fragments(attempted))
+    assert attempted_text.strip(), (
+        f"weight run 的事实 {name} 必须携带非空 attempted_source（指回声明"
+        f"的 run 源）：实际 {attempted!r}"
+    )
+    assert run_id in attempted_text, (
+        f"weight run 的事实 {name} 的 attempted_source 必须指回声明的 run"
+        f"源（{run_id}）：实际 {attempted_text!r}"
+    )
+    if "value" in fact:
+        assert fact["value"] is None, (
+            f"weight run 的事实 {name} 不得携带非 None 的 value（无证据值"
+            f"不得登记为已知）：实际 {fact['value']!r}"
+        )
+
+
+def _assert_h6_known_fact(
+    fact: Any,
+    *,
+    name: str,
+    run_id: str,
+    expected_value: Any,
+    must_reference_fold: bool = False,
+) -> None:
+    """断言 weight run 已知事实为 {value, source} 形态且来源指回声明源。"""
+    assert isinstance(fact, Mapping), (
+        f"weight run 的已知事实 {name} 必须为 {{value, source}} 形态的 "
+        f"mapping：实际 {type(fact).__name__!r}"
+    )
+    assert set(fact) == {"value", "source"}, (
+        f"weight run 的已知事实 {name} 的键集必须恰为 {{value, source}}："
+        f"实际 {sorted(fact)}"
+    )
+    if isinstance(expected_value, bool):
+        assert fact["value"] is expected_value, (
+            f"weight run 的已知事实 {name} 的 value 必须为 "
+            f"{expected_value!r}（M0 结构观察声明值）：实际 {fact['value']!r}"
+        )
+    else:
+        assert fact["value"] == expected_value, (
+            f"weight run 的已知事实 {name} 的 value 必须与 M0 结构观察声明值"
+            f"相等（不重算、不伪造、不取 sibling）：实际 {fact['value']!r}，"
+            f"期望 {expected_value!r}"
+        )
+    source = fact["source"]
+    assert isinstance(source, Mapping) and source, (
+        f"weight run 的已知事实 {name} 必须携带非空 mapping 形态的来源 "
+        f"provenance（source，指回声明 run 源）：实际 {source!r}"
+    )
+    source_text = " ".join(_document_string_fragments(source))
+    assert source_text.strip(), (
+        f"weight run 的已知事实 {name} 的来源 provenance 必须非空：实际 "
+        f"{source_text!r}"
+    )
+    assert run_id in source_text, (
+        f"weight run 的已知事实 {name} 的来源 provenance 必须指回声明的 run"
+        f"源（{run_id}）：实际 {source_text!r}"
+    )
+    if must_reference_fold:
+        assert "fold0" in source_text, (
+            f"weight run 的已知事实 {name} 的来源 provenance 必须指回观察到"
+            f"该事实的 fold0 位置（权重位置及存在性）：实际 {source_text!r}"
+        )
+
+
+def _assert_h6_no_completion_or_verification_claims(
+    value: Any, path: str
+) -> None:
+    """递归断言 weight run summary entry 内不存在完成 / 验证类声明。
+
+    与 H5 的 _assert_h5_no_training_fact_claims 不同：weight run 的权重
+    存在性是 M0 观察事实，weights / adapter / merged / checkpoint /
+    safetensors 命名族键允许携带存在性值（H6a 钉定的三个已知事实即属
+    此类）；禁止的是 M0 明确排除的声明 —— 训练完成（completed：run 目
+    录存在不等于完成训练）、通过（passed：不得把历史 summary 转成
+    passed）、评测结果（eval：已有评估指标属后续切片）、model 正式身份
+    （不为 run 分配任何新正式身份）与权重完整性 / 哈希验证（M0：全部
+    未验证权重完整性与哈希）。
+    """
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            child_path = f"{path}.{key}"
+            if any(token in key_text for token in _H6_CLAIM_KEY_TOKENS):
+                assert not _h5_value_claims_existence(item), (
+                    f"weight run 的 summary entry 不得声明 {child_path}：键"
+                    f"携带训练完成 / 通过 / 评测 / model 身份 / 权重完整性验"
+                    f"证的存在性值 {item!r}（M0 未证实训练完成，权重完整性与"
+                    "哈希全部未验证，不得把历史 summary 转成 passed）"
+                )
+            _assert_h6_no_completion_or_verification_claims(item, child_path)
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            _assert_h6_no_completion_or_verification_claims(
+                item, f"{path}[{index}]"
+            )
+
+
+def _assert_legal_prepare_only_run_entry_still_builds(
+    build: Any, root: Path
+) -> None:
+    """合法对照（H6a 新增 run 分类不得反向过宽）：prepare_only_run 不回归。
+
+    完整 H5 正向契约由既有 H5 selector 复跑钉定；此处只做轻量对照，
+    证明 weight run 历史条目分类不得反向过宽到改变既有合法 run entry
+    的行为。
+    """
+    legal_document = build(root, [_confirmed_prepare_only_run_entry()])
+    legal_entries = (
+        legal_document.get("entries")
+        if isinstance(legal_document, Mapping)
+        else None
+    )
+    assert isinstance(legal_entries, list) and len(legal_entries) == 1, (
+        "weight run 分类不得反向过宽：合法已确认 prepare_only_run entry 必须"
+        "仍正常构建恰含一条 entry 的 history-summary 文档（H5 正向行为不回"
+        f"归）；实际 {type(legal_document).__name__} / entries={legal_entries!r}"
+    )
+    legal_entry = legal_entries[0]
+    assert isinstance(legal_entry, Mapping), (
+        "合法已确认 prepare_only_run entry 的 history-summary entry 必须是 "
+        f"mapping：实际 {type(legal_entry).__name__!r}"
+    )
+    assert legal_entry.get("training_status") == "prepared_only", (
+        "weight run 分类不得反向过宽：合法已确认 prepare_only_run entry 的 "
+        "training_status 必须保持 'prepared_only'（H5 正向行为不回归）：实际 "
+        f"{legal_entry.get('training_status')!r}"
+    )
+
+
+def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
+    tmp_path: Path,
+) -> None:
+    r"""单条已确认 weight run entry 只登记有证据的观察事实（H6a，M1b
+    history-summary weight run 第一切片，先写测试，不改 production）。
+
+    H6a behavior —— 对已确认 weight run 历史条目（kind
+    ``weight_run``、source_legacy_id
+    ``v4.1-phase2-source-aware-v1-seed3407``、status
+    ``user_confirmed``；M0 source-inventory
+    training_machine_run_evidence.weight_runs 首条：训练机只读观察
+    "fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"，
+    notes "run 目录存在不等于完成训练……全部未验证权重完整性与哈希"）
+    调用 ``build_history_summary(root, [entry])`` 必须：
+    1. 返回 history-summary 文档（history_summary_schema ==
+       tensile-migration/history-summary/v1），不得 fail-closed 拒绝该
+       kind 使 entry 消失 —— 有权重 run 是 M0 明确允许保留的简明历史
+       记录（Spec：试验性模型允许保留简明历史记录，资料不完整的记录仍
+       可用于历史查询），fail-closed 拒绝只能保留给 H2/H3 的非法输入
+       域；
+    2. 保留原始 run ID 与分类：original_id ==
+       v4.1-phase2-source-aware-v1-seed3407；kind == "weight_run"（保
+       持有权重 run 分类，不得误归 prepare_only_run 或 prompt 形态）；
+       history_only: true；formal_identity: "none"；entry_id 为文档内
+       slug 且非 <kind>-v<协议>-r<N> 正式身份；
+    3. 输出 evidence-derived ``training_status == "weights_observed"``：
+       M0 观察到权重存在，训练完成状态被 M0 明确排除 —— 不得输出
+       completed（无证据的完成声明），也不得输出 not_completed 等同
+       样无证据的负向声明（"run 目录存在不等于完成训练"不等于"训练
+       未完成"）；
+    4. M0 结构观察分解出的已知事实（Spec「模型身份」最小内容：fold 或
+       全量范围 + 权重位置及存在性）：fold_scope == "fold0"、
+       adapter_present is True、merged_present is True，已知值形态
+       {value, source}，source 为非空 mapping 且指回声明 run 源；权重
+       事实的 source 须指回观察到它们的 fold0 位置；不重算、不伪
+       造、不取 sibling；
+    5. 核心训练参数（seed / learning_rate / epochs /
+       effective_batch_size / optimizer / precision / lora_rank /
+       lora_alpha / lora_target_modules，与 H5 同族）全部以 H4 同口径
+       字段级 unknown 进入 facts：非空 unknown_reason + 指回声明 run 源
+       的 attempted_source，不携带非 None value（M0 未记录 weight run
+       的任何参数值；声明 run 的 evidence_archive 内容未经 M0 核实，
+       fixture 中声明 run 内不存在任何参数来源文件）；任何名字含参数
+       token（seed / learning_rate / epoch / step / batch / optim /
+       precision / lora）或数据 / Prompt 引用 token（prompt / release /
+       dataset / data / split）的事实同样不得携带已知值（反走私：不
+       得从 sibling prepare-only run 的 planned 配置（seed 3411）、
+       sibling input 资料（release_id）或 sibling 归档 manifest（合成
+       参数）登记任何已知值）；
+    6. 不声明训练完成、通过、评测结果、model 正式身份或权重完整性 /
+       哈希验证：entry 内任何键名携带 completed / passed / eval /
+       model / verif / hash / integrity / checksum / sha 命名族 token
+       的位置不得声明存在性值（允许字段级 unknown 形态或 None / False
+       显式非存在记录）；weights / adapter / merged / checkpoint /
+       safetensors 命名族键允许携带存在性值 —— 与 H5 相反，权重存在
+       是本 run 的 M0 观察事实；
+    7. 不扫描 sibling：entries 恰含声明的一条（不得扫描 workspace/
+       runs/ 生成 sibling 条目，也不得为 run 派生 model 等其他概念条
+       目）；未声明 sibling（v4.1-prompt-concise-v1/seed3411、
+       v4.1-prompt-concise-v2/seed3411、v4.1-prompt-minimal-v1-
+       seed3411 与三个 prompt registry 条目）的 ID 不得进入文档任何字
+       符串；
+    8. 不分配任何新正式身份：文档内任何字符串值都不是
+       <kind>-v<协议>-r<N> 正式身份（M0 model_train_eval_history
+       scope_note：不为复用导出器伪造 completed Run / 模型）；
+    9. 纯构建零写入：全树快照逐字节不变（不写 history-summary 文件、
+       不创建 records/ 或任何目标条目、不改 legacy 源树含
+       workspace/runs/ 权重与准备资料）；不就地修改传入 entry；
+    10. 合法已确认 prompt_history 与 prepare_only_run entry 对照仍正常
+        构建（H1/H5 正向不回归，新增 run 分类不得反向过宽）。
+
+    fixture：_write_prepare_only_runs_layout 镜像 M0
+    training_machine_run_evidence 的 workspace/runs/ 布局 —— 已声明
+    weight run ``v4.1-phase2-source-aware-v1-seed3407`` 呈 M0 观察的
+    fold0 结构（fold0/adapter + 10 个 merged 分片 + 空 evidence_archive/
+    —— M0 未核实归档内容，故声明 run 内没有任何参数来源文件）；两个
+    未声明 prepare-only sibling（v1 携带 planned 参数 seed 3411 的
+    prepared-config-untrained）。_write_weight_run_root_sibling_layout 补
+    充未声明 run 根结构 weight run sibling（v4.1-prompt-minimal-v1-
+    seed3411：权重在 run 根、无 fold0/，归档内放合成参数诱饵 manifest）。
+    加上 _write_full_history_prompt_registry 的完整三条目 legacy prompt
+    registry（合法对照与 prompt sibling 钉死）。entry 输入
+    _confirmed_weight_run_entry 逐字段镜像 M0 证据结构（observed 逐字
+    取 M0 观察记录；status user_confirmed 由入口自身读取消费；
+    source_verified 保持 training_observed 事实分级）。
+
+    RED Gate 设计（H6a）：build_history_summary 入口已存在（H1 已
+    GREEN），RED 不经入口缺失分支给出。当前实现不按 kind 分流到 run
+    历史路径（对 weight_run 仍走 prompt registry 源路径）：对本用例
+    entry 静默构建无 training_status、无 fold/weights 已知事实、无核
+    心训练参数事实的 prompt 形态文档（六个 prompt 事实全部 unknown，
+    attempted_source 指向不存在的 pipeline/prompt_registry/<run_id>/）
+    —— 由 training_status 断言的显式 AssertionError 钉出"weight run
+    历史条目行为缺失"。若实现改为对该 kind fail-closed 拒绝（任务允许
+    的另一缺陷形态），拒绝经本用例 try/except 转译为显式行为
+    AssertionError（原始域错误经 cause 链保留）钉出同一 RED 结论，不
+    让原始异常直接充当 RED。fixture 前置事实与两个合法对照全部真实执
+    行后才失败。
+
+    捕获的合理但错误实现：
+    - 对 weight_run kind fail-closed 拒绝（entry 消失）-> 转译后的显式
+      AssertionError 判失败；
+    - 走 prompt registry 源路径（当前实现形态：无 training_status、
+      无 fold/weights 已知事实、prompt 事实 unknown 的 attempted_source
+      指向 pipeline/prompt_registry/<run_id>）-> 行为 3 断言失败；
+    - 输出 completed / not_completed / prepared_only -> 行为 3 断言失
+      败；
+    - 不输出 fold_scope / adapter_present / merged_present 或伪造其值
+      （fold_scope 非 fold0、来源不指回声明 run 源）-> 行为 4 断言失
+      败；
+    - 从 sibling prepare-only run 的 planned 配置（seed 3411）、
+      sibling input 资料（release_id）或 sibling 归档 manifest（合成参
+      数）登记已知参数 / 引用（含改用 configured_seed / num_train_
+      epochs 等名字）-> 行为 5 的 unknown / 反走私断言失败；
+    - 声明训练完成 / passed / 评测结果 / model 身份 -> 行为 6 claims
+      扫描失败；
+    - 声明权重完整性 / 哈希已验证 -> 行为 6 claims 扫描失败；
+    - 扫描 workspace/runs/ 生成 sibling 条目或取 sibling 结构事实
+      （run 根结构 sibling 无 fold0/）-> 行为 7 / fold_scope 断言失
+      败；
+    - 为 run 派生 model 概念条目 / 分配正式身份 -> 行为 7/8 断言失
+      败；
+    - 构建路径写盘（history-summary 文件、records/、staging、改
+      workspace/runs/ 权重与准备资料）-> 全树快照对比失败；
+    - 丢失原始 run ID -> original_id 断言失败；
+    - 就地改写传入 entry -> 输入不变断言失败；
+    - 对合法 prompt_history / prepare_only_run entry 改变 H1/H5 行为
+      -> 合法对照断言失败。
+
+    多 entry 批量（多个 weight run 同批）、其余 weight run 结构形态
+    （run 根结构声明、merged 软链接来源链）、声明 run 源缺失（known
+    gap）、有证据的核心训练参数提取（已核实归档 manifest）、eval /
+    model 历史条目（H9/H10）、prepare-only 与 weight run 的非法输入反
+    向（H2/H3 门对 run entry 的适用）、history-summary 文件写入与
+    CLI 不在本切片。
+
+    Binding（证据绑定，供复跑核对）：
+    - 测试文件：``tests/versioning/test_migration.py``（H6a 仅新增用
+      例与配套 helper/常量及模块 docstring 清单条目，不改 production）。
+    - 命令（新 selector）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_confirmed_weight_run_entry_records_observed_weights_and_
+      evidence_gaps``
+    - RED failure signature：恰一个失败用例（本 selector），失败为
+      行为 3 的 AssertionError（training_status 实际 None !=
+      'weights_observed'）；fixture 前置事实、入口解析与两个合法对照
+      全部不失败；不出现 ModuleNotFoundError / ImportError /
+      AttributeError 或原始异常直接充当 RED 结论。
+    - 既有 selector 复跑（回归钉）：H1–H5 小 selector（-k 同口径 7 个
+      用例名）26 passed；全 migration 文件 RED 时点：106 passed +
+      1 failed（失败恰为本 selector）。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （与 H1–H5 binding 记录一致，``[tool.pytest.ini_options]
+      testpaths / pythonpath`` 解析依赖该文件）。
+    """
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_fold_dir = declared_run_dir / "fold0"
+
+    # ---- fixture 前置事实（对齐 M0 证据）：已声明 run 呈 M0 观察的
+    #      fold0 结构；声明 run 内没有任何参数来源文件（核心参数
+    #      unknown 断言非空洞 —— 已知参数值只能来自 sibling）；sibling
+    #      prepare-only run 携带 planned 参数与 input 引用（走私诱
+    #      饵）；run 根结构 weight sibling 存在（结构取错必被捕获）；
+    #      prompt registry 完整（合法对照依赖）；目标根不存在。----
+    assert (declared_fold_dir / "adapter" / "adapter_model.safetensors").is_file(), (
+        "fixture 前置事实失败：已声明 weight run 必须呈 M0 观察的 fold0 "
+        "结构（fold0/adapter 存在）"
+    )
+    merged_shards = sorted((declared_fold_dir / "merged").glob("*.safetensors"))
+    assert len(merged_shards) == 10, (
+        "fixture 前置事实失败：已声明 weight run 的 fold0/merged 必须有 "
+        f"M0 观察的 10 个分片：实际 {len(merged_shards)}"
+    )
+    assert (declared_run_dir / "evidence_archive").is_dir(), (
+        "fixture 前置事实失败：已声明 weight run 必须有 M0 观察的 "
+        "evidence_archive 目录"
+    )
+    declared_files = [path for path in declared_run_dir.rglob("*") if path.is_file()]
+    assert declared_files, (
+        "fixture 前置事实失败：已声明 weight run 目录必须携带 M0 观察的"
+        "权重文件"
+    )
+    for path in declared_files:
+        assert path.suffix not in {".json", ".yaml", ".yml"}, (
+            "fixture 前置事实失败：已声明 weight run 内不得存在任何参数来"
+            f"源文件（M0 未核实归档内容，核心参数 unknown 断言才有依据）："
+            f"发现 {path}"
+        )
+    prepare_only_dir = (
+        tmp_path / "workspace" / "runs" / PREPARE_ONLY_RUN_V1_ID
+    )
+    prepared_manifest = json.loads(
+        (
+            prepare_only_dir
+            / "prepared-config-untrained"
+            / "manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert prepared_manifest.get("status") == "prepared", (
+        "fixture 前置事实失败：sibling prepare-only run 的 prepared "
+        "manifest 必须声明 status: prepared"
+    )
+    planned_config = yaml.safe_load(
+        (
+            prepare_only_dir / "prepared-config-untrained" / "train.yaml"
+        ).read_bytes()
+    )
+    assert planned_config.get("seed") == 3411 and "learning_rate" in planned_config, (
+        "fixture 前置事实失败：sibling prepare-only run 必须真实携带 "
+        "planned 参数（走私诱饵：实现不得把 sibling 的 planned 参数登记"
+        "为该 weight run 的训练事实）"
+    )
+    root_sibling_dir = (
+        tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_SIBLING_ID
+    )
+    assert (root_sibling_dir / "adapter" / "adapter_model.safetensors").is_file(), (
+        "fixture 前置事实失败：run 根结构 weight run sibling 必须存在"
+        "（权重在 run 根，结构与已声明 run 不同）"
+    )
+    assert any((root_sibling_dir / "merged").glob("*.safetensors")), (
+        "fixture 前置事实失败：run 根结构 weight run sibling 必须真实携"
+        "带 merged 分片"
+    )
+    sibling_manifest = json.loads(
+        (
+            root_sibling_dir
+            / "evidence_archive"
+            / "training_run_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert sibling_manifest.get("seed") == 9999, (
+        "fixture 前置事实失败：sibling 归档诱饵 manifest 必须携带与一切真"
+        "实 run 不同的合成参数（从 sibling 取参数的实现才会登记出该值）"
+    )
+    for prompt_source_id in (
+        HISTORY_SIBLING_SOURCE_ID,
+        CONFIRMED_PROMPT_SOURCE_ID,
+        _THIRD_REGISTRY_SOURCE_ID,
+    ):
+        prompt_dir = tmp_path / "pipeline" / "prompt_registry" / prompt_source_id
+        assert (prompt_dir / "manifest.json").is_file() and (
+            prompt_dir / "prompt.yaml"
+        ).is_file(), (
+            f"fixture 前置事实失败：legacy prompt registry 条目 {prompt_source_id} "
+            "必须完整（合法对照依赖）"
+        )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    # ---- 行为 10：合法对照 —— H1 prompt_history 与 H5 prepare_only_run
+    #      正向不回归（新增 run 分类不得反向过宽）。----
+    _assert_legal_history_entry_still_builds(build, tmp_path)
+    _assert_legal_prepare_only_run_entry_still_builds(build, tmp_path)
+
+    before = _snapshot_tree(tmp_path)
+    entry = _confirmed_weight_run_entry()
+    expected_entry = _confirmed_weight_run_entry()
+
+    # ---- 行为 1：已确认 weight_run entry 必须构建文档，不得 fail-closed
+    #      拒绝 kind 使 entry 消失。----
+    try:
+        document = build(tmp_path, [entry])
+    except Exception as exc:
+        raise AssertionError(
+            "已确认 weight_run 历史条目必须进入 history-summary 文档"
+            "（有权重 run 是 M0 明确允许保留的简明历史记录，不得 "
+            "fail-closed 拒绝使 entry 消失；weight run 历史条目行为缺"
+            "失）：实际抛出 "
+            f"{type(exc).__module__}.{type(exc).__name__}: {exc}"
+        ) from exc
+    assert isinstance(document, Mapping), (
+        "build_history_summary 必须返回 history-summary 文档（mapping）：实际 "
+        f"{type(document).__name__!r}"
+    )
+    assert (
+        document.get("history_summary_schema")
+        == "tensile-migration/history-summary/v1"
+    ), (
+        "history-summary 文档必须声明 history_summary_schema == "
+        "'tensile-migration/history-summary/v1'：实际 "
+        f"{document.get('history_summary_schema')!r}"
+    )
+    document_entries = document.get("entries")
+    assert isinstance(document_entries, list), (
+        "history-summary 文档的 entries 必须是 list：实际 "
+        f"{type(document_entries).__name__!r}"
+    )
+    assert len(document_entries) == 1, (
+        "history-summary 文档必须恰含声明的一条 entry（不得扫描 runs 目录生成"
+        " sibling 条目，也不得为 weight run 派生 model 等其他概念条目）："
+        f"实际 {len(document_entries)} 条"
+    )
+    summary_entry = document_entries[0]
+    assert isinstance(summary_entry, Mapping), (
+        "history-summary entry 必须是 mapping：实际 "
+        f"{type(summary_entry).__name__!r}"
+    )
+
+    # ---- 行为 2：保留原始 run ID、分类与来源结构。----
+    assert summary_entry.get("original_id") == WEIGHT_RUN_DECLARED_ID, (
+        "weight run entry 必须保留 original_id（M0 记录的原始 run ID）："
+        f"实际 {summary_entry.get('original_id')!r}"
+    )
+    assert summary_entry.get("kind") == "weight_run", (
+        "weight run entry 必须保持声明的 kind（weight_run，M0 weight_runs "
+        f"对齐分类，不得误归 prepare_only_run 或 prompt 形态）：实际 "
+        f"{summary_entry.get('kind')!r}"
+    )
+    assert summary_entry.get("history_only") is True, (
+        "weight run entry 必须标记 history_only: true：实际 "
+        f"{summary_entry.get('history_only')!r}"
+    )
+    assert summary_entry.get("formal_identity") == "none", (
+        "weight run entry 必须标记 formal_identity: none（不分配新正式身"
+        f"份）：实际 {summary_entry.get('formal_identity')!r}"
+    )
+    entry_id = summary_entry.get("entry_id")
+    assert isinstance(entry_id, str) and entry_id, (
+        "weight run entry 必须携带非空字符串 entry_id（文档内 slug）：实际 "
+        f"{entry_id!r}"
+    )
+    assert not is_valid_version_id(entry_id), (
+        "entry_id 必须是文档内 slug，不得是 <kind>-v<协议>-r<N> 正式身份："
+        f"实际 {entry_id!r}"
+    )
+
+    # ---- 行为 3：training_status: weights_observed（evidence-derived，
+    #      是否 completed 由证据决定 —— M0 明确排除完成状态，也不允许
+    #      无证据的负向声明）。----
+    assert summary_entry.get("training_status") == WEIGHT_RUN_TRAINING_STATUS, (
+        "weight run 历史条目必须输出 training_status == 'weights_observed'"
+        "（M0 观察到权重存在；训练完成状态被 M0 明确排除 —— 不得输出 "
+        "completed，也不得输出 not_completed 等同样无证据的负向声明，还不得"
+        "误归 prepared_only）：实际 "
+        f"{summary_entry.get('training_status')!r}"
+    )
+
+    # ---- 行为 4：M0 结构观察分解出的已知事实（fold_scope /
+    #      adapter_present / merged_present），{value, source} 形态，
+    #      来源指回声明 run 源；权重事实的来源须指回 fold0 观察位置。----
+    facts = summary_entry.get("facts")
+    assert isinstance(facts, Mapping) and facts, (
+        "weight run entry 必须携带非空 facts（M0 结构观察的已知事实与字段级 "
+        f"unknown 的核心训练参数）：实际 {facts!r}"
+    )
+    for name in WEIGHT_RUN_KNOWN_FACTS:
+        assert name in facts, (
+            f"weight run 的 facts 必须包含 M0 结构观察分解出的已知事实 "
+            f"{name}（Spec「模型身份」最小内容：fold 或全量范围 + 权重位置"
+            f"及存在性）：实际键集 {sorted(facts)}"
+        )
+    _assert_h6_known_fact(
+        facts[WEIGHT_RUN_FOLD_SCOPE_FACT],
+        name=WEIGHT_RUN_FOLD_SCOPE_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value="fold0",
+    )
+    _assert_h6_known_fact(
+        facts[WEIGHT_RUN_ADAPTER_PRESENT_FACT],
+        name=WEIGHT_RUN_ADAPTER_PRESENT_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value=True,
+        must_reference_fold=True,
+    )
+    _assert_h6_known_fact(
+        facts[WEIGHT_RUN_MERGED_PRESENT_FACT],
+        name=WEIGHT_RUN_MERGED_PRESENT_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value=True,
+        must_reference_fold=True,
+    )
+
+    # ---- 行为 5：核心训练参数全部字段级 unknown（M0 未记录 weight run
+    #      的任何参数值；声明 run 内没有参数来源文件），参数名与数据 /
+    #      Prompt 引用名反走私。----
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert name in facts, (
+            f"weight run 的 facts 必须包含核心训练参数 {name}（Spec「核心历史"
+            f"信息的最低内容」，缺失资料进入字段级 unknown 而不是删字段）："
+            f"实际键集 {sorted(facts)}"
+        )
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=WEIGHT_RUN_DECLARED_ID
+        )
+    for name, fact in facts.items():
+        name_lower = str(name).lower()
+        if any(token in name_lower for token in _H6_PARAM_NAME_TOKENS) or any(
+            token in name_lower for token in _H6_REFERENCE_NAME_TOKENS
+        ):
+            _assert_h6_fact_is_unknown(
+                fact, name=name, run_id=WEIGHT_RUN_DECLARED_ID
+            )
+
+    # ---- 行为 6：不声明训练完成、通过、评测结果、model 正式身份或权
+    #      重完整性 / 哈希验证。----
+    _assert_h6_no_completion_or_verification_claims(summary_entry, "entry")
+
+    # ---- 行为 8：不分配任何新正式身份（文档内任何字符串都不是正式
+    #      身份）。----
+    all_strings = _document_string_fragments(document)
+    for fragment in all_strings:
+        assert not is_valid_version_id(fragment), (
+            "history-summary 文档内不得出现任何 <kind>-v<协议>-r<N> 正式"
+            f"身份（weight run 不分配 model/train/eval 等任何新正式身份）："
+            f"实际出现 {fragment!r}"
+        )
+
+    # ---- 行为 7：不扫描 sibling —— 未声明 run 与 prompt sibling 的 ID
+    #      不得进入文档任何字符串。----
+    for sibling_id in (
+        PREPARE_ONLY_RUN_V1_ID,
+        PREPARE_ONLY_RUN_V2_ID,
+        WEIGHT_RUN_ROOT_SIBLING_ID,
+        HISTORY_SIBLING_SOURCE_ID,
+        CONFIRMED_PROMPT_SOURCE_ID,
+        _THIRD_REGISTRY_SOURCE_ID,
+    ):
+        assert not any(sibling_id in fragment for fragment in all_strings), (
+            f"未声明 sibling {sibling_id} 不得进入 history-summary 文档的任何"
+            "字符串（实现必须按声明 entry 定位源，不得扫描 legacy 目录或从"
+            "sibling 取内容）"
+        )
+
+    # ---- 行为 9：纯构建零写入 —— 全树逐字节不变（legacy 源不变含
+    #      workspace/runs/ 权重与准备资料、不写 history-summary 文件、
+    #      不创建任何目标条目）。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "build_history_summary 必须纯构建零写入：全树快照逐字节不变"
+        "（不写 history-summary 文件、不创建 records/ 或任何目标条目、不改 "
+        "legacy 源树含 workspace/runs/ 权重与准备资料）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "纯构建不得创建 records/ 或任何正式对象条目（不分配新正式身份）"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "纯构建不得写入 history-summary 文件（本切片只经返回值给出文档）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"纯构建不得落盘任何 history-summary 命名文件：发现 {path}"
+        )
+
+    # ---- 不就地修改传入 entry。----
+    assert entry == expected_entry, (
+        "全程不得就地改写传入 entry（H6a 输入事实保持不变）"
     )

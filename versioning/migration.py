@@ -1654,6 +1654,16 @@ _PREPARE_ONLY_CORE_TRAIN_PARAMS = (
     "lora_target_modules",
 )
 
+# H6a weight run 历史条目的固定分类：M0 把这组 run 归类为 "有权重历史
+# run"（weight_runs），观察事实是权重存在（training_observed），训练
+# 完成状态被 M0 明确排除（"run 目录存在不等于完成训练"）—— 既不输出
+# completed（无证据的完成声明），也不输出 not_completed（无证据的负向
+# 声明），唯一有证据的分类是 "观察到权重存在" 本身。核心训练参数与
+# H5 同族：M0 只记录目录结构观察，未记录任何参数值，一律字段级
+# unknown。声明 run 源定位与 prepare-only run 同为 workspace/runs/。
+_WEIGHT_RUN_KIND = "weight_run"
+_WEIGHT_RUN_OBSERVED_TRAINING_STATUS = "weights_observed"
+
 # H1 历史 entry 的必需已知事实与来源文件对应：manifest-only 事实指回
 # manifest.json、prompt.yaml-only 事实指回 prompt.yaml（字段级 provenance
 # 口径；protocol_id 两源均有，取 manifest 声明值）。事实值一律取 legacy
@@ -1720,11 +1730,14 @@ def _build_history_summary_entry(
     if not isinstance(kind, str) or not kind:
         raise PromptMigrationBlocked("history entry 缺少 kind：无法构建文档条目")
 
-    # H5 按 kind 分流：prepare-only run 是允许的历史查询记录（仅进
-    # history-summary，不是训练执行事实），走独立构建路径 —— 不读
-    # prompt registry 源，也不扫描 workspace/runs/ 的 sibling。
+    # H5/H6a 按 kind 分流：run 类历史条目（prepare-only run、weight
+    # run）是允许的历史查询记录（仅进 history-summary，不是训练执行
+    # 事实），走独立构建路径 —— 不读 prompt registry 源，也不扫描
+    # workspace/runs/ 的 sibling。
     if kind == _PREPARE_ONLY_RUN_KIND:
         return _build_prepare_only_run_history_entry(source_id)
+    if kind == _WEIGHT_RUN_KIND:
+        return _build_weight_run_history_entry(Path(root), source_id)
 
     source_rel_dir = _LEGACY_PROMPT_REGISTRY / source_id
     manifest_file = Path(root) / source_rel_dir / "manifest.json"
@@ -1837,6 +1850,92 @@ def _build_history_summary_entry(
         "original_id": source_id,
         "history_only": True,
         "formal_identity": "none",
+        "facts": facts,
+    }
+
+
+def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any]:
+    """构建 weight run 历史条目（H6a，纯构建零写入）。
+
+    只按声明 ``source_legacy_id`` 定位声明 run 源
+    ``workspace/runs/<source_legacy_id>`` 并只读观察其目录结构，不扫描
+    runs 目录、不取任何 sibling 内容。保留原始 run ID 与分类
+    （kind ``weight_run``）；``training_status: weights_observed`` 是
+    M0 weight_runs 分组的 evidence-derived 分类（观察事实是权重存在，
+    训练完成状态被 M0 明确排除，不得输出 completed / not_completed /
+    prepared_only）；``formal_identity: none``，不派生 model 等任何概念
+    条目，不分配正式身份。
+
+    已知事实（Spec「模型身份」最小内容：fold 或全量范围 + 权重位置及
+    存在性）从声明 run 源的 fold0 结构观察得出（fold_scope /
+    adapter_present / merged_present，{value, source} 形态，source 指回
+    观察到该事实的声明 run 内位置），不重算、不伪造、不取 sibling。
+    核心训练参数一律字段级 unknown：M0 未记录 weight run 的任何参数
+    值，声明 run 的 evidence_archive 内容未经 M0 核实，planned 配置与
+    sibling 归档 manifest 一律不读、不登记（unknown 事实携带非空
+    unknown_reason 与指回声明 run 源的 attempted_source）。
+
+    声明 run 源缺失或呈本切片未覆盖的结构形态（如 run 根权重结构）时
+    fail-closed 抛 :class:`PromptMigrationBlocked`（known gap / 其余结构
+    形态属后续切片，不伪造已知事实、不降级静默构建）。
+    """
+    run_rel = _PREPARE_ONLY_RUN_SOURCE_ROOT / source_id
+    run_dir = root / run_rel
+    fold_rel = run_rel / "fold0"
+    fold_dir = run_dir / "fold0"
+    if not run_dir.is_dir() or not fold_dir.is_dir():
+        raise PromptMigrationBlocked(
+            f"weight run {source_id} 的声明源 {fold_rel.as_posix()} 缺失："
+            "fold0 权重结构未观察到，weight run 历史条目的 known gap 处理"
+            "不在本切片内（fail-closed，不伪造已知事实）"
+        )
+    adapter_dir = fold_dir / "adapter"
+    merged_dir = fold_dir / "merged"
+    adapter_present = adapter_dir.is_dir() and any(
+        path.is_file() for path in adapter_dir.rglob("*")
+    )
+    merged_present = merged_dir.is_dir() and any(
+        path.is_file() for path in merged_dir.glob("*.safetensors")
+    )
+    if not (adapter_present or merged_present):
+        raise PromptMigrationBlocked(
+            f"weight run {source_id} 的声明源 {fold_rel.as_posix()} 内未观察到"
+            " adapter / merged 权重存在性证据：无法支撑 "
+            f"{ _WEIGHT_RUN_OBSERVED_TRAINING_STATUS!r} 分类（fail-closed，"
+            "不输出无证据声明）"
+        )
+
+    def _observed_fact(value: object, observed_rel: Path) -> dict[str, Any]:
+        return {
+            "value": value,
+            "source": {
+                "path": observed_rel.as_posix(),
+                "observed": "declared run source directory structure (read-only)",
+            },
+        }
+
+    facts: dict[str, dict[str, Any]] = {
+        "fold_scope": _observed_fact("fold0", fold_rel),
+        "adapter_present": _observed_fact(adapter_present, fold_rel / "adapter"),
+        "merged_present": _observed_fact(merged_present, fold_rel / "merged"),
+    }
+    for name in _PREPARE_ONLY_CORE_TRAIN_PARAMS:
+        facts[name] = {
+            "unknown_reason": (
+                f"weight run {source_id} 的 M0 调查只记录权重目录结构观察，"
+                f"未记录任何训练参数值；声明 run 的 evidence_archive 内容"
+                f"未经 M0 核实，{name} 不得从 planned 配置或 sibling 归档"
+                "登记为已知值"
+            ),
+            "attempted_source": run_rel.as_posix(),
+        }
+    return {
+        "entry_id": f"history-{_WEIGHT_RUN_KIND}-{source_id}",
+        "kind": _WEIGHT_RUN_KIND,
+        "original_id": source_id,
+        "history_only": True,
+        "formal_identity": "none",
+        "training_status": _WEIGHT_RUN_OBSERVED_TRAINING_STATUS,
         "facts": facts,
     }
 
