@@ -802,6 +802,17 @@ _MIGRATION_RECEIPTS_DIR = Path("migration_receipts")
 
 _RECEIPT_COMMITTED_STATUS = "committed"
 
+# 用户确认的 receipt 生命周期（T19-P4）：每个对象只使用同一个
+# ``migration_receipts/<target_identity>.receipt.yaml``。开始写目标
+# release 前，该文件原子写入为 status: in_progress 的 receipt（沿用
+# committed receipt 的八个顶层键，target_release_digest 为 null，另
+# 绑定映射 target_status / replacement），绑定写入前 re-validation
+# 通过的那份 source_manifest_sha256；中断后同一文件保留，重跑恢复时
+# 与当前映射/当前源比对，失配即 fail-closed。目标完整写入并验证后
+# 同一文件经既有原子写机制替换为 committed receipt；不使用
+# migration_receipts.in_progress/ 或任何额外 credential 目录/文件。
+_RECEIPT_IN_PROGRESS_STATUS = "in_progress"
+
 # legacy manifest 中映射到 source_batches 的原始批次标识字段（M0
 # object-mapping preserve_state：source_batches 记录原始批次，不回填伪造）。
 _LEGACY_SOURCE_BATCH_FIELDS = (
@@ -1000,6 +1011,165 @@ def _derive_operation_id(
             separators=(",", ":"),
         ).encode("utf-8")
     ).hexdigest()
+
+
+def _atomic_write_receipt(receipt_path: Path, payload: Mapping[str, Any]) -> None:
+    """经临时文件 + os.replace 原子写入单条 receipt（同一路径整体替换）。"""
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = receipt_path.parent / f".{receipt_path.name}.tmp"
+    try:
+        tmp_path.write_text(
+            yaml.safe_dump(dict(payload), sort_keys=False), encoding="utf-8"
+        )
+        os.replace(tmp_path, receipt_path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
+def _in_progress_credential_errors(
+    credential: Mapping[str, Any],
+    mapping_item: Mapping[str, object],
+    source_manifest_sha256: str,
+) -> list[str]:
+    """核实 in-progress credential 与当前映射/当前源（fail-closed）。
+
+    逐字段核实（任一不符返回错误列表）：source_legacy_id /
+    candidate_target_identity / target_path / target_status / replacement 与
+    映射项精确相等；source_manifest_sha256 与当前 legacy 源 manifest 文件
+    字节 SHA-256 相等；operation_id 按共享派生口径（映射 source/target/
+    status/replacement + 当前 source_manifest_sha256）重算相等 —— 重跑
+    恢复半写对象时，credential 绑定的是中断前源快照，当前源任何变化（含
+    不影响已落盘 payload 前缀的 manifest 语义变化）都经本比对被发现。
+    """
+    source_id = mapping_item.get("source_legacy_id")
+    identity = mapping_item.get("candidate_target_identity")
+    target_rel = mapping_item.get("target_path")
+    target_status = mapping_item.get("target_status")
+    replacement = mapping_item.get("replacement")
+    expected_bindings: tuple[tuple[str, Any], ...] = (
+        ("source_legacy_id", source_id),
+        ("target_identity", identity),
+        ("target_path", target_rel),
+        ("target_status", target_status),
+        ("replacement", replacement),
+        ("source_manifest_sha256", source_manifest_sha256),
+    )
+    errors: list[str] = []
+    for field, expected_value in expected_bindings:
+        if credential.get(field) != expected_value:
+            errors.append(
+                f"{field}={credential.get(field)!r} 与映射/当前源期望 "
+                f"{expected_value!r} 不符"
+            )
+    if not isinstance(source_id, str) or not isinstance(identity, str):
+        return errors
+    if credential.get("operation_id") != _derive_operation_id(
+        source_id,
+        identity,
+        target_status,
+        source_manifest_sha256,
+        replacement,
+    ):
+        errors.append("operation_id 与按当前映射/当前源重算值不符")
+    return errors
+
+
+def _verify_in_progress_credential(
+    receipt_path: Path,
+    mapping_item: Mapping[str, object],
+    source_manifest_sha256: str,
+    *,
+    resuming_partial: bool,
+) -> bool:
+    """重跑恢复半写对象前只读核实 in-progress credential（fail-closed）。
+
+    receipt 路径已有 in-progress credential 时，逐字段核实其与当前映射和
+    当前 source manifest 匹配（见 :func:`_in_progress_credential_errors`），
+    失配即 ``DataMigrationBlocked``（调用发生在任何目标/凭证写入前，拒绝
+    零写入）。credential 损坏（不可解析 / 顶层非 mapping / status 非
+    in_progress 亦非 committed）同样在恢复半写对象时 fail-closed 拒绝；
+    无半写目标（新转换路径）且 credential 缺失时直接返回 False —— 调用方
+    随后在开始写目标前写入新的 in-progress credential。committed receipt 由
+    完成态核实通道（:_verified_completed_receipt）处理，本函数不改变其
+    既有行为。返回是否已存在经核实的 in-progress credential（恢复路径
+    据此跳过重写与删除，保持其逐字节不动）。全程只读。
+    """
+    if not receipt_path.is_file():
+        if resuming_partial:
+            raise DataMigrationBlocked(
+                "恢复半写对象缺少写入开始前持久化的 in-progress "
+                "credential（fail-closed，零写入）"
+            )
+        return False
+    try:
+        credential = yaml.safe_load(receipt_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        if resuming_partial:
+            raise DataMigrationBlocked(
+                f"in-progress credential 不可解析（fail-closed，零写入）: {exc}"
+            ) from exc
+        return False
+    if not isinstance(credential, Mapping):
+        if resuming_partial:
+            raise DataMigrationBlocked(
+                "in-progress credential 顶层必须是 mapping（fail-closed，零写入）"
+            )
+        return False
+    status = credential.get("status")
+    if status == _RECEIPT_COMMITTED_STATUS:
+        # committed receipt 的核实/拒绝由完成态通道与既有 fail-closed 预检
+        # 负责，本函数不改变其行为。
+        return False
+    if status != _RECEIPT_IN_PROGRESS_STATUS:
+        if resuming_partial:
+            raise DataMigrationBlocked(
+                f"in-progress credential status={status!r} 非法（fail-closed，"
+                "零写入）"
+            )
+        return False
+    errors = _in_progress_credential_errors(
+        credential, mapping_item, source_manifest_sha256
+    )
+    if errors:
+        raise DataMigrationBlocked(
+            "in-progress credential 与当前映射/当前源失配（fail-closed，零写"
+            "入，不得按改后源内容恢复半写对象）：" + "；".join(errors)
+        )
+    return True
+
+
+def _write_in_progress_credential(
+    receipt_path: Path,
+    mapping_item: Mapping[str, object],
+    operation_id: str,
+    source_manifest_sha256: str,
+) -> None:
+    """开始写目标 release 前把同一个 receipt 文件原子写为 in_progress。
+
+    用户确认生命周期（T19-P4）：每个对象只使用同一个
+    ``migration_receipts/<target_identity>.receipt.yaml``，本函数把该
+    文件写为 status: in_progress、target_release_digest 为 null 的恢复
+    依据。顶层键沿用 committed receipt 的八个字段，另绑定映射
+    target_status / replacement（receipt 必须可核实“同一次转换”的生命
+    周期）；source_manifest_sha256 取写入前 re-validation 时读到的同一
+    份 manifest 文件字节哈希。经临时文件 + os.replace 原子落盘，写入先
+    于任何目标子树写入，中断后同一文件保留；目标完整写入并验证后由
+    committed receipt 经同一原子写机制整体替换。
+    """
+    credential = {
+        "operation_id": operation_id,
+        "source_legacy_id": mapping_item.get("source_legacy_id"),
+        "target_identity": mapping_item.get("candidate_target_identity"),
+        "target_path": mapping_item.get("target_path"),
+        "source_manifest_sha256": source_manifest_sha256,
+        "target_release_digest": None,
+        "status": _RECEIPT_IN_PROGRESS_STATUS,
+        "written_at": datetime.now(timezone.utc).isoformat(),
+        "target_status": mapping_item.get("target_status"),
+        "replacement": mapping_item.get("replacement"),
+    }
+    _atomic_write_receipt(receipt_path, credential)
 
 
 def _verified_completed_receipt(
@@ -1225,8 +1395,33 @@ def _migrate_single_data_release(
             + "；".join(source_errors)
         )
 
+    # T19-P4：重跑恢复半写对象前，只读核实写入开始前持久化的同一个
+    # in-progress receipt（receipt_path，用户确认生命周期：每个对象只
+    # 使用同一个 migration_receipts/<target_identity>.receipt.yaml）与
+    # 当前映射和当前源匹配（receipt 绑定中断前源快照；当前
+    # source_manifest_sha256 即上方 re-validation 读到的这份 manifest
+    # 的文件字节哈希）。失配/损坏/缺失（恢复路径）即 fail-closed 拒绝，
+    # 发生在任何目标/凭证写入前，拒绝零写入；committed receipt 的既有
+    # 核实通道不受本检查影响。
+    receipt_path = root / _MIGRATION_RECEIPTS_DIR / f"{identity}.receipt.yaml"
+    resuming_partial = (root / Path(target_rel).parent).is_dir()
+    resume_verified = _verify_in_progress_credential(
+        receipt_path,
+        mapping_item,
+        source_manifest_sha256,
+        resuming_partial=resuming_partial,
+    )
+    operation_id = _derive_operation_id(
+        source_id,
+        identity,
+        target_status,
+        source_manifest_sha256,
+        mapping_item.get("replacement"),
+    )
     # superseded 目标：replacement 必须指向目标 root 中已有的正式 release
     # （fail-closed：任何目标目录/文件写入前核验，悬空引用零写入拒绝）。
+    # 该校验须在写入 in-progress credential 之前完成（T19-P4-P2）：悬空
+    # replacement 拒绝时不得留下 in-progress receipt。
     if target_status == DataStatus.SUPERSEDED.value:
         replacement = mapping_item.get("replacement")
         if not isinstance(replacement, str) or not replacement:
@@ -1246,8 +1441,20 @@ def _migrate_single_data_release(
 
     release_data = _build_release_data(identity, source_id, manifest, mapping_item)
     # 落盘前经既有 data release 校验语义（parse_release_metadata：schema、
-    # 字段值域、身份一致性、replacement 规则）接受。
+    # 字段值域、身份一致性、replacement 规则）接受。该校验须在写入
+    # in-progress credential 之前完成（T19-P4-P2）：非法 release 语义字段
+    # 拒绝时不得留下 in-progress receipt。
     parse_release_metadata(release_data)
+
+    # 开始写目标 release 前原子写入同一个 receipt 文件为 in_progress
+    # （绑定上方这份 source_manifest_sha256）；写入先于任何目标子树写入，
+    # 中断后同一文件保留为恢复依据。恢复路径已存在经核实的 in-progress
+    # receipt 时跳过重写 —— 恢复重跑必须保持其逐字节不动（T19-P3 钉定恢
+    # 复重跑除目标 release 子树外整树不变）。
+    if not resume_verified:
+        _write_in_progress_credential(
+            receipt_path, mapping_item, operation_id, source_manifest_sha256
+        )
 
     release_dir = root / Path(target_rel).parent
     release_dir.mkdir(parents=True, exist_ok=True)
@@ -1276,16 +1483,8 @@ def _migrate_single_data_release(
     # 的 migration_receipts/ 与 legacy 源。digest/receipt 后续只读目标内容。
     seal_payload(release_dir)
 
-    # operation_id：确定性哈希（共享派生口径，见 _derive_operation_id）。
-    operation_id = _derive_operation_id(
-        source_id,
-        identity,
-        target_status,
-        source_manifest_sha256,
-        mapping_item.get("replacement"),
-    )
-
-    # 目标完整写入并验证后原子写入 committed receipt（八字段契约，无多余键）。
+    # 目标完整写入并验证后原子写入 committed receipt（八字段契约，无多余
+    # 键，credential 字段不得泄漏进 committed receipt）。
     receipt = {
         "operation_id": operation_id,
         "source_legacy_id": source_id,
@@ -1296,18 +1495,7 @@ def _migrate_single_data_release(
         "status": _RECEIPT_COMMITTED_STATUS,
         "written_at": datetime.now(timezone.utc).isoformat(),
     }
-    receipt_dir = root / _MIGRATION_RECEIPTS_DIR
-    receipt_dir.mkdir(parents=True, exist_ok=True)
-    receipt_path = receipt_dir / f"{identity}.receipt.yaml"
-    tmp_path = receipt_dir / f".{identity}.receipt.yaml.tmp"
-    try:
-        tmp_path.write_text(
-            yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8"
-        )
-        os.replace(tmp_path, receipt_path)
-    finally:
-        if tmp_path.exists():
-            tmp_path.unlink()
+    _atomic_write_receipt(receipt_path, receipt)
     return receipt_path
 
 
@@ -1345,7 +1533,10 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
     路径），其目标存在冲突不阻塞恢复；未完成对象继续执行转换。未完成
     对象的半写目标仅在 :func:`_resumable_partial_release` 证明其为按
     当前映射/legacy 源的本转换部分写入时允许重建，否则退回既有
-    fail-closed 预检拒绝（不覆盖外来对象）。凭证失配拒绝分支不在本切片。
+    fail-closed 预检拒绝（不覆盖外来对象）。恢复半写对象前必须核实写入
+    开始前持久化的 in-progress credential（T19-P4，绑定中断前
+    source_manifest_sha256 与映射生命周期）与当前映射/当前源匹配；
+    credential 失配/损坏/缺失即 fail-closed 拒绝（零写入）。
 
     返回写入的 receipt 路径序列（与映射批同序；返回值契约本切片不绑定）。
     """
