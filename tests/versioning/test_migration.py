@@ -422,8 +422,24 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #     域错误类型）或 blocked 报告通道给出，携带非空拒因，不得抛
         #     未类型化异常；拒绝零写入（legacy 源与全树逐字节不变）、
         #     不就地修改传入 entries；合法已确认 entry 对照仍正常构建。
-        #   unknown / 缺失资料形态、多 entry 批量、history-summary 文件
-        #   写入与 CLI 不在本切片。
+        #   H4（M1b 源可读性与身份绑定门切片）起，声明源的可读性缺
+        #   口与身份矛盾按缺口类别分流（unknown 与 blocked 必须可区分）：
+        #   - 声明源缺失（源条目目录缺失/为空，或 manifest.json /
+        #     prompt.yaml 单文件缺失）时，相关字段进入字段级 unknown
+        #     （每条 unknown 事实携带非空 unknown_reason 与指向声明源
+        #     路径的 attempted_source，不得伪装成已知值），entry 不得
+        #     静默消失，不得整批因缺失 blocked；单文件缺失时未受影响
+        #     的另一来源文件事实保持已知（H1 {value, source} 形态）；
+        #   - 源文件存在但坏 JSON/YAML（含顶层非 mapping）时，必须整
+        #     批 fail-closed（不得降级为 unknown 静默构建文档）；
+        #   - 源文件可解析但身份字段（manifest.json / prompt.yaml 的
+        #     revision_id）与 entry source_legacy_id 矛盾时，必须整批
+        #     fail-closed（不得在错误身份下提取事实构建文档）；
+        #   - 上述任一失败路径零写入、legacy 源不变、不就地修改传入
+        #     entries，合法已确认 entry 对照仍正常构建（H1/H2 正向不回
+        #     归）；
+        #   多 entry 批量、run/eval/model 条目、history-summary 文件写
+        #   入与 CLI 不在本切片。
 
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
@@ -511,6 +527,24 @@ fail-closed 行为缺失”；拒绝若以未类型化异常（TypeError 等直�
 （字符串）的场景当前实现已经明确域错误通道 fail-closed，记录为
 Unexpected PASS（回归钉），不当 RED；合法已确认 entry 的正向构
 建由既有 H1 selector 复跑钉定（合法对照仍通过）。
+H4（M1b history-summary 源可读性与身份绑定门切片）同口径补充：
+build_history_summary 入口已存在（H1 已 GREEN），RED 不经入口缺
+失分支给出，分两类钉出：
+- 声明源缺失（源条目目录缺失/为空，或 manifest.json / prompt.yaml
+  单文件缺失）时当前实现一律 PromptMigrationBlocked 整批拒绝
+  （缺失被当 blocked，entry 消失，无字段级 unknown_reason /
+  attempted_source），本文件把该拒绝转成显式行为 AssertionError
+  （原始域错误经 cause 链保留）钉出“缺失资料字段级 unknown 行为
+  缺失”；
+- 源文件可解析但身份字段（manifest.json / prompt.yaml 的
+  revision_id）与 source_legacy_id 矛盾时当前实现静默构建文档
+  （在错误身份下提取事实），由 _expect_history_summary_fail_
+closed 的显式 AssertionError（“不得静默构建 history-summary 文
+档”）钉出“history-summary 身份绑定门缺失”。
+源文件存在但坏 JSON/YAML（含顶层非 mapping）四参数当前实现已
+经明确域错误通道整批 fail-closed，记录为 Unexpected PASS（回归
+钉），不当 RED；合法已确认 entry 的正向构建由既有 H1 selector
+复跑钉定（合法对照仍通过）。
 
 范围边界：本文件只覆盖 Prompt 迁移（T1–T10）、T11–T14 数据迁移批级
 只读预检切面（ready 正向、目标冲突边界、已钉扎 manifest provenance
@@ -14838,3 +14872,881 @@ def test_history_summary_rejects_none_and_non_iterable_entries_fail_closed(
         assert "history-summary" not in path.name, (
             f"拒绝路径不得落盘任何 history-summary 命名文件：发现 {path}"
         )
+# ---------------------------------------------------------------------------
+# H4：history-summary —— 声明源可读性与身份绑定门（先写测试，不改
+# production）
+# ---------------------------------------------------------------------------
+#
+# H4 behavior（本切片，主 Agent 选定，M1b history-summary 源可读性与身
+# 份绑定门，先写测试，不改 production）—— build_history_summary 对声明
+# 源 legacy ``pipeline/prompt_registry/<source_legacy_id>/
+# {manifest.json,prompt.yaml}`` 的可读性缺口与身份矛盾按缺口类别分流，
+# unknown 与 blocked 必须可区分（M0/Spec 证据：object-mapping.yaml
+# model_train_eval_history 存在用户已确认、但声明源路径缺失的 history
+# entry（known gap 明确记录），Plan M1 要求 history-summary"逐字段记录来
+# 源或未知原因"）：
+# 1. 声明源缺失（源条目目录缺失 / 目录为空 / manifest.json 或
+#    prompt.yaml 单文件缺失）时，相关字段进入字段级 unknown，每条
+#    unknown 事实携带非空 unknown_reason（可读缺失原因）与
+#    attempted_source（指回声明源条目目录及其来源文件的曾尝试读取路
+#    径），不得伪装成已知值；entry 不得静默消失，文档不得整批因缺失
+#    blocked；未受影响的另一来源文件事实保持 H1 已知形态
+#    {value, source}；
+# 2. 源文件存在但坏 JSON/YAML（含合法解析但顶层非 mapping）时，必须
+#    整批 fail-closed，不得降级为 unknown 静默构建文档（坏源是可读性
+#    缺口的存在性证据，与"确实不在"的缺失必须可区分）；
+# 3. 源文件可解析、内容哈希自洽，但身份字段（manifest.json /
+#    prompt.yaml 的 revision_id，M0 verified_local：真实 manifest 的
+#    revision_id 与所在 registry 目录名精确一致）与 entry
+#    source_legacy_id 矛盾时，必须整批 fail-closed，不得在错误身份下
+#    提取事实构建文档；
+# 4. 上述全部路径零写入（legacy 源与全树逐字节不变、不写
+#    history-summary 文件、不创建 records/ 或任何目标条目、不修复/
+#    重建缺失源）、不就地修改传入 entry；合法已确认 entry 对照仍正常
+#    构建（H1/H2 正向不回归）。
+# 多 entry 批量（混合完整/缺失资料）、run/eval/model 历史条目、
+# history-summary 文件写入与 CLI 不在本切片。
+
+# H4 事实分组口径：镜像 H1 production _HISTORY_FACT_SOURCES ——
+# manifest-only 事实指 manifest.json、prompt.yaml-only 事实指
+# prompt.yaml；protocol_id 两源均有（H1 允许任一来源），两文件全缺失时
+# 必须为 unknown（attempted_source 仅钉指回条目目录），单文件缺失时其
+# unknown/known 归属不单独钉死（允许实现取另一来源声明值或标 unknown）。
+_H4_ALL_FACT_NAMES = (
+    "protocol_id",
+    "prompt_content_sha256",
+    "publishing_code_commit",
+    "system_prompt",
+    "user_prompt",
+    "output_fields",
+)
+_H4_FACT_SOURCE_FILES = {
+    "protocol_id": None,
+    "prompt_content_sha256": "manifest.json",
+    "publishing_code_commit": "manifest.json",
+    "system_prompt": "prompt.yaml",
+    "user_prompt": "prompt.yaml",
+    "output_fields": "prompt.yaml",
+}
+
+# 各源缺失形态下六个必需事实的期望归属（unknown / known，其余 = 不钉死）。
+_H4_MISSING_SOURCE_STATES = {
+    "source_dir_missing": {
+        "unknown": _H4_ALL_FACT_NAMES,
+        "known": (),
+    },
+    "source_dir_empty": {
+        "unknown": _H4_ALL_FACT_NAMES,
+        "known": (),
+    },
+    "manifest_missing": {
+        "unknown": ("prompt_content_sha256", "publishing_code_commit"),
+        "known": ("system_prompt", "user_prompt", "output_fields"),
+    },
+    "prompt_missing": {
+        "unknown": ("system_prompt", "user_prompt", "output_fields"),
+        "known": ("prompt_content_sha256", "publishing_code_commit"),
+    },
+}
+
+# 声明源坏内容（文件存在：是不可解析/不可用，不是缺失）。manifest 侧
+# 覆盖坏 JSON 与合法 JSON 但顶层非 mapping；prompt 侧镜像覆盖坏 YAML
+# 与合法 YAML 但顶层非 mapping。
+_H4_SOURCE_CORRUPTIONS = {
+    "manifest_bad_json": ("manifest.json", b'{ not valid json'),
+    "manifest_not_mapping": ("manifest.json", b"[1, 2]\n"),
+    "prompt_bad_yaml": ("prompt.yaml", b"system_prompt: [unclosed flow"),
+    "prompt_not_mapping": ("prompt.yaml", b"- a\n- b\n"),
+}
+
+
+def _remove_history_declared_source(root: Path, source_state: str) -> None:
+    """按 source_state 移除声明源（v4.1-concise-evidence-json-v1）文件。
+
+    只动声明源条目，未声明 sibling（v4.1-concise-evidence-json-v2 /
+    v4.1-fixed-full-fields-initial-v1）保持完整 —— entry 的缺口形态只能
+    由声明源缺失引起，不得由 sibling 损伤混入。
+    """
+    declared_dir = root / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    if source_state == "source_dir_missing":
+        shutil.rmtree(declared_dir)
+    elif source_state == "source_dir_empty":
+        (declared_dir / "manifest.json").unlink()
+        (declared_dir / "prompt.yaml").unlink()
+    elif source_state == "manifest_missing":
+        (declared_dir / "manifest.json").unlink()
+    elif source_state == "prompt_missing":
+        (declared_dir / "prompt.yaml").unlink()
+    else:
+        raise AssertionError(f"未知 source_state {source_state!r}")
+
+
+def _assert_history_declared_source_state(root: Path, source_state: str) -> None:
+    """钉定源缺失 mutation 真实生效且未声明 sibling 完好（fixture 前置）。"""
+    declared_dir = root / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    if source_state == "source_dir_missing":
+        assert not declared_dir.exists(), (
+            "fixture 前置事实失败：source_dir_missing 下声明源条目目录必须不存在"
+        )
+    else:
+        assert declared_dir.is_dir(), (
+            "fixture 前置事实失败：该形态下声明源条目目录必须存在"
+        )
+        if source_state in ("source_dir_empty", "manifest_missing"):
+            assert not (declared_dir / "manifest.json").exists(), (
+                "fixture 前置事实失败：该形态下声明源 manifest.json 必须缺失"
+            )
+        else:
+            assert (declared_dir / "manifest.json").is_file(), (
+                "fixture 前置事实失败：该形态下声明源 manifest.json 必须存在"
+            )
+        if source_state in ("source_dir_empty", "prompt_missing"):
+            assert not (declared_dir / "prompt.yaml").exists(), (
+                "fixture 前置事实失败：该形态下声明源 prompt.yaml 必须缺失"
+            )
+        else:
+            assert (declared_dir / "prompt.yaml").is_file(), (
+                "fixture 前置事实失败：该形态下声明源 prompt.yaml 必须存在"
+            )
+    for sibling_id in (CONFIRMED_PROMPT_SOURCE_ID, _THIRD_REGISTRY_SOURCE_ID):
+        sibling_dir = root / "pipeline" / "prompt_registry" / sibling_id
+        assert (sibling_dir / "manifest.json").is_file() and (
+            sibling_dir / "prompt.yaml"
+        ).is_file(), (
+            f"fixture 前置事实失败：未声明 sibling {sibling_id} 必须保持完整"
+            "（缺失只能由声明源引起）"
+        )
+
+
+def _assert_history_fact_is_unknown(
+    fact: Any,
+    *,
+    name: str,
+    declared_rel_dir: str,
+    expected_file: str | None,
+) -> None:
+    """断言单条事实为 H4 字段级 unknown 形态（与 blocked 可区分的缺口形态）。
+
+    契约：
+    - fact 为 mapping，携带非空字符串 unknown_reason（可读缺失原因，
+      不得静默标 unknown）；
+    - 携带非空 attempted_source（曾尝试读取的声明源路径；字符串或含
+      路径片段的 mapping 结构均可），必须指回声明源条目目录；
+      expected_file 非 None（manifest-only / prompt.yaml-only 事实）时
+      还须指回对应来源文件；
+    - 不得携带非 None 的 value（缺失资料不得伪装成已知值，不重算、不
+      伪造、不取 sibling）。
+    """
+    assert isinstance(fact, Mapping), (
+        f"缺失源的事实 {name} 必须以 mapping 形态进入字段级 unknown（携带 "
+        f"unknown_reason / attempted_source）：实际 {type(fact).__name__!r}"
+    )
+    reason = fact.get("unknown_reason")
+    assert isinstance(reason, str) and reason.strip(), (
+        f"缺失源的事实 {name} 必须携带非空字符串 unknown_reason（可读缺失"
+        f"原因，不得静默标 unknown）：实际 {reason!r}"
+    )
+    attempted = fact.get("attempted_source")
+    attempted_text = " ".join(_document_string_fragments(attempted))
+    assert attempted_text.strip(), (
+        f"缺失源的事实 {name} 必须携带非空 attempted_source（曾尝试读取的"
+        f"声明源路径）：实际 {attempted!r}"
+    )
+    assert declared_rel_dir in attempted_text, (
+        f"缺失源的事实 {name} 的 attempted_source 必须指回声明源条目目录"
+        f"（{declared_rel_dir}）：实际 {attempted_text!r}"
+    )
+    if expected_file is not None:
+        assert expected_file in attempted_text, (
+            f"缺失源的事实 {name} 的 attempted_source 必须指回其来源文件 "
+            f"{expected_file}：实际 {attempted_text!r}"
+        )
+    if "value" in fact:
+        assert fact["value"] is None, (
+            f"缺失源的事实 {name} 不得携带非 None 的 value（缺失资料不得伪装"
+            f"成已知值）：实际 {fact['value']!r}"
+        )
+
+
+def _assert_history_fact_is_known(
+    fact: Any,
+    *,
+    name: str,
+    expected_value: Any,
+    declared_rel_dir: str,
+    expected_file: str | None,
+) -> None:
+    """断言单条事实保持 H1 已知形态 {value, source}（未受影响的来源文件）。"""
+    assert isinstance(fact, Mapping), (
+        f"未受影响来源的事实 {name} 必须保持 H1 已知形态 {{value, source}} 的"
+        f" mapping：实际 {type(fact).__name__!r}"
+    )
+    assert set(fact) == {"value", "source"}, (
+        f"未受影响来源的事实 {name} 的键集必须恰为 {{value, source}}（H1 契约，"
+        f"单文件缺失不得改变已知事实形态）：实际 {sorted(fact)}"
+    )
+    assert fact["value"] == expected_value, (
+        f"未受影响来源的事实 {name} 的 value 必须与声明源声明值逐值相等（不重"
+        f"算、不伪造、不取 sibling）：实际 {fact['value']!r}，期望 "
+        f"{expected_value!r}"
+    )
+    source = fact["source"]
+    assert isinstance(source, Mapping) and source, (
+        f"未受影响来源的事实 {name} 必须携带非空 mapping 形态的字段级来源 "
+        f"provenance（source）：实际 {source!r}"
+    )
+    source_text = " ".join(_document_string_fragments(source))
+    assert declared_rel_dir in source_text, (
+        f"未受影响来源的事实 {name} 的来源 provenance 必须指回声明源条目"
+        f"（{declared_rel_dir}）：实际 {source_text!r}"
+    )
+    if expected_file is not None:
+        assert expected_file in source_text, (
+            f"未受影响来源的事实 {name} 的来源 provenance 必须指回其来源文件 "
+            f"{expected_file}：实际 {source_text!r}"
+        )
+
+
+def _rewrite_history_declared_prompt_revision(
+    root: Path, new_revision_id: str
+) -> None:
+    """把声明源 prompt.yaml 的身份字段 revision_id 改写为 new_revision_id。
+
+    其余字节不变；同步改写 manifest.json 的 prompt_yaml_sha256 /
+    source_sha256（真实 registry 事实：source_sha256 == prompt_yaml_sha256
+    == prompt.yaml 文件字节哈希），保持 fixture 除 revision_id 矛盾外自
+    洽：权威内容哈希 payload 不含 revision_id，prompt_content_sha256 声
+    明值不需改动、仍与 prompt.yaml 声明值一致 —— 拒绝只能由身份字段矛
+    盾引起。
+    """
+    entry_dir = root / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    prompt_bytes = (entry_dir / "prompt.yaml").read_bytes()
+    replaced = prompt_bytes.replace(
+        f"revision_id: {HISTORY_SIBLING_SOURCE_ID}\n".encode("utf-8"),
+        f"revision_id: {new_revision_id}\n".encode("utf-8"),
+    )
+    assert replaced != prompt_bytes, (
+        "fixture 前置事实失败：prompt.yaml revision_id 改写必须真实生效"
+    )
+    (entry_dir / "prompt.yaml").write_bytes(replaced)
+    manifest = json.loads((entry_dir / "manifest.json").read_text(encoding="utf-8"))
+    file_hash = hashlib.sha256(replaced).hexdigest()
+    manifest["prompt_yaml_sha256"] = file_hash
+    manifest["source_sha256"] = file_hash
+    (entry_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _rewrite_history_declared_manifest_revision(
+    root: Path, new_revision_id: str
+) -> None:
+    """把声明源 manifest.json 的身份字段 revision_id 改写为
+    new_revision_id，其余声明字段（含全部哈希）保持不变。"""
+    entry_dir = root / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    manifest = json.loads((entry_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest.get("revision_id") == HISTORY_SIBLING_SOURCE_ID, (
+        "fixture 前置事实失败：改写前 manifest revision_id 必须与条目目录/"
+        "source_legacy_id 一致"
+    )
+    manifest["revision_id"] = new_revision_id
+    (entry_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize(
+    "source_state",
+    [
+        pytest.param("source_dir_missing", id="source_dir_missing"),
+        pytest.param("source_dir_empty", id="source_dir_empty"),
+        pytest.param("manifest_missing", id="manifest_missing"),
+        pytest.param("prompt_missing", id="prompt_missing"),
+    ],
+)
+def test_history_summary_missing_declared_source_records_field_level_unknown_without_blocking(
+    tmp_path: Path, source_state: str
+) -> None:
+    r"""声明源缺失时相关字段必须进入字段级 unknown（unknown_reason +
+    attempted_source），entry 不静默消失、不整批 blocked（H4，M1b
+    history-summary 源可读性门，先写测试，不改 production）。
+
+    H4 behavior —— 对已确认 prompt_history entry（H1 同一 fixture 与
+    entry：kind prompt_history、source_legacy_id
+    v4.1-concise-evidence-json-v1、status user_confirmed），其声明源
+    legacy 文件按 source_state 缺失（源条目目录缺失 / 目录为空 /
+    manifest.json 单缺失 / prompt.yaml 单缺失；未声明 sibling 保持完
+    整）时调用 ``build_history_summary(root, [entry])`` 必须：
+    1. 返回 history-summary 文档（history_summary_schema ==
+       tensile-migration/history-summary/v1），不得 fail-closed 拒绝
+       —— 不得整批因缺失 blocked（抛域错误或返回 blocked 报告均判失
+       败，与 H2/H3 非法输入的 blocked 通道必须可区分）；
+    2. entries 恰含声明的一条：entry 不得静默消失，也不得扫描 legacy
+       目录生成未声明条目；entry 级结构保持 H1（original_id 保留原始
+       legacy ID（来源是 entry 声明而非源文件）、kind 保持声明、
+       history_only: true、formal_identity: "none"、entry_id 为非空
+       文档内 slug 且非 <kind>-v<协议>-r<N> 正式身份）；
+    3. facts 逐字段进入 unknown（缺失不是删字段）：
+       - 全缺失形态（目录缺失 / 为空）：六个必需事实全部 unknown；
+       - manifest_missing：manifest-only 事实（prompt_content_sha256 /
+         publishing_code_commit）unknown，prompt.yaml-only 事实
+         （system_prompt / user_prompt / output_fields）保持 H1 已知形
+         态 {value, source}（值取声明源 prompt.yaml 声明值）；
+       - prompt_missing：镜像对称；
+       - protocol_id 两源均有：全缺失形态下必须 unknown，单文件缺失形
+         态下归属不钉死（取另一来源声明值或标 unknown 均可）；
+    4. 每条 unknown 事实为 mapping，携带非空字符串 unknown_reason（可
+       读缺失原因，不得静默标 unknown）与非空 attempted_source（曾
+       尝试读取的声明源路径：指回声明源条目目录，manifest-only /
+       prompt.yaml-only 事实分别指回 manifest.json / prompt.yaml）；
+       unknown 事实不得携带非 None 的 value（缺失资料不得伪装成已知
+       值，不从 sibling 取内容）；
+    5. 纯构建零写入：全树快照逐字节不变（不写 history-summary 文件、
+       不创建 records/ 或任何目标条目、不修复/重建缺失的 legacy 源）；
+    6. 不就地修改传入 entry。
+
+    fixture 隔离：_write_full_history_prompt_registry 完整三条目
+    registry；mutation 只移除声明源对应文件，sibling 保持完整 —— 缺失
+    只能由声明源引起。合法对照在 mutation 前对完整 fixture 执行（证
+    明 fixture 与入口通道可用、分流不误伤合法已确认 entry）。
+
+    RED Gate 设计（H4）：build_history_summary 入口已存在（H1 已
+    GREEN）。当前实现（H3 反向切片）对声明源缺失一律抛
+    PromptMigrationBlocked（"manifest.json/prompt.yaml 缺失或无法解
+    析: [Errno 2] …"）—— 把缺失当 blocked、entry 消失、无字段级
+    unknown_reason / attempted_source。本测试把该拒绝转成显式行为
+    AssertionError（原始域错误经 cause 链保留，不得直接充当 RED 结
+    论）钉出"缺失资料字段级 unknown 行为缺失"；fixture 构建、合法对
+    照、mutation 生效前置断言与全树快照均真实执行后才失败。
+
+    捕获的合理但错误实现：
+    - 缺失 fail-closed（当前实现）-> 转译后的显式 AssertionError 判失
+      败；
+    - entry 静默消失（跳过缺失源条目）/ 返回空文档 -> entries 数量断言
+      失败；
+    - 返回 blocked 报告 -> history_summary_schema 断言失败；
+    - unknown 字段缺 unknown_reason / attempted_source 或二者为空 ->
+      字段级断言失败；
+    - unknown 字段携带伪造 value（从 sibling 取内容冒充已知值）->
+      非 None value 断言失败（全缺失形态另有 sibling ID 不得进入文档
+      断言兜底）；
+    - 单文件缺失时把未受影响来源的已知事实也标 unknown（缺口扩大）或
+      值漂移（取 sibling 声明值）-> 已知事实形态与值断言失败；
+    - 构建路径写盘（history-summary 文件、records/、重建/修复源文件）
+      -> 全树快照对比失败；
+    - 就地改写传入 entry -> 输入不变断言失败。
+
+    Binding（证据绑定，供复跑核对）：
+    - 测试文件：``tests/versioning/test_migration.py``（H4 仅新增用例
+      与配套 helper/常量及模块 docstring 清单条目，不改 production）。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （与 H1/H2/H3 binding 记录一致，``[tool.pytest.ini_options]
+      testpaths / pythonpath`` 解析依赖该文件）。
+    - 命令（新 selector）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_history_summary_missing_declared_source_records_field_level_unknown_without_blocking``
+      —— RED 时点恰 4 failed（四个 source_state 参数）、0 passed，失
+      败为转译后的 AssertionError"声明源缺失必须进入字段级 unknown…"，
+      cause 链保留原始 PromptMigrationBlocked；不出现原始异常直接充当
+      RED 结论，fixture 前置事实与合法对照全部不失败。
+    - 既有 selector 复跑（回归钉）：H1 selector（-k test_confirmed_
+      prompt_history_entry_builds_history_summary_document_without_
+      writes）与 H2/H3 selectors（-k history_summary_rejects）通过。
+    """
+    declared_bytes = _write_full_history_prompt_registry(tmp_path)
+    declared_entry_dir = (
+        tmp_path / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    )
+    declared_rel_dir = f"pipeline/prompt_registry/{HISTORY_SIBLING_SOURCE_ID}"
+
+    # ---- fixture 前置事实（对齐 H1）：声明源与 sibling 完整、目标根
+    #      不存在；预捕获声明源声明值（mutation 后文件不可读）。----
+    assert (declared_entry_dir / "prompt.yaml").read_bytes() == declared_bytes, (
+        "fixture 前置事实失败：已确认历史源 prompt.yaml 必须可逐字节读回"
+    )
+    assert (declared_entry_dir / "manifest.json").is_file(), (
+        "fixture 前置事实失败：已确认历史源 manifest.json 必须存在"
+    )
+    declared_manifest = json.loads(
+        (declared_entry_dir / "manifest.json").read_text(encoding="utf-8")
+    )
+    declared_prompt = yaml.safe_load(declared_bytes)
+    assert declared_manifest.get("revision_id") == HISTORY_SIBLING_SOURCE_ID and (
+        declared_prompt.get("revision_id") == HISTORY_SIBLING_SOURCE_ID
+    ), (
+        "fixture 前置事实失败：完整声明源的身份字段必须与 source_legacy_id"
+        " 一致（本用例只测缺失形态，不测身份矛盾）"
+    )
+    expected_known_values = {
+        "protocol_id": declared_manifest["protocol_id"],
+        "prompt_content_sha256": declared_manifest["prompt_content_sha256"],
+        "publishing_code_commit": declared_manifest["publishing_code_commit"],
+        "system_prompt": declared_prompt["system_prompt"],
+        "user_prompt": declared_prompt["user_prompt"],
+        "output_fields": declared_prompt["output_fields"],
+    }
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    entry = _confirmed_prompt_history_entry()
+    expected_entry = _confirmed_prompt_history_entry()
+
+    # ---- 合法对照（mutation 前、fixture 完整）：分流不得误伤合法已确
+    #      认 entry（H1 正向行为不回归）。----
+    _assert_legal_history_entry_still_builds(build, tmp_path)
+
+    # ---- 按参数移除声明源对应文件，钉定 mutation 生效且 sibling 完好。----
+    _remove_history_declared_source(tmp_path, source_state)
+    _assert_history_declared_source_state(tmp_path, source_state)
+
+    before = _snapshot_tree(tmp_path)
+
+    # ---- 行为 1：缺失不得整批 blocked / entry 不得消失。----
+    try:
+        document = build(tmp_path, [entry])
+    except Exception as exc:
+        raise AssertionError(
+            "声明源缺失必须进入字段级 unknown（unknown_reason / "
+            "attempted_source），不得 fail-closed 拒绝使 entry 消失或整批"
+            f"blocked（H4 缺失资料形态行为缺失）：实际抛出 "
+            f"{type(exc).__module__}.{type(exc).__name__}: {exc}"
+        ) from exc
+    assert isinstance(document, Mapping), (
+        "声明源缺失必须返回 history-summary 文档（entry 进入字段级 "
+        f"unknown，不整批 blocked）：实际 {type(document).__name__!r}"
+    )
+    assert (
+        document.get("history_summary_schema")
+        == "tensile-migration/history-summary/v1"
+    ), (
+        "声明源缺失不得整批 blocked：必须返回 history-summary 文档"
+        "（history_summary_schema == 'tensile-migration/history-summary/v1'）："
+        f"实际 {document.get('history_summary_schema')!r}"
+    )
+
+    # ---- 行为 2：恰一条 entry，entry 级结构保持 H1。----
+    document_entries = document.get("entries")
+    assert isinstance(document_entries, list), (
+        "history-summary 文档的 entries 必须是 list：实际 "
+        f"{type(document_entries).__name__!r}"
+    )
+    assert len(document_entries) == 1, (
+        "声明源缺失时 entry 不得静默消失，也不得生成未声明条目：文档必须恰含"
+        f"声明的一条 entry：实际 {len(document_entries)} 条"
+    )
+    summary_entry = document_entries[0]
+    assert isinstance(summary_entry, Mapping), (
+        "history-summary entry 必须是 mapping：实际 "
+        f"{type(summary_entry).__name__!r}"
+    )
+    assert summary_entry.get("original_id") == HISTORY_SIBLING_SOURCE_ID, (
+        "缺失源 entry 必须保留 original_id（原始 legacy ID 来源是 entry 声明"
+        f"而非源文件）：实际 {summary_entry.get('original_id')!r}"
+    )
+    assert summary_entry.get("kind") == "prompt_history", (
+        "缺失源 entry 必须保持声明的 kind（prompt_history）：实际 "
+        f"{summary_entry.get('kind')!r}"
+    )
+    assert summary_entry.get("history_only") is True, (
+        "缺失源 entry 必须标记 history_only: true：实际 "
+        f"{summary_entry.get('history_only')!r}"
+    )
+    assert summary_entry.get("formal_identity") == "none", (
+        "缺失源 entry 必须标记 formal_identity: none（不分配新正式身份）："
+        f"实际 {summary_entry.get('formal_identity')!r}"
+    )
+    entry_id = summary_entry.get("entry_id")
+    assert isinstance(entry_id, str) and entry_id, (
+        "缺失源 entry 必须携带非空字符串 entry_id（文档内 slug）：实际 "
+        f"{entry_id!r}"
+    )
+    assert not is_valid_version_id(entry_id), (
+        "entry_id 必须是文档内 slug，不得是 <kind>-v<协议>-r<N> 正式身份："
+        f"实际 {entry_id!r}"
+    )
+
+    # ---- 行为 3/4：facts 逐字段按缺失形态进入 unknown（字段级
+    #      unknown_reason / attempted_source）或保持 H1 已知形态。----
+    facts = summary_entry.get("facts")
+    assert isinstance(facts, Mapping) and facts, (
+        "缺失源 entry 必须携带非空 facts（缺失资料进入字段级 unknown，不是"
+        f"删字段）：实际 {facts!r}"
+    )
+    expected_split = _H4_MISSING_SOURCE_STATES[source_state]
+    for name in _H4_ALL_FACT_NAMES:
+        assert name in facts, (
+            f"缺失源时必需事实 {name} 不得从 facts 中消失（缺失进入字段级 "
+            f"unknown，不是删字段）：实际键集 {sorted(facts)}"
+        )
+        fact = facts[name]
+        if name in expected_split["unknown"]:
+            _assert_history_fact_is_unknown(
+                fact,
+                name=name,
+                declared_rel_dir=declared_rel_dir,
+                expected_file=_H4_FACT_SOURCE_FILES[name],
+            )
+        elif name in expected_split["known"]:
+            _assert_history_fact_is_known(
+                fact,
+                name=name,
+                expected_value=expected_known_values[name],
+                declared_rel_dir=declared_rel_dir,
+                expected_file=_H4_FACT_SOURCE_FILES[name],
+            )
+        # protocol_id 在单文件缺失形态下归属不钉死（H1 允许任一来源：
+        # 取另一来源声明值或标 unknown 均可），不在此断言。
+
+    # ---- 全缺失形态兜底：不得从 sibling 取内容冒充（sibling ID 不得
+    #      进入文档任何字符串）。----
+    if source_state in ("source_dir_missing", "source_dir_empty"):
+        all_strings = _document_string_fragments(document)
+        for sibling_id in (CONFIRMED_PROMPT_SOURCE_ID, _THIRD_REGISTRY_SOURCE_ID):
+            assert not any(sibling_id in fragment for fragment in all_strings), (
+                f"声明源全缺失时未声明 sibling {sibling_id} 不得进入文档任何"
+                "字符串（unknown 事实不得从 sibling 取内容冒充已知值）"
+            )
+
+    # ---- 行为 5：纯构建零写入（不修复/重建缺失源、不落盘任何目标）。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "缺失形态的纯构建必须零写入：全树快照逐字节不变（不写 "
+        "history-summary 文件、不创建 records/ 或任何目标条目、不修复或"
+        "重建缺失的 legacy 源）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "缺失形态纯构建不得创建 records/ 或任何正式对象条目"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "缺失形态纯构建不得写入 history-summary 文件（文档只经返回值给出）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"缺失形态纯构建不得落盘任何 history-summary 命名文件：发现 {path}"
+        )
+
+    # ---- 行为 6：不就地修改传入 entry。----
+    assert entry == expected_entry, (
+        "全程不得就地改写传入 entry（H4 输入事实保持不变）"
+    )
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    [
+        pytest.param("manifest_bad_json", id="manifest_bad_json"),
+        pytest.param("manifest_not_mapping", id="manifest_not_mapping"),
+        pytest.param("prompt_bad_yaml", id="prompt_bad_yaml"),
+        pytest.param("prompt_not_mapping", id="prompt_not_mapping"),
+    ],
+)
+def test_history_summary_unparseable_declared_source_fails_closed(
+    tmp_path: Path, corruption: str
+) -> None:
+    r"""声明源存在但坏 JSON/YAML（含顶层非 mapping）时必须整批
+    fail-closed，不得降级为 unknown 静默构建文档（H4，M1b
+    history-summary 源可读性门，先写测试，不改 production）。
+
+    H4 behavior —— 对已确认 prompt_history entry（H1 同一 fixture 与
+    entry），其声明源对应文件被覆写为坏内容（manifest.json：非合法
+    JSON / 合法 JSON 但顶层非 mapping；prompt.yaml：非合法 YAML / 合法
+    YAML 但顶层非 mapping；另一来源文件保持完整，文件存在性钉定"是
+    不可解析/不可用，不是缺失"）时调用 ``build_history_summary(root,
+    [entry])`` 必须：
+    1. 整批 fail-closed：经明确域错误（PromptMigrationBlocked 等
+       versioning 域错误）或 blocked 报告通道拒绝，携带非空拒因（复用
+       H2/H3 的 _expect_history_summary_fail_closed 通道契约）；
+       不得返回 history-summary 文档 —— 含把坏源字段标 unknown 的文
+       档也不行：坏源是可读性缺口的存在性证据，降级为 unknown 是静默
+       丢弃可读证据的 fail-open，与"源确实不在"的缺失（行为 1 的字段
+       级 unknown）必须可区分；即使另一来源文件完好可提取部分事实，
+       也不得部分构建；
+    2. 零写入：全树逐字节不变（legacy 源不变、不写 history-summary 文
+       件、不创建 records/ 或任何目标条目）；
+    3. 不就地修改传入 entry；合法已确认 entry 对照仍正常构建（mutation
+       前对完整 fixture 执行）。
+
+    RED Gate 设计（H4）：本用例对当前实现为 Unexpected PASS（回归钉）
+    —— 当前 _build_history_summary_entry 对 manifest.json /
+    prompt.yaml 的 json.loads / yaml.safe_load 失败与顶层非 mapping 均
+    经 PromptMigrationBlocked 域错误通道整批拒绝，满足本切片契约；记录
+    为 Unexpected PASS，不当 RED，钉定该通道不得回归为静默文档、字段级
+    unknown 或未类型化异常穿透。
+
+    捕获的合理但错误实现：
+    - 坏源降级为字段级 unknown 构建文档 -> _expect_history_summary_
+      fail_closed 的"不得静默构建文档"断言失败；
+    - 只在另一文件也坏时才拒绝（部分构建）-> 同上；
+    - 拒绝以未类型化异常穿透 -> 通道合规性断言失败（cause 链保留）；
+    - 静默拒绝（空拒因）-> 非空拒因断言失败；
+    - 拒绝路径写盘 -> 全树快照对比失败；
+    - 就地改写传入 entry -> 输入不变断言失败。
+
+    Binding（证据绑定，供复跑核对）：
+    - 命令（新 selector）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_history_summary_unparseable_declared_source_fails_closed``
+      —— 本切片时点 4 passed（Unexpected PASS 回归钉），GREEN 后保持
+      通过。
+    - 测试文件与 ``pyproject.toml`` sha256 同本切片缺失用例 docstring
+      的 Binding 记录。
+    """
+    _write_full_history_prompt_registry(tmp_path)
+    declared_entry_dir = (
+        tmp_path / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    )
+    file_name, corrupt_bytes = _H4_SOURCE_CORRUPTIONS[corruption]
+
+    # ---- fixture 前置事实（对齐 H1）：声明源完整、目标根不存在。----
+    assert (declared_entry_dir / "manifest.json").is_file(), (
+        "fixture 前置事实失败：覆写前已确认历史源 manifest.json 必须存在"
+    )
+    assert (declared_entry_dir / "prompt.yaml").is_file(), (
+        "fixture 前置事实失败：覆写前已确认历史源 prompt.yaml 必须存在"
+    )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    entry = _confirmed_prompt_history_entry()
+    expected_entry = _confirmed_prompt_history_entry()
+
+    # ---- 合法对照（corruption 前）：门不得反向过宽。----
+    _assert_legal_history_entry_still_builds(build, tmp_path)
+
+    # ---- 覆写声明源对应文件为坏内容（文件存在：是不可解析，不是缺
+    #      失）；另一来源文件保持完整。----
+    (declared_entry_dir / file_name).write_bytes(corrupt_bytes)
+    assert (declared_entry_dir / file_name).read_bytes() == corrupt_bytes, (
+        "fixture 前置事实失败：坏内容覆写必须真实生效"
+    )
+    other_file = (
+        "prompt.yaml" if file_name == "manifest.json" else "manifest.json"
+    )
+    assert (declared_entry_dir / other_file).is_file(), (
+        "fixture 前置事实失败：另一来源文件必须保持完整（拒绝只能由坏"
+        "内容引起，不得由缺失混入）"
+    )
+
+    before = _snapshot_tree(tmp_path)
+
+    # ---- 行为 1：整批 fail-closed（明确域错误/blocked 通道 + 非空
+    #      拒因 + 不静默构建文档，含 unknown 形态的文档）。----
+    _expect_history_summary_fail_closed(build, tmp_path, [entry])
+
+    # ---- 行为 2：零写入 —— 全树逐字节不变。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "坏源 fail-closed 拒绝必须零写入：全树快照逐字节不变（不写 "
+        "history-summary 文件、不创建 records/ 或任何目标条目、不改 "
+        "legacy 源）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "坏源拒绝路径不得创建 records/ 或任何正式对象条目"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "坏源拒绝路径不得写入 history-summary 文件（文档只经返回值给出）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"坏源拒绝路径不得落盘任何 history-summary 命名文件：发现 {path}"
+        )
+
+    # ---- 行为 3：不就地修改传入 entry。----
+    assert entry == expected_entry, (
+        "全程不得就地改写传入 entry（H4 输入事实保持不变）"
+    )
+
+
+@pytest.mark.parametrize(
+    "identity_mutation",
+    [
+        pytest.param("manifest_revision_mismatch", id="manifest_revision_mismatch"),
+        pytest.param("prompt_revision_mismatch", id="prompt_revision_mismatch"),
+        pytest.param("both_revisions_mismatch", id="both_revisions_mismatch"),
+    ],
+)
+def test_history_summary_source_identity_field_mismatch_fails_closed(
+    tmp_path: Path, identity_mutation: str
+) -> None:
+    r"""源文件可解析、内容哈希自洽，但身份字段 revision_id 与
+    source_legacy_id 矛盾时必须整批 fail-closed（H4，M1b
+    history-summary 身份绑定门，先写测试，不改 production）。
+
+    H4 behavior —— 真实 legacy registry 的 manifest.json 与 prompt.yaml
+    均携带身份字段 revision_id（M0 verified_local：三份真实 manifest /
+    prompt.yaml 的 revision_id 与其所在 registry 目录名（即条目
+    source_legacy_id）精确一致）。对已确认 prompt_history entry（H1
+    同一 fixture 与 entry），其声明源文件可解析、内容哈希自洽
+    （prompt_content_sha256 按权威 recipe 与 prompt.yaml 声明值一致、
+    prompt_yaml_sha256 与 prompt.yaml 文件字节一致），但 revision_id
+    被改写为另一真实身份（manifest.json 单侧 / prompt.yaml 单侧 / 双
+    侧）时调用 ``build_history_summary(root, [entry])`` 必须：
+    1. 整批 fail-closed（_expect_history_summary_fail_closed 通道契
+       约）：不得在错误身份下静默提取事实构建文档 —— 那会把 A 身份
+       的源内容归到 B 身份的 entry 下，是历史归因漂移（也不得改为从
+       revision_id 指向的 sibling 目录取内容）；
+    2. 零写入：全树逐字节不变（legacy 源不变、不写 history-summary 文
+       件、不创建 records/ 或任何目标条目）；
+    3. 不就地修改传入 entry；合法已确认 entry 对照仍正常构建（mutation
+       前对完整 fixture 执行）。
+
+    fixture 隔离：改写只动身份字段 revision_id（manifest 侧 / prompt
+    侧 / 双侧），manifest 的内容与文件字节哈希字段同步保持自洽（见
+    _rewrite_history_declared_prompt_revision），使拒绝只能由身份矛
+    盾引起，不得由内容哈希失配或缺失混入。
+
+    RED Gate 设计（H4）：当前实现完全不读取/比对 revision_id，对三类
+    矛盾参数全部静默构建文档（含声明源事实的 entry）—— 由 _expect_
+    history_summary_fail_closed 的显式 AssertionError（"不得静默构建
+    history-summary 文档"）钉出"history-summary 身份绑定门缺失"。
+
+    捕获的合理但错误实现：
+    - 不比对 revision_id（当前实现）-> 全部参数静默构建文档，判失败；
+    - 只比 manifest 侧 / 只比 prompt.yaml 侧 -> 另一单侧参数静默放行，
+      判失败；
+    - 把身份矛盾降级为字段级 unknown 文档 -> 必须与源缺失可区分（矛盾
+      是 fail-closed，不是 unknown），"不得静默构建文档"断言失败；
+    - 按 revision_id 改读 sibling 目录取内容 -> 归因漂移，同上判失败；
+    - 拒绝以未类型化异常穿透 / 空拒因 -> 通道合规性与非空拒因断言失败；
+    - 拒绝路径写盘 / 就地改写传入 entry -> 快照与输入不变断言失败。
+
+    Binding（证据绑定，供复跑核对）：
+    - 命令（新 selector）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_history_summary_source_identity_field_mismatch_fails_closed``
+      —— RED 时点恰 3 failed（三个 identity_mutation 参数）、
+      0 passed，失败为 _expect_history_summary_fail_closed 的
+      AssertionError"非法 history 输入必须 fail-closed 拒绝，不得静默
+      构建 history-summary 文档…"（当前实现返回含声明源事实的文档）；
+      fixture 前置事实与合法对照全部不失败。
+    - 测试文件与 ``pyproject.toml`` sha256 同本切片缺失用例 docstring
+      的 Binding 记录。
+    """
+    _write_full_history_prompt_registry(tmp_path)
+    declared_entry_dir = (
+        tmp_path / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    )
+
+    # ---- fixture 前置事实（对齐 H1）：声明源完整、目标根不存在。----
+    assert (declared_entry_dir / "manifest.json").is_file(), (
+        "fixture 前置事实失败：改写前已确认历史源 manifest.json 必须存在"
+    )
+    assert (declared_entry_dir / "prompt.yaml").is_file(), (
+        "fixture 前置事实失败：改写前已确认历史源 prompt.yaml 必须存在"
+    )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    entry = _confirmed_prompt_history_entry()
+    expected_entry = _confirmed_prompt_history_entry()
+
+    # ---- 合法对照（mutation 前）：门不得反向过宽。----
+    _assert_legal_history_entry_still_builds(build, tmp_path)
+
+    # ---- 按参数改写身份字段 revision_id（只动身份，哈希保持自洽）。----
+    if identity_mutation == "manifest_revision_mismatch":
+        _rewrite_history_declared_manifest_revision(
+            tmp_path, CONFIRMED_PROMPT_SOURCE_ID
+        )
+    elif identity_mutation == "prompt_revision_mismatch":
+        _rewrite_history_declared_prompt_revision(
+            tmp_path, _THIRD_REGISTRY_SOURCE_ID
+        )
+    elif identity_mutation == "both_revisions_mismatch":
+        # prompt 侧改写同步更新 manifest 文件字节哈希，须先于 manifest
+        # 侧 revision_id 改写执行。
+        _rewrite_history_declared_prompt_revision(
+            tmp_path, CONFIRMED_PROMPT_SOURCE_ID
+        )
+        _rewrite_history_declared_manifest_revision(
+            tmp_path, CONFIRMED_PROMPT_SOURCE_ID
+        )
+    else:
+        raise AssertionError(f"未知 identity_mutation {identity_mutation!r}")
+
+    # ---- mutation 生效前置事实：两文件存在且可解析、内容哈希自洽 ——
+    #      拒绝只能由身份字段矛盾引起。----
+    manifest = json.loads(
+        (declared_entry_dir / "manifest.json").read_text(encoding="utf-8")
+    )
+    prompt_bytes = (declared_entry_dir / "prompt.yaml").read_bytes()
+    prompt = yaml.safe_load(prompt_bytes)
+    assert isinstance(manifest, Mapping) and isinstance(prompt, Mapping), (
+        "fixture 前置事实失败：改写后两份源文件必须仍可解析为 mapping"
+    )
+    assert _prompt_content_sha256_of_yaml(prompt_bytes) == manifest.get(
+        "prompt_content_sha256"
+    ), (
+        "fixture 前置事实失败：改写后 prompt_content_sha256 必须仍与 "
+        "prompt.yaml 声明值按权威 recipe 一致（矛盾只能由 revision_id 引起）"
+    )
+    assert (
+        hashlib.sha256(prompt_bytes).hexdigest() == manifest.get("prompt_yaml_sha256")
+    ), (
+        "fixture 前置事实失败：改写后 prompt_yaml_sha256 必须与 prompt.yaml "
+        "文件字节一致"
+    )
+    if identity_mutation in ("manifest_revision_mismatch", "both_revisions_mismatch"):
+        assert manifest.get("revision_id") != HISTORY_SIBLING_SOURCE_ID, (
+            "fixture 前置事实失败：manifest 侧矛盾必须真实生效"
+        )
+    if identity_mutation in ("prompt_revision_mismatch", "both_revisions_mismatch"):
+        assert prompt.get("revision_id") != HISTORY_SIBLING_SOURCE_ID, (
+            "fixture 前置事实失败：prompt.yaml 侧矛盾必须真实生效"
+        )
+    if identity_mutation == "manifest_revision_mismatch":
+        assert prompt.get("revision_id") == HISTORY_SIBLING_SOURCE_ID, (
+            "fixture 前置事实失败：单侧矛盾下另一文件身份字段必须保持与 "
+            "source_legacy_id 一致"
+        )
+    if identity_mutation == "prompt_revision_mismatch":
+        assert manifest.get("revision_id") == HISTORY_SIBLING_SOURCE_ID, (
+            "fixture 前置事实失败：单侧矛盾下另一文件身份字段必须保持与 "
+            "source_legacy_id 一致"
+        )
+
+    before = _snapshot_tree(tmp_path)
+
+    # ---- 行为 1：整批 fail-closed（不得在错误身份下构建文档）。----
+    _expect_history_summary_fail_closed(build, tmp_path, [entry])
+
+    # ---- 行为 2：零写入 —— 全树逐字节不变。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "身份矛盾 fail-closed 拒绝必须零写入：全树快照逐字节不变（不写 "
+        "history-summary 文件、不创建 records/ 或任何目标条目、不改 "
+        "legacy 源）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "身份矛盾拒绝路径不得创建 records/ 或任何正式对象条目"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "身份矛盾拒绝路径不得写入 history-summary 文件（文档只经返回值给出）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"身份矛盾拒绝路径不得落盘任何 history-summary 命名文件：发现 {path}"
+        )
+
+    # ---- 行为 3：不就地修改传入 entry。----
+    assert entry == expected_entry, (
+        "全程不得就地改写传入 entry（H4 输入事实保持不变）"
+    )

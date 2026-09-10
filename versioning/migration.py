@@ -15,7 +15,9 @@
 - 预检全程零写入：不创建 ``records/``、staging 或任何目标条目，
   不修改 legacy 源；报告只经返回值给出。
 - :func:`build_history_summary`：M1b history-summary 纯构建，只按声明
-  entry 只读提取 legacy 事实，文档只经返回值给出，不落盘。
+  entry 只读提取 legacy 事实 —— 声明源缺失时相关事实字段级 unknown
+  （unknown_reason / attempted_source），坏源与身份字段矛盾 fail-closed；
+  文档只经返回值给出，不落盘。
 - 冲突恢复等不在本切片内。
 """
 
@@ -1637,14 +1639,6 @@ _HISTORY_SUMMARY_SCHEMA = "tensile-migration/history-summary/v1"
 # manifest.json、prompt.yaml-only 事实指回 prompt.yaml（字段级 provenance
 # 口径；protocol_id 两源均有，取 manifest 声明值）。事实值一律取 legacy
 # 源声明值，不重算、不伪造、不取 sibling。
-_HISTORY_FACT_SOURCES = {
-    "protocol_id": "manifest.json",
-    "prompt_content_sha256": "manifest.json",
-    "publishing_code_commit": "manifest.json",
-    "system_prompt": "prompt.yaml",
-    "user_prompt": "prompt.yaml",
-    "output_fields": "prompt.yaml",
-}
 
 
 def _build_history_summary_entry(
@@ -1654,9 +1648,8 @@ def _build_history_summary_entry(
 
     只按 entry 的 ``source_legacy_id`` 定位
     ``pipeline/prompt_registry/<source_legacy_id>/{manifest.json,prompt.yaml}``，
-    不扫描 registry；事实值取声明源文件值并携带来源 provenance。缺失/
-    不可解析源 fail-closed 抛 :class:`PromptMigrationBlocked`（零写入），
-    unknown / 未确认 entry 的 blocked 反向切片不在本切片内。
+    不扫描 registry；事实值取声明源文件值并携带来源 provenance（H1 已
+    知形态 ``{value, source}``）。全程零写入，不就地修改传入 entry。
 
     H2/H3 fail-closed 门（先于任何 legacy 源读取，零写入拒绝）：
       - entry ``status`` 必须是 ``user_confirmed``（白名单式，未知 /
@@ -1665,6 +1658,22 @@ def _build_history_summary_entry(
         是 history_only，不分配任何新正式身份）；
       - entry 不得声明 ``passed: true``（不得把历史 summary 转成
         passed / 自我声明通过状态）。
+
+    H4 源可读性分流与身份绑定门：
+      - 声明源文件缺失（源条目目录缺失 / 目录为空 / manifest.json /
+        prompt.yaml 单文件缺失）时，对应来源的事实进入字段级 unknown
+        （携带非空 unknown_reason 与指回声明源路径的 attempted_source，
+        不伪造 value），entry 不消失、整批不 blocked，未受影响的另一
+        来源事实保持已知形态；
+      - 源文件存在但不可解析（坏 JSON/YAML 或顶层非 mapping）时，整
+        批 fail-closed 抛 :class:`PromptMigrationBlocked`（坏源是可读性
+        缺口的存在性证据，不得降级为 unknown 静默构建文档，与缺失形
+        态必须可区分）；
+      - 可解析来源的身份字段 ``revision_id`` 与 entry 声明的
+        ``source_legacy_id`` 矛盾时，整批 fail-closed 抛
+        :class:`PromptMigrationBlocked`（不得在错误身份下提取事实造成
+        历史归因漂移，也不得改按 revision_id 指向的 sibling 目录取内
+        容）。
     """
     source_id = entry.get("source_legacy_id")
     status = entry.get("status")
@@ -1695,54 +1704,107 @@ def _build_history_summary_entry(
     source_rel_dir = _LEGACY_PROMPT_REGISTRY / source_id
     manifest_file = Path(root) / source_rel_dir / "manifest.json"
     prompt_file = Path(root) / source_rel_dir / "prompt.yaml"
-    try:
-        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
-    except Exception as exc:
+
+    # H4 源可读性分流：声明源文件缺失（源条目目录缺失 / 目录为空 /
+    # 单文件缺失）不是 fail-closed 缺口 —— 对应来源的事实进入字段级
+    # unknown；文件存在但不可解析（坏 JSON/YAML 或顶层非 mapping）是
+    # 可读性缺口的存在性证据，维持 fail-closed 域错误，与缺失形态可
+    # 区分。
+    manifest: Mapping[str, object] | None = None
+    if manifest_file.is_file():
+        try:
+            manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise PromptMigrationBlocked(
+                f"history entry {source_id} 的 manifest.json 无法解析: {exc}"
+            ) from exc
+        if not isinstance(manifest, Mapping):
+            raise PromptMigrationBlocked(
+                f"history entry {source_id} 的 manifest.json 顶层必须是 mapping"
+            )
+    prompt: Mapping[str, object] | None = None
+    if prompt_file.is_file():
+        try:
+            prompt = yaml.safe_load(prompt_file.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise PromptMigrationBlocked(
+                f"history entry {source_id} 的 prompt.yaml 无法解析: {exc}"
+            ) from exc
+        if not isinstance(prompt, Mapping):
+            raise PromptMigrationBlocked(
+                f"history entry {source_id} 的 prompt.yaml 顶层必须是 mapping"
+            )
+
+    # H4 身份绑定门（fail-closed）：可解析来源的身份字段 revision_id
+    # 必须与 entry 声明的 source_legacy_id 精确相等 —— 在错误身份下
+    # 提取事实会把 A 身份的源内容归到 B 身份的 entry 下（历史归因漂
+    # 移），也不得改按 revision_id 指向的 sibling 目录取内容。
+    if manifest is not None and manifest.get("revision_id") != source_id:
         raise PromptMigrationBlocked(
-            f"history entry {source_id} 的 manifest.json 缺失或无法解析: {exc}"
-        ) from exc
-    if not isinstance(manifest, Mapping):
-        raise PromptMigrationBlocked(
-            f"history entry {source_id} 的 manifest.json 顶层必须是 mapping"
+            f"history entry {source_id} 的 manifest.json 身份字段 "
+            f"revision_id={manifest.get('revision_id')!r} 与声明源身份 "
+            f"{source_id!r} 矛盾（fail-closed）"
         )
-    try:
-        prompt = yaml.safe_load(prompt_file.read_text(encoding="utf-8"))
-    except Exception as exc:
+    if prompt is not None and prompt.get("revision_id") != source_id:
         raise PromptMigrationBlocked(
-            f"history entry {source_id} 的 prompt.yaml 缺失或无法解析: {exc}"
-        ) from exc
-    if not isinstance(prompt, Mapping):
-        raise PromptMigrationBlocked(
-            f"history entry {source_id} 的 prompt.yaml 顶层必须是 mapping"
+            f"history entry {source_id} 的 prompt.yaml 身份字段 "
+            f"revision_id={prompt.get('revision_id')!r} 与声明源身份 "
+            f"{source_id!r} 矛盾（fail-closed）"
         )
 
-    raw_facts = {
-        "protocol_id": (manifest.get("protocol_id"), "manifest.json"),
-        "prompt_content_sha256": (
-            manifest.get("prompt_content_sha256"),
-            "manifest.json",
-        ),
-        "publishing_code_commit": (
-            manifest.get("publishing_code_commit"),
-            "manifest.json",
-        ),
-        "system_prompt": (prompt.get("system_prompt"), "prompt.yaml"),
-        "user_prompt": (prompt.get("user_prompt"), "prompt.yaml"),
-        "output_fields": (prompt.get("output_fields"), "prompt.yaml"),
-    }
-    facts: dict[str, dict[str, Any]] = {}
-    for name, (value, file_name) in raw_facts.items():
+    def _known_fact(name: str, value: object, file_name: str) -> dict[str, Any]:
         if value is None:
             raise PromptMigrationBlocked(
                 f"history entry {source_id} 的 {file_name} 缺少必需事实 {name}"
             )
-        facts[name] = {
+        return {
             "value": value,
             "source": {
                 "field": name,
                 "file": (source_rel_dir / file_name).as_posix(),
             },
         }
+
+    def _unknown_fact(reason: str, attempted: str) -> dict[str, Any]:
+        # 缺失资料不得伪装成已知值：unknown 事实不携带非 None 的
+        # value，不从 sibling 取内容。
+        return {"unknown_reason": reason, "attempted_source": attempted}
+
+    facts: dict[str, dict[str, Any]] = {}
+    # protocol_id 两源均有（manifest 优先，与 H1 来源口径一致）。
+    if manifest is not None:
+        facts["protocol_id"] = _known_fact(
+            "protocol_id", manifest.get("protocol_id"), "manifest.json"
+        )
+    elif prompt is not None:
+        facts["protocol_id"] = _known_fact(
+            "protocol_id", prompt.get("protocol_id"), "prompt.yaml"
+        )
+    else:
+        facts["protocol_id"] = _unknown_fact(
+            "声明源条目 "
+            f"{source_rel_dir.as_posix()} 缺失：manifest.json 与 prompt.yaml "
+            "均不可读，protocol_id 无法取自任一来源",
+            source_rel_dir.as_posix(),
+        )
+    for name in ("prompt_content_sha256", "publishing_code_commit"):
+        if manifest is not None:
+            facts[name] = _known_fact(name, manifest.get(name), "manifest.json")
+        else:
+            facts[name] = _unknown_fact(
+                f"声明源 {source_rel_dir.as_posix()}/manifest.json 缺失，"
+                f"无法读取 {name}",
+                (source_rel_dir / "manifest.json").as_posix(),
+            )
+    for name in ("system_prompt", "user_prompt", "output_fields"):
+        if prompt is not None:
+            facts[name] = _known_fact(name, prompt.get(name), "prompt.yaml")
+        else:
+            facts[name] = _unknown_fact(
+                f"声明源 {source_rel_dir.as_posix()}/prompt.yaml 缺失，"
+                f"无法读取 {name}",
+                (source_rel_dir / "prompt.yaml").as_posix(),
+            )
 
     return {
         "entry_id": f"history-{kind}-{source_id}",
@@ -1769,12 +1831,15 @@ def build_history_summary(
     条目、不就地修改传入 entries。
 
     全程纯构建零写入：不写 history-summary 文件、不创建 records/ 或任
-    何目标条目、不改 legacy 源，文档只经返回值给出。缺失/不可解析源、
-    未确认 entry（status 非 ``user_confirmed``）、夹带
-    ``candidate_target_identity`` 键、声明 ``passed: true``、非法
-    ``entries``（None / 不可迭代 / 元素非 mapping）均 fail-closed 抛
-    :class:`PromptMigrationBlocked`；unknown / 缺失资料形态、多 entry
-    批量、文件写入与 CLI 不在本切片。
+    何目标条目、不改 legacy 源，文档只经返回值给出。未确认 entry
+    （status 非 ``user_confirmed``）、夹带 ``candidate_target_identity``
+    键、声明 ``passed: true``、源文件存在但不可解析（坏 JSON/YAML 或顶
+    层非 mapping）、可解析源身份字段 revision_id 与 entry 声明源身份矛
+    盾、非法 ``entries``（None / 不可迭代 / 元素非 mapping）均 fail-closed
+    抛 :class:`PromptMigrationBlocked`；声明源文件缺失（源条目目录缺失 /
+    目录为空 / 单文件缺失）时相关事实进入字段级 unknown（携带
+    unknown_reason / attempted_source，不整批 blocked）；多 entry 批量、
+    文件写入与 CLI 不在本切片。
     """
     root = Path(root)
     try:
