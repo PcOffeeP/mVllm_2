@@ -381,6 +381,31 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   或目标目录（该对象零写入），修正输入后的重跑不得被失败路径
         #   遗留的 stale credential 失配拒绝堵死。
 
+    def build_history_summary(root: Path, entries: Sequence[Mapping[str, object]]) -> object
+        # H1 history-summary 纯构建（M1b 第一个切片，先写测试，不改
+        #   production）：对已确认历史 Prompt entry（kind "prompt_history"、
+        #   source_legacy_id "v4.1-concise-evidence-json-v1"、status
+        #   "user_confirmed"，M0 registry_versions_not_migrating 用户确认
+        #   仅进 history-summary，不迁移为正式 Prompt 身份）执行只读构
+        #   建，返回 history-summary 文档（mapping）：history_summary_schema
+        #   == "tensile-migration/history-summary/v1"；entries 为 list 且
+        #   恰含声明的条目（不扫描 legacy 目录生成未声明条目）；每条
+        #   entry 携带 entry_id（文档内 slug，非 <kind>-v<协议>-r<N> 正
+        #   式身份）、kind、original_id（保留原始 legacy ID）、
+        #   history_only: true、formal_identity: "none"（不分配任何新正
+        #   式身份，文档内任何字符串值都不是正式身份）与 facts；facts
+        #   内已知值为 {value, source} 形态（source 为非空 mapping 的字
+        #   段级来源 provenance，须可指回该 entry 的 legacy 源文件：
+        #   manifest-only 事实指 manifest.json、prompt.yaml-only 事实指
+        #   prompt.yaml），事实值取 legacy manifest/prompt 源声明值
+        #   （protocol_id / prompt_content_sha256 / publishing_code_commit /
+        #   system_prompt / user_prompt / output_fields），不重算、不伪
+        #   造、不取 sibling。全程纯构建零写入：不写 history-summary 文
+        #   件、不创建 records/ 或任何目标条目、不改 legacy 源、不就地修
+        #   改传入 entries。unknown / 缺失资料形态、未确认 entry 的
+        #   blocked 反向、多 entry 批量、history-summary 文件写入与 CLI
+        #   不在本切片。
+
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
 ``import versioning.migration``，pytest 会在 collection 阶段以
@@ -450,11 +475,17 @@ in_progress）：零写入断言（receipt 不得存在）钉出“credential �
 RED 阶段不执行到（失败先发生于零 receipt 断言），其当前 production
 行为（stale credential 与修正后映射/源逐字段核实失配即拒绝重跑）恰
 为本切片要钉死的缺陷，GREEN 后转为重跑不被阻塞的回归钉。
+H1（M1b history-summary 第一个切片，单条已确认历史 Prompt entry 的
+最小正向纯构建）同口径：migration 模块已存在而 build_history_summary
+入口缺失时，仍由测试内惰性解析 + 显式 AssertionError 钉出
+“history-summary 纯构建行为缺失”，不让原始 import 错误或
+AttributeError 成为 RED。
 
 范围边界：本文件只覆盖 Prompt 迁移（T1–T10）、T11–T14 数据迁移批级
 只读预检切面（ready 正向、目标冲突边界、已钉扎 manifest provenance
-门、manifest files 声明的 payload 文件哈希复算门）与 T15–T18 单对象/批级
-data 真实转换切面 —— T1 ready 正向
+门、manifest files 声明的 payload 文件哈希复算门）、T15–T18 单对象/批级
+data 真实转换切面与 H1 history-summary 单条历史 Prompt entry 最小
+正向纯构建切面 —— T1 ready 正向
 最小切面、
 T2 blocked 反向四类场景、T3 目标冲突精确身份边界回归、T4 同身份非
 标准文件形式回归、T5 身份契约收紧、T6 真实转换最小切片（创建
@@ -690,7 +721,26 @@ counts 删除 splits 声明（files[] 声明哈希不动保持 T14 自洽门绿�
 写入后的补偿清理（要求校验先于写入而非写入后补偿）、in-progress
 receipt 自身缺失/被篡改的拒绝分支（T19-P2/P4 既有口径）、CLI、
 DVC、训练机真实路径；T19-P4 正常中断 credential 生命周期不回归由既
-有 T19-P4 selector 复跑钉定；
+有 T19-P4 selector 复跑钉定、H1 history-summary 单条历史 Prompt
+entry 最小正向纯构建切片（M1b 第一个 current behavior：对 kind
+prompt_history、source_legacy_id v4.1-concise-evidence-json-v1、
+status user_confirmed 的单条已确认 entry 调用
+build_history_summary(root, entries) 返回 history-summary 文档 ——
+history_summary_schema 为 tensile-migration/history-summary/v1、
+entries 恰含声明一条、original_id 保留原始 legacy ID、
+history_only: true、formal_identity: "none"、entry_id 为文档内 slug
+且非 <kind>-v<协议>-r<N> 正式身份、文档内任何字符串值都不是正式
+身份；facts 从该 entry 的 legacy manifest/prompt 源提取（protocol_id /
+prompt_content_sha256 / publishing_code_commit / system_prompt /
+user_prompt / output_fields 六个必需事实，逐值与 legacy 源声明值相等，
+不重算不伪造不取 sibling），已知值形态 {value, source{...}}、source
+为非空 mapping 且可指回声明源的 legacy 文件（manifest-only 事实须
+指 manifest.json、prompt.yaml-only 事实须指 prompt.yaml）；纯构建零
+写入 —— 全树逐字节不变、legacy 源不变、不写 history-summary 文
+件、不创建 records/、不就地修改传入 entry；fixture 镜像真实 legacy
+prompt registry 完整三条目（v1 已确认历史源 + v2 /
+fixed-full-fields-initial-v1 两个未声明 sibling，逐源内容不同），未
+声明 sibling 的 ID 不得进入文档）；
 以上切片之外
 不实现/不要求
 data 真实转换的其余行为（批级多对象乱序写入顺序、
@@ -702,7 +752,11 @@ data 真实转换的其余行为（批级多对象乱序写入顺序、
 同一个 migration_receipts/<target_identity>.receipt.yaml，写入前
 in_progress、成功后原子转 committed，不另立 credential 目录））、data blocked 反向其余场景（身份契约收紧、legacy 源
 release 目录/manifest 缺失、声明的 payload 文件缺失——该存在性分支
-由既有 production 检查 blocked，本文件未单列用例钉定）、history-summary、CLI、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
+由既有 production 检查 blocked，本文件未单列用例钉定）、history-
+summary 的其余切面（H1 只钉单条已确认 prompt_history entry 的纯构
+建正向：unknown/缺失资料形态、pending/未确认 entry 的 blocked 反
+向、多 entry 批量与混合完整/缺失资料、history-summary 文件写入、
+CLI 均不在本切片）、自动恢复/续传逻辑（冲突场景只断言 blocked 与零写入；
 T10 的“重跑”是对 migrate_prompt 的全新调用，不断言任何自动恢复行为）。T2 身份场景只绑定
 behavior 列举的禁用形式（旧哈希、LATEST、短哈希、前导零）；r0、
 revision 上限、revision 是否必须等于已确认的 r1 等更细身份规则留给
@@ -755,6 +809,7 @@ from versioning.data_release import (
     load_release_metadata,
     validate_training_reference,
 )
+from versioning.ids import is_valid_version_id
 from versioning.prompts import (
     PROMPT_REQUIRED_FIELDS,
     PromptConflict,
@@ -13831,4 +13886,491 @@ def test_migrate_data_invalid_release_semantics_rejected_without_persisting_in_p
         r2_completed_side_mtime_ns=r2_completed_side_mtime,
         fixture_baseline_snapshot=pristine_baseline,
         fix_context="恢复 r1 manifest counts.splits 声明",
+    )
+
+
+# ---------------------------------------------------------------------------
+# H1：history-summary —— 单条已确认历史 Prompt entry 的最小正向纯构建
+# ---------------------------------------------------------------------------
+
+# 第三个真实 registry 条目（M0 source-inventory pipeline_prompt_registry：
+# v4.1-fixed-full-fields-initial-v1，历史 Prompt，仅 registry 存在）。H1
+# fixture 把它与 v4.1-concise-evidence-json-v1（已确认历史源）、
+# v4.1-concise-evidence-json-v2（当前活动 Prompt）共同写入，镜像真实
+# legacy prompt registry 的完整三条目布局；后两者在本切片中是未声明
+# sibling（H1 只声明 v1 一条 entry）。
+_THIRD_REGISTRY_SOURCE_ID = "v4.1-fixed-full-fields-initial-v1"
+
+# 真实 legacy registry manifest 的逐源 publishing_code_commit 与
+# generated_at（M0 source-inventory manifest_facts / 真实 manifest.json
+# 声明值，verified_local）。fixture 其余字段值合成，但这两个字段取真实
+# 声明值以保持证据结构可追溯。
+_REGISTRY_PUBLISHING_COMMITS: dict[str, str] = {
+    HISTORY_SIBLING_SOURCE_ID: "4c56f7c958b830e43e301739aa4d71b2eb1c1f99",
+    CONFIRMED_PROMPT_SOURCE_ID: "98f0476d50138a7577e65426338a44a1baaec040",
+    _THIRD_REGISTRY_SOURCE_ID: "4999ae0191c1473642163ed421649b29805beddf",
+}
+_REGISTRY_GENERATED_AT: dict[str, str] = {
+    HISTORY_SIBLING_SOURCE_ID: "2026-07-28T21:41:33+08:00",
+    CONFIRMED_PROMPT_SOURCE_ID: "2026-07-28T21:44:58+08:00",
+    _THIRD_REGISTRY_SOURCE_ID: "2026-07-28T15:11:41+08:00",
+}
+
+
+def _write_full_history_prompt_registry(root: Path) -> bytes:
+    """H1 fixture：镜像真实 legacy prompt registry 的完整三条目布局。
+
+    三个真实条目全部写入 ``pipeline/prompt_registry/<source_id>/
+    {manifest.json,prompt.yaml}``（M0 source-inventory
+    pipeline_prompt_registry 布局）。manifest.json 逐字段镜像真实
+    manifest 的字段集与生成 recipe
+    （pipeline/prompt_control/core.py::_manifest_payload，测试独立镜像
+    自算、不 import legacy production）：哈希字段按真实 recipe 从合成
+    prompt.yaml 复算（prompt_content_sha256 权威六字段 payload recipe；
+    prompt_yaml_sha256 / source_sha256 文件字节 recipe 且镜像真实事实
+    source_sha256 == prompt_yaml_sha256；system_prompt_sha256 /
+    user_prompt_sha256 字符串 UTF-8 字节；fields_and_labels_sha256
+    output_fields+label_pools canonical JSON），publishing_code_commit /
+    generated_at 取真实 manifest 声明值，其余标识字段取合成
+    prompt.yaml 声明值 —— 源内自洽。三条目 prompt.yaml 内容逐源不同
+    （system_prompt 内嵌源标记），使"扫全 registry / 取错 sibling"
+    的实现无法通过 H1 的事实值断言。
+
+    返回已确认历史源（v4.1-concise-evidence-json-v1）prompt.yaml 的
+    字节。
+    """
+    registry = root / "pipeline" / "prompt_registry"
+    for source_id in (
+        HISTORY_SIBLING_SOURCE_ID,
+        CONFIRMED_PROMPT_SOURCE_ID,
+        _THIRD_REGISTRY_SOURCE_ID,
+    ):
+        entry_dir = registry / source_id
+        entry_dir.mkdir(parents=True, exist_ok=True)
+        prompt_bytes = _legacy_prompt_yaml_full(source_id)
+        (entry_dir / "prompt.yaml").write_bytes(prompt_bytes)
+        prompt = yaml.safe_load(prompt_bytes)
+        fields_and_labels_payload = {
+            "output_fields": prompt["output_fields"],
+            "label_pools": prompt["label_pools"],
+        }
+        manifest = {
+            "schema_version": "tensile-prompt-registry-manifest/v1",
+            "prompt_schema_version": prompt["schema_version"],
+            "protocol_id": prompt["protocol_id"],
+            "revision_id": prompt["revision_id"],
+            "prompt_content_sha256": _prompt_content_sha256_of_yaml(prompt_bytes),
+            "prompt_yaml_sha256": hashlib.sha256(prompt_bytes).hexdigest(),
+            "source_path": "pipeline/prompt_control/active_prompt.yaml",
+            "source_sha256": hashlib.sha256(prompt_bytes).hexdigest(),
+            "system_prompt_sha256": hashlib.sha256(
+                prompt["system_prompt"].encode("utf-8")
+            ).hexdigest(),
+            "user_prompt_sha256": hashlib.sha256(
+                prompt["user_prompt"].encode("utf-8")
+            ).hexdigest(),
+            "fields_and_labels_sha256": hashlib.sha256(
+                json.dumps(
+                    fields_and_labels_payload,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ).encode("utf-8")
+            ).hexdigest(),
+            "publishing_code_commit": _REGISTRY_PUBLISHING_COMMITS[source_id],
+            "generated_at": _REGISTRY_GENERATED_AT[source_id],
+            "immutable": True,
+        }
+        (entry_dir / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
+            + "\n",
+            encoding="utf-8",
+        )
+    return (registry / HISTORY_SIBLING_SOURCE_ID / "prompt.yaml").read_bytes()
+
+
+def _confirmed_prompt_history_entry() -> dict[str, Any]:
+    """逐字段镜像 M0 证据结构的已确认 prompt_history entry（H1 输入）。
+
+    结构对齐 M0 object-mapping.yaml 的历史整理口径
+    （model_train_eval_history.entries 的 source_id / verified /
+    history_only / status / confirmed_by_user_date / notes 字段族）与
+    prompt registry 历史条目语境：kind 为 H1 契约的 ``prompt_history``，
+    source_legacy_id 指向真实历史源 ``v4.1-concise-evidence-json-v1``
+    （M0 registry_versions_not_migrating：用户确认仅进 history-summary，
+    不迁移为新的正式 Prompt 身份），status 为 ``user_confirmed``
+    （M0 status_field_legend 唯一"用户已逐项确认"口径；由入口自身读
+    取该字段消费，调用方不预过滤成布尔标志，后续 pending/未确认的反
+    向切片才能绑定同一入口）。entry 不携带 candidate_target_identity
+    —— 历史 entry 不分配正式目标身份，与 prompt_mapping.items 的已
+    确认迁移条目结构性区分。
+    """
+    return {
+        "kind": "prompt_history",
+        "source_legacy_id": HISTORY_SIBLING_SOURCE_ID,
+        "role": "历史 Prompt（registry 存在，非活动；仅进 history-summary）",
+        "source_verified": "verified_local",
+        "history_only": True,
+        "status": "user_confirmed",
+        "confirmed_by_user_date": "2026-09-07",
+        "notes": (
+            "M0 registry_versions_not_migrating：该历史 Prompt 仅进 "
+            "history-summary，不迁移为新的正式 Prompt 身份；历史引用不能"
+            "替换为当前 Prompt。"
+        ),
+    }
+
+
+def _resolve_history_summary_entry() -> Any:
+    """惰性解析 H1 history-summary 纯构建入口；模块或入口缺失返回 None。
+
+    RED Gate 设计（与 _resolve_precheck_entry 同口径）：不让原始
+    import 错误或 AttributeError 成为 RED，由调用方以显式行为断言
+    钉出"history-summary 纯构建行为缺失"。
+    """
+    spec = importlib.util.find_spec("versioning.migration")
+    if spec is None:
+        return None
+    module = importlib.import_module("versioning.migration")
+    return getattr(module, "build_history_summary", None)
+
+
+def _document_string_fragments(value: Any) -> list[str]:
+    """递归收集文档内全部字符串片段（mapping 键、序列元素、标量）。"""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, Mapping):
+        fragments: list[str] = []
+        for key, item in value.items():
+            fragments.extend(_document_string_fragments(key))
+            fragments.extend(_document_string_fragments(item))
+        return fragments
+    if isinstance(value, (list, tuple)):
+        item_fragments: list[str] = []
+        for item in value:
+            item_fragments.extend(_document_string_fragments(item))
+        return item_fragments
+    if value is None:
+        return []
+    return [str(value)]
+
+
+def test_confirmed_prompt_history_entry_builds_history_summary_document_without_writes(
+    tmp_path: Path,
+) -> None:
+    r"""单条已确认历史 Prompt entry 的最小正向纯构建（H1，M1b history-summary
+    第一个 current behavior，先写测试，不改 production）。
+
+    H1 behavior —— 对已确认历史 Prompt entry（kind ``prompt_history``、
+    source_legacy_id ``v4.1-concise-evidence-json-v1``、status
+    ``user_confirmed``，M0 registry_versions_not_migrating 用户确认仅进
+    history-summary）调用 ``build_history_summary(root, entries)`` 应：
+    1. 返回 history-summary 文档（mapping）：
+       ``history_summary_schema`` == ``tensile-migration/history-summary/v1``，
+       ``entries`` 为 list 且恰含声明的一条；
+    2. 保留 ``original_id``（v4.1-concise-evidence-json-v1，原始
+       legacy ID）；
+    3. 标记 ``history_only: true`` 与 ``formal_identity: "none"``；
+    4. 从该 entry 的 legacy manifest/prompt 源提取事实（facts：六个必
+       需事实 protocol_id / prompt_content_sha256 /
+       publishing_code_commit / system_prompt / user_prompt /
+       output_fields，已知值形态 ``{value, source}``，source 为非空
+       mapping 的字段级来源 provenance），事实 value 必须与 legacy 源
+       声明值逐值相等（不重算、不伪造、不取 sibling）；manifest-only
+       事实的 source 必须指回声明源的 manifest.json、prompt.yaml-only
+       事实的 source 必须指回声明源的 prompt.yaml（protocol_id 两源均
+       有，允许任一，但须指回声明源条目目录）；
+    5. 纯构建零写入（全树快照逐字节不变）；
+    6. legacy 源不变（同 5）；
+    7. 不扫描目录生成未声明条目：fixture 镜像真实 legacy prompt
+       registry 完整三条目（v1 已确认历史源 + v2 /
+       fixed-full-fields-initial-v1 两个未声明 sibling，prompt.yaml
+       逐源内容不同），文档恰含一条 entry，未声明 sibling 的 ID 不得
+       出现在文档任何字符串中；
+    8. 不分配任何新正式身份：entry_id 为文档内 slug（非空字符串）
+       且不是 ``<kind>-v<协议>-r<N>`` 正式身份，文档内任何字符串值都
+       不是正式身份，不创建 records/ 条目；
+    9. 不写 history-summary 文件（同 5：不落盘
+       docs/results/.../history-summary.yaml、migration_receipts/
+       或任何其他目标条目，文档只经返回值给出）。
+
+    unknown / 缺失资料形态、pending/未确认 entry 的 blocked 反向、多
+    entry 批量与混合完整/缺失资料、history-summary 文件写入、CLI 均
+    不在本切片。
+
+    fixture：_write_full_history_prompt_registry 镜像真实 legacy
+    prompt registry（三个真实条目，manifest.json 逐字段镜像真实
+    manifest 字段集与生成 recipe、哈希独立复算保持源内自洽，
+    publishing_code_commit / generated_at 取真实声明值）；entry 输入
+    _confirmed_prompt_history_entry 逐字段镜像 M0 证据结构（status 由
+    入口自身读取消费，调用方不预过滤）。
+
+    RED Gate 设计说明（H1）：migration 模块已存在而 build_history_summary
+    入口缺失时，仍由测试内惰性解析 + 显式 AssertionError 钉出
+    "history-summary 纯构建行为缺失"，不让原始 import 错误或
+    AttributeError 成为 RED；fixture 构建、前置事实断言与全树快照真实
+    执行之后才失败，映射到当前 behavior 未实现。
+
+    捕获的合理但错误实现：
+    - 构建时写盘（history-summary 文件、records/、staging、任何目标
+      条目）-> 全树快照对比失败；
+    - 改写/规范化 legacy 源 -> 全树快照对比失败；
+    - 扫描整个 legacy registry 生成 sibling 条目 -> entries 数量 /
+      未声明 sibling ID 断言失败；
+    - 取错 sibling（扫目录取首个/活动源）-> 事实值断言失败（逐源内容
+      不同）；
+    - 给历史 entry 分配正式身份（entry_id 或文档内任何字符串为
+      ``<kind>-v<协议>-r<N>``、formal_identity 不是 "none"）-> 正式身
+      份断言失败；
+    - 伪造/重算事实值（不取 manifest/prompt.yaml 声明值）-> 事实值
+      断言失败；
+    - 事实不携带来源或 source 为空/不可指回声明源文件 -> provenance
+      断言失败；
+    - 不接受 M0 证据结构的 entry（期望别的输入形状）-> 调用即失败；
+    - 对合法已确认输入 fail-closed（抛错或返回非法文档）-> 文档断言
+      失败；
+    - 就地改写传入 entry -> 输入不变断言失败。
+
+    Binding（证据绑定，供复跑核对）：
+    - 测试文件：``tests/versioning/test_migration.py``（本切片仅新增
+      用例与配套 helper、常量及模块 docstring 清单条目，不改
+      production）。
+    - 命令（新 selector）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_confirmed_prompt_history_entry_builds_history_summary_document_without_writes``
+    - 既有 selector 复跑（回归钉）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_confirmed_prompt_mapping_precheck_returns_ready_without_writes``
+      （通过）；全 migration 文件：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py``（RED 时点：80 passed + 1
+      failed，失败恰为本 selector）。
+    - RED failure signature：恰一个失败用例（本 selector），失败信息
+      为 AssertionError "history-summary 纯构建行为缺失：
+      versioning.migration 未提供 build_history_summary 入口（当前
+      behavior 未实现）"；fixture 前置事实（三 registry 条目存在、未
+      声明 sibling 内容逐源不同、目标根不存在）全部不失败；不出现
+      ModuleNotFoundError / ImportError / AttributeError。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （``[tool.pytest.ini_options] testpaths / pythonpath`` 解析依赖该
+      文件）。
+    """
+    declared_bytes = _write_full_history_prompt_registry(tmp_path)
+    declared_entry_dir = (
+        tmp_path / "pipeline" / "prompt_registry" / HISTORY_SIBLING_SOURCE_ID
+    )
+
+    # ---- fixture 前置事实（对齐 M0 证据）：三条目齐全、声明源与
+    #      未声明 sibling 内容逐源不同、目标根不存在。----
+    assert (declared_entry_dir / "prompt.yaml").read_bytes() == declared_bytes, (
+        "fixture 前置事实失败：已确认历史源 prompt.yaml 必须可逐字节读回"
+    )
+    assert (declared_entry_dir / "manifest.json").is_file(), (
+        "fixture 前置事实失败：已确认历史源 manifest.json 必须存在"
+    )
+    for sibling_id in (CONFIRMED_PROMPT_SOURCE_ID, _THIRD_REGISTRY_SOURCE_ID):
+        sibling_dir = tmp_path / "pipeline" / "prompt_registry" / sibling_id
+        assert (sibling_dir / "manifest.json").is_file() and (
+            sibling_dir / "prompt.yaml"
+        ).is_file(), (
+            f"fixture 前置事实失败：未声明 sibling {sibling_id} 必须以完整"
+            " registry 条目存在（钉死目录扫描）"
+        )
+        assert (
+            sibling_dir / "prompt.yaml"
+        ).read_bytes() != declared_bytes, (
+            f"fixture 前置事实失败：未声明 sibling {sibling_id} 的 "
+            "prompt.yaml 内容必须与声明源逐源不同（钉死取错源）"
+        )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    before = _snapshot_tree(tmp_path)
+    entry = _confirmed_prompt_history_entry()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    document = build(tmp_path, [entry])
+
+    # ---- 行为 1：返回 history-summary 文档（schema + 恰一条 entry）。----
+    assert isinstance(document, Mapping), (
+        "build_history_summary 必须返回 history-summary 文档（mapping）："
+        f"实际 {type(document).__name__!r}"
+    )
+    assert (
+        document.get("history_summary_schema")
+        == "tensile-migration/history-summary/v1"
+    ), (
+        "history-summary 文档必须声明 history_summary_schema == "
+        "'tensile-migration/history-summary/v1'：实际 "
+        f"{document.get('history_summary_schema')!r}"
+    )
+    document_entries = document.get("entries")
+    assert isinstance(document_entries, list), (
+        "history-summary 文档的 entries 必须是 list：实际 "
+        f"{type(document_entries).__name__!r}"
+    )
+    assert len(document_entries) == 1, (
+        "history-summary 文档必须恰含声明的一条 entry（不得扫描 legacy "
+        f"目录生成未声明条目）：实际 {len(document_entries)} 条"
+    )
+    summary_entry = document_entries[0]
+    assert isinstance(summary_entry, Mapping), (
+        "history-summary entry 必须是 mapping：实际 "
+        f"{type(summary_entry).__name__!r}"
+    )
+
+    # ---- 行为 2：保留 original_id；entry kind 保持声明。----
+    assert summary_entry.get("original_id") == HISTORY_SIBLING_SOURCE_ID, (
+        "history-summary entry 必须保留 original_id（原始 legacy ID）："
+        f"实际 {summary_entry.get('original_id')!r}"
+    )
+    assert summary_entry.get("kind") == "prompt_history", (
+        "history-summary entry 必须保持声明的 kind（prompt_history）："
+        f"实际 {summary_entry.get('kind')!r}"
+    )
+
+    # ---- 行为 3：history_only / formal_identity。----
+    assert summary_entry.get("history_only") is True, (
+        "history-summary entry 必须标记 history_only: true：实际 "
+        f"{summary_entry.get('history_only')!r}"
+    )
+    assert summary_entry.get("formal_identity") == "none", (
+        "history-summary entry 必须标记 formal_identity: none（不分配新"
+        f"正式身份）：实际 {summary_entry.get('formal_identity')!r}"
+    )
+
+    # ---- 行为 8a：entry_id 是文档内 slug，不是正式身份。----
+    entry_id = summary_entry.get("entry_id")
+    assert isinstance(entry_id, str) and entry_id, (
+        "history-summary entry 必须携带非空字符串 entry_id（文档内 "
+        f"slug）：实际 {entry_id!r}"
+    )
+    assert not is_valid_version_id(entry_id), (
+        "entry_id 必须是文档内 slug，不得是 <kind>-v<协议>-r<N> 正式身份"
+        f"（不得为历史 entry 分配新正式身份）：实际 {entry_id!r}"
+    )
+
+    # ---- 行为 4：facts 从声明源的 legacy manifest/prompt 提取，已知
+    #      值形态 {value, source{...}}，携带字段级来源 provenance。----
+    facts = summary_entry.get("facts")
+    assert isinstance(facts, Mapping) and facts, (
+        "history-summary entry 必须携带非空 facts（从 legacy 源提取的"
+        f"事实）：实际 {facts!r}"
+    )
+    declared_manifest = json.loads(
+        (declared_entry_dir / "manifest.json").read_text(encoding="utf-8")
+    )
+    declared_prompt = yaml.safe_load(declared_bytes)
+    expected_fact_values = {
+        "protocol_id": declared_manifest["protocol_id"],
+        "prompt_content_sha256": declared_manifest["prompt_content_sha256"],
+        "publishing_code_commit": declared_manifest["publishing_code_commit"],
+        "system_prompt": declared_prompt["system_prompt"],
+        "user_prompt": declared_prompt["user_prompt"],
+        "output_fields": declared_prompt["output_fields"],
+    }
+    for name, expected_value in expected_fact_values.items():
+        assert name in facts, (
+            f"facts 必须包含从 legacy 源提取的必需事实 {name}：实际键集 "
+            f"{sorted(facts)}"
+        )
+        fact = facts[name]
+        assert isinstance(fact, Mapping), (
+            f"已知事实 {name} 必须为 {{value, source}} 形态的 mapping："
+            f"实际 {type(fact).__name__!r}"
+        )
+        assert set(fact) == {"value", "source"}, (
+            f"已知事实 {name} 的键集必须恰为 {{value, source}}：实际 "
+            f"{sorted(fact)}"
+        )
+        assert fact["value"] == expected_value, (
+            f"已知事实 {name} 的 value 必须与 legacy 源声明值逐值相等"
+            f"（不重算、不伪造、不取 sibling）：实际 {fact['value']!r}，"
+            f"期望 {expected_value!r}"
+        )
+        source = fact["source"]
+        assert isinstance(source, Mapping) and source, (
+            f"已知事实 {name} 必须携带非空 mapping 形态的字段级来源 "
+            f"provenance（source）：实际 {source!r}"
+        )
+
+    # provenance 必须可指回声明源的 legacy 文件：manifest-only 事实 ->
+    # manifest.json；prompt.yaml-only 事实 -> prompt.yaml；protocol_id
+    # 两源均有 -> 允许任一，但须指回声明源条目目录。
+    legacy_entry_rel_dir = f"pipeline/prompt_registry/{HISTORY_SIBLING_SOURCE_ID}"
+    manifest_only_facts = ("prompt_content_sha256", "publishing_code_commit")
+    prompt_only_facts = ("system_prompt", "user_prompt", "output_fields")
+    for name in manifest_only_facts:
+        source_text = " ".join(_document_string_fragments(facts[name]["source"]))
+        assert legacy_entry_rel_dir in source_text, (
+            f"manifest-only 事实 {name} 的来源 provenance 必须指回声明源"
+            f"条目（{legacy_entry_rel_dir}）：实际 {source_text!r}"
+        )
+        assert "manifest.json" in source_text, (
+            f"manifest-only 事实 {name} 的来源 provenance 必须指回声明源"
+            f"的 manifest.json：实际 {source_text!r}"
+        )
+    for name in prompt_only_facts:
+        source_text = " ".join(_document_string_fragments(facts[name]["source"]))
+        assert legacy_entry_rel_dir in source_text, (
+            f"prompt.yaml-only 事实 {name} 的来源 provenance 必须指回声明"
+            f"源条目（{legacy_entry_rel_dir}）：实际 {source_text!r}"
+        )
+        assert "prompt.yaml" in source_text, (
+            f"prompt.yaml-only 事实 {name} 的来源 provenance 必须指回声明"
+            f"源的 prompt.yaml：实际 {source_text!r}"
+        )
+    protocol_source_text = " ".join(
+        _document_string_fragments(facts["protocol_id"]["source"])
+    )
+    assert legacy_entry_rel_dir in protocol_source_text, (
+        "protocol_id 事实的来源 provenance 必须指回声明源条目"
+        f"（{legacy_entry_rel_dir}，manifest.json 与 prompt.yaml 均可）："
+        f"实际 {protocol_source_text!r}"
+    )
+
+    # ---- 行为 7：不扫描目录生成未声明条目（sibling ID 不得进入文档）。----
+    all_strings = _document_string_fragments(document)
+    for sibling_id in (CONFIRMED_PROMPT_SOURCE_ID, _THIRD_REGISTRY_SOURCE_ID):
+        assert not any(sibling_id in fragment for fragment in all_strings), (
+            f"未声明 sibling {sibling_id} 不得进入 history-summary 文档的"
+            "任何字符串（实现必须按声明 entry 定位源，不得扫描 legacy 目"
+            "录生成未声明条目）"
+        )
+
+    # ---- 行为 8b：不分配任何新正式身份（文档内任何字符串都不是正式
+    #      身份）。----
+    for fragment in all_strings:
+        assert not is_valid_version_id(fragment), (
+            "history-summary 文档内不得出现任何 <kind>-v<协议>-r<N> 正式"
+            f"身份（历史 entry 不分配新正式身份）：实际出现 {fragment!r}"
+        )
+
+    # ---- 行为 5/6/9：纯构建零写入 —— 全树逐字节不变（legacy 源不变、
+    #      不写 history-summary 文件、不创建任何目标条目）。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "build_history_summary 必须纯构建零写入：全树快照逐字节不变"
+        "（不写 history-summary 文件、不创建 records/ 或任何目标条目、"
+        "不改 legacy 源）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "纯构建不得创建 records/ 或任何正式对象条目（不分配新正式身份）"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "纯构建不得写入 history-summary 文件（本切片只经返回值给出文档）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"纯构建不得落盘任何 history-summary 命名文件：发现 {path}"
+        )
+
+    # ---- 不就地修改传入 entry。----
+    assert entry == _confirmed_prompt_history_entry(), (
+        "全程不得就地改写传入 entry（H1 输入事实保持不变）"
     )

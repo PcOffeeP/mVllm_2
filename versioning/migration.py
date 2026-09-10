@@ -14,7 +14,9 @@
   禁止旧哈希身份、LATEST、短哈希前缀与隐式最新。
 - 预检全程零写入：不创建 ``records/``、staging 或任何目标条目，
   不修改 legacy 源；报告只经返回值给出。
-- history-summary、冲突恢复等不在本切片内。
+- :func:`build_history_summary`：M1b history-summary 纯构建，只按声明
+  entry 只读提取 legacy 事实，文档只经返回值给出，不落盘。
+- 冲突恢复等不在本切片内。
 """
 
 from __future__ import annotations
@@ -1626,3 +1628,138 @@ def migrate_data(root: Path, mapping_items: Any) -> tuple[Path, ...]:
             continue
         receipt_paths.append(_migrate_single_data_release(root, mapping_item))
     return tuple(receipt_paths)
+
+
+# H1 history-summary 文档 schema（M1b 纯构建，文档只经返回值给出，不落盘）。
+_HISTORY_SUMMARY_SCHEMA = "tensile-migration/history-summary/v1"
+
+# H1 历史 entry 的必需已知事实与来源文件对应：manifest-only 事实指回
+# manifest.json、prompt.yaml-only 事实指回 prompt.yaml（字段级 provenance
+# 口径；protocol_id 两源均有，取 manifest 声明值）。事实值一律取 legacy
+# 源声明值，不重算、不伪造、不取 sibling。
+_HISTORY_FACT_SOURCES = {
+    "protocol_id": "manifest.json",
+    "prompt_content_sha256": "manifest.json",
+    "publishing_code_commit": "manifest.json",
+    "system_prompt": "prompt.yaml",
+    "user_prompt": "prompt.yaml",
+    "output_fields": "prompt.yaml",
+}
+
+
+def _build_history_summary_entry(
+    root: Path, entry: Mapping[str, object]
+) -> dict[str, Any]:
+    """按声明 entry 只读构建单条 history-summary entry（H1 纯构建）。
+
+    只按 entry 的 ``source_legacy_id`` 定位
+    ``pipeline/prompt_registry/<source_legacy_id>/{manifest.json,prompt.yaml}``，
+    不扫描 registry；事实值取声明源文件值并携带来源 provenance。缺失/
+    不可解析源 fail-closed 抛 :class:`PromptMigrationBlocked`（零写入），
+    unknown / 未确认 entry 的 blocked 反向切片不在本切片内。
+    """
+    source_id = entry.get("source_legacy_id")
+    if not isinstance(source_id, str) or not source_id:
+        raise PromptMigrationBlocked(
+            "history entry 缺少 source_legacy_id：无法定位 legacy 源"
+        )
+    kind = entry.get("kind")
+    if not isinstance(kind, str) or not kind:
+        raise PromptMigrationBlocked("history entry 缺少 kind：无法构建文档条目")
+
+    source_rel_dir = _LEGACY_PROMPT_REGISTRY / source_id
+    manifest_file = Path(root) / source_rel_dir / "manifest.json"
+    prompt_file = Path(root) / source_rel_dir / "prompt.yaml"
+    try:
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise PromptMigrationBlocked(
+            f"history entry {source_id} 的 manifest.json 缺失或无法解析: {exc}"
+        ) from exc
+    if not isinstance(manifest, Mapping):
+        raise PromptMigrationBlocked(
+            f"history entry {source_id} 的 manifest.json 顶层必须是 mapping"
+        )
+    try:
+        prompt = yaml.safe_load(prompt_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise PromptMigrationBlocked(
+            f"history entry {source_id} 的 prompt.yaml 缺失或无法解析: {exc}"
+        ) from exc
+    if not isinstance(prompt, Mapping):
+        raise PromptMigrationBlocked(
+            f"history entry {source_id} 的 prompt.yaml 顶层必须是 mapping"
+        )
+
+    raw_facts = {
+        "protocol_id": (manifest.get("protocol_id"), "manifest.json"),
+        "prompt_content_sha256": (
+            manifest.get("prompt_content_sha256"),
+            "manifest.json",
+        ),
+        "publishing_code_commit": (
+            manifest.get("publishing_code_commit"),
+            "manifest.json",
+        ),
+        "system_prompt": (prompt.get("system_prompt"), "prompt.yaml"),
+        "user_prompt": (prompt.get("user_prompt"), "prompt.yaml"),
+        "output_fields": (prompt.get("output_fields"), "prompt.yaml"),
+    }
+    facts: dict[str, dict[str, Any]] = {}
+    for name, (value, file_name) in raw_facts.items():
+        if value is None:
+            raise PromptMigrationBlocked(
+                f"history entry {source_id} 的 {file_name} 缺少必需事实 {name}"
+            )
+        facts[name] = {
+            "value": value,
+            "source": {
+                "field": name,
+                "file": (source_rel_dir / file_name).as_posix(),
+            },
+        }
+
+    return {
+        "entry_id": f"history-{kind}-{source_id}",
+        "kind": kind,
+        "original_id": source_id,
+        "history_only": True,
+        "formal_identity": "none",
+        "facts": facts,
+    }
+
+
+def build_history_summary(
+    root: Path, entries: Sequence[Mapping[str, object]]
+) -> dict[str, Any]:
+    """对已确认历史 entry 执行 history-summary 纯构建（H1，M1b 第一切片）。
+
+    按声明 ``entries`` 逐条只读构建 history-summary 文档：schema 为
+    ``tensile-migration/history-summary/v1``；每条 entry 保留 ``original_id``、
+    标记 ``history_only: true`` 与 ``formal_identity: "none"``（不分配任何
+    新正式身份，entry_id 只是文档内 slug），facts 取该 entry 声明 legacy
+    源（``pipeline/prompt_registry/<source_legacy_id>/`` 的 manifest.json /
+    prompt.yaml）声明值并携带字段级来源 provenance（source 指回声明源
+    文件）。不重算、不伪造、不取 sibling、不扫描 registry 生成未声明
+    条目、不就地修改传入 entries。
+
+    全程纯构建零写入：不写 history-summary 文件、不创建 records/ 或任
+    何目标条目、不改 legacy 源，文档只经返回值给出。缺失/不可解析源
+    fail-closed 抛 :class:`PromptMigrationBlocked`；unknown / 缺失资料形
+    态、未确认 entry 的 blocked 反向、多 entry 批量、文件写入与 CLI 不
+    在本切片。
+    """
+    root = Path(root)
+    try:
+        items = list(entries)
+    except TypeError:
+        items = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            raise PromptMigrationBlocked(
+                f"history entry 必须是 mapping：实际 {type(item).__name__!r}"
+            )
+    return {
+        "history_summary_schema": _HISTORY_SUMMARY_SCHEMA,
+        "entries": [_build_history_summary_entry(root, item) for item in items],
+    }
