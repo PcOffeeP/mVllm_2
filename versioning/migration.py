@@ -1869,30 +1869,69 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     已知事实（Spec「模型身份」最小内容：fold 或全量范围 + 权重位置及
     存在性）从声明 run 源的 fold0 结构观察得出（fold_scope /
     adapter_present / merged_present，{value, source} 形态，source 指回
-    观察到该事实的声明 run 内位置），不重算、不伪造、不取 sibling。
-    核心训练参数一律字段级 unknown：M0 未记录 weight run 的任何参数
-    值，声明 run 的 evidence_archive 内容未经 M0 核实，planned 配置与
-    sibling 归档 manifest 一律不读、不登记（unknown 事实携带非空
-    unknown_reason 与指回声明 run 源的 attempted_source）。
+    观察到该事实的声明 run 内位置），权重存在性判定只认 *.safetensors
+    权重命名文件（adapter 与 merged 同口径，非权重文件不得计为权重），
+    不重算、不伪造、不取 sibling。核心训练参数一律字段级 unknown：M0
+    未记录 weight run 的任何参数值，声明 run 的 evidence_archive 内容
+    未经 M0 核实，planned 配置与 sibling 归档 manifest 一律不读、不登
+    记（unknown 事实携带非空 unknown_reason 与指回声明 run 源的
+    attempted_source）。
 
-    声明 run 源缺失或呈本切片未覆盖的结构形态（如 run 根权重结构）时
-    fail-closed 抛 :class:`PromptMigrationBlocked`（known gap / 其余结构
-    形态属后续切片，不伪造已知事实、不降级静默构建）。
+    声明 run 源缺失（源目录缺失 / fold0 缺失，M0 known_gap 形态：预期
+    路径不存在）时 entry 不消失、整批不 blocked：结构事实与核心训练
+    参数全部字段级 unknown（缺席不可观察，缺失不伪装成已知值），且不
+    输出 weights_observed / completed / not_completed / prepared_only
+    等无证据分类。声明 run 源存在但 fold0 内 adapter / merged 均无权重
+    命名文件（完全无权重证据）时维持 fail-closed 抛
+    :class:`PromptMigrationBlocked`（该分流方向留待裁决，不伪造已知事
+    实、不降级静默构建）；run 根权重结构等其余形态不在本切片。
     """
     run_rel = _PREPARE_ONLY_RUN_SOURCE_ROOT / source_id
     run_dir = root / run_rel
     fold_rel = run_rel / "fold0"
     fold_dir = run_dir / "fold0"
     if not run_dir.is_dir() or not fold_dir.is_dir():
-        raise PromptMigrationBlocked(
-            f"weight run {source_id} 的声明源 {fold_rel.as_posix()} 缺失："
-            "fold0 权重结构未观察到，weight run 历史条目的 known gap 处理"
-            "不在本切片内（fail-closed，不伪造已知事实）"
-        )
+        # H6b：声明 run 源缺失（M0 known_gap：预期路径不存在）与 H4 缺
+        # 失形态同口径 —— 相关事实进入字段级 unknown，entry 照常构建、
+        # 不整批 blocked；缺席不可观察，不得标为已知 False，也不从
+        # sibling 取内容冒充。缺失源无任何权重观察证据，不输出
+        # training_status 分类（weights_observed / completed /
+        # not_completed / prepared_only 均为无证据声明），也不信任 entry
+        # 声明代替重新观察。
+        facts: dict[str, dict[str, Any]] = {
+            name: {
+                "unknown_reason": (
+                    f"weight run {source_id} 的声明 run 源 "
+                    f"{fold_rel.as_posix()} 缺失（M0 known_gap：预期路径不"
+                    f"存在），{name} 无法经只读观察取得：缺席不可观察，缺"
+                    "失不伪装成已知值，也不从 sibling 取内容"
+                ),
+                "attempted_source": run_rel.as_posix(),
+            }
+            for name in ("fold_scope", "adapter_present", "merged_present")
+        }
+        for name in _PREPARE_ONLY_CORE_TRAIN_PARAMS:
+            facts[name] = {
+                "unknown_reason": (
+                    f"weight run {source_id} 的 M0 调查只记录权重目录结构观察，"
+                    f"未记录任何训练参数值；声明 run 的 evidence_archive 内容"
+                    f"未经 M0 核实，{name} 不得从 planned 配置或 sibling 归档"
+                    "登记为已知值"
+                ),
+                "attempted_source": run_rel.as_posix(),
+            }
+        return {
+            "entry_id": f"history-{_WEIGHT_RUN_KIND}-{source_id}",
+            "kind": _WEIGHT_RUN_KIND,
+            "original_id": source_id,
+            "history_only": True,
+            "formal_identity": "none",
+            "facts": facts,
+        }
     adapter_dir = fold_dir / "adapter"
     merged_dir = fold_dir / "merged"
     adapter_present = adapter_dir.is_dir() and any(
-        path.is_file() for path in adapter_dir.rglob("*")
+        path.is_file() for path in adapter_dir.rglob("*.safetensors")
     )
     merged_present = merged_dir.is_dir() and any(
         path.is_file() for path in merged_dir.glob("*.safetensors")

@@ -480,6 +480,28 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   明 run 源缺失（known gap）、有证据的核心训练参数提取（已
         #   核实归档 manifest）、多 entry 批量、eval/model 历史条目、
         #   history-summary 文件写入与 CLI 不在本切片（留 H6b 及后续）。
+        #   H6b（M1b weight run 历史条目第二切片）起，weight run 的权重
+        #   存在性判定口径必须一致（reviewer 对 H6a 的 P3：adapter_present
+        #   递归任意文件、merged_present 顶层 safetensors，口径不一致）——
+        #   两者都只把目录中的权重命名文件（例如 *.safetensors）计为权重，
+        #   非权重文件（adapter_config.json / README.md / model-index.json
+        #   等元数据文件）不得使 *_present 为 True；可观察目录中无权重命
+        #   名文件时该 *_present 为已知 False（观察到的缺席，不是
+        #   unknown）；adapter / merged 任一观察到权重 -> entry 照常构建且
+        #   training_status 仍为 weights_observed（H6a 既有"任一证据即支
+        #   撑分类"规则保持）。声明 run 源整体缺失（M0 known_gap 真实形态：
+        #   预期 run 路径不存在）时，weight_run entry 不得 fail-closed 拒绝
+        #   使 entry 消失、整批不得 blocked（Spec："身份、权重或结果证据
+        #   不足时，可以保存明确标注缺失的历史记录"、"不能取得的历史值标
+        #   为未知并注明来源缺口"；H4 同口径先例）—— fold_scope /
+        #   adapter_present / merged_present 与九个核心训练参数全部字段级
+        #   unknown（非空 unknown_reason + 指回声明 run 源的
+        #   attempted_source，不携带非 None value），不输出 weights_observed
+        #   / completed / not_completed / prepared_only 等无证据声明；
+        #   fold0 缺失但 run 目录存在的其余结构形态、两个目录均无权重命
+        #   名文件（完全无权重证据）的分流、merged 软链接来源链、有证据
+        #   的核心训练参数提取、多 entry 批量、eval/model 历史条目、
+        #   history-summary 文件写入与 CLI 仍不在本切片（留后续）。
 
 RED Gate 设计说明（本轮 TDD 约束）：
 本文件编写时 ``versioning/migration.py`` 尚不存在。若在模块顶层
@@ -611,6 +633,24 @@ unknown，attempted_source 指向不存在的 pipeline/prompt_registry/
 始域错误经 cause 链保留）钉出同一 RED 结论；合法 prompt_history 与
 prepare_only_run entry 的正向构建由既有 H1/H5 selector 复跑钉定
 （合法对照仍通过）。
+H6b（M1b weight run 历史条目第二切片：权重存在性判定口径一致 + 声明
+run 源缺失 known gap 分流）同口径补充：build_history_summary 入口与
+weight_run 分流已存在（H6a 已 GREEN），RED 不经入口缺失分支给出，两
+类钉出：
+- 权重存在性口径：当前实现 adapter_present 以递归任意文件判定 ——
+  fold0/adapter 只剩非权重元数据文件（adapter_config.json /
+  README.md）时仍输出 adapter_present == True；本文件由该已知事实值
+  断言（期望已知 False）钉出"非权重文件被误判为权重"；merged 侧由
+  对称场景（只剩非权重文件）钉定 merged_present 不得反向放宽为任意
+  文件口径（防"统一口径"向更宽方向统一）。
+- 声明 run 源缺失：当前实现对该形态 fail-closed 抛 PromptMigration-
+  Blocked（"known gap 处理不在本切片内"），entry 消失、整批 blocked；
+  本文件把该拒绝转成显式行为 AssertionError（原始域错误经 cause 链
+  保留，不得直接充当 RED 结论）钉出"缺失资料字段级 unknown 行为缺
+  失"；training_status 若仍输出 weights_observed（信任 entry 声明而
+  非重新观察）由无证据声明断言钉出；合法 prompt_history /
+  prepare_only_run / 有证据 weight_run entry 的正向构建由既有
+  H1/H5/H6a selector 复跑钉定（合法对照仍通过，缺失分流不得过宽）。
 
 范围边界：本文件只覆盖 Prompt 迁移（T1–T10）、T11–T14 数据迁移批级
 只读预检切面（ready 正向、目标冲突边界、已钉扎 manifest provenance
@@ -17330,4 +17370,960 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
     # ---- 不就地修改传入 entry。----
     assert entry == expected_entry, (
         "全程不得就地改写传入 entry（H6a 输入事实保持不变）"
+    )
+
+
+# ---------------------------------------------------------------------------
+# H6b：history-summary —— weight run 权重存在性判定口径一致 + 声明源缺
+# 失 known gap 分流（M1b，先写测试，不改 production）
+# ---------------------------------------------------------------------------
+#
+# H6b behavior（本切片，主 Agent 选定，M1b history-summary weight run
+# 第二切片，先写测试，不改 production）—— 两项：
+# 1. 权重存在性判定口径一致（reviewer 对 H6a 的 P3：adapter_present 使
+#    用递归任意文件判定，merged_present 使用顶层 safetensors 判定，两
+#    者口径不一致）：两者都只把目录中的权重命名文件（例如
+#    *.safetensors）计为权重，不得把非权重文件（adapter_config.json /
+#    README.md / model-index.json 等元数据文件）误判为权重；可观察目
+#    录中无权重命名文件时该 *_present 为已知 False（观察到的缺席，
+#    目录可观察、判定结果确定，不是 unknown）；adapter / merged 任一
+#    观察到权重 -> entry 照常构建且 training_status 仍为
+#    weights_observed（H6a 既有"未观察到 adapter / merged 权重存在性
+#    证据"才拒绝的任一证据规则保持，H6a 不回归）。
+# 2. 声明 run 源缺失（workspace/runs/<source_legacy_id> 整个缺失；M0
+#    known_gap 真实形态：source-inventory.yaml known_gap.expected_run
+#    workspace/runs/v4.1-prompt-concise-cv-v1-seed3411 "训练机预期路
+#    径不存在"，object-mapping model_train_eval_history 将该 run 列为
+#    用户确认 history-only entry："训练机对应 run 路径缺失（known
+#    gap）"）时，weight_run entry 不得 fail-closed 拒绝使 entry 消
+#    失、整批不得 blocked（Spec："身份、权重或结果证据不足时，可以
+#    保存明确标注缺失的历史记录，不能把它作为完整的新正式对象供下
+#    游执行"、"不能取得的历史值标为未知并注明来源缺口"；M0 known_gap
+#    meaning："不能断言模型在整台训练机上不存在；需沿历史报告定位"，
+#    既非权重存在也非准备资料观察；H4 同口径先例：声明源缺失 -> 字段
+#    级 unknown，缺失与坏源可区分）：fold_scope / adapter_present /
+#    merged_present 与九个核心训练参数全部进入字段级 unknown（非空
+#    unknown_reason + 指回声明 run 源的 attempted_source，不携带非
+#    None value），不输出 weights_observed（无权重观察证据，也不得信
+#    任 entry 声明代替重新观察）/ completed / not_completed /
+#    prepared_only 等无证据声明；不取 sibling（planned 配置、归档诱
+#    饵、其余 run 目录）。
+# 有证据的 H6a 行为不回归（H6a selector 复跑钉定 + 本切片合法对照）；
+# 不扫描 sibling；纯构建零写入。fold0 缺失但 run 目录存在的其余结构
+# 形态（含 run 根权重结构）、fold0/adapter 与 merged 均无权重命名文
+# 件（完全无权重证据）的分流、merged 软链接来源链、有证据的核心训
+# 练参数提取（已核实归档 manifest）、多 entry 批量、eval/model 历史
+# 条目（H9/H10）、history-summary 文件写入与 CLI 不在本切片（留后
+# 续）。
+
+
+# T1/T2 共用的未声明 sibling ID 集（fixture 与文档反扫描断言共用）。
+_H6B_UNDECLARED_SIBLING_IDS = (
+    PREPARE_ONLY_RUN_V1_ID,
+    PREPARE_ONLY_RUN_V2_ID,
+    WEIGHT_RUN_ROOT_SIBLING_ID,
+    HISTORY_SIBLING_SOURCE_ID,
+    CONFIRMED_PROMPT_SOURCE_ID,
+    _THIRD_REGISTRY_SOURCE_ID,
+)
+
+
+def _replace_declared_adapter_weights_with_non_weight_files(root: Path) -> None:
+    """场景 A mutation：声明 run 的 fold0/adapter 只剩非权重元数据文件。
+
+    移除 M0 观察的权重文件 adapter_model.safetensors，写入两个真实适
+    配器目录常见形态的非权重元数据文件（adapter_config.json /
+    README.md）。配置内容刻意不含九个核心训练参数 token（本切片只钉
+    存在性判定口径，不新增参数来源歧视面；核心参数 unknown 的既有钉
+    定由 H6a selector 与本用例的 sibling 走私诱饵覆盖）。
+    """
+    adapter_dir = (
+        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+    )
+    weight_file = adapter_dir / "adapter_model.safetensors"
+    assert weight_file.is_file(), (
+        "fixture 前置事实失败：替换前 fold0/adapter 必须有 M0 观察的权重文件"
+    )
+    weight_file.unlink()
+    (adapter_dir / "adapter_config.json").write_bytes(
+        _fixture_pretty_json_bytes(
+            {
+                "schema_version": "tensile-adapter-metadata-fixture/v1",
+                "note": "非权重元数据（合成 fixture，不含训练参数）",
+            }
+        )
+    )
+    (adapter_dir / "README.md").write_bytes(
+        "<synthetic adapter metadata note>\n".encode("utf-8")
+    )
+
+
+def _restore_declared_adapter_weight_file(root: Path) -> None:
+    """场景 B 前置：恢复声明 run 的 fold0/adapter 权重文件（场景 A 已移除）。"""
+    adapter_dir = (
+        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+    )
+    weight_file = adapter_dir / "adapter_model.safetensors"
+    assert not weight_file.exists(), (
+        "fixture 前置事实失败：场景 B 恢复前 adapter 权重文件必须已被场景 A 移除"
+    )
+    weight_file.write_bytes(
+        f"<synthetic adapter bytes: {WEIGHT_RUN_DECLARED_ID}>".encode("utf-8")
+    )
+
+
+def _replace_declared_merged_shards_with_non_weight_file(root: Path) -> None:
+    """场景 B mutation：声明 run 的 fold0/merged 只剩非权重元数据文件。"""
+    merged_dir = (
+        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
+    )
+    shards = sorted(merged_dir.glob("*.safetensors"))
+    assert len(shards) == 10, (
+        "fixture 前置事实失败：替换前 fold0/merged 必须有 M0 观察的 10 个分"
+        f"片：实际 {len(shards)}"
+    )
+    for shard in shards:
+        shard.unlink()
+    (merged_dir / "model-index.json").write_bytes(
+        _fixture_pretty_json_bytes(
+            {
+                "schema_version": "tensile-merged-metadata-fixture/v1",
+                "note": "非权重元数据（合成 fixture，非 safetensors 分片）",
+            }
+        )
+    )
+
+
+def _assert_legal_weight_run_entry_still_builds(build: Any, root: Path) -> None:
+    """轻量对照：有证据的已确认 weight_run entry（H6a）仍正常构建。
+
+    完整 H6a 正向契约由既有 H6a selector 复跑钉定；此处只做轻量对照，
+    证明缺失分流与口径修正不得反向过宽到改变既有有证据 weight run
+    entry 的行为（training_status 仍为 weights_observed）。
+    """
+    legal_document = build(root, [_confirmed_weight_run_entry()])
+    legal_entries = (
+        legal_document.get("entries") if isinstance(legal_document, Mapping) else None
+    )
+    assert isinstance(legal_entries, list) and len(legal_entries) == 1, (
+        "有证据 weight run entry 不得被新增分流反向过宽拒绝：合法已确认 "
+        "weight_run entry 必须仍正常构建恰含一条 entry 的 history-summary "
+        f"文档（H6a 正向行为不回归）；实际 {type(legal_document).__name__} / "
+        f"entries={legal_entries!r}"
+    )
+    legal_entry = legal_entries[0]
+    assert isinstance(legal_entry, Mapping) and (
+        legal_entry.get("training_status") == WEIGHT_RUN_TRAINING_STATUS
+    ), (
+        "合法有证据 weight_run entry 的 training_status 必须保持 "
+        f"'weights_observed'（H6a 正向行为不回归）：实际 "
+        f"{legal_entry.get('training_status')!r}"
+    )
+
+
+def test_confirmed_weight_run_entry_weight_existence_requires_weight_named_files(
+    tmp_path: Path,
+) -> None:
+    r"""adapter_present 与 merged_present 必须用一致的权重存在性口径
+    （只认权重命名文件，不得把非权重文件误判为权重）（H6b 第一切片，
+    M1b history-summary，先写测试，不改 production）。
+
+    H6b behavior —— reviewer 对 H6a 的 P3：adapter_present 使用递归任
+    意文件判定，merged_present 使用顶层 safetensors 判定，两者口径不
+    一致。对已确认 weight run 历史条目（H6a 同一 entry：kind
+    ``weight_run``、source_legacy_id ``v4.1-phase2-source-aware-v1-"
+    "seed3407``、status ``user_confirmed``）调用
+    ``build_history_summary(root, [entry])``：
+    1. 口径基线（H6a 不回归）：fold0/adapter 与 fold0/merged 均有权重
+       文件时（H6a fixture），adapter_present / merged_present 均为已
+       知 True，training_status == weights_observed —— 证明口径收紧不
+       是把一切判 False；
+    2. 场景 A（adapter 非权重文件）：fold0/adapter 只剩非权重元数据文
+       件（adapter_config.json + README.md，目录可观察、无任何权重命
+       名文件）、fold0/merged 仍带 10 个分片时，adapter_present 必须
+       为已知 False（{value: False, source} 形态，来源指回声明 run 源
+       且指回 fold0 观察位置）—— 非权重文件不得使 adapter_present 为
+       True；merged_present 保持已知 True；entry 照常构建不 blocked
+       （merged 权重证据足够，H6a 任一证据规则保持），training_status
+       仍为 weights_observed（merged 权重存在性证据支撑分类）；
+    3. 场景 B（merged 非权重文件）：fold0/adapter 恢复权重文件、
+       fold0/merged 只剩非权重元数据文件（model-index.json，无任何
+       safetensors）时，merged_present 必须为已知 False、
+       adapter_present 为已知 True —— merged 口径不得反向放宽为任意
+       文件（防"统一口径"向更宽方向统一）；entry 照常构建，
+       training_status 仍为 weights_observed（adapter 权重证据足够）；
+    4. 两个场景均保持 H6a 其余行为：fold_scope 已知 "fold0"；九个核心
+       训练参数字段级 unknown（sibling planned 配置 seed 3411 与归档诱
+       饵 manifest seed 9999 不得走私，参数名 / 引用名反走私）；不声明
+       completed / passed / eval / model / verif / hash / integrity /
+       checksum / sha 命名族存在性值；entry_id 为文档内 slug 且非正式
+       身份，文档内任何字符串都不是 <kind>-v<协议>-r<N> 正式身份；未
+       声明 sibling ID 不得进入文档任何字符串（不扫描 sibling）；
+    5. 纯构建零写入：每次 build 全树快照逐字节不变（不写
+       history-summary 文件、不创建 records/、不改 legacy 源树）；不就
+       地修改传入 entry。
+
+    fixture：与 H6a 同款三件套（_write_full_history_prompt_registry +
+    _write_prepare_only_runs_layout + _write_weight_run_root_sibling_
+    layout）。场景 A/B 是对声明 run 的 fixture mutation（H4 同款先例：
+    先合法对照、后 mutation）：场景 A 只移除 adapter 权重文件并写入两
+    个非权重元数据文件（内容不含核心训练参数 token，不新增参数来源歧
+    视面）；场景 B 恢复 adapter 权重、移除 merged 分片并写入一个非权
+    重元数据文件。两次 build 均单 entry，未声明 sibling 保持完好。
+
+    RED Gate 设计（H6b）：build_history_summary 入口与 weight_run 分流
+    已存在（H6a 已 GREEN），RED 不经入口缺失分支给出。当前实现
+    adapter_present 以递归任意文件判定 —— 场景 A 的 adapter_config.json
+    使 adapter_present == True，由该已知事实值断言（期望已知 False）钉
+    出"非权重文件被误判为权重"；场景 B 断言当前实现已满足（merged 本
+    就按 safetensors 判定），作为回归钉防"统一口径"时反向放宽 merged。
+    场景 A 先失败即 RED（场景 B 断言不执行）；fixture 前置事实、口径
+    基线与全树快照真实执行后才失败。
+
+    捕获的合理但错误实现：
+    - adapter_present 沿用递归任意文件判定（当前实现）-> 场景 A
+      adapter_present 值断言失败（True != False）；
+    - "统一口径"时把 merged 放宽为任意文件口径 -> 场景 B
+      merged_present 值断言失败（True != False）；
+    - 把可观察目录中的无权重状态标为 unknown 而非已知 False（缺席不
+      可观察化）-> 场景 A/B 的 {value: False, source} 形态断言失败；
+    - adapter 非权重文件时 fail-closed 拒绝（无视 merged 权重证据）->
+      场景 A 转译后的显式 AssertionError 判失败；
+    - weights_observed 误改为要求 adapter 权重证据（任一证据规则被改）
+      -> 场景 A/B training_status 断言失败；
+    - 从 sibling（planned 配置 seed 3411、归档诱饵 manifest seed 9999）
+      登记已知参数 -> 核心参数 unknown / 反走私断言失败；
+    - 声明训练完成 / passed / 评测 / model 身份 / 哈希已验证 -> claims
+      扫描失败；
+    - 扫描 runs 目录生成 sibling 条目或取 sibling 事实 -> entries 数量
+      / sibling ID 断言失败；
+    - 构建路径写盘 -> 全树快照对比失败；
+    - 就地改写传入 entry -> 输入不变断言失败。
+
+    fold0 缺失但 run 目录存在的其余结构形态、fold0/adapter 与 merged
+    均无权重命名文件（完全无权重证据）的分流方向（fail-closed 保持还
+    是字段级 unknown）、merged 软链接来源链、有证据的核心训练参数提
+    取、多 entry 批量、eval/model 历史条目、history-summary 文件写入
+    与 CLI 不在本切片（留后续）。
+
+    Binding（证据绑定，供复跑核对）：
+    - 测试文件：``tests/versioning/test_migration.py``（H6b 仅新增用
+      例与配套 helper/常量及模块 docstring 清单条目，不改 production）。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （与 H1–H6a binding 记录一致，``[tool.pytest.ini_options]
+      testpaths / pythonpath`` 解析依赖该文件）。
+    - 命令（新 selector）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_confirmed_weight_run_entry_weight_existence_requires_weight_named_files``
+    - RED failure signature：恰一个失败用例（本 selector），失败为场
+      景 A 的 adapter_present 已知值断言（实际 True != 期望 False，
+      "非权重文件不得误判为权重"）；fixture 前置事实、口径基线与入
+      口解析全部不失败；不出现 ModuleNotFoundError / ImportError /
+      AttributeError 或原始异常直接充当 RED 结论。
+    - 既有 selector 复跑（回归钉）：H1–H6a 小 selector（-k 同口径八个
+      用例名）27 passed；全 migration 文件 RED 时点：全部既有用例
+      passed + 本 selector 失败（失败恰为本 selector）。
+    """
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    adapter_dir = declared_run_dir / "fold0" / "adapter"
+    merged_dir = declared_run_dir / "fold0" / "merged"
+
+    # ---- fixture 前置事实（对齐 M0/H6a）：权重文件真实存在（口径基线
+    #      非空洞：真实权重文件使 *_present 为 True）；sibling 诱饵与
+    #      prompt registry 完整；目标根不存在。----
+    assert (adapter_dir / "adapter_model.safetensors").is_file(), (
+        "fixture 前置事实失败：声明 run 的 fold0/adapter 必须有 M0 观察的"
+        "权重文件（口径基线：真实权重文件使 adapter_present 为 True）"
+    )
+    assert len(sorted(merged_dir.glob("*.safetensors"))) == 10, (
+        "fixture 前置事实失败：声明 run 的 fold0/merged 必须有 M0 观察的 "
+        "10 个分片"
+    )
+    assert (declared_run_dir / "evidence_archive").is_dir(), (
+        "fixture 前置事实失败：声明 run 必须有 M0 观察的 evidence_archive"
+    )
+    root_sibling_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_SIBLING_ID
+    assert (root_sibling_dir / "adapter" / "adapter_model.safetensors").is_file(), (
+        "fixture 前置事实失败：run 根结构 sibling 必须存在（反扫描诱饵）"
+    )
+    planned_config = yaml.safe_load(
+        (
+            tmp_path
+            / "workspace"
+            / "runs"
+            / PREPARE_ONLY_RUN_V1_ID
+            / "prepared-config-untrained"
+            / "train.yaml"
+        ).read_bytes()
+    )
+    assert planned_config.get("seed") == 3411 and "learning_rate" in planned_config, (
+        "fixture 前置事实失败：sibling planned 配置必须真实携带参数（走私诱饵）"
+    )
+    sibling_manifest = json.loads(
+        (
+            root_sibling_dir / "evidence_archive" / "training_run_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert sibling_manifest.get("seed") == 9999, (
+        "fixture 前置事实失败：sibling 归档诱饵 manifest 必须携带合成参数"
+    )
+    for prompt_source_id in (
+        HISTORY_SIBLING_SOURCE_ID,
+        CONFIRMED_PROMPT_SOURCE_ID,
+        _THIRD_REGISTRY_SOURCE_ID,
+    ):
+        prompt_dir = tmp_path / "pipeline" / "prompt_registry" / prompt_source_id
+        assert (prompt_dir / "manifest.json").is_file() and (
+            prompt_dir / "prompt.yaml"
+        ).is_file(), (
+            f"fixture 前置事实失败：legacy prompt registry 条目 {prompt_source_id} "
+            "必须完整（反扫描诱饵依赖）"
+        )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    entry = _confirmed_weight_run_entry()
+    expected_entry = _confirmed_weight_run_entry()
+
+    # ---- 行为 1：口径基线（H6a 不回归）—— 真实权重文件使两个
+    #      *_present 均为已知 True，training_status 为 weights_observed
+    #      （证明口径修正不是把一切判 False / 拒绝一切）。----
+    before_baseline = _snapshot_tree(tmp_path)
+    baseline_document = build(tmp_path, [_confirmed_weight_run_entry()])
+    baseline_entries = baseline_document.get("entries")
+    assert isinstance(baseline_entries, list) and len(baseline_entries) == 1, (
+        "口径基线（H6a 不回归）：完整权重 fixture 下 entry 必须正常构建恰含"
+        f"一条：实际 {baseline_entries!r}"
+    )
+    baseline_entry = baseline_entries[0]
+    assert isinstance(baseline_entry, Mapping), (
+        "口径基线 entry 必须是 mapping：实际 "
+        f"{type(baseline_entry).__name__!r}"
+    )
+    baseline_facts = baseline_entry.get("facts")
+    assert isinstance(baseline_facts, Mapping), (
+        "口径基线 entry 必须携带 facts：实际 "
+        f"{type(baseline_facts).__name__!r}"
+    )
+    for name, expected_value in (
+        (WEIGHT_RUN_FOLD_SCOPE_FACT, "fold0"),
+        (WEIGHT_RUN_ADAPTER_PRESENT_FACT, True),
+        (WEIGHT_RUN_MERGED_PRESENT_FACT, True),
+    ):
+        assert name in baseline_facts, (
+            f"口径基线 facts 必须包含 {name}（H6a 正向行为不回归）：实际键集 "
+            f"{sorted(baseline_facts)}"
+        )
+        _assert_h6_known_fact(
+            baseline_facts[name],
+            name=name,
+            run_id=WEIGHT_RUN_DECLARED_ID,
+            expected_value=expected_value,
+            must_reference_fold=(name != WEIGHT_RUN_FOLD_SCOPE_FACT),
+        )
+    assert (
+        baseline_entry.get("training_status") == WEIGHT_RUN_TRAINING_STATUS
+    ), (
+        "口径基线 training_status 必须保持 weights_observed（H6a 正向行为不"
+        f"回归）：实际 {baseline_entry.get('training_status')!r}"
+    )
+    assert _snapshot_tree(tmp_path) == before_baseline, (
+        "口径基线 build 必须纯构建零写入（H6a 不回归）"
+    )
+
+    # ---- 场景 A mutation：adapter 只剩非权重元数据文件（merged 权重
+    #      仍在）。钉定 mutation 生效。----
+    _replace_declared_adapter_weights_with_non_weight_files(tmp_path)
+    assert not any(adapter_dir.rglob("*.safetensors")), (
+        "fixture 前置事实失败：场景 A 下 fold0/adapter 必须无任何权重命名文"
+        "件（存在性判定只应看到非权重元数据文件）"
+    )
+    assert (adapter_dir / "adapter_config.json").is_file() and (
+        adapter_dir / "README.md"
+    ).is_file(), (
+        "fixture 前置事实失败：场景 A 下 fold0/adapter 必须真实携带非权重"
+        "元数据文件（adapter_present 判定对象真实存在）"
+    )
+    assert len(sorted(merged_dir.glob("*.safetensors"))) == 10, (
+        "fixture 前置事实失败：场景 A 下 fold0/merged 必须仍有 10 个分片"
+        "（merged 权重证据足够，entry 不得因 adapter 非权重文件 blocked）"
+    )
+
+    before_scenario_a = _snapshot_tree(tmp_path)
+
+    # ---- 行为 2：场景 A —— adapter 非权重文件不得误判为权重；merged
+    #      权重证据足够，entry 照常构建且 weights_observed。----
+    try:
+        document = build(tmp_path, [entry])
+    except Exception as exc:
+        raise AssertionError(
+            "fold0/adapter 只剩非权重元数据文件时 entry 必须照常构建"
+            "（merged 权重存在性证据足够，H6a 任一证据规则保持，不得 "
+            "fail-closed 拒绝）：实际抛出 "
+            f"{type(exc).__module__}.{type(exc).__name__}: {exc}"
+        ) from exc
+    scenario_a_entries = document.get("entries")
+    assert isinstance(scenario_a_entries, list) and len(scenario_a_entries) == 1, (
+        "场景 A 文档必须恰含声明的一条 entry（不得扫描 runs 目录生成 sibling "
+        f"条目）：实际 {scenario_a_entries!r}"
+    )
+    scenario_a_summary = scenario_a_entries[0]
+    assert isinstance(scenario_a_summary, Mapping), (
+        "场景 A entry 必须是 mapping：实际 "
+        f"{type(scenario_a_summary).__name__!r}"
+    )
+    assert scenario_a_summary.get("original_id") == WEIGHT_RUN_DECLARED_ID, (
+        "场景 A entry 必须保留 original_id（H6a 正向行为不回归）：实际 "
+        f"{scenario_a_summary.get('original_id')!r}"
+    )
+    assert scenario_a_summary.get("kind") == "weight_run", (
+        "场景 A entry 必须保持声明 kind：实际 "
+        f"{scenario_a_summary.get('kind')!r}"
+    )
+    assert scenario_a_summary.get("training_status") == WEIGHT_RUN_TRAINING_STATUS, (
+        "场景 A 下 training_status 必须仍为 weights_observed（merged 权重存"
+        "在性证据足够支撑分类，H6a 任一证据规则保持）：实际 "
+        f"{scenario_a_summary.get('training_status')!r}"
+    )
+    scenario_a_facts = scenario_a_summary.get("facts")
+    assert isinstance(scenario_a_facts, Mapping) and scenario_a_facts, (
+        "场景 A entry 必须携带非空 facts：实际 "
+        f"{scenario_a_facts!r}"
+    )
+    _assert_h6_known_fact(
+        scenario_a_facts.get(WEIGHT_RUN_FOLD_SCOPE_FACT),
+        name=WEIGHT_RUN_FOLD_SCOPE_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value="fold0",
+    )
+    # 核心断言（RED Gate）：非权重文件不得使 adapter_present 为 True ——
+    # 观察到的缺席是已知 False（目录可观察，判定结果确定），不是 unknown。
+    _assert_h6_known_fact(
+        scenario_a_facts.get(WEIGHT_RUN_ADAPTER_PRESENT_FACT),
+        name=WEIGHT_RUN_ADAPTER_PRESENT_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value=False,
+        must_reference_fold=True,
+    )
+    _assert_h6_known_fact(
+        scenario_a_facts.get(WEIGHT_RUN_MERGED_PRESENT_FACT),
+        name=WEIGHT_RUN_MERGED_PRESENT_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value=True,
+        must_reference_fold=True,
+    )
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert name in scenario_a_facts, (
+            f"场景 A 下核心训练参数 {name} 不得从 facts 中消失（H6a 正向行为"
+            f"不回归）：实际键集 {sorted(scenario_a_facts)}"
+        )
+        _assert_h6_fact_is_unknown(
+            scenario_a_facts[name], name=name, run_id=WEIGHT_RUN_DECLARED_ID
+        )
+    for name, fact in scenario_a_facts.items():
+        name_lower = str(name).lower()
+        if any(token in name_lower for token in _H6_PARAM_NAME_TOKENS) or any(
+            token in name_lower for token in _H6_REFERENCE_NAME_TOKENS
+        ):
+            _assert_h6_fact_is_unknown(
+                fact, name=name, run_id=WEIGHT_RUN_DECLARED_ID
+            )
+    _assert_h6_no_completion_or_verification_claims(scenario_a_summary, "entry")
+    scenario_a_strings = _document_string_fragments(document)
+    for fragment in scenario_a_strings:
+        assert not is_valid_version_id(fragment), (
+            "场景 A 文档内不得出现任何正式身份：实际出现 "
+            f"{fragment!r}"
+        )
+    for sibling_id in _H6B_UNDECLARED_SIBLING_IDS:
+        assert not any(
+            sibling_id in fragment for fragment in scenario_a_strings
+        ), (
+            f"场景 A 下未声明 sibling {sibling_id} 不得进入文档任何字符串（不"
+            "扫描 sibling、不取 sibling 内容）"
+        )
+    assert _snapshot_tree(tmp_path) == before_scenario_a, (
+        "场景 A build 必须纯构建零写入：全树快照逐字节不变"
+    )
+    assert not (tmp_path / "records").exists() and not (tmp_path / "docs").exists(), (
+        "场景 A 纯构建不得创建 records/ 或 docs/（history-summary 只经返回值）"
+    )
+    assert entry == expected_entry, (
+        "场景 A 全程不得就地改写传入 entry（H6a 输入事实保持不变）"
+    )
+
+    # ---- 场景 B mutation：adapter 权重恢复；merged 只剩非权重元数据
+    #      文件。钉定 mutation 生效。----
+    _restore_declared_adapter_weight_file(tmp_path)
+    _replace_declared_merged_shards_with_non_weight_file(tmp_path)
+    assert (adapter_dir / "adapter_model.safetensors").is_file(), (
+        "fixture 前置事实失败：场景 B 下 fold0/adapter 必须恢复权重文件"
+    )
+    assert not any(merged_dir.glob("*.safetensors")), (
+        "fixture 前置事实失败：场景 B 下 fold0/merged 必须无任何权重命名文"
+        "件（merged_present 判定对象真实存在）"
+    )
+    assert (merged_dir / "model-index.json").is_file(), (
+        "fixture 前置事实失败：场景 B 下 fold0/merged 必须真实携带非权重元"
+        "数据文件（防 merged 口径反向放宽为任意文件）"
+    )
+
+    before_scenario_b = _snapshot_tree(tmp_path)
+
+    # ---- 行为 3：场景 B —— merged 非权重文件不得误判为权重；adapter
+    #      权重证据足够，entry 照常构建且 weights_observed。----
+    try:
+        document_b = build(tmp_path, [entry])
+    except Exception as exc:
+        raise AssertionError(
+            "fold0/merged 只剩非权重元数据文件时 entry 必须照常构建"
+            "（adapter 权重存在性证据足够，H6a 任一证据规则保持，不得 "
+            "fail-closed 拒绝）：实际抛出 "
+            f"{type(exc).__module__}.{type(exc).__name__}: {exc}"
+        ) from exc
+    scenario_b_entries = document_b.get("entries")
+    assert isinstance(scenario_b_entries, list) and len(scenario_b_entries) == 1, (
+        "场景 B 文档必须恰含声明的一条 entry：实际 {scenario_b_entries!r}"
+    )
+    scenario_b_summary = scenario_b_entries[0]
+    assert isinstance(scenario_b_summary, Mapping), (
+        "场景 B entry 必须是 mapping：实际 "
+        f"{type(scenario_b_summary).__name__!r}"
+    )
+    assert scenario_b_summary.get("original_id") == WEIGHT_RUN_DECLARED_ID, (
+        "场景 B entry 必须保留 original_id：实际 "
+        f"{scenario_b_summary.get('original_id')!r}"
+    )
+    assert scenario_b_summary.get("kind") == "weight_run", (
+        "场景 B entry 必须保持声明 kind：实际 "
+        f"{scenario_b_summary.get('kind')!r}"
+    )
+    assert scenario_b_summary.get("training_status") == WEIGHT_RUN_TRAINING_STATUS, (
+        "场景 B 下 training_status 必须仍为 weights_observed（adapter 权重存"
+        "在性证据足够支撑分类，H6a 任一证据规则保持）：实际 "
+        f"{scenario_b_summary.get('training_status')!r}"
+    )
+    scenario_b_facts = scenario_b_summary.get("facts")
+    assert isinstance(scenario_b_facts, Mapping) and scenario_b_facts, (
+        "场景 B entry 必须携带非空 facts：实际 "
+        f"{scenario_b_facts!r}"
+    )
+    _assert_h6_known_fact(
+        scenario_b_facts.get(WEIGHT_RUN_FOLD_SCOPE_FACT),
+        name=WEIGHT_RUN_FOLD_SCOPE_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value="fold0",
+    )
+    _assert_h6_known_fact(
+        scenario_b_facts.get(WEIGHT_RUN_ADAPTER_PRESENT_FACT),
+        name=WEIGHT_RUN_ADAPTER_PRESENT_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value=True,
+        must_reference_fold=True,
+    )
+    _assert_h6_known_fact(
+        scenario_b_facts.get(WEIGHT_RUN_MERGED_PRESENT_FACT),
+        name=WEIGHT_RUN_MERGED_PRESENT_FACT,
+        run_id=WEIGHT_RUN_DECLARED_ID,
+        expected_value=False,
+        must_reference_fold=True,
+    )
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert name in scenario_b_facts, (
+            f"场景 B 下核心训练参数 {name} 不得从 facts 中消失（H6a 正向行为"
+            f"不回归）：实际键集 {sorted(scenario_b_facts)}"
+        )
+        _assert_h6_fact_is_unknown(
+            scenario_b_facts[name], name=name, run_id=WEIGHT_RUN_DECLARED_ID
+        )
+    for name, fact in scenario_b_facts.items():
+        name_lower = str(name).lower()
+        if any(token in name_lower for token in _H6_PARAM_NAME_TOKENS) or any(
+            token in name_lower for token in _H6_REFERENCE_NAME_TOKENS
+        ):
+            _assert_h6_fact_is_unknown(
+                fact, name=name, run_id=WEIGHT_RUN_DECLARED_ID
+            )
+    _assert_h6_no_completion_or_verification_claims(scenario_b_summary, "entry")
+    scenario_b_strings = _document_string_fragments(document_b)
+    for fragment in scenario_b_strings:
+        assert not is_valid_version_id(fragment), (
+            "场景 B 文档内不得出现任何正式身份：实际出现 "
+            f"{fragment!r}"
+        )
+    for sibling_id in _H6B_UNDECLARED_SIBLING_IDS:
+        assert not any(
+            sibling_id in fragment for fragment in scenario_b_strings
+        ), (
+            f"场景 B 下未声明 sibling {sibling_id} 不得进入文档任何字符串（不"
+            "扫描 sibling、不取 sibling 内容）"
+        )
+    assert _snapshot_tree(tmp_path) == before_scenario_b, (
+        "场景 B build 必须纯构建零写入：全树快照逐字节不变"
+    )
+    assert not (tmp_path / "records").exists() and not (tmp_path / "docs").exists(), (
+        "场景 B 纯构建不得创建 records/ 或 docs/（history-summary 只经返回值）"
+    )
+    assert entry == expected_entry, (
+        "场景 B 全程不得就地改写传入 entry（H6a 输入事实保持不变）"
+    )
+
+
+def test_confirmed_weight_run_entry_missing_declared_source_records_unknown_without_blocking(
+    tmp_path: Path,
+) -> None:
+    r"""声明 run 源缺失时 weight_run entry 不得消失：结构事实与核心参数
+    进入字段级 unknown，整批不 blocked（H6b 第二切片，M1b history-
+    summary，先写测试，不改 production）。
+
+    H6b behavior —— 声明 run 源（workspace/runs/<source_legacy_id>）整
+    个缺失（M0 known_gap 真实形态：source-inventory.yaml
+    training_machine_run_evidence.known_gap：expected_run
+    workspace/runs/v4.1-prompt-concise-cv-v1-seed3411 "训练机预期路
+    径不存在"，meaning "不能断言模型在整台训练机上不存在；需沿历史
+    报告定位"；object-mapping model_train_eval_history 将该 run 列为
+    用户确认 history-only entry："训练机对应 run 路径缺失（known
+    gap）"）时，对已确认 weight_run entry（H6a 同一 entry：kind
+    ``weight_run``、source_legacy_id ``v4.1-phase2-source-aware-v1-"
+    "seed3407``、status ``user_confirmed``，其声明源在构建前被整体移
+    除）调用 ``build_history_summary(root, [entry])`` 必须：
+    1. 返回 history-summary 文档，不得 fail-closed 拒绝使 entry 消失、
+       整批不得 blocked（Spec："身份、权重或结果证据不足时，可以保存
+       明确标注缺失的历史记录，不能把它作为完整的新正式对象供下游执
+       行"、"不能取得的历史值标为未知并注明来源缺口"；H4 同口径先
+       例：缺失与坏源可区分，缺失不是 blocked）；
+    2. entries 恰含声明的一条：entry 不得静默消失，也不得扫描 runs 目
+       录生成未声明条目；entry 级结构保持（original_id 保留原始 run
+       ID、kind 保持 weight_run、history_only: true、formal_identity:
+       "none"、entry_id 为文档内 slug 且非 <kind>-v<协议>-r<N> 正式身
+       份）；
+    3. 不输出无证据声明：training_status 不得为 weights_observed（源
+       缺失时无任何权重观察证据；也不得信任 entry 声明代替重新观察）、
+       completed、not_completed、prepared_only（M0 known_gap：路径缺
+       失 —— 既非权重存在也非准备资料观察，四者均为伪造分类）；
+       training_status 若存在必须为非空字符串；entry 内任何键名携带
+       completed / passed / eval / model / verif / hash / integrity /
+       checksum / sha 命名族 token 的位置不得声明存在性值；
+    4. 结构事实与核心参数全部字段级 unknown（缺失不是删字段，也与
+       已知 False 可区分 —— 源缺失时判定不可观察）：fold_scope /
+       adapter_present / merged_present 与九个核心训练参数均携带非空
+       unknown_reason 与指回声明 run 源（workspace/runs/<run_id>）的
+       attempted_source，不携带非 None value（缺失源不得伪装成已知
+       值，不得把 H6a 的 M0 结构观察声明值当作仍然成立）；参数名 /
+       数据与 Prompt 引用名反走私：不得从 sibling（planned 配置 seed
+       3411、归档诱饵 manifest seed 9999）登记任何已知值；
+    5. 纯构建零写入：全树快照逐字节不变（不写 history-summary 文件、
+       不创建 records/、不修复/重建缺失源、不改 sibling）；不就地修
+       改传入 entry；
+    6. 合法对照（mutation 前）：H1 prompt_history、H5 prepare_only_run
+       与 H6a 有证据 weight_run entry 均仍正常构建（缺失分流不得过宽）。
+
+    fixture：与 H6a 同款三件套；mutation 为整体移除声明 run 目录（M0
+    known_gap 形态：预期路径不存在），未声明 sibling（两个 prepare-only
+    run、run 根结构 weight run、三个 prompt registry 条目）保持完好。
+
+    RED Gate 设计（H6b）：build_history_summary 入口与 weight_run 分流
+    已存在（H6a 已 GREEN），RED 不经入口缺失分支给出。当前实现（H6a）
+    对声明 run 源缺失一律抛 PromptMigrationBlocked（"声明源 ...
+    缺失：fold0 权重结构未观察到，weight run 历史条目的 known gap 处
+    理不在本切片内（fail-closed，不伪造已知事实）"）—— 缺失被当
+    blocked、entry 消失、无字段级 unknown_reason / attempted_source。
+    本测试把该拒绝转成显式行为 AssertionError（原始域错误经 cause 链
+    保留，不得直接充当 RED 结论）钉出"缺失资料字段级 unknown 行为缺
+    失"；fixture 构建、合法对照、mutation 生效前置断言与全树快照均
+    真实执行后才失败。若实现改为信任 entry 声明输出 weights_observed
+    （非重新观察），由无证据声明断言钉出。
+
+    捕获的合理但错误实现：
+    - 声明源缺失 fail-closed（当前实现）-> 转译后的显式 AssertionError
+      判失败；
+    - entry 静默消失（跳过缺失源条目）/ 返回空文档 -> entries 数量断言
+      失败；
+    - 信任 entry 声明输出 training_status == weights_observed（M0 历
+      史观察代替重新观察）-> 无证据声明断言失败；
+    - 输出 completed / not_completed / prepared_only -> 无证据声明断言
+      失败；
+    - 结构事实从 facts 中消失（删字段）或伪造已知值（含已知 False ——
+      源缺失时缺席不可观察）-> unknown 形态断言失败；
+    - 从 sibling（planned 配置、归档诱饵、其余 run 目录）取参数 / 引
+      用 / 结构事实冒充 -> unknown 形态 + sibling ID 断言失败；
+    - 缺失分流过宽：合法有证据 weight_run entry 也被改判 unknown ->
+      合法对照 training_status 断言失败；
+    - 构建路径写盘（history-summary 文件、records/、重建/修复缺失源）
+      -> 全树快照对比失败；
+    - 就地改写传入 entry -> 输入不变断言失败。
+
+    fold0 缺失但 run 目录存在的其余结构形态、fold0/adapter 与 merged
+    均无权重命名文件（完全无权重证据）的分流方向、merged 软链接来源
+    链、有证据的核心训练参数提取、多 entry 批量、eval/model 历史条
+    目、history-summary 文件写入与 CLI 不在本切片（留后续）。
+
+    Binding（证据绑定，供复跑核对）：
+    - 测试文件：``tests/versioning/test_migration.py``（H6b 仅新增用
+      例与配套 helper/常量及模块 docstring 清单条目，不改 production）。
+    - ``pyproject.toml`` sha256（本切片时点）：
+      ``424c669b6d8150fe0245de88777d05adcd2f5aeeeaa8a67d57c9d4186fc7ee1f``
+      （与 H1–H6a binding 记录一致，``[tool.pytest.ini_options]
+      testpaths / pythonpath`` 解析依赖该文件）。
+    - 命令（新 selector）：``.venv/bin/python -m pytest -q
+      tests/versioning/test_migration.py -k
+      test_confirmed_weight_run_entry_missing_declared_source_records_unknown_without_blocking``
+    - RED failure signature：恰一个失败用例（本 selector），失败为转
+      译后的 AssertionError（"声明 run 源缺失必须进入字段级 unknown…"
+      ），cause 链保留原始 PromptMigrationBlocked（声明源缺失被当
+      blocked、entry 消失）；fixture 前置事实、合法对照与 mutation 生
+      效断言全部不失败；不出现 ModuleNotFoundError / ImportError /
+      AttributeError 或原始异常直接充当 RED 结论。
+    - 既有 selector 复跑（回归钉）：H1–H6a 小 selector（-k 同口径八
+      个用例名）27 passed；全 migration 文件 RED 时点：全部既有用例
+      passed + 本 selector 失败（失败恰为本 selector）。
+    """
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    runs_root = tmp_path / "workspace" / "runs"
+
+    # ---- fixture 前置事实（mutation 前）：声明 run 源完整呈 fold0 结
+    #      构；未声明 sibling 完整（缺失只能由声明源移除引起）；prompt
+    #      registry 完整（合法对照依赖）；目标根不存在。----
+    assert declared_run_dir.is_dir() and (declared_run_dir / "fold0").is_dir(), (
+        "fixture 前置事实失败：声明 run 源必须完整（mutation 才能钉定缺失）"
+    )
+    assert (
+        declared_run_dir / "fold0" / "adapter" / "adapter_model.safetensors"
+    ).is_file() and any(
+        (declared_run_dir / "fold0" / "merged").glob("*.safetensors")
+    ), (
+        "fixture 前置事实失败：声明 run 源必须真实携带 M0 观察的权重结构"
+        "（合法对照依赖）"
+    )
+    for sibling_id in (
+        PREPARE_ONLY_RUN_V1_ID,
+        PREPARE_ONLY_RUN_V2_ID,
+        WEIGHT_RUN_ROOT_SIBLING_ID,
+    ):
+        assert (runs_root / sibling_id).is_dir(), (
+            f"fixture 前置事实失败：未声明 sibling {sibling_id} 必须存在（反"
+            "扫描诱饵与走私诱饵依赖）"
+        )
+    for prompt_source_id in (
+        HISTORY_SIBLING_SOURCE_ID,
+        CONFIRMED_PROMPT_SOURCE_ID,
+        _THIRD_REGISTRY_SOURCE_ID,
+    ):
+        prompt_dir = tmp_path / "pipeline" / "prompt_registry" / prompt_source_id
+        assert (prompt_dir / "manifest.json").is_file() and (
+            prompt_dir / "prompt.yaml"
+        ).is_file(), (
+            f"fixture 前置事实失败：legacy prompt registry 条目 {prompt_source_id} "
+            "必须完整（合法对照依赖）"
+        )
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 纯构建行为缺失：versioning.migration 未提供 "
+        "build_history_summary 入口（当前 behavior 未实现）"
+    )
+
+    entry = _confirmed_weight_run_entry()
+    expected_entry = _confirmed_weight_run_entry()
+
+    # ---- 行为 6：合法对照（mutation 前、fixture 完整）—— H1/H5/H6a
+    #      正向行为不回归，缺失分流不得过宽到拒绝有证据 entry。----
+    _assert_legal_history_entry_still_builds(build, tmp_path)
+    _assert_legal_prepare_only_run_entry_still_builds(build, tmp_path)
+    _assert_legal_weight_run_entry_still_builds(build, tmp_path)
+
+    # ---- mutation：声明 run 源整体缺失（M0 known_gap 形态：预期路径
+    #      不存在）；未声明 sibling 保持完好。----
+    shutil.rmtree(declared_run_dir)
+    assert not declared_run_dir.exists(), (
+        "fixture 前置事实失败：mutation 后声明 run 源目录必须不存在"
+        "（M0 known_gap：预期路径缺失）"
+    )
+    for sibling_id in (
+        PREPARE_ONLY_RUN_V1_ID,
+        PREPARE_ONLY_RUN_V2_ID,
+        WEIGHT_RUN_ROOT_SIBLING_ID,
+    ):
+        assert (runs_root / sibling_id).is_dir(), (
+            f"fixture 前置事实失败：mutation 后未声明 sibling {sibling_id} "
+            "必须保持完好（缺失只能由声明源引起）"
+        )
+
+    before = _snapshot_tree(tmp_path)
+
+    # ---- 行为 1：声明源缺失不得整批 blocked / entry 不得消失。----
+    try:
+        document = build(tmp_path, [entry])
+    except Exception as exc:
+        raise AssertionError(
+            "声明 run 源缺失必须进入字段级 unknown（unknown_reason / "
+            "attempted_source 指回声明 run 源），entry 不得消失、整批不得 "
+            "blocked（M0 known_gap 是允许保留的明确标注缺失的历史记录，"
+            "Spec：身份、权重或结果证据不足时保存明确标注缺失的历史记录；"
+            "H6b 缺失资料形态行为缺失）：实际抛出 "
+            f"{type(exc).__module__}.{type(exc).__name__}: {exc}"
+        ) from exc
+    assert isinstance(document, Mapping), (
+        "声明源缺失必须返回 history-summary 文档（mapping）：实际 "
+        f"{type(document).__name__!r}"
+    )
+    assert (
+        document.get("history_summary_schema")
+        == "tensile-migration/history-summary/v1"
+    ), (
+        "声明源缺失不得整批 blocked：必须返回 history-summary 文档：实际 "
+        f"{document.get('history_summary_schema')!r}"
+    )
+    document_entries = document.get("entries")
+    assert isinstance(document_entries, list), (
+        "history-summary 文档的 entries 必须是 list：实际 "
+        f"{type(document_entries).__name__!r}"
+    )
+    assert len(document_entries) == 1, (
+        "声明源缺失时 entry 不得静默消失，也不得扫描 runs 目录生成未声明条"
+        f"目：文档必须恰含声明的一条 entry：实际 {len(document_entries)} 条"
+    )
+    summary_entry = document_entries[0]
+    assert isinstance(summary_entry, Mapping), (
+        "history-summary entry 必须是 mapping：实际 "
+        f"{type(summary_entry).__name__!r}"
+    )
+
+    # ---- entry 级结构保持（original_id / kind / history_only /
+    #      formal_identity / entry_id）。----
+    assert summary_entry.get("original_id") == WEIGHT_RUN_DECLARED_ID, (
+        "缺失源 entry 必须保留 original_id（原始 run ID 来源是 entry 声明而非"
+        f"源目录）：实际 {summary_entry.get('original_id')!r}"
+    )
+    assert summary_entry.get("kind") == "weight_run", (
+        "缺失源 entry 必须保持声明的 kind（weight_run）：实际 "
+        f"{summary_entry.get('kind')!r}"
+    )
+    assert summary_entry.get("history_only") is True, (
+        "缺失源 entry 必须标记 history_only: true：实际 "
+        f"{summary_entry.get('history_only')!r}"
+    )
+    assert summary_entry.get("formal_identity") == "none", (
+        "缺失源 entry 必须标记 formal_identity: none（不分配新正式身份）："
+        f"实际 {summary_entry.get('formal_identity')!r}"
+    )
+    entry_id = summary_entry.get("entry_id")
+    assert isinstance(entry_id, str) and entry_id, (
+        "缺失源 entry 必须携带非空字符串 entry_id（文档内 slug）：实际 "
+        f"{entry_id!r}"
+    )
+    assert not is_valid_version_id(entry_id), (
+        "entry_id 必须是文档内 slug，不得是 <kind>-v<协议>-r<N> 正式身份："
+        f"实际 {entry_id!r}"
+    )
+
+    # ---- 行为 3：不输出无证据声明（training_status 四个伪造分类值全
+    #      部禁止；无权重观察证据，也不得信任 entry 声明代替重新观察）。----
+    training_status = summary_entry.get("training_status")
+    assert training_status != WEIGHT_RUN_TRAINING_STATUS, (
+        "声明 run 源缺失时不得输出 training_status == 'weights_observed'"
+        "（无任何权重观察证据；也不得信任 entry 声明代替重新观察 —— 缺失"
+        "资料的分类是伪造）：实际 "
+        f"{summary_entry.get('training_status')!r}"
+    )
+    assert training_status != "completed", (
+        "声明 run 源缺失时不得输出 completed（无证据的完成声明，M0 明确排除"
+        f"）：实际 {summary_entry.get('training_status')!r}"
+    )
+    assert training_status != "not_completed", (
+        "声明 run 源缺失时不得输出 not_completed（“不等于完成”不等于“未完"
+        "成”，无证据的负向声明同样禁止）：实际 "
+        f"{summary_entry.get('training_status')!r}"
+    )
+    assert training_status != "prepared_only", (
+        "声明 run 源缺失时不得输出 prepared_only（该 run 无任何准备资料观察："
+        "M0 known_gap meaning：预期路径缺失，非权重存在也非准备资料观察，"
+        "分类是伪造）：实际 "
+        f"{summary_entry.get('training_status')!r}"
+    )
+    if training_status is not None:
+        assert isinstance(training_status, str) and training_status.strip(), (
+            "缺失源 entry 的 training_status 若存在必须为非空字符串：实际 "
+            f"{training_status!r}"
+        )
+
+    # ---- 行为 4：结构事实与核心参数全部字段级 unknown（缺失不是删字
+    #      段，也不是已知 False —— 源缺失时缺席不可观察）。----
+    facts = summary_entry.get("facts")
+    assert isinstance(facts, Mapping) and facts, (
+        "缺失源 entry 必须携带非空 facts（结构事实与核心参数进入字段级 "
+        f"unknown，不是删字段）：实际 {facts!r}"
+    )
+    for name in WEIGHT_RUN_KNOWN_FACTS + WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert name in facts, (
+            f"声明源缺失时结构事实/核心参数 {name} 不得从 facts 中消失（缺失"
+            f"进入字段级 unknown，不是删字段）：实际键集 {sorted(facts)}"
+        )
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=WEIGHT_RUN_DECLARED_ID
+        )
+    for name, fact in facts.items():
+        name_lower = str(name).lower()
+        if any(token in name_lower for token in _H6_PARAM_NAME_TOKENS) or any(
+            token in name_lower for token in _H6_REFERENCE_NAME_TOKENS
+        ):
+            _assert_h6_fact_is_unknown(
+                fact, name=name, run_id=WEIGHT_RUN_DECLARED_ID
+            )
+
+    # ---- 行为 3 兼：不声明训练完成 / 通过 / 评测 / model 身份 / 权重
+    #      完整性与哈希验证。----
+    _assert_h6_no_completion_or_verification_claims(summary_entry, "entry")
+
+    # ---- 不分配任何新正式身份；不扫描 sibling —— 未声明 sibling 的
+    #      ID 不得进入文档任何字符串（缺失 run 的已知事实不得从
+    #      sibling 取内容冒充）。----
+    all_strings = _document_string_fragments(document)
+    for fragment in all_strings:
+        assert not is_valid_version_id(fragment), (
+            "history-summary 文档内不得出现任何 <kind>-v<协议>-r<N> 正式身份："
+            f"实际出现 {fragment!r}"
+        )
+    for sibling_id in _H6B_UNDECLARED_SIBLING_IDS:
+        assert not any(sibling_id in fragment for fragment in all_strings), (
+            f"声明源缺失时未声明 sibling {sibling_id} 不得进入 history-summary "
+            "文档任何字符串（unknown 事实不得从 sibling 取内容冒充已知值）"
+        )
+
+    # ---- 行为 5：纯构建零写入 —— 全树逐字节不变（不写 history-summary
+    #      文件、不创建 records/、不修复/重建缺失源、不改 sibling）。----
+    assert _snapshot_tree(tmp_path) == before, (
+        "缺失形态的纯构建必须零写入：全树快照逐字节不变（不写 history-summary "
+        "文件、不创建 records/ 或任何目标条目、不修复或重建缺失的声明 run "
+        "源）"
+    )
+    assert not (tmp_path / "records").exists(), (
+        "缺失形态纯构建不得创建 records/ 或任何正式对象条目"
+    )
+    assert not (tmp_path / "docs").exists(), (
+        "缺失形态纯构建不得写入 history-summary 文件（文档只经返回值给出）"
+    )
+    for path in tmp_path.rglob("*"):
+        assert "history-summary" not in path.name, (
+            f"缺失形态纯构建不得落盘任何 history-summary 命名文件：发现 {path}"
+        )
+
+    # ---- 不就地修改传入 entry。----
+    assert entry == expected_entry, (
+        "全程不得就地改写传入 entry（H6b 输入事实保持不变）"
     )
