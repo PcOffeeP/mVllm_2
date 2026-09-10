@@ -1877,8 +1877,11 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     记（unknown 事实携带非空 unknown_reason 与指回声明 run 源的
     attempted_source）。
 
-    声明 run 源缺失（源目录缺失 / fold0 缺失，M0 known_gap 形态：预期
-    路径不存在）时 entry 不消失、整批不 blocked：结构事实与核心训练
+    声明 run 支持两种 M0 已观察结构：``fold0/{adapter,merged}``，以及
+    ``{adapter,merged}`` 直接位于 run 根的 ``run_root`` 结构；后者只描
+    述可观察布局，不推断为全量训练。声明 run 源或两种已知结构均缺失
+    （M0 known_gap 形态：预期路径不存在）时 entry 不消失、整批不
+    blocked：结构事实与核心训练
     参数全部字段级 unknown（缺席不可观察，缺失不伪装成已知值），且不
     输出 weights_observed / completed / not_completed / prepared_only
     等无证据分类。声明 run 源存在但 fold0 内 adapter / merged 均无权重
@@ -1893,13 +1896,29 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     attempted_source，不携带非 None value、不携带观察 provenance），可读
     目录事实仍按观察输出（可读无权重 -> 已知 False），且因不可完整观察
     不输出 training_status 键（部分结构观察不足以支撑 evidence-derived
-    分类，Reviewer P3）；run 根权重结构等其余形态不在本切片。
+    分类，Reviewer P3）。
     """
     run_rel = _PREPARE_ONLY_RUN_SOURCE_ROOT / source_id
     run_dir = root / run_rel
     fold_rel = run_rel / "fold0"
     fold_dir = run_dir / "fold0"
-    if not run_dir.is_dir() or not fold_dir.is_dir():
+    root_adapter = run_dir / "adapter"
+    root_merged = run_dir / "merged"
+    # H7 reviewer P2：根级组件链接可把 sibling 权重误归因到声明 run。
+    # 本切片只接受声明 run 根下的真实目录；链接来源链留给后续独立切片
+    # 核对，在核对前 fail-closed 为不可观察，不跟随链接读取目标内容。
+    root_structure_observed = not run_dir.is_symlink() and ((
+        root_adapter.is_dir() and not root_adapter.is_symlink()
+    ) or (root_merged.is_dir() and not root_merged.is_symlink()))
+    if fold_dir.is_dir():
+        structure_rel = fold_rel
+        structure_dir = fold_dir
+        fold_scope = "fold0"
+    elif run_dir.is_dir() and root_structure_observed:
+        structure_rel = run_rel
+        structure_dir = run_dir
+        fold_scope = "run_root"
+    else:
         # H6b：声明 run 源缺失（M0 known_gap：预期路径不存在）与 H4 缺
         # 失形态同口径 —— 相关事实进入字段级 unknown，entry 照常构建、
         # 不整批 blocked；缺席不可观察，不得标为已知 False，也不从
@@ -1910,8 +1929,9 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         facts: dict[str, dict[str, Any]] = {
             name: {
                 "unknown_reason": (
-                    f"weight run {source_id} 的声明 run 源 "
-                    f"{fold_rel.as_posix()} 缺失（M0 known_gap：预期路径不"
+                    f"weight run {source_id} 的声明 run 源或已知权重结构 "
+                    f"{fold_rel.as_posix()} / {run_rel.as_posix()} 缺失"
+                    "（M0 known_gap：预期路径不"
                     f"存在），{name} 无法经只读观察取得：缺席不可观察，缺"
                     "失不伪装成已知值，也不从 sibling 取内容"
                 ),
@@ -1937,24 +1957,33 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
             "formal_identity": "none",
             "facts": facts,
         }
-    adapter_dir = fold_dir / "adapter"
-    merged_dir = fold_dir / "merged"
+    adapter_dir = structure_dir / "adapter"
+    merged_dir = structure_dir / "merged"
     # H6d：区分目录存在性与权重文件存在性（Reviewer P2）—— 声明的
     # adapter / merged 目录缺失（预期路径不存在）是缺席不可观察：对应
     # 事实进入字段级 unknown（非空 unknown_reason 指明缺失的声明位置 +
     # 指回声明 run 源的 attempted_source），不得标为已知 False、provenance
     # 不得声称观察到不存在的目录；目录可读时权重存在性按 H6c 口径只认
     # 顶层 *.safetensors（可读无权重目录仍是观察到的缺席，已知 False）。
-    adapter_dir_exists = adapter_dir.is_dir()
-    merged_dir_exists = merged_dir.is_dir()
+    if fold_scope == "fold0":
+        adapter_dir_exists = adapter_dir.is_dir()
+        merged_dir_exists = merged_dir.is_dir()
+    else:
+        adapter_dir_exists = adapter_dir.is_dir() and not adapter_dir.is_symlink()
+        merged_dir_exists = merged_dir.is_dir() and not merged_dir.is_symlink()
     # H6c：adapter 与 merged 权重存在性同口径 —— 只认声明目录顶层
     # *.safetensors（统一深度口径：M0 观察的 adapter 导出与 merged 分
     # 片均为目录顶层文件；嵌套 / checkpoint 层权重不得伪造 *_present）。
+    def _declared_weight_file(path: Path) -> bool:
+        if not path.is_file():
+            return False
+        return fold_scope == "fold0" or not path.is_symlink()
+
     adapter_weights_present = adapter_dir_exists and any(
-        path.is_file() for path in adapter_dir.glob("*.safetensors")
+        _declared_weight_file(path) for path in adapter_dir.glob("*.safetensors")
     )
     merged_weights_present = merged_dir_exists and any(
-        path.is_file() for path in merged_dir.glob("*.safetensors")
+        _declared_weight_file(path) for path in merged_dir.glob("*.safetensors")
     )
     weight_evidence_present = adapter_weights_present or merged_weights_present
     weight_structure_fully_observable = adapter_dir_exists and merged_dir_exists
@@ -1963,8 +1992,8 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         # 缺失目录事实：不携带非 None value，不携带观察 provenance。
         return {
             "unknown_reason": (
-                f"weight run {source_id} 声明的 fold0/{component} 目录"
-                f" {fold_rel.as_posix()}/{component} 缺失（预期路径不存在），"
+                f"weight run {source_id} 声明的 {fold_scope}/{component} 目录"
+                f" {structure_rel.as_posix()}/{component} 缺失（预期路径不存在），"
                 f"{component} 存在性无法经只读观察取得：目录缺席不可观察，缺"
                 "失不伪装成已知值，也不从 sibling 取内容"
             ),
@@ -1981,14 +2010,14 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         }
 
     facts: dict[str, dict[str, Any]] = {
-        "fold_scope": _observed_fact("fold0", fold_rel),
+        "fold_scope": _observed_fact(fold_scope, structure_rel),
         "adapter_present": (
-            _observed_fact(adapter_weights_present, fold_rel / "adapter")
+            _observed_fact(adapter_weights_present, structure_rel / "adapter")
             if adapter_dir_exists
             else _missing_dir_fact("adapter")
         ),
         "merged_present": (
-            _observed_fact(merged_weights_present, fold_rel / "merged")
+            _observed_fact(merged_weights_present, structure_rel / "merged")
             if merged_dir_exists
             else _missing_dir_fact("merged")
         ),

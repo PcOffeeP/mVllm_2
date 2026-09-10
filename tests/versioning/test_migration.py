@@ -16698,6 +16698,11 @@ WEIGHT_RUN_DECLARED_ID = WEIGHT_RUN_SIBLING_ID
 # 扫描 workspace/runs/ 或从 sibling 取结构事实的实现必被捕获。
 WEIGHT_RUN_ROOT_SIBLING_ID = "v4.1-prompt-minimal-v1-seed3411"
 
+# H7 run 根结构声明切片将 M0 第 5 条 weight run 作为声明源。该 run
+# 没有 fold0 子目录，adapter / merged 直接位于 run 根；fold_scope 使用
+# ``run_root`` 描述可观察的布局，避免把“无 fold 目录”伪造成全量训练。
+WEIGHT_RUN_ROOT_DECLARED_ID = WEIGHT_RUN_ROOT_SIBLING_ID
+
 # Spec「核心训练参数」九字段族（与 H5 同族共享常量）：M0 对 weight run
 # 只记录目录结构观察，未记录任何核心训练参数值，这些参数必须以字段级
 # unknown 进入文档；有证据的参数提取（已核实的归档 manifest）属 H6b。
@@ -16841,6 +16846,27 @@ def _confirmed_weight_run_entry() -> dict[str, Any]:
             "M0 source-inventory weight_runs notes：run 目录存在不等于完"
             "成训练；全部未验证权重完整性与哈希。object-mapping "
             "model_train_eval_history：不能当作 completed 训练。"
+        ),
+    }
+
+
+def _confirmed_root_weight_run_entry() -> dict[str, Any]:
+    """镜像 M0 第 5 条、权重直接位于 run 根的已确认 history entry。"""
+    return {
+        "kind": "weight_run",
+        "source_legacy_id": WEIGHT_RUN_ROOT_DECLARED_ID,
+        "role": "有权重历史 run（M0 weight_runs 第 5 条：run 根结构）",
+        "source_verified": "training_observed",
+        "history_only": True,
+        "status": "user_confirmed",
+        "confirmed_by_user_date": "2026-09-07",
+        "observed": (
+            "run 根下有 adapter 与 10 个 merged 分片，有归档目录；"
+            "结构与 fold0 子目录模式不同"
+        ),
+        "notes": (
+            "M0 source-inventory weight_runs notes：run 目录存在不等于完成"
+            "训练；全部未验证权重完整性与哈希。"
         ),
     }
 
@@ -20284,3 +20310,173 @@ def test_confirmed_weight_run_entry_missing_declared_weight_dir_records_unknown_
     assert entry == expected_entry, (
         "场景 E 全程不得就地改写传入 entry（输入事实保持不变）"
     )
+
+
+# ---------------------------------------------------------------------------
+# H7：weight run 根结构声明 —— adapter / merged 直接位于 run 根
+# ---------------------------------------------------------------------------
+
+
+def test_build_history_summary_observes_declared_root_weight_layout(
+    tmp_path: Path,
+) -> None:
+    """声明 run 的根级权重结构须可查询，不得误报为 fold0 缺失 unknown。
+
+    Test List：
+    - 只按声明的 ``source_legacy_id`` 读取 run 根下 adapter / merged；
+    - fold_scope 记录 ``run_root``，不把无 fold 目录伪造成全量训练；
+    - adapter / merged 都只认各自目录顶层 ``*.safetensors``；
+    - 任一完整可观察根结构中的权重证据支持 ``weights_observed``，但不
+      支持 completed / passed / 权重完整性或哈希结论；
+    - 九个核心训练参数继续字段级 unknown，归档内容不在本切片读取；
+    - 构建全程零写入且不就地修改输入 entry。
+
+    有效 RED：当前实现硬编码 ``fold0``，会将本声明源误分流为源缺失，
+    因而 fold_scope 不会得到已知值 ``run_root``。失败应来自下方行为断
+    言，不得来自 import / fixture 装配错误。
+    """
+    _write_weight_run_root_sibling_layout(tmp_path)
+    entry = _confirmed_root_weight_run_entry()
+    expected_entry = dict(entry)
+    before = _snapshot_tree(tmp_path)
+
+    build = _resolve_history_summary_entry()
+    assert build is not None, (
+        "history-summary 构建入口缺失：versioning.migration 未提供 "
+        "build_history_summary"
+    )
+    document = build(tmp_path, [entry])
+
+    assert isinstance(document, Mapping)
+    assert (
+        document.get("history_summary_schema")
+        == "tensile-migration/history-summary/v1"
+    )
+    entries = document.get("entries")
+    assert isinstance(entries, list) and len(entries) == 1
+    summary_entry = entries[0]
+    assert isinstance(summary_entry, Mapping)
+    assert summary_entry.get("original_id") == WEIGHT_RUN_ROOT_DECLARED_ID
+    assert summary_entry.get("training_status") == WEIGHT_RUN_TRAINING_STATUS
+    assert summary_entry.get("formal_identity") == "none"
+
+    facts = summary_entry.get("facts")
+    assert isinstance(facts, Mapping)
+    run_rel = Path("workspace") / "runs" / WEIGHT_RUN_ROOT_DECLARED_ID
+    expected_structure = (
+        (WEIGHT_RUN_FOLD_SCOPE_FACT, "run_root", run_rel),
+        (WEIGHT_RUN_ADAPTER_PRESENT_FACT, True, run_rel / "adapter"),
+        (WEIGHT_RUN_MERGED_PRESENT_FACT, True, run_rel / "merged"),
+    )
+    for name, expected_value, expected_source in expected_structure:
+        fact = facts.get(name)
+        assert isinstance(fact, Mapping), f"{name} 必须是已知事实 mapping"
+        assert fact.get("value") == expected_value, (
+            f"根结构 {name} 观察值错误：实际 {fact.get('value')!r}"
+        )
+        source = fact.get("source")
+        assert isinstance(source, Mapping)
+        assert source.get("path") == expected_source.as_posix(), (
+            f"{name} provenance 必须指回声明 run 的实际根结构位置"
+        )
+        assert "fold0" not in source.get("path", ""), (
+            f"根结构 {name} 不得伪造 fold0 来源路径"
+        )
+
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert name in facts
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=WEIGHT_RUN_ROOT_DECLARED_ID
+        )
+
+    assert _snapshot_tree(tmp_path) == before
+    assert entry == expected_entry
+    assert not (tmp_path / "records").exists()
+    assert not (tmp_path / "docs").exists()
+
+
+def test_root_weight_layout_does_not_follow_component_links_to_sibling(
+    tmp_path: Path,
+) -> None:
+    """根级组件链接越出声明 run 时不得读取 sibling 权重（reviewer P2）。"""
+    sibling_id = "v4.1-root-weight-sibling-v1-seed9999"
+    sibling_dir = tmp_path / "workspace" / "runs" / sibling_id
+    for component in ("adapter", "merged"):
+        component_dir = sibling_dir / component
+        component_dir.mkdir(parents=True, exist_ok=True)
+        (component_dir / f"{component}.safetensors").write_bytes(b"sibling-only")
+
+    declared_dir = (
+        tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_DECLARED_ID
+    )
+    declared_dir.mkdir(parents=True, exist_ok=True)
+    (declared_dir / "adapter").symlink_to(sibling_dir / "adapter", target_is_directory=True)
+    (declared_dir / "merged").symlink_to(sibling_dir / "merged", target_is_directory=True)
+    entry = _confirmed_root_weight_run_entry()
+    expected_entry = dict(entry)
+    before = _snapshot_tree(tmp_path)
+
+    build = _resolve_history_summary_entry()
+    assert build is not None
+    document = build(tmp_path, [entry])
+    entries = document.get("entries")
+    assert isinstance(entries, list) and len(entries) == 1
+    summary_entry = entries[0]
+    assert isinstance(summary_entry, Mapping)
+    assert "training_status" not in summary_entry, (
+        "根级组件链接越出声明 run 时不得用 sibling 权重输出 weights_observed"
+    )
+    facts = summary_entry.get("facts")
+    assert isinstance(facts, Mapping)
+    for name in WEIGHT_RUN_KNOWN_FACTS + WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert name in facts
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=WEIGHT_RUN_ROOT_DECLARED_ID
+        )
+
+    assert _snapshot_tree(tmp_path) == before
+    assert entry == expected_entry
+
+
+@pytest.mark.parametrize("attack_kind", ["run_link", "weight_file_links"])
+def test_root_weight_layout_rejects_remaining_sibling_link_paths(
+    tmp_path: Path, attack_kind: str
+) -> None:
+    """run 祖先链接与权重文件链接都不得成为根结构权重证据。"""
+    sibling_id = "v4.1-root-weight-sibling-v1-seed9998"
+    sibling_dir = tmp_path / "workspace" / "runs" / sibling_id
+    for component in ("adapter", "merged"):
+        component_dir = sibling_dir / component
+        component_dir.mkdir(parents=True, exist_ok=True)
+        (component_dir / f"{component}.safetensors").write_bytes(b"sibling-only")
+
+    declared_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_DECLARED_ID
+    if attack_kind == "run_link":
+        declared_dir.parent.mkdir(parents=True, exist_ok=True)
+        declared_dir.symlink_to(sibling_dir, target_is_directory=True)
+    else:
+        for component in ("adapter", "merged"):
+            component_dir = declared_dir / component
+            component_dir.mkdir(parents=True, exist_ok=True)
+            (component_dir / f"{component}.safetensors").symlink_to(
+                sibling_dir / component / f"{component}.safetensors"
+            )
+
+    entry = _confirmed_root_weight_run_entry()
+    before = _snapshot_tree(tmp_path)
+    build = _resolve_history_summary_entry()
+    assert build is not None
+    summary_entry = build(tmp_path, [entry])["entries"][0]
+    assert "training_status" not in summary_entry
+    facts = summary_entry["facts"]
+    if attack_kind == "run_link":
+        for name in WEIGHT_RUN_KNOWN_FACTS:
+            _assert_h6_fact_is_unknown(
+                facts[name], name=name, run_id=WEIGHT_RUN_ROOT_DECLARED_ID
+            )
+    else:
+        assert facts[WEIGHT_RUN_FOLD_SCOPE_FACT]["value"] == "run_root"
+        assert facts[WEIGHT_RUN_ADAPTER_PRESENT_FACT]["value"] is False
+        assert facts[WEIGHT_RUN_MERGED_PRESENT_FACT]["value"] is False
+
+    assert _snapshot_tree(tmp_path) == before
