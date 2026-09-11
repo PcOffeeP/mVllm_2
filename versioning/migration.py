@@ -1665,6 +1665,495 @@ _PREPARE_ONLY_CORE_TRAIN_PARAMS = (
 # unknown。声明 run 源定位与 prepare-only run 同为 workspace/runs/。
 _WEIGHT_RUN_KIND = "weight_run"
 _WEIGHT_RUN_OBSERVED_TRAINING_STATUS = "weights_observed"
+_MODEL_HISTORY_KIND = "model_history"
+_EVAL_HISTORY_KIND = "eval_history"
+_EVAL_HISTORY_METRIC_KEYS = frozenset(
+    {
+        "total",
+        "contract_valid_rate",
+        "joint_correct_rate",
+        "clip_state_correct_rate",
+        "fracture_mechanism_correct_rate",
+        "fracture_site_correct_rate",
+        "special_case_correct_rate",
+    }
+)
+
+
+def _history_path_has_link(root: Path, relative_path: Path) -> bool:
+    """检查受信任根以下词法路径的任一组件是否为符号链接。"""
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        return True
+    current = root
+    for part in relative_path.parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def _history_unknown(reason: str, attempted: Path) -> dict[str, Any]:
+    return {"unknown_reason": reason, "attempted_source": attempted.as_posix()}
+
+
+def _history_json_equal(left: Any, right: Any) -> bool:
+    """按 JSON 类型和值比较，避免 bool 与 0/1 被 Python 视为相等。"""
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, Mapping):
+        return left.keys() == right.keys() and all(
+            _history_json_equal(value, right[key]) for key, value in left.items()
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _history_json_equal(a, b) for a, b in zip(left, right, strict=True)
+        )
+    return left == right
+
+
+def _build_model_history_entry(root: Path, source_id: str) -> dict[str, Any]:
+    """从既有 Registry manifest 构建 history-only 模型记录。"""
+    source_rel = (
+        Path("pipeline") / "model_registry" / "releases" / f"{source_id}.json"
+    )
+    source_file = root / source_rel
+    names = (
+        "model_name",
+        "base_model",
+        "protocol_version",
+        "contract_version",
+        "contract_sha256",
+        "release_id",
+        "experiment_id",
+        "training_variant",
+        "optimizer_steps",
+        "fold",
+        "seed",
+        "lifecycle_status",
+        "production_approved",
+        "limitations",
+        "adapter_path",
+        "merged_path",
+        "merged_aggregate_sha256",
+    )
+    if _history_path_has_link(root, source_rel):
+        raise PromptMigrationBlocked(
+            f"model history {source_id} 的 Registry manifest 来源链含符号链接"
+        )
+    if not source_file.is_file():
+        facts = {
+            name: _history_unknown(
+                f"model history {source_id} 的 Registry manifest 缺失或来源链含链接",
+                source_rel,
+            )
+            for name in names
+        }
+    else:
+        try:
+            raw = json.loads(source_file.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 Registry manifest 无法解析: {exc}"
+            ) from exc
+        if not isinstance(raw, Mapping) or raw.get("model_name") != source_id:
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 Registry manifest 身份不一致"
+            )
+        if raw.get("schema_version") != "tensile-model-registry/model/v1":
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 Registry schema_version 不受支持"
+            )
+        contract = raw.get("contract")
+        origin = raw.get("origin")
+        artifacts = raw.get("artifacts")
+        adapter = artifacts.get("adapter") if isinstance(artifacts, Mapping) else None
+        merged = artifacts.get("merged") if isinstance(artifacts, Mapping) else None
+        if not all(
+            isinstance(value, Mapping)
+            for value in (contract, origin, adapter, merged)
+        ):
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 Registry manifest 缺少结构化来源字段"
+            )
+        values = {
+            "model_name": raw.get("model_name"),
+            "protocol_version": raw.get("protocol_version"),
+            "contract_version": contract.get("version"),
+            "contract_sha256": contract.get("sha256"),
+            "release_id": origin.get("release_id"),
+            "experiment_id": origin.get("experiment_id"),
+            "training_variant": origin.get("training_variant"),
+            "optimizer_steps": origin.get("optimizer_steps"),
+            "fold": origin.get("fold"),
+            "seed": origin.get("seed"),
+            "lifecycle_status": raw.get("lifecycle_status"),
+            "production_approved": raw.get("production_approved"),
+            "limitations": raw.get("limitations"),
+            "adapter_path": adapter.get("managed_path"),
+            "merged_path": merged.get("managed_path"),
+            "merged_aggregate_sha256": merged.get("aggregate_sha256"),
+        }
+        if any(value is None for value in values.values()):
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 Registry manifest 缺少必需事实"
+            )
+        scalar_strings = (
+            "model_name",
+            "protocol_version",
+            "contract_version",
+            "contract_sha256",
+            "release_id",
+            "experiment_id",
+            "training_variant",
+            "lifecycle_status",
+            "adapter_path",
+            "merged_path",
+            "merged_aggregate_sha256",
+        )
+        if any(
+            not isinstance(values[name], str) or not values[name]
+            for name in scalar_strings
+        ):
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 Registry 字符串事实无效"
+            )
+        if any(
+            isinstance(values[name], bool) or not isinstance(values[name], int)
+            for name in ("fold", "seed", "optimizer_steps")
+        ) or any(
+            values[name] < 0 for name in ("fold", "seed")
+        ) or values["optimizer_steps"] <= 0 or not isinstance(
+            values["production_approved"], bool
+        ):
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 fold/seed/审批事实类型无效"
+            )
+        limitations = values["limitations"]
+        if (
+            not isinstance(limitations, list)
+            or not all(isinstance(item, str) and item for item in limitations)
+            or len(set(limitations)) != len(limitations)
+        ):
+            raise PromptMigrationBlocked(
+                f"model history {source_id} 的 limitations 无效"
+            )
+        json_fields = {
+            "model_name": "/model_name",
+            "protocol_version": "/protocol_version",
+            "contract_version": "/contract/version",
+            "contract_sha256": "/contract/sha256",
+            "release_id": "/origin/release_id",
+            "experiment_id": "/origin/experiment_id",
+            "training_variant": "/origin/training_variant",
+            "optimizer_steps": "/origin/optimizer_steps",
+            "fold": "/origin/fold",
+            "seed": "/origin/seed",
+            "lifecycle_status": "/lifecycle_status",
+            "production_approved": "/production_approved",
+            "limitations": "/limitations",
+            "adapter_path": "/artifacts/adapter/managed_path",
+            "merged_path": "/artifacts/merged/managed_path",
+            "merged_aggregate_sha256": "/artifacts/merged/aggregate_sha256",
+        }
+        facts = {
+            name: {
+                "value": value,
+                "source": {
+                    "file": source_rel.as_posix(),
+                    "json_pointer": json_fields[name],
+                },
+            }
+            for name, value in values.items()
+        }
+        facts["base_model"] = _history_unknown(
+            f"model history {source_id} 的 Registry manifest 未记录基座模型修订",
+            source_rel,
+        )
+    return {
+        "entry_id": f"history-{_MODEL_HISTORY_KIND}-{source_id}",
+        "kind": _MODEL_HISTORY_KIND,
+        "original_id": source_id,
+        "history_only": True,
+        "formal_identity": "none",
+        "facts": facts,
+    }
+
+
+def _build_eval_history_entry(root: Path, source_id: str) -> dict[str, Any]:
+    """从逐文件验签的归档评估摘要构建 history-only 记录。"""
+    archive_rel = Path("docs") / "results" / "model_evidence" / source_id
+    package_rel = archive_rel / "MANIFEST.json"
+    summary_rel = archive_rel / "evaluation" / "evaluation_summary.json"
+    package_file = root / package_rel
+    summary_file = root / summary_rel
+    names = (
+        "model_reference",
+        "evaluated_weight_path",
+        "data_release_id",
+        "fold",
+        "split",
+        "sample_count",
+        "evaluation_contract",
+        "metrics",
+        "runtime_failure_count",
+        "strict_valid_count",
+        "strict_valid_rate",
+        "evaluation_status",
+    )
+    if _history_path_has_link(root, package_rel) or _history_path_has_link(
+        root, summary_rel
+    ):
+        raise PromptMigrationBlocked(
+            f"eval history {source_id} 的归档来源链含符号链接"
+        )
+    if not package_file.is_file() or not summary_file.is_file():
+        facts = {
+            name: _history_unknown(
+                f"eval history {source_id} 的归档 package 或 evaluation summary 缺失",
+                archive_rel,
+            )
+            for name in names
+        }
+    else:
+        try:
+            package = json.loads(package_file.read_text(encoding="utf-8"))
+            summary_bytes = summary_file.read_bytes()
+            summary = json.loads(summary_bytes.decode("utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的归档证据无法解析: {exc}"
+            ) from exc
+        if not isinstance(package, Mapping) or not isinstance(summary, Mapping):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的归档证据顶层必须为 mapping"
+            )
+        if summary.get("schema_version") != "tensile-v4.1-evaluation-run/v1":
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的 evaluation schema_version 不受支持"
+            )
+        embedded_summary = package.get("evaluation_summary")
+        if (
+            package.get("schema_version") != "v4.1-archival-evidence-package/v1"
+            or package.get("run_id") != source_id
+            or not isinstance(embedded_summary, Mapping)
+            or any(
+                key not in summary or not _history_json_equal(summary[key], value)
+                for key, value in embedded_summary.items()
+            )
+        ):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的归档身份或摘要交叉证据不一致"
+            )
+        listed = package.get("evidence_package_files")
+        matches = [
+            item
+            for item in listed
+            if isinstance(item, Mapping)
+            and item.get("path") == "evaluation/evaluation_summary.json"
+        ] if isinstance(listed, list) else []
+        if len(matches) != 1:
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的评估摘要文件清单缺失或重复"
+            )
+        protected = matches[0]
+        if (
+            isinstance(protected.get("size_bytes"), bool)
+            or not isinstance(protected.get("size_bytes"), int)
+            or protected.get("size_bytes") != len(summary_bytes)
+            or not isinstance(protected.get("sha256"), str)
+            or protected.get("sha256") != hashlib.sha256(summary_bytes).hexdigest()
+        ):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的评估摘要 size/SHA-256 不一致"
+            )
+        metrics = summary.get("metrics")
+        sample_count = summary.get("sample_count")
+        if (
+            not isinstance(metrics, Mapping)
+            or set(metrics) != _EVAL_HISTORY_METRIC_KEYS
+            or isinstance(sample_count, bool)
+            or not isinstance(sample_count, int)
+            or sample_count < 0
+        ):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的 metrics/sample_count 无效"
+            )
+        runtime_failures = summary.get("runtime_failure_count")
+        strict_count = summary.get("strict_valid_count")
+        strict_rate = summary.get("strict_valid_rate")
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value < 0
+            or value > sample_count
+            for value in (runtime_failures, strict_count)
+        ) or runtime_failures + strict_count > sample_count:
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的有效样本或运行失败计数无效"
+            )
+        expected_strict_rate = (
+            round(strict_count / sample_count, 6) if sample_count else None
+        )
+        if not _history_json_equal(strict_rate, expected_strict_rate):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的 strict_valid_rate 与计数不一致"
+            )
+        for metric, value in metrics.items():
+            if (
+                not isinstance(metric, str)
+                or not metric
+            ):
+                raise PromptMigrationBlocked(
+                    f"eval history {source_id} 含无效指标 {metric!r}"
+                )
+            if metric == "total":
+                if isinstance(value, bool) or not isinstance(value, int) or value != sample_count:
+                    raise PromptMigrationBlocked(
+                        f"eval history {source_id} 的 metrics.total 与 sample_count 不一致"
+                    )
+            elif sample_count == 0:
+                if value is not None:
+                    raise PromptMigrationBlocked(
+                        f"eval history {source_id} 的零样本比例指标 {metric!r} 必须为 null"
+                    )
+            elif (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or not 0 <= value <= 1
+            ):
+                raise PromptMigrationBlocked(
+                    f"eval history {source_id} 的比例指标 {metric!r} 超出 [0, 1]"
+                )
+        if metrics.get("total") != sample_count or metrics.get(
+            "contract_valid_rate"
+        ) != strict_rate or not _history_json_equal(
+            metrics.get("contract_valid_rate"), strict_rate
+        ):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的 metrics 与样本/严格有效率不一致"
+            )
+        total_samples = summary.get("total_samples")
+        if (
+            isinstance(total_samples, bool)
+            or not isinstance(total_samples, int)
+            or total_samples < 0
+            or total_samples != sample_count
+        ):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的 total_samples 与 sample_count 不一致"
+            )
+        data_release = package.get("data_release")
+        package_contract = package.get("contract")
+        if not isinstance(data_release, Mapping):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 缺少 data_release"
+            )
+        release_id = summary.get("release_id")
+        contract_version = summary.get("contract_version")
+        contract_hash = summary.get("contract_hash")
+        fold = summary.get("fold")
+        evaluated_weight_path = summary.get("model_dir")
+        if (
+            not isinstance(release_id, str)
+            or not release_id
+            or not isinstance(contract_version, str)
+            or not contract_version
+            or not isinstance(contract_hash, str)
+            or not contract_hash
+            or not isinstance(evaluated_weight_path, str)
+            or not evaluated_weight_path
+            or isinstance(fold, bool)
+            or not isinstance(fold, int)
+            or fold < 0
+        ):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的数据、契约或 fold 事实无效"
+            )
+        if not _history_json_equal(
+            data_release.get("release_id"), release_id
+        ) or not _history_json_equal(package.get("fold"), fold):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的 release/fold 交叉证据不一致"
+            )
+        if "contract" in package:
+            if not isinstance(package_contract, Mapping) or (
+                not _history_json_equal(
+                    package_contract.get("contract_version"), contract_version
+                )
+                or not _history_json_equal(
+                    package_contract.get("contract_hash"), contract_hash
+                )
+            ):
+                raise PromptMigrationBlocked(
+                    f"eval history {source_id} 的 contract 交叉证据不一致"
+                )
+        source = {
+            "path": summary_rel.as_posix(),
+            "corroborated_by": [package_rel.as_posix()],
+        }
+        known = {
+            "data_release_id": release_id,
+            "fold": fold,
+            "evaluated_weight_path": evaluated_weight_path,
+            "sample_count": sample_count,
+            "evaluation_contract": {
+                "version": contract_version,
+                "sha256": contract_hash,
+            },
+            "metrics": dict(metrics),
+            "runtime_failure_count": runtime_failures,
+            "strict_valid_count": strict_count,
+            "strict_valid_rate": strict_rate,
+            "evaluation_status": "recorded",
+        }
+        if any(
+            value is None
+            for name, value in known.items()
+            if name != "strict_valid_rate" or sample_count > 0
+        ):
+            raise PromptMigrationBlocked(
+                f"eval history {source_id} 的归档摘要缺少必需事实"
+            )
+        facts = {
+            name: {"value": value, "source": dict(source)}
+            for name, value in known.items()
+        }
+        if "model_name" in package:
+            model_name = package["model_name"]
+            if not isinstance(model_name, str) or not model_name:
+                raise PromptMigrationBlocked(
+                    f"eval history {source_id} 的 model_name 事实无效"
+                )
+            facts["model_reference"] = {
+                "value": model_name,
+                "source": {"path": package_rel.as_posix()},
+            }
+        else:
+            facts["model_reference"] = _history_unknown(
+                f"eval history {source_id} 的归档包未记录 model_name",
+                package_rel,
+            )
+        if "split" in summary:
+            split = summary["split"]
+            if not isinstance(split, str) or not split:
+                raise PromptMigrationBlocked(
+                    f"eval history {source_id} 的 split 事实无效"
+                )
+            facts["split"] = {"value": split, "source": dict(source)}
+        else:
+            facts["split"] = _history_unknown(
+                f"eval history {source_id} 的归档摘要未记录明确 split",
+                summary_rel,
+            )
+    return {
+        "entry_id": f"history-{_EVAL_HISTORY_KIND}-{source_id}",
+        "kind": _EVAL_HISTORY_KIND,
+        "original_id": source_id,
+        "history_only": True,
+        "formal_identity": "none",
+        "facts": facts,
+    }
 
 # H1 历史 entry 的必需已知事实与来源文件对应：manifest-only 事实指回
 # manifest.json、prompt.yaml-only 事实指回 prompt.yaml（字段级 provenance
@@ -1740,6 +2229,10 @@ def _build_history_summary_entry(
         return _build_prepare_only_run_history_entry(source_id)
     if kind == _WEIGHT_RUN_KIND:
         return _build_weight_run_history_entry(Path(root), source_id)
+    if kind == _MODEL_HISTORY_KIND:
+        return _build_model_history_entry(Path(root), source_id)
+    if kind == _EVAL_HISTORY_KIND:
+        return _build_eval_history_entry(Path(root), source_id)
 
     source_rel_dir = _LEGACY_PROMPT_REGISTRY / source_id
     manifest_file = Path(root) / source_rel_dir / "manifest.json"

@@ -20831,6 +20831,7 @@ def _write_verified_parameter_archive(root: Path) -> Path:
                 / "adapter"
                 / "adapter_config.json"
             )
+            declared_config.parent.mkdir(parents=True, exist_ok=True)
             declared_config.write_bytes(content)
     # 真实归档布局只在 MANIFEST 中保存 adapter_config 的 size/hash；内容
     # 仍位于声明 run，参数提取必须把 provenance 指回该实际文件。
@@ -21046,3 +21047,496 @@ def test_history_summary_multi_entry_rejects_duplicate_kind_and_source(
         _resolve_history_summary_entry()(tmp_path, [entry, dict(entry)])
 
     assert _snapshot_tree(tmp_path) == before
+
+
+def _confirmed_model_history_entry() -> dict[str, Any]:
+    return {
+        "kind": "model_history",
+        "source_legacy_id": "v4.1-agent-pipeline-fold0-r1",
+        "history_only": True,
+        "status": "user_confirmed",
+        "confirmed_by_user_date": "2026-09-07",
+    }
+
+
+def _confirmed_eval_history_entry() -> dict[str, Any]:
+    return {
+        "kind": "eval_history",
+        "source_legacy_id": WEIGHT_RUN_DECLARED_ID,
+        "history_only": True,
+        "status": "user_confirmed",
+        "confirmed_by_user_date": "2026-09-07",
+    }
+
+
+def _write_h11_model_and_eval_sources(root: Path) -> None:
+    model_name = "v4.1-agent-pipeline-fold0-r1"
+    release = {
+        "schema_version": "tensile-model-registry/model/v1",
+        "model_name": model_name,
+        "protocol_version": "v4.1",
+        "contract": {"version": "tensile-vlm/v4.1", "sha256": "c" * 64},
+        "origin": {
+            "release_id": "v4.1.0-ecb5aeb9657c",
+            "experiment_id": "v4_1_phase2_source_aware_3k_coverage_first_fixture",
+            "fold": 0,
+            "seed": 3407,
+            "training_variant": "coverage-first",
+            "optimizer_steps": 1125,
+        },
+        "lifecycle_status": "current",
+        "production_approved": False,
+        "limitations": ["single_fold_only", "quality_gates_not_passed"],
+        "artifacts": {
+            "adapter": {"managed_path": f"workspace/models/releases/{model_name}/adapter"},
+            "merged": {
+                "managed_path": f"workspace/models/releases/{model_name}/merged",
+                "aggregate_sha256": "m" * 64,
+            },
+        },
+    }
+    release_path = root / "pipeline" / "model_registry" / "releases" / f"{model_name}.json"
+    release_path.parent.mkdir(parents=True, exist_ok=True)
+    release_path.write_bytes(_fixture_pretty_json_bytes(release))
+
+    archive = _write_verified_parameter_archive(root)
+    evaluation = {
+        "schema_version": "tensile-v4.1-evaluation-run/v1",
+        "release_id": "v4.1.0-ecb5aeb9657c",
+        "contract_version": "tensile-vlm/v4.1",
+        "contract_hash": "d" * 64,
+        "fold": 0,
+        "model_dir": "/archive/models/source-aware-seed3407-merged",
+        "sample_count": 425,
+        "total_samples": 425,
+        "runtime_failure_count": 0,
+        "strict_valid_count": 425,
+        "strict_valid_rate": 1.0,
+        "metrics": {
+            "total": 425,
+            "contract_valid_rate": 1.0,
+            "joint_correct_rate": 0.362353,
+            "clip_state_correct_rate": 0.9,
+            "fracture_mechanism_correct_rate": 0.8,
+            "fracture_site_correct_rate": 0.7,
+            "special_case_correct_rate": 0.6,
+        },
+    }
+    evaluation_path = archive / "evaluation" / "evaluation_summary.json"
+    evaluation_path.parent.mkdir(parents=True, exist_ok=True)
+    evaluation_bytes = _fixture_pretty_json_bytes(evaluation)
+    evaluation_path.write_bytes(evaluation_bytes)
+    manifest_path = archive / "MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.update(
+        {
+            "model_name": "v4.1-sampling-source-aware-fold0-r1",
+            "fold": 0,
+            "data_release": {"release_id": "v4.1.0-ecb5aeb9657c"},
+            "contract": {"contract_version": "tensile-vlm/v4.1", "contract_hash": "d" * 64},
+            "evaluation_summary": evaluation,
+        }
+    )
+    manifest["evidence_package_files"].append(
+        {
+            "path": "evaluation/evaluation_summary.json",
+            "size_bytes": len(evaluation_bytes),
+            "sha256": hashlib.sha256(evaluation_bytes).hexdigest(),
+        }
+    )
+    manifest_path.write_bytes(_fixture_pretty_json_bytes(manifest))
+
+
+def test_model_history_entry_preserves_registry_identity_without_formal_release(
+    tmp_path: Path,
+) -> None:
+    _write_h11_model_and_eval_sources(tmp_path)
+    entry = _confirmed_model_history_entry()
+
+    result = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]
+
+    assert result["kind"] == "model_history"
+    assert result["formal_identity"] == "none"
+    assert "passed" not in result
+    facts = result["facts"]
+    assert facts["model_name"]["value"] == entry["source_legacy_id"]
+    assert facts["production_approved"]["value"] is False
+    assert facts["merged_aggregate_sha256"]["value"] == "m" * 64
+    assert facts["experiment_id"]["source"]["json_pointer"] == "/origin/experiment_id"
+    assert facts["training_variant"]["source"]["json_pointer"] == "/origin/training_variant"
+    assert facts["optimizer_steps"]["value"] == 1125
+    assert facts["optimizer_steps"]["source"]["json_pointer"] == "/origin/optimizer_steps"
+
+
+def test_eval_history_entry_preserves_metrics_and_unknown_split_without_passed(
+    tmp_path: Path,
+) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    entry = _confirmed_eval_history_entry()
+
+    result = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]
+
+    assert result["kind"] == "eval_history"
+    assert result["formal_identity"] == "none"
+    assert "passed" not in result and "training_status" not in result
+    facts = result["facts"]
+    assert facts["model_reference"]["value"] == "v4.1-sampling-source-aware-fold0-r1"
+    assert facts["data_release_id"]["value"] == "v4.1.0-ecb5aeb9657c"
+    assert facts["sample_count"]["value"] == 425
+    assert facts["metrics"]["value"]["joint_correct_rate"] == 0.362353
+    _assert_h6_fact_is_unknown(facts["split"], name="split", run_id=entry["source_legacy_id"])
+
+
+def test_model_history_identity_mismatch_fails_closed(tmp_path: Path) -> None:
+    _write_h11_model_and_eval_sources(tmp_path)
+    entry = _confirmed_model_history_entry()
+    source = (
+        tmp_path
+        / "pipeline"
+        / "model_registry"
+        / "releases"
+        / f"{entry['source_legacy_id']}.json"
+    )
+    manifest = json.loads(source.read_text(encoding="utf-8"))
+    manifest["model_name"] = "v4.1-sibling-model-fold0-r1"
+    source.write_bytes(_fixture_pretty_json_bytes(manifest))
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="身份不一致"):
+        _resolve_history_summary_entry()(tmp_path, [entry])
+
+
+def test_eval_history_hash_mismatch_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    entry = _confirmed_eval_history_entry()
+    summary = (
+        tmp_path
+        / "docs"
+        / "results"
+        / "model_evidence"
+        / entry["source_legacy_id"]
+        / "evaluation"
+        / "evaluation_summary.json"
+    )
+    summary.write_bytes(summary.read_bytes() + b"\n")
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="size/SHA-256"):
+        _resolve_history_summary_entry()(tmp_path, [entry])
+
+
+def test_eval_history_missing_source_stays_queryable_with_unknown_facts(
+    tmp_path: Path,
+) -> None:
+    entry = _confirmed_eval_history_entry()
+
+    result = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]
+
+    assert result["kind"] == "eval_history"
+    assert "passed" not in result
+    for name, fact in result["facts"].items():
+        _assert_h6_fact_is_unknown(
+            fact, name=name, run_id=entry["source_legacy_id"]
+        )
+
+
+def test_eval_history_embedded_summary_mismatch_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    entry = _confirmed_eval_history_entry()
+    package_path = (
+        tmp_path
+        / "docs"
+        / "results"
+        / "model_evidence"
+        / entry["source_legacy_id"]
+        / "MANIFEST.json"
+    )
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package["evaluation_summary"]["sample_count"] = 424
+    package_path.write_bytes(_fixture_pretty_json_bytes(package))
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="交叉证据不一致"):
+        _resolve_history_summary_entry()(tmp_path, [entry])
+
+
+def _rewrite_h11_eval_summary_and_signature(
+    root: Path, mutate: Callable[[dict[str, Any]], None]
+) -> None:
+    archive = (
+        root / "docs" / "results" / "model_evidence" / WEIGHT_RUN_DECLARED_ID
+    )
+    summary_path = archive / "evaluation" / "evaluation_summary.json"
+    package_path = archive / "MANIFEST.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    mutate(summary)
+    summary_bytes = _fixture_pretty_json_bytes(summary)
+    summary_path.write_bytes(summary_bytes)
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package["evaluation_summary"] = dict(summary)
+    protected = next(
+        item
+        for item in package["evidence_package_files"]
+        if item["path"] == "evaluation/evaluation_summary.json"
+    )
+    protected["size_bytes"] = len(summary_bytes)
+    protected["sha256"] = hashlib.sha256(summary_bytes).hexdigest()
+    package_path.write_bytes(_fixture_pretty_json_bytes(package))
+
+
+@pytest.mark.parametrize("kind", ["model", "eval_package", "eval_summary"])
+def test_model_and_eval_history_symlink_sources_fail_closed(
+    tmp_path: Path, kind: str
+) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    if kind == "model":
+        entry = _confirmed_model_history_entry()
+        source = (
+            tmp_path / "pipeline" / "model_registry" / "releases"
+            / f"{entry['source_legacy_id']}.json"
+        )
+    else:
+        entry = _confirmed_eval_history_entry()
+        archive = (
+            tmp_path / "docs" / "results" / "model_evidence"
+            / entry["source_legacy_id"]
+        )
+        source = archive / ("MANIFEST.json" if kind == "eval_package" else "evaluation/evaluation_summary.json")
+    actual = source.with_name(source.name + ".actual")
+    source.rename(actual)
+    source.symlink_to(actual.name)
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="符号链接"):
+        _resolve_history_summary_entry()(tmp_path, [entry])
+
+
+def test_eval_history_embedded_extra_null_fact_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    entry = _confirmed_eval_history_entry()
+    package_path = (
+        tmp_path / "docs" / "results" / "model_evidence"
+        / entry["source_legacy_id"] / "MANIFEST.json"
+    )
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package["evaluation_summary"]["not_in_signed_summary"] = None
+    package_path.write_bytes(_fixture_pretty_json_bytes(package))
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="交叉证据不一致"):
+        _resolve_history_summary_entry()(tmp_path, [entry])
+
+
+def test_eval_history_count_rate_contradiction_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    _rewrite_h11_eval_summary_and_signature(
+        tmp_path, lambda summary: summary.update(strict_valid_count=424)
+    )
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="strict_valid_rate 与计数不一致"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+def test_eval_history_runtime_and_strict_counts_cannot_overlap(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    _rewrite_h11_eval_summary_and_signature(
+        tmp_path, lambda summary: summary.update(runtime_failure_count=425)
+    )
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="有效样本或运行失败计数无效"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+def test_eval_history_runtime_and_non_runtime_invalid_samples_can_coexist(
+    tmp_path: Path,
+) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+
+    def mutate(summary: dict[str, Any]) -> None:
+        summary["runtime_failure_count"] = 1
+        summary["strict_valid_count"] = 423
+        summary["strict_valid_rate"] = round(423 / 425, 6)
+        summary["metrics"]["contract_valid_rate"] = summary["strict_valid_rate"]
+
+    _rewrite_h11_eval_summary_and_signature(tmp_path, mutate)
+
+    result = _resolve_history_summary_entry()(
+        tmp_path, [_confirmed_eval_history_entry()]
+    )["entries"][0]
+
+    assert result["facts"]["runtime_failure_count"]["value"] == 1
+    assert result["facts"]["strict_valid_count"]["value"] == 423
+
+
+def test_eval_history_signed_split_is_preserved(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    _rewrite_h11_eval_summary_and_signature(
+        tmp_path, lambda summary: summary.update(split="test")
+    )
+
+    result = _resolve_history_summary_entry()(
+        tmp_path, [_confirmed_eval_history_entry()]
+    )["entries"][0]
+
+    assert result["facts"]["split"]["value"] == "test"
+    assert result["facts"]["split"]["source"]["path"].endswith(
+        "/evaluation/evaluation_summary.json"
+    )
+
+
+def test_eval_history_embedded_bool_does_not_equal_integer(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    package_path = (
+        tmp_path / "docs" / "results" / "model_evidence"
+        / WEIGHT_RUN_DECLARED_ID / "MANIFEST.json"
+    )
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package["evaluation_summary"]["fold"] = False
+    package_path.write_bytes(_fixture_pretty_json_bytes(package))
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="交叉证据不一致"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+def test_eval_history_bool_rate_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    _rewrite_h11_eval_summary_and_signature(
+        tmp_path, lambda summary: summary.update(strict_valid_rate=True)
+    )
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="strict_valid_rate 与计数不一致"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+def test_eval_history_package_bool_fold_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    package_path = (
+        tmp_path / "docs" / "results" / "model_evidence"
+        / WEIGHT_RUN_DECLARED_ID / "MANIFEST.json"
+    )
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package["fold"] = False
+    package_path.write_bytes(_fixture_pretty_json_bytes(package))
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="release/fold"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+def test_eval_history_total_samples_mismatch_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    _rewrite_h11_eval_summary_and_signature(
+        tmp_path, lambda summary: summary.update(total_samples=999)
+    )
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="total_samples"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+def test_eval_history_missing_total_samples_fails_closed(tmp_path: Path) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    _rewrite_h11_eval_summary_and_signature(
+        tmp_path, lambda summary: summary.pop("total_samples")
+    )
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="total_samples"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [("model_name", 123, "model_name"), ("model_name", "", "model_name"), ("contract", 123, "contract")],
+)
+def test_eval_history_invalid_optional_package_fact_fails_closed(
+    tmp_path: Path, field: str, value: Any, message: str
+) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    package_path = (
+        tmp_path / "docs" / "results" / "model_evidence"
+        / WEIGHT_RUN_DECLARED_ID / "MANIFEST.json"
+    )
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package[field] = value
+    package_path.write_bytes(_fixture_pretty_json_bytes(package))
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match=message):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+@pytest.mark.parametrize("mutation", ["extra", "missing"])
+def test_eval_history_metric_schema_must_be_exact(
+    tmp_path: Path, mutation: str
+) -> None:
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+
+    def mutate(summary: dict[str, Any]) -> None:
+        if mutation == "extra":
+            summary["metrics"]["passed"] = 1
+        else:
+            summary["metrics"].pop("joint_correct_rate")
+
+    _rewrite_h11_eval_summary_and_signature(tmp_path, mutate)
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="metrics/sample_count"):
+        _resolve_history_summary_entry()(tmp_path, [_confirmed_eval_history_entry()])
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("fold", -1), ("seed", -1), ("optimizer_steps", -1), ("fold", False), ("seed", True), ("optimizer_steps", False)],
+)
+def test_model_history_invalid_origin_number_fails_closed(
+    tmp_path: Path, field: str, value: Any
+) -> None:
+    _write_h11_model_and_eval_sources(tmp_path)
+    entry = _confirmed_model_history_entry()
+    source = (
+        tmp_path / "pipeline" / "model_registry" / "releases"
+        / f"{entry['source_legacy_id']}.json"
+    )
+    manifest = json.loads(source.read_text(encoding="utf-8"))
+    manifest["origin"][field] = value
+    source.write_bytes(_fixture_pretty_json_bytes(manifest))
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+
+    with pytest.raises(blocked, match="fold/seed"):
+        _resolve_history_summary_entry()(tmp_path, [entry])
