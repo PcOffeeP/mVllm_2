@@ -1460,3 +1460,204 @@ class TestInputRoi:
                 flock(held.fileno(), fcntl.LOCK_UN)
             with pytest.raises(StageInputError):
                 future.result(timeout=5)
+
+
+# M3d — candidate planning and actual media/sampling adaptation.
+@pytest.fixture()
+def media_inputs(roi_inputs):
+    path, doc, project, rewrite = roi_inputs
+    def pin(name, value):
+        content = json.dumps(value, ensure_ascii=False).encode()
+        ref = {'path': name}
+        (project / name).parent.mkdir(parents=True, exist_ok=True)
+        rewrite(ref, content)
+        return ref
+    v3_path = Path(__file__).resolve().parents[2] / 'pipeline/contracts/tensile_vlm_v3.json'
+    v3 = pin('candidate_contract.json', json.loads(v3_path.read_text()))
+    development = pin('development_reference.json', {'reference_id': 'fixture-reference',
+        'source_inventory': ['video_0001'], 'records': []})
+    test = pin('test_reference.json', {'reference_id': 'fixture-reference', 'source_inventory': [], 'records': []})
+    media = {'schema': 'tensile-data/media-inputs/v1', 'candidate_contract': v3,
+             'development_reference': development, 'test_reference': test}
+    rewrite(doc['media']['config'], json.dumps(media).encode())
+    config = pin('model/config.json', {})
+    processor = pin('model/preprocessor_config.json', {})
+    prep = {'schema': 'tensile-data/preprocessor-inputs/v1', 'model_root': 'model',
+            'files': [config, processor], 'max_frames': 8, 'video_fps': 2.0,
+            'expected_fingerprint': 'fixture:minicpm'}
+    rewrite(doc['media']['preprocessor']['config'], json.dumps(prep).encode())
+    _save_pinned(path, doc)
+    return path, doc, project, rewrite
+
+
+@pytest.fixture()
+def media_runtime(monkeypatch):
+    import re
+    from versioning import data_pipeline as dp
+    from pipeline import roi_media, v3_candidate_media
+    from pipeline.preprocessing.adapter import FrameMapping
+    calls = []
+    def execute(command, label):
+        calls.append(command)
+        output = Path(command[-1])
+        frame_count = 300
+        if '-vf' in command:
+            match = re.search(r'trim=start_frame=(\d+):end_frame=(\d+)', command[command.index('-vf')+1])
+            if match:
+                frame_count = int(match[2]) - int(match[1])
+        output.write_text(json.dumps({'frames': frame_count}))
+    def probe(path):
+        from pipeline.roi_media import VideoProbe
+        if path.parent.parent.name == 'source':
+            return _roi_probe(path)
+        try:
+            n = json.loads(path.read_text())['frames']
+        except (ValueError, KeyError):
+            n = 300
+        return VideoProbe(width=642, height=856, frame_rate='30/1', nominal_frame_rate='30/1',
+                          frame_count=n, duration=n / 30)
+    class Processor:
+        def fingerprint(self):
+            return 'fixture:minicpm'
+        def sample(self, path, start, end):
+            count = probe(Path(path)).frame_count
+            frames = sorted({round(i * (count-1) / 7) for i in range(8)})
+            return [FrameMapping(i, f, f/30) for i, f in enumerate(frames)]
+    monkeypatch.setattr(dp, '_execute_input_media', execute)
+    monkeypatch.setattr(dp, '_make_input_preprocessor', lambda *args: Processor())
+    monkeypatch.setattr(roi_media, 'probe_video', probe)
+    monkeypatch.setattr(v3_candidate_media, 'probe_video', probe)
+    monkeypatch.setattr(v3_candidate_media, '_source_frame_timestamps',
+                        lambda path: tuple(i/30 for i in range(probe(Path(path)).frame_count)))
+    return calls, Processor, probe
+
+
+def _run_real_subvideo(root, path):
+    from versioning.data_pipeline import run_input_subvideo
+    return run_input_subvideo(root, inputs_path=path, batch='batch-001')
+
+
+class TestInputSubvideo:
+    def test_real_candidate_policy_and_actual_frames_are_preserved(self, media_inputs, media_runtime, tmp_path, monkeypatch):
+        from pipeline import v3_candidate_plan as planner, v3_candidate_media as media_api
+        path, _, _, _ = media_inputs
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        _run_real_roi(root, path)
+        def forbid(*args, **kwargs):
+            pytest.fail('legacy candidate builder/publisher forbidden')
+        monkeypatch.setattr(planner, 'build_candidate_plan', forbid)
+        monkeypatch.setattr(planner, 'materialize_candidate_plan', forbid)
+        monkeypatch.setattr(media_api, 'materialize_media_plan', forbid)
+        result = _run_real_subvideo(root, path)
+        output = root / 'data/working/batch-001/subvideo'
+        manifest = json.loads((output / 'subvideo_manifest.json').read_text())
+        assert result.stage == 'subvideo'
+        assert len(manifest['candidates']) > 2
+        roi = json.loads((root / 'data/working/batch-001/roi/roi_manifest.json').read_text())
+        expected = planner._raw_candidates_for_source(roi['records'][0], [])
+        actual = manifest['planned_candidates']
+        assert [(r['start_frame'], r['end_frame'], r['candidate_v3_labels']) for r in actual] == [
+            (r['start_frame'], r['end_frame'], r['candidate_v3_labels']) for r in expected]
+        for candidate in manifest['candidates']:
+            assert candidate['processor_fingerprint'] == 'fixture:minicpm'
+            assert len(candidate['actual_frame_mapping']) == len(candidate['frame_artifacts']) == 8
+            assert (output / candidate['video_path']).is_file()
+            assert all((output / f['path']).is_file() for f in candidate['frame_artifacts'])
+        assert not any(p.name in {'LATEST', 'index.json'} for p in root.rglob('*'))
+        assert 'candidate-plan-' not in json.dumps(manifest)
+
+    @pytest.mark.parametrize('problem', ['missing_reference', 'reference_drift', 'inventory', 'contract', 'processor_pin', 'fingerprint'])
+    def test_configuration_failures_never_publish(self, media_inputs, media_runtime, tmp_path, monkeypatch, problem):
+        from versioning import data_pipeline as dp
+        path, doc, project, rewrite = media_inputs
+        media = json.loads((project / 'media.yaml').read_text())
+        if problem == 'missing_reference':
+            del media['development_reference']
+            rewrite(doc['media']['config'], json.dumps(media).encode())
+        elif problem == 'reference_drift':
+            (project / 'development_reference.json').write_text('{}')
+        elif problem == 'inventory':
+            ref = json.loads((project / 'development_reference.json').read_text())
+            ref['source_inventory'] = []
+            rewrite(media['development_reference'], json.dumps(ref).encode())
+            rewrite(doc['media']['config'], json.dumps(media).encode())
+        elif problem == 'contract':
+            rewrite(media['candidate_contract'], b'{}')
+            rewrite(doc['media']['config'], json.dumps(media).encode())
+        elif problem == 'processor_pin':
+            (project / 'model/config.json').write_text('{"changed":true}')
+        else:
+            class WrongProcessor:
+                def fingerprint(self):
+                    return 'wrong'
+            monkeypatch.setattr(dp, '_make_input_preprocessor', lambda *args: WrongProcessor())
+        _save_pinned(path, doc)
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        _run_real_roi(root, path)
+        with pytest.raises(StageInputError):
+            _run_real_subvideo(root, path)
+        assert not (root / 'data/working/batch-001/subvideo').exists()
+
+    def test_actual_sampling_gate_excludes_failed_candidates(self, media_inputs, media_runtime, tmp_path, monkeypatch):
+        from versioning import data_pipeline as dp
+        from pipeline.preprocessing.adapter import FrameMapping
+        path, _, _, _ = media_inputs
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        _run_real_roi(root, path)
+        class NoTransition:
+            def fingerprint(self):
+                return 'fixture:minicpm'
+            def sample(self, path, start, end):
+                return [FrameMapping(0, 0, 0.0)]
+        monkeypatch.setattr(dp, '_make_input_preprocessor', lambda *args: NoTransition())
+        _run_real_subvideo(root, path)
+        manifest = json.loads((root / 'data/working/batch-001/subvideo/subvideo_manifest.json').read_text())
+        assert any(row['reason'] == 'transition_missing_post_event_sample' for row in manifest['excluded'])
+        assert all(row['candidate_v3_labels']['clip_state'] != '发生断裂' for row in manifest['candidates'])
+
+class TestInputSubvideoBoundaries:
+    def test_test_scope_is_actually_materialized(self, media_inputs, media_runtime, tmp_path):
+        path, doc, project, rewrite = media_inputs
+        split = json.loads((project / doc['split']['path']).read_text())
+        split['splits'] = {name: (['video_0001'] if name == 'test' else []) for name in split['splits']}
+        rewrite(doc['split'], json.dumps(split).encode())
+        media = json.loads((project / doc['media']['config']['path']).read_text())
+        for key, ids in [('development_reference', []), ('test_reference', ['video_0001'])]:
+            reference = json.loads((project / media[key]['path']).read_text())
+            reference['source_inventory'] = ids
+            rewrite(media[key], json.dumps(reference).encode())
+        rewrite(doc['media']['config'], json.dumps(media).encode()); _save_pinned(path, doc)
+        root = tmp_path / 'store'
+        _run_real_source(root, path); _run_real_roi(root, path); _run_real_subvideo(root, path)
+        output = root / 'data/working/batch-001/subvideo'
+        manifest = json.loads((output / 'subvideo_manifest.json').read_text())
+        assert manifest['candidates'], 'test candidates require real media, not only a plan'
+        assert all(c['scope'] == 'test_audit' for c in manifest['candidates'])
+        assert all((output / c['video_path']).is_file() and c['actual_frame_mapping'] for c in manifest['candidates'])
+
+    def test_processor_snapshot_modules_are_isolated_per_execution(self, media_inputs, media_runtime, tmp_path, monkeypatch):
+        from versioning import data_pipeline as dp
+        path, _, _, _ = media_inputs
+        calls = []
+        def create(*args):
+            calls.append(args[-1].name)
+            return media_runtime[1]()
+        monkeypatch.setattr(dp, '_make_input_preprocessor', create)
+        for name in ('first', 'second'):
+            root = tmp_path / name
+            _run_real_source(root, path); _run_real_roi(root, path); _run_real_subvideo(root, path)
+        assert len(calls) == len(set(calls)) == 2
+        assert all(name.isidentifier() for name in calls)
+
+    @pytest.mark.parametrize('code_ref', ['other/repo--processing_minicpmv.MiniCPMVProcessor', 'missing_module.Processor'])
+    def test_processor_cannot_load_unpinned_dynamic_code(self, media_inputs, code_ref):
+        from versioning import data_pipeline as dp
+        path, doc, project, rewrite = media_inputs
+        prep = json.loads((project / doc['media']['preprocessor']['config']['path']).read_text())
+        rewrite(prep['files'][1], json.dumps({'auto_map': {'AutoProcessor': code_ref}}).encode())
+        rewrite(doc['media']['preprocessor']['config'], json.dumps(prep).encode()); _save_pinned(path, doc)
+        with pytest.raises(StageInputError):
+            dp._load_media_inputs(dp.load_data_inputs(path, batch='batch-001'))

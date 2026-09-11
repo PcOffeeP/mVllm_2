@@ -259,3 +259,13 @@ M3b 已完成本地 source 适配；真实媒体、CLI 和其余阶段仍待完�
 完整权威测试在 `6403400e` 的独立本机 detached worktree 上，仅叠加本 ROI 代码与测试，未包含后续子视频/审查/发布增量：`.venv/bin/python -m pytest -q tests/versioning --basetemp /tmp/mvllm2-roi-proof-20260912`，使用主工作区的同一虚拟环境解释器；**1725 passed，484.94 秒，exit 0**。临时日志 `/tmp/mvllm2-m3-roi-full-pytest.log`。本次提交的两个代码文件与被测快照逐字相同。
 
 媒体执行、探测均为本机显式替身；没有训练机真实 ffmpeg/采样对照、正式对象迁移或 CLI 切换证据。M3 仍进行中。
+
+## 15. M3d：真实候选规划、子视频与实际采样
+
+2026-09-12 接入显式候选契约、development/test 历史参考、MiniCPM 配置和逐文件预处理器 pins；只调用既有纯候选规划、裁剪命令、媒体门禁和真实采样映射。两个 scope 都生成媒体与模型采样帧，并逐项保留成功或排除原因。实际 AutoProcessor 仅从显式文件快照加载，拒绝外部 auto_map、缺失动态模块及相对依赖。内部临时包名按执行唯一，避免同进程缓存复用不同批次代码，不进入版本身份。
+
+初始8项定向通过；独立 reviewer 发现 test_audit 未物化、外部 auto_map 绕过 pins 两个P2，3项新增断言先RED后修复。复审再发现固定临时包名导致旧helper缓存复用，新增双执行隔离测试先RED后修复。最终专项12 passed；reviewer用Transformers4.56.1官方加载函数最小复现验证两份helper独立生效，终审无可执行finding。本机没有Transformers，未宣称实际AutoProcessor加载通过。
+
+独立本机 detached worktree 基于 `3d396988`，仅叠加本子视频切片；权威命令使用同一`.venv`解释器执行 `-m pytest -q tests/versioning --basetemp /tmp/mvllm2-subvideo-proof-20260912`，**1737 passed，323.83秒，exit0**。暂存代码与该快照逐字一致。临时日志`/tmp/mvllm2-m3-subvideo-full-pytest.log`，不含后续审查/发布/界面/CLI增量。
+
+所有媒体和预处理器测试仍为本机替身；真实训练机小样本/完整MiniCPM加载/双机审查和两个正式release迁移尚待执行，M3未完成。

@@ -933,13 +933,15 @@ def _load_input_stage(root: Path, inputs: DataInputs, stage: str) -> tuple[Path,
 
 
 def _publish_input_stage(root: Path, inputs: DataInputs, stage: str, producer,
-                         upstream: Mapping[str, str] | None = None) -> StageResult:
+                         upstream: Mapping[str, str] | None = None, validate_inputs=None) -> StageResult:
     """Publish one complete working stage; never overwrite an existing result."""
     directory = _input_stage_path(root, inputs.batch, stage)
     upstream = dict(upstream or {})
     fresh = load_data_inputs(inputs.config_path, batch=inputs.batch)
     if fresh != inputs:
         raise StageInputError('inputs 在阶段执行前漂移')
+    if validate_inputs is not None:
+        validate_inputs()
     # All semantic preflight must precede this helper's first filesystem write.
     directory.parent.mkdir(parents=True, exist_ok=True)
     lock_path = directory.parent / f'.{stage}.lock'
@@ -950,6 +952,8 @@ def _publish_input_stage(root: Path, inputs: DataInputs, stage: str, producer,
             raise StageInputError('inputs 在等待阶段锁期间漂移')
         _input_stage_path(root, inputs.batch, stage)
         _verify_upstream_stages(root, inputs, upstream)
+        if validate_inputs is not None:
+            validate_inputs()
         if directory.exists():
             existing, manifest = _load_input_stage(root, inputs, stage)
             if manifest['upstream'] != upstream:
@@ -962,6 +966,8 @@ def _publish_input_stage(root: Path, inputs: DataInputs, stage: str, producer,
             if load_data_inputs(inputs.config_path, batch=inputs.batch) != inputs:
                 raise StageInputError('inputs 在阶段执行期间漂移')
             _verify_upstream_stages(root, inputs, upstream)
+            if validate_inputs is not None:
+                validate_inputs()
             manifest = {'schema': 'tensile-data/stage/v1', 'stage': stage,
                         'batch': inputs.batch, 'inputs_sha256': inputs.config_sha256,
                         'upstream': upstream, 'artifacts': _stage_inventory(temporary),
@@ -1208,3 +1214,239 @@ def run_input_roi(root: Path, *, inputs_path: Path, batch: str, probe=None) -> S
         return {'batch': batch, 'video_count': len(videos)}
 
     return _publish_input_stage(root, inputs, 'roi', produce, upstream)
+
+
+# M3d — candidate planning and actual media/sampling adaptation.
+def _load_media_inputs(inputs: DataInputs):
+    from pipeline.v3_candidate_plan import _validate_contract
+    media = _input_mapping(_read_pinned_document(inputs.media_config),
+                          {'schema', 'candidate_contract', 'development_reference', 'test_reference'}, 'media.config')
+    if media['schema'] != 'tensile-data/media-inputs/v1':
+        raise StageInputError('media.config schema 不匹配')
+    refs = {key: _pin_input_file(media[key], inputs.project_root, f'media.{key}')
+            for key in ('candidate_contract', 'development_reference', 'test_reference')}
+    values = {key: _read_pinned_document(pin) for key, pin in refs.items()}
+    try:
+        _validate_contract(values['candidate_contract'])
+    except (ValueError, RuntimeError, AttributeError) as exc:
+        raise StageInputError(f'候选 contract 无效: {exc}') from exc
+    splits = _load_input_splits(inputs)
+    test_ids = set(splits['test'])
+    all_ids = {v.video_id for v in inputs.videos}
+    for key, expected in (('development_reference', all_ids - test_ids), ('test_reference', test_ids)):
+        ref = values[key]
+        if not isinstance(ref, dict):
+            raise StageInputError(f'{key} 必须是 mapping')
+        ids = ref.get('source_inventory')
+        if (not isinstance(ids, list) or not all(isinstance(v, str) for v in ids)
+                or len(ids) != len(set(ids)) or set(ids) != expected):
+            raise StageInputError(f'{key}: 历史参考 source_inventory 与显式 split 不一致')
+        _input_text(ref.get('reference_id'), f'{key}.reference_id')
+        records = ref.get('records')
+        if not isinstance(records, list):
+            raise StageInputError(f'{key}: records 必须是列表')
+        seen = set()
+        for row in records:
+            if not isinstance(row, dict) or row.get('source_video') not in expected:
+                raise StageInputError(f'{key}: 历史参考包含错误 source')
+            record_id = _input_text(row.get('reference_record_id'), 'reference_record_id')
+            if record_id in seen:
+                raise StageInputError('历史参考 record ID 重复')
+            seen.add(record_id)
+    if values['development_reference']['reference_id'] != values['test_reference']['reference_id']:
+        raise StageInputError('历史参考 reference_id 不一致')
+    processor = _input_mapping(_read_pinned_document(inputs.preprocessor_config),
+                              {'schema', 'model_root', 'files', 'max_frames', 'video_fps', 'expected_fingerprint'},
+                              'preprocessor.config')
+    if (processor['schema'] != 'tensile-data/preprocessor-inputs/v1'
+            or inputs.preprocessor_kind != 'minicpm'):
+        raise StageInputError('仅支持显式 minicpm 真实预处理器契约')
+    if type(processor['max_frames']) is not int or processor['max_frames'] != 8:
+        raise StageInputError('preprocessor max_frames 必须是8')
+    fps = processor['video_fps']
+    if type(fps) not in (int, float) or not math.isfinite(fps) or fps <= 0:
+        raise StageInputError('preprocessor video_fps 必须是正有限数')
+    _input_text(processor['expected_fingerprint'], 'preprocessor.expected_fingerprint')
+    model_text = _input_text(processor['model_root'], 'preprocessor.model_root')
+    model = Path(model_text)
+    if model.is_absolute() or '..' in model.parts:
+        raise StageInputError('preprocessor.model_root 必须是项目内相对目录')
+    model = inputs.project_root / model
+    if not model.is_dir() or model.is_symlink():
+        raise StageInputError('preprocessor.model_root 必须是普通目录')
+    model = model.resolve()
+    try:
+        model.relative_to(inputs.project_root)
+    except ValueError as exc:
+        raise StageInputError('preprocessor.model_root 越出项目根') from exc
+    file_rows = processor['files']
+    if not isinstance(file_rows, list) or not file_rows:
+        raise StageInputError('preprocessor.files 必须是完整非空文件清单')
+    processor_files = tuple(_pin_input_file(row, inputs.project_root, 'preprocessor.files') for row in file_rows)
+    names = []
+    for pin in processor_files:
+        try:
+            names.append(pin.path.relative_to(model).as_posix())
+        except ValueError as exc:
+            raise StageInputError('preprocessor file 不在显式 model_root 下') from exc
+    if len(set(names)) != len(names) or not {'config.json', 'preprocessor_config.json'} <= set(names):
+        raise StageInputError('preprocessor 配置缺失或文件重复')
+    _validate_local_processor_code(model, processor_files)
+    return values, processor, model, (*refs.values(), *processor_files), processor_files
+
+
+def _validate_local_processor_code(model: Path, pins: tuple[PinnedInputFile, ...]) -> None:
+    """Keep Hugging Face dynamic modules inside the explicitly pinned snapshot."""
+    import ast
+    names = {pin.path.relative_to(model).as_posix() for pin in pins}
+    def module_present(module):
+        return module + '.py' in names or module + '/__init__.py' in names
+    def check_maps(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key == 'auto_map':
+                    if not isinstance(item, dict):
+                        raise StageInputError('auto_map 必须是 mapping')
+                    for refs in item.values():
+                        for ref in (refs if isinstance(refs, list) else [refs]):
+                            if ref is None:
+                                continue
+                            if not isinstance(ref, str) or not re.fullmatch(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', ref):
+                                raise StageInputError('auto_map 禁止引用冻结快照外的代码')
+                            module = ref.rsplit('.', 1)[0].replace('.', '/')
+                            if not module_present(module):
+                                raise StageInputError('auto_map 模块没有纳入文件 pins')
+                else:
+                    check_maps(item)
+        elif isinstance(value, list):
+            for item in value:
+                check_maps(item)
+    for pin in pins:
+        if pin.path.suffix == '.json':
+            check_maps(_read_pinned_document(pin))
+        if pin.path.suffix != '.py':
+            continue
+        try:
+            tree = ast.parse(pin.path.read_text(encoding='utf-8'))
+        except (SyntaxError, UnicodeError) as exc:
+            raise StageInputError('冻结预处理代码无法解析') from exc
+        package = list(pin.path.relative_to(model).parts[:-1])
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or not node.level:
+                continue
+            if node.level > len(package) + 1:
+                raise StageInputError('预处理器相对 import 越出冻结目录')
+            base = package[:len(package) + 1 - node.level]
+            modules = [node.module] if node.module else [a.name for a in node.names]
+            for module in modules:
+                joined = '/'.join([*base, *module.split('.')])
+                if not module_present(joined):
+                    raise StageInputError(f'预处理器相对依赖未钉扎: {joined}')
+
+
+def _make_input_preprocessor(inputs: DataInputs, processor: Mapping[str, Any],
+                             model: Path, pins: tuple[PinnedInputFile, ...], scratch: Path):
+    """Load only a verified local snapshot of processor code/config, never model weights."""
+    from pipeline.preprocessing.minicpm_preprocessor import MiniCPMVideoPreprocessor
+    try:
+        from transformers import AutoProcessor
+        scratch.mkdir()
+        for pin in pins:
+            _copy_input_pin(pin, scratch / pin.path.relative_to(model))
+        actual = AutoProcessor.from_pretrained(str(scratch), local_files_only=True, trust_remote_code=True)
+        return MiniCPMVideoPreprocessor(
+            str(model), max_frames=processor['max_frames'], video_fps=processor['video_fps'],
+            processor=actual, eager_load=False)
+    except Exception as exc:
+        raise StageInputError(f'无法加载冻结的本地预处理器: {exc}') from exc
+
+
+def run_input_subvideo(root: Path, *, inputs_path: Path, batch: str) -> StageResult:
+    from pipeline import v3_candidate_plan as planner, v3_candidate_media as media_api
+
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    roi_dir, _ = _load_input_stage(root, inputs, 'roi')
+    roi = _stage_json(roi_dir, 'roi_manifest.json')
+    values, processor_config, model, pins, processor_files = _load_media_inputs(inputs)
+    records = {row['video_id']: row for row in roi['records']}
+    videos = {row['video_id']: row for row in roi['videos']}
+    try:
+        candidates, skipped = planner._build_scope_candidates(
+            records, values['development_reference']['source_inventory'],
+            values['development_reference'], 'development', 'working')
+        audit, test_skipped = planner._build_scope_candidates(
+            records, values['test_reference']['source_inventory'],
+            values['test_reference'], 'test_audit', 'working')
+    except (ValueError, RuntimeError, KeyError, TypeError) as exc:
+        raise StageInputError(f'候选规划失败: {exc}') from exc
+    # The pure planner's legacy output paths are not used or published.
+    for row in (*candidates, *audit):
+        row.pop('planned_video_path', None)
+        row.pop('planned_frame_dir', None)
+    upstream = {'roi': _sha256_file(roi_dir / 'stage_manifest.json')}
+
+    def verify_nested_inputs():
+        for pin in pins:
+            _verify_input_pin(pin)
+
+    def produce(destination):
+        import uuid
+        scratch = destination / f'processor_inputs_{uuid.uuid4().hex}'
+        processor = _make_input_preprocessor(inputs, processor_config, model, processor_files, scratch)
+        if processor.fingerprint() != processor_config['expected_fingerprint']:
+            raise StageInputError('实际预处理器 fingerprint 与冻结配置不一致')
+        materialized, excluded = [], []
+        for candidate in (*candidates, *audit):
+            video_id = candidate['source_video']
+            cid = candidate['candidate_id']
+            source_path = roi_dir / videos[video_id]['path']
+            output = destination / 'videos' / f'{cid}.mp4'
+            output.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                before = _checked_input_probe(media_api.probe_video, source_path)
+                command = media_api.build_crop_command(source_path, output, candidate, before.nominal_frame_rate)
+                _execute_input_media(command, f'{cid}: 子视频裁剪失败')
+                after = _checked_input_probe(media_api.probe_video, output)
+                media_api._validate_clip_probe(before, after, candidate)
+                mapping = media_api._sample_mapping(processor, output, candidate, after.duration,
+                                                    source_path, before.nominal_frame_rate)
+                passed, reason = media_api.validate_actual_sampling_gate(candidate, mapping, records[video_id])
+                if not passed:
+                    excluded.append({'candidate_id': cid, 'source_video': video_id, 'scope': candidate['scope'], 'reason': reason,
+                                     'actual_frame_mapping': mapping})
+                    output.unlink()
+                    continue
+                if not mapping or len(mapping) > processor_config['max_frames']:
+                    raise StageInputError('实际采样帧数超出冻结契约')
+                frames = []
+                frame_dir = destination / 'frames' / cid
+                frame_dir.mkdir(parents=True)
+                for row in mapping:
+                    frame = frame_dir / f"frame_{row['input_index']:04d}.jpg"
+                    _execute_input_media([
+                        'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
+                        '-i', str(output), '-vf', f"select=eq(n\\,{row['clip_frame']})",
+                        '-frames:v', '1', '-q:v', '2', str(frame)], f'{cid}: 抽帧失败')
+                    frames.append({'path': frame.relative_to(destination).as_posix(),
+                                   'sha256': _sha256_file(frame), 'size_bytes': frame.stat().st_size})
+                materialized.append({**candidate, 'media_status': 'materialized_gate_passed',
+                                     'video_path': output.relative_to(destination).as_posix(),
+                                     'video_sha256': _sha256_file(output), 'video_size_bytes': output.stat().st_size,
+                                     'frame_artifacts': frames, 'actual_frame_mapping': mapping,
+                                     'processor_fingerprint': processor.fingerprint(),
+                                     'sampling_gate': {'version': media_api.GATE_VERSION, 'status': 'passed'}})
+            except (ValueError, RuntimeError, OSError, KeyError, TypeError) as exc:
+                raise StageInputError(f'{cid}: 子视频生成失败: {exc}') from exc
+        if processor.fingerprint() != processor_config['expected_fingerprint']:
+            raise StageInputError('预处理器执行期间 fingerprint 漂移')
+        if scratch.exists():
+            shutil.rmtree(scratch)
+        _write_json(destination / 'subvideo_manifest.json', {
+            'batch': batch, 'inputs_sha256': inputs.config_sha256,
+            'planned_candidates': candidates, 'candidates': materialized, 'excluded': excluded,
+            'skipped_sources': skipped, 'test_candidate_audit': audit,
+            'test_skipped_sources': test_skipped, 'splits': roi['splits'],
+            'processor_fingerprint': processor_config['expected_fingerprint']})
+        return {'batch': batch, 'candidate_count': len(materialized), 'excluded_count': len(excluded)}
+
+    return _publish_input_stage(root, inputs, 'subvideo', produce, upstream, verify_nested_inputs)
