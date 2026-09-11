@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import stat
 import shutil
 import subprocess
 import sys
@@ -629,3 +631,191 @@ def run_stage(root: Path, stage: str, **kwargs: Any) -> StageResult:
         "release_validate": run_release_validate,
     }
     return dispatch[stage](root, **kwargs)
+
+
+@dataclass(frozen=True)
+class PinnedInputFile:
+    """Verified bytes at an explicit path; a digest is not a version identity."""
+
+    path: Path
+    size_bytes: int
+    sha256: str
+
+
+@dataclass(frozen=True)
+class PinnedSourceVideo:
+    video_id: str
+    file: PinnedInputFile
+
+
+@dataclass(frozen=True)
+class DataInputs:
+    """Read-only M3 input envelope, before stage-specific semantic validation.
+
+    Paths in file references are relative to explicit absolute project_root.
+    Source tags/mapping correspond to all_videos_tag.csv/video_mapping.csv.
+    split, ROI, media and contract are pinned files, not legacy IDs or pointers.
+    The consumer must validate their business schemas and cross-file bindings,
+    and reverify pins when consuming them; loading is not a concurrent lock.
+    """
+
+    config_path: Path
+    config_sha256: str
+    project_root: Path
+    batch: str
+    videos: tuple[PinnedSourceVideo, ...]
+    tags: PinnedInputFile
+    mapping: PinnedInputFile
+    split: PinnedInputFile
+    roi_decisions: PinnedInputFile
+    media_config: PinnedInputFile
+    preprocessor_kind: str
+    preprocessor_config: PinnedInputFile
+    contract: PinnedInputFile
+
+    @property
+    def dependencies(self) -> tuple[Path, ...]:
+        """Input dependencies only; DVC must also track actual implementation code."""
+        return tuple(dict.fromkeys((
+            self.config_path, *(v.file.path for v in self.videos),
+            self.tags.path, self.mapping.path, self.split.path,
+            self.roi_decisions.path, self.media_config.path,
+            self.preprocessor_config.path, self.contract.path,
+        )))
+
+
+class _DataInputsLoader(yaml.SafeLoader):
+    def compose_node(self, parent, index):
+        if self.check_event(yaml.AliasEvent):
+            raise StageInputError("inputs 不允许 YAML alias/merge")
+        return super().compose_node(parent, index)
+
+    def construct_mapping(self, node, deep=False):
+        result = {}
+        for key_node, value_node in node.value:
+            if key_node.tag != 'tag:yaml.org,2002:str':
+                raise StageInputError("inputs mapping key 必须是字符串；不允许 merge")
+            key = self.construct_object(key_node, deep=True)
+            if key in result:
+                raise StageInputError(f"inputs 重复 YAML key: {key}")
+            result[key] = self.construct_object(value_node, deep=True)
+        return result
+
+
+def _input_mapping(value: Any, keys: set[str], label: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise StageInputError(f"{label} 必须是 mapping")
+    missing = keys - value.keys()
+    extra = value.keys() - keys
+    if missing or extra:
+        raise StageInputError(
+            f"{label} 字段不符: missing={sorted(missing)}, extra={sorted(extra)}"
+        )
+    return value
+
+
+def _input_text(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value.strip() or value != value.strip():
+        raise StageInputError(f"{label} 必须是非空、无首尾空白字符串")
+    return value
+
+
+def _pin_input_file(value: Any, project: Path, label: str) -> PinnedInputFile:
+    ref = _input_mapping(value, {'path', 'size_bytes', 'sha256'}, label)
+    path_text = _input_text(ref['path'], f"{label}.path")
+    relative = Path(path_text)
+    if (relative.is_absolute() or '\\' in path_text or '\x00' in path_text
+            or any(part in ('', '.', '..') for part in path_text.split('/'))):
+        raise StageInputError(f"{label}.path 必须是 project_root 下的规范相对路径")
+    size = ref['size_bytes']
+    if type(size) is not int or size < 0:
+        raise StageInputError(f"{label}.size_bytes 必须是非负整数")
+    digest = ref['sha256']
+    if not isinstance(digest, str) or re.fullmatch(r'[0-9a-f]{64}', digest) is None:
+        raise StageInputError(f"{label}.sha256 必须是 64 位小写十六进制摘要")
+    path = project
+    for part in relative.parts:
+        path = path / part
+        if path.is_symlink():
+            raise StageInputError(f"{label}.path 不允许符号链接: {path}")
+    try:
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise StageInputError(f"{label}.path 必须是普通文件: {path}")
+        actual_size = 0
+        hasher = hashlib.sha256()
+        with path.open('rb') as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                actual_size += len(chunk)
+                hasher.update(chunk)
+    except OSError as exc:
+        raise StageInputError(f"无法读取 {label}.path: {path}: {exc}") from exc
+    if actual_size != size:
+        raise StageInputError(f"{label}.size_bytes 不匹配: {actual_size} != {size}")
+    if hasher.hexdigest() != digest:
+        raise StageInputError(f"{label}.sha256 不匹配: {path}")
+    return PinnedInputFile(path, size, digest)
+
+
+def load_data_inputs(path: Path, *, batch: str) -> DataInputs:
+    """Validate the complete explicit inputs envelope without any writes/probes.
+
+    Schema: tensile-data/inputs/v1. Required top-level fields are schema, batch,
+    project_root, source, split, roi_decisions, media and contract. source has a
+    nonempty videos list (video_id plus file pin) and annotations {tags, mapping}.
+    media has config plus preprocessor {kind, config}. Every file pin has exactly
+    path, size_bytes and sha256. kind records the explicit requested processor;
+    the media adapter must validate support and runtime fingerprint before use.
+    """
+    try:
+        if path.is_symlink() or not stat.S_ISREG(path.stat().st_mode):
+            raise StageInputError("inputs YAML 必须是普通文件且不得为符号链接")
+        content = path.read_bytes()
+        raw = yaml.load(content.decode('utf-8'), Loader=_DataInputsLoader)
+    except (OSError, UnicodeError, yaml.YAMLError, RecursionError) as exc:
+        raise StageInputError(f"无法读取 inputs YAML: {exc}") from exc
+    doc = _input_mapping(raw, {
+        'schema', 'batch', 'project_root', 'source', 'split', 'roi_decisions',
+        'media', 'contract',
+    }, 'inputs')
+    if doc['schema'] != 'tensile-data/inputs/v1':
+        raise StageInputError("inputs.schema 必须是 tensile-data/inputs/v1")
+    explicit_batch = _input_text(doc['batch'], 'inputs.batch')
+    if (re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', explicit_batch) is None
+            or explicit_batch != batch):
+        raise StageInputError("inputs.batch 非法或与调用 batch 不一致")
+    project = Path(_input_text(doc['project_root'], 'inputs.project_root'))
+    if not project.is_absolute() or not project.is_dir():
+        raise StageInputError("inputs.project_root 必须是存在的绝对目录")
+    project = project.resolve()
+    source = _input_mapping(doc['source'], {'videos', 'annotations'}, 'source')
+    annotations = _input_mapping(source['annotations'], {'tags', 'mapping'}, 'source.annotations')
+    media = _input_mapping(doc['media'], {'config', 'preprocessor'}, 'media')
+    processor = _input_mapping(media['preprocessor'], {'kind', 'config'}, 'media.preprocessor')
+    kind = _input_text(processor['kind'], 'media.preprocessor.kind')
+    entries = source['videos']
+    if not isinstance(entries, list) or not entries:
+        raise StageInputError("source.videos 必须是非空列表")
+    videos = []
+    seen = set()
+    for entry in entries:
+        entry = _input_mapping(entry, {'video_id', 'path', 'size_bytes', 'sha256'}, 'source.videos item')
+        video_id = _input_text(entry['video_id'], 'video_id')
+        if re.fullmatch(r'video_\d{4}', video_id) is None or video_id in seen:
+            raise StageInputError(f"video_id 非法或重复: {video_id}")
+        ref = {key: entry[key] for key in ('path', 'size_bytes', 'sha256')}
+        file = _pin_input_file(ref, project, f'source.videos.{video_id}')
+        if file.path.name != f'{video_id}.mp4':
+            raise StageInputError(f"video_id 与视频文件名不匹配: {video_id}")
+        videos.append(PinnedSourceVideo(video_id, file))
+        seen.add(video_id)
+    return DataInputs(
+        path.resolve(), hashlib.sha256(content).hexdigest(), project,
+        explicit_batch, tuple(videos),
+        _pin_input_file(annotations['tags'], project, 'source.annotations.tags'),
+        _pin_input_file(annotations['mapping'], project, 'source.annotations.mapping'),
+        _pin_input_file(doc['split'], project, 'split'),
+        _pin_input_file(doc['roi_decisions'], project, 'roi_decisions'),
+        _pin_input_file(media['config'], project, 'media.config'), kind,
+        _pin_input_file(processor['config'], project, 'media.preprocessor.config'),
+        _pin_input_file(doc['contract'], project, 'contract'),
+    )

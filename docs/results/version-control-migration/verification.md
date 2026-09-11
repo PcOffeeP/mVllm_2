@@ -156,3 +156,59 @@
 - 本节与项目台账作为唯一同步记录提交后，再按相同显式 refspec 推送该文档提交，并在训练机隔离 checkout 中再次 fetch 与仅快进；最终三端完整 SHA 以提交后的只读 refs 核对为准。
 
 全程未执行 force push、rebase、reset、cherry-pick、clean、分支删除或 `main` merge；两端既有未跟踪文件不暂存、不删除、不修改。
+
+## 12. M3a：显式输入契约的只读加载门
+
+2026-09-12 按用户已确认的 M3 方案继续本地实施。本机恢复基线为
+`2027c4dc14753971bf499d9b65ede6bbf650222f`；只读 `git ls-remote` 核对 Codeup
+同名任务分支一致，Codeup main 仍为 `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。
+Intent/Spec/Plan 最新确认提交分别为 `3dae30a0` / `6996d35d` / `11e54b31`。
+本轮没有连接训练机；训练机状态沿用第 11 节前序证据，未冒充本轮复查。
+
+首个切片仅新增 `versioning.data_pipeline.load_data_inputs(path, batch=...)`
+及不可变输入记录，供后续 `--inputs` 接线使用。它是只读加载门，不是第八个公共阶段；
+现有七阶段 CLI、DVC、legacy 公共入口尚未切换。
+
+输入 envelope 使用 `schema: tensile-data/inputs/v1`，字段为：
+
+- `batch`：必须与调用批次一致；`project_root`：显式存在的绝对项目目录。
+- `source.videos`：非空列表，每项含唯一 `video_id` 和文件 pin；ID 与
+  `video_NNNN.mp4` 文件名绑定，沿用现有 source 输入规范。
+- `source.annotations.tags` / `mapping`：两份源注释表的显式文件 pin，
+  分别供后续 source 适配读取标签与视频来源映射。
+- `split` / `roi_decisions` / `contract`：显式划分、ROI 决定与业务契约文件 pin。
+- `media.config` 与 `media.preprocessor.{kind,config}`：显式媒体配置、
+  请求使用的预处理器名称及其配置文件 pin；实际支持性与运行时 fingerprint 由媒体适配层复核。
+
+每个 pin 精确包含 `path` / `size_bytes` / `sha256`，路径相对上述项目目录，
+拒绝绝对路径、穿越、符号链接、非普通文件及缺失文件；size 为非负整数（拒绝布尔值），
+SHA-256 为完整小写摘要。所有字段完整且无额外项，YAML 全层级重复键、alias/merge、
+非字符串键均拒绝。文件流式计算 size/SHA，加载结果保存输入 YAML 自身摘要及显式依赖清单。
+摘要仅作内容校验，不生成任何版本身份或活动指针。
+
+验证分层与限制：加载门只验证 envelope、路径与字节完整性；文件内部的业务 schema、
+视频/注释/split/ROI 全集与交叉引用、预处理器实际行为均留给对应业务适配切片。
+加载成功不表示已冻结可发布数据，也不提供并发锁；实际消费前仍须复核 pins。
+返回的 `dependencies` 只列输入，后续 DVC 接线仍须加入实际实现代码。
+所有测试使用本机临时非正式 fixture，没有媒体探测、GPU 操作或正式迁移写入。
+
+TDD 的有效 RED：先提供可导入的空加载入口，运行
+`.venv/bin/python -m pytest -q tests/versioning/test_data_pipeline.py -k 'TestPinnedDataInputs and required_fields'`，
+8 个缺字段断言均以 `DID NOT RAISE StageInputError` 失败，exit 1；不是导入或 fixture 错误。
+最小实现后，
+`.venv/bin/python -m pytest -q tests/versioning/test_data_pipeline.py -k TestPinnedDataInputs --disable-warnings`
+为 **61 passed**，exit 0。测试覆盖所有输入角色的内容漂移、同长度摘要漂移、
+错误批次/路径/字段类型、重复视频、预处理器无显式名称，以及成功加载时禁止创建目录、写文件或启动子进程。
+权威完整回归 `.venv/bin/python -m pytest -q tests/versioning --disable-warnings`
+为 **1690 passed，287 warnings，317.12 秒，exit 0**，已等待进程正常退出。
+本机临时原始日志为 `/tmp/mvllm2-m3-inputs-pytest.log`（非持久证据；本节保存命令和结果）。
+已知 pytest 临时只读目录清理 warning 仍出现，未导致失败。
+
+独立 reviewer 对本切片代码、测试、TODO 与本节记录审查通过，无可执行 finding。
+reviewer 独立复跑输入专项 **61 passed，exit 0**，并用临时 fixture 验证父目录链接逃逸、
+含 `..` 的路径、视频额外字段与深层重复键均被拒绝；未复跑完整套件或历史 RED。
+代码版本可从本节与 `versioning/data_pipeline.py` 的同次提交追溯（`git log --` 对应文件），
+恢复基线 `2027c4dc` 不是本切片修复版本。
+
+M3a 本地加载门切片已完成；M3 仍进行中。下一步接真实 source snapshot+split 与
+`--inputs` CLI，禁止将有效 inputs 交给现有简化产物路径后宣称真实业务已接入。

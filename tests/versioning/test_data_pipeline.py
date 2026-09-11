@@ -945,3 +945,176 @@ class TestReleaseValidate:
         root, _ = self._released_root(tmp_path)
         with pytest.raises(DataPipelineError):
             run_release_validate(root, version="data-v4.1-r99")
+
+
+# M3a Test List: strict envelope/recursive duplicate keys; explicit batch/project
+# binding; complete pinned file inventory; missing, escaped or changed inputs;
+# no writes, probes or subprocesses; successful read preserves file bytes.
+@pytest.fixture()
+def pinned_inputs(tmp_path):
+    project = tmp_path / 'project'
+    project.mkdir()
+
+    def pin(name, content=b'fixture'):
+        path = project / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return {'path': name, 'size_bytes': len(content),
+                'sha256': hashlib.sha256(content).hexdigest()}
+
+    doc = {
+        'schema': 'tensile-data/inputs/v1', 'batch': 'batch-001',
+        'project_root': str(project),
+        'source': {
+            'videos': [{'video_id': 'video_0001', **pin('videos/video_0001.mp4')}],
+            'annotations': {'tags': pin('annotations/all_videos_tag.csv'),
+                            'mapping': pin('annotations/video_mapping.csv')},
+        },
+        'split': pin('split.json'), 'roi_decisions': pin('roi.json'),
+        'media': {'config': pin('media.yaml'),
+                  'preprocessor': {'kind': 'minicpm', 'config': pin('preprocessor.json')}},
+        'contract': pin('contract.json'),
+    }
+    path = tmp_path / 'inputs.yaml'
+    path.write_text(yaml.safe_dump(doc), encoding='utf-8')
+    return path, doc, project
+
+
+def _load_pinned(path, batch='batch-001'):
+    from versioning.data_pipeline import load_data_inputs
+    return load_data_inputs(path, batch=batch)
+
+
+def _save_pinned(path, doc):
+    path.write_text(yaml.safe_dump(doc), encoding='utf-8')
+
+
+class TestPinnedDataInputs:
+    def test_load_is_read_only_and_preserves_explicit_inventory(self, pinned_inputs, monkeypatch):
+        path, doc, project = pinned_inputs
+        before = {p: p.read_bytes() for p in project.rglob('*') if p.is_file()}
+        def forbid(*args, **kwargs):
+            pytest.fail('input loading must not write or launch media processing')
+        monkeypatch.setattr(Path, 'mkdir', forbid)
+        monkeypatch.setattr(Path, 'write_bytes', forbid)
+        monkeypatch.setattr(Path, 'write_text', forbid)
+        monkeypatch.setattr('subprocess.run', forbid)
+        loaded = _load_pinned(path)
+        assert loaded.project_root == project
+        assert loaded.batch == doc['batch']
+        assert loaded.config_path == path
+        assert loaded.config_sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert loaded.videos[0].video_id == 'video_0001'
+        assert loaded.videos[0].file.path == project / 'videos/video_0001.mp4'
+        assert loaded.preprocessor_kind == 'minicpm'
+        assert {p: p.read_bytes() for p in before} == before
+        assert set(loaded.dependencies) == {path, *before}
+
+    @pytest.mark.parametrize('field', ['schema', 'batch', 'project_root', 'source', 'split', 'roi_decisions', 'media', 'contract'])
+    def test_required_fields(self, pinned_inputs, field):
+        path, doc, _ = pinned_inputs
+        del doc[field]
+        _save_pinned(path, doc)
+        with pytest.raises(StageInputError, match=field):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('location', [(), ('source',), ('source', 'annotations'), ('media',), ('media', 'preprocessor'), ('split',)])
+    def test_unknown_fields(self, pinned_inputs, location):
+        path, doc, _ = pinned_inputs
+        target = doc
+        for key in location:
+            target = target[key]
+        target['LATEST'] = 'ignored?'
+        _save_pinned(path, doc)
+        with pytest.raises(StageInputError, match='LATEST'):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('text', ['[]', 'null', 'true', 'schema: a\nschema: b',
+                                     'source:\n  videos: []\n  videos: []',
+                                     '? [complex, key]\n: value', 'x: &x {x: *x}',
+                                     'x: &x {}\ny: {<<: *x}'])
+    def test_malformed_or_ambiguous_yaml(self, pinned_inputs, text):
+        path, _, _ = pinned_inputs
+        path.write_text(text)
+        with pytest.raises(StageInputError):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('field,value', [('schema', 'unknown'), ('batch', 'other'),
+                                           ('batch', '../escape'), ('batch', True),
+                                           ('project_root', ''), ('project_root', '.'),
+                                           ('project_root', '/no/such/project')])
+    def test_envelope_binding(self, pinned_inputs, field, value):
+        path, doc, _ = pinned_inputs
+        doc[field] = value
+        _save_pinned(path, doc)
+        with pytest.raises(StageInputError, match=field):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('ref_name', ['tags', 'mapping', 'split', 'roi_decisions', 'media', 'preprocessor', 'contract', 'video'])
+    def test_every_role_is_content_pinned(self, pinned_inputs, ref_name):
+        path, doc, project = pinned_inputs
+        refs = {**doc['source']['annotations'], 'split': doc['split'],
+                'roi_decisions': doc['roi_decisions'], 'media': doc['media']['config'],
+                'preprocessor': doc['media']['preprocessor']['config'],
+                'contract': doc['contract'], 'video': doc['source']['videos'][0]}
+        (project / refs[ref_name]['path']).write_bytes(b'changed')
+        with pytest.raises(StageInputError, match='size_bytes|sha256'):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('field,value', [('path', ''), ('path', '../outside'), ('path', '/outside'),
+        ('size_bytes', True), ('size_bytes', -1), ('size_bytes', 1.5),
+        ('sha256', 'abc'), ('sha256', 'A' * 64), ('sha256', 123)])
+    def test_bad_file_reference(self, pinned_inputs, field, value):
+        path, doc, _ = pinned_inputs
+        doc['split'][field] = value
+        _save_pinned(path, doc)
+        with pytest.raises(StageInputError, match=field):
+            _load_pinned(path)
+
+    def test_same_size_drift(self, pinned_inputs):
+        path, doc, project = pinned_inputs
+        (project / doc['split']['path']).write_bytes(b'changed')  # seven bytes, like fixture
+        with pytest.raises(StageInputError, match='sha256'):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('mode', ['missing', 'directory', 'symlink'])
+    def test_non_regular_input(self, pinned_inputs, mode):
+        path, doc, project = pinned_inputs
+        source = project / doc['split']['path']
+        source.unlink()
+        if mode == 'directory':
+            source.mkdir()
+        elif mode == 'symlink':
+            source.symlink_to(project / 'roi.json')
+        with pytest.raises(StageInputError):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('mode', ['empty', 'duplicate', 'id_mismatch', 'bad_id', 'not_list'])
+    def test_video_inventory_binding(self, pinned_inputs, mode):
+        path, doc, _ = pinned_inputs
+        videos = doc['source']['videos']
+        if mode == 'empty':
+            videos.clear()
+        elif mode == 'duplicate':
+            videos.append(dict(videos[0]))
+        elif mode == 'id_mismatch':
+            videos[0]['video_id'] = 'video_0002'
+        elif mode == 'bad_id':
+            videos[0]['video_id'] = '../video'
+        else:
+            doc['source']['videos'] = {}
+        _save_pinned(path, doc)
+        with pytest.raises(StageInputError):
+            _load_pinned(path)
+
+    @pytest.mark.parametrize('value', ['', {}, None, True])
+    def test_preprocessor_not_silently_defaulted(self, pinned_inputs, value):
+        path, doc, _ = pinned_inputs
+        doc['media']['preprocessor']['kind'] = value
+        _save_pinned(path, doc)
+        with pytest.raises(StageInputError, match='preprocessor'):
+            _load_pinned(path)
+
+    def test_missing_config(self, tmp_path):
+        with pytest.raises(StageInputError):
+            _load_pinned(tmp_path / 'missing.yaml')
