@@ -151,8 +151,8 @@ model_train_eval_history:
       target_identity: "none (history-only)"
       history_decision: user_confirmed  # 用户 2026-09-07 确认：仅 history-summary，不分配新身份
       confirmed_by_user_date: "2026-09-07"
-      status: not_verified              # 权重完整性、合并软链接来源链仍未验证（不等于用户确认通过）
-      notes: "不能当作 completed 训练；prompt-concise-v1/v2 仅准备资料，不得导入为模型。"
+      status: not_verified              # 整体权重完整性仍未验证（不等于用户确认通过）
+      notes: "不能当作 completed 训练；coverage-first seed3407 的 merged 软链接来源链已于 2026-09-11 只读核对，路径/run 身份/Registry/发布 manifest 一致，但未验证权重内容哈希或加载；prompt-concise-v1/v2 仅准备资料，不得导入为模型。"
     - source_id: "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411"
       verified: verified_local（tentative_model_selection.json）
       history_only: true

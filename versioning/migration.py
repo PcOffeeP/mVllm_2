@@ -26,6 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1898,6 +1899,29 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     不输出 training_status 键（部分结构观察不足以支撑 evidence-derived
     分类，Reviewer P3）。
     """
+    def has_link_component(relative_path: Path) -> bool:
+        """Return whether any lexical component below the trusted root is a link."""
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            return True
+        current = root
+        for part in relative_path.parts:
+            current = current / part
+            if current.is_symlink():
+                return True
+        return False
+
+    def freeze_path_matches_source(value: object, source: str) -> bool:
+        """Match an absolute or repository-relative freeze path to one source."""
+        if not isinstance(value, str) or not value:
+            return False
+        source_path = Path(source)
+        freeze_path = Path(value)
+        if source_path.is_absolute() or ".." in source_path.parts:
+            return False
+        if not freeze_path.is_absolute():
+            return freeze_path == source_path
+        return freeze_path.parts[-len(source_path.parts) :] == source_path.parts
+
     run_rel = _PREPARE_ONLY_RUN_SOURCE_ROOT / source_id
     run_dir = root / run_rel
     fold_rel = run_rel / "fold0"
@@ -1907,10 +1931,15 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     # H7 reviewer P2：根级组件链接可把 sibling 权重误归因到声明 run。
     # 本切片只接受声明 run 根下的真实目录；链接来源链留给后续独立切片
     # 核对，在核对前 fail-closed 为不可观察，不跟随链接读取目标内容。
-    root_structure_observed = not run_dir.is_symlink() and ((
+    run_source_has_link = has_link_component(run_rel)
+    root_structure_observed = not run_source_has_link and ((
         root_adapter.is_dir() and not root_adapter.is_symlink()
     ) or (root_merged.is_dir() and not root_merged.is_symlink()))
-    if fold_dir.is_dir():
+    if (
+        fold_dir.is_dir()
+        and not run_source_has_link
+        and not has_link_component(fold_rel)
+    ):
         structure_rel = fold_rel
         structure_dir = fold_dir
         fold_scope = "fold0"
@@ -1959,6 +1988,135 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         }
     adapter_dir = structure_dir / "adapter"
     merged_dir = structure_dir / "merged"
+    merged_link_source: dict[str, Any] | None = None
+    merged_link_reason: str | None = None
+    if fold_scope == "fold0" and merged_dir.is_symlink():
+        identity_rel = structure_rel / "model_identity.json"
+        identity_file = root / identity_rel
+        try:
+            if has_link_component(identity_rel):
+                raise ValueError("model_identity.json 来源链不得包含额外符号链接")
+            identity_raw = json.loads(identity_file.read_text(encoding="utf-8"))
+            if not isinstance(identity_raw, Mapping):
+                raise ValueError("model_identity.json 顶层不是 mapping")
+            model_name = identity_raw.get("model_name")
+            expected_merged_rel = structure_rel / "merged"
+            if not isinstance(model_name, str) or not model_name:
+                raise ValueError("model_identity.json 缺少 model_name")
+            if Path(model_name).name != model_name or model_name in {".", ".."}:
+                raise ValueError("model_identity.json model_name 不是单一路径组件")
+            if identity_raw.get("merged_path") != expected_merged_rel.as_posix():
+                raise ValueError("model_identity.json merged_path 与声明 run 不符")
+            source_match = re.fullmatch(
+                r"v[^-]+-phase2-(?P<variant>.+)-v\d+-seed(?P<seed>\d+)",
+                source_id,
+            )
+            if source_match is None:
+                raise ValueError("声明 run ID 无法解析训练 variant 与 seed")
+            expected_variant = source_match.group("variant")
+            expected_variant_slug = expected_variant.replace("-", "_")
+            expected_seed = int(source_match.group("seed"))
+            source_adapter_path = identity_raw.get("source_adapter_path")
+            source_merged_path = identity_raw.get("source_merged_path")
+            if not isinstance(source_adapter_path, str):
+                raise ValueError("model_identity.json source_adapter_path 与声明 run 不符")
+            if source_merged_path != f"{source_adapter_path}_merged":
+                raise ValueError("model_identity.json source_merged_path 与声明 run 不符")
+            release_rel = (
+                Path("workspace") / "models" / "releases" / model_name
+            )
+            release_manifest_rel = release_rel / "release-manifest.json"
+            registry_manifest_rel = (
+                Path("pipeline")
+                / "model_registry"
+                / "releases"
+                / f"{model_name}.json"
+            )
+            if has_link_component(release_manifest_rel) or has_link_component(
+                registry_manifest_rel
+            ):
+                raise ValueError("发布 manifest 来源链不得包含额外符号链接")
+            release_bytes = (root / release_manifest_rel).read_bytes()
+            registry_bytes = (root / registry_manifest_rel).read_bytes()
+            if (root / release_manifest_rel).is_symlink() or (
+                root / registry_manifest_rel
+            ).is_symlink():
+                raise ValueError("发布 manifest 不得为符号链接")
+            if release_bytes != registry_bytes:
+                raise ValueError("发布目录 manifest 与 Registry manifest 不一致")
+            release_raw = json.loads(release_bytes.decode("utf-8"))
+            if not isinstance(release_raw, Mapping):
+                raise ValueError("release-manifest.json 顶层不是 mapping")
+            artifacts = release_raw.get("artifacts")
+            adapter_artifact = (
+                artifacts.get("adapter") if isinstance(artifacts, Mapping) else None
+            )
+            merged_artifact = (
+                artifacts.get("merged") if isinstance(artifacts, Mapping) else None
+            )
+            expected_target_rel = release_rel / "merged"
+            if release_raw.get("model_name") != model_name:
+                raise ValueError("release manifest model_name 与 run 身份不符")
+            origin = release_raw.get("origin")
+            if not isinstance(origin, Mapping):
+                raise ValueError("release manifest 缺少 origin")
+            if origin.get("fold") != 0:
+                raise ValueError("release origin.fold 与声明 fold0 不符")
+            if origin.get("seed") != expected_seed:
+                raise ValueError("release origin.seed 与声明 run 不符")
+            if origin.get("training_variant") != expected_variant:
+                raise ValueError("release origin.training_variant 与声明 run 不符")
+            experiment_id = origin.get("experiment_id")
+            expected_adapter_name = (
+                f"sft_tensile_{experiment_id}_seed{expected_seed}"
+                if isinstance(experiment_id, str)
+                else None
+            )
+            if (
+                expected_adapter_name is None
+                or Path(source_adapter_path).name != expected_adapter_name
+                or expected_variant_slug not in experiment_id
+            ):
+                raise ValueError("release origin.experiment_id 与声明 run 不符")
+            if not isinstance(adapter_artifact, Mapping) or not freeze_path_matches_source(
+                adapter_artifact.get("path_at_freeze"), source_adapter_path
+            ):
+                raise ValueError("release adapter path_at_freeze 与 run 身份不符")
+            if not isinstance(merged_artifact, Mapping) or not freeze_path_matches_source(
+                merged_artifact.get("path_at_freeze"), source_merged_path
+            ):
+                raise ValueError("release merged path_at_freeze 与 run 身份不符")
+            if not isinstance(merged_artifact, Mapping) or merged_artifact.get(
+                "managed_path"
+            ) != expected_target_rel.as_posix():
+                raise ValueError("release manifest merged managed_path 不符")
+            actual_target = merged_dir.resolve(strict=True)
+            expected_target_path = root / expected_target_rel
+            if has_link_component(expected_target_rel):
+                raise ValueError("发布目录或 managed merged 目标不得为符号链接")
+            link_text = os.readlink(merged_dir)
+            expected_absolute_text = str(expected_target_path.absolute())
+            expected_relative_text = os.path.relpath(
+                expected_target_path, start=merged_dir.parent
+            )
+            if link_text not in {expected_absolute_text, expected_relative_text}:
+                raise ValueError("merged 链接必须单跳直达发布 managed_path")
+            expected_target = expected_target_path.resolve(strict=True)
+            if actual_target != expected_target:
+                raise ValueError("merged 链接目标与发布 managed_path 不符")
+            merged_link_source = {
+                "resolved_path": expected_target_rel.as_posix(),
+                "model_identity_path": identity_rel.as_posix(),
+                "release_manifest_path": release_manifest_rel.as_posix(),
+                "registry_manifest_path": registry_manifest_rel.as_posix(),
+            }
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+            merged_link_reason = str(exc)
+        if merged_link_source is not None and any(
+            path.is_symlink() for path in merged_dir.glob("*.safetensors")
+        ):
+            merged_link_source = None
+            merged_link_reason = "发布 merged 顶层权重文件不得为符号链接"
     # H6d：区分目录存在性与权重文件存在性（Reviewer P2）—— 声明的
     # adapter / merged 目录缺失（预期路径不存在）是缺席不可观察：对应
     # 事实进入字段级 unknown（非空 unknown_reason 指明缺失的声明位置 +
@@ -1966,8 +2124,10 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     # 不得声称观察到不存在的目录；目录可读时权重存在性按 H6c 口径只认
     # 顶层 *.safetensors（可读无权重目录仍是观察到的缺席，已知 False）。
     if fold_scope == "fold0":
-        adapter_dir_exists = adapter_dir.is_dir()
-        merged_dir_exists = merged_dir.is_dir()
+        adapter_dir_exists = adapter_dir.is_dir() and not adapter_dir.is_symlink()
+        merged_dir_exists = merged_dir.is_dir() and (
+            not merged_dir.is_symlink() or merged_link_source is not None
+        )
     else:
         adapter_dir_exists = adapter_dir.is_dir() and not adapter_dir.is_symlink()
         merged_dir_exists = merged_dir.is_dir() and not merged_dir.is_symlink()
@@ -1975,9 +2135,7 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     # *.safetensors（统一深度口径：M0 观察的 adapter 导出与 merged 分
     # 片均为目录顶层文件；嵌套 / checkpoint 层权重不得伪造 *_present）。
     def _declared_weight_file(path: Path) -> bool:
-        if not path.is_file():
-            return False
-        return fold_scope == "fold0" or not path.is_symlink()
+        return path.is_file() and not path.is_symlink()
 
     adapter_weights_present = adapter_dir_exists and any(
         _declared_weight_file(path) for path in adapter_dir.glob("*.safetensors")
@@ -2009,6 +2167,25 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
             },
         }
 
+    def _merged_fact() -> dict[str, Any]:
+        if merged_dir_exists:
+            fact = _observed_fact(merged_weights_present, structure_rel / "merged")
+            if merged_link_source is not None:
+                fact["source"].update(merged_link_source)
+                fact["source"]["observed"] = (
+                    "declared run merged link bound to matching model release"
+                )
+            return fact
+        if merged_link_reason is not None:
+            return {
+                "unknown_reason": (
+                    f"weight run {source_id} 的 merged 符号链接来源链未通过"
+                    f" run 身份与发布 manifest 绑定：{merged_link_reason}"
+                ),
+                "attempted_source": (structure_rel / "merged").as_posix(),
+            }
+        return _missing_dir_fact("merged")
+
     facts: dict[str, dict[str, Any]] = {
         "fold_scope": _observed_fact(fold_scope, structure_rel),
         "adapter_present": (
@@ -2016,11 +2193,7 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
             if adapter_dir_exists
             else _missing_dir_fact("adapter")
         ),
-        "merged_present": (
-            _observed_fact(merged_weights_present, structure_rel / "merged")
-            if merged_dir_exists
-            else _missing_dir_fact("merged")
-        ),
+        "merged_present": _merged_fact(),
     }
     for name in _PREPARE_ONLY_CORE_TRAIN_PARAMS:
         facts[name] = {

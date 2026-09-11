@@ -158,7 +158,8 @@ training_machine_run_evidence:   # 以下来自训练机只读调查记录，均
         observed: "run 根下有 adapter 与 10 个 merged 分片，有归档目录；结构与 fold0 子目录模式不同"
       - run_id: "v4.1-phase2-coverage-first-v1-seed3407"
         observed: "fold0 有 adapter，保留 checkpoint-250/1000/1050/1100/1125；merged 是指向发布模型的软链接"
-    notes: "run 目录存在不等于完成训练；merge 软链接的来源链须单独核对。全部未验证权重完整性与哈希。"
+        merged_link_source_verified: "2026-09-11 训练机只读核对：链接解析到 workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged；run model_identity、Registry manifest、发布目录 release-manifest 与 managed_path 一致，目标有 10 个顶层分片"
+    notes: "run 目录存在不等于完成训练；coverage-first seed3407 的 merged 软链接来源链已核对，但全部 run 的权重内容完整性与哈希仍未验证。"
   prepare_only_runs:
     items:
       - run_id: "v4.1-prompt-concise-v1/seed3411"

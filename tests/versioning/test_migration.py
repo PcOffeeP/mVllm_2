@@ -20480,3 +20480,308 @@ def test_root_weight_layout_rejects_remaining_sibling_link_paths(
         assert facts[WEIGHT_RUN_MERGED_PRESENT_FACT]["value"] is False
 
     assert _snapshot_tree(tmp_path) == before
+
+
+def _write_fold_merged_link_layout(root: Path, *, target_model: str) -> Path:
+    """创建 H8 fold0 merged 发布模型链接 fixture，返回 run 目录。"""
+    run_id = "v4.1-phase2-coverage-first-v1-seed3407"
+    run_dir = root / "workspace" / "runs" / run_id
+    fold_dir = run_dir / "fold0"
+    adapter_dir = fold_dir / "adapter"
+    adapter_dir.mkdir(parents=True, exist_ok=True)
+    (adapter_dir / "adapter_model.safetensors").write_bytes(b"declared-adapter")
+
+    release_merged = (
+        root / "workspace" / "models" / "releases" / target_model / "merged"
+    )
+    release_merged.mkdir(parents=True, exist_ok=True)
+    for index in range(1, 11):
+        (release_merged / f"model-{index:05d}-of-00010.safetensors").write_bytes(
+            f"merged-{index}".encode("utf-8")
+        )
+    (fold_dir / "merged").symlink_to(release_merged, target_is_directory=True)
+    experiment_id = "v4_1_phase2_source_aware_3k_coverage_first_fixture"
+    source_adapter_path = (
+        f"LlamaFactory/saves/sft_tensile_{experiment_id}_seed3407"
+    )
+    source_merged_path = f"{source_adapter_path}_merged"
+    (fold_dir / "model_identity.json").write_bytes(
+        _fixture_pretty_json_bytes(
+            {
+                "schema_version": "tensile-model-registry/local-identity/v1",
+                "model_name": target_model,
+                "adapter_path": f"workspace/runs/{run_id}/fold0/adapter",
+                "merged_path": f"workspace/runs/{run_id}/fold0/merged",
+                "source_adapter_path": source_adapter_path,
+                "source_merged_path": source_merged_path,
+            }
+        )
+    )
+    release_manifest = {
+        "schema_version": "tensile-model-registry/model/v1",
+        "model_name": target_model,
+        "origin": {
+            "experiment_id": experiment_id,
+            "fold": 0,
+            "seed": 3407,
+            "training_variant": "coverage-first",
+        },
+        "artifacts": {
+            "adapter": {
+                "managed_path": (
+                    f"workspace/models/releases/{target_model}/adapter"
+                ),
+                "path_at_freeze": str(root / source_adapter_path),
+            },
+            "merged": {
+                "managed_path": (
+                    f"workspace/models/releases/{target_model}/merged"
+                ),
+                "path_at_freeze": str(root / source_merged_path),
+                "expected_safetensors_shards": 10,
+            }
+        },
+    }
+    release_root = release_merged.parent
+    (release_root / "release-manifest.json").write_bytes(
+        _fixture_pretty_json_bytes(release_manifest)
+    )
+    registry_manifest = (
+        root / "pipeline" / "model_registry" / "releases" / f"{target_model}.json"
+    )
+    registry_manifest.parent.mkdir(parents=True, exist_ok=True)
+    registry_manifest.write_bytes(_fixture_pretty_json_bytes(release_manifest))
+    return run_dir
+
+
+def _confirmed_fold_link_weight_run_entry() -> dict[str, Any]:
+    entry = _confirmed_weight_run_entry()
+    entry["source_legacy_id"] = "v4.1-phase2-coverage-first-v1-seed3407"
+    entry["observed"] = (
+        "fold0 有 adapter；merged 是指向发布模型的软链接"
+    )
+    return entry
+
+
+def test_fold_merged_link_requires_matching_run_and_release_identity(
+    tmp_path: Path,
+) -> None:
+    """三方身份一致的发布模型链接可作为声明 run 的 merged 存在证据。"""
+    model_name = "v4.1-agent-pipeline-fold0-r1"
+    run_dir = _write_fold_merged_link_layout(tmp_path, target_model=model_name)
+    entry = _confirmed_fold_link_weight_run_entry()
+    before = _snapshot_tree(tmp_path)
+
+    build = _resolve_history_summary_entry()
+    assert build is not None
+    summary_entry = build(tmp_path, [entry])["entries"][0]
+    assert summary_entry.get("training_status") == WEIGHT_RUN_TRAINING_STATUS
+    facts = summary_entry["facts"]
+    assert facts[WEIGHT_RUN_FOLD_SCOPE_FACT]["value"] == "fold0"
+    assert facts[WEIGHT_RUN_ADAPTER_PRESENT_FACT]["value"] is True
+    merged_fact = facts[WEIGHT_RUN_MERGED_PRESENT_FACT]
+    assert merged_fact["value"] is True
+    source = merged_fact["source"]
+    assert source["path"] == (
+        "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged"
+    )
+    assert source["resolved_path"] == (
+        f"workspace/models/releases/{model_name}/merged"
+    )
+    assert source["model_identity_path"].endswith("fold0/model_identity.json")
+    assert source["release_manifest_path"] == (
+        f"workspace/models/releases/{model_name}/release-manifest.json"
+    )
+    assert source["registry_manifest_path"] == (
+        f"pipeline/model_registry/releases/{model_name}.json"
+    )
+    assert (run_dir / "fold0" / "merged").is_symlink()
+    assert _snapshot_tree(tmp_path) == before
+
+
+def test_fold_merged_link_identity_mismatch_is_unknown_without_status(
+    tmp_path: Path,
+) -> None:
+    """链接目标与 run 身份声明矛盾时不得采信 sibling 发布权重。"""
+    actual_model = "v4.1-agent-pipeline-fold0-r1"
+    run_dir = _write_fold_merged_link_layout(tmp_path, target_model=actual_model)
+    identity_path = run_dir / "fold0" / "model_identity.json"
+    identity = json.loads(identity_path.read_text(encoding="utf-8"))
+    identity["model_name"] = "v4.1-different-model-fold0-r1"
+    identity_path.write_bytes(_fixture_pretty_json_bytes(identity))
+    entry = _confirmed_fold_link_weight_run_entry()
+    before = _snapshot_tree(tmp_path)
+
+    build = _resolve_history_summary_entry()
+    assert build is not None
+    summary_entry = build(tmp_path, [entry])["entries"][0]
+    assert "training_status" not in summary_entry
+    facts = summary_entry["facts"]
+    assert facts[WEIGHT_RUN_ADAPTER_PRESENT_FACT]["value"] is True
+    _assert_h6_fact_is_unknown(
+        facts[WEIGHT_RUN_MERGED_PRESENT_FACT],
+        name=WEIGHT_RUN_MERGED_PRESENT_FACT,
+        run_id=entry["source_legacy_id"],
+    )
+    assert _snapshot_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "tamper_kind",
+    [
+        "experiment",
+        "fold",
+        "seed",
+        "source_adapter_path",
+        "source_merged_path",
+        "adapter_path_at_freeze",
+        "merged_path_at_freeze",
+    ],
+)
+def test_fold_merged_link_origin_must_bind_declared_run(
+    tmp_path: Path, tamper_kind: str
+) -> None:
+    """release origin 与本地原始合并路径必须共同绑定声明 run。"""
+    model_name = "v4.1-agent-pipeline-fold0-r1"
+    run_dir = _write_fold_merged_link_layout(tmp_path, target_model=model_name)
+    if tamper_kind in {"source_adapter_path", "source_merged_path"}:
+        identity_path = run_dir / "fold0" / "model_identity.json"
+        identity = json.loads(identity_path.read_text(encoding="utf-8"))
+        identity[tamper_kind] = f"LlamaFactory/saves/unrelated_{tamper_kind}"
+        identity_path.write_bytes(_fixture_pretty_json_bytes(identity))
+    else:
+        release_path = (
+            tmp_path
+            / "workspace"
+            / "models"
+            / "releases"
+            / model_name
+            / "release-manifest.json"
+        )
+        release = json.loads(release_path.read_text(encoding="utf-8"))
+        if tamper_kind == "experiment":
+            release["origin"]["experiment_id"] = (
+                "v4_1_phase2_unrelated_coverage_first_shadow"
+            )
+        elif tamper_kind == "fold":
+            release["origin"]["fold"] = 1
+        elif tamper_kind == "seed":
+            release["origin"]["seed"] = 9999
+        elif tamper_kind == "adapter_path_at_freeze":
+            release["artifacts"]["adapter"]["path_at_freeze"] = (
+                "/unrelated/source_adapter"
+            )
+        else:
+            release["artifacts"]["merged"]["path_at_freeze"] = (
+                "/unrelated/source_merged"
+            )
+        release_bytes = _fixture_pretty_json_bytes(release)
+        release_path.write_bytes(release_bytes)
+        registry_path = (
+            tmp_path
+            / "pipeline"
+            / "model_registry"
+            / "releases"
+            / f"{model_name}.json"
+        )
+        registry_path.write_bytes(release_bytes)
+
+    entry = _confirmed_fold_link_weight_run_entry()
+    summary_entry = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]
+    assert "training_status" not in summary_entry
+    _assert_h6_fact_is_unknown(
+        summary_entry["facts"][WEIGHT_RUN_MERGED_PRESENT_FACT],
+        name=WEIGHT_RUN_MERGED_PRESENT_FACT,
+        run_id=entry["source_legacy_id"],
+    )
+
+
+@pytest.mark.parametrize(
+    "attack_kind",
+    [
+        "fold_link",
+        "merged_intermediary_link",
+        "merged_cancelled_link_hop",
+        "merged_weight_link",
+        "runs_ancestor_link",
+        "release_ancestor_link",
+        "registry_ancestor_link",
+    ],
+)
+def test_fold_merged_link_rejects_unapproved_link_layers(
+    tmp_path: Path, attack_kind: str
+) -> None:
+    """除最终 merged 目录链接外，祖先和权重文件链接均不得越界。"""
+    model_name = "v4.1-agent-pipeline-fold0-r1"
+    run_dir = _write_fold_merged_link_layout(tmp_path, target_model=model_name)
+    if attack_kind == "fold_link":
+        real_fold = run_dir / "real-fold0"
+        (run_dir / "fold0").rename(real_fold)
+        (run_dir / "fold0").symlink_to(real_fold, target_is_directory=True)
+    elif attack_kind == "merged_intermediary_link":
+        merged = run_dir / "fold0" / "merged"
+        expected_target = merged.resolve(strict=True)
+        intermediary = tmp_path / "sibling-intermediary-link"
+        intermediary.symlink_to(expected_target, target_is_directory=True)
+        merged.unlink()
+        merged.symlink_to(intermediary, target_is_directory=True)
+    elif attack_kind == "merged_cancelled_link_hop":
+        merged = run_dir / "fold0" / "merged"
+        release_root = merged.resolve(strict=True).parent
+        hidden_target = release_root / "hidden-target"
+        hidden_target.mkdir()
+        hidden_hop = release_root / "hidden-hop"
+        hidden_hop.symlink_to(hidden_target, target_is_directory=True)
+        merged.unlink()
+        merged.symlink_to(
+            release_root / "hidden-hop" / ".." / "merged",
+            target_is_directory=True,
+        )
+    elif attack_kind == "merged_weight_link":
+        merged_dir = (
+            tmp_path
+            / "workspace"
+            / "models"
+            / "releases"
+            / model_name
+            / "merged"
+        )
+        weight = merged_dir / "model-00001-of-00010.safetensors"
+        sibling_weight = tmp_path / "workspace" / "models" / "sibling.safetensors"
+        sibling_weight.write_bytes(weight.read_bytes())
+        weight.unlink()
+        weight.symlink_to(sibling_weight)
+        for other in merged_dir.glob("model-0000[2-9]-of-00010.safetensors"):
+            other.unlink()
+        (merged_dir / "model-00010-of-00010.safetensors").unlink()
+    elif attack_kind == "runs_ancestor_link":
+        runs = tmp_path / "workspace" / "runs"
+        sibling_runs = tmp_path / "sibling-runs"
+        runs.rename(sibling_runs)
+        runs.symlink_to(sibling_runs, target_is_directory=True)
+    elif attack_kind == "release_ancestor_link":
+        releases = tmp_path / "workspace" / "models" / "releases"
+        sibling_releases = tmp_path / "sibling-releases"
+        releases.rename(sibling_releases)
+        releases.symlink_to(sibling_releases, target_is_directory=True)
+    else:
+        releases = tmp_path / "pipeline" / "model_registry" / "releases"
+        sibling_releases = tmp_path / "sibling-registry-releases"
+        releases.rename(sibling_releases)
+        releases.symlink_to(sibling_releases, target_is_directory=True)
+
+    entry = _confirmed_fold_link_weight_run_entry()
+    summary_entry = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]
+    assert "training_status" not in summary_entry
+    facts = summary_entry["facts"]
+    if attack_kind in {"fold_link", "runs_ancestor_link"}:
+        for name in WEIGHT_RUN_KNOWN_FACTS:
+            _assert_h6_fact_is_unknown(
+                facts[name], name=name, run_id=entry["source_legacy_id"]
+            )
+    else:
+        _assert_h6_fact_is_unknown(
+            facts[WEIGHT_RUN_MERGED_PRESENT_FACT],
+            name=WEIGHT_RUN_MERGED_PRESENT_FACT,
+            run_id=entry["source_legacy_id"],
+        )
