@@ -1051,6 +1051,7 @@ import importlib
 import importlib.util
 import json
 import math
+import os
 import shutil
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -14293,6 +14294,22 @@ def _resolve_history_summary_entry() -> Any:
     return getattr(module, "build_history_summary", None)
 
 
+def _resolve_history_summary_writer() -> Any:
+    spec = importlib.util.find_spec("versioning.migration")
+    if spec is None:
+        return None
+    module = importlib.import_module("versioning.migration")
+    return getattr(module, "write_history_summary", None)
+
+
+def _resolve_history_summary_conflict_type() -> Any:
+    spec = importlib.util.find_spec("versioning.migration")
+    if spec is None:
+        return None
+    module = importlib.import_module("versioning.migration")
+    return getattr(module, "HistorySummaryConflict", None)
+
+
 def _document_string_fragments(value: Any) -> list[str]:
     """递归收集文档内全部字符串片段（mapping 键、序列元素、标量）。"""
     if isinstance(value, str):
@@ -21540,3 +21557,367 @@ def test_model_history_invalid_origin_number_fails_closed(
 
     with pytest.raises(blocked, match="fold/seed"):
         _resolve_history_summary_entry()(tmp_path, [entry])
+
+
+def test_write_history_summary_atomically_publishes_exact_built_document(
+    tmp_path: Path,
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    entries = [_confirmed_prompt_history_entry()]
+    writer = _resolve_history_summary_writer()
+    assert writer is not None, "write_history_summary 文件写入入口尚未实现"
+
+    target = writer(tmp_path, entries)
+
+    expected = _resolve_history_summary_entry()(tmp_path, entries)
+    assert target == (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    assert yaml.safe_load(target.read_text(encoding="utf-8")) == expected
+    assert not list(target.parent.glob(".history-summary.yaml.*.tmp"))
+
+
+def test_write_history_summary_existing_target_fails_closed_without_overwrite(
+    tmp_path: Path,
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    target.parent.mkdir(parents=True)
+    original = b"existing: evidence\n"
+    target.write_bytes(original)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None, "write_history_summary 文件写入入口尚未实现"
+    conflict = _resolve_history_summary_conflict_type()
+    assert conflict is not None
+
+    with pytest.raises(conflict, match="已存在|冲突"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert target.read_bytes() == original
+    assert not list(target.parent.glob(".history-summary.yaml.*.tmp"))
+
+
+def test_write_history_summary_publish_failure_leaves_no_target_or_temp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None, "write_history_summary 文件写入入口尚未实现"
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+
+    def fail_link(
+        source: str | bytes | Path,
+        destination: str | bytes | Path,
+        **kwargs: Any,
+    ) -> None:
+        raise OSError("injected history publish failure")
+
+    monkeypatch.setattr(os, "link", fail_link)
+    with pytest.raises(OSError, match="injected history publish failure"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert not target.exists()
+    assert not list(target.parent.glob(".history-summary.yaml.*.tmp"))
+    assert target.parent.is_dir()
+
+
+def test_write_history_summary_rejects_symlinked_output_ancestor(
+    tmp_path: Path,
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    docs = tmp_path / "docs"
+    docs.symlink_to(outside, target_is_directory=True)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    conflict = _resolve_history_summary_conflict_type()
+    assert conflict is not None
+
+    with pytest.raises(conflict, match="符号链接"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert list(outside.iterdir()) == []
+
+
+def test_write_history_summary_concurrent_target_wins_without_overwrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    competing = b"writer: competing\n"
+    original_link = os.link
+    conflict = _resolve_history_summary_conflict_type()
+    assert conflict is not None
+
+    def race_link(
+        source: str | bytes | Path,
+        destination: str | bytes | Path,
+        **kwargs: Any,
+    ) -> None:
+        target.write_bytes(competing)
+        original_link(source, destination, **kwargs)
+
+    monkeypatch.setattr(os, "link", race_link)
+    with pytest.raises(conflict, match="已存在|冲突"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert target.read_bytes() == competing
+    assert not list(target.parent.glob(".history-summary.yaml.*.tmp"))
+
+
+def test_write_history_summary_detects_temporary_source_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    original_link = os.link
+
+    def replace_source_then_link(
+        source: str | bytes | Path,
+        destination: str | bytes | Path,
+        **kwargs: Any,
+    ) -> None:
+        source_dir_fd = kwargs["src_dir_fd"]
+        os.unlink(source, dir_fd=source_dir_fd)
+        malicious_fd = os.open(
+            source,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+            dir_fd=source_dir_fd,
+        )
+        with os.fdopen(malicious_fd, "wb") as stream:
+            stream.write(b"passed: true\n")
+        original_link(source, destination, **kwargs)
+
+    monkeypatch.setattr(os, "link", replace_source_then_link)
+    with pytest.raises(OSError, match="发生变化"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    # 同权限竞争者可在 link 前替换临时名；函数必须拒绝成功，但不能在
+    # 无法原子判断所有权时删除当前目标名，以免误删竞争方文件。
+    assert target.read_bytes() == b"passed: true\n"
+    assert not list(target.parent.glob(".history-summary.yaml.*.tmp"))
+
+
+def test_write_history_summary_does_not_remove_concurrently_created_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    docs = tmp_path / "docs"
+    original_mkdir = os.mkdir
+
+    def racing_mkdir(path: str | bytes | Path, *args: Any, **kwargs: Any) -> None:
+        if path == "docs" and not docs.exists():
+            original_mkdir(path, *args, **kwargs)
+            raise FileExistsError(str(path))
+        original_mkdir(path, *args, **kwargs)
+
+    def fail_link(*args: Any, **kwargs: Any) -> None:
+        raise OSError("injected history publish failure")
+
+    monkeypatch.setattr(os, "mkdir", racing_mkdir)
+    monkeypatch.setattr(os, "link", fail_link)
+    with pytest.raises(OSError, match="injected history publish failure"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert docs.is_dir()
+    assert not (
+        docs / "results" / "version-control-migration" / "history-summary.yaml"
+    ).exists()
+
+
+def test_write_history_summary_directory_creation_stays_under_pinned_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    docs = tmp_path / "docs"
+    detached = tmp_path / "detached-docs"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    original_mkdir = os.mkdir
+
+    def swap_then_mkdir(
+        path: str | bytes | Path, *args: Any, **kwargs: Any
+    ) -> None:
+        if path == "results" and docs.is_dir() and not docs.is_symlink():
+            docs.rename(detached)
+            docs.symlink_to(outside, target_is_directory=True)
+        original_mkdir(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "mkdir", swap_then_mkdir)
+    with pytest.raises((OSError, FileNotFoundError)):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert list(outside.iterdir()) == []
+    docs.unlink()
+    detached.rename(docs)
+    assert not list(docs.rglob("history-summary.yaml"))
+
+
+def test_write_history_summary_detects_output_ancestor_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    detached = tmp_path / "detached-output"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    original_link = os.link
+
+    def swap_ancestor_then_link(
+        source: str | bytes | Path,
+        destination: str | bytes | Path,
+        **kwargs: Any,
+    ) -> None:
+        target.parent.rename(detached)
+        target.parent.symlink_to(outside, target_is_directory=True)
+        original_link(source, destination, **kwargs)
+
+    monkeypatch.setattr(os, "link", swap_ancestor_then_link)
+    with pytest.raises((OSError, FileNotFoundError)):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert list(outside.iterdir()) == []
+    target.parent.unlink()
+    detached.rename(target.parent)
+    assert not target.exists()
+    assert not list(target.parent.glob(".history-summary.yaml.*.tmp"))
+
+
+def test_write_history_summary_cleanup_failure_after_commit_is_not_ambiguous(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    original_unlink = os.unlink
+    injected = False
+
+    def fail_first_temp_unlink(
+        path: str | bytes | Path, *args: Any, **kwargs: Any
+    ) -> None:
+        nonlocal injected
+        if not injected and str(path).startswith(".history-summary.yaml."):
+            injected = True
+            raise OSError("injected temp cleanup failure")
+        original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "unlink", fail_first_temp_unlink)
+
+    target = writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert injected is True
+    assert target.is_file()
+    assert not list(target.parent.glob(".history-summary.yaml.*.tmp"))
+
+
+def test_write_history_summary_rollback_preserves_replaced_competing_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    original_fsync = os.fsync
+    fsync_calls = 0
+    competing = b"writer: competing\n"
+
+    def fail_first_directory_fsync(fd: int) -> None:
+        nonlocal fsync_calls
+        fsync_calls += 1
+        if fsync_calls == 2:
+            target.unlink()
+            target.write_bytes(competing)
+            raise OSError("injected directory fsync failure")
+        original_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", fail_first_directory_fsync)
+    with pytest.raises(OSError, match="directory fsync failure"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert target.read_bytes() == competing
+
+
+def test_write_history_summary_temp_name_collision_preserves_competitor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    parent = tmp_path / "docs" / "results" / "version-control-migration"
+    parent.mkdir(parents=True)
+    temporary = parent / ".history-summary.yaml.fixed.tmp"
+    competitor = b"competitor: true\n"
+    temporary.write_bytes(competitor)
+    monkeypatch.setattr("versioning.migration.secrets.token_hex", lambda size: "fixed")
+
+    with pytest.raises(FileExistsError):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert temporary.read_bytes() == competitor
+
+
+def test_write_history_summary_rechecks_visible_path_after_commit_fsync(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    detached = tmp_path / "detached-after-fsync"
+    outside = tmp_path / "outside-after-fsync"
+    outside.mkdir()
+    competing = outside / "history-summary.yaml"
+    competing.write_bytes(b"attacker: true\n")
+    original_fsync = os.fsync
+    calls = 0
+
+    def swap_after_commit_fsync(fd: int) -> None:
+        nonlocal calls
+        calls += 1
+        original_fsync(fd)
+        if calls == 2:
+            target.parent.rename(detached)
+            target.parent.symlink_to(outside, target_is_directory=True)
+
+    monkeypatch.setattr(os, "fsync", swap_after_commit_fsync)
+    with pytest.raises(OSError, match="提交同步期间发生变化"):
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert competing.read_bytes() == b"attacker: true\n"
+    assert not (detached / "history-summary.yaml").exists()
+    target.parent.unlink()
+    detached.rename(target.parent)

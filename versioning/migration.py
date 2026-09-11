@@ -28,6 +28,7 @@ import json
 import math
 import os
 import re
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -838,6 +839,10 @@ class DataMigrationBlocked(Exception):
 
     fail-closed：任何写入前抛出，不遗留半写入目标对象。
     """
+
+
+class HistorySummaryConflict(Exception):
+    """history-summary 目标已存在，禁止覆盖或自动改名。"""
 
 
 def _derive_release_splits(raw_splits: object) -> dict[str, dict[str, int]]:
@@ -2993,3 +2998,144 @@ def build_history_summary(
         "history_summary_schema": _HISTORY_SUMMARY_SCHEMA,
         "entries": [_build_history_summary_entry(root, item) for item in items],
     }
+
+
+def write_history_summary(
+    root: Path, entries: Sequence[Mapping[str, object]]
+) -> Path:
+    """原子发布固定路径 history-summary，目标已存在时 fail-closed。"""
+    root = Path(root)
+    document = build_history_summary(root, entries)
+    target_rel = (
+        Path("docs")
+        / "results"
+        / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    if _history_path_has_link(root, target_rel):
+        raise HistorySummaryConflict("history-summary 目标路径含符号链接")
+    target = root / target_rel
+    if target.exists() or target.is_symlink():
+        raise HistorySummaryConflict(f"history-summary 目标已存在，拒绝覆盖: {target}")
+
+    nofollow_directory_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    directory_fd = os.open(root, nofollow_directory_flags)
+    try:
+        for part in target_rel.parent.parts:
+            try:
+                next_fd = os.open(
+                    part, nofollow_directory_flags, dir_fd=directory_fd
+                )
+            except FileNotFoundError:
+                try:
+                    os.mkdir(part, 0o755, dir_fd=directory_fd)
+                except FileExistsError:
+                    pass
+                next_fd = os.open(
+                    part, nofollow_directory_flags, dir_fd=directory_fd
+                )
+            os.close(directory_fd)
+            directory_fd = next_fd
+    except Exception:
+        os.close(directory_fd)
+        raise
+    temporary_name = f".{target.name}.{secrets.token_hex(12)}.tmp"
+    temporary_created = False
+    published = False
+    committed = False
+    try:
+        fd = os.open(
+            temporary_name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+            dir_fd=directory_fd,
+        )
+        temporary_created = True
+        payload = yaml.safe_dump(
+            document, allow_unicode=True, sort_keys=False
+        ).encode("utf-8")
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+            expected_stat = os.fstat(stream.fileno())
+        try:
+            os.link(
+                temporary_name,
+                target.name,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+        except FileExistsError as exc:
+            raise HistorySummaryConflict(
+                f"history-summary 目标已存在，拒绝覆盖: {target}"
+            ) from exc
+        published = True
+        published_stat = os.stat(
+            target.name, dir_fd=directory_fd, follow_symlinks=False
+        )
+        visible_stat = target.stat(follow_symlinks=False)
+        if (
+            (published_stat.st_dev, published_stat.st_ino)
+            != (expected_stat.st_dev, expected_stat.st_ino)
+            or (visible_stat.st_dev, visible_stat.st_ino)
+            != (expected_stat.st_dev, expected_stat.st_ino)
+        ):
+            raise OSError("history-summary 发布路径在原子提交期间发生变化")
+        os.fsync(directory_fd)
+        visible_after_fsync = target.stat(follow_symlinks=False)
+        if (
+            visible_after_fsync.st_dev,
+            visible_after_fsync.st_ino,
+        ) != (expected_stat.st_dev, expected_stat.st_ino):
+            raise OSError("history-summary 固定可见路径在提交同步期间发生变化")
+        committed = True
+        try:
+            for _ in range(3):
+                try:
+                    os.unlink(temporary_name, dir_fd=directory_fd)
+                    temporary_created = False
+                    break
+                except FileNotFoundError:
+                    temporary_created = False
+                    break
+                except OSError:
+                    continue
+            os.fsync(directory_fd)
+        except OSError:
+            # 目标目录项已在上一次 fsync 后提交；清理失败不能伪装成
+            # 未发布。finally 会再尝试一次删除临时名。
+            pass
+        return target
+    finally:
+        if published and not committed:
+            try:
+                current_stat = os.stat(
+                    target.name, dir_fd=directory_fd, follow_symlinks=False
+                )
+            except FileNotFoundError:
+                pass
+            else:
+                if (
+                    current_stat.st_dev,
+                    current_stat.st_ino,
+                ) == (expected_stat.st_dev, expected_stat.st_ino):
+                    os.unlink(target.name, dir_fd=directory_fd)
+            try:
+                os.fsync(directory_fd)
+            except OSError:
+                pass
+        if temporary_created:
+            try:
+                os.unlink(temporary_name, dir_fd=directory_fd)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                if not committed:
+                    raise
+        os.close(directory_fd)
