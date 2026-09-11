@@ -249,3 +249,13 @@ TDD：先提供可导入的空 source 入口，七个非法 split 测试均以
 该回归进程在后续 ROI/子视频增量开始前已经完成 collection/模块加载；source 代码和测试
 按已审查暂存快照独立提交，后续增量不混入本切片，也不由本结果宣称通过。
 M3b 已完成本地 source 适配；真实媒体、CLI 和其余阶段仍待完成。
+
+## 14. M3c：冻结 ROI 与真实裁剪适配
+
+2026-09-12 本机新增 `run_input_roi`，完整绑定 source 快照、冻结人工决定、原视频路径/摘要/分辨率、几何和审查时间。复用 legacy 的决定校验、几何 filter、ffmpeg 命令与时间轴门禁，不调用旧发布器。输出 ROI 媒体、保留标签治理的记录、冻结决定和完整阶段清单；阶段锁内及发布前递归复验上游，失败不发布半成品。
+
+非法决定测试先取得行为 RED；锁等待期间上游漂移测试取得 RED 后修复。独立 reviewer 发现非有限 duration 可绕过旧时间轴比较，补入正有限时长、正整数帧数/分辨率及帧率校验，并禁止 JSON NaN；NaN 回归 RED 后通过。ROI 定向18 passed，source+ROI35 passed；reviewer 独立复验131 passed（不含子视频），最终无可执行 finding。
+
+完整权威测试在 `6403400e` 的独立本机 detached worktree 上，仅叠加本 ROI 代码与测试，未包含后续子视频/审查/发布增量：`.venv/bin/python -m pytest -q tests/versioning --basetemp /tmp/mvllm2-roi-proof-20260912`，使用主工作区的同一虚拟环境解释器；**1725 passed，484.94 秒，exit 0**。临时日志 `/tmp/mvllm2-m3-roi-full-pytest.log`。本次提交的两个代码文件与被测快照逐字相同。
+
+媒体执行、探测均为本机显式替身；没有训练机真实 ffmpeg/采样对照、正式对象迁移或 CLI 切换证据。M3 仍进行中。

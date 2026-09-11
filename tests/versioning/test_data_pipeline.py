@@ -1304,3 +1304,159 @@ class TestInputSource:
                 flock(held.fileno(), fcntl.LOCK_UN)
             with pytest.raises(StageInputError):
                 future.result(timeout=5)
+
+
+# M3c Test List: frozen human ROI has full coverage and source/geometry binding;
+# crop commands use existing policy; actual resolution/frame count/duration gate;
+# publication remains atomic and source inputs/previous outputs are preserved.
+@pytest.fixture()
+def roi_inputs(source_inputs):
+    from pipeline.scripts import roi_annotation_app as app
+    path, doc, project, rewrite = source_inputs
+    video = project / 'videos/video_0001.mp4'
+    decision = app.build_decision(
+        video_id='video_0001', video_path=video, mode=app.MODE_NO_CROP,
+        review_status=app.STATUS_APPROVED,
+        margins=dict(top=0.0, right=0.0, bottom=0.0, left=0.0),
+        source_width=640, source_height=480, reviewed_timestamps=[0.0, 4.0, 9.0],
+        source_sha256=doc['source']['videos'][0]['sha256'],
+        source_video_reference='videos/video_0001.mp4',
+        visibility_checks={key: True for key in app.VISIBILITY_CHECK_KEYS})
+    payload = dict(schema_version=app.SCHEMA_VERSION, roi_policy_version=app.ROI_POLICY_VERSION,
+                   decisions=[decision])
+    rewrite(doc['roi_decisions'], json.dumps(payload).encode())
+    _save_pinned(path, doc)
+    return path, doc, project, rewrite
+
+
+def _roi_probe(path):
+    from pipeline.roi_media import VideoProbe
+    width, height = (640, 480) if path.parent.parent.name == 'source' else (642, 856)
+    return VideoProbe(width=width, height=height, frame_rate='30/1',
+                      nominal_frame_rate='30/1', frame_count=300, duration=10.0)
+
+
+def _fake_input_media(command, label):
+    Path(command[-1]).write_bytes(b'real-media-command-fixture')
+
+
+def _run_real_roi(root, path, probe=_roi_probe):
+    from versioning.data_pipeline import run_input_roi
+    return run_input_roi(root, inputs_path=path, batch='batch-001', probe=probe)
+
+
+class TestInputRoi:
+    def test_real_geometry_and_timeline_are_recorded(self, roi_inputs, tmp_path, monkeypatch):
+        from pipeline import roi_media, roi_manifest
+        from versioning import data_pipeline as dp
+        path, _, project, _ = roi_inputs
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        calls = []
+        def execute(command, label):
+            calls.append(command)
+            _fake_input_media(command, label)
+        monkeypatch.setattr(dp, '_execute_input_media', execute)
+        def forbid(*args, **kwargs):
+            pytest.fail('legacy ROI publisher must not run')
+        monkeypatch.setattr(roi_media, 'materialize_plan', forbid)
+        monkeypatch.setattr(roi_manifest, 'build_roi_manifest_bundle', forbid)
+        result = _run_real_roi(root, path)
+        output = root / 'data/working/batch-001/roi'
+        manifest = json.loads((output / 'roi_manifest.json').read_text())
+        assert result.stage == 'roi'
+        assert manifest['records'][0]['event_frame_effective'] == 120
+        assert manifest['videos'][0]['output_resolution'] == [642, 856]
+        assert manifest['videos'][0]['frame_count'] == 300
+        assert calls[0][calls[0].index('-vf') + 1] == 'pad=642:856:1:188:color=black,setsar=1'
+        frozen = json.loads((output / 'roi_decisions.frozen.json').read_text())
+        assert frozen == json.loads((project / 'roi.json').read_text())
+        assert not any(p.name in {'LATEST', 'index.json'} for p in root.rglob('*'))
+
+    @pytest.mark.parametrize('problem', ['missing', 'extra', 'pending', 'hash', 'path', 'geometry', 'resolution', 'timestamps'])
+    def test_invalid_roi_blocks_before_media_execution(self, roi_inputs, tmp_path, monkeypatch, problem):
+        from versioning import data_pipeline as dp
+        path, doc, project, rewrite = roi_inputs
+        payload = json.loads((project / 'roi.json').read_text())
+        decision = payload['decisions'][0]
+        if problem == 'missing':
+            payload['decisions'] = []
+        elif problem == 'extra':
+            payload['decisions'].append({**decision, 'source_video_id': 'video_0999'})
+        elif problem == 'pending':
+            decision['review_status'] = 'needs_review'
+        elif problem == 'hash':
+            decision['source_sha256'] = '0' * 64
+        elif problem == 'path':
+            decision['source_video_path'] = 'other/video_0001.mp4'
+        elif problem == 'geometry':
+            decision['pixel_box']['width'] -= 2
+        elif problem == 'resolution':
+            decision['source_resolution'] = [480, 640]
+        else:
+            decision['reviewed_timestamps'] = [float('nan')]
+        rewrite(doc['roi_decisions'], json.dumps(payload).encode())
+        _save_pinned(path, doc)
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        def forbidden(*args, **kwargs):
+            pytest.fail('invalid ROI must fail before any media write')
+        monkeypatch.setattr(dp, '_execute_input_media', forbidden)
+        with pytest.raises(StageInputError):
+            _run_real_roi(root, path)
+        assert not (root / 'data/working/batch-001/roi').exists()
+
+    @pytest.mark.parametrize('problem', ['frame_count', 'duration', 'nan_duration', 'infinite_duration', 'zero_duration', 'resolution', 'rate', 'execution'])
+    def test_failed_real_media_gate_never_publishes(self, roi_inputs, tmp_path, monkeypatch, problem):
+        from dataclasses import replace
+        from versioning import data_pipeline as dp
+        path, _, _, _ = roi_inputs
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        def execute(command, label):
+            if problem == 'execution':
+                raise StageInputError('ffmpeg failed')
+            _fake_input_media(command, label)
+        def probe(target):
+            result = _roi_probe(target)
+            if target.parent.parent.name == 'source':
+                return result
+            changes = {'frame_count': {'frame_count': 299}, 'duration': {'duration': 9.0},
+                       'resolution': {'width': 640}, 'rate': {'nominal_frame_rate': '24/1'},
+                       'nan_duration': {'duration': float('nan')},
+                       'infinite_duration': {'duration': float('inf')},
+                       'zero_duration': {'duration': 0.0}}
+            return replace(result, **changes.get(problem, {}))
+        monkeypatch.setattr(dp, '_execute_input_media', execute)
+        with pytest.raises(StageInputError):
+            _run_real_roi(root, path, probe)
+        assert not (root / 'data/working/batch-001/roi').exists()
+        assert not list((root / 'data/working/batch-001').glob('.roi-*'))
+
+    def test_upstream_drift_while_waiting_for_roi_lock_is_rejected(self, roi_inputs, tmp_path, monkeypatch):
+        import fcntl
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        from versioning import data_pipeline as dp
+        path, _, _, _ = roi_inputs
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        monkeypatch.setattr(dp, '_execute_input_media', _fake_input_media)
+        _run_real_roi(root, path)
+        flock = fcntl.flock
+        waiting = threading.Event()
+        def observed_lock(fd, operation):
+            waiting.set()
+            return flock(fd, operation)
+        lock_path = root / 'data/working/batch-001/.roi.lock'
+        with lock_path.open('a+') as held, ThreadPoolExecutor(max_workers=1) as pool:
+            flock(held.fileno(), fcntl.LOCK_EX)
+            monkeypatch.setattr(fcntl, 'flock', observed_lock)
+            future = pool.submit(_run_real_roi, root, path)
+            try:
+                assert waiting.wait(5)
+                (root / 'data/working/batch-001/source/media/video_0001.mp4').write_bytes(b'upstream changed')
+            finally:
+                flock(held.fileno(), fcntl.LOCK_UN)
+            with pytest.raises(StageInputError):
+                future.result(timeout=5)

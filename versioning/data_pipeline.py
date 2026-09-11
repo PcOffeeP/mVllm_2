@@ -98,7 +98,7 @@ def _sha256_file(path: Path) -> str:
 def _write_json(path: Path, data: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+        json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False),
         encoding="utf-8",
     )
 
@@ -949,6 +949,7 @@ def _publish_input_stage(root: Path, inputs: DataInputs, stage: str, producer,
         if load_data_inputs(inputs.config_path, batch=inputs.batch) != inputs:
             raise StageInputError('inputs 在等待阶段锁期间漂移')
         _input_stage_path(root, inputs.batch, stage)
+        _verify_upstream_stages(root, inputs, upstream)
         if directory.exists():
             existing, manifest = _load_input_stage(root, inputs, stage)
             if manifest['upstream'] != upstream:
@@ -960,6 +961,7 @@ def _publish_input_stage(root: Path, inputs: DataInputs, stage: str, producer,
             report = producer(temporary)
             if load_data_inputs(inputs.config_path, batch=inputs.batch) != inputs:
                 raise StageInputError('inputs 在阶段执行期间漂移')
+            _verify_upstream_stages(root, inputs, upstream)
             manifest = {'schema': 'tensile-data/stage/v1', 'stage': stage,
                         'batch': inputs.batch, 'inputs_sha256': inputs.config_sha256,
                         'upstream': upstream, 'artifacts': _stage_inventory(temporary),
@@ -1055,3 +1057,154 @@ def run_input_source(root: Path, *, inputs_path: Path, batch: str, probe=None) -
     return _publish_input_stage(root, inputs, 'source', produce,
                                 {'source_manifest_sha256': hashlib.sha256(
                                     json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode()).hexdigest()})
+
+
+
+
+def _verify_upstream_stages(root: Path, inputs: DataInputs, upstream: Mapping[str, str],
+                            seen: set[str] | None = None) -> None:
+    if not isinstance(upstream, dict):
+        raise StageInputError('upstream 必须是 mapping')
+    seen = set() if seen is None else seen
+    for stage, digest in upstream.items():
+        if stage == 'source_manifest_sha256':
+            continue
+        if stage not in STAGES or stage in seen:
+            raise StageInputError('阶段上游非法或出现循环')
+        directory, manifest = _load_input_stage(root, inputs, stage)
+        if _sha256_file(directory / 'stage_manifest.json') != digest:
+            raise StageInputError(f'{stage}: 上游 manifest 漂移')
+        _verify_upstream_stages(root, inputs, manifest['upstream'], seen | {stage})
+
+
+def _execute_input_media(command: list[str], label: str) -> None:
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
+    except OSError as exc:
+        raise StageInputError(f'{label}: 无法执行媒体命令: {exc}') from exc
+    if result.returncode != 0:
+        raise StageInputError(f'{label}: {result.stderr.strip()}')
+
+
+def _stage_json(directory: Path, name: str) -> dict[str, Any]:
+    try:
+        value = yaml.load((directory / name).read_text(encoding='utf-8'), Loader=_DataInputsLoader)
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise StageInputError(f'阶段输入无法读取 {name}: {exc}') from exc
+    if not isinstance(value, dict):
+        raise StageInputError(f'阶段输入必须是 mapping: {name}')
+    return value
+
+
+
+def _checked_input_probe(probe, path: Path):
+    from fractions import Fraction
+    observed = probe(path)
+    try:
+        if (type(observed.duration) not in (int, float)
+                or not math.isfinite(observed.duration) or observed.duration <= 0):
+            raise ValueError('duration 必须是正有限数')
+        for key in ('width', 'height', 'frame_count'):
+            value = getattr(observed, key)
+            if type(value) is not int or value <= 0:
+                raise ValueError(f'{key} 必须是正整数')
+        for key in ('frame_rate', 'nominal_frame_rate'):
+            if Fraction(getattr(observed, key)) <= 0:
+                raise ValueError(f'{key} 必须是正帧率')
+    except (AttributeError, ValueError, TypeError, ZeroDivisionError) as exc:
+        raise StageInputError(f'媒体属性无效 {path}: {exc}') from exc
+    return observed
+
+
+def run_input_roi(root: Path, *, inputs_path: Path, batch: str, probe=None) -> StageResult:
+    """Validate frozen human ROI then crop/pad without changing the timeline."""
+    from pipeline import roi_manifest as roi_api, roi_media
+
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    source_dir, _ = _load_input_stage(root, inputs, 'source')
+    source = _stage_json(source_dir, 'source_manifest.json')
+    frozen = _read_pinned_document(inputs.roi_decisions)
+    try:
+        decisions = roi_api._decision_index(frozen)
+    except ValueError as exc:
+        raise StageInputError(f'ROI 决定无效: {exc}') from exc
+    records = {row['video_id']: row for row in source['records']}
+    files = {row['video_id']: row for row in source['files']}
+    if set(decisions) != set(records):
+        raise StageInputError('ROI 决定必须完整覆盖 source 全集')
+    rows = []
+    for video in inputs.videos:
+        video_id = video.video_id
+        decision = decisions[video_id]
+        reference = _input_text(decision.get('source_video_path'), 'ROI.source_video_path')
+        raw = Path(reference)
+        if not raw.is_absolute():
+            raw = inputs.project_root / raw
+        if '..' in Path(reference).parts or raw.resolve() != video.file.path:
+            raise StageInputError(f'{video_id}: ROI 源路径不匹配显式 video pin')
+        if decision.get('source_sha256') != video.file.sha256:
+            raise StageInputError(f'{video_id}: ROI source SHA-256 不一致')
+        observed = files[video_id]['probe']
+        if decision.get('source_resolution') != [observed['width'], observed['height']]:
+            raise StageInputError(f'{video_id}: ROI source_resolution 与真实 source 不一致')
+        timestamps = decision.get('reviewed_timestamps')
+        if (not isinstance(timestamps, list) or not timestamps or any(
+                type(value) not in (int, float) or not math.isfinite(value)
+                or value < 0 or value > records[video_id]['duration'] for value in timestamps)):
+            raise StageInputError(f'{video_id}: reviewed_timestamps 无效或越界')
+        try:
+            # Resolve only the already-bound exact path; no legacy path fallback.
+            roi_api._validate_decision(
+                {**decision, 'source_video_path': str(video.file.path)}, records[video_id],
+                inputs.project_root, verify_source_hash=True)
+            video_filter, resolution = roi_media.filter_for_decision(decision)
+        except ValueError as exc:
+            raise StageInputError(f'{video_id}: ROI 校验失败: {exc}') from exc
+        rows.append((video_id, decision, video_filter, resolution))
+    upstream = {'source': _sha256_file(source_dir / 'stage_manifest.json')}
+    get_probe = probe or roi_media.probe_video
+
+    def produce(destination):
+        videos, derived_records = [], []
+        for video_id, decision, video_filter, resolution in rows:
+            source_path = source_dir / 'media' / files[video_id]['name']
+            output = destination / 'media' / f'{video_id}.mp4'
+            output.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                before = _checked_input_probe(get_probe, source_path)
+                recorded = files[video_id]['probe']
+                if ((before.width, before.height) != tuple(decision['source_resolution'])
+                        or before.frame_count != recorded['total_frames']):
+                    raise StageInputError(f'{video_id}: 裁剪前源属性漂移')
+                command = roi_media.build_ffmpeg_command(source_path, output, decision)
+                _execute_input_media(command, f'{video_id}: ROI 裁剪失败')
+                after = _checked_input_probe(get_probe, output)
+                roi_media.validate_temporal_contract(before, after, resolution)
+            except (ValueError, RuntimeError, OSError) as exc:
+                raise StageInputError(f'{video_id}: ROI 媒体校验失败: {exc}') from exc
+            digest = _sha256_file(output)
+            videos.append({'video_id': video_id, 'path': f'media/{video_id}.mp4',
+                           'output_resolution': [after.width, after.height],
+                           'frame_count': after.frame_count, 'duration': after.duration,
+                           'frame_rate': after.frame_rate, 'nominal_frame_rate': after.nominal_frame_rate,
+                           'video_filter': video_filter, 'sha256': digest,
+                           'size_bytes': output.stat().st_size})
+            derived_records.append({**records[video_id], 'video_path': f'media/{video_id}.mp4',
+                                    'width': after.width, 'height': after.height,
+                                    'roi_provenance': {'source_stage_sha256': upstream['source'],
+                                                       'roi_decisions_sha256': inputs.roi_decisions.sha256,
+                                                       'mode': decision['mode'], 'pixel_box': decision['pixel_box'],
+                                                       'output_sha256': digest}})
+        if _sha256_file(source_dir / 'stage_manifest.json') != upstream['source']:
+            raise StageInputError('ROI 执行期间 source manifest 漂移')
+        _load_input_stage(root, inputs, 'source')
+        _write_json(destination / 'roi_manifest.json', {
+            'batch': batch, 'inputs_sha256': inputs.config_sha256,
+            'videos': videos, 'records': derived_records, 'splits': source['splits']})
+        _write_json(destination / 'roi_decisions.frozen.json', {
+            'schema_version': frozen['schema_version'],
+            'roi_policy_version': frozen['roi_policy_version'],
+            'decisions': frozen['decisions']})
+        return {'batch': batch, 'video_count': len(videos)}
+
+    return _publish_input_stage(root, inputs, 'roi', produce, upstream)
