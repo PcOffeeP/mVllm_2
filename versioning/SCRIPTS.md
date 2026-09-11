@@ -11,9 +11,14 @@
 | `eval` | `mlflow_eval.py`、`manifest.py` | 测评父子 Run、Registry 精确引用、holdout 消费、结论门与 eval manifest 单向导出 |
 | `model` | `registry.py`、`manifest.py`、`materialize.py` | `mVllm2` 两阶段 register/finalize、model manifest、唯一部署目标 gate、alias 与 `models/current` 原子物化 |
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
+| `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
 完整参数运行 `python -m versioning <领域> --help` 查看。
+迁移命令不会扫描 sibling 或选择“当前”对象：Prompt/Data 动作必须显式给出
+`tensile-migration/object-mapping/v1` 映射文件，history 动作必须显式给出 entry YAML 列表，
+六个 migration 动作都必须显式给出 `--root`。映射或 entry 中的重复 YAML 键会被拒绝；
+预检报告为 `blocked` 时保留 JSON 拒因并以非零状态退出。
 
 所有正式写入都要求显式版本；CLI 的项目数据根必须显式传入，Registry、eval、alias 与
 manifest 在操作时在线复验其 train/data/eval 血缘。测试中的临时 store 推断不属于正式入口。

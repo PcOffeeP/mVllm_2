@@ -16,6 +16,7 @@ from typing import Any, Mapping, Sequence
 
 import yaml
 
+from versioning import migration as migration_api
 from versioning.backup import create_backup, restore_backup, verify_backup
 from versioning.data_pipeline import run_stage
 from versioning.data_release import load_release_metadata, validate_training_reference
@@ -79,9 +80,23 @@ class CLIUsageError(ValueError):
     """命令行参数组合不完整或不合法。"""
 
 
-def _add_root(parser: argparse.ArgumentParser) -> None:
+def _explicit_path(value: str) -> Path:
+    if not value.strip():
+        raise argparse.ArgumentTypeError("--root 不得为空")
+    return Path(value)
+
+
+def _add_root(parser: argparse.ArgumentParser, *, required: bool = False) -> None:
     parser.add_argument(
-        "--root", type=Path, default=Path("."), help="项目根目录（默认当前目录）"
+        "--root",
+        type=_explicit_path if required else Path,
+        default=None if required else Path("."),
+        required=required,
+        help=(
+            "显式项目根目录"
+            if required
+            else "项目根目录（默认当前目录）"
+        ),
     )
 
 
@@ -233,6 +248,32 @@ def _build_parser() -> argparse.ArgumentParser:
     backup.add_argument("--prompts-root", type=Path, help="Prompt 项目根目录")
     backup.add_argument("--models-root", type=Path, help="物化模型根目录")
     backup.add_argument("--mlflow-root", type=Path, help="恢复目标 MLflow 根目录")
+
+    migration = commands.add_parser(
+        "migration", help="预检、迁移已确认对象或整理历史摘要"
+    )
+    migration.add_argument(
+        "action",
+        choices=(
+            "prompt-precheck",
+            "prompt-migrate",
+            "data-precheck",
+            "data-migrate",
+            "history-build",
+            "history-write",
+        ),
+    )
+    _add_root(migration, required=True)
+    migration.add_argument(
+        "--mapping",
+        type=Path,
+        help="显式 object-mapping YAML（Prompt/Data 动作必需）",
+    )
+    migration.add_argument(
+        "--entries",
+        type=Path,
+        help="显式 history entry YAML 列表（history 动作必需）",
+    )
     return parser
 
 
@@ -257,6 +298,63 @@ def _load_mapping(
         qualifier = "可为空" if allow_empty else "非空"
         raise ValueError(f"{label} YAML 必须是{qualifier} mapping")
     return dict(raw)
+
+
+class _UniqueKeySafeLoader(yaml.SafeLoader):
+    """SafeLoader 变体：任意层级的重复 mapping key 都拒绝。"""
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> Any:
+        if not isinstance(node, yaml.MappingNode):
+            return super().construct_mapping(node, deep=deep)
+        self.flatten_mapping(node)
+        mapping: dict[Any, Any] = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                duplicate = key in mapping
+            except TypeError as exc:
+                raise ValueError("YAML mapping key 不可哈希") from exc
+            if duplicate:
+                raise ValueError(f"YAML mapping 含重复键: {key!r}")
+            mapping[key] = self.construct_object(value_node, deep=deep)
+        return mapping
+
+
+def _load_yaml_value(path: Path, label: str) -> Any:
+    try:
+        return yaml.load(
+            Path(path).read_text(encoding="utf-8"), Loader=_UniqueKeySafeLoader
+        )
+    except Exception as exc:
+        raise ValueError(f"无法读取 {label} YAML: {exc}") from exc
+
+
+_MIGRATION_MAPPING_SCHEMA = "tensile-migration/object-mapping/v1"
+
+
+def _load_migration_mapping_items(path: Path, section_name: str) -> list[Any]:
+    raw = _load_yaml_value(path, "mapping")
+    if not isinstance(raw, Mapping):
+        raise ValueError("migration mapping YAML 顶层必须是 mapping")
+    if raw.get("mapping_schema") != _MIGRATION_MAPPING_SCHEMA:
+        raise ValueError(
+            "migration mapping_schema 必须为 "
+            f"{_MIGRATION_MAPPING_SCHEMA!r}"
+        )
+    section = raw.get(section_name)
+    if not isinstance(section, Mapping):
+        raise ValueError(f"migration mapping 缺少 {section_name} mapping")
+    items = section.get("items")
+    if not isinstance(items, list):
+        raise ValueError(f"migration {section_name}.items 必须是显式列表")
+    return list(items)
+
+
+def _load_history_entries(path: Path) -> list[Any]:
+    raw = _load_yaml_value(path, "entries")
+    if not isinstance(raw, list):
+        raise ValueError("history entries YAML 顶层必须是显式列表")
+    return list(raw)
 
 
 def _jsonable(value: Any) -> Any:
@@ -687,6 +785,33 @@ def _handle_backup(args: argparse.Namespace) -> Any:
     )
 
 
+def _handle_migration(args: argparse.Namespace) -> Any:
+    if args.action.startswith("prompt-"):
+        _required(args, "mapping")
+        items = _load_migration_mapping_items(args.mapping, "prompt_mapping")
+        if len(items) != 1:
+            raise ValueError(
+                "migration prompt_mapping.items 必须恰含一条已确认映射"
+            )
+        item = items[0]
+        if args.action == "prompt-precheck":
+            return migration_api.precheck_prompt_migration(args.root, item)
+        return migration_api.migrate_prompt(args.root, item)
+
+    if args.action.startswith("data-"):
+        _required(args, "mapping")
+        items = _load_migration_mapping_items(args.mapping, "data_mapping")
+        if args.action == "data-precheck":
+            return migration_api.precheck_data_migration(args.root, items)
+        return migration_api.migrate_data(args.root, items)
+
+    _required(args, "entries")
+    entries = _load_history_entries(args.entries)
+    if args.action == "history-build":
+        return migration_api.build_history_summary(args.root, entries)
+    return migration_api.write_history_summary(args.root, entries)
+
+
 _HANDLERS = {
     "data": _handle_data,
     "prompt": _handle_prompt,
@@ -694,6 +819,7 @@ _HANDLERS = {
     "eval": _handle_eval,
     "model": _handle_model,
     "backup": _handle_backup,
+    "migration": _handle_migration,
 }
 
 
@@ -713,6 +839,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+
+    if args.command == "migration" and args.action.endswith("-precheck"):
+        status = (
+            result.get("status")
+            if isinstance(result, Mapping)
+            else getattr(result, "status", None)
+        )
+        if status != "ready":
+            _emit(result)
+            return 1
 
     _emit(result)
     return 0
