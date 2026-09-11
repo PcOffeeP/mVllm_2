@@ -21868,6 +21868,162 @@ def test_write_history_summary_rollback_preserves_replaced_competing_target(
     assert target.read_bytes() == competing
 
 
+def test_write_history_summary_double_failure_closes_fds_and_keeps_primary_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    original_unlink = os.unlink
+    fd_directory = Path("/proc/self/fd")
+    if not fd_directory.is_dir():
+        fd_directory = Path("/dev/fd")
+    before_fds = len(list(fd_directory.iterdir()))
+
+    def fail_link(*args: Any, **kwargs: Any) -> None:
+        raise OSError("primary publish failure")
+
+    def fail_temp_unlink(
+        path: str | bytes | Path, *args: Any, **kwargs: Any
+    ) -> None:
+        if str(path).startswith(".history-summary.yaml."):
+            raise OSError("secondary temp cleanup failure")
+        original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "link", fail_link)
+    monkeypatch.setattr(os, "unlink", fail_temp_unlink)
+    with pytest.raises(OSError, match="primary publish failure") as exc_info:
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert len(list(fd_directory.iterdir())) == before_fds
+    assert any(
+        "secondary temp cleanup failure" in note
+        for note in getattr(exc_info.value, "__notes__", [])
+    )
+
+
+def test_write_history_summary_rollback_failure_closes_fds_and_keeps_primary_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    original_fsync = os.fsync
+    original_unlink = os.unlink
+    fsync_calls = 0
+    fd_directory = Path("/proc/self/fd")
+    if not fd_directory.is_dir():
+        fd_directory = Path("/dev/fd")
+    before_fds = len(list(fd_directory.iterdir()))
+
+    def fail_directory_fsync(fd: int) -> None:
+        nonlocal fsync_calls
+        fsync_calls += 1
+        if fsync_calls == 2:
+            raise OSError("primary directory fsync failure")
+        original_fsync(fd)
+
+    def fail_target_unlink(
+        path: str | bytes | Path, *args: Any, **kwargs: Any
+    ) -> None:
+        if str(path) == "history-summary.yaml":
+            raise OSError("secondary target rollback failure")
+        original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "fsync", fail_directory_fsync)
+    monkeypatch.setattr(os, "unlink", fail_target_unlink)
+    with pytest.raises(OSError, match="primary directory fsync failure") as exc_info:
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert len(list(fd_directory.iterdir())) == before_fds
+    assert any(
+        "secondary target rollback failure" in note
+        for note in getattr(exc_info.value, "__notes__", [])
+    )
+
+
+def test_write_history_summary_rollback_stat_failure_closes_fds_and_preserves_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    target = (
+        tmp_path / "docs" / "results" / "version-control-migration"
+        / "history-summary.yaml"
+    )
+    original_fsync = os.fsync
+    original_stat = os.stat
+    fsync_calls = 0
+    target_stat_calls = 0
+    fd_directory = Path("/proc/self/fd")
+    if not fd_directory.is_dir():
+        fd_directory = Path("/dev/fd")
+    before_fds = len(list(fd_directory.iterdir()))
+
+    def fail_directory_fsync(fd: int) -> None:
+        nonlocal fsync_calls
+        fsync_calls += 1
+        if fsync_calls == 2:
+            raise OSError("primary directory fsync failure")
+        original_fsync(fd)
+
+    def fail_rollback_stat(
+        path: str | bytes | Path, *args: Any, **kwargs: Any
+    ) -> os.stat_result:
+        nonlocal target_stat_calls
+        if str(path) == "history-summary.yaml" and "dir_fd" in kwargs:
+            target_stat_calls += 1
+            if target_stat_calls == 2:
+                raise PermissionError("secondary rollback stat failure")
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "fsync", fail_directory_fsync)
+    monkeypatch.setattr(os, "stat", fail_rollback_stat)
+    with pytest.raises(OSError, match="primary directory fsync failure") as exc_info:
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert len(list(fd_directory.iterdir())) == before_fds
+    assert any(
+        "secondary rollback stat failure" in note
+        for note in getattr(exc_info.value, "__notes__", [])
+    )
+    assert target.is_file()
+
+
+def test_write_history_summary_rollback_fsync_failure_is_attached_to_primary_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_full_history_prompt_registry(tmp_path)
+    writer = _resolve_history_summary_writer()
+    assert writer is not None
+    original_fsync = os.fsync
+    fsync_calls = 0
+    fd_directory = Path("/proc/self/fd")
+    if not fd_directory.is_dir():
+        fd_directory = Path("/dev/fd")
+    before_fds = len(list(fd_directory.iterdir()))
+
+    def fail_publish_and_rollback_fsync(fd: int) -> None:
+        nonlocal fsync_calls
+        fsync_calls += 1
+        if fsync_calls == 2:
+            raise OSError("primary directory fsync failure")
+        if fsync_calls == 3:
+            raise OSError("secondary rollback fsync failure")
+        original_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", fail_publish_and_rollback_fsync)
+    with pytest.raises(OSError, match="primary directory fsync failure") as exc_info:
+        writer(tmp_path, [_confirmed_prompt_history_entry()])
+
+    assert len(list(fd_directory.iterdir())) == before_fds
+    assert any(
+        "secondary rollback fsync failure" in note
+        for note in getattr(exc_info.value, "__notes__", [])
+    )
+
+
 def test_write_history_summary_temp_name_collision_preserves_competitor(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

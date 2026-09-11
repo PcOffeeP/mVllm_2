@@ -89,3 +89,31 @@
 - LoRA 参数取自声明 run 的 `adapter_config.json`，并以归档 MANIFEST 中记录的 size/SHA-256 验证；归档目录本身没有该文件副本。epochs/effective batch 由归档 training manifest、trainer state 和包摘要交叉核对。
 - learning rate、optimizer、precision 继续保持字段级 unknown：现有证据包未提供足够稳定的历史执行配置链，当前 active 配置可能已漂移，不得据此反推。
 - 训练机当前 `main@f1b7d8a3` 尚无 `docs/results/model_evidence`，因此本轮仅完成本地合成行为、实际归档布局静态核对和训练机文件盘点；尚未在训练机对真实历史 run 执行端到端参数提取。
+
+## 10. M2 训练机隔离验证授权与预检
+
+2026-09-11，用户明确授权以 M1 基线 `7eeb93a792d023c7f250f56157ae3128ac583ec2` 推进 M2 训练机隔离验证。授权范围与精确目标如下：
+
+- bundle：`/home/liuyang/文档/mvllm2-migration-7eeb93a7.bundle`
+- 隔离 checkout：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7`
+- 允许：创建并传输上述 bundle、创建上述隔离 checkout、在隔离 checkout 内创建项目级环境、执行非 GPU 测试、只读 precheck、Linux 文件锁验证，以及小规模 DVC/MLflow restore smoke。
+- 不允许：正式迁移写入、修改训练机现有 `main` 工作区、停止进程、修改系统权限或系统级依赖、训练、GPU 推理、完整评测、push 或 merge。
+
+执行前只读预检（exit 0）：
+
+- 本机为 `refactor/2026-09-07-readable-version-control-migration@7eeb93a7`；除未跟踪交接文件外无修改。
+- 训练机现有项目保持干净 `main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。
+- 上述 bundle 与隔离 checkout 路径均不存在。
+- `/home` 可用约 395 GiB，`/data` 可用约 3.4 TiB。
+
+本节只记录授权和执行前状态；bundle 校验、隔离 checkout、环境与 smoke 结果将在实际完成后追加。
+
+### 10.1 首次同步与 Linux RED
+
+- 本机生成完整历史 bundle，分支引用精确指向 `7eeb93a792d023c7f250f56157ae3128ac583ec2`；本机与训练机 SHA-256 均为 `6a6ebd9944256deddf08e12a0c4f58de720f2e2eb4896e11719cd73d993396e2`，训练机仓库上下文中的 `git bundle verify` 通过。
+- 隔离 checkout 已从该 bundle 创建，分支为 `refactor/2026-09-07-readable-version-control-migration`，HEAD 为 `7eeb93a7`；除项目级环境目录外无修改。原有项目继续保持干净 `main@f1b7d8a3`。
+- `/data/mVllm_2` 属主为 `liuyang:liuyang` 且可读、可写、可进入；设计目标 `/data/mVllm_2/dvc-remote` 与 `/data/mVllm_2/mlflow` 尚不存在。本轮未创建二者，smoke 继续使用临时目录。
+- 隔离 checkout 内创建 `.conda-m2` 项目级环境；Python 3.11.16。训练机没有可用的已跟踪 `uv.lock`（仓库 `.gitignore` 排除该文件），因此未生成或伪称冻结同步；改按本机既有锁定事实显式安装 DVC 3.67.1、MLflow 3.15.2、pandas 3.0.3、pytest 9.1.1、PyYAML 6.0.3。
+- 普通 pip 解析正确拒绝 MLflow 3.15.2 声明的 `pandas<3` 与 pandas 3.0.3 冲突；随后按项目 `pyproject.toml` 的 uv override 机制安装成功。该组合仍须以真实 SQLite/artifact smoke 验证，不能只凭安装成功判定兼容。
+- 首轮 Linux `test_cli.py + test_migration.py`：236 passed、1 failed。失败用例 `test_write_history_summary_detects_temporary_source_replacement` 证明 H12 在 hard-link 前关闭最后一个临时源 FD 后，Linux 可立即复用 inode，使仅比较 `(st_dev, st_ino)` 的替换检测失效。
+- 本机最小修复保持原临时 inode 的复制 FD 直到发布校验结束。独立 reviewer 三轮先后发现并闭环 2 个 P2 与 1 个 P3：双故障清理可掩盖原发布异常并泄漏复制 FD 与目录 FD；回滚所有权 `stat` 失败有同类问题；回滚目录 `fsync` 失败被静默吞掉。最终所有回滚、临时清理和两个 FD 关闭均被独立尝试，原异常保持主异常，次级清理错误附注于原异常；新增四类双故障回归，相关 8 例与完整 `test_migration.py` 191 例均通过，reviewer 终审无剩余 P0–P3。该修复须以提交对象增量同步后在训练机复跑；在此之前 M2 不判定通过。

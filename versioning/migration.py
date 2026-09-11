@@ -29,6 +29,7 @@ import math
 import os
 import re
 import secrets
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -3047,6 +3048,7 @@ def write_history_summary(
     temporary_created = False
     published = False
     committed = False
+    source_guard_fd: int | None = None
     try:
         fd = os.open(
             temporary_name,
@@ -3063,6 +3065,11 @@ def write_history_summary(
             stream.flush()
             os.fsync(stream.fileno())
             expected_stat = os.fstat(stream.fileno())
+            # Keep the original inode alive until the published name has been
+            # verified.  Linux may immediately reuse the inode after the last
+            # descriptor is closed, which would let a same-name replacement
+            # evade a comparison based on (st_dev, st_ino).
+            source_guard_fd = os.dup(stream.fileno())
         try:
             os.link(
                 temporary_name,
@@ -3113,6 +3120,8 @@ def write_history_summary(
             pass
         return target
     finally:
+        active_error = sys.exception()
+        cleanup_errors: list[OSError] = []
         if published and not committed:
             try:
                 current_stat = os.stat(
@@ -3120,22 +3129,52 @@ def write_history_summary(
                 )
             except FileNotFoundError:
                 pass
+            except OSError as exc:
+                # Ownership cannot be established safely; preserve the target
+                # and continue closing every resource.
+                cleanup_errors.append(exc)
             else:
                 if (
                     current_stat.st_dev,
                     current_stat.st_ino,
                 ) == (expected_stat.st_dev, expected_stat.st_ino):
-                    os.unlink(target.name, dir_fd=directory_fd)
+                    try:
+                        os.unlink(target.name, dir_fd=directory_fd)
+                    except OSError as exc:
+                        cleanup_errors.append(exc)
             try:
                 os.fsync(directory_fd)
-            except OSError:
-                pass
+            except OSError as exc:
+                cleanup_errors.append(exc)
         if temporary_created:
             try:
                 os.unlink(temporary_name, dir_fd=directory_fd)
             except FileNotFoundError:
                 pass
-            except OSError:
+            except OSError as exc:
                 if not committed:
-                    raise
-        os.close(directory_fd)
+                    cleanup_errors.append(exc)
+        if source_guard_fd is not None:
+            try:
+                os.close(source_guard_fd)
+            except OSError as exc:
+                cleanup_errors.append(exc)
+        try:
+            os.close(directory_fd)
+        except OSError as exc:
+            cleanup_errors.append(exc)
+        if cleanup_errors:
+            if active_error is not None:
+                for exc in cleanup_errors:
+                    active_error.add_note(
+                        "history-summary 清理失败："
+                        f"{type(exc).__name__}: {exc}"
+                    )
+            else:
+                primary_cleanup_error = cleanup_errors[0]
+                for exc in cleanup_errors[1:]:
+                    primary_cleanup_error.add_note(
+                        "history-summary 其他清理失败："
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                raise primary_cleanup_error
