@@ -20785,3 +20785,187 @@ def test_fold_merged_link_rejects_unapproved_link_layers(
             name=WEIGHT_RUN_MERGED_PRESENT_FACT,
             run_id=entry["source_legacy_id"],
         )
+
+
+def _write_verified_parameter_archive(root: Path) -> Path:
+    """写入与真实 model_evidence 包同结构的 H9 合成归档证据。"""
+    archive = root / "docs" / "results" / "model_evidence" / WEIGHT_RUN_DECLARED_ID
+    files = {
+        "input/training_run_manifest.json": {
+            "schema_version": (
+                "tensile-vlm-v4.1-source-aware-3k-training-run/v1"
+            ),
+            "seed": 3407,
+            "epochs": 3.0,
+        },
+        "adapter/adapter_config.json": {
+            "r": 8,
+            "lora_alpha": 16,
+            "target_modules": ["v_proj", "q_proj", "k_proj"],
+        },
+        "adapter/trainer_state.json": {
+            "num_train_epochs": 3.0,
+            "train_batch_size": 1,
+        },
+    }
+    evidence_files = []
+    for relative, payload in files.items():
+        path = archive / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        content = _fixture_pretty_json_bytes(payload)
+        path.write_bytes(content)
+        evidence_files.append(
+            {
+                "path": relative,
+                "size_bytes": len(content),
+                "sha256": hashlib.sha256(content).hexdigest(),
+            }
+        )
+        if relative == "adapter/adapter_config.json":
+            declared_config = (
+                root
+                / "workspace"
+                / "runs"
+                / WEIGHT_RUN_DECLARED_ID
+                / "fold0"
+                / "adapter"
+                / "adapter_config.json"
+            )
+            declared_config.write_bytes(content)
+    # 真实归档布局只在 MANIFEST 中保存 adapter_config 的 size/hash；内容
+    # 仍位于声明 run，参数提取必须把 provenance 指回该实际文件。
+    (archive / "adapter" / "adapter_config.json").unlink()
+    (archive / "MANIFEST.json").write_bytes(
+        _fixture_pretty_json_bytes(
+            {
+                "schema_version": "v4.1-archival-evidence-package/v1",
+                "run_id": WEIGHT_RUN_DECLARED_ID,
+                "sampling": {"seed": 3407},
+                "training": {
+                    "epochs": 3.0,
+                    "gradient_accumulation_steps": 8,
+                },
+                "evidence_package_files": evidence_files,
+            }
+        )
+    )
+    return archive
+
+
+def test_weight_run_extracts_only_hash_verified_archival_parameters(
+    tmp_path: Path,
+) -> None:
+    """已验签归档只放行六个可交叉证明的核心训练参数。"""
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    archive = _write_verified_parameter_archive(tmp_path)
+    entry = _confirmed_weight_run_entry()
+    before = _snapshot_tree(tmp_path)
+
+    summary_entry = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]
+    facts = summary_entry["facts"]
+    expected = {
+        "seed": 3407,
+        "epochs": 3.0,
+        "effective_batch_size": 8,
+        "lora_rank": 8,
+        "lora_alpha": 16,
+        "lora_target_modules": ["k_proj", "q_proj", "v_proj"],
+    }
+    for name, value in expected.items():
+        assert facts[name]["value"] == value
+        assert facts[name]["source"]["corroborated_by"]
+    assert facts["seed"]["source"]["path"].endswith(
+        "input/training_run_manifest.json"
+    )
+    assert facts["epochs"]["source"]["path"].endswith(
+        "input/training_run_manifest.json"
+    )
+    assert facts["effective_batch_size"]["source"]["path"].endswith(
+        "adapter/trainer_state.json"
+    )
+    expected_adapter_source = (
+        f"workspace/runs/{WEIGHT_RUN_DECLARED_ID}/fold0/adapter/adapter_config.json"
+    )
+    for name in ("lora_rank", "lora_alpha", "lora_target_modules"):
+        assert facts[name]["source"]["path"] == expected_adapter_source
+        assert facts[name]["source"]["corroborated_by"] == [
+            f"docs/results/model_evidence/{WEIGHT_RUN_DECLARED_ID}/MANIFEST.json"
+        ]
+    for name in ("learning_rate", "optimizer", "precision"):
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+    assert _snapshot_tree(tmp_path) == before
+
+
+def test_weight_run_parameter_archive_hash_mismatch_keeps_all_unknown(
+    tmp_path: Path,
+) -> None:
+    """归档内任一被保护文件篡改时不得输出部分参数事实。"""
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    archive = _write_verified_parameter_archive(tmp_path)
+    state_path = archive / "adapter" / "trainer_state.json"
+    state_path.write_bytes(_fixture_pretty_json_bytes({"num_train_epochs": 99}))
+    entry = _confirmed_weight_run_entry()
+
+    facts = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]["facts"]
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+
+
+@pytest.mark.parametrize("bad_path", [[], {}, 1, True, "", "../escape.json"])
+def test_weight_run_parameter_archive_rejects_unsafe_manifest_paths(
+    tmp_path: Path, bad_path: object
+) -> None:
+    """非字符串或越界 evidence path 不得抛异常或放行参数。"""
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    archive = _write_verified_parameter_archive(tmp_path)
+    manifest_path = archive / "MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["evidence_package_files"][0]["path"] = bad_path
+    manifest_path.write_bytes(_fixture_pretty_json_bytes(manifest))
+    entry = _confirmed_weight_run_entry()
+
+    facts = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]["facts"]
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+
+
+def test_weight_run_parameter_archive_rejects_bool_cross_evidence(
+    tmp_path: Path,
+) -> None:
+    """交叉来源的 bool 不得利用 Python 数值相等语义冒充 epoch。"""
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    archive = _write_verified_parameter_archive(tmp_path)
+    state_path = archive / "adapter" / "trainer_state.json"
+    state_content = _fixture_pretty_json_bytes(
+        {"num_train_epochs": True, "train_batch_size": 1}
+    )
+    state_path.write_bytes(state_content)
+    manifest_path = archive / "MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["training"]["epochs"] = True
+    for item in manifest["evidence_package_files"]:
+        if item["path"] == "adapter/trainer_state.json":
+            item["size_bytes"] = len(state_content)
+            item["sha256"] = hashlib.sha256(state_content).hexdigest()
+    manifest_path.write_bytes(_fixture_pretty_json_bytes(manifest))
+    entry = _confirmed_weight_run_entry()
+
+    facts = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]["facts"]
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )

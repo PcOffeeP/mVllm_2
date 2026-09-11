@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 from dataclasses import dataclass, field
@@ -2205,6 +2206,190 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
             ),
             "attempted_source": run_rel.as_posix(),
         }
+
+    # H9：只采信已归档且逐文件验签的模型证据包。活动配置可能在训练后
+    # 漂移，不参与历史参数推断；一个包内任一身份、哈希或交叉字段矛盾
+    # 时全部参数保持字段级 unknown，结构事实仍按上文独立观察。
+    archive_rel = Path("docs") / "results" / "model_evidence" / source_id
+    archive_dir = root / archive_rel
+    archive_manifest = archive_dir / "MANIFEST.json"
+    training_manifest = archive_dir / "input" / "training_run_manifest.json"
+    declared_adapter_config = adapter_dir / "adapter_config.json"
+    archived_trainer_state = archive_dir / "adapter" / "trainer_state.json"
+    parameter_files = {
+        "input/training_run_manifest.json": training_manifest,
+        "adapter/adapter_config.json": declared_adapter_config,
+        "adapter/trainer_state.json": archived_trainer_state,
+    }
+    try:
+        for path in (archive_manifest, *parameter_files.values()):
+            relative = path.relative_to(root)
+            if has_link_component(relative) or not path.is_file():
+                raise ValueError(f"归档参数证据文件不可读或来源链含链接：{relative}")
+        package = json.loads(archive_manifest.read_text(encoding="utf-8"))
+        training = json.loads(training_manifest.read_text(encoding="utf-8"))
+        adapter_config = json.loads(
+            declared_adapter_config.read_text(encoding="utf-8")
+        )
+        trainer_state = json.loads(archived_trainer_state.read_text(encoding="utf-8"))
+        if not all(
+            isinstance(item, Mapping)
+            for item in (package, training, adapter_config, trainer_state)
+        ):
+            raise ValueError("归档参数证据 JSON 顶层必须为 mapping")
+        if package.get("run_id") != source_id:
+            raise ValueError("归档包 run_id 与声明 run 不符")
+        if package.get("schema_version") != "v4.1-archival-evidence-package/v1":
+            raise ValueError("归档包 schema_version 不受支持")
+        if training.get("schema_version") != (
+            "tensile-vlm-v4.1-source-aware-3k-training-run/v1"
+        ):
+            raise ValueError("训练归档 manifest schema_version 不受支持")
+        file_entries = package.get("evidence_package_files")
+        if not isinstance(file_entries, list):
+            raise ValueError("归档包缺少 evidence_package_files")
+        expected_hashes: dict[object, tuple[object, object]] = {}
+        for item in file_entries:
+            if not isinstance(item, Mapping):
+                raise ValueError("evidence_package_files 条目必须为 mapping")
+            item_path = item.get("path")
+            if (
+                not isinstance(item_path, str)
+                or not item_path
+                or Path(item_path).is_absolute()
+                or ".." in Path(item_path).parts
+            ):
+                raise ValueError("evidence_package_files path 必须为安全相对路径")
+            if item_path in expected_hashes:
+                raise ValueError("evidence_package_files 含重复路径")
+            expected_hashes[item_path] = (item.get("sha256"), item.get("size_bytes"))
+        for relative_name, path in parameter_files.items():
+            expected = expected_hashes.get(relative_name)
+            content = path.read_bytes()
+            actual_hash = hashlib.sha256(content).hexdigest()
+            if (
+                expected is None
+                or not isinstance(expected[0], str)
+                or isinstance(expected[1], bool)
+                or not isinstance(expected[1], int)
+                or len(content) != expected[1]
+                or actual_hash != expected[0]
+            ):
+                raise ValueError(f"归档参数证据哈希不一致：{relative_name}")
+        source_match = re.fullmatch(r".+-seed(?P<seed>\d+)", source_id)
+        if source_match is None:
+            raise ValueError("声明 run ID 无法解析 seed")
+        seed = int(source_match.group("seed"))
+        package_sampling = package.get("sampling")
+        package_training = package.get("training")
+        if not isinstance(package_sampling, Mapping) or not isinstance(
+            package_training, Mapping
+        ):
+            raise ValueError("归档包缺少 sampling/training")
+        epochs = training.get("epochs")
+        trainer_epochs = trainer_state.get("num_train_epochs")
+        per_device_batch = trainer_state.get("train_batch_size")
+        accumulation = package_training.get("gradient_accumulation_steps")
+        training_seed = training.get("seed")
+        package_seed = package_sampling.get("seed")
+        if (
+            isinstance(training_seed, bool)
+            or not isinstance(training_seed, int)
+            or isinstance(package_seed, bool)
+            or not isinstance(package_seed, int)
+            or training_seed != seed
+            or package_seed != seed
+        ):
+            raise ValueError("归档 seed 与声明 run 不一致")
+        package_epochs = package_training.get("epochs")
+        numeric_epochs = (epochs, trainer_epochs, package_epochs)
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value <= 0
+            for value in numeric_epochs
+        ):
+            raise ValueError("归档 epochs 必须为有限正数且不得为 bool")
+        if (
+            epochs != trainer_epochs
+        ):
+            raise ValueError("归档 epochs 在 manifest 与 trainer state 间不一致")
+        if package_epochs != epochs:
+            raise ValueError("归档 epochs 在包摘要与训练 manifest 间不一致")
+        if (
+            isinstance(per_device_batch, bool)
+            or not isinstance(per_device_batch, int)
+            or per_device_batch <= 0
+        ):
+            raise ValueError("trainer state 缺少有效 train_batch_size")
+        if (
+            isinstance(accumulation, bool)
+            or not isinstance(accumulation, int)
+            or accumulation <= 0
+        ):
+            raise ValueError("归档包缺少有效 gradient_accumulation_steps")
+        lora_rank = adapter_config.get("r")
+        lora_alpha = adapter_config.get("lora_alpha")
+        lora_targets = adapter_config.get("target_modules")
+        if (
+            isinstance(lora_rank, bool)
+            or not isinstance(lora_rank, int)
+            or lora_rank <= 0
+        ):
+            raise ValueError("adapter config 缺少有效 LoRA rank")
+        if (
+            isinstance(lora_alpha, bool)
+            or not isinstance(lora_alpha, (int, float))
+            or not math.isfinite(lora_alpha)
+            or lora_alpha <= 0
+        ):
+            raise ValueError("adapter config 缺少有效 LoRA alpha")
+        if not isinstance(lora_targets, list) or not lora_targets or not all(
+            isinstance(target, str) and target for target in lora_targets
+        ):
+            raise ValueError("adapter config 缺少有效 LoRA target modules")
+        if len(set(lora_targets)) != len(lora_targets):
+            raise ValueError("adapter config LoRA target modules 不得重复")
+        package_manifest_rel = archive_rel / "MANIFEST.json"
+        training_manifest_rel = archive_rel / "input" / "training_run_manifest.json"
+        trainer_state_rel = archive_rel / "adapter" / "trainer_state.json"
+        adapter_config_rel = declared_adapter_config.relative_to(root)
+        known_parameters = {
+            "seed": (
+                seed,
+                training_manifest_rel,
+                [package_manifest_rel],
+            ),
+            "epochs": (
+                epochs,
+                training_manifest_rel,
+                [trainer_state_rel, package_manifest_rel],
+            ),
+            "effective_batch_size": (
+                per_device_batch * accumulation,
+                trainer_state_rel,
+                [package_manifest_rel],
+            ),
+            "lora_rank": (lora_rank, adapter_config_rel, [package_manifest_rel]),
+            "lora_alpha": (lora_alpha, adapter_config_rel, [package_manifest_rel]),
+            "lora_target_modules": (
+                sorted(lora_targets),
+                adapter_config_rel,
+                [package_manifest_rel],
+            ),
+        }
+        for name, (value, primary, corroborating) in known_parameters.items():
+            facts[name] = {
+                "value": value,
+                "source": {
+                    "path": primary.as_posix(),
+                    "observed": "hash-verified archival training evidence",
+                    "corroborated_by": [path.as_posix() for path in corroborating],
+                },
+            }
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        pass
     entry: dict[str, Any] = {
         "entry_id": f"history-{_WEIGHT_RUN_KIND}-{source_id}",
         "kind": _WEIGHT_RUN_KIND,

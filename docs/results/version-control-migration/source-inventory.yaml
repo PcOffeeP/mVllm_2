@@ -142,7 +142,7 @@ local_run_evidence:
       - "v4.1-phase2-source-aware-v1-seed3411"
       - "v4.1-phase2-coverage-first-v1-seed3411"
       - "v4.1-phase2-coverage-fallback-v1-seed3413"
-    notes: "索引 README 称'仅一个试点'，但目录实际存在 5 个 → 待确认哪些是真实归档、哪些需迁移。目录存在不证明归档/恢复链完整。"
+    notes: "索引 README 称'仅一个试点'，但目录实际存在 5 个 → 待确认哪些是真实归档、哪些需迁移。H9 已核对四个 phase2 包的 training manifest、trainer state 与 MANIFEST 文件清单结构；adapter_config 内容仍位于声明 run，须用 MANIFEST 的 size/SHA-256 验证。目录存在不证明归档/恢复链完整，训练机 main 当前尚无本目录，未做真实端到端提取。"
 training_machine_run_evidence:   # 以下来自训练机只读调查记录，均 training_observed
   weight_runs:
     items:
