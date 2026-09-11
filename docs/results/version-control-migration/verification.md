@@ -88,7 +88,7 @@
 - 当前可提取字段为 seed、epochs、effective batch size、LoRA rank、LoRA alpha、LoRA target modules；每个字段分别记录实际取值文件和交叉验证文件。
 - LoRA 参数取自声明 run 的 `adapter_config.json`，并以归档 MANIFEST 中记录的 size/SHA-256 验证；归档目录本身没有该文件副本。epochs/effective batch 由归档 training manifest、trainer state 和包摘要交叉核对。
 - learning rate、optimizer、precision 继续保持字段级 unknown：现有证据包未提供足够稳定的历史执行配置链，当前 active 配置可能已漂移，不得据此反推。
-- 训练机当前 `main@f1b7d8a3` 尚无 `docs/results/model_evidence`，因此本轮仅完成本地合成行为、实际归档布局静态核对和训练机文件盘点；尚未在训练机对真实历史 run 执行端到端参数提取。
+- 训练机现有 `main@f1b7d8a3` 不含 `docs/results/model_evidence`，M2 因此在训练机临时目录组合隔离分支的真实归档与现有工作区的真实 run 文件：归档文件复制到临时根，adapter config 及代表性 adapter/merged 权重以同文件系统硬链接只读引用。四个 phase2 run 的端到端 CLI 构建均成功，临时根退出后删除；未修改现有 main 或正式对象。
 
 ## 10. M2 训练机隔离验证授权与预检
 
@@ -117,3 +117,22 @@
 - 普通 pip 解析正确拒绝 MLflow 3.15.2 声明的 `pandas<3` 与 pandas 3.0.3 冲突；随后按项目 `pyproject.toml` 的 uv override 机制安装成功。该组合仍须以真实 SQLite/artifact smoke 验证，不能只凭安装成功判定兼容。
 - 首轮 Linux `test_cli.py + test_migration.py`：236 passed、1 failed。失败用例 `test_write_history_summary_detects_temporary_source_replacement` 证明 H12 在 hard-link 前关闭最后一个临时源 FD 后，Linux 可立即复用 inode，使仅比较 `(st_dev, st_ino)` 的替换检测失效。
 - 本机最小修复保持原临时 inode 的复制 FD 直到发布校验结束。独立 reviewer 三轮先后发现并闭环 2 个 P2 与 1 个 P3：双故障清理可掩盖原发布异常并泄漏复制 FD 与目录 FD；回滚所有权 `stat` 失败有同类问题；回滚目录 `fsync` 失败被静默吞掉。最终所有回滚、临时清理和两个 FD 关闭均被独立尝试，原异常保持主异常，次级清理错误附注于原异常；新增四类双故障回归，相关 8 例与完整 `test_migration.py` 191 例均通过，reviewer 终审无剩余 P0–P3。该修复须以提交对象增量同步后在训练机复跑；在此之前 M2 不判定通过。
+
+### 10.2 Linux 修复增量同步路径
+
+- 修复提交：`c4b53d08`（完整提交值在 bundle 校验时记录）。
+- 新增增量 bundle 精确路径：`/home/liuyang/文档/mvllm2-migration-c4b53d08.bundle`。
+- 该 bundle 只用于把已提交修复对象安全获取到既有隔离 checkout；不覆盖首次完整 bundle，不创建第二个 checkout，不修改训练机现有 main。
+
+### 10.3 M2 隔离验证结果
+
+- 增量 bundle 完整提交为 `c4b53d08c14de6859a5143062fcc526ab214eb7f`，前置提交为 `7eeb93a792d023c7f250f56157ae3128ac583ec2`；本机与训练机 SHA-256 均为 `f68533c6720aec04f299dc637f7d32d0d5329998b8c91f65fcf9542c2c12a95b`，训练机 `git bundle verify` 通过。既有隔离 checkout 已 fast-forward 到该提交。
+- Linux 复验 `tests/versioning/test_cli.py + tests/versioning/test_migration.py` 为 **241 passed**，正常退出；首次暴露的临时 inode 复用失败及新增四类双故障清理回归均通过。
+- 跨进程 `fcntl.flock` smoke 验证：父进程持有排他锁时子进程非阻塞获取被拒绝，释放后同一子进程逻辑可获取。只读权限 smoke 验证：`0444` 文件的独立子进程写入得到 `PermissionError`，原字节保持不变。
+- DVC 小对象恢复用例 `TestDvcRemoteRecovery::test_push_delete_pull_restores_outputs` 为 **1 passed**：临时本地 remote push 后删除本地 cache/output，再 pull 可恢复输出及哈希，release manifest 未被改写。
+- MLflow/SQLite 与 artifact 联合灾备用例 `TestRestoreBackup::test_restore_disaster_recovery_reopens_everything` 为 **1 passed**：删除临时原对象后联合恢复，registry/train/eval、SQLite 和 artifact 均可重新打开与读取。该结果证明锁定依赖组合可运行小规模恢复，不等同于真实移动硬盘恢复。
+- H9 真实成功路径：四个 phase2 run（source-aware seed 3407/3411、coverage-first seed 3411、coverage-fallback seed 3413）均从 size/SHA-256 保护的真实归档与声明 run 的真实 adapter config 提取 seed、epochs、effective batch size、LoRA rank/alpha/targets；learning rate、optimizer、precision 继续保持 unknown。临时组合根只使用复制的小型归档与真实文件硬链接，未复制大权重、未写入正式对象。
+- H11 真实成功路径：隔离 checkout 中 1 个 model manifest 与 5 个 eval 归档经 CLI 构建成功，全部保持 `history_only: true`、`formal_identity: none`，无 `passed`；构建前后工作区状态一致。
+- 最终边界核对：隔离 checkout 为任务分支 `c4b53d08`，仅有未跟踪项目环境 `.conda-m2/`；现有训练机项目仍为干净 `main@f1b7d8a3`。`/data/mVllm_2/dvc-remote` 与 `/data/mVllm_2/mlflow` 仍不存在，本轮未创建；未执行正式迁移写入、训练、GPU 推理、完整评测、push 或 merge。
+
+据此，M2 的隔离环境、Linux 行为、依赖兼容、小对象恢复与 H9/H11 真实只读成功路径已完成。正式 store 建立、真实移动硬盘恢复和迁移对象写入属于后续阶段，不能由本节结果替代。
