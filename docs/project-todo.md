@@ -198,6 +198,8 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ## 最近维护记录
 
+- 2026-09-11：按用户要求暂停 M3，先同步本机、Codeup 与训练机隔离任务分支。同步前本机 `93847d9f`、训练机隔离 `c4b53d08` 为严格祖先关系且双方独有提交 `0/2`，Codeup 尚无同名分支；本机用显式 Codeup refspec 首次推送，训练机保留 bundle `origin`、新增 `codeup` remote，经 fetch 核对后以 `--ff-only` 快进并改设 Codeup upstream。本同步记录提交后将再次显式 push/fetch/fast-forward，最终三端 SHA 以只读核对为准；Codeup 与训练机正式 `main@f1b7d8a3` 未修改，M3 未实施。
+
 - 2026-09-11：完成 M2 训练机隔离环境与存储预检。完整及增量 bundle 均经本机/训练机 SHA-256 与 `git bundle verify` 核对，隔离 checkout 更新到 `c4b53d08`，原有 `main@f1b7d8a3` 保持干净。Linux CLI+migration 241 passed；跨进程锁、只读权限、DVC 小对象恢复、MLflow/SQLite artifact 联合恢复、H9 四个真实 run 和 H11 的 1 model + 5 eval 只读成功路径均通过。正式 store、真实移动硬盘恢复、迁移对象写入、训练/GPU/完整评测、merge/push 均未执行；下一阶段为 M3 数据七阶段真实接入。
 
 - 本轮：完成 M1 最后的 migration CLI 切片，统一入口增加 Prompt/Data 预检与迁移、history-summary 构建与固定路径发布六个显式动作。TDD 有效 RED 后实现显式 root/输入文件门、blocked 非零退出与 JSON 拒因、全层级重复 YAML 键拒绝；独立 reviewer 三轮闭环 4 个 P2 后无剩余 P0–P3。CLI 50 passed、migration 187 passed、reviewer 联合 237 passed，最新工作树完整 `tests/versioning` 1625 passed，均正常退出。前一轮完整套件打印汇总后的额外耗时已经进程采样定位到 Python 终止 GC，不冒充 CLI 失败。本轮未连接训练机、未执行真实迁移、训练、推理、merge 或 push；下一步为 M2 隔离环境与存储预检。

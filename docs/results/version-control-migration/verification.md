@@ -136,3 +136,23 @@
 - 最终边界核对：隔离 checkout 为任务分支 `c4b53d08`，仅有未跟踪项目环境 `.conda-m2/`；现有训练机项目仍为干净 `main@f1b7d8a3`。`/data/mVllm_2/dvc-remote` 与 `/data/mVllm_2/mlflow` 仍不存在，本轮未创建；未执行正式迁移写入、训练、GPU 推理、完整评测、push 或 merge。
 
 据此，M2 的隔离环境、Linux 行为、依赖兼容、小对象恢复与 H9/H11 真实只读成功路径已完成。正式 store 建立、真实移动硬盘恢复和迁移对象写入属于后续阶段，不能由本节结果替代。
+
+## 11. 本机、Codeup 与训练机隔离分支同步
+
+2026-09-11，用户要求暂停 M3，只把同名任务分支安全同步为一条线性历史，并明确授权本机向 Codeup 推送及训练机隔离 checkout 从 Codeup 仅快进。本次不涉及 `main`、正式迁移对象或 M3 实现。
+
+同步前只读核对：
+
+- 本机位于 `refactor/2026-09-07-readable-version-control-migration@93847d9fc713925daa5df65c900e5efb5a7c3e36`，只有未跟踪的 `docs/tasks/2026-09-07-readable-version-control-migration/agent-handoff.md`。
+- Codeup `main` 为 `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`，尚无同名任务分支。
+- 训练机正式工作区为干净 `main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`；隔离 checkout 为任务分支 `c4b53d08c14de6859a5143062fcc526ab214eb7f`，只有未跟踪 `.conda-m2/`。
+- `c4b53d08` 是本机 `93847d9f` 的祖先，双方独有提交计数为 `0/2`；训练机没有本机不具备的提交，Codeup 也没有意外任务分支提交。
+
+执行记录：
+
+- 本机使用显式 remote `codeup` 与完整同名 refspec 首次推送，Codeup 回查任务分支为 `93847d9fc713925daa5df65c900e5efb5a7c3e36`，`main` 未变；未向 GitHub 推送。
+- 训练机隔离 checkout 保留 bundle `origin`，新增 `codeup` remote 指向 `git@codeup.aliyun.com:61fa7f5774c3f3b55074132e/mVllm_2.git`；显式 fetch 后再次确认 ahead/behind 为 `0/2`，随后通过 `pull --ff-only --no-tags` 快进到 `93847d9f`，并把 upstream 设置为 Codeup 同名任务分支。
+- 首次 fetch 按 Git 默认 tag-following 行为额外取得已有标签 `tensile-vlm-v2-final`；未修改该标签，也不影响任务分支、`main` 或工作树。后续 pull 显式使用 `--no-tags`。
+- 本节与项目台账作为唯一同步记录提交后，再按相同显式 refspec 推送该文档提交，并在训练机隔离 checkout 中再次 fetch 与仅快进；最终三端完整 SHA 以提交后的只读 refs 核对为准。
+
+全程未执行 force push、rebase、reset、cherry-pick、clean、分支删除或 `main` merge；两端既有未跟踪文件不暂存、不删除、不修改。
