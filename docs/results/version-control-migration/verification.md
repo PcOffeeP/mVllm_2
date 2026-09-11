@@ -212,3 +212,40 @@ reviewer 独立复跑输入专项 **61 passed，exit 0**，并用临时 fixture 
 
 M3a 本地加载门切片已完成；M3 仍进行中。下一步接真实 source snapshot+split 与
 `--inputs` CLI，禁止将有效 inputs 交给现有简化产物路径后宣称真实业务已接入。
+
+## 13. M3b：真实 source 与显式 split 快照
+
+2026-09-12 继续 M3。新增 `run_input_source`：逐项读取 inputs 指定的视频、tags 与
+mapping 表，核对 ID 全集/重复/来源字段；复用 `pipeline.source_bootstrap._governed_record`
+生成实际标签治理记录和冲突说明。视频属性由实际 `probe_video` 获取，测试使用显式替身。
+不调用 legacy source builder、split 重新生成器或发布器。
+
+`split` pin 指向 `tensile-data/split-inputs/v1` 描述文件，精确字段为 `schema`、`batch`、
+`source_sha256`（全部视频 ID 到摘要）和 `splits`。后者含 `test` 以及三个 fold 的
+`train`/`val` 视频 ID 列表；逐 fold 拒绝 train/val/test 交叉、未知/重复/遗漏 source，
+保持显式给定的成员列表，不重新计算划分。该描述文件是输入配置，不是新版本身份。
+
+source 阶段输出在显式 store 下 `data/working/<batch>/source/`，包含字节验签后的视频、
+原始两份注释表、输入 split 描述、七份 split 成员文件、带真实媒体属性/治理记录的
+`source_manifest.json`，以及完整阶段文件清单 `stage_manifest.json`。
+阶段发布采用同阶段文件锁、临时目录完整构建、输入再次验签和最终目录发布；现存结果
+先核对输入/阶段身份、全文件 size/SHA 与本次 source 内容，冲突时停止，不覆盖现存快照。
+失败的临时副本不会成为下游可用快照。
+
+本切片尚未接公共 CLI，后续真实 ROI/子视频/审查/发布接完后统一切换入口，避免有效
+inputs 继续落入旧最小数据链。没有正式对象迁移或训练机操作。
+
+TDD：先提供可导入的空 source 入口，七个非法 split 测试均以
+`DID NOT RAISE StageInputError` 失败（exit 1）。实现后
+`.venv/bin/python -m pytest -q tests/versioning/test_data_pipeline.py -k TestInputSource --disable-warnings`
+首轮为 **16 passed，exit 0**。独立 reviewer 以真实 flock 争用发现 1 个 P2：
+等待锁期间输入漂移时仍可复用既有快照。补入锁内再次验签，先以同场景测试取得有效 RED，
+修复后专项 **17 passed**，reviewer 独立重现确认抛出 StageInputError 且旧快照字节不变，终审通过。
+
+最终权威命令 `.venv/bin/python -m pytest -q tests/versioning --disable-warnings`
+为 **1707 passed，291 warnings，690.57 秒，exit 0**，已等到进程正常退出。
+临时原始日志 `/tmp/mvllm2-m3-source-final-pytest.log`；本节保留持久摘要。
+先前未包含锁等待修复的回归为 1706 passed，不能冒充最终代码验证。
+该回归进程在后续 ROI/子视频增量开始前已经完成 collection/模块加载；source 代码和测试
+按已审查暂存快照独立提交，后续增量不混入本切片，也不由本结果宣称通过。
+M3b 已完成本地 source 适配；真实媒体、CLI 和其余阶段仍待完成。

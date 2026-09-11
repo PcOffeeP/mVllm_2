@@ -1118,3 +1118,189 @@ class TestPinnedDataInputs:
     def test_missing_config(self, tmp_path):
         with pytest.raises(StageInputError):
             _load_pinned(tmp_path / 'missing.yaml')
+
+
+# M3b Test List: real CSV governance and supplied splits; exact inventories;
+# byte-identical inputs copied; pin drift during probe refuses publication;
+# safe repeat and conflict; no legacy source builder/publisher or derived IDs.
+@pytest.fixture()
+def source_inputs(pinned_inputs):
+    import csv
+    from pipeline.source_bootstrap import TAG_COLUMNS, MAPPING_COLUMNS
+    path, doc, project = pinned_inputs
+
+    def rewrite(ref, content):
+        (project / ref['path']).write_bytes(content)
+        ref.update(size_bytes=len(content), sha256=hashlib.sha256(content).hexdigest())
+
+    def csv_bytes(columns, rows):
+        import io
+        stream = io.StringIO(newline='')
+        writer = csv.DictWriter(stream, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+        return stream.getvalue().encode()
+
+    tag = dict.fromkeys(TAG_COLUMNS, '')
+    tag.update(id='video_0001', video_path='videos/video_0001.mp4',
+               断裂模式='脆性断裂', 材料类型='金属', 清晰度='480P', 断裂位置='中间',
+               断裂时间点='4', 断裂帧数='120', 视频时长='10', 视频帧率='30',
+               视频总帧数='300', has_fracture='FALSE', is_abnormal='FALSE')
+    mapping = dict.fromkeys(MAPPING_COLUMNS, '')
+    mapping.update(标准化文件名='video_0001.mp4', 原始文件名='original.mp4',
+                   来源目录='original', 材料类别='金属', 状态='existing',
+                   duration='10', resolution='640x480', codec='h264')
+    rewrite(doc['source']['annotations']['tags'], csv_bytes(TAG_COLUMNS, [tag]))
+    rewrite(doc['source']['annotations']['mapping'], csv_bytes(MAPPING_COLUMNS, [mapping]))
+    splits = {'test': []}
+    for fold in range(3):
+        splits[f'fold_{fold}_train'] = ['video_0001']
+        splits[f'fold_{fold}_val'] = []
+    split = {'schema': 'tensile-data/split-inputs/v1', 'batch': doc['batch'],
+             'source_sha256': {'video_0001': doc['source']['videos'][0]['sha256']},
+             'splits': splits}
+    rewrite(doc['split'], json.dumps(split).encode())
+    contract = Path(__file__).resolve().parents[2] / 'pipeline/contracts/tensile_vlm_v4_1.json'
+    rewrite(doc['contract'], contract.read_bytes())
+    _save_pinned(path, doc)
+    return path, doc, project, rewrite
+
+
+def _source_probe(path):
+    return dict(width=640, height=480, codec_name='h264', fps_num=30, fps_den=1,
+                fps=30.0, duration_us=10000000, total_frames=300)
+
+
+def _run_real_source(root, inputs, probe=_source_probe):
+    from versioning.data_pipeline import run_input_source
+    return run_input_source(root, inputs_path=inputs, batch='batch-001', probe=probe)
+
+
+class TestInputSource:
+    def test_source_preserves_governance_and_explicit_splits(self, source_inputs, tmp_path, monkeypatch):
+        from pipeline import source_bootstrap
+        path, doc, project, _ = source_inputs
+        def forbidden(*args, **kwargs):
+            pytest.fail('legacy builder/publisher must not be used')
+        for name in ('build_source_snapshot', 'materialize_source_snapshot', 'materialize_split_snapshot', 'stratified_split'):
+            monkeypatch.setattr(source_bootstrap, name, forbidden)
+        root = tmp_path / 'store'
+        result = _run_real_source(root, path)
+        assert result.stage == 'source'
+        output = root / 'data/working/batch-001/source'
+        manifest = json.loads((output / 'source_manifest.json').read_text())
+        record = manifest['records'][0]
+        assert record['has_fracture_canonical'] is True
+        assert record['is_label_conflict'] is True
+        assert record['event_frame_effective'] == 120
+        assert manifest['splits'] == json.loads((project / 'split.json').read_text())['splits']
+        assert (output / 'media/video_0001.mp4').read_bytes() == (project / 'videos/video_0001.mp4').read_bytes()
+        assert manifest['inputs_sha256'] == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert not any(p.name in {'LATEST', 'index.json'} for p in root.rglob('*'))
+        assert 'source-snapshot-' not in (output / 'source_manifest.json').read_text()
+        assert len(manifest['files']) == 1
+
+    @pytest.mark.parametrize('problem', ['overlap', 'unknown', 'missing', 'duplicate', 'binding', 'batch', 'extra'])
+    def test_invalid_split_writes_nothing(self, source_inputs, tmp_path, problem):
+        path, doc, project, rewrite = source_inputs
+        split = json.loads((project / 'split.json').read_text())
+        if problem == 'overlap':
+            split['splits']['test'] = ['video_0001']
+        elif problem == 'unknown':
+            split['splits']['fold_0_train'] = ['video_0999']
+        elif problem == 'missing':
+            del split['splits']['fold_0_val']
+        elif problem == 'duplicate':
+            split['splits']['fold_0_train'] *= 2
+        elif problem == 'binding':
+            split['source_sha256']['video_0001'] = '0' * 64
+        elif problem == 'batch':
+            split['batch'] = 'wrong'
+        else:
+            split['LATEST'] = 'anything'
+        rewrite(doc['split'], json.dumps(split).encode())
+        _save_pinned(path, doc)
+        root = tmp_path / 'store'
+        with pytest.raises(StageInputError):
+            _run_real_source(root, path)
+        assert not root.exists()
+
+    @pytest.mark.parametrize('problem', ['missing', 'duplicate', 'extra', 'path', 'mapping_state'])
+    def test_invalid_annotations_writes_nothing(self, source_inputs, tmp_path, problem):
+        path, doc, project, rewrite = source_inputs
+        role = 'mapping' if problem == 'mapping_state' else 'tags'
+        ref = doc['source']['annotations'][role]
+        text = (project / ref['path']).read_text()
+        lines = text.splitlines()
+        if problem == 'missing':
+            text = lines[0] + '\n'
+        elif problem == 'duplicate':
+            text += lines[1] + '\n'
+        elif problem == 'extra':
+            text += lines[1].replace('video_0001', 'video_0002') + '\n'
+        elif problem == 'path':
+            text = text.replace('videos/video_0001.mp4', 'videos/video_9999.mp4')
+        else:
+            text = text.replace('existing', 'not_valid')
+        rewrite(ref, text.encode())
+        _save_pinned(path, doc)
+        root = tmp_path / 'store'
+        with pytest.raises(StageInputError):
+            _run_real_source(root, path)
+        assert not root.exists()
+
+    def test_probe_failure_has_no_published_snapshot(self, source_inputs, tmp_path):
+        path, _, _, _ = source_inputs
+        def fail(_):
+            raise RuntimeError('probe unavailable')
+        root = tmp_path / 'store'
+        with pytest.raises(StageInputError, match='probe'):
+            _run_real_source(root, path, fail)
+        assert not root.exists()
+
+    def test_drift_during_probe_has_no_published_snapshot(self, source_inputs, tmp_path):
+        path, _, project, _ = source_inputs
+        def mutate(video):
+            (project / 'videos/video_0001.mp4').write_bytes(b'changed')
+            return _source_probe(video)
+        root = tmp_path / 'store'
+        with pytest.raises(StageInputError):
+            _run_real_source(root, path, mutate)
+        assert not root.exists()
+
+    def test_repeat_verifies_outputs_and_refuses_conflict(self, source_inputs, tmp_path):
+        path, _, _, _ = source_inputs
+        root = tmp_path / 'store'
+        first = _run_real_source(root, path)
+        again = _run_real_source(root, path)
+        assert first.outputs == again.outputs
+        media = root / 'data/working/batch-001/source/media/video_0001.mp4'
+        media.write_bytes(b'tampered')
+        with pytest.raises(StageInputError):
+            _run_real_source(root, path)
+        assert media.read_bytes() == b'tampered'
+
+    def test_input_drift_while_waiting_for_stage_lock_is_rejected(self, source_inputs, tmp_path, monkeypatch):
+        import fcntl
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        path, _, project, _ = source_inputs
+        root = tmp_path / 'store'
+        _run_real_source(root, path)
+        lock_path = root / 'data/working/batch-001/.source.lock'
+        flock = fcntl.flock
+        waiting = threading.Event()
+        def observed_lock(fd, operation):
+            waiting.set()
+            return flock(fd, operation)
+        with lock_path.open('a+') as held, ThreadPoolExecutor(max_workers=1) as pool:
+            flock(held.fileno(), fcntl.LOCK_EX)
+            monkeypatch.setattr(fcntl, 'flock', observed_lock)
+            future = pool.submit(_run_real_source, root, path)
+            try:
+                assert waiting.wait(5), 'source did not reach stage lock'
+                (project / 'videos/video_0001.mp4').write_bytes(b'changed while waiting')
+            finally:
+                flock(held.fileno(), fcntl.LOCK_UN)
+            with pytest.raises(StageInputError):
+                future.result(timeout=5)

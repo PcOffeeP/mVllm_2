@@ -7,6 +7,11 @@ D035（自动发现、手动执行；release_validate 只报告不启动训练�
 from __future__ import annotations
 
 import hashlib
+import csv
+import fcntl
+import io
+import math
+import tempfile
 import json
 import os
 import re
@@ -819,3 +824,234 @@ def load_data_inputs(path: Path, *, batch: str) -> DataInputs:
         _pin_input_file(processor['config'], project, 'media.preprocessor.config'),
         _pin_input_file(doc['contract'], project, 'contract'),
     )
+
+
+SPLIT_NAMES = ('test', *(f'fold_{i}_{part}' for i in range(3) for part in ('train', 'val')))
+
+
+def _verify_input_pin(ref: PinnedInputFile) -> None:
+    _pin_input_file({'path': ref.path.name, 'size_bytes': ref.size_bytes,
+                     'sha256': ref.sha256}, ref.path.parent, str(ref.path))
+
+
+def _read_pinned_document(ref: PinnedInputFile) -> Any:
+    _verify_input_pin(ref)
+    try:
+        content = ref.path.read_bytes()
+        if len(content) != ref.size_bytes or hashlib.sha256(content).hexdigest() != ref.sha256:
+            raise StageInputError(f'输入读取期间内容漂移: {ref.path}')
+        return yaml.load(content.decode('utf-8'), Loader=_DataInputsLoader)
+    except (OSError, UnicodeError, yaml.YAMLError, RecursionError) as exc:
+        raise StageInputError(f'无法读取结构化输入 {ref.path}: {exc}') from exc
+
+
+def _read_source_rows(ref: PinnedInputFile, columns: tuple[str, ...]) -> list[dict[str, str]]:
+    _verify_input_pin(ref)
+    content = ref.path.read_bytes()
+    if hashlib.sha256(content).hexdigest() != ref.sha256:
+        raise StageInputError(f'注释读取期间漂移: {ref.path}')
+    try:
+        reader = csv.DictReader(io.StringIO(content.decode('utf-8-sig'), newline=''))
+        fields = reader.fieldnames or []
+        if len(fields) != len(set(fields)) or set(columns) - set(fields):
+            raise StageInputError(f'注释表列缺失或重复: {ref.path}')
+        rows = list(reader)
+        if any(None in row or any(v is None for v in row.values()) for row in rows):
+            raise StageInputError(f'注释表行列数量不一致: {ref.path}')
+        return rows
+    except (UnicodeError, csv.Error) as exc:
+        raise StageInputError(f'无法读取注释表: {ref.path}: {exc}') from exc
+
+
+def _load_input_splits(inputs: DataInputs) -> dict[str, list[str]]:
+    doc = _input_mapping(_read_pinned_document(inputs.split),
+                         {'schema', 'batch', 'source_sha256', 'splits'}, 'split')
+    if doc['schema'] != 'tensile-data/split-inputs/v1' or doc['batch'] != inputs.batch:
+        raise StageInputError('split schema/batch 不匹配')
+    pins = {v.video_id: v.file.sha256 for v in inputs.videos}
+    if doc['source_sha256'] != pins:
+        raise StageInputError('split 未绑定完整 source SHA-256 清单')
+    splits = _input_mapping(doc['splits'], set(SPLIT_NAMES), 'split.splits')
+    for name, ids in splits.items():
+        if (not isinstance(ids, list) or not all(isinstance(v, str) for v in ids)
+                or len(ids) != len(set(ids)) or set(ids) - pins.keys()):
+            raise StageInputError(f'split {name} 视频清单非法/重复/未知')
+    test = set(splits['test'])
+    for fold in range(3):
+        train = set(splits[f'fold_{fold}_train'])
+        val = set(splits[f'fold_{fold}_val'])
+        if train & val or (train | val) & test or train | val | test != pins.keys():
+            raise StageInputError(f'fold_{fold}: 划分交叉或未覆盖完整 source')
+    return splits
+
+
+def _input_stage_path(root: Path, batch: str, stage: str) -> Path:
+    if stage not in STAGES or re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', batch) is None:
+        raise StageInputError('非法 stage/batch')
+    current = root.absolute()
+    for part in ('', 'data', 'working', batch, stage):
+        if part:
+            current /= part
+        if current.is_symlink() or (current.exists() and not current.is_dir()):
+            raise StageInputError(f'输出路径不是普通目录: {current}')
+    return current
+
+
+def _stage_inventory(directory: Path) -> dict[str, Any]:
+    inventory = {}
+    for path in sorted(directory.rglob('*')):
+        if path.is_symlink():
+            raise StageInputError(f'阶段产物不允许符号链接: {path}')
+        if path.is_dir():
+            continue
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise StageInputError(f'阶段产物必须是普通文件: {path}')
+        name = path.relative_to(directory).as_posix()
+        if name == 'stage_manifest.json':
+            continue
+        inventory[name] = {'size_bytes': path.stat().st_size, 'sha256': _sha256_file(path)}
+    return inventory
+
+
+def _load_input_stage(root: Path, inputs: DataInputs, stage: str) -> tuple[Path, dict[str, Any]]:
+    directory = _input_stage_path(root, inputs.batch, stage)
+    manifest_path = directory / 'stage_manifest.json'
+    try:
+        if manifest_path.is_symlink():
+            raise StageInputError('阶段 manifest 不允许符号链接')
+        doc = yaml.load(manifest_path.read_text(encoding='utf-8'), Loader=_DataInputsLoader)
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise StageInputError(f'阶段 {stage} 缺失或无法读取: {exc}') from exc
+    doc = _input_mapping(doc, {'schema', 'stage', 'batch', 'inputs_sha256', 'upstream',
+                              'artifacts', 'report'}, f'{stage}.manifest')
+    if (doc['schema'] != 'tensile-data/stage/v1' or doc['stage'] != stage
+            or doc['batch'] != inputs.batch or doc['inputs_sha256'] != inputs.config_sha256):
+        raise StageInputError(f'{stage} 身份或 inputs 内容漂移')
+    if doc['artifacts'] != _stage_inventory(directory):
+        raise StageInputError(f'{stage} 产物内容漂移')
+    return directory, doc
+
+
+def _publish_input_stage(root: Path, inputs: DataInputs, stage: str, producer,
+                         upstream: Mapping[str, str] | None = None) -> StageResult:
+    """Publish one complete working stage; never overwrite an existing result."""
+    directory = _input_stage_path(root, inputs.batch, stage)
+    upstream = dict(upstream or {})
+    fresh = load_data_inputs(inputs.config_path, batch=inputs.batch)
+    if fresh != inputs:
+        raise StageInputError('inputs 在阶段执行前漂移')
+    # All semantic preflight must precede this helper's first filesystem write.
+    directory.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = directory.parent / f'.{stage}.lock'
+    flags = os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW
+    with os.fdopen(os.open(lock_path, flags, 0o600), 'a+') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        if load_data_inputs(inputs.config_path, batch=inputs.batch) != inputs:
+            raise StageInputError('inputs 在等待阶段锁期间漂移')
+        _input_stage_path(root, inputs.batch, stage)
+        if directory.exists():
+            existing, manifest = _load_input_stage(root, inputs, stage)
+            if manifest['upstream'] != upstream:
+                raise StageInputError(f'{stage} 上游内容漂移')
+            return StageResult(stage, (existing,), manifest['report'])
+        with tempfile.TemporaryDirectory(prefix=f'.{stage}-', dir=directory.parent) as temp:
+            temporary = Path(temp) / stage
+            temporary.mkdir()
+            report = producer(temporary)
+            if load_data_inputs(inputs.config_path, batch=inputs.batch) != inputs:
+                raise StageInputError('inputs 在阶段执行期间漂移')
+            manifest = {'schema': 'tensile-data/stage/v1', 'stage': stage,
+                        'batch': inputs.batch, 'inputs_sha256': inputs.config_sha256,
+                        'upstream': upstream, 'artifacts': _stage_inventory(temporary),
+                        'report': report}
+            _write_json(temporary / 'stage_manifest.json', manifest)
+            if directory.exists() or directory.is_symlink():
+                raise StageInputError(f'{stage} 目标冲突')
+            os.rename(temporary, directory)
+        return StageResult(stage, (directory,), report)
+
+
+def _copy_input_pin(ref: PinnedInputFile, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    hasher = hashlib.sha256()
+    size = 0
+    with ref.path.open('rb') as source, destination.open('xb') as target:
+        for chunk in iter(lambda: source.read(1024 * 1024), b''):
+            target.write(chunk)
+            size += len(chunk)
+            hasher.update(chunk)
+    if size != ref.size_bytes or hasher.hexdigest() != ref.sha256:
+        raise StageInputError(f'复制期间输入漂移: {ref.path}')
+
+
+def run_input_source(root: Path, *, inputs_path: Path, batch: str, probe=None) -> StageResult:
+    """Create source snapshot and preserve caller-supplied seven split memberships."""
+    from pipeline import source_bootstrap as source_api
+    from pipeline.v4_1_training_release import _contract_identity
+
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    _input_stage_path(root, batch, 'source')
+    splits = _load_input_splits(inputs)
+    _read_pinned_document(inputs.contract)  # Reject ambiguous YAML/JSON before business loading.
+    try:
+        _contract_identity(inputs.contract.path)
+    except ValueError as exc:
+        raise StageInputError(f'业务 contract 无效: {exc}') from exc
+    tags = _read_source_rows(inputs.tags, source_api.TAG_COLUMNS)
+    mappings = _read_source_rows(inputs.mapping, source_api.MAPPING_COLUMNS)
+    video_ids = {v.video_id for v in inputs.videos}
+    tag_ids = [row['id'].strip() for row in tags]
+    mapping_ids = [Path(row['标准化文件名'].strip()).stem for row in mappings]
+    if (len(set(tag_ids)) != len(tag_ids) or len(set(mapping_ids)) != len(mapping_ids)
+            or set(tag_ids) != video_ids or set(mapping_ids) != video_ids):
+        raise StageInputError('视频、tags 与 mapping ID 全集不一致或存在重复')
+    for row in tags:
+        if Path(row['video_path'].strip()).name != f"{row['id'].strip()}.mp4":
+            raise StageInputError('tags video_path 与 ID 不一致')
+    for row in mappings:
+        if (not row['原始文件名'].strip() or not row['来源目录'].strip()
+                or row['状态'].strip() not in source_api.MAPPING_STATUSES):
+            raise StageInputError('mapping 缺少来源或状态非法')
+    tag_index = {row['id'].strip(): row for row in tags}
+    records, files, warnings = [], [], []
+    for video in inputs.videos:
+        try:
+            observed = (probe or source_api.probe_video)(video.file.path)
+            for key in ('width', 'height', 'fps_num', 'fps_den', 'duration_us', 'total_frames'):
+                if type(observed[key]) is not int or observed[key] <= 0:
+                    raise ValueError(f'{key} 必须是正整数')
+            if (type(observed['fps']) not in (int, float) or not math.isfinite(observed['fps'])
+                    or observed['fps'] <= 0
+                    or not math.isclose(observed['fps'], observed['fps_num'] / observed['fps_den'])):
+                raise ValueError('fps 非法或与有理帧率不一致')
+            record, notes = source_api._governed_record(tag_index[video.video_id], observed)
+        except Exception as exc:
+            raise StageInputError(f'{video.video_id}: probe/标签治理失败: {exc}') from exc
+        record['video_path'] = f'media/{video.file.path.name}'
+        records.append(record)
+        warnings.extend(notes)
+        files.append({'name': video.file.path.name, 'video_id': video.video_id,
+                      'size': video.file.size_bytes, 'sha256': video.file.sha256,
+                      'probe': observed})
+    if load_data_inputs(inputs_path, batch=batch) != inputs:
+        raise StageInputError('source probe 期间输入漂移')
+    manifest = {'batch': batch, 'inputs_sha256': inputs.config_sha256, 'files': files,
+                'records': records, 'splits': splits, 'warnings': warnings,
+                'annotation_sha256': {'tags': inputs.tags.sha256, 'mapping': inputs.mapping.sha256},
+                'contract_sha256': inputs.contract.sha256}
+
+    def produce(destination):
+        for video in inputs.videos:
+            _copy_input_pin(video.file, destination / 'media' / video.file.path.name)
+        for name, ref in (('all_videos_tag.csv', inputs.tags), ('video_mapping.csv', inputs.mapping)):
+            _copy_input_pin(ref, destination / 'annotations' / name)
+        _copy_input_pin(inputs.split, destination / 'split_inputs.json')
+        for name, ids in splits.items():
+            _write_json(destination / 'splits' / f'{name}.json',
+                        {'split': name, 'video_ids': ids, 'count': len(ids)})
+        _write_json(destination / 'source_manifest.json', manifest)
+        return {'batch': batch, 'file_count': len(files), 'warnings': warnings}
+
+    return _publish_input_stage(root, inputs, 'source', produce,
+                                {'source_manifest_sha256': hashlib.sha256(
+                                    json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode()).hexdigest()})
