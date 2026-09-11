@@ -20969,3 +20969,80 @@ def test_weight_run_parameter_archive_rejects_bool_cross_evidence(
         _assert_h6_fact_is_unknown(
             facts[name], name=name, run_id=entry["source_legacy_id"]
         )
+
+
+def test_history_summary_multi_entry_preserves_order_and_mixed_evidence(
+    tmp_path: Path,
+) -> None:
+    """批量构建按声明顺序保留合法、已验签和缺失来源条目。"""
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    _write_verified_parameter_archive(tmp_path)
+    prompt_entry = _confirmed_prompt_history_entry()
+    weight_entry = _confirmed_weight_run_entry()
+    missing_entry = _confirmed_weight_run_entry()
+    missing_entry["source_legacy_id"] = "v4.1-phase2-missing-v1-seed9997"
+    prepare_entry = _confirmed_prepare_only_run_entry()
+    entries = [prompt_entry, weight_entry, missing_entry, prepare_entry]
+    before = _snapshot_tree(tmp_path)
+
+    document = _resolve_history_summary_entry()(tmp_path, entries)
+
+    assert [item["original_id"] for item in document["entries"]] == [
+        item["source_legacy_id"] for item in entries
+    ]
+    assert document["entries"][1]["facts"]["seed"]["value"] == 3407
+    _assert_h6_fact_is_unknown(
+        document["entries"][2]["facts"][WEIGHT_RUN_FOLD_SCOPE_FACT],
+        name=WEIGHT_RUN_FOLD_SCOPE_FACT,
+        run_id=missing_entry["source_legacy_id"],
+    )
+    assert document["entries"][3]["training_status"] == "prepared_only"
+    assert entries == [prompt_entry, weight_entry, missing_entry, prepare_entry]
+    assert _snapshot_tree(tmp_path) == before
+
+
+def test_history_summary_multi_entry_bad_source_fails_whole_batch_without_writes(
+    tmp_path: Path,
+) -> None:
+    """后置坏源不得返回前面合法条目的部分批次。"""
+    _write_full_history_prompt_registry(tmp_path)
+    _write_prepare_only_runs_layout(tmp_path)
+    bad_entry = _confirmed_prompt_history_entry()
+    manifest_path = (
+        tmp_path
+        / "pipeline"
+        / "prompt_registry"
+        / bad_entry["source_legacy_id"]
+        / "manifest.json"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["revision_id"] = "v4.1-sibling-identity"
+    manifest_path.write_bytes(_fixture_pretty_json_bytes(manifest))
+    entries = [_confirmed_prepare_only_run_entry(), bad_entry]
+    before = _snapshot_tree(tmp_path)
+
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+    with pytest.raises(blocked) as exc_info:
+        _resolve_history_summary_entry()(tmp_path, entries)
+
+    assert "身份" in str(exc_info.value) or "revision_id" in str(exc_info.value)
+    assert _snapshot_tree(tmp_path) == before
+
+
+def test_history_summary_multi_entry_rejects_duplicate_kind_and_source(
+    tmp_path: Path,
+) -> None:
+    """同 kind/source 重复条目必须在构建前 fail-closed。"""
+    _write_full_history_prompt_registry(tmp_path)
+    entry = _confirmed_prompt_history_entry()
+    before = _snapshot_tree(tmp_path)
+
+    blocked = _resolve_prompt_migration_blocked_type()
+    assert blocked is not None
+    with pytest.raises(blocked, match="重复来源"):
+        _resolve_history_summary_entry()(tmp_path, [entry, dict(entry)])
+
+    assert _snapshot_tree(tmp_path) == before

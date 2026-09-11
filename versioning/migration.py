@@ -2467,8 +2467,9 @@ def build_history_summary(
     盾、非法 ``entries``（None / 不可迭代 / 元素非 mapping）均 fail-closed
     抛 :class:`PromptMigrationBlocked`；声明源文件缺失（源条目目录缺失 /
     目录为空 / 单文件缺失）时相关事实进入字段级 unknown（携带
-    unknown_reason / attempted_source，不整批 blocked）；多 entry 批量、
-    文件写入与 CLI 不在本切片。
+    unknown_reason / attempted_source，不整批 blocked）；多 entry 按输入
+    顺序构建，缺失证据条目可与合法条目共存，坏源或身份矛盾整批拒绝，
+    同 kind/source 重复项在读取前 fail-closed。文件写入与 CLI 不在本切片。
     """
     root = Path(root)
     try:
@@ -2483,6 +2484,18 @@ def build_history_summary(
             raise PromptMigrationBlocked(
                 f"history entry 必须是 mapping：实际 {type(item).__name__!r}"
             )
+    seen_sources: set[tuple[str, str]] = set()
+    for item in items:
+        kind = item.get("kind")
+        source_id = item.get("source_legacy_id")
+        if isinstance(kind, str) and isinstance(source_id, str):
+            source_key = (kind, source_id)
+            if source_key in seen_sources:
+                raise PromptMigrationBlocked(
+                    "history entries 含重复来源："
+                    f"kind={kind!r}, source_legacy_id={source_id!r}"
+                )
+            seen_sources.add(source_key)
     return {
         "history_summary_schema": _HISTORY_SUMMARY_SCHEMA,
         "entries": [_build_history_summary_entry(root, item) for item in items],
