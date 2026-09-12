@@ -307,3 +307,5 @@ CLI 两项测试先取得缺失输入仍成功、显式 inputs 未接线的行�
 训练机验收执行单经独立审查修复一项 P2：小样本仅有 development，准备时只读开发参考并构造明确空 test 参考，不读取原测试审查标签。复审通过。本轮前期只读结构调查曾打开测试参考结构；未用于模型、选样、调参或质量结论，后续执行单不再要求访问。远程执行及两份正式对象复制仍待明确授权。
 
 最终权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /tmp/mvllm2-m3-entry-proof-final-20260912` 在本机当前完整工作树执行：**1768 passed，341.64秒，exit0**，已等待进程正常退出。临时日志 `/tmp/mvllm2-m3-entry-full-final-pytest.log`。没有新增真实训练机运行或正式迁移证据。M3 本地接入完成，整体 M3 保持进行中。
+
+本轮 M3a–M3h 均已本机提交；最终代码提交 `18d3da0e2a1ab086d4f5c2eb466ef0a68d3ca216`。为待授权同步准备增量 bundle `/tmp/mvllm2-m3-18d3da0e.bundle`，基线 `2027c4dc14753971bf499d9b65ede6bbf650222f`，89,047字节，SHA-256 `0547ba5d5408dcebaf2c72f091882faadeea9389e03b12592a1b14cff0edd896`；本机 `git bundle verify` exit0。尚未传输；bundle 包含上述代码及执行单，不含本条后续证据记录提交。执行前再次检查训练机祖先与状态。
