@@ -697,3 +697,38 @@ class TestResolutionDiscipline:
         ):
             assert issubclass(exc, PromptError)
         assert issubclass(PromptError, ValueError)
+
+@pytest.mark.parametrize('operation', ['create', 'freeze'])
+def test_concurrent_prompt_publication_has_one_winner(tmp_path, monkeypatch, operation):
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    target = (tmp_path / 'records/prompts/prompt-v4.1-r1.yaml' if operation == 'create'
+              else tmp_path / 'workspace/runs/train-v4.1-r1/input/prompt.yaml')
+    if operation == 'freeze':
+        for revision in (1, 2):
+            create_prompt(tmp_path, 'v4.1', version=f'prompt-v4.1-r{revision}',
+                          system_prompt=f'system {revision}', user_prompt='user', output_fields=['x'])
+    barrier = threading.Barrier(2)
+    original_exists = Path.exists
+    def synchronized_exists(path):
+        result = original_exists(path)
+        if path == target and not result:
+            barrier.wait(timeout=10)
+        return result
+    monkeypatch.setattr(Path, 'exists', synchronized_exists)
+    def publish(revision):
+        try:
+            if operation == 'create':
+                create_prompt(tmp_path, 'v4.1', version='prompt-v4.1-r1',
+                              system_prompt=f'system {revision}', user_prompt='user', output_fields=['x'])
+            else:
+                freeze_prompt(tmp_path, f'prompt-v4.1-r{revision}', 'train-v4.1-r1')
+            return ('published', revision)
+        except PromptConflict:
+            return ('conflict', revision)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(publish, (1, 2)))
+    assert sorted(status for status, _ in outcomes) == ['conflict', 'published']
+    winner = next(revision for status, revision in outcomes if status == 'published')
+    assert yaml.safe_load(target.read_text())['system_prompt'] == f'system {winner}'
+    assert not list(target.parent.glob('.*.tmp'))

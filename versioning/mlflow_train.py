@@ -253,10 +253,16 @@ def _search_children(
     )
 
 
-def _validate_parent_tags(run: Any) -> None:
+def _validate_parent_tags(
+    run: Any, *, allow_completed_running_recovery: bool = False
+) -> None:
     """读取 fail-closed：校验 workflow_state/run_status 组合与 record_validity 值域。"""
     tags = run.data.tags
-    validate_workflow_run_status(tags.get(WORKFLOW_STATE_TAG), run.info.status)
+    recovering = (allow_completed_running_recovery
+        and tags.get(WORKFLOW_STATE_TAG) == WorkflowState.COMPLETED.value
+        and run.info.status == "RUNNING")
+    if not recovering:
+        validate_workflow_run_status(tags.get(WORKFLOW_STATE_TAG), run.info.status)
     validity = tags.get(RECORD_VALIDITY_TAG)
     if validity not in (RecordValidity.VALID.value, RecordValidity.INVALID.value):
         raise IllegalTrainRecord(f"父 Run record_validity 非法: {validity!r}")
@@ -503,6 +509,17 @@ def transition_train_state(
     """父 Run workflow_state 与原生 RunStatus 一起转换；completed 需过晋级门。"""
     client = _client(store)
     run = _search_parent(client, store.experiment_id, train_id)
+    # workflow_state 已提交而终止请求中断时，仅允许同一目标补完该 Run。
+    # 普通读取仍拒绝 completed/RUNNING；恢复不能跳过三折和汇总门。
+    if (WorkflowState(target) == WorkflowState.COMPLETED
+        and run.data.tags.get(WORKFLOW_STATE_TAG) == WorkflowState.COMPLETED.value
+        and run.info.status == "RUNNING"):
+        if run_status not in (None, "FINISHED"):
+            raise IllegalStateCombination("completed 恢复只接受 FINISHED")
+        _validate_parent_tags(run, allow_completed_running_recovery=True)
+        _check_completion_gate(client, store, run.info.run_id)
+        client.set_terminated(run.info.run_id, status="FINISHED")
+        return _build_train_record(store, client.get_run(run.info.run_id))
     record = _build_train_record(store, run)
     current_state = WorkflowState(record.workflow_state)
     target_state = transition_workflow_state(current_state, target)

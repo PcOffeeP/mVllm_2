@@ -1586,3 +1586,30 @@ def test_execute_fold_run_parameter_write_failure_terminates_owned_run(store, re
     assert calls == []
     assert parent.workflow_state == "failed"
     assert parent.folds[0].status == "FAILED"
+
+
+def test_completion_retry_repairs_same_run_after_termination_failure(store, record, monkeypatch):
+    _finish_all_folds(store)
+    log_train_summary(store, TRAIN_ID, SUMMARY_METRICS)
+    original = MlflowClient.set_terminated
+    def fail_parent_once(client, run_id, *args, **kwargs):
+        if run_id == record.run_id:
+            raise OSError('injected termination interruption')
+        return original(client, run_id, *args, **kwargs)
+    monkeypatch.setattr(MlflowClient, 'set_terminated', fail_parent_once)
+    with pytest.raises(OSError, match='injected'):
+        transition_train_state(store, TRAIN_ID, 'completed')
+    with pytest.raises(IllegalStateCombination):
+        get_train_run(store, TRAIN_ID)
+    monkeypatch.setattr(MlflowClient, 'set_terminated', original)
+    repaired = transition_train_state(store, TRAIN_ID, 'completed')
+    assert repaired.run_id == record.run_id
+    assert (repaired.workflow_state, repaired.run_status) == ('completed', 'FINISHED')
+    assert len(_all_runs(store)) == 4
+
+
+def test_completion_recovery_revalidates_fold_gate(store, record):
+    _client(store).set_tag(record.run_id, 'workflow_state', 'completed')
+    with pytest.raises(IncompleteTrainRecord):
+        transition_train_state(store, TRAIN_ID, 'completed')
+    assert _raw_run(store, record.run_id).info.status == 'RUNNING'

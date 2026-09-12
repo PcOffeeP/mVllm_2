@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import itertools
 import os
-import shutil
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -213,7 +212,7 @@ def create_prompt(
     parse_prompt_definition(content)
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    # 原子写入：先写同目录临时文件，成功后 rename 为正式目标。写入
+    # 同目录临时文件完整写入后排他发布，目标冲突时保留先到达的版本。写入
     # 中途失败（中断 / IO 错误）时删除临时文件并原样向上抛 —— 目标
     # 路径不留半写入正式对象，重跑不被残骸阻塞。临时文件名不含目标
     # 身份前缀（以 "." 开头），不触发 records/ 下同身份冲突扫描。
@@ -225,10 +224,12 @@ def create_prompt(
             yaml.safe_dump(content, allow_unicode=True, sort_keys=False),
             encoding="utf-8",
         )
-        os.replace(tmp, target)
-    except BaseException:
+        try:
+            os.link(tmp, target)
+        except FileExistsError as exc:
+            raise PromptConflict(f"prompt 已存在: {version}") from exc
+    finally:
         tmp.unlink(missing_ok=True)
-        raise
 
     return version
 
@@ -291,7 +292,17 @@ def freeze_prompt(
         raise PromptConflict(f"冻结副本已存在: {target}")
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(source_path, target)
+    tmp = target.parent / (
+        f".freeze-prompt-{os.getpid()}-{next(_TMP_WRITE_COUNTER)}.tmp"
+    )
+    try:
+        tmp.write_bytes(source_path.read_bytes())
+        try:
+            os.link(tmp, target)
+        except FileExistsError as exc:
+            raise PromptConflict(f"冻结副本已存在: {target}") from exc
+    finally:
+        tmp.unlink(missing_ok=True)
 
     return target
 
