@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from finetune.v4_1_runtime import (
-    RELEASE_ID,
     RELEASE_SCHEMA_VERSION,
     validate_release,
 )

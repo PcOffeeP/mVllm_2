@@ -14,7 +14,7 @@ from typing import Any, Mapping
 
 from finetune.v4_1_runtime import (
     CONTRACT_VERSION,
-    RELEASE_ID,
+    _load_active_release_id,
     RELEASE_SCHEMA_VERSION,
     V4_1FinetuneError,
     parse_v4_1_output,
@@ -179,7 +179,7 @@ def load_validation_samples(
     *,
     release_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    path = release_dir(ROOT, release_id or RELEASE_ID) / f"datasets/validation/fold_{fold}.json"
+    path = release_dir(ROOT, release_id or _load_active_release_id()) / f"datasets/validation/fold_{fold}.json"
     rows = _read_json(path)
     if not isinstance(rows, list):
         raise RuntimeError(f"validation dataset must be a list: {path}")
@@ -221,7 +221,7 @@ def _run_identity(
 ) -> dict[str, Any]:
     identity = {
         "schema_version": "tensile-v4.1-evaluation-run/v1",
-        "release_id": release_id or RELEASE_ID,
+        "release_id": release_id or _load_active_release_id(),
         "contract_version": CONTRACT_VERSION,
         "contract_hash": contract_hash,
         "fold": fold,
@@ -282,6 +282,7 @@ def evaluate_one(
     processor: Any,
     system_prompt: str,
     user_prompt: str,
+    media_root: Path | None = None,
 ) -> dict[str, Any]:
     runtime_error: str | None = None
     parse_error: str | None = None
@@ -292,7 +293,7 @@ def evaluate_one(
     hit_token_limit: bool | None = None
     video_path = resolve_workspace_artifact(
         str(sample["video_path"]),
-        current_data_paths(ROOT).root,
+        media_root if media_root is not None else current_data_paths(ROOT).root,
     )
     try:
         result = run_model_on_video_detailed(
@@ -488,6 +489,415 @@ def main() -> int:
     summary = summarize_records(ordered)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0 if evaluation_succeeded(summary) else 1
+
+
+
+# Formal readable-identity evaluation. Legacy main above remains an audit entry
+# until M7; it is never called by the versioning commands below.
+FORMAL_GENERATION = {"do_sample": False, "num_beams": 1, "max_new_tokens": 256, "video_max_frames": 8}
+FORMAL_METRICS = {
+    "contract_valid_rate": "strictly valid predictions / selected samples",
+    "joint_correct_rate": "jointly correct predictions / selected samples",
+    **{f"{field}_correct_rate": f"correct {field} predictions / selected samples"
+       for field in ("clip_state", "fracture_mechanism", "fracture_site", "special_case")},
+}
+
+
+def _formal_bytes(value: Any) -> bytes:
+    return (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n").encode()
+
+
+def _formal_workspace(root: Path, eval_version: str) -> Path:
+    from versioning.ids import parse_eval_id
+    parse_eval_id(eval_version)
+    root = Path(root).absolute()
+    path = root / "workspace/evaluations" / eval_version
+    if any(p.is_symlink() for p in (path, *path.parents)):
+        raise ValueError("evaluation workspace must not contain symlinks")
+    return path
+
+
+def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    import math
+    expected = {"scope", "split", "artifact_kind", "scorer", "sample_selection",
+                "quantization_bit", "generation", "thresholds", "aggregation"}
+    if not isinstance(config, Mapping) or set(config) != expected:
+        raise ValueError(f"evaluation config requires exactly {sorted(expected)}")
+    result = json.loads(_formal_bytes(dict(config)))
+    if result["scope"] not in ("single_fold", "cross_validation") or result["split"] != "validation":
+        raise ValueError("actual evaluation currently supports validation folds only; full/holdout execution is not connected")
+    if result["aggregation"] != "pooled":
+        raise ValueError("aggregation must explicitly select pooled validation rows")
+    if result["artifact_kind"] not in ("adapter", "merged"):
+        raise ValueError("artifact_kind must be adapter or merged")
+    if result["scorer"] != "strict-v4.1" or result["sample_selection"] != "all":
+        raise ValueError("formal evaluation requires strict-v4.1 and all samples in each selected validation fold")
+    if result["quantization_bit"] is not None and (type(result["quantization_bit"]) is not int or result["quantization_bit"] != 4):
+        raise ValueError("quantization_bit must be null or 4")
+    if _formal_bytes(result["generation"]) != _formal_bytes(FORMAL_GENERATION):
+        raise ValueError("generation must match the actual strict V4.1 runtime")
+    thresholds = result["thresholds"]
+    if not isinstance(thresholds, dict) or not thresholds:
+        raise ValueError("explicit non-empty thresholds are required")
+    for metric, value in thresholds.items():
+        if metric not in FORMAL_METRICS or type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1:
+            raise ValueError("thresholds must name supported rates with finite minimum values in [0, 1]")
+    return result
+
+
+def _model_binding(record) -> dict[str, Any]:
+    # Aliases, eval_id and promotion tags can change independently of the
+    # registered training artifacts. They are not part of evaluation input.
+    return {key: getattr(record, key) for key in (
+        "model_id", "version", "run_id", "train_id", "data_version", "prompt_version",
+        "git_commit", "base_model", "source_scope", "artifacts")}
+
+
+def _formal_input(*, root: Path, eval_version: str, model_version: str,
+                  model_version_number: int, data_version: str, config: Mapping[str, Any],
+                  git_commit: str, media_root: Path, inputs_path: Path | None = None) -> dict[str, Any]:
+    from versioning.ids import parse_eval_id, parse_model_id, parse_data_id
+    from versioning.data_release import load_release_metadata
+    from versioning.registry import open_registry_store, validate_model_for_evaluation
+    from versioning.prompts import load_prompt
+    from finetune.train_build_dataset import build_versioned_datasets
+
+    protocols = {parse_eval_id(eval_version).protocol, parse_model_id(model_version).protocol,
+                 parse_data_id(data_version).protocol}
+    if protocols != {"v4.1"}:
+        raise ValueError("eval/model/data must use the same supported v4.1 protocol")
+    if type(model_version_number) is not int or model_version_number < 1:
+        raise ValueError("numeric MLflow Model Version must be a positive integer")
+    config = _formal_config(config)
+    if not isinstance(git_commit, str) or not git_commit.strip():
+        raise ValueError("git_commit is required")
+    root = Path(root).absolute()
+    _formal_workspace(root, eval_version)
+    meta = load_release_metadata(root / "data", data_version)
+    if meta.purpose == "holdout":
+        raise ValueError("holdout actual execution is not connected; refusing before truth access or model loading")
+    # No caller-supplied model directory: the complete registered identity is
+    # checked before artifacts are materialized or any weight path is resolved.
+    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    model = validate_model_for_evaluation(registry, model_version, model_version_number)
+    if model.source_scope != config["scope"]:
+        raise ValueError("evaluation scope does not match registered model scope")
+    folds = [0, 1, 2] if model.source_scope == "cross_validation" else [0]
+    if any(config["artifact_kind"] not in model.artifacts[f"fold{i}"] for i in folds):
+        raise ValueError("selected artifact kind is missing from a registered fold")
+    contract, _ = _load_contract()
+    from finetune.validation.constants import GENERATION_CONFIG, VIDEO_MAX_FRAMES
+    if {**GENERATION_CONFIG, "video_max_frames": VIDEO_MAX_FRAMES} != FORMAL_GENERATION:
+        raise ValueError("runtime generation implementation drift")
+    files, binding = build_versioned_datasets(root=root, data_version=data_version,
+        prompt_version=model.prompt_version, media_root=media_root, inputs_path=inputs_path)
+    prompt = load_prompt(root, model.prompt_version)
+    samples = {}
+    for fold in folds:
+        rows = json.loads(files[f"datasets/validation/fold_{fold}.json"])
+        selected, seen = [], set()
+        for index, row in enumerate(rows):
+            video, labels = validate_training_row(row, f"fold{fold}", index)
+            candidate = Path(video).stem
+            if candidate in seen:
+                raise ValueError("duplicate validation candidate identity")
+            seen.add(candidate)
+            source = re.match(r"(video_\d+)", candidate)
+            selected.append({"candidate_id": candidate, "source_video": source.group(1) if source else None,
+                             "video_path": video, "target": labels})
+        if not selected:
+            raise ValueError("formal evaluation requires non-empty folds")
+        samples[f"fold{fold}"] = selected
+    sources = ["finetune/eval_run.py", "finetune/v4_1_runtime.py", "pipeline/v4_1_labels.py",
+               "finetune/validation/model_runtime.py", "finetune/validation/constants.py",
+               "finetune/validation/video_loader.py", "pipeline/preprocessing/minicpm_preprocessor.py"]
+    return {"schema_version": "tensile-vlm/v4.1-evaluation", "eval_version": eval_version,
+        "model": _model_binding(model), "data_version": data_version, "config": config,
+        "git_commit": git_commit, "inputs_path": str(Path(inputs_path).absolute()) if inputs_path else None,
+        "media_root": str(Path(media_root).absolute()), "data_binding": binding, "folds": folds,
+        "samples": samples, "prompt": {"version": model.prompt_version,
+            "system_prompt": prompt.system_prompt, "user_prompt": prompt.user_prompt,
+            "output_fields": list(prompt.output_fields)},
+        "contract_hash": contract["contract_hash"], "metric_definitions": FORMAL_METRICS,
+        "aggregation": "pooled validation rows across the selected folds; all minimum thresholds must be met",
+        "implementation_sha256": {source: _sha256(ROOT / source) for source in sources}}
+
+
+def prepare_versioned_evaluation(**kwargs) -> Path:
+    import fcntl
+    import tempfile
+    import shutil
+    value = _formal_input(**kwargs)
+    workspace = _formal_workspace(kwargs["root"], kwargs["eval_version"])
+    workspace.mkdir(parents=True, exist_ok=True)
+    payload = _formal_bytes(value)
+    with (workspace / ".prepare.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        target = workspace / "input"
+        if target.exists():
+            current = verify_versioned_evaluation(root=kwargs["root"], eval_version=kwargs["eval_version"])
+            if _formal_bytes(current) != payload:
+                raise ValueError("frozen evaluation input conflict")
+            return target / "evaluation.yaml"
+        staging = Path(tempfile.mkdtemp(prefix=".input-", dir=workspace))
+        try:
+            (staging / "evaluation.yaml").write_bytes(payload)
+            (staging / "sha256").write_text(hashlib.sha256(payload).hexdigest())
+            for path in staging.iterdir():
+                path.chmod(0o444)
+            os.rename(staging, target)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
+    return target / "evaluation.yaml"
+
+
+def verify_versioned_evaluation(*, root: Path, eval_version: str, live: bool = True) -> dict[str, Any]:
+    folder = _formal_workspace(root, eval_version) / "input"
+    if folder.is_symlink() or not folder.is_dir() or {p.name for p in folder.iterdir()} != {"evaluation.yaml", "sha256"}:
+        raise ValueError("frozen evaluation input is missing or malformed")
+    for path in folder.iterdir():
+        if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o222:
+            raise ValueError("frozen evaluation files must be regular and read-only")
+    payload = (folder / "evaluation.yaml").read_bytes()
+    if hashlib.sha256(payload).hexdigest() != (folder / "sha256").read_text():
+        raise ValueError("frozen evaluation input digest drift")
+    value = json.loads(payload)
+    if value["eval_version"] != eval_version:
+        raise ValueError("frozen evaluation identity drift")
+    if live:
+        current = _formal_input(root=root, eval_version=eval_version,
+            model_version=value["model"]["model_id"], model_version_number=value["model"]["version"],
+            data_version=value["data_version"], config=value["config"], git_commit=value["git_commit"],
+            media_root=Path(value["media_root"]), inputs_path=Path(value["inputs_path"]) if value["inputs_path"] else None)
+        if _formal_bytes(current) != payload:
+            raise ValueError("frozen evaluation input or upstream content drift")
+    return value
+
+
+def _weight_inventory(path: Path) -> dict[str, Any]:
+    if not path.is_absolute() or not path.is_dir() or any(p.is_symlink() for p in (path, *path.parents)):
+        raise ValueError("registered model weight directory is missing or contains symlinks")
+    result = {}
+    for file in sorted(path.rglob("*")):
+        if file.is_symlink():
+            raise ValueError("model artifacts must not contain symlinks")
+        if file.is_file():
+            result[str(file.relative_to(path))] = {"size": file.stat().st_size, "sha256": _sha256(file)}
+    if not result:
+        raise ValueError("registered model weight directory is empty")
+    return result
+
+
+def _write_formal_json(path: Path, value: Any) -> None:
+    path.write_bytes(_formal_bytes(value))
+
+
+def _checked_loader_path(path: Path) -> str:
+    from finetune.validation.model_runtime import _sanitize_model_path
+    selected = _sanitize_model_path(str(path))
+    if Path(selected).resolve() != path.resolve():
+        raise ValueError("loader path alias does not resolve to the registered weight directory")
+    return selected
+
+
+def _execute_formal_fold(value, fold, model_dir, adapter_dir, output):
+    """Invoke the established loader and strict scorer on the frozen fold."""
+    output.mkdir(parents=True, exist_ok=False)
+    selected_model = _checked_loader_path(model_dir)
+    selected_adapter = _checked_loader_path(adapter_dir) if adapter_dir else None
+    processor, model = load_model(selected_model, quantization_bit=value["config"]["quantization_bit"],
+                                 adapter_dir=selected_adapter)
+    records = []
+    try:
+        with (output / "records.jsonl").open("x") as handle, (output / "failures.jsonl").open("x") as failures:
+            for sample in value["samples"][f"fold{fold}"]:
+                record = evaluate_one(sample=sample, model=model, processor=processor,
+                    system_prompt=value["prompt"]["system_prompt"], user_prompt=value["prompt"]["user_prompt"],
+                    media_root=Path(value["media_root"]))
+                record["fold"] = fold
+                encoded = json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n"
+                handle.write(encoded)
+                handle.flush()
+                os.fsync(handle.fileno())
+                if record["runtime_error"] or record["parse_error"]:
+                    failures.write(encoded)
+                    failures.flush()
+                    os.fsync(failures.fileno())
+                records.append(record)
+    finally:
+        del model, processor
+        # Releasing one fold before loading the next avoids keeping three
+        # model instances alive. CUDA is touched only when already initialized.
+        import gc
+        import sys
+        gc.collect()
+        torch = sys.modules.get("torch")
+        if torch is not None and torch.cuda.is_initialized():
+            torch.cuda.empty_cache()
+    _write_formal_json(output / "summary.json", summarize_records(records))
+    return records
+
+
+def execute_versioned_evaluation(*, root: Path, eval_version: str):
+    import fcntl
+    import tempfile
+    from mlflow.tracking import MlflowClient
+    from versioning.registry import open_registry_store, materialize_model
+    from versioning.mlflow_eval import (open_eval_store, create_eval_run, execute_eval_fold_run,
+        log_eval_aggregate, log_eval_summary, transition_eval_state, get_eval_run)
+
+    value = verify_versioned_evaluation(root=root, eval_version=eval_version)
+    workspace = _formal_workspace(root, eval_version)
+    with (workspace / ".execution.lock").open("a+b") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("evaluation is already executing") from exc
+        value = verify_versioned_evaluation(root=root, eval_version=eval_version)
+        output = workspace / "output"
+        if output.exists():
+            raise ValueError("existing evaluation output requires recovery; use export for a completed run")
+        store = open_eval_store(Path(root) / "workspace/mlflow")
+        client = MlflowClient(tracking_uri=store.tracking_uri)
+        input_sha = hashlib.sha256(_formal_bytes(value)).hexdigest()
+        parent = create_eval_run(store, eval_version, model_id=value["model"]["model_id"],
+            model_version_number=value["model"]["version"], data_version=value["data_version"],
+            config=f"sha256:{input_sha}", git_commit=value["git_commit"], scope=value["config"]["scope"],
+            split="validation", data_root=Path(root) / "data")
+        try:
+            output.mkdir()
+            client.log_artifact(parent.run_id, str(workspace / "input/evaluation.yaml"), artifact_path="input")
+            registry = open_registry_store(store.root, data_root=Path(root) / "data")
+            # A fresh private materialization cannot silently reuse an old model cache.
+            with tempfile.TemporaryDirectory(prefix=".weights-", dir=workspace) as cache:
+                materialized = materialize_model(registry, value["model"]["model_id"], Path(cache))
+                verify_versioned_evaluation(root=root, eval_version=eval_version)
+                all_records, weight_inputs = [], {}
+                for fold in value["folds"]:
+                    verify_versioned_evaluation(root=root, eval_version=eval_version)
+                    declared = value["model"]["artifacts"][f"fold{fold}"][value["config"]["artifact_kind"]]
+                    artifact = materialized / declared
+                    adapter = artifact if value["config"]["artifact_kind"] == "adapter" else None
+                    base = Path(value["model"]["base_model"]) if adapter else artifact
+                    weight_inputs[f"fold{fold}"] = {"model_artifact": declared,
+                        "model_files": _weight_inventory(base),
+                        "adapter_files": _weight_inventory(adapter) if adapter else None}
+                    # Capture the actual files before first loading the fold.
+                    _write_formal_json(output / "evaluation.yaml", {**value, "weights": weight_inputs})
+                    client.log_artifact(parent.run_id, str(output / "evaluation.yaml"))
+                    fold_output = output / f"fold{fold}"
+                    def execute():
+                        verify_versioned_evaluation(root=root, eval_version=eval_version)
+                        records = _execute_formal_fold(value, fold, base, adapter, fold_output)
+                        client.log_artifacts(parent.run_id, str(fold_output), artifact_path=f"fold{fold}")
+                        verify_versioned_evaluation(root=root, eval_version=eval_version)
+                        _checked_loader_path(base)
+                        if adapter is not None:
+                            _checked_loader_path(adapter)
+                        if (_weight_inventory(base) != weight_inputs[f"fold{fold}"]["model_files"]
+                            or (adapter is not None and _weight_inventory(adapter) != weight_inputs[f"fold{fold}"]["adapter_files"])):
+                            raise ValueError("loaded model weights drifted during evaluation")
+                        summary = summarize_records(records)
+                        if len(records) != len(value["samples"][f"fold{fold}"]) or not evaluation_succeeded(summary):
+                            raise RuntimeError("evaluation execution incomplete: runtime failures")
+                        all_records.extend(records)
+                        return {key: summary["metrics"][key] for key in FORMAL_METRICS}
+                    execute_eval_fold_run(store, eval_version, fold, executor=execute,
+                        model_artifact=f"runs:/{value['model']['run_id']}/{declared.removeprefix('artifacts/')}",
+                        data_split=f"{value['data_version']}/validation/fold{fold}",
+                        sample_count=len(value["samples"][f"fold{fold}"]),
+                        records=f"runs:/{parent.run_id}/fold{fold}/records.jsonl",
+                        failures=f"runs:/{parent.run_id}/fold{fold}/failures.jsonl")
+                summary = summarize_records(all_records)
+                metrics = {key: summary["metrics"][key] for key in FORMAL_METRICS}
+                outcome = "passed" if all(metrics[k] >= threshold for k, threshold in value["config"]["thresholds"].items()) else "failed"
+                summary.update(outcome=outcome, input_sha256=input_sha)
+                _write_formal_json(output / "summary.json", summary)
+                for name, rows in (("records.jsonl", all_records), ("failures.jsonl", [r for r in all_records if r["runtime_error"] or r["parse_error"]])):
+                    (output / name).write_text("".join(json.dumps(r, ensure_ascii=False, allow_nan=False) + "\n" for r in rows))
+                for name in ("evaluation.yaml", "summary.json", "records.jsonl", "failures.jsonl"):
+                    client.log_artifact(parent.run_id, str(output / name))
+                    client.log_param(parent.run_id, f"sha256_{name}", _sha256(output / name))
+                if value["config"]["scope"] == "cross_validation":
+                    log_eval_aggregate(store, eval_version, metrics, folds=tuple(value["folds"]))
+                else:
+                    log_eval_summary(store, eval_version, metrics)
+                transition_eval_state(store, eval_version, "completed", outcome=outcome)
+        except BaseException as exc:
+            try:
+                current = get_eval_run(store, eval_version)
+                if current.workflow_state == "running" and current.outcome is None:
+                    transition_eval_state(store, eval_version, "failed", run_status="FAILED")
+            except Exception as tracking_error:
+                exc.add_note(f"Failed to persist evaluation failure: {tracking_error}")
+            raise
+        export_versioned_evaluation(root=root, eval_version=eval_version)
+        return get_eval_run(store, eval_version)
+
+
+def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
+    import tempfile
+    from mlflow.tracking import MlflowClient
+    from versioning.mlflow_eval import open_eval_store, validate_eval_for_conclusion
+    from versioning.manifest import _publish_immutable
+
+    value = verify_versioned_evaluation(root=root, eval_version=eval_version, live=False)
+    if any(_sha256(ROOT / source) != digest for source, digest in value["implementation_sha256"].items()):
+        raise ValueError("export requires the frozen scorer implementation")
+    store = open_eval_store(Path(root) / "workspace/mlflow")
+    record = validate_eval_for_conclusion(store, eval_version)
+    client = MlflowClient(tracking_uri=store.tracking_uri)
+    digest = hashlib.sha256(_formal_bytes(value)).hexdigest()
+    if (record.config != f"sha256:{digest}" or record.model_id != value["model"]["model_id"]
+        or record.model_version_number != value["model"]["version"] or record.data_version != value["data_version"]
+        or record.git_commit != value["git_commit"] or record.scope != value["config"]["scope"]
+        or set(record.folds) != set(value["folds"])):
+        raise ValueError("completed evaluation does not match frozen input")
+    params = client.get_run(record.run_id).data.params
+    with tempfile.TemporaryDirectory(prefix="eval-export-") as scratch:
+        paths = {}
+        for name in ("evaluation.yaml", "summary.json", "records.jsonl", "failures.jsonl"):
+            path = Path(client.download_artifacts(record.run_id, name, scratch))
+            if _sha256(path) != params.get(f"sha256_{name}"):
+                raise ValueError("completed evaluation artifact digest mismatch")
+            paths[name] = path
+        evaluation = json.loads(paths["evaluation.yaml"].read_bytes())
+        if {key: evaluation.get(key) for key in value} != value:
+            raise ValueError("persisted evaluation input mismatch")
+        summary = json.loads(paths["summary.json"].read_bytes())
+        records = [json.loads(line) for line in paths["records.jsonl"].read_text().splitlines()]
+        expected = [(fold, s) for fold in value["folds"] for s in value["samples"][f"fold{fold}"]]
+        if len(records) != len(expected):
+            raise ValueError("completed evaluation sample count mismatch")
+        for row, (fold, sample) in zip(records, expected, strict=True):
+            if row.get("fold") != fold or any(row.get(k) != v for k, v in sample.items()):
+                raise ValueError("completed evaluation sample binding mismatch")
+            parsed = None
+            try:
+                parsed = parse_v4_1_output(row["raw_output"])
+            except V4_1FinetuneError:
+                pass
+            if row["prediction"] != parsed or row["strict_valid"] != (parsed is not None) or row["scores"] != score_v4_1_prediction(row["target"], parsed):
+                raise ValueError("completed evaluation scoring mismatch")
+        recomputed = summarize_records(records)
+        metrics = {key: recomputed["metrics"][key] for key in FORMAL_METRICS}
+        outcome = "passed" if all(metrics[k] >= threshold for k, threshold in value["config"]["thresholds"].items()) else "failed"
+        if (not evaluation_succeeded(recomputed) or any(summary.get(k) != v for k, v in recomputed.items())
+            or summary.get("input_sha256") != digest or summary.get("outcome") != outcome
+            or record.outcome != outcome or dict(record.metrics) != metrics):
+            raise ValueError("completed evaluation summary/outcome mismatch")
+        failures = [json.loads(line) for line in paths["failures.jsonl"].read_text().splitlines()]
+        if failures != [row for row in records if row["runtime_error"] or row["parse_error"]]:
+            raise ValueError("completed evaluation failure records mismatch")
+    target = Path(root) / "records/evaluations" / eval_version / "manifest.yaml"
+    return _publish_immutable(target, _formal_bytes({"version": eval_version,
+        "protocol": "tensile-vlm/v4.1", "state": "sealed", "record_validity": record.record_validity,
+        "model_version": record.model_id, "mlflow_model_version": record.model_version_number,
+        "data_version": record.data_version, "split": "validation", "model_scope": record.scope,
+        "sample_count": len(records), "outcome": record.outcome, "run_id": record.run_id,
+        "input_sha256": digest, "artifacts": {name: {"uri": f"runs:/{record.run_id}/{name}",
+            "sha256": params[f"sha256_{name}"]} for name in paths}}), label="evaluation manifest")
 
 
 if __name__ == "__main__":

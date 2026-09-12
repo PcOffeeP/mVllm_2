@@ -326,7 +326,7 @@ def test_validate_release_counts_drift_fail_closed(
 def test_missing_active_data_release_fails_closed(
     tmp_path: Path,
 ) -> None:
-    """Importing without a release pointer must fail without touching the real file.
+    """Requesting the legacy identity without its pointer must fail closed.
 
     We copy the runtime module into an isolated project tree that lacks the
     pointer file and import from there, leaving the repository pointer intact.
@@ -342,7 +342,7 @@ def test_missing_active_data_release_fails_closed(
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root)
     result = subprocess.run(
-        [sys.executable, "-c", "import finetune.v4_1_runtime"],
+        [sys.executable, "-c", "from finetune.v4_1_runtime import RELEASE_ID"],
         cwd=str(tmp_path),
         capture_output=True,
         text=True,

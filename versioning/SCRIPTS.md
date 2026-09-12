@@ -1,6 +1,6 @@
 <!-- DOCUMENT-CONTRACT
 Purpose: 定位 versioning 的实际入口，并提供显式数据输入与人工交接的操作边界。
-Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收及三折训练准备与执行入口。
+Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、三折训练及正式验证集测评入口。
 Must Preserve:
 - 五类完整可读身份、显式输入与 fail-closed，不引入当前版本回退。
 - 区分数据业务处理、人工决定和正式封存；不能把测试替身当真实媒体验收。
@@ -20,7 +20,7 @@ Non-goals:
 | `data` | `data_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
 | `prompt` | `prompts.py` | 注册不可变 Prompt，并冻结/校验训练 input 副本 |
 | `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结六份数据与三折配置、真实训练调用、父子 Run、汇总与完成后导出 |
-| `eval` | `mlflow_eval.py`、`manifest.py` | 测评父子 Run、Registry 精确引用、holdout 消费、结论门与 eval manifest 单向导出 |
+| `eval` | `finetune/eval_run.py`、`mlflow_eval.py`、`manifest.py` | 正式validation输入冻结、Registry精确引用、实际推理与严格评分、父子Run和不可变导出；低层holdout授权记录API保留 |
 | `model` | `registry.py`、`manifest.py`、`materialize.py` | `mVllm2` 两阶段 register/finalize、model manifest、唯一部署目标 gate、alias 与 `models/current` 原子物化 |
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
@@ -65,6 +65,42 @@ manifest 在操作时在线复验其 train/data/eval 血缘。测试中的临时
 包含声明的 adapter 与 merged 路径。每个作用域模型的严格 manifest 一并恢复到
 `records/models/<id>/manifest.yaml`；MLflow store 仅保存 SQLite、上述声明训练产物
 和已绑定正式测评产物，不通过整树复制夹带 adapter 模型的 merged。
+
+## 正式验证集测评
+
+`eval prepare / validate / run / export` 连接实际严格V4.1推理与评分器。当前支持已注册的`single_fold`（fold0）或`cross_validation`（fold0/1/2）模型，逐折使用显式data版本的完整validation划分；不新增采样。`full`与holdout的实际读取尚未接入，这四个动作在读取数据内容或加载权重前拒绝该范围。既有低层`create/fold-start/fold-end/aggregate/summary/complete`与holdout授权API保留，手动状态或历史summary不构成实际执行证据。
+
+先由完成的train通过`model register`登记模型，取得完整model版本与数值MLflow Model Version；Registry声明必须有每折所选adapter或merged artifact。Prompt来自该模型的训练绑定，须已位于store的`records/prompts/`。data输入使用已验证的迁移receipt，或用`--data-inputs`提供七阶段发布的原始输入。媒体根使用原实际外部媒体目录，不能把迁移来源镜像当作媒体根。
+
+准备命令：
+
+```bash
+python -m versioning eval prepare <完整eval版本> --root <store绝对路径> \
+  --model-version <完整model版本> --model-version-number <Registry数值版本> \
+  --data-version <完整data版本> --config <评价配置YAML> \
+  --git-commit <核实的代码提交> --media-root <实际媒体根绝对路径>
+```
+
+评价配置必须精确包含下列字段，不接受重复YAML键或额外参数：
+
+| 字段 | 取值与含义 |
+| --- | --- |
+| `scope` | `single_fold`或`cross_validation`，必须与Registry模型一致 |
+| `split` | `validation` |
+| `artifact_kind` | 显式选择`adapter`或`merged`，每折必须具备该artifact |
+| `scorer`、`sample_selection` | 分别为`strict-v4.1`、`all` |
+| `quantization_bit` | 显式`null`或`4` |
+| `aggregation` | 必须显式写`pooled`，确认按各折实际样本行合并评分；省略或其他规则会拒绝 |
+| `generation` | 精确mapping：`do_sample: false`、`num_beams: 1`、`max_new_tokens: 256`、`video_max_frames: 8` |
+| `thresholds` | 必须显式给出非空mapping，各值为已确定的0到1最低阈值，全部达到才判为passed；没有默认质量阈值 |
+
+阈值可用指标为`contract_valid_rate`、`joint_correct_rate`、`clip_state_correct_rate`、`fracture_mechanism_correct_rate`、`fracture_site_correct_rate`、`special_case_correct_rate`。分母为所选样本数，空值与非法预测遵守现有严格评分器规则。跨折汇总将各折实际结果按行合并评分，沿用六位小数的指标口径。配置内容、模型绑定、Prompt、样本、媒体摘要、生成参数和评分实现摘要冻结在`workspace/evaluations/<eval>/input/evaluation.yaml`；prepare不下载权重，不创建eval Run，不执行推理。它会访问显式store中的Registry，必要时初始化本地MLflow基础设施。
+
+`python -m versioning eval validate <完整eval版本> --root <store绝对路径>`重核冻结输入和上游内容，不执行推理。取得实际测评授权后，在训练机运行`python -m versioning eval run <完整eval版本> --root <store绝对路径>`。run从冻结输入取得身份，拒绝命令行覆盖model、data、outcome等参数，且只使用`<store>/workspace/mlflow`。权重从已验证的Registry artifact物化到本次私有临时目录；adapter使用Registry绑定的基座目录，基座必须是存在的普通绝对目录。旧加载器需要的下划线目录别名必须解析到同一已核验目录，已有同名其他目录或错误软链接会在加载前拒绝。执行前后核验内容摘要，并保留实际权重摘要。该过程包含权重复制、媒体与权重哈希扫描及GPU推理，资源预算须按实际模型和数据量核定。
+
+每折记录`records.jsonl`、`failures.jsonl`和`summary.json`；正式父Run保存`evaluation.yaml`、汇总`summary.json`及两份合并JSONL。运行失败保留已有结果并标记failed，无正式manifest；解析非法但推理完整属于质量结果，可形成`outcome: failed`。全部结果上传完成后才提交结论并导出`records/evaluations/<eval>/manifest.yaml`，其中保存Run引用、数值模型版本和产物摘要。staging结果不是导出权威。
+
+完成后的导出失败可运行`python -m versioning eval export <完整eval版本> --root <store绝对路径>`：从同一MLflow Run下载并验签结果，按冻结评分实现重核样本/指标/结论，幂等发布manifest，不再次调用模型、不覆盖不同内容。需保留冻结input及相同评分实现。已有输出或失败Run不会自动重跑、覆盖或续跑；进程强制终止、持续后端故障与创建响应丢失后的恢复仍须核对原Run，不将普通异常处理视作这些场景已完成验证。
 
 ## 显式数据七阶段
 

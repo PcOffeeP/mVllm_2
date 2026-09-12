@@ -168,6 +168,7 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument(
         "action",
         choices=(
+            "prepare", "validate", "run", "export",
             "create",
             "fold-start",
             "fold-end",
@@ -179,6 +180,8 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     evaluate.add_argument("eval_version", help="显式完整 eval 版本")
+    evaluate.add_argument("--media-root", type=Path, help="实际媒体根目录")
+    evaluate.add_argument("--data-inputs", type=Path, help="七阶段数据发布的原始显式输入")
     _add_root(evaluate)
     _add_store(evaluate)
     evaluate.add_argument("--model-version", help="显式完整 model 版本")
@@ -567,6 +570,31 @@ def _parse_folds(value: str | None) -> tuple[int, ...]:
 
 
 def _handle_eval(args: argparse.Namespace) -> Any:
+    if args.action in {"prepare", "validate", "run", "export"}:
+        if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
+            raise CLIUsageError("actual evaluation must use root/workspace/mlflow")
+        input_flags = {"model_version", "model_version_number", "data_version", "config",
+                       "git_commit", "media_root", "data_inputs"}
+        legacy_flags = {"scope", "split", "pre_registration", "executor", "fold", "model_artifact",
+                        "data_split", "sample_count", "records", "failures", "metrics", "folds",
+                        "outcome", "source_train", "prompt_version", "result_refs", "target"}
+        rejected = legacy_flags | (input_flags if args.action != "prepare" else set())
+        if any(getattr(args, key) is not None for key in rejected):
+            raise CLIUsageError("actual evaluation accepts frozen inputs only; configure them with eval prepare")
+        from finetune.eval_run import (prepare_versioned_evaluation, verify_versioned_evaluation,
+            execute_versioned_evaluation, export_versioned_evaluation)
+        if args.action == "prepare":
+            _required(args, "model_version", "model_version_number", "data_version", "config", "git_commit", "media_root")
+            config = _load_yaml_value(Path(args.config), "evaluation config")
+            return {"path": prepare_versioned_evaluation(root=args.root, eval_version=args.eval_version,
+                model_version=args.model_version, model_version_number=args.model_version_number,
+                data_version=args.data_version, config=config, git_commit=args.git_commit,
+                media_root=args.media_root, inputs_path=args.data_inputs)}
+        if args.action == "validate":
+            return verify_versioned_evaluation(root=args.root, eval_version=args.eval_version)
+        if args.action == "export":
+            return {"path": export_versioned_evaluation(root=args.root, eval_version=args.eval_version)}
+        return execute_versioned_evaluation(root=args.root, eval_version=args.eval_version)
     if args.action == "create":
         _required(
             args,

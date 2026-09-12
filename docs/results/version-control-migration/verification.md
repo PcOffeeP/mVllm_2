@@ -477,3 +477,29 @@ Test List覆盖实际调用顺序、成功不等于质量通过、异常/中断�
 独立复审通过，P2关闭，无剩余可执行finding。reviewer实际专项13 passed、227 deselected、6.74秒、exit0（--basetemp=/private/tmp/mvllm2-review-eval-events-final-20260912）；公开create_eval_fold_run签名、原校验和快照返回兼容。未验证并发调用、创建请求已提交但响应丢失、后端持续不可用或进程强制终止恢复；不能将本轮异常处理测试解释为这些场景已获保证。
 
 修复后主Agent完整测评记录回归：240 passed、93.98秒、exit0，日志/private/tmp/mvllm2-m4-eval-events-fixed.log；git diff --check通过。此次代码与证据由Mac提交，具体提交可通过git log -- versioning/mlflow_eval.py追溯。本机main仍是任务HEAD祖先，无主线漂移需要重新设计；未跟踪agent-handoff.md保持原样且不纳入提交。
+
+## 31. M4f 正式validation测评编排（2026-09-12）
+
+本机Mac，基线c93f53a7；用户要求继续正式eval run接线。新增公共eval prepare/validate/run/export及finetune/eval_run.py实际编排。当前覆盖与Registry一致的single_fold（fold0）和cross_validation三折模型，使用显式data原有完整validation划分；full与holdout实际数据读取尚未接入，新动作在真值或权重访问前拒绝，既有低层授权门维持。阈值由调用者显式提供非空最低率mapping，无默认质量门槛，不新增采样要求。
+
+Test List包括数值Model Version错误先于权重解析拒绝、prepared无eval Run、冻结Prompt/成员/标签/媒体与评分实现、实际loader/strict scorer接线、三折及single/merged路由、运行失败与质量失败区分、上游/冻结输入/运行中媒体和权重漂移、CLI拒绝raw目录/参数覆盖、MLflow权威输出验签与completed补导出。首6项因缺API得到RED（6 failed/3.83秒/exit1，/private/tmp/mvllm2-m4-formal-red.log），初实现6 passed/4.88秒；CLI和无旧指针导入专项RED为2 failed、1 passed/1.45秒（/private/tmp/mvllm2-m4-formal-cli-red.log），接线后13 passed、1 skipped/5.77秒。首次联合发现旧测试把“import runtime必须读活动指针”当要求；已改为“显式请求legacy RELEASE_ID时缺指针仍fail-closed”，同时保留正式纯推理导入不读指针测试。
+
+精确增加实际model_runtime直接依赖finetune/validation/constants.py的惰性旧路径读取，并在Plan文件白名单说明原因；不改变旧数据路径的返回值、生成参数、标签或划分。该隔离连同eval_run/release_validate/v4_1_runtime解除新路径导入时的活动指针读取，旧文件和旧CLI身份继续保留至M7。versioning/SCRIPTS沿用Document Contract补充正式测评命令，finetune README增加入口链接；独立reviewer已逐项核对输入来源、命令、阈值、支持范围和恢复限制。
+
+初轮广回归479 passed、1 skipped/159.43秒/exit0（/private/tmp/mvllm2-m4-eval-regression.log），不作为后续路径修复的最终证明。独立reviewer初轮27 passed、1 skipped/15.87秒，并用临时SQLite验证单折实际编排与父summary上传失败；确认P1：真实loader把base-model映射到base_model，如果同名兄弟目录已存在，可能加载未被inventory覆盖的另一份权重。新增回归先RED（1 failed/2.46秒/exit1，/private/tmp/mvllm2-m4-eval-alias-red.log），修复复用实际_sanitize_model_path并要求resolve等于已核验目录，基座和adapter/processor均在加载前与执行后检查。独立专项3 passed/3.01秒，错误目录/错误软链接拒绝、正确软链接兼容；额外运行中别名改指向故障注入使父failed且无manifest。P1关闭，专项复审通过，无剩余finding。
+
+已有输出/失败Run不自动重跑或覆盖；completed导出使用冻结input及相同评分实现，从MLflow下载合并输出、核对摘要/样本/评分/指标/结论后幂等发布。export不重读live数据或依赖事后晋级状态，保留已经完成的历史事实；eval本身invalid仍拒绝。持续后端故障、强制终止、创建响应丢失和真实GPU权重加载不由本机替身测试证明。以下追加最终回归和训练机证据。
+
+### 31.1 训练机隔离验证范围（执行前）
+
+只读核对训练机正式checkout仍clean main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52，任务隔离checkout仍123b4ab22ff93fe7121418ae372a9f3176186297、tracked clean，四个既有未跟踪环境/验证目录保留。/data/mVllm_2/records/models下无manifest，/data/mVllm_2/workspace/mlflow/mlflow.db不存在；因此不能声称已有可供真实正式eval准备的新体系已注册模型，不构造伪造完成训练或登记历史不合格模型来补齐证据。
+
+后续先将本机已审查代码通过校验SHA/verify和祖先关系的增量bundle快进到原任务隔离checkout，不push/merge main。已核实不存在的新输出目录为 `/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m4-eval-verification-20260912`。使用既有.venv-m3（不安装依赖）执行tests/test_eval_run.py、tests/test_v4_1_runtime_pointers.py、tests/versioning/test_cli.py、tests/test_train_with_contract.py，basetemp与日志均限新目录。CUDA_VISIBLE_DEVICES为空、OMP_NUM_THREADS=4、HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE=1。输入是测试自行建立的小媒体/模型文件、临时SQLite与受控loader/inference；不读取正式真值、不加载真实权重、不触发GPU或正式测评，不修改/data正式store。预计CPU几十秒、少量临时文件。完成后在实际训练机提交轻量证据，再校验bundle回传Mac；具体命令、版本、结果随后追加，执行前文字不代表已通过。
+
+### 31.2 本机最终验证与提交
+
+路径修复后的六文件广回归（tests/test_eval_run.py、tests/test_v4_1_runtime_pointers.py、tests/versioning/test_cli.py、tests/test_train_with_contract.py、tests/versioning/test_mlflow_eval.py、tests/versioning/test_registry.py）486 passed、1 skipped/215.61秒/exit0，日志/private/tmp/mvllm2-m4-eval-final-regression.log。跳过的是缺本机legacy发布数据的历史validation集测试，不影响隔离fixture的正式入口验证。
+
+随后收紧配置要求：调用者必须显式声明aggregation: pooled，确认使用现有按行合并的评分口径；缺省/其他规则拒绝。评分算法本身未变，不设实际业务阈值。新增缺字段回归先RED（1 failed/1.81秒/exit1），最终受影响的四文件联合回归114 passed、1 skipped/22.19秒/exit0（/private/tmp/mvllm2-m4-eval-final-config.log），没有重复未改动的低层广回归。独立专项1 passed/1.33秒且非法值检查全部拒绝，配置专项复审通过。三折与单折、adapter/merged、执行中媒体/基座漂移均已纳入最终测试；模型调用始终使用受控替身。
+
+git diff --check通过；当前可审阅实现与上述本机证据在Mac原子提交，代码版本由git log -- finetune/eval_run.py追溯。下一步按31.1执行既有训练机隔离同步与非GPU验证，不把本段本机通过写作Linux或真实模型效果证据。

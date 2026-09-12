@@ -40,7 +40,11 @@ def _load_active_release_id() -> str:
     return release_id
 
 
-RELEASE_ID = _load_active_release_id()
+def __getattr__(name: str):
+    # Only legacy callers requesting the active identity read its pointer.
+    if name == "RELEASE_ID":
+        return _load_active_release_id()
+    raise AttributeError(name)
 RELEASE_SCHEMA_VERSION = "tensile-training-release/v4.1"
 RELEASE_SCHEMA_VERSION_V2 = "tensile-training-release/v4.1-v2"
 
@@ -99,7 +103,7 @@ def load_release_expectations(
     finetune/active_data_release.json. Raises V4_1FinetuneError when the pointer
     is incomplete or when the manifest has drifted (e.g. through tampering).
     """
-    resolved_release_id = release_id or RELEASE_ID
+    resolved_release_id = release_id or _load_active_release_id()
     project_root = Path(
         project_root
         if project_root is not None
@@ -168,8 +172,8 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def release_dir(project_root: Path, release_id: str = RELEASE_ID) -> Path:
-    return current_data_paths(project_root).training_releases / release_id
+def release_dir(project_root: Path, release_id: str | None = None) -> Path:
+    return current_data_paths(project_root).training_releases / (release_id or _load_active_release_id())
 
 
 def _validate_v2_snapshot_binding(manifest: Mapping[str, Any]) -> None:
@@ -232,7 +236,7 @@ def validate_release(
     short-circuit is intended for tests and should not be used in production.
     """
     project_root = Path(project_root).resolve()
-    resolved_release_id = release_id or RELEASE_ID
+    resolved_release_id = release_id or _load_active_release_id()
     resolved_schema_version = expected_schema_version or RELEASE_SCHEMA_VERSION
     if expected_contract_hash is None or expected_counts is None:
         expectations = load_release_expectations(
@@ -426,7 +430,7 @@ def validate_training_config(
     expected_dataset_dir = release_dir(project_root).resolve()
     if configured_dataset_dir != expected_dataset_dir:
         raise V4_1FinetuneError(
-            f"{config_path.name}: dataset_dir 未绑定 {RELEASE_ID}"
+            f"{config_path.name}: dataset_dir 未绑定 {_load_active_release_id()}"
         )
     configured_media_dir = (
         Path(project_root) / "finetune" / str(config.get("media_dir"))
@@ -437,7 +441,7 @@ def validate_training_config(
             f"{config_path.name}: media_dir 未绑定当前语义化数据 workspace"
         )
     output_dir = str(config.get("output_dir") or "")
-    if RELEASE_ID.replace(".", "_").replace("-", "_") not in output_dir:
+    if _load_active_release_id().replace(".", "_").replace("-", "_") not in output_dir:
         raise V4_1FinetuneError(
             f"{config_path.name}: output_dir 未包含 V4.1 发布身份"
         )
