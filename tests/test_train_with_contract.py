@@ -92,3 +92,209 @@ def test_cli_rejects_duplicate_yaml_keys_before_execution(monkeypatch, tmp_path)
     with pytest.raises(ValueError, match="duplicate"):
         entry.main()
     assert events == []
+
+
+def _versioned_data_fixture(tmp_path):
+    import json
+    import yaml
+    from versioning.data_release import seal_payload
+    from versioning.migration import _release_content_digest
+    from versioning.prompts import create_prompt
+
+    root = tmp_path / "store"
+    media = tmp_path / "original/workspace/data"
+    release = root / "data/releases/data-v4.1-r2"
+    payload = release
+    labels = {"clip_state": "未断裂", "fracture_mechanism": None,
+              "fracture_site": None, "special_case": None}
+    rows = []
+    for fold in range(3):
+        path = media / f"derived/subvideos/video_{fold:04d}.mp4"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"isolated media fixture")
+        rows.append({"videos": [f"data/03_subvideos/video_{fold:04d}.mp4"], "messages": [
+            {"role": "system", "content": "old system"},
+            {"role": "user", "content": "<video>\nold user"},
+            {"role": "assistant", "content": json.dumps(labels, ensure_ascii=False)}]})
+    for fold in range(3):
+        for split in ("train", "validation"):
+            path = payload / f"datasets/{split}/fold_{fold}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            chosen = [row for i, row in enumerate(rows) if (i == fold) == (split == "validation")]
+            path.write_text(json.dumps(chosen, ensure_ascii=False))
+    (release / "release.yaml").write_text(yaml.safe_dump({
+        "version": "data-v4.1-r2", "protocol": "tensile-vlm/v4.1", "state": "sealed",
+        "purpose": "development", "training_allowed": True, "status": "active",
+        "description": "isolated fixture", "sample_count": 3, "source_batches": ["fixture"],
+        "splits": {f"fold_{i}": {"train": 2, "validation": 1} for i in range(3)}}))
+    seal_payload(release)
+    receipt = root / "migration_receipts/data-v4.1-r2.receipt.yaml"
+    receipt.parent.mkdir()
+    receipt.write_text(yaml.safe_dump({"target_identity": "data-v4.1-r2",
+        "target_path": "data/releases/data-v4.1-r2/release.yaml", "status": "committed",
+        "target_release_digest": _release_content_digest(release)}))
+    create_prompt(root, "v4.1", version="prompt-v4.1-r1", system_prompt="frozen system",
+                  user_prompt="frozen user", output_fields=list(labels))
+    return root, media, release, rows
+
+
+def test_versioned_datasets_keep_each_fold_members_and_labels(tmp_path):
+    import json
+    from finetune.train_build_dataset import build_versioned_datasets
+
+    root, media, release, original = _versioned_data_fixture(tmp_path)
+    files, binding = build_versioned_datasets(root=root, data_version="data-v4.1-r2",
+        prompt_version="prompt-v4.1-r1", media_root=media)
+    assert binding["media_root"] == str(media)
+    for fold in range(3):
+        for split in ("train", "validation"):
+            rows = json.loads(files[f"datasets/{split}/fold_{fold}.json"])
+            source = json.loads((release / f"datasets/{split}/fold_{fold}.json").read_text())
+            assert len(rows) == len(source)
+            for row, old in zip(rows, source):
+                assert row["messages"][2] == old["messages"][2]
+                assert row["messages"][0]["content"] == "frozen system"
+                assert row["messages"][1]["content"] == "<video>\nfrozen user"
+                assert (media / row["videos"][0]).is_file()
+    assert not (root / "workspace/runs").exists()
+
+
+def test_versioned_datasets_reject_wrong_external_media_root(tmp_path):
+    import pytest
+    from finetune.train_build_dataset import build_versioned_datasets
+
+    root, media, release, original = _versioned_data_fixture(tmp_path)
+    wrong = root / "workspace/data"
+    wrong.mkdir(parents=True)
+    with pytest.raises(ValueError, match="media"):
+        build_versioned_datasets(root=root, data_version="data-v4.1-r2",
+            prompt_version="prompt-v4.1-r1", media_root=wrong)
+
+
+def test_versioned_datasets_reject_payload_drift(tmp_path):
+    import pytest
+    from finetune.train_build_dataset import build_versioned_datasets
+
+    root, media, release, original = _versioned_data_fixture(tmp_path)
+    path = release / "datasets/train/fold_0.json"
+    path.chmod(0o644)
+    path.write_text("[]")
+    path.chmod(0o444)
+    with pytest.raises(ValueError, match="receipt"):
+        build_versioned_datasets(root=root, data_version="data-v4.1-r2",
+            prompt_version="prompt-v4.1-r1", media_root=media)
+
+
+def _prepare_versioned_fixture(tmp_path):
+    from finetune.train_prepare_run import prepare_versioned_run
+    root, media, release, rows = _versioned_data_fixture(tmp_path)
+    model = tmp_path / "model"
+    model.mkdir()
+    configs = {f"fold{i}": {"seed": 3411 + i, "model_name_or_path": str(model),
+        "learning_rate": 0.0001, "do_train": True} for i in range(3)}
+    prepared = prepare_versioned_run(root=root, train_version="train-v4.1-r1",
+        data_version="data-v4.1-r2", prompt_version="prompt-v4.1-r1",
+        media_root=media, fold_configs=configs, git_commit="test-commit",
+        environment={"python": "fixture"})
+    return root, media, release, prepared
+
+
+def test_versioned_prepare_freezes_three_folds_without_creating_run(tmp_path):
+    import yaml
+    root, media, release, prepared = _prepare_versioned_fixture(tmp_path)
+    training = yaml.safe_load((prepared / "training.yaml").read_text())
+    assert not (root / "workspace/mlflow").exists()
+    for fold in range(3):
+        config = training["folds"][f"fold{fold}"]
+        assert config["seed"] == 3411 + fold
+        assert config["dataset"] == f"tensile_v4_1_fold{fold}_train"
+        assert config["eval_dataset"] == f"tensile_v4_1_fold{fold}_val"
+        assert config["media_dir"] == str(media)
+    assert (prepared / "prompt.yaml").is_file()
+    assert all(not p.stat().st_mode & 0o222 for p in prepared.rglob("*") if p.is_file())
+
+
+def test_versioned_execution_calls_real_adapter_and_records_all_folds(tmp_path, monkeypatch):
+    import json
+    from finetune import train_with_contract
+    from finetune.train_prepare_run import execute_versioned_run
+    from versioning.mlflow_train import get_train_run, open_train_store
+
+    root, media, release, prepared = _prepare_versioned_fixture(tmp_path)
+    calls = []
+    def tuner(config):
+        calls.append(config)
+        output = Path(config["output_dir"])
+        output.mkdir(parents=True)
+        (output / "train_results.json").write_text(json.dumps({"train_loss": 0.25}))
+    from pathlib import Path
+    monkeypatch.setattr(train_with_contract, "run_training", tuner)
+    result = execute_versioned_run(root=root, train_version="train-v4.1-r1")
+    assert [c["seed"] for c in calls] == [3411, 3412, 3413]
+    assert result.workflow_state == "completed"
+    assert all(f.status == "FINISHED" for f in result.folds.values())
+    assert (root / "records/training/train-v4.1-r1/manifest.yaml").is_file()
+
+
+def test_versioned_execution_rejects_frozen_input_tampering_before_run(tmp_path, monkeypatch):
+    import pytest
+    from finetune import train_with_contract
+    from finetune.train_prepare_run import execute_versioned_run
+
+    root, media, release, prepared = _prepare_versioned_fixture(tmp_path)
+    path = prepared / "training.yaml"
+    path.chmod(0o644)
+    path.write_text(path.read_text().replace("3411", "9999"))
+    path.chmod(0o444)
+    calls = []
+    monkeypatch.setattr(train_with_contract, "run_training", lambda config: calls.append(config))
+    with pytest.raises(ValueError, match="frozen"):
+        execute_versioned_run(root=root, train_version="train-v4.1-r1")
+    assert calls == []
+    assert not (root / "workspace/mlflow").exists()
+
+
+def test_versioned_prepare_rejects_tokenized_cache(tmp_path):
+    import pytest
+    from finetune.train_prepare_run import prepare_versioned_run
+    root, media, release, rows = _versioned_data_fixture(tmp_path)
+    configs = {f"fold{i}": {"model_name_or_path": str(tmp_path), "tokenized_path": str(tmp_path / "cache")} for i in range(3)}
+    with pytest.raises(ValueError, match="tokenized_path"):
+        prepare_versioned_run(root=root, train_version="train-v4.1-r1", data_version="data-v4.1-r2",
+            prompt_version="prompt-v4.1-r1", media_root=media, fold_configs=configs,
+            git_commit="fixture", environment={"python": "fixture"})
+    assert not (root / "workspace/runs/train-v4.1-r1/input").exists()
+
+
+def test_versioned_validate_rejects_changed_media_bytes(tmp_path):
+    import pytest
+    from finetune.train_prepare_run import verify_versioned_run
+    root, media, release, prepared = _prepare_versioned_fixture(tmp_path)
+    next(media.rglob("*.mp4")).write_bytes(b"changed media")
+    with pytest.raises(ValueError, match="frozen"):
+        verify_versioned_run(root=root, train_version="train-v4.1-r1")
+
+
+def test_completed_training_can_recover_failed_export_without_execution(tmp_path, monkeypatch):
+    import json
+    from pathlib import Path
+    import pytest
+    import versioning.manifest as manifests
+    from finetune import train_with_contract
+    from finetune import train_prepare_run as preparation
+    root, media, release, prepared = _prepare_versioned_fixture(tmp_path)
+    calls = []
+    def tuner(config):
+        calls.append(config)
+        output = Path(config["output_dir"])
+        output.mkdir(parents=True)
+        (output / "train_results.json").write_text(json.dumps({"train_loss": 0.25}))
+    monkeypatch.setattr(train_with_contract, "run_training", tuner)
+    original = manifests._publish_immutable
+    monkeypatch.setattr(manifests, "_publish_immutable", lambda *a, **k: (_ for _ in ()).throw(OSError("export unavailable")))
+    with pytest.raises(OSError, match="export unavailable"):
+        preparation.execute_versioned_run(root=root, train_version="train-v4.1-r1")
+    monkeypatch.setattr(manifests, "_publish_immutable", original)
+    path = preparation.export_versioned_run(root=root, train_version="train-v4.1-r1")
+    assert path.is_file()
+    assert len(calls) == 3

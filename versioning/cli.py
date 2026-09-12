@@ -146,7 +146,7 @@ def _build_parser() -> argparse.ArgumentParser:
     train = commands.add_parser("train", help="创建和推进训练记录")
     train.add_argument(
         "action",
-        choices=("create", "fold-start", "fold-end", "summary", "complete", "show"),
+        choices=("prepare", "validate", "run", "export", "create", "fold-start", "fold-end", "summary", "complete", "show"),
     )
     train.add_argument("train_version", help="显式完整 train 版本")
     _add_root(train)
@@ -156,6 +156,9 @@ def _build_parser() -> argparse.ArgumentParser:
     train.add_argument("--git-commit", help="实际 Git commit")
     train.add_argument("--base-model", help="基础模型身份")
     train.add_argument("--config", type=Path, help="训练配置 YAML mapping")
+    train.add_argument("--environment", type=Path, help="冻结运行依赖版本 YAML")
+    train.add_argument("--media-root", type=Path, help="显式真实训练媒体根")
+    train.add_argument("--data-inputs", type=Path, help="七阶段发布的原始 inputs YAML；迁移对象使用既有 receipt")
     train.add_argument("--fold", type=int, help="fold 编号")
     train.add_argument("--params", type=Path, help="fold 参数 YAML mapping")
     train.add_argument("--metrics", type=Path, help="指标 YAML mapping")
@@ -488,6 +491,22 @@ def _handle_prompt(args: argparse.Namespace) -> Any:
 
 
 def _handle_train(args: argparse.Namespace) -> Any:
+    if args.action in {"prepare", "validate", "run", "export"}:
+        from finetune.train_prepare_run import prepare_versioned_run, verify_versioned_run, execute_versioned_run, export_versioned_run
+        if args.store is not None and args.store.absolute() != (args.root / "workspace/mlflow").absolute():
+            raise CLIUsageError("实际训练仅使用 <root>/workspace/mlflow；请指定对应 root")
+        if args.action == "prepare":
+            _required(args, "data_version", "prompt_version", "git_commit", "config", "environment", "media_root")
+            return {"input": prepare_versioned_run(root=args.root, train_version=args.train_version,
+                data_version=args.data_version, prompt_version=args.prompt_version,
+                media_root=args.media_root, fold_configs=_load_mapping(args.config, "fold configs"),
+                git_commit=args.git_commit, environment=_load_mapping(args.environment, "environment"),
+                inputs_path=args.data_inputs)}
+        if args.action == "validate":
+            return verify_versioned_run(root=args.root, train_version=args.train_version)
+        if args.action == "export":
+            return {"manifest": export_versioned_run(root=args.root, train_version=args.train_version)}
+        return execute_versioned_run(root=args.root, train_version=args.train_version)
     if args.action == "create":
         _required(
             args,

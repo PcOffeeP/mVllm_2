@@ -3,6 +3,8 @@
 本目录维护 MiniCPM-V-4.5 的 V4.1 三折 LoRA 微调、模型合并和严格验证集推理。
 训练、模型合并和 GPU 推理必须在训练电脑执行；本机只复核代码和已同步的轻量结果。
 
+可读版本体系的三折训练使用统一 `train prepare / validate / run / export` 入口，见 [versioning 训练操作说明](../versioning/SCRIPTS.md#三折训练准备与执行)。下文既有实验命令与结果保留其 legacy 身份语义。
+
 ## 当前身份
 
 | 项目 | 值 |

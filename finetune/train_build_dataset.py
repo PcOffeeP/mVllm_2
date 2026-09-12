@@ -54,6 +54,69 @@ def _read_json(path: Path, label: str) -> Any:
         raise SourceAware3kError(f"无法读取 {label}: {path}: {exc}") from exc
 
 
+def build_versioned_datasets(*, root: Path, data_version: str, prompt_version: str,
+                             media_root: Path, inputs_path: Path | None = None):
+    """Build six in-memory datasets without changing fold membership or labels.
+
+    Media roots are explicit. Migrated numbered paths use the existing mapping;
+    self-contained seven-stage releases resolve their relative media in payload.
+    Only Prompt text and media addressing change; there is no resampling.
+    """
+    from finetune.release_validate import validate_versioned_training_release
+    from versioning.prompts import load_prompt
+    from versioning.ids import parse_data_id, parse_prompt_id
+    from pipeline.v4_1_labels import V4_1_LABEL_FIELDS
+
+    if parse_data_id(data_version).protocol != parse_prompt_id(prompt_version).protocol:
+        raise ValueError("data/Prompt protocol mismatch")
+    meta, payload = validate_versioned_training_release(root, data_version, inputs_path=inputs_path)
+    prompt = load_prompt(root, prompt_version)
+    if tuple(prompt.output_fields) != tuple(V4_1_LABEL_FIELDS):
+        raise ValueError("Prompt output fields mismatch")
+    media_root = Path(media_root).absolute()
+    if not media_root.is_dir():
+        raise ValueError("explicit media root is missing")
+    files, counts, media_inventory = {}, {}, {}
+    for fold in range(3):
+        counts[f"fold{fold}"] = {}
+        members = {}
+        for split in ("train", "validation"):
+            relative = f"datasets/{split}/fold_{fold}.json"
+            source = _read_json(payload / relative, relative)
+            if not isinstance(source, list):
+                raise ValueError("fold dataset must be a list")
+            rows, seen = [], set()
+            for index, row in enumerate(source):
+                video, _ = validate_training_row(row, relative, index)
+                resolved = resolve_workspace_artifact(video, media_root).resolve()
+                if not resolved.is_relative_to(media_root.resolve()) or not resolved.is_file():
+                    raise ValueError(f"media missing or outside explicit root: {video}")
+                if resolved in seen:
+                    raise ValueError(f"duplicate fold member: {video}")
+                seen.add(resolved)
+                media_name = str(resolved.relative_to(media_root.resolve()))
+                if media_name not in media_inventory:
+                    media_inventory[media_name] = {"size": resolved.stat().st_size,
+                                                  "sha256": sha256_file(resolved)}
+                rows.append({"videos": [str(resolved.relative_to(media_root.resolve()))],
+                    "messages": [{"role": "system", "content": prompt.system_prompt},
+                        {"role": "user", "content": "<video>\n" + prompt.user_prompt},
+                        dict(row["messages"][2])]})
+            members[split] = seen
+            counts[f"fold{fold}"][split] = len(rows)
+            metadata_fold = f"fold{fold}" if inputs_path is not None else f"fold_{fold}"
+            if len(rows) != meta.splits.get(metadata_fold, {}).get(split):
+                raise ValueError("fold count does not match release metadata")
+            files[relative] = _pretty_bytes(rows)
+        if members["train"] & members["validation"]:
+            raise ValueError("train/validation members overlap")
+    # Keep registry names and column semantics from the established release.
+    from pipeline.v4_1_training_release import _registry
+    files["dataset_info.json"] = _pretty_bytes(_registry())
+    return files, {"data_version": data_version, "prompt_version": prompt_version,
+                   "media_root": str(media_root), "splits": counts, "media": media_inventory}
+
+
 def _validate_source_sampling(source_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     source_dir = Path(source_dir).resolve()
     summary = _read_json(source_dir / "summary.json", "source sampling summary")

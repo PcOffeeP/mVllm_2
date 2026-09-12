@@ -427,3 +427,25 @@ Mac，承接4c88cd95；仅低层执行事件适配，正式输入门与公共入
 Git正式记录 `records/prompts/prompt-v4.1-r1.yaml` 的SHA为 `907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6`。独立reviewer用标准load_prompt读取，逐字段核对system_prompt/user_prompt完全相等、output_fields内容和顺序一致；legacy六字段内容hash复算为 `0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db`，匹配源manifest。标准加载拒绝旧身份、LATEST及不完整ID。对已存在目标再次只读预检仅报告冲突，未重跑写入。
 
 独立审查通过，无finding；旧Prompt与活动指针相对HEAD未修改。训练机正式store当时尚无该Prompt文件，本节只记录Mac产物与两端源一致性，不冒充训练机已部署；后续随已提交Git对象同步。无模型权重加载或GPU工作。
+
+## 28. M4c/d 三折输入冻结与真实调用编排（2026-09-12）
+
+本机Mac，承接458e2004的训练事件及d92a0a19的正式Prompt。Test List：六份fold数据的成员/顺序/标签保留，显式媒体根与receipt漂移拒绝；prepared无Run，冻结三折完整配置；调用真实训练适配器、三fold父子Run/指标/产物/汇总/导出；冻结文件漂移在Run创建前拒绝；公共prepare/validate/run路由。数据构建3项和准备/执行3项分别因缺API得到有效RED；CLI路由2项得到有效RED。早期联合65项通过，不作为最终证明。
+
+独立reviewer发现tokenized缓存绕过与媒体字节未冻结两个P1、导出失败后缺恢复入口一个P2。三项回归先RED（`/private/tmp/mvllm2-m4cd-review-red.log`，3 failed/exit1），随后prepare/verify拒绝tokenized_path，冻结实际视频SHA/大小并执行前重算，增加公共train export从相同completed Run补导出。模型产物上传父Run foldN/adapter，子Run引用同一路径；异常记录保留原异常。修复后联合68 passed/exit0，日志 `/private/tmp/mvllm2-m4cd-fixed.log` 与按真实布局修正后的 `/private/tmp/mvllm2-m4cd-layout.log`。
+
+训练机只读核实了正式迁移对象实际结构：文件直接平铺版本目录、protocol为tensile-vlm/v4.1、split键为fold_0/1/2。新七阶段使用payload/与fold0/1/2。读取器按receipt或显式data-inputs区分，不修改发布内容。独立复审68 passed/2.56秒、exit0，另验证同长度媒体换字节拒绝、公共补导出幂等且执行次数仍3、Run身份漂移拒绝及父子产物引用；3个finding关闭。
+
+广回归 `.venv/bin/python -m pytest -q tests/test_train_build_dataset.py tests/test_train_build_source_aware_dataset.py tests/test_v4_1_runtime_pointers.py tests/test_train_with_contract.py tests/versioning/test_cli.py tests/versioning/test_mlflow_train.py --basetemp=/private/tmp/mvllm2-m4-training-regression-20260912 --tb=short`：233 passed/105.57秒、exit0，日志 `/private/tmp/mvllm2-m4-training-regression.log`。运行代码期间未变。新增七阶段→三折数据构建测试使用原reviewed_inputs fixture，主Agent与独立reviewer分别1 passed/1.06秒及1.00秒、exit0；媒体生成仍为替身，六fold有序视频/标签和无Run均验证。
+
+已同步versioning/SCRIPTS.md操作段与finetune README入口引用。主Agent按doc-contract沿用现有Contract扩充索引Scope；独立reviewer逐条核对CLI与链路完整性，通过。完整参数、环境版本和git_commit由调用者核实声明，代码不自动证明它们等于真实环境。
+
+本机验证使用隔离媒体/模型替身与真实临时MLflow，未加载模型、未执行GPU或完整评测；正式eval入口尚未接线，M4整体保持进行中。已有失败训练与checkpoint不自动覆盖或续跑；此切片明确提供completed事实的补导出恢复。迁移源和旧活动指针保持原样。
+
+## 29. M4训练机输入准备执行范围（执行前记录，2026-09-12）
+
+只读核对：训练机隔离分支仍e428f1c9、tracked clean，仅原.conda-m2/.venv-m3/m3-verification目录未跟踪；正式main仍f1b7d8a3且clean。Mac main是本任务祖先；后续先对增量bundle验SHA/verify及祖先关系，再快进该隔离分支，不push/merge main。
+
+拟在 `/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m4-verification-20260912`（RUN，已核实不存在）执行已授权的CPU准备dry-run。只复制正式r2的13,743,985字节轻量发布及receipt到RUN/store，并使用本次Git正式Prompt；不复制视频、不覆盖正式对象。实际媒体根为 `/home/liuyang/文档/mVllm_2/workspace/data`，只读核实1678个唯一视频、165,485,727字节。准备与验证各流式读取该范围的内容摘要，顺序CPU/I/O，不加载权重、不运行训练或评测。
+
+输入配置从现有active/v4_1_visual三fold YAML读取，显式绑定真实普通模型目录 `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；只用来验证参数传递和输入准备，不构成新实验或超参数选择。在RUN/store中用隔离train-v4.1-r1调用公共prepare和validate；该身份与任何正式store下同名对象分离。依赖版本使用既有.venv-m3的实际版本，CUDA_VISIBLE_DEVICES为空、OMP_NUM_THREADS=4、HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE=1。输出限RUN下输入配置、冻结input、验证JSON/日志和轻量摘要；预期不产生MLflow数据库。结果完成后在本节追加实际命令、退出与限制，执行前文字不能视为已经通过。

@@ -2015,3 +2015,28 @@ class TestHumanReviewerIdentity:
         app._freeze_review_result(args, tmp_path, {}, decisions)
         assert writes == [decisions]
         assert decisions['clip-1']['reviewer_id'] is None
+
+
+def test_seven_stage_release_feeds_versioned_three_fold_training(reviewed_inputs):
+    from versioning import data_pipeline as dp
+    from versioning.prompts import create_prompt
+    from finetune.train_build_dataset import build_versioned_datasets
+    from pipeline.v4_1_labels import V4_1_LABEL_FIELDS
+
+    root, path = reviewed_inputs
+    dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+    create_prompt(root, 'v4.1', version='prompt-v4.1-r1', system_prompt='frozen system',
+                  user_prompt='frozen user', output_fields=V4_1_LABEL_FIELDS)
+    payload = root / 'data/releases/data-v4.1-r1/payload'
+    files, binding = build_versioned_datasets(root=root, data_version='data-v4.1-r1',
+        prompt_version='prompt-v4.1-r1', media_root=payload, inputs_path=path)
+    assert binding['media']
+    for fold in range(3):
+        for split in ('train', 'validation'):
+            relative = f'datasets/{split}/fold_{fold}.json'
+            before = json.loads((payload / relative).read_text())
+            after = json.loads(files[relative])
+            assert len(before) == len(after)
+            assert [r['videos'] for r in before] == [r['videos'] for r in after]
+            assert [r['messages'][2] for r in before] == [r['messages'][2] for r in after]
+    assert not (root / 'workspace/mlflow').exists()

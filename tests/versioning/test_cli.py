@@ -467,3 +467,34 @@ def test_migration_cli_builds_then_publishes_history_summary_once(
 
     assert main(command) == 1
     assert "拒绝覆盖" in capsys.readouterr().err
+
+
+def test_train_prepare_routes_all_explicit_inputs(tmp_path, monkeypatch, capsys):
+    from finetune import train_prepare_run
+    seen = {}
+    config = tmp_path / "folds.yaml"
+    config.write_text(yaml.safe_dump({f"fold{i}": {"seed": i} for i in range(3)}))
+    environment = tmp_path / "environment.yaml"
+    environment.write_text("python: fixture\n")
+    def prepare(**kwargs):
+        seen.update(kwargs)
+        return tmp_path / "input"
+    monkeypatch.setattr(train_prepare_run, "prepare_versioned_run", prepare)
+    assert main(["train", "prepare", "train-v4.1-r1", "--root", str(tmp_path),
+        "--data-version", "data-v4.1-r2", "--prompt-version", "prompt-v4.1-r1",
+        "--config", str(config), "--environment", str(environment),
+        "--git-commit", "commit", "--media-root", str(tmp_path / "media")]) == 0
+    assert seen["fold_configs"]["fold2"]["seed"] == 2
+    assert seen["media_root"] == tmp_path / "media"
+    assert seen["data_version"] == "data-v4.1-r2"
+
+
+def test_train_run_and_validate_route_to_frozen_inputs(tmp_path, monkeypatch):
+    from finetune import train_prepare_run
+    calls = []
+    monkeypatch.setattr(train_prepare_run, "execute_versioned_run", lambda **kw: calls.append(("run", kw)))
+    monkeypatch.setattr(train_prepare_run, "verify_versioned_run", lambda **kw: calls.append(("validate", kw)))
+    for action in ("run", "validate"):
+        assert main(["train", action, "train-v4.1-r1", "--root", str(tmp_path)]) == 0
+    assert [item[0] for item in calls] == ["run", "validate"]
+    assert all(kw["train_version"] == "train-v4.1-r1" for _, kw in calls)

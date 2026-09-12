@@ -1,6 +1,6 @@
 <!-- DOCUMENT-CONTRACT
 Purpose: 定位 versioning 的实际入口，并提供显式数据输入与人工交接的操作边界。
-Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置和审查包回收。
+Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收及三折训练准备与执行入口。
 Must Preserve:
 - 五类完整可读身份、显式输入与 fail-closed，不引入当前版本回退。
 - 区分数据业务处理、人工决定和正式封存；不能把测试替身当真实媒体验收。
@@ -19,13 +19,36 @@ Non-goals:
 | --- | --- | --- |
 | `data` | `data_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
 | `prompt` | `prompts.py` | 注册不可变 Prompt，并冻结/校验训练 input 副本 |
-| `train` | `mlflow_train.py` | 训练父 Run、三折子 Run、汇总与完成门 |
+| `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结六份数据与三折配置、真实训练调用、父子 Run、汇总与完成后导出 |
 | `eval` | `mlflow_eval.py`、`manifest.py` | 测评父子 Run、Registry 精确引用、holdout 消费、结论门与 eval manifest 单向导出 |
 | `model` | `registry.py`、`manifest.py`、`materialize.py` | `mVllm2` 两阶段 register/finalize、model manifest、唯一部署目标 gate、alias 与 `models/current` 原子物化 |
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
+
+## 三折训练准备与执行
+
+`train prepare` 显式选择一个完整 train、data 和 prompt 身份。一个 train 包含 fold0、fold1、fold2；每折使用 release 中对应的 train/validation 文件，保持成员、顺序和标签，不重新划分或增加采样。`--config` 指向调用者准备的 YAML：顶层恰好为 `fold0`、`fold1`、`fold2`，各值为该折的完整 LLaMA-Factory 训练配置。`model_name_or_path` 必须为实际存在的绝对目录，三折相同；其余超参数原样保留。准备器只绑定数据集名称、冻结数据目录、显式媒体根和该 train 的输出目录；拒绝可能绕过这些输入的 `tokenized_path`。
+
+`--environment` 指向调用者核实的依赖版本 YAML（例如实际 Python、torch、transformers、LLaMA-Factory 版本），`--git-commit` 记录执行代码版本。版本号和配置必须由调用者明确选择；以下尖括号是必填占位符。
+
+```bash
+python -m versioning train prepare <完整train版本> \
+  --root <store绝对路径> --data-version <完整data版本> \
+  --prompt-version <完整prompt版本> --config <三折配置.yaml> \
+  --environment <依赖版本.yaml> --git-commit <代码commit> \
+  --media-root <实际媒体根>
+python -m versioning train validate <完整train版本> --root <store绝对路径>
+```
+
+迁移数据通过该 store 的 committed receipt 核验平铺发布内容；七阶段数据须额外传 `--data-inputs <原inputs.yaml>`，复验原发布链及 `payload/`。迁移数据的媒体根通常是原训练机项目的 `workspace/data`，来源镜像不能替代它；自包含七阶段发布使用该版本 `payload/` 作为媒体根。准备时冻结实际视频 SHA/大小，执行前复验媒体内容。检查、准备及验证不会创建 MLflow Run 或加载模型权重。
+
+准备产物为 `workspace/runs/<train>/input/`，含 `data-version.txt`、`prompt.yaml`、`training.yaml`、`environment.yaml`、六份数据 JSON、`dataset_info.json` 和内容校验清单。正式 Prompt 必须预先存在于 `records/prompts/`。旧记录中的样本数量与历史训练结果不会因准备而改变。
+
+取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/workspace/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。
+
+完成后的导出若失败，可用 `python -m versioning train export <完整train版本> --root <store绝对路径>` 从同一 completed Run 补导出；不重新训练，不覆盖不同内容。已有训练输出或失败 Run 不会由 `run` 自动覆盖或恢复；须先核对原 Run 和 checkpoint 后处理。底层 `create/fold-start/fold-end/summary/complete` 是记录 API，手动推进状态不能替代上述实际执行证据。
 完整参数运行 `python -m versioning <领域> --help` 查看。
 迁移命令不会扫描 sibling 或选择“当前”对象：Prompt/Data 动作必须显式给出
 `tensile-migration/object-mapping/v1` 映射文件，history 动作必须显式给出 entry YAML 列表，
