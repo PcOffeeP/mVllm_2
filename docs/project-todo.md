@@ -26,7 +26,7 @@
 | 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、holdout 独立验收及其他适用质量门 |
 | 文档收尾 | DOC-INDEX | 修正脚本索引的过期缺陷描述 | 待处理 | 本轮新发现，不阻塞模型诊断 |
 | 低优先级 | CONTRACT-NAMING | 澄清候选规划与训练发布的契约边界 | 待处理 | 先解释真实用途，再决定是否兼容重命名 |
-| 后续迁移 | VERSION-CONTROL-FORMAL-MIGRATION | 正式迁移可读版本控制体系 | 进行中（执行者 Codex；M3f 发布已完成，继续UI/CLI/DVC验收） | 核心基础设施已完成；正式迁移写入、legacy 退役、merge/push 均需另行授权 |
+| 后续迁移 | VERSION-CONTROL-FORMAL-MIGRATION | 正式迁移可读版本控制体系 | 进行中（执行者 Codex；M3g UI 已完成，继续CLI/DVC完整验收） | 核心基础设施已完成；正式迁移写入、legacy 退役、merge/push 均需另行授权 |
 
 MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独立验收才允许训练最终候选。新发现改变依赖时，同步本表和条目并说明原因。
 
@@ -231,3 +231,5 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - 2026-09-12 M3e：真实开发候选审查包与完整绑定回收完成，定向12项、独立完整1749 passed/exit0，独立reviewer无finding。非空历史参考与冲突保护已独立复验；真实人工及跨机回传仍待验证，继续发布/UI/CLI/DVC。
 
 - 2026-09-12 M3f：真实六份开发集数据、媒体/标签/split保持、封存及只读validate完成。reviewer发现的3处校验遗漏和锁等待目录变化均经RED/修复/独立复验关闭；专项8项，独立完整1757 passed/exit0。真实对象写入未执行，后续UI和入口集成尚待提交。
+
+- 2026-09-12 M3g：显式审查包接入现有界面，草稿/冻结角色和路径保护完成；reviewer两个P2均闭环。5项边界、1项AppTest完整交互、独立完整1763 passed/exit0；测试图像/视频/决定均为fixture，不冒充真人审查。继续最终CLI/DVC完整验收与待授权训练机步骤。

@@ -1846,3 +1846,94 @@ class TestInputReleaseBoundaries:
         dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
         with pytest.raises(dp.ReleaseConflict):
             dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+
+
+# M3g — portable review UI adapter and persisted decisions.
+class TestInputReviewWorkspace:
+    def test_portable_package_load_and_draft_round_trip(self, review_stage, tmp_path):
+        from versioning import data_pipeline as dp
+        import shutil
+        root, path = review_stage
+        exported = dp.run_input_review_export(root, inputs_path=path, batch='batch-001').outputs[0]
+        package = tmp_path / 'portable'
+        shutil.copytree(exported, package)
+        identity, candidates, references = dp.load_input_review_package(package)
+        assert candidates
+        assert all(Path(c['_resolved_video_path']).is_file() for c in candidates)
+        result_path = tmp_path / 'review.json'
+        payload = _review_return(package, result_path)
+        decisions = {r['clip_id']: r for r in payload['review']['decisions']}
+        draft = tmp_path / 'draft.json'
+        dp.save_input_review_draft(draft, identity, {candidates[0]['candidate_id']: decisions[candidates[0]['candidate_id']]})
+        assert len(dp.load_input_review_draft(draft, identity)) == 1
+        dp.save_input_review_draft(draft, identity, decisions)
+        result = dp.freeze_input_review_workspace(tmp_path / 'result', identity, decisions)
+        assert result.is_file()
+        dp.run_input_review_import(root, inputs_path=path, batch='batch-001', results_path=result)
+
+    def test_changed_portable_media_cannot_open(self, review_stage):
+        from versioning import data_pipeline as dp
+        root, path = review_stage
+        package = dp.run_input_review_export(root, inputs_path=path, batch='batch-001').outputs[0]
+        next(package.rglob('*.mp4')).write_bytes(b'changed')
+        with pytest.raises(dp.DataPipelineError):
+            dp.load_input_review_package(package)
+
+    def test_ui_rejects_partial_selection_even_zero_limit(self, tmp_path):
+        from pipeline.scripts.review_candidates_app import _parse_args
+        with pytest.raises(SystemExit):
+            _parse_args(['--versioning-package', str(tmp_path / 'package'), '--reviewer-id', 'reviewer',
+                         '--draft', str(tmp_path / 'draft.json'), '--output-root', str(tmp_path / 'out'), '--limit', '0'])
+
+class TestInputReviewApp:
+    def test_ui_completes_fixture_review_into_bound_return(self, media_inputs, media_runtime, tmp_path, monkeypatch):
+        from streamlit.testing.v1 import AppTest
+        from PIL import Image
+        from versioning import data_pipeline as dp
+        import sys
+        original = dp._execute_input_media
+        def execute(command, label):
+            original(command, label)
+            if command[-1].endswith('.jpg'):
+                Image.new('RGB', (2, 2), 'gray').save(command[-1])
+        monkeypatch.setattr(dp, '_execute_input_media', execute)
+        path = media_inputs[0]; root = tmp_path / 'store'
+        _run_real_source(root, path); _run_real_roi(root, path); _run_real_subvideo(root, path)
+        package = dp.run_input_review_export(root, inputs_path=path, batch='batch-001').outputs[0]
+        output = tmp_path / 'review-output'
+        script = Path(__file__).resolve().parents[2] / 'pipeline/scripts/review_candidates_app.py'
+        monkeypatch.setattr(sys, 'argv', [str(script), '--versioning-package', str(package),
+            '--reviewer-id', 'fixture-reviewer', '--draft', str(tmp_path / 'draft.json'), '--output-root', str(output)])
+        app = AppTest.from_file(str(script)).run(timeout=20)
+        assert not app.exception
+        count = len(json.loads((package / 'review_queue.json').read_text())['candidates'])
+        for _ in range(count):
+            [button for button in app.button if button.label == '批准'][0].click()
+            app.run(timeout=20)
+            assert not app.exception
+        returned = output / 'review_return.json'
+        assert returned.is_file()
+        dp.run_input_review_import(root, inputs_path=path, batch='batch-001', results_path=returned)
+
+
+class TestInputReviewWorkspaceBoundaries:
+    @pytest.mark.parametrize('problem', ['overwrite_frozen', 'traversal_into_package'])
+    def test_workspace_preserves_package_and_frozen_result(self, review_stage, tmp_path, problem):
+        from versioning import data_pipeline as dp
+        root, path = review_stage
+        package = dp.run_input_review_export(root, inputs_path=path, batch='batch-001').outputs[0]
+        identity, _, _ = dp.load_input_review_package(package)
+        returned = tmp_path / 'return.json'
+        payload = _review_return(package, returned)
+        decisions = {r['clip_id']: r for r in payload['review']['decisions']}
+        if problem == 'overwrite_frozen':
+            output = dp.freeze_input_review_workspace(tmp_path / 'final', identity, decisions)
+            next(iter(decisions.values()))['reviewer_notes'] = 'changed'
+            with pytest.raises(dp.ReviewGateError):
+                dp.save_input_review_draft(output, identity, decisions)
+        else:
+            sibling = package.parent / 'sibling'; sibling.mkdir()
+            output = sibling / '..' / package.name / 'draft.json'
+            with pytest.raises(dp.ReviewGateError):
+                dp.save_input_review_draft(output, identity, decisions)
+            assert not (package / 'draft.json').exists()

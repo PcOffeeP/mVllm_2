@@ -1732,3 +1732,113 @@ def run_input_release_validate(root: Path, *, inputs_path: Path, batch: str, ver
               'sample_count': build['sample_count'], 'payload_file_count': len(build['payload_inventory'])}
     # Validation is read-only; this does not start training or change release status.
     return StageResult('release_validate', (release,), report)
+
+# M3g — portable review UI adapter and persisted decisions.
+def load_input_review_package(package: Path):
+    package = Path(package).absolute()
+    if not package.is_dir() or any(p.is_symlink() for p in (package, *package.parents)):
+        raise StageInputError('审查包必须位于普通目录')
+    manifest_pin = _external_document_pin(package / 'stage_manifest.json')
+    manifest = _read_pinned_document(manifest_pin)
+    if (manifest.get('schema') != 'tensile-data/stage/v1' or manifest.get('stage') != 'review_export'
+            or manifest.get('artifacts') != _stage_inventory(package)):
+        raise ReviewGateError('审查包阶段身份或完整文件清单不一致')
+    queue = _stage_json(package, 'review_queue.json')
+    if (queue.get('schema') != 'tensile-data/review-queue/v1' or queue.get('batch') != manifest['batch']
+            or queue.get('inputs_sha256') != manifest['inputs_sha256']):
+        raise ReviewGateError('审查队列与包身份不一致')
+    candidates, references = [], {}
+    ids = []
+    for candidate in queue['candidates']:
+        ids.append(candidate['candidate_id'])
+        video = _candidate_media_pin(package, candidate, video=True)
+        frames = [_candidate_media_pin(package, f) for f in candidate['frame_artifacts']]
+        candidates.append({**candidate, '_resolved_video_path': str(video.path),
+                           '_resolved_frames': [{'path': str(f.path), 'sha256': f.sha256} for f in frames]})
+        references.update({r['reference_record_id']: r for r in candidate['historical_records']})
+    if len(ids) != len(set(ids)) or not set(ids) <= set(queue['candidate_inventory']):
+        raise ReviewGateError('审查候选清单不一致')
+    identity = {'queue_id': queue['batch'], 'selected_candidate_ids': ids,
+                'export_sha256': manifest_pin.sha256, '_package': str(package), '_queue': queue}
+    return identity, candidates, references
+
+
+def _input_workspace_payload(identity, decisions, *, complete):
+    from pipeline.v4_1_review_decisions import build_review_payload
+    fresh, _, _ = load_input_review_package(Path(identity['_package']))
+    if fresh['export_sha256'] != identity['export_sha256']:
+        raise ReviewGateError('审查期间包内容发生变化')
+    queue = fresh['_queue']
+    all_ids = set(fresh['selected_candidate_ids'])
+    if not isinstance(decisions, dict) or set(decisions) - all_ids or (complete and set(decisions) != all_ids):
+        raise ReviewGateError('审查决定未覆盖要求的候选清单')
+    for key, row in decisions.items():
+        if not isinstance(row, dict) or row.get('clip_id') != key:
+            raise ReviewGateError('审查决定索引与 clip_id 不一致')
+    payload = {'schema': 'tensile-data/review-return/v1', 'batch': queue['batch'],
+               'inputs_sha256': queue['inputs_sha256'], 'export_sha256': fresh['export_sha256'],
+               'review': build_review_payload([decisions[cid] for cid in fresh['selected_candidate_ids'] if cid in decisions],
+                   batch_id=queue['batch'], created_at=max((r['reviewed_at'] for r in decisions.values()), default='1970-01-01T00:00:00+00:00'))}
+    selected = {**queue, 'candidates': [c for c in queue['candidates'] if c['candidate_id'] in decisions]}
+    _validate_input_review_return(payload, selected, fresh['export_sha256'])
+    return payload
+
+
+def load_input_review_draft(path: Path, identity):
+    if not path.exists():
+        return {}
+    draft = _read_pinned_document(_external_document_pin(path))
+    if set(draft) != {'schema', 'payload'} or draft['schema'] != 'tensile-data/review-draft/v1':
+        raise ReviewGateError('该文件不是审查草稿')
+    payload = draft['payload']
+    if payload.get('export_sha256') != identity['export_sha256']:
+        raise ReviewGateError('草稿属于另一份审查包')
+    rows = payload.get('review', {}).get('decisions', [])
+    decisions = {r['clip_id']: r for r in rows}
+    if len(rows) != len(decisions) or _input_workspace_payload(identity, decisions, complete=False) != payload:
+        raise ReviewGateError('草稿不是规范化的已绑定审查结果')
+    return decisions
+
+
+def _write_input_review_file(path, identity, decisions, *, complete):
+    path = Path(path).absolute()
+    if any(p.is_symlink() for p in (path, *path.parents)):
+        raise ReviewGateError('审查输出路径不能经过符号链接')
+    path = path.resolve()
+    package = Path(identity['_package']).resolve()
+    if path.is_relative_to(package):
+        raise ReviewGateError('审查结果必须位于导出包之外')
+    payload = _input_workspace_payload(identity, decisions, complete=complete)
+    if not complete:
+        payload = {'schema': 'tensile-data/review-draft/v1', 'payload': payload}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with os.fdopen(os.open(path.parent / f'.{path.name}.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600), 'a+') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        if path.exists():
+            existing = _read_pinned_document(_external_document_pin(path))
+            if complete:
+                if existing != payload:
+                    raise ReviewGateError('拒绝覆盖已有冻结回收结果')
+                return path
+            if (existing.get('schema') != 'tensile-data/review-draft/v1'
+                    or existing.get('payload', {}).get('export_sha256') != identity['export_sha256']):
+                raise ReviewGateError('拒绝覆盖冻结结果或其他审查包草稿')
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f'.{path.name}-', delete=False) as handle:
+            temp = Path(handle.name)
+        try:
+            _write_json(temp, payload)
+            if complete:
+                os.link(temp, path)
+            else:
+                os.replace(temp, path)
+        finally:
+            temp.unlink(missing_ok=True)
+    return path
+
+
+def save_input_review_draft(path: Path, identity, decisions):
+    return _write_input_review_file(path, identity, decisions, complete=False)
+
+
+def freeze_input_review_workspace(output_root: Path, identity, decisions):
+    return _write_input_review_file(Path(output_root) / 'review_return.json', identity, decisions, complete=True)

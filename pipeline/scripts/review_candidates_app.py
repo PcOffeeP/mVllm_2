@@ -59,7 +59,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         raw = raw[raw.index("--") + 1 :]
     parser = argparse.ArgumentParser(description="v4.1 候选媒体人工复检 UI")
     parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--queue", type=Path, required=True)
+    queue_input = parser.add_mutually_exclusive_group(required=True)
+    queue_input.add_argument("--queue", type=Path)
+    queue_input.add_argument("--versioning-package", type=Path, help="显式可读版本审查导出包")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--review-reference", type=Path)
     parser.add_argument("--candidate-id", action="append", default=[])
@@ -69,6 +71,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--reviewer-id")
     args = parser.parse_args(raw)
+    if args.versioning_package is not None:
+        if not args.reviewer_id or not args.reviewer_id.strip() or args.draft is None or args.output_root is None:
+            parser.error("--versioning-package 必须显式指定 --reviewer-id、--draft 和 --output-root")
+        if any((args.data_root, args.project_root, args.review_reference, args.candidate_id, args.routing_manifest)) or args.limit is not None:
+            parser.error("完整 versioning 审查包不接受 legacy 根、局部筛选或外部参考参数")
+        if args.draft.resolve() == (args.output_root / "review_return.json").resolve():
+            parser.error("--draft 不能指向冻结结果文件")
+        return args
     context = data_context_from_arg(PROJECT_ROOT, args.data_root)
     args.project_root = args.project_root or context.root
     args._data_context = context
@@ -238,44 +248,50 @@ def main() -> None:
     st.set_page_config(page_title="v4.1 人工复检", layout="wide")
     args = _parse_args()
     try:
-        if args.routing_manifest is not None and args.candidate_id:
-            raise V4_1ReviewWorkflowError(
-                "--routing-manifest 与 --candidate-id 不能同时使用"
+        if args.versioning_package is not None:
+            from versioning.data_pipeline import load_input_review_package, load_input_review_draft
+            identity, candidates, references = load_input_review_package(args.versioning_package)
+            draft_path, output_root = args.draft, args.output_root
+            decisions = load_input_review_draft(draft_path, identity)
+        else:
+            if args.routing_manifest is not None and args.candidate_id:
+                raise V4_1ReviewWorkflowError(
+                    "--routing-manifest 与 --candidate-id 不能同时使用"
+                )
+            candidate_ids = list(args.candidate_id)
+            if args.routing_manifest is not None:
+                candidate_ids = load_manual_candidate_ids(
+                    args.routing_manifest,
+                    queue_path=args.queue,
+                )
+            identity, candidates = _cached_review_queue(
+                str(args.queue.resolve()),
+                str(args.project_root.resolve()),
+                tuple(candidate_ids),
+                args.limit,
             )
-        candidate_ids = list(args.candidate_id)
-        if args.routing_manifest is not None:
-            candidate_ids = load_manual_candidate_ids(
-                args.routing_manifest,
-                queue_path=args.queue,
+            references = _cached_reference_records(
+                str(args.review_reference.resolve()) if args.review_reference else None
             )
-        identity, candidates = _cached_review_queue(
-            str(args.queue.resolve()),
-            str(args.project_root.resolve()),
-            tuple(candidate_ids),
-            args.limit,
-        )
-        references = _cached_reference_records(
-            str(args.review_reference.resolve()) if args.review_reference else None
-        )
-        review_root = args._data_context.metadata_collection(
-            "review_decisions"
-        )
-        default_draft, default_output_root = _default_paths(
-            review_root,
-            identity["queue_id"],
-            identity["selected_candidate_ids_sha256"],
-        )
-        draft_path = args._data_context.require_managed_output(
-            args.draft or default_draft,
-            review_root,
-            label="review draft output",
-        )
-        output_root = args._data_context.require_managed_output(
-            args.output_root or default_output_root,
-            review_root,
-            label="review decisions output",
-        )
-        decisions = load_draft(draft_path, identity)
+            review_root = args._data_context.metadata_collection(
+                "review_decisions"
+            )
+            default_draft, default_output_root = _default_paths(
+                review_root,
+                identity["queue_id"],
+                identity["selected_candidate_ids_sha256"],
+            )
+            draft_path = args._data_context.require_managed_output(
+                args.draft or default_draft,
+                review_root,
+                label="review draft output",
+            )
+            output_root = args._data_context.require_managed_output(
+                args.output_root or default_output_root,
+                review_root,
+                label="review decisions output",
+            )
+            decisions = load_draft(draft_path, identity)
     except (ReviewRoutingError, V4_1ReviewWorkflowError, ValueError) as exc:
         st.error(str(exc))
         st.stop()
@@ -287,10 +303,14 @@ def main() -> None:
     freeze_error: str | None = None
     if counts["remaining"] == 0:
         try:
-            completed_batch = freeze_completed_batch(
-                output_root, identity, decisions,
-                collection_dir=args._data_context.metadata_collection("review_decisions"),
-            )
+            if args.versioning_package is not None:
+                from versioning.data_pipeline import freeze_input_review_workspace
+                completed_batch = freeze_input_review_workspace(output_root, identity, decisions)
+            else:
+                completed_batch = freeze_completed_batch(
+                    output_root, identity, decisions,
+                    collection_dir=args._data_context.metadata_collection("review_decisions"),
+                )
         except (V4_1ReviewWorkflowError, ValueError, FileExistsError) as exc:
             freeze_error = str(exc)
 
@@ -564,7 +584,11 @@ def main() -> None:
                     reviewer_notes=notes,
                     reviewer_id=args.reviewer_id,
                 )
-                save_draft(draft_path, identity, decisions)
+                if args.versioning_package is not None:
+                    from versioning.data_pipeline import save_input_review_draft
+                    save_input_review_draft(draft_path, identity, decisions)
+                else:
+                    save_draft(draft_path, identity, decisions)
             except (V4_1ReviewWorkflowError, ValueError) as exc:
                 st.error(str(exc))
                 st.stop()

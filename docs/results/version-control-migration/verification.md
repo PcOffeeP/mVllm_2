@@ -285,3 +285,13 @@ M3b 已完成本地 source 适配；真实媒体、CLI 和其余阶段仍待完�
 初始3项取得有效RED后实现；reviewer发现协议字段、正式目录链接和payload根额外stage_manifest漏检，补入3项RED并修复。另增加同名版本冲突RED/修复。复审发现等待版本锁期间集合路径变化可在错误位置写入，新增RED后在锁内、阶段转换前重查路径，DVC前先完整校验。最终8项定向通过；reviewer独立复验错误目录保持为空且DVC不调用，原问题全部关闭。
 
 本机独立detached worktree基于`c66b5228`，仅叠加发布切片，完整`tests/versioning` **1757 passed，359.36秒，exit0**，`--basetemp /tmp/mvllm2-release-proof-20260912`，同一项目虚拟环境解释器。代码与被测快照逐字一致；临时日志`/tmp/mvllm2-m3-release-full-pytest.log`。不含后续UI/CLI/DVC接线增量。本切片媒体与人工记录为fixture，没有正式数据迁移；DVC调用顺序由reviewer替身核查，真实DVC集成另随入口接线验收。
+
+## 18. M3g：可携审查包的现有界面接入
+
+2026-09-12 现有 review_candidates_app 新增显式 `--versioning-package` 模式，必须指定真实reviewer-id、包外draft和output-root，不接受局部候选选择；legacy `--queue` 分支保持原样。新模式打开/保存/冻结时验签整包，沿用模型采样帧优先的呈现与标签确认。草稿持久化为独立review-draft envelope，完整结果为review-return；冻结文件不能被草稿接口覆写，规范化后的输出路径不能落在包内。
+
+包加载/媒体漂移先取得2项RED；局部limit=0绕过另取得RED后修复。reviewer发现草稿覆盖冻结文件及含`..`路径可写入包内两个P2，均补RED/修复；5项专项通过，reviewer以新进程验证角色持久化、冻结字节保留和包inventory不变，终审通过。既有UI媒体helper独立1项通过。
+
+主Agent另用Streamlit AppTest完成完整fixture界面操作：打开包、逐条批准、草稿保存、完整冻结及统一import，**1 passed**。该用例帧为2×2测试图片、视频为媒体替身，仅证明交互/数据绑定，不证明真实画面或播放。没有代替实际审查者作真人决定。
+
+独立本机detached worktree基于`aea0e1e2`，仅叠加本UI切片及相关测试，完整`tests/versioning` **1763 passed，397.23秒，exit0**，同一虚拟环境解释器，`--basetemp /tmp/mvllm2-ui-proof-20260912`。暂存的三个代码文件与快照逐字一致；临时日志`/tmp/mvllm2-m3-ui-full-pytest.log`。后续CLI/DVC接线另验，真实跨机审查仍待执行。
