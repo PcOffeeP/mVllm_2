@@ -1747,3 +1747,102 @@ class TestInputReview:
         with pytest.raises((dp.StageInputError, dp.ReviewGateError)):
             dp.run_input_review_import(root, inputs_path=path, batch='batch-001', results_path=returned)
         assert not (root / 'data/working/batch-001/review_import').exists()
+
+# M3f — reviewed development release with real datasets.
+@pytest.fixture()
+def reviewed_inputs(review_stage, tmp_path):
+    from versioning import data_pipeline as dp
+    root, path = review_stage
+    package = dp.run_input_review_export(root, inputs_path=path, batch='batch-001').outputs[0]
+    returned = tmp_path / 'returned.json'
+    _review_return(package, returned)
+    dp.run_input_review_import(root, inputs_path=path, batch='batch-001', results_path=returned)
+    return root, path
+
+
+class TestInputRelease:
+    def test_datasets_preserve_labels_media_and_source_splits(self, reviewed_inputs):
+        from versioning import data_pipeline as dp
+        from pipeline.v4_1_training_release import _dataset_row
+        root, path = reviewed_inputs
+        result = dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+        assert len(result.outputs) >= 1
+        release = root / 'data/releases/data-v4.1-r1'
+        payload = release / 'payload'
+        meta = json.loads((payload / 'metadata/training_candidates.json').read_text())
+        contract = json.loads((payload / 'contract.json').read_text())
+        assert meta['candidates']
+        assert {'automatic_validation', 'human_review'} == {r['label_source'] for r in meta['candidates']}
+        splits = json.loads((payload / 'splits.json').read_text())
+        for fold in range(3):
+            for name, directory in [('train', 'train'), ('val', 'validation')]:
+                rows = [r for r in meta['candidates'] if r['source_video'] in splits[f'fold_{fold}_{name}']]
+                actual = json.loads((payload / f'datasets/{directory}/fold_{fold}.json').read_text())
+                assert actual == [_dataset_row({'_release_video_path': r['video_path']}, r['labels'], contract) for r in rows]
+        assert all((payload / r['video_path']).is_file() for r in meta['candidates'])
+        assert not any(r['source_video'] in splits['test'] for r in meta['candidates'])
+        assert not any(p.stat().st_mode & 0o222 for p in payload.rglob('*'))
+        report = dp.run_input_release_validate(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+        assert report.report['passed'] is True
+        assert not (root / 'data/release_pointer.json').exists()
+
+    def test_tampered_release_fails_validation(self, reviewed_inputs):
+        from versioning import data_pipeline as dp
+        root, path = reviewed_inputs
+        dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+        target = root / 'data/releases/data-v4.1-r1/payload/dataset_info.json'
+        assert target.exists()
+        target.chmod(0o600); target.write_text('{}'); target.chmod(0o400)
+        with pytest.raises(dp.DataPipelineError):
+            dp.run_input_release_validate(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+
+    def test_no_review_cannot_create_release(self, review_stage):
+        from versioning import data_pipeline as dp
+        root, path = review_stage
+        with pytest.raises(dp.DataPipelineError):
+            dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+        assert not (root / 'data/releases').exists()
+
+class TestInputReleaseBoundaries:
+    @pytest.mark.parametrize('problem', ['protocol', 'release_link', 'extra_manifest'])
+    def test_sealed_release_validation_rejects_unbound_changes(self, reviewed_inputs, problem):
+        from versioning import data_pipeline as dp
+        root, path = reviewed_inputs
+        dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+        release = root / 'data/releases/data-v4.1-r1'
+        if problem == 'protocol':
+            meta = yaml.safe_load((release / 'release.yaml').read_text()); meta['protocol'] = 'v9.9'
+            (release / 'release.yaml').write_text(yaml.safe_dump(meta))
+        elif problem == 'release_link':
+            backup = release.with_name('moved'); release.chmod(0o700); release.rename(backup)
+            backup.chmod(0o500); release.symlink_to(backup, target_is_directory=True)
+        else:
+            payload = release / 'payload'; payload.chmod(0o700)
+            extra = payload / 'stage_manifest.json'; extra.write_text('{}'); extra.chmod(0o400); payload.chmod(0o500)
+        with pytest.raises(dp.DataPipelineError):
+            dp.run_input_release_validate(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+
+    def test_collection_path_change_while_waiting_does_not_publish(self, reviewed_inputs, tmp_path, monkeypatch):
+        from versioning import data_pipeline as dp
+        root, path = reviewed_inputs
+        (root / 'data/releases').mkdir()
+        outside = tmp_path / 'outside'; outside.mkdir()
+        calls = []
+        original = dp.fcntl.flock
+        def wait(lock, operation):
+            calls.append(lock)
+            if len(calls) == 2:
+                (root / 'data/releases').rmdir()
+                (root / 'data/releases').symlink_to(outside, target_is_directory=True)
+            return original(lock, operation)
+        monkeypatch.setattr(dp.fcntl, 'flock', wait)
+        with pytest.raises(dp.DataPipelineError):
+            dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+        assert list(outside.iterdir()) == []
+
+    def test_existing_version_is_a_conflict_even_when_identical(self, reviewed_inputs):
+        from versioning import data_pipeline as dp
+        root, path = reviewed_inputs
+        dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')
+        with pytest.raises(dp.ReleaseConflict):
+            dp.run_input_release(root, inputs_path=path, batch='batch-001', version='data-v4.1-r1')

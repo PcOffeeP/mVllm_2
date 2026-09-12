@@ -897,7 +897,7 @@ def _input_stage_path(root: Path, batch: str, stage: str) -> Path:
     return current
 
 
-def _stage_inventory(directory: Path) -> dict[str, Any]:
+def _stage_inventory(directory: Path, *, exclude_manifest: bool = True) -> dict[str, Any]:
     inventory = {}
     for path in sorted(directory.rglob('*')):
         if path.is_symlink():
@@ -907,7 +907,7 @@ def _stage_inventory(directory: Path) -> dict[str, Any]:
         if not stat.S_ISREG(path.stat().st_mode):
             raise StageInputError(f'阶段产物必须是普通文件: {path}')
         name = path.relative_to(directory).as_posix()
-        if name == 'stage_manifest.json':
+        if exclude_manifest and name == 'stage_manifest.json':
             continue
         inventory[name] = {'size_bytes': path.stat().st_size, 'sha256': _sha256_file(path)}
     return inventory
@@ -1564,3 +1564,171 @@ def run_input_review_import(root: Path, *, inputs_path: Path, batch: str, result
     if frozen != payload:
         raise ReviewGateError('已有冻结审查结果与本次回收不同，拒绝覆盖')
     return result
+
+# M3f — reviewed development release with real datasets.
+def _input_release_rows(sub, review, contract):
+    from pipeline.v4_1_labels import migrate_v3_to_v4_1_labels
+    from pipeline.v4_1_review_workflow import _proposal
+    decisions = {r['clip_id']: r for r in review['review']['decisions']}
+    finalized, excluded = [], []
+    for candidate in sub['candidates']:
+        if candidate['scope'] != 'development':
+            continue
+        cid = candidate['candidate_id']
+        decision = decisions.get(cid)
+        if decision is not None:
+            if decision['review_status'] in {'dropped', 'needs_regenerate'}:
+                excluded.append({'candidate_id': cid, 'source_video': candidate['source_video'],
+                                 'review_status': decision['review_status'], 'reviewer_notes': decision['reviewer_notes']})
+                continue
+            labels = decision['effective_labels']
+            label_source = 'human_review'
+        else:
+            if _proposal(candidate) is not None or candidate.get('review_disposition') != 'automatic_validation':
+                raise ReviewGateError(f'{cid}: 人工候选缺少冻结决定')
+            labels = migrate_v3_to_v4_1_labels(candidate['candidate_v3_labels'])
+            if labels != {'clip_state': '未断裂', 'fracture_mechanism': None, 'fracture_site': None, 'special_case': None}:
+                raise ReviewGateError(f'{cid}: 自动准入仅限普通未断裂')
+            label_source = 'automatic_validation'
+        finalized.append({**candidate, 'labels': labels, 'label_source': label_source,
+                          'review_status': decision['review_status'] if decision else None})
+    if not finalized:
+        raise ReviewGateError('审查后没有可发布的开发集候选')
+    splits = sub['splits']
+    source_ids = {r['source_video'] for r in finalized}
+    for fold in range(3):
+        train, val, test = (set(splits[f'fold_{fold}_train']), set(splits[f'fold_{fold}_val']), set(splits['test']))
+        if train & val or (train | val) & test or source_ids - (train | val) or source_ids & test:
+            raise StageInputError('开发集 source split 交叉或未覆盖')
+    return finalized, excluded
+
+
+def _check_input_release_paths(root: Path, version: str):
+    data = root / 'data'
+    for path in (root, *root.parents, data, data / 'working', data / 'release_staging',
+                 data / 'releases', data / 'release_staging' / version, data / 'releases' / version):
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise StageInputError('发布集合与版本路径必须是普通目录')
+
+
+def _verify_published_input_release(root, inputs, version):
+    _check_input_release_paths(root, version)
+    stage, manifest = _load_input_stage(root, inputs, 'release')
+    _verify_upstream_stages(root, inputs, manifest['upstream'])
+    build = _stage_json(stage, 'release_build.json')
+    if build['version'] != version:
+        raise StageInputError('release 阶段绑定的完整版本不匹配')
+    release = root / 'data/releases' / version
+    if any(p.is_symlink() for p in (release, *release.parents)) or (release / 'payload').is_symlink():
+        raise StageInputError('正式 release 路径不能经过符号链接')
+    meta = load_release_metadata(root / 'data', version)
+    if meta.protocol != parse_data_id(version).protocol:
+        raise StageInputError('正式 release 协议与完整版本身份不一致')
+    assert_payload_sealed(release)
+    validate_training_reference(root / 'data', version)
+    inventory = _stage_inventory(release / 'payload', exclude_manifest=False)
+    if inventory != build['payload_inventory']:
+        raise StageInputError('发布 payload 与已验签构建清单不一致')
+    if (meta.sample_count != build['sample_count'] or dict(meta.splits) != build['splits']
+            or meta.source_batches != (inputs.batch,) or meta.purpose != 'development'):
+        raise StageInputError('release 元数据与真实构建计数不一致')
+    return release, build
+
+
+def run_input_release(root: Path, *, inputs_path: Path, batch: str, version: str) -> StageResult:
+    from pipeline.v4_1_training_release import _dataset_row, _registry, _distribution, _contract_identity
+    from pipeline.v4_1_labels import V4_1_LABEL_FIELDS
+    parsed = parse_data_id(version)
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    contract, _ = _contract_identity(inputs.contract.path)
+    if parsed.protocol != str(contract['contract_version']).removeprefix('tensile-vlm/'):
+        raise StageInputError('release 协议与冻结业务契约不一致')
+    subdir, _ = _load_input_stage(root, inputs, 'subvideo')
+    sub = _stage_json(subdir, 'subvideo_manifest.json')
+    reviewdir, _ = _load_input_stage(root, inputs, 'review_import')
+    exportdir, _ = _load_input_stage(root, inputs, 'review_export')
+    review = _validate_input_review_return(_stage_json(reviewdir, 'review_return.json'),
+        _stage_json(exportdir, 'review_queue.json'), _sha256_file(exportdir / 'stage_manifest.json'))
+    rows, excluded = _input_release_rows(sub, review, contract)
+    upstream = {'review_import': _sha256_file(reviewdir / 'stage_manifest.json')}
+
+    def produce(destination):
+        payload = destination / 'payload'
+        payload.mkdir()
+        for row in rows:
+            for pin in (_candidate_media_pin(subdir, row, video=True),
+                        *(_candidate_media_pin(subdir, frame) for frame in row['frame_artifacts'])):
+                _copy_input_pin(pin, payload / pin.path.relative_to(subdir))
+        _copy_input_pin(inputs.contract, payload / 'contract.json')
+        _write_json(payload / 'splits.json', sub['splits'])
+        _write_json(payload / 'review_return.json', review)
+        _write_json(payload / 'metadata/training_candidates.json', {
+            'schema': 'tensile-data/training-candidates/v1', 'batch': batch, 'version': version,
+            'contract_hash': contract['contract_hash'], 'inputs_sha256': inputs.config_sha256,
+            'candidates': rows, 'excluded': excluded})
+        _write_json(payload / 'dataset_info.json', _registry())
+        counts = {}
+        for fold in range(3):
+            counts[f'fold{fold}'] = {}
+            for key, directory in (('train', 'train'), ('val', 'validation')):
+                chosen = [r for r in rows if r['source_video'] in sub['splits'][f'fold_{fold}_{key}']]
+                dataset = [_dataset_row({'_release_video_path': r['video_path']}, r['labels'], contract) for r in chosen]
+                _write_json(payload / f'datasets/{directory}/fold_{fold}.json', dataset)
+                counts[f'fold{fold}'][directory] = len(dataset)
+        _write_json(payload / 'reports/quality_report.json', {
+            'schema': 'tensile-data/quality/v1', 'published_count': len(rows), 'excluded_count': len(excluded),
+            'human_reviewed_count': sum(r['label_source'] == 'human_review' for r in rows),
+            'automatic_count': sum(r['label_source'] == 'automatic_validation' for r in rows),
+            'splits': counts, 'distributions': {key: _distribution(rows, key) for key in V4_1_LABEL_FIELDS}})
+        _write_json(destination / 'release_build.json', {'version': version, 'batch': batch,
+            'sample_count': len(rows), 'splits': counts, 'payload_inventory': _stage_inventory(payload, exclude_manifest=False)})
+        return {'version': version, 'batch': batch, 'sample_count': len(rows)}
+
+    result = _publish_input_stage(root, inputs, 'release', produce, upstream)
+    build = _stage_json(result.outputs[0], 'release_build.json')
+    if build['version'] != version:
+        raise StageInputError('该批次已构建其他版本，拒绝隐式改号')
+    data = root / 'data'
+    for directory in (data / 'working', data / 'release_staging', data / 'releases'):
+        if directory.is_symlink() or (directory.exists() and not directory.is_dir()):
+            raise StageInputError('发布集合必须是普通目录')
+    lock_path = data / f'.{version}.lock'
+    with os.fdopen(os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600), 'a+') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        _check_input_release_paths(root, version)
+        if load_data_inputs(inputs_path, batch=batch) != inputs:
+            raise StageInputError('发布等待期间 inputs 漂移')
+        stagedir, manifest = _load_input_stage(root, inputs, 'release')
+        _verify_upstream_stages(root, inputs, manifest['upstream'])
+        final = data / 'releases' / version
+        if final.exists() or final.is_symlink():
+            raise ReleaseConflict(f'完整版本已存在: {version}')
+        else:
+            if (data / 'release_staging' / version).exists():
+                raise ReleaseConflict('已存在未完成的同名 staging，需显式恢复')
+            with tempfile.TemporaryDirectory(prefix='.release-', dir=data / 'working') as temporary:
+                work = Path(temporary) / 'build'
+                work.mkdir()
+                shutil.copytree(stagedir / 'payload', work / 'payload')
+                if _stage_inventory(work / 'payload', exclude_manifest=False) != build['payload_inventory']:
+                    raise StageInputError('发布复制期间 payload 漂移')
+                _check_input_release_paths(root, version)
+                stage_release(data, work.relative_to(data / 'working').as_posix(),
+                              protocol=parsed.protocol, version=version)
+                final = seal_release(data, version, purpose='development', description=f'{batch} 审查后开发集',
+                    sample_count=build['sample_count'], source_batches=[batch], splits=build['splits'])
+        _verify_published_input_release(root, inputs, version)
+        if (root / '.dvc').is_dir():
+            _dvc_add_payload(root, final, version)
+        _verify_published_input_release(root, inputs, version)
+    return StageResult('release', (final,), build)
+
+
+def run_input_release_validate(root: Path, *, inputs_path: Path, batch: str, version: str) -> StageResult:
+    parse_data_id(version)
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    release, build = _verify_published_input_release(root, inputs, version)
+    report = {'version': version, 'batch': batch, 'passed': True,
+              'sample_count': build['sample_count'], 'payload_file_count': len(build['payload_inventory'])}
+    # Validation is read-only; this does not start training or change release status.
+    return StageResult('release_validate', (release,), report)

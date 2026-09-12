@@ -277,3 +277,11 @@ M3b 已完成本地 source 适配；真实媒体、CLI 和其余阶段仍待完�
 空输出stub取得有效RED，定向12 passed。独立 reviewer 对12项及非空历史参考、额外身份/时间/状态边界、同结果重复和不同有效结果冲突进行复验，无可执行finding；另验证incipient纯提案语义。后续UI不属于本切片证据。
 
 本机独立 detached worktree 基于 `e11b9379`，仅叠加本切片，完整`tests/versioning` **1749 passed，335.81秒，exit0**；同一虚拟环境解释器，`--basetemp /tmp/mvllm2-human-proof-20260912`。提交代码与被测快照逐字一致。临时日志`/tmp/mvllm2-m3-human-full-pytest.log`。媒体与审查记录为明确fixture，尚无真实媒体播放、真实人工决定或跨机传输证据，M3仍进行中。
+
+## 17. M3f：真实开发集发布与封存校验
+
+2026-09-12 新增真实 release/validate 适配。只取 development 候选，人工决定保留有效标签及丢弃原因，未审自动准入严格限定普通稳定未断裂。使用既有数据行生成规则形成六份fold数据集和dataset_info，保留冻结source划分，复制视频与实际帧，输出契约/审查/质量计数及完整payload文件清单。完整版本必须与业务协议一致，经逐文件复制校验后封存；版本已存在立即冲突，中断staging保留并拒绝不明恢复。validate只读检查完整内容、元数据、封存权限和训练准入。
+
+初始3项取得有效RED后实现；reviewer发现协议字段、正式目录链接和payload根额外stage_manifest漏检，补入3项RED并修复。另增加同名版本冲突RED/修复。复审发现等待版本锁期间集合路径变化可在错误位置写入，新增RED后在锁内、阶段转换前重查路径，DVC前先完整校验。最终8项定向通过；reviewer独立复验错误目录保持为空且DVC不调用，原问题全部关闭。
+
+本机独立detached worktree基于`c66b5228`，仅叠加发布切片，完整`tests/versioning` **1757 passed，359.36秒，exit0**，`--basetemp /tmp/mvllm2-release-proof-20260912`，同一项目虚拟环境解释器。代码与被测快照逐字一致；临时日志`/tmp/mvllm2-m3-release-full-pytest.log`。不含后续UI/CLI/DVC接线增量。本切片媒体与人工记录为fixture，没有正式数据迁移；DVC调用顺序由reviewer替身核查，真实DVC集成另随入口接线验收。
