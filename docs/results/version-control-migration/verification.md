@@ -701,7 +701,7 @@ report.json SHA15fe53f516869216d4999d2319be11b789a52e6bdae09494759c418cc08022f9�
 
 独立reviewer读取两端报告985字节/日志353字节，逐字节及SHA一致、报告内日志SHA正确；核对8文件命令、环境、结果和计时口径，实时隔离15b44009 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑；历史执行环境/退出码/耗时依据报告和日志，跳过项及真实运行未验证。
 
-## 38. M7e旧Prompt入口与历史索引边界（进行中）
+## 38. M7e旧Prompt入口与历史索引边界（本批完成）
 
 基线f293df3a。旧Prompt公开validate/publish及脚本/模块入口停止，旧main私有保留；core/__init__导出不改。模块启动仍加载既有包定义/PyYAML，不要求-S模块无依赖退出；实际main在parse_args/source读取/publish前拒绝。新versioning Prompt注册、读取、冻结和复验保持原实现。历史build_artifact_index保留仅写INDEX.md，但必填现存data-root并移除current选择；不更新集合index/LATEST或创建新版本。
 
@@ -712,3 +712,13 @@ versioning说明补Prompt定义→create→正式文件→freeze/verify→训练
 代码引用复核：除core定义外，publish_prompt调用仅剩已私有化旧main；build_index仅由显式根main调用。Linux计划为既有隔离checkout新m7e-prompt-index-verification-20260912，以.venv-m3、CUDA不可见/OMP4/离线执行上述四文件，不安装依赖、不处理正式数据；同步前两端f293df3a、隔离tracked clean、正式main clean@f1b7d8a3，新RUN不存在。
 
 独立reviewer四文件179 passed/1.20秒/exit0；AST确认旧Prompt解析/旧main及历史索引收集/渲染/生成逻辑保持，core/__init__无改动。按文档在独立临时目录实际运行create→show→freeze→verify均exit0，正式和冻结副本路径/字节一致。代码、文档Contract/链路及范围核查通过，无finding；合成Prompt不代表实际训练，未远程/GPU。
+
+### 38.1 Linux隔离复验
+
+实现cc02acc1abd9307dfc46191aa83962ae3d3e8c3c在Mac提交；增量bundle两端SHA36d7f72e71f8b5a05ac4586c3dd3e6a679bee4957ca57fa15509df0d7762d55a，verify通过、祖先及0/1差异检查后cherry-pick --ff同步同一对象。
+
+输出/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m7e-prompt-index-verification-20260912。使用.venv-m3/bin/python（3.11.16）运行pytest -q tests/test_prompt_control.py tests/test_artifact_index.py tests/versioning/test_prompts.py tests/versioning/test_cli.py --basetemp=<RUN>/pytest --tb=short，179 passed/1.11秒/exit0，进程1.488秒。CUDA不可见、OMP4、HF/Transformers离线，无依赖安装、真实媒体/GPU。
+
+report.json SHAe2811f9c476a974b639316c0f61724ba067909fde8faf2d98c71b07d1b6195c1；linux-tests.log SHA8afcd40b5d3f5c2fd044ba1bc0634f8fcc7bdab408450fe7ccf985baf2dfaa88；Mac副本/private/tmp/mvllm2-m7e-evidence-20260912。M7a–e入口与文档切片完成，下一步M8整体Spec验收矩阵/源保护/Codeup main完整差异审查及交付；切片通过不代替整体审查，不关闭真实训练/评测、full/holdout输入或大型硬盘等原缺口。轻量证据在实际Linux提交后以docs-only验签bundle回传，提交由git log追溯。
+
+独立reviewer读取两端报告779字节/日志260字节，逐字节及SHA一致、报告内日志SHA正确；核对4文件命令/环境/结果/耗时，实时隔离cc02acc1 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑，历史执行环境/退出码/耗时依据报告与日志，不外推真实媒体/GPU。
