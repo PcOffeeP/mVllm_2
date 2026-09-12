@@ -309,3 +309,41 @@ CLI 两项测试先取得缺失输入仍成功、显式 inputs 未接线的行�
 最终权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /tmp/mvllm2-m3-entry-proof-final-20260912` 在本机当前完整工作树执行：**1768 passed，341.64秒，exit0**，已等待进程正常退出。临时日志 `/tmp/mvllm2-m3-entry-full-final-pytest.log`。没有新增真实训练机运行或正式迁移证据。M3 本地接入完成，整体 M3 保持进行中。
 
 本轮 M3a–M3h 均已本机提交；最终代码提交 `18d3da0e2a1ab086d4f5c2eb466ef0a68d3ca216`。为待授权同步准备增量 bundle `/tmp/mvllm2-m3-18d3da0e.bundle`，基线 `2027c4dc14753971bf499d9b65ede6bbf650222f`，89,047字节，SHA-256 `0547ba5d5408dcebaf2c72f091882faadeea9389e03b12592a1b14cff0edd896`；本机 `git bundle verify` exit0。尚未传输；bundle 包含上述代码及执行单，不含本条后续证据记录提交。执行前再次检查训练机祖先与状态。
+
+## 20. M3 训练机真实媒体与两份正式复制（2026-09-12）
+
+用户对已审执行单明确回复“确认”，授权隔离分支同步、新 CPU 环境、两段 development 视频真实对照、Mac 审查回传及两份声明 release 复制迁移。未授权 push/merge main、模型训练/GPU/完整评测或改写旧产物。
+
+本节由训练机实际执行后记录，执行代码 `18d3da0e2a1ab086d4f5c2eb466ef0a68d3ca216`。增量包SHA `0547ba5d5408dcebaf2c72f091882faadeea9389e03b12592a1b14cff0edd896` 在两端一致，训练机 bundle verify通过，隔离分支从2027c4dc仅快进8提交。正式main仍为f1b7d8a3且干净。既有.conda-m2保持不变，新.venv-m3安装CPU Torch2.5.1+cpu/torchvision0.20.1+cpu、Transformers4.56.1、PyAV18.1.0、Streamlit1.63.0/cropper0.3.1；继承DVC3.67.1等项目依赖。处理器只加载17个冻结代码/配置/tokenizer文件，不加载模型权重；CUDA_VISIBLE_DEVICES为空，离线模型加载，OMP线程4。
+
+原视频video_0003/video_0011的SHA、全部注释字段、七份split交集与冻结ROI保留；只在输入副本映射旧source路径。仅裁剪development参考，新建显式空test参考，不打开原测试参考。输入SHA `a01fc52ad3e02f00a0fddb77e11af763f924dee9e6a1f5a7a1f0097d16ea6af9`。通过真实DVC repro review_export执行source→ROI→subvideo→review_export，得到34候选、0排除、11自动、23待审；首轮ROI因缺Streamlit停止，向新环境补齐项目依赖后成功续跑，旧阶段验签复用。
+
+独立执行未变的legacy业务计算，逐项比较source治理、ROI几何/时间轴、候选窗口/标签/计划、实际采样映射/门禁：2份ROI、34份子视频、211张抽帧字节全部一致。运行没有调用legacy集合发布器。独立reviewer只读复算输入/四阶段全部文件摘要、重新执行纯候选规划，并比较对照产物，确认该证据成立。
+
+两份源的全部20个声明payload本轮重新验签。来源镜像复制至/data/mVllm_2/workspace/data/releases/<旧ID>及finetune/active_data_release.json（23文件、23,572,633字节），再次验签后，统一CLI data-precheck两对象ready、data-migrate成功。逐文件目标与原源SHA相等，receipt有效且payload只读：
+
+| 正式身份 | 声明文件 | 样本数 | 状态 | 新训练引用门 |
+| --- | --- | --- | --- | --- |
+| data-v4.1-r1 | 9 | 1275 | superseded，replacement=data-v4.1-r2 | 拒绝 |
+| data-v4.1-r2 | 11 | 1678 | active | 元数据允许 |
+
+metadata的protocol、purpose、training_allowed、sample_count、splits、source_batches均与已确认转换规则及原manifest一致。原指针字节和正式Git工作树未变。引用门调用需传领域根/data/mVllm_2/data；首次检查脚本误传store根导致两者均报不存在，修正脚本参数后按预期通过，非迁移产物错误。独立reviewer重新验签20文件、两个receipt及准入/拒绝结果均通过。
+
+原JSON外部媒体引用保持不变；仅按已声明路径stat检查，r1共9421、r2共11986个唯一视频/帧引用，经既有PROJECT_LOCAL_LEGACY_PATHS映射在原workspace/data全部可达，未读取这些媒体字节。新来源镜像未复制外部视频/帧；M4必须显式保留正确的媒体根，不能据此宣称新store自包含或训练已成功。
+
+Mac已接收完整review_export包，验签并以现有Streamlit AppTest加载真实帧，零异常/错误、显示23待审，没有点击审批或创建任何决定。这是跨机包加载证据，尚非完整人工回传。按用户提出的“未断裂无需人工”规则调查：11普通未断裂在新旧两边均走automatic_validation；23待审为15发生断裂、4已断裂、4临界未断裂，旧发布全部标为human_review/approved。其媒体SHA、采样帧、时间戳及标签与本次完全相等，但原reviewer_id全部为空；旧界面该参数可选，空作者不能改解释为自动准入。当前真实审查者来源未确认，不推测填名，不创建回传结果。独立reviewer确认此缺口，M3整体保持未完成。
+
+原始证据目录：训练机隔离项目m3-verification-20260912/comparison/；脚本prepare-inputs.py、compare-media.py、mirror-sources.py、verify-migration.py及日志保留。以下SHA固定本节所引用的轻量报告：
+
+| 报告 | SHA-256 |
+| --- | --- |
+| environment.json | `d6883ec7a372b75cf170821949ee92d7aea1c4b48a4086a2230f4300edafcfa0` |
+| input-preparation.json | `3c1d6e95e92b1c38f3d56c70be6610aeca41ac57ad6db68c5835cc48506665e5` |
+| real-media-comparison.json | `4700f40bbb29696c4903db34f3d36809187654b25d1b58a0c42a6e69abebac2c` |
+| source-mirror.json | `d087b33e303d19db27120681bd63959156207d36a72917fc1df6f22bd22aecd2` |
+| formal-data-precheck.json | `9d8644939481f05f2ffd80c74e3ac965ad4b8024b521426bba758d9dd9ca5644` |
+| formal-data-migrate.json | `76872c640233fdb6cc4116f578f76d1c219940cd097fd20f14747571ea44fcb3` |
+| formal-migration-verification.json | `6fedad7c140ec11d5e20d9a6eee1ba9cab54553089c6d668894d56533d111d3e` |
+| external-media-reachability.json | `44792677f06ef6983dc01cd7300b83e6d8b1bfad2f18832c898ef867024d932b` |
+| review-routing-investigation.json | `b72cbe5348c44cae42be8a5d9062ab60cf095338e885220416702b6055a8ff69` |
+| mac-package-inspection.json | `f3613ba197ca81fa0f8bae623563d8303126abb11b639048a9b97ef36887b10c` |
