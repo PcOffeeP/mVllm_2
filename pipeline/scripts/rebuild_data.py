@@ -12,6 +12,25 @@ import sys
 from pathlib import Path
 from typing import Any
 
+
+def main() -> int:
+    message = (
+        "此历史数据写入CLI已停用。请使用 python -m versioning data <stage>，"
+        "显式指定 --root、--inputs、--batch；发布时另需完整 --version。"
+        "迁移既有release请使用 python -m versioning migration --help。"
+        "操作说明：docs/DATA_PROCESSING_RUNBOOK.md 第10节。"
+    )
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        print(message)
+        return 0
+    print(message, file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -873,7 +892,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
+def _legacy_main() -> int:
     raw = sys.argv[1:]
     if raw and raw[0].startswith("-") and raw[0] != "--help":
         raw.insert(0, "run")
@@ -983,7 +1002,3 @@ def main() -> int:
     ) as exc:
         print(f"错误: {exc}", file=sys.stderr)
         return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

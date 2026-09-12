@@ -1,3 +1,14 @@
+<!-- DOCUMENT-CONTRACT
+Purpose: 介绍项目并把读者引导到实际受支持的操作入口和状态证据。
+Scope: 项目用途、环境、流程入口与文档导航。
+Must Preserve:
+- 新体系完整身份与legacy历史路径明确区分。
+- 代码接线、受控验证和真实模型效果不得混为完成结论。
+- 重计算遵守训练机边界。
+Non-goals:
+- 不替代项目TODO或各领域运行手册。
+-->
+
 # mVllm_2
 
 基于 MiniCPM-V-4.5 的材料拉伸视频视觉模型研发仓库，覆盖从原始视频治理、帧窗口标注、
@@ -15,8 +26,7 @@
   全部冻结后再进行比较；
 - **严格评测**：除训练 loss 外，检查 schema 合法率、四字段准确率、`clip_state` 混淆表、
   分类别召回和失败样例；
-- **模型生命周期管理**：实验产物先进入 `workspace/runs/`，人工确认后才晋级为
-  `workspace/models/releases/`，最终由推理服务加载；
+- **模型生命周期管理**：正式训练和模型身份由MLflow记录，模型通过评测、备份范围及适用批准门后才可绑定服务alias；
 - **与 TensileAgent 对接**：自然语言任务编排、多轮视频搜索和结果展示由独立
   TensileAgent 项目负责，两个项目通过冻结的视觉契约和 deployment identity 对接。
 
@@ -34,19 +44,17 @@
 
 ## 可读版本控制新体系
 
-`refactor/readable-version-control` 分支已实现独立的核心基础设施入口：
+正式入口为顶层versioning包：
 
-```bash
+```sh
 python -m versioning --help
 ```
 
-该入口按 `data`、`prompt`、`train`、`eval`、`model`、`backup` 六个领域组织命令，
-正式身份必须显式使用 `data-v4.1-rN`、`prompt-v4.1-rN`、`train-v4.1-rN`、
-`model-v4.1-rN`、`eval-v4.1-rN` 形式，不提供隐式 latest 或短前缀解析。
-架构和完整命令边界见 [ARCHITECTURE.md](ARCHITECTURE.md)；设计依据见
-[可读版本控制架构设计](docs/plans/2026-09-01-readable-version-control-design.md)。
+命令包括data、prompt、train、eval、model、backup及migration；正式身份仅限data/prompt/train/model/eval五类完整版本，不提供隐式latest或短前缀。参数及输入契约见[versioning操作索引](versioning/SCRIPTS.md)，设计依据见[可读版本控制设计](docs/plans/2026-09-01-readable-version-control-design.md)。
 
-新体系尚未替换 `pipeline/`、`finetune/` 的 legacy 正式链路，也未执行训练机或真实产物迁移。
+数据七阶段使用显式输入；release_build.py、release_build_phase2.py、rebuild_data.py旧CLI已停用，正式数据处理见[数据手册第10节](docs/DATA_PROCESSING_RUNBOOK.md#10-现行数据入口versioning显式七阶段)。已有release的复制迁移须使用已确认mapping，不自动重新构建。服务入口使用显式alias与模式，见[pipeline服务用法](pipeline/SCRIPTS.md)。
+
+迁移是分阶段接入，不能把整个pipeline/finetune包当作已退役。训练与validation执行接线、服务准入和备份均有受控验证；full/holdout实际执行、真实合格模型成功路径、真实移动硬盘与大型产物恢复仍有未完成项。最新状态和证据以[项目TODO](docs/project-todo.md)为准，历史模型结果不因迁移变为质量通过。
 
 ## V4.1 视觉契约（简要）
 
@@ -99,8 +107,7 @@ pip install -e ./LlamaFactory
   候选物化、人工审查、不可覆盖 release 构建；
 - [微调、合并与评测](finetune/README.md)：三折 LoRA 训练、模型合并、严格评测、
   证据冻结；
-- [推理服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)：当前中间服务启动、预检、
-  smoke、TensileAgent 接入与停止；
+- [现行服务入口](pipeline/SCRIPTS.md)：alias准入、配置绑定与smoke；[历史服务手册](docs/INFERENCE_SERVICE_RUNBOOK.md)保留旧交付背景，其中原始模型路径启动命令已不适用；
 - [当前项目状态](docs/CURRENT_PROJECT_STATUS.md)：发布模型身份、最新实验结果、
   下一轮优化目标；
 - [V4.1 数据发布](docs/V4_1_DATA_RELEASES.md)：当前与历史 development release 统计。

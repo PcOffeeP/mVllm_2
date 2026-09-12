@@ -26,7 +26,7 @@
 | 训练与测评接入 | `finetune/train_build_dataset.py`、`finetune/train_build_source_aware_dataset.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py`、`finetune/eval_run.py`、`finetune/validation/constants.py`、`finetune/release_validate.py`、`finetune/v4_1_runtime.py`、`versioning/mlflow_train.py`、`versioning/mlflow_eval.py`、`versioning/manifest.py` | 冻结输入、实际执行器、Run 生命周期、正式引用校验 |
 | 服务与模型接入 | `pipeline/server_proxy.py`、`pipeline/server_adapter.py`、`pipeline/model_registry.py`、`pipeline/server_deployment_manifest.example.json`、`scripts/serve_validate_delivery.py`、`scripts/serve_manage_model_registry.py`、`pipeline/scripts/serve_smoke.py`、`versioning/registry.py`、`versioning/materialize.py` | 启动和加载前统一解析合法 alias，停用旧开发例外 |
 | 存储与备份 | `versioning/backup.py`、`pyproject.toml`、`uv.lock`、`requirements.txt`、`.gitignore` | 依赖兼容、运行存储、跨机传输及恢复接线 |
-| 回归测试 | `tests/versioning/test_data_pipeline.py`、`tests/versioning/test_dvc_pipeline.py`、`tests/versioning/test_cli.py`、`tests/versioning/test_e2e.py`、`tests/versioning/test_mlflow_train.py`、`tests/versioning/test_mlflow_eval.py`、`tests/versioning/test_materialize.py`、`tests/versioning/test_registry.py`、`tests/versioning/test_backup.py`、`tests/test_train_with_contract.py`、`tests/test_eval_run.py`、`tests/test_serve_smoke.py`、`tests/test_serve_validate_delivery.py`、`tests/test_v4_1_runtime_pointers.py`、`tests/test_data_rebuild.py` | 真实入口接线、语义保持、失效与恢复回归 |
+| 回归测试 | `tests/versioning/test_data_pipeline.py`、`tests/versioning/test_dvc_pipeline.py`、`tests/versioning/test_cli.py`、`tests/versioning/test_e2e.py`、`tests/versioning/test_mlflow_train.py`、`tests/versioning/test_mlflow_eval.py`、`tests/versioning/test_materialize.py`、`tests/versioning/test_registry.py`、`tests/versioning/test_backup.py`、`tests/test_train_with_contract.py`、`tests/test_eval_run.py`、`tests/test_serve_smoke.py`、`tests/test_serve_validate_delivery.py`、`tests/test_v4_1_runtime_pointers.py`、`tests/test_data_rebuild.py`、`tests/test_rebuild_source_only.py` | 真实入口接线、语义保持、失效与恢复回归 |
 | 文档收敛 | `AGENTS.md`、`ARCHITECTURE.md`、`README.md`、`docs/project-guide.md`、`docs/DATA_PROCESSING_RUNBOOK.md`、`finetune/README.md`、`pipeline/SCRIPTS.md`、`pipeline/scripts/SCRIPTS.md`、`finetune/SCRIPTS.md`、`versioning/SCRIPTS.md`、`docs/project-todo.md`、`docs/plans/2026-09-01-readable-version-control-design.md`、`docs/plans/2026-09-01-readable-version-control-implementation.md` | 只同步实际生效入口、Spec 已确认的边界与历史阶段记录 |
 
 **只读参考、默认保持不变：** `pipeline/source_bootstrap.py`、`pipeline/roi_manifest.py`、`pipeline/roi_media.py`、`pipeline/v3_candidate_plan.py`、`pipeline/v3_candidate_media.py`、`pipeline/v4_1_review_workflow.py`、业务契约、旧已发布 manifests、历史实验配置和报告。真实媒体算法优先复用；其身份写入若无法与业务算法分离，M0 报告并精确扩充 Plan，不复制一套变化后的算法冒充等价。
@@ -63,7 +63,7 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 非硬盘范围已实现：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物与改路径恢复未验证（verification第33节） |
-| M7–M8 | 下一步核查旧活动写入口与收敛文档；未闭合真实环境缺口显式保留，整体审查和交付待后续；未授权push/merge |
+| M7–M8 | M7a进行中（Codex）：停用已完成M3接管的release_build/release_build_phase2/rebuild_data旧CLI，更新数据手册与入口索引；未闭合真实环境缺口显式保留，整体审查和交付待后续；未授权push/merge |
 
 ### M0：核定范围与写入者
 
@@ -168,3 +168,6 @@ merge/push、系统权限调整、停止已有服务或训练进程、真实重�
 ## 2026-09-12 单维护者审查归属（取代上一节的手填要求）
 
 用户明确确认历史人工审批均由本人完成，并批准默认使用“项目维护者”。新决定自动记录该角色，保留可选显式标识；不以旧记录缺姓名要求重审，不改写原历史记录。23条对象完全匹配的审批可依据本次确认复用，原审查时间保留，补充确认单独记录。人工决定完整性及媒体绑定门禁继续有效。
+
+
+M7a精确范围：上述三个数据CLI停止历史写入并指向versioning显式七阶段；rebuild_data的旧编排函数仅保留为私有历史测试入口，tests/test_rebuild_source_only.py改为显式调用该私有入口，新的真实CLI拒绝回归放tests/test_data_rebuild.py。不删除artifact_index/artifact_resolver：source_bootstrap、ROI及候选媒体业务实现仍依赖它们。M4/M5尚未验证的真实成功路径不因本批关闭，其他未核定旧入口逐个列证据后处理。

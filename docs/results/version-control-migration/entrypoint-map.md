@@ -1,10 +1,6 @@
-# M0 入口调用图与保护清单（entrypoint map）
-# 任务：2026-09-07-readable-version-control-migration · M0 · 证据草稿
-#
-# 目标：为后续真实入口接管（M4/M5/M7）提供"当前活动入口 → 调用方 → 身份解析 →
-# 正式写入点 → 最终模型加载点"的可追溯证据。
-# 本文只描述现状与保护边界；不修改任何入口、不判定入口已接管。
-# 身份解析以 versioning/ids.py 的 <kind>-v<协议>-r<N> 完整身份为 fail-closed 标准。
+# 迁移入口调用图与保护清单
+
+本表在M0核查基础上按已验证入口更新。当前M7a仅关闭三个旧数据发布/重建CLI；不能从局部切换推断整个legacy包退役。历史证据保留在verification及Git；完整身份以versioning/ids.py为准。
 
 entrypoint_map_schema: tensile-migration/entrypoint-map/v1
 task_id: "2026-09-07-readable-version-control-migration"
@@ -13,7 +9,7 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
 ## 1) 统一编排入口（新体系顶层包）
 - entry: "python -m versioning"（versioning/__main__.py -> versioning/cli.py）
   role: "新体系统一 CLI，所有正式对象由调用方显式给完整 ID，不猜 latest、不自动加号"
-  subcommands: ["data", "prompt", "train", "eval", "model", "backup"]
+  subcommands: ["data", "prompt", "train", "eval", "model", "backup", "migration"]
   identity_resolution:
     - "versioning/ids.py：仅接受 data/prompt/train/model/eval 五族完整 ID"
     - "data 引用通过 versioning/data_release.validate_training_reference 校验 training_allowed/status（fail-closed）"
@@ -24,34 +20,26 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
     - "model 注册/晋级/alias/物化：MLflow store workspace/mlflow（注册表 mVllm2）"
   notes: "这是 M1 新增 migration.py 的承载入口（Plan 要求统一 CLI 编排）。"
 
-## 2) 数据七阶段（新体系，DVC）
-- entry: "versioning/data_pipeline.py · run_stage"（经 cli `data <action>`）
-  stages: [source, roi, subvideo, review_export, review_import, release, release_validate]
-  role: "DVC 数据 pipeline 最小实现；release_validate 只报告不启动训练"
-  identity_resolution:
-    - "release 阶段必须显式传 version；用 parse_data_id 校验"
-    - "review_import 用 content_sha256 绑定审查结论与内容"
-  formal_write_points:
-    - "working/<batch>/ 中间产物；data/releases/<full-id>（经 stage_release + seal_release）"
-  known_gap（M3 需替换）:
-    - "_derive_roi 由视频名摘要派生 ROI；run_subvideo 每视频固定 2 条 clip → 不承接真实人工 ROI/剪裁/采样语义"
-  protection:
-    - "不把固定 2-clip / 文件名 ROI 当作真实业务语义；M3 前不得宣称已接入真实数据语义"
+## 2) 数据七阶段（M3已接入真实业务）
 
-## 3) 数据业务接入点（legacy，M4/M7 接管候选）
-- pipeline/data_rebuild.py 与 pipeline/scripts/rebuild_data.py
-  role: "隔离 V4.1 数据重建/续跑/promote（legacy 状态与原子提升原语）"
-  identity: "使用 legacy artifact_index/artifact_resolver + LATEST 解析"
-  protection: "legacy 旧写入口在 M7 前保持原样，不切换/删除/重构；不得被新写入绕过"
-- pipeline/scripts/release_build.py / release_build_phase2.py
-  role: "校验已审查候选并发布不可变训练 release（legacy：v4_1_training_release）"
-  protection: "保留与数据语义有关的业务实现与历史审计内容；迁移只做语义保持"
-- pipeline/scripts/review_candidates_app.py / roi_annotation_app.py
-  role: "人工审查/ROI 标注 Streamlit 界面；ROI app 只写 ROI 决定文件，不生成裁剪媒体（MVP 声明）"
-  identity: "roi_annotation_app 默认从 source_snapshots 集合 LATEST 解析 video_meta"
-  protection: "人工交接链路保留；LATEST 解析仅限 legacy 域，不得迁移进 versioning 正式写入"
+正式CLI统一要求root/inputs/batch；release和release_validate另需完整data版本。data_pipeline的run_input_source/roi/subvideo/review_export/review_import/release及对应校验使用冻结原视频、注释、给定split、人工ROI、实际候选媒体/processor、完整人工回收；输出工作阶段manifest及data/releases/<完整身份>/payload。
 
-## 4) 训练与测评入口（legacy 实际执行器，M4 接管）
+M0发现的文件名ROI和固定两条候选属于早期最小实现，已不能代表当前正式入口。新链不重新划分三折，不新增采样，不生成旧release_pointer。M3真实媒体和人工交接证据见verification第24节；输入/输出完整说明见DATA_PROCESSING_RUNBOOK第10节及versioning/SCRIPTS.md。
+
+## 3) 数据历史入口（M7a停用范围与保留依赖）
+
+| 路径 | 当前状态 | 保留原因/后续动作 |
+| --- | --- | --- |
+| pipeline/scripts/release_build.py | 实际脚本与main先返回停用提示；不解析旧参数或进入写入 | 解析器/私有旧编排供历史测试，业务builder未删除 |
+| pipeline/scripts/release_build_phase2.py | 包括validate-only在内的CLI已停用，无旧默认路径选择 | 既有Phase2发布对象走确认mapping复制迁移，不重建冒充等价 |
+| pipeline/scripts/rebuild_data.py | run/resume/promote/source-only/check-only的CLI均停止，--help只显示新入口 | _legacy_main为显式历史测试路径；底层source/ROI/候选算法与状态回归保留 |
+| pipeline/data_rebuild.py | 库函数保留，不作为本轮已退役对象 | tree_inventory等仍为业务依赖；旧promote/index写入函数仅停止上述CLI可达路径 |
+| pipeline/scripts/review_candidates_app.py | versioning-package为新完整审查包模式，queue为旧模式 | 两种模式互斥；新模式不默认选择、不支持局部筛选；旧UI写入退役待单独核定 |
+| pipeline/scripts/roi_annotation_app.py | 原ROI输入准备界面保留 | 旧模式仍可按source_snapshots LATEST找metadata；新数据输入必须明确冻结ROI文件，不把该默认值当新身份 |
+
+artifact_index、artifact_resolver和build_artifact_index.py未删除。source_bootstrap、roi_manifest、roi_media、v3_candidate_plan、v3_candidate_media、v4_1_review_workflow、v4_1_training_release及历史重建代码仍引用相关模块；其中部分为独立辅助入口，不能仅凭新的正式CLI不直接import就判定零活动依赖。
+
+## 4) 训练与测评入口（M4接线及剩余legacy边界）
 - finetune/train_with_contract.py
   role: "启动 LLaMA-Factory 训练（MiniCPM child-processor 契约）"
   identity: "读取 training-yaml 配置；校验 LlamaFactory src 无漂移"
@@ -62,7 +50,7 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
   notes: "依赖 current_data_paths（legacy 当前数据指针）。"
 - finetune/train_prepare_run.py
   role: "准备一个语义化的 V4.1 Prompt 实验（legacy run 准备）"
-  notes: "与 versioning/mlflow_train 的 Run 生命周期是新旧两套；M4 需统一身份贯穿。"
+  notes: "新prepare/validate/run/export已接入三折冻结与MLflow执行器；旧main尚保留，必须在M7后续单独核定，不宣称全部入口已接管。"
 - finetune/eval_run.py
   role: "真实可续跑严格 V4.1 评测，对某 validation fold 逐样本推理"
   identity:
@@ -70,7 +58,7 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
     - "校验 V4.1 contract 身份（contract_hash == RUNTIME_CONTRACT_HASH）"
     - "通过 prompt_control 加载实验契约或 (legacy) analysis prompt overlay"
   model_load_point: "finetune/validation/model_runtime.load_model(model-dir, adapter-dir)"
-  notes: "原始 model-dir 不能绕过正式测评入口；历史 summary 不转 passed。"
+  notes: "新正式eval prepare/validate/run/export已绑定Registry完整model与数值版本、原fold和Prompt；full/holdout实际读取拒绝。旧main仍支持model-dir，尚未列为已退役，不把历史summary转为passed。"
 - finetune/release_validate.py / finetune/v4_1_runtime.py
   role: "经 finetuning runtime 校验不可变 release；解析/校验 V4.1 训练输入与输出"
   protection: "这些是真实校验原语；接管时应复用其校验，不复制一套等价实现冒充"
@@ -90,17 +78,17 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
 
 生产模式只接受production。服务解析不自动物化或修复缓存，不回退旧current.json；缺合格模型立即失败。当前没有合格真实模型成功加载证据。
 
-## 6) 新体系身份/写入核心模块（只读引用，M0 不改）
+## 6) 新体系身份/写入核心模块
 - versioning/registry.py：MLflow Registry（mVllm2）晋级门、alias(candidate/production)、fail-closed 校验；materialize_model 到 models/<model_id>/
 - versioning/materialize.py：alias -> workspace/models/current 原子物化与启动校验；validate_service_current
 - versioning/manifest.py：DataRecordRef / PromptRecordRef / TrainRecordRef / EvalRecordRef / export_manifest / model manifest 校验
 - versioning/mlflow_train.py / mlflow_eval.py：train/eval Run 生命周期与记录存储
-- versioning/backup.py：离线备份 create/verify/restore
+- versioning/backup.py：离线备份 create/verify/restore与显式SSH transfer，catalog钉扎与原子不覆盖发布；M6实测证据见verification第33节
 
-## 保护清单（M0 结论）
-1. legacy `pipeline/`、`finetune/` 既有入口保持原样，不切换/删除/重构/批量改名直至正式迁移完成。
+## 保护清单
+1. 仅按已确认迁移计划逐入口切换；本轮停用上述三个数据CLI，其他legacy路径和历史产物保留，不批量删除包。
 2. versioning 只接受 <kind>-v<协议>-r<N> 完整身份，fail-closed；禁止哈希/ LATEST/短前缀/隐式最新。
 3. 历史正式产物（active_data_release.json、model_registry/current.json、旧模型 release manifest、review_decisions 层级）保留为历史证据，活动代码解除依赖。
 4. M0记录的raw模型加载缺口已在M4正式eval和M5服务入口逐步接线；具体范围与未验证项以上文及verification为准，不能把代码接线当作真实推理成功。
-5. 真实写入/评测/GPU 推理只发生在训练机；本机只做文档与证据整理。
-6. 本文为 M0 草稿，每一行"已接管"类结论均需对应行为测试（Plan Proof 表），文件存在不构成接管证明。
+5. 真实媒体重处理、训练、评测/GPU推理在训练机；本机开发、受控小对象测试与轻量证据操作按授权执行。
+6. 每一项已切换结论须对应实际入口测试；私有历史函数保留不等于允许恢复旧CLI，代码接线不构成真实模型效果证明。

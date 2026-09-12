@@ -595,3 +595,32 @@ Mac已验签目录通过scp回传RUN/returned-snapshot并再次完整验签；�
 M6功能接线、两端受控测试、实际SSH往返和原隔离路径联合恢复完成；真实移动硬盘及真实大型产物恢复仍未验证，原绝对路径布局限制和此前MLflow/pandas环境告警保留。后续推进M7旧活动入口核查与文档收敛，同时保留M4 full/holdout实际入口及M5真实模型成功路径缺口。独立证据核查通过，结果见下段。
 
 独立reviewer仅只读检查，核对八份关键报告两端SHA一致；三份实际快照均6对象/23文件/905202字节、逐文件验签且无额外文件。恢复文件与catalog、保留原件的非SQLite文件逐字节摘要一致；原/恢复SQLite mode=ro查询一致，确认18Run/3Model Version/1alias、candidate/三折父子/指标/eval与artifact路径及字节，scope裁剪符合声明。通过此次小型合成对象跨机与原路径恢复证据范围，无finding。核查时两端HEAD均ab5543de、隔离tracked clean、正式main clean@f1b7d8a3；其后主Agent仅更新本节及TODO/Plan。历史环境/退出码/耗时依据报告，未独立复跑；错误摘要当时无目标的状态按主Agent过程记录，不能事后直接观察。首次后核查stdin脚本未落独立文件，reviewer仅确认保留traceback及最终结果，不把第41行断言解释冒充独立重建证据。真实硬盘/大型模型/GPU与改绝对路径可用性未验证。三份轻量证据文档在实际Linux提交，再校验增量bundle回传Mac，提交由git log追溯。
+
+
+## 34. M7a数据旧CLI停用与文档收敛（进行中）
+
+基线a7e0fc14。本批依据已完成M3真实输入/人工交接/发布迁移验收，停用release_build.py、release_build_phase2.py、rebuild_data.py三个旧CLI。脚本在导入legacy业务模块前返回停用提示；--help只说明新入口，其他参数返回2，不解析旧当前路径，不提供legacy模式。私有_legacy_main及业务库保留历史测试，不声明整个legacy包已退役。
+
+实际CLI拒绝与加载前拦截6项先RED（6 failed/1.33秒，/private/tmp/mvllm2-m7-red.log），实现后三文件联合57 passed/1.04秒/exit0（tests/test_data_rebuild.py、tests/test_rebuild_source_only.py、tests/test_release_build_cli.py，/private/tmp/mvllm2-m7-data-regression.log）。历史source-only语义测试明确调用私有入口；新增subprocess测试在独立cwd验证三个真实脚本无输出目录且help指向versioning。本机验证不涉及GPU或真实媒体构建。
+
+数据手册第10节改为实际显式输入、真实ROI/候选/采样、完整审查包与回收、不可变payload、DVC persist；移除早期固定两条候选、隐式默认batch和release_pointer表述。原第1–9节保留并明确历史参考。README、project-guide与脚本索引区分现行操作与历史背景；entrypoint-map记录尚存ROI/审查/训练/eval和索引依赖，未删除artifact_index/resolver。独立代码及权威手册链路核查通过，详见下节。
+
+### 34.1 根指令边界核查（review-ags）
+
+审查对象：AGENTS.md的“新旧体系边界”两条及其状态引用；Agent/Platform：当前Codex会话，并保留项目指令服务多平台的原约束；类型：Project Root Instruction；Scope：整个仓库的新旧入口路由。结论：局部REWRITE；不声称审计其余条款或推断其他平台的自动加载机制。
+
+P1事实/冲突：原两条把pipeline/finetune全部入口描述为尚未迁移，并把当前状态引向基础设施历史台账；与已确认Spec逐入口停止旧写入、已实现服务alias门及本批三个数据CLI停用不一致。证据为Spec“每个已切换业务入口只有一个正式写入者”、三个main停用门、server_proxy及本轮真实CLI测试。影响是后续Agent可能恢复旧回退或误认为整包不可按既有授权迁移。Ownership：根指令保留跨模块保护原则，任务TODO负责状态，CLI负责可执行拒绝；不把具体M7进度复制到长期指令。
+
+KEEP：五族完整身份、fail-closed、历史产物保护、源保护与授权边界；删除这些原则会增加错误回退与批量清理风险。REWRITE：仅将两条改为逐入口核定、已确认方案/授权/验收范围内停止旧写入，禁止恢复宽松回退或批量删业务实现；状态指向既有唯一TODO，基础设施台账作为历史参考。精确diff见本次AGENTS.md改动，无新增工作流或删除其他规则。
+
+验证记录：本会话明确提供用户级重大取舍/持续授权约束与项目根指令；受影响路径中rg仅找到根AGENTS，无子级覆盖。核对Task Artifact、README、CLI、测试、TODO及两个现存台账路径；这里只依赖会话已提供的作用域，不需要猜测宿主加载规则。按完整rubric检查本目标的正确性、作用域、必要性、精确性、密度/上下文成本、渐进披露、职责、重复/冲突、可执行性、验证与安全；无关包管理/CI规则未改写，未把它们包装为本目标新要求。
+
+最终判断：Scope保持仓库级且跨模块适用；Context Cost仅两条；Signal Density为保护原则和路由；Ownership保持TODO/CLI/指令各自职责；Conflict通过符合已确认逐入口迁移范围消除；Verification以路径、代码门和测试核对。该局部修订不改变授权来源，不以修改AGENTS本身创造操作权限；独立reviewer随后核对实际diff和文档一致性。
+
+### 34.2 独立审查与隔离 Linux 验证准备
+
+独立 reviewer 对 a7e0fc14 工作区 diff 核查三个 CLI、变更测试、权威数据手册七阶段链路及其他同步文档和 AGENTS 两条边界，通过本轮局部范围，无可执行问题。独立本机联合测试 57 passed/0.96秒；额外脚本和模块模式以 Python -S 禁用 site packages，共30次启动边界调用通过，覆盖空参、--legacy、旧run/source-only/check-only、--help/-h。git diff --check通过。上述为 reviewer 执行结果，不是主 Agent 复跑；未验证真实媒体/GPU/大型备份。
+
+同文件维护时关闭既有 DOC-INDEX：对照 data_rebuild 的 _update_snapshot_collection_indexes 及 promote 调用，删除脚本索引中已修复缺陷的过期描述。仅修正文档，未重新开放历史 CLI。独立 reviewer 追加核对实际 cdb8632c diff、移动后索引更新顺序及脚本索引/TODO，通过，无 finding；本次文档追加未重复运行测试。
+
+下一步在代码提交并核对两端状态后，将增量 bundle 同步到训练机既有隔离 checkout。输出限定新目录 m7-data-entry-verification-20260912；使用已有 .venv-m3，CUDA不可见、OMP4、离线模式，执行上述三个测试文件的小型合成回归，不读取正式 /data、不执行真实媒体处理、不安装依赖。实际命令、日志及结果执行后追加。

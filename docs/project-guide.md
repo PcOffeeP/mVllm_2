@@ -1,3 +1,13 @@
+<!-- DOCUMENT-CONTRACT
+Purpose: 解释项目业务链路、双机角色及主要实现之间的关系。
+Scope: 业务流程、模块与产物关系、训练机连接及实现背景。
+Must Preserve:
+- 历史实现说明与现行操作入口分开。
+- 双机路径和真实模型证据边界明确。
+Non-goals:
+- 不替代项目任务台账或领域运行手册。
+-->
+
 # mVllm_2 Project Guide
 
 <!-- explain-project
@@ -6,6 +16,12 @@ verified_worktree: clean（本次仅更新 project-guide.md；指纹已排除该
 -->
 
 mVllm_2 把材料拉伸试验视频治理为来源可追踪、标签可审查的 V4.1 视觉训练样本，并基于 MiniCPM-V-4.5 完成 LoRA 微调、严格评测与可复现的模型服务交付。
+
+## 现行操作入口与历史实现范围
+
+正式数据构建使用[数据手册第10节](DATA_PROCESSING_RUNBOOK.md#10-现行数据入口versioning显式七阶段)；release_build.py、release_build_phase2.py、rebuild_data.py旧CLI已停用。既有对象复制迁移使用versioning migration与显式mapping。训练/测评新入口见[versioning索引](../versioning/SCRIPTS.md)，服务使用[pipeline说明](../pipeline/SCRIPTS.md)中的alias绑定，备份支持已验签快照传输。
+
+下文流程图、步骤表及模型状态保留先前实现核查背景，其verified_commit指向当时版本；不得据此重新执行已停用的CLI或把旧默认路径当成新体系身份。尚存的ROI、审查、训练和测评legacy辅助路径须逐项核定，不能声明整个旧包已退役。最新迁移状态与真实环境限制见[项目TODO](project-todo.md)。
 
 ## 核心链路
 

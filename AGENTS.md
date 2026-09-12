@@ -58,8 +58,8 @@ Non-goals:
 
 ## 新旧体系边界
 
-- 旧链路：`pipeline/`、`finetune/` 下的现有入口为尚未迁移的 legacy 路径。其既有规则（含下文"命名规范"中标注为 legacy 的条款）维持原样，不得切换、删除、重构或批量改名，直至正式迁移完成。
-- 新体系入口为顶层包 `versioning/`，启动方式为 `python -m versioning`；当前实施状态见 [可读版本控制实施台账](docs/plans/2026-09-01-readable-version-control-implementation.md)。
+- 新旧边界按入口核定，不按整个包推断。尚未切换的 `pipeline/`、`finetune/` legacy 路径维持既有规则；只有在已确认迁移方案、实施授权及该入口验收范围内才能停止旧写入。已停用入口不得恢复为宽松回退，历史产物及仍被调用的业务函数不得因此批量删除或改名。
+- 新体系入口为顶层包 `versioning/`，启动方式为 `python -m versioning`；当前状态及逐入口证据以 [项目TODO](docs/project-todo.md) 为准，设计与基础设施历史见 [可读版本控制实施台账](docs/plans/2026-09-01-readable-version-control-implementation.md)。
 
 ## 新体系（versioning）规则
 
@@ -114,4 +114,7 @@ Why: 固定写成 Codex 会错误归因 Pi 的提交，破坏提交历史的来�
 
 D002 — 新旧版本身份规则在根 Instruction 中显式分域，legacy 细节不得用于 versioning。
 Why: 两套入口迁移期间并存，而 versioning 的解析器只接受 `<kind>-v<协议>-r<N>` 完整身份。
+
+D003 — 迁移保护按实际入口和已确认验收边界生效，当前状态由项目TODO负责。
+Why: 已确认方案要求逐入口停止旧写入；把整个包永久视作未迁移会与实际停用门冲突，也不能据局部迁移删除仍被调用的业务实现。
 -->

@@ -1,4 +1,14 @@
-# pipeline 当前命令
+<!-- DOCUMENT-CONTRACT
+Purpose: 区分pipeline可用工具与停用入口，指向正式数据和服务用法。
+Scope: 同目录命令职责、活动/历史边界与权威文档链接。
+Must Preserve:
+- 已停用CLI不能写作现行发布路径。
+- 业务辅助工具与新体系正式写入者必须区分。
+Non-goals:
+- 不复述完整参数或保存本次迁移进度。
+-->
+
+# pipeline 命令与历史入口
 
 | 文件 | 作用 |
 | --- | --- |
@@ -11,10 +21,12 @@
 | `review_build_phase2_queues.py` | 生成阶段 2 隔离队列 |
 | `review_route_from_history.py` | 按冻结历史分流审核 |
 | `review_candidates_app.py` | 打开当前审核界面 |
-| `release_build.py` | 构建基础 V4.1 发布 |
-| `release_build_phase2.py` | 构建阶段 2 发布 |
-| `rebuild_data.py` | 运行、恢复或晋升隔离的 V4.1 数据重建；`--source-only` 会初始化 run state（写 `run_root/control/rebuild.json`）并将 roi/review 模式烘焙为不可变身份，同一 run-root 续跑完整流水线时必须使用相同模式，否则需换 run-root；`--check-only` 仅校验输入并打印身份（不写文件） |
-| `build_artifact_index.py` | 扫描各产物集合目录的 `index.json`，生成数据根 `INDEX.md` 全局总览；支持 `--data-root`。当前覆盖 staging 侧与 `roi_manifests`/`roi_videos`；`promote` 尚未把 `index.json` 从 source/split 快照传播到正式 workspace 集合。 |
+| `release_build.py` | CLI已停用；正式发布使用versioning data release |
+| `release_build_phase2.py` | CLI已停用；既有Phase2对象使用显式mapping迁移 |
+| `rebuild_data.py` | CLI已停用，包括run/resume/promote/source-only/check-only；历史编排仅供显式私有测试调用 |
+| `build_artifact_index.py` | 扫描各产物集合目录的 `index.json`，生成数据根 `INDEX.md` 全局总览；支持 `--data-root`。覆盖历史产物集合；legacy promote 业务函数在快照移入正式 workspace 后更新 source/split 集合索引。`rebuild_data.py` CLI 已停用，保留业务函数不代表公开入口仍可执行。 |
 | `serve_smoke.py` | 显式root/alias/service-mode/contract校验Registry绑定后执行HTTP检查；用法见上级SCRIPTS.md |
 
-其他旧命令统一放在 [`archive/`](archive/README.md)。
+新正式数据流程见[数据手册第10节](../../docs/DATA_PROCESSING_RUNBOOK.md#10-现行数据入口versioning显式七阶段)和[显式输入契约](../../versioning/SCRIPTS.md#显式数据七阶段)。上表ROI/候选媒体/队列脚本中仍保留历史辅助入口，不能据此声明整个legacy包已退役。
+
+其他旧命令另放在 [`archive/`](archive/README.md)。

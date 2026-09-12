@@ -1241,3 +1241,34 @@ def test_promote_fails_closed_when_split_decision_missing_key(
 
     state = json.loads((run / "control/rebuild.json").read_text())
     assert state["state"] != "promoted"
+
+
+@pytest.mark.parametrize("module_name", ["release_build", "release_build_phase2", "rebuild_data"])
+def test_retired_data_cli_stops_before_legacy_selection(module_name, monkeypatch, capsys):
+    import importlib
+    import sys
+    module = importlib.import_module("pipeline.scripts." + module_name)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("legacy selection or dispatch reached")
+    for name in ["parse_args", "build_parser", "current_data_context", "current_data_paths"]:
+        if hasattr(module, name):
+            monkeypatch.setattr(module, name, forbidden)
+    monkeypatch.setattr(sys, "argv", [module_name, "--run-root", "/must-not-write"])
+    assert module.main() == 2
+    assert "python -m versioning" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("script", ["release_build.py", "release_build_phase2.py", "rebuild_data.py"])
+def test_retired_data_script_has_no_write_cli(script, tmp_path):
+    import subprocess
+    import sys
+    root = Path(__file__).resolve().parents[1]
+    command = [sys.executable, str(root / "pipeline/scripts" / script)]
+    result = subprocess.run(command + ["--releases-dir", str(tmp_path / "output")],
+                            cwd=tmp_path, text=True, capture_output=True)
+    assert result.returncode == 2
+    assert "python -m versioning" in result.stderr
+    assert not (tmp_path / "output").exists()
+    help_result = subprocess.run(command + ["--help"], cwd=tmp_path, text=True, capture_output=True)
+    assert help_result.returncode == 0
+    assert "已停用" in help_result.stdout

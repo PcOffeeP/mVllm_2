@@ -14,9 +14,9 @@ Non-goals:
 
 # 数据处理运行手册
 
-> 本文只描述如何运行当前项目的数据处理链路，不记录任何一次具体运行的状态、基线或历史发布。状态性内容见 `docs/results/` 与 `docs/project-guide.md`。
+> 新的正式数据处理从[第10节：现行显式七阶段](#10-现行数据入口versioning显式七阶段)开始。第1–9节保留历史业务、参数和产物解释；其中release_build.py、release_build_phase2.py、rebuild_data.py已停止CLI执行，不能照抄历史命令发布或promote。状态与迁移证据见项目TODO及docs/results/。
 
-## 1. 适用范围、当前版本与假设
+## 1. 历史链路的适用范围、版本与假设
 
 - 目标读者：首次跑通、复现或维护当前受支持数据处理链路的人。
 - 当前数据处理链路版本：**4.1**。本文中的命令、默认值、目录和产物说明均以 4.1 为当前执行基线；版本升级时继续维护本手册，并同步更新本条、适用契约、版本特有路径、命令和验收条件，而不是因版本号另建一份平行主手册。
@@ -621,67 +621,66 @@ python pipeline/scripts/rebuild_data.py promote \
 > - `run --source-only --check-only` 仅做校验，不写入快照。
 > - 同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
 
-## 10. 新体系（versioning）DVC pipeline（已实现，本轮不切换）
+## 10. 现行数据入口：versioning显式七阶段
 
-> 本章节描述可读版本控制新体系（`refactor/readable-version-control` 分支）已经实现的 DVC 数据 pipeline 入口。**legacy 六步流程（§3–§9）仍为现役**，本章节为新体系入口，本轮不切换正式流程。统一 CLI 还提供 Prompt、训练、测评、模型和备份命令，但不代表训练机或真实产物已经迁移。
+正式数据构建统一使用python -m versioning data，完整身份为data-v4.1-rN。旧发布和重建CLI只保留停用提示；不提供legacy开关或路径回退。已有发布对象、业务算法和历史审计记录保留，旧集合index/LATEST不用于新版本选择。
 
-### 10.1 前置条件
+### 10.1 准备显式输入
 
-- 仓库已配置 `uv`；运行前先 `uv sync` 确保依赖可用（含 `dvc`）。
-- 新体系数据 pipeline 由仓库根 `dvc.yaml` 声明，命令统一走 `python -m versioning data <stage>`。
-- 数据批次目录约定：原始输入在 `data/raw/<batch>/`，阶段产物在 `data/working/<batch>/`，正式封存版本在 `data/releases/`。
+先在训练机核对原视频、tags/mapping注释、既定split、已完成的人工ROI决定、业务契约、历史参考及实际processor文件。操作者按[显式输入契约](../versioning/SCRIPTS.md#显式数据七阶段)准备tensile-data/inputs/v1 YAML，逐文件固定规范路径、大小和SHA256；该节逐项定义split、ROI和media/processor配置。已有ROI界面仍可作为输入准备工具，但应显式给metadata，不能把其默认LATEST当作新体系版本选择。
 
-### 10.2 七阶段含义
+INPUTS包含已经完成的ROI决定；source阶段不会替操作者生成或猜测决定。各阶段只消费明确输入，不按文件名生成ROI，不重新划分三折，不固定每视频候选数量。真实媒体处理在训练机执行；Mac用于完整审查包、草稿和轻量验证。test_audit材料留在子视频阶段，不能混入开发审查/训练。当前该真实链发布development，holdout构建须按单独契约处理。
 
-| 阶段 | 作用 |
-| --- | --- |
-| source | 整理原始文件并写入 `source_manifest.json` |
-| roi | 为每个 source 视频生成确定性 ROI manifest |
-| subvideo | 每视频生成 2 条确定性子视频记录 |
-| review_export | 导出审查包 `items.jsonl`，覆盖全部 clip |
-| review_import | 回收并校验人工审查结果，通过则写入 `review_decisions.json` |
-| release | 组装 accepted payload 并封存为正式数据版本，写 `release_pointer.json` |
-| release_validate | 只报告：验证正式数据是否满足训练入口要求，不启动训练 |
+以下变量由操作者明确设置：PYTHON为项目解释器绝对路径，STORE为独立store根，INPUTS为已核对YAML，BATCH与YAML一致，VERSION为已确认且未占用的完整data身份。现有历史release复制迁移使用migration data-precheck/data-migrate与已确认mapping，不通过重跑本链替代迁移。
 
-阶段固定顺序 source→roi→subvideo→review_export→review_import→release→release_validate；相邻阶段经 outs/deps 闭合衔接。
+### 10.2 处理与审查导出
 
-### 10.3 dvc.yaml 位置与结构
+| 阶段与入口 | 明确输入 | STORE内主要输出 | 进入下一步的条件 |
+| --- | --- | --- | --- |
+| data source | 原视频、注释与给定split | data/working/BATCH/source及stage_manifest.json | pins、成员和完整文件匹配 |
+| data roi | source、人工ROI决定 | data/working/BATCH/roi裁剪媒体/冻结决定 | 源身份、分辨率、裁剪与决定一致 |
+| data subvideo | ROI、候选契约、两域参考、processor配置 | data/working/BATCH/subvideo候选媒体、采样帧、映射与排除原因 | 真实物化和采样证据完整 |
+| data review_export | 候选媒体与开发域参考 | data/working/BATCH/review_export完整可搬移包 | 导出包文件与manifest一致 |
+| data review_import | 同一INPUTS及完整人工RETURN | data/working/BATCH/review_import回收证据 | 决定覆盖完整、审查者/时间/标签与证据绑定合法 |
+| data release | 已回收审查、完整VERSION | data/working/BATCH/release构建证据；data/releases/VERSION/payload | 审查及构建校验通过，版本不冲突 |
+| data release_validate | 同一INPUTS/BATCH/VERSION | JSON校验报告 | payload封存、文件/上游绑定及训练准入通过 |
 
-- 根 `dvc.yaml`（仓库根目录）声明七阶段 pipeline。
-- `review_import` 消费外部人工审查结果 `data/review_results/<batch>.yaml`（不由任何阶段产物提供，关卡显式）；`release` 依赖 `review_import` 产物，审查未回收或结论不通过时 release 及下游不可执行。
-- `release` 的 outs 为固定路径 `data/release_payload`（可整体重建的普通 out）+ `data/release_pointer.json`（指针，普通 out）；**无 `data/releases` out、无 persist**。版本号经 DVC params 注入：阶段 `cmd` 使用 `--version ${release_version}` 并声明 `params: [release_version]`；操作者显式编辑根 `params.yaml` 指定目标版本。
+从代码仓库执行：
 
-### 10.4 命令用法
-
-```bash
-python -m versioning data <stage> [--root DIR] [--batch NAME] \
-  [--version ID] [--protocol P] [--purpose P] [--results FILE]
+```sh
+"$PYTHON" -m versioning data source --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data roi --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data subvideo --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data review_export --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
 ```
 
-- `<stage>` 必填，必须属于七阶段之一；缺参 / 非法 stage / 阶段失败均非零退出（fail-closed）。
-- `--root` 项目根目录（默认当前目录）；`--batch` 数据批次名（默认 `batch-001`）。
-- `--version` 在 `release` / `release_validate` 时显式指定目标版本（`release` 必填，缺省即 fail-closed 阻断，体现显式版本纪律）；`--protocol` / `--purpose` 仅 `release` 时使用；`--results` 仅 `review_import` 时显式指定审查结果 YAML 路径。注意：`release_validate` 不接收 `--batch`；dvc.yaml 中 `release` 阶段的目标版本由根 `params.yaml` 的 `release_version` 经 DVC params 注入 `${release_version}`。
+阶段目录已有时仅在全部输入、上游和文件匹配时复用，漂移即停止；不自动删除或覆盖后重跑。
 
-### 10.5 人工审查关卡操作
+### 10.3 人工回收与发布
 
-1. 运行到 `review_export`，生成审查包 `data/working/<batch>/review/review_package/items.jsonl`。
-2. 人工审查后，把审查结果写入 `data/review_results/<batch>.yaml`（含 `batch`、`approved`、`decisions`、`content_sha256` 四键；`decisions` 每项含 `clip_id` 与 `verdict`，verdict 为 `accept`/`reject`，clip_id 集合须与导出 clip 集合一致；`content_sha256` 须为 64 位十六进制摘要且与当前 subvideo manifest 内容哈希一致，用于把审查结论绑定到所审内容）。
-3. 运行 `review_import` 回收并校验审查结果；通过则写 `review_decisions.json`，未回收 / 格式错 / `content_sha256` 不符 / 结论不通过时非零退出阻断。
+把整个STORE/data/working/BATCH/review_export复制到Mac的PACKAGE普通目录，不能只带队列JSON。Mac明确设置自身PYTHON、包外DRAFT与REVIEW_OUTPUT：
 
-### 10.6 release / release_validate 行为
+```sh
+"$PYTHON" -m streamlit run pipeline/scripts/review_candidates_app.py -- --versioning-package "$PACKAGE" --draft "$DRAFT" --output-root "$REVIEW_OUTPUT"
+```
 
-- `release`：固定 out `data/release_payload`（accepted clips 汇总，普通 out，可重建）+ 正式封存版本 `data/releases/data-v<协议>-r<N>/`（含 `release.yaml` + `README.md`，payload 在 `payload/` 子目录，DVC 仓库内经 `dvc add` 生成 `payload.dvc` 纳入管理），并写 `data/release_pointer.json`；目标版本必须显式指定（缺省即 fail-closed 阻断），审查未回收 / 审查摘要与当前内容绑定不一致时非零退出阻断。`release` 阶段 cmd 通过 `${release_version}` param 接收目标版本。
-- `release_validate`：真实调用 `assert_payload_sealed` 与 `validate_training_reference` 两项校验，报告先落盘 `data/reports/<version>.validation.json` 再按结果 fail-closed，不硬编码通过，也不启动训练。
+在界面检查真实视频和采样证据，完成所有候选后冻结REVIEW_OUTPUT/review_return.json。默认审查者为“项目维护者”，可显式使用其他非空标识；历史审批复用须保留核对依据，不把测试决定当成人工审批。保存与冻结会复验整包，不能只筛选部分候选完成回收。
 
-### 10.7 outs 边界与封存目录
+把回收文件复制到训练机明确的RETURN路径，再执行：
 
-- `release` 阶段 outs 为固定路径 `data/release_payload`（普通 out，可整体重建）+ `data/release_pointer.json`（指针，普通 out）；不含 `data/releases` out，也不使用 persist。
-- 正式封存版本 `data/releases/<version>/` 不是 DVC pipeline out：其 `release.yaml` 与 `README.md` 属 Git 跟踪边界（保持可写、受控更新），`payload/` 子目录在 DVC 仓库内经 `dvc add` 生成 `payload.dvc` 指针纳入版本控制；payload 封存只读（去写位），DVC 重跑不触碰既有版本目录。
+```sh
+"$PYTHON" -m versioning data review_import --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --results "$RETURN"
+"$PYTHON" -m versioning data release --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --version "$VERSION"
+"$PYTHON" -m versioning data release_validate --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --version "$VERSION"
+```
 
-### 10.8 本地 fixture 验证方式
+正式payload包括媒体、冻结契约/审查、六份fold数据集、dataset_info和质量计数；同级release.yaml/README为元数据。完整版本已存在则拒绝，staging遗留需核对并显式处理。release_validate只读核验，不启动训练，也不生成release_pointer.json。
 
-- 集成测试在 `tmp_path` 初始化临时 DVC 仓库（`dvc init --no-scm`），跑通七阶段 fixture 闭环；审查缺失 / 不通过时 pipeline 阻断、回收通过后放行；输入变化后 `dvc status` 报告过期但不自动重跑（D035），手动 `dvc repro` 产生新 data 版本；临时 local remote push→删本地 cache 与产物→pull 完整恢复。
-- 测试命令：`uv run pytest tests/versioning/test_data_pipeline.py tests/versioning/test_dvc_pipeline.py -q`（54 例）。
+### 10.4 DVC、封存与恢复
+
+在STORE按实际情况显式初始化DVC后，执行data dvc-config生成该store的dvc.yaml/params.yaml。完整命令及依赖清单见[DVC配置与手动执行](../versioning/SCRIPTS.md#dvc-配置与手动执行)。输入/代码依赖全部固定，跨机配置须重新生成，不能沿用原机器绝对路径。
+
+先dvc repro review_export，人工回收完成后再dvc repro release_validate；缺少回收时停止。阶段输出使用persist，输入过期只报告，不自动删旧输出悄悄重建。正式payload单独经payload.dvc跟踪，已封存目录不是普通可重写out；恢复后核验封存权限与输入绑定。不要对全部封存payload执行强制commit。
 
 ### 10.9 holdout claim 与训练边界
 
@@ -694,4 +693,6 @@ python -m versioning data <stage> [--root DIR] [--batch NAME] \
 D001 — 将本文维护为不绑定版本号的数据处理主手册，并在正文集中声明当前支持的链路版本。
 Why: 数据处理链路后续可能升级；把版本号写入标题会让长期入口与 4.1 偶然耦合，容易产生平行手册或遗留过期入口。
 Trade-off: 版本升级时必须同时核对当前版本声明、版本特有路径、命令、默认值和验收条件，不能只修改版本号。
+D002 — 现行显式七阶段与历史操作参考分区，保留旧业务解释但停用旧CLI不再作为操作入口。
+Why: 迁移已确认逐入口停止旧写入；保留参数历史有助追溯，但不能让旧说明重新授予发布权限。
 -->

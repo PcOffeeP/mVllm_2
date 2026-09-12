@@ -109,7 +109,8 @@ def _run_rebuild(
             *extra_args,
         ],
     )
-    rc = rebuild_cli.main()
+    # Historical semantics only; the public CLI is retired.
+    rc = rebuild_cli._legacy_main()
     captured = capsys.readouterr()
     out = captured.out
     err = captured.err
