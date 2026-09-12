@@ -419,3 +419,11 @@ Mac，承接4c88cd95；仅低层执行事件适配，正式输入门与公共入
 修复后 `.venv/bin/python -m pytest -q tests/versioning/test_mlflow_train.py --basetemp=/private/tmp/mvllm2-m4b-fixed-20260912`，148 passed/52.28秒、exit0；日志 `/private/tmp/mvllm2-m4b-fixed.log`。独立reviewer复审11项9.00秒、exit0，并验证中文恰好6000字符、6512字符拒绝、参数写入RuntimeError/KeyboardInterrupt、读回截断，各项通过，两个P2关闭。
 
 没有真实训练/GPU、远程或正式store操作。这里是非GPU注入执行器加真实临时MLflow数据库证据，不证明实际模型训练成功。并发执行、输入冻结与导出恢复由后续编排切片补齐，后端持续不可用或进程被强制终止的恢复未由本切片穷举。代码提交以本节同次提交及 `git log -- versioning/mlflow_train.py` 追溯。
+
+## 27. 已确认 Prompt 的实际登记（2026-09-12）
+
+承接458e2004。Mac与训练机隔离checkout中的 `v4.1-concise-evidence-json-v2` 源Prompt/manifest逐文件SHA相同：分别 `8870c537bea1fb86b0c2419555c279e934227e4602d1c2f724438b9cc6e460af`、`de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d`。本机执行 `.venv/bin/python -m versioning migration prompt-precheck --root /Users/pcoffeep/AgentPlayground/active-projects/mVllm_2 --mapping docs/results/version-control-migration/object-mapping.yaml` 返回ready/exit0，随后同参数prompt-migrate返回prompt-v4.1-r1/exit0。此动作使用M0已user_confirmed的唯一Prompt映射及持续有效实施授权。
+
+Git正式记录 `records/prompts/prompt-v4.1-r1.yaml` 的SHA为 `907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6`。独立reviewer用标准load_prompt读取，逐字段核对system_prompt/user_prompt完全相等、output_fields内容和顺序一致；legacy六字段内容hash复算为 `0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db`，匹配源manifest。标准加载拒绝旧身份、LATEST及不完整ID。对已存在目标再次只读预检仅报告冲突，未重跑写入。
+
+独立审查通过，无finding；旧Prompt与活动指针相对HEAD未修改。训练机正式store当时尚无该Prompt文件，本节只记录Mac产物与两端源一致性，不冒充训练机已部署；后续随已提交Git对象同步。无模型权重加载或GPU工作。
