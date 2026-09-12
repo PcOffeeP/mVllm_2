@@ -537,3 +537,18 @@ Test List覆盖：实际CLI拒绝raw模型路径、无alias/非法模式、模�
 
 
 独立reviewer对7a750065之后的当前改动完成只读核查：三文件27 passed/9.96秒、production契约与Registry/materialize依赖171 passed/89.21秒、新增merged专项1 passed/2.81秒，均已正常退出exit0；这些是reviewer执行结果，不是主Agent复跑。审查核对实际LLaMA-Factory模型/adapter参数消费、CLI、Prompt、响应与文档链路；发现一处前置文档引用夸大已修正并读回确认，无剩余finding。未验证Linux、真实权重/GPU/真实服务HTTP与大权重哈希开销。git diff --check通过。
+
+
+### 32.2 Linux实际执行结果
+
+已通过增量bundle将035aee2464ced0ba55ade30a1048f4a6b4fa0a47同步到任务隔离分支。bundle SHA256为30c86d0ffe1b2e956c64b771ee3ac003ee5edf135ac4ce6b472c6138c7461ccd，两端摘要与verify一致，祖先检查通过、独有提交0/1，cherry-pick --ff保留同一提交对象。
+
+初次远程执行脚本因字符串换行转义语法错误在解析阶段退出，未创建RUN或运行测试；修正后首轮四文件40 passed、1 failed/13.61秒/exit1，失败发生在Starlette TestClient导入httpx2之前。原始report.json与linux-tests.log保留，SHA分别为f5bfb3524f2490704a7d7eaade82ee460f07f82b60fd6fa6d47b7ab6b1515e4c和7136a14d4579c2ecc90e21df564c375d9865abda6b6644df4778e0389a698e3b。
+
+核对已安装Starlette1.6.0元数据，其full extra声明httpx2>=2.0.0；在本次RUN/dependencies内使用pip --target安装httpx2及依赖，保持原.venv-m3/.conda-m2与系统包不变，仅为复跑设置PYTHONPATH指向该目录。这是32.1“无需安装依赖”预期的局部修正，沿用已授权的隔离CPU环境范围。实际httpx2/httpcore2为2.12.0、anyio4.15.1、FastAPI0.141.1。安装日志保留既有MLflow3.15.2要求pandas<3而环境为3.0.3的兼容告警；本轮专项通过不能证明全部依赖兼容，后续真实运行前仍需处理此环境限制。
+
+最终四文件41 passed、1 warning/13.45秒/exit0，包含报告版本查询的进程计时15.312秒。warning为Starlette使用已弃用anyio.BlockingPortal别名，不是模型推理告警。final-report.json记录035aee24、完整命令、禁用CUDA与离线/OMP4/PYTHONPATH环境及实测软件版本。其SHA为d6258843f8bd92e3c0c105affa720353b67dbf7d79ca315a41615b0f633307f4；linux-final-tests.log SHA为915bb2ab8946a78904c1ebe78a1daec6539584f0f77e7cf2ae10e1b8968e20fd；dependency-install.log SHA为babb05a98c010ee074726de1403850fe446826d053418ac5ac0b97eb6c787914。五个轻量报告/日志已复制到Mac /private/tmp/mvllm2-m5-evidence-20260912并核对摘要。此处均为实际Linux执行，不包含GPU、真实模型权重、真实HTTP服务或/data正式store操作。
+
+M5代码接线与两端受控CPU测试已形成证据；真实模型成功路径和运行中服务切换仍未验证，M5保留进行中。接下来可推进不依赖真实合格模型的M6隔离备份/传输/恢复；M4 full/holdout实际入口和最终真实环境验收依赖继续保留。独立证据核查通过，详见下段。
+
+独立reviewer只读核对两端五份报告/日志SHA全部一致，首轮40/1与最终41项报告对应；读取包元数据确认httpx2/httpcore2/anyio来自本次dependencies目录，实际代码与报告均035aee24。核查时正式main仍clean@f1b7d8a3，隔离checkout tracked clean且保留六个未跟踪环境/证据目录；随后主Agent仅追加本节和TODO/Plan证据。审查通过，无finding；退出码与耗时按既有报告核对，未声称独立复跑或事后重建进程环境。当前三份轻量文档在实际Linux训练机提交，随后校验bundle回传Mac；提交对象由git log追溯。
