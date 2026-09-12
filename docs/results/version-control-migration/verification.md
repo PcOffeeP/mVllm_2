@@ -722,3 +722,105 @@ versioning说明补Prompt定义→create→正式文件→freeze/verify→训练
 report.json SHAe2811f9c476a974b639316c0f61724ba067909fde8faf2d98c71b07d1b6195c1；linux-tests.log SHA8afcd40b5d3f5c2fd044ba1bc0634f8fcc7bdab408450fe7ccf985baf2dfaa88；Mac副本/private/tmp/mvllm2-m7e-evidence-20260912。M7a–e入口与文档切片完成，下一步M8整体Spec验收矩阵/源保护/Codeup main完整差异审查及交付；切片通过不代替整体审查，不关闭真实训练/评测、full/holdout输入或大型硬盘等原缺口。轻量证据在实际Linux提交后以docs-only验签bundle回传，提交由git log追溯。
 
 独立reviewer读取两端报告779字节/日志260字节，逐字节及SHA一致、报告内日志SHA正确；核对4文件命令/环境/结果/耗时，实时隔离cc02acc1 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑，历史执行环境/退出码/耗时依据报告与日志，不外推真实媒体/GPU。
+
+
+<a id="m8-audit-20260913"></a>
+## 39. M8整体审查、不可变Prompt与训练半提交修复（2026-09-13）
+
+### 审查基线与范围
+
+执行者Codex。Mac任务分支`refactor/2026-09-07-readable-version-control-migration`冻结于
+`0963642bdb47c87af0df78b809a2262ee7e1ea30`；Codeup `main`经本轮远端只读查询仍为
+`f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`，两侧独有提交计数0/117，差异148文件、76054行新增/456行删除。
+本地main `cc59312c`原有6个独有提交（cc59312c、f8209b61、d8cba46a、7b8192bd、8acaf2cf、cdb8632c）
+全部纳入范围，不能只审查Task Artifact之后的提交。
+
+独立reviewer `review_m8_full_diff`按冻结差异核查Spec、入口、Registry、状态、不可变发布、备份及原6提交，
+在隔离临时对象上独立复现下列4项。结论为**驳回修改**；风险抽样审查不宣称逐行证明76k行新增内容。
+
+| 固定问题标识 | 优先级/已证实问题 | 当前动作与验收 |
+| --- | --- | --- |
+| M8-R1 | P1：公开train/eval手工状态命令不执行训练/推理、不产生冻结input或权重，仍可通过model register/finalize及candidate alias；Registry只核状态元数据 | 未解决，列为当前前置。须同时封住公开手工绕过和已有状态齐全但缺产物的记录；实际执行器保留。不能仅删除CLI后称证据门完成 |
+| M8-R2 | P2：Prompt同ID并发create双成功，后者覆盖先者；freeze同类窗口 | 本轮create/freeze均改完整临时文件加原子排他link发布，冲突返回PromptConflict，赢家正文保持。新增2条确定性并发回归 |
+| M8-R3 | P2：train完成先写workflow_state后终止Run，I/O中断留下completed/RUNNING，同目标无法重试 | 本轮仅对同目标completed/RUNNING补完原Run，恢复前重验父记录及三折/summary门；普通读取、非法目标及已完成自环不放宽。新增中断恢复与缺折拒绝2条回归 |
+| M8-R4 | P2：改根隔离恢复后SQLite仍保留旧artifact URI；使模拟原源不可达后，恢复目录虽有文件仍下载失败 | 未解决，已证实实现缺口。先前第33节原绝对路径恢复证据不作废，但不能解释为任意隔离路径可恢复；真实硬盘仍单独未验证 |
+
+R1独立复现脚本`/tmp/m8_reviewer_probe.py`通过`versioning.cli.main`顺序执行：Prompt create/freeze →
+train create → 三折fold-start/fold-end → summary/complete → model register → eval create/fold-start/fold-end/summary/complete
+（outcome=passed）→ model finalize/scope(adapter)/alias(candidate)。输入base_model、eval config和结果引用均不存在；
+最终actual_model_files为空、training_frozen_manifest=false，get_model_by_alias仍返回candidate。
+该复现不调用训练器和推理器。R2/R3脚本`/tmp/m8_reviewer_edges.py`分别用屏障并发发布、set_terminated一次I/O故障复现。
+R4脚本`/tmp/m8_reviewer_restore.py`仅临时移动并恢复它自己创建的模拟原源；未操作真实模型或数据。
+脚本临时路径只作本轮复核入口，长期修复验收以仓库回归测试及本节记录为准。
+
+另有待确认线索：已通过eval与服务实际权重清单的绑定需在R1修复时构造内容漂移反例验证。
+独立reviewer未完成这一反例，不把它写成已证实问题。`history-summary.yaml`实物缺失则由主Agent直接盘点确认；
+其构建器测试不代表本次历史对象整理已落盘。
+
+### 本机测试与修复边界
+
+- 基线整仓CPU命令：`CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 .venv/bin/python -m pytest -q tests --basetemp=/private/tmp/mvllm2-m8-full-20260913 --tb=short`。
+  输出`2603 passed, 11 skipped in 322.11s`、正常退出0；日志`/private/tmp/mvllm2-m8-full-20260913.log`。11项skip为既有历史fixture缺失。这是主Agent本轮执行，reviewer仅引用，不是其复跑。
+- R2先运行新增create/freeze并发回归，2 failed，均观察到两个published；修复后Prompt及migration联合292 passed。
+- R3先注入终止中断和缺折恢复，两项均RED（IllegalStateCombination，尚无恢复分支）；随后补实现。
+- 最终本机联合：`.venv/bin/python -m pytest -q tests/versioning/test_mlflow_train.py tests/versioning/test_prompts.py tests/versioning/test_migration.py tests/test_train_with_contract.py --basetemp=/private/tmp/mvllm2-m8-repairs-green --tb=short`，
+  `466 passed in 44.08s`、正常退出0，日志`/private/tmp/mvllm2-m8-repairs-green.log`。
+- R2/R3最终独立reviewer复跑Prompt/train两文件：251 passed，41.55秒，退出0；额外缺summary、错误run_status、半提交改向及完成后自环均拒绝，专项复审通过。训练机同组466项通过，见本节末尾。本轮修复不涉及R1/R4，不能据466项通过关闭M8。
+
+### 训练机原对象与物理存储根复核
+
+本轮仅SSH只读：原项目`/home/liuyang/文档/mVllm_2`为干净`main@f1b7d8a3`；隔离项目
+`/home/liuyang/文档/mVllm_2-migration-7eeb93a7`为任务分支`0963642b`，tracked干净，原环境和M3–M7验证目录均保留。
+没有加载权重、执行GPU/训练/评分，未写原项目、更新指针或修改source。
+
+初次探测误用了release根下`manifest.json`，该路径不存在；随后按source-inventory声明的
+`manifest/release_manifest.json`复核成功，不能将初次路径错误解释为源对象丢失。
+两份正确源manifest的SHA与M0/M3一致：
+- 760050fad303：`c7a5fe349137b5b5f1e37082ae69b0e5d175bf174e4a27b71061975afac3c036`；3846字节。
+- ecb5aeb9657c：`ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b`；4986字节。
+
+当前旧Prompt `manifest.json` SHA为`de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d`，
+`prompt.yaml`为`8870c537bea1fb86b0c2419555c279e934227e4602d1c2f724438b9cc6e460af`；
+隔离checkout内新Prompt为`907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6`，均与第27节一致。
+原模型Registry manifest仍为`3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008`。
+旧数据指针SHA `66770b94e9762e56bce5aea00a0e407d80b7bc7f606e2c0bc73121ed6845da73`、旧模型指针SHA
+`ec9b876b15c1ac964e50bc1950eadad52cd472676096c60f5b3b971227f54bb8`为本轮只读快照；未另做历史摘要对比，不扩大为所有原对象不变的完整证明。
+
+`/data/mVllm_2/data/releases/data-v4.1-r1/r2/release.yaml`存在；各SHA为
+`7bbbf15f350c17d522fa33b9052d9fafc5279f70343980d84ee8b419a124940f` / `3a42da0db7837c3a21d36d923a428b1b009f7b2d7b00bde7cf7ecafab84f0039`。
+该根下`records/prompts/prompt-v4.1-r1.yaml`不存在；Git Prompt已迁移与`/data`训练输入是否备齐是不同事实。
+完整只读JSON保留于`/private/tmp/mvllm2-m8-source-audit-20260913.json`。本轮未重算20个payload和全部外部媒体摘要，前序真实验证仍按原章节归因。
+
+
+### 历史汇总只读试构建（未发布正式历史文档）
+
+使用训练机隔离代码`2b8cbc89`的`build_history_summary`纯构建API：对原项目声明3个Prompt、6个有权重run、
+1个缺失run、2个prepare-only及1个旧Registry模型；对隔离checkout中明确声明的5个归档eval包另行构建。
+18项均保留原ID，未分配新train/model/eval身份，未创建或修改任何Run，未调用固定路径history-write。
+API返回值经SSH写入Mac临时`/private/tmp/mvllm2-m8-history-probe-20260913.json`（65699字节）。
+
+3个Prompt各取得6个有来源事实；旧Registry模型16个有来源事实、1个unknown；5个eval摘要共54个已知字段、6个unknown。
+6个权重run各取得3个目录结构事实，但9个核心参数均unknown：原项目root不存在已提交到任务分支的归档包，
+构建器单root定位无法同时取得原权重观察/adapter_config与隔离checkout归档资料。缺失run的12个字段保留unknown，
+2个prepare-only各9个参数保留unknown。**这些unknown是本次来源布局导致的提取缺口，不是已证明历史参数不存在。**
+下一批须按既有归档文件清单校验跨根来源并保留字段provenance后再发布history-summary；不能把这次临时JSON当作完成的交付物，
+也不能为运行构建器向原正式checkout复制归档或制作虚假权重占位文件。
+
+
+### Linux修复验证与同步
+
+代码提交`2b8cbc891d12282dfc4f55a6f0aa45d6714cd22f`，四文件实现/测试范围，已通过Mac专项及独立复审。
+增量bundle SHA为`63cada6811cf74d7c08a8f8a1634cf75caa6e12bdf963aa2eab1d7d86b289f71`。
+首次用纯SHA范围生成bundle被Git拒绝为空，未触碰训练机；改用具名`HEAD ^0963642b`成功生成。
+传输前后检查分支、HEAD、tracked修改、bundle摘要、依赖及祖先关系，0/1后仅`cherry-pick --ff`隔离分支。
+
+训练机`m8-verification-20260913/`为本轮新建且冲突即停的隔离证据目录，保存`code.bundle`、`sync.json`、
+`pytest.log`及`result.json`；`.venv-m3/bin/python`运行与Mac相同四份测试文件，
+`CUDA_VISIBLE_DEVICES=''`、`OMP_NUM_THREADS=4`、HF/Transformers offline。
+结果`466 passed in 92.12s`，进程正常退出0；含解释器与MLflow初始化的命令耗时105.20秒。
+日志SHA为`0e9ed84d5630e6e84b9905cdb183e7d4ac5d0b425501f73f2415b73a425c6d55`。
+实现SHA与reviewer本机复审一致：Prompt `e6f5752d0a3ec1d785b058b4694bb9b8c82189d730cf57a0b0e8945ed4fea955`，
+train `a88808252daf89f33c133f3951cbdf38731eb2f75a29b1e456dd82cdb8932d53`。
+Linux验证后tracked干净；无安装、GPU训练/推理、真实完整评分、原源写入、merge或push。
+R2/R3在本轮指定范围解决，R1/R4和历史汇总仍未解决，最终整体审查结论继续为驳回修改。
+本节与台账/Plan/交接的同次轻量证据提交由`git log -- docs/results/version-control-migration/verification.md`追溯。
