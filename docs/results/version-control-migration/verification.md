@@ -597,7 +597,7 @@ M6功能接线、两端受控测试、实际SSH往返和原隔离路径联合恢
 独立reviewer仅只读检查，核对八份关键报告两端SHA一致；三份实际快照均6对象/23文件/905202字节、逐文件验签且无额外文件。恢复文件与catalog、保留原件的非SQLite文件逐字节摘要一致；原/恢复SQLite mode=ro查询一致，确认18Run/3Model Version/1alias、candidate/三折父子/指标/eval与artifact路径及字节，scope裁剪符合声明。通过此次小型合成对象跨机与原路径恢复证据范围，无finding。核查时两端HEAD均ab5543de、隔离tracked clean、正式main clean@f1b7d8a3；其后主Agent仅更新本节及TODO/Plan。历史环境/退出码/耗时依据报告，未独立复跑；错误摘要当时无目标的状态按主Agent过程记录，不能事后直接观察。首次后核查stdin脚本未落独立文件，reviewer仅确认保留traceback及最终结果，不把第41行断言解释冒充独立重建证据。真实硬盘/大型模型/GPU与改绝对路径可用性未验证。三份轻量证据文档在实际Linux提交，再校验增量bundle回传Mac，提交由git log追溯。
 
 
-## 34. M7a数据旧CLI停用与文档收敛（进行中）
+## 34. M7a数据旧CLI停用与文档收敛（本批完成）
 
 基线a7e0fc14。本批依据已完成M3真实输入/人工交接/发布迁移验收，停用release_build.py、release_build_phase2.py、rebuild_data.py三个旧CLI。脚本在导入legacy业务模块前返回停用提示；--help只说明新入口，其他参数返回2，不解析旧当前路径，不提供legacy模式。私有_legacy_main及业务库保留历史测试，不声明整个legacy包已退役。
 
@@ -624,3 +624,15 @@ KEEP：五族完整身份、fail-closed、历史产物保护、源保护与授�
 同文件维护时关闭既有 DOC-INDEX：对照 data_rebuild 的 _update_snapshot_collection_indexes 及 promote 调用，删除脚本索引中已修复缺陷的过期描述。仅修正文档，未重新开放历史 CLI。独立 reviewer 追加核对实际 cdb8632c diff、移动后索引更新顺序及脚本索引/TODO，通过，无 finding；本次文档追加未重复运行测试。
 
 下一步在代码提交并核对两端状态后，将增量 bundle 同步到训练机既有隔离 checkout。输出限定新目录 m7-data-entry-verification-20260912；使用已有 .venv-m3，CUDA不可见、OMP4、离线模式，执行上述三个测试文件的小型合成回归，不读取正式 /data、不执行真实媒体处理、不安装依赖。实际命令、日志及结果执行后追加。
+
+### 34.3 Linux 隔离回归与完成边界
+
+实现提交881c81819725057e77d7be5d1c2c7cfaa5b08293由Mac生成，增量bundle两端SHA03b1fec56b19da1985681be67c0a55b886627bd65c4e6fe426b853cc46bacdb7；核对隔离分支/HEAD/无tracked改动、bundle verify、祖先与0/1差异后cherry-pick --ff同步同一对象。正式main在同步前clean@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52，未参与同步。
+
+训练机新输出位于/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m7-data-entry-verification-20260912。实际使用.venv-m3/bin/python（3.11.16）执行pytest -q tests/test_data_rebuild.py tests/test_rebuild_source_only.py tests/test_release_build_cli.py --basetemp=<该RUN>/pytest --tb=short，57 passed/2.20秒/exit0，进程2.635秒。环境CUDA_VISIBLE_DEVICES为空、OMP_NUM_THREADS=4、HF_HUB_OFFLINE=1、TRANSFORMERS_OFFLINE=1；没有安装依赖、没有真实媒体或GPU任务。
+
+report.json SHA3829b295939da55b6eb2bf04a830fe34851fbc3c81f5f51d6ffb51c277be47c8；linux-tests.log SHAbd43d7f9cf463d9ce0bcb3cfc1b84074b38e3eeea49e0dfb2f7f8024c66d0d9d。Mac副本/private/tmp/mvllm2-m7-evidence-20260912。首次SSH核查脚本因换行转义出现SyntaxError，在执行前失败、没有建立RUN；修正后首次实际测试成功，不隐去该操作错误。
+
+M7a仅关闭三个数据CLI停用与对应文档、DOC-INDEX；保留私有历史测试函数及仍有实际调用的索引库。M7b剩余旧入口核定和文档收敛、M8最终审查尚待执行。M4 full/holdout读取与真实模型、M5真实加载成功、M6真实硬盘/大型对象等原限制未因本轮轻量回归而关闭。证据文档在实际Linux原子提交，提交通过git log追溯。
+
+独立 reviewer 只读核对两端报告/日志字节和摘要一致、报告内日志摘要正确；实时确认隔离881c8181 tracked clean、正式main clean@f1b7d8a3、Python版本一致，通过Linux轻量证据范围，无finding。未复跑测试；历史命令/环境/耗时依据报告，首次语法错误及未建立目录仅为主Agent过程记录，独立reviewer未重建该历史状态。
