@@ -656,3 +656,15 @@ M7a仅关闭三个数据CLI停用与对应文档、DOC-INDEX；保留私有历�
 report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c；linux-tests.log SHAfe4fc3382cefac46a9cacc4b3f44014af83b0fe9b244c24089a590398d4956c5；Mac副本/private/tmp/mvllm2-m7b-evidence-20260912。本批只关闭四个公开CLI退役及相应文档范围，剩余ROI/审查/索引辅助入口和M8整体审查待推进；真实GPU、full/holdout、大型备份等原缺口仍未关闭。轻量证据文档在实际Linux原子提交，由git log追溯，随后验签回传Mac。
 
 独立reviewer只读获取两端原始报告和日志，逐字节一致、摘要一致，报告内日志摘要正确；核对指定命令和环境记录，实时Python3.11.16、隔离60dd00bc tracked clean、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑，历史执行环境/退出码/耗时依据报告与日志，实时状态不重建历史进程。
+
+## 36. M7c辅助UI入口接管（进行中）
+
+基线80b7fa3e。review_candidates_app在参数解析时拒绝旧queue，避免进入current数据根和旧review_decisions写入；完整包及默认项目维护者身份不变。ROI仍是输入准备工具，公开参数要求metadata实际文件/output/project-root；拒绝缺参、无文件/目录和输出覆盖metadata，移除模块导入时current_data_paths调用；几何/媒体/人工决定函数保留。旧ROI解析器只供历史语义测试，未删除仍被业务引用的索引库。
+
+新增入口回归先RED：8 failed/201 deselected/0.60秒（/private/tmp/mvllm2-m7c-red.log）。第一轮两文件208 passed/15.88秒；随后补充非法路径三项，最终两文件211 passed/15.28秒/exit0（/private/tmp/mvllm2-m7c-final.log）。验证限本机合成/受控业务，无真实媒体处理或新人工决定；未将旧数据/模型缺口标记完成。手册现行第10.1节补齐显式metadata来源→ROI输入文件→inputs绑定→七阶段复验，旧1–9节历史语义保留并标注停用路径。独立审查及Linux复验待执行。
+
+拟在代码提交和两端Git核对后，增量bundle同步训练机既有隔离checkout；新输出m7c-ui-entry-verification-20260912，已有.venv-m3以CUDA不可见/OMP4/离线模式运行同两文件CPU回归。输入均本轮合成fixture，不启动Streamlit服务、不安装依赖、不读取正式/data；实际结果另记。
+
+剩余公开辅助CLI已定位：roi_freeze_decisions.py、roi_materialize_videos.py、subvideo_build_plan.py、subvideo_materialize_media.py、review_build_queue.py、review_build_phase2_queues.py、review_route_from_history.py。均有main，需下一批逐个对照新链的库函数调用核定退役，并先补入Plan精确代码范围；不能因本批两UI接管就宣称全部写入入口已停止。build_artifact_index.py及底层索引库继续按实际依赖处理。
+
+最终导入回归改为独立subprocess，避免reload模块改变同进程异常类身份；专项1 passed/0.43秒。独立reviewer两文件211 passed/15.60秒/exit0，追加验证ROI输出软链接指向metadata及旧--data-root均退出2且输入不变；入口控制流、ROI schema→inputs.roi_decisions→七阶段文档链核查通过，无可执行问题。限制为本机CPU，未做真实UI人工操作/媒体/GPU，Linux另验。

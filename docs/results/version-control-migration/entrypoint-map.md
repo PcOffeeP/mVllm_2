@@ -34,8 +34,8 @@ M0发现的文件名ROI和固定两条候选属于早期最小实现，已不能
 | pipeline/scripts/release_build_phase2.py | 包括validate-only在内的CLI已停用，无旧默认路径选择 | 既有Phase2发布对象走确认mapping复制迁移，不重建冒充等价 |
 | pipeline/scripts/rebuild_data.py | run/resume/promote/source-only/check-only的CLI均停止，--help只显示新入口 | _legacy_main为显式历史测试路径；底层source/ROI/候选算法与状态回归保留 |
 | pipeline/data_rebuild.py | 库函数保留，不作为本轮已退役对象 | tree_inventory等仍为业务依赖；旧promote/index写入函数仅停止上述CLI可达路径 |
-| pipeline/scripts/review_candidates_app.py | versioning-package为新完整审查包模式，queue为旧模式 | 两种模式互斥；新模式不默认选择、不支持局部筛选；旧UI写入退役待单独核定 |
-| pipeline/scripts/roi_annotation_app.py | 原ROI输入准备界面保留 | 旧模式仍可按source_snapshots LATEST找metadata；新数据输入必须明确冻结ROI文件，不把该默认值当新身份 |
+| pipeline/scripts/review_candidates_app.py | 仅接受versioning-package完整审查包，旧queue解析时即拒绝 | 保留历史批次业务函数和读取规则；不改写原审查决定 |
+| pipeline/scripts/roi_annotation_app.py | ROI输入准备界面保留，metadata/output/project-root均必填 | 导入和公开参数解析不选current/LATEST；仅接受metadata实际文件，旧解析器保留私有历史测试 |
 
 artifact_index、artifact_resolver和build_artifact_index.py未删除。source_bootstrap、roi_manifest、roi_media、v3_candidate_plan、v3_candidate_media、v4_1_review_workflow、v4_1_training_release及历史重建代码仍引用相关模块；其中部分为独立辅助入口，不能仅凭新的正式CLI不直接import就判定零活动依赖。
 

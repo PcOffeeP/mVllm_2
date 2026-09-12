@@ -1988,7 +1988,7 @@ class TestInputDvcConfiguration:
 
 
 class TestHumanReviewerIdentity:
-    @pytest.mark.parametrize('portable', [False, True])
+    @pytest.mark.parametrize('portable', [True])
     def test_single_maintainer_needs_no_manual_identity(self, tmp_path, monkeypatch, portable):
         from types import SimpleNamespace
         from pipeline.scripts import review_candidates_app as app
@@ -2001,7 +2001,7 @@ class TestHumanReviewerIdentity:
         from types import SimpleNamespace
         from pipeline.scripts import review_candidates_app as app
         monkeypatch.setattr(app, 'data_context_from_arg', lambda *a: SimpleNamespace(root=tmp_path))
-        args = app._parse_args(['--queue', str(tmp_path / 'queue.json'), '--reviewer-id', '  reviewer-a  '])
+        args = app._parse_args(['--versioning-package', str(tmp_path / 'package'), '--draft', str(tmp_path / 'draft.json'), '--output-root', str(tmp_path / 'output'), '--reviewer-id', '  reviewer-a  '])
         assert args.reviewer_id == 'reviewer-a'
 
     def test_legacy_history_keeps_missing_identity_without_reapproval(self, tmp_path, monkeypatch):
@@ -2040,3 +2040,12 @@ def test_seven_stage_release_feeds_versioned_three_fold_training(reviewed_inputs
             assert [r['videos'] for r in before] == [r['videos'] for r in after]
             assert [r['messages'][2] for r in before] == [r['messages'][2] for r in after]
     assert not (root / 'workspace/mlflow').exists()
+
+
+@pytest.mark.parametrize("argv", [["--queue", "old.json"], ["--queue=old.json"], ["--", "--queue", "old.json"]])
+def test_retired_review_queue_rejected_before_root_selection(argv, monkeypatch):
+    from pipeline.scripts import review_candidates_app as app
+    monkeypatch.setattr(app, "data_context_from_arg", lambda *a: pytest.fail("legacy root selected"))
+    with pytest.raises(SystemExit) as exc:
+        app._parse_args(argv)
+    assert exc.value.code == 2

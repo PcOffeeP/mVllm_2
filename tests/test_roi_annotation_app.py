@@ -341,7 +341,7 @@ def test_parse_args_default_metadata_resolves_source_snapshots_latest(
     _add_source_snapshot(collection, artifact_id)
     artifact_resolver.update_latest(collection, artifact_id)
 
-    args = app._parse_args(["--data-root", str(data_root)])
+    args = app._legacy_parse_args(["--data-root", str(data_root)])
 
     assert args.metadata == collection / artifact_id / "video_meta.json"
     # 失效遗留路径不得再作为默认
@@ -357,7 +357,7 @@ def test_parse_args_explicit_metadata_path_passes_through(
     explicit.parent.mkdir(parents=True)
     explicit.write_text("[]", encoding="utf-8")
 
-    args = app._parse_args(
+    args = app._legacy_parse_args(
         ["--data-root", str(data_root), "--metadata", str(explicit)]
     )
 
@@ -372,7 +372,7 @@ def test_parse_args_metadata_snapshot_id_prefix_resolves(
     artifact_id = "source-abcdef123456"
     _add_source_snapshot(collection, artifact_id)
 
-    args = app._parse_args(
+    args = app._legacy_parse_args(
         ["--data-root", str(data_root), "--metadata", "abcdef"]
     )
 
@@ -387,7 +387,7 @@ def test_parse_args_without_latest_fails_closed(
     _add_source_snapshot(collection, "source-abcdef123456")
 
     with pytest.raises(ValueError, match="LATEST"):
-        app._parse_args(["--data-root", str(data_root)])
+        app._legacy_parse_args(["--data-root", str(data_root)])
 
 
 def test_parse_args_ambiguous_metadata_prefix_fails_closed(
@@ -399,7 +399,7 @@ def test_parse_args_ambiguous_metadata_prefix_fails_closed(
     _add_source_snapshot(collection, "source-abcdef222222")
 
     with pytest.raises(ValueError, match="多义"):
-        app._parse_args(
+        app._legacy_parse_args(
             ["--data-root", str(data_root), "--metadata", "abcdef"]
         )
 
@@ -413,3 +413,47 @@ def test_source_state_change_invalidates_existing_decision(tmp_path: Path):
     video.write_bytes(b"version-two-is-longer")
 
     assert not app.source_state_matches(decision, video)
+
+
+@pytest.mark.parametrize("missing", ["--metadata", "--output", "--project-root"])
+def test_explicit_roi_entry_rejects_missing_paths(tmp_path, monkeypatch, missing):
+    monkeypatch.setattr(app, "data_context_from_arg", lambda *a: pytest.fail("legacy root selected"))
+    values = {"--metadata": tmp_path / "video_meta.json", "--output": tmp_path / "roi.json", "--project-root": tmp_path}
+    values["--metadata"].write_text("[]")
+    argv = [item for key, value in values.items() if key != missing for item in (key, str(value))]
+    with pytest.raises(SystemExit) as exc:
+        app._parse_args(argv)
+    assert exc.value.code == 2
+
+
+def test_explicit_roi_entry_never_resolves_legacy_identity(tmp_path, monkeypatch):
+    monkeypatch.setattr(app, "data_context_from_arg", lambda *a: pytest.fail("legacy root selected"))
+    monkeypatch.setattr(app.artifact_resolver, "resolve_cli_artifact_path", lambda *a, **kw: pytest.fail("legacy identity selected"))
+    metadata = tmp_path / "video_meta.json"
+    metadata.write_text("[]")
+    args = app._parse_args(["--metadata", str(metadata), "--output", str(tmp_path / "roi.json"), "--project-root", str(tmp_path)])
+    assert args.metadata == metadata
+    assert args.output == tmp_path / "roi.json"
+    assert args.project_root == tmp_path
+
+
+def test_roi_import_does_not_select_current_data():
+    import subprocess
+    import sys
+    code = "import pipeline.current_data as current; current.current_data_paths = lambda *a: (_ for _ in ()).throw(AssertionError('import selected current data')); import pipeline.scripts.roi_annotation_app"
+    result = subprocess.run([sys.executable, "-c", code], cwd=Path(__file__).resolve().parents[1], text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("case", ["missing_metadata", "missing_root", "overwrite_input"])
+def test_explicit_roi_entry_rejects_invalid_paths(tmp_path, case):
+    metadata = tmp_path / "video_meta.json"
+    metadata.write_text("[]")
+    output = metadata if case == "overwrite_input" else tmp_path / "roi.json"
+    root = tmp_path / "absent" if case == "missing_root" else tmp_path
+    if case == "missing_metadata":
+        metadata = tmp_path / "source-prefix"
+    with pytest.raises(SystemExit) as exc:
+        app._parse_args(["--metadata", str(metadata), "--output", str(output), "--project-root", str(root)])
+    assert exc.value.code == 2
+    assert (tmp_path / "video_meta.json").read_text() == "[]"

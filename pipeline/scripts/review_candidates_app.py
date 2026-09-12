@@ -60,7 +60,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="v4.1 候选媒体人工复检 UI")
     parser.add_argument("--data-root", type=Path)
     queue_input = parser.add_mutually_exclusive_group(required=True)
-    queue_input.add_argument("--queue", type=Path)
+    queue_input.add_argument("--queue", type=Path, help="已停用；请使用 --versioning-package 完整审查包")
     queue_input.add_argument("--versioning-package", type=Path, help="显式可读版本审查导出包")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--review-reference", type=Path)
@@ -71,6 +71,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--reviewer-id", default="项目维护者", help="审查者标识（默认：项目维护者，保存到每条人工决定）")
     args = parser.parse_args(raw)
+    if args.versioning_package is None:
+        parser.error("旧 --queue 审查写入已停用；请使用 --versioning-package 完整审查包及显式 --draft、--output-root")
     if not args.reviewer_id or not args.reviewer_id.strip():
         parser.error("人工审查必须提供非空 --reviewer-id，例如 --reviewer-id reviewer-name")
     args.reviewer_id = args.reviewer_id.strip()

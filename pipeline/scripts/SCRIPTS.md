@@ -12,7 +12,7 @@ Non-goals:
 
 | 文件 | 作用 |
 | --- | --- |
-| `roi_annotation_app.py` | 标注 ROI |
+| `roi_annotation_app.py` | ROI输入准备；必填metadata文件/output/project-root，不再解析current/LATEST或快照ID |
 | `roi_freeze_decisions.py` | 冻结 ROI 决定 |
 | `roi_materialize_videos.py` | 生成 ROI 视频 |
 | `subvideo_build_plan.py` | 生成当前沿用的候选计划 |
@@ -20,7 +20,7 @@ Non-goals:
 | `review_build_queue.py` | 生成 V4.1 审核队列 |
 | `review_build_phase2_queues.py` | 生成阶段 2 隔离队列 |
 | `review_route_from_history.py` | 按冻结历史分流审核 |
-| `review_candidates_app.py` | 打开当前审核界面 |
+| `review_candidates_app.py` | 完整versioning-package审查界面；旧queue写入模式已停用 |
 | `release_build.py` | CLI已停用；正式发布使用versioning data release |
 | `release_build_phase2.py` | CLI已停用；既有Phase2对象使用显式mapping迁移 |
 | `rebuild_data.py` | CLI已停用，包括run/resume/promote/source-only/check-only；历史编排仅供显式私有测试调用 |

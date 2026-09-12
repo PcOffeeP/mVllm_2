@@ -14,7 +14,7 @@ Non-goals:
 
 # 数据处理运行手册
 
-> 新的正式数据处理从[第10节：现行显式七阶段](#10-现行数据入口versioning显式七阶段)开始。第1–9节保留历史业务、参数和产物解释；其中release_build.py、release_build_phase2.py、rebuild_data.py已停止CLI执行，不能照抄历史命令发布或promote。状态与迁移证据见项目TODO及docs/results/。
+> 新的正式数据处理从[第10节：现行显式七阶段](#10-现行数据入口versioning显式七阶段)开始。第1–9节保留历史业务、参数和产物解释；其中release_build.py、release_build_phase2.py、rebuild_data.py已停止CLI执行，不能照抄历史命令发布或promote。review_candidates_app的旧--queue模式也已停用；ROI现行显式路径参数见第10.1节。状态与迁移证据见项目TODO及docs/results/。
 
 ## 1. 历史链路的适用范围、版本与假设
 
@@ -627,7 +627,16 @@ python pipeline/scripts/rebuild_data.py promote \
 
 ### 10.1 准备显式输入
 
-先在训练机核对原视频、tags/mapping注释、既定split、已完成的人工ROI决定、业务契约、历史参考及实际processor文件。操作者按[显式输入契约](../versioning/SCRIPTS.md#显式数据七阶段)准备tensile-data/inputs/v1 YAML，逐文件固定规范路径、大小和SHA256；该节逐项定义split、ROI和media/processor配置。已有ROI界面仍可作为输入准备工具，但应显式给metadata，不能把其默认LATEST当作新体系版本选择。
+先在训练机核对原视频、tags/mapping注释、既定split、已完成的人工ROI决定、业务契约、历史参考及实际processor文件。操作者按[显式输入契约](../versioning/SCRIPTS.md#显式数据七阶段)准备tensile-data/inputs/v1 YAML，逐文件固定规范路径、大小和SHA256；该节逐项定义split、ROI和media/processor配置。ROI界面保留为输入准备工具，必须显式给出metadata文件、输出和媒体项目根。metadata来自已核对的历史source snapshot中的video_meta.json（明确到文件），或操作者提供的同结构视频清单；清单应与本批输入视频一致。工具不构造新source版本，不解析snapshot ID/前缀/LATEST，也不接受--data-root默认选择。
+
+```sh
+python -m streamlit run pipeline/scripts/roi_annotation_app.py -- \
+  --metadata /absolute/source-snapshot/video_meta.json \
+  --output /absolute/roi-draft/roi_decisions.json \
+  --project-root /absolute/media-root
+```
+
+project-root用于解析metadata中的video_path；应指向实际媒体根，不能指向迁移来源镜像。输出是可编辑ROI输入准备文件，不得指向已有封存对象或metadata自身。人工完成后，按输入契约将该文件路径/大小/SHA绑定到inputs的ROI引用，再运行七阶段；ROI阶段会按真实媒体尺寸及已有几何规则复验决定。本批只改参数选择，未改变人工几何与准入规则。
 
 INPUTS包含已经完成的ROI决定；source阶段不会替操作者生成或猜测决定。各阶段只消费明确输入，不按文件名生成ROI，不重新划分三折，不固定每视频候选数量。真实媒体处理在训练机执行；Mac用于完整审查包、草稿和轻量验证。test_audit材料留在子视频阶段，不能混入开发审查/训练。当前该真实链发布development，holdout构建须按单独契约处理。
 

@@ -6,11 +6,10 @@ MVP 只写 ROI 决定文件，不生成裁剪媒体，也不修改现有训练�
 
 运行：
     streamlit run pipeline/scripts/roi_annotation_app.py -- \
-      --metadata <source_snapshot_id> \
-      --output workspace/data/derived/metadata/roi_decisions.json
+      --metadata /absolute/video_meta.json \
+      --output /absolute/roi_decisions.json --project-root /absolute/media-root
 
-未指定 --metadata 时，默认从 source_snapshots 集合的 LATEST 指针解析
-video_meta.json。
+必须显式给出 metadata 文件、输出文件和媒体项目根；不解析 LATEST 或快照身份。
 """
 
 from __future__ import annotations
@@ -38,14 +37,11 @@ except ModuleNotFoundError:  # Core pipeline validation must not depend on the U
 
 from pipeline import artifact_resolver
 from pipeline.current_data import (
-    current_data_paths,
     data_context_from_arg,
     resolve_data_artifact,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-CURRENT_DATA = current_data_paths(PROJECT_ROOT)
-OUTPUT_DEFAULT = CURRENT_DATA.metadata / "roi_decisions.json"
 
 SCHEMA_VERSION = "1.0"
 ROI_POLICY_VERSION = "1.2"
@@ -74,6 +70,24 @@ class RoiValidationError(ValueError):
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if "--" in raw:
+        raw = raw[raw.index("--") + 1:]
+    parser = argparse.ArgumentParser(description="源视频ROI标注；只接受显式文件和媒体项目根")
+    parser.add_argument("--metadata", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--project-root", type=Path, required=True)
+    args = parser.parse_args(raw)
+    if not args.metadata.is_file():
+        parser.error("--metadata 必须是现存文件路径，不接受快照ID、短前缀或LATEST选择")
+    if not args.project_root.is_dir():
+        parser.error("--project-root 必须是现存媒体项目根目录")
+    if args.output.resolve() == args.metadata.resolve():
+        parser.error("ROI输出不能覆盖metadata输入")
+    return args
+
+
+def _legacy_parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
     if "--" in raw:
         raw = raw[raw.index("--") + 1 :]
