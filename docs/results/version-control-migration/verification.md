@@ -371,3 +371,15 @@ Mac已接收完整review_export包，验签并以现有Streamlit AppTest加载�
 本机完整权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /private/tmp/mvllm2-m3-reviewer-required-20260912` 为 **1780 passed，398.37秒，exit0**，已等待进程正常退出。UI与身份测试快照在该运行期间未改变；期间补充的重建命令提示由上述47项legacy回归和独立Bash/Zsh核查覆盖。日志`/tmp/mvllm2-reviewer-required-full.log`。
 
 训练机隔离分支已验签增量包并快进至修复提交`5495090ece813608294a596b79f67dbdf8485803`，原正式main未修改。该机器以`.venv-m3/bin/python -m pytest -q tests/versioning/test_data_pipeline.py -k "TestHumanReviewerIdentity or TestInputReviewApp"`（独立basetemp、CUDA_VISIBLE_DEVICES为空）复验为**13 passed，4.37秒，exit0**，日志`m3-verification-20260912/comparison/linux-reviewer-required.log`，SHA-256 `d500702125a94a59966908107b8d37a1fa66ea791c738e7ecb8f1d9dc84e7fe9`。此追加记录在实际执行机器原子提交；不包含新的真人审查或M3回传。
+
+## 23. 单维护者默认归属与 Mac 历史审批复用（2026-09-12）
+
+用户进一步明确：除普通未断裂自动候选外，历史人工审批全部由本人完成；项目唯一维护，不需要反复确认个人姓名。用户批准默认记录“项目维护者”，取代第22节的手填必需和旧匿名记录重新审批要求。新人工决定自动保存该角色及实际审查时间，可显式覆盖非空标识；legacy 原始匿名字段保留，不因姓名缺失新增门禁。versioning 回收的完整决定、标签和媒体证据绑定校验保持有效，11条普通未断裂继续自动准入。
+
+测试先取得3 failed/1 passed的有效RED（两模式缺省角色、旧匿名冻结），修复后专项及完整UI交互5 passed/exit0；legacy重建/工作流/helpers 47 passed/1.22秒/exit0。独立reviewer定向28 passed/9.94秒/exit0，另实测默认角色落盘、portable空作者拒绝且零输出；操作说明对照实现通过。
+
+Mac真实包 `/private/tmp/mvllm2-m3-mac-20260912/review_export` 的23条历史批准按用户确认复用。原视频、按序采样帧、时间戳与标签逐条一致；使用原reviewed_at、状态、修正、有效标签与备注。原source文件SHA为`28677745f6bc0b475d1824250a6fae67e0c680593e22a3c989c4f038252200d6`。原记录（含缺失作者及19条旧迁移来源）完整保存在本目录 `historical-review-attestation.json`，本次记录时间独立于原审查时间；没有改写旧源或模拟新的视觉审批。
+
+真实UI加载授权复用草稿并自动冻结成功：23完成、0待审、0异常/错误，0次新视觉审批。回收文件SHA `d662905beda62bd75c6623b7f8e86877de2e904ebe231bb1bec92bb2f8a9637c`；确认记录SHA `9027145f6e229c9a3b09489b238a2151f122d680afeb2ea294388e0341c6b591`，轻量报告 `mac-review-return-verification.json`。脚本 `/tmp/mvllm2-m3-reuse.py` 及真实包/草稿/输出保留本机，副本保留训练机comparison。独立reviewer逐条核验原值保留、原始记录全等及实际回收校验通过。
+
+本机完整回归 `.venv/bin/python -m pytest -q tests/versioning --basetemp /private/tmp/mvllm2-maintainer-full-20260912` 为 **1772 passed，481.05秒，exit0**，已等待清理后正常退出；日志 `/tmp/mvllm2-maintainer-full.log`。本切片代码在运行期间未更改。测试总数从1780变为1772，是以4项单维护者行为测试替换上一方案12项身份门测试；不是跳过失败用例。

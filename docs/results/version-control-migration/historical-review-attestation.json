@@ -1,0 +1,1195 @@
+{
+  "schema": "m3-historical-review-attestation/v1",
+  "recorded_at": "2026-09-12T09:47:25.923035+00:00",
+  "basis": "用户在本会话明确确认历史人工审批均由本人完成，项目由本人唯一维护，并批准自动记录项目维护者；不是新的视频人工复审。",
+  "reviewer_role": "项目维护者",
+  "original": {
+    "source_file": "/home/liuyang/文档/mVllm_2/workspace/data/derived/metadata/v4_1/review_decisions/v4-1-review-4a449c8d1193/review-batch-9043bbe4c286/decisions.json",
+    "source_sha256": "28677745f6bc0b475d1824250a6fae67e0c680593e22a3c989c4f038252200d6",
+    "decisions": [
+      {
+        "clip_id": "video_0003_v3_transition_f000774-000834",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            25.8,
+            26.4333,
+            27.1,
+            27.7667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_3s_20pct",
+            "development:video_0003_focus_3s_35pct",
+            "development:video_0003_focus_3s_50pct"
+          ],
+          "media_sha256": "3dd4295eacee56698a75c520f6e14d85ea47590b251ca0eba66d0993fdc448d1",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T04:39:27.528606+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000754-000844",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            25.1333,
+            25.7,
+            26.3,
+            26.9,
+            27.5,
+            28.1
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_3s_35pct",
+            "development:video_0003_focus_3s_50pct",
+            "development:video_0003_focus_3s_20pct"
+          ],
+          "media_sha256": "abe0fa50d524b21639b9ec3e9660fcf5fbaecdc2e93582f7cc417df9eb964e6e",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:10:58.189196+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000711-000861",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            23.7,
+            24.4,
+            25.1,
+            25.8,
+            26.5333,
+            27.2333,
+            27.9333,
+            28.6667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_5s_50pct",
+            "development:video_0003_focus_5s_65pct",
+            "development:video_0003_focus_5s_35pct"
+          ],
+          "media_sha256": "f59afdcddec7566ede89972df42be73aa45e64b763134f7f4b781695f5ee03a0",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:04.566274+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000591-000891",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            19.7,
+            21.1,
+            22.5333,
+            23.9667,
+            25.3667,
+            26.8,
+            28.2333,
+            29.6667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_10s_65pct",
+            "development:video_0003_focus_11.90s_65pct_adaptive",
+            "development:video_0003_focus_10s_80pct"
+          ],
+          "media_sha256": "0608bfa8f0ddbf8d3af37973de69274ec35646911605e56de462fd41058d1a45",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:09.045889+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000306-000906",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            10.2,
+            13.0333,
+            15.9,
+            18.7333,
+            21.6,
+            24.4333,
+            27.3,
+            30.1667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_20s_80pct",
+            "development:video_0003_full",
+            "development:video_0003_neg_before_20s_03"
+          ],
+          "media_sha256": "9d1a0147b3fb854bee46eae9eb37b79fe60a7df180ecfbb0a2e4bd3a31503361",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:14.904520+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000765-000825",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            25.5,
+            26.1333,
+            26.8,
+            27.4667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_3s_35pct",
+            "development:video_0003_focus_3s_50pct",
+            "development:video_0003_focus_3s_20pct"
+          ],
+          "media_sha256": "3b5b8f98442dc8eff152d172ad5f141540b2d9aec23e759924076a4835fc8ad7",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:19.891500+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000741-000831",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            24.7,
+            25.2667,
+            25.8667,
+            26.4667,
+            27.0667,
+            27.6667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_3s_50pct",
+            "development:video_0003_focus_3s_65pct",
+            "development:video_0003_focus_3s_35pct"
+          ],
+          "media_sha256": "5c2b293dde7f408e0d486b568be000d57aaa12b05cc94a7f36bc9cf4f1a11d38",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:30.309707+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000688-000838",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            22.9333,
+            23.6333,
+            24.3333,
+            25.0333,
+            25.7667,
+            26.4667,
+            27.1667,
+            27.9
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_5s_65pct",
+            "development:video_0003_focus_5s_80pct",
+            "development:video_0003_focus_5s_50pct"
+          ],
+          "media_sha256": "97fac9d46ad10dec1654945c7e1e750a6be4d178b6a91bd18c94d69dce24a35d",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:34.541244+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000546-000846",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            18.2,
+            19.6,
+            21.0333,
+            22.4667,
+            23.8667,
+            25.3,
+            26.7333,
+            28.1667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_10s_80pct",
+            "development:video_0003_focus_11.90s_65pct_adaptive",
+            "development:video_0003_focus_10s_65pct"
+          ],
+          "media_sha256": "0d40212e10edd90e3d94539ab14b7e03494c4ccc4aa342ede30d9a0bb38aa7f1",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:39.348128+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_transition_f000754-000912",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            25.1333,
+            25.8667,
+            26.6,
+            27.3667,
+            28.1,
+            28.8667,
+            29.6,
+            30.3667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_5.20s_20pct_adaptive",
+            "development:video_0003_focus_5s_20pct",
+            "development:video_0003_focus_6.40s_35pct_adaptive"
+          ],
+          "media_sha256": "1a9d6f9ade6866ce401fcd2c3dee692280f2a0532757f96dbceb705e4772ce35",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:41.906087+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_post_f000801-000912",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            26.7,
+            27.3,
+            27.9,
+            28.5333,
+            29.1333,
+            29.7333,
+            30.3667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_5.20s_20pct_adaptive",
+            "development:video_0003_focus_5s_20pct",
+            "development:video_0003_focus_6.40s_35pct_adaptive"
+          ],
+          "media_sha256": "ec977a96a358e565850732e4e6e24f468e5e4f28a8078a254d012bbc6a5df2fe",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:43.615774+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_post_f000801-000857",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            26.7,
+            27.6,
+            28.5333
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_3s_20pct",
+            "development:video_0003_focus_3s_35pct",
+            "development:video_0003_focus_5s_20pct"
+          ],
+          "media_sha256": "c0a0dc48859967ec9146789ef41e774998f1fea0932bca8f5e16b773010a0888",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:44.709205+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0003_v3_post_f000857-000912",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            28.5667,
+            29.4667,
+            30.3667
+          ],
+          "historical_reference_ids": [
+            "development:video_0003_focus_5.20s_20pct_adaptive",
+            "development:video_0003_focus_5s_20pct",
+            "development:video_0003_focus_6.40s_35pct_adaptive"
+          ],
+          "media_sha256": "b094ae8a156566e9633c089cc1fd823a9279cc271e7fab8e7b02e12d1d58ed9e",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:11:45.969400+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0003",
+        "system_proposed_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "脆性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_transition_f000389-000449",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            12.9667,
+            13.6,
+            14.2667,
+            14.9333
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "62eb96be76a74fd4de82bda01ae9f3298c14d6c5c8712c28bae5126d7d239bbd",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:13:19.577492+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_transition_f000380-000440",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            12.6667,
+            13.3,
+            13.9667,
+            14.6333
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "7bffb15a7cd0d951a9f40abf1d93ea64b570abb9c828a0f9a380d7425a9d8136",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:13:26.576149+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_transition_f000356-000446",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            11.8667,
+            12.4333,
+            13.0333,
+            13.6333,
+            14.2333,
+            14.8333
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "93d35e9396267a6d6b77b35c324dbe8fc86af77128fd5b689b8517926d11210b",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:13:30.107989+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_transition_f000304-000454",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            10.1333,
+            10.8333,
+            11.5333,
+            12.2333,
+            12.9667,
+            13.6667,
+            14.3667,
+            15.1
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "03fe786528f3911be89147aa3f832438fb25cb4ab7d6e92bd365b0e14cf1d154",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:13:35.959648+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_transition_f000179-000457",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            5.9667,
+            7.2667,
+            8.6,
+            9.9,
+            11.2333,
+            12.5333,
+            13.8667,
+            15.2
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "c01acc05c34ad320acf4ddce7ac53492ed91f4653ffa2ef6029c6427d08a0c81",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:13:43.382741+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "发生断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_pre_f000326-000386",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            10.8667,
+            11.5,
+            12.1667,
+            12.8333
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "df27e8b37804ebe4d25f92d338e3cbedc68ef876cb5e0103cca83748e59a5bb2",
+          "migration": null
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:35:55.223478+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_pre_f000296-000386",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            9.8667,
+            10.4333,
+            11.0333,
+            11.6333,
+            12.2333,
+            12.8333
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "60b4ceef602696483f3f905c35d656ab4e1a8a586771e12b64ef630b29964aad",
+          "migration": null
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:35:58.861106+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_pre_f000236-000386",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            7.8667,
+            8.5667,
+            9.2667,
+            9.9667,
+            10.7,
+            11.4,
+            12.1,
+            12.8333
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "dc14b5a3db45b434a6dad0445acd28b6e860c808f4f364f44a30a60280488472",
+          "migration": null
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:36:01.463024+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_pre_f000086-000386",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            2.8667,
+            4.2667,
+            5.7,
+            7.1333,
+            8.5333,
+            9.9667,
+            11.4,
+            12.8333
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "796548f5385c2c6759d7afb9d54e49606f536216e98415a40a1e62838549e54f",
+          "migration": null
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:36:07.509621+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "临界未断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      },
+      {
+        "clip_id": "video_0011_v3_post_f000417-000457",
+        "corrected_labels": null,
+        "effective_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        },
+        "evidence": {
+          "actual_sampled_timestamps": [
+            13.9,
+            15.2
+          ],
+          "historical_reference_ids": [],
+          "media_sha256": "3559f9abcac1a77423731f6d167aac5fcc685c12ce7b46fcb4bce583664c6d49",
+          "migration": {
+            "policy_version": "v4-to-v4.1-incipient/v1",
+            "source_schema_version": "tensile-review-decision/v4",
+            "source_sha256": "dc397a7b5eec37824f7c4a0dbee6b43d929d6a191df85e2b3a63fb8c6b66a311"
+          }
+        },
+        "historical_suggested_labels": null,
+        "review_status": "approved",
+        "reviewed_at": "2026-07-23T07:13:45.678272+00:00",
+        "reviewer_id": null,
+        "reviewer_notes": "",
+        "source_video": "video_0011",
+        "system_proposed_labels": {
+          "clip_state": "已断裂",
+          "fracture_mechanism": "韧性断裂",
+          "fracture_site": "inside_gauge",
+          "special_case": null
+        }
+      }
+    ]
+  },
+  "object_comparison": [
+    {
+      "id": "video_0003_v3_transition_f000774-000834",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000754-000844",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000711-000861",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000591-000891",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000306-000906",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000765-000825",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000741-000831",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000688-000838",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000546-000846",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_transition_f000754-000912",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_post_f000801-000912",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_post_f000801-000857",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0003_v3_post_f000857-000912",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_transition_f000389-000449",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_transition_f000380-000440",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_transition_f000356-000446",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_transition_f000304-000454",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_transition_f000179-000457",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_pre_f000326-000386",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_pre_f000296-000386",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_pre_f000236-000386",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_pre_f000086-000386",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    },
+    {
+      "id": "video_0011_v3_post_f000417-000457",
+      "legacy_present": true,
+      "same_video": true,
+      "same_frames": true,
+      "same_timestamps": true,
+      "same_labels": true
+    }
+  ],
+  "export_sha256": "a96007d5681cdea120886ab3b9589a2110600b95d5300b3c56b0e6d6e15c9849",
+  "original_review_times_preserved": true,
+  "original_files_modified": false
+}

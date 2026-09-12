@@ -1988,17 +1988,14 @@ class TestInputDvcConfiguration:
 
 
 class TestHumanReviewerIdentity:
-    @pytest.mark.parametrize('value', [None, '', '   '])
-    def test_legacy_ui_requires_reviewer_before_loading_queue(self, tmp_path, monkeypatch, value):
+    @pytest.mark.parametrize('portable', [False, True])
+    def test_single_maintainer_needs_no_manual_identity(self, tmp_path, monkeypatch, portable):
         from types import SimpleNamespace
         from pipeline.scripts import review_candidates_app as app
         monkeypatch.setattr(app, 'data_context_from_arg', lambda *a: SimpleNamespace(root=tmp_path))
-        argv = ['--queue', str(tmp_path / 'queue.json')]
-        if value is not None:
-            argv += ['--reviewer-id', value]
-        with pytest.raises(SystemExit) as exc:
-            app._parse_args(argv)
-        assert exc.value.code == 2
+        argv = (['--versioning-package', str(tmp_path / 'package'), '--draft', str(tmp_path / 'draft.json'),
+                 '--output-root', str(tmp_path / 'output')] if portable else ['--queue', str(tmp_path / 'queue.json')])
+        assert app._parse_args(argv).reviewer_id == '项目维护者'
 
     def test_reviewer_id_is_normalized_at_entry(self, tmp_path, monkeypatch):
         from types import SimpleNamespace
@@ -2007,20 +2004,14 @@ class TestHumanReviewerIdentity:
         args = app._parse_args(['--queue', str(tmp_path / 'queue.json'), '--reviewer-id', '  reviewer-a  '])
         assert args.reviewer_id == 'reviewer-a'
 
-    @pytest.mark.parametrize('portable', [False, True])
-    @pytest.mark.parametrize('reviewer', [None, '', ' ', 123])
-    def test_completed_old_draft_cannot_freeze_without_authors(self, tmp_path, monkeypatch, portable, reviewer):
+    def test_legacy_history_keeps_missing_identity_without_reapproval(self, tmp_path, monkeypatch):
         from types import SimpleNamespace
         from pipeline.scripts import review_candidates_app as app
-        from versioning import data_pipeline as dp
         writes = []
-        monkeypatch.setattr(app, 'freeze_completed_batch', lambda *a, **kw: writes.append('legacy'))
-        monkeypatch.setattr(dp, 'freeze_input_review_workspace', lambda *a, **kw: writes.append('portable'))
-        args = SimpleNamespace(versioning_package=tmp_path if portable else None,
-                               reviewer_id='current-operator',
+        monkeypatch.setattr(app, 'freeze_completed_batch', lambda *a, **kw: writes.append(a[2]))
+        args = SimpleNamespace(versioning_package=None,
                                _data_context=SimpleNamespace(metadata_collection=lambda _: tmp_path))
-        decisions = {'clip-1': {'clip_id': 'clip-1', 'reviewer_id': reviewer}}
-        with pytest.raises(ValueError, match='审查者'):
-            app._freeze_review_result(args, tmp_path, {}, decisions)
-        assert writes == []
-        assert decisions['clip-1']['reviewer_id'] == reviewer
+        decisions = {'clip-1': {'clip_id': 'clip-1', 'reviewer_id': None}}
+        app._freeze_review_result(args, tmp_path, {}, decisions)
+        assert writes == [decisions]
+        assert decisions['clip-1']['reviewer_id'] is None

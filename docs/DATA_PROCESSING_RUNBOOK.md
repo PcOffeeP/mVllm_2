@@ -381,22 +381,20 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **目的**：逐候选确认标签（优先看帧画面而非源视频）。
 - **机器**：Mac（uv 环境 + streamlit）。
 - **命令**：
-  > `<reviewer-id>` 为用户自定的人工标识（如姓名/工号）；`<batch-id>` 由审查 UI 在保存/冻结时自动生成，不能从 `INDEX.md` 提前查询。
-  > 审查者标识不得为空或只有空白，界面会显示本次审查者。旧草稿中缺少审查者的决定不能直接汇总冻结；切换到全部候选，逐条重新核对并保存。当前操作人的标识不会批量补写到历史决定。重建流程输出的继续审查命令使用 `REVIEWER` 环境变量，请先将其设置为实际审查者标识；未设置或为空时命令立即停止。
+  > `--reviewer-id` 仅在需要覆盖默认角色时提供；`<batch-id>` 由审查 UI 在保存/冻结时自动生成，不能从 `INDEX.md` 提前查询。
+  > 本项目由唯一维护者审查，界面默认将“项目维护者”写入每条新人工决定，无需手填姓名。可用 `--reviewer-id` 指定其他非空标识。历史缺失字段保留原貌，不因缺姓名要求重审；复用历史审批需绑定相同媒体、帧、时间戳和标签，并单独记录维护者确认依据。人工队列仍须全部完成才能发布。
 
   ```bash
   uv run streamlit run pipeline/scripts/review_candidates_app.py -- \
     --data-root workspace/data \
-    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
-    --reviewer-id <reviewer-id>
+    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json
   ```
   若使用历史分流，加 `--routing-manifest`：
   ```bash
   uv run streamlit run pipeline/scripts/review_candidates_app.py -- \
     --data-root workspace/data \
     --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
-    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
-    --reviewer-id <reviewer-id>
+    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json
   ```
 - **参数**：
 
@@ -404,7 +402,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
   | --- | --- | --- | --- |
   | `--data-root` | 可选 | `workspace/data` | - |
   | `--queue` | **必填** | - | 审查队列 JSON 路径 |
-  | `--reviewer-id` | **必填** | - | 用户自定审查人标识 |
+  | `--reviewer-id` | 可选 | 项目维护者 | 写入新人工决定的审查人标识 |
   | `--project-root` | 可选 | 项目根目录 | - |
   | `--review-reference` | 可选 | - | - |
   | `--candidate-id` | 可选 | - | 可重复，指定只审部分 candidate |

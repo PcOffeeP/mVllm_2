@@ -109,11 +109,11 @@ path 仍相对项目根）、`max_frames: 8`、正有限 `video_fps`、实际 `e
 包可迁移路径，不能只复制队列 JSON 或替换媒体。Mac 的项目环境中运行：
 
 ```sh
-"$PYTHON" -m streamlit run pipeline/scripts/review_candidates_app.py --   --versioning-package "$PACKAGE" --reviewer-id "$REVIEWER"   --draft "$DRAFT" --output-root "$REVIEW_OUTPUT"
+"$PYTHON" -m streamlit run pipeline/scripts/review_candidates_app.py --   --versioning-package "$PACKAGE"   --draft "$DRAFT" --output-root "$REVIEW_OUTPUT"
 ```
 
-`REVIEWER` 为实际审查者，旧队列与新审查包两种模式均要求非空标识，界面显示本次审查者。
-汇总前逐条检查作者；缺失的历史决定必须重新核对保存，不自动归给当前操作人。
+本项目由唯一维护者审查；两种模式默认将“项目维护者”写入新人工决定，无需填写姓名。可用 `--reviewer-id` 显式指定其他非空标识，界面显示本次审查者。
+历史缺失姓名不要求重新审批，也不改写旧记录。复用历史审批须确认媒体、帧、时间戳和标签一致，并单独保存维护者确认依据。新回收文件仍验证决定完整性与证据绑定。
 `DRAFT` 与 `REVIEW_OUTPUT` 都必须位于包外；草稿不能指向
 `REVIEW_OUTPUT/review_return.json`。打开包、保存草稿、完成冻结均会复验包；所有候选完成
 后生成该回收文件，保留真实审查者、时间、备注、标签和采样证据。不要把 fixture 决定

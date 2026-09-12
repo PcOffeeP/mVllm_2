@@ -69,14 +69,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--draft", type=Path)
     parser.add_argument("--output-root", type=Path)
-    parser.add_argument("--reviewer-id", help="实际审查者标识（必填，保存到每条人工决定）")
+    parser.add_argument("--reviewer-id", default="项目维护者", help="审查者标识（默认：项目维护者，保存到每条人工决定）")
     args = parser.parse_args(raw)
     if not args.reviewer_id or not args.reviewer_id.strip():
         parser.error("人工审查必须提供非空 --reviewer-id，例如 --reviewer-id reviewer-name")
     args.reviewer_id = args.reviewer_id.strip()
     if args.versioning_package is not None:
         if not args.reviewer_id or not args.reviewer_id.strip() or args.draft is None or args.output_root is None:
-            parser.error("--versioning-package 必须显式指定 --reviewer-id、--draft 和 --output-root")
+            parser.error("--versioning-package 必须显式指定 --draft 和 --output-root")
         if any((args.data_root, args.project_root, args.review_reference, args.candidate_id, args.routing_manifest)) or args.limit is not None:
             parser.error("完整 versioning 审查包不接受 legacy 根、局部筛选或外部参考参数")
         if args.draft.resolve() == (args.output_root / "review_return.json").resolve():
@@ -89,14 +89,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _freeze_review_result(args, output_root, identity, decisions):
-    """Do not attribute old anonymous decisions to the current operator."""
-    missing = [clip_id for clip_id, row in decisions.items()
-               if not isinstance(row.get("reviewer_id"), str) or not row["reviewer_id"].strip()]
-    if missing:
-        raise V4_1ReviewWorkflowError(
-            f"{len(missing)} 条决定缺少审查者（如 {missing[0]}）。"
-            "请切换到全部候选，重新核对这些条目后保存；不会自动归到当前审查者名下。"
-        )
+    """Freeze complete decisions without rewriting historical attribution."""
     if args.versioning_package is not None:
         from versioning.data_pipeline import freeze_input_review_workspace
         return freeze_input_review_workspace(output_root, identity, decisions)

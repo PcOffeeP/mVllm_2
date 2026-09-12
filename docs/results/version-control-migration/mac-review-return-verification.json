@@ -1,0 +1,35 @@
+{
+  "machine": "Mac",
+  "approved_history_reused": 23,
+  "new_visual_reviews": 0,
+  "ui_errors": 0,
+  "ui_exceptions": 0,
+  "return_sha256": "d662905beda62bd75c6623b7f8e86877de2e904ebe231bb1bec92bb2f8a9637c",
+  "attestation_sha256": "9027145f6e229c9a3b09489b238a2151f122d680afeb2ea294388e0341c6b591",
+  "metrics": [
+    {
+      "label": "总数",
+      "value": "23"
+    },
+    {
+      "label": "已完成",
+      "value": "23"
+    },
+    {
+      "label": "待审核",
+      "value": "0"
+    },
+    {
+      "label": "批准",
+      "value": "23"
+    },
+    {
+      "label": "修正",
+      "value": "0"
+    },
+    {
+      "label": "需重生成",
+      "value": "0"
+    }
+  ]
+}
