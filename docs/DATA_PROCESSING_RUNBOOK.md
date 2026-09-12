@@ -382,6 +382,7 @@ python pipeline/scripts/subvideo_materialize_media.py \
 - **机器**：Mac（uv 环境 + streamlit）。
 - **命令**：
   > `<reviewer-id>` 为用户自定的人工标识（如姓名/工号）；`<batch-id>` 由审查 UI 在保存/冻结时自动生成，不能从 `INDEX.md` 提前查询。
+  > 审查者标识不得为空或只有空白，界面会显示本次审查者。旧草稿中缺少审查者的决定不能直接汇总冻结；切换到全部候选，逐条重新核对并保存。当前操作人的标识不会批量补写到历史决定。重建流程输出的继续审查命令使用 `REVIEWER` 环境变量，请先将其设置为实际审查者标识；未设置或为空时命令立即停止。
 
   ```bash
   uv run streamlit run pipeline/scripts/review_candidates_app.py -- \

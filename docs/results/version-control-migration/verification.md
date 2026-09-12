@@ -357,3 +357,15 @@ Mac已接收完整review_export包，验签并以现有Streamlit AppTest加载�
 本机完整权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /private/tmp/mvllm2-m3-portable-final-20260912` 为 **1768 passed，273.39秒，exit0**，已等待正常退出，日志`/tmp/mvllm2-m3-portable-full.log`。无production代码改变。训练机原始两份日志位于comparison/linux-m3-targeted-pytest.log和linux-m3-dvc-fixed.log。本节修复按同次提交追溯。
 
 训练机实机证据原子提交bf3d4ca已通过SHA与bundle verify取回本机，双方暂未push。两份真实release复制与原媒体对照完成不代表M3整体完成：23条人工审查的可信作者来源及回传→非正式真实发布/校验仍待补齐。
+
+## 22. 人工审查者必填与匿名草稿冻结门（2026-09-12）
+
+用户本轮回忆23条历史审查“应该就是我审核的”，并明确要求分析原因、修复未来人工审查必须补全该字段。代码层面已证实：legacy UI 的reviewer-id可选且默认None，唯一保存入口原样传入new_decision；记录规范化保留None，v4→v4.1迁移继续保留旧值。RUNBOOK原本已写必填，而入口未落实。没有当时启动命令/操作日志，不能把缺参这一可复现机制写成具体历史运行的确定原因，也不能由此确定历史作者。
+
+在用户追加授权范围内，两种UI模式统一在加载输入前拒绝缺失、空串和纯空白reviewer-id，去掉首尾空白，并在界面显示本次审查者。实际人工保存继续同时记录该身份与真实当前reviewed_at。完整汇总前新增逐条作者检查，匿名旧草稿禁止冻结；操作者须切到全部候选重新核对保存，不把历史匿名决定批量归给当前操作人。共享历史读取/迁移schema、普通未断裂自动规则和旧封存对象未改。重建流程输出的继续审查命令追加显式REVIEWER变量要求，未设/空值不启动UI。操作说明同步。
+
+12项行为测试先取得有效RED（缺参未拒绝、未strip、匿名旧决定可进入冻结），修复后身份专项加现有完整UI AppTest **13 passed，4.40秒，exit0**。独立reviewer另外执行身份/UI/workflow/helpers **22 passed，10.04秒，exit0**，并独立临时目录验证：匿名完整草稿冻结零写入且草稿字节不变；仅重新保存匿名条目后冻结成功，该条新作者/新时间，其余条目原作者/原时间逐字段保持。重建及legacy相关回归 **47 passed，3.24秒，exit0**。相关293 warnings为已知pytest历史临时目录清理噪音。
+
+独立补审在Bash/Zsh验证继续审查命令的未设、空值、中文/空格标识及纯空白传参边界，审查通过。未由Agent模拟真实人工批准；原23条仍保留来源缺口，用户自述作为本轮背景记录，未改写原始审查者字段。
+
+本机完整权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /private/tmp/mvllm2-m3-reviewer-required-20260912` 为 **1780 passed，398.37秒，exit0**，已等待进程正常退出。UI与身份测试快照在该运行期间未改变；期间补充的重建命令提示由上述47项legacy回归和独立Bash/Zsh核查覆盖。日志`/tmp/mvllm2-reviewer-required-full.log`。

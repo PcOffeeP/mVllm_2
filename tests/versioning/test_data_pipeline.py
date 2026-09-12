@@ -1985,3 +1985,42 @@ class TestInputDvcConfiguration:
         assert str(results) in config['pipeline']['review_import']['deps']
         assert '--version data-v4.1-r1' in config['pipeline']['release']['cmd']
         assert all('release_pointer' not in str(s) for s in config['pipeline'].values())
+
+
+class TestHumanReviewerIdentity:
+    @pytest.mark.parametrize('value', [None, '', '   '])
+    def test_legacy_ui_requires_reviewer_before_loading_queue(self, tmp_path, monkeypatch, value):
+        from types import SimpleNamespace
+        from pipeline.scripts import review_candidates_app as app
+        monkeypatch.setattr(app, 'data_context_from_arg', lambda *a: SimpleNamespace(root=tmp_path))
+        argv = ['--queue', str(tmp_path / 'queue.json')]
+        if value is not None:
+            argv += ['--reviewer-id', value]
+        with pytest.raises(SystemExit) as exc:
+            app._parse_args(argv)
+        assert exc.value.code == 2
+
+    def test_reviewer_id_is_normalized_at_entry(self, tmp_path, monkeypatch):
+        from types import SimpleNamespace
+        from pipeline.scripts import review_candidates_app as app
+        monkeypatch.setattr(app, 'data_context_from_arg', lambda *a: SimpleNamespace(root=tmp_path))
+        args = app._parse_args(['--queue', str(tmp_path / 'queue.json'), '--reviewer-id', '  reviewer-a  '])
+        assert args.reviewer_id == 'reviewer-a'
+
+    @pytest.mark.parametrize('portable', [False, True])
+    @pytest.mark.parametrize('reviewer', [None, '', ' ', 123])
+    def test_completed_old_draft_cannot_freeze_without_authors(self, tmp_path, monkeypatch, portable, reviewer):
+        from types import SimpleNamespace
+        from pipeline.scripts import review_candidates_app as app
+        from versioning import data_pipeline as dp
+        writes = []
+        monkeypatch.setattr(app, 'freeze_completed_batch', lambda *a, **kw: writes.append('legacy'))
+        monkeypatch.setattr(dp, 'freeze_input_review_workspace', lambda *a, **kw: writes.append('portable'))
+        args = SimpleNamespace(versioning_package=tmp_path if portable else None,
+                               reviewer_id='current-operator',
+                               _data_context=SimpleNamespace(metadata_collection=lambda _: tmp_path))
+        decisions = {'clip-1': {'clip_id': 'clip-1', 'reviewer_id': reviewer}}
+        with pytest.raises(ValueError, match='审查者'):
+            app._freeze_review_result(args, tmp_path, {}, decisions)
+        assert writes == []
+        assert decisions['clip-1']['reviewer_id'] == reviewer

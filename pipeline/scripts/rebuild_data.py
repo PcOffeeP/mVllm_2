@@ -721,6 +721,7 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 "review_command": (
                     "streamlit run pipeline/scripts/review_candidates_app.py -- "
                     f"--data-root {rebuild.root} --queue {queue_path}"
+                    ' --reviewer-id "${REVIEWER:?请先设置实际审查者标识}"'
                 ),
             },
         )

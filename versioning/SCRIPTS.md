@@ -112,7 +112,9 @@ path 仍相对项目根）、`max_frames: 8`、正有限 `video_fps`、实际 `e
 "$PYTHON" -m streamlit run pipeline/scripts/review_candidates_app.py --   --versioning-package "$PACKAGE" --reviewer-id "$REVIEWER"   --draft "$DRAFT" --output-root "$REVIEW_OUTPUT"
 ```
 
-`REVIEWER` 为实际审查者，`DRAFT` 与 `REVIEW_OUTPUT` 都必须位于包外；草稿不能指向
+`REVIEWER` 为实际审查者，旧队列与新审查包两种模式均要求非空标识，界面显示本次审查者。
+汇总前逐条检查作者；缺失的历史决定必须重新核对保存，不自动归给当前操作人。
+`DRAFT` 与 `REVIEW_OUTPUT` 都必须位于包外；草稿不能指向
 `REVIEW_OUTPUT/review_return.json`。打开包、保存草稿、完成冻结均会复验包；所有候选完成
 后生成该回收文件，保留真实审查者、时间、备注、标签和采样证据。不要把 fixture 决定
 当成人工结果。`--queue` 继续走 legacy UI，两种输入模式互斥；新模式不接受局部候选筛选。
