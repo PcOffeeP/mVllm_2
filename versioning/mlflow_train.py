@@ -15,11 +15,15 @@ completed|archived + 所有子 Run 完整）。
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
+import json
+import math
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient
+from mlflow.utils.validation import MAX_PARAM_VAL_LENGTH
 
 from versioning.ids import parse_data_id, parse_prompt_id, parse_train_id
 from versioning.state import (
@@ -582,3 +586,58 @@ def validate_train_for_promotion(
         )
     _check_completion_gate(client, store, run.info.run_id)
     return record
+
+
+def execute_fold_run(
+    store: TrainRecordStore,
+    train_id: str,
+    fold: int,
+    config: Mapping[str, Any],
+    *,
+    executor: Callable[[dict[str, Any]], Mapping[str, float]],
+) -> FoldRunRecord:
+    """Record one actual executor invocation under an already started parent.
+
+    The orchestration layer must validate and freeze inputs before starting the
+    parent. This low-level event adapter neither selects datasets nor creates a
+    prepared Run. A successful fold alone never completes its parent.
+    """
+    parse_train_id(train_id)
+    _validate_fold(fold)
+    if not isinstance(config, Mapping) or not config or any(
+        not isinstance(key, str) or not key for key in config
+    ):
+        raise IllegalTrainRecord("training config must be a non-empty mapping")
+    try:
+        encoded = json.dumps(dict(config), ensure_ascii=False, sort_keys=True, allow_nan=False)
+        actual_config = json.loads(encoded)
+    except (TypeError, ValueError) as exc:
+        raise IllegalTrainRecord(f"training config is not JSON serializable: {exc}") from exc
+    if len(encoded) > MAX_PARAM_VAL_LENGTH:
+        raise IllegalTrainRecord("training config exceeds the MLflow parameter length limit")
+    parent = get_train_run(store, train_id)
+    if parent.record_validity != RecordValidity.VALID.value:
+        raise InvalidTrainRecord(f"train {train_id} is invalid")
+    # Conflicts and illegal parent states fail before calling the executor;
+    # they must not terminate somebody else's active fold or parent.
+    child = create_fold_run(store, train_id, fold)
+    try:
+        _client(store).log_param(child.run_id, "training_config_json", encoded)
+        if _client(store).get_run(child.run_id).data.params.get("training_config_json") != encoded:
+            raise IllegalTrainRecord("training config readback mismatch")
+        metrics = _validate_metrics(executor(deepcopy(actual_config)))
+        if not all(math.isfinite(value) for value in metrics.values()):
+            raise IllegalTrainRecord("executor metrics must be finite")
+        return end_fold_run(store, train_id, fold, "FINISHED", metrics=metrics)
+    except BaseException as exc:
+        # Preserve the original training exception even if the tracking backend
+        # is unavailable. A tracking failure must never become successful work.
+        status = "KILLED" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "FAILED"
+        try:
+            current = get_train_run(store, train_id)
+            if current.folds[fold].status == "RUNNING":
+                end_fold_run(store, train_id, fold, status)
+            transition_train_state(store, train_id, "failed", run_status="FAILED")
+        except Exception as tracking_error:
+            exc.add_note(f"Failed to persist training failure: {tracking_error}")
+        raise

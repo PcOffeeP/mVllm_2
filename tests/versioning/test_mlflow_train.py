@@ -1499,3 +1499,90 @@ class TestReadPathTrainIdValidation:
         assert not isinstance(excinfo.value, TrainRecordNotFound)
         # 既有合法记录不受畸形读影响
         assert get_train_run(store, TRAIN_ID).train_id == TRAIN_ID
+
+
+# M4b: execution events, independent of the pending sampling policy.
+def test_execute_fold_run_records_actual_arguments_and_metrics(store, record):
+    config = {"seed": 3411, "lora_target": ["q_proj"], "output_dir": "/isolated/fold0"}
+    observed = []
+
+    def executor(actual):
+        child = get_train_run(store, TRAIN_ID).folds[0]
+        assert child.status == "RUNNING"
+        observed.append(dict(actual))
+        actual["lora_target"].append("v_proj")
+        return {"train_loss": 0.25}
+
+    child = mlflow_train.execute_fold_run(store, TRAIN_ID, 0, config, executor=executor)
+    import json
+    assert json.loads(child.params["training_config_json"])["lora_target"] == ["q_proj"]
+    assert config["lora_target"] == ["q_proj"]
+    assert observed[0]["seed"] == 3411
+    assert child.status == "FINISHED"
+    assert child.metrics == {"train_loss": 0.25}
+    assert get_train_run(store, TRAIN_ID).workflow_state == "running"
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("executor failed"), KeyboardInterrupt()])
+def test_execute_fold_run_records_failure_and_reraises(store, record, failure):
+    def executor(config):
+        raise failure
+    with pytest.raises(type(failure)):
+        mlflow_train.execute_fold_run(store, TRAIN_ID, 0, {"seed": 3411}, executor=executor)
+    parent = get_train_run(store, TRAIN_ID)
+    assert parent.workflow_state == "failed"
+    assert parent.run_status == "FAILED"
+    assert parent.folds[0].status == ("KILLED" if isinstance(failure, KeyboardInterrupt) else "FAILED")
+    assert parent.metrics == {}
+
+
+@pytest.mark.parametrize("metrics", [None, {}, {"train_loss": float("nan")}, {"train_loss": "unknown"}])
+def test_execute_fold_run_missing_or_invalid_result_cannot_finish(store, record, metrics):
+    with pytest.raises(IllegalTrainRecord):
+        mlflow_train.execute_fold_run(store, TRAIN_ID, 0, {"seed": 3411}, executor=lambda config: metrics)
+    assert get_train_run(store, TRAIN_ID).folds[0].status == "FAILED"
+    assert get_train_run(store, TRAIN_ID).workflow_state == "failed"
+
+
+def test_execute_fold_run_rejects_invalid_parent_without_calling_executor(store, record):
+    mark_train_invalid(store, TRAIN_ID)
+    calls = []
+    with pytest.raises(InvalidTrainRecord):
+        mlflow_train.execute_fold_run(store, TRAIN_ID, 0, {"seed": 3411}, executor=lambda config: calls.append(config))
+    assert calls == []
+    assert get_train_run(store, TRAIN_ID).folds == {}
+
+
+def test_execute_fold_run_does_not_restart_existing_fold(store, record):
+    create_fold_run(store, TRAIN_ID, 0)
+    calls = []
+    with pytest.raises(TrainRunConflict):
+        mlflow_train.execute_fold_run(store, TRAIN_ID, 0, {"seed": 3411}, executor=lambda config: calls.append(config))
+    assert calls == []
+    assert get_train_run(store, TRAIN_ID).workflow_state == "running"
+
+
+def test_execute_fold_run_rejects_truncated_parameter_before_creation(store, record):
+    calls = []
+    with pytest.raises(IllegalTrainRecord, match="limit"):
+        mlflow_train.execute_fold_run(store, TRAIN_ID, 0, {"text": "x" * 6500},
+            executor=lambda config: calls.append(config))
+    assert calls == []
+    assert get_train_run(store, TRAIN_ID).folds == {}
+
+
+def test_execute_fold_run_parameter_write_failure_terminates_owned_run(store, record, monkeypatch):
+    original = MlflowClient.log_param
+    def fail(self, run_id, key, value, *args, **kwargs):
+        if key == "training_config_json":
+            raise RuntimeError("parameter persistence failure")
+        return original(self, run_id, key, value, *args, **kwargs)
+    monkeypatch.setattr(MlflowClient, "log_param", fail)
+    calls = []
+    with pytest.raises(RuntimeError, match="parameter persistence failure"):
+        mlflow_train.execute_fold_run(store, TRAIN_ID, 0, {"seed": 3411},
+            executor=lambda config: calls.append(config))
+    parent = get_train_run(store, TRAIN_ID)
+    assert calls == []
+    assert parent.workflow_state == "failed"
+    assert parent.folds[0].status == "FAILED"

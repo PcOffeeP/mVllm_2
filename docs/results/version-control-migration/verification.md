@@ -409,3 +409,13 @@ Test List：已加载配置传到真实 tuner；不修改冻结输入；执行�
 独立reviewer读取两文件diff及实际tuner/处理器依赖，运行相同测试（basetemp为 `/private/tmp/mvllm2-m4a-review-20260912`）7 passed/0.17秒、exit0，补测嵌套重复键、非字符串键、处理器异常及contract→tuner顺序，无finding。此处引用reviewer结果，并非主Agent重复运行。
 
 验证限制：动态使用受控tuner/处理器替身，真实依赖链仅静态检查；没有模型加载、GPU、训练机操作或完整评测。这个切片不表示M4身份冻结、MLflow生命周期或三折准备完成。用户本轮澄清：同一train包含三折，各折绑定既有训练/验证划分；版本迁移不新增采样要求，不擅自把历史fold0的3k实验扩展到三折。
+
+## 26. M4b fold 执行事件（2026-09-12）
+
+Mac，承接4c88cd95；仅低层执行事件适配，正式输入门与公共入口继续在后续切片接通。Test List：实际参数、指标和子Run顺序；异常/中断；缺失、空、非数值、非有限指标；invalid父Run；既有fold冲突。新增9项先RED（缺API，exit1，日志 `/private/tmp/mvllm2-m4b-red.log`），实现后完整模块146 passed/40.72秒、exit0。
+
+独立reviewer在临时SQLite复现两个P2：MLflow默认截断超过6000字符的参数；create_fold_run中的log_param失败遗留父子RUNNING。追加两项回归得到有效RED（2 failed/exit1，`/private/tmp/mvllm2-m4b-review-red.log`），随后按实际MLflow上限在创建前拒绝超限，先取得子Run所有权再在try内写入并逐字读回复验参数，失败终结本次子Run/父Run且原样传播异常。
+
+修复后 `.venv/bin/python -m pytest -q tests/versioning/test_mlflow_train.py --basetemp=/private/tmp/mvllm2-m4b-fixed-20260912`，148 passed/52.28秒、exit0；日志 `/private/tmp/mvllm2-m4b-fixed.log`。独立reviewer复审11项9.00秒、exit0，并验证中文恰好6000字符、6512字符拒绝、参数写入RuntimeError/KeyboardInterrupt、读回截断，各项通过，两个P2关闭。
+
+没有真实训练/GPU、远程或正式store操作。这里是非GPU注入执行器加真实临时MLflow数据库证据，不证明实际模型训练成功。并发执行、输入冻结与导出恢复由后续编排切片补齐，后端持续不可用或进程被强制终止的恢复未由本切片穷举。代码提交以本节同次提交及 `git log -- versioning/mlflow_train.py` 追溯。
