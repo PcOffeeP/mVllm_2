@@ -63,7 +63,7 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 非硬盘范围已实现：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物与改路径恢复未验证（verification第33节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b下一步核查剩余ROI/审查/训练/eval旧入口和索引依赖，收敛ARCHITECTURE与finetune等文档。真实环境缺口保留，M8整体审查和交付待后续；未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b进行中（Codex）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛；ROI/审查与索引辅助依赖继续保留核查。真实环境缺口保留，M8整体审查和交付待后续；未授权push/merge |
 
 ### M0：核定范围与写入者
 
@@ -171,3 +171,5 @@ merge/push、系统权限调整、停止已有服务或训练进程、真实重�
 
 
 M7a精确范围：上述三个数据CLI停止历史写入并指向versioning显式七阶段；rebuild_data的旧编排函数仅保留为私有历史测试入口，tests/test_rebuild_source_only.py改为显式调用该私有入口，新的真实CLI拒绝回归放tests/test_data_rebuild.py。不删除artifact_index/artifact_resolver：source_bootstrap、ROI及候选媒体业务实现仍依赖它们。M4/M5尚未验证的真实成功路径不因本批关闭，其他未核定旧入口逐个列证据后处理。
+
+M7b本批精确范围：停用train_build_dataset/train_prepare_run/train_with_contract/eval_run公开CLI，保留新入口直接调用的版本化业务函数及历史私有测试入口；回归在既有允许的tests/test_train_with_contract.py、tests/test_eval_run.py添加或调整。只读复跑tests/test_train_build_dataset.py与tests/test_train_build_source_aware_dataset.py，不改采样、评分或底层训练。ROI/审查/索引辅助入口不在本批退役范围。

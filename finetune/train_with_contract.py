@@ -2,13 +2,32 @@
 
 from __future__ import annotations
 
+import sys
+
+
+def main() -> int:
+    message = (
+        "此历史训练/评测 CLI 已停用。请使用 python -m versioning train "
+        "prepare / validate / run / export，显式指定 --root 和完整版本身份。"
+        "参数与冻结输入说明见 versioning/SCRIPTS.md；不接受旧 YAML 或裸模型路径直接启动。"
+    )
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        print(message)
+        return 0
+    print(message, file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 import os
 
 # Avoid W&B interactive login prompt; keep offline logging.
 # User can override via shell env (e.g., WANDB_MODE=online, WANDB_API_KEY=xxx).
 os.environ.setdefault("WANDB_MODE", "offline")
 
-import sys
 from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
@@ -73,13 +92,9 @@ def run_training(config: Mapping[str, Any]) -> None:
     run_exp(actual_config)
 
 
-def main() -> None:
+def _legacy_main() -> None:
     if len(sys.argv) != 2:
         raise SystemExit("usage: python3 finetune/train_with_contract.py <training-yaml>")
     with open(sys.argv[1], "r", encoding="utf-8") as handle:
         config = yaml.load(handle, Loader=_TrainingLoader)
     run_training(config)
-
-
-if __name__ == "__main__":
-    main()

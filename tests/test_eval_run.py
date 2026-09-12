@@ -106,7 +106,7 @@ def test_main_forwards_release_contract_hash_before_model_loading(
     )
 
     with pytest.raises(RuntimeError, match="stop-before-model"):
-        evaluation_cli.main()
+        evaluation_cli._legacy_main()  # Historical parser semantics; public CLI is retired.
 
     assert captured == {
         "verify_media": True,

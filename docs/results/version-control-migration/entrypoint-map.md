@@ -1,6 +1,6 @@
 # 迁移入口调用图与保护清单
 
-本表在M0核查基础上按已验证入口更新。当前M7a仅关闭三个旧数据发布/重建CLI；不能从局部切换推断整个legacy包退役。历史证据保留在verification及Git；完整身份以versioning/ids.py为准。
+本表在M0核查基础上按已验证入口更新。M7a关闭三个旧数据发布/重建CLI；M7b本批关闭四个旧训练/评测CLI；不能从局部切换推断整个legacy包退役。历史证据保留在verification及Git；完整身份以versioning/ids.py为准。
 
 entrypoint_map_schema: tensile-migration/entrypoint-map/v1
 task_id: "2026-09-07-readable-version-control-migration"
@@ -39,29 +39,18 @@ M0发现的文件名ROI和固定两条候选属于早期最小实现，已不能
 
 artifact_index、artifact_resolver和build_artifact_index.py未删除。source_bootstrap、roi_manifest、roi_media、v3_candidate_plan、v3_candidate_media、v4_1_review_workflow、v4_1_training_release及历史重建代码仍引用相关模块；其中部分为独立辅助入口，不能仅凭新的正式CLI不直接import就判定零活动依赖。
 
-## 4) 训练与测评入口（M4接线及剩余legacy边界）
-- finetune/train_with_contract.py
-  role: "启动 LLaMA-Factory 训练（MiniCPM child-processor 契约）"
-  identity: "读取 training-yaml 配置；校验 LlamaFactory src 无漂移"
-  notes: "真实训练执行器；M4 必须贯通真实调用，而非只补状态管理测试。"
-- finetune/train_build_dataset.py / train_build_source_aware_dataset.py
-  role: "由当前 data 路径 + Prompt revision 派生 seed3411 / source-aware 3k 采样 bundle"
-  identity: "经 pipeline/prompt_control 加载实验契约；绑定不可变 Prompt revision"
-  notes: "依赖 current_data_paths（legacy 当前数据指针）。"
-- finetune/train_prepare_run.py
-  role: "准备一个语义化的 V4.1 Prompt 实验（legacy run 准备）"
-  notes: "新prepare/validate/run/export已接入三折冻结与MLflow执行器；旧main尚保留，必须在M7后续单独核定，不宣称全部入口已接管。"
-- finetune/eval_run.py
-  role: "真实可续跑严格 V4.1 评测，对某 validation fold 逐样本推理"
-  identity:
-    - "校验 release（RELEASE_ID / expected contract hash / schema）"
-    - "校验 V4.1 contract 身份（contract_hash == RUNTIME_CONTRACT_HASH）"
-    - "通过 prompt_control 加载实验契约或 (legacy) analysis prompt overlay"
-  model_load_point: "finetune/validation/model_runtime.load_model(model-dir, adapter-dir)"
-  notes: "新正式eval prepare/validate/run/export已绑定Registry完整model与数值版本、原fold和Prompt；full/holdout实际读取拒绝。旧main仍支持model-dir，尚未列为已退役，不把历史summary转为passed。"
-- finetune/release_validate.py / finetune/v4_1_runtime.py
-  role: "经 finetuning runtime 校验不可变 release；解析/校验 V4.1 训练输入与输出"
-  protection: "这些是真实校验原语；接管时应复用其校验，不复制一套等价实现冒充"
+## 4) 训练与测评入口（M7b本批）
+
+| 路径 | 公开CLI状态 | 新入口调用与保留边界 |
+| --- | --- | --- |
+| finetune/train_build_dataset.py | main和脚本/模块启动停用 | build_versioned_datasets供train/eval准备调用；历史固定Prompt构建保留私有编排测试 |
+| finetune/train_prepare_run.py | 旧实验准备CLI停用 | versioning.cli直接调用prepare_versioned_run、verify_versioned_run、execute_versioned_run、export_versioned_run |
+| finetune/train_with_contract.py | 直接training-yaml CLI停用 | execute_versioned_run按折调用run_training，传入已冻结内存配置；保留LLaMA-Factory来源检查与processor契约 |
+| finetune/eval_run.py | 裸model-dir与旧release选择CLI停用 | versioning.cli调用prepare/verify/execute/export_versioned_evaluation；Registry完整model和数值版本、原fold与Prompt绑定不变 |
+| finetune/train_build_source_aware_dataset.py | 无独立main | 历史采样及共享辅助函数保留；新体系不扩大3k采样 |
+| finetune/release_validate.py、finetune/v4_1_runtime.py | 校验原语保留 | 新旧业务共用契约与标签校验；不删除当前仍被调用的实现 |
+
+四个已停用CLI在第三方/业务导入前拒绝，help仅迁移说明，无legacy开关。私有_legacy_main仅供明确的历史语义回归；旧prepare库函数内生成的历史运行命令也不能绕过脚本停用门。正式full/holdout实际读取仍拒绝，真实新模型训练与GPU测评成功路径仍缺证据，不因旧CLI退役宣称验收通过。
 
 ## 5) 服务与模型域入口（M5 严格切换）
 
@@ -86,7 +75,7 @@ artifact_index、artifact_resolver和build_artifact_index.py未删除。source_b
 - versioning/backup.py：离线备份 create/verify/restore与显式SSH transfer，catalog钉扎与原子不覆盖发布；M6实测证据见verification第33节
 
 ## 保护清单
-1. 仅按已确认迁移计划逐入口切换；本轮停用上述三个数据CLI，其他legacy路径和历史产物保留，不批量删除包。
+1. 仅按已确认迁移计划逐入口切换；已停用上述三个数据和四个训练/评测CLI，其他legacy路径和历史产物保留，不批量删除包。
 2. versioning 只接受 <kind>-v<协议>-r<N> 完整身份，fail-closed；禁止哈希/ LATEST/短前缀/隐式最新。
 3. 历史正式产物（active_data_release.json、model_registry/current.json、旧模型 release manifest、review_decisions 层级）保留为历史证据，活动代码解除依赖。
 4. M0记录的raw模型加载缺口已在M4正式eval和M5服务入口逐步接线；具体范围与未验证项以上文及verification为准，不能把代码接线当作真实推理成功。

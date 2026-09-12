@@ -1,11 +1,40 @@
+<!-- DOCUMENT-CONTRACT
+Purpose: 提供现行训练与评测入口导航，并保留历史实验的身份与质量证据。
+Scope: 新入口的输入输出与执行边界、历史训练配置和结果参考。
+Must Preserve:
+- 三折沿用原数据划分；历史采样与结果不能冒充新体系执行证据。
+- 训练、合并、GPU推理在训练机执行；质量结论必须绑定真实产物。
+- 明确已停用CLI和历史指针不得用于现行操作。
+Non-goals:
+- 不复制 versioning/SCRIPTS.md 的完整参数规范或项目任务台账。
+-->
+
 # V4.1 微调、合并与评测
 
 本目录维护 MiniCPM-V-4.5 的 V4.1 三折 LoRA 微调、模型合并和严格验证集推理。
 训练、模型合并和 GPU 推理必须在训练电脑执行；本机只复核代码和已同步的轻量结果。
 
-可读版本体系的三折训练使用统一 `train prepare / validate / run / export` 入口，见 [versioning 训练操作说明](../versioning/SCRIPTS.md#三折训练准备与执行)。正式验证集测评使用 `eval prepare / validate / run / export`，见 [versioning 测评操作说明](../versioning/SCRIPTS.md#正式验证集测评)。下文既有实验命令与结果保留其 legacy 身份语义。
+## 现行训练与评测入口
 
-## 当前身份
+正式入口为 `python -m versioning train` 和 `python -m versioning eval`，各自使用 `prepare / validate / run / export`。完整参数与配置字段见 [三折训练说明](../versioning/SCRIPTS.md#三折训练准备与执行)和[正式验证集测评说明](../versioning/SCRIPTS.md#正式验证集测评)。
+
+| 环节 | 显式输入 | 产物与下一步 |
+| --- | --- | --- |
+| 训练准备、校验 | store、完整train/data/prompt身份、三折训练YAML、环境YAML、代码提交、实际媒体根；七阶段发布另给原data-inputs | `workspace/runs/<train>/input/`冻结六份数据、Prompt、配置及摘要；validate复验后才可run |
+| 训练执行、导出 | 已验证的同一train及store；实际训练授权 | 真实执行器与MLflow父子Run、每折adapter；完成后导出`records/training/<train>/manifest.yaml` |
+| 模型登记 | 完成的train及明确的model身份、scope和artifact声明；使用`versioning model register` | MLflow完整model身份与数值版本，作为评测准备输入；登记不等于质量通过 |
+| 验证集评测准备、校验 | 完整eval/model/data身份、Registry数值版本、评价YAML、代码提交及实际媒体根 | `workspace/evaluations/<eval>/input/evaluation.yaml`冻结模型、Prompt、样本与评分器；validate复验 |
+| 评测执行、导出 | 已冻结的eval及store；实际GPU评测授权 | 每折预测/失败/summary，MLflow父Run汇总；完成后导出`records/evaluations/<eval>/manifest.yaml` |
+
+一个train包含原fold0/1/2，不扩大旧source-aware 3k采样。评测Prompt来自模型绑定；模型必须先登记，不能用裸目录绕过Registry。当前正式执行支持validation的single_fold或cross_validation；full/holdout实际输入尚未接线，入口明确拒绝。无合格模型时不能沿用旧模型的工程通过结论。
+
+`train_build_dataset.py`、`train_prepare_run.py`、`train_with_contract.py`及`eval_run.py`的公开CLI已停用，`--help`仅给迁移提示；直接脚本和模块启动都会拒绝旧参数。新入口通过`build_versioned_datasets`、版本化准备/执行函数、`run_training`及严格评分器复用业务实现。私有历史测试函数不作为操作入口。
+
+## 历史实验参考
+
+**以下身份、配置、命令和结果均保留历史语义。四个已停用CLI的示例不可再执行，旧active_data_release/current.json指针不能用于现行训练或服务。** 历史checkpoint保留与模型质量结论仍按原证据理解；当前迁移进度和未验证项以[项目台账](../docs/project-todo.md)为准。
+
+## 历史身份
 
 | 项目 | 值 |
 | --- | --- |
@@ -81,7 +110,7 @@ python -m finetune.eval_run \
 V4.1 中间服务和 TensileAgent 链路已经跑通，但固定 Prompt 实验仍必须使用 fail-closed
 的 Prompt/schema 身份校验；链路通过不授予 production approval。
 
-## 当前模型与实验资产
+## 历史模型与实验资产
 
 训练产物不再长期散落在 `LlamaFactory/saves/`。统一规则如下：
 
@@ -299,7 +328,7 @@ python -m finetune.eval_run \
 训练 loss 和 eval loss 下降只能证明训练目标收敛。没有逐样本预测和任务指标时，不得
 声称模型已经达到可部署效果。
 
-## 当前部署与质量边界
+## 历史部署证据与质量边界
 
 当前训练机已使用 `v4.1-agent-pipeline-fold0-r1` 启动 V4.1 中间服务，并通过真实媒体
 service smoke、TensileAgent doctor 和 Agent 调用。它解决的是“整个链路能否运行”的
@@ -317,11 +346,9 @@ service smoke、TensileAgent doctor 和 Agent 调用。它解决的是“整个�
 当前模型仍是 Fold0 中间开发模型，不得宣称为 final、full-data、
 independent-test-passed 或 production-approved。
 
-## 可读版本控制新体系的训练与测评记录
+## 新体系底层记录与晋级原语
 
-`refactor/readable-version-control` 分支提供独立的 `python -m versioning` 入口，用于在
-MLflow 本地 store 中记录可读训练与测评身份；它尚未替换本文件前述 legacy 训练命令，也不在
-Mac 上执行真实 GPU 训练或推理。
+以下是 versioning 的底层记录及晋级能力。正式训练和validation评测已由本文开头的prepare/validate/run/export调用实际执行器；手工状态推进不能替代真实执行。低层full/holdout记录门的存在，不表示正式执行器已经支持该数据输入。Mac不执行真实GPU训练或推理。
 
 - `train create train-v...` 先校验封存 data release 和已冻结 Prompt，再创建训练父 Run；
   `fold-start` / `fold-end` 管理 fold0–fold2 子 Run，`summary` 写三折汇总，全部完成后才能
@@ -365,5 +392,5 @@ Mac 上执行真实 GPU 训练或推理。
 
 - [仓库总览](../README.md)
 - [数据处理与训练运行手册](../docs/DATA_PROCESSING_RUNBOOK.md)
-- [当前推理服务运行手册](../docs/INFERENCE_SERVICE_RUNBOOK.md)
+- [现行服务入口说明](../pipeline/SCRIPTS.md)；[历史推理服务手册](../docs/INFERENCE_SERVICE_RUNBOOK.md)中的裸路径命令不适用于现行alias入口
 - 历史数据隔离、模型资产生命周期与 checkpoint 清理文档已在提交 `d964eeb5` 归档；需要时从 Git 历史查阅。

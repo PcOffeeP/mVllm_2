@@ -81,7 +81,7 @@ def test_run_training_rejects_invalid_mapping_before_processor(monkeypatch):
     assert events == []
 
 
-def test_cli_rejects_duplicate_yaml_keys_before_execution(monkeypatch, tmp_path):
+def test_legacy_yaml_parser_rejects_duplicate_keys_before_execution(monkeypatch, tmp_path):
     import pytest
     from finetune import train_with_contract as entry
 
@@ -90,7 +90,7 @@ def test_cli_rejects_duplicate_yaml_keys_before_execution(monkeypatch, tmp_path)
     events = _fake_training_modules(monkeypatch, lambda config: events.append("tuner"))
     monkeypatch.setattr(sys, "argv", ["train_with_contract.py", str(path)])
     with pytest.raises(ValueError, match="duplicate"):
-        entry.main()
+        entry._legacy_main()
     assert events == []
 
 
@@ -298,3 +298,38 @@ def test_completed_training_can_recover_failed_export_without_execution(tmp_path
     path = preparation.export_versioned_run(root=root, train_version="train-v4.1-r1")
     assert path.is_file()
     assert len(calls) == 3
+
+
+# M7b: public legacy launchers must reject before imports or raw path selection.
+import pytest
+
+
+@pytest.mark.parametrize("module", ["train_build_dataset", "train_prepare_run", "train_with_contract", "eval_run"])
+def test_retired_training_cli_rejects_before_legacy_dispatch(module, monkeypatch, capsys):
+    import importlib
+    entry = importlib.import_module("finetune." + module)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("legacy dispatch reached")
+
+    for name in ("parse_args", "run_training", "current_data_paths", "_load_active_release_id"):
+        if hasattr(entry, name):
+            monkeypatch.setattr(entry, name, forbidden)
+    monkeypatch.setattr(sys, "argv", [module, "--legacy", "/must-not-read"])
+    assert entry.main() == 2
+    assert "python -m versioning" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("module", ["train_build_dataset", "train_prepare_run", "train_with_contract", "eval_run"])
+def test_retired_training_cli_runs_without_site_packages(module, tmp_path):
+    import subprocess
+    for prefix in ([sys.executable, "-S", str(ROOT / "finetune" / (module + ".py"))],
+                   [sys.executable, "-S", "-m", "finetune." + module]):
+        for arguments, expected in (([], 2), (["--legacy"], 2),
+                                    (["--model-dir", str(tmp_path / "model"), "--out-dir", str(tmp_path / "output")], 2),
+                                    ([str(tmp_path / "training.yaml")], 2),
+                                    (["--help"], 0), (["-h"], 0)):
+            result = subprocess.run(prefix + arguments, cwd=ROOT, text=True, capture_output=True)
+            assert result.returncode == expected, result.stderr
+            assert "python -m versioning" in result.stdout + result.stderr
+            assert not (tmp_path / "output").exists()

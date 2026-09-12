@@ -636,3 +636,13 @@ report.json SHA3829b295939da55b6eb2bf04a830fe34851fbc3c81f5f51d6ffb51c277be47c8�
 M7a仅关闭三个数据CLI停用与对应文档、DOC-INDEX；保留私有历史测试函数及仍有实际调用的索引库。M7b剩余旧入口核定和文档收敛、M8最终审查尚待执行。M4 full/holdout读取与真实模型、M5真实加载成功、M6真实硬盘/大型对象等原限制未因本轮轻量回归而关闭。证据文档在实际Linux原子提交，提交通过git log追溯。
 
 独立 reviewer 只读核对两端报告/日志字节和摘要一致、报告内日志摘要正确；实时确认隔离881c8181 tracked clean、正式main clean@f1b7d8a3、Python版本一致，通过Linux轻量证据范围，无finding。未复跑测试；历史命令/环境/耗时依据报告，首次语法错误及未建立目录仅为主Agent过程记录，独立reviewer未重建该历史状态。
+
+## 35. M7b训练与评测旧CLI退役（进行中）
+
+基线45cae766。train_build_dataset/train_prepare_run/train_with_contract/eval_run公开main及脚本/模块执行在第三方导入前停止，帮助指向versioning，旧YAML/model-dir/默认选择均不能启动。原main改为私有_legacy_main；保留build_versioned_datasets、版本化准备与实际执行、run_training及评分器，新CLI继续直接调用这些函数。两个历史解析语义测试明确调用私有入口。
+
+新增8项先RED（8 failed/16 deselected/0.35秒，/private/tmp/mvllm2-m7b-red.log），随后四文件联合65 passed/1 skipped/21.20秒（/private/tmp/mvllm2-m7b-regression.log）。覆盖48次Python -S脚本/模块启动及公开main拦截、新训练/评测接线和历史数据采样回归；skip为既有真实数据缺失，不冒充通过。均本机合成/受控执行器，无GPU或真实训练。训练说明及脚本索引补最小文档Contract，架构文档沿用Contract、保留B批次历史证据，现行链路说明按真实入口更新。独立审查与Linux轻量复验待执行。
+
+执行前核对两端任务基线45cae766、隔离tracked clean，正式main clean@f1b7d8a3；新Linux输出拟为既有隔离checkout内m7b-training-entry-verification-20260912，当前不存在。提交后增量bundle验签同步，使用已有.venv-m3、CUDA不可见/OMP4/离线模式执行相同四个文件的受控回归；不安装依赖、不执行真实训练/推理、不修改正式/data。评测冻结输入包含评分实现文件摘要，本次eval_run.py改变会被已有冻结输入的漂移门识别；不原地改写旧input或豁免校验，新准备需明确未占用身份。
+
+独立reviewer本机四文件65 passed/1 skipped/20.15秒，skip为test_eval_run.py:48缺历史数据；额外AST核对四模块50个原函数体保持，旧main仅改名，versioning.cli仍直接调用版本化函数。当前代码与文档范围未发现可执行问题，未执行远程/GPU。

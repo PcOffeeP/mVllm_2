@@ -3,12 +3,31 @@
 
 from __future__ import annotations
 
+import sys
+
+
+def main() -> int:
+    message = (
+        "此历史训练/评测 CLI 已停用。请使用 python -m versioning train "
+        "prepare / validate / run / export，显式指定 --root 和完整版本身份。"
+        "参数与冻结输入说明见 versioning/SCRIPTS.md；不接受旧 YAML 或裸模型路径直接启动。"
+    )
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        print(message)
+        return 0
+    print(message, file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 import argparse
 import json
 import math
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping
@@ -603,7 +622,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
+def _legacy_main() -> int:
     args = parse_args()
     paths = experiment_workspace_paths(ROOT, args.experiment_id)
     output, manifest = prepare_fixed_prompt_run(
@@ -623,7 +642,3 @@ def main() -> int:
         )
     )
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

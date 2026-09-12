@@ -2,6 +2,26 @@
 
 from __future__ import annotations
 
+import sys
+
+
+def main() -> int:
+    message = (
+        "此历史训练/评测 CLI 已停用。请使用 python -m versioning eval "
+        "prepare / validate / run / export，显式指定 --root 和完整版本身份。"
+        "参数与冻结输入说明见 versioning/SCRIPTS.md；不接受旧 YAML 或裸模型路径直接启动。"
+    )
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        print(message)
+        return 0
+    print(message, file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 import argparse
 import csv
 import hashlib
@@ -411,7 +431,7 @@ def _write_final_outputs(
                 )
 
 
-def main() -> int:
+def _legacy_main() -> int:
     args = parse_args()
     validate_release(
         ROOT,
@@ -898,7 +918,3 @@ def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
         "sample_count": len(records), "outcome": record.outcome, "run_id": record.run_id,
         "input_sha256": digest, "artifacts": {name: {"uri": f"runs:/{record.run_id}/{name}",
             "sha256": params[f"sha256_{name}"]} for name in paths}}), label="evaluation manifest")
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
