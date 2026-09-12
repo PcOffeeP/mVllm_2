@@ -76,34 +76,19 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
   protection: "这些是真实校验原语；接管时应复用其校验，不复制一套等价实现冒充"
 
 ## 5) 服务与模型域入口（M5 严格切换）
-- pipeline/server_proxy.py
-  role: "集成 MiniCPM 服务（uvicorn FastAPI），加载 ChatModel 并暴露 /v1/chat/completions 与 contract preflight"
-  identity:
-    - "--model 直接给模型路径；--deployment-manifest 启动配置（10 固定字段）"
-    - "contract 按 --contract-version 选择 v2 或 v4.1 生产契约"
-  model_load_point: "ChatModel(_chat_model_args(args.model))"
-  notes: "当前模型路径经 --model 显式给出，未经过 versioning alias/materialize 校验 → M5 需接入 alias 解析与 materialize 校验。"
-- pipeline/server_adapter.py
-  role: "给 OpenAI 响应注入 preprocessing 证据（frames/deployment）"
-  identity: "校验 deployment_snapshot 11 字段与 contract_hash"
-  notes: "响应注入器，不含正式身份解析；需与 alias 校验联动。"
-- pipeline/model_registry.py
-  role: "legacy 模型身份解析（MODEL_NAME_PATTERN <protocol>-<core>-<foldN|full>-r<N>）与 current 解析、artifact 校验"
-  identity: "current.json + releases/<model>.json + aggregate sha256"
-  formal_write_point: "读取 model_registry/current.json 与 releases/；resolve_current_artifact 解析路径"
-  protection: "legacy 解析保留为历史证据；M7 只停用旧身份/写入路径，不把整个包当删除对象"
-- scripts/serve_validate_delivery.py
-  role: "校验 model/service delivery 组件身份、绑定与既有 gate 记录"
-  identity: "校验 schema、manifest 绑定、artifact_gate/runtime_gate、source commit 为 HEAD 祖先"
-  notes: "把既有 quality_status false 等读作记录，不自动升级为通过。"
-- scripts/serve_manage_model_registry.py
-  role: "检查/校验项目本地模型 artifact registry（inventory / validate / resolve-current）"
-  identity: "经 pipeline.model_registry load_current_model / resolve_current_artifact / verify_current_artifacts"
-  notes: "legacy 清单/校验入口，不含 versioning 的 MLflow alias 门。"
-- pipeline/scripts/serve_smoke.py
-  role: "对运行中服务做真实 HTTP smoke（contract preflight + analysis 请求 + preprocessing 校验）"
-  identity: "本地契约与 preflight/响应 contract_hash 一致"
-  protection: "只对已启动服务做 smoke；不负责启动/准入"
+
+2026-09-12接线更新：以下为代码入口状态；合成模型与受控loader的本机证据见verification第32节，不代表运行中服务或真实GPU已切换。
+
+| 入口 | 当前身份与行为 |
+| --- | --- |
+| pipeline/server_proxy.py | 必填root、alias、service-mode、contract-version和deployment-manifest；通过共享resolver后才调用ChatModel，加载后再验；删除raw --model |
+| pipeline/server_adapter.py | 仅包装响应并校验既有11字段deployment；实际选择在server_proxy完成，额外model_registry身份由proxy加入 |
+| pipeline/model_registry.py | resolve_service_model调用MLflow alias门与current/manifest校验，比较缓存与权威artifact全部文件内容，生成绑定指纹；旧current读函数仅保留历史读取 |
+| scripts/serve_validate_delivery.py | 公共validate_components及CLI通过共享resolver，无旧开发例外；历史组件审计只保留私有函数，不能作为新服务准入 |
+| scripts/serve_manage_model_registry.py | validate/resolve-current要求显式alias与mode并通过共享resolver；inventory仅历史盘点，不授予模型资格 |
+| pipeline/scripts/serve_smoke.py | 必填root/alias/mode/contract，发送媒体前核对preflight的Registry身份与指纹；响应也必须同一绑定，前后重验alias |
+
+生产模式只接受production。服务解析不自动物化或修复缓存，不回退旧current.json；缺合格模型立即失败。当前没有合格真实模型成功加载证据。
 
 ## 6) 新体系身份/写入核心模块（只读引用，M0 不改）
 - versioning/registry.py：MLflow Registry（mVllm2）晋级门、alias(candidate/production)、fail-closed 校验；materialize_model 到 models/<model_id>/
@@ -116,6 +101,6 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
 1. legacy `pipeline/`、`finetune/` 既有入口保持原样，不切换/删除/重构/批量改名直至正式迁移完成。
 2. versioning 只接受 <kind>-v<协议>-r<N> 完整身份，fail-closed；禁止哈希/ LATEST/短前缀/隐式最新。
 3. 历史正式产物（active_data_release.json、model_registry/current.json、旧模型 release manifest、review_decisions 层级）保留为历史证据，活动代码解除依赖。
-4. 最终模型加载点当前在 server_proxy(--model) 与 eval_run(model-dir)；M5 前不得宣称已由 versioning alias 严格接管。
+4. M0记录的raw模型加载缺口已在M4正式eval和M5服务入口逐步接线；具体范围与未验证项以上文及verification为准，不能把代码接线当作真实推理成功。
 5. 真实写入/评测/GPU 推理只发生在训练机；本机只做文档与证据整理。
 6. 本文为 M0 草稿，每一行"已接管"类结论均需对应行为测试（Plan Proof 表），文件存在不构成接管证明。

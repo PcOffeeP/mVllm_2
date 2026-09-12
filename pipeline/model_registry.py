@@ -303,3 +303,67 @@ def verify_current_artifacts(project_root: Path) -> dict[str, Any]:
         "artifacts": identities,
         "passed": True,
     }
+
+
+def _service_files(path: Path) -> dict[str, str]:
+    """Fingerprint a concrete directory; reject links instead of following them."""
+    if not path.is_absolute() or not path.is_dir() or any(p.is_symlink() for p in (path, *path.parents)):
+        raise ModelRegistryError("service artifact must be a concrete absolute directory")
+    files = {}
+    for file in sorted(path.rglob("*")):
+        if file.is_symlink():
+            raise ModelRegistryError("service artifact contains a symlink")
+        if file.is_file():
+            files[file.relative_to(path).as_posix()] = _sha256(file)
+    if not files:
+        raise ModelRegistryError("service artifact is empty")
+    return files
+
+
+def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[str, Any]:
+    """Resolve the actual service exclusively through the qualified Registry.
+
+    Legacy manifest/current functions in this module remain historical readers.
+    This entry neither scans for models nor materializes or repairs a cache.
+    """
+    import tempfile
+    from mlflow.tracking import MlflowClient
+    from versioning.materialize import validate_service_current, _validate_route
+    from versioning.registry import open_registry_store
+    _validate_route(service_mode, alias)
+    root = Path(root).absolute()
+    store = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    record = validate_service_current(store, alias=alias, service_mode=service_mode,
+        models_root=root / "workspace/models", records_root=root)
+    target = root / "workspace/models/materialized" / record.model_id
+    client = MlflowClient(tracking_uri=store.tracking_uri)
+    inventory = {}
+    with tempfile.TemporaryDirectory(prefix="service-artifacts-") as temp:
+        for entries in record.artifacts.values():
+            for declared in entries.values():
+                cached = _service_files(target / declared)
+                source = Path(client.download_artifacts(record.run_id, declared.removeprefix("artifacts/"), str(Path(temp).resolve())))
+                if cached != _service_files(source):
+                    raise ModelRegistryError("materialized artifact content differs from the registered source")
+                inventory[declared] = cached
+    selected = [(kind, path) for entries in record.artifacts.values() for kind, path in entries.items()
+                if path == record.deploy_target]
+    if len(selected) != 1 or selected[0][0] not in {"adapter", "merged"}:
+        raise ModelRegistryError("service requires one explicit adapter or merged deployment target")
+    kind, declared = selected[0]
+    adapter = target / declared if kind == "adapter" else None
+    model_path = Path(record.base_model) if adapter else target / declared
+    inventory["base_model"] = _service_files(model_path)
+    # Detect Registry/current changes during content verification.
+    if validate_service_current(store, alias=alias, service_mode=service_mode,
+        models_root=root / "workspace/models", records_root=root) != record:
+        raise ModelRegistryError("service Registry binding changed during validation")
+    identity = {"model_version": record.model_id, "model_version_number": record.version,
+        "alias": alias, "service_mode": service_mode, "train_version": record.train_id,
+        "eval_version": record.eval_id, "data_version": record.data_version,
+        "prompt_version": record.prompt_version, "base_model_version": record.base_model,
+        "deploy_target": declared}
+    digest = hashlib.sha256(json.dumps({"identity": identity, "files": inventory},
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return {**identity, "fingerprint": digest, "model_path": str(model_path),
+            "adapter_path": str(adapter) if adapter else None}

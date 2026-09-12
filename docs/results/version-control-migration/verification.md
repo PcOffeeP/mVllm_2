@@ -515,3 +515,25 @@ git diff --check通过；当前可审阅实现与上述本机证据在Mac原子�
 原正式checkout始终clean main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52；任务隔离checkout为tracked clean，保留原有环境和新增验证目录，不能称为整体clean。本段在实际训练机提交轻量验收事实，再通过已验签增量bundle回传Mac。本轮没有真实权重加载、GPU、完整正式评测或/data正式store写入。正式新体系无已注册模型，真实eval准备成功路径仍无证据；不能把这些临时fixture登记为正式模型或效果结论。
 
 M4的正式validation执行接线已完成本机/训练机CPU范围验收；full/holdout实际读取与真实模型成功路径保持显式限制，M4不据此关闭。下一步可推进不依赖真实合格模型的M5服务入口严格拒绝/路由接线，同时保留后续真实模型登记与授权测评的依赖。
+
+## 32. M5服务入口接线（2026-09-12，Mac）
+
+本轮输入为临时SQLite/MLflow、完整data/prompt/train/model/eval身份与合成小权重；ChatModel/uvicorn为受控替身。本机测试不涉及真实权重加载、GPU推理或运行中服务进程变更；本节后续单列训练机只读预检及隔离CPU验证。
+
+Test List覆盖：实际CLI拒绝raw模型路径、无alias/非法模式、模型invalid、current缺失、缓存字节修改、Registry损坏；成功路径只能加载Registry绑定的基座和adapter。公共交付校验删除开发例外入口，管理工具与HTTP smoke统一使用显式alias与mode；smoke检查完整身份、数值Model Version与指纹。旧组件校验的四项历史审计保留为私有函数测试，不构成新准入证明。
+
+初始resolver/启动测试5 failed，交付工具2 failed，smoke路由2 failed，均在实现前观察有效RED。实现后工具16 passed；五文件联合回归179 passed/78.05秒/exit0（tests/test_serve_smoke.py、tests/test_serve_validate_delivery.py、tests/test_v4_1_service_contract.py、tests/versioning/test_materialize.py、tests/versioning/test_registry.py；日志/private/tmp/mvllm2-m5-regression.log）。随后补充Prompt输出字段校验和五类实际启动拒绝，受影响三文件26 passed/10.02秒/exit0（/private/tmp/mvllm2-m5-final-local.log）。
+
+共享resolver先检查alias晋级门和Git manifest/current，再逐文件比较所有声明artifact缓存与MLflow权威源，并把所选模型、基座、身份纳入SHA256指纹；禁止artifact软链接。临时下载目录先正规化系统临时路径（Mac /var指向/private/var），不放宽模型目录的软链接拒绝。加载前校验10字段配置的模型/基座/指纹与Prompt，加载后再解析并核对绑定。响应原11字段deployment保持，附加model_registry供smoke核对。启动不自动物化/修复，不提供旧开发模型豁免。
+
+独立审查已通过本轮代码与本机验证范围；M5保持进行中，不以这些本机替身测试关闭真实模型加载/推理或Linux验收。代码与本节版本由git log -- pipeline/server_proxy.py追溯。
+
+
+### 32.1 本机补充验证与Linux执行范围
+
+新增加载中基座内容漂移拒绝、merged唯一deploy_target路由，并纳入实际FastAPI受控引擎的既有production_contract回归。最终四文件41 passed/7.91秒/exit0，日志/private/tmp/mvllm2-m5-complete-local.log；四文件为tests/test_serve_smoke.py、tests/test_serve_validate_delivery.py、tests/test_v4_1_service_contract.py、tests/test_production_contract.py。先前179项底层联合回归后未修改Registry/materialize实现，不重复该批测试作为新证据。
+
+只读SSH确认正式checkout仍clean main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52，隔离checkout仍7a750065、tracked clean，保留五个既有未跟踪环境/证据目录；m5-service-verification-20260912尚不存在。独立审查通过、Mac原子提交后，按既有授权通过增量bundle校验与祖先检查快进任务隔离分支。在新/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m5-service-verification-20260912目录输出日志、report与pytest临时对象，用既有.venv-m3执行上述四文件CPU测试。CUDA_VISIBLE_DEVICES为空、OMP_NUM_THREADS=4、HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE=1；预计几十秒、小型合成权重与SQLite文件，不安装依赖、不访问/data正式store、不启动GPU或真实服务。执行事实与提交随后追加，本段不是Linux通过证据。
+
+
+独立reviewer对7a750065之后的当前改动完成只读核查：三文件27 passed/9.96秒、production契约与Registry/materialize依赖171 passed/89.21秒、新增merged专项1 passed/2.81秒，均已正常退出exit0；这些是reviewer执行结果，不是主Agent复跑。审查核对实际LLaMA-Factory模型/adapter参数消费、CLI、Prompt、响应与文档链路；发现一处前置文档引用夸大已修正并读回确认，无剩余finding。未验证Linux、真实权重/GPU/真实服务HTTP与大权重哈希开销。git diff --check通过。

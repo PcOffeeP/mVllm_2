@@ -11,6 +11,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from pipeline.model_registry import resolve_service_model
 from pipeline.production_contract import load_production_contract, production_contract_hash
 from pipeline.v4_1_production_contract import load_v4_1_production_contract
 
@@ -107,15 +108,28 @@ def validate_analysis_response(
         raise RuntimeError("analysis response deployment identity drifted")
 
 
+def validate_service_binding(payload: dict[str, Any], binding: dict[str, Any]) -> None:
+    expected = {key: value for key, value in binding.items()
+                if key not in {"model_path", "adapter_path", "base_model_version"}}
+    deployment = payload.get("deployment_manifest", {})
+    if (payload.get("model_registry") != expected
+            or deployment.get("model_version") != binding["model_version"]
+            or deployment.get("config_fingerprint") != binding["fingerprint"]):
+        raise RuntimeError("service Registry binding differs from the selected alias")
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--alias", choices=("candidate", "production"), required=True)
+    parser.add_argument("--service-mode", choices=("development", "production"), required=True)
     parser.add_argument("--base-url", default="http://127.0.0.1:8001")
     parser.add_argument("--video", type=Path, required=True)
     parser.add_argument("--api-key-env", default="API_KEY")
     parser.add_argument(
         "--contract-version",
         choices=("tensile-vlm/v2", "tensile-vlm/v4.1"),
-        default="tensile-vlm/v2",
+        required=True,
     )
     parser.add_argument("--timeout", type=float, default=300.0)
     return parser.parse_args()
@@ -123,6 +137,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    binding = resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode)
     if not args.video.is_file():
         raise SystemExit(f"video does not exist: {args.video}")
     base_url = args.base_url.rstrip("/")
@@ -139,6 +154,9 @@ def main() -> int:
         timeout=args.timeout,
     )
     validate_preflight(preflight, contract)
+    validate_service_binding(preflight, binding)
+    if resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode) != binding:
+        raise RuntimeError("service Registry binding changed before inference")
     response = _request_json(
         f"{base_url}/v1/chat/completions",
         api_key=api_key,
@@ -146,6 +164,9 @@ def main() -> int:
         timeout=args.timeout,
     )
     validate_analysis_response(response, contract)
+    validate_service_binding(response["preprocessing"], binding)
+    if resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode) != binding:
+        raise RuntimeError("service Registry binding changed during inference")
 
     summary = {
         "preflight": {

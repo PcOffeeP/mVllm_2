@@ -281,6 +281,7 @@ def create_integrated_app(
     startup_config: dict[str, Any],
     *,
     contract: dict[str, Any] | None = None,
+    service_binding: dict[str, Any] | None = None,
 ):
     os.environ["API_VERBOSE"] = "0"
     try:
@@ -295,6 +296,8 @@ def create_integrated_app(
     config = _validate_startup_config(startup_config)
     contract = contract or load_production_contract()
     deployment = _deployment_snapshot(config, contract)
+    public_binding = {key: value for key, value in (service_binding or {}).items()
+                      if key not in {"model_path", "adapter_path", "base_model_version"}}
     processor = chat_model.engine.processor
     capture = configure_loaded_processor(processor, capture=True)
     assert capture is not None
@@ -316,6 +319,7 @@ def create_integrated_app(
             "contract_version": contract["contract_version"],
             "contract_hash": contract["contract_hash"],
             "deployment_manifest": dict(deployment),
+            "model_registry": dict(public_binding),
             "capabilities": {"analysis": True, "evidence": True},
         }
 
@@ -377,6 +381,7 @@ def create_integrated_app(
             )
             wrapped["preprocessing"]["tensor_digest"] = actual["tensor_digest"]
             wrapped["preprocessing"]["tensor_shape"] = actual["tensor_shape"]
+            wrapped["preprocessing"]["model_registry"] = dict(public_binding)
             return wrapped
         except HTTPException:
             raise
@@ -405,12 +410,14 @@ def create_integrated_app(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Integrated MiniCPM tensile VLM service")
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--alias", choices=("candidate", "production"), required=True)
+    parser.add_argument("--service-mode", choices=("development", "production"), required=True)
     parser.add_argument("--deployment-manifest", type=Path, required=True)
     parser.add_argument(
         "--contract-version",
         choices=("tensile-vlm/v2", "tensile-vlm/v4.1"),
-        default="tensile-vlm/v2",
+        required=True,
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8001)
@@ -419,21 +426,42 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    from pipeline.model_registry import resolve_service_model
+    from versioning.ids import parse_model_id
+    from versioning.prompts import load_prompt
+    binding = resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode)
+    if "tensile-vlm/" + parse_model_id(binding["model_version"]).protocol != args.contract_version:
+        raise ValueError("registered model protocol does not match the service contract")
     os.environ["API_VERBOSE"] = "0"
     startup_config = json.loads(args.deployment_manifest.read_text(encoding="utf-8"))
     _validate_startup_config(startup_config)
-    try:
-        import uvicorn
-        from llamafactory.chat import ChatModel
-    except ImportError as exc:  # pragma: no cover
-        raise RuntimeError("LLaMA-Factory and uvicorn are required") from exc
-    chat_model = ChatModel(_chat_model_args(args.model))
+    for field, expected in {"model_version": binding["model_version"],
+        "adapter_version": binding["model_version"], "base_model_version": binding["base_model_version"],
+        "config_fingerprint": binding["fingerprint"]}.items():
+        if startup_config[field] != expected:
+            raise ValueError(f"deployment {field} does not match qualified Registry binding")
     contract = (
         load_v4_1_production_contract()
         if args.contract_version == "tensile-vlm/v4.1"
         else load_production_contract()
     )
-    app = create_integrated_app(chat_model, startup_config, contract=contract)
+    prompt = load_prompt(args.root, binding["prompt_version"])
+    if (prompt.system_prompt != contract["analysis"]["system_prompt"]
+        or prompt.user_prompt != contract["analysis"]["user_prompt"]
+        or tuple(prompt.output_fields) != tuple(contract["model_output_fields"])):
+        raise ValueError("registered Prompt differs from the fixed service analysis contract")
+    try:
+        import uvicorn
+        from llamafactory.chat import ChatModel
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("LLaMA-Factory and uvicorn are required") from exc
+    model_args = _chat_model_args(binding["model_path"])
+    if binding["adapter_path"] is not None:
+        model_args["adapter_name_or_path"] = binding["adapter_path"]
+    chat_model = ChatModel(model_args)
+    if resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode) != binding:
+        raise ValueError("Registry or model content changed while loading")
+    app = create_integrated_app(chat_model, startup_config, contract=contract, service_binding=binding)
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
 

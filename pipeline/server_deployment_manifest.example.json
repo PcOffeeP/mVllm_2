@@ -1,12 +1,12 @@
 {
   "processor_version": "MiniCPMVProcessor",
   "max_frames": 8,
-  "model_version": "minicpm-v-4.5",
+  "model_version": "model-v4.1-r1",
   "transformers_version": "REPLACE_WITH_INSTALLED_VERSION",
   "llamafactory_version": "REPLACE_WITH_GIT_COMMIT",
-  "base_model_version": "REPLACE_WITH_MODEL_REVISION",
-  "adapter_version": "REPLACE_WITH_ADAPTER_OR_MERGED_MODEL_REVISION",
-  "config_fingerprint": "REPLACE_WITH_SHA256",
+  "base_model_version": "REPLACE_WITH_REGISTRY_BASE_MODEL_PATH",
+  "adapter_version": "model-v4.1-r1",
+  "config_fingerprint": "REPLACE_WITH_RESOLVED_FINGERPRINT",
   "runtime_device": "cuda:0",
   "runtime_dtype": "bfloat16"
 }

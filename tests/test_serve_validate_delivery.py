@@ -6,7 +6,7 @@ import scripts.serve_validate_delivery as validator
 
 def test_current_delivery_components_are_internally_valid() -> None:
     root = Path(__file__).resolve().parents[1]
-    report = validator.validate_components(root)
+    report = validator._validate_legacy_components(root)
     assert report["passed"] is True
 
 
@@ -22,7 +22,7 @@ def test_model_component_cannot_claim_final_or_production(monkeypatch) -> None:
         return value
 
     monkeypatch.setattr(validator, "_load", load_with_false_claim)
-    report = validator.validate_components(root)
+    report = validator._validate_legacy_components(root)
     assert "model capability boundary is invalid" in report["errors"]
 
 
@@ -42,7 +42,7 @@ def test_performance_thresholds_cannot_block_intermediate_delivery(
         return value
 
     monkeypatch.setattr(validator, "_load", load_with_blocking_performance)
-    report = validator.validate_components(root)
+    report = validator._validate_legacy_components(root)
     assert "intermediate delivery performance policy is invalid" in report["errors"]
 
 
@@ -58,5 +58,5 @@ def test_model_component_must_bind_current_registry(monkeypatch) -> None:
         return value
 
     monkeypatch.setattr(validator, "_load", load_with_wrong_registry_binding)
-    report = validator.validate_components(root)
+    report = validator._validate_legacy_components(root)
     assert "model component/registry binding mismatch" in report["errors"]

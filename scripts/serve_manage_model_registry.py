@@ -13,11 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pipeline.model_registry import (  # noqa: E402
-    load_current_model,
-    resolve_current_artifact,
-    verify_current_artifacts,
-)
+from pipeline.model_registry import resolve_service_model  # noqa: E402
 
 
 def _inventory(root: Path) -> dict[str, Any]:
@@ -61,37 +57,19 @@ def _inventory(root: Path) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, required=True)
     subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("inventory")
-    validate = subparsers.add_parser("validate")
-    validate.add_argument("--verify-hashes", action="store_true")
-    resolve = subparsers.add_parser("resolve-current")
-    resolve.add_argument(
-        "--artifact",
-        choices=("adapter", "merged"),
-        default="merged",
-    )
+    subparsers.add_parser("inventory", help="Historical inventory only; does not qualify models")
+    for command in ("validate", "resolve-current"):
+        route = subparsers.add_parser(command)
+        route.add_argument("--alias", choices=("candidate", "production"), required=True)
+        route.add_argument("--service-mode", choices=("development", "production"), required=True)
     args = parser.parse_args()
-    root = args.root.resolve()
     if args.command == "inventory":
-        value = _inventory(root)
-    elif args.command == "resolve-current":
-        value = {
-            "model_name": load_current_model(root)[0]["model_name"],
-            "artifact": args.artifact,
-            "path": str(resolve_current_artifact(root, args.artifact)),
-        }
-    elif args.verify_hashes:
-        value = verify_current_artifacts(root)
+        value = _inventory(args.root)
     else:
-        current, manifest = load_current_model(root)
-        value = {
-            "schema_version": "tensile-model-registry/validation/v1",
-            "model_name": current["model_name"],
-            "manifest": manifest,
-            "passed": True,
-        }
+        value = resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode)
+        value = {**value, "passed": True, "runtime_verified": False}
     print(json.dumps(value, ensure_ascii=False, indent=2))
     return 0
 

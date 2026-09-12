@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pipeline.model_registry import load_model_manifest  # noqa: E402
+from pipeline.model_registry import load_model_manifest, resolve_service_model  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -33,7 +33,7 @@ def _load(path: Path) -> dict[str, Any]:
     return value
 
 
-def validate_components(
+def _validate_legacy_components(
     root: Path = ROOT,
     *,
     require_source_ancestor: bool = True,
@@ -158,16 +158,23 @@ def validate_components(
     }
 
 
+def validate_components(root: Path, *, alias: str | None = None,
+                        service_mode: str | None = None) -> dict[str, Any]:
+    """Validate current Registry eligibility, not historical development exemptions."""
+    if alias is None or service_mode is None:
+        raise ValueError("explicit alias and service_mode are required")
+    binding = resolve_service_model(root, alias=alias, service_mode=service_mode)
+    return {**binding, "passed": True, "runtime_verified": False}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--alias", choices=("candidate", "production"), required=True)
+    parser.add_argument("--service-mode", choices=("development", "production"), required=True)
     args = parser.parse_args()
-    report = validate_components(
-        args.root.resolve(),
-        require_source_ancestor=True,
-    )
+    report = validate_components(args.root, alias=args.alias, service_mode=args.service_mode)
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    raise SystemExit(0 if report["passed"] else 1)
 
 
 if __name__ == "__main__":

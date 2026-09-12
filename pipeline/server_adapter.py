@@ -14,7 +14,7 @@ wraps the actual child ``video_processor`` used by ChatModel and calls
 
 1.  Install the project and editable LLaMA-Factory dependencies.
 2.  Start ``python3 -m pipeline.server_proxy`` with the exact MiniCPM-V 4.5
-    merged model path and a completed deployment manifest.
+    explicit root, alias, service mode and a Registry-bound deployment manifest.
 
     The returned ``response`` dict is JSON-serialisable and includes a
     top-level ``preprocessing`` key that the Agent client will parse.
