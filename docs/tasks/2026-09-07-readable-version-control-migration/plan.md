@@ -63,7 +63,7 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 非硬盘范围已实现：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物与改路径恢复未验证（verification第33节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d进行中（Codex）：按下文精确范围退役7个辅助CLI，索引库实际依赖保留，完成文档收尾。真实环境缺口保留，M8整体审查和交付待后续；未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；下一步核定新发现的旧Prompt发布CLI，补精确Plan后实施；历史索引工具与库按实际用途保留，M8待前置完成。真实环境缺口保留，M8整体审查和交付待后续；未授权push/merge |
 
 ### M0：核定范围与写入者
 

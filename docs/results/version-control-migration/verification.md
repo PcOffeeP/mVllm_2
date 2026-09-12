@@ -679,7 +679,7 @@ report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c�
 
 独立reviewer只读取得两端报告/日志原始字节，完全一致且报告内日志SHA正确；核对指定命令、环境与结果记录，实时隔离09035fd4 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑；历史环境/退出码/耗时依据报告和日志，实时查询不重建历史进程。
 
-## 37. M7d剩余数据辅助CLI退役（进行中）
+## 37. M7d剩余数据辅助CLI退役（本批完成）
 
 基线5c650814。逐文件检查7个ROI/候选/队列脚本及全局引用，versioning和pipeline业务不调用这些CLI；新七阶段直接执行run_input_*与共享原语。公开main及脚本/模块在业务导入前停止，无legacy、check-only或dry-run绕过；原main改为私有，历史解析器与业务函数保留。精确新增文件范围先补Plan，再实现。
 
@@ -690,3 +690,13 @@ report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c�
 扩展只读入口核查发现pipeline/prompt_control/__main__.py仍公开提供publish并调用core.publish_prompt写旧registry；此路径未列入前序数据辅助7项清单，需作为M7后续前置核定并补精确Plan，不能宣布M7全部完成。build_artifact_index.py当前仅按历史集合生成INDEX.md总览，仍使用current_data_context默认根；底层集合库保留依赖，后续区分历史审计输出与正式身份写入，不贸然删除。
 
 独立reviewer最终8文件257 passed/10 skipped/16.45秒/exit0，AST确认7脚本全部原函数体保持（main仅改名）；额外28次Python -S脚本/模块dry-run及混合help/legacy全部退出2，结合回归84次无绕过。独立代码、调用关系、文档历史/现行范围及未完成条目核查通过，无finding。10项历史fixture缺失未动态验收。Linux复验拟在既有隔离checkout新m7d-aux-entry-verification-20260912输出，以.venv-m3、CUDA不可见/OMP4/离线运行同8文件，不安装依赖、不执行真实媒体。同步前两端任务HEAD5c650814，隔离tracked clean、正式main clean@f1b7d8a3，新RUN不存在。
+
+### 37.1 Linux隔离回归
+
+实现15b440095e8f64f879cdd1c1d93410992006a6df在Mac提交；增量bundle两端SHAe01a5ecc232c82b6de1a97779140a6ebe78e88bf6de395f596d733a59ee158e3，verify通过、祖先和0/1差异检查后cherry-pick --ff同步同一对象。
+
+训练机输出/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m7d-aux-entry-verification-20260912。实际.venv-m3/bin/python（3.11.16）运行上述相同8文件pytest -q，--basetemp=<RUN>/pytest --tb=short，257 passed/10 skipped/19.62秒/exit0，进程20.275秒。CUDA不可见、OMP4、HF/Transformers离线，无新依赖或真实媒体处理。候选计划10项仍因历史fixture缺失skip，不能作为该历史环境通过。
+
+report.json SHA15fe53f516869216d4999d2319be11b789a52e6bdae09494759c418cc08022f9；linux-tests.log SHAde78b485f7d23462ed2e3effd99dbb776bfd67632fea28735d16c19a79b2e80b，Mac副本/private/tmp/mvllm2-m7d-evidence-20260912。M7d本批只关闭7个辅助CLI及对应文档；旧Prompt发布入口为M7完成前置，索引工具和底层库按实际用途核定；M8、真实模型训练/评测、full/holdout输入、大型硬盘等原限制不因此关闭。轻量证据三文件在实际Linux提交，随后验签docs-only增量bundle回传Mac，提交由git log追溯。
+
+独立reviewer读取两端报告985字节/日志353字节，逐字节及SHA一致、报告内日志SHA正确；核对8文件命令、环境、结果和计时口径，实时隔离15b44009 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑；历史执行环境/退出码/耗时依据报告和日志，跳过项及真实运行未验证。
