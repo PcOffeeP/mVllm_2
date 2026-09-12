@@ -70,8 +70,8 @@ python -m versioning --help
 - `pipeline/contracts/tensile_vlm_v4_1.json`
 - `pipeline/v4_1_labels.py`
 - `finetune/v4_1_runtime.py`
-- `pipeline/prompt_control/active_prompt.yaml`（新固定全字段实验的唯一 Prompt 编辑入口）
-- `pipeline/prompt_registry/`（不可变 Prompt revision）
+- `versioning prompt create`读取显式定义，正式Prompt位于store的`records/prompts/<完整版本>.yaml`，见[Prompt说明](versioning/SCRIPTS.md#prompt注册与冻结)
+- `pipeline/prompt_control/active_prompt.yaml`与`pipeline/prompt_registry/`（历史Prompt定义与revision，旧发布CLI已停用）
 
 ## 环境
 

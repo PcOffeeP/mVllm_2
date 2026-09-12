@@ -2,6 +2,27 @@
 
 from __future__ import annotations
 
+import sys
+
+
+def main() -> int:
+    message = (
+        "旧 Prompt validate/publish CLI 已停用。请使用 python -m versioning prompt "
+        "create/show/freeze/verify，显式指定 --root 和完整 --version。"
+        "既有Prompt迁移使用 python -m versioning migration 与已确认mapping；"
+        "定义格式和完整参数见 versioning/SCRIPTS.md。"
+    )
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        print(message)
+        return 0
+    print(message, file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 import argparse
 import json
 from pathlib import Path
@@ -20,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
+def _legacy_main() -> int:
     args = parse_args()
     if args.command == "validate":
         prompt = validate_active_prompt(args.source)
@@ -42,7 +63,3 @@ def main() -> int:
         }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

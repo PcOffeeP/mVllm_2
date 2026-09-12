@@ -32,7 +32,7 @@ Non-goals:
 
 ## 历史实验参考
 
-**以下身份、配置、命令和结果均保留历史语义。四个已停用CLI的示例不可再执行，旧active_data_release/current.json指针不能用于现行训练或服务。** 历史checkpoint保留与模型质量结论仍按原证据理解；当前迁移进度和未验证项以[项目台账](../docs/project-todo.md)为准。
+**以下身份、配置、命令和结果均保留历史语义。四个训练/评测CLI及旧Prompt validate/publish示例均已停用，不可再执行，旧active_data_release/current.json指针不能用于现行训练或服务。** 历史checkpoint保留与模型质量结论仍按原证据理解；当前迁移进度和未验证项以[项目台账](../docs/project-todo.md)为准。
 
 ## 历史身份
 

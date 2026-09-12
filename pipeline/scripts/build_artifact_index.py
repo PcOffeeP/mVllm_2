@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from pipeline import artifact_index
-from pipeline.current_data import current_data_context
 
 COLLECTIONS: tuple[tuple[str, Path], ...] = (
     ("source_snapshots", Path("derived/metadata/source_snapshots")),
@@ -87,20 +86,19 @@ def build_index(data_root: Path) -> tuple[Path, list[str]]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="生成 workspace/data/INDEX.md 全局产物索引总览。"
+        description="生成显式历史数据根的INDEX.md审计总览；不注册新版本。"
     )
     parser.add_argument(
         "--data-root",
         type=Path,
-        default=None,
-        help="数据根目录；默认使用当前项目的 current data root",
+        required=True,
+        help="显式历史数据根目录（必须存在）",
     )
     args = parser.parse_args(argv)
 
-    if args.data_root is None:
-        data_root = current_data_context(Path.cwd()).root
-    else:
-        data_root = args.data_root.resolve()
+    data_root = args.data_root.resolve()
+    if not data_root.is_dir():
+        parser.error("--data-root 必须是现存目录")
 
     output, warnings = build_index(data_root)
     for warning in warnings:

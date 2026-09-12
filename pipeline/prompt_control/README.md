@@ -1,5 +1,8 @@
 # V4.1 Prompt Control
 
+> 历史Prompt工具说明：下文validate/publish CLI已停用，旧active_prompt与registry保留为历史证据。现行Prompt定义、注册及冻结见[versioning说明](../../versioning/SCRIPTS.md#prompt注册与冻结)，已有对象使用显式mapping迁移；旧发布函数仅保留业务回归。
+
+
 `active_prompt.yaml` 是 V4.1 固定全字段任务的唯一人工 Prompt 编辑入口。它不保存训练
 超参数、数据标签、模型路径、seed 或评测阈值。
 

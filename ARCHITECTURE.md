@@ -37,7 +37,7 @@ Non-goals:
 
 ## 3. 新旧入口边界
 
-正式数据七阶段和限定对象迁移由versioning接管；旧release_build/release_build_phase2/rebuild_data，以及ROI冻结/物化、候选规划/物化、队列构建/分流的7个辅助CLI已停用。训练与验证集评测通过versioning调用finetune业务函数，旧train_build_dataset/train_prepare_run/train_with_contract/eval_run CLI也已停用。服务入口按MLflow alias与service mode复验后加载。
+正式数据七阶段和限定对象迁移由versioning接管；旧release_build/release_build_phase2/rebuild_data，以及ROI冻结/物化、候选规划/物化、队列构建/分流的7个辅助CLI已停用。训练与验证集评测通过versioning调用finetune业务函数，旧train_build_dataset/train_prepare_run/train_with_contract/eval_run CLI也已停用。旧Prompt validate/publish CLI已停用，新正式Prompt使用versioning prompt；历史INDEX.md工具要求显式根。服务入口按MLflow alias与service mode复验后加载。
 
 ROI输入准备仍保留，显式选择metadata/output/project-root；人工审查仅接受完整versioning包，旧queue写入已停用。历史业务的索引辅助依赖仍保留，不能把局部退役扩大为删除整个pipeline或finetune。入口明细见[入口清单](docs/results/version-control-migration/entrypoint-map.md)。历史产物不原地改写；旧current/LATEST不作为新身份选择依据。
 

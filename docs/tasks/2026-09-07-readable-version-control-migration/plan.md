@@ -63,7 +63,7 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 非硬盘范围已实现：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物与改路径恢复未验证（verification第33节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；下一步核定新发现的旧Prompt发布CLI，补精确Plan后实施；历史索引工具与库按实际用途保留，M8待前置完成。真实环境缺口保留，M8整体审查和交付待后续；未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e进行中（Codex）：旧Prompt CLI退役、历史索引工具显式根和文档同步；历史索引工具与库按实际用途保留，M8待前置完成。真实环境缺口保留，M8整体审查和交付待后续；未授权push/merge |
 
 ### M0：核定范围与写入者
 
@@ -179,3 +179,7 @@ M7c精确范围：review_candidates_app公开UI仅接受完整versioning-package
 M7d精确补充：允许修改pipeline/scripts/roi_freeze_decisions.py、roi_materialize_videos.py、subvideo_build_plan.py、subvideo_materialize_media.py、review_build_queue.py、review_build_phase2_queues.py、review_route_from_history.py，停止其公开CLI写入并指向versioning显式七阶段。versioning无上述脚本调用，保留历史私有main及解析器、业务库；回归新增在已允许tests/test_data_rebuild.py，复跑六个相关历史CLI测试及tests/versioning/test_data_pipeline.py。不变更几何、采样、分流规则或历史对象；不删除索引库。
 
 M7d文档与历史测试补充：tests/test_subvideo_build_plan.py中的旧dry-run语义测试显式调用私有_legacy_main（既有真实数据缺失时仍skip，不当作通过）；允许docs/INFERENCE_SERVICE_RUNBOOK.md仅追加历史适用范围与现行服务链接，不重写历史操作或效果证据。
+
+M7e精确补充：修改pipeline/prompt_control/__main__.py停用旧validate/publish公开CLI，历史main私有保留，不改core或__init__导出；模块启动先完成既有包导入，但不得解析/读取旧source或调用publish。修改pipeline/scripts/build_artifact_index.py，历史INDEX.md报告工具必须显式--data-root且目录存在，不再选择current根，不更改底层集合索引。新增回归在tests/test_prompt_control.py和tests/test_artifact_index.py；核对tests/versioning/test_prompts.py及test_cli.py。versioning/SCRIPTS.md补Prompt现行参数说明并将过期legacy不变条款同步为既定逐入口退役边界。
+
+M7e文档精确补充：pipeline/prompt_control/README.md仅追加历史范围与现行Prompt链接，保留原历史说明；README/finetune说明/项目指南同步旧Prompt停用与新定义入口，不改变历史Prompt正文。

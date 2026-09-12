@@ -700,3 +700,15 @@ report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c�
 report.json SHA15fe53f516869216d4999d2319be11b789a52e6bdae09494759c418cc08022f9；linux-tests.log SHAde78b485f7d23462ed2e3effd99dbb776bfd67632fea28735d16c19a79b2e80b，Mac副本/private/tmp/mvllm2-m7d-evidence-20260912。M7d本批只关闭7个辅助CLI及对应文档；旧Prompt发布入口为M7完成前置，索引工具和底层库按实际用途核定；M8、真实模型训练/评测、full/holdout输入、大型硬盘等原限制不因此关闭。轻量证据三文件在实际Linux提交，随后验签docs-only增量bundle回传Mac，提交由git log追溯。
 
 独立reviewer读取两端报告985字节/日志353字节，逐字节及SHA一致、报告内日志SHA正确；核对8文件命令、环境、结果和计时口径，实时隔离15b44009 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑；历史执行环境/退出码/耗时依据报告和日志，跳过项及真实运行未验证。
+
+## 38. M7e旧Prompt入口与历史索引边界（进行中）
+
+基线f293df3a。旧Prompt公开validate/publish及脚本/模块入口停止，旧main私有保留；core/__init__导出不改。模块启动仍加载既有包定义/PyYAML，不要求-S模块无依赖退出；实际main在parse_args/source读取/publish前拒绝。新versioning Prompt注册、读取、冻结和复验保持原实现。历史build_artifact_index保留仅写INDEX.md，但必填现存data-root并移除current选择；不更新集合index/LATEST或创建新版本。
+
+7项新增回归先RED（7 failed/19 deselected/0.27秒，/private/tmp/mvllm2-m7e-red.log）；四文件联合179 passed/1.37秒/exit0（tests/test_prompt_control.py、tests/test_artifact_index.py、tests/versioning/test_prompts.py、tests/versioning/test_cli.py，/private/tmp/mvllm2-m7e-regression.log）。包含旧source/publish前拦截、脚本与模块无写入、新Prompt及CLI回归、历史索引实际输出。均本机轻量合成，无真实媒体/GPU。
+
+versioning说明补Prompt定义→create→正式文件→freeze/verify→训练引用，并将过期legacy保持原样Contract同步为已批准逐入口退役约束、记录D001原因；旧PromptREADME只加历史范围，其他导航同步。M7e精确文件先补Plan再实施；独立审查和Linux复验待执行，M8完整差异/验收矩阵仍待推进。
+
+代码引用复核：除core定义外，publish_prompt调用仅剩已私有化旧main；build_index仅由显式根main调用。Linux计划为既有隔离checkout新m7e-prompt-index-verification-20260912，以.venv-m3、CUDA不可见/OMP4/离线执行上述四文件，不安装依赖、不处理正式数据；同步前两端f293df3a、隔离tracked clean、正式main clean@f1b7d8a3，新RUN不存在。
+
+独立reviewer四文件179 passed/1.20秒/exit0；AST确认旧Prompt解析/旧main及历史索引收集/渲染/生成逻辑保持，core/__init__无改动。按文档在独立临时目录实际运行create→show→freeze→verify均exit0，正式和冻结副本路径/字节一致。代码、文档Contract/链路及范围核查通过，无finding；合成Prompt不代表实际训练，未远程/GPU。

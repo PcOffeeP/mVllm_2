@@ -1,10 +1,10 @@
 <!-- DOCUMENT-CONTRACT
 Purpose: 定位 versioning 的实际入口，并提供显式数据输入与人工交接的操作边界。
-Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、三折训练、正式验证集测评及备份传输入口。
+Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、Prompt注册与冻结、三折训练、正式验证集测评及备份传输入口。
 Must Preserve:
 - 五类完整可读身份、显式输入与 fail-closed，不引入当前版本回退。
 - 区分数据业务处理、人工决定和正式封存；不能把测试替身当真实媒体验收。
-- legacy 公共入口维持原样，显式新模式不读旧活动指针或创建旧集合身份。
+- 已切换入口按确认方案停用旧写入；历史对象与仍被调用的业务实现保留，新入口不读旧活动指针或创建旧集合身份。
 Non-goals:
 - 不替代训练、测评、部署及备份各自的验收规范。
 - 不保存本次实施进度、临时主机状态或迁移授权。
@@ -26,6 +26,27 @@ Non-goals:
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
+
+## Prompt注册与冻结
+
+现行入口为`python -m versioning prompt`。操作者准备定义YAML，包含非空`system_prompt`、`user_prompt`与非空且无重复字符串的`output_fields`列表；可给`protocol_label`以保存业务协议标签。定义不是旧active_prompt.yaml格式，不能直接把旧文件当新定义发布。已有Prompt应按确认mapping走migration，保持原正文和身份对应。
+
+```sh
+python -m versioning prompt create --root <store绝对路径> \
+  --version <完整prompt版本> --protocol <版本协议段如v4.1> --definition <定义YAML>
+python -m versioning prompt show --root <store绝对路径> --version <完整prompt版本>
+```
+
+create在`records/prompts/<完整prompt版本>.yaml`创建正式对象，版本协议段须匹配，已有版本拒绝覆盖或自动加号。正文/schema有效不代表模型质量通过。训练通常由`train prepare`绑定这个Prompt；单独冻结和复验可使用：
+
+```sh
+python -m versioning prompt freeze --root <store绝对路径> \
+  --version <完整prompt版本> --train-version <完整train版本>
+python -m versioning prompt verify --root <store绝对路径> \
+  --version <完整prompt版本> --train-version <完整train版本>
+```
+
+冻结副本位于`workspace/runs/<train>/input/prompt.yaml`，正式对象仍以records/prompts为权威。旧`python -m pipeline.prompt_control validate/publish`及其脚本入口均已停用；旧core读取、校验和发布函数保留历史业务回归，不是现行操作接口。
 
 ## 三折训练准备与执行
 
@@ -244,3 +265,8 @@ python -m versioning backup restore --root /absolute/isolated-project --backup-r
 ```
 
 SQLite中的artifact URI保留原绝对路径；完整MLflow artifact查询恢复需在原路径布局下演练，任意改目录后的文件复制不构成完整可用性证明。本机可以验签训练机快照，联合恢复在训练机受控隔离对象的原路径布局下验证；不删除或覆盖真实唯一源以模拟故障。真实移动硬盘与真实大型模型恢复是否通过，单独以实际证据验收。
+
+<!-- DECISION-LOG
+D001 — Contract中的legacy整体现状保护改为按已确认入口退役，保留历史对象与业务实现。
+Why: 已批准的迁移Spec要求单一正式写入者；旧“公共入口维持原样”条款与实际逐入口切换冲突，不能用于恢复旧选择或发布绕过。
+-->

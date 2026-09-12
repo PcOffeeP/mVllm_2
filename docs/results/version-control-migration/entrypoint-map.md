@@ -41,6 +41,12 @@ M7d补充：roi_freeze_decisions、roi_materialize_videos、subvideo_build_plan�
 
 artifact_index、artifact_resolver和build_artifact_index.py未删除。source_bootstrap、roi_manifest、roi_media、v3_candidate_plan、v3_candidate_media、v4_1_review_workflow、v4_1_training_release及历史重建代码仍引用相关模块；上述独立数据辅助CLI已停止，但业务库与历史读取/索引工具仍有引用，不能把CLI退役等同于库无依赖。
 
+### Prompt与历史索引入口
+
+pipeline/prompt_control/__main__.py公开validate/publish及实际脚本/模块入口已停用，拒绝旧source读取和registry写入；模块启动保留既有包__init__导入core定义（含PyYAML依赖），不以Python -S模块可用性为验收。core/__init__公共库导出保持历史兼容，原main私有保留。新正式Prompt写入使用versioning prompt create，已有对象通过显式mapping迁移。
+
+build_artifact_index.py保留为历史报告工具，必须显式指定现存data-root，仅生成INDEX.md，不选择current根、不更改集合index/LATEST、不授予新对象资格。artifact_index/resolver仍供历史业务和报告读取使用，保留库有实际引用依据。
+
 ## 4) 训练与测评入口（M7b本批）
 
 | 路径 | 公开CLI状态 | 新入口调用与保留边界 |

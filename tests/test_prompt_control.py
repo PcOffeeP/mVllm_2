@@ -146,3 +146,27 @@ def test_experiment_contract_is_self_contained_and_fail_closed(
     _write_json(path, drifted)
     with pytest.raises(PromptControlError, match="自哈希"):
         load_experiment_contract(path)
+
+
+@pytest.mark.parametrize("arguments", [[], ["validate", "--source", "missing.yaml"], ["publish", "--source", "missing.yaml"], ["--legacy"]])
+def test_retired_prompt_cli_stops_before_parsing(arguments, monkeypatch, capsys):
+    from pipeline.prompt_control import __main__ as cli
+    import sys
+    monkeypatch.setattr(cli, "parse_args", lambda: pytest.fail("legacy parsing reached"))
+    monkeypatch.setattr(cli, "publish_prompt", lambda *a, **kw: pytest.fail("legacy publication reached"))
+    monkeypatch.setattr(sys, "argv", ["prompt_control", *arguments])
+    assert cli.main() == 2
+    assert "python -m versioning prompt" in capsys.readouterr().err
+
+
+def test_retired_prompt_script_and_module_do_not_publish(tmp_path):
+    import subprocess
+    import sys
+    for prefix in ([sys.executable, str(ROOT / "pipeline/prompt_control/__main__.py")],
+                   [sys.executable, "-m", "pipeline.prompt_control"]):
+        for args, expected in ((["publish", "--source", str(ACTIVE), "--registry-root", str(tmp_path / "registry")], 2),
+                               (["--help"], 0), (["-h"], 0), (["--help", "--legacy"], 2)):
+            result = subprocess.run(prefix + args, cwd=ROOT, text=True, capture_output=True)
+            assert result.returncode == expected, result.stderr
+            assert "python -m versioning prompt" in result.stdout + result.stderr
+            assert not (tmp_path / "registry").exists()

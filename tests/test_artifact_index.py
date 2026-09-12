@@ -553,3 +553,13 @@ def test_build_index_cli_warns_on_permission_denied_index_and_continues(
     assert "split-healthy" in content
     assert "source-abc" in content
     assert "not-json-object" not in content
+
+
+@pytest.mark.parametrize("arguments", [[], ["--data-root", "/nonexistent/mvllm2-index-root"]])
+def test_index_cli_requires_explicit_existing_root(arguments, tmp_path, monkeypatch):
+    from pipeline.scripts import build_artifact_index as cli
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(arguments)
+    assert exc.value.code == 2
+    assert not (tmp_path / "INDEX.md").exists()
