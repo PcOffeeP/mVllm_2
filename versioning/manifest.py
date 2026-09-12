@@ -599,7 +599,14 @@ def validate_model_manifest(payload: str) -> dict[str, Any]:
 
 def build_model_manifest(store: ModelRegistryStore, model_id: str) -> str:
     """从真实 Registry Model Version 单向构造 model manifest YAML。"""
-    obj = _model_manifest_mapping(get_model(store, model_id))
+    from versioning.registry import _run_model_train_gate, _run_eval_gate, PromotionGateRejected
+    record = get_model(store, model_id)
+    _run_model_train_gate(store, record)
+    if record.eval_id is not None:
+        evaluated = _run_eval_gate(store, record.eval_id, require_passed=True)
+        if evaluated.model_id != record.model_id or evaluated.model_version_number != record.version:
+            raise PromotionGateRejected("model manifest evaluation binding differs")
+    obj = _model_manifest_mapping(record)
     payload = yaml.safe_dump(obj, sort_keys=True, allow_unicode=True)
     validate_model_manifest(payload)
     return payload

@@ -63,13 +63,13 @@ python -m versioning train prepare <完整train版本> \
 python -m versioning train validate <完整train版本> --root <store绝对路径>
 ```
 
-迁移数据通过该 store 的 committed receipt 核验平铺发布内容；七阶段数据须额外传 `--data-inputs <原inputs.yaml>`，复验原发布链及 `payload/`。迁移数据的媒体根通常是原训练机项目的 `workspace/data`，来源镜像不能替代它；自包含七阶段发布使用该版本 `payload/` 作为媒体根。准备时冻结实际视频 SHA/大小，执行前复验媒体内容。检查、准备及验证不会创建 MLflow Run 或加载模型权重。
+迁移数据通过该 store 的 committed receipt 核验平铺发布内容；七阶段数据须额外传 `--data-inputs <原inputs.yaml>`，复验原发布链及 `payload/`。迁移数据的媒体根通常是原训练机项目的 `workspace/data`，来源镜像不能替代它；自包含七阶段发布使用该版本 `payload/` 作为媒体根。准备时冻结实际视频与基座模型全部文件的 SHA/大小，创建 Run 前及每折训练前后复验。检查、准备及验证只以 CPU 流式读取文件作摘要，不创建 MLflow Run 或加载推理模型。
 
 准备产物为 `workspace/runs/<train>/input/`，含 `data-version.txt`、`prompt.yaml`、`training.yaml`、`environment.yaml`、六份数据 JSON、`dataset_info.json` 和内容校验清单。正式 Prompt 必须预先存在于 `records/prompts/`。旧记录中的样本数量与历史训练结果不会因准备而改变。
 
-取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/workspace/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。
+取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/workspace/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后，执行器校验实际 adapter 权重、配置和结果，在父 Run 保存 `training-evidence.json` 并钉扎其摘要，再导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。
 
-完成后的导出若失败，可用 `python -m versioning train export <完整train版本> --root <store绝对路径>` 从同一 completed Run 补导出；不重新训练，不覆盖不同内容。已有训练输出或失败 Run 不会由 `run` 自动覆盖或恢复；须先核对原 Run 和 checkpoint 后处理。底层 `create/fold-start/fold-end/summary/complete` 是记录 API，手动推进状态不能替代上述实际执行证据。
+完成后的导出若失败，可用 `python -m versioning train export <完整train版本> --root <store绝对路径>` 从同一 completed Run 补导出；不重新训练，不覆盖不同内容。已有训练输出或失败 Run 不会由 `run` 自动覆盖或恢复；须先核对原 Run 和 checkpoint 后处理。公共 CLI 的 `create/fold-start/fold-end/summary/complete` 已停用，调用时在创建 store 前拒绝；同名底层 Python 记录 API 保留，不能凭手工 completed 状态通过模型登记或导出。Registry 校验执行证据、声明目录的完整文件清单及训练基座。
 完整参数运行 `python -m versioning <领域> --help` 查看。
 迁移命令不会扫描 sibling 或选择“当前”对象：Prompt/Data 动作必须显式给出
 `tensile-migration/object-mapping/v1` 映射文件，history 动作必须显式给出 entry YAML 列表，
@@ -84,14 +84,15 @@ manifest 在操作时在线复验其 train/data/eval 血缘。测试中的临时
 模型备份按 `offline_backup_scope` 实际裁剪文件：`adapter` 只包含
 `materialized.yaml` 与 Registry 声明的 adapter 路径；`production_bundle`
 包含声明的 adapter 与 merged 路径。每个作用域模型的严格 manifest 一并恢复到
-`records/models/<id>/manifest.yaml`；MLflow store 仅保存 SQLite、上述声明训练产物
-和已绑定正式测评产物，不通过整树复制夹带 adapter 模型的 merged。
+`records/models/<id>/manifest.yaml`；MLflow store 仅保存 SQLite、上述声明训练产物、冻结训练 input、training-evidence.json 和已绑定正式测评产物；未声明折的权重不因此纳入。声明路径含子目录时整个声明子树会保留，不能把 merged 放进 adapter 子目录后期待按文件类型排除。
 
 ## 正式验证集测评
 
-`eval prepare / validate / run / export` 连接实际严格V4.1推理与评分器。当前支持已注册的`single_fold`（fold0）或`cross_validation`（fold0/1/2）模型，逐折使用显式data版本的完整validation划分；不新增采样。`full`与holdout的实际读取尚未接入，这四个动作在读取数据内容或加载权重前拒绝该范围。既有低层`create/fold-start/fold-end/aggregate/summary/complete`与holdout授权API保留，手动状态或历史summary不构成实际执行证据。
+`eval prepare / validate / run / export` 连接实际严格V4.1推理与评分器。当前支持已注册的`single_fold`（fold0）或`cross_validation`（fold0/1/2）模型，逐折使用显式data版本的完整validation划分；不新增采样。`full`与holdout的实际读取尚未接入，这四个动作在读取数据内容或加载权重前拒绝该范围。公共 CLI 的`create/fold-start/fold-end/aggregate/summary/complete/manifest`已停用并提示实际执行器；底层 Python 记录及holdout授权API保留，手动状态或历史summary不构成实际执行证据。
 
-先由完成的train通过`model register`登记模型，取得完整model版本与数值MLflow Model Version；Registry声明必须有每折所选adapter或merged artifact。Prompt来自该模型的训练绑定，须已位于store的`records/prompts/`。data输入使用已验证的迁移receipt，或用`--data-inputs`提供七阶段发布的原始输入。媒体根使用原实际外部媒体目录，不能把迁移来源镜像当作媒体根。
+正式模型入口按用途在线校验执行证据：登记、模型 manifest 和物化均校验训练证据；staging 尚无 eval_id 时可仅据训练证据导出。finalize、已绑定 eval 的模型 manifest、alias 设置/读取和服务 current 另校验正式评测。评测门从保存的逐样本记录重新计算严格评分、汇总和结论，并复验原输入、评分实现与实际被评权重摘要；缺文件或内容漂移即拒绝。代码或冻结输入变化后须重新准备新的完整版本，不覆盖已有冻结对象。CPU 替身回归只能证明这些接线和拒绝行为，不能证明真实模型效果。
+
+先由完成的train通过`model register`登记模型，取得完整model版本与数值MLflow Model Version；Registry声明必须有每折所选adapter或merged artifact；single_fold所选实际评测路径必须等于唯一deploy_target。Prompt来自该模型的训练绑定，须已位于store的`records/prompts/`。data输入使用已验证的迁移receipt，或用`--data-inputs`提供七阶段发布的原始输入。媒体根使用原实际外部媒体目录，不能把迁移来源镜像当作媒体根。
 
 准备命令：
 
@@ -108,7 +109,7 @@ python -m versioning eval prepare <完整eval版本> --root <store绝对路径> 
 | --- | --- |
 | `scope` | `single_fold`或`cross_validation`，必须与Registry模型一致 |
 | `split` | `validation` |
-| `artifact_kind` | 显式选择`adapter`或`merged`，每折必须具备该artifact |
+| `artifact_kind` | 显式选择`adapter`或`merged`，每折必须具备该artifact；single_fold须与deploy_target一致 |
 | `scorer`、`sample_selection` | 分别为`strict-v4.1`、`all` |
 | `quantization_bit` | 显式`null`或`4` |
 | `aggregation` | 必须显式写`pooled`，确认按各折实际样本行合并评分；省略或其他规则会拒绝 |

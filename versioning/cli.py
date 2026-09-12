@@ -497,6 +497,8 @@ def _handle_prompt(args: argparse.Namespace) -> Any:
 
 
 def _handle_train(args: argparse.Namespace) -> Any:
+    if args.action in {'fold-start', 'fold-end', 'complete', 'summary', 'create'}:
+        raise CLIUsageError("手工状态写入已停用；请使用实际执行器 train prepare/validate/run/export")
     if args.action in {"prepare", "validate", "run", "export"}:
         from finetune.train_prepare_run import prepare_versioned_run, verify_versioned_run, execute_versioned_run, export_versioned_run
         if args.store is not None and args.store.absolute() != (args.root / "workspace/mlflow").absolute():
@@ -573,6 +575,8 @@ def _parse_folds(value: str | None) -> tuple[int, ...]:
 
 
 def _handle_eval(args: argparse.Namespace) -> Any:
+    if args.action in {'manifest', 'fold-start', 'fold-end', 'aggregate', 'complete', 'summary', 'create'}:
+        raise CLIUsageError("手工状态写入已停用；请使用实际执行器 eval prepare/validate/run/export")
     if args.action in {"prepare", "validate", "run", "export"}:
         if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
             raise CLIUsageError("actual evaluation must use root/workspace/mlflow")

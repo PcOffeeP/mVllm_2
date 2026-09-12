@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import shutil
@@ -439,7 +440,7 @@ def validate_model_for_evaluation(
         raise PromotionGateRejected(
             f"model {model_id} 的数值版本是 {record.version}，不是 {model_version_number}"
         )
-    _run_train_gate(store, record.train_id)
+    _run_model_train_gate(store, record)
     return record
 
 
@@ -483,7 +484,7 @@ def get_model_by_alias(store: ModelRegistryStore, alias: str) -> RegisteredModel
         or not record.production_approved
     ):
         raise PromotionGateRejected("production alias 目标缺少范围或批准")
-    _run_train_gate(store, record.train_id)
+    _run_model_train_gate(store, record)
     eval_record = _run_eval_gate(store, record.eval_id, require_passed=True)
     if (
         eval_record.model_id != record.model_id
@@ -493,18 +494,172 @@ def get_model_by_alias(store: ModelRegistryStore, alias: str) -> RegisteredModel
     return record
 
 
+def _artifact_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _artifact_tree(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.is_dir() or any(p.is_symlink() for p in (path, *path.parents)):
+        raise ValueError('execution evidence directory is missing or linked')
+    result = {}
+    for file in sorted(path.rglob('*')):
+        if file.is_symlink() or not (file.is_dir() or file.is_file()):
+            raise ValueError('execution evidence must contain regular files only')
+        if file.is_file():
+            result[file.relative_to(path).as_posix()] = {
+                'size': file.stat().st_size, 'sha256': _artifact_digest(file)}
+    if not result:
+        raise ValueError('execution evidence directory is empty')
+    return result
+
+
+def _run_artifact_root(store: Any, run_id: str) -> Path:
+    # This project uses a local MLflow artifact store. Do not let an altered URI
+    # turn a gate into a network download or read outside that explicit store.
+    from urllib.parse import urlparse, unquote
+    uri = _client(store).get_run(run_id).info.artifact_uri
+    parsed = urlparse(uri)
+    if parsed.scheme not in ('', 'file') or parsed.netloc:
+        raise ValueError('execution evidence must use the local artifact store')
+    path = Path(unquote(parsed.path))
+    if not path.is_absolute() or ".." in path.parts or any(p.is_symlink() for p in (path, *path.parents)):
+        raise ValueError('execution evidence artifact root is not an ordinary absolute path')
+    path.relative_to(Path(store.artifact_location).resolve())
+    if not path.is_dir():
+        raise ValueError('execution evidence artifact root is missing')
+    return path
+
+
+def _training_execution_snapshot(store: Any, record: Any, *, recorded_outputs: Any = None) -> dict[str, Any]:
+    """Bind actual frozen input and all three adapter outputs, without changing Run state."""
+    root = _run_artifact_root(store, record.run_id)
+    inputs = root / 'input'
+    tree = _artifact_tree(inputs)
+    manifest = json.loads((inputs / 'input-manifest.json').read_bytes())
+    if not isinstance(manifest, dict) or set(tree) != set(manifest) | {'input-manifest.json'}:
+        raise ValueError('execution evidence frozen input file set differs')
+    if any(tree[name] != expected for name, expected in manifest.items()):
+        raise ValueError('execution evidence frozen input digest differs')
+    training = yaml.safe_load((inputs / 'training.yaml').read_text())
+    if training.get('version') != record.train_id or any(
+        training.get(key) != getattr(record, key)
+        for key in ('data_version', 'prompt_version', 'git_commit', 'base_model')
+    ):
+        raise ValueError('execution evidence training binding differs')
+    from versioning.prompts import parse_prompt_definition
+    prompt = parse_prompt_definition(yaml.safe_load((inputs / 'prompt.yaml').read_text()))
+    if prompt.version != record.prompt_version or (inputs / 'data-version.txt').read_text().strip() != record.data_version:
+        raise ValueError('execution evidence data/Prompt binding differs')
+    folds = training.get('folds', {})
+    if set(folds) != {'fold0', 'fold1', 'fold2'} or set(record.folds) != {0, 1, 2}:
+        raise ValueError('execution evidence requires three actual folds')
+    outputs, metrics = {}, []
+    for fold in range(3):
+        name = f'fold{fold}'
+        if record.config.get(name) != json.dumps(folds[name], ensure_ascii=False, sort_keys=True, allow_nan=False):
+            raise ValueError('execution evidence fold configuration differs')
+        output = root / name / 'adapter'
+        files = _artifact_tree(output) if recorded_outputs is None else recorded_outputs[name]
+        if not isinstance(files, dict) or any(
+            not isinstance(key, str) or Path(key).is_absolute() or '..' in Path(key).parts
+            or not isinstance(spec, dict) or set(spec) != {'size', 'sha256'}
+            or type(spec['size']) is not int or spec['size'] < 0
+            or not isinstance(spec['sha256'], str) or len(spec['sha256']) != 64
+            or any(c not in '0123456789abcdef' for c in spec['sha256'])
+            for key, spec in files.items()
+        ):
+            raise ValueError('execution evidence artifact inventory is malformed')
+        weights = [key for key in ('adapter_model.safetensors', 'adapter_model.bin')
+                   if files.get(key, {}).get('size', 0) > 0]
+        if not weights or 'adapter_config.json' not in files or 'train_results.json' not in files:
+            raise ValueError('execution evidence requires adapter weights, configuration and actual results')
+        if recorded_outputs is None:
+            if not isinstance(json.loads((output / 'adapter_config.json').read_bytes()), dict):
+                raise ValueError('execution evidence adapter configuration is malformed')
+            result = json.loads((output / 'train_results.json').read_bytes())
+        else:
+            result = record.folds[fold].metrics
+        if result != record.folds[fold].metrics:
+            raise ValueError('execution evidence actual fold metrics differ')
+        metrics.append(result)
+        outputs[name] = files
+    common = set.intersection(*(set(item) for item in metrics))
+    summary = {f'{key}_mean': sum(item[key] for item in metrics) / 3 for key in common}
+    if not summary or summary != record.metrics:
+        raise ValueError('execution evidence actual training summary differs')
+    return {'schema': 'tensile-training-execution/v1', 'run_id': record.run_id,
+            'train_version': record.train_id, 'input': tree, 'outputs': outputs,
+            'fold_metrics': {f'fold{i}': result for i, result in enumerate(metrics)}}
+
+
+def _validate_train_execution_artifacts(store: Any, record: Any, *, require_all_outputs: bool = False) -> None:
+    root = _run_artifact_root(store, record.run_id)
+    proof = root / 'training-evidence.json'
+    if not proof.is_file() or proof.is_symlink():
+        raise ValueError('training execution evidence is missing')
+    expected = _client(store).get_run(record.run_id).data.params.get('sha256_training_evidence')
+    if not expected or _artifact_digest(proof) != expected:
+        raise ValueError('training execution evidence digest differs')
+    evidence = json.loads(proof.read_bytes())
+    if evidence != _training_execution_snapshot(store, record,
+        recorded_outputs=None if require_all_outputs else evidence['outputs']):
+        raise ValueError('training execution evidence artifacts drifted')
+
+
+def _validate_eval_execution_artifacts(store: Any, record: Any) -> None:
+    from finetune.eval_run import validate_evaluation_execution_artifacts
+    validate_evaluation_execution_artifacts(store=store, record=record)
+
+
+def _validate_model_artifact_evidence(store: Any, train: Any, artifacts: Any) -> None:
+    root = _run_artifact_root(store, train.run_id)
+    evidence = json.loads((root / 'training-evidence.json').read_bytes())
+    if any('adapter' in entries for entries in artifacts.values()):
+        training = yaml.safe_load((root / 'input/training.yaml').read_text())
+        if _artifact_tree(Path(train.base_model)) != training.get('base_model_files'):
+            raise ValueError('execution evidence training base model drifted')
+    covered = {f'{fold}/adapter/{name}': spec
+               for fold, files in evidence['outputs'].items() for name, spec in files.items()}
+    for entries in artifacts.values():
+        for declared in entries.values():
+            relative = declared.removeprefix('artifacts/')
+            files = _artifact_tree(root / relative)
+            prefix = relative + '/'
+            expected = {name[len(prefix):]: spec for name, spec in covered.items()
+                        if name.startswith(prefix)}
+            if files != expected:
+                raise ValueError('model artifact is not covered by training execution evidence')
+
+
+def _run_model_train_gate(store: ModelRegistryStore, model: Any) -> Any:
+    train = _run_train_gate(store, model.train_id)
+    if any(getattr(train, key) != getattr(model, key)
+           for key in ('run_id', 'data_version', 'prompt_version', 'git_commit', 'base_model')):
+        raise PromotionGateRejected('model binding differs from actual source training')
+    try:
+        _validate_model_artifact_evidence(store, train, model.artifacts)
+    except (ValueError, OSError, KeyError, TypeError, MlflowException) as exc:
+        raise PromotionGateRejected(f'model execution evidence rejected: {exc}') from exc
+    return train
+
+
 def _run_train_gate(store: ModelRegistryStore, train_id: str) -> Any:
     """train 晋级门；成功返回记录，失败包装为 PromotionGateRejected。"""
     try:
         record = validate_train_for_promotion(_train_store(store), train_id)
         validate_training_reference(store.data_root, record.data_version)
+        _validate_train_execution_artifacts(store, record)
         return record
     except (
         TrainRecordNotFound,
         InvalidTrainRecord,
         IncompleteTrainRecord,
         IllegalTrainRecord,
-        ValueError,
+        ValueError, OSError, KeyError, TypeError, AttributeError, MlflowException,
     ) as exc:
         raise PromotionGateRejected(f"train 晋级门拒绝: {exc}") from exc
 
@@ -513,12 +668,13 @@ def _run_eval_gate(store: ModelRegistryStore, eval_id: str, *, require_passed: b
     """eval 结论门；成功返回记录，失败包装为 PromotionGateRejected。"""
     try:
         record = validate_eval_for_conclusion(_eval_store(store), eval_id)
+        _validate_eval_execution_artifacts(store, record)
     except (
         EvalRecordNotFound,
         InvalidEvalRecord,
         IncompleteEvalRecord,
         IllegalEvalRecord,
-        ValueError,
+        ValueError, OSError, KeyError, TypeError, AttributeError, MlflowException,
     ) as exc:
         raise PromotionGateRejected(f"eval 结论门拒绝: {exc}") from exc
 
@@ -563,6 +719,10 @@ def register_model(
             raise ModelVersionConflict(f"model {model_id} 已存在")
 
         train_record = _run_train_gate(store, train_id)
+        try:
+            _validate_model_artifact_evidence(store, train_record, artifacts)
+        except (ValueError, OSError, KeyError, TypeError, MlflowException) as exc:
+            raise PromotionGateRejected(f"model execution evidence rejected: {exc}") from exc
         run = client.get_run(train_record.run_id)
         tags = {
             MODEL_ID_TAG: model_id,
@@ -608,6 +768,7 @@ def finalize_model_evaluation(
                 f"model {model_id} 已绑定 eval {record.eval_id}，不得改绑 {eval_id}"
             )
 
+        _run_model_train_gate(store, record)
         eval_record = _run_eval_gate(store, eval_id, require_passed=True)
         if eval_record.model_id != model_id:
             raise PromotionGateRejected(
@@ -683,7 +844,7 @@ def _approve_model_for_production_locked(
     if eval_id is None:
         raise PromotionGateRejected(f"model {model_id} 尚未绑定通过的正式 eval")
 
-    _run_train_gate(store, train_id)
+    _run_model_train_gate(store, record)
     eval_record = _run_eval_gate(store, eval_id, require_passed=True)
 
     # 关联校验：eval.model_id == 被批准 model_id
@@ -759,7 +920,7 @@ def _set_alias_locked(
         )
 
     # train / eval 门在线复验
-    _run_train_gate(store, record.train_id)
+    _run_model_train_gate(store, record)
     eval_record = _run_eval_gate(store, record.eval_id, require_passed=True)
     if (
         eval_record.model_id != record.model_id
@@ -897,6 +1058,8 @@ def materialize_model(
 
     if record.record_validity == RecordValidity.INVALID.value:
         raise InvalidModelRecord(f"model {model_id} 已 invalid，禁止物化")
+
+    _run_model_train_gate(store, record)
 
     target = Path(models_root) / model_id
     metadata_path = target / MATERIALIZED_METADATA_FILE

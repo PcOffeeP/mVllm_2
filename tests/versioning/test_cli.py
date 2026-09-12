@@ -42,7 +42,8 @@ def test_incomplete_commands_stop_with_usage_error(
     argv: list[str], capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert main(argv) == 2
-    assert "缺少必填参数" in capsys.readouterr().err
+    message = capsys.readouterr().err
+    assert "缺少必填参数" in message or "实际执行器" in message
 
 
 def test_unknown_data_stage_is_fail_closed(capsys: pytest.CaptureFixture[str]) -> None:
@@ -63,7 +64,8 @@ def test_non_create_usage_errors_do_not_initialize_store(
 ) -> None:
     root = tmp_path / "project"
     assert main([*argv, "--root", str(root)]) == 2
-    assert "缺少必填参数" in capsys.readouterr().err
+    message = capsys.readouterr().err
+    assert "缺少必填参数" in message or "实际执行器" in message
     assert not (root / "workspace" / "mlflow").exists()
 
 
@@ -503,7 +505,8 @@ def test_train_run_and_validate_route_to_frozen_inputs(tmp_path, monkeypatch):
 def test_backup_transfer_requires_host_source_and_digest(tmp_path, capsys):
     assert main(["backup", "transfer", "--root", str(tmp_path),
                  "--backup-root", str(tmp_path / "received")]) == 2
-    assert "缺少必填参数" in capsys.readouterr().err
+    message = capsys.readouterr().err
+    assert "缺少必填参数" in message or "实际执行器" in message
 
 
 def test_backup_transfer_cli_routes_explicit_arguments(tmp_path, monkeypatch, capsys):
@@ -516,3 +519,14 @@ def test_backup_transfer_cli_routes_explicit_arguments(tmp_path, monkeypatch, ca
     assert calls == [{"ssh_host": "fixture-host", "source_backup_root": Path("/remote/snapshot"),
                      "backup_root": tmp_path / "received", "catalog_sha256": "a" * 64}]
     assert json.loads(capsys.readouterr().out) == {"objects": []}
+
+
+@pytest.mark.parametrize('domain,actions', [
+    ('train', ('create', 'fold-start', 'fold-end', 'summary', 'complete')),
+    ('eval', ('create', 'fold-start', 'fold-end', 'aggregate', 'summary', 'complete', 'manifest')),
+])
+def test_manual_execution_commands_refused_before_store(tmp_path, capsys, domain, actions):
+    for action in actions:
+        assert main([domain, action, f'{domain}-v4.1-r1', '--root', str(tmp_path)]) == 2
+        assert '实际执行器' in capsys.readouterr().err
+        assert not (tmp_path / 'workspace/mlflow').exists()

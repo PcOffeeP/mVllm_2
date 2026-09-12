@@ -2121,3 +2121,15 @@ def test_transfer_does_not_replace_directory_created_at_publication(world, regis
     assert backup_root.stat().st_ino == created[0]
     assert list(backup_root.iterdir()) == []
     assert not list(tmp_path.glob(".drive.transfer-*"))
+
+
+@pytest.fixture(autouse=True)
+def record_policy_execution_evidence_double(monkeypatch):
+    """Isolate the pre-migration record-policy scenarios from GPU execution proof.
+
+    This module does not certify actual execution or promotion evidence. Unmocked
+    evidence, drift and public service tests live in test_eval_run/test_train_with_contract.
+    """
+    monkeypatch.setattr("versioning.registry._validate_train_execution_artifacts", lambda *a: None)
+    monkeypatch.setattr("versioning.registry._validate_eval_execution_artifacts", lambda *a: None)
+    monkeypatch.setattr("versioning.registry._validate_model_artifact_evidence", lambda *a: None)

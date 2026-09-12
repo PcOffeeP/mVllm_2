@@ -67,58 +67,19 @@ def test_validate_analysis_response_requires_evidence_and_identity():
 # model loading; no raw path, invalid model, cache drift or mode bypass;
 # management/delivery/smoke use the same binding; no actual GPU in these tests.
 def _service_fixture(tmp_path, artifact_kind="adapter"):
-    from pathlib import Path
-    from mlflow.tracking import MlflowClient
-    from versioning.data_release import stage_release, seal_release
-    from versioning.prompts import create_prompt
-    from versioning.mlflow_train import (open_train_store, create_train_run, create_fold_run,
-        end_fold_run, log_train_summary, transition_train_state)
-    from versioning.mlflow_eval import (open_eval_store, create_eval_run, create_eval_fold_run,
-        end_eval_fold_run, log_eval_summary, transition_eval_state)
-    from versioning.registry import (open_registry_store, register_model, finalize_model_evaluation,
-        set_offline_backup_scope, set_alias)
+    from test_eval_run import _formal_eval_fixture, _fake_formal_runtime
+    from finetune import eval_run
+    from versioning.registry import open_registry_store, finalize_model_evaluation, set_offline_backup_scope, set_alias
     from versioning.manifest import export_model_manifest
     from versioning.materialize import materialize_current
-    from pipeline.v4_1_production_contract import load_v4_1_production_contract
-    root = tmp_path / "store"
-    data = root / "data"
-    work = data / "working/batch"
-    work.mkdir(parents=True)
-    (work / "media.txt").write_text("CPU fixture")
-    stage_release(data, "batch", "v4.1", version="data-v4.1-r1")
-    seal_release(data, "data-v4.1-r1", purpose="development", description="fixture",
-        sample_count=1, source_batches=["batch"], splits={"fold0": {"train": 1, "validation": 1}})
-    contract = load_v4_1_production_contract()
-    create_prompt(root, "v4.1", version="prompt-v4.1-r1", system_prompt=contract["analysis"]["system_prompt"],
-        user_prompt=contract["analysis"]["user_prompt"], output_fields=contract["model_output_fields"])
-    base = tmp_path / "base_model"
-    base.mkdir()
-    (base / "model.safetensors").write_bytes(b"base fixture")
-    train = open_train_store(root / "workspace/mlflow")
-    parent = create_train_run(train, "train-v4.1-r1", data_version="data-v4.1-r1",
-        prompt_version="prompt-v4.1-r1", git_commit="fixture", base_model=str(base), config={"fixture": True})
-    for i in range(3):
-        create_fold_run(train, "train-v4.1-r1", i)
-        end_fold_run(train, "train-v4.1-r1", i, "FINISHED", metrics={"loss": .2})
-    log_train_summary(train, "train-v4.1-r1", {"loss": .2})
-    transition_train_state(train, "train-v4.1-r1", "completed")
-    adapter = tmp_path / artifact_kind
-    adapter.mkdir()
-    (adapter / ("adapter_model.safetensors" if artifact_kind == "adapter" else "model.safetensors")).write_bytes(b"weights fixture")
-    MlflowClient(tracking_uri=train.tracking_uri).log_artifacts(parent.run_id, str(adapter), f"fold0/{artifact_kind}")
-    registry = open_registry_store(train.root, data_root=data)
-    model = register_model(registry, "model-v4.1-r1", train_id="train-v4.1-r1",
-        artifacts={"fold0": {artifact_kind: f"artifacts/fold0/{artifact_kind}"}},
-        deploy_target=f"artifacts/fold0/{artifact_kind}")
-    evaluations = open_eval_store(train.root)
-    create_eval_run(evaluations, "eval-v4.1-r1", model_id=model.model_id, model_version_number=model.version,
-        data_version="data-v4.1-r1", config="synthetic fixture", git_commit="fixture",
-        scope="single_fold", split="validation", data_root=data)
-    create_eval_fold_run(evaluations, "eval-v4.1-r1", 0, model_artifact=f"fold0/{artifact_kind}",
-        data_split="validation/fold0", sample_count=1, records="fixture", failures="fixture")
-    end_eval_fold_run(evaluations, "eval-v4.1-r1", 0, "FINISHED", metrics={"score": 1.})
-    log_eval_summary(evaluations, "eval-v4.1-r1", {"score": 1.})
-    transition_eval_state(evaluations, "eval-v4.1-r1", "completed", outcome="passed")
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold", kind=artifact_kind, service_contract=True)
+    eval_run.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
+        model_version=model.model_id, model_version_number=model.version, data_version="data-v4.1-r2",
+        config=config, git_commit="fixture", media_root=media)
+    with pytest.MonkeyPatch.context() as patch:
+        _fake_formal_runtime(patch, service_contract=True)
+        eval_run.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
+    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
     finalize_model_evaluation(registry, model.model_id, eval_id="eval-v4.1-r1")
     set_offline_backup_scope(registry, model.model_id, "adapter" if artifact_kind == "adapter" else "production_bundle")
     export_model_manifest(root / "records/models" / model.model_id / "manifest.yaml", store=registry, model_id=model.model_id)
@@ -207,7 +168,7 @@ def test_service_main_loads_only_resolved_model(tmp_path, monkeypatch, drift_dur
     monkeypatch.setattr(sys, "argv", ["server_proxy", "--root", str(root), "--alias", "candidate",
         "--service-mode", "development", "--contract-version", "tensile-vlm/v4.1", "--deployment-manifest", str(path)])
     if drift_during_load:
-        with pytest.raises(ValueError, match="changed while loading"):
+        with pytest.raises(ValueError, match="changed while loading|evaluated weights drifted|training base model drifted"):
             server_proxy.main()
         assert len(calls) == 1
         return
@@ -295,4 +256,4 @@ def test_service_resolver_merged_uses_deploy_target_without_adapter(tmp_path):
     root, registry, model = _service_fixture(tmp_path, artifact_kind="merged")
     binding = resolve_service_model(root, alias="candidate", service_mode="development")
     assert binding["adapter_path"] is None
-    assert Path(binding["model_path"]) == root / "workspace/models/materialized" / model.model_id / "artifacts/fold0/merged"
+    assert Path(binding["model_path"]) == root / "workspace/models/materialized" / model.model_id / model.deploy_target

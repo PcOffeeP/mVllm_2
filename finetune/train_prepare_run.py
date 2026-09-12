@@ -436,7 +436,10 @@ def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
     base_models = {config["model_name_or_path"] for config in configs.values()}
     if len(base_models) != 1:
         raise ValueError("all folds must bind the same base model")
+    from versioning.registry import _artifact_tree
+    base_model_files = _artifact_tree(Path(next(iter(base_models))))
     training = {"version": train_version, **binding, "git_commit": git_commit,
+        "base_model_files": base_model_files,
         "base_model": next(iter(base_models)), "folds": configs,
         "data_inputs": str(Path(inputs_path).absolute()) if inputs_path is not None else None}
     files.update({"training.yaml": yaml.safe_dump(training, allow_unicode=True, sort_keys=True).encode(),
@@ -503,8 +506,13 @@ def verify_versioned_run(*, root: Path, train_version: str, for_execution: bool 
                     "model_name_or_path": training["base_model"]}
         if any(config.get(key) != value for key, value in expected.items()):
             raise ValueError("frozen fold routing mismatch")
+    if not isinstance(training.get("base_model_files"), dict) or not training["base_model_files"]:
+        raise ValueError("frozen training base model inventory is missing")
     if not for_execution:
         return training
+    from versioning.registry import _artifact_tree
+    if _artifact_tree(Path(training["base_model"])) != training["base_model_files"]:
+        raise ValueError("frozen training base model drifted")
     verify_frozen_prompt(root, training["prompt_version"], train_version)
     files, binding = build_versioned_datasets(root=root, data_version=training["data_version"],
         prompt_version=training["prompt_version"], media_root=Path(training["media_root"]),
@@ -552,6 +560,7 @@ def execute_versioned_run(*, root: Path, train_version: str):
                 verify_versioned_run(root=root, train_version=train_version)
                 def executor(config):
                     run_training(config)
+                    verify_versioned_run(root=root, train_version=train_version)
                     return _read_json(Path(config["output_dir"]) / "train_results.json", "actual train results")
                 child = execute_fold_run(store, train_version, fold, training["folds"][f"fold{fold}"], executor=executor)
                 client.log_artifacts(parent.run_id, training["folds"][f"fold{fold}"]["output_dir"], artifact_path=f"fold{fold}/adapter")
@@ -561,6 +570,15 @@ def execute_versioned_run(*, root: Path, train_version: str):
             if not common:
                 raise ValueError("no common actual metrics for three-fold summary")
             log_train_summary(store, train_version, {f"{key}_mean": sum(item[key] for item in metrics) / 3 for key in common})
+            # Freeze evidence only after the actual tuner returned every fold and
+            # the uploaded weights/results match their recorded metrics.
+            from versioning.registry import _training_execution_snapshot
+            from versioning.mlflow_train import get_train_run
+            snapshot = _training_execution_snapshot(store, get_train_run(store, train_version))
+            proof = run / "training-evidence.json"
+            proof.write_bytes(_pretty_bytes(snapshot))
+            client.log_artifact(parent.run_id, str(proof))
+            client.log_param(parent.run_id, "sha256_training_evidence", sha256_file(proof))
             parent = transition_train_state(store, train_version, "completed")
         except BaseException as exc:
             from versioning.mlflow_train import get_train_run
@@ -581,7 +599,10 @@ def export_versioned_run(*, root: Path, train_version: str) -> Path:
     from versioning.mlflow_train import open_train_store, validate_train_for_promotion
     root = Path(root).absolute()
     training = verify_versioned_run(root=root, train_version=train_version, for_execution=False)
-    parent = validate_train_for_promotion(open_train_store(root / "workspace/mlflow"), train_version)
+    store = open_train_store(root / "workspace/mlflow")
+    parent = validate_train_for_promotion(store, train_version)
+    from versioning.registry import _validate_train_execution_artifacts
+    _validate_train_execution_artifacts(store, parent, require_all_outputs=True)
     for key in ("data_version", "prompt_version", "git_commit", "base_model"):
         if getattr(parent, key) != training[key]:
             raise ValueError("frozen input differs from completed Run")

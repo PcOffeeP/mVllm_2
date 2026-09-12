@@ -605,6 +605,8 @@ def _formal_input(*, root: Path, eval_version: str, model_version: str,
     folds = [0, 1, 2] if model.source_scope == "cross_validation" else [0]
     if any(config["artifact_kind"] not in model.artifacts[f"fold{i}"] for i in folds):
         raise ValueError("selected artifact kind is missing from a registered fold")
+    if model.source_scope == "single_fold" and model.deploy_target != model.artifacts["fold0"][config["artifact_kind"]]:
+        raise ValueError("evaluated artifact must match the registered deploy_target")
     contract, _ = _load_contract()
     from finetune.validation.constants import GENERATION_CONFIG, VIDEO_MAX_FRAMES
     if {**GENERATION_CONFIG, "video_max_frames": VIDEO_MAX_FRAMES} != FORMAL_GENERATION:
@@ -856,18 +858,29 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
         return get_eval_run(store, eval_version)
 
 
-def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
-    import tempfile
+def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
+    """Read-only check of actual MLflow inputs/results and evaluated weight bytes."""
     from mlflow.tracking import MlflowClient
-    from versioning.mlflow_eval import open_eval_store, validate_eval_for_conclusion
-    from versioning.manifest import _publish_immutable
+    from versioning.registry import _run_artifact_root, _artifact_tree, get_model
 
-    value = verify_versioned_evaluation(root=root, eval_version=eval_version, live=False)
-    if any(_sha256(ROOT / source) != digest for source, digest in value["implementation_sha256"].items()):
-        raise ValueError("export requires the frozen scorer implementation")
-    store = open_eval_store(Path(root) / "workspace/mlflow")
-    record = validate_eval_for_conclusion(store, eval_version)
     client = MlflowClient(tracking_uri=store.tracking_uri)
+    artifact_root = _run_artifact_root(store, record.run_id)
+    _artifact_tree(artifact_root)
+    value = json.loads((artifact_root / "input/evaluation.yaml").read_bytes())
+    if value.get("eval_version") != record.eval_id:
+        raise ValueError("execution evidence evaluation identity differs")
+    if _formal_config(value["config"]) != value["config"]:
+        raise ValueError("execution evidence evaluation policy differs")
+    sources = {"finetune/eval_run.py", "finetune/v4_1_runtime.py", "pipeline/v4_1_labels.py",
+               "finetune/validation/model_runtime.py", "finetune/validation/constants.py",
+               "finetune/validation/video_loader.py", "pipeline/preprocessing/minicpm_preprocessor.py"}
+    if set(value["implementation_sha256"]) != sources or any(
+        _sha256(ROOT / source) != digest for source, digest in value["implementation_sha256"].items()
+    ):
+        raise ValueError("execution evidence requires the frozen scorer implementation")
+    model = get_model(store, record.model_id)
+    if _model_binding(model) != value["model"]:
+        raise ValueError("execution evidence registered model binding differs")
     digest = hashlib.sha256(_formal_bytes(value)).hexdigest()
     if (record.config != f"sha256:{digest}" or record.model_id != value["model"]["model_id"]
         or record.model_version_number != value["model"]["version"] or record.data_version != value["data_version"]
@@ -875,46 +888,76 @@ def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
         or set(record.folds) != set(value["folds"])):
         raise ValueError("completed evaluation does not match frozen input")
     params = client.get_run(record.run_id).data.params
-    with tempfile.TemporaryDirectory(prefix="eval-export-") as scratch:
-        paths = {}
-        for name in ("evaluation.yaml", "summary.json", "records.jsonl", "failures.jsonl"):
-            path = Path(client.download_artifacts(record.run_id, name, scratch))
-            if _sha256(path) != params.get(f"sha256_{name}"):
-                raise ValueError("completed evaluation artifact digest mismatch")
-            paths[name] = path
-        evaluation = json.loads(paths["evaluation.yaml"].read_bytes())
-        if {key: evaluation.get(key) for key in value} != value:
-            raise ValueError("persisted evaluation input mismatch")
-        summary = json.loads(paths["summary.json"].read_bytes())
-        records = [json.loads(line) for line in paths["records.jsonl"].read_text().splitlines()]
-        expected = [(fold, s) for fold in value["folds"] for s in value["samples"][f"fold{fold}"]]
-        if len(records) != len(expected):
-            raise ValueError("completed evaluation sample count mismatch")
-        for row, (fold, sample) in zip(records, expected, strict=True):
-            if row.get("fold") != fold or any(row.get(k) != v for k, v in sample.items()):
-                raise ValueError("completed evaluation sample binding mismatch")
-            parsed = None
-            try:
-                parsed = parse_v4_1_output(row["raw_output"])
-            except V4_1FinetuneError:
-                pass
-            if row["prediction"] != parsed or row["strict_valid"] != (parsed is not None) or row["scores"] != score_v4_1_prediction(row["target"], parsed):
-                raise ValueError("completed evaluation scoring mismatch")
-        recomputed = summarize_records(records)
-        metrics = {key: recomputed["metrics"][key] for key in FORMAL_METRICS}
-        outcome = "passed" if all(metrics[k] >= threshold for k, threshold in value["config"]["thresholds"].items()) else "failed"
-        if (not evaluation_succeeded(recomputed) or any(summary.get(k) != v for k, v in recomputed.items())
-            or summary.get("input_sha256") != digest or summary.get("outcome") != outcome
-            or record.outcome != outcome or dict(record.metrics) != metrics):
-            raise ValueError("completed evaluation summary/outcome mismatch")
-        failures = [json.loads(line) for line in paths["failures.jsonl"].read_text().splitlines()]
-        if failures != [row for row in records if row["runtime_error"] or row["parse_error"]]:
-            raise ValueError("completed evaluation failure records mismatch")
-    target = Path(root) / "records/evaluations" / eval_version / "manifest.yaml"
-    return _publish_immutable(target, _formal_bytes({"version": eval_version,
+    paths = {}
+    for name in ("evaluation.yaml", "summary.json", "records.jsonl", "failures.jsonl"):
+        path = artifact_root / name
+        if _sha256(path) != params.get(f"sha256_{name}"):
+            raise ValueError("completed evaluation artifact digest mismatch")
+        paths[name] = path
+    evaluation = json.loads(paths["evaluation.yaml"].read_bytes())
+    if {key: evaluation.get(key) for key in value} != value:
+        raise ValueError("persisted evaluation input mismatch")
+    summary = json.loads(paths["summary.json"].read_bytes())
+    records = [json.loads(line) for line in paths["records.jsonl"].read_text().splitlines()]
+    expected = [(fold, s) for fold in value["folds"] for s in value["samples"][f"fold{fold}"]]
+    if len(records) != len(expected):
+        raise ValueError("completed evaluation sample count mismatch")
+    for row, (fold, sample) in zip(records, expected, strict=True):
+        if row.get("fold") != fold or any(row.get(k) != v for k, v in sample.items()):
+            raise ValueError("completed evaluation sample binding mismatch")
+        parsed = None
+        try:
+            parsed = parse_v4_1_output(row["raw_output"])
+        except V4_1FinetuneError:
+            pass
+        if row["prediction"] != parsed or row["strict_valid"] != (parsed is not None) or row["scores"] != score_v4_1_prediction(row["target"], parsed):
+            raise ValueError("completed evaluation scoring mismatch")
+    recomputed = summarize_records(records)
+    metrics = {key: recomputed["metrics"][key] for key in FORMAL_METRICS}
+    outcome = "passed" if all(metrics[k] >= threshold for k, threshold in value["config"]["thresholds"].items()) else "failed"
+    if (not evaluation_succeeded(recomputed) or any(summary.get(k) != v for k, v in recomputed.items())
+        or summary.get("input_sha256") != digest or summary.get("outcome") != outcome
+        or record.outcome != outcome or dict(record.metrics) != metrics):
+        raise ValueError("completed evaluation summary/outcome mismatch")
+    failures = [json.loads(line) for line in paths["failures.jsonl"].read_text().splitlines()]
+    if failures != [row for row in records if row["runtime_error"] or row["parse_error"]]:
+        raise ValueError("completed evaluation failure records mismatch")
+    weights = evaluation.get("weights", {})
+    if set(weights) != {f"fold{fold}" for fold in value["folds"]}:
+        raise ValueError("execution evidence evaluated weight inventory is incomplete")
+    model_root = _run_artifact_root(store, model.run_id)
+    kind = value["config"]["artifact_kind"]
+    if model.source_scope == "single_fold" and model.deploy_target != model.artifacts["fold0"][kind]:
+        raise ValueError("evaluated artifact must match the registered deploy_target")
+    for fold in value["folds"]:
+        declared = model.artifacts[f"fold{fold}"][kind]
+        used = weights[f"fold{fold}"]
+        if used.get("model_artifact") != declared:
+            raise ValueError("execution evidence evaluated artifact differs")
+        artifact_files = _artifact_tree(model_root / declared.removeprefix("artifacts/"))
+        if kind == "adapter":
+            if artifact_files != used.get("adapter_files") or _artifact_tree(Path(model.base_model)) != used.get("model_files"):
+                raise ValueError("execution evidence evaluated weights drifted")
+        elif artifact_files != used.get("model_files") or used.get("adapter_files") is not None:
+            raise ValueError("execution evidence evaluated weights drifted")
+    return {"version": record.eval_id,
         "protocol": "tensile-vlm/v4.1", "state": "sealed", "record_validity": record.record_validity,
         "model_version": record.model_id, "mlflow_model_version": record.model_version_number,
         "data_version": record.data_version, "split": "validation", "model_scope": record.scope,
         "sample_count": len(records), "outcome": record.outcome, "run_id": record.run_id,
         "input_sha256": digest, "artifacts": {name: {"uri": f"runs:/{record.run_id}/{name}",
-            "sha256": params[f"sha256_{name}"]} for name in paths}}), label="evaluation manifest")
+            "sha256": params[f"sha256_{name}"]} for name in paths}}
+
+
+def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
+    from versioning.mlflow_eval import open_eval_store, validate_eval_for_conclusion
+    from versioning.registry import open_registry_store
+    from versioning.manifest import _publish_immutable
+    value = verify_versioned_evaluation(root=root, eval_version=eval_version, live=False)
+    store = open_registry_store(Path(root) / "workspace/mlflow", data_root=Path(root) / "data")
+    record = validate_eval_for_conclusion(open_eval_store(store.root), eval_version)
+    document = validate_evaluation_execution_artifacts(store=store, record=record)
+    if document["input_sha256"] != hashlib.sha256(_formal_bytes(value)).hexdigest():
+        raise ValueError("local frozen input differs from actual execution evidence")
+    target = Path(root) / "records/evaluations" / eval_version / "manifest.yaml"
+    return _publish_immutable(target, _formal_bytes(document), label="evaluation manifest")

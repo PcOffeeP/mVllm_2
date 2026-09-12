@@ -694,8 +694,8 @@ INPUTS包含已经完成的ROI决定；source阶段不会替操作者生成或�
 ### 10.9 holdout claim 与训练边界
 
 - `python -m versioning data claim` 只接受已经封存且 `purpose: holdout` 的完整 data 版本，并要求显式给出 `--pre-registration`、`--eval-version`、`--model-version`、`--split` 与 `--executor`；命令先核对预注册与四元组、校验 holdout 隔离布局，再把预注册原子冻结为只读的 `evaluations/staging/<eval>/authorization/pre_registration.yaml`，最后把该冻结文件的完整 SHA-256 与身份一起原子写入 release 的 `authorization/claim.yaml`。规则或阈值发生任何内容变化都会被拒绝。
-- `python -m versioning train create` 在创建 MLflow Run 前在线执行数据训练引用门；`purpose: holdout`、`training_allowed: false` 或 `status: invalid` 均直接拒绝。
-- holdout 的 `eval create` 还必须显式提供匹配的 `--pre-registration` 与 `--executor`，并把稳定审计路径和内容摘要记录到 eval Run；`eval complete` 必须再次显式提供预注册与 executor，按摘要核对冻结内容和 claim，在完成门通过后先原子落 `consumed.yaml`，再以可恢复顺序提交 MLflow 的 `workflow_state` 与原生 RunStatus。同一内容在另一台机器上的绝对路径可以不同；消费写入或状态提交中断时，同一完整身份和 executor 可以安全重试，任何内容或身份漂移均拒绝且不创建第二份 claim。
+- `python -m versioning train prepare/validate/run` 在线执行数据训练引用门，实际 run 在创建 MLflow Run 前再次校验；`purpose: holdout`、`training_allowed: false` 或 `status: invalid` 均直接拒绝。
+- 当前实际 `eval prepare/validate/run/export` 仅接入 validation，holdout 实际读取尚未接线，在读取真值或加载权重前拒绝。公共手工 train/eval 状态写入 CLI 已停用，不能用 `eval create/complete` 消费 claim 或产生正式 passed。底层 Python holdout 授权 API 保留原规则：创建与完成均要求匹配的预注册和 executor，核对冻结摘要与 claim；完成时先原子落 `consumed.yaml`，再可恢复地提交 Run 状态。该底层状态处理不构成真实测评证据，也不解除 holdout 的独立授权边界。
 - 完整参数以各子命令 `--help` 为准；所有正式版本均使用完整 `<kind>-v<协议>-r<N>` 身份，不接受隐式 latest 或短前缀。
 
 <!-- DECISION-LOG

@@ -493,6 +493,12 @@ def _enumerate_scoped_models(
 
         train_run = client.get_run(record.run_id)
         train_artifact_root = _run_artifact_root(store, train_run.info.artifact_uri)
+        # Preserve the lightweight proof and frozen inputs needed by restored
+        # models, without widening their declared weight retention scope.
+        for evidence_name in ("input", "training-evidence.json"):
+            evidence_source = train_artifact_root / evidence_name
+            if evidence_source.exists():
+                mlflow_paths.add(evidence_source.relative_to(store.root.resolve()).as_posix())
         for declared in selected_artifacts:
             relative_in_run = Path(*Path(declared).parts[1:])
             selected_source = train_artifact_root / relative_in_run

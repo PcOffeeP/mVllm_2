@@ -94,7 +94,7 @@ def test_legacy_yaml_parser_rejects_duplicate_keys_before_execution(monkeypatch,
     assert events == []
 
 
-def _versioned_data_fixture(tmp_path):
+def _versioned_data_fixture(tmp_path, *, prompt_definition=None):
     import json
     import yaml
     from versioning.data_release import seal_payload
@@ -133,8 +133,8 @@ def _versioned_data_fixture(tmp_path):
     receipt.write_text(yaml.safe_dump({"target_identity": "data-v4.1-r2",
         "target_path": "data/releases/data-v4.1-r2/release.yaml", "status": "committed",
         "target_release_digest": _release_content_digest(release)}))
-    create_prompt(root, "v4.1", version="prompt-v4.1-r1", system_prompt="frozen system",
-                  user_prompt="frozen user", output_fields=list(labels))
+    definition = prompt_definition or {"system_prompt": "frozen system", "user_prompt": "frozen user", "output_fields": list(labels)}
+    create_prompt(root, "v4.1", version="prompt-v4.1-r1", **definition)
     return root, media, release, rows
 
 
@@ -190,6 +190,7 @@ def _prepare_versioned_fixture(tmp_path):
     root, media, release, rows = _versioned_data_fixture(tmp_path)
     model = tmp_path / "model"
     model.mkdir()
+    (model / "model.safetensors").write_bytes(b"synthetic base")
     configs = {f"fold{i}": {"seed": 3411 + i, "model_name_or_path": str(model),
         "learning_rate": 0.0001, "do_train": True} for i in range(3)}
     prepared = prepare_versioned_run(root=root, train_version="train-v4.1-r1",
@@ -227,6 +228,8 @@ def test_versioned_execution_calls_real_adapter_and_records_all_folds(tmp_path, 
         output = Path(config["output_dir"])
         output.mkdir(parents=True)
         (output / "train_results.json").write_text(json.dumps({"train_loss": 0.25}))
+        (output / "adapter_config.json").write_text("{}")
+        (output / "adapter_model.safetensors").write_bytes(b"synthetic adapter")
     from pathlib import Path
     monkeypatch.setattr(train_with_contract, "run_training", tuner)
     result = execute_versioned_run(root=root, train_version="train-v4.1-r1")
@@ -289,6 +292,8 @@ def test_completed_training_can_recover_failed_export_without_execution(tmp_path
         output = Path(config["output_dir"])
         output.mkdir(parents=True)
         (output / "train_results.json").write_text(json.dumps({"train_loss": 0.25}))
+        (output / "adapter_config.json").write_text("{}")
+        (output / "adapter_model.safetensors").write_bytes(b"synthetic adapter")
     monkeypatch.setattr(train_with_contract, "run_training", tuner)
     original = manifests._publish_immutable
     monkeypatch.setattr(manifests, "_publish_immutable", lambda *a, **k: (_ for _ in ()).throw(OSError("export unavailable")))
@@ -333,3 +338,55 @@ def test_retired_training_cli_runs_without_site_packages(module, tmp_path):
             assert result.returncode == expected, result.stderr
             assert "python -m versioning" in result.stdout + result.stderr
             assert not (tmp_path / "output").exists()
+
+
+def test_registry_rejects_completed_train_without_execution_evidence(tmp_path):
+    import pytest
+    from versioning.mlflow_train import (open_train_store, create_train_run, create_fold_run,
+        end_fold_run, log_train_summary, transition_train_state)
+    from versioning.registry import open_registry_store, register_model, PromotionGateRejected
+    from mlflow.tracking import MlflowClient
+    root, media, release, rows = _versioned_data_fixture(tmp_path)
+    store = open_train_store(root / 'workspace/mlflow')
+    create_train_run(store, 'train-v4.1-r1', data_version='data-v4.1-r2',
+        prompt_version='prompt-v4.1-r1', git_commit='unexecuted', base_model='missing', config={'epochs': 1})
+    for fold in range(3):
+        create_fold_run(store, 'train-v4.1-r1', fold)
+        end_fold_run(store, 'train-v4.1-r1', fold, 'FINISHED', metrics={'loss': 0.1})
+    log_train_summary(store, 'train-v4.1-r1', {'loss_mean': 0.1})
+    transition_train_state(store, 'train-v4.1-r1', 'completed')
+    registry = open_registry_store(store.root, data_root=root / 'data')
+    with pytest.raises(PromotionGateRejected, match='evidence|证据'):
+        register_model(registry, 'model-v4.1-r1', train_id='train-v4.1-r1')
+    assert not MlflowClient(tracking_uri=store.tracking_uri).search_model_versions("name='mVllm2'")
+
+
+def test_training_base_drift_before_run_creates_no_run(tmp_path, monkeypatch):
+    import pytest
+    from finetune.train_prepare_run import execute_versioned_run
+    root, _, _, _ = _prepare_versioned_fixture(tmp_path)
+    (tmp_path / "model/model.safetensors").write_bytes(b"different base")
+    calls = []
+    monkeypatch.setattr("finetune.train_with_contract.run_training", lambda config: calls.append(config))
+    with pytest.raises(ValueError, match="base model"):
+        execute_versioned_run(root=root, train_version="train-v4.1-r1")
+    assert calls == []
+    assert not (root / "workspace/mlflow").exists()
+
+
+def test_training_base_drift_during_fold_marks_run_failed(tmp_path, monkeypatch):
+    import pytest
+    from finetune.train_prepare_run import execute_versioned_run
+    from versioning.mlflow_train import open_train_store, get_train_run
+    root, _, _, _ = _prepare_versioned_fixture(tmp_path)
+    calls = []
+    def tuner(config):
+        calls.append(config)
+        (tmp_path / "model/model.safetensors").write_bytes(b"different base")
+    monkeypatch.setattr("finetune.train_with_contract.run_training", tuner)
+    with pytest.raises(ValueError, match="base model"):
+        execute_versioned_run(root=root, train_version="train-v4.1-r1")
+    record = get_train_run(open_train_store(root / "workspace/mlflow"), "train-v4.1-r1")
+    assert record.workflow_state == "failed"
+    assert len(calls) == 1
+    assert not (root / "records/training/train-v4.1-r1/manifest.yaml").exists()

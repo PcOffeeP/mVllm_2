@@ -149,35 +149,45 @@ def test_evaluation_succeeds_when_inference_has_no_runtime_failures() -> None:
 # inputs; actual strict scorer/model-runtime dispatch; three fold bindings;
 # runtime failure versus quality failure; authoritative export retry; no raw
 # weight override or holdout bypass through the public CLI.
-def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter"):
+def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter", service_contract=False):
     from test_train_with_contract import _versioned_data_fixture
-    from versioning.mlflow_train import (open_train_store, create_train_run,
-        create_fold_run, end_fold_run, log_train_summary, transition_train_state)
+    from finetune.train_prepare_run import prepare_versioned_run, execute_versioned_run
     from versioning.registry import open_registry_store, register_model
-    from mlflow.tracking import MlflowClient
+    from unittest.mock import patch
+    import json
 
-    root, media, release, rows = _versioned_data_fixture(tmp_path)
+    definition = None
+    if service_contract:
+        from pipeline.v4_1_production_contract import load_v4_1_production_contract
+        contract = load_v4_1_production_contract()
+        definition = {**{k: contract["analysis"][k] for k in ("system_prompt", "user_prompt")}, "output_fields": contract["model_output_fields"]}
+    root, media, release, rows = _versioned_data_fixture(tmp_path, prompt_definition=definition)
     base = tmp_path / "base-model"
     base.mkdir()
     (base / "config.json").write_text("{}")
-    store = open_train_store(root / "workspace/mlflow")
-    parent = create_train_run(store, "train-v4.1-r1", data_version="data-v4.1-r2",
-        prompt_version="prompt-v4.1-r1", git_commit="fixture", base_model=str(base), config={"fixture": True})
-    client = MlflowClient(tracking_uri=store.tracking_uri)
-    for fold in range(3):
-        create_fold_run(store, "train-v4.1-r1", fold)
-        end_fold_run(store, "train-v4.1-r1", fold, "FINISHED", metrics={"loss": 0.2})
-        artifact = tmp_path / f"adapter{fold}"
-        artifact.mkdir()
+    (base / "model.safetensors").write_bytes(b"synthetic base")
+    configs = {f"fold{i}": {"model_name_or_path": str(base), "seed": 3411 + i} for i in range(3)}
+    prepare_versioned_run(root=root, train_version="train-v4.1-r1", data_version="data-v4.1-r2",
+        prompt_version="prompt-v4.1-r1", media_root=media, fold_configs=configs,
+        git_commit="fixture", environment={"python": "CPU fixture"})
+    def tuner(config):
+        artifact = Path(config["output_dir"])
+        artifact.mkdir(parents=True)
         (artifact / "adapter_config.json").write_text("{}")
-        (artifact / "adapter_model.safetensors").write_bytes(b"fixture")
-        client.log_artifacts(parent.run_id, str(artifact), artifact_path=f"fold{fold}/{kind}")
-    log_train_summary(store, "train-v4.1-r1", {"loss_mean": 0.2})
-    transition_train_state(store, "train-v4.1-r1", "completed")
-    registry = open_registry_store(store.root, data_root=root / "data")
+        (artifact / "adapter_model.safetensors").write_bytes(b"synthetic adapter")
+        (artifact / "train_results.json").write_text(json.dumps({"loss": 0.2}))
+        if kind == "merged":
+            merged = artifact / "merged"
+            merged.mkdir()
+            (merged / "config.json").write_text("{}")
+            (merged / "model.safetensors").write_bytes(b"synthetic merged")
+    with patch("finetune.train_with_contract.run_training", side_effect=tuner):
+        execute_versioned_run(root=root, train_version="train-v4.1-r1")
+    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    suffix = "adapter" if kind == "adapter" else "adapter/merged"
     model = register_model(registry, "model-v4.1-r1", train_id="train-v4.1-r1",
-        source_scope=scope, deploy_target=None if scope == "cross_validation" else f"artifacts/fold0/{kind}",
-        artifacts={f"fold{i}": {kind: f"artifacts/fold{i}/{kind}"} for i in (range(3) if scope == "cross_validation" else [0])})
+        source_scope=scope, deploy_target=None if scope == "cross_validation" else f"artifacts/fold0/{suffix}",
+        artifacts={f"fold{i}": {kind: f"artifacts/fold{i}/{suffix}"} for i in (range(3) if scope == "cross_validation" else [0])})
     config = {"scope": scope, "split": "validation", "artifact_kind": kind,
         "scorer": "strict-v4.1", "sample_selection": "all", "quantization_bit": None, "aggregation": "pooled",
         "generation": {"do_sample": False, "num_beams": 1, "max_new_tokens": 256, "video_max_frames": 8},
@@ -193,7 +203,7 @@ def _prepare_formal(tmp_path):
     return root, media, model, path
 
 
-def _fake_formal_runtime(monkeypatch, *, runtime_error=False, invalid_output=False):
+def _fake_formal_runtime(monkeypatch, *, runtime_error=False, invalid_output=False, service_contract=False):
     from types import SimpleNamespace
     calls = []
     def load(model_dir, **kwargs):
@@ -201,8 +211,13 @@ def _fake_formal_runtime(monkeypatch, *, runtime_error=False, invalid_output=Fal
         return object(), object()
     def infer(model, processor, video_path, prompt, **kwargs):
         assert Path(video_path).is_file()
-        assert prompt == "frozen user"
-        assert kwargs["system_prompt"] == "frozen system"
+        if service_contract:
+            from pipeline.v4_1_production_contract import load_v4_1_production_contract
+            expected = load_v4_1_production_contract()["analysis"]
+        else:
+            expected = {"user_prompt": "frozen user", "system_prompt": "frozen system"}
+        assert prompt == expected["user_prompt"]
+        assert kwargs["system_prompt"] == expected["system_prompt"]
         if runtime_error:
             raise RuntimeError("fixture inference failure")
         import json
@@ -457,7 +472,7 @@ def test_formal_mid_execution_base_drift_cannot_complete(tmp_path, monkeypatch):
         (Path(model_dir) / "config.json").write_text('{"changed": true}')
         return result
     monkeypatch.setattr(evaluation_cli, "load_model", mutate)
-    with pytest.raises(ValueError, match="weights drifted"):
+    with pytest.raises(ValueError, match="weights drifted|training base model drifted"):
         evaluation_cli.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
     assert not (root / "records/evaluations/eval-v4.1-r1/manifest.yaml").exists()
 
@@ -496,3 +511,140 @@ def test_formal_requires_explicit_aggregation_rule(tmp_path):
         evaluation_cli.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
             model_version=model.model_id, model_version_number=model.version,
             data_version="data-v4.1-r2", config=config, git_commit="fixture", media_root=media)
+
+
+def test_registry_rejects_passed_eval_without_actual_results(tmp_path):
+    from versioning.mlflow_eval import (open_eval_store, create_eval_run, create_eval_fold_run,
+        end_eval_fold_run, log_eval_summary, transition_eval_state)
+    from versioning.registry import (open_registry_store, finalize_model_evaluation,
+        get_model, PromotionGateRejected)
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope='single_fold')
+    store = open_eval_store(root / 'workspace/mlflow')
+    create_eval_run(store, 'eval-v4.1-r1', model_id=model.model_id,
+        model_version_number=model.version, data_version='data-v4.1-r2', config='missing.yaml',
+        git_commit='unexecuted', scope='single_fold', split='validation', data_root=root / 'data')
+    create_eval_fold_run(store, 'eval-v4.1-r1', 0, model_artifact='missing', data_split='validation',
+        sample_count=1, records='missing', failures='missing')
+    end_eval_fold_run(store, 'eval-v4.1-r1', 0, 'FINISHED', metrics={'score': 1.0})
+    log_eval_summary(store, 'eval-v4.1-r1', {'score': 1.0})
+    transition_eval_state(store, 'eval-v4.1-r1', 'completed', outcome='passed')
+    registry = open_registry_store(store.root, data_root=root / 'data')
+    with pytest.raises(PromotionGateRejected):
+        finalize_model_evaluation(registry, model.model_id, eval_id='eval-v4.1-r1')
+    assert get_model(registry, model.model_id).eval_id is None
+
+
+@pytest.mark.parametrize('drift', ['adapter', 'base', 'evaluation', 'training_input', 'proof_missing'])
+def test_qualified_alias_rechecks_actual_execution_bytes(tmp_path, monkeypatch, drift):
+    from versioning.registry import (open_registry_store, finalize_model_evaluation,
+        set_offline_backup_scope, set_alias, get_model_by_alias, PromotionGateRejected, _run_artifact_root)
+    from pipeline.model_registry import resolve_service_model
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope='single_fold')
+    evaluation_cli.prepare_versioned_evaluation(root=root, eval_version='eval-v4.1-r1',
+        model_version=model.model_id, model_version_number=model.version, data_version='data-v4.1-r2',
+        config=config, git_commit='fixture', media_root=media)
+    _fake_formal_runtime(monkeypatch)
+    result = evaluation_cli.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
+    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    finalize_model_evaluation(registry, model.model_id, eval_id=result.eval_id)
+    set_offline_backup_scope(registry, model.model_id, 'adapter')
+    set_alias(registry, model.model_id, 'candidate')
+    assert get_model_by_alias(registry, 'candidate').model_id == model.model_id
+    train_root = _run_artifact_root(registry, model.run_id)
+    targets = {'adapter': train_root / 'fold0/adapter/adapter_model.safetensors',
+        'base': Path(model.base_model) / 'model.safetensors',
+        'evaluation': _run_artifact_root(registry, result.run_id) / 'records.jsonl',
+        'training_input': train_root / 'input/training.yaml',
+        'proof_missing': train_root / 'training-evidence.json'}
+    target = targets[drift]
+    if drift == 'proof_missing':
+        target.unlink()
+    else:
+        content = target.read_bytes()
+        target.chmod(0o644)
+        target.write_bytes(bytes([content[0] ^ 1]) + content[1:])
+    with pytest.raises(PromotionGateRejected):
+        get_model_by_alias(registry, 'candidate')
+    with pytest.raises(ValueError):
+        resolve_service_model(root, alias='candidate', service_mode='development')
+
+
+def test_actual_execution_chain_reaches_candidate_and_backup_through_cli(tmp_path, monkeypatch):
+    import yaml
+    from versioning.cli import main
+    from versioning.registry import open_registry_store, get_model_by_alias
+    from versioning.backup import verify_backup
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope='single_fold')
+    configuration = tmp_path / 'eval-config.yaml'
+    configuration.write_text(yaml.safe_dump(config))
+    common = ['--root', str(root)]
+    assert main(['eval', 'prepare', 'eval-v4.1-r1', *common,
+        '--model-version', model.model_id, '--model-version-number', str(model.version),
+        '--data-version', 'data-v4.1-r2', '--config', str(configuration),
+        '--git-commit', 'fixture', '--media-root', str(media)]) == 0
+    _fake_formal_runtime(monkeypatch)
+    assert main(['eval', 'run', 'eval-v4.1-r1', *common]) == 0
+    for args in [('finalize', '--eval-version', 'eval-v4.1-r1'),
+                 ('scope', '--backup-scope', 'adapter'), ('alias', '--alias', 'candidate')]:
+        assert main(['model', args[0], model.model_id, *common, *args[1:]]) == 0
+    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    assert get_model_by_alias(registry, 'candidate').model_id == model.model_id
+    manifest = root / 'records/models' / model.model_id / 'manifest.yaml'
+    assert main(['model', 'manifest', model.model_id, *common, '--target', str(manifest)]) == 0
+    assert main(['model', 'current', *common, '--alias', 'candidate', '--service-mode', 'development']) == 0
+    backup = tmp_path / 'backup'
+    assert main(['backup', 'create', *common, '--backup-root', str(backup)]) == 0
+    assert main(['backup', 'verify', *common, '--backup-root', str(backup)]) == 0
+    catalog = verify_backup(backup)
+    assert {obj.object_id for obj in catalog.objects} == {
+        'data-v4.1-r2', 'prompt-v4.1-r1', 'model-v4.1-r1', 'mlflow-store'}
+    store_files = [file.path for obj in catalog.objects if obj.object_id == 'mlflow-store' for file in obj.files]
+    assert any(path.endswith('/training-evidence.json') for path in store_files)
+    assert any(path.endswith('/input/training.yaml') for path in store_files)
+    assert any('/fold0/adapter/adapter_model.safetensors' in path for path in store_files)
+    assert not any(f'/fold{fold}/adapter/' in path for fold in (1, 2) for path in store_files)
+
+
+@pytest.mark.parametrize("drift", ["base", "missing_weight"])
+def test_model_rejects_training_artifact_drift_before_first_evaluation(tmp_path, drift):
+    from versioning.registry import open_registry_store, register_model, PromotionGateRejected, _run_artifact_root
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold")
+    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    if drift == "base":
+        (Path(model.base_model) / "model.safetensors").write_bytes(b"changed base")
+    else:
+        (_run_artifact_root(registry, model.run_id) / "fold0/adapter/adapter_model.safetensors").unlink()
+    with pytest.raises(PromotionGateRejected):
+        register_model(registry, "model-v4.1-r2", train_id="train-v4.1-r1")
+    with pytest.raises(PromotionGateRejected):
+        evaluation_cli.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
+            model_version=model.model_id, model_version_number=model.version, data_version="data-v4.1-r2",
+            config=config, git_commit="fixture", media_root=media)
+    assert not (root / "workspace/evaluations/eval-v4.1-r1").exists()
+
+
+def test_evaluation_cannot_qualify_another_deploy_artifact(tmp_path):
+    from versioning.registry import open_registry_store, register_model
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold", kind="merged")
+    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    model = register_model(registry, "model-v4.1-r2", train_id="train-v4.1-r1",
+        artifacts={"fold0": {"adapter": "artifacts/fold0/adapter", "merged": "artifacts/fold0/adapter/merged"}},
+        deploy_target="artifacts/fold0/adapter/merged")
+    with pytest.raises(ValueError, match="deploy_target"):
+        evaluation_cli.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
+            model_version=model.model_id, model_version_number=model.version, data_version="data-v4.1-r2",
+            config={**config, "artifact_kind": "adapter"}, git_commit="fixture", media_root=media)
+
+
+def test_declared_fold_evidence_survives_unselected_weight_retirement(tmp_path):
+    import shutil
+    from versioning.registry import open_registry_store, validate_model_for_evaluation, PromotionGateRejected, _run_artifact_root
+    root, _, model, _ = _formal_eval_fixture(tmp_path, scope="single_fold")
+    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    artifacts = _run_artifact_root(registry, model.run_id)
+    for fold in (1, 2):
+        shutil.rmtree(artifacts / f"fold{fold}")
+    assert validate_model_for_evaluation(registry, model.model_id, model.version).model_id == model.model_id
+    (artifacts / "fold0/adapter/adapter_model.safetensors").unlink()
+    with pytest.raises(PromotionGateRejected):
+        validate_model_for_evaluation(registry, model.model_id, model.version)
