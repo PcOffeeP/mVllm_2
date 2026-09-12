@@ -347,3 +347,13 @@ Mac已接收完整review_export包，验签并以现有Streamlit AppTest加载�
 | external-media-reachability.json | `44792677f06ef6983dc01cd7300b83e6d8b1bfad2f18832c898ef867024d932b` |
 | review-routing-investigation.json | `b72cbe5348c44cae42be8a5d9062ab60cf095338e885220416702b6055a8ff69` |
 | mac-package-inspection.json | `f3613ba197ca81fa0f8bae623563d8303126abb11b639048a9b97ef36887b10c` |
+
+## 21. M3 Linux 恢复测试路径可移植性修复
+
+训练机新环境执行 `.venv-m3/bin/python -m pytest -q tests/versioning/test_data_pipeline.py tests/versioning/test_cli.py tests/versioning/test_dvc_pipeline.py tests/versioning/test_e2e.py --basetemp <隔离项目>/m3-verification-20260912/pytest-tmp`，**244 passed、1 failed，23.66秒**。唯一失败为真实DVC remote add写入含中文的绝对地址时ASCII编码错误，尚未执行push/pull，不当作产品媒体或正式迁移失败。
+
+仅将test_dvc_pipeline.py中的临时remote URL改为`os.path.relpath(remote, root)`，仍定位原fixture缓存目录，全部push→删除临时payload/cache→pull→文件清单/元数据/封存校验断言保留。训练机同一代码修复后DVC专项 **22 passed，8.34秒，exit0**；独立reviewer确认本机/训练机diff一致、旧失败与新通过日志对应，审查通过。这不证明DVC支持非ASCII绝对remote地址，后续缓存配置应保留此环境限制。
+
+本机完整权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /private/tmp/mvllm2-m3-portable-final-20260912` 为 **1768 passed，273.39秒，exit0**，已等待正常退出，日志`/tmp/mvllm2-m3-portable-full.log`。无production代码改变。训练机原始两份日志位于comparison/linux-m3-targeted-pytest.log和linux-m3-dvc-fixed.log。本节修复按同次提交追溯。
+
+训练机实机证据原子提交bf3d4ca已通过SHA与bundle verify取回本机，双方暂未push。两份真实release复制与原媒体对照完成不代表M3整体完成：23条人工审查的可信作者来源及回传→非正式真实发布/校验仍待补齐。

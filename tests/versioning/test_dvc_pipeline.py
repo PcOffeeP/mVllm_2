@@ -126,7 +126,9 @@ def test_real_dvc_payload_push_pull_preserves_metadata(dvc_inputs, tmp_path):
     assert pointer.is_file()
     assert 'release.yaml' not in pointer.read_text()
     remote = tmp_path / 'remote'
-    proc = dvc(root, 'remote', 'add', '-d', 'fixture', str(remote)); assert proc.returncode == 0, proc.stderr
+    # DVC's config writer rejects non-ASCII absolute URLs on Linux.
+    remote_url = os.path.relpath(remote, root)
+    proc = dvc(root, 'remote', 'add', '-d', 'fixture', remote_url); assert proc.returncode == 0, proc.stderr
     proc = dvc(root, 'push', str(pointer)); assert proc.returncode == 0, proc.stderr
     dp._restore_write_bits(payload); release.chmod(0o700); shutil.rmtree(payload)
     shutil.rmtree(root / '.dvc/cache')
