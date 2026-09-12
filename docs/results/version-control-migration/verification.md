@@ -657,7 +657,7 @@ report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c�
 
 独立reviewer只读获取两端原始报告和日志，逐字节一致、摘要一致，报告内日志摘要正确；核对指定命令和环境记录，实时Python3.11.16、隔离60dd00bc tracked clean、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑，历史执行环境/退出码/耗时依据报告与日志，实时状态不重建历史进程。
 
-## 36. M7c辅助UI入口接管（进行中）
+## 36. M7c辅助UI入口接管（本批完成）
 
 基线80b7fa3e。review_candidates_app在参数解析时拒绝旧queue，避免进入current数据根和旧review_decisions写入；完整包及默认项目维护者身份不变。ROI仍是输入准备工具，公开参数要求metadata实际文件/output/project-root；拒绝缺参、无文件/目录和输出覆盖metadata，移除模块导入时current_data_paths调用；几何/媒体/人工决定函数保留。旧ROI解析器只供历史语义测试，未删除仍被业务引用的索引库。
 
@@ -668,3 +668,13 @@ report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c�
 剩余公开辅助CLI已定位：roi_freeze_decisions.py、roi_materialize_videos.py、subvideo_build_plan.py、subvideo_materialize_media.py、review_build_queue.py、review_build_phase2_queues.py、review_route_from_history.py。均有main，需下一批逐个对照新链的库函数调用核定退役，并先补入Plan精确代码范围；不能因本批两UI接管就宣称全部写入入口已停止。build_artifact_index.py及底层索引库继续按实际依赖处理。
 
 最终导入回归改为独立subprocess，避免reload模块改变同进程异常类身份；专项1 passed/0.43秒。独立reviewer两文件211 passed/15.60秒/exit0，追加验证ROI输出软链接指向metadata及旧--data-root均退出2且输入不变；入口控制流、ROI schema→inputs.roi_decisions→七阶段文档链核查通过，无可执行问题。限制为本机CPU，未做真实UI人工操作/媒体/GPU，Linux另验。
+
+### 36.1 Linux隔离回归
+
+实现09035fd4cae7d3eeec7eff79c34a837e419ec5f5在Mac提交；增量bundle两端SHA29b2592940bad9f341a5f3f6f4c3a051ac93d86a5b3369979c74da015357ccad，verify通过，核对祖先及0/1差异后cherry-pick --ff同步同一代码对象。执行前两端任务基线80b7fa3e，隔离tracked clean，正式main clean@f1b7d8a3；新RUN确认不存在。
+
+输出/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m7c-ui-entry-verification-20260912。实际使用.venv-m3/bin/python（3.11.16）运行pytest -q tests/test_roi_annotation_app.py tests/versioning/test_data_pipeline.py --basetemp=<RUN>/pytest --tb=short，211 passed/16.09秒/exit0，进程16.686秒。CUDA不可见、OMP4、HF/Transformers离线，无依赖安装，无真实UI人工审批、媒体处理或GPU。
+
+报告report.json SHA4f77f1bb83de228ea72abe0b7094180a4c3eb4bfa1b0a1daa5bd4ca822b79f3e；日志linux-tests.log SHAa30954db7b037749600abc3d50f9b150672d87c9fdccc497bb57c380952d5a55；Mac副本/private/tmp/mvllm2-m7c-evidence-20260912。本批完成只涵盖两UI入口及文档，剩余7个辅助CLI和最终审查不自动完成；旧源、模型、训练与full/holdout等限制保留。轻量证据文档在实际Linux原子提交，再核对docs-only增量bundle回传Mac，提交由git log追溯。
+
+独立reviewer只读取得两端报告/日志原始字节，完全一致且报告内日志SHA正确；核对指定命令、环境与结果记录，实时隔离09035fd4 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑；历史环境/退出码/耗时依据报告和日志，实时查询不重建历史进程。
