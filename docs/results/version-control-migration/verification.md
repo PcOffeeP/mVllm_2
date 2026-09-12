@@ -397,3 +397,15 @@ Mac真实包 `/private/tmp/mvllm2-m3-mac-20260912/review_export` 的23条历史�
 结合第20节真实媒体旧算法对照及两份正式release复制、第23节用户确认与Mac回传，M3真实验收链路已经闭环。审批复用不等于新的视觉审查；没有训练/GPU/完整评测，不推导模型效果。M4–M8尚未实施，尤其正式迁移payload的外部媒体仍需M4显式绑定原workspace/data根。
 
 最终代码7a122323经SHA一致且bundle verify通过的增量包快进到本隔离分支（同步前独有提交0/1，tracked clean）。Linux默认身份与完整UI专项 **5 passed，4.39秒，exit0**，日志comparison/linux-maintainer-default.log；同代码再次执行公共release_validate仍passed（34样本、257文件）。结合Mac完整1772项正常退出和两轮独立审查，M3验收完成。该结论不关闭整体迁移任务，也不进入M4。
+
+## 25. M4a 实际训练适配器（2026-09-12）
+
+本机 Mac，基线 e428f1c9；本切片提交用 `git log -- finetune/train_with_contract.py` 追溯。已有 Intent/Spec/Plan 祖先关系有效，本机 main 为当前任务祖先（独有提交0/89），交接文件始终未跟踪。
+
+Test List：已加载配置传到真实 tuner；不修改冻结输入；执行异常传播；来源漂移拒绝；非法 mapping 在处理器前拒绝；CLI重复YAML键拒绝。先新增测试，`.venv/bin/python -m pytest -q tests/test_train_with_contract.py` 得到6 failed/1 passed、exit1：5项缺少适配API，1项旧CLI静默接受重复键。旧pytest临时封存目录清理另报293条warning，没有把它们当行为RED。
+
+最小实现提取 `run_training(config)`，参数深拷贝；LLaMA-Factory来源检查先于处理器安装，处理器契约先于tuner；CLI用拒绝重复键的SafeLoader并调用相同适配器。GREEN：`.venv/bin/python -m pytest -q tests/test_train_with_contract.py --basetemp=/private/tmp/mvllm2-m4a-green-20260912`，7 passed/0.11秒、exit0。
+
+独立reviewer读取两文件diff及实际tuner/处理器依赖，运行相同测试（basetemp为 `/private/tmp/mvllm2-m4a-review-20260912`）7 passed/0.17秒、exit0，补测嵌套重复键、非字符串键、处理器异常及contract→tuner顺序，无finding。此处引用reviewer结果，并非主Agent重复运行。
+
+验证限制：动态使用受控tuner/处理器替身，真实依赖链仅静态检查；没有模型加载、GPU、训练机操作或完整评测。这个切片不表示M4身份冻结、MLflow生命周期或三折准备完成。用户本轮澄清：同一train包含三折，各折绑定既有训练/验证划分；版本迁移不新增采样要求，不擅自把历史fold0的3k实验扩展到三折。
