@@ -503,3 +503,15 @@ Test List包括数值Model Version错误先于权重解析拒绝、prepared无ev
 随后收紧配置要求：调用者必须显式声明aggregation: pooled，确认使用现有按行合并的评分口径；缺省/其他规则拒绝。评分算法本身未变，不设实际业务阈值。新增缺字段回归先RED（1 failed/1.81秒/exit1），最终受影响的四文件联合回归114 passed、1 skipped/22.19秒/exit0（/private/tmp/mvllm2-m4-eval-final-config.log），没有重复未改动的低层广回归。独立专项1 passed/1.33秒且非法值检查全部拒绝，配置专项复审通过。三折与单折、adapter/merged、执行中媒体/基座漂移均已纳入最终测试；模型调用始终使用受控替身。
 
 git diff --check通过；当前可审阅实现与上述本机证据在Mac原子提交，代码版本由git log -- finetune/eval_run.py追溯。下一步按31.1执行既有训练机隔离同步与非GPU验证，不把本段本机通过写作Linux或真实模型效果证据。
+
+### 31.3 Linux实际执行与独立核查
+
+代码7cb24398与前序c93f53a7通过增量bundle同步到训练机隔离分支；bundle SHA a3e6ab805c5fb55c8a691f46c8109be8310cbeb48b0a1bb14ad6a19846804b4e，两端一致、bundle verify通过，祖先关系0/2，git cherry-pick --ff保持相同提交对象。正式main未参与同步。
+
+按31.1在新RUN目录真实执行四个指定测试文件：114 passed、1 skipped，pytest耗时33.44秒，进程36.854秒、exit0。完整命令与环境在RUN/report.json，输出在RUN/linux-tests.log；报告SHA为21563b253df3f264b3859126c27539c460cc05ae3c65924437ee0b20754076df，日志SHA为fc014488d9225bdabc9e01fd9e54ba53322383169273114751ad4cd791c50838。轻量副本已回取Mac /private/tmp/mvllm2-m4-eval-evidence-20260912/ 并核对摘要一致。实际Python3.11.16、torch2.5.1+cpu、transformers4.56.1、MLflow3.15.2、DVC3.67.1，禁用CUDA可见设备、离线模式、OMP4；未安装依赖。
+
+独立reviewer仅只读SSH和SQLite mode=ro核查，未复跑测试：远端代码路径相对7cb24398无差异；报告/日志/软件版本与两端SHA一致。抽查成功fixture为3样本、0运行失败、completed/passed并有passed manifest；质量失败fixture为3样本、0运行失败、0合法预测、completed/failed并有failed manifest；运行失败fixture为fold0一次运行失败、父failed、无outcome/manifest。独立证据核查通过，无finding。报告中的原进程退出码/耗时/环境变量只能按既有报告核对，未声称事后重建进程状态。
+
+原正式checkout始终clean main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52；任务隔离checkout为tracked clean，保留原有环境和新增验证目录，不能称为整体clean。本段在实际训练机提交轻量验收事实，再通过已验签增量bundle回传Mac。本轮没有真实权重加载、GPU、完整正式评测或/data正式store写入。正式新体系无已注册模型，真实eval准备成功路径仍无证据；不能把这些临时fixture登记为正式模型或效果结论。
+
+M4的正式validation执行接线已完成本机/训练机CPU范围验收；full/holdout实际读取与真实模型成功路径保持显式限制，M4不据此关闭。下一步可推进不依赖真实合格模型的M5服务入口严格拒绝/路由接线，同时保留后续真实模型登记与授权测评的依赖。
