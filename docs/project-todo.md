@@ -26,7 +26,7 @@
 | 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、holdout 独立验收及其他适用质量门 |
 | 文档收尾 | DOC-INDEX | 修正脚本索引的过期缺陷描述 | 待处理 | 本轮新发现，不阻塞模型诊断 |
 | 低优先级 | CONTRACT-NAMING | 澄清候选规划与训练发布的契约边界 | 待处理 | 先解释真实用途，再决定是否兼容重命名 |
-| 后续迁移 | VERSION-CONTROL-FORMAL-MIGRATION | 正式迁移可读版本控制体系 | 进行中（执行者 Codex；M3真实七阶段及复制已验，最终回归收尾） | 核心基础设施已完成；正式迁移写入、legacy 退役、merge/push 均需另行授权 |
+| 后续迁移 | VERSION-CONTROL-FORMAL-MIGRATION | 正式迁移可读版本控制体系 | 进行中（执行者 Codex；M3已完成；M4待后续推进） | 核心基础设施已完成；正式迁移写入、legacy 退役、merge/push 均需另行授权 |
 
 MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独立验收才允许训练最终候选。新发现改变依赖时，同步本表和条目并说明原因。
 
@@ -121,9 +121,9 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **规划发现与修复**：M3 已将公共数据入口从文件名派生 ROI、固定两条 clip 的最小实现切换到显式真实输入适配；真实媒体效果仍须训练机验收。训练 CLI 的真实执行器接线属于后续 M4，不能沿用基础设施测试宣称已完成。
 - **现场证据**：2026-09-07 网络恢复后只读调查成功；当时远端干净 `main@f1b7d8a3`，origin 为 Codeup。两个 release、三个 Prompt registry 目录、八个 run、五个历史归档目录和一个发布模型目录可见；六组 run 有 adapter，两个 concise run 仅见准备资料；concise-cv 预期路径不存在，`/data/mVllm_2` 尚未建立。完整观察及扫描边界见[调查记录](results/version-control-migration-20260907.md)，提交 `821e5953`。未验证权重哈希、加载、数据完整性或历史原始记录完整性，尚未分配新正式身份；无远端写入。
 - **已证实事实与差距**：M0 证据已提交，训练机 payload 完整 hash 已验证，`/data/mVllm_2` 已只读验证可写。M1a 本地 Prompt/Data 迁移核心已完成并通过 review；M1b H1–H12 与统一 migration CLI 已完成。M2 以完整 bundle 建立隔离 checkout，再以 SHA-256 一致且 `git bundle verify` 通过的增量 bundle 更新到修复提交 `c4b53d08`；原有训练机 `main@f1b7d8a3` 始终干净。项目级 Python 3.11.16 环境锁定 DVC 3.67.1、MLflow 3.15.2、pandas 3.0.3 等关键版本。首轮 Linux 236 passed / 1 failed 暴露 inode 复用竞态；最小修复和独立 reviewer 三轮闭环 2 个 P2 与 1 个 P3 后，训练机 CLI+migration **241 passed**。跨进程锁、只读权限、DVC push-delete-pull、MLflow/SQLite artifact 联合恢复均通过；H9 四个真实 run 与 H11 的 1 model + 5 eval 只读成功路径通过。`/data/mVllm_2/dvc-remote`、`/data/mVllm_2/mlflow` 仍不存在且本轮未创建；截至M2完成时，真实移动硬盘恢复、正式store与真实迁移写入未执行；M3本轮已完成两份data复制，见下方最新证据。legacy `pipeline/`、`finetune/` 仍按旧规则运行。
-- **下一动作/依赖**：M3a–M3h本地接入、训练机真实source/ROI/34候选对照、两份正式release复制及验签均完成。用户明确确认历史审批归属并批准默认“项目维护者”；23条精确匹配的历史决定已保留原时间/标签复用，Mac冻结回传、训练机review_import→非正式release/validate完成。最终完整回归与原子证据提交收尾后关闭M3。另11条普通未断裂已按新旧相同规则自动通过，无需人工。后续M4须显式绑定原外部媒体根；新来源镜像不是媒体根。当前执行单授权持续有效，无需再次询问同步/新CPU环境/两份复制；不包含模型训练/GPU/完整评测及push/merge main。
+- **下一动作/依赖**：M3a–M3h本地接入、训练机真实source/ROI/34候选对照、两份正式release复制及验签均完成。用户明确确认历史审批归属并批准默认“项目维护者”；23条精确匹配的历史决定已保留原时间/标签复用，Mac冻结回传、训练机review_import→非正式release/validate完成。M3已完成：Mac完整1772项正常退出、Linux专项5项及最新代码发布校验通过；代码7a122323，实机证据见验证记录第24节及同次提交。下一阶段为M4训练/测评真实入口接线，尚未实施。另11条普通未断裂已按新旧相同规则自动通过，无需人工。后续M4须显式绑定原外部媒体根；新来源镜像不是媒体根。当前执行单授权持续有效，无需再次询问同步/新CPU环境/两份复制；不包含模型训练/GPU/完整评测及push/merge main。
 - **验收标准**：按已确认 Spec 核对两个数据版本及一版 Prompt 的内容保持、历史关联可查询、所有活动入口接管、单写与恢复不丢事实、训练机真实环境证据、文档及独立审查。Codeup 为发布依据，最终交付覆盖相对 Codeup main 的完整差异。
-- **证据/限制**：[验证记录](results/version-control-migration/verification.md)第12–20节及[执行单](results/version-control-migration/handoff.md)。M3h本机完整1768 passed/exit0，各切片独立审查通过；真实媒体对照2份ROI、34份子视频、211张帧字节一致。正式r1/r2共20个声明payload与原源SHA一致、有效receipt、只读封存、r1拒绝/r2允许元数据新引用门，独立reviewer复验通过，训练机证据提交bf3d4ca。r1/r2共9421/11986个外部视频/帧引用在原workspace/data映射后全部可达，新store不自包含。Mac真实界面23完成/0待审，回收与训练机导入及257文件封存校验通过独立复核；新视觉审批0次，复用依据用户确认记录。最终回归收尾中，尚未将M3标为完成。未执行训练/GPU/完整评测、未改旧指针或正式main，M4–M8仍待推进。
+- **证据/限制**：[验证记录](results/version-control-migration/verification.md)第12–24节及[执行单](results/version-control-migration/handoff.md)。M3h本机完整1768 passed/exit0，各切片独立审查通过；真实媒体对照2份ROI、34份子视频、211张帧字节一致。正式r1/r2共20个声明payload与原源SHA一致、有效receipt、只读封存、r1拒绝/r2允许元数据新引用门，独立reviewer复验通过，训练机证据提交bf3d4ca。r1/r2共9421/11986个外部视频/帧引用在原workspace/data映射后全部可达，新store不自包含。Mac真实界面23完成/0待审，回收与训练机导入及257文件封存校验通过独立复核；新视觉审批0次，复用依据用户确认记录。M3已完成，完整回归与实机最终校验见第23–24节。未执行训练/GPU/完整评测、未改旧指针或正式main，M4–M8仍待推进。
 
 ## Skill 改进候选（待确认，不属于当前实现范围）
 
@@ -241,3 +241,5 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - 2026-09-12 M3 Linux回归：244pass/1fail定位为DVC临时remote绝对中文路径编码限制，测试改同目标相对地址后22项通过，独立审查通过；本机完整1768pass/exit0。未修改生产代码，人工回传缺口不变。
 
 - 2026-09-12 人工审查追踪修复：用户回忆旧批准应为本人，并要求修复未来字段完整性。确认legacy入口审查者可选、保存与迁移保留None，手册必填未落实；新增两模式非空标识、界面显示、完整冻结逐条作者校验，并补继续审查命令。13项专项/47项legacy回归、完整1780项通过且正常退出，独立review22项及真实临时保存链通过；不批量归因旧匿名决定，M3真实回传缺口仍保留。
+
+- 2026-09-12 M3完成：用户明确确认唯一维护者历史审批归属；新UI默认项目维护者，23条对象匹配的旧审批保留原时间/标签复用，11条普通未断裂自动。Mac回传、训练机review_import→隔离开发release/validate通过（34样本257文件）；独立复核确认源记录/旧指针/main不变。Mac完整1772项、legacy47项、独立28项、Linux专项5项均正常退出。两份正式release复制及真实媒体对照证据已齐；M4–M8待推进，整体迁移继续进行中。代码7a122323，训练机闭环证据按本次提交追溯。

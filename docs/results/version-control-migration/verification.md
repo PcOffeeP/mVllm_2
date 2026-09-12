@@ -383,3 +383,17 @@ Mac真实包 `/private/tmp/mvllm2-m3-mac-20260912/review_export` 的23条历史�
 真实UI加载授权复用草稿并自动冻结成功：23完成、0待审、0异常/错误，0次新视觉审批。回收文件SHA `d662905beda62bd75c6623b7f8e86877de2e904ebe231bb1bec92bb2f8a9637c`；确认记录SHA `9027145f6e229c9a3b09489b238a2151f122d680afeb2ea294388e0341c6b591`，轻量报告 `mac-review-return-verification.json`。脚本 `/tmp/mvllm2-m3-reuse.py` 及真实包/草稿/输出保留本机，副本保留训练机comparison。独立reviewer逐条核验原值保留、原始记录全等及实际回收校验通过。
 
 本机完整回归 `.venv/bin/python -m pytest -q tests/versioning --basetemp /private/tmp/mvllm2-maintainer-full-20260912` 为 **1772 passed，481.05秒，exit0**，已等待清理后正常退出；日志 `/tmp/mvllm2-maintainer-full.log`。本切片代码在运行期间未更改。测试总数从1780变为1772，是以4项单维护者行为测试替换上一方案12项身份门测试；不是跳过失败用例。
+
+## 24. 训练机真实回传、开发发布与 M3 闭环（2026-09-12）
+
+在用户已授权的训练机隔离 checkout `/home/liuyang/文档/mVllm_2-migration-7eeb93a7` 执行，运行目录仍为 `m3-verification-20260912`。实际媒体/回收/发布执行代码为 `15414d3d2a265ac70a36c9be9c0f25f2ec93b80b`；最新单维护者 UI 在 Mac 产生回收，训练机本次接收没有依赖新 UI 改动。原有 CPU/offline 环境中，于 `RUN/store` 使用 `.venv-m3/bin/python -m dvc repro release_validate` 正常退出0；CUDA_VISIBLE_DEVICES为空，OMP_NUM_THREADS=4，HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE=1。前四个已封存阶段复验复用，随后真实执行 review_import → release → release_validate。
+
+训练机 `RUN/review_return.json`、review_import 冻结副本及发布 payload 内回收文件SHA均与Mac的 `d662905beda62bd75c6623b7f8e86877de2e904ebe231bb1bec92bb2f8a9637c` 相同。开发发布位于 `RUN/store/data/releases/data-v4.1-r1`，与 `/data/mVllm_2` 正式复制 store 的同名版本严格分开。发布校验passed：34样本、257个payload文件；全部逐文件摘要/大小/完整集合与构建清单一致且去写位。实际来源23 human_review + 11 automatic_validation，排除0；标签分布15发生断裂、4已断裂、4临界未断裂、11未断裂。六份数据集按原显式split保持：fold0 train34/validation0、fold1 train0/validation34、fold2 train34/validation0。两个source的小样本固有空侧不是全量数据遗漏。
+
+独立reviewer通过只读SSH再次调用实际run_input_release_validate，并独立复算257文件、回收三处SHA、34候选来源、六fold逐条标签/成员/媒体引用；无finding。原历史审查源SHA仍为 `28677745f6bc0b475d1824250a6fae67e0c680593e22a3c989c4f038252200d6`，原活动指针摘要不变，正式main仍为 `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52` 且clean。
+
+实机证据 `RUN/comparison/dvc-real-return.log` SHA `1a9a53ed74d00f7452963d673247b0a6eb03b91f71ddd03ac3d74bcaf489881d`；`real-roundtrip-verification.json` 记录发布、来源及保护检查；`historical-review-attestation.json`、`mac-review-return-verification.json` 和复用脚本副本同目录保留。证据在实际训练机原子提交，再用验签增量bundle取回Mac。
+
+结合第20节真实媒体旧算法对照及两份正式release复制、第23节用户确认与Mac回传，M3真实验收链路已经闭环。审批复用不等于新的视觉审查；没有训练/GPU/完整评测，不推导模型效果。M4–M8尚未实施，尤其正式迁移payload的外部媒体仍需M4显式绑定原workspace/data根。
+
+最终代码7a122323经SHA一致且bundle verify通过的增量包快进到本隔离分支（同步前独有提交0/1，tracked clean）。Linux默认身份与完整UI专项 **5 passed，4.39秒，exit0**，日志comparison/linux-maintainer-default.log；同代码再次执行公共release_validate仍passed（34样本、257文件）。结合Mac完整1772项正常退出和两轮独立审查，M3验收完成。该结论不关闭整体迁移任务，也不进入M4。
