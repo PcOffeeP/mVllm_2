@@ -824,3 +824,79 @@ train `a88808252daf89f33c133f3951cbdf38731eb2f75a29b1e456dd82cdb8932d53`。
 Linux验证后tracked干净；无安装、GPU训练/推理、真实完整评分、原源写入、merge或push。
 R2/R3在本轮指定范围解决，R1/R4和历史汇总仍未解决，最终整体审查结论继续为驳回修改。
 本节与台账/Plan/交接的同次轻量证据提交由`git log -- docs/results/version-control-migration/verification.md`追溯。
+
+
+<a id="m8-r1-evidence-20260913"></a>
+## 40. M8-R1 正式晋级必须具有实际执行证据（2026-09-13）
+
+本轮从`b1887b26c97a83d63e30c05a109fa7772fc1e531`继续用户已授权实施，修复第39节R1。
+代码提交为`3b63aa52c79267376d6274cedf77f13df16f53ec`（Mac），本节轻量证据提交由本文件Git历史追溯；未push/merge。
+
+### 实现与证据边界
+
+- 公共手工train `create/fold-start/fold-end/summary/complete`及eval对应动作（含aggregate和旧manifest）在store创建前拒绝，提示实际prepare/validate/run/export。底层Python记录与holdout授权API保留；旧completed/passed记录缺少实际产物也无法通过Registry。
+- 训练准备冻结视频及基座全部文件SHA/大小，Run创建前、每折前后复验。实际三折上传后核对adapter权重、配置、train_results与Run指标，生成父Run的`training-evidence.json`并用不可改写param钉扎摘要；完成导出仍复验所有折。
+- Registry登记、模型manifest及物化复验训练血缘、冻结输入、证据和声明权重的完整子树。下游不要求恢复未声明折权重，仍核对被钉扎的三折事实与指标。adapter还必须对应实际训练时的基座。
+- 正式评测结论门只读核验冻结input、实现摘要、逐样本records/failures/summary，重新计算严格评分与outcome，核对实际被评权重。single_fold所选artifact必须等于deploy_target；finalize、alias读写、服务入口和已绑定eval的model manifest复用该门，没有export递归。
+- 备份按原声明范围保留权重，增加轻量训练input/proof。新实际CLI闭环先model manifest、再current、最后backup create/verify，明确断言fold0在位而fold1/2权重不在备份。
+- 旧prepared若缺基座清单、旧completed若缺执行证据都会拒绝；不能倒填成功证据或覆盖旧冻结版本。代码/输入变化须重新准备新完整身份。基座校验增加CPU流式I/O，未加载推理模型。
+
+### Mac测试与独立复核
+
+主Agent先运行无证据训练及手工CLI拒绝回归，原行为3 failed；修复后首轮81 passed。
+实际执行链逐步升级fixture：训练器/推理器为CPU替身，数据准备、实际执行器、MLflow、证据门、Registry、服务及备份直接调用实现。
+中间失败均保留于`/private/tmp/mvllm2-r1-*.log`，包含旧Prompt fixture不匹配、较早漂移拒绝改变错误文本、测试未先生成manifest等；不将中间失败写为最终通过。
+
+三个旧政策模块`tests/versioning/test_registry.py`、`test_materialize.py`、`test_backup.py`仅在各自模块内替换三项证据validator，以保留状态/保留策略故障测试；这些测试不证明实际执行证据。
+主Agent政策组含`test_manifest.py`共413 passed，162.64秒；实际证据、服务和E2E测试不使用上述替身。
+
+主Agent实际链专项：`tests/test_train_with_contract.py tests/test_eval_run.py tests/test_serve_smoke.py tests/versioning/test_cli.py tests/versioning/test_cli_holdout.py tests/versioning/test_e2e.py`，
+153 passed/1 skipped，56.26秒，正常退出0；日志`/private/tmp/mvllm2-r1-execution-pass.log`。skip为既有历史数据fixture缺失。
+本机整仓CPU最终命令：`CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 .venv/bin/python -m pytest -q tests --basetemp=/private/tmp/mvllm2-r1-full-20260913 --tb=short`。
+结果2623 passed/11 skipped，502.13秒，进程正常退出0；日志`/private/tmp/mvllm2-r1-full-20260913.log`。summary后Python退出清理仍耗时，已等待真实exit0；11项skip为既有历史fixture缺失。整仓包含最后的备份范围断言与测试导入整理。Linux最终结果见本节末尾；CPU结果不代替真实GPU证据。
+
+独立reviewer发现并复现三项：训练后首次eval前基座可替换、adapter评测可晋级未评merged、选择性保留后删除声明weights仍能登记。修复分别为冻结基座、single_fold被评路径=deploy_target、声明完整子树全等。
+reviewer独立16例首轮15 passed/1 failed（12.29秒）；唯一失败为新测试current先于manifest，修正顺序后该例1 passed（5.80秒）。
+另独立攻击旧passed模型的deploy_target漂移，alias读取与finalize重试均拒绝，未改alias或增加ModelVersion；exit0。
+独立实际备份39文件，input/proof/fold0在位且无fold1/2 adapter，create/verify均0。
+reviewer对R1代码及`versioning/SCRIPTS.md`、`docs/DATA_PROCESSING_RUNBOOK.md`局部审查通过，无残留可执行问题；主Agent广回归不记为reviewer复跑。
+
+审查最终SHA：registry `500feb5bd8edf266bc76e6b7af2f961c624565cfd57d94e06a06747382a92aee`；
+train_prepare `2946e882b7914f611d4de761174540129e3c1483032bc10809e3767e7eee5854`；
+eval_run `1e598fb0e8b138dfbc10a3be1733c24c0c661adafb0e20c1650c091858cbe3e8`；
+backup `f525e17e19c2309464fc336feca32c6c951df289e4e98b52414911eaa33f4538`。
+
+### 训练机边界与未完成项
+
+本轮同步前SSH只读复核：原项目`main@f1b7d8a3`干净，隔离任务分支`b1887b26`tracked干净；旧环境及m3–m8证据目录保留。
+本轮已将代码3b63aa52以bundle快进隔离分支，增量bundle SHA为`9d354ae51b7f48a93f3b7247bc762a569bf1a5c21308241ab283fd3da56da063`；同步前后核对HEAD/分支/tracked修改、摘要、bundle依赖及0/1独有提交后，使用`cherry-pick --ff`。
+合成CPU回归写入新`m8-r1-verification-20260913/`；执行前估计约10分钟、数百MB临时产物，首轮资源失败及后续重跑耗时单列。不读取真实权重或受限测试集。
+R4异根恢复、history-summary实物、物理`/data`下Prompt备齐、full/holdout实际接线及真实模型/GPU成功证据仍未完成。M8整体验收继续进行中，不能因R1局部通过而关闭。
+
+
+Linux首轮12文件同进程回归未正常完成：默认RLIMIT_NOFILE为soft1024/hard1048576，约60%后出现批量setup错误，pytest收尾报`OSError: [Errno 24] Too many open files`，exit1，410.69秒；没有可用最终通过汇总。
+失败日志`m8-r1-verification-20260913/pytest.log`与`result.json`保留，日志SHA `15fe1552e4dc93588f7247b48eb9e04f4401300dc561d369f35cd3e80a7ac4be`。
+该单进程创建大量独立临时MLflow/SQLite store；后续保持1024软限制和相同已提交代码，把原12文件按实际执行6文件、策略4文件、底层状态2文件分为三个独立pytest进程，隔离进程级store缓存。不修改系统限制或安装依赖；最终结果另记，不覆盖首轮失败。
+
+训练机已安装MLflow实现的`mlflow/store/tracking/sqlalchemy_store.py:327–339`使用进程级`_engine_map`按数据库URI缓存engine；本次测试不断生成新临时URI，分进程会释放这些资源。该代码观察支持测试资源累积解释，不证明长期真实服务的句柄使用已完成验收。
+
+
+### Linux最终分组结果与R1结论
+
+同一代码`3b63aa52`、默认NOFILE soft1024/hard1048576，复用`.venv-m3`及前轮`m5-service-verification-20260912/dependencies`中的httpx；没有安装或升级依赖。
+三组都设置`CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1`，每组新的`pytest-<组名>`临时目录。
+
+- execution：`153 passed, 1 skipped in 87.09s (0:01:27)`，命令耗时93.44秒，exit0；日志`execution.log`，SHA `0aee17589451abd2d59325741eed5be922a050a393267d57be3efa7105185f38`。
+
+- policy：`413 passed in 254.68s (0:04:14)`，命令耗时282.74秒，exit0；日志`policy.log`，SHA `0f742ec71e6d0791ca0c93b1b355b9221ee0d06f02148ef9f87e88d93ef2d924`。
+
+- state：`390 passed in 267.12s (0:04:27)`，命令耗时301.75秒，exit0；日志`state.log`，SHA `0a60c5d0c1b9dfa5d43a1c706ed5518c78ef96b6bd0d4447e34d21febd150617`。
+
+三组共956 passed/1 skipped。execution为上述实际链6文件，policy为上述策略4文件，state为`tests/versioning/test_mlflow_train.py tests/versioning/test_mlflow_eval.py`；与首轮12文件完全一致。
+完整命令、环境、SHA及结果保存在训练机`m8-r1-verification-20260913/grouped-result.json`，各组还有独立`<组名>-result.json`；本机留存`/private/tmp/mvllm2-r1-grouped-result.json`。
+全部测试进程真实正常退出0，最终tracked干净，四份关键实现SHA与独立reviewer及Mac提交一致。首轮pytest.log/result.json未覆盖。
+
+M8-R1已解决本轮范围（代码3b63aa52）：Mac整仓2623 passed/11 skipped，Linux分三进程956 passed/1 skipped、各exit0，独立代码/操作文档局部审查通过。首次Linux单进程回归触及1024文件句柄上限而exit1，已保留日志；相同代码及原限额分组复验通过，不能外推长期服务资源验收。完整证据见verification第40节。下一步M8-R4异根恢复、history-summary实物与最终整包复审；真实GPU/full/holdout及物理存储缺口保持，M8整体不关闭。
+
+最终独立证据核查通过：reviewer只读核对三组日志SHA/汇总/退出码、相同12文件集合、两端代码和Git状态，并确认此前P3文档状态冲突已闭环，没有把本机测试或主Agent执行冒记为独立复跑。
+两端`grouped-result.json`共同SHA为`90a9fccb2fe7e6b8141322e87ce670f079939184cc9c1876a08b9bcc62866ec2`。四份轻量证据文档在训练机按核对过的原/新SHA写入并提交，随后通过增量bundle同步回Mac；同次提交版本由本文件Git历史追溯。

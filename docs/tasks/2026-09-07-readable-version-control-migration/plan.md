@@ -63,7 +63,7 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 部分验收通过（原路径恢复）：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物未验证；改路径恢复已由M8-R4复现失败，待修复（verification第33、39节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1无实际证据可晋级与M8-R4异根恢复仍依赖原源待修复，M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物仍缺失，handoff已补当前矩阵。真实环境缺口保留；未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4异根恢复仍依赖原源待修复，M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物仍缺失，handoff已补当前矩阵。真实环境缺口保留；未授权push/merge |
 
 ### M0：核定范围与写入者
 
@@ -183,3 +183,7 @@ M7d文档与历史测试补充：tests/test_subvideo_build_plan.py中的旧dry-r
 M7e精确补充：修改pipeline/prompt_control/__main__.py停用旧validate/publish公开CLI，历史main私有保留，不改core或__init__导出；模块启动先完成既有包导入，但不得解析/读取旧source或调用publish。修改pipeline/scripts/build_artifact_index.py，历史INDEX.md报告工具必须显式--data-root且目录存在，不再选择current根，不更改底层集合索引。新增回归在tests/test_prompt_control.py和tests/test_artifact_index.py；核对tests/versioning/test_prompts.py及test_cli.py。versioning/SCRIPTS.md补Prompt现行参数说明并将过期legacy不变条款同步为既定逐入口退役边界。
 
 M7e文档精确补充：pipeline/prompt_control/README.md仅追加历史范围与现行Prompt链接，保留原历史说明；README/finetune说明/项目指南同步旧Prompt停用与新定义入口，不改变历史Prompt正文。
+
+M8-R1精确测试补充：`tests/versioning/test_cli_holdout.py`随公共手工写入口停用更新，验证合法claim也不能由手工状态消费；既有低层holdout状态/消费故障测试继续保留。训练证据保存为实际父Run的`training-evidence.json` artifact及只写一次的摘要param，不产生新正式身份或全局索引。
+
+2026-09-13 M8-R1已解决本轮范围（代码3b63aa52）：Mac整仓2623 passed/11 skipped，Linux分三进程956 passed/1 skipped、各exit0，独立代码/操作文档局部审查通过。首次Linux单进程回归触及1024文件句柄上限而exit1，已保留日志；相同代码及原限额分组复验通过，不能外推长期服务资源验收。完整证据见verification第40节。下一步M8-R4异根恢复、history-summary实物与最终整包复审；真实GPU/full/holdout及物理存储缺口保持，M8整体不关闭。
