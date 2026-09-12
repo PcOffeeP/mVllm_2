@@ -14,7 +14,7 @@ Non-goals:
 
 # 数据处理运行手册
 
-> 新的正式数据处理从[第10节：现行显式七阶段](#10-现行数据入口versioning显式七阶段)开始。第1–9节保留历史业务、参数和产物解释；其中release_build.py、release_build_phase2.py、rebuild_data.py已停止CLI执行，不能照抄历史命令发布或promote。review_candidates_app的旧--queue模式也已停用；ROI现行显式路径参数见第10.1节。状态与迁移证据见项目TODO及docs/results/。
+> 新的正式数据处理从[第10节：现行显式七阶段](#10-现行数据入口versioning显式七阶段)开始。第1–9节保留历史业务、参数和产物解释；其中release_build.py、release_build_phase2.py、rebuild_data.py已停止CLI执行，不能照抄历史命令发布或promote。review_candidates_app的旧--queue模式也已停用；ROI现行显式路径参数见第10.1节。ROI冻结/物化、候选规划/物化、队列构建/Phase2构建及历史分流的7个辅助CLI也已停用，精确名单见pipeline/scripts/SCRIPTS.md。状态与迁移证据见项目TODO及docs/results/。
 
 ## 1. 历史链路的适用范围、版本与假设
 

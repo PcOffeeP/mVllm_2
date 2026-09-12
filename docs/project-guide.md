@@ -19,7 +19,7 @@ mVllm_2 把材料拉伸试验视频治理为来源可追踪、标签可审查的
 
 ## 现行操作入口与历史实现范围
 
-正式数据构建使用[数据手册第10节](DATA_PROCESSING_RUNBOOK.md#10-现行数据入口versioning显式七阶段)；release_build.py、release_build_phase2.py、rebuild_data.py旧CLI已停用。既有对象复制迁移使用versioning migration与显式mapping。训练/测评新入口见[versioning索引](../versioning/SCRIPTS.md)，服务使用[pipeline说明](../pipeline/SCRIPTS.md)中的alias绑定，备份支持已验签快照传输。
+正式数据构建使用[数据手册第10节](DATA_PROCESSING_RUNBOOK.md#10-现行数据入口versioning显式七阶段)；release_build.py、release_build_phase2.py、rebuild_data.py及ROI冻结/物化、候选规划/物化、队列构建/分流的旧CLI已停用，精确状态见[pipeline脚本索引](../pipeline/scripts/SCRIPTS.md)。ROI输入准备要求显式metadata/output/project-root，审查UI仅接受完整versioning包。既有对象复制迁移使用versioning migration与显式mapping。训练/测评新入口见[versioning索引](../versioning/SCRIPTS.md)，服务使用[pipeline说明](../pipeline/SCRIPTS.md)中的alias绑定，备份支持已验签快照传输。
 
 下文流程图、步骤表及模型状态保留先前实现核查背景，其verified_commit指向当时版本；不得据此重新执行已停用的CLI或把旧默认路径当成新体系身份。尚存的ROI、审查、训练和测评legacy辅助路径须逐项核定，不能声明整个旧包已退役。最新迁移状态与真实环境限制见[项目TODO](project-todo.md)。
 

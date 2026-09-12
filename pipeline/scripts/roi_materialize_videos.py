@@ -3,9 +3,30 @@
 
 from __future__ import annotations
 
+import sys
+
+
+def main() -> int:
+    message = (
+        "此历史数据辅助 CLI 已停用。请使用 python -m versioning data <stage>，"
+        "显式指定 --root、--inputs、--batch；发布时另需完整 --version。"
+        "ROI和候选媒体使用roi/subvideo阶段，审查包使用review_export；"
+        "历史Phase2对象按已确认mapping迁移，不重建或重新审批。"
+        "操作说明见 docs/DATA_PROCESSING_RUNBOOK.md 第10节。"
+    )
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        print(message)
+        return 0
+    print(message, file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 import argparse
 import json
-import sys
 from pathlib import Path
 
 
@@ -55,7 +76,7 @@ def _resolve_inputs(args: argparse.Namespace, context) -> None:
         args.output_root = context.roi_videos
 
 
-def main() -> int:
+def _legacy_main() -> int:
     args = build_parser().parse_args()
     context = data_context_from_arg(PROJECT_ROOT, args.data_root)
     _resolve_inputs(args, context)
@@ -91,7 +112,3 @@ def main() -> int:
     except RoiMediaError as exc:
         print(f"错误: {exc}", file=sys.stderr)
         return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

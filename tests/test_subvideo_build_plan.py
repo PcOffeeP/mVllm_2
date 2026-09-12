@@ -272,7 +272,7 @@ def test_dry_run_cli_does_not_create_output_directory(
             str(output_root),
         ],
     )
-    cli.main()
+    cli._legacy_main()  # Historical dry-run semantics; public CLI is retired.
     summary = json.loads(capsys.readouterr().out)
     assert summary["dry_run"] is True
     assert summary["media_generated"] is False

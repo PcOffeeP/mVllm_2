@@ -1,5 +1,8 @@
 # 可读版本控制架构实施台账（refactor/readable-version-control）
 
+> 历史范围：本文只记录B0–B12基础设施实施，不再承载后续正式迁移进度。后续实际接入、入口退役和两端证据见[项目TODO](../project-todo.md)、[迁移Plan](../tasks/2026-09-07-readable-version-control-migration/plan.md)及[验证记录](../results/version-control-migration/verification.md)。下文当时的未迁移边界、测试数量和命令保持历史语义，不能当作现行操作要求。
+
+
 > 文档定位：本文件是 `refactor/readable-version-control` 分支的**实施台账**，记录本分支分批实施"可读版本控制架构"核心基础设施的批次计划、状态跟踪与恢复上下文。它不是项目级 TODO（项目级任务台账见 `docs/project-todo.md`），也不是架构权威（架构权威见设计文档）。
 >
 > 权威关系：**目标要求以确认后的设计文档为准，当前现状以代码和测试证据为准。**本文件只编排实施批次与验收，不重新定义架构；任何与[设计文档](2026-09-01-readable-version-control-design.md)冲突的表述以设计文档为准，任何与真实代码冲突的表述以代码和测试证据为准。实施后代码与设计冲突时，该 batch 不得完成；重大不可调和冲突暂停并交用户裁决。本文件不改变设计文档的责任边界。

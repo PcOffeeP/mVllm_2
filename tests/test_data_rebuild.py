@@ -1272,3 +1272,19 @@ def test_retired_data_script_has_no_write_cli(script, tmp_path):
     help_result = subprocess.run(command + ["--help"], cwd=tmp_path, text=True, capture_output=True)
     assert help_result.returncode == 0
     assert "已停用" in help_result.stdout
+
+
+@pytest.mark.parametrize("module", ["roi_freeze_decisions", "roi_materialize_videos", "subvideo_build_plan", "subvideo_materialize_media", "review_build_queue", "review_build_phase2_queues", "review_route_from_history"])
+def test_retired_auxiliary_cli_rejects_without_business_imports(module, tmp_path):
+    import subprocess
+    import sys
+    root = Path(__file__).resolve().parents[1]
+    for prefix in ([sys.executable, "-S", str(root / "pipeline/scripts" / (module + ".py"))],
+                   [sys.executable, "-S", "-m", "pipeline.scripts." + module]):
+        for arguments, expected in (([], 2), (["--legacy"], 2),
+                                    (["--output-dir", str(tmp_path / "output")], 2),
+                                    (["--check-only"], 2), (["--help"], 0), (["-h"], 0)):
+            result = subprocess.run(prefix + arguments, cwd=root, text=True, capture_output=True)
+            assert result.returncode == expected, result.stderr
+            assert "python -m versioning data" in result.stdout + result.stderr
+            assert not (tmp_path / "output").exists()

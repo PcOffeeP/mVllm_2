@@ -1,5 +1,8 @@
 # V4.1 中间推理服务运行手册
 
+> **历史操作与效果证据。** 下文裸模型路径、旧current.json和开发发布例外不能用于现行服务启动。现行服务必须经MLflow alias及service-mode校验，参数见[pipeline服务说明](../pipeline/SCRIPTS.md)；没有合格模型时明确拒绝。本文旧模型的真实运行结果不授予新体系模型资格，当前状态见[项目TODO](project-todo.md)。
+
+
 > 当前状态：`v4.1-agent-pipeline-fold0-r1` 已在训练机完成模型哈希校验、真实媒体
 > service smoke 和 TensileAgent 调用验证。它是 loopback-only 中间开发服务，不是
 > production deployment。

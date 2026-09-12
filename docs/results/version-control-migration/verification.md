@@ -678,3 +678,15 @@ report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c�
 报告report.json SHA4f77f1bb83de228ea72abe0b7094180a4c3eb4bfa1b0a1daa5bd4ca822b79f3e；日志linux-tests.log SHAa30954db7b037749600abc3d50f9b150672d87c9fdccc497bb57c380952d5a55；Mac副本/private/tmp/mvllm2-m7c-evidence-20260912。本批完成只涵盖两UI入口及文档，剩余7个辅助CLI和最终审查不自动完成；旧源、模型、训练与full/holdout等限制保留。轻量证据文档在实际Linux原子提交，再核对docs-only增量bundle回传Mac，提交由git log追溯。
 
 独立reviewer只读取得两端报告/日志原始字节，完全一致且报告内日志SHA正确；核对指定命令、环境与结果记录，实时隔离09035fd4 tracked clean、Python3.11.16、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑；历史环境/退出码/耗时依据报告和日志，实时查询不重建历史进程。
+
+## 37. M7d剩余数据辅助CLI退役（进行中）
+
+基线5c650814。逐文件检查7个ROI/候选/队列脚本及全局引用，versioning和pipeline业务不调用这些CLI；新七阶段直接执行run_input_*与共享原语。公开main及脚本/模块在业务导入前停止，无legacy、check-only或dry-run绕过；原main改为私有，历史解析器与业务函数保留。精确新增文件范围先补Plan，再实现。
+
+新增7项先RED：7 failed/44 deselected/0.49秒（/private/tmp/mvllm2-m7d-red.log）；8文件联合257 passed/10 skipped/16.71秒/exit0（/private/tmp/mvllm2-m7d-regression.log），包括84次Python -S脚本/模块边界调用、历史CLI解析与完整新数据链。10个skip源自候选计划测试所需历史数据缺失，不算通过；其中旧dry-run测试现明确调用私有main。随后文档/历史测试同步的最终核查另记。
+
+脚本索引、数据手册、项目指南、架构及入口清单同步退役状态；B0–B12历史台账仅加后续任务路由，不改历史数字。旧服务手册仅加历史适用范围提示与现行alias入口链接，不修改历史效果证据。索引工具/库保留实际引用，不声明整包退役。独立审查与Linux复验待执行；无真实媒体/GPU/新人工审批。
+
+扩展只读入口核查发现pipeline/prompt_control/__main__.py仍公开提供publish并调用core.publish_prompt写旧registry；此路径未列入前序数据辅助7项清单，需作为M7后续前置核定并补精确Plan，不能宣布M7全部完成。build_artifact_index.py当前仅按历史集合生成INDEX.md总览，仍使用current_data_context默认根；底层集合库保留依赖，后续区分历史审计输出与正式身份写入，不贸然删除。
+
+独立reviewer最终8文件257 passed/10 skipped/16.45秒/exit0，AST确认7脚本全部原函数体保持（main仅改名）；额外28次Python -S脚本/模块dry-run及混合help/legacy全部退出2，结合回归84次无绕过。独立代码、调用关系、文档历史/现行范围及未完成条目核查通过，无finding。10项历史fixture缺失未动态验收。Linux复验拟在既有隔离checkout新m7d-aux-entry-verification-20260912输出，以.venv-m3、CUDA不可见/OMP4/离线运行同8文件，不安装依赖、不执行真实媒体。同步前两端任务HEAD5c650814，隔离tracked clean、正式main clean@f1b7d8a3，新RUN不存在。

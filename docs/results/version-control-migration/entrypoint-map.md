@@ -37,7 +37,9 @@ M0发现的文件名ROI和固定两条候选属于早期最小实现，已不能
 | pipeline/scripts/review_candidates_app.py | 仅接受versioning-package完整审查包，旧queue解析时即拒绝 | 保留历史批次业务函数和读取规则；不改写原审查决定 |
 | pipeline/scripts/roi_annotation_app.py | ROI输入准备界面保留，metadata/output/project-root均必填 | 导入和公开参数解析不选current/LATEST；仅接受metadata实际文件，旧解析器保留私有历史测试 |
 
-artifact_index、artifact_resolver和build_artifact_index.py未删除。source_bootstrap、roi_manifest、roi_media、v3_candidate_plan、v3_candidate_media、v4_1_review_workflow、v4_1_training_release及历史重建代码仍引用相关模块；其中部分为独立辅助入口，不能仅凭新的正式CLI不直接import就判定零活动依赖。
+M7d补充：roi_freeze_decisions、roi_materialize_videos、subvideo_build_plan、subvideo_materialize_media、review_build_queue、review_build_phase2_queues、review_route_from_history七个脚本的公开main及脚本/模块启动均在业务导入前停止；含check-only/dry-run也不开放旧选择。versioning无这些CLI调用，历史main改为私有测试入口，业务函数不变。
+
+artifact_index、artifact_resolver和build_artifact_index.py未删除。source_bootstrap、roi_manifest、roi_media、v3_candidate_plan、v3_candidate_media、v4_1_review_workflow、v4_1_training_release及历史重建代码仍引用相关模块；上述独立数据辅助CLI已停止，但业务库与历史读取/索引工具仍有引用，不能把CLI退役等同于库无依赖。
 
 ## 4) 训练与测评入口（M7b本批）
 

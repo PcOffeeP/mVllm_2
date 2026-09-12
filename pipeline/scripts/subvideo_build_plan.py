@@ -3,9 +3,30 @@
 
 from __future__ import annotations
 
+import sys
+
+
+def main() -> int:
+    message = (
+        "此历史数据辅助 CLI 已停用。请使用 python -m versioning data <stage>，"
+        "显式指定 --root、--inputs、--batch；发布时另需完整 --version。"
+        "ROI和候选媒体使用roi/subvideo阶段，审查包使用review_export；"
+        "历史Phase2对象按已确认mapping迁移，不重建或重新审批。"
+        "操作说明见 docs/DATA_PROCESSING_RUNBOOK.md 第10节。"
+    )
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        print(message)
+        return 0
+    print(message, file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 import argparse
 import json
-import sys
 from pathlib import Path
 
 
@@ -66,7 +87,7 @@ def _resolve_inputs(args: argparse.Namespace, context) -> None:
     )
 
 
-def main() -> None:
+def _legacy_main() -> None:
     args = build_parser().parse_args()
     context = data_context_from_arg(PROJECT_ROOT, args.data_root)
     _resolve_inputs(args, context)
@@ -95,7 +116,3 @@ def main() -> None:
         destination = materialize_candidate_plan(plan, args.output_root)
         summary["output_dir"] = str(destination)
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
-
-
-if __name__ == "__main__":
-    main()
