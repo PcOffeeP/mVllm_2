@@ -576,3 +576,22 @@ transfer使用源catalog SHA256钉扎已核验快照，SSH远端只执行tar读�
 另补截断tar错误归一为BackupIntegrityError供CLI明确报告；先RED再传输+CLI专项19 passed/6.48秒。一次未指定basetemp的RED出现旧pytest只读目录清理告警，未处理与本轮无关的旧临时目录，随后测试均使用显式独立basetemp。本轮失败输入不会发布目标备份。
 
 修复后主Agent完整backup+CLI109 passed/34.44秒/exit0（/private/tmp/mvllm2-m6-final-regression.log），清理断言专项1 passed/1.82秒。独立专项复审18 passed/6.11秒/exit0，额外注入空目录/文件/悬空软链竞争、不支持平台/符号、ENOSPC和真实libc ENOENT均按预期失败并清理；P2关闭，通过本轮代码与Mac证据范围。Linux原子分支与跨机恢复仍待实际执行。提交前再次核对两端基线：Mac/训练机隔离均54e12a01，正式main仍clean@f1b7d8a3；33.1两端新输出均确认不存在。git diff --check通过，本轮代码在Mac原子提交。
+
+
+### 33.3 实际SSH往返与训练机联合恢复
+
+实现ab5543de6f53884ff3c7608592770b2a56538c77通过增量bundle同步；两端SHA为9bea9c95d7aa2a77212c18be79311b7fb9d9378eef29aa4dd123dbe512c16817，verify通过、祖先关系0/1，cherry-pick --ff保留同一代码对象。按33.1在新RUN真实执行backup+CLI：109 passed/62.78秒/exit0，包含Linux原子发布竞态；report进程67.338秒，禁用CUDA/OMP4/离线设置，不安装依赖。report.json SHA为2fb52a9123ceff49937d43740c7f7805262554c6d336210f8a2389761c55c986，linux-tests.log为4e009abd027f228738c55d3bb42cefbd771e0faa54e637d41992c2e0802f23ef。
+
+从RUN/pytest/test_transfer_publishes_verifi0的本轮合成data、records、models、mlflow运行实际backup create和verify CLI至RUN/source-snapshot，得到6对象、23文件、905202字节；两条CLI输出相同，SHA为4a3e9f2430becc56e704b8c705c3ed60df30bdb002644196d16f5309f476c309。catalog SHA为9ecf8b34377272d641a6088b519377df3e06670fcf65e440b1b9548e4395d797。
+
+Mac通过新增transfer CLI真实SSH读取同一源：首先故意给全零摘要，exit1/1.623秒且目标不存在；随后正确摘要exit0/1.117秒，在/private/tmp/mvllm2-m6-received-20260912发布快照，实际905202字节且verify通过。transfer-report.json SHA为d835ab6726dea2b6d49d54da46990de089f39dc870be95693a80b4e4738403eb，远端同一文件名为mac-transfer-report.json。本轮只用小型合成产物验证功能，不能外推大权重传输性能。
+
+Mac已验签目录通过scp回传RUN/returned-snapshot并再次完整验签；此次fixture的data/mlflow/models/records移到同fixture/retained-originals保留，再运行restore CLI恢复至这些原隔离路径，exit0、输出restored=true（restore-cli.json SHA4b6ee7a2edc0cf9e8a62646773fc63a36b7b7759cfd213a48efe9bd4851215bc）。没有删除合成原件，更没有移动正式对象。
+
+第一次恢复后核查脚本误把MlflowClient.download_artifacts返回的临时下载目录当成源artifact目录，导致路径断言失败；restore已成功。保留restore.stdout/stderr，纠正核查假设后只重做核查，不重复restore、不修改实现。最终核对实际Run artifact_uri属于恢复后的原fixture/mlflow，源文件和下载副本均为FAKE-ADAPTER-WEIGHTS；SHA34f404d340691e76a7f0af081ed9b46ef691678045959044354d1fc767286e0e。candidate=model-v4.1-r1/数值版本1，train完成且fold0/1/2均FINISHED、父子绑定正确、cv_f1_mean=0.8，eval结论passed（全部为测试构造事实，不是真实模型质量结论）。SQLite integrity_check=ok，18个Run、3个Model Version、1个alias可查；adapter范围的MLflow与模型备份无merged，production_bundle含merged。joint-restore-report.json SHA47f751f77365194c8aede3c03bf7c695197a5eb4217b76b83fc1ea1013199138。
+
+另对恢复出的data、Prompt、model manifest/权重、MLflow artifact共21个非SQLite文件逐个核对catalog大小与SHA，全部一致；restored-file-check.json SHA8c7c73a53abf4d95631071b309b744b95bbd802e440b6f0aa51b4b7cd71cecf5。SQLite以一致性/语义查询验收，未因打开后数据库文件布局可能变化要求机械字节相同。源快照与回传快照再验均通过；报告和日志副本在Mac /private/tmp/mvllm2-m6-evidence-20260912，八份核心摘要清单为evidence-sha256.json，完整命令在对应报告中。
+
+M6功能接线、两端受控测试、实际SSH往返和原隔离路径联合恢复完成；真实移动硬盘及真实大型产物恢复仍未验证，原绝对路径布局限制和此前MLflow/pandas环境告警保留。后续推进M7旧活动入口核查与文档收敛，同时保留M4 full/holdout实际入口及M5真实模型成功路径缺口。独立证据核查通过，结果见下段。
+
+独立reviewer仅只读检查，核对八份关键报告两端SHA一致；三份实际快照均6对象/23文件/905202字节、逐文件验签且无额外文件。恢复文件与catalog、保留原件的非SQLite文件逐字节摘要一致；原/恢复SQLite mode=ro查询一致，确认18Run/3Model Version/1alias、candidate/三折父子/指标/eval与artifact路径及字节，scope裁剪符合声明。通过此次小型合成对象跨机与原路径恢复证据范围，无finding。核查时两端HEAD均ab5543de、隔离tracked clean、正式main clean@f1b7d8a3；其后主Agent仅更新本节及TODO/Plan。历史环境/退出码/耗时依据报告，未独立复跑；错误摘要当时无目标的状态按主Agent过程记录，不能事后直接观察。首次后核查stdin脚本未落独立文件，reviewer仅确认保留traceback及最终结果，不把第41行断言解释冒充独立重建证据。真实硬盘/大型模型/GPU与改绝对路径可用性未验证。三份轻量证据文档在实际Linux提交，再校验增量bundle回传Mac，提交由git log追溯。
