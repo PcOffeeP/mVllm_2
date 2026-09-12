@@ -3160,3 +3160,134 @@ class TestListEvalFoldRunsObservation:
         ]
         assert listed[0].model_artifact == FOLD_BINDINGS[0]["model_artifact"]
         assert listed[2].data_split == FOLD_BINDINGS[2]["data_split"]
+
+
+# M4 Test List: actual invocation observes RUNNING; success is not an outcome;
+# exceptions/interruption/invalid metrics fail both runs; conflicts never execute
+# or terminate other work; invalid parent refuses execution; tracking errors keep
+# the original execution exception.
+def test_execute_eval_fold_records_actual_success(store, data_root):
+    from versioning.mlflow_eval import execute_eval_fold_run
+
+    parent = _create(store, data_root)
+    calls = []
+
+    def execute():
+        current = get_eval_run(store, EVAL_ID)
+        assert current.run_status == "RUNNING"
+        assert current.folds[0].status == "RUNNING"
+        calls.append(current.folds[0].run_id)
+        return {"joint_correct_rate": 0.0}
+
+    child = execute_eval_fold_run(store, EVAL_ID, 0, executor=execute, **FOLD_BINDINGS[0])
+    assert calls == [child.run_id]
+    assert child.status == "FINISHED"
+    assert child.metrics == {"joint_correct_rate": 0.0}
+    current = get_eval_run(store, EVAL_ID)
+    assert current.run_id == parent.run_id
+    assert current.workflow_state == "running"
+    assert current.outcome is None
+
+
+@pytest.mark.parametrize("error", [RuntimeError("inference failed"), KeyboardInterrupt(), SystemExit(2)])
+def test_execute_eval_fold_preserves_execution_failure(store, data_root, error):
+    from versioning.mlflow_eval import execute_eval_fold_run
+
+    _create(store, data_root)
+
+    def execute():
+        raise error
+
+    with pytest.raises(type(error)) as caught:
+        execute_eval_fold_run(store, EVAL_ID, 0, executor=execute, **FOLD_BINDINGS[0])
+    assert caught.value is error
+    current = get_eval_run(store, EVAL_ID)
+    assert (current.workflow_state, current.run_status, current.outcome) == ("failed", "FAILED", None)
+    assert current.folds[0].status == ("FAILED" if isinstance(error, Exception) else "KILLED")
+
+
+@pytest.mark.parametrize("metrics", [{}, None, {"score": True}, {"score": float("nan")}, {"score": float("inf")}])
+def test_execute_eval_fold_rejects_invalid_result(store, data_root, metrics):
+    from versioning.mlflow_eval import execute_eval_fold_run
+
+    _create(store, data_root)
+    with pytest.raises(IllegalEvalRecord):
+        execute_eval_fold_run(store, EVAL_ID, 0, executor=lambda: metrics, **FOLD_BINDINGS[0])
+    current = get_eval_run(store, EVAL_ID)
+    assert current.workflow_state == "failed"
+    assert current.folds[0].status == "FAILED"
+    assert current.outcome is None
+
+
+def test_execute_eval_fold_conflict_preserves_running_work(store, data_root):
+    from versioning.mlflow_eval import execute_eval_fold_run
+
+    _create(store, data_root)
+    child = _create_fold(store)
+    calls = []
+    with pytest.raises(EvalRunConflict):
+        execute_eval_fold_run(store, EVAL_ID, 0, executor=lambda: calls.append(1), **FOLD_BINDINGS[0])
+    assert not calls
+    current = get_eval_run(store, EVAL_ID)
+    assert current.run_status == "RUNNING"
+    assert current.folds[0].run_id == child.run_id
+    assert current.folds[0].status == "RUNNING"
+
+
+def test_execute_eval_fold_invalid_parent_never_calls_executor(store, data_root):
+    from versioning.mlflow_eval import execute_eval_fold_run
+
+    parent = _create(store, data_root)
+    _client(store).set_tag(parent.run_id, "record_validity", "invalid")
+    calls = []
+    with pytest.raises(InvalidEvalRecord):
+        execute_eval_fold_run(store, EVAL_ID, 0, executor=lambda: calls.append(1), **FOLD_BINDINGS[0])
+    assert not calls
+    assert not get_eval_run(store, EVAL_ID).folds
+
+
+def test_execute_eval_fold_tracking_failure_preserves_original(store, data_root, monkeypatch):
+    import versioning.mlflow_eval as module
+
+    _create(store, data_root)
+    error = RuntimeError("original inference failure")
+
+    def execute():
+        raise error
+
+    def fail_tracking(*args, **kwargs):
+        raise OSError("tracking unavailable")
+
+    monkeypatch.setattr(module, "end_eval_fold_run", fail_tracking)
+    with pytest.raises(RuntimeError) as caught:
+        module.execute_eval_fold_run(store, EVAL_ID, 0, executor=execute, **FOLD_BINDINGS[0])
+    assert caught.value is error
+    assert any("tracking unavailable" in note for note in error.__notes__)
+    assert get_eval_run(store, EVAL_ID).workflow_state == "failed"
+
+
+def test_execute_eval_fold_creation_read_failure_cleans_owned_run(store, data_root, monkeypatch):
+    import versioning.mlflow_eval as module
+
+    _create(store, data_root)
+    original = MlflowClient.get_run
+    error = OSError("temporary child read failure")
+    failed = []
+    calls = []
+
+    def get_run(client, run_id):
+        run = original(client, run_id)
+        if run.data.tags.get("fold") == "fold0" and not failed:
+            failed.append(run_id)
+            raise error
+        return run
+
+    monkeypatch.setattr(MlflowClient, "get_run", get_run)
+    with pytest.raises(OSError) as caught:
+        module.execute_eval_fold_run(store, EVAL_ID, 0, executor=lambda: calls.append(1), **FOLD_BINDINGS[0])
+    assert caught.value is error
+    assert calls == []
+    current = get_eval_run(store, EVAL_ID)
+    assert current.folds[0].run_id == failed[0]
+    assert current.folds[0].status == "FAILED"
+    assert current.workflow_state == "failed"

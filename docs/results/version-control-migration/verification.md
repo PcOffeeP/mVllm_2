@@ -463,3 +463,17 @@ Linux `.venv-m3/bin/python -m pytest -q tests/test_train_with_contract.py tests/
 环境实际为Python3.11.16、torch2.5.1+cpu、transformers4.56.1、MLflow3.15.2、DVC3.67.1；peft与accelerate未安装。基座仅验证普通目录存在，未加载/验签权重。本次是既有CPU环境的真实输入准备证据，不是GPU训练成功、可训练环境就绪或模型效果证据。Prompt现已随Git同步到隔离仓库，并用于隔离store/input；/data正式store的运行镜像未在此次复制，不能声称它已具备Prompt运行目录。没有push、merge main、停止任务、重训或完整评测。
 
 M4训练侧本地实现、独立复核和训练机输入准备已完成；正式eval入口接线、相应受控执行/失败/导出验收仍未实施，M4整体保持进行中。下一步按Plan M4正式评测要求验证完整model身份、数值Model Version、data与评价配置后再解析权重，保留受限评测授权门，不把历史summary转换为passed。既有完成训练的补导出可恢复；失败训练/checkpoint的真实受控续跑未由本次dry-run验证。
+
+## 30. M4e 测评执行事件适配（2026-09-12）
+
+本机Mac，基线123b4ab2；沿用已确认M4及三折对应既有划分的决定。本切片在versioning/mlflow_eval.py新增execute_eval_fold_run，由编排层传入真实执行回调和完整fold绑定。它先创建RUNNING子Run，再调用执行器；非空有限数值指标才允许FINISHED。成功不自动完成父Run、不产生passed/failed质量结论。普通异常记录FAILED，中断记录KILLED，父Run记录failed/FAILED；子Run写失败时仍尝试记录父Run失败，原异常不被tracking异常遮蔽。非法父记录及fold冲突在执行前拒绝，保留其他调用的状态。
+
+Test List覆盖实际调用顺序、成功不等于质量通过、异常/中断、空值/bool/NaN/Inf指标、冲突、invalid父记录及tracking失败。新增12项先因缺API得到有效RED：12 failed/5.76秒/exit1，日志/private/tmp/mvllm2-m4-eval-events-red.log；最小实现后12 passed/6.01秒/exit0，日志/private/tmp/mvllm2-m4-eval-events-green.log。随后补强tracking失败场景的父Run失败断言，最终回归及独立审查结果追加于下文。
+
+该API是低层事件适配器，不是正式eval运行入口。冻结配置、权重解析前的完整model/数值Model Version/data校验、受限数据授权、结果文件持久化与完整性、聚合阈值及不可变导出仍由后续实际编排负责；本切片没有提供新的CLI run动作。测试使用临时SQLite/MLflow及执行替身，没有真实模型加载、GPU或完整评测，也未同步训练机、push或merge。M4保持进行中。
+
+初轮完整测评记录回归239 passed/89.22秒/exit0，日志/private/tmp/mvllm2-m4-eval-events-regression.log；补强断言后的专项12 passed/5.69秒/exit0，日志/private/tmp/mvllm2-m4-eval-events-final.log。独立reviewer确认一个P2：子Run创建成功后的首次get_run失败发生在清理范围外，会留下RUNNING并阻断重试。新增真实SQLite故障注入回归先RED（1 failed/1.57秒/exit1，/private/tmp/mvllm2-m4-eval-review-red.log），随后把创建响应的child ID与后续读回分离，适配器取得本次ID后在try内读回；失败清理与原异常保留均覆盖该窗口。旧create_eval_fold_run公开快照接口保持兼容。
+
+独立复审通过，P2关闭，无剩余可执行finding。reviewer实际专项13 passed、227 deselected、6.74秒、exit0（--basetemp=/private/tmp/mvllm2-review-eval-events-final-20260912）；公开create_eval_fold_run签名、原校验和快照返回兼容。未验证并发调用、创建请求已提交但响应丢失、后端持续不可用或进程强制终止恢复；不能将本轮异常处理测试解释为这些场景已获保证。
+
+修复后主Agent完整测评记录回归：240 passed、93.98秒、exit0，日志/private/tmp/mvllm2-m4-eval-events-fixed.log；git diff --check通过。此次代码与证据由Mac提交，具体提交可通过git log -- versioning/mlflow_eval.py追溯。本机main仍是任务HEAD祖先，无主线漂移需要重新设计；未跟踪agent-handoff.md保持原样且不纳入提交。

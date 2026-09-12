@@ -9,9 +9,10 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient
@@ -706,6 +707,26 @@ def create_eval_fold_run(
     failures: str,
 ) -> EvalFoldRecord:
     """在 running 父 Run 下创建嵌套 fold 子 Run（RUNNING）。"""
+    run_id = _start_eval_fold_run(
+        store, eval_id, fold, model_artifact=model_artifact,
+        data_split=data_split, sample_count=sample_count,
+        records=records, failures=failures,
+    )
+    return _build_fold_record(eval_id, _client(store).get_run(run_id))
+
+
+def _start_eval_fold_run(
+    store: EvalRecordStore,
+    eval_id: str,
+    fold: int,
+    *,
+    model_artifact: str,
+    data_split: str,
+    sample_count: int,
+    records: str,
+    failures: str,
+) -> str:
+    """Return the owned child ID without a fallible post-creation read."""
     fold = _validate_fold(fold)
     model_artifact = _validate_non_empty_string(model_artifact, "model_artifact")
     data_split = _validate_non_empty_string(data_split, "data_split")
@@ -751,7 +772,7 @@ def create_eval_fold_run(
         run_name=fold_name,
         tags=tags,
     )
-    return _build_fold_record(eval_id, client.get_run(child.info.run_id))
+    return child.info.run_id
 
 
 def log_eval_fold_metrics(
@@ -794,6 +815,62 @@ def end_eval_fold_run(
             client.log_metric(child.info.run_id, key, value)
     client.set_terminated(child.info.run_id, status=run_status)
     return _build_fold_record(eval_id, client.get_run(child.info.run_id))
+
+
+def execute_eval_fold_run(
+    store: EvalRecordStore,
+    eval_id: str,
+    fold: int,
+    *,
+    model_artifact: str,
+    data_split: str,
+    sample_count: int,
+    records: str,
+    failures: str,
+    executor: Callable[[], Mapping[str, float]],
+) -> EvalFoldRecord:
+    """Record one actual evaluation invocation under an existing parent.
+
+    This event adapter does not resolve weights or authorize data access. The
+    caller must freeze and validate inputs, acquire any required holdout claim,
+    and supply an executor that rejects incomplete execution and persists its
+    outputs before returning metrics. Success finishes only this fold; quality
+    thresholds, aggregation and the parent's outcome belong to orchestration.
+    """
+    parse_eval_id(eval_id)
+    _validate_fold(fold)
+    if not callable(executor):
+        raise IllegalEvalRecord("executor must be callable")
+    parent = get_eval_run(store, eval_id)
+    if parent.record_validity != RecordValidity.VALID.value:
+        raise InvalidEvalRecord(f"eval {eval_id} is invalid")
+    # Rejected inputs and conflicts must not terminate another invocation.
+    child_id = _start_eval_fold_run(
+        store, eval_id, fold, model_artifact=model_artifact,
+        data_split=data_split, sample_count=sample_count,
+        records=records, failures=failures,
+    )
+    try:
+        _build_fold_record(eval_id, _client(store).get_run(child_id))
+        metrics = _validate_metrics(executor())
+        if not all(math.isfinite(value) for value in metrics.values()):
+            raise IllegalEvalRecord("executor metrics must be finite")
+        return end_eval_fold_run(store, eval_id, fold, "FINISHED", metrics=metrics)
+    except BaseException as exc:
+        status = "KILLED" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "FAILED"
+        # Attempt both records independently: a child tracking failure must not
+        # prevent the parent failure from being persisted when still possible.
+        try:
+            current = get_eval_run(store, eval_id)
+            if current.folds[fold].status == "RUNNING":
+                end_eval_fold_run(store, eval_id, fold, status)
+        except Exception as tracking_error:
+            exc.add_note(f"Failed to persist evaluation fold failure: {tracking_error}")
+        try:
+            transition_eval_state(store, eval_id, "failed", run_status="FAILED")
+        except Exception as tracking_error:
+            exc.add_note(f"Failed to persist evaluation parent failure: {tracking_error}")
+        raise
 
 
 def resume_eval_fold_run(store: EvalRecordStore, eval_id: str, fold: int) -> EvalFoldRecord:
