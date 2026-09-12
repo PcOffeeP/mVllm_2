@@ -269,3 +269,11 @@ M3b 已完成本地 source 适配；真实媒体、CLI 和其余阶段仍待完�
 独立本机 detached worktree 基于 `3d396988`，仅叠加本子视频切片；权威命令使用同一`.venv`解释器执行 `-m pytest -q tests/versioning --basetemp /tmp/mvllm2-subvideo-proof-20260912`，**1737 passed，323.83秒，exit0**。暂存代码与该快照逐字一致。临时日志`/tmp/mvllm2-m3-subvideo-full-pytest.log`，不含后续审查/发布/界面/CLI增量。
 
 所有媒体和预处理器测试仍为本机替身；真实训练机小样本/完整MiniCPM加载/双机审查和两个正式release迁移尚待执行，M3未完成。
+
+## 16. M3e：可携媒体的完整人工审查回收
+
+2026-09-12 新增 review_export/import 真实适配。开发候选按既有 v4.1 提案选择进入人工队列（包括韧性临界未断裂），普通稳定负例保留自动路径；test_audit不进入开发集审查包。导出包包含相对路径视频/模型采样帧、冻结契约、历史建议和完整候选清单。回收逐项绑定 batch、inputs、导出包SHA、源视频、媒体SHA、实际时间戳、系统建议、历史参考及规范化标签；必须完整终态且有审查者/含时区时间，丢弃/重生成必须有说明。旧包、缺项、追加及不同有效结果均拒绝，原冻结文件不覆盖。
+
+空输出stub取得有效RED，定向12 passed。独立 reviewer 对12项及非空历史参考、额外身份/时间/状态边界、同结果重复和不同有效结果冲突进行复验，无可执行finding；另验证incipient纯提案语义。后续UI不属于本切片证据。
+
+本机独立 detached worktree 基于 `e11b9379`，仅叠加本切片，完整`tests/versioning` **1749 passed，335.81秒，exit0**；同一虚拟环境解释器，`--basetemp /tmp/mvllm2-human-proof-20260912`。提交代码与被测快照逐字一致。临时日志`/tmp/mvllm2-m3-human-full-pytest.log`。媒体与审查记录为明确fixture，尚无真实媒体播放、真实人工决定或跨机传输证据，M3仍进行中。

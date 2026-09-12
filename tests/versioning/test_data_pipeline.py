@@ -1661,3 +1661,89 @@ class TestInputSubvideoBoundaries:
         rewrite(doc['media']['preprocessor']['config'], json.dumps(prep).encode()); _save_pinned(path, doc)
         with pytest.raises(StageInputError):
             dp._load_media_inputs(dp.load_data_inputs(path, batch='batch-001'))
+
+
+# M3e — portable, complete human-review round trip.
+@pytest.fixture()
+def review_stage(media_inputs, media_runtime, tmp_path):
+    path, _, _, _ = media_inputs
+    root = tmp_path / 'store'
+    _run_real_source(root, path)
+    _run_real_roi(root, path)
+    _run_real_subvideo(root, path)
+    return root, path
+
+
+def _review_return(package, destination):
+    from pipeline.v4_1_review_workflow import new_decision
+    from pipeline.v4_1_review_decisions import build_review_payload
+    queue = json.loads((package / 'review_queue.json').read_text())
+    records = [new_decision(row, status='approved', corrected_labels=None,
+        historical_suggested_labels=None, historical_reference_ids=[], reviewer_notes='fixture review',
+        reviewer_id='fixture-reviewer', reviewed_at='2026-09-12T12:00:00+08:00') for row in queue['candidates']]
+    payload = {'schema': 'tensile-data/review-return/v1', 'batch': queue['batch'],
+        'inputs_sha256': queue['inputs_sha256'],
+        'export_sha256': hashlib.sha256((package / 'stage_manifest.json').read_bytes()).hexdigest(),
+        'review': build_review_payload(records, batch_id=queue['batch'], created_at='2026-09-12T12:00:00+08:00')}
+    destination.write_text(json.dumps(payload, ensure_ascii=False))
+    return payload
+
+
+class TestInputReview:
+    def test_portable_complete_round_trip_preserves_proposals(self, review_stage, tmp_path):
+        from versioning import data_pipeline as dp
+        from pipeline.v4_1_review_workflow import _proposal
+        root, path = review_stage
+        result = dp.run_input_review_export(root, inputs_path=path, batch='batch-001')
+        assert len(result.outputs) == 1
+        package = result.outputs[0]
+        queue = json.loads((package / 'review_queue.json').read_text())
+        sub = json.loads((root / 'data/working/batch-001/subvideo/subvideo_manifest.json').read_text())
+        expected = [c for c in sub['candidates'] if _proposal(c) is not None]
+        assert expected and len(queue['candidates']) == len(expected)
+        assert {c['candidate_id'] for c in queue['candidates']} == {c['candidate_id'] for c in expected}
+        for c in queue['candidates']:
+            assert c['candidate_v4_labels'] == _proposal(c)
+            assert not Path(c['video_path']).is_absolute()
+            assert (package / c['video_path']).is_file()
+            assert all((package / f['path']).is_file() for f in c['frame_artifacts'])
+        import shutil
+        portable = tmp_path / 'mac-copy'
+        shutil.copytree(package, portable)
+        returned = tmp_path / 'returned.json'
+        expected_return = _review_return(portable, returned)
+        result = dp.run_input_review_import(root, inputs_path=path, batch='batch-001', results_path=returned)
+        frozen = json.loads((result.outputs[0] / 'review_return.json').read_text())
+        assert frozen == expected_return
+        assert result.report['reviewed_count'] == len(expected)
+
+    @pytest.mark.parametrize('problem', ['missing', 'extra', 'batch', 'export', 'media', 'timestamps',
+                                        'proposal', 'pending', 'reviewer', 'drop_notes', 'same_correction'])
+    def test_invalid_returns_do_not_publish(self, review_stage, tmp_path, problem):
+        from versioning import data_pipeline as dp
+        from pipeline.v4_1_review_decisions import build_review_payload
+        root, path = review_stage
+        package = dp.run_input_review_export(root, inputs_path=path, batch='batch-001').outputs[0]
+        returned = tmp_path / 'returned.json'
+        payload = _review_return(package, returned)
+        records = payload['review']['decisions']
+        if problem == 'missing': records.pop()
+        elif problem == 'extra':
+            row = dict(records[0]); row['clip_id'] = 'extra'; records.append(row)
+        elif problem == 'batch': payload['batch'] = 'other'
+        elif problem == 'export': payload['export_sha256'] = '0' * 64
+        elif problem == 'media': records[0]['evidence']['media_sha256'] = '0' * 64
+        elif problem == 'timestamps': records[0]['evidence']['actual_sampled_timestamps'] = []
+        elif problem == 'proposal': records[0]['system_proposed_labels']['clip_state'] = '未断裂'
+        elif problem == 'pending':
+            records[0]['review_status'] = 'needs_review'; records[0]['effective_labels'] = None
+        elif problem == 'reviewer': records[0]['reviewer_id'] = ' '
+        elif problem == 'drop_notes':
+            records[0]['review_status'] = 'dropped'; records[0]['effective_labels'] = None; records[0]['reviewer_notes'] = ''
+        else:
+            records[0]['review_status'] = 'corrected'
+            records[0]['corrected_labels'] = records[0]['system_proposed_labels']
+        returned.write_text(json.dumps(payload, ensure_ascii=False))
+        with pytest.raises((dp.StageInputError, dp.ReviewGateError)):
+            dp.run_input_review_import(root, inputs_path=path, batch='batch-001', results_path=returned)
+        assert not (root / 'data/working/batch-001/review_import').exists()

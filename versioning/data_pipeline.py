@@ -1450,3 +1450,117 @@ def run_input_subvideo(root: Path, *, inputs_path: Path, batch: str) -> StageRes
         return {'batch': batch, 'candidate_count': len(materialized), 'excluded_count': len(excluded)}
 
     return _publish_input_stage(root, inputs, 'subvideo', produce, upstream, verify_nested_inputs)
+
+# M3e — portable, complete human-review round trip.
+def _candidate_media_pin(directory: Path, value: Mapping[str, Any], *, video=False) -> PinnedInputFile:
+    fields = {'path': value['video_path'], 'size_bytes': value['video_size_bytes'],
+              'sha256': value['video_sha256']} if video else dict(value)
+    return _pin_input_file(fields, directory, 'candidate.media')
+
+
+def run_input_review_export(root: Path, *, inputs_path: Path, batch: str) -> StageResult:
+    from pipeline.v4_1_review_workflow import _proposal, _is_incipient_candidate, historical_context
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    subdir, _ = _load_input_stage(root, inputs, 'subvideo')
+    sub = _stage_json(subdir, 'subvideo_manifest.json')
+    values, _, _, pins, _ = _load_media_inputs(inputs)
+    reference_index = {r['reference_record_id']: r for r in values['development_reference']['records']}
+    candidates = []
+    for row in sub['candidates']:
+        if row['scope'] != 'development':
+            continue
+        proposal = _proposal(row)
+        if proposal is None:
+            continue
+        candidate = {**row, 'candidate_v4_labels': proposal,
+                     'candidate_kind': 'incipient_ductile' if _is_incipient_candidate(row) else 'observed',
+                     '_actual_sampled_timestamps': [r['timestamp'] for r in row['actual_frame_mapping']]}
+        labels, ids, records = historical_context(candidate, reference_index)
+        candidate['historical_suggested_labels'] = labels
+        candidate['historical_reference_ids'] = ids
+        candidate['historical_records'] = records
+        candidates.append(candidate)
+
+    def verify():
+        for pin in pins:
+            _verify_input_pin(pin)
+
+    def produce(destination):
+        for candidate in candidates:
+            for pin in (_candidate_media_pin(subdir, candidate, video=True),
+                        *(_candidate_media_pin(subdir, frame) for frame in candidate['frame_artifacts'])):
+                _copy_input_pin(pin, destination / pin.path.relative_to(subdir))
+        _copy_input_pin(inputs.contract, destination / 'contract.json')
+        _write_json(destination / 'review_queue.json', {
+            'schema': 'tensile-data/review-queue/v1', 'batch': batch,
+            'inputs_sha256': inputs.config_sha256, 'candidates': candidates,
+            'candidate_inventory': [r['candidate_id'] for r in sub['candidates'] if r['scope'] == 'development']})
+        return {'batch': batch, 'review_required_count': len(candidates),
+                'automatic_count': sum(r['scope'] == 'development' for r in sub['candidates']) - len(candidates)}
+
+    return _publish_input_stage(root, inputs, 'review_export', produce,
+                                {'subvideo': _sha256_file(subdir / 'stage_manifest.json')}, verify)
+
+
+def _external_document_pin(path: Path) -> PinnedInputFile:
+    path = Path(path).absolute()
+    if any(p.is_symlink() for p in (path, *path.parents)) or not path.is_file():
+        raise StageInputError('显式回收文件必须是普通文件且不能经过符号链接')
+    return PinnedInputFile(path, path.stat().st_size, _sha256_file(path))
+
+
+def _validate_input_review_return(payload, queue, export_sha):
+    from datetime import datetime
+    from pipeline.v4_1_review_decisions import validate_review_payload
+    from pipeline.v4_1_review_workflow import new_decision
+    payload = _input_mapping(payload, {'schema', 'batch', 'inputs_sha256', 'export_sha256', 'review'}, 'review-return')
+    if (payload['schema'] != 'tensile-data/review-return/v1' or payload['batch'] != queue['batch']
+            or payload['inputs_sha256'] != queue['inputs_sha256'] or payload['export_sha256'] != export_sha):
+        raise ReviewGateError('回收结果的批次、inputs 或导出包绑定不一致')
+    try:
+        review = payload['review']
+        validate_review_payload(review)
+        if review['batch_id'] != queue['batch']:
+            raise ValueError('审查 batch_id 不匹配')
+        by_id = {r['clip_id']: r for r in review['decisions']}
+        if set(by_id) != {c['candidate_id'] for c in queue['candidates']}:
+            raise ValueError('回收必须恰好完整覆盖导出审查队列')
+        for candidate in queue['candidates']:
+            row = by_id[candidate['candidate_id']]
+            _input_text(row['reviewer_id'], 'reviewer_id')
+            reviewed_at = _input_text(row['reviewed_at'], 'reviewed_at')
+            parsed = datetime.fromisoformat(reviewed_at.replace('Z', '+00:00'))
+            if parsed.tzinfo is None:
+                raise ValueError('reviewed_at 必须含时区')
+            expected = new_decision(candidate, status=row['review_status'],
+                corrected_labels=row['corrected_labels'],
+                historical_suggested_labels=candidate['historical_suggested_labels'],
+                historical_reference_ids=candidate['historical_reference_ids'],
+                reviewer_notes=row['reviewer_notes'], reviewer_id=row['reviewer_id'], reviewed_at=reviewed_at)
+            if row != expected:
+                raise ValueError(f"{candidate['candidate_id']}: 标签、来源或媒体证据与导出队列不一致")
+    except (ValueError, TypeError, KeyError) as exc:
+        raise ReviewGateError(f'审查回收未通过: {exc}') from exc
+    return payload
+
+
+def run_input_review_import(root: Path, *, inputs_path: Path, batch: str, results_path: Path) -> StageResult:
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    directory, _ = _load_input_stage(root, inputs, 'review_export')
+    queue = _stage_json(directory, 'review_queue.json')
+    export_sha = _sha256_file(directory / 'stage_manifest.json')
+    pin = _external_document_pin(results_path)
+    payload = _validate_input_review_return(_read_pinned_document(pin), queue, export_sha)
+
+    def produce(destination):
+        _write_json(destination / 'review_return.json', payload)
+        return {'batch': batch, 'reviewed_count': len(payload['review']['decisions']),
+                'results_sha256': pin.sha256}
+
+    result = _publish_input_stage(root, inputs, 'review_import', produce,
+        {'review_export': export_sha}, lambda: _verify_input_pin(pin))
+    # A changed result file is a conflict even when it is independently valid.
+    frozen = _stage_json(result.outputs[0], 'review_return.json')
+    if frozen != payload:
+        raise ReviewGateError('已有冻结审查结果与本次回收不同，拒绝覆盖')
+    return result
