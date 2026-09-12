@@ -9,6 +9,10 @@ from pathlib import Path
 import yaml
 from mlflow.tracking import MlflowClient
 
+from test_data_pipeline import (
+    pinned_inputs, source_inputs, roi_inputs, media_inputs, media_runtime,
+    _review_return, _source_probe,
+)
 from versioning.backup import verify_backup
 from versioning.cli import main
 from versioning.manifest import validate_manifest
@@ -25,45 +29,20 @@ def _yaml(path: Path, value: object) -> Path:
     return path
 
 
-def test_full_fixture_lifecycle_through_unified_cli(tmp_path: Path) -> None:
-    root = tmp_path / "project"
+def test_full_fixture_lifecycle_through_unified_cli(tmp_path: Path, media_inputs, media_runtime, monkeypatch) -> None:
+    from pipeline import source_bootstrap
+    monkeypatch.setattr(source_bootstrap, 'probe_video', _source_probe)
+    inputs, _, root, _ = media_inputs
     store = root / "workspace" / "mlflow"
-    batch = "batch-e2e"
-    raw = root / "data" / "raw" / batch
-    raw.mkdir(parents=True)
-    (raw / "sample.mp4").write_bytes(b"fixture-video")
-
-    common = ("--root", str(root), "--batch", batch)
+    batch = "batch-001"
+    common = ("--root", str(root), "--batch", batch, "--inputs", str(inputs))
     for stage in ("source", "roi", "subvideo", "review_export"):
         _run("data", stage, *common)
-
-    subvideo_path = (
-        root / "data" / "working" / batch / "subvideo" / "subvideo_manifest.json"
-    )
-    subvideo = json.loads(subvideo_path.read_text(encoding="utf-8"))
-    review = _yaml(
-        root / "review.yaml",
-        {
-            "batch": batch,
-            "approved": True,
-            "content_sha256": hashlib.sha256(subvideo_path.read_bytes()).hexdigest(),
-            "decisions": [
-                {"clip_id": item["clip_id"], "verdict": "accept"}
-                for item in subvideo["clips"]
-            ],
-        },
-    )
+    review = tmp_path / 'review.json'
+    _review_return(root / 'data/working' / batch / 'review_export', review)
     _run("data", "review_import", *common, "--results", str(review))
-    _run(
-        "data",
-        "release",
-        *common,
-        "--version",
-        "data-v4.1-r1",
-        "--protocol",
-        "v4.1",
-    )
-    _run("data", "release_validate", "--root", str(root), "--version", "data-v4.1-r1")
+    _run("data", "release", *common, "--version", "data-v4.1-r1")
+    _run("data", "release_validate", *common, "--version", "data-v4.1-r1")
 
     definition = _yaml(
         root / "prompt.yaml",

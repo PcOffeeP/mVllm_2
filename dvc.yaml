@@ -1,57 +1,31 @@
-# DVC 只管理数据 pipeline（设计 §2.5）：七阶段主干 + 人工审查显式关卡。
-# 阶段固定顺序 source -> roi -> subvideo -> review_export -> review_import
-# -> release -> release_validate；相邻阶段经 outs/deps 闭合衔接。
-# review_import 消费外部人工审查结果 data/review_results/<batch>.yaml
-# （不由任何阶段产物提供，关卡显式，D015/D016）；release 依赖其产物，
-# 审查未回收或结论不通过时 release 及下游不可执行。
-# release_validate 只报告（D035），不触碰训练。
+# 显式 store 的七阶段模板。用 data dvc-config 生成该 store 的 params.yaml。
+# 未配置参数时 fail-closed；人工回收是外部依赖，已有阶段 persist 且不可覆盖。
 stages:
   source:
-    cmd: python -m versioning data source --root . --batch batch-001
-    deps:
-      - data/raw/batch-001
-    outs:
-      - data/working/batch-001/source
+    cmd: ${pipeline.source.cmd}
+    deps: [params.yaml]
+    outs: []
   roi:
-    cmd: python -m versioning data roi --root . --batch batch-001
-    deps:
-      - data/working/batch-001/source
-    outs:
-      - data/working/batch-001/roi
+    cmd: ${pipeline.roi.cmd}
+    deps: [params.yaml]
+    outs: []
   subvideo:
-    cmd: python -m versioning data subvideo --root . --batch batch-001
-    deps:
-      - data/working/batch-001/roi
-    outs:
-      - data/working/batch-001/subvideo
+    cmd: ${pipeline.subvideo.cmd}
+    deps: [params.yaml]
+    outs: []
   review_export:
-    cmd: python -m versioning data review_export --root . --batch batch-001
-    deps:
-      - data/working/batch-001/subvideo
-    outs:
-      - data/working/batch-001/review/review_package
+    cmd: ${pipeline.review_export.cmd}
+    deps: [params.yaml]
+    outs: []
   review_import:
-    cmd: python -m versioning data review_import --root . --batch batch-001
-    deps:
-      - data/working/batch-001/review/review_package
-      - data/review_results/batch-001.yaml
-    outs:
-      - data/working/batch-001/review/review_decisions.json
+    cmd: ${pipeline.review_import.cmd}
+    deps: [params.yaml]
+    outs: []
   release:
-    cmd: python -m versioning data release --root . --batch batch-001 --version ${release_version}
-    deps:
-      - data/working/batch-001/review/review_decisions.json
-    params:
-      - release_version
-    outs:
-      # Finding 3：固定 payload out + 指针；封存版本目录不是 pipeline out。
-      - data/release_payload
-      - data/release_pointer.json
+    cmd: ${pipeline.release.cmd}
+    deps: [params.yaml]
+    outs: []
   release_validate:
-    cmd: python -m versioning data release_validate --root . --batch batch-001 --version ${release_version}
-    deps:
-      - data/release_pointer.json
-    params:
-      - release_version
-    outs:
-      - data/reports
+    cmd: ${pipeline.release_validate.cmd}
+    deps: [params.yaml]
+    outs: []

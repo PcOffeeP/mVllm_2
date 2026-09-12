@@ -1,1 +1,2 @@
-release_version: data-v4.1-r1
+# 此仓库仅提供模板；不得默认选择 store、输入、批次或正式版本。
+pipeline: {}

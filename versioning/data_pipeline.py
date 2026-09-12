@@ -622,18 +622,15 @@ def run_release_validate(
 
 
 def run_stage(root: Path, stage: str, **kwargs: Any) -> StageResult:
-    """按 stage 名分发到对应执行函数。"""
+    """The public seven-stage dispatcher only accepts explicit real inputs."""
     if stage not in _STAGES_SET:
         raise UnknownStageError(f"未知 stage: {stage!r}")
-
-    dispatch: dict[str, Any] = {
-        "source": run_source,
-        "roi": run_roi,
-        "subvideo": run_subvideo,
-        "review_export": run_review_export,
-        "review_import": run_review_import,
-        "release": run_release,
-        "release_validate": run_release_validate,
+    if kwargs.get('inputs_path') is None or not kwargs.get('batch'):
+        raise StageInputError('真实数据阶段必须显式指定 inputs_path 和 batch')
+    dispatch = {
+        'source': run_input_source, 'roi': run_input_roi, 'subvideo': run_input_subvideo,
+        'review_export': run_input_review_export, 'review_import': run_input_review_import,
+        'release': run_input_release, 'release_validate': run_input_release_validate,
     }
     return dispatch[stage](root, **kwargs)
 
@@ -1842,3 +1839,64 @@ def save_input_review_draft(path: Path, identity, decisions):
 
 def freeze_input_review_workspace(output_root: Path, identity, decisions):
     return _write_input_review_file(Path(output_root) / 'review_return.json', identity, decisions, complete=True)
+
+# M3h — DVC configuration for the explicit input graph.
+def build_input_dvc_configuration(root: Path, *, inputs_path: Path, batch: str, results_path: Path, version: str):
+    import shlex
+    inputs = load_data_inputs(inputs_path, batch=batch)
+    parse_data_id(version)
+    _, _, _, nested_pins, _ = _load_media_inputs(inputs)
+    root = Path(root).absolute()
+    _input_stage_path(root, batch, 'source')
+    root = root.resolve()
+    results = Path(results_path).absolute()
+    if any(p.is_symlink() for p in (results, *results.parents)):
+        raise StageInputError('DVC 外部审查结果路径不能经过符号链接')
+    results = results.resolve()
+    if results.is_relative_to(root / 'data/working') or results.is_relative_to(root / 'data/releases'):
+        raise StageInputError('DVC 人工回收结果必须位于阶段产物之外')
+    repository = Path(__file__).resolve().parents[1]
+    code = [p for package in ('versioning', 'pipeline') for p in (repository / package).rglob('*.py')]
+    deps = sorted({str(p) for p in (*inputs.dependencies, *(pin.path for pin in nested_pins), *code,
+                                  repository / 'pyproject.toml')})
+    stages = {}
+    for index, stage in enumerate(STAGES):
+        args = ['env', f'PYTHONPATH={repository}', sys.executable, '-m', 'versioning', 'data', stage,
+                '--root', str(root), '--inputs', str(inputs.config_path), '--batch', batch]
+        stage_deps = list(deps)
+        if index:
+            stage_deps.append(str(root / 'data/working' / batch / STAGES[index - 1]))
+        if stage == 'review_import':
+            args.extend(['--results', str(results)])
+            stage_deps.append(str(results))
+        if stage in {'release', 'release_validate'}:
+            args.extend(['--version', version])
+        if stage == 'release_validate':
+            stage_deps.extend([str(root / 'data/releases' / version / 'release.yaml'),
+                               str(root / 'data/releases' / version / 'payload')])
+        stages[stage] = {'cmd': shlex.join(args), 'deps': stage_deps,
+                         'outs': [{str(root / 'data/working' / batch / stage): {'persist': True}}]
+                         if stage != 'release_validate' else []}
+    return {'pipeline': stages}
+
+
+def write_input_dvc_configuration(root: Path, *, inputs_path: Path, batch: str, results_path: Path, version: str):
+    config = build_input_dvc_configuration(root, inputs_path=inputs_path, batch=batch,
+                                           results_path=results_path, version=version)
+    root = Path(root).resolve()
+    if not (root / '.dvc').is_dir() or (root / '.dvc').is_symlink():
+        raise StageInputError('请先在显式 store 初始化 DVC，再生成配置')
+    template = yaml.safe_load((Path(__file__).resolve().parents[1] / 'dvc.yaml').read_text())
+    for stage, values in config['pipeline'].items():
+        template['stages'][stage]['deps'] = ['params.yaml', *values['deps']]
+        template['stages'][stage]['outs'] = values['outs']
+    files = {root / 'dvc.yaml': yaml.safe_dump(template, allow_unicode=True, sort_keys=False).encode(),
+             root / 'params.yaml': yaml.safe_dump(config, allow_unicode=True, sort_keys=False).encode()}
+    for path, content in files.items():
+        if path.is_symlink() or (path.exists() and (not path.is_file() or path.read_bytes() != content)):
+            raise StageInputError(f'拒绝覆盖现有 DVC 配置: {path}')
+    for path, content in files.items():
+        if not path.exists():
+            with path.open('xb') as handle:
+                handle.write(content)
+    return {'batch': batch, 'version': version, 'paths': [str(p) for p in files]}

@@ -295,3 +295,15 @@ M3b 已完成本地 source 适配；真实媒体、CLI 和其余阶段仍待完�
 主Agent另用Streamlit AppTest完成完整fixture界面操作：打开包、逐条批准、草稿保存、完整冻结及统一import，**1 passed**。该用例帧为2×2测试图片、视频为媒体替身，仅证明交互/数据绑定，不证明真实画面或播放。没有代替实际审查者作真人决定。
 
 独立本机detached worktree基于`aea0e1e2`，仅叠加本UI切片及相关测试，完整`tests/versioning` **1763 passed，397.23秒，exit0**，同一虚拟环境解释器，`--basetemp /tmp/mvllm2-ui-proof-20260912`。暂存的三个代码文件与快照逐字一致；临时日志`/tmp/mvllm2-m3-ui-full-pytest.log`。后续CLI/DVC接线另验，真实跨机审查仍待执行。
+
+## 19. M3h：七阶段公共入口与真实 DVC 依赖接线
+
+2026-09-12 公共 run_stage/CLI 全部切换至真实输入适配，七阶段强制显式 root/inputs/batch；回收强制 results，发布与校验强制完整版本。新增 dvc-config 配置动作，仓库模板无默认输入/版本；生成的七阶段依赖覆盖原视频、注释、split、ROI、业务契约、嵌套参考、全部处理器 pins 和实际实现代码。工作输出 persist，漂移时停止；正式 payload 独立跟踪，validate 不产生旧指针。
+
+CLI 两项测试先取得缺失输入仍成功、显式 inputs 未接线的行为 RED；DVC 配置以返回空配置取得行为 RED。针对性联合命令 `.venv/bin/python -m pytest -q tests/versioning/test_data_pipeline.py tests/versioning/test_cli.py tests/versioning/test_dvc_pipeline.py tests/versioning/test_e2e.py --disable-warnings --tb=short` 为 **245 passed，293 warnings，29.15秒，exit0**。DVC 22项覆盖真实配置、状态变化、受控 repro 与本地缓存 push/pull；旧合成管线测试替换为真实适配测试，整体计数不宜与此前机械比较。
+
+独立 reviewer 对代码及 versioning/SCRIPTS.md 操作链核对通过，独立25项通过，并验证嵌套处理器/参考/候选契约修改会使真实 DVC 状态过期。DVC 测试中的媒体/处理器和人工决定仍为 fixture；实际 DVC 全部七阶段跨进程媒体执行尚无证据。E2E 已经过全部真实适配阶段，但不代表真实媒体或人工验收。
+
+训练机验收执行单经独立审查修复一项 P2：小样本仅有 development，准备时只读开发参考并构造明确空 test 参考，不读取原测试审查标签。复审通过。本轮前期只读结构调查曾打开测试参考结构；未用于模型、选样、调参或质量结论，后续执行单不再要求访问。远程执行及两份正式对象复制仍待明确授权。
+
+最终权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /tmp/mvllm2-m3-entry-proof-final-20260912` 在本机当前完整工作树执行：**1768 passed，341.64秒，exit0**，已等待进程正常退出。临时日志 `/tmp/mvllm2-m3-entry-full-final-pytest.log`。没有新增真实训练机运行或正式迁移证据。M3 本地接入完成，整体 M3 保持进行中。

@@ -18,7 +18,8 @@ import yaml
 
 from versioning import migration as migration_api
 from versioning.backup import create_backup, restore_backup, verify_backup
-from versioning.data_pipeline import run_stage
+from versioning.ids import parse_data_id
+from versioning.data_pipeline import run_stage, STAGES, UnknownStageError
 from versioning.data_release import load_release_metadata, validate_training_reference
 from versioning.holdout import (
     ClaimIdentity,
@@ -121,8 +122,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     data = commands.add_parser("data", help="运行数据 pipeline 或管理 holdout claim")
     data.add_argument("action", help="七阶段名称，或 claim")
-    _add_root(data)
-    data.add_argument("--batch", default="batch-001", help="数据批次名")
+    data.add_argument("--root", type=_explicit_path, default=None, help="显式 versioning store 根")
+    data.add_argument("--inputs", type=_explicit_path, help="显式冻结输入 YAML")
+    data.add_argument("--batch", help="显式数据批次名")
     data.add_argument("--version", help="显式完整 data 版本")
     data.add_argument("--protocol", default="v4.1", help="release 协议标签")
     data.add_argument("--purpose", default="development", help="release 数据用途")
@@ -390,6 +392,7 @@ def _sha256_file(path: Path) -> tuple[Path, str]:
 
 def _handle_data(args: argparse.Namespace) -> Any:
     if args.action == "claim":
+        args.root = args.root if args.root is not None else Path(".")
         _required(
             args,
             "version",
@@ -435,17 +438,25 @@ def _handle_data(args: argparse.Namespace) -> Any:
             pre_registration_sha256=preregistration_sha256,
         )
 
-    kwargs: dict[str, Any] = {}
-    if args.action == "release_validate":
+    if args.action == "dvc-config":
+        from versioning.data_pipeline import write_input_dvc_configuration
+        _required(args, "root", "inputs", "batch", "results", "version")
+        return write_input_dvc_configuration(args.root, inputs_path=args.inputs, batch=args.batch,
+                                             results_path=args.results, version=args.version)
+    if args.action not in STAGES:
+        raise UnknownStageError(f"未知 stage: {args.action!r}")
+    _required(args, "root", "inputs", "batch")
+    kwargs: dict[str, Any] = {"inputs_path": args.inputs, "batch": args.batch}
+    if args.action in {"release", "release_validate"}:
         _required(args, "version")
-    if args.action != "release_validate":
-        kwargs["batch"] = args.batch
-    if args.action == "release":
-        _required(args, "version")
-        kwargs.update(version=args.version, protocol=args.protocol, purpose=args.purpose)
-    elif args.action == "release_validate":
         kwargs["version"] = args.version
-    if args.action == "review_import" and args.results is not None:
+    if args.action == "release":
+        if args.purpose != "development":
+            raise ValueError("真实 v4.1 数据构建仅发布 development；holdout 不得沿用开发集构建")
+        if parse_data_id(args.version).protocol != args.protocol:
+            raise ValueError("--protocol 与完整 data 版本不一致")
+    if args.action == "review_import":
+        _required(args, "results")
         kwargs["results_path"] = args.results
     return run_stage(args.root, args.action, **kwargs)
 

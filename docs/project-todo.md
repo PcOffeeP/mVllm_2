@@ -26,7 +26,7 @@
 | 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、holdout 独立验收及其他适用质量门 |
 | 文档收尾 | DOC-INDEX | 修正脚本索引的过期缺陷描述 | 待处理 | 本轮新发现，不阻塞模型诊断 |
 | 低优先级 | CONTRACT-NAMING | 澄清候选规划与训练发布的契约边界 | 待处理 | 先解释真实用途，再决定是否兼容重命名 |
-| 后续迁移 | VERSION-CONTROL-FORMAL-MIGRATION | 正式迁移可读版本控制体系 | 进行中（执行者 Codex；M3g UI 已完成，继续CLI/DVC完整验收） | 核心基础设施已完成；正式迁移写入、legacy 退役、merge/push 均需另行授权 |
+| 后续迁移 | VERSION-CONTROL-FORMAL-MIGRATION | 正式迁移可读版本控制体系 | 进行中（执行者 Codex；M3 本地接入完成，真实验收与正式复制待授权） | 核心基础设施已完成；正式迁移写入、legacy 退役、merge/push 均需另行授权 |
 
 MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独立验收才允许训练最终候选。新发现改变依赖时，同步本表和条目并说明原因。
 
@@ -118,12 +118,12 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **状态/来源**：进行中（执行者 Codex；M2 已完成，2026-09-11 用户已确认 M3 显式输入契约与七阶段内部映射，2026-09-12 要求按交接继续本地实施）；由 VERSION-CONTROL-MIGRATION 核心基础设施完成后拆出。用户授权建立 Task Artifact，Intent 已确认提交 `3dae30a0`，Spec 已确认提交 `6996d35d`，Plan 已确认并提交 `11e54b31`；2026-09-11 用户进一步明确授权限定的 bundle/隔离 checkout、项目级环境和非 GPU smoke，该 M2 授权范围已执行完毕，正式迁移写入与 merge/push 仍未授权。
 - **任务关联**：[Intent](tasks/2026-09-07-readable-version-control-migration/intent.md)、[Spec](tasks/2026-09-07-readable-version-control-migration/spec.md)、[Plan](tasks/2026-09-07-readable-version-control-migration/plan.md)（已确认提交 `11e54b31`）。任务分支为 `refactor/2026-09-07-readable-version-control-migration`，由用户确认重命名原分支并保留历史，承接基线 `1b0d5823`。原 B0–B12 台账中的旧分支名作为历史记录保留。
 - **已确认范围**：迁移两个已发布数据版本和当前一版 Prompt `v4.1-concise-evidence-json-v2`；历史模型保留身份、核心训练参数及已有指标，不要求补齐全部历史信息。所有活动入口完成切换，保持单一正式写入者及不可抹去新事实的恢复规则。candidate/production 门禁不变；无合格模型时实际服务入口拒绝启动是允许状态，不要求历史开发模型继续服务。
-- **规划发现**：`versioning/data_pipeline.py` 当前从文件名派生 ROI、固定生成两条 clip 记录，尚未承接真实媒体语义；训练 CLI 管理 Run 状态，真实执行器接线仍需完成。Plan 的 M3/M4 明确覆盖这两处差距，不能沿用 B0–B12 测试宣称真实业务已接入。
+- **规划发现与修复**：M3 已将公共数据入口从文件名派生 ROI、固定两条 clip 的最小实现切换到显式真实输入适配；真实媒体效果仍须训练机验收。训练 CLI 的真实执行器接线属于后续 M4，不能沿用基础设施测试宣称已完成。
 - **现场证据**：2026-09-07 网络恢复后只读调查成功；当时远端干净 `main@f1b7d8a3`，origin 为 Codeup。两个 release、三个 Prompt registry 目录、八个 run、五个历史归档目录和一个发布模型目录可见；六组 run 有 adapter，两个 concise run 仅见准备资料；concise-cv 预期路径不存在，`/data/mVllm_2` 尚未建立。完整观察及扫描边界见[调查记录](results/version-control-migration-20260907.md)，提交 `821e5953`。未验证权重哈希、加载、数据完整性或历史原始记录完整性，尚未分配新正式身份；无远端写入。
 - **已证实事实与差距**：M0 证据已提交，训练机 payload 完整 hash 已验证，`/data/mVllm_2` 已只读验证可写。M1a 本地 Prompt/Data 迁移核心已完成并通过 review；M1b H1–H12 与统一 migration CLI 已完成。M2 以完整 bundle 建立隔离 checkout，再以 SHA-256 一致且 `git bundle verify` 通过的增量 bundle 更新到修复提交 `c4b53d08`；原有训练机 `main@f1b7d8a3` 始终干净。项目级 Python 3.11.16 环境锁定 DVC 3.67.1、MLflow 3.15.2、pandas 3.0.3 等关键版本。首轮 Linux 236 passed / 1 failed 暴露 inode 复用竞态；最小修复和独立 reviewer 三轮闭环 2 个 P2 与 1 个 P3 后，训练机 CLI+migration **241 passed**。跨进程锁、只读权限、DVC push-delete-pull、MLflow/SQLite artifact 联合恢复均通过；H9 四个真实 run 与 H11 的 1 model + 5 eval 只读成功路径通过。`/data/mVllm_2/dvc-remote`、`/data/mVllm_2/mlflow` 仍不存在且本轮未创建；真实移动硬盘恢复、正式 store 与真实迁移写入仍未执行。legacy `pipeline/`、`finetune/` 仍按旧规则运行。
-- **下一动作/依赖**：M3a 加载门、M3b source/split 与 M3c ROI 和 M3d 子视频适配已完成；继续人工审查与发布适配，再统一接入 `--inputs` CLI 和 DVC，逐切片完成 TDD、完整新体系回归、独立审查与原子提交。七阶段名称不变，`--root` 仍为 versioning store 根；显式输入固定项目根、视频及注释、split、冻结 ROI 决定、媒体配置/预处理器与业务契约。新适配层只复用无副作用业务计算，legacy 公共入口与产物保持原样。正式迁移对象写入、merge/push、远端进程或系统变更、训练/GPU/完整评测仍未授权。
+- **下一动作/依赖**：M3a–M3h 本地输入、source/split、ROI、子视频、审查、发布、界面及 CLI/DVC 已接通。依照[训练机验收执行单](results/version-control-migration/handoff.md)，待用户明确授权后同步隔离分支、新建 CPU 处理器环境、完成两段 development 视频真实业务对照及 Mac 审查回传，再将两个声明 legacy release 复制迁移到 `/data/mVllm_2`。M3 保持未完成；真实人工决定不足时交实际审查者处理。七阶段与显式输入方案不变；不包含 push/merge、模型训练/GPU/完整评测或旧产物改写。
 - **验收标准**：按已确认 Spec 核对两个数据版本及一版 Prompt 的内容保持、历史关联可查询、所有活动入口接管、单写与恢复不丢事实、训练机真实环境证据、文档及独立审查。Codeup 为发布依据，最终交付覆盖相对 Codeup main 的完整差异。
-- **证据/限制**：[实施台账](plans/2026-09-01-readable-version-control-implementation.md)、[迁移验证记录](results/version-control-migration/verification.md)、[架构说明](../ARCHITECTURE.md)、[项目指南](project-guide.md)。真实移动硬盘恢复允许单独保持未完成，不能把临时目录 smoke 宣称为真实备份可恢复；无合格模型时真实模型加载/推理成功仍记未验证。M1 本地行为已完成；训练机最新 CLI+migration 为 241 passed，DVC 与联合灾备专项各 1 passed。2026-09-12 M3a 新增 61 个输入加载门测试，独立 reviewer 无可执行 finding；M3a 当时完整 `tests/versioning` **1690 passed、exit 0**（287 warnings）。M3a 仅验证输入 envelope 与字节完整性，未接 CLI/真实 source，文件内语义与运行时预处理器校验仍待后续适配。本轮未连接训练机，未运行 GPU/完整评测。H9 只放行六个经归档 size/SHA-256 与交叉来源证明的参数，learning rate/optimizer/precision 保持 unknown；H11 训练机隔离分支真实 1 model + 5 eval 构建已验证。真实训练机迁移对象写入未执行，M3–M8 未完成，不得宣称整体迁移已完成。
+- **证据/限制**：[实施台账](plans/2026-09-01-readable-version-control-implementation.md)、[迁移验证记录](results/version-control-migration/verification.md)第12–19节、[训练机验收执行单](results/version-control-migration/handoff.md)。M3a–M3g 各切片均有完整新体系回归和独立审查；M3h 最新计数见验证记录。真实媒体及审查决定在本机测试中为显式 fixture，不能视为训练机验收。2026-09-12 已只读复核训练机正式 main、隔离分支、空数据根、依赖、两个源视频 SHA 和两个 release manifest；未写入远程。两个 release 完整 payload 验签仍引用 M0，M2 Linux CLI+migration 241 passed 等均为前序证据。正式复制迁移、真实媒体及双机人工交接未执行，M3–M8 未完成。移动硬盘真实恢复和模型训练/推理效果亦不在本轮本机证据内。
 
 ## Skill 改进候选（待确认，不属于当前实现范围）
 
@@ -233,3 +233,5 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - 2026-09-12 M3f：真实六份开发集数据、媒体/标签/split保持、封存及只读validate完成。reviewer发现的3处校验遗漏和锁等待目录变化均经RED/修复/独立复验关闭；专项8项，独立完整1757 passed/exit0。真实对象写入未执行，后续UI和入口集成尚待提交。
 
 - 2026-09-12 M3g：显式审查包接入现有界面，草稿/冻结角色和路径保护完成；reviewer两个P2均闭环。5项边界、1项AppTest完整交互、独立完整1763 passed/exit0；测试图像/视频/决定均为fixture，不冒充真人审查。继续最终CLI/DVC完整验收与待授权训练机步骤。
+
+- 2026-09-12 M3h：七阶段公共 CLI/真实 DVC 输入与上游依赖全部接通；针对性245 passed、完整1768 passed/exit0，独立reviewer25项及操作文档核查通过。训练机执行单测试参考范围P2已修复并复审通过。只读核对训练机分支、依赖、原视频与源manifest；真实媒体、双机人工回传及两份release复制待明确授权，M3未完成。代码版本以同次提交追溯。

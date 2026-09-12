@@ -323,11 +323,10 @@ class TestStageRegistry:
     def test_stages_constant_exact(self) -> None:
         assert tuple(STAGES) == EXPECTED_STAGES
 
-    def test_run_stage_dispatches(self, tmp_path: Path) -> None:
+    def test_run_stage_requires_explicit_real_inputs(self, tmp_path: Path) -> None:
         root = _make_root(tmp_path)
-        result = run_stage(root, "source", batch=BATCH)
-        assert isinstance(result, StageResult)
-        assert result.stage == "source"
+        with pytest.raises(StageInputError):
+            run_stage(root, "source", batch=BATCH)
 
     def test_run_stage_unknown_fail_closed(self, tmp_path: Path) -> None:
         root = _make_root(tmp_path)
@@ -1937,3 +1936,52 @@ class TestInputReviewWorkspaceBoundaries:
             with pytest.raises(dp.ReviewGateError):
                 dp.save_input_review_draft(output, identity, decisions)
             assert not (package / 'draft.json').exists()
+
+
+# M3h — explicit CLI routing without the synthetic data path.
+class TestInputCli:
+    def test_source_requires_explicit_inputs(self, tmp_path):
+        from versioning.cli import main
+        root = tmp_path / 'store'
+        (root / 'data/raw/batch-001').mkdir(parents=True)
+        (root / 'data/raw/batch-001/fake.mp4').write_bytes(b'fake')
+        assert main(['data', 'source', '--root', str(root), '--batch', 'batch-001']) == 2
+        assert not (root / 'data/working').exists()
+
+    def test_all_seven_commands_use_real_adapters(self, media_inputs, media_runtime, tmp_path, monkeypatch):
+        from versioning.cli import main
+        from pipeline import source_bootstrap
+        monkeypatch.setattr(source_bootstrap, 'probe_video', _source_probe)
+        path, _, _, _ = media_inputs
+        root = tmp_path / 'store'
+        common = ['--root', str(root), '--batch', 'batch-001', '--inputs', str(path)]
+        for stage in ('source', 'roi', 'subvideo', 'review_export'):
+            assert main(['data', stage, *common]) == 0
+        returned = tmp_path / 'returned.json'
+        _review_return(root / 'data/working/batch-001/review_export', returned)
+        assert main(['data', 'review_import', *common, '--results', str(returned)]) == 0
+        assert main(['data', 'release', *common, '--version', 'data-v4.1-r1']) == 0
+        assert main(['data', 'release_validate', *common, '--version', 'data-v4.1-r1']) == 0
+        assert not (root / 'data/release_pointer.json').exists()
+
+class TestInputDvcConfiguration:
+    def test_all_stages_track_explicit_and_nested_inputs(self, media_inputs, tmp_path):
+        from versioning import data_pipeline as dp
+        path, doc, project, _ = media_inputs
+        root = tmp_path / 'explicit-store'
+        results = tmp_path / 'external-review.json'
+        config = dp.build_input_dvc_configuration(root, inputs_path=path, batch='batch-001', results_path=results, version='data-v4.1-r1')
+        assert 'pipeline' in config
+        assert list(config['pipeline']) == list(dp.STAGES)
+        for index, (stage, spec) in enumerate(config['pipeline'].items()):
+            assert '--inputs' in spec['cmd'] and str(path) in spec['cmd']
+            assert str(root) in spec['cmd'] and '--root .' not in spec['cmd']
+            deps = spec['deps']
+            assert str(path) in deps and str(project / 'model/config.json') in deps
+            assert str(project / 'development_reference.json') in deps
+            assert str(Path(dp.__file__).resolve()) in deps
+            if index:
+                assert str(root / 'data/working/batch-001' / dp.STAGES[index-1]) in deps
+        assert str(results) in config['pipeline']['review_import']['deps']
+        assert '--version data-v4.1-r1' in config['pipeline']['release']['cmd']
+        assert all('release_pointer' not in str(s) for s in config['pipeline'].values())
