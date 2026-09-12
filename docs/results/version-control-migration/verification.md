@@ -637,7 +637,7 @@ M7a仅关闭三个数据CLI停用与对应文档、DOC-INDEX；保留私有历�
 
 独立 reviewer 只读核对两端报告/日志字节和摘要一致、报告内日志摘要正确；实时确认隔离881c8181 tracked clean、正式main clean@f1b7d8a3、Python版本一致，通过Linux轻量证据范围，无finding。未复跑测试；历史命令/环境/耗时依据报告，首次语法错误及未建立目录仅为主Agent过程记录，独立reviewer未重建该历史状态。
 
-## 35. M7b训练与评测旧CLI退役（进行中）
+## 35. M7b训练与评测旧CLI退役（本批完成）
 
 基线45cae766。train_build_dataset/train_prepare_run/train_with_contract/eval_run公开main及脚本/模块执行在第三方导入前停止，帮助指向versioning，旧YAML/model-dir/默认选择均不能启动。原main改为私有_legacy_main；保留build_versioned_datasets、版本化准备与实际执行、run_training及评分器，新CLI继续直接调用这些函数。两个历史解析语义测试明确调用私有入口。
 
@@ -646,3 +646,13 @@ M7a仅关闭三个数据CLI停用与对应文档、DOC-INDEX；保留私有历�
 执行前核对两端任务基线45cae766、隔离tracked clean，正式main clean@f1b7d8a3；新Linux输出拟为既有隔离checkout内m7b-training-entry-verification-20260912，当前不存在。提交后增量bundle验签同步，使用已有.venv-m3、CUDA不可见/OMP4/离线模式执行相同四个文件的受控回归；不安装依赖、不执行真实训练/推理、不修改正式/data。评测冻结输入包含评分实现文件摘要，本次eval_run.py改变会被已有冻结输入的漂移门识别；不原地改写旧input或豁免校验，新准备需明确未占用身份。
 
 独立reviewer本机四文件65 passed/1 skipped/20.15秒，skip为test_eval_run.py:48缺历史数据；额外AST核对四模块50个原函数体保持，旧main仅改名，versioning.cli仍直接调用版本化函数。当前代码与文档范围未发现可执行问题，未执行远程/GPU。
+
+### 35.1 Linux隔离复验
+
+实现60dd00bc92e010cdb9df03d7864966ef3cb721cc在Mac提交，通过增量bundle同步Linux；两端bundle SHA9a6fbf4dc808e6df50c82de2bf2038b7375f572b35c910411fb6b433542996f7，verify通过、祖先和0/1差异符合预期，cherry-pick --ff保持同一代码对象。
+
+训练机输出/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m7b-training-entry-verification-20260912。已有.venv-m3/bin/python（3.11.16）运行pytest -q tests/test_train_with_contract.py tests/test_eval_run.py tests/test_train_build_dataset.py tests/test_train_build_source_aware_dataset.py --basetemp=<RUN>/pytest --tb=short，65 passed/1 skipped/37.25秒/exit0，进程40.697秒。skip为隔离checkout缺既有V4.1真实数据，不能算真实数据验收。CUDA不可见、OMP4、HF/Transformers离线，无依赖安装或真实训练/推理。
+
+report.json SHA147e0b9577a02935406b9d69f83f8867243be16ed0553a205a1950f1104b570c；linux-tests.log SHAfe4fc3382cefac46a9cacc4b3f44014af83b0fe9b244c24089a590398d4956c5；Mac副本/private/tmp/mvllm2-m7b-evidence-20260912。本批只关闭四个公开CLI退役及相应文档范围，剩余ROI/审查/索引辅助入口和M8整体审查待推进；真实GPU、full/holdout、大型备份等原缺口仍未关闭。轻量证据文档在实际Linux原子提交，由git log追溯，随后验签回传Mac。
+
+独立reviewer只读获取两端原始报告和日志，逐字节一致、摘要一致，报告内日志摘要正确；核对指定命令和环境记录，实时Python3.11.16、隔离60dd00bc tracked clean、正式main clean@f1b7d8a3，通过Linux轻量证据范围，无finding。未复跑，历史执行环境/退出码/耗时依据报告与日志，实时状态不重建历史进程。
