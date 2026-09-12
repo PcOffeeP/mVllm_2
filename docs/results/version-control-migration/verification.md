@@ -449,3 +449,17 @@ Git正式记录 `records/prompts/prompt-v4.1-r1.yaml` 的SHA为 `907e3b5a025df70
 拟在 `/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m4-verification-20260912`（RUN，已核实不存在）执行已授权的CPU准备dry-run。只复制正式r2的13,743,985字节轻量发布及receipt到RUN/store，并使用本次Git正式Prompt；不复制视频、不覆盖正式对象。实际媒体根为 `/home/liuyang/文档/mVllm_2/workspace/data`，只读核实1678个唯一视频、165,485,727字节。准备与验证各流式读取该范围的内容摘要，顺序CPU/I/O，不加载权重、不运行训练或评测。
 
 输入配置从现有active/v4_1_visual三fold YAML读取，显式绑定真实普通模型目录 `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；只用来验证参数传递和输入准备，不构成新实验或超参数选择。在RUN/store中用隔离train-v4.1-r1调用公共prepare和validate；该身份与任何正式store下同名对象分离。依赖版本使用既有.venv-m3的实际版本，CUDA_VISIBLE_DEVICES为空、OMP_NUM_THREADS=4、HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE=1。输出限RUN下输入配置、冻结input、验证JSON/日志和轻量摘要；预期不产生MLflow数据库。结果完成后在本节追加实际命令、退出与限制，执行前文字不能视为已经通过。
+
+### 29.1 实际执行与独立验收
+
+已提交代码6c43479e通过增量bundle同步到训练机隔离分支：bundle SHA `9c0149a9920e06809588261b16a769dcc89b7781ac214a43a8a7270b4caa8a09`，两端校验一致，bundle verify通过；同步前独有提交0/4、tracked clean，通过 `git cherry-pick --ff e428f1c9..6c43479e` 保持相同提交对象严格快进。正式main未参与同步。
+
+按本节执行范围在RUN/store真实调用公共train prepare（2.568秒、exit0）与train validate（1.372秒、exit0），完整实参见RUN/preparation-report.json。引用正式r2原划分：fold0 train1253/validation425，fold1 train1014/validation664，fold2 train1186/validation492。冻结1678个唯一视频的SHA/大小，共165,485,727字节；没有复制视频、加载权重、创建MLflow或训练输出。输入清单SHA为 `7c27968d748e538072c3874371a1f78626d38cc3af047c228edee877e91901b3`，Prompt在Git仓库、隔离store和input副本中的SHA均为 `907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6`。
+
+Linux `.venv-m3/bin/python -m pytest -q tests/test_train_with_contract.py tests/versioning/test_cli.py -k 'versioned or train_prepare_routes or train_run_and_validate or completed_training' --basetemp=RUN/pytest-inputs --tb=short`：11 passed、57 deselected、3.31秒、exit0。仅选择本次新输入/执行替身专项，未称作全套复跑。日志RUN/linux-training-tests.log。报告SHA `0e3650fda068667dbf1031c7053d4a1fd1d2825abb8ff815cf364fd888187730`，日志SHA `033f936c6cbb6e832b0fd591312b4b26ee9ccbac920195c97e573d4b09f71328`；两份轻量副本已回取Mac `/private/tmp/mvllm2-m4-evidence-20260912/`。
+
+独立reviewer随后仅通过只读SSH遍历实际产物，未重新执行prepare/validate：六份数据共5034行的成员、顺序、assistant标签和Prompt逐项一致，train/validation无交集；1678视频全部流式SHA/大小一致；12个冻结输入文件的清单、摘要、大小、只读位和无symlink通过。正式r2的12个文件与隔离副本相等，receipt字节一致且release digest `a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b`匹配；原工作区核验前后为clean main@f1b7d8a3。独立验收通过，无finding。配置相对调用者fold-configs只改变dataset_dir/media_dir/output_dir，dataset/eval_dataset原本即逐折对应，其余参数保留。
+
+环境实际为Python3.11.16、torch2.5.1+cpu、transformers4.56.1、MLflow3.15.2、DVC3.67.1；peft与accelerate未安装。基座仅验证普通目录存在，未加载/验签权重。本次是既有CPU环境的真实输入准备证据，不是GPU训练成功、可训练环境就绪或模型效果证据。Prompt现已随Git同步到隔离仓库，并用于隔离store/input；/data正式store的运行镜像未在此次复制，不能声称它已具备Prompt运行目录。没有push、merge main、停止任务、重训或完整评测。
+
+M4训练侧本地实现、独立复核和训练机输入准备已完成；正式eval入口接线、相应受控执行/失败/导出验收仍未实施，M4整体保持进行中。下一步按Plan M4正式评测要求验证完整model身份、数值Model Version、data与评价配置后再解析权重，保留受限评测授权门，不把历史summary转换为passed。既有完成训练的补导出可恢复；失败训练/checkpoint的真实受控续跑未由本次dry-run验证。
