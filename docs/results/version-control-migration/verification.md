@@ -369,3 +369,5 @@ Mac已接收完整review_export包，验签并以现有Streamlit AppTest加载�
 独立补审在Bash/Zsh验证继续审查命令的未设、空值、中文/空格标识及纯空白传参边界，审查通过。未由Agent模拟真实人工批准；原23条仍保留来源缺口，用户自述作为本轮背景记录，未改写原始审查者字段。
 
 本机完整权威命令 `.venv/bin/python -m pytest -q tests/versioning --basetemp /private/tmp/mvllm2-m3-reviewer-required-20260912` 为 **1780 passed，398.37秒，exit0**，已等待进程正常退出。UI与身份测试快照在该运行期间未改变；期间补充的重建命令提示由上述47项legacy回归和独立Bash/Zsh核查覆盖。日志`/tmp/mvllm2-reviewer-required-full.log`。
+
+训练机隔离分支已验签增量包并快进至修复提交`5495090ece813608294a596b79f67dbdf8485803`，原正式main未修改。该机器以`.venv-m3/bin/python -m pytest -q tests/versioning/test_data_pipeline.py -k "TestHumanReviewerIdentity or TestInputReviewApp"`（独立basetemp、CUDA_VISIBLE_DEVICES为空）复验为**13 passed，4.37秒，exit0**，日志`m3-verification-20260912/comparison/linux-reviewer-required.log`，SHA-256 `d500702125a94a59966908107b8d37a1fa66ea791c738e7ecb8f1d9dc84e7fe9`。此追加记录在实际执行机器原子提交；不包含新的真人审查或M3回传。
