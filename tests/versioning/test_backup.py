@@ -1980,3 +1980,144 @@ class TestBackupEdgeCaseRegressions:
         with pytest.raises(BackupSourceSetError):
             create_backup(registry, **_backup_args(world, backup_root))
         assert (backup_root / BACKUP_CATALOG_FILENAME).read_bytes() == catalog_bytes
+
+
+class TestBackupTransfer:
+    def test_transfer_publishes_verified_snapshot(self, world, registry, backup_root, tmp_path, monkeypatch):
+        import versioning.backup as api
+        source = tmp_path / "source-snapshot"
+        expected = create_backup(registry, **_backup_args(world, source))
+        digest = hashlib.sha256((source / BACKUP_CATALOG_FILENAME).read_bytes()).hexdigest()
+        def transport(host, source_root, destination):
+            assert host == "fixture-host"
+            shutil.copytree(source_root, destination, dirs_exist_ok=True)
+        monkeypatch.setattr(api, "_receive_backup_tree", transport, raising=False)
+        actual = api.transfer_backup(ssh_host="fixture-host", source_backup_root=source,
+            backup_root=backup_root, catalog_sha256=digest)
+        assert actual == expected
+        assert verify_backup(backup_root) == expected
+        assert (source / BACKUP_CATALOG_FILENAME).is_file()
+
+    @pytest.mark.parametrize("fault", ["interrupted", "hash", "content", "existing"])
+    def test_transfer_failure_does_not_publish(self, world, registry, backup_root, tmp_path, monkeypatch, fault):
+        import versioning.backup as api
+        source = tmp_path / "source-snapshot"
+        create_backup(registry, **_backup_args(world, source))
+        digest = hashlib.sha256((source / BACKUP_CATALOG_FILENAME).read_bytes()).hexdigest()
+        if fault == "existing":
+            backup_root.mkdir()
+            (backup_root / "keep").write_text("untouched")
+        def transport(host, source_root, destination):
+            shutil.copytree(source_root, destination, dirs_exist_ok=True)
+            if fault == "interrupted":
+                raise OSError("interrupted transfer")
+            if fault == "content":
+                catalog = load_backup_catalog(destination)
+                (destination / catalog.objects[0].files[0].path).write_bytes(b"bad bytes")
+        monkeypatch.setattr(api, "_receive_backup_tree", transport, raising=False)
+        with pytest.raises((ValueError, OSError)):
+            api.transfer_backup(ssh_host="fixture-host", source_backup_root=source,
+                backup_root=backup_root, catalog_sha256="0" * 64 if fault == "hash" else digest)
+        if fault == "existing":
+            assert (backup_root / "keep").read_text() == "untouched"
+        else:
+            assert not backup_root.exists()
+        assert not list(tmp_path.glob(".drive.transfer-*"))
+        assert verify_backup(source)
+
+
+@pytest.mark.parametrize("entry_kind", ["symlink", "hardlink", "escape", "absolute", "duplicate", "fifo"])
+def test_backup_transport_rejects_unsafe_archive(tmp_path, monkeypatch, entry_kind):
+    import io
+    import tarfile
+    import versioning.backup as api
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        info = tarfile.TarInfo("../escape" if entry_kind == "escape" else
+                               "/absolute" if entry_kind == "absolute" else "file")
+        info.type = {"symlink": tarfile.SYMTYPE, "hardlink": tarfile.LNKTYPE,
+                     "fifo": tarfile.FIFOTYPE}.get(entry_kind, tarfile.REGTYPE)
+        info.linkname = "/outside"
+        archive.addfile(info)
+        if entry_kind == "duplicate":
+            archive.addfile(info)
+    class Process:
+        stdout = io.BytesIO(buffer.getvalue())
+        def poll(self): return 0
+        def wait(self): return 0
+    monkeypatch.setattr(api.subprocess, "Popen", lambda *args, **kwargs: Process())
+    destination = tmp_path / "received"
+    destination.mkdir()
+    with pytest.raises(BackupIntegrityError):
+        api._receive_backup_tree("host", Path("/snapshot"), destination)
+    assert not (tmp_path / "escape").exists()
+
+
+def test_backup_transport_checks_ssh_exit_and_quotes_source(tmp_path, monkeypatch):
+    import io, tarfile, shlex
+    import versioning.backup as api
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w"):
+        pass
+    class Process:
+        stdout = io.BytesIO(buffer.getvalue())
+        def poll(self): return 1
+        def wait(self): return 1
+    commands = []
+    def launch(command, **kwargs):
+        commands.append(command)
+        return Process()
+    monkeypatch.setattr(api.subprocess, "Popen", launch)
+    source = Path("/snapshot with ' quote; $(command)")
+    with pytest.raises(BackupError, match="SSH"):
+        api._receive_backup_tree("host", source, tmp_path)
+    assert shlex.split(commands[0][-1]) == ["tar", "-C", str(source), "-cf", "-", "."]
+
+
+@pytest.mark.parametrize("host,source,digest", [
+    ("-oProxyCommand=bad", "/source", "a" * 64),
+    ("host;bad", "/source", "a" * 64),
+    ("host", "relative", "a" * 64),
+    ("host", "/source", "bad"),
+])
+def test_backup_transfer_requires_explicit_safe_inputs(tmp_path, host, source, digest):
+    from versioning.backup import transfer_backup
+    target = tmp_path / "received"
+    with pytest.raises(BackupError):
+        transfer_backup(ssh_host=host, source_backup_root=Path(source),
+                        backup_root=target, catalog_sha256=digest)
+    assert not target.exists()
+
+
+def test_backup_transport_reports_truncated_stream(tmp_path, monkeypatch):
+    import io
+    import versioning.backup as api
+    class Process:
+        stdout = io.BytesIO(b"truncated tar stream")
+        def poll(self): return 1
+        def wait(self): return 1
+    monkeypatch.setattr(api.subprocess, "Popen", lambda *args, **kwargs: Process())
+    with pytest.raises(BackupIntegrityError, match="archive"):
+        api._receive_backup_tree("host", Path("/snapshot"), tmp_path)
+
+
+def test_transfer_does_not_replace_directory_created_at_publication(world, registry, backup_root, tmp_path, monkeypatch):
+    import versioning.backup as api
+    source = tmp_path / "source-snapshot"
+    create_backup(registry, **_backup_args(world, source))
+    digest = hashlib.sha256((source / BACKUP_CATALOG_FILENAME).read_bytes()).hexdigest()
+    monkeypatch.setattr(api, "_receive_backup_tree",
+                        lambda host, src, dst: shutil.copytree(src, dst, dirs_exist_ok=True))
+    publish = api._publish_backup_directory
+    created = []
+    def race(src, dst):
+        dst.mkdir()
+        created.append(dst.stat().st_ino)
+        publish(src, dst)
+    monkeypatch.setattr(api, "_publish_backup_directory", race)
+    with pytest.raises((RestoreTargetConflict, FileExistsError)):
+        api.transfer_backup(ssh_host="host", source_backup_root=source,
+                            backup_root=backup_root, catalog_sha256=digest)
+    assert backup_root.stat().st_ino == created[0]
+    assert list(backup_root.iterdir()) == []
+    assert not list(tmp_path.glob(".drive.transfer-*"))

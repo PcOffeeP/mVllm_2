@@ -1,6 +1,6 @@
 <!-- DOCUMENT-CONTRACT
 Purpose: 定位 versioning 的实际入口，并提供显式数据输入与人工交接的操作边界。
-Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、三折训练及正式验证集测评入口。
+Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、三折训练、正式验证集测评及备份传输入口。
 Must Preserve:
 - 五类完整可读身份、显式输入与 fail-closed，不引入当前版本回退。
 - 区分数据业务处理、人工决定和正式封存；不能把测试替身当真实媒体验收。
@@ -214,3 +214,33 @@ review_import 阻断。命令包含实际解释器和代码位置，跨机器迁
 通过 DVC 自动删除旧结果后悄悄重建；需明确新批次、完整 pins 和新版本。正式封存目录不作为
 普通 pipeline out，payload 单独经 DVC 跟踪；恢复后需重新校验封存权限与绑定。不要对全部
 已封存 `payload.dvc` 执行强制 commit，pipeline 的测试/补登记限于 `dvc commit --force dvc.yaml`。
+
+
+## 已完成备份的跨机传输
+
+备份创建仍在训练机执行，输入为显式store、data、Prompt和物化模型根。先完成对应模型的scope声明及物化，并确保所有正式数据与作用域模型的源齐全。示例中的绝对路径必须替换为已核对位置，目标父目录预先存在：
+
+```sh
+python -m versioning backup create --root /absolute/store --backup-root /absolute/snapshot
+python -m versioning backup verify --root /absolute/store --backup-root /absolute/snapshot
+sha256sum /absolute/snapshot/backup_catalog.yaml
+```
+
+create复用Registry一致性锁与SQLite快照、粘性scope裁剪，完成后再传输该快照；不要直接传输正在写入的MLflow store。记录上一步catalog摘要并保持源快照不变。Mac使用既有OpenSSH配置/密钥接收：
+
+```sh
+python -m versioning backup transfer --root /absolute/local-project --ssh-host configured-training-host --source-backup-root /absolute/snapshot --catalog-sha256 <已核对的64位SHA256> --backup-root /absolute/destination
+python -m versioning backup verify --root /absolute/local-project --backup-root /absolute/destination
+```
+
+transfer只通过SSH调用远端tar读取显式源目录，不在远端创建快照或修改文件。主机只接受host或user@host形式；不接受shell片段。接收流直接写入目标同级私有临时目录，拒绝绝对路径、越界路径、重复成员、软/硬链接和特殊文件。目标端核对钉扎的catalog摘要、全部声明文件、额外文件及SQLite完整性后才发布目标目录，保留原catalog的身份与verified记录，不重新分配版本。
+
+目标必须不存在，不合并或覆盖已有备份；最终发布使用Mac/Linux原子no-replace接口，文件系统或平台不支持时失败，不回退到可覆盖的rename；同目标并发传输由排他锁拒绝。正常异常会清理本次临时目录和锁，原源与已有目标保持；连接中断后可对同一未变快照重试。进程被强制杀死可能遗留临时目录或锁，需要先确认没有存活传输再人工处置，入口不会猜测锁失效。升级scope后在训练机重新create并核对新catalog，再传输到新的明确目标。实际磁盘空间至少容纳所选快照，目标同级临时目录发布后即成为最终备份，不另外保留整份tar；大产物应直接写到已核对的目标存储，不默认暂存Mac内置盘。
+
+恢复仍使用既有restore入口，四类输出根必须核对且不得覆盖正式对象：
+
+```sh
+python -m versioning backup restore --root /absolute/isolated-project --backup-root /absolute/destination --data-root /absolute/isolated-data --prompts-root /absolute/isolated-project --models-root /absolute/isolated-models --mlflow-root /absolute/original-mlflow-path
+```
+
+SQLite中的artifact URI保留原绝对路径；完整MLflow artifact查询恢复需在原路径布局下演练，任意改目录后的文件复制不构成完整可用性证明。本机可以验签训练机快照，联合恢复在训练机受控隔离对象的原路径布局下验证；不删除或覆盖真实唯一源以模拟故障。真实移动硬盘与真实大型模型恢复是否通过，单独以实际证据验收。

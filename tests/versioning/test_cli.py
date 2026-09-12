@@ -498,3 +498,21 @@ def test_train_run_and_validate_route_to_frozen_inputs(tmp_path, monkeypatch):
         assert main(["train", action, "train-v4.1-r1", "--root", str(tmp_path)]) == 0
     assert [item[0] for item in calls] == ["run", "validate"]
     assert all(kw["train_version"] == "train-v4.1-r1" for _, kw in calls)
+
+
+def test_backup_transfer_requires_host_source_and_digest(tmp_path, capsys):
+    assert main(["backup", "transfer", "--root", str(tmp_path),
+                 "--backup-root", str(tmp_path / "received")]) == 2
+    assert "缺少必填参数" in capsys.readouterr().err
+
+
+def test_backup_transfer_cli_routes_explicit_arguments(tmp_path, monkeypatch, capsys):
+    from versioning import cli
+    calls = []
+    monkeypatch.setattr(cli, "transfer_backup", lambda **kwargs: calls.append(kwargs) or {"objects": []})
+    assert main(["backup", "transfer", "--root", str(tmp_path),
+        "--backup-root", str(tmp_path / "received"), "--ssh-host", "fixture-host",
+        "--source-backup-root", "/remote/snapshot", "--catalog-sha256", "a" * 64]) == 0
+    assert calls == [{"ssh_host": "fixture-host", "source_backup_root": Path("/remote/snapshot"),
+                     "backup_root": tmp_path / "received", "catalog_sha256": "a" * 64}]
+    assert json.loads(capsys.readouterr().out) == {"objects": []}

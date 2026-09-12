@@ -17,7 +17,7 @@ from typing import Any, Mapping, Sequence
 import yaml
 
 from versioning import migration as migration_api
-from versioning.backup import create_backup, restore_backup, verify_backup
+from versioning.backup import create_backup, restore_backup, transfer_backup, verify_backup
 from versioning.ids import parse_data_id
 from versioning.data_pipeline import run_stage, STAGES, UnknownStageError
 from versioning.data_release import load_release_metadata, validate_training_reference
@@ -248,9 +248,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     backup = commands.add_parser("backup", help="创建、校验或恢复离线备份")
-    backup.add_argument("action", choices=("create", "verify", "restore"))
+    backup.add_argument("action", choices=("create", "verify", "restore", "transfer"))
     _add_root(backup)
     _add_store(backup)
+    backup.add_argument("--ssh-host", help="显式SSH主机（使用现有OpenSSH认证）")
+    backup.add_argument("--source-backup-root", type=Path, help="远程已完成快照绝对路径")
+    backup.add_argument("--catalog-sha256", help="预先核对的源catalog SHA256")
     backup.add_argument("--backup-root", type=Path, required=True, help="备份根目录")
     backup.add_argument("--data-root", type=Path, help="data 根目录")
     backup.add_argument("--prompts-root", type=Path, help="Prompt 项目根目录")
@@ -817,6 +820,10 @@ def _handle_model(args: argparse.Namespace) -> Any:
 
 
 def _handle_backup(args: argparse.Namespace) -> Any:
+    if args.action == "transfer":
+        _required(args, "ssh_host", "source_backup_root", "catalog_sha256")
+        return transfer_backup(ssh_host=args.ssh_host, source_backup_root=args.source_backup_root,
+            backup_root=args.backup_root, catalog_sha256=args.catalog_sha256)
     data_root = args.data_root or args.root / "data"
     prompts_root = args.prompts_root or args.root
     models_root = (

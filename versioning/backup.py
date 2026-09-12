@@ -7,13 +7,20 @@
 from __future__ import annotations
 
 import datetime
+import ctypes
+import errno
+import sys
 import hashlib
 import os
+import re
+import shlex
+import subprocess
+import tarfile
 import shutil
 import sqlite3
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 from urllib.parse import unquote, urlparse
 
@@ -1207,3 +1214,122 @@ def restore_backup(
             models_root=models_root,
             mlflow_root=mlflow_root,
         )
+
+
+def _receive_backup_tree(ssh_host: str, source_root: Path, destination: Path) -> None:
+    """Stream an explicit remote snapshot; never extract links or special files."""
+    command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+               "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
+               ssh_host, shlex.join(["tar", "-C", str(source_root), "-cf", "-", "."])]
+    # stderr goes to disk so a verbose remote cannot deadlock a full stderr pipe.
+    with tempfile.TemporaryFile() as errors:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=errors)
+        try:
+            assert process.stdout is not None
+            seen = set()
+            with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
+                for member in archive:
+                    path = PurePosixPath(member.name)
+                    if path.is_absolute() or ".." in path.parts:
+                        raise BackupIntegrityError("unsafe path in backup transport")
+                    if str(path) == "." and member.isdir():
+                        continue
+                    if str(path) in seen or not (member.isfile() or member.isdir()):
+                        raise BackupIntegrityError("duplicate or non-regular backup transport entry")
+                    seen.add(str(path))
+                    target = destination.joinpath(*path.parts)
+                    if member.isdir():
+                        target.mkdir(parents=True, exist_ok=True)
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        stream = archive.extractfile(member)
+                        if stream is None:
+                            raise BackupIntegrityError("missing backup transport content")
+                        with stream, target.open("xb") as output:
+                            shutil.copyfileobj(stream, output, 1024 * 1024)
+            # Drain tar padding before waiting; otherwise a full pipe can block ssh.
+            while process.stdout.read(1024 * 1024):
+                pass
+            if process.wait() != 0:
+                errors.seek(0)
+                raise BackupError("backup SSH transfer failed: " +
+                                  errors.read(4096).decode("utf-8", errors="replace"))
+        except BaseException as exc:
+            if process.poll() is None:
+                process.kill()
+            process.wait()
+            if isinstance(exc, tarfile.TarError):
+                raise BackupIntegrityError("invalid or truncated backup archive") from exc
+            raise
+        finally:
+            if process.stdout is not None:
+                process.stdout.close()
+
+
+def transfer_backup(*, ssh_host: str, source_backup_root: Path,
+                    backup_root: Path, catalog_sha256: str) -> BackupCatalog:
+    """Receive a pinned snapshot into a new directory, publishing only after verification.
+
+    The source is an already-created backup, not the live MLflow store.
+    No source files or existing destination are modified; a failed transfer can
+    be retried with the same pinned catalog and a still-absent destination.
+    """
+    if not isinstance(ssh_host, str) or not re.fullmatch(
+            r"(?:[A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9][A-Za-z0-9_.-]*", ssh_host):
+        raise BackupError("explicit SSH host or user@host is required")
+    source = Path(source_backup_root)
+    target = Path(backup_root)
+    if not source.is_absolute() or not target.is_absolute() or not _is_sha256(catalog_sha256):
+        raise BackupError("absolute source/destination and catalog SHA256 are required")
+    if not target.parent.is_dir() or target.name in {"", ".", ".."}:
+        raise BackupError("backup destination parent must already exist")
+    lock = target.with_name("." + target.name + ".transfer-lock")
+    # Serialize publishers without replacing an existing lock or destination.
+    fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    try:
+        if target.exists() or target.is_symlink():
+            raise RestoreTargetConflict("backup transfer destination already exists")
+        with tempfile.TemporaryDirectory(prefix="." + target.name + ".transfer-",
+                                         dir=target.parent) as temporary:
+            staging = Path(temporary)
+            _receive_backup_tree(ssh_host, source, staging)
+            if any(path.is_symlink() for path in staging.rglob("*")):
+                raise BackupIntegrityError("backup transfer contains a symlink")
+            if _sha256_file(staging / BACKUP_CATALOG_FILENAME) != catalog_sha256:
+                raise BackupIntegrityError("backup catalog differs from the pinned SHA256")
+            catalog = verify_backup(staging)
+            if not all(entry.verified for entry in catalog.objects):
+                raise BackupIntegrityError("backup contains unverified objects")
+            if target.exists() or target.is_symlink():
+                raise RestoreTargetConflict("backup transfer destination appeared during transfer")
+            _publish_backup_directory(staging, target)
+            return catalog
+    finally:
+        os.close(fd)
+        lock.unlink()
+
+
+def _publish_backup_directory(source: Path, target: Path) -> None:
+    """Atomic no-replace publication on the project's Mac and Linux hosts."""
+    library = ctypes.CDLL(None, use_errno=True)
+    if sys.platform == "darwin":
+        rename = getattr(library, "renamex_np", None)
+        if rename is None:
+            raise BackupError("atomic no-replace rename is unavailable")
+        rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+        arguments = (os.fsencode(source), os.fsencode(target), 0x4)  # RENAME_EXCL
+    elif sys.platform.startswith("linux"):
+        rename = getattr(library, "renameat2", None)
+        if rename is None:
+            raise BackupError("atomic no-replace rename is unavailable")
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                           ctypes.c_char_p, ctypes.c_uint]
+        arguments = (-100, os.fsencode(source), -100, os.fsencode(target), 1)  # AT_FDCWD, RENAME_NOREPLACE
+    else:
+        raise BackupError("atomic no-replace publication requires Mac or Linux")
+    rename.restype = ctypes.c_int
+    if rename(*arguments) != 0:
+        error = ctypes.get_errno()
+        if error in {errno.EEXIST, errno.ENOTEMPTY}:
+            raise RestoreTargetConflict("backup destination appeared during publication")
+        raise OSError(error, os.strerror(error), str(target))

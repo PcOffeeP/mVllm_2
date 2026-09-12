@@ -552,3 +552,27 @@ Test List覆盖：实际CLI拒绝raw模型路径、无alias/非法模式、模�
 M5代码接线与两端受控CPU测试已形成证据；真实模型成功路径和运行中服务切换仍未验证，M5保留进行中。接下来可推进不依赖真实合格模型的M6隔离备份/传输/恢复；M4 full/holdout实际入口和最终真实环境验收依赖继续保留。独立证据核查通过，详见下段。
 
 独立reviewer只读核对两端五份报告/日志SHA全部一致，首轮40/1与最终41项报告对应；读取包元数据确认httpx2/httpcore2/anyio来自本次dependencies目录，实际代码与报告均035aee24。核查时正式main仍clean@f1b7d8a3，隔离checkout tracked clean且保留六个未跟踪环境/证据目录；随后主Agent仅追加本节和TODO/Plan证据。审查通过，无finding；退出码与耗时按既有报告核对，未声称独立复跑或事后重建进程环境。当前三份轻量文档在实际Linux训练机提交，随后校验bundle回传Mac；提交对象由git log追溯。
+
+
+## 33. M6显式快照传输（2026-09-12，进行中）
+
+现有backup create已使用Registry快照锁、SQLite备份及scope裁剪；restore的MLflow artifact恢复契约保留原绝对路径布局。本轮仅新增显式已完成快照的SSH传輸，不改源集合、备份范围和旧恢复语义。
+
+Test List：成功后目标catalog/文件与源一致，原源保留；中断、错误catalog摘要、文件损坏、已有目标都不发布；归档绝对路径/越界/重复/软链/硬链/FIFO拒绝；SSH非零状态拒绝；参数不可注入shell；CLI缺参和转发校验。最初测试误用不存在的摘要helper，修正helper后观察有效RED：5 failed/5.69秒，错误均为缺transfer_backup。实现后5 passed/5.78秒；最终backup+CLI联合107 passed/37.33秒/exit0，日志/private/tmp/mvllm2-m6-regression.log。覆盖既有scope升级、源缺失、catalog修复与SQLite/artifact联合恢复；均为本机小型合成对象。
+
+transfer使用源catalog SHA256钉扎已核验快照，SSH远端只执行tar读取，目标同级私有临时目录逐成员接收，验签全部文件及SQLite后rename发布。目标已存在或同目标锁已占用时拒绝，不合并覆盖；普通异常清理本次临时目录和锁。强制杀进程可能留下锁/临时目录，需要人工核对，不自动猜测失效或清理源。新增文档保留原路径恢复限制，大产物直接落指定存储，真实移动硬盘单独待验。独立代码与文档审查进行中。
+
+### 33.1 后续隔离跨机验证范围（执行前）
+
+独立审查和本机提交后，通过既有增量bundle SHA/verify/祖先检查同步训练机任务隔离checkout，正式main不参与。新输出目录拟为/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m6-backup-verification-20260912，执行前确认不存在。使用已有.venv-m3、CUDA不可见/OMP4/离线模式，运行backup+CLI测试生成小型合成fixture；不安装依赖、不读取/data正式store。
+
+从本轮合成fixture的显式data、Prompt、models和MLflow根运行实际backup create/verify CLI到RUN/source-snapshot，核对catalog摘要及字节量。Mac使用新增transfer CLI接收到/private/tmp/mvllm2-m6-received-20260912（执行前确认不存在），只限此次小对象，执行完整验签。受控恢复在训练机：把此次fixture合成源移动到同fixture的retained-originals保留，把Mac已验签副本回传至RUN/returned-snapshot；用restore CLI恢复至原fixture绝对路径，检查父子Run、指标、Registry版本/alias及实际artifact可读和scope裁剪一致。全部原始对象都是本轮测试生成，保留移动前副本，不触碰正式唯一源、运行任务或GPU。以上执行后另记实际命令、提交和结果，不把预案写成通过。
+
+
+### 33.2 独立审查修复
+
+独立reviewer初轮107 passed/39.92秒、传输专项17 passed/5.49秒，均exit0；确认P2：最终exists检查与os.rename间若另一进程创建空目标目录，普通rename会覆盖该目录，锁仅保护合作传输者，不能保证不覆盖外部创建。新增竞态回归先RED（1 failed/1.97秒，/private/tmp/mvllm2-m6-race-red.log），随后改为Mac renamex_np(RENAME_EXCL)和Linux renameat2(RENAME_NOREPLACE)原子拒绝替换。常量/声明分别对照本机SDK sys/stdio.h及训练机linux/fs.h、fcntl.h；不支持符号/平台/文件系统时失败，不回退普通rename。测试检查竞争目录inode、内容和临时目录/锁保留边界，专项复审进行中。
+
+另补截断tar错误归一为BackupIntegrityError供CLI明确报告；先RED再传输+CLI专项19 passed/6.48秒。一次未指定basetemp的RED出现旧pytest只读目录清理告警，未处理与本轮无关的旧临时目录，随后测试均使用显式独立basetemp。本轮失败输入不会发布目标备份。
+
+修复后主Agent完整backup+CLI109 passed/34.44秒/exit0（/private/tmp/mvllm2-m6-final-regression.log），清理断言专项1 passed/1.82秒。独立专项复审18 passed/6.11秒/exit0，额外注入空目录/文件/悬空软链竞争、不支持平台/符号、ENOSPC和真实libc ENOENT均按预期失败并清理；P2关闭，通过本轮代码与Mac证据范围。Linux原子分支与跨机恢复仍待实际执行。提交前再次核对两端基线：Mac/训练机隔离均54e12a01，正式main仍clean@f1b7d8a3；33.1两端新输出均确认不存在。git diff --check通过，本轮代码在Mac原子提交。
