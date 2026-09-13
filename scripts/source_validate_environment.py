@@ -39,9 +39,12 @@ def main():
             errors.append(f'missing prerequisite {tool}')
     for tool in ('ffmpeg', 'ffprobe'):
         if shutil.which(tool):
-            probe = subprocess.run([tool, '-version'], capture_output=True, text=True, env=clean_env)
-            if probe.returncode:
-                errors.append(f'{tool} cannot execute: {probe.stderr}')
+            try:
+                probe = subprocess.run([tool, '-version'], capture_output=True, text=True, env=clean_env)
+                if probe.returncode:
+                    errors.append(f'{tool} cannot execute: {probe.stderr}')
+            except OSError as exc:
+                errors.append(f'{tool} cannot execute: {exc}')
     # pip check validates compatibility, not equality with the reviewed lock.
     try:
         if args.profile == 'mac':

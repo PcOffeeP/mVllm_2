@@ -13,7 +13,7 @@ Non-goals:
 | 脚本 | 用途 |
 | --- | --- |
 | source_prepare_environment.py | 按mac/linux-gpu锁定依赖安装到新环境，随后调用doctor |
-| source_validate_environment.py | 检查依赖、公共CLI、媒体工具；Linux检查CUDA及训练模块来源，不加载模型 |
+| source_validate_environment.py | 检查锁定版本、依赖兼容、公共CLI、媒体工具实际启动；Linux检查CUDA及训练模块来源，不加载模型 |
 | serve_manage_checkpoints.py | checkpoint管理，删除须按项目授权 |
 | serve_manage_model_registry.py | 模型库历史管理；活动入口以versioning为准 |
 | serve_validate_no_oob.py | 模型交付边界检查 |
@@ -38,6 +38,6 @@ Mac使用pyproject.toml/uv.lock（包含dev组）；Linux x86_64 GPU使用requir
 # Linux环境选择 --profile linux-gpu
 ```
 
-doctor输出JSON到stdout，不创建版本、Run或模型。缺工具、包冲突、入口导入失败或GPU训练模块来源不符返回非零。环境检查通过不表示基座模型已下载、实际训练可完成、模型质量passed或备份恢复完成。
+doctor输出JSON到stdout，不创建版本、Run或模型。缺工具、包冲突/偏离锁定版本、入口导入失败或GPU训练模块来源/子模块提交漂移返回非零。外部uv配置及Python路径变量不会参与安装与doctor，以免把目标重定向到已有环境。环境检查通过不表示基座模型已下载、实际训练可完成、模型质量passed或备份恢复完成。
 
 维护者更新依赖时分别运行`uv lock`和`uv pip compile requirements.txt --python-version 3.11 --python-platform x86_64-manylinux_2_28 --output-file requirements-linux-gpu.lock`，再在对应机器的新环境验证。
