@@ -1,7 +1,7 @@
 # 可读版本控制正式迁移实施计划
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
-- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `042f335e`（承接55b3f4d4；用户确认train/test数据分支完整接线）。
+- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `a5cfa86f`（承接042f335e；用户明确工程迁移收口不重训）。
 - **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
 - **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
 - **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
@@ -337,3 +337,10 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 
 
 2026-09-13 M4配置/资源预检：基座路径models/minicpm_v_4_5存在并解析到models/minicpmv4_5，config声明openbmb/MiniCPM-V-4_5；仅stat/配置，未验完整权重或冻结修订。4090查询时24564MiB总显存、约1081MiB使用、利用率0%；/data约3.4TiB可用。cpm45有torch/transformers/peft等训练包，但importlib.metadata未发现mlflow分发包；正式适配器在同进程调用run_training，不能假设CPU隔离环境与GPU环境已贯通。公共入口仅cross_validation三折整组或full，没有单折选项；前文“现成单折工程验证”建议收窄为待设计方案。下一步先核对完整执行环境与有限三折工程验证方案，不创建训练版本、不启动训练。
+
+
+## 当前执行边界纠正（Spec a5cfa86f）
+
+取消将有限真实训练作为本分支默认下一步。按用户最新范围，先核对agent环境与DVC/MLflow执行环境，补齐逐折入口，再验证新体系的身份、记录、导出、恢复及活动入口接管，准备合并材料。真实质量训练及test留后续，旧模型保留且不放宽门禁。逐折接口具体方案待确认；依赖该方案的代码变更暂不执行，其余只读核验与文档维护继续。
+
+本轮基座只读全文件哈希与分片结构核查，保留必要摘要到现有verification，不新增长期结果文件、不写正式训练版本、不删除既有模型文件。上游master不能当不可变修订，本地内容指纹与上游来源证明分别表述。
