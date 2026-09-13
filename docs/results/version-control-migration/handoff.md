@@ -2,14 +2,16 @@
 
 ## 2026-09-13 当前交接
 
-当前处于 M8 整体审查和问题闭环，**尚未形成可合并候选，整体迁移未完成**。状态以
-[项目 TODO](../../project-todo.md) 为准；完整审查及R2/R3修复见[验证记录第39节](verification.md#m8-audit-20260913)，R1见[第40节](verification.md#m8-r1-evidence-20260913)，R4见[第41节](verification.md#m8-r4-restore-20260913)，历史汇总与batch修正见[第42节](verification.md#m8-history-20260913)，物理Prompt落位及最终复审见[第43节](verification.md#m8-final-20260913)，本轮R5修复见[第44节](verification.md#m8-r5-prompt-20260913)，full/holdout实际接线见[第45节](verification.md#m4-full-holdout-20260913)。
+当前 M8 更新后的整包代码差异审查已通过；**真实环境验收和集成授权仍未完成，整体迁移未完成**。状态以
+[项目 TODO](../../project-todo.md) 为准；完整审查及R2/R3修复见[验证记录第39节](verification.md#m8-audit-20260913)，R1见[第40节](verification.md#m8-r1-evidence-20260913)，R4见[第41节](verification.md#m8-r4-restore-20260913)，历史汇总与batch修正见[第42节](verification.md#m8-history-20260913)，物理Prompt落位及历史复审见[第43节](verification.md#m8-final-20260913)，R5修复见[第44节](verification.md#m8-r5-prompt-20260913)，full/holdout实际接线见[第45节](verification.md#m4-full-holdout-20260913)，当前R6/R7与更新后的整包代码审查结论见[第47节](verification.md#m8-r6-r7-20260913)。
 
-本轮完整差异复审已完成：冻结`f1b7d8a3→e1d70c58`全部138提交/152文件，独立结论驳回修改，新增M8-R6外部adapter/checkpoint冻结缺口；文档过期说明已校正。Mac整仓2686 passed/1 failed/11 skipped、exit1，已定位M8-R7测试导入顺序问题。两端Git状态及七份保护文件核验通过，见[第46节](verification.md#m8-complete-20260913)。下一步先修M8-R6/M8-R7并复验，不请求merge/push。
+第46节`f1b7d8a3→e1d70c58`的138提交/152文件审查曾因M8-R6驳回，Mac整仓也暴露M8-R7导入顺序失败。两项已由代码`d9ec1227`修复；Mac最终整仓2694 passed/11 skipped、实际exit0，Linux隔离CPU定向179项及原顺序1项各exit0。独立reviewer对更新范围`f1b7d8a3→d9ec1227`的**140提交/152文件给出整包代码差异通过**，见[第47节](verification.md#m8-r6-r7-20260913)。这是代码与CPU验收结论，不等于真实模型/硬盘验收或merge/push授权。
+
+本次四份最终交付文档的追加独立核查因reviewer用量限制未返回结论；本地一致性检查及链接检查已完成，不能将先前代码审查通过写作文档已获独立核查。
 
 Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main` 核实为 `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。
 第39节当次独立审查冻结目标为任务分支 `0963642bdb47c87af0df78b809a2262ee7e1ea30`：117个提交、148个变更文件，
-包含本地 main 原有的6个独有提交。审查结论为驳回修改：1项P1、3项P2；后续局部修复不等于整体通过。
+包含本地 main 原有的6个独有提交。审查结论为驳回修改：1项P1、3项P2；该次驳回为历史冻结范围结论；最新整包代码审查结论见第47节。
 
 | Spec 要求 | 已有证据 | 当前验收结论及余项 |
 | --- | --- | --- |
@@ -21,19 +23,19 @@ Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main
 | 严格alias及实际服务入口 | 第32节实际服务调用和拒绝路径 | 入口切换完成；M8-R1实际证据门已修复，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R5前轮两反例已由de1b51dd修复：用户确认采用冻结Prompt，Mac及独立局部服务/HTTP请求/重试/smoke验证通过；Linux200 passed/1 skipped、两组exit0，M8-R5本轮范围已解决（第44节）。真实模型加载/推理成功未验证 |
 | 不覆盖及同操作失败恢复 | M1/M3/M6故障测试；第39节Prompt并发和训练完成半提交回归 | M8-R2/R3本轮修复与复审结果见第39节；不将该局部修复扩大为所有故障窗口已验证 |
 | 隔离备份恢复 | 第33节SSH小对象往返；第41节Mac/Linux异根恢复 | **M8-R4本轮范围已解决**（2fce3ab1）：原模拟store不可访问时读取/写入新根、显式current与服务准入、再次备份均通过。只重定位活动地址，冻结事实/外部引用保留；真实移动硬盘、大型产物及外部依赖整机恢复未验收 |
-| 全部活动入口接管、完整差异审查 | 第34–38节M7a–e；entrypoint-map；第39节整体审查 | M7切片已有双机证据，第46节完整复审已完成且因M8-R6驳回；整仓另有M8-R7，M8尚未通过。旧低层库保留不等于允许旧公共写入 |
+| 全部活动入口接管、完整差异审查 | 第34–38节M7a–e；entrypoint-map；第39节整体审查 | M7切片已有双机证据，第46节旧范围曾因M8-R6驳回，R7使旧整仓exit1；第47节更新的140提交/152文件整包代码差异审查通过，R6/R7本轮范围已解决。M8真实环境验收仍未完成。旧低层库保留不等于允许旧公共写入 |
 
 本轮M8-R1已覆盖公开手工写入及已有无证据记录，冻结训练基座并校验被评路径与服务deploy_target一致；本机2623 passed/11 skipped、独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决。
 本轮M8-R4代码2fce3ab1：Mac受影响回归175 passed/1 skipped、最后URI专项6 passed；Linux最终181 passed/1 skipped，exit0，独立代码/操作文档局部审查通过。实际历史汇总现已完成，第42节另记录公共历史生成器batch口径修复d2ae4cee、Mac/Linux各247项与独立15项。物理/data下Prompt已落位并验证（第43节）；第43节当次最终复审范围为f1b7d8a3→ab5c71ae，125提交/149文件。M8-R5服务Prompt冻结输入绑定P2的策略已由用户确认，代码de1b51dd已修复并通过Mac/Linux及独立局部复审，Linux200 passed/1 skipped、两组exit0，本轮R5已解决；full/holdout实际输入接线已由fed9bcfc补齐，独立代码及操作说明局部通过，Linux819 passed/1 skipped、三组exit0和保护文件复验已完成（第45节）。第43节独立完整代码复审当次结论为整包驳回修改；本次R5局部通过不替代新的整包验收。前轮Mac整仓2647 passed/11 skipped，452.07秒，正常exit0；skip为本机历史数据缺失。四份交付文档同步当前结论（第43节）。
-本轮用户明确确认独立full训练范围（Spec 0bf0baed），只使用合成CPU数据实施及验证。第45节双机证据已收口；第46节完整差异审查已完成，下一步先修M8-R6与M8-R7，再完成受影响回归和独立复核。真正的全量训练和holdout独立验收仍依赖MODEL-DIAG、HOLDOUT-BUILD及另行实际执行授权；真实硬盘、大型产物和外部依赖整机恢复保留未验收。不能把新入口具备执行能力写成已经训练出full模型或已经获得真实holdout passed。
+本轮用户明确确认独立full训练范围（Spec 0bf0baed），只使用合成CPU数据实施及验证。第45节双机证据已收口；第47节R6/R7修复、Mac整仓实际exit0、Linux隔离CPU及更新的独立整包代码差异审查已完成。下一步核对证据交付和两端状态，再按TODO处理真实环境依赖。真正的全量训练和holdout独立验收仍依赖MODEL-DIAG、HOLDOUT-BUILD及另行实际执行授权；真实硬盘、大型产物和外部依赖整机恢复保留未验收。不能把新入口具备执行能力写成已经训练出full模型或已经获得真实holdout passed。
 所有修复继续沿已确认Spec，不得以放宽门禁或把未知历史事实补成passed来关闭条目。
 
 第39节只读核对：训练机原项目 `main@f1b7d8a3` 干净；隔离checkout在当时审查时为 `0963642b`，
 原有环境和验证目录均保留。前轮R2/R3代码`2b8cbc89`通过bundle同步，Mac/Linux各466项及独立251项通过。
 本轮R1代码`3b63aa52`已同步到隔离分支，原正式项目仍为干净main@f1b7d8a3；Linux分三进程956 passed/1 skipped、各exit0，验收结果见第40节。
 本轮R4代码`2fce3ab1`也已同步隔离分支；原正式项目保持只读。Linux回归与恢复边界见第41节。
-当前轻量证据提交由相关文件`git log`追溯，不能把审查冻结目标或修复提交冒充最终整包通过版本。
-拟合并目标仍为 Codeup `main`。尚未请求或执行merge/push；需问题闭环、更新完整差异和两端Git状态后再提出具体请求。
+当前轻量证据提交由相关文件`git log`追溯；整包代码审查冻结目标为`d9ec1227`，文档同步提交不改变代码审查范围。
+拟合并目标仍为 Codeup `main`。尚未请求或执行merge/push；实施前仍须明确授权并核对两端Git状态、具体提交及目标分支。
 下文保留M3授权执行单及当时事实，**其状态、路径存在性及“待推进”表述均为历史快照**，不得覆盖本节当前盘点。
 
 ---

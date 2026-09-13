@@ -1191,3 +1191,33 @@ Mac整仓 **2686 passed / 1 failed / 11 skipped，504.68秒，实际exit1**；�
 本轮Mac原始证据共19文件已按字节复制到Linux隔离目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-complete-verification-20260913-e1d70c58/`，含完整冻结patch、范围、原日志、进程报告和独立探针脚本。压缩包SHA `2821625060e9c3c20e04be2366bfb8c008c1535bca293b8b1d2f6e165379f1ea`，逐文件摘要、七份保护文件和原项目干净状态复核通过，copy-receipt.json记录；这是Mac证据存档，不是Linux复跑。六文档本地链接已检查70项无缺失，新训练/holdout链接锚点另对照实际标题。文档提交及隔离分支快进由Git历史与RUN同步凭证追溯，不push/merge。
 
 最终六文档及第46节证据已由独立reviewer只读核查通过：P3过期入口说明已修正，M8-R7导入链归因与单项/组合证据一致，Linux19份存档与Mac摘要一致；没有重跑主Agent测试，也不把文档通过覆盖M8整包驳回。新增M8-R7链接后最终本地链接复查71项均可达（final-doc-links.json），git diff --check通过。M8-R6/M8-R7仍待修。
+
+
+<a id="m8-r6-r7-20260913"></a>
+## 47. 外部训练输入冻结与整仓测试隔离修复（2026-09-13）
+
+用户要求执行下一步，按第46节及TODO先修M8-R6/R7，沿用既有明确实施授权。保持三折与独立full训练范围、模型晋级门和历史对象，不运行真实训练/GPU/真实holdout。M8-R6选择未实现外部权重冻结时fail-closed：配置中的非null`adapter_name_or_path`或`resume_from_checkpoint`在prepare前拒绝，旧冻结配置在validate/run拒绝，MLflow训练证据门在模型登记前再次检查。旧completed状态不重写或删除，只拒绝将无来源证据的结果晋级。M8-R7将路径优先级测试放入新Python进程，保留run_training对实际模块来源的运行时校验。versioning/SCRIPTS.md同步明确可接受的配置边界。
+
+本机合成RED：四个CV/full×两类外部权重prepare测试此前均未拒绝；旧full含外部adapter的completed记录仍能register model。第一轮RED总6 failed（其中两个旧冻结测试由于拦截函数尚未实现而报AttributeError，不能算已复现业务缺陷）；单独旧模型登记反例1 failed，实际外部模型被创建。修复后Mac受影响训练/Registry联合179 passed、62.94秒/exit0；原第46节失败的三文件导入顺序组合1 passed/49 deselected、0.95秒/exit0。均使用CPU合成数据、CUDA不可见、OMP4、HF/Transformers离线；正式真实效果仍无证据。该时点整仓回归及独立复审仍在进行；最终结果见本节末。
+
+
+独立reviewer已核查五文件代码/操作说明工作树差异，局部结论通过、无可执行新问题：定向11 passed/35 deselected、5.80秒、exit0，日志SHA `a40f9f8a5b8ffe406c707c7ab018474ae13f990f1a9d6261315daa0465190a15`；原收集顺序及错误实际包来源拒绝2 passed/48 deselected、2.34秒、exit0，日志SHA `e4e985bf99cddcd63304a955fcb9b359b4f23aff9261500827a007f4402ed91a`。审查者直接使用上轮原始adapter/checkpoint反例旧记录，validate/run/export/register及已登记模型测评准入均拒绝，原Run/ModelVersion/状态/params前后不变，探针exit0、日志SHA `4c3d9f31e99175903e5db6aba794f5026f9c2c4ad38b7611a0bb00edbfc09343`。三份原日志在Mac`/private/tmp/mvllm2-r6-r7-20260913/`按原字节留存；此为独立局部验证，不是整仓或Linux复跑。该时点最终整仓及双机证据尚待完成；本节末记录最终结果。
+
+
+### 代码提交与 Linux 隔离 CPU 复验
+
+代码/操作说明提交为`d9ec12270d5b3f106a1e1da6e5b2c6eb443aaea7`（五文件）；独立局部复核先于提交通过。Codeup main及训练机原项目仍是干净`f1b7d8a3`，隔离基线`2caac393`。增量bundle SHA `3dd5f2d321ae1cf59c6baeb17ce184741f1326101b8ce47573939b41f7dbe257`；在隔离工作区验证bundle、0/1独有提交及精确五文件后快进，不触碰正式项目。
+
+Linux证据目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-r6r7-verification-20260913/`，使用现有`.venv-m3/bin/python`及先前隔离依赖目录，CUDA不可见、OMP4、HF/Transformers离线。实际两进程各exit0：训练/full/Registry **179 passed，114.27秒**（外层128.463秒）；原收集顺序复验 **1 passed/49 deselected，2.30秒**（外层2.836秒）。原日志SHA分别为`5a6ecad7a5c92e31fa6a6b1fd453b3caeb77de1acd4213d84c456a5336bc6560`、`8d6a94d33ec53abb8484abe74e555d5629c68da5bd22c0ecfb4a74cfbe6cc85d`；`result.json` SHA `6771267a5f89e70cfc79c8c316afc96eb41ae5421f117bbe79d2e0cdb3611002`。Mac副本`/private/tmp/mvllm2-r6-r7-20260913/linux-result.json`与两日志按原字节回传验签，未写成Mac复跑。
+
+测试后五文件SHA与代码bundle一致；七份保护轻量文件前后摘要不变，正式原项目干净`main@f1b7d8a3`、隔离tracked干净`d9ec1227`。Linux验证仍是CPU合成运行，不代表真实训练/GPU/holdout或大型产物可用。该时点Mac整仓仍在运行；最终证据和整体复核见下。
+
+### 最终整仓退出、原件存档与整包审查结论
+
+同一代码`d9ec12270d5b3f106a1e1da6e5b2c6eb443aaea7`下，Mac整仓`.venv/bin/python -m pytest -q --tb=short -rs --basetemp /private/tmp/mvllm2-r6-r7-20260913/pytest-tmp`最终为 **2694 passed / 11 skipped，pytest 774.28秒，实际进程exit0**；外层计时1136.481秒，runner从`subprocess.returncode`记录退出码。`/private/tmp/mvllm2-r6-r7-20260913/result.json`的`log_sha256`为`b8a2aef36df3fb49d8bff100814a28897370565d71e7a73320e8b4d51aef086f`；11项skip是1项缺本机V4.1数据、10项缺本机V3轻量fixture。测试摘要打印后的长尾采样在`Py_FinalizeEx/gc_collect_main`，但最终退出码已取得，不再沿用第46节旧失败状态。测试期间仅更新此类证据文档，五文件代码字节未变。
+
+Mac原始整仓日志、报告、runner及三份独立局部复核日志和进程采样共7文件，均按原字节验SHA复制至Linux隔离验证目录；来源清单`/private/tmp/mvllm2-r6-r7-20260913/mac-evidence.json` SHA `22e2c22df551d1716cea4003bdbd4ab0648decbd80576811d5951a9ab900a3ab`，清单注明`source_machine=Mac`、`linux_rerun=false`。远端逐文件验签7/7通过；此存档不算Linux整仓复跑。Linux实际新执行的只有前述两组179项和顺序1项，各exit0，`result.json`原件与Mac副本同SHA `6771267a5f89e70cfc79c8c316afc96eb41ae5421f117bbe79d2e0cdb3611002`。
+
+独立reviewer核对冻结范围Codeup main `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`至`d9ec12270d5b3f106a1e1da6e5b2c6eb443aaea7`，**140提交/152文件，更新后的整包代码差异审查通过，无剩余可执行问题**。未变化部分承接同一reviewer前轮完整范围审查证据；`2caac393`只含已核查文档，`d9ec1227`五文件SHA与独立局部复审一致。reviewer核对作者Mac整仓实际exit0和Linux原报告，未把它们记作独立复跑；独立者自身的11项、顺序/错误来源2项及原两类旧记录反例复验如本节上文。第46节的驳回是当时冻结范围的历史结论，R6/R7现已解决本轮代码与CPU范围。
+
+验收边界：尚无真实GPU训练与模型质量、实际授权新holdout构建和评分、真实硬盘及大型产物恢复、外部依赖整机恢复证据。M4/M5等真实环境缺口与M8父任务保持未关闭；本轮没有执行merge/push。轻量台账、Plan、verification、handoff的最终提交版本按Git历史追溯。四份最终文档已请求同一独立reviewer只读核查，但该次任务触及用量限制而未产生结论；文档仅经主Agent的`git diff --check`和59个本地文件链接可达性检查，不记作独立文档复核通过。整包代码差异审查结论已先于此独立完成，不受该错误覆盖。

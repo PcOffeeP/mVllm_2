@@ -8,11 +8,15 @@
 
 ## 下一步与执行顺序
 
-**本轮按用户指定优先继续 VERSION-CONTROL-FORMAL-MIGRATION 的M8整体差异审查与验收交付；M7a 三个数据CLI及M7b四个训练/评测CLI退役已完成；其他模型工作保持原依赖与授权边界。**
+**本轮按用户指定优先继续 VERSION-CONTROL-FORMAL-MIGRATION 的 M8 验收交付；更新后的完整代码差异审查已通过，下一步核对交付证据并准备可审阅的集成边界。M7a 三个数据 CLI 及 M7b 四个训练/评测 CLI 退役已完成；其他模型工作保持原依赖与授权边界。**
 
-本轮迁移修复：M8-R1代码`3b63aa52`已完成，本机整仓2623 passed/11 skipped、独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4代码`2fce3ab1`的store级异根恢复已通过Mac/Linux及独立局部验收（第41节）；实际history-summary已交付并独立验收（第42节）；物理/data下Prompt已完成登记与验签（第43节）；完整差异复审已完成并驳回整包（125提交/149文件，代码ab5c71ae）；Mac最终整仓CPU回归2647 passed/11 skipped、exit0。M8-R5代码de1b51dd已解决本轮范围：用户确认服务使用冻结Prompt，Mac195+5项、Linux200 passed/1 skipped、独立25+5项及操作说明通过（第44节）；本轮full/holdout实际输入接线（Codex）：用户已确认独立full训练范围（Spec 0bf0baed）；full来源/执行/模型证据接线已实现、两项审查P2修复并局部通过，holdout媒体run与授权score已实现，独立holdout审查发现链接提前读truth的P2与伪造评分恢复凭据的P1，均已修复并新增回归；Mac广回归679 passed/1 skipped及最终holdout16项均exit0；独立局部复审通过，Linux三组819 passed/1 skipped均exit0（代码fed9bcfc，第45节）。full/holdout代码接线与双机隔离CPU验证已完成，GPU/真实holdout仍未验证；第45节是已完成的局部证据，最新整包结论及下一步见下文第46节。
+本轮迁移修复：M8-R1代码`3b63aa52`已完成，本机整仓2623 passed/11 skipped、独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4代码`2fce3ab1`的store级异根恢复已通过Mac/Linux及独立局部验收（第41节）；实际history-summary已交付并独立验收（第42节）；物理/data下Prompt已完成登记与验签（第43节）；历史完整差异复审曾驳回整包（125提交/149文件，代码ab5c71ae）；当次Mac整仓CPU回归2647 passed/11 skipped、exit0。M8-R5代码de1b51dd已解决本轮范围：用户确认服务使用冻结Prompt，Mac195+5项、Linux200 passed/1 skipped、独立25+5项及操作说明通过（第44节）；本轮full/holdout实际输入接线（Codex）：用户已确认独立full训练范围（Spec 0bf0baed）；full来源/执行/模型证据接线已实现、两项审查P2修复并局部通过，holdout媒体run与授权score已实现，独立holdout审查发现链接提前读truth的P2与伪造评分恢复凭据的P1，均已修复并新增回归；Mac广回归679 passed/1 skipped及最终holdout16项均exit0；独立局部复审通过，Linux三组819 passed/1 skipped均exit0（代码fed9bcfc，第45节）。full/holdout代码接线与双机隔离CPU验证已完成，GPU/真实holdout仍未验证；第45节是已完成的局部证据，最新整包代码审查结论及下一步见下文第47节。
 
 2026-09-13 本轮整包复审已完成（Codex）：冻结Codeup main `f1b7d8a3` → `e1d70c58`，138提交/152文件。独立结论为驳回修改，新增M8-R6（P2：外部adapter/checkpoint未冻结）；过期full/holdout入口说明已校正。Mac整仓2686 passed/1 failed/11 skipped、实际exit1，失败由主Agent缩小为导入顺序导致的测试隔离问题M8-R7。两端工作区及七份保护文件核对通过，见验证第46节。下一步先修M8-R6与M8-R7，再做受影响回归和独立复核；M8不关闭，不请求merge/push。
+
+2026-09-13 M8-R6/R7已解决本轮代码与CPU验收范围（Codex，代码`d9ec1227`）：新训练准备拒绝非null外部adapter/checkpoint配置，旧冻结记录在validate/run/export及Registry下游拒绝；路径优先级测试改用独立Python进程，实际模块来源门保持。Mac受影响179项与原收集顺序1项均exit0，整仓**2694 passed/11 skipped、实际exit0**；独立局部复核与旧反例复验通过。Linux隔离分支两组179项及顺序1项均exit0，七保护文件及原main保持。独立审查承接前轮完整范围，对`f1b7d8a3→d9ec1227`共140提交/152文件给出**整包代码差异通过**；证据见第47节。M8父任务仍进行中：真实GPU训练/模型效果、未使用holdout构建及授权评分、真实硬盘/大型产物恢复和外部依赖整机恢复尚未验收；不请求merge/push。
+
+M8交付文档的本轮追加独立复核因reviewer用量限制未形成结论；四份文档经主Agent本地`git diff --check`与链接检查，后续补独立核查。此缺口不改变已单独完成的整包代码审查结论。
 
 **模型验收下一项先执行 HOLDOUT-BUILD：构建并授权一个未使用的 holdout 测试集，作为最终模型独立验收的前置，同时继续 MODEL-DIAG。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
 
@@ -128,27 +132,23 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **验收标准**：按已确认 Spec 核对两个数据版本及一版 Prompt 的内容保持、历史关联可查询、所有活动入口接管、单写与恢复不丢事实、训练机真实环境证据、文档及独立审查。Codeup 为发布依据，最终交付覆盖相对 Codeup main 的完整差异。
 - **证据/限制**：[验证记录](results/version-control-migration/verification.md)第12–24节及[执行单](results/version-control-migration/handoff.md)。M3h本机完整1768 passed/exit0，各切片独立审查通过；真实媒体对照2份ROI、34份子视频、211张帧字节一致。正式r1/r2共20个声明payload与原源SHA一致、有效receipt、只读封存、r1拒绝/r2允许元数据新引用门，独立reviewer复验通过，训练机证据提交bf3d4ca。r1/r2共9421/11986个外部视频/帧引用在原workspace/data映射后全部可达，新store不自包含。Mac真实界面23完成/0待审，回收与训练机导入及257文件封存校验通过独立复核；新视觉审批0次，复用依据用户确认记录。M3已完成，完整回归与实机最终校验见第23–24节。未执行真实训练/GPU/完整评测、未改旧指针或正式main；M4–M7后续证据见第25–38节，M8进行中，M4/M5真实环境缺口保留。
 
-### M8-R7 — 训练入口路径优先级测试依赖全局导入顺序
+### M8-R7 — 训练入口路径优先级测试依赖全局导入顺序：已解决（本轮范围）
 
-- **状态/来源**：待处理；父任务VERSION-CONTROL-FORMAL-MIGRATION的Mac最终整仓CPU回归发现，代码e1d70c58，主Agent已完成最小顺序复现。
-- **已证实事实与差距**：test_training_entrypoint_prefers_current_repository_llamafactory单独执行1 passed/exit0；先收集test_eval_holdout、test_publish_training_release再收集该测试，以-k只执行它仍1 failed/49 deselected、exit1。full测试复用训练测试fixture会提前导入train_with_contract，之后历史发布测试把ROOT重新插到sys.path头部，使全局顺序断言失败。尚无证据表明真实入口加载错包；run_training仍核对实际llamafactory来源并fail-closed。
-- **依赖/下一动作**：作为最终回归前置，隔离导入/路径优先级测试，保持实际加载来源校验；不得靠删除断言或只报告单测通过消除整仓失败。按既有Plan测试文件范围处理，运行顺序复现及必要回归。
-- **验收标准**：干净进程与上述组合收集均可验证仓库内LLaMA-Factory优先级；错误实际模块来源继续在训练器执行前拒绝；最终整仓真实exit0，skip与告警如实保留。
-- **证据/限制**：[验证第46节](results/version-control-migration/verification.md#m8-complete-20260913)，Mac证据目录`/private/tmp/mvllm2-m8-complete-20260913-e1d70c58/`中的pytest.log、result.json、isolated-test.log和ordered-test.log及各报告。整仓2686 passed/1 failed/11 skipped、exit1；未修改运行代码或测试，本轮只定位并交接。
+- **状态/来源**：已解决（Codex；代码 `d9ec1227`）；父任务整仓测试在 `e1d70c58` 发现，原第46节为失败证据。
+- **已证实事实与修复**：原测试受其他测试收集时的 `sys.path` 变动影响。路径优先级断言现由新 Python 进程验证，训练器对实际 LLaMA-Factory 模块来源的运行时拒绝门保留。
+- **验收与证据**：[验证第47节](results/version-control-migration/verification.md#m8-r6-r7-20260913)：原失败顺序组合 Mac/Linux 各 1 passed/49 deselected、exit0；Mac 整仓 2694 passed/11 skipped、实际 exit0；独立复核另验证错误实际来源仍被拒绝。11项 skip 均因本机历史数据/fixture 缺失，不代表真实模型效果。
 
-### M8-R6 — 外部训练初始化权重未纳入冻结输入
+### M8-R6 — 外部训练初始化权重未纳入冻结输入：已解决（本轮范围）
 
-- **状态/来源**：待处理（P2）；父任务VERSION-CONTROL-FORMAL-MIGRATION的本轮完整独立审查发现，冻结代码e1d70c58。执行者reviewer提供合成CPU反例，主Agent已核对日志与实际依赖调用。
-- **已证实事实与差距**：train prepare保留配置中的adapter_name_or_path，却只对model_name_or_path建立base_model_files清单。准备后修改外部adapter的safetensors，verify仍通过，execute将已漂移路径交给训练器，训练可completed且full model可register。LLaMA-Factory实际会从该路径加载/合并adapter，故路径字符串冻结不能证明实际初始化输入一致。
-- **依赖/下一动作**：作为M8整包验收前置，补齐外部初始化/恢复输入的冻结边界；独立resume_from_checkpoint探针也已复现准备后替换checkpoint仍可completed，须同批封闭。实施前核对已批准训练配置契约及精确文件范围，外部输入必须验签或明确拒绝，不允许继续静默使用未冻结内容。
-- **验收标准**：外部adapter内容或身份漂移在训练器调用前被拒绝；合法支持的初始化/恢复路径有明确冻结证据，未支持路径fail-closed；CV与full均满足，旧冻结记录不能绕过；恢复不会抹去已完成/失败事实，模型登记不能授予缺失来源证据的权重资格。
-- **证据/限制**：[验证第46节](results/version-control-migration/verification.md#m8-complete-20260913)；finetune/train_prepare_run.py的配置接收及verify，LlamaFactory/src/llamafactory/model/adapter.py实际加载路径。独立日志`/private/tmp/mvllm2-final-range-external-input-probe.log`、fixture`/private/tmp/mvllm2-final-external-input-2791otwy`，输出EXTERNAL_INPUT_DRIFT_ACCEPTED；checkpoint反例日志`/private/tmp/mvllm2-final-range-checkpoint-probe.log`输出CHECKPOINT_DRIFT_ACCEPTED，二者实际exit0。本轮为合成CPU替身，无实际训练或真实模型效果证据；未实施代码修复。
+- **状态/来源**：已解决（Codex；代码 `d9ec1227`）；父任务完整独立审查在 `e1d70c58` 发现 P2，原 adapter/checkpoint 漂移反例见第46节。
+- **已证实事实与修复**：当前契约不支持外部 adapter 或 checkpoint 初始化/恢复；CV/full 的 prepare 在冻结前拒绝两类非null配置，旧冻结记录在 validate/run/export 与 Registry 训练证据门拒绝。旧完成/失败事实不改写，缺少来源证据的模型不能登记或进入后续准入。
+- **验收与证据**：[验证第47节](results/version-control-migration/verification.md#m8-r6-r7-20260913)：Mac 相关179项、Linux同组179项各exit0；独立审查重用原两类漂移 fixture，旧记录各拒绝且Run/ModelVersion/状态/params不变；整包代码差异审查对140提交/152文件结论通过。上述为CPU合成验证，未声称外部权重路径已获支持或真实GPU训练通过。
 
 ### M8-R5 — 服务Prompt来源未与被评冻结输入绑定：已解决（本轮范围）
 
 - **状态/来源**：已解决（本轮实现范围；Codex；用户2026-09-13确认兼容策略，Spec789fa4fc/Plan511cfc14）；父任务VERSION-CONTROL-FORMAL-MIGRATION的最终完整独立复审发现P2，代码ab5c71ae。
 - **已证实事实与差距**：第43节发现时，prompt-v4.1-r1保持原concise-v2内容，与固定service analysis的system/user不同。独立CPU链路在真实证据门下构建合法candidate后，server_proxy.main仍在加载器前拒绝；不是缺alias的允许拒绝，不能宣称此Prompt对应模型端到端可服务。反例还证明同ID当前定义替换为固定契约后，resolver指纹不变且错误放行服务，未与训练/eval冻结内容绑定。
-- **依赖/下一动作**：用户2026-09-13已确认采用模型冻结并验签的Prompt，保持输出/评分/alias/审批/备份门禁，并同步请求识别、重试和交付契约。Spec789fa4fc/Plan511cfc14记录，代码de1b51dd已实现。Mac广回归195 passed/1 skipped及新增5项通过，独立25+5项和操作说明通过；Linux最终200 passed/1 skipped、两组exit0，保护文件保持；本轮R5闭环。后续实际GPU加载/模型效果另验；父任务full/holdout接线及双机隔离CPU验证已完成（fed9bcfc，第45节），本轮整包复审见第46节，先修M8-R6/M8-R7再复核，真实holdout仍未验证。
+- **依赖/下一动作**：用户2026-09-13已确认采用模型冻结并验签的Prompt，保持输出/评分/alias/审批/备份门禁，并同步请求识别、重试和交付契约。Spec789fa4fc/Plan511cfc14记录，代码de1b51dd已实现。Mac广回归195 passed/1 skipped及新增5项通过，独立25+5项和操作说明通过；Linux最终200 passed/1 skipped、两组exit0，保护文件保持；本轮R5闭环。后续实际GPU加载/模型效果另验；父任务full/holdout接线及双机隔离CPU验证已完成（fed9bcfc，第45节），第46节原整包驳回已由第47节R6/R7修复及更新的独立代码审查闭环，真实holdout仍未验证。
 - **验收标准**：当前迁移Prompt的合法模型可以通过实际服务CLI路由并使用其冻结输入；不兼容输出结构、模型版本/文件漂移、非法alias继续拒绝。训练/eval冻结Prompt及其摘要必须进入服务绑定，当前同ID内容漂移在加载前拒绝。CPU替身证据与GPU模型加载/效果证据分别标记，不将修复外推为模型质量通过。
 - **证据/验证限制**：[第43节](results/version-control-migration/verification.md#m8-final-20260913)，pipeline/server_proxy.py:447–452；独立fixture`/private/tmp/mvllm2-final-concise-service-0bdr7oux`。修复证据见[第44节](results/version-control-migration/verification.md#m8-r5-prompt-20260913)，代码de1b51dd；旧行号/fixture仅追溯发现时事实。未运行GPU或读取受限测试结果，不以本轮局部通过代替整体验收。
 
