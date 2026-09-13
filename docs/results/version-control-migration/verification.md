@@ -1600,3 +1600,21 @@ Linux agent环境只读元数据：torch2.5.1、transformers4.56.1、peft0.18.1�
 | vocab.json | 2776833 | `ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910` |
 
 这是完整性核查，不是数字签名验证或模型效果验收。仅临时计算输出与本节必要摘要，未新增仓库结果JSON。本轮未使用受限test、训练、推理、修改环境或远端状态。
+
+
+## 62. 环境归属与部署声明核查
+
+用户要求核对实际环境与requirements，不授权本轮修改环境。Linux分别用各环境的绝对python读取importlib.metadata、direct_url并执行python -m pip check；四个元数据查询均exit0。
+
+| 环境 | 实际关键依赖/来源 | pip check |
+| --- | --- | --- |
+| agent | Python3.11.15；torch2.5.1、peft0.18.1、accelerate1.11.0、av16、pandas2.3.3；LLaMA-Factory editable指向mVllm_2/LlamaFactory；无DVC、MLflow、cropper | exit0 No broken requirements found |
+| cpm45 | Python3.11.15；peft0.19.1、accelerate1.14、av17.1、datasets5；editable指向旧mVllm/LlamaFactory；无DVC/MLflow | exit1：缺fire、gradio、hf-transfer、modelscope、sse-starlette、torchdata、tyro；accelerate/av/datasets/peft不满足已安装LLaMA-Factory范围 |
+| 隔离.conda-m2 | Python3.11.16；MLflow3.15.2、DVC3.67.1、pandas3.0.3；无GPU训练栈 | exit1：MLflow要求pandas<3 |
+| 隔离.venv-m3 | Python3.11.16；torch2.5.1+cpu、av18.1；从.conda-m2继承MLflow/DVC/pandas | exit1：相同pandas冲突 |
+
+.venv-m3/pyvenv.cfg明确include-system-site-packages=true，home为.conda-m2/bin；因此不是agent或cpm45提供DVC/MLflow。此为当前安装位置事实，不据此推断历史安装者或具体安装时间。
+
+部署文件问题：根requirements含Linux CUDA/triton及GPU栈，但缺ROI UI实际导入的streamlit-cropper；DVC/MLflow只给主版本区间，没有GPU环境完整锁文件。pyproject要求av>=18.1，与固定子模块4447137e的av<=16冲突；pandas>=3.0.3及uv override强制覆盖与当前MLflow3.15.2的pandas<3冲突，uv.lock同样记录pandas3.0.3。两平台本可不同，但不能把这两份配置当作同一环境叠加安装。README的Conda安装步骤未包括cropper，ffmpeg/ffprobe只作文字提示；finetune/README引用的LlamaFactory/requirements/minicpm-v.txt在当前checkout不存在。根requirements的pandas2.3.3符合当前MLflow声明，不能把该冲突错误归因于根requirements。
+
+结论：尚不能宣称一键部署已验证。需分平台统一兼容声明、固定子模块/依赖来源、补系统工具预检与完整导入检查，再用干净环境实装验收。未执行联网依赖解析/下载或干净环境安装，不推断每个固定包版本都可下载；未安装依赖、修改源码/环境或运行训练。本轮只维护现有证据/TODO，未新增结果文件。

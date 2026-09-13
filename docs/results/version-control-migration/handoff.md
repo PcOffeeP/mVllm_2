@@ -188,3 +188,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 
 
 当前范围以Spec a5cfa86f/Plan efde1536为准：工程迁移收口不要求新微调，旧模型保留且质量门禁不变。下一步M4-FOLD逐折入口方案确认及agent/DVC/MLflow环境接线核对，不再推进有限真实训练。agent环境和基座完整性已核查，见verification第61节；上游master未冻结为可信修订，不能称来源验签通过。
+
+
+2026-09-13 环境与部署文件核查：agent/cpm45均无DVC/MLflow；实际安装在隔离.conda-m2（MLflow3.15.2、DVC3.67.1），.venv-m3通过system-site-packages继承。agent pip check exit0，cpm45 exit1且editable LLaMA-Factory指向旧mVllm项目；两个隔离环境pip check均因MLflow要求pandas<3、实际3.0.3而exit1。新增ENV-DEPLOY部署一致性前置，不把历史CPU测试通过解释为依赖声明一致。

@@ -344,3 +344,6 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 取消将有限真实训练作为本分支默认下一步。按用户最新范围，先核对agent环境与DVC/MLflow执行环境，补齐逐折入口，再验证新体系的身份、记录、导出、恢复及活动入口接管，准备合并材料。真实质量训练及test留后续，旧模型保留且不放宽门禁。逐折接口具体方案待确认；依赖该方案的代码变更暂不执行，其余只读核验与文档维护继续。
 
 本轮基座只读全文件哈希与分片结构核查，保留必要摘要到现有verification，不新增长期结果文件、不写正式训练版本、不删除既有模型文件。上游master不能当不可变修订，本地内容指纹与上游来源证明分别表述。
+
+
+2026-09-13 环境与部署文件核查：agent/cpm45均无DVC/MLflow；实际安装在隔离.conda-m2（MLflow3.15.2、DVC3.67.1），.venv-m3通过system-site-packages继承。agent pip check exit0，cpm45 exit1且editable LLaMA-Factory指向旧mVllm项目；两个隔离环境pip check均因MLflow要求pandas<3、实际3.0.3而exit1。新增ENV-DEPLOY部署一致性前置，不把历史CPU测试通过解释为依赖声明一致。
