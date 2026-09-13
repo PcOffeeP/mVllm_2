@@ -60,10 +60,10 @@
 | 阶段 | 当前状态与下一动作 |
 | --- | --- |
 | M0–M3 | 已完成现场核对、转换能力、隔离环境与真实数据链迁移验收 |
-| M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
+| M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。本轮独立full训练与holdout媒体run/授权score接线完成（fed9bcfc），Linux819 passed/1 skipped、各exit0，双机及独立局部证据见第45节；真实训练/GPU、真实holdout读取及真实注册模型成功路径仍未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 部分验收通过（store级恢复已完成，真实硬盘/大型产物待验收）：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物未验证；M8-R4 store级异根恢复已由2fce3ab1完成并通过Mac/Linux及独立局部验收，真实硬盘/大型产物与外部依赖整机恢复仍未验收（verification第33、39、41节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，第42节）；第43节物理Prompt已补齐，Mac整仓2647 passed/11 skipped、exit0。最终125提交/149文件独立审查已完成且因M8-R5驳回整包；当前矩阵已更新，第44节R5已由de1b51dd解决本轮范围，用户策略确认、Mac/Linux200项及独立局部证据通过；下一步full/holdout实际输入接线，真实环境缺口分别保留；未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，第42节）；第43节物理Prompt已补齐，Mac整仓2647 passed/11 skipped、exit0。最终125提交/149文件独立审查已完成且因M8-R5驳回整包；当前矩阵已更新，第44节R5已由de1b51dd解决本轮范围，用户策略确认、Mac/Linux200项及独立局部证据通过；本轮full/holdout接线及双机隔离CPU验证已完成（fed9bcfc，Linux819 passed/1 skipped、各exit0，第45节）；下一步整包差异审查，真实环境缺口分别保留；未授权push/merge |
 
 ### M0：核定范围与写入者
 
@@ -239,3 +239,11 @@ M4 holdout 接线细化：`eval prepare` 接收 `--pre-registration`/`--executor
 2026-09-13 M4 full/holdout 实施进展（Codex）：full 数据/执行/证据及model登记已接通。独立训练审查发现2项P2（full完成半提交恢复、旧三折导出字节兼容），均修复，独立5项通过并局部复审通过；Mac训练/claim联合44项通过。holdout已增加显式媒体推理和score阶段，合成完整成功/质量失败、身份与规则拒绝、truth读隔离及评分/完成中断恢复9项通过；此前eval/CLI联合109 passed/1 skipped。holdout独立代码/操作说明审查与广回归正在执行，Linux仅完成只读预检：原项目及Codeup main均f1b7d8a3，隔离b40eaa90，tracked干净；尚未同步本轮代码。这里的通过均为CPUfixture，真实GPU、模型效果和HOLDOUT-BUILD继续保留未完成。
 
 M4 文档一致性补充：允许精确更新 `docs/plans/2026-09-01-readable-version-control-design.md` 的训练范围、full来源与验收条款，并以D042记录用户已确认的独立全量训练决定；不重写架构或新增方案。本变更消除原文“模型晋级必须三折完整”与已确认full训练范围的冲突；同样交由独立reviewer对照Spec和实际实现核查。
+
+
+2026-09-13 M4 full/holdout代码收口（Codex）：代码提交fed9bcfc；训练2项P2已复审闭环，holdout链接提前读truth的P2和伪造评分阶段恢复的P1（含完整私有文件伪造强化反例）已修复。无评分承诺时必须在授权score核对原source truth与快照并复算全部明细，之后才建立不可变承诺；已承诺恢复不重读原truth。独立最终7项通过及局部代码/操作说明通过，设计文档精确同步也已独立通过。Mac广回归679 passed/1 skipped、exit0，最终holdout另16 passed/exit0；广回归开始早于holdout最终修复，不能冒充全部在最终holdout版本复跑。Linux隔离工作区已验签bundle并快进到fed9bcfc，第一组163 passed/1 skipped、exit0；第二/三组及最终保护文件复验待完成。正式项目与真实产物仍只读，整体M4及迁移不关闭。
+
+
+2026-09-13 M4 full/holdout双机证据收口：Linux同一fed9bcfc三组163/390/266 passed（共819 passed/1 skipped）全部exit0；既有AnyIO弃用告警保留，未改环境。12份代码/操作说明摘要一致，7份保护文件前后一致，原项目仍干净main@f1b7d8a3。仅Plan 0666462d在测试后另以单文件0/1提交快进，代码未变。设计、TODO、Plan、verification、handoff按第45节最终证据同步；独立最终证据核查后在Linux提交轻量文档并回传Mac。实现接线缺口已补齐，M4仍须真实训练/GPU/评分证据，HOLDOUT-BUILD未执行；下一步完整差异审查，整体迁移不关闭。
+
+2026-09-13 本轮最终文档/证据独立核查通过：两端原日志、退出码、摘要与保护状态均一致；4处当前状态残留已修正并复核。仅局部验收通过，下一步仍为M8整包差异审查；轻量文档提交与回传由RUN docs-commit.json及Git历史追溯。

@@ -1106,3 +1106,46 @@ Linux结束后7份保护轻量文件SHA全部保持，包含/data正式Prompt、
 M8-R5本轮范围已解决：用户确认的冻结Prompt服务路径通过实际入口和CPU HTTP路由/重试/smoke，原错误拒绝及同ID漂移放行均闭环。独立代码/操作说明结论为局部通过；最终双机证据与四份文档按实际原日志另核查。第43节完整代码范围驳回保留为历史结论，本次局部通过不冒充新的整包审查；full/holdout实际输入仍未接线，GPU/模型效果、真实硬盘/大型产物及外部依赖整机恢复仍未验证，整体迁移不关闭。
 
 仅四份轻量证据文档在Linux按已核对原/新摘要原子提交，再经校验bundle回传Mac；同次证据版本由本节文件Git历史及RUN `docs-commit.json`追溯。用户未跟踪handoff与原stash保持，未push/merge、改旧源或执行GPU/受限测试。
+
+
+<a id="m4-full-holdout-20260913"></a>
+## 45. 独立 full 训练及 holdout 实际接线（2026-09-13）
+
+### 授权、实现与证据边界
+
+用户要求“补齐吧”，并明确回答“接受，增加独立全量训练范围”。Spec `0bf0baed`与Plan `ef025f57`/`63ec035c`/`3cfa5b77`记录授权与精确文件范围；设计文档一致性维护由Plan `0666462d`纳入。本轮实现代码为 `fed9bcfcf35736c304cc548fab4d7e93721c73d2`，不执行真实训练、GPU推理、真实holdout构建或真值读取，不push/merge。
+
+full准备使用同一开发release三折共同全集按媒体身份去重，冻结六份来源及新增full输入；训练只调用一次实际适配器并保存full/adapter，无fold子Run。Registry要求full范围与冻结输入、实际结果及权重证据对应。三折划分、采样和旧manifest字节格式保持。
+
+holdout准备绑定无标签媒体清单、模型训练Prompt、严格规则/阈值、预注册与claim；run仅媒体推理，显式score才读受限真值。private目录保存预测、访问记录、真值快照和逐样本评分；未建立评分承诺时必须对照原source truth并复算明细，文件自洽不能代替实际评分。公开MLflow仅保存无标签输入及aggregate证据，消费前钉扎评分承诺；已承诺完成恢复不重新推理或重读原truth。模型准入与导出核查公开承诺、绑定、权重和consumed，不公开逐样本结果。
+
+### 本机验证与独立审查
+
+所有测试使用Mac隔离合成数据和训练器/模型回调替身，不能作为GPU或真实模型质量证据。
+
+- claim新增三种身份不匹配测试：最初断言错误地期待exit2，只是测试断言错误；调整为现有业务错误exit1后，`/private/tmp/mvllm2-holdout-preflight-valid-red.log`复现错误参数仍留下冻结目录的3个有效失败。修复在冻结前核对四元组，发布后继续复验。
+- full/claim/原训练联合 **44 passed，6.09秒，exit0**，日志`/private/tmp/mvllm2-full-fixed.log`；独立训练审查发现full完成半提交恢复及旧三折导出兼容两项P2，修复后独立 **5 passed，2.84秒，exit0**，局部复审通过。
+- 广回归 **679 passed、1 skipped，451.78秒，正常exit0**，日志`/private/tmp/mvllm2-full-holdout-broad.log`。命令为`.venv/bin/python -m pytest tests/test_full_training.py tests/test_eval_holdout.py tests/test_train_with_contract.py tests/test_eval_run.py tests/versioning/test_mlflow_train.py tests/versioning/test_mlflow_eval.py tests/versioning/test_registry.py tests/versioning/test_cli.py tests/versioning/test_cli_holdout.py -q --tb=short`，CUDA不可见、OMP4、HF/Transformers离线。该轮启动早于holdout最终P1/P2修改，未变化路径的广回归与最终holdout复验分开记，不把前者写成所有最终代码重新跑过。
+- 最终holdout **16 passed，21.40秒，exit0**，日志`/private/tmp/mvllm2-holdout-source-fixed.log`。覆盖正常媒体推理/评分、质量失败也消费、错误身份/规则/媒体标签拒绝、三类metadata symlink拒绝、评分与完成中断、单份及完整私有评分伪造拒绝、来源快照核验与公开aggregate不读truth。
+- holdout独立审查先发现链接提前读取truth的P2、只凭收据恢复的P1；第一次P1修复仍可伪造完整私有阶段，强化反例实际达到passed并finalize。最终增加原source truth校验后，独立 **7 passed、9 deselected，10.24秒，exit0**，P1闭环；前轮链接P2的独立15项复验通过保持。最后核查`finetune/eval_holdout.py` SHA `0879372e06cb32c606416011d69cc5637856e7040bb0468241548a3ea2b0354b`，与代码提交一致。训练、holdout与两份操作说明均局部通过；设计文档精确修改另经只读一致性核查通过，不等于完整迁移差异审查。
+
+### Linux 隔离验证
+
+执行目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m4-full-holdout-verification-20260913/`。从b40eaa90至fed9bcfc的6提交bundle SHA `7e11aad6e9e56eab730ded96a4a43880887346022a8aaf491390782c13dd492b`；同步前验证原项目与Codeup main均f1b7d8a3、隔离b40eaa90且tracked干净，bundle verify及0/6独有提交核对后只快进隔离分支。`execution.py`及`code.json`固定实际代码、12文件摘要和7份保护轻量文件；原项目不写入。
+
+使用既有`.venv-m3/bin/python`，`PYTHONPATH=.:m5-service-verification-20260912/dependencies`、CUDA不可见、OMP4、HF/Transformers离线；分三个新CPU进程避免既有MLflow进程缓存文件句柄累计。三组均正常exit0：第一组163 passed/1 skipped、91.46秒；第二组390 passed、256.03秒；第三组266 passed、305.26秒；合计819 passed/1 skipped。外围进程耗时分别98.595、290.485、329.985秒。唯一skip仍为历史workspace fixture缺失，第三组另有既存AnyIO BlockingPortal弃用告警，没有修改依赖或系统限额。Mac原日志通过scp按字节复制到RUN，摘要与`mac-result.json`对应；没有把Mac测试说成Linux复跑。
+
+
+最终RUN `result.json` SHA `2430f0be047c905743ce5da5945f121b0c2eceff7ee470d12bf2a9d037e48686`。三组日志SHA依次为：
+
+- `pytest-group1.log`：`bc02f598aadec102ea2d8c6268ae2823de9df0afd4515a72b80982f3b5b05026`。
+- `pytest-group2.log`：`1d44aa6282168b1ab29f3370b4a1eb3d096dab2601c50e0b393551b6486d5ae1`。
+- `pytest-group3.log`：`7409dc48f423ba95d41a40f99cb7750b8764aadd074aa870d6930334f8038dd4`。
+
+Mac对应副本为`/private/tmp/mvllm2-full-holdout-linux-result.json`、`mvllm2-full-holdout-linux-pytest-group1.log`至`group3.log`，按原字节回传并验签。RUN的`mac-result.json` SHA `8e02fcb51f5580160ce64e1c41d746a09cc403be32e53ce4d21793fa469f2536`；其原日志与来源说明保持Mac执行归属。
+
+三组覆盖：① full训练、holdout、原训练适配器、eval执行器和公开train/eval/claim CLI；② MLflow训练及测评状态；③ Registry、物化、备份及实际服务smoke。测试结束时12份代码/操作说明摘要与fed9bcfc一致，7份保护轻量文件前后SHA一致：/data正式Prompt、两data release.yaml、两receipt、原数据活动指针、原模型current。原项目保持干净main@f1b7d8a3，隔离tracked干净fed9bcfc。额外Plan维护范围提交0666462d只改变Plan，在测试后以0/1独有提交、单文件diff及bundle验签快进；不把它写成重新跑过代码。
+
+本轮full/holdout实现缺口已补齐且双机隔离CPU验证通过。M4仍保留真实训练/模型加载/评分验证缺口，HOLDOUT-BUILD仍未实际构建授权新数据；M5真实服务成功路径、真实硬盘/大型产物和外部依赖整机恢复亦未验收。下一步是更新Codeup main至当前分支的完整差异并完成整包审查；本轮局部通过不替代整包验收，也不授权push/merge。设计、TODO、Plan、verification、handoff五份轻量文档按最终证据同步，提交由本节文件Git历史及RUN `docs-commit.json`追溯；用户未跟踪agent-handoff及原stash保留。
+
+最终五份文档与双机证据已由独立reviewer只读核查通过：原日志、实际退出码、12份代码摘要、7份保护文件及两端Git状态与记录一致。发现的1项P3当前状态残留（Plan及TODO共4处）已修正并复核闭环；未重跑测试。此结论仅覆盖本轮文档和证据，不替代M8整包差异审查。

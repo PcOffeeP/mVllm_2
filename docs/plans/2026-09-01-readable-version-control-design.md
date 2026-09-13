@@ -4,7 +4,7 @@ Scope: 覆盖数据、Prompt、训练、模型、测评五类版本的命名、�
 Must Preserve:
 - 面向使用者的活动流程使用五类可读完整版本名，不以内容哈希、短前缀或自动 LATEST 作为日常选择方式；DVC 可以在内部保留哈希。
 - 数据处理中间产物与正式版本分离；正式数据 payload 与身份字段、保留模型和正式测评封存后只增不改；数据 `release.yaml` 仅允许通过 Git 修改受控状态字段；holdout 继续保持训练禁用、真值隔离和一次性授权。
-- 每个训练版本保存实际使用的数据版本、完整 Prompt 和完整训练参数，三折属于同一训练版本。
+- 每个训练版本保存实际使用的数据版本、完整 Prompt 和完整训练参数；三折属于同一训练版本，独立全量训练另建一个full范围训练版本。
 - 数据、训练、模型晋级和测评必须显式选择完整版本；服务必须显式选择运行模式并由 MLflow alias 解析精确 Model Version，`models/current` 只作为经过校验的本地物化缓存。
 - DVC 只管理数据 pipeline 和数据产物；MLflow 管理训练运行、实际参数、模型、指标、测评和运行状态；Git 管理代码、Prompt、配置、文档及 MLflow 导出的轻量 manifest。
 - YAML 配置是运行定义，MLflow 是实际训练、模型和测评结果的权威来源；`manifest.yaml` 由 MLflow 单向导出并通过 Git 跨设备同步。
@@ -166,14 +166,16 @@ DVC 的执行策略固定为“自动发现、手动执行”：
 - MLflow 页面按需启动，默认只在训练机本地监听；Mac 需要查看时通过 SSH 隧道访问，不向公共网络直接开放，也不建设额外的常驻数据库服务。
 - SQLite 与 artifact store 计划放在训练机 `/data/mVllm_2/mlflow/` 下的独立子目录；具体路径和权限只在获准实施后配置。
 
-### 2.7 已确认的三折训练 Run 结构
+### 2.7 已确认的训练范围与 Run 结构
 
 - 一个 `train-v<协议>-r<N>` 对应一个 MLflow 父 Run，表示一次完整训练方案。
-- `fold0`、`fold1`、`fold2` 分别对应父 Run 下的三个子 Run，不分配彼此独立的 `train-v...` 版本。
+- cross_validation范围保持三折结构：`fold0`、`fold1`、`fold2` 分别对应父 Run 下的三个子 Run，不分配彼此独立的 `train-v...` 版本。
 - 父 Run 保存三折共用的数据版本、Prompt 版本、Git commit、完整训练配置、基座模型和环境信息。
 - 子 Run 保存各自的数据划分、过程指标、日志、checkpoint、最佳 checkpoint、预测产物和运行状态。
 - 三折汇总指标和总体结论写入父 Run；任一必需 fold 未完成时，父 Run 的项目 `workflow_state` 不得进入 `completed`，模型晋级器也不得仅凭 MLflow 原生状态放行。
 - 后续 `model-v...` 必须引用父 Run，并说明晋级对象是三折模型集合、指定 fold，还是基于完整数据形成的模型；不得只凭某个子 Run 的内部 MLflow ID解释模型来源。
+
+2026-09-13用户确认独立full训练范围，见[正式迁移Spec](../tasks/2026-09-07-readable-version-control-migration/spec.md#训练与测评事实)：全量训练另建train版本，冻结同一开发release三折划分共同覆盖的全部候选，按媒体身份去重且拒绝标签冲突；不扩展历史采样算法，不用holdout做训练中验证或选择checkpoint。full只执行一次，由父Run记录实际参数、结果和完整产物证据，不创建fold子Run，只产出full模型。仅有completed标记或把fold产物改名，均不能满足full来源门。
 
 ### 2.8 已确认的正式测评 Run 结构
 
@@ -428,7 +430,7 @@ output_fields:
 
 ### 5.3 训练版本
 
-一个训练版本表示一套实际运行的完整训练方案，而不是可复用参数模板。三折训练属于同一个版本：
+一个训练版本表示一套实际运行的完整训练方案，而不是可复用参数模板。范围在准备时冻结：cross_validation三折训练属于同一个版本；full另建版本，保留同样完整的冻结输入，产物位于full/adapter，父Run直接保存实际结果。以下展示三折布局：
 
 ```text
 workspace/runs/train-v4.1-r1/
@@ -503,7 +505,7 @@ MLflow Registered Model: mVllm2
 
 一个可读模型版本映射为 `mVllm2` 下一个可长期保留的数值 Model Version，可以是单折模型、三折模型组或 full-data 模型。登记采用两阶段：完成且有效的 train 先创建带 `model_id`、`train_id` 和冻结训练输入、但尚无 `eval_id` 的 staging Model Version；正式 eval 创建时必须在线核对该 `model_id` 已存在、有效且 MLflow 数值 Model Version 精确匹配。eval 完整结束且 `outcome: passed` 后，finalize 操作才把该 `eval_id` 单向绑定到原 Model Version。绑定不得改写或更换，未绑定通过结论的 staging 模型不得设置 candidate/production alias。
 
-`model_id` tag 在整个 Registered Model 中必须唯一；注册后不得把该数值版本改绑到另一个可读模型 ID。三折模型组在同一个版本的 `artifacts/fold0`、`fold1`、`fold2` 下保存，不为每个 fold 单独分配 model 版本。full-data 模型使用 `artifacts/full/`。该结构与“一次完整训练及三折共用一个 train 版本”保持一致。`workspace/models/materialized/model-v...` 只是从该权威对象生成的本地部署副本，可以重新物化，不能反向修改 Registry 模型。
+`model_id` tag 在整个 Registered Model 中必须唯一；注册后不得把该数值版本改绑到另一个可读模型 ID。三折模型组在同一个版本的 `artifacts/fold0`、`fold1`、`fold2` 下保存，不为每个 fold 单独分配 model 版本。full-data 模型使用 `artifacts/full/`。该结构与训练范围一致：三折及其单折来源绑定cross_validation训练，full-data模型只能绑定独立full训练版本，不能用某折代替全量。`workspace/models/materialized/model-v...` 只是从该权威对象生成的本地部署副本，可以重新物化，不能反向修改 Registry 模型。
 
 模型决定长期保留后，MLflow 将来源和产物索引导出到 Git 跟踪的 `records/models/model-v4.1-r1/manifest.yaml`：
 
@@ -791,7 +793,7 @@ staging 保持非正式状态。数据只有在 DVC 发布完成、`release.yaml
 - 三个 fold 共享同一份数据、Prompt 和训练参数；
 - 正式 Prompt 文件不可覆盖，训练冻结副本与 Git 中对应 Prompt 进行结构化深比较；缺失或不一致时 fail-closed；
 - 临时 SQLite/artifact store 中父 Run 与三折子 Run 关系完整；失败/恢复组合符合原生 RunStatus 与 `workflow_state` 映射，非法组合被拒绝；
-- 模型只能来自 `record_validity: valid` 且原生 `FINISHED`、项目 `completed|archived`、三折完整的父 Run；
+- 模型只能来自 `record_validity: valid` 且原生 `FINISHED`、项目 `completed|archived` 的父Run；cross_validation须三折完整，full须无fold子Run且单次全量执行的冻结输入、实际结果和产物证据完整；
 - 稳定 Registered Model `mVllm2` 中 `model_id` 与数值 Model Version 一一对应，`candidate`/`production` alias 只能指向其中的有效版本；
 - 单折、三折模型组和 full-data 模型结构合法，三折模型组不能成为 `models/current`；
 - 三折正式测评逐 fold 绑定模型 artifact、数据 split、样本数和结果路径，聚合集合完整且无重复；
@@ -958,7 +960,7 @@ D021 — YAML 配置和 `manifest.yaml` 作为人类可读入口，MLflow 自动
 Why: 保留打开文件即可理解单次运行的体验，同时利用 MLflow 查询、筛选和比较多次实验；SQLite 只是无需独立数据库服务的内部元数据文件。
 Trade-off: YAML 与 MLflow 必须由同一入口基于同一冻结输入同时写入并校验，避免形成两份可独立修改的事实来源。
 
-D022 — 一个 `train-v...` 对应一个 MLflow 父 Run，三折分别作为 fold0、fold1、fold2 子 Run。
+D022 — 一个 `train-v...` 对应一个 MLflow 父 Run，cross_validation范围的三折分别作为 fold0、fold1、fold2 子 Run；独立full范围按D042。
 Why: 三折属于同一训练方案，需要共同的可读训练版本和汇总结论，同时保留每一折独立的日志、指标、checkpoint 和失败状态。
 Trade-off: 模型晋级时必须明确引用父 Run 以及实际选取的 fold 或模型集合，不能只保存某个内部子 Run ID。
 
@@ -1035,4 +1037,7 @@ Trade-off: Registry 中会保留未通过或尚未完成正式测评的 staging 
 D041 — holdout 预注册由统一入口原子冻结到 eval staging 稳定路径，claim 和 MLflow 以完整内容摘要绑定；跨机器恢复比较身份与摘要，不绑定机器本地绝对路径。
 Why: 用户提供的临时路径既不适合作为长期审计位置，也会破坏双机恢复；稳定副本提供可追溯证据，摘要则同时阻止内容漂移并允许相同内容在不同机器恢复。
 Trade-off: 预注册冻结后规则或阈值的任何变化都必须创建新的 eval 身份；文件系统消费证据与 MLflow 状态仍通过显式可恢复顺序协调，而不是假装存在跨系统原子事务。
+D042 — 独立全量训练另建full范围train版本，使用全部开发候选去重后的冻结输入，单次实际训练只产出full模型；三折结构保持原样。
+Why: 用户于2026-09-13明确接受独立全量训练范围。full模型需要合法且可验证的全量来源，不能把三折中的某个产物改名登记；训练范围、Run结构和模型产物证据必须一致。
+Trade-off: full训练配置不引入验证切分或holdout训练中评测，最终质量依赖另行授权的独立holdout验收；本次代码及隔离CPU接线沿用用户“补齐”的既有实施授权，范围确认本身不自动授权实际训练或holdout使用。
 -->
