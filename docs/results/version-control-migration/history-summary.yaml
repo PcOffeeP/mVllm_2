@@ -1,0 +1,3972 @@
+history_summary_schema: tensile-migration/history-summary/v1
+generation:
+  generated_at: '2026-09-13T03:30:29.435952+00:00'
+  code_commit: a14b3d0ae252c91368b2e0d3608b215ab81bd6ee
+  generator_sha256: f9e2f6456d750c563e26457c2b9d82eef3994e5e7e44d28bb14a857b3a2d7fc8
+  generator_path: /home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-history-verification-20260913/mvllm2-history-acceptance.py
+  source_roots:
+    original: /home/liuyang/文档/mVllm_2
+    archive: /home/liuyang/文档/mVllm_2-migration-7eeb93a7
+  source_files:
+  - root: archive
+    path: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/manifest.json
+    sha256: de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d
+    size_bytes: 966
+  - root: archive
+    path: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/prompt.yaml
+    sha256: 8870c537bea1fb86b0c2419555c279e934227e4602d1c2f724438b9cc6e460af
+    size_bytes: 1696
+  - root: archive
+    path: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/manifest.json
+    sha256: 3bd9c1d70697f05375f2c1a0d870c105ad42a2ebbe3f074fd06b2186dd6d1367
+    size_bytes: 966
+  - root: archive
+    path: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/prompt.yaml
+    sha256: 1bf9381e70a135d53a3d7097a397eda760ad6ccc4a58ff5a23d389503b65b4be
+    size_bytes: 2152
+  - root: archive
+    path: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/manifest.json
+    sha256: 04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0
+    size_bytes: 970
+  - root: archive
+    path: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/prompt.yaml
+    sha256: 1283a7aff1e8dffbe05098977a7a9d99034982b681a042b93297d4acc8fe2133
+    size_bytes: 1641
+  - root: original
+    path: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    size_bytes: 2151
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+    sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+    size_bytes: 11652
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/adapter/trainer_state.json
+    sha256: 2a5001b69ab73b8cb09f408876e1bc3bbba8a26d96babf762e380bd086ce6639
+    size_bytes: 43842
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/input/training_run_manifest.json
+    sha256: 7fb4267753aac20e5770d0575504d5d94f3ea5486908567f899731bd32cc4fbe
+    size_bytes: 2532
+  - root: original
+    path: workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_config.json
+    sha256: f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03
+    size_bytes: 1123
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+    sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    size_bytes: 1599
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+    sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+    size_bytes: 11653
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/adapter/trainer_state.json
+    sha256: a8d0c11f4a3a4c3edc27de4a23d2b0fa894a43e09ed78d13dd1af2c162ae146e
+    size_bytes: 43830
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/input/training_run_manifest.json
+    sha256: 4fd58f8a5d778e83107bb4432fb9d830fa34314ada3701cdc90fa3c8843853c1
+    size_bytes: 2533
+  - root: original
+    path: workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_config.json
+    sha256: 1407baffb6163ab585ef9862f0cefaf58d3a9414d7b363e8061bde069f7232fa
+    size_bytes: 1123
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+    sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    size_bytes: 1598
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+    sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+    size_bytes: 11832
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/adapter/trainer_state.json
+    sha256: 6b306cfcdf8d4fdeb9f3527065465a7e757acc92ba170f4ba9c4d53cdaaf0fc6
+    size_bytes: 43849
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/input/training_run_manifest.json
+    sha256: 49beb36515a5e21151c4bd97f42fce877273220a0be9745c6aa2345dce900290
+    size_bytes: 2592
+  - root: original
+    path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_config.json
+    sha256: a5c745fb27cbefe6625e096b86cca1b77b686816e05e12cbf14dbb8c75f3e496
+    size_bytes: 1123
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+    sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    size_bytes: 1583
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+    sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+    size_bytes: 11770
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/adapter/trainer_state.json
+    sha256: 2988842a843d7f935785c6f88af2eb0b6f90ee76db7f2751eefa41c7d421f3bf
+    size_bytes: 43809
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/input/training_run_manifest.json
+    sha256: 847fbd18f1f67add01a330410315dddf0ec11620f3d58913fd816443f272e83a
+    size_bytes: 2566
+  - root: original
+    path: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_config.json
+    sha256: c0c93c9d0331ab221967e9f26b40def81533fcb5f9d9ff6b3fdaac163332d578
+    size_bytes: 1123
+  - root: archive
+    path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+    sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    size_bytes: 1548
+  - root: archive
+    path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+    sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+    size_bytes: 9929
+  - root: archive
+    path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/adapter/trainer_state.json
+    sha256: aeb019a3e598ffc46a76e8caa2ef135c9380845526cc9d3912bca4b588eaafbb
+    size_bytes: 43694
+  - root: archive
+    path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/input/experiment_contract.json
+    sha256: ccf53b73c0bcfaf4fb0e551321eafa942c2b784f79e459457dd06c76ab2523ca
+    size_bytes: 3176
+  - root: archive
+    path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+    sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    size_bytes: 2226
+  - root: original
+    path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/model_identity.json
+    sha256: 83cc641cdb441cb3766694fe1916da3d4d3325009409df3edab565528020ef5b
+    size_bytes: 637
+  - root: original
+    path: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/release-manifest.json
+    sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    size_bytes: 2151
+  - root: original
+    path: workspace/runs/v4.1-prompt-concise-v1-seed3411/input/summary.json
+    sha256: 333d4de33b5c7380af47099039ed1434ea388010ce2dadf12bc8b26da6c4d6a3
+    size_bytes: 1907
+  - root: archive
+    path: docs/results/version-control-migration/source-inventory.yaml
+    sha256: 2e33bf14169619f6497303bce10c8b2c7b2859e0bfa6e9d650ffe3d8ae25dce7
+    size_bytes: 12249
+  - root: original
+    path: workspace/runs/v4.1-prompt-concise-v2-seed3411/input/summary.json
+    sha256: 2d46f24f163254adfd2996c4a496e43508617ab41219405cc6dd5ded30b818bb
+    size_bytes: 1907
+  - root: archive
+    path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+    sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+    size_bytes: 1665
+  - root: archive
+    path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/run_identity.json
+    sha256: 8aca0efce23e1f3f8f8f4d1f374b3dda95ba7a8670fab42310edc21764338664
+    size_bytes: 428
+  - root: archive
+    path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+    sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+    size_bytes: 1520
+  - root: archive
+    path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/run_identity.json
+    sha256: 70080a667496e4901d9c7e21083b8de8ad5af4734dcfe25bd94a54dc0dee5780
+    size_bytes: 428
+  - root: archive
+    path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+    sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+    size_bytes: 21357
+  - root: archive
+    path: delivery/model_component.json
+    sha256: 8ffb53aa7f380e2a8afd2974f2752eec3882f037d3e05d0de95058678cb43b87
+    size_bytes: 1687
+  - root: archive
+    path: delivery/service_component.json
+    sha256: acb850ee60407377a725f9210635ff364cbbd7a6d66eaa41be3ac36539c77abd
+    size_bytes: 1286
+  - root: archive
+    path: pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json
+    sha256: 2f07ff4396d0bd55c35f8367f86c6b79a31ea79a504307628a05ebb581000a0e
+    size_bytes: 625
+  - root: archive
+    path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+    sha256: 1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5
+    size_bytes: 2593
+  - root: original
+    path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_config.json
+    sha256: d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a
+    size_bytes: 1123
+  - root: archive
+    path: docs/results/version-control-migration/object-mapping.yaml
+    sha256: e46b3b1b2fabaa1d5d5e8b36dad7747dd000488d848f521ab789903c61be9756
+    size_bytes: 11649
+  weight_observations:
+    v4.1-phase2-source-aware-v1-seed3407:
+      adapter:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: adapter_model.safetensors
+          size_bytes: 460430776
+          mtime_ns: 1785072025660637807
+      merged:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: model-00001-of-00010.safetensors
+          size_bytes: 1914228064
+          mtime_ns: 1785072804605428102
+        - name: model-00002-of-00010.safetensors
+          size_bytes: 1929470832
+          mtime_ns: 1785072805129430537
+        - name: model-00003-of-00010.safetensors
+          size_bytes: 1929470856
+          mtime_ns: 1785072805661433010
+        - name: model-00004-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785072806201435523
+        - name: model-00005-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785072806705437869
+        - name: model-00006-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785072807217440253
+        - name: model-00007-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785072807721442601
+        - name: model-00008-of-00010.safetensors
+          size_bytes: 1644265032
+          mtime_ns: 1785072808165444672
+        - name: model-00009-of-00010.safetensors
+          size_bytes: 1997939416
+          mtime_ns: 1785072811645460933
+        - name: model-00010-of-00010.safetensors
+          size_bytes: 258632328
+          mtime_ns: 1785072812285463930
+    v4.1-phase2-source-aware-v1-seed3411:
+      adapter:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: adapter_model.safetensors
+          size_bytes: 460430776
+          mtime_ns: 1785091073252734245
+      merged:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: model-00001-of-00010.safetensors
+          size_bytes: 1914228064
+          mtime_ns: 1785091643342817213
+        - name: model-00002-of-00010.safetensors
+          size_bytes: 1929470832
+          mtime_ns: 1785091643902823189
+        - name: model-00003-of-00010.safetensors
+          size_bytes: 1929470856
+          mtime_ns: 1785091644422828738
+        - name: model-00004-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785091644954834416
+        - name: model-00005-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785091645474839965
+        - name: model-00006-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785091645998845557
+        - name: model-00007-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785091646510851020
+        - name: model-00008-of-00010.safetensors
+          size_bytes: 1644265032
+          mtime_ns: 1785091646958855801
+        - name: model-00009-of-00010.safetensors
+          size_bytes: 1997939416
+          mtime_ns: 1785091647502861607
+        - name: model-00010-of-00010.safetensors
+          size_bytes: 258632328
+          mtime_ns: 1785091647574862375
+    v4.1-phase2-coverage-first-v1-seed3411:
+      adapter:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: adapter_model.safetensors
+          size_bytes: 460430776
+          mtime_ns: 1785183353433849179
+      merged:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: model-00001-of-00010.safetensors
+          size_bytes: 1914228064
+          mtime_ns: 1785183673376999244
+        - name: model-00002-of-00010.safetensors
+          size_bytes: 1929470832
+          mtime_ns: 1785183673897004560
+        - name: model-00003-of-00010.safetensors
+          size_bytes: 1929470856
+          mtime_ns: 1785183674409009796
+        - name: model-00004-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785183674941015235
+        - name: model-00005-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785183675461020553
+        - name: model-00006-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785183675989025953
+        - name: model-00007-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785183676497031149
+        - name: model-00008-of-00010.safetensors
+          size_bytes: 1644265032
+          mtime_ns: 1785183677033036631
+        - name: model-00009-of-00010.safetensors
+          size_bytes: 1997939416
+          mtime_ns: 1785183680685074004
+        - name: model-00010-of-00010.safetensors
+          size_bytes: 258632328
+          mtime_ns: 1785183681217079450
+    v4.1-phase2-coverage-fallback-v1-seed3413:
+      adapter:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: adapter_model.safetensors
+          size_bytes: 460430776
+          mtime_ns: 1785202978298969825
+      merged:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: model-00001-of-00010.safetensors
+          size_bytes: 1914228064
+          mtime_ns: 1785203462432367059
+        - name: model-00002-of-00010.safetensors
+          size_bytes: 1929470832
+          mtime_ns: 1785203463028372884
+        - name: model-00003-of-00010.safetensors
+          size_bytes: 1929470856
+          mtime_ns: 1785203463620378668
+        - name: model-00004-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785203464220384529
+        - name: model-00005-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785203464796390153
+        - name: model-00006-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785203465384395894
+        - name: model-00007-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785203465968401595
+        - name: model-00008-of-00010.safetensors
+          size_bytes: 1644265032
+          mtime_ns: 1785203466580407568
+        - name: model-00009-of-00010.safetensors
+          size_bytes: 1997939416
+          mtime_ns: 1785203470616446917
+        - name: model-00010-of-00010.safetensors
+          size_bytes: 258632328
+          mtime_ns: 1785203471740457864
+    v4.1-prompt-minimal-v1-seed3411:
+      adapter:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: adapter_model.safetensors
+          size_bytes: 460430776
+          mtime_ns: 1785243718376430964
+      merged:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: model-00001-of-00010.safetensors
+          size_bytes: 1914228064
+          mtime_ns: 1785244004745242529
+        - name: model-00002-of-00010.safetensors
+          size_bytes: 1929470832
+          mtime_ns: 1785244005265266995
+        - name: model-00003-of-00010.safetensors
+          size_bytes: 1929470856
+          mtime_ns: 1785244005777291067
+        - name: model-00004-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785244006309316060
+        - name: model-00005-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785244006817339911
+        - name: model-00006-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785244007345364678
+        - name: model-00007-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785244007853388495
+        - name: model-00008-of-00010.safetensors
+          size_bytes: 1644265032
+          mtime_ns: 1785244008409414535
+        - name: model-00009-of-00010.safetensors
+          size_bytes: 1997939416
+          mtime_ns: 1785244011993581940
+        - name: model-00010-of-00010.safetensors
+          size_bytes: 258632328
+          mtime_ns: 1785244012469604100
+    v4.1-phase2-coverage-first-v1-seed3407:
+      adapter:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter
+        exists: true
+        symlink: false
+        link_target: null
+        files:
+        - name: adapter_model.safetensors
+          size_bytes: 460430776
+          mtime_ns: 1785111359186057389
+      merged:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged
+        exists: true
+        symlink: true
+        link_target: ../../../models/releases/v4.1-agent-pipeline-fold0-r1/merged
+        files:
+        - name: model-00001-of-00010.safetensors
+          size_bytes: 1914228064
+          mtime_ns: 1785111735603261595
+        - name: model-00002-of-00010.safetensors
+          size_bytes: 1929470832
+          mtime_ns: 1785111736135264095
+        - name: model-00003-of-00010.safetensors
+          size_bytes: 1929470856
+          mtime_ns: 1785111736647266505
+        - name: model-00004-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785111737183269028
+        - name: model-00005-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785111737691271421
+        - name: model-00006-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785111738211273872
+        - name: model-00007-of-00010.safetensors
+          size_bytes: 1929470888
+          mtime_ns: 1785111738723276288
+        - name: model-00008-of-00010.safetensors
+          size_bytes: 1644265032
+          mtime_ns: 1785111739171278403
+        - name: model-00009-of-00010.safetensors
+          size_bytes: 1997939416
+          mtime_ns: 1785111742727295231
+        - name: model-00010-of-00010.safetensors
+          size_bytes: 258632328
+          mtime_ns: 1785111743367298268
+    v4.1-prompt-concise-cv-v1-seed3411:
+      adapter:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/adapter
+        exists: false
+        symlink: false
+        link_target: null
+        files: []
+      merged:
+        path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/merged
+        exists: false
+        symlink: false
+        link_target: null
+        files: []
+    v4.1-prompt-concise-v1-seed3411:
+      kind: prepared_input_observation
+      path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v1-seed3411
+      top_level_entries:
+      - input
+      - reference
+      weight_files_in_declared_run: []
+    v4.1-prompt-concise-v2-seed3411:
+      kind: prepared_input_observation
+      path: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v2-seed3411
+      top_level_entries:
+      - input
+      weight_files_in_declared_run: []
+  scope: History-only evidence assembly using existing pure builders plus explicit archival facts; no
+    history-write CLI or new formal objects.
+  limitations:
+  - No weight-byte rehash, GPU, training, inference or restricted sealed-test semantic reads.
+  - Known archival declarations remain attributed to their original source; missing fields are not inferred
+    from active pointers.
+  - Relative fact paths resolve against the explicitly recorded source root.
+  data_mapping_reference:
+    root: archive
+    path: docs/results/version-control-migration/object-mapping.yaml
+    sha256: e46b3b1b2fabaa1d5d5e8b36dad7747dd000488d848f521ab789903c61be9756
+    mapping:
+      v4.1.0-760050fad303: data-v4.1-r1
+      v4.1.0-ecb5aeb9657c: data-v4.1-r2
+    meaning: confirmed data mapping only; historical references unchanged
+entries:
+- entry_id: history-prompt_history-v4.1-concise-evidence-json-v2
+  kind: prompt_history
+  original_id: v4.1-concise-evidence-json-v2
+  history_only: true
+  formal_identity: none
+  facts:
+    protocol_id:
+      value: tensile-vlm/v4.1
+      source:
+        field: protocol_id
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/manifest.json
+        root: archive
+        sha256: de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d
+    prompt_content_sha256:
+      value: 0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db
+      source:
+        field: prompt_content_sha256
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/manifest.json
+        root: archive
+        sha256: de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d
+    publishing_code_commit:
+      value: 98f0476d50138a7577e65426338a44a1baaec040
+      source:
+        field: publishing_code_commit
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/manifest.json
+        root: archive
+        sha256: de737c67149b58e1f5ae2f9ce493287237eabc83aa88f8d4935011eff0402e5d
+    system_prompt:
+      value: '仅依据当前视频的可见证据判断，不推测片段外事件。
+
+
+        clip_state：未断裂=连续且无临界征兆；临界未断裂=仍连续且有明确临界征兆；发生断裂=片段内由连续变断开；已断裂=开头已断开；无法判断=证据不足。
+
+
+        未断裂时其余字段均为 null；无法判断时机制和位置为 null。其他状态仅填写有可见证据的机制和位置。special_case 仅填明确可见的“未夹紧”或“视频异常”，否则为 null。
+
+
+        fracture_mechanism 只能是“韧性断裂”、“脆性断裂”、“界面脱粘”、“爆炸性断裂”、“半脆半韧断裂”或 null；fracture_site 只能是“inside_gauge”、“outside_gauge_non_root”、“grip_root”或
+        null。
+
+
+        只输出包含 clip_state、fracture_mechanism、fracture_site、special_case 的合法 JSON。空值写成不加引号的 null，禁止字符串 "null"。'
+      source:
+        field: system_prompt
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/prompt.yaml
+        root: archive
+        sha256: 8870c537bea1fb86b0c2419555c279e934227e4602d1c2f724438b9cc6e460af
+    user_prompt:
+      value: 请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。
+      source:
+        field: user_prompt
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/prompt.yaml
+        root: archive
+        sha256: 8870c537bea1fb86b0c2419555c279e934227e4602d1c2f724438b9cc6e460af
+    output_fields:
+      value:
+      - clip_state
+      - fracture_mechanism
+      - fracture_site
+      - special_case
+      source:
+        field: output_fields
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v2/prompt.yaml
+        root: archive
+        sha256: 8870c537bea1fb86b0c2419555c279e934227e4602d1c2f724438b9cc6e460af
+- entry_id: history-prompt_history-v4.1-concise-evidence-json-v1
+  kind: prompt_history
+  original_id: v4.1-concise-evidence-json-v1
+  history_only: true
+  formal_identity: none
+  facts:
+    protocol_id:
+      value: tensile-vlm/v4.1
+      source:
+        field: protocol_id
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/manifest.json
+        root: archive
+        sha256: 3bd9c1d70697f05375f2c1a0d870c105ad42a2ebbe3f074fd06b2186dd6d1367
+    prompt_content_sha256:
+      value: 7fbb55d59548af56a486de501d187a2694e81257dd1936bbf13c85fdef6c6d6d
+      source:
+        field: prompt_content_sha256
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/manifest.json
+        root: archive
+        sha256: 3bd9c1d70697f05375f2c1a0d870c105ad42a2ebbe3f074fd06b2186dd6d1367
+    publishing_code_commit:
+      value: 4c56f7c958b830e43e301739aa4d71b2eb1c1f99
+      source:
+        field: publishing_code_commit
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/manifest.json
+        root: archive
+        sha256: 3bd9c1d70697f05375f2c1a0d870c105ad42a2ebbe3f074fd06b2186dd6d1367
+    system_prompt:
+      value: '你是一位材料力学视频分析助手。只能依据当前视频片段中实际可见的信息判断，不得推测片段之外的事件。
+
+
+        clip_state：
+
+        - 未断裂：试样保持连续，且没有明确的临界断裂征兆。
+
+        - 临界未断裂：试样仍连续，但已出现明确可见的临界断裂征兆。
+
+        - 发生断裂：片段中直接看到试样由连续变为断开。
+
+        - 已断裂：片段开始时试样已经断开。
+
+        - 无法判断：关键区域或证据不足，无法可靠判断。
+
+
+        先判断 clip_state，再填写其他字段。clip_state 为“未断裂”时，其余字段必须为 null；为“无法判断”时，fracture_mechanism 和 fracture_site
+        必须为 null。其他状态只有在存在可见证据时才填写断裂机制和位置，否则为 null。special_case 只能在明确看到“未夹紧”或“视频异常”时填写，否则为 null。
+
+
+        fracture_mechanism 只能是“韧性断裂”、“脆性断裂”、“界面脱粘”、“爆炸性断裂”、“半脆半韧断裂”或 null。
+
+        fracture_site 只能是“inside_gauge”、“outside_gauge_non_root”、“grip_root”或 null。
+
+
+        只输出一个合法 JSON 对象，且必须包含 clip_state、fracture_mechanism、fracture_site、special_case 四个字段。空值必须使用不加引号的
+        JSON null，禁止输出字符串 "null"。'
+      source:
+        field: system_prompt
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/prompt.yaml
+        root: archive
+        sha256: 1bf9381e70a135d53a3d7097a397eda760ad6ccc4a58ff5a23d389503b65b4be
+    user_prompt:
+      value: 请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。
+      source:
+        field: user_prompt
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/prompt.yaml
+        root: archive
+        sha256: 1bf9381e70a135d53a3d7097a397eda760ad6ccc4a58ff5a23d389503b65b4be
+    output_fields:
+      value:
+      - clip_state
+      - fracture_mechanism
+      - fracture_site
+      - special_case
+      source:
+        field: output_fields
+        file: pipeline/prompt_registry/v4.1-concise-evidence-json-v1/prompt.yaml
+        root: archive
+        sha256: 1bf9381e70a135d53a3d7097a397eda760ad6ccc4a58ff5a23d389503b65b4be
+- entry_id: history-prompt_history-v4.1-fixed-full-fields-initial-v1
+  kind: prompt_history
+  original_id: v4.1-fixed-full-fields-initial-v1
+  history_only: true
+  formal_identity: none
+  facts:
+    protocol_id:
+      value: tensile-vlm/v4.1
+      source:
+        field: protocol_id
+        file: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/manifest.json
+        root: archive
+        sha256: 04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0
+    prompt_content_sha256:
+      value: 2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3
+      source:
+        field: prompt_content_sha256
+        file: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/manifest.json
+        root: archive
+        sha256: 04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0
+    publishing_code_commit:
+      value: 4999ae0191c1473642163ed421649b29805beddf
+      source:
+        field: publishing_code_commit
+        file: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/manifest.json
+        root: archive
+        sha256: 04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0
+    system_prompt:
+      value: '你是一位材料力学视频分析助手。请仅依据当前输入视频中可见的信息完成判断，不要推测视频片段之外发生的事件。
+
+
+        请以一个合法 JSON 对象给出结果，不要输出解释、Markdown 或其他文字。结果包含 clip_state、fracture_mechanism、fracture_site、special_case
+        四个字段。
+
+
+        本任务使用以下标签池：
+
+
+        clip_state：
+
+        未断裂、临界未断裂、发生断裂、已断裂、无法判断。
+
+
+        fracture_mechanism：
+
+        韧性断裂、脆性断裂、界面脱粘、爆炸性断裂、半脆半韧断裂，以及 null。
+
+
+        fracture_site：
+
+        inside_gauge、outside_gauge_non_root、grip_root，以及 null。
+
+
+        special_case：
+
+        未夹紧、视频异常，以及 null。
+
+
+        输出结构：
+
+
+        {"clip_state": ..., "fracture_mechanism": ..., "fracture_site": ..., "special_case": ...}'
+      source:
+        field: system_prompt
+        file: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/prompt.yaml
+        root: archive
+        sha256: 1283a7aff1e8dffbe05098977a7a9d99034982b681a042b93297d4acc8fe2133
+    user_prompt:
+      value: 请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。
+      source:
+        field: user_prompt
+        file: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/prompt.yaml
+        root: archive
+        sha256: 1283a7aff1e8dffbe05098977a7a9d99034982b681a042b93297d4acc8fe2133
+    output_fields:
+      value:
+      - clip_state
+      - fracture_mechanism
+      - fracture_site
+      - special_case
+      source:
+        field: output_fields
+        file: pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/prompt.yaml
+        root: archive
+        sha256: 1283a7aff1e8dffbe05098977a7a9d99034982b681a042b93297d4acc8fe2133
+- entry_id: history-model_history-v4.1-agent-pipeline-fold0-r1
+  kind: model_history
+  original_id: v4.1-agent-pipeline-fold0-r1
+  history_only: true
+  formal_identity: none
+  facts:
+    model_name:
+      value: v4.1-agent-pipeline-fold0-r1
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /model_name
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    protocol_version:
+      value: v4.1
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /protocol_version
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    contract_version:
+      value: tensile-vlm/v4.1
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /contract/version
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    contract_sha256:
+      value: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /contract/sha256
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source: &id003
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /origin/release_id
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    experiment_id:
+      value: v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /origin/experiment_id
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    training_variant:
+      value: coverage-first
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /origin/training_variant
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    optimizer_steps:
+      value: 1125
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /origin/optimizer_steps
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    fold:
+      value: 0
+      source: &id002
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /origin/fold
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    seed:
+      value: 3407
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /origin/seed
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    lifecycle_status:
+      value: current
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /lifecycle_status
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    production_approved:
+      value: false
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /production_approved
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    limitations:
+      value:
+      - single_fold_only
+      - not_full_data_final
+      - not_production_approved
+      - quality_gates_not_passed
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /limitations
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    adapter_path:
+      value: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /artifacts/adapter/managed_path
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    merged_path:
+      value: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /artifacts/merged/managed_path
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    merged_aggregate_sha256:
+      value: 1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c
+      source:
+        file: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /artifacts/merged/aggregate_sha256
+        root: original
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+    base_model:
+      unknown_reason: model history v4.1-agent-pipeline-fold0-r1 的 Registry manifest 未记录基座模型修订
+      attempted_source: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+      attempted_root: original
+    delivery_model:
+      value:
+        schema_version: tensile-delivery/model-component/v1
+        component_name: v4.1-agent-pipeline-fold0-r1
+        model_name: v4.1-agent-pipeline-fold0-r1
+        registry_manifest_path: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        repository: mVllm_2
+        source_repository_commit: 1c4eda2194c1cc56f107d9bef13ee7a159623692
+        model_tier: intermediate_development_model
+        full_data_final: false
+        production_approved: false
+        source:
+          training_variant: coverage-first
+          seed: 3407
+          optimizer_steps: 1125
+        artifact:
+          managed_remote_path: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged
+          format: merged_bf16
+          expected_safetensors_shards: 10
+          aggregate_sha256: 1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c
+        evidence:
+          acceptance_summary_path: docs/results/v4_1_stage_b_intermediate/acceptance_summary.json
+          acceptance_summary_sha256: 1c01bd1653be47e771da59c91fe843f449563ec8770ee5ecba78353dfe69fdc3
+        quality_status: &id001
+          stage_b_passed: false
+          stage_c_completed: false
+          stage_d_passed: false
+          stage_g_passed: false
+        intermediate_delivery_policy:
+          primary_gate: artifact_and_runtime_chain
+          performance_metrics_mode: record_only_non_blocking
+          performance_thresholds_block_delivery: false
+          optimization_status: paused
+          retraining_authorized: false
+        artifact_gate:
+          merged_bf16_present: true
+          expected_safetensors_shards_present: true
+          full_hash_verified: true
+          manifest_identity_verified: true
+          passed: true
+      source:
+        root: archive
+        path: delivery/model_component.json
+        sha256: 8ffb53aa7f380e2a8afd2974f2752eec3882f037d3e05d0de95058678cb43b87
+        size_bytes: 1687
+        evidence_level: historical_delivery_declaration_not_current_runtime
+        json_pointer: ''
+    quality_status:
+      value: *id001
+      source: &id009
+        root: archive
+        path: delivery/model_component.json
+        sha256: 8ffb53aa7f380e2a8afd2974f2752eec3882f037d3e05d0de95058678cb43b87
+        size_bytes: 1687
+        evidence_level: archival_declaration
+        json_pointer: /quality_status
+    approval_status:
+      value: false
+      source: &id010
+        root: archive
+        path: delivery/model_component.json
+        sha256: 8ffb53aa7f380e2a8afd2974f2752eec3882f037d3e05d0de95058678cb43b87
+        size_bytes: 1687
+        evidence_level: archival_declaration
+        json_pointer: /production_approved
+    delivery_service:
+      value:
+        schema_version: tensile-delivery/service-component/v1
+        component_name: v4.1-agent-pipeline-fold0-r1-loopback
+        repository: mVllm_2
+        source_repository_commit: 1c4eda2194c1cc56f107d9bef13ee7a159623692
+        contract_version: tensile-vlm/v4.1
+        contract_hash: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+        model_component_path: delivery/model_component.json
+        deployment_manifest_path: pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json
+        deployment_manifest_sha256: 2f07ff4396d0bd55c35f8367f86c6b79a31ea79a504307628a05ebb581000a0e
+        runtime:
+          host: 127.0.0.1
+          port: 8002
+          access_policy: ssh_tunnel_only
+          production_alias: false
+        evidence:
+          deployment_summary_path: docs/results/v4_1_agent_pipeline_fold0_r1/deployment_summary.json
+          deployment_summary_sha256: 6d295c6a2f05294a00c3b13172b33b1a3cbb5766dfac22f7fb0f13d204d9c5a3
+          real_media_smoke_passed: true
+          v2_rollback_rehearsal_passed: true
+        runtime_gate:
+          contract_identity_verified: true
+          deployment_identity_verified: true
+          loopback_only_verified: true
+          real_media_smoke_passed: true
+          v2_rollback_rehearsal_passed: true
+          passed: true
+      source:
+        root: archive
+        path: delivery/service_component.json
+        sha256: acb850ee60407377a725f9210635ff364cbbd7a6d66eaa41be3ac36539c77abd
+        size_bytes: 1286
+        evidence_level: historical_delivery_declaration_not_current_runtime
+        json_pointer: ''
+    deployment:
+      value:
+        processor_version: MiniCPMVProcessor
+        max_frames: 8
+        model_version: v4.1-agent-pipeline-fold0-r1
+        transformers_version: 4.56.1
+        llamafactory_version: 0.9.6.dev0+git.4447137e08c1
+        base_model_version: MiniCPM-V-4_5+config-sha256.1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8
+        adapter_version: v4.1-agent-pipeline-fold0-r1+aggregate-sha256.1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c
+        config_fingerprint: sha256:2b6c82b8fe27e7e59412a54050f96968861c1c4b165406b3bd6a21b82abbade1
+        runtime_device: cuda:0
+        runtime_dtype: bfloat16
+      source:
+        root: archive
+        path: pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json
+        sha256: 2f07ff4396d0bd55c35f8367f86c6b79a31ea79a504307628a05ebb581000a0e
+        size_bytes: 625
+        evidence_level: historical_delivery_declaration_not_current_runtime
+        json_pointer: ''
+    base_model_revision:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    fold_scope:
+      value: 0
+      source: *id002
+    adapter_present:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    merged_present:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source: *id003
+    prompt_reference:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    frozen_input:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    learning_rate:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    epochs:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    effective_batch_size:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    optimizer:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    precision:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    lora_rank:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    lora_alpha:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    lora_target_modules:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    sampling:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    image_video_processing:
+      unknown_reason: 发布manifest无该字段；关联来源run的history条目单独保留其参数和存在性。
+      attempted_source: original:pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+    origin_run_history:
+      value: v4.1-phase2-coverage-first-v1-seed3407
+      source:
+        root: original
+        path: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        json_pointer: /origin
+        derivation: training_variant=coverage-first and seed=3407; linked merged source validated by weight_run
+          builder
+- entry_id: history-weight_run-v4.1-phase2-source-aware-v1-seed3407
+  kind: weight_run
+  original_id: v4.1-phase2-source-aware-v1-seed3407
+  history_only: true
+  formal_identity: none
+  facts:
+    fold_scope:
+      value: 0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+        size_bytes: 11652
+        evidence_level: archival_declaration
+        json_pointer: /fold
+    adapter_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter
+        observed: declared run source directory structure (read-only)
+        root: original
+    merged_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged
+        observed: declared run source directory structure (read-only)
+        root: original
+    seed:
+      value: 3407
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/input/training_run_manifest.json
+        sha256: 7fb4267753aac20e5770d0575504d5d94f3ea5486908567f899731bd32cc4fbe
+        size_bytes: 2532
+        evidence_level: hash_verified_archival_file
+        json_pointer: /seed
+    learning_rate:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 learning_rate 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+      attempted_root: original
+    epochs:
+      value: 3.0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/input/training_run_manifest.json
+        sha256: 7fb4267753aac20e5770d0575504d5d94f3ea5486908567f899731bd32cc4fbe
+        size_bytes: 2532
+        evidence_level: hash_verified_archival_file
+        json_pointer: /epochs
+    effective_batch_size:
+      unknown_reason: 历史证据未记录world_size；单进程batch与累积步数的乘积不证明全局有效batch。
+      attempted_source: archive:docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+    optimizer:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+      attempted_root: original
+    precision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 precision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+      attempted_root: original
+    lora_rank:
+      value: 8
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /r
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_alpha:
+      value: 16
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /lora_alpha
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_target_modules:
+      value:
+      - v_proj
+      - q_proj
+      - down_proj
+      - out_proj
+      - fc1
+      - gate_proj
+      - up_proj
+      - fc2
+      - kv_proj
+      - o_proj
+      - k_proj
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /target_modules
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model:
+      value: ../models/minicpm_v_4_5
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /base_model_name_or_path
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model_revision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model_revision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+        size_bytes: 11652
+        evidence_level: archival_declaration
+        json_pointer: /data_release/release_id
+    prompt_reference:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 prompt_reference 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+    frozen_input:
+      value:
+        sampling_id: source-aware-3k-dd89b70e9d63
+        sampling_sequence_sha256: de0673b494e866e16bc0e17cde22de072750e9c0e4668bc85e134c63c8fedf15
+        run_manifest:
+          path: finetune/MiniCPM/config/active/v4_1_source_aware_3k/run_manifest.json
+          sha256: cc957a99ccaa8e641bfe177f5777653c20ec5bfa01423a0648a649857bc8b18b
+          size_bytes: 1358
+        launch_run_manifest_sha256: 9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6
+        training_code_commit: f6ba152121d394141ddddaf73926e3a9c065d0a8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/input/training_run_manifest.json
+        sha256: 7fb4267753aac20e5770d0575504d5d94f3ea5486908567f899731bd32cc4fbe
+        size_bytes: 2532
+        evidence_level: archival_declaration
+        selected_json_fields:
+        - sampling_id
+        - sampling_sequence_sha256
+        - run_manifest
+        - launch_run_manifest_sha256
+        - training_code_commit
+    optimizer_steps:
+      value: 1125
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/input/training_run_manifest.json
+        sha256: 7fb4267753aac20e5770d0575504d5d94f3ea5486908567f899731bd32cc4fbe
+        size_bytes: 2532
+        evidence_level: hash_verified_archival_file
+        json_pointer: /actual_optimizer_steps
+    sampling:
+      value:
+        sampling_id: source-aware-3k-dd89b70e9d63
+        sampling_sequence_sha256: de0673b494e866e16bc0e17cde22de072750e9c0e4668bc85e134c63c8fedf15
+        summary:
+          path_at_freeze: /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-dd89b70e9d63/summary.json
+          sha256: 82057e3aa840b562b88bba10e4403e92fc5b45917101ca064063c906577bee1d
+          size_bytes: 2137
+        seed: 3407
+        launch_run_manifest_sha256: 9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6
+        training_code_commit: f6ba152121d394141ddddaf73926e3a9c065d0a8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+        size_bytes: 11652
+        evidence_level: archival_declaration
+        json_pointer: /sampling
+    image_video_processing:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 image_video_processing 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+    quality_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 quality_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+    approval_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 approval_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3407
+    weight_integrity:
+      unknown_reason: 本轮仅stat权重，未读取权重字节或重新计算哈希，不能证明内容完整性。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0
+    archived_training_declaration:
+      value:
+        epochs: 3.0
+        gradient_accumulation_steps: 8
+        total_steps: 1125
+        train_runtime_seconds: 16730.6081
+        best_metric: 0.05644451826810837
+        best_checkpoint: checkpoint-200
+        adapter_coverage:
+          resampler_saved: true
+          resampler_weight_count: 13
+          target_module_count: 11
+          visual: true
+          visual_weight_count: 324
+        files_hashes:
+          adapter_config:
+            sha256: f76992bce7ad0310e13cd97073bfd3947dbecb3f62f283db4597d87e0f5f7e03
+            size_bytes: 1123
+          adapter_model:
+            sha256: 13d56ca4010ded03bd1b9570ffc72ef47f57ab5c3f3cbc3a45ee2b9e6c573616
+            size_bytes: 460430776
+          train_config:
+            sha256: ab7582d68f3e82ec73a1a3749815001a3b50dc5c3ac759e79ab5af85eda50d46
+            size_bytes: 1516
+          train_results:
+            sha256: 9fbf7f9714845c8661d2968694d594816e5b1a5bfec7b83817aa41c1dbbe2795
+            size_bytes: 210
+          trainer_log:
+            sha256: 6091ba35a1712456edc96e35aff9e97d030103abda25462f4a56472cd4479eab
+            size_bytes: 46979
+          trainer_state:
+            sha256: 2a5001b69ab73b8cb09f408876e1bc3bbba8a26d96babf762e380bd086ce6639
+            size_bytes: 43842
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+        size_bytes: 11652
+        evidence_level: archival_declaration
+        json_pointer: /training
+    archived_lifecycle_status:
+      value: evaluated
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+        size_bytes: 11652
+        evidence_level: archival_declaration
+        json_pointer: /lifecycle_status
+    archived_weight_hashes:
+      value:
+        relative_path: fold0/adapter/adapter_model.safetensors
+        sha256: 13d56ca4010ded03bd1b9570ffc72ef47f57ab5c3f3cbc3a45ee2b9e6c573616
+        size_bytes: 460430776
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+        size_bytes: 11652
+        evidence_level: archival_declaration
+        json_pointer: /large_file_hashes/adapter
+    per_process_accumulated_batch:
+      value: 8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/adapter/trainer_state.json
+        sha256: 2a5001b69ab73b8cb09f408876e1bc3bbba8a26d96babf762e380bd086ce6639
+        size_bytes: 43842
+        evidence_level: hash_verified_archival_file
+        json_pointer: /train_batch_size
+        derivation: per-process batch * gradient_accumulation_steps; world_size unavailable, not global
+          effective batch
+        factors:
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+          json_pointer: /training/gradient_accumulation_steps
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/adapter/trainer_state.json
+          json_pointer: /train_batch_size
+      units: samples_per_process_per_accumulation_window
+  training_status: weights_observed
+- entry_id: history-eval_history-v4.1-phase2-source-aware-v1-seed3407
+  kind: eval_history
+  original_id: v4.1-phase2-source-aware-v1-seed3407
+  history_only: true
+  formal_identity: none
+  facts:
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: &id004
+        - docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    fold:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    evaluated_weight_path:
+      value: /home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407_merged
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    sample_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    evaluation_contract:
+      value:
+        version: tensile-vlm/v4.1
+        sha256: 47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    metrics:
+      value:
+        total: 425
+        contract_valid_rate: 1.0
+        joint_correct_rate: 0.362353
+        clip_state_correct_rate: 0.477647
+        fracture_mechanism_correct_rate: 0.550588
+        fracture_site_correct_rate: 0.574118
+        special_case_correct_rate: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+      units:
+        total: count
+        contract_valid_rate: ratio_0_to_1
+        joint_correct_rate: ratio_0_to_1
+        clip_state_correct_rate: ratio_0_to_1
+        fracture_mechanism_correct_rate: ratio_0_to_1
+        fracture_site_correct_rate: ratio_0_to_1
+        special_case_correct_rate: ratio_0_to_1
+    runtime_failure_count:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    strict_valid_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    strict_valid_rate:
+      value: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    evaluation_status:
+      value: recorded
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+        corroborated_by: *id004
+        root: archive
+        sha256: f46746fe3eeb07ec2720eb7ace7949e7bfc921cd04a9a376d0cff72752825048
+    model_reference:
+      value: v4.1-sampling-source-aware-fold0-r1
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json
+        root: archive
+        sha256: be9bf05172f0a8c8c586a1f2f2e42d771466017eb7a74f993e8faa59036d4ba7
+    split:
+      unknown_reason: eval history v4.1-phase2-source-aware-v1-seed3407 的归档摘要未记录明确 split
+      attempted_source: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/evaluation/evaluation_summary.json
+      attempted_root: archive
+- entry_id: history-weight_run-v4.1-phase2-source-aware-v1-seed3411
+  kind: weight_run
+  original_id: v4.1-phase2-source-aware-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    fold_scope:
+      value: 0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+        size_bytes: 11653
+        evidence_level: archival_declaration
+        json_pointer: /fold
+    adapter_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter
+        observed: declared run source directory structure (read-only)
+        root: original
+    merged_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged
+        observed: declared run source directory structure (read-only)
+        root: original
+    seed:
+      value: 3411
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/input/training_run_manifest.json
+        sha256: 4fd58f8a5d778e83107bb4432fb9d830fa34314ada3701cdc90fa3c8843853c1
+        size_bytes: 2533
+        evidence_level: hash_verified_archival_file
+        json_pointer: /seed
+    learning_rate:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 learning_rate 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+      attempted_root: original
+    epochs:
+      value: 3.0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/input/training_run_manifest.json
+        sha256: 4fd58f8a5d778e83107bb4432fb9d830fa34314ada3701cdc90fa3c8843853c1
+        size_bytes: 2533
+        evidence_level: hash_verified_archival_file
+        json_pointer: /epochs
+    effective_batch_size:
+      unknown_reason: 历史证据未记录world_size；单进程batch与累积步数的乘积不证明全局有效batch。
+      attempted_source: archive:docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+    optimizer:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+      attempted_root: original
+    precision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 precision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+      attempted_root: original
+    lora_rank:
+      value: 8
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: 1407baffb6163ab585ef9862f0cefaf58d3a9414d7b363e8061bde069f7232fa
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /r
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_alpha:
+      value: 16
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: 1407baffb6163ab585ef9862f0cefaf58d3a9414d7b363e8061bde069f7232fa
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /lora_alpha
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_target_modules:
+      value:
+      - k_proj
+      - fc2
+      - down_proj
+      - fc1
+      - gate_proj
+      - out_proj
+      - o_proj
+      - kv_proj
+      - v_proj
+      - up_proj
+      - q_proj
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: 1407baffb6163ab585ef9862f0cefaf58d3a9414d7b363e8061bde069f7232fa
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /target_modules
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model:
+      value: ../models/minicpm_v_4_5
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: 1407baffb6163ab585ef9862f0cefaf58d3a9414d7b363e8061bde069f7232fa
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /base_model_name_or_path
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model_revision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model_revision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+        size_bytes: 11653
+        evidence_level: archival_declaration
+        json_pointer: /data_release/release_id
+    prompt_reference:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 prompt_reference 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+    frozen_input:
+      value:
+        sampling_id: source-aware-3k-dd89b70e9d63
+        sampling_sequence_sha256: 4bec24c3414786c9df9109c16d07c47e5ec087ec3cb2b6892301177003e1eba3
+        run_manifest:
+          path: finetune/MiniCPM/config/active/v4_1_source_aware_3k/run_manifest.json
+          sha256: cc957a99ccaa8e641bfe177f5777653c20ec5bfa01423a0648a649857bc8b18b
+          size_bytes: 1358
+        launch_run_manifest_sha256: 9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6
+        training_code_commit: f6ba152121d394141ddddaf73926e3a9c065d0a8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/input/training_run_manifest.json
+        sha256: 4fd58f8a5d778e83107bb4432fb9d830fa34314ada3701cdc90fa3c8843853c1
+        size_bytes: 2533
+        evidence_level: archival_declaration
+        selected_json_fields:
+        - sampling_id
+        - sampling_sequence_sha256
+        - run_manifest
+        - launch_run_manifest_sha256
+        - training_code_commit
+    optimizer_steps:
+      value: 1125
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/input/training_run_manifest.json
+        sha256: 4fd58f8a5d778e83107bb4432fb9d830fa34314ada3701cdc90fa3c8843853c1
+        size_bytes: 2533
+        evidence_level: hash_verified_archival_file
+        json_pointer: /actual_optimizer_steps
+    sampling:
+      value:
+        sampling_id: source-aware-3k-dd89b70e9d63
+        sampling_sequence_sha256: 4bec24c3414786c9df9109c16d07c47e5ec087ec3cb2b6892301177003e1eba3
+        summary:
+          path_at_freeze: /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-dd89b70e9d63/summary.json
+          sha256: 82057e3aa840b562b88bba10e4403e92fc5b45917101ca064063c906577bee1d
+          size_bytes: 2137
+        seed: 3411
+        launch_run_manifest_sha256: 9f7a025a676310b0bda8495f715caaf2a219933247542693aac3471f44558db6
+        training_code_commit: f6ba152121d394141ddddaf73926e3a9c065d0a8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+        size_bytes: 11653
+        evidence_level: archival_declaration
+        json_pointer: /sampling
+    image_video_processing:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 image_video_processing 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+    quality_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 quality_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+    approval_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 approval_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3411
+    weight_integrity:
+      unknown_reason: 本轮仅stat权重，未读取权重字节或重新计算哈希，不能证明内容完整性。
+      attempted_source: original:workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0
+    archived_training_declaration:
+      value:
+        epochs: 3.0
+        gradient_accumulation_steps: 8
+        total_steps: 1125
+        train_runtime_seconds: 16861.6903
+        best_metric: 0.056790076196193695
+        best_checkpoint: checkpoint-200
+        adapter_coverage:
+          resampler_saved: true
+          resampler_weight_count: 13
+          target_module_count: 11
+          visual: true
+          visual_weight_count: 324
+        files_hashes:
+          adapter_config:
+            sha256: 1407baffb6163ab585ef9862f0cefaf58d3a9414d7b363e8061bde069f7232fa
+            size_bytes: 1123
+          adapter_model:
+            sha256: ac961b20366a9475c605a2815d045600ba658d51284b2413afd291b7b4e12548
+            size_bytes: 460430776
+          train_config:
+            sha256: f4f4ebd0d44a46e165c04734cbbaa2a79ef4645c1a984be71b55c820ff627b40
+            size_bytes: 1516
+          train_results:
+            sha256: 9bbf6d9c2f5bcb923177ba2189d80454157b5fe124da947143ed24e33f9fe56b
+            size_bytes: 209
+          trainer_log:
+            sha256: 68ea72e680856ff992650934e297b6519fb71a44a0298cf69ddafe385a83c359
+            size_bytes: 46975
+          trainer_state:
+            sha256: a8d0c11f4a3a4c3edc27de4a23d2b0fa894a43e09ed78d13dd1af2c162ae146e
+            size_bytes: 43830
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+        size_bytes: 11653
+        evidence_level: archival_declaration
+        json_pointer: /training
+    archived_lifecycle_status:
+      value: evaluated
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+        size_bytes: 11653
+        evidence_level: archival_declaration
+        json_pointer: /lifecycle_status
+    archived_weight_hashes:
+      value:
+        relative_path: fold0/adapter/adapter_model.safetensors
+        sha256: ac961b20366a9475c605a2815d045600ba658d51284b2413afd291b7b4e12548
+        size_bytes: 460430776
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+        size_bytes: 11653
+        evidence_level: archival_declaration
+        json_pointer: /large_file_hashes/adapter
+    per_process_accumulated_batch:
+      value: 8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/adapter/trainer_state.json
+        sha256: a8d0c11f4a3a4c3edc27de4a23d2b0fa894a43e09ed78d13dd1af2c162ae146e
+        size_bytes: 43830
+        evidence_level: hash_verified_archival_file
+        json_pointer: /train_batch_size
+        derivation: per-process batch * gradient_accumulation_steps; world_size unavailable, not global
+          effective batch
+        factors:
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+          json_pointer: /training/gradient_accumulation_steps
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/adapter/trainer_state.json
+          json_pointer: /train_batch_size
+      units: samples_per_process_per_accumulation_window
+  training_status: weights_observed
+- entry_id: history-eval_history-v4.1-phase2-source-aware-v1-seed3411
+  kind: eval_history
+  original_id: v4.1-phase2-source-aware-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: &id005
+        - docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    fold:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    evaluated_weight_path:
+      value: /home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3411_merged
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    sample_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    evaluation_contract:
+      value:
+        version: tensile-vlm/v4.1
+        sha256: 47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    metrics:
+      value:
+        total: 425
+        contract_valid_rate: 1.0
+        joint_correct_rate: 0.411765
+        clip_state_correct_rate: 0.510588
+        fracture_mechanism_correct_rate: 0.527059
+        fracture_site_correct_rate: 0.585882
+        special_case_correct_rate: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+      units:
+        total: count
+        contract_valid_rate: ratio_0_to_1
+        joint_correct_rate: ratio_0_to_1
+        clip_state_correct_rate: ratio_0_to_1
+        fracture_mechanism_correct_rate: ratio_0_to_1
+        fracture_site_correct_rate: ratio_0_to_1
+        special_case_correct_rate: ratio_0_to_1
+    runtime_failure_count:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    strict_valid_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    strict_valid_rate:
+      value: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    evaluation_status:
+      value: recorded
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id005
+        root: archive
+        sha256: f44f9c07275d1abfc423ead101ac33a3a6f013fad1520e60502aa83eaa34ba07
+    model_reference:
+      value: v4.1-sampling-source-aware-fold0-r2
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json
+        root: archive
+        sha256: 09c66e5dbbc8fbcb74c1f83b8c95f13c83311f17438150b67757de81ee21a470
+    split:
+      unknown_reason: eval history v4.1-phase2-source-aware-v1-seed3411 的归档摘要未记录明确 split
+      attempted_source: docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3411/evaluation/evaluation_summary.json
+      attempted_root: archive
+- entry_id: history-weight_run-v4.1-phase2-coverage-first-v1-seed3411
+  kind: weight_run
+  original_id: v4.1-phase2-coverage-first-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    fold_scope:
+      value: 0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+        size_bytes: 11832
+        evidence_level: archival_declaration
+        json_pointer: /fold
+    adapter_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter
+        observed: declared run source directory structure (read-only)
+        root: original
+    merged_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged
+        observed: declared run source directory structure (read-only)
+        root: original
+    seed:
+      value: 3411
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/input/training_run_manifest.json
+        sha256: 49beb36515a5e21151c4bd97f42fce877273220a0be9745c6aa2345dce900290
+        size_bytes: 2592
+        evidence_level: hash_verified_archival_file
+        json_pointer: /seed
+    learning_rate:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 learning_rate 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+      attempted_root: original
+    epochs:
+      value: 3.0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/input/training_run_manifest.json
+        sha256: 49beb36515a5e21151c4bd97f42fce877273220a0be9745c6aa2345dce900290
+        size_bytes: 2592
+        evidence_level: hash_verified_archival_file
+        json_pointer: /epochs
+    effective_batch_size:
+      unknown_reason: 历史证据未记录world_size；单进程batch与累积步数的乘积不证明全局有效batch。
+      attempted_source: archive:docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+    optimizer:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+      attempted_root: original
+    precision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 precision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+      attempted_root: original
+    lora_rank:
+      value: 8
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: a5c745fb27cbefe6625e096b86cca1b77b686816e05e12cbf14dbb8c75f3e496
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /r
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_alpha:
+      value: 16
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: a5c745fb27cbefe6625e096b86cca1b77b686816e05e12cbf14dbb8c75f3e496
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /lora_alpha
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_target_modules:
+      value:
+      - gate_proj
+      - k_proj
+      - o_proj
+      - down_proj
+      - v_proj
+      - out_proj
+      - kv_proj
+      - fc1
+      - up_proj
+      - fc2
+      - q_proj
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: a5c745fb27cbefe6625e096b86cca1b77b686816e05e12cbf14dbb8c75f3e496
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /target_modules
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model:
+      value: ../models/minicpm_v_4_5
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_config.json
+        sha256: a5c745fb27cbefe6625e096b86cca1b77b686816e05e12cbf14dbb8c75f3e496
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /base_model_name_or_path
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model_revision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model_revision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+        size_bytes: 11832
+        evidence_level: archival_declaration
+        json_pointer: /data_release/release_id
+    prompt_reference:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 prompt_reference 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+    frozen_input:
+      value:
+        sampling_id: source-aware-3k-2a84e8b6cfc3
+        sampling_sequence_sha256: 9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9
+        run_manifest:
+          path: finetune/MiniCPM/config/active/v4_1_source_aware_3k_coverage_first/run_manifest.json
+          sha256: b911c6a0e295c0dc99565f5a27082820bc5ba8542c11c0c1a5c5f06069ebd866
+          size_bytes: 1555
+        launch_run_manifest_sha256: 8880686e9856dde0c176978c4662996f291634fd6bd34cca36f63949bb2cdcd9
+        training_code_commit: f54d9ca617e455454f28e31ae058eda2dfdb5ec7
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/input/training_run_manifest.json
+        sha256: 49beb36515a5e21151c4bd97f42fce877273220a0be9745c6aa2345dce900290
+        size_bytes: 2592
+        evidence_level: archival_declaration
+        selected_json_fields:
+        - sampling_id
+        - sampling_sequence_sha256
+        - run_manifest
+        - launch_run_manifest_sha256
+        - training_code_commit
+    optimizer_steps:
+      value: 1125
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/input/training_run_manifest.json
+        sha256: 49beb36515a5e21151c4bd97f42fce877273220a0be9745c6aa2345dce900290
+        size_bytes: 2592
+        evidence_level: hash_verified_archival_file
+        json_pointer: /actual_optimizer_steps
+    sampling:
+      value:
+        sampling_id: source-aware-3k-2a84e8b6cfc3
+        sampling_sequence_sha256: 9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9
+        summary:
+          path_at_freeze: /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-2a84e8b6cfc3/summary.json
+          sha256: 74d592c4f87518ddbf135f1c93a7ed741d981c0455a9b4fdc4fa0de108933e8c
+          size_bytes: 2150
+        seed: 3411
+        launch_run_manifest_sha256: 8880686e9856dde0c176978c4662996f291634fd6bd34cca36f63949bb2cdcd9
+        training_code_commit: f54d9ca617e455454f28e31ae058eda2dfdb5ec7
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+        size_bytes: 11832
+        evidence_level: archival_declaration
+        json_pointer: /sampling
+    image_video_processing:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 image_video_processing 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+    quality_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 quality_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+    approval_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 approval_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3411
+    weight_integrity:
+      unknown_reason: 本轮仅stat权重，未读取权重字节或重新计算哈希，不能证明内容完整性。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0
+    archived_training_declaration:
+      value:
+        epochs: 3.0
+        gradient_accumulation_steps: 8
+        total_steps: 1125
+        train_runtime_seconds: 16790.3818
+        best_metric: 0.05516669899225235
+        best_checkpoint: checkpoint-200
+        adapter_coverage:
+          resampler_saved: true
+          resampler_weight_count: 13
+          target_module_count: 11
+          visual: true
+          visual_weight_count: 324
+        files_hashes:
+          adapter_config:
+            sha256: a5c745fb27cbefe6625e096b86cca1b77b686816e05e12cbf14dbb8c75f3e496
+            size_bytes: 1123
+          adapter_model:
+            sha256: 3f83131667bc839dabeba0ff8a06590518cbef4382abbc089cdd0ee5d76a4da5
+            size_bytes: 460430776
+          train_config:
+            sha256: bfe20def016b144a1e2aea0b7ed82d13620d4aa8baa34462b9f4307c07834def
+            size_bytes: 1535
+          train_results:
+            sha256: b38d78c3c3a602e1cd8fb27462fb24a9aa2313343286cc2cfb01eba3809ca1e4
+            size_bytes: 206
+          trainer_log:
+            sha256: cef4caaf204016bc1840336af812be71a767aa342e4286637c86a27d606a9d0a
+            size_bytes: 46978
+          trainer_state:
+            sha256: 6b306cfcdf8d4fdeb9f3527065465a7e757acc92ba170f4ba9c4d53cdaaf0fc6
+            size_bytes: 43849
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+        size_bytes: 11832
+        evidence_level: archival_declaration
+        json_pointer: /training
+    archived_lifecycle_status:
+      value: evaluated
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+        size_bytes: 11832
+        evidence_level: archival_declaration
+        json_pointer: /lifecycle_status
+    archived_weight_hashes:
+      value:
+        relative_path: fold0/adapter/adapter_model.safetensors
+        sha256: 3f83131667bc839dabeba0ff8a06590518cbef4382abbc089cdd0ee5d76a4da5
+        size_bytes: 460430776
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+        size_bytes: 11832
+        evidence_level: archival_declaration
+        json_pointer: /large_file_hashes/adapter
+    per_process_accumulated_batch:
+      value: 8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/adapter/trainer_state.json
+        sha256: 6b306cfcdf8d4fdeb9f3527065465a7e757acc92ba170f4ba9c4d53cdaaf0fc6
+        size_bytes: 43849
+        evidence_level: hash_verified_archival_file
+        json_pointer: /train_batch_size
+        derivation: per-process batch * gradient_accumulation_steps; world_size unavailable, not global
+          effective batch
+        factors:
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+          json_pointer: /training/gradient_accumulation_steps
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/adapter/trainer_state.json
+          json_pointer: /train_batch_size
+      units: samples_per_process_per_accumulation_window
+  training_status: weights_observed
+- entry_id: history-eval_history-v4.1-phase2-coverage-first-v1-seed3411
+  kind: eval_history
+  original_id: v4.1-phase2-coverage-first-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: &id006
+        - docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    fold:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    evaluated_weight_path:
+      value: /home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    sample_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    evaluation_contract:
+      value:
+        version: tensile-vlm/v4.1
+        sha256: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    metrics:
+      value:
+        total: 425
+        contract_valid_rate: 1.0
+        joint_correct_rate: 0.374118
+        clip_state_correct_rate: 0.557647
+        fracture_mechanism_correct_rate: 0.44
+        fracture_site_correct_rate: 0.510588
+        special_case_correct_rate: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+      units:
+        total: count
+        contract_valid_rate: ratio_0_to_1
+        joint_correct_rate: ratio_0_to_1
+        clip_state_correct_rate: ratio_0_to_1
+        fracture_mechanism_correct_rate: ratio_0_to_1
+        fracture_site_correct_rate: ratio_0_to_1
+        special_case_correct_rate: ratio_0_to_1
+    runtime_failure_count:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    strict_valid_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    strict_valid_rate:
+      value: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    evaluation_status:
+      value: recorded
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id006
+        root: archive
+        sha256: d63178836eb28de2244706bda6bd6e25124f76d2a8f86b8987004d9b028bf93c
+    model_reference:
+      value: v4.1-sampling-coverage-first-fold0-r1
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json
+        root: archive
+        sha256: 0e12743f667624f35daae5ff40e7a1f6dd7991328466f84b424dc301f8115f18
+    split:
+      unknown_reason: eval history v4.1-phase2-coverage-first-v1-seed3411 的归档摘要未记录明确 split
+      attempted_source: docs/results/model_evidence/v4.1-phase2-coverage-first-v1-seed3411/evaluation/evaluation_summary.json
+      attempted_root: archive
+- entry_id: history-weight_run-v4.1-phase2-coverage-fallback-v1-seed3413
+  kind: weight_run
+  original_id: v4.1-phase2-coverage-fallback-v1-seed3413
+  history_only: true
+  formal_identity: none
+  facts:
+    fold_scope:
+      value: 0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+        size_bytes: 11770
+        evidence_level: archival_declaration
+        json_pointer: /fold
+    adapter_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter
+        observed: declared run source directory structure (read-only)
+        root: original
+    merged_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged
+        observed: declared run source directory structure (read-only)
+        root: original
+    seed:
+      value: 3413
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/input/training_run_manifest.json
+        sha256: 847fbd18f1f67add01a330410315dddf0ec11620f3d58913fd816443f272e83a
+        size_bytes: 2566
+        evidence_level: hash_verified_archival_file
+        json_pointer: /seed
+    learning_rate:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 learning_rate 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+      attempted_root: original
+    epochs:
+      value: 3.0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/input/training_run_manifest.json
+        sha256: 847fbd18f1f67add01a330410315dddf0ec11620f3d58913fd816443f272e83a
+        size_bytes: 2566
+        evidence_level: hash_verified_archival_file
+        json_pointer: /epochs
+    effective_batch_size:
+      unknown_reason: 历史证据未记录world_size；单进程batch与累积步数的乘积不证明全局有效batch。
+      attempted_source: archive:docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+    optimizer:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+      attempted_root: original
+    precision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 precision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+      attempted_root: original
+    lora_rank:
+      value: 8
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_config.json
+        sha256: c0c93c9d0331ab221967e9f26b40def81533fcb5f9d9ff6b3fdaac163332d578
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /r
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_alpha:
+      value: 16
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_config.json
+        sha256: c0c93c9d0331ab221967e9f26b40def81533fcb5f9d9ff6b3fdaac163332d578
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /lora_alpha
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    lora_target_modules:
+      value:
+      - kv_proj
+      - q_proj
+      - up_proj
+      - gate_proj
+      - down_proj
+      - k_proj
+      - fc1
+      - out_proj
+      - fc2
+      - v_proj
+      - o_proj
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_config.json
+        sha256: c0c93c9d0331ab221967e9f26b40def81533fcb5f9d9ff6b3fdaac163332d578
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /target_modules
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model:
+      value: ../models/minicpm_v_4_5
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_config.json
+        sha256: c0c93c9d0331ab221967e9f26b40def81533fcb5f9d9ff6b3fdaac163332d578
+        size_bytes: 1123
+        evidence_level: matches_archived_config_hash
+        json_pointer: /base_model_name_or_path
+        binding:
+          root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+          field: evidence_package_files[adapter/adapter_config.json]
+    base_model_revision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model_revision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+        size_bytes: 11770
+        evidence_level: archival_declaration
+        json_pointer: /data_release/release_id
+    prompt_reference:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 prompt_reference 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+    frozen_input:
+      value:
+        sampling_id: source-aware-3k-coverage-first-fallback-seed3413
+        sampling_sequence_sha256: a83fe7eea6caf8cee66df70cd0d3a7a0eac2a658935317477a654e15496a91e4
+        run_manifest:
+          path: finetune/MiniCPM/config/active/v4_1_phase2_coverage_first_fallback_seed3413/run_manifest.json
+          sha256: 6e48af4010af7ca352751b71adaaa8da83f44f2ab3cb691249465b5e99b4bafb
+          size_bytes: 992
+        launch_run_manifest_sha256: runtime-frozen-629e40ff
+        training_code_commit: 629e40ff526fc53392969fc5b543fb2e16bf8761
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/input/training_run_manifest.json
+        sha256: 847fbd18f1f67add01a330410315dddf0ec11620f3d58913fd816443f272e83a
+        size_bytes: 2566
+        evidence_level: archival_declaration
+        selected_json_fields:
+        - sampling_id
+        - sampling_sequence_sha256
+        - run_manifest
+        - launch_run_manifest_sha256
+        - training_code_commit
+    optimizer_steps:
+      value: 1125
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/input/training_run_manifest.json
+        sha256: 847fbd18f1f67add01a330410315dddf0ec11620f3d58913fd816443f272e83a
+        size_bytes: 2566
+        evidence_level: hash_verified_archival_file
+        json_pointer: /actual_optimizer_steps
+    sampling:
+      value:
+        sampling_id: source-aware-3k-coverage-first-fallback-seed3413
+        sampling_sequence_sha256: a83fe7eea6caf8cee66df70cd0d3a7a0eac2a658935317477a654e15496a91e4
+        summary:
+          path_at_freeze: /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-coverage-first-fallback-seed3413/summary.json
+          sha256: 686e7e726b4aa00bd9e4209f5fba26398e18ce7d607e34fef875b8a1d802c1f2
+          size_bytes: 1484
+        seed: 3413
+        launch_run_manifest_sha256: runtime-frozen-629e40ff
+        training_code_commit: 629e40ff526fc53392969fc5b543fb2e16bf8761
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+        size_bytes: 11770
+        evidence_level: archival_declaration
+        json_pointer: /sampling
+    image_video_processing:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 image_video_processing 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+    quality_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 quality_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+    approval_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 approval_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413
+    weight_integrity:
+      unknown_reason: 本轮仅stat权重，未读取权重字节或重新计算哈希，不能证明内容完整性。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0
+    archived_training_declaration:
+      value:
+        epochs: 3.0
+        gradient_accumulation_steps: 8
+        total_steps: 1125
+        train_runtime_seconds: 16769.6197
+        best_metric: 0.05644860491156578
+        best_checkpoint: checkpoint-200
+        adapter_coverage:
+          resampler_saved: true
+          resampler_weight_count: 13
+          target_module_count: 11
+          visual: true
+          visual_weight_count: 324
+        files_hashes:
+          adapter_config:
+            sha256: c0c93c9d0331ab221967e9f26b40def81533fcb5f9d9ff6b3fdaac163332d578
+            size_bytes: 1123
+          adapter_model:
+            sha256: bdb553dec2bc8d2e2f061b651d5c73030ff9dfd2c53d1a739d984671a5976d12
+            size_bytes: 460430776
+          train_config:
+            sha256: 9a3f974d06a543ccee82219b9a64f60f577617806e8f37e9ebe18cc10c449a59
+            size_bytes: 1478
+          train_results:
+            sha256: 48115984f226cbde5bdc02d2288f0609569dbf5ebe7d939a359da8c48ade4865
+            size_bytes: 207
+          trainer_log:
+            sha256: 4bfde3ecb9e007cf1f40bf2dea51bc8c5c905548e51661460965cbc8edf81abb
+            size_bytes: 46969
+          trainer_state:
+            sha256: 2988842a843d7f935785c6f88af2eb0b6f90ee76db7f2751eefa41c7d421f3bf
+            size_bytes: 43809
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+        size_bytes: 11770
+        evidence_level: archival_declaration
+        json_pointer: /training
+    archived_lifecycle_status:
+      value: evaluated
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+        size_bytes: 11770
+        evidence_level: archival_declaration
+        json_pointer: /lifecycle_status
+    archived_weight_hashes:
+      value:
+        relative_path: fold0/adapter/adapter_model.safetensors
+        sha256: bdb553dec2bc8d2e2f061b651d5c73030ff9dfd2c53d1a739d984671a5976d12
+        size_bytes: 460430776
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+        size_bytes: 11770
+        evidence_level: archival_declaration
+        json_pointer: /large_file_hashes/adapter
+    per_process_accumulated_batch:
+      value: 8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/adapter/trainer_state.json
+        sha256: 2988842a843d7f935785c6f88af2eb0b6f90ee76db7f2751eefa41c7d421f3bf
+        size_bytes: 43809
+        evidence_level: hash_verified_archival_file
+        json_pointer: /train_batch_size
+        derivation: per-process batch * gradient_accumulation_steps; world_size unavailable, not global
+          effective batch
+        factors:
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+          json_pointer: /training/gradient_accumulation_steps
+        - root: archive
+          path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/adapter/trainer_state.json
+          json_pointer: /train_batch_size
+      units: samples_per_process_per_accumulation_window
+  training_status: weights_observed
+- entry_id: history-eval_history-v4.1-phase2-coverage-fallback-v1-seed3413
+  kind: eval_history
+  original_id: v4.1-phase2-coverage-fallback-v1-seed3413
+  history_only: true
+  formal_identity: none
+  facts:
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: &id007
+        - docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    fold:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    evaluated_weight_path:
+      value: /home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_coverage_first_fallback_seed3413_seed3413_merged
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    sample_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    evaluation_contract:
+      value:
+        version: tensile-vlm/v4.1
+        sha256: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    metrics:
+      value:
+        total: 425
+        contract_valid_rate: 1.0
+        joint_correct_rate: 0.350588
+        clip_state_correct_rate: 0.545882
+        fracture_mechanism_correct_rate: 0.444706
+        fracture_site_correct_rate: 0.527059
+        special_case_correct_rate: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+      units:
+        total: count
+        contract_valid_rate: ratio_0_to_1
+        joint_correct_rate: ratio_0_to_1
+        clip_state_correct_rate: ratio_0_to_1
+        fracture_mechanism_correct_rate: ratio_0_to_1
+        fracture_site_correct_rate: ratio_0_to_1
+        special_case_correct_rate: ratio_0_to_1
+    runtime_failure_count:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    strict_valid_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    strict_valid_rate:
+      value: 1.0
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    evaluation_status:
+      value: recorded
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+        corroborated_by: *id007
+        root: archive
+        sha256: 8f465b91a6e66f5545397ced492904a8276d48fc93274cdf7d60daefcfca3ef1
+    model_reference:
+      value: v4.1-sampling-fallback-fold0-r1
+      source:
+        path: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json
+        root: archive
+        sha256: 6debdccfeb56afec215d18a6a784825ea462ce51c00cdeacce5dcc053ea9c6bd
+    split:
+      unknown_reason: eval history v4.1-phase2-coverage-fallback-v1-seed3413 的归档摘要未记录明确 split
+      attempted_source: docs/results/model_evidence/v4.1-phase2-coverage-fallback-v1-seed3413/evaluation/evaluation_summary.json
+      attempted_root: archive
+- entry_id: history-weight_run-v4.1-prompt-minimal-v1-seed3411
+  kind: weight_run
+  original_id: v4.1-prompt-minimal-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    fold_scope:
+      value: 0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /fold
+    adapter_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter
+        observed: declared run source directory structure (read-only)
+        root: original
+    merged_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged
+        observed: declared run source directory structure (read-only)
+        root: original
+    seed:
+      value: 3411
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /training/seed
+    learning_rate:
+      value: 5.0e-06
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /training/learning_rate
+    epochs:
+      value: 3
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /training/epochs
+    effective_batch_size:
+      unknown_reason: 历史证据未记录world_size；单进程batch与累积步数的乘积不证明全局有效batch。
+      attempted_source: archive:docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+    optimizer:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-minimal-v1-seed3411
+      attempted_root: original
+    precision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 precision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-minimal-v1-seed3411
+      attempted_root: original
+    lora_rank:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 lora_rank 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-minimal-v1-seed3411
+      attempted_root: original
+    lora_alpha:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 lora_alpha 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-minimal-v1-seed3411
+      attempted_root: original
+    lora_target_modules:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 lora_target_modules 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-minimal-v1-seed3411
+      attempted_root: original
+    base_model:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-minimal-v1-seed3411
+    base_model_revision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model_revision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-minimal-v1-seed3411
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /data_release/release_id
+    prompt_reference:
+      value:
+        revision_id: v4.1-fixed-full-fields-initial-v1
+        content_sha256: 2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3
+        manifest_sha256: 04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /prompt
+    frozen_input:
+      value:
+        base_contract_hash: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+        base_contract_version: tensile-vlm/v4.1
+        experiment_contract_sha256: ddec9c90dd8cfb2cc55d094929d556c2685ce429b4daa580b1b6949c08762123
+        generation:
+          do_sample: false
+          max_new_tokens: 256
+          num_beams: 1
+          temperature: 0.0
+        immutable: true
+        prompt:
+          label_pools:
+            clip_state:
+            - 未断裂
+            - 临界未断裂
+            - 发生断裂
+            - 已断裂
+            - 无法判断
+            fracture_mechanism:
+            - 韧性断裂
+            - 脆性断裂
+            - 界面脱粘
+            - 爆炸性断裂
+            - 半脆半韧断裂
+            - null
+            fracture_site:
+            - inside_gauge
+            - outside_gauge_non_root
+            - grip_root
+            - null
+            special_case:
+            - 未夹紧
+            - 视频异常
+            - null
+          output_fields:
+          - clip_state
+          - fracture_mechanism
+          - fracture_site
+          - special_case
+          prompt_content_sha256: 2e4e0ad6503dfabab6239028060164edaf0c04cf98923687ddb273e7a21d34d3
+          prompt_manifest_sha256: 04286f9107e5c6cc571b4b0c07bcd016b09f6b2797686ae6b4120861ad4c50b0
+          protocol_id: tensile-vlm/v4.1
+          revision_id: v4.1-fixed-full-fields-initial-v1
+          schema_version: tensile-prompt-control/v1
+          system_prompt: '你是一位材料力学视频分析助手。请仅依据当前输入视频中可见的信息完成判断，不要推测视频片段之外发生的事件。
+
+
+            请以一个合法 JSON 对象给出结果，不要输出解释、Markdown 或其他文字。结果包含 clip_state、fracture_mechanism、fracture_site、special_case
+            四个字段。
+
+
+            本任务使用以下标签池：
+
+
+            clip_state：
+
+            未断裂、临界未断裂、发生断裂、已断裂、无法判断。
+
+
+            fracture_mechanism：
+
+            韧性断裂、脆性断裂、界面脱粘、爆炸性断裂、半脆半韧断裂，以及 null。
+
+
+            fracture_site：
+
+            inside_gauge、outside_gauge_non_root、grip_root，以及 null。
+
+
+            special_case：
+
+            未夹紧、视频异常，以及 null。
+
+
+            输出结构：
+
+
+            {"clip_state": ..., "fracture_mechanism": ..., "fracture_site": ..., "special_case": ...}'
+          user_prompt: 请根据这段拉伸试验视频，判断试样是否发生断裂，并给出相应的断裂模式和断裂位置。
+        release:
+          release_id: v4.1.0-ecb5aeb9657c
+          release_manifest_sha256: ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b
+          training_candidates_sha256: 390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf
+        sampling:
+          candidate_sequence_sha256: 9a980c604dd4aa5a2dae101ffbc76e29576560c0ecbcde47790cbf6d84dfe8b9
+          sampling_id: source-aware-3k-2a84e8b6cfc3
+          sampling_manifest_sha256: d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038
+          seed: 3411
+          video_sequence_sha256: d36b2ab2b9cf8cb5da8e0fb5cc49cf2413d1727599d02e1fc3ca063ca98b22b0
+        schema_version: tensile-vlm-v4.1-experiment-contract/v1
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/input/experiment_contract.json
+        sha256: ccf53b73c0bcfaf4fb0e551321eafa942c2b784f79e459457dd06c76ab2523ca
+        size_bytes: 3176
+        evidence_level: hash_verified_archival_file
+        json_pointer: ''
+    optimizer_steps:
+      value: 1125
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /training/total_steps
+    sampling:
+      value:
+        sampling_id: source-aware-3k-2a84e8b6cfc3
+        source_sampling_sha256: d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038
+        seed: 3411
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /sampling
+    image_video_processing:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 image_video_processing 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-minimal-v1-seed3411
+    quality_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 quality_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-minimal-v1-seed3411
+    approval_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 approval_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-minimal-v1-seed3411
+    weight_integrity:
+      unknown_reason: 本轮仅stat权重，未读取权重字节或重新计算哈希，不能证明内容完整性。
+      attempted_source: original:workspace/runs/v4.1-prompt-minimal-v1-seed3411
+    archived_training_declaration:
+      value:
+        seed: 3411
+        learning_rate: 5.0e-06
+        epochs: 3
+        per_device_batch: 1
+        gradient_accumulation_steps: 8
+        total_steps: 1125
+        early_stopping: false
+        best_checkpoint_step: 250
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /training
+    archived_weight_hashes:
+      value:
+        relative_path: adapter/adapter_model.safetensors
+        sha256: 55c8e446af827cfb8c2c3cb0ac1aed8dc88bffb9641fb2713fc188dbb3df3e18
+        size_bytes: 460430776
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /large_file_hashes/adapter
+    per_process_accumulated_batch:
+      value: 8
+      source:
+        root: archive
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        sha256: 319ca495885467824201689f0670cefe2fa9a58fde3073dc7fedfb0971b33cc9
+        size_bytes: 9929
+        evidence_level: archival_declaration
+        json_pointer: /training
+        derivation: per-process batch * gradient_accumulation_steps; world_size unavailable, not global
+          effective batch
+        factors:
+        - root: archive
+          path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+          json_pointer: /training/gradient_accumulation_steps
+        - root: archive
+          path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+          json_pointer: /training/per_device_batch
+      units: samples_per_process_per_accumulation_window
+  training_status: weights_observed
+- entry_id: history-eval_history-v4.1-prompt-minimal-v1-seed3411
+  kind: eval_history
+  original_id: v4.1-prompt-minimal-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: &id008
+        - docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    fold:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    evaluated_weight_path:
+      value: /home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    sample_count:
+      value: 425
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    evaluation_contract:
+      value:
+        version: tensile-vlm/v4.1
+        sha256: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    metrics:
+      value:
+        total: 425
+        contract_valid_rate: 0.861176
+        joint_correct_rate: 0.24
+        clip_state_correct_rate: 0.350588
+        fracture_mechanism_correct_rate: 0.388235
+        fracture_site_correct_rate: 0.397647
+        special_case_correct_rate: 0.861176
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+      units:
+        total: count
+        contract_valid_rate: ratio_0_to_1
+        joint_correct_rate: ratio_0_to_1
+        clip_state_correct_rate: ratio_0_to_1
+        fracture_mechanism_correct_rate: ratio_0_to_1
+        fracture_site_correct_rate: ratio_0_to_1
+        special_case_correct_rate: ratio_0_to_1
+    runtime_failure_count:
+      value: 0
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    strict_valid_count:
+      value: 366
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    strict_valid_rate:
+      value: 0.861176
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    evaluation_status:
+      value: recorded
+      source:
+        path: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+        corroborated_by: *id008
+        root: archive
+        sha256: ce875bf141822930f9b381058705ce91b8fe2def4885de10675813bdbf506836
+    model_reference:
+      unknown_reason: eval history v4.1-prompt-minimal-v1-seed3411 的归档包未记录 model_name
+      attempted_source: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/MANIFEST.json
+      attempted_root: archive
+    split:
+      unknown_reason: eval history v4.1-prompt-minimal-v1-seed3411 的归档摘要未记录明确 split
+      attempted_source: docs/results/model_evidence/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json
+      attempted_root: archive
+- entry_id: history-weight_run-v4.1-phase2-coverage-first-v1-seed3407
+  kind: weight_run
+  original_id: v4.1-phase2-coverage-first-v1-seed3407
+  history_only: true
+  formal_identity: none
+  facts:
+    fold_scope:
+      value: fold0
+      source:
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0
+        observed: declared run source directory structure (read-only)
+        root: original
+    adapter_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter
+        observed: declared run source directory structure (read-only)
+        root: original
+    merged_present:
+      value: true
+      source:
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged
+        observed: declared run merged link bound to matching model release
+        resolved_path: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged
+        model_identity_path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/model_identity.json
+        release_manifest_path: workspace/models/releases/v4.1-agent-pipeline-fold0-r1/release-manifest.json
+        registry_manifest_path: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        root: original
+    seed:
+      value: 3407
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+        sha256: 1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5
+        size_bytes: 2593
+        evidence_level: archival_declaration
+        json_pointer: /seed
+    learning_rate:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 learning_rate 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407
+      attempted_root: original
+    epochs:
+      value: 3.0
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+        sha256: 1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5
+        size_bytes: 2593
+        evidence_level: archival_declaration
+        json_pointer: /epochs
+    effective_batch_size:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 effective_batch_size 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407
+      attempted_root: original
+    optimizer:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407
+      attempted_root: original
+    precision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 precision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407
+      attempted_root: original
+    lora_rank:
+      value: 8
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a
+        size_bytes: 1123
+        evidence_level: matches_training_manifest_config_hash
+        json_pointer: /r
+        binding:
+          root: archive
+          path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+          json_pointer: /files/adapter_config
+    lora_alpha:
+      value: 16
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a
+        size_bytes: 1123
+        evidence_level: matches_training_manifest_config_hash
+        json_pointer: /lora_alpha
+        binding:
+          root: archive
+          path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+          json_pointer: /files/adapter_config
+    lora_target_modules:
+      value:
+      - kv_proj
+      - up_proj
+      - v_proj
+      - fc1
+      - k_proj
+      - q_proj
+      - o_proj
+      - gate_proj
+      - out_proj
+      - down_proj
+      - fc2
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a
+        size_bytes: 1123
+        evidence_level: matches_training_manifest_config_hash
+        json_pointer: /target_modules
+        binding:
+          root: archive
+          path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+          json_pointer: /files/adapter_config
+    base_model:
+      value: ../models/minicpm_v_4_5
+      source:
+        root: original
+        path: workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_config.json
+        sha256: d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a
+        size_bytes: 1123
+        evidence_level: matches_training_manifest_config_hash
+        json_pointer: /base_model_name_or_path
+        binding:
+          root: archive
+          path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+          json_pointer: /files/adapter_config
+    base_model_revision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model_revision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3407
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+        sha256: 1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5
+        size_bytes: 2593
+        evidence_level: archival_declaration
+        json_pointer: /release_id
+    prompt_reference:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 prompt_reference 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3407
+    frozen_input:
+      value:
+        run_manifest:
+          path: finetune/MiniCPM/config/active/v4_1_source_aware_3k_coverage_first/run_manifest.json
+          sha256: b911c6a0e295c0dc99565f5a27082820bc5ba8542c11c0c1a5c5f06069ebd866
+          size_bytes: 1555
+        launch_run_manifest_sha256: 8880686e9856dde0c176978c4662996f291634fd6bd34cca36f63949bb2cdcd9
+        training_code_commit: f54d9ca617e455454f28e31ae058eda2dfdb5ec7
+        sampling_sequence_sha256: 2e5c9d6894b115d94d0a085cf7f4c643b65482bb63b253b45a34a116dec1ba9c
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+        sha256: 1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5
+        size_bytes: 2593
+        evidence_level: archival_declaration
+        selected_json_fields:
+        - run_manifest
+        - launch_run_manifest_sha256
+        - training_code_commit
+        - sampling_sequence_sha256
+    optimizer_steps:
+      value: 1125
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+        sha256: 1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5
+        size_bytes: 2593
+        evidence_level: archival_declaration
+        json_pointer: /actual_optimizer_steps
+    sampling:
+      value:
+        sampling_id: source-aware-3k-2a84e8b6cfc3
+        sampling_summary:
+          path_at_freeze: /home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-2a84e8b6cfc3/summary.json
+          sha256: 74d592c4f87518ddbf135f1c93a7ed741d981c0455a9b4fdc4fa0de108933e8c
+          size_bytes: 2150
+        sampling_sequence_sha256: 2e5c9d6894b115d94d0a085cf7f4c643b65482bb63b253b45a34a116dec1ba9c
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json
+        sha256: 1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5
+        size_bytes: 2593
+        evidence_level: archival_declaration
+        selected_json_fields:
+        - sampling_id
+        - sampling_summary
+        - sampling_sequence_sha256
+    image_video_processing:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 image_video_processing 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3407
+    quality_status:
+      value: *id001
+      source: *id009
+    approval_status:
+      value: false
+      source: *id010
+    weight_integrity:
+      unknown_reason: 本轮仅stat权重，未读取权重字节或重新计算哈希，不能证明内容完整性。
+      attempted_source: original:workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0
+  training_status: weights_observed
+- entry_id: history-weight_run-v4.1-prompt-concise-cv-v1-seed3411
+  kind: weight_run
+  original_id: v4.1-prompt-concise-cv-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    fold_scope:
+      unknown_reason: weight run v4.1-prompt-concise-cv-v1-seed3411 的声明 run 源或已知权重结构 workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold0
+        / workspace/runs/v4.1-prompt-concise-cv-v1-seed3411 缺失（M0 known_gap：预期路径不存在），fold_scope 无法经只读观察取得：缺席不可观察，缺失不伪装成已知值，也不从
+        sibling 取内容
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    adapter_present:
+      unknown_reason: weight run v4.1-prompt-concise-cv-v1-seed3411 的声明 run 源或已知权重结构 workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold0
+        / workspace/runs/v4.1-prompt-concise-cv-v1-seed3411 缺失（M0 known_gap：预期路径不存在），adapter_present 无法经只读观察取得：缺席不可观察，缺失不伪装成已知值，也不从
+        sibling 取内容
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    merged_present:
+      unknown_reason: weight run v4.1-prompt-concise-cv-v1-seed3411 的声明 run 源或已知权重结构 workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold0
+        / workspace/runs/v4.1-prompt-concise-cv-v1-seed3411 缺失（M0 known_gap：预期路径不存在），merged_present 无法经只读观察取得：缺席不可观察，缺失不伪装成已知值，也不从
+        sibling 取内容
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    seed:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 seed 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    learning_rate:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 learning_rate 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    epochs:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 epochs 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    effective_batch_size:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 effective_batch_size 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    optimizer:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    precision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 precision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    lora_rank:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 lora_rank 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    lora_alpha:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 lora_alpha 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    lora_target_modules:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 lora_target_modules 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+      attempted_root: original
+    base_model:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    base_model_revision:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 base_model_revision 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    data_release_id:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 data_release_id 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    prompt_reference:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 prompt_reference 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    frozen_input:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 frozen_input 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    optimizer_steps:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 optimizer_steps 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    sampling:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 sampling 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    image_video_processing:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 image_video_processing 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    quality_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 quality_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    approval_status:
+      unknown_reason: 本轮限定的历史manifest、归档和可绑定文件未提供足够的 approval_status 证据；未从活动配置、planned配置或其他实验推断。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    weight_integrity:
+      unknown_reason: 本轮仅stat权重，未读取权重字节或重新计算哈希，不能证明内容完整性。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+- entry_id: history-prepare_only_run-v4.1-prompt-concise-v1-seed3411
+  kind: prepare_only_run
+  original_id: v4.1-prompt-concise-v1-seed3411
+  history_only: true
+  formal_identity: none
+  training_status: prepared_only
+  facts:
+    seed:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：seed 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    learning_rate:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：learning_rate 不得取自
+        planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    epochs:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：epochs 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    effective_batch_size:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：effective_batch_size
+        不得取自 planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    optimizer:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：optimizer 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    precision:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：precision 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    lora_rank:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：lora_rank 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    lora_alpha:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：lora_alpha 不得取自
+        planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    lora_target_modules:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v1-seed3411 仅有准备资料，无训练执行记录：lora_target_modules
+        不得取自 planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v1-seed3411
+      attempted_root: original
+    base_model:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    base_model_revision:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    fold_scope:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    adapter_present:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    merged_present:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    data_release_id:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    prompt_reference:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    frozen_input:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    optimizer_steps:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    sampling:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    image_video_processing:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    quality_status:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    approval_status:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v1-seed3411
+    prepared_input_identity:
+      value:
+        experiment_id: v4.1-prompt-concise-v1-seed3411
+        prompt_revision_id: v4.1-concise-evidence-json-v1
+        prompt_content_sha256: 7fbb55d59548af56a486de501d187a2694e81257dd1936bbf13c85fdef6c6d6d
+      source:
+        root: original
+        path: workspace/runs/v4.1-prompt-concise-v1-seed3411/input/summary.json
+        sha256: 333d4de33b5c7380af47099039ed1434ea388010ce2dadf12bc8b26da6c4d6a3
+        size_bytes: 1907
+        evidence_level: prepared_input_only
+        selected_json_fields:
+        - experiment_id
+        - prompt_revision_id
+        - prompt_content_sha256
+    inventory_spelling:
+      value: v4.1-prompt-concise-v1/seed3411
+      source:
+        root: archive
+        path: docs/results/version-control-migration/source-inventory.yaml
+        sha256: 2e33bf14169619f6497303bce10c8b2c7b2859e0bfa6e9d650ffe3d8ae25dce7
+        size_bytes: 12249
+        evidence_level: historical_inventory_label_not_physical_path
+        note: M0 used slash spelling; current input/summary.json experiment_id and physical directory
+          use hyphen spelling. No new experiment identity allocated.
+- entry_id: history-prepare_only_run-v4.1-prompt-concise-v2-seed3411
+  kind: prepare_only_run
+  original_id: v4.1-prompt-concise-v2-seed3411
+  history_only: true
+  formal_identity: none
+  training_status: prepared_only
+  facts:
+    seed:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：seed 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    learning_rate:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：learning_rate 不得取自
+        planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    epochs:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：epochs 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    effective_batch_size:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：effective_batch_size
+        不得取自 planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    optimizer:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：optimizer 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    precision:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：precision 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    lora_rank:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：lora_rank 不得取自 planned
+        配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    lora_alpha:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：lora_alpha 不得取自
+        planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    lora_target_modules:
+      unknown_reason: prepare-only run v4.1-prompt-concise-v2-seed3411 仅有准备资料，无训练执行记录：lora_target_modules
+        不得取自 planned 配置登记为训练事实
+      attempted_source: workspace/runs/v4.1-prompt-concise-v2-seed3411
+      attempted_root: original
+    base_model:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    base_model_revision:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    fold_scope:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    adapter_present:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    merged_present:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    data_release_id:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    prompt_reference:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    frozen_input:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    optimizer_steps:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    sampling:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    image_video_processing:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    quality_status:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    approval_status:
+      unknown_reason: 仅准备资料，未作为实际训练事实提取。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-v2-seed3411
+    prepared_input_identity:
+      value:
+        experiment_id: v4.1-prompt-concise-v2-seed3411
+        prompt_revision_id: v4.1-concise-evidence-json-v2
+        prompt_content_sha256: 0040c7d73cc417ac81fca196fec3c4a30b011ca15549eb324a3a37cde0aff6db
+      source:
+        root: original
+        path: workspace/runs/v4.1-prompt-concise-v2-seed3411/input/summary.json
+        sha256: 2d46f24f163254adfd2996c4a496e43508617ab41219405cc6dd5ded30b818bb
+        size_bytes: 1907
+        evidence_level: prepared_input_only
+        selected_json_fields:
+        - experiment_id
+        - prompt_revision_id
+        - prompt_content_sha256
+    inventory_spelling:
+      value: v4.1-prompt-concise-v2/seed3411
+      source:
+        root: archive
+        path: docs/results/version-control-migration/source-inventory.yaml
+        sha256: 2e33bf14169619f6497303bce10c8b2c7b2859e0bfa6e9d650ffe3d8ae25dce7
+        size_bytes: 12249
+        evidence_level: historical_inventory_label_not_physical_path
+        note: M0 used slash spelling; current input/summary.json experiment_id and physical directory
+          use hyphen spelling. No new experiment identity allocated.
+- entry_id: history-eval-coverage-first-seed3407-fold0
+  kind: eval_history
+  original_id: v4.1-phase2-coverage-first-v1-seed3407:seed3407/fold0
+  history_only: true
+  formal_identity: none
+  facts:
+    release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /release_id
+    contract_version:
+      value: tensile-vlm/v4.1
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /contract_version
+    contract_hash:
+      value: 47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /contract_hash
+    fold:
+      value: 0
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /fold
+    model_dir:
+      value: /home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407_merged
+      source: &id011
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /model_dir
+    sample_count:
+      value: 425
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /sample_count
+    metrics:
+      value:
+        total: 425
+        contract_valid_rate: 0.995294
+        joint_correct_rate: 0.4
+        clip_state_correct_rate: 0.470588
+        fracture_mechanism_correct_rate: 0.56
+        fracture_site_correct_rate: 0.597647
+        special_case_correct_rate: 0.995294
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /metrics
+      units:
+        total: count
+        contract_valid_rate: ratio_0_to_1
+        joint_correct_rate: ratio_0_to_1
+        clip_state_correct_rate: ratio_0_to_1
+        fracture_mechanism_correct_rate: ratio_0_to_1
+        fracture_site_correct_rate: ratio_0_to_1
+        special_case_correct_rate: ratio_0_to_1
+    runtime_failure_count:
+      value: 0
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /runtime_failure_count
+    strict_valid_count:
+      value: 423
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /strict_valid_count
+    strict_valid_rate:
+      value: 0.995294
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+        sha256: 71d6c43179fedf761be0bb7de4760fa5eab97f7890af20424e3d07229e333970
+        size_bytes: 1665
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /strict_valid_rate
+    split:
+      unknown_reason: 原summary未记录split；不凭目录名补写。
+      attempted_source: archive:finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json
+    model_reference:
+      value: v4.1-agent-pipeline-fold0-r1
+      source:
+        root: original
+        path: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+        size_bytes: 2151
+        evidence_level: archival_declaration
+        json_pointer: /model_name
+        binding:
+          evaluated_model_dir: *id011
+          registry_weight_pointer: /artifacts/merged/path_at_freeze
+          registry_origin_pointers:
+          - /origin/release_id
+          - /origin/fold
+          meaning: same frozen path and origin, not a new weight hash verification
+- entry_id: history-eval-coverage-first-seed3407_runtime_contract_3798-fold0
+  kind: eval_history
+  original_id: v4.1-phase2-coverage-first-v1-seed3407:seed3407_runtime_contract_3798/fold0
+  history_only: true
+  formal_identity: none
+  facts:
+    release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /release_id
+    contract_version:
+      value: tensile-vlm/v4.1
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /contract_version
+    contract_hash:
+      value: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /contract_hash
+    fold:
+      value: 0
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /fold
+    model_dir:
+      value: /home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407_merged
+      source: &id012
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /model_dir
+    sample_count:
+      value: 425
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /sample_count
+    metrics:
+      value:
+        total: 425
+        contract_valid_rate: 1.0
+        joint_correct_rate: 0.411765
+        clip_state_correct_rate: 0.56
+        fracture_mechanism_correct_rate: 0.458824
+        fracture_site_correct_rate: 0.548235
+        special_case_correct_rate: 1.0
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /metrics
+      units:
+        total: count
+        contract_valid_rate: ratio_0_to_1
+        joint_correct_rate: ratio_0_to_1
+        clip_state_correct_rate: ratio_0_to_1
+        fracture_mechanism_correct_rate: ratio_0_to_1
+        fracture_site_correct_rate: ratio_0_to_1
+        special_case_correct_rate: ratio_0_to_1
+    runtime_failure_count:
+      value: 0
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /runtime_failure_count
+    strict_valid_count:
+      value: 425
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /strict_valid_count
+    strict_valid_rate:
+      value: 1.0
+      source:
+        root: archive
+        path: finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+        sha256: a4cf4f932ee1c118080baf0d58587ca87fb74a00a3b25ef31480f51922246c6c
+        size_bytes: 1520
+        evidence_level: recorded_evaluation_not_recomputed
+        json_pointer: /strict_valid_rate
+    split:
+      unknown_reason: 原summary未记录split；不凭目录名补写。
+      attempted_source: archive:finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json
+    model_reference:
+      value: v4.1-agent-pipeline-fold0-r1
+      source:
+        root: original
+        path: pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
+        sha256: 3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008
+        size_bytes: 2151
+        evidence_level: archival_declaration
+        json_pointer: /model_name
+        binding:
+          evaluated_model_dir: *id012
+          registry_weight_pointer: /artifacts/merged/path_at_freeze
+          registry_origin_pointers:
+          - /origin/release_id
+          - /origin/fold
+          meaning: same frozen path and origin, not a new weight hash verification
+- entry_id: history-report-v4.1-prompt-concise-cv-v1-seed3411
+  kind: report_history
+  original_id: v4.1-prompt-concise-cv-v1-seed3411
+  history_only: true
+  formal_identity: none
+  facts:
+    weight_verification:
+      unknown_reason: 声明run路径本轮仍不可见；报告声明不证明当前权重存在或完成新的评测。
+      attempted_source: original:workspace/runs/v4.1-prompt-concise-cv-v1-seed3411
+    sample_count:
+      value: 1581
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    runtime_failure_count:
+      value: 0
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    data_release_id:
+      value: v4.1.0-ecb5aeb9657c
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    prompt_reference:
+      value: v4.1-concise-evidence-json-v2
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    seed:
+      value: 3411
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    folds:
+      value:
+      - 0
+      - 1
+      - 2
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    stop_steps:
+      value:
+      - 300
+      - 350
+      - 250
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    best_checkpoint_steps:
+      value:
+      - 225
+      - 275
+      - 175
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    metrics_percent:
+      value:
+        contract_valid: 79.63
+        joint_correct: 32.07
+        clip_state_correct: 35.8
+        fracture_mechanism_correct: 34.85
+        fracture_site_correct: 37.44
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+      units: percent_0_to_100; reported rounded values, not recalculated
+    reported_split:
+      value: development validation
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    contract_hash:
+      value: 3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    experiment_contract_sha256:
+      value: 6ea640efeed5fa196c7af9a2b753ac012cea954326f23eac8f5554d452e1ea3a
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+        sections:
+        - '1'
+        - '3.1'
+        - '3.2'
+        - '4.1'
+        - '5.1'
+    reported_execution_status:
+      value: 报告声明三折训练、最佳checkpoint回载、adapter合并和全量严格评测均已完成；本轮未复验。
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+    reported_quality_status:
+      value: 报告声明任务级效果未达到可接受水平；本轮未重算。
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed
+    reported_review_status:
+      value: 报告当时状态为待独立reviewer审查；本轮历史摘要核查不等于该模型质量审查。
+      source:
+        root: archive
+        path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md
+        sha256: 8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0
+        size_bytes: 21357
+        evidence_level: historical_report_not_recomputed

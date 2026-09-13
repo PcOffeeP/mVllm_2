@@ -949,3 +949,52 @@ Mac代码提交`2fce3ab13afa1af02b9f4e2d03e8bf32085e805e`，含backup实现、�
 M8-R4已解决本轮store级异根恢复范围（代码2fce3ab1）：Mac受影响回归175 passed/1 skipped，最后URI严格化另6 passed；Linux最终同一提交181 passed/1 skipped、exit0；独立代码/操作文档局部审查通过。原模拟store不可访问时，新根artifact读取、显式current/服务准入、后续写入与再次备份均通过；冻结事实和原备份保持。验证见第41节；真实硬盘/大型产物、外部依赖整机恢复与GPU不在通过范围。下一步补实际history-summary并做M8最终整包复审，整体迁移不关闭。
 
 最终Linux证据与四份文档独立只读核查通过：reviewer核对两端原始报告/日志及摘要、HEAD/四文件摘要、汇总/退出码/NOFILE与原项目和隔离checkout状态，无新增可执行问题。以上Linux执行由主Agent完成，不计作reviewer复跑；局部通过不代表M8整包通过。四份轻量文档在训练机按明确旧/新摘要写入并原子提交，再通过bundle同步Mac；同次提交版本由相关文件Git历史追溯。
+
+
+<a id="m8-history-20260913"></a>
+## 42. M8实际历史汇总交付与batch来源修正（2026-09-13）
+
+本轮承接`a14b3d0ae252c91368b2e0d3608b215ab81bd6ee`，按已确认Spec整理历史查询事实，不创建正式train/model/eval，不触发模型晋级。训练机原项目`/home/liuyang/文档/mVllm_2`的main仍为`f1b7d8a3`且干净；隔离checkout开始为相同任务分支`a14b3d0a`、tracked干净。原项目没有Git归档包，隔离checkout有五个归档包但没有workspace/runs；两种根不互相冒充。
+
+### 产物及完整性
+
+固定输出为本目录`history-summary.yaml`，已审发布字节SHA `fb9dc8d25b00dc9b774680db938c2f8a8bc172119ad1111d6bf26b4182382a12`，21个唯一条目、234个有来源值与152个有原因的未知字段。所有条目保持`history_only: true`、`formal_identity: none`。
+
+基础18条包括3个Prompt、6个有权重观察run、2个仅准备run、1个权重路径缺口run、1个Registry发布模型和5个归档eval。另保留coverage-first seed3407两份不同契约的已有eval，以及concise-cv报告声明条目，共21条。两个data旧ID及已确认r1/r2映射只作来源关联，不改绑历史训练输入。
+
+两组prepared的当前目录与input/summary.json experiment_id使用`v4.1-prompt-concise-v1-seed3411`/`v4.1-prompt-concise-v2-seed3411`；M0 inventory的`v1/seed3411`、`v2/seed3411`拼写作为历史标签另存，不新建实验或静默丢弃旧标签。现场目录与无权重命名文件的观察随产物保存。
+
+汇总逐字段保留root、相对路径、摘要或未知原因；generation记录47份实际读取的轻量源文件size/SHA、权重stat、生成时间、代码提交与生成脚本位置/摘要。六组权重只做存在性、文件大小、mtime与已限定merged链接链观察，没有读取权重字节或重算权重SHA。归档里的旧权重SHA明确为来源声明，不能当成本轮完整性验签。
+
+五份归档eval都没有split，继续未知。两个source-aware契约摘要为47e393…b937，其余三份为3798f0…38ab，分别保存；JSON比例保留0–1，报告百分数保留0–100。seed3407额外两eval按各自summary/run_identity交叉核对，并将评估model_dir与Registry冻结merged路径、origin数据/fold绑定，保留旧路径，不改写为当前物理目录。concise-cv原声明run路径仍不可见，报告中的完成、质量未达标和当时待独立审查均标为历史报告声明，不能替代当前运行或权重证据。
+
+发布模型关联delivery model/service/deployment历史声明，保留production_approved=false和质量门未通过；其中artifact/runtime历史passed不成为当前正式质量准入。未取得的基座修订、优化器、精度及图像/视频处理等字段均明确未知，不从活动配置猜测。
+
+### 生成方法与复核
+
+本次在训练机新`m8-history-verification-20260913/`目录中使用现有`build_history_summary`纯构建器按显式原/隔离root读取，再由一次性历史资料组装脚本补齐可绑定的归档事实。没有修改CLI来隐式选择跨根来源，也不把这次离线组装称为公共history-write的双根端到端验证。正式发布采用已审字节的排他新文件写入，不覆盖目标。
+
+最终脚本`m8-history-verification-20260913/mvllm2-history-acceptance.py`，SHA `f9e2f6456d750c563e26457c2b9d82eef3994e5e7e44d28bb14a857b3a2d7fc8`；它在`a14b3d0a`上生成`history-summary.acceptance.yaml`，两端副本一致。命令为在隔离checkout设置`PYTHONPATH=. CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4`后，用`.venv-m3/bin/python`执行该脚本。脚本及中间candidate/review/checked草案保留在RUN，最终记录不覆盖中间证据。生成前后核对HEAD与tracked状态，源轻量文件末尾重算摘要；本机未用缺权重目录重新生成实际存在性。
+
+独立reviewer最初核定18条最低对象清单，再检查21条实际产物。发现并修正：模型已知data/fold重复写未知、CV历史执行/质量/待审声明遗漏，以及把单进程batch累积乘积误称全局有效batch。最终产物两端SHA一致；reviewer通过只读SSH独立重算47源文件size/SHA、两prepared目录、旧/new ID拼写及无权重命名文件事实，核对模型/评估绑定和数值来源后，局部验收通过。没有复跑训练或重新评分。
+
+主Agent独立脚本`mvllm2-history-validate.py`再次检查21条唯一性、fact形态、history-only、split与global batch未知、47轻量文件摘要及权重stat，并在Linux运行现有history专项：76 passed/115 deselected，0.36秒，exit0（外围0.551秒）。日志SHA `efa4b7e35e2e3a38687e834c6c5287bbbf6bdce12196579f0340e0349c18e11b`；RUN中的`history-result.json`保存完整结果。本机同专项76 passed/115 deselected，0.42秒，exit0。这是生成时a14b3d0a的验证；随后batch代码修复的回归另记。
+
+### 同轮闭环：公共历史生成器的batch口径
+
+reviewer另确认既有H9代码未读取历史world_size，直接将train_batch_size×gradient_accumulation_steps命名为effective_batch_size。实际历史汇总先行纠正为per_process_accumulated_batch并保留两因子来源，全局有效batch未知；随后本轮按既有允许文件修复`versioning/migration.py`及对应`tests/versioning/test_migration.py`，公共构建器也保留限定含义的乘积和推导来源，缺world_size不再声明全局值。
+
+有效RED：目标测试因缺per_process_accumulated_batch失败，1 failed/190 deselected，0.70秒；日志`/private/tmp/mvllm2-history-batch-red.log`。修复后Mac完整migration+CLI两个文件247 passed，2.79秒，exit0；日志`/private/tmp/mvllm2-history-batch-final.log`。此局部事实口径修复不扩展训练执行、正式身份或历史来源范围。
+
+代码提交、Linux最终回归及最终配套文档独立核查结果见下文。本轮仅历史证据交付及已证实的batch误记修正；真实GPU/模型成功、full/holdout实际输入、物理/data下Prompt备齐、真实硬盘/大型产物与M8完整差异复审仍未完成，整体迁移不关闭。
+
+
+### 最终代码与Linux回归
+
+batch口径代码提交`d2ae4ceeda0f5f8a26393b2550b528e3fb3ae93a`，Mac产出，仅两个允许的实现/测试文件。增量bundle SHA `71598a4c8b44a976bbb07a375e937196b85e47a5f3c0efb349190e03eb218e01`；核对隔离a14b3d0a基线、tracked干净、bundle依赖与0/1独有提交后，通过cherry-pick --ff同步，原正式项目保持只读。
+
+reviewer独立代码专项15 passed/176 deselected，0.22秒，exit0，覆盖成功归档、哈希/路径/bool拒绝及源树保持；确认既有batch P2闭环。Mac完整migration+CLI247 passed，2.79秒，exit0。Linux同一提交、同两个测试文件247 passed，2.46秒，exit0（外围2.81秒），CUDA不可见、OMP4、HF/Transformers离线，既有环境未修改；RUN `pytest-final`与先前生成时history专项分开，日志及结果不覆盖。Linux最终tracked干净。
+
+Linux日志`pytest.log` SHA `5204aa4c2652e82d100bb2990ed50d96445a4bab60a28dbf389354a3980d2ee2`，报告`result.json`两端SHA `e4e41808446da9041c47ff9c3e2e0d05a3d82463b72352cee61bab85b57b4443`；本机副本`/private/tmp/mvllm2-history-linux.log`、`/private/tmp/mvllm2-history-linux-result.json`。代码SHA `1d883bfca9703d1a0f65f557246bc9184d1d19988e613a8f4a8390e2237370ae`；测试SHA `548c9cb2726e966458e113ce4fe287a16d99024478d8cddd2f708404bad8f8dd`，与reviewer审查一致。
+
+实际历史YAML保持已审字节及其生成时代码a14b3d0a归因；随后d2ae4cee只修复公共生成器，没有改写历史来源或产物事实。最终配套文档及Linux证据独立只读核查通过：reviewer确认实际YAML仍为已审SHA，两端报告/日志、代码SHA、247 passed/退出码、原项目及隔离tracked状态一致；TODO中的早期“正在补汇总”已改为当次审查历史时点。Linux主Agent回归不计为reviewer复跑，本次局部通过不代表M8整包通过。产物和四份轻量文档在Linux按已核对旧/新摘要提交，再通过bundle同步回Mac；同次证据提交版本由Git历史追溯。整体M8仍未通过，不据历史整理取得GPU、受限测试、push或merge授权。

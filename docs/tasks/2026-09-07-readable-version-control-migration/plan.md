@@ -63,7 +63,7 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 部分验收通过（store级恢复已完成，真实硬盘/大型产物待验收）：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物未验证；M8-R4 store级异根恢复已由2fce3ab1完成并通过Mac/Linux及独立局部验收，真实硬盘/大型产物与外部依赖整机恢复仍未验收（verification第33、39、41节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物仍缺失，handoff已补当前矩阵。真实环境缺口保留；未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，verification第42节），handoff已补当前矩阵。真实环境缺口保留；未授权push/merge |
 
 ### M0：核定范围与写入者
 
@@ -192,3 +192,9 @@ M8-R1精确测试补充：`tests/versioning/test_cli_holdout.py`随公共手工�
 2026-09-13 M8-R4进行中（Codex）：从7bea4533继续已授权实施。修复恢复副本SQLite内的MLflow存储地址，保留不可变训练/评测内容及状态；验收要求新根读取、原模拟store不可达、备份不变、非法映射和冲突拒绝。代码限既有backup.py及已批准测试/文档，基础模型与外部媒体不因重定位扩大备份范围。
 
 2026-09-13 M8-R4已解决本轮store级异根恢复范围（代码2fce3ab1）：Mac受影响回归175 passed/1 skipped，最后URI严格化另6 passed；Linux最终同一提交181 passed/1 skipped、exit0；独立代码/操作文档局部审查通过。原模拟store不可访问时，新根artifact读取、显式current/服务准入、后续写入与再次备份均通过；冻结事实和原备份保持。验证见第41节；真实硬盘/大型产物、外部依赖整机恢复与GPU不在通过范围。下一步补实际history-summary并做M8最终整包复审，整体迁移不关闭。
+
+2026-09-13 M8历史汇总进行中（Codex）：承接a14b3d0a，读取训练机原工作区的限定run结构及隔离分支的五份轻量归档，生成已批准history-summary.yaml。分别保留来源根、归档声明与本轮观察；不写原工作区、不复制大型权重、不读取受限测试结果、不新增正式身份。验收覆盖声明对象全集、Spec核心字段的已知值/未知原因、指标口径与审批事实，并独立核查。
+
+2026-09-13 同轮发现并修复M8历史生成器batch口径（Codex）：已证实原H9缺world_size却输出effective_batch_size；本轮改保留per_process_accumulated_batch及推导来源，全局值未知。变更仅既有migration.py与test_migration.py，RED有效，Mac migration+CLI247项通过；代码/产物/Linux与独立结论见verification第42节，不新增训练或正式身份。
+
+2026-09-13 M8历史汇总本轮交付完成：history-summary.yaml含21条、234已知/152未知、47份轻量来源及实际权重stat，已独立验收；同轮公共生成器batch误记由d2ae4cee修复，Mac/Linux migration+CLI各247项通过，独立15项通过。证据见第42节。下一步核对物理/data下Prompt落位并做M8最终完整Spec矩阵与差异复审；真实GPU/full/holdout及硬盘/大型产物限制保留，整体迁移未完成。

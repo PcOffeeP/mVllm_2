@@ -3,7 +3,7 @@
 ## 2026-09-13 当前交接
 
 当前处于 M8 整体审查和问题闭环，**尚未形成可合并候选，整体迁移未完成**。状态以
-[项目 TODO](../../project-todo.md) 为准；完整审查及R2/R3修复见[验证记录第39节](verification.md#m8-audit-20260913)，R1见[第40节](verification.md#m8-r1-evidence-20260913)，本轮R4见[第41节](verification.md#m8-r4-restore-20260913)。
+[项目 TODO](../../project-todo.md) 为准；完整审查及R2/R3修复见[验证记录第39节](verification.md#m8-audit-20260913)，R1见[第40节](verification.md#m8-r1-evidence-20260913)，R4见[第41节](verification.md#m8-r4-restore-20260913)，本轮历史汇总与batch修正见[第42节](verification.md#m8-history-20260913)。
 
 Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main` 核实为 `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。
 独立审查冻结目标为任务分支 `0963642bdb47c87af0df78b809a2262ee7e1ea30`：117个提交、148个变更文件，
@@ -13,7 +13,7 @@ Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main
 | --- | --- | --- |
 | 两个数据版本保持身份、内容与生命周期 | verification 第20–24节真实复制、20个payload验签、外部媒体引用核对；第39节复算源manifest | 复制迁移完成；本轮未重扫完整payload，媒体仍依赖原根 |
 | 当前Prompt迁移，旧引用保留 | 第27节原文逐字段一致；第39节新旧文件SHA复查 | `records/prompts/prompt-v4.1-r1.yaml`已在Git及隔离checkout；`/data/mVllm_2`下尚无此Prompt文件，不能把该物理根称为已备齐训练输入 |
-| 历史模型、参数和已有指标可查询 | source-inventory、object-mapping及M1历史构建器测试 | **未完成**：实际`history-summary.yaml`尚未生成；须结合原工作区权重观察及隔离checkout内归档证据，保留逐字段来源和未知值 |
+| 历史模型、参数和已有指标可查询 | [history-summary.yaml](history-summary.yaml)；第42节原工作区stat、47份轻量源验签与独立核查 | **本轮交付完成**：21条、234已知/152未知；源root、原ID、参数、指标口径和缺失原因可查。权重内容未重验、报告声明未重算；简明历史不等于正式可执行身份 |
 | 七阶段数据及人工审查语义 | 第12–24节真实2个source、34候选、23条旧审批精确复用及11条普通自动通过 | M3完成；不代表全量新数据重建或新人工审批 |
 | 三折实际训练、测评事实 | 第25–31节执行器、1678视频准备dry-run和CPU故障路径 | 接线及限定验证完成；**M8-R1**代码3b63aa52与独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；full/holdout实际输入仍拒绝，未执行GPU训练或真实评分 |
 | 严格alias及实际服务入口 | 第32节实际服务调用和拒绝路径 | 入口切换完成；M8-R1实际证据门已修复，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；真实模型加载/推理成功未验证 |
@@ -22,7 +22,7 @@ Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main
 | 全部活动入口接管、完整差异审查 | 第34–38节M7a–e；entrypoint-map；第39节整体审查 | M7切片已有双机证据，M8整体尚未通过；旧低层库保留不等于允许旧公共写入 |
 
 本轮M8-R1已覆盖公开手工写入及已有无证据记录，冻结训练基座并校验被评路径与服务deploy_target一致；本机2623 passed/11 skipped、独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决。
-本轮M8-R4代码2fce3ab1：Mac受影响回归175 passed/1 skipped、最后URI专项6 passed；Linux最终181 passed/1 skipped，exit0，独立代码/操作文档局部审查通过。下一批补实际历史汇总并推进M8最终完整差异复审。
+本轮M8-R4代码2fce3ab1：Mac受影响回归175 passed/1 skipped、最后URI专项6 passed；Linux最终181 passed/1 skipped，exit0，独立代码/操作文档局部审查通过。实际历史汇总现已完成，第42节另记录公共历史生成器batch口径修复d2ae4cee、Mac/Linux各247项与独立15项。下一批核对物理/data下Prompt落位，推进M8最终完整Spec矩阵及完整差异复审。
 所有修复继续沿已确认Spec，不得以放宽门禁或把未知历史事实补成passed来关闭条目。
 
 第39节只读核对：训练机原项目 `main@f1b7d8a3` 干净；隔离checkout在当时审查时为 `0963642b`，
