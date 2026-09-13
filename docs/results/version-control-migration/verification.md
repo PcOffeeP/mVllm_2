@@ -1149,3 +1149,45 @@ Mac对应副本为`/private/tmp/mvllm2-full-holdout-linux-result.json`、`mvllm2
 本轮full/holdout实现缺口已补齐且双机隔离CPU验证通过。M4仍保留真实训练/模型加载/评分验证缺口，HOLDOUT-BUILD仍未实际构建授权新数据；M5真实服务成功路径、真实硬盘/大型产物和外部依赖整机恢复亦未验收。下一步是更新Codeup main至当前分支的完整差异并完成整包审查；本轮局部通过不替代整包验收，也不授权push/merge。设计、TODO、Plan、verification、handoff五份轻量文档按最终证据同步，提交由本节文件Git历史及RUN `docs-commit.json`追溯；用户未跟踪agent-handoff及原stash保留。
 
 最终五份文档与双机证据已由独立reviewer只读核查通过：原日志、实际退出码、12份代码摘要、7份保护文件及两端Git状态与记录一致。发现的1项P3当前状态残留（Plan及TODO共4处）已修正并复核闭环；未重跑测试。此结论仅覆盖本轮文档和证据，不替代M8整包差异审查。
+
+
+<a id="m8-complete-20260913"></a>
+## 46. full/holdout 接线后的完整迁移复审（2026-09-13）
+
+### 冻结范围及执行前核对
+
+用户要求“下一步”，继续已批准M8整包审查。Codeup main `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52` 至任务分支 `e1d70c58e7176591bd325cd516222ffce1b2874c`，共138提交/152文件；包括承接基础设施及本地main独有提交，不局限于最后full/holdout修改。`git diff --binary`冻结patch SHA `5bb22a90a019e4e332f1e31126bb191da78de514eafb7792e410e313a5d70818`。
+
+Mac证据目录`/private/tmp/mvllm2-m8-complete-20260913-e1d70c58/`，`scope.json`保存完整文件清单、分支、提交和保护摘要，`complete.patch`保存冻结差异。用户未跟踪agent-handoff SHA保持`9b89b64994954f1adb6b37f04ef013b952a0a9fbe4304815ea9f97a5ba4d5b51`，原stash保持`38613e5eb42b0af3ca43a7274d9c3f3d73cb0200`。
+
+本轮通过SSH只读核对原项目干净`main@f1b7d8a3`、隔离任务分支tracked干净`e1d70c58`；七份保护文件当前摘要与第45节结束值完全一致。首次尝试在原远程工作区使用不存在的`codeup`别名，`ls-remote`返回128；后改从Mac已配置的`codeup`远端查询，main仍为上述基线。没有修改远端配置；成功结果和首次错误说明保存在`preflight.json`。
+
+### 验证与审查状态
+
+Mac整仓命令`.venv/bin/python -m pytest -q --tb=short -rs`已执行完成（结果见下文），CUDA不可见、OMP4、HF/Transformers离线，使用合成CPU对象，不运行真实训练、推理或真实holdout。`run.py`保存实际进程退出码、耗时和`pytest.log`摘要至`result.json`。
+
+独立reviewer已核查冻结的全部差异、Spec逐项验收及活动入口/失败恢复/训练与holdout/Registry/备份/服务交互；允许必要CPU合成验证，只读代码和文档。既有局部通过不代替本轮整包结论。真实GPU成功路径、真实holdout构建和使用、真实硬盘及大型产物恢复的限制保持；未请求或执行push/merge。
+
+
+### 已确认发现与文档校正
+
+M8-R6（P2）：独立合成CPU探针在prepare之后替换adapter_name_or_path的权重内容，verify通过，执行替身读到“changed after freeze”，训练completed并可登记full model。源代码仅冻结base_model_files，LLaMA-Factory实际加载/合并外部adapter，主Agent已核对二者。原日志`/private/tmp/mvllm2-final-range-external-input-probe.log`，fixture`/private/tmp/mvllm2-final-external-input-2791otwy`，输出EXTERNAL_INPUT_DRIFT_ACCEPTED。独立resume_from_checkpoint探针随后也复现准备后替换checkpoint仍可completed，日志`/private/tmp/mvllm2-final-range-checkpoint-probe.log`输出CHECKPOINT_DRIFT_ACCEPTED；两反例合并为同一M8-R6。本轮保持被冻结代码不变。
+
+finetune/README.md及entrypoint-map.md仍声明full/holdout拒绝，已按已批准Spec与fed9bcfc实现同步独立full范围、媒体run/授权score及真实环境限制；参数继续引用versioning/SCRIPTS.md，不复制schema或引入新方案。待独立核对最终文档。
+
+
+### 最终结果与结论
+
+Mac整仓 **2686 passed / 1 failed / 11 skipped，504.68秒，实际exit1**；外围进程571.311秒。pytest.log SHA `48a636b9ac06e5149120808274951b2f29f017465e8812b848cc29d42ccca437`，不能以通过数量掩盖整仓失败。11项skip为1项缺V4.1本机数据、10项缺V3轻量fixture。295条告警包含pytest清理既有只读合成目录时Directory not empty；未删除既有测试目录以掩盖告警，未改系统环境。
+
+唯一失败为tests/test_train_with_contract.py::test_training_entrypoint_prefers_current_repository_llamafactory，ROOT被其他测试收集时重新插入sys.path，先前导入的训练模块不会重排。主Agent单独复跑该项 **1 passed，0.15秒，exit0**；组合收集tests/test_eval_holdout.py、tests/test_publish_training_release.py、tests/test_train_with_contract.py，以-k只运行该项，**1 failed/49 deselected，0.99秒，exit1**，证实顺序依赖，记录M8-R7。isolated-test.log SHA `976ea3fe6dfa65b827ec05fc16bf49cec94d3fda3b2d6ad4719708e74a38b32d`；ordered-test.log SHA `c75a832007d0756a08712cecb57e3830182f178b323cf4088d0ed8b081948678`；对应result文件保存精确命令与实际退出码。运行时仍校验实际LLaMA-Factory来源，不把此测试失败扩大为已证实错包加载。
+
+独立整合回归 **34 passed，40.41秒，exit0**；日志mvllm2-final-range-selected-e1d70c58.log SHA `38e5f1fdbd7cd4447a1269a13b3f2a436e369c8a1bb63e6c6fb745c22440d4d4`。独立合成full训练→holdout推理/score→candidate→备份→原模拟store不可用→异根恢复→current/服务准入探针exit0，恢复前后指纹一致且准入truth读取tripwire未触发；日志mvllm2-final-full-restore-probe.log SHA `db7cbdb784a2ea8b2478f80066e378c1224d034a17ff6afda8de09ff13848fe8`。它不是实际模型推理或真实硬盘恢复。
+
+两项外部权重反例均exit0，表示错误被接受而非修复通过。adapter日志SHA `d555e0b287a86d58b73ceac3fb66da6c2ee7d2a86c198773915118156f4d9241`，checkpoint日志SHA `dc5bb2c948d7efc9a7fa88db5ed930c9d8c16406ab563740a38be2fcb4f4e201`。adapter首次通过stdin执行的原脚本已保存为mvllm2-final-range-external-input-probe.py，SHA `7bffc6d718ca68afa93fb53b3bc070bdb2f9ca494ab529286428b70f99425b5a`，从repo cwd设置PYTHONPATH=.及上述CPU离线环境可复跑。以上独立证据原字节复制到本轮Mac证据目录，review-result.json由主Agent据独立报告整理，未冒充主Agent复跑。
+
+本轮独立整包审查结论为**驳回修改**：一项运行时P2（M8-R6）及冻结文档P3；主Agent另定位整仓回归问题M8-R7。审查覆盖138提交/152文件和Spec矩阵，未变化部分复用同一reviewer前轮完整范围与修复核查，本轮重查R5、full/holdout及跨模块交互，不能表述为每项历史动态验证均重新执行。文档P3修改另核对当前六份文档，不改变运行代码冻结目标。下一步先修M8-R6/M8-R7，再做回归与独立复核；M8整体保持未关闭。
+
+本轮Mac原始证据共19文件已按字节复制到Linux隔离目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-complete-verification-20260913-e1d70c58/`，含完整冻结patch、范围、原日志、进程报告和独立探针脚本。压缩包SHA `2821625060e9c3c20e04be2366bfb8c008c1535bca293b8b1d2f6e165379f1ea`，逐文件摘要、七份保护文件和原项目干净状态复核通过，copy-receipt.json记录；这是Mac证据存档，不是Linux复跑。六文档本地链接已检查70项无缺失，新训练/holdout链接锚点另对照实际标题。文档提交及隔离分支快进由Git历史与RUN同步凭证追溯，不push/merge。
+
+最终六文档及第46节证据已由独立reviewer只读核查通过：P3过期入口说明已修正，M8-R7导入链归因与单项/组合证据一致，Linux19份存档与Mac摘要一致；没有重跑主Agent测试，也不把文档通过覆盖M8整包驳回。新增M8-R7链接后最终本地链接复查71项均可达（final-doc-links.json），git diff --check通过。M8-R6/M8-R7仍待修。

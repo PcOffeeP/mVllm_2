@@ -53,12 +53,14 @@ build_artifact_index.py保留为历史报告工具，必须显式指定现存dat
 | --- | --- | --- |
 | finetune/train_build_dataset.py | main和脚本/模块启动停用 | build_versioned_datasets供train/eval准备调用；历史固定Prompt构建保留私有编排测试 |
 | finetune/train_prepare_run.py | 旧实验准备CLI停用 | versioning.cli直接调用prepare_versioned_run、verify_versioned_run、execute_versioned_run、export_versioned_run |
-| finetune/train_with_contract.py | 直接training-yaml CLI停用 | execute_versioned_run按折调用run_training，传入已冻结内存配置；保留LLaMA-Factory来源检查与processor契约 |
+| finetune/train_with_contract.py | 直接training-yaml CLI停用 | execute_versioned_run按冻结范围调用run_training（三折逐折、full一次），传入已冻结内存配置；保留LLaMA-Factory来源检查与processor契约 |
 | finetune/eval_run.py | 裸model-dir与旧release选择CLI停用 | versioning.cli调用prepare/verify/execute/export_versioned_evaluation；Registry完整model和数值版本、原fold与Prompt绑定不变 |
 | finetune/train_build_source_aware_dataset.py | 无独立main | 历史采样及共享辅助函数保留；新体系不扩大3k采样 |
 | finetune/release_validate.py、finetune/v4_1_runtime.py | 校验原语保留 | 新旧业务共用契约与标签校验；不删除当前仍被调用的实现 |
 
-四个已停用CLI在第三方/业务导入前拒绝，help仅迁移说明，无legacy开关。私有_legacy_main仅供明确的历史语义回归；旧prepare库函数内生成的历史运行命令也不能绕过脚本停用门。正式full/holdout实际读取仍拒绝，真实新模型训练与GPU测评成功路径仍缺证据，不因旧CLI退役宣称验收通过。
+四个已停用CLI在第三方/业务导入前拒绝，help仅迁移说明，无legacy开关。私有_legacy_main仅供明确的历史语义回归；旧prepare库函数内生成的历史运行命令也不能绕过脚本停用门。独立full训练和holdout代码接线已完成（fed9bcfc，verification第45节）；真实新模型训练、GPU测评与真实holdout评分成功路径仍缺证据，不因代码接线或旧CLI退役宣称真实验收通过。
+
+full训练使用同一开发release三折共同全集去重，冻结六份来源和full输入；训练父Run无fold子Run，Registry核对full实际来源和adapter。holdout由eval_run委托finetune/eval_holdout.py：build_holdout_input冻结媒体及授权引用，execute_holdout_inference仅媒体推理，公开eval score调用score_holdout_evaluation进入授权评分；validate_holdout_execution验证公开承诺及consumed。私有预测/真值/逐样本结果不进入普通导出，未建立评分承诺时须核验原truth来源，已承诺恢复不重读原truth。参数及清单schema以versioning/SCRIPTS.md为准。
 
 ## 5) 服务与模型域入口（M5 严格切换）
 

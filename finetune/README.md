@@ -11,12 +11,12 @@ Non-goals:
 
 # V4.1 微调、合并与评测
 
-本目录维护 MiniCPM-V-4.5 的 V4.1 三折 LoRA 微调、模型合并和严格验证集推理。
+本目录维护 MiniCPM-V-4.5 的 V4.1 三折及独立全量 LoRA 微调、模型合并和严格评测入口。
 训练、模型合并和 GPU 推理必须在训练电脑执行；本机只复核代码和已同步的轻量结果。
 
 ## 现行训练与评测入口
 
-正式入口为 `python -m versioning train` 和 `python -m versioning eval`，各自使用 `prepare / validate / run / export`。完整参数与配置字段见 [三折训练说明](../versioning/SCRIPTS.md#三折训练准备与执行)和[正式验证集测评说明](../versioning/SCRIPTS.md#正式验证集测评)。
+正式入口为 `python -m versioning train` 和 `python -m versioning eval`，使用 `prepare / validate / run / export`；holdout另以显式 `eval score --executor` 进入授权评分。完整参数与配置字段见 [三折训练说明](../versioning/SCRIPTS.md#三折训练准备与执行)、[正式验证集测评说明](../versioning/SCRIPTS.md#正式验证集测评)及[独立全量训练](../versioning/SCRIPTS.md#独立全量训练)及[holdout验收说明](../versioning/SCRIPTS.md#full-模型的独立-holdout-验收)。
 
 | 环节 | 显式输入 | 产物与下一步 |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Non-goals:
 | 验证集评测准备、校验 | 完整eval/model/data身份、Registry数值版本、评价YAML、代码提交及实际媒体根 | `workspace/evaluations/<eval>/input/evaluation.yaml`冻结模型、Prompt、样本与评分器；validate复验 |
 | 评测执行、导出 | 已冻结的eval及store；实际GPU评测授权 | 每折预测/失败/summary，MLflow父Run汇总；完成后导出`records/evaluations/<eval>/manifest.yaml` |
 
-一个train包含原fold0/1/2，不扩大旧source-aware 3k采样。评测Prompt来自模型绑定；模型必须先登记，不能用裸目录绕过Registry。当前正式执行支持validation的single_fold或cross_validation；full/holdout实际输入尚未接线，入口明确拒绝。无合格模型时不能沿用旧模型的工程通过结论。
+默认一个train包含原fold0/1/2，不扩大旧source-aware 3k采样。独立全量训练另建train版本，以 `train prepare --scope full` 冻结同一开发release的共同全集，每个候选仅训练一次，只产出full模型，不创建fold子Run或使用holdout选checkpoint。评测Prompt来自模型绑定；模型必须先登记，不能用裸目录绕过Registry。正式validation支持single_fold或cross_validation；full模型的holdout先绑定独立媒体清单、预注册和claim，run仅媒体推理，score核验同一executor及冻结规则后才读受限真值，完成时消费授权，普通导出仅含汇总。代码接线与合成CPU验证不等于真实训练或holdout验收通过；无合格模型时不能沿用旧模型的工程通过结论。
 
 `train_build_dataset.py`、`train_prepare_run.py`、`train_with_contract.py`及`eval_run.py`的公开CLI已停用，`--help`仅给迁移提示；直接脚本和模块启动都会拒绝旧参数。新入口通过`build_versioned_datasets`、版本化准备/执行函数、`run_training`及严格评分器复用业务实现。私有历史测试函数不作为操作入口。
 
@@ -348,7 +348,7 @@ independent-test-passed 或 production-approved。
 
 ## 新体系底层记录与晋级原语
 
-以下是 versioning 的底层记录及晋级能力。正式训练和validation评测已由本文开头的prepare/validate/run/export调用实际执行器；手工状态推进不能替代真实执行。低层full/holdout记录门的存在，不表示正式执行器已经支持该数据输入。Mac不执行真实GPU训练或推理。
+以下是 versioning 的底层记录及晋级能力。正式三折及full训练、validation评测由本文开头的prepare/validate/run/export调用实际执行器；holdout使用媒体run与显式授权score。手工状态推进不能替代真实执行，以下记录原语不构成独立执行入口。Mac不执行真实GPU训练或推理。
 
 - `train create train-v...` 先校验封存 data release 和已冻结 Prompt，再创建训练父 Run；
   `fold-start` / `fold-end` 管理 fold0–fold2 子 Run，`summary` 写三折汇总，全部完成后才能
