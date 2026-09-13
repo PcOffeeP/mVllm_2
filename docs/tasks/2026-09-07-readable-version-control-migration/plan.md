@@ -237,3 +237,5 @@ M4 holdout 接线细化：`eval prepare` 接收 `--pre-registration`/`--executor
 
 
 2026-09-13 M4 full/holdout 实施进展（Codex）：full 数据/执行/证据及model登记已接通。独立训练审查发现2项P2（full完成半提交恢复、旧三折导出字节兼容），均修复，独立5项通过并局部复审通过；Mac训练/claim联合44项通过。holdout已增加显式媒体推理和score阶段，合成完整成功/质量失败、身份与规则拒绝、truth读隔离及评分/完成中断恢复9项通过；此前eval/CLI联合109 passed/1 skipped。holdout独立代码/操作说明审查与广回归正在执行，Linux仅完成只读预检：原项目及Codeup main均f1b7d8a3，隔离b40eaa90，tracked干净；尚未同步本轮代码。这里的通过均为CPUfixture，真实GPU、模型效果和HOLDOUT-BUILD继续保留未完成。
+
+M4 文档一致性补充：允许精确更新 `docs/plans/2026-09-01-readable-version-control-design.md` 的训练范围、full来源与验收条款，并以D042记录用户已确认的独立全量训练决定；不重写架构或新增方案。本变更消除原文“模型晋级必须三折完整”与已确认full训练范围的冲突；同样交由独立reviewer对照Spec和实际实现核查。
