@@ -67,7 +67,7 @@ python -m versioning train validate <完整train版本> --root <store绝对路�
 
 准备产物为 `workspace/runs/<train>/input/`，含 `data-version.txt`、`prompt.yaml`、`training.yaml`、`environment.yaml`、六份数据 JSON、`dataset_info.json` 和内容校验清单。正式 Prompt 必须预先存在于 `records/prompts/`。旧记录中的样本数量与历史训练结果不会因准备而改变。
 
-取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/workspace/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后，执行器校验实际 adapter 权重、配置和结果，在父 Run 保存 `training-evidence.json` 并钉扎其摘要，再导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。
+取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/workspace/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后，执行器校验实际 adapter 权重、配置和结果，在父 Run 保存 `training-evidence.json` 并钉扎其摘要，再导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。 单折分次执行可在run中显式传`--fold 0/1/2`；缺折为partial，已完成折验签复用，省略参数继续未完成折。完整续办与失败边界见[训练入口说明](../finetune/README.md#现行训练与评测入口)。
 
 完成后的导出若失败，可用 `python -m versioning train export <完整train版本> --root <store绝对路径>` 从同一 completed Run 补导出；不重新训练，不覆盖不同内容。已有训练输出或失败 Run 不会由 `run` 自动覆盖或恢复；须先核对原 Run 和 checkpoint 后处理。公共 CLI 的 `create/fold-start/fold-end/summary/complete` 已停用，调用时在创建 store 前拒绝；同名底层 Python 记录 API 保留，不能凭手工 completed 状态通过模型登记或导出。Registry 校验执行证据、声明目录的完整文件清单及训练基座。
 完整参数运行 `python -m versioning <领域> --help` 查看。

@@ -530,3 +530,14 @@ def test_manual_execution_commands_refused_before_store(tmp_path, capsys, domain
         assert main([domain, action, f'{domain}-v4.1-r1', '--root', str(tmp_path)]) == 2
         assert '实际执行器' in capsys.readouterr().err
         assert not (tmp_path / 'workspace/mlflow').exists()
+
+
+def test_train_run_routes_explicit_fold_and_other_actions_reject_it(tmp_path, monkeypatch):
+    from finetune import train_prepare_run
+    calls = []
+    monkeypatch.setattr(train_prepare_run, "execute_versioned_run", lambda **kw: calls.append(kw))
+    assert main(["train", "run", "train-v4.1-r1", "--root", str(tmp_path), "--fold", "1"]) == 0
+    assert calls[0]["fold"] == 1
+    for action in ("prepare", "validate", "export"):
+        assert main(["train", action, "train-v4.1-r1", "--root", str(tmp_path), "--fold", "1"]) == 2
+    assert len(calls) == 1

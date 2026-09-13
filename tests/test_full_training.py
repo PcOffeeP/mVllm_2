@@ -201,3 +201,13 @@ def test_old_three_fold_export_remains_byte_identical(tmp_path, monkeypatch):
     before = path.read_bytes()
     assert 'scope' not in yaml.safe_load(before)
     assert export_versioned_run(root=root, train_version='train-v4.1-r1').read_bytes() == before
+
+
+def test_full_rejects_fold_before_creating_run(tmp_path, monkeypatch):
+    root, _ = prepare_full(tmp_path)
+    calls = []
+    monkeypatch.setattr('finetune.train_with_contract.run_training', lambda config: calls.append(config))
+    with pytest.raises(ValueError, match='full training does not accept fold'):
+        execute_versioned_run(root=root, train_version='train-v4.1-r1', fold=0)
+    assert not calls
+    assert not (root / 'workspace/mlflow').exists()

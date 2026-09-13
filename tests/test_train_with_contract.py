@@ -305,7 +305,11 @@ def test_completed_training_can_recover_failed_export_without_execution(tmp_path
         (output / "adapter_model.safetensors").write_bytes(b"synthetic adapter")
     monkeypatch.setattr(train_with_contract, "run_training", tuner)
     original = manifests._publish_immutable
-    monkeypatch.setattr(manifests, "_publish_immutable", lambda *a, **k: (_ for _ in ()).throw(OSError("export unavailable")))
+    def fail_export(*args, **kwargs):
+        if kwargs.get("label") == "training manifest":
+            raise OSError("export unavailable")
+        return original(*args, **kwargs)
+    monkeypatch.setattr(manifests, "_publish_immutable", fail_export)
     with pytest.raises(OSError, match="export unavailable"):
         preparation.execute_versioned_run(root=root, train_version="train-v4.1-r1")
     monkeypatch.setattr(manifests, "_publish_immutable", original)

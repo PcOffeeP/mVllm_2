@@ -161,7 +161,7 @@ def _build_parser() -> argparse.ArgumentParser:
     train.add_argument("--media-root", type=Path, help="显式真实训练媒体根")
     train.add_argument("--data-inputs", type=Path, help="七阶段发布的原始 inputs YAML；迁移对象使用既有 receipt")
     train.add_argument("--scope", choices=("cross_validation", "full"), help="prepare 的训练范围，默认三折")
-    train.add_argument("--fold", type=int, help="fold 编号")
+    train.add_argument("--fold", type=int, help="fold 编号（train run 可选单折0/1/2）")
     train.add_argument("--params", type=Path, help="fold 参数 YAML mapping")
     train.add_argument("--metrics", type=Path, help="指标 YAML mapping")
     train.add_argument("--run-status", default="FINISHED", help="fold 终态")
@@ -521,6 +521,8 @@ def _handle_train(args: argparse.Namespace) -> Any:
         from finetune.train_prepare_run import prepare_versioned_run, verify_versioned_run, execute_versioned_run, export_versioned_run
         if args.store is not None and args.store.absolute() != (args.root / "workspace/mlflow").absolute():
             raise CLIUsageError("实际训练仅使用 <root>/workspace/mlflow；请指定对应 root")
+        if args.fold is not None and args.action != "run":
+            raise CLIUsageError("--fold 仅适用于 train run")
         if args.action == "prepare":
             _required(args, "data_version", "prompt_version", "git_commit", "config", "environment", "media_root")
             return {"input": prepare_versioned_run(root=args.root, train_version=args.train_version,
@@ -534,7 +536,7 @@ def _handle_train(args: argparse.Namespace) -> Any:
             return verify_versioned_run(root=args.root, train_version=args.train_version)
         if args.action == "export":
             return {"manifest": export_versioned_run(root=args.root, train_version=args.train_version)}
-        return execute_versioned_run(root=args.root, train_version=args.train_version)
+        return execute_versioned_run(root=args.root, train_version=args.train_version, fold=args.fold)
     if args.action == "create":
         _required(
             args,

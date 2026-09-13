@@ -564,15 +564,64 @@ def verify_versioned_run(*, root: Path, train_version: str, for_execution: bool 
     return training
 
 
-def execute_versioned_run(*, root: Path, train_version: str):
-    """Execute three frozen folds through the real tuner and MLflow events."""
+def _fold_execution_evidence(store, parent, training, fold):
+    """Compare actual local/uploaded bytes and bind them to one finished child."""
+    from mlflow.tracking import MlflowClient
+    from versioning.registry import _artifact_tree, _run_artifact_root
+    name = f"fold{fold}"
+    child = parent.folds[fold]
+    config = _training_configs(training)[name]
+    client = MlflowClient(tracking_uri=store.tracking_uri)
+    recorded = client.get_run(child.run_id)
+    encoded = json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False)
+    if (child.status != "FINISHED" or recorded.data.params.get("training_config_json") != encoded
+            or recorded.data.tags.get("output_artifact") != f"runs:/{parent.run_id}/{name}/adapter"):
+        raise ValueError("completed fold Run binding differs")
+    uploaded = _run_artifact_root(store, parent.run_id)
+    local_input = Path(config["dataset_dir"])
+    inputs = _artifact_tree(local_input)
+    if inputs != _artifact_tree(uploaded / "input"):
+        raise ValueError("completed fold frozen input differs")
+    local = Path(config["output_dir"])
+    files = _artifact_tree(local)
+    if files != _artifact_tree(uploaded / name / "adapter"):
+        raise ValueError("completed fold output differs")
+    if (not any(files.get(key, {}).get("size", 0) > 0 for key in
+                ("adapter_model.safetensors", "adapter_model.bin"))
+            or not isinstance(_read_json(local / "adapter_config.json", "adapter config"), dict)
+            or _read_json(local / "train_results.json", "fold results") != child.metrics):
+        raise ValueError("completed fold actual adapter/results differ")
+    return {"schema": "tensile-training-fold-execution/v1", "train_version": parent.train_id,
+            "run_id": parent.run_id, "child_run_id": child.run_id, "fold": fold,
+            "input": inputs, "output": files, "metrics": child.metrics}
+
+
+def _verify_completed_fold(store, parent, training, fold):
+    from mlflow.tracking import MlflowClient
+    from versioning.registry import _run_artifact_root
+    child = parent.folds[fold]
+    client = MlflowClient(tracking_uri=store.tracking_uri)
+    proof = _run_artifact_root(store, parent.run_id) / f"fold{fold}/execution-evidence.json"
+    expected = client.get_run(child.run_id).data.params.get("sha256_fold_evidence")
+    if not expected or proof.is_symlink() or not proof.is_file() or sha256_file(proof) != expected:
+        raise ValueError("completed fold evidence missing or drifted")
+    if _read_json(proof, "fold evidence") != _fold_execution_evidence(store, parent, training, fold):
+        raise ValueError("completed fold evidence differs")
+
+
+def execute_versioned_run(*, root: Path, train_version: str, fold: int | None = None):
+    """Execute selected frozen folds, reusing only verified completed outputs."""
     import fcntl
     from mlflow.tracking import MlflowClient
     from finetune.train_with_contract import run_training
     from versioning.mlflow_train import (open_train_store, create_train_run, execute_fold_run,
         log_train_summary, transition_train_state)
+    if fold is not None and (type(fold) is not int or fold not in (0, 1, 2)):
+        raise ValueError("fold must be 0, 1 or 2")
     root = Path(root).absolute()
     training = verify_versioned_run(root=root, train_version=train_version)
+    if fold is not None and training.get("scope") == "full":
+        raise ValueError("full training does not accept fold")
     run = root / "workspace/runs" / train_version
     with (run / ".execution.lock").open("a+b") as lock:
         try:
@@ -582,23 +631,65 @@ def execute_versioned_run(*, root: Path, train_version: str):
         training = verify_versioned_run(root=root, train_version=train_version)
         configs = _training_configs(training)
         scope = training.get("scope", "cross_validation")
-        for config in configs.values():
-            if Path(config["output_dir"]).exists():
-                raise ValueError("existing training output requires explicit recovery")
-        params = {fold: json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False)
-                  for fold, config in configs.items()}
+        params = {name: json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False)
+                  for name, config in configs.items()}
         from mlflow.utils.validation import MAX_PARAM_VAL_LENGTH
         if any(len(value) > MAX_PARAM_VAL_LENGTH for value in params.values()):
             raise ValueError("frozen config exceeds MLflow parameter limit")
+        from versioning.mlflow_train import get_train_run, TrainRecordNotFound
         store = open_train_store(root / "workspace/mlflow")
-        parent = create_train_run(store, train_version, data_version=training["data_version"],
-            prompt_version=training["prompt_version"], git_commit=training["git_commit"],
-            base_model=training["base_model"], config=params, scope=scope)
         client = MlflowClient(tracking_uri=store.tracking_uri)
+        try:
+            parent = get_train_run(store, train_version)
+        except TrainRecordNotFound:
+            parent = None
+        if parent is not None:
+            if scope == "full" or parent.workflow_state not in {"partial", "completed"}:
+                raise ValueError("existing training output requires explicit recovery")
+            if (parent.record_validity != "valid" or parent.scope != scope
+                    or {k: v for k, v in parent.config.items() if k != "sha256_training_evidence"} != params
+                    or any(getattr(parent, key) != training[key] for key in
+                           ("data_version", "prompt_version", "git_commit", "base_model"))):
+                raise ValueError("existing training Run differs from frozen input")
+            if parent.workflow_state == "partial" and (
+                    parent.run_status != "KILLED" or len(parent.folds) not in (1, 2)
+                    or parent.metrics or "sha256_training_evidence" in parent.config
+                    or "summary_complete" in client.get_run(parent.run_id).data.tags):
+                raise ValueError("partial training requires explicit recovery")
+            from versioning.mlflow_train import list_fold_runs
+            children = list_fold_runs(store, train_version)
+            if len(children) != len(parent.folds) or any(child.status != "FINISHED" for child in children):
+                raise ValueError("duplicate or unfinished fold Runs require explicit recovery")
+            for finished in parent.folds:
+                _verify_completed_fold(store, parent, training, finished)
+        done = set(parent.folds) if parent is not None else set()
+        for name, config in configs.items():
+            if scope != "full" and int(name[-1]) in done:
+                continue
+            paths = [Path(config["output_dir"]) if scope == "full" else Path(config["output_dir"]).parent]
+            if parent is not None:
+                from versioning.registry import _run_artifact_root
+                paths.append(_run_artifact_root(store, parent.run_id) / name)
+            if any(path.exists() or path.is_symlink() for path in paths):
+                raise ValueError("existing training output requires explicit recovery")
+        selected = {name: config for name, config in configs.items()
+                    if (fold is None or name == f"fold{fold}")
+                    and (scope == "full" or int(name[-1]) not in done)}
+        if parent is not None and not selected:
+            if parent.workflow_state == "completed":
+                export_versioned_run(root=root, train_version=train_version)
+            return parent
+        if parent is None:
+            parent = create_train_run(store, train_version, data_version=training["data_version"],
+                prompt_version=training["prompt_version"], git_commit=training["git_commit"],
+                base_model=training["base_model"], config=params, scope=scope)
+        else:
+            parent = transition_train_state(store, train_version, "running")
         metrics = []
         try:
-            client.log_artifacts(parent.run_id, str(run / "input"), artifact_path="input")
-            for name, config in configs.items():
+            if not done:
+                client.log_artifacts(parent.run_id, str(run / "input"), artifact_path="input")
+            for name, config in selected.items():
                 verify_versioned_run(root=root, train_version=train_version)
                 def executor(actual_config):
                     run_training(actual_config)
@@ -616,6 +707,22 @@ def execute_versioned_run(*, root: Path, train_version: str):
                     client.set_tag(child.run_id, "output_artifact", f"runs:/{parent.run_id}/{name}/adapter")
                     metrics.append(child.metrics)
                 client.log_artifacts(parent.run_id, config["output_dir"], artifact_path=f"{name}/adapter")
+                if scope != "full":
+                    from versioning.manifest import _publish_immutable
+                    current = get_train_run(store, train_version)
+                    evidence = _fold_execution_evidence(store, current, training, int(name[-1]))
+                    proof = _publish_immutable(run / name / "execution-evidence.json",
+                        _pretty_bytes(evidence), label="fold execution evidence")
+                    client.log_artifact(parent.run_id, str(proof), artifact_path=name)
+                    client.log_param(child.run_id, "sha256_fold_evidence", sha256_file(proof))
+                    _verify_completed_fold(store, current, training, int(name[-1]))
+            if scope != "full":
+                current = get_train_run(store, train_version)
+                for finished in current.folds:
+                    _verify_completed_fold(store, current, training, finished)
+                if set(current.folds) != {0, 1, 2}:
+                    return transition_train_state(store, train_version, "partial", run_status="KILLED")
+                metrics = [current.folds[i].metrics for i in (0, 1, 2)]
             common = set.intersection(*(set(item) for item in metrics))
             if not common:
                 raise ValueError("no common actual metrics for training summary")

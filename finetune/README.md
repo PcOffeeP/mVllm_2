@@ -26,6 +26,16 @@ Non-goals:
 | 验证集评测准备、校验 | 完整eval/model/data身份、Registry数值版本、评价YAML、代码提交及实际媒体根 | `workspace/evaluations/<eval>/input/evaluation.yaml`冻结模型、Prompt、样本与评分器；validate复验 |
 | 评测执行、导出 | 已冻结的eval及store；实际GPU评测授权 | 每折预测/失败/summary，MLflow父Run汇总；完成后导出`records/evaluations/<eval>/manifest.yaml` |
 
+三折可以分次执行：先按上述prepare/validate冻结同一个完整train版本，再在训练机取得实际训练授权后逐次调用：
+
+```bash
+python -m versioning train run train-v4.1-r1 --root /absolute/store --fold 0
+python -m versioning train run train-v4.1-r1 --root /absolute/store --fold 1
+python -m versioning train run train-v4.1-r1 --root /absolute/store --fold 2
+```
+
+`--fold`仅接受0/1/2，且只用于run；full拒绝该参数。不带`--fold`执行整组，续办只执行未完成折。三折共享父Run，成功但缺折时为`partial`（沿用状态契约映射为MLflow原生`KILLED`，表示本次调用已结束、整组未完成；不表示已成功子Run失败）。每折的`execution-evidence.json`及子Run摘要绑定冻结输入、指标和adapter；续办时必须保留并验签本地输入/输出及MLflow副本。已完成折只返回核验结果，不重训；三折齐全后才汇总、标记completed并导出正式训练manifest。失败/中断、残留输出、篡改或并发冲突立即拒绝，不自动覆盖或续训；完整训练后的导出故障仍用`train export`恢复。工程合成验证不代表实际模型效果或真实训练获授权。
+
 默认一个train包含原fold0/1/2，不扩大旧source-aware 3k采样。独立全量训练另建train版本，以 `train prepare --scope full` 冻结同一开发release的共同全集，每个候选仅训练一次，只产出full模型，不创建fold子Run或使用holdout选checkpoint。评测Prompt来自模型绑定；模型必须先登记，不能用裸目录绕过Registry。正式validation支持single_fold或cross_validation；full模型的holdout先绑定独立媒体清单、预注册和claim，run仅媒体推理，score核验同一executor及冻结规则后才读受限真值，完成时消费授权，普通导出仅含汇总。代码接线与合成CPU验证不等于真实训练或holdout验收通过；无合格模型时不能沿用旧模型的工程通过结论。
 
 `train_build_dataset.py`、`train_prepare_run.py`、`train_with_contract.py`及`eval_run.py`的公开CLI已停用，`--help`仅给迁移提示；直接脚本和模块启动都会拒绝旧参数。新入口通过`build_versioned_datasets`、版本化准备/执行函数、`run_training`及严格评分器复用业务实现。私有历史测试函数不作为操作入口。
