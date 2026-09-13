@@ -1,7 +1,7 @@
 # 可读版本控制正式迁移实施计划
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
-- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `6996d35d`。
+- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `789fa4fc`（承接6996d35d；2026-09-13用户确认服务冻结Prompt来源）。
 - **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
 - **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
 - **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
@@ -208,3 +208,8 @@ M8-R5补充证据：独立临时fixture中同ID当前Prompt替换为固定服务
 2026-09-13 M8最终冻结代码复审完成：f1b7d8a3→ab5c71ae共125提交/149文件，独立整合11 passed/exit0及物理Prompt只读核查通过；整包驳回修改，保留M8-R5 P2，前序R1–R4/历史局部结论有效。同ID漂移拒绝属于已确认完整性要求，可先修复；仅兼容策略依赖用户裁决，不阻塞full/holdout等独立工作。
 
 2026-09-13 M8本轮收尾：Mac冻结ab5c71ae整仓2647 passed/11 skipped，452.07秒且正常exit0；skip原因单独复核为10项缺V3本机fixture、1项缺V4.1本机数据。四份交付文档及52本地链接检查完成，独立核查已保留R5两反例和整包驳回。Linux提交实物Prompt与Mac回归的轻量证据后bundle回传；原main/源产物、Mac用户未跟踪文件和stash保持。下一步同ID漂移完整性修复；服务兼容策略待用户裁决，full/holdout实际输入接线继续按依赖推进，M8不关闭。
+
+
+2026-09-13 M8-R5实施确认（Codex）：用户回复“可以”，批准服务analysis采用训练及通过评测时冻结并验签的Prompt，现有输出、评分、生成/重试、evidence和准入门保持。Spec已先行记录并单独提交；本计划复核后继续既有授权。
+
+精确范围：pipeline/model_registry.py校验训练/评测/当前Prompt一致并纳入fingerprint，提供从绑定派生服务契约的共享函数；pipeline/server_proxy.py使用该契约并在加载后复验；pipeline/scripts/serve_smoke.py按同一绑定构造请求并验证动态契约摘要。tests/test_eval_run.py只扩充真实证据fixture的显式Prompt输入，tests/test_serve_smoke.py覆盖concise完整CPU链、当前/冻结漂移、加载时漂移、字段不兼容、实际FastAPI请求/重试与smoke；复跑现有契约/交付/Registry/恢复相关测试。必要文档仅同步versioning/SCRIPTS.md及四份任务证据，不修改已发布Prompt或底层业务契约。Mac代码提交后bundle同步既有隔离checkout，Linux分进程CPU回归及轻量证据提交回传；独立reviewer复核代码/操作说明/证据。真实GPU/full/holdout/硬盘缺口保持，不push/merge。
