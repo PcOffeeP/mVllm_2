@@ -231,3 +231,6 @@ M8-R5补充证据：独立临时fixture中同ID当前Prompt替换为固定服务
 实现选择：full 配置显式与三折区分，开发样本按媒体身份去重且标签冲突拒绝，冻结原六份划分来源以便核查；全量配置不开放训练中验证/隐式拆分，不擅自选择 epoch、seed 或其他训练日程。full 产物使用 full/adapter，MLflow 父 Run 记真实结果，禁止 fold 子 Run 和折结果改名。Registry 同时验证冻结范围、结果、权重摘要和模型来源范围。holdout 延续已批准的 media/evaluation_inputs/sealed_ground_truth/authorization 布局，预注册规则及阈值与冻结执行配置严格匹配，真值与逐样本评分不进入普通 MLflow artifact 或公开导出；消费遵守已有先写 consumed 后完成状态的顺序。
 
 Proof：合成数据端到端覆盖 full prepare→run→export→model register 及 full holdout prepare→inference→score→export；验证三折输入/结果不变、重复标签冲突、范围混用、输入/权重漂移、失败状态、未授权真值访问、预注册身份/规则不符、跨身份恢复、消费后复用、公开产物无真值或逐样本明细。CPU 测试替换实际模型/tuner 回调，不能据此宣称真实训练效果或真实安全部署验证。先保留有效失败证据，修复后跑受影响回归，再由独立 reviewer 对照实际代码核查入口、失败路径和操作说明。Linux 仅使用现有隔离工作区及 CPU 环境；证据记录实际退出码，分进程避免既有 MLflow 句柄累计问题。
+
+
+M4 holdout 接线细化：`eval prepare` 接收 `--pre-registration`/`--executor` 并要求先以 data claim 冻结；`eval run` 仅执行媒体推理，新增 `eval score --executor` 明确进入受限评分。冻结媒体清单使用 `evaluation_inputs/manifest.json`，包含完整 data/split、开发版本、来源隔离与划分核验以及无标签样本；受限标签仅由 score 读取 `sealed_ground_truth/labels.json`。逐样本推理/评分及读访问记录位于权限0700的执行私有目录，不上传普通MLflow；公开证据是身份、权重与规则绑定、aggregate和执行摘要。同一身份中断后仅复用已完整落盘并验签的阶段结果，不重跑已评分推理或清空claim；已消费完成只允许验签/导出。此拆分落实已确认的先媒体推理后授权评分，不新增真实数据使用授权。
