@@ -161,3 +161,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 第52节承接用户“推进第一步，第二步去训练机查看即可”：隔离checkout已同步7b0e01d5，同代码Linux427 passed/1 skipped、实际两组exit0；正式main及七保护文件未变。初始21个test视频在`workspace/data/source/splits/test.json`，源视频21/21在场，三折train/validation与test零交集。后续无需再向用户索取这一既定路径。
 
 测试资格仍按原政策：旧release有claim及exposed=true，20source媒体凭据与旧发布摘要关联，video_0005没有该批候选凭据，原旧发布目录缺失。没有读取旧受限语义或新建真实test数据，不能把21个既定视频整体当作新的未使用测试，也不能推定未生成候选的视频已满足独立测试条件。精确证据、机器版本和下一动作见[第52节](verification.md#linux-test-branch-source-20260913)。
+
+
+2026-09-13 test使用资格只读续查：用户已授权限定范围身份调查。当前数据目录和已发现的pre-semantic-portal-20260723备份中共6个媒体receipt集合，均无video_0005；18份manifest/identity已按非语义字段核对。迁移清单只列source、derived、training_releases→releases，不覆盖sealed_test_releases；这说明verified不证明旧test发布已迁移，不能据此认定删除原因。未找回299样本的完整发布身份清单，现阶段21个source的独立使用资格均为“证据不足”，并非“全部未用”；其中20个已有与暴露release相关联的物化证据。run_identity的初始化状态不能覆盖后续gate的completed/exposed事实。下一步最小缺失材料是旧发布的无标签candidate/source清单或对应备份；不扩大读取受限语义、不重划分或放行复用。详见verification第53节。

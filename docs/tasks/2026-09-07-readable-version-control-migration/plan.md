@@ -305,3 +305,6 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 
 
 2026-09-13 Linux续办：用户授权第一步隔离验收与第二步训练机既定划分调查。隔离分支经bundle0/5快进至7b0e01d5，仅task checkout，正式main未动；同代码两组265、162/1skip各exit0。既定test21/train89来源和隔离已定位，21视频存在；旧测试claim/exposure及20source媒体凭据关联已记录，video_0005无该批候选。下一步核清使用资格及输入证据，不要求重新指定已找到路径、不擅自改划分或复用受限测试。精确Linux证据目录为`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-verification-20260913/`，详见verification第52节。本次只有CPU合成验证和非语义只读调查，原真实数据/模型/删除/push及正式main merge边界保持。
+
+
+2026-09-13 test使用资格只读续查：用户已授权限定范围身份调查。当前数据目录和已发现的pre-semantic-portal-20260723备份中共6个媒体receipt集合，均无video_0005；18份manifest/identity已按非语义字段核对。迁移清单只列source、derived、training_releases→releases，不覆盖sealed_test_releases；这说明verified不证明旧test发布已迁移，不能据此认定删除原因。未找回299样本的完整发布身份清单，现阶段21个source的独立使用资格均为“证据不足”，并非“全部未用”；其中20个已有与暴露release相关联的物化证据。run_identity的初始化状态不能覆盖后续gate的completed/exposed事实。下一步最小缺失材料是旧发布的无标签candidate/source清单或对应备份；不扩大读取受限语义、不重划分或放行复用。详见verification第53节。

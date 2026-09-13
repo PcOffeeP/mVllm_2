@@ -314,3 +314,6 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 
 2026-09-13 M4 full/holdout接线完成（Codex，代码fed9bcfc）：用户确认独立full训练范围，保持三折原划分和旧导出格式，全量开发候选只训练一次并记录full产物来源；holdout新增媒体run/显式授权score，评分承诺建立前必须核验原truth来源和实际明细，已承诺恢复与公开导出不重读原truth。独立审查的2项训练P2、holdout链接P2和评分恢复P1（含强化伪造反例）已闭环，代码/操作说明/设计局部通过。Mac广回归679 passed/1 skipped与最终holdout16项、Linux最终819 passed/1 skipped均正常exit0，七份保护文件及原项目保持，完整证据见verification第45节。M4仍进行中：缺真实模型训练/GPU评分证据；HOLDOUT-BUILD未执行，不将CPU替身写成模型质量通过。下一动作是最终整包差异审查及交付矩阵收口，整体迁移、真实硬盘与真实模型效果不据此关闭。
+
+
+2026-09-13 test使用资格只读续查：用户已授权限定范围身份调查。当前数据目录和已发现的pre-semantic-portal-20260723备份中共6个媒体receipt集合，均无video_0005；18份manifest/identity已按非语义字段核对。迁移清单只列source、derived、training_releases→releases，不覆盖sealed_test_releases；这说明verified不证明旧test发布已迁移，不能据此认定删除原因。未找回299样本的完整发布身份清单，现阶段21个source的独立使用资格均为“证据不足”，并非“全部未用”；其中20个已有与暴露release相关联的物化证据。run_identity的初始化状态不能覆盖后续gate的completed/exposed事实。下一步最小缺失材料是旧发布的无标签candidate/source清单或对应备份；不扩大读取受限语义、不重划分或放行复用。详见verification第53节。

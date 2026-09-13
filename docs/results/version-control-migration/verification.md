@@ -1454,3 +1454,43 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 独立reviewer只读核对保存原件副本及代码提交：两组计数/实际exit、五份验收文件摘要、六代码摘要、七保护摘要、21/89集合关系、媒体stat和历史资格边界均通过；没有重跑测试或读取受限语义。当前四文档随后另行核查；文档提交及隔离同步由Git历史及RUN最终同步回执追溯。
 
 第52节四文档最终独立核查通过：10份证据摘要及旧release_summary关联pin重算一致，计数、机器版本、来源已定位纠正、资格与内容哈希限制均准确；新增链接与锚点、diff-check通过。主Agent另核对四文档70个本地文件链接可达。此结论不包含未来提交/同步；最终仅隔离分支文档同步的主Agent回执保存为RUN/final-docs-sync.json。
+
+
+<a id="test-source-history-20260913"></a>
+## 53. test source历史使用映射限定只读调查
+
+用户明确授权继续沿已有preparation、claim、发布摘要和媒体凭据查找旧发布备份/迁移清单，并单独追查video_0005；本轮只读取非语义身份信息，没有读取旧真值、预测、受限评分、审查标签或候选语义内容，没有运行测试、训练、推理或构建真实数据。上轮Linux427项为既有验证，不在本轮重跑。Mac起点02ed8a4a干净，Linux正式main为f1b7d8a3、隔离为02ed8a4a，tracked均干净。
+
+调查范围为项目workspace/data迁移清单、既定run_identity、当前derived/metadata与已发现备份`/home/liuyang/文档/mVllm_2-data-backups/pre-semantic-portal-20260723/data/07_metadata`。目录枚举限制深度并排除审查决定/队列/参考、受限目录、视频和帧；读取限定manifest/identity的身份字段，不读取test_candidate_audit、test_materialized_audit、review_queue、evaluation_records或restricted summary。
+
+### 已证实事实
+
+- `workspace/data/migration_manifest.json`声明source_root为原tensile-data/current，目标为workspace/data，映射仅source、derived、training_releases→releases，verified=true只覆盖声明的20718文件及两个train release摘要；没有sealed_test_releases映射。不能从verified推断旧test发布已迁移，也不能从此清单独断旧目录被谁删除或是否另有备份。
+- 已发现备份名称为pre-semantic-portal-20260723，其data顶层有05_splits、08_training_ready等旧布局目录名，07_metadata内确认两个候选媒体集合；本报告不以目录名证明其中划分文件或train发布的存在及完整性。限定枚举未找回独立测试release的manifest或一次性凭据副本；不将目录日期单独作为内容年代或完整性的证明。
+- 当前数据4个、该备份2个媒体receipt集合，分别1617/904/410/332和1617/904个文件。六集合均未出现video_0005；两个备份集合的文件名清单摘要与当前同ID集合一致。因此增加了跨已发现集合的负向证据，仍不构成“从未使用”的证明。
+- 18份相关manifest/identity的身份字段已核查，没有恢复出299样本的完整candidate→source发布清单。历史run_identity仍绑定release v4.1-sealed-test-5546b8bf1ec3、manifest SHA b996f054…、preparation、authorization及sample_count=299；没有逐样本身份列表。
+- run_identity.status仍为authorized_not_started。历史代码`f04ca7cb:finetune/v4_1_stage_d_runtime.py`初始化身份时写入该值，执行结果另产生sealed_test_exposed=true的gate；此初始文件不能推翻第52节同run的completed/exposed记录。未重读受限结果。
+
+### 逐source资格结论
+
+| 范围 | 已有证据 | 本轮分类 |
+| --- | --- | --- |
+| 第52节列明的20个source（排除video_0005） | 与已暴露release关联的媒体物化身份存在；完整299样本映射仍缺 | 证据不足：不能标为未使用，也不把物化清单冒充精确暴露清单 |
+| video_0005 | 原视频及既定test划分存在；六个已查receipt集合均无记录 | 证据不足：未生成候选的具体原因和其他使用情况未证明 |
+| release/run级 | 同身份claim与后续exposed/completed gate | 已证实该历史release发生暴露；不能重置使用资格 |
+
+本轮“已证实未使用”的source数量为0，含义是没有取得这类充分证据，不等于证明全部21个均被使用。静态候选算法存在按source类型/事件可靠性跳过等路径，但未读取对应source语义字段，不能把某条算法路径指定为video_0005的实际原因。
+
+下一步最小材料为旧release的**无标签candidate_id/source_video发布清单及其与冻结manifest的绑定**，或包含该清单的准确备份位置。此前找到的21个路径无需重复索取。现有授权下的已知位置调查完成，未擅自扩大至其他项目、全盘扫描或受限语义文件；未修改TEST-POLICY或批准复用。
+
+### 原件与验证
+
+本机程序及过滤结果：`/private/tmp/mvllm2-test-source-history-20260913/audit.py`、`audit.json`。程序通过SSH在Linux执行，实际exit0；保留完整的被读文件路径/SHA、六集合身份摘要、18份身份文件的投影和两工作区HEAD。没有原视频内容摘要或模型效果结论。
+
+- `audit.py` SHA256 `f7f0add7178abc9c90d2b159bfba897d588331fb1ee5d20f105db8f3da437671`。
+
+- `audit.json` SHA256 `f73f617d6cda34c61493418558f00d7bd55d07e62bff2bb9a383cf928a420c73`。
+
+两份只读调查原件已复制并验签至隔离证据目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-verification-20260913/source-history/`；只写新证据目录，不修改调查源。
+
+四文档追加内容经独立reviewer核查通过：两份原件摘要、六集合计数/身份摘要、18份身份路径及历史初始化/完成状态语义均一致；备份目录名与实际内容证明已明确区分。核查仅使用保存证据与历史源码，未新增远端扫描或测试。最终文档提交由Git历史追溯；隔离同步结果另存上述source-history/final-docs-sync.json。
