@@ -193,3 +193,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 2026-09-13 环境与部署文件核查：agent/cpm45均无DVC/MLflow；实际安装在隔离.conda-m2（MLflow3.15.2、DVC3.67.1），.venv-m3通过system-site-packages继承。agent pip check exit0，cpm45 exit1且editable LLaMA-Factory指向旧mVllm项目；两个隔离环境pip check均因MLflow要求pandas<3、实际3.0.3而exit1。新增ENV-DEPLOY部署一致性前置，不把历史CPU测试通过解释为依赖声明一致。
 
 2026-09-14 ENV-DEPLOY本批已解决：双profile锁定部署与doctor完成，当前代码83724995；Mac新环境安装/doctor exit0、361项定向回归通过、最新部署边界12项通过；Linux新GPU环境通过显式镜像安装/doctor exit0。独立审查发现的P1/P2均闭环，镜像增量复核通过；七保护SHA及正式/原隔离工作区保持。旧agent/cpm45未修补，新环境未正式激活。官方源首轮主动中断exit1及部分环境保留；完整证据第63节。本批不训练、不test、不push/merge。下一步恢复M4-FOLD逐折接口方案确认与工程收口，不再以依赖缺失或重训为默认前置。
+
+
+2026-09-14 M4-FOLD接口核对完成（e7efb56b，verification第64节）：现有train run忽略已解析的--fold并执行全部冻结配置，不能作为单折入口使用。下一步确认TODO中的显式选折、partial、同父Run续办及完成折验签复用方案，再更新Spec/Plan实施。ENV-DEPLOY不重做；本次无训练、test、远程操作或业务代码修改。

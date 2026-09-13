@@ -1655,3 +1655,12 @@ Linux前置只读状态：正式main f1b7d8a3、隔离bb73e4dd均tracked干净�
 /private/tmp/mvllm2-deploy-mac-isolated-20260914/bin/python -m pytest -q tests/test_environment_deployment.py tests/versioning/test_mlflow_train.py tests/versioning/test_prompts.py --basetemp=/private/tmp/mvllm2-env-integration-20260914 --disable-warnings
 /private/tmp/mvllm2-deploy-mac-isolated-20260914/bin/python -m pytest -q tests/versioning/test_dvc_pipeline.py tests/versioning/test_data_release.py --basetemp=/private/tmp/mvllm2-env-dvc-20260914 --disable-warnings
 ```
+
+
+## 64. M4-FOLD实施前接口核对
+
+2026-09-14，Codex本机只读核对e7efb56b，工作区干净；该提交为部署README完善，承接5c6e3ccc，未覆盖该修改。此轮未连接训练机、未创建Run、未训练或使用test。
+
+`versioning/cli.py`的train parser已接收`--fold`，但`_handle_train`调用`execute_versioned_run`只传root/train_version；该参数目前不会限制训练范围。`finetune/train_prepare_run.py:execute_versioned_run`持train级非阻塞锁，检查所有输出目录不存在，创建父Run后遍历全部冻结配置，最后汇总/冻结证据/完成与导出。底层`versioning/mlflow_train.py:execute_fold_run`支持单个子Run，不能据此推断公共入口已有分折续办能力。
+
+待确认方案：冻结三折保持不变；run显式选单折，省略时保留整组行为；同一父Run可依次完成三折，成功但缺折为partial，不汇总晋级或导出正式完成manifest；验签通过的已完成折复用，绝不再次调用trainer。full拒绝fold参数。失败、遗留输出、漂移与并发均拒绝自动覆盖/续训；失败恢复不属于本批。代价是必须核对既有子Run、实际产物和冻结输入，不能仅按目录存在或FINISHED标签跳过。验证用合成trainer，覆盖调用次数、状态、漂移、并发和full回归，不生成模型质量结论。该方案尚未确认，未改业务代码。
