@@ -347,3 +347,9 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 
 
 2026-09-13 环境与部署文件核查：agent/cpm45均无DVC/MLflow；实际安装在隔离.conda-m2（MLflow3.15.2、DVC3.67.1），.venv-m3通过system-site-packages继承。agent pip check exit0，cpm45 exit1且editable LLaMA-Factory指向旧mVllm项目；两个隔离环境pip check均因MLflow要求pandas<3、实际3.0.3而exit1。新增ENV-DEPLOY部署一致性前置，不把历史CPU测试通过解释为依赖声明一致。
+
+## 双平台部署实施批次
+
+承接本次单独提交的双平台部署Spec及用户实施授权。精确文件范围：pyproject.toml、uv.lock、requirements.txt、新requirements-linux-gpu.lock；新增scripts/source_prepare_environment.py、scripts/source_validate_environment.py、scripts/SCRIPTS.md、tests/test_environment_deployment.py；局部更新README.md、finetune/README.md、TODO、handoff、verification。保持LlamaFactory子模块代码、版本身份与训练业务不变。
+
+先统一pandas/MLflow兼容依赖并补cropper/媒体读取包，分别锁定Mac轻量和Linux GPU依赖；实现显式平台/新环境路径安装与doctor，绑定当前Git子模块来源，错误输入fail-closed，不安装系统包；最后做拒绝/失败传播测试、Mac新环境和Linux新隔离环境安装及入口验证。需要网络的安装只写新环境和工具缓存；不安装进agent/cpm45。新脚本和文档接受局部独立审查，保留真实安装失败证据。安装成功不等同模型可用，无真实训练/推理/test。
