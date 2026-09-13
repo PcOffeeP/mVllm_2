@@ -1694,3 +1694,41 @@ Mac扩大回归命令（在两项P2修复前启动的中间实现；后续修复
 ```
 
 该中间实现扩大回归最终447 passed/1 skipped，pytest计时749.01s；汇总打印后进程继续收尾，主Agent等待工具实际返回exit0才记为完成。唯一skip为tests/test_eval_run.py的本机历史V4.1工作区数据缺失。日志/private/tmp/m4fold-regression.log（仅测试输出，命令及exit来自主Agent执行回执），SHA256 `b179efb9595719aa4dabe46c265fc357ece9e2789f22e7397fb3bc9862a482a1`。未把中间实现结果冒充61effebd全包测试；最终代码依据Linux123项及独立修复专项。
+
+
+## 66. 最终集成候选核查（2026-09-14）
+
+用户要求核查工程分支是否可收口，沿用不重训、真实GPU模型成功路径后续验收、质量门不变的最新Spec。核查基线9077690f，工作区干净；本轮不执行push/merge、训练、真实推理、test使用、删除或正式部署切换。
+
+### 新鲜Git与完整交付范围
+
+本机git ls-remote codeup refs/heads/main实测为f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52，与本地codeup/main相同。该基线至9077690f共181提交/170文件，93335新增行、484删除行；祖先关系为0/181，没有远端独有提交。Mac main cc59312c是任务分支祖先，0/175；其相对Codeup原有6提交全部包含，不遗漏为“分支外历史”。这6项包含cdb8632c数据修复，以及8acaf2cf、7b8192bd、d8cba46a、f8209b61、cc59312c指令/文档/历史模型证据维护，已包含第47节整包范围。以已核对状态可快进，不需要冲突消解；没有实际执行merge。
+
+Linux正式项目main f1b7d8a3无未提交文件；原隔离bb73e4dd相对本机0/27，无独有提交但有历史未跟踪环境/验证目录；部署验证检出61effebd相对本机0/1，差异仅证据文档，代码/依赖锁完全一致，保留3个未跟踪bundle。初次探测误用正式项目不存在的codeup远端引用而exit1，未改状态；改用已远端核实的完整main提交完成比较，正式项目远端名实际为origin。完整只读回执/private/tmp/mvllm2-integration-git-20260914.jsonl。不能把tracked干净写成所有隔离目录无未跟踪文件；后续同步必须保留这些环境、证据和editable来源。
+
+### 审查覆盖与范围纠正
+
+第47节已通过f1b7d8a3→d9ec1227的140提交/152文件整包审查，不重复历史审查。其后至9077690f为41提交/38文件：七门f1be1060对应第49节；test分支abafdbf2对应第51–52节；部署91fa5677..83724995对应第63节；逐折61effebd对应第65节，均有局部独立审查与适用双机证据。其余为Spec/Plan、只读调查或证据文档。e7efb56b README部署改写此前无独立审查记录，本次reviewer对该77行差异逐条核对实际安装器、doctor、锁来源、新环境/子模块/镜像/退出及失败重试说明，通过，无可执行问题，补齐该局部覆盖。
+
+独立核查发现P2台账范围冲突：当前矩阵仍把已允许后置的M4/M5成功路径写为待裁决阻塞，旧执行单仍建议有限三折且称不支持单折。本轮按已有用户决定纠正矩阵，把旧执行单明确标历史；不再次索取同一范围确认。RELEASE-POINTER、CONTRACT-NAMING继续保留后续任务，不擅自取消，但无证据要求恢复旧指针或重命名才可合并。
+
+### 合并候选的实际能力与限制
+
+- 已验：五类显式身份与旧入口退役、真实数据迁移/Prompt/1678媒体输入预检、DVC/MLflow记录链、部署、逐折训练接口、模型登记/评测/服务准入的合成执行链、store级异根恢复。上述不同层级证据不得混为真实模型成功。
+- 后续模型验收：实际GPU训练、真实权重加载/推理与HTTP服务成功路径、最终模型质量及test资格/构建/独立测试均未通过，不阻塞按最新Spec交付工程候选，也不获得实际执行授权。无合格alias时仍拒绝服务，不给旧模型补发passed。
+- 真实恢复限制：移动硬盘、大型adapter/merged、SQLite与外部媒体/基座的整机组合恢复未验，保留源及外部引用，不宣称灾难恢复可用。按既有允许单独未完成的决定在合并材料显著保留，由用户依据材料授权实际集成。
+- 尚未执行：push、合并Codeup main、正式训练机工作区同步与新环境正式激活、合并后main落点及适用冒烟。原隔离环境不是可删除的临时垃圾；新GPU环境editable仍引用部署验证检出。正式激活须绑定保留的checkout并再次运行doctor。
+
+本轮组合回归旨在验证最后四批代码与新依赖环境的交互，不重做181提交历史审查；训练器、推理及媒体均用合成fixture，关闭CUDA与模型联网。最终代码61effebd与候选9077690f在全部Python/依赖文件无差异。运行分组、命令与实际结果见以下补记。
+
+
+最终组合回归：Linux新GPU解释器加第65节独立pytest工具目录，CUDA不可见、模型联网关闭；execution组tests/test_eval_run.py、tests/test_serve_smoke.py、tests/versioning/test_e2e.py为78 passed/1 skipped，108.48s、exit0；data组tests/versioning/test_dvc_pipeline.py、tests/versioning/test_holdout_pipeline.py、tests/test_eval_holdout.py、tests/test_holdout_metrics.py、tests/test_environment_deployment.py为91 passed，38.27s、exit0。共169 passed/1 skipped；唯一skip日志明确为项目本地历史V4.1数据不存在。完整命令、解释器、cwd、HEAD和退出码均在日志，未把合成七门通过当真实test通过。最终postflight三工作区HEAD未变且tracked干净。原日志保存在训练机/tmp，同名副本在本机/private/tmp；摘要如下：
+
+- `/private/tmp/mvllm2-integration-git-20260914.jsonl`：SHA256 `b06cf67c461aa4e1c393e3f4b79bed15919cfc63ca61e8b8db4925abe24e8b12`。
+- `/private/tmp/mvllm2-integration-execution-20260914.log`：SHA256 `782a55d0014ee0a14144e0ae1323c5f0fd0205830352c77a1db8274c907342bb`。
+- `/private/tmp/mvllm2-integration-data-20260914.log`：SHA256 `c4a865a14eae20c85b3e14ee1f065bde6cf0f4d9dae850182dba3e03a040b23b`。
+- `/private/tmp/mvllm2-integration-postflight-20260914.jsonl`：SHA256 `4cb89364bff4fa6072746534862e5a34d85ef86b154b88719f238b4da9d79b72`。
+
+结论：已确认工程范围的代码/依赖/入口与证据可形成合并候选；整体迁移尚未关闭，因为实际发布合并、正式环境激活与合并后验证未执行。核查范围以9077690f冻结，本轮仅追加纠错/证据文档，最终候选另包含本轮文档提交（由git log追溯）。
+
+最终独立复核通过：P2范围矛盾已闭环；reviewer核对两组日志计数/退出、4份证据SHA、181提交/170文件及后续41提交/38文件覆盖，确认测试代码与候选代码一致。未复查远端现场、未重审历史代码，远端状态来源为主Agent本轮保存回执；不代表模型效果、真实恢复、环境激活或发布合并已经完成或获授权。
