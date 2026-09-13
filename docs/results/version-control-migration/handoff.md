@@ -196,3 +196,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 
 
 2026-09-14 M4-FOLD接口核对完成（e7efb56b，verification第64节）：现有train run忽略已解析的--fold并执行全部冻结配置，不能作为单折入口使用。下一步确认TODO中的显式选折、partial、同父Run续办及完成折验签复用方案，再更新Spec/Plan实施。ENV-DEPLOY不重做；本次无训练、test、远程操作或业务代码修改。
+
+
+2026-09-14 M4-FOLD本批工程实现已解决：Spec b1aaf315/Plan902d8c9d、代码61effebd；显式单折、同父Run分次执行、逐折证据验签复用、partial与完整三折完成门已接通。两项P2经独立反例复验闭环，提前汇总拒绝增量复核通过；Linux最终123项合成回归exit0（独立测试工具目录覆盖，非GPU运行锁自带pytest）。详见verification第65节；保留真实训练/服务成功路径与恢复缺口，不改变旧模型质量门。下一步为最终集成范围、审查覆盖及M4/M5/M6补证或转交裁决，不重训、不test、不push/merge。

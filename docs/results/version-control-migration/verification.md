@@ -1664,3 +1664,33 @@ Linux前置只读状态：正式main f1b7d8a3、隔离bb73e4dd均tracked干净�
 `versioning/cli.py`的train parser已接收`--fold`，但`_handle_train`调用`execute_versioned_run`只传root/train_version；该参数目前不会限制训练范围。`finetune/train_prepare_run.py:execute_versioned_run`持train级非阻塞锁，检查所有输出目录不存在，创建父Run后遍历全部冻结配置，最后汇总/冻结证据/完成与导出。底层`versioning/mlflow_train.py:execute_fold_run`支持单个子Run，不能据此推断公共入口已有分折续办能力。
 
 待确认方案：冻结三折保持不变；run显式选单折，省略时保留整组行为；同一父Run可依次完成三折，成功但缺折为partial，不汇总晋级或导出正式完成manifest；验签通过的已完成折复用，绝不再次调用trainer。full拒绝fold参数。失败、遗留输出、漂移与并发均拒绝自动覆盖/续训；失败恢复不属于本批。代价是必须核对既有子Run、实际产物和冻结输入，不能仅按目录存在或FINISHED标签跳过。验证用合成trainer，覆盖调用次数、状态、漂移、并发和full回归，不生成模型质量结论。该方案尚未确认，未改业务代码。
+
+
+## 65. M4-FOLD逐折执行与证据复用
+
+用户确认第64节规则并授权实施，Spec b1aaf315、Plan902d8c9d、实现61effebd。CLI将run的--fold传给执行器，非run动作和full拒绝该参数。三折冻结输入不变；现有train锁内只执行选中且未完成折。同父Run分次执行，缺折为partial/KILLED，已有成功子Run仍FINISHED；三折完整后才汇总、冻结总证据和导出。full原有单次执行与完成门保持。
+
+每折新存不可变execution-evidence.json，并以MLflow子Run参数固定摘要；复用核对父/子身份、配置、冻结输入、本地/上传权重及指标。失败或不明状态、重复子Run、缺失/篡改证据、未完成折本地/上传目录残留、并发均在下一训练调用前拒绝。partial已有汇总或总证据也拒绝。真实权重只由正式trainer产生，本轮测试使用明确synthetic字节及合成trainer，不代表模型训练、效果或test通过。
+
+独立reviewer初审117项通过，另以2个反例发现P2：重复失败子Run被字典覆盖、仅残留逐折证据时先训练后冲突。两项已修复，原始子Run集合及本地/上传整个fold目录在续办前检查；reviewer两反例加18项单折专项20 passed/35.22s，提前汇总增量另1 passed/5.20s，均exit0，无残余发现。操作说明局部核对通过。主Agent修复专项18 passed/44.78s，提前汇总1 passed/7.48s；这些与其他回归重叠，不累计为独立总数。
+
+验证过程保留失败：初版本目标集为2 failed/113 passed（完成父Run配置多出总证据参数；导出故障注入过宽），修正并新增CLI/full拒绝测试后117 passed/11.29s。Linux新GPU环境首轮因未包含pytest在收集前exit1；另在/tmp/m4fold-test-tools-61effebd安装pytest9.1.1、pluggy1.6.0、iniconfig2.3.0、pygments2.21.0、packaging26.2作为独立测试工具覆盖目录，未安装进运行环境。后续使用同一GPU解释器-I、显式加入测试目录并禁用pytest插件自动发现，不能把它描述为GPU运行锁自身已包含开发测试工具。
+
+跨机前置核对：正式main f1b7d8a3、原隔离bb73e4dd、部署验证检出83724995均tracked干净。部署验证检出有3个前轮未跟踪bundle，保留原状；首次全干净门因此未执行checkout，随后确认仅这些bundle后只更新该检出到61effebd。首个bundle命令因未导出命名引用而报告empty，改用HEAD成功；未push/merge，未改正式/原隔离工作区。Linux所有fixture只写/tmp，未读真实train/test数据或加载模型。
+
+
+最终代码61effebd在Linux新GPU解释器加独立测试工具目录执行：tests/test_fold_execution.py、tests/test_full_training.py、tests/test_train_with_contract.py、tests/versioning/test_cli.py，123 passed/22.35s，实际exit0。原始日志/tmp/m4fold-linux-tools-61effebd.log包含完整cwd、命令、解释器、HEAD及退出码，本机副本/private/tmp/m4fold-linux-tools-61effebd.log；首次缺pytest失败日志同样保留。postflight确认正式main仍f1b7d8a3、原隔离仍bb73e4dd、测试检出61effebd均tracked干净；安装器工作区内前轮bundle保留。两机训练执行器、CLI及单折测试三份文件SHA逐项一致，原始回执/private/tmp/m4fold-postflight.log。此轮没有重新验签真实数据或权重，不将工作区状态核对冒充保护文件全量复验。
+
+Linux证据与台账完成记录经独立reviewer核查通过：日志命令/HEAD/退出码及本机重算的三文件SHA一致。此次独立核查未SSH或复跑模型；原始记录SHA256如下：
+
+- `/private/tmp/m4fold-linux-tools-61effebd.log`：`cb762911eb0f97e0ddc4a9ea4e4aef3e93305b7c62dfe9dcd88d039f94091772`。
+- `/private/tmp/m4fold-linux-61effebd.log`：`c939f31bd7f695efb927697e3e96d5f5300875eefb74d80503a19fdaba830c5d`。
+- `/private/tmp/m4fold-postflight.log`：`fd38518a774fbc536a058862d0a3a659f9b31f4795de538228f83ddce85f70f3`。
+
+Mac扩大回归命令（在两项P2修复前启动的中间实现；后续修复使用上述专项及Linux最终提交复验，不能把本组写成最终提交整包复跑）：
+
+```bash
+/private/tmp/mvllm2-deploy-mac-isolated-20260914/bin/python -m pytest -q tests/test_fold_execution.py tests/test_full_training.py tests/test_train_with_contract.py tests/versioning/test_cli.py tests/versioning/test_mlflow_train.py tests/versioning/test_registry.py tests/test_eval_run.py --basetemp=/private/tmp/m4fold-regression --disable-warnings
+```
+
+该中间实现扩大回归最终447 passed/1 skipped，pytest计时749.01s；汇总打印后进程继续收尾，主Agent等待工具实际返回exit0才记为完成。唯一skip为tests/test_eval_run.py的本机历史V4.1工作区数据缺失。日志/private/tmp/m4fold-regression.log（仅测试输出，命令及exit来自主Agent执行回执），SHA256 `b179efb9595719aa4dabe46c265fc357ece9e2789f22e7397fb3bc9862a482a1`。未把中间实现结果冒充61effebd全包测试；最终代码依据Linux123项及独立修复专项。

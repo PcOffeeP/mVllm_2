@@ -1,7 +1,7 @@
 # 可读版本控制正式迁移实施计划
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
-- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `31d20154`（承接a5cfa86f；用户确认双平台新环境部署）。
+- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `b1aaf315`（承接31d20154；用户确认逐折执行与证据复用）。
 - **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
 - **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
 - **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
@@ -363,3 +363,6 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 ## M4-FOLD已确认实施批次（Spec b1aaf315）
 
 承接用户对逐折规则及工程验证的确认。实施范围：finetune/train_prepare_run.py、versioning/cli.py，必要的versioning训练证据辅助逻辑；tests/test_train_with_contract.py、tests/versioning/test_cli.py及必要单折定向测试；局部更新finetune/README.md、TODO、handoff、verification。不改冻结三折结构或full契约。先接入选择参数，在现有train锁内核对父/子Run与逐折不可变证据，成功缺折partial、三折齐全沿用汇总/完成门；用合成trainer覆盖分次执行、完成折复用、漂移/残留/失败/并发拒绝与full回归，最后独立审查。复用现有partial原生状态映射，界面说明该映射而不改变公共状态契约。真实训练与test不执行。
+
+
+2026-09-14 M4-FOLD本批工程实现已解决：Spec b1aaf315/Plan902d8c9d、代码61effebd；显式单折、同父Run分次执行、逐折证据验签复用、partial与完整三折完成门已接通。两项P2经独立反例复验闭环，提前汇总拒绝增量复核通过；Linux最终123项合成回归exit0（独立测试工具目录覆盖，非GPU运行锁自带pytest）。详见verification第65节；保留真实训练/服务成功路径与恢复缺口，不改变旧模型质量门。下一步为最终集成范围、审查覆盖及M4/M5/M6补证或转交裁决，不重训、不test、不push/merge。
