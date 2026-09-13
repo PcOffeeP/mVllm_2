@@ -1,0 +1,103 @@
+{
+  "schema": "model-recovery-targets/v1",
+  "local_baseline": "0c6169e3eec8a092c3490b5b50c47eec6b4ff35f",
+  "remote_probe": {
+    "program": "from pathlib import Path\nimport json,hashlib,subprocess,datetime\nr=Path('/home/liuyang/文档/mVllm_2'); p=r/'workspace/models/releases'; current=r/'workspace/models/current'\nfiles=[]\nfor d in sorted(p.iterdir()):\n f=d/'release-manifest.json'\n if f.is_file():\n  raw=f.read_bytes();x=json.loads(raw)\n  files.append({'path':str(f),'sha256':hashlib.sha256(raw).hexdigest(),'identity':{k:x.get(k) for k in ['schema_version','model_name','training_scope','full_data_final','production_approved','origin']}})\nout={'time_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scope':'legacy release manifest identity only; no weight/prediction/test data reads','release_names':sorted(x.name for x in p.iterdir()),'current_resolved':str(current.resolve()),'manifests':files,'git':{}}\nfor d in [r,r.with_name('mVllm_2-migration-7eeb93a7')]:\n out['git'][str(d)]={k:subprocess.check_output(['git','-C',str(d),*args],text=True).strip() for k,args in {'head':['rev-parse','HEAD'],'tracked_status':['status','--porcelain','--untracked-files=no']}.items()}\nprint(json.dumps(out,ensure_ascii=False,indent=2))\n",
+    "program_sha256": "79534a042f1d527a711dbaefe62f8d405a6e3f61405933b73a1fc628da6d0cd2",
+    "exit_code": 0,
+    "stdout_sha256": "251c65c0935c7e3bfd491c49696e629d15ace776ec806b54ba12649c9f255c6c",
+    "result": {
+      "time_utc": "2026-09-13T10:57:00.450467+00:00",
+      "scope": "legacy release manifest identity only; no weight/prediction/test data reads",
+      "release_names": [
+        "v4.1-agent-pipeline-fold0-r1"
+      ],
+      "current_resolved": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1",
+      "manifests": [
+        {
+          "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/release-manifest.json",
+          "sha256": "3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008",
+          "identity": {
+            "schema_version": "tensile-model-registry/model/v1",
+            "model_name": "v4.1-agent-pipeline-fold0-r1",
+            "training_scope": "fold0",
+            "full_data_final": false,
+            "production_approved": false,
+            "origin": {
+              "experiment_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+              "release_id": "v4.1.0-ecb5aeb9657c",
+              "fold": 0,
+              "seed": 3407,
+              "training_variant": "coverage-first",
+              "optimizer_steps": 1125
+            }
+          }
+        }
+      ],
+      "git": {
+        "/home/liuyang/文档/mVllm_2": {
+          "head": "f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52",
+          "tracked_status": ""
+        },
+        "/home/liuyang/文档/mVllm_2-migration-7eeb93a7": {
+          "head": "bb73e4dd0264c8ae709612627794b98118611efa",
+          "tracked_status": ""
+        }
+      }
+    }
+  },
+  "historical_report": {
+    "path": "docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md",
+    "sha256": "8753d10117affae7dfc3edb9e1cabfea41b409be96cae2d25d0de514623705e0",
+    "limitation": "Reported hashes are recovery comparison targets, not independent proof of original files or weights."
+  },
+  "recovery_targets": [
+    {
+      "experiment": "v4.1-prompt-concise-cv-v1-seed3411",
+      "fold": 0,
+      "relative_path": "fold0/evaluation/evaluation_summary.json",
+      "expected_sha256_from_historical_report": "5f74b404db1ab4ec1e3fa9a11cfb7d33f93a1208d9df1da26992817cee55ae5f",
+      "recovered": false
+    },
+    {
+      "experiment": "v4.1-prompt-concise-cv-v1-seed3411",
+      "fold": 1,
+      "relative_path": "fold1/evaluation/evaluation_summary.json",
+      "expected_sha256_from_historical_report": "ad4be872311eadfebd665571d1dc1d37aa480b79076c025833a3ca633212460b",
+      "recovered": false
+    },
+    {
+      "experiment": "v4.1-prompt-concise-cv-v1-seed3411",
+      "fold": 2,
+      "relative_path": "fold2/evaluation/evaluation_summary.json",
+      "expected_sha256_from_historical_report": "e4b18217f97dcc15f25790487c878fca2d3596b9c4967dd0289ad11f33a7ad6f",
+      "recovered": false
+    },
+    {
+      "experiment": "v4.1-prompt-concise-cv-v1-seed3411",
+      "fold": 0,
+      "relative_path": "fold0/evaluation/evaluation_records.jsonl",
+      "expected_sha256_from_historical_report": "bba43698f8ac850ab0e8375c0c2ead895c1b8ab401c53afc9c2ce60cfeb676ce",
+      "recovered": false
+    },
+    {
+      "experiment": "v4.1-prompt-concise-cv-v1-seed3411",
+      "fold": 1,
+      "relative_path": "fold1/evaluation/evaluation_records.jsonl",
+      "expected_sha256_from_historical_report": "c57f58d5e669259aeb0ca1d03f9216c04324c255acc84f1d196aafa91c3032da",
+      "recovered": false
+    },
+    {
+      "experiment": "v4.1-prompt-concise-cv-v1-seed3411",
+      "fold": 2,
+      "relative_path": "fold2/evaluation/evaluation_records.jsonl",
+      "expected_sha256_from_historical_report": "72e2bfcdd27e697da906c4d33120b3fb9a12d5ea81b59af3ff98a256e745d98c",
+      "recovered": false
+    }
+  ],
+  "limitations": [
+    "No files recovered.",
+    "Matching prediction hashes cannot establish current weight identity or restore inference.",
+    "Known legacy release has a distinct experiment and cannot substitute for concise/visual three-fold models."
+  ]
+}

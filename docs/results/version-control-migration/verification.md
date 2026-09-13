@@ -1504,3 +1504,15 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 本机基线bb73e4dd，远端隔离同提交且tracked干净；正式main仍f1b7d8a3且tracked干净。本轮只在Mac保存轻量证据和维护台账，没有修改远端文件，也没有同步本轮提交。七个明确目录和六个merged路径的读取程序、实际输出及SHA保存于[调查证据](../model-location-followup-20260913.json)，文件SHA256为`f70bf9b73d90015324d1b23e811ed279aaf8df0fa8d8ce244d1252efdaf4ddd5`。这里的“目标不存在”指实际stat的路径，不证明其他位置没有副本；目录名不证明其中内容完整。前轮visual1216条复算属于第48节既有证据，本轮未运行测试或推理，没有新的模型效果结论。
 
 本轮为既有任务的证据补充和执行顺序纠正，主Agent核对JSON可解析、程序摘要、目录/路径数量及Git diff；不冒充独立审查或权威操作手册验收。
+
+
+<a id="model-recovery-targets-20260913"></a>
+## 55. MODEL-DIAG发布库身份与恢复比对目标
+
+2026-09-13 MODEL-DIAG发布库身份及恢复目标：Linux只读release-manifest核查exit0，已知legacy发布库只有v4.1-agent-pipeline-fold0-r1，origin为coverage-first单折实验，不能替代concise/visual三折。已从历史concise报告提取三折summary/records共6个SHA256恢复比对目标；尚未找回文件，报告摘要不是原件或模型权重的独立证明。已知位置线索核查到此收束，等待准确备份路径/迁移记录；不重复扫描、重训或擅自改用其他模型。详见verification第55节。
+
+[恢复比对证据](../model-recovery-targets-20260913.json)包含远端只读程序/摘要、发布manifest身份投影及文件SHA、历史报告文件SHA与六个逐fold恢复目标。现有release的origin为`v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`、fold0、seed3407、1125steps；仅核查身份清单，没有读取或哈希权重。其current链接解析到该release，不表示三折模型找回或最终模型验收通过。
+
+本机基线0c6169e3；远端正式main f1b7d8a3、隔离bb73e4dd，tracked均干净。历史报告给出的三个summary及三个records摘要仅用作恢复后的比对依据；报告自身注明未独立审查，当前未验证这些原始文件。未来原件即便匹配，也须另外核验模型、Prompt、数据及fold训练排除关系。
+
+主Agent核对JSON、程序摘要、六个目标的唯一性与报告对应关系，git diff --check通过；未运行模型测试、GPU推理、训练、真实数据构建或受限test读取，未修改远端或同步本轮提交。本轮没有新的模型效果结论。

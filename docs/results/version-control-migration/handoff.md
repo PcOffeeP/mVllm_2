@@ -167,3 +167,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 
 
 2026-09-13 MODEL-DIAG限定目录续查：Linux只读目录与路径stat实际exit0。evidence_archive顶层5组名称不含目标concise/visual三折；现存concise-v1仅input/reference、concise-v2仅input，不能替代concise-cv；/data/mVllm_2/workspace仅data、finetune仅active_data_release.json。六个约定三折merged目标仍不存在。未检查其他发布库内容或全盘备份，不能断言模型全部丢失；没有读取权重/预测/test内容或重跑既有评分。下一步需目标身份绑定的模型/原始预测备份，或另行确认诊断方案；test资格阻塞不取消MODEL-DIAG，也不授权重训。证据见verification第54节及docs/results/model-location-followup-20260913.json。
+
+
+2026-09-13 MODEL-DIAG发布库身份及恢复目标：Linux只读release-manifest核查exit0，已知legacy发布库只有v4.1-agent-pipeline-fold0-r1，origin为coverage-first单折实验，不能替代concise/visual三折。已从历史concise报告提取三折summary/records共6个SHA256恢复比对目标；尚未找回文件，报告摘要不是原件或模型权重的独立证明。已知位置线索核查到此收束，等待准确备份路径/迁移记录；不重复扫描、重训或擅自改用其他模型。详见verification第55节。
