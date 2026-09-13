@@ -11,7 +11,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from pipeline.model_registry import resolve_service_model
+from pipeline.model_registry import resolve_service_model, bind_service_contract
 from pipeline.production_contract import load_production_contract, production_contract_hash
 from pipeline.v4_1_production_contract import load_v4_1_production_contract
 
@@ -147,6 +147,8 @@ def main() -> int:
         if args.contract_version == "tensile-vlm/v4.1"
         else load_production_contract()
     )
+
+    contract = bind_service_contract(contract, binding)
 
     preflight = _request_json(
         f"{base_url}/v1/tensile/contract",

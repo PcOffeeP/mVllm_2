@@ -1,6 +1,6 @@
 <!-- DOCUMENT-CONTRACT
 Purpose: 定位 versioning 的实际入口，并提供显式数据输入与人工交接的操作边界。
-Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、Prompt注册与冻结、三折训练、正式验证集测评及备份传输入口。
+Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、Prompt注册与冻结、三折训练、正式验证集测评、服务Prompt绑定及备份传输入口。
 Must Preserve:
 - 五类完整可读身份、显式输入与 fail-closed，不引入当前版本回退。
 - 区分数据业务处理、人工决定和正式封存；不能把测试替身当真实媒体验收。
@@ -215,6 +215,14 @@ release 保存 `data/working/BATCH/release/` 构建证据，并封存
 不自行删旧对象或改号。`release_validate` 只读校验绑定、全部 payload 文件、封存权限与
 训练准入，输出 JSON，不启动训练，也不生成 `release_pointer.json`。
 
+## 服务analysis的冻结Prompt绑定
+
+共享`pipeline.model_registry.resolve_service_model`先验证合法alias、实际训练/正式评测证据及物化权重，再逐字段比较训练artifact中的`input/prompt.yaml`、passed eval的`input/evaluation.yaml`内Prompt与store的同ID正式定义。缺失、链接、内容漂移或不一致即拒绝。绑定返回`prompt`与`prompt_sha256`，其内容纳入`fingerprint`；加载后重新解析，变化时不启动服务。摘要只用于内容校验，不产生新的版本身份。
+
+`pipeline.server_proxy`和`pipeline/scripts/serve_smoke.py`均通过`bind_service_contract`从这一绑定生成服务analysis契约，使用冻结的system/user正文并计算实际契约hash；客户端不能继续发送旧固定正文或沿用旧`config_fingerprint`。输出字段须与所选业务契约一致，生成参数、重试提示、evidence请求及评分规则保持既有定义。analysis重试仍以同一冻结system/user开头，再追加失败回答与原重试提示。
+
+部署元数据的`config_fingerprint`取该显式root/alias/service_mode的resolver返回值；既有元数据不自动重写。smoke使用相同root和模式解析绑定、构造analysis请求，并核对preflight/response的model_registry与动态contract_hash。只通过门禁或CPU替身回归不能宣称真实模型/HTTP服务可用；实际加载、预处理与推理仍需训练机验证。
+
 ## DVC 配置与手动执行
 
 仓库根 `dvc.yaml` 是七阶段模板，`params.yaml` 无默认数据版本或输入。先由操作者在
@@ -282,6 +290,9 @@ python -m versioning model current --root /absolute/isolated-project --alias can
 <!-- DECISION-LOG
 D001 — Contract中的legacy整体现状保护改为按已确认入口退役，保留历史对象与业务实现。
 Why: 已批准的迁移Spec要求单一正式写入者；旧“公共入口维持原样”条款与实际逐入口切换冲突，不能用于恢复旧选择或发布绕过。
+
+D003 — 服务analysis正文由已验证的模型冻结Prompt派生，契约摘要随实际正文计算。
+Why: 同一Prompt身份不足以证明输入一致；固定正文相等门既会拒绝当前迁移Prompt，又不能阻止同ID内容漂移。
 
 D002 — 恢复副本重定位MLflow活动存储地址，冻结输入与来源证据保留原文。
 Why: 异根恢复必须能在原store不可访问时读取和写入artifact；修改冻结来源会改变摘要与历史事实，因此外部基座和媒体仍按原引用单独备齐。

@@ -149,15 +149,15 @@ def test_evaluation_succeeds_when_inference_has_no_runtime_failures() -> None:
 # inputs; actual strict scorer/model-runtime dispatch; three fold bindings;
 # runtime failure versus quality failure; authoritative export retry; no raw
 # weight override or holdout bypass through the public CLI.
-def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter", service_contract=False):
+def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter", service_contract=False, prompt_definition=None):
     from test_train_with_contract import _versioned_data_fixture
     from finetune.train_prepare_run import prepare_versioned_run, execute_versioned_run
     from versioning.registry import open_registry_store, register_model
     from unittest.mock import patch
     import json
 
-    definition = None
-    if service_contract:
+    definition = None if prompt_definition is None else {k: prompt_definition[k] for k in ("system_prompt", "user_prompt", "output_fields")}
+    if service_contract and definition is None:
         from pipeline.v4_1_production_contract import load_v4_1_production_contract
         contract = load_v4_1_production_contract()
         definition = {**{k: contract["analysis"][k] for k in ("system_prompt", "user_prompt")}, "output_fields": contract["model_output_fields"]}
@@ -203,7 +203,7 @@ def _prepare_formal(tmp_path):
     return root, media, model, path
 
 
-def _fake_formal_runtime(monkeypatch, *, runtime_error=False, invalid_output=False, service_contract=False):
+def _fake_formal_runtime(monkeypatch, *, runtime_error=False, invalid_output=False, service_contract=False, prompt_definition=None):
     from types import SimpleNamespace
     calls = []
     def load(model_dir, **kwargs):
@@ -211,7 +211,9 @@ def _fake_formal_runtime(monkeypatch, *, runtime_error=False, invalid_output=Fal
         return object(), object()
     def infer(model, processor, video_path, prompt, **kwargs):
         assert Path(video_path).is_file()
-        if service_contract:
+        if prompt_definition is not None:
+            expected = prompt_definition
+        elif service_contract:
             from pipeline.v4_1_production_contract import load_v4_1_production_contract
             expected = load_v4_1_production_contract()["analysis"]
         else:

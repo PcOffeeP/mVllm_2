@@ -66,18 +66,18 @@ def test_validate_analysis_response_requires_evidence_and_identity():
 # M5 Test List: public startup must resolve a qualified alias/current before
 # model loading; no raw path, invalid model, cache drift or mode bypass;
 # management/delivery/smoke use the same binding; no actual GPU in these tests.
-def _service_fixture(tmp_path, artifact_kind="adapter"):
+def _service_fixture(tmp_path, artifact_kind="adapter", *, prompt_definition=None):
     from test_eval_run import _formal_eval_fixture, _fake_formal_runtime
     from finetune import eval_run
     from versioning.registry import open_registry_store, finalize_model_evaluation, set_offline_backup_scope, set_alias
     from versioning.manifest import export_model_manifest
     from versioning.materialize import materialize_current
-    root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold", kind=artifact_kind, service_contract=True)
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold", kind=artifact_kind, service_contract=True, prompt_definition=prompt_definition)
     eval_run.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
         model_version=model.model_id, model_version_number=model.version, data_version="data-v4.1-r2",
         config=config, git_commit="fixture", media_root=media)
     with pytest.MonkeyPatch.context() as patch:
-        _fake_formal_runtime(patch, service_contract=True)
+        _fake_formal_runtime(patch, service_contract=True, prompt_definition=prompt_definition)
         eval_run.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
     registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
     finalize_model_evaluation(registry, model.model_id, eval_id="eval-v4.1-r1")
@@ -257,3 +257,217 @@ def test_service_resolver_merged_uses_deploy_target_without_adapter(tmp_path):
     binding = resolve_service_model(root, alias="candidate", service_mode="development")
     assert binding["adapter_path"] is None
     assert Path(binding["model_path"]) == root / "workspace/models/materialized" / model.model_id / model.deploy_target
+
+
+# M8-R5: actual training/eval evidence gates; only trainer/inference are CPU substitutes.
+def _migrated_prompt():
+    import yaml
+    from pathlib import Path
+    return yaml.safe_load((Path(__file__).resolve().parents[1] / "records/prompts/prompt-v4.1-r1.yaml").read_text())
+
+
+def test_service_concise_frozen_prompt_contract_and_retry(tmp_path):
+    from copy import deepcopy
+    from pipeline.model_registry import resolve_service_model, bind_service_contract
+    from pipeline.v4_1_production_contract import load_v4_1_production_contract
+    from pipeline.server_proxy import _request_mode, _fixed_payload, _deployment_snapshot, STARTUP_FIELDS
+    from pipeline.scripts.serve_smoke import build_analysis_payload, validate_preflight
+    definition = _migrated_prompt()
+    root, _, _ = _service_fixture(tmp_path, prompt_definition=definition)
+    binding = resolve_service_model(root, alias="candidate", service_mode="development")
+    assert binding["prompt"] == definition
+    assert len(binding["prompt_sha256"]) == 64
+    fixed = load_v4_1_production_contract()
+    before = deepcopy(fixed)
+    contract = bind_service_contract(fixed, binding)
+    assert fixed == before
+    assert contract["contract_hash"] != fixed["contract_hash"]
+    payload = build_analysis_payload(b"fixture mp4", contract)
+    assert _request_mode(payload, contract) == "analysis"
+    with pytest.raises(ValueError, match="prompts"):
+        _request_mode(build_analysis_payload(b"fixture mp4", fixed), contract)
+    retry = _fixed_payload(payload, "analysis", contract, "/fixture.mp4", previous_output="invalid")
+    assert retry["messages"][0]["content"] == definition["system_prompt"]
+    assert retry["messages"][1]["content"][1]["text"] == definition["user_prompt"]
+    assert retry["messages"][-1]["content"] == fixed["analysis"]["retry_prompt"]
+    assert contract["evidence"] == fixed["evidence"]
+    config = {k: "fixture" for k in STARTUP_FIELDS}
+    deployment = _deployment_snapshot(config, contract)
+    validate_preflight({"contract_version": contract["contract_version"], "contract_hash": contract["contract_hash"], "deployment_manifest": deployment}, contract)
+    changed = deepcopy(binding)
+    changed["prompt"]["output_fields"] = ["unexpected"]
+    with pytest.raises(ValueError):
+        bind_service_contract(fixed, changed)
+
+
+@pytest.mark.parametrize("when", ["before_resolve", "during_load"])
+def test_concise_service_rejects_same_id_prompt_drift(tmp_path, monkeypatch, when):
+    import json, sys, types, yaml
+    from pipeline import server_proxy
+    from pipeline.model_registry import resolve_service_model
+    from pipeline.v4_1_production_contract import load_v4_1_production_contract
+    definition = _migrated_prompt()
+    root, _, model = _service_fixture(tmp_path, prompt_definition=definition)
+    binding = resolve_service_model(root, alias="candidate", service_mode="development")
+    fixed = load_v4_1_production_contract()
+    def drift():
+        changed = {**definition, **{k: fixed["analysis"][k] for k in ("system_prompt", "user_prompt")}}
+        (root / "records/prompts/prompt-v4.1-r1.yaml").write_text(yaml.safe_dump(changed, allow_unicode=True))
+    if when == "before_resolve":
+        drift()
+        with pytest.raises(ValueError, match="[Pp]rompt"):
+            resolve_service_model(root, alias="candidate", service_mode="development")
+        return
+    config = {"max_frames": 8, "model_version": model.model_id, "adapter_version": model.model_id,
+        "base_model_version": model.base_model, "processor_version": "fixture", "llamafactory_version": "fixture",
+        "transformers_version": "fixture", "config_fingerprint": binding["fingerprint"], "runtime_device": "fixture", "runtime_dtype": "fixture"}
+    path = tmp_path / "deployment.json"
+    path.write_text(json.dumps(config))
+    calls = []
+    def load(args):
+        calls.append("load")
+        drift()
+        return object()
+    monkeypatch.setitem(sys.modules, "llamafactory.chat", types.SimpleNamespace(ChatModel=load))
+    monkeypatch.setitem(sys.modules, "uvicorn", types.SimpleNamespace(run=lambda *a, **k: calls.append("serve")))
+    monkeypatch.setattr(sys, "argv", ["service", "--root", str(root), "--alias", "candidate", "--service-mode", "development", "--contract-version", "tensile-vlm/v4.1", "--deployment-manifest", str(path)])
+    with pytest.raises(ValueError, match="[Pp]rompt"):
+        server_proxy.main()
+    assert calls == ["load"]
+
+
+def test_concise_service_main_http_and_smoke_use_frozen_prompt(tmp_path, monkeypatch, capsys):
+    import json, sys, types
+    from fastapi.testclient import TestClient
+    from pipeline import server_proxy
+    from pipeline.model_registry import resolve_service_model
+    from pipeline.scripts import serve_smoke
+    from pipeline.v4_1_production_contract import load_v4_1_production_contract
+
+    definition = _migrated_prompt()
+    root, _, model = _service_fixture(tmp_path, prompt_definition=definition)
+    binding = resolve_service_model(root, alias="candidate", service_mode="development")
+    requests, clients = [], []
+    class Capture:
+        last_capture = None
+        def reset_capture(self, video):
+            self.last_capture = {"frames": [{"index": 0, "timestamp": 0.0}],
+                "tensor_digest": "CPU fixture", "tensor_shape": [1, 1]}
+    capture = Capture()
+    monkeypatch.setattr(server_proxy, "configure_loaded_processor", lambda *a, **kw: capture)
+    monkeypatch.setattr(server_proxy, "_install_mm_shape_diagnostics", lambda *a: None)
+    processor = type("FixtureProcessor", (), {})()
+    chat_model = types.SimpleNamespace(engine=types.SimpleNamespace(processor=processor))
+    monkeypatch.setitem(sys.modules, "llamafactory.chat", types.SimpleNamespace(ChatModel=lambda args: chat_model))
+    monkeypatch.setitem(sys.modules, "llamafactory.api.common", types.SimpleNamespace(SAFE_MEDIA_PATH=str(tmp_path / "media")))
+    monkeypatch.setitem(sys.modules, "llamafactory.api.protocol", types.SimpleNamespace(ChatCompletionRequest=types.SimpleNamespace(model_validate=lambda x: x)))
+    class Response:
+        def __init__(self, content):
+            self.content = content
+            self.choices = [types.SimpleNamespace(message=types.SimpleNamespace(content=content))]
+        def model_dump(self, **kw):
+            return {"choices": [{"message": {"role": "assistant", "content": self.content}}]}
+    async def infer(request, model):
+        requests.append(request)
+        content = "invalid" if len(requests) == 1 else json.dumps({"clip_state": "未断裂", "fracture_mechanism": None, "fracture_site": None, "special_case": None}, ensure_ascii=False)
+        return Response(content)
+    monkeypatch.setitem(sys.modules, "llamafactory.api.chat", types.SimpleNamespace(create_chat_completion_response=infer))
+    monkeypatch.setitem(sys.modules, "uvicorn", types.SimpleNamespace(run=lambda app, **kw: clients.append(TestClient(app))))
+    monkeypatch.delenv("API_KEY", raising=False)
+    config = {"max_frames": 8, "model_version": model.model_id, "adapter_version": model.model_id,
+        "base_model_version": model.base_model, "processor_version": "FixtureProcessor", "llamafactory_version": "fixture",
+        "transformers_version": "fixture", "config_fingerprint": binding["fingerprint"], "runtime_device": "CPU", "runtime_dtype": "fixture"}
+    path = tmp_path / "deployment.json"
+    path.write_text(json.dumps(config))
+    monkeypatch.setattr(sys, "argv", ["service", "--root", str(root), "--alias", "candidate", "--service-mode", "development", "--contract-version", "tensile-vlm/v4.1", "--deployment-manifest", str(path)])
+    assert server_proxy.main() == 0
+    client = clients[0]
+    preflight = client.get('/v1/tensile/contract').json()
+    assert preflight['model_registry']['prompt'] == definition
+    assert preflight['model_registry']['prompt_sha256'] == binding['prompt_sha256']
+    fixed = load_v4_1_production_contract()
+    assert preflight['contract_hash'] != fixed['contract_hash']
+    rejected = client.post('/v1/chat/completions', json=serve_smoke.build_analysis_payload(b'CPU media fixture', fixed))
+    assert rejected.status_code == 422 and requests == []
+    from urllib.parse import urlparse
+    def request_json(url, *, payload=None, **kw):
+        response = client.get(urlparse(url).path) if payload is None else client.post(urlparse(url).path, json=payload)
+        response.raise_for_status()
+        return response.json()
+    monkeypatch.setattr(serve_smoke, '_request_json', request_json)
+    video = tmp_path / 'fixture.mp4'
+    video.write_bytes(b'CPU media fixture')
+    monkeypatch.setattr(sys, "argv", ["smoke", "--root", str(root), "--alias", "candidate", "--service-mode", "development", "--contract-version", "tensile-vlm/v4.1", "--video", str(video)])
+    assert serve_smoke.main() == 0
+    capsys.readouterr()
+    assert len(requests) == 2
+    for request in requests:
+        assert request['messages'][0]['content'] == definition['system_prompt']
+        assert request['messages'][1]['content'][1]['text'] == definition['user_prompt']
+        assert request['max_tokens'] == fixed['analysis']['generation']['max_new_tokens']
+    assert requests[1]['messages'][-1]['content'] == fixed['analysis']['retry_prompt']
+    client.close()
+
+
+@pytest.mark.parametrize("source", ["training", "evaluation", "current_missing", "current_symlink"])
+def test_service_rejects_frozen_prompt_damage(tmp_path, source):
+    import json, yaml
+    from pipeline.model_registry import resolve_service_model
+    from versioning.registry import _run_artifact_root, _eval_store, get_model
+    from versioning.mlflow_eval import get_eval_run
+    root, registry, model = _service_fixture(tmp_path, prompt_definition=_migrated_prompt())
+    if source == "training":
+        path = _run_artifact_root(registry, model.run_id) / "input/prompt.yaml"
+        value = yaml.safe_load(path.read_text())
+        value['system_prompt'] = 'changed frozen training'
+        path.chmod(path.stat().st_mode | 0o200)  # Damage only this test's sealed fixture.
+        path.write_text(yaml.safe_dump(value))
+    elif source == "evaluation":
+        model = get_model(registry, model.model_id)
+        evaluation = get_eval_run(_eval_store(registry), model.eval_id)
+        path = _run_artifact_root(registry, evaluation.run_id) / "input/evaluation.yaml"
+        value = json.loads(path.read_text())
+        value['prompt']['system_prompt'] = 'changed frozen evaluation'
+        path.chmod(path.stat().st_mode | 0o200)  # Damage only this test's sealed fixture.
+        path.write_text(json.dumps(value))
+    else:
+        path = root / 'records/prompts/prompt-v4.1-r1.yaml'
+        if source == 'current_symlink':
+            copied = tmp_path / 'same-prompt.yaml'
+            copied.write_bytes(path.read_bytes())
+        path.unlink()
+        if source == 'current_symlink':
+            path.symlink_to(copied)
+    with pytest.raises((ValueError, FileNotFoundError)):
+        resolve_service_model(root, alias='candidate', service_mode='development')
+
+
+def test_service_rejects_individually_valid_but_different_evaluated_prompt(tmp_path, monkeypatch):
+    import yaml
+    from test_eval_run import _formal_eval_fixture, _fake_formal_runtime
+    from finetune import eval_run
+    from pipeline.model_registry import resolve_service_model
+    from pipeline.v4_1_production_contract import load_v4_1_production_contract
+    from versioning.registry import open_registry_store, finalize_model_evaluation, set_offline_backup_scope, set_alias
+    from versioning.manifest import export_model_manifest
+    from versioning.materialize import materialize_current
+    definition = _migrated_prompt()
+    root, media, model, config = _formal_eval_fixture(tmp_path, scope='single_fold', prompt_definition=definition)
+    current = root / 'records/prompts/prompt-v4.1-r1.yaml'
+    original = current.read_bytes()
+    fixed = load_v4_1_production_contract()
+    changed = {**definition, **{k: fixed['analysis'][k] for k in ('system_prompt', 'user_prompt')}}
+    current.write_text(yaml.safe_dump(changed, allow_unicode=True))
+    eval_run.prepare_versioned_evaluation(root=root, eval_version='eval-v4.1-r1', model_version=model.model_id,
+        model_version_number=model.version, data_version='data-v4.1-r2', config=config, git_commit='fixture', media_root=media)
+    _fake_formal_runtime(monkeypatch, prompt_definition=changed)
+    eval_run.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
+    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    finalize_model_evaluation(registry, model.model_id, eval_id='eval-v4.1-r1')
+    set_offline_backup_scope(registry, model.model_id, 'adapter')
+    export_model_manifest(root / 'records/models' / model.model_id / 'manifest.yaml', store=registry, model_id=model.model_id)
+    set_alias(registry, model.model_id, 'candidate')
+    materialize_current(registry, alias='candidate', service_mode='development', models_root=root / 'workspace/models', records_root=root)
+    current.write_bytes(original)
+    with pytest.raises(ValueError, match='evaluated Prompt differs'):
+        resolve_service_model(root, alias='candidate', service_mode='development')

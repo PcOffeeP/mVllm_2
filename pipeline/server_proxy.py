@@ -14,7 +14,7 @@ from typing import Any
 
 from pipeline.llamafactory_contract import configure_loaded_processor
 from pipeline.output_normalizer import normalize_structured_output, validate_structured_output
-from pipeline.production_contract import load_production_contract, production_contract_hash
+from pipeline.production_contract import load_production_contract
 from pipeline.server_adapter import wrap_response
 from pipeline.v4_1_labels import canonicalize_v4_1_labels
 from pipeline.v4_1_production_contract import load_v4_1_production_contract
@@ -72,11 +72,7 @@ def _deployment_snapshot(
     contract: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     contract = contract or load_production_contract()
-    contract_hash = (
-        production_contract_hash()
-        if contract["contract_version"] == "tensile-vlm/v2"
-        else str(contract["contract_hash"])
-    )
+    contract_hash = str(contract["contract_hash"])
     return {
         key: str(config[key])
         for key in sorted(STARTUP_FIELDS - {"max_frames"})
@@ -426,9 +422,8 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
-    from pipeline.model_registry import resolve_service_model
+    from pipeline.model_registry import resolve_service_model, bind_service_contract
     from versioning.ids import parse_model_id
-    from versioning.prompts import load_prompt
     binding = resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode)
     if "tensile-vlm/" + parse_model_id(binding["model_version"]).protocol != args.contract_version:
         raise ValueError("registered model protocol does not match the service contract")
@@ -445,11 +440,7 @@ def main() -> int:
         if args.contract_version == "tensile-vlm/v4.1"
         else load_production_contract()
     )
-    prompt = load_prompt(args.root, binding["prompt_version"])
-    if (prompt.system_prompt != contract["analysis"]["system_prompt"]
-        or prompt.user_prompt != contract["analysis"]["user_prompt"]
-        or tuple(prompt.output_fields) != tuple(contract["model_output_fields"])):
-        raise ValueError("registered Prompt differs from the fixed service analysis contract")
+    contract = bind_service_contract(contract, binding)
     try:
         import uvicorn
         from llamafactory.chat import ChatModel

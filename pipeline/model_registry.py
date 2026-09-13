@@ -320,6 +320,59 @@ def _service_files(path: Path) -> dict[str, str]:
     return files
 
 
+def _service_prompt(root: Path, store: Any, record: Any) -> dict[str, Any]:
+    """Compare the inputs already checked by the training/evaluation gates.
+
+    The current definition is checked for drift; it is not the source of the
+    service input. Ordinary artifact paths and their digests are validated by
+    validate_service_current before and after this snapshot.
+    """
+    import yaml
+    from dataclasses import asdict
+    from versioning.prompts import load_prompt, parse_prompt_definition, prompt_path
+    from versioning.registry import _run_artifact_root, _eval_store
+    from versioning.mlflow_eval import get_eval_run
+
+    training = _run_artifact_root(store, record.run_id) / "input/prompt.yaml"
+    frozen = parse_prompt_definition(yaml.safe_load(training.read_text()))
+    current_path = prompt_path(root, record.prompt_version)
+    if any(path.is_symlink() for path in (current_path, *current_path.parents)):
+        raise ModelRegistryError("service Prompt must be an ordinary file")
+    if frozen.version != record.prompt_version or load_prompt(root, record.prompt_version) != frozen:
+        raise ModelRegistryError("current Prompt differs from frozen training Prompt")
+    evaluation = get_eval_run(_eval_store(store), record.eval_id)
+    evaluated = json.loads((_run_artifact_root(store, evaluation.run_id) / "input/evaluation.yaml").read_bytes())
+    prompt = {**asdict(frozen), "output_fields": list(frozen.output_fields)}
+    if evaluated.get("prompt") != {key: prompt[key] for key in ("version", "system_prompt", "user_prompt", "output_fields")}:
+        raise ModelRegistryError("evaluated Prompt differs from frozen training Prompt")
+    return prompt
+
+
+def _service_prompt_digest(prompt: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(prompt, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def bind_service_contract(contract: dict[str, Any], binding: dict[str, Any]) -> dict[str, Any]:
+    """Derive analysis inputs from a verified model binding, retaining output policy."""
+    from copy import deepcopy
+    from versioning.ids import parse_model_id
+    from versioning.prompts import parse_prompt_definition
+    from pipeline.production_contract import canonical_contract_bytes
+
+    prompt = binding["prompt"]
+    parsed = parse_prompt_definition(prompt)
+    if (parsed.version != binding["prompt_version"]
+        or _service_prompt_digest(prompt) != binding["prompt_sha256"]
+        or contract["contract_version"] != "tensile-vlm/" + parse_model_id(binding["model_version"]).protocol
+        or list(parsed.output_fields) != contract["model_output_fields"]):
+        raise ModelRegistryError("service Prompt binding or output contract differs")
+    result = deepcopy(contract)
+    result["analysis"].update(system_prompt=parsed.system_prompt, user_prompt=parsed.user_prompt)
+    result["contract_hash"] = hashlib.sha256(canonical_contract_bytes(result)).hexdigest()
+    return result
+
+
 def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[str, Any]:
     """Resolve the actual service exclusively through the qualified Registry.
 
@@ -335,6 +388,7 @@ def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[
     store = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
     record = validate_service_current(store, alias=alias, service_mode=service_mode,
         models_root=root / "workspace/models", records_root=root)
+    prompt = _service_prompt(root, store, record)
     target = root / "workspace/models/materialized" / record.model_id
     client = MlflowClient(tracking_uri=store.tracking_uri)
     inventory = {}
@@ -358,11 +412,13 @@ def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[
     if validate_service_current(store, alias=alias, service_mode=service_mode,
         models_root=root / "workspace/models", records_root=root) != record:
         raise ModelRegistryError("service Registry binding changed during validation")
+    if _service_prompt(root, store, record) != prompt:
+        raise ModelRegistryError("service Prompt changed during validation")
     identity = {"model_version": record.model_id, "model_version_number": record.version,
         "alias": alias, "service_mode": service_mode, "train_version": record.train_id,
         "eval_version": record.eval_id, "data_version": record.data_version,
         "prompt_version": record.prompt_version, "base_model_version": record.base_model,
-        "deploy_target": declared}
+        "deploy_target": declared, "prompt": prompt, "prompt_sha256": _service_prompt_digest(prompt)}
     digest = hashlib.sha256(json.dumps({"identity": identity, "files": inventory},
         sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {**identity, "fingerprint": digest, "model_path": str(model_path),
