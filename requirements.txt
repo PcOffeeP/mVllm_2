@@ -153,6 +153,9 @@ websockets==15.0.1
 xxhash==3.7.1
 yarl==1.24.2
 
-# 项目级依赖（uv.lock 版本由 uv lock 锁定，以下仅声明下界）
-dvc>=3,<4
-mlflow>=3,<4
+# Shared project services (kept aligned with pyproject.toml).
+dvc==3.67.1
+mlflow==3.15.2
+streamlit-cropper==0.3.1
+# Bind the repository submodule; deploy script checks its Git identity.
+-e ./LlamaFactory

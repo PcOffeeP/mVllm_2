@@ -90,11 +90,12 @@ python -m versioning --help
 
 ```bash
 git submodule update --init --recursive
-conda create -n mVllm2 python=3.11 pip -y
-conda activate mVllm2
-pip install -r requirements.txt
-pip install -e ./LlamaFactory
+# Python 3.11可来自Conda；目标环境必须不存在。
+python3 scripts/source_prepare_environment.py --profile linux-gpu \
+  --env /absolute/new/environment --python /absolute/python3.11
 ```
+
+安装前需已有uv、Git、`ffmpeg` / `ffprobe`与NVIDIA驱动；脚本不改已有Conda环境。Mac使用同一入口的`--profile mac`。锁文件来源、doctor及失败处理见[scripts/SCRIPTS.md](scripts/SCRIPTS.md)。
 
 子视频处理需要 `ffmpeg` / `ffprobe`。MiniCPM-V-4.5 基座模型放在 `models/`，或
 通过具体运行配置指定。

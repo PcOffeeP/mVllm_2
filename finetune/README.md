@@ -164,9 +164,9 @@ python scripts/serve_manage_checkpoints.py plan
 ## 环境
 
 ```bash
-cd LlamaFactory
-pip install -e ".[metrics]"
-pip install -r requirements/minicpm-v.txt
+# 从项目根目录执行；Python 3.11、uv、媒体工具和NVIDIA驱动须已就绪。
+python3 scripts/source_prepare_environment.py --profile linux-gpu \
+  --env /absolute/new/environment --python /absolute/python3.11
 ```
 
 运行时需要：
