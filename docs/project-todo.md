@@ -53,6 +53,7 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。
 - **人工审查**：对候选样本执行有效视图/剪裁人工审查（对应 `review_*` 流程），核对批次与 source 分层，形成冻结的 review batch 后再生成 release。
 - **发布入口与差距**：人工source/审查/隔离证据仍是前置。现有 `versioning data release` 明确仅发布development；`versioning data claim`及`eval prepare/run/score`消费已经构建的holdout，不负责构建。历史构建器位于 `pipeline/scripts/archive/build_v4_1_sealed_test_release.py`，使用旧queue/batch和哈希release语义，不能直接作为新体系写入口。需先明确并确认获审查新source到完整data身份、媒体manifest、owner-only真值、质量报告及封存的构建接线；新体系禁止index/LATEST，不通过手写隔离true字段补造证据。
+- **构建接线待决（2026-09-13续办）**：源码核查确认 review_export 和 release 两层均仅处理 development，缺口包含审查链。推荐新增独立 holdout 审查/构建路径、入选样本全量人工审查、受限真值与公开媒体分离；方案尚待确认，不沿用 development 的自动准入。备选外部审查包及风险见[验证第50节](results/version-control-migration/verification.md#holdout-build-routing-20260913)。来源路径/批次和非语义隔离清单仍为真实构建前置。
 - **授权流程**：预注册一次性授权 + one-time claim，沿用现有 stage_d 流程；授权条件 `one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，首次模型调用前原子写入 claim，只允许同一 run identity 恢复。
 - **阈值**：沿用 `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
 - **依赖/边界**：本任务只负责构建、审查、发布与授权一个未使用 holdout，不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。

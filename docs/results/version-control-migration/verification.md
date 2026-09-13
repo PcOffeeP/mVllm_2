@@ -1326,3 +1326,20 @@ HOLDOUT-METRICS已完成本轮七门代码、双机合成验证及局部独立�
 独立reviewer对当前四份迁移交付文档及finetune/SCRIPTS纯文案、双机原件最终核查通过，无剩余可执行问题。核对Linux拆组文件集合完整覆盖原失败组，614/1skip不含首组重复计数；11/11 Linux副本与6/6 Mac存档均再次SSH验签，7/7保护文件及七文件代码版本一致，70个本地文件链接与diff-check通过。发现的HOLDOUT-METRICS“仍仅支持六指标”现在时残留已明确标为第48节修复前事实并复核。本次只读核查不重跑测试，前序独立回执无原磁盘日志的限制保留。
 
 本批文档按本文件Git历史追溯最终原子提交；随后仅快进训练机隔离任务分支，精确同步回执落于上述Linux RUN的`final-docs-sync.json`，记录最终提交、bundle摘要、0/1独有提交及保护文件核验。该回执由主Agent对实际同步读回核对，不冒充独立reviewer已核验尚未发生的同步。正式main与push/merge授权边界保持。
+
+
+<a id="holdout-build-routing-20260913"></a>
+## 50. HOLDOUT-BUILD 构建链路只读核查与待决方案
+
+2026-09-13，Codex 在 Mac 的干净 `0d8a9f55` 核查当前源码；未访问真实数据或远程机器，未执行测试、训练、推理或构建。第49节测试结果为前轮证据，本节不新增通过计数。
+
+- `versioning/data_pipeline.py::run_input_review_export` 仅纳入 `scope == development`，且无 proposal 的普通候选不会进入人工队列。`_input_release_rows` 再次排除其他 scope，并只为特定普通未断裂候选提供自动准入。因此现有审查链不能直接作为新 holdout 全量人工审查入口；并非只增加发布 purpose 即可完成。
+- `run_input_release` 输出训练 datasets、带标签的 training_candidates 和分布报告，调用 `seal_release(..., purpose=development)`。不得直接复用其完整 payload 作为无真值的 holdout 推理输入。
+- `versioning/data_release.py::seal_release` 已支持 holdout、training_allowed=False 及隔离目录，但创建目录与封存并不证明 source 独立或人工审查完成。
+- `finetune/eval_holdout.py::build_holdout_input` 的消费端要求 `evaluation_inputs/manifest.json` 使用 `tensile-holdout-media/v1`，绑定 data、development_data、split；样本仅含 candidate_id/source_video/video_path。评分端要求 `sealed_ground_truth/labels.json` 使用 `tensile-holdout-truth/v1`，标签集合与媒体候选精确一致。source_video 当前依赖 `video_数字` 身份约定，不在本轮擅自扩展。
+
+**待确认推荐，尚非已批准 Spec：** 增加独立 holdout 审查/构建路径，复用媒体 pin、阶段证据和不可变发布机制；新 source 隔离清单 → 候选媒体 → 全量人工审查及冻结决定 → 无标签媒体 manifest 与 owner-only 真值分离输出 → 完整性/隔离验证 → 完整 data 身份封存。构建前以已冻结 development source 和旧测试 source 的非语义身份清单验证隔离；无法验证则拒绝，不根据布尔声明推断隔离。审查标签和类别分布不得进入普通公开 payload、日志或 Git；详细质量证据留在受限目录，公开报告仅完整性及通过状态。预注册和模型绑定 claim 保持原消费端时序，不由构建阶段提前消耗。
+
+备选是导入外部已审查包，能减少内部审查实现，但需另立可信来源、审查证明和媒体绑定契约，不能消除验证责任。推荐独立原生路径的代价是新增审查作用域及受限工作区，须验证审查往返完整性、权限、中断恢复和开发路径兼容。它涉及公共接口、数据流与安全边界，须用户确认后修订 Spec/Plan，不能将上一轮七项评分门槛的批准扩大解释为构建链路批准。
+
+本次仅形成源码定位与可审阅方向，尚未制定最终配置 schema 或具体 CLI；新 source 的路径/批次及非语义隔离清单仍未提供。真实 holdout 构建、读取与使用分别遵守原授权边界。
