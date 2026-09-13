@@ -1,7 +1,7 @@
 # 可读版本控制正式迁移实施计划
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
-- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `0bf0baed`（承接789fa4fc；2026-09-13用户确认独立全量训练范围）。
+- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `55b3f4d4`（承接0bf0baed；2026-09-13用户确认七项holdout门槛接线）。
 - **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
 - **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
 - **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
@@ -273,3 +273,14 @@ M8-R6/R7实机隔离CPU进度：代码d9ec1227在Mac定向及独立局部审查�
 本次四份最终文档的追加独立复核因reviewer用量限制未返回结论；仅主Agent完成本地一致性与链接检查，后续可按第47节证据补做独立文档核查。已完成的独立整包代码审查不因这次工具错误改写。
 
 本轮轻量文档`c3685578`经bundle SHA `ce4e77f8cb5182e96827304d582b49064056c40b55417b2281a0bd3c7dee3305`仅快进Linux隔离分支，`docs-sync-receipt.json`记录四文件范围、原正式项目干净及七保护文件不变。后续文档状态更新仍需按同一隔离同步纪律交付；真实环境验收和四文档独立补核保持待办。
+
+
+## HOLDOUT-METRICS 实施批次（2026-09-13）
+
+用户已明确要求按原七项门槛补齐；Spec确认提交55b3f4d4。精确代码范围：新增`finetune/holdout_metrics.py`集中原定义与冻结阈值、私有指标和公开gate聚合；修改`finetune/eval_run.py`仅为full配置路由到七门校验；修改`finetune/eval_holdout.py`贯通准备、评分、恢复、公开证据及下游校验，并将新模块加入冻结实现摘要。不改validation评分、源数据或历史对象。
+
+精确测试范围：新增`tests/test_holdout_metrics.py`，修改`tests/test_eval_holdout.py`的合成四状态fixture及全链路断言；若共享fixture调用者受影响，仅修其必要断言并在证据列明。文档范围沿既有TODO/Plan/verification/handoff，加`versioning/SCRIPTS.md`及`finetune/SCRIPTS.md`的指标说明/模块索引。
+
+先验证七门完整性、固定阈值与比较方向；用合成四状态原记录与历史f04ca7cb评分函数逐项对照（包括缺类、非法、runtime失败和边界），确认validation不变。再验证媒体推理不读truth、授权score、质量失败后consumed、完成中断恢复、私有评分重验、公开无数值指标泄漏及Registry准入拒绝篡改。旧泛化full配置不能自动改写为七门。
+
+本机按受影响套件验证并取得独立reviewer局部审查；代码提交后沿既有bundle授权核对双机独有提交和保护文件，仅快进隔离checkout，在Linux现有CPU环境分进程复跑受影响套件。记录实际退出、日志SHA、实际执行代码和机器；不重复未变化的整包审查与模型实验。新批完成后更新验收状态，真实holdout来源/构建、GPU和硬盘缺口保留。Spec确认仅涵盖本批七门；实现沿用户“补齐”的明确授权，不要求再次批准同一取舍。
