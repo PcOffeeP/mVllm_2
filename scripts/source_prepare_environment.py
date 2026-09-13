@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -58,8 +59,13 @@ def main():
     parser.add_argument('--profile', choices=('mac', 'linux-gpu'), required=True)
     parser.add_argument('--env', type=Path, required=True)
     parser.add_argument('--python', required=True, help='existing Python 3.11 executable')
+    parser.add_argument('--index-url', help='explicit HTTPS package mirror for linux-gpu; defaults to PyPI')
     args = parser.parse_args()
     try:
+        if args.index_url:
+            parsed = urlsplit(args.index_url)
+            if args.profile != 'linux-gpu' or parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+                raise ValueError('--index-url requires a credential-free HTTPS URL and linux-gpu profile')
         python = preflight(args.profile, args.env, args.python)
         # uv's pip.target/config can override --python and mutate another environment.
         env = {k: v for k, v in os.environ.items()
@@ -70,7 +76,9 @@ def main():
             run(['uv', '--no-config', 'sync', '--locked', '--python', python], cwd=ROOT, env=env)
         else:
             run(['uv', '--no-config', 'venv', '--python', python, args.env], cwd=ROOT, env=env)
-            run(['uv', '--no-config', 'pip', 'sync', '--python', args.env / 'bin/python', 'requirements-linux-gpu.lock'], cwd=ROOT, env=env)
+            run(['uv', '--no-config', 'pip', 'sync', '--python', args.env / 'bin/python',
+                 *(['--default-index', args.index_url] if args.index_url else []),
+                 'requirements-linux-gpu.lock'], cwd=ROOT, env=env)
         run([args.env / 'bin/python', '-I', ROOT / 'scripts/source_validate_environment.py', '--profile', args.profile], cwd=ROOT, env=env)
     except (ValueError, subprocess.CalledProcessError, OSError) as exc:
         print(f'deployment failed: {exc}\nAny partially created environment is retained; no existing environment was selected for update.', file=sys.stderr)

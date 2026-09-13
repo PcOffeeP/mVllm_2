@@ -140,3 +140,20 @@ def test_doctor_rechecks_git_identity(doctor_fixture, monkeypatch, capsys):
     monkeypatch.setattr(doctor.subprocess, 'check_output', lambda a, **k: ' M tuner.py' if 'status' in a else git(a))
     assert doctor.main() == 1
     assert 'differs from clean pinned submodule' in capsys.readouterr().out
+
+
+def test_mirror_is_explicit_and_cannot_supply_credentials(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, 'argv', ['deploy', '--profile', 'linux-gpu', '--env', str(tmp_path/'new'), '--python', 'python', '--index-url', 'https://user:password@example.com/simple'])
+    monkeypatch.setattr(deploy, 'preflight', lambda *a: pytest.fail('invalid index must be rejected before work'))
+    assert deploy.main() == 1
+
+
+def test_explicit_mirror_does_not_change_target(tmp_path, monkeypatch):
+    target = tmp_path/'new'
+    monkeypatch.setattr(sys, 'argv', ['deploy', '--profile', 'linux-gpu', '--env', str(target), '--python', 'python', '--index-url', 'https://example.com/simple'])
+    monkeypatch.setattr(deploy, 'preflight', lambda *a: '/python3.11')
+    calls=[]
+    monkeypatch.setattr(deploy, 'run', lambda a, **kw: calls.append(a))
+    assert deploy.main() == 0
+    assert calls[1][calls[1].index('--python')+1] == target/'bin/python'
+    assert calls[1][calls[1].index('--default-index')+1] == 'https://example.com/simple'

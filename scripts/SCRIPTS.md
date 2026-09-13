@@ -31,7 +31,7 @@ python3 scripts/source_prepare_environment.py --profile linux-gpu \
   --env /absolute/new/environment --python /absolute/python3.11
 ```
 
-Mac使用pyproject.toml/uv.lock（包含dev组）；Linux x86_64 GPU使用requirements-linux-gpu.lock及当前固定LlamaFactory子模块。requirements.txt是Linux锁文件输入；不把Mac和GPU配置叠加安装。安装失败返回非零并保留部分环境以便调查；重试须选择新目标，不自动清空已有目录。成功后用目标环境bin/python运行项目，不依赖当前shell激活的环境。
+Mac使用pyproject.toml/uv.lock（包含dev组）；Linux x86_64 GPU使用requirements-linux-gpu.lock及当前固定LlamaFactory子模块。requirements.txt是Linux锁文件输入；不把Mac和GPU配置叠加安装。Linux网络需要镜像时可显式传`--index-url https://mirror.example/simple`（不允许URL含凭据）；默认PyPI，版本锁不变，不能通过外部uv配置重定向目标。安装失败返回非零并保留部分环境以便调查；重试须选择新目标，不自动清空已有目录。成功后用目标环境bin/python运行项目，不依赖当前shell激活的环境。
 
 ```sh
 /absolute/new/environment/bin/python scripts/source_validate_environment.py --profile mac
