@@ -8,7 +8,7 @@
 
 ## 下一步与执行顺序
 
-**当前执行入口（2026-09-13，覆盖下方历史批次的下一步）**：HOLDOUT-BUILD等待旧发布无标签逐项来源清单或准确备份位置，第53节限定调查不重复。MODEL-DIAG不依赖该项，已完成已知归档/迁移目录与发布库身份核查，见第54–55节；六个历史预测/摘要恢复比对目标已保存。原模型交叉推理路径等待准确备份位置/迁移记录；其他模型替代或新诊断方案需要先确认。缺权重时不启动交叉推理，不把同名近似目录当成三折模型。
+**当前执行入口（2026-09-13，覆盖下方历史批次的下一步）**：HOLDOUT-BUILD等待旧发布无标签逐项来源清单或准确备份位置，第53节限定调查不重复。MODEL-DIAG不依赖该项，已完成已知归档/迁移目录与发布库身份核查，见第54–55节；六个历史预测/摘要恢复比对目标已保存。用户已转向条件清理，不继续追问三折备份；当前先按第56节建立可删副本证据。原模型推理仍缺权重，其他模型替代或新诊断方案需要先确认。缺权重时不启动交叉推理，不把同名近似目录当成三折模型。
 
 2026-09-13 Linux续办（Codex）：用户明确指出初始test视频已划分，授权训练机调查。已找到`workspace/data/source/splits/test.json`的21个test source，原视频21/21存在，train分支89source，三折与test无交集；不再要求用户重新提供既定路径。Linux隔离7b0e01d5已运行本批同代码427 passed/1 skipped、两组exit0，七保护文件未变。详见[第52节](results/version-control-migration/verification.md#linux-test-branch-source-20260913)。历史claim/gate确认旧release已暴露，媒体凭据文件名覆盖其中20source，video_0005无该批候选凭据；原旧release目录缺失，逐source最终消费映射未完整复核。既定划分已找到，不等于全体可作为新独立测试；保留TEST-POLICY，不重划、不复测、不擅自放行。
 
@@ -33,7 +33,7 @@
 | 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用的 test 数据分支 | 阻塞 | 代码接线及双机合成验收已完成；既定21个test source已定位，使用资格、人工审查及真实操作授权待落实 |
 | 评分接线前置 | HOLDOUT-METRICS | 冻结七项holdout门槛接线 | 已解决（本轮代码/CPU范围） | f1be1060；真实holdout验收仍归HOLDOUT-BUILD/MODEL-QUALITY |
 | 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 进行中（Codex；只读准备） | 历史开发记录可复算；concise原件缺失及visual断链阻塞推理对照 |
-| 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | MODEL-DIAG 权重依赖、完整证据备份、显式删除授权 |
+| 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | 条件删除已授权；仍须证明完整迁移、冗余性及MODEL-DIAG依赖已保留 |
 | 发布前配套 | RELEASE-POINTER | 原旧指针维护目标适用性 | 待确认 | 新体系已显式选版本；待用户裁决原目标，不恢复旧写入 |
 | 后续训练 | FINAL-TRAIN | 全量开发数据训练最终候选 | 阻塞 | 开发侧三折验收通过、holdout 测试集就绪及训练授权 |
 | 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、holdout 独立验收及其他适用质量门 |
@@ -47,7 +47,7 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ### MODEL-ARCHIVE — 中间模型证据归档与权重清理准备
 
-- **状态/来源**：进行中（主 Agent）；用户要求验证能否保留历次训练参数和结果后清除训练机 run 下模型文件。本轮仅验证，无删除授权。
+- **状态/来源**：进行中（主 Agent）；用户要求验证能否保留历次训练参数和结果后清除训练机 run 下模型文件。用户已授权在完整迁移核验通过后清理旧数据与旧模型副本；未满足条件的文件继续保留。
 - **已证实事实与差距**：2026-08-31 训练机 `workspace/runs` 约 90.253 GiB；原清单漏列两组 source-aware，concise-cv 约定路径不存在；r1 来源仍有 5 个 checkpoint，merged 为发布库软链接。5 组未发布模型 merged 权重合计约 80.988 GiB，各 root LoRA 约 439.1 MiB。原清单不足以放行删除；当前快照未哈希权重，未归档原始预测和完整训练日志。
 - **依赖**：MODEL-DIAG 对历史/当前模型和阶段 checkpoint 的需求；当前发布模型及 `pipeline/checkpoint_policy.json` 保护边界。权重清理不隐含取消诊断任务。
 - **下一动作**：按 MODEL_INVENTORY 第 8 节归档实际配置、模型/数据/Prompt/评测身份、完整日志和原始预测、文件哈希及备份校验；查 concise-cv 备份或迁移位置。逐 run 确定仅留研究记录还是保留 adapter 以便重新合并，形成显式候选清单后取得删除授权。保留 adapter 的方案先验证准确基座与合并链路，不以直挂 4-bit 代替 merged BF16。
@@ -325,3 +325,6 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 
 2026-09-13 MODEL-DIAG发布库身份及恢复目标：Linux只读release-manifest核查exit0，已知legacy发布库只有v4.1-agent-pipeline-fold0-r1，origin为coverage-first单折实验，不能替代concise/visual三折。已从历史concise报告提取三折summary/records共6个SHA256恢复比对目标；尚未找回文件，报告摘要不是原件或模型权重的独立证明。已知位置线索核查到此收束，等待准确备份路径/迁移记录；不重复扫描、重训或擅自改用其他模型。详见verification第55节。
+
+
+2026-09-13 条件清理授权（Codex）：用户明确旧数据和旧训练run/模型两类均包括，只删除已验证完整迁移且不再需要的旧副本。本轮Linux预检exit0：历史迁移source_root已不存在；pre-semantic备份不在该迁移清单映射内；旧LlamaFactory顶层16个模型软链接，10个目标存在、6个断链，不能当作重复权重。workspace/runs包含迁移后的实际目标，当前发布库保持保护。删除白名单为空，实际删除0、释放0字节；不是授权缺失，而是完整迁移/冗余性证据未满足。后续先建立旧备份到保留位置的逐文件映射、内容一致性和引用退出证明，再在本次条件授权内清理；不继续索取缺失三折模型备份，不把此次决定解释为取消MODEL-DIAG或TEST-POLICY。

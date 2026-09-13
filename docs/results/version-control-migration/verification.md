@@ -1516,3 +1516,11 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 本机基线0c6169e3；远端正式main f1b7d8a3、隔离bb73e4dd，tracked均干净。历史报告给出的三个summary及三个records摘要仅用作恢复后的比对依据；报告自身注明未独立审查，当前未验证这些原始文件。未来原件即便匹配，也须另外核验模型、Prompt、数据及fold训练排除关系。
 
 主Agent核对JSON、程序摘要、六个目标的唯一性与报告对应关系，git diff --check通过；未运行模型测试、GPU推理、训练、真实数据构建或受限test读取，未修改远端或同步本轮提交。本轮没有新的模型效果结论。
+
+
+<a id="conditional-cleanup-20260913"></a>
+## 56. 旧数据与模型条件清理预检
+
+2026-09-13 条件清理授权（Codex）：用户明确旧数据和旧训练run/模型两类均包括，只删除已验证完整迁移且不再需要的旧副本。本轮Linux预检exit0：历史迁移source_root已不存在；pre-semantic备份不在该迁移清单映射内；旧LlamaFactory顶层16个模型软链接，10个目标存在、6个断链，不能当作重复权重。workspace/runs包含迁移后的实际目标，当前发布库保持保护。删除白名单为空，实际删除0、释放0字节；不是授权缺失，而是完整迁移/冗余性证据未满足。后续先建立旧备份到保留位置的逐文件映射、内容一致性和引用退出证明，再在本次条件授权内清理；不继续索取缺失三折模型备份，不把此次决定解释为取消MODEL-DIAG或TEST-POLICY。
+
+[预检原件](../conditional-cleanup-preflight-20260913.json)保存SSH程序、摘要、实际exit0、迁移清单与两份receipt、16个旧模型链接目标和两端Git状态。本机基线cf40dd70，远端main f1b7d8a3、隔离bb73e4dd均tracked干净。本轮没有远端写入；未读取权重或受限test，未计算整树一致性。主Agent验证JSON、程序摘要、16链接/10有效目标及空删除列表，git diff --check通过。迁移receipt committed不证明source/derived/备份全量移走；既有整机/大型产物恢复缺口仍在。此为清理预检记录，不是已完成删除或独立审查结论。

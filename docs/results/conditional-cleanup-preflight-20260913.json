@@ -1,0 +1,233 @@
+{
+  "schema": "conditional-cleanup-preflight/v1",
+  "authorization": "User permits both old data and old training/model copies to be deleted only after migration is verified; not a waiver of preservation or identity requirements.",
+  "baseline": "cf40dd708ededb2414290dac4915b83a72ceb717",
+  "program": "from pathlib import Path\nimport json,hashlib,subprocess,datetime\nr=Path('/home/liuyang/文档/mVllm_2')\ndef item(p):\n return {'path':str(p),'exists':p.exists(),'symlink':p.is_symlink(),'resolved':str(p.resolve()),'children':sorted(c.name for c in p.iterdir()) if p.is_dir() and not p.is_symlink() else None}\nold=r/'LlamaFactory/saves/minicpmv4_5/lora'\nlinks=[item(p) for p in sorted(old.iterdir()) if p.is_symlink()]\nfiles=[r/'workspace/data/migration_manifest.json']+sorted(Path('/data/mVllm_2/migration_receipts').glob('*.yaml'))\nevidence=[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'text':p.read_text()} for p in files]\npaths=[Path('/home/liuyang/文档/tensile-data/current'),Path('/home/liuyang/文档/mVllm_2-data-backups/pre-semantic-portal-20260723'),r/'workspace/data',r/'workspace/runs',r/'workspace/models/releases',Path('/data/mVllm_2/records')]\nout={'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scope':'conditional cleanup preflight: directory/link metadata and migration receipts only','paths':[item(p) for p in paths],'legacy_model_links':links,'migration_evidence':evidence,'git':{}}\nfor p in [r,r.with_name('mVllm_2-migration-7eeb93a7')]:\n out['git'][str(p)]={k:subprocess.check_output(['git','-C',str(p),*a],text=True).strip() for k,a in {'head':['rev-parse','HEAD'],'status':['status','--porcelain','--untracked-files=no']}.items()}\nprint(json.dumps(out,ensure_ascii=False,indent=2))\n",
+  "program_sha256": "86c4c21bbaf258bff2ed15a004d4d8a247217fad31a5715ae9286c92f85a4577",
+  "exit_code": 0,
+  "stdout_sha256": "95147ac9a14c28b8234e2b5d6a63295dbef35d7ccb646af58f4fa89f3b58b03f",
+  "result": {
+    "time": "2026-09-13T13:46:05.743986+00:00",
+    "scope": "conditional cleanup preflight: directory/link metadata and migration receipts only",
+    "paths": [
+      {
+        "path": "/home/liuyang/文档/tensile-data/current",
+        "exists": false,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/tensile-data/current",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2-data-backups/pre-semantic-portal-20260723",
+        "exists": true,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2-data-backups/pre-semantic-portal-20260723",
+        "children": [
+          "data"
+        ]
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/data",
+        "exists": true,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/data",
+        "children": [
+          "derived",
+          "migration_manifest.json",
+          "releases",
+          "source"
+        ]
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs",
+        "exists": true,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs",
+        "children": [
+          "v4.1-phase2-coverage-fallback-v1-seed3413",
+          "v4.1-phase2-coverage-first-v1-seed3407",
+          "v4.1-phase2-coverage-first-v1-seed3411",
+          "v4.1-phase2-source-aware-v1-seed3407",
+          "v4.1-phase2-source-aware-v1-seed3411",
+          "v4.1-prompt-concise-v1-seed3411",
+          "v4.1-prompt-concise-v2-seed3411",
+          "v4.1-prompt-minimal-v1-seed3411"
+        ]
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases",
+        "exists": true,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/models/releases",
+        "children": [
+          "v4.1-agent-pipeline-fold0-r1"
+        ]
+      },
+      {
+        "path": "/data/mVllm_2/records",
+        "exists": true,
+        "symlink": false,
+        "resolved": "/data/mVllm_2/records",
+        "children": [
+          "prompts"
+        ]
+      }
+    ],
+    "legacy_model_links": [
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold0",
+        "exists": false,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold0/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold0_merged",
+        "exists": false,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold0/merged",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold1",
+        "exists": false,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold1/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold1_merged",
+        "exists": false,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold1/merged",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold2",
+        "exists": false,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold2/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_0_760050fad303_20260724_visual_fold2_merged",
+        "exists": false,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold2/merged",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_coverage_first_fallback_seed3413_seed3413",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_coverage_first_fallback_seed3413_seed3413_merged",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407_merged",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3407_merged",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3411",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter",
+        "children": null
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_dd89b70e9d63_seed3411_merged",
+        "exists": true,
+        "symlink": true,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged",
+        "children": null
+      }
+    ],
+    "migration_evidence": [
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/data/migration_manifest.json",
+        "sha256": "4aa3a43686ee4c9e5963a553bc7517e99ce31583d87181f7cad05aacfc2a8299",
+        "text": "{\n  \"schema_version\": \"tensile-vlm-project-workspace-migration/v1\",\n  \"source_root\": \"/home/liuyang/文档/tensile-data/current\",\n  \"destination_root\": \"/home/liuyang/文档/mVllm_2/workspace/data\",\n  \"managed_directory_mapping\": {\n    \"source\": \"source\",\n    \"derived\": \"derived\",\n    \"training_releases\": \"releases\"\n  },\n  \"file_count\": 20718,\n  \"total_bytes\": 7516223269,\n  \"release_manifest_sha256\": {\n    \"releases/v4.1.0-760050fad303/manifest/release_manifest.json\": \"c7a5fe349137b5b5f1e37082ae69b0e5d175bf174e4a27b71061975afac3c036\",\n    \"releases/v4.1.0-ecb5aeb9657c/manifest/release_manifest.json\": \"ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b\"\n  },\n  \"verified\": true\n}\n"
+      },
+      {
+        "path": "/data/mVllm_2/migration_receipts/data-v4.1-r1.receipt.yaml",
+        "sha256": "8ef51e7f6414eeffd44a49d26ea65a1b6d7600589c9681d10441906274819515",
+        "text": "operation_id: data-migration-a14fdfa0d2336919b088abb7c4f4e9c18c8648c3f9b773119d97557cc27bda5c\nsource_legacy_id: v4.1.0-760050fad303\ntarget_identity: data-v4.1-r1\ntarget_path: data/releases/data-v4.1-r1/release.yaml\nsource_manifest_sha256: c7a5fe349137b5b5f1e37082ae69b0e5d175bf174e4a27b71061975afac3c036\ntarget_release_digest: ee1d50ab1433e13fcbaf79164cfa15ced09a5331d2f64ecc1afc95a850c76d7d\nstatus: committed\nwritten_at: '2026-09-12T08:29:17.285924+00:00'\n"
+      },
+      {
+        "path": "/data/mVllm_2/migration_receipts/data-v4.1-r2.receipt.yaml",
+        "sha256": "89df85cf871b9b86b61da49a50d742dfca95d038dd6297addbc93fb09eba17c3",
+        "text": "operation_id: data-migration-b1dd29737aeb84fbc440120b9bffba68316e9052313afdaa466abbf23aba6a54\nsource_legacy_id: v4.1.0-ecb5aeb9657c\ntarget_identity: data-v4.1-r2\ntarget_path: data/releases/data-v4.1-r2/release.yaml\nsource_manifest_sha256: ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b\ntarget_release_digest: a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b\nstatus: committed\nwritten_at: '2026-09-12T08:29:17.268127+00:00'\n"
+      }
+    ],
+    "git": {
+      "/home/liuyang/文档/mVllm_2": {
+        "head": "f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52",
+        "status": ""
+      },
+      "/home/liuyang/文档/mVllm_2-migration-7eeb93a7": {
+        "head": "bb73e4dd0264c8ae709612627794b98118611efa",
+        "status": ""
+      }
+    }
+  },
+  "approved_deletion_paths": [],
+  "deleted_paths": [],
+  "bytes_freed": 0,
+  "decisions": {
+    "old_source": "already_absent",
+    "old_backup": "not_covered_by_migration_manifest; retain",
+    "workspace_runs": "actual_migrated_weight_targets_not_proven_redundant; retain",
+    "legacy_model_links": "links_not_duplicate_weight_copies; reference_retirement_not_verified; retain",
+    "current_release": "protected; retain"
+  },
+  "limitations": [
+    "No full tree/content equivalence proof was performed.",
+    "Directory contents and receipt status do not prove complete backup migration.",
+    "No deletion, weight reads, restricted test reads, training or remote writes."
+  ]
+}
