@@ -1524,3 +1524,11 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 2026-09-13 条件清理授权（Codex）：用户明确旧数据和旧训练run/模型两类均包括，只删除已验证完整迁移且不再需要的旧副本。本轮Linux预检exit0：历史迁移source_root已不存在；pre-semantic备份不在该迁移清单映射内；旧LlamaFactory顶层16个模型软链接，10个目标存在、6个断链，不能当作重复权重。workspace/runs包含迁移后的实际目标，当前发布库保持保护。删除白名单为空，实际删除0、释放0字节；不是授权缺失，而是完整迁移/冗余性证据未满足。后续先建立旧备份到保留位置的逐文件映射、内容一致性和引用退出证明，再在本次条件授权内清理；不继续索取缺失三折模型备份，不把此次决定解释为取消MODEL-DIAG或TEST-POLICY。
 
 [预检原件](../conditional-cleanup-preflight-20260913.json)保存SSH程序、摘要、实际exit0、迁移清单与两份receipt、16个旧模型链接目标和两端Git状态。本机基线cf40dd70，远端main f1b7d8a3、隔离bb73e4dd均tracked干净。本轮没有远端写入；未读取权重或受限test，未计算整树一致性。主Agent验证JSON、程序摘要、16链接/10有效目标及空删除列表，git diff --check通过。迁移receipt committed不证明source/derived/备份全量移走；既有整机/大型产物恢复缺口仍在。此为清理预检记录，不是已完成删除或独立审查结论。
+
+
+<a id="train-video-cleanup-20260913"></a>
+## 57. train原视频副本逐文件核验与删除前阻塞
+
+2026-09-13 train原视频清理候选：按用户条件授权在Linux核对旧备份01_videos到workspace/data/source/videos，89个train视频逐文件大小/SHA256一致，共5852142357字节（约5.45GiB），21个test视频未读内容。两工作区tracked运行代码/配置未见该备份路径引用。删除程序的占用预检遇到不可读/proc文件句柄，实际exit1且发生于首次unlink和证据目录创建之前；sudo -n只读能力探针要求密码，未提权。删除0、释放0，旧副本保留。候选清单与完整程序已保存；后续完成有权限的占用检查后再沿用授权执行，不能把候选已验签写成已删除。
+
+[逐文件证据与程序](../train-video-cleanup-candidates-20260913.json)记录每个旧路径、保留路径、SHA256、大小、inode/mtime及远端Git。内容核验SSH实际exit0；删除尝试exit1（原stderr保留）。不可读PID最初为164474/271119/3474702；随后ps显示前两者为sd-pam和ssh-agent，第三个已退出，未将进程名当作完整占用证明。没有改系统权限、停止进程、读取test内容或删除其他产物。此批只核定89个train原视频，不外推整个备份或模型可删。主Agent检查JSON、89条唯一映射/摘要、总字节和diff-check。
