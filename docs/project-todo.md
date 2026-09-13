@@ -18,6 +18,8 @@
 
 M8交付文档的本轮追加独立复核因reviewer用量限制未形成结论；四份文档经主Agent本地`git diff --check`与链接检查，后续补独立核查。此缺口不改变已单独完成的整包代码审查结论。
 
+M8本轮轻量交付已在Mac提交`c3685578`并以SHA `ce4e77f8cb5182e96827304d582b49064056c40b55417b2281a0bd3c7dee3305`的bundle快进训练机隔离工作区；回执见第47节。原项目仍干净`main@f1b7d8a3`，隔离分支tracked干净，七份保护文件未变。下一步在可用独立审查资源下补四文档核查，同时按本表原依赖准备真实环境验收；未获实际训练、holdout使用及merge/push授权。
+
 **模型验收下一项先执行 HOLDOUT-BUILD：构建并授权一个未使用的 holdout 测试集，作为最终模型独立验收的前置，同时继续 MODEL-DIAG。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
 
 1. 构建并授权未使用 holdout 测试集：隔离独立于开发/调参的 source，按已冻结阈值发布 sealed-test release，走预注册 + 一次性授权 + claim 流程；不得读取或混用现有 sealed-test 的受限语义结果。本步单独执行，不隐含于“策略已确定”。

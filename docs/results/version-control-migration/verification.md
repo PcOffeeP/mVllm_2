@@ -1221,3 +1221,7 @@ Mac原始整仓日志、报告、runner及三份独立局部复核日志和进�
 独立reviewer核对冻结范围Codeup main `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`至`d9ec12270d5b3f106a1e1da6e5b2c6eb443aaea7`，**140提交/152文件，更新后的整包代码差异审查通过，无剩余可执行问题**。未变化部分承接同一reviewer前轮完整范围审查证据；`2caac393`只含已核查文档，`d9ec1227`五文件SHA与独立局部复审一致。reviewer核对作者Mac整仓实际exit0和Linux原报告，未把它们记作独立复跑；独立者自身的11项、顺序/错误来源2项及原两类旧记录反例复验如本节上文。第46节的驳回是当时冻结范围的历史结论，R6/R7现已解决本轮代码与CPU范围。
 
 验收边界：尚无真实GPU训练与模型质量、实际授权新holdout构建和评分、真实硬盘及大型产物恢复、外部依赖整机恢复证据。M4/M5等真实环境缺口与M8父任务保持未关闭；本轮没有执行merge/push。轻量台账、Plan、verification、handoff的最终提交版本按Git历史追溯。四份最终文档已请求同一独立reviewer只读核查，但该次任务触及用量限制而未产生结论；文档仅经主Agent的`git diff --check`和59个本地文件链接可达性检查，不记作独立文档复核通过。整包代码差异审查结论已先于此独立完成，不受该错误覆盖。
+
+### 轻量文档隔离同步
+
+Mac将四份轻量台账/Plan/verification/handoff提交为`c3685578923a46ab078f331906ad3aabbd4e7c31`，提交范围仅这四文件，尾注按实际Mac Codex执行归因。增量bundle SHA `ce4e77f8cb5182e96827304d582b49064056c40b55417b2281a0bd3c7dee3305`；Linux先核隔离`d9ec1227`、正式`main@f1b7d8a3`均干净及七保护文件与原preflight一致，再验签bundle、确认只有一提交/四文件、仅快进隔离分支至`c3685578`。事后两工作区tracked状态干净、七保护文件SHA未变。原回执`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-r6r7-verification-20260913/docs-sync-receipt.json`按原字节复制到Mac`/private/tmp/mvllm2-r6-r7-20260913/docs-sync-receipt.json`，SHA `d9ffea7f77f5bc8e5e397089b63ca92718d5b20b98a1d4dd4a6f7d2fb86c71e8`。本段后续文字收口只追加文档记录，代码审查范围仍冻结于`d9ec1227`；不把隔离分支快进说成Codeup main集成。

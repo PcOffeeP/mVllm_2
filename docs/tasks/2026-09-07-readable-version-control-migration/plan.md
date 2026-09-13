@@ -263,3 +263,5 @@ M8-R6/R7实机隔离CPU进度：代码d9ec1227在Mac定向及独立局部审查�
 2026-09-13 M8-R6/R7最终验收：Mac同一代码`d9ec1227`整仓2694 passed/11 skipped（pytest 774.28秒，进程实际exit0），原导入顺序组合1 passed/49 deselected/exit0；Linux隔离分支训练/full/Registry 179 passed/exit0及顺序1 passed/49 deselected/exit0。独立reviewer复用上轮未变差异的完整审查证据，确认五文件修复及原始adapter/checkpoint反例均闭环，对Codeup main `f1b7d8a3` 至 `d9ec1227` 的140提交/152文件更新整包代码差异审查结论为通过；具体日志摘要与范围见verification第47节。R6/R7已解决本轮范围；M8父任务仍进行中，真实训练/GPU效果、授权新holdout及评分、真实硬盘/大型产物和外部依赖整机恢复未验收。下一步完成当前证据交付和双机隔离同步，再按TODO处理真实环境依赖；未获merge/push授权。
 
 本次四份最终文档的追加独立复核因reviewer用量限制未返回结论；仅主Agent完成本地一致性与链接检查，后续可按第47节证据补做独立文档核查。已完成的独立整包代码审查不因这次工具错误改写。
+
+本轮轻量文档`c3685578`经bundle SHA `ce4e77f8cb5182e96827304d582b49064056c40b55417b2281a0bd3c7dee3305`仅快进Linux隔离分支，`docs-sync-receipt.json`记录四文件范围、原正式项目干净及七保护文件不变。后续文档状态更新仍需按同一隔离同步纪律交付；真实环境验收和四文档独立补核保持待办。
