@@ -1,7 +1,7 @@
 # 可读版本控制正式迁移实施计划
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
-- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `789fa4fc`（承接6996d35d；2026-09-13用户确认服务冻结Prompt来源）。
+- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `0bf0baed`（承接789fa4fc；2026-09-13用户确认独立全量训练范围）。
 - **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
 - **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
 - **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
@@ -217,3 +217,17 @@ M8-R5补充证据：独立临时fixture中同ID当前Prompt替换为固定服务
 2026-09-13 M8-R5代码de1b51dd完成Mac范围：受影响7文件195 passed/1 skipped、193.63秒/exit0，新增冻结专项5 passed/exit0；独立25+5项及操作说明通过。用户确认的Spec789fa4fc/Plan511cfc14有效，代码经3提交bundle同步隔离分支，Linux按两个进程验证同7文件，实际结果见第44节收尾。整体迁移、full/holdout及真实环境限制保持。
 
 2026-09-13 M8-R5最终验收：Linux第一组97 passed/1 skipped、99.72秒/exit0，第二组103 passed、115.60秒/exit0，合计200 passed/1 skipped；代码两端de1b51dd一致，7保护文件不变，原main干净。本轮R5已解决，最终双机证据和4文档核查后在Linux原子提交回传Mac。第43节整包驳回是历史完整审查结论，不以本次局部通过覆盖；下一步full/holdout实际输入接线及最终完整验收，GPU、硬盘/大型产物限制保留，M8不关闭。
+
+
+2026-09-13 M4 full/holdout接线启动（Codex）：用户要求“补齐吧”。只实现和用隔离CPU数据验证，不取得真实holdout/重训授权。已核实两个前置：full训练证据当前只承认fold0/1/2，需确认独立full训练范围；holdout必须按已确认设计先媒体推理、后授权评分、普通导出只公开aggregate，不能把真值混进输入快照。先行局部修复限定versioning/cli.py和tests/versioning/test_cli_holdout.py：data claim在冻结预注册前校验完整四元组，避免错误参数留下不可变冻结文件，发布后仍复验。该步骤不改变claim身份/生命周期或数据布局；后续完整接线具体范围在决策确认后补入，不将参数可接受当作实现完成。
+
+
+### M4 全量训练与 holdout 实际接线（2026-09-13）
+
+用户明确答复“接受，增加独立全量训练范围”，前述待确认已解除；沿用“补齐吧”的实施授权，Spec 0bf0baed。先完成独立 full 训练来源与证据，再完成 holdout 的媒体推理、受限评分和 aggregate 导出，最后独立审查及两机隔离 CPU 验证。真实训练/GPU、真实 holdout 构建或读取、push/merge 均未授权。
+
+精确文件范围：`finetune/train_build_dataset.py`（开发候选去重全量输入）、`finetune/train_prepare_run.py`（冻结/执行/导出 full）、`versioning/mlflow_train.py`（显式范围、父 Run 单次 full 事实）、`versioning/registry.py`（full 来源及产物证据）、`versioning/cli.py`（显式入口及冻结前身份检查）、`finetune/eval_run.py` 与新增 `finetune/eval_holdout.py`（实际 full/holdout 执行、媒体与评分分离、受限细节与公开 aggregate）、`versioning/holdout.py`、`versioning/mlflow_eval.py`（授权衔接）。测试限定 `tests/versioning/test_cli_holdout.py`、`tests/versioning/test_mlflow_train.py`、`tests/versioning/test_registry.py`、`tests/test_versioned_training_run.py`、`tests/test_eval_run.py` 及新增 `tests/test_full_training.py`、`tests/test_eval_holdout.py`。操作说明增补 `versioning/SCRIPTS.md`、`finetune/SCRIPTS.md`，状态同步本 Plan、`docs/project-todo.md`、`docs/plans/2026-09-01-readable-version-control-implementation.md`、任务目录 `verification.md`/`handoff.md`；保留用户未跟踪 agent-handoff.md、stash、原训练机项目和所有正式产物。
+
+实现选择：full 配置显式与三折区分，开发样本按媒体身份去重且标签冲突拒绝，冻结原六份划分来源以便核查；全量配置不开放训练中验证/隐式拆分，不擅自选择 epoch、seed 或其他训练日程。full 产物使用 full/adapter，MLflow 父 Run 记真实结果，禁止 fold 子 Run 和折结果改名。Registry 同时验证冻结范围、结果、权重摘要和模型来源范围。holdout 延续已批准的 media/evaluation_inputs/sealed_ground_truth/authorization 布局，预注册规则及阈值与冻结执行配置严格匹配，真值与逐样本评分不进入普通 MLflow artifact 或公开导出；消费遵守已有先写 consumed 后完成状态的顺序。
+
+Proof：合成数据端到端覆盖 full prepare→run→export→model register 及 full holdout prepare→inference→score→export；验证三折输入/结果不变、重复标签冲突、范围混用、输入/权重漂移、失败状态、未授权真值访问、预注册身份/规则不符、跨身份恢复、消费后复用、公开产物无真值或逐样本明细。CPU 测试替换实际模型/tuner 回调，不能据此宣称真实训练效果或真实安全部署验证。先保留有效失败证据，修复后跑受影响回归，再由独立 reviewer 对照实际代码核查入口、失败路径和操作说明。Linux 仅使用现有隔离工作区及 CPU 环境；证据记录实际退出码，分进程避免既有 MLflow 句柄累计问题。
