@@ -185,3 +185,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 
 
 2026-09-13 M4配置/资源预检：基座路径models/minicpm_v_4_5存在并解析到models/minicpmv4_5，config声明openbmb/MiniCPM-V-4_5；仅stat/配置，未验完整权重或冻结修订。4090查询时24564MiB总显存、约1081MiB使用、利用率0%；/data约3.4TiB可用。cpm45有torch/transformers/peft等训练包，但importlib.metadata未发现mlflow分发包；正式适配器在同进程调用run_training，不能假设CPU隔离环境与GPU环境已贯通。公共入口仅cross_validation三折整组或full，没有单折选项；前文“现成单折工程验证”建议收窄为待设计方案。下一步先核对完整执行环境与有限三折工程验证方案，不创建训练版本、不启动训练。
+
+
+当前范围以Spec a5cfa86f/Plan efde1536为准：工程迁移收口不要求新微调，旧模型保留且质量门禁不变。下一步M4-FOLD逐折入口方案确认及agent/DVC/MLflow环境接线核对，不再推进有限真实训练。agent环境和基座完整性已核查，见verification第61节；上游master未冻结为可信修订，不能称来源验签通过。

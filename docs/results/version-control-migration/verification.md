@@ -1555,3 +1555,48 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 [环境与资源原件](../training-readiness-20260913.json)保存程序、实际exit0、包版本、基座文件stat与配置身份、GPU/磁盘输出及远端Git。代码依据finetune/train_prepare_run.py的prepare_versioned_run仅接受三个fold或full，以及execute中的同进程run_training调用。前序历史YAML仅作候选参数参考，旧数据名、相对模型路径和输出路径不能原样用于新训练。
 
 工程验收若需要真实成功证据仍要实际执行有限训练；这不代表必须重做完整质量训练。最终模型交付另需开发验证与full训练。有限工程Run不能凭loss或完成状态登记为质量passed。cpm45缺mlflow仅指分发元数据查询结果，不声称已做import或运行兼容验证。本轮未安装依赖、加载模型、GPU推理、训练、test使用或远端写入；主Agent核对JSON与diff-check。
+
+
+## 61. 用户范围澄清、agent环境及基座完整性
+
+用户明确本分支是版本身份与DVC/MLflow链路迁移、全部入口接管，不要求重新微调；旧模型保留，质量门不补passed。Spec a5cfa86f与Plan efde1536记录纠正。逐折运行要求已记录M4-FOLD，具体接口方案待确认。
+
+Linux agent环境只读元数据：torch2.5.1、transformers4.56.1、peft0.18.1、accelerate1.11.0、bitsandbytes0.49.2、llamafactory0.9.6.dev0；直接查询mlflow/mlflow-skinny/dvc分发包均无，find_spec(mlflow)为None。未加载模型或安装依赖，不能据此声称运行兼容性通过。
+
+基座/home/liuyang/文档/mVllm_2/models/minicpmv4_5：29个顶层文件全部流式SHA256，读取前后大小/mtime未变；4个safetensors分片索引映射、849个tensor、数据区连续偏移及total_size=17391790560一致，SSH实际exit0。文件清单按名称排序、JSON sort_keys=True/separators=(逗号,冒号)编码的内容摘要为`2ffb284ff1a0db561633e91c768c1a9732b33838147113004966c1ff112faa21`。下载备注为Revision:master，缺可信上游固定修订摘要；本次只证明本地内容指纹与结构一致，不证明上游真实性或可加载，不创建正式训练冻结记录。隐藏._侧车也已哈希且保留，未删除任何原文件。
+
+必要文件摘要如下；不另建长期结果文件：
+
+| 文件 | 字节 | SHA256 |
+| --- | ---: | --- |
+| ._model-00001-of-00004.safetensors | 4096 | `492e691774684f6a624ea5a9cd7c68ad1ea38ac3c083c91d9319bfe14d1af9b5` |
+| ._model-00002-of-00004.safetensors | 4096 | `492e691774684f6a624ea5a9cd7c68ad1ea38ac3c083c91d9319bfe14d1af9b5` |
+| ._model-00003-of-00004.safetensors | 4096 | `492e691774684f6a624ea5a9cd7c68ad1ea38ac3c083c91d9319bfe14d1af9b5` |
+| ._model-00004-of-00004.safetensors | 4096 | `492e691774684f6a624ea5a9cd7c68ad1ea38ac3c083c91d9319bfe14d1af9b5` |
+| .msc | 1766 | `52f3ec11f0c281c0b094202c53ef760b7484948eccfb3f6c0a62a8128e79e7f4` |
+| .mv | 36 | `de31a81198609b9e042141f3b3060e12122007854e616728b08001315cee14d2` |
+| README.md | 25454 | `5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64` |
+| added_tokens.json | 2862 | `1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f` |
+| config.json | 1461 | `1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8` |
+| configuration.json | 51 | `2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0` |
+| configuration_minicpm.py | 3288 | `bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45` |
+| generation_config.json | 268 | `4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db` |
+| image_processing_minicpmv.py | 20757 | `52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7` |
+| merges.txt | 1671853 | `8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5` |
+| model-00001-of-00004.safetensors | 5286612176 | `22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0` |
+| model-00002-of-00004.safetensors | 5301855088 | `8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a` |
+| model-00003-of-00004.safetensors | 4546851120 | `9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7` |
+| model-00004-of-00004.safetensors | 2256571800 | `f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e` |
+| model.safetensors.index.json | 72172 | `6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749` |
+| modeling_minicpmv.py | 18609 | `f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10` |
+| modeling_navit_siglip.py | 41835 | `c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa` |
+| preprocessor_config.json | 714 | `5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e` |
+| processing_minicpmv.py | 11026 | `aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd` |
+| resampler.py | 11732 | `9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be` |
+| special_tokens_map.json | 12103 | `742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016` |
+| tokenization_minicpmv_fast.py | 1647 | `770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736` |
+| tokenizer.json | 11437868 | `c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b` |
+| tokenizer_config.json | 25786 | `8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c` |
+| vocab.json | 2776833 | `ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910` |
+
+这是完整性核查，不是数字签名验证或模型效果验收。仅临时计算输出与本节必要摘要，未新增仓库结果JSON。本轮未使用受限test、训练、推理、修改环境或远端状态。
