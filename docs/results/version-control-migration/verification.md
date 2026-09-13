@@ -1618,3 +1618,40 @@ Linux agent环境只读元数据：torch2.5.1、transformers4.56.1、peft0.18.1�
 部署文件问题：根requirements含Linux CUDA/triton及GPU栈，但缺ROI UI实际导入的streamlit-cropper；DVC/MLflow只给主版本区间，没有GPU环境完整锁文件。pyproject要求av>=18.1，与固定子模块4447137e的av<=16冲突；pandas>=3.0.3及uv override强制覆盖与当前MLflow3.15.2的pandas<3冲突，uv.lock同样记录pandas3.0.3。两平台本可不同，但不能把这两份配置当作同一环境叠加安装。README的Conda安装步骤未包括cropper，ffmpeg/ffprobe只作文字提示；finetune/README引用的LlamaFactory/requirements/minicpm-v.txt在当前checkout不存在。根requirements的pandas2.3.3符合当前MLflow声明，不能把该冲突错误归因于根requirements。
 
 结论：尚不能宣称一键部署已验证。需分平台统一兼容声明、固定子模块/依赖来源、补系统工具预检与完整导入检查，再用干净环境实装验收。未执行联网依赖解析/下载或干净环境安装，不推断每个固定包版本都可下载；未安装依赖、修改源码/环境或运行训练。本轮只维护现有证据/TODO，未新增结果文件。
+
+## 63. 双平台锁定依赖与新环境部署
+
+用户确认统一部署入口、Mac轻量/Linux GPU双profile、新隔离环境验证且不改agent/cpm45；Spec31d20154、Plan a07a320c。实现91fa5677，原先被忽略的uv.lock由85573e31纳入Git；faa62f10隔离外部uv配置，7aa21354补doctor精确锁版本/媒体执行/子模块复核，af77fa88补启动异常处理，83724995增加显式Linux镜像。固定共享MLflow3.15.2、DVC3.67.1、pandas2.3.3及cropper0.3.1，移除pandas3覆盖；AV16兼容固定LlamaFactory。Mac uv锁解析181包，Linux锁解析242包；子模块4447137e保持，未修改训练业务或逐折接口。
+
+独立reviewer初审发现P1外部uv配置可把目标重定向到已有环境，已关闭：全部uv调用--no-config、清除UV/PIP/PYTHON路径变量并使用isolated doctor。后续P2锁版本漂移、媒体工具只检查存在、同路径子模块漂移均修复并独立复验；显式HTTPS无凭据镜像增量另经复核通过。12项最终部署边界/doctor测试通过，reviewer另验证6种非法镜像输入全部在preflight前拒绝；未在审查中安装软件。
+
+Mac新环境/private/tmp/mvllm2-deploy-mac-isolated-20260914实际安装及doctor exit0，DVC/MLflow/AV/pandas/cropper/OpenCV导入、锁定版本/依赖和公共CLI核对通过。早期环境/private/tmp/mvllm2-deploy-mac-20260914的安装成功记录保留，但隔离修复后的安装以isolated环境为准。该环境261项（部署边界、MLflow训练记录、Prompt）51.13秒exit0，DVC/数据发布100项10.72秒exit0；最新镜像增量两项包含在单独12项部署测试，不重复加到361计数。无模型加载或训练。Mac日志含AV/OpenCV的Objective-C重复类警告，尚无对应失败证据，不将导入通过外推所有媒体工作负载。
+
+Linux前置只读状态：正式main f1b7d8a3、隔离bb73e4dd均tracked干净，原LlamaFactory4447137e干净。训练机无PATH内uv，本次仅在新deployment-tools-20260914环境安装uv0.11.21；独立deployment-check-20260914检出用于验证，不修改两原工作区。首轮官方源安装faa62f10下载缓慢，主Agent核对本次uv PID及精确新环境路径后SIGINT，安装器实际exit1；原日志与部分deployment-gpu-20260914环境保留。随后新deployment-gpu-mirror-20260914使用83724995与显式清华镜像重试；镜像重试实际exit0，最终doctor errors为空，确认torch2.5.1+cu124可用CUDA、LLaMA-Factory真实训练模块可导入及来源/子模块/锁版本一致；没有模型加载或训练。不把首轮中断记成通过。
+
+本机日志：/private/tmp/mvllm2-deploy-mac-isolated-20260914.log、mvllm2-doctor-mac-final-20260914.log、mvllm2-env-integration-20260914.log、mvllm2-env-dvc-20260914.log。Linux日志在原隔离目录的deployment-linux-20260914.log及deployment-linux-mirror-20260914.log；独立检出/新环境保留以复核。仅在既有验证文档记必要结果，不新增受Git跟踪的结果JSON；postflight快照只保存在本机临时目录。安装源码来自明确锁文件与固定子模块；GPU锁为版本锁，editable构建工具未声称字节级重现，镜像不改变版本锁。
+
+最终postflight：原正式main f1b7d8a3、原隔离bb73e4dd均tracked干净；验证用独立检出83724995 tracked干净。安装器、doctor、两lock的SHA与Mac当前提交一致；七保护文件SHA与前序保护基线全部相同。agent原pip check仍exit0；cpm45仍为原7缺包/4冲突的exit1，没有以本次新环境部署修复旧环境。新环境尚未切换为正式项目默认解释器，editable来源绑定本次独立检出，不能删除该检出后继续使用它。真实模型/媒体工作负载、主项目激活和main集成仍是独立任务。
+
+关键日志SHA256（原件保留于上列路径）：
+
+- `mvllm2-deploy-mac-isolated-20260914.log`：`951fcfc37c11be16d11ead2ef647e59ece0915cbfbe1b1e79171f99c9503c64d`。
+
+- `mvllm2-doctor-mac-final-20260914.log`：`b7bdbee56cf5e9bcf9ab5317fff4b0ec3a16324895a9bc0e50b3c56a146c046e`。
+
+- `mvllm2-env-integration-20260914.log`：`3799e887599c7b3f1104b550a52e4f40d1c0ff4b27c854cddd03792738d1c2c3`。
+
+- `mvllm2-env-dvc-20260914.log`：`e782bfa8e77c7f5c58452b3492f648070c75110a1d29f81455016be27e0a1362`。
+
+- `deployment-linux-20260914.log`：`a8ff91bd3bdce5bfd613ee407b5033bfe5723b6ec26851875ea80360bd45066b`。
+
+- `deployment-linux-mirror-20260914.log`：`050c5431e2cee9e2e6ed4cde0ab45fc492d709ee858976a0824d5d4dcc827ca4`。
+
+- `mvllm2-deployment-postflight-20260914.json`：`6478e8e9748bb08d6d218377e4f5d5741f67baa68c0271db45230b2e795b4d30`。
+
+最终文档独立核查：reviewer重算上述7个日志/快照SHA及4个代码/锁SHA一致，并核对安装成功/中断与261+100测试计数。保护比较由主Agent本轮执行，postflight仅保留布尔结论，未保留7文件的逐项after摘要，因此reviewer未能独立重演该比较。两份pytest日志仅保留进度/计数，解释器与命令来自主Agent执行记录，不能由日志本身独立证明。实际执行命令如下（并非文档核查时复跑）：
+
+```bash
+/private/tmp/mvllm2-deploy-mac-isolated-20260914/bin/python -m pytest -q tests/test_environment_deployment.py tests/versioning/test_mlflow_train.py tests/versioning/test_prompts.py --basetemp=/private/tmp/mvllm2-env-integration-20260914 --disable-warnings
+/private/tmp/mvllm2-deploy-mac-isolated-20260914/bin/python -m pytest -q tests/versioning/test_dvc_pipeline.py tests/versioning/test_data_release.py --basetemp=/private/tmp/mvllm2-env-dvc-20260914 --disable-warnings
+```

@@ -1,7 +1,7 @@
 # 可读版本控制正式迁移实施计划
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
-- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `a5cfa86f`（承接042f335e；用户明确工程迁移收口不重训）。
+- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `31d20154`（承接a5cfa86f；用户确认双平台新环境部署）。
 - **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
 - **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
 - **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
@@ -353,3 +353,5 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 承接本次单独提交的双平台部署Spec及用户实施授权。精确文件范围：pyproject.toml、uv.lock、requirements.txt、新requirements-linux-gpu.lock；新增scripts/source_prepare_environment.py、scripts/source_validate_environment.py、scripts/SCRIPTS.md、tests/test_environment_deployment.py；局部更新README.md、finetune/README.md、TODO、handoff、verification。保持LlamaFactory子模块代码、版本身份与训练业务不变。
 
 先统一pandas/MLflow兼容依赖并补cropper/媒体读取包，分别锁定Mac轻量和Linux GPU依赖；实现显式平台/新环境路径安装与doctor，绑定当前Git子模块来源，错误输入fail-closed，不安装系统包；最后做拒绝/失败传播测试、Mac新环境和Linux新隔离环境安装及入口验证。需要网络的安装只写新环境和工具缓存；不安装进agent/cpm45。新脚本和文档接受局部独立审查，保留真实安装失败证据。安装成功不等同模型可用，无真实训练/推理/test。
+
+2026-09-14 ENV-DEPLOY本批已解决：双profile锁定部署与doctor完成，当前代码83724995；Mac新环境安装/doctor exit0、361项定向回归通过、最新部署边界12项通过；Linux新GPU环境通过显式镜像安装/doctor exit0。独立审查发现的P1/P2均闭环，镜像增量复核通过；七保护SHA及正式/原隔离工作区保持。旧agent/cpm45未修补，新环境未正式激活。官方源首轮主动中断exit1及部分环境保留；完整证据第63节。本批不训练、不test、不push/merge。下一步恢复M4-FOLD逐折接口方案确认与工程收口，不再以依赖缺失或重训为默认前置。

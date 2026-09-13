@@ -392,10 +392,12 @@ M4配置/资源初检已完成（第60节）；下一步核对同进程训练环
 
 ### ENV-DEPLOY — 环境依赖与可重复部署
 
-- **状态/来源**：进行中（Codex，核查已完成、修复方案待确认）；用户要求核对agent/cpm45和requirements是否可一键部署。
-- **证据/差距**：见verification第62节。agent现有GPU训练依赖自洽但缺DVC/MLflow/cropper；cpm45有7缺包和4版本冲突且editable来源旧项目；隔离环境为CPU集成环境且pandas违反MLflow声明。README缺少cropper安装；finetune说明引用不存在的requirements/minicpm-v.txt。pyproject与GPU依赖的AV区间不兼容，不能直接合并安装。
-- **下一动作建议（未实施）**：保留Mac轻量与Linux GPU两种部署配置，共享DVC/MLflow兼容约束；移除掩盖冲突的pandas覆盖并锁定兼容版本；补齐UI/媒体工具、当前子模块与正确工作区来源；新增单入口安装及只读doctor，在新隔离环境按锁定依赖验证，避免直接改agent/cpm45。具体依赖/脚本方案确认后实施。
+- **状态/来源**：已解决（本批部署实现与双平台新环境验收，83724995）；用户确认统一部署入口与隔离验证，未修改旧环境。
+- **发现时事实（修复前）**：见verification第62节。agent现有GPU训练依赖自洽但缺DVC/MLflow/cropper；cpm45有7缺包和4版本冲突且editable来源旧项目；隔离环境为CPU集成环境且pandas违反MLflow声明。README缺少cropper安装；finetune说明引用不存在的requirements/minicpm-v.txt。pyproject与GPU依赖的AV区间不兼容，不能直接合并安装。
+- **实施结果/下一动作**：已实现Mac轻量/Linux GPU锁定配置、兼容DVC/MLflow/pandas、cropper、单入口与doctor，双平台新环境通过；详见第63节。正式激活解释器须结合最终checkout路径核定，不能让editable引用被删除；继续M4-FOLD及工程集成。
 - **验收**：新建环境可按文档自动部署，pip check无冲突，DVC/MLflow及活动CLI可导入，LLaMA-Factory来源正确、ffmpeg/ffprobe可用；Mac不装GPU栈，Linux明确CUDA包；合成链路与入口验收通过，过程不训练模型或使用test。
-- **边界**：本轮仅包元数据、pip check和文件审阅；没有下载解析安装测试、安装依赖、改环境或训练。pip check通过仅证明已安装包声明不冲突，不证明项目所需包完整。
+- **前轮核查边界（第62节）**：当轮仅包元数据、pip check和文件审阅；没有下载解析安装测试、安装依赖、改环境或训练。pip check通过仅证明已安装包声明不冲突，不证明项目所需包完整。
 
 2026-09-13 环境与部署文件核查：agent/cpm45均无DVC/MLflow；实际安装在隔离.conda-m2（MLflow3.15.2、DVC3.67.1），.venv-m3通过system-site-packages继承。agent pip check exit0，cpm45 exit1且editable LLaMA-Factory指向旧mVllm项目；两个隔离环境pip check均因MLflow要求pandas<3、实际3.0.3而exit1。新增ENV-DEPLOY部署一致性前置，不把历史CPU测试通过解释为依赖声明一致。
+
+2026-09-14 ENV-DEPLOY本批已解决：双profile锁定部署与doctor完成，当前代码83724995；Mac新环境安装/doctor exit0、361项定向回归通过、最新部署边界12项通过；Linux新GPU环境通过显式镜像安装/doctor exit0。独立审查发现的P1/P2均闭环，镜像增量复核通过；七保护SHA及正式/原隔离工作区保持。旧agent/cpm45未修补，新环境未正式激活。官方源首轮主动中断exit1及部分环境保留；完整证据第63节。本批不训练、不test、不push/merge。下一步恢复M4-FOLD逐折接口方案确认与工程收口，不再以依赖缺失或重训为默认前置。
