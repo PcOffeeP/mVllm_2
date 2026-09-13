@@ -8,9 +8,11 @@
 
 ## 下一步与执行顺序
 
+2026-09-13 Linux续办（Codex）：用户明确指出初始test视频已划分，授权训练机调查。已找到`workspace/data/source/splits/test.json`的21个test source，原视频21/21存在，train分支89source，三折与test无交集；不再要求用户重新提供既定路径。Linux隔离7b0e01d5已运行本批同代码427 passed/1 skipped、两组exit0，七保护文件未变。详见[第52节](results/version-control-migration/verification.md#linux-test-branch-source-20260913)。历史claim/gate确认旧release已暴露，媒体凭据文件名覆盖其中20source，video_0005无该批候选凭据；原旧release目录缺失，逐source最终消费映射未完整复核。既定划分已找到，不等于全体可作为新独立测试；保留TEST-POLICY，不重划、不复测、不擅自放行。
+
 **现行术语**：train 数据分支用于三折训练/验证及全量训练；test 数据分支仅用于最终独立测试。代码/配置仍使用 `development` / `holdout` / `test_audit`，历史身份不改。下文前轮记录中的旧称按此对应解释。
 
-2026-09-13 续办（Codex）：用户已确认完整test数据分支并授权实施；Spec042f335e、Plan66416f0f、代码abafdbf2。独立受限处理、全量人工审查、封存发布和最终full模型测试已接通；Mac合成回归427 passed/1 skipped、两进程均exit0，局部独立代码及入口说明审查通过。详见[第51节](results/version-control-migration/verification.md#test-branch-20260913)。真实新source、人工审查和适用构建/测试使用授权仍未就绪，HOLDOUT-BUILD不关闭；本批尚未在Linux运行或同步，不把前批双机结果记为本批验证。
+2026-09-13 续办（Codex）：用户已确认完整test数据分支并授权实施；Spec042f335e、Plan66416f0f、代码abafdbf2。独立受限处理、全量人工审查、封存发布和最终full模型测试已接通；Mac合成回归427 passed/1 skipped、两进程均exit0，局部独立代码及入口说明审查通过。详见[第51节](results/version-control-migration/verification.md#test-branch-20260913)。真实新source、人工审查和适用构建/测试使用授权仍未就绪，HOLDOUT-BUILD不关闭；此为第51节Mac阶段记录；随后Linux独立验收见第52节，不借用前批结果。
 
 **M8 整包代码差异审查已通过，范围冻结于 `f1b7d8a3→d9ec1227`（140提交/152文件）；不重做已完成修复与整包审查。四份交付文档独立核查已闭环；HOLDOUT-METRICS也已完成七门接线、双机合成验证及局部独立代码审查，当前按模型主线依赖准备真实环境前置。**
 
@@ -26,7 +28,7 @@
 
 | 顺序/定位 | 固定标识 | 任务 | 状态 | 依赖或触发条件 |
 | --- | --- | --- | --- | --- |
-| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用的 test 数据分支 | 阻塞 | 代码接线及Mac合成验收已完成；新source、人工审查、真实环境和适用授权未就绪 |
+| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用的 test 数据分支 | 阻塞 | 代码接线及双机合成验收已完成；既定21个test source已定位，使用资格、人工审查及真实操作授权待落实 |
 | 评分接线前置 | HOLDOUT-METRICS | 冻结七项holdout门槛接线 | 已解决（本轮代码/CPU范围） | f1be1060；真实holdout验收仍归HOLDOUT-BUILD/MODEL-QUALITY |
 | 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 进行中（Codex；只读准备） | 历史开发记录可复算；concise原件缺失及visual断链阻塞推理对照 |
 | 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | MODEL-DIAG 权重依赖、完整证据备份、显式删除授权 |
@@ -52,12 +54,12 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ### HOLDOUT-BUILD — 构建并授权未使用的 test 数据分支
 
-- **状态/来源**：阻塞（Codex已完成test数据分支处理/全量人工审查/封存发布/最终测试接线，代码abafdbf2；解除条件为指定独立新source、取得适用真实构建授权、完成人工审查及真实环境验证）；由TEST-POLICY拆出，数据冻结支撑FINAL-TRAIN，最终候选测试支撑MODEL-QUALITY。
-- **事实与差距**：现有唯一 sealed-test `v4.1-sealed-test-5546b8bf1ec3` 已暴露且一次性，不复测不调参；本地与训练机均无未使用 holdout。需要一个新的、未使用的 holdout 测试集及其对应授权链路。
+- **状态/来源**：阻塞（Codex已完成test数据分支处理/全量人工审查/封存发布/最终测试接线，代码abafdbf2；解除条件为核清既定test source独立使用资格、取得适用真实构建授权、完成人工审查及真实媒体验证）；由TEST-POLICY拆出，数据冻结支撑FINAL-TRAIN，最终候选测试支撑MODEL-QUALITY。
+- **事实与差距**：既定test分支21个视频及三折隔离已在训练机找到，不再以“source未指定”阻塞定位。旧release `v4.1-sealed-test-5546b8bf1ec3` 的一次性claim与completed/exposed凭据仍在；其摘要20source与332份媒体凭据的20source集合相关联，video_0005无该批候选凭据。原发布目录已缺失，不能把“缺文件”解释为“没用过”，也不能仅据无候选就认定video_0005可独立覆盖七门。当前缺口是使用资格及正式输入证据，不是初始划分不存在；未使用的新release尚未发现。
 - **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。
 - **人工审查**：对候选样本执行有效视图/剪裁人工审查（对应 `review_*` 流程），核对批次与 source 分层，形成冻结的 review batch 后再生成 release。
-- **发布入口与差距**：test七阶段显式使用`--purpose holdout --test-config ...`，新模块`versioning/holdout_pipeline.py`在owner-only工作区复用媒体算法，所有候选必须人工审查。train默认路径不变。真实输入必须为独立test批次、具备冻结train版本的source清单及旧测试非语义来源清单；当前真实source和清单尚缺。新入口及完整参数/产物来源见[入口说明](../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)。
-- **已确认实施与限制**：用户已确认上一轮待决方案，Mac合成完整builder→claim→prepare→run→score通过。原审查发现真值摘要未校验P1和发布rename后封存尾步恢复P2均修复并专项复核；公开input仅固定整体receipt摘要，真值pin在授权score读取。当前test分支不自动向DVC remote发布受限数据；源码与Mac验证完成不表示真实数据已构建，Linux本批未跑。
+- **发布入口与差距**：test七阶段显式使用`--purpose holdout --test-config ...`，新模块`versioning/holdout_pipeline.py`在owner-only工作区复用媒体算法，所有候选必须人工审查。train默认路径不变。真实输入必须为独立test批次、具备冻结train版本的source清单及旧测试非语义来源清单；当前既定test source已定位；可用资格与完整非语义清单仍须核定。新入口及完整参数/产物来源见[入口说明](../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)。
+- **已确认实施与限制**：用户已确认上一轮待决方案，Mac合成完整builder→claim→prepare→run→score通过。原审查发现真值摘要未校验P1和发布rename后封存尾步恢复P2均修复并专项复核；公开input仅固定整体receipt摘要，真值pin在授权score读取。当前test分支不自动向DVC remote发布受限数据；源码与Mac验证完成不表示真实数据已构建，Linux本批随后427/1skip通过，见第52节。
 - **授权流程**：预注册一次性授权 + one-time claim，沿用现有 stage_d 流程；授权条件 `one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，首次模型调用前原子写入 claim，只允许同一 run identity 恢复。
 - **阈值**：沿用 `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
 - **依赖/边界**：本任务只负责构建、审查、发布与授权一个未使用 holdout，不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。

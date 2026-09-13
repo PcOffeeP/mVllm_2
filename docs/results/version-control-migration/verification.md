@@ -1398,3 +1398,59 @@ HOLDOUT-METRICS已完成本轮七门代码、双机合成验证及局部独立�
 HOLDOUT-BUILD的本批代码/合成前置完成，父任务仍阻塞于独立新source、非语义清单、人工审查、适用真实构建/测试使用授权与真实环境证据。MODEL-DIAG缺权重/原件依赖未解除。Linux本批未同步或运行，前批双机614项不得算作此代码验证；之后同步前须重新核对两端状态。本机文档提交由Git历史追溯，不在同次文档内编造自身提交ID。
 
 最终四文档独立证据核查通过：reviewer仅对照保存原件，复算runner/两日志/result摘要，确认六文件与abafdbf2及当前工作树一致、两组实际exit0、原失败保留、版本归属及真实/Linux限制准确；新增链接和锚点、diff-check通过。主Agent另核对五份相关文档的69个本地文件链接全部存在。本次证据核查未重跑测试或访问训练机。
+
+
+<a id="linux-test-branch-source-20260913"></a>
+## 52. Linux隔离验收与既定test视频划分调查
+
+用户要求“推进第一步，第二步去训练机查看即可”，并指出test视频最初已划分。此授权覆盖隔离CPU合成验收与训练机来源/划分调查；未授权真实数据构建、训练、受限测试使用或重划分。本轮无代码修改，补充第51节实现的Linux证据。
+
+### 同步及Linux CPU验收
+
+执行前Mac7b0e01d5干净；正式Linux`/home/liuyang/文档/mVllm_2`为干净main@f1b7d8a3，隔离`/home/liuyang/文档/mVllm_2-migration-7eeb93a7`为0d8a9f55、tracked干净，既有未跟踪环境和证据保留。核对七保护文件摘要后，在新目录`test-branch-verification-20260913`保存证据（下称RUN）。bundle包含0/5提交差，12个精确文件，SHA256 `23f32a21f11510fb91846a95a7fd34dfd55cb249eac361cf3203457eb579d037`；校验bundle HEAD、独有提交及文件集合后，仅在隔离任务分支ff-only快进至7b0e01d5，不操作正式main或push。
+
+运行解释器为隔离区`.venv-m3/bin/python`；复用原项目级依赖，PYTHONPATH为`.:m5-service-verification-20260912/dependencies`，CUDA设备为空、OMP线程4、模型hub离线。runner、命令、环境和结果均保存在RUN。
+
+| 测试组（与Mac第51节相同文件集合） | 结果 | pytest秒 / 外层秒 | 实际退出 |
+| --- | --- | --- | --- |
+| test七阶段/最终测试、数据pipeline、CLI、审查UI | 265 passed | 45.04 / 47.611 | 0 |
+| 七门、train验证/full训练、claim与隔离库 | 162 passed / 1 skipped | 60.90 / 66.256 | 0 |
+
+共427 passed/1 skipped；skip为隔离区缺V4.1 workspace真实数据。六文件SHA与abafdbf2以及第51节Mac最终测试一致；不重跑Mac，不把两机器计数相加冒充不同测试覆盖。本次实际进程均正常退出，无文件描述符耗尽失败。仅合成媒体/模型替身，非真实训练、GPU或模型效果。五份Linux runner/result/logs/sync原件已复制Mac并重算摘要一致；七保护文件前后未变，正式main和隔离tracked保持干净。
+
+### 既定来源已定位
+
+原始划分位置为`/home/liuyang/文档/mVllm_2/workspace/data/source/splits/`，其七份JSON为含video_ids的mapping。第一版只读探针假设其为ID列表而断言退出；核对schema后修正为提取video_ids，再成功完成，未写入源数据。训练机无rg，文件发现改用限定目录的Python列举；没有全盘扫描或读取受限语义结果。
+
+`test.json` SHA256 `26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc`。其21个test source如下：
+
+`video_0005, video_0008, video_0010, video_0018, video_0019, video_0025, video_0032, video_0037, video_0038, video_0041, video_0062, video_0063, video_0067, video_0078, video_0082, video_0087, video_0088, video_0089, video_0093, video_0094, video_0095`
+
+train分支union为89source；三折train/validation分别59/30、59/30、66/23，各折内部无ID交集，与test的ID交集均为空。test列表与`workspace/data/derived/metadata/test_manifest_sha256.json`中的21个ID完全一致。`workspace/data/source/videos/<video_id>.mp4`对应21/21文件存在、非链接且大小>0。此处只做stat，不读/解码视频或计算原视频内容摘要，故身份隔离不等于已证实内容无重复。无需再让用户提供这一已定位的既定路径。
+
+### 历史使用资格边界
+
+在训练机既有`finetune/results/v4_1_stage_d_claims/v4.1-sealed-test-5546b8bf1ec3/claim.json`找到一次性claim，preparation为`stage-d-preparation-5cd1b3fa343c`，run为`stage-d-run-da566a5644f8`。同run的`stage_d_gate.json`记录completed及`sealed_test_exposed: true`；只提取身份和非语义暴露/状态字段，不读取evaluation_records、restricted summary、真值或审查标签。prepared_run_manifest记录旧release共299样本、20source，manifest摘要b996f054…与仓库既有release_summary一致。
+
+prepared记录的旧目录`/home/liuyang/文档/tensile-data/current/sealed_test_releases/v4.1-sealed-test-5546b8bf1ec3`当前不存在。关联依据为仓库既有`docs/results/v4_1_stage_d_sealed_test_release/release_summary.json`（SHA256 `8abf67c9b35cb07889222e365ac0e667439526da83f8765620e74f6aa0004edb`）：其release_id/manifest_sha256与训练机prepared记录相同，identity.media_id为`candidate-media-53d068569a09`；不是仅凭source数量相同推断关联。其现存332份媒体receipt的**文件名**映射20source，均属于既定21个test，唯一没有该批receipt者为video_0005。未读取receipt内容、候选审查标签或受限测试语义。
+
+这证明既定划分存在及历史发布已暴露，但尚无299样本release到这20source的完整逐项映射；物化receipt不能直接当精确暴露清单。video_0005没有这批receipt不证明从未使用，也不能直接认定适合独立测试。原release目录缺失同样不能取消历史暴露。保留已确认TEST-POLICY，不擅自把21个视频整体重新视为未使用测试、不重划分、不生成或消费新claim。下一动作是核清现有source使用资格与非语义溯源、准备明确输入清单，随后按适用授权推进真实test构建/审查；出现政策冲突再提交具体裁决，不重复询问已找到的路径。
+
+### 原件、摘要与独立核查
+
+RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-verification-20260913/`；Mac副本：`/private/tmp/mvllm2-linux-test-branch-20260913/`。两份调查程序及其过滤结果已存入RUN；不保存真值或逐样本语义。文件摘要如下（postflight在Mac副本名为postflight-source.json）：
+
+- `run.py`：`a4de7cc300671d59f73629e1d1e3e688709057eefb2a7b5151721b9f2a2bc1b9`。
+- `result.json`：`3fa32ed09b611c7a422bdf8c4d923e4e31a5f5d7663a0cb457a3aa784a733c2a`。
+- `group1.log`：`a09819ba88319d91fc2a5b707ef52a688ea8e96a6f390655e5a3747161835230`。
+- `group2.log`：`26ba1d2aa91c88300a30d18e86e21be83b1fae3eb9e877c1eabc385d20ece0e4`。
+- `sync.json`：`0229cacbc37a34ad2d701e8be80a69aa6856547fb009fe2c5bde86bb1af0a513`。
+- `split-audit-vetted.py`：`affeccb059b2329e0a9c5fc93e3d8772b00aee0359a7720f00b0aa284e468b45`。
+- `split-audit.json`：`c4e135adec41ce6ee92921fa0d0220d2ebef382f042dfd12965f5cd623b6deb4`。
+- `usage-audit-final.py`：`004a12a5c251e4e9285f03aa8795a5f4bb58fe9592f5affcba473bbb54d79ae6`。
+- `usage-audit-final.json`：`aed3c09635e15a5a4aee3775e0079cda2c87e8bd997ff1d595225e87a6b3f508`。
+- `postflight-source.json`：`ab1e9b9d016a2cf9bf63cf130ee7ac8bd472f0ec568e74d447af7a6610b5edf5`。
+
+独立reviewer只读核对保存原件副本及代码提交：两组计数/实际exit、五份验收文件摘要、六代码摘要、七保护摘要、21/89集合关系、媒体stat和历史资格边界均通过；没有重跑测试或读取受限语义。当前四文档随后另行核查；文档提交及隔离同步由Git历史及RUN最终同步回执追溯。
+
+第52节四文档最终独立核查通过：10份证据摘要及旧release_summary关联pin重算一致，计数、机器版本、来源已定位纠正、资格与内容哈希限制均准确；新增链接与锚点、diff-check通过。主Agent另核对四文档70个本地文件链接可达。此结论不包含未来提交/同步；最终仅隔离分支文档同步的主Agent回执保存为RUN/final-docs-sync.json。

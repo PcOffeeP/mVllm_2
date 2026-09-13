@@ -154,3 +154,10 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 现行叙述使用train数据分支（三折训练/验证及全量训练）和test数据分支（最终独立测试），代码字段/配置值及历史身份不改。Spec042f335e、Plan66416f0f、代码abafdbf2已在Mac提交；完整test处理/全量人工审查/封存发布/最终full模型测试接线完成，427 passed/1 skipped、两组exit0及局部独立核查通过。证据与原失败保留见[第51节](verification.md#test-branch-20260913)。
 
 下一步仍须独立新source、冻结train source清单、旧测试非语义身份清单、人工审查与适用真实操作授权；真实构建、训练和受限测试没有执行。本批Linux未同步/未复跑，不根据前轮隔离分支0d8a9f55推断其现在无漂移；操作前重新检查两端状态。M8历史整包审查不重做，也不把本批局部通过扩大为真实环境或模型质量验收。
+
+
+## Linux验收与既定test source定位续办
+
+第52节承接用户“推进第一步，第二步去训练机查看即可”：隔离checkout已同步7b0e01d5，同代码Linux427 passed/1 skipped、实际两组exit0；正式main及七保护文件未变。初始21个test视频在`workspace/data/source/splits/test.json`，源视频21/21在场，三折train/validation与test零交集。后续无需再向用户索取这一既定路径。
+
+测试资格仍按原政策：旧release有claim及exposed=true，20source媒体凭据与旧发布摘要关联，video_0005没有该批候选凭据，原旧发布目录缺失。没有读取旧受限语义或新建真实test数据，不能把21个既定视频整体当作新的未使用测试，也不能推定未生成候选的视频已满足独立测试条件。精确证据、机器版本和下一动作见[第52节](verification.md#linux-test-branch-source-20260913)。

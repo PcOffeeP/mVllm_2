@@ -302,3 +302,6 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 
 
 本批代码abafdbf2已完成test分支处理、全量人工审查、封存发布及最终full测试接线；Mac427 passed/1 skipped、两组exit0，独立局部代码与入口说明核查通过，原P1/P2及权限/只读验证修复已闭环，见verification第51节。历史七门评分批次的双机证据不作本批复跑；本次尚未同步Linux。下一步提供新test source、非语义隔离清单和适用真实构建授权后进行训练机媒体/审查/封存验收；模型权重缺失仍阻塞MODEL-DIAG，真实训练、测试使用、删除与push/merge边界保持。
+
+
+2026-09-13 Linux续办：用户授权第一步隔离验收与第二步训练机既定划分调查。隔离分支经bundle0/5快进至7b0e01d5，仅task checkout，正式main未动；同代码两组265、162/1skip各exit0。既定test21/train89来源和隔离已定位，21视频存在；旧测试claim/exposure及20source媒体凭据关联已记录，video_0005无该批候选。下一步核清使用资格及输入证据，不要求重新指定已找到路径、不擅自改划分或复用受限测试。精确Linux证据目录为`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-verification-20260913/`，详见verification第52节。本次只有CPU合成验证和非语义只读调查，原真实数据/模型/删除/push及正式main merge边界保持。
