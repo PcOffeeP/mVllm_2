@@ -900,3 +900,52 @@ M8-R1已解决本轮范围（代码3b63aa52）：Mac整仓2623 passed/11 skipped
 
 最终独立证据核查通过：reviewer只读核对三组日志SHA/汇总/退出码、相同12文件集合、两端代码和Git状态，并确认此前P3文档状态冲突已闭环，没有把本机测试或主Agent执行冒记为独立复跑。
 两端`grouped-result.json`共同SHA为`90a9fccb2fe7e6b8141322e87ce670f079939184cc9c1876a08b9bcc62866ec2`。四份轻量证据文档在训练机按核对过的原/新SHA写入并提交，随后通过增量bundle同步回Mac；同次提交版本由本文件Git历史追溯。
+
+
+<a id="m8-r4-restore-20260913"></a>
+## 41. M8-R4：异根恢复的MLflow地址重定位（2026-09-13）
+
+基线`7bea45330d6743b90adc845c09503366958620d0`。本轮只实现已授权的隔离恢复，不读取真实权重/受限测试语义结果，不移动、删除或覆盖原正式store。原模拟store不可访问的RED已复现：实际执行证据门在`_run_artifact_root`找回旧地址并拒绝；日志`/private/tmp/mvllm2-r4-red.log`，1 failed，6.73秒。
+
+### 实现与验收范围
+
+`versioning/backup.py`在任何对象写入前读取已验签SQLite，按catalog源store规划五类活动存储地址的重定位：`experiments.artifact_location`、`runs.artifact_uri`、`model_versions.source`/`storage_location`及存在时的`logged_models.artifact_location`。本地路径转为新artifact根的file URI；合法已知Run的runs URI按MLflow的原始path语义校验并保留。没有Run或logged-model的Default空占位例外落到新根`artifacts/0`；其他越界、网络/未知地址均拒绝。映射只应用在恢复私有副本，原快照保持字节不变。
+
+恢复预检拒绝软链接/特殊输入、目标重叠与冲突。各目标路径同级暂存并以no-replace发布，模型实体目录和manifest分两次发布；保留数据封存权限，只对预检见到的同一空MLflow目录使用rmdir。四个根不是整体事务，晚期I/O或竞态失败可能保留此前已发布对象，已有对象不会自动回滚或覆盖。该语义与外部依赖边界已写入`versioning/SCRIPTS.md`。
+
+实际执行链测试复用R1 CPU训练/推理进程替身，调用真实prepare/run/finalize/alias/backup入口，未替换实际证据validator。测试仅移动自己创建的tmp/store，保留外部合成基座/媒体。恢复到含空格新路径后：原store仍不可访问；SQLite全部原表行除允许地址列外全等；alias和ModelVersion身份保持；Run artifact与ModelVersion下载定位新根；显式model current及开发服务准入通过；新Run日志artifact写到新根；可再次create/verify备份。它证明store级恢复和服务准入，不证明真实推理或所有外部依赖可迁移。
+
+### Mac验证与独立核查
+
+主Agent使用`.venv/bin/python`，设置`CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1`。
+受影响三文件命令：`-m pytest -q tests/versioning/test_backup.py tests/test_eval_run.py tests/versioning/test_cli.py --basetemp=/private/tmp/mvllm2-r4-stable --tb=short`，175 passed/1 skipped，96.72秒，exit0；日志`/private/tmp/mvllm2-r4-stable.log`。skip为既有历史数据fixture缺失。
+该进程已包含软链接拒绝、SQLite事实全等与第二次备份，尚未包含最后的runs URI严格化；该局部变更另跑`tests/versioning/test_backup.py -k literal_mlflow --basetemp=/private/tmp/mvllm2-r4-uri`，6 passed/72 deselected，6.99秒，exit0；日志`/private/tmp/mvllm2-r4-uri.log`。不冒称本轮整仓重跑；前轮R1整仓证据见第40节。
+
+独立reviewer先复现并推动修复三类问题：Mac封存目录rename需owner-write、同字节外链备份能被解引用、runs URI经规范化后被错误接受。修复分别为持目录inode fd临时修改发布权限并恢复、restore入口普通树预检、按MLflow原始Run ID精确校验。中间10 passed/1 failed的Mac发布失败及主Agent早期current未显式激活的1 failed/3 passed保留，不计为通过。
+reviewer独立实际链及四类并发目标保护5 passed（7.00秒），四类外链/特殊输入4 passed（4.42秒）；独立比较59张表111条原始行，除五类地址外保留全部事实，实际测试新写入仅另增Run/tag。最终runs URI六例及完整异根链由reviewer独立复跑7 passed，9.40秒，exit0；分组有重叠，不合并计数。代码与操作说明局部审查通过，无待修复可执行问题；该次局部审查时Linux尚未执行，最终结果另见本节末尾。
+
+### 跨机执行前记录与限制
+
+SSH预检原项目`main@f1b7d8a3`干净；隔离任务分支`7bea4533`tracked干净，既有环境与证据目录保留。新验证目录`m8-r4-verification-20260913/`不存在，复用`.venv-m3`和前轮service dependencies，不安装依赖或更改系统限制。当时计划以同一代码运行三文件CPU回归，未提前标已解决；执行后结果见下文。
+真实移动硬盘/大型模型、外部基座/媒体整机恢复及GPU推理未验收。原冻结训练/评测内容与基座引用保留原文；历史汇总实物、物理/data下Prompt备齐、full/holdout实际输入与M8最终整包复审继续保留。
+
+Mac代码提交`2fce3ab13afa1af02b9f4e2d03e8bf32085e805e`，含backup实现、两份测试与操作索引。增量bundle SHA `08d5b0fbb12389ee0782d9bf9203455d2df1cc3e2eed5afb0e2a6f4212b27c6c`；训练机同步脚本核对7bea4533基线、tracked干净、bundle依赖及0/1独有提交后用cherry-pick --ff同步。仅隔离checkout写入，原项目保持只读。
+
+### Linux最终结果与R4结论
+
+同一代码`2fce3ab13afa1af02b9f4e2d03e8bf32085e805e`，CPU环境与命令完整记录于训练机隔离目录`m8-r4-verification-20260913/result.json`；命令为`.venv-m3/bin/python -m pytest -q tests/versioning/test_backup.py tests/test_eval_run.py tests/versioning/test_cli.py --basetemp=<RUN>/pytest --tb=short`。复用前轮httpx依赖目录，CUDA不可见、OMP4、HF/Transformers离线。
+
+最终汇总：`181 passed, 1 skipped in 175.94s (0:02:55)`。
+
+进程正常退出0，外围耗时187.33秒，NOFILE soft1024/hard1048576，最终tracked干净；本轮未调整系统限制。最终181项含最后runs URI六例、链接/竞态拒绝和完整新根链。日志`pytest.log` SHA `23b64ffff3c9f2c69e81015a1ae7230deca182dedb57a6459731104d700e4a5e`；报告两端SHA `85f8b4b24e8327fea3f9a1e77ce163e3c07db8255163c08cd7ebe687c1eb2833`，本机副本`/private/tmp/mvllm2-r4-result.json`及`/private/tmp/mvllm2-r4-linux.log`。
+
+代码/测试/操作索引SHA与reviewer最终核查及两端提交相同：
+
+- `versioning/backup.py`：`1dff40c9715862e9c4d420b6f1838d8043c2935593ca9bd1a1ab576e9442785d`。
+- `versioning/SCRIPTS.md`：`296f5b70f8a2fb20b426fccef853df30b2a25aff95adc37a446e96770b61f015`。
+- `tests/versioning/test_backup.py`：`a0d025d777b0758f73d8cfcc9670abf8d4f7d8b2deb38ef850459c1cfb8ac9f2`。
+- `tests/test_eval_run.py`：`eb6ca38a0f4d2b17085f073caa3447615b60c2eef031a201ad13ed5a580fbb80`。
+
+M8-R4已解决本轮store级异根恢复范围（代码2fce3ab1）：Mac受影响回归175 passed/1 skipped，最后URI严格化另6 passed；Linux最终同一提交181 passed/1 skipped、exit0；独立代码/操作文档局部审查通过。原模拟store不可访问时，新根artifact读取、显式current/服务准入、后续写入与再次备份均通过；冻结事实和原备份保持。验证见第41节；真实硬盘/大型产物、外部依赖整机恢复与GPU不在通过范围。下一步补实际history-summary并做M8最终整包复审，整体迁移不关闭。
+
+最终Linux证据与四份文档独立只读核查通过：reviewer核对两端原始报告/日志及摘要、HEAD/四文件摘要、汇总/退出码/NOFILE与原项目和隔离checkout状态，无新增可执行问题。以上Linux执行由主Agent完成，不计作reviewer复跑；局部通过不代表M8整包通过。四份轻量文档在训练机按明确旧/新摘要写入并原子提交，再通过bundle同步Mac；同次提交版本由相关文件Git历史追溯。
