@@ -358,3 +358,8 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 
 
 2026-09-14 M4-FOLD接口核对完成（e7efb56b，verification第64节）：现有train run忽略已解析的--fold并执行全部冻结配置，不能作为单折入口使用。下一步确认TODO中的显式选折、partial、同父Run续办及完成折验签复用方案，再更新Spec/Plan实施。ENV-DEPLOY不重做；本次无训练、test、远程操作或业务代码修改。
+
+
+## M4-FOLD已确认实施批次（Spec b1aaf315）
+
+承接用户对逐折规则及工程验证的确认。实施范围：finetune/train_prepare_run.py、versioning/cli.py，必要的versioning训练证据辅助逻辑；tests/test_train_with_contract.py、tests/versioning/test_cli.py及必要单折定向测试；局部更新finetune/README.md、TODO、handoff、verification。不改冻结三折结构或full契约。先接入选择参数，在现有train锁内核对父/子Run与逐折不可变证据，成功缺折partial、三折齐全沿用汇总/完成门；用合成trainer覆盖分次执行、完成折复用、漂移/残留/失败/并发拒绝与full回归，最后独立审查。复用现有partial原生状态映射，界面说明该映射而不改变公共状态契约。真实训练与test不执行。
