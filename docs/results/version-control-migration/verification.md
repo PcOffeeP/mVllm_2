@@ -1546,3 +1546,12 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 2026-09-13 train真实输入预检：Linux隔离bb73e4dd执行正式build_versioned_datasets(scope=full)，实际exit0；data-v4.1-r2 + prompt-v4.1-r1 + 原workspace/data媒体根成功生成内存输入。三折train/validation为1253/425、1014/664、1186/492，full为1678，唯一媒体1678个共165485727字节逐一哈希；媒体名提取source与既定21个test ID无交集，此项不代替内容隔离或test资格。没有Run写入、训练或GPU执行。完整结果摘要见docs/results/train-input-preflight-20260913.json及verification第59节。
 
 [轻量结果与程序](../train-input-preflight-20260913.json)记录实际代码版本、三折/full计数、生成内容摘要、媒体集合摘要及原始结果路径/SHA。仅使用train发布内容，test只比对既有非语义ID；未输出标签。远端正式main f1b7d8a3、隔离bb73e4dd事后tracked干净。本机0054b419为文档后续版本，不能冒充远端运行HEAD。原始结果包含1678条媒体哈希；轻量记录不声称是全部原件的独立备份。主Agent检查计数、媒体ID交集、JSON和diff-check，本轮非独立审查、无新增CPU回归或模型效果结论。
+
+
+## 60. M4基座、配置与资源准备
+
+2026-09-13 M4配置/资源预检：基座路径models/minicpm_v_4_5存在并解析到models/minicpmv4_5，config声明openbmb/MiniCPM-V-4_5；仅stat/配置，未验完整权重或冻结修订。4090查询时24564MiB总显存、约1081MiB使用、利用率0%；/data约3.4TiB可用。cpm45有torch/transformers/peft等训练包，但importlib.metadata未发现mlflow分发包；正式适配器在同进程调用run_training，不能假设CPU隔离环境与GPU环境已贯通。公共入口仅cross_validation三折整组或full，没有单折选项；前文“现成单折工程验证”建议收窄为待设计方案。下一步先核对完整执行环境与有限三折工程验证方案，不创建训练版本、不启动训练。
+
+[环境与资源原件](../training-readiness-20260913.json)保存程序、实际exit0、包版本、基座文件stat与配置身份、GPU/磁盘输出及远端Git。代码依据finetune/train_prepare_run.py的prepare_versioned_run仅接受三个fold或full，以及execute中的同进程run_training调用。前序历史YAML仅作候选参数参考，旧数据名、相对模型路径和输出路径不能原样用于新训练。
+
+工程验收若需要真实成功证据仍要实际执行有限训练；这不代表必须重做完整质量训练。最终模型交付另需开发验证与full训练。有限工程Run不能凭loss或完成状态登记为质量passed。cpm45缺mlflow仅指分发元数据查询结果，不声称已做import或运行兼容验证。本轮未安装依赖、加载模型、GPU推理、训练、test使用或远端写入；主Agent核对JSON与diff-check。

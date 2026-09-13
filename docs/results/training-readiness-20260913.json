@@ -1,0 +1,181 @@
+{
+  "time": "2026-09-13T15:36:39.916616+00:00",
+  "bases": [
+    {
+      "path": "/home/liuyang/文档/mVllm_2/models/minicpm_v_4_5",
+      "exists": true,
+      "resolved": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+      "files": [
+        {
+          "name": "._model-00001-of-00004.safetensors",
+          "bytes": 4096
+        },
+        {
+          "name": "._model-00002-of-00004.safetensors",
+          "bytes": 4096
+        },
+        {
+          "name": "._model-00003-of-00004.safetensors",
+          "bytes": 4096
+        },
+        {
+          "name": "._model-00004-of-00004.safetensors",
+          "bytes": 4096
+        },
+        {
+          "name": ".msc",
+          "bytes": 1766
+        },
+        {
+          "name": ".mv",
+          "bytes": 36
+        },
+        {
+          "name": "README.md",
+          "bytes": 25454
+        },
+        {
+          "name": "added_tokens.json",
+          "bytes": 2862
+        },
+        {
+          "name": "config.json",
+          "bytes": 1461
+        },
+        {
+          "name": "configuration.json",
+          "bytes": 51
+        },
+        {
+          "name": "configuration_minicpm.py",
+          "bytes": 3288
+        },
+        {
+          "name": "generation_config.json",
+          "bytes": 268
+        },
+        {
+          "name": "image_processing_minicpmv.py",
+          "bytes": 20757
+        },
+        {
+          "name": "merges.txt",
+          "bytes": 1671853
+        },
+        {
+          "name": "model-00001-of-00004.safetensors",
+          "bytes": 5286612176
+        },
+        {
+          "name": "model-00002-of-00004.safetensors",
+          "bytes": 5301855088
+        },
+        {
+          "name": "model-00003-of-00004.safetensors",
+          "bytes": 4546851120
+        },
+        {
+          "name": "model-00004-of-00004.safetensors",
+          "bytes": 2256571800
+        },
+        {
+          "name": "model.safetensors.index.json",
+          "bytes": 72172
+        },
+        {
+          "name": "modeling_minicpmv.py",
+          "bytes": 18609
+        },
+        {
+          "name": "modeling_navit_siglip.py",
+          "bytes": 41835
+        },
+        {
+          "name": "preprocessor_config.json",
+          "bytes": 714
+        },
+        {
+          "name": "processing_minicpmv.py",
+          "bytes": 11026
+        },
+        {
+          "name": "resampler.py",
+          "bytes": 11732
+        },
+        {
+          "name": "special_tokens_map.json",
+          "bytes": 12103
+        },
+        {
+          "name": "tokenization_minicpmv_fast.py",
+          "bytes": 1647
+        },
+        {
+          "name": "tokenizer.json",
+          "bytes": 11437868
+        },
+        {
+          "name": "tokenizer_config.json",
+          "bytes": 25786
+        },
+        {
+          "name": "vocab.json",
+          "bytes": 2776833
+        }
+      ],
+      "config_identity": {
+        "_name_or_path": "openbmb/MiniCPM-V-4_5",
+        "model_type": "minicpmv",
+        "architectures": [
+          "MiniCPMV"
+        ],
+        "transformers_version": "4.51.0",
+        "torch_dtype": "bfloat16"
+      }
+    },
+    {
+      "path": "/home/liuyang/文档/models/minicpm_v_4_5",
+      "exists": false,
+      "resolved": "/home/liuyang/文档/models/minicpm_v_4_5"
+    }
+  ],
+  "environment": {
+    "torch": "2.5.1",
+    "transformers": "4.56.1",
+    "peft": "0.19.1",
+    "accelerate": "1.14.0",
+    "bitsandbytes": "0.49.2",
+    "llamafactory": "0.9.6.dev0",
+    "mlflow": null
+  },
+  "git": {
+    "/home/liuyang/文档/mVllm_2": {
+      "head": "f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52",
+      "status": ""
+    },
+    "/home/liuyang/文档/mVllm_2-migration-7eeb93a7": {
+      "head": "bb73e4dd0264c8ae709612627794b98118611efa",
+      "status": ""
+    }
+  },
+  "commands": {
+    "gpu": {
+      "exit": 0,
+      "stdout": "NVIDIA GeForce RTX 4090, 24564 MiB, 1081 MiB, 0 %\n",
+      "stderr": ""
+    },
+    "disk": {
+      "exit": 0,
+      "stdout": "文件系统        大小  已用  可用 已用% 挂载点\n/dev/sda1       3.6T   46M  3.4T    1% /data\n/dev/nvme0n1p2  937G  503G  387G   57% /home\n",
+      "stderr": ""
+    }
+  },
+  "program": "from pathlib import Path\nimport json,subprocess,datetime,importlib.metadata as md\nr=Path('/home/liuyang/文档/mVllm_2');bases=[r/'models/minicpm_v_4_5',r.parent/'models/minicpm_v_4_5']\nout={'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),'bases':[],'environment':{},'git':{},'commands':{}}\nfor p in bases:\n row={'path':str(p),'exists':p.is_dir(),'resolved':str(p.resolve())}\n if p.is_dir():\n  row['files']=[{'name':f.name,'bytes':f.stat().st_size} for f in sorted(p.iterdir()) if f.is_file()]\n  f=p/'config.json'\n  if f.is_file():\n   x=json.loads(f.read_text());row['config_identity']={k:x.get(k) for k in ['_name_or_path','model_type','architectures','transformers_version','torch_dtype']}\n out['bases'].append(row)\nfor name in ['torch','transformers','peft','accelerate','bitsandbytes','llamafactory','mlflow']:\n try:out['environment'][name]=md.version(name)\n except md.PackageNotFoundError:out['environment'][name]=None\nfor name,cmd in {'gpu':['nvidia-smi','--query-gpu=name,memory.total,memory.used,utilization.gpu','--format=csv,noheader'],'disk':['df','-h','/data','/home/liuyang']}.items():\n a=subprocess.run(cmd,capture_output=True,text=True);out['commands'][name]={'exit':a.returncode,'stdout':a.stdout,'stderr':a.stderr}\nfor p in [r,r.with_name('mVllm_2-migration-7eeb93a7')]:\n out['git'][str(p)]={k:subprocess.check_output(['git','-C',str(p),*a],text=True).strip() for k,a in {'head':['rev-parse','HEAD'],'status':['status','--porcelain','--untracked-files=no']}.items()}\nprint(json.dumps(out,ensure_ascii=False,indent=2))\n",
+  "actual_exit": 0,
+  "scope": "read-only model config/stat, distribution metadata, GPU and disk snapshot; no model load",
+  "limitations": [
+    "Base model contents not hashed; revision not yet pinned.",
+    "Installed distribution versions do not prove compatible runtime.",
+    "GPU availability is a snapshot, not reserved capacity or peak usage proof."
+  ]
+}
