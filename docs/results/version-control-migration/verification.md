@@ -1343,3 +1343,58 @@ HOLDOUT-METRICS已完成本轮七门代码、双机合成验证及局部独立�
 备选是导入外部已审查包，能减少内部审查实现，但需另立可信来源、审查证明和媒体绑定契约，不能消除验证责任。推荐独立原生路径的代价是新增审查作用域及受限工作区，须验证审查往返完整性、权限、中断恢复和开发路径兼容。它涉及公共接口、数据流与安全边界，须用户确认后修订 Spec/Plan，不能将上一轮七项评分门槛的批准扩大解释为构建链路批准。
 
 本次仅形成源码定位与可审阅方向，尚未制定最终配置 schema 或具体 CLI；新 source 的路径/批次及非语义隔离清单仍未提供。真实 holdout 构建、读取与使用分别遵守原授权边界。
+
+
+<a id="test-branch-20260913"></a>
+## 51. train / test 数据分支完整接线（Mac合成验收）
+
+用户明确确认补齐test数据分支的处理、人工审查、封存发布及最终模型测试接线，并统一叙述名称：train数据分支用于三折训练/验证及全量训练，test数据分支仅用于最终独立测试。代码字段/配置值development、holdout、test_audit及历史身份不改；前文旧称为历史记录。Spec042f335e和Plan66416f0f分别提交，代码abafdbf2。执行机器Mac，使用仓库`.venv/bin/python`；未SSH、未真实媒体处理、未GPU/真实训练/测试使用、未删除既有产物、未push/merge。
+
+### 实施与范围
+
+新增`versioning/holdout_pipeline.py`，由七阶段CLI显式`--purpose holdout --test-config`路由。独立全test批次输入（fold成员为空、历史参考语义records为空），对照pin钉扎的train/旧测试非语义来源审查清单检查ID与原视频摘要交集；train清单ID与已发布候选集合精确一致。原清单完整性和未用于调参仍是人工证据边界，缺失不补默认通过。
+
+工作区和test审查包owner-only，逐候选人工决定完整绑定，禁止train自动准入混用。复制受限审查包后权限不符拒绝；UI草稿与回收输出受限。发布固定data身份、无标签媒体manifest、受限真值/审查/隔离原件/五阶段证据及仅通过状态的质量报告。原始配置和队列可追溯，授权目录保持未消费，数据命令不启动模型。数据验证只读，不创建工作区/锁/绑定；真实调用会读取当前新test真值，仍需适用授权。
+
+最终full模型测试从构建器产物消费。prepare/run只验公开媒体及构建凭证整体摘要，核对train版本元数据绑定；score授权后读取真值并核对冻结构建摘要，未承诺恢复同样验证，已承诺恢复不重读真值。公开MLflow不包含裸真值摘要；新模块纳入评分实现快照摘要。旧对象缺构建凭证拒绝，不补证或重置claim。train代码字段/算法及七门阈值不变。test分支不自动DVC remote发布，现有dvc-config仍仅服务train；受限数据存储/真实环境仍须单独验收。
+
+### 实际验证与原失败
+
+最终runner基线66416f0f的工作树经六文件SHA逐项核验，与随后提交abafdbf2字节一致，不把基线提交冒充实现版本。最终两组：
+
+| 范围 | pytest结果 | pytest秒 / 外层秒 | 实际退出 |
+| --- | --- | --- | --- |
+| test构建/最终测试、数据七阶段、CLI、审查UI | 265 passed | 38.91 / 40.904 | 0 |
+| 七门、train验证/full训练、claim及隔离库 | 162 passed / 1 skipped | 38.91 / 42.880 | 0 |
+
+合计427 passed/1 skipped，跳过为本机缺少V4.1实际workspace数据。所有模型/处理器执行为合成替身，不构成模型效果、GPU、真实媒体或Linux证据。保留已有295条warnings（含库弃用、裸Streamlit上下文及pytest临时目录清理提示），未修改依赖或系统限制。
+
+正式首次组合保存在原目录`/private/tmp/mvllm2-test-branch-20260913/`：261 passed/1 failed、exit1；旧缺类测试在prepare后改写真值，新漂移门提前拒绝，故原'all four'断言失配。将缺类输入改在初始receipt/prepare冻结前构造后专项1 passed，最终新目录两组通过；原失败不覆盖。更早探索使用系统python缺mlflow而收集失败、fixture封存目录写权限及corrected标签与建议相同导致的失败均已修正；不把这些探索当验收。
+
+### 独立核查
+
+受派reviewer对本批局部实现与调用链独立核查，确认P1：构建后真值可漂移而评分仍接受；P2：rename后最终chmod中断导致重试永久失败。两项修复后原独立反例均通过。后续指出裸truth pin进入公开input的泄漏风险，已改为仅整体receipt摘要公开，授权score才取真值pin，独立复核通过。
+
+独立实际构建器→claim→prepare→run→score、读取隔离与恢复验证通过。其一轮两文件加两探针为27 passed/1 failed（23.80秒、exit1），当时唯一缺类fixture断言已按上文修正；最终独立四项专项为4 passed/exit0（5.69秒），涵盖缺类门、release_validate不创建工作区、七阶段CLI、test UI私有输出。独立UI权限探针另1 passed/exit0；前轮train审查定向38 passed/141 deselected来源为reviewer前次工具回执，不作本轮复跑。最终局部代码及`versioning/SCRIPTS.md`新增操作说明核查通过，入口→审查→回收→发布→最终测试链可追溯，没有剩余可执行finding。未重做M8历史整包审查。
+
+独立探针为`/private/tmp/test_holdout_review_probes.py`；其运行记录来源于reviewer工具回执，未声称存在独立原始日志文件。主Agent最终runner与两份日志、result原件在`/private/tmp/mvllm2-test-branch-20260913/final/`。
+
+- `final/run.py` SHA256 `dac9640b2c8ce2202ae348e31d93072edb2960978213647763ca1e0389398fbb`。
+- `final/group1.log` SHA256 `446791b18ff75999c3cfb47a98eb8eb2cc17433bc630e4d4ad6ffd9662261cbc`。
+- `final/group2.log` SHA256 `055716d3869f4ed7fb6222dcc7190a63ab57f96a5a35344799c937f1387c73f8`。
+- `final/result.json` SHA256 `20ce13251ae19ac350e2b7e194f22d4edc567abef46d55b72d71a17dbc1b83d8`。
+
+冻结代码/测试摘要：
+
+- `versioning/holdout_pipeline.py`：`8cf5a95845d8b632474229709849717f229b1833cd1df6cef41a39122fc0264d`。
+- `versioning/data_pipeline.py`：`b7892bd2a753bfc71ff33343c25eaf95956d35d101916a5b41c25e30762e0d56`。
+- `versioning/cli.py`：`6993d80325af9bdde5a1b851bee122f5031b452c9afc77c64d517a4c805ce6e9`。
+- `finetune/eval_holdout.py`：`d5ba919cfc94b4c774032c4580ad867e19cee6cebe8885118ad41c8ea16ea4cb`。
+- `tests/versioning/test_holdout_pipeline.py`：`2f766ff478add1a1249b8bc16693604f38a9a192cfbd6cb4913aa0ba019e7817`。
+- `tests/test_eval_holdout.py`：`8573fd5d019bf5850b2610f06155dddd01d25a493d2b55857cfe4ee587383035`。
+
+### 状态与交接
+
+HOLDOUT-BUILD的本批代码/合成前置完成，父任务仍阻塞于独立新source、非语义清单、人工审查、适用真实构建/测试使用授权与真实环境证据。MODEL-DIAG缺权重/原件依赖未解除。Linux本批未同步或运行，前批双机614项不得算作此代码验证；之后同步前须重新核对两端状态。本机文档提交由Git历史追溯，不在同次文档内编造自身提交ID。
+
+最终四文档独立证据核查通过：reviewer仅对照保存原件，复算runner/两日志/result摘要，确认六文件与abafdbf2及当前工作树一致、两组实际exit0、原失败保留、版本归属及真实/Linux限制准确；新增链接和锚点、diff-check通过。主Agent另核对五份相关文档的69个本地文件链接全部存在。本次证据核查未重跑测试或访问训练机。

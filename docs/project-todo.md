@@ -8,6 +8,10 @@
 
 ## 下一步与执行顺序
 
+**现行术语**：train 数据分支用于三折训练/验证及全量训练；test 数据分支仅用于最终独立测试。代码/配置仍使用 `development` / `holdout` / `test_audit`，历史身份不改。下文前轮记录中的旧称按此对应解释。
+
+2026-09-13 续办（Codex）：用户已确认完整test数据分支并授权实施；Spec042f335e、Plan66416f0f、代码abafdbf2。独立受限处理、全量人工审查、封存发布和最终full模型测试已接通；Mac合成回归427 passed/1 skipped、两进程均exit0，局部独立代码及入口说明审查通过。详见[第51节](results/version-control-migration/verification.md#test-branch-20260913)。真实新source、人工审查和适用构建/测试使用授权仍未就绪，HOLDOUT-BUILD不关闭；本批尚未在Linux运行或同步，不把前批双机结果记为本批验证。
+
 **M8 整包代码差异审查已通过，范围冻结于 `f1b7d8a3→d9ec1227`（140提交/152文件）；不重做已完成修复与整包审查。四份交付文档独立核查已闭环；HOLDOUT-METRICS也已完成七门接线、双机合成验证及局部独立代码审查，当前按模型主线依赖准备真实环境前置。**
 
 2026-09-13 当前维护（Codex）：本机及Linux隔离分支执行前均为干净`f76d0f4a`，正式项目与Codeup main仍为`f1b7d8a3`。第47节的Mac整仓2694 passed/11 skipped、实际exit0，Linux179项及顺序1项各exit0均为前轮运行；本轮独立reviewer逐件核验原日志、SHA、七保护文件及同步回执通过，没有重跑或将CPU结果当模型效果。四文档首轮发现两项P3：后续任务沿用已退役CLI、当前动作残留R6/R7旧失败；本轮修正文案后局部复核通过（含新增只读证据），最终结论见[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)。M8及真实环境缺口仍未关闭，未请求merge/push。
@@ -16,13 +20,13 @@
 
 **模型验收下一项先执行 HOLDOUT-BUILD：构建并授权一个未使用的 holdout 测试集，作为最终模型独立验收的前置，同时继续 MODEL-DIAG。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
 
-1. 构建并授权未使用 holdout 测试集：隔离独立于开发/调参的 source，按已冻结阈值发布 sealed-test release，走预注册 + 一次性授权 + claim 流程；不得读取或混用现有 sealed-test 的受限语义结果。本步单独执行，不隐含于“策略已确定”。
+1. 构建并授权未使用的 test 数据分支：隔离独立于开发/调参的 source，按已冻结阈值发布 sealed-test release，走预注册 + 一次性授权 + claim 流程；不得读取或混用现有 sealed-test 的受限语义结果。本步单独执行，不隐含于“策略已确定”。
 2. 持续整理 MODEL-DIAG 的开发集证据和训练机任务单：先核三折模型身份与原始预测，再做无需重训的推理对照，最后考虑单变量训练。任何新推理/训练开始前，明确机器、输入、输出、资源和既有授权范围。
 3. 开发侧三折方案稳定、holdout 构建就绪并冻结后，才进入全量最终训练、独立验收和模型晋级。新体系release切换使用显式完整身份；RELEASE-POINTER的原旧指针维护目标待裁决，不构成新体系切换的自动前置。
 
 | 顺序/定位 | 固定标识 | 任务 | 状态 | 依赖或触发条件 |
 | --- | --- | --- | --- | --- |
-| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用 holdout 测试集 | 阻塞 | 新source与人工审查未就绪；正式构建入口待接通，HOLDOUT-METRICS代码前置已完成 |
+| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用的 test 数据分支 | 阻塞 | 代码接线及Mac合成验收已完成；新source、人工审查、真实环境和适用授权未就绪 |
 | 评分接线前置 | HOLDOUT-METRICS | 冻结七项holdout门槛接线 | 已解决（本轮代码/CPU范围） | f1be1060；真实holdout验收仍归HOLDOUT-BUILD/MODEL-QUALITY |
 | 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 进行中（Codex；只读准备） | 历史开发记录可复算；concise原件缺失及visual断链阻塞推理对照 |
 | 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | MODEL-DIAG 权重依赖、完整证据备份、显式删除授权 |
@@ -46,14 +50,14 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **验收标准**：每模型每 fold 有可核查的原始配置和结果链、缺失证据明确、归档已备份并校验；本轮新增visual三fold merged断链与concise缺失归入同一保护依赖（验证第48节）；清理路径不跟随链接误入发布库，不删除在用模型和未完成诊断所需文件；训练机按获准清单执行并记录删除前后体量、保留文件完整性及对应机器提交。完成可行性审查不等于归档或删除完成。
 - **证据/版本/验证限制**：[模型清单](MODEL_INVENTORY.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)、[模型归档证据包索引](results/model_evidence/README.md)、[试点证据包`v4.1-prompt-minimal-v1-seed3411`](results/model_evidence/v4.1-prompt-minimal-v1-seed3411/README.md)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；本轮 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
 
-### HOLDOUT-BUILD — 构建并授权未使用 holdout 测试集
+### HOLDOUT-BUILD — 构建并授权未使用的 test 数据分支
 
-- **状态/来源**：阻塞（Codex已完成本轮只读前置核查；解除条件为指定新source、完成审查并补齐正式构建入口；HOLDOUT-METRICS代码前置已完成）；由 TEST-POLICY 关闭时拆出，作为 FINAL-TRAIN / MODEL-QUALITY 的前置。目标是构建一个未参与开发/调参的 holdout 测试集，用于最终候选模型的独立验收。
+- **状态/来源**：阻塞（Codex已完成test数据分支处理/全量人工审查/封存发布/最终测试接线，代码abafdbf2；解除条件为指定独立新source、取得适用真实构建授权、完成人工审查及真实环境验证）；由TEST-POLICY拆出，数据冻结支撑FINAL-TRAIN，最终候选测试支撑MODEL-QUALITY。
 - **事实与差距**：现有唯一 sealed-test `v4.1-sealed-test-5546b8bf1ec3` 已暴露且一次性，不复测不调参；本地与训练机均无未使用 holdout。需要一个新的、未使用的 holdout 测试集及其对应授权链路。
 - **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。
 - **人工审查**：对候选样本执行有效视图/剪裁人工审查（对应 `review_*` 流程），核对批次与 source 分层，形成冻结的 review batch 后再生成 release。
-- **发布入口与差距**：人工source/审查/隔离证据仍是前置。现有 `versioning data release` 明确仅发布development；`versioning data claim`及`eval prepare/run/score`消费已经构建的holdout，不负责构建。历史构建器位于 `pipeline/scripts/archive/build_v4_1_sealed_test_release.py`，使用旧queue/batch和哈希release语义，不能直接作为新体系写入口。需先明确并确认获审查新source到完整data身份、媒体manifest、owner-only真值、质量报告及封存的构建接线；新体系禁止index/LATEST，不通过手写隔离true字段补造证据。
-- **构建接线待决（2026-09-13续办）**：源码核查确认 review_export 和 release 两层均仅处理 development，缺口包含审查链。推荐新增独立 holdout 审查/构建路径、入选样本全量人工审查、受限真值与公开媒体分离；方案尚待确认，不沿用 development 的自动准入。备选外部审查包及风险见[验证第50节](results/version-control-migration/verification.md#holdout-build-routing-20260913)。来源路径/批次和非语义隔离清单仍为真实构建前置。
+- **发布入口与差距**：test七阶段显式使用`--purpose holdout --test-config ...`，新模块`versioning/holdout_pipeline.py`在owner-only工作区复用媒体算法，所有候选必须人工审查。train默认路径不变。真实输入必须为独立test批次、具备冻结train版本的source清单及旧测试非语义来源清单；当前真实source和清单尚缺。新入口及完整参数/产物来源见[入口说明](../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)。
+- **已确认实施与限制**：用户已确认上一轮待决方案，Mac合成完整builder→claim→prepare→run→score通过。原审查发现真值摘要未校验P1和发布rename后封存尾步恢复P2均修复并专项复核；公开input仅固定整体receipt摘要，真值pin在授权score读取。当前test分支不自动向DVC remote发布受限数据；源码与Mac验证完成不表示真实数据已构建，Linux本批未跑。
 - **授权流程**：预注册一次性授权 + one-time claim，沿用现有 stage_d 流程；授权条件 `one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，首次模型调用前原子写入 claim，只允许同一 run identity 恢复。
 - **阈值**：沿用 `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
 - **依赖/边界**：本任务只负责构建、审查、发布与授权一个未使用 holdout，不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。

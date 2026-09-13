@@ -1,7 +1,7 @@
 # 可读版本控制正式迁移实施计划
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
-- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `55b3f4d4`（承接0bf0baed；2026-09-13用户确认七项holdout门槛接线）。
+- **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `042f335e`（承接55b3f4d4；用户确认train/test数据分支完整接线）。
 - **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
 - **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
 - **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
@@ -299,3 +299,6 @@ HOLDOUT-METRICS本批收口：代码f1be1060及两入口说明局部独立审查
 顺序：先增加显式test配置（冻结train版本、train/历史测试source身份与摘要清单），在owner-only独立工作区复用source/ROI/子视频算法；然后全量人工审查往返、媒体/真值分离发布与只读校验；最后接最终full模型测试并完成受影响回归、独立代码及入口说明核查。发布前后核验相同输入、source隔离、媒体内容、审查完整性，已发布内容和授权事实不可覆盖。训练及测试消费不由数据命令自动启动。
 
 Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容重叠拒绝、受限权限、公开数据无标签、同操作重试与冲突保留、最终模型测试从真实构建器产物消费及claim时序；train已有链路定向回归。只在本机或Linux隔离目录执行CPU测试，记录实际exit及机器/代码版本。真实数据/模型效果、硬盘和受限测试使用均保留未验收；本批不push或merge。
+
+
+本批代码abafdbf2已完成test分支处理、全量人工审查、封存发布及最终full测试接线；Mac427 passed/1 skipped、两组exit0，独立局部代码与入口说明核查通过，原P1/P2及权限/只读验证修复已闭环，见verification第51节。历史七门评分批次的双机证据不作本批复跑；本次尚未同步Linux。下一步提供新test source、非语义隔离清单和适用真实构建授权后进行训练机媒体/审查/封存验收；模型权重缺失仍阻塞MODEL-DIAG，真实训练、测试使用、删除与push/merge边界保持。
