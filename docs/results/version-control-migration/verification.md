@@ -1749,3 +1749,13 @@ Linux正式项目main f1b7d8a3无未提交文件；原隔离bb73e4dd相对本机
 发布前已刷新Codeup main及任务分支引用：main=f1b7d8a3，远端任务分支2027c4dc是本地祖先（当时0/103），无远端独有提交；不会强制推送。模型文档独立核查/提交完成后才执行用户要求的先分支push、再main快进与push，集成结果后续补记。
 
 模型背景独立核查通过：现存资产/大小求和、历史指标分母、七门及链接核对完成；P3将待确认MODEL-DIAG误称已确认的措辞已修正并复核闭环。新增服务有限快照与三份SHA独立重算一致。reviewer未SSH或重算真实权重，现场状态来源为主Agent原始回执；无模型质量通过结论。
+
+
+### 已执行的按序集成与保护核对
+
+1. 模型文档通过独立核查后提交5acebc27；先执行git push codeup HEAD:refs/heads/refactor/2026-09-07-readable-version-control-migration，实际exit0，远端2027c4dc→5acebc27。
+2. 随后ls-remote确认main仍f1b7d8a3、任务分支已5acebc27，刷新main并确认祖先关系；本机main由cc59312c快进到5acebc27，再git push codeup main:main实际exit0，远端main f1b7d8a3→5acebc27。没有强推，没有squash或丢失本地main原6提交。
+3. 训练机正式工作区完整git status干净、分支main；fetch origin main并核验FETCH_HEAD精确5acebc27后，merge --ff-only成功。Mac和Linux正式目录使用已验证新环境解释器运行python -B -m versioning --help，Linux另运行train --help，均exit0；只是CLI入口检查，没有加载模型或切换默认解释器。新GPU环境仍绑定保留的验证checkout，正式训练前须按部署说明创建/绑定正确来源的环境。
+4. 重新运行相同只读模型探针：releases（含manifest SHA、权重大小/mtime）、runs权重标记、旧current、基座分片与store目录状态逐项前后一致；不是重新哈希全部权重。正式代码已更新，原隔离bb73e4dd、部署检出61effebd保持，均tracked干净，未跟踪环境/证据保留。更新后现场JSON `/private/tmp/mvllm2-model-after-main-20260914.json` SHA256为`beb3bde32501e1d572e0590825c3fd327523ecb40082035927b1bf99b0dbb964`。
+
+本次用户要求的模型背景与main集成已完成。工程迁移按已确认范围关闭；模型任务和真实恢复限制保留。此后只补本段及TODO/Plan/handoff的集成回执，仍按先push任务分支、再快进main的同一顺序发布；最终回执提交由git log追溯，不冒充在本文中预知自身提交号。

@@ -1,6 +1,8 @@
 # 可读版本控制迁移交接与验收盘点
 
-## 2026-09-13 当前交接
+2026-09-14当前交接：工程迁移已按用户授权合并Codeup main。先push任务分支5acebc27，再本机main快进并push，训练机正式main随后同步；双机CLI检查通过，模型资产前后stat/身份一致。当前模型背景见[MODEL_GATE_BASELINE](../../MODEL_GATE_BASELINE.md)，集成回执见verification第67节。真实模型效果/test/物理恢复未通过，默认解释器未切换；原隔离与验证环境保留。下文为历史冻结记录，不再作为阻止本次合并的待决授权。
+
+## 2026-09-13 历史交接
 
 当前 M8 更新后的整包代码差异审查已通过；**真实环境验收和集成授权仍未完成，整体迁移未完成**。状态以
 [项目 TODO](../../project-todo.md) 为准；完整审查及R2/R3修复见[验证记录第39节](verification.md#m8-audit-20260913)，R1见[第40节](verification.md#m8-r1-evidence-20260913)，R4见[第41节](verification.md#m8-r4-restore-20260913)，历史汇总与batch修正见[第42节](verification.md#m8-history-20260913)，物理Prompt落位及历史复审见[第43节](verification.md#m8-final-20260913)，R5修复见[第44节](verification.md#m8-r5-prompt-20260913)，full/holdout实际接线见[第45节](verification.md#m4-full-holdout-20260913)，当前R6/R7与更新后的整包代码审查结论见[第47节](verification.md#m8-r6-r7-20260913)。

@@ -374,3 +374,6 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 ## 模型背景调查与已授权main集成
 
 用户明确要求：先梳理当前真实模型并写docs一级文档，再先推送当前任务分支、后合并main。沿用已确认工程范围及既有合并候选；本批新增docs/MODEL_GATE_BASELINE.md，局部为旧状态/清单加历史提示，并同步TODO、handoff、verification。只读核对训练机模型路径、文件stat和非评测身份，历史效果注明来源，不重训/推理/test或删产物。模型文档独立核查通过并提交后，刷新Codeup及两机状态，先推送任务分支，再本机main快进并推送Codeup main；仅无分叉无本地修改时同步训练机正式代码，核验落点及适用轻量检查。保留任务分支、原环境与验证检出；本批不把新环境切换为正式默认解释器。
+
+
+2026-09-14 已执行完成：模型背景docs/MODEL_GATE_BASELINE.md独立核查通过；5acebc27先推任务分支，再快进并推Codeup main，随后训练机正式main同步。双机versioning CLI及Linux train帮助入口exit0，旧模型stat/manifest/current前后一致。工程迁移按已确认范围收口；真实训练/test/模型效果/物理恢复及默认解释器激活未执行。此后集成回执文档仍按先任务分支push、再main快进的授权顺序发布，最终提交见Git历史。
