@@ -63,7 +63,15 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。本轮独立full训练与holdout媒体run/授权score接线完成（fed9bcfc），Linux819 passed/1 skipped、各exit0，双机及独立局部证据见第45节；真实训练/GPU、真实holdout读取及真实注册模型成功路径仍未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 部分验收通过（store级恢复已完成，真实硬盘/大型产物待验收）：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物未验证；M8-R4 store级异根恢复已由2fce3ab1完成并通过Mac/Linux及独立局部验收，真实硬盘/大型产物与外部依赖整机恢复仍未验收（verification第33、39、41节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，第42节）；第43节物理Prompt已补齐，Mac整仓2647 passed/11 skipped、exit0。最终125提交/149文件独立审查已完成且因M8-R5驳回整包；当前矩阵已更新，第44节R5已由de1b51dd解决本轮范围，用户策略确认、Mac/Linux200项及独立局部证据通过；本轮full/holdout接线及双机隔离CPU验证已完成（fed9bcfc，Linux819 passed/1 skipped、各exit0，第45节）；第46节完整复审e1d70c58曾因M8-R6驳回，Mac整仓另发现M8-R7；两项已由d9ec1227修复，Mac整仓2694 passed/11 skipped、exit0，Linux两组179+1项各exit0，更新的独立整包代码审查覆盖140提交/152文件并通过（第47节）；真实环境缺口分别保留，未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。以下M8首次审查及后续驳回为历史推进记录，不作为当前下一动作。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，第42节）；第43节物理Prompt已补齐，Mac整仓2647 passed/11 skipped、exit0。最终125提交/149文件独立审查已完成且因M8-R5驳回整包；当前矩阵已更新，第44节R5已由de1b51dd解决本轮范围，用户策略确认、Mac/Linux200项及独立局部证据通过；本轮full/holdout接线及双机隔离CPU验证已完成（fed9bcfc，Linux819 passed/1 skipped、各exit0，第45节）；第46节完整复审e1d70c58曾因M8-R6驳回，Mac整仓另发现M8-R7；两项已由d9ec1227修复，Mac整仓2694 passed/11 skipped、exit0，Linux两组179+1项各exit0，更新的独立整包代码审查覆盖140提交/152文件并通过（第47节）；真实环境缺口分别保留，未授权push/merge |
+
+### 2026-09-13 交付收口与模型前置准备
+
+当前下一动作以TODO及verification第48节为准：完成四文档独立核查、修正过期CLI与R6/R7状态；不重复第47节已通过的完整代码审查和CPU回归。真实环境限制继续保留。
+
+用户本轮明确要求同时推进HOLDOUT-BUILD和MODEL-DIAG，先执行不改变行为契约的只读准备。精确新增轻量证据文件为`docs/results/model-diagnostics-preflight-20260913.json`，保存限定SSH元数据检查、历史development原记录重算的程序/摘要/返回结果和纯配置探针；不收录逐样本标签、预测或权重。该扩充仅用于本轮Proof落盘，不新增训练、holdout构建/使用或正式写入授权。
+
+来源未指定与实际构建入口未接通阻塞HOLDOUT-BUILD。新发现的HOLDOUT-METRICS先记录并确认公共配置扩展，再按守护流程更新Spec/Plan；本轮不自行改变评分口径。MODEL-DIAG可复算已有开发预测，但concise缺失和历史visual权重断链阻塞新推理；找到精确备份位置后只读核验，不全盘搜寻或恢复覆盖产物。
 
 ### M0：核定范围与写入者
 

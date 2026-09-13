@@ -3,35 +3,30 @@
 本文件是项目持续维护的任务台账，记录用户目标、当前差距、执行顺序和验证结果。维护规则见 [AGENTS.md](../AGENTS.md#todo-执行与维护)，不另建平行 TODO。
 
 - 更新日期：随“最近维护记录”持续更新，不以文件头日期代替记录。
-- 本轮依据：当前可读版本控制迁移任务的已确认Plan、M6接线ab5543de与跨机证据a7e0fc14，以及M7a实现881c8181与两端回归证据。详细证据见下述目标条目与验证记录；其他任务保留其原先注明的机器、代码版本和授权边界。
+- 本轮依据：迁移任务已确认Spec/Plan、第47节整包代码审查及本轮第48节交付核查和模型主线只读证据。详细证据见下述目标条目与验证记录；其他任务保留其原先注明的机器、代码版本和授权边界。
 - 主 Agent 汇总并维护，其他执行 Agent 按 AGENTS.md 交接证据和新发现。任务标识固定，不随排序改变。
 
 ## 下一步与执行顺序
 
-**本轮按用户指定优先继续 VERSION-CONTROL-FORMAL-MIGRATION 的 M8 验收交付；更新后的完整代码差异审查已通过，下一步核对交付证据并准备可审阅的集成边界。M7a 三个数据 CLI 及 M7b 四个训练/评测 CLI 退役已完成；其他模型工作保持原依赖与授权边界。**
+**M8 整包代码差异审查已通过，范围冻结于 `f1b7d8a3→d9ec1227`（140提交/152文件）；不重做已完成修复与整包审查。当前收口四份交付文档的独立核查，并按模型主线依赖整理真实环境前置。**
 
-本轮迁移修复：M8-R1代码`3b63aa52`已完成，本机整仓2623 passed/11 skipped、独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4代码`2fce3ab1`的store级异根恢复已通过Mac/Linux及独立局部验收（第41节）；实际history-summary已交付并独立验收（第42节）；物理/data下Prompt已完成登记与验签（第43节）；历史完整差异复审曾驳回整包（125提交/149文件，代码ab5c71ae）；当次Mac整仓CPU回归2647 passed/11 skipped、exit0。M8-R5代码de1b51dd已解决本轮范围：用户确认服务使用冻结Prompt，Mac195+5项、Linux200 passed/1 skipped、独立25+5项及操作说明通过（第44节）；本轮full/holdout实际输入接线（Codex）：用户已确认独立full训练范围（Spec 0bf0baed）；full来源/执行/模型证据接线已实现、两项审查P2修复并局部通过，holdout媒体run与授权score已实现，独立holdout审查发现链接提前读truth的P2与伪造评分恢复凭据的P1，均已修复并新增回归；Mac广回归679 passed/1 skipped及最终holdout16项均exit0；独立局部复审通过，Linux三组819 passed/1 skipped均exit0（代码fed9bcfc，第45节）。full/holdout代码接线与双机隔离CPU验证已完成，GPU/真实holdout仍未验证；第45节是已完成的局部证据，最新整包代码审查结论及下一步见下文第47节。
+2026-09-13 当前维护（Codex）：本机及Linux隔离分支执行前均为干净`f76d0f4a`，正式项目与Codeup main仍为`f1b7d8a3`。第47节的Mac整仓2694 passed/11 skipped、实际exit0，Linux179项及顺序1项各exit0均为前轮运行；本轮独立reviewer逐件核验原日志、SHA、七保护文件及同步回执通过，没有重跑或将CPU结果当模型效果。四文档首轮发现两项P3：后续任务沿用已退役CLI、当前动作残留R6/R7旧失败；本轮修正文案后局部复核通过（含新增只读证据），最终结论见[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)。M8及真实环境缺口仍未关闭，未请求merge/push。
 
-2026-09-13 本轮整包复审已完成（Codex）：冻结Codeup main `f1b7d8a3` → `e1d70c58`，138提交/152文件。独立结论为驳回修改，新增M8-R6（P2：外部adapter/checkpoint未冻结）；过期full/holdout入口说明已校正。Mac整仓2686 passed/1 failed/11 skipped、实际exit1，失败由主Agent缩小为导入顺序导致的测试隔离问题M8-R7。两端工作区及七份保护文件核对通过，见验证第46节。下一步先修M8-R6与M8-R7，再做受影响回归和独立复核；M8不关闭，不请求merge/push。
-
-2026-09-13 M8-R6/R7已解决本轮代码与CPU验收范围（Codex，代码`d9ec1227`）：新训练准备拒绝非null外部adapter/checkpoint配置，旧冻结记录在validate/run/export及Registry下游拒绝；路径优先级测试改用独立Python进程，实际模块来源门保持。Mac受影响179项与原收集顺序1项均exit0，整仓**2694 passed/11 skipped、实际exit0**；独立局部复核与旧反例复验通过。Linux隔离分支两组179项及顺序1项均exit0，七保护文件及原main保持。独立审查承接前轮完整范围，对`f1b7d8a3→d9ec1227`共140提交/152文件给出**整包代码差异通过**；证据见第47节。M8父任务仍进行中：真实GPU训练/模型效果、未使用holdout构建及授权评分、真实硬盘/大型产物恢复和外部依赖整机恢复尚未验收；不请求merge/push。
-
-M8交付文档的本轮追加独立复核因reviewer用量限制未形成结论；四份文档经主Agent本地`git diff --check`与链接检查，后续补独立核查。此缺口不改变已单独完成的整包代码审查结论。
-
-M8本轮轻量交付已在Mac提交`c3685578`并以SHA `ce4e77f8cb5182e96827304d582b49064056c40b55417b2281a0bd3c7dee3305`的bundle快进训练机隔离工作区；回执见第47节。原项目仍干净`main@f1b7d8a3`，隔离分支tracked干净，七份保护文件未变。下一步在可用独立审查资源下补四文档核查，同时按本表原依赖准备真实环境验收；未获实际训练、holdout使用及merge/push授权。
+本轮推进HOLDOUT-BUILD来源/入口预检与MODEL-DIAG开发记录复算：新source尚未指定，新体系release集合仅见r1/r2；未创建或授权测试集。新增HOLDOUT-METRICS前置：当前配置不能表达已冻结七指标，需确认接口扩展范围。历史visual开发集1216条已在Linux按现行严格解析器重新评分、各折原摘要一致；concise原始记录仍缺，visual三折merged路径均断链。详见第48节及[轻量证据](results/model-diagnostics-preflight-20260913.json)。只复算历史开发输出，不是新推理或模型质量通过。
 
 **模型验收下一项先执行 HOLDOUT-BUILD：构建并授权一个未使用的 holdout 测试集，作为最终模型独立验收的前置，同时继续 MODEL-DIAG。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
 
 1. 构建并授权未使用 holdout 测试集：隔离独立于开发/调参的 source，按已冻结阈值发布 sealed-test release，走预注册 + 一次性授权 + claim 流程；不得读取或混用现有 sealed-test 的受限语义结果。本步单独执行，不隐含于“策略已确定”。
 2. 持续整理 MODEL-DIAG 的开发集证据和训练机任务单：先核三折模型身份与原始预测，再做无需重训的推理对照，最后考虑单变量训练。任何新推理/训练开始前，明确机器、输入、输出、资源和既有授权范围。
-3. 开发侧三折方案稳定、holdout 构建就绪并冻结后，才进入全量最终训练、独立验收和模型晋级。新数据 release 切换前完成 RELEASE-POINTER；沿用现有 release 时它不阻塞首轮诊断。
+3. 开发侧三折方案稳定、holdout 构建就绪并冻结后，才进入全量最终训练、独立验收和模型晋级。新体系release切换使用显式完整身份；RELEASE-POINTER的原旧指针维护目标待裁决，不构成新体系切换的自动前置。
 
 | 顺序/定位 | 固定标识 | 任务 | 状态 | 依赖或触发条件 |
 | --- | --- | --- | --- | --- |
-| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用 holdout 测试集 | 待处理 | TEST-POLICY 已确定策略；作为 FINAL-TRAIN / MODEL-QUALITY 独立验收的前置 |
-| 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 待处理 | 可先只读整理开发证据；执行实验前明确测试隔离边界和授权 |
+| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用 holdout 测试集 | 阻塞 | 新source与人工审查未就绪；HOLDOUT-METRICS及正式构建入口前置未完成 |
+| 评分接线前置 | HOLDOUT-METRICS | 冻结七项holdout门槛接线 | 待确认 | 先确认公共配置扩展，不能删减原指标 |
+| 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 进行中（Codex；只读准备） | 历史开发记录可复算；concise原件缺失及visual断链阻塞推理对照 |
 | 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | MODEL-DIAG 权重依赖、完整证据备份、显式删除授权 |
-| 发布前配套 | RELEASE-POINTER | 安全更新并激活数据 release 指针 | 待处理 | 下一次数据 release 切换前完成 |
+| 发布前配套 | RELEASE-POINTER | 原旧指针维护目标适用性 | 待确认 | 新体系已显式选版本；待用户裁决原目标，不恢复旧写入 |
 | 后续训练 | FINAL-TRAIN | 全量开发数据训练最终候选 | 阻塞 | 开发侧三折验收通过、holdout 测试集就绪及训练授权 |
 | 总体验收 | MODEL-QUALITY | 最终模型质量验收与晋级 | 阻塞 | FINAL-TRAIN 候选、holdout 独立验收及其他适用质量门 |
 | 文档收尾 | DOC-INDEX | 修正脚本索引的过期缺陷描述 | 已解决 | M7a 已对照 promote 实现修正脚本索引 |
@@ -48,59 +43,67 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **已证实事实与差距**：2026-08-31 训练机 `workspace/runs` 约 90.253 GiB；原清单漏列两组 source-aware，concise-cv 约定路径不存在；r1 来源仍有 5 个 checkpoint，merged 为发布库软链接。5 组未发布模型 merged 权重合计约 80.988 GiB，各 root LoRA 约 439.1 MiB。原清单不足以放行删除；当前快照未哈希权重，未归档原始预测和完整训练日志。
 - **依赖**：MODEL-DIAG 对历史/当前模型和阶段 checkpoint 的需求；当前发布模型及 `pipeline/checkpoint_policy.json` 保护边界。权重清理不隐含取消诊断任务。
 - **下一动作**：按 MODEL_INVENTORY 第 8 节归档实际配置、模型/数据/Prompt/评测身份、完整日志和原始预测、文件哈希及备份校验；查 concise-cv 备份或迁移位置。逐 run 确定仅留研究记录还是保留 adapter 以便重新合并，形成显式候选清单后取得删除授权。保留 adapter 的方案先验证准确基座与合并链路，不以直挂 4-bit 代替 merged BF16。
-- **验收标准**：每模型每 fold 有可核查的原始配置和结果链、缺失证据明确、归档已备份并校验；清理路径不跟随链接误入发布库，不删除在用模型和未完成诊断所需文件；训练机按获准清单执行并记录删除前后体量、保留文件完整性及对应机器提交。完成可行性审查不等于归档或删除完成。
+- **验收标准**：每模型每 fold 有可核查的原始配置和结果链、缺失证据明确、归档已备份并校验；本轮新增visual三fold merged断链与concise缺失归入同一保护依赖（验证第48节）；清理路径不跟随链接误入发布库，不删除在用模型和未完成诊断所需文件；训练机按获准清单执行并记录删除前后体量、保留文件完整性及对应机器提交。完成可行性审查不等于归档或删除完成。
 - **证据/版本/验证限制**：[模型清单](MODEL_INVENTORY.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)、[模型归档证据包索引](results/model_evidence/README.md)、[试点证据包`v4.1-prompt-minimal-v1-seed3411`](results/model_evidence/v4.1-prompt-minimal-v1-seed3411/README.md)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；本轮 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
 
 ### HOLDOUT-BUILD — 构建并授权未使用 holdout 测试集
 
-- **状态/来源**：待处理；由 TEST-POLICY 关闭时拆出，作为 FINAL-TRAIN / MODEL-QUALITY 的前置。目标是构建一个未参与开发/调参的 holdout 测试集，用于最终候选模型的独立验收。
+- **状态/来源**：阻塞（Codex已完成本轮只读前置核查；解除条件为指定新source、完成审查并补齐正式构建入口及HOLDOUT-METRICS）；由 TEST-POLICY 关闭时拆出，作为 FINAL-TRAIN / MODEL-QUALITY 的前置。目标是构建一个未参与开发/调参的 holdout 测试集，用于最终候选模型的独立验收。
 - **事实与差距**：现有唯一 sealed-test `v4.1-sealed-test-5546b8bf1ec3` 已暴露且一次性，不复测不调参；本地与训练机均无未使用 holdout。需要一个新的、未使用的 holdout 测试集及其对应授权链路。
 - **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。
 - **人工审查**：对候选样本执行有效视图/剪裁人工审查（对应 `review_*` 流程），核对批次与 source 分层，形成冻结的 review batch 后再生成 release。
-- **发布入口**：沿用 sealed-test release 构建流程，生成 release manifest、`sealed_ground_truth`、`quality_report` 等产物，并校验契约、清单、帧哈希与权限，再写入 index/LATEST。
+- **发布入口与差距**：人工source/审查/隔离证据仍是前置。现有 `versioning data release` 明确仅发布development；`versioning data claim`及`eval prepare/run/score`消费已经构建的holdout，不负责构建。历史构建器位于 `pipeline/scripts/archive/build_v4_1_sealed_test_release.py`，使用旧queue/batch和哈希release语义，不能直接作为新体系写入口。需先明确并确认获审查新source到完整data身份、媒体manifest、owner-only真值、质量报告及封存的构建接线；新体系禁止index/LATEST，不通过手写隔离true字段补造证据。
 - **授权流程**：预注册一次性授权 + one-time claim，沿用现有 stage_d 流程；授权条件 `one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，首次模型调用前原子写入 claim，只允许同一 run identity 恢复。
 - **阈值**：沿用 `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
 - **依赖/边界**：本任务只负责构建、审查、发布与授权一个未使用 holdout，不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。
-- **验收标准**：新的未使用 holdout release 已构建并经人工审查，source 隔离与 test-split binding 校验通过，manifest/ground-truth/quality_report 与授权 claim 齐备、可追溯；为 FINAL-TRAIN / MODEL-QUALITY 的独立验收提供就绪入口。
-- **证据/限制**：产物落位按现有约定记录于 `docs/results/` 对应新目录与 `finetune/results/v4_1_stage_d_*` 式授权/claim/run 目录；本轮仅登记任务，未实际构建 holdout。
+- **验收标准**：新的未使用 holdout release 已构建并经人工审查，source 隔离与 test-split binding 校验通过，manifest/ground-truth/quality_report及预注册准备可追溯。数据冻结就绪先支撑FINAL-TRAIN；最终model/eval身份确定并获使用授权后，首次模型调用前建立绑定claim，再支撑MODEL-QUALITY。不能要求先有最终模型claim才能训练该模型。
+- **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)及[轻量证据](results/model-diagnostics-preflight-20260913.json)。已核查新store集合与公开入口，未全盘扫描旧sealed-test集合，不推断历史对象已消失；未读取受限语义或创建真实holdout。最终候选model/eval身份形成前不提前创建绑定它们的一次性claim；保留预注册和首次模型调用前claim的要求。
+
+### HOLDOUT-METRICS — 已冻结七项holdout门槛与正式评分入口衔接
+
+- **状态/来源**：待确认（Codex）；HOLDOUT-BUILD本轮准备发现，阻塞实际独立验收配置。不是改变TEST-POLICY阈值的授权。
+- **事实与差距**：`finetune/eval_run.py::_formal_config`仅接受六项通用正确率，holdout共用此配置与最小值比较。七项既定门槛中仅`joint_correct_rate`可原名表达；宏召回、两类召回、runtime失败数及strict合法率均不能原样输入。纯配置反例拒绝七项、单joint控制通过，未访问数据/Registry。
+- **下一动作/依赖**：确认扩展holdout公共配置及证据校验，逐项复用原指标定义、阈值与比较方向（runtime失败数为上限0），保持validation口径；确认后先更新适用Spec/Plan及精确文件集，再实现聚合/恢复/准入一致校验。不自动重命名或遗漏门槛，也不把全部指标当下限。
+- **验收标准**：七项可冻结并与预注册精确一致，原输出重算可追溯；缺类、非法输出、runtime失败、边界值、恢复及下游准入均按原规则决定，不消费真实测试集来验代码。
+- **证据/限制**：[第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)、轻量JSON的`threshold_probe`；当前仅已证实能力缺口，未改变评分接口。既有整包代码审查结论保留其冻结范围，不把它外推为七项业务门槛已接通。
 
 ### MODEL-DIAG — 诊断并改善三折类别坍缩与契约退化
 
-- **状态/来源**：待处理；原“三折实验出现类别坍缩与契约退化”。目标是在固定证据与评价口径下找到可跨 fold 复现的改进方案。
+- **状态/来源**：进行中（Codex；只读证据准备）；原“三折实验出现类别坍缩与契约退化”。目标是在固定证据与评价口径下找到可跨 fold 复现的改进方案。
 - **事实与差距**：已同步报告记录 `v4.1-prompt-concise-cv-v1-seed3411` 的 1581 条评测：contract 合法率 79.63%、joint correct 32.07%、`clip_state` 35.80%，322 条非法输出中 311 条缺 `special_case`，“临界未断裂”和“已断裂”召回为 0%。这支持退化症状，不证明 Prompt、采样或早停中的任何一个是单独根因。
 - **下一动作**：每个步骤分别交接证据，新发现关联本任务，不悄悄加入当前实验。
   1. 在训练机核对既有 release、checkpoint step、adapter/merged 哈希、Prompt contract、生成参数、评分器代码和逐样本记录；只同步允许公开的开发集轻量摘要。缺产物则记录补同步/补评测任务，不用本机测试代替模型结果。
   2. 从已有开发验证集构建固定、按状态和 source 分层的 canary 清单，确认每个被测模型对应 fold 的训练排除关系；先重算既有记录，再做历史/当前模型与历史/当前 Prompt 的交叉推理对照。
   3. 对保留 checkpoint 做阶段性严格评测，定位字段遗漏和类别偏置开始的 step；保持样本、评分器和生成参数可比较，原始输出与评分结果分开保存。
   4. 根据诊断分别调整 Prompt、采样配额或训练日程，冻结其他因素；单折筛选后扩展到三折。组合修改另列候选，不作为单变量归因证据。
-- **入口与产物**：既有报告约定输入和权重路径为训练机 `workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/`，但 2026-08-31 只读检查该路径不存在（见 MODEL-ARCHIVE 快照），需先查备份/迁移位置；依赖这些权重的推理与阶段 checkpoint 评测暂不能执行，已有报告整理仍可推进。[eval_run.py](../finetune/eval_run.py) 读取指定 fold、model-dir 和适用 experiment-contract，向独立 out-dir 写 `run_identity.json`、`evaluation_records.jsonl`、`evaluation_summary.json`。`--max-samples` 只截取样本，不等于分层抽样；先核对/补齐按冻结清单选样的能力，不能假称 CLI 已支持。
-- **准备与执行边界**：[脚本索引](../finetune/SCRIPTS.md) 中的 `train_build_dataset.py`、`train_prepare_run.py`、`train_with_contract.py` 分别负责数据包、配置与训练；前两者含固定 fold/seed/3000 行约束。执行者须核对能否表达目标对照，任务单列出实际数据包、配置、checkpoint/merged 生成与评测路径；缺能力先实现，不复用默认值或覆盖旧实验。本条不是已验证可直接运行的全量命令。
+- **入口与产物**：2026-09-13训练机复核concise约定run/三fold原始记录缺失；历史visual的三折原始记录可读，但run_identity指向的merged均为断链，目标是`workspace/runs/v4.1-visual-cv-v1-seed3407/fold{0,1,2}/merged`。新正式评测由`python -m versioning eval prepare/validate/run/export`消费合法model完整身份、Registry数值版本和冻结data/Prompt；旧`finetune/eval_run.py`仅保留业务函数，CLI已停用，不能用裸路径绕过。正式入口目前使用全validation，尚不支持冻结分层canary或任意替换模型训练Prompt；这些对照能力须作为后续获确认的诊断方案，不写成现成命令。
+- **准备与执行边界**：按[新入口说明](../versioning/SCRIPTS.md)准备完整data/prompt/train身份、显式媒体根、来源输入及三折配置；`versioning train prepare/validate`负责冻结与校验，`run/export`负责实际执行和产物证据。旧build/prepare/train CLI已停用；底层函数供新入口调用。历史模型只有报告/裸目录时不能强行登记为新正式completed；先找回原始配置、权重及逐样本身份链。
 - **依赖/边界**：开发集只读整理不等待 HOLDOUT-BUILD；实验执行前明确测试隔离规则、冻结开发侧阈值并核对授权。现有交付配置记录 optimization paused / retraining unauthorized，本次文档维护不代表恢复训练授权。不使用 sealed-test 调参，不补字段伪造合法率，不删除诊断所需 checkpoint。
 - **验收标准**：身份链一致、原始预测可追溯，根因分清事实与假设；报告四字段合法率/正确率、各状态召回、macro recall、joint correct、分布和失败样例；单变量结果可比较，三折达到预定开发侧标准后才放行 FINAL-TRAIN。仅完成诊断时记录阶段结果，不宣称效果改进已完成。
-- **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[项目状态](CURRENT_PROJECT_STATUS.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；本轮未复算训练机原始预测。
+- **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[项目状态](CURRENT_PROJECT_STATUS.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；本轮已在Linux重算历史visual的1216条开发原记录，concise原始预测仍缺且未复算。新增[第48节证据](results/version-control-migration/verification.md#delivery-preparation-20260913)记录三fold模型断链和能力前置，不能据历史输出关闭改善任务。
 
 ### RELEASE-POINTER — 安全更新并激活数据 release 指针
 
-- **状态/来源**：待处理；原“release 指针文件更新自动化”。目标是减少人工错配，同时保留可信身份校验和明确激活语义。
+- **状态/来源**：待确认（迁移后适用性）；原“release 指针文件更新自动化”。旧指针原目标保留追溯，未授权恢复其活动写入。
 - **事实与差距**：当前指针手动维护；运行时校验契约内容哈希和 manifest 文件哈希，原方案仅更新两个字段不完整。
-- **下一动作**：设计发布与激活的边界；成功验证后整体原子更新 `release_id`、`release_dir`、`manifest`、`expected_contract_hash`、`expected_manifest_sha256`，记录选中该 release 的依据。构建自己的产物再自算哈希只证明一致性，不冒充独立信任校验。
-- **入口与产物**：[release_build_phase2.py](../pipeline/scripts/release_build_phase2.py) 调用发布器生成 release manifest；激活逻辑需新增/补齐，写入 [active_data_release.json](../finetune/active_data_release.json)，再通过 [release_validate.py](../finetune/release_validate.py) 默认钉扎路径验收。
-- **依赖**：下一次 release 切换前完成；沿用现有 release 的首轮诊断不受阻。
-- **验收标准**：五字段同源一致；预检查和失败构建不动指针，激活失败不留下半写状态，旧指针可追溯恢复；明确不静默激活的规则，覆盖成功、失败、重复执行和身份漂移场景；提交经核对的指针变更。
+- **下一动作**：先裁决旧指针维护目标在迁移后的适用性；以下保留原目标而非当前执行指令：成功验证后整体原子更新 `release_id`、`release_dir`、`manifest`、`expected_contract_hash`、`expected_manifest_sha256`，记录选中该 release 的依据。构建自己的产物再自算哈希只证明一致性，不冒充独立信任校验。
+- **入口与产物**：正式新数据发布走`python -m versioning data release/release_validate`和完整data身份，训练显式选择版本；旧`release_build_phase2.py`CLI已退役。原active_data_release.json作为历史保护证据保留，不能再将修改五字段旧指针写成新release切换前置。
+- **依赖**：迁移后本条原“旧指针自动激活”目标适用性待用户裁决；当前不阻塞显式选择新data身份的诊断。若仍需legacy只读消费者维护，先明确精确范围，禁止恢复旧正式写入。
+- **验收标准（原目标，待裁决）**：若保留legacy专用维护，五字段同源一致、预检失败不写、原子更新且可追溯；若取消此目标，依据用户决定关闭。新体系以显式完整data身份及冻结引用验证为准。
 - **证据/限制**：[运行时](../finetune/v4_1_runtime.py) 的 `_load_active_release_pointer` / `load_release_expectations`；实现未开始，REL-VERIFY 通过不代表本项完成。
 
 ### FINAL-TRAIN — 全量开发数据训练最终候选
 
 - **状态/来源**：阻塞；从原“独立测试 release 与 full-data final”拆出，是 MODEL-QUALITY 的前置。
 - **事实与差距**：当前发布模型只用 Fold0，`full_data_final: false`；development release 有 1678 条发布候选。候选数不自动等于最终训练行数，训练资格与采样策略仍须冻结。
-- **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、HOLDOUT-BUILD 就绪（未使用 holdout 已构建并授权）并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
-- **入口与产物**：先核对现有数据构建/配置入口的 Fold0 限制，准备全量数据包和配置；`finetune/train_with_contract.py` 消费训练 YAML，保存 adapter/checkpoint；再用经核实的合并入口生成 merged 身份，交 MODEL-QUALITY 验收。全量准备与合并命令须在任务单核实，缺失能力作为前置实现，不编造现成脚本。
+- **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、HOLDOUT-BUILD的数据构建/审查/冻结及预注册准备就绪（模型绑定claim在候选产生并获测试使用授权后建立）并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
+- **入口与产物**：独立full能力已由fed9bcfc实现且双机隔离CPU验收；正式入口为`versioning train prepare --scope full`，消费同一开发release全集、每候选一次及显式full配置，继而validate/run/export产生一个full/adapter，登记时`--source-scope full`。详见[新入口说明](../versioning/SCRIPTS.md#独立全量训练)。不再安排重做full代码；真实运行仍等待上列模型、holdout及训练授权前置。
 - **验收标准**：全部合格开发数据按冻结方案纳入，未混入测试来源；真实训练/合并完成，模型与数据/配置/代码/哈希可追溯，保存最终候选及轻量 manifest。完成本项不自动获得 production approval。
 - **证据/限制**：[开发 release 摘要](results/v4_1_phase2_development_release/release_summary.json)、[当前模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[训练说明](../finetune/README.md)；本轮无全量最终模型证据。
 
 ### MODEL-QUALITY — 最终模型质量验收与晋级
 
-- **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、RELEASE-POINTER、FINAL-TRAIN、HOLDOUT-BUILD。
+- **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、FINAL-TRAIN、HOLDOUT-BUILD和HOLDOUT-METRICS；RELEASE-POINTER原目标适用性另待裁决。
 - **事实与差距**：`v4.1-agent-pipeline-fold0-r1` 已用于工程链路验证，但 Stage B/D/G 标志均为 false，`production_approved: false`。标志为 false 不等于每一门都已执行失败，须查各门证据。
 - **下一动作**：核对适用质量门、阈值和证据要求并落实到子任务；最终候选和测试前置齐备后，按授权协议完成独立验收及其他质量门，再决定晋级。
 - **入口与产物**：参照 [发布证据](results/v4_1_agent_pipeline_fold0_r1/README.md) 和 [服务手册](INFERENCE_SERVICE_RUNBOOK.md) 核对执行入口；冻结报告和模型哈希，经注册表发布新身份并同步 delivery，核对服务加载对象。缺可执行入口则先补任务单/实现，不把历史归档命令写成现成流程。
@@ -127,10 +130,10 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **状态/来源**：进行中（执行者 Codex；M2 已完成，2026-09-11 用户已确认 M3 显式输入契约与七阶段内部映射，2026-09-12 要求按交接继续本地实施）；由 VERSION-CONTROL-MIGRATION 核心基础设施完成后拆出。用户授权建立 Task Artifact，Intent 已确认提交 `3dae30a0`，Spec 已确认提交 `6996d35d`，Plan 已确认并提交 `11e54b31`；2026-09-11 用户进一步明确授权限定的 bundle/隔离 checkout、项目级环境和非 GPU smoke，该 M2 授权范围已执行完毕；2026-09-12 用户进一步确认 M3 精确执行单，已授权隔离同步、新 CPU 环境、小样本与两份数据复制。merge/push main、训练/GPU/完整评测仍不在授权内。
 - **任务关联**：[Intent](tasks/2026-09-07-readable-version-control-migration/intent.md)、[Spec](tasks/2026-09-07-readable-version-control-migration/spec.md)、[Plan](tasks/2026-09-07-readable-version-control-migration/plan.md)（已确认提交 `11e54b31`）。任务分支为 `refactor/2026-09-07-readable-version-control-migration`，由用户确认重命名原分支并保留历史，承接基线 `1b0d5823`。原 B0–B12 台账中的旧分支名作为历史记录保留。
 - **已确认范围**：迁移两个已发布数据版本和当前一版 Prompt `v4.1-concise-evidence-json-v2`；历史模型保留身份、核心训练参数及已有指标，不要求补齐全部历史信息。所有活动入口完成切换，保持单一正式写入者及不可抹去新事实的恢复规则。candidate/production 门禁不变；无合格模型时实际服务入口拒绝启动是允许状态，不要求历史开发模型继续服务。
-- **规划发现与修复**：M3 已将公共数据入口从文件名派生 ROI、固定两条 clip 的最小实现切换到显式真实输入适配；真实媒体效果仍须训练机验收。训练 CLI 的真实执行器接线属于后续 M4，不能沿用基础设施测试宣称已完成。
+- **规划发现与修复（历史）**：M3已替换最小数据链，M4已接入三折及独立full执行器；当前证据以第47–48节为准，不将早期“待M4”规划作为当前动作。
 - **现场证据**：2026-09-07 网络恢复后只读调查成功；当时远端干净 `main@f1b7d8a3`，origin 为 Codeup。两个 release、三个 Prompt registry 目录、八个 run、五个历史归档目录和一个发布模型目录可见；六组 run 有 adapter，两个 concise run 仅见准备资料；concise-cv 预期路径不存在，`/data/mVllm_2` 尚未建立。完整观察及扫描边界见[调查记录](results/version-control-migration-20260907.md)，提交 `821e5953`。未验证权重哈希、加载、数据完整性或历史原始记录完整性，尚未分配新正式身份；无远端写入。
 - **已证实事实与差距**：M0 证据已提交，训练机 payload 完整 hash 已验证，`/data/mVllm_2` 已只读验证可写。M1a 本地 Prompt/Data 迁移核心已完成并通过 review；M1b H1–H12 与统一 migration CLI 已完成。M2 以完整 bundle 建立隔离 checkout，再以 SHA-256 一致且 `git bundle verify` 通过的增量 bundle 更新到修复提交 `c4b53d08`；原有训练机 `main@f1b7d8a3` 始终干净。项目级 Python 3.11.16 环境锁定 DVC 3.67.1、MLflow 3.15.2、pandas 3.0.3 等关键版本。首轮 Linux 236 passed / 1 failed 暴露 inode 复用竞态；最小修复和独立 reviewer 三轮闭环 2 个 P2 与 1 个 P3 后，训练机 CLI+migration **241 passed**。跨进程锁、只读权限、DVC push-delete-pull、MLflow/SQLite artifact 联合恢复均通过；H9 四个真实 run 与 H11 的 1 model + 5 eval 只读成功路径通过。`/data/mVllm_2/dvc-remote`、`/data/mVllm_2/mlflow` 仍不存在且本轮未创建；截至M2完成时，真实移动硬盘恢复、正式store与真实迁移写入未执行；M3本轮已完成两份data复制，见下方最新证据。legacy `pipeline/`、`finetune/` 仍按旧规则运行。
-- **下一动作/依赖**：M3a–M3h本地接入、训练机真实source/ROI/34候选对照、两份正式release复制及验签均完成。用户明确确认历史审批归属并批准默认“项目维护者”；23条精确匹配的历史决定已保留原时间/标签复用，Mac冻结回传、训练机review_import→非正式release/validate完成。M3已完成：Mac完整1772项正常退出、Linux专项5项及最新代码发布校验通过；代码7a122323，实机证据见验证记录第24节及同次提交。M4已开始：M4a真实训练适配器、M4b低层MLflow执行事件均通过独立复核；M4c/d三折冻结、公共prepare/validate/run/export及实际训练调用的本机接线也已通过独立复核；训练机真实输入dry-run与独立全量验签已通过（1678视频、六份5034行引用）；M4e测评执行事件适配已实现，修复独立审查发现的创建后读回失败窗口；240项本机回归与13项独立专项通过，审查通过；它只负责实际回调的父子Run成功/异常记录，不自动形成质量结论。M4f正式validation的prepare/validate/run/export已接线，绑定Registry完整model及数值版本、原fold划分、模型Prompt、显式阈值和评分实现；独立审查发现的loader别名错模型风险已修复并通过复审，本机广回归486项及最终配置专项114项通过（各1项历史数据缺失skip），训练机非GPU专项114项通过（1项历史数据缺失skip），独立只读核对三类结果/SQLite/环境与两端摘要通过（证据见验证记录第31节；代码7cb24398，实机证据同次提交由git log追溯）。前序M4f只接入validation；本轮full/holdout实际输入已由fed9bcfc补齐（第45节），媒体run与授权score分开，消费前要求原truth来源核验及评分承诺。训练机正式新体系尚无已注册模型，不能声称真实模型准备或GPU测评成功；M4保持进行中，本轮隔离验证已完成；2026-09-12用户要求继续并实时同步台账/计划，M5进行中（Codex），实际服务加载、registry管理、交付校验与smoke已接入严格alias门；本机联合179项及后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围，证据见verification第32节；Linux最终41项通过；首轮缺httpx2失败已保留，仅在验证目录补依赖后通过。既有MLflow/pandas兼容告警保留为真实运行前环境限制；真实模型成功路径仍待验证，M6前序实现及原路径演练：Mac/Linux109项通过，发布竞态修复并通过独立复审，实际SSH往返和原隔离路径联合恢复通过，独立证据核查通过；证据见verification第33节，真实硬盘及大型产物未验证；2026-09-13已由M8-R4复现异根恢复仍依赖原源，当时M6仅部分验收通过；本轮R4异根恢复补验见第41节，真实硬盘/大型产物仍未验收。M7a已完成：881c8181停用三个旧数据发布/重建CLI并更新手册与入口索引，本机与Linux各57项通过，独立代码/手册审查通过，证据见verification第34节；DOC-INDEX同步关闭。M7b本批完成：60dd00bc停用四个旧训练/评测CLI，收敛ARCHITECTURE及finetune文档；新执行器直接函数调用保持，本机65项通过/1项历史数据缺失skip，独立审查通过，Linux证据见verification第35节。M7c本批完成（09035fd4）：旧queue审查写入退役，ROI显式metadata/output/project-root且不再导入时选择current；本机211项通过，独立审查通过，Linux证据见verification第36节。M7d本批完成（15b44009）：7个ROI/候选/队列辅助CLI退役，保留业务语义，本机257项通过/10项历史fixture缺失skip，独立审查通过，两端证据见verification第37节；M7e本批完成（cc02acc1）：旧Prompt CLI已停用，历史INDEX.md工具必填显式现存根；Mac/Linux各179项通过，独立代码/文档/证据核查通过，详见verification第38节。历史库与报告工具保留，不重新开放旧写入。2026-09-13 M8进行中：Codeup main f1b7d8a3至0963642b共117提交/148文件已送独立审查；本机整仓CPU基线2603 passed/11 skipped；该次审查时实际history-summary及最终交付矩阵尚待补齐；本轮history-summary已交付，见第42节。独立整体审查驳回（1项P1/3项P2）：M8-R1无实际证据可晋级已由3b63aa52修复，Mac整仓2623 passed/11 skipped及Linux分组956 passed/1 skipped通过、独立局部审查通过（第40节）；M8-R4 store级异根恢复已解决本轮范围，代码2fce3ab1，Mac/Linux及独立局部验证通过（第41节）；M8-R2 Prompt并发覆盖和M8-R3训练完成半提交本机已修复，联合466项通过、独立251项复跑通过，Linux同组466项通过，R2/R3本轮范围已解决（代码2b8cbc89，verification第39节）。前序原路径演练的证据边界保持，本轮异根通过由第41节单独证明。实际history-summary已由本轮第42节交付，21条历史记录及来源已独立验收，当前验收矩阵见handoff当前交接；不关闭上层任务。本轮第43节已核验完整Spec矩阵、源保护及f1b7d8a3→ab5c71ae全部差异，完整审查因M8-R5驳回整包；物理Prompt已补齐，Mac整仓2647 passed/11 skipped、exit0。用户已确认服务使用冻结Prompt，Spec789fa4fc/Plan511cfc14已提交；R5代码de1b51dd在Mac/Linux及独立局部复审通过，Linux200 passed/1 skipped、两个进程各exit0，本轮R5已解决；full/holdout接线及双机隔离CPU验证已完成（fed9bcfc，Linux819 passed/1 skipped、各exit0，第45节），本轮完整复审已因M8-R6驳回，整仓另发现M8-R7；先修两项再复验，真实环境验收限制保持（第46节）；未授权merge/push；保留M4/M5真实环境缺口，不把整包或整个M7标记完成。用户澄清同一train包含三折只要求对应既有划分，不新增采样要求、不扩展历史3k算法。另11条普通未断裂已按新旧相同规则自动通过，无需人工。后续M4须显式绑定原外部媒体根；新来源镜像不是媒体根。当前执行单授权持续有效，无需再次询问同步/新CPU环境/两份复制；不包含模型训练/GPU/完整评测及push/merge main。
+- **下一动作/依赖**：M3真实数据链及M4–M7限定接线/退役、M8-R1至R7代码与CPU验收已完成，证据见第24–47节；当前完成四文档独立核查，按HOLDOUT-BUILD/HOLDOUT-METRICS及MODEL-DIAG前置准备真实环境验收。M4/M5真实GPU成功路径、真实硬盘/大型产物及外部依赖整机恢复继续未验收。历史full/holdout第45节及整包第47节不重做；本次没有实际训练/受限测试使用或push/merge授权。
 - **验收标准**：按已确认 Spec 核对两个数据版本及一版 Prompt 的内容保持、历史关联可查询、所有活动入口接管、单写与恢复不丢事实、训练机真实环境证据、文档及独立审查。Codeup 为发布依据，最终交付覆盖相对 Codeup main 的完整差异。
 - **证据/限制**：[验证记录](results/version-control-migration/verification.md)第12–24节及[执行单](results/version-control-migration/handoff.md)。M3h本机完整1768 passed/exit0，各切片独立审查通过；真实媒体对照2份ROI、34份子视频、211张帧字节一致。正式r1/r2共20个声明payload与原源SHA一致、有效receipt、只读封存、r1拒绝/r2允许元数据新引用门，独立reviewer复验通过，训练机证据提交bf3d4ca。r1/r2共9421/11986个外部视频/帧引用在原workspace/data映射后全部可达，新store不自包含。Mac真实界面23完成/0待审，回收与训练机导入及257文件封存校验通过独立复核；新视觉审批0次，复用依据用户确认记录。M3已完成，完整回归与实机最终校验见第23–24节。未执行真实训练/GPU/完整评测、未改旧指针或正式main；M4–M7后续证据见第25–38节，M8进行中，M4/M5真实环境缺口保留。
 

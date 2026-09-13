@@ -7,7 +7,9 @@
 
 第46节`f1b7d8a3→e1d70c58`的138提交/152文件审查曾因M8-R6驳回，Mac整仓也暴露M8-R7导入顺序失败。两项已由代码`d9ec1227`修复；Mac最终整仓2694 passed/11 skipped、实际exit0，Linux隔离CPU定向179项及原顺序1项各exit0。独立reviewer对更新范围`f1b7d8a3→d9ec1227`的**140提交/152文件给出整包代码差异通过**，见[第47节](verification.md#m8-r6-r7-20260913)。这是代码与CPU验收结论，不等于真实模型/硬盘验收或merge/push授权。
 
-本次四份最终交付文档的追加独立核查因reviewer用量限制未返回结论；本地一致性检查及链接检查已完成，不能将先前代码审查通过写作文档已获独立核查。
+2026-09-13已补四份交付文档的独立核查：第47节原件、机器归属、SHA及同步边界通过；首轮两项P3（旧CLI说明和R6/R7过期下一动作）已修正，最终局部复核通过，见[第48节](verification.md#delivery-preparation-20260913)。未重做整包代码审查。
+
+当前模型主线：HOLDOUT-BUILD等待独立新source、人工审查及正式构建入口；新增HOLDOUT-METRICS记录七项既定门槛不能由当前配置表达，接口扩展待确认。MODEL-DIAG已在Linux重算历史visual开发原记录1216条、各折摘要一致；concise原件仍缺、visual三fold merged均断链，实际推理对照阻塞。详情和轻量JSON见第48节，未构建/授权/消费真实holdout，未训练或读取权重。真实GPU、服务成功路径和硬盘/外部依赖恢复仍未验收。
 
 Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main` 核实为 `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。
 第39节当次独立审查冻结目标为任务分支 `0963642bdb47c87af0df78b809a2262ee7e1ea30`：117个提交、148个变更文件，
@@ -27,7 +29,7 @@ Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main
 
 本轮M8-R1已覆盖公开手工写入及已有无证据记录，冻结训练基座并校验被评路径与服务deploy_target一致；本机2623 passed/11 skipped、独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决。
 本轮M8-R4代码2fce3ab1：Mac受影响回归175 passed/1 skipped、最后URI专项6 passed；Linux最终181 passed/1 skipped，exit0，独立代码/操作文档局部审查通过。实际历史汇总现已完成，第42节另记录公共历史生成器batch口径修复d2ae4cee、Mac/Linux各247项与独立15项。物理/data下Prompt已落位并验证（第43节）；第43节当次最终复审范围为f1b7d8a3→ab5c71ae，125提交/149文件。M8-R5服务Prompt冻结输入绑定P2的策略已由用户确认，代码de1b51dd已修复并通过Mac/Linux及独立局部复审，Linux200 passed/1 skipped、两组exit0，本轮R5已解决；full/holdout实际输入接线已由fed9bcfc补齐，独立代码及操作说明局部通过，Linux819 passed/1 skipped、三组exit0和保护文件复验已完成（第45节）。第43节独立完整代码复审当次结论为整包驳回修改；本次R5局部通过不替代新的整包验收。前轮Mac整仓2647 passed/11 skipped，452.07秒，正常exit0；skip为本机历史数据缺失。四份交付文档同步当前结论（第43节）。
-本轮用户明确确认独立full训练范围（Spec 0bf0baed），只使用合成CPU数据实施及验证。第45节双机证据已收口；第47节R6/R7修复、Mac整仓实际exit0、Linux隔离CPU及更新的独立整包代码差异审查已完成。四份轻量交付文档`c3685578`也已验签快进隔离分支，原正式项目与七保护文件保持；后续需补本次文档独立核查并按TODO处理真实环境依赖。真正的全量训练和holdout独立验收仍依赖MODEL-DIAG、HOLDOUT-BUILD及另行实际执行授权；真实硬盘、大型产物和外部依赖整机恢复保留未验收。不能把新入口具备执行能力写成已经训练出full模型或已经获得真实holdout passed。
+本轮用户明确确认独立full训练范围（Spec 0bf0baed），只使用合成CPU数据实施及验证。第45节双机证据已收口；第47节R6/R7修复、Mac整仓实际exit0、Linux隔离CPU及更新的独立整包代码差异审查已完成。四份轻量交付文档`c3685578`也已验签快进隔离分支，原正式项目与七保护文件保持；本次文档追加核查与修订结论见第48节，后续按TODO处理真实环境依赖。真正的全量训练和holdout独立验收仍依赖MODEL-DIAG、HOLDOUT-BUILD及另行实际执行授权；真实硬盘、大型产物和外部依赖整机恢复保留未验收。不能把新入口具备执行能力写成已经训练出full模型或已经获得真实holdout passed。
 所有修复继续沿已确认Spec，不得以放宽门禁或把未知历史事实补成passed来关闭条目。
 
 第39节只读核对：训练机原项目 `main@f1b7d8a3` 干净；隔离checkout在当时审查时为 `0963642b`，

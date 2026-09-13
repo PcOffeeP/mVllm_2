@@ -1225,3 +1225,49 @@ Mac原始整仓日志、报告、runner及三份独立局部复核日志和进�
 ### 轻量文档隔离同步
 
 Mac将四份轻量台账/Plan/verification/handoff提交为`c3685578923a46ab078f331906ad3aabbd4e7c31`，提交范围仅这四文件，尾注按实际Mac Codex执行归因。增量bundle SHA `ce4e77f8cb5182e96827304d582b49064056c40b55417b2281a0bd3c7dee3305`；Linux先核隔离`d9ec1227`、正式`main@f1b7d8a3`均干净及七保护文件与原preflight一致，再验签bundle、确认只有一提交/四文件、仅快进隔离分支至`c3685578`。事后两工作区tracked状态干净、七保护文件SHA未变。原回执`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-r6r7-verification-20260913/docs-sync-receipt.json`按原字节复制到Mac`/private/tmp/mvllm2-r6-r7-20260913/docs-sync-receipt.json`，SHA `d9ffea7f77f5bc8e5e397089b63ca92718d5b20b98a1d4dd4a6f7d2fb86c71e8`。本段后续文字收口只追加文档记录，代码审查范围仍冻结于`d9ec1227`；不把隔离分支快进说成Codeup main集成。
+
+
+<a id="delivery-preparation-20260913"></a>
+## 48. 交付文档补核与模型主线只读准备（2026-09-13）
+
+### 范围、机器与授权
+
+用户明确要求继续剩余实施，先补交付文档核查，并按台账推进HOLDOUT-BUILD和MODEL-DIAG。执行前Mac工作区干净，任务HEAD为`f76d0f4ab43a23b346e38069e6625aa64b859d0b`；SSH核对Linux隔离分支同HEAD、tracked干净，正式项目干净`main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。本机`git ls-remote codeup refs/heads/main`得到同一发布基线；本地main对任务分支独有提交为0/136，Mac与隔离同HEAD为0/0。原stash保留。本轮只读远端，未同步checkout、运行训练/推理、读取受限测试语义、删除或恢复产物、push/merge。
+
+本轮新增机器可读证据：[model-diagnostics-preflight-20260913.json](../model-diagnostics-preflight-20260913.json)，SHA `b0e379a02249647f6d9c731d6980ef7a0b08181f997341ae237d25359b448c39`。该文件保存六段实际执行程序、返回JSON、原stdout SHA及实际exit0，执行版本均为上述基线。`preflight/locate/development/links/recompute`在Linux执行；`threshold_probe`在Mac执行。Linux前四项用系统python3，复算用隔离`.venv-m3/bin/python`，Mac配置探针用`.venv/bin/python`。复算环境为CUDA不可见、HF/Transformers离线、`PYTHONDONTWRITEBYTECODE=1`；从SSH stdin执行JSON所载程序，输出保存到Mac `/private/tmp/mvllm2-next-20260913/` 同名文件。没有把Linux原记录复算说成模型重新推理，或把Mac配置验证说成GPU证据。
+
+### 四份交付文档独立核查
+
+独立reviewer在冻结`f76d0f4a`上只读核对TODO、Plan、handoff和verification。第47节证据通过：Mac原日志2694 passed/11 skipped、pytest774.28秒，runner实际exit0、外层1136.481秒；Linux原报告179 passed/114.27秒及1 passed/49 deselected/2.30秒、两进程exit0。两日志与报告SHA、Mac来源7/7存档、7/7保护文件、代码及四文档bundle和同步回执一致；两个工作区tracked干净，五修复文件摘要一致。独立者核验59个文件链接可达，并以五个旧CLI业务导入前的exit2证明退役状态。本轮没有重跑整仓测试或上轮独立探针，未改变整包代码审查冻结范围。
+
+首轮结论有条件通过，发现两项P3：① TODO MODEL-DIAG/RELEASE-POINTER/FINAL-TRAIN仍指向已退役CLI；② TODO目标条目及Plan当前进度仍要求修复已闭环R6/R7和重做完整审查。主Agent已按实际公开入口修正，历史证据仍在原节保留；原旧指针任务改为适用性待确认，不自行取消用户目标。最终局部复核结论待本节末追加。
+
+### HOLDOUT-BUILD：来源与入口前置
+
+用户尚未提供未参与开发/调参或旧测试的新source，已请求具体训练机路径/采集批次。`/data/mVllm_2/data/releases`本次仅列出`data-v4.1-r1`和`data-v4.1-r2`；未读取真值。对几个旧集合候选路径的不存在性只作限定观察，不据此宣布历史sealed-test消失，也不全盘扫描。
+
+`versioning/cli.py::_handle_data`明确拒绝`data release --purpose holdout`：真实业务构建仅发布development。`versioning/SCRIPTS.md`的Full holdout流程要求先有已构建审查冻结的release；claim和eval不会创建它。历史`pipeline/scripts/archive/build_v4_1_sealed_test_release.py`仍使用旧queue/batch与哈希release约定，不能直接成为完整data身份的新正式写入口。需先指定独立source并核对人工审查，再确认新构建接线；禁止从开发样本另划或给旧测试改名。完整media manifest、owner-only真值、质量/隔离证据、封存及预注册是前置；claim必须绑定最终model/eval身份，在首次调用前形成，不提前伪造候选身份。
+
+另发现HOLDOUT-METRICS能力缺口：Mac只调用`finetune.eval_run._formal_config`，完整full/holdout配置配以TEST-POLICY七项原名阈值时拒绝，错误为`thresholds must name supported rates with finite minimum values in [0, 1]`；仅用受支持的joint门槛作控制时通过。当前支持六个通用正确率，不能原样表达宏召回、两类召回、runtime失败数和strict合法率；holdout评分及恢复路径也按这些metrics和统一下限比较。新增TODO前置，等待确认holdout接口扩展，保留七项原定义/阈值/比较方向，validation不变。本轮未改接口或评价口径；这个新业务衔接证据限制真实验收，不否定第47节针对当时冻结代码的独立审查已完成这一事实。
+
+### MODEL-DIAG：已有开发记录重算与权重依赖
+
+限定核对报告声明run、`workspace/runs`的一层名称、已知结果根、`workspace/evidence_archive`一层名称，以及历史run_identity指定的LlamaFactory路径和其已知experiments子目录。concise-cv约定run、三fold adapter/merged、逐样本预测/摘要/身份及约定实验manifest均不存在，所查范围未发现迁移备份。不能据此断言全机没有备份；下一步需用户给出精确备份/迁移位置，或恢复原开发证据后再验证。
+
+历史`v4_1_0_760050fad303_20260724_visual/three_fold_validation/fold{0,1,2}`原记录可读，合计1,171,841字节。Linux从每条raw_output重新运行现行严格解析器和评分器（不修补缺字段），核对prediction、strict_valid、scores和重复candidate：全部零差异，各fold summary metrics完全相同。
+
+| fold | 原记录条数 | source数 | 合法率 | joint正确率 | 当前权重路径 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 0 | 425 | 29 | 0.981176 | 0.421176 | run_identity的merged软链接断链 |
+| 1 | 445 | 29 | 0.979775 | 0.343820 | 同上 |
+| 2 | 346 | 22 | 0.947977 | 0.453757 | 同上 |
+
+三对validation source交集均为0；只证明这些验证记录之间source不重叠，不替代每个模型训练排除关系。1216条合并重算合法率0.971217、joint0.402138、state0.496711、mechanism0.506579、site0.566612、special_case0.971217；旧three_fold_summary的state为0.496710，相差0.000001，各折计数与逐条评分无差异，后续使用精确合并计数，不改写历史summary。四状态macro recall为0.3705574936；召回为发生断裂137/408、未断裂408/547、临界未断裂50/161、已断裂9/100。它们仅描述历史保存输出，不是当前模型的新增效果证据。
+
+三条merged链接实际指向`workspace/runs/v4.1-visual-cv-v1-seed3407/fold{0,1,2}/merged`且目标均缺失。未读取或哈希权重，不修复链接到同名其他模型。此新权重依赖并入MODEL-DIAG及MODEL-ARCHIVE，不创建重复缺失任务。完整每fold记录/summary/identity SHA、解析器SHA及readlink结果保存在上述JSON。concise的1581条、共同1216条比较及最佳checkpoint回载仍只有历史报告声明，本轮没有复算，不能用visual证据替代。
+
+真实推理任务单尚不能执行：先找回concise及visual精确权重/配置/原记录并验签，确认fold训练排除关系；再确认冻结canary与Prompt交叉对照的诊断入口。当前正式eval仅支持全validation和训练冻结Prompt，不支持任意裸模型或Prompt替换，不能绕过正式门禁完成诊断。全量训练能力已完成代码接线，仍等待开发侧验收、holdout就绪和单独训练授权。Mac只见`/Volumes/Macintosh HD`，本轮未获真实移动硬盘挂载路径，硬盘及大型/外部依赖恢复继续待验收。
+
+### 本批最终独立结论
+
+独立reviewer对四文档修订、第48节和新增轻量JSON局部复核通过，无剩余可执行文档问题；两项P3及过程中两处状态残留已关闭。六段程序/原stdout/JSON/SHA一致；独立在Mac重跑纯配置探针、Linux重算历史1216条开发记录及readlink，均实际exit0且stdout SHA与原件完全一致。64个文件链接及diff-check通过。本结论覆盖指标实施前的准备快照，不包括后续七指标代码。用户随后明确回复“确认，按原七项门槛补齐”；该确认将由下一批Spec/Plan承接，准备记录的待确认描述保留为当时事实。
