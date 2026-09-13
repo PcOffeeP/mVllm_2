@@ -73,32 +73,83 @@ python -m versioning --help
 - `versioning prompt create`读取显式定义，正式Prompt位于store的`records/prompts/<完整版本>.yaml`，见[Prompt说明](versioning/SCRIPTS.md#prompt注册与冻结)
 - `pipeline/prompt_control/active_prompt.yaml`与`pipeline/prompt_registry/`（历史Prompt定义与revision，旧发布CLI已停用）
 
-## 环境
+## 环境部署
 
-本项目采用双环境工作流：本机（Mac）使用 uv 做代码检查、文档整理与轻量校验；训练机
-（Linux/GPU）使用 Conda 执行训练、推理与重数据处理。
+在项目根目录执行下列命令。两种平台共用部署入口，由 uv 按对应锁文件创建新环境，
+安装完成后自动执行环境检查。Python 3.11 可以来自 Conda 或其他已有安装。
 
-### Mac 本地开发（uv）
+| 部署配置 | 使用场景 | 依赖来源 |
+| --- | --- | --- |
+| `mac` | 本机代码检查、轻量测试、Streamlit 审查 UI、同步结果复核 | `pyproject.toml` 与 `uv.lock`，包含开发依赖 |
+| `linux-gpu` | Linux x86_64 训练机的数据处理、训练与推理 | `requirements-linux-gpu.lock` 与固定的 LlamaFactory 子模块 |
 
-- Python 3.11
-- 依赖管理：`pyproject.toml`、`uv.lock`
-- 典型用途：代码检查、文档整理、Streamlit 审查 UI、已同步结果复核
+训练、GPU 推理和完整评测必须在训练机执行。两种配置分别安装，不要把 Mac 依赖与
+GPU 依赖叠加安装；`requirements.txt` 是 Linux 锁文件的维护输入，部署使用锁文件。
 
-> 训练、GPU 推理、完整评测必须在训练机执行，不能在本机运行。
+### 安装前准备
 
-### 训练机（Conda）
+- 已安装 **Python 3.11、uv、Git、ffmpeg 和 ffprobe**；后四项须在当前 `PATH` 中可用。
+- Linux GPU 还需可用的 NVIDIA 驱动，`nvidia-smi` 能正常运行。
+- 将下面的 `/absolute/python3.11` 替换为已有 Python 3.11 可执行文件的绝对路径。
+- 将 `/absolute/new/environment` 替换为准备创建的新环境绝对路径；目标目录必须不存在，
+  路径不能经过符号链接，也不能包含 `..`。不要指定已有 `agent`、`cpm45` 或其他环境。
+
+部署脚本不安装上述系统工具，不更新已有 Conda 环境。Linux 安装前还需初始化项目固定的子模块：
 
 ```bash
 git submodule update --init --recursive
-# Python 3.11可来自Conda；目标环境必须不存在。
+```
+
+LlamaFactory 子模块必须保持干净，并与当前项目提交记录的版本一致。
+
+### Mac 本地环境
+
+```bash
+python3 scripts/source_prepare_environment.py --profile mac \
+  --env /absolute/new/environment --python /absolute/python3.11
+```
+
+### Linux GPU 训练环境
+
+```bash
 python3 scripts/source_prepare_environment.py --profile linux-gpu \
   --env /absolute/new/environment --python /absolute/python3.11
 ```
 
-安装前需已有uv、Git、`ffmpeg` / `ffprobe`与NVIDIA驱动；脚本不改已有Conda环境。Mac使用同一入口的`--profile mac`。锁文件来源、doctor及失败处理见[scripts/SCRIPTS.md](scripts/SCRIPTS.md)。
+Linux 默认使用 PyPI。网络需要镜像时，在上述安装命令末尾显式添加：
 
-子视频处理需要 `ffmpeg` / `ffprobe`。MiniCPM-V-4.5 基座模型放在 `models/`，或
-通过具体运行配置指定。
+```text
+--index-url https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+该选项仅支持 Linux GPU，地址须为不含凭据、查询参数或片段的 HTTPS URL；镜像选择
+不改变版本锁。安装入口隔离外部 uv 配置和 Python 路径变量，不依赖它们选择安装目标或镜像。
+
+### 安装后使用与检查
+
+安装命令退出码为 0 并输出 `Deployment verified` 表示部署检查通过。
+使用新环境的解释器运行项目，无需依赖当前 shell 激活的环境：
+
+```bash
+/absolute/new/environment/bin/python -m versioning --help
+
+# Mac 手动复查；训练机将 mac 换为 linux-gpu。
+/absolute/new/environment/bin/python scripts/source_validate_environment.py --profile mac
+```
+
+环境检查覆盖锁定版本、依赖冲突、DVC／MLflow 和公共入口导入、ffmpeg／ffprobe 实际启动；
+Linux 还检查 CUDA、LlamaFactory 子模块及训练模块来源。检查结果以 JSON 输出到终端，
+失败返回非零退出码。Linux 的 LlamaFactory 以 editable 方式绑定当前项目路径，使用该环境时
+须保留对应工作区；迁移或删除工作区前应重新核定环境来源。
+
+安装失败会保留部分创建的环境，便于查看错误；重试时选择另一个尚不存在的目标目录，
+脚本不会自动删除或覆盖原目录。
+
+部署检查不下载或加载模型，也不执行训练、推理或 test 数据分支测试。
+检查通过不能证明模型效果达标。MiniCPM-V-4.5 基座模型通过具体运行配置指定；
+数据、模型文件及其版本身份仍按相应流程单独准备。
+
+维护者更新锁文件及脚本职责说明见 [部署脚本索引](scripts/SCRIPTS.md)。
 
 ## 快速开始
 
