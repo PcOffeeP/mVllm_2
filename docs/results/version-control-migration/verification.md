@@ -1057,3 +1057,52 @@ CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=
 四份变更文档的52个本地链接可达，`git diff --check`通过。独立文档核查确认第43节/当前矩阵准确保留两个R5反例、CPU替身及无真实HTTP边界、Prompt实物验证和full/holdout实现缺口；旧审查时点与当前终态已区分。最终完整审查为驳回修改，并非未完成审查；任务上层继续进行中，R5兼容策略待用户确认，同ID漂移门可按既有完整性要求先修复。真实GPU、受限测试、硬盘/大型产物/外部依赖整机恢复未执行，未请求或执行push/merge。
 
 本轮仅四份证据文档变更，运行时代码保持ab5c71ae。Linux在核对原/新文档摘要、物理Prompt及9保护文件、Mac回归日志摘要、两工作区状态后原子提交；提交版本由本节相关文件Git历史追溯，再以校验bundle回传Mac。用户未跟踪agent-handoff.md及原stash必须保持；提交/同步的实际结果另由Git与证据目录docs-commit.json追溯，不把代码审查结论扩大到未经执行的后续操作。
+
+
+<a id="m8-r5-prompt-20260913"></a>
+## 44. M8-R5服务冻结Prompt绑定修复（2026-09-13）
+
+### 已确认行为与代码
+
+用户在第43节复审后明确回复“可以”，确认服务analysis使用模型训练及passed正式评测时冻结并验签的Prompt，保留现有输出和准入门禁。Spec已单独提交`789fa4fc`，下游Plan复核及精确范围提交`511cfc14`；既有实施授权持续。Codeup main只读核对仍为`f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`，没有新的基线漂移。
+
+Mac代码提交`de1b51dd163bd4694a6823dc9b54a056248cd61f`只包含3个运行时文件、2个测试文件和versioning/SCRIPTS.md。共享resolver在既有训练/评测/alias/current/权重门之后读取训练冻结Prompt，比对当前同ID定义及passed eval冻结内容，在末次在线复验后再比较快照；缺失、链接、正文不一致及加载时漂移均拒绝。返回Prompt与规范化内容SHA，将内容纳入fingerprint。server_proxy与smoke共享派生契约，只替换analysis system/user并重算实际contract_hash；原输出字段、生成参数、重试提示、evidence、评分及审批/备份门保持。重试仍从同一冻结Prompt开始，不直接删除固定相等检查而放弃绑定。
+
+没有改写Git或/data中的正式Prompt、旧业务契约、历史训练/评测记录，也没有自动重写部署元数据。已有部署config_fingerprint须由显式resolver新绑定取得；旧fingerprint不被默认放行。eval输入沿用规范化JSON摘要，仅增加尾部空白不等于正文漂移，不宣称拒绝所有原始字节变化。
+
+### 本机验证与独立复核
+
+有效RED使用修复前511cfc14的三个运行时文件及已修正fixture的新增测试：3 failed/21 deselected、exit1，分别为缺共享派生函数、当前同ID漂移未拒绝、concise仍在loader前被旧门拒绝。日志`/private/tmp/mvllm2-r5-valid-red.log`；测试后恢复本轮实现。更早初测曾因fixture把version重复传给create_prompt失败，修正后才做上述有效RED，不把fixture错误作为产品失败证明。
+
+Mac受影响7文件回归：`tests/test_serve_smoke.py tests/test_eval_run.py tests/test_production_contract.py tests/test_v4_1_service_contract.py tests/test_serve_validate_delivery.py tests/versioning/test_materialize.py tests/versioning/test_backup.py`，共同环境CUDA不可见、OMP4、HF/Transformers离线，命令`.venv/bin/python -m pytest -q <上述文件> --tb=short --basetemp=/private/tmp/mvllm2-r5-broad`，**195 passed/1 skipped，193.63秒，exit0**。唯一skip是本机缺V4.1历史workspace数据；未重新运行第43节的整仓2647项，不将其归因到本轮修复。
+
+随后新增5项冻结内容回归，以`-k 'frozen_prompt_damage or individually_valid'`运行服务测试文件，basetemp为`/private/tmp/mvllm2-r5-frozen-final`：**5 passed/25 deselected，13.91秒，exit0**。首次损坏注入被fixture封存0444权限挡住，修正为仅对测试自建文件加owner-write后注入；主工作区及正式文件没有被改权限。五项覆盖训练/eval冻结正文损坏、当前定义缺失/链接，以及训练和eval各自证据有效但Prompt不同的混用拒绝。
+
+新增完整成功路径使用本次Git迁移Prompt正文，实际prepare→三折运行证据→模型登记→正式eval passed→finalize→candidate→manifest/current→server_proxy.main→FastAPI TestClient→smoke。analysis初次返回非法输出，第二次使用同一冻结Prompt及原重试提示；旧固定正文请求422拒绝。训练器、推理器、processor及HTTP transport/uvicorn监听为CPU替身，实际准入门、FastAPI路由、请求校验和包装未mock；没有真实HTTP监听、媒体解码、GPU或真实模型效果证明。
+
+独立reviewer对511cfc14至修复工作树的6文件及操作说明局部复审通过，无可执行finding，前轮R5两反例闭环。独立服务文件25 passed/23.73秒/exit0，basetemp`/private/tmp/mvllm2-r5-independent-review-20260913`；新增5项随后独立5 passed/25 deselected/13.86秒/exit0，basetemp`/private/tmp/mvllm2-r5-independent-final-20260913`。另独立注入训练/eval冻结正文损坏并验证拒绝，恢复自建fixture后binding保持，派生hash独立重算一致；探针及独立测试原始输出在reviewer工具记录，没有另存独立脚本/日志。独立范围不自动包括后续Linux回归或整体迁移通过。
+
+### 双机同步与Linux验证
+
+增量bundle从bb9ef57b到de1b51dd，包含Spec、Plan和代码共3提交，SHA `85f3f17880587c903e70460fa99867c66a357f75dd48e13e3b4a43e7833d6598`。预检原项目main@f1b7d8a3及隔离bb9ef57b均tracked干净；bundle verify、0/3独有提交及6文件摘要通过后，仅cherry-pick --ff到隔离任务分支。原项目保持只读，环境不修改。
+
+Linux使用既有`.venv-m3/bin/python`，`PYTHONPATH=.:m5-service-verification-20260912/dependencies`，CUDA不可见、OMP4、HF/Transformers离线；为避免既有MLflow进程缓存文件句柄上限，分两个新进程执行同7测试文件，第一组为5个服务/eval/契约/交付文件，第二组为materialize/backup。证据目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-r5-verification-20260913/`，新增日志及临时fixture，不复用旧演练输出。两组均正常退出，最终结果见下文。
+
+Mac日志`/private/tmp/mvllm2-r5-valid-red.log` SHA `ec5f0559d680dd65528ab5e59a71ef4dc8ee44bafae3efbcc6c936049194d764`。
+
+Mac日志`/private/tmp/mvllm2-r5-broad.log` SHA `f6289f285261ab3281344b58ef80955172b88a7523bec70d4222034291d88cf5`。
+
+Mac日志`/private/tmp/mvllm2-r5-frozen-final.log` SHA `8c68498129137b8ea59cb5e9a44e543af8a8073df330634c9830c041306b4fa7`。
+
+
+### Linux最终结果与交付结论
+
+同一提交de1b51dd、原CPU环境，第一组 **97 passed/1 skipped，99.72秒，exit0**（外围106.624秒）；第二组 **103 passed，115.60秒，exit0**（外围125.051秒）；合计 **200 passed/1 skipped**。第一组唯一skip仍为缺本机V4.1历史workspace数据；Starlette TestClient另有1条AnyIO BlockingPortal别名弃用告警，没有安装或变更依赖。第二组覆盖现有物化及store备份/恢复行为，不扩大为真实硬盘或外部基座/媒体整机恢复。
+
+RUN中的`pytest-group1.log` SHA `37852c7a790777bb34d1859fe3456c1c247192ec6b77d70e79902be9ae73ad6c`，`pytest-group2.log` SHA `44a61ea6b1ea652255e4b616fd045d8fc1a2a918c25e258e8417b38da42afe1c`，`result.json` SHA `753d905ad50cb15a21507b6ebcdb6162ee7e8d62699ed5d192fa9ab6403a1764`；Mac副本为`/private/tmp/mvllm2-r5-linux-group1.log`、`mvllm2-r5-linux-group2.log`、`mvllm2-r5-linux-result.json`，两端摘要一致。执行脚本保存于RUN `execution.py`（Mac `/private/tmp/mvllm2-r5-linux.py`）；Mac broad/frozen原日志同字节复制为RUN `mac-broad.log`、`mac-frozen.log`。RED初次以文本读取传输，进度条CR/CRLF换行被规范化为LF，RUN `mac-valid-red.log` SHA `e19e17899961fedacb96df24cb5b1bd59b87376451841c55fc489ed0d823fd8f`及mac-result.json如实保留这份文本副本；后续另传原始字节为`mac-valid-red-source.log`，SHA `ec5f0559d680dd65528ab5e59a71ef4dc8ee44bafae3efbcc6c936049194d764`，与Mac原文件一致。规范化规则已逐字节校验，测试结论未改变；未覆盖初次副本，也未将Mac执行写成Linux复跑。
+
+Linux结束后7份保护轻量文件SHA全部保持，包含/data正式Prompt、两个release.yaml、两份data receipt、原数据活动指针和模型current；原正式项目仍干净main@f1b7d8a3，隔离tracked干净de1b51dd。六文件实际摘要两端一致，其中model_registry.py `f6fa5418ec40c3ec1c34c153b5b58ea25118f7d2f946b088906187aa9fcacf8f`、server_proxy.py `c2da52db27fdac092c2fdcac4c098dc5ca75582e339ad2b2fab3b25ab52880c2`、serve_smoke.py `2d1395ba2bfda0fff5c7e850975d0b607c38717335d96360eeb97dbd724c7ef9`，与独立审查对象一致。
+
+M8-R5本轮范围已解决：用户确认的冻结Prompt服务路径通过实际入口和CPU HTTP路由/重试/smoke，原错误拒绝及同ID漂移放行均闭环。独立代码/操作说明结论为局部通过；最终双机证据与四份文档按实际原日志另核查。第43节完整代码范围驳回保留为历史结论，本次局部通过不冒充新的整包审查；full/holdout实际输入仍未接线，GPU/模型效果、真实硬盘/大型产物及外部依赖整机恢复仍未验证，整体迁移不关闭。
+
+仅四份轻量证据文档在Linux按已核对原/新摘要原子提交，再经校验bundle回传Mac；同次证据版本由本节文件Git历史及RUN `docs-commit.json`追溯。用户未跟踪handoff与原stash保持，未push/merge、改旧源或执行GPU/受限测试。
