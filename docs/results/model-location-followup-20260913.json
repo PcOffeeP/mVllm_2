@@ -1,0 +1,127 @@
+{
+  "schema": "model-location-followup/v1",
+  "local_baseline": "bb73e4dd0264c8ae709612627794b98118611efa",
+  "machine": "Linux",
+  "exit_code": 0,
+  "program": "from pathlib import Path\nimport json,subprocess,datetime\nroot=Path('/home/liuyang/文档/mVllm_2')\niso=Path('/home/liuyang/文档/mVllm_2-migration-7eeb93a7')\npaths=[root/'workspace/runs',root/'workspace/evidence_archive',root/'workspace/models',Path('/data/mVllm_2/workspace'),Path('/data/mVllm_2/finetune'),root/'workspace/runs/v4.1-prompt-concise-v1-seed3411',root/'workspace/runs/v4.1-prompt-concise-v2-seed3411']\nrows=[]\nfor p in paths:\n rows.append({'path':str(p),'resolved':str(p.resolve()),'children':sorted(c.name for c in p.iterdir()) if p.is_dir() else None})\nmissing=[]\nfor name in ['v4.1-prompt-concise-cv-v1-seed3411','v4.1-visual-cv-v1-seed3407']:\n for i in range(3):\n  p=root/'workspace/runs'/name/f'fold{i}'/'merged'\n  missing.append({'path':str(p),'exists':p.exists(),'symlink':p.is_symlink(),'resolved':str(p.resolve())})\ngit={}\nfor p in [root,iso]:\n git[str(p)]={k:subprocess.check_output(['git','-C',str(p),*a],text=True).strip() for k,a in {'head':['rev-parse','HEAD'],'branch':['branch','--show-current'],'tracked_status':['status','--porcelain','--untracked-files=no']}.items()}\nprint(json.dumps({'time_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scope':'exact directory listings and model path stat only; no recursive search, file content, weights, predictions or test data','directories':rows,'model_paths':missing,'git':git},ensure_ascii=False,indent=2))\n",
+  "program_sha256": "046e43b87c7fe9b7d073bc2a70c0ccbeccd9cec0389f787ee0e8c991eea5482f",
+  "stdout_sha256": "d546184e3fbfb3c0f4980feb05fae3bc5a5b0eddb5409289773d64a6be359da4",
+  "result": {
+    "time_utc": "2026-09-13T10:42:07.911962+00:00",
+    "scope": "exact directory listings and model path stat only; no recursive search, file content, weights, predictions or test data",
+    "directories": [
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs",
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs",
+        "children": [
+          "v4.1-phase2-coverage-fallback-v1-seed3413",
+          "v4.1-phase2-coverage-first-v1-seed3407",
+          "v4.1-phase2-coverage-first-v1-seed3411",
+          "v4.1-phase2-source-aware-v1-seed3407",
+          "v4.1-phase2-source-aware-v1-seed3411",
+          "v4.1-prompt-concise-v1-seed3411",
+          "v4.1-prompt-concise-v2-seed3411",
+          "v4.1-prompt-minimal-v1-seed3411"
+        ]
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/evidence_archive",
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/evidence_archive",
+        "children": [
+          "v4.1-phase2-coverage-fallback-v1-seed3413",
+          "v4.1-phase2-coverage-first-v1-seed3411",
+          "v4.1-phase2-source-aware-v1-seed3407",
+          "v4.1-phase2-source-aware-v1-seed3411",
+          "v4.1-prompt-minimal-v1-seed3411"
+        ]
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/models",
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/models",
+        "children": [
+          "current",
+          "releases"
+        ]
+      },
+      {
+        "path": "/data/mVllm_2/workspace",
+        "resolved": "/data/mVllm_2/workspace",
+        "children": [
+          "data"
+        ]
+      },
+      {
+        "path": "/data/mVllm_2/finetune",
+        "resolved": "/data/mVllm_2/finetune",
+        "children": [
+          "active_data_release.json"
+        ]
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v1-seed3411",
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v1-seed3411",
+        "children": [
+          "input",
+          "reference"
+        ]
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v2-seed3411",
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v2-seed3411",
+        "children": [
+          "input"
+        ]
+      }
+    ],
+    "model_paths": [
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold0/merged",
+        "exists": false,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold0/merged"
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold1/merged",
+        "exists": false,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold1/merged"
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold2/merged",
+        "exists": false,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold2/merged"
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold0/merged",
+        "exists": false,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold0/merged"
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold1/merged",
+        "exists": false,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold1/merged"
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold2/merged",
+        "exists": false,
+        "symlink": false,
+        "resolved": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-visual-cv-v1-seed3407/fold2/merged"
+      }
+    ],
+    "git": {
+      "/home/liuyang/文档/mVllm_2": {
+        "head": "f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52",
+        "branch": "main",
+        "tracked_status": ""
+      },
+      "/home/liuyang/文档/mVllm_2-migration-7eeb93a7": {
+        "head": "bb73e4dd0264c8ae709612627794b98118611efa",
+        "branch": "refactor/2026-09-07-readable-version-control-migration",
+        "tracked_status": ""
+      }
+    }
+  }
+}

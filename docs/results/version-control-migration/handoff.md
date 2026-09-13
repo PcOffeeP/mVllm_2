@@ -164,3 +164,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 
 
 2026-09-13 test使用资格只读续查：用户已授权限定范围身份调查。当前数据目录和已发现的pre-semantic-portal-20260723备份中共6个媒体receipt集合，均无video_0005；18份manifest/identity已按非语义字段核对。迁移清单只列source、derived、training_releases→releases，不覆盖sealed_test_releases；这说明verified不证明旧test发布已迁移，不能据此认定删除原因。未找回299样本的完整发布身份清单，现阶段21个source的独立使用资格均为“证据不足”，并非“全部未用”；其中20个已有与暴露release相关联的物化证据。run_identity的初始化状态不能覆盖后续gate的completed/exposed事实。下一步最小缺失材料是旧发布的无标签candidate/source清单或对应备份；不扩大读取受限语义、不重划分或放行复用。详见verification第53节。
+
+
+2026-09-13 MODEL-DIAG限定目录续查：Linux只读目录与路径stat实际exit0。evidence_archive顶层5组名称不含目标concise/visual三折；现存concise-v1仅input/reference、concise-v2仅input，不能替代concise-cv；/data/mVllm_2/workspace仅data、finetune仅active_data_release.json。六个约定三折merged目标仍不存在。未检查其他发布库内容或全盘备份，不能断言模型全部丢失；没有读取权重/预测/test内容或重跑既有评分。下一步需目标身份绑定的模型/原始预测备份，或另行确认诊断方案；test资格阻塞不取消MODEL-DIAG，也不授权重训。证据见verification第54节及docs/results/model-location-followup-20260913.json。

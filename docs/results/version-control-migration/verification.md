@@ -1494,3 +1494,13 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 两份只读调查原件已复制并验签至隔离证据目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-verification-20260913/source-history/`；只写新证据目录，不修改调查源。
 
 四文档追加内容经独立reviewer核查通过：两份原件摘要、六集合计数/身份摘要、18份身份路径及历史初始化/完成状态语义均一致；备份目录名与实际内容证明已明确区分。核查仅使用保存证据与历史源码，未新增远端扫描或测试。最终文档提交由Git历史追溯；隔离同步结果另存上述source-history/final-docs-sync.json。
+
+
+<a id="model-location-followup-20260913"></a>
+## 54. MODEL-DIAG模型位置限定续查
+
+2026-09-13 MODEL-DIAG限定目录续查：Linux只读目录与路径stat实际exit0。evidence_archive顶层5组名称不含目标concise/visual三折；现存concise-v1仅input/reference、concise-v2仅input，不能替代concise-cv；/data/mVllm_2/workspace仅data、finetune仅active_data_release.json。六个约定三折merged目标仍不存在。未检查其他发布库内容或全盘备份，不能断言模型全部丢失；没有读取权重/预测/test内容或重跑既有评分。下一步需目标身份绑定的模型/原始预测备份，或另行确认诊断方案；test资格阻塞不取消MODEL-DIAG，也不授权重训。证据见verification第54节及docs/results/model-location-followup-20260913.json。
+
+本机基线bb73e4dd，远端隔离同提交且tracked干净；正式main仍f1b7d8a3且tracked干净。本轮只在Mac保存轻量证据和维护台账，没有修改远端文件，也没有同步本轮提交。七个明确目录和六个merged路径的读取程序、实际输出及SHA保存于[调查证据](../model-location-followup-20260913.json)，文件SHA256为`f70bf9b73d90015324d1b23e811ed279aaf8df0fa8d8ce244d1252efdaf4ddd5`。这里的“目标不存在”指实际stat的路径，不证明其他位置没有副本；目录名不证明其中内容完整。前轮visual1216条复算属于第48节既有证据，本轮未运行测试或推理，没有新的模型效果结论。
+
+本轮为既有任务的证据补充和执行顺序纠正，主Agent核对JSON可解析、程序摘要、目录/路径数量及Git diff；不冒充独立审查或权威操作手册验收。

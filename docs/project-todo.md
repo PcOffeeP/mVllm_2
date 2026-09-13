@@ -8,6 +8,8 @@
 
 ## 下一步与执行顺序
 
+**当前执行入口（2026-09-13，覆盖下方历史批次的下一步）**：HOLDOUT-BUILD等待旧发布无标签逐项来源清单或准确备份位置，第53节限定调查不重复。MODEL-DIAG不依赖该项，本轮已补查模型归档/迁移目录线索，见第54节；下一动作是找回能绑定concise/visual三折身份的原始模型与预测备份，或先提出并确认独立的诊断方案。缺权重时不启动交叉推理，不把同名近似目录当成三折模型。
+
 2026-09-13 Linux续办（Codex）：用户明确指出初始test视频已划分，授权训练机调查。已找到`workspace/data/source/splits/test.json`的21个test source，原视频21/21存在，train分支89source，三折与test无交集；不再要求用户重新提供既定路径。Linux隔离7b0e01d5已运行本批同代码427 passed/1 skipped、两组exit0，七保护文件未变。详见[第52节](results/version-control-migration/verification.md#linux-test-branch-source-20260913)。历史claim/gate确认旧release已暴露，媒体凭据文件名覆盖其中20source，video_0005无该批候选凭据；原旧release目录缺失，逐source最终消费映射未完整复核。既定划分已找到，不等于全体可作为新独立测试；保留TEST-POLICY，不重划、不复测、不擅自放行。
 
 **现行术语**：train 数据分支用于三折训练/验证及全量训练；test 数据分支仅用于最终独立测试。代码/配置仍使用 `development` / `holdout` / `test_audit`，历史身份不改。下文前轮记录中的旧称按此对应解释。
@@ -20,9 +22,9 @@
 
 本轮推进HOLDOUT-BUILD来源/入口预检与MODEL-DIAG开发记录复算：新source尚未指定，新体系release集合仅见r1/r2；未创建或授权测试集。新增HOLDOUT-METRICS前置：基线配置不能表达已冻结七指标；用户已确认按原门槛补齐，Spec55b3f4d4/Plan061d2598单独提交，代码f1be1060已完成本轮双机验证和局部独立代码审查（第49节）。历史visual开发集1216条已在Linux按现行严格解析器重新评分、各折原摘要一致；concise原始记录仍缺，visual三折merged路径均断链。详见第48节及[轻量证据](results/model-diagnostics-preflight-20260913.json)。只复算历史开发输出，不是新推理或模型质量通过。
 
-**模型验收下一项先执行 HOLDOUT-BUILD：构建并授权一个未使用的 holdout 测试集，作为最终模型独立验收的前置，同时继续 MODEL-DIAG。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
+**最终独立验收依赖 HOLDOUT-BUILD；当前因使用资格证据不足而阻塞，优先继续不依赖它的 MODEL-DIAG 证据准备。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
 
-1. 构建并授权未使用的 test 数据分支：隔离独立于开发/调参的 source，按已冻结阈值发布 sealed-test release，走预注册 + 一次性授权 + claim 流程；不得读取或混用现有 sealed-test 的受限语义结果。本步单独执行，不隐含于“策略已确定”。
+1. HOLDOUT-BUILD先补齐使用资格证据，满足适用授权后才构建未使用的 test 数据分支：隔离独立于开发/调参的 source，按已冻结阈值发布 sealed-test release，走预注册 + 一次性授权 + claim 流程；不得读取或混用现有 sealed-test 的受限语义结果。本步单独执行，不隐含于“策略已确定”。
 2. 持续整理 MODEL-DIAG 的开发集证据和训练机任务单：先核三折模型身份与原始预测，再做无需重训的推理对照，最后考虑单变量训练。任何新推理/训练开始前，明确机器、输入、输出、资源和既有授权范围。
 3. 开发侧三折方案稳定、holdout 构建就绪并冻结后，才进入全量最终训练、独立验收和模型晋级。新体系release切换使用显式完整身份；RELEASE-POINTER的原旧指针维护目标待裁决，不构成新体系切换的自动前置。
 
@@ -317,3 +319,6 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 
 2026-09-13 test使用资格只读续查：用户已授权限定范围身份调查。当前数据目录和已发现的pre-semantic-portal-20260723备份中共6个媒体receipt集合，均无video_0005；18份manifest/identity已按非语义字段核对。迁移清单只列source、derived、training_releases→releases，不覆盖sealed_test_releases；这说明verified不证明旧test发布已迁移，不能据此认定删除原因。未找回299样本的完整发布身份清单，现阶段21个source的独立使用资格均为“证据不足”，并非“全部未用”；其中20个已有与暴露release相关联的物化证据。run_identity的初始化状态不能覆盖后续gate的completed/exposed事实。下一步最小缺失材料是旧发布的无标签candidate/source清单或对应备份；不扩大读取受限语义、不重划分或放行复用。详见verification第53节。
+
+
+2026-09-13 MODEL-DIAG限定目录续查：Linux只读目录与路径stat实际exit0。evidence_archive顶层5组名称不含目标concise/visual三折；现存concise-v1仅input/reference、concise-v2仅input，不能替代concise-cv；/data/mVllm_2/workspace仅data、finetune仅active_data_release.json。六个约定三折merged目标仍不存在。未检查其他发布库内容或全盘备份，不能断言模型全部丢失；没有读取权重/预测/test内容或重跑既有评分。下一步需目标身份绑定的模型/原始预测备份，或另行确认诊断方案；test资格阻塞不取消MODEL-DIAG，也不授权重训。证据见verification第54节及docs/results/model-location-followup-20260913.json。
