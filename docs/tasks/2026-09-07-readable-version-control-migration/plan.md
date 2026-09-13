@@ -290,3 +290,12 @@ HOLDOUT-METRICS本批收口：代码f1be1060及两入口说明局部独立审查
 
 
 2026-09-13 续办只读准备：Mac基线0d8a9f55，HOLDOUT-BUILD核查深入到审查导出及发布两层development过滤，消费端媒体/真值schema定位完成。待决推荐为独立holdout审查/构建、全量人工审查与受限输出分离，详见verification第50节。此段仅记录发现和依赖，不批准公共接口或数据流扩展；确认后先修订Spec，再确认实现Plan。七项指标既有批准及已完成验证保持；真实source/非语义隔离清单未指定，不执行真实构建或测试使用。
+
+
+## 2026-09-13 test 数据分支实施批次
+
+上游Spec042f335e，用户已明确确认方案并要求继续实施。现行叙述采用train/test数据分支，代码标识和历史记录保持原样。精确范围：新增`versioning/holdout_pipeline.py`与`tests/versioning/test_holdout_pipeline.py`；修改`versioning/data_pipeline.py`（共享审查导出可选择全部test候选）、`versioning/cli.py`（显式用途与test配置路由）、`finetune/eval_holdout.py`（构建证据绑定）、`tests/test_eval_holdout.py`（新发布到最终模型测试的合成接线），以及`versioning/SCRIPTS.md`、TODO、handoff、verification。其他长期文档仅做用户要求的叙述术语映射，不替换代码标记、配置值、路径或历史身份。
+
+顺序：先增加显式test配置（冻结train版本、train/历史测试source身份与摘要清单），在owner-only独立工作区复用source/ROI/子视频算法；然后全量人工审查往返、媒体/真值分离发布与只读校验；最后接最终full模型测试并完成受影响回归、独立代码及入口说明核查。发布前后核验相同输入、source隔离、媒体内容、审查完整性，已发布内容和授权事实不可覆盖。训练及测试消费不由数据命令自动启动。
+
+Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容重叠拒绝、受限权限、公开数据无标签、同操作重试与冲突保留、最终模型测试从真实构建器产物消费及claim时序；train已有链路定向回归。只在本机或Linux隔离目录执行CPU测试，记录实际exit及机器/代码版本。真实数据/模型效果、硬盘和受限测试使用均保留未验收；本批不push或merge。
