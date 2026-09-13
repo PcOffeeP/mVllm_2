@@ -1137,8 +1137,145 @@ def _target_exists_for_object(
         )
     if entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
         root = Path(mlflow_root)
-        return root.exists() and any(root.iterdir())
+        return root.exists() and (not root.is_dir() or any(root.iterdir()))
     return False
+
+
+def _relocated_mlflow_updates(db_path: Path, source_root: str, target_root: Path) -> list[tuple[str, tuple[Any, ...]]]:
+    """Plan storage-address changes only; never inspect or edit the original store."""
+    original = Path(source_root)
+    if not original.is_absolute() or ".." in original.parts:
+        raise BackupIntegrityError("MLflow catalog source must be an absolute store root")
+    old_artifacts = original / "artifacts"
+    new_artifacts = target_root / "artifacts"
+    updates = []
+    try:
+        with sqlite3.connect(db_path.as_uri() + "?mode=ro", uri=True) as connection:
+            runs = {row[0] for row in connection.execute("SELECT run_uuid FROM runs")}
+
+            def relocate(value: str, *, run_reference: bool = False) -> str:
+                if not isinstance(value, str) or not value:
+                    raise BackupIntegrityError("missing MLflow storage address")
+                # Bare POSIX paths may themselves contain percent signs or '#'.
+                if value.startswith("/"):
+                    path = Path(value)
+                else:
+                    uri = urlparse(value)
+                    if uri.netloc or uri.query or uri.fragment:
+                        raise BackupIntegrityError("unsupported MLflow storage address")
+                    if run_reference and uri.scheme == "runs":
+                        # MLflow parses the literal path, without URL decoding or
+                        # collapsing slashes. Validate that same Run identity.
+                        parts = uri.path.split("/")
+                        if (len(parts) < 2 or parts[0] != "" or parts[1] not in runs
+                                or any(part in {"", ".", ".."} for part in parts[2:])
+                                or ".." in PurePosixPath(unquote(uri.path)).parts):
+                            raise BackupIntegrityError("unresolved MLflow Run reference")
+                        return value
+                    if uri.scheme != "file":
+                        raise BackupIntegrityError("MLflow restore requires local storage addresses")
+                    path = Path(unquote(uri.path))
+                if not path.is_absolute() or ".." in path.parts:
+                    raise BackupIntegrityError("unsafe MLflow storage address")
+                try:
+                    relative = path.relative_to(old_artifacts)
+                except ValueError as exc:
+                    raise BackupIntegrityError("MLflow storage address is outside the catalog source") from exc
+                return (new_artifacts / relative).as_uri()
+
+            for rowid, experiment_id, name, location in connection.execute(
+                "SELECT rowid, experiment_id, name, artifact_location FROM experiments"
+            ):
+                try:
+                    destination = relocate(location)
+                except BackupIntegrityError:
+                    # MLflow creates an unused Default experiment outside the explicit
+                    # project store. Give that empty placeholder a local destination;
+                    # a Default experiment with actual records must obey the same map.
+                    count = connection.execute("SELECT count(*) FROM runs WHERE experiment_id=?", (experiment_id,)).fetchone()[0]
+                    logged_table = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='logged_models'").fetchone()
+                    if logged_table:
+                        count += connection.execute("SELECT count(*) FROM logged_models WHERE experiment_id=?", (experiment_id,)).fetchone()[0]
+                    if experiment_id != 0 or name != "Default" or count:
+                        raise
+                    destination = (new_artifacts / "0").as_uri()
+                updates.append(("UPDATE experiments SET artifact_location=? WHERE rowid=?", (destination, rowid)))
+
+            columns = [("runs", "artifact_uri", False, False),
+                       ("model_versions", "source", True, False),
+                       ("model_versions", "storage_location", True, True)]
+            if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='logged_models'").fetchone():
+                columns.append(("logged_models", "artifact_location", False, False))
+            for table, column, run_reference, nullable in columns:
+                for rowid, value in connection.execute(f"SELECT rowid, {column} FROM {table}"):
+                    if value is None and nullable:
+                        continue
+                    destination = relocate(value, run_reference=run_reference)
+                    updates.append((f"UPDATE {table} SET {column}=? WHERE rowid=?", (destination, rowid)))
+    except sqlite3.Error as exc:
+        raise BackupIntegrityError(f"unsupported MLflow snapshot schema: {exc}") from exc
+    return updates
+
+
+def _restore_targets(catalog: BackupCatalog, backup_root: Path, *, data_root: Path,
+                     prompts_root: Path, models_root: Path, mlflow_root: Path) -> None:
+    """Reject aliases, path overlap and collisions before restoring any object."""
+    targets = []
+    for entry in catalog.objects:
+        if entry.object_type == OBJECT_TYPE_DATA_RELEASE:
+            targets.append(Path(data_root) / "releases" / entry.object_id)
+        elif entry.object_type == OBJECT_TYPE_PROMPT:
+            targets.append(prompt_path(prompts_root, entry.object_id))
+        elif entry.object_type == OBJECT_TYPE_MODEL:
+            targets.extend([Path(models_root) / entry.object_id,
+                            Path(prompts_root) / "records/models" / entry.object_id / "manifest.yaml"])
+        elif entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
+            targets.append(Path(mlflow_root))
+    backup = backup_root.resolve()
+    for target in targets:
+        if not target.is_absolute() or ".." in target.parts:
+            raise RestoreTargetConflict("restore targets must be ordinary absolute paths")
+        if any(path.is_symlink() for path in (target, *target.parents)):
+            raise RestoreTargetConflict("restore targets must not contain symlinks")
+        if any(path.exists() and not path.is_dir() for path in target.parents):
+            raise RestoreTargetConflict("restore target parent is not a directory")
+        if target == backup or target in backup.parents or backup in target.parents:
+            raise RestoreTargetConflict("restore target overlaps the backup")
+    for index, target in enumerate(targets):
+        if any(target == other or target in other.parents or other in target.parents for other in targets[:index]):
+            raise RestoreTargetConflict("restore object destinations overlap")
+
+
+def _restore_tree_no_replace(source: Path, target: Path, *, sealed: bool = False,
+                             drop_manifest: bool = False) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".object-restore-", dir=target.parent) as temporary:
+        staging = Path(temporary) / "object"
+        shutil.copytree(source, staging, copy_function=shutil.copy2)
+        if sealed:
+            seal_payload(staging)
+        if drop_manifest:
+            (staging / "manifest.yaml").unlink()
+        # macOS renamex_np requires owner-write on a moved directory itself.
+        # Hold its inode open so restoring the mode never follows a raced path.
+        mode = staging.stat().st_mode & 0o7777
+        descriptor = os.open(staging, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fchmod(descriptor, mode | 0o200)
+            _publish_backup_directory(staging, target)
+        finally:
+            try:
+                os.fchmod(descriptor, mode)
+            finally:
+                os.close(descriptor)
+
+
+def _restore_file_no_replace(source: Path, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".object-restore-", dir=target.parent) as temporary:
+        staging = Path(temporary) / "file"
+        shutil.copy2(source, staging)
+        _publish_backup_directory(staging, target)
 
 
 def _restore_object(
@@ -1149,24 +1286,23 @@ def _restore_object(
     prompts_root: Path,
     models_root: Path,
     mlflow_root: Path,
+    mlflow_updates: list[tuple[str, tuple[Any, ...]]],
+    empty_mlflow_identity: tuple[int, int] | None,
 ) -> None:
     backup_root = Path(backup_root)
     if entry.object_type == OBJECT_TYPE_DATA_RELEASE:
         src = backup_root / BACKUP_DIR_DATA / entry.object_id
         dst = Path(data_root) / "releases" / entry.object_id
-        _copy_tree_preserve(src, dst)
-        # 备份副本在维护时被补过写位；恢复后必须重放封存权限，
-        # 与 versioning.data_release.seal_payload 的只读语义保持一致。
-        seal_payload(dst)
+        _restore_tree_no_replace(src, dst, sealed=True)
     elif entry.object_type == OBJECT_TYPE_PROMPT:
         src = backup_root / BACKUP_DIR_PROMPTS / f"{entry.object_id}.yaml"
         dst = prompt_path(prompts_root, entry.object_id)
-        _copy_file_preserve(src, dst)
+        _restore_file_no_replace(src, dst)
     elif entry.object_type == OBJECT_TYPE_MODEL:
         src = backup_root / BACKUP_DIR_MODELS / entry.object_id
         dst = Path(models_root) / entry.object_id
-        _copy_tree_preserve(src, dst)
-        bundled_manifest = dst / "manifest.yaml"
+        _restore_tree_no_replace(src, dst, drop_manifest=True)
+        bundled_manifest = src / "manifest.yaml"
         manifest_target = (
             Path(prompts_root)
             / "records"
@@ -1174,15 +1310,29 @@ def _restore_object(
             / entry.object_id
             / "manifest.yaml"
         )
-        _copy_file_preserve(bundled_manifest, manifest_target)
-        bundled_manifest.unlink()
+        _restore_file_no_replace(bundled_manifest, manifest_target)
     elif entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
         src = backup_root / BACKUP_DIR_MLFLOW
         dst = Path(mlflow_root)
-        if dst.exists():
-            _make_writable(dst)
-            shutil.rmtree(dst)
-        shutil.copytree(src, dst, copy_function=shutil.copy2)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".mlflow-restore-", dir=dst.parent) as temporary:
+            staging_root = Path(temporary)
+            staging = staging_root / BACKUP_DIR_MLFLOW
+            shutil.copytree(src, staging, copy_function=shutil.copy2)
+            _verify_object_files(staging_root, entry)
+            with sqlite3.connect(staging / "mlflow.db") as connection:
+                for query, parameters in mlflow_updates:
+                    connection.execute(query, parameters)
+                if connection.execute("PRAGMA integrity_check").fetchone() != ("ok",):
+                    raise BackupIntegrityError("relocated MLflow SQLite integrity check failed")
+            # Only the same empty root accepted by preflight may be removed.
+            # An empty directory created by another publisher is still a conflict.
+            if dst.exists() and empty_mlflow_identity is not None:
+                stat = dst.lstat()
+                if dst.is_symlink() or (stat.st_dev, stat.st_ino) != empty_mlflow_identity:
+                    raise RestoreTargetConflict("MLflow restore destination changed")
+                dst.rmdir()
+            _publish_backup_directory(staging, dst)
     else:
         raise BackupError(f"未知对象类型: {entry.object_type!r}")
 
@@ -1195,9 +1345,26 @@ def restore_backup(
     models_root: Path,
     mlflow_root: Path,
 ) -> None:
-    """先完整校验，再按对象类型恢复到四根显式目标；失败零副作用。"""
-    backup_root = Path(backup_root)
+    """Validate the snapshot and address map before restoring to explicit isolated roots."""
+    backup_root = Path(backup_root).absolute()
+    if not backup_root.is_dir() or any(path.is_symlink() for path in (backup_root, *backup_root.parents)):
+        raise BackupIntegrityError("restore backup must be an ordinary directory")
+    for path in backup_root.rglob("*"):
+        if path.is_symlink() or not (path.is_dir() or path.is_file()):
+            raise BackupIntegrityError("restore backup must contain regular files only")
     catalog = verify_backup(backup_root)
+    _restore_targets(catalog, backup_root, data_root=data_root, prompts_root=prompts_root,
+                     models_root=models_root, mlflow_root=mlflow_root)
+    empty_mlflow_identity = None
+    if Path(mlflow_root).is_dir():
+        stat = Path(mlflow_root).lstat()
+        empty_mlflow_identity = (stat.st_dev, stat.st_ino)
+
+    mlflow_updates = []
+    for entry in catalog.objects:
+        if entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
+            mlflow_updates = _relocated_mlflow_updates(
+                (backup_root / BACKUP_DIR_MLFLOW / "mlflow.db").absolute(), entry.source, Path(mlflow_root))
 
     for entry in catalog.objects:
         if _target_exists_for_object(
@@ -1219,6 +1386,8 @@ def restore_backup(
             prompts_root=prompts_root,
             models_root=models_root,
             mlflow_root=mlflow_root,
+            mlflow_updates=mlflow_updates,
+            empty_mlflow_identity=empty_mlflow_identity,
         )
 
 

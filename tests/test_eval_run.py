@@ -569,7 +569,8 @@ def test_qualified_alias_rechecks_actual_execution_bytes(tmp_path, monkeypatch, 
         resolve_service_model(root, alias='candidate', service_mode='development')
 
 
-def test_actual_execution_chain_reaches_candidate_and_backup_through_cli(tmp_path, monkeypatch):
+@pytest.mark.parametrize("relocate", [False, True])
+def test_actual_execution_chain_reaches_candidate_and_backup_through_cli(tmp_path, monkeypatch, relocate):
     import yaml
     from versioning.cli import main
     from versioning.registry import open_registry_store, get_model_by_alias
@@ -603,6 +604,52 @@ def test_actual_execution_chain_reaches_candidate_and_backup_through_cli(tmp_pat
     assert any(path.endswith('/input/training.yaml') for path in store_files)
     assert any('/fold0/adapter/adapter_model.safetensors' in path for path in store_files)
     assert not any(f'/fold{fold}/adapter/' in path for fold in (1, 2) for path in store_files)
+    if relocate:
+        from mlflow.tracking import MlflowClient
+        from versioning.backup import restore_backup
+        from pipeline.model_registry import resolve_service_model
+        source_digest = {p.relative_to(backup).as_posix(): p.read_bytes()
+                         for p in backup.rglob("*") if p.is_file()}
+        root.rename(tmp_path / "retained-original")
+        fresh = tmp_path / "restored store"
+        restore_backup(backup, data_root=fresh / "data", prompts_root=fresh,
+            models_root=fresh / "workspace/models/materialized", mlflow_root=fresh / "workspace/mlflow")
+        import sqlite3
+        def historical_rows(database):
+            changed = {"experiments": {"artifact_location"}, "runs": {"artifact_uri"},
+                "model_versions": {"source", "storage_location"}, "logged_models": {"artifact_location"}}
+            snapshot = {}
+            with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+                for (table,) in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"):
+                    columns = [row[1] for row in connection.execute(f'PRAGMA table_info("{table}")') if row[1] not in changed.get(table, set())]
+                    selected = ','.join('"' + column + '"' for column in columns)
+                    snapshot[table] = sorted(connection.execute(f'SELECT {selected} FROM "{table}"').fetchall(), key=repr)
+            return snapshot
+        assert historical_rows(backup / "mlflow/mlflow.db") == historical_rows(fresh / "workspace/mlflow/mlflow.db")
+        restored = open_registry_store(fresh / "workspace/mlflow", data_root=fresh / "data")
+        resolved = get_model_by_alias(restored, "candidate")
+        assert resolved.model_id == model.model_id and resolved.version == model.version
+        client = MlflowClient(tracking_uri=restored.tracking_uri)
+        assert client.get_run(model.run_id).info.artifact_uri.startswith(fresh.as_uri())
+        downloaded = client.download_artifacts(model.run_id, "fold0/adapter/adapter_model.safetensors")
+        assert Path(downloaded).read_bytes() == b"synthetic adapter"
+        assert client.get_model_version_download_uri("mVllm2", str(model.version)).startswith(fresh.as_uri())
+        assert main(['model', 'current', '--root', str(fresh), '--alias', 'candidate', '--service-mode', 'development']) == 0
+        resolve_service_model(fresh, alias="candidate", service_mode="development")
+        # New writes must use the restored experiment location as well.
+        resumed = client.create_run(client.get_run(model.run_id).info.experiment_id)
+        marker = tmp_path / "restored-write.txt"
+        marker.write_bytes(b"new isolated write")
+        client.log_artifact(resumed.info.run_id, str(marker))
+        assert client.get_run(resumed.info.run_id).info.artifact_uri.startswith(fresh.as_uri())
+        assert Path(client.download_artifacts(resumed.info.run_id, marker.name)).read_bytes() == marker.read_bytes()
+        client.set_terminated(resumed.info.run_id)
+        second_backup = tmp_path / "second-backup"
+        assert main(['backup', 'create', '--root', str(fresh), '--backup-root', str(second_backup)]) == 0
+        assert {obj.object_id for obj in verify_backup(second_backup).objects} == {obj.object_id for obj in catalog.objects}
+        assert not root.exists()
+        assert {p.relative_to(backup).as_posix(): p.read_bytes()
+                for p in backup.rglob("*") if p.is_file()} == source_digest
 
 
 @pytest.mark.parametrize("drift", ["base", "missing_weight"])

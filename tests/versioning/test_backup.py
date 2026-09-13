@@ -2133,3 +2133,137 @@ def record_policy_execution_evidence_double(monkeypatch):
     monkeypatch.setattr("versioning.registry._validate_train_execution_artifacts", lambda *a: None)
     monkeypatch.setattr("versioning.registry._validate_eval_execution_artifacts", lambda *a: None)
     monkeypatch.setattr("versioning.registry._validate_model_artifact_evidence", lambda *a: None)
+
+
+@pytest.mark.parametrize("address", ["https://example.invalid/artifact", "file://remote/store/artifacts/run", "runs:/unknown/path", "/outside/artifacts/run", "/original/artifacts/../escape"])
+def test_restore_rejects_unmapped_addresses_before_any_target_write(world, registry, backup_root, tmp_path, address):
+    client = MlflowClient(tracking_uri=registry.tracking_uri)
+    run = client.create_run(open_train_store(world.mlflow_root).experiment_id)
+    with sqlite3.connect(world.mlflow_root / "mlflow.db") as connection:
+        connection.execute("UPDATE runs SET artifact_uri=? WHERE run_uuid=?", (address, run.info.run_id))
+    create_backup(registry, **_backup_args(world, backup_root))
+    before = _tree_digests(backup_root)
+    fresh = tmp_path / "unpublished"
+    with pytest.raises(BackupIntegrityError):
+        restore_backup(backup_root, data_root=fresh / "data", prompts_root=fresh,
+            models_root=fresh / "models", mlflow_root=fresh / "mlflow")
+    assert not fresh.exists()
+    assert _tree_digests(backup_root) == before
+
+
+@pytest.mark.parametrize("collision", ["backup_overlap", "object_overlap", "symlink", "parent_file"])
+def test_restore_rejects_unsafe_destination_layout(world, registry, backup_root, tmp_path, collision):
+    create_backup(registry, **_backup_args(world, backup_root))
+    before = _tree_digests(backup_root)
+    fresh = tmp_path / "unpublished"
+    mlflow = fresh / "mlflow"
+    if collision == "backup_overlap":
+        mlflow = backup_root / "nested"
+    elif collision == "object_overlap":
+        mlflow = fresh
+    elif collision == "symlink":
+        fresh.symlink_to(tmp_path / "absent", target_is_directory=True)
+    else:
+        fresh.write_bytes(b"preserve me")
+    with pytest.raises(RestoreTargetConflict):
+        restore_backup(backup_root, data_root=fresh / "data", prompts_root=fresh,
+            models_root=fresh / "models", mlflow_root=mlflow)
+    assert _tree_digests(backup_root) == before
+    if collision == "symlink":
+        assert fresh.is_symlink() and not fresh.exists()
+    elif collision == "parent_file":
+        assert fresh.read_bytes() == b"preserve me"
+    else:
+        assert not fresh.exists()
+
+
+@pytest.mark.parametrize("object_kind", ["data", "prompt", "model", "mlflow"])
+def test_restore_does_not_overwrite_concurrent_destination(world, registry, backup_root, tmp_path, monkeypatch, object_kind):
+    import versioning.backup as api
+    create_backup(registry, **_backup_args(world, backup_root))
+    fresh = tmp_path / "racing-restore"
+    destinations = {"data": fresh / "data/releases" / DATA_VERSION,
+        "prompt": prompt_path(fresh, PROMPT_VERSION), "model": fresh / "models" / MODEL_ID,
+        "mlflow": fresh / "mlflow"}
+    victim = destinations[object_kind]
+    publish = api._publish_backup_directory
+    def arrive(staging, target):
+        if target == victim:
+            if object_kind == "prompt":
+                target.write_bytes(b"other writer")
+            else:
+                target.mkdir()
+                (target / "other.txt").write_bytes(b"other writer")
+        return publish(staging, target)
+    monkeypatch.setattr(api, "_publish_backup_directory", arrive)
+    with pytest.raises(RestoreTargetConflict):
+        restore_backup(backup_root, data_root=fresh / "data", prompts_root=fresh,
+            models_root=fresh / "models", mlflow_root=fresh / "mlflow")
+    preserved = victim if object_kind == "prompt" else victim / "other.txt"
+    assert preserved.read_bytes() == b"other writer"
+    assert verify_backup(backup_root)
+
+
+@pytest.mark.parametrize("linked", ["file", "directory", "root", "fifo"])
+def test_restore_rejects_linked_or_special_backup_inputs(world, registry, backup_root, tmp_path, linked):
+    create_backup(registry, **_backup_args(world, backup_root))
+    prompt = backup_root / BACKUP_DIR_PROMPTS / f"{PROMPT_VERSION}.yaml"
+    content = prompt.read_bytes()
+    if linked == "root":
+        alias = tmp_path / "linked-backup"
+        alias.symlink_to(backup_root, target_is_directory=True)
+        source = alias
+    elif linked == "directory":
+        retained = tmp_path / "external-prompts"
+        prompt.parent.rename(retained)
+        (backup_root / BACKUP_DIR_PROMPTS).symlink_to(retained, target_is_directory=True)
+        source = backup_root
+    else:
+        prompt.unlink()
+        if linked == "file":
+            external = tmp_path / "external-prompt.yaml"
+            external.write_bytes(content)
+            prompt.symlink_to(external)
+        else:
+            os.mkfifo(prompt)
+        source = backup_root
+    fresh = tmp_path / "unpublished"
+    with pytest.raises(BackupIntegrityError):
+        restore_backup(source, data_root=fresh / "data", prompts_root=fresh,
+            models_root=fresh / "models", mlflow_root=fresh / "mlflow")
+    assert not fresh.exists()
+    if linked == "file":
+        assert prompt.is_symlink() and external.read_bytes() == content
+
+
+@pytest.mark.parametrize("column", ["source", "storage_location"])
+@pytest.mark.parametrize("form", ["canonical", "extra_slashes", "encoded_run"])
+def test_restore_validates_literal_mlflow_run_reference(world, registry, backup_root, tmp_path, column, form):
+    client = MlflowClient(tracking_uri=registry.tracking_uri)
+    run = client.create_run(open_train_store(world.mlflow_root).experiment_id)
+    run_id = run.info.run_id
+    client.create_registered_model("restore-uri-test")
+    version = client.create_model_version("restore-uri-test", source=run.info.artifact_uri, run_id=run_id)
+    address = f"runs:/{run_id}/fold0/adapter"
+    if form == "extra_slashes":
+        address = f"runs://///{run_id}/fold0/adapter"
+    elif form == "encoded_run":
+        address = f"runs:/%{ord(run_id[0]):02x}{run_id[1:]}/fold0/adapter"
+    with sqlite3.connect(world.mlflow_root / "mlflow.db") as connection:
+        connection.execute(f"UPDATE model_versions SET {column}=? WHERE name=? AND version=?",
+                           (address, "restore-uri-test", version.version))
+    create_backup(registry, **_backup_args(world, backup_root))
+    before = _tree_digests(backup_root)
+    fresh = tmp_path / "literal-uri-restore"
+    arguments = dict(data_root=fresh / "data", prompts_root=fresh,
+                     models_root=fresh / "models", mlflow_root=fresh / "mlflow")
+    if form == "canonical":
+        restore_backup(backup_root, **arguments)
+        with sqlite3.connect(fresh / "mlflow/mlflow.db") as connection:
+            assert connection.execute(f"SELECT {column} FROM model_versions WHERE name=?",
+                                      ("restore-uri-test",)).fetchone() == (address,)
+    else:
+        with pytest.raises(BackupIntegrityError):
+            restore_backup(backup_root, **arguments)
+        assert not fresh.exists()
+    assert _tree_digests(backup_root) == before

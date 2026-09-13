@@ -259,15 +259,30 @@ transfer只通过SSH调用远端tar读取显式源目录，不在远端创建快
 
 目标必须不存在，不合并或覆盖已有备份；最终发布使用Mac/Linux原子no-replace接口，文件系统或平台不支持时失败，不回退到可覆盖的rename；同目标并发传输由排他锁拒绝。正常异常会清理本次临时目录和锁，原源与已有目标保持；连接中断后可对同一未变快照重试。进程被强制杀死可能遗留临时目录或锁，需要先确认没有存活传输再人工处置，入口不会猜测锁失效。升级scope后在训练机重新create并核对新catalog，再传输到新的明确目标。实际磁盘空间至少容纳所选快照，目标同级临时目录发布后即成为最终备份，不另外保留整份tar；大产物应直接写到已核对的目标存储，不默认暂存Mac内置盘。
 
-恢复仍使用既有restore入口，四类输出根必须核对且不得覆盖正式对象：
+恢复使用显式隔离目录。以下布局使恢复后的CLI与服务使用同一个store；四类对象目标须不存在，MLflow根也允许预先存在的空普通目录：
 
 ```sh
-python -m versioning backup restore --root /absolute/isolated-project --backup-root /absolute/destination --data-root /absolute/isolated-data --prompts-root /absolute/isolated-project --models-root /absolute/isolated-models --mlflow-root /absolute/original-mlflow-path
+python -m versioning backup restore --root /absolute/isolated-project --backup-root /absolute/destination --data-root /absolute/isolated-project/data --prompts-root /absolute/isolated-project --models-root /absolute/isolated-project/workspace/models/materialized --mlflow-root /absolute/isolated-project/workspace/mlflow
 ```
 
-SQLite中的artifact URI保留原绝对路径；完整MLflow artifact查询恢复需在原路径布局下演练，任意改目录后的文件复制不构成完整可用性证明。本机可以验签训练机快照，联合恢复在训练机受控隔离对象的原路径布局下验证；不删除或覆盖真实唯一源以模拟故障。真实移动硬盘与真实大型模型恢复是否通过，单独以实际证据验收。
+restore先校验快照、目标和存储地址映射，再复制到各目标同级的私有临时目录。MLflow副本以catalog记录的源store为依据，将experiment、Run、ModelVersion及logged-model的本地artifact地址改为新MLflow根下的file URI；合法且指向已知Run的`runs:/`逻辑引用保留。唯一特殊情形是MLflow自动创建且没有Run或logged-model记录的Default experiment，其空占位地址落到新artifact根的`0`目录。原store无需可访问，原备份字节不修改；Run/ModelVersion身份、指标、生命周期、alias、scope及holdout状态保持原值。
+
+恢复入口拒绝备份及其父路径的软链接、备份内特殊文件、越界或无法映射的存储地址，以及目标软链接、备份/对象路径重叠和既有对象冲突。上述预检失败不发布对象。各目标路径通过Mac/Linux原子no-replace发布；模型实体目录与manifest也分两次发布，四类根之间不是整体事务，后续I/O失败或并发目标出现时可能保留此前已发布对象。失败后先检查实际目标与日志，使用新的明确隔离目标重试，不覆盖已有对象或自动清理其他写入者的内容。
+
+restore不选择服务current。核对恢复的模型manifest与candidate alias后，显式激活开发服务路径：
+
+```sh
+python -m versioning model current --root /absolute/isolated-project --alias candidate --service-mode development
+```
+
+该动作仍执行证据与准入检查，不能将未通过模型晋级。已冻结的训练配置、评测输入、来源路径和基座引用保留原文，避免改变证据摘要和历史事实；外部基座模型与媒体不因重定位自动纳入备份。adapter服务仍要求冻结基座在其引用路径可用并通过摘要检查；重跑训练或评测还需备齐原冻结输入、媒体和代码依赖，恢复store本身不证明这些外部依赖已齐全。
+
+合成CPU演练应覆盖原模拟store不可访问时的新根查询、artifact下载、显式current及开发服务准入、后续artifact写入和再次备份。执行机器、结果与限制见[迁移验证记录第41节](../docs/results/version-control-migration/verification.md#m8-r4-restore-20260913)。它不证明真实模型推理、整机外部依赖恢复或真实移动硬盘/大型产物恢复；这些按实际证据单独验收。不删除或覆盖真实唯一源以模拟故障。
 
 <!-- DECISION-LOG
 D001 — Contract中的legacy整体现状保护改为按已确认入口退役，保留历史对象与业务实现。
 Why: 已批准的迁移Spec要求单一正式写入者；旧“公共入口维持原样”条款与实际逐入口切换冲突，不能用于恢复旧选择或发布绕过。
+
+D002 — 恢复副本重定位MLflow活动存储地址，冻结输入与来源证据保留原文。
+Why: 异根恢复必须能在原store不可访问时读取和写入artifact；修改冻结来源会改变摘要与历史事实，因此外部基座和媒体仍按原引用单独备齐。
 -->
