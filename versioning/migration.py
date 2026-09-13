@@ -2865,7 +2865,7 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
                 training_manifest_rel,
                 [trainer_state_rel, package_manifest_rel],
             ),
-            "effective_batch_size": (
+            "per_process_accumulated_batch": (
                 per_device_batch * accumulation,
                 trainer_state_rel,
                 [package_manifest_rel],
@@ -2887,6 +2887,14 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
                     "corroborated_by": [path.as_posix() for path in corroborating],
                 },
             }
+        facts["per_process_accumulated_batch"]["source"]["derivation"] = (
+            "train_batch_size * gradient_accumulation_steps; world_size unknown"
+        )
+        facts["effective_batch_size"] = _history_unknown(
+            "归档缺少可核实的 world_size；单进程 batch 与累积步数的乘积"
+            "不能证明全局有效 batch size",
+            package_manifest_rel,
+        )
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
         pass
     entry: dict[str, Any] = {

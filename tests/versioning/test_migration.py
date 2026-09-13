@@ -20886,7 +20886,7 @@ def test_weight_run_extracts_only_hash_verified_archival_parameters(
     expected = {
         "seed": 3407,
         "epochs": 3.0,
-        "effective_batch_size": 8,
+        "per_process_accumulated_batch": 8,
         "lora_rank": 8,
         "lora_alpha": 16,
         "lora_target_modules": ["k_proj", "q_proj", "v_proj"],
@@ -20900,8 +20900,13 @@ def test_weight_run_extracts_only_hash_verified_archival_parameters(
     assert facts["epochs"]["source"]["path"].endswith(
         "input/training_run_manifest.json"
     )
-    assert facts["effective_batch_size"]["source"]["path"].endswith(
+    assert facts["per_process_accumulated_batch"]["source"]["path"].endswith(
         "adapter/trainer_state.json"
+    )
+    assert "value" not in facts["effective_batch_size"]
+    assert "world_size" in facts["effective_batch_size"]["unknown_reason"]
+    assert facts["per_process_accumulated_batch"]["source"]["derivation"] == (
+        "train_batch_size * gradient_accumulation_steps; world_size unknown"
     )
     expected_adapter_source = (
         f"workspace/runs/{WEIGHT_RUN_DECLARED_ID}/fold0/adapter/adapter_config.json"
