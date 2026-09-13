@@ -79,3 +79,64 @@ def test_ambient_uv_target_cannot_redirect_install(tmp_path, monkeypatch):
     env = calls[0][1]['env']
     assert not any(k in env for k in ('UV_CONFIG_FILE', 'UV_PROJECT', 'UV_WORKING_DIRECTORY', 'UV_TARGET', 'PIP_TARGET', 'PYTHONPATH', 'PYTHONHOME'))
     assert calls[1][0][1] == '-I'
+
+
+@pytest.fixture
+def doctor_fixture(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location('doctor', PATH.with_name('source_validate_environment.py'))
+    doctor = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(doctor)
+    monkeypatch.setattr(doctor, 'ROOT', tmp_path)
+    (tmp_path / 'uv.lock').write_text('[[package]]\nname="pandas"\nversion="2.3.3"\n')
+    (tmp_path / 'pyproject.toml').write_text('[project]\ndependencies=["pandas==2.3.3"]\n[dependency-groups]\ndev=[]\n')
+    (tmp_path / 'requirements-linux-gpu.lock').write_text('pandas==2.3.3\n')
+    monkeypatch.setattr(doctor.os, 'execve', lambda *a: None)
+    monkeypatch.setattr(sys, 'argv', ['doctor', '--profile', 'mac'])
+    monkeypatch.setattr(sys, 'platform', 'darwin')
+    monkeypatch.setattr(doctor.shutil, 'which', lambda n: '/synthetic/' + n)
+    monkeypatch.setattr(doctor.importlib, 'import_module', lambda n: SimpleNamespace(__version__='mock'))
+    monkeypatch.setattr(doctor.metadata, 'version', lambda n: '2.3.3')
+    monkeypatch.setattr(doctor.metadata, 'distributions', lambda: [SimpleNamespace(metadata={'Name':'pandas'}, version='2.3.3')])
+    monkeypatch.setattr(doctor.subprocess, 'run', lambda *a, **k: SimpleNamespace(returncode=0, stdout='', stderr=''))
+    return doctor
+
+
+def test_doctor_lock_drift_is_not_compatibility_pass(doctor_fixture, monkeypatch, capsys):
+    doctor = doctor_fixture
+    assert doctor.main() == 0
+    capsys.readouterr()
+    monkeypatch.setattr(doctor.metadata, 'version', lambda n: '2.2.3')
+    assert doctor.main() == 1
+    assert 'pandas violates project requirement' in capsys.readouterr().out
+
+
+def test_doctor_executes_media_tools(doctor_fixture, monkeypatch, capsys):
+    from types import SimpleNamespace
+    assert doctor_fixture.main() == 0
+    capsys.readouterr()
+    monkeypatch.setattr(doctor_fixture.subprocess, 'run', lambda a, **k: SimpleNamespace(returncode=int(a[0]=='ffmpeg'), stdout='', stderr='broken'))
+    assert doctor_fixture.main() == 1
+    assert 'ffmpeg cannot execute' in capsys.readouterr().out
+
+
+def test_doctor_rechecks_git_identity(doctor_fixture, monkeypatch, capsys):
+    from types import SimpleNamespace
+    doctor = doctor_fixture
+    monkeypatch.setattr(sys, 'platform', 'linux')
+    monkeypatch.setattr(sys, 'argv', ['doctor', '--profile', 'linux-gpu'])
+    monkeypatch.setattr(doctor.platform, 'machine', lambda: 'x86_64')
+    monkeypatch.setitem(sys.modules, 'torch', SimpleNamespace(__version__='mock', cuda=SimpleNamespace(is_available=lambda:True)))
+    monkeypatch.setitem(sys.modules, 'llamafactory', SimpleNamespace(__file__=str(doctor.ROOT / 'LlamaFactory/src/llamafactory/__init__.py')))
+    monkeypatch.setitem(sys.modules, 'finetune.train_with_contract', SimpleNamespace(run_training=lambda:None))
+    monkeypatch.setitem(sys.modules, 'llamafactory.train.tuner', SimpleNamespace(run_exp=lambda:None))
+    def git(args, **kwargs):
+        if 'ls-tree' in args: return '160000 commit ' + 'a'*40 + '\tLlamaFactory\n'
+        if 'rev-parse' in args: return 'a'*40+'\n'
+        return ''
+    monkeypatch.setattr(doctor.subprocess, 'check_output', git)
+    assert doctor.main() == 0
+    capsys.readouterr()
+    monkeypatch.setattr(doctor.subprocess, 'check_output', lambda a, **k: ' M tuner.py' if 'status' in a else git(a))
+    assert doctor.main() == 1
+    assert 'differs from clean pinned submodule' in capsys.readouterr().out

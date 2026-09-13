@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -33,6 +34,8 @@ def preflight(profile: str, target: Path, python: str, root: Path = ROOT):
     if version != '3.11':
         raise ValueError(f'Python 3.11 required, got {version}')
     if profile == 'linux-gpu':
+        if platform.machine() != 'x86_64':
+            raise ValueError('linux-gpu lock requires x86_64')
         sub = root / 'LlamaFactory'
         expected_head = subprocess.check_output(['git', '-C', str(root), 'ls-tree', 'HEAD', 'LlamaFactory'], text=True).split()
         if len(expected_head) < 3 or expected_head[0] != '160000':

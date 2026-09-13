@@ -6,6 +6,9 @@ import importlib
 import importlib.metadata as metadata
 import json
 import os
+import platform
+import re
+import tomllib
 from pathlib import Path
 import shutil
 import subprocess
@@ -34,6 +37,39 @@ def main():
     for tool in ('uv', 'ffmpeg', 'ffprobe'):
         if not shutil.which(tool):
             errors.append(f'missing prerequisite {tool}')
+    for tool in ('ffmpeg', 'ffprobe'):
+        if shutil.which(tool):
+            probe = subprocess.run([tool, '-version'], capture_output=True, text=True, env=clean_env)
+            if probe.returncode:
+                errors.append(f'{tool} cannot execute: {probe.stderr}')
+    # pip check validates compatibility, not equality with the reviewed lock.
+    try:
+        if args.profile == 'mac':
+            lock = tomllib.loads((ROOT / 'uv.lock').read_text())
+            allowed = {}
+            for package in lock['package']:
+                name = re.sub(r'[-_.]+', '-', package['name']).lower()
+                allowed.setdefault(name, set()).add(package['version'])
+            from packaging.requirements import Requirement
+            project = tomllib.loads((ROOT / 'pyproject.toml').read_text())
+            for text in project['project']['dependencies'] + project['dependency-groups']['dev']:
+                req = Requirement(text)
+                if req.marker is None or req.marker.evaluate():
+                    if metadata.version(req.name) not in req.specifier:
+                        errors.append(f'{req.name} violates project requirement')
+            for dist in metadata.distributions():
+                name = re.sub(r'[-_.]+', '-', dist.metadata['Name']).lower()
+                if name in allowed and dist.version not in allowed[name]:
+                    errors.append(f'{name}=={dist.version} differs from uv.lock')
+        else:
+            if platform.machine() != 'x86_64':
+                errors.append('linux-gpu lock requires x86_64')
+            for line in (ROOT / 'requirements-linux-gpu.lock').read_text().splitlines():
+                match = re.fullmatch(r'([A-Za-z0-9_.-]+)==([^ ;]+)', line.strip())
+                if match and metadata.version(match[1]) != match[2]:
+                    errors.append(f'{match[1]} differs from Linux lock')
+    except Exception as exc:
+        errors.append(f'lock verification: {type(exc).__name__}: {exc}')
     for name in ('dvc', 'mlflow', 'av', 'pandas', 'streamlit', 'streamlit_cropper', 'cv2'):
         try:
             module = importlib.import_module(name)
@@ -48,6 +84,14 @@ def main():
     if result.returncode:
         errors.append('versioning CLI: ' + result.stderr)
     if args.profile == 'linux-gpu':
+        try:
+            expected = subprocess.check_output(['git', '-C', str(ROOT), 'ls-tree', 'HEAD', 'LlamaFactory'], text=True).split()
+            actual = subprocess.check_output(['git', '-C', str(ROOT / 'LlamaFactory'), 'rev-parse', 'HEAD'], text=True).strip()
+            dirty = subprocess.check_output(['git', '-C', str(ROOT / 'LlamaFactory'), 'status', '--porcelain'], text=True).strip()
+            if len(expected) < 3 or expected[0] != '160000' or actual != expected[2] or dirty:
+                errors.append('LlamaFactory differs from clean pinned submodule')
+        except (OSError, subprocess.CalledProcessError) as exc:
+            errors.append(f'LlamaFactory Git verification: {exc}')
         try:
             import torch
             import llamafactory
