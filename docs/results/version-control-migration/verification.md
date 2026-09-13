@@ -1732,3 +1732,20 @@ Linux正式项目main f1b7d8a3无未提交文件；原隔离bb73e4dd相对本机
 结论：已确认工程范围的代码/依赖/入口与证据可形成合并候选；整体迁移尚未关闭，因为实际发布合并、正式环境激活与合并后验证未执行。核查范围以9077690f冻结，本轮仅追加纠错/证据文档，最终候选另包含本轮文档提交（由git log追溯）。
 
 最终独立复核通过：P2范围矛盾已闭环；reviewer核对两组日志计数/退出、4份证据SHA、181提交/170文件及后续41提交/38文件覆盖，确认测试代码与候选代码一致。未复查远端现场、未重审历史代码，远端状态来源为主Agent本轮保存回执；不代表模型效果、真实恢复、环境激活或发布合并已经完成或获授权。
+
+
+## 67. 真实模型背景与按序合并授权（2026-09-14）
+
+用户要求先核清模型、在docs一级落文档，再先推送当前任务分支后合并main。新增docs/MODEL_GATE_BASELINE.md，以本轮现场stat/非评测身份与历史效果分别交代，旧CURRENT_PROJECT_STATUS和MODEL_INVENTORY加历史提示。调查时Mac业务代码61effebd、工作基线4b560d54；Linux正式f1b7d8a3、原隔离bb73e4dd、部署检出61effebd均tracked干净。
+
+本轮SSH仅读模型名、目录/文件stat及旧发布manifest身份，actual exit0。旧发布仅v4.1-agent-pipeline-fold0-r1，adapter460430776字节、10 merged分片共17391890080字节；full_data_final与production_approved均false，manifest SHA与前轮一致。六组实验有adapter，concise v1/v2仅输入目录；约定运行根未见concise/visual三折，不证明全盘删除。基座4分片在场，前轮全文件哈希/849tensor检查作为历史证据引用，本轮不重算。/data/mVllm_2正式store的workspace/mlflow及models目录不存在，不以合成验证库冒充真实模型Registry。只读ss/nvidia-smi均exit0：当时8002无监听，GPU计算进程仅远程桌面daemon，不外推其他端口；未发模型请求。
+
+文档七门阈值/方向按现有holdout_metrics代码，历史validation分数不套作test结果；MODEL-DIAG方案待确认，TEST-POLICY与来源资格缺口不变。没有重训、推理、受限语义读取、删除或覆盖模型。原始探针/JSON保留在本机临时目录，正文只保存必要事实。摘要如下：
+
+- `/private/tmp/mvllm2-model-current-probe.py`：SHA256 `7e54cfc23d6671fa5c3ceac2e08c0c151ce42a5bc6f57e52ef13205e4d55366e`。
+- `/private/tmp/mvllm2-model-current-20260914.json`：SHA256 `993d9b323a6dd528d98192c5c6f4cc275293bd6b7d907dd2fb816aa07b56f999`。
+- `/private/tmp/mvllm2-model-service-20260914.json`：SHA256 `c4336388f8107f3fc1c538c6bf159845f79537c72c2c468963a4a587bd490558`。
+
+发布前已刷新Codeup main及任务分支引用：main=f1b7d8a3，远端任务分支2027c4dc是本地祖先（当时0/103），无远端独有提交；不会强制推送。模型文档独立核查/提交完成后才执行用户要求的先分支push、再main快进与push，集成结果后续补记。
+
+模型背景独立核查通过：现存资产/大小求和、历史指标分母、七门及链接核对完成；P3将待确认MODEL-DIAG误称已确认的措辞已修正并复核闭环。新增服务有限快照与三份SHA独立重算一致。reviewer未SSH或重算真实权重，现场状态来源为主Agent原始回执；无模型质量通过结论。

@@ -26,7 +26,7 @@
 | 后续模型 | MODEL-DIAG → FINAL-TRAIN → MODEL-QUALITY | 旧三折权重缺失，不持续搜寻；新诊断方案待确认 | train单折可行性→三折开发验证→全量最终训练→一次性test→晋级/真实服务验收，分别落实执行授权 |
 | 不阻塞 | MODEL-ARCHIVE | 条件清理已授权；89个train视频副本验签，占用检查未完成，删除0 | 条件满足才清理；不占用模型与工程收口主线 |
 
-**当前推荐第一项**：ENV-DEPLOY及M4-FOLD工程实现已完成，核对最终集成范围与审查覆盖，把已确认后置的真实模型与物理恢复限制写入交付材料，准备合并main授权，不重复请求范围确认。无需新训练或test使用。
+**当前推荐第一项**：用户已授权先调查真实模型并写docs一级文档，再先推送任务分支、后合并main。模型背景见[MODEL_GATE_BASELINE](MODEL_GATE_BASELINE.md)，本轮按第67节完成文档核查与按序集成；无需新训练或test使用。
 
 2026-09-13 Linux续办（Codex）：用户明确指出初始test视频已划分，授权训练机调查。已找到`workspace/data/source/splits/test.json`的21个test source，原视频21/21存在，train分支89source，三折与test无交集；不再要求用户重新提供既定路径。Linux隔离7b0e01d5已运行本批同代码427 passed/1 skipped、两组exit0，七保护文件未变。详见[第52节](results/version-control-migration/verification.md#linux-test-branch-source-20260913)。历史claim/gate确认旧release已暴露，媒体凭据文件名覆盖其中20source，video_0005无该批候选凭据；原旧release目录缺失，逐source最终消费映射未完整复核。既定划分已找到，不等于全体可作为新独立测试；保留TEST-POLICY，不重划、不复测、不擅自放行。
 
@@ -401,3 +401,6 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 2026-09-13 环境与部署文件核查：agent/cpm45均无DVC/MLflow；实际安装在隔离.conda-m2（MLflow3.15.2、DVC3.67.1），.venv-m3通过system-site-packages继承。agent pip check exit0，cpm45 exit1且editable LLaMA-Factory指向旧mVllm项目；两个隔离环境pip check均因MLflow要求pandas<3、实际3.0.3而exit1。新增ENV-DEPLOY部署一致性前置，不把历史CPU测试通过解释为依赖声明一致。
 
 2026-09-14 ENV-DEPLOY本批已解决：双profile锁定部署与doctor完成，当前代码83724995；Mac新环境安装/doctor exit0、361项定向回归通过、最新部署边界12项通过；Linux新GPU环境通过显式镜像安装/doctor exit0。独立审查发现的P1/P2均闭环，镜像增量复核通过；七保护SHA及正式/原隔离工作区保持。旧agent/cpm45未修补，新环境未正式激活。官方源首轮主动中断exit1及部分环境保留；完整证据第63节。本批不训练、不test、不push/merge。下一步恢复M4-FOLD逐折接口方案确认与工程收口，不再以依赖缺失或重训为默认前置。
+
+
+2026-09-14 当前真实模型调查：docs/MODEL_GATE_BASELINE.md保存旧发布、六组实验、基座及原始证据缺口，区分本轮stat与历史效果；旧模型未获新门禁passed，MODEL-DIAG方案及test使用资格仍待落实。用户已明确授权文档完成后先push当前分支、再合并main；合并结果见verification后续记录。
