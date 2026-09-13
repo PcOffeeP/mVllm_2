@@ -1539,3 +1539,10 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 2026-09-13 用户确认工程与模型交付拆分，Plan单独提交0d3c7461。TODO新增合并前/后续模型/非阻塞清理矩阵及MODEL-DIAG方案草案；原Intent/Spec无需改写。真实GPU、服务成功路径和恢复缺口仍逐项保留，未因拆分自动通过或豁免。下一步先做train真实输入预检与具体缺口裁决单；不再以清理或找回旧模型占据主线。本轮无远端操作、训练、测试使用、删除或push/merge。
 
 核对现有Intent明确迁移不等于模型质量，Spec明确服务接管与模型可用性分验且移动硬盘可单独未完成；保留所有原门禁。本机起点4a7244c9工作区干净，相对本地main为0/152；此为本地快照，不冒充本轮远端刷新。主Agent检查固定任务标识、依赖与授权表述及diff-check；只维护任务记录，不运行测试或宣称独立审查。
+
+
+## 59. train真实输入内存构建预检
+
+2026-09-13 train真实输入预检：Linux隔离bb73e4dd执行正式build_versioned_datasets(scope=full)，实际exit0；data-v4.1-r2 + prompt-v4.1-r1 + 原workspace/data媒体根成功生成内存输入。三折train/validation为1253/425、1014/664、1186/492，full为1678，唯一媒体1678个共165485727字节逐一哈希；媒体名提取source与既定21个test ID无交集，此项不代替内容隔离或test资格。没有Run写入、训练或GPU执行。完整结果摘要见docs/results/train-input-preflight-20260913.json及verification第59节。
+
+[轻量结果与程序](../train-input-preflight-20260913.json)记录实际代码版本、三折/full计数、生成内容摘要、媒体集合摘要及原始结果路径/SHA。仅使用train发布内容，test只比对既有非语义ID；未输出标签。远端正式main f1b7d8a3、隔离bb73e4dd事后tracked干净。本机0054b419为文档后续版本，不能冒充远端运行HEAD。原始结果包含1678条媒体哈希；轻量记录不声称是全部原件的独立备份。主Agent检查计数、媒体ID交集、JSON和diff-check，本轮非独立审查、无新增CPU回归或模型效果结论。

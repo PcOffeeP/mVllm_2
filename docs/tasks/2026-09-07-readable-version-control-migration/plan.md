@@ -331,3 +331,6 @@ Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容�
 模型任务保留HOLDOUT-BUILD、MODEL-DIAG、FINAL-TRAIN、MODEL-QUALITY原标识及父子依赖，最终模型质量不是本工程分支默认硬门槛。真实GPU/服务成功路径的工程验收缺口不得自动转为已完成：逐项明确如何补证或由用户接受转交边界。大型/外部依赖恢复缺口同理保留，移动硬盘既有允许单独未完成的决定保持。
 
 清理MODEL-ARCHIVE移至非阻塞配套；原条件删除授权保留，89个train原视频候选未删除，不继续以清理占用检查阻塞主线。精确文件范围仅本Plan、TODO、handoff、verification；诊断方案草案存于现有TODO条目，尚不修改训练配置或代码，不创建平行任务台账。
+
+
+2026-09-13 train真实输入预检：Linux隔离bb73e4dd执行正式build_versioned_datasets(scope=full)，实际exit0；data-v4.1-r2 + prompt-v4.1-r1 + 原workspace/data媒体根成功生成内存输入。三折train/validation为1253/425、1014/664、1186/492，full为1678，唯一媒体1678个共165485727字节逐一哈希；媒体名提取source与既定21个test ID无交集，此项不代替内容隔离或test资格。没有Run写入、训练或GPU执行。完整结果摘要见docs/results/train-input-preflight-20260913.json及verification第59节。

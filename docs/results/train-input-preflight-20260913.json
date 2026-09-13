@@ -1,0 +1,165 @@
+{
+  "time": "2026-09-13T15:32:21.920583+00:00",
+  "scope": "read-only actual train inputs; build in memory only; no MLflow/GPU/training/test use",
+  "code": "bb73e4dd0264c8ae709612627794b98118611efa",
+  "binding": {
+    "data_version": "data-v4.1-r2",
+    "prompt_version": "prompt-v4.1-r1",
+    "media_root": "/home/liuyang/文档/mVllm_2/workspace/data",
+    "splits": {
+      "fold0": {
+        "train": 1253,
+        "validation": 425
+      },
+      "fold1": {
+        "train": 1014,
+        "validation": 664
+      },
+      "fold2": {
+        "train": 1186,
+        "validation": 492
+      },
+      "full": {
+        "train": 1678
+      }
+    }
+  },
+  "generated_memory_files": {
+    "datasets/train/fold_0.json": {
+      "bytes": 1915658,
+      "sha256": "d0b1958f7574875c8a8a7b9917fd463bf3cc20a047e318903a04cd7a7817a83e"
+    },
+    "datasets/validation/fold_0.json": {
+      "bytes": 646163,
+      "sha256": "d67cff2de679f9aa692abb16da405a80b2d1c920f00e06cd59432f9981abca86"
+    },
+    "datasets/train/fold_1.json": {
+      "bytes": 1545905,
+      "sha256": "d5c633279cb93b1ebcdb0f6867b7f23cbbd6308214f33ee0d052c179f977c084"
+    },
+    "datasets/validation/fold_1.json": {
+      "bytes": 1015916,
+      "sha256": "1f3c601ce5749bdcc78a4fcbb70fd7b8aaf92e7deccf811fc048d32058f58208"
+    },
+    "datasets/train/fold_2.json": {
+      "bytes": 1810659,
+      "sha256": "f47d0cfa78d99195a612474bed73e266526448cd28a2ace3682f0731b3250c68"
+    },
+    "datasets/validation/fold_2.json": {
+      "bytes": 751162,
+      "sha256": "f796c5a9d1e7f254ff3aa234f9a02b9fc9924349182f355a0042aabdb5a4c183"
+    },
+    "datasets/train/full.json": {
+      "bytes": 2561818,
+      "sha256": "f37e2b54c135c9bd43447343507a43047e0d86bdcb75f3f88c2d3bc97c3f93c7"
+    },
+    "dataset_info.json": {
+      "bytes": 3096,
+      "sha256": "1ed496583ff81d65aa5577eb51daaa59f52b887de09c10f3746c5cfa21d1a6d3"
+    }
+  },
+  "prompt_sha256": "907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6",
+  "actual_exit": 0,
+  "program": "from pathlib import Path\nimport sys,json,hashlib,subprocess,datetime\niso=Path('/home/liuyang/文档/mVllm_2-migration-7eeb93a7');sys.path.insert(0,str(iso))\nfrom finetune.train_build_dataset import build_versioned_datasets\nroot=Path('/data/mVllm_2');media=Path('/home/liuyang/文档/mVllm_2/workspace/data')\nfiles,binding=build_versioned_datasets(root=root,data_version='data-v4.1-r2',prompt_version='prompt-v4.1-r1',media_root=media,scope='full')\nprint(json.dumps({'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scope':'read-only actual train inputs; build in memory only; no MLflow/GPU/training/test use','code':subprocess.check_output(['git','-C',str(iso),'rev-parse','HEAD'],text=True).strip(),'binding':binding,'generated_memory_files':{n:{'bytes':len(v),'sha256':hashlib.sha256(v).hexdigest()} for n,v in files.items()},'prompt_sha256':hashlib.sha256((root/'records/prompts/prompt-v4.1-r1.yaml').read_bytes()).hexdigest()},ensure_ascii=False,indent=2))\n",
+  "raw_result_path": "/private/tmp/mvllm2-train-preflight-20260913/result.json",
+  "raw_result_sha256": "b6116b75140434e17c967e64d09827d4e80553049731149c0b6593b54d9e18e6",
+  "media_summary": {
+    "count": 1678,
+    "bytes": 165485727,
+    "source_ids": [
+      "video_0001",
+      "video_0003",
+      "video_0004",
+      "video_0006",
+      "video_0007",
+      "video_0009",
+      "video_0011",
+      "video_0012",
+      "video_0013",
+      "video_0014",
+      "video_0015",
+      "video_0016",
+      "video_0017",
+      "video_0020",
+      "video_0021",
+      "video_0022",
+      "video_0023",
+      "video_0024",
+      "video_0026",
+      "video_0027",
+      "video_0028",
+      "video_0029",
+      "video_0030",
+      "video_0031",
+      "video_0033",
+      "video_0034",
+      "video_0035",
+      "video_0036",
+      "video_0039",
+      "video_0040",
+      "video_0043",
+      "video_0044",
+      "video_0045",
+      "video_0046",
+      "video_0047",
+      "video_0048",
+      "video_0049",
+      "video_0050",
+      "video_0051",
+      "video_0052",
+      "video_0053",
+      "video_0054",
+      "video_0055",
+      "video_0056",
+      "video_0057",
+      "video_0059",
+      "video_0060",
+      "video_0061",
+      "video_0064",
+      "video_0065",
+      "video_0066",
+      "video_0068",
+      "video_0070",
+      "video_0071",
+      "video_0072",
+      "video_0073",
+      "video_0074",
+      "video_0075",
+      "video_0076",
+      "video_0077",
+      "video_0079",
+      "video_0080",
+      "video_0081",
+      "video_0083",
+      "video_0084",
+      "video_0085",
+      "video_0086",
+      "video_0090",
+      "video_0091",
+      "video_0092",
+      "video_0096",
+      "video_0097",
+      "video_0098",
+      "video_0099",
+      "video_0100",
+      "video_0101",
+      "video_0102",
+      "video_0103",
+      "video_0104",
+      "video_0105",
+      "video_0106",
+      "video_0107",
+      "video_0108",
+      "video_0109",
+      "video_0110"
+    ],
+    "test_id_overlap": 0,
+    "inventory_sha256": "7ff5989d11b26c04d02898d0fd20908bacf5b6abb5d384f171d087715dc5def0"
+  },
+  "local_baseline": "0054b419d5539a9c2850903accf1693bea0c8866",
+  "limits": [
+    "Memory-only dataset construction, no train prepare/run, GPU inference or scoring.",
+    "Source IDs extracted from media names; this does not prove content-level test isolation or test eligibility.",
+    "Raw media inventory retained in local evidence path; no original labels or prompt text published."
+  ]
+}

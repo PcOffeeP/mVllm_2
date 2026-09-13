@@ -179,3 +179,6 @@ sample_count/split/source_batches 和 r1/r2 生命周期。外部视频引用保
 
 
 2026-09-13 用户确认工程与模型交付拆分，Plan单独提交0d3c7461。TODO新增合并前/后续模型/非阻塞清理矩阵及MODEL-DIAG方案草案；原Intent/Spec无需改写。真实GPU、服务成功路径和恢复缺口仍逐项保留，未因拆分自动通过或豁免。下一步先做train真实输入预检与具体缺口裁决单；不再以清理或找回旧模型占据主线。本轮无远端操作、训练、测试使用、删除或push/merge。
+
+
+2026-09-13 train真实输入预检：Linux隔离bb73e4dd执行正式build_versioned_datasets(scope=full)，实际exit0；data-v4.1-r2 + prompt-v4.1-r1 + 原workspace/data媒体根成功生成内存输入。三折train/validation为1253/425、1014/664、1186/492，full为1678，唯一媒体1678个共165485727字节逐一哈希；媒体名提取source与既定21个test ID无交集，此项不代替内容隔离或test资格。没有Run写入、训练或GPU执行。完整结果摘要见docs/results/train-input-preflight-20260913.json及verification第59节。
