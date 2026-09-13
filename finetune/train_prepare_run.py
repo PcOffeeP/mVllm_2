@@ -393,11 +393,32 @@ def prepare_fixed_prompt_run(
     return paths.git_dir, manifest
 
 
+def _training_configs(training: Mapping) -> dict:
+    scope = training.get("scope", "cross_validation")
+    if scope == "full" and not training.get("folds") and isinstance(training.get("full"), dict):
+        return {"full": training["full"]}
+    if scope == "cross_validation" and set(training.get("folds", {})) == {"fold0", "fold1", "fold2"} and "full" not in training:
+        return training["folds"]
+    raise ValueError("frozen training scope/configuration mismatch")
+
+
+def _validate_full_config(config: Mapping) -> None:
+    # Independent acceptance data never selects a training checkpoint. Keep
+    # the complete development set, with a user-frozen training schedule.
+    forbidden = {"eval_dataset": (None, ""), "val_size": (None, 0),
+        "do_eval": (None, False), "do_predict": (None, False),
+        "eval_strategy": (None, "no"), "evaluation_strategy": (None, "no"),
+        "load_best_model_at_end": (None, False), "early_stopping_steps": (None,),
+        "max_samples": (None,)}
+    if any(config.get(key) not in allowed for key, allowed in forbidden.items()):
+        raise ValueError("full training forbids evaluation, implicit validation splits and sample truncation")
+
+
 def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
                           prompt_version: str, media_root: Path, fold_configs: Mapping,
                           git_commit: str, environment: Mapping,
-                          inputs_path: Path | None = None) -> Path:
-    """Freeze a complete three-fold invocation without creating MLflow Runs."""
+                          inputs_path: Path | None = None, scope: str = "cross_validation") -> Path:
+    """Freeze a complete scoped invocation without creating MLflow Runs."""
     import fcntl
     from finetune.train_build_dataset import build_versioned_datasets
     from versioning.ids import parse_train_id, parse_data_id, parse_prompt_id
@@ -411,26 +432,31 @@ def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
         raise ValueError("git_commit is required")
     if not isinstance(environment, Mapping) or not environment:
         raise ValueError("environment versions are required")
-    if not isinstance(fold_configs, Mapping) or set(fold_configs) != {"fold0", "fold1", "fold2"}:
-        raise ValueError("explicit fold0/fold1/fold2 configs are required")
+    if scope not in {"cross_validation", "full"}:
+        raise ValueError("unsupported training scope")
+    required = {"full"} if scope == "full" else {"fold0", "fold1", "fold2"}
+    if not isinstance(fold_configs, Mapping) or set(fold_configs) != required:
+        raise ValueError(f"explicit {sorted(required)} configs are required")
     root = Path(root).absolute()
     run = root / "workspace/runs" / train_version
     target = run / "input"
     if any(path.is_symlink() for path in (target, *target.parents)):
         raise ValueError("training paths must not contain symlinks")
     files, binding = build_versioned_datasets(root=root, data_version=data_version,
-        prompt_version=prompt_version, media_root=media_root, inputs_path=inputs_path)
+        prompt_version=prompt_version, media_root=media_root, inputs_path=inputs_path, scope=scope)
     configs = {}
     for fold, source in fold_configs.items():
         if not isinstance(source, Mapping) or not source:
             raise ValueError("fold config must be a non-empty mapping")
         config = dict(source)
+        if scope == "full":
+            _validate_full_config(config)
         if config.get("tokenized_path") is not None:
             raise ValueError("tokenized_path may bypass frozen fold/Prompt inputs")
         model = config.get("model_name_or_path")
         if not isinstance(model, str) or not Path(model).is_absolute() or not Path(model).is_dir():
             raise ValueError("explicit existing base model directory is required")
-        config.update(dataset=f"tensile_v4_1_{fold}_train", eval_dataset=f"tensile_v4_1_{fold}_val",
+        config.update(dataset=f"tensile_v4_1_{fold}_train", eval_dataset=None if scope == "full" else f"tensile_v4_1_{fold}_val",
             dataset_dir=str(target), media_dir=binding["media_root"], output_dir=str(run / fold / "adapter"))
         configs[fold] = config
     base_models = {config["model_name_or_path"] for config in configs.values()}
@@ -440,7 +466,8 @@ def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
     base_model_files = _artifact_tree(Path(next(iter(base_models))))
     training = {"version": train_version, **binding, "git_commit": git_commit,
         "base_model_files": base_model_files,
-        "base_model": next(iter(base_models)), "folds": configs,
+        "base_model": next(iter(base_models)),
+        **({"scope": "full", "folds": {}, "full": configs["full"]} if scope == "full" else {"folds": configs}),
         "data_inputs": str(Path(inputs_path).absolute()) if inputs_path is not None else None}
     files.update({"training.yaml": yaml.safe_dump(training, allow_unicode=True, sort_keys=True).encode(),
         "environment.yaml": yaml.safe_dump(dict(environment), allow_unicode=True, sort_keys=True).encode(),
@@ -495,12 +522,14 @@ def verify_versioned_run(*, root: Path, train_version: str, for_execution: bool 
     training = _read_yaml(target / "training.yaml", "frozen training")
     if training.get("version") != train_version:
         raise ValueError("frozen train identity mismatch")
-    if set(training.get("folds", {})) != {"fold0", "fold1", "fold2"}:
-        raise ValueError("frozen input requires exactly three folds")
-    for fold, config in training["folds"].items():
+    configs = _training_configs(training)
+    scope = training.get("scope", "cross_validation")
+    for fold, config in configs.items():
+        if scope == "full":
+            _validate_full_config(config)
         if config.get("tokenized_path") is not None:
             raise ValueError("tokenized_path may bypass frozen fold/Prompt inputs")
-        expected = {"dataset": f"tensile_v4_1_{fold}_train", "eval_dataset": f"tensile_v4_1_{fold}_val",
+        expected = {"dataset": f"tensile_v4_1_{fold}_train", "eval_dataset": None if scope == "full" else f"tensile_v4_1_{fold}_val",
                     "dataset_dir": str(target), "media_dir": training["media_root"],
                     "output_dir": str(target.parent / fold / "adapter"),
                     "model_name_or_path": training["base_model"]}
@@ -516,7 +545,7 @@ def verify_versioned_run(*, root: Path, train_version: str, for_execution: bool 
     verify_frozen_prompt(root, training["prompt_version"], train_version)
     files, binding = build_versioned_datasets(root=root, data_version=training["data_version"],
         prompt_version=training["prompt_version"], media_root=Path(training["media_root"]),
-        inputs_path=Path(training["data_inputs"]) if training["data_inputs"] is not None else None)
+        inputs_path=Path(training["data_inputs"]) if training["data_inputs"] is not None else None, scope=scope)
     if any(training.get(key) != value for key, value in binding.items()):
         raise ValueError("frozen data binding mismatch")
     if any((target / name).read_bytes() != content for name, content in files.items()):
@@ -540,36 +569,48 @@ def execute_versioned_run(*, root: Path, train_version: str):
         except BlockingIOError as exc:
             raise ValueError("training version is already executing") from exc
         training = verify_versioned_run(root=root, train_version=train_version)
-        for config in training["folds"].values():
+        configs = _training_configs(training)
+        scope = training.get("scope", "cross_validation")
+        for config in configs.values():
             if Path(config["output_dir"]).exists():
                 raise ValueError("existing training output requires explicit recovery")
         params = {fold: json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False)
-                  for fold, config in training["folds"].items()}
+                  for fold, config in configs.items()}
         from mlflow.utils.validation import MAX_PARAM_VAL_LENGTH
         if any(len(value) > MAX_PARAM_VAL_LENGTH for value in params.values()):
             raise ValueError("frozen config exceeds MLflow parameter limit")
         store = open_train_store(root / "workspace/mlflow")
         parent = create_train_run(store, train_version, data_version=training["data_version"],
             prompt_version=training["prompt_version"], git_commit=training["git_commit"],
-            base_model=training["base_model"], config=params)
+            base_model=training["base_model"], config=params, scope=scope)
         client = MlflowClient(tracking_uri=store.tracking_uri)
         metrics = []
         try:
             client.log_artifacts(parent.run_id, str(run / "input"), artifact_path="input")
-            for fold in range(3):
+            for name, config in configs.items():
                 verify_versioned_run(root=root, train_version=train_version)
-                def executor(config):
-                    run_training(config)
+                def executor(actual_config):
+                    run_training(actual_config)
                     verify_versioned_run(root=root, train_version=train_version)
-                    return _read_json(Path(config["output_dir"]) / "train_results.json", "actual train results")
-                child = execute_fold_run(store, train_version, fold, training["folds"][f"fold{fold}"], executor=executor)
-                client.log_artifacts(parent.run_id, training["folds"][f"fold{fold}"]["output_dir"], artifact_path=f"fold{fold}/adapter")
-                client.set_tag(child.run_id, "output_artifact", f"runs:/{parent.run_id}/fold{fold}/adapter")
-                metrics.append(child.metrics)
+                    return _read_json(Path(actual_config["output_dir"]) / "train_results.json", "actual train results")
+                if scope == "full":
+                    from copy import deepcopy
+                    from versioning.mlflow_train import _validate_metrics
+                    result = _validate_metrics(executor(deepcopy(config)))
+                    if not all(math.isfinite(value) for value in result.values()):
+                        raise ValueError("executor metrics must be finite")
+                    metrics.append(result)
+                else:
+                    child = execute_fold_run(store, train_version, int(name[-1]), config, executor=executor)
+                    client.set_tag(child.run_id, "output_artifact", f"runs:/{parent.run_id}/{name}/adapter")
+                    metrics.append(child.metrics)
+                client.log_artifacts(parent.run_id, config["output_dir"], artifact_path=f"{name}/adapter")
             common = set.intersection(*(set(item) for item in metrics))
             if not common:
-                raise ValueError("no common actual metrics for three-fold summary")
-            log_train_summary(store, train_version, {f"{key}_mean": sum(item[key] for item in metrics) / 3 for key in common})
+                raise ValueError("no common actual metrics for training summary")
+            summary = metrics[0] if scope == "full" else {
+                f"{key}_mean": sum(item[key] for item in metrics) / 3 for key in common}
+            log_train_summary(store, train_version, summary)
             # Freeze evidence only after the actual tuner returned every fold and
             # the uploaded weights/results match their recorded metrics.
             from versioning.registry import _training_execution_snapshot
@@ -606,12 +647,15 @@ def export_versioned_run(*, root: Path, train_version: str) -> Path:
     for key in ("data_version", "prompt_version", "git_commit", "base_model"):
         if getattr(parent, key) != training[key]:
             raise ValueError("frozen input differs from completed Run")
-    for fold, config in training["folds"].items():
+    if parent.scope != training.get("scope", "cross_validation"):
+        raise ValueError("frozen scope differs from completed Run")
+    for fold, config in _training_configs(training).items():
         if parent.config.get(fold) != json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False):
             raise ValueError("frozen fold config differs from completed Run")
     document = {"version": train_version, "protocol": "tensile-vlm/" + parse_train_id(train_version).protocol,
         "record_validity": parent.record_validity, "data_version": parent.data_version,
         "prompt_version": parent.prompt_version, "folds": list(parent.folds),
+        **({"scope": "full"} if parent.scope == "full" else {}),
         "base_model": parent.base_model, "run_id": parent.run_id,
         "metrics": dict(parent.metrics), "git_commit": parent.git_commit}
     return _publish_immutable(root / "records/training" / train_version / "manifest.yaml",

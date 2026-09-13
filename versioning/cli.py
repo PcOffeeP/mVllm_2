@@ -159,6 +159,7 @@ def _build_parser() -> argparse.ArgumentParser:
     train.add_argument("--environment", type=Path, help="冻结运行依赖版本 YAML")
     train.add_argument("--media-root", type=Path, help="显式真实训练媒体根")
     train.add_argument("--data-inputs", type=Path, help="七阶段发布的原始 inputs YAML；迁移对象使用既有 receipt")
+    train.add_argument("--scope", choices=("cross_validation", "full"), help="prepare 的训练范围，默认三折")
     train.add_argument("--fold", type=int, help="fold 编号")
     train.add_argument("--params", type=Path, help="fold 参数 YAML mapping")
     train.add_argument("--metrics", type=Path, help="指标 YAML mapping")
@@ -168,7 +169,7 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument(
         "action",
         choices=(
-            "prepare", "validate", "run", "export",
+            "prepare", "validate", "run", "score", "export",
             "create",
             "fold-start",
             "fold-end",
@@ -423,6 +424,11 @@ def _handle_data(args: argparse.Namespace) -> Any:
             data_version=args.version,
             split=args.split,
         )
+        pre = load_pre_registration(args.pre_registration)
+        if (pre.eval_version, pre.model_version, pre.data_version, pre.split) != (
+            identity.eval_version, identity.model_version, identity.data_version, identity.split
+        ):
+            raise ValueError("pre_registration 与 claim 身份不一致")
         frozen_pre_registration = freeze_pre_registration(
             args.pre_registration, args.root / "evaluations", args.eval_version
         )
@@ -509,7 +515,9 @@ def _handle_train(args: argparse.Namespace) -> Any:
                 data_version=args.data_version, prompt_version=args.prompt_version,
                 media_root=args.media_root, fold_configs=_load_mapping(args.config, "fold configs"),
                 git_commit=args.git_commit, environment=_load_mapping(args.environment, "environment"),
-                inputs_path=args.data_inputs)}
+                inputs_path=args.data_inputs, scope=args.scope or "cross_validation")}
+        if args.scope is not None:
+            raise CLIUsageError("--scope 仅适用于 train prepare；后续使用冻结范围")
         if args.action == "validate":
             return verify_versioned_run(root=args.root, train_version=args.train_version)
         if args.action == "export":
@@ -577,15 +585,17 @@ def _parse_folds(value: str | None) -> tuple[int, ...]:
 def _handle_eval(args: argparse.Namespace) -> Any:
     if args.action in {'manifest', 'fold-start', 'fold-end', 'aggregate', 'complete', 'summary', 'create'}:
         raise CLIUsageError("手工状态写入已停用；请使用实际执行器 eval prepare/validate/run/export")
-    if args.action in {"prepare", "validate", "run", "export"}:
+    if args.action in {"prepare", "validate", "run", "score", "export"}:
         if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
             raise CLIUsageError("actual evaluation must use root/workspace/mlflow")
         input_flags = {"model_version", "model_version_number", "data_version", "config",
                        "git_commit", "media_root", "data_inputs"}
-        legacy_flags = {"scope", "split", "pre_registration", "executor", "fold", "model_artifact",
+        legacy_flags = {"scope", "split", "fold", "model_artifact",
                         "data_split", "sample_count", "records", "failures", "metrics", "folds",
                         "outcome", "source_train", "prompt_version", "result_refs", "target"}
-        rejected = legacy_flags | (input_flags if args.action != "prepare" else set())
+        rejected = legacy_flags | (input_flags | {"pre_registration"} if args.action != "prepare" else set())
+        if args.action not in {"prepare", "score"}:
+            rejected |= {"executor"}
         if any(getattr(args, key) is not None for key in rejected):
             raise CLIUsageError("actual evaluation accepts frozen inputs only; configure them with eval prepare")
         from finetune.eval_run import (prepare_versioned_evaluation, verify_versioned_evaluation,
@@ -596,7 +606,12 @@ def _handle_eval(args: argparse.Namespace) -> Any:
             return {"path": prepare_versioned_evaluation(root=args.root, eval_version=args.eval_version,
                 model_version=args.model_version, model_version_number=args.model_version_number,
                 data_version=args.data_version, config=config, git_commit=args.git_commit,
-                media_root=args.media_root, inputs_path=args.data_inputs)}
+                media_root=args.media_root, inputs_path=args.data_inputs,
+                pre_registration=args.pre_registration, executor=args.executor)}
+        if args.action == "score":
+            _required(args, "executor")
+            from finetune.eval_holdout import score_holdout_evaluation
+            return {"manifest": score_holdout_evaluation(root=args.root, eval_version=args.eval_version, executor=args.executor)}
         if args.action == "validate":
             return verify_versioned_evaluation(root=args.root, eval_version=args.eval_version)
         if args.action == "export":

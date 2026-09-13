@@ -173,3 +173,20 @@ def test_holdout_eval_requires_claim_and_preregistration(
     assert not consumed.exists()
     with pytest.raises(EvalRecordNotFound):
         get_eval_run(open_eval_store(store_path), eval_id)
+
+
+@pytest.mark.parametrize("field,wrong", [("model_version", "model-v4.1-r9"), ("data_version", "data-v4.1-r9"), ("split", "different")])
+def test_claim_identity_mismatch_does_not_freeze_input(tmp_path, field, wrong):
+    root = tmp_path / "store"
+    _release(root, "data-v4.1-r3", "holdout")
+    document = {"eval_version": "eval-v4.1-r3", "model_version": "model-v4.1-r3",
+        "data_version": "data-v4.1-r3", "split": "holdout", "rules": {"metric": "score"},
+        "thresholds": {"score": 0.5}, "one_time": True, "tuning_use": "forbidden", "recovery": {"same_identity_only": True}}
+    document[field] = wrong
+    path = root / 'pre-registration.yaml'
+    path.write_text(yaml.safe_dump(document))
+    assert main(['data', 'claim', '--root', str(root), '--version', 'data-v4.1-r3',
+        '--eval-version', 'eval-v4.1-r3', '--model-version', 'model-v4.1-r3', '--split', 'holdout',
+        '--executor', 'fixture', '--pre-registration', str(path)]) == 1
+    assert not (root / 'evaluations').exists()
+    assert not (root / 'data/releases/data-v4.1-r3/authorization/claim.yaml').exists()

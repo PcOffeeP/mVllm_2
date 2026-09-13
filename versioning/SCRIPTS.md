@@ -20,7 +20,7 @@ Non-goals:
 | `data` | `data_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
 | `prompt` | `prompts.py` | 注册不可变 Prompt，并冻结/校验训练 input 副本 |
 | `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结六份数据与三折配置、真实训练调用、父子 Run、汇总与完成后导出 |
-| `eval` | `finetune/eval_run.py`、`mlflow_eval.py`、`manifest.py` | 正式validation输入冻结、Registry精确引用、实际推理与严格评分、父子Run和不可变导出；低层holdout授权记录API保留 |
+| `eval` | `finetune/eval_run.py`、`finetune/eval_holdout.py`、`mlflow_eval.py`、`manifest.py` | validation逐折评测；full媒体推理与独立授权holdout评分；精确绑定、执行记录及不可变导出 |
 | `model` | `registry.py`、`manifest.py`、`materialize.py` | `mVllm2` 两阶段 register/finalize、model manifest、唯一部署目标 gate、alias 与 `models/current` 原子物化 |
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
@@ -50,7 +50,7 @@ python -m versioning prompt verify --root <store绝对路径> \
 
 ## 三折训练准备与执行
 
-`train prepare` 显式选择一个完整 train、data 和 prompt 身份。一个 train 包含 fold0、fold1、fold2；每折使用 release 中对应的 train/validation 文件，保持成员、顺序和标签，不重新划分或增加采样。`--config` 指向调用者准备的 YAML：顶层恰好为 `fold0`、`fold1`、`fold2`，各值为该折的完整 LLaMA-Factory 训练配置。`model_name_or_path` 必须为实际存在的绝对目录，三折相同；其余超参数原样保留。准备器只绑定数据集名称、冻结数据目录、显式媒体根和该 train 的输出目录；拒绝可能绕过这些输入的 `tokenized_path`。
+`train prepare` 显式选择一个完整 train、data 和 prompt 身份。默认cross_validation范围的一个 train 包含 fold0、fold1、fold2；每折使用 release 中对应的 train/validation 文件，保持成员、顺序和标签，不重新划分或增加采样。`--config` 指向调用者准备的 YAML：顶层恰好为 `fold0`、`fold1`、`fold2`，各值为该折的完整 LLaMA-Factory 训练配置。`model_name_or_path` 必须为实际存在的绝对目录，三折相同；其余超参数原样保留。准备器只绑定数据集名称、冻结数据目录、显式媒体根和该 train 的输出目录；拒绝可能绕过这些输入的 `tokenized_path`。
 
 `--environment` 指向调用者核实的依赖版本 YAML（例如实际 Python、torch、transformers、LLaMA-Factory 版本），`--git-commit` 记录执行代码版本。版本号和配置必须由调用者明确选择；以下尖括号是必填占位符。
 
@@ -88,9 +88,9 @@ manifest 在操作时在线复验其 train/data/eval 血缘。测试中的临时
 
 ## 正式验证集测评
 
-`eval prepare / validate / run / export` 连接实际严格V4.1推理与评分器。当前支持已注册的`single_fold`（fold0）或`cross_validation`（fold0/1/2）模型，逐折使用显式data版本的完整validation划分；不新增采样。`full`与holdout的实际读取尚未接入，这四个动作在读取数据内容或加载权重前拒绝该范围。公共 CLI 的`create/fold-start/fold-end/aggregate/summary/complete/manifest`已停用并提示实际执行器；底层 Python 记录及holdout授权API保留，手动状态或历史summary不构成实际执行证据。
+`eval prepare / validate / run / export` 连接实际严格V4.1推理与评分器。当前支持已注册的`single_fold`（fold0）或`cross_validation`（fold0/1/2）模型，逐折使用显式data版本的完整validation划分；不新增采样。独立full训练来源的模型可通过下文holdout流程验收：`run`只做媒体推理，`score`才进入授权评分。公共 CLI 的`create/fold-start/fold-end/aggregate/summary/complete/manifest`已停用并提示实际执行器；底层 Python 记录及holdout授权API保留，手动状态或历史summary不构成实际执行证据。
 
-正式模型入口按用途在线校验执行证据：登记、模型 manifest 和物化均校验训练证据；staging 尚无 eval_id 时可仅据训练证据导出。finalize、已绑定 eval 的模型 manifest、alias 设置/读取和服务 current 另校验正式评测。评测门从保存的逐样本记录重新计算严格评分、汇总和结论，并复验原输入、评分实现与实际被评权重摘要；缺文件或内容漂移即拒绝。代码或冻结输入变化后须重新准备新的完整版本，不覆盖已有冻结对象。CPU 替身回归只能证明这些接线和拒绝行为，不能证明真实模型效果。
+正式模型入口按用途在线校验执行证据：登记、模型 manifest 和物化均校验训练证据；staging 尚无 eval_id 时可仅据训练证据导出。finalize、已绑定 eval 的模型 manifest、alias 设置/读取和服务 current 另校验正式评测。validation评测门从保存的逐样本记录重新计算严格评分、汇总和结论，并复验原输入、评分实现与实际被评权重摘要；holdout门核对执行器产生的aggregate证据、消费凭据、绑定及权重，不为导出或服务准入重读受限真值；缺文件或内容漂移即拒绝。代码或冻结输入变化后须重新准备新的完整版本，不覆盖已有冻结对象。CPU 替身回归只能证明这些接线和拒绝行为，不能证明真实模型效果。
 
 先由完成的train通过`model register`登记模型，取得完整model版本与数值MLflow Model Version；Registry声明必须有每折所选adapter或merged artifact；single_fold所选实际评测路径必须等于唯一deploy_target。Prompt来自该模型的训练绑定，须已位于store的`records/prompts/`。data输入使用已验证的迁移receipt，或用`--data-inputs`提供七阶段发布的原始输入。媒体根使用原实际外部媒体目录，不能把迁移来源镜像当作媒体根。
 
@@ -107,8 +107,8 @@ python -m versioning eval prepare <完整eval版本> --root <store绝对路径> 
 
 | 字段 | 取值与含义 |
 | --- | --- |
-| `scope` | `single_fold`或`cross_validation`，必须与Registry模型一致 |
-| `split` | `validation` |
+| `scope` | validation为`single_fold`或`cross_validation`；独立holdout为`full`，必须与Registry模型一致 |
+| `split` | 折评测为`validation`；full为预注册指定的独立holdout split，不能用validation |
 | `artifact_kind` | 显式选择`adapter`或`merged`，每折必须具备该artifact；single_fold须与deploy_target一致 |
 | `scorer`、`sample_selection` | 分别为`strict-v4.1`、`all` |
 | `quantization_bit` | 显式`null`或`4` |
@@ -297,3 +297,44 @@ Why: 同一Prompt身份不足以证明输入一致；固定正文相等门既会
 D002 — 恢复副本重定位MLflow活动存储地址，冻结输入与来源证据保留原文。
 Why: 异根恢复必须能在原store不可访问时读取和写入artifact；修改冻结来源会改变摘要与历史事实，因此外部基座和媒体仍按原引用单独备齐。
 -->
+
+
+## 独立全量训练
+
+在开发侧三折方案稳定并取得实际训练授权后，另选新的完整 train 版本，以 `train prepare --scope full` 准备。配置 YAML 顶层恰好为 `full`，值为调用者明确冻结的 LLaMA-Factory 配置；`--data-version` 必须是已验证的开发 release。其余必填参数、媒体根和七阶段 `--data-inputs` 规则同上。
+
+full 使用三折 train/validation 的共同开发全集，按媒体身份去重，每个候选只出现一次；同一媒体标签冲突、三折全集不一致时拒绝。保留六份来源文件，并新增 `datasets/train/full.json`；不新增采样。`eval_dataset`、验证切分、训练中评测/最佳checkpoint选择和 `max_samples` 截断均禁止，`tokenized_path`继续禁止。epoch、seed、学习率等训练日程仍由完整配置明确给出。
+
+`train validate/run/export` 从冻结输入读取范围，不再接受 `--scope`。full只调用一次实际训练适配器，父Run记录完整实际结果，不创建fold子Run；产物为 `full/adapter`，训练导出标记 `scope: full`。模型登记时显式使用 `--source-scope full --deploy-target artifacts/full/adapter`，`--artifacts` YAML须为 `full: {adapter: artifacts/full/adapter}`。只有同范围真实训练证据覆盖的权重才能登记，不能将折产物改名为full。旧三折导出字节格式保持不变。
+
+## Full 模型的独立 holdout 验收
+
+此流程不构建测试集，也不授予新使用资格。输入必须是已构建、审查、冻结且尚未使用的独立 holdout release；不得把已暴露的历史sealed-test改名使用。实际模型训练及GPU推理仍只在训练机执行。以下文件由获授权的holdout发布流程提前准备；缺失即停止，不猜测或自动生成标签。
+
+- `release.yaml`：完整data身份、`purpose: holdout`、`training_allowed: false`、active状态及准确sample_count。
+- `media/`：仅实际推理媒体，显式 `--media-root` 必须指向本目录。
+- `evaluation_inputs/manifest.json`：精确字段为 `schema_version`（`tensile-holdout-media/v1`）、`data_version`、`split`、`development_data_version`（模型训练所用开发版本）、`development_source_isolation_verified: true`、`test_split_binding_verified: true`、`samples`。每条sample仅有 `candidate_id`、`source_video`、`video_path`；candidate为媒体文件stem，source使用可核查的 `video_<数字>` 来源身份，video_path为media内相对路径。禁止混入target或其他标签字段；准备时对照训练冻结媒体来源排除source重叠，并核验数量、路径和媒体摘要。这些检查不替代发布前的人工作业与来源审查。
+- `sealed_ground_truth/labels.json`：只供授权评分读取，目录及文件均owner-only，不能有symlink；精确字段为 `schema_version`（`tensile-holdout-truth/v1`）、`data_version`、`split`、`labels`。labels是每个candidate_id到严格V4.1四字段标签的完整映射，不能缺项或多项。
+- `authorization/`：由显式 `data claim` 写入一次性身份及后续消费事实；不手工清空或覆盖。
+
+评测配置沿用上表所有字段，scope为full、split为独立验收划分、sample_selection为all；阈值必须显式提供且符合先前业务裁决。预注册YAML含完整eval/model/data身份、相同split、`one_time: true`、`tuning_use: forbidden`、`recovery: {same_identity_only: true}`。`rules`必须精确等于评测配置去掉thresholds后的mapping，`thresholds`与实际配置完全相同。先执行：
+
+```bash
+python -m versioning data claim --root <store绝对路径> --version <holdout完整data版本> \
+  --eval-version <完整eval版本> --model-version <完整full模型版本> \
+  --split <独立验收split> --executor <授权执行身份> --pre-registration <预注册.yaml>
+python -m versioning eval prepare <完整eval版本> --root <store绝对路径> \
+  --model-version <完整full模型版本> --model-version-number <Registry数值版本> \
+  --data-version <holdout完整data版本> --config <评测配置.yaml> --git-commit <代码commit> \
+  --media-root <store绝对路径>/data/releases/<holdout完整data版本>/media \
+  --executor <同一执行身份> \
+  --pre-registration <store绝对路径>/evaluations/staging/<完整eval版本>/authorization/pre_registration.yaml
+python -m versioning eval validate <完整eval版本> --root <store绝对路径>
+python -m versioning eval run <完整eval版本> --root <store绝对路径>
+python -m versioning eval score <完整eval版本> --root <store绝对路径> --executor <同一执行身份>
+python -m versioning eval export <完整eval版本> --root <store绝对路径>
+```
+
+prepare/validate/run均不读取truth文件。run用冻结媒体、模型权重与模型训练Prompt推理，完整推理后仍保持父Run running，提示执行score，不创建fold子Run。score先核验同一授权身份和推理证据，再记录真值访问、读取标签并严格评分；逐样本推理、真值快照和评分仅存于 `workspace/evaluations/<eval>/restricted/`（0700，文件0400），不会上传普通MLflow artifacts。目录权限与阶段调用控制不等于独立操作系统账户沙箱；运行环境仍须限制未授权账户读取受限目录。
+
+公开MLflow仅保存无标签input/evaluation、权重/规则绑定、summary及执行摘要；公开manifest仅引用aggregate证据。消费前先完整核验私有预测、真值快照和逐样本严格评分，将执行摘要钉扎为同一Run不可改写的评分承诺；仅有一份汇总文件不能恢复或晋级。评分落盘后承诺尚未提交的恢复也须重新授权读取原truth、对照私有快照并复验上述完整证据；私有文件自洽不能代替来源核验，既有承诺不符立即拒绝。评分后无论质量passed或failed，均先持久化consumed再提交completed。评分中断且尚未生成scoring凭据时，相同身份可用score复用完整推理，重新授权读取原truth并与已保存只读快照比对，内容冲突拒绝；已有MLflow评分承诺的完成/导出中断用同命令恢复，不重新推理、不重读原始真值；只有私有scoring文件而尚无承诺时仍需重新授权核验原truth。run不会覆盖已有推理输出；推理阶段中断而缺少完整inference凭据时必须保持失败并另行核查，不提供自动重跑。错误executor、输入/权重/预测/已冻结真值漂移及跨身份恢复均拒绝；迁移、备份和恢复不重置消费状态。

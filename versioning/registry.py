@@ -554,13 +554,21 @@ def _training_execution_snapshot(store: Any, record: Any, *, recorded_outputs: A
     prompt = parse_prompt_definition(yaml.safe_load((inputs / 'prompt.yaml').read_text()))
     if prompt.version != record.prompt_version or (inputs / 'data-version.txt').read_text().strip() != record.data_version:
         raise ValueError('execution evidence data/Prompt binding differs')
-    folds = training.get('folds', {})
-    if set(folds) != {'fold0', 'fold1', 'fold2'} or set(record.folds) != {0, 1, 2}:
+    from finetune.train_prepare_run import _training_configs, _validate_full_config
+    configs = _training_configs(training)
+    scope = training.get('scope', 'cross_validation')
+    if scope != record.scope:
+        raise ValueError('execution evidence training scope differs')
+    if scope == 'full':
+        if record.folds:
+            raise ValueError('full execution evidence must have no fold children')
+        _validate_full_config(configs['full'])
+    elif set(record.folds) != {0, 1, 2}:
         raise ValueError('execution evidence requires three actual folds')
     outputs, metrics = {}, []
-    for fold in range(3):
-        name = f'fold{fold}'
-        if record.config.get(name) != json.dumps(folds[name], ensure_ascii=False, sort_keys=True, allow_nan=False):
+    for name, config in configs.items():
+        actual_metrics = record.metrics if scope == 'full' else record.folds[int(name[-1])].metrics
+        if record.config.get(name) != json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False):
             raise ValueError('execution evidence fold configuration differs')
         output = root / name / 'adapter'
         files = _artifact_tree(output) if recorded_outputs is None else recorded_outputs[name]
@@ -582,18 +590,18 @@ def _training_execution_snapshot(store: Any, record: Any, *, recorded_outputs: A
                 raise ValueError('execution evidence adapter configuration is malformed')
             result = json.loads((output / 'train_results.json').read_bytes())
         else:
-            result = record.folds[fold].metrics
-        if result != record.folds[fold].metrics:
+            result = actual_metrics
+        if result != actual_metrics:
             raise ValueError('execution evidence actual fold metrics differ')
         metrics.append(result)
         outputs[name] = files
     common = set.intersection(*(set(item) for item in metrics))
-    summary = {f'{key}_mean': sum(item[key] for item in metrics) / 3 for key in common}
+    summary = metrics[0] if scope == 'full' else {f'{key}_mean': sum(item[key] for item in metrics) / 3 for key in common}
     if not summary or summary != record.metrics:
         raise ValueError('execution evidence actual training summary differs')
     return {'schema': 'tensile-training-execution/v1', 'run_id': record.run_id,
             'train_version': record.train_id, 'input': tree, 'outputs': outputs,
-            'fold_metrics': {f'fold{i}': result for i, result in enumerate(metrics)}}
+            'fold_metrics': dict(zip(configs, metrics))}
 
 
 def _validate_train_execution_artifacts(store: Any, record: Any, *, require_all_outputs: bool = False) -> None:
@@ -640,6 +648,8 @@ def _run_model_train_gate(store: ModelRegistryStore, model: Any) -> Any:
     if any(getattr(train, key) != getattr(model, key)
            for key in ('run_id', 'data_version', 'prompt_version', 'git_commit', 'base_model')):
         raise PromotionGateRejected('model binding differs from actual source training')
+    if (train.scope == "full") != (model.source_scope == "full"):
+        raise PromotionGateRejected("model source scope differs from actual training")
     try:
         _validate_model_artifact_evidence(store, train, model.artifacts)
     except (ValueError, OSError, KeyError, TypeError, MlflowException) as exc:
@@ -719,6 +729,8 @@ def register_model(
             raise ModelVersionConflict(f"model {model_id} 已存在")
 
         train_record = _run_train_gate(store, train_id)
+        if (train_record.scope == "full") != (source_scope == "full"):
+            raise PromotionGateRejected("model source scope differs from actual training")
         try:
             _validate_model_artifact_evidence(store, train_record, artifacts)
         except (ValueError, OSError, KeyError, TypeError, MlflowException) as exc:

@@ -118,6 +118,7 @@ class TrainRunRecord:
     config: Mapping[str, str]
     metrics: Mapping[str, float]
     folds: Mapping[int, FoldRunRecord]
+    scope: str = "cross_validation"
 
 
 def _client(store: TrainRecordStore) -> MlflowClient:
@@ -258,6 +259,8 @@ def _validate_parent_tags(
 ) -> None:
     """读取 fail-closed：校验 workflow_state/run_status 组合与 record_validity 值域。"""
     tags = run.data.tags
+    if tags.get("scope", "cross_validation") not in {"cross_validation", "full"}:
+        raise IllegalTrainRecord("invalid training scope")
     recovering = (allow_completed_running_recovery
         and tags.get(WORKFLOW_STATE_TAG) == WorkflowState.COMPLETED.value
         and run.info.status == "RUNNING")
@@ -290,8 +293,8 @@ def _build_folds(
     return {r.fold: r for r in records}
 
 
-def _build_train_record(store: TrainRecordStore, run: Any) -> TrainRunRecord:
-    _validate_parent_tags(run)
+def _build_train_record(store: TrainRecordStore, run: Any, *, allow_completed_running_recovery: bool = False) -> TrainRunRecord:
+    _validate_parent_tags(run, allow_completed_running_recovery=allow_completed_running_recovery)
     client = _client(store)
     tags = run.data.tags
     train_id = tags[TRAIN_ID_TAG]
@@ -310,6 +313,7 @@ def _build_train_record(store: TrainRecordStore, run: Any) -> TrainRunRecord:
         config=dict(run.data.params),
         metrics=dict(run.data.metrics),
         folds=_build_folds(client, store.experiment_id, run.info.run_id, train_id),
+        scope=tags.get("scope", "cross_validation"),
     )
 
 
@@ -322,6 +326,7 @@ def create_train_run(
     git_commit: str,
     base_model: str,
     config: Mapping,
+    scope: str = "cross_validation",
 ) -> TrainRunRecord:
     """创建 train-v 父 Run；创建即 running/RUNNING/valid。"""
     parse_train_id(train_id)
@@ -330,6 +335,8 @@ def create_train_run(
     _validate_non_empty_string(git_commit, "git_commit")
     _validate_non_empty_string(base_model, "base_model")
     config_str = _validate_config(config)
+    if scope not in {"cross_validation", "full"}:
+        raise IllegalTrainRecord("invalid training scope")
 
     client = _client(store)
     try:
@@ -341,6 +348,7 @@ def create_train_run(
 
     tags = {
         TRAIN_ID_TAG: train_id,
+        "scope": scope,
         WORKFLOW_STATE_TAG: WorkflowState.RUNNING.value,
         DATA_VERSION_TAG: data_version,
         PROMPT_VERSION_TAG: prompt_version,
@@ -391,6 +399,8 @@ def create_fold_run(
     client = _client(store)
     parent = _search_parent(client, store.experiment_id, train_id)
     parent_record = _build_train_record(store, parent)
+    if parent_record.scope == "full":
+        raise IllegalTrainRecord("full training does not create fold child Runs")
     if parent_record.workflow_state != WorkflowState.RUNNING.value:
         raise IllegalTrainRecord(
             f"父 Run 状态为 {parent_record.workflow_state}，无法新建 fold"
@@ -482,9 +492,25 @@ def resume_fold_run(store: TrainRecordStore, train_id: str, fold: int) -> FoldRu
 
 
 def _check_completion_gate(
-    client: MlflowClient, store: TrainRecordStore, parent_run_id: str
+    client: MlflowClient, store: TrainRecordStore, parent_run_id: str, *,
+    allow_completed_running_recovery: bool = False,
 ) -> None:
     """completed / 晋级门：全部 REQUIRED_FOLDS 子 Run FINISHED + summary_complete tag。"""
+    parent = client.get_run(parent_run_id)
+    if parent.data.tags.get("scope", "cross_validation") == "full":
+        if _search_children(client, store.experiment_id, parent_run_id):
+            raise IncompleteTrainRecord("full training must have no fold children")
+        if parent.data.tags.get(SUMMARY_COMPLETE_TAG) != "true":
+            raise IncompleteTrainRecord("missing full training summary")
+        # A full parent has no child FINISHED gate, so completion itself must
+        # require the actual executor's immutable input/output evidence.
+        from versioning.registry import _validate_train_execution_artifacts
+        try:
+            _validate_train_execution_artifacts(store, _build_train_record(store, parent,
+                allow_completed_running_recovery=allow_completed_running_recovery), require_all_outputs=True)
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            raise IncompleteTrainRecord(f"full execution evidence rejected: {exc}") from exc
+        return
     children = _search_children(client, store.experiment_id, parent_run_id)
     child_by_fold: dict[int, Any] = {}
     for child in children:
@@ -517,7 +543,7 @@ def transition_train_state(
         if run_status not in (None, "FINISHED"):
             raise IllegalStateCombination("completed 恢复只接受 FINISHED")
         _validate_parent_tags(run, allow_completed_running_recovery=True)
-        _check_completion_gate(client, store, run.info.run_id)
+        _check_completion_gate(client, store, run.info.run_id, allow_completed_running_recovery=True)
         client.set_terminated(run.info.run_id, status="FINISHED")
         return _build_train_record(store, client.get_run(run.info.run_id))
     record = _build_train_record(store, run)

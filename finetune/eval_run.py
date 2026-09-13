@@ -544,8 +544,11 @@ def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(config, Mapping) or set(config) != expected:
         raise ValueError(f"evaluation config requires exactly {sorted(expected)}")
     result = json.loads(_formal_bytes(dict(config)))
-    if result["scope"] not in ("single_fold", "cross_validation") or result["split"] != "validation":
-        raise ValueError("actual evaluation currently supports validation folds only; full/holdout execution is not connected")
+    if (result["scope"] not in ("single_fold", "cross_validation", "full")
+        or not isinstance(result["split"], str) or not result["split"].strip()
+        or (result["scope"] == "full" and result["split"] == "validation")
+        or (result["scope"] != "full" and result["split"] != "validation")):
+        raise ValueError("evaluation requires validation folds or full with an independent holdout split")
     if result["aggregation"] != "pooled":
         raise ValueError("aggregation must explicitly select pooled validation rows")
     if result["artifact_kind"] not in ("adapter", "merged"):
@@ -575,7 +578,16 @@ def _model_binding(record) -> dict[str, Any]:
 
 def _formal_input(*, root: Path, eval_version: str, model_version: str,
                   model_version_number: int, data_version: str, config: Mapping[str, Any],
-                  git_commit: str, media_root: Path, inputs_path: Path | None = None) -> dict[str, Any]:
+                  git_commit: str, media_root: Path, inputs_path: Path | None = None,
+                  pre_registration: Path | None = None, executor: str | None = None) -> dict[str, Any]:
+    if isinstance(config, Mapping) and config.get("scope") == "full":
+        from finetune.eval_holdout import build_holdout_input
+        return build_holdout_input(root=root, eval_version=eval_version, model_version=model_version,
+            model_version_number=model_version_number, data_version=data_version, config=config,
+            git_commit=git_commit, media_root=media_root, inputs_path=inputs_path,
+            pre_registration=pre_registration, executor=executor)
+    if pre_registration is not None or executor is not None:
+        raise ValueError("holdout authorization arguments require full holdout evaluation")
     from versioning.ids import parse_eval_id, parse_model_id, parse_data_id
     from versioning.data_release import load_release_metadata
     from versioning.registry import open_registry_store, validate_model_for_evaluation
@@ -691,7 +703,9 @@ def verify_versioned_evaluation(*, root: Path, eval_version: str, live: bool = T
         current = _formal_input(root=root, eval_version=eval_version,
             model_version=value["model"]["model_id"], model_version_number=value["model"]["version"],
             data_version=value["data_version"], config=value["config"], git_commit=value["git_commit"],
-            media_root=Path(value["media_root"]), inputs_path=Path(value["inputs_path"]) if value["inputs_path"] else None)
+            media_root=Path(value["media_root"]), inputs_path=Path(value["inputs_path"]) if value["inputs_path"] else None,
+            **({"pre_registration": Path(root).absolute() / "evaluations/staging" / eval_version / "authorization/pre_registration.yaml",
+                "executor": value["authorization"]["executor"]} if "authorization" in value else {}))
         if _formal_bytes(current) != payload:
             raise ValueError("frozen evaluation input or upstream content drift")
     return value
@@ -770,6 +784,9 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
         log_eval_aggregate, log_eval_summary, transition_eval_state, get_eval_run)
 
     value = verify_versioned_evaluation(root=root, eval_version=eval_version)
+    if value["config"]["scope"] == "full":
+        from finetune.eval_holdout import execute_holdout_inference
+        return execute_holdout_inference(root=root, eval_version=eval_version)
     workspace = _formal_workspace(root, eval_version)
     with (workspace / ".execution.lock").open("a+b") as lock:
         try:
@@ -867,6 +884,9 @@ def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
     artifact_root = _run_artifact_root(store, record.run_id)
     _artifact_tree(artifact_root)
     value = json.loads((artifact_root / "input/evaluation.yaml").read_bytes())
+    if value.get("schema_version") == "tensile-vlm/v4.1-holdout-evaluation":
+        from finetune.eval_holdout import validate_holdout_execution
+        return validate_holdout_execution(store=store, record=record, value=value, artifact_root=artifact_root)
     if value.get("eval_version") != record.eval_id:
         raise ValueError("execution evidence evaluation identity differs")
     if _formal_config(value["config"]) != value["config"]:

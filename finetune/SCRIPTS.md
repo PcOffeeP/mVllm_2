@@ -13,8 +13,9 @@ Non-goals:
 
 | 文件 | 作用 |
 | --- | --- |
-| `train_build_dataset.py` | 公开CLI已停用；build_versioned_datasets供新入口冻结原三折，历史构建函数保留 |
+| `train_build_dataset.py` | 公开CLI已停用；build_versioned_datasets供新入口冻结原三折或去重全量开发输入，历史构建函数保留 |
 | `train_prepare_run.py` | 公开CLI已停用；版本化prepare/verify/execute函数供新训练入口调用 |
+| `eval_holdout.py` | 新入口full媒体推理及显式score授权评分；逐样本细节仅存受限目录，公开aggregate证据 |
 | `train_with_contract.py` | 直接YAML启动CLI已停用；run_training接收新入口已冻结的内存配置 |
 | `eval_run.py` | 裸model-dir CLI已停用；版本化评测函数与严格评分器供新入口调用 |
 | `train_monitor_run.py` | 查看训练进度 |

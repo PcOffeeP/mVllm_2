@@ -74,13 +74,16 @@ def _read_json(path: Path, label: str) -> Any:
 
 
 def build_versioned_datasets(*, root: Path, data_version: str, prompt_version: str,
-                             media_root: Path, inputs_path: Path | None = None):
+                             media_root: Path, inputs_path: Path | None = None,
+                             scope: str = "cross_validation"):
     """Build six in-memory datasets without changing fold membership or labels.
 
     Media roots are explicit. Migrated numbered paths use the existing mapping;
     self-contained seven-stage releases resolve their relative media in payload.
     Only Prompt text and media addressing change; there is no resampling.
     """
+    if scope not in {"cross_validation", "full"}:
+        raise ValueError("unsupported training scope")
     from finetune.release_validate import validate_versioned_training_release
     from versioning.prompts import load_prompt
     from versioning.ids import parse_data_id, parse_prompt_id
@@ -131,7 +134,29 @@ def build_versioned_datasets(*, root: Path, data_version: str, prompt_version: s
             raise ValueError("train/validation members overlap")
     # Keep registry names and column semantics from the established release.
     from pipeline.v4_1_training_release import _registry
-    files["dataset_info.json"] = _pretty_bytes(_registry())
+    registry = _registry()
+    if scope == "full":
+        # The six source partitions remain frozen for provenance. Train each
+        # development candidate once; neither sample nor relabel the union.
+        candidates, universes = {}, []
+        for fold in range(3):
+            universe = set()
+            for split in ("train", "validation"):
+                for row in json.loads(files[f"datasets/{split}/fold_{fold}.json"]):
+                    identity = row["videos"][0]
+                    universe.add(identity)
+                    if identity in candidates and candidates[identity] != row:
+                        raise ValueError("full development candidate has conflicting labels")
+                    candidates[identity] = row
+            universes.append(universe)
+        if not candidates or any(universe != universes[0] for universe in universes):
+            raise ValueError("full training requires the same complete development universe in every fold")
+        files["datasets/train/full.json"] = _pretty_bytes([candidates[key] for key in sorted(candidates)])
+        template = dict(registry["tensile_v4_1_fold0_train"])
+        template["file_name"] = "datasets/train/full.json"
+        registry["tensile_v4_1_full_train"] = template
+        counts["full"] = {"train": len(candidates)}
+    files["dataset_info.json"] = _pretty_bytes(registry)
     return files, {"data_version": data_version, "prompt_version": prompt_version,
                    "media_root": str(media_root), "splits": counts, "media": media_inventory}
 
