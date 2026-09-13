@@ -560,6 +560,10 @@ def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
     if _formal_bytes(result["generation"]) != _formal_bytes(FORMAL_GENERATION):
         raise ValueError("generation must match the actual strict V4.1 runtime")
     thresholds = result["thresholds"]
+    if result["scope"] == "full":
+        from finetune.holdout_metrics import validate_thresholds
+        validate_thresholds(thresholds)
+        return result
     if not isinstance(thresholds, dict) or not thresholds:
         raise ValueError("explicit non-empty thresholds are required")
     for metric, value in thresholds.items():

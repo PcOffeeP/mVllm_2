@@ -10,10 +10,12 @@ from tests.test_full_training import full_model
 from tests.versioning.test_cli_holdout import _release
 from finetune import eval_run as ev
 from finetune.eval_holdout import score_holdout_evaluation
+from finetune.holdout_metrics import THRESHOLDS, FOUR_STATES, restricted_metrics, public_gates, PUBLIC_GATE_KEYS
 from versioning.cli import main
 from versioning.mlflow_eval import get_eval_run, open_eval_store
 
 LABELS = {'clip_state': '未断裂', 'fracture_mechanism': None, 'fracture_site': None, 'special_case': None}
+TARGETS = {('video_9999_clip' if i == 0 else f'video_{9999+i}_clip'): {**LABELS, 'clip_state': state} for i, state in enumerate(FOUR_STATES)}
 
 
 def prepare_holdout(tmp_path, monkeypatch, *, prepare=True):
@@ -22,19 +24,25 @@ def prepare_holdout(tmp_path, monkeypatch, *, prepare=True):
     release = root / 'data/releases/data-v4.1-r3'
     for name in ('media', 'evaluation_inputs', 'sealed_ground_truth'):
         (release / name).chmod(0o700)
-    (release / 'media/video_9999_clip.mp4').write_bytes(b'synthetic independent media')
+    metadata = release / 'release.yaml'
+    metadata.chmod(0o600)
+    meta = yaml.safe_load(metadata.read_text()); meta['sample_count'] = 4
+    meta['splits'] = {'holdout': {'train': 0, 'validation': 4}}
+    metadata.write_text(yaml.safe_dump(meta)); metadata.chmod(0o400)
+    for candidate in TARGETS:
+        (release / 'media' / (candidate + '.mp4')).write_bytes(b'synthetic independent media')
     manifest = {'schema_version': 'tensile-holdout-media/v1', 'data_version': 'data-v4.1-r3',
         'split': 'holdout', 'development_data_version': 'data-v4.1-r2',
         'development_source_isolation_verified': True, 'test_split_binding_verified': True,
-        'samples': [{'candidate_id': 'video_9999_clip', 'source_video': 'video_9999', 'video_path': 'video_9999_clip.mp4'}]}
+        'samples': [{'candidate_id': candidate, 'source_video': candidate.removesuffix('_clip'), 'video_path': candidate + '.mp4'} for candidate in TARGETS]}
     (release / 'evaluation_inputs/manifest.json').write_text(json.dumps(manifest))
     truth = release / 'sealed_ground_truth/labels.json'
     truth.write_text(json.dumps({'schema_version': 'tensile-holdout-truth/v1', 'data_version': 'data-v4.1-r3',
-        'split': 'holdout', 'labels': {'video_9999_clip': LABELS}}))
+        'split': 'holdout', 'labels': TARGETS}))
     truth.chmod(0o400)
     config = {'scope': 'full', 'split': 'holdout', 'artifact_kind': 'adapter', 'scorer': 'strict-v4.1',
         'sample_selection': 'all', 'quantization_bit': None, 'generation': ev.FORMAL_GENERATION,
-        'thresholds': {'joint_correct_rate': 1.0}, 'aggregation': 'pooled'}
+        'thresholds': dict(THRESHOLDS), 'aggregation': 'pooled'}
     pre = {'eval_version': 'eval-v4.1-r1', 'model_version': model.model_id, 'data_version': 'data-v4.1-r3',
         'split': 'holdout', 'rules': {k: v for k, v in config.items() if k != 'thresholds'},
         'thresholds': config['thresholds'], 'one_time': True, 'tuning_use': 'forbidden', 'recovery': {'same_identity_only': True}}
@@ -49,7 +57,7 @@ def prepare_holdout(tmp_path, monkeypatch, *, prepare=True):
     if prepare:
         ev.prepare_versioned_evaluation(**kwargs)
     monkeypatch.setattr(ev, 'load_model', lambda *a, **k: (object(), object()))
-    monkeypatch.setattr(ev, 'run_model_on_video_detailed', lambda *a, **k: SimpleNamespace(raw_output=json.dumps(LABELS)))
+    monkeypatch.setattr(ev, 'run_model_on_video_detailed', lambda *a, **k: SimpleNamespace(raw_output=json.dumps(TARGETS[a[2].stem])))
     return root, registry, truth, kwargs
 
 
@@ -209,8 +217,8 @@ def test_forged_scoring_receipt_cannot_skip_actual_scoring(tmp_path, monkeypatch
     receipt = {'schema_version': 'tensile-holdout-score/v1', 'run_id': inference['run_id'],
         'input_sha256': _digest(value), 'pre_registration_sha256': value['authorization']['pre_registration_sha256'],
         'inference_sha256': ev._sha256(private / 'inference.json'), 'weights': inference['weights'],
-        'summary': {'input_sha256': _digest(value), 'sample_count': 1, 'outcome': 'passed',
-            'metrics': {key: 1.0 for key in ev.FORMAL_METRICS}}}
+        'summary': {'input_sha256': _digest(value), 'sample_count': 4, 'outcome': 'passed',
+            'metrics': {key: 1.0 for key in PUBLIC_GATE_KEYS}}}
     path = private / 'scoring.json'; path.write_bytes(ev._formal_bytes(receipt)); path.chmod(0o400)
     forbid_truth(monkeypatch, truth)
     with pytest.raises(ValueError, match='ordinary'):
@@ -260,22 +268,61 @@ def test_forged_complete_private_stage_cannot_replace_authorized_truth(tmp_path,
     value = ev.verify_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
     private = ev._formal_workspace(root, 'eval-v4.1-r1') / 'restricted'
     inference = json.loads((private / 'inference.json').read_bytes())
-    prediction = json.loads((private / 'predictions.json').read_bytes())[0]
-    record = {**value['samples'][0], **prediction, 'target': LABELS, 'prediction': LABELS,
-        'strict_valid': True, 'parse_error': None, 'runtime_error': None,
-        'scores': ev.score_v4_1_prediction(LABELS, LABELS)}
-    fake_truth = {**actual, 'labels': {'video_9999_clip': LABELS}}
+    predictions = json.loads((private / 'predictions.json').read_bytes())
+    records = [{**sample, **prediction, 'target': TARGETS[sample['candidate_id']],
+        'prediction': TARGETS[sample['candidate_id']], 'strict_valid': True, 'parse_error': None,
+        'runtime_error': None, 'scores': ev.score_v4_1_prediction(TARGETS[sample['candidate_id']], TARGETS[sample['candidate_id']])}
+        for sample, prediction in zip(value['samples'], predictions, strict=True)]
+    fake_truth = {**actual, 'labels': TARGETS}
     _save(private / 'truth-access.json', {'run_id': inference['run_id'], 'input_sha256': _digest(value),
         'executor': 'synthetic', 'pre_registration_sha256': value['authorization']['pre_registration_sha256']}, private=True)
     _save(private / 'truth-snapshot.json', fake_truth, private=True)
-    _save(private / 'scored-records.json', [record], private=True)
-    metrics = ev.summarize_records([record])['metrics']
+    _save(private / 'scored-records.json', records, private=True)
+    metrics = restricted_metrics(records)
+    _save(private / 'metrics.json', metrics, private=True)
     _save(private / 'scoring.json', {'schema_version': 'tensile-holdout-score/v1', 'run_id': inference['run_id'],
         'input_sha256': _digest(value), 'pre_registration_sha256': value['authorization']['pre_registration_sha256'],
         'inference_sha256': ev._sha256(private / 'inference.json'), 'weights': inference['weights'],
-        'summary': {'input_sha256': _digest(value), 'sample_count': 1, 'outcome': 'passed',
-            'metrics': {key: metrics[key] for key in ev.FORMAL_METRICS}}}, private=True)
+        'summary': {'input_sha256': _digest(value), 'sample_count': 4, 'outcome': 'passed',
+            'metrics': public_gates(metrics, THRESHOLDS)}}, private=True)
     with pytest.raises(ValueError, match='authorized source'):
         score_holdout_evaluation(root=root, eval_version='eval-v4.1-r1', executor='synthetic')
     assert not (truth.parent.parent / 'authorization/consumed.yaml').exists()
     assert get_eval_run(open_eval_store(registry.root), 'eval-v4.1-r1').outcome is None
+
+
+def test_seven_gates_are_public_but_numeric_values_stay_private(tmp_path, monkeypatch):
+    root, registry, truth, _ = prepare_holdout(tmp_path, monkeypatch)
+    # Valid output alone is insufficient: predicting only 未断裂 fails recall/joint gates.
+    monkeypatch.setattr(ev, 'run_model_on_video_detailed', lambda *a, **k: SimpleNamespace(raw_output=json.dumps(LABELS)))
+    ev.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
+    score_holdout_evaluation(root=root, eval_version='eval-v4.1-r1', executor='synthetic')
+    record = get_eval_run(open_eval_store(registry.root), 'eval-v4.1-r1')
+    assert record.outcome == 'failed' and (truth.parent.parent / 'authorization/consumed.yaml').exists()
+    assert set(record.metrics) == PUBLIC_GATE_KEYS
+    assert record.metrics['gate_strict_valid_rate'] == 1.0
+    assert record.metrics['gate_runtime_failure_count'] == 1.0
+    assert record.metrics['gate_已断裂_recall'] == 0.0
+    workspace = ev._formal_workspace(root, 'eval-v4.1-r1')
+    private = workspace / 'restricted/metrics.json'
+    metrics = json.loads(private.read_bytes())
+    assert metrics['joint_correct_rate'] == 0.25 and metrics['four_state_macro_recall'] == 0.25
+    assert private.stat().st_mode & 0o077 == 0
+    public = json.loads((workspace / 'output/summary.json').read_bytes())
+    assert public['metrics'] == dict(record.metrics) and set(public['metrics']) == PUBLIC_GATE_KEYS
+    with monkeypatch.context() as guard:
+        forbid_truth(guard, truth)
+        ev.validate_evaluation_execution_artifacts(store=registry, record=record)
+
+
+def test_missing_holdout_class_cannot_complete_or_consume(tmp_path, monkeypatch):
+    root, registry, truth, _ = prepare_holdout(tmp_path, monkeypatch)
+    labels = json.loads(truth.read_bytes())
+    labels['labels']['video_10002_clip'] = LABELS
+    truth.chmod(0o600); truth.write_text(json.dumps(labels)); truth.chmod(0o400)
+    ev.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
+    with pytest.raises(ValueError, match='all four'):
+        score_holdout_evaluation(root=root, eval_version='eval-v4.1-r1', executor='synthetic')
+    record = get_eval_run(open_eval_store(registry.root), 'eval-v4.1-r1')
+    assert record.workflow_state == 'failed' and record.outcome is None
+    assert not (truth.parent.parent / 'authorization/consumed.yaml').exists()

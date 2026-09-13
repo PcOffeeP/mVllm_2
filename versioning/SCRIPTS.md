@@ -317,6 +317,23 @@ full 使用三折 train/validation 的共同开发全集，按媒体身份去重
 - `sealed_ground_truth/labels.json`：只供授权评分读取，目录及文件均owner-only，不能有symlink；精确字段为 `schema_version`（`tensile-holdout-truth/v1`）、`data_version`、`split`、`labels`。labels是每个candidate_id到严格V4.1四字段标签的完整映射，不能缺项或多项。
 - `authorization/`：由显式 `data claim` 写入一次性身份及后续消费事实；不手工清空或覆盖。
 
+holdout配置的字段结构沿用validation，但`thresholds`必须显式且完整提供以下原七项固定门槛，不接受通用六指标替代或缺省补齐：
+
+```yaml
+thresholds:
+  four_state_macro_recall: 0.4006
+  fracture_three_state_macro_recall: 0.3
+  joint_correct_rate: 0.3921
+  runtime_failure_count: 0
+  strict_valid_rate: 1.0
+  已断裂_recall: 0.15
+  未断裂_recall: 0.7
+```
+
+runtime_failure_count按原定义等于0，其余为下限。四状态为未断裂、临界未断裂、发生断裂、已断裂，三类断裂状态排除未断裂；缺任一状态或空记录拒绝评分。各召回先按完整原始计数计算，宏平均后才保留六位小数。joint/strict的分母为全部记录，非法输出不补字段。具体定义由`finetune/holdout_metrics.py`集中维护并纳入冻结实现摘要；validation六项通用指标保持不变。
+
+实际七项值仅写受限`restricted/metrics.json`；公开summary和MLflow的`metrics`字段只含`gate_<原指标名>`七个0/1值（1为通过），不包含实际召回或合法率。整体通过必须七门全过；下游导出/Registry只核对绑定的七门及评分承诺，不重读真值。旧full泛化配置/指标证据不能自动变成新的七门资格；不得改写旧Run或重置claim，应在明确授权和原消费边界下处理。
+
 评测配置沿用上表所有字段，scope为full、split为独立验收划分、sample_selection为all；阈值必须显式提供且符合先前业务裁决。预注册YAML含完整eval/model/data身份、相同split、`one_time: true`、`tuning_use: forbidden`、`recovery: {same_identity_only: true}`。`rules`必须精确等于评测配置去掉thresholds后的mapping，`thresholds`与实际配置完全相同。先执行：
 
 ```bash
@@ -337,4 +354,4 @@ python -m versioning eval export <完整eval版本> --root <store绝对路径>
 
 prepare/validate/run均不读取truth文件。run用冻结媒体、模型权重与模型训练Prompt推理，完整推理后仍保持父Run running，提示执行score，不创建fold子Run。score先核验同一授权身份和推理证据，再记录真值访问、读取标签并严格评分；逐样本推理、真值快照和评分仅存于 `workspace/evaluations/<eval>/restricted/`（0700，文件0400），不会上传普通MLflow artifacts。目录权限与阶段调用控制不等于独立操作系统账户沙箱；运行环境仍须限制未授权账户读取受限目录。
 
-公开MLflow仅保存无标签input/evaluation、权重/规则绑定、summary及执行摘要；公开manifest仅引用aggregate证据。消费前先完整核验私有预测、真值快照和逐样本严格评分，将执行摘要钉扎为同一Run不可改写的评分承诺；仅有一份汇总文件不能恢复或晋级。评分落盘后承诺尚未提交的恢复也须重新授权读取原truth、对照私有快照并复验上述完整证据；私有文件自洽不能代替来源核验，既有承诺不符立即拒绝。评分后无论质量passed或failed，均先持久化consumed再提交completed。评分中断且尚未生成scoring凭据时，相同身份可用score复用完整推理，重新授权读取原truth并与已保存只读快照比对，内容冲突拒绝；已有MLflow评分承诺的完成/导出中断用同命令恢复，不重新推理、不重读原始真值；只有私有scoring文件而尚无承诺时仍需重新授权核验原truth。run不会覆盖已有推理输出；推理阶段中断而缺少完整inference凭据时必须保持失败并另行核查，不提供自动重跑。错误executor、输入/权重/预测/已冻结真值漂移及跨身份恢复均拒绝；迁移、备份和恢复不重置消费状态。
+公开MLflow仅保存无标签input/evaluation、权重/规则绑定、七门通过/失败summary及执行摘要；公开manifest仅引用aggregate证据。消费前先完整核验私有预测、真值快照和逐样本严格评分，将执行摘要钉扎为同一Run不可改写的评分承诺；仅有一份汇总文件不能恢复或晋级。评分落盘后承诺尚未提交的恢复也须重新授权读取原truth、对照私有快照并复验上述完整证据；私有文件自洽不能代替来源核验，既有承诺不符立即拒绝。评分后无论质量passed或failed，均先持久化consumed再提交completed。评分中断且尚未生成scoring凭据时，相同身份可用score复用完整推理，重新授权读取原truth并与已保存只读快照比对，内容冲突拒绝；已有MLflow评分承诺的完成/导出中断用同命令恢复，不重新推理、不重读原始真值；只有私有scoring文件而尚无承诺时仍需重新授权核验原truth。run不会覆盖已有推理输出；推理阶段中断而缺少完整inference凭据时必须保持失败并另行核查，不提供自动重跑。错误executor、输入/权重/预测/已冻结真值漂移及跨身份恢复均拒绝；迁移、备份和恢复不重置消费状态。

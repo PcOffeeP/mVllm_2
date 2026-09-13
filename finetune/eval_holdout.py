@@ -8,15 +8,15 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import re
 import tempfile
 
 from finetune import eval_run as ev
+from finetune.holdout_metrics import METRIC_DEFINITIONS, restricted_metrics, public_gates, gate_outcome
 
-SOURCES = ('finetune/eval_holdout.py', 'finetune/eval_run.py', 'finetune/v4_1_runtime.py',
+SOURCES = ('finetune/holdout_metrics.py', 'finetune/eval_holdout.py', 'finetune/eval_run.py', 'finetune/v4_1_runtime.py',
     'pipeline/v4_1_labels.py', 'finetune/validation/model_runtime.py',
     'finetune/validation/constants.py', 'finetune/validation/video_loader.py',
     'pipeline/preprocessing/minicpm_preprocessor.py')
@@ -160,7 +160,7 @@ def build_holdout_input(*, root, eval_version, model_version, model_version_numb
             'manifest_sha256': ev._sha256(manifest_path), 'media': media}, 'folds': [], 'samples': samples,
         'prompt': {'version': prompt.version, 'system_prompt': prompt.system_prompt,
             'user_prompt': prompt.user_prompt, 'output_fields': list(prompt.output_fields)},
-        'contract_hash': contract['contract_hash'], 'metric_definitions': ev.FORMAL_METRICS,
+        'contract_hash': contract['contract_hash'], 'metric_definitions': METRIC_DEFINITIONS,
         'implementation_sha256': {name: ev._sha256(ev.ROOT / name) for name in SOURCES}}
 
 
@@ -307,9 +307,11 @@ def _verify_private_scoring(private, value, inference, receipt):
             'scores': ev.score_v4_1_prediction(target, parsed)})
     if _json(private / 'scored-records.json', private=True) != expected:
         raise ValueError('holdout actual per-sample scoring mismatch')
-    summary = ev.summarize_records(expected)
-    metrics = {key: summary['metrics'][key] for key in ev.FORMAL_METRICS}
-    outcome = 'passed' if all(metrics[k] >= v for k, v in value['config']['thresholds'].items()) else 'failed'
+    actual_metrics = restricted_metrics(expected)
+    if _json(private / 'metrics.json', private=True) != actual_metrics:
+        raise ValueError('holdout private metric evidence mismatch')
+    metrics = public_gates(actual_metrics, value['config']['thresholds'])
+    outcome = gate_outcome(metrics)
     if receipt['summary'] != {'sample_count': len(expected), 'metrics': metrics,
         'outcome': outcome, 'input_sha256': _digest(value)}:
         raise ValueError('holdout actual aggregate scoring mismatch')
@@ -375,9 +377,10 @@ def score_holdout_evaluation(*, root, eval_version, executor):
                     records.append({**sample, 'target': target, **prediction, 'prediction': parsed,
                         'strict_valid': parsed is not None, 'parse_error': error, 'runtime_error': None,
                         'scores': ev.score_v4_1_prediction(target, parsed)})
-                summary = ev.summarize_records(records)
-                metrics = {key: summary['metrics'][key] for key in ev.FORMAL_METRICS}
-                outcome = 'passed' if all(metrics[k] >= v for k, v in value['config']['thresholds'].items()) else 'failed'
+                actual_metrics = restricted_metrics(records)
+                metrics = public_gates(actual_metrics, value['config']['thresholds'])
+                outcome = gate_outcome(metrics)
+                _save(private / 'metrics.json', actual_metrics, private=True)
                 public = {'sample_count': len(records), 'metrics': metrics, 'outcome': outcome,
                     'input_sha256': _digest(value)}
                 _save(private / 'scored-records.json', records, private=True)
@@ -468,11 +471,10 @@ def validate_holdout_execution(*, store, record, value, artifact_root):
         or receipt['summary'] != summary or summary['sample_count'] != len(value['samples'])
         or receipt['pre_registration_sha256'] != value['authorization']['pre_registration_sha256']
         or receipt['inference_sha256'] != params.get('sha256_holdout_inference')
-        or set(summary['metrics']) != set(ev.FORMAL_METRICS)
-        or any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1 for v in summary['metrics'].values())
+        or value['metric_definitions'] != METRIC_DEFINITIONS
         or summary['metrics'] != dict(record.metrics)):
         raise ValueError('holdout aggregate execution evidence mismatch')
-    outcome = 'passed' if all(summary['metrics'][k] >= v for k, v in value['config']['thresholds'].items()) else 'failed'
+    outcome = gate_outcome(summary['metrics'])
     if record.outcome != outcome or summary['outcome'] != outcome:
         raise ValueError('holdout aggregate outcome mismatch')
     model = get_model(store, record.model_id)
