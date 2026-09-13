@@ -63,7 +63,7 @@
 | M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。full/holdout实际读取与真实注册模型成功路径未验证，保持未关闭 |
 | M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
 | M6 | 部分验收通过（store级恢复已完成，真实硬盘/大型产物待验收）：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物未验证；M8-R4 store级异根恢复已由2fce3ab1完成并通过Mac/Linux及独立局部验收，真实硬盘/大型产物与外部依赖整机恢复仍未验收（verification第33、39、41节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，verification第42节），handoff已补当前矩阵。真实环境缺口保留；未授权push/merge |
+| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。下一步M8完整Spec矩阵、源保护及Codeup main全部差异审查、交付材料。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，第42节）；第43节物理Prompt已补齐，Mac整仓2647 passed/11 skipped、exit0。最终125提交/149文件独立审查已完成且因M8-R5驳回整包；当前矩阵已更新，下一步修复冻结Prompt绑定，兼容策略待裁决。full/holdout实现与真实环境缺口分别保留；未授权push/merge |
 
 ### M0：核定范围与写入者
 
@@ -198,3 +198,13 @@ M8-R1精确测试补充：`tests/versioning/test_cli_holdout.py`随公共手工�
 2026-09-13 同轮发现并修复M8历史生成器batch口径（Codex）：已证实原H9缺world_size却输出effective_batch_size；本轮改保留per_process_accumulated_batch及推导来源，全局值未知。变更仅既有migration.py与test_migration.py，RED有效，Mac migration+CLI247项通过；代码/产物/Linux与独立结论见verification第42节，不新增训练或正式身份。
 
 2026-09-13 M8历史汇总本轮交付完成：history-summary.yaml含21条、234已知/152未知、47份轻量来源及实际权重stat，已独立验收；同轮公共生成器batch误记由d2ae4cee修复，Mac/Linux migration+CLI各247项通过，独立15项通过。证据见第42节。下一步核对物理/data下Prompt落位并做M8最终完整Spec矩阵与差异复审；真实GPU/full/holdout及硬盘/大型产物限制保留，整体迁移未完成。
+
+2026-09-13 M8最终核查进行中（Codex，代码ab5c71ae）：使用既有公开prompt create入口把已确认Git定义登记到/data/mVllm_2，核对原文字段、字节SHA和重复写入拒绝；只新增同身份Prompt文件与隔离证据。并行执行Mac整仓CPU回归与f1b7d8a3→ab5c71ae完整独立审查，更新当前Spec验收矩阵。无新增方案取舍；full/holdout实际输入未接线与真实GPU未验证须分开记载。
+
+2026-09-13 M8物理Prompt已完成（第43节）：公开create/show成功，重复create拒绝，1200字节及SHA与Git一致、9份保护文件保持。独立最终复审新增M8-R5 P2：当前concise Prompt对应合法candidate被固定服务analysis契约拒绝。先确认服务Prompt来源，再列精确接线和回归；不更改已冻结Prompt/输出/评分/alias门。该记录时最终CPU与独立完整审查进行中，最终复审结论见下条；full/holdout实现未接线、GPU与硬盘验证缺口分别保留。
+
+M8-R5补充证据：独立临时fixture中同ID当前Prompt替换为固定服务契约后，resolver指纹不变而服务错误放行。最小修复必须绑定训练/eval冻结Prompt及摘要并拒绝当前定义漂移；这项完整性门不因兼容策略选择而省略。当前未改生产代码，独立发现及后续裁决见第43节。
+
+2026-09-13 M8最终冻结代码复审完成：f1b7d8a3→ab5c71ae共125提交/149文件，独立整合11 passed/exit0及物理Prompt只读核查通过；整包驳回修改，保留M8-R5 P2，前序R1–R4/历史局部结论有效。同ID漂移拒绝属于已确认完整性要求，可先修复；仅兼容策略依赖用户裁决，不阻塞full/holdout等独立工作。
+
+2026-09-13 M8本轮收尾：Mac冻结ab5c71ae整仓2647 passed/11 skipped，452.07秒且正常exit0；skip原因单独复核为10项缺V3本机fixture、1项缺V4.1本机数据。四份交付文档及52本地链接检查完成，独立核查已保留R5两反例和整包驳回。Linux提交实物Prompt与Mac回归的轻量证据后bundle回传；原main/源产物、Mac用户未跟踪文件和stash保持。下一步同ID漂移完整性修复；服务兼容策略待用户裁决，full/holdout实际输入接线继续按依赖推进，M8不关闭。

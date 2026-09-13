@@ -998,3 +998,62 @@ reviewer独立代码专项15 passed/176 deselected，0.22秒，exit0，覆盖成
 Linux日志`pytest.log` SHA `5204aa4c2652e82d100bb2990ed50d96445a4bab60a28dbf389354a3980d2ee2`，报告`result.json`两端SHA `e4e41808446da9041c47ff9c3e2e0d05a3d82463b72352cee61bab85b57b4443`；本机副本`/private/tmp/mvllm2-history-linux.log`、`/private/tmp/mvllm2-history-linux-result.json`。代码SHA `1d883bfca9703d1a0f65f557246bc9184d1d19988e613a8f4a8390e2237370ae`；测试SHA `548c9cb2726e966458e113ce4fe287a16d99024478d8cddd2f708404bad8f8dd`，与reviewer审查一致。
 
 实际历史YAML保持已审字节及其生成时代码a14b3d0a归因；随后d2ae4cee只修复公共生成器，没有改写历史来源或产物事实。最终配套文档及Linux证据独立只读核查通过：reviewer确认实际YAML仍为已审SHA，两端报告/日志、代码SHA、247 passed/退出码、原项目及隔离tracked状态一致；TODO中的早期“正在补汇总”已改为当次审查历史时点。Linux主Agent回归不计为reviewer复跑，本次局部通过不代表M8整包通过。产物和四份轻量文档在Linux按已核对旧/新摘要提交，再通过bundle同步回Mac；同次证据提交版本由Git历史追溯。整体M8仍未通过，不据历史整理取得GPU、受限测试、push或merge授权。
+
+
+<a id="m8-final-20260913"></a>
+## 43. M8物理Prompt登记与最终完整范围复审（2026-09-13）
+
+### 范围、版本与原状态
+
+本轮承接两端任务分支`ab5c71aea61b6ed4c083379f2883f574365722a9`，仅补齐已确认当前Prompt的物理存储位置并核对最终验收；没有改动运行时代码。Codeup main重新只读核对为`f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`，完整独立审查冻结范围为这两个提交之间的125提交/149文件，包含本地main原有6个独有提交。Intent→Spec→Plan提交祖先关系及当前实施授权均已核对。
+
+训练机原项目`/home/liuyang/文档/mVllm_2`仍为干净main@f1b7d8a3；隔离项目`/home/liuyang/文档/mVllm_2-migration-7eeb93a7`为上述任务HEAD且tracked干净。写入前`/data/mVllm_2/records`及目标Prompt不存在，已有两份release与data迁移凭证存在；逐层普通路径检查通过，目标冲突即停止。
+
+### 已确认Prompt的物理落位
+
+使用既有公开CLI，从隔离checkout的已提交`records/prompts/prompt-v4.1-r1.yaml`加载定义，只向已授权根新增相同身份的1200字节文件：
+
+```sh
+PYTHONPATH=. CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+.venv-m3/bin/python -m versioning prompt create \
+  --root /data/mVllm_2 --version prompt-v4.1-r1 --protocol v4.1 \
+  --definition /home/liuyang/文档/mVllm_2-migration-7eeb93a7/records/prompts/prompt-v4.1-r1.yaml
+```
+
+实际create exit0、同root/version的`prompt show` exit0。目标`/data/mVllm_2/records/prompts/prompt-v4.1-r1.yaml`为普通文件，SHA `907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6`，与Git定义逐字节相同；system_prompt、user_prompt、output_fields三字段与原项目concise-v2逐项相等。重复同一create exit1，报`prompt 已存在`，原目标SHA不变。没有新train/model/eval身份，没有绑定新训练或制造冻结副本。
+
+原Prompt YAML/manifest、原数据活动指针、原模型current、Git定义、r1/r2 release.yaml与两份data receipt共9份文件写前写后SHA一致；原正式项目保持干净，隔离tracked干净。本轮只复算这些轻量文件，没有重扫两份release全部payload或外部媒体。两data已有各自迁移receipt；公开Prompt create没有另一个Prompt receipt schema，本次动作以命令、原新字段及摘要报告追溯，不伪造新凭证格式。
+
+Linux证据目录`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/m8-prompt-verification-20260913/`保存preflight/progress/result及三个CLI的stdout/stderr。`result.json` SHA `4641bb6dc22cf456250b3ef05b5fe4c04143734ab297959c2e5d9ac8f7059d1e`，Mac副本`/private/tmp/mvllm2-m8-prompt-result.json`摘要相同。执行脚本Mac路径`/private/tmp/mvllm2-m8-prompt.py`，同字节保存于Linux证据目录`prompt-execution.py`（SHA `b2dffb14e11f0913248850e7a2622822868dbb74d762402049adb49a0d805860`）；整个实物动作exit0，持续约1.88秒，未加载权重、使用GPU或读取受限测试结果。
+
+### 当前完整Spec验收缺口
+
+物理Prompt缺口已补齐，但不能把该文件存在等同于训练、测评或服务全链路已完成。full/holdout正式测评实际输入仍未接线，是实现缺口；GPU训练、真实模型加载/评分是独立的验证缺口，二者不能合并为“缺实机证据”。
+
+独立reviewer新增复现M8-R5（P2，服务Prompt来源未与被评冻结输入绑定）：`pipeline/server_proxy.py:447–452`要求模型注册Prompt的system/user/字段与固定service analysis契约完全相同。当前已迁移concise-v2的system/user不同，output_fields相同。在CPU临时真实prepare→三折Run及证据→注册→正式eval passed→finalize→candidate→manifest/current链路中，仅训练/推理使用进程替身，不mock证据门；合法绑定通过resolve_service_model后，server_proxy.main仍在加载器前拒绝。独立fixture位于`/private/tmp/mvllm2-final-concise-service-0bdr7oux`，该复现exit0，不是GPU或模型效果通过。
+
+同一独立fixture还复现同ID漂移错误放行：仅将临时store中当前Prompt文件替换为固定service contract内容，训练/eval冻结事实不改，resolver的binding/fingerprint保持不变，实际server_proxy.main反而调用CPU替身loader及serve并返回0；此服务反例还替换create_integrated_app与uvicorn.run，未启动真实HTTP服务，随后已恢复临时文件原字节。当前服务读取可变的同ID定义，却未与被评冻结内容绑定。因此修复还必须比较训练/eval冻结Prompt，绑定其内容摘要，并拒绝当前同ID内容漂移；仅删除固定相等门不满足修复要求。此替换只在独立临时fixture，不曾改动Git或/data正式Prompt。
+
+M8-R5阻断“当前迁移Prompt对应合格模型可服务”的验收，不能解释为Spec允许的“缺合法alias时拒绝”。推荐后续让服务analysis输入使用模型已冻结且验签的Prompt，并保留输出结构、评分、alias、审批及备份门禁；需同步核对请求识别、重试及交付契约。另一方向是保留固定服务Prompt并明确批准缩小可部署范围；这会使当前迁移Prompt对应模型仍不可部署。两者都会触及输入行为或交付范围，须先由用户确认。当前不删除相等校验、不改写不可变Prompt，也不把推荐方案记成已批准。具体任务与依赖统一见TODO M8-R5。
+
+独立reviewer已复核完整125提交/149文件范围及最终新增实物证据：跨SSH重新验证目标普通文件/1200字节/SHA与Git相同、旧源三字段一致，9份保护文件当前SHA全部匹配，两个工作区tracked clean；CLI 0/0/1与报告SHA一致。另执行最终整合专项11 passed/58 deselected，14.66秒，exit0，覆盖实际candidate→backup异根、alias字节漂移拒绝、未选fold退休、deploy artifact、固定服务fixture成功及加载中漂移；这不是当前concise服务成功。完整range diff-check通过。最终完整代码审查结论为“整包驳回修改”，唯一新增可执行finding为上述P2；R1–R4和历史局部验收继续有效，不因本次拒绝撤销。最终CPU回归已正常退出，结果与skip原因见下文。整体迁移未完成，未请求或执行push/merge。
+
+
+独立11项回归精确命令（上述相同CPU/离线环境）：`.venv/bin/python -m pytest -q tests/test_eval_run.py tests/test_serve_smoke.py -k 'actual_execution_chain or qualified_alias_rechecks or service_main_loads_only or declared_fold_evidence or evaluation_cannot_qualify' --basetemp=/private/tmp/mvllm2-final-range-review-20260913 --tb=short`。独立Agent没有另外保存日志文件，原始输出在本次reviewer工具执行记录；R5两反例由stdin临时Python命令执行，输出标记`REVIEW_REPRO`、`PROMPT_DRIFT_REPRO`，未另存脚本/日志，保留上述临时fixture。这里引用独立执行结果，不记为主Agent复跑。
+
+
+### 本机最终整仓CPU回归与文档收尾
+
+冻结代码ab5c71ae，Mac运行：
+
+```sh
+CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 .venv/bin/python -m pytest -q tests --tb=short --basetemp=/private/tmp/mvllm2-m8-final-20260913
+```
+
+实际结果 **2647 passed/11 skipped，452.07秒，exit0**。汇总打印后进程仍有终止耗时，主Agent等待到exec会话实际返回0才记录完成；后续尝试进程采样时进程已退出，没有取得可用于本次归因的堆栈，不把历史GC诊断冒充本轮采样结论。日志`/private/tmp/mvllm2-m8-final-20260913.log`，SHA `011e79fb99d89748c94d492996da8936f76d2244d4871ec9ee0ace39b4d07490`。
+
+为明确skip原因，另仅执行既有跳过项：`.venv/bin/python -m pytest -q -rs tests/test_subvideo_build_plan.py tests/test_eval_run.py::test_loads_committed_fold_validation_sets`，11 skipped/0.18秒/exit0；其中10项缺V3本机历史fixture，1项缺V4.1本机workspace数据，不能计为通过。日志`/private/tmp/mvllm2-m8-skip-reasons.log`，SHA `dd2bcd3804428e91ce9f5e6f66614dfaf5783c27086177f975aeb224631efd8d`。CPU报告`/private/tmp/mvllm2-m8-mac-regression.json`与上述两份日志复制到Linux本轮证据目录，名称分别`mac-regression.json`、`mac-pytest.log`、`mac-skip-reasons.log`；明确来源为Mac，没有在Linux重跑全仓套件。
+
+四份变更文档的52个本地链接可达，`git diff --check`通过。独立文档核查确认第43节/当前矩阵准确保留两个R5反例、CPU替身及无真实HTTP边界、Prompt实物验证和full/holdout实现缺口；旧审查时点与当前终态已区分。最终完整审查为驳回修改，并非未完成审查；任务上层继续进行中，R5兼容策略待用户确认，同ID漂移门可按既有完整性要求先修复。真实GPU、受限测试、硬盘/大型产物/外部依赖整机恢复未执行，未请求或执行push/merge。
+
+本轮仅四份证据文档变更，运行时代码保持ab5c71ae。Linux在核对原/新文档摘要、物理Prompt及9保护文件、Mac回归日志摘要、两工作区状态后原子提交；提交版本由本节相关文件Git历史追溯，再以校验bundle回传Mac。用户未跟踪agent-handoff.md及原stash必须保持；提交/同步的实际结果另由Git与证据目录docs-commit.json追溯，不把代码审查结论扩大到未经执行的后续操作。
