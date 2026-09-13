@@ -16,7 +16,7 @@ import tempfile
 from finetune import eval_run as ev
 from finetune.holdout_metrics import METRIC_DEFINITIONS, restricted_metrics, public_gates, gate_outcome
 
-SOURCES = ('finetune/holdout_metrics.py', 'finetune/eval_holdout.py', 'finetune/eval_run.py', 'finetune/v4_1_runtime.py',
+SOURCES = ('versioning/holdout_pipeline.py', 'finetune/holdout_metrics.py', 'finetune/eval_holdout.py', 'finetune/eval_run.py', 'finetune/v4_1_runtime.py',
     'pipeline/v4_1_labels.py', 'finetune/validation/model_runtime.py',
     'finetune/validation/constants.py', 'finetune/validation/video_loader.py',
     'pipeline/preprocessing/minicpm_preprocessor.py')
@@ -112,6 +112,12 @@ def build_holdout_input(*, root, eval_version, model_version, model_version_numb
     model = validate_model_for_evaluation(registry, model_version, model_version_number)
     if model.source_scope != 'full' or model.deploy_target != model.artifacts['full'].get(config['artifact_kind']):
         raise ValueError('full holdout must evaluate the full model deploy_target')
+    from versioning.holdout_pipeline import validate_public_build
+    build_sha256 = validate_public_build(release)
+    build_receipt = _json(release / 'build_receipt.json')
+    train_release = root / 'data/releases' / model.data_version / 'release.yaml'
+    if build_receipt['binding']['development_release_sha256'] != ev._sha256(_ordinary(train_release)):
+        raise ValueError('test build train release binding drifted')
     manifest_path = release / 'evaluation_inputs/manifest.json'
     manifest = _json(manifest_path)
     fields = {'schema_version', 'data_version', 'split', 'development_data_version',
@@ -156,13 +162,25 @@ def build_holdout_input(*, root, eval_version, model_version, model_version_numb
         raise ValueError('holdout generation implementation drifted')
     return {**value, 'model': ev._model_binding(model), 'git_commit': git_commit,
         'inputs_path': None, 'media_root': str(Path(media_root).absolute()),
-        'data_binding': {'release_sha256': ev._sha256(release / 'release.yaml'),
+        'data_binding': {'build_receipt_sha256': build_sha256, 'release_sha256': ev._sha256(release / 'release.yaml'),
             'manifest_sha256': ev._sha256(manifest_path), 'media': media}, 'folds': [], 'samples': samples,
         'prompt': {'version': prompt.version, 'system_prompt': prompt.system_prompt,
             'user_prompt': prompt.user_prompt, 'output_fields': list(prompt.output_fields)},
         'contract_hash': contract['contract_hash'], 'metric_definitions': METRIC_DEFINITIONS,
         'implementation_sha256': {name: ev._sha256(ev.ROOT / name) for name in SOURCES}}
 
+
+
+def _read_frozen_truth(path, value):
+    raw = _ordinary(path, private=True).read_bytes()
+    import hashlib
+    receipt_bytes = _ordinary(path.parent.parent / 'build_receipt.json').read_bytes()
+    if hashlib.sha256(receipt_bytes).hexdigest() != value['data_binding']['build_receipt_sha256']:
+        raise ValueError('test build receipt drifted before authorized scoring')
+    pin = json.loads(receipt_bytes)['inventory']['sealed_ground_truth']['labels.json']
+    if len(raw) != pin['size_bytes'] or hashlib.sha256(raw).hexdigest() != pin['sha256']:
+        raise ValueError('authorized source truth drifted from frozen build receipt')
+    return json.loads(raw)
 
 def _private(workspace):
     private = workspace / 'restricted'
@@ -357,7 +375,7 @@ def score_holdout_evaluation(*, root, eval_version, executor):
                 _save(private / 'truth-access.json', {'run_id': run.info.run_id, 'input_sha256': _digest(value),
                     'executor': executor, 'pre_registration_sha256': value['authorization']['pre_registration_sha256']}, private=True)
                 truth_path = root / 'data/releases' / value['data_version'] / 'sealed_ground_truth/labels.json'
-                truth = _json(truth_path, private=True)
+                truth = _read_frozen_truth(truth_path, value)
                 _save(private / 'truth-snapshot.json', truth, private=True)
                 if (not isinstance(truth, dict) or set(truth) != {'schema_version', 'data_version', 'split', 'labels'}
                     or truth['schema_version'] != 'tensile-holdout-truth/v1' or truth['data_version'] != value['data_version']
@@ -409,7 +427,7 @@ def score_holdout_evaluation(*, root, eval_version, executor):
                 # it with the authorized original source before establishing the
                 # one-time public scoring commitment. Consumed recovery never
                 # enters this branch.
-                if _json(source_truth, private=True) != _json(private / 'truth-snapshot.json', private=True):
+                if _read_frozen_truth(source_truth, value) != _json(private / 'truth-snapshot.json', private=True):
                     raise ValueError('holdout uncommitted truth snapshot differs from authorized source')
                 commitment = ev._sha256(receipt_path)
                 client.log_param(run.info.run_id, 'sha256_holdout_scoring', commitment)

@@ -17,7 +17,7 @@ Non-goals:
 
 | CLI 领域 | 主要模块 | 作用 |
 | --- | --- | --- |
-| `data` | `data_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
+| `data` | `data_pipeline.py`、`holdout_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
 | `prompt` | `prompts.py` | 注册不可变 Prompt，并冻结/校验训练 input 副本 |
 | `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结三折或独立全量训练输入、真实训练调用、Run、汇总与完成后导出 |
 | `eval` | `finetune/eval_run.py`、`finetune/eval_holdout.py`、`mlflow_eval.py`、`manifest.py` | validation逐折评测；full媒体推理与独立授权holdout评分；精确绑定、执行记录及不可变导出 |
@@ -129,7 +129,7 @@ python -m versioning eval prepare <完整eval版本> --root <store绝对路径> 
 `--root` 是 versioning store 根，`--inputs` 是固定全部真实输入的 YAML；两者职责不同。
 七阶段均要求 `--root`、`--inputs`、`--batch`，发布和校验另要求完整 `--version`，
 回收另要求 `--results`。`data claim` 沿用独立的 holdout 消费契约。
-真实 v4.1 构建当前发布 development；test_audit 媒体单独保留在子视频阶段，不能混入
+默认命令发布 train 数据分支（配置值 `development`）；test 数据分支使用下文独立入口，不能混入
 开发集审查与训练数据。已有两个 legacy release 的迁移使用 `migration data-*`，
 不能通过重新运行本链代替语义保持的复制迁移。
 
@@ -355,3 +355,44 @@ python -m versioning eval export <完整eval版本> --root <store绝对路径>
 prepare/validate/run均不读取truth文件。run用冻结媒体、模型权重与模型训练Prompt推理，完整推理后仍保持父Run running，提示执行score，不创建fold子Run。score先核验同一授权身份和推理证据，再记录真值访问、读取标签并严格评分；逐样本推理、真值快照和评分仅存于 `workspace/evaluations/<eval>/restricted/`（0700，文件0400），不会上传普通MLflow artifacts。目录权限与阶段调用控制不等于独立操作系统账户沙箱；运行环境仍须限制未授权账户读取受限目录。
 
 公开MLflow仅保存无标签input/evaluation、权重/规则绑定、七门通过/失败summary及执行摘要；公开manifest仅引用aggregate证据。消费前先完整核验私有预测、真值快照和逐样本严格评分，将执行摘要钉扎为同一Run不可改写的评分承诺；仅有一份汇总文件不能恢复或晋级。评分落盘后承诺尚未提交的恢复也须重新授权读取原truth、对照私有快照并复验上述完整证据；私有文件自洽不能代替来源核验，既有承诺不符立即拒绝。评分后无论质量passed或failed，均先持久化consumed再提交completed。评分中断且尚未生成scoring凭据时，相同身份可用score复用完整推理，重新授权读取原truth并与已保存只读快照比对，内容冲突拒绝；已有MLflow评分承诺的完成/导出中断用同命令恢复，不重新推理、不重读原始真值；只有私有scoring文件而尚无承诺时仍需重新授权核验原truth。run不会覆盖已有推理输出；推理阶段中断而缺少完整inference凭据时必须保持失败并另行核查，不提供自动重跑。错误executor、输入/权重/预测/已冻结真值漂移及跨身份恢复均拒绝；迁移、备份和恢复不重置消费状态。
+
+
+## test 数据分支：处理、全量人工审查与封存
+
+叙述统一使用 **train 数据分支**（三折训练/验证及全量训练）与 **test 数据分支**（最终独立测试）。现有字段及值 `development`、`holdout`、`test_audit`、`validation` 和历史身份保持不变。以下命令是执行接口，不赋予真实数据构建、测试使用或训练授权。
+
+`holdout_pipeline.py` 复用 source/ROI/子视频算法，使用独立 `STORE/data/test_working/BATCH/`，顶层及批次目录必须 owner-only；存在的宽权限目录拒绝，不自动修改。实际七阶段位于其内部 `data/working/BATCH/`。每批绑定输入与隔离配置摘要，漂移后不能继续复用。test 输入必须是独立全 test source 批次：split 的 `test` 覆盖全部声明视频，六份 fold train/val 列表显式为空；两类历史参考的 `records` 均为空，source_inventory 分别为空和全部 test source。沿用输入视频、ROI、处理器、业务契约及pin格式。
+
+另提供 `TEST_CONFIG`，JSON或YAML，字段精确为：
+
+| 字段 | 必须提供的内容 |
+| --- | --- |
+| `schema` | `tensile-data/holdout-build/v1` |
+| `batch`、`inputs_sha256` | 与 `INPUTS` 批次及原文件SHA256一致 |
+| `development_data_version`、`development_release_sha256` | 完整 train data 身份及其 release.yaml 摘要 |
+| `development_sources`、`used_test_sources` | 两份非语义来源审查清单pin，路径相对INPUTS.project_root，含path/size_bytes/sha256 |
+
+每份来源清单精确包含 `schema: tensile-data/source-isolation/v1`、`scope`（与对应配置字段同名）、`sources`（非空video_ID到原视频SHA256映射）、`reviewer_id`、含时区的`reviewed_at`、非空`reference`（审查来源说明）。train清单ID必须精确覆盖已发布`payload/metadata/training_candidates.json`的source，缺失该证据即拒绝，不推断历史对象兼容。两个清单由操作者提供已核查的完整证据；程序校验其pin、身份覆盖及新test source与两者的ID/内容摘要无交集，并拒绝新source内部重复内容，不能替代人工确认清单完整和从未用于调参。不得读取旧测试真值来填写清单。
+
+在既有变量之外，`TEST_CONFIG`为上述配置的绝对路径：
+
+```bash
+"$PYTHON" -m versioning data source --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data roi --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data subvideo --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data review_export --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+```
+
+导出包为`STORE/data/test_working/BATCH/data/working/BATCH/review_export/`，必须连同媒体和stage_manifest完整保留。test全部候选进入人工审查，包括普通未断裂；无历史标签建议，不自动准入。沿用前文`review_candidates_app.py --versioning-package`工作流；复制后的包目录及`REVIEW_OUTPUT`均须owner-only，草稿/回收文件不得进入Git或公开位置。所有决定带审查人/时间，并精确绑定每个候选及媒体。冻结得到包外`review_return.json`后，将其作为`RETURN`，文件权限仅owner可读写：
+
+```bash
+"$PYTHON" -m versioning data review_import --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --results "$RETURN"
+"$PYTHON" -m versioning data release --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --version "$VERSION"
+"$PYTHON" -m versioning data release_validate --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --version "$VERSION"
+```
+
+发布`data/releases/VERSION/`内的`media/`、无标签`evaluation_inputs/manifest.json`、owner-only `sealed_ground_truth/`（labels、审查原件、隔离清单和阶段证据）、仅通过状态的`payload/quality_report.json`以及`build_receipt.json`。发布保持`purpose: holdout`、`training_allowed: false`、`split: holdout`，不创建训练datasets。CLI只输出阶段状态和路径；受限构建凭证不上传Git或MLflow，完整数据备份须保留权限。既有`data dvc-config`仅支持train路径，test分支不自动向DVC remote发布受限数据。
+
+相同完整绑定与审查可重试；冲突拒绝，已消费authorization保留。staging恢复须核对完整inventory，rename后的根目录封存尾步只在其余文件均已封存时恢复。`release_validate`是数据管理校验，会读取当前新test真值并核对构建内容，因此真实执行仍需适用数据授权；它不执行模型测试或创建claim。
+
+最终full模型身份形成并获测试使用授权后，使用已有`data claim`及`eval prepare/run/score/export`，data版本指定上述VERSION，媒体根指定`STORE/data/releases/VERSION/media`。prepare/run验证构建凭证整体摘要、公开媒体及train版本绑定，不读取真值。授权score首次或未承诺恢复时验证真值字节与构建时pin一致；已承诺恢复不重读真值。公开input仅绑定整份构建凭证摘要，不公开裸真值摘要；既定七门及claim消费规则不变。缺构建凭证的旧对象不自动补证或重新获得测试资格。

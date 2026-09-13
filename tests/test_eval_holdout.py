@@ -18,7 +18,8 @@ LABELS = {'clip_state': '未断裂', 'fracture_mechanism': None, 'fracture_site'
 TARGETS = {('video_9999_clip' if i == 0 else f'video_{9999+i}_clip'): {**LABELS, 'clip_state': state} for i, state in enumerate(FOUR_STATES)}
 
 
-def prepare_holdout(tmp_path, monkeypatch, *, prepare=True):
+def prepare_holdout(tmp_path, monkeypatch, *, prepare=True, targets=None):
+    targets = TARGETS if targets is None else targets
     root, registry, model = full_model(tmp_path, monkeypatch)
     _release(root, 'data-v4.1-r3', 'holdout')
     release = root / 'data/releases/data-v4.1-r3'
@@ -29,17 +30,26 @@ def prepare_holdout(tmp_path, monkeypatch, *, prepare=True):
     meta = yaml.safe_load(metadata.read_text()); meta['sample_count'] = 4
     meta['splits'] = {'holdout': {'train': 0, 'validation': 4}}
     metadata.write_text(yaml.safe_dump(meta)); metadata.chmod(0o400)
-    for candidate in TARGETS:
+    for candidate in targets:
         (release / 'media' / (candidate + '.mp4')).write_bytes(b'synthetic independent media')
     manifest = {'schema_version': 'tensile-holdout-media/v1', 'data_version': 'data-v4.1-r3',
         'split': 'holdout', 'development_data_version': 'data-v4.1-r2',
         'development_source_isolation_verified': True, 'test_split_binding_verified': True,
-        'samples': [{'candidate_id': candidate, 'source_video': candidate.removesuffix('_clip'), 'video_path': candidate + '.mp4'} for candidate in TARGETS]}
+        'samples': [{'candidate_id': candidate, 'source_video': candidate.removesuffix('_clip'), 'video_path': candidate + '.mp4'} for candidate in targets]}
     (release / 'evaluation_inputs/manifest.json').write_text(json.dumps(manifest))
     truth = release / 'sealed_ground_truth/labels.json'
     truth.write_text(json.dumps({'schema_version': 'tensile-holdout-truth/v1', 'data_version': 'data-v4.1-r3',
-        'split': 'holdout', 'labels': TARGETS}))
+        'split': 'holdout', 'labels': targets}))
     truth.chmod(0o400)
+    release.chmod(0o700)
+    from versioning.holdout_pipeline import _inventory
+    (release / 'payload').mkdir(exist_ok=True)
+    (release / 'build_receipt.json').write_text(json.dumps({
+        'schema': 'tensile-data/holdout-build-receipt/v1', 'version': 'data-v4.1-r3',
+        'binding': {'development_data_version': 'data-v4.1-r2',
+                    'development_release_sha256': ev._sha256(root / 'data/releases/data-v4.1-r2/release.yaml'),
+                    'source_sha256': {r['source_video']: 'a'*64 for r in manifest['samples']}},
+        'inventory': _inventory(release)}))
     config = {'scope': 'full', 'split': 'holdout', 'artifact_kind': 'adapter', 'scorer': 'strict-v4.1',
         'sample_selection': 'all', 'quantization_bit': None, 'generation': ev.FORMAL_GENERATION,
         'thresholds': dict(THRESHOLDS), 'aggregation': 'pooled'}
@@ -57,7 +67,7 @@ def prepare_holdout(tmp_path, monkeypatch, *, prepare=True):
     if prepare:
         ev.prepare_versioned_evaluation(**kwargs)
     monkeypatch.setattr(ev, 'load_model', lambda *a, **k: (object(), object()))
-    monkeypatch.setattr(ev, 'run_model_on_video_detailed', lambda *a, **k: SimpleNamespace(raw_output=json.dumps(TARGETS[a[2].stem])))
+    monkeypatch.setattr(ev, 'run_model_on_video_detailed', lambda *a, **k: SimpleNamespace(raw_output=json.dumps(targets[a[2].stem])))
     return root, registry, truth, kwargs
 
 
@@ -94,6 +104,8 @@ def test_media_inference_then_score_and_aggregate_only_export(tmp_path, monkeypa
     for path in public.rglob('*'):
         if path.is_file():
             contents = path.read_text()
+            assert ev._sha256(truth) not in contents
+            assert 'truth_pin' not in contents
             assert 'raw_output' not in contents and '"target"' not in contents
             assert 'scored-records' not in contents and 'sealed_ground_truth' not in contents
     assert set(json.loads(manifest.read_bytes())['artifacts']) == {'summary.json', 'execution.json'}
@@ -316,13 +328,23 @@ def test_seven_gates_are_public_but_numeric_values_stay_private(tmp_path, monkey
 
 
 def test_missing_holdout_class_cannot_complete_or_consume(tmp_path, monkeypatch):
-    root, registry, truth, _ = prepare_holdout(tmp_path, monkeypatch)
-    labels = json.loads(truth.read_bytes())
-    labels['labels']['video_10002_clip'] = LABELS
-    truth.chmod(0o600); truth.write_text(json.dumps(labels)); truth.chmod(0o400)
+    root, registry, truth, _ = prepare_holdout(tmp_path, monkeypatch,
+        targets={**TARGETS, 'video_10002_clip': LABELS})
     ev.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
     with pytest.raises(ValueError, match='all four'):
         score_holdout_evaluation(root=root, eval_version='eval-v4.1-r1', executor='synthetic')
     record = get_eval_run(open_eval_store(registry.root), 'eval-v4.1-r1')
     assert record.workflow_state == 'failed' and record.outcome is None
+    assert not (truth.parent.parent / 'authorization/consumed.yaml').exists()
+
+
+def test_score_rejects_truth_changed_after_build_commitment(tmp_path, monkeypatch):
+    root, registry, truth, _ = prepare_holdout(tmp_path, monkeypatch)
+    ev.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
+    doc = json.loads(truth.read_bytes())
+    first, second = list(doc['labels'])[:2]
+    doc['labels'][first], doc['labels'][second] = doc['labels'][second], doc['labels'][first]
+    truth.chmod(0o600); truth.write_text(json.dumps(doc)); truth.chmod(0o400)
+    with pytest.raises(ValueError, match='truth drifted'):
+        score_holdout_evaluation(root=root, eval_version='eval-v4.1-r1', executor='synthetic')
     assert not (truth.parent.parent / 'authorization/consumed.yaml').exists()

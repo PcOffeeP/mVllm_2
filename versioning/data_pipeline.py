@@ -1455,8 +1455,10 @@ def _candidate_media_pin(directory: Path, value: Mapping[str, Any], *, video=Fal
     return _pin_input_file(fields, directory, 'candidate.media')
 
 
-def run_input_review_export(root: Path, *, inputs_path: Path, batch: str) -> StageResult:
+def run_input_review_export(root: Path, *, inputs_path: Path, batch: str, scope: str = 'development') -> StageResult:
     from pipeline.v4_1_review_workflow import _proposal, _is_incipient_candidate, historical_context
+    if scope not in {'development', 'test_audit'}:
+        raise StageInputError('未知审查 scope')
     inputs = load_data_inputs(inputs_path, batch=batch)
     subdir, _ = _load_input_stage(root, inputs, 'subvideo')
     sub = _stage_json(subdir, 'subvideo_manifest.json')
@@ -1464,15 +1466,19 @@ def run_input_review_export(root: Path, *, inputs_path: Path, batch: str) -> Sta
     reference_index = {r['reference_record_id']: r for r in values['development_reference']['records']}
     candidates = []
     for row in sub['candidates']:
-        if row['scope'] != 'development':
+        if row['scope'] != scope:
             continue
         proposal = _proposal(row)
         if proposal is None:
-            continue
+            if scope == 'development':
+                continue
+            from pipeline.v4_1_labels import migrate_v3_to_v4_1_labels
+            proposal = migrate_v3_to_v4_1_labels(row['candidate_v3_labels'])
         candidate = {**row, 'candidate_v4_labels': proposal,
                      'candidate_kind': 'incipient_ductile' if _is_incipient_candidate(row) else 'observed',
                      '_actual_sampled_timestamps': [r['timestamp'] for r in row['actual_frame_mapping']]}
-        labels, ids, records = historical_context(candidate, reference_index)
+        labels, ids, records = (historical_context(candidate, reference_index)
+                                if scope == 'development' else (None, [], []))
         candidate['historical_suggested_labels'] = labels
         candidate['historical_reference_ids'] = ids
         candidate['historical_records'] = records
@@ -1491,9 +1497,10 @@ def run_input_review_export(root: Path, *, inputs_path: Path, batch: str) -> Sta
         _write_json(destination / 'review_queue.json', {
             'schema': 'tensile-data/review-queue/v1', 'batch': batch,
             'inputs_sha256': inputs.config_sha256, 'candidates': candidates,
-            'candidate_inventory': [r['candidate_id'] for r in sub['candidates'] if r['scope'] == 'development']})
+            'candidate_inventory': [r['candidate_id'] for r in sub['candidates'] if r['scope'] == scope],
+            **({'purpose': 'holdout'} if scope == 'test_audit' else {})})
         return {'batch': batch, 'review_required_count': len(candidates),
-                'automatic_count': sum(r['scope'] == 'development' for r in sub['candidates']) - len(candidates)}
+                'automatic_count': sum(r['scope'] == scope for r in sub['candidates']) - len(candidates)}
 
     return _publish_input_stage(root, inputs, 'review_export', produce,
                                 {'subvideo': _sha256_file(subdir / 'stage_manifest.json')}, verify)
@@ -1744,6 +1751,8 @@ def load_input_review_package(package: Path):
     if (queue.get('schema') != 'tensile-data/review-queue/v1' or queue.get('batch') != manifest['batch']
             or queue.get('inputs_sha256') != manifest['inputs_sha256']):
         raise ReviewGateError('审查队列与包身份不一致')
+    if queue.get('purpose') == 'holdout' and package.stat().st_mode & 0o077:
+        raise ReviewGateError('test 审查包必须为 owner-only')
     candidates, references = [], {}
     ids = []
     for candidate in queue['candidates']:
@@ -1808,7 +1817,12 @@ def _write_input_review_file(path, identity, decisions, *, complete):
     payload = _input_workspace_payload(identity, decisions, complete=complete)
     if not complete:
         payload = {'schema': 'tensile-data/review-draft/v1', 'payload': payload}
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if identity['_queue'].get('purpose') == 'holdout':
+        if path.parent.exists() and path.parent.stat().st_mode & 0o077:
+            raise ReviewGateError('test 审查输出目录必须为 owner-only')
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
     with os.fdopen(os.open(path.parent / f'.{path.name}.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600), 'a+') as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         if path.exists():

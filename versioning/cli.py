@@ -128,6 +128,7 @@ def _build_parser() -> argparse.ArgumentParser:
     data.add_argument("--version", help="显式完整 data 版本")
     data.add_argument("--protocol", default="v4.1", help="release 协议标签")
     data.add_argument("--purpose", default="development", help="release 数据用途")
+    data.add_argument("--test-config", type=_explicit_path, help="test 数据分支冻结隔离配置")
     data.add_argument("--results", type=Path, help="review_import 审查结果 YAML")
     data.add_argument("--pre-registration", type=Path, help="claim 对应的预注册 YAML")
     data.add_argument("--eval-version", help="claim 绑定的完整 eval 版本")
@@ -453,6 +454,17 @@ def _handle_data(args: argparse.Namespace) -> Any:
             pre_registration_sha256=preregistration_sha256,
         )
 
+    if args.purpose == "holdout" and args.action != "claim":
+        from versioning.holdout_pipeline import run_holdout_stage
+        _required(args, "root", "inputs", "batch", "test_config")
+        if args.action in {"release", "release_validate"}:
+            _required(args, "version")
+            if parse_data_id(args.version).protocol != args.protocol:
+                raise ValueError("--protocol 与完整 data 版本不一致")
+        return run_holdout_stage(args.root, args.action, inputs_path=args.inputs,
+            batch=args.batch, config_path=args.test_config, version=args.version, results_path=args.results)
+    if args.test_config is not None:
+        raise ValueError("--test-config 必须显式使用 --purpose holdout")
     if args.action == "dvc-config":
         from versioning.data_pipeline import write_input_dvc_configuration
         _required(args, "root", "inputs", "batch", "results", "version")
