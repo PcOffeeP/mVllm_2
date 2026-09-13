@@ -554,7 +554,8 @@ def _training_execution_snapshot(store: Any, record: Any, *, recorded_outputs: A
     prompt = parse_prompt_definition(yaml.safe_load((inputs / 'prompt.yaml').read_text()))
     if prompt.version != record.prompt_version or (inputs / 'data-version.txt').read_text().strip() != record.data_version:
         raise ValueError('execution evidence data/Prompt binding differs')
-    from finetune.train_prepare_run import _training_configs, _validate_full_config
+    from finetune.train_prepare_run import (_training_configs, _validate_full_config,
+                                           _reject_unfrozen_training_inputs)
     configs = _training_configs(training)
     scope = training.get('scope', 'cross_validation')
     if scope != record.scope:
@@ -567,6 +568,7 @@ def _training_execution_snapshot(store: Any, record: Any, *, recorded_outputs: A
         raise ValueError('execution evidence requires three actual folds')
     outputs, metrics = {}, []
     for name, config in configs.items():
+        _reject_unfrozen_training_inputs(config)
         actual_metrics = record.metrics if scope == 'full' else record.folds[int(name[-1])].metrics
         if record.config.get(name) != json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False):
             raise ValueError('execution evidence fold configuration differs')

@@ -6,8 +6,17 @@ from finetune.train_with_contract import LLAMAFACTORY_SRC, ROOT
 
 
 def test_training_entrypoint_prefers_current_repository_llamafactory() -> None:
+    import subprocess
+
     assert LLAMAFACTORY_SRC == ROOT / "LlamaFactory/src"
-    assert sys.path.index(str(LLAMAFACTORY_SRC)) < sys.path.index(str(ROOT))
+    # Collection of unrelated tests may edit this process's sys.path. Import
+    # the public adapter in a fresh process to check its own path setup.
+    code = (
+        "import sys; from finetune.train_with_contract import LLAMAFACTORY_SRC, ROOT; "
+        "assert sys.path.index(str(LLAMAFACTORY_SRC)) < sys.path.index(str(ROOT))"
+    )
+    result = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
 # M4a Test List: in-memory frozen config reaches the real tuner unchanged;

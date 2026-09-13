@@ -1,6 +1,6 @@
 <!-- DOCUMENT-CONTRACT
 Purpose: 定位 versioning 的实际入口，并提供显式数据输入与人工交接的操作边界。
-Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、Prompt注册与冻结、三折训练、正式验证集测评、服务Prompt绑定及备份传输入口。
+Scope: CLI 模块索引、七阶段数据命令、输入契约、DVC 配置、审查包回收、Prompt注册与冻结、三折及独立全量训练、正式测评、服务Prompt绑定及备份传输入口。
 Must Preserve:
 - 五类完整可读身份、显式输入与 fail-closed，不引入当前版本回退。
 - 区分数据业务处理、人工决定和正式封存；不能把测试替身当真实媒体验收。
@@ -19,7 +19,7 @@ Non-goals:
 | --- | --- | --- |
 | `data` | `data_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
 | `prompt` | `prompts.py` | 注册不可变 Prompt，并冻结/校验训练 input 副本 |
-| `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结六份数据与三折配置、真实训练调用、父子 Run、汇总与完成后导出 |
+| `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结三折或独立全量训练输入、真实训练调用、Run、汇总与完成后导出 |
 | `eval` | `finetune/eval_run.py`、`finetune/eval_holdout.py`、`mlflow_eval.py`、`manifest.py` | validation逐折评测；full媒体推理与独立授权holdout评分；精确绑定、执行记录及不可变导出 |
 | `model` | `registry.py`、`manifest.py`、`materialize.py` | `mVllm2` 两阶段 register/finalize、model manifest、唯一部署目标 gate、alias 与 `models/current` 原子物化 |
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
@@ -50,7 +50,7 @@ python -m versioning prompt verify --root <store绝对路径> \
 
 ## 三折训练准备与执行
 
-`train prepare` 显式选择一个完整 train、data 和 prompt 身份。默认cross_validation范围的一个 train 包含 fold0、fold1、fold2；每折使用 release 中对应的 train/validation 文件，保持成员、顺序和标签，不重新划分或增加采样。`--config` 指向调用者准备的 YAML：顶层恰好为 `fold0`、`fold1`、`fold2`，各值为该折的完整 LLaMA-Factory 训练配置。`model_name_or_path` 必须为实际存在的绝对目录，三折相同；其余超参数原样保留。准备器只绑定数据集名称、冻结数据目录、显式媒体根和该 train 的输出目录；拒绝可能绕过这些输入的 `tokenized_path`。
+`train prepare` 显式选择一个完整 train、data 和 prompt 身份。默认cross_validation范围的一个 train 包含 fold0、fold1、fold2；每折使用 release 中对应的 train/validation 文件，保持成员、顺序和标签，不重新划分或增加采样。`--config` 指向调用者准备的 YAML：顶层恰好为 `fold0`、`fold1`、`fold2`，各值为该折的完整 LLaMA-Factory 训练配置。`model_name_or_path` 必须为实际存在的绝对目录，三折相同；允许的其余超参数原样保留。准备器只绑定数据集名称、冻结数据目录、显式媒体根和该 train 的输出目录；`tokenized_path`、`adapter_name_or_path`、`resume_from_checkpoint` 不属于已冻结输入，配置为非null时准备即拒绝。既有冻结记录含这两种外部权重参数时，validate/run及模型登记也拒绝。确需从外部adapter或checkpoint初始化时，先补相应不可变输入及完整验签能力。
 
 `--environment` 指向调用者核实的依赖版本 YAML（例如实际 Python、torch、transformers、LLaMA-Factory 版本），`--git-commit` 记录执行代码版本。版本号和配置必须由调用者明确选择；以下尖括号是必填占位符。
 
@@ -303,7 +303,7 @@ Why: 异根恢复必须能在原store不可访问时读取和写入artifact；�
 
 在开发侧三折方案稳定并取得实际训练授权后，另选新的完整 train 版本，以 `train prepare --scope full` 准备。配置 YAML 顶层恰好为 `full`，值为调用者明确冻结的 LLaMA-Factory 配置；`--data-version` 必须是已验证的开发 release。其余必填参数、媒体根和七阶段 `--data-inputs` 规则同上。
 
-full 使用三折 train/validation 的共同开发全集，按媒体身份去重，每个候选只出现一次；同一媒体标签冲突、三折全集不一致时拒绝。保留六份来源文件，并新增 `datasets/train/full.json`；不新增采样。`eval_dataset`、验证切分、训练中评测/最佳checkpoint选择和 `max_samples` 截断均禁止，`tokenized_path`继续禁止。epoch、seed、学习率等训练日程仍由完整配置明确给出。
+full 使用三折 train/validation 的共同开发全集，按媒体身份去重，每个候选只出现一次；同一媒体标签冲突、三折全集不一致时拒绝。保留六份来源文件，并新增 `datasets/train/full.json`；不新增采样。`eval_dataset`、验证切分、训练中评测/最佳checkpoint选择和 `max_samples` 截断均禁止；上述三类未冻结输入的禁用同样适用于full。epoch、seed、学习率等训练日程仍由完整配置明确给出。
 
 `train validate/run/export` 从冻结输入读取范围，不再接受 `--scope`。full只调用一次实际训练适配器，父Run记录完整实际结果，不创建fold子Run；产物为 `full/adapter`，训练导出标记 `scope: full`。模型登记时显式使用 `--source-scope full --deploy-target artifacts/full/adapter`，`--artifacts` YAML须为 `full: {adapter: artifacts/full/adapter}`。只有同范围真实训练证据覆盖的权重才能登记，不能将折产物改名为full。旧三折导出字节格式保持不变。
 

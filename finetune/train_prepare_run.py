@@ -414,6 +414,14 @@ def _validate_full_config(config: Mapping) -> None:
         raise ValueError("full training forbids evaluation, implicit validation splits and sample truncation")
 
 
+def _reject_unfrozen_training_inputs(config: Mapping) -> None:
+    # Only the base model has a frozen content inventory. External adapter and
+    # checkpoint paths would let the tuner load different bytes after prepare.
+    for key in ("adapter_name_or_path", "resume_from_checkpoint"):
+        if config.get(key) is not None:
+            raise ValueError(f"{key} is not a frozen training input")
+
+
 def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
                           prompt_version: str, media_root: Path, fold_configs: Mapping,
                           git_commit: str, environment: Mapping,
@@ -437,6 +445,10 @@ def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
     required = {"full"} if scope == "full" else {"fold0", "fold1", "fold2"}
     if not isinstance(fold_configs, Mapping) or set(fold_configs) != required:
         raise ValueError(f"explicit {sorted(required)} configs are required")
+    for source in fold_configs.values():
+        if not isinstance(source, Mapping) or not source:
+            raise ValueError("fold config must be a non-empty mapping")
+        _reject_unfrozen_training_inputs(source)
     root = Path(root).absolute()
     run = root / "workspace/runs" / train_version
     target = run / "input"
@@ -446,8 +458,6 @@ def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
         prompt_version=prompt_version, media_root=media_root, inputs_path=inputs_path, scope=scope)
     configs = {}
     for fold, source in fold_configs.items():
-        if not isinstance(source, Mapping) or not source:
-            raise ValueError("fold config must be a non-empty mapping")
         config = dict(source)
         if scope == "full":
             _validate_full_config(config)
@@ -525,6 +535,7 @@ def verify_versioned_run(*, root: Path, train_version: str, for_execution: bool 
     configs = _training_configs(training)
     scope = training.get("scope", "cross_validation")
     for fold, config in configs.items():
+        _reject_unfrozen_training_inputs(config)
         if scope == "full":
             _validate_full_config(config)
         if config.get("tokenized_path") is not None:
