@@ -65,3 +65,17 @@ def test_failed_doctor_never_reports_success(tmp_path, monkeypatch):
     monkeypatch.setattr(deploy, 'run', fake)
     assert deploy.main() == 1
     assert len(calls) == 2
+
+
+def test_ambient_uv_target_cannot_redirect_install(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, 'argv', ['deploy', '--profile', 'mac', '--env', str(tmp_path / 'new'), '--python', 'python'])
+    monkeypatch.setattr(deploy, 'preflight', lambda *a: '/python3.11')
+    for name in ('UV_CONFIG_FILE', 'UV_PROJECT', 'UV_WORKING_DIRECTORY', 'UV_TARGET', 'PIP_TARGET', 'PYTHONPATH', 'PYTHONHOME'):
+        monkeypatch.setenv(name, '/existing/environment')
+    calls = []
+    monkeypatch.setattr(deploy, 'run', lambda args, **kwargs: calls.append((args, kwargs)))
+    assert deploy.main() == 0
+    assert calls[0][0][:3] == ['uv', '--no-config', 'sync']
+    env = calls[0][1]['env']
+    assert not any(k in env for k in ('UV_CONFIG_FILE', 'UV_PROJECT', 'UV_WORKING_DIRECTORY', 'UV_TARGET', 'PIP_TARGET', 'PYTHONPATH', 'PYTHONHOME'))
+    assert calls[1][0][1] == '-I'

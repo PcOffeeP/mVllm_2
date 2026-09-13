@@ -5,6 +5,7 @@ import argparse
 import importlib
 import importlib.metadata as metadata
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,6 +18,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', choices=('mac', 'linux-gpu'), required=True)
     args = parser.parse_args()
+    clean_env = {k: v for k, v in os.environ.items()
+                 if not k.startswith(('UV_', 'PIP_', 'PYTHON')) and k != 'VIRTUAL_ENV'}
+    # Re-exec standalone checks in isolated Python mode before importing project packages.
+    if not sys.flags.isolated:
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith(('UV_', 'PIP_', 'PYTHON')) and k != 'VIRTUAL_ENV'}
+        os.execve(sys.executable, [sys.executable, '-I', str(Path(__file__).resolve()),
+                                 '--profile', args.profile], env)
     errors, versions = [], {}
     if sys.version_info[:2] != (3, 11):
         errors.append('Python 3.11 required')
@@ -32,10 +41,10 @@ def main():
         except Exception as exc:
             errors.append(f'{name}: {type(exc).__name__}: {exc}')
     if shutil.which('uv'):
-        result = subprocess.run(['uv', 'pip', 'check', '--python', sys.executable], capture_output=True, text=True)
+        result = subprocess.run(['uv', '--no-config', 'pip', 'check', '--python', sys.executable], capture_output=True, text=True, env=clean_env)
         if result.returncode:
             errors.append(result.stdout + result.stderr)
-    result = subprocess.run([sys.executable, '-m', 'versioning', '--help'], cwd=ROOT, capture_output=True, text=True)
+    result = subprocess.run([sys.executable, '-I', '-c', 'import sys,runpy; sys.path.insert(0, ' + repr(str(ROOT)) + '); sys.argv=["versioning","--help"]; runpy.run_module("versioning",run_name="__main__")'], cwd=ROOT, capture_output=True, text=True, env=clean_env)
     if result.returncode:
         errors.append('versioning CLI: ' + result.stderr)
     if args.profile == 'linux-gpu':

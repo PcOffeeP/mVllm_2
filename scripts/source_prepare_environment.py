@@ -58,16 +58,17 @@ def main():
     args = parser.parse_args()
     try:
         python = preflight(args.profile, args.env, args.python)
-        env = dict(os.environ, UV_PYTHON_DOWNLOADS='never')
-        # Prevent external activation/uv settings from targeting a different environment.
-        env.pop('VIRTUAL_ENV', None)
-        env['UV_PROJECT_ENVIRONMENT'] = str(args.env)
+        # uv's pip.target/config can override --python and mutate another environment.
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith(('UV_', 'PIP_', 'PYTHON')) and k != 'VIRTUAL_ENV'}
+        env.update(UV_PYTHON_DOWNLOADS='never', PYTHONNOUSERSITE='1',
+                   UV_PROJECT_ENVIRONMENT=str(args.env))
         if args.profile == 'mac':
-            run(['uv', 'sync', '--locked', '--python', python], cwd=ROOT, env=env)
+            run(['uv', '--no-config', 'sync', '--locked', '--python', python], cwd=ROOT, env=env)
         else:
-            run(['uv', 'venv', '--python', python, args.env], cwd=ROOT, env=env)
-            run(['uv', 'pip', 'sync', '--python', args.env / 'bin/python', 'requirements-linux-gpu.lock'], cwd=ROOT, env=env)
-        run([args.env / 'bin/python', ROOT / 'scripts/source_validate_environment.py', '--profile', args.profile], cwd=ROOT, env=env)
+            run(['uv', '--no-config', 'venv', '--python', python, args.env], cwd=ROOT, env=env)
+            run(['uv', '--no-config', 'pip', 'sync', '--python', args.env / 'bin/python', 'requirements-linux-gpu.lock'], cwd=ROOT, env=env)
+        run([args.env / 'bin/python', '-I', ROOT / 'scripts/source_validate_environment.py', '--profile', args.profile], cwd=ROOT, env=env)
     except (ValueError, subprocess.CalledProcessError, OSError) as exc:
         print(f'deployment failed: {exc}\nAny partially created environment is retained; no existing environment was selected for update.', file=sys.stderr)
         return 1
