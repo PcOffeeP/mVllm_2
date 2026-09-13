@@ -8,11 +8,11 @@
 
 ## 下一步与执行顺序
 
-**M8 整包代码差异审查已通过，范围冻结于 `f1b7d8a3→d9ec1227`（140提交/152文件）；不重做已完成修复与整包审查。当前收口四份交付文档的独立核查，并按模型主线依赖整理真实环境前置。**
+**M8 整包代码差异审查已通过，范围冻结于 `f1b7d8a3→d9ec1227`（140提交/152文件）；不重做已完成修复与整包审查。四份交付文档独立核查已闭环；HOLDOUT-METRICS也已完成七门接线、双机合成验证及局部独立代码审查，当前按模型主线依赖准备真实环境前置。**
 
 2026-09-13 当前维护（Codex）：本机及Linux隔离分支执行前均为干净`f76d0f4a`，正式项目与Codeup main仍为`f1b7d8a3`。第47节的Mac整仓2694 passed/11 skipped、实际exit0，Linux179项及顺序1项各exit0均为前轮运行；本轮独立reviewer逐件核验原日志、SHA、七保护文件及同步回执通过，没有重跑或将CPU结果当模型效果。四文档首轮发现两项P3：后续任务沿用已退役CLI、当前动作残留R6/R7旧失败；本轮修正文案后局部复核通过（含新增只读证据），最终结论见[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)。M8及真实环境缺口仍未关闭，未请求merge/push。
 
-本轮推进HOLDOUT-BUILD来源/入口预检与MODEL-DIAG开发记录复算：新source尚未指定，新体系release集合仅见r1/r2；未创建或授权测试集。新增HOLDOUT-METRICS前置：当前配置不能表达已冻结七指标，需确认接口扩展范围。历史visual开发集1216条已在Linux按现行严格解析器重新评分、各折原摘要一致；concise原始记录仍缺，visual三折merged路径均断链。详见第48节及[轻量证据](results/model-diagnostics-preflight-20260913.json)。只复算历史开发输出，不是新推理或模型质量通过。
+本轮推进HOLDOUT-BUILD来源/入口预检与MODEL-DIAG开发记录复算：新source尚未指定，新体系release集合仅见r1/r2；未创建或授权测试集。新增HOLDOUT-METRICS前置：基线配置不能表达已冻结七指标；用户已确认按原门槛补齐，Spec55b3f4d4/Plan061d2598单独提交，代码f1be1060已完成本轮双机验证和局部独立代码审查（第49节）。历史visual开发集1216条已在Linux按现行严格解析器重新评分、各折原摘要一致；concise原始记录仍缺，visual三折merged路径均断链。详见第48节及[轻量证据](results/model-diagnostics-preflight-20260913.json)。只复算历史开发输出，不是新推理或模型质量通过。
 
 **模型验收下一项先执行 HOLDOUT-BUILD：构建并授权一个未使用的 holdout 测试集，作为最终模型独立验收的前置，同时继续 MODEL-DIAG。** TEST-POLICY 已关闭（选定新建未使用 holdout、现有 sealed-test 不复测不调参）；历史问题 REL-VERIFY、CONTRACT-HASH 已关闭，不再重复安排首跑或契约找回。
 
@@ -22,8 +22,8 @@
 
 | 顺序/定位 | 固定标识 | 任务 | 状态 | 依赖或触发条件 |
 | --- | --- | --- | --- | --- |
-| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用 holdout 测试集 | 阻塞 | 新source与人工审查未就绪；HOLDOUT-METRICS及正式构建入口前置未完成 |
-| 评分接线前置 | HOLDOUT-METRICS | 冻结七项holdout门槛接线 | 待确认 | 先确认公共配置扩展，不能删减原指标 |
+| 独立验收前置 | HOLDOUT-BUILD | 构建并授权未使用 holdout 测试集 | 阻塞 | 新source与人工审查未就绪；正式构建入口待接通，HOLDOUT-METRICS代码前置已完成 |
+| 评分接线前置 | HOLDOUT-METRICS | 冻结七项holdout门槛接线 | 已解决（本轮代码/CPU范围） | f1be1060；真实holdout验收仍归HOLDOUT-BUILD/MODEL-QUALITY |
 | 主要技术工作 | MODEL-DIAG | 诊断并改善三折类别坍缩与契约退化 | 进行中（Codex；只读准备） | 历史开发记录可复算；concise原件缺失及visual断链阻塞推理对照 |
 | 清理前置 | MODEL-ARCHIVE | 中间模型证据归档与权重清理准备 | 进行中（主 Agent） | MODEL-DIAG 权重依赖、完整证据备份、显式删除授权 |
 | 发布前配套 | RELEASE-POINTER | 原旧指针维护目标适用性 | 待确认 | 新体系已显式选版本；待用户裁决原目标，不恢复旧写入 |
@@ -48,7 +48,7 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ### HOLDOUT-BUILD — 构建并授权未使用 holdout 测试集
 
-- **状态/来源**：阻塞（Codex已完成本轮只读前置核查；解除条件为指定新source、完成审查并补齐正式构建入口及HOLDOUT-METRICS）；由 TEST-POLICY 关闭时拆出，作为 FINAL-TRAIN / MODEL-QUALITY 的前置。目标是构建一个未参与开发/调参的 holdout 测试集，用于最终候选模型的独立验收。
+- **状态/来源**：阻塞（Codex已完成本轮只读前置核查；解除条件为指定新source、完成审查并补齐正式构建入口；HOLDOUT-METRICS代码前置已完成）；由 TEST-POLICY 关闭时拆出，作为 FINAL-TRAIN / MODEL-QUALITY 的前置。目标是构建一个未参与开发/调参的 holdout 测试集，用于最终候选模型的独立验收。
 - **事实与差距**：现有唯一 sealed-test `v4.1-sealed-test-5546b8bf1ec3` 已暴露且一次性，不复测不调参；本地与训练机均无未使用 holdout。需要一个新的、未使用的 holdout 测试集及其对应授权链路。
 - **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。
 - **人工审查**：对候选样本执行有效视图/剪裁人工审查（对应 `review_*` 流程），核对批次与 source 分层，形成冻结的 review batch 后再生成 release。
@@ -61,11 +61,11 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 
 ### HOLDOUT-METRICS — 已冻结七项holdout门槛与正式评分入口衔接
 
-- **状态/来源**：待确认（Codex）；HOLDOUT-BUILD本轮准备发现，阻塞实际独立验收配置。不是改变TEST-POLICY阈值的授权。
-- **事实与差距**：`finetune/eval_run.py::_formal_config`仅接受六项通用正确率，holdout共用此配置与最小值比较。七项既定门槛中仅`joint_correct_rate`可原名表达；宏召回、两类召回、runtime失败数及strict合法率均不能原样输入。纯配置反例拒绝七项、单joint控制通过，未访问数据/Registry。
-- **下一动作/依赖**：确认扩展holdout公共配置及证据校验，逐项复用原指标定义、阈值与比较方向（runtime失败数为上限0），保持validation口径；确认后先更新适用Spec/Plan及精确文件集，再实现聚合/恢复/准入一致校验。不自动重命名或遗漏门槛，也不把全部指标当下限。
+- **状态/来源**：已解决（Codex，本轮代码/CPU范围，f1be1060）；HOLDOUT-BUILD本轮准备发现，用户已明确“确认，按原七项门槛补齐”，Spec55b3f4d4/Plan061d2598已单独提交。保持TEST-POLICY原定义和阈值，validation不变。
+- **发现时基线事实（第48节，修复前）**：`finetune/eval_run.py::_formal_config`当时仅接受六项通用正确率，holdout共用此配置与最小值比较。七项既定门槛中仅`joint_correct_rate`可原名表达；宏召回、两类召回、runtime失败数及strict合法率均不能原样输入。纯配置反例拒绝七项、单joint控制通过，未访问数据/Registry。
+- **下一动作/依赖**：已接入七门完整配置、私有数值指标及公开二值gate，Mac两进程614 passed/1 skipped、Linux首组加拆组167/240合计614 passed/1 skipped，实际各exit0，独立93项及篡改/Registry探针通过。Linux原合并组文件句柄耗尽exit1保留，不声称单进程通过。原f04ca7cb定义核对：runtime失败数等于0，其余为下限，缺四状态拒绝；原函数200组合成差分一致。不自动重命名或遗漏门槛，也不把全部指标当下限。
 - **验收标准**：七项可冻结并与预注册精确一致，原输出重算可追溯；缺类、非法输出、runtime失败、边界值、恢复及下游准入均按原规则决定，不消费真实测试集来验代码。
-- **证据/限制**：[第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)、轻量JSON的`threshold_probe`；当前仅已证实能力缺口，未改变评分接口。既有整包代码审查结论保留其冻结范围，不把它外推为七项业务门槛已接通。
+- **证据/限制**：[第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)、轻量JSON的`threshold_probe`；第48节保留缺口发现快照；本轮已按确认实施，最终验证与代码版本见第49节。既有整包代码审查保留原冻结范围，新增变更另行验收。
 
 ### MODEL-DIAG — 诊断并改善三折类别坍缩与契约退化
 
@@ -133,7 +133,7 @@ MODEL-QUALITY 是总目标，不重复开实验，也不要求先通过最终独
 - **规划发现与修复（历史）**：M3已替换最小数据链，M4已接入三折及独立full执行器；当前证据以第47–48节为准，不将早期“待M4”规划作为当前动作。
 - **现场证据**：2026-09-07 网络恢复后只读调查成功；当时远端干净 `main@f1b7d8a3`，origin 为 Codeup。两个 release、三个 Prompt registry 目录、八个 run、五个历史归档目录和一个发布模型目录可见；六组 run 有 adapter，两个 concise run 仅见准备资料；concise-cv 预期路径不存在，`/data/mVllm_2` 尚未建立。完整观察及扫描边界见[调查记录](results/version-control-migration-20260907.md)，提交 `821e5953`。未验证权重哈希、加载、数据完整性或历史原始记录完整性，尚未分配新正式身份；无远端写入。
 - **已证实事实与差距**：M0 证据已提交，训练机 payload 完整 hash 已验证，`/data/mVllm_2` 已只读验证可写。M1a 本地 Prompt/Data 迁移核心已完成并通过 review；M1b H1–H12 与统一 migration CLI 已完成。M2 以完整 bundle 建立隔离 checkout，再以 SHA-256 一致且 `git bundle verify` 通过的增量 bundle 更新到修复提交 `c4b53d08`；原有训练机 `main@f1b7d8a3` 始终干净。项目级 Python 3.11.16 环境锁定 DVC 3.67.1、MLflow 3.15.2、pandas 3.0.3 等关键版本。首轮 Linux 236 passed / 1 failed 暴露 inode 复用竞态；最小修复和独立 reviewer 三轮闭环 2 个 P2 与 1 个 P3 后，训练机 CLI+migration **241 passed**。跨进程锁、只读权限、DVC push-delete-pull、MLflow/SQLite artifact 联合恢复均通过；H9 四个真实 run 与 H11 的 1 model + 5 eval 只读成功路径通过。`/data/mVllm_2/dvc-remote`、`/data/mVllm_2/mlflow` 仍不存在且本轮未创建；截至M2完成时，真实移动硬盘恢复、正式store与真实迁移写入未执行；M3本轮已完成两份data复制，见下方最新证据。legacy `pipeline/`、`finetune/` 仍按旧规则运行。
-- **下一动作/依赖**：M3真实数据链及M4–M7限定接线/退役、M8-R1至R7代码与CPU验收已完成，证据见第24–47节；当前完成四文档独立核查，按HOLDOUT-BUILD/HOLDOUT-METRICS及MODEL-DIAG前置准备真实环境验收。M4/M5真实GPU成功路径、真实硬盘/大型产物及外部依赖整机恢复继续未验收。历史full/holdout第45节及整包第47节不重做；本次没有实际训练/受限测试使用或push/merge授权。
+- **下一动作/依赖**：M3真实数据链及M4–M7限定接线/退役、M8-R1至R7代码与CPU验收已完成，证据见第24–47节；四文档独立核查已完成；HOLDOUT-METRICS代码f1be1060及双机合成验收完成，按HOLDOUT-BUILD及MODEL-DIAG前置准备真实环境验收。M4/M5真实GPU成功路径、真实硬盘/大型产物及外部依赖整机恢复继续未验收。历史full/holdout第45节及整包第47节不重做；本次没有实际训练/受限测试使用或push/merge授权。
 - **验收标准**：按已确认 Spec 核对两个数据版本及一版 Prompt 的内容保持、历史关联可查询、所有活动入口接管、单写与恢复不丢事实、训练机真实环境证据、文档及独立审查。Codeup 为发布依据，最终交付覆盖相对 Codeup main 的完整差异。
 - **证据/限制**：[验证记录](results/version-control-migration/verification.md)第12–24节及[执行单](results/version-control-migration/handoff.md)。M3h本机完整1768 passed/exit0，各切片独立审查通过；真实媒体对照2份ROI、34份子视频、211张帧字节一致。正式r1/r2共20个声明payload与原源SHA一致、有效receipt、只读封存、r1拒绝/r2允许元数据新引用门，独立reviewer复验通过，训练机证据提交bf3d4ca。r1/r2共9421/11986个外部视频/帧引用在原workspace/data映射后全部可达，新store不自包含。Mac真实界面23完成/0待审，回收与训练机导入及257文件封存校验通过独立复核；新视觉审批0次，复用依据用户确认记录。M3已完成，完整回归与实机最终校验见第23–24节。未执行真实训练/GPU/完整评测、未改旧指针或正式main；M4–M7后续证据见第25–38节，M8进行中，M4/M5真实环境缺口保留。
 

@@ -1271,3 +1271,58 @@ Mac将四份轻量台账/Plan/verification/handoff提交为`c3685578923a46ab078f
 ### 本批最终独立结论
 
 独立reviewer对四文档修订、第48节和新增轻量JSON局部复核通过，无剩余可执行文档问题；两项P3及过程中两处状态残留已关闭。六段程序/原stdout/JSON/SHA一致；独立在Mac重跑纯配置探针、Linux重算历史1216条开发记录及readlink，均实际exit0且stdout SHA与原件完全一致。64个文件链接及diff-check通过。本结论覆盖指标实施前的准备快照，不包括后续七指标代码。用户随后明确回复“确认，按原七项门槛补齐”；该确认将由下一批Spec/Plan承接，准备记录的待确认描述保留为当时事实。
+
+
+<a id="holdout-metrics-20260913"></a>
+## 49. 七项冻结holdout门槛接线（2026-09-13）
+
+用户明确确认按原七项门槛补齐，Spec55b3f4d4和Plan061d2598已分别单独提交。定义从冻结准备对应的Git代码`f04ca7cb:finetune/v4_1_stage_d_runtime.py`读取；没有打开其受限运行结果。原函数_recall/restricted_metrics/build_gate_reports规定四状态覆盖、先原计数再宏平均/六位小数、runtime等于0及其余下限；THRESHOLDS与准备manifest七项逐项相同。
+
+新增finetune/holdout_metrics.py集中配置及指标定义，full配置严格要求七键和固定阈值，validation六通用指标不变；holdout prepare将该模块纳入冻结实现SHA，评分与未提交恢复从完整私有记录重算并核对restricted/metrics.json。普通summary及MLflow metrics仅保存七个gate_<原名>二值，不公开实际召回/正确率；完成恢复和Registry准入核对同一摘要承诺、完整七门与结果，不重读原truth。旧泛化full配置缺少七门时拒绝，历史事实和claim不改写。
+
+原定义差分：Mac仅提取历史两纯函数，随机seed3411的200组合成四状态记录逐项比较，7值全部一致；原源码SHA `931fb805c888a2840a59c5af489d658c3528f3e67a966f1c9373f0cc556f5896`。程序与stdout为`/private/tmp/mvllm2-next-20260913/metrics_oracle.py`、`metrics-oracle.json`。新增单位边界28项通过；原holdout16项在四状态fixture下通过，这两次为阶段证据，最终组合运行及实际进程退出见下文。独立审查及Mac广回归正在执行；Linux待代码提交后按既有授权同步隔离工作区。
+
+Linux后续精确输出目录预登记：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/holdout-metrics-verification-20260913/`，只读预检不存在；七保护文件与第47节相同，正式main仍f1b7d8a3、隔离f76d0f4a且tracked干净。待本机代码原子提交后，仅按既有授权向隔离任务分支传递增量Git对象与CPU验证程序，预计两组数分钟、使用既有.venv-m3及依赖目录、禁用CUDA/网络模型下载；不写正式项目或正式产物。
+
+
+### 本机与独立验证进度
+
+代码/两份入口说明已原子提交`f1be1060207930bb58a9b43239a7f2efdc125ed8`，七文件SHA与Mac runner及独立审查冻结字节相同。Mac第一组训练/full/holdout/配置与claim相关回归207 passed/1 skipped、pytest65.65秒、实际exit0，外层70.946秒；skip为既有本机V4.1数据缺失。第二组Registry/MLflow/service广回归继续运行，不能将第一组代替最终联合结论。
+
+独立reviewer局部代码/两入口说明通过，无可执行finding。其CPU回归93 passed/1 skipped、57.41秒、实际exit0，原函数200组差分全一致。额外探针先用路径别名被已有symlink门拒绝，改用/private/tmp实际路径后：私有metrics在评分承诺前被篡改，恢复报`holdout private metric evidence mismatch`且不consumed；仅还原自建fixture原字节后同Run正常完成。消费后禁止truth读取，Registry实际_run_eval_gate正常通过；向合成MLflow写gate_joint_correct_rate=0.9后准入拒绝，consumed字节不变。该探针为独立执行，主Agent不冒充复跑。
+
+### 隔离同步与Linux复验启动
+
+增量bundle（基线f76d0f4a，4提交/13文件）SHA `1a9a7fad7d468a8f7860d1802154d93e1e6fddf5cc022abb6e482b7f65748fd6`，含已独立核查的文档准备、已确认Spec/Plan及七文件代码。同步首次尝试用分支名fetch失败（exit128），bundle只导出HEAD；随后的runner因代码文件未到位在收集SHA阶段退出1，未执行pytest。核对`git bundle list-heads`后改为显式HEAD引用，再次验证保护文件、bundle SHA、0/4独有提交及精确13文件，只快进隔离任务分支至f1be1060，实际同步exit0。未覆盖代码、未修改远端配置或正式main；首次错误保留为编排错误，不当作代码测试失败或通过。
+
+Linux从既有.venv-m3启动两组新CPU进程，使用原m5隔离依赖路径，CUDA不可见、OMP4及离线。七份代码摘要在启动前均与f1be1060匹配。运行目录内`linux-run.py`保存精确命令、实际subprocess退出码及日志SHA，结果待完成后追加。
+
+
+Mac最终两进程均正常退出：第一组207 passed/1 skipped、65.65秒（外层70.946秒），第二组407 passed、292.47秒（外层325.118秒），合计614 passed/1 skipped、各exit0。第二组先打印摘要后仍有退出长尾，最终runner已取得subprocess.returncode=0。Mac证据目录`/private/tmp/mvllm2-holdout-metrics-20260913/`，group1.log SHA `d5446e28e14dae81d51e599b7f361650712a9cca2c065491c491f521c08b0cc2`，group2.log SHA `d8d0d035d6c32769943020f0084966444fbd32195e8cca4eebfbe252f130e9d3`；result.json保存精确命令、机器与七文件SHA，测试后七文件与代码f1be1060字节一致。runner启动基线为061d2598工作树，随后原子提交为f1be1060，运行期间实现未变化，不把基线提交冒充含有新代码。
+
+独立93项回归和有效对抗探针只有reviewer工具调用原始回执，没有生成磁盘日志/脚本，故没有独立原日志SHA；不事后重建为原字节日志。原函数差分脚本及主Agent结果文件可存档，分别SHA `f46ec26416da4af98d7115a4ce1168151e583b99c12452e605b28f01367265fb`、`6352f9a847044ada3e52adf8b0073bb2b46a4ff1330d34d22c9a5c69c4ab687a`。独立者复用脚本得到相同200组结论，其输出仍仅在工具回执中；后续有效探针exit0，fixture为`/private/tmp/mvllm2-metrics-adversarial-we60zuw0`。这些证据来源限制不替代主Agent正式runner原件。
+
+最终扩大到本批7份文档的文件链接检查发现finetune/SCRIPTS.md既有archive/README.md链接不可达，当前工作树不存在finetune/archive。已将这一历史提示改为从Git历史查询；全部表格中的当前Python文件均存在。该修改仅影响文案，不改变f1be1060运行代码或任何评分语义，独立最终文档核查另覆盖。
+
+Linux第一组207 passed/1 skipped、92.20秒，实际exit0。第二组单进程发生Errno24 Too many open files并在pytest收尾退出1，没有完整成功摘要；原group2.log与result.json保留，不计通过。已拆出registry-service与mlflow-eval两个独立CPU进程，各独立basetemp/日志、OMP4并禁用CUDA，保持代码和系统限额，重验失败组的原407项；不重复首组207项。拆组解决的是本次测试进程资源累积，不宣称修复依赖库缓存或完成Linux单进程全套验证。
+
+
+### Linux最终结果、证据存档与验收边界
+
+同一代码f1be1060在Linux拆组复验正常退出：Registry/service 167 passed、183.42秒，MLflow eval 240 passed、190.89秒，各actual exit0；加首组207 passed/1 skipped，最终覆盖原614项通过/1项skip。原合并组exit1因文件句柄耗尽，保留为进程资源限制，不抹去或改报成功；不声称Linux单进程整套通过。Registry/service另有既有AnyIO BlockingPortal弃用warning，未更改依赖或系统限额。
+
+- `registry-service`：外层198.249秒，exit0，log SHA `74807cf7a1830d14aa7f44661ba4c4eca7996922e8c59476318d37bd69445649`。
+- `mlflow-eval`：外层213.367秒，exit0，log SHA `4ec7d1dfc931e3ff953e6e43dc713a68173291e0fa9fb33d47e1a3a7da8023b7`。
+
+Linux原result.json SHA `ee9825795e2180cb35869e8e09e6a1c9e23922372f46b030b1268a0e73bb7150`，split-result.json SHA `67c8661a992cd3ce14b75990be1c47578e8bc9631bd10fadf6d9f8f1795b099e`，首组log SHA `77beed778cbbb5d1d257f338bae2e1e3b9a2d5aa8fa08757d2b8bb5e2345f531`，失败组log SHA `4d7ee9c3920ac3ee8348ccb9fef2bf9cda85ce287b3fc14cbcec2abbe146f1d1`。原件位于已登记Linux目录，11份日志/报告/runner/同步回执逐字节复制到Mac证据目录的`linux-evidence/`并全部验签。Linux另保存并验签6/6份Mac来源原件，`mac-evidence/manifest.json`明确`source_machine=Mac`、`linux_rerun=false`，不将存档说成Linux复跑。
+
+最终postflight核对：正式项目保持干净main@f1b7d8a3，隔离分支tracked干净f1be1060；7/7保护文件SHA与预检及第47节一致，七文件测试版本摘要一致。Mac最后仅修finetune索引旧链接及本节等文档，运行代码/测试/版本化入口说明六文件未变化；不重复CPU测试验证纯文案。Codeup main再次只读核实仍f1b7d8a3。没有push或集成main、真实训练/GPU、真实holdout构建/使用、正式产物删除或硬盘恢复。
+
+HOLDOUT-METRICS已完成本轮七门代码、双机合成验证及局部独立代码审查；真实业务数据验收仍归HOLDOUT-BUILD/MODEL-QUALITY。四文档初始缺口已在607a14b1闭环，本批最终追加文档和双机证据另交独立核查，结论随后记录。下一步仍是指定独立新source、确认其构建接线及人工审查，提供concise/visual模型精确备份位置；不放宽模型晋级规则以跳过这些前置。父任务M8及真实GPU/服务/硬盘/外部依赖整机恢复继续未关闭。
+
+
+### 本批最终交付核查
+
+独立reviewer对当前四份迁移交付文档及finetune/SCRIPTS纯文案、双机原件最终核查通过，无剩余可执行问题。核对Linux拆组文件集合完整覆盖原失败组，614/1skip不含首组重复计数；11/11 Linux副本与6/6 Mac存档均再次SSH验签，7/7保护文件及七文件代码版本一致，70个本地文件链接与diff-check通过。发现的HOLDOUT-METRICS“仍仅支持六指标”现在时残留已明确标为第48节修复前事实并复核。本次只读核查不重跑测试，前序独立回执无原磁盘日志的限制保留。
+
+本批文档按本文件Git历史追溯最终原子提交；随后仅快进训练机隔离任务分支，精确同步回执落于上述Linux RUN的`final-docs-sync.json`，记录最终提交、bundle摘要、0/1独有提交及保护文件核验。该回执由主Agent对实际同步读回核对，不冒充独立reviewer已核验尚未发生的同步。正式main与push/merge授权边界保持。

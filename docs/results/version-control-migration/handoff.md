@@ -9,7 +9,7 @@
 
 2026-09-13已补四份交付文档的独立核查：第47节原件、机器归属、SHA及同步边界通过；首轮两项P3（旧CLI说明和R6/R7过期下一动作）已修正，最终局部复核通过，见[第48节](verification.md#delivery-preparation-20260913)。未重做整包代码审查。
 
-当前模型主线：HOLDOUT-BUILD等待独立新source、人工审查及正式构建入口；新增HOLDOUT-METRICS记录七项既定门槛不能由当前配置表达，接口扩展待确认。MODEL-DIAG已在Linux重算历史visual开发原记录1216条、各折摘要一致；concise原件仍缺、visual三fold merged均断链，实际推理对照阻塞。详情和轻量JSON见第48节，未构建/授权/消费真实holdout，未训练或读取权重。真实GPU、服务成功路径和硬盘/外部依赖恢复仍未验收。
+当前模型主线：HOLDOUT-BUILD等待独立新source、人工审查及正式构建入口；HOLDOUT-METRICS经用户确认，Spec55b3f4d4/Plan061d2598与代码f1be1060已提交；局部独立代码审查通过，Mac/Linux均覆盖614 passed/1 skipped；Linux原合并组因文件句柄限制exit1，拆组后正常退出，双机最终验证见[第49节](verification.md#holdout-metrics-20260913)。MODEL-DIAG已在Linux重算历史visual开发原记录1216条、各折摘要一致；concise原件仍缺、visual三fold merged均断链，实际推理对照阻塞。详情和轻量JSON见第48节，未构建/授权/消费真实holdout，未训练或读取权重。真实GPU、服务成功路径和硬盘/外部依赖恢复仍未验收。
 
 Codeup 发布基线在第39节审查时经 `git ls-remote codeup refs/heads/main` 核实为 `f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。
 第39节当次独立审查冻结目标为任务分支 `0963642bdb47c87af0df78b809a2262ee7e1ea30`：117个提交、148个变更文件，

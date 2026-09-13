@@ -25,4 +25,4 @@ Non-goals:
 | `train_build_source_aware_dataset.py` | 历史source-aware采样及共享辅助函数，无独立main；新三折不扩大该采样 |
 | `v4_1_runtime.py` | 公共校验与运行时模块，不直接执行 |
 
-其他历史复现脚本见 [`archive/`](archive/README.md)。
+当前工作树不含 `finetune/archive/`；已移出的历史复现脚本从 Git 历史查询，不作为现行入口。
