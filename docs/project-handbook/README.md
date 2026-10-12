@@ -56,44 +56,64 @@
 | 准备实验、评测模型并部署服务 | [模型流程](model-workflow.md) |
 | 了解现有成果、未完成项和证据日期 | [项目现状](project-status.md) |
 
-### 2. 创建代码运行环境
+### 2. 按机器准备 Python 3.11.x 环境
 
-取得代码后，在仓库根目录运行。先安装 Python 3.11、uv、Git、ffmpeg 和 ffprobe，确保后四项在 PATH 中可用。安装脚本使用锁定依赖创建新环境，不安装系统工具。
+本项目支持 **Python 3.11.x**。当前 Mac 用于开发、ROI/审查 UI 和轻量结果检查，通过 `uv` 调用已部署的 Mac 解释器；实际数据处理、训练、评测和模型服务在 Linux GPU 训练机上，直接使用对应的 **Conda 环境 Python**。两平台的依赖保持分开：
 
-| 配置 | 用途与额外前置 |
+| 平台 | 依赖来源与用途 |
 | --- | --- |
-| `mac` | macOS 代码检查、ROI/审查 UI 和同步结果复核，无需初始化 LlamaFactory 子模块 |
-| `linux-gpu` | Linux x86_64 NVIDIA GPU 训练机的数据处理、训练和推理；需要驱动及可用 `nvidia-smi`，并初始化固定子模块 |
+| Mac | `pyproject.toml` + `uv.lock`；代码检查、ROI/审查 UI 和同步结果复核，无需初始化 LlamaFactory 子模块 |
+| Linux GPU 训练机 | `requirements-linux-gpu.lock` + 固定 LlamaFactory 子模块；真实数据处理、训练、评测和服务 |
 
-示例中的 `/absolute/python3.11` 是已有解释器绝对路径；`/absolute/new/environment` 是准备创建且尚不存在的环境目录，不能经过符号链接或包含 `..`。两种配置使用不同目录。
+两机都需要 Git、ffmpeg、ffprobe 和 uv 在 PATH 中可用。训练机的运行入口仍是 Conda Python；环境检查器内部使用 `uv pip check`，所以 uv 也是检查工具前置。训练机另需 Linux x86_64、NVIDIA 驱动及可用 `nvidia-smi`。
 
-macOS：
+#### Mac：首次部署与日常运行
+
+先准备一个已经存在的 Python 3.11.x 解释器，以其绝对路径设置 `BOOTSTRAP_PYTHON`。`MAC_ENV` 是准备新建且尚不存在的环境绝对目录，不得经过符号链接或包含 `..`。从仓库根运行：
 
 ```bash
-python3 scripts/source_prepare_environment.py --profile mac \
-  --env /absolute/new/environment --python /absolute/python3.11
+BOOTSTRAP_PYTHON=/absolute/existing/python3.11
+MAC_ENV=/absolute/new/mac-environment
+uv --no-config run --no-project --no-python-downloads --python "$BOOTSTRAP_PYTHON" \
+  python scripts/source_prepare_environment.py --profile mac \
+  --env "$MAC_ENV" --python "$BOOTSTRAP_PYTHON"
 ```
 
-Linux GPU：先确认具备[子模块](../../.gitmodules)对应 Gitee SSH 仓库的访问资格，初始化固定版本并保持干净：
+首次调用跳过项目环境发现，用已有解释器启动部署脚本；脚本再按 Mac 锁创建新环境。退出码为 0 且输出 `Deployment verified` 才表示环境检查通过。失败时保留部分环境，调查后重试选择新的目标目录。
+
+日常开发时，`MAC_PYTHON` 指向上述成功部署的 Mac 环境解释器。已部署环境可以直接设置其实际路径，无需重复创建：
+
+```bash
+MAC_PYTHON="$MAC_ENV/bin/python"
+uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
+  python -m versioning --help
+uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
+  python scripts/source_validate_environment.py --profile mac
+```
+
+这里 `uv run` 复用显式选定的解释器，跳过项目依赖自动同步并禁止下载 Python；它不替代首次部署。不要用未指定解释器的默认 `uv run` 去选择另一套环境。
+
+#### 训练机：核验已有 Conda 环境
+
+先确认具备[子模块](../../.gitmodules)对应 Gitee SSH 仓库的访问资格，初始化固定版本并保持干净：
 
 ```bash
 git submodule update --init --recursive
-python3 scripts/source_prepare_environment.py --profile linux-gpu \
-  --env /absolute/new/environment --python /absolute/python3.11
 ```
 
-安装退出码为 0 且输出 `Deployment verified` 表示环境检查通过。安装失败会保留部分环境；重试选择新的目标目录。Linux 可显式选择无凭据 HTTPS 包镜像，参数与维护规则见[部署接口索引](../../scripts/SCRIPTS.md)。
-
-### 3. 查看入口并准备实际输入
-
-使用新环境的解释器，不依赖当前 shell 激活状态：
+使用已准备好、按 Linux GPU 锁和当前 checkout 核验的 Conda Python 3.11.x 环境。可以先激活该环境，也可以全程使用其解释器绝对路径；以下写法不依赖 shell 激活状态：
 
 ```bash
-/absolute/new/environment/bin/python -m versioning --help
-/absolute/new/environment/bin/python scripts/source_validate_environment.py --profile mac
+PYTHON=/absolute/verified/conda-environment/bin/python
+"$PYTHON" scripts/source_validate_environment.py --profile linux-gpu
+"$PYTHON" -m versioning --help
 ```
 
-Linux 手动检查将 profile 改为 `linux-gpu`。检查覆盖依赖、公共入口和媒体工具；Linux 另核对 CUDA 与训练模块来源。它不会下载或加载模型、训练或推理。Linux editable 依赖绑定代码工作区，后续使用时须保留或重新核定该来源。
+检查覆盖锁定依赖、公共入口、媒体工具、CUDA 和训练模块来源，不下载或加载模型，也不训练或推理。Linux editable 依赖绑定代码工作区，后续使用时须保留或重新核定该来源。只有检查通过的环境才用于后续实际处理；历史环境名字不能代替核验。
+
+如果没有合格的 Conda 环境，先准备并核验，不能直接开始真实任务。现有 `source_prepare_environment.py --profile linux-gpu` 创建的是新的 venv，既不创建 Conda 环境，也不修补已有 Conda 环境；其 `--env` 不接受已存在目录。部署接口与依赖维护规则见[脚本索引](../../scripts/SCRIPTS.md)。
+
+### 3. 准备实际输入
 
 正式版本只有 data、prompt、train、model、eval 五类，名称为 `<kind>-v<协议>-r<N>`，例如 `data-v4.1-r2`。示例身份不表示你本地已有资产；版本和输入必须显式提供，不自动猜测“最新”。
 

@@ -17,7 +17,7 @@
 
 身份格式是 `data-v<协议>-r<N>`，例如 `data-v4.1-r3`。摘要用于校验文件完整性，不是身份。批次名字和完整版本由操作者明确选择，不能静默改号重试。
 
-Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件检查。真实 ROI 物化、子视频生成、大量校验及正式数据发布在训练机执行；模型训练、GPU 推理及完整评测也只在训练机执行。解释器须对应实际 checkout 与依赖，不按旧环境名猜测。机器与环境准备见[快速开始](README.md#快速开始)。
+Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件检查。真实 ROI 物化、子视频生成、大量校验及正式数据发布在训练机执行；模型训练、GPU 推理及完整评测也只在训练机执行。Mac 通过 uv 调用已部署的 Python 3.11.x 解释器；训练机直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。解释器须对应实际 checkout 与依赖，不按旧环境名猜测。机器与环境准备见[快速开始](README.md#快速开始)。
 
 ## 1. 准备真实输入
 
@@ -42,10 +42,11 @@ ROI UI 的输入 `ROI_METADATA` 是数组或含 `videos` 数组的 JSON，逐项
 
 metadata 可以来自核对过的历史 source snapshot 的 `video_meta.json`，也可以由操作者按本批真实视频准备。如果历史 metadata 保存了机器专属绝对路径，先准备并核对具有上述相对布局的便携 metadata，再进行人工 ROI 决定；不能直接沿用 Mac 绝对路径，也不能事后手改已冻结决定绕过校验。UI 会把 metadata 路径原样写入决定的 `source_video_path`，训练机 ROI 阶段会解析并要求它与对应输入 pin 的实际文件相同。同结构与读取逻辑见[ROI UI](../../pipeline/scripts/roi_annotation_app.py)及[ROI 物化校验](../../versioning/data_pipeline.py)的 `run_input_roi`。新 source 阶段输出 `source_manifest.json`，不会自动生成供 UI 选择的旧 snapshot 身份。
 
-Mac 上从代码仓库运行，`PYTHON` 是本机项目解释器，`MEDIA_PROJECT_ROOT` 解析 metadata 中的媒体路径，`ROI_OUTPUT` 是可编辑决定文件，不能覆盖 metadata 或已有封存文件：
+Mac 上从代码仓库运行，`MAC_PYTHON` 是[快速开始](README.md#快速开始)中已部署的 Mac 环境解释器绝对路径，`MEDIA_PROJECT_ROOT` 解析 metadata 中的媒体路径，`ROI_OUTPUT` 是可编辑决定文件，不能覆盖 metadata 或已有封存文件：
 
 ```sh
-"$PYTHON" -m streamlit run pipeline/scripts/roi_annotation_app.py -- \
+uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
+  python -m streamlit run pipeline/scripts/roi_annotation_app.py -- \
   --metadata "$ROI_METADATA" --output "$ROI_OUTPUT" --project-root "$MEDIA_PROJECT_ROOT"
 ```
 
@@ -74,7 +75,7 @@ inputs 是 `schema: tensile-data/inputs/v1` 的 YAML。每个文件 pin 精确�
 
 ## 2. 冻结、裁剪和生成待审包
 
-从训练机代码仓库执行。先设置 `PYTHON`（匹配 checkout 的绝对解释器）、`STORE`（独立 store 根）、`INPUTS`（完整 YAML 绝对路径）、`BATCH`（与 YAML 一致）、`VERSION`（确认过且未占用的完整 data 身份）。`RETURN` 暂留为人工回收后的明确路径。
+从训练机代码仓库执行。先设置 `PYTHON`（已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 绝对路径）、`STORE`（独立 store 根）、`INPUTS`（完整 YAML 绝对路径）、`BATCH`（与 YAML 一致）、`VERSION`（确认过且未占用的完整 data 身份）。`RETURN` 暂留为人工回收后的明确路径。
 
 | 阶段 | 输入 → 主要产物及检查 |
 | --- | --- |
@@ -94,10 +95,11 @@ inputs 是 `schema: tensile-data/inputs/v1` 的 YAML。每个文件 pin 精确�
 
 ## 3. 人工审查、回收与发布
 
-把训练机整个 `review_export/` 复制到 Mac 的普通目录 `PACKAGE`，保留媒体、队列、契约及 `stage_manifest.json`。不能只复制队列 JSON。Mac 重新设置本机 `PYTHON`，并设置包外 `DRAFT` 和 `REVIEW_OUTPUT`，运行：
+把训练机整个 `review_export/` 复制到 Mac 的普通目录 `PACKAGE`，保留媒体、队列、契约及 `stage_manifest.json`。不能只复制队列 JSON。Mac 设置已部署环境的 `MAC_PYTHON`，并设置包外 `DRAFT` 和 `REVIEW_OUTPUT`，运行：
 
 ```sh
-"$PYTHON" -m streamlit run pipeline/scripts/review_candidates_app.py -- \
+uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
+  python -m streamlit run pipeline/scripts/review_candidates_app.py -- \
   --versioning-package "$PACKAGE" --draft "$DRAFT" --output-root "$REVIEW_OUTPUT"
 ```
 

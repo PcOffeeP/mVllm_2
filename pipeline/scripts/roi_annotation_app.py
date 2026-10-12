@@ -28,6 +28,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import streamlit as st
 from PIL import Image, ImageDraw
 try:
@@ -40,8 +44,6 @@ from pipeline.current_data import (
     data_context_from_arg,
     resolve_data_artifact,
 )
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 SCHEMA_VERSION = "1.0"
 ROI_POLICY_VERSION = "1.2"
