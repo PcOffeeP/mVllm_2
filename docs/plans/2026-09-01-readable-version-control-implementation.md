@@ -359,9 +359,9 @@
 
 ## 6. 状态跟踪与恢复
 
-### 6.1 当前 batch
+### 6.1 基础设施结项
 
-- **当前 batch**：B12（completed；B0–B12 核心基础设施实施与最终复核全部完成）。
+- **最终 batch**：B12（completed；B0–B12 核心基础设施实施与最终复核全部完成）。
 
 ### 6.2 Batch 状态表
 
@@ -430,21 +430,16 @@
 - Registry/backup 的 `fcntl.flock` 已在当前 macOS 以独立双进程攻击验证阻塞，但尚未在 Linux 训练机 smoke；真实移动硬盘容量不足、中断恢复及真实 adapter/merged 加载恢复也未在本轮执行。
 - 本分支仅为核心基础设施，正式迁移（旧对象映射、训练机操作、真实数据/模型迁移、merge/push）需另行授权。
 
-### 6.6 下一步
+### 6.6 后续交付的证据入口
 
-- 本分支核心基础设施已完成。下一阶段是单独授权的正式迁移：旧对象映射、训练机/Linux smoke、真实 adapter/merged 与移动硬盘恢复演练、旧链路退役、merge/push；本轮不自动进入这些工作。
+B0–B12 已结项；后续正式迁移也已按确认工程范围交付，见[已执行迁移计划](../tasks/2026-09-07-readable-version-control-migration/plan.md)及[最终交接](../results/version-control-migration/handoff.md)。本文历史风险、依赖版本与未做事项只描述基础设施批次当时范围，后续修复和双机验收查[验证记录](../results/version-control-migration/verification.md)，不重复列为当前待执行动作。
 
-### 6.7 新接收者恢复工作所需最小上下文
+### 6.7 追溯基础设施批次
 
-- 分支：`refactor/readable-version-control`，核心修复 HEAD `9965dc1b`；最终台账/TODO 收尾提交由 `git log --` 追溯。B0–B12 完整映射见 §6.3。
-- 权威设计：`docs/plans/2026-09-01-readable-version-control-design.md`（D040/D041 已随已确认两阶段模型生命周期和稳定预注册冻结路径更新）。
-- 本实施台账：`docs/plans/2026-09-01-readable-version-control-implementation.md`。
-- 项目级任务台账：`docs/project-todo.md` 的 `VERSION-CONTROL-MIGRATION` 总条目。
-- 测试基线：B9 最后正常退出为 `2043 passed, 11 skipped, 0 failed`；B10 初版后整仓输出 `2066 passed, 11 skipped, 0 failed`，但摘要后进程未自行退出并被中断，不算 B12 最终证据；R11 后 `tests/versioning/` 已正常退出为 `1399 passed`。
-- 需保护：`stash@{0}`（他人工作，任何 batch 不得触碰）；旧链路代码与正式产物全程只读。
-- 提交信息约定：含"以上commit由codex生成。"。
-- 禁止：merge、push、训练机操作、真实数据/模型迁移。
-- 下一动作：等待用户决定是否另行授权正式迁移、训练机实机验证或合并/推送；核心基础设施不再有未完成 batch。
+- 核心修复提交 `9965dc1b`；完整提交映射见 §6.3，独立审查 findings 见 §6.4。
+- 确认规则见[设计文档](2026-09-01-readable-version-control-design.md)，后续任务与授权边界统一见[项目TODO](../project-todo.md)。
+- 最终测试与退出证据见文首及 §6.3；中断的修复前运行不作为最终通过证据。
+- 不依据本历史台账中的临时分支、stash、环境或目录信息操作今天的工作区。
 
 ## 7. 停止与升级条件
 

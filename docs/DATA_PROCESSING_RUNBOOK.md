@@ -1,660 +1,113 @@
 <!-- DOCUMENT-CONTRACT
 Purpose: 为项目当前受支持的数据处理链路提供可持续维护、可执行且可验证的端到端运行指南。
 Audience: 需要首次跑通、复现或维护项目数据处理链路的开发者和操作人员。
-Scope: 覆盖源数据快照、ROI、候选媒体、人工审查、训练数据发布、产物索引及其跨机器执行边界。
+Scope: 显式输入准备、versioning store 七阶段、人工审查交接、train/test 数据封存、DVC 及 holdout 数据授权交接与跨机边界。
 Must Preserve:
 - 手册的标题和长期定位不绑定某一链路版本；当前支持版本与主要适用契约集中声明，版本特有差异在相关步骤中明确标注。
 - 每个流程环节都给出可追溯的入口、主要输入与产物、执行机器、验收检查和进入下一步的条件。
-- 冻结产物与 release 不可覆盖；上游产物选择和身份必须可追溯，并明确保留各产物集合的解析与路径边界。
+- 冻结产物与 release 不可覆盖；上游产物选择和身份必须可追溯，以显式 store、完整身份与文件绑定维护新旧入口的路径边界。
 - 区分本机轻量操作与训练机重计算或 GPU 操作，不暗示本机能够复现训练机任务。
 Non-goals:
 - 记录某次运行状态、历史发布基线或实验结果。
-- 说明模型训练、评测和部署流程。
+- 展开模型训练、评分算法或部署流程；holdout 章节仅说明数据授权与执行接口交接，细则引用训练手册及 versioning 索引。
 -->
 
 # 数据处理运行手册
 
-> 新的正式数据处理从[第10节：现行显式七阶段](#10-现行数据入口versioning显式七阶段)开始。第1–9节保留历史业务、参数和产物解释；其中release_build.py、release_build_phase2.py、rebuild_data.py已停止CLI执行，不能照抄历史命令发布或promote。review_candidates_app的旧--queue模式也已停用；ROI现行显式路径参数见第10.1节。ROI冻结/物化、候选规划/物化、队列构建/Phase2构建及历史分流的7个辅助CLI也已停用，精确名单见pipeline/scripts/SCRIPTS.md。状态与迁移证据见项目TODO及docs/results/。
+正式数据处理统一使用 `python -m versioning data`。本文提供当前链路的输入准备、七阶段、人工交接、发布和封存操作；训练与模型评分规范分别见[训练手册](../finetune/README.md)和[完整 holdout 验收接口](../versioning/SCRIPTS.md#full-模型的独立-holdout-验收)。命令示例是操作接口，不授予真实数据构建、测试使用、训练或评测授权。
 
-## 1. 历史链路的适用范围、版本与假设
+## 适用范围与执行边界
 
-- 目标读者：首次跑通、复现或维护当前受支持数据处理链路的人。
-- 当前数据处理链路版本：**4.1**。本文中的命令、默认值、目录和产物说明均以 4.1 为当前执行基线；版本升级时继续维护本手册，并同步更新本条、适用契约、版本特有路径、命令和验收条件，而不是因版本号另建一份平行主手册。
-- 代码根目录：`<repo>`（本仓库根目录）。所有命令均从 `<repo>` 执行。
-- 数据根目录：多数脚本 `--data-root` 默认使用 `<repo>/workspace/data`，正文中显式写出 `--data-root workspace/data` 仅为可读性，可省略。
-- 机器分工：
-  - **Mac（uv 环境）**：ROI 标注、人工审查、轻量校验与队列构建。
-  - **训练机（Conda  环境）**：ROI 视频物化、候选媒体物化、重计算、训练发布构建。
-- 当前审查与发布契约：`pipeline/contracts/tensile_vlm_v4_1.json`。候选计划阶段仍使用 v3 契约，具体边界见 Step 3.1。
-- Prompt 管理：`pipeline/prompt_control/active_prompt.yaml`。
+当前审查及发布业务契约为 `pipeline/contracts/tensile_vlm_v4_1.json`，候选算法复用 `pipeline/contracts/tensile_vlm_v3.json` 与 `pipeline/v3_candidate_plan.py`、`pipeline/v3_candidate_media.py`；模块名称中的 v3 不代表发布契约回退。新体系正式身份仅接受完整 `data-v4.1-r<N>`，必须显式指定 store、批次和输入，不解析旧集合 index、LATEST 或短哈希。
 
-## 2. 前置准备
+Mac 负责 ROI 输入准备、完整包人工审查及轻量文件检查；训练机负责 ROI 裁剪、子视频/采样帧生成、大量文件校验与正式发布。模型训练、GPU 推理和完整评测只在训练机执行。环境解释器必须与实际 checkout 和依赖匹配；不根据历史环境名猜测当前解释器。训练机连接见[双机工作流](project-guide.md#双机工作流)。
 
-### 2.1 运行环境
+旧重建、ROI 冻结/物化、候选规划/物化、队列及发布 CLI 已退役，精确清单见[pipeline 脚本索引](../pipeline/scripts/SCRIPTS.md)。保留的历史业务函数和媒体引用仍可能被使用；不得删除旧 workspace 或把历史发布重新生成来替代已确认的复制迁移。历史映射与验证见[object mapping](results/version-control-migration/object-mapping.yaml)、[迁移验证记录](results/version-control-migration/verification.md)及[交接记录](results/version-control-migration/handoff.md)。执行次序和现状只在[项目台账](project-todo.md)维护。
 
-- **Mac**：仓库已配置 `uv`。运行前先确保依赖可用：
-  ```bash
-  uv sync
-  ```
-  关键依赖：`streamlit`、`streamlit-cropper==0.3.1`。
-- **训练机**：激活 Conda `agent` 环境；确保 `ffmpeg` / `ffprobe` 在 `PATH` 中；模型目录 `models/minicpmv4_5` 已就位。
+## 输入准备
 
-### 2.2 数据放置约定
+### 源视频与两份注释
 
-数据统一放在项目内 `workspace/data/`（Git 忽略）。首次运行前，确保：
+源视频使用 `video_0001.mp4` 格式，inputs 中的 `video_id` 与文件 stem 一致。`all_videos_tag.csv` 与 `video_mapping.csv` 都必须无重复且恰好覆盖本批源视频。列定义来自 `pipeline/source_bootstrap.py`，由 `versioning/data_pipeline.py::run_input_source` 校验：
 
-```text
-workspace/data/
-├── source/
-│   ├── videos/        # 原始 MP4
-│   └── annotations/   # 原始标注
-└── derived/metadata/
-    └── video_meta.json  # 遗留路径，当前链路不生成；权威视频元数据为 source snapshot 内 video_meta.json
-```
+| 文件 | 必需列及来源要求 |
+| --- | --- |
+| tags CSV | `id`、`video_path`、`断裂时间点`、`断裂模式`、`材料类型`、`清晰度`、`断裂位置`、`断裂帧数`、`视频时长`、`视频帧率`、`视频总帧数`、`has_fracture`、`is_abnormal`；`video_path` 文件名必须与 ID 匹配 |
+| mapping CSV | `标准化文件名`、`原始文件名`、`来源目录`、`材料类别`、`状态`、`duration`、`resolution`、`codec`；原文件名及来源目录非空，状态为 `existing` 或 `new` |
 
-> 注意：`source/videos`、`source/annotations` 是生成快照的前提；`source/splits` 是旧系统遗留路径，source 快照生成不再读取 source/splits，划分由 `build_source_snapshot` 在生成快照时按确定性策略内部产出。生成 source snapshot 后，下游脚本以 `derived/metadata/source_snapshots/<id>/video_meta.json` 为权威视频元数据输入。
+标签来自已核对的原始标注；视频属性在 source 阶段由真实 probe 校验和治理，不能用占位帧率/时长代替。新入口不硬编码 110 个视频或 89/21 数量；历史数据数量不是每个新批次的固定要求。
 
-## 3. 流程总览
+### 既定 split 与 ROI 人工输入
 
-```mermaid
-flowchart LR
-  A[1. 源数据迁移/校验] --> B[2. ROI 标注、冻结与物化]
-  B --> C[3. 候选计划与候选媒体物化]
-  C --> D[4. 审查队列与人工审查]
-  D --> E[5. 训练发布构建]
-  E --> F[6. 产物索引导出]
-```
+split 由操作者提供已确认的成员划分，包含 test 和三个 fold 的 train/val 七份列表及全部原视频 SHA256。可从已核对的历史冻结 split 文件逐项转录既定成员到下述新输入 schema；新入口只校验并保存，不重新随机划分。新划分或测试集资格判断是独立决策。
 
-六步一句话：先校验、放置源数据并生成 source/split 快照，再固定 ROI 并裁剪源视频，随后生成候选片段与实际帧，再经人工审查后构建不可覆盖的训练发布，最后导出产物索引。
-
-## 4. 产物 ID 与回溯
-
-本流程中大部分下游脚本都支持通过产物 ID 指定上游输入，而不必总是使用最近一次产物。解析规则如下：
-
-- **不传 ID**：脚本自动使用目标集合的 `LATEST` 指针，即当前 index 中最新物化或最新被触碰的世代。
-- **短哈希前缀**：传入 ID 的前缀，脚本在目标集合的 `index.json` 中查找唯一匹配项。例如 `<roi-manifest-旧哈希前缀>` 可命中以该前缀开头的 ROI manifest，但若前缀同时匹配多个候选则会报错。
-- **完整 ID**：传入完整产物 ID，脚本做精确匹配。
-
-查询可用 ID 的入口：
-
-- 已接入全局索引的集合（`source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos`）：查看 `workspace/data/INDEX.md` 或对应集合的 `index.json`。
-- 尚未接入全局索引的集合（候选媒体、审查队列、决定、release 等）：查看各自集合目录下的 `index.json`。
-
-回溯示例（以下 ID 均为占位格式，请替换为实际查询到的 ID）：
-
-```bash
-# 显式指定 ROI manifest 与 source snapshot，而非使用 LATEST
-uv run python pipeline/scripts/roi_materialize_videos.py \
-  --data-root workspace/data \
-  --roi-manifest <roi-manifest-旧哈希前缀> \
-  --video-meta <source-snapshot-旧哈希前缀> \
-  --workers 2
-
-# 显式指定候选计划与 ROI 媒体，重新物化候选媒体
-python pipeline/scripts/subvideo_materialize_media.py \
-  --data-root workspace/data \
-  --candidate-plan <candidate-plan-旧哈希前缀> \
-  --roi-media <roi-media-旧哈希前缀>
-```
-
-注意事项：
-
-- 中段词不会命中。例如只写 `media` 或 `roi` 会被当成完整 ID 或前缀处理，通常无法匹配任何候选并报错；请使用足够长度的前缀或完整 ID。
-- `LATEST` 指针可能失效：如果对应集合的 `index.json` 被重建、清空或对应世代被移除，再次使用 `LATEST` 会报 `LATEST 指针 '...' 已失效，不在当前 index 候选集中`。
-- 前缀若匹配多个候选，会报 `产物选择器 '...' 存在多义匹配，候选: ...`，此时应改用更长的前缀或完整 ID。
-
-## 5. 逐步操作
-
-以下命令中的 `<...>` 为每次运行实际生成的 ID 或路径。按性质分为三类：
-
-1. **脚本输出，可从 `INDEX.md` / `index.json` / 脚本输出中查询**：`<source-snapshot-id>`、`<split-snapshot-id>`、`<roi-manifest-id>`、`<roi-media-id>`、`<candidate-media-id>`、`<candidate-plan-id>`、`<queue-id>`、`<route-id>`、`<release-id>` 等。
-2. **用户自定**：`<run-id>` 是你自己起的 staging 目录名（如 `2024-08-26-test`），用来隔离一次 `rebuild_data.py` 的 staging 产物；`<reviewer-id>` 是审查人工号/名称，仅写入审计元数据。
-3. **审查 UI 生成**：`<batch-id>` 在 `review_candidates_app.py` 中随着保存/冻结审查结果自动生成，**不能**从 `INDEX.md` 提前查询。
-
-`source/split/ROI manifest/ROI media` 等 ID 均为脚本按内容哈希自动计算，不是你输入的参数。
-
-### Step 1：源数据就位并生成快照
-
-本步骤假设源数据已按 `docs/project-guide.md` 中「初始数据」列的约定放置到
-`workspace/data/source/{videos,annotations}`（110 个 MP4、CSV 列）。 split 由脚本内部按确定性策略生成：当前数据下近似 89/21 的 train/test 比例，以及 3 折 stratified split，均为脚本输出，不是输入约束。直接生成 source/split 快照。
-
-#### 1.1 快照生成
-
-- **目的**：物化不可变的 source snapshot 与 split snapshot（含视频元数据与训练/测试划分）。
-- **机器**：训练机（Conda  环境）。
-- **命令**：
-  > `<run-id>` 是你自己起的 staging 目录名（如 `run-2024-08-26`），用来把一次 `rebuild_data.py` 的产物隔离在 `workspace/data-staging/<run-id>`；只有执行 `promote` 后，source/split 快照才会正式落入 `workspace/data`。
-
-  ```bash
-  # 仅校验源数据身份与拆分计划
-  python pipeline/scripts/rebuild_data.py run \
-    --source-data-root workspace/data \
-    --run-root workspace/data-staging/<run-id> \
-    --source-only \
-    --check-only
-
-  # 真正物化快照到 staging run-root
-  python pipeline/scripts/rebuild_data.py run \
-    --source-data-root workspace/data \
-    --run-root workspace/data-staging/<run-id> \
-    --source-only
-
-  # 把 staging 产物晋级到 workspace/data
-  python pipeline/scripts/rebuild_data.py promote \
-    --run-root workspace/data-staging/<run-id>
-  ```
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--run-root` | **必填** | - | staging 目录，用户自定；建议每次新起一个名字 |
-  | `--source-data-root` | 可选 | `workspace/data` | 必须等于当前数据根 |
-  | `--source-only` | 开关 | 关闭 | 只跑 source/split 快照，不进入 ROI/审查/发布 |
-  | `--check-only` | 开关 | 关闭 | 只校验，不写快照 |
-  | `--roi-mode` | 可选 | `--source-only` 时自动补 `review` | 完整流水线必填 |
-  | `--review-mode` | 可选 | `--source-only` 时自动补 `review` | 完整流水线必填 |
-  | `--review-reference-id` | 可选 | `review-ref-7cd2e73a1cd1` | - |
-  | `--model` | 可选 | `models/minicpmv4_5` | - |
-  | `--workers` | 可选 | `2` | - |
-  | `--expected-count` | 可选 | `110` | 源视频期望数量 |
-
-  `promote` 子命令：`--run-root` 必填，`--expected-count` 默认 `110`。
-- **产物位置**：
-  - `workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/`
-    - 含 `video_meta.json`、`source_manifest.json` 等
-  - `workspace/data/derived/metadata/split_snapshots/<split-snapshot-id>/`
-    - 含 `split_manifest.json`、`split_decision.json`、`test.json`、`fold_0_train.json`、`fold_0_val.json`、`fold_1_train.json`、`fold_1_val.json`、`fold_2_train.json`、`fold_2_val.json`
-- **验收/检查**：`run --source-only` 输出 `source_snapshotted` 状态、`source_snapshot_id`、`split_snapshot_id`；快照目录已生成且 `source_snapshots/<id>/` 含 `video_meta.json`，`split_snapshots/<id>/` 含 splits。
-- **进入下一步条件**：已知 `<source-snapshot-id>` 与 `<split-snapshot-id>`，且快照已晋级到 `workspace/data`。
-
-### Step 2：ROI 标注、冻结与物化
-
-> 注意：本步骤使用的 `video_meta.json` 来自 Step 1 生成的 source snapshot（`workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json`），不再使用旧路径 `derived/metadata/video_meta.json`。
->
-> 阶段 2 已接入 LATEST 指针：`roi_freeze_decisions.py` 与 `roi_materialize_videos.py` 的 source/split/ROI 产物参数不传 ID 时，默认自动解析对应集合的 LATEST 指针；也可显式传入完整 ID 或短前缀（详见「产物 ID 与回溯」）。
-
-#### 2.1 标注 ROI
-
-- **目的**：在源视频上标定固定 ROI（上/下夹具、完整试样）。
-- **机器**：Mac（uv 环境，streamlit-cropper 仅 Mac 依赖中已配置）。
-- **命令**：
-  ```bash
-  uv run streamlit run pipeline/scripts/roi_annotation_app.py -- \
-    --data-root workspace/data \
-    --metadata workspace/data/derived/metadata/source_snapshots/<source-snapshot-id>/video_meta.json \
-    --output workspace/data/derived/metadata/roi_decisions.json
-  ```
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--metadata` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST 指向的 `video_meta.json` | 可传完整 ID / 短前缀 / 路径（不再指向遗留路径） |
-  | `--output` | 可选 | `derived/metadata/roi_decisions.json` | ROI 决定保存路径 |
-  | `--project-root` | 可选 | 当前数据根 | 通常不需要传 |
-
-  > 说明：`--metadata` 现在为可选，缺省时自动解析 `source_snapshots` 集合的 `LATEST` 指针，指向该快照内的 `video_meta.json`；显式传入时支持路径（原样透传）或快照 ID / 前缀（自动解析）。若 `source_snapshots` 无 `LATEST` 或前缀存在多义匹配，脚本会抛错终止（fail-closed），不会静默回退遗留路径 `derived/metadata/video_meta.json`；此时请先运行 Step 1 生成 source snapshot，或显式传入 Step 1 产出的快照路径/ID。
-
-- **产物位置**：`workspace/data/derived/metadata/roi_decisions.json`。
-- **验收/检查**：UI 中每个视频的关键时刻必须包含上/下夹具、完整试样和位置判断。
-- **进入下一步条件**：所有源视频完成标注并保存。
-
-#### 2.2 冻结 ROI 决定
-
-- **目的**：把 ROI 决定打包成不可变的 ROI manifest。
-- **机器**：Mac（轻量校验）。
-- **命令**：
-  ```bash
-  uv run python pipeline/scripts/roi_freeze_decisions.py --check-only
-  uv run python pipeline/scripts/roi_freeze_decisions.py
-  ```
-  若使用非默认数据根，加 `--data-root <path>`。
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--decisions` | 可选 | `derived/metadata/roi_decisions.json` | ROI 决定输入 |
-  | `--video-metadata` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST 指向的 `video_meta.json` | 可传完整 ID / 短前缀 / 路径 |
-  | `--test-manifest` | 可选，缺省自动取 LATEST | `split_snapshots` 的 LATEST 指向的 `test.json` | 可传完整 ID / 短前缀 / 路径 |
-  | `--output-root` | 可选 | `derived/metadata/roi_manifests` | - |
-  | `--check-only` | 开关 | 关闭 | 只校验摘要，不写冻结目录 |
-
-- **产物位置**：`workspace/data/derived/metadata/roi_manifests/<roi-manifest-id>/`。
-- **验收/检查**：`--check-only` 输出校验报告；正式运行后目录中出现 `manifest.json` 且 `roi_manifest_id` 已打印。
-- **进入下一步条件**：无校验错误，且已知 `<roi-manifest-id>`。
-
-#### 2.3 物化 ROI 视频
-
-- **目的**：按 ROI manifest 裁剪出保持原时间轴的 3:4 源视频。
-- **机器**：训练机（ffmpeg 重计算）。
-- **命令**：
-  ```bash
-  # 先只校验生成计划
-  python pipeline/scripts/roi_materialize_videos.py \
-    --data-root workspace/data \
-    --check-only
-
-  # 小样本试跑（必须指定隔离目录）
-  python pipeline/scripts/roi_materialize_videos.py \
-    --data-root workspace/data \
-    --video-ids video_0001 video_0008 \
-    --output-root workspace/data/derived/roi_videos/sample_roi_videos \
-    --workers 1
-
-  # 全量生成
-  python pipeline/scripts/roi_materialize_videos.py \
-    --data-root workspace/data \
-    --workers 2
-  ```
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--roi-manifest` | 可选，缺省自动取 LATEST | `roi_manifests` 的 LATEST 指向的 `manifest.json` | 可传完整 ID / 短前缀 / 路径 |
-  | `--video-meta` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST 指向的 `video_meta.json` | 可传完整 ID / 短前缀 / 路径 |
-  | `--output-root` | 可选 | `derived/roi_videos` | 小样本试跑时必须改隔离目录 |
-  | `--video-ids` | 可选 | 全部视频 | 仅小样本试跑用 |
-  | `--workers` | 可选 | `2` | - |
-  | `--check-only` | 开关 | 关闭 | 只校验计划，不调用 ffmpeg |
-
-- **产物位置**：`workspace/data/derived/roi_videos/<roi-media-id>/`。
-- **验收/检查**：目录中出现 `manifest.json`；单条媒体通过分辨率、帧数、帧率、时长检查。
-- **进入下一步条件**：`manifest.json` 存在，且已知 `<roi-media-id>`。
-
-### Step 3：候选计划与候选媒体物化
-
-> 阶段 2 已接入 LATEST 指针：`subvideo_build_plan.py` 的 `--roi-media-dir`、`subvideo_materialize_media.py` 的 `--candidate-plan` / `--roi-media` 不传时默认解析对应集合的 LATEST 指针；也可显式传入完整 ID 或短前缀（详见「产物 ID 与回溯」）。
-
-#### 3.1 生成候选计划
-
-- **目的**：基于 ROI 视频和 review reference 生成内容寻址的候选计划。
-- **机器**：Mac 或训练机（轻量计算）。
-- **命令**：
-  ```bash
-  # 先只打印计划身份与统计
-  uv run python pipeline/scripts/subvideo_build_plan.py \
-    --data-root workspace/data \
-    --review-reference-dir workspace/data/derived/metadata/review_reference/<review-ref-id> \
-    --dry-run
-
-  # 正式生成
-  uv run python pipeline/scripts/subvideo_build_plan.py \
-    --data-root workspace/data \
-    --review-reference-dir workspace/data/derived/metadata/review_reference/<review-ref-id> \
-    --output-root workspace/data/derived/metadata/candidate_plans
-  ```
-
-  > 注意：候选计划步骤固定使用 v3 契约（脚本默认值），v4.1 契约从审查/发布环节开始使用；因此 `subvideo_build_plan.py` 不需要也不应显式传入 `--contract pipeline/contracts/tensile_vlm_v4_1.json`。
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--roi-media-dir` | 可选，缺省自动取 LATEST | `roi_videos` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
-  | `--review-reference-dir` | 可选 | `derived/metadata/review_reference/review-ref-7cd2e73a1cd1` | v3 review reference |
-  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v3.json` | 不要改成 v4.1 |
-  | `--output-root` | 可选 | `derived/metadata/candidate_plans` | - |
-  | `--dry-run` | 开关 | 关闭 | 只计算统计，不写目录 |
-
-- **产物位置**：`workspace/data/derived/metadata/candidate_plans/<plan-id>/`。
-- **验收/检查**：`--dry-run` 输出 `plan_id`、development 候选数、需审查数；正式运行后目录中出现 `manifest.json`。
-- **进入下一步条件**：计划已生成，且已知 `<plan-id>`。
-
-#### 3.2 物化候选媒体
-
-- **目的**：生成候选 MP4、实际 MiniCPM 抽帧和门禁结果。
-- **机器**：训练机（Conda环境，GPU/模型推理）。
-- **命令**：
-  ```bash
-  # 先只校验输入与身份
-  python pipeline/scripts/subvideo_materialize_media.py \
-    --data-root workspace/data \
-    --check-only
-
-  # 小样本试跑（必须同时指定隔离目录）
-  python pipeline/scripts/subvideo_materialize_media.py \
-    --data-root workspace/data \
-    --limit 3 \
-    --video-output-root workspace/data/derived/subvideos/sample_candidate_media \
-    --frame-output-root workspace/data/derived/frames/sample_candidate_media \
-    --result-root workspace/data/derived/metadata/candidate_media_results/sample_candidate_media
-
-  # 全量生成
-  python pipeline/scripts/subvideo_materialize_media.py \
-    --data-root workspace/data
-  ```
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--candidate-plan` | 可选，缺省自动取 LATEST | `candidate_plans` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
-  | `--roi-media` | 可选，缺省自动取 LATEST | `roi_videos` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
-  | `--model` | 可选 | `models/minicpmv4_5` | - |
-  | `--scope` | 可选 | `all` | `development` / `test_audit` / `all` |
-  | `--candidate-ids` | 可选 | - | 指定只物化部分 candidate |
-  | `--limit` | 可选 | - | 小样本试跑限制数量 |
-  | `--video-output-root` | 可选 | `derived/subvideos` | 子集试跑时必须改隔离目录 |
-  | `--frame-output-root` | 可选 | `derived/frames` | 子集试跑时必须改隔离目录 |
-  | `--result-root` | 可选 | `derived/metadata/candidate_media_results` | 子集试跑时必须改隔离目录 |
-  | `--check-only` | 开关 | 关闭 | 只校验，不生成媒体 |
-
-- **产物位置**：
-  - `workspace/data/derived/subvideos/<candidate-media-id>/`
-  - `workspace/data/derived/frames/<candidate-media-id>/`
-  - `workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/`
-- **验收/检查**：`manifest.json` 与 `development_materialized.json` 均已生成；MP4、解码、抽帧、时间映射、状态门禁全部通过。
-- **进入下一步条件**：`<candidate-media-id>` 已知，且 `development_materialized.json` 存在。
-
-### Step 4：审查队列与人工审查
-
-#### 4.1 构建审查队列
-
-- **目的**：把 materialized 候选组织成当前 4.1 链路的审查队列（`observed` / `incipient`）。
-- **机器**：Mac（轻量）。
-- **命令**：
-  ```bash
-  uv run python pipeline/scripts/review_build_queue.py \
-    --data-root workspace/data \
-    --contract pipeline/contracts/tensile_vlm_v4_1.json \
-    --output-root workspace/data/derived/metadata/review_queues
-  ```
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--materialized` | 可选，缺省自动取 LATEST | `candidate_media_results` 的 LATEST 指向的 `development_materialized.json` | 可传完整 ID / 短前缀 / 路径 |
-  | `--manifest` | 可选，缺省自动取 LATEST | `candidate_media_results` 的 LATEST 指向的 `manifest.json` | 可传完整 ID / 短前缀 / 路径 |
-  | `--project-root` | 可选 | 项目根目录 | - |
-  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
-  | `--output-root` | 可选 | `derived/metadata/review_queues` | - |
-
-- **产物位置**：`workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json`。
-- **验收/检查**：输出 `queue_id`、`candidate_count`、`observed_count`、`incipient_count`。
-- **进入下一步条件**：队列文件已生成，且已知 `<queue-id>`。
-
-#### 4.2 人工审查
-
-- **目的**：逐候选确认标签（优先看帧画面而非源视频）。
-- **机器**：Mac（uv 环境 + streamlit）。
-- **命令**：
-  > `--reviewer-id` 仅在需要覆盖默认角色时提供；`<batch-id>` 由审查 UI 在保存/冻结时自动生成，不能从 `INDEX.md` 提前查询。
-  > 本项目由唯一维护者审查，界面默认将“项目维护者”写入每条新人工决定，无需手填姓名。可用 `--reviewer-id` 指定其他非空标识。历史缺失字段保留原貌，不因缺姓名要求重审；复用历史审批需绑定相同媒体、帧、时间戳和标签，并单独记录维护者确认依据。人工队列仍须全部完成才能发布。
-
-  ```bash
-  uv run streamlit run pipeline/scripts/review_candidates_app.py -- \
-    --data-root workspace/data \
-    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json
-  ```
-  若使用历史分流，加 `--routing-manifest`：
-  ```bash
-  uv run streamlit run pipeline/scripts/review_candidates_app.py -- \
-    --data-root workspace/data \
-    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
-    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json
-  ```
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--queue` | **必填** | - | 审查队列 JSON 路径 |
-  | `--reviewer-id` | 可选 | 项目维护者 | 写入新人工决定的审查人标识 |
-  | `--project-root` | 可选 | 项目根目录 | - |
-  | `--review-reference` | 可选 | - | - |
-  | `--candidate-id` | 可选 | - | 可重复，指定只审部分 candidate |
-  | `--routing-manifest` | 可选 | - | 历史分流 manifest 路径 |
-  | `--limit` | 可选 | - | 只审前 N 条 |
-  | `--draft` | 可选 | - | 断点续审草稿 |
-  | `--output-root` | 可选 | `derived/metadata/review_decisions` | - |
-
-- **产物位置**：默认保存到 `workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json`（`<batch-id>` 由 UI 生成）。
-- **验收/检查**：UI 状态全部为 `approved`、`corrected`、`dropped` 或 `needs_regenerate`；没有 `remaining`。
-- **进入下一步条件**：全部候选形成合法终态，且已知 `<batch-id>`。
-
-#### 4.3 （可选）阶段 2 隔离队列与历史分流
-
-- **目的**：当存在阶段 1 审计和上一轮冻结决策时，生成开发/密封测试隔离队列，并按历史决定分流以减少重复人工审查。
-- **机器**：Mac（轻量）。
-- **命令**：
-  ```bash
-  # 从阶段 1 审计生成两个隔离队列
-  uv run python pipeline/scripts/review_build_phase2_queues.py \
-    --audit-manifest workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
-    --contract pipeline/contracts/tensile_vlm_v4_1.json \
-    --output-root workspace/data/derived/metadata/review_queues
-
-  # 基于上一轮冻结决策分流
-  uv run python pipeline/scripts/review_route_from_history.py \
-    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
-    --previous-decisions workspace/data/derived/metadata/review_decisions/<prev-queue-id>/<prev-batch-id>/decisions.json \
-    --output-root workspace/data/derived/metadata/review_routes
-  ```
-- **参数**（`review_build_phase2_queues.py`）：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--audit-manifest` | **必填** | - | 阶段 1 审计 manifest 路径 |
-  | `--project-root` | 可选 | 项目根目录 | - |
-  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
-  | `--output-root` | 可选 | `derived/metadata/review_queues` | - |
-
-- **参数**（`review_route_from_history.py`）：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--queue` | **必填** | - | 当前队列 JSON 路径 |
-  | `--previous-decisions` | **必填** | - | 上一轮 decisions.json 路径 |
-  | `--current-draft` | 可选 | - | 当前审查草稿 |
-  | `--project-root` | 可选 | 项目根目录 | - |
-  | `--output-root` | 可选 | `derived/metadata/review_routes` | - |
-  | `--review-decisions-root` | 可选 | `derived/metadata/review_decisions` | - |
-
-- **产物位置**：新队列目录 + `workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json`。
-- **验收/检查**：队列身份、候选集合、契约 hash 与审计一致；分流后进入 UI 的候选为 `manual_review` 子集。
-- **进入下一步条件**：分流产物已知，且后续发布使用分流后的人工决定。
-
-### Step 5：构建训练发布
-
-- **目的**：把审查决定物化为不可覆盖的训练 release。
-- **机器**：训练机（Conda  环境）。
-- **命令**：
-  ```bash
-  python pipeline/scripts/release_build.py \
-    --data-root workspace/data \
-    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
-    --media-manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
-    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
-    --decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
-    --contract pipeline/contracts/tensile_vlm_v4_1.json
-  ```
-- **参数**（`release_build.py`）：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | `workspace/data` | - |
-  | `--project-root` | 可选 | 当前数据根 | 通常传 `.` |
-  | `--materialized` | **必填** | - | `candidate_media_results` 的 `development_materialized.json` |
-  | `--media-manifest` | **必填** | - | `candidate_media_results` 的 `manifest.json` |
-  | `--queue` | **必填** | - | 审查队列 JSON |
-  | `--decisions` | **必填** | - | 审查决定 JSON |
-  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
-  | `--source-snapshot` | 可选，缺省自动取 LATEST | `source_snapshots` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
-  | `--split-snapshot` | 可选，缺省自动取 LATEST | `split_snapshots` 的 LATEST | 可传完整 ID / 短前缀 / 路径 |
-  | `--source-tree-sha256` | 可选 | 从解析后的 source snapshot 自动计算 | 通常不传 |
-  | `--split-tree-sha256` | 可选 | 从解析后的 split snapshot 自动计算 | 通常不传 |
-  | `--releases-dir` | 可选 | `training_releases` | - |
-
-  阶段 2 发布先验证再发布：
-  ```bash
-  python pipeline/scripts/release_build_phase2.py --validate-only \
-    --project-root . \
-    --base-release-dir workspace/data/releases/<base-release-id> \
-    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
-    --media-manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
-    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
-    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
-    --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
-    --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
-    --splits-dir workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
-    --contract pipeline/contracts/tensile_vlm_v4_1.json
-
-  python pipeline/scripts/release_build_phase2.py \
-    --project-root . \
-    --base-release-dir workspace/data/releases/<base-release-id> \
-    --materialized workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/development_materialized.json \
-    --media-manifest workspace/data/derived/metadata/candidate_media_results/<candidate-media-id>/manifest.json \
-    --queue workspace/data/derived/metadata/review_queues/<queue-id>/review_queue.json \
-    --routing-manifest workspace/data/derived/metadata/review_routes/<route-id>/routing_manifest.json \
-    --manual-decisions workspace/data/derived/metadata/review_decisions/<queue-id>/review-batch-<batch-id>/decisions.json \
-    --audit workspace/data/derived/metadata/v4_1/effective_view_audits/<audit-id>/audit_manifest.json \
-    --splits-dir workspace/data/derived/metadata/split_snapshots/<split-snapshot-id> \
-    --contract pipeline/contracts/tensile_vlm_v4_1.json
-  ```
-- **参数**（`release_build_phase2.py`）：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--validate-only` | 开关 | 关闭 | 只验证，不发布 |
-  | `--project-root` | 可选 | 当前数据根 | 通常传 `.` |
-  | `--base-release-dir` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
-  | `--materialized` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
-  | `--media-manifest` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
-  | `--queue` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
-  | `--routing-manifest` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
-  | `--manual-decisions` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
-  | `--audit` | 可选 | 脚本硬编码默认值 | **建议显式传入** |
-  | `--contract` | 可选 | `pipeline/contracts/tensile_vlm_v4_1.json` | - |
-  | `--splits-dir` | 可选 | `source/splits`（遗留） | 缺省指向遗留路径，新链路必须显式传入 split snapshot 目录 |
-  | `--releases-dir` | 可选 | `training_releases` | - |
-
-- **产物位置**：`workspace/data/releases/<release-id>/`。
-- **验收/检查**：脚本输出 `release_id`、`status`、`counts`；目标目录必须不存在，否则拒绝覆盖。
-- **进入下一步条件**：`manifest/release_manifest.json` 已生成，且已知 `<release-id>`。
-
-### Step 6：生成产物索引
-
-- **目的**：汇总各产物集合的 `index.json`，生成全局可读的 `INDEX.md`。
-- **机器**：Mac 或训练机。
-- **命令**：
-  ```bash
-  python pipeline/scripts/build_artifact_index.py
-  # 或在非默认数据根上运行
-  python pipeline/scripts/build_artifact_index.py --data-root /path/to/data
-  ```
-- **参数**：
-
-  | 参数 | 性质 | 默认值 | 说明 |
-  | --- | --- | --- | --- |
-  | `--data-root` | 可选 | 当前项目 current data root | - |
-
-- **产物位置**：`workspace/data/INDEX.md`。
-- **验收/检查**：`INDEX.md` 当前列出 `source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos` 四类集合；候选媒体、队列、决定、release 等集合后续接入。
-- **进入下一步条件**：索引生成成功，可供下游查找 artifact ID。
-
-## 6. 产物索引说明
-
-- 当前 `build_artifact_index.py` 维护并读取以下 4 个产物集合的 `index.json`：`source_snapshots`、`split_snapshots`、`roi_manifests`、`roi_videos`。
-- `pipeline/scripts/build_artifact_index.py` 读取这些 `index.json`，生成 `workspace/data/INDEX.md` 全局总览。
-- 候选媒体、审查队列、决定、release 等其他集合尚未接入全局索引，将在后续版本中支持。
-- 下游命令中 `<...-id>` 可从已接入集合的 `index.json` 或 `INDEX.md` 查到。
-
-## 7. 故障处理
-
-| 现象                                             | 含义                                        | 处理                                                                                                   |
-| ---------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `DataRootError: ... 必须位于 ...`                  | 输出路径不在受管集合目录内                             | 检查 `--output-root` 是否在 `workspace/data/derived/metadata/<collection>` 或 `workspace/data/releases` 下。 |
-| `目标目录已存在` / 拒绝覆盖                               | releases 与冻结产物不可覆盖                        | 若确实要重新生成，使用新的 `<run-id>` / `<release-id>`，不要删除旧目录。                                                   |
-| `identity_sha256` / `tree_sha256` 不匹配          | 上游身份漂移                                    | 重新确认输入 artifact ID 与 hash；不要手动改冻结文件。                                                                 |
-| `staging state 的 schema/layout/root/Git 身份不匹配` | `rebuild_data.py` 恢复时 Git commit 或目录结构不一致 | 在同一 Git 版本下用同一 `run-root` 恢复，否则新建 run-root。                                                          |
-| `视频 metadata 不存在`                              | source snapshot 中 `video_meta.json` 缺失    | 回到 Step 1 检查源数据并重新生成 source snapshot。                                                                |
-| `ffmpeg/ffprobe 未找到`                           | 训练机缺少媒体工具                                 | 安装 ffmpeg 并确保在 PATH 中。                                                                               |
-| 审查 UI 中候选 `remaining > 0`                      | 还有未审核候选                                   | 继续审查，直到全部形成终态。                                                                                       |
-| `LATEST 指针 '...' 已失效，不在当前 index 候选集中`      | 目标集合的 `index.json` 中不存在 `LATEST` 标记，或对应世代已被移除/重建 | 用 `build_artifact_index.py` 重建索引；若仍需旧世代，查询 `INDEX.md` 或对应 `index.json` 后显式传入完整 ID 或唯一前缀（见 §4）。 |
-| `产物选择器 '...' 存在多义匹配，候选: ...`              | 传入的短前缀同时命中多个候选                           | 改用更长的前缀或完整 ID，直到唯一匹配。                                                                           |
-| 想使用旧世代，但脚本默认走了 LATEST                     | 未显式指定 ID，目标集合默认使用 LATEST 指针         | 查询目标集合的 `index.json` / `INDEX.md`，在命令中显式传入旧世代完整 ID 或唯一前缀。                                  |
-
-## 8. 不该做的事（速查）
-
-- 不要把旧 `data/07_metadata`、`data/08_training_ready`、`review_subvideos_app.py` 当成当前数据处理链路的主入口。
-- 不要删除或覆盖已冻结的 ROI manifest、review batch、candidate media、training release。
-- 不要把 `needs_regenerate`、缺媒体、哈希漂移或非法标签带入发布。
-- 不要让源视频初始标签静默覆盖帧窗口人工复标结果。
-- 不要把训练完成本身等同于任务效果验收通过。
-
-## 9. 编排器模式（可选）
-
-如果你希望用一个命令跑隔离重建，可以使用 orchestrator。`<run-id>` 与 Step 1.1 相同，是你自定的 staging 目录名。
-
-```bash
-# 首次或完整重建
-python pipeline/scripts/rebuild_data.py run \
-  --source-data-root workspace/data \
-  --run-root workspace/data-staging/<run-id> \
-  --roi-mode review \
-  --review-mode review
-
-# 仅校验源数据身份
-python pipeline/scripts/rebuild_data.py run \
-  --source-data-root workspace/data \
-  --run-root workspace/data-staging/<run-id> \
-  --source-only \
-  --check-only
-
-# 物化 source/split 快照到 staging（不进入后续 ROI/审查/发布）
-python pipeline/scripts/rebuild_data.py run \
-  --source-data-root workspace/data \
-  --run-root workspace/data-staging/<run-id> \
-  --source-only
-
-# 把 staging 产物晋级到 workspace/data
-python pipeline/scripts/rebuild_data.py promote \
-  --run-root workspace/data-staging/<run-id>
-```
-
-> 注意：
->
-> - `run --source-only` 会真实生成 source/split 快照，但产物留在 `run-root` 的 staging data 中，需要执行 `promote` 才能落入 `workspace/data`。
-> - `run --source-only --check-only` 仅做校验，不写入快照。
-> - 同一 `run-root` 续跑完整流水线时，必须使用与首次相同的 `--roi-mode` / `--review-mode`，否则需换 `run-root`。
-
-## 10. 现行数据入口：versioning显式七阶段
-
-正式数据构建统一使用python -m versioning data，完整身份为data-v4.1-rN。旧发布和重建CLI只保留停用提示；不提供legacy开关或路径回退。已有发布对象、业务算法和历史审计记录保留，旧集合index/LATEST不用于新版本选择。
-
-### 10.1 准备显式输入
-
-先在训练机核对原视频、tags/mapping注释、既定split、已完成的人工ROI决定、业务契约、历史参考及实际processor文件。操作者按[显式输入契约](../versioning/SCRIPTS.md#显式数据七阶段)准备tensile-data/inputs/v1 YAML，逐文件固定规范路径、大小和SHA256；该节逐项定义split、ROI和media/processor配置。ROI界面保留为输入准备工具，必须显式给出metadata文件、输出和媒体项目根。metadata来自已核对的历史source snapshot中的video_meta.json（明确到文件），或操作者提供的同结构视频清单；清单应与本批输入视频一致。工具不构造新source版本，不解析snapshot ID/前缀/LATEST，也不接受--data-root默认选择。
+ROI 输入准备先于七阶段，因为 inputs 必须绑定已完成的决定。`ROI_METADATA` 是明确的 JSON 文件：来源为核对过的历史 source snapshot 的 `video_meta.json`，或操作者根据本批视频准备的同结构清单（数组或含 `videos` 数组的对象）。每项包含唯一 `video_id`、可解析的 `video_path` 和真实视频属性/事件信息；媒体根与路径共同定位实际视频。新 source 阶段产出 `source_manifest.json`，不产出供 UI 自动选择的历史 snapshot 身份。缺少 metadata 时先完成清单准备，不能恢复已停用的重建 CLI。
 
 ```sh
-python -m streamlit run pipeline/scripts/roi_annotation_app.py -- \
-  --metadata /absolute/source-snapshot/video_meta.json \
-  --output /absolute/roi-draft/roi_decisions.json \
-  --project-root /absolute/media-root
+"$PYTHON" -m streamlit run pipeline/scripts/roi_annotation_app.py -- \
+  --metadata "$ROI_METADATA" --output "$ROI_OUTPUT" --project-root "$MEDIA_PROJECT_ROOT"
 ```
 
-project-root用于解析metadata中的video_path；应指向实际媒体根，不能指向迁移来源镜像。输出是可编辑ROI输入准备文件，不得指向已有封存对象或metadata自身。人工完成后，按输入契约将该文件路径/大小/SHA绑定到inputs的ROI引用，再运行七阶段；ROI阶段会按真实媒体尺寸及已有几何规则复验决定。本批只改参数选择，未改变人工几何与准入规则。
+`PYTHON` 为本机实际项目解释器；`MEDIA_PROJECT_ROOT` 用来解析清单中的媒体路径；`ROI_OUTPUT` 为包外可编辑草稿，不得覆盖 metadata 或已有封存文件。在 UI 中逐视频确认 `fixed_roi`（精确 3:4 裁剪）或 `no_crop`（完整画面后 padding 到 3:4），完成可见性检查及关键时刻预览。输出 `roi_decisions.json` 完整覆盖本批且全部 approved；绑定来源路径、SHA、分辨率、几何和策略版本。训练机 ROI 阶段复验真实尺寸与时间轴，不凭界面保存成功放行。
 
-INPUTS包含已经完成的ROI决定；source阶段不会替操作者生成或猜测决定。各阶段只消费明确输入，不按文件名生成ROI，不重新划分三折，不固定每视频候选数量。真实媒体处理在训练机执行；Mac用于完整审查包、草稿和轻量验证。test_audit材料留在子视频阶段，不能混入开发审查/训练。当前该真实链发布development，holdout构建须按单独契约处理。
+人工完成后将 ROI 文件复制到 inputs 所声明的真实项目根内，核对与源视频的绑定，再记录 pin。媒体项目根必须定位真实媒体，不能用迁移来源镜像替代训练媒体根。
 
-以下变量由操作者明确设置：PYTHON为项目解释器绝对路径，STORE为独立store根，INPUTS为已核对YAML，BATCH与YAML一致，VERSION为已确认且未占用的完整data身份。现有历史release复制迁移使用migration data-precheck/data-migrate与已确认mapping，不通过重跑本链替代迁移。
+### 冻结 inputs YAML
 
-### 10.2 处理与审查导出
+输入 YAML 的 schema 为 `tensile-data/inputs/v1`，精确字段如下。所有 pin 都是
+`{path: 项目根内规范相对路径, size_bytes: 非负整数, sha256: 完整64位摘要}`；
+摘要仅作完整性校验，不作版本身份。路径不能经过符号链接，文件必须存在，内容变化后
+不能沿用旧 pin。YAML 重复键、alias/merge、额外或缺失字段均拒绝。
 
-| 阶段与入口 | 明确输入 | STORE内主要输出 | 进入下一步的条件 |
+| 字段 | 内容 |
+| --- | --- |
+| `schema`、`batch`、`project_root` | 上述 schema、显式批次、真实项目绝对目录 |
+| `source.videos` | 非空列表，每项在 pin 字段之外含 `video_id`，格式 `video_0001`，与 MP4 文件名一致 |
+| `source.annotations.tags`、`source.annotations.mapping` | 两份 pin，内容为现有 source tags/mapping CSV，恰好覆盖声明的视频全集 |
+| `split` | 显式 split 描述文件 pin，不重新计算成员 |
+| `roi_decisions` | 已完成的人工作业 ROI 决定文件 pin，内容使用既有 ROI schema，完整覆盖 source 且绑定来源/摘要/分辨率 |
+| `media.config` | 媒体输入描述 pin，含候选契约与两类历史参考 |
+| `media.preprocessor.kind`、`media.preprocessor.config` | kind 必须为 `minicpm`，config 为实际预处理器描述 pin |
+| `contract` | 现有 `tensile_vlm_v4_1.json` 业务契约 pin |
+
+`split` 内容精确为 `schema: tensile-data/split-inputs/v1`、`batch`、
+`source_sha256`（全部视频 ID 到原视频摘要）、`splits`。
+`splits` 含 `test` 和 `fold_0_train` / `fold_0_val` 至三个 fold 的七份视频 ID 列表；
+每个 fold 的 train/val/test 不相交且覆盖 source，保留 rare-pool 等已决定的成员分配。
+
+`media.config` 内容精确为 `schema: tensile-data/media-inputs/v1`、
+`candidate_contract`、`development_reference`、`test_reference`；后三项都是 pin。
+候选契约使用既有 v3 业务契约，两个历史参考必须有同一 `reference_id`，其
+`source_inventory` 分别与 development/test 成员一致，`records` 中每个
+`reference_record_id` 唯一且绑定本域 source。空历史参考必须由输入明确声明，不能缺文件后回退为空。
+
+预处理器描述精确为 `schema: tensile-data/preprocessor-inputs/v1`、`model_root`
+（项目内普通相对目录）、`files`（加载所需配置、处理代码、tokenizer等的完整 pin 列表，
+path 仍相对项目根）、`max_frames: 8`、正有限 `video_fps`、实际 `expected_fingerprint`。
+至少包含 `config.json` 和 `preprocessor_config.json`，动态模块与相对依赖也须钉扎；
+外部 `auto_map` 拒绝。实际 fingerprint 来自既有 `MiniCPMVideoPreprocessor.fingerprint()`，
+必须使用同一模型目录和运行参数，不填占位值。运行时从只包含声明文件的独立快照加载处理器，
+不会加载模型权重或启动推理。配置准备好后可用 `load_data_inputs` 和 `build_input_dvc_configuration`
+先做只读预检；真实媒体运行还需训练机的 ffmpeg、PyAV 与完整 MiniCPM 处理器依赖。
+
+
+完整字段与解析器见[versioning 输入契约](../versioning/SCRIPTS.md#显式数据七阶段)及 `versioning/data_pipeline.py::load_data_inputs`。inputs 不会替操作者生成 split、历史参考、ROI 或处理器指纹；没有来源的参数不能进入执行。历史参考是明确的已核对文件；空参考也须显式提供合法结构。
+
+## 数据七阶段
+
+从代码仓库执行。训练机上由操作者明确设置：`PYTHON` 为匹配 checkout 的项目解释器绝对路径，`STORE` 为独立 versioning store 根，`INPUTS` 为上述完整 YAML 绝对路径，`BATCH` 与 YAML 一致，`VERSION` 为已确认且未占用的完整 data 身份。`RETURN` 是人工交接后回到训练机的回收 JSON 路径。
+
+| 阶段 | 入口 | 明确输入 | STORE 内输出与准入检查 |
 | --- | --- | --- | --- |
-| data source | 原视频、注释与给定split | data/working/BATCH/source及stage_manifest.json | pins、成员和完整文件匹配 |
-| data roi | source、人工ROI决定 | data/working/BATCH/roi裁剪媒体/冻结决定 | 源身份、分辨率、裁剪与决定一致 |
-| data subvideo | ROI、候选契约、两域参考、processor配置 | data/working/BATCH/subvideo候选媒体、采样帧、映射与排除原因 | 真实物化和采样证据完整 |
-| data review_export | 候选媒体与开发域参考 | data/working/BATCH/review_export完整可搬移包 | 导出包文件与manifest一致 |
-| data review_import | 同一INPUTS及完整人工RETURN | data/working/BATCH/review_import回收证据 | 决定覆盖完整、审查者/时间/标签与证据绑定合法 |
-| data release | 已回收审查、完整VERSION | data/working/BATCH/release构建证据；data/releases/VERSION/payload | 审查及构建校验通过，版本不冲突 |
-| data release_validate | 同一INPUTS/BATCH/VERSION | JSON校验报告 | payload封存、文件/上游绑定及训练准入通过 |
+| 原始输入冻结 | `data source` | 视频、两份注释、给定 split、业务契约 | `data/working/BATCH/source/` 的 `media/`、注释、split 文件、`source_manifest.json`；校验 pin、视频属性和成员 |
+| ROI 物化 | `data roi` | source、人工决定 | `data/working/BATCH/roi/` 裁剪媒体、`roi_manifest.json`、冻结决定；校验来源、尺寸、几何和时间轴 |
+| 子视频与采样帧 | `data subvideo` | ROI、候选契约、两域参考、处理器配置 | `data/working/BATCH/subvideo/` 候选计划、真实 MP4、采样帧、映射及排除证据；校验实际采样门 |
+| 审查导出 | `data review_export` | 候选媒体、参考、冻结契约 | `data/working/BATCH/review_export/` 完整可搬移包；所有声明媒体及证据匹配 |
+| 审查回收 | `data review_import` | 同一 inputs、人工 RETURN | `data/working/BATCH/review_import/`；决定完整覆盖且审查人、时间、标签、证据绑定合法 |
+| 数据发布 | `data release` | 审查回收、完整 VERSION | `data/working/BATCH/release/` 构建证据，`data/releases/VERSION/payload/`；拒绝版本冲突 |
+| 发布验证 | `data release_validate` | 同一 inputs/batch/version | JSON 报告；核验 payload、上游、封存权限与训练准入，不启动训练 |
 
-从代码仓库执行：
+各阶段包含 `stage_manifest.json`，输入、上游、完整文件都一致时才复用；漂移即停止，不自动删除、覆盖或改号。候选数量由实际视频/事件窗口和现有算法决定，不固定为每视频若干条；采样门核对时间戳及事件前后帧，失败候选记录排除原因。开发域待审候选与 test 审计材料隔离，后者不能进入训练发布。
 
 ```sh
 "$PYTHON" -m versioning data source --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
@@ -663,19 +116,18 @@ INPUTS包含已经完成的ROI决定；source阶段不会替操作者生成或�
 "$PYTHON" -m versioning data review_export --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
 ```
 
-阶段目录已有时仅在全部输入、上游和文件匹配时复用，漂移即停止；不自动删除或覆盖后重跑。
+## 人工审查交接与发布
 
-### 10.3 人工回收与发布
-
-把整个STORE/data/working/BATCH/review_export复制到Mac的PACKAGE普通目录，不能只带队列JSON。Mac明确设置自身PYTHON、包外DRAFT与REVIEW_OUTPUT：
+将训练机整个 `STORE/data/working/BATCH/review_export/` 复制到 Mac 的普通目录 `PACKAGE`，保留媒体、队列、契约和 stage manifest，不能只带队列 JSON。Mac 明确设置自身 `PYTHON` 和包外 `DRAFT`、`REVIEW_OUTPUT`：
 
 ```sh
-"$PYTHON" -m streamlit run pipeline/scripts/review_candidates_app.py -- --versioning-package "$PACKAGE" --draft "$DRAFT" --output-root "$REVIEW_OUTPUT"
+"$PYTHON" -m streamlit run pipeline/scripts/review_candidates_app.py -- \
+  --versioning-package "$PACKAGE" --draft "$DRAFT" --output-root "$REVIEW_OUTPUT"
 ```
 
-在界面检查真实视频和采样证据，完成所有候选后冻结REVIEW_OUTPUT/review_return.json。默认审查者为“项目维护者”，可显式使用其他非空标识；历史审批复用须保留核对依据，不把测试决定当成人工审批。保存与冻结会复验整包，不能只筛选部分候选完成回收。
+草稿不能指向 `REVIEW_OUTPUT/review_return.json`。完整包模式默认审查者为“项目维护者”，可用 `--reviewer-id` 指定其他非空身份。UI 打开、保存和冻结均复验整包，所有候选形成终态才冻结回收文件，不接受旧 `--queue` 模式或局部候选筛选。历史审批复用须核对媒体、帧、时间戳和标签并保留确认依据；fixture 不构成人工审批。
 
-把回收文件复制到训练机明确的RETURN路径，再执行：
+冻结得到 `REVIEW_OUTPUT/review_return.json` 后，完整复制该文件到训练机的 `RETURN` 路径，再执行：
 
 ```sh
 "$PYTHON" -m versioning data review_import --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --results "$RETURN"
@@ -683,20 +135,110 @@ INPUTS包含已经完成的ROI决定；source阶段不会替操作者生成或�
 "$PYTHON" -m versioning data release_validate --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --version "$VERSION"
 ```
 
-正式payload包括媒体、冻结契约/审查、六份fold数据集、dataset_info和质量计数；同级release.yaml/README为元数据。完整版本已存在则拒绝，staging遗留需核对并显式处理。release_validate只读核验，不启动训练，也不生成release_pointer.json。
+正式 payload 包含媒体、冻结契约/审查、六份 fold 数据集、dataset_info 与质量计数；`release.yaml`、`README.md` 位于同级元数据边界，DVC store 中另有 `payload.dvc`。发布不可覆盖，中断 staging 保留供显式核查，不自动清理。训练准备显式绑定 VERSION；七阶段数据须同时提供原 `--data-inputs`，媒体根使用该版本 payload。已复制迁移的历史数据则按 committed receipt 复验，外部媒体根仍为原实际位置，不能假定自包含。
 
-### 10.4 DVC、封存与恢复
+## DVC 配置与手动执行
 
-在STORE按实际情况显式初始化DVC后，执行data dvc-config生成该store的dvc.yaml/params.yaml。完整命令及依赖清单见[DVC配置与手动执行](../versioning/SCRIPTS.md#dvc-配置与手动执行)。输入/代码依赖全部固定，跨机配置须重新生成，不能沿用原机器绝对路径。
+仓库根 `dvc.yaml` 是七阶段模板，`params.yaml` 无默认数据版本或输入。先由操作者在
+`STORE` 初始化 DVC（已有 Git store 用 `dvc init`；明确不使用 SCM 的独立 store 可用
+`dvc init --no-scm`），再从代码仓库生成参数化配置：
 
-先dvc repro review_export，人工回收完成后再dvc repro release_validate；缺少回收时停止。阶段输出使用persist，输入过期只报告，不自动删旧输出悄悄重建。正式payload单独经payload.dvc跟踪，已封存目录不是普通可重写out；恢复后核验封存权限与输入绑定。不要对全部封存payload执行强制commit。
+```sh
+"$PYTHON" -m versioning data dvc-config --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --results "$RETURN" --version "$VERSION"
+```
 
-### 10.9 holdout claim 与训练边界
+`dvc-config` 是配置动作，不是第八个数据阶段。它只生成 store 内的 `dvc.yaml`/`params.yaml`，
+覆盖全部显式视频、注释、split、ROI决定、输入配置、业务契约、嵌套历史参考、处理器文件与
+实际 Python 实现代码依赖。回收路径可尚不存在，但不能位于阶段输出内；缺少人工回收时
+review_import 阻断。命令包含实际解释器和代码位置，跨机器迁移配置时须显式重新生成，
+不能复制后假定原绝对路径有效。不同内容的既有配置不覆盖，需先由操作者处理配置冲突。
 
-- `python -m versioning data claim` 只接受已经封存且 `purpose: holdout` 的完整 data 版本，并要求显式给出 `--pre-registration`、`--eval-version`、`--model-version`、`--split` 与 `--executor`；命令先核对预注册与四元组、校验 holdout 隔离布局，再把预注册原子冻结为只读的 `evaluations/staging/<eval>/authorization/pre_registration.yaml`，最后把该冻结文件的完整 SHA-256 与身份一起原子写入 release 的 `authorization/claim.yaml`。规则或阈值发生任何内容变化都会被拒绝。
-- `python -m versioning train prepare/validate/run` 在线执行数据训练引用门，实际 run 在创建 MLflow Run 前再次校验；`purpose: holdout`、`training_allowed: false` 或 `status: invalid` 均直接拒绝。
-- 当前实际 `eval prepare/validate/run/export` 仅接入 validation，holdout 实际读取尚未接线，在读取真值或加载权重前拒绝。公共手工 train/eval 状态写入 CLI 已停用，不能用 `eval create/complete` 消费 claim 或产生正式 passed。底层 Python holdout 授权 API 保留原规则：创建与完成均要求匹配的预注册和 executor，核对冻结摘要与 claim；完成时先原子落 `consumed.yaml`，再可恢复地提交 Run 状态。该底层状态处理不构成真实测评证据，也不解除 holdout 的独立授权边界。
-- 完整参数以各子命令 `--help` 为准；所有正式版本均使用完整 `<kind>-v<协议>-r<N>` 身份，不接受隐式 latest 或短前缀。
+在 `STORE` 中运行 `dvc status` 只报告过期；`dvc repro review_export` 手动推进到待审包，
+完成回收后 `dvc repro release_validate` 继续执行。工作阶段输出使用 persist，输入漂移不会
+通过 DVC 自动删除旧结果后悄悄重建；需明确新批次、完整 pins 和新版本。正式封存目录不作为
+普通 pipeline out，payload 单独经 DVC 跟踪；恢复后需重新校验封存权限与绑定。不要对全部
+已封存 `payload.dvc` 执行强制 commit，pipeline 的测试/补登记限于 `dvc commit --force dvc.yaml`。
+
+
+## test 数据分支：独立构建与全量审查
+
+叙述统一使用 **train 数据分支**（三折训练/验证及全量训练）与 **test 数据分支**（最终独立测试）。现有字段及值 `development`、`holdout`、`test_audit`、`validation` 和历史身份保持不变。以下命令是执行接口，不赋予真实数据构建、测试使用或训练授权。
+
+`holdout_pipeline.py` 复用 source/ROI/子视频算法，使用独立 `STORE/data/test_working/BATCH/`，顶层及批次目录必须 owner-only；存在的宽权限目录拒绝，不自动修改。实际七阶段位于其内部 `data/working/BATCH/`。每批绑定输入与隔离配置摘要，漂移后不能继续复用。test 输入必须是独立全 test source 批次：split 的 `test` 覆盖全部声明视频，六份 fold train/val 列表显式为空；两类历史参考的 `records` 均为空，source_inventory 分别为空和全部 test source。沿用输入视频、ROI、处理器、业务契约及pin格式。
+
+另提供 `TEST_CONFIG`，JSON或YAML，字段精确为：
+
+| 字段 | 必须提供的内容 |
+| --- | --- |
+| `schema` | `tensile-data/holdout-build/v1` |
+| `batch`、`inputs_sha256` | 与 `INPUTS` 批次及原文件SHA256一致 |
+| `development_data_version`、`development_release_sha256` | 完整 train data 身份及其 release.yaml 摘要 |
+| `development_sources`、`used_test_sources` | 两份非语义来源审查清单pin，路径相对INPUTS.project_root，含path/size_bytes/sha256 |
+
+每份来源清单精确包含 `schema: tensile-data/source-isolation/v1`、`scope`（与对应配置字段同名）、`sources`（非空video_ID到原视频SHA256映射）、`reviewer_id`、含时区的`reviewed_at`、非空`reference`（审查来源说明）。train清单ID必须精确覆盖已发布`payload/metadata/training_candidates.json`的source，缺失该证据即拒绝，不推断历史对象兼容。两个清单由操作者提供已核查的完整证据；程序校验其pin、身份覆盖及新test source与两者的ID/内容摘要无交集，并拒绝新source内部重复内容，不能替代人工确认清单完整和从未用于调参。不得读取旧测试真值来填写清单。
+
+在既有变量之外，`TEST_CONFIG`为上述配置的绝对路径：
+
+```bash
+"$PYTHON" -m versioning data source --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data roi --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data subvideo --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+"$PYTHON" -m versioning data review_export --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH"
+```
+
+导出包为`STORE/data/test_working/BATCH/data/working/BATCH/review_export/`，必须连同媒体和stage_manifest完整保留。test全部候选进入人工审查，包括普通未断裂；无历史标签建议，不自动准入。沿用本文人工审查交接的 `review_candidates_app.py --versioning-package` 工作流；复制后的包目录及`REVIEW_OUTPUT`均须owner-only，草稿/回收文件不得进入Git或公开位置。所有决定带审查人/时间，并精确绑定每个候选及媒体。冻结得到包外`review_return.json`后，将其作为`RETURN`，文件权限仅owner可读写：
+
+```bash
+"$PYTHON" -m versioning data review_import --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --results "$RETURN"
+"$PYTHON" -m versioning data release --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --version "$VERSION"
+"$PYTHON" -m versioning data release_validate --purpose holdout --test-config "$TEST_CONFIG" --root "$STORE" --inputs "$INPUTS" --batch "$BATCH" --version "$VERSION"
+```
+
+发布`data/releases/VERSION/`内的`media/`、无标签`evaluation_inputs/manifest.json`、owner-only `sealed_ground_truth/`（labels、审查原件、隔离清单和阶段证据）、仅通过状态的`payload/quality_report.json`以及`build_receipt.json`。发布保持`purpose: holdout`、`training_allowed: false`、`split: holdout`，不创建训练datasets。CLI只输出阶段状态和路径；受限构建凭证不上传Git或MLflow，完整数据备份须保留权限。既有`data dvc-config`仅支持train路径，test分支不自动向DVC remote发布受限数据。
+
+相同完整绑定与审查可重试；冲突拒绝，已消费authorization保留。staging恢复须核对完整inventory，rename后的根目录封存尾步只在其余文件均已封存时恢复。`release_validate`是数据管理校验，会读取当前新test真值并核对构建内容，因此真实执行仍需适用数据授权；它不执行模型测试或创建claim。
+
+最终full模型身份形成并获测试使用授权后，使用已有`data claim`及`eval prepare/run/score/export`，data版本指定上述VERSION，媒体根指定`STORE/data/releases/VERSION/media`。prepare/run验证构建凭证整体摘要、公开媒体及train版本绑定，不读取真值。授权score首次或未承诺恢复时验证真值字节与构建时pin一致；已承诺恢复不重读真值。公开input仅绑定整份构建凭证摘要，不公开裸真值摘要；既定七门及claim消费规则不变。缺构建凭证的旧对象不自动补证或重新获得测试资格。
+
+
+## Holdout claim、推理与授权评分交接
+
+封存 test 数据不自动授予测试使用资格。最终 full 模型须来自已完成的独立全量训练并已登记，确认使用资格和实际执行授权后，操作者准备评测配置及预注册。配置、原七项固定质量门、受限输出及恢复规则以[完整 holdout 验收接口](../versioning/SCRIPTS.md#full-模型的独立-holdout-验收)和[训练/评测规范](../finetune/README.md)为准；不能把 validation 六项指标替代 holdout 七门。
+
+预注册 YAML 必含 `eval_version`、`model_version`、`data_version`、`split`、`rules`、`thresholds`、`one_time`、`tuning_use` 和 `recovery` 九个字段（由 `versioning/holdout.py::parse_pre_registration` 核对）；绑定完整 eval/model/data 身份、相同 split、`one_time: true`、`tuning_use: forbidden`、`recovery: {same_identity_only: true}`；rules 精确等于评测配置去掉 thresholds 的内容，thresholds 完全一致。由操作者明确设置 `EVAL`、`MODEL`、Registry 数值 `MODEL_NUMBER`、`EVAL_CONFIG`、`PRE_REGISTRATION`、授权 `EXECUTOR`、实际代码 `COMMIT`；`VERSION` 是前述 holdout 发布，`SPLIT` 与其及预注册一致。
+
+```sh
+"$PYTHON" -m versioning data claim --root "$STORE" --version "$VERSION" \
+  --eval-version "$EVAL" --model-version "$MODEL" --split "$SPLIT" \
+  --executor "$EXECUTOR" --pre-registration "$PRE_REGISTRATION"
+"$PYTHON" -m versioning eval prepare "$EVAL" --root "$STORE" \
+  --model-version "$MODEL" --model-version-number "$MODEL_NUMBER" \
+  --data-version "$VERSION" --config "$EVAL_CONFIG" --git-commit "$COMMIT" \
+  --media-root "$STORE/data/releases/$VERSION/media" --executor "$EXECUTOR" \
+  --pre-registration "$STORE/evaluations/staging/$EVAL/authorization/pre_registration.yaml"
+"$PYTHON" -m versioning eval validate "$EVAL" --root "$STORE"
+"$PYTHON" -m versioning eval run "$EVAL" --root "$STORE"
+"$PYTHON" -m versioning eval score "$EVAL" --root "$STORE" --executor "$EXECUTOR"
+"$PYTHON" -m versioning eval export "$EVAL" --root "$STORE"
+```
+
+claim 校验隔离布局与完整绑定，将预注册原子冻结到上示路径，再在 release 的 `authorization/claim.yaml` 写入一次性绑定。prepare/validate/run 不读真值；run 在训练机只执行媒体推理，完整后保持父 Run running，等待显式 score。score 核对同一执行身份、推理与授权证据后才读真值，私有逐样本记录及实际七指标位于 `workspace/evaluations/EVAL/restricted/`。公开 MLflow/manifest 只保留绑定、执行摘要及七门通过状态。无论评分 passed 或 failed，都先持久化 consumed，再提交 completed；export 验签同一 Run，不重复推理或重置消费。
+
+权限和阶段调用不等于独立操作系统沙箱。评分/导出中断遵守原消费和恢复边界，不能手工清空 claim、跨身份续办或用状态写入 CLI 制造通过。所有 train prepare/validate/run 在线拒绝 holdout、training_allowed false 或 invalid 数据。工程接线已存在，真实模型质量和真实独立 test 使用仍以台账证据为准；本手册不声明真实环境验收已完成。
+
+## 故障处理与追溯
+
+| 现象 | 下一动作 |
+| --- | --- |
+| pin、上游或阶段文件漂移 | 停止；核对真实来源，再确认新批次、输入及完整版本，保留旧证据 |
+| 完整版本已存在或遗留 staging | 核对原发布/进程与 inventory，显式处理冲突；不自动覆盖或删除 |
+| metadata、ROI 或 split 缺失 | 回到输入准备；不猜测决定、不重分成员、不恢复旧默认选择 |
+| ffmpeg、PyAV 或处理器不可用/指纹不符 | 核对训练机项目环境和钉扎文件，不能以本机替身代替真实物化 |
+| 审查包不完整或候选未完成 | 保持完整包与媒体，完成全部终态后冻结，不拆包绕过验签 |
+| holdout 隔离、使用资格或授权不足 | 保留阻塞并补来源审查/确认，禁止改名旧测试集或读取真值补资格 |
+| DVC 恢复后封存/绑定校验失败 | 停止下游使用并核对 payload、权限及原输入，不强制改写封存对象 |
+
+旧链路参数和施工过程从 Git 历史及现有验证记录追溯；旧集合索引只用于必要的历史对象调查，不能成为新版本选择入口。新问题、证据限制与下一步回到[唯一项目台账](project-todo.md)。
 
 <!-- DECISION-LOG
 D001 — 将本文维护为不绑定版本号的数据处理主手册，并在正文集中声明当前支持的链路版本。
@@ -704,4 +246,6 @@ Why: 数据处理链路后续可能升级；把版本号写入标题会让长期
 Trade-off: 版本升级时必须同时核对当前版本声明、版本特有路径、命令、默认值和验收条件，不能只修改版本号。
 D002 — 现行显式七阶段与历史操作参考分区，保留旧业务解释但停用旧CLI不再作为操作入口。
 Why: 迁移已确认逐入口停止旧写入；保留参数历史有助追溯，但不能让旧说明重新授予发布权限。
+D003 — 移除旧 CLI 操作正文，现行输入准备、七阶段及 test/评分交接成为唯一操作链。
+Why: 迁移交付后历史可执行示例会与单一正式写入入口冲突；D002 的历史追溯改由 Git 与已有验证记录承载。
 -->

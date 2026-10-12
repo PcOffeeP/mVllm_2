@@ -1,203 +1,47 @@
 # 当前项目状态与开发原则
 
-> 本文保留历史阶段记录。2026-09-14现场模型资产与新体系门禁背景见[当前真实模型背景](MODEL_GATE_BASELINE.md)；历史工程通过、旧指针及清单中的存活状态不代表当前新门禁通过。
+## 工程交付与证据时间
 
-> 更新时间：2026-07-29
-> 权威范围：`mVllm_2` 数据、训练、模型资产、推理服务及 TensileAgent 对接
+可读版本控制工程迁移已按确认范围完成并于 2026-09-14 合并 Codeup main，训练机正式代码已同步；最终集成回执见[验证记录第67节](results/version-control-migration/verification.md)。当前任务、依赖及下一动作统一在[项目 TODO](project-todo.md)，本文件只汇总项目状态和开发原则。
 
-## 一句话状态
+本页 2026-10-12 整理依据仓库代码与已有记录，未刷新训练机。模型资产现场基线仍是[2026-09-14模型背景](MODEL_GATE_BASELINE.md)，文件存在、历史可运行与今天可加载是不同证据。
 
-项目已经拥有一款能够稳定走通 VLM 训练、合并、推理服务和 TensileAgent 调用链路的
-V4.1 Fold0 中间模型；接下来的主要工作是提升模型任务效果，而不是继续证明工程链路
-能否运行。
+## 当前支持的链路
 
-## 当前交付对象
+| 范围 | 工程状态 | 证据限制 |
+| --- | --- | --- |
+| 数据处理 | versioning 显式七阶段及完整审查包接管，旧公共写入 CLI 已停用 | 真实媒体与迁移验签范围见验证第24节；已迁移 release 仍依赖外部媒体 |
+| 数据与 Prompt | 完整 data/prompt 身份、封存及输入冻结 | 数据对应关系见[发布说明](V4_1_DATA_RELEASES.md)；不隐式选择版本 |
+| 训练与评测 | 逐折、独立 full、validation 与 holdout 执行/授权评分已接线 | 合成执行和 CPU 回归不代表真实 GPU 训练或质量通过 |
+| 模型与服务 | MLflow 登记、正式评测绑定、alias、冻结 Prompt 及服务模式准入 | 尚无已证实满足新体系最终门禁的真实模型；真实加载/服务成功未验收 |
+| 备份恢复 | store 级恢复与异根地址重定位有工程证据 | 大型权重、SQLite、外部媒体/基座与真实硬盘组合恢复未完整验收 |
 
-当前唯一发布模型：
+正式入口、产物与保留业务函数边界见[入口清单](results/version-control-migration/entrypoint-map.md)。旧包仍提供共享算法，CLI 退役不代表整包无依赖。
 
-`v4.1-agent-pipeline-fold0-r1`
+## 模型与测试的实际起点
 
-它代表：
+旧 Fold0 发布 `v4.1-agent-pipeline-fold0-r1` 曾完成旧工程服务与 Agent 调用验证，质量门未通过、production 未批准。旧 current 与 Git legacy Registry 只解释历史身份，不授予新 alias 或正式 passed。
 
-- `v4.1`：模型实际实现的协议版本；
-- `agent-pipeline`：该模型的核心价值是完成 Agent 链路验证；
-- `fold0`：仅使用 Fold0 训练范围；
-- `r1`：该身份下第一轮保留模型。
+concise 三折报告记载 1581 条 validation 中合法率 79.63%、joint correct 32.07%，并有类别坍缩；原始预测和约定三折权重的缺口仍保留。详细历史结果及来源见[模型背景](MODEL_GATE_BASELINE.md)，不把报告摘要当作本轮复算或可执行模型。
 
-它不代表：
+既定 21 个 test source 已定位，但旧测试发布曾暴露，独立使用资格仍待核定。最终独立测试必须走来源隔离、全量人工审查、封存、预注册和一次性 claim；不得利用已暴露测试调参。
 
-- 当前三折最优模型；
-- full-data 模型；
-- 独立测试通过；
-- production-ready；
-- 项目最终模型。
+## 开发原则
 
-训练机的权威入口：
+1. 输入先冻结：完整 data/prompt/train/model/eval 身份、契约、基座来源与内容、fold、seed、生成和训练参数均可追溯。
+2. 开发侧三折用于方案选择；full 是独立最终训练范围。开发阈值须预先确认，不能自动套用最终 test 七门或事后回填。
+3. 工程集成、训练完成、模型质量与服务成功分别验收。旧效果不补写为新体系 passed。
+4. 历史 checkpoint、adapter、merged、预测和日志按诊断依赖与条件清理台账保护，不因已有 merged 自动删除。
+5. 当前链路通过显式 store 和在线引用门操作；模型服务经合法 alias、精确 Registry 版本与冻结 Prompt 校验。
+6. 重大方案需确认，真实训练、推理、受限测试及删除遵守各自授权。本轮整理不启动这些操作。
 
-```text
-workspace/models/current
-  -> workspace/models/releases/v4.1-agent-pipeline-fold0-r1
-```
+## 下一步入口
 
-Git 中的权威身份：
+下一轮先按 TODO 刷新训练机只读现状；MODEL-DIAG 新基线方案、test 使用资格、环境绑定和真实恢复缺口继续分项处理。没有可用的旧权重时，不持续全盘搜寻，也不直接照旧建议构建尚未支持的 canary/交叉 Prompt 接口。
 
-```text
-pipeline/model_registry/current.json
-pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json
-```
-
-## 当前模型证据
-
-已经完成：
-
-- root adapter 和 merged BF16 完整聚合哈希校验；
-- `tensile-vlm/v4.1` 契约身份校验；
-- 训练机 `127.0.0.1:8002` loopback 推理服务启动；
-- 真实拉伸 MP4 service smoke；
-- TensileAgent doctor；
-- 实际 Agent 视频调用；
-- V2 历史回滚对象保留。
-
-尚未完成或未通过：
-
-- Stage B、Stage D、Stage G 模型质量门；
-- full-data final 训练；
-- 独立测试通过；
-- production approval。
-
-因此工程链路通过和模型质量通过必须始终作为两个不同结论表述。
-
-## 最新三折实验
-
-`v4.1-prompt-concise-cv-v1-seed3411` 已完成三折训练、最佳 checkpoint 回载、adapter
-合并和 1581 条严格评测。
-
-它解决了训练越过最佳点后继续运行的问题，但没有解决任务效果：
-
-- contract 合法率：79.63%；
-- joint correct：32.07%；
-- `clip_state`：35.80%；
-- 322 条严格非法输出；
-- 明显坍缩到“未断裂”；
-- `临界未断裂`和`已断裂`召回率均为 0%。
-
-因此该组三折仍属于 `workspace/runs/` 中的实验，不晋级为 release。
-
-## 当前开发理念
-
-### 开发闭环
-
-本项目以“帧窗口证据”为中心，而不是简单增加子视频数量。完整开发闭环如下：
-
-1. **定义任务契约**：冻结输入媒体约束、输出字段、枚举、Prompt 和生成参数。
-2. **治理原始视频**：记录来源、实验编号、标注、ROI 和源视频级 split。
-3. **生成帧窗口证据**：物化子视频与实际采样帧，避免把近重复画面当作独立证据。
-4. **人工审查标签**：自动规则只负责候选分流，人工结论才可以进入冻结发布。
-5. **发布训练数据**：开发数据与独立测试数据分别形成内容寻址、不可覆盖的 release。
-6. **运行受控实验**：先在固定 fold 隔离单一变量，并保存完整 checkpoint 学习轨迹。
-7. **执行严格评测**：检查 schema 合法率、字段准确率、状态召回、混淆矩阵和失败样例。
-8. **完成三折选择**：只有跨 fold 稳定的方案才进入全量训练候选。
-9. **管理模型生命周期**：实验产物进入 `workspace/runs/`，人工确认后才能晋级为 release。
-10. **交付推理服务**：服务从 `workspace/models/current` 加载发布模型，并校验完整身份。
-
-同一源视频可以贡献多个窗口，但不能把近重复帧当作独立视觉证据；三折用于选择方案，
-最终模型必须使用全部合格开发数据训练，并由从未参与调参的独立测试发布验收。
-
-工程链路验收和模型质量验收相互独立：模型可以成功训练、合并、部署和被 Agent 调用，
-但仍可能因为类别坍缩、契约非法或断裂召回不足而不能作为最终模型。
-
-### 1. 先固定身份，再比较效果
-
-每个实验必须冻结：
-
-- 数据 release；
-- Prompt revision 与内容 hash；
-- contract 与 schema hash；
-- fold、seed、采样和训练参数；
-- adapter、merged 和评测身份。
-
-不能把不同数据、Prompt 和训练日程下的指标差异直接解释成单一变量效果。
-
-### 2. 工程链路和模型质量分开验收
-
-工程链路回答：
-
-> 模型能否被合并、部署、调用并返回符合契约的证据？
-
-模型质量回答：
-
-> 模型是否在独立、严格、可比较的任务指标上达到要求？
-
-前者通过不能替代后者。
-
-### 3. 模型先实验，后发布
-
-```text
-workspace/runs/<experiment-id>
-        |
-        | 严格评测与人工确认
-        v
-workspace/models/releases/<model-name>
-        |
-        | 服务与 Agent 验证
-        v
-workspace/models/current
-```
-
-合并成功不等于发布，单折指标好也不等于最终模型。
-
-### 4. 名称表达模型身份，manifest 表达复现细节
-
-模型名固定为：
-
-`<协议版本>-<核心要点>-<训练范围>-r<轮次>`
-
-seed、日期、checkpoint、数据 hash 和 Prompt hash 放入 manifest，不继续堆进目录名。
-
-### 5. Checkpoint 按分析状态管理
-
-Checkpoint 同时服务于：
-
-- 断点续训；
-- best/last 对比；
-- 中间学习能力分析；
-- 定位类别坍缩、契约退化和过拟合发生的 step。
-
-因此不能因为已有 merged 就自动删除。当前保留：
-
-- 发布模型来源实验的全部 5 个 checkpoint；
-- 最新 prompt-concise 三折的全部 15 个 checkpoint。
-
-其他已完成且无需继续分析的实验只删除 checkpoint，保留 adapter、merged、指标和日志。
-
-### 6. 数据和权重都使用项目内 workspace
-
-- 当前数据：`workspace/data`；
-- 实验：`workspace/runs`；
-- 发布模型：`workspace/models/releases`；
-- 当前模型：`workspace/models/current`。
-
-`tensile-data` 和 `LlamaFactory/saves` 只保留历史兼容入口，不再作为新工作的权威根。
-
-## 下一轮优化目标
-
-优先级按证据链排序：
-
-1. 对保留的三折 checkpoint 做逐 step 严格评测，确定契约退化和类别坍缩从何时开始；
-2. 隔离 Prompt 精简、采样配额和训练日程三个变量；
-3. 首先恢复接近 100% 的四字段 contract 合法率；
-4. 提升`临界未断裂`、`发生断裂`、`已断裂`召回，避免“未断裂”偏置；
-5. 只有完整三折稳定优于当前基准后，才讨论 full-data 模型；
-6. 方案冻结后再执行独立测试，不根据独立测试结果回头调参。
-
-## 文档入口
-
-- [仓库总览](../README.md)
-- [微调、合并与评测](../finetune/README.md)
-- [数据处理运行手册](DATA_PROCESSING_RUNBOOK.md)
-- [V4.1 数据发布](V4_1_DATA_RELEASES.md)
-- [推理服务运行手册](INFERENCE_SERVICE_RUNBOOK.md)
-- 模型资产生命周期（文档已归档，见 git 历史）
-- Checkpoint 清理报告（文档已归档，见 git 历史）
-- [当前发布模型证据](results/v4_1_agent_pipeline_fold0_r1/README.md)
-- [最新三折结果](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)
+- [项目 TODO](project-todo.md)：唯一任务状态和执行顺序。
+- [项目指南](project-guide.md)：双机角色与链路关系。
+- [数据处理手册](DATA_PROCESSING_RUNBOOK.md)：输入准备到封存发布。
+- [训练与评测](../finetune/README.md)：正式运行入口及历史实验索引。
+- [服务手册](INFERENCE_SERVICE_RUNBOOK.md)：现行 alias 准入与运维。
+- [模型背景](MODEL_GATE_BASELINE.md)：带核查日期的真实资产和历史效果来源。

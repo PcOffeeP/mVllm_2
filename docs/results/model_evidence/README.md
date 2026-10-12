@@ -8,7 +8,7 @@
 ## 这个目录是干什么的
 
 每个被清除或评估过质量的过程模型，其「怎么训练、评测了谁、结果如何、哪里失败」的
-自包含证据包按 `<model_id>/` 存放于此。证据包的定位：
+轻量证据包按 `<model_id>/` 存放于此。证据包的定位：
 
 - **只保留小而关键的归档文件**（身份、配置、效果摘要、哈希），大权重与逐样本记录
   按政策留在训练机、不入 git；
@@ -44,12 +44,15 @@ evaluation 日志）、`adapter/*.png`（训练 loss 图）、`evaluation/evalua
 
 ## 模型清单索引
 
-当前仅一个试点归档模型。新归档模型按同一结构追加一行，并同步到
-[MODEL_INVENTORY.md](../../MODEL_INVENTORY.md) 对应条目。
+2026-10-12 本地共有以下五份轻量证据包，均有 README 与 MANIFEST；本轮只核对目录和文件存在，没有重算包内哈希或刷新训练机。目录存在不代表完整归档、正式模型通过或已经删除权重。
 
-| model_id | 一句话结论 | 证据包 | MODEL_INVENTORY 定位 |
-| --- | --- | --- | --- |
-| `v4.1-prompt-minimal-v1-seed3411` | prompt-minimal（seed 3411, fold0）：精简 prompt 致 valid 100%→86.12%、joint 41.18%→24.00%，四字段正确率同步下滑 | [证据包](v4.1-prompt-minimal-v1-seed3411/README.md) | [第 3 节清单 条目 4](../../MODEL_INVENTORY.md#3-模型清单)；归档边界见[第 8 节](../../MODEL_INVENTORY.md#8-2026-08-31-清理可行性核查) |
+| 历史运行身份 | 证据入口 | 验证边界 |
+| --- | --- | --- |
+| `v4.1-phase2-coverage-fallback-v1-seed3413` | [说明](v4.1-phase2-coverage-fallback-v1-seed3413/README.md)、[清单](v4.1-phase2-coverage-fallback-v1-seed3413/MANIFEST.json) | 历史轻量证据；完整性、远端原件及清理资格须另核 |
+| `v4.1-phase2-coverage-first-v1-seed3411` | [说明](v4.1-phase2-coverage-first-v1-seed3411/README.md)、[清单](v4.1-phase2-coverage-first-v1-seed3411/MANIFEST.json) | 历史轻量证据；完整性、远端原件及清理资格须另核 |
+| `v4.1-phase2-source-aware-v1-seed3407` | [说明](v4.1-phase2-source-aware-v1-seed3407/README.md)、[清单](v4.1-phase2-source-aware-v1-seed3407/MANIFEST.json) | 历史轻量证据；完整性、远端原件及清理资格须另核 |
+| `v4.1-phase2-source-aware-v1-seed3411` | [说明](v4.1-phase2-source-aware-v1-seed3411/README.md)、[清单](v4.1-phase2-source-aware-v1-seed3411/MANIFEST.json) | 历史轻量证据；完整性、远端原件及清理资格须另核 |
+| `v4.1-prompt-minimal-v1-seed3411` | [说明](v4.1-prompt-minimal-v1-seed3411/README.md)、[清单](v4.1-prompt-minimal-v1-seed3411/MANIFEST.json) | 历史轻量证据；完整性、远端原件及清理资格须另核 |
 
 ## 如何使用
 
@@ -58,9 +61,7 @@ evaluation 日志）、`adapter/*.png`（训练 loss 图）、`evaluation/evalua
 1. **先看本索引**：按 `model_id` 定位目标，读「一句话结论」判断是否相关；
 2. **进具体模型目录**：读该 `model_id/README.md` 获取配置、指标与失败特征，核对
    `MANIFEST.json` 的哈希与身份；
-3. **需要原始数据再上训练机**：逐样本记录（`evaluation_records.jsonl`）、完整训练
-   日志、loss png 与权重本体在训练机 `workspace/evidence_archive/<model_id>/` ，
-   不入 git；本目录不包含这些大文件。
+3. **需要原始数据再上训练机**：逐样本记录、完整日志与权重的历史约定位置为训练机 `workspace/evidence_archive/<model_id>/`；需先按 MODEL-ARCHIVE 核对原 manifest 与实际位置、缺失项，不假定原件仍在场。本目录不包含这些大文件。
 
 跨模型横向对比、模型清单与清理放行前置条件见 [MODEL_INVENTORY.md](../../MODEL_INVENTORY.md)；
 归档/清理任务的进展跟踪见 [project-todo.md](../../project-todo.md) 的 MODEL-ARCHIVE 条目。

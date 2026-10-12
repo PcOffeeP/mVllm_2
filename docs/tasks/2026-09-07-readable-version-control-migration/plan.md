@@ -2,22 +2,22 @@
 
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
 - **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `b1aaf315`（承接31d20154；用户确认逐折执行与证据复用）。
-- **分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
-- **目标**：按 Spec 完成实际入口和限定对象迁移，形成面向 Codeup main 的可审阅交付。此文件只编排实施，状态和每批结果写入[项目 TODO](../../project-todo.md)。
-- **确认与执行边界**：用户已确认本 Plan，并要求先单独提交计划文档；本次提交不启动迁移实施。后续执行遵守文末列明的实施范围与单独授权边界。
+- **历史任务分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
+- **目标**：保存已确认的实施范围、选择、完成门及 Proof。工程迁移于 2026-09-14 完成交付；后续任务只在[项目 TODO](../../project-todo.md)维护。
+- **确认与执行边界**：本 Plan 的实施已按历次确认与授权执行，最终集成先推任务分支、再快进 Codeup main 至 `5acebc27` 并同步训练机（验证第67节）。本文件保留的施工步骤和 Proof 用于追溯，不是新的执行授权。2026-10-12 仅整理文档与独立核查，不 SSH、不训练或评测。
 
-## 执行基线与真实缺口
+## 规划基线与当时接入缺口
 
-基础设施承接点为 `1b0d5823`；前序 1399 项 versioning 测试、2082 项整仓测试及独立复核均为历史证据，本次实施后按受影响范围重新验证。现场观察见[调查记录](../../results/version-control-migration-20260907.md)，不能把文件存在性当作完整性或加载证据。
+基础设施承接点为 `1b0d5823`；前序 1399 项 versioning 测试、2082 项整仓测试及独立复核是基础设施历史证据；后续迁移验证按具体代码与机器记录，未在本轮文档整理中复跑。现场观察见[调查记录](../../results/version-control-migration-20260907.md)，不能把文件存在性当作完整性或加载证据。
 
 规划时查明两处关键接入缺口：
 
 - `versioning/data_pipeline.py` 的 `_derive_roi` 从文件名摘要生成 ROI，`run_subvideo` 为每视频生成两条记录；这是已有最小数据链行为，不能承接真实人工 ROI、视频剪裁和采样语义。M3 必须替换正式路径上的该行为，并保留真实业务规则。
 - `versioning/cli.py` 的训练处理函数创建、更新 MLflow Run；实际训练仍在 `finetune/train_with_contract.py`，测评仍在 `finetune/eval_run.py`。M4 必须贯通真实调用，而非只补充状态管理测试。
 
-## 文件范围与实施选择
+## 已确认文件范围与实施选择
 
-以下是计划允许的精确代码文件集。不得将某个目录整体作为任意修改授权。M0 若发现遗漏的活动入口或底层身份依赖，先记录精确路径并更新 Plan；改变行为或职责时回到 Spec。
+以下保留迁移时确认的精确代码文件集。不得将某个目录整体作为任意修改授权。M0 若发现遗漏的活动入口或底层身份依赖，先记录精确路径并更新 Plan；改变行为或职责时回到 Spec。
 
 | 范围 | 允许新增或修改的文件 | 职责 |
 | --- | --- | --- |
@@ -31,13 +31,11 @@
 
 **只读参考、默认保持不变：** `pipeline/source_bootstrap.py`、`pipeline/roi_manifest.py`、`pipeline/roi_media.py`、`pipeline/v3_candidate_plan.py`、`pipeline/v3_candidate_media.py`、`pipeline/v4_1_review_workflow.py`、业务契约、旧已发布 manifests、历史实验配置和报告。真实媒体算法优先复用；其身份写入若无法与业务算法分离，M0 报告并精确扩充 Plan，不复制一套变化后的算法冒充等价。
 
-2026-09-12 M4精确补充：`finetune/validation/constants.py` 将旧数据路径常量的活动指针读取延后至legacy调用者显式请求，保留原返回值；模型推理仅导入生成参数时不再读取旧指针。该文件是实际model_runtime的直接依赖，此局部隔离不改变数据划分、生成参数或正式输入契约。
-
 历史正式产物不原地改名、覆盖或删除；`stash@{0}` 保留。`finetune/active_data_release.json`、`pipeline/model_registry/current.json` 和旧模型 release manifest 作为历史证据保留，活动代码解除对它们的依赖。不存在合格 alias 时不改写旧模型质量结论。
 
 **新轻量输出：** 本任务证据放入 `docs/results/version-control-migration/`，具体文件为 `source-inventory.yaml`、`object-mapping.yaml`、`entrypoint-map.md`、`history-summary.yaml`、`verification.md`、`handoff.md`。这些是映射、历史证据和验证记录，不是新的全局注册表或任务状态库。已确认正式对象的输出路径由完整版本名确定，在 object-mapping 中逐个列明后才允许写入；不预造版本编号。
 
-## Batch 顺序与完成门
+## 已执行批次顺序与完成门
 
 | Batch | 内容 | 依赖 | 可观察交付 |
 | --- | --- | --- | --- |
@@ -53,25 +51,33 @@
 
 这些编号是施工分组，不增加 Spec 状态机。每批完成后更新 TODO：实际机器、提交、Proof 结果和限制；每个独立可验证代码步骤原子提交，不积压到整批结束。依赖失败只暂停受影响的下游。
 
-### 当前实施进度（2026-09-13）
+## 最终工程交付矩阵
 
-本节同步执行进度；项目任务状态仍以docs/project-todo.md为唯一台账，详细证据见docs/results/version-control-migration/verification.md。
+工程交付按确认范围已解决；详细失败、修复和分组日志保留在[验证记录](../../results/version-control-migration/verification.md)，当前后续动作只查[项目 TODO](../../project-todo.md)。
 
-| 阶段 | 当前状态与下一动作 |
-| --- | --- |
-| M0–M3 | 已完成现场核对、转换能力、隔离环境与真实数据链迁移验收 |
-| M4 | 三折训练及validation执行接线、双机CPU范围验收完成；代码7cb24398、证据7a750065。本轮独立full训练与holdout媒体run/授权score接线完成（fed9bcfc），Linux819 passed/1 skipped、各exit0，双机及独立局部证据见第45节；真实训练/GPU、真实holdout读取及真实注册模型成功路径仍未验证，保持未关闭 |
-| M5 | 进行中（Codex）：server_proxy实际加载、registry管理、交付校验及smoke已接线；本机联合179项与后续最终服务专项41项通过，独立审查通过本轮代码与本机证据范围；Linux最终41项通过；真实模型成功路径未验证，真实环境依赖继续保留（verification第32节） |
-| M6 | 部分验收通过（store级恢复已完成，真实硬盘/大型产物待验收）：Mac/Linux109项通过，实际SSH往返、错误摘要拒绝和原隔离路径联合恢复通过；独立证据核查通过，真实硬盘/大型产物未验证；M8-R4 store级异根恢复已由2fce3ab1完成并通过Mac/Linux及独立局部验收，真实硬盘/大型产物与外部依赖整机恢复仍未验收（verification第33、39、41节） |
-| M7–M8 | M7a完成（881c8181）：三个数据旧CLI退役，数据手册与入口索引同步，本机/Linux各57项通过、独立审查通过；M7b本批完成（60dd00bc）：四个旧训练/评测CLI退役及ARCHITECTURE/finetune文档收敛，双机证据见verification第35节；M7c本批完成（09035fd4）：旧queue写入退役、ROI显式路径及文档同步，两端验证见verification第36节；M7d本批完成（15b44009）：7个辅助CLI退役，验证见第37节；M7e本批完成（cc02acc1）：旧Prompt CLI退役、历史索引工具显式根及文档同步，两端179项通过/独立核查通过（第38节）；历史库保留。以下M8首次审查及后续驳回为历史推进记录，不作为当前下一动作。M8进行中（Codex）：f1b7d8a3至0963642b全量117提交/148文件独立审查，整仓CPU基线2603 passed/11 skipped；整体审查驳回，M8-R1代码3b63aa52完成、本机整仓及独立局部审查通过，Linux分三进程956 passed/1 skipped、各exit0，R1本轮范围已解决；M8-R4 store级异根恢复已解决本轮范围（代码2fce3ab1，Mac/Linux及独立局部验收，第41节），M8-R2 Prompt并发及M8-R3训练半提交已解决本轮范围（2b8cbc89）：Mac/Linux各466项、独立251项通过。历史汇总实物已交付（21条，第42节）；第43节物理Prompt已补齐，Mac整仓2647 passed/11 skipped、exit0。最终125提交/149文件独立审查已完成且因M8-R5驳回整包；当前矩阵已更新，第44节R5已由de1b51dd解决本轮范围，用户策略确认、Mac/Linux200项及独立局部证据通过；本轮full/holdout接线及双机隔离CPU验证已完成（fed9bcfc，Linux819 passed/1 skipped、各exit0，第45节）；第46节完整复审e1d70c58曾因M8-R6驳回，Mac整仓另发现M8-R7；两项已由d9ec1227修复，Mac整仓2694 passed/11 skipped、exit0，Linux两组179+1项各exit0，更新的独立整包代码审查覆盖140提交/152文件并通过（第47节）；真实环境缺口分别保留，未授权push/merge |
+| 范围 | 最终工程结果 | 验证证据及限制 |
+| --- | --- | --- |
+| M0–M2：范围、转换及隔离环境 | 源/映射/入口核对、data/Prompt 转换、历史摘要及 Linux 隔离验证完成 | 第12–18节及 source-inventory/object-mapping；不证明全部历史模型可重现 |
+| M3：数据处理与人工审查 | 两份发布语义保持、真实媒体小样本对照、双机审查包往返及封存校验完成 | 第19–24节；r1/r2 外部媒体仍引用原 workspace，新 store 不自包含 |
+| M4：训练与测评 | 三折、独立 full、正式 validation 与 holdout 推理/授权评分接线完成 | 第25–31、45节；以 CPU 替身和输入预检证明接线，真实训练及模型效果未验 |
+| M5：服务准入 | alias/Registry/冻结 Prompt 绑定、实际入口拒绝及 CPU 成功路由完成 | 第32、43–44节；合格真实模型加载、GPU 推理及 HTTP 成功路径未验 |
+| M6：备份与恢复 | 跨机小对象传输及 store 级异根联合恢复完成 | 第33、39、41节；真实硬盘、大型权重和外部依赖整机组合恢复未验 |
+| M7：逐入口退役 | 旧数据/训练/评测/Prompt/队列/辅助写 CLI 已逐入口停用；业务函数与历史对象保留 | 第34–38节及 entrypoint-map；不能删除整个 legacy 包 |
+| M8：独立审查与最终交付 | R1–R7 修复闭环、140提交/152文件完整代码审查通过；后续四批增量独立审查映射及授权集成完成 | 第40–48、66–67节；历史 Mac 整仓 2694 passed/11 skipped，未在本轮复跑 |
+| 冻结七门及 test 分支 | 七门原定义接线、独立七阶段审查/封存与最终 full 测试接线完成 | 第49–53节；既定21 source已定位，独立使用资格及真实构建仍缺 |
+| 双平台部署 | Mac 轻量/Linux GPU 新隔离环境锁定安装及 doctor 验收完成，代码83724995 | 第62–63节；旧环境未修补、新环境未正式激活 |
+| 三折分次执行 | 显式选折、同父 Run、验签复用、partial 和完整汇总门完成，代码61effebd | 第64–65节；合成工程验收，不含真实训练 |
+| 集成与模型基线 | MODEL_GATE_BASELINE独立核查后，按授权顺序推任务分支、快进main并同步训练机 | 第67节；历史落点5acebc27，今日训练机现状尚未刷新 |
 
-### 2026-09-13 交付收口与模型前置准备
+### 保留的后续限制
 
-当前下一动作以TODO及verification第48节为准：完成四文档独立核查、修正过期CLI与R6/R7状态；不重复第47节已通过的完整代码审查和CPU回归。真实环境限制继续保留。
+真实训练、质量、test 和真实服务成功路径分别由 TODO 中的 MODEL-DIAG / HOLDOUT-BUILD / FINAL-TRAIN / MODEL-QUALITY 跟踪；ENV-ACTIVATION 与 RECOVERY-VALIDATION 承接正式环境和物理恢复缺口。旧指针目标仍待用户裁决，不恢复旧写入；清理不阻塞工程交付，必须满足既有完整迁移、冗余、引用退出和诊断保护条件。
 
-用户本轮明确要求同时推进HOLDOUT-BUILD和MODEL-DIAG，先执行不改变行为契约的只读准备。精确新增轻量证据文件为`docs/results/model-diagnostics-preflight-20260913.json`，保存限定SSH元数据检查、历史development原记录重算的程序/摘要/返回结果和纯配置探针；不收录逐样本标签、预测或权重。该扩充仅用于本轮Proof落盘，不新增训练、holdout构建/使用或正式写入授权。
+下一轮先刷新训练机只读事实。本轮只完成文档收敛及独立核查，不运行本文件中的施工、测试、训练或评测命令。
 
-来源未指定与实际构建入口未接通阻塞HOLDOUT-BUILD。当时HOLDOUT-METRICS先记录待确认；用户随后确认按七项原门槛补齐，Spec55b3f4d4及下文专门实施批次承接，当前代码f1be1060已局部独立审查通过，双机最终验证见第49节。MODEL-DIAG可复算已有开发预测，但concise缺失和历史visual权重断链阻塞新推理；找到精确备份位置后只读核验，不全盘搜寻或恢复覆盖产物。
+## 已确认施工步骤（供实施追溯）
+
+以下保留每阶段的技术选择和停止门，不再用于安排当前下一动作。
 
 ### M0：核定范围与写入者
 
@@ -139,7 +145,7 @@
 
 ## Proof：场景、命令与证明范围
 
-所有本机命令在上述本机 worktree 执行；训练机命令在已核对的隔离 checkout 中用该环境 Python 执行。以下新增测试路径在 M1 创建后才运行，不宣称已有命令今天可完成真实迁移。
+所有本机命令在上述本机 worktree 执行；训练机命令在已核对的隔离 checkout 中用该环境 Python 执行。以下命令是实施时的 Proof 设计；实际执行版本、机器、结果与限制以验证记录为准，不是本轮测试记录。
 
 | Spec 行为 | Proof | 证明内容与限制 |
 | --- | --- | --- |
@@ -163,22 +169,15 @@
 - **历史引用缺失**：按 Spec 标记未知，不无限补资料，不伪造 passed；只有正式对象的必需缺口阻塞其正式登记。
 - **验证误报**：未测真实硬盘、真实训练及无合格模型的真实推理，各自明确列出；基础设施测试总数不代替实际接入证据。
 
-## Plan 确认时的实施范围
-
-请求用户确认本计划并明确授权其范围内的实现、正常原子提交、限定的训练机项目级隔离环境准备与小样本验证、经人工核对映射后的两个数据版本和一版 Prompt 迁移，以及历史摘要整理和入口接管。
-
-merge/push、系统权限调整、停止已有服务或训练进程、真实重训练/完整评测、受限测试使用、历史权重删除不包含在上述授权中。遇到这些动作，只暂停相应部分并提供精确目标和理由。Plan 确认提交并取得实施授权前，不开始任何迁移实施；已有授权内的只读调查和草案整理可以继续。
-
-## 2026-09-12 用户追加的审查者完整性修复
+## 人工审查归属的决定演进（2026-09-12）
 
 用户要求分析历史人工记录reviewer_id缺失，并修复未来人工审查必须补全审查者信息。此授权允许对既有review_candidates_app.py的legacy模式作局部缺陷修复：两模式开始前强制非空审查者标识、界面显示当前审查者、完整汇总前逐条检查作者。已有普通未断裂自动准入规则保持不变，不批量将匿名历史记录归给当前操作者，不改写历史封存对象。实施仅涉及既有允许文件review_candidates_app.py、rebuild_data.py中的继续审查命令提示、tests/versioning/test_data_pipeline.py及对应操作说明/任务证据；不调整共享历史读取/迁移schema。
 
-## 2026-09-12 单维护者审查归属（取代上一节的手填要求）
+### 最终确认：单维护者审查归属（取代手填要求）
 
 用户明确确认历史人工审批均由本人完成，并批准默认使用“项目维护者”。新决定自动记录该角色，保留可选显式标识；不以旧记录缺姓名要求重审，不改写原历史记录。23条对象完全匹配的审批可依据本次确认复用，原审查时间保留，补充确认单独记录。人工决定完整性及媒体绑定门禁继续有效。
 
-
-M7a精确范围：上述三个数据CLI停止历史写入并指向versioning显式七阶段；rebuild_data的旧编排函数仅保留为私有历史测试入口，tests/test_rebuild_source_only.py改为显式调用该私有入口，新的真实CLI拒绝回归放tests/test_data_rebuild.py。不删除artifact_index/artifact_resolver：source_bootstrap、ROI及候选媒体业务实现仍依赖它们。M4/M5尚未验证的真实成功路径不因本批关闭，其他未核定旧入口逐个列证据后处理。
+M7a精确范围：上述三个数据CLI停止历史写入并指向versioning显式七阶段；rebuild_data的旧编排函数仅保留为私有历史测试入口，tests/test_rebuild_source_only.py改为显式调用该私有入口，新的真实CLI拒绝回归放tests/test_data_rebuild.py。不删除artifact_index/artifact_resolver：source_bootstrap、ROI及候选媒体业务实现仍依赖它们。M4/M5的真实成功路径不因工程验收关闭，其他未核定旧入口逐个列证据后处理。
 
 M7b本批精确范围：停用train_build_dataset/train_prepare_run/train_with_contract/eval_run公开CLI，保留新入口直接调用的版本化业务函数及历史私有测试入口；回归在既有允许的tests/test_train_with_contract.py、tests/test_eval_run.py添加或调整。只读复跑tests/test_train_build_dataset.py与tests/test_train_build_source_aware_dataset.py，不改采样、评分或底层训练。ROI/审查/索引辅助入口不在本批退役范围。
 
@@ -194,45 +193,11 @@ M7e文档精确补充：pipeline/prompt_control/README.md仅追加历史范围�
 
 M8-R1精确测试补充：`tests/versioning/test_cli_holdout.py`随公共手工写入口停用更新，验证合法claim也不能由手工状态消费；既有低层holdout状态/消费故障测试继续保留。训练证据保存为实际父Run的`training-evidence.json` artifact及只写一次的摘要param，不产生新正式身份或全局索引。
 
-2026-09-13 M8-R1已解决本轮范围（代码3b63aa52）：Mac整仓2623 passed/11 skipped，Linux分三进程956 passed/1 skipped、各exit0，独立代码/操作文档局部审查通过。首次Linux单进程回归触及1024文件句柄上限而exit1，已保留日志；相同代码及原限额分组复验通过，不能外推长期服务资源验收。完整证据见verification第40节。下一步M8-R4异根恢复、history-summary实物与最终整包复审；真实GPU/full/holdout及物理存储缺口保持，M8整体不关闭。
+M8-R5补充证据与已确认方案：用户确认采用训练及通过评测时冻结并验签的 Prompt，输出/评分/生成/重试及准入门保持。独立临时fixture中同ID当前Prompt替换为固定服务契约后，resolver指纹不变而服务错误放行。最小修复必须绑定训练/eval冻结Prompt及摘要并拒绝当前定义漂移；这项完整性门不因兼容策略选择而省略。该发现及后续裁决见第43–44节，修复已闭环。
 
-
-2026-09-13 M8-R4进行中（Codex）：从7bea4533继续已授权实施。修复恢复副本SQLite内的MLflow存储地址，保留不可变训练/评测内容及状态；验收要求新根读取、原模拟store不可达、备份不变、非法映射和冲突拒绝。代码限既有backup.py及已批准测试/文档，基础模型与外部媒体不因重定位扩大备份范围。
-
-2026-09-13 M8-R4已解决本轮store级异根恢复范围（代码2fce3ab1）：Mac受影响回归175 passed/1 skipped，最后URI严格化另6 passed；Linux最终同一提交181 passed/1 skipped、exit0；独立代码/操作文档局部审查通过。原模拟store不可访问时，新根artifact读取、显式current/服务准入、后续写入与再次备份均通过；冻结事实和原备份保持。验证见第41节；真实硬盘/大型产物、外部依赖整机恢复与GPU不在通过范围。下一步补实际history-summary并做M8最终整包复审，整体迁移不关闭。
-
-2026-09-13 M8历史汇总进行中（Codex）：承接a14b3d0a，读取训练机原工作区的限定run结构及隔离分支的五份轻量归档，生成已批准history-summary.yaml。分别保留来源根、归档声明与本轮观察；不写原工作区、不复制大型权重、不读取受限测试结果、不新增正式身份。验收覆盖声明对象全集、Spec核心字段的已知值/未知原因、指标口径与审批事实，并独立核查。
-
-2026-09-13 同轮发现并修复M8历史生成器batch口径（Codex）：已证实原H9缺world_size却输出effective_batch_size；本轮改保留per_process_accumulated_batch及推导来源，全局值未知。变更仅既有migration.py与test_migration.py，RED有效，Mac migration+CLI247项通过；代码/产物/Linux与独立结论见verification第42节，不新增训练或正式身份。
-
-2026-09-13 M8历史汇总本轮交付完成：history-summary.yaml含21条、234已知/152未知、47份轻量来源及实际权重stat，已独立验收；同轮公共生成器batch误记由d2ae4cee修复，Mac/Linux migration+CLI各247项通过，独立15项通过。证据见第42节。下一步核对物理/data下Prompt落位并做M8最终完整Spec矩阵与差异复审；真实GPU/full/holdout及硬盘/大型产物限制保留，整体迁移未完成。
-
-2026-09-13 M8最终核查进行中（Codex，代码ab5c71ae）：使用既有公开prompt create入口把已确认Git定义登记到/data/mVllm_2，核对原文字段、字节SHA和重复写入拒绝；只新增同身份Prompt文件与隔离证据。并行执行Mac整仓CPU回归与f1b7d8a3→ab5c71ae完整独立审查，更新当前Spec验收矩阵。无新增方案取舍；full/holdout实际输入未接线与真实GPU未验证须分开记载。
-
-2026-09-13 M8物理Prompt已完成（第43节）：公开create/show成功，重复create拒绝，1200字节及SHA与Git一致、9份保护文件保持。独立最终复审新增M8-R5 P2：当前concise Prompt对应合法candidate被固定服务analysis契约拒绝。先确认服务Prompt来源，再列精确接线和回归；不更改已冻结Prompt/输出/评分/alias门。该记录时最终CPU与独立完整审查进行中，最终复审结论见下条；full/holdout实现未接线、GPU与硬盘验证缺口分别保留。
-
-M8-R5补充证据：独立临时fixture中同ID当前Prompt替换为固定服务契约后，resolver指纹不变而服务错误放行。最小修复必须绑定训练/eval冻结Prompt及摘要并拒绝当前定义漂移；这项完整性门不因兼容策略选择而省略。当前未改生产代码，独立发现及后续裁决见第43节。
-
-2026-09-13 M8最终冻结代码复审完成：f1b7d8a3→ab5c71ae共125提交/149文件，独立整合11 passed/exit0及物理Prompt只读核查通过；整包驳回修改，保留M8-R5 P2，前序R1–R4/历史局部结论有效。同ID漂移拒绝属于已确认完整性要求，可先修复；仅兼容策略依赖用户裁决，不阻塞full/holdout等独立工作。
-
-2026-09-13 M8本轮收尾：Mac冻结ab5c71ae整仓2647 passed/11 skipped，452.07秒且正常exit0；skip原因单独复核为10项缺V3本机fixture、1项缺V4.1本机数据。四份交付文档及52本地链接检查完成，独立核查已保留R5两反例和整包驳回。Linux提交实物Prompt与Mac回归的轻量证据后bundle回传；原main/源产物、Mac用户未跟踪文件和stash保持。下一步同ID漂移完整性修复；服务兼容策略待用户裁决，full/holdout实际输入接线继续按依赖推进，M8不关闭。
-
-
-2026-09-13 M8-R5实施确认（Codex）：用户回复“可以”，批准服务analysis采用训练及通过评测时冻结并验签的Prompt，现有输出、评分、生成/重试、evidence和准入门保持。Spec已先行记录并单独提交；本计划复核后继续既有授权。
-
-精确范围：pipeline/model_registry.py校验训练/评测/当前Prompt一致并纳入fingerprint，提供从绑定派生服务契约的共享函数；pipeline/server_proxy.py使用该契约并在加载后复验；pipeline/scripts/serve_smoke.py按同一绑定构造请求并验证动态契约摘要。tests/test_eval_run.py只扩充真实证据fixture的显式Prompt输入，tests/test_serve_smoke.py覆盖concise完整CPU链、当前/冻结漂移、加载时漂移、字段不兼容、实际FastAPI请求/重试与smoke；复跑现有契约/交付/Registry/恢复相关测试。必要文档仅同步versioning/SCRIPTS.md及四份任务证据，不修改已发布Prompt或底层业务契约。Mac代码提交后bundle同步既有隔离checkout，Linux分进程CPU回归及轻量证据提交回传；独立reviewer复核代码/操作说明/证据。真实GPU/full/holdout/硬盘缺口保持，不push/merge。
-
-2026-09-13 M8-R5代码de1b51dd完成Mac范围：受影响7文件195 passed/1 skipped、193.63秒/exit0，新增冻结专项5 passed/exit0；独立25+5项及操作说明通过。用户确认的Spec789fa4fc/Plan511cfc14有效，代码经3提交bundle同步隔离分支，Linux按两个进程验证同7文件，实际结果见第44节收尾。整体迁移、full/holdout及真实环境限制保持。
-
-2026-09-13 M8-R5最终验收：Linux第一组97 passed/1 skipped、99.72秒/exit0，第二组103 passed、115.60秒/exit0，合计200 passed/1 skipped；代码两端de1b51dd一致，7保护文件不变，原main干净。本轮R5已解决，最终双机证据和4文档核查后在Linux原子提交回传Mac。第43节整包驳回是历史完整审查结论，不以本次局部通过覆盖；下一步full/holdout实际输入接线及最终完整验收，GPU、硬盘/大型产物限制保留，M8不关闭。
-
-
-2026-09-13 M4 full/holdout接线启动（Codex）：用户要求“补齐吧”。只实现和用隔离CPU数据验证，不取得真实holdout/重训授权。已核实两个前置：full训练证据当前只承认fold0/1/2，需确认独立full训练范围；holdout必须按已确认设计先媒体推理、后授权评分、普通导出只公开aggregate，不能把真值混进输入快照。先行局部修复限定versioning/cli.py和tests/versioning/test_cli_holdout.py：data claim在冻结预注册前校验完整四元组，避免错误参数留下不可变冻结文件，发布后仍复验。该步骤不改变claim身份/生命周期或数据布局；后续完整接线具体范围在决策确认后补入，不将参数可接受当作实现完成。
-
+精确范围：pipeline/model_registry.py校验训练/评测/当前Prompt一致并纳入fingerprint，提供从绑定派生服务契约的共享函数；pipeline/server_proxy.py使用该契约并在加载后复验；pipeline/scripts/serve_smoke.py按同一绑定构造请求并验证动态契约摘要。tests/test_eval_run.py只扩充真实证据fixture的显式Prompt输入，tests/test_serve_smoke.py覆盖concise完整CPU链、当前/冻结漂移、加载时漂移、字段不兼容、实际FastAPI请求/重试与smoke；复跑现有契约/交付/Registry/恢复相关测试。必要文档仅同步versioning/SCRIPTS.md及四份任务证据，不修改已发布Prompt或底层业务契约。Mac代码提交后bundle同步既有隔离checkout，Linux分进程CPU回归及轻量证据提交回传；独立reviewer复核代码/操作说明/证据。真实GPU/full/holdout/硬盘缺口保持，该局部批次不包含 push/merge；后续最终集成另按授权执行。
 
 ### M4 全量训练与 holdout 实际接线（2026-09-13）
-
-用户明确答复“接受，增加独立全量训练范围”，前述待确认已解除；沿用“补齐吧”的实施授权，Spec 0bf0baed。先完成独立 full 训练来源与证据，再完成 holdout 的媒体推理、受限评分和 aggregate 导出，最后独立审查及两机隔离 CPU 验证。真实训练/GPU、真实 holdout 构建或读取、push/merge 均未授权。
 
 精确文件范围：`finetune/train_build_dataset.py`（开发候选去重全量输入）、`finetune/train_prepare_run.py`（冻结/执行/导出 full）、`versioning/mlflow_train.py`（显式范围、父 Run 单次 full 事实）、`versioning/registry.py`（full 来源及产物证据）、`versioning/cli.py`（显式入口及冻结前身份检查）、`finetune/eval_run.py` 与新增 `finetune/eval_holdout.py`（实际 full/holdout 执行、媒体与评分分离、受限细节与公开 aggregate）、`versioning/holdout.py`、`versioning/mlflow_eval.py`（授权衔接）。测试限定 `tests/versioning/test_cli_holdout.py`、`tests/versioning/test_mlflow_train.py`、`tests/versioning/test_registry.py`、`tests/test_train_with_contract.py`、`tests/test_eval_run.py` 及新增 `tests/test_full_training.py`、`tests/test_eval_holdout.py`。操作说明增补 `versioning/SCRIPTS.md`、`finetune/SCRIPTS.md`，状态同步本 Plan、`docs/project-todo.md`、`docs/results/version-control-migration/verification.md`、`docs/results/version-control-migration/handoff.md`（B0–B12实施台账已标为历史范围，保持原文）；保留用户未跟踪 agent-handoff.md、stash、原训练机项目和所有正式产物。
 
@@ -240,39 +205,9 @@ M8-R5补充证据：独立临时fixture中同ID当前Prompt替换为固定服务
 
 Proof：合成数据端到端覆盖 full prepare→run→export→model register 及 full holdout prepare→inference→score→export；验证三折输入/结果不变、重复标签冲突、范围混用、输入/权重漂移、失败状态、未授权真值访问、预注册身份/规则不符、跨身份恢复、消费后复用、公开产物无真值或逐样本明细。CPU 测试替换实际模型/tuner 回调，不能据此宣称真实训练效果或真实安全部署验证。先保留有效失败证据，修复后跑受影响回归，再由独立 reviewer 对照实际代码核查入口、失败路径和操作说明。Linux 仅使用现有隔离工作区及 CPU 环境；证据记录实际退出码，分进程避免既有 MLflow 句柄累计问题。
 
-
 M4 holdout 接线细化：`eval prepare` 接收 `--pre-registration`/`--executor` 并要求先以 data claim 冻结；`eval run` 仅执行媒体推理，新增 `eval score --executor` 明确进入受限评分。冻结媒体清单使用 `evaluation_inputs/manifest.json`，包含完整 data/split、开发版本、来源隔离与划分核验以及无标签样本；受限标签仅由 score 读取 `sealed_ground_truth/labels.json`。逐样本推理/评分及读访问记录位于权限0700的执行私有目录，不上传普通MLflow；公开证据是身份、权重与规则绑定、aggregate和执行摘要。同一身份中断后仅复用已完整落盘并验签的阶段结果，不重跑已评分推理或清空claim；已消费完成只允许验签/导出。此拆分落实已确认的先媒体推理后授权评分，不新增真实数据使用授权。
 
-
-2026-09-13 M4 full/holdout 实施进展（Codex）：full 数据/执行/证据及model登记已接通。独立训练审查发现2项P2（full完成半提交恢复、旧三折导出字节兼容），均修复，独立5项通过并局部复审通过；Mac训练/claim联合44项通过。holdout已增加显式媒体推理和score阶段，合成完整成功/质量失败、身份与规则拒绝、truth读隔离及评分/完成中断恢复9项通过；此前eval/CLI联合109 passed/1 skipped。holdout独立代码/操作说明审查与广回归正在执行，Linux仅完成只读预检：原项目及Codeup main均f1b7d8a3，隔离b40eaa90，tracked干净；尚未同步本轮代码。这里的通过均为CPUfixture，真实GPU、模型效果和HOLDOUT-BUILD继续保留未完成。
-
 M4 文档一致性补充：允许精确更新 `docs/plans/2026-09-01-readable-version-control-design.md` 的训练范围、full来源与验收条款，并以D042记录用户已确认的独立全量训练决定；不重写架构或新增方案。本变更消除原文“模型晋级必须三折完整”与已确认full训练范围的冲突；同样交由独立reviewer对照Spec和实际实现核查。
-
-
-2026-09-13 M4 full/holdout代码收口（Codex）：代码提交fed9bcfc；训练2项P2已复审闭环，holdout链接提前读truth的P2和伪造评分阶段恢复的P1（含完整私有文件伪造强化反例）已修复。无评分承诺时必须在授权score核对原source truth与快照并复算全部明细，之后才建立不可变承诺；已承诺恢复不重读原truth。独立最终7项通过及局部代码/操作说明通过，设计文档精确同步也已独立通过。Mac广回归679 passed/1 skipped、exit0，最终holdout另16 passed/exit0；广回归开始早于holdout最终修复，不能冒充全部在最终holdout版本复跑。Linux隔离工作区已验签bundle并快进到fed9bcfc，第一组163 passed/1 skipped、exit0；第二/三组及最终保护文件复验待完成。正式项目与真实产物仍只读，整体M4及迁移不关闭。
-
-
-2026-09-13 M4 full/holdout双机证据收口：Linux同一fed9bcfc三组163/390/266 passed（共819 passed/1 skipped）全部exit0；既有AnyIO弃用告警保留，未改环境。12份代码/操作说明摘要一致，7份保护文件前后一致，原项目仍干净main@f1b7d8a3。仅Plan 0666462d在测试后另以单文件0/1提交快进，代码未变。设计、TODO、Plan、verification、handoff按第45节最终证据同步；独立最终证据核查后在Linux提交轻量文档并回传Mac。实现接线缺口已补齐，M4仍须真实训练/GPU/评分证据，HOLDOUT-BUILD未执行；下一步完整差异审查，整体迁移不关闭。
-
-2026-09-13 本轮最终文档/证据独立核查通过：两端原日志、退出码、摘要与保护状态均一致；4处当前状态残留已修正并复核。仅局部验收通过，下一步仍为M8整包差异审查；轻量文档提交与回传由RUN docs-commit.json及Git历史追溯。
-
-2026-09-13 M8完整差异复审进行中（Codex）：按既有M8范围冻结f1b7d8a3→e1d70c58全部138提交/152文件，独立reviewer执行完整差异和Spec矩阵核查，Mac最终整仓CPU回归并行执行。Codeup main已从Mac配置的远端只读刷新，双机原/隔离工作区及七份保护文件核验通过；不改变运行代码，不访问真实truth/GPU。本轮证据追加verification第46节，并同步TODO和handoff；审查与测试未结束前不写整包通过。
-
-本轮整包审查新增M8-R6（P2）前置：外部adapter权重未纳入冻结输入，准备后漂移仍可执行并登记full模型；先保留反例并完成本轮审查，修复验收要求见TODO同标识。另发现finetune/README.md与entrypoint-map.md仍写full/holdout拒绝，按既有文档范围同步至实际入口并交独立核查。本轮不修改冻结运行代码。
-
-2026-09-13 M8本轮完整审查收口：独立核对f1b7d8a3→e1d70c58共138提交/152文件，结论驳回修改；M8-R6两类外部训练权重漂移已由独立CPU反例证实，文档P3已校正待最终核查。独立34项整合回归及full→holdout→备份异根恢复→服务准入探针均exit0。Mac整仓2686 passed/1 failed/11 skipped、exit1（504.68秒，进程571.311秒）；单项通过及三文件组合失败证实M8-R7导入顺序问题。当前运行代码保持冻结，下一步先修M8-R6/M8-R7再回归及局部独立复核；真实环境与push/merge边界不变。
-
-本轮六文档与第46节最终证据独立核查通过，文档P3闭环；M8-R6/M8-R7仍未修复，整包驳回结论保持。原始Mac证据已验签存档到Linux隔离目录，轻量文档在Mac提交后按既有授权bundle快进隔离分支，具体版本由Git历史及RUN sync-receipt.json追溯。
-
-2026-09-13 M8-R6/R7当前实施（Codex）：选择已批准fail-closed路径，非null外部adapter/checkpoint在准备前拒绝，既有冻结记录在validate/run以及Registry训练证据门拒绝；测试使用合成旧记录验证不能登记ModelVersion。路径优先级测试改为新Python进程验证入口自身设定，运行时真实模块来源门保持。Mac定向179项和原先导入顺序组合1项通过；独立代码/操作说明局部复核已通过，整仓CPU正在运行，暂不关闭R6/R7。现行训练参数边界同步versioning/SCRIPTS.md，证据待写verification第47节。
-
-M8-R6/R7实机隔离CPU进度：代码d9ec1227在Mac定向及独立局部审查后原子提交，bundle SHA 3dd5f2d321ae1cf59c6baeb17ce184741f1326101b8ce47573939b41f7dbe257；Linux仅隔离工作区0/1快进，同五文件SHA一致。Linux新环境两进程179 passed/exit0和顺序1 passed/49 deselected/exit0；七份保护文件及原项目main保持。Mac整仓仍运行，最终文档与整包复核未完成。
-
-2026-09-13 M8-R6/R7最终验收：Mac同一代码`d9ec1227`整仓2694 passed/11 skipped（pytest 774.28秒，进程实际exit0），原导入顺序组合1 passed/49 deselected/exit0；Linux隔离分支训练/full/Registry 179 passed/exit0及顺序1 passed/49 deselected/exit0。独立reviewer复用上轮未变差异的完整审查证据，确认五文件修复及原始adapter/checkpoint反例均闭环，对Codeup main `f1b7d8a3` 至 `d9ec1227` 的140提交/152文件更新整包代码差异审查结论为通过；具体日志摘要与范围见verification第47节。R6/R7已解决本轮范围；M8父任务仍进行中，真实训练/GPU效果、授权新holdout及评分、真实硬盘/大型产物和外部依赖整机恢复未验收。下一步完成当前证据交付和双机隔离同步，再按TODO处理真实环境依赖；未获merge/push授权。
-
-本次四份最终文档的追加独立复核因reviewer用量限制未返回结论；仅主Agent完成本地一致性与链接检查，后续可按第47节证据补做独立文档核查。已完成的独立整包代码审查不因这次工具错误改写。
-
-本轮轻量文档`c3685578`经bundle SHA `ce4e77f8cb5182e96827304d582b49064056c40b55417b2281a0bd3c7dee3305`仅快进Linux隔离分支，`docs-sync-receipt.json`记录四文件范围、原正式项目干净及七保护文件不变。后续文档状态更新仍需按同一隔离同步纪律交付；真实环境验收和四文档独立补核保持待办。
 
 
 ## HOLDOUT-METRICS 实施批次（2026-09-13）
@@ -285,13 +220,6 @@ M8-R6/R7实机隔离CPU进度：代码d9ec1227在Mac定向及独立局部审查�
 
 本机按受影响套件验证并取得独立reviewer局部审查；代码提交后沿既有bundle授权核对双机独有提交和保护文件，仅快进隔离checkout，在Linux现有CPU环境分进程复跑受影响套件。记录实际退出、日志SHA、实际执行代码和机器；不重复未变化的整包审查与模型实验。新批完成后更新验收状态，真实holdout来源/构建、GPU和硬盘缺口保留。Spec确认仅涵盖本批七门；实现沿用户“补齐”的明确授权，不要求再次批准同一取舍。
 
-
-HOLDOUT-METRICS本批收口：代码f1be1060及两入口说明局部独立审查通过；Mac614 passed/1 skipped、两进程exit0，Linux首组207/1skip加拆组167+240、三进程exit0。Linux原单进程合并组文件句柄限制失败保留（第49节），不改系统限额，不重复首组或旧整包审查。原200组合成定义差分一致，私有指标/公开gate篡改拒绝。当前按TODO的独立source、实际构建、模型原件与真实环境依赖推进；新的七门能力不代表真实holdout或模型质量已验收。
-
-
-2026-09-13 续办只读准备：Mac基线0d8a9f55，HOLDOUT-BUILD核查深入到审查导出及发布两层development过滤，消费端媒体/真值schema定位完成。待决推荐为独立holdout审查/构建、全量人工审查与受限输出分离，详见verification第50节。此段仅记录发现和依赖，不批准公共接口或数据流扩展；确认后先修订Spec，再确认实现Plan。七项指标既有批准及已完成验证保持；真实source/非语义隔离清单未指定，不执行真实构建或测试使用。
-
-
 ## 2026-09-13 test 数据分支实施批次
 
 上游Spec042f335e，用户已明确确认方案并要求继续实施。现行叙述采用train/test数据分支，代码标识和历史记录保持原样。精确范围：新增`versioning/holdout_pipeline.py`与`tests/versioning/test_holdout_pipeline.py`；修改`versioning/data_pipeline.py`（共享审查导出可选择全部test候选）、`versioning/cli.py`（显式用途与test配置路由）、`finetune/eval_holdout.py`（构建证据绑定）、`tests/test_eval_holdout.py`（新发布到最终模型测试的合成接线），以及`versioning/SCRIPTS.md`、TODO、handoff、verification。其他长期文档仅做用户要求的叙述术语映射，不替换代码标记、配置值、路径或历史身份。
@@ -300,80 +228,21 @@ HOLDOUT-METRICS本批收口：代码f1be1060及两入口说明局部独立审查
 
 Proof：合成fixture验证七阶段、缺审/篡改/跨分支/身份或内容重叠拒绝、受限权限、公开数据无标签、同操作重试与冲突保留、最终模型测试从真实构建器产物消费及claim时序；train已有链路定向回归。只在本机或Linux隔离目录执行CPU测试，记录实际exit及机器/代码版本。真实数据/模型效果、硬盘和受限测试使用均保留未验收；本批不push或merge。
 
-
-本批代码abafdbf2已完成test分支处理、全量人工审查、封存发布及最终full测试接线；Mac427 passed/1 skipped、两组exit0，独立局部代码与入口说明核查通过，原P1/P2及权限/只读验证修复已闭环，见verification第51节。历史七门评分批次的双机证据不作本批复跑；本次尚未同步Linux。下一步提供新test source、非语义隔离清单和适用真实构建授权后进行训练机媒体/审查/封存验收；模型权重缺失仍阻塞MODEL-DIAG，真实训练、测试使用、删除与push/merge边界保持。
-
-
-2026-09-13 Linux续办：用户授权第一步隔离验收与第二步训练机既定划分调查。隔离分支经bundle0/5快进至7b0e01d5，仅task checkout，正式main未动；同代码两组265、162/1skip各exit0。既定test21/train89来源和隔离已定位，21视频存在；旧测试claim/exposure及20source媒体凭据关联已记录，video_0005无该批候选。下一步核清使用资格及输入证据，不要求重新指定已找到路径、不擅自改划分或复用受限测试。精确Linux证据目录为`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-verification-20260913/`，详见verification第52节。本次只有CPU合成验证和非语义只读调查，原真实数据/模型/删除/push及正式main merge边界保持。
-
-
-2026-09-13 test使用资格只读续查：用户已授权限定范围身份调查。当前数据目录和已发现的pre-semantic-portal-20260723备份中共6个媒体receipt集合，均无video_0005；18份manifest/identity已按非语义字段核对。迁移清单只列source、derived、training_releases→releases，不覆盖sealed_test_releases；这说明verified不证明旧test发布已迁移，不能据此认定删除原因。未找回299样本的完整发布身份清单，现阶段21个source的独立使用资格均为“证据不足”，并非“全部未用”；其中20个已有与暴露release相关联的物化证据。run_identity的初始化状态不能覆盖后续gate的completed/exposed事实。下一步最小缺失材料是旧发布的无标签candidate/source清单或对应备份；不扩大读取受限语义、不重划分或放行复用。详见verification第53节。
-
-
-2026-09-13 MODEL-DIAG限定目录续查：Linux只读目录与路径stat实际exit0。evidence_archive顶层5组名称不含目标concise/visual三折；现存concise-v1仅input/reference、concise-v2仅input，不能替代concise-cv；/data/mVllm_2/workspace仅data、finetune仅active_data_release.json。六个约定三折merged目标仍不存在。未检查其他发布库内容或全盘备份，不能断言模型全部丢失；没有读取权重/预测/test内容或重跑既有评分。下一步需目标身份绑定的模型/原始预测备份，或另行确认诊断方案；test资格阻塞不取消MODEL-DIAG，也不授权重训。证据见verification第54节及docs/results/model-location-followup-20260913.json。
-
-
-2026-09-13 MODEL-DIAG发布库身份及恢复目标：Linux只读release-manifest核查exit0，已知legacy发布库只有v4.1-agent-pipeline-fold0-r1，origin为coverage-first单折实验，不能替代concise/visual三折。已从历史concise报告提取三折summary/records共6个SHA256恢复比对目标；尚未找回文件，报告摘要不是原件或模型权重的独立证明。已知位置线索核查到此收束，等待准确备份路径/迁移记录；不重复扫描、重训或擅自改用其他模型。详见verification第55节。
-
-
-2026-09-13 条件清理授权（Codex）：用户明确旧数据和旧训练run/模型两类均包括，只删除已验证完整迁移且不再需要的旧副本。本轮Linux预检exit0：历史迁移source_root已不存在；pre-semantic备份不在该迁移清单映射内；旧LlamaFactory顶层16个模型软链接，10个目标存在、6个断链，不能当作重复权重。workspace/runs包含迁移后的实际目标，当前发布库保持保护。删除白名单为空，实际删除0、释放0字节；不是授权缺失，而是完整迁移/冗余性证据未满足。后续先建立旧备份到保留位置的逐文件映射、内容一致性和引用退出证明，再在本次条件授权内清理；不继续索取缺失三折模型备份，不把此次决定解释为取消MODEL-DIAG或TEST-POLICY。
-
-
-2026-09-13 train原视频清理候选：按用户条件授权在Linux核对旧备份01_videos到workspace/data/source/videos，89个train视频逐文件大小/SHA256一致，共5852142357字节（约5.45GiB），21个test视频未读内容。两工作区tracked运行代码/配置未见该备份路径引用。删除程序的占用预检遇到不可读/proc文件句柄，实际exit1且发生于首次unlink和证据目录创建之前；sudo -n只读能力探针要求密码，未提权。删除0、释放0，旧副本保留。候选清单与完整程序已保存；后续完成有权限的占用检查后再沿用授权执行，不能把候选已验签写成已删除。
-
-
-## 2026-09-13 已确认：工程分支收口与模型交付拆分
-
-用户确认先整理合并前/后续模型/非阻塞清理三类清单并提出新的模型诊断方案。沿用Intent“迁移成功不表示模型质量达标”和Spec的服务接管/模型可用性分别验收；不改变完整身份、数据语义、七门、一次性测试或Registry门禁。工程交付以约定范围验收、用户批准集成、合并Codeup main并核验落点为终点；本次确认不直接授权push/merge。
-
-执行顺序：先按TODO收口矩阵将每个剩余真实环境缺口对应到证据与完成条件，明确仍阻塞项；核对当前train版本及外部媒体依赖，整理新增代码相对已审基线的差异；准备最终PR范围、必要验证与独立审查。保持已有审查冻结范围，不因文档增加重复整包历史修复。最终集成前刷新目标远端与两机状态，核对独有提交和精确目标后申请push/merge执行授权；获准合并后核验main提交、两机同步和适用冒烟。当前并不宣称可以立即合并。
-
-模型任务保留HOLDOUT-BUILD、MODEL-DIAG、FINAL-TRAIN、MODEL-QUALITY原标识及父子依赖，最终模型质量不是本工程分支默认硬门槛。真实GPU/服务成功路径的工程验收缺口不得自动转为已完成：逐项明确如何补证或由用户接受转交边界。大型/外部依赖恢复缺口同理保留，移动硬盘既有允许单独未完成的决定保持。
-
-清理MODEL-ARCHIVE移至非阻塞配套；原条件删除授权保留，89个train原视频候选未删除，不继续以清理占用检查阻塞主线。精确文件范围仅本Plan、TODO、handoff、verification；诊断方案草案存于现有TODO条目，尚不修改训练配置或代码，不创建平行任务台账。
-
-
-2026-09-13 train真实输入预检：Linux隔离bb73e4dd执行正式build_versioned_datasets(scope=full)，实际exit0；data-v4.1-r2 + prompt-v4.1-r1 + 原workspace/data媒体根成功生成内存输入。三折train/validation为1253/425、1014/664、1186/492，full为1678，唯一媒体1678个共165485727字节逐一哈希；媒体名提取source与既定21个test ID无交集，此项不代替内容隔离或test资格。没有Run写入、训练或GPU执行。完整结果摘要见docs/results/train-input-preflight-20260913.json及verification第59节。
-
-
-2026-09-13 M4配置/资源预检：基座路径models/minicpm_v_4_5存在并解析到models/minicpmv4_5，config声明openbmb/MiniCPM-V-4_5；仅stat/配置，未验完整权重或冻结修订。4090查询时24564MiB总显存、约1081MiB使用、利用率0%；/data约3.4TiB可用。cpm45有torch/transformers/peft等训练包，但importlib.metadata未发现mlflow分发包；正式适配器在同进程调用run_training，不能假设CPU隔离环境与GPU环境已贯通。公共入口仅cross_validation三折整组或full，没有单折选项；前文“现成单折工程验证”建议收窄为待设计方案。下一步先核对完整执行环境与有限三折工程验证方案，不创建训练版本、不启动训练。
-
-
-## 当前执行边界纠正（Spec a5cfa86f）
-
-取消将有限真实训练作为本分支默认下一步。按用户最新范围，先核对agent环境与DVC/MLflow执行环境，补齐逐折入口，再验证新体系的身份、记录、导出、恢复及活动入口接管，准备合并材料。真实质量训练及test留后续，旧模型保留且不放宽门禁。逐折接口具体方案待确认；依赖该方案的代码变更暂不执行，其余只读核验与文档维护继续。
-
-本轮基座只读全文件哈希与分片结构核查，保留必要摘要到现有verification，不新增长期结果文件、不写正式训练版本、不删除既有模型文件。上游master不能当不可变修订，本地内容指纹与上游来源证明分别表述。
-
-
-2026-09-13 环境与部署文件核查：agent/cpm45均无DVC/MLflow；实际安装在隔离.conda-m2（MLflow3.15.2、DVC3.67.1），.venv-m3通过system-site-packages继承。agent pip check exit0，cpm45 exit1且editable LLaMA-Factory指向旧mVllm项目；两个隔离环境pip check均因MLflow要求pandas<3、实际3.0.3而exit1。新增ENV-DEPLOY部署一致性前置，不把历史CPU测试通过解释为依赖声明一致。
-
 ## 双平台部署实施批次
 
 承接本次单独提交的双平台部署Spec及用户实施授权。精确文件范围：pyproject.toml、uv.lock、requirements.txt、新requirements-linux-gpu.lock；新增scripts/source_prepare_environment.py、scripts/source_validate_environment.py、scripts/SCRIPTS.md、tests/test_environment_deployment.py；局部更新README.md、finetune/README.md、TODO、handoff、verification。保持LlamaFactory子模块代码、版本身份与训练业务不变。
 
 先统一pandas/MLflow兼容依赖并补cropper/媒体读取包，分别锁定Mac轻量和Linux GPU依赖；实现显式平台/新环境路径安装与doctor，绑定当前Git子模块来源，错误输入fail-closed，不安装系统包；最后做拒绝/失败传播测试、Mac新环境和Linux新隔离环境安装及入口验证。需要网络的安装只写新环境和工具缓存；不安装进agent/cpm45。新脚本和文档接受局部独立审查，保留真实安装失败证据。安装成功不等同模型可用，无真实训练/推理/test。
 
-2026-09-14 ENV-DEPLOY本批已解决：双profile锁定部署与doctor完成，当前代码83724995；Mac新环境安装/doctor exit0、361项定向回归通过、最新部署边界12项通过；Linux新GPU环境通过显式镜像安装/doctor exit0。独立审查发现的P1/P2均闭环，镜像增量复核通过；七保护SHA及正式/原隔离工作区保持。旧agent/cpm45未修补，新环境未正式激活。官方源首轮主动中断exit1及部分环境保留；完整证据第63节。本批不训练、不test、不push/merge。下一步恢复M4-FOLD逐折接口方案确认与工程收口，不再以依赖缺失或重训为默认前置。
-
-
-2026-09-14 M4-FOLD接口核对完成（e7efb56b，verification第64节）：现有train run忽略已解析的--fold并执行全部冻结配置，不能作为单折入口使用。下一步确认TODO中的显式选折、partial、同父Run续办及完成折验签复用方案，再更新Spec/Plan实施。ENV-DEPLOY不重做；本次无训练、test、远程操作或业务代码修改。
-
-
 ## M4-FOLD已确认实施批次（Spec b1aaf315）
 
 承接用户对逐折规则及工程验证的确认。实施范围：finetune/train_prepare_run.py、versioning/cli.py，必要的versioning训练证据辅助逻辑；tests/test_train_with_contract.py、tests/versioning/test_cli.py及必要单折定向测试；局部更新finetune/README.md、TODO、handoff、verification。不改冻结三折结构或full契约。先接入选择参数，在现有train锁内核对父/子Run与逐折不可变证据，成功缺折partial、三折齐全沿用汇总/完成门；用合成trainer覆盖分次执行、完成折复用、漂移/残留/失败/并发拒绝与full回归，最后独立审查。复用现有partial原生状态映射，界面说明该映射而不改变公共状态契约。真实训练与test不执行。
 
+## 已确认的交付与授权决定
 
-2026-09-14 M4-FOLD本批工程实现已解决：Spec b1aaf315/Plan902d8c9d、代码61effebd；显式单折、同父Run分次执行、逐折证据验签复用、partial与完整三折完成门已接通。两项P2经独立反例复验闭环，提前汇总拒绝增量复核通过；Linux最终123项合成回归exit0（独立测试工具目录覆盖，非GPU运行锁自带pytest）。详见verification第65节；保留真实训练/服务成功路径与恢复缺口，不改变旧模型质量门。下一步为最终集成范围、审查覆盖及M4/M5/M6补证或转交裁决，不重训、不test、不push/merge。
-
-
-2026-09-14 最终集成候选核查（基线9077690f，verification第66节）：新鲜Codeup main=f1b7d8a3，任务分支包含全部远端历史及Mac main额外6提交，共181提交/170文件，无远端或训练机遗漏的独有提交。历史整包140提交审查保持，后续41提交按七门/test分支/部署/逐折四批映射到既有独立审查；README e7efb56b操作说明本轮独立核查补齐。修正TODO把已允许后置的真实模型成功路径重复列为待裁决阻塞的问题；真实硬盘/大型产物/外部依赖整机恢复限制继续显著保留。工程候选进入集成准备，实际push/merge、正式工作区同步/解释器激活及合并后验证仍未执行，整体任务须这些完成后才能关闭。
-
-
-## 模型背景调查与已授权main集成
-
-用户明确要求：先梳理当前真实模型并写docs一级文档，再先推送当前任务分支、后合并main。沿用已确认工程范围及既有合并候选；本批新增docs/MODEL_GATE_BASELINE.md，局部为旧状态/清单加历史提示，并同步TODO、handoff、verification。只读核对训练机模型路径、文件stat和非评测身份，历史效果注明来源，不重训/推理/test或删产物。模型文档独立核查通过并提交后，刷新Codeup及两机状态，先推送任务分支，再本机main快进并推送Codeup main；仅无分叉无本地修改时同步训练机正式代码，核验落点及适用轻量检查。保留任务分支、原环境与验证检出；本批不把新环境切换为正式默认解释器。
-
-
-2026-09-14 已执行完成：模型背景docs/MODEL_GATE_BASELINE.md独立核查通过；5acebc27先推任务分支，再快进并推Codeup main，随后训练机正式main同步。双机versioning CLI及Linux train帮助入口exit0，旧模型stat/manifest/current前后一致。工程迁移按已确认范围收口；真实训练/test/模型效果/物理恢复及默认解释器激活未执行。此后集成回执文档仍按先任务分支push、再main快进的授权顺序发布，最终提交见Git历史。
+- **工程与模型分开验收**（Spec `a5cfa86f`）：取消有限真实训练作为工程分支默认前置；旧模型及未通过质量门的事实保留。最终模型质量、真实成功路径及大型/外部恢复不由工程替身证据关闭。
+- **独立 full 范围**（Spec `0bf0baed`）：用户确认增加 full 训练，不改冻结三折；full 使用独立配置与 full/adapter，holdout 先媒体推理、后授权 score，普通导出只公开 aggregate。
+- **模型诊断仍待确认**：单折新基线方向、开发侧门槛及资源预算未确定；冻结 canary 或任意交叉替换 Prompt 的能力未实现，不列为当前动作。详细候选及证据缺口只在 MODEL-DIAG 条目维护。
+- **条件清理持续有效**：旧数据及旧 run/model 的已验证冗余副本可按既有授权处理；89 个 train 视频仅验签，占用检查未过，删除0。未取消诊断或测试策略，不删新 store 外部依赖、唯一源和当前模型。
+- **最终集成已完成**：用户明确先写模型背景文档，再推任务分支、后合并 main；2026-09-14 按顺序执行至 `5acebc27` 并同步训练机，回执见第67节。历史任务分支与隔离环境保留，默认解释器未切换。
+- **授权只适用于已确认动作**：历史计划与集成授权不能自动用于新的 push/merge、系统权限调整、停止服务/训练、真实重训练/完整评测、受限测试使用或删除未核实产物。2026-10-12 用户仅授权本轮文档整理和独立核查。

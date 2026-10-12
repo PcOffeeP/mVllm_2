@@ -24,7 +24,7 @@ evidence_level: verified_local   # 入口职责均从本机代码文件读取核
 
 正式CLI统一要求root/inputs/batch；release和release_validate另需完整data版本。data_pipeline的run_input_source/roi/subvideo/review_export/review_import/release及对应校验使用冻结原视频、注释、给定split、人工ROI、实际候选媒体/processor、完整人工回收；输出工作阶段manifest及data/releases/<完整身份>/payload。
 
-M0发现的文件名ROI和固定两条候选属于早期最小实现，已不能代表当前正式入口。新链不重新划分三折，不新增采样，不生成旧release_pointer。M3真实媒体和人工交接证据见verification第24节；输入/输出完整说明见DATA_PROCESSING_RUNBOOK第10节及versioning/SCRIPTS.md。
+M0发现的文件名ROI和固定两条候选属于早期最小实现，已不能代表当前正式入口。新链不重新划分三折，不新增采样，不生成旧release_pointer。M3真实媒体和人工交接证据见verification第24节；输入/输出完整说明见DATA_PROCESSING_RUNBOOK及versioning/SCRIPTS.md。
 
 ## 3) 数据历史入口（M7a停用范围与保留依赖）
 

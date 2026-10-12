@@ -34,13 +34,11 @@ Non-goals:
 
 ## 项目状态
 
-`main` 当前维护 `tensile-vlm/v4.1`。数据、训练、模型发布和推理服务流程均已跑通，
-并保留了一款可用于服务与 Agent 联调的中间发布模型；当前模型质量仍未通过最终验收。
-最新完整三折实验也已完成，但仍暴露出输出契约退化和类别偏置问题。
+工程迁移已于 2026-09-14 按确认范围合并 Codeup main，正式数据、训练/评测、模型与服务入口已接管。当前维护 `tensile-vlm/v4.1`，正式身份仅限五类完整可读版本。
 
-当前发布模型：`v4.1-agent-pipeline-fold0-r1`（Fold0 中间模型，仅用于工程链路验证）。
+真实模型质量、独立 test 使用资格、真实 GPU/服务成功路径及大型产物组合恢复仍未验收。旧 Fold0 中间模型与历史实验保留为证据，不自动获得新体系 passed 或 production 资格。
 
-详情见 [当前项目状态与开发原则](docs/CURRENT_PROJECT_STATUS.md)。
+[当前项目状态](docs/CURRENT_PROJECT_STATUS.md)汇总能力与限制；[项目 TODO](docs/project-todo.md)是唯一任务台账；[模型背景](docs/MODEL_GATE_BASELINE.md)记录 2026-09-14 现场基线。本轮文档整理未刷新训练机现状。
 
 ## 可读版本控制新体系
 
@@ -52,9 +50,9 @@ python -m versioning --help
 
 命令包括data、prompt、train、eval、model、backup及migration；正式身份仅限data/prompt/train/model/eval五类完整版本，不提供隐式latest或短前缀。参数及输入契约见[versioning操作索引](versioning/SCRIPTS.md)，设计依据见[可读版本控制设计](docs/plans/2026-09-01-readable-version-control-design.md)。
 
-数据七阶段使用显式输入；release_build.py、release_build_phase2.py、rebuild_data.py旧CLI已停用，正式数据处理见[数据手册第10节](docs/DATA_PROCESSING_RUNBOOK.md#10-现行数据入口versioning显式七阶段)。已有release的复制迁移须使用已确认mapping，不自动重新构建。服务入口使用显式alias与模式，见[pipeline服务用法](pipeline/SCRIPTS.md)。
+数据七阶段使用显式输入；release_build.py、release_build_phase2.py、rebuild_data.py旧CLI已停用，正式数据处理见[数据手册](docs/DATA_PROCESSING_RUNBOOK.md#数据七阶段)。已有release的复制迁移须使用已确认mapping，不自动重新构建。服务入口使用显式alias与模式，见[pipeline服务用法](pipeline/SCRIPTS.md)。
 
-迁移是分阶段接入，不能把整个pipeline/finetune包当作已退役。训练与validation执行接线、服务准入和备份均有受控验证；full/holdout实际执行、真实合格模型成功路径、真实移动硬盘与大型产物恢复仍有未完成项。最新状态和证据以[项目TODO](docs/project-todo.md)为准，历史模型结果不因迁移变为质量通过。
+工程迁移已交付；pipeline/finetune中的共享业务函数与历史读取依赖仍保留。训练与validation执行接线、服务准入和备份均有受控验证；full/holdout实际执行、真实合格模型成功路径、真实移动硬盘与大型产物恢复仍有未完成项。最新状态和证据以[项目TODO](docs/project-todo.md)为准，历史模型结果不因迁移变为质量通过。
 
 ## V4.1 视觉契约（简要）
 
@@ -159,17 +157,16 @@ Linux 还检查 CUDA、LlamaFactory 子模块及训练模块来源。检查结�
   候选物化、人工审查、不可覆盖 release 构建；
 - [微调、合并与评测](finetune/README.md)：三折 LoRA 训练、模型合并、严格评测、
   证据冻结；
-- [现行服务入口](pipeline/SCRIPTS.md)：alias准入、配置绑定与smoke；[历史服务手册](docs/INFERENCE_SERVICE_RUNBOOK.md)保留旧交付背景，其中原始模型路径启动命令已不适用；
-- [当前项目状态](docs/CURRENT_PROJECT_STATUS.md)：发布模型身份、最新实验结果、
-  下一轮优化目标；
-- [V4.1 数据发布](docs/V4_1_DATA_RELEASES.md)：当前与历史 development release 统计。
+- [服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md)：alias准入、配置绑定、启动与运维；精确参数见[pipeline索引](pipeline/SCRIPTS.md)；
+- [当前项目状态](docs/CURRENT_PROJECT_STATUS.md)：工程交付、模型证据限制与开发原则；
+- [V4.1 数据发布](docs/V4_1_DATA_RELEASES.md)：正式 train 数据身份与历史统计。
 
 ## 项目结构
 
 ```text
 pipeline/      数据处理、V4.1 契约、模型注册表与推理服务
 finetune/      三折训练、模型合并、严格评测
-versioning/    独立可读版本控制核心基础设施与统一 CLI
+versioning/    正式版本身份、数据编排与统一 CLI
 workspace/     训练机本地数据、实验运行和模型资产（Git 忽略）
 data/          旧外部数据根的兼容入口
 config/        数据根配置
@@ -183,14 +180,14 @@ models/        本地模型目录
 
 | 文档 | 内容 |
 | --- | --- |
-| [docs/CURRENT_PROJECT_STATUS.md](docs/CURRENT_PROJECT_STATUS.md) | 当前项目状态、发布模型身份、最新实验结果、开发原则 |
+| [docs/CURRENT_PROJECT_STATUS.md](docs/CURRENT_PROJECT_STATUS.md) | 工程状态、模型证据限制与开发原则 |
 | [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md) | 当前数据处理链路的完整操作手册（正文声明当前支持版本） |
-| [docs/V4_1_DATA_RELEASES.md](docs/V4_1_DATA_RELEASES.md) | 当前与历史 development release 统计与说明 |
-| [docs/INFERENCE_SERVICE_RUNBOOK.md](docs/INFERENCE_SERVICE_RUNBOOK.md) | 当前中间推理服务启动与运维 |
+| [docs/V4_1_DATA_RELEASES.md](docs/V4_1_DATA_RELEASES.md) | 正式 train 数据身份与历史统计与说明 |
+| [docs/INFERENCE_SERVICE_RUNBOOK.md](docs/INFERENCE_SERVICE_RUNBOOK.md) | 现行 alias 服务准入、启动与运维 |
 | [finetune/README.md](finetune/README.md) | 微调、合并、评测与证据冻结 |
 | [docs/V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md](docs/V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md) | V4.1 有效视图审计 |
-| [docs/results/v4_1_agent_pipeline_fold0_r1/README.md](docs/results/v4_1_agent_pipeline_fold0_r1/README.md) | 当前发布模型部署证据 |
-| [docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md](docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md) | 最新三折实验结果 |
+| [docs/results/v4_1_agent_pipeline_fold0_r1/README.md](docs/results/v4_1_agent_pipeline_fold0_r1/README.md) | 历史 Fold0 模型部署证据 |
+| [docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md](docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md) | 历史 concise 三折实验结果 |
 | [docs/results/model_evidence/README.md](docs/results/model_evidence/README.md) | 模型归档证据包引导索引（查找模型测试结果入口） |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 新旧体系边界、可读版本控制职责与实现范围 |
 | [docs/adr/ADR-0001.md](docs/adr/ADR-0001.md) | 采用可读版本控制及 Git/DVC/MLflow 职责边界的决策记录 |
