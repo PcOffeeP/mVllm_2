@@ -1783,3 +1783,15 @@ Linux正式项目main f1b7d8a3无未提交文件；原隔离bb73e4dd相对本机
 首轮发现服务手册误写部署模板在仓库根（P2），已修为 `pipeline/server_deployment_manifest.example.json` 并专项复核。最终核查正文diff（`git diff 3f200461`）SHA256为 `f6371dc66dc1a04bbe992707184f420a0a461930bc40152c94b848a384817b77`，对应验收回填前17份正文。最终结论：通过，无剩余可执行问题。主Agent另移除数据手册重复D003并纠正台账历史时间指代，已纳入最终核查。验收回填后再次检查47份Markdown的295个本地链接/锚点，0问题；29个任务标识唯一，diff检查通过。未改变操作正文或确认方案。
 
 此为静态文档一致性验收，未执行文档中的业务命令，未复跑前序CPU测试或原远端日志，未加载真实模型、消费受限test或验证物理恢复。后续从 REMOTE-STATE-REFRESH 开始，仅刷新只读事实，不由工程结项推导模型效果通过或清理放行。
+
+
+<a id="readme-public-intro-20261012"></a>
+## 69. 根README项目介绍与快速开始（2026-10-12）
+
+用户授权根README改为面向首次访问者的项目介绍与快速开始，重点为基础概念、实际用途及初步成果。执行平台Mac/Codex，基线 `9b59837c`，分支 `docs/consolidate-project-status`；原README顶部Document Contract的未提交删除保留，未恢复。提交由 `git log -- README.md` 追溯。
+
+正文解释拉伸视频的有限窗口、采样帧与四字段结构，简述ROI、LoRA和三折。初步成果引用旧Fold0的425条validation：strict valid 100%、joint 41.18%，明确历史开发范围、非独立test或最终模型。快速开始提供无GPU阅读路径、Mac/Linux GPU部署、环境检查与统一CLI，再引导按数据/训练/服务目标准备真实资产。没有虚构项目公开URL、许可证、权重下载或现成演示。
+
+独立reviewer全文核查148行README及任务条目，对照部署脚本、锁文件、子模块、契约、身份解析器、实际历史evaluation_summary和Registry：425/1.0/0.411765支持所列指标，训练范围fold0且full_data_final/production_approved仍为false。命令参数、环境前置、Gitee SSH访问、合法格式示例、资产来源及文档导航一致。独立扫描README的24个相对链接及锚点，0问题，`git diff --check` exit0；最终结论通过，无可执行问题。主Agent另扫描README/TODO的76个本地链接及锚点，0问题，并解析一份JSON示例通过；验收回填后继续执行链接与diff检查。
+
+本轮未运行安装器、doctor、项目CLI、pytest、应用、SSH、训练、推理或评测。部署步骤正确性仅静态核查，历史效果与服务证据未复跑；未刷新训练机现状，不宣称最终模型或正式服务通过。REMOTE-STATE-REFRESH仍为下一轮只读任务。
