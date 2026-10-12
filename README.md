@@ -1,32 +1,25 @@
 # mVllm_2
 
-**面向材料拉伸试验视频的视觉模型与数据工作流。** 本项目基于 MiniCPM-V-4.5，从视频中提取按时间排列的采样帧，判断试样是否断裂、可能的断裂机制、断裂位置及画面中的特殊情况，并把结果输出为统一的 JSON，供后续视频分析与检索使用。
+**把材料拉伸试验视频转化为可审查的视觉样本与结构化判断。** 本项目基于 MiniCPM-V-4.5，围绕试样是否断裂、断裂机制、断裂位置及特殊情况，提供数据准备、人工审查、LoRA 微调、严格评测和视觉服务流程。
 
-仓库包含数据准备、人工审查、LoRA 微调、评测和推理服务代码，以及已有实验的轻量结果与验证记录。当前仍处于模型研发阶段：数据与模型管理流程已有工程交付，尚无经最终独立测试验收的对外最终模型。
+项目当前工程能力、历史效果及尚未完成的验收见[项目现状](docs/project-status.md)。
 
 ## 项目介绍
 
-### 从视频画面到结构化判断
+### 判断一个时间窗口里的画面
 
-拉伸试验视频记录了试样伸长、颈缩、断裂和分离等过程。本项目关注其中一个有限时间窗口：模型只依据该窗口内实际可见的画面判断，不能用片段外发生的事件补全答案。
+模型观察一个有限视频窗口中的采样帧，每个窗口最多 8 帧。它依据窗口内实际可见的证据回答问题，不用片段外事件补全标签，也不直接把整段长视频当作一个训练样本。
 
-处理过程由以下环节组成：
+当前使用 `tensile-vlm/v4.1` 四字段契约：
 
-1. **准备视频证据**：保留原始来源与数据划分，标注 ROI（感兴趣区域，即需要观察的试样区域），生成子视频和采样帧。
-2. **建立训练样本**：人工审查关键窗口及标签，将审核后的样本封存为可追溯的数据发布。
-3. **微调与评测**：通过 LoRA 更新少量附加参数，适配材料拉伸画面；使用三折训练与验证比较开发阶段效果，即分别训练三次，每次使用对应划分的训练集和验证集。
-4. **提供视觉判断**：服务按统一契约返回结构化结果，供上层应用进一步组织视频搜索和展示。
+| 字段 | 含义 |
+| --- | --- |
+| `clip_state` | 未断裂、临界未断裂、发生断裂、已断裂或无法判断 |
+| `fracture_mechanism` | 可见证据支持的断裂机制，不能判断或不适用时为 `null` |
+| `fracture_site` | 标距内、标距外非夹具根部、夹具根部，或 `null` |
+| `special_case` | 未夹紧、视频异常，或 `null` |
 
-当前输出契约为 `tensile-vlm/v4.1`，每个窗口最多使用 8 帧，包含四个字段：
-
-| 字段 | 回答的问题 | 可选值 |
-| --- | --- | --- |
-| `clip_state` | 当前窗口是否已经出现断裂？ | 未断裂、临界未断裂、发生断裂、已断裂、无法判断 |
-| `fracture_mechanism` | 画面支持哪种断裂机制判断？ | 韧性断裂、脆性断裂、界面脱粘、爆炸性断裂、半脆半韧断裂，或 `null` |
-| `fracture_site` | 断裂发生在哪里？ | `inside_gauge`（标距内）、`outside_gauge_non_root`（标距外且非夹具根部）、`grip_root`（夹具根部），或 `null` |
-| `special_case` | 是否存在影响判断的特殊情况？ | 未夹紧、视频异常，或 `null` |
-
-下面仅为输出格式示例，不是实际推理结果：
+格式示例，不代表实际推理结果：
 
 ```json
 {
@@ -37,112 +30,99 @@
 }
 ```
 
-“发生断裂”表示窗口内可见从连续到分离的变化；“已断裂”表示可靠画面从窗口开始就已经分离。这种区分可以帮助上层应用判断断裂事件位于窗口内、之前还是之后。“无法判断”不提供搜索方向。字段之间也有约束，例如“未断裂”时其余三个字段均须为 `null`。完整定义见 [V4.1 契约](pipeline/contracts/tensile_vlm_v4_1.json)。
+“发生断裂”表示窗口内可见连续到分离的变化；“已断裂”表示可靠画面从窗口开始就已分离。普通“未断裂”窗口的其余三个字段均为 `null`。完整枚举与约束见[业务契约](pipeline/contracts/tensile_vlm_v4_1.json)。
 
-本仓库负责视觉判断及其数据、训练和服务流程。自然语言任务编排、多轮视频搜索与结果展示由独立的TensileAgent 项目负责，双方通过冻结的视觉契约和部署身份对接。
+### 从视频到模型
 
-### 已有成果与当前边界
+先保留视频来源和源视频级划分，以 ROI（需要观察的试样区域）裁剪或保留画面，生成候选窗口及采样帧。人工审查结果与媒体一起冻结成数据发布，再用 LoRA 更新少量附加参数，使基座适配拉伸试验画面。
 
-项目已经建立从原始视频、ROI、子视频与采样帧、人工审查到数据发布的流程，并提供训练、评测、模型登记和服务入口。现行流程以显式版本绑定数据、Prompt、训练、模型和评测，便于追溯某次结果使用了什么输入和配置。已有三折实验、逐样本评测材料和历史服务联调记录。
+开发阶段沿用三折 train/validation 划分，分别训练和验证以比较方案；最终 full 模型使用合格开发数据全集训练，另用独立 test 验收。上层自然语言任务编排、视频搜索和展示由独立的 TensileAgent 项目负责，本仓库提供视觉判断与相关数据、模型流程。
 
-作为初步模型成果，历史 Fold0 中间开发模型曾走通微调、权重合并、视频推理服务和 TensileAgent 调用。其在 **425 条开发侧 validation 样本**上的历史结果为：
+### 初步成果
 
-| 指标 | 结果 | 含义 |
-| --- | ---: | --- |
-| 严格输出合法率 | 100% | 输出符合四字段契约及其约束 |
-| 四字段联合正确率 | 41.18% | 四个字段同时符合参考标签 |
+数据处理、审查交接、版本管理及训练/评测/服务入口已有工程实现与验收记录。历史 Fold0 中间模型曾完成权重合并、真实视频服务和 Agent 调用；其 425 条开发侧 validation 的严格输出合法率为 **100%**，四字段联合正确率为 **41.18%**。这是单折开发结果，尚未证明最终独立 test 通过或生产可用。
 
-这些结果说明结构化输出和调用链路已有基础，但任务效果仍需改善。它们来自一个 Fold0 开发模型，不代表三折总体结果、最终独立 test 成绩或生产可用性。来源和评测口径见[模型效果基线](docs/MODEL_GATE_BASELINE.md#3-已知效果仅引用历史开发侧证据)及[历史服务联调记录](docs/results/v4_1_agent_pipeline_fold0_r1/README.md)。
-
-当前使用者还需了解以下边界：
-
-- 克隆代码不会获得原始视频、基座权重、LoRA adapter 或完整实验目录，这些资产需要另行准备。
-- 独立 test 的使用资格、最终模型质量、现行正式模型的真实服务成功路径，以及大型产物组合恢复仍有未完成验收项。
-- 已迁移的数据发布仍可能引用外部媒体，不能假定一个 store 目录包含全部数据。
+当前重点仍是提升任务效果并完成真实模型验收。代码不附带原始视频、基座、adapter 或完整实验目录，也没有可据现有证据提供的一键最终模型演示。历史效果、资产缺口和当前工程边界统一见[项目现状](docs/project-status.md)。
 
 ## 快速开始
 
-### 1. 先了解输出与结果
+### 1. 不安装也能了解项目
 
-没有 GPU 或模型资产，也可以先阅读本仓库：
+先阅读上面的输出示例，然后按目标选一份说明：
 
-- 阅读上面的四字段定义和 [V4.1 契约](pipeline/contracts/tensile_vlm_v4_1.json)，了解一个窗口的判断范围。
-- 查看 [模型证据索引](docs/results/model_evidence/README.md)和 [历史三折实验报告](docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md)，了解效果、失败类型与证据限制。
-- 查看 [数据发布说明](docs/V4_1_DATA_RELEASES.md)，了解样本组成和 train/validation 划分。
+| 目标 | 阅读入口 |
+| --- | --- |
+| 把自己的试验视频整理成可训练数据 | [数据处理](docs/data-workflow.md) |
+| 准备实验、评测模型并部署服务 | [模型流程](docs/model-workflow.md) |
+| 了解现有成果、未完成项和证据日期 | [项目现状](docs/project-status.md) |
 
-以下安装步骤用于建立代码运行环境。安装完成后可以查看统一 CLI、开展代码检查，并按手册准备自己的输入；它不会自动下载模型，也不会自动执行视频推理。
+### 2. 按机器准备 Python 3.11.x 环境
 
-### 2. 准备运行环境
+本项目支持 **Python 3.11.x**。当前 Mac 用于开发、ROI/审查 UI 和轻量结果检查，通过 `uv` 调用已部署的 Mac 解释器；实际数据处理、训练、评测和模型服务在 Linux GPU 训练机上，直接使用对应的 **Conda 环境 Python**。两平台的依赖保持分开：
 
-取得仓库代码后，在项目根目录执行命令。当前提供两个锁定环境配置：
+| 平台 | 依赖来源与用途 |
+| --- | --- |
+| Mac | `pyproject.toml` + `uv.lock`；代码检查、ROI/审查 UI 和同步结果复核，无需初始化 LlamaFactory 子模块 |
+| Linux GPU 训练机 | `requirements-linux-gpu.lock` + 固定 LlamaFactory 子模块；真实数据处理、训练、评测和服务 |
 
-| 配置 | 适用平台与用途 | 依赖来源 |
-| --- | --- | --- |
-| `mac` | macOS；代码检查、人工审查 UI、已同步结果复核 | `pyproject.toml` 与 `uv.lock`，包含开发依赖 |
-| `linux-gpu` | Linux x86_64 NVIDIA GPU 训练机；数据处理、训练与推理 | `requirements-linux-gpu.lock` 与固定的 LlamaFactory 子模块 |
+两机都需要 Git、ffmpeg、ffprobe 和 uv 在 PATH 中可用。训练机的运行入口仍是 Conda Python；环境检查器内部使用 `uv pip check`，所以 uv 也是检查工具前置。训练机另需 Linux x86_64、NVIDIA 驱动及可用 `nvidia-smi`。
 
-先安装 **Python 3.11、uv、Git、ffmpeg 和 ffprobe**，确保后四项在 `PATH` 中可用。Linux GPU 还需要可用的 NVIDIA 驱动，`nvidia-smi` 能正常运行。部署脚本不会安装这些系统工具。
+#### Mac：首次部署与日常运行
 
-下面的命令使用两个占位路径，执行前请替换：
-
-- `/absolute/python3.11`：已有 Python 3.11 解释器的绝对路径。
-- `/absolute/new/environment`：准备创建的新环境绝对路径，目录须不存在；路径不能经过符号链接或包含 `..`。
-
-**macOS：**
+先准备一个已经存在的 Python 3.11.x 解释器，以其绝对路径设置 `BOOTSTRAP_PYTHON`。`MAC_ENV` 是准备新建且尚不存在的环境绝对目录，不得经过符号链接或包含 `..`。从仓库根运行：
 
 ```bash
-python3 scripts/source_prepare_environment.py --profile mac \
-  --env /absolute/new/environment --python /absolute/python3.11
+BOOTSTRAP_PYTHON=/absolute/existing/python3.11
+MAC_ENV=/absolute/new/mac-environment
+uv --no-config run --no-project --no-python-downloads --python "$BOOTSTRAP_PYTHON" \
+  python scripts/source_prepare_environment.py --profile mac \
+  --env "$MAC_ENV" --python "$BOOTSTRAP_PYTHON"
 ```
 
-**Linux GPU：** 先初始化项目固定的子模块，再部署环境。[.gitmodules](.gitmodules) 中的 LlamaFactory 使用 Gitee SSH 地址，需具备相应 SSH 认证与仓库访问资格；子模块必须保持干净并匹配当前项目提交固定的版本。
+首次调用跳过项目环境发现，用已有解释器启动部署脚本；脚本再按 Mac 锁创建新环境。退出码为 0 且输出 `Deployment verified` 才表示环境检查通过。失败时保留部分环境，调查后重试选择新的目标目录。
+
+日常开发时，`MAC_PYTHON` 指向上述成功部署的 Mac 环境解释器。已部署环境可以直接设置其实际路径，无需重复创建：
+
+```bash
+MAC_PYTHON="$MAC_ENV/bin/python"
+uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
+  python -m versioning --help
+uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
+  python scripts/source_validate_environment.py --profile mac
+```
+
+这里 `uv run` 复用显式选定的解释器，跳过项目依赖自动同步并禁止下载 Python；它不替代首次部署。不要用未指定解释器的默认 `uv run` 去选择另一套环境。
+
+#### 训练机：核验已有 Conda 环境
+
+先确认具备[子模块](.gitmodules)对应 Gitee SSH 仓库的访问资格，初始化固定版本并保持干净：
 
 ```bash
 git submodule update --init --recursive
-
-python3 scripts/source_prepare_environment.py --profile linux-gpu \
-  --env /absolute/new/environment --python /absolute/python3.11
 ```
 
-两种配置分别安装，不要叠加到同一个环境。Linux 默认使用 PyPI，镜像选项与部署维护说明见[环境部署脚本索引](scripts/SCRIPTS.md)。安装失败时脚本保留部分创建的环境；重试应选择新的目标目录，不会自动覆盖原目录。
-
-### 3. 检查安装并查看入口
-
-安装退出码为 0 且输出 `Deployment verified` 表示环境检查通过。之后直接使用新环境的解释器，无需依赖 shell 当前激活的环境：
+使用已准备好、按 Linux GPU 锁和当前 checkout 核验的 Conda Python 3.11.x 环境。可以先激活该环境，也可以全程使用其解释器绝对路径；以下写法不依赖 shell 激活状态：
 
 ```bash
-/absolute/new/environment/bin/python -m versioning --help
-
-# macOS 手动复查；Linux GPU 将 mac 换为 linux-gpu。
-/absolute/new/environment/bin/python scripts/source_validate_environment.py --profile mac
+PYTHON=/absolute/verified/conda-environment/bin/python
+"$PYTHON" scripts/source_validate_environment.py --profile linux-gpu
+"$PYTHON" -m versioning --help
 ```
 
-环境检查涵盖锁定依赖、依赖冲突、公共入口和媒体工具；Linux 还检查 CUDA 及 LlamaFactory 来源。检查不会加载模型或执行训练、推理和评测。Linux 的 LlamaFactory 以 editable 方式绑定当前代码工作区，使用该环境时应保留对应工作区。
+检查覆盖锁定依赖、公共入口、媒体工具、CUDA 和训练模块来源，不下载或加载模型，也不训练或推理。Linux editable 依赖绑定代码工作区，后续使用时须保留或重新核定该来源。只有检查通过的环境才用于后续实际处理；历史环境名字不能代替核验。
 
-`versioning` 是正式数据与模型流程的统一 CLI。数据、Prompt、训练、模型、评测使用`<kind>-v<协议>-r<N>` 完整身份，例如 `data-v4.1-r2`；这些示例身份不表示本地已具备相应资产。命令不自动选择“最新版本”，缺少必要输入或引用不合法时会停止。
+如果没有合格的 Conda 环境，先准备并核验，不能直接开始真实任务。现有 `source_prepare_environment.py --profile linux-gpu` 创建的是新的 venv，既不创建 Conda 环境，也不修补已有 Conda 环境；其 `--env` 不接受已存在目录。部署接口与依赖维护规则见[脚本索引](scripts/SCRIPTS.md)。
 
-### 4. 按目标准备资产并运行
+### 3. 准备实际输入
 
-正式操作还需要实际数据、基座模型、冻结 Prompt 和相应配置。模型服务还需要与训练和评测证据一致的模型身份、权重及部署配置。当前没有可直接从本 README 下载并运行的最终模型演示，请沿对应手册准备输入：
+正式版本只有 data、prompt、train、model、eval 五类，名称为 `<kind>-v<协议>-r<N>`，例如 `data-v4.1-r2`。示例身份不表示你本地已有资产；版本和输入必须显式提供，不自动猜测“最新”。
 
-| 你希望做什么 | 下一份文档 | 主要前置输入 |
-| --- | --- | --- |
-| 将试验视频整理成训练数据 | [数据处理手册](docs/DATA_PROCESSING_RUNBOOK.md) | 原始视频、注释与既定划分、ROI 和人工审查决定 |
-| 微调并评估模型 | [训练与评测说明](finetune/README.md) | 正式数据发布、冻结 Prompt、MiniCPM-V-4.5 基座及训练配置 |
-| 部署视觉推理服务 | [服务运行手册](docs/INFERENCE_SERVICE_RUNBOOK.md) | 合格的模型与评测记录、权重、正式 Prompt 及部署配置 |
-| 查找精确命令和参数 | [统一 CLI 索引](versioning/SCRIPTS.md) | 对应领域的显式输入和完整版本身份 |
+接下来按[数据处理](docs/data-workflow.md)准备视频、注释、split 和人工决定；按[模型流程](docs/model-workflow.md)准备基座、正式数据、Prompt 和配置。GPU 训练、推理、完整评测及长时间媒体处理在训练机执行。环境安装通过与实际模型效果达标分别验收。
 
-项目采用开发机与训练机分工：macOS 用于开发、审查和结果复核；GPU 训练、推理、完整评测及长时间数据处理在训练机执行。具体流程和资产位置见 [项目指南](docs/project-guide.md)。
+## 文档与代码导航
 
-## 仓库导航
+这套面向使用者的说明只有四份：本页负责介绍与初次安装，数据说明负责视频到发布，模型说明负责训练到服务，现状说明负责成果及限制。
 
-| 路径 | 内容 |
-| --- | --- |
-| [versioning/](versioning/) | 正式版本身份、数据编排和统一 CLI |
-| [pipeline/](pipeline/) | 视频处理、视觉契约、审查工具和推理服务 |
-| [finetune/](finetune/) | LoRA 训练、模型合并和严格评测 |
-| [scripts/](scripts/) | 环境部署及各阶段操作脚本 |
-| [docs/](docs/) | 使用手册、实验结果、设计与决策记录 |
-| [tests/](tests/) | 数据、契约、版本管理及评测测试 |
+实现入口为 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。设计决定与历史验证作为证据保留，不需要首次访问者先读完。
 
-当前能力与限制见 [项目状态](docs/CURRENT_PROJECT_STATUS.md)，开发任务见 [项目 TODO](docs/project-todo.md)。希望了解实现与设计，可继续阅读 [架构说明](ARCHITECTURE.md)和[可读版本控制决策](docs/adr/ADR-0001.md)。`workspace/` 与 `models/` 用于本地资产，不随 Git 分发；历史流程资料保留作追溯，当前操作从以上手册与统一 CLI 进入。
+当前任务与执行顺序以[项目台账](docs/project-todo.md)为准，设计边界见[架构说明](ARCHITECTURE.md)。目录整理与核查记录见[文档整合记录](docs/results/documentation-consolidation-20261012.md)。

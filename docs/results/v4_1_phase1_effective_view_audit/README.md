@@ -6,4 +6,4 @@
 receipt 和后续人工真值保留在隔离数据根，不进入 Git。
 
 结果摘要与复现命令见
-[`docs/V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md`](../../V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT.md)。
+[历史审计报告](report.md)。

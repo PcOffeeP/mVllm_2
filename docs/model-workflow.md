@@ -1,10 +1,10 @@
 # 模型训练、评测与服务
 
-本说明面向已经准备好数据、希望训练或运行模型的使用者。环境安装从[快速开始](README.md#快速开始)进入；开发数据与独立 test 数据的构建见[数据处理](data-workflow.md)。正式操作统一使用 `python -m versioning`，所有版本使用 `data / prompt / train / model / eval` 五类完整身份，例如 `train-v4.1-r<N>`，其中 `<N>` 必须替换为明确分配的序号。
+本说明面向已经准备好数据、希望训练或运行模型的使用者。环境安装从[快速开始](../README.md#快速开始)进入；开发数据与独立 test 数据的构建见[数据处理](data-workflow.md)。正式操作统一使用 `python -m versioning`，所有版本使用 `data / prompt / train / model / eval` 五类完整身份，例如 `train-v4.1-r<N>`，其中 `<N>` 必须替换为明确分配的序号。
 
 项目已实现冻结训练输入、三折与全量训练、严格评测、Registry 晋级及服务门禁。现有历史开发结果尚不能证明最终模型质量；新体系真实合格模型的加载与媒体推理成功路径、独立 test 使用资格、大型产物组合恢复仍未完成验收。命令接线和 CPU 合成验证不等于真实模型验收。
 
-GPU 训练、权重合并、实际推理与完整评测在训练机执行，运行入口直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。Mac 开发及人工审查使用 uv 的方式见[快速开始](README.md#快速开始)。以下命令是操作说明，执行仍需相应任务授权。准备与摘要校验虽不加载模型，也可能扫描大量权重和媒体，须按实际数据量安排执行位置与磁盘空间。
+GPU 训练、权重合并、实际推理与完整评测在训练机执行，运行入口直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。Mac 开发及人工审查使用 uv 的方式见[快速开始](../README.md#快速开始)。以下命令是操作说明，执行仍需相应任务授权。准备与摘要校验虽不加载模型，也可能扫描大量权重和媒体，须按实际数据量安排执行位置与磁盘空间。
 
 ## 1. 准备身份、输入与执行环境
 
@@ -24,11 +24,11 @@ GPU 训练、权重合并、实际推理与完整评测在训练机执行，运�
 
 store 不会为使用者自动下载基座、提供训练数据或分配质量门槛。基座必须是实际存在的普通绝对目录；训练准备会冻结完整文件清单与内容摘要。已有大型权重是否在场必须现场核对，历史日志或 manifest 不能替代它们。
 
-配置字段的完整规范见 [versioning 参数索引](../../versioning/SCRIPTS.md)。原 `finetune` 训练与评测公开 CLI 已停用；保留的业务函数供新执行器调用。
+配置字段的完整规范见 [versioning 参数索引](../versioning/SCRIPTS.md)。原 `finetune` 训练与评测公开 CLI 已停用；保留的业务函数供新执行器调用。
 
 ## 2. 注册 Prompt
 
-先准备 `PROMPT_DEFINITION` YAML，包含非空 `system_prompt`、`user_prompt` 和非空、不重复的字符串列表 `output_fields`，可附 `protocol_label` 保存业务契约标签。V4.1 输出字段为 `clip_state`、`fracture_mechanism`、`fracture_site`、`special_case`；具体取值遵守[业务契约](../../pipeline/contracts/tensile_vlm_v4_1.json)。旧 `active_prompt.yaml` 不是新定义格式。
+先准备 `PROMPT_DEFINITION` YAML，包含非空 `system_prompt`、`user_prompt` 和非空、不重复的字符串列表 `output_fields`，可附 `protocol_label` 保存业务契约标签。V4.1 输出字段为 `clip_state`、`fracture_mechanism`、`fracture_site`、`special_case`；具体取值遵守[业务契约](../pipeline/contracts/tensile_vlm_v4_1.json)。旧 `active_prompt.yaml` 不是新定义格式。
 
 ```sh
 "$PYTHON" -m versioning prompt create --root "$STORE" \
@@ -148,7 +148,7 @@ thresholds:
   未断裂_recall: 0.7
 ```
 
-失败次数必须等于 0，其余为最低值。四状态或三类断裂状态缺项、空记录拒绝评分；定义见[严格 holdout 指标](../../finetune/holdout_metrics.py)。先获得 test 使用授权，再执行：
+失败次数必须等于 0，其余为最低值。四状态或三类断裂状态缺项、空记录拒绝评分；定义见[严格 holdout 指标](../finetune/holdout_metrics.py)。先获得 test 使用授权，再执行：
 
 ```sh
 "$PYTHON" -m versioning data claim --root "$STORE" --version "$HOLDOUT_DATA" \
@@ -169,7 +169,7 @@ prepare/validate/run 不读真值。run 仅媒体推理，完成后等待 score�
 
 实际七指标、预测、真值快照及逐样本评分保存在 `workspace/evaluations/<eval>/restricted/`，目录 0700、文件 0400，不上传普通 MLflow artifact。公开结果仅含七个 `gate_<指标名>` 0/1 状态与绑定证据，导出或服务准入不重读真值。权限控制不等于独立账户沙箱，须另保证受限运行环境。
 
-恢复只允许同一完整绑定：尚未提交评分承诺时需重新授权核验原真值；已有承诺的完成或导出中断可用同一 score 恢复，不重新推理或重读原真值。推理中断且缺完整凭据、跨身份、内容漂移均拒绝。完整恢复条件见[接口规范](../../versioning/SCRIPTS.md#full-模型的独立-holdout-验收)，不清空 authorization 后重试。
+恢复只允许同一完整绑定：尚未提交评分承诺时需重新授权核验原真值；已有承诺的完成或导出中断可用同一 score 恢复，不重新推理或重读原真值。推理中断且缺完整凭据、跨身份、内容漂移均拒绝。完整恢复条件见[接口规范](../versioning/SCRIPTS.md#full-模型的独立-holdout-验收)，不清空 authorization 后重试。
 
 ## 6. 晋级、备份范围与服务物化
 
@@ -201,7 +201,7 @@ production 须具 `production_bundle`、真实批准及对应准入条件。`pro
 
 核对完整 model 身份、数值版本、base_model_version、fingerprint 和冻结 Prompt。`runtime_verified: false` 只表示静态检查，不能作为真实推理成功。
 
-复制[部署 JSON 模板](../../pipeline/server_deployment_manifest.example.json)到包外明确路径 `STARTUP`。model_version 与 adapter_version 都填所选完整模型身份；base_model_version 与 config_fingerprint 来自上述 resolver；processor_version、transformers_version、llamafactory_version、runtime_device、runtime_dtype 来自实际运行环境，max_frames 与冻结配置一致（V4.1 上限 8）。模板占位值不能保留。服务逐字段比对训练、正式 Prompt 与 passed eval 的冻结正文，动态 analysis 契约由该 Prompt 派生。
+复制[部署 JSON 模板](../pipeline/server_deployment_manifest.example.json)到包外明确路径 `STARTUP`。model_version 与 adapter_version 都填所选完整模型身份；base_model_version 与 config_fingerprint 来自上述 resolver；processor_version、transformers_version、llamafactory_version、runtime_device、runtime_dtype 来自实际运行环境，max_frames 与冻结配置一致（V4.1 上限 8）。模板占位值不能保留。服务逐字段比对训练、正式 Prompt 与 passed eval 的冻结正文，动态 analysis 契约由该 Prompt 派生。
 
 准备真实基座、artifact 缓存、可用 GPU 及磁盘，核对未占用的 `PORT`；`API_KEY` 从受限环境读取，不入 Git。取得推理授权后前台启动：
 
@@ -240,7 +240,7 @@ curl --fail --silent --show-error -H "Authorization: Bearer ${API_KEY}" \
 
 `BACKUP` 是已核对容量且不与源重叠的明确位置。adapter 范围保留声明 adapter；production_bundle 按机制保留已合法声明的 adapter 与 merged，不创建或补证 merged。当前训练证据链只有 adapter，不能将 scope 设置当作真实 merged 备份或生产链验收。快照包含数据、Prompt、模型 manifest 及按范围裁剪的 MLflow SQLite、训练 input/证据和绑定评测产物，不能据 scope 假定未声明权重已保存。外部基座和媒体不自动纳入，迁移发布引用的旧媒体目录不能因此删除。
 
-跨机接收使用 `backup transfer`，显式提供已完成的源快照、SSH 主机、catalog SHA-256 和不存在的目标；只读远端，不传正在写入的 store，接收后再 verify。认证使用已有 OpenSSH 密钥。完整参数、权限及空间边界见[备份接口](../../versioning/SCRIPTS.md#已完成备份的跨机传输)。
+跨机接收使用 `backup transfer`，显式提供已完成的源快照、SSH 主机、catalog SHA-256 和不存在的目标；只读远端，不传正在写入的 store，接收后再 verify。认证使用已有 OpenSSH 密钥。完整参数、权限及空间边界见[备份接口](../versioning/SCRIPTS.md#已完成备份的跨机传输)。
 
 恢复到明确隔离根 `RESTORE_ROOT`，对象目标不存在，MLflow 目标也可为空普通目录：
 
@@ -259,4 +259,4 @@ curl --fail --silent --show-error -H "Authorization: Bearer ${API_KEY}" \
 
 缺身份、基座、媒体、正式证据或资格时停止在对应前置准备；内容漂移时核对来源，不手改摘要通过门禁；失败或中断保留 Run 和已有输出，不自动重跑。每次真实执行记录机器、代码提交、输入/输出路径、完整对象绑定、命令、结果和限制，再交接台账。
 
-详细接口以 [versioning/SCRIPTS.md](../../versioning/SCRIPTS.md)、[训练准备实现](../../finetune/train_prepare_run.py)、[Registry 门禁](../../versioning/registry.py)、[服务入口](../../pipeline/server_proxy.py)为依据。既有工程验证及其范围见[迁移验证记录](../results/version-control-migration/verification.md)；当前未完成项与执行顺序在候选手册的[项目状态](project-status.md)中汇总。
+详细接口以 [versioning/SCRIPTS.md](../versioning/SCRIPTS.md)、[训练准备实现](../finetune/train_prepare_run.py)、[Registry 门禁](../versioning/registry.py)、[服务入口](../pipeline/server_proxy.py)为依据。既有工程验证及其范围见[迁移验证记录](results/version-control-migration/verification.md)；当前能力与缺口见[项目现状](project-status.md)，任务和执行顺序以[唯一台账](project-todo.md)为准。

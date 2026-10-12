@@ -55,7 +55,7 @@ eval-v4.1-rN
 
 Git 继续正常管理源码、Prompt、普通配置、测试、文档和轻量正式记录的修改历史，但不维护全局“当前版本”注册表，也不保存大型数据、模型或完整实验数据库。
 
-现行任务依赖和受限验收边界以[项目任务台账](../project-todo.md)为准；现行数据处理的双机步骤以[数据处理运行手册](../DATA_PROCESSING_RUNBOOK.md)为核对基线。本设计定义迁移后的目标，不把尚未实施的目录和命令写成当前能力。
+现行任务依赖和受限验收边界以[项目任务台账](../project-todo.md)为准；现行数据处理的双机步骤以[数据处理运行手册](../data-workflow.md)为核对基线。本设计定义迁移后的目标，不把尚未实施的目录和命令写成当前能力。
 
 ## 2. 工具选择与责任边界
 
@@ -234,11 +234,11 @@ Git/YAML + DVC 定义输入 → 训练机实际运行 → MLflow 完整记录 �
 
 设计确认不等于仅保留本文件。后续实施必须建立“设计决定 → 权威说明 → 程序约束 → 测试证据”的对应关系：
 
-- `README.md` 只提供简明架构入口和文档导航，不堆放运行细节；
+- `README.md` 提供项目介绍、初次环境准备和文档导航，具体操作由流程说明负责；
 - 项目根 [`AGENTS.md`](../../AGENTS.md) 必须删除或替换与目标架构冲突的哈希数据 ID、集合 `index.json`、`LATEST` 和短哈希解析强制规则，改为本文确认的五类可读版本、DVC/MLflow/Git 边界和显式选择纪律；
-- `docs/DATA_PROCESSING_RUNBOOK.md` 说明 DVC pipeline、七个业务阶段、人工审查关卡、remote/cache 和常用恢复操作；
-- `finetune/README.md` 说明 YAML + MLflow、父子 Run、模型晋级、正式测评和 Registry 别名；
-- 单独的备份/恢复操作文档说明移动硬盘连接、catalog 比较、一致性快照、完整性验证和恢复演练；
+- `docs/data-workflow.md` 说明 DVC pipeline、七个业务阶段、人工审查关卡、remote/cache 和常用恢复操作；
+- `docs/model-workflow.md` 说明 YAML + MLflow、父子 Run、模型晋级、正式测评和 Registry 别名；
+- `docs/model-workflow.md` 集中说明备份范围、catalog、一致性快照、完整性验证与隔离恢复；真实移动硬盘和大型组合恢复的验收仍由任务台账跟踪；
 - `dvc.yaml`、YAML schema/数据模型、CLI 参数与校验器承担机器可读契约；
 - 自动测试覆盖不可覆盖、引用冲突、状态转换、别名切换、catalog 差异计算和恢复校验；
 - 实施验收表逐项记录文档位置、实现位置、验证命令、结果和训练机限制，未落到文档或机器约束的设计决定不得标记完成。

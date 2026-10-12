@@ -3,7 +3,7 @@
 本目录是**已归档模型证据包**的统一存放根，是未来 Agent 查找模型测试结果的引导入口：
 先看本索引，再进具体 `<model_id>/` 目录，需要原始逐样本记录或完整日志时再到训练机
 `workspace/evidence_archive/`（见「如何使用」）。归档归属与清理状态以
-[MODEL_INVENTORY.md](../../MODEL_INVENTORY.md) 为准，本索引不自行判定清理是否放行。
+[MODEL_INVENTORY.md](../model-inventory.md) 为准，本索引不自行判定清理是否放行。
 
 ## 这个目录是干什么的
 
@@ -17,7 +17,7 @@
 - 这里是模型测试结果的**引导索引**，替代挨个翻 `docs/results/` 的检索方式。
 
 > 本目录是归档根，不等于目录内模型已被授权删除；删除仍须满足
-> [MODEL_INVENTORY.md](../../MODEL_INVENTORY.md) 第 8 节的归档验收与显式授权。
+> [MODEL_INVENTORY.md](../model-inventory.md) 第 8 节的归档验收与显式授权。
 
 ## 证据包标准结构
 
@@ -63,7 +63,7 @@ evaluation 日志）、`adapter/*.png`（训练 loss 图）、`evaluation/evalua
    `MANIFEST.json` 的哈希与身份；
 3. **需要原始数据再上训练机**：逐样本记录、完整日志与权重的历史约定位置为训练机 `workspace/evidence_archive/<model_id>/`；需先按 MODEL-ARCHIVE 核对原 manifest 与实际位置、缺失项，不假定原件仍在场。本目录不包含这些大文件。
 
-跨模型横向对比、模型清单与清理放行前置条件见 [MODEL_INVENTORY.md](../../MODEL_INVENTORY.md)；
+跨模型横向对比、模型清单与清理放行前置条件见 [MODEL_INVENTORY.md](../model-inventory.md)；
 归档/清理任务的进展跟踪见 [project-todo.md](../../project-todo.md) 的 MODEL-ARCHIVE 条目。
 
 ## 维护约定

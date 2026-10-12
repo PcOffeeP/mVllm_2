@@ -17,9 +17,9 @@ Non-goals:
 关联文档：
 
 - [docs/project-todo.md](docs/project-todo.md)：唯一项目任务台账与下一步入口。
-- [docs/project-guide.md](docs/project-guide.md)：项目流程、双机角色与训练机连接信息。
-- [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)
-- [finetune/README.md](finetune/README.md)
+- [docs/project-status.md](docs/project-status.md)：项目现状、双机角色与训练机连接信息。
+- [docs/data-workflow.md](docs/data-workflow.md)
+- [docs/model-workflow.md](docs/model-workflow.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [README.md](README.md)
 
@@ -45,14 +45,14 @@ Non-goals:
 
 ## 训练机操作
 
-- 连接信息、远程项目路径和命令格式以 [docs/project-guide.md](docs/project-guide.md#双机工作流) 为准；认证只使用本机已有的 OpenSSH 密钥或 SSH agent，不在仓库中保存私钥、口令或其他凭据。
+- 连接信息、远程项目路径和命令格式以 [docs/project-status.md](docs/project-status.md#已记录的机器与资产位置) 为准；认证只使用本机已有的 OpenSSH 密钥或 SSH agent，不在仓库中保存私钥、口令或其他凭据。
 - 需要训练、GPU 推理、完整评测或长时间数据处理时，通过 SSH 在训练机执行；连接前先明确命令、输入、输出位置和预计资源占用。
 - 默认只操作远程项目目录及明确指定的训练产物。删除或覆盖远程文件、修改系统配置、安装系统级依赖、停止已有任务等高风险操作，必须先获得用户明确授权。
 
 ## 训练结果验收口径
 
 - `train_loss` / `eval_loss` 下降只能证明训练目标收敛，不能单独证明模型任务效果好。
-- 按被评模型的冻结契约和 [finetune/README.md](finetune/README.md) 中的严格评测口径验收；不得在不同契约之间混用字段或指标。
+- 按被评模型的冻结契约和 [docs/model-workflow.md](docs/model-workflow.md) 中的严格评测口径验收；不得在不同契约之间混用字段或指标。
 - 对 LoRA/merged 模型做结论前，应确认实际加载的模型路径、checkpoint step、adapter 文件、metadata 和评测结果彼此一致。
 - 如果训练目录中的 metadata 指向旧实验、缺少 adapter/checkpoint，或评测结果无法对应到当前模型，应优先指出产物链路问题，而不是给出正向效果结论。
 

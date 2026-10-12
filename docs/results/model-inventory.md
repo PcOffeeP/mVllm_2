@@ -1,6 +1,6 @@
 # V4.1 模型清单与效果对比
 
-> 本文保留历史阶段记录。2026-09-14现场模型资产与新体系门禁背景见[当前真实模型背景](MODEL_GATE_BASELINE.md)；历史工程通过、旧指针及清单中的存活状态不代表当前新门禁通过。
+> 本文保留历史阶段记录。2026-09-14现场模型资产与新体系门禁背景见[2026-09-14模型核查档案](model-gate-baseline-20260914.md)；历史工程通过、旧指针及清单中的存活状态不代表当前新门禁通过。
 
 本文记录 V4.1 阶段各训练模型的「数据 release / Prompt revision / 训练参数 / 效果指标」，
 作为后续清除过程模型前的信息留存。2026-08-31 已对本地证据与训练机进行只读核查。
@@ -128,11 +128,11 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 ## 7. 证据与限制
 
-- 模型 1 的评测源：[runtime-contract 3798 摘要](../finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json)。
-- 模型 2：[评测摘要](../finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3411/fold0/evaluation_summary.json)；模型 3：[评测摘要](../finetune/results/v4_1_phase2_coverage_first_fallback_seed3413/seed3413/fold0/evaluation_summary.json)。
+- 模型 1 的评测源：[runtime-contract 3798 摘要](../../finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json)。
+- 模型 2：[评测摘要](../../finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3411/fold0/evaluation_summary.json)；模型 3：[评测摘要](../../finetune/results/v4_1_phase2_coverage_first_fallback_seed3413/seed3413/fold0/evaluation_summary.json)。
 - 模型 4：训练机 `workspace/runs/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json`，本轮内容已收入第 8 节快照；原始逐样本记录未复制到本快照。
-- 模型 7 及历史 visual 对比：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)。本轮只核报告，没有重跑三折评测或验证缺失权重。
-- 模型 11/12：[seed3407 摘要](../finetune/results/v4_1_phase2_source_aware_3k_dd89b70e9d63/seed3407/fold0/evaluation_summary.json)、[seed3411 摘要](../finetune/results/v4_1_phase2_source_aware_3k_dd89b70e9d63/seed3411/fold0/evaluation_summary.json)；同目录上层 `training_run_manifest.json` 记录训练代码、采样序列哈希、best step 等，训练 YAML 在 `finetune/MiniCPM/config/active/v4_1_source_aware_3k/`，归档前需校验其与 manifest 哈希一致。
+- 模型 7 及历史 visual 对比：[三折报告](v4_1_prompt_concise_cv_v1_seed3411/README.md)。本轮只核报告，没有重跑三折评测或验证缺失权重。
+- 模型 11/12：[seed3407 摘要](../../finetune/results/v4_1_phase2_source_aware_3k_dd89b70e9d63/seed3407/fold0/evaluation_summary.json)、[seed3411 摘要](../../finetune/results/v4_1_phase2_source_aware_3k_dd89b70e9d63/seed3411/fold0/evaluation_summary.json)；同目录上层 `training_run_manifest.json` 记录训练代码、采样序列哈希、best step 等，训练 YAML 在 `finetune/MiniCPM/config/active/v4_1_source_aware_3k/`，归档前需校验其与 manifest 哈希一致。
 - **数据契约与推理契约不同**：第 2 节的 `47e393...` 是数据发布契约；模型 1–4 上述推理记录为 `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab`，模型 11/12 为 `47e393...`。相同 V4.1 标签不能代替逐次评测的契约和 Prompt 内容绑定。
 - 本文修正事实与归档要求，不修改配置、契约、指针，不删除远程文件。数字摘录与文件存在性核查不等于本轮完整模型质量验收。
 
@@ -143,7 +143,7 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 ### 8.1 实际文件与体量
 
-证据：[训练机只读快照](results/model-inventory-audit-20260831/remote_snapshot.json)。
+证据：[训练机只读快照](model-inventory-audit-20260831/remote_snapshot.json)。
 采集于训练机 `dell-Precision-3660`、项目 `/home/liuyang/文档/mVllm_2`；远端 `main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`，工作区干净；本地核查基线 `main@7b8192bd197ad8c94e38d0a5ab1776450e4f7a50`，比远端多 3 个提交，远端独有 0 个。本轮没有同步或更改训练机。
 
 以下路径相对训练机项目根；占用按分配字节计，不跟随软链接，GiB = 2^30 字节。
@@ -168,7 +168,7 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 每个实际训练模型、每个 fold 单独绑定以下证据；摘要中无空间展开的内容保留原文件并链接，不增加多份重复叙述。
 
-> 已归档证据包统一位于 [模型归档证据包索引](results/model_evidence/README.md)，按 `model_id/` 存放于 `docs/results/model_evidence/`。该链接**仅作为证据定位入口**，索引内已有目录不等于归档已完整、也不等于清理已放行；能否删除仍以本节归档验收条件与 TODO 的 MODEL-ARCHIVE 显式授权为准。
+> 已归档证据包统一位于 [模型归档证据包索引](model_evidence/README.md)，按 `model_id/` 存放于 `docs/results/model_evidence/`。该链接**仅作为证据定位入口**，索引内已有目录不等于归档已完整、也不等于清理已放行；能否删除仍以本节归档验收条件与 TODO 的 MODEL-ARCHIVE 显式授权为准。
 
 | 信息 | 最小留存内容 |
 | --- | --- |
@@ -190,8 +190,8 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 - **只保留研究记录**：完整冻结上述证据后，可将已明确退役、无后续模型依赖的 adapter/merged/训练恢复状态纳入删除候选；代价是永久失去该权重的新推理能力。重新训练不能保证得到同一模型。
 - **兼顾空间和后续使用**：保留约 439 MiB 的原始 adapter、准确基座及自定义模型/processor 代码、配置和合并环境，优先考虑删除约 16.2 GiB 的 merged 权重。必须先验证重新合并链路；不能以“4-bit 基座直挂 adapter”替代历史 merged BF16 评测口径。本轮未进行恢复/合并验证。
-- **当前发布与诊断**：保留 `workspace/models/releases/v4.1-agent-pipeline-fold0-r1`；[checkpoint 保留策略](../pipeline/checkpoint_policy.json) 还保护 r1 来源及 concise 三折。TODO 的 MODEL-DIAG 需要模型交叉推理/中间 step 评测；要删除其依赖，须先完成对应诊断或由用户明确取消该诊断目标。本次提出节省空间不自动等于取消诊断。
-- **现有工具不能代替新清理方案**：[serve_manage_checkpoints.py](../scripts/serve_manage_checkpoints.py) 仅针对 checkpoint 子目录，不是 root adapter/merged 或整个 run 的归档清理器。不能直接套用到本次目标。
+- **当前发布与诊断**：保留 `workspace/models/releases/v4.1-agent-pipeline-fold0-r1`；[checkpoint 保留策略](../../pipeline/checkpoint_policy.json) 还保护 r1 来源及 concise 三折。TODO 的 MODEL-DIAG 需要模型交叉推理/中间 step 评测；要删除其依赖，须先完成对应诊断或由用户明确取消该诊断目标。本次提出节省空间不自动等于取消诊断。
+- **现有工具不能代替新清理方案**：[serve_manage_checkpoints.py](../../scripts/serve_manage_checkpoints.py) 仅针对 checkpoint 子目录，不是 root adapter/merged 或整个 run 的归档清理器。不能直接套用到本次目标。
 - **执行前再验证**：核对两机 Git、真实路径/链接、当前模型完整性、在用进程与文件占用、归档校验及备份；固定显式路径清单，排除发布库、基座、数据、证据目录。这里只读核查不构成删除授权，不提供整目录通配删除命令。
 
-状态与下一动作统一追踪于 [project-todo.md](project-todo.md) 的 MODEL-ARCHIVE；MODEL-DIAG 的权重缺失需同步处理。
+状态与下一动作统一追踪于 [project-todo.md](../project-todo.md) 的 MODEL-ARCHIVE；MODEL-DIAG 的权重缺失需同步处理。

@@ -1,8 +1,8 @@
 # 材料拉伸断裂行为分类指南
 
 > 定位：用于理解视觉现象的领域参考，不是训练标签或代码枚举的权威来源。
-> 标签治理以 [`data/02_annotations/all_videos_tag.csv`](../data/02_annotations/all_videos_tag.csv) 为准，
-> 代码闭集以 `pipeline/` 中的验证脚本和配置为准；本文不得覆盖 CSV 原字段或 canonical 口径。
+> 原始标注以本批 inputs 明确绑定的 `all_videos_tag.csv` 为准；该数据文件不随代码分发，来源与审查要求见[数据处理](../docs/data-workflow.md)。
+> 正式发布标签与代码闭集遵守[现行业务契约](../pipeline/contracts/tensile_vlm_v4_1.json)及人工审查；本文不得覆盖 CSV 原字段或 canonical 口径。
 >
 > 关联文档：[README.md](../README.md)。
 

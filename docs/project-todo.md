@@ -6,14 +6,15 @@
 
 **数据处理及活动入口的工程迁移已解决。** 2026-09-14，迁移分支先推送，再快进 Codeup main 至 `5acebc27` 并同步训练机正式代码；集成与双机 CLI 记录见[验证第67节](results/version-control-migration/verification.md)。这不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。
 
-**2026-10-12 本轮范围**：整理文档正文、导航和台账，并独立核查；续办按用户要求将根README改为项目介绍与新人快速开始。训练机现状刷新放到下一轮；本轮不 SSH、不训练、不推理、不评测、不激活环境、不删除产物。下列远端事实来自 2026-09-13/14 记录，尚未刷新。
+**当前文档整合范围（2026-10-12）**：用户已认可新手册的分工，授权替换根 README 并清理被新正文覆盖的旧说明。正式阅读入口为根 README，以及 docs 下的数据处理、模型流程和项目现状；唯一台账、设计决策及原始验证证据保留。DOC-INTEGRATION 已完成目录、正文、导航和链接核查；下一步为 REMOTE-STATE-REFRESH。本轮不 SSH、不执行实际数据处理、训练、推理或评测，不激活环境或删除运行产物；文档删除授权不扩大为设计、证据或资产删除。下列远端事实来自 2026-09-13/14 记录，尚未刷新。
 
 新体系正式入口为 `python -m versioning`，显式使用五类完整可读身份。train 数据分支用于三折开发验证和 full 训练，test 分支只用于最终独立测试；代码中的 `development` / `holdout` / `test_audit` 保留原值。旧媒体仍被新 store 引用，不得按“迁移完成”删除旧目录。
 
 | 顺序/定位 | 固定标识 | 当前任务与状态 | 依赖、下一动作 |
 | --- | --- | --- | --- |
-| 本轮已完成 | README-PUBLIC-INTRO | 已解决：项目介绍与新人快速开始 | 独立核查通过；验证第69节，无动态执行 |
-| 本轮已完成 | DOC-CONSOLIDATION | 已解决：文档及台账收敛 | 独立核查通过；验证第68节，本轮未刷新远端 |
+| 本轮已完成 | DOC-INTEGRATION | 已解决：正式整合文档目录 | 根README及三份正文正式启用，覆盖旧说明清理；独立核查通过，台账/设计/证据保留 |
+| 已完成前序 | README-PUBLIC-INTRO | 已解决：项目介绍与新人快速开始 | 独立核查通过；验证第69节，无动态执行 |
+| 已完成前序 | DOC-CONSOLIDATION | 已解决：文档及台账收敛 | 独立核查通过；验证第68节；候选手册及运行约定见文档整理记录 |
 | 下一轮第一项 | REMOTE-STATE-REFRESH | 待处理：训练机现状只读刷新 | 核对两端 Git、store、媒体、模型资产和环境；本轮不连接 |
 | 模型准备 | MODEL-DIAG | 待确认：诊断方向与开发侧门槛 | 可继续公开开发证据准备；新基线方案和真实运行授权分别确认 |
 | 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
@@ -33,9 +34,9 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：待处理（下一轮）；用户明确本轮只整理文档，训练机现状刷新后置。
 - **事实与差距**：最近远端集成与资产事实来自 2026-09-14，不能视为 2026-10-12 的现场状态。
-- **依赖/下一动作**：按项目指南先列明只读命令及路径，核对两端分支/HEAD/修改/独有提交、正式 store、媒体引用、模型资产与环境来源；不自动同步或修改现场。
+- **依赖/下一动作**：按[项目现状](project-status.md)中的双机位置和[模型流程](model-workflow.md)中的运行边界先列明只读命令及路径，核对两端分支/HEAD/修改/独有提交、正式 store、媒体引用、模型资产与环境来源；不自动同步或修改现场。
 - **验收标准**：记录机器、代码版本、检查范围、退出结果及缺口，更新受影响条目；存在性不替代模型加载、内容隔离或恢复证明。
-- **证据/限制**：[集成记录](results/version-control-migration/verification.md)第67节、[模型门禁基线](MODEL_GATE_BASELINE.md)。本轮未连接；训练/推理/评测及高风险操作不由本任务隐含授权。
+- **证据/限制**：[集成记录](results/version-control-migration/verification.md)第67节、[模型门禁基线](results/model-gate-baseline-20260914.md)。本轮未连接；训练/推理/评测及高风险操作不由本任务隐含授权。
 
 ### ENV-ACTIVATION — 正式解释器与最终 checkout 绑定
 
@@ -59,9 +60,9 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **状态/来源**：进行中（主 Agent）；用户要求验证能否保留历次训练参数和结果后清除训练机 run 下模型文件。用户已授权在完整迁移核验通过后清理旧数据与旧模型副本；未满足条件的文件继续保留。
 - **已证实事实与差距**：2026-08-31 训练机 `workspace/runs` 约 90.253 GiB；原清单漏列两组 source-aware，concise-cv 约定路径不存在；r1 来源仍有 5 个 checkpoint，merged 为发布库软链接。5 组未发布模型 merged 权重合计约 80.988 GiB，各 root LoRA 约 439.1 MiB。原清单不足以放行删除；当时快照未哈希权重，未归档原始预测和完整训练日志。
 - **依赖**：MODEL-DIAG 对历史/当前模型和阶段 checkpoint 的需求；当前发布模型及 `pipeline/checkpoint_policy.json` 保护边界。权重清理不隐含取消诊断任务。
-- **下一动作**：按 MODEL_INVENTORY 第 8 节归档实际配置、模型/数据/Prompt/评测身份、完整日志和原始预测、文件哈希及备份校验；仅按已知身份和准确备份线索核查，不持续搜索缺失三折模型。逐 run 确定仅留研究记录还是保留 adapter 以便重新合并，形成显式候选清单并核对既有条件删除授权。保留 adapter 的方案先验证准确基座与合并链路，不以直挂 4-bit 代替 merged BF16。
+- **下一动作**：按[归档模型清单第 8 节](results/model-inventory.md#8-2026-08-31-清理可行性核查)归档实际配置、模型/数据/Prompt/评测身份、完整日志和原始预测、文件哈希及备份校验；仅按已知身份和准确备份线索核查，不持续搜索缺失三折模型。逐 run 确定仅留研究记录还是保留 adapter 以便重新合并，形成显式候选清单并核对既有条件删除授权。保留 adapter 的方案先验证准确基座与合并链路，不以直挂 4-bit 代替 merged BF16。
 - **验收标准**：每模型每 fold 有可核查的原始配置和结果链、缺失证据明确、归档已备份并校验；2026-09-13 新增 visual 三 fold merged 断链与concise缺失归入同一保护依赖（验证第48节）；清理路径不跟随链接误入发布库，不删除在用模型和未完成诊断所需文件；训练机按获准清单执行并记录删除前后体量、保留文件完整性及对应机器提交。完成可行性审查不等于归档或删除完成。
-- **证据/版本/验证限制**：[模型清单](MODEL_INVENTORY.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)、[模型归档证据包索引](results/model_evidence/README.md)、[试点证据包`v4.1-prompt-minimal-v1-seed3411`](results/model_evidence/v4.1-prompt-minimal-v1-seed3411/README.md)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；2026-08-31 调查的 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
+- **证据/版本/验证限制**：[模型清单](results/model-inventory.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)、[模型归档证据包索引](results/model_evidence/README.md)、[试点证据包`v4.1-prompt-minimal-v1-seed3411`](results/model_evidence/v4.1-prompt-minimal-v1-seed3411/README.md)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；2026-08-31 调查的 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
 - **后续证据**：2026-09-13 条件清理授权涵盖旧数据及旧 run/model 的已核实冗余副本；89 个 train 视频大小/SHA 一致，但占用预检权限不足，删除 0、释放 0。新 store 的外部媒体与当前发布库仍受保护；见[验证记录](results/version-control-migration/verification.md)第56–58节。下一轮刷新后核定候选，不能将历史验签当作今日可删除证明。
 
 ### HOLDOUT-BUILD — 构建并授权未使用的 test 数据分支
@@ -99,7 +100,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **准备与执行边界**：按[新入口说明](../versioning/SCRIPTS.md)准备完整data/prompt/train身份、显式媒体根、来源输入及三折配置；`versioning train prepare/validate`负责冻结与校验，`run/export`负责实际执行和产物证据。旧build/prepare/train CLI已停用；底层函数供新入口调用。历史模型只有报告/裸目录时不能强行登记为新正式completed；先找回原始配置、权重及逐样本身份链。
 - **依赖/边界**：开发集只读整理不等待 HOLDOUT-BUILD；实验执行前明确测试隔离规则、冻结开发侧阈值并核对授权。现有交付配置记录 optimization paused / retraining unauthorized；本轮只整理该方案与证据说明，不执行准备命令或恢复训练授权。不使用 sealed-test 调参，不补字段伪造合法率，不删除诊断所需 checkpoint。
 - **验收标准**：身份链一致、原始预测可追溯，根因分清事实与假设；报告四字段合法率/正确率、各状态召回、macro recall、joint correct、分布和失败样例；单变量结果可比较，三折达到预定开发侧标准后才放行 FINAL-TRAIN。仅完成诊断时记录阶段结果，不宣称效果改进已完成。
-- **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[模型门禁基线](MODEL_GATE_BASELINE.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；2026-09-13 在 Linux 重算历史 visual 的 1216 条开发原记录，concise原始预测仍缺且未复算。新增[第48节证据](results/version-control-migration/verification.md#delivery-preparation-20260913)记录三fold模型断链和能力前置，不能据历史输出关闭改善任务。
+- **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[模型门禁基线](results/model-gate-baseline-20260914.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；2026-09-13 在 Linux 重算历史 visual 的 1216 条开发原记录，concise原始预测仍缺且未复算。新增[第48节证据](results/version-control-migration/verification.md#delivery-preparation-20260913)记录三fold模型断链和能力前置，不能据历史输出关闭改善任务。
 
 ### RELEASE-POINTER — 安全更新并激活数据 release 指针
 
@@ -118,14 +119,14 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、HOLDOUT-BUILD的数据构建/审查/冻结及预注册准备就绪（模型绑定claim在候选产生并获测试使用授权后建立）并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
 - **入口与产物**：独立full能力已由fed9bcfc实现且双机隔离CPU验收；正式入口为`versioning train prepare --scope full`，消费同一开发release全集、每候选一次及显式full配置，继而validate/run/export产生一个full/adapter，登记时`--source-scope full`。详见[新入口说明](../versioning/SCRIPTS.md#独立全量训练)。不再安排重做full代码；真实运行仍等待上列模型、holdout及训练授权前置。
 - **验收标准**：全部合格开发数据按冻结方案纳入，未混入测试来源；真实训练/合并完成，模型与数据/配置/代码/哈希可追溯，保存最终候选及轻量 manifest。完成本项不自动获得 production approval。
-- **证据/限制**：[开发 release 摘要](results/v4_1_phase2_development_release/release_summary.json)、[当前模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[训练说明](../finetune/README.md)；截至既有记录无全量最终模型证据；本轮未刷新训练机。
+- **证据/限制**：[开发 release 摘要](results/v4_1_phase2_development_release/release_summary.json)、[当前模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[模型流程](model-workflow.md)；截至既有记录无全量最终模型证据；本轮未刷新训练机。
 
 ### MODEL-QUALITY — 最终模型质量验收与晋级
 
 - **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、FINAL-TRAIN、HOLDOUT-BUILD和HOLDOUT-METRICS；RELEASE-POINTER原目标适用性另待裁决。
 - **事实与差距**：`v4.1-agent-pipeline-fold0-r1` 已用于工程链路验证，但 Stage B/D/G 标志均为 false，`production_approved: false`。标志为 false 不等于每一门都已执行失败，须查各门证据。
 - **下一动作**：核对适用质量门、阈值和证据要求并落实到子任务；最终候选和测试前置齐备后，按授权协议完成独立验收及其他质量门，再决定晋级。
-- **入口与产物**：参照 [发布证据](results/v4_1_agent_pipeline_fold0_r1/README.md) 和 [服务手册](INFERENCE_SERVICE_RUNBOOK.md) 核对执行入口；冻结报告和模型哈希，经注册表发布新身份并同步 delivery，核对服务加载对象。缺可执行入口则先补任务单/实现，不把历史归档命令写成现成流程。
+- **入口与产物**：参照 [发布证据](results/v4_1_agent_pipeline_fold0_r1/README.md) 和 [模型流程](model-workflow.md) 核对执行入口；冻结报告和模型哈希，经注册表发布新身份并同步 delivery，核对服务加载对象。缺可执行入口则先补任务单/实现，不把历史归档命令写成现成流程。
 - **验收标准**：预定质量门与身份校验均有证据，模型/报告/注册表/delivery/服务一致；新候选不覆盖旧模型历史结论，工程成功不能替代质量通过。
 - **证据/限制**：[交付配置](../delivery/model_component.json)、[模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json) 及现有 sealed-test 公开结果；目前不满足最终交付标准。
 
@@ -151,6 +152,13 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 以下保留各任务原验收依据，历史测试未在本次2026-10-12整理中复跑。工程任务关闭不自动关闭模型、test 或真实恢复验收。
 
+### DOC-INTEGRATION — 正式整合项目文档目录：已解决
+
+- **状态/来源**：已解决（Codex，2026-10-12，本机）；用户认可四份说明并授权正式替换根README、清理覆盖旧说明，保留任务台账、设计决策和原始验证证据。
+- **结果/验收**：正式入口为根README与docs下data-workflow、model-workflow、project-status；删除七份重复说明及候选目录，完整归档模型现场基线、模型清单和阶段一审计报告。同步AGENTS/架构/接口索引和停用CLI提示导航，不改变运行入口行为或授权。Mac uv、训练机Conda Python、3.11.x及两平台依赖分工保持。
+- **独立核查**：reviewer结论通过，无可执行问题；冻结版本50份Markdown、289个本地链接/锚点0错误，25个shell块语法通过。原30个任务标识保留，31标识唯一；65份非Markdown原结果、ADR/迁移确认链/研究材料及决策日志完整性核对通过，归档统计和清理标准未丢失；十个Python变更严格仅停用提示路径文本。
+- **证据/限制**：[正式整合记录](results/documentation-consolidation-20261012.md)；提交由 `git log -- README.md docs/project-todo.md` 追溯。本轮不执行pytest、业务CLI、安装、UI/server、SSH、实际数据处理、训练、推理或评测；历史结果未复跑，不关闭模型/test/Conda现场或真实恢复缺口。下一步仍为REMOTE-STATE-REFRESH。
+
 ### README-PUBLIC-INTRO — 项目介绍与新人快速开始：已解决
 
 - **状态/来源**：已解决（Codex，2026-10-12，本机）；用户要求根README面向首次访问者介绍项目概念、实际用途、初步成果及快速开始。
@@ -161,9 +169,10 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 ### DOC-CONSOLIDATION — 现行文档与任务台账收敛：已解决
 
 - **状态/来源**：已解决（Codex，2026-10-12，本机）；用户授权统一迁移后状态、正文和导航，保留设计/决定/验证证据，清除过期下一动作并独立核查。
-- **结果/验收**：现行数据、训练与服务正文退出旧 CLI 操作；当前状态、完整数据身份与入口导航一致。工程迁移等已解决事项统一进入关闭区；MODEL-DIAG 待确认，模型/test/真实恢复限制保留。已执行 Plan 保存范围、选择与最终矩阵，详细历史仍在验证记录和 Git。
+- **结果/验收**：前序现行数据、训练与服务正文退出旧 CLI 操作；当前状态、完整数据身份与入口导航一致。工程迁移等已解决事项统一进入关闭区；MODEL-DIAG 待确认，模型/test/真实恢复限制保留。已执行 Plan 保存范围、选择与最终矩阵，详细历史仍在验证记录和 Git。
+- **后续成果**：新候选手册在 `389c797e` 完成交付及独立核查，`f8af0bba` 修复 ROI 直接文件导入并统一 Mac uv/训练机 Conda Python 及 Python 3.11.x；具体实际检查和限制见[文档整理记录](results/documentation-consolidation-20261012.md)。这些结果没有刷新训练机或关闭真实环境、模型/test 与恢复缺口；正式目录切换由 DOC-INTEGRATION 承接。
 - **独立核查**：reviewer 对照代码及历史证据核查17份正文；首轮服务模板路径 P2 已修复并复核，最终无剩余可执行问题，结论通过。输入来源、七阶段产物、UI交接、claim/评分、alias服务参数及证据边界均静态核对。
-- **证据/限制**：[验证第68节](results/version-control-migration/verification.md#document-consolidation-20261012)记录覆盖、检查和限制；本轮未 SSH、训练、推理、评测、运行应用或 pytest，历史动态结果未复跑。提交由 `git log -- docs/project-todo.md` 追溯。
+- **证据/限制**：[验证第68节](results/version-control-migration/verification.md#document-consolidation-20261012)记录该次覆盖、检查和限制；该次未 SSH、训练、推理、评测、运行应用或 pytest，历史动态结果未复跑。提交由 `git log -- docs/project-todo.md` 追溯。
 
 ### VERSION-CONTROL-FORMAL-MIGRATION — 正式迁移可读版本控制体系：已解决
 
@@ -242,7 +251,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 ### RUNBOOK-CONTRACT — 数据处理运行手册初始契约化与版本解耦：已解决
 
-- **结果**：为 [数据处理运行手册](DATA_PROCESSING_RUNBOOK.md) 补建独立、精简的 Document Contract；标题和长期定位不再绑定特定链路版本，正文集中声明当前数据处理链路版本为 4.1，并保留候选计划使用 v3、审查与发布使用 v4.1 的真实契约边界。README 导航已同步。
+- **结果**：为当时的 `docs/DATA_PROCESSING_RUNBOOK.md`（现行说明由[数据处理](data-workflow.md)承接，原文可查 Git）补建独立、精简的 Document Contract；标题和长期定位不再绑定特定链路版本，正文集中声明当前数据处理链路版本为 4.1，并保留候选计划使用 v3、审查与发布使用 v4.1 的真实契约边界。README 导航已同步。
 - **文档决定**：文档级 Decision Log 的 D001 记录继续维护单一、不带版本号的主手册；版本升级时同步核对版本声明、版本特有路径、命令、默认值和验收条件，不只替换版本号，也不另建平行主手册。
 - **证据/验证限制**：本地 `git diff --check`、两个治理块唯一性与本地 Markdown 链接检查通过；脚本默认值静态核对支持 v3/v4.1 边界。独立 reviewer 首轮发现 Contract 将统一 resolver 能力错误泛化到 `review_decisions` 的 P2，修正为保留各集合解析与路径边界后复审通过、无剩余可执行问题；reviewer 另执行 2 个相关测试，结果 `2 passed`。该批未连接训练机，未运行 GPU、媒体物化或完整发布链路，不能据此宣称重新认证了手册中的全部既有命令。
 
@@ -287,6 +296,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **残余**：Streamlit 显示原始 ValueError traceback 是此前接受的呈现层风险；该批未重新验收 UI。
 
 ## 最近维护记录
+
+- **2026-10-12（Codex，正式文档整合）**：新增 DOC-INTEGRATION，承接用户的根 README 替换和覆盖旧说明清理授权；保留原 30 个任务标识、设计决策和原始验证证据，最终独立核查通过、无可执行问题，DOC-INTEGRATION已解决。Mac uv、训练机 Conda Python 与 3.11.x 约定保持；本轮无 SSH、实际数据处理、训练、推理或评测，现场刷新仍为下一步。
 
 - **2026-10-12（Codex，README续办）**：根README改为面向首次访问者的项目介绍与快速开始，静态独立核查通过，见验证第69节。无安装、SSH、训练或评测；训练机刷新仍后置。
 

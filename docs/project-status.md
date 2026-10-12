@@ -2,9 +2,9 @@
 
 ## 如何理解这里的“当前”
 
-本页整理日期为 **2026-10-12**，本批修复所据本地代码起点为 `389c797e`，具体ROI/支持声明修复提交由 `git log -- pipeline/scripts/roi_annotation_app.py` 追溯。工程能力依据当前代码及仓库验收记录；训练机文件、模型和运行环境的最近现场记录来自 **2026-09-14**，本轮没有 SSH 刷新，也没有加载模型或重新评测。过去的服务成功不表示今天有同一服务在运行。
+本页整理日期为 **2026-10-12**，本地入口代码基线为 `f8af0bba`（ROI入口修复、Python3.11及两平台运行约定），本次正式目录整合提交由 `git log -- README.md` 追溯。工程能力依据当前代码及仓库验收记录；训练机文件、模型和运行环境的最近现场记录来自 **2026-09-14**，本轮没有 SSH 刷新，也没有加载模型或重新评测。过去的服务成功不表示今天有同一服务在运行。
 
-项目任务仍由原[唯一台账](../project-todo.md)维护。本页是证据摘要，不再另列一套执行任务、优先级或授权。
+项目任务仍由[唯一台账](project-todo.md)维护。本页是现状与证据摘要，不另列一套执行任务、优先级或授权。
 
 ## 已记录的机器与资产位置
 
@@ -31,7 +31,7 @@
 | 部署环境 | Mac 和 Linux GPU 的依赖锁及部署脚本、doctor 已有验收；部署脚本创建新环境，Linux 模式为 venv | 当前实际使用的 Conda 环境已按 Linux GPU 锁核验，或正式解释器已切换且绑定今天的正确 checkout |
 | 备份恢复 | 小对象跨机与store级异根恢复有证据 | 真实硬盘、大型权重、SQLite及外部媒体/基座组合灾难恢复可用 |
 
-工程迁移已按确认范围合并并同步正式代码，证据见[最终集成记录第66–67节](../results/version-control-migration/verification.md)。原公共CLI的退役范围见[入口清单](../results/version-control-migration/entrypoint-map.md)；共享业务库和历史读取依赖仍有用途，不能删除整个旧包。
+工程迁移已按确认范围合并并同步正式代码，证据见[最终集成记录第66–67节](results/version-control-migration/verification.md)。原公共CLI的退役范围见[入口清单](results/version-control-migration/entrypoint-map.md)；共享业务库和历史读取依赖仍有用途，不能删除整个旧包。
 
 ## 数据与Prompt的落点
 
@@ -41,9 +41,9 @@
 | `data-v4.1-r2` | active | `v4.1.0-ecb5aeb9657c` | 新引用仍须在线校验许可、状态与内容 |
 | `prompt-v4.1-r1` | 已登记正式定义 | 已确认历史Prompt复制迁移 | 实际训练按完整身份冻结，不任意换Prompt复用评测结论 |
 
-这不是隐式“默认版本”清单，也未刷新今天的在线状态。r1/r2复制保留原payload及划分，其中仍有外部媒体引用；不能按迁移完成删除旧workspace。正式记录在 `<store>/data/releases/<完整身份>/` 与 `records/prompts/`，映射和生命周期决定见[对象映射](../results/version-control-migration/object-mapping.yaml)，内容验签见[验证第20–24及43节](../results/version-control-migration/verification.md)。
+这不是隐式“默认版本”清单，也未刷新今天的在线状态。r1/r2复制保留原payload及划分，其中仍有外部媒体引用；不能按迁移完成删除旧workspace。正式记录在 `<store>/data/releases/<完整身份>/` 与 `records/prompts/`，映射和生命周期决定见[对象映射](results/version-control-migration/object-mapping.yaml)，内容验签见[验证第20–24及43节](results/version-control-migration/verification.md)。
 
-Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1253/425、1014/664、1186/492。基础发布有1275条，三折为850/425、830/445、929/346。数据来源和详细统计见[Phase2发布记录](../results/v4_1_phase2_development_release/README.md)及[有效视图审计记录](../results/v4_1_phase1_effective_view_audit/README.md)；不同发布分数不能直接作单变量因果比较。
+Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1253/425、1014/664、1186/492。基础发布有1275条，三折为850/425、830/445、929/346。数据来源和详细统计见[Phase2发布记录](results/v4_1_phase2_development_release/README.md)及[有效视图审计记录](results/v4_1_phase1_effective_view_audit/README.md)；不同发布分数不能直接作单变量因果比较。
 
 ## 历史模型成果
 
@@ -55,9 +55,9 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 | concise三折 | Phase2 validation，1581条 | valid 79.63%；joint 32.07%；clip_state 35.80% | 322条非法输出，临界未断裂及已断裂召回均0%，类别坍缩和契约退化未解决 |
 | visual三折的merged BF16路线 | 基础发布开发侧，1216条 | valid 97.12%；joint 40.21%；clip_state 49.67% | 已有预测曾按严格解析器复算一致，不表示对应权重今天可加载 |
 
-来源为[旧发布身份](../../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](../results/v4_1_agent_pipeline_fold0_r1/README.md)、[concise报告](../results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[visual报告](../results/v4_1_0_760050fad303_20260724_visual/README.md)及[开发证据预检](../results/model-diagnostics-preflight-20260913.json)。
+来源为[旧发布身份](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](results/v4_1_agent_pipeline_fold0_r1/README.md)、[concise报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[visual报告](results/v4_1_0_760050fad303_20260724_visual/README.md)及[开发证据预检](results/model-diagnostics-preflight-20260913.json)。
 
-2026-09-14资产记录表明旧Fold0发布文件与若干实验adapter在约定位置存在，但未加载验证；concise/visual三折权重的约定位置有缺口，concise原始预测也缺失。旧current与旧Registry只是历史身份，不授予新alias或passed。详细现场记录保存在[验证第67节](../results/version-control-migration/verification.md)，此前限定调查见[模型位置核查](../results/model-location-followup-20260913.json)及[恢复身份目标](../results/model-recovery-targets-20260913.json)。
+2026-09-14资产记录表明旧Fold0发布文件与若干实验adapter在约定位置存在，但未加载验证；concise/visual三折权重的约定位置有缺口，concise原始预测也缺失。旧current与旧Registry只是历史身份，不授予新alias或passed。详细现场记录保存在[验证第67节](results/version-control-migration/verification.md)，此前限定调查见[模型位置核查](results/model-location-followup-20260913.json)及[恢复身份目标](results/model-recovery-targets-20260913.json)。
 
 ## 仍需独立解决的缺口
 
@@ -67,10 +67,10 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 - **真实质量与服务**：训练成功、严格评测通过、最终质量、production批准和GPU服务成功分别取得真实证据，不互相替代。
 - **清理与恢复**：未完成引用、归档和备份证明的旧媒体/权重仍保留；大型及外部依赖组合恢复不能用小对象测试替代。
 
-下一轮首先刷新训练机只读事实，具体任务和允许操作以唯一台账为准。本套文档没有启动上述工作。
+下一轮首先刷新训练机只读事实，具体任务和允许操作以唯一台账为准。本次文档整合没有启动上述工作。
 
 ## 证据应怎样保留
 
-[设计与决定](../plans/2026-09-01-readable-version-control-design.md)、[ADR](../adr/ADR-0001.md)、[已确认Spec](../tasks/2026-09-07-readable-version-control-migration/spec.md)描述确认的规则；[对象映射](../results/version-control-migration/object-mapping.yaml)、[历史摘要](../results/version-control-migration/history-summary.yaml)、[验证记录](../results/version-control-migration/verification.md)描述实际发生的事实。
+[设计与决定](plans/2026-09-01-readable-version-control-design.md)、[ADR](adr/ADR-0001.md)、[已确认Spec](tasks/2026-09-07-readable-version-control-migration/spec.md)描述确认的规则；[对象映射](results/version-control-migration/object-mapping.yaml)、[历史摘要](results/version-control-migration/history-summary.yaml)、[验证记录](results/version-control-migration/verification.md)描述实际发生的事实。
 
-模型资料从[证据包索引](../results/model_evidence/README.md)查找；本地五份轻量README/MANIFEST存在不等于训练机原始日志、预测和权重完整，也不是删除放行单。原始结果、摘要和证据不要因概览文档被替换而一起删除。
+模型资料从[证据包索引](results/model_evidence/README.md)查找；本地五份轻量README/MANIFEST存在不等于训练机原始日志、预测和权重完整，也不是删除放行单。原始结果、摘要和证据不要因概览文档被替换而一起删除。

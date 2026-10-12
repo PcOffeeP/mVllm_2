@@ -1,4 +1,28 @@
-# 文档整理与验收说明
+# 文档整理与正式整合记录
+
+## 正式文档入口
+
+2026-10-12用户已认可四份文档分工，并授权正式替换根README、清理被覆盖旧说明，同时保留唯一任务台账、设计决策与原始验证证据。本轮执行平台为Mac/Codex，代码起点 `f8af0bba`；未SSH、安装环境、实际数据处理、训练、推理或评测。
+
+现行入口只有根[README](../../README.md)与三份流程/现状正文：[数据处理](../data-workflow.md)、[模型流程](../model-workflow.md)、[项目现状](../project-status.md)。[项目TODO](../project-todo.md)仍是唯一任务台账；代码附近SCRIPTS索引负责完整参数，历史报告不作为当前操作手册。
+
+| 整合内容 | 处理结果 |
+| --- | --- |
+| 候选README及三份正文 | 正式发布到根README和docs一级，删除候选目录，校正所有相对链接 |
+| CURRENT_PROJECT_STATUS、DATA_PROCESSING_RUNBOOK、INFERENCE_SERVICE_RUNBOOK、V4_1_DATA_RELEASES、WORKSPACE_METADATA_GUIDE、project-guide、finetune/README | 删除七份已覆盖的重复说明，历史版本由Git追溯，不留平行提示页 |
+| MODEL_GATE_BASELINE | 保留完整现场事实，归档到[2026-09-14核查档案](model-gate-baseline-20260914.md) |
+| MODEL_INVENTORY | 保留配置/指标及第8节清理验收，归档到[历史模型清单](model-inventory.md) |
+| V4_1_PHASE1_EFFECTIVE_VIEW_AUDIT | 保留审计方法/来源/结果，归档到[历史审计报告](v4_1_phase1_effective_view_audit/report.md) |
+| 任务台账、设计/ADR、迁移Intent/Spec/Plan、研究资料与results原始产物 | 保留；只修正必要导航，确认规则、身份、数据和验证事实不重写 |
+| AGENTS、架构、接口索引、旧CLI停用提示 | 更新入口位置；旧CLI仍停用，业务算法和授权规则不变 |
+
+## 正式整合的检查与审查
+
+独立reviewer最终结论通过，无可执行问题。冻结整合版本覆盖50份Markdown、289个本地链接及锚点，0错误；四份正式正文25个shell代码块经bash -n全部通过。原30任务标识保留，31标识唯一；65份原始非Markdown结果文件逐字节一致，ADR/迁移Intent-Spec-Plan/研究资料及AGENTS和权威设计决策日志保持原文。归档模型清单和审计报告的表格、列表事实与清理标准完整；十个Python文件严格仅替换停用提示中的文档路径，AST解析通过。`git diff --cached --check`通过。验收回填后再次检查链接及diff，不修改操作正文。本轮没有复跑下文历史测试，不将前序34项ROI验证记成本次运行。整理提交由 `git log -- README.md docs/project-todo.md` 追溯。
+
+## 历史阶段记录
+
+下文保存候选撰写及ROI修复批次的决定、检查和限制；其中“待审阅”“未替换”是当时状态，正式采用的授权与完成结果以上文为准。
 
 ## 首次候选文档交付范围
 
@@ -8,10 +32,10 @@
 
 | 文档 | 负责内容 | 不重复的内容 |
 | --- | --- | --- |
-| [README](README.md) | 项目概念、四字段、初步成果、环境初装与阅读入口 | 实验施工过程、完整接口schema |
-| [数据处理](data-workflow.md) | 原始输入、ROI、候选与审查、train/test发布、DVC和数据引用 | 模型训练与正式评分的完整步骤 |
-| [模型流程](model-workflow.md) | Prompt/训练冻结、评测、模型登记晋级、服务及备份 | 初次安装与重复数据制作说明 |
-| [项目现状](project-status.md) | 带日期的能力、成果、资产/资格缺口和证据来源 | 第二套项目任务排序或授权 |
+| [README](../../README.md) | 项目概念、四字段、初步成果、环境初装与阅读入口 | 实验施工过程、完整接口schema |
+| [数据处理](../data-workflow.md) | 原始输入、ROI、候选与审查、train/test发布、DVC和数据引用 | 模型训练与正式评分的完整步骤 |
+| [模型流程](../model-workflow.md) | Prompt/训练冻结、评测、模型登记晋级、服务及备份 | 初次安装与重复数据制作说明 |
+| [项目现状](../project-status.md) | 带日期的能力、成果、资产/资格缺口和证据来源 | 第二套项目任务排序或授权 |
 
 本文件只记录整理和验收，不是另一份项目TODO。现有 `docs/project-todo.md` 仍是唯一台账；候选整合并未切换项目权威入口或批准删除。
 
@@ -55,7 +79,7 @@
 
 两项均为候选文档准确性修正，没有实现新功能、放宽门禁或改变既有工程结项。最终独立静态增量复核通过，两项P2均关闭，无新增或剩余可执行问题。主Agent及reviewer复查最终新目录77个本地链接与锚点，0问题；JSON格式示例解析通过，`git diff --cached --check`通过；`git diff --exit-code 3827363a -- . ':!docs/project-handbook'`为0，原文件保持不变。本轮不安装环境、不启动应用或pytest、不SSH、不训练、推理或评测；文档命令的准确性依据当前代码参数、调用链和已有证据核对，不代表真实环境已经执行。
 
-用户尚未审阅本候选手册；即使独立静态核查通过，也不视为旧文档删除批准。当前项目任务和下一轮训练机只读刷新仍按原台账执行。
+在首次候选交付时，用户尚未审阅，静态核查通过也不代表当时获得旧文档删除批准。当前项目任务和下一轮训练机只读刷新仍按原台账执行。
 
 
 ## 续办：ROI入口与两平台运行约定
@@ -68,4 +92,4 @@ pyproject支持范围收紧为 `>=3.11,<3.12`，uv重新解析锁后规范化为
 
 实际检查：现有.venv Python3.11.14运行 `python -B -m pytest -p no:cacheprovider tests/test_roi_entrypoint.py tests/test_roi_annotation_app.py -q`，34 passed、exit0（新增2项、现有32项）；两种未修复入口敏感性反例都捕获ModuleNotFoundError。历史pytest临时目录清理产生297条warning，不影响结果，未清理它们。主Agent通过显式Mac uv解释器直接运行ROI文件 --help，exit0。文档25个shell block经bash -n检查通过。独立reviewer结论通过，无剩余可执行问题：另独立运行新增2项测试通过，从仓库根/脚本目录/仓库外分别验证直接文件与Streamlit路径，共6次help exit0，基线两入口反例仍失败；显式uv解释器选择与离线lock检查通过。锁结构核对确认未删除兼容3.11的轮子、未改变保留包版本/来源/sdist哈希。最终候选目录79个本地链接及锚点0问题，diff检查通过。独立核查没有借用作者34项组合冒充复跑，也没有验证训练机Conda现场。
 
-本批没有实际数据处理、训练、推理、评测、UI/server启动或SSH。训练机Conda环境状态没有刷新，本文只说明运行约定及验收要求，不证明现场环境已合格。旧文档仍保留，候选手册依然等待用户审阅，未推送/合并或切换正式入口。
+本批没有实际数据处理、训练、推理、评测、UI/server启动或SSH。训练机Conda环境状态没有刷新，本文只说明运行约定及验收要求，不证明现场环境已合格。旧文档仍保留，当批候选手册仍待用户审阅，未推送/合并或切换正式入口。

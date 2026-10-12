@@ -2,7 +2,7 @@
 
 本项目把材料拉伸视频整理为经过裁剪、采样和标签审查的子视频。train 数据用于三折训练、验证和独立全量训练；test 数据用于最终独立测试，构建与使用都有单独的隔离及授权要求。正式处理入口是 `python -m versioning data`。
 
-本文是新文档包的候选数据指南。当前项目证据和未完成事项见[项目现状](project-status.md)，模型训练及测试使用见[模型流程](model-workflow.md)。命令说明不代表真实数据构建、test 使用或模型运行已经获准。
+本文是现行数据处理指南。当前项目证据和未完成事项见[项目现状](project-status.md)，模型训练及测试使用见[模型流程](model-workflow.md)。命令说明不代表真实数据构建、test 使用或模型运行已经获准。
 
 ## 执行前认识两个目录
 
@@ -17,7 +17,7 @@
 
 身份格式是 `data-v<协议>-r<N>`，例如 `data-v4.1-r3`。摘要用于校验文件完整性，不是身份。批次名字和完整版本由操作者明确选择，不能静默改号重试。
 
-Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件检查。真实 ROI 物化、子视频生成、大量校验及正式数据发布在训练机执行；模型训练、GPU 推理及完整评测也只在训练机执行。Mac 通过 uv 调用已部署的 Python 3.11.x 解释器；训练机直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。解释器须对应实际 checkout 与依赖，不按旧环境名猜测。机器与环境准备见[快速开始](README.md#快速开始)。
+Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件检查。真实 ROI 物化、子视频生成、大量校验及正式数据发布在训练机执行；模型训练、GPU 推理及完整评测也只在训练机执行。Mac 通过 uv 调用已部署的 Python 3.11.x 解释器；训练机直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。解释器须对应实际 checkout 与依赖，不按旧环境名猜测。机器与环境准备见[快速开始](../README.md#快速开始)。
 
 ## 1. 准备真实输入
 
@@ -32,7 +32,7 @@ Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件�
 | `all_videos_tag.csv` | `id`、`video_path`、`断裂时间点`、`断裂模式`、`材料类型`、`清晰度`、`断裂位置`、`断裂帧数`、`视频时长`、`视频帧率`、`视频总帧数`、`has_fracture`、`is_abnormal` |
 | `video_mapping.csv` | `标准化文件名`、`原始文件名`、`来源目录`、`材料类别`、`状态`、`duration`、`resolution`、`codec` |
 
-tags 的 `video_path` 文件名与 ID 对应。mapping 的原始文件名及来源目录非空，状态是 `existing` 或 `new`。列语义及治理逻辑见[输入实现](../../pipeline/source_bootstrap.py)和[现行校验](../../versioning/data_pipeline.py)的 `run_input_source`。历史 110 个原视频或特定 train/test 数量不构成新批次固定要求。
+tags 的 `video_path` 文件名与 ID 对应。mapping 的原始文件名及来源目录非空，状态是 `existing` 或 `new`。列语义及治理逻辑见[输入实现](../pipeline/source_bootstrap.py)和[现行校验](../versioning/data_pipeline.py)的 `run_input_source`。历史 110 个原视频或特定 train/test 数量不构成新批次固定要求。
 
 ### split 与 ROI 决定
 
@@ -40,9 +40,9 @@ split 使用已确认的原视频成员划分，包含 `test` 和三个 fold 的
 
 ROI UI 的输入 `ROI_METADATA` 是数组或含 `videos` 数组的 JSON，逐项有唯一 `video_id`、定位真实视频的 `video_path` 及真实视频属性/事件信息。跨机使用时，`video_path` 必须是两机共有的项目内相对路径，与 inputs 中对应视频 pin 的 `path` 一致：Mac 的 `MEDIA_PROJECT_ROOT` 和训练机的 `INPUTS.project_root` 各自解析到该相对位置的同一份视频内容。两机项目根可以不同，视频相对布局及 SHA256 必须一致。
 
-metadata 可以来自核对过的历史 source snapshot 的 `video_meta.json`，也可以由操作者按本批真实视频准备。如果历史 metadata 保存了机器专属绝对路径，先准备并核对具有上述相对布局的便携 metadata，再进行人工 ROI 决定；不能直接沿用 Mac 绝对路径，也不能事后手改已冻结决定绕过校验。UI 会把 metadata 路径原样写入决定的 `source_video_path`，训练机 ROI 阶段会解析并要求它与对应输入 pin 的实际文件相同。同结构与读取逻辑见[ROI UI](../../pipeline/scripts/roi_annotation_app.py)及[ROI 物化校验](../../versioning/data_pipeline.py)的 `run_input_roi`。新 source 阶段输出 `source_manifest.json`，不会自动生成供 UI 选择的旧 snapshot 身份。
+metadata 可以来自核对过的历史 source snapshot 的 `video_meta.json`，也可以由操作者按本批真实视频准备。如果历史 metadata 保存了机器专属绝对路径，先准备并核对具有上述相对布局的便携 metadata，再进行人工 ROI 决定；不能直接沿用 Mac 绝对路径，也不能事后手改已冻结决定绕过校验。UI 会把 metadata 路径原样写入决定的 `source_video_path`，训练机 ROI 阶段会解析并要求它与对应输入 pin 的实际文件相同。同结构与读取逻辑见[ROI UI](../pipeline/scripts/roi_annotation_app.py)及[ROI 物化校验](../versioning/data_pipeline.py)的 `run_input_roi`。新 source 阶段输出 `source_manifest.json`，不会自动生成供 UI 选择的旧 snapshot 身份。
 
-Mac 上从代码仓库运行，`MAC_PYTHON` 是[快速开始](README.md#快速开始)中已部署的 Mac 环境解释器绝对路径，`MEDIA_PROJECT_ROOT` 解析 metadata 中的媒体路径，`ROI_OUTPUT` 是可编辑决定文件，不能覆盖 metadata 或已有封存文件：
+Mac 上从代码仓库运行，`MAC_PYTHON` 是[快速开始](../README.md#快速开始)中已部署的 Mac 环境解释器绝对路径，`MEDIA_PROJECT_ROOT` 解析 metadata 中的媒体路径，`ROI_OUTPUT` 是可编辑决定文件，不能覆盖 metadata 或已有封存文件：
 
 ```sh
 uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
@@ -65,13 +65,13 @@ inputs 是 `schema: tensile-data/inputs/v1` 的 YAML。每个文件 pin 精确�
 | `roi_decisions` | 完整人工 ROI 决定 pin |
 | `media.config` | 候选契约及 development/test 两域参考的配置 pin |
 | `media.preprocessor.kind` / `config` | `minicpm` 与真实处理器描述 pin |
-| `contract` | [当前四字段业务契约](../../pipeline/contracts/tensile_vlm_v4_1.json)的 pin |
+| `contract` | [当前四字段业务契约](../pipeline/contracts/tensile_vlm_v4_1.json)的 pin |
 
-`split` 文件使用 `tensile-data/split-inputs/v1`，含 batch、完整 `source_sha256` 和七份 `splits`。`media.config` 使用 `tensile-data/media-inputs/v1`，钉扎 [v3 候选契约](../../pipeline/contracts/tensile_vlm_v3.json)、`development_reference`、`test_reference`。候选算法仍复用 v3 模块，发布契约仍为 v4.1。两域参考有同一 `reference_id`，其 source inventory 与对应域成员一致，记录绑定对应源视频；没有历史参考也必须显式提供合法空记录文件，不能缺文件后回退。
+`split` 文件使用 `tensile-data/split-inputs/v1`，含 batch、完整 `source_sha256` 和七份 `splits`。`media.config` 使用 `tensile-data/media-inputs/v1`，钉扎 [v3 候选契约](../pipeline/contracts/tensile_vlm_v3.json)、`development_reference`、`test_reference`。候选算法仍复用 v3 模块，发布契约仍为 v4.1。两域参考有同一 `reference_id`，其 source inventory 与对应域成员一致，记录绑定对应源视频；没有历史参考也必须显式提供合法空记录文件，不能缺文件后回退。
 
 处理器描述使用 `tensile-data/preprocessor-inputs/v1`，包含项目内普通相对目录 `model_root`、加载所需文件的完整 pins、`max_frames: 8`、正有限 `video_fps`、实际 `expected_fingerprint`。至少包含 `config.json`、`preprocessor_config.json`，tokenizer、动态处理代码及相对依赖也须钉扎，外部 `auto_map` 拒绝。指纹来自同一目录及参数下的 `MiniCPMVideoPreprocessor.fingerprint()`，不能填示例摘要。此步骤准备处理器，不加载模型权重或推理。
 
-完整嵌套字段见[接口索引：显式数据七阶段](../../versioning/SCRIPTS.md#显式数据七阶段)，实际解析器是 `load_data_inputs`、`_load_media_inputs`。inputs 不会生成缺失的决定、参考或指纹。真实运行需训练机具备 ffmpeg、PyAV 和 MiniCPM 处理器依赖。
+完整嵌套字段见[接口索引：显式数据七阶段](../versioning/SCRIPTS.md#显式数据七阶段)，实际解析器是 `load_data_inputs`、`_load_media_inputs`。inputs 不会生成缺失的决定、参考或指纹。真实运行需训练机具备 ffmpeg、PyAV 和 MiniCPM 处理器依赖。
 
 ## 2. 冻结、裁剪和生成待审包
 
@@ -139,7 +139,7 @@ DVC 负责依赖和内容追踪，完整 data 身份仍由 versioning 管理。�
 
 另准备 JSON/YAML `TEST_CONFIG`，schema 为 `tensile-data/holdout-build/v1`，绑定 batch、inputs 文件摘要、完整 `development_data_version` 及该 train `release.yaml` 摘要。`development_sources` 和 `used_test_sources` 是两份非语义来源清单的 pins，路径相对 INPUTS.project_root。
 
-每份清单使用 `tensile-data/source-isolation/v1`，包含对应字段名作为 `scope`、非空视频 ID → 原视频 SHA256 的 `sources`、`reviewer_id`、含时区的 `reviewed_at` 和说明依据的 `reference`。train 清单须精确覆盖绑定发布的 `payload/metadata/training_candidates.json` source；缺少该证据的历史发布不自动兼容。由操作者核查两份清单完整且新 test 未用于调参；程序检查 ID/内容无重叠和新 source 无重复，不能替代人工资格确认。不得读取旧 test 真值来填写清单。精确字段见[接口索引](../../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)和[隔离实现](../../versioning/holdout_pipeline.py)。
+每份清单使用 `tensile-data/source-isolation/v1`，包含对应字段名作为 `scope`、非空视频 ID → 原视频 SHA256 的 `sources`、`reviewer_id`、含时区的 `reviewed_at` 和说明依据的 `reference`。train 清单须精确覆盖绑定发布的 `payload/metadata/training_candidates.json` source；缺少该证据的历史发布不自动兼容。由操作者核查两份清单完整且新 test 未用于调参；程序检查 ID/内容无重叠和新 source 无重复，不能替代人工资格确认。不得读取旧 test 真值来填写清单。精确字段见[接口索引](../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)和[隔离实现](../versioning/holdout_pipeline.py)。
 
 将 TEST_CONFIG 设为绝对路径，调用七阶段时每次都加 `--purpose holdout --test-config "$TEST_CONFIG"`，例如：
 
@@ -173,7 +173,7 @@ test 的 release_validate 会读取本次新 test 真值核对构建内容，实
 | `data-v4.1-r1` | superseded | 原 `v4.1.0-760050fad303` 基础发布，用于恢复历史引用，不能建立新训练引用 |
 | `data-v4.1-r2` | active | 原 `v4.1.0-ecb5aeb9657c` Phase2 train 发布 |
 
-发布数量和各折统计集中在[项目现状](project-status.md)，来源是[原始发布报告](../results/v4_1_phase2_development_release/README.md)；身份与状态来自[对象映射](../results/version-control-migration/object-mapping.yaml)及[迁移验证](../results/version-control-migration/verification.md)。新训练引用仍须在线校验状态及许可。
+发布数量和各折统计集中在[项目现状](project-status.md)，来源是[原始发布报告](results/v4_1_phase2_development_release/README.md)；身份与状态来自[对象映射](results/version-control-migration/object-mapping.yaml)及[迁移验证](results/version-control-migration/verification.md)。新训练引用仍须在线校验状态及许可。
 
 迁移保留原内容和 split，不能重新生成数据冒充同一发布。两个迁移对象仍引用旧 workspace 外部媒体，store 尚不自包含。旧 workspace、历史元数据及共享 pipeline 函数可能仍被发布或实验引用；入口退役不表示目录和函数可以删除。清理前必须扫描引用、归档必要证据并验证备份，执行范围由项目现有台账和用户授权决定。
 
@@ -188,4 +188,4 @@ test 的 release_validate 会读取本次新 test 真值核对构建内容，实
 | test 来源、隔离或授权不足 | 保持阻塞，补来源核查及资格确认，不能读取真值补资格 |
 | 恢复后 payload、权限或绑定校验失败 | 停止下游引用，核对数据与原输入，不改写封存对象制造通过 |
 
-实现接口以 [versioning 索引](../../versioning/SCRIPTS.md)、[数据实现](../../versioning/data_pipeline.py)和[发布实现](../../versioning/data_release.py)为准；迁移决定及验证仍保留原始证据，不在候选指南中创建第二份任务台账。
+实现接口以 [versioning 索引](../versioning/SCRIPTS.md)、[数据实现](../versioning/data_pipeline.py)和[发布实现](../versioning/data_release.py)为准；迁移决定及验证仍保留原始证据，不在本指南中创建第二份任务台账。

@@ -19,8 +19,8 @@ Non-goals:
 
 - [README.md](README.md)：仓库概述、当前维护协议与常用流程入口。
 - [AGENTS.md](AGENTS.md)：项目 Agent 运行规则，含双机边界、新旧体系分域与提交信息约定。
-- [docs/DATA_PROCESSING_RUNBOOK.md](docs/DATA_PROCESSING_RUNBOOK.md)：显式七阶段数据操作手册。
-- [finetune/README.md](finetune/README.md)：现行训练/评测入口导航与历史实验参考。
+- [docs/data-workflow.md](docs/data-workflow.md)：显式七阶段数据操作手册。
+- [docs/model-workflow.md](docs/model-workflow.md)：现行训练、评测、模型服务与备份流程。
 - [docs/plans/2026-09-01-readable-version-control-design.md](docs/plans/2026-09-01-readable-version-control-design.md)：可读版本控制架构权威设计（目标）。
 - [docs/plans/2026-09-01-readable-version-control-implementation.md](docs/plans/2026-09-01-readable-version-control-implementation.md)：B0–B12 基础设施历史实施台账。
 - [docs/project-todo.md](docs/project-todo.md)：项目唯一任务台账与下一步入口。

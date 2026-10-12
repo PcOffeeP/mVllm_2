@@ -1,9 +1,11 @@
-# V4.1 阶段 1：有效视图审计
+# V4.1 有效视图审计历史报告（2026-07-25）
+
+本文保留当时的审计方法、来源和结果，不作为新数据批次的操作手册。现行处理见[数据流程](../../data-workflow.md)，冻结结果仍在本目录。
 
 阶段 1 只生成审计与人工复审候选，不创建训练发布，也不把自动标签或 V3 标签提升为
 V4.1 真值。
 
-## 正式入口
+## 当时的审计入口
 
 ```bash
 python -m finetune.eval_audit_effective_views \
@@ -41,7 +43,7 @@ IoU `>= 0.80` 合并。单源贡献报告默认门槛为池内 `10%`。
 - 三个池都没有精确重复签名，单源贡献均未超过 10%。
 
 完整轻量制品位于
-[`docs/results/v4_1_phase1_effective_view_audit/`](results/v4_1_phase1_effective_view_audit/)。
+[`docs/results/v4_1_phase1_effective_view_audit/`](.)。
 
 ## 人工复审边界
 
