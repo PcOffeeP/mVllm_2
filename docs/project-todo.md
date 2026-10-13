@@ -6,7 +6,7 @@
 
 **数据处理及活动入口的工程迁移已解决。** 2026-09-14，迁移分支先推送，再快进 Codeup main 至 `5acebc27` 并同步训练机正式代码；集成与双机 CLI 记录见[验证第67节](results/version-control-migration/verification.md)。这不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。
 
-**当前状态（2026-10-13）**：DOC-INTEGRATION 已完成正式目录、正文、导航和链接整理。用户随后授权训练机只读刷新；本轮已核对两端 Git、Python/环境来源、数据引用与限定模型资产，结果见[现场核查](results/remote-state-refresh-20261013.md)。未执行业务文件写入、代码同步或训练/推理/评测；一次普通git status的潜在索引刷新偏差见报告。下一步先处理 ENV-ACTIVATION 的正式 Conda 环境与 checkout 绑定方案，再核定模型来源及诊断方案；现场存在不等于质量或恢复通过。
+**当前状态（2026-10-13）**：DOC-INTEGRATION 和 REMOTE-STATE-REFRESH 已完成。用户随后授权新建正式Conda环境；ENV-ACTIVATION 已在训练机建立 `mvllm2`（Python3.11.17），按GPU锁安装并绑定正式checkout，通过环境验收，见[部署记录](results/conda-environment-setup-20261013.md)。保留agent/cpm45，不同步代码，不启动数据处理、训练、推理或评测。下一步核定候选模型来源并确认MODEL-DIAG方案；新体系正式训练/评测/模型记录尚未产生符合当前阶段，不作为迁移失败，也不创建空记录补目录。环境可用不等于模型质量或恢复通过。
 
 新体系正式入口为 `python -m versioning`，显式使用五类完整可读身份。train 数据分支用于三折开发验证和 full 训练，test 分支只用于最终独立测试；代码中的 `development` / `holdout` / `test_audit` 保留原值。旧媒体仍被新 store 引用，不得按“迁移完成”删除旧目录。
 
@@ -18,7 +18,7 @@
 | 本轮已完成 | REMOTE-STATE-REFRESH | 已解决：限定范围训练机只读刷新 | 实时事实及缺口已记录；未执行同步、环境切换或模型运行 |
 | 模型准备 | MODEL-DIAG | 待确认：诊断方向与开发侧门槛 | 可继续公开开发证据准备；新基线方案和真实运行授权分别确认 |
 | 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
-| 运行环境 | ENV-ACTIVATION | 待处理：正式解释器与 checkout 绑定 | 刷新后核定环境来源、路径和激活动作；部署工程能力已验 |
+| 本轮已完成 | ENV-ACTIVATION | 已解决：正式Conda环境与checkout绑定 | mvllm2 Python3.11.17、241锁项一致、doctor/pip check通过；真实业务未运行 |
 | 备份验收 | RECOVERY-VALIDATION | 待处理：真实大型产物组合恢复 | store 级恢复已验；真实硬盘、权重、SQLite 与外部依赖缺完整证据 |
 | 后续训练 | FINAL-TRAIN | 阻塞：full 最终候选 | 开发侧三折通过、test 构建冻结就绪及适用训练授权 |
 | 总体验收 | MODEL-QUALITY | 阻塞：最终质量及晋级 | FINAL-TRAIN、独立 test 及其他适用质量门；真实服务成功路径另核 |
@@ -29,23 +29,6 @@
 MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练最终候选；绑定 model/eval 的一次性 claim 在最终身份确定并获测试使用授权后、首次模型调用前建立。不能倒置为先测试通过才允许训练该候选。
 
 ## 待处理、待确认与阻塞事项
-
-### REMOTE-STATE-REFRESH — 训练机现状只读刷新
-
-- **状态/来源**：已解决（2026-10-13，Codex）；用户授权只读现状核查，禁止远程写入、同步代码、训练与评测。
-- **结果**：训练机 main 与实时 Codeup main 均为 `3f200461` 且训练机/子模块干净；Mac 起始 `59dee2d1` 比该基线领先 5 提交。Conda agent/cpm45 为 Python3.11.15，但当前锁依赖与源码绑定仍有缺口；历史 mirror venv 绑定隔离 checkout。r2 active，1678 个去重媒体引用 stat 缺失0；旧Fold0与基座索引分片在场，concise/visual限定路径及正式 store 的模型记录有缺口。
-- **后续/依赖**：ENV-ACTIVATION、MODEL-DIAG、MODEL-ARCHIVE 与 RECOVERY-VALIDATION 保持原状态；正式 Registry 配置根与模型来源随环境/诊断准备核定，不据指定目录缺失推断全盘无记录。
-- **验收/证据**：[现场报告](results/remote-state-refresh-20261013.md)、[返回快照](results/remote-state-refresh-20261013.json)记录机器、起始版本、命令、退出结果、覆盖范围与限制；独立reviewer已核查返回快照、锁项与正文链接；普通git status潜在索引刷新偏差已披露，无其他可执行问题。报告及台账提交由 `git log -- docs/results/remote-state-refresh-20261013.md` 追溯。
-- **限制**：模型盘点一次普通git status可能刷新.git/index，未采集前后元数据，不能证明或排除；这不影响工作区内容干净的结论。没有加载模型、导入torch、执行doctor、读取测试语义、哈希大型产物或全面验证媒体链接/解码；不存在性结论限指定路径。只读刷新完成不代表正式Conda合格、真实质量/test/服务或恢复通过。
-
-### ENV-ACTIVATION — 正式解释器与最终 checkout 绑定
-
-- **状态/来源**：待处理；由 VERSION-CONTROL-FORMAL-MIGRATION / ENV-DEPLOY 保留的正式运行缺口拆出。
-- **事实与差距**：2026-09-14 双平台新隔离环境部署及 doctor 已通过，旧 agent/cpm45 未修补，新环境未正式激活；editable 来源不能指向后续删除的临时 checkout。
-- **现场增量（2026-10-13）**：agent/cpm45 均 Python3.11.15，但比当前 GPU 锁分别缺85/143项、版本差2/20项；cpm45 editable指向旧项目。历史mirror venv仍绑定隔离checkout，不是已验收正式Conda。见[只读核查](results/remote-state-refresh-20261013.md)。
-- **依赖/下一动作**：只读刷新已完成；明确最终Conda环境、代码来源与激活动作，再按适用授权处理；不重新打开已解决的部署功能任务。
-- **验收标准**：正式运行 Python 与锁定 profile、依赖、子模块及最终 checkout 一致，doctor 和适用轻量入口核验有证据；不以此声称真实训练通过。
-- **证据/限制**：[验证记录](results/version-control-migration/verification.md)第62–63、67节；本轮无环境操作。
 
 ### RECOVERY-VALIDATION — 真实大型产物与外部依赖组合恢复
 
@@ -152,7 +135,24 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 ## 已解决与已关闭
 
-以下保留各任务原验收依据，历史测试未在本次2026-10-12整理中复跑。工程任务关闭不自动关闭模型、test 或真实恢复验收。
+### REMOTE-STATE-REFRESH — 训练机现状只读刷新
+
+- **状态/来源**：已解决（2026-10-13，Codex）；用户授权只读现状核查，禁止远程写入、同步代码、训练与评测。
+- **结果**：训练机 main 与实时 Codeup main 均为 `3f200461` 且训练机/子模块干净；Mac 起始 `59dee2d1` 比该基线领先 5 提交。Conda agent/cpm45 为 Python3.11.15，但当前锁依赖与源码绑定仍有缺口；历史 mirror venv 绑定隔离 checkout。r2 active，1678 个去重媒体引用 stat 缺失0；旧Fold0与基座索引分片在场，concise/visual在限定路径仍有权重缺口；指定store正式运行记录尚未产生。
+- **后续/依赖**：MODEL-DIAG、MODEL-ARCHIVE 与 RECOVERY-VALIDATION 保持原状态；ENV-ACTIVATION由随后获授权的新Conda环境部署解决；正式 Registry 配置根与模型来源随环境/诊断准备核定，不据指定目录缺失推断全盘无记录。
+- **验收/证据**：[现场报告](results/remote-state-refresh-20261013.md)、[返回快照](results/remote-state-refresh-20261013.json)记录机器、起始版本、命令、退出结果、覆盖范围与限制；独立reviewer已核查返回快照、锁项与正文链接；普通git status潜在索引刷新偏差已披露，无其他可执行问题。报告及台账提交由 `git log -- docs/results/remote-state-refresh-20261013.md` 追溯。
+- **限制**：模型盘点一次普通git status可能刷新.git/index，未采集前后元数据，不能证明或排除；这不影响工作区内容干净的结论。没有加载模型、导入torch、执行doctor、读取测试语义、哈希大型产物或全面验证媒体链接/解码；不存在性结论限指定路径。只读刷新完成不代表正式Conda合格、真实质量/test/服务或恢复通过。
+
+### ENV-ACTIVATION — 正式解释器与最终 checkout 绑定
+
+- **状态/来源**：已解决（Codex，2026-10-13）；用户同意按当前GPU锁新建Conda Python3.11环境、保留旧环境并绑定正式checkout。
+- **结果**：训练机 `/home/liuyang/miniconda3/envs/mvllm2/bin/python` 为Python3.11.17；GPU锁241个精确项缺失0/版本差0，244包兼容检查通过，doctor errors为空、CUDA可见且训练模块导入通过。LlamaFactory editable绑定正式 `/home/liuyang/文档/mVllm_2/LlamaFactory`，checkout/submodule为3f200461/4447137e且保持干净。
+- **保护与后续使用**：agent/cpm45的发行包元数据、conda-meta和指定pycache快照前后相同；没有修改用户shell默认环境。后续显式使用新Conda解释器，checkout/依赖/子模块变动后重新核验绑定；历史venv和旧环境继续保留，不重新打开已解决部署功能任务。
+- **验收/证据**：[部署报告](results/conda-environment-setup-20261013.md)、[执行快照](results/conda-environment-setup-20261013.json)；安装及审计SSH均exit0，冻结脚本通过独立执行前审查，结果独立核查通过：脚本身份及返回快照一致、241锁项和旧环境保护证据匹配，原31任务标识保留，83本地链接/锚点有效；未关闭模型/test/恢复任务。Mac本地记录提交由 `git log -- docs/results/conda-environment-setup-20261013.md` 追溯。
+- **限制**：没有同步代码、初始化业务store、处理媒体、加载模型、训练、推理或评测；环境验收不关闭模型/test/真实服务及恢复门槛，旧环境摘要比较不等于所有文件逐字节审计。
+
+
+以下保留前序任务原验收依据，历史测试未因文档整理而复跑。工程任务关闭不自动关闭模型、test 或真实恢复验收。
 
 ### DOC-INTEGRATION — 正式整合项目文档目录：已解决
 
@@ -310,3 +310,5 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 更早的施工、失败、修复与测试日志见[迁移验证记录](results/version-control-migration/verification.md)，原维护顺序可查 `git log -- docs/project-todo.md`。历史结果均按原机器、代码版本和覆盖范围读取，本轮不宣称复跑。
 
 - **2026-10-13（Codex，只读刷新）**：REMOTE-STATE-REFRESH 完成限定现场查询；两端起始版本、环境来源、数据引用与模型资产已落报告。未执行业务写入、同步或真实模型运行；普通git status潜在索引刷新偏差明确留证。ENV-ACTIVATION 和模型/test/恢复缺口保持。
+
+- **2026-10-13（Codex，训练机Conda部署）**：按用户授权新建mvllm2，Python3.11.17、GPU锁241项一致、doctor/依赖检查通过，ENV-ACTIVATION已解决。旧环境保护摘要和代码状态保持；无业务运行或代码同步，新体系记录按流程生成。

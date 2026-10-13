@@ -1,0 +1,3329 @@
+{
+  "date": "2026-10-13",
+  "execution_platform": "Codex via SSH on Linux training machine; documentation on Mac",
+  "local_initial_head": "151693d1340303d1e3a9de1492adbb913eb3d4ef",
+  "remote_head": "3f200461026a59676aaac7ea864f8fadb599688d",
+  "prefix": "/home/liuyang/miniconda3/envs/mvllm2",
+  "installer_sha256": "b7a720d996dbd397249f21835e73ccac3e26b1608964286a1dc4a3db4aca90a6",
+  "installer_script": "#!/usr/bin/env bash\n# Reviewed two-phase installer for the authorized mVllm_2 Linux GPU environment.\nset -Eeuo pipefail\numask 077\n\nreadonly REPO='/home/liuyang/文档/mVllm_2'\nreadonly PREFIX='/home/liuyang/miniconda3/envs/mvllm2'\nreadonly CONDA='/home/liuyang/miniconda3/bin/conda'\nreadonly UV_SOURCE='/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-tools-20260914/bin/uv'\nreadonly EXPECTED_HEAD='3f200461026a59676aaac7ea864f8fadb599688d'\nreadonly EXPECTED_SUBMODULE='4447137e08c172d7701594b4d1695a6d4a869cbd'\nreadonly EXPECTED_LOCK_SHA='caf298c41681cfabe1fdaae707b0a4890e4e077a5d98b86ae18b658d7227416d'\nreadonly EXPECTED_VALIDATOR_SHA='b2caaa72a6762ce9f1b2fae13d6dab9b98d421f8d213f93d282a177d6d83fde6'\nreadonly EXPECTED_UV_SHA='2856d1bf7e5bcfba7df20ae6f939340ae1f8022d2d103cada1a6da597df86e32'\nreadonly EXPECTED_UV_VERSION='uv 0.11.21 (x86_64-unknown-linux-gnu)'\nreadonly RUN_ROOT='/home/liuyang/mvllm2-conda-setup-20261013'\nreadonly UV_INDEX='https://pypi.tuna.tsinghua.edu.cn/simple'\nreadonly CONDA_CHANNEL='https://conda.anaconda.org/conda-forge'\nreadonly SYSTEM_PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\n\n# Remove inherited package, Python, environment, cache, and Git overrides. Keep real HOME untouched.\nwhile IFS='=' read -r name _; do\n  case \"$name\" in\n    UV_*|PIP_*|PYTHON*|VIRTUAL_ENV|CONDA*|GIT_*|XDG_CACHE_HOME|MPLCONFIGDIR|TMPDIR|TMP|TEMP|HF_*|TRANSFORMERS_*|TORCH_HOME|CUDA_CACHE_PATH|JOBLIB_TEMP_FOLDER|JUPYTER_*) unset \"$name\" || true ;;\n  esac\ndone < <(env)\nexport GIT_OPTIONAL_LOCKS=0\nexport GIT_CONFIG_NOSYSTEM=1\nexport GIT_CONFIG_GLOBAL=/dev/null\n# Highest-priority Git config also disables repo-local fsmonitor and hooks.\nexport GIT_CONFIG_COUNT=2\nexport GIT_CONFIG_KEY_0=core.fsmonitor\nexport GIT_CONFIG_VALUE_0=false\nexport GIT_CONFIG_KEY_1=core.hooksPath\nexport GIT_CONFIG_VALUE_1=/dev/null\nexport PATH=\"$(dirname \"$CONDA\"):$SYSTEM_PATH\"\n\nif [[ -e \"$RUN_ROOT\" || -L \"$RUN_ROOT\" ]]; then\n  echo \"STOP: run directory already exists: $RUN_ROOT\" >&2\n  exit 20\nfi\nmkdir -m 700 \"$RUN_ROOT\"\nmkdir -m 700 \"$RUN_ROOT/cache\" \"$RUN_ROOT/logs\"\nreadonly LOG=\"$RUN_ROOT/logs/install.log\"\nexec > >(tee -a \"$LOG\") 2>&1\nexport XDG_CACHE_HOME=\"$RUN_ROOT/cache/xdg\"\nexport MPLCONFIGDIR=\"$RUN_ROOT/cache/matplotlib\"\nexport TMPDIR=\"$RUN_ROOT/cache/tmp\"\nexport HF_HOME=\"$RUN_ROOT/cache/huggingface\"\nexport TORCH_HOME=\"$RUN_ROOT/cache/torch\"\nexport CUDA_CACHE_PATH=\"$RUN_ROOT/cache/cuda\"\nexport HF_HUB_OFFLINE=1\nexport TRANSFORMERS_OFFLINE=1\nexport MPLBACKEND=Agg\nexport PYTHONDONTWRITEBYTECODE=1\nmkdir -m 700 \"$XDG_CACHE_HOME\" \"$MPLCONFIGDIR\" \"$TMPDIR\" \"$HF_HOME\" \"$TORCH_HOME\" \"$CUDA_CACHE_PATH\"\n\nwrite_summary() {\n  local input=\"$1\" output=\"$2\"\n  { printf 'count='; wc -l < \"$input\"; sha256sum < \"$input\"; } > \"$output\"\n}\n\nsnapshot_old_env() {\n  local label=\"$1\" env_name=\"$2\" p=\"/home/liuyang/miniconda3/envs/$2\"\n  \"$p/bin/python\" -I -B - \"$label\" \"$env_name\" \"$p\" \"$RUN_ROOT/logs\" <<'PY'\nimport importlib.metadata as md, json, pathlib, sys\nlabel, name, prefix, outdir = sys.argv[1:]\ndists=[]\nfor d in md.distributions():\n    raw=d.read_text('direct_url.json')\n    try:\n        direct=json.loads(raw) if raw else None\n    except Exception:\n        direct={'unparsed':raw}\n    dists.append({'name':d.metadata.get('Name'),'version':d.version,'direct_url':direct})\ndists.sort(key=lambda x:((x['name'] or '').lower(),x['version']))\nobj={'prefix':prefix,'python':sys.version.split()[0],'distributions':dists}\npath=pathlib.Path(outdir)/f'old-{name}-{label}.json'\npath.write_text(json.dumps(obj,ensure_ascii=False,sort_keys=True,indent=2)+'\\n')\nprint(f'OLD_ENV_{label}_{name}_DISTRIBUTIONS={len(dists)}')\nPY\n  find \"$p/conda-meta\" -maxdepth 1 -type f -printf '%f %s %T@\\n' 2>/dev/null | sort > \"$RUN_ROOT/logs/old-$env_name-$label-conda-meta.txt\"\n  {\n    write_summary \"$RUN_ROOT/logs/old-$env_name-$label-conda-meta.txt\" \"$RUN_ROOT/logs/old-$env_name-$label-conda-meta-summary.txt\"\n    find \"$p/lib/python3.11\" \\( -type d -name __pycache__ -o -type f -name '*.pyc' \\) -printf '%y %p %s %T@\\n' 2>/dev/null | sort > \"$RUN_ROOT/logs/old-$env_name-$label-pycache.txt\"\n    write_summary \"$RUN_ROOT/logs/old-$env_name-$label-pycache.txt\" \"$RUN_ROOT/logs/old-$env_name-$label-pycache-summary.txt\"\n  }\n}\n\nrepo_status() {\n  local target=\"$1\"\n  local main sub\n  main=\"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO\" --no-optional-locks status --porcelain=v1 --untracked-files=all)\"\n  sub=\"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO/LlamaFactory\" --no-optional-locks status --porcelain=v1 --untracked-files=all)\"\n  printf '%s\\n' \"$main\" > \"$RUN_ROOT/logs/repo-main-$target.status\"\n  printf '%s\\n' \"$sub\" > \"$RUN_ROOT/logs/repo-submodule-$target.status\"\n  [[ -z \"$main\" && -z \"$sub\" ]] || { echo \"STOP: tracked/untracked changes in formal repo or submodule ($target)\"; return 1; }\n  echo \"REPO_AND_SUBMODULE_CLEAN_$target=yes\"\n}\n\nrepo_pycache_snapshot() {\n  local label=\"$1\"\n  find \"$REPO\" \\\n    -path \"$REPO/.git\" -prune -o -path \"$REPO/LlamaFactory/.git\" -prune -o \\\n    -path \"$REPO/data\" -prune -o -path \"$REPO/store\" -prune -o -path \"$REPO/outputs\" -prune -o \\\n    -path \"$REPO/runs\" -prune -o -path \"$REPO/.venv\" -prune -o -path '*/node_modules' -prune -o \\\n    \\( -type d -name __pycache__ -o -type f -name '*.pyc' \\) -printf '%y %p %s %T@\\n' | sort > \"$RUN_ROOT/logs/repo-pycache-$label.txt\"\n  write_summary \"$RUN_ROOT/logs/repo-pycache-$label.txt\" \"$RUN_ROOT/logs/repo-pycache-$label-summary.txt\"\n}\n\n[[ -x \"$CONDA\" && -x \"$UV_SOURCE\" ]] || { echo 'STOP: explicit Conda or reviewed uv binary is unavailable'; exit 21; }\n[[ \"$(sha256sum \"$UV_SOURCE\" | cut -d' ' -f1)\" == \"$EXPECTED_UV_SHA\" ]] || { echo 'STOP: uv binary SHA differs from reviewed binary'; exit 21; }\n[[ \"$(\"$UV_SOURCE\" --version)\" == \"$EXPECTED_UV_VERSION\" ]] || { echo 'STOP: uv binary version differs from reviewed version'; exit 21; }\n[[ -e \"$REPO/.git\" && \"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO/LlamaFactory\" --no-optional-locks rev-parse --show-toplevel)\" == \"$REPO/LlamaFactory\" ]] || { echo 'STOP: expected formal checkout/submodule missing'; exit 22; }\n[[ ! -e \"$PREFIX\" && ! -L \"$PREFIX\" ]] || { echo \"STOP: prefix already exists; do not overwrite: $PREFIX\"; exit 23; }\n[[ \"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO\" --no-optional-locks rev-parse HEAD)\" == \"$EXPECTED_HEAD\" ]] || { echo 'STOP: formal checkout HEAD changed'; exit 24; }\n[[ \"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO/LlamaFactory\" --no-optional-locks rev-parse HEAD)\" == \"$EXPECTED_SUBMODULE\" ]] || { echo 'STOP: submodule HEAD changed'; exit 25; }\n[[ \"$(sha256sum \"$REPO/requirements-linux-gpu.lock\" | cut -d' ' -f1)\" == \"$EXPECTED_LOCK_SHA\" ]] || { echo 'STOP: lockfile changed'; exit 26; }\n[[ \"$(sha256sum \"$REPO/scripts/source_validate_environment.py\" | cut -d' ' -f1)\" == \"$EXPECTED_VALIDATOR_SHA\" ]] || { echo 'STOP: validator changed'; exit 27; }\n[[ \"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO\" --no-optional-locks branch --show-current)\" == 'main' ]] || { echo 'STOP: formal checkout is not on main'; exit 27; }\nrepo_status before\nrepo_pycache_snapshot before\n\navailable_kib=\"$(df -Pk /home/liuyang/miniconda3 | awk 'NR==2 {print $4}')\"\n[[ \"$available_kib\" -ge 20971520 ]] || { echo 'STOP: less than 20 GiB free on target filesystem'; exit 27; }\nfor tool in /usr/bin/git /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/nvidia-smi; do\n  [[ -x \"$tool\" ]] || { echo \"STOP: required system tool unavailable: $tool\"; exit 27; }\ndone\n/usr/bin/nvidia-smi --query-gpu=name,memory.total --format=csv,noheader\n\nlock_count=\"$(awk 'NF && $1 !~ /^#/ {n++} END {print n+0}' \"$REPO/requirements-linux-gpu.lock\")\"\n[[ \"$lock_count\" == 242 ]] || { echo \"STOP: lock structure changed (expected 241 pinned packages plus editable, saw $lock_count lines)\"; exit 28; }\n[[ \"$(\"$CONDA\" --version)\" == 'conda 25.11.1' ]] || { echo 'STOP: Conda version changed since preflight'; exit 29; }\n\nexport CONDA_PKGS_DIRS=\"$RUN_ROOT/cache/conda-pkgs\"\nexport CONDA_ENVS_PATH='/home/liuyang/miniconda3/envs'\nexport UV_CACHE_DIR=\"$RUN_ROOT/cache/uv\"\nexport UV_NO_CONFIG=1\nexport UV_PYTHON_DOWNLOADS=never\nexport PYTHONNOUSERSITE=1\nexport PIP_CONFIG_FILE=/dev/null\nmkdir -m 700 \"$CONDA_PKGS_DIRS\" \"$UV_CACHE_DIR\"\n\nfor env_name in agent cpm45; do snapshot_old_env before \"$env_name\"; done\nprintf 'PREFLIGHT repo=%s prefix=%s\\n' \"$REPO\" \"$PREFIX\"\nprintf 'TOOLS conda=%s uv=%s uv_sha=%s git=%s ffmpeg=%s ffprobe=%s\\n' \"$($CONDA --version)\" \"$(\"$UV_SOURCE\" --version)\" \"$(sha256sum \"$UV_SOURCE\" | cut -d' ' -f1)\" \"$(/usr/bin/git --version)\" \"$(/usr/bin/ffmpeg -version | head -n1)\" \"$(/usr/bin/ffprobe -version | head -n1)\"\n\n# Conda writes the new prefix and its own environment registration; package cache is task-local.\n\"$CONDA\" create --yes --prefix \"$PREFIX\" --override-channels --channel \"$CONDA_CHANNEL\" 'python=3.11'\n[[ -x \"$PREFIX/bin/python\" ]] || { echo 'STOP: Conda did not create the expected Python'; exit 30; }\n\"$PREFIX/bin/python\" -I -B -c 'import sys; assert sys.version_info[:2] == (3,11), sys.version; print(\"NEW_PYTHON\",sys.prefix,sys.version.split()[0])'\n\n# Keep doctor operational without depending on a removable deployment-tools checkout.\ninstall -m 0755 \"$UV_SOURCE\" \"$PREFIX/bin/uv\"\ncmp -s \"$UV_SOURCE\" \"$PREFIX/bin/uv\"\n[[ \"$(sha256sum \"$PREFIX/bin/uv\" | cut -d' ' -f1)\" == \"$EXPECTED_UV_SHA\" ]] || { echo 'STOP: copied uv binary SHA mismatch'; exit 35; }\nprintf 'INSTALLED_UV version=%s sha256=%s\\n' \"$(\"$PREFIX/bin/uv\" --version)\" \"$(sha256sum \"$PREFIX/bin/uv\" | cut -d' ' -f1)\"\n\n# uv receives only the new interpreter and current lock; editable resolves from formal checkout.\ncd \"$REPO\"\n\"$PREFIX/bin/uv\" --no-config pip sync --python \"$PREFIX/bin/python\" --default-index \"$UV_INDEX\" requirements-linux-gpu.lock\n\n# Run the frozen doctor through a wrapper that disables bytecode and propagates -B\n# only to its Python child processes; non-Python commands and all other args are unchanged.\nreadonly DOCTOR_WRAPPER=\"$RUN_ROOT/doctor_wrapper.py\"\ncat > \"$DOCTOR_WRAPPER\" <<'PY'\nimport os, runpy, subprocess, sys\nvalidator, profile = sys.argv[1:]\noriginal_run = subprocess.run\ndef run_no_bytecode(args, *positional, **kwargs):\n    if isinstance(args, (list, tuple)) and args and os.fspath(args[0]) == sys.executable:\n        args = list(args)\n        if '-B' not in args[1:]:\n            args.insert(1, '-B')\n    return original_run(args, *positional, **kwargs)\nsubprocess.run = run_no_bytecode\nsys.argv = [validator, '--profile', profile]\nrunpy.run_path(validator, run_name='__main__')\nPY\nPATH=\"$PREFIX/bin:$SYSTEM_PATH\" GIT_OPTIONAL_LOCKS=0 \"$PREFIX/bin/python\" -I -B \"$DOCTOR_WRAPPER\" \"$REPO/scripts/source_validate_environment.py\" linux-gpu\nPATH=\"$PREFIX/bin:$SYSTEM_PATH\" GIT_OPTIONAL_LOCKS=0 \"$PREFIX/bin/uv\" --no-config pip check --python \"$PREFIX/bin/python\"\n\"$PREFIX/bin/python\" -I -B - \"$REPO\" <<'PY'\nimport importlib.metadata as md, json, pathlib, sys\nrepo=pathlib.Path(sys.argv[1]).resolve()\nd=md.distribution('llamafactory')\nraw=d.read_text('direct_url.json')\nassert raw, 'editable direct_url.json missing'\ndata=json.loads(raw)\nassert data.get('dir_info',{}).get('editable') is True, data\nfrom urllib.parse import unquote, urlparse\nsource=pathlib.Path(unquote(urlparse(data['url']).path)).resolve()\nassert source == (repo/'LlamaFactory').resolve(), (source,repo)\nprint('EDITABLE_SOURCE',source)\nPY\n\nrepo_status after\n[[ \"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO\" --no-optional-locks rev-parse HEAD)\" == \"$EXPECTED_HEAD\" ]] || { echo 'STOP: formal checkout HEAD changed during install'; exit 31; }\n[[ \"$(GIT_OPTIONAL_LOCKS=0 git -C \"$REPO/LlamaFactory\" --no-optional-locks rev-parse HEAD)\" == \"$EXPECTED_SUBMODULE\" ]] || { echo 'STOP: submodule HEAD changed during install'; exit 32; }\n[[ \"$(sha256sum \"$REPO/requirements-linux-gpu.lock\" | cut -d' ' -f1)\" == \"$EXPECTED_LOCK_SHA\" ]] || { echo 'STOP: lock changed during install'; exit 33; }\n[[ \"$(sha256sum \"$REPO/scripts/source_validate_environment.py\" | cut -d' ' -f1)\" == \"$EXPECTED_VALIDATOR_SHA\" ]] || { echo 'STOP: validator changed during install'; exit 34; }\nrepo_pycache_snapshot after\nfor env_name in agent cpm45; do snapshot_old_env after \"$env_name\"; done\nfor env_name in agent cpm45; do\n  cmp -s \"$RUN_ROOT/logs/old-$env_name-before.json\" \"$RUN_ROOT/logs/old-$env_name-after.json\" || { echo \"STOP: old $env_name distribution metadata changed\"; exit 36; }\n  cmp -s \"$RUN_ROOT/logs/old-$env_name-before-conda-meta-summary.txt\" \"$RUN_ROOT/logs/old-$env_name-after-conda-meta-summary.txt\" || { echo \"STOP: old $env_name conda-meta summary changed\"; exit 37; }\n  cmp -s \"$RUN_ROOT/logs/old-$env_name-before-pycache-summary.txt\" \"$RUN_ROOT/logs/old-$env_name-after-pycache-summary.txt\" || { echo \"STOP: old $env_name pycache metadata changed\"; exit 37; }\n  echo \"OLD_ENV_UNCHANGED_$env_name=distribution-json-conda-meta-and-pycache-metadata-summaries\"\ndone\ncmp -s \"$RUN_ROOT/logs/repo-pycache-before-summary.txt\" \"$RUN_ROOT/logs/repo-pycache-after-summary.txt\" || { echo 'STOP: repository pycache metadata changed'; exit 38; }\nfor status_file in repo-main repo-submodule; do cmp -s \"$RUN_ROOT/logs/$status_file-before.status\" \"$RUN_ROOT/logs/$status_file-after.status\" || { echo \"STOP: $status_file status changed\"; exit 39; }; done\nprintf 'COMPLETE prefix=%s run_root=%s\\n' \"$PREFIX\" \"$RUN_ROOT\"\nprintf 'SCOPE_WRITES new_prefix,run_logs_and_cache,conda_new_environment_registration,editable_build_metadata_if_project_requires\\n'\nprintf 'NO_MODEL_LOADED training_started=no inference_started=no evaluation_started=no\\n'\n",
+  "ssh_command": "ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 liuyang@100.70.83.68 'bash -s' < /private/tmp/mvllm2-conda-setup-20261013/install_remote_conda.sh > /private/tmp/mvllm2-conda-setup-20261013/install.log 2>&1\n",
+  "ssh_exit": 0,
+  "installation_log": "REPO_AND_SUBMODULE_CLEAN_before=yes\nNVIDIA GeForce RTX 4090, 24564 MiB\nOLD_ENV_before_agent_DISTRIBUTIONS=163\nOLD_ENV_before_cpm45_DISTRIBUTIONS=109\nPREFLIGHT repo=/home/liuyang/文档/mVllm_2 prefix=/home/liuyang/miniconda3/envs/mvllm2\nTOOLS conda=conda 25.11.1 uv=uv 0.11.21 (x86_64-unknown-linux-gnu) uv_sha=2856d1bf7e5bcfba7df20ae6f939340ae1f8022d2d103cada1a6da597df86e32 git=git version 2.34.1 ffmpeg=ffmpeg version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2000-2021 the FFmpeg developers ffprobe=ffprobe version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2007-2021 the FFmpeg developers\nRetrieving notices: - \b\b\\ \b\b| \b\bdone\nChannels:\n - conda-forge\nPlatform: linux-64\nCollecting package metadata (repodata.json): - \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\bdone\nSolving environment: - \b\b\\ \b\bdone\n\n## Package Plan ##\n\n  environment location: /home/liuyang/miniconda3/envs/mvllm2\n\n  added / updated specs:\n    - python=3.11\n\n\nThe following packages will be downloaded:\n\n    package                    |            build\n    ---------------------------|-----------------\n    _openmp_mutex-4.5          |           20_gnu          28 KB  conda-forge\n    bzip2-1.0.8                |      hda65f42_10         252 KB  conda-forge\n    ca-certificates-2026.7.22  |       hbd8a1cb_0         129 KB  conda-forge\n    ld_impl_linux-64-2.46.1    |default_hbd61a6d_103         725 KB  conda-forge\n    libexpat-2.8.5             |       hd2095e1_0          76 KB  conda-forge\n    libffi-3.7.0               |       h81df57d_1          66 KB  conda-forge\n    libgcc-16.2.0              |       ha9f2e26_7         1.0 MB  conda-forge\n    libgomp-16.2.0             |       he0feb66_7         626 KB  conda-forge\n    liblzma-5.8.3              |       hb03c661_1         110 KB  conda-forge\n    libnsl-2.0.1               |       hb9d3cd8_1          33 KB  conda-forge\n    libpython-3.11.17          |h0c77377_1_cpython         7.5 MB  conda-forge\n    libsqlite-3.54.0           |     h0737f62_101         956 KB  conda-forge\n    libstdcxx-16.2.0           |       h934c35e_7         6.3 MB  conda-forge\n    libuuid-2.42.4             |       hcfc3c73_0          34 KB  conda-forge\n    libxcrypt-4.4.38           |       h280c20c_0         100 KB  conda-forge\n    libzlib-1.3.2              |       h25fd6f3_3          62 KB  conda-forge\n    ncurses-6.6                |       hdb14827_1         890 KB  conda-forge\n    openssl-3.6.5              |       h781a0a9_0         3.0 MB  conda-forge\n    packaging-26.3             |     pyhc364b38_0         114 KB  conda-forge\n    pip-26.2.1                 |     pyh8b19718_0         1.1 MB  conda-forge\n    python-3.11.17             |h5f976f7_1_cpython        22.3 MB  conda-forge\n    readline-8.3               |       hd6e31c0_1         341 KB  conda-forge\n    setuptools-84.0.0          |     pyh332efcf_0         512 KB  conda-forge\n    tk-8.6.13                  | noxft_h1df4ec4_4         3.4 MB  conda-forge\n    tzdata-2026c               |       h151e31d_0         116 KB  conda-forge\n    wheel-0.48.0               |     pyhd8ed1ab_0          34 KB  conda-forge\n    zstd-1.5.7                 |       hb78ec9c_7         587 KB  conda-forge\n    ------------------------------------------------------------\n                                           Total:        50.3 MB\n\nThe following NEW packages will be INSTALLED:\n\n  _openmp_mutex      conda-forge/linux-64::_openmp_mutex-4.5-20_gnu \n  bzip2              conda-forge/linux-64::bzip2-1.0.8-hda65f42_10 \n  ca-certificates    conda-forge/noarch::ca-certificates-2026.7.22-hbd8a1cb_0 \n  ld_impl_linux-64   conda-forge/linux-64::ld_impl_linux-64-2.46.1-default_hbd61a6d_103 \n  libexpat           conda-forge/linux-64::libexpat-2.8.5-hd2095e1_0 \n  libffi             conda-forge/linux-64::libffi-3.7.0-h81df57d_1 \n  libgcc             conda-forge/linux-64::libgcc-16.2.0-ha9f2e26_7 \n  libgomp            conda-forge/linux-64::libgomp-16.2.0-he0feb66_7 \n  liblzma            conda-forge/linux-64::liblzma-5.8.3-hb03c661_1 \n  libnsl             conda-forge/linux-64::libnsl-2.0.1-hb9d3cd8_1 \n  libpython          conda-forge/linux-64::libpython-3.11.17-h0c77377_1_cpython \n  libsqlite          conda-forge/linux-64::libsqlite-3.54.0-h0737f62_101 \n  libstdcxx          conda-forge/linux-64::libstdcxx-16.2.0-h934c35e_7 \n  libuuid            conda-forge/linux-64::libuuid-2.42.4-hcfc3c73_0 \n  libxcrypt          conda-forge/linux-64::libxcrypt-4.4.38-h280c20c_0 \n  libzlib            conda-forge/linux-64::libzlib-1.3.2-h25fd6f3_3 \n  ncurses            conda-forge/linux-64::ncurses-6.6-hdb14827_1 \n  openssl            conda-forge/linux-64::openssl-3.6.5-h781a0a9_0 \n  packaging          conda-forge/noarch::packaging-26.3-pyhc364b38_0 \n  pip                conda-forge/noarch::pip-26.2.1-pyh8b19718_0 \n  python             conda-forge/linux-64::python-3.11.17-h5f976f7_1_cpython \n  readline           conda-forge/linux-64::readline-8.3-hd6e31c0_1 \n  setuptools         conda-forge/noarch::setuptools-84.0.0-pyh332efcf_0 \n  tk                 conda-forge/linux-64::tk-8.6.13-noxft_h1df4ec4_4 \n  tzdata             conda-forge/noarch::tzdata-2026c-h151e31d_0 \n  wheel              conda-forge/noarch::wheel-0.48.0-pyhd8ed1ab_0 \n  zstd               conda-forge/linux-64::zstd-1.5.7-hb78ec9c_7 \n\n\n\nDownloading and Extracting Packages: ...working...\npython-3.11.17       | 22.3 MB   |            |   0% \n\nlibpython-3.11.17    | 7.5 MB    |            |   0% \u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    |            |   0% \u001b[A\u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    |            |   0% \u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\npip-26.2.1           | 1.1 MB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\nlibgcc-16.2.0        | 1.0 MB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\nlibsqlite-3.54.0     | 956 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\nncurses-6.6          | 890 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\nld_impl_linux-64-2.4 | 725 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\nlibgomp-16.2.0       | 626 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\nzstd-1.5.7           | 587 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\nsetuptools-84.0.0    | 512 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\nreadline-8.3         | 341 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nbzip2-1.0.8          | 252 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nca-certificates-2026 | 129 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ntzdata-2026c         | 116 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\npackaging-26.3       | 114 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nliblzma-5.8.3        | 110 KB    |            |   0% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ... (more hidden) ...\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    |            |   0% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | 3          |   4% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | #7         |  18% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | ###5       |  35% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | ####6      |  47% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | #######6   |  76% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | #########3 |  94% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | ########## | 100% \u001b[A\u001b[A\n\n\nlibstdcxx-16.2.0     | 6.3 MB    | ########## | 100% \u001b[A\u001b[A\n\n\n\n\n\npip-26.2.1           | 1.1 MB    | 1          |   1% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\npip-26.2.1           | 1.1 MB    | #########4 |  94% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\npip-26.2.1           | 1.1 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\npip-26.2.1           | 1.1 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\nlibgcc-16.2.0        | 1.0 MB    | 1          |   2% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    |            |   1% \u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   |            |   0% \n\nlibpython-3.11.17    | 7.5 MB    |            |   0% \u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    |            |   0% \u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\nlibgcc-16.2.0        | 1.0 MB    | #########2 |  93% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\nlibgcc-16.2.0        | 1.0 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\nlibgcc-16.2.0        | 1.0 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | 1          |   1% \u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | 3          |   3% \u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\nlibsqlite-3.54.0     | 956 KB    | 1          |   2% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | 4          |   4% \u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   |            |   1% \n\n\n\ntk-8.6.13            | 3.4 MB    | 5          |   6% \u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | 2          |   3% \u001b[A\n\n\n\n\n\n\n\nlibsqlite-3.54.0     | 956 KB    | #######1   |  72% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | 8          |   9% \u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | 1          |   1% \n\n\n\n\n\n\n\nlibsqlite-3.54.0     | 956 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\nlibsqlite-3.54.0     | 956 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | #          |  10% \u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | 5          |   5% \u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | #6         |  17% \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\nncurses-6.6          | 890 KB    | 1          |   2% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | #4         |  14% \u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\nncurses-6.6          | 890 KB    | #6         |  16% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | ##1        |  22% \u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | 2          |   2% \n\nlibpython-3.11.17    | 7.5 MB    | 6          |   7% \u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | ##2        |  22% \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\nncurses-6.6          | 890 KB    | #########5 |  95% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\nncurses-6.6          | 890 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | ###9       |  39% \u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | 5          |   5% \n\n\n\ntk-8.6.13            | 3.4 MB    | ###2       |  33% \u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | #6         |  17% \u001b[A\n\n\n\n\n\n\n\n\n\nld_impl_linux-64-2.4 | 725 KB    | 2          |   2% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\nncurses-6.6          | 890 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\nld_impl_linux-64-2.4 | 725 KB    | #9         |  20% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | ###7       |  38% \u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | ####6      |  46% \u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | 6          |   6% \n\n\n\n\n\n\n\n\n\nld_impl_linux-64-2.4 | 725 KB    | ##8        |  29% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | #9         |  20% \u001b[A\npython-3.11.17       | 22.3 MB   | 7          |   7% \n\n\n\ntk-8.6.13            | 3.4 MB    | ####1      |  42% \u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | #####1     |  52% \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\nld_impl_linux-64-2.4 | 725 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\nld_impl_linux-64-2.4 | 725 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | ###3       |  33% \u001b[A\npython-3.11.17       | 22.3 MB   | #          |  11% \n\n\n\ntk-8.6.13            | 3.4 MB    | #######    |  71% \u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | ########4  |  84% \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\nlibgomp-16.2.0       | 626 KB    | 2          |   3% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | ########2  |  82% \u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\nlibgomp-16.2.0       | 626 KB    | #########2 |  92% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\nlibgomp-16.2.0       | 626 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | #########7 |  98% \u001b[A\u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | ###8       |  39% \u001b[A\n\n\n\n\n\n\n\n\n\n\nlibgomp-16.2.0       | 626 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | #2         |  12% \n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\nopenssl-3.6.5        | 3.0 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\nzstd-1.5.7           | 587 KB    | 2          |   3% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | #3         |  14% \n\n\n\ntk-8.6.13            | 3.4 MB    | #########2 |  92% \u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | ####3      |  44% \u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\nzstd-1.5.7           | 587 KB    | ##1        |  22% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\nsetuptools-84.0.0    | 512 KB    | 3          |   3% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\nzstd-1.5.7           | 587 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\nzstd-1.5.7           | 587 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\ntk-8.6.13            | 3.4 MB    | ########## | 100% \u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\nsetuptools-84.0.0    | 512 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | #6         |  17% \n\nlibpython-3.11.17    | 7.5 MB    | #####2     |  53% \u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\nsetuptools-84.0.0    | 512 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\nreadline-8.3         | 341 KB    | 4          |   5% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nbzip2-1.0.8          | 252 KB    | 6          |   6% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nca-certificates-2026 | 129 KB    | #2         |  12% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\npython-3.11.17       | 22.3 MB   | #8         |  18% \n\n\n\n\n\n\n\n\n\n\n\n\n\n\nbzip2-1.0.8          | 252 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\nreadline-8.3         | 341 KB    | ########4  |  85% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nbzip2-1.0.8          | 252 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nca-certificates-2026 | 129 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nca-certificates-2026 | 129 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\nreadline-8.3         | 341 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\nreadline-8.3         | 341 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | #####8     |  58% \u001b[A\npython-3.11.17       | 22.3 MB   | ##         |  20% \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ntzdata-2026c         | 116 KB    | #3         |  14% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\npackaging-26.3       | 114 KB    | #4         |  14% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nliblzma-5.8.3        | 110 KB    | #4         |  14% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ntzdata-2026c         | 116 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\npackaging-26.3       | 114 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nliblzma-5.8.3        | 110 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\npackaging-26.3       | 114 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nliblzma-5.8.3        | 110 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ntzdata-2026c         | 116 KB    | ########## | 100% \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | ######3    |  63% \u001b[A\npython-3.11.17       | 22.3 MB   | ##1        |  22% \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ... (more hidden) ...\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ... (more hidden) ...\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ... (more hidden) ...\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | ######8    |  68% \u001b[A\npython-3.11.17       | 22.3 MB   | ##3        |  23% \n\nlibpython-3.11.17    | 7.5 MB    | #######2   |  72% \u001b[A\npython-3.11.17       | 22.3 MB   | ##4        |  25% \n\nlibpython-3.11.17    | 7.5 MB    | #######6   |  77% \u001b[A\npython-3.11.17       | 22.3 MB   | ##6        |  27% \n\nlibpython-3.11.17    | 7.5 MB    | ########   |  81% \u001b[A\npython-3.11.17       | 22.3 MB   | ##8        |  28% \n\nlibpython-3.11.17    | 7.5 MB    | ########7  |  88% \u001b[A\npython-3.11.17       | 22.3 MB   | ###3       |  33% \n\nlibpython-3.11.17    | 7.5 MB    | #########1 |  92% \u001b[A\npython-3.11.17       | 22.3 MB   | ###5       |  35% \n\nlibpython-3.11.17    | 7.5 MB    | #########6 |  96% \u001b[A\n\nlibpython-3.11.17    | 7.5 MB    | ########## | 100% \u001b[A\npython-3.11.17       | 22.3 MB   | ###7       |  38% \n\nlibpython-3.11.17    | 7.5 MB    | ########## | 100% \u001b[A\npython-3.11.17       | 22.3 MB   | ###9       |  40% \npython-3.11.17       | 22.3 MB   | ####1      |  42% \npython-3.11.17       | 22.3 MB   | ####3      |  44% \npython-3.11.17       | 22.3 MB   | ####6      |  46% \npython-3.11.17       | 22.3 MB   | #####      |  50% \npython-3.11.17       | 22.3 MB   | #####2     |  53% \npython-3.11.17       | 22.3 MB   | #####5     |  56% \npython-3.11.17       | 22.3 MB   | #####8     |  58% \npython-3.11.17       | 22.3 MB   | ######1    |  61% \npython-3.11.17       | 22.3 MB   | ######3    |  64% \npython-3.11.17       | 22.3 MB   | ######6    |  67% \npython-3.11.17       | 22.3 MB   | ######9    |  70% \npython-3.11.17       | 22.3 MB   | #######3   |  73% \npython-3.11.17       | 22.3 MB   | #######6   |  76% \npython-3.11.17       | 22.3 MB   | #######9   |  79% \npython-3.11.17       | 22.3 MB   | ########5  |  86% \npython-3.11.17       | 22.3 MB   | ########9  |  90% \npython-3.11.17       | 22.3 MB   | #########4 |  94% \npython-3.11.17       | 22.3 MB   | #########7 |  98% \npython-3.11.17       | 22.3 MB   | ########## | 100% \npython-3.11.17       | 22.3 MB   | ########## | 100% \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                      \n\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n                                                     \n\n                                                     \u001b[A\n\n\n                                                     \u001b[A\u001b[A\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                     \u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\u001b[A\n\n\n\u001b[A\u001b[A\n\n\n\n\u001b[A\u001b[A\u001b[A\n\n\n\n\n\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\n\n\n\n\n\n\n\n\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A\u001b[A done\nPreparing transaction: / \b\bdone\nVerifying transaction: \\ \b\b| \b\b/ \b\b- \b\b\\ \b\bdone\nExecuting transaction: / \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\bdone\n#\n# To activate this environment, use\n#\n#     $ conda activate /home/liuyang/miniconda3/envs/mvllm2\n#\n# To deactivate an active environment, use\n#\n#     $ conda deactivate\n\nNEW_PYTHON /home/liuyang/miniconda3/envs/mvllm2 3.11.17\nINSTALLED_UV version=uv 0.11.21 (x86_64-unknown-linux-gnu) sha256=2856d1bf7e5bcfba7df20ae6f939340ae1f8022d2d103cada1a6da597df86e32\nUsing Python 3.11.17 environment at: /home/liuyang/miniconda3/envs/mvllm2\nResolved 242 packages in 6.56s\n   Building llamafactory @ file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm_2/LlamaFactory\nDownloading gradio (60.6MiB)\n      Built llamafactory @ file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm_2/LlamaFactory\nDownloading torch (864.5MiB)\nDownloading nvidia-cudnn-cu12 (634.0MiB)\nDownloading nvidia-cublas-cu12 (346.6MiB)\nDownloading nvidia-cufft-cu12 (201.7MiB)\nDownloading triton (199.8MiB)\nDownloading nvidia-cusparse-cu12 (197.8MiB)\nDownloading nvidia-nccl-cu12 (179.9MiB)\nDownloading nvidia-cusolver-cu12 (122.0MiB)\nDownloading opencv-python (69.5MiB)\nDownloading nvidia-curand-cu12 (53.7MiB)\nDownloading bitsandbytes (57.8MiB)\nDownloading pyarrow (46.6MiB)\nDownloading av (38.4MiB)\nDownloading scipy (33.7MiB)\nDownloading wandb (25.5MiB)\nDownloading nvidia-cuda-nvrtc-cu12 (23.5MiB)\nDownloading nvidia-nvjitlink-cu12 (20.1MiB)\nDownloading numpy (16.1MiB)\nDownloading nvidia-cuda-cupti-cu12 (13.2MiB)\nDownloading ruff (11.1MiB)\nDownloading pandas (12.2MiB)\nDownloading transformers (11.1MiB)\nDownloading pydeck (10.8MiB)\nDownloading mlflow (10.7MiB)\nDownloading matplotlib (9.6MiB)\nDownloading scikit-learn (8.9MiB)\nDownloading torchvision (6.9MiB)\nDownloading pillow (6.3MiB)\nDownloading sympy (5.9MiB)\nDownloading modelscope (5.8MiB)\nDownloading pygit2 (5.6MiB)\nDownloading fonttools (4.8MiB)\nDownloading streamlit (8.8MiB)\nDownloading cryptography (4.5MiB)\nDownloading hf-xet (4.3MiB)\nDownloading mlflow-skinny (3.5MiB)\nDownloading torchaudio (3.2MiB)\nDownloading hf-transfer (3.4MiB)\nDownloading sqlalchemy (3.2MiB)\nDownloading tokenizers (3.1MiB)\nDownloading pydantic-core (2.0MiB)\nDownloading networkx (2.0MiB)\nDownloading aiohttp (1.7MiB)\nDownloading mlflow-tracing (1.7MiB)\nDownloading dulwich (1.4MiB)\nDownloading kiwisolver (1.4MiB)\nDownloading brotli (1.4MiB)\nDownloading sentencepiece (1.3MiB)\nDownloading openai (1.3MiB)\n Downloaded openai\nDownloading soundfile (1.3MiB)\n Downloaded kiwisolver\n Downloaded brotli\n Downloaded sentencepiece\nDownloading pygments (1.2MiB)\nDownloading tiktoken (1.1MiB)\n Downloaded dulwich\n Downloaded aiohttp\n Downloaded mlflow-tracing\n Downloaded pydantic-core\n Downloaded networkx\n Downloaded tiktoken\n Downloaded pygments\n Downloaded soundfile\n Downloaded tokenizers\n Downloaded torchaudio\n Downloaded sqlalchemy\n Downloaded hf-transfer\n Downloaded mlflow-skinny\n Downloaded hf-xet\n Downloaded cryptography\n Downloaded fonttools\n   Building antlr4-python3-runtime==4.9.3\n Downloaded pygit2\n Downloaded modelscope\n Downloaded sympy\n Downloaded pillow\n      Built antlr4-python3-runtime==4.9.3\n Downloaded torchvision\n Downloaded streamlit\n   Building encodec==0.1.1\n Downloaded scikit-learn\n      Built encodec==0.1.1\n Downloaded transformers\n Downloaded mlflow\n Downloaded matplotlib\n Downloaded pydeck\n Downloaded ruff\n Downloaded pandas\n Downloaded nvidia-cuda-cupti-cu12\n Downloaded numpy\n Downloaded nvidia-nvjitlink-cu12\n Downloaded nvidia-cuda-nvrtc-cu12\n Downloaded wandb\n Downloaded scipy\n Downloaded av\n Downloaded pyarrow\n Downloaded nvidia-curand-cu12\n Downloaded bitsandbytes\n Downloaded opencv-python\n Downloaded gradio\n Downloaded nvidia-cusolver-cu12\n Downloaded nvidia-cufft-cu12\n Downloaded triton\n Downloaded nvidia-nccl-cu12\n Downloaded nvidia-cusparse-cu12\n Downloaded nvidia-cublas-cu12\n Downloaded nvidia-cudnn-cu12\n Downloaded torch\nPrepared 239 packages in 5m 20s\nInstalled 240 packages in 91ms\n + accelerate==1.11.0\n + aiofiles==24.1.0\n + aiohappyeyeballs==2.6.2\n + aiohttp==3.14.1\n + aiohttp-retry==2.9.1\n + aiosignal==1.4.0\n + alembic==1.20.0\n + altair==6.2.2\n + amqp==5.3.1\n + annotated-doc==0.0.4\n + annotated-types==0.7.0\n + antlr4-python3-runtime==4.9.3\n + anyio==4.14.1\n + appdirs==1.4.4\n + asyncssh==2.24.0\n + atpublic==7.0.0\n + attrs==26.1.0\n + av==16.0.0\n + billiard==4.2.4\n + bitsandbytes==0.49.2\n + blinker==1.9.0\n + brotli==1.2.0\n + cachetools==7.1.4\n + celery==5.6.3\n + certifi==2026.6.17\n + cffi==2.0.0\n + charset-normalizer==3.4.7\n + click==8.4.2\n + click-didyoumean==0.3.1\n + click-plugins==1.1.1.2\n + click-repl==0.3.0\n + cloudpickle==3.1.2\n + colorama==0.4.6\n + configobj==5.0.9\n + contourpy==1.3.3\n + cryptography==49.0.0\n + cycler==0.12.1\n + databricks-sdk==0.67.0\n + datasets==4.0.0\n + dictdiffer==0.10.0\n + dill==0.3.8\n + diskcache==5.6.3\n + distro==1.9.0\n + docker==7.2.0\n + docstring-parser==0.18.0\n + dpath==2.2.0\n + dulwich==1.2.14\n + dvc==3.67.1\n + dvc-data==3.18.3\n + dvc-http==2.32.0\n + dvc-objects==5.2.0\n + dvc-render==1.0.2\n + dvc-studio-client==0.23.0\n + dvc-task==0.40.2\n + einops==0.8.2\n + einx==0.4.3\n + encodec==0.1.1\n + entrypoints==0.4\n + fastapi==0.138.0\n + ffmpy==1.0.0\n + filelock==3.29.4\n + fire==0.7.1\n + flask==3.1.3\n + flask-cors==6.0.5\n + flatten-dict==0.5.0\n + flufl-lock==9.1.0\n + fonttools==4.63.0\n + frozendict==2.4.7\n + frozenlist==1.8.0\n + fsspec==2025.3.0\n + funcy==2.1\n + gitdb==4.0.12\n + gitpython==3.1.50\n + google-auth==2.58.0\n + gradio==5.50.0\n + gradio-client==1.14.0\n + grandalf==0.8\n + graphene==3.4.3\n + graphql-core==3.2.12\n + graphql-relay==3.2.0\n + greenlet==3.5.5\n + groovy==0.1.2\n + gto==1.10.1\n + gunicorn==26.2.0\n + h11==0.16.0\n + hf-transfer==0.1.9\n + hf-xet==1.5.1\n + httpcore==1.0.9\n + httptools==0.8.0\n + httpx==0.28.1\n + huey==3.4.0\n + huggingface-hub==0.36.2\n + hydra-core==1.3.6\n + idna==3.18\n + importlib-metadata==9.0.1\n + iterative-telemetry==0.0.10\n + itsdangerous==2.2.0\n + jinja2==3.1.6\n + jiter==0.15.0\n + joblib==1.6.0\n + jsonschema==4.26.0\n + jsonschema-specifications==2025.9.1\n + kiwisolver==1.5.0\n + kombu==5.6.2\n + llamafactory==0.9.6.dev0 (from file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm_2/LlamaFactory)\n + mako==1.4.1\n + markdown-it-py==4.2.0\n + markupsafe==3.0.3\n + matplotlib==3.11.0\n + mdurl==0.1.2\n + mlflow==3.15.2\n + mlflow-skinny==3.15.2\n + mlflow-tracing==3.15.2\n + modelscope==1.37.1\n + mpmath==1.3.0\n + msgpack==1.2.1\n + multidict==6.7.1\n + multiprocess==0.70.16\n + narwhals==2.22.1\n + networkx==3.6.1\n + ninja==1.13.0\n + numpy==2.4.6\n + nvidia-cublas-cu12==12.4.5.8\n + nvidia-cuda-cupti-cu12==12.4.127\n + nvidia-cuda-nvrtc-cu12==12.4.127\n + nvidia-cuda-runtime-cu12==12.4.127\n + nvidia-cudnn-cu12==9.1.0.70\n + nvidia-cufft-cu12==11.2.1.3\n + nvidia-curand-cu12==10.3.5.147\n + nvidia-cusolver-cu12==11.6.1.9\n + nvidia-cusparse-cu12==12.3.1.170\n + nvidia-nccl-cu12==2.21.5\n + nvidia-nvjitlink-cu12==12.4.127\n + nvidia-nvtx-cu12==12.4.127\n + omegaconf==2.3.1\n + openai==2.44.0\n + opencv-python==4.13.0.92\n + opentelemetry-api==1.44.0\n + opentelemetry-proto==1.44.0\n + opentelemetry-sdk==1.44.0\n + opentelemetry-semantic-conventions==0.65b0\n + orjson==3.11.9\n + pandas==2.3.3\n + pathspec==1.1.1\n + peft==0.18.1\n + pillow==11.3.0\n + platformdirs==4.10.0\n + prettytable==3.18.0\n + prompt-toolkit==3.0.53\n + propcache==0.5.2\n + protobuf==7.35.1\n + psutil==7.2.2\n + pyarrow==24.0.0\n + pyasn1==0.6.4\n + pyasn1-modules==0.4.2\n + pycparser==3.0\n + pydantic==2.12.3\n + pydantic-core==2.41.4\n + pydantic-settings==2.15.0\n + pydeck==0.9.2\n + pydot==4.0.1\n + pydub==0.25.1\n + pygit2==1.20.1\n + pygments==2.20.0\n + pygtrie==2.6.1\n + pyparsing==3.3.2\n + python-dateutil==2.9.0.post0\n + python-dotenv==1.2.3\n + python-multipart==0.0.32\n + pytz==2026.2\n + pyyaml==6.0.3\n + referencing==0.37.0\n + regex==2026.5.9\n + requests==2.34.2\n + rich==15.0.0\n + rpds-py==2026.5.1\n + ruamel-yaml==0.19.1\n + ruff==0.15.19\n + safehttpx==0.1.7\n + safetensors==0.8.0\n + scikit-learn==1.9.1\n + scipy==1.17.1\n + scmrepo==3.6.2\n + semantic-version==2.10.0\n + semver==3.1.0\n + sentencepiece==0.2.1\n + sentry-sdk==2.63.0\n + shellingham==1.5.4\n + shortuuid==1.0.13\n + shtab==1.8.0\n + six==1.17.0\n + skops==0.14.0\n + smmap==5.0.3\n + sniffio==1.3.1\n + soundfile==0.14.0\n + sqlalchemy==2.0.52\n + sqlparse==0.6.0\n + sqltrie==0.11.3\n + sse-starlette==3.4.5\n + starlette==0.52.1\n + streamlit==1.58.0\n + streamlit-cropper==0.3.1\n + sympy==1.13.1\n + tabulate==0.10.0\n + tenacity==9.1.4\n + termcolor==3.3.0\n + threadpoolctl==3.6.0\n + tiktoken==0.13.0\n + tokenizers==0.22.2\n + toml==0.10.2\n + tomlkit==0.13.3\n + torch==2.5.1\n + torchaudio==2.5.1\n + torchdata==0.11.0\n + torchvision==0.20.1\n + tqdm==4.68.3\n + transformers==4.56.1\n + triton==3.1.0\n + trl==0.24.0\n + typer==0.26.7\n + typing-extensions==4.15.0\n + typing-inspection==0.4.2\n + tyro==0.8.14\n + tzdata==2026.2\n + tzlocal==5.4.4\n + urllib3==2.7.0\n + uvicorn==0.49.0\n + vector-quantize-pytorch==1.29.1\n + vine==5.1.0\n + vocos==0.1.0\n + voluptuous==0.16.0\n + wandb==0.28.0\n + watchdog==6.0.0\n + wcwidth==0.8.3\n + websockets==15.0.1\n + werkzeug==3.1.8\n + xxhash==3.7.1\n + yarl==1.24.2\n + zc-lockfile==4.0\n + zipp==4.1.0\n2026-10-13 17:01:51.590 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.\n⚙️  Running in WANDB offline mode\n{\n  \"profile\": \"linux-gpu\",\n  \"python\": \"/home/liuyang/miniconda3/envs/mvllm2/bin/python\",\n  \"versions\": {\n    \"dvc\": \"3.67.1\",\n    \"mlflow\": \"3.15.2\",\n    \"av\": \"16.0.0\",\n    \"pandas\": \"2.3.3\",\n    \"streamlit\": \"1.58.0\",\n    \"streamlit_cropper\": \"imported\",\n    \"cv2\": \"4.13.0\",\n    \"torch\": \"2.5.1+cu124\",\n    \"llamafactory\": \"0.9.6.dev0\"\n  },\n  \"errors\": [],\n  \"model_loaded\": false,\n  \"training_started\": false\n}\nUsing Python 3.11.17 environment at: /home/liuyang/miniconda3/envs/mvllm2\nChecked 244 packages in 1ms\nAll installed packages are compatible\nEDITABLE_SOURCE /home/liuyang/文档/mVllm_2/LlamaFactory\nREPO_AND_SUBMODULE_CLEAN_after=yes\nOLD_ENV_after_agent_DISTRIBUTIONS=163\nOLD_ENV_after_cpm45_DISTRIBUTIONS=109\nOLD_ENV_UNCHANGED_agent=distribution-json-conda-meta-and-pycache-metadata-summaries\nOLD_ENV_UNCHANGED_cpm45=distribution-json-conda-meta-and-pycache-metadata-summaries\nCOMPLETE prefix=/home/liuyang/miniconda3/envs/mvllm2 run_root=/home/liuyang/mvllm2-conda-setup-20261013\nSCOPE_WRITES new_prefix,run_logs_and_cache,conda_new_environment_registration,editable_build_metadata_if_project_requires\nNO_MODEL_LOADED training_started=no inference_started=no evaluation_started=no\n",
+  "doctor": {
+    "profile": "linux-gpu",
+    "python": "/home/liuyang/miniconda3/envs/mvllm2/bin/python",
+    "versions": {
+      "dvc": "3.67.1",
+      "mlflow": "3.15.2",
+      "av": "16.0.0",
+      "pandas": "2.3.3",
+      "streamlit": "1.58.0",
+      "streamlit_cropper": "imported",
+      "cv2": "4.13.0",
+      "torch": "2.5.1+cu124",
+      "llamafactory": "0.9.6.dev0"
+    },
+    "errors": [],
+    "model_loaded": false,
+    "training_started": false
+  },
+  "postinstall_audit_command": "ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 liuyang@100.70.83.68 'bash -s' < /private/tmp/mvllm2-conda-setup-20261013/postinstall_audit.sh\n",
+  "postinstall_audit_exit": 0,
+  "postinstall_audit_script": "#!/usr/bin/env bash\nset -Eeuo pipefail\numask 077\nREPO='/home/liuyang/文档/mVllm_2'\nPREFIX='/home/liuyang/miniconda3/envs/mvllm2'\nRUN='/home/liuyang/mvllm2-conda-setup-20261013'\nSYSTEM_PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\nexport PATH=\"$PREFIX/bin:$SYSTEM_PATH\"\nexport GIT_OPTIONAL_LOCKS=0 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null\nexport GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=core.fsmonitor GIT_CONFIG_VALUE_0=false\nexport GIT_CONFIG_KEY_1=core.hooksPath GIT_CONFIG_VALUE_1=/dev/null\nexport PYTHONDONTWRITEBYTECODE=1\nexport XDG_CACHE_HOME=\"$RUN/cache/xdg\" MPLCONFIGDIR=\"$RUN/cache/matplotlib\" TMPDIR=\"$RUN/cache/tmp\"\nexport HF_HOME=\"$RUN/cache/huggingface\" TORCH_HOME=\"$RUN/cache/torch\" CUDA_CACHE_PATH=\"$RUN/cache/cuda\"\nexport HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 MPLBACKEND=Agg\n\"$PREFIX/bin/python\" -I -B - \"$REPO\" \"$RUN\" <<'PY'\nimport hashlib, importlib.metadata as md, json, pathlib, re, sys\nrepo, run = map(pathlib.Path, sys.argv[1:])\nlock=repo/'requirements-linux-gpu.lock'\nexpected=[]\nfor line in lock.read_text().splitlines():\n    item=line.strip()\n    if not item or item.startswith('#') or item.startswith('-e '):\n        continue\n    m=re.fullmatch(r'([A-Za-z0-9_.-]+)==([^ ;]+)',item)\n    if not m: raise SystemExit('UNPARSEABLE_LOCK_ENTRY')\n    expected.append(m.groups())\nmissing=[]; mismatch=[]\nfor name, version in expected:\n    try: got=md.version(name)\n    except md.PackageNotFoundError: missing.append(name); continue\n    if got != version: mismatch.append({'name':name,'locked':version,'installed':got})\nprint(json.dumps({'python':sys.version.split()[0],'prefix':sys.prefix,'lock_pins':len(expected),'missing_count':len(missing),'missing':missing,'mismatch_count':len(mismatch),'mismatches':mismatch},ensure_ascii=False,sort_keys=True))\nfor env in ('agent','cpm45'):\n    before=run/'logs'/f'old-{env}-before.json'\n    after=run/'logs'/f'old-{env}-after.json'\n    a=hashlib.sha256(before.read_bytes()).hexdigest(); b=hashlib.sha256(after.read_bytes()).hexdigest()\n    print(f'OLD_SNAPSHOT_HASH_{env} before={a} after={b} equal={a==b}')\n    if a != b: raise SystemExit(f'OLD_SNAPSHOT_DIFFERENT_{env}')\nimport torch\nprint(json.dumps({'torch':torch.__version__,'cuda_available':torch.cuda.is_available(),'device_count':torch.cuda.device_count()},sort_keys=True))\nd=md.distribution('llamafactory')\nprint('LLAMAFACTORY_VERSION',d.version)\nprint('LLAMAFACTORY_DIRECT_URL',d.read_text('direct_url.json'))\nPY\nprintf 'BRANCH '; git -C \"$REPO\" --no-optional-locks branch --show-current\nprintf 'HEAD '; git -C \"$REPO\" --no-optional-locks rev-parse HEAD\nprintf 'MAIN_STATUS '; git -C \"$REPO\" --no-optional-locks status --porcelain=v1 --untracked-files=all\nprintf 'SUBMODULE_HEAD '; git -C \"$REPO/LlamaFactory\" --no-optional-locks rev-parse HEAD\nprintf 'SUBMODULE_STATUS '; git -C \"$REPO/LlamaFactory\" --no-optional-locks status --porcelain=v1 --untracked-files=all\nprintf 'SIZES '; du -sh \"$PREFIX\" \"$RUN/cache/conda-pkgs\" \"$RUN/cache/uv\" \"$RUN/logs\"\nprintf 'DISK '; df -h /home | tail -n1\nprintf 'SUMMARY_FILES\\\\n'; for f in old-agent-before-conda-meta-summary.txt old-agent-after-conda-meta-summary.txt old-agent-before-pycache-summary.txt old-agent-after-pycache-summary.txt old-cpm45-before-conda-meta-summary.txt old-cpm45-after-conda-meta-summary.txt old-cpm45-before-pycache-summary.txt old-cpm45-after-pycache-summary.txt repo-pycache-before-summary.txt repo-pycache-after-summary.txt; do printf '%s ' \"$f\"; cat \"$RUN/logs/$f\"; done\n",
+  "postinstall_audit_log": "{\"lock_pins\": 241, \"mismatch_count\": 0, \"mismatches\": [], \"missing\": [], \"missing_count\": 0, \"prefix\": \"/home/liuyang/miniconda3/envs/mvllm2\", \"python\": \"3.11.17\"}\nOLD_SNAPSHOT_HASH_agent before=8020ed36fce3e23e8d95f6d213ba1cf36c9a526abcbee9f2e1f31882649c1126 after=8020ed36fce3e23e8d95f6d213ba1cf36c9a526abcbee9f2e1f31882649c1126 equal=True\nOLD_SNAPSHOT_HASH_cpm45 before=55181763db2e579ad8610b52ee2ca7f8949ad0e68d40aeb9652988a1ef6ddd5b after=55181763db2e579ad8610b52ee2ca7f8949ad0e68d40aeb9652988a1ef6ddd5b equal=True\n{\"cuda_available\": true, \"device_count\": 1, \"torch\": \"2.5.1+cu124\"}\nLLAMAFACTORY_VERSION 0.9.6.dev0\nLLAMAFACTORY_DIRECT_URL {\"url\":\"file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm_2/LlamaFactory\",\"dir_info\":{\"editable\":true}}\nBRANCH main\nHEAD 3f200461026a59676aaac7ea864f8fadb599688d\nMAIN_STATUS SUBMODULE_HEAD 4447137e08c172d7701594b4d1695a6d4a869cbd\nSUBMODULE_STATUS SIZES 6.9G\t/home/liuyang/miniconda3/envs/mvllm2\n738M\t/home/liuyang/mvllm2-conda-setup-20261013/cache/conda-pkgs\n166M\t/home/liuyang/mvllm2-conda-setup-20261013/cache/uv\n13M\t/home/liuyang/mvllm2-conda-setup-20261013/logs\nDISK /dev/nvme0n1p2  937G  524G  366G   59% /home\nSUMMARY_FILES\\nold-agent-before-conda-meta-summary.txt count=28\nd4606a7c426d7e5f27414bc4af2cd942382aefaed84e338dfc2fb96b9bcec66c  -\nold-agent-after-conda-meta-summary.txt count=28\nd4606a7c426d7e5f27414bc4af2cd942382aefaed84e338dfc2fb96b9bcec66c  -\nold-agent-before-pycache-summary.txt count=23742\naa0a63d19584b1234f236236b6c9b3affebcc98bb00ce963c269620142958258  -\nold-agent-after-pycache-summary.txt count=23742\naa0a63d19584b1234f236236b6c9b3affebcc98bb00ce963c269620142958258  -\nold-cpm45-before-conda-meta-summary.txt count=28\n83e14c8a713f7c461ddad3f3b1aa71051a1f22ddee2650a68cdb4ec63311ec32  -\nold-cpm45-after-conda-meta-summary.txt count=28\n83e14c8a713f7c461ddad3f3b1aa71051a1f22ddee2650a68cdb4ec63311ec32  -\nold-cpm45-before-pycache-summary.txt count=17353\n231bfb4efea072f7faa1c37e323c5056b83cb1791ccf80d275f2e405e33a2caf  -\nold-cpm45-after-pycache-summary.txt count=17353\n231bfb4efea072f7faa1c37e323c5056b83cb1791ccf80d275f2e405e33a2caf  -\nrepo-pycache-before-summary.txt count=544\n30f6ed001126cd9427eeb403e0612bfe9738ddf03cd96f3138e454b1308625cc  -\nrepo-pycache-after-summary.txt count=544\n30f6ed001126cd9427eeb403e0612bfe9738ddf03cd96f3138e454b1308625cc  -\n",
+  "old_environments_sanitized": {
+    "agent": {
+      "after": [
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "accelerate",
+          "version": "1.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiofiles",
+          "version": "24.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohappyeyeballs",
+          "version": "2.6.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohttp",
+          "version": "3.14.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiosignal",
+          "version": "1.4.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "altair",
+          "version": "6.2.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-doc",
+          "version": "0.0.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-types",
+          "version": "0.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "antlr4-python3-runtime",
+          "version": "4.9.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "anyio",
+          "version": "4.14.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "attrs",
+          "version": "26.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "av",
+          "version": "16.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "bitsandbytes",
+          "version": "0.49.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "blinker",
+          "version": "1.9.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "brotli",
+          "version": "1.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cachetools",
+          "version": "7.1.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "certifi",
+          "version": "2026.6.17"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cffi",
+          "version": "2.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "charset-normalizer",
+          "version": "3.4.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "click",
+          "version": "8.4.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "contourpy",
+          "version": "1.3.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cycler",
+          "version": "0.12.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "datasets",
+          "version": "4.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "dill",
+          "version": "0.3.8"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "distro",
+          "version": "1.9.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "docstring_parser",
+          "version": "0.18.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "einops",
+          "version": "0.8.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "einx",
+          "version": "0.4.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "encodec",
+          "version": "0.1.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fastapi",
+          "version": "0.138.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ffmpy",
+          "version": "1.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "filelock",
+          "version": "3.29.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fire",
+          "version": "0.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fonttools",
+          "version": "4.63.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "frozendict",
+          "version": "2.4.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "frozenlist",
+          "version": "1.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fsspec",
+          "version": "2025.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "gitdb",
+          "version": "4.0.12"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "GitPython",
+          "version": "3.1.50"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "gradio",
+          "version": "5.50.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "gradio_client",
+          "version": "1.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "groovy",
+          "version": "0.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "h11",
+          "version": "0.16.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hf-xet",
+          "version": "1.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hf_transfer",
+          "version": "0.1.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpcore",
+          "version": "1.0.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httptools",
+          "version": "0.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpx",
+          "version": "0.28.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "huggingface_hub",
+          "version": "0.36.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "idna",
+          "version": "3.18"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "iniconfig",
+          "version": "2.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "itsdangerous",
+          "version": "2.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Jinja2",
+          "version": "3.1.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jiter",
+          "version": "0.15.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jsonschema",
+          "version": "4.26.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jsonschema-specifications",
+          "version": "2025.9.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "kiwisolver",
+          "version": "1.5.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": true,
+          "name": "llamafactory",
+          "version": "0.9.6.dev0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "markdown-it-py",
+          "version": "4.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "MarkupSafe",
+          "version": "3.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "matplotlib",
+          "version": "3.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mdurl",
+          "version": "0.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "modelscope",
+          "version": "1.37.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mpmath",
+          "version": "1.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "msgpack",
+          "version": "1.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multidict",
+          "version": "6.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multiprocess",
+          "version": "0.70.16"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "narwhals",
+          "version": "2.22.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "networkx",
+          "version": "3.6.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ninja",
+          "version": "1.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "numpy",
+          "version": "2.4.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cublas-cu12",
+          "version": "12.4.5.8"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-cupti-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-nvrtc-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-runtime-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cudnn-cu12",
+          "version": "9.1.0.70"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cufft-cu12",
+          "version": "11.2.1.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-curand-cu12",
+          "version": "10.3.5.147"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusolver-cu12",
+          "version": "11.6.1.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusparse-cu12",
+          "version": "12.3.1.170"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nccl-cu12",
+          "version": "2.21.5"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvjitlink-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvtx-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "omegaconf",
+          "version": "2.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "openai",
+          "version": "2.44.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "opencv-python",
+          "version": "4.13.0.92"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "orjson",
+          "version": "3.11.9"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "packaging",
+          "version": "26.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pandas",
+          "version": "2.3.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "peft",
+          "version": "0.18.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pillow",
+          "version": "11.3.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "pip",
+          "version": "26.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "platformdirs",
+          "version": "4.10.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pluggy",
+          "version": "1.6.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "propcache",
+          "version": "0.5.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "protobuf",
+          "version": "7.35.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "psutil",
+          "version": "7.2.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyarrow",
+          "version": "24.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pycparser",
+          "version": "3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic",
+          "version": "2.12.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic_core",
+          "version": "2.41.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydeck",
+          "version": "0.9.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydub",
+          "version": "0.25.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Pygments",
+          "version": "2.20.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyparsing",
+          "version": "3.3.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pytest",
+          "version": "9.1.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "python-dateutil",
+          "version": "2.9.0.post0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "python-multipart",
+          "version": "0.0.32"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pytz",
+          "version": "2026.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "PyYAML",
+          "version": "6.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "referencing",
+          "version": "0.37.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "regex",
+          "version": "2026.5.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "requests",
+          "version": "2.34.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "rich",
+          "version": "15.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "rpds-py",
+          "version": "2026.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ruff",
+          "version": "0.15.19"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "safehttpx",
+          "version": "0.1.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "safetensors",
+          "version": "0.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "scipy",
+          "version": "1.17.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "semantic-version",
+          "version": "2.10.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sentencepiece",
+          "version": "0.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sentry-sdk",
+          "version": "2.63.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "setuptools",
+          "version": "82.0.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "shellingham",
+          "version": "1.5.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "shtab",
+          "version": "1.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "six",
+          "version": "1.17.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "smmap",
+          "version": "5.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sniffio",
+          "version": "1.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "soundfile",
+          "version": "0.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sse-starlette",
+          "version": "3.4.5"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "starlette",
+          "version": "0.52.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "streamlit",
+          "version": "1.58.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sympy",
+          "version": "1.13.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tenacity",
+          "version": "9.1.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "termcolor",
+          "version": "3.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tiktoken",
+          "version": "0.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tokenizers",
+          "version": "0.22.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "toml",
+          "version": "0.10.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tomlkit",
+          "version": "0.13.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torch",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchaudio",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchdata",
+          "version": "0.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchvision",
+          "version": "0.20.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tqdm",
+          "version": "4.68.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "transformers",
+          "version": "4.56.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "triton",
+          "version": "3.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "trl",
+          "version": "0.24.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typer",
+          "version": "0.26.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing-inspection",
+          "version": "0.4.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing_extensions",
+          "version": "4.15.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tyro",
+          "version": "0.8.14"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tzdata",
+          "version": "2026.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "urllib3",
+          "version": "2.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "uv",
+          "version": "0.11.29"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "uvicorn",
+          "version": "0.49.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "vector-quantize-pytorch",
+          "version": "1.29.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "vocos",
+          "version": "0.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "wandb",
+          "version": "0.28.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "watchdog",
+          "version": "6.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "websockets",
+          "version": "15.0.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "wheel",
+          "version": "0.47.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "xxhash",
+          "version": "3.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "yarl",
+          "version": "1.24.2"
+        }
+      ],
+      "before": [
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "accelerate",
+          "version": "1.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiofiles",
+          "version": "24.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohappyeyeballs",
+          "version": "2.6.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohttp",
+          "version": "3.14.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiosignal",
+          "version": "1.4.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "altair",
+          "version": "6.2.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-doc",
+          "version": "0.0.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-types",
+          "version": "0.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "antlr4-python3-runtime",
+          "version": "4.9.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "anyio",
+          "version": "4.14.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "attrs",
+          "version": "26.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "av",
+          "version": "16.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "bitsandbytes",
+          "version": "0.49.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "blinker",
+          "version": "1.9.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "brotli",
+          "version": "1.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cachetools",
+          "version": "7.1.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "certifi",
+          "version": "2026.6.17"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cffi",
+          "version": "2.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "charset-normalizer",
+          "version": "3.4.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "click",
+          "version": "8.4.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "contourpy",
+          "version": "1.3.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cycler",
+          "version": "0.12.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "datasets",
+          "version": "4.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "dill",
+          "version": "0.3.8"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "distro",
+          "version": "1.9.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "docstring_parser",
+          "version": "0.18.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "einops",
+          "version": "0.8.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "einx",
+          "version": "0.4.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "encodec",
+          "version": "0.1.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fastapi",
+          "version": "0.138.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ffmpy",
+          "version": "1.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "filelock",
+          "version": "3.29.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fire",
+          "version": "0.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fonttools",
+          "version": "4.63.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "frozendict",
+          "version": "2.4.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "frozenlist",
+          "version": "1.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fsspec",
+          "version": "2025.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "gitdb",
+          "version": "4.0.12"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "GitPython",
+          "version": "3.1.50"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "gradio",
+          "version": "5.50.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "gradio_client",
+          "version": "1.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "groovy",
+          "version": "0.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "h11",
+          "version": "0.16.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hf-xet",
+          "version": "1.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hf_transfer",
+          "version": "0.1.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpcore",
+          "version": "1.0.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httptools",
+          "version": "0.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpx",
+          "version": "0.28.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "huggingface_hub",
+          "version": "0.36.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "idna",
+          "version": "3.18"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "iniconfig",
+          "version": "2.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "itsdangerous",
+          "version": "2.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Jinja2",
+          "version": "3.1.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jiter",
+          "version": "0.15.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jsonschema",
+          "version": "4.26.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jsonschema-specifications",
+          "version": "2025.9.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "kiwisolver",
+          "version": "1.5.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": true,
+          "name": "llamafactory",
+          "version": "0.9.6.dev0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "markdown-it-py",
+          "version": "4.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "MarkupSafe",
+          "version": "3.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "matplotlib",
+          "version": "3.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mdurl",
+          "version": "0.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "modelscope",
+          "version": "1.37.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mpmath",
+          "version": "1.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "msgpack",
+          "version": "1.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multidict",
+          "version": "6.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multiprocess",
+          "version": "0.70.16"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "narwhals",
+          "version": "2.22.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "networkx",
+          "version": "3.6.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ninja",
+          "version": "1.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "numpy",
+          "version": "2.4.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cublas-cu12",
+          "version": "12.4.5.8"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-cupti-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-nvrtc-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-runtime-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cudnn-cu12",
+          "version": "9.1.0.70"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cufft-cu12",
+          "version": "11.2.1.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-curand-cu12",
+          "version": "10.3.5.147"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusolver-cu12",
+          "version": "11.6.1.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusparse-cu12",
+          "version": "12.3.1.170"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nccl-cu12",
+          "version": "2.21.5"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvjitlink-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvtx-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "omegaconf",
+          "version": "2.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "openai",
+          "version": "2.44.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "opencv-python",
+          "version": "4.13.0.92"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "orjson",
+          "version": "3.11.9"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "packaging",
+          "version": "26.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pandas",
+          "version": "2.3.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "peft",
+          "version": "0.18.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pillow",
+          "version": "11.3.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "pip",
+          "version": "26.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "platformdirs",
+          "version": "4.10.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pluggy",
+          "version": "1.6.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "propcache",
+          "version": "0.5.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "protobuf",
+          "version": "7.35.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "psutil",
+          "version": "7.2.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyarrow",
+          "version": "24.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pycparser",
+          "version": "3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic",
+          "version": "2.12.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic_core",
+          "version": "2.41.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydeck",
+          "version": "0.9.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydub",
+          "version": "0.25.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Pygments",
+          "version": "2.20.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyparsing",
+          "version": "3.3.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pytest",
+          "version": "9.1.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "python-dateutil",
+          "version": "2.9.0.post0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "python-multipart",
+          "version": "0.0.32"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pytz",
+          "version": "2026.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "PyYAML",
+          "version": "6.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "referencing",
+          "version": "0.37.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "regex",
+          "version": "2026.5.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "requests",
+          "version": "2.34.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "rich",
+          "version": "15.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "rpds-py",
+          "version": "2026.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ruff",
+          "version": "0.15.19"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "safehttpx",
+          "version": "0.1.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "safetensors",
+          "version": "0.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "scipy",
+          "version": "1.17.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "semantic-version",
+          "version": "2.10.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sentencepiece",
+          "version": "0.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sentry-sdk",
+          "version": "2.63.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "setuptools",
+          "version": "82.0.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "shellingham",
+          "version": "1.5.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "shtab",
+          "version": "1.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "six",
+          "version": "1.17.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "smmap",
+          "version": "5.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sniffio",
+          "version": "1.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "soundfile",
+          "version": "0.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sse-starlette",
+          "version": "3.4.5"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "starlette",
+          "version": "0.52.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "streamlit",
+          "version": "1.58.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sympy",
+          "version": "1.13.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tenacity",
+          "version": "9.1.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "termcolor",
+          "version": "3.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tiktoken",
+          "version": "0.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tokenizers",
+          "version": "0.22.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "toml",
+          "version": "0.10.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tomlkit",
+          "version": "0.13.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torch",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchaudio",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchdata",
+          "version": "0.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchvision",
+          "version": "0.20.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tqdm",
+          "version": "4.68.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "transformers",
+          "version": "4.56.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "triton",
+          "version": "3.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "trl",
+          "version": "0.24.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typer",
+          "version": "0.26.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing-inspection",
+          "version": "0.4.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing_extensions",
+          "version": "4.15.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tyro",
+          "version": "0.8.14"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tzdata",
+          "version": "2026.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "urllib3",
+          "version": "2.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "uv",
+          "version": "0.11.29"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "uvicorn",
+          "version": "0.49.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "vector-quantize-pytorch",
+          "version": "1.29.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "vocos",
+          "version": "0.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "wandb",
+          "version": "0.28.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "watchdog",
+          "version": "6.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "websockets",
+          "version": "15.0.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "wheel",
+          "version": "0.47.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "xxhash",
+          "version": "3.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "yarl",
+          "version": "1.24.2"
+        }
+      ]
+    },
+    "cpm45": {
+      "after": [
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "accelerate",
+          "version": "1.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohappyeyeballs",
+          "version": "2.6.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohttp",
+          "version": "3.14.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiosignal",
+          "version": "1.4.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-doc",
+          "version": "0.0.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-types",
+          "version": "0.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "antlr4-python3-runtime",
+          "version": "4.9.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "anyio",
+          "version": "4.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "attrs",
+          "version": "26.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "av",
+          "version": "17.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "bitsandbytes",
+          "version": "0.49.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "certifi",
+          "version": "2026.6.17"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "charset-normalizer",
+          "version": "3.4.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "click",
+          "version": "8.4.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "contourpy",
+          "version": "1.3.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cycler",
+          "version": "0.12.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "datasets",
+          "version": "5.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "deepspeed",
+          "version": "0.19.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "dill",
+          "version": "0.4.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "einops",
+          "version": "0.8.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fastapi",
+          "version": "0.139.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "filelock",
+          "version": "3.29.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fonttools",
+          "version": "4.63.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "frozenlist",
+          "version": "1.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fsspec",
+          "version": "2026.4.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "h11",
+          "version": "0.16.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hf-xet",
+          "version": "1.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hjson",
+          "version": "3.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpcore",
+          "version": "1.0.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpx",
+          "version": "0.28.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "huggingface_hub",
+          "version": "0.36.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "idna",
+          "version": "3.18"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "iniconfig",
+          "version": "2.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jieba",
+          "version": "0.42.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Jinja2",
+          "version": "3.1.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "kiwisolver",
+          "version": "1.5.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": true,
+          "name": "llamafactory",
+          "version": "0.9.6.dev0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "markdown-it-py",
+          "version": "4.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "MarkupSafe",
+          "version": "3.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "matplotlib",
+          "version": "3.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mdurl",
+          "version": "0.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mpmath",
+          "version": "1.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "msgpack",
+          "version": "1.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multidict",
+          "version": "6.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multiprocess",
+          "version": "0.70.19"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "networkx",
+          "version": "3.6.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ninja",
+          "version": "1.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "numpy",
+          "version": "2.4.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cublas-cu12",
+          "version": "12.4.5.8"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-cupti-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-nvrtc-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-runtime-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cudnn-cu12",
+          "version": "9.1.0.70"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cufft-cu12",
+          "version": "11.2.1.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-curand-cu12",
+          "version": "10.3.5.147"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusolver-cu12",
+          "version": "11.6.1.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusparse-cu12",
+          "version": "12.3.1.170"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-ml-py",
+          "version": "13.610.43"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nccl-cu12",
+          "version": "2.21.5"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvjitlink-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvtx-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "omegaconf",
+          "version": "2.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "opencv-python",
+          "version": "4.13.0.92"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "packaging",
+          "version": "26.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pandas",
+          "version": "3.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "peft",
+          "version": "0.19.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pillow",
+          "version": "12.2.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "pip",
+          "version": "26.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pluggy",
+          "version": "1.6.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "propcache",
+          "version": "0.5.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "protobuf",
+          "version": "7.35.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "psutil",
+          "version": "7.2.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "py-cpuinfo",
+          "version": "9.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyarrow",
+          "version": "24.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic",
+          "version": "2.13.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic_core",
+          "version": "2.46.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Pygments",
+          "version": "2.20.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyparsing",
+          "version": "3.3.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pytest",
+          "version": "9.1.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "python-dateutil",
+          "version": "2.9.0.post0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "PyYAML",
+          "version": "6.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "regex",
+          "version": "2026.5.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "requests",
+          "version": "2.34.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "rich",
+          "version": "15.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "safetensors",
+          "version": "0.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "scipy",
+          "version": "1.17.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sentencepiece",
+          "version": "0.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "setuptools",
+          "version": "82.0.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "shellingham",
+          "version": "1.5.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "six",
+          "version": "1.17.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "starlette",
+          "version": "1.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sympy",
+          "version": "1.13.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tiktoken",
+          "version": "0.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tokenizers",
+          "version": "0.22.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torch",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchaudio",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchvision",
+          "version": "0.20.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tqdm",
+          "version": "4.68.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "transformers",
+          "version": "4.56.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "triton",
+          "version": "3.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "trl",
+          "version": "0.24.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typer",
+          "version": "0.25.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing-inspection",
+          "version": "0.4.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing_extensions",
+          "version": "4.15.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "urllib3",
+          "version": "2.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "uvicorn",
+          "version": "0.51.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "wheel",
+          "version": "0.47.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "xxhash",
+          "version": "3.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "yarl",
+          "version": "1.24.2"
+        }
+      ],
+      "before": [
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "accelerate",
+          "version": "1.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohappyeyeballs",
+          "version": "2.6.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiohttp",
+          "version": "3.14.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "aiosignal",
+          "version": "1.4.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-doc",
+          "version": "0.0.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "annotated-types",
+          "version": "0.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "antlr4-python3-runtime",
+          "version": "4.9.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "anyio",
+          "version": "4.14.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "attrs",
+          "version": "26.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "av",
+          "version": "17.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "bitsandbytes",
+          "version": "0.49.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "certifi",
+          "version": "2026.6.17"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "charset-normalizer",
+          "version": "3.4.7"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "click",
+          "version": "8.4.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "contourpy",
+          "version": "1.3.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "cycler",
+          "version": "0.12.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "datasets",
+          "version": "5.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "deepspeed",
+          "version": "0.19.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "dill",
+          "version": "0.4.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "einops",
+          "version": "0.8.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fastapi",
+          "version": "0.139.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "filelock",
+          "version": "3.29.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fonttools",
+          "version": "4.63.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "frozenlist",
+          "version": "1.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "fsspec",
+          "version": "2026.4.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "h11",
+          "version": "0.16.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hf-xet",
+          "version": "1.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "hjson",
+          "version": "3.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpcore",
+          "version": "1.0.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "httpx",
+          "version": "0.28.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "huggingface_hub",
+          "version": "0.36.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "idna",
+          "version": "3.18"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "iniconfig",
+          "version": "2.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "jieba",
+          "version": "0.42.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Jinja2",
+          "version": "3.1.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "kiwisolver",
+          "version": "1.5.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": true,
+          "name": "llamafactory",
+          "version": "0.9.6.dev0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "markdown-it-py",
+          "version": "4.2.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "MarkupSafe",
+          "version": "3.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "matplotlib",
+          "version": "3.11.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mdurl",
+          "version": "0.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "mpmath",
+          "version": "1.3.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "msgpack",
+          "version": "1.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multidict",
+          "version": "6.7.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "multiprocess",
+          "version": "0.70.19"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "networkx",
+          "version": "3.6.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "ninja",
+          "version": "1.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "numpy",
+          "version": "2.4.6"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cublas-cu12",
+          "version": "12.4.5.8"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-cupti-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-nvrtc-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cuda-runtime-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cudnn-cu12",
+          "version": "9.1.0.70"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cufft-cu12",
+          "version": "11.2.1.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-curand-cu12",
+          "version": "10.3.5.147"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusolver-cu12",
+          "version": "11.6.1.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-cusparse-cu12",
+          "version": "12.3.1.170"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-ml-py",
+          "version": "13.610.43"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nccl-cu12",
+          "version": "2.21.5"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvjitlink-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "nvidia-nvtx-cu12",
+          "version": "12.4.127"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "omegaconf",
+          "version": "2.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "opencv-python",
+          "version": "4.13.0.92"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "packaging",
+          "version": "26.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pandas",
+          "version": "3.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "peft",
+          "version": "0.19.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pillow",
+          "version": "12.2.0"
+        },
+        {
+          "direct_url_present": true,
+          "editable": false,
+          "name": "pip",
+          "version": "26.1.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pluggy",
+          "version": "1.6.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "propcache",
+          "version": "0.5.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "protobuf",
+          "version": "7.35.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "psutil",
+          "version": "7.2.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "py-cpuinfo",
+          "version": "9.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyarrow",
+          "version": "24.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic",
+          "version": "2.13.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pydantic_core",
+          "version": "2.46.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "Pygments",
+          "version": "2.20.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pyparsing",
+          "version": "3.3.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "pytest",
+          "version": "9.1.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "python-dateutil",
+          "version": "2.9.0.post0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "PyYAML",
+          "version": "6.0.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "regex",
+          "version": "2026.5.9"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "requests",
+          "version": "2.34.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "rich",
+          "version": "15.0.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "safetensors",
+          "version": "0.8.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "scipy",
+          "version": "1.17.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sentencepiece",
+          "version": "0.2.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "setuptools",
+          "version": "82.0.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "shellingham",
+          "version": "1.5.4"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "six",
+          "version": "1.17.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "starlette",
+          "version": "1.3.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "sympy",
+          "version": "1.13.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tiktoken",
+          "version": "0.13.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tokenizers",
+          "version": "0.22.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torch",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchaudio",
+          "version": "2.5.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "torchvision",
+          "version": "0.20.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "tqdm",
+          "version": "4.68.3"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "transformers",
+          "version": "4.56.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "triton",
+          "version": "3.1.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "trl",
+          "version": "0.24.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typer",
+          "version": "0.25.1"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing-inspection",
+          "version": "0.4.2"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "typing_extensions",
+          "version": "4.15.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "urllib3",
+          "version": "2.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "uvicorn",
+          "version": "0.51.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "wheel",
+          "version": "0.47.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "xxhash",
+          "version": "3.7.0"
+        },
+        {
+          "direct_url_present": false,
+          "editable": false,
+          "name": "yarl",
+          "version": "1.24.2"
+        }
+      ]
+    }
+  },
+  "comparison_snapshots": {
+    "old-agent-after-conda-meta-summary.txt": "count=28\nd4606a7c426d7e5f27414bc4af2cd942382aefaed84e338dfc2fb96b9bcec66c  -\n",
+    "old-agent-after-pycache-summary.txt": "count=23742\naa0a63d19584b1234f236236b6c9b3affebcc98bb00ce963c269620142958258  -\n",
+    "old-agent-before-conda-meta-summary.txt": "count=28\nd4606a7c426d7e5f27414bc4af2cd942382aefaed84e338dfc2fb96b9bcec66c  -\n",
+    "old-agent-before-pycache-summary.txt": "count=23742\naa0a63d19584b1234f236236b6c9b3affebcc98bb00ce963c269620142958258  -\n",
+    "old-cpm45-after-conda-meta-summary.txt": "count=28\n83e14c8a713f7c461ddad3f3b1aa71051a1f22ddee2650a68cdb4ec63311ec32  -\n",
+    "old-cpm45-after-pycache-summary.txt": "count=17353\n231bfb4efea072f7faa1c37e323c5056b83cb1791ccf80d275f2e405e33a2caf  -\n",
+    "old-cpm45-before-conda-meta-summary.txt": "count=28\n83e14c8a713f7c461ddad3f3b1aa71051a1f22ddee2650a68cdb4ec63311ec32  -\n",
+    "old-cpm45-before-pycache-summary.txt": "count=17353\n231bfb4efea072f7faa1c37e323c5056b83cb1791ccf80d275f2e405e33a2caf  -\n",
+    "repo-main-after.status": "\n",
+    "repo-main-before.status": "\n",
+    "repo-pycache-after-summary.txt": "count=544\n30f6ed001126cd9427eeb403e0612bfe9738ddf03cd96f3138e454b1308625cc  -\n",
+    "repo-pycache-before-summary.txt": "count=544\n30f6ed001126cd9427eeb403e0612bfe9738ddf03cd96f3138e454b1308625cc  -\n",
+    "repo-submodule-after.status": "\n",
+    "repo-submodule-before.status": "\n"
+  },
+  "business_record_path_stat": "ABSENT /data/mVllm_2/records/models\nABSENT /data/mVllm_2/records/training\nABSENT /data/mVllm_2/records/evaluations\nABSENT /data/mVllm_2/workspace/mlflow/mlflow.db\n"
+}
