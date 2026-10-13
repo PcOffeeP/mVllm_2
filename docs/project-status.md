@@ -2,23 +2,23 @@
 
 ## 如何理解这里的“当前”
 
-本页整理日期为 **2026-10-12**，本地入口代码基线为 `f8af0bba`（ROI入口修复、Python3.11及两平台运行约定），本次正式目录整合提交由 `git log -- README.md` 追溯。工程能力依据当前代码及仓库验收记录；训练机文件、模型和运行环境的最近现场记录来自 **2026-09-14**，本轮没有 SSH 刷新，也没有加载模型或重新评测。过去的服务成功不表示今天有同一服务在运行。
+本页更新日期为 **2026-10-13**，本轮只读核查起始 Mac 基线为 `59dee2d1`，训练机为 `main@3f200461`，详见[现场报告](results/remote-state-refresh-20261013.md)。工程能力依据代码及仓库验收记录；环境、数据引用和限定模型文件位置已刷新，模型质量仍依据历史结果。本轮没有加载模型或重新评测，过去的服务成功不表示今天有同一服务在运行。
 
 项目任务仍由[唯一台账](project-todo.md)维护。本页是现状与证据摘要，不另列一套执行任务、优先级或授权。
 
 ## 已记录的机器与资产位置
 
-这些位置来自已有双机配置和2026-09-14记录，本轮未验证在线状态、目录存在性或工作区干净程度。首次连接先核对两端分支、HEAD、未提交修改和独有提交，不直接同步覆盖。
+2026-10-13已通过SSH核对训练机、代码目录、正式store和基座的指定位置。训练机工作区与LlamaFactory子模块干净；Mac文档分支比现场main领先5提交，本轮没有同步。后续连接仍先核对状态，不直接同步覆盖。
 
 | 位置 | 记录值与用途 |
 | --- | --- |
 | 本机 | macOS 开发、审查 UI 及结果复核；用 uv 调用已部署的 Mac Python 3.11.x |
 | 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660` |
 | 训练机代码目录 | `/home/liuyang/文档/mVllm_2` |
-| 正式store历史落点 | `/data/mVllm_2`，与代码checkout分开 |
-| 基座历史位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；来源修订与加载可用性仍需核定 |
+| 正式store | `/data/mVllm_2`，与代码checkout分开 |
+| 基座位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；索引4个分片在场；来源修订与加载可用性仍需核定 |
 
-通过已有OpenSSH配置、密钥或SSH agent连接：`ssh liuyang@100.70.83.68`。在该机器项目根目录直接使用已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 执行数据及模型说明中的命令；连接前明确命令、输入/输出和资源。凭据不入Git，删除/覆盖远端文件、切换环境、停止已有任务或push/merge仍按项目授权处理。上述连接信息不授权本轮连接，也不表示已完成训练机刷新。
+通过已有OpenSSH配置、密钥或SSH agent连接：`ssh liuyang@100.70.83.68`。在该机器项目根目录直接使用已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 执行数据及模型说明中的命令；连接前明确命令、输入/输出和资源。凭据不入Git，删除/覆盖远端文件、切换环境、停止已有任务或push/merge仍按项目授权处理。本轮连接仅用于只读核查，不授权后续同步、环境切换或模型运行。
 
 ## 工程能力与真实验收
 
@@ -57,17 +57,17 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 
 来源为[旧发布身份](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](results/v4_1_agent_pipeline_fold0_r1/README.md)、[concise报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[visual报告](results/v4_1_0_760050fad303_20260724_visual/README.md)及[开发证据预检](results/model-diagnostics-preflight-20260913.json)。
 
-2026-09-14资产记录表明旧Fold0发布文件与若干实验adapter在约定位置存在，但未加载验证；concise/visual三折权重的约定位置有缺口，concise原始预测也缺失。旧current与旧Registry只是历史身份，不授予新alias或passed。详细现场记录保存在[验证第67节](results/version-control-migration/verification.md)，此前限定调查见[模型位置核查](results/model-location-followup-20260913.json)及[恢复身份目标](results/model-recovery-targets-20260913.json)。
+2026-10-13现场核查：旧current仍指向Fold0发布，其adapter和merged索引10个分片在场；基座索引4个分片在场。限定run目录中concise缺权重、visual未找到，不代表全盘丢失。指定store的records/models、training、evaluations及默认MLflow路径未找到，真实新Registry配置根仍需核定。旧current与旧Registry身份不授予新alias或passed。细节和限制见[现场报告](results/remote-state-refresh-20261013.md)；模型质量、旧预测及历史恢复调查仍以原证据日期为准。
 
 ## 仍需独立解决的缺口
 
 - **模型诊断方案**：新单折基线方向、开发侧阈值及资源尚待确认；canary和任意交叉替换训练Prompt不是现成接口。没有对应权重时不据历史报告安排推理。
 - **独立test资格**：既定21个test source已找到，但旧测试发布曾暴露，20个source有媒体凭据关联；余下source也未证实具备独立使用资格。禁止用旧测试调参或仅改名重新获得资格。
-- **正式运行环境**：新环境历史验收通过，但该记录不证明当前 Conda 环境合格。训练机实际运行继续使用对应 Conda Python 3.11.x；其锁定依赖、editable 来源与最终 checkout 需刷新核定。Mac 使用独立 Mac 锁及 uv 调用方式，不能据轻量检查认定 GPU 环境可用。
+- **正式运行环境**：agent/cpm45现场Python为3.11.15，但锁依赖不一致，cpm45还指向旧项目；历史mirror venv仍指向隔离checkout。训练机实际运行继续使用对应Conda Python3.11.x，正式环境及来源绑定仍待验收。Mac 使用独立 Mac 锁及 uv 调用方式，不能据轻量检查认定 GPU 环境可用。
 - **真实质量与服务**：训练成功、严格评测通过、最终质量、production批准和GPU服务成功分别取得真实证据，不互相替代。
 - **清理与恢复**：未完成引用、归档和备份证明的旧媒体/权重仍保留；大型及外部依赖组合恢复不能用小对象测试替代。
 
-下一轮首先刷新训练机只读事实，具体任务和允许操作以唯一台账为准。本次文档整合没有启动上述工作。
+只读刷新已完成限定范围检查；下一步先核定正式Conda环境与checkout绑定及模型来源，再准备诊断方案。具体任务和操作授权以唯一台账为准。
 
 ## 证据应怎样保留
 

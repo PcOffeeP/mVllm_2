@@ -6,16 +6,16 @@
 
 **数据处理及活动入口的工程迁移已解决。** 2026-09-14，迁移分支先推送，再快进 Codeup main 至 `5acebc27` 并同步训练机正式代码；集成与双机 CLI 记录见[验证第67节](results/version-control-migration/verification.md)。这不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。
 
-**当前文档整合范围（2026-10-12）**：用户已认可新手册的分工，授权替换根 README 并清理被新正文覆盖的旧说明。正式阅读入口为根 README，以及 docs 下的数据处理、模型流程和项目现状；唯一台账、设计决策及原始验证证据保留。DOC-INTEGRATION 已完成目录、正文、导航和链接核查；下一步为 REMOTE-STATE-REFRESH。本轮不 SSH、不执行实际数据处理、训练、推理或评测，不激活环境或删除运行产物；文档删除授权不扩大为设计、证据或资产删除。下列远端事实来自 2026-09-13/14 记录，尚未刷新。
+**当前状态（2026-10-13）**：DOC-INTEGRATION 已完成正式目录、正文、导航和链接整理。用户随后授权训练机只读刷新；本轮已核对两端 Git、Python/环境来源、数据引用与限定模型资产，结果见[现场核查](results/remote-state-refresh-20261013.md)。未执行业务文件写入、代码同步或训练/推理/评测；一次普通git status的潜在索引刷新偏差见报告。下一步先处理 ENV-ACTIVATION 的正式 Conda 环境与 checkout 绑定方案，再核定模型来源及诊断方案；现场存在不等于质量或恢复通过。
 
 新体系正式入口为 `python -m versioning`，显式使用五类完整可读身份。train 数据分支用于三折开发验证和 full 训练，test 分支只用于最终独立测试；代码中的 `development` / `holdout` / `test_audit` 保留原值。旧媒体仍被新 store 引用，不得按“迁移完成”删除旧目录。
 
 | 顺序/定位 | 固定标识 | 当前任务与状态 | 依赖、下一动作 |
 | --- | --- | --- | --- |
-| 本轮已完成 | DOC-INTEGRATION | 已解决：正式整合文档目录 | 根README及三份正文正式启用，覆盖旧说明清理；独立核查通过，台账/设计/证据保留 |
+| 已完成前序 | DOC-INTEGRATION | 已解决：正式整合文档目录 | 根README及三份正文正式启用，覆盖旧说明清理；独立核查通过，台账/设计/证据保留 |
 | 已完成前序 | README-PUBLIC-INTRO | 已解决：项目介绍与新人快速开始 | 独立核查通过；验证第69节，无动态执行 |
 | 已完成前序 | DOC-CONSOLIDATION | 已解决：文档及台账收敛 | 独立核查通过；验证第68节；候选手册及运行约定见文档整理记录 |
-| 下一轮第一项 | REMOTE-STATE-REFRESH | 待处理：训练机现状只读刷新 | 核对两端 Git、store、媒体、模型资产和环境；本轮不连接 |
+| 本轮已完成 | REMOTE-STATE-REFRESH | 已解决：限定范围训练机只读刷新 | 实时事实及缺口已记录；未执行同步、环境切换或模型运行 |
 | 模型准备 | MODEL-DIAG | 待确认：诊断方向与开发侧门槛 | 可继续公开开发证据准备；新基线方案和真实运行授权分别确认 |
 | 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
 | 运行环境 | ENV-ACTIVATION | 待处理：正式解释器与 checkout 绑定 | 刷新后核定环境来源、路径和激活动作；部署工程能力已验 |
@@ -32,17 +32,18 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 ### REMOTE-STATE-REFRESH — 训练机现状只读刷新
 
-- **状态/来源**：待处理（下一轮）；用户明确本轮只整理文档，训练机现状刷新后置。
-- **事实与差距**：最近远端集成与资产事实来自 2026-09-14，不能视为 2026-10-12 的现场状态。
-- **依赖/下一动作**：按[项目现状](project-status.md)中的双机位置和[模型流程](model-workflow.md)中的运行边界先列明只读命令及路径，核对两端分支/HEAD/修改/独有提交、正式 store、媒体引用、模型资产与环境来源；不自动同步或修改现场。
-- **验收标准**：记录机器、代码版本、检查范围、退出结果及缺口，更新受影响条目；存在性不替代模型加载、内容隔离或恢复证明。
-- **证据/限制**：[集成记录](results/version-control-migration/verification.md)第67节、[模型门禁基线](results/model-gate-baseline-20260914.md)。本轮未连接；训练/推理/评测及高风险操作不由本任务隐含授权。
+- **状态/来源**：已解决（2026-10-13，Codex）；用户授权只读现状核查，禁止远程写入、同步代码、训练与评测。
+- **结果**：训练机 main 与实时 Codeup main 均为 `3f200461` 且训练机/子模块干净；Mac 起始 `59dee2d1` 比该基线领先 5 提交。Conda agent/cpm45 为 Python3.11.15，但当前锁依赖与源码绑定仍有缺口；历史 mirror venv 绑定隔离 checkout。r2 active，1678 个去重媒体引用 stat 缺失0；旧Fold0与基座索引分片在场，concise/visual限定路径及正式 store 的模型记录有缺口。
+- **后续/依赖**：ENV-ACTIVATION、MODEL-DIAG、MODEL-ARCHIVE 与 RECOVERY-VALIDATION 保持原状态；正式 Registry 配置根与模型来源随环境/诊断准备核定，不据指定目录缺失推断全盘无记录。
+- **验收/证据**：[现场报告](results/remote-state-refresh-20261013.md)、[返回快照](results/remote-state-refresh-20261013.json)记录机器、起始版本、命令、退出结果、覆盖范围与限制；独立reviewer已核查返回快照、锁项与正文链接；普通git status潜在索引刷新偏差已披露，无其他可执行问题。报告及台账提交由 `git log -- docs/results/remote-state-refresh-20261013.md` 追溯。
+- **限制**：模型盘点一次普通git status可能刷新.git/index，未采集前后元数据，不能证明或排除；这不影响工作区内容干净的结论。没有加载模型、导入torch、执行doctor、读取测试语义、哈希大型产物或全面验证媒体链接/解码；不存在性结论限指定路径。只读刷新完成不代表正式Conda合格、真实质量/test/服务或恢复通过。
 
 ### ENV-ACTIVATION — 正式解释器与最终 checkout 绑定
 
 - **状态/来源**：待处理；由 VERSION-CONTROL-FORMAL-MIGRATION / ENV-DEPLOY 保留的正式运行缺口拆出。
 - **事实与差距**：2026-09-14 双平台新隔离环境部署及 doctor 已通过，旧 agent/cpm45 未修补，新环境未正式激活；editable 来源不能指向后续删除的临时 checkout。
-- **依赖/下一动作**：REMOTE-STATE-REFRESH 后明确最终环境、代码来源与激活动作，再按适用授权处理；不重新打开已解决的部署功能任务。
+- **现场增量（2026-10-13）**：agent/cpm45 均 Python3.11.15，但比当前 GPU 锁分别缺85/143项、版本差2/20项；cpm45 editable指向旧项目。历史mirror venv仍绑定隔离checkout，不是已验收正式Conda。见[只读核查](results/remote-state-refresh-20261013.md)。
+- **依赖/下一动作**：只读刷新已完成；明确最终Conda环境、代码来源与激活动作，再按适用授权处理；不重新打开已解决的部署功能任务。
 - **验收标准**：正式运行 Python 与锁定 profile、依赖、子模块及最终 checkout 一致，doctor 和适用轻量入口核验有证据；不以此声称真实训练通过。
 - **证据/限制**：[验证记录](results/version-control-migration/verification.md)第62–63、67节；本轮无环境操作。
 
@@ -50,7 +51,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：待处理；迁移 Spec 保留的物理恢复限制，工程交付后继续单独验收。
 - **事实与差距**：store 级异根恢复、SQLite/artifact 小对象联合恢复已通过；真实移动硬盘、大型 adapter/merged、SQLite、外部媒体与基座的整机组合恢复未完整验收，新 store 不自包含。
-- **依赖/下一动作**：REMOTE-STATE-REFRESH 后核定备份、源/目标、设备容量及受保护引用，准备明确恢复任务单及适用操作授权；不删除唯一源。
+- **依赖/下一动作**：只读刷新已完成；继续核定备份、源/目标、设备容量及受保护引用，准备明确恢复任务单及适用操作授权；不删除唯一源。
 - **验收标准**：恢复对象和外部依赖范围明确，摘要一致；原路径不可用时，恢复副本可解析并支持约定读取/准入；原备份和不可变事实保持。GPU 加载/模型效果另按授权验收。
 - **证据/限制**：[验证记录](results/version-control-migration/verification.md)第33、39、41、66–67节；已有 CPU/store 证据不能外推为灾难恢复通过，本轮不执行恢复。
 
@@ -59,6 +60,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：进行中（主 Agent）；用户要求验证能否保留历次训练参数和结果后清除训练机 run 下模型文件。用户已授权在完整迁移核验通过后清理旧数据与旧模型副本；未满足条件的文件继续保留。
 - **已证实事实与差距**：2026-08-31 训练机 `workspace/runs` 约 90.253 GiB；原清单漏列两组 source-aware，concise-cv 约定路径不存在；r1 来源仍有 5 个 checkpoint，merged 为发布库软链接。5 组未发布模型 merged 权重合计约 80.988 GiB，各 root LoRA 约 439.1 MiB。原清单不足以放行删除；当时快照未哈希权重，未归档原始预测和完整训练日志。
+- **现场增量（2026-10-13）**：旧Fold0及5个phase run的索引分片在场；coverage-first seed3407 merged仍共享发布库。concise/visual只在限定位置检查，未全面搜索或哈希权重、核验备份，清理条件仍未满足。见[现场报告](results/remote-state-refresh-20261013.md)。
 - **依赖**：MODEL-DIAG 对历史/当前模型和阶段 checkpoint 的需求；当前发布模型及 `pipeline/checkpoint_policy.json` 保护边界。权重清理不隐含取消诊断任务。
 - **下一动作**：按[归档模型清单第 8 节](results/model-inventory.md#8-2026-08-31-清理可行性核查)归档实际配置、模型/数据/Prompt/评测身份、完整日志和原始预测、文件哈希及备份校验；仅按已知身份和准确备份线索核查，不持续搜索缺失三折模型。逐 run 确定仅留研究记录还是保留 adapter 以便重新合并，形成显式候选清单并核对既有条件删除授权。保留 adapter 的方案先验证准确基座与合并链路，不以直挂 4-bit 代替 merged BF16。
 - **验收标准**：每模型每 fold 有可核查的原始配置和结果链、缺失证据明确、归档已备份并校验；2026-09-13 新增 visual 三 fold merged 断链与concise缺失归入同一保护依赖（验证第48节）；清理路径不跟随链接误入发布库，不删除在用模型和未完成诊断所需文件；训练机按获准清单执行并记录删除前后体量、保留文件完整性及对应机器提交。完成可行性审查不等于归档或删除完成。
@@ -119,7 +121,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、HOLDOUT-BUILD的数据构建/审查/冻结及预注册准备就绪（模型绑定claim在候选产生并获测试使用授权后建立）并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
 - **入口与产物**：独立full能力已由fed9bcfc实现且双机隔离CPU验收；正式入口为`versioning train prepare --scope full`，消费同一开发release全集、每候选一次及显式full配置，继而validate/run/export产生一个full/adapter，登记时`--source-scope full`。详见[新入口说明](../versioning/SCRIPTS.md#独立全量训练)。不再安排重做full代码；真实运行仍等待上列模型、holdout及训练授权前置。
 - **验收标准**：全部合格开发数据按冻结方案纳入，未混入测试来源；真实训练/合并完成，模型与数据/配置/代码/哈希可追溯，保存最终候选及轻量 manifest。完成本项不自动获得 production approval。
-- **证据/限制**：[开发 release 摘要](results/v4_1_phase2_development_release/release_summary.json)、[当前模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[模型流程](model-workflow.md)；截至既有记录无全量最终模型证据；本轮未刷新训练机。
+- **证据/限制**：[开发 release 摘要](results/v4_1_phase2_development_release/release_summary.json)、[当前模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[模型流程](model-workflow.md)；截至既有记录无全量最终模型证据；2026-10-13只读刷新了限定文件位置，未执行全量训练或模型质量验收。
 
 ### MODEL-QUALITY — 最终模型质量验收与晋级
 
@@ -306,3 +308,5 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-09-13（必要决定与调查）**：test 七阶段和七门接通不改变 TEST-POLICY；21 个既定 test source 已找到，但使用资格均证据不足，其中20个存在与暴露 release 关联的媒体凭据，见验证第49–53节。缺失三折权重的已知位置调查收束，不持续搜索、不以其他单折模型替代，见第54–55节。条件清理授权持续有效，89 个 train 视频仅验签，删除为0，见第56–58节。工程范围取消真实训练默认前置、正式输入预检与环境调查见第59–62节。
 
 更早的施工、失败、修复与测试日志见[迁移验证记录](results/version-control-migration/verification.md)，原维护顺序可查 `git log -- docs/project-todo.md`。历史结果均按原机器、代码版本和覆盖范围读取，本轮不宣称复跑。
+
+- **2026-10-13（Codex，只读刷新）**：REMOTE-STATE-REFRESH 完成限定现场查询；两端起始版本、环境来源、数据引用与模型资产已落报告。未执行业务写入、同步或真实模型运行；普通git status潜在索引刷新偏差明确留证。ENV-ACTIVATION 和模型/test/恢复缺口保持。

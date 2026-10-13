@@ -1,0 +1,3655 @@
+{
+  "date": "2026-10-13",
+  "local_initial_branch": "docs/consolidate-project-status",
+  "local_initial_head": "59dee2d1b31d76c4a26365b8875c5369e48eba8e",
+  "local_initial_status": "clean",
+  "local_main": "3f200461026a59676aaac7ea864f8fadb599688d",
+  "codeup_main_ls_remote": "3f200461026a59676aaac7ea864f8fadb599688d",
+  "local_main_vs_initial_head": [
+    0,
+    5
+  ],
+  "queries": {
+    "remote_audit.json": {
+      "remote_hostname": {
+        "exit": 0,
+        "stdout": "dell-Precision-3660",
+        "stderr": ""
+      },
+      "project": "/home/liuyang/文档/mVllm_2",
+      "git": {
+        "branch": {
+          "exit": 0,
+          "stdout": "main",
+          "stderr": ""
+        },
+        "head": {
+          "exit": 0,
+          "stdout": "3f200461026a59676aaac7ea864f8fadb599688d",
+          "stderr": ""
+        },
+        "status": {
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "remote_names": {
+          "exit": 0,
+          "stdout": "origin",
+          "stderr": ""
+        },
+        "recent_log": {
+          "exit": 0,
+          "stdout": "3f20046\t2026-09-14T01:41:49+08:00\tdocs: record main integration and preserve model acceptance boundaries\n5acebc2\t2026-09-14T01:37:31+08:00\tdocs: establish current model baseline for future quality gates\nb0cc765\t2026-09-14T01:32:35+08:00\tdocs: record authorized model baseline and ordered main integration\n4b560d5\t2026-09-14T01:29:12+08:00\tdocs: verify final integration candidate and resolve stale closure gates\n9077690\t2026-09-14T01:21:11+08:00\tdocs: close per-fold engineering delivery with scoped verification evidence",
+          "stderr": ""
+        },
+        "tracking_refs_no_fetch": {
+          "exit": 0,
+          "stdout": "bundle/delivery-c6dd47a2\tc6dd47a2b8ca7e579e17956dfdc4a01790a311e9\t2026-07-27T20:55:47+08:00\nbundle/policy-71405d9c\t71405d9ca6f2714b6a12144662cc017d8ff7a1c2\t2026-07-27T21:21:30+08:00\nlocal-sync/main\t2bca288adaf969cbba83e827a44133c4c0659c2c\t2026-07-22T10:45:04+08:00\nlocal-sync/v3-media-080d9a9\t080d9a955fd70bd8534a756fdb2eb32763db90a0\t2026-07-22T19:41:10+08:00\nlocal-sync/v3-media-50a2eb9\t50a2eb9617fef44477ab326fdbf6576a1bd9ff45\t2026-07-22T19:59:50+08:00\nlocal-sync/v3-media-83e1d11\t83e1d116d1f625d56af14027a1f57c8c14a73d7b\t2026-07-22T19:24:33+08:00\nlocal-sync/v3-media-8a1388e\t8a1388e7b600c31bcadedb98880febc560a47de8\t2026-07-22T20:32:57+08:00\nlocal-sync/v3-media-acf7398\tacf73980cd0a2de03a9d5a47a40ae0be89fe46d9\t2026-07-22T19:19:31+08:00\nlocal-sync/v3-media-ef10d48\tef10d48d9d0c5f14ff315177fd857e99dd530c4c\t2026-07-22T20:04:55+08:00\nlocal/cancel-full\tc87d5828bc74109fcbc8ef0af25a214bafbd6049\t2026-07-29T09:27:17+08:00\nlocal/full-development\t4a56ff7010ced45411993eeec52032da2032a558\t2026-07-29T08:55:05+08:00\norigin/diagnostics/data-visual-audit\tbcdf4f36288861bd9b986535e0699f4deafe981e\t2026-07-19T10:42:24+08:00\norigin/main\t3f200461026a59676aaac7ea864f8fadb599688d\t2026-09-14T01:41:49+08:00",
+          "stderr": ""
+        },
+        "submodules_at_head": [
+          {
+            "path": "LlamaFactory",
+            "tree_commit": "4447137e08c172d7701594b4d1695a6d4a869cbd",
+            "head": {
+              "exit": 0,
+              "stdout": "4447137e08c172d7701594b4d1695a6d4a869cbd",
+              "stderr": ""
+            },
+            "status": {
+              "exit": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          }
+        ],
+        "ls_tree_exit": 0
+      },
+      "conda_env_roots": [
+        {
+          "path": "/home/liuyang/miniconda3/envs",
+          "exists": true
+        },
+        {
+          "path": "/home/liuyang/anaconda3/envs",
+          "exists": false
+        }
+      ],
+      "envs": [
+        {
+          "name": "agent",
+          "path": "/home/liuyang/miniconda3/envs/agent",
+          "python_path": "/home/liuyang/miniconda3/envs/agent/bin/python",
+          "python_exists": true,
+          "probe_exit": 0,
+          "probe": {
+            "sys_version": "3.11.15 | packaged by conda-forge | (main, Jun 11 2026, 03:34:02) [GCC 14.3.0]",
+            "sys_executable": "/home/liuyang/miniconda3/envs/agent/bin/python",
+            "sys_prefix": "/home/liuyang/miniconda3/envs/agent",
+            "lock_pin_count": 241,
+            "missing_lock_packages": [
+              "aiohttp-retry",
+              "alembic",
+              "amqp",
+              "appdirs",
+              "asyncssh",
+              "atpublic",
+              "billiard",
+              "celery",
+              "click-didyoumean",
+              "click-plugins",
+              "click-repl",
+              "cloudpickle",
+              "colorama",
+              "configobj",
+              "cryptography",
+              "databricks-sdk",
+              "dictdiffer",
+              "diskcache",
+              "docker",
+              "dpath",
+              "dulwich",
+              "dvc",
+              "dvc-data",
+              "dvc-http",
+              "dvc-objects",
+              "dvc-render",
+              "dvc-studio-client",
+              "dvc-task",
+              "entrypoints",
+              "flask",
+              "flask-cors",
+              "flatten-dict",
+              "flufl-lock",
+              "funcy",
+              "google-auth",
+              "grandalf",
+              "graphene",
+              "graphql-core",
+              "graphql-relay",
+              "greenlet",
+              "gto",
+              "gunicorn",
+              "huey",
+              "hydra-core",
+              "importlib-metadata",
+              "iterative-telemetry",
+              "joblib",
+              "kombu",
+              "mako",
+              "mlflow",
+              "mlflow-skinny",
+              "mlflow-tracing",
+              "opentelemetry-api",
+              "opentelemetry-proto",
+              "opentelemetry-sdk",
+              "opentelemetry-semantic-conventions",
+              "pathspec",
+              "prettytable",
+              "prompt-toolkit",
+              "pyasn1",
+              "pyasn1-modules",
+              "pydantic-settings",
+              "pydot",
+              "pygit2",
+              "pygtrie",
+              "python-dotenv",
+              "ruamel-yaml",
+              "scikit-learn",
+              "scmrepo",
+              "semver",
+              "shortuuid",
+              "skops",
+              "sqlalchemy",
+              "sqlparse",
+              "sqltrie",
+              "streamlit-cropper",
+              "tabulate",
+              "threadpoolctl",
+              "tzlocal",
+              "vine",
+              "voluptuous",
+              "wcwidth",
+              "werkzeug",
+              "zc-lockfile",
+              "zipp"
+            ],
+            "version_mismatches": [
+              [
+                "packaging",
+                "26.3",
+                "26.2"
+              ],
+              [
+                "setuptools",
+                "84.0.0",
+                "82.0.1"
+              ]
+            ],
+            "key_packages": [
+              [
+                "accelerate",
+                "1.11.0"
+              ],
+              [
+                "llamafactory",
+                "0.9.6.dev0"
+              ],
+              [
+                "peft",
+                "0.18.1"
+              ],
+              [
+                "torch",
+                "2.5.1"
+              ],
+              [
+                "transformers",
+                "4.56.1"
+              ],
+              [
+                "trl",
+                "0.24.0"
+              ]
+            ],
+            "llamafactory_distribution_sources": [
+              {
+                "version": "0.9.6.dev0",
+                "direct_url_json": "{\"dir_info\": {\"editable\": true}, \"url\": \"file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm_2/LlamaFactory\"}"
+              }
+            ],
+            "related_pth_or_egg_links": [
+              {
+                "file": "/home/liuyang/miniconda3/envs/agent/lib/python3.1/site-packages/_editable_impl_llamafactory.pth",
+                "content": "/home/liuyang/文档/mVllm_2/LlamaFactory/src"
+              },
+              {
+                "file": "/home/liuyang/miniconda3/envs/agent/lib/python3.11/site-packages/_editable_impl_llamafactory.pth",
+                "content": "/home/liuyang/文档/mVllm_2/LlamaFactory/src"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cpm45",
+          "path": "/home/liuyang/miniconda3/envs/cpm45",
+          "python_path": "/home/liuyang/miniconda3/envs/cpm45/bin/python",
+          "python_exists": true,
+          "probe_exit": 0,
+          "probe": {
+            "sys_version": "3.11.15 | packaged by conda-forge | (main, Jun 11 2026, 03:34:02) [GCC 14.3.0]",
+            "sys_executable": "/home/liuyang/miniconda3/envs/cpm45/bin/python",
+            "sys_prefix": "/home/liuyang/miniconda3/envs/cpm45",
+            "lock_pin_count": 241,
+            "missing_lock_packages": [
+              "aiofiles",
+              "aiohttp-retry",
+              "alembic",
+              "altair",
+              "amqp",
+              "appdirs",
+              "asyncssh",
+              "atpublic",
+              "billiard",
+              "blinker",
+              "brotli",
+              "cachetools",
+              "celery",
+              "cffi",
+              "click-didyoumean",
+              "click-plugins",
+              "click-repl",
+              "cloudpickle",
+              "colorama",
+              "configobj",
+              "cryptography",
+              "databricks-sdk",
+              "dictdiffer",
+              "diskcache",
+              "distro",
+              "docker",
+              "docstring-parser",
+              "dpath",
+              "dulwich",
+              "dvc",
+              "dvc-data",
+              "dvc-http",
+              "dvc-objects",
+              "dvc-render",
+              "dvc-studio-client",
+              "dvc-task",
+              "einx",
+              "encodec",
+              "entrypoints",
+              "ffmpy",
+              "fire",
+              "flask",
+              "flask-cors",
+              "flatten-dict",
+              "flufl-lock",
+              "frozendict",
+              "funcy",
+              "gitdb",
+              "gitpython",
+              "google-auth",
+              "gradio",
+              "gradio-client",
+              "grandalf",
+              "graphene",
+              "graphql-core",
+              "graphql-relay",
+              "greenlet",
+              "groovy",
+              "gto",
+              "gunicorn",
+              "hf-transfer",
+              "httptools",
+              "huey",
+              "hydra-core",
+              "importlib-metadata",
+              "iterative-telemetry",
+              "itsdangerous",
+              "jiter",
+              "joblib",
+              "jsonschema",
+              "jsonschema-specifications",
+              "kombu",
+              "mako",
+              "mlflow",
+              "mlflow-skinny",
+              "mlflow-tracing",
+              "modelscope",
+              "narwhals",
+              "openai",
+              "opentelemetry-api",
+              "opentelemetry-proto",
+              "opentelemetry-sdk",
+              "opentelemetry-semantic-conventions",
+              "orjson",
+              "pathspec",
+              "platformdirs",
+              "prettytable",
+              "prompt-toolkit",
+              "pyasn1",
+              "pyasn1-modules",
+              "pycparser",
+              "pydantic-settings",
+              "pydeck",
+              "pydot",
+              "pydub",
+              "pygit2",
+              "pygtrie",
+              "python-dotenv",
+              "python-multipart",
+              "pytz",
+              "referencing",
+              "rpds-py",
+              "ruamel-yaml",
+              "ruff",
+              "safehttpx",
+              "scikit-learn",
+              "scmrepo",
+              "semantic-version",
+              "semver",
+              "sentry-sdk",
+              "shortuuid",
+              "shtab",
+              "skops",
+              "smmap",
+              "sniffio",
+              "soundfile",
+              "sqlalchemy",
+              "sqlparse",
+              "sqltrie",
+              "sse-starlette",
+              "streamlit",
+              "streamlit-cropper",
+              "tabulate",
+              "tenacity",
+              "termcolor",
+              "threadpoolctl",
+              "toml",
+              "tomlkit",
+              "torchdata",
+              "tyro",
+              "tzdata",
+              "tzlocal",
+              "vector-quantize-pytorch",
+              "vine",
+              "vocos",
+              "voluptuous",
+              "wandb",
+              "watchdog",
+              "wcwidth",
+              "websockets",
+              "werkzeug",
+              "zc-lockfile",
+              "zipp"
+            ],
+            "version_mismatches": [
+              [
+                "accelerate",
+                "1.11.0",
+                "1.14.0"
+              ],
+              [
+                "anyio",
+                "4.14.1",
+                "4.14.0"
+              ],
+              [
+                "av",
+                "16.0.0",
+                "17.1.0"
+              ],
+              [
+                "click",
+                "8.4.2",
+                "8.4.1"
+              ],
+              [
+                "datasets",
+                "4.0.0",
+                "5.0.0"
+              ],
+              [
+                "dill",
+                "0.3.8",
+                "0.4.1"
+              ],
+              [
+                "fastapi",
+                "0.138.0",
+                "0.139.0"
+              ],
+              [
+                "fsspec",
+                "2025.3.0",
+                "2026.4.0"
+              ],
+              [
+                "multiprocess",
+                "0.70.16",
+                "0.70.19"
+              ],
+              [
+                "packaging",
+                "26.3",
+                "26.2"
+              ],
+              [
+                "pandas",
+                "2.3.3",
+                "3.0.3"
+              ],
+              [
+                "peft",
+                "0.18.1",
+                "0.19.1"
+              ],
+              [
+                "pillow",
+                "11.3.0",
+                "12.2.0"
+              ],
+              [
+                "pydantic",
+                "2.12.3",
+                "2.13.4"
+              ],
+              [
+                "pydantic-core",
+                "2.41.4",
+                "2.46.4"
+              ],
+              [
+                "setuptools",
+                "84.0.0",
+                "82.0.1"
+              ],
+              [
+                "starlette",
+                "0.52.1",
+                "1.3.1"
+              ],
+              [
+                "typer",
+                "0.26.7",
+                "0.25.1"
+              ],
+              [
+                "uvicorn",
+                "0.49.0",
+                "0.51.0"
+              ],
+              [
+                "xxhash",
+                "3.7.1",
+                "3.7.0"
+              ]
+            ],
+            "key_packages": [
+              [
+                "accelerate",
+                "1.14.0"
+              ],
+              [
+                "llamafactory",
+                "0.9.6.dev0"
+              ],
+              [
+                "peft",
+                "0.19.1"
+              ],
+              [
+                "torch",
+                "2.5.1"
+              ],
+              [
+                "transformers",
+                "4.56.1"
+              ],
+              [
+                "trl",
+                "0.24.0"
+              ]
+            ],
+            "llamafactory_distribution_sources": [
+              {
+                "version": "0.9.6.dev0",
+                "direct_url_json": "{\"dir_info\": {\"editable\": true}, \"url\": \"file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm/LlamaFactory\"}"
+              }
+            ],
+            "related_pth_or_egg_links": [
+              {
+                "file": "/home/liuyang/miniconda3/envs/cpm45/lib/python3.1/site-packages/_editable_impl_llamafactory.pth",
+                "content": "/home/liuyang/文档/mVllm/LlamaFactory/src"
+              },
+              {
+                "file": "/home/liuyang/miniconda3/envs/cpm45/lib/python3.11/site-packages/_editable_impl_llamafactory.pth",
+                "content": "/home/liuyang/文档/mVllm/LlamaFactory/src"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jepa",
+          "path": "/home/liuyang/miniconda3/envs/jepa",
+          "python_path": "/home/liuyang/miniconda3/envs/jepa/bin/python",
+          "python_exists": true,
+          "probe_exit": 0,
+          "probe": {
+            "sys_version": "3.12.13 | packaged by conda-forge | (main, Mar  5 2026, 16:50:00) [GCC 14.3.0]",
+            "sys_executable": "/home/liuyang/miniconda3/envs/jepa/bin/python",
+            "sys_prefix": "/home/liuyang/miniconda3/envs/jepa",
+            "lock_pin_count": 241,
+            "missing_lock_packages": [
+              "accelerate",
+              "aiofiles",
+              "aiohappyeyeballs",
+              "aiohttp",
+              "aiohttp-retry",
+              "aiosignal",
+              "alembic",
+              "altair",
+              "amqp",
+              "annotated-doc",
+              "annotated-types",
+              "antlr4-python3-runtime",
+              "anyio",
+              "appdirs",
+              "asyncssh",
+              "atpublic",
+              "attrs",
+              "av",
+              "billiard",
+              "bitsandbytes",
+              "blinker",
+              "brotli",
+              "cachetools",
+              "celery",
+              "certifi",
+              "cffi",
+              "charset-normalizer",
+              "click",
+              "click-didyoumean",
+              "click-plugins",
+              "click-repl",
+              "cloudpickle",
+              "colorama",
+              "configobj",
+              "contourpy",
+              "cryptography",
+              "cycler",
+              "databricks-sdk",
+              "datasets",
+              "dictdiffer",
+              "dill",
+              "diskcache",
+              "distro",
+              "docker",
+              "docstring-parser",
+              "dpath",
+              "dulwich",
+              "dvc",
+              "dvc-data",
+              "dvc-http",
+              "dvc-objects",
+              "dvc-render",
+              "dvc-studio-client",
+              "dvc-task",
+              "einops",
+              "einx",
+              "encodec",
+              "entrypoints",
+              "fastapi",
+              "ffmpy",
+              "filelock",
+              "fire",
+              "flask",
+              "flask-cors",
+              "flatten-dict",
+              "flufl-lock",
+              "fonttools",
+              "frozendict",
+              "frozenlist",
+              "fsspec",
+              "funcy",
+              "gitdb",
+              "gitpython",
+              "google-auth",
+              "gradio",
+              "gradio-client",
+              "grandalf",
+              "graphene",
+              "graphql-core",
+              "graphql-relay",
+              "greenlet",
+              "groovy",
+              "gto",
+              "gunicorn",
+              "h11",
+              "hf-transfer",
+              "hf-xet",
+              "httpcore",
+              "httptools",
+              "httpx",
+              "huey",
+              "huggingface-hub",
+              "hydra-core",
+              "idna",
+              "importlib-metadata",
+              "iterative-telemetry",
+              "itsdangerous",
+              "jinja2",
+              "jiter",
+              "joblib",
+              "jsonschema",
+              "jsonschema-specifications",
+              "kiwisolver",
+              "kombu",
+              "mako",
+              "markdown-it-py",
+              "markupsafe",
+              "matplotlib",
+              "mdurl",
+              "mlflow",
+              "mlflow-skinny",
+              "mlflow-tracing",
+              "modelscope",
+              "mpmath",
+              "msgpack",
+              "multidict",
+              "multiprocess",
+              "narwhals",
+              "networkx",
+              "ninja",
+              "numpy",
+              "nvidia-cublas-cu12",
+              "nvidia-cuda-cupti-cu12",
+              "nvidia-cuda-nvrtc-cu12",
+              "nvidia-cuda-runtime-cu12",
+              "nvidia-cudnn-cu12",
+              "nvidia-cufft-cu12",
+              "nvidia-curand-cu12",
+              "nvidia-cusolver-cu12",
+              "nvidia-cusparse-cu12",
+              "nvidia-nccl-cu12",
+              "nvidia-nvjitlink-cu12",
+              "nvidia-nvtx-cu12",
+              "omegaconf",
+              "openai",
+              "opencv-python",
+              "opentelemetry-api",
+              "opentelemetry-proto",
+              "opentelemetry-sdk",
+              "opentelemetry-semantic-conventions",
+              "orjson",
+              "pandas",
+              "pathspec",
+              "peft",
+              "pillow",
+              "platformdirs",
+              "prettytable",
+              "prompt-toolkit",
+              "propcache",
+              "protobuf",
+              "psutil",
+              "pyarrow",
+              "pyasn1",
+              "pyasn1-modules",
+              "pycparser",
+              "pydantic",
+              "pydantic-core",
+              "pydantic-settings",
+              "pydeck",
+              "pydot",
+              "pydub",
+              "pygit2",
+              "pygments",
+              "pygtrie",
+              "pyparsing",
+              "python-dateutil",
+              "python-dotenv",
+              "python-multipart",
+              "pytz",
+              "pyyaml",
+              "referencing",
+              "regex",
+              "requests",
+              "rich",
+              "rpds-py",
+              "ruamel-yaml",
+              "ruff",
+              "safehttpx",
+              "safetensors",
+              "scikit-learn",
+              "scipy",
+              "scmrepo",
+              "semantic-version",
+              "semver",
+              "sentencepiece",
+              "sentry-sdk",
+              "shellingham",
+              "shortuuid",
+              "shtab",
+              "six",
+              "skops",
+              "smmap",
+              "sniffio",
+              "soundfile",
+              "sqlalchemy",
+              "sqlparse",
+              "sqltrie",
+              "sse-starlette",
+              "starlette",
+              "streamlit",
+              "streamlit-cropper",
+              "sympy",
+              "tabulate",
+              "tenacity",
+              "termcolor",
+              "threadpoolctl",
+              "tiktoken",
+              "tokenizers",
+              "toml",
+              "tomlkit",
+              "torch",
+              "torchaudio",
+              "torchdata",
+              "torchvision",
+              "tqdm",
+              "transformers",
+              "triton",
+              "trl",
+              "typer",
+              "typing-extensions",
+              "typing-inspection",
+              "tyro",
+              "tzdata",
+              "tzlocal",
+              "urllib3",
+              "uvicorn",
+              "vector-quantize-pytorch",
+              "vine",
+              "vocos",
+              "voluptuous",
+              "wandb",
+              "watchdog",
+              "wcwidth",
+              "websockets",
+              "werkzeug",
+              "xxhash",
+              "yarl",
+              "zc-lockfile",
+              "zipp"
+            ],
+            "version_mismatches": [
+              [
+                "packaging",
+                "26.3",
+                "26.2"
+              ],
+              [
+                "setuptools",
+                "84.0.0",
+                "82.0.1"
+              ]
+            ],
+            "key_packages": [],
+            "llamafactory_distribution_sources": [],
+            "related_pth_or_egg_links": []
+          }
+        }
+      ],
+      "default_shell_python": {
+        "exit": 0,
+        "stdout": "CONDA_PREFIX=",
+        "stderr": ""
+      }
+    },
+    "historical_env_audit.json": {
+      "root": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7",
+      "git": {
+        "target_commit": "59dee2d1b31d76c4a26365b8875c5369e48eba8e",
+        "cat_file": {
+          "exit": 128,
+          "stdout": "",
+          "stderr": "fatal: Not a valid object name 59dee2d1b31d76c4a26365b8875c5369e48eba8e^{commit}"
+        }
+      },
+      "paths": [
+        {
+          "label": "deployment-gpu-mirror-20260914",
+          "kind": "named_path",
+          "path": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-gpu-mirror-20260914",
+          "stat": {
+            "exists": true,
+            "mode": "0o40775",
+            "is_dir": true,
+            "size": 4096,
+            "mtime_ns": 1789316667630778340
+          },
+          "pyvenv_cfg_stat": {
+            "exists": true,
+            "mode": "0o100664",
+            "is_dir": false,
+            "size": 145,
+            "mtime_ns": 1789316347019009538
+          },
+          "pyvenv_cfg": "home = /home/liuyang/miniconda3/envs/agent/bin\nimplementation = CPython\nuv = 0.11.21\nversion_info = 3.11.15\ninclude-system-site-packages = false\n",
+          "python_stat": {
+            "exists": true,
+            "mode": "0o100775",
+            "is_dir": false,
+            "size": 25409784,
+            "mtime_ns": 1782377264442349366
+          },
+          "python_probe_exit": 0,
+          "python_probe": {
+            "sys_version": "3.11.15 | packaged by conda-forge | (main, Jun 11 2026, 03:34:02) [GCC 14.3.0]",
+            "sys_executable": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-gpu-mirror-20260914/bin/python",
+            "sys_prefix": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-gpu-mirror-20260914",
+            "selected_distributions": {
+              "torch": "2.5.1",
+              "llamafactory": "0.9.6.dev0",
+              "transformers": "4.56.1",
+              "accelerate": "1.11.0",
+              "peft": "0.18.1",
+              "trl": "0.24.0",
+              "datasets": "4.0.0",
+              "av": "16.0.0",
+              "pandas": "2.3.3",
+              "dvc": "3.67.1",
+              "mlflow": "3.15.2",
+              "streamlit-cropper": "0.3.1"
+            },
+            "llamafactory_direct_urls": [
+              {
+                "version": "0.9.6.dev0",
+                "direct_url_json": "{\"url\":\"file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm_2-migration-7eeb93a7/deployment-check-20260914/LlamaFactory\",\"dir_info\":{\"editable\":true}}"
+              },
+              {
+                "name": "llamafactory",
+                "version": "0.9.6.dev0",
+                "direct_url_json": "{\"url\":\"file:///home/liuyang/%E6%96%87%E6%A1%A3/mVllm_2-migration-7eeb93a7/deployment-check-20260914/LlamaFactory\",\"dir_info\":{\"editable\":true}}"
+              }
+            ]
+          }
+        },
+        {
+          "label": "deployment-gpu-20260914",
+          "kind": "named_path",
+          "path": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-gpu-20260914",
+          "stat": {
+            "exists": true,
+            "mode": "0o40775",
+            "is_dir": true,
+            "size": 4096,
+            "mtime_ns": 1789315868333685236
+          },
+          "pyvenv_cfg_stat": {
+            "exists": true,
+            "mode": "0o100664",
+            "is_dir": false,
+            "size": 145,
+            "mtime_ns": 1789315868309685485
+          },
+          "pyvenv_cfg": "home = /home/liuyang/miniconda3/envs/agent/bin\nimplementation = CPython\nuv = 0.11.21\nversion_info = 3.11.15\ninclude-system-site-packages = false\n",
+          "python_stat": {
+            "exists": true,
+            "mode": "0o100775",
+            "is_dir": false,
+            "size": 25409784,
+            "mtime_ns": 1782377264442349366
+          },
+          "python_probe_exit": 0,
+          "python_probe": {
+            "sys_version": "3.11.15 | packaged by conda-forge | (main, Jun 11 2026, 03:34:02) [GCC 14.3.0]",
+            "sys_executable": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-gpu-20260914/bin/python",
+            "sys_prefix": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-gpu-20260914",
+            "selected_distributions": {
+              "torch": null,
+              "llamafactory": null,
+              "transformers": null,
+              "accelerate": null,
+              "peft": null,
+              "trl": null,
+              "datasets": null,
+              "av": null,
+              "pandas": null,
+              "dvc": null,
+              "mlflow": null,
+              "streamlit-cropper": null
+            },
+            "llamafactory_direct_urls": []
+          }
+        },
+        {
+          "label": "deployment-check-20260914",
+          "kind": "named_path",
+          "path": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-check-20260914",
+          "stat": {
+            "exists": true,
+            "mode": "0o40775",
+            "is_dir": true,
+            "size": 4096,
+            "mtime_ns": 1789319646142844852
+          },
+          "pyvenv_cfg_stat": {
+            "exists": false
+          },
+          "python_stat": {
+            "exists": false
+          }
+        },
+        {
+          "label": "deployment-check-20260914/.venv",
+          "kind": "checkout_venv_candidate",
+          "path": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-check-20260914/.venv",
+          "stat": {
+            "exists": false
+          }
+        }
+      ]
+    },
+    "historical_source_stat.json": [
+      {
+        "path": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-check-20260914/LlamaFactory",
+        "exists": true,
+        "is_dir": true,
+        "mode": "0o40775",
+        "mtime_ns": 1789315773078800356
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2-migration-7eeb93a7/deployment-check-20260914/LlamaFactory/src",
+        "exists": true,
+        "is_dir": true,
+        "mode": "0o40775",
+        "mtime_ns": 1789315773078800356
+      }
+    ],
+    "data-remote-check.json": {
+      "host": "dell-Precision-3660",
+      "project": "/home/liuyang/文档/mVllm_2",
+      "store": "/data/mVllm_2",
+      "yaml": {
+        "data-v4.1-r1": {
+          "version": "data-v4.1-r1",
+          "protocol": "tensile-vlm/v4.1",
+          "state": "sealed",
+          "purpose": "development",
+          "training_allowed": true,
+          "sample_count": 1275,
+          "source_batches": [
+            "review-batch-9043bbe4c286",
+            "v4-1-review-4a449c8d1193",
+            "candidate-media-8de972530561"
+          ],
+          "splits": {
+            "fold_0": {
+              "train": 850,
+              "validation": 425
+            },
+            "fold_1": {
+              "train": 830,
+              "validation": 445
+            },
+            "fold_2": {
+              "train": 929,
+              "validation": 346
+            }
+          },
+          "status": "superseded",
+          "replacement": "data-v4.1-r2"
+        },
+        "data-v4.1-r2": {
+          "version": "data-v4.1-r2",
+          "protocol": "tensile-vlm/v4.1",
+          "state": "sealed",
+          "purpose": "development",
+          "training_allowed": true,
+          "sample_count": 1678,
+          "source_batches": [
+            "review-batch-7a7222b947da",
+            "v4-1-phase2-development-dc453f01fb23",
+            "candidate-media-b442478052cd"
+          ],
+          "splits": {
+            "fold_0": {
+              "train": 1253,
+              "validation": 425
+            },
+            "fold_1": {
+              "train": 1014,
+              "validation": 664
+            },
+            "fold_2": {
+              "train": 1186,
+              "validation": 492
+            }
+          },
+          "status": "active",
+          "replacement": null
+        }
+      },
+      "receipts": {
+        "data-v4.1-r1": {
+          "status": "committed",
+          "operation_id": "data-migration-a14fdfa0d2336919b088abb7c4f4e9c18c8648c3f9b773119d97557cc27bda5c",
+          "source_legacy_id": "v4.1.0-760050fad303",
+          "target_identity": "data-v4.1-r1",
+          "target_path": "data/releases/data-v4.1-r1/release.yaml",
+          "source_manifest_sha256": "c7a5fe349137b5b5f1e37082ae69b0e5d175bf174e4a27b71061975afac3c036",
+          "target_release_digest": "ee1d50ab1433e13fcbaf79164cfa15ced09a5331d2f64ecc1afc95a850c76d7d",
+          "written_at": "2026-09-12T08:29:17.285924+00:00",
+          "target_status": null,
+          "replacement": null
+        },
+        "data-v4.1-r2": {
+          "status": "committed",
+          "operation_id": "data-migration-b1dd29737aeb84fbc440120b9bffba68316e9052313afdaa466abbf23aba6a54",
+          "source_legacy_id": "v4.1.0-ecb5aeb9657c",
+          "target_identity": "data-v4.1-r2",
+          "target_path": "data/releases/data-v4.1-r2/release.yaml",
+          "source_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+          "target_release_digest": "a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b",
+          "written_at": "2026-09-12T08:29:17.268127+00:00",
+          "target_status": null,
+          "replacement": null
+        }
+      },
+      "datasets": {
+        "data-v4.1-r1": {
+          "train/fold_0.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "train/fold_1.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "train/fold_2.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "validation/fold_0.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "validation/fold_1.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "validation/fold_2.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          }
+        },
+        "data-v4.1-r2": {
+          "train/fold_0.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "train/fold_1.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "train/fold_2.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "validation/fold_0.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "validation/fold_1.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          },
+          "validation/fold_2.json": {
+            "row_count": null,
+            "videos_first_reference_samples": [],
+            "first_video_reference_count": 0
+          }
+        }
+      },
+      "media": {},
+      "dvc": {
+        "/home/liuyang/文档/mVllm_2/.dvc/config": {
+          "present": false,
+          "remotes": [],
+          "cache_path": null
+        },
+        "/home/liuyang/文档/mVllm_2/.dvc/config.local": {
+          "present": false,
+          "remotes": [],
+          "cache_path": null
+        }
+      }
+    },
+    "data-reference-audit.json": {
+      "data-v4.1-r1": {
+        "dataset_files": {
+          "train/fold_0.json": {
+            "row_count": 850,
+            "unique_video_paths": 850,
+            "missing_unique_paths": 0
+          },
+          "train/fold_1.json": {
+            "row_count": 830,
+            "unique_video_paths": 830,
+            "missing_unique_paths": 0
+          },
+          "train/fold_2.json": {
+            "row_count": 929,
+            "unique_video_paths": 929,
+            "missing_unique_paths": 0
+          },
+          "validation/fold_0.json": {
+            "row_count": 425,
+            "unique_video_paths": 425,
+            "missing_unique_paths": 0
+          },
+          "validation/fold_1.json": {
+            "row_count": 445,
+            "unique_video_paths": 445,
+            "missing_unique_paths": 0
+          },
+          "validation/fold_2.json": {
+            "row_count": 346,
+            "unique_video_paths": 346,
+            "missing_unique_paths": 0
+          }
+        },
+        "rows_total": 3825,
+        "rows_without_videos0_string": 0,
+        "unique_paths_across_six_files": 1275,
+        "missing_unique_paths": 0,
+        "missing_path_samples": [],
+        "path_stat_samples": [
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000774-000834.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 40341
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000754-000844.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 54571
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000711-000861.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 87166
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000591-000891.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 175919
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000306-000906.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 338903
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000765-000825.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 39662
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000741-000831.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 52819
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000688-000838.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 84216
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000546-000846.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 164392
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000754-000912.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 112708
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_pre_f000710-000770.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 32183
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_pre_f000620-000770.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 78308
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_pre_f000170-000770.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 326971
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_post_f000801-000912.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 89943
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_post_f000801-000857.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 40355
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_post_f000857-000912.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 53302
+          }
+        ],
+        "media_root": "/home/liuyang/文档/mVllm_2/workspace/data"
+      },
+      "data-v4.1-r2": {
+        "dataset_files": {
+          "train/fold_0.json": {
+            "row_count": 1253,
+            "unique_video_paths": 1253,
+            "missing_unique_paths": 0
+          },
+          "train/fold_1.json": {
+            "row_count": 1014,
+            "unique_video_paths": 1014,
+            "missing_unique_paths": 0
+          },
+          "train/fold_2.json": {
+            "row_count": 1186,
+            "unique_video_paths": 1186,
+            "missing_unique_paths": 0
+          },
+          "validation/fold_0.json": {
+            "row_count": 425,
+            "unique_video_paths": 425,
+            "missing_unique_paths": 0
+          },
+          "validation/fold_1.json": {
+            "row_count": 664,
+            "unique_video_paths": 664,
+            "missing_unique_paths": 0
+          },
+          "validation/fold_2.json": {
+            "row_count": 492,
+            "unique_video_paths": 492,
+            "missing_unique_paths": 0
+          }
+        },
+        "rows_total": 5034,
+        "rows_without_videos0_string": 0,
+        "unique_paths_across_six_files": 1678,
+        "missing_unique_paths": 0,
+        "missing_path_samples": [],
+        "path_stat_samples": [
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000774-000834.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 40341
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000754-000844.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 54571
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000711-000861.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 87166
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000591-000891.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 175919
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000306-000906.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 338903
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000765-000825.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 39662
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000741-000831.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 52819
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000688-000838.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 84216
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000546-000846.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 164392
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_transition_f000754-000912.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 112708
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_pre_f000710-000770.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 32183
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_pre_f000620-000770.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 78308
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_pre_f000170-000770.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 326971
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_post_f000801-000912.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 89943
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_post_f000801-000857.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 40355
+          },
+          {
+            "dataset": "train/fold_0.json",
+            "mapped_path": "/home/liuyang/文档/mVllm_2/workspace/data/derived/subvideos/candidate-plan-ce36b9226be5/videos/video_0003_v3_post_f000857-000912.mp4",
+            "exists": true,
+            "is_symlink": false,
+            "link_target": null,
+            "size": 53302
+          }
+        ],
+        "media_root": "/home/liuyang/文档/mVllm_2/workspace/data"
+      }
+    },
+    "data-dvc-configs.json": {
+      "/home/liuyang/文档/mVllm_2": {
+        ".dvc/config": {
+          "present": false,
+          "remotes": [],
+          "cache_path": null
+        },
+        ".dvc/config.local": {
+          "present": false,
+          "remotes": [],
+          "cache_path": null
+        }
+      },
+      "/data/mVllm_2": {
+        ".dvc/config": {
+          "present": false,
+          "remotes": [],
+          "cache_path": null
+        },
+        ".dvc/config.local": {
+          "present": false,
+          "remotes": [],
+          "cache_path": null
+        }
+      }
+    },
+    "model-inventory.json": {
+      "base_model": {
+        "configs": [
+          {
+            "fields": {
+              "architectures": [
+                "MiniCPMV"
+              ],
+              "model_type": "minicpmv",
+              "slice_config.model_type": "minicpmv",
+              "version": 4.5,
+              "vision_config.model_type": "siglip"
+            },
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/config.json",
+            "size": 1461,
+            "type": "file"
+          },
+          {
+            "index": {
+              "shards": [
+                "model-00001-of-00004.safetensors",
+                "model-00002-of-00004.safetensors",
+                "model-00003-of-00004.safetensors",
+                "model-00004-of-00004.safetensors"
+              ],
+              "tensor_reference_count": 849
+            },
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model.safetensors.index.json",
+            "size": 72172,
+            "type": "file"
+          }
+        ],
+        "entries": [
+          {
+            "mode": "0o755",
+            "mtime": 1782491789,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/._____temp",
+            "size": 4096,
+            "type": "dir"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782219981,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/._model-00001-of-00004.safetensors",
+            "size": 4096,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782219982,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/._model-00002-of-00004.safetensors",
+            "size": 4096,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782219976,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/._model-00003-of-00004.safetensors",
+            "size": 4096,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782219958,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/._model-00004-of-00004.safetensors",
+            "size": 4096,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/.msc",
+            "size": 1766,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/.mv",
+            "size": 36,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/README.md",
+            "size": 25454,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/added_tokens.json",
+            "size": 2862,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/config.json",
+            "size": 1461,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/configuration.json",
+            "size": 51,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/configuration_minicpm.py",
+            "size": 3288,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/generation_config.json",
+            "size": 268,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491791,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/image_processing_minicpmv.py",
+            "size": 20757,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/merges.txt",
+            "size": 1671853,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00001-of-00004.safetensors",
+            "size": 5286612176,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491807,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00002-of-00004.safetensors",
+            "size": 5301855088,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00003-of-00004.safetensors",
+            "size": 4546851120,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491791,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00004-of-00004.safetensors",
+            "size": 2256571800,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model.safetensors.index.json",
+            "size": 72172,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491807,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/modeling_minicpmv.py",
+            "size": 18609,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/modeling_navit_siglip.py",
+            "size": 41835,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491807,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/preprocessor_config.json",
+            "size": 714,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/processing_minicpmv.py",
+            "size": 11026,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/resampler.py",
+            "size": 11732,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/special_tokens_map.json",
+            "size": 12103,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenization_minicpmv_fast.py",
+            "size": 1647,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenizer.json",
+            "size": 11437868,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491793,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenizer_config.json",
+            "size": 25786,
+            "type": "file"
+          },
+          {
+            "mode": "0o755",
+            "mtime": 1782491797,
+            "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/vocab.json",
+            "size": 2776833,
+            "type": "file"
+          }
+        ],
+        "exists": true,
+        "index_shard_check": {
+          "missing": [],
+          "present": [
+            "model-00001-of-00004.safetensors",
+            "model-00002-of-00004.safetensors",
+            "model-00003-of-00004.safetensors",
+            "model-00004-of-00004.safetensors"
+          ],
+          "referenced": [
+            "model-00001-of-00004.safetensors",
+            "model-00002-of-00004.safetensors",
+            "model-00003-of-00004.safetensors",
+            "model-00004-of-00004.safetensors"
+          ],
+          "weight_files": [
+            {
+              "mode": "0o755",
+              "mtime": 1782491793,
+              "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00001-of-00004.safetensors",
+              "size": 5286612176,
+              "type": "file"
+            },
+            {
+              "mode": "0o755",
+              "mtime": 1782491807,
+              "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00002-of-00004.safetensors",
+              "size": 5301855088,
+              "type": "file"
+            },
+            {
+              "mode": "0o755",
+              "mtime": 1782491797,
+              "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00003-of-00004.safetensors",
+              "size": 4546851120,
+              "type": "file"
+            },
+            {
+              "mode": "0o755",
+              "mtime": 1782491791,
+              "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00004-of-00004.safetensors",
+              "size": 2256571800,
+              "type": "file"
+            }
+          ]
+        },
+        "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5"
+      },
+      "base_model_alias": {
+        "link_target": "minicpmv4_5",
+        "mode": "0o777",
+        "mtime": 1782570008,
+        "path": "/home/liuyang/文档/mVllm_2/models/minicpm_v_4_5",
+        "size": 11,
+        "type": "symlink"
+      },
+      "base_model_alias_target": {
+        "mode": "0o755",
+        "mtime": 1784900919,
+        "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+        "size": 4096,
+        "type": "dir"
+      },
+      "current": {
+        "artifacts": [
+          {
+            "configs": [
+              {
+                "fields": {
+                  "base_model_name_or_path": "../models/minicpm_v_4_5",
+                  "revision": null
+                },
+                "mode": "0o664",
+                "mtime": 1785111359,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/adapter_config.json",
+                "size": 1123,
+                "type": "file"
+              }
+            ],
+            "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
+            "stat": {
+              "mode": "0o775",
+              "mtime": 1785292307,
+              "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
+              "size": 4096,
+              "type": "dir"
+            },
+            "weights": [
+              {
+                "mode": "0o600",
+                "mtime": 1785111359,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/adapter_model.safetensors",
+                "size": 460430776,
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "configs": [
+              {
+                "fields": {
+                  "architectures": [
+                    "MiniCPMV"
+                  ],
+                  "model_type": "minicpmv",
+                  "slice_config.model_type": "minicpmv",
+                  "version": 4.5,
+                  "vision_config.model_type": "siglip_vision_model"
+                },
+                "mode": "0o664",
+                "mtime": 1785111735,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/config.json",
+                "size": 2440,
+                "type": "file"
+              },
+              {
+                "index": {
+                  "shards": [
+                    "model-00001-of-00010.safetensors",
+                    "model-00002-of-00010.safetensors",
+                    "model-00003-of-00010.safetensors",
+                    "model-00004-of-00010.safetensors",
+                    "model-00005-of-00010.safetensors",
+                    "model-00006-of-00010.safetensors",
+                    "model-00007-of-00010.safetensors",
+                    "model-00008-of-00010.safetensors",
+                    "model-00009-of-00010.safetensors",
+                    "model-00010-of-00010.safetensors"
+                  ],
+                  "tensor_reference_count": 849
+                },
+                "mode": "0o664",
+                "mtime": 1785111743,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model.safetensors.index.json",
+                "size": 72209,
+                "type": "file"
+              }
+            ],
+            "index_check": {
+              "missing": [],
+              "present": [
+                "model-00001-of-00010.safetensors",
+                "model-00002-of-00010.safetensors",
+                "model-00003-of-00010.safetensors",
+                "model-00004-of-00010.safetensors",
+                "model-00005-of-00010.safetensors",
+                "model-00006-of-00010.safetensors",
+                "model-00007-of-00010.safetensors",
+                "model-00008-of-00010.safetensors",
+                "model-00009-of-00010.safetensors",
+                "model-00010-of-00010.safetensors"
+              ],
+              "referenced": [
+                "model-00001-of-00010.safetensors",
+                "model-00002-of-00010.safetensors",
+                "model-00003-of-00010.safetensors",
+                "model-00004-of-00010.safetensors",
+                "model-00005-of-00010.safetensors",
+                "model-00006-of-00010.safetensors",
+                "model-00007-of-00010.safetensors",
+                "model-00008-of-00010.safetensors",
+                "model-00009-of-00010.safetensors",
+                "model-00010-of-00010.safetensors"
+              ]
+            },
+            "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+            "stat": {
+              "mode": "0o775",
+              "mtime": 1785111744,
+              "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+              "size": 4096,
+              "type": "dir"
+            },
+            "weights": [
+              {
+                "mode": "0o600",
+                "mtime": 1785111735,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00001-of-00010.safetensors",
+                "size": 1914228064,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111736,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00002-of-00010.safetensors",
+                "size": 1929470832,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111736,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00003-of-00010.safetensors",
+                "size": 1929470856,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111737,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00004-of-00010.safetensors",
+                "size": 1929470888,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111737,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00005-of-00010.safetensors",
+                "size": 1929470888,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111738,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00006-of-00010.safetensors",
+                "size": 1929470888,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111738,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00007-of-00010.safetensors",
+                "size": 1929470888,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111739,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00008-of-00010.safetensors",
+                "size": 1644265032,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111742,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00009-of-00010.safetensors",
+                "size": 1997939416,
+                "type": "file"
+              },
+              {
+                "mode": "0o600",
+                "mtime": 1785111743,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00010-of-00010.safetensors",
+                "size": 258632328,
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "configs": [],
+            "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/checkpoint",
+            "stat": {
+              "error": "FileNotFoundError: [Errno 2] No such file or directory: '/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/checkpoint'",
+              "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/checkpoint"
+            },
+            "weights": []
+          }
+        ],
+        "link_target": "releases/v4.1-agent-pipeline-fold0-r1",
+        "mode": "0o777",
+        "mtime": 1785292317,
+        "path": "/home/liuyang/文档/mVllm_2/workspace/models/current",
+        "resolved_target": {
+          "mode": "0o775",
+          "mtime": 1785292316,
+          "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1",
+          "size": 4096,
+          "type": "dir"
+        },
+        "size": 37,
+        "type": "symlink"
+      },
+      "git_head": {
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "3f200461026a59676aaac7ea864f8fadb599688d"
+      },
+      "git_status": {
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "## main...origin/main"
+      },
+      "gpu": {
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "NVIDIA GeForce RTX 4090, 580.159.03, 24564 MiB, 663 MiB, 23410 MiB"
+      },
+      "gpu_processes": {
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "16894, /usr/libexec/gnome-remote-desktop-daemon, 392 MiB"
+      },
+      "port8002": {
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess"
+      },
+      "releases": [
+        {
+          "contents": [
+            {
+              "artifact": {
+                "configs": [
+                  {
+                    "fields": {
+                      "base_model_name_or_path": "../models/minicpm_v_4_5",
+                      "revision": null
+                    },
+                    "mode": "0o664",
+                    "mtime": 1785111359,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/adapter_config.json",
+                    "size": 1123,
+                    "type": "file"
+                  }
+                ],
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
+                "stat": {
+                  "mode": "0o775",
+                  "mtime": 1785292307,
+                  "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
+                  "size": 4096,
+                  "type": "dir"
+                },
+                "weights": [
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111359,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter/adapter_model.safetensors",
+                    "size": 460430776,
+                    "type": "file"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": {
+                "configs": [
+                  {
+                    "fields": {
+                      "architectures": [
+                        "MiniCPMV"
+                      ],
+                      "model_type": "minicpmv",
+                      "slice_config.model_type": "minicpmv",
+                      "version": 4.5,
+                      "vision_config.model_type": "siglip_vision_model"
+                    },
+                    "mode": "0o664",
+                    "mtime": 1785111735,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/config.json",
+                    "size": 2440,
+                    "type": "file"
+                  },
+                  {
+                    "index": {
+                      "shards": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ],
+                      "tensor_reference_count": 849
+                    },
+                    "mode": "0o664",
+                    "mtime": 1785111743,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model.safetensors.index.json",
+                    "size": 72209,
+                    "type": "file"
+                  }
+                ],
+                "index_check": {
+                  "missing": [],
+                  "present": [
+                    "model-00001-of-00010.safetensors",
+                    "model-00002-of-00010.safetensors",
+                    "model-00003-of-00010.safetensors",
+                    "model-00004-of-00010.safetensors",
+                    "model-00005-of-00010.safetensors",
+                    "model-00006-of-00010.safetensors",
+                    "model-00007-of-00010.safetensors",
+                    "model-00008-of-00010.safetensors",
+                    "model-00009-of-00010.safetensors",
+                    "model-00010-of-00010.safetensors"
+                  ],
+                  "referenced": [
+                    "model-00001-of-00010.safetensors",
+                    "model-00002-of-00010.safetensors",
+                    "model-00003-of-00010.safetensors",
+                    "model-00004-of-00010.safetensors",
+                    "model-00005-of-00010.safetensors",
+                    "model-00006-of-00010.safetensors",
+                    "model-00007-of-00010.safetensors",
+                    "model-00008-of-00010.safetensors",
+                    "model-00009-of-00010.safetensors",
+                    "model-00010-of-00010.safetensors"
+                  ]
+                },
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+                "stat": {
+                  "mode": "0o775",
+                  "mtime": 1785111744,
+                  "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+                  "size": 4096,
+                  "type": "dir"
+                },
+                "weights": [
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111735,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00001-of-00010.safetensors",
+                    "size": 1914228064,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111736,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00002-of-00010.safetensors",
+                    "size": 1929470832,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111736,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00003-of-00010.safetensors",
+                    "size": 1929470856,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111737,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00004-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111737,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00005-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111738,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00006-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111738,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00007-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111739,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00008-of-00010.safetensors",
+                    "size": 1644265032,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111742,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00009-of-00010.safetensors",
+                    "size": 1997939416,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785111743,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged/model-00010-of-00010.safetensors",
+                    "size": 258632328,
+                    "type": "file"
+                  }
+                ]
+              }
+            },
+            {
+              "config": {
+                "bytes_hashed": 2151,
+                "fields": {
+                  "contract.version": "tensile-vlm/v4.1",
+                  "model_name": "v4.1-agent-pipeline-fold0-r1",
+                  "origin.experiment_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+                  "origin.fold": 0,
+                  "origin.release_id": "v4.1.0-ecb5aeb9657c"
+                },
+                "mode": "0o664",
+                "mtime": 1785292158,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/release-manifest.json",
+                "sha256": "3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008",
+                "size": 2151,
+                "type": "file"
+              }
+            }
+          ],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785292316,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1",
+            "size": 4096,
+            "type": "dir"
+          },
+          "root_configs": [
+            {
+              "bytes_hashed": 2151,
+              "fields": {
+                "contract.version": "tensile-vlm/v4.1",
+                "model_name": "v4.1-agent-pipeline-fold0-r1",
+                "origin.experiment_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+                "origin.fold": 0,
+                "origin.release_id": "v4.1.0-ecb5aeb9657c"
+              },
+              "mode": "0o664",
+              "mtime": 1785292158,
+              "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/release-manifest.json",
+              "sha256": "3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008",
+              "size": 2151,
+              "type": "file"
+            }
+          ]
+        }
+      ],
+      "remote": {
+        "project": "/home/liuyang/文档/mVllm_2",
+        "store": "/data/mVllm_2"
+      },
+      "runs": [
+        {
+          "contents": [],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785292317,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": [
+            {
+              "contents": [
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "base_model_name_or_path": "../models/minicpm_v_4_5",
+                          "revision": null
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785202978,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_config.json",
+                        "size": 1123,
+                        "type": "file"
+                      }
+                    ],
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785293842,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785202978,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/adapter/adapter_model.safetensors",
+                        "size": 460430776,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "architectures": [
+                            "MiniCPMV"
+                          ],
+                          "model_type": "minicpmv",
+                          "slice_config.model_type": "minicpmv",
+                          "version": 4.5,
+                          "vision_config.model_type": "siglip_vision_model"
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785203461,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/config.json",
+                        "size": 2440,
+                        "type": "file"
+                      },
+                      {
+                        "index": {
+                          "shards": [
+                            "model-00001-of-00010.safetensors",
+                            "model-00002-of-00010.safetensors",
+                            "model-00003-of-00010.safetensors",
+                            "model-00004-of-00010.safetensors",
+                            "model-00005-of-00010.safetensors",
+                            "model-00006-of-00010.safetensors",
+                            "model-00007-of-00010.safetensors",
+                            "model-00008-of-00010.safetensors",
+                            "model-00009-of-00010.safetensors",
+                            "model-00010-of-00010.safetensors"
+                          ],
+                          "tensor_reference_count": 849
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785203471,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model.safetensors.index.json",
+                        "size": 72209,
+                        "type": "file"
+                      }
+                    ],
+                    "index_check": {
+                      "missing": [],
+                      "present": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ],
+                      "referenced": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ]
+                    },
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785203472,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203462,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00001-of-00010.safetensors",
+                        "size": 1914228064,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203463,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00002-of-00010.safetensors",
+                        "size": 1929470832,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203463,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00003-of-00010.safetensors",
+                        "size": 1929470856,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203464,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00004-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203464,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00005-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203465,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00006-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203465,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00007-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203466,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00008-of-00010.safetensors",
+                        "size": 1644265032,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203470,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00009-of-00010.safetensors",
+                        "size": 1997939416,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785203471,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0/merged/model-00010-of-00010.safetensors",
+                        "size": 258632328,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "entry": {
+                "mode": "0o775",
+                "mtime": 1785292317,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-fallback-v1-seed3413/fold0",
+                "size": 4096,
+                "type": "dir"
+              }
+            }
+          ]
+        },
+        {
+          "contents": [],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785292316,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": [
+            {
+              "contents": [
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "base_model_name_or_path": "../models/minicpm_v_4_5",
+                          "revision": null
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785111359,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_config.json",
+                        "size": 1123,
+                        "type": "file"
+                      }
+                    ],
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785111563,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111359,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/adapter_model.safetensors",
+                        "size": 460430776,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "architectures": [
+                            "MiniCPMV"
+                          ],
+                          "model_type": "minicpmv",
+                          "slice_config.model_type": "minicpmv",
+                          "version": 4.5,
+                          "vision_config.model_type": "siglip_vision_model"
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785111735,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/config.json",
+                        "size": 2440,
+                        "type": "file"
+                      },
+                      {
+                        "index": {
+                          "shards": [
+                            "model-00001-of-00010.safetensors",
+                            "model-00002-of-00010.safetensors",
+                            "model-00003-of-00010.safetensors",
+                            "model-00004-of-00010.safetensors",
+                            "model-00005-of-00010.safetensors",
+                            "model-00006-of-00010.safetensors",
+                            "model-00007-of-00010.safetensors",
+                            "model-00008-of-00010.safetensors",
+                            "model-00009-of-00010.safetensors",
+                            "model-00010-of-00010.safetensors"
+                          ],
+                          "tensor_reference_count": 849
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785111743,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model.safetensors.index.json",
+                        "size": 72209,
+                        "type": "file"
+                      }
+                    ],
+                    "index_check": {
+                      "missing": [],
+                      "present": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ],
+                      "referenced": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ]
+                    },
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged",
+                    "stat": {
+                      "link_target": "../../../models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+                      "mode": "0o777",
+                      "mtime": 1785292316,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged",
+                      "size": 60,
+                      "type": "symlink"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111735,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00001-of-00010.safetensors",
+                        "size": 1914228064,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111736,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00002-of-00010.safetensors",
+                        "size": 1929470832,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111736,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00003-of-00010.safetensors",
+                        "size": 1929470856,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111737,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00004-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111737,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00005-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111738,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00006-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111738,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00007-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111739,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00008-of-00010.safetensors",
+                        "size": 1644265032,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111742,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00009-of-00010.safetensors",
+                        "size": 1997939416,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785111743,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged/model-00010-of-00010.safetensors",
+                        "size": 258632328,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "entry": {
+                "mode": "0o775",
+                "mtime": 1785292317,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0",
+                "size": 4096,
+                "type": "dir"
+              }
+            }
+          ]
+        },
+        {
+          "contents": [],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785292317,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": [
+            {
+              "contents": [
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "base_model_name_or_path": "../models/minicpm_v_4_5",
+                          "revision": null
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785183353,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_config.json",
+                        "size": 1123,
+                        "type": "file"
+                      }
+                    ],
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785293842,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183353,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/adapter/adapter_model.safetensors",
+                        "size": 460430776,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "architectures": [
+                            "MiniCPMV"
+                          ],
+                          "model_type": "minicpmv",
+                          "slice_config.model_type": "minicpmv",
+                          "version": 4.5,
+                          "vision_config.model_type": "siglip_vision_model"
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785183672,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/config.json",
+                        "size": 2440,
+                        "type": "file"
+                      },
+                      {
+                        "index": {
+                          "shards": [
+                            "model-00001-of-00010.safetensors",
+                            "model-00002-of-00010.safetensors",
+                            "model-00003-of-00010.safetensors",
+                            "model-00004-of-00010.safetensors",
+                            "model-00005-of-00010.safetensors",
+                            "model-00006-of-00010.safetensors",
+                            "model-00007-of-00010.safetensors",
+                            "model-00008-of-00010.safetensors",
+                            "model-00009-of-00010.safetensors",
+                            "model-00010-of-00010.safetensors"
+                          ],
+                          "tensor_reference_count": 849
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785183681,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model.safetensors.index.json",
+                        "size": 72209,
+                        "type": "file"
+                      }
+                    ],
+                    "index_check": {
+                      "missing": [],
+                      "present": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ],
+                      "referenced": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ]
+                    },
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785183682,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183673,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00001-of-00010.safetensors",
+                        "size": 1914228064,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183673,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00002-of-00010.safetensors",
+                        "size": 1929470832,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183674,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00003-of-00010.safetensors",
+                        "size": 1929470856,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183674,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00004-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183675,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00005-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183675,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00006-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183676,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00007-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183677,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00008-of-00010.safetensors",
+                        "size": 1644265032,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183680,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00009-of-00010.safetensors",
+                        "size": 1997939416,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785183681,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0/merged/model-00010-of-00010.safetensors",
+                        "size": 258632328,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "entry": {
+                "mode": "0o775",
+                "mtime": 1785292317,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-coverage-first-v1-seed3411/fold0",
+                "size": 4096,
+                "type": "dir"
+              }
+            }
+          ]
+        },
+        {
+          "contents": [],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785292317,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": [
+            {
+              "contents": [
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "base_model_name_or_path": "../models/minicpm_v_4_5",
+                          "revision": null
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785072025,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_config.json",
+                        "size": 1123,
+                        "type": "file"
+                      }
+                    ],
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785293842,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072025,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/adapter/adapter_model.safetensors",
+                        "size": 460430776,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "architectures": [
+                            "MiniCPMV"
+                          ],
+                          "model_type": "minicpmv",
+                          "slice_config.model_type": "minicpmv",
+                          "version": 4.5,
+                          "vision_config.model_type": "siglip_vision_model"
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785072804,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/config.json",
+                        "size": 2440,
+                        "type": "file"
+                      },
+                      {
+                        "index": {
+                          "shards": [
+                            "model-00001-of-00010.safetensors",
+                            "model-00002-of-00010.safetensors",
+                            "model-00003-of-00010.safetensors",
+                            "model-00004-of-00010.safetensors",
+                            "model-00005-of-00010.safetensors",
+                            "model-00006-of-00010.safetensors",
+                            "model-00007-of-00010.safetensors",
+                            "model-00008-of-00010.safetensors",
+                            "model-00009-of-00010.safetensors",
+                            "model-00010-of-00010.safetensors"
+                          ],
+                          "tensor_reference_count": 849
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785072812,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model.safetensors.index.json",
+                        "size": 72209,
+                        "type": "file"
+                      }
+                    ],
+                    "index_check": {
+                      "missing": [],
+                      "present": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ],
+                      "referenced": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ]
+                    },
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785072813,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072804,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00001-of-00010.safetensors",
+                        "size": 1914228064,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072805,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00002-of-00010.safetensors",
+                        "size": 1929470832,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072805,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00003-of-00010.safetensors",
+                        "size": 1929470856,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072806,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00004-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072806,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00005-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072807,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00006-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072807,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00007-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072808,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00008-of-00010.safetensors",
+                        "size": 1644265032,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072811,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00009-of-00010.safetensors",
+                        "size": 1997939416,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785072812,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0/merged/model-00010-of-00010.safetensors",
+                        "size": 258632328,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "entry": {
+                "mode": "0o775",
+                "mtime": 1785292317,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3407/fold0",
+                "size": 4096,
+                "type": "dir"
+              }
+            }
+          ]
+        },
+        {
+          "contents": [],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785292317,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": [
+            {
+              "contents": [
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "base_model_name_or_path": "../models/minicpm_v_4_5",
+                          "revision": null
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785091073,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_config.json",
+                        "size": 1123,
+                        "type": "file"
+                      }
+                    ],
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785293842,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091073,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/adapter/adapter_model.safetensors",
+                        "size": 460430776,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "artifact": {
+                    "configs": [
+                      {
+                        "fields": {
+                          "architectures": [
+                            "MiniCPMV"
+                          ],
+                          "model_type": "minicpmv",
+                          "slice_config.model_type": "minicpmv",
+                          "version": 4.5,
+                          "vision_config.model_type": "siglip_vision_model"
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785091642,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/config.json",
+                        "size": 2440,
+                        "type": "file"
+                      },
+                      {
+                        "index": {
+                          "shards": [
+                            "model-00001-of-00010.safetensors",
+                            "model-00002-of-00010.safetensors",
+                            "model-00003-of-00010.safetensors",
+                            "model-00004-of-00010.safetensors",
+                            "model-00005-of-00010.safetensors",
+                            "model-00006-of-00010.safetensors",
+                            "model-00007-of-00010.safetensors",
+                            "model-00008-of-00010.safetensors",
+                            "model-00009-of-00010.safetensors",
+                            "model-00010-of-00010.safetensors"
+                          ],
+                          "tensor_reference_count": 849
+                        },
+                        "mode": "0o664",
+                        "mtime": 1785091647,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model.safetensors.index.json",
+                        "size": 72209,
+                        "type": "file"
+                      }
+                    ],
+                    "index_check": {
+                      "missing": [],
+                      "present": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ],
+                      "referenced": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ]
+                    },
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged",
+                    "stat": {
+                      "mode": "0o775",
+                      "mtime": 1785091648,
+                      "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged",
+                      "size": 4096,
+                      "type": "dir"
+                    },
+                    "weights": [
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091643,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00001-of-00010.safetensors",
+                        "size": 1914228064,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091643,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00002-of-00010.safetensors",
+                        "size": 1929470832,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091644,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00003-of-00010.safetensors",
+                        "size": 1929470856,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091644,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00004-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091645,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00005-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091645,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00006-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091646,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00007-of-00010.safetensors",
+                        "size": 1929470888,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091646,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00008-of-00010.safetensors",
+                        "size": 1644265032,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091647,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00009-of-00010.safetensors",
+                        "size": 1997939416,
+                        "type": "file"
+                      },
+                      {
+                        "mode": "0o600",
+                        "mtime": 1785091647,
+                        "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0/merged/model-00010-of-00010.safetensors",
+                        "size": 258632328,
+                        "type": "file"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "entry": {
+                "mode": "0o775",
+                "mtime": 1785292317,
+                "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-phase2-source-aware-v1-seed3411/fold0",
+                "size": 4096,
+                "type": "dir"
+              }
+            }
+          ]
+        },
+        {
+          "contents": [],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785246334,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v1-seed3411",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": []
+        },
+        {
+          "contents": [],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785246334,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-concise-v2-seed3411",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": []
+        },
+        {
+          "contents": [
+            {
+              "artifact": {
+                "configs": [
+                  {
+                    "fields": {
+                      "base_model_name_or_path": "models/minicpm_v_4_5",
+                      "revision": null
+                    },
+                    "mode": "0o664",
+                    "mtime": 1785243718,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/adapter_config.json",
+                    "size": 1168,
+                    "type": "file"
+                  }
+                ],
+                "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter",
+                "stat": {
+                  "mode": "0o775",
+                  "mtime": 1785293842,
+                  "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter",
+                  "size": 4096,
+                  "type": "dir"
+                },
+                "weights": [
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785243718,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/adapter/adapter_model.safetensors",
+                    "size": 460430776,
+                    "type": "file"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": {
+                "configs": [
+                  {
+                    "fields": {
+                      "architectures": [
+                        "MiniCPMV"
+                      ],
+                      "model_type": "minicpmv",
+                      "slice_config.model_type": "minicpmv",
+                      "version": 4.5,
+                      "vision_config.model_type": "siglip_vision_model"
+                    },
+                    "mode": "0o664",
+                    "mtime": 1785244004,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/config.json",
+                    "size": 2440,
+                    "type": "file"
+                  },
+                  {
+                    "index": {
+                      "shards": [
+                        "model-00001-of-00010.safetensors",
+                        "model-00002-of-00010.safetensors",
+                        "model-00003-of-00010.safetensors",
+                        "model-00004-of-00010.safetensors",
+                        "model-00005-of-00010.safetensors",
+                        "model-00006-of-00010.safetensors",
+                        "model-00007-of-00010.safetensors",
+                        "model-00008-of-00010.safetensors",
+                        "model-00009-of-00010.safetensors",
+                        "model-00010-of-00010.safetensors"
+                      ],
+                      "tensor_reference_count": 849
+                    },
+                    "mode": "0o664",
+                    "mtime": 1785244012,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model.safetensors.index.json",
+                    "size": 72209,
+                    "type": "file"
+                  }
+                ],
+                "index_check": {
+                  "missing": [],
+                  "present": [
+                    "model-00001-of-00010.safetensors",
+                    "model-00002-of-00010.safetensors",
+                    "model-00003-of-00010.safetensors",
+                    "model-00004-of-00010.safetensors",
+                    "model-00005-of-00010.safetensors",
+                    "model-00006-of-00010.safetensors",
+                    "model-00007-of-00010.safetensors",
+                    "model-00008-of-00010.safetensors",
+                    "model-00009-of-00010.safetensors",
+                    "model-00010-of-00010.safetensors"
+                  ],
+                  "referenced": [
+                    "model-00001-of-00010.safetensors",
+                    "model-00002-of-00010.safetensors",
+                    "model-00003-of-00010.safetensors",
+                    "model-00004-of-00010.safetensors",
+                    "model-00005-of-00010.safetensors",
+                    "model-00006-of-00010.safetensors",
+                    "model-00007-of-00010.safetensors",
+                    "model-00008-of-00010.safetensors",
+                    "model-00009-of-00010.safetensors",
+                    "model-00010-of-00010.safetensors"
+                  ]
+                },
+                "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged",
+                "stat": {
+                  "mode": "0o775",
+                  "mtime": 1785244013,
+                  "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged",
+                  "size": 4096,
+                  "type": "dir"
+                },
+                "weights": [
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244004,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00001-of-00010.safetensors",
+                    "size": 1914228064,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244005,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00002-of-00010.safetensors",
+                    "size": 1929470832,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244005,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00003-of-00010.safetensors",
+                    "size": 1929470856,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244006,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00004-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244006,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00005-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244007,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00006-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244007,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00007-of-00010.safetensors",
+                    "size": 1929470888,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244008,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00008-of-00010.safetensors",
+                    "size": 1644265032,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244011,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00009-of-00010.safetensors",
+                    "size": 1997939416,
+                    "type": "file"
+                  },
+                  {
+                    "mode": "0o600",
+                    "mtime": 1785244012,
+                    "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411/merged/model-00010-of-00010.safetensors",
+                    "size": 258632328,
+                    "type": "file"
+                  }
+                ]
+              }
+            }
+          ],
+          "entry": {
+            "mode": "0o775",
+            "mtime": 1785244067,
+            "path": "/home/liuyang/文档/mVllm_2/workspace/runs/v4.1-prompt-minimal-v1-seed3411",
+            "size": 4096,
+            "type": "dir"
+          },
+          "folds": []
+        }
+      ],
+      "store_materialized_models": {
+        "exists": false,
+        "path": "/data/mVllm_2/workspace/models/materialized"
+      },
+      "store_mlflow": {
+        "artifacts": {
+          "exists": false,
+          "path": "/data/mVllm_2/workspace/mlflow/artifacts"
+        },
+        "db": {
+          "error": "FileNotFoundError: [Errno 2] No such file or directory: '/data/mVllm_2/workspace/mlflow/mlflow.db'",
+          "path": "/data/mVllm_2/workspace/mlflow/mlflow.db"
+        },
+        "root": {
+          "error": "FileNotFoundError: [Errno 2] No such file or directory: '/data/mVllm_2/workspace/mlflow'",
+          "path": "/data/mVllm_2/workspace/mlflow"
+        }
+      },
+      "store_record_collections": [
+        {
+          "exists": false,
+          "path": "/data/mVllm_2/records/models"
+        },
+        {
+          "exists": false,
+          "path": "/data/mVllm_2/records/training"
+        },
+        {
+          "exists": false,
+          "path": "/data/mVllm_2/records/evaluations"
+        }
+      ],
+      "store_records": {
+        "entries": [
+          {
+            "mode": "0o775",
+            "mtime": 1789271146,
+            "path": "/data/mVllm_2/records/prompts",
+            "size": 4096,
+            "type": "dir"
+          }
+        ],
+        "exists": true,
+        "path": "/data/mVllm_2/records"
+      },
+      "store_root": {
+        "entries": [
+          {
+            "mode": "0o775",
+            "mtime": 1789201757,
+            "path": "/data/mVllm_2/data",
+            "size": 4096,
+            "type": "dir"
+          },
+          {
+            "mode": "0o775",
+            "mtime": 1789201519,
+            "path": "/data/mVllm_2/finetune",
+            "size": 4096,
+            "type": "dir"
+          },
+          {
+            "mode": "0o775",
+            "mtime": 1789201757,
+            "path": "/data/mVllm_2/migration_receipts",
+            "size": 4096,
+            "type": "dir"
+          },
+          {
+            "mode": "0o775",
+            "mtime": 1789271146,
+            "path": "/data/mVllm_2/records",
+            "size": 4096,
+            "type": "dir"
+          },
+          {
+            "mode": "0o775",
+            "mtime": 1789201518,
+            "path": "/data/mVllm_2/workspace",
+            "size": 4096,
+            "type": "dir"
+          }
+        ],
+        "exists": true,
+        "path": "/data/mVllm_2"
+      },
+      "store_workspace": {
+        "entries": [
+          {
+            "mode": "0o775",
+            "mtime": 1789201518,
+            "path": "/data/mVllm_2/workspace/data",
+            "size": 4096,
+            "type": "dir"
+          }
+        ],
+        "exists": true,
+        "path": "/data/mVllm_2/workspace"
+      }
+    }
+  }
+}
