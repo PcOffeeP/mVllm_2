@@ -6,7 +6,9 @@
 
 **数据处理及活动入口的工程迁移已解决。** 2026-09-14，迁移分支先推送，再快进 Codeup main 至 `5acebc27` 并同步训练机正式代码；集成与双机 CLI 记录见[验证第67节](results/version-control-migration/verification.md)。这不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。
 
-**当前状态（2026-10-13）**：DOC-INTEGRATION 和 REMOTE-STATE-REFRESH 已完成。用户随后授权新建正式Conda环境；ENV-ACTIVATION 已在训练机建立 `mvllm2`（Python3.11.17），按GPU锁安装并绑定正式checkout，通过环境验收，见[部署记录](results/conda-environment-setup-20261013.md)。保留agent/cpm45，不同步代码，不启动数据处理、训练、推理或评测。下一步核定候选模型来源并确认MODEL-DIAG方案；新体系正式训练/评测/模型记录尚未产生符合当前阶段，不作为迁移失败，也不创建空记录补目录。环境可用不等于模型质量或恢复通过。
+**最近现场及环境证据（2026-10-13）**：DOC-INTEGRATION 和 REMOTE-STATE-REFRESH 已完成。用户随后授权新建正式Conda环境；ENV-ACTIVATION 已在训练机建立 `mvllm2`（Python3.11.17），按GPU锁安装并绑定正式checkout，通过环境验收，见[部署记录](results/conda-environment-setup-20261013.md)。保留agent/cpm45，不同步代码，不启动数据处理、训练、推理或评测。候选模型来源及实际运行授权仍须核定；新体系正式训练/评测/模型记录尚未产生符合当前阶段，不作为迁移失败，也不创建空记录补目录。环境可用不等于模型质量或恢复通过。
+
+**当前文档进展（2026-10-15）**：用户已确认完整[测评方案](model-evaluation.md)，并授权本轮落文档、列[实施计划](plans/model-evaluation-implementation.md)及更新 TODO。视觉门槛、全样本语义评分与五分钟交互性能标准已确定；代码未切换，现行严格六指标/七门不代表新协议。下一步是核定 EVAL-SEMANTICS 等实施边界与基座来源；人工盲评访问、测试报告公开范围等重大细节先确认，只局部阻塞相关工作。当前没有代码、训练、推理、真实 test 使用或性能测试授权；环境可用不自动解除这些边界。
 
 新体系正式入口为 `python -m versioning`，显式使用五类完整可读身份。train 数据分支用于三折开发验证和 full 训练，test 分支只用于最终独立测试；代码中的 `development` / `holdout` / `test_audit` 保留原值。旧媒体仍被新 store 引用，不得按“迁移完成”删除旧目录。
 
@@ -16,12 +18,18 @@
 | 已完成前序 | README-PUBLIC-INTRO | 已解决：项目介绍与新人快速开始 | 独立核查通过；验证第69节，无动态执行 |
 | 已完成前序 | DOC-CONSOLIDATION | 已解决：文档及台账收敛 | 独立核查通过；验证第68节；候选手册及运行约定见文档整理记录 |
 | 本轮已完成 | REMOTE-STATE-REFRESH | 已解决：限定范围训练机只读刷新 | 实时事实及缺口已记录；未执行同步、环境切换或模型运行 |
-| 模型准备 | MODEL-DIAG | 待确认：诊断方向与开发侧门槛 | 可继续公开开发证据准备；新基线方案和真实运行授权分别确认 |
+| 文档交付 | EVAL-PROTOCOL | 已解决：已确认方案与差距计划入库 | 独立源码核查和文档静态检查通过；只关闭文档范围，不关闭实现与真实质量任务 |
+| 实施前置 A | EVAL-SEMANTICS | 待处理：全样本语义评分与盲评证据 | 已确认设计；代码未授权；先冻结字段提取/指标定义与合成验收 |
+| 开发接线 B | EVAL-DEVELOPMENT | 待处理：逐折门槛及基座对比适配 | 依赖 A，不能伪造 train 为基座登记；来源/接口核定后再实施 |
+| 独立评分 C | EVAL-HOLDOUT | 待处理：新协议与受限盲评接线 | 依赖 A；盲评访问、公开范围需先确认；真实运行另依赖 HOLDOUT-BUILD |
+| 性能接线 D | EVAL-PERFORMANCE | 待处理：五分钟全请求性能基准 | 实现可独立准备；真实运行需模型/规格/预算与单独授权，不消费 test |
+| 完整绑定 E | EVAL-INTEGRATION | 待处理：新证据导出与模型/服务准入 | 依赖 B/C/D 对应结论；旧 passed 不继承新质量/性能资格 |
+| 模型准备 | MODEL-DIAG | 待处理：方向和门槛已确认，尚未执行 | 依赖新评分/开发接线、基座来源与输入核定及实际运行授权 |
 | 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
 | 本轮已完成 | ENV-ACTIVATION | 已解决：正式Conda环境与checkout绑定 | mvllm2 Python3.11.17、241锁项一致、doctor/pip check通过；真实业务未运行 |
 | 备份验收 | RECOVERY-VALIDATION | 待处理：真实大型产物组合恢复 | store 级恢复已验；真实硬盘、权重、SQLite 与外部依赖缺完整证据 |
-| 后续训练 | FINAL-TRAIN | 阻塞：full 最终候选 | 开发侧三折通过、test 构建冻结就绪及适用训练授权 |
-| 总体验收 | MODEL-QUALITY | 阻塞：最终质量及晋级 | FINAL-TRAIN、独立 test 及其他适用质量门；真实服务成功路径另核 |
+| 后续训练 | FINAL-TRAIN | 阻塞：full 最终候选 | 按新门槛三折通过、test 构建冻结与预注册准备就绪及适用训练授权 |
+| 总体验收 | MODEL-QUALITY | 阻塞：最终质量及晋级 | FINAL-TRAIN、HOLDOUT-BUILD、新语义验收和性能/绑定证据；真实服务及批准另核 |
 | 非阻塞清理 | MODEL-ARCHIVE | 进行中（主 Agent）：归档与条件清理准备 | 证明完整迁移、冗余、引用退出及诊断保护；候选未删除 |
 | 目标裁决 | RELEASE-POINTER | 待确认：旧指针目标适用性 | 新入口已显式选版本；不恢复旧写入、不阻塞新数据选择 |
 | 低优先级 | CONTRACT-NAMING | 待处理：契约命名与复用边界 | 先解释实际职责，需要改名时再确认兼容方案 |
@@ -29,6 +37,46 @@
 MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练最终候选；绑定 model/eval 的一次性 claim 在最终身份确定并获测试使用授权后、首次模型调用前建立。不能倒置为先测试通过才允许训练该候选。
 
 ## 待处理、待确认与阻塞事项
+
+### EVAL-SEMANTICS — 全样本语义评分与预测盲评证据
+
+- **状态/来源**：待处理；来自已确认测评方案，代码实施未授权，父目标 MODEL-DIAG / MODEL-QUALITY。
+- **事实与差距**：`finetune/v4_1_runtime.py::parse_v4_1_output` 只做严格解析；`pipeline/output_normalizer.py` 为旧 V2 修补器，不能直接作为 V4.1 语义提取。现有数据标签审查不是预测盲评。
+- **依赖/下一动作**：按[计划批次 A](plans/model-evaluation-implementation.md)细化并冻结允许的规则、逐字段判读、匿名双人/仲裁证据和指标定义。受限 test 的人工访问由 EVAL-HOLDOUT 另核，不阻塞无真值的评分与开发准备。
+- **验收标准**：全样本分母、缺失字段、GT适用子集、null误填、拒答、缺类、互斥恢复分类和不可篡改记录均有保护性用例；多数类坍缩不能靠总体率通过。严格原始记录保留，新语义不覆盖旧结果。
+- **证据/限制**：[评分与指标设计](model-evaluation.md)、[代码差距映射](plans/model-evaluation-implementation.md)；本轮仅静态核查，未实现或运行评分。
+
+### EVAL-DEVELOPMENT — 新开发门槛与基座对比接线
+
+- **状态/来源**：待处理；父任务 MODEL-DIAG，功能范围已确认但未获代码/模型运行授权。
+- **事实与差距**：`finetune/eval_run.py::FORMAL_METRICS / _formal_config` 仅允许六指标/pooled；Registry 依赖 completed/archived 与真实三折证据，未微调基座不能假造同链身份。只完成一折的 partial train 也不能登记；single_fold 仅从完整训练选择一折。
+- **依赖/下一动作**：依赖 EVAL-SEMANTICS，核定基座来源，以及独立单折诊断所需训练证据、登记与正式评测适配；按计划批次 B 更新 prepare/validate/run/export、逐折与合并门及配对报告。重大身份/完成语义接口先确认，不恢复旧 CLI，不把 partial 改完成、虚补折或借 full 绕门。
+- **验收标准**：每折状态门及 pooled 其余开发门可冻结并复验；缺折/单折退化/多数类坍缩不能放行；双方同媒体/Prompt/预算/评分规则，无预测筛样，原模型/训练证据不可伪造。
+- **证据/限制**：[方案](model-evaluation.md)、[实施计划](plans/model-evaluation-implementation.md)与现行[操作说明](model-workflow.md)；没有基座推理或三折新结果。
+
+### EVAL-HOLDOUT — 新独立质量协议与受限盲评接线
+
+- **状态/来源**：待处理；父目标 MODEL-QUALITY，衔接 HOLDOUT-BUILD；原 HOLDOUT-METRICS 不重开。
+- **事实与差距**：`finetune/holdout_metrics.py` 固定旧七门；现行公开结果只含二值 gate，实际指标/预测/真值受限。新语义指标、人工判读访问与结果回收未实现。
+- **依赖/下一动作**：依赖 EVAL-SEMANTICS；先确认匿名输出访问角色/授权、盲评回收与公开范围，再按计划批次 C 接入新协议、预注册/claim/score/恢复及导出。真实推理还依赖 HOLDOUT-BUILD 和冻结 full 候选及单独 test 使用授权。
+- **验收标准**：新旧协议和身份不混用、授权消费不重置，盲评人员不见真值/视频/模型身份；未确认的结果保持受限。完整最终门全通过且覆盖/证据合格才下通过结论，缺类不放行，不复用已暴露测试。
+- **证据/限制**：[方案](model-evaluation.md)、[实施计划](plans/model-evaluation-implementation.md)、`finetune/eval_holdout.py` 与 `versioning/holdout.py`；本轮未读取受限语义、创建 claim 或改变权限。
+
+### EVAL-PERFORMANCE — 五分钟全请求交互性能基准
+
+- **状态/来源**：待处理；父目标 MODEL-QUALITY，可与语义/开发接线准备并行，代码及真实性能执行均未授权。
+- **事实与差距**：现有服务串行推理，单次 `serve_smoke.py` 的 timeout=300 不是性能门；缺全请求完成率、阶段耗时、显存和持续运行统计及显示端测点。
+- **依赖/下一动作**：按计划批次 D 核定受控性能测量的正式加载资格/入口/权限及其与最终服务准入的关系，避免循环，不临时补 passed 或借旧 alias；再冻结合法输入规格、服务/客户端测点、缓存/重试/终止超时与预算。真实执行须有可加载模型、准确环境和授权，不使用 sealed-test；单用户串行范围不外推并发。
+- **验收标准**：全部合格请求≥95%在300秒内自动显示完整结果；失败/超时/人工恢复不算按时完成；失败率≤1%、无OOM/服务崩溃/持续资源增长；≥100次且≥30分钟连续处理，预热/冷启动分开，后端证据不冒充完整交互。
+- **证据/限制**：[性能设计](model-evaluation.md)、[实施计划](plans/model-evaluation-implementation.md)、`pipeline/server_proxy.py` / `pipeline/scripts/serve_smoke.py`；没有采集性能样本或新的服务结果。
+
+### EVAL-INTEGRATION — 新评测证据与模型/服务准入绑定
+
+- **状态/来源**：待处理；父目标 MODEL-QUALITY，实施未授权。
+- **事实与差距**：现行 `versioning/registry.py`、`manifest.py`、`mlflow_eval.py` 绑定旧正式 eval/passed；没有新语义/人工证据与独立性能结论的完整绑定。底层 eval 和 MLflow 不因新“证据不足”表述自动增加运行状态。
+- **依赖/下一动作**：依赖 B/C/D 对应功能，按计划批次 E 核定结论与状态映射、评分实现摘要、导出复核、manifest/Registry/服务门一致性；准入接口重大变更先确认。
+- **验收标准**：篡改、漏证据、错模型/数值版本、旧 passed 冒充新协议均拒绝；视觉/输出使用/性能分别可追溯，candidate/production批准分离，测试明细不流入普通artifact。工程与真实模型验收分别记录。
+- **证据/限制**：[实施计划](plans/model-evaluation-implementation.md)和[现行模型流程](model-workflow.md)；本轮不登记模型、不变更alias或晋级。
 
 ### RECOVERY-VALIDATION — 真实大型产物与外部依赖组合恢复
 
@@ -59,32 +107,21 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **发布入口与差距**：test七阶段显式使用`--purpose holdout --test-config ...`，新模块`versioning/holdout_pipeline.py`在owner-only工作区复用媒体算法，所有候选必须人工审查。train默认路径不变。真实输入必须为独立test批次、具备冻结train版本的source清单及旧测试非语义来源清单；当前既定test source已定位；可用资格与完整非语义清单仍须核定。新入口及完整参数/产物来源见[入口说明](../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)。
 - **已确认实施与限制**：用户于 2026-09-13 确认 test 分支方案，Mac合成完整builder→claim→prepare→run→score通过。原审查发现真值摘要未校验P1和发布rename后封存尾步恢复P2均修复并专项复核；公开input仅固定整体receipt摘要，真值pin在授权score读取。当前test分支不自动向DVC remote发布受限数据；2026-09-13 源码与 Mac 验证完成不表示真实数据已构建，随后 Linux 同代码 427 passed/1 skipped 通过，见第52节。
 - **授权流程**：预注册一次性授权 + one-time claim，沿用现有 stage_d 流程；授权条件 `one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，首次模型调用前原子写入 claim，只允许同一 run identity 恢复。
-- **阈值**：沿用 `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
+- **现行旧协议阈值（历史及代码兼容事实）**：`stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
+- **新方案衔接**：已确认的最终视觉门与格式分离规则见[测评方案](model-evaluation.md)，由 EVAL-HOLDOUT 实现；本任务不直接修改旧七门或授权。盲评可见输出、真实指标/样例的公开范围须先核定，默认保持受限；来源资格、全量人工审查和封存职责不变。
 - **依赖/边界**：本任务只负责构建、审查、发布与授权一个未使用 holdout，不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。
 - **验收标准**：新的未使用 holdout release 已构建并经人工审查，source 隔离与 test-split binding 校验通过，manifest/ground-truth/quality_report及预注册准备可追溯。数据冻结就绪先支撑FINAL-TRAIN；最终model/eval身份确定并获使用授权后，首次模型调用前建立绑定claim，再支撑MODEL-QUALITY。不能要求先有最终模型claim才能训练该模型。
 - **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)及[轻量证据](results/model-diagnostics-preflight-20260913.json)。2026-09-13 已核查新 store 集合与公开入口，未全盘扫描旧sealed-test集合，不推断历史对象已消失；未读取受限语义或创建真实holdout。最终候选model/eval身份形成前不提前创建绑定它们的一次性claim；保留预注册和首次模型调用前claim的要求。
 
 ### MODEL-DIAG — 诊断并改善三折类别坍缩与契约退化
 
-#### 新诊断方案草案（待确认，不是训练授权）
-
-目标是建立当前新入口下可追溯、可重复的train分支基线，逐步诊断字段遗漏与类别偏置；不承诺恢复旧实验，也不将缺失权重视为继续搜寻的前置。
-
-- 推荐从冻结train版本和明确基座修订重新建立一个单折基线，使用对应fold的完整validation及现有严格评分入口。先只读验证输入/配置/资源，明确完整data、prompt、train身份和媒体根；基座存在性与适用性另核，不预设当前已经可用。
-- 数据、Prompt、采样、训练日程、生成参数先冻结；单折结果用于定位合法率和类别召回退化，每轮只调整一个因素。单折方案稳定后扩展三折，再按既定依赖进入full训练与最终test。
-- 开发侧同时报告四字段合法率/正确率、各状态召回、macro recall、joint与失败样例。开发侧数值通过门槛须在实验前确认，不能借用test七项门槛或观察结果后回填；若正式validation配置不能表达诊断指标，先提出局部设计，不悄悄改接口。
-- 不引入冻结分层canary或任意替换模型训练Prompt的交叉入口；这些能力尚未实现，增加它们会扩大范围。另一方向是先建立全部三折基线，比较更完整但成本更高；推荐单折起步会有fold偏差风险，必须由后续三折验收控制，不能据单折直接放行full训练。
-- 待确认项：是否采用上述新基线方向；随后冻结基座/数据/Prompt/配置、开发侧门槛和资源预算。确认方案后仍须取得真实训练/推理授权。该方向仍为草案。
-
-
-- **状态/来源**：待确认（诊断方案；可继续只读证据准备）；原“三折实验出现类别坍缩与契约退化”。目标是在固定证据与评价口径下找到可跨 fold 复现的改进方案。
+- **状态/来源**：待处理；用户已确认单折诊断后完整三折验证、开发质量门、全样本语义评分及基座公平对比，见[测评方案](model-evaluation.md)。方案确认不是实验授权，不再重复要求确认已确定的阈值。
 - **事实与差距**：已同步报告记录 `v4.1-prompt-concise-cv-v1-seed3411` 的 1581 条评测：contract 合法率 79.63%、joint correct 32.07%、`clip_state` 35.80%，322 条非法输出中 311 条缺 `special_case`，“临界未断裂”和“已断裂”召回为 0%。这支持退化症状，不证明 Prompt、采样或早停中的任何一个是单独根因。
-- **下一动作**：整理已允许公开的开发证据、缺失文件身份和现行入口任务单；将上述新基线方向、开发侧门槛与资源预算交用户确认。下一轮训练机只读刷新由 REMOTE-STATE-REFRESH 统一安排；不重复全盘查找缺失三折模型，不将报告摘要当作权重或原始预测。方案确认和真实训练/推理授权分别落实后才执行实验。
-
-- **入口与产物**：2026-09-13训练机复核concise约定run/三fold原始记录缺失；历史visual的三折原始记录可读，但run_identity指向的merged均为断链，目标是`workspace/runs/v4.1-visual-cv-v1-seed3407/fold{0,1,2}/merged`。新正式评测由`python -m versioning eval prepare/validate/run/export`消费合法model完整身份、Registry数值版本和冻结data/Prompt；旧`finetune/eval_run.py`仅保留业务函数，CLI已停用，不能用裸路径绕过。正式入口目前使用全validation，尚不支持冻结分层canary或任意替换模型训练Prompt；这些对照能力须作为后续获确认的诊断方案，不写成现成命令。
-- **准备与执行边界**：按[新入口说明](../versioning/SCRIPTS.md)准备完整data/prompt/train身份、显式媒体根、来源输入及三折配置；`versioning train prepare/validate`负责冻结与校验，`run/export`负责实际执行和产物证据。旧build/prepare/train CLI已停用；底层函数供新入口调用。历史模型只有报告/裸目录时不能强行登记为新正式completed；先找回原始配置、权重及逐样本身份链。
-- **依赖/边界**：开发集只读整理不等待 HOLDOUT-BUILD；实验执行前明确测试隔离规则、冻结开发侧阈值并核对授权。现有交付配置记录 optimization paused / retraining unauthorized；本轮只整理该方案与证据说明，不执行准备命令或恢复训练授权。不使用 sealed-test 调参，不补字段伪造合法率，不删除诊断所需 checkpoint。
-- **验收标准**：身份链一致、原始预测可追溯，根因分清事实与假设；报告四字段合法率/正确率、各状态召回、macro recall、joint correct、分布和失败样例；单变量结果可比较，三折达到预定开发侧标准后才放行 FINAL-TRAIN。仅完成诊断时记录阶段结果，不宣称效果改进已完成。
+- **差距与依赖**：现行 formal validation 仅 strict-v4.1 六指标/pooled，规则提取、预测盲评、逐折召回门和基座正式评测适配未实现，依赖 EVAL-SEMANTICS / EVAL-DEVELOPMENT。仅完成一折的 partial train 不能登记，先单折诊断的证据与登记适配也是前置。候选基座来源、data/Prompt、环境/代码/权重身份及资源预算仍须核定；不伪造 completed train，不用裸目录绕 Registry。
+- **下一动作**：先完成新评测协议的实现边界和输入准备；获相应授权后做基座/多数类参照、对应完整单折 validation 诊断，再完整三折。每轮冻结其他因素，保留逐样本配对改善/退化；不自动引入 canary、任意交叉替换训练 Prompt 或重新划分数据。
+- **入口与产物**：保留 `python -m versioning eval prepare/validate/run/export` 的正式身份和原始预测/manifest 链；新语义与逐折判定尚待接线，不能把新阈值填入旧配置即运行。历史缺失权重继续记录，不全盘反复搜寻，也不把报告视为可加载模型。
+- **验收标准**：每折四状态 macro recall≥65%、每状态 recall≥50%；pooled 语义 joint≥50%、机制 macro F1≥50%、位置 macro F1≥60%；特殊情况完整报告。身份链、原始预测、盲评记录和配对分析可追溯；缺类/来源覆盖不足不自动通过。达到新三折门才支持 FINAL-TRAIN，运行完成与效果改善分别下结论。
+- **授权/限制**：只读公开开发证据准备不等待 HOLDOUT-BUILD；实际训练/推理及代码仍未授权。禁止使用 sealed-test 调参、修补原始输出伪造合法率或删除受保护 checkpoint。历史现场/环境记录不作为本轮重新验证。
 - **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[模型门禁基线](results/model-gate-baseline-20260914.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；2026-09-13 在 Linux 重算历史 visual 的 1216 条开发原记录，concise原始预测仍缺且未复算。新增[第48节证据](results/version-control-migration/verification.md#delivery-preparation-20260913)记录三fold模型断链和能力前置，不能据历史输出关闭改善任务。
 
 ### RELEASE-POINTER — 安全更新并激活数据 release 指针
@@ -103,14 +140,14 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **事实与差距**：当前发布模型只用 Fold0，`full_data_final: false`；development release 有 1678 条发布候选。候选数不自动等于最终训练行数，训练资格与采样策略仍须冻结。
 - **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、HOLDOUT-BUILD的数据构建/审查/冻结及预注册准备就绪（模型绑定claim在候选产生并获测试使用授权后建立）并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
 - **入口与产物**：独立full能力已由fed9bcfc实现且双机隔离CPU验收；正式入口为`versioning train prepare --scope full`，消费同一开发release全集、每候选一次及显式full配置，继而validate/run/export产生一个full/adapter，登记时`--source-scope full`。详见[新入口说明](../versioning/SCRIPTS.md#独立全量训练)。不再安排重做full代码；真实运行仍等待上列模型、holdout及训练授权前置。
-- **验收标准**：全部合格开发数据按冻结方案纳入，未混入测试来源；真实训练/合并完成，模型与数据/配置/代码/哈希可追溯，保存最终候选及轻量 manifest。完成本项不自动获得 production approval。
+- **验收标准**：全部合格开发数据按冻结方案纳入，未混入测试来源；真实 full 训练及 adapter 执行证据完整，模型与数据/配置/代码/哈希可追溯，保存最终候选及轻量 manifest。完成本项不自动获得 production approval。
 - **证据/限制**：[开发 release 摘要](results/v4_1_phase2_development_release/release_summary.json)、[当前模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[模型流程](model-workflow.md)；截至既有记录无全量最终模型证据；2026-10-13只读刷新了限定文件位置，未执行全量训练或模型质量验收。
 
 ### MODEL-QUALITY — 最终模型质量验收与晋级
 
-- **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、FINAL-TRAIN、HOLDOUT-BUILD和HOLDOUT-METRICS；RELEASE-POINTER原目标适用性另待裁决。
+- **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、FINAL-TRAIN、HOLDOUT-BUILD 及 EVAL-HOLDOUT / EVAL-PERFORMANCE / EVAL-INTEGRATION；HOLDOUT-METRICS 已解决的旧协议实现保留；RELEASE-POINTER原目标适用性另待裁决。
 - **事实与差距**：`v4.1-agent-pipeline-fold0-r1` 已用于工程链路验证，但 Stage B/D/G 标志均为 false，`production_approved: false`。标志为 false 不等于每一门都已执行失败，须查各门证据。
-- **下一动作**：核对适用质量门、阈值和证据要求并落实到子任务；最终候选和测试前置齐备后，按授权协议完成独立验收及其他质量门，再决定晋级。
+- **下一动作**：按已确认[测评方案](model-evaluation.md)落实新语义/性能证据与准入绑定；最终候选、测试资格和适用授权齐备后完成一次独立验收。视觉质量、输出使用能力、交互性能分别报告；旧 passed 或历史工程 smoke 不替代新结论。
 - **入口与产物**：参照 [发布证据](results/v4_1_agent_pipeline_fold0_r1/README.md) 和 [模型流程](model-workflow.md) 核对执行入口；冻结报告和模型哈希，经注册表发布新身份并同步 delivery，核对服务加载对象。缺可执行入口则先补任务单/实现，不把历史归档命令写成现成流程。
 - **验收标准**：预定质量门与身份校验均有证据，模型/报告/注册表/delivery/服务一致；新候选不覆盖旧模型历史结论，工程成功不能替代质量通过。
 - **证据/限制**：[交付配置](../delivery/model_component.json)、[模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json) 及现有 sealed-test 公开结果；目前不满足最终交付标准。
@@ -134,6 +171,13 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **验收标准（未来获准修改时）**：改进有案例和边界，保留项目介绍与任务执行职责分离，用初次创建、后续更新、误报关闭、执行中新发现等案例验证；当前只记录候选。
 
 ## 已解决与已关闭
+
+### EVAL-PROTOCOL — 已确认测评方案与差距实施计划入库
+
+- **状态/来源**：已解决（Codex，2026-10-15，本机文档范围）；用户明确授权落项目文档、列功能缺口与实施计划、同步 TODO，禁止改代码或运行模型。
+- **交付范围**：[完整方案](model-evaluation.md)、[实施计划](plans/model-evaluation-implementation.md)及模型流程/现状/根导航/接口索引的边界同步。方案来自本会话逐项确认；实际能力以 b827f73f 本地源码核查为基线，不引用旧模型历史测试为本轮运行。
+- **验收标准**：数值与用户确认一致；开发、full与一次性test、性能各环节输入/现行入口/产物可追溯；拟新增能力不写成现成命令；新旧协议、权限/待决接口和授权边界明确；原任务标识保持、链接及 diff 检查通过，并经独立 reviewer 对照源码核查。
+- **验证/限制**：独立 reviewer 已对照契约、严格评分、holdout/Registry及服务实现核查通过。首轮发现单折 partial 无法登记、受控测量加载与最终准入依赖未闭合两项缺口，已写入实施前置并专项回验，无剩余可执行文档问题。179 个本地链接/锚点有效，原31个固定任务标识保留、现37个唯一，8个变更文件全为 Markdown，`git diff --check`通过。提交由 `git log -- docs/model-evaluation.md docs/plans/model-evaluation-implementation.md docs/project-todo.md` 追溯；仅本机文档，不SSH、pytest、训练、推理、评测、test语义读取或push/merge，后续实现任务全部未关闭。
 
 ### REMOTE-STATE-REFRESH — 训练机现状只读刷新
 
@@ -312,3 +356,5 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-13（Codex，只读刷新）**：REMOTE-STATE-REFRESH 完成限定现场查询；两端起始版本、环境来源、数据引用与模型资产已落报告。未执行业务写入、同步或真实模型运行；普通git status潜在索引刷新偏差明确留证。ENV-ACTIVATION 和模型/test/恢复缺口保持。
 
 - **2026-10-13（Codex，训练机Conda部署）**：按用户授权新建mvllm2，Python3.11.17、GPU锁241项一致、doctor/依赖检查通过，ENV-ACTIVATION已解决。旧环境保护摘要和代码状态保持；无业务运行或代码同步，新体系记录按流程生成。
+
+- **2026-10-15（Codex，测评方案入库）**：EVAL-PROTOCOL 文档范围已解决；新增开发/最终语义质量与五分钟交互性能设计、现状差距及 A–E 实施计划，更新现行入口和唯一台账，保留31个原任务并新增6个固定标识。独立源码核查通过；单折登记与受控性能加载两项前置已补齐，不擅定接口。179链接/锚点、37唯一标识及Markdown范围检查通过；未改代码、SSH、训练、推理、评测、读受限测试语义或push/merge，未关闭真实模型任务。

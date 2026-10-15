@@ -54,6 +54,7 @@
 | --- | --- |
 | 把自己的试验视频整理成可训练数据 | [数据处理](docs/data-workflow.md) |
 | 准备实验、评测模型并部署服务 | [模型流程](docs/model-workflow.md) |
+| 了解已确认的测评指标、通过标准和执行框架 | [模型测评方案](docs/model-evaluation.md) |
 | 了解现有成果、未完成项和证据日期 | [项目现状](docs/project-status.md) |
 
 ### 2. 按机器准备 Python 3.11.x 环境
@@ -121,7 +122,7 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 ## 文档与代码导航
 
-这套面向使用者的说明只有四份：本页负责介绍与初次安装，数据说明负责视频到发布，模型说明负责训练到服务，现状说明负责成果及限制。
+首次使用从四份主说明进入：本页负责介绍与初次安装，数据说明负责视频到发布，模型说明负责训练到服务，现状说明负责成果及限制。[模型测评方案](docs/model-evaluation.md)补充已确认的质量和性能标准；[实施计划](docs/plans/model-evaluation-implementation.md)列出现有功能差距，方案确认不表示代码已实现或模型已通过。
 
 实现入口为 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。设计决定与历史验证作为证据保留，不需要首次访问者先读完。
 

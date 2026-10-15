@@ -4,6 +4,8 @@
 
 项目已实现冻结训练输入、三折与全量训练、严格评测、Registry 晋级及服务门禁。现有历史开发结果尚不能证明最终模型质量；新体系真实合格模型的加载与媒体推理成功路径、独立 test 使用资格、大型产物组合恢复仍未完成验收。命令接线和 CPU 合成验证不等于真实模型验收。
 
+**测评设计已更新，代码尚未切换。** 用户已确认[完整测评方案](model-evaluation.md)：全样本语义评分、格式可靠性单独报告、开发逐折门槛、最终视觉质量门及五分钟交互性能验收。本文的命令和配置仍描述现行 `strict-v4.1` 实现，不是新方案的操作入口；功能差距、依赖和实施验收见[实施计划](plans/model-evaluation-implementation.md)，进度仅在[项目 TODO](project-todo.md)维护。不得通过修改旧七门常量或手工补写 passed 代替协议切换。
+
 GPU 训练、权重合并、实际推理与完整评测在训练机执行，运行入口直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。Mac 开发及人工审查使用 uv 的方式见[快速开始](../README.md#快速开始)。以下命令是操作说明，执行仍需相应任务授权。准备与摘要校验虽不加载模型，也可能扫描大量权重和媒体，须按实际数据量安排执行位置与磁盘空间。
 
 ## 1. 准备身份、输入与执行环境
@@ -85,6 +87,8 @@ full 禁止训练中 validation、最佳 checkpoint 选择、隐式验证切分�
 
 ## 4. 登记模型与验证集评测
 
+本节为现行严格评分链。新方案要求的基座对比、规则语义提取、预测盲评、各状态召回与逐折通过条件尚未接线；旧 six-rate/pooled 的 passed 不能证明已达到新开发门槛。未经微调的基座也不能伪造 completed train 后登记，或用裸目录绕过 Registry；其正式来源与评测适配属于实施前置。
+
 登记先校验真实训练执行证据、声明 artifact 全部文件和冻结基座，创建 Registry `mVllm2` 的 staging Model Version。它同时具有完整 `MODEL` 身份和 MLflow 数值版本；后者由登记结果取得，不猜测或默认选择最新版本。
 
 `ARTIFACTS` 是调用者准备的 YAML 文件绝对路径，文件内容为 artifact mapping，不是命令行直接传入的 mapping 字面量。三折组包含三折，例如：
@@ -100,7 +104,7 @@ fold2: {adapter: artifacts/fold2/adapter}
   --train-version "$TRAIN" --source-scope cross_validation --artifacts "$ARTIFACTS"
 ```
 
-三折组不能提供 `--deploy-target`，也不能直接部署。single_fold 以 fold0 为例，使用仅含 `fold0` 的声明及 `--source-scope single_fold --deploy-target artifacts/fold0/adapter`；full 使用 `full: {adapter: artifacts/full/adapter}` 及 `--source-scope full --deploy-target artifacts/full/adapter`。每种声明均须对应训练证据中的真实 artifact。
+三折组不能提供 `--deploy-target`，也不能直接部署。single_fold 以 fold0 为例，使用仅含 `fold0` 的声明及 `--source-scope single_fold --deploy-target artifacts/fold0/adapter`；full 使用 `full: {adapter: artifacts/full/adapter}` 及 `--source-scope full --deploy-target artifacts/full/adapter`。每种声明均须对应训练证据中的真实 artifact。**现行 single_fold 是从已完成的三折训练选择一折，不是仅训练一折即可登记。** 只完成 fold0 的父 train 仍为 partial，登记门拒绝；已确认的先单折诊断还需训练证据与登记适配，不能虚补折或修改完成状态绕过。
 
 当前正式执行链使用 adapter：训练执行器上传 adapter，Registry 逐文件核对训练执行证据中的 `<fold>/adapter/` 内容。接口接受 `merged` artifact 类型不代表已经实现独立合并及其证据登记通路。另行准备完整 merged 权重、修改 mapping，或在冻结 adapter 子树中后添 merged 文件，均不能补齐证据。真实 merged 合并、登记与后续使用须先完成独立确认的实现和验收；历史 BF16/merged 结果仅保留为原实验成果，不能沿用为新模型资格。
 
@@ -129,9 +133,11 @@ fold2: {adapter: artifacts/fold2/adapter}
 
 逐折结果为 `records.jsonl`、`failures.jsonl`、`summary.json`；父 Run 汇总逐样本预测与严格评分，正式导出为 `records/evaluations/<eval>/manifest.yaml`。运行失败不产生正式完成 manifest；完整推理但非法 JSON/schema 或指标不达标形成质量失败。完成后的导出故障可用 `eval export` 从同一 Run 补导出，不调用模型。失败 Run、已有输出或进程强制中断不提供自动覆盖重跑。
 
-质量分析应同时查看运行失败、严格合法率、四字段准确率、联合准确率、状态召回及位置混淆、典型非法输出。解析器不补字段。validation 开发指标不替代最终独立 test 验收。
+现行质量分析应查看运行失败、严格合法率、四字段准确率、联合准确率及状态混淆，并据逐样本记录分析召回与位置错误；正式配置仍不支持召回或逐折质量门。当前解析器不补字段。新方案保留原始严格结果，另建语义提取与盲评记录，不在旧结果上补字段。validation 开发指标不替代最终独立 test 验收。
 
 ## 5. Full 模型的独立 test 验收
+
+**以下七门是现行旧协议的代码事实，不是新确认的最终视觉标准。** 新标准及格式分离规则以[测评方案](model-evaluation.md)为准，但新授权评分、人工盲评与导出/准入绑定尚未实现。以下命令不能执行新语义验收；旧身份、旧报告与已消费 test 的限制保留，新协议不得重新利用已暴露 test。
 
 先完成[数据处理中的独立 test 发布](data-workflow.md)，取得仍具独立使用资格、已全量人工审查且封存的 holdout data。发布须包含无标签 `evaluation_inputs/manifest.json`、`media/`、受限 `sealed_ground_truth/` 及构建凭证，绑定 full 模型所用开发版本。历史 test 划分、旧 sealed-test 目录或重新命名的对象不能自动获得资格。
 
@@ -173,6 +179,8 @@ prepare/validate/run 不读真值。run 仅媒体推理，完成后等待 score�
 
 ## 6. 晋级、备份范围与服务物化
 
+本节仍复验现行评测证据。未来新方案还需精确绑定语义协议、盲评证据及分开的质量/性能结论；旧 passed 不自动获得新质量或交互性能资格，格式放宽也不扩大现有 production 授权。
+
 正式评测 passed 且精确绑定模型数值版本后，单向 finalize；已有不同 eval 绑定不可改写。以单一部署目标模型为例：
 
 ```sh
@@ -189,6 +197,8 @@ scope 是持久化的备份范围声明，不能把设置 scope 当作备份完�
 production 须具 `production_bundle`、真实批准及对应准入条件。`production_bundle` 是备份范围机制，不提供 merged 合并或登记能力；缺少真实 merged 证据通路时，设置此 scope 不能证明完整生产交付链已经通过。只有用户明确批准生产使用后才执行 `model approve`，再设置 production alias，并以 `--alias production --service-mode production` 物化与启动。development 成功不能代替生产批准。三折组不能晋级为部署目标。
 
 ## 7. 服务配置、启动与真实媒体检查
+
+本节的单次 smoke 只验证链路与身份，不能替代[性能验收](model-evaluation.md)。`serve_smoke.py` 的 300 秒请求超时不是“全部合格请求至少 95% 在五分钟内自动完成”的实测成绩。新性能采集、统计与完整交互测点均待实施；只有后端响应时，须明确标记尚缺结果显示端证据。
 
 先静态解析同一 store/alias/mode：
 

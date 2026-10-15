@@ -27,6 +27,8 @@ Non-goals:
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
 
+**测评协议边界**：下文 validation 六指标和 holdout 七门仍是现行 `strict-v4.1` 接口。[已确认测评方案](../docs/model-evaluation.md)另要求语义提取/盲评、逐折质量门及五分钟交互性能验收，目前尚未接入这些命令。具体缺口见[实施计划](../docs/plans/model-evaluation-implementation.md)。不得把新门槛填入旧配置后声称新验收可执行，也不得覆盖旧协议或公开受限 test 明细。
+
 ## Prompt注册与冻结
 
 现行入口为`python -m versioning prompt`。操作者准备定义YAML，包含非空`system_prompt`、`user_prompt`与非空且无重复字符串的`output_fields`列表；可给`protocol_label`以保存业务协议标签。定义不是旧active_prompt.yaml格式，不能直接把旧文件当新定义发布。已有Prompt应按确认mapping走migration，保持原正文和身份对应。
