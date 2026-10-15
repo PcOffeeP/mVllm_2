@@ -172,7 +172,9 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument(
         "action",
         choices=(
-            "prepare", "validate", "run", "score", "export", "compare",
+            "prepare", "validate", "run", "score", "export", "compare", "review_prepare", "review_seal",
+            "performance_prepare", "performance_validate", "performance_run", "performance_export", "performance_serve",
+            "review_run", "review_verify", "restricted_summary",
             "create",
             "fold-start",
             "fold-end",
@@ -202,6 +204,13 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--pre-registration", type=Path, help="holdout 预注册 YAML")
     evaluate.add_argument("--executor", help="holdout claim 执行身份")
     evaluate.add_argument("--blind-reviews", type=Path, help="开发语义评测的已封存盲评证据 JSON")
+    evaluate.add_argument("--manual", type=Path, help="匿名判读手册；不含真值或媒体")
+    evaluate.add_argument("--performance-evidence", type=Path, help="已冻结性能事件证据；导入不启动真实推理")
+    evaluate.add_argument("--session-id", help="冻结受控性能会话身份")
+    evaluate.add_argument("--port", type=int, help="显式受控loopback端口")
+    evaluate.add_argument("--actor", help="冻结受限聚合报告验收负责人")
+    evaluate.add_argument("--allow-real-model-calls", action="store_true", help="显式允许冻结本地评审模型调用；仍须满足隔离部署门")
+    evaluate.add_argument("--allow-local-review-metadata", action="store_true", help="显式允许固定本地评审端点的tags/show部署核验；不生成回答")
     evaluate.add_argument("--baseline-eval-version", help="配对比较的完整 base eval 身份")
     evaluate.add_argument("--fold", type=int, help="fold 编号")
     evaluate.add_argument("--model-artifact", help="fold 模型 artifact 引用")
@@ -224,6 +233,7 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=(
             "register",
             "finalize",
+            "bind-performance",
             "scope",
             "approve",
             "alias",
@@ -607,9 +617,45 @@ def _parse_folds(value: str | None) -> tuple[int, ...]:
 
 
 def _handle_eval(args: argparse.Namespace) -> Any:
+    if args.action.startswith("performance_"):
+        if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
+            raise CLIUsageError("performance evaluation must use root/workspace/mlflow")
+        from finetune.eval_performance import (prepare_performance_evaluation, verify_performance_evaluation,
+            execute_performance_evaluation, export_performance_evaluation)
+        forbidden = {"pre_registration", "executor", "blind_reviews", "manual", "baseline_eval_version",
+            "scope", "split", "fold", "model_artifact", "data_split", "sample_count", "records", "failures",
+            "metrics", "folds", "outcome", "source_train", "prompt_version", "result_refs", "target", "actor", "session_id", "port"}
+        if args.allow_real_model_calls or args.allow_local_review_metadata:
+            raise CLIUsageError("performance cannot invoke answer-review models")
+        if args.action == "performance_serve":
+            forbidden -= {"executor", "session_id", "port"}
+        if args.action != "performance_prepare":
+            forbidden |= {"model_version", "model_version_number", "data_version", "config", "git_commit", "media_root", "data_inputs"}
+        if args.action not in {"performance_run", "performance_serve"}:
+            forbidden.add("performance_evidence")
+        if any(getattr(args, field) is not None for field in forbidden):
+            raise CLIUsageError("performance evaluation accepts only purpose-specific frozen inputs")
+        if args.action == "performance_prepare":
+            _required(args, "model_version", "model_version_number", "data_version", "config", "git_commit", "media_root")
+            return {"path": prepare_performance_evaluation(root=args.root, eval_version=args.eval_version,
+                model_version=args.model_version, model_version_number=args.model_version_number,
+                data_version=args.data_version, config=_load_yaml_value(Path(args.config), "performance config"),
+                git_commit=args.git_commit, media_root=args.media_root, inputs_path=args.data_inputs)}
+        if args.action == "performance_validate":
+            return verify_performance_evaluation(root=args.root, eval_version=args.eval_version)
+        if args.action == "performance_export":
+            return {"path": export_performance_evaluation(root=args.root, eval_version=args.eval_version)}
+        _required(args, "performance_evidence")
+        if args.action == "performance_serve":
+            _required(args, "executor", "session_id", "port")
+            from versioning.performance import run_performance_session
+            return run_performance_session(root=args.root, eval_version=args.eval_version,
+                executor=args.executor, session_id=args.session_id, port=args.port, evidence_path=args.performance_evidence)
+        return execute_performance_evaluation(root=args.root, eval_version=args.eval_version,
+            evidence_path=args.performance_evidence)
     if args.action in {'manifest', 'fold-start', 'fold-end', 'aggregate', 'complete', 'summary', 'create'}:
         raise CLIUsageError("手工状态写入已停用；请使用实际执行器 eval prepare/validate/run/export")
-    if args.action in {"prepare", "validate", "run", "score", "export", "compare"}:
+    if args.action in {"prepare", "validate", "run", "score", "export", "compare", "review_prepare", "review_seal", "review_run", "review_verify", "restricted_summary"}:
         if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
             raise CLIUsageError("actual evaluation must use root/workspace/mlflow")
         input_flags = {"model_version", "model_version_number", "data_version", "config",
@@ -624,10 +670,42 @@ def _handle_eval(args: argparse.Namespace) -> Any:
             rejected |= {"blind_reviews"}
         if args.action != "compare":
             rejected |= {"baseline_eval_version"}
+        if args.action == "review_seal":
+            rejected.discard("blind_reviews")
+        if args.action != "review_prepare":
+            rejected.add("manual")
+        rejected.add("performance_evidence")
+        rejected |= {"session_id", "port"}
+        if args.action != "restricted_summary":
+            rejected.add("actor")
+        if args.allow_real_model_calls and args.action != "review_run":
+            raise CLIUsageError("real review model permission applies only to eval review_run")
+        if args.allow_local_review_metadata and args.action != "review_verify":
+            raise CLIUsageError("local review metadata permission applies only to eval review_verify")
         if any(getattr(args, key) is not None for key in rejected):
             raise CLIUsageError("actual evaluation accepts frozen inputs only; configure them with eval prepare")
         from finetune.eval_run import (prepare_versioned_evaluation, verify_versioned_evaluation,
             execute_versioned_evaluation, export_versioned_evaluation)
+        if args.action == "review_prepare":
+            _required(args, "manual")
+            from finetune.eval_holdout import prepare_holdout_review
+            return prepare_holdout_review(root=args.root, eval_version=args.eval_version, manual=args.manual)
+        if args.action == "review_seal":
+            _required(args, "blind_reviews")
+            from finetune.eval_holdout import seal_holdout_review
+            return seal_holdout_review(root=args.root, eval_version=args.eval_version, blind_reviews=args.blind_reviews)
+        if args.action == "review_run":
+            from finetune.eval_holdout import run_holdout_review
+            return run_holdout_review(root=args.root, eval_version=args.eval_version,
+                allow_real_model_calls=args.allow_real_model_calls)
+        if args.action == "review_verify":
+            from finetune.eval_holdout import verify_holdout_review_deployment
+            return verify_holdout_review_deployment(root=args.root, eval_version=args.eval_version,
+                allow_local_metadata=args.allow_local_review_metadata)
+        if args.action == "restricted_summary":
+            _required(args, "actor")
+            from finetune.eval_holdout import read_restricted_holdout_summary
+            return read_restricted_holdout_summary(root=args.root, eval_version=args.eval_version, actor=args.actor)
         if args.action == "prepare":
             _required(args, "model_version", "model_version_number", "data_version", "config", "git_commit", "media_root")
             config = _load_yaml_value(Path(args.config), "evaluation config")
@@ -828,7 +906,7 @@ def _handle_model(args: argparse.Namespace) -> Any:
             _required(args, "deploy_target")
         elif args.deploy_target is not None:
             raise CLIUsageError("此来源不接受 --deploy-target")
-    elif args.action == "finalize":
+    elif args.action in {"finalize", "bind-performance"}:
         _required(args, "eval_version")
     elif args.action == "scope":
         _required(args, "backup_scope")
@@ -857,6 +935,9 @@ def _handle_model(args: argparse.Namespace) -> Any:
         return finalize_model_evaluation(
             store, args.model_version, eval_id=args.eval_version
         )
+    if args.action == "bind-performance":
+        from versioning.registry import bind_model_performance
+        return bind_model_performance(store, args.model_version, eval_id=args.eval_version)
     if args.action == "scope":
         return set_offline_backup_scope(store, args.model_version, args.backup_scope)
     if args.action == "approve":

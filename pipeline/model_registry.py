@@ -369,6 +369,11 @@ def bind_service_contract(contract: dict[str, Any], binding: dict[str, Any]) -> 
         raise ModelRegistryError("service Prompt binding or output contract differs")
     result = deepcopy(contract)
     result["analysis"].update(system_prompt=parsed.system_prompt, user_prompt=parsed.user_prompt)
+    if binding.get("evaluation_runtime") is not None:
+        generation = result["analysis"]["generation"]
+        expected = binding["evaluation_runtime"]["generation"]
+        if any(generation.get(key) != expected[key] for key in ("do_sample", "num_beams", "max_new_tokens")):
+            raise ModelRegistryError("service generation differs from qualified quality/performance evidence")
     result["contract_hash"] = hashlib.sha256(canonical_contract_bytes(result)).hexdigest()
     return result
 
@@ -380,7 +385,7 @@ def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[
     This entry neither scans for models nor materializes or repairs a cache.
     """
     import tempfile
-    from mlflow.tracking import MlflowClient
+    from versioning.backup import scoped_mlflow_client
     from versioning.materialize import validate_service_current, _validate_route
     from versioning.registry import open_registry_store
     _validate_route(service_mode, alias)
@@ -390,7 +395,7 @@ def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[
         models_root=root / "workspace/models", records_root=root)
     prompt = _service_prompt(root, store, record)
     target = root / "workspace/models/materialized" / record.model_id
-    client = MlflowClient(tracking_uri=store.tracking_uri)
+    client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
     inventory = {}
     with tempfile.TemporaryDirectory(prefix="service-artifacts-") as temp:
         for entries in record.artifacts.values():
@@ -419,6 +424,16 @@ def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[
         "eval_version": record.eval_id, "data_version": record.data_version,
         "prompt_version": record.prompt_version, "base_model_version": record.base_model,
         "deploy_target": declared, "prompt": prompt, "prompt_sha256": _service_prompt_digest(prompt)}
+    if record.performance_eval_id:
+        from versioning.mlflow_eval import get_eval_run, open_eval_store
+        from versioning.registry import _evaluation_input
+        performance = get_eval_run(open_eval_store(store.root), record.performance_eval_id)
+        frozen = _evaluation_input(store, performance)
+        config = frozen["config"]
+        if config["artifact_kind"] != kind:
+            raise ModelRegistryError("service artifact kind differs from qualified performance")
+        identity.update(performance_eval_version=record.performance_eval_id,
+            evaluation_runtime={key: config[key] for key in ("generation", "quantization_bit", "runtime_variant", "device")})
     digest = hashlib.sha256(json.dumps({"identity": identity, "files": inventory},
         sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {**identity, "fingerprint": digest, "model_path": str(model_path),

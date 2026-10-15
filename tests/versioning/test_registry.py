@@ -1,5 +1,9 @@
 """B8 — MLflow Model Registry：唯一 mVllm2 + 晋级门 + alias 唯一路由 + offline_backup_scope。
 
+测评准入迁移说明：本文件的 strict fixture 仅模拟既有已绑定记录，不授予新准入。
+新 finalize / alias / approve 的独立质量＋性能验收见 test_eval_admission_restore.py；
+下列历史 B8 说明仅描述这些状态机和存储约束，不能替代新的准入条件。
+
 对应权威设计 docs/plans/2026-09-01-readable-version-control-design.md：
 - §2.9 + D024/D037：项目只建一个稳定 Registered Model ``mVllm2``；每个
   ``model-v<协议>-r<N>`` 映射其中一个不可变数值 Model Version，以 ``model_id``
@@ -298,6 +302,8 @@ from versioning.mlflow_train import (
     open_train_store,
     transition_train_state,
 )
+import versioning.registry as registry_module
+
 from versioning.registry import (
     ALIASES,
     BACKUP_SCOPES,
@@ -524,11 +530,11 @@ def golden(
     eval_store: EvalRecordStore,
     data_root: Path,
 ) -> RegisteredModelRecord:
-    """黄金晋级链上的已注册 model-v4.1-r1（version=1）。"""
+    """既有 strict 快照：历史已绑定 model-v4.1-r1（version=1），不模拟新准入。"""
     _complete_training(train_store)
     register_model(registry, MODEL_ID, train_id=TRAIN_ID)
     _pass_eval(eval_store, data_root)
-    return finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+    return _historical_eval_binding(registry, MODEL_ID, EVAL_ID)
 
 
 def _client(
@@ -536,6 +542,37 @@ def _client(
 ) -> MlflowClient:
     """raw MLflow 读回通道（真实集成断言；篡改模拟"人工或异常操作"）。"""
     return MlflowClient(tracking_uri=store.tracking_uri)
+
+
+@pytest.fixture()
+def verified_admission_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """State-machine units inject only the independently verified new-admission boundary.
+
+    These marked units cover alias/scope/entity mutation, existing gates, and
+    locking, not evidence acceptance. The injected boundary keeps a later protocol
+    rejection from masking a broken earlier gate. Train/eval validation and all
+    public operations remain real.
+    Unpatched migration acceptance lives in test_eval_admission_restore.py.
+    """
+    monkeypatch.setattr(registry_module, "_require_new_quality_protocol", lambda quality: None)
+
+
+def _historical_eval_binding(
+    registry: ModelRegistryStore, model_id: str, eval_id: str
+) -> RegisteredModelRecord:
+    """Install a pre-migration binding; do not call a new strict admission API."""
+    record = get_model(registry, model_id)
+    _client(registry).set_model_version_tag(
+        REGISTERED_MODEL_NAME, str(record.version), EVAL_ID_TAG, eval_id
+    )
+    return get_model(registry, model_id)
+
+
+def _historical_alias(registry: ModelRegistryStore, model_id: str, alias: str) -> None:
+    record = get_model(registry, model_id)
+    _client(registry).set_registered_model_alias(
+        REGISTERED_MODEL_NAME, alias, str(record.version)
+    )
 
 
 def _raw_model_version(registry: ModelRegistryStore, version: int | str):
@@ -619,7 +656,7 @@ def _golden_register(
     train_id: str = TRAIN_ID,
     eval_id: str = EVAL_ID,
 ) -> RegisteredModelRecord:
-    """完整黄金链：train completed → staging register → eval passed → finalize。"""
+    """构造历史已绑定快照；strict 证据不再用于新晋级。"""
     _complete_training(train_store, train_id)
     staged = register_model(registry, model_id, train_id=train_id)
     _pass_eval(
@@ -629,7 +666,7 @@ def _golden_register(
         model_id=model_id,
         model_version_number=staged.version,
     )
-    return finalize_model_evaluation(registry, model_id, eval_id=eval_id)
+    return _historical_eval_binding(registry, model_id, eval_id)
 
 
 def _stable_entity_view(entity) -> tuple:
@@ -752,7 +789,7 @@ class TestRegistryStore:
 class TestRegisterModelGate:
     """register_model：显式三元组、六绑定 tags、门 fail-closed、同名冲突。"""
 
-    def test_two_phase_registration_requires_passed_eval_before_candidate(
+    def test_strict_eval_requires_historical_binding_and_alias_for_recovery(
         self,
         registry: ModelRegistryStore,
         train_store: TrainRecordStore,
@@ -770,9 +807,14 @@ class TestRegisterModelGate:
             set_alias(registry, MODEL_ID, "candidate")
 
         _pass_eval(eval_store, data_root)
-        finalized = finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
-        assert finalized.eval_id == EVAL_ID
+        with pytest.raises(PromotionGateRejected, match="new admission"):
+            finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+        assert get_model(registry, MODEL_ID).eval_id is None
+        finalized = _historical_eval_binding(registry, MODEL_ID, EVAL_ID)
         assert finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID) == finalized
+        with pytest.raises(PromotionGateRejected, match="new admission"):
+            set_alias(registry, MODEL_ID, "candidate")
+        _historical_alias(registry, MODEL_ID, "candidate")
         assert set_alias(registry, MODEL_ID, "candidate").aliases == ("candidate",)
 
     def test_eval_reference_and_finalize_require_exact_numeric_version(
@@ -880,6 +922,7 @@ class TestRegisterModelGate:
         _complete_training(train_store)
         register_model(registry, MODEL_ID, train_id=TRAIN_ID)
         _pass_eval(eval_store, data_root)
+        _historical_eval_binding(registry, MODEL_ID, EVAL_ID)
         transition_train_state(train_store, TRAIN_ID, "archived")
         transition_eval_state(eval_store, EVAL_ID, "archived")
 
@@ -1056,6 +1099,7 @@ class TestRegisterModelGate:
             register_model(registry, MODEL_ID, train_id=UNKNOWN_TRAIN_ID)
         assert _raw_model_versions(registry) == []
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_finalize_rejects_missing_eval(
         self,
         registry: ModelRegistryStore,
@@ -1068,6 +1112,7 @@ class TestRegisterModelGate:
             finalize_model_evaluation(registry, MODEL_ID, eval_id=UNKNOWN_EVAL_ID)
         assert get_model(registry, MODEL_ID).eval_id is None
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_register_rejects_running_eval(
         self,
         registry: ModelRegistryStore,
@@ -1093,6 +1138,7 @@ class TestRegisterModelGate:
             finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
         assert get_model(registry, MODEL_ID).eval_id is None
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_register_rejects_failed_outcome_eval(
         self,
         registry: ModelRegistryStore,
@@ -1108,6 +1154,7 @@ class TestRegisterModelGate:
             finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
         assert get_model(registry, MODEL_ID).eval_id is None
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_register_rejects_invalid_eval(
         self,
         registry: ModelRegistryStore,
@@ -1232,7 +1279,7 @@ class TestRecordValidity:
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
         set_offline_backup_scope(registry, MODEL_ID, "adapter")
-        set_alias(registry, MODEL_ID, "candidate")
+        _historical_alias(registry, MODEL_ID, "candidate")
 
         marked = mark_model_invalid(registry, MODEL_ID)
         assert marked.record_validity == "invalid"
@@ -1266,7 +1313,7 @@ class TestRecordValidity:
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
         set_offline_backup_scope(registry, MODEL_ID, "adapter")
-        set_alias(registry, MODEL_ID, "candidate")
+        _historical_alias(registry, MODEL_ID, "candidate")
         mark_model_invalid(registry, MODEL_ID)
         # §13.1：alias 只能指向有效版本，路由读 fail-closed
         with pytest.raises(InvalidModelRecord):
@@ -1279,7 +1326,7 @@ class TestRecordValidity:
         eval_store: EvalRecordStore,
     ) -> None:
         set_offline_backup_scope(registry, MODEL_ID, "adapter")
-        set_alias(registry, MODEL_ID, "candidate")
+        _historical_alias(registry, MODEL_ID, "candidate")
         mark_eval_invalid(eval_store, EVAL_ID)
         with pytest.raises(PromotionGateRejected):
             get_model_by_alias(registry, "candidate")
@@ -1369,6 +1416,7 @@ class TestOfflineBackupScope:
         with pytest.raises(RegistryModelNotFound):
             set_offline_backup_scope(registry, UNKNOWN_MODEL_ID, "adapter")
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_scope_sticky_across_alias_switch_and_delete(
         self,
         registry: ModelRegistryStore,
@@ -1407,6 +1455,7 @@ class TestOfflineBackupScope:
 class TestAliasManagement:
     """set_alias/delete_alias/get_model_by_alias：显式绑定/切换/删除，无隐式最新。"""
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_candidate_full_path(
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
@@ -1429,6 +1478,7 @@ class TestAliasManagement:
         assert mv.tags["model_id"] == MODEL_ID
         assert mv.tags["offline_backup_scope"] == "adapter"
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_candidate_requires_scope_before_alias(
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
@@ -1439,6 +1489,7 @@ class TestAliasManagement:
         with pytest.raises(MlflowException):
             _client(registry).get_model_version_by_alias("mVllm2", "candidate")
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_production_requires_production_bundle_scope(
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
@@ -1452,6 +1503,7 @@ class TestAliasManagement:
         with pytest.raises(MlflowException):
             _client(registry).get_model_version_by_alias("mVllm2", "production")
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_production_requires_user_approval(
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
@@ -1461,6 +1513,7 @@ class TestAliasManagement:
         with pytest.raises(MlflowException):
             _client(registry).get_model_version_by_alias("mVllm2", "production")
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_production_full_path_with_candidate(
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
@@ -1479,6 +1532,7 @@ class TestAliasManagement:
             == 1
         )
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_approve_sets_tag_gates_online_and_idempotent(
         self,
         golden: RegisteredModelRecord,
@@ -1497,6 +1551,7 @@ class TestAliasManagement:
         with pytest.raises(PromotionGateRejected):
             approve_model_for_production(registry, MODEL_ID)
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_approve_rejects_tampered_eval_model_binding(
         self,
         golden: RegisteredModelRecord,
@@ -1547,6 +1602,7 @@ class TestAliasManagement:
         with pytest.raises(RegistryModelNotFound):
             set_alias(registry, UNKNOWN_MODEL_ID, "candidate")
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_alias_switch_moves_route_without_mutating_entities(
         self,
         registry: ModelRegistryStore,
@@ -1579,6 +1635,7 @@ class TestAliasManagement:
         assert record.aliases == ()
         assert record.record_validity == "valid"
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_alias_same_target_idempotent(
         self, golden: RegisteredModelRecord, registry: ModelRegistryStore
     ) -> None:
@@ -1588,6 +1645,7 @@ class TestAliasManagement:
         assert again.aliases == ("candidate",)
         assert get_model_by_alias(registry, "candidate").version == 1
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_delete_alias_explicit_and_no_implicit_latest(
         self,
         registry: ModelRegistryStore,
@@ -1627,6 +1685,7 @@ class TestAliasManagement:
         assert mv.tags["model_id"] == MODEL_ID
         assert mv.aliases == []
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_alias_gate_rechecks_train_online(
         self,
         golden: RegisteredModelRecord,
@@ -1641,6 +1700,7 @@ class TestAliasManagement:
         with pytest.raises(MlflowException):
             _client(registry).get_model_version_by_alias("mVllm2", "candidate")
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_production_gate_rechecks_eval_online(
         self,
         golden: RegisteredModelRecord,
@@ -1656,6 +1716,7 @@ class TestAliasManagement:
         with pytest.raises(MlflowException):
             _client(registry).get_model_version_by_alias("mVllm2", "production")
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_alias_lifecycle_never_rewrites_model_entity(
         self,
         registry: ModelRegistryStore,
@@ -1734,6 +1795,7 @@ class TestRegistryConcurrentTransactions:
         assert len(_raw_model_versions(registry)) == 1
         assert get_model(registry, MODEL_ID).version == 1
 
+    @pytest.mark.usefixtures("verified_admission_boundary")
     def test_competing_eval_finalize_cannot_overwrite_first_binding(
         self,
         registry: ModelRegistryStore,
@@ -1790,7 +1852,7 @@ class TestRegistryConcurrentTransactions:
         _pass_eval(
             eval_store, data_root, model_version_number=staged.version
         )
-        finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+        _historical_eval_binding(registry, MODEL_ID, EVAL_ID)
         set_offline_backup_scope(registry, MODEL_ID, "adapter")
         with pytest.raises(PromotionGateRejected, match="唯一 deploy_target"):
             set_alias(registry, MODEL_ID, "candidate")

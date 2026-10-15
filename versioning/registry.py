@@ -143,6 +143,7 @@ class RegisteredModelRecord:
     aliases: tuple[str, ...]
     source_kind: str = "trained"
     source_evidence: dict[str, Any] = field(default_factory=dict)
+    performance_eval_id: str | None = None
 
 
 @contextmanager
@@ -171,7 +172,8 @@ def registry_snapshot_lock(store: ModelRegistryStore):
 
 def _client(store: ModelRegistryStore | TrainRecordStore | EvalRecordStore) -> MlflowClient:
     """按 store 句柄构造独立 MLflow Client。"""
-    return MlflowClient(tracking_uri=store.tracking_uri)
+    from versioning.backup import scoped_mlflow_client
+    return scoped_mlflow_client(tracking_uri=store.tracking_uri)
 
 
 def _train_store(store: ModelRegistryStore) -> TrainRecordStore:
@@ -365,6 +367,11 @@ def _validate_model_version_tags(version: Any, *, expected_model_id: str | None 
             parse_eval_id(eval_id)
         except Exception as exc:
             raise IllegalRegistryRecord(f"eval_id tag 非法: {eval_id!r}") from exc
+    if tags.get("performance_eval_id") is not None:
+        try:
+            parse_eval_id(tags["performance_eval_id"])
+        except Exception as exc:
+            raise IllegalRegistryRecord("performance_eval_id tag 非法") from exc
 
     if source_kind == "trained":
         try:
@@ -432,6 +439,7 @@ def _build_record(version: Any) -> RegisteredModelRecord:
         aliases=tuple(aliases),
         source_kind=tags.get(SOURCE_KIND_TAG, "trained"),
         source_evidence=json.loads(tags.get(SOURCE_EVIDENCE_TAG, "{}")),
+        performance_eval_id=tags.get("performance_eval_id"),
     )
 
 
@@ -517,6 +525,7 @@ def get_model_by_alias(store: ModelRegistryStore, alias: str) -> RegisteredModel
         or eval_record.model_version_number != record.version
     ):
         raise PromotionGateRejected("alias 目标的 eval 与模型身份或数值版本不一致")
+    _validate_new_service_admission(store, record, eval_record)
     return record
 
 
@@ -646,9 +655,9 @@ def _validate_train_execution_artifacts(store: Any, record: Any, *, require_all_
         raise ValueError('training execution evidence artifacts drifted')
 
 
-def _validate_eval_execution_artifacts(store: Any, record: Any) -> None:
+def _validate_eval_execution_artifacts(store: Any, record: Any) -> dict[str, Any]:
     from finetune.eval_run import validate_evaluation_execution_artifacts
-    validate_evaluation_execution_artifacts(store=store, record=record)
+    return validate_evaluation_execution_artifacts(store=store, record=record)
 
 
 def _validate_model_artifact_evidence(store: Any, train: Any, artifacts: Any) -> None:
@@ -962,11 +971,18 @@ def _run_train_gate(store: ModelRegistryStore, train_id: str) -> Any:
         raise PromotionGateRejected(f"train 晋级门拒绝: {exc}") from exc
 
 
-def _run_eval_gate(store: ModelRegistryStore, eval_id: str, *, require_passed: bool) -> Any:
+def _run_eval_gate(store: ModelRegistryStore, eval_id: str, *, require_passed: bool, purpose: str = "quality") -> Any:
     """eval 结论门；成功返回记录，失败包装为 PromotionGateRejected。"""
     try:
         record = validate_eval_for_conclusion(_eval_store(store), eval_id)
-        _validate_eval_execution_artifacts(store, record)
+        execution = _validate_eval_execution_artifacts(store, record)
+        if execution is None:
+            if (getattr(record, "purpose", "legacy") != "legacy" or
+                    getattr(record, "protocol", "strict-v4.1") != "strict-v4.1"):
+                raise IllegalEvalRecord("new evaluation purpose requires complete execution evidence")
+            # Historical validators exposed only a successful read, not a
+            # new-protocol evidence mapping. This cannot pass new-write gates.
+            execution = {}
     except (
         EvalRecordNotFound,
         InvalidEvalRecord,
@@ -980,7 +996,111 @@ def _run_eval_gate(store: ModelRegistryStore, eval_id: str, *, require_passed: b
         raise PromotionGateRejected(
             f"eval {eval_id} outcome={record.outcome!r}，未通过"
         )
+    actual_purpose = getattr(record, "purpose", "legacy")
+    if purpose == "performance":
+        if actual_purpose != "performance" or getattr(record, "protocol", None) != "performance-v1":
+            raise PromotionGateRejected("performance requires its own purpose/protocol evidence")
+    else:
+        protocol = getattr(record, "protocol", "strict-v4.1")
+        # A/B semantic records predate purpose tags; inspect the validated
+        # execution too so deleting tags cannot turn development into quality.
+        actual_protocol = execution.get("scoring_protocol", protocol)
+        if actual_purpose == "performance" or protocol == "performance-v1":
+            raise PromotionGateRejected("performance evidence cannot substitute for quality")
+        if actual_protocol == "semantic-v4.1" or protocol == "semantic-v4.1":
+            raise PromotionGateRejected("development semantic evidence cannot substitute for independent quality")
+        if actual_protocol == "semantic-holdout-v4.1":
+            if actual_purpose != "quality" or protocol != actual_protocol or record.scope != "full":
+                raise PromotionGateRejected("semantic quality purpose/protocol binding differs")
+            if require_passed:
+                integrity = execution.get("review_integrity", {})
+                if (integrity.get("synthetic") is not False or
+                    integrity.get("technical_isolation_verified") is not True or
+                    integrity.get("real_model_deployment_verified") is not True):
+                    raise PromotionGateRejected("semantic quality requires real verified independent review evidence")
+        elif actual_protocol != "strict-v4.1":
+            raise PromotionGateRejected("unsupported quality scoring protocol")
     return record
+
+
+def _evaluation_input(store: ModelRegistryStore, evaluation: Any) -> dict:
+    return json.loads((_run_artifact_root(store, evaluation.run_id) / "input/evaluation.yaml").read_bytes())
+
+
+def _validate_new_service_admission(store: ModelRegistryStore, model: Any, quality: Any) -> None:
+    """Old frozen strict approvals retain their meaning; new semantic service gates are joint."""
+    protocol = getattr(quality, "protocol", "strict-v4.1")
+    if protocol == "strict-v4.1":
+        return
+    if protocol != "semantic-holdout-v4.1":
+        raise PromotionGateRejected("unsupported service quality protocol")
+    if getattr(quality, "purpose", None) != "quality" or quality.scope != "full" or model.source_scope != "full":
+        raise PromotionGateRejected("semantic service admission requires full independent quality evidence")
+    if not getattr(model, "performance_eval_id", None):
+        raise PromotionGateRejected("semantic service admission requires bound performance evidence")
+    performance = _run_eval_gate(store, model.performance_eval_id, require_passed=True, purpose="performance")
+    _validate_performance_pair(store, model, performance, quality)
+
+
+def _validate_performance_pair(store: ModelRegistryStore, model: Any, performance: Any, quality: Any = None) -> None:
+    if performance.model_id != model.model_id or performance.model_version_number != model.version:
+        raise PromotionGateRejected("performance model identity or numeric version differs")
+    from finetune.eval_run import validate_evaluation_execution_artifacts
+    evidence = validate_evaluation_execution_artifacts(store=store, record=performance)
+    if evidence.get("synthetic") is not False or evidence.get("e2e_verified") is not True or evidence.get("outcome") != "passed":
+        raise PromotionGateRejected("performance requires real verified client display E2E evidence")
+    if quality is None:
+        return
+    if quality.model_id != model.model_id or quality.model_version_number != model.version:
+        raise PromotionGateRejected("quality model identity or numeric version differs")
+    quality_input, performance_input = _evaluation_input(store, quality), _evaluation_input(store, performance)
+    quality_evidence = validate_evaluation_execution_artifacts(store=store, record=quality)
+    attestation = quality_evidence.get("runtime_attestation")
+    performance_config = performance_input["config"]
+    if (not isinstance(attestation, dict) or
+        attestation != {key: performance_config[key] for key in ("runtime_variant", "device", "quantization_bit")}):
+        raise PromotionGateRejected("quality/performance actual runtime attestation is missing or differs")
+    for field in ("model", "prompt"):
+        if quality_input.get(field) != performance_input.get(field) or not quality_input.get(field):
+            raise PromotionGateRejected(f"quality/performance {field} binding differs")
+    for field in ("generation", "quantization_bit", "artifact_kind"):
+        if quality_input["config"].get(field) != performance_input["config"].get(field):
+            raise PromotionGateRejected(f"quality/performance {field} binding differs")
+    # Frames/preprocessing are code-frozen, not a caller's descriptive variant label.
+    frame_sources = {"finetune/validation/video_loader.py", "pipeline/preprocessing/minicpm_preprocessor.py"}
+    for source in frame_sources:
+        expected = quality_input.get("implementation_sha256", {}).get(source)
+        if not expected or performance_input.get("implementation_sha256", {}).get(source) != expected:
+            raise PromotionGateRejected("quality/performance frame preprocessing binding differs")
+
+
+def _require_new_quality_protocol(quality: Any) -> None:
+    if getattr(quality, "purpose", None) != "quality" or getattr(quality, "protocol", None) != "semantic-holdout-v4.1":
+        raise PromotionGateRejected("new admission requires semantic-holdout quality plus independent performance; historical strict is read-only")
+
+
+def bind_model_performance(store: ModelRegistryStore, model_id: str, *, eval_id: str) -> RegisteredModelRecord:
+    """Bind independent real performance proof without granting an alias or production approval."""
+    parse_model_id(model_id)
+    parse_eval_id(eval_id)
+    with _registry_write_lock(store):
+        client = _client(store)
+        version = _fetch_version_by_model_id(client, model_id)
+        _validate_model_version_tags(version, expected_model_id=model_id)
+        model = _build_record(version)
+        _reject_development_only_source(model)
+        if model.record_validity != "valid":
+            raise InvalidModelRecord("invalid model cannot bind performance")
+        if model.performance_eval_id not in (None, eval_id):
+            raise ModelVersionConflict("performance evidence cannot be rebound")
+        _run_model_train_gate(store, model)
+        performance = _run_eval_gate(store, eval_id, require_passed=True, purpose="performance")
+        quality = _run_eval_gate(store, model.eval_id, require_passed=True) if model.eval_id else None
+        if quality is not None and getattr(quality, "protocol", None) != "semantic-holdout-v4.1":
+            raise PromotionGateRejected("legacy quality cannot acquire new semantic admission through performance binding")
+        _validate_performance_pair(store, model, performance, quality)
+        client.set_model_version_tag(REGISTERED_MODEL_NAME, str(model.version), "performance_eval_id", eval_id)
+        return _build_record(client.get_model_version(REGISTERED_MODEL_NAME, str(model.version)))
 
 
 def register_model(
@@ -1083,8 +1203,16 @@ def finalize_model_evaluation(
                 "eval 引用的 MLflow 数值 Model Version "
                 f"{eval_record.model_version_number} 与实际版本 {record.version} 不一致"
             )
+        if getattr(eval_record, "protocol", "strict-v4.1") == "semantic-holdout-v4.1":
+            if record.source_scope != "full" or eval_record.scope != "full" or eval_record.purpose != "quality":
+                raise PromotionGateRejected("semantic quality requires a full model and independent full evaluation")
+            if record.performance_eval_id:
+                performance = _run_eval_gate(store, record.performance_eval_id, require_passed=True, purpose="performance")
+                _validate_performance_pair(store, record, performance, eval_record)
         if record.eval_id == eval_id:
             return record
+        _require_new_quality_protocol(eval_record)
+        _validate_new_service_admission(store, record, eval_record)
 
         client.set_model_version_tag(
             REGISTERED_MODEL_NAME, str(record.version), EVAL_ID_TAG, eval_id
@@ -1163,7 +1291,10 @@ def _approve_model_for_production_locked(
         )
 
     if record.production_approved:
+        _validate_new_service_admission(store, record, eval_record)
         return record
+    _require_new_quality_protocol(eval_record)
+    _validate_new_service_admission(store, record, eval_record)
 
     client.set_model_version_tag(
         REGISTERED_MODEL_NAME, str(record.version), PRODUCTION_APPROVED_TAG, "true"
@@ -1233,6 +1364,14 @@ def _set_alias_locked(
         or eval_record.model_version_number != record.version
     ):
         raise PromotionGateRejected("eval 与模型可读身份或数值版本绑定不一致")
+    _validate_new_service_admission(store, record, eval_record)
+    try:
+        existing_alias = _resolve_alias(client, alias)
+        same_alias = int(existing_alias.version) == record.version
+    except RegistryModelNotFound:
+        same_alias = False
+    if not same_alias:
+        _require_new_quality_protocol(eval_record)
 
     client.set_registered_model_alias(
         REGISTERED_MODEL_NAME, alias, str(record.version)
@@ -1316,6 +1455,7 @@ def _build_materialized_payload(record: RegisteredModelRecord) -> dict[str, Any]
         "model_id": record.model_id,
         "train_id": record.train_id,
         "eval_id": record.eval_id,
+        **({"performance_eval_id": record.performance_eval_id} if record.performance_eval_id else {}),
         "data_version": record.data_version,
         "prompt_version": record.prompt_version,
         "git_commit": record.git_commit,

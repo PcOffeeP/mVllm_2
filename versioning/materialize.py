@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
-from mlflow.tracking import MlflowClient
+from versioning.backup import scoped_mlflow_client
 
 from versioning.manifest import ManifestReferenceError, validate_model_manifest
 from versioning.registry import (
@@ -73,6 +73,11 @@ def _load_matching_manifest(records_root: Path, record: RegisteredModelRecord) -
             raise ManifestReferenceError(f"model manifest {key} 与 Registry 不一致")
     if obj.get("artifacts") != record.artifacts:
         raise ManifestReferenceError("model manifest artifacts 与 Registry 不一致")
+    expected_evaluation = ({"quality_eval_id": record.eval_id, "performance_eval_id": record.performance_eval_id,
+        "quality_protocol": "semantic-holdout-v4.1", "performance_protocol": "performance-v1"}
+        if record.performance_eval_id else None)
+    if obj.get("evaluation_binding") != expected_evaluation:
+        raise ManifestReferenceError("model manifest evaluation binding 与 Registry 不一致")
     return path, obj
 
 
@@ -83,6 +88,7 @@ def _metadata(record: RegisteredModelRecord, manifest: Path, records_root: Path)
         "model_id": record.model_id,
         "train_id": record.train_id,
         "eval_id": record.eval_id,
+        **({"performance_eval_id": record.performance_eval_id} if record.performance_eval_id else {}),
         "data_version": record.data_version,
         "prompt_version": record.prompt_version,
         "git_commit": record.git_commit,
@@ -143,7 +149,7 @@ def _materialize_current_locked(
     else:
         temp = Path(tempfile.mkdtemp(prefix=f".{record.model_id}.", dir=materialized_root))
         try:
-            client = MlflowClient(tracking_uri=store.tracking_uri)
+            client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
             source = Path(client.download_artifacts(run_id=record.run_id, path=""))
             shutil.copytree(source, temp / MATERIALIZED_ARTIFACTS_DIR, dirs_exist_ok=True)
             deploy_path = temp / record.deploy_target

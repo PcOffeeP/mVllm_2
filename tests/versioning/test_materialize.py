@@ -1,5 +1,9 @@
 """B8 — 物化：注册模型 artifact 单向导出到 models/<model_id>/（含 manifest 链接）。
 
+测评准入迁移说明：本文件的 strict fixture 仅模拟既有已绑定记录，不授予新准入。
+新 finalize / alias / approve 的独立质量＋性能验收见 test_eval_admission_restore.py；
+下列历史 B8 说明仅描述这些状态机和存储约束，不能替代新的准入条件。
+
 对应权威设计 docs/plans/2026-09-01-readable-version-control-design.md：
 - §5.4（``workspace/models/materialized/model-v...`` 只是从权威 Registry 对象
   生成的本地部署副本，可以重新物化，不能反向修改 Registry 模型；模型内容、
@@ -146,7 +150,7 @@ from versioning.registry import (
     ModelRegistryStore,
     RegisteredModelRecord,
     RegistryModelNotFound,
-    finalize_model_evaluation,
+    get_model,
     mark_model_invalid,
     materialize_model,
     open_registry_store,
@@ -283,12 +287,13 @@ def golden(
     data_root: Path,
     tmp_path: Path,
 ) -> RegisteredModelRecord:
-    """黄金链：train completed（含真实 artifacts）+ eval passed + 已注册。"""
+    """历史已绑定 strict 快照，含临时合成 artifacts；不执行新准入。"""
     train = _complete_training(train_store)
     register_model(registry, MODEL_ID, train_id=TRAIN_ID)
     _pass_eval(eval_store, data_root)
     _log_train_artifacts(registry, train.run_id, tmp_path)
-    return finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+    _client(registry).set_model_version_tag("mVllm2", "1", "eval_id", EVAL_ID)
+    return get_model(registry, MODEL_ID)
 
 
 def _client(
@@ -591,7 +596,9 @@ class TestModelManifestAndCurrent:
         set_offline_backup_scope(registry, MODEL_ID, "adapter")
         target = records_root / "records" / "models" / MODEL_ID / "manifest.yaml"
         export_model_manifest(target, store=registry, model_id=MODEL_ID)
-        set_alias(registry, MODEL_ID, "candidate")
+        # Simulate a pre-existing alias; strict evidence cannot create a new one.
+        _client(registry).set_registered_model_alias("mVllm2", "candidate", "1")
+        assert set_alias(registry, MODEL_ID, "candidate").version == 1
         return target
 
     def test_model_manifest_and_current_round_trip(
@@ -633,7 +640,9 @@ class TestModelManifestAndCurrent:
         models_root: Path,
     ) -> None:
         set_offline_backup_scope(registry, MODEL_ID, "adapter")
-        set_alias(registry, MODEL_ID, "candidate")
+        # Simulate a pre-existing alias; strict evidence cannot create a new one.
+        _client(registry).set_registered_model_alias("mVllm2", "candidate", "1")
+        assert set_alias(registry, MODEL_ID, "candidate").version == 1
         old = models_root / "materialized" / "old-model"
         old.mkdir(parents=True)
         models_root.mkdir(parents=True, exist_ok=True)

@@ -265,11 +265,10 @@ def test_complete_semantic_formal_pass_and_collapsed_fold_gate(tmp_path, monkeyp
     summary = json.loads((root / "workspace/evaluations/eval-v4.1-r1/output/summary.json").read_bytes())
     assert all(v for k, v in summary["development_gates"]["gates"].items() if k.startswith("pooled_"))
     registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
-    if collapse:
-        with pytest.raises(PromotionGateRejected):
-            _run_eval_gate(registry, record.eval_id, require_passed=True)
-    else:
-        assert _run_eval_gate(registry, record.eval_id, require_passed=True).eval_id == record.eval_id
+    # Development can report passed while remaining ineligible as final quality.
+    with pytest.raises(PromotionGateRejected):
+        _run_eval_gate(registry, record.eval_id, require_passed=True)
+    assert runtime.export_versioned_evaluation(root=root, eval_version=record.eval_id).is_file()
 
 
 def _archived_module(path):
@@ -298,8 +297,10 @@ def _archived_runtime(monkeypatch):
     return legacy, legacy_holdout, archived
 
 
-def test_actual_archived_strict_record_remains_exportable_and_aliasable(tmp_path, monkeypatch):
-    from versioning.registry import open_registry_store, finalize_model_evaluation, set_offline_backup_scope, set_alias, get_model_by_alias
+def test_actual_archived_strict_record_preserves_export_and_existing_alias(tmp_path, monkeypatch):
+    from mlflow.tracking import MlflowClient
+    from versioning.registry import (open_registry_store, finalize_model_evaluation,
+        set_alias, get_model_by_alias, get_model, PromotionGateRejected, REGISTERED_MODEL_NAME)
     root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold")
     legacy, _, archived = _archived_runtime(monkeypatch)
     calls = _fake_formal_runtime(monkeypatch)
@@ -315,10 +316,18 @@ def test_actual_archived_strict_record_remains_exportable_and_aliasable(tmp_path
     runtime.export_versioned_evaluation(root=root, eval_version=result.eval_id)
     runtime.prepare_versioned_evaluation(**_prepare_legacy)  # idempotent historical prepare
     registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
-    finalize_model_evaluation(registry, model.model_id, eval_id=result.eval_id)
-    set_offline_backup_scope(registry, model.model_id, "adapter")
-    set_alias(registry, model.model_id, "candidate")
+    with pytest.raises(PromotionGateRejected, match="new admission"):
+        finalize_model_evaluation(registry, model.model_id, eval_id=result.eval_id)
+    assert get_model(registry, model.model_id).eval_id is None
+    # Reconstruct only the registry state that could already exist with this
+    # archived implementation. New strict promotion is deliberately prohibited.
+    client = MlflowClient(tracking_uri=registry.tracking_uri)
+    for name, value in {"eval_id": result.eval_id, "offline_backup_scope": "adapter"}.items():
+        client.set_model_version_tag(REGISTERED_MODEL_NAME, str(model.version), name, value)
+    client.set_registered_model_alias(REGISTERED_MODEL_NAME, "candidate", str(model.version))
     assert get_model_by_alias(registry, "candidate").eval_id == result.eval_id
+    assert finalize_model_evaluation(registry, model.model_id, eval_id=result.eval_id).eval_id == result.eval_id
+    assert set_alias(registry, model.model_id, "candidate").eval_id == result.eval_id
     # A future adapter edit is an actual byte change, and is not implicitly trusted.
     modified = tmp_path / "unreviewed.py"
     modified.write_bytes((runtime.ROOT / "finetune/eval_run.py").read_bytes() + b"\n# unreviewed adapter bytes\n")

@@ -447,9 +447,28 @@ def main() -> int:
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("LLaMA-Factory and uvicorn are required") from exc
     model_args = _chat_model_args(binding["model_path"])
+    if binding.get("evaluation_runtime") is not None:
+        runtime = binding["evaluation_runtime"]
+        model_args.update({key: runtime["generation"][key] for key in ("do_sample", "num_beams", "max_new_tokens")})
+        if runtime["generation"]["video_max_frames"] != 8:
+            raise ValueError("service frame configuration differs from qualified performance")
+        if runtime["quantization_bit"] is not None:
+            model_args["quantization_bit"] = runtime["quantization_bit"]
+            model_args.update(double_quantization=runtime["runtime_variant"]["quantization"]["double_quant"],
+                quantization_type=runtime["runtime_variant"]["quantization"]["quant_type"])
+        model_args.update(infer_dtype=runtime["runtime_variant"]["dtype"],
+            device_map=runtime["device"]["runtime_device"])
+        if (startup_config["runtime_device"] != runtime["device"]["runtime_device"] or
+            startup_config["runtime_dtype"] != runtime["runtime_variant"]["dtype"]):
+            raise ValueError("service runtime device differs from qualified performance")
     if binding["adapter_path"] is not None:
         model_args["adapter_name_or_path"] = binding["adapter_path"]
     chat_model = ChatModel(model_args)
+    if binding.get("evaluation_runtime") is not None:
+        actual = chat_model.engine.model
+        runtime = binding["evaluation_runtime"]
+        from versioning.performance import validate_loaded_runtime
+        validate_loaded_runtime(actual, runtime)
     if resolve_service_model(args.root, alias=args.alias, service_mode=args.service_mode) != binding:
         raise ValueError("Registry or model content changed while loading")
     app = create_integrated_app(chat_model, startup_config, contract=contract, service_binding=binding)

@@ -555,3 +555,42 @@ def validate_claim_consumed(
     if not _claims_match(consumed, identity, executor, pre_registration_sha256):
         raise ClaimConflictError("consumed.yaml 与 claim 身份不一致")
     return consumed_path
+
+
+def mark_claim_exposed(authorization_dir: Path, identity: ClaimIdentity, executor: str,
+                       *, pre_registration_sha256: str, input_sha256: str,
+                       predictions_sha256: str, package_sha256: str) -> Path:
+    """Irreversible exposure fact, independent of score/consumed.
+
+    An identical resend may recover; a new input/raw/package can never replace the
+    original. Publish this fact BEFORE making any anonymous package available.
+    """
+    authorization_dir = Path(authorization_dir)
+    if any(path.is_symlink() for path in (authorization_dir, *authorization_dir.parents)):
+        raise ClaimConflictError('prediction exposure authorization cannot contain symlinks')
+    if identity.data_version != _expected_data_version(authorization_dir):
+        raise ClaimConflictError('prediction exposure must belong to the claimed data release')
+    claim = load_claim(authorization_dir)
+    if not _claims_match(claim, identity, executor, pre_registration_sha256):
+        raise ClaimConflictError('prediction exposure claim binding mismatch')
+    for value in (pre_registration_sha256, input_sha256, predictions_sha256, package_sha256):
+        if value is None:
+            raise ClaimError('prediction exposure requires explicit full SHA256 bindings')
+        _validate_pre_registration_sha256(value)
+    payload = {**_claim_to_dict(identity, executor, pre_registration_sha256),
+        'schema_version': 'tensile-holdout-exposure/v1', 'input_sha256': input_sha256,
+        'predictions_sha256': predictions_sha256, 'package_sha256': package_sha256}
+    target = Path(authorization_dir) / 'exposed.yaml'
+    encoded = yaml.safe_dump(payload).encode('utf-8')
+    if target.exists():
+        if target.is_symlink() or target.read_bytes() != encoded:
+            raise ClaimConflictError('prediction exposure binding drift; only identical recovery allowed')
+        return target
+    if (Path(authorization_dir) / 'consumed.yaml').exists():
+        raise ClaimConsumedError('consumed claim cannot create a new prediction exposure')
+    try:
+        _publish_read_only_exclusive(target, encoded)
+    except FileExistsError:
+        if target.is_symlink() or target.read_bytes() != encoded:
+            raise ClaimConflictError('concurrent prediction exposure binding drift')
+    return target

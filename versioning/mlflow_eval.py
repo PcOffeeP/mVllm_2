@@ -74,6 +74,11 @@ PRE_REGISTRATION_PATH_TAG: str = "pre_registration_path"
 PRE_REGISTRATION_SHA256_TAG: str = "pre_registration_sha256"
 HOLDOUT_AUTHORIZATION_DIR_TAG: str = "holdout_authorization_dir"
 HOLDOUT_EXECUTOR_TAG: str = "holdout_executor"
+PURPOSE_TAG: str = "evaluation_purpose"
+PROTOCOL_TAG: str = "evaluation_protocol"
+PURPOSE_PROTOCOLS = {"development": {"strict-v4.1", "semantic-v4.1"},
+    "quality": {"strict-v4.1", "semantic-holdout-v4.1"},
+    "performance": {"performance-v1"}}
 REGISTERED_MODEL_NAME: str = "mVllm2"
 
 
@@ -158,11 +163,14 @@ class EvalRunRecord:
     pre_registration_sha256: str | None
     holdout_authorization_dir: str | None
     holdout_executor: str | None
+    purpose: str = "legacy"
+    protocol: str = "strict-v4.1"
 
 
 def _client(store: EvalRecordStore) -> MlflowClient:
     """按 store 句柄构造独立 MLflow Client，不依赖全局 tracking 状态。"""
-    return MlflowClient(tracking_uri=store.tracking_uri)
+    from versioning.backup import scoped_mlflow_client
+    return scoped_mlflow_client(tracking_uri=store.tracking_uri)
 
 
 def _validate_non_empty_string(value: Any, name: str) -> str:
@@ -297,6 +305,10 @@ def _validate_parent_tags(
 ) -> None:
     """读取 fail-closed：校验父 Run 组合与各类 tag 值域/可解析性。"""
     tags = run.data.tags
+    purpose, protocol = tags.get(PURPOSE_TAG), tags.get(PROTOCOL_TAG)
+    if (purpose is None) != (protocol is None) or (purpose is not None and
+            protocol not in PURPOSE_PROTOCOLS.get(purpose, set())):
+        raise IllegalEvalRecord("evaluation purpose/protocol binding is invalid")
     if not (
         allow_completed_running_recovery
         and tags.get(WORKFLOW_STATE_TAG) == WorkflowState.COMPLETED.value
@@ -455,6 +467,8 @@ def _build_eval_record(store: EvalRecordStore, run: Any) -> EvalRunRecord:
         pre_registration_sha256=tags.get(PRE_REGISTRATION_SHA256_TAG),
         holdout_authorization_dir=tags.get(HOLDOUT_AUTHORIZATION_DIR_TAG),
         holdout_executor=tags.get(HOLDOUT_EXECUTOR_TAG),
+        purpose=tags.get(PURPOSE_TAG, "legacy"),
+        protocol=tags.get(PROTOCOL_TAG, "strict-v4.1"),
     )
 
 
@@ -603,6 +617,8 @@ def create_eval_run(
     data_root: Path,
     pre_registration: Path | None = None,
     executor: str | None = None,
+    purpose: str | None = None,
+    protocol: str | None = None,
 ) -> EvalRunRecord:
     """创建 eval-v 父 Run；创建即 running/RUNNING/valid。"""
     parse_eval_id(eval_id)
@@ -623,6 +639,15 @@ def create_eval_run(
         raise IllegalEvalRecord(f"无法加载 data release: {exc}") from exc
 
     prereg_binding: tuple[str, str] | None = None
+    if (purpose is None) != (protocol is None) or (purpose is not None and
+            protocol not in PURPOSE_PROTOCOLS.get(purpose, set())):
+        raise IllegalEvalRecord("evaluation purpose/protocol binding is invalid")
+    if purpose == "performance" and (meta.purpose != "development" or pre_registration is not None or executor is not None):
+        raise IllegalEvalRecord("performance requires development data without holdout authorization")
+    if purpose == "quality" and meta.purpose != "holdout":
+        raise IllegalEvalRecord("quality requires authorized holdout data")
+    if purpose == "development" and meta.purpose != "development":
+        raise IllegalEvalRecord("development evaluation requires development data")
     if meta.purpose == "holdout":
         try:
             validate_holdout_layout(Path(data_root) / "releases" / data_version)
@@ -663,6 +688,8 @@ def create_eval_run(
     }
     if split is not None:
         tags[SPLIT_TAG] = split
+    if purpose is not None:
+        tags[PURPOSE_TAG], tags[PROTOCOL_TAG] = purpose, protocol
     if prereg_binding is not None:
         tags[PRE_REGISTRATION_PATH_TAG] = prereg_binding[0]
         tags[PRE_REGISTRATION_SHA256_TAG] = prereg_binding[1]

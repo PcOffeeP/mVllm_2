@@ -536,8 +536,24 @@ def test_registry_rejects_passed_eval_without_actual_results(tmp_path):
     assert get_model(registry, model.model_id).eval_id is None
 
 
+def _install_historical_strict_candidate(registry, model, eval_id):
+    """Install a valid pre-migration snapshot; never grant a new strict admission.
+
+    The caller has produced synthetic execution archives. Only the existing
+    registry binding and route are seeded here; public reads and idempotent
+    recovery must still validate those archives, including every actual byte.
+    """
+    from mlflow.tracking import MlflowClient
+    from versioning.registry import REGISTERED_MODEL_NAME
+
+    client = MlflowClient(tracking_uri=registry.tracking_uri)
+    for name, value in (("eval_id", eval_id), ("offline_backup_scope", "adapter")):
+        client.set_model_version_tag(REGISTERED_MODEL_NAME, str(model.version), name, value)
+    client.set_registered_model_alias(REGISTERED_MODEL_NAME, "candidate", str(model.version))
+
+
 @pytest.mark.parametrize('drift', ['adapter', 'base', 'evaluation', 'training_input', 'proof_missing'])
-def test_qualified_alias_rechecks_actual_execution_bytes(tmp_path, monkeypatch, drift):
+def test_historical_alias_rechecks_actual_execution_bytes(tmp_path, monkeypatch, drift):
     from versioning.registry import (open_registry_store, finalize_model_evaluation,
         set_offline_backup_scope, set_alias, get_model_by_alias, PromotionGateRejected, _run_artifact_root)
     from pipeline.model_registry import resolve_service_model
@@ -548,6 +564,7 @@ def test_qualified_alias_rechecks_actual_execution_bytes(tmp_path, monkeypatch, 
     _fake_formal_runtime(monkeypatch)
     result = evaluation_cli.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
     registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    _install_historical_strict_candidate(registry, model, result.eval_id)
     finalize_model_evaluation(registry, model.model_id, eval_id=result.eval_id)
     set_offline_backup_scope(registry, model.model_id, 'adapter')
     set_alias(registry, model.model_id, 'candidate')
@@ -572,7 +589,7 @@ def test_qualified_alias_rechecks_actual_execution_bytes(tmp_path, monkeypatch, 
 
 
 @pytest.mark.parametrize("relocate", [False, True])
-def test_actual_execution_chain_reaches_candidate_and_backup_through_cli(tmp_path, monkeypatch, relocate):
+def test_historical_execution_candidate_and_backup_through_cli(tmp_path, monkeypatch, relocate):
     import yaml
     from versioning.cli import main
     from versioning.registry import open_registry_store, get_model_by_alias
@@ -587,6 +604,10 @@ def test_actual_execution_chain_reaches_candidate_and_backup_through_cli(tmp_pat
         '--git-commit', 'fixture', '--media-root', str(media)]) == 0
     _fake_formal_runtime(monkeypatch)
     assert main(['eval', 'run', 'eval-v4.1-r1', *common]) == 0
+    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    _install_historical_strict_candidate(registry, model, 'eval-v4.1-r1')
+    assert get_model_by_alias(registry, 'candidate').model_id == model.model_id
+    # These commands recover an existing binding and alias, not a new admission.
     for args in [('finalize', '--eval-version', 'eval-v4.1-r1'),
                  ('scope', '--backup-scope', 'adapter'), ('alias', '--alias', 'candidate')]:
         assert main(['model', args[0], model.model_id, *common, *args[1:]]) == 0
@@ -600,7 +621,14 @@ def test_actual_execution_chain_reaches_candidate_and_backup_through_cli(tmp_pat
     assert main(['backup', 'verify', *common, '--backup-root', str(backup)]) == 0
     catalog = verify_backup(backup)
     assert {obj.object_id for obj in catalog.objects} == {
-        'data-v4.1-r2', 'prompt-v4.1-r1', 'model-v4.1-r1', 'mlflow-store'}
+        'data-v4.1-r2', 'prompt-v4.1-r1', 'model-v4.1-r1', 'eval-v4.1-r1', 'mlflow-store'}
+    evaluation_object = next(obj for obj in catalog.objects if obj.object_id == 'eval-v4.1-r1')
+    assert evaluation_object.object_type == 'evaluation_workspace'
+    # Independent workspace evidence must survive alongside the MLflow copy.
+    for relative in ('input/evaluation.yaml', 'output/records.jsonl', 'output/evaluation.yaml'):
+        source = root / 'workspace/evaluations/eval-v4.1-r1' / relative
+        archived = backup / 'evaluations/eval-v4.1-r1/workspace/evaluations/eval-v4.1-r1' / relative
+        assert archived.read_bytes() == source.read_bytes()
     store_files = [file.path for obj in catalog.objects if obj.object_id == 'mlflow-store' for file in obj.files]
     assert any(path.endswith('/training-evidence.json') for path in store_files)
     assert any(path.endswith('/input/training.yaml') for path in store_files)

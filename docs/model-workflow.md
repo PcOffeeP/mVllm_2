@@ -4,9 +4,9 @@
 
 项目已实现冻结训练输入、三折与全量训练、严格评测、Registry 晋级及服务门禁。现有历史开发结果尚不能证明最终模型质量；新体系真实合格模型的加载与媒体推理成功路径、独立 test 使用资格、大型产物组合恢复仍未完成验收。命令接线和 CPU 合成验证不等于真实模型验收。
 
-**开发测评显式区分协议。** `strict-v4.1` 保留历史严格评分；新开发配置选择 `semantic-v4.1`，使用全样本语义评分、独立格式诊断和逐折开发门。基座与成功折诊断来源已接入同一 Registry。接口及合成检查不构成真实模型质量证据；新 holdout、真实低权限盲评进程、受控性能入口和完整生产准入仍按[实施计划](plans/model-evaluation-implementation.md)推进，实际状态见[项目 TODO](project-todo.md)。不得修改旧门或补写 passed 代替新协议证据。
+**开发测评显式区分协议。** `strict-v4.1` 保留历史严格评分；新开发配置选择 `semantic-v4.1`，使用全样本语义评分、独立格式诊断和逐折开发门。基座与成功折诊断来源已接入同一 Registry。接口及合成检查不构成真实模型质量证据；独立语义评分、受控性能证据和按用途准入的工程接线见下文；真实低权限判读、性能运行及生产验收仍按[实施计划](plans/model-evaluation-implementation.md)推进，实际状态见[项目 TODO](project-todo.md)。不得修改旧门或补写 passed 代替新协议证据。
 
-基座真实来源登记、已完成折快照诊断、开发语义统计及已封存盲评答案导入已接入代码。预测判读策略默认两个 Agent 独立处理，分歧交第三个先独立再仲裁；可扩人数但配置预先冻结，不要求多个真人。纯导入接口不执行判读，也不证明真实隔离：本地评审进程、账户权限、安装摘要及现场输入仍须核验，新 holdout 和独立性能入口仍待实施。设计确认和接口实现均不授予真实模型调用、受限数据发送或测试集使用权限。
+基座真实来源登记、已完成折快照诊断、开发语义统计及已封存盲评答案导入已接入代码。预测判读策略默认两个 Agent 独立处理，分歧交第三个先独立再仲裁；可扩人数但配置预先冻结，不要求多个真人。纯导入接口不执行判读，也不证明真实隔离：本地评审进程、账户权限、安装摘要及现场输入仍须核验。独立评分已增加发包、封存和消费接线，性能入口接收冻结事件证据；两者的合成证据均不能取得真实生产资格。设计确认和接口实现均不授予真实模型调用、受限数据发送或测试集使用权限。
 
 GPU 训练、权重合并、实际推理与完整评测在训练机执行，运行入口直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。Mac 开发及人工审查使用 uv 的方式见[快速开始](../README.md#快速开始)。以下命令是操作说明，执行仍需相应任务授权。准备与摘要校验虽不加载模型，也可能扫描大量权重和媒体，须按实际数据量安排执行位置与磁盘空间。
 
@@ -102,7 +102,7 @@ full 禁止训练中 validation、最佳 checkpoint 选择、隐式验证切分�
 
 `BASE_MODEL`、`DIAGNOSTIC_MODEL` 都是调用者分配的完整 model 身份。基座目录须含实际权重、config、tokenizer/processor，来源与固定 revision 须先核实；可用 config 来源字段或可识别 HF snapshot 路径须与声明一致；二者不足时，目录须含 `source-provenance.json`，schema 为 `tensile-base-provenance/v1`，含匹配的 upstream_source/upstream_revision 及非空 verified_by。该文件随字节冻结；一致性检查不等于密码学证明上游真实性。不接受 main/latest 等活动引用，不自动下载或升级。登记创建来源 Run 的实际字节快照和 `model-source.json`，不造 train/data/Prompt。基座评测另显式绑定开发 data 与任务 Prompt。
 
-诊断来源只接受真实 FINISHED 折的 execution receipt 和 adapter，冻结 checkpoint step、父 train/run、共享输入、基座与真实折号；不接受任意中途 checkpoint 或自定义 artifact。父 train 保持 partial，后续使用重验共享输入及来源。base/diagnostic 只用于开发测评；性能受控入口尚待实现，不能借 candidate/production alias 部署，也不能 finalize 为生产资格。
+诊断来源只接受真实 FINISHED 折的 execution receipt 和 adapter，冻结 checkpoint step、父 train/run、共享输入、基座与真实折号；不接受任意中途 checkpoint 或自定义 artifact。父 train 保持 partial，后续使用重验共享输入及来源。base/diagnostic 可用于开发测评和受控性能测量；性能入口见第 7 节，不能借 candidate/production alias 部署，也不能 finalize 为生产资格。
 
 登记先校验真实训练执行证据、声明 artifact 全部文件和冻结基座，创建 Registry `mVllm2` 的 staging Model Version。它同时具有完整 `MODEL` 身份和 MLflow 数值版本；后者由登记结果取得，不猜测或默认选择最新版本。
 
@@ -167,13 +167,47 @@ fold2: {adapter: artifacts/fold2/adapter}
 
 `eval compare "$EVAL" --root "$STORE" --baseline-eval-version "$BASE_EVAL"` 从两个已完成的 semantic validation Run 形成 `records/evaluations/<eval>/paired/<base-eval>.json`，重验来源和同条件完整配对，不重新推理。多数类自动摘要是合成对照，其合法率或耗时不是模型能力。
 
-接口可执行性和合成验证只证明接线、统计及拒绝逻辑，不能据此声称完成真实模型调用、训练机评测或质量通过；真实运行证据以项目 TODO 的验收记录为准。真实低权限 Agent 工作区、Ollama 运行和权限隔离尚未完成，内容封存/访问声明不能代替技术隔离。新 holdout、性能与服务全链分别属于后续实施范围。
+接口可执行性和合成验证只证明接线、统计及拒绝逻辑，不能据此声称完成真实模型调用、训练机评测或质量通过；真实运行证据以项目 TODO 的验收记录为准。本轮独立评分的 sandbox 探针仅验证合成 canary 的进程限制，真实低权限 Agent 工作区、Ollama 安装/运行及完整隔离仍未验收；内容封存或访问声明不能代替现场技术隔离。性能与服务的真实验收仍未完成。
 
 ## 5. Full 模型的独立 test 验收
 
-**以下七门是现行旧协议的代码事实，不是新确认的最终视觉标准。** 新标准及格式分离规则以[测评方案](model-evaluation.md)为准，但新 holdout 授权评分、受限盲评与最终导出/准入绑定尚未实现；开发侧的语义与盲评导入不能替代这些环节。以下命令不能执行新语义验收；旧身份、旧报告与已消费 test 的限制保留，新协议不得重新利用已暴露 test。
+本节命令用于说明已接入的工程链路，不授予真实 test 使用权限。本轮仅允许合成验证，禁止运行真实模型评测或使用真实 test。
 
-新语义环节采用匿名多 Agent 判读而非双真人审查；Agent只见固定回答/手册，不能访问GT/视频/被测模型身份或其他初判，未决才交用户盲态复核或计失败。发包的预测 exposure、逐 Agent 结果封存和同身份恢复需新增实现；现行 run 不读真值、score 才读真值并在完成时消费授权的时点不改写为已存在的新功能。匿名包发放和外部 Agent 调用仍须具体授权及权限核验。
+### 新独立语义协议
+
+新配置显式选择 `scorer: semantic-holdout-v4.1`、`scope: full`，绑定完整 `source_groups`、预冻结 `blind_policy` 与 `review_runtime`；需要读取受限聚合时，prepare 前另冻结 `aggregate_authorization: {actor: <负责人>, role: acceptance-owner, os_uid: <实际UID>}`，评分 executor 不隐式取得此角色；阈值采用[测评方案](model-evaluation.md)中的最终质量门，不使用下文旧七门。配置核验入口为 `finetune/eval_review.py` 的 `validate_semantic_holdout_config`，模型须来自真实完整 full 训练；base、诊断折和开发 validation 不能代替它。
+
+| 环节 | 输入提供者与入口 | 真实文件与消费者 |
+| --- | --- | --- |
+| 一次性锁定 | 获授权操作者先准备预注册；`data claim` 精确绑定 eval/model/data/split/executor/规则 | release 的 `authorization/` 与 staging 预注册 → `eval prepare/validate/run` |
+| 一次推理 | 已发布无标签媒体、Registry 权重、训练 Prompt；`eval run` | `workspace/evaluations/<eval>/restricted/predictions.json`、`inference.json` → 匿名发包；此时不读真值 |
+| 发包与暴露登记 | 操作者提供与冻结 policy 摘要一致的手册；`eval review_prepare --manual` | 受限 `anonymous-review.json`、映射及 `exposure.json`，授权目录 `exposed.yaml` → 本地评审和封存；不能恢复成未暴露 |
+| 判读封存 | 独立执行者提供已封存判断 JSON；`eval review_seal --blind-reviews` | 受限 `review_attempts/`、`judge.json` → score；同内容重传幂等，完成初判不可替换，故障按冻结策略重试 |
+| 受限评分与消费 | `eval score --executor` 核验原身份、raw、发包、判读，再读 sealed truth | 受限真值快照、语义记录、实际指标/CI、评分 receipt；承诺和 `consumed` → 公开 export |
+| 公开导出 | `eval export` 从同 Run 重验 aggregate、规则、权重、评分承诺和消费事实 | `records/evaluations/<eval>/manifest.yaml` 仅 gate 与完整性证据 → Registry；不重新读真值 |
+
+已有 `data claim`、`eval prepare/validate/run/score/export` 参数见下文；新协议在 run 与 score 之间插入：
+
+```sh
+"$PYTHON" -m versioning eval review_prepare "$EVAL" --root "$STORE" --manual "$REVIEW_MANUAL"
+"$PYTHON" -m versioning eval review_seal "$EVAL" --root "$STORE" --blind-reviews "$SEALED_REVIEWS"
+```
+
+`REVIEW_MANUAL` 是操作者在 prepare 前冻结、与 policy 匹配的普通文件；`SEALED_REVIEWS` 由获授权的独立判读过程提供，不是代码自动生成的正确答案。受控执行入口为 `eval review_run "$EVAL" --root "$STORE"`，默认禁止真实模型调用；未来即使显式添加 `--allow-real-model-calls`，仍须实际部署/tokenizer/隔离证据齐全。固定 localhost Ollama broker 与 Mac worker 的 transport、部署凭据核验接口已实现；真实部署/tokenizer receipt 缺失或当前资产漂移时在真实请求前拒绝，测试仅使用合成资产/stub。本轮不执行该入口的真实调用。发包前实际运行 Mac `sandbox-exec` 拒绝访问探针，验证包只读、受限 canary/凭据不可读、他人结果不可写及网络/任意工具受限；不可用即拒绝发包。本轮合成工程 receipt 标记 `synthetic: true`、`real_model_deployment_verified: false`，未调用真实评审模型、未证明真实评审部署，因此即使合成 gate 全过仍不能晋级或取得服务资格。broker 每次调用保存 started/sealed 与 attempt 证据；未证实后台终止的 timeout 记 ambiguous 并立即停止，不自动重试或切模型。owner-only 全局锁和 `backend-ambiguous.json` 哨兵阻止后续请求，核定终态前不继续，也不停止共享 Ollama。
+
+真实评审部署凭据由 `eval review_verify "$EVAL" --root "$STORE"` 核验；默认不联网，未来显式加 `--allow-local-review-metadata` 只准固定 localhost 的 tags/show 元数据，不生成回答。输入 `config.review_tokenizers` 须在 prepare 前冻结每个批准模型的本地 HF 完整文件/大小/摘要、固定上游来源/revision、GGUF 模型摘要、依赖版本及源码摘要、provider 实现摘要、模板摘要和 `tokenizer_equivalence_audit: {path, sha256}`。本地加载使用 local_files_only、trust_remote_code=False，核验模板、special tokens 和关闭 thinking 的行为，封存受限 `review-deployment.json` 并提交 MLflow 摘要；注入 provider 的 receipt 永远 synthetic。
+
+等价审计必须由具名 independent-tokenizer-auditor 提供受审 GGUF↔HF 映射、可核查 basis 文件/独立 GGUF counter 来源摘要及 golden messages→rendered prompt 摘要→token IDs。代码核验绑定、字节和本地 golden case，不接受 `equivalent: true` 自报；映射真实性仍由未来独立审计者负责，本轮没有真实审计资产。实际调用前以 HF 按冻结非 thinking 模板精确 render，同一字符串 encode 计数核 8K 上限，再由 Ollama raw generate 使用同字符串，避免另套隐式模板；返回模型/token count 不一致拒绝。真实 review_run 还须显式调用授权、已提交真实部署凭据及当前模型/资产/依赖/profile 一致，不能仅凭开关放行。
+
+新独立语义配置还须显式冻结 `device` 与 `runtime_variant`，与性能配置使用相同 device/dtype/库版本/预处理及量化声明。默认实际推理采集已加载模型、processor 帧属性、generation 和源码/版本，形成 `runtime_attestation`、`runtime_observation`，从 inference 经 score 延续到 manifest；旧 strict 不添加这些字段。工程 collector 已接入，本轮没有现场真实运行凭据。
+
+恢复始终绑定同一 eval/model/data/split/executor/规则/raw/判读摘要。发包后不能撤销 exposed，score 完成无论质量通过或失败均消费授权；迁移、备份和恢复保留这些事实。已有评分承诺时可恢复完成/导出，不重推理或重读原真值；尚无承诺时仍须原授权核验真值来源。公开 MLflow/manifest 不发布实际分数、CI、映射、raw 或逐样本错误；受限聚合读取须在消费封存后执行 `eval restricted_summary "$EVAL" --root "$STORE" --actor "$ACCEPTANCE_OWNER"`，或调用 `finetune.eval_holdout.read_restricted_holdout_summary(root=..., eval_version=..., actor=...)`。`ACCEPTANCE_OWNER` 必须是 prepare 前显式冻结的 acceptance-owner；接口核验实际 OS UID、文件所有者、消费凭据和评分承诺，只返回聚合指标、支持数、诊断和 CI，不返回 raw/GT/逐样本。未冻结授权时拒绝，不默认由 score executor 读取，也不得用于调参。
+
+### 旧 strict 冻结协议
+
+**以下七门保留旧 strict 协议的冻结含义。** 新标准及格式分离规则以[测评方案](model-evaluation.md)及上节显式新协议为准。旧身份、旧报告与已消费 test 的限制保留，新协议不得重新利用已暴露 test；旧 passed 不获得新语义或性能资格。
+
+匿名多 Agent 判读只适用于上节新协议；下述 strict 路线不执行新判读。两条路线均在 run 不读真值、score 才读真值并消费授权，禁止混用旧门与新规则。
 
 先完成[数据处理中的独立 test 发布](data-workflow.md)，取得仍具独立使用资格、已全量人工审查且封存的 holdout data。发布须包含无标签 `evaluation_inputs/manifest.json`、`media/`、受限 `sealed_ground_truth/` 及构建凭证，绑定 full 模型所用开发版本。历史 test 划分、旧 sealed-test 目录或重新命名的对象不能自动获得资格。
 
@@ -215,7 +249,7 @@ prepare/validate/run 不读真值。run 仅媒体推理，完成后等待 score�
 
 ## 6. 晋级、备份范围与服务物化
 
-本节仍复验现行评测证据。未来新方案还需精确绑定语义协议、盲评证据及分开的质量/性能结论；旧 passed 不自动获得新质量或交互性能资格，格式放宽也不扩大现有 production 授权。
+晋级按用途复验，`semantic-v4.1` 开发结果和 `performance-v1` 性能结果均不能充当独立质量结果。新 `semantic-holdout-v4.1` 质量要求 full 模型、真实非合成评审完整性证据；candidate、approve、current 还要求同模型数值版本及配置的性能绑定。用户已确认新准入统一要求新独立质量加性能；停止以旧 strict 结果新增晋级/服务资格。既有 strict 记录保留原定义读取，已批准或已存在 alias 仅可按原模型、eval、alias 和用途绑定幂等恢复，不能改绑、换 alias 或借恢复新增服务资格。
 
 正式评测 passed 且精确绑定模型数值版本后，单向 finalize；已有不同 eval 绑定不可改写。以单一部署目标模型为例：
 
@@ -228,15 +262,42 @@ prepare/validate/run 不读真值。run 仅媒体推理，完成后等待 score�
 "$PYTHON" -m versioning model current --root "$STORE" --alias candidate --service-mode development
 ```
 
+新语义路线还须在服务 alias/批准前执行 `model bind-performance "$MODEL" --root "$STORE" --eval-version "$PERFORMANCE_EVAL"`，其中 `PERFORMANCE_EVAL` 为同一模型的独立 performance eval。绑定会重验模型/数值版本、Prompt、generation、量化、artifact 及抽帧预处理实现，要求非合成、完整显示端 E2E 和 passed；已有不同绑定不能替换。新准入还要求质量 execution 的 `runtime_attestation` 与性能的 runtime_variant/device/quantization_bit 完全一致；默认真实 runtime collector 已接线；本轮现场 attestation 未取得，缺少或不一致时拒绝，自报标志不能补证。manifest 保存质量/性能分开的 `evaluation_binding`，备份必须保留双方 Run/输入/产物，恢复后继续重验，不把恢复当作新资格。当前合成评审和未验真的显示端证据会被拒绝，所以上述命令示例不表示新生产通路已通过。
+
 scope 是持久化的备份范围声明，不能把设置 scope 当作备份完成；只允许从 adapter 升级为 production_bundle。candidate 要求 finalized/passed、完整训练/评测证据、唯一 deploy_target 和有效 scope。`current` 再次验签并原子物化 `workspace/models/current`；它是显式服务缓存，不是可缺省的数据或模型版本指针。
 
 production 须具 `production_bundle`、真实批准及对应准入条件。`production_bundle` 是备份范围机制，不提供 merged 合并或登记能力；缺少真实 merged 证据通路时，设置此 scope 不能证明完整生产交付链已经通过。只有用户明确批准生产使用后才执行 `model approve`，再设置 production alias，并以 `--alias production --service-mode production` 物化与启动。development 成功不能代替生产批准。三折组不能晋级为部署目标。
 
 ## 7. 服务配置、启动与真实媒体检查
 
-本节的单次 smoke 只验证链路与身份，不能替代[性能验收](model-evaluation.md)。`serve_smoke.py` 的 300 秒请求超时不是“全部合格请求至少 95% 在五分钟内自动完成”的实测成绩。新性能采集、统计与完整交互测点均待实施；只有后端响应时，须明确标记尚缺结果显示端证据。
+本节的单次 smoke 只验证链路与身份，不能替代[性能验收](model-evaluation.md)。`serve_smoke.py` 的 300 秒请求超时不是“全部合格请求至少 95% 在五分钟内自动完成”的实测成绩。性能配置、事件统计、受控 session 和导出已接线；真实 GPU 采集及可信显示端测点尚未验收。只有后端响应时，须明确标记尚缺结果显示端证据。
 
-已选新设计为 eval 的 performance 用途与独立临时受控端点，精确模型/权重/Prompt/变体和开发媒体白名单，不借 candidate/production alias、不用裸路径或test；模型可尚未质量/性能通过，但来源必须有效。性能 passed 不等于视觉 passed，各导出和准入须验用途。本节以下现有服务命令不能直接启动该入口；评测 Agent 判读不算被测服务自动完成，也不把判读等待拼成五分钟成绩。
+已选新设计为 eval 的 performance 用途与独立临时受控端点，精确模型/权重/Prompt/变体和开发媒体白名单，不借 candidate/production alias、不用裸路径或test；模型可尚未质量/性能通过，但来源必须有效。性能 passed 不等于视觉 passed，各导出和准入须验用途。性能入口及限制见下节；本节以下服务命令仍使用正式 alias。评测 Agent 判读不算被测服务自动完成，也不把判读等待拼成五分钟成绩。
+
+性能操作者须单独分配 `PERFORMANCE_EVAL` 和 `PERFORMANCE_CONFIG`，使用已验证的开发 data、明确 validation fold 与 `media_ids` 白名单。配置冻结 `generation`、显式 `quantization_bit`、`runtime_variant`（dtype、实际预处理摘要及 LLaMA-Factory/transformers 版本）、`device`（runtime_device、gpu_count）、`executor`、`session_id`、`issued_at/expires_at`、`phase`、`budget_gpu_hours`、资源增长策略（algorithm 为 window-net-growth），以及媒体分层/缓存/重复/retry/warmup/cold_start/client_instrumentation 七项 policy。warmup 必须为 `{request_ids: [显式ID...]}`，正式请求开始前全部终结，不能事后增加或换类。base 显式给任务 Prompt，trained 继承登记 Prompt；base、成功诊断折和 full 来源可测，test/holdout 在读取样本前拒绝。完整字段与 API 见[参数索引](../versioning/SCRIPTS.md#受控性能测量)。
+
+```sh
+"$PYTHON" -m versioning eval performance_prepare "$PERFORMANCE_EVAL" --root "$STORE" \
+  --model-version "$MODEL" --model-version-number "$MODEL_NUMBER" --data-version "$DATA" \
+  --config "$PERFORMANCE_CONFIG" --git-commit "$GIT_COMMIT" --media-root "$MEDIA_ROOT" \
+  --data-inputs "$DATA_INPUTS"
+"$PYTHON" -m versioning eval performance_validate "$PERFORMANCE_EVAL" --root "$STORE"
+"$PYTHON" -m versioning eval performance_run "$PERFORMANCE_EVAL" --root "$STORE" \
+  --performance-evidence "$PERFORMANCE_EVENTS"
+"$PYTHON" -m versioning eval performance_export "$PERFORMANCE_EVAL" --root "$STORE"
+```
+
+`PERFORMANCE_EVENTS` 是受控采集器或合成测试提供的事件 JSON，schema 为 `tensile.performance-events/v1`；`performance_run` 导入、重放和封存事件，不隐式启动真实模型。prepare 以 ffprobe 和实际字节冻结白名单到 `workspace/evaluations/<eval>/input/evaluation.yaml`；执行保存 `output/events.json`、`summary.json` 和 `evaluation.yaml` 到同一 MLflow Run，export 重算全部原始事件/资源序列并发布 `records/evaluations/<eval>/manifest.yaml`。不可覆盖已有 output 以重置失败或分母。
+
+`versioning.performance.ControlledPerformanceSession` 提供受控 session API：加载前和每次请求重验 Registry 来源、权重、冻结输入、executor/session、TTL 和开发媒体；仅 loopback、独立 token，复用实际 adapter；退出只关闭本 session。`open_performance_session(root=..., eval_version=..., executor=..., session_id=...)` 默认使用 `RegistryPerformanceLoader`，从 Registry 物化权重并核验实际 device/dtype/量化；4-bit 配置在 `runtime_variant.quantization` 精确冻结 `quant_type: nf4`、`double_quant: true`、`compute_dtype`、`quant_storage`、`skip_modules: [resampler]` 和 `excluded_module_dtype: bfloat16`，逐实际模块核验计算类型与存储类型，不把 uint8 存储视为计算精度；调用 `session.serve(port=...)` 启动、`session.export_events(path)` 封存采集事件，`session.close()` 关闭。该 API 会真实加载模型，只有取得训练机运行授权后才调用；本轮未调用。`run_performance_session(root=..., eval_version=..., executor=..., session_id=..., port=..., evidence_path=...)` 封装启动及 finally 清理：临时 `.session.json` 以 0600 保存本地 capability，退出后导出事件并删除该文件，只关闭自己的服务。CLI 对应 `eval performance_serve "$PERFORMANCE_EVAL" --root "$STORE" --executor "$EXECUTOR" --session-id "$SESSION_ID" --port "$PORT" --performance-evidence "$PERFORMANCE_EVENTS"`，它会真实加载模型，本轮未启动。采集器周期读取本进程 nvidia-smi VRAM、psutil RSS 与 GPU 保留时长预算；缺采集器报告证据缺口，不填零。不能以裸路径或服务 alias 绕过。预检预算最多 1 GPU 小时、正式最多 20 GPU 小时；到期/耗尽停止新请求并保留未完成事实。
+
+事件 schema 以上传完成为唯一请求起点，支持排队、读取、预处理、推理、自动解析、后端完成与显示完成；当前受控 adapter 实际采集外层排队/推理/自动解析/后端完成，读取和预处理尚缺内部细阶段 hooks，报告 `stage_measurement_gaps`，不据事件名称声称已测得这些分阶段耗时；OOM 只按显式事件统计，通用 adapter 500 不冒充已诊断 OOM；重试保留同一 request 的原时钟、失败事实和分母。合格请求按 ≤60 秒/100 MiB、MP4/H.264、8-bit、≤1920×1080（按长短边）、≤60 fps 检查；正式不少于 100 请求且连续 30 分钟，全部合格请求至少 95% 在 300 秒内自动完成显示、失败率不超过 1%，无 OOM/crash/持续资源增长。预热单列；600/660 秒分别为后端/客户端绝对超时，300 秒超标不自动 kill。Agent/人工判读不能计自动成功。
+
+`versioning/performance_receipts.py` 已提供显示端 receipt 接收与双签名核验。操作者在 prepare 前可冻结 `client_attestation_policy`：schema `tensile.performance-display-policy/v1`、client_id、client_source_sha256、instrumentation_sha256、由 `server_source_digest()` 取得的 server_source_sha256、不同的 client/server Ed25519 公钥、同 session_id 和 clock_protocol `client-monotonic-ns-upload-complete-to-render-v1`。私钥不入 plan；serve 从 `PERFORMANCE_SERVER_SIGNING_KEY_FILE` 的 owner-only 文件读取服务端私钥并核对公钥。
+
+受控模型请求携带 32-byte hex 的 `x-performance-upload-nonce`，同 request 重试不变。client 通过 `GET /v1/performance/backend-receipt/{request_id}` 取得服务端签名的原上传/后端完成/输出摘要及 challenge，再用 `make_display_receipt` 与 `sign_document` 形成客户端签名包，向 `POST /v1/performance/display-receipt` 提交 `{receipt: ...}`。接口绑定冻结来源、session、客户端单调时钟、nonce、raw/完整自动字段和原请求；跨请求时钟不能回退，首次 receipt 锁定。`POST /v1/performance/finish`（body `{}`）仅在无进行中请求且所有自动成功均有签名显示凭据时正常结束本 session，随后服务端签整个 ledger。
+
+真实性能 passed 要求非 synthetic、可信 client/server receipt 和 ledger 签名、实际 runtime collector 资格、clean finish 及全部原性能门同时成立；缺 policy/凭据/签名、未验真时间或合成事件均不能替代。OOM、挂起超时及不明后台状态会停止接收新请求。接收/核验工程已实现，外部客户端与真实显示测点尚未部署或验收，本轮未修改 TensileAgent，也未执行真实 client/model；本轮所有报告仍 synthetic、不得 passed。后端和未验真显示时间分别报告其测量边界，success P95 只辅助，不能替代全分母按时率。
 
 先静态解析同一 store/alias/mode：
 

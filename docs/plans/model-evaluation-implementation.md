@@ -1,14 +1,16 @@
 # 模型评测实施计划
 
-本计划承接[已确认评测设计](../model-evaluation.md)，将目标协议映射到当前实现的缺口与验收批次。初版入库时仅获文档授权。**2026-10-15 用户已授权实施批次 A/B（测评基础能力和开发验证接线）及本机合成验证；真实数据处理、模型调用、训练、SSH、test 使用及性能运行不在本轮授权内。** 训练机和真实模型执行仍须取得适用授权。本轮正在实现基座来源、完成折登记及离线判读证据导入；真实多 Agent 盲评隔离及 performance 用途通路已确认、仍属后续批次；执行配置已收口，现场输入、隔离和运行适配尚未验证，全链不能称为可立即运行。
+本计划承接[已确认评测设计](../model-evaluation.md)，将目标协议映射到当前实现的缺口与验收批次。初版入库时仅获文档授权。**2026-10-15 用户已授权实施批次 A/B（测评基础能力和开发验证接线）及本机合成验证；真实数据处理、模型调用、训练、SSH、test 使用及性能运行不在本轮授权内。** 训练机和真实模型执行仍须取得适用授权。A/B工程已提交，2026-10-15 后续授权已扩展至批次 C/D/E 的工程接线和合成验证；本地权限工作进程、受控性能会话、可信显示回执接收及统一准入已实现。暂不运行真实模型评测或使用真实 test，实际本地评审资产、tokenizer受审等价映射、外部客户端测点与GPU/E2E结果仍缺，不据合成验证声称真实验收通过。实现及验证见[接线记录](../results/evaluation-independent-performance-admission-20261015.md)。
 
 任务状态、负责人、实际执行版本与证据统一写入[项目 TODO](../project-todo.md)；本文不另设任务台账。下述批次只规定实现顺序、依赖与验收，不能凭计划中的产物名称声称文件已经存在。
 
-## 1. 当前基线与不可破坏的边界
+## 1. 初版基线与不可破坏的边界
 
 现状证据于 2026-10-15 按本机 `b827f73f` 的实现只读核对；本次从 `ee2b3af2` 续补确认设计，不使用真实模型运行验证现状，也未刷新训练机。用户确认的设计与阈值完整保存于[模型评测设计](../model-evaluation.md)。现行可执行接口见 [versioning/SCRIPTS.md](../../versioning/SCRIPTS.md)，业务入口职责见 [finetune/SCRIPTS.md](../../finetune/SCRIPTS.md)。
 
-| 证据位置 | 当前已实现事实 | 尚缺能力 |
+下表保留初版设计所针对的历史基线，不是当前实施状态；当前工程与真实证据差距以TODO及本轮接线记录为准。
+
+| 证据位置 | 初版已实现事实 | 初版尚缺能力 |
 | --- | --- | --- |
 | `finetune/eval_run.py` 的 `FORMAL_METRICS`、`_formal_input` 及配置校验 | 正式 validation 冻结模型、Prompt、数据/媒体、生成参数和实现摘要；只接受 `strict-v4.1/all/pooled`，六类阈值指标 | 语义恢复/预测盲评、适用子集 F1、每折状态门、统计证据与新配置 |
 | `finetune/holdout_metrics.py` 的 `THRESHOLDS`、`restricted_metrics`、`public_gates` | 原七门固定，真实数值受限，公开仅 gate 0/1 | 新最终门及其独立冻结协议；不能就地改常量重解释旧记录 |
@@ -26,7 +28,7 @@
 
 对应 TODO：`EVAL-SEMANTICS`；依赖 `EVAL-PROTOCOL` 的已确认文档。获得代码授权后可使用合成数据开展，不依赖受限 test 真值或真实 GPU。
 
-实现范围：建立独立可测试的语义提取与评分原语；严格解析、冻结规则恢复、多 Agent 独立盲评/仲裁结果导入和不可读互斥归类；保留 raw、字段来源及缺失状态。新增模块/配置名及路径在实施前按仓库规范确定，本文不虚构可运行 CLI。评审接口按已确认匿名只读包和低权限 Agent 工作进程隔离设计；本轮不部署、不开放受限数据或连接外部模型。
+实现范围：建立独立可测试的语义提取与评分原语；严格解析、冻结规则恢复、多 Agent 独立盲评/仲裁结果导入和不可读互斥归类；保留 raw、字段来源及缺失状态。纯评分实现为 `finetune/eval_semantics.py`，正式开发接线由 `finetune/eval_run.py` 选择 `semantic-v4.1`；规则、手册与判读摘要随冻结input保存。评审接口按已确认匿名只读包和低权限 Agent 工作进程隔离设计；本轮不部署、不开放受限数据或连接外部模型。
 
 验收必须覆盖：
 
@@ -39,13 +41,13 @@
 - 仅匿名 raw+手册可见，GT/video/model 身份/标签文件名/其他初判均不可见；无法仲裁时用户盲态复核或计无法判读失败。记录逐 Agent 结果、字段来源、一致/分歧/仲裁/人工复核及改判、成本与延迟，先封存 judge 答案再 score。相同模型共错风险必须说明。
 - 防作弊测试涵盖按预测筛样本、删失败、根据 GT/video 补答案、把缺失补 null、pooled 掩盖折坍缩、规则事后漂移等反例。
 
-交付为拟新增逻辑产物“评分协议定义、纯评分器、合成反例验证证据”。不输出真实模型效果结论。
+交付为 `finetune/eval_semantics.py`、`tests/test_eval_semantics.py` 及[开发接线验证记录](../results/evaluation-development-implementation-20261015.md)，不输出真实模型效果结论。
 
 ## 3. 批次 B：开发评测与正式 baseline
 
 对应 TODO：`EVAL-DEVELOPMENT`；依赖批次 A，服务于 `MODEL-DIAG`。纯接线开发可先做；真实执行依赖明确模型来源、媒体/环境与独立运行授权。
 
-保持现有链路输入来源可追溯：开发发布 data 和 `records/prompts/<prompt>.yaml` → `train prepare/validate/run/export` 冻结输入与真实 adapter → `model register` 登记完整 model 与数值版本 → `eval prepare/validate/run/export` 使用对应完整 validation → 逐折记录、父 Run 和 `records/evaluations/<eval>/manifest.yaml`。新增证据进入哪些文件、字段/schema 与接口兼容策略由本批明确，不能把设计逻辑产物当成现有文件。
+保持现有链路输入来源可追溯：开发发布 data 和 `records/prompts/<prompt>.yaml` → `train prepare/validate/run/export` 冻结输入与真实 adapter → `model register` 登记完整 model 与数值版本 → `eval prepare/validate/run/export` 使用对应完整 validation → 逐折记录、父 Run 和 `records/evaluations/<eval>/manifest.yaml`。具体配置、逐折文件与MLflow/manifest schema已由 `finetune/eval_run.py`、`versioning/mlflow_eval.py` 及[开发接线验证记录](../results/evaluation-development-implementation-20261015.md)固定，真实运行另核授权。
 
 需要贯穿改造：评测配置/schema、冻结手册与规则摘要、输入样本/来源分组、raw 与语义记录、MLflow 汇总、逐折/pooled 指标、导出重验与 manifest。配置必须明确选择新协议，旧身份继续使用其原规则；禁止只在显示报告层算新指标而让正式 passed 仍走旧门。
 
@@ -67,7 +69,7 @@
 
 对应 TODO：`EVAL-HOLDOUT`，衔接 `HOLDOUT-BUILD`、`FINAL-TRAIN` 和 `MODEL-QUALITY`；依赖批次 A/B 的冻结协议与正式证据，但权限设计和 test 资格准备可并行。
 
-权限架构已确认：匿名只读评审包只脱敏身份元数据、不改语义，映射和 raw 保持受限；每个 Agent 工作进程独立低权限工作区/身份，仅可读包及写自己结果，不提供 GT/video/训练目录、凭据或自由网络/工具访问。必须验证真实技术隔离，不能把提示词、同一高权限账号 chmod 或同账号多会话当成安全/物理隔离证据。具体平台适配和实际账户尚未部署；当前固定 Mac 本地 Ollama 受控适配，不采用远端模型或云端 fallback，判读 Agent 不获得自由联网工具。本轮不建账户、不连接外部模型、不发 raw。本地模型配置按下述冻结，实际安装和隔离需执行前验证；外发受限 raw 不在授权内。
+权限架构已确认：匿名只读评审包只脱敏身份元数据、不改语义，映射和 raw 保持受限；每个 Agent 工作进程独立低权限工作区/身份，仅可读包及写自己结果，不提供 GT/video/训练目录、凭据或自由网络/工具访问。必须验证真实技术隔离，不能把提示词、同一高权限账号 chmod 或同账号多会话当成安全/物理隔离证据。Mac sandbox内核探针和固定worker适配已实现并以合成canary验证；真实评审模型部署与现场隔离尚未验收。当前固定 Mac 本地 Ollama 受控适配，不采用远端模型或云端 fallback，判读 Agent 不获得自由联网工具。本轮不建账户、不连接外部模型、不发 raw。本地模型配置按下述冻结，实际安装和隔离需执行前验证；外发受限 raw 不在授权内。
 
 本地评审使用 `qwen3.5:9b` 与 `ornith-1.5:9b` 两个独立初判，分歧用 `qwen3.5:9b` 的第三独立上下文先判读后仲裁；Mac 同一时间仅加载运行一个模型。同族相关误判风险须报告。仅输入匿名 raw、字段与手册，context 8K、输出 512 tokens、temperature 0，支持时关闭 thinking；每次 120 秒 timeout，仅运行故障重试一次，超长不截断，转盲态复核或记未完成。失败重试不得挑答案。评审基础设施故障记评审未完成，不直接算被测模型视觉错误；模型输出未明示或无法判读的字段才按评分规则计失败。评审未完成不能据此宣称整体通过。
 
@@ -83,7 +85,7 @@
 | 预注册准备与 full | 开发三折过门，test 封存就绪，`train` full 链路 | test 就绪在 FINAL-TRAIN 前完成；可预先冻结的规则/门/角色已准备，候选一次 full，不用 test 选 checkpoint |
 | 一次性 claim | full model/eval 身份已出现，`data claim` | 首次调用前精确绑定候选、data/split/executor、新规则与授权；不要求先测试通过才训练 |
 | 推理与 raw 冻结 | `eval prepare/validate/run` 从无标签 manifest/媒体与 Registry 权重推理 | 全部请求、失败与 raw 完整冻结，不读真值；冻结完成后不再次调用模型补答案 |
-| 语义整理 | 拟新增接口，接收匿名 raw、规则与手册 | 匿名只读包、低权限进程、默认双 Agent 独立字段结果及第三 Agent 先独立后仲裁；judge 先封存，记录 exposed/盲化/恢复证据，具体路径/CLI 未实现 |
+| 语义整理 | `eval review_prepare/review_verify/review_run/review_seal`；接收冻结raw、规则、手册及受审部署资产 | `workspace/evaluations/<eval>/restricted/`的`anonymous-review.json`、私有映射、部署receipt、`review_attempts/`及judge；authorization保留exposed。双Agent独立初判和第三者先独立后仲裁，seal后供score核验；完整参数见SCRIPTS |
 | 受限评分 | `eval score` 的现有受限入口 | 检查 raw/语义/规则/模型/授权绑定后才读真值；新最终所有门同时满足；不把评测 Agent/人工恢复正确计为自动性能成功 |
 | 导出与恢复 | `eval export`、现有消费凭据及备份机制 | 协议及消费事实随导出/迁移/备份恢复保留；同身份恢复不增加推理、不重置消费、不改规则；公开内容只按精确批准范围 |
 
@@ -95,11 +97,11 @@
 
 对应 TODO：`EVAL-PERFORMANCE`。测量工具与开发媒体准备可与前述工作并行，不依赖一次 test 结果；正式模型运行依赖合格加载链与授权，不能用 backend 或替身结果造 passed。
 
-**受控测量通路已确认待实现**：在 eval 领域增加 performance 用途接口（非当前命令），精确绑定 Registry 数值 model、冻结来源/权重、Prompt/generation、开发媒体 allowlist、设备、预算、TTL 和授权会话。base、完成折诊断及 full 可在尚无质量/性能 passed 时进入受控测量；复用 adapter 实际推理代码，临时 loopback 受控端点经受控通道连接 client，不用 candidate/production alias、裸路径或 test。测后仅退出自身进程，不影响已有服务。真实来源不合格或授权会话无效时不加载。
+**受控测量通路已实现工程接线，真实运行待授权及补证**：在 eval 领域增加 performance 用途接口（现行命令见SCRIPTS），精确绑定 Registry 数值 model、冻结来源/权重、Prompt/generation、开发媒体 allowlist、设备、预算、TTL 和授权会话。base、完成折诊断及 full 可在尚无质量/性能 passed 时进入受控测量；复用 adapter 实际推理代码，临时 loopback 受控端点经受控通道连接 client，不用 candidate/production alias、裸路径或 test。测后仅退出自身进程，不影响已有服务。真实来源不合格或授权会话无效时不加载。
 
-验收须拒绝数值版本/来源/权重/Prompt/generation 漂移、allowlist 外媒体、过期 TTL 或越权会话；性能结果的 export、finalize、manifest 与准入重验用途和同模型配置。performance passed 不能被当作 quality passed；来源核验、可诊断/可测、视觉/性能通过、正式服务批准分层处理，旧门不放宽、不产生循环。具体接口/适配仍待实现，不能补 passed 或借 alias 绕门。
+验收须拒绝数值版本/来源/权重/Prompt/generation 漂移、allowlist 外媒体、过期 TTL 或越权会话；性能结果的 export、finalize、manifest 与准入重验用途和同模型配置。performance passed 不能被当作 quality passed；来源核验、可诊断/可测、视觉/性能通过、正式服务批准分层处理，旧门不放宽、不产生循环。接口/适配已实现且接受合成验证；真实客户端与GPU未验证，不能补 passed 或借 alias 绕门。
 
-在上传完成端建立 request 起点、完整自动结果显示端建立终点；关联排队、读取、预处理、推理、自动解析、内部 retry 与错误状态。展示与交互编排由独立 TensileAgent 项目负责，本仓库只提供视觉服务；客户端测点与跨仓库写入授权须另核，本次不授权改该项目。当前 server 锁和 smoke timeout 只提供实现参考，不满足这个边界。拟新增逻辑产物为“性能冻结方案、逐请求时间线、资源序列及验收报告”，具体代码接口和路径待实施确定；不另造第六正式身份种类。
+在上传完成端建立 request 起点、完整自动结果显示端建立终点；关联排队、读取、预处理、推理、自动解析、内部 retry 与错误状态。展示与交互编排由独立 TensileAgent 项目负责，本仓库只提供视觉服务；客户端测点与跨仓库写入授权须另核，本次不授权改该项目。当前 server 锁和 smoke timeout 只提供实现参考，不满足这个边界。`eval performance_prepare/validate`冻结 `workspace/evaluations/<eval>/input/evaluation.yaml`；`performance_serve`采集并通过`performance_run`导入实际会话事件，产物包括`output/events.json`与`summary.json`，同步到MLflow；`performance_export`复验后生成`records/evaluations/<eval>/manifest.yaml`，供`model bind-performance`和准入重验。具体结构由`finetune/eval_performance.py`与`versioning/performance.py`负责，签名接收由`versioning/performance_receipts.py`负责；不另造第六正式身份种类。
 
 性能规格已确认：视频 ≤ 60 秒、≤ 100 MiB、MP4/H.264、8-bit、长边 ≤ 1920、短边 ≤ 1080、≤ 60 fps。规格尚未实测，只筛性能合格请求，不删质量评测样本。300 秒为按时完成门，不自动 kill；后端绝对 timeout 600 秒、客户端绝对 timeout 660 秒，从上传完成计全流程，重试不重置。媒体分层、缓存/重复/重试、预热、cold start/ready 及日志关联执行前冻结。
 
@@ -113,9 +115,11 @@
 
 对应 TODO：`EVAL-INTEGRATION`；依赖各适用批次证据，衔接 `MODEL-QUALITY`，不自动关闭其他真实环境任务。
 
+2026-10-15 用户已裁决入口迁移边界：新执行的准入统一要求新质量与性能证据，旧 strict 不再新增 finalize/alias/approve 晋级；既有批准和 alias 的读取与同身份幂等恢复保留，不允许以恢复重绑或授予新资格。
+
 将视觉质量、形式/评测整理依赖及性能三类结论绑定同一模型完整身份、Registry 数值版本、Prompt、数据范围、权重和运行变体。更新 `versioning/registry.py`、eval/manifest/MLflow 重验及服务 resolver/adapter 的相关契约，使新协议准入不能被旧 passed 或无盲评凭据绕过。保持 `model finalize/alias/current` 的 candidate/production 分离和现有批准边界；视觉通过不能自动批准 production。
 
-最终服务准入与批次 D 受控测量资格分离的方案已确认，待实现其用途校验和真实运行适配；本批不得放宽现行服务门，也不得要求已有性能 passed 才能首次受控测量。base/诊断模型不能凭 performance 结果获得正式服务资格。
+最终服务准入与批次 D 受控测量资格分离的用途校验和运行适配已实现工程接线，实际运行待补证；本批不得放宽现行服务门，也不得要求已有性能 passed 才能首次受控测量。base/诊断模型不能凭 performance 结果获得正式服务资格。
 
 验收包括：prepare → validate → run → 语义整理 → score/aggregate → export → Registry 准入 → 服务物化的绑定一致；无新协议证据、权重/Prompt/变体漂移或语义整理缺失时拒绝；原协议历史记录仍按其冻结定义解释。备份/隔离恢复保留新证据、受限权限和消费状态，不能借恢复重用 test。更新相关 SCRIPTS、数据/模型流程及本设计的现状说明，并由不同 Agent 对照代码独立核查流程完整性。
 
@@ -123,12 +127,12 @@
 
 ## 7. 配置收口与现场验证
 
-当前基座、交付推理参数、本地 Ollama 双模型、统计与 CI、性能规格/timeout 和预算均按本设计收口；其中 A/B 的统计、来源登记和开发接线已实现并通过合成验证，真实评审隔离与性能等后续批次仍待实施，不再将已确认配置列为架构或执行方案待讨论。执行前仍须现场核验当前基座版本及完整摘要、本地评审安装摘要与可用性、评测/服务参数一致性、同源/更高试件分组映射、权限隔离、预算所需冻结样本数及适配。核验不明或不一致停止，不升级模型、不云端回退、不外发 raw、不截断超长判读或缩减质量样本。
+当前基座、交付推理参数、本地 Ollama 双模型、统计与 CI、性能规格/timeout 和预算均按本设计收口；其中 A/B 的统计、来源登记和开发接线，以及 C/D/E 的独立评审、受控性能、签名回执接收和联合准入均已实现工程接线并接受合成验证；真实评审部署、GPU与客户端显示性能仍待现场补证，不再将已确认配置列为架构或执行方案待讨论。执行前仍须现场核验当前基座版本及完整摘要、本地评审安装摘要与可用性、评测/服务参数一致性、同源/更高试件分组映射、权限隔离、预算所需冻结样本数及适配。核验不明或不一致停止，不升级模型、不云端回退、不外发 raw、不截断超长判读或缩减质量样本。
 
-初版文档阶段未执行模型；本轮 A/B 代码实施也不得将历史只读安装盘点写成已加载，不将设计确认写成账户/接口已部署、现场验签/性能已通过或模型调用已授权。TensileAgent 显示测点和跨仓库写入仍需另行授权。
+初版文档阶段未执行模型；本轮 A–E 代码实施也不得将历史只读安装盘点写成已加载，不将设计确认写成账户/接口已部署、现场验签/性能已通过或模型调用已授权。TensileAgent 显示测点和跨仓库写入仍需另行授权。
 
 ## 8. 台账关联与完成口径
 
 `EVAL-PROTOCOL` 记录本轮设计/计划文档交付；`EVAL-SEMANTICS`、`EVAL-DEVELOPMENT`、`EVAL-HOLDOUT`、`EVAL-PERFORMANCE`、`EVAL-INTEGRATION` 的实际状态统一由 TODO 维护。MODEL-DIAG 继续承担开发改善，HOLDOUT-BUILD 承担真实 test 数据资格与构建，FINAL-TRAIN 承担独立 full 训练，MODEL-QUALITY 承担最终模型质量与晋级总目标；子任务完成不自动关闭父目标。
 
-后续每批交接须记录实际执行机器/代码、授权范围、变更入口、完整身份、输入来源、实际输出及消费者、验证命令/结果、独立审查（适用时）和残余风险。新接口或产物一经实现，再把本文的逻辑名称替换为实有路径及相应证据；不预先填写成功版本、真实指标或通过状态。
+后续每批交接须记录实际执行机器/代码、授权范围、变更入口、完整身份、输入来源、实际输出及消费者、验证命令/结果、独立审查（适用时）和残余风险。本轮已将C/D/E接口与产物映射到实有路径，后续变更继续同步本文及SCRIPTS；不预先填写成功版本、真实指标或通过状态。

@@ -20,14 +20,14 @@ Non-goals:
 | `data` | `data_pipeline.py`、`holdout_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
 | `prompt` | `prompts.py` | 注册不可变 Prompt，并冻结/校验训练 input 副本 |
 | `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结三折或独立全量训练输入、真实训练调用、Run、汇总与完成后导出 |
-| `eval` | `finetune/eval_run.py`、`finetune/eval_semantics.py`、`finetune/eval_baselines.py`、`finetune/eval_holdout.py`、`eval_compatibility.py`、`mlflow_eval.py`、`manifest.py` | 显式 strict/semantic 开发评测、来源对照与报告；旧 full 授权评分；精确绑定、执行记录及不可变导出 |
+| `eval` | `finetune/eval_run.py`、`finetune/eval_semantics.py`、`finetune/eval_baselines.py`、`finetune/eval_holdout.py`、`finetune/eval_review.py`、`finetune/eval_performance.py`、`performance.py`、`eval_compatibility.py`、`mlflow_eval.py`、`manifest.py` | 显式 strict/semantic 开发评测、来源对照与报告；新旧独立 full 授权评分、匿名发包/封存和受控性能证据；精确绑定、执行记录及不可变导出 |
 | `model` | `registry.py`、`manifest.py`、`materialize.py` | `mVllm2` 两阶段 register/finalize、model manifest、唯一部署目标 gate、alias 与 `models/current` 原子物化 |
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
 
-**测评协议边界**：`strict-v4.1` 的 validation 六指标与旧 holdout 七门保留冻结语义；`semantic-v4.1` 显式接入全样本语义整理和逐折开发门。两种结果不能互相改写或继承资格。`eval_compatibility.py` 仅为已核实的 `512cc8b4` 严格实现登记历史摘要到本次准确适配代码摘要的映射；未知旧摘要、适配代码或其他依赖漂移仍拒绝，不自动接受未来代码。基座/成功折已接入开发测评来源；新 holdout、实际低权限评审执行、performance 受控入口与完整生产准入仍见[实施计划](../docs/plans/model-evaluation-implementation.md)。合成检查不构成真实模型、真实权限隔离、GPU、test 或 E2E 证据；不得公开受限 test 明细。
+**测评协议边界**：`strict-v4.1` 的 validation 六指标与旧 holdout 七门保留冻结语义；`semantic-v4.1` 显式接入全样本语义整理和逐折开发门。两种结果不能互相改写或继承资格。`eval_compatibility.py` 仅为已核实的 `512cc8b4` 严格实现登记历史摘要到本次准确适配代码摘要的映射；未知旧摘要、适配代码或其他依赖漂移仍拒绝，不自动接受未来代码。基座/成功折已接入开发测评来源；新独立评分、performance 事件证据和按用途准入已接线，真实低权限模型评审、GPU 性能及显示端验收仍见[实施计划](../docs/plans/model-evaluation-implementation.md)。合成检查不构成真实模型、真实权限隔离、GPU、test 或 E2E 证据；不得公开受限 test 明细。
 
 ## Prompt注册与冻结
 
@@ -155,7 +155,7 @@ python -m versioning model register <完整model版本> --root <store绝对路�
   --source-kind trained --source-scope diagnostic_fold --train-version <完整train版本> --fold 0
 ```
 
-base 拒绝 train/artifacts/deploy-target/fold 引用，核验完整 config、tokenizer/processor、权重与分片索引，冻结来源 revision 和实际字节；可用 config 来源字段或可识别 HF snapshot 路径须与声明一致；二者不足时，目录须含 `source-provenance.json`，schema 为 `tensile-base-provenance/v1`，含匹配的 upstream_source/upstream_revision 及非空 verified_by。该文件随字节冻结；一致性检查不等于密码学证明上游真实性。不造 train/data/Prompt。诊断只从 FINISHED 折 receipt 的实际 adapter 创建不可变快照，不接受任意中途 checkpoint；checkpoint step 来自 trainer_state，父 train 保持原状态。来源 Run 保存 `model-source.json`、`base/model/` 或 `foldN/adapter/`，参数 `sha256_model_source` 钉扎 receipt，Registry 保存 source_kind/source_evidence。后续读取重验快照、原基座及诊断共享 input。已有完整训练 register 的门不放宽；base/diagnostic 禁止 finalize、alias、approve。允许的受控性能用途仍需未来专用入口，不能借服务 alias 实施。
+base 拒绝 train/artifacts/deploy-target/fold 引用，核验完整 config、tokenizer/processor、权重与分片索引，冻结来源 revision 和实际字节；可用 config 来源字段或可识别 HF snapshot 路径须与声明一致；二者不足时，目录须含 `source-provenance.json`，schema 为 `tensile-base-provenance/v1`，含匹配的 upstream_source/upstream_revision 及非空 verified_by。该文件随字节冻结；一致性检查不等于密码学证明上游真实性。不造 train/data/Prompt。诊断只从 FINISHED 折 receipt 的实际 adapter 创建不可变快照，不接受任意中途 checkpoint；checkpoint step 来自 trainer_state，父 train 保持原状态。来源 Run 保存 `model-source.json`、`base/model/` 或 `foldN/adapter/`，参数 `sha256_model_source` 钉扎 receipt，Registry 保存 source_kind/source_evidence。后续读取重验快照、原基座及诊断共享 input。已有完整训练 register 的门不放宽；base/diagnostic 禁止 finalize、alias、approve。受控性能用途通过下节专用入口，不授服务 alias。
 
 沿前节 prepare/validate/run/export 传入语义配置。prepare 冻结 `semantic_rules`、实现摘要、样本/组映射及各折训练集拟合的多数类定义；base 与 fine-tuned 对照必须保持同媒体、任务 Prompt、解码及 scorer。逐响应保留 raw、runtime_error、strict_valid、互斥的 strict/rule/blind/unreadable 分支、已表达字段及其来源；缺失不补 null，非法格式不因恢复而变成严格合法。机制/位置只按 GT 非 null 子集取分母，GT null 误填单列，特殊类别 P/R 报告完整相关样本。
 
@@ -188,6 +188,35 @@ python -m versioning eval compare <trained完整eval版本> --root <store绝对�
 ```
 
 比较要求 baseline 来自真实 base 来源、另一侧来自 trained 来源，且完整候选配对、任务 Prompt、媒体/抽帧、generation、量化和语义规则相同。报告不可变发布为 `records/evaluations/<trained-eval>/paired/<base-eval>.json`，内含双方正式执行证据及绝对结论，不能把手工改配置后的比较视为同条件对照。
+
+## 受控性能测量
+
+`eval performance_prepare / performance_validate / performance_run / performance_export` 使用完整 eval 身份、独立 `purpose: performance`、`protocol: performance-v1`；不以质量 passed 为测量前提，也不能代替质量。命令参数、输入提供者和事件产物流转见[模型工作流第 7 节](../docs/model-workflow.md#7-服务配置启动与真实媒体检查)。prepare 与普通 prepare 同样显式提供 root、model-version、model-version-number、data-version、config、git-commit、media-root，七阶段数据另给 data-inputs；run 只接受 `--performance-evidence <事件JSON>`，不启动真实模型。真实受控启动另用 `eval performance_serve <eval> --root <store> --executor <身份> --session-id <会话> --port <端口> --performance-evidence <新事件文件>`；会加载模型，本轮未启动。其余动作从同 eval 冻结输入恢复，不允许命令行覆盖配置。
+
+| 性能配置字段 | 要求与提供者 |
+| --- | --- |
+| `scope/split/fold` | `single_fold` / `validation` / 明确 0、1、2；仅已验证 development data，诊断模型须对应登记完成折 |
+| `artifact_kind/prompt_version` | base 为 model 并显式给任务 Prompt；trained 为 adapter 且继承登记 Prompt；来源只接受 base、diagnostic_fold、full |
+| `generation/quantization_bit/runtime_variant/device` | 操作者现场核定非空配置，量化显式 null 或 4；runtime_variant 必含 dtype、preprocessing_sha256、llamafactory_version、transformers_version；device 必含 runtime_device、gpu_count。4-bit 时 quantization 精确含 quant_type: nf4、double_quant: true、compute_dtype、quant_storage、skip_modules: [resampler]、excluded_module_dtype: bfloat16，实际模块逐项核验计算/存储类型，不把 uint8 storage 当 compute dtype |
+| `media_ids` | 从对应完整开发 validation 明确选取的唯一媒体 ID；prepare 以 ffprobe、实际文件大小与 SHA 冻结 allowlist，不读取 test |
+| `executor/session_id/issued_at/expires_at` | 非空授权身份、会话身份和明确 Unix 秒；过期拒绝加载/新请求，session 不授 alias |
+| `phase/budget_gpu_hours` | preflight 最多 1、formal 最多 20 GPU 小时；正数且不能超上限 |
+| `policies` | 精确包含 media_strata、cache、repetition、retry、warmup、cold_start、client_instrumentation；warmup 为 {request_ids: [显式ID...]}，全部预热终结后才进入正式请求，不能事后增添或换类 |
+| `resource_growth_policy` | algorithm 为 window-net-growth，metric 为 vram_bytes 或 rss_bytes；window_seconds、min_samples（≥2）、max_growth_bytes 明确冻结 |
+
+`finetune.eval_performance.PerformanceRecorder` 记录上传完成、各阶段、自动解析、后端/显示完成、重试、错误和资源采样，生成 `tensile.performance-events/v1`；每个 request 的原时钟与失败事实不重置。导入重放原事件/资源，保存 `output/{evaluation.yaml,events.json,summary.json}` 并上传父 Run，形成独立 manifest；export 与准入重算全分母、摘要、来源、权重和实现。正式门为全部合格请求不少于 100 次、连续至少 1800 秒、300 秒自动完整显示率 ≥95%、失败率 ≤1%，且无 OOM/crash/持续增长；预热单列，P95 只辅助。媒体规格与 600/660 秒超时见[测评方案](../docs/model-evaluation.md#8-交互性能与稳定性)。
+
+`versioning.performance.ControlledPerformanceSession` 在加载与每请求前核验冻结来源、allowlist、TTL/预算、executor/session；使用 loopback 独立 token 和实际 adapter API，关闭仅影响本会话。`open_performance_session(root=..., eval_version=..., executor=..., session_id=...)` 默认连接 `RegistryPerformanceLoader` 实际加载器，核验物化字节及实际 device/dtype/量化；`session.serve(port=...)` 启动、`export_events(path)` 封存后端事件/资源、`close()` 关闭。`run_performance_session(..., port=..., evidence_path=...)` 封装自身服务启动、0600临时 `.session.json` capability、退出导出事件和清理；API 会真实加载模型，本轮未调用，未来仅在训练机取得运行授权后使用，不借 candidate/production alias。当前实际采集外层 queue/inference/auto_parse/backend_complete 及周期 VRAM/RSS/GPU保留时长；读取/预处理内部细阶段未接 hooks，报告 stage_measurement_gaps；OOM 只按显式事件，不把通用 adapter 500 当 OOM；cold start 保存实际 started/ready/seconds，warmup 独立，不虚构耗时。事件导入不证明真实采集；显示 receipt 接收/核验工程已实现，外部可信 client/显示测点未部署验收。本轮所有事件 synthetic，不可 passed。`synthetic`、`backend-only`、`untrusted-display-events` 和 incomplete/failed 状态必须原样保留，不能手工改标志晋级。
+
+可选 `config.client_attestation_policy` 精确冻结 schema_version: tensile.performance-display-policy/v1、client_id、client_source_sha256、instrumentation_sha256、server_source_sha256（`server_source_digest()`）、不同 client_public_key/server_public_key（Ed25519 raw hex）、同 session_id、clock_protocol: client-monotonic-ns-upload-complete-to-render-v1；私钥不入 plan。serve 从 owner-only `PERFORMANCE_SERVER_SIGNING_KEY_FILE` 读取服务端签名私钥并核公钥。受控请求携带 x-performance-upload-nonce（32-byte hex、retry不变）；GET `/v1/performance/backend-receipt/{request_id}` 返回服务端签原上传/完成/输出摘要/challenge；客户端调用 make_display_receipt/sign_document 后 POST `/v1/performance/display-receipt` 提交 {receipt: 签名包}。POST `/v1/performance/finish` body {} 要求无 inflight、自动成功均有签名 display，标 clean finish 并仅停自己，导出 server 签完整 ledger。来源/key/session/clock/nonce/raw/完整自动字段及全分母均重验，首receipt锁定、跨请求单调时钟不得回退。
+
+缺 policy、client/server receipt/签名、实际 runtime collector 资格、clean finish 或 synthetic 时不能真实性能 passed；只有全部原性能门及信任门成立才通过。OOM、挂起超时/不明后台状态停止接新请求。工程接收器见 `performance_receipts.py`；外部客户端/真实测点仍未部署验收，本轮未修改 TensileAgent、未执行真实 client/model。
+
+## 按用途绑定与准入
+
+新 `semantic-v4.1` 是开发结论；独立质量为 `quality/semantic-holdout-v4.1`，性能为 `performance/performance-v1`。`model finalize` 只接受适用独立质量，不接受开发或性能替代；新质量还要求非合成、真实评审部署与隔离证据。`model bind-performance <完整model版本> --root <store> --eval-version <完整eval版本>` 单向绑定真实性能证据，不授 alias 或生产批准。新语义准入的 finalize、manifest、alias、approve、current 复验质量与性能同模型/Registry 数值版本、Prompt、generation、量化、artifact 和实际抽帧/预处理实现，性能必须非合成且可信显示端 E2E passed；质量 execution.runtime_attestation 还须等于性能冻结 runtime_variant/device/quantization_bit，默认实际推理 collector 已接线；缺现场 attestation 或不一致即拒绝，自报 flags 不能代替。合成检查均应被此门拒绝。
+
+用户已确认停止用旧 strict 新增晋级/服务准入；新准入统一要求新独立质量与性能。旧记录按原冻结门只读，既有批准/alias 只允许同一模型/eval/alias/用途绑定幂等恢复，不得改绑、换 alias 或新增服务资格；新旧用途不互相继承。model manifest 的 `evaluation_binding` 保存分别绑定的质量/性能证据；备份携带两方 Run、冻结输入、产物及受限 exposure/consumed 事实，恢复保留关系与权限并重新验签，不生成新评测资格。异根恢复以 restore-locations.json 和 restore-catalog.yaml 认证原 catalog/input 摘要，仅映射 managed holdout 媒体；冻结 input/claim/raw/judge 不变。同 raw 的 sealed 续 score、consumed 后不重读原 truth 导出已合成验证。旧 exposure profile 按原路径重算历史证明，只读验证不代表新路径隔离，恢复旧 exposed 禁止重跑 worker/broker；inferred 首次发包在新根实际 probe。外部基座/媒体仍验签，真实大型灾备未验收。scoped_mlflow_client 每次按自身 tracking URI 的权威 artifact_uri 构建仓库，避开跨 store 相同 run ID 的进程缓存；不改全局缓存。`production_bundle` 仍仅为备份范围；production 仍须真实用户批准，base/diagnostic 不可 finalize/alias/approve。
 
 ## 显式数据七阶段
 
@@ -374,6 +403,16 @@ full 使用三折 train/validation 的共同开发全集，按媒体身份去重
 
 ## Full 模型的独立 holdout 验收
 
+本节输入要求与 claim/prepare/run/score/export 共用。新独立协议显式 `scorer: semantic-holdout-v4.1`，阈值、source_groups、blind_policy、review_runtime 由 `finetune/eval_review.py` 核验，最终质量门见[测评方案](../docs/model-evaluation.md)；不套用下文旧 strict 七门。完整新协议流转见[模型工作流第 5 节](../docs/model-workflow.md#5-full-模型的独立-test-验收)。run 后、score 前须执行 `eval review_prepare <eval> --root <store> --manual <冻结手册>` 与 `eval review_seal <eval> --root <store> --blind-reviews <封存判断JSON>`。前者核验实际 sandbox canary 探针并写 restricted 匿名包/映射/exposure 和 authorization/exposed.yaml；`eval review_run <eval> --root <store>` 使用固定 localhost Ollama broker 与 Mac worker，默认不允许真实调用，即使带 --allow-real-model-calls 仍先核实际部署/tokenizer/隔离，当前未验真时硬拒任何真实请求；后者核验 raw/policy/独立判断及尝试链后写 review_attempts/judge，未完成禁止读真值。所有判断（含故障）成本封存，已完成初判不能替换。当前工程探针及导入仍标 synthetic、真实模型部署未验收，不能取得新生产资格。
+
+`eval review_verify <eval> --root <store>` 默认不联网；未来显式 --allow-local-review-metadata 仅准固定 localhost tags/show 元数据，不生成回答。prepare 前可冻结 review_tokenizers，每个批准模型声明完整本地 HF 文件/大小/摘要、固定上游 source/revision、GGUF model digest、transformers/tokenizers 库版本及源码、provider implementation、模板和 tokenizer_equivalence_audit 路径/摘要。`eval_review_deployment.py` 核本地 local_files_only/trust_remote_code=False、specialtoken/thinkFalse；独立具名 auditor 的 GGUF↔HF 映射、可核 basis 文件/counter来源与 golden messages→prompt摘要→token IDs 均须一致，不能以 equivalent:true 代替。代码验绑定/bytes/goldens，未来 auditor 负责映射真实性，本轮无真实审计资产。凭据封存 restricted/review-deployment.json 并提交 MLflow；注入 provider 永远 synthetic。真实运行须显式授权及真实凭据，调用前 HF exact render/encode 计8K token，再 Ollama raw generate 同字符串，返回 model/token count 不一致拒绝。
+
+新独立语义配置强制显式 device/runtime_variant，与D相同库/源码/量化6键；默认实际 infer 从已加载模型/processor/帧属性/generation 提取 runtime_attestation/observation，沿 inference→score→manifest 封存；旧 strict 不加字段，真实运行仍未执行。
+
+公开新结果仅二值 gate、用途/协议和完整性证据；实际数值、CI、raw、映射和逐样本评分保留 restricted/。消费后用 `eval restricted_summary <eval> --root <store> --actor <负责人>` 或 `read_restricted_holdout_summary(root=..., eval_version=..., actor=...)`；prepare 前须显式冻结 aggregate_authorization: {actor, role: acceptance-owner, os_uid}，查询核实际 OS UID/owner 与 committed score/consumed/私有评分，不默认 score executor 为负责人。仅返回聚合 metrics/support/diagnostics/CI，无 raw/GT/逐样本。broker started/sealed 和 broker_attempts 保留每次调用；不明 timeout 立即 ambiguous，owner-only 全局锁与 backend-ambiguous.json 阻止自动 retry/切模型或下一请求，核终态前不继续，不停止共享 Ollama。exposed 不能回退、consumed 不重置；已有承诺可同 identity 恢复导出，其他恢复条件沿下述授权纪律。本轮禁止使用真实 test 或运行真实模型，示例不授执行权限。
+
+### 共用输入与旧 strict 门
+
 此流程不构建测试集，也不授予新使用资格。输入必须是已构建、审查、冻结且尚未使用的独立 holdout release；不得把已暴露的历史sealed-test改名使用。实际模型训练及GPU推理仍只在训练机执行。以下文件由获授权的holdout发布流程提前准备；缺失即停止，不猜测或自动生成标签。
 
 - `release.yaml`：完整data身份、`purpose: holdout`、`training_allowed: false`、active状态及准确sample_count。
@@ -382,7 +421,7 @@ full 使用三折 train/validation 的共同开发全集，按媒体身份去重
 - `sealed_ground_truth/labels.json`：只供授权评分读取，目录及文件均owner-only，不能有symlink；精确字段为 `schema_version`（`tensile-holdout-truth/v1`）、`data_version`、`split`、`labels`。labels是每个candidate_id到严格V4.1四字段标签的完整映射，不能缺项或多项。
 - `authorization/`：由显式 `data claim` 写入一次性身份及后续消费事实；不手工清空或覆盖。
 
-holdout配置的字段结构沿用validation，但`thresholds`必须显式且完整提供以下原七项固定门槛，不接受通用六指标替代或缺省补齐：
+以下仅说明旧 `strict-v4.1` holdout；其配置字段结构沿用validation，但`thresholds`必须显式且完整提供以下原七项固定门槛，不接受通用六指标替代或缺省补齐：
 
 ```yaml
 thresholds:

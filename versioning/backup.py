@@ -28,7 +28,7 @@ import yaml
 from mlflow.tracking import MlflowClient
 
 from versioning.data_release import seal_payload
-from versioning.ids import parse_data_id
+from versioning.ids import parse_data_id, parse_eval_id
 from versioning.manifest import ManifestError, validate_model_manifest
 from versioning.mlflow_eval import get_eval_run, open_eval_store
 from versioning.prompts import prompt_path
@@ -51,6 +51,7 @@ OBJECT_TYPE_DATA_RELEASE: str = "data_release"
 OBJECT_TYPE_PROMPT: str = "prompt"
 OBJECT_TYPE_MODEL: str = "model"
 OBJECT_TYPE_MLFLOW_STORE: str = "mlflow_store"
+OBJECT_TYPE_EVALUATION_WORKSPACE: str = "evaluation_workspace"
 
 SCOPE_DATA_RELEASE: str = "data"
 SCOPE_PROMPT: str = "prompt"
@@ -60,6 +61,7 @@ BACKUP_DIR_DATA: str = "data"
 BACKUP_DIR_PROMPTS: str = "prompts"
 BACKUP_DIR_MODELS: str = "models"
 BACKUP_DIR_MLFLOW: str = "mlflow"
+BACKUP_DIR_EVALUATIONS: str = "evaluations"
 
 OBJECT_KEYS: frozenset[str] = frozenset(
     {
@@ -162,7 +164,7 @@ def _is_sha256(value: object) -> bool:
 
 
 def _client(store: ModelRegistryStore) -> MlflowClient:
-    return MlflowClient(tracking_uri=store.tracking_uri)
+    return scoped_mlflow_client(tracking_uri=store.tracking_uri)
 
 
 def _run_artifact_root(store: ModelRegistryStore, artifact_uri: str) -> Path:
@@ -463,6 +465,20 @@ def _enumerate_scoped_models(
         }
         if record.source_evidence:
             expected_manifest.update(source_kind=record.source_kind, source_evidence=record.source_evidence)
+        if record.performance_eval_id:
+            expected_manifest["evaluation_binding"] = {"quality_eval_id": record.eval_id,
+                "performance_eval_id": record.performance_eval_id,
+                "quality_protocol": "semantic-holdout-v4.1", "performance_protocol": "performance-v1"}
+            if metadata.get("performance_eval_id") != record.performance_eval_id:
+                raise BackupSourceSetError("materialized performance identity differs from Registry")
+            from versioning.registry import _run_eval_gate, _validate_new_service_admission
+            try:
+                if record.eval_id is None:
+                    raise ValueError("bound performance has no quality evidence")
+                quality = _run_eval_gate(store, record.eval_id, require_passed=True)
+                _validate_new_service_admission(store, record, quality)
+            except ValueError as exc:
+                raise BackupSourceSetError("new admission evidence rejected before backup") from exc
         for key, value in expected_manifest.items():
             if manifest.get(key) != value:
                 raise BackupSourceSetError(
@@ -523,8 +539,8 @@ def _enumerate_scoped_models(
 
         # 正式 eval 的文件证据按该模型精确绑定的父/子 Run 纳入；指标与 tags
         # 保存在同批 SQLite。未绑定 eval 的 adapter 仍可备份训练产物。
-        if record.eval_id is not None:
-            evaluation = get_eval_run(open_eval_store(store.root), record.eval_id)
+        for evaluation_id in filter(None, (record.eval_id, record.performance_eval_id)):
+            evaluation = get_eval_run(open_eval_store(store.root), evaluation_id)
             eval_run_ids = {evaluation.run_id, *(fold.run_id for fold in evaluation.folds.values())}
             for run_id in eval_run_ids:
                 eval_artifact_root = _run_artifact_root(
@@ -572,6 +588,48 @@ def enumerate_backup_sources(
         store, models_root, prompts_root
     )
     sources.extend(model_sources)
+
+    # Claims and prediction exposure can exist before model finalization.
+    # Retain those workspaces independently of a serving alias or outcome.
+    bases = (prompts_root / "workspace/evaluations", prompts_root / "evaluations/staging")
+    identities = set()
+    for base in bases:
+        if not base.exists():
+            continue
+        for workspace in base.iterdir():
+            if workspace.is_symlink() or not workspace.is_dir():
+                raise BackupSourceSetError("evaluation workspace must be an ordinary directory")
+            parse_eval_id(workspace.name)
+            identities.add(workspace.name)
+    for evaluation_id in sorted(identities):
+        relative = Path("workspace/evaluations") / evaluation_id
+        workspace = prompts_root / relative
+        selected = [str(relative / name) for name in ("input", "output", "restricted")
+                    if (workspace / name).exists()]
+        authorization = Path("evaluations/staging") / evaluation_id / "authorization"
+        if (prompts_root / authorization).exists():
+            selected.append(str(authorization))
+        if not selected:
+            continue
+        restricted = workspace / "restricted"
+        if restricted.exists():
+            for path in (restricted, *restricted.rglob("*")):
+                if path.is_symlink() or path.stat().st_mode & 0o077:
+                    raise BackupSourceSetError("restricted evaluation workspace must remain owner-only")
+        sources.append(BackupSource(object_id=evaluation_id,
+            object_type=OBJECT_TYPE_EVALUATION_WORKSPACE, scope="evaluation", source=prompts_root,
+            include_paths=tuple(selected)))
+        try:
+            evaluation = get_eval_run(open_eval_store(store.root), evaluation_id)
+        except Exception as exc:
+            from versioning.mlflow_eval import EvalRecordNotFound
+            if not isinstance(exc, EvalRecordNotFound):
+                raise BackupSourceSetError("evaluation workspace tracking record is unreadable") from exc
+        else:
+            for run_id in {evaluation.run_id, *(fold.run_id for fold in evaluation.folds.values())}:
+                artifact_root = _run_artifact_root(store, _client(store).get_run(run_id).info.artifact_uri)
+                if artifact_root.exists() and any(p.is_file() for p in artifact_root.rglob("*")):
+                    mlflow_paths.add(artifact_root.relative_to(store.root.resolve()).as_posix())
 
     for prompt_version in sorted(prompt_versions):
         sources.append(
@@ -648,6 +706,10 @@ def _backup_object(source: BackupSource, backup_root: Path) -> BackupObjectEntry
         _copy_selected_tree_atomic_replace(source, dst)
         prefix = f"{BACKUP_DIR_MODELS}/{source.object_id}"
         files = _build_file_entries(dst, prefix)
+    elif source.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
+        dst = backup_root / BACKUP_DIR_EVALUATIONS / source.object_id
+        _copy_selected_tree_atomic_replace(source, dst)
+        files = _build_file_entries(dst, f"{BACKUP_DIR_EVALUATIONS}/{source.object_id}")
     elif source.object_type == OBJECT_TYPE_MLFLOW_STORE:
         dst = backup_root / BACKUP_DIR_MLFLOW
         _copy_selected_tree_atomic_replace(source, dst)
@@ -920,6 +982,9 @@ def _repair_or_copy(
     elif source.object_type == OBJECT_TYPE_MODEL:
         dst = backup_root / BACKUP_DIR_MODELS / source.object_id
         prefix = f"{BACKUP_DIR_MODELS}/{source.object_id}"
+    elif source.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
+        dst = backup_root / BACKUP_DIR_EVALUATIONS / source.object_id
+        prefix = f"{BACKUP_DIR_EVALUATIONS}/{source.object_id}"
     elif source.object_type == OBJECT_TYPE_MLFLOW_STORE:
         dst = backup_root / BACKUP_DIR_MLFLOW
         prefix = BACKUP_DIR_MLFLOW
@@ -975,6 +1040,17 @@ def _verify_object_files(
     backup_root: Path, entry: BackupObjectEntry
 ) -> None:
     """逐文件核对存在性、大小、sha256；MLflow SQLite 额外检查可查询性。"""
+    if entry.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
+        try:
+            parse_eval_id(entry.object_id)
+        except ValueError as exc:
+            raise BackupIntegrityError("evaluation backup identity differs") from exc
+        expected_prefix = f"{BACKUP_DIR_EVALUATIONS}/{entry.object_id}/"
+        if entry.scope != "evaluation" or any(not f.path.startswith(expected_prefix) for f in entry.files):
+            raise BackupIntegrityError("evaluation workspace backup scope/path differs")
+        private = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id / "workspace/evaluations" / entry.object_id / "restricted"
+        if private.exists() and any(p.stat().st_mode & 0o077 or p.is_symlink() for p in (private, *private.rglob("*"))):
+            raise BackupIntegrityError("restricted backup permissions are not owner-only")
     for file_entry in entry.files:
         path = backup_root / file_entry.path
         if not path.is_file():
@@ -1136,6 +1212,9 @@ def _target_exists_for_object(
         return (Path(data_root) / "releases" / entry.object_id).exists()
     if entry.object_type == OBJECT_TYPE_PROMPT:
         return prompt_path(prompts_root, entry.object_id).exists()
+    if entry.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
+        return any((Path(prompts_root) / relative / entry.object_id).exists()
+                   for relative in ("workspace/evaluations", "evaluations/staging"))
     if entry.object_type == OBJECT_TYPE_MODEL:
         return (
             (Path(models_root) / entry.object_id).exists()
@@ -1153,7 +1232,8 @@ def _target_exists_for_object(
     return False
 
 
-def _relocated_mlflow_updates(db_path: Path, source_root: str, target_root: Path) -> list[tuple[str, tuple[Any, ...]]]:
+def _relocated_mlflow_updates(db_path: Path, source_root: str, target_root: Path,
+        *, data_root: Path | None = None, prompts_root: Path | None = None) -> list[tuple[str, tuple[Any, ...]]]:
     """Plan storage-address changes only; never inspect or edit the original store."""
     original = Path(source_root)
     if not original.is_absolute() or ".." in original.parts:
@@ -1224,6 +1304,23 @@ def _relocated_mlflow_updates(db_path: Path, source_root: str, target_root: Path
                         continue
                     destination = relocate(value, run_reference=run_reference)
                     updates.append((f"UPDATE {table} SET {column}=? WHERE rowid=?", (destination, rowid)))
+            # Relocate only storage-address tags; identity, rule hashes and
+            # claim/exposure/consumption facts retain their original bytes.
+            old_project = original.parent.parent
+            new_project = Path(prompts_root) if prompts_root is not None else target_root.parent.parent
+            new_data = Path(data_root) if data_root is not None else new_project / "data"
+            for rowid, key, value in connection.execute(
+                    "SELECT rowid, key, value FROM tags WHERE key IN ('pre_registration_path','holdout_authorization_dir')"):
+                path = Path(value)
+                source_base = old_project / ("evaluations/staging" if key == "pre_registration_path" else "data/releases")
+                try:
+                    relative = path.relative_to(source_base)
+                except ValueError as exc:
+                    raise BackupIntegrityError("holdout authorization storage is outside its frozen project scope") from exc
+                if ".." in relative.parts or not relative.parts:
+                    raise BackupIntegrityError("unsafe holdout authorization storage address")
+                destination_base = new_project / "evaluations/staging" if key == "pre_registration_path" else new_data / "releases"
+                updates.append(("UPDATE tags SET value=? WHERE rowid=?", (str(destination_base / relative), rowid)))
     except sqlite3.Error as exc:
         raise BackupIntegrityError(f"unsupported MLflow snapshot schema: {exc}") from exc
     return updates
@@ -1238,6 +1335,9 @@ def _restore_targets(catalog: BackupCatalog, backup_root: Path, *, data_root: Pa
             targets.append(Path(data_root) / "releases" / entry.object_id)
         elif entry.object_type == OBJECT_TYPE_PROMPT:
             targets.append(prompt_path(prompts_root, entry.object_id))
+        elif entry.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
+            targets.extend(Path(prompts_root) / relative / entry.object_id
+                           for relative in ("workspace/evaluations", "evaluations/staging"))
         elif entry.object_type == OBJECT_TYPE_MODEL:
             targets.extend([Path(models_root) / entry.object_id,
                             Path(prompts_root) / "records/models" / entry.object_id / "manifest.yaml"])
@@ -1310,6 +1410,12 @@ def _restore_object(
         src = backup_root / BACKUP_DIR_PROMPTS / f"{entry.object_id}.yaml"
         dst = prompt_path(prompts_root, entry.object_id)
         _restore_file_no_replace(src, dst)
+    elif entry.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
+        src = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id
+        for relative in ("workspace/evaluations", "evaluations/staging"):
+            subtree = Path(relative) / entry.object_id
+            if (src / subtree).exists():
+                _restore_tree_no_replace(src / subtree, Path(prompts_root) / subtree)
     elif entry.object_type == OBJECT_TYPE_MODEL:
         src = backup_root / BACKUP_DIR_MODELS / entry.object_id
         dst = Path(models_root) / entry.object_id
@@ -1365,6 +1471,18 @@ def restore_backup(
         if path.is_symlink() or not (path.is_dir() or path.is_file()):
             raise BackupIntegrityError("restore backup must contain regular files only")
     catalog = verify_backup(backup_root)
+    # A formal holdout resumes from these exact managed paths. Reject an
+    # unsupported split-root layout before copying any snapshot object.
+    for entry in catalog.objects:
+        if entry.object_type != OBJECT_TYPE_EVALUATION_WORKSPACE:
+            continue
+        frozen = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id / "workspace/evaluations" / entry.object_id / "input/evaluation.yaml"
+        if frozen.is_file():
+            import json
+            if json.loads(frozen.read_bytes()).get("schema_version") == "tensile-vlm/v4.1-holdout-evaluation" and (
+                    Path(data_root) != Path(prompts_root) / "data" or
+                    Path(mlflow_root) != Path(prompts_root) / "workspace/mlflow"):
+                raise BackupIntegrityError("live holdout recovery requires the formal managed project layout")
     _restore_targets(catalog, backup_root, data_root=data_root, prompts_root=prompts_root,
                      models_root=models_root, mlflow_root=mlflow_root)
     empty_mlflow_identity = None
@@ -1376,7 +1494,8 @@ def restore_backup(
     for entry in catalog.objects:
         if entry.object_type == OBJECT_TYPE_MLFLOW_STORE:
             mlflow_updates = _relocated_mlflow_updates(
-                (backup_root / BACKUP_DIR_MLFLOW / "mlflow.db").absolute(), entry.source, Path(mlflow_root))
+                (backup_root / BACKUP_DIR_MLFLOW / "mlflow.db").absolute(), entry.source, Path(mlflow_root),
+                data_root=Path(data_root), prompts_root=Path(prompts_root))
 
     for entry in catalog.objects:
         if _target_exists_for_object(
@@ -1401,6 +1520,143 @@ def restore_backup(
             mlflow_updates=mlflow_updates,
             empty_mlflow_identity=empty_mlflow_identity,
         )
+    _write_restore_locations(backup_root, catalog, Path(prompts_root), Path(mlflow_root), Path(data_root))
+
+
+def _write_restore_locations(backup_root: Path, catalog: BackupCatalog, project_root: Path,
+        mlflow_root: Path, data_root: Path) -> None:
+    """Create a narrowly scoped locator without rewriting any frozen evidence."""
+    from versioning.manifest import _publish_immutable
+    stores = [e for e in catalog.objects if e.object_type == OBJECT_TYPE_MLFLOW_STORE]
+    if len(stores) != 1:
+        raise BackupIntegrityError("restore requires one exact MLflow store")
+    locations = {}
+    for entry in catalog.objects:
+        if entry.object_type != OBJECT_TYPE_EVALUATION_WORKSPACE:
+            continue
+        relative = f"workspace/evaluations/{entry.object_id}/input/evaluation.yaml"
+        path = project_root / relative
+        if not path.exists():
+            continue
+        import json
+        value = json.loads(path.read_bytes())
+        if value.get("schema_version") != "tensile-vlm/v4.1-holdout-evaluation":
+            continue
+        original_media = Path(value["media_root"])
+        expected_suffix = Path("data/releases") / value["data_version"] / "media"
+        if (value.get("eval_version") != entry.object_id or not original_media.is_absolute()
+                or tuple(original_media.parts[-len(expected_suffix.parts):]) != expected_suffix.parts):
+            raise BackupIntegrityError("holdout restore locator does not match the frozen managed release")
+        expected_file = f"{BACKUP_DIR_EVALUATIONS}/{entry.object_id}/{relative}"
+        file = next((f for f in entry.files if f.path == expected_file), None)
+        if file is None or _sha256_file(path) != file.sha256:
+            raise BackupIntegrityError("holdout restore locator input is not in the verified catalog")
+        locations[entry.object_id] = {"input_sha256": file.sha256,
+            "original_media_root": str(original_media),
+            "restored_media_root": str(data_root / "releases" / value["data_version"] / "media")}
+    if not locations:
+        return
+    # Current formal builders require these managed roots; do not invent
+    # arbitrary path remapping for unsupported restore layouts.
+    if data_root != project_root / "data" or mlflow_root != project_root / "workspace/mlflow":
+        raise BackupIntegrityError("live holdout recovery requires the formal managed project layout")
+    catalog_bytes = (backup_root / BACKUP_CATALOG_FILENAME).read_bytes()
+    catalog_proof = _publish_immutable(mlflow_root / "restore-catalog.yaml", catalog_bytes, label="restore catalog provenance")
+    catalog_proof.chmod(0o400)
+    receipt = {"schema": "tensile-restore-locations/v1", "catalog_sha256": hashlib.sha256(catalog_bytes).hexdigest(),
+        "original_store": stores[0].source, "restored_store": str(mlflow_root),
+        "restored_project": str(project_root), "evaluations": locations}
+    import json
+    location_proof = _publish_immutable(mlflow_root / "restore-locations.json",
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode(), label="restore locations")
+    location_proof.chmod(0o400)
+
+
+def restored_holdout_media_root(root: Path, value: Mapping[str, Any]) -> Path:
+    """Accept only a verified catalog's exact managed holdout-media relocation."""
+    import json
+    root = Path(root).absolute()
+    store_root = root / "workspace/mlflow"
+    receipt_path = store_root / "restore-locations.json"
+    if not receipt_path.exists():
+        return Path(value["media_root"])
+    catalog_path = store_root / "restore-catalog.yaml"
+    if any(p.is_symlink() for p in (receipt_path, catalog_path, *receipt_path.parents)):
+        raise BackupIntegrityError("restore locator must use ordinary files")
+    if any(not path.is_file() or path.stat().st_mode & 0o777 != 0o400 for path in (receipt_path, catalog_path)):
+        raise BackupIntegrityError("restore locator proofs must remain owner-only and read-only")
+    receipt = json.loads(receipt_path.read_bytes())
+    if (set(receipt) != {"schema", "catalog_sha256", "original_store", "restored_store", "restored_project", "evaluations"}
+            or receipt["schema"] != "tensile-restore-locations/v1" or receipt["restored_store"] != str(store_root)
+            or receipt["restored_project"] != str(root) or _sha256_file(catalog_path) != receipt["catalog_sha256"]):
+        raise BackupIntegrityError("restore locator provenance drifted")
+    identity = value["eval_version"]
+    binding = receipt["evaluations"].get(identity)
+    if binding is None:
+        return Path(value["media_root"])
+    from finetune.eval_run import _formal_bytes
+    encoded = _formal_bytes(value)
+    catalog = yaml.safe_load(catalog_path.read_bytes())
+    original_store = next((entry["source"] for entry in catalog["objects"]
+                           if entry["object_type"] == OBJECT_TYPE_MLFLOW_STORE), None)
+    expected_path = f"evaluations/{identity}/workspace/evaluations/{identity}/input/evaluation.yaml"
+    file = next((f for entry in catalog["objects"] if entry["object_type"] == OBJECT_TYPE_EVALUATION_WORKSPACE
+                 and entry["object_id"] == identity for f in entry["files"] if f["path"] == expected_path), None)
+    expected_media = root / "data/releases" / value["data_version"] / "media"
+    if (value.get("schema_version") != "tensile-vlm/v4.1-holdout-evaluation" or value.get("inputs_path") is not None
+            or not isinstance(binding, dict) or set(binding) != {"input_sha256", "original_media_root", "restored_media_root"}
+            or receipt["original_store"] != original_store or file is None
+            or file["sha256"] != hashlib.sha256(encoded).hexdigest() or binding["input_sha256"] != file["sha256"]
+            or binding["original_media_root"] != value["media_root"] or binding["restored_media_root"] != str(expected_media)):
+        raise BackupIntegrityError("restore locator identity, frozen input, or managed media mapping differs")
+    return expected_media
+
+
+def restored_review_profile_paths(root: Path, value: Mapping[str, Any], package: Path,
+        output: Path) -> tuple[Path, Path]:
+    """Canonicalize only an already exposed, catalog-sealed sandbox profile."""
+    root = Path(root).absolute()
+    mapped = restored_holdout_media_root(root, value)
+    if mapped == Path(value["media_root"]):
+        return package, output
+    private = root / "workspace/evaluations" / value["eval_version"] / "restricted"
+    if package != private / "anonymous-review.json" or output.parent != private or not re.fullmatch(r"actor-requests-[0-9]+\.json", output.name):
+        raise BackupIntegrityError("review profile relocation is outside the frozen worker scope")
+    catalog = yaml.safe_load((root / "workspace/mlflow/restore-catalog.yaml").read_bytes())
+    prefix = f"evaluations/{value['eval_version']}/workspace/evaluations/{value['eval_version']}/restricted/"
+    proof = next((file for entry in catalog["objects"] if entry["object_type"] == OBJECT_TYPE_EVALUATION_WORKSPACE
+                  and entry["object_id"] == value["eval_version"] for file in entry["files"]
+                  if file["path"] == prefix + "exposure.json"), None)
+    if proof is None:
+        return package, output  # First exposure occurred after restoration.
+    if _sha256_file(private / "exposure.json") != proof["sha256"]:
+        raise BackupIntegrityError("restored exposure differs from its catalog-sealed profile")
+    original_project = Path(value["media_root"]).parents[3]
+    original_private = original_project / "workspace/evaluations" / value["eval_version"] / "restricted"
+    return original_private / package.name, original_private / output.name
+
+
+def scoped_mlflow_client(*, tracking_uri: str) -> MlflowClient:
+    """Bypass MLflow 3.15.2's process-global ID-only artifact repository cache.
+
+    The override is per client; original and restored stores may have the same
+    immutable run IDs while their authoritative artifact URIs differ.
+    """
+    from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
+    client = MlflowClient(tracking_uri=tracking_uri)
+    tracking = client._tracking_client
+
+    def repository(resource_id, *, resource="run"):
+        if resource == "run":
+            location = tracking.get_run(resource_id).info.artifact_uri
+        elif resource == "logged_model":
+            location = tracking.get_logged_model(resource_id).artifact_location
+        else:
+            raise BackupIntegrityError("unsupported scoped MLflow artifact resource")
+        return get_artifact_repository(location, tracking_uri=tracking_uri)
+
+    tracking._get_artifact_repo = repository
+    return client
 
 
 def _receive_backup_tree(ssh_host: str, source_root: Path, destination: Path) -> None:

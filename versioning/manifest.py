@@ -532,6 +532,10 @@ def _model_manifest_mapping(record: RegisteredModelRecord) -> dict[str, Any]:
         "prompt_version": record.prompt_version,
         "artifacts": record.artifacts,
         "deploy_target": record.deploy_target,
+        **({"evaluation_binding": {"quality_eval_id": record.eval_id,
+             "performance_eval_id": record.performance_eval_id,
+             "quality_protocol": "semantic-holdout-v4.1", "performance_protocol": "performance-v1"}}
+           if getattr(record, "performance_eval_id", None) else {}),
         **({"source_kind": record.source_kind, "source_evidence": record.source_evidence}
            if getattr(record, "source_kind", "trained") == "base" or getattr(record, "source_evidence", None) else {}),
     }
@@ -545,8 +549,21 @@ def validate_model_manifest(payload: str) -> dict[str, Any]:
         obj = yaml.safe_load(payload)
     except Exception as exc:
         raise ManifestSchemaError(f"model manifest YAML 非法: {exc}") from exc
-    if not isinstance(obj, dict) or set(obj) not in (_MODEL_MANIFEST_KEYS, _MODEL_MANIFEST_KEYS | {"source_kind", "source_evidence"}):
+    if not isinstance(obj, dict) or set(obj) - {"evaluation_binding"} not in (_MODEL_MANIFEST_KEYS, _MODEL_MANIFEST_KEYS | {"source_kind", "source_evidence"}):
         raise ManifestSchemaError("model manifest 顶层键集合非法")
+    if "evaluation_binding" in obj:
+        binding = obj["evaluation_binding"]
+        if not isinstance(binding, dict) or set(binding) != {"quality_eval_id", "performance_eval_id", "quality_protocol", "performance_protocol"}:
+            raise ManifestSchemaError("evaluation_binding schema differs")
+        if binding["quality_protocol"] != "semantic-holdout-v4.1" or binding["performance_protocol"] != "performance-v1":
+            raise ManifestSchemaError("evaluation_binding purpose/protocol differs")
+        try:
+            parse_eval_id(binding["quality_eval_id"])
+            parse_eval_id(binding["performance_eval_id"])
+        except (ValueError, TypeError) as exc:
+            raise ManifestSchemaError("evaluation_binding identities differ") from exc
+        if binding["quality_eval_id"] == binding["performance_eval_id"]:
+            raise ManifestSchemaError("quality/performance must be distinct evaluations")
     source_kind = obj.get("source_kind", "trained")
     if source_kind not in {"base", "trained"}:
         raise ManifestSchemaError("source_kind 必须是 base 或 trained")
@@ -617,13 +634,16 @@ def validate_model_manifest(payload: str) -> dict[str, Any]:
 
 def build_model_manifest(store: ModelRegistryStore, model_id: str) -> str:
     """从真实 Registry Model Version 单向构造 model manifest YAML。"""
-    from versioning.registry import _run_model_train_gate, _run_eval_gate, PromotionGateRejected
+    from versioning.registry import _run_model_train_gate, _run_eval_gate, _validate_new_service_admission, PromotionGateRejected
     record = get_model(store, model_id)
     _run_model_train_gate(store, record)
     if record.eval_id is not None:
         evaluated = _run_eval_gate(store, record.eval_id, require_passed=True)
         if evaluated.model_id != record.model_id or evaluated.model_version_number != record.version:
             raise PromotionGateRejected("model manifest evaluation binding differs")
+        _validate_new_service_admission(store, record, evaluated)
+    elif record.performance_eval_id:
+        raise PromotionGateRejected("model manifest requires quality evidence before publishing performance binding")
     obj = _model_manifest_mapping(record)
     payload = yaml.safe_dump(obj, sort_keys=True, allow_unicode=True)
     validate_model_manifest(payload)

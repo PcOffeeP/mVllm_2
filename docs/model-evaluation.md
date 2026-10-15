@@ -1,6 +1,6 @@
 # 模型评测设计
 
-本文保存已确认的评测设计，覆盖开发诊断、最终独立验收及交互性能。它是目标协议，**不表示实现或真实评测已完成，也不是可直接执行的新操作手册**。现行命令及原协议见[模型工作流](model-workflow.md)与 [versioning 参数索引](../versioning/SCRIPTS.md)；实现差距及验收批次见[实施计划](plans/model-evaluation-implementation.md)，任务状态只由[项目 TODO](project-todo.md)维护。
+本文保存已确认的评测设计，覆盖开发诊断、最终独立验收及交互性能。它是目标协议；工程接口已按批次接入，**不表示真实评测已完成，也不是直接执行的操作手册**。现行命令及原协议见[模型工作流](model-workflow.md)与 [versioning 参数索引](../versioning/SCRIPTS.md)；实现差距及验收批次见[实施计划](plans/model-evaluation-implementation.md)，任务状态只由[项目 TODO](project-todo.md)维护。
 
 ## 1. 目标与结论边界
 
@@ -29,7 +29,7 @@
 
 部分字段明确时可获得该字段分数，但 joint 必须四字段均明确且正确。字段缺失不等于显式 null；不能因为预测“未断裂”就替模型补齐其余三个 null。语义提取只整理模型已表达的答案，不根据真值、视频或业务常识替它作答。
 
-当前评审配置已确认、待实现：在 Mac 本地 Ollama 使用 `qwen3.5:9b` 与 `ornith-1.5:9b` 作两个独立初判；分歧交 `qwen3.5:9b` 的第三独立上下文，先独立判读再仲裁。同一时间只运行一个模型，无云端 fallback。两者同族，须报告相关误判风险，不能把一致等同独立正确。仅输入匿名 raw、待提取字段和手册；context 8K、输出上限 512 tokens、temperature 0，支持时关闭 thinking。每次判读 timeout 120 秒，仅运行故障重试一次；超长不截断，转盲态复核或记未完成，不能挑选重试答案。评审基础设施故障记评审未完成，不直接算被测模型视觉错误；模型输出未明示或无法判读的字段才按评分规则计失败。评审未完成不能据此宣称整体通过。
+当前评审配置已确认、已进入冻结核验接口，真实模型执行尚未验收：在 Mac 本地 Ollama 使用 `qwen3.5:9b` 与 `ornith-1.5:9b` 作两个独立初判；分歧交 `qwen3.5:9b` 的第三独立上下文，先独立判读再仲裁。同一时间只运行一个模型，无云端 fallback。两者同族，须报告相关误判风险，不能把一致等同独立正确。仅输入匿名 raw、待提取字段和手册；context 8K、输出上限 512 tokens、temperature 0，支持时关闭 thinking。每次判读 timeout 120 秒，仅运行故障重试一次；超长不截断，转盲态复核或记未完成，不能挑选重试答案。评审基础设施故障记评审未完成，不直接算被测模型视觉错误；模型输出未明示或无法判读的字段才按评分规则计失败。评审未完成不能据此宣称整体通过。
 
 | 本地模型 | 已记录安装摘要（Q4_K_M） | 证据限制 |
 | --- | --- | --- |
@@ -92,24 +92,24 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 
 | 顺序 | 输入及前置 | 目标动作与输出 |
 | --- | --- | --- |
-| 资格与规则冻结 | 开发 data、契约、候选来源、依赖/预算；独立来源和近重复检查 | 冻结评分规则、盲评手册、对照条件及开发阈值；拟新增逻辑产物“新协议冻结记录” |
+| 资格与规则冻结 | 开发 data、契约、候选来源、依赖/预算；独立来源和近重复检查 | 冻结评分规则、盲评手册、对照条件及开发阈值；`input/evaluation.yaml` 的规则、配置与实现摘要 |
 | baseline 与单折诊断 | 有正式身份的 base、开发多数类 baseline；对应 diagnostic_fold 模型（评测 scope 为 single_fold）与完整 validation | 同媒体对照，保留 raw、失败与完整诊断；不抽掉困难样本 |
 | 完整三折 | 已冻结开发方案及三折模型/完整 validation | 每折状态门与 pooled 门同时检查，形成开发结论 |
 | test 构建就绪 | 未使用 test 资格、独立来源、完整人工数据审查和封存 | 发布无标签推理输入、受限真值及构建证据；完成可预先确定的预注册准备 |
 | 独立 full 训练 | 开发三折达到门槛、test 构建/冻结及预注册准备就绪、适用训练授权 | 开发全集去重，每候选一次独立训练；不以 test 选 checkpoint 或日程 |
 | 一次性绑定 | full 候选 model/eval 身份已确定，获 test 使用授权 | 首次模型调用前，claim 精确绑定 model/eval/data/split/executor/规则；不要求先 test 通过才训 full |
 | 一次推理与 raw 冻结 | 无标签媒体输入、已核验权重与冻结调用规则 | 一次媒体推理、保留失败；冻结原始响应与运行证据 |
-| 盲评语义整理 | 匿名 raw、冻结规则与手册、获授权评审 | 拟新增逻辑产物“预测语义整理与盲评审计证据”；不看 GT/video/model |
+| 盲评语义整理 | 匿名 raw、冻结规则与手册、获授权评审 | restricted 匿名包/映射/exposure、review_attempts 与 judge 证据；不看 GT/video/model |
 | 受限 score 与报告 | 已冻结 raw/语义记录、受限真值、同一授权绑定 | 按新协议受限评分，保留授权消费、实际指标、公开许可范围内报告及导出证据 |
 | 发布与服务 | 精确绑定的质量、形式/评测整理依赖、性能证据及相应批准 | 保留 candidate / production 区别；视觉过门不自动证明服务或生产合格 |
 
-表中是目标流程；拟新增逻辑产物尚未分配文件路径或 CLI。既有链路可追溯关系见下一节。test 数据准备可与开发工作并行，性能准备也不依赖一次 test 结果。最终 claim 在候选出现后建立；test 资格及数据构建就绪在 FINAL-TRAIN 前完成。
+表中是目标流程；工程入口和实际产物见下一节及[模型工作流](model-workflow.md#5-full-模型的独立-test-验收)，真实运行状态以 TODO 为准。test 数据准备可与开发工作并行，性能准备也不依赖一次 test 结果。最终 claim 在候选出现后建立；test 资格及数据构建就绪在 FINAL-TRAIN 前完成。
 
-盲评权限架构已确认、待实现：提供身份元数据脱敏但语义不变的匿名只读评审包，映射和原 raw 保持受限。每个 Agent 工作进程使用独立低权限工作区/身份，只能读包、写自身结果，不提供 GT、视频、训练目录、凭据或自由网络/工具访问。须以实际技术隔离验证职责；提示词、同一高权限账号 chmod 或同账号的多个会话，均不能证明安全或物理隔离。具体运行适配及实际账户尚未部署。 原始回答作为待判读数据，不作为 Agent 指令；不向判读 Agent 暴露检索真值或执行任意工具的能力。当前固定 Mac 本地 Ollama 受控适配，不采用远端评审或云端 fallback；判读 Agent 不获得自由网络或任意工具。
+盲评权限架构已确认，发包/封存及合成 sandbox 探针已接线；真实模型进程隔离尚未部署验收：提供身份元数据脱敏但语义不变的匿名只读评审包，映射和原 raw 保持受限。每个 Agent 工作进程使用独立低权限工作区/身份，只能读包、写自身结果，不提供 GT、视频、训练目录、凭据或自由网络/工具访问。须以实际技术隔离验证职责；提示词、同一高权限账号 chmod 或同账号的多个会话，均不能证明安全或物理隔离。受控 Mac worker 与固定 localhost Ollama broker 的 transport 已接线，部署receipt核验、tokenizer受审映射与实际runtime采集工程已接线；真实资产/独立审计mapping及实际账户尚未验真，缺凭据时真实请求前拒绝。 原始回答作为待判读数据，不作为 Agent 指令；不向判读 Agent 暴露检索真值或执行任意工具的能力。当前固定 Mac 本地 Ollama 受控适配，不采用远端评审或云端 fallback；判读 Agent 不获得自由网络或任意工具。
 
-首次推理前 claim 锁定。现有实现仅在 score 读真值，并在 score commit 保留 consumed 事实；新协议另在评审包发放时记录预测 exposed，发包后不能退回“未用”。补传包或未完成判读只允许同 identity、同内容恢复，不重推理、不改规则、不重置 claim；Agent retry 预先冻结，不能挑答案。
+首次推理前 claim 锁定。两协议仅在 score 读真值，并在 score commit 保留 consumed 事实；新协议在 `review_prepare` 发包时另写预测 exposed，发包后不能退回“未用”。补传包或未完成判读只允许同 identity、同内容恢复，不重推理、不改规则、不重置 claim；Agent retry 预先冻结，不能挑答案。
 
-普通 MLflow/public manifest 继续只保留 gate 和 integrity 证据。消费封存后，获授权验收负责人可查看受限聚合数值，不能据此调参；开发侧不获得逐样本 GT/errors。公开细节另行授权，旧 sealed-test 不开放。本轮不创建账户、连接外部评审模型或发送 raw；本地模型及参数按本文冻结，实际隔离和数据访问仍需验证；向外部平台发送受限 raw 不在授权内。
+普通 MLflow/public manifest 继续只保留 gate 和 integrity 证据。消费封存后，获授权验收负责人可查看受限聚合数值，不能据此调参；开发侧不获得逐样本 GT/errors。受限聚合读取需要执行前显式冻结 acceptance-owner actor/OS UID，不能默认评分执行者有权查看。公开细节另行授权，旧 sealed-test 不开放。本轮不创建账户、连接外部评审模型或发送 raw；本地模型及参数按本文冻结，实际隔离和数据访问仍需验证；向外部平台发送受限 raw 不在授权内。
 
 ## 7. 现有实现与目标的界线
 
@@ -120,8 +120,8 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 | 模型登记 | `model register` 支持原 completed trained、独立 base 来源及 FINISHED 折的 diagnostic_fold 字节快照；同一完整 model 身份与数值 Registry 版本 | A/B 接线已实现且合成验证；真实基座来源及字节需现场核定，禁止空 train、partial 冒充完成或虚补折，base/diagnostic 不授生产资格 |
 | 开发评测 | `eval prepare/validate/run/export`；`finetune/eval_run.py` 冻结输入于 `workspace/evaluations/<eval>/input/evaluation.yaml`；逐折 `records.jsonl/failures.jsonl/summary.json` → MLflow 父 Run → `records/evaluations/<eval>/manifest.yaml` | 显式 `semantic-v4.1` 已实现规则/封存判读导入、macro F1、逐折状态门、统计及配对报告；原 strict 六指标保留原义。真实低权限判读运行与训练机质量仍未验证 |
 | test 数据 | `versioning/holdout_pipeline.py` 的 source/roi/subvideo/review_export/review_import/release/release_validate；`data/releases/<data>/` 的媒体、`evaluation_inputs/manifest.json`、`sealed_ground_truth/`、`build_receipt.json` | 数据标签审查不是预测盲评；真实资格与构建状态见 HOLDOUT-BUILD |
-| test 授权与评分 | `data claim` → `eval prepare/validate/run/score/export`；`finetune/eval_holdout.py`、`versioning/holdout.py`；实际评分在 `workspace/evaluations/<eval>/restricted/`，公开二值 gate | `finetune/holdout_metrics.py` 硬编码原七门；新协议、盲评证据、安全/公开接口与恢复绑定未实现 |
-| 晋级与服务 | `versioning/registry.py` 校验 train/model 数值版本/正式 eval；`model finalize/alias/current` → `pipeline.server_proxy` → adapter；`pipeline/scripts/serve_smoke.py` 核查响应绑定 | 旧 passed 不代表新协议通过；新三类结论及用途还需全链绑定；受控 performance 通路未实现，smoke 的 300 秒 timeout 不是性能门 |
+| test 授权与评分 | `data claim` → `eval prepare/validate/run/score/export`；`finetune/eval_holdout.py`、`versioning/holdout.py`；实际评分在 `workspace/evaluations/<eval>/restricted/`，公开二值 gate | strict 原七门不变；新 semantic-holdout 独立门、匿名发包/封存、exposed/consumed、安全公开分界及恢复已接线。工程 receipt 标 synthetic，真实本地模型隔离与使用资格未验收 |
+| 晋级与服务 | `versioning/registry.py` 校验 train/model 数值版本/正式 eval；`model finalize/alias/current` → `pipeline.server_proxy` → adapter；`pipeline/scripts/serve_smoke.py` 核查响应绑定 | 用途/协议和同模型配置绑定已接线，受控 performance session/事件导入可用；真实显示端未验真时 fail-closed。旧 passed 不代表新协议通过；新准入停止旧 strict 新写入，既有批准/alias仅同绑定幂等恢复。smoke 的 300 秒 timeout 不是性能门 |
 
 现有命令的参数和输入来源以[模型工作流](model-workflow.md)、[数据工作流](data-workflow.md)、[脚本索引](../finetune/SCRIPTS.md)为准。新协议需贯穿配置、冻结实现摘要、记录、MLflow、manifest、Registry 准入和服务绑定；不能直接改原七门常量后让旧 identity 含义改变，不给旧测试重评分、重测或补 passed。
 
@@ -142,6 +142,6 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 
 被测模型在训练机运行，评审模型在当前 Mac 运行。预检预算上限 1 GPU 小时，正式性能预算上限 20 GPU 小时；这是资源上限，不是预计耗时，预算耗尽停止并报告未完成。正式质量预算在冻结样本数后计算，不中途缩样。性能证据绑定实际加载路径与交付变体，缺合格路径不能造 passed；视觉过门不自动满足服务性能或 production 批准。
 
-性能进入通路已确认、待实现：在 eval 领域增加 performance 用途的正式接口（不是当前可运行命令），精确绑定 Registry 数值 model、冻结来源/权重、Prompt/generation、开发媒体 allowlist、设备、预算、TTL 和授权会话。可测尚未质量或性能 passed 的 base、诊断完成折或 full；复用 adapter 实际推理代码，通过临时 loopback 受控端点和受控通道连接 client，不使用 candidate/production alias、裸路径或 test。测后仅退出本次自己的进程，不影响已有服务。
+性能工程通路已接线：eval 的 `performance_prepare/validate/run/export` 和 `ControlledPerformanceSession` API 负责 performance 用途，精确绑定 Registry 数值 model、冻结来源/权重、Prompt/generation、开发媒体 allowlist、设备、预算、TTL 和授权会话。可测尚未质量或性能 passed 的 base、诊断完成折或 full；复用 adapter 实际推理代码，通过临时 loopback 受控端点和受控通道连接 client，不使用 candidate/production alias、裸路径或 test。测后仅退出本次自己的进程，不影响已有服务。
 
-performance passed 不等于 quality passed；export、finalize、manifest 与准入均验用途及同模型配置。来源核验 → 可诊断/可测 → 视觉通过/性能通过 → 正式服务批准分层成立，旧服务门不放宽，也不形成“先 passed 才能测、先测才能 passed”的循环。开发基础与接线已实现；本节性能架构和执行配置已确认、仍待实施。剩余现场工作是现场核验当前基座/安装摘要、交付参数一致性、分组映射、权限隔离与运行适配，不能写成已通过或重新标为方案待定。
+performance passed 不等于 quality passed；export、finalize、manifest 与准入均验用途及同模型配置。来源核验 → 可诊断/可测 → 视觉通过/性能通过 → 正式服务批准分层成立，旧服务门不放宽，也不形成“先 passed 才能测、先测才能 passed”的循环。开发基础、独立评分及性能工程接线已实现；性能事件导入不隐式运行模型，显示端双签名 receipt 接收/核验及服务端ledger签名工程已接入；外部可信客户端与真实测点未部署验收。本轮全synthetic，不能产生真实性能 passed；缺可信receipt、实际runtimecollector资格或cleanfinish同样拒绝。剩余现场工作是现场核验当前基座/安装摘要、交付参数一致性、分组映射、权限隔离与运行适配，不能写成已通过或重新标为方案待定。

@@ -554,21 +554,21 @@ def _formal_workspace(root: Path, eval_version: str) -> Path:
 
 
 def _implementation_matches(value: Mapping, source: str, digest: str) -> bool:
-    from versioning.eval_compatibility import strict_adapter_matches
+    from versioning.eval_compatibility import evaluation_adapter_matches
     current_digest = _sha256(ROOT / source)
     return (current_digest == digest or
-            (value.get("config", {}).get("scorer") == "strict-v4.1" and
-             strict_adapter_matches(source, frozen_digest=digest, current_digest=current_digest)))
+            evaluation_adapter_matches(source, scorer=value.get("config", {}).get("scorer"),
+                frozen_digest=digest, current_digest=current_digest))
 
 
 def _historical_strict_comparison(current: dict, frozen: Mapping) -> dict:
     """Map only audited implementation identities, preserving every other byte."""
-    if frozen.get("config", {}).get("scorer") != "strict-v4.1":
+    if frozen.get("config", {}).get("scorer") not in {"strict-v4.1", "semantic-v4.1"}:
         return current
-    from versioning.eval_compatibility import strict_adapter_matches
+    from versioning.eval_compatibility import evaluation_adapter_matches
     copied = json.loads(_formal_bytes(current))
     for source, digest in frozen.get("implementation_sha256", {}).items():
-        if strict_adapter_matches(source, frozen_digest=digest,
+        if evaluation_adapter_matches(source, scorer=frozen["config"]["scorer"], frozen_digest=digest,
                 current_digest=current["implementation_sha256"].get(source)):
             copied["implementation_sha256"][source] = digest
     return copied
@@ -578,8 +578,11 @@ def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
     import math
     expected = {"scope", "split", "artifact_kind", "scorer", "sample_selection",
                 "quantization_bit", "generation", "thresholds", "aggregation"}
-    semantic = isinstance(config, Mapping) and config.get("scorer") == "semantic-v4.1"
+    semantic_holdout = isinstance(config, Mapping) and config.get("scorer") == "semantic-holdout-v4.1"
+    semantic = isinstance(config, Mapping) and config.get("scorer") in {"semantic-v4.1", "semantic-holdout-v4.1"}
     optional = {"source_groups", "prompt_version", "fold", "blind_policy"} if semantic else set()
+    if semantic_holdout:
+        optional |= {"review_runtime", "aggregate_authorization", "device", "runtime_variant", "review_tokenizers"}
     if not isinstance(config, Mapping) or not expected <= set(config) or set(config) - expected - optional:
         raise ValueError(f"evaluation config requires exactly {sorted(expected)}")
     result = json.loads(_formal_bytes(dict(config)))
@@ -592,13 +595,17 @@ def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("aggregation must explicitly select pooled validation rows")
     if result["artifact_kind"] not in (("adapter", "merged", "model") if semantic else ("adapter", "merged")):
         raise ValueError("artifact_kind must be adapter or merged")
-    if result["scorer"] not in ("strict-v4.1", "semantic-v4.1") or result["sample_selection"] != "all":
+    if result["scorer"] not in ("strict-v4.1", "semantic-v4.1", "semantic-holdout-v4.1") or result["sample_selection"] != "all":
         raise ValueError("formal evaluation requires strict-v4.1 and all samples in each selected validation fold")
     if result["quantization_bit"] is not None and (type(result["quantization_bit"]) is not int or result["quantization_bit"] != 4):
         raise ValueError("quantization_bit must be null or 4")
     if _formal_bytes(result["generation"]) != _formal_bytes(FORMAL_GENERATION):
         raise ValueError("generation must match the actual strict V4.1 runtime")
     thresholds = result["thresholds"]
+    if semantic_holdout:
+        from finetune.eval_review import validate_semantic_holdout_config
+        validate_semantic_holdout_config(result)
+        return result
     if semantic:
         if result["scope"] == "full":
             raise ValueError("semantic holdout requires its separately authorized protocol")
@@ -871,15 +878,27 @@ def verify_versioned_evaluation(*, root: Path, eval_version: str, live: bool = T
     if value["eval_version"] != eval_version:
         raise ValueError("frozen evaluation identity drift")
     if live:
+        media_root = _restored_evaluation_media_root(root, value)
         current = _formal_input(root=root, eval_version=eval_version,
             model_version=value["model"]["model_id"], model_version_number=value["model"]["version"],
             data_version=value["data_version"], config=value["config"], git_commit=value["git_commit"],
-            media_root=Path(value["media_root"]), inputs_path=Path(value["inputs_path"]) if value["inputs_path"] else None,
+            media_root=media_root, inputs_path=Path(value["inputs_path"]) if value["inputs_path"] else None,
             **({"pre_registration": Path(root).absolute() / "evaluations/staging" / eval_version / "authorization/pre_registration.yaml",
                 "executor": value["authorization"]["executor"]} if "authorization" in value else {}))
+        if media_root != Path(value["media_root"]):
+            # Only a catalog-bound managed media locator changes. Frozen
+            # input, identity, rule, model, claim and consumption bytes do not.
+            current["media_root"] = value["media_root"]
         if _formal_bytes(_historical_strict_comparison(current, value)) != payload:
             raise ValueError("frozen evaluation input or upstream content drift")
     return value
+
+
+def _restored_evaluation_media_root(root: Path, value: Mapping[str, Any]) -> Path:
+    if value.get("schema_version") != "tensile-vlm/v4.1-holdout-evaluation":
+        return Path(value["media_root"])
+    from versioning.backup import restored_holdout_media_root
+    return restored_holdout_media_root(root, value)
 
 
 def _weight_inventory(path: Path) -> dict[str, Any]:
@@ -954,7 +973,7 @@ def _execute_formal_fold(value, fold, model_dir, adapter_dir, output):
 def execute_versioned_evaluation(*, root: Path, eval_version: str):
     import fcntl
     import tempfile
-    from mlflow.tracking import MlflowClient
+    from versioning.backup import scoped_mlflow_client
     from versioning.registry import open_registry_store, materialize_model
     from versioning.mlflow_eval import (open_eval_store, create_eval_run, execute_eval_fold_run,
         log_eval_aggregate, log_eval_summary, transition_eval_state, get_eval_run)
@@ -974,12 +993,13 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
         if output.exists():
             raise ValueError("existing evaluation output requires recovery; use export for a completed run")
         store = open_eval_store(Path(root) / "workspace/mlflow")
-        client = MlflowClient(tracking_uri=store.tracking_uri)
+        client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
         input_sha = hashlib.sha256(_formal_bytes(value)).hexdigest()
         parent = create_eval_run(store, eval_version, model_id=value["model"]["model_id"],
             model_version_number=value["model"]["version"], data_version=value["data_version"],
             config=f"sha256:{input_sha}", git_commit=value["git_commit"], scope=value["config"]["scope"],
-            split="validation", data_root=Path(root) / "data")
+            split="validation", data_root=Path(root) / "data",
+            purpose="development", protocol=value["config"]["scorer"])
         try:
             output.mkdir()
             client.log_artifact(parent.run_id, str(workspace / "input/evaluation.yaml"), artifact_path="input")
@@ -1060,9 +1080,9 @@ class EvaluationReviewPending(ValueError):
 
 
 def _finish_formal_evaluation(value, records, output, store, parent, input_sha):
-    from mlflow.tracking import MlflowClient
+    from versioning.backup import scoped_mlflow_client
     from versioning.mlflow_eval import log_eval_aggregate, log_eval_summary, transition_eval_state
-    client = MlflowClient(tracking_uri=store.tracking_uri)
+    client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
     summary, metrics, outcome = _formal_summary(value, records)
     summary.update(outcome=outcome, input_sha256=input_sha)
     attempts, _ = _read_review_attempts(output, client.get_run(parent.run_id).data.params)
@@ -1154,7 +1174,7 @@ def _read_review_attempts(folder, params, *, pending=None):
 def resume_versioned_evaluation(*, root: Path, eval_version: str, blind_reviews: Path) -> Path:
     """Import sealed prediction-only reviews and score the same frozen raw bytes."""
     import fcntl
-    from mlflow.tracking import MlflowClient
+    from versioning.backup import scoped_mlflow_client
     from finetune.eval_semantics import extract_semantics
     from versioning.mlflow_eval import open_eval_store, get_eval_run
     value = verify_versioned_evaluation(root=root, eval_version=eval_version)
@@ -1167,7 +1187,7 @@ def resume_versioned_evaluation(*, root: Path, eval_version: str, blind_reviews:
         parent = get_eval_run(store, eval_version)
         if parent.workflow_state != "running" or parent.outcome is not None or set(parent.folds) != set(value["folds"]) or any(r.status != "FINISHED" for r in parent.folds.values()):
             raise ValueError("only completed inference awaiting review can resume scoring")
-        client = MlflowClient(tracking_uri=store.tracking_uri)
+        client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
         output = workspace / "output"
         params = client.get_run(parent.run_id).data.params
         from versioning.registry import _run_artifact_root
@@ -1221,16 +1241,29 @@ def resume_versioned_evaluation(*, root: Path, eval_version: str, blind_reviews:
 
 def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
     """Read-only check of actual MLflow inputs/results and evaluated weight bytes."""
-    from mlflow.tracking import MlflowClient
+    from versioning.backup import scoped_mlflow_client
     from versioning.registry import _run_artifact_root, _artifact_tree, validate_model_for_evaluation
 
-    client = MlflowClient(tracking_uri=store.tracking_uri)
+    client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
     artifact_root = _run_artifact_root(store, record.run_id)
     _artifact_tree(artifact_root)
     value = json.loads((artifact_root / "input/evaluation.yaml").read_bytes())
+    if value.get("schema_version") == "tensile-vlm/v4.1-performance-evaluation":
+        from finetune.eval_performance import validate_performance_execution
+        if getattr(record, "purpose", None) != "performance" or getattr(record, "protocol", None) != "performance-v1":
+            raise ValueError("performance purpose/protocol binding differs")
+        return validate_performance_execution(store=store, record=record, value=value, artifact_root=artifact_root)
     if value.get("schema_version") == "tensile-vlm/v4.1-holdout-evaluation":
         from finetune.eval_holdout import validate_holdout_execution
+        if value.get("config", {}).get("scorer") == "semantic-holdout-v4.1" and (
+                getattr(record, "purpose", None) != "quality" or
+                getattr(record, "protocol", None) != "semantic-holdout-v4.1"):
+            raise ValueError("semantic holdout purpose/protocol binding differs")
         return validate_holdout_execution(store=store, record=record, value=value, artifact_root=artifact_root)
+    if getattr(record, "purpose", "legacy") not in {"legacy", "development"}:
+        raise ValueError("development execution cannot provide quality/performance evidence")
+    if getattr(record, "purpose", "legacy") == "development" and record.protocol != value.get("config", {}).get("scorer"):
+        raise ValueError("development protocol binding differs")
     if value.get("eval_version") != record.eval_id:
         raise ValueError("execution evidence evaluation identity differs")
     if _formal_config(value["config"]) != value["config"]:
