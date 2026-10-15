@@ -4,6 +4,8 @@
 
 ## 当前状态与下一步
 
+**本轮实际分词核验与方案（2026-10-15，核验完成／Codex；对齐方案待用户确认）**：用户授权继续核定本机Ollama实际分词路径与NFC/NFD差异，提出不改原文的对齐方案；重大取舍须先确认。起始 `52d6afbd` 干净工作区；已核签名/架构并实际调用安装包x86词表库：24公开case，16与HF同ID，原22与前轮counter同ID；原生arm64 server未执行测量。预算反例HF4013／x86库8013，加512后HF误判可入8K。对齐草案A/B已提交用户确认，未切生产。详见[本轮核验](results/ollama-tokenizer-verification-20261015.md)及[方案草案](plans/2026-10-15-review-tokenizer-alignment-design.md)。只做公开合成文本和无推理权重的核验，不调用真实模型评测/生成、不读真实test，不改计数provider或冻结协议；未知及重大决策只局部阻塞。
+
 **本轮tokenizer与环境补齐（2026-10-15，独立准备完成／Codex；映射因实测不等阻塞）**：用户授权核定两个批准评审模型的HF来源及固定revision、建立独立Python3.11评审环境并准备受审映射材料。从 `696ea17c` 干净工作区开始；可下载核定的tokenizer小文件并安装隔离环境依赖，不改现有开发/GPU环境或模型身份；禁止真实模型评测/真实test，不创建eval/claim，不生成真实回答。两个HF固定来源、10文件、Python3.11隔离环境及词表counter材料已完成；16次比较14匹配2不匹配，已确认HF NFC／GGUF NFD差异，不能出具等价映射或运行真实评审。详见[固定来源与映射材料](results/evaluation-tokenizer-materials-20261015.md)。
 
 **数据处理及活动入口的工程迁移已解决。** 2026-09-14，迁移分支先推送，再快进 Codeup main 至 `5acebc27` 并同步训练机正式代码；集成与双机 CLI 记录见[验证第67节](results/version-control-migration/verification.md)。这不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。
@@ -63,6 +65,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **前轮现场快照（2026-10-15，Codex；本轮补齐见下条）**：本机Ollama0.33.1已有两个批准标签，tags与manifest摘要匹配冻结digest，声明blob在场/大小一致；随后只读复验全部7个唯一blob SHA256，6.6秒内全部匹配且stat稳定，无未核项；未推理，ps无驻留模型。限定标准缓存和源码资产检查未找到匹配HF tokenizer或真实独立GGUF↔HF audit/basis/goldens；项目Python3.11 `.venv` 缺transformers/tokenizers，不能混用系统Python3.12。当时缺HF来源/隔离依赖；本轮已补齐候选资产和环境，但独立审计仍受下述Unicode反证阻塞，不为准备创建空eval/claim。离线盘点工具与不能通过生产校验的来源草稿已完成，主Agent38项合成测试通过；只核静态结构/字节，不认证auditor或执行golden，不生成部署receipt。证据见[运行前核验](results/evaluation-readiness-20261015.md)及其中模型库存快照。
 - **本轮补齐（2026-10-15，Codex）**：已核官方HF固定候选 Qwen/Qwen3.5-9B@c202236235762e1c871ad0ccb60c8ee5ba337b9a、ornith-ai/Ornith-1.5-9B@489cb97981b8654bcfcf30ce1f94ed1b62e07b53；10小文件完整SHA/API对象核验，分别保存独立Jinja。独立Py3.11.14环境29包hash锁/官方wheel/5010安装文件字节通过，实际离线tokenizer加载/渲染通过，无Torch。provider仅白名单增Jinja，旧冻结字节不追认；76项相关合成回归通过，独立reviewer41项及16+16+6个tokenizer材料复核通过，准备交付无剩余可执行问题，但正式等价映射不通过。详见[固定来源与材料](results/evaluation-tokenizer-materials-20261015.md)。
 - **受审映射阻塞及解除条件**：固定llama.cpp vocab-only counter共16case仅14完整ID相同，两个Unicode case均HF31／GGUF32；原始HF资产及直接加载均NFC，GGUF counter保留NFD，不能归因为缺包或仅待auditor签字。固定HF来源不证明本机GGUF转制历史，Ornith官方Q4与本机blob也不同。保留全部反证，不改raw/模板/模型、不删除失败case、不伪造已审mapping；已只读核官方Ollama0.33.1固定源码及其b10630 GGUF路径未见NFC（不是本机执行测量），仍须核定实际分词/二进制来源；与用户确认需要改变的计数对齐方案后，重新取得独立审计证据才可解除。真实模型评测/test仍未授权。
+- **本轮实际分词核验（2026-10-15）**：App/工件签名及架构已核：arm64 server静态嵌入，库仅x86。通过已有Rosetta和安装包实际签名x86库vocab-only执行24公开case（不tensor/context/GPU/生成），实测重现NFC/NFD差异；16与HF同ID，22/22与旧counter相同。预算反例HF4013+512=4525，实际x86库8013+512=8525，8K安全判定相反。28项合成保护和独立复跑通过，最终24词表case亦独立完整复现；实际loaded images/角色/摘要/批准manifest受控，准备审查无剩余可执行问题。原生arm64未实测，不能用x86放行native。证据见[核验记录](results/ollama-tokenizer-verification-20261015.md)。
+- **重大方案待确认**：已提出[计数对齐草案](plans/2026-10-15-review-tokenizer-alignment-design.md)，推荐A“运行时词表计数为权威、HF仅模板”（仍需原生身份/校准，否则拒绝），备选B“HF与运行时完整IDs一致才继续、已知NFD停整轮”。两者均原文不变、不删样本、不改质量门；已向用户提问，未决定/实施，不启动fullserver或真实评测/test。设计确认本身不授真实运行或新生产切换权限。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)、现行 `finetune/eval_holdout.py` / `versioning/holdout.py`；未读取受限语义、创建账户或claim、发送评审包。
 
 ### EVAL-PERFORMANCE — 受控加载与五分钟交互基准
@@ -399,3 +403,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-15（Codex，tokenizer来源与评审环境补齐启动）**：用户继续授权HF固定来源/revision、独立Python3.11环境及受审材料准备，真实模型评测/test禁令持续。起始 `696ea17c`、Mac、工作区干净；分派上游来源、隔离依赖与GGUF tokenizer-only可行性核验，不更换模型、不改外部客户端或既有环境。
 
 - **2026-10-15（Codex，固定HF来源/隔离环境/映射材料完成）**：两个官方HF来源固定完整revision，10文件全SHA/API对象匹配、各自Jinja独立；独立Python3.11.14环境29包、hash锁与官方wheel/5010安装文件验证通过。固定官方llama.cpp源码tree和CPU vocab-only counter完成16公开合成case：14完整IDs匹配，两个NFD Unicode反证已确认为HF原资产NFC与GGUF计数行为差异，不出具等价映射。provider窄加Jinja保护，76项相关回归通过；真实评审依然阻塞，HF来源/环境在场不授准入。过程见[固定来源与材料](results/evaluation-tokenizer-materials-20261015.md)，同次提交git log可追溯；独立准备审查通过，映射因实测不等继续阻塞；188链接/37唯一ID及compileall/diff-check通过。不真实模型评测/生成、不读真实test、不加载推理权重、不创建eval/claim、不改既有环境/训练机/客户端、不push/merge。
+
+- **2026-10-15（Codex，本机实际分词核验启动）**：用户授权Ollama实际tokenizer身份/NFCNFD及原文不变对齐方案核定；起始 `52d6afbd`、Mac、工作区干净。已分派本机工件、官方来源与固定Ollama对应参考counter核验；不将前轮较新上游counter冒称installed行为，不真实模型评测/生成/test，不改provider/协议，重大方案等待用户确认。
+
+- **2026-10-15（Codex，本机包内x86分词核验完成）**：签名/架构核验与实际installed x86三库词表专用24case完成，NFC/NFD与8K预算低估反证保留；nativearm64 server未测。新增离线auditor、完整helper/工件/输入输出证据与28项保护（tester及reviewer分别全过）；不tensor加载/context/GPU/生成、不真实test。已提出A/B原文不变方案并向用户确认，生产counter/冻结协议未改，真实评审仍拒绝。详情[本轮核验](results/ollama-tokenizer-verification-20261015.md)、[方案草案](plans/2026-10-15-review-tokenizer-alignment-design.md)，同次提交由git log追溯；独立准备审查通过、28测试和24词表case分别独立复跑；201链接/37唯一ID及compileall/diff-check通过；方案待用户确认，未push/merge。

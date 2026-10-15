@@ -23,6 +23,7 @@ Non-goals:
 | `eval_review.py` | 独立最终语义门、固定本地评审配置、Mac sandbox 探针及受控 worker/localhost Ollama broker；部署receipt核验及HF exact render/raw generate；缺真实部署/tokenizer凭据时请求前拒绝，ambiguous后禁止自动retry/切模型 |
 | `eval_review_deployment.py` | 本地资产/源码/模板/独立受审GGUF↔HF映射和golden核验，生成部署receipt；默认不联网，未来显式仅本地元数据，不生成回答 |
 | `eval_audit_readiness.py` | `python -m finetune.eval_audit_readiness [--tokenizer-sources /绝对路径/sources.json] [--template] [--output /路径/新报告.json]`：完全离线盘点批准模型摘要、当前provider源码、已安装tokenizer依赖及显式资产/审计basis字节；不导入/实例化tokenizer、不请求Ollama、不读取评测store/truth、不生成凭据。JSON恒为inventory-only且`ready_for_real_review=false`，草稿模板不可用于生产证明；指定输出仅新建0600文件，缺口不代表评审失败或通过 |
+| `eval_audit_tokenizer_parity.py` | 显式spec的离线词表核验；冻结安装包x86库/实际loaded images、helper、HF/GGUF与公开合成输入，不启动完整server/推理，不改原文、不授native或等价/部署资格 |
 | `eval_performance.py` | 冻结开发性能输入、全请求事件/资源重放、MLflow和manifest；配合versioning/performance_receipts双签名接收/核验；缺真实client/runtimecollector/cleanfinish或synthetic时不能passed |
 | `eval_baselines.py` | 仅从开发训练集构造多数类对照及同条件配对报告；不读取 test、不改变绝对质量门 |
 | `train_monitor_run.py` | 查看训练进度 |
