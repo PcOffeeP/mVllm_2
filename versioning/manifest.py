@@ -532,6 +532,8 @@ def _model_manifest_mapping(record: RegisteredModelRecord) -> dict[str, Any]:
         "prompt_version": record.prompt_version,
         "artifacts": record.artifacts,
         "deploy_target": record.deploy_target,
+        **({"source_kind": record.source_kind, "source_evidence": record.source_evidence}
+           if getattr(record, "source_kind", "trained") == "base" or getattr(record, "source_evidence", None) else {}),
     }
 
 
@@ -543,13 +545,23 @@ def validate_model_manifest(payload: str) -> dict[str, Any]:
         obj = yaml.safe_load(payload)
     except Exception as exc:
         raise ManifestSchemaError(f"model manifest YAML 非法: {exc}") from exc
-    if not isinstance(obj, dict) or set(obj) != _MODEL_MANIFEST_KEYS:
+    if not isinstance(obj, dict) or set(obj) not in (_MODEL_MANIFEST_KEYS, _MODEL_MANIFEST_KEYS | {"source_kind", "source_evidence"}):
         raise ManifestSchemaError("model manifest 顶层键集合非法")
+    source_kind = obj.get("source_kind", "trained")
+    if source_kind not in {"base", "trained"}:
+        raise ManifestSchemaError("source_kind 必须是 base 或 trained")
+    if "source_evidence" in obj and (not isinstance(obj["source_evidence"], dict) or not obj["source_evidence"]):
+        raise ManifestSchemaError("source_evidence 必须是非空 mapping")
+    if source_kind == "base" and (obj["source_scope"] != "base" or any(obj[key] is not None for key in ("source_training", "data_version", "prompt_version"))):
+        raise ManifestSchemaError("base source must not invent training/data/Prompt references")
+    if source_kind == "trained" and obj["source_scope"] == "base":
+        raise ManifestSchemaError("trained source cannot claim base scope")
     try:
         parsed = parse_model_id(obj["version"])
-        parse_train_id(obj["source_training"])
-        parse_data_id(obj["data_version"])
-        parse_prompt_id(obj["prompt_version"])
+        if source_kind == "trained":
+            parse_train_id(obj["source_training"])
+            parse_data_id(obj["data_version"])
+            parse_prompt_id(obj["prompt_version"])
     except (InvalidIdentifier, KeyError) as exc:
         raise ManifestSchemaError(f"model manifest 身份非法: {exc}") from exc
     if obj["protocol"] != f"tensile-vlm/{parsed.protocol.removeprefix('v')}":
@@ -565,9 +577,15 @@ def validate_model_manifest(payload: str) -> dict[str, Any]:
             raise ManifestSchemaError(f"{key} 必须是非空字符串")
     scope = obj["source_scope"]
     artifacts = obj["artifacts"]
-    if scope not in _ALLOWED_EVAL_SCOPE or not isinstance(artifacts, dict):
+    if scope not in {*_ALLOWED_EVAL_SCOPE, "base", "diagnostic_fold"} or not isinstance(artifacts, dict):
         raise ManifestSchemaError("source_scope/artifacts 非法")
-    expected = {"single_fold": {"fold0"}, "cross_validation": {"fold0", "fold1", "fold2"}, "full": {"full"}}[scope]
+    if scope == "diagnostic_fold":
+        fold = obj.get("source_evidence", {}).get("fold")
+        if type(fold) is not int or fold not in (0, 1, 2):
+            raise ManifestSchemaError("diagnostic source requires actual fold evidence")
+        expected = {f"fold{fold}"}
+    else:
+        expected = {"single_fold": {"fold0"}, "cross_validation": {"fold0", "fold1", "fold2"}, "full": {"full"}, "base": {"base"}}[scope]
     if set(artifacts) != expected:
         raise ManifestSchemaError("artifacts 与 source_scope 不一致")
     paths: set[str] = set()
@@ -589,9 +607,9 @@ def validate_model_manifest(payload: str) -> dict[str, Any]:
                 raise ManifestSchemaError("artifact 路径必须是安全相对路径")
             paths.add(path)
     deploy_target = obj["deploy_target"]
-    if scope == "cross_validation":
+    if scope in {"cross_validation", "base", "diagnostic_fold"}:
         if deploy_target is not None:
-            raise ManifestSchemaError("cross_validation deploy_target 必须为 null")
+            raise ManifestSchemaError("non-serving model source deploy_target 必须为 null")
     elif not isinstance(deploy_target, str) or deploy_target not in paths:
         raise ManifestSchemaError("deploy_target 必须唯一引用 artifacts 路径")
     return obj

@@ -20,16 +20,14 @@ Non-goals:
 | `data` | `data_pipeline.py`、`holdout_pipeline.py`、`data_release.py`、`holdout.py` | 七阶段 DVC 数据 pipeline、封存、训练引用门、预注册冻结与 holdout claim |
 | `prompt` | `prompts.py` | 注册不可变 Prompt，并冻结/校验训练 input 副本 |
 | `train` | `mlflow_train.py`、`finetune/train_prepare_run.py`、`finetune/train_with_contract.py` | 冻结三折或独立全量训练输入、真实训练调用、Run、汇总与完成后导出 |
-| `eval` | `finetune/eval_run.py`、`finetune/eval_holdout.py`、`mlflow_eval.py`、`manifest.py` | validation逐折评测；full媒体推理与独立授权holdout评分；精确绑定、执行记录及不可变导出 |
+| `eval` | `finetune/eval_run.py`、`finetune/eval_semantics.py`、`finetune/eval_baselines.py`、`finetune/eval_holdout.py`、`eval_compatibility.py`、`mlflow_eval.py`、`manifest.py` | 显式 strict/semantic 开发评测、来源对照与报告；旧 full 授权评分；精确绑定、执行记录及不可变导出 |
 | `model` | `registry.py`、`manifest.py`、`materialize.py` | `mVllm2` 两阶段 register/finalize、model manifest、唯一部署目标 gate、alias 与 `models/current` 原子物化 |
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
 
-**测评协议边界**：下文 validation 六指标和 holdout 七门仍是现行 `strict-v4.1` 接口。[已确认测评方案](../docs/model-evaluation.md)另要求语义提取/盲评、逐折质量门及五分钟交互性能验收，目前尚未接入这些命令。具体缺口见[实施计划](../docs/plans/model-evaluation-implementation.md)。不得把新门槛填入旧配置后声称新验收可执行，也不得覆盖旧协议或公开受限 test 明细。
-
-新增基座来源登记、成功折诊断快照、默认2个 Agent 加分歧第三仲裁及 performance 受控加载的设计已确认，接口仍待实施。不能把以下现行 model register 当作支持 base 或 partial 来源，也不能用现行服务 alias 代替受控测试会话；未来质量/性能 passed 的用途必须在导出及准入中分别复验。多 Agent 外部调用和受限回答发送不属于本轮文档授权。
+**测评协议边界**：`strict-v4.1` 的 validation 六指标与旧 holdout 七门保留冻结语义；`semantic-v4.1` 显式接入全样本语义整理和逐折开发门。两种结果不能互相改写或继承资格。`eval_compatibility.py` 仅为已核实的 `512cc8b4` 严格实现登记历史摘要到本次准确适配代码摘要的映射；未知旧摘要、适配代码或其他依赖漂移仍拒绝，不自动接受未来代码。基座/成功折已接入开发测评来源；新 holdout、实际低权限评审执行、performance 受控入口与完整生产准入仍见[实施计划](../docs/plans/model-evaluation-implementation.md)。合成检查不构成真实模型、真实权限隔离、GPU、test 或 E2E 证据；不得公开受限 test 明细。
 
 ## Prompt注册与冻结
 
@@ -81,22 +79,24 @@ python -m versioning train validate <完整train版本> --root <store绝对路�
 预检报告为 `blocked` 时保留 JSON 拒因并以非零状态退出。
 
 所有正式写入都要求显式版本；CLI 的项目数据根必须显式传入，Registry、eval、alias 与
-manifest 在操作时在线复验其 train/data/eval 血缘。测试中的临时 store 推断不属于正式入口。
+manifest 在操作时按来源分支在线复验其来源证据及适用的 train/data/eval 血缘。测试中的临时 store 推断不属于正式入口。
 服务物化必须显式给出 `service_mode` 与 alias；三折模型组不具备唯一 `deploy_target`，只能用于
 比较和聚合测评，不能成为 candidate、production 或 `models/current`。
+
+base/diagnostic 的备份同样保留 `model-source.json` 和实际来源快照。base 无训练 Prompt，完整基座使用 `production_bundle` 字节范围；这个 scope 名称不授予生产资格。诊断副本还保留父 train 的共享 input 与对应折 execution receipt，恢复仍重验原外部基座路径，不改冻结来源引用。大型真实产物恢复须另行验收。
 
 模型备份按 `offline_backup_scope` 实际裁剪文件：`adapter` 只包含
 `materialized.yaml` 与 Registry 声明的 adapter 路径；`production_bundle`
 包含声明的 adapter 与 merged 路径。每个作用域模型的严格 manifest 一并恢复到
-`records/models/<id>/manifest.yaml`；MLflow store 仅保存 SQLite、上述声明训练产物、冻结训练 input、training-evidence.json 和已绑定正式测评产物；未声明折的权重不因此纳入。声明路径含子目录时整个声明子树会保留，不能把 merged 放进 adapter 子目录后期待按文件类型排除。
+`records/models/<id>/manifest.yaml`；MLflow store 仅保存 SQLite、上述声明来源产物、冻结训练 input、training-evidence.json 和已绑定正式测评产物；未声明折的权重不因此纳入。声明路径含子目录时整个声明子树会保留，不能把 merged 放进 adapter 子目录后期待按文件类型排除。
 
 ## 正式验证集测评
 
-`eval prepare / validate / run / export` 连接实际严格V4.1推理与评分器。当前支持已注册的`single_fold`（fold0）或`cross_validation`（fold0/1/2）模型，逐折使用显式data版本的完整validation划分；不新增采样。独立full训练来源的模型可通过下文holdout流程验收：`run`只做媒体推理，`score`才进入授权评分。公共 CLI 的`create/fold-start/fold-end/aggregate/summary/complete/manifest`已停用并提示实际执行器；底层 Python 记录及holdout授权API保留，手动状态或历史summary不构成实际执行证据。
+`eval prepare / validate / run / export` 按冻结配置选择严格或语义开发评分器，逐折使用显式data版本的完整validation划分，不新增采样。旧严格来源支持`single_fold`（fold0）或`cross_validation`（fold0/1/2）；semantic另支持base和真实成功折诊断，见下文。独立full训练来源的模型可通过下文holdout流程验收：`run`只做媒体推理，`score`才进入授权评分。公共 CLI 的`create/fold-start/fold-end/aggregate/summary/complete/manifest`已停用并提示实际执行器；底层 Python 记录及holdout授权API保留，手动状态或历史summary不构成实际执行证据。
 
-正式模型入口按用途在线校验执行证据：登记、模型 manifest 和物化均校验训练证据；staging 尚无 eval_id 时可仅据训练证据导出。finalize、已绑定 eval 的模型 manifest、alias 设置/读取和服务 current 另校验正式评测。validation评测门从保存的逐样本记录重新计算严格评分、汇总和结论，并复验原输入、评分实现与实际被评权重摘要；holdout门核对执行器产生的aggregate证据、消费凭据、绑定及权重，不为导出或服务准入重读受限真值；缺文件或内容漂移即拒绝。代码或冻结输入变化后须重新准备新的完整版本，不覆盖已有冻结对象。CPU 替身回归只能证明这些接线和拒绝行为，不能证明真实模型效果。
+正式模型入口按用途在线校验执行证据：登记、模型 manifest 和物化按来源分支校验完整训练证据或 base/diagnostic 来源快照；staging 尚无 eval_id 时可据适用来源证据导出。finalize、已绑定 eval 的模型 manifest、alias 设置/读取和服务 current 另校验正式评测。validation 评测门按冻结 strict/semantic 协议从保存的逐样本记录重新计算评分、汇总和结论，并复验原输入、评分实现与实际被评权重摘要；holdout门核对执行器产生的aggregate证据、消费凭据、绑定及权重，不为导出或服务准入重读受限真值；缺文件或内容漂移即拒绝。代码或冻结输入变化后须重新准备新的完整版本，不覆盖已有冻结对象。CPU 替身回归只能证明这些接线和拒绝行为，不能证明真实模型效果。
 
-先由完成的train通过`model register`登记模型，取得完整model版本与数值MLflow Model Version；Registry声明必须有每折所选adapter或merged artifact；single_fold所选实际评测路径必须等于唯一deploy_target。Prompt来自该模型的训练绑定，须已位于store的`records/prompts/`。data输入使用已验证的迁移receipt，或用`--data-inputs`提供七阶段发布的原始输入。媒体根使用原实际外部媒体目录，不能把迁移来源镜像当作媒体根。
+旧严格链先由完成的train通过`model register`登记模型，取得完整model版本与数值MLflow Model Version；Registry声明必须有每折所选adapter或merged artifact；single_fold所选实际评测路径必须等于唯一deploy_target。Prompt来自该模型的训练绑定，须已位于store的`records/prompts/`。data输入使用已验证的迁移receipt，或用`--data-inputs`提供七阶段发布的原始输入。媒体根使用原实际外部媒体目录，不能把迁移来源镜像当作媒体根。
 
 准备命令：
 
@@ -107,7 +107,7 @@ python -m versioning eval prepare <完整eval版本> --root <store绝对路径> 
   --git-commit <核实的代码提交> --media-root <实际媒体根绝对路径>
 ```
 
-评价配置必须精确包含下列字段，不接受重复YAML键或额外参数：
+旧 `strict-v4.1` 评价配置精确包含下列字段，不接受重复 YAML 键或额外参数；新语义配置的差异见下一节：
 
 | 字段 | 取值与含义 |
 | --- | --- |
@@ -127,6 +127,67 @@ python -m versioning eval prepare <完整eval版本> --root <store绝对路径> 
 每折记录`records.jsonl`、`failures.jsonl`和`summary.json`；正式父Run保存`evaluation.yaml`、汇总`summary.json`及两份合并JSONL。运行失败保留已有结果并标记failed，无正式manifest；解析非法但推理完整属于质量结果，可形成`outcome: failed`。全部结果上传完成后才提交结论并导出`records/evaluations/<eval>/manifest.yaml`，其中保存Run引用、数值模型版本和产物摘要。staging结果不是导出权威。
 
 完成后的导出失败可运行`python -m versioning eval export <完整eval版本> --root <store绝对路径>`：从同一MLflow Run下载并验签结果，按冻结评分实现重核样本/指标/结论，幂等发布manifest，不再次调用模型、不覆盖不同内容。需保留冻结input及相同评分实现。已有输出或失败Run不会自动重跑、覆盖或续跑；进程强制终止、持续后端故障与创建响应丢失后的恢复仍须核对原Run，不将普通异常处理视作这些场景已完成验证。
+
+## 语义开发协议
+
+配置必须明确选择 `scorer: semantic-v4.1`。沿用前表 scope/split/sample_selection/quantization/generation/aggregation 字段；scope 只允许 single_fold/cross_validation、split 为 validation。新增 `source_groups` 必填，为完整开发候选全集 ID 到非空独立组 ID 的 mapping；操作者应核定同源及更高试件依赖，不能默认视频来源等于独立组。实现核验精确覆盖、同源一致性、每折 train/validation 组隔离和 validation 折间不交叉，不证明现实中的独立性。
+
+阈值必须精确为已冻结开发协议，不能省略或另加门：
+
+```yaml
+thresholds:
+  four_state_macro_recall: 0.65
+  per_state_recall: 0.50
+  joint_correct_rate: 0.50
+  fracture_mechanism_macro_f1: 0.50
+  fracture_site_macro_f1: 0.60
+```
+
+训练来源继承 Registry 的 Prompt；base 必须显式给 `prompt_version: <完整prompt版本>` 和 `artifact_kind: model`。base 的单折配置还须 `fold: 0|1|2`；cross_validation 固定三个折。diagnostic 使用真实登记折、scope 为 single_fold、artifact_kind 为 adapter；若提供 fold 必须一致。其余训练模型使用已登记 adapter/merged，已有 merged 真实证据通路限制仍保留。base/diagnostic 不获得 deploy_target 或正式服务资格。
+
+来源登记入口如下，版本均由操作者分配完整身份：
+
+```sh
+python -m versioning model register <完整model版本> --root <store绝对路径> \
+  --source-kind base --source-scope base --base-model-path <完整基座绝对目录> \
+  --upstream-source <上游来源> --upstream-revision <已核实固定revision> --git-commit <代码commit>
+python -m versioning model register <完整model版本> --root <store绝对路径> \
+  --source-kind trained --source-scope diagnostic_fold --train-version <完整train版本> --fold 0
+```
+
+base 拒绝 train/artifacts/deploy-target/fold 引用，核验完整 config、tokenizer/processor、权重与分片索引，冻结来源 revision 和实际字节；可用 config 来源字段或可识别 HF snapshot 路径须与声明一致；二者不足时，目录须含 `source-provenance.json`，schema 为 `tensile-base-provenance/v1`，含匹配的 upstream_source/upstream_revision 及非空 verified_by。该文件随字节冻结；一致性检查不等于密码学证明上游真实性。不造 train/data/Prompt。诊断只从 FINISHED 折 receipt 的实际 adapter 创建不可变快照，不接受任意中途 checkpoint；checkpoint step 来自 trainer_state，父 train 保持原状态。来源 Run 保存 `model-source.json`、`base/model/` 或 `foldN/adapter/`，参数 `sha256_model_source` 钉扎 receipt，Registry 保存 source_kind/source_evidence。后续读取重验快照、原基座及诊断共享 input。已有完整训练 register 的门不放宽；base/diagnostic 禁止 finalize、alias、approve。允许的受控性能用途仍需未来专用入口，不能借服务 alias 实施。
+
+沿前节 prepare/validate/run/export 传入语义配置。prepare 冻结 `semantic_rules`、实现摘要、样本/组映射及各折训练集拟合的多数类定义；base 与 fine-tuned 对照必须保持同媒体、任务 Prompt、解码及 scorer。逐响应保留 raw、runtime_error、strict_valid、互斥的 strict/rule/blind/unreadable 分支、已表达字段及其来源；缺失不补 null，非法格式不因恢复而变成严格合法。机制/位置只按 GT 非 null 子集取分母，GT null 误填单列，特殊类别 P/R 报告完整相关样本。
+
+逐折状态 macro recall ≥ 0.65 且每状态 recall ≥ 0.50；三折 pooled joint ≥ 0.50、机制 macro F1 ≥ 0.50、位置 macro F1 ≥ 0.60。缺必测类、缺完整三折或评审未完成时不给三折 passed。CI 使用冻结 source_group 按组共同重采样 2,000 次、seed 3407，报告 95% CI 及不可估情况，不新增 CI 硬门。显示舍入不参与判门。导出从原始记录重新提取语义、评分和核对实际绑定，不能只补汇总数字。
+
+`finetune/eval_semantics.py` 提供纯 Python 的 `freeze_blind_policy`、`build_blind_package`、`seal_judgment`、`import_blind_review`。policy 预先冻结参与者及仲裁者的确切模型/Prompt 摘要、手册/规则摘要、逐字段一致策略及故障最多重试一次；不临时多数票。匿名包仅 raw 与手册，身份映射独立保留，raw 原文不改写。初判先封存，分歧时第三者先独立判读再看分歧；导入验证 raw/policy/顺序/答案摘要，评审基础设施失败保留为评审未完成；视觉 metrics 为 null，暂算值仅列 diagnostics.provisional_metrics，严格合法率仍独立报告。模型运行失败和空输出则是正式失败，保留在全部样本分母。内容摘要与 access_scope 声明不构成真实账户隔离证据；本轮不提供 Agent 自由网络/工具、不运行 Ollama 或外发 raw。
+
+
+需盲评时必须在 prepare 配置中预先提供 `blind_policy`（schema 由 `freeze_blind_policy` 核验）。推理完整后，`output/raw_records.jsonl` 冻结并上传父 Run，以摘要绑定原 raw 与 evaluation 输入；待评审时父 Run 保持 running，各折 FINISHED，不能重跑模型。仅部分 JSON/围栏 JSON 明示字段可由 rule 恢复；一个响应一旦归为 rule，其他字段保持 missing，不再转 blind。没有预冻结 policy 时，不能推理后补一套判读规则。
+
+每次有效导入先形成只读 `output/review_attempts/0001.json`（后续按序递增），上传父 Run 并以 `sha256_review_attempt_0001` 参数钉扎，再判断评审是否完成。相同内容重提幂等；已完成 actor/phase 的封存判断不得替换，仅基础设施失败判断可按冻结策略重试一次，第三次尝试拒绝。恢复同时重验本地与 MLflow 的 raw、输入、权重及 attempt 链；`summary.json` 的 `blind_import_audit` 汇总全部唯一判断（含失败）的成本与累计计算耗时，耗时不代表墙钟延迟。最终采用结果另存 `blind_reviews.json`；export 重验 attempt 链与最终采用关系，全部尝试随 `manifest.artifacts` 导出，不因成功恢复丢弃失败事实。
+
+获授权、独立执行并封存 judge 答案后，由操作者准备 JSON mapping，键是全部待判读 raw 的 SHA256，值是 `import_blind_review` 接受的证据，policy 必须等于 prepare 冻结值。只导入 pending 集合，既不能漏项也不能夹带已完成项：
+
+```sh
+python -m versioning eval score <完整eval版本> --root <store绝对路径> \
+  --blind-reviews <已封存证据.json>
+python -m versioning eval export <完整eval版本> --root <store绝对路径>
+```
+
+开发 `score` 只从同一冻结 raw 恢复语义整理、评分和导出，不调用模型；证据保存为 `blind_reviews.json` 并钉扎摘要。尚未完成的评审不生成质量结论。完成导出重验原 raw、judge、冻结 policy/规则、逐样本语义、每折/pooled/多数类汇总及实际模型权重；缺项或漂移拒绝。`summary.development_gates.outcome` 可为 `insufficient_evidence`，正式 eval outcome 此时为 failed，不能把单折诊断或缺类解释为 passed。
+
+多数类定义由 prepare 逐折从对应 train 拟合，保存于 `input/evaluation.yaml` 的 `majority_baselines`，输出摘要见 `summary.json` 的 `majority_baseline`。方法是四字段完整标签 tuple 的众数，平票用规范 JSON 字典序，避免拼出未出现的字段组合。`eval_baselines.build_majority_baseline` 也接受显式开发 validation 拟合，但须如实标明用途，不能当作泛化证据；正式 prepare 采用 train。合成多数类的 JSON 合法率和耗时不是被测模型能力。
+
+`eval_baselines.compare_paired_records` 接受 base/trained 的完整逐样本记录及恰含 media_sampling/prompt/decode/scorer 的相同冻结配置，严格核对候选、target、媒体和来源，保留失败，输出逐字段/joint 改善退化、metric_delta 及独立 absolute_gate_result。相对提升不新增硬门。正式比较通过以下命令消费两个已完成 semantic validation Run 的重验证据，不加载模型、不读取 test、不重新推理：
+
+```sh
+python -m versioning eval compare <trained完整eval版本> --root <store绝对路径> \
+  --baseline-eval-version <base完整eval版本>
+```
+
+比较要求 baseline 来自真实 base 来源、另一侧来自 trained 来源，且完整候选配对、任务 Prompt、媒体/抽帧、generation、量化和语义规则相同。报告不可变发布为 `records/evaluations/<trained-eval>/paired/<base-eval>.json`，内含双方正式执行证据及绝对结论，不能把手工改配置后的比较视为同条件对照。
 
 ## 显式数据七阶段
 

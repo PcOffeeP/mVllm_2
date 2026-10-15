@@ -63,7 +63,7 @@
 
 base 与 fine-tuned 对照固定相同媒体、采样帧规则、Prompt、解码参数和 scorer；同一样本配对比较。报告绝对指标是否过门及 paired 提升，两者分开。优于 base 尚不是已确认硬门。多数类 baseline 的构造与参数仅在开发数据确定，不读取 test 真值调参。
 
-默认在开发集比较 base；最终 test 只运行一个冻结的 full 候选，不默认增加 base 的 test 调用。基座登记方案已确认、待实现：沿用 `model-v<协议>-r<N>` 和同一 Registry，以互斥 `base` / `trained` 来源分支分别核验，而非把 `train_id` 随意改为可选来放宽门禁。
+默认在开发集比较 base；最终 test 只运行一个冻结的 full 候选，不默认增加 base 的 test 调用。基座登记已实现并通过合成验证，真实来源仍须现场核定：沿用 `model-v<协议>-r<N>` 和同一 Registry，以互斥 `base` / `trained` 来源分支分别核验，而非把 `train_id` 随意改为可选来放宽门禁。
 
 base 绑定真实固定来源/上游 revision，以及权重、配置、tokenizer/processor 的完整内容摘要；不伪造 train、训练 data 或训练 Prompt。base eval 显式绑定评测 data 和任务 Prompt，与 fine-tuned 使用同 Prompt、媒体、decode 和 scorer。trained 分支继续继承真实 train 的 Prompt 并准确绑定其 base。来源不明先核查，不加载。新 record/schema 明确区分来源，旧不可变对象不补字段；base 仅用于开发对照和受控性能测量，不自动取得生产资格。
 
@@ -71,7 +71,7 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 
 ## 5. 开发与最终质量门
 
-以下数值是已确认的新协议目标，尚未接入现行严格评分器。所有适用门同时满足才能通过；缺类或证据不足不能据其他门达标而通过。
+以下数值是已确认的新协议目标；开发列已通过显式 semantic-v4.1 接入，旧严格协议保持原义，最终独立验收列仍待后续实现。所有适用门同时满足才能通过；缺类或证据不足不能据其他门达标而通过。
 
 | 指标 | 开发门 | 最终独立 test 门 |
 | --- | --- | --- |
@@ -84,16 +84,16 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 
 单折诊断用于定位问题，不能代替完整三折。三折 pooled 由完整逐样本记录合并计算，不能简单平均三个 F1；状态门另检查每折，防止 pooled 掩盖某折坍缩。严格合法率、分支比例、评测整理依赖、CI 与相对 baseline 提升独立报告，不擅自增加新硬门。
 
-“先单折诊断”的完成折登记方案已确认、待实现：复用已 FINISHED 折的 execution receipt，形成实际字节的不可变快照；绑定 parent train/run、真实 fold 号、checkpoint step、input/config/data/Prompt/code、base、tokenizer/processor 和权重摘要。诊断 model 登记只核验该完成折及共享 input 有效，父 train 保持 partial；三折真实全完成后才记 completed。其他折失败不抹去该折已成功的历史证据；共享输入漂移或来源 invalid 阻止后续使用，但不删除历史。
+“先单折诊断”的完成折登记已实现并通过合成验证，真实执行证据尚待取得：复用已 FINISHED 折的 execution receipt，形成实际字节的不可变快照；绑定 parent train/run、真实 fold 号、checkpoint step、input/config/data/Prompt/code、base、tokenizer/processor 和权重摘要。诊断 model 登记只核验该完成折及共享 input 有效，父 train 保持 partial；三折真实全完成后才记 completed。其他折失败不抹去该折已成功的历史证据；共享输入漂移或来源 invalid 阻止后续使用，但不删除历史。
 
-初版只接受完成折，不接受任意训练中 checkpoint，不补其他折、不借 full 绕门。诊断模型只用于对应折完整开发 validation 与受控性能测量，不替代完整三折或 full，也不默认设置服务 alias。当前代码仍要求完整训练，以上不是现成登记能力。
+初版只接受完成折，不接受任意训练中 checkpoint，不补其他折、不借 full 绕门。诊断模型只用于对应折完整开发 validation 与受控性能测量，不替代完整三折或 full，也不默认设置服务 alias。当前已新增 diagnostic_fold 完成折快照登记；原 single_fold 从完整训练选折的门保持不变。真实运行与来源现场核验尚未完成。
 
 ## 6. 从开发到最终验收
 
 | 顺序 | 输入及前置 | 目标动作与输出 |
 | --- | --- | --- |
 | 资格与规则冻结 | 开发 data、契约、候选来源、依赖/预算；独立来源和近重复检查 | 冻结评分规则、盲评手册、对照条件及开发阈值；拟新增逻辑产物“新协议冻结记录” |
-| baseline 与单折诊断 | 有正式身份的 base、开发多数类 baseline；对应 single_fold 训练模型与完整 validation | 同媒体对照，保留 raw、失败与完整诊断；不抽掉困难样本 |
+| baseline 与单折诊断 | 有正式身份的 base、开发多数类 baseline；对应 diagnostic_fold 模型（评测 scope 为 single_fold）与完整 validation | 同媒体对照，保留 raw、失败与完整诊断；不抽掉困难样本 |
 | 完整三折 | 已冻结开发方案及三折模型/完整 validation | 每折状态门与 pooled 门同时检查，形成开发结论 |
 | test 构建就绪 | 未使用 test 资格、独立来源、完整人工数据审查和封存 | 发布无标签推理输入、受限真值及构建证据；完成可预先确定的预注册准备 |
 | 独立 full 训练 | 开发三折达到门槛、test 构建/冻结及预注册准备就绪、适用训练授权 | 开发全集去重，每候选一次独立训练；不以 test 选 checkpoint 或日程 |
@@ -117,8 +117,8 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 | --- | --- | --- |
 | 数据与 Prompt | `versioning data` 发布开发 data；`prompt create` 从定义生成 `records/prompts/<prompt>.yaml`；契约来自 `pipeline/contracts/tensile_vlm_v4_1.json` | 新协议来源分组/支持数/近重复证据须核验，不能从窗口数推定 |
 | 训练 | `train prepare/validate/run/export`；冻结 data、Prompt、基座、配置/环境；`workspace/runs/<train>/input/` → adapter、执行证据及 `records/training/<train>/manifest.yaml` | 三折/full 编排已存在，真实运行与开发门证据未由本文产生 |
-| 模型登记 | `model register` 从真实已完成 train/artifact 登记完整 model 与数值 Registry 版本；single_fold 也要求原训练完成及三折证据 | base 正式来源及先单折诊断的训练/登记适配尚需实现，禁止空 train、partial 冒充完成或虚补折 |
-| 开发评测 | `eval prepare/validate/run/export`；`finetune/eval_run.py` 冻结输入于 `workspace/evaluations/<eval>/input/evaluation.yaml`；逐折 `records.jsonl/failures.jsonl/summary.json` → MLflow 父 Run → `records/evaluations/<eval>/manifest.yaml` | 当前 `strict-v4.1/all/pooled` 只有六类阈值指标；没有本设计的恢复/盲评、macro F1、逐折状态门和统计协议 |
+| 模型登记 | `model register` 支持原 completed trained、独立 base 来源及 FINISHED 折的 diagnostic_fold 字节快照；同一完整 model 身份与数值 Registry 版本 | A/B 接线已实现且合成验证；真实基座来源及字节需现场核定，禁止空 train、partial 冒充完成或虚补折，base/diagnostic 不授生产资格 |
+| 开发评测 | `eval prepare/validate/run/export`；`finetune/eval_run.py` 冻结输入于 `workspace/evaluations/<eval>/input/evaluation.yaml`；逐折 `records.jsonl/failures.jsonl/summary.json` → MLflow 父 Run → `records/evaluations/<eval>/manifest.yaml` | 显式 `semantic-v4.1` 已实现规则/封存判读导入、macro F1、逐折状态门、统计及配对报告；原 strict 六指标保留原义。真实低权限判读运行与训练机质量仍未验证 |
 | test 数据 | `versioning/holdout_pipeline.py` 的 source/roi/subvideo/review_export/review_import/release/release_validate；`data/releases/<data>/` 的媒体、`evaluation_inputs/manifest.json`、`sealed_ground_truth/`、`build_receipt.json` | 数据标签审查不是预测盲评；真实资格与构建状态见 HOLDOUT-BUILD |
 | test 授权与评分 | `data claim` → `eval prepare/validate/run/score/export`；`finetune/eval_holdout.py`、`versioning/holdout.py`；实际评分在 `workspace/evaluations/<eval>/restricted/`，公开二值 gate | `finetune/holdout_metrics.py` 硬编码原七门；新协议、盲评证据、安全/公开接口与恢复绑定未实现 |
 | 晋级与服务 | `versioning/registry.py` 校验 train/model 数值版本/正式 eval；`model finalize/alias/current` → `pipeline.server_proxy` → adapter；`pipeline/scripts/serve_smoke.py` 核查响应绑定 | 旧 passed 不代表新协议通过；新三类结论及用途还需全链绑定；受控 performance 通路未实现，smoke 的 300 秒 timeout 不是性能门 |
@@ -144,4 +144,4 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 
 性能进入通路已确认、待实现：在 eval 领域增加 performance 用途的正式接口（不是当前可运行命令），精确绑定 Registry 数值 model、冻结来源/权重、Prompt/generation、开发媒体 allowlist、设备、预算、TTL 和授权会话。可测尚未质量或性能 passed 的 base、诊断完成折或 full；复用 adapter 实际推理代码，通过临时 loopback 受控端点和受控通道连接 client，不使用 candidate/production alias、裸路径或 test。测后仅退出本次自己的进程，不影响已有服务。
 
-performance passed 不等于 quality passed；export、finalize、manifest 与准入均验用途及同模型配置。来源核验 → 可诊断/可测 → 视觉通过/性能通过 → 正式服务批准分层成立，旧服务门不放宽，也不形成“先 passed 才能测、先测才能 passed”的循环。架构和本文执行配置均已确认待实现；剩余工作是现场核验当前基座/安装摘要、交付参数一致性、分组映射、权限隔离与运行适配，不能写成已通过或重新标为方案待定。
+performance passed 不等于 quality passed；export、finalize、manifest 与准入均验用途及同模型配置。来源核验 → 可诊断/可测 → 视觉通过/性能通过 → 正式服务批准分层成立，旧服务门不放宽，也不形成“先 passed 才能测、先测才能 passed”的循环。开发基础与接线已实现；本节性能架构和执行配置已确认、仍待实施。剩余现场工作是现场核验当前基座/安装摘要、交付参数一致性、分组映射、权限隔离与运行适配，不能写成已通过或重新标为方案待定。

@@ -70,6 +70,8 @@ from versioning.registry import (
     materialize_model,
     open_registry_store,
     register_model,
+    register_base_model,
+    register_completed_fold_model,
     set_alias,
     set_offline_backup_scope,
     validate_model_for_evaluation,
@@ -170,7 +172,7 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument(
         "action",
         choices=(
-            "prepare", "validate", "run", "score", "export",
+            "prepare", "validate", "run", "score", "export", "compare",
             "create",
             "fold-start",
             "fold-end",
@@ -199,6 +201,8 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--split", help="single_fold/full 或 holdout split")
     evaluate.add_argument("--pre-registration", type=Path, help="holdout 预注册 YAML")
     evaluate.add_argument("--executor", help="holdout claim 执行身份")
+    evaluate.add_argument("--blind-reviews", type=Path, help="开发语义评测的已封存盲评证据 JSON")
+    evaluate.add_argument("--baseline-eval-version", help="配对比较的完整 base eval 身份")
     evaluate.add_argument("--fold", type=int, help="fold 编号")
     evaluate.add_argument("--model-artifact", help="fold 模型 artifact 引用")
     evaluate.add_argument("--data-split", help="fold 数据 split")
@@ -234,12 +238,18 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_root(model)
     _add_store(model)
     model.add_argument("--train-version", help="来源 train 版本")
+    model.add_argument("--source-kind", choices=("base", "trained"), default="trained")
+    model.add_argument("--base-model-path", type=Path, help="固定本地基座完整目录")
+    model.add_argument("--upstream-source", help="上游模型来源身份")
+    model.add_argument("--upstream-revision", help="上游固定不可变 revision")
+    model.add_argument("--git-commit", help="登记代码版本")
+    model.add_argument("--fold", type=int, choices=(0, 1, 2), help="诊断模型的真实已完成折")
     model.add_argument("--eval-version", help="关联 eval 版本")
     model.add_argument("--backup-scope", choices=("adapter", "production_bundle"))
     model.add_argument("--alias", choices=("candidate", "production"))
     model.add_argument("--models-root", type=Path, help="物化目标根目录")
     model.add_argument(
-        "--source-scope", choices=("single_fold", "cross_validation", "full")
+        "--source-scope", choices=("single_fold", "cross_validation", "full", "base", "diagnostic_fold")
     )
     model.add_argument("--artifacts", type=Path, help="模型 artifacts YAML mapping")
     model.add_argument("--deploy-target", help="唯一部署 artifact 路径")
@@ -599,7 +609,7 @@ def _parse_folds(value: str | None) -> tuple[int, ...]:
 def _handle_eval(args: argparse.Namespace) -> Any:
     if args.action in {'manifest', 'fold-start', 'fold-end', 'aggregate', 'complete', 'summary', 'create'}:
         raise CLIUsageError("手工状态写入已停用；请使用实际执行器 eval prepare/validate/run/export")
-    if args.action in {"prepare", "validate", "run", "score", "export"}:
+    if args.action in {"prepare", "validate", "run", "score", "export", "compare"}:
         if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
             raise CLIUsageError("actual evaluation must use root/workspace/mlflow")
         input_flags = {"model_version", "model_version_number", "data_version", "config",
@@ -610,6 +620,10 @@ def _handle_eval(args: argparse.Namespace) -> Any:
         rejected = legacy_flags | (input_flags | {"pre_registration"} if args.action != "prepare" else set())
         if args.action not in {"prepare", "score"}:
             rejected |= {"executor"}
+        if args.action != "score":
+            rejected |= {"blind_reviews"}
+        if args.action != "compare":
+            rejected |= {"baseline_eval_version"}
         if any(getattr(args, key) is not None for key in rejected):
             raise CLIUsageError("actual evaluation accepts frozen inputs only; configure them with eval prepare")
         from finetune.eval_run import (prepare_versioned_evaluation, verify_versioned_evaluation,
@@ -622,7 +636,18 @@ def _handle_eval(args: argparse.Namespace) -> Any:
                 data_version=args.data_version, config=config, git_commit=args.git_commit,
                 media_root=args.media_root, inputs_path=args.data_inputs,
                 pre_registration=args.pre_registration, executor=args.executor)}
+        if args.action == "compare":
+            _required(args, "baseline_eval_version")
+            from finetune.eval_run import compare_versioned_evaluations
+            return {"path": compare_versioned_evaluations(root=args.root, eval_version=args.eval_version,
+                baseline_eval_version=args.baseline_eval_version)}
         if args.action == "score":
+            if args.blind_reviews is not None:
+                if args.executor is not None:
+                    raise CLIUsageError("development blind scoring does not accept a holdout executor")
+                from finetune.eval_run import resume_versioned_evaluation
+                return {"manifest": resume_versioned_evaluation(root=args.root, eval_version=args.eval_version,
+                    blind_reviews=args.blind_reviews)}
             _required(args, "executor")
             from finetune.eval_holdout import score_holdout_evaluation
             return {"manifest": score_holdout_evaluation(root=args.root, eval_version=args.eval_version, executor=args.executor)}
@@ -782,11 +807,27 @@ def _handle_model(args: argparse.Namespace) -> Any:
     if args.action not in {"current", "validate-current"} and args.model_version is None:
         raise CLIUsageError("缺少显式完整 model 版本")
     if args.action == "register":
-        _required(args, "train_version", "source_scope", "artifacts")
-        if args.source_scope != "cross_validation":
+        _required(args, "source_scope")
+        base_options = (args.base_model_path, args.upstream_source, args.upstream_revision)
+        if args.source_kind == "base":
+            _required(args, "base_model_path", "upstream_source", "upstream_revision", "git_commit")
+            if args.source_scope != "base" or any(value is not None for value in
+                    (args.train_version, args.artifacts, args.deploy_target, args.fold)):
+                raise CLIUsageError("base 来源与训练引用、artifacts、deploy-target、fold 互斥")
+        elif any(value is not None for value in base_options) or args.source_scope == "base":
+            raise CLIUsageError("trained 来源不接受 base 来源参数")
+        elif args.source_scope == "diagnostic_fold":
+            _required(args, "train_version", "fold")
+            if args.artifacts is not None or args.deploy_target is not None:
+                raise CLIUsageError("diagnostic_fold 只从真实 receipt 冻结，不接受自定义 artifacts/deploy-target")
+        else:
+            _required(args, "train_version", "artifacts")
+            if args.fold is not None:
+                raise CLIUsageError("仅 diagnostic_fold 接受 --fold")
+        if args.source_scope in {"single_fold", "full"}:
             _required(args, "deploy_target")
         elif args.deploy_target is not None:
-            raise CLIUsageError("cross_validation 不接受 --deploy-target")
+            raise CLIUsageError("此来源不接受 --deploy-target")
     elif args.action == "finalize":
         _required(args, "eval_version")
     elif args.action == "scope":
@@ -799,6 +840,11 @@ def _handle_model(args: argparse.Namespace) -> Any:
         _required(args, "alias", "service_mode")
     store = open_registry_store(_store_path(args), data_root=args.root / "data")
     if args.action == "register":
+        if args.source_kind == "base":
+            return register_base_model(store, args.model_version, model_path=args.base_model_path,
+                upstream_source=args.upstream_source, upstream_revision=args.upstream_revision, git_commit=args.git_commit)
+        if args.source_scope == "diagnostic_fold":
+            return register_completed_fold_model(store, args.model_version, train_id=args.train_version, fold=args.fold)
         return register_model(
             store,
             args.model_version,

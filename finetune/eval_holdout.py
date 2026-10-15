@@ -470,7 +470,7 @@ def validate_holdout_execution(*, store, record, value, artifact_root):
     _check_run(client, record.run_id, value)
     if record.folds or value['folds'] or ev._formal_config(value['config']) != value['config']:
         raise ValueError('holdout full evaluation must have no fold children')
-    if set(value['implementation_sha256']) != set(SOURCES) or any(ev._sha256(ev.ROOT / name) != value['implementation_sha256'][name] for name in SOURCES):
+    if set(value['implementation_sha256']) != set(SOURCES) or any(not ev._implementation_matches(value, name, value['implementation_sha256'][name]) for name in SOURCES):
         raise ValueError('holdout scorer implementation drifted')
     params = client.get_run(record.run_id).data.params
     if params.get('sha256_holdout_scoring') != ev._sha256(artifact_root / 'execution.json'):

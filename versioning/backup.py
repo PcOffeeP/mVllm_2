@@ -461,6 +461,8 @@ def _enumerate_scoped_models(
             "artifacts": record.artifacts,
             "deploy_target": record.deploy_target,
         }
+        if record.source_evidence:
+            expected_manifest.update(source_kind=record.source_kind, source_evidence=record.source_evidence)
         for key, value in expected_manifest.items():
             if manifest.get(key) != value:
                 raise BackupSourceSetError(
@@ -474,11 +476,12 @@ def _enumerate_scoped_models(
             ) from exc
 
         prompt_version = record.prompt_version
-        prompt_file = prompt_path(prompts_root, prompt_version)
-        if not prompt_file.is_file():
-            raise BackupSourceSetError(
-                f"作用域模型 {model_id!r} 引用的 prompt {prompt_version!r} 缺失: {prompt_file}"
-            )
+        if prompt_version is not None:
+            prompt_file = prompt_path(prompts_root, prompt_version)
+            if not prompt_file.is_file():
+                raise BackupSourceSetError(
+                    f"作用域模型 {model_id!r} 引用的 prompt {prompt_version!r} 缺失: {prompt_file}"
+                )
 
         selected_artifacts = {
             path
@@ -495,10 +498,18 @@ def _enumerate_scoped_models(
         train_artifact_root = _run_artifact_root(store, train_run.info.artifact_uri)
         # Preserve the lightweight proof and frozen inputs needed by restored
         # models, without widening their declared weight retention scope.
-        for evidence_name in ("input", "training-evidence.json"):
+        for evidence_name in ("input", "training-evidence.json", "model-source.json"):
             evidence_source = train_artifact_root / evidence_name
             if evidence_source.exists():
                 mlflow_paths.add(evidence_source.relative_to(store.root.resolve()).as_posix())
+        if record.source_scope == "diagnostic_fold":
+            parent_run = client.get_run(record.source_evidence["parent_run_id"])
+            parent_artifact_root = _run_artifact_root(store, parent_run.info.artifact_uri)
+            for relative in ("input", f"fold{record.source_evidence['fold']}/execution-evidence.json"):
+                proof_source = parent_artifact_root / relative
+                if not proof_source.exists() or proof_source.is_symlink():
+                    raise BackupSourceSetError("diagnostic parent shared input/fold receipt is missing")
+                mlflow_paths.add(proof_source.relative_to(store.root.resolve()).as_posix())
         for declared in selected_artifacts:
             relative_in_run = Path(*Path(declared).parts[1:])
             selected_source = train_artifact_root / relative_in_run
@@ -536,7 +547,8 @@ def _enumerate_scoped_models(
                 manifest_source=manifest_path,
             )
         )
-        prompt_versions.add(prompt_version)
+        if prompt_version is not None:
+            prompt_versions.add(prompt_version)
 
     return model_sources, prompt_versions, mlflow_paths
 

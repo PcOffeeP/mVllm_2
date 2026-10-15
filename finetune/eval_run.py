@@ -521,6 +521,21 @@ FORMAL_METRICS = {
     **{f"{field}_correct_rate": f"correct {field} predictions / selected samples"
        for field in ("clip_state", "fracture_mechanism", "fracture_site", "special_case")},
 }
+SEMANTIC_METRICS = {
+    "strict_valid_rate": "raw strict JSON/schema valid predictions / every frozen sample; diagnostic only",
+    "joint_correct_rate": "all four explicitly expressed fields correct / every frozen sample",
+    **{f"{field}_correct_rate": "explicit correct field / every frozen sample; missing differs from null"
+       for field in ("clip_state", "fracture_mechanism", "fracture_site", "special_case")},
+    "four_state_macro_recall": "unweighted recall over four supported GT states, excluding GT unknown; per-fold gate",
+    "per_state_recall": "correct state / all corresponding GT state samples; every fold checked separately",
+    "fracture_mechanism_macro_f1": "macro F1 over contract non-null classes on fixed GT non-null mechanism subset",
+    "fracture_site_macro_f1": "macro F1 over contract non-null classes on fixed GT non-null site subset",
+    "special_case_precision_recall": "per non-null class, all fixed samples including false positives; diagnostic only",
+    "group_bootstrap": "95 percent percentile CI, independent frozen groups resampled jointly, 2000 replicates, seed 3407; undefined draws retained",
+    "missing_support": "insufficient evidence; no automatic pass or post-hoc class/sample exclusion",
+    "review_incomplete": "final visual metrics unavailable until prediction-only review is complete",
+}
+
 
 
 def _formal_bytes(value: Any) -> bytes:
@@ -537,11 +552,35 @@ def _formal_workspace(root: Path, eval_version: str) -> Path:
     return path
 
 
+
+def _implementation_matches(value: Mapping, source: str, digest: str) -> bool:
+    from versioning.eval_compatibility import strict_adapter_matches
+    current_digest = _sha256(ROOT / source)
+    return (current_digest == digest or
+            (value.get("config", {}).get("scorer") == "strict-v4.1" and
+             strict_adapter_matches(source, frozen_digest=digest, current_digest=current_digest)))
+
+
+def _historical_strict_comparison(current: dict, frozen: Mapping) -> dict:
+    """Map only audited implementation identities, preserving every other byte."""
+    if frozen.get("config", {}).get("scorer") != "strict-v4.1":
+        return current
+    from versioning.eval_compatibility import strict_adapter_matches
+    copied = json.loads(_formal_bytes(current))
+    for source, digest in frozen.get("implementation_sha256", {}).items():
+        if strict_adapter_matches(source, frozen_digest=digest,
+                current_digest=current["implementation_sha256"].get(source)):
+            copied["implementation_sha256"][source] = digest
+    return copied
+
+
 def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
     import math
     expected = {"scope", "split", "artifact_kind", "scorer", "sample_selection",
                 "quantization_bit", "generation", "thresholds", "aggregation"}
-    if not isinstance(config, Mapping) or set(config) != expected:
+    semantic = isinstance(config, Mapping) and config.get("scorer") == "semantic-v4.1"
+    optional = {"source_groups", "prompt_version", "fold", "blind_policy"} if semantic else set()
+    if not isinstance(config, Mapping) or not expected <= set(config) or set(config) - expected - optional:
         raise ValueError(f"evaluation config requires exactly {sorted(expected)}")
     result = json.loads(_formal_bytes(dict(config)))
     if (result["scope"] not in ("single_fold", "cross_validation", "full")
@@ -551,15 +590,34 @@ def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("evaluation requires validation folds or full with an independent holdout split")
     if result["aggregation"] != "pooled":
         raise ValueError("aggregation must explicitly select pooled validation rows")
-    if result["artifact_kind"] not in ("adapter", "merged"):
+    if result["artifact_kind"] not in (("adapter", "merged", "model") if semantic else ("adapter", "merged")):
         raise ValueError("artifact_kind must be adapter or merged")
-    if result["scorer"] != "strict-v4.1" or result["sample_selection"] != "all":
+    if result["scorer"] not in ("strict-v4.1", "semantic-v4.1") or result["sample_selection"] != "all":
         raise ValueError("formal evaluation requires strict-v4.1 and all samples in each selected validation fold")
     if result["quantization_bit"] is not None and (type(result["quantization_bit"]) is not int or result["quantization_bit"] != 4):
         raise ValueError("quantization_bit must be null or 4")
     if _formal_bytes(result["generation"]) != _formal_bytes(FORMAL_GENERATION):
         raise ValueError("generation must match the actual strict V4.1 runtime")
     thresholds = result["thresholds"]
+    if semantic:
+        if result["scope"] == "full":
+            raise ValueError("semantic holdout requires its separately authorized protocol")
+        expected_thresholds = {"four_state_macro_recall": 0.65, "per_state_recall": 0.50,
+            "joint_correct_rate": 0.50, "fracture_mechanism_macro_f1": 0.50,
+            "fracture_site_macro_f1": 0.60}
+        if thresholds != expected_thresholds:
+            raise ValueError("semantic development thresholds must match the frozen protocol")
+        if result.get("blind_policy") is not None:
+            from finetune.eval_semantics import freeze_blind_policy
+            freeze_blind_policy(result["blind_policy"])
+        groups = result.get("source_groups")
+        if not isinstance(groups, dict) or not groups or any(
+            not isinstance(k, str) or not k or not isinstance(v, str) or not v
+            for k, v in groups.items()):
+            raise ValueError("semantic evaluation requires explicit complete candidate source_groups")
+        if "fold" in result and (type(result["fold"]) is not int or result["fold"] not in (0, 1, 2)):
+            raise ValueError("fold must be 0, 1 or 2")
+        return result
     if result["scope"] == "full":
         from finetune.holdout_metrics import validate_thresholds
         validate_thresholds(thresholds)
@@ -572,12 +630,78 @@ def _formal_config(config: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
+
+def _validate_source_groups(files: Mapping[str, bytes], groups: Mapping[str, str]) -> None:
+    """Freeze declared independent groups; never infer independence from windows."""
+    observed = set()
+    validation_groups = []
+    source_assignments = {}
+    for fold in range(3):
+        members = {}
+        for split in ("train", "validation"):
+            rows = json.loads(files[f"datasets/{split}/fold_{fold}.json"])
+            selected = set()
+            for index, row in enumerate(rows):
+                video, _ = validate_training_row(row, split, index)
+                candidate = Path(video).stem
+                observed.add(candidate)
+                if candidate not in groups:
+                    raise ValueError(f"source_groups missing candidate: {candidate}")
+                source = re.match(r"(video_\d+)", candidate)
+                if source:
+                    previous = source_assignments.setdefault(source.group(1), groups[candidate])
+                    if previous != groups[candidate]:
+                        raise ValueError("one source cannot be split across independent source_groups")
+                selected.add(groups[candidate])
+            members[split] = selected
+        if members["train"] & members["validation"]:
+            raise ValueError("source_groups leak across train/validation within a fold")
+        if any(members["validation"] & other for other in validation_groups):
+            raise ValueError("source_groups overlap across validation folds")
+        validation_groups.append(members["validation"])
+    if observed != set(groups):
+        raise ValueError("source_groups must exactly cover the development candidate universe")
+
+
+def _semantic_summary(value, records):
+    from finetune.eval_semantics import development_gates, score_semantic_records
+    folds = {fold: [r for r in records if r["fold"] == fold] for fold in value["folds"]}
+    gates = development_gates(folds)
+    pooled = gates["pooled"]
+    from finetune.eval_baselines import majority_baseline_records
+    majority = {}
+    for fold, rows in folds.items():
+        baseline_rows = majority_baseline_records(value["majority_baselines"][f"fold{fold}"], rows)
+        majority[f"fold{fold}"] = score_semantic_records(baseline_rows, bootstrap=False)
+    metrics = {k: float(v) for k, v in pooled["metrics"].items()
+               if type(v) in (int, float)}
+    outcome = "passed" if gates["outcome"] == "passed" else "failed"
+    return {**summarize_records(records), "semantic": pooled, "development_gates": gates,
+            "majority_baseline": majority,
+            "scoring_protocol": "semantic-v4.1", "outcome": outcome}, metrics, outcome
+
+
+def _formal_summary(value, records):
+    if value["config"]["scorer"] == "semantic-v4.1":
+        return _semantic_summary(value, records)
+    summary = summarize_records(records)
+    metrics = {key: summary["metrics"][key] for key in FORMAL_METRICS}
+    outcome = "passed" if all(metrics[k] >= t for k, t in value["config"]["thresholds"].items()) else "failed"
+    return summary, metrics, outcome
+
+
+def _formal_artifact_key(value, fold):
+    return "base" if value["model"].get("source_kind") == "base" else f"fold{fold}"
+
 def _model_binding(record) -> dict[str, Any]:
     # Aliases, eval_id and promotion tags can change independently of the
     # registered training artifacts. They are not part of evaluation input.
-    return {key: getattr(record, key) for key in (
+    binding = {key: getattr(record, key) for key in (
         "model_id", "version", "run_id", "train_id", "data_version", "prompt_version",
         "git_commit", "base_model", "source_scope", "artifacts")}
+    if getattr(record, "source_kind", "trained") == "base" or getattr(record, "source_evidence", None):
+        binding.update(source_kind=record.source_kind, source_evidence=record.source_evidence)
+    return binding
 
 
 def _formal_input(*, root: Path, eval_version: str, model_version: str,
@@ -616,11 +740,30 @@ def _formal_input(*, root: Path, eval_version: str, model_version: str,
     # checked before artifacts are materialized or any weight path is resolved.
     registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
     model = validate_model_for_evaluation(registry, model_version, model_version_number)
-    if model.source_scope != config["scope"]:
-        raise ValueError("evaluation scope does not match registered model scope")
-    folds = [0, 1, 2] if model.source_scope == "cross_validation" else [0]
-    if any(config["artifact_kind"] not in model.artifacts[f"fold{i}"] for i in folds):
+    semantic = config["scorer"] == "semantic-v4.1"
+    is_base = getattr(model, "source_kind", "trained") == "base"
+    diagnostic = model.source_scope == "diagnostic_fold"
+    if is_base:
+        if not semantic or config["artifact_kind"] != "model" or not config.get("prompt_version"):
+            raise ValueError("base evaluation requires semantic protocol, model artifacts and explicit prompt_version")
+        if config["scope"] == "single_fold" and "fold" not in config:
+            raise ValueError("single-fold base comparison requires explicit fold")
+        folds = [0, 1, 2] if config["scope"] == "cross_validation" else [config["fold"]]
+    elif diagnostic:
+        if not semantic or config["scope"] != "single_fold":
+            raise ValueError("completed-fold diagnostics require semantic single_fold evaluation")
+        folds = [model.source_evidence["fold"]]
+        if "fold" in config and config["fold"] != folds[0]:
+            raise ValueError("explicit evaluation fold differs from completed-fold source")
+    else:
+        if model.source_scope != config["scope"]:
+            raise ValueError("evaluation scope does not match registered model scope")
+        folds = [0, 1, 2] if model.source_scope == "cross_validation" else [0]
+    if any(config["artifact_kind"] not in model.artifacts["base" if is_base else f"fold{i}"] for i in folds):
         raise ValueError("selected artifact kind is missing from a registered fold")
+    prompt_version = config["prompt_version"] if is_base else model.prompt_version
+    if not is_base and "prompt_version" in config and config["prompt_version"] != prompt_version:
+        raise ValueError("trained evaluation must inherit the registered training Prompt")
     if model.source_scope == "single_fold" and model.deploy_target != model.artifacts["fold0"][config["artifact_kind"]]:
         raise ValueError("evaluated artifact must match the registered deploy_target")
     contract, _ = _load_contract()
@@ -628,8 +771,10 @@ def _formal_input(*, root: Path, eval_version: str, model_version: str,
     if {**GENERATION_CONFIG, "video_max_frames": VIDEO_MAX_FRAMES} != FORMAL_GENERATION:
         raise ValueError("runtime generation implementation drift")
     files, binding = build_versioned_datasets(root=root, data_version=data_version,
-        prompt_version=model.prompt_version, media_root=media_root, inputs_path=inputs_path)
-    prompt = load_prompt(root, model.prompt_version)
+        prompt_version=prompt_version, media_root=media_root, inputs_path=inputs_path)
+    prompt = load_prompt(root, prompt_version)
+    if semantic:
+        _validate_source_groups(files, config["source_groups"])
     samples = {}
     for fold in folds:
         rows = json.loads(files[f"datasets/validation/fold_{fold}.json"])
@@ -642,23 +787,45 @@ def _formal_input(*, root: Path, eval_version: str, model_version: str,
             seen.add(candidate)
             source = re.match(r"(video_\d+)", candidate)
             selected.append({"candidate_id": candidate, "source_video": source.group(1) if source else None,
-                             "video_path": video, "target": labels})
+                             "video_path": video, "target": labels,
+                             **({"source_group": config["source_groups"][candidate]} if semantic else {})})
         if not selected:
             raise ValueError("formal evaluation requires non-empty folds")
         samples[f"fold{fold}"] = selected
     sources = ["finetune/eval_run.py", "finetune/v4_1_runtime.py", "pipeline/v4_1_labels.py",
                "finetune/validation/model_runtime.py", "finetune/validation/constants.py",
                "finetune/validation/video_loader.py", "pipeline/preprocessing/minicpm_preprocessor.py"]
+    baselines = {}
+    if semantic:
+        from finetune.eval_semantics import default_rules
+        from finetune.eval_baselines import build_majority_baseline
+        sources.extend(["finetune/eval_semantics.py", "finetune/eval_baselines.py"])
+        for fold in folds:
+            training_rows = []
+            for i, row in enumerate(json.loads(files[f"datasets/train/fold_{fold}.json"])):
+                video, labels = validate_training_row(row, "train", i)
+                training_rows.append({"candidate_id": Path(video).stem, "target": labels})
+            baselines[f"fold{fold}"] = build_majority_baseline(training_rows,
+                development_data_id=data_version, fit_split="train")
     return {"schema_version": "tensile-vlm/v4.1-evaluation", "eval_version": eval_version,
         "model": _model_binding(model), "data_version": data_version, "config": config,
         "git_commit": git_commit, "inputs_path": str(Path(inputs_path).absolute()) if inputs_path else None,
         "media_root": str(Path(media_root).absolute()), "data_binding": binding, "folds": folds,
-        "samples": samples, "prompt": {"version": model.prompt_version,
+        "samples": samples, "prompt": {"version": prompt_version,
             "system_prompt": prompt.system_prompt, "user_prompt": prompt.user_prompt,
             "output_fields": list(prompt.output_fields)},
-        "contract_hash": contract["contract_hash"], "metric_definitions": FORMAL_METRICS,
-        "aggregation": "pooled validation rows across the selected folds; all minimum thresholds must be met",
-        "implementation_sha256": {source: _sha256(ROOT / source) for source in sources}}
+        "contract_hash": contract["contract_hash"], "metric_definitions": SEMANTIC_METRICS if semantic else FORMAL_METRICS,
+        "aggregation": ("complete sample-level pooled F1/joint plus separate state gates in every fold; "
+                        "three complete folds and supported classes required; no mean-of-fold-F1; no rounding at thresholds"
+                        if semantic else "pooled validation rows across the selected folds; all minimum thresholds must be met"),
+        "implementation_sha256": {source: _sha256(ROOT / source) for source in sources},
+        **({"scoring_protocol": "semantic-v4.1", "semantic_rules": default_rules(),
+            "majority_baselines": baselines,
+            "semantic_review_runtime": {"provider": "local-ollama", "context_tokens": 8192,
+                "max_output_tokens": 512, "temperature": 0, "thinking": "off-when-supported",
+                "timeout_seconds": 120, "runtime_failure_retries": 1, "concurrent_models": 1,
+                "cloud_fallback": False, "overlong_input": "no-truncation-blind-review-or-incomplete"}}
+           if semantic else {})}
 
 
 def prepare_versioned_evaluation(**kwargs) -> Path:
@@ -674,7 +841,7 @@ def prepare_versioned_evaluation(**kwargs) -> Path:
         target = workspace / "input"
         if target.exists():
             current = verify_versioned_evaluation(root=kwargs["root"], eval_version=kwargs["eval_version"])
-            if _formal_bytes(current) != payload:
+            if _formal_bytes(_historical_strict_comparison(value, current)) != _formal_bytes(current):
                 raise ValueError("frozen evaluation input conflict")
             return target / "evaluation.yaml"
         staging = Path(tempfile.mkdtemp(prefix=".input-", dir=workspace))
@@ -710,7 +877,7 @@ def verify_versioned_evaluation(*, root: Path, eval_version: str, live: bool = T
             media_root=Path(value["media_root"]), inputs_path=Path(value["inputs_path"]) if value["inputs_path"] else None,
             **({"pre_registration": Path(root).absolute() / "evaluations/staging" / eval_version / "authorization/pre_registration.yaml",
                 "executor": value["authorization"]["executor"]} if "authorization" in value else {}))
-        if _formal_bytes(current) != payload:
+        if _formal_bytes(_historical_strict_comparison(current, value)) != payload:
             raise ValueError("frozen evaluation input or upstream content drift")
     return value
 
@@ -756,6 +923,11 @@ def _execute_formal_fold(value, fold, model_dir, adapter_dir, output):
                     system_prompt=value["prompt"]["system_prompt"], user_prompt=value["prompt"]["user_prompt"],
                     media_root=Path(value["media_root"]))
                 record["fold"] = fold
+                if "source_group" in sample:
+                    record["source_group"] = sample["source_group"]
+                    from finetune.eval_semantics import extract_semantics
+                    record["semantics"] = extract_semantics(record["raw_output"],
+                        runtime_error=record["runtime_error"], rules=value["semantic_rules"])
                 encoded = json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n"
                 handle.write(encoded)
                 handle.flush()
@@ -819,7 +991,7 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
                 all_records, weight_inputs = [], {}
                 for fold in value["folds"]:
                     verify_versioned_evaluation(root=root, eval_version=eval_version)
-                    declared = value["model"]["artifacts"][f"fold{fold}"][value["config"]["artifact_kind"]]
+                    declared = value["model"]["artifacts"][_formal_artifact_key(value, fold)][value["config"]["artifact_kind"]]
                     artifact = materialized / declared
                     adapter = artifact if value["config"]["artifact_kind"] == "adapter" else None
                     base = Path(value["model"]["base_model"]) if adapter else artifact
@@ -845,6 +1017,10 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
                         if len(records) != len(value["samples"][f"fold{fold}"]) or not evaluation_succeeded(summary):
                             raise RuntimeError("evaluation execution incomplete: runtime failures")
                         all_records.extend(records)
+                        if value["config"]["scorer"] == "semantic-v4.1":
+                            from finetune.eval_semantics import score_semantic_records
+                            return {k: float(v) for k, v in score_semantic_records(records, bootstrap=False)["metrics"].items()
+                                    if type(v) in (int, float)}
                         return {key: summary["metrics"][key] for key in FORMAL_METRICS}
                     execute_eval_fold_run(store, eval_version, fold, executor=execute,
                         model_artifact=f"runs:/{value['model']['run_id']}/{declared.removeprefix('artifacts/')}",
@@ -852,22 +1028,21 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
                         sample_count=len(value["samples"][f"fold{fold}"]),
                         records=f"runs:/{parent.run_id}/fold{fold}/records.jsonl",
                         failures=f"runs:/{parent.run_id}/fold{fold}/failures.jsonl")
-                summary = summarize_records(all_records)
-                metrics = {key: summary["metrics"][key] for key in FORMAL_METRICS}
-                outcome = "passed" if all(metrics[k] >= threshold for k, threshold in value["config"]["thresholds"].items()) else "failed"
-                summary.update(outcome=outcome, input_sha256=input_sha)
-                _write_formal_json(output / "summary.json", summary)
-                for name, rows in (("records.jsonl", all_records), ("failures.jsonl", [r for r in all_records if r["runtime_error"] or r["parse_error"]])):
-                    (output / name).write_text("".join(json.dumps(r, ensure_ascii=False, allow_nan=False) + "\n" for r in rows))
-                for name in ("evaluation.yaml", "summary.json", "records.jsonl", "failures.jsonl"):
-                    client.log_artifact(parent.run_id, str(output / name))
-                    client.log_param(parent.run_id, f"sha256_{name}", _sha256(output / name))
-                if value["config"]["scope"] == "cross_validation":
-                    log_eval_aggregate(store, eval_version, metrics, folds=tuple(value["folds"]))
-                else:
-                    log_eval_summary(store, eval_version, metrics)
-                transition_eval_state(store, eval_version, "completed", outcome=outcome)
+                if value["config"]["scorer"] == "semantic-v4.1":
+                    raw_path = output / "raw_records.jsonl"
+                    raw_path.write_text("".join(json.dumps(r, ensure_ascii=False, allow_nan=False) + "\n" for r in all_records))
+                    raw_path.chmod(0o444)
+                    client.log_artifact(parent.run_id, str(raw_path))
+                    client.log_param(parent.run_id, "sha256_raw_records.jsonl", _sha256(raw_path))
+                    client.log_param(parent.run_id, "sha256_inference_evaluation.yaml", _sha256(output / "evaluation.yaml"))
+                    if any(not r["semantics"]["review_complete"] for r in all_records):
+                        raise EvaluationReviewPending("raw inference is frozen; import blind reviews with eval score, without rerunning inference")
+                parent = get_eval_run(store, eval_version)
+                _finish_formal_evaluation(value, all_records, output, store, parent, input_sha)
+
         except BaseException as exc:
+            if isinstance(exc, EvaluationReviewPending):
+                raise
             try:
                 current = get_eval_run(store, eval_version)
                 if current.workflow_state == "running" and current.outcome is None:
@@ -879,10 +1054,175 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
         return get_eval_run(store, eval_version)
 
 
+
+class EvaluationReviewPending(ValueError):
+    """Inference is complete and frozen; only prediction-blind review may resume."""
+
+
+def _finish_formal_evaluation(value, records, output, store, parent, input_sha):
+    from mlflow.tracking import MlflowClient
+    from versioning.mlflow_eval import log_eval_aggregate, log_eval_summary, transition_eval_state
+    client = MlflowClient(tracking_uri=store.tracking_uri)
+    summary, metrics, outcome = _formal_summary(value, records)
+    summary.update(outcome=outcome, input_sha256=input_sha)
+    attempts, _ = _read_review_attempts(output, client.get_run(parent.run_id).data.params)
+    if attempts:
+        summary["blind_import_audit"] = _review_attempt_audit(attempts)
+    if value["config"]["scorer"] == "semantic-v4.1":
+        from finetune.eval_semantics import score_semantic_records
+        for fold, child in parent.folds.items():
+            rows = [r for r in records if r["fold"] == fold]
+            final_semantic = output / f"fold{fold}" / "semantic_records.jsonl"
+            final_semantic.write_text("".join(json.dumps(r, ensure_ascii=False, allow_nan=False) + "\n" for r in rows))
+            client.log_artifact(parent.run_id, str(final_semantic), artifact_path=f"fold{fold}")
+            for k, v in score_semantic_records(rows, bootstrap=False)["metrics"].items():
+                if type(v) in (int, float):
+                    client.log_metric(child.run_id, k, v)
+    _write_formal_json(output / "summary.json", summary)
+    for name, rows in (("records.jsonl", records), ("failures.jsonl", [r for r in records if r["runtime_error"] or r["parse_error"]])):
+        (output / name).write_text("".join(json.dumps(r, ensure_ascii=False, allow_nan=False) + "\n" for r in rows))
+    for name in ("evaluation.yaml", "summary.json", "records.jsonl", "failures.jsonl"):
+        client.log_artifact(parent.run_id, str(output / name))
+        client.log_param(parent.run_id, f"sha256_{name}", _sha256(output / name))
+    if value["config"]["scope"] == "cross_validation":
+        log_eval_aggregate(store, value["eval_version"], metrics, folds=tuple(value["folds"]))
+    else:
+        log_eval_summary(store, value["eval_version"], metrics)
+    transition_eval_state(store, value["eval_version"], "completed", outcome=outcome)
+
+
+
+def _judgments(evidence):
+    values = list(evidence["initial"])
+    for phase in ("arbiter_independent", "arbitration", "human"):
+        if evidence.get(phase) is not None:
+            values.append(evidence[phase])
+    return {(value["actor_id"], value["phase"]): value for value in values}
+
+
+def _review_attempt_audit(attempts):
+    """Check immutable adopted answers and the single infrastructure retry budget."""
+    observed, seals, last_keys = {}, {}, {}
+    for attempt in attempts:
+        for raw_digest, evidence in attempt.items():
+            current = _judgments(evidence)
+            if not last_keys.get(raw_digest, set()) <= set(current):
+                raise ValueError("review attempt discarded an earlier judgment phase")
+            for actor_phase, judgment in current.items():
+                key = (raw_digest, *actor_phase)
+                history = observed.setdefault(key, [])
+                if history and history[-1]["sha256"] != judgment["sha256"]:
+                    if history[-1]["status"] == "completed":
+                        raise ValueError("completed blind judgment cannot be replaced or selected again")
+                    if len(history) >= 2:
+                        raise ValueError("blind infrastructure failure allows at most one retry")
+                if not history or history[-1]["sha256"] != judgment["sha256"]:
+                    history.append(judgment)
+                seals[judgment["sha256"]] = judgment
+            last_keys[raw_digest] = set(current)
+    return {"attempt_count": len(attempts), "unique_judgment_count": len(seals),
+            "infrastructure_failure_count": sum(v["status"] == "infrastructure_failure" for v in seals.values()),
+            "cost": sum(v["cost"] for v in seals.values()),
+            "elapsed_seconds": sum(v["elapsed_seconds"] for v in seals.values()),
+            "elapsed_definition": "sum of all unique sealed attempt durations (compute work), not wall-clock latency"}
+
+
+def _read_review_attempts(folder, params, *, pending=None):
+    names = sorted(key for key in params if key.startswith("sha256_review_attempt_"))
+    attempts, paths = [], {}
+    expected = [f"sha256_review_attempt_{i:04d}" for i in range(1, len(names) + 1)]
+    if names != expected:
+        raise ValueError("blind review attempt chain has gaps")
+    directory = folder / "review_attempts"
+    if directory.exists():
+        expected_files = {f"{i:04d}.json" for i in range(1, len(names) + 1)}
+        actual_files = {p.name for p in directory.iterdir()}
+        next_file = directory / f"{len(names) + 1:04d}.json"
+        recoverable = (pending is not None and actual_files == expected_files | {next_file.name}
+                       and not next_file.is_symlink() and next_file.read_bytes() == _formal_bytes(pending))
+        if directory.is_symlink() or (actual_files != expected_files and not recoverable):
+            raise ValueError("blind review attempt chain has uncommitted or missing files")
+    for i, key in enumerate(names, 1):
+        name = f"review_attempts/{i:04d}.json"
+        path = folder / name
+        if path.is_symlink() or _sha256(path) != params[key]:
+            raise ValueError("blind review attempt digest drift")
+        attempts.append(json.loads(path.read_bytes()))
+        paths[name] = path
+    return attempts, paths
+
+def resume_versioned_evaluation(*, root: Path, eval_version: str, blind_reviews: Path) -> Path:
+    """Import sealed prediction-only reviews and score the same frozen raw bytes."""
+    import fcntl
+    from mlflow.tracking import MlflowClient
+    from finetune.eval_semantics import extract_semantics
+    from versioning.mlflow_eval import open_eval_store, get_eval_run
+    value = verify_versioned_evaluation(root=root, eval_version=eval_version)
+    if value["config"]["scorer"] != "semantic-v4.1" or not value["config"].get("blind_policy"):
+        raise ValueError("blind resume requires semantic evaluation with a pre-frozen blind_policy")
+    workspace = _formal_workspace(root, eval_version)
+    with (workspace / ".execution.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        store = open_eval_store(Path(root) / "workspace/mlflow")
+        parent = get_eval_run(store, eval_version)
+        if parent.workflow_state != "running" or parent.outcome is not None or set(parent.folds) != set(value["folds"]) or any(r.status != "FINISHED" for r in parent.folds.values()):
+            raise ValueError("only completed inference awaiting review can resume scoring")
+        client = MlflowClient(tracking_uri=store.tracking_uri)
+        output = workspace / "output"
+        params = client.get_run(parent.run_id).data.params
+        from versioning.registry import _run_artifact_root
+        artifact_root = _run_artifact_root(store, parent.run_id)
+        if any(_sha256(folder / "raw_records.jsonl") != params.get("sha256_raw_records.jsonl") or
+               _sha256(folder / "evaluation.yaml") != params.get("sha256_inference_evaluation.yaml")
+               for folder in (output, artifact_root)):
+            raise ValueError("frozen inference bytes drifted before review import")
+        records = [json.loads(line) for line in (output / "raw_records.jsonl").read_text().splitlines()]
+        reviews = json.loads(Path(blind_reviews).read_bytes())
+        if not isinstance(reviews, dict):
+            raise ValueError("blind_reviews must map raw_sha256 to sealed evidence")
+        pending = {r["semantics"]["raw_sha256"] for r in records if not r["semantics"]["review_complete"]}
+        if set(reviews) != pending:
+            raise ValueError("blind review import must exactly cover pending frozen raw digests")
+        incomplete = False
+        for row in records:
+            key = row["semantics"]["raw_sha256"]
+            if key not in pending:
+                continue
+            evidence = reviews[key]
+            if evidence.get("policy") != value["config"]["blind_policy"]:
+                raise ValueError("blind review policy differs from pre-inference policy")
+            row["blind_review"] = evidence
+            row["semantics"] = extract_semantics(row["raw_output"], runtime_error=row["runtime_error"],
+                rules=value["semantic_rules"], blind_review=evidence)
+            incomplete |= not row["semantics"]["review_complete"]
+        attempts, _ = _read_review_attempts(output, params, pending=reviews)
+        tracked_attempts, _ = _read_review_attempts(artifact_root, params, pending=reviews)
+        if tracked_attempts != attempts:
+            raise ValueError("local and tracked blind review attempt chains differ")
+        is_repeat = bool(attempts and attempts[-1] == reviews)
+        proposed = attempts if is_repeat else [*attempts, reviews]
+        _review_attempt_audit(proposed)
+        if not is_repeat:
+            from versioning.manifest import _publish_immutable
+            attempt_path = output / "review_attempts" / f"{len(proposed):04d}.json"
+            _publish_immutable(attempt_path, _formal_bytes(reviews), label="sealed blind review attempt")
+            attempt_path.chmod(0o444)
+            client.log_artifact(parent.run_id, str(attempt_path), artifact_path="review_attempts")
+            client.log_param(parent.run_id, f"sha256_review_attempt_{len(proposed):04d}", _sha256(attempt_path))
+        if incomplete:
+            raise EvaluationReviewPending("sealed review attempt is retained but incomplete; only one infrastructure retry per actor/phase is allowed")
+        review_path = output / "blind_reviews.json"
+        from versioning.manifest import _publish_immutable
+        _publish_immutable(review_path, _formal_bytes(reviews), label="sealed blind review")
+        client.log_artifact(parent.run_id, str(review_path))
+        client.log_param(parent.run_id, "sha256_blind_reviews.json", _sha256(review_path))
+        _finish_formal_evaluation(value, records, output, store, parent, hashlib.sha256(_formal_bytes(value)).hexdigest())
+    return export_versioned_evaluation(root=root, eval_version=eval_version)
+
 def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
     """Read-only check of actual MLflow inputs/results and evaluated weight bytes."""
     from mlflow.tracking import MlflowClient
-    from versioning.registry import _run_artifact_root, _artifact_tree, get_model
+    from versioning.registry import _run_artifact_root, _artifact_tree, validate_model_for_evaluation
 
     client = MlflowClient(tracking_uri=store.tracking_uri)
     artifact_root = _run_artifact_root(store, record.run_id)
@@ -895,14 +1235,19 @@ def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
         raise ValueError("execution evidence evaluation identity differs")
     if _formal_config(value["config"]) != value["config"]:
         raise ValueError("execution evidence evaluation policy differs")
+    expected_definitions = SEMANTIC_METRICS if value["config"]["scorer"] == "semantic-v4.1" else FORMAL_METRICS
+    if value.get("metric_definitions") != expected_definitions:
+        raise ValueError("execution evidence metric definitions differ from frozen protocol")
     sources = {"finetune/eval_run.py", "finetune/v4_1_runtime.py", "pipeline/v4_1_labels.py",
                "finetune/validation/model_runtime.py", "finetune/validation/constants.py",
                "finetune/validation/video_loader.py", "pipeline/preprocessing/minicpm_preprocessor.py"}
+    if value["config"]["scorer"] == "semantic-v4.1":
+        sources.update({"finetune/eval_semantics.py", "finetune/eval_baselines.py"})
     if set(value["implementation_sha256"]) != sources or any(
-        _sha256(ROOT / source) != digest for source, digest in value["implementation_sha256"].items()
+        not _implementation_matches(value, source, digest) for source, digest in value["implementation_sha256"].items()
     ):
         raise ValueError("execution evidence requires the frozen scorer implementation")
-    model = get_model(store, record.model_id)
+    model = validate_model_for_evaluation(store, record.model_id, record.model_version_number)
     if _model_binding(model) != value["model"]:
         raise ValueError("execution evidence registered model binding differs")
     digest = hashlib.sha256(_formal_bytes(value)).hexdigest()
@@ -918,6 +1263,14 @@ def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
         if _sha256(path) != params.get(f"sha256_{name}"):
             raise ValueError("completed evaluation artifact digest mismatch")
         paths[name] = path
+    if value["config"]["scorer"] == "semantic-v4.1":
+        for name in ("raw_records.jsonl", *(["blind_reviews.json"] if "sha256_blind_reviews.json" in params else [])):
+            path = artifact_root / name
+            if _sha256(path) != params.get(f"sha256_{name}"):
+                raise ValueError("frozen raw or blind review digest differs")
+            paths[name] = path
+    attempts, attempt_paths = _read_review_attempts(artifact_root, params)
+    paths.update(attempt_paths)
     evaluation = json.loads(paths["evaluation.yaml"].read_bytes())
     if {key: evaluation.get(key) for key in value} != value:
         raise ValueError("persisted evaluation input mismatch")
@@ -936,9 +1289,53 @@ def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
             pass
         if row["prediction"] != parsed or row["strict_valid"] != (parsed is not None) or row["scores"] != score_v4_1_prediction(row["target"], parsed):
             raise ValueError("completed evaluation scoring mismatch")
-    recomputed = summarize_records(records)
-    metrics = {key: recomputed["metrics"][key] for key in FORMAL_METRICS}
-    outcome = "passed" if all(metrics[k] >= threshold for k, threshold in value["config"]["thresholds"].items()) else "failed"
+    if value["config"]["scorer"] == "semantic-v4.1":
+        from finetune.eval_semantics import extract_semantics
+        raw_rows = [json.loads(line) for line in paths["raw_records.jsonl"].read_text().splitlines()]
+        reviews = json.loads(paths["blind_reviews.json"].read_bytes()) if "blind_reviews.json" in paths else {}
+        if bool(attempts) != bool(reviews) or (attempts and attempts[-1] != reviews):
+            raise ValueError("final adopted blind reviews differ from immutable attempt chain")
+        pending_raw = {r["semantics"]["raw_sha256"]: r for r in raw_rows if not r["semantics"]["review_complete"]}
+        for attempt in attempts:
+            if set(attempt) != set(pending_raw):
+                raise ValueError("blind attempt changed the original pending raw denominator")
+            for raw_digest, evidence in attempt.items():
+                if evidence.get("policy") != value["config"].get("blind_policy"):
+                    raise ValueError("blind attempt policy drift")
+                raw = pending_raw[raw_digest]
+                extract_semantics(raw["raw_output"], runtime_error=raw["runtime_error"],
+                    rules=value["semantic_rules"], blind_review=evidence)
+        if len(raw_rows) != len(records):
+            raise ValueError("frozen raw denominator mismatch")
+        for row, raw in zip(records, raw_rows, strict=True):
+            original = {k: v for k, v in row.items() if k not in {"semantics", "blind_review"}}
+            if original != {k: v for k, v in raw.items() if k != "semantics"}:
+                raise ValueError("semantic import changed frozen inference records")
+            if row.get("blind_review") is not None:
+                if (row["blind_review"] != reviews.get(raw["semantics"]["raw_sha256"]) or
+                    row["blind_review"].get("policy") != value["config"].get("blind_policy")):
+                    raise ValueError("sealed review evidence/policy mismatch")
+            if not row.get("semantics", {}).get("review_complete"):
+                raise ValueError("completed evaluation has unfinished semantic review")
+            recomputed_semantic = extract_semantics(row["raw_output"], runtime_error=row["runtime_error"],
+                rules=value["semantic_rules"], blind_review=row.get("blind_review"))
+            if row.get("semantics") != recomputed_semantic:
+                raise ValueError("completed evaluation semantic evidence differs from frozen raw/rules")
+    if value["config"]["scorer"] == "semantic-v4.1":
+        from finetune.eval_semantics import score_semantic_records
+        for fold, child in record.folds.items():
+            selected = [r for r in records if r["fold"] == fold]
+            expected_metrics = {k: float(v) for k, v in score_semantic_records(selected, bootstrap=False)["metrics"].items()
+                                if type(v) in (int, float)}
+            semantic_file = artifact_root / f"fold{fold}/semantic_records.jsonl"
+            original_file = artifact_root / f"fold{fold}/records.jsonl"
+            if (child.sample_count != len(selected) or dict(child.metrics) != expected_metrics or
+                [json.loads(line) for line in semantic_file.read_text().splitlines()] != selected or
+                [json.loads(line) for line in original_file.read_text().splitlines()] != [r for r in raw_rows if r["fold"] == fold]):
+                raise ValueError("per-fold semantic evidence/metrics/denominator mismatch")
+    recomputed, metrics, outcome = _formal_summary(value, records)
+    if attempts:
+        recomputed["blind_import_audit"] = _review_attempt_audit(attempts)
     if (not evaluation_succeeded(recomputed) or any(summary.get(k) != v for k, v in recomputed.items())
         or summary.get("input_sha256") != digest or summary.get("outcome") != outcome
         or record.outcome != outcome or dict(record.metrics) != metrics):
@@ -954,7 +1351,7 @@ def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
     if model.source_scope == "single_fold" and model.deploy_target != model.artifacts["fold0"][kind]:
         raise ValueError("evaluated artifact must match the registered deploy_target")
     for fold in value["folds"]:
-        declared = model.artifacts[f"fold{fold}"][kind]
+        declared = model.artifacts[_formal_artifact_key(value, fold)][kind]
         used = weights[f"fold{fold}"]
         if used.get("model_artifact") != declared:
             raise ValueError("execution evidence evaluated artifact differs")
@@ -969,8 +1366,14 @@ def validate_evaluation_execution_artifacts(*, store, record) -> dict[str, Any]:
         "model_version": record.model_id, "mlflow_model_version": record.model_version_number,
         "data_version": record.data_version, "split": "validation", "model_scope": record.scope,
         "sample_count": len(records), "outcome": record.outcome, "run_id": record.run_id,
-        "input_sha256": digest, "artifacts": {name: {"uri": f"runs:/{record.run_id}/{name}",
-            "sha256": params[f"sha256_{name}"]} for name in paths}}
+        "input_sha256": digest,
+        **({"scoring_protocol": "semantic-v4.1", "semantic_rules_sha256":
+            hashlib.sha256(_formal_bytes(value["semantic_rules"])).hexdigest(),
+            "development_evidence_status": recomputed["development_gates"]["outcome"]}
+           if value["config"]["scorer"] == "semantic-v4.1" else {}),
+        "artifacts": {name: {"uri": f"runs:/{record.run_id}/{name}",
+            "sha256": (params[f"sha256_review_attempt_{Path(name).stem}"] if name.startswith("review_attempts/")
+                       else params[f"sha256_{name}"])} for name in paths}}
 
 
 def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
@@ -985,3 +1388,44 @@ def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
         raise ValueError("local frozen input differs from actual execution evidence")
     target = Path(root) / "records/evaluations" / eval_version / "manifest.yaml"
     return _publish_immutable(target, _formal_bytes(document), label="evaluation manifest")
+
+
+def compare_versioned_evaluations(*, root: Path, eval_version: str, baseline_eval_version: str) -> Path:
+    """Publish a paired development comparison from two complete formal Runs."""
+    from versioning.ids import parse_eval_id
+    from versioning.registry import open_registry_store, _run_artifact_root
+    from versioning.mlflow_eval import open_eval_store, validate_eval_for_conclusion
+    from versioning.manifest import _publish_immutable
+    from finetune.eval_baselines import compare_paired_records
+    parse_eval_id(eval_version)
+    parse_eval_id(baseline_eval_version)
+    store = open_registry_store(Path(root) / "workspace/mlflow", data_root=Path(root) / "data")
+    eval_store = open_eval_store(store.root)
+    inputs, rows, manifests = {}, {}, {}
+    for role, identity in (("base", baseline_eval_version), ("trained", eval_version)):
+        record = validate_eval_for_conclusion(eval_store, identity)
+        manifest = validate_evaluation_execution_artifacts(store=store, record=record)
+        artifact = _run_artifact_root(store, record.run_id)
+        frozen = json.loads((artifact / "input/evaluation.yaml").read_bytes())
+        if frozen["config"]["scorer"] != "semantic-v4.1" or frozen["config"]["split"] != "validation":
+            raise ValueError("paired comparison requires semantic development evidence")
+        is_base = frozen["model"].get("source_kind") == "base"
+        if (role == "base") != is_base:
+            raise ValueError("paired comparison requires a real registered base and a trained model")
+        inputs[role], manifests[role] = frozen, manifest
+        rows[role] = [json.loads(line) for line in (artifact / "records.jsonl").read_text().splitlines()]
+    if _weight_inventory(Path(inputs["trained"]["model"]["base_model"])) != inputs["base"]["model"]["source_evidence"]["base_files"]:
+        raise ValueError("paired baseline differs from the trained model's actual frozen base bytes")
+    def conditions(value):
+        return {"media_sampling": {"data_version": value["data_version"],
+                    "media": value["data_binding"]["media"], "video_max_frames": value["config"]["generation"]["video_max_frames"]},
+                "prompt": value["prompt"],
+                "decode": {"generation": value["config"]["generation"], "quantization_bit": value["config"]["quantization_bit"]},
+                "scorer": {"protocol": "semantic-v4.1", "rules": value["semantic_rules"]}}
+    result = compare_paired_records(rows["base"], rows["trained"],
+        base_config=conditions(inputs["base"]), trained_config=conditions(inputs["trained"]),
+        absolute_gate_result={role: manifest["outcome"] for role, manifest in manifests.items()})
+    payload = {"schema_version": "tensile-development-paired-comparison/v1", "base_eval": baseline_eval_version,
+               "trained_eval": eval_version, "evidence": manifests, "comparison": result}
+    return _publish_immutable(Path(root) / "records/evaluations" / eval_version / "paired" / f"{baseline_eval_version}.json",
+        _formal_bytes(payload), label="paired development comparison")

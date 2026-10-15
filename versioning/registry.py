@@ -13,7 +13,7 @@ import shutil
 import threading
 import tempfile
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +69,9 @@ SOURCE_SCOPE_TAG: str = "source_scope"
 ARTIFACTS_TAG: str = "artifacts"
 DEPLOY_TARGET_TAG: str = "deploy_target"
 BASE_MODEL_TAG: str = "base_model"
-SOURCE_SCOPES: tuple[str, ...] = ("single_fold", "cross_validation", "full")
+SOURCE_SCOPES: tuple[str, ...] = ("single_fold", "cross_validation", "full", "base", "diagnostic_fold")
+SOURCE_KIND_TAG = "source_kind"
+SOURCE_EVIDENCE_TAG = "source_evidence"
 
 MATERIALIZED_METADATA_FILE: str = "materialized.yaml"
 MATERIALIZED_ARTIFACTS_DIR: str = "artifacts"
@@ -126,10 +128,10 @@ class RegisteredModelRecord:
     version: int
     registered_model: str
     run_id: str
-    train_id: str
+    train_id: str | None
     eval_id: str | None
-    data_version: str
-    prompt_version: str
+    data_version: str | None
+    prompt_version: str | None
     git_commit: str
     base_model: str
     source_scope: str
@@ -139,6 +141,8 @@ class RegisteredModelRecord:
     offline_backup_scope: str | None
     production_approved: bool
     aliases: tuple[str, ...]
+    source_kind: str = "trained"
+    source_evidence: dict[str, Any] = field(default_factory=dict)
 
 
 @contextmanager
@@ -233,15 +237,21 @@ def _validate_model_layout(
         "single_fold": {"fold0"},
         "cross_validation": {"fold0", "fold1", "fold2"},
         "full": {"full"},
+        "base": {"base"},
+        "diagnostic_fold": set(normalized),
     }[source_scope]
+    if source_scope == "diagnostic_fold" and (
+        len(normalized) != 1 or next(iter(normalized)) not in {"fold0", "fold1", "fold2"}
+    ):
+        raise IllegalRegistryRecord("diagnostic_fold requires exactly one actual fold")
     if set(normalized) != expected:
         raise IllegalRegistryRecord(
             f"artifacts scope {sorted(normalized)} 与 source_scope={source_scope!r} 不一致"
         )
     all_paths = {path for entries in normalized.values() for path in entries.values()}
-    if source_scope == "cross_validation":
+    if source_scope in {"cross_validation", "base", "diagnostic_fold"}:
         if deploy_target is not None:
-            raise IllegalRegistryRecord("cross_validation 的 deploy_target 必须为 null")
+            raise IllegalRegistryRecord(f"{source_scope} 的 deploy_target 必须为 null")
         return source_scope, normalized, None
     if not isinstance(deploy_target, str) or not deploy_target:
         raise IllegalRegistryRecord(f"{source_scope} 必须有唯一 deploy_target")
@@ -332,11 +342,22 @@ def _validate_model_version_tags(version: Any, *, expected_model_id: str | None 
             f"model_id tag {model_id!r} 与请求 {expected_model_id!r} 不一致"
         )
 
-    train_id = tags.get(TRAIN_ID_TAG)
-    try:
-        parse_train_id(train_id)
-    except Exception as exc:
-        raise IllegalRegistryRecord(f"train_id tag 非法: {train_id!r}") from exc
+    source_kind = tags.get(SOURCE_KIND_TAG, "trained")
+    if source_kind not in {"base", "trained"}:
+        raise IllegalRegistryRecord("source_kind must be base or trained")
+    if source_kind == "base":
+        if any(key in tags for key in (TRAIN_ID_TAG, DATA_VERSION_TAG, PROMPT_VERSION_TAG)):
+            raise IllegalRegistryRecord("base source must not contain fabricated training references")
+        if tags.get(SOURCE_SCOPE_TAG) != "base":
+            raise IllegalRegistryRecord("base source scope differs")
+    else:
+        train_id = tags.get(TRAIN_ID_TAG)
+        try:
+            parse_train_id(train_id)
+        except Exception as exc:
+            raise IllegalRegistryRecord(f"train_id tag 非法: {train_id!r}") from exc
+        if tags.get(SOURCE_SCOPE_TAG) == "base":
+            raise IllegalRegistryRecord("trained source cannot use base scope")
 
     eval_id = tags.get(EVAL_ID_TAG)
     if eval_id is not None:
@@ -345,17 +366,19 @@ def _validate_model_version_tags(version: Any, *, expected_model_id: str | None 
         except Exception as exc:
             raise IllegalRegistryRecord(f"eval_id tag 非法: {eval_id!r}") from exc
 
-    data_version = tags.get(DATA_VERSION_TAG)
-    try:
-        parse_data_id(data_version)
-    except Exception as exc:
-        raise IllegalRegistryRecord(f"data_version tag 非法: {data_version!r}") from exc
-
-    prompt_version = tags.get(PROMPT_VERSION_TAG)
-    try:
-        parse_prompt_id(prompt_version)
-    except Exception as exc:
-        raise IllegalRegistryRecord(f"prompt_version tag 非法: {prompt_version!r}") from exc
+    if source_kind == "trained":
+        try:
+            parse_data_id(tags.get(DATA_VERSION_TAG))
+            parse_prompt_id(tags.get(PROMPT_VERSION_TAG))
+        except Exception as exc:
+            raise IllegalRegistryRecord("trained data_version/prompt_version tag 非法") from exc
+    if source_kind == "base" or tags.get(SOURCE_SCOPE_TAG) == "diagnostic_fold":
+        try:
+            evidence = json.loads(tags[SOURCE_EVIDENCE_TAG])
+            if not isinstance(evidence, dict) or evidence.get("schema") != "tensile-model-source/v1":
+                raise ValueError("source evidence schema differs")
+        except (KeyError, ValueError, TypeError) as exc:
+            raise IllegalRegistryRecord("source evidence is missing or malformed") from exc
 
     _validate_non_empty_string(tags.get(GIT_COMMIT_TAG), "git_commit")
     _validate_non_empty_string(tags.get(BASE_MODEL_TAG), "base_model")
@@ -394,10 +417,10 @@ def _build_record(version: Any) -> RegisteredModelRecord:
         version=int(version.version),
         registered_model=version.name,
         run_id=version.run_id,
-        train_id=tags[TRAIN_ID_TAG],
+        train_id=tags.get(TRAIN_ID_TAG),
         eval_id=tags.get(EVAL_ID_TAG),
-        data_version=tags[DATA_VERSION_TAG],
-        prompt_version=tags[PROMPT_VERSION_TAG],
+        data_version=tags.get(DATA_VERSION_TAG),
+        prompt_version=tags.get(PROMPT_VERSION_TAG),
         git_commit=tags[GIT_COMMIT_TAG],
         base_model=tags[BASE_MODEL_TAG],
         source_scope=tags[SOURCE_SCOPE_TAG],
@@ -407,6 +430,8 @@ def _build_record(version: Any) -> RegisteredModelRecord:
         offline_backup_scope=tags.get(OFFLINE_BACKUP_SCOPE_TAG),
         production_approved=tags.get(PRODUCTION_APPROVED_TAG) == "true",
         aliases=tuple(aliases),
+        source_kind=tags.get(SOURCE_KIND_TAG, "trained"),
+        source_evidence=json.loads(tags.get(SOURCE_EVIDENCE_TAG, "{}")),
     )
 
 
@@ -468,6 +493,7 @@ def get_model_by_alias(store: ModelRegistryStore, alias: str) -> RegisteredModel
     record = _build_record(version)
     if record.record_validity == RecordValidity.INVALID.value:
         raise InvalidModelRecord(f"alias {alias!r} 指向 invalid 模型")
+    _reject_development_only_source(record)
     if record.eval_id is None:
         raise PromotionGateRejected(f"alias {alias!r} 指向未 finalize 模型")
     if record.deploy_target is None or record.source_scope == "cross_validation":
@@ -645,7 +671,267 @@ def _validate_model_artifact_evidence(store: Any, train: Any, artifacts: Any) ->
                 raise ValueError('model artifact is not covered by training execution evidence')
 
 
+def _complete_base_inventory(path: Path) -> dict[str, dict[str, Any]]:
+    """Freeze complete local inference bytes; a directory name is not provenance."""
+    files = _artifact_tree(path)
+    required = {"config.json", "tokenizer_config.json"}
+    if not required <= files.keys():
+        raise ValueError("base model requires configuration and tokenizer configuration")
+    if not any(name in files for name in ("tokenizer.json", "tokenizer.model", "vocab.json")):
+        raise ValueError("base model tokenizer bytes are missing")
+    if not any(name in files for name in ("preprocessor_config.json", "processor_config.json")):
+        raise ValueError("base model processor configuration is missing")
+    for name in required | ({"preprocessor_config.json", "processor_config.json"} & files.keys()):
+        if not isinstance(json.loads((path / name).read_bytes()), dict):
+            raise ValueError("base model configuration must be a mapping")
+    weights = {name for name in ("model.safetensors", "pytorch_model.bin") if files.get(name, {}).get("size", 0) > 0}
+    for index in ("model.safetensors.index.json", "pytorch_model.bin.index.json"):
+        if index not in files:
+            continue
+        mapping = json.loads((path / index).read_bytes()).get("weight_map")
+        if not isinstance(mapping, dict) or not mapping:
+            raise ValueError("base model weight index is malformed")
+        shards = set(mapping.values())
+        if any(not isinstance(name, str) or Path(name).is_absolute() or ".." in Path(name).parts
+               or files.get(name, {}).get("size", 0) <= 0 for name in shards):
+            raise ValueError("base model weight shard is missing")
+        weights.update(shards)
+    if not weights:
+        raise ValueError("base model complete weight bytes are missing")
+    return files
+
+
+def _base_provenance(path: Path, upstream_source: str, upstream_revision: str) -> dict[str, Any]:
+    """Check available local metadata; never claim network verification from a caller string."""
+    config = json.loads((path / "config.json").read_bytes())
+    source = config.get("_name_or_path")
+    revision = config.get("_commit_hash")
+    if source is not None and source not in {upstream_source, str(path)}:
+        raise ValueError("base configuration upstream source differs")
+    if revision is not None and revision != upstream_revision:
+        raise ValueError("base configuration upstream revision differs")
+    metadata_verified = source == upstream_source and revision == upstream_revision
+    if path.parent.name == "snapshots" and path.parent.parent.name.startswith("models--"):
+        cache_source = path.parent.parent.name.removeprefix("models--").replace("--", "/")
+        if cache_source != upstream_source or path.name != upstream_revision:
+            raise ValueError("base Hugging Face snapshot provenance differs")
+        metadata_verified = True
+    proof = path / "source-provenance.json"
+    if proof.exists():
+        provenance = json.loads(proof.read_bytes())
+        if (not isinstance(provenance, dict) or provenance.get("schema") != "tensile-base-provenance/v1"
+                or provenance.get("upstream_source") != upstream_source
+                or provenance.get("upstream_revision") != upstream_revision
+                or not isinstance(provenance.get("verified_by"), str) or not provenance["verified_by"].strip()):
+            raise ValueError("base local provenance file is malformed or inconsistent")
+        return {"method": "local_provenance", "provenance": provenance}
+    if not metadata_verified:
+        raise ValueError("base source is unknown: require consistent local metadata or source-provenance.json")
+    return {"method": "local_metadata", "upstream_source": upstream_source, "upstream_revision": upstream_revision}
+
+
+def _source_identity(model: Any) -> dict[str, Any]:
+    return {key: getattr(model, key) for key in ("model_id", "train_id", "data_version",
+            "prompt_version", "git_commit", "base_model", "source_scope", "source_kind", "artifacts")}
+
+
+def _reject_development_only_source(model: Any) -> None:
+    if model.source_kind == "base" or model.source_scope == "diagnostic_fold":
+        raise PromotionGateRejected("base and diagnostic models are restricted to development evaluation/performance")
+
+
+def _diagnostic_parent_evidence(store: Any, parent: Any, fold: int) -> tuple[dict, dict, dict]:
+    """Read only the chosen FINISHED child and shared input; never promote its parent."""
+    if parent.record_validity != "valid" or parent.scope != "cross_validation":
+        raise ValueError("diagnostic source training is invalid or not cross-validation")
+    child = parent.folds.get(fold)
+    if child is None or child.status != "FINISHED":
+        raise ValueError("diagnostic source requires a FINISHED fold")
+    root = _run_artifact_root(store, parent.run_id)
+    inputs = _artifact_tree(root / "input")
+    manifest = json.loads((root / "input/input-manifest.json").read_bytes())
+    if set(inputs) != set(manifest) | {"input-manifest.json"} or any(inputs[n] != v for n, v in manifest.items()):
+        raise ValueError("diagnostic shared input inventory differs")
+    training = yaml.safe_load((root / "input/training.yaml").read_text())
+    if training.get("version") != parent.train_id or any(training.get(key) != getattr(parent, key)
+            for key in ("data_version", "prompt_version", "git_commit", "base_model")):
+        raise ValueError("diagnostic shared training binding differs")
+    from finetune.train_prepare_run import _training_configs, _reject_unfrozen_training_inputs
+    config = _training_configs(training)[f"fold{fold}"]
+    _reject_unfrozen_training_inputs(config)
+    encoded = json.dumps(config, ensure_ascii=False, sort_keys=True, allow_nan=False)
+    actual_child = _client(store).get_run(child.run_id)
+    if (parent.config.get(f"fold{fold}") != encoded
+            or actual_child.data.params.get("training_config_json") != encoded
+            or actual_child.data.tags.get("output_artifact") != f"runs:/{parent.run_id}/fold{fold}/adapter"):
+        raise ValueError("diagnostic fold configuration binding differs")
+    proof = root / f"fold{fold}/execution-evidence.json"
+    expected = actual_child.data.params.get("sha256_fold_evidence")
+    if proof.is_symlink() or not proof.is_file() or not expected or _artifact_digest(proof) != expected:
+        raise ValueError("diagnostic fold receipt is missing or drifted")
+    receipt = json.loads(proof.read_bytes())
+    if (receipt.get("schema") != "tensile-training-fold-execution/v1"
+            or receipt.get("train_version") != parent.train_id or receipt.get("run_id") != parent.run_id
+            or receipt.get("child_run_id") != child.run_id or receipt.get("fold") != fold
+            or receipt.get("input") != inputs or receipt.get("metrics") != dict(child.metrics)):
+        raise ValueError("diagnostic fold receipt binding differs")
+    validate_training_reference(store.data_root, parent.data_version)
+    base = _complete_base_inventory(Path(parent.base_model))
+    if base != training.get("base_model_files"):
+        raise ValueError("diagnostic base model drifted")
+    return receipt, training, base
+
+
+def _validate_frozen_model_source(store: Any, model: Any) -> Any:
+    root = _run_artifact_root(store, model.run_id)
+    proof = root / "model-source.json"
+    run = _client(store).get_run(model.run_id)
+    if (run.info.status != "FINISHED" or run.data.tags.get("record_validity") != "valid"
+            or run.data.tags.get("model_source_id") != model.model_id):
+        raise ValueError("model snapshot source Run is invalid or unfinished")
+    if proof.is_symlink() or not proof.is_file() or _artifact_digest(proof) != run.data.params.get("sha256_model_source"):
+        raise ValueError("model source receipt is missing or drifted")
+    evidence = json.loads(proof.read_bytes())
+    if evidence != model.source_evidence or evidence.get("identity") != _source_identity(model):
+        raise ValueError("model source identity differs from frozen receipt")
+    expected_files = {prefix + "/" + name: spec for prefix, files in evidence["snapshot"].items()
+                      for name, spec in files.items()}
+    actual = _artifact_tree(root)
+    actual.pop("model-source.json", None)
+    if actual != expected_files:
+        raise ValueError("model source snapshot bytes drifted")
+    if model.source_kind == "base":
+        if _base_provenance(Path(evidence["source_path"]), evidence["upstream_source"], evidence["upstream_revision"]) != evidence["provenance"]:
+            raise ValueError("base model provenance drifted")
+        if _complete_base_inventory(Path(evidence["source_path"])) != evidence["base_files"]:
+            raise ValueError("base model source bytes drifted")
+        if evidence["snapshot"] != {"base/model": evidence["base_files"]}:
+            raise ValueError("base snapshot differs from source")
+        return None
+    parent = get_train_run(_train_store(store), model.train_id)
+    receipt, training, base = _diagnostic_parent_evidence(store, parent, evidence["fold"])
+    if (parent.run_id != evidence["parent_run_id"] or receipt != evidence["fold_receipt"]
+            or base != evidence["base_files"] or training != evidence["training"]):
+        raise ValueError("diagnostic source binding drifted")
+    for key in ("data_version", "prompt_version", "git_commit", "base_model"):
+        if getattr(parent, key) != getattr(model, key):
+            raise ValueError("diagnostic model training references differ")
+    prefix = f"fold{evidence['fold']}/adapter"
+    if evidence["snapshot"] != {prefix: receipt["output"]}:
+        raise ValueError("diagnostic snapshot differs from fold receipt")
+    state = json.loads((root / prefix / "trainer_state.json").read_bytes())
+    if type(state.get("global_step")) is not int or state["global_step"] <= 0 or state["global_step"] != evidence["checkpoint_step"]:
+        raise ValueError("diagnostic checkpoint step differs")
+    return parent
+
+
+def _register_frozen_source(store: Any, model_id: str, *, tags: dict, evidence: dict,
+                            source: Path, prefix: str) -> RegisteredModelRecord:
+    """Called under Registry lock; freeze actual bytes before exposing a ModelVersion."""
+    client = _client(store)
+    try:
+        _fetch_version_by_model_id(client, model_id)
+    except RegistryModelNotFound:
+        pass
+    else:
+        raise ModelVersionConflict(f"model {model_id} 已存在")
+    run = client.create_run(store.train_experiment_id, tags={"model_source_id": model_id,
+                            "record_validity": "valid"}, run_name=f"{model_id}-source")
+    try:
+        client.log_artifacts(run.info.run_id, str(source), artifact_path=prefix)
+        snapshot_root = _run_artifact_root(store, run.info.run_id)
+        if _artifact_tree(snapshot_root / prefix) != evidence["snapshot"][prefix]:
+            raise ValueError("model snapshot differs from source bytes")
+        proof = snapshot_root / "model-source.json"
+        proof.write_text(json.dumps(evidence, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
+        client.log_param(run.info.run_id, "sha256_model_source", _artifact_digest(proof))
+        client.set_terminated(run.info.run_id, status="FINISHED")
+        tags[SOURCE_EVIDENCE_TAG] = json.dumps(evidence, ensure_ascii=False, sort_keys=True)
+        version = client.create_model_version(name=REGISTERED_MODEL_NAME, source=run.info.artifact_uri,
+                                              run_id=run.info.run_id, tags=tags)
+        return _build_record(version)
+    except BaseException:
+        client.set_tag(run.info.run_id, "record_validity", "invalid")
+        client.set_terminated(run.info.run_id, status="FAILED")
+        raise
+
+
+def _assert_source_model_id_unused(store: Any, model_id: str) -> None:
+    try:
+        _fetch_version_by_model_id(_client(store), model_id)
+    except RegistryModelNotFound:
+        return
+    raise ModelVersionConflict(f"model {model_id} 已存在")
+
+
+def register_base_model(store: ModelRegistryStore, model_id: str, *, model_path: Path,
+                        upstream_source: str, upstream_revision: str, git_commit: str) -> RegisteredModelRecord:
+    """Register a fixed base source without inventing a training Run, data or Prompt."""
+    parse_model_id(model_id)
+    with _registry_write_lock(store):
+        _assert_source_model_id_unused(store, model_id)
+    for value, name in ((upstream_source, "upstream_source"), (upstream_revision, "upstream_revision"), (git_commit, "git_commit")):
+        _validate_non_empty_string(value, name)
+    if upstream_revision.lower() in {"main", "master", "latest", "head"}:
+        raise IllegalRegistryRecord("upstream_revision must identify a fixed revision")
+    path = Path(model_path).absolute()
+    files = _complete_base_inventory(path)
+    provenance = _base_provenance(path, upstream_source, upstream_revision)
+    artifacts = {"base": {"model": "artifacts/base/model"}}
+    identity = {"model_id": model_id, "train_id": None, "data_version": None, "prompt_version": None,
+                "git_commit": git_commit, "base_model": str(path), "source_scope": "base",
+                "source_kind": "base", "artifacts": artifacts}
+    evidence = {"schema": "tensile-model-source/v1", "identity": identity, "source_path": str(path),
+                "upstream_source": upstream_source, "upstream_revision": upstream_revision,
+                "provenance": provenance, "base_files": files, "snapshot": {"base/model": files}}
+    tags = {MODEL_ID_TAG: model_id, SOURCE_KIND_TAG: "base", SOURCE_SCOPE_TAG: "base",
+            GIT_COMMIT_TAG: git_commit, BASE_MODEL_TAG: str(path), RECORD_VALIDITY_TAG: "valid",
+            ARTIFACTS_TAG: json.dumps(artifacts, sort_keys=True)}
+    with _registry_write_lock(store):
+        return _register_frozen_source(store, model_id, tags=tags, evidence=evidence, source=path, prefix="base/model")
+
+
+def register_completed_fold_model(store: ModelRegistryStore, model_id: str, *, train_id: str,
+                                  fold: int) -> RegisteredModelRecord:
+    """Snapshot an actually FINISHED fold; leave its parent training state untouched."""
+    parse_model_id(model_id)
+    parse_train_id(train_id)
+    if type(fold) is not int or fold not in (0, 1, 2):
+        raise IllegalRegistryRecord("fold must be 0, 1 or 2")
+    with _registry_write_lock(store):
+        _assert_source_model_id_unused(store, model_id)
+        parent = get_train_run(_train_store(store), train_id)
+        receipt, training, base = _diagnostic_parent_evidence(store, parent, fold)
+        source = _run_artifact_root(store, parent.run_id) / f"fold{fold}/adapter"
+        if _artifact_tree(source) != receipt["output"]:
+            raise ValueError("completed fold output differs from receipt")
+        if "trainer_state.json" not in receipt["output"]:
+            raise ValueError("completed fold requires receipt-covered checkpoint step evidence")
+        state = json.loads((source / "trainer_state.json").read_bytes())
+        if type(state.get("global_step")) is not int or state["global_step"] <= 0:
+            raise ValueError("completed fold requires actual checkpoint step evidence")
+        prefix = f"fold{fold}/adapter"
+        artifacts = {f"fold{fold}": {"adapter": f"artifacts/{prefix}"}}
+        identity = {"model_id": model_id, "train_id": train_id, "data_version": parent.data_version,
+                    "prompt_version": parent.prompt_version, "git_commit": parent.git_commit,
+                    "base_model": parent.base_model, "source_kind": "trained", "source_scope": "diagnostic_fold",
+                    "artifacts": artifacts}
+        evidence = {"schema": "tensile-model-source/v1", "identity": identity,
+                    "parent_run_id": parent.run_id, "fold": fold, "checkpoint_step": state["global_step"],
+                    "fold_receipt": receipt, "training": training, "base_files": base,
+                    "snapshot": {prefix: receipt["output"]}}
+        tags = {key: value for key, value in identity.items() if key != "artifacts"}
+        tags[ARTIFACTS_TAG] = json.dumps(artifacts, sort_keys=True)
+        tags[RECORD_VALIDITY_TAG] = "valid"
+        return _register_frozen_source(store, model_id, tags=tags, evidence=evidence, source=source, prefix=prefix)
+
+
 def _run_model_train_gate(store: ModelRegistryStore, model: Any) -> Any:
+    if model.source_kind == "base" or model.source_scope == "diagnostic_fold":
+        try:
+            return _validate_frozen_model_source(store, model)
+        except (ValueError, OSError, KeyError, TypeError, MlflowException) as exc:
+            raise PromotionGateRejected(f"model source evidence rejected: {exc}") from exc
     train = _run_train_gate(store, model.train_id)
     if any(getattr(train, key) != getattr(model, key)
            for key in ('run_id', 'data_version', 'prompt_version', 'git_commit', 'base_model')):
@@ -708,6 +994,8 @@ def register_model(
 ) -> RegisteredModelRecord:
     """登记 staging 模型，先得到供正式 eval 精确引用的数值版本。"""
     parse_model_id(model_id)
+    if source_scope in {"base", "diagnostic_fold"}:
+        raise IllegalRegistryRecord("use the explicit base/completed-fold registration entry point")
     parse_train_id(train_id)
     if artifacts is None:
         artifacts = {
@@ -740,6 +1028,7 @@ def register_model(
         run = client.get_run(train_record.run_id)
         tags = {
             MODEL_ID_TAG: model_id,
+            SOURCE_KIND_TAG: "trained",
             TRAIN_ID_TAG: train_record.train_id,
             DATA_VERSION_TAG: train_record.data_version,
             PROMPT_VERSION_TAG: train_record.prompt_version,
@@ -775,6 +1064,7 @@ def finalize_model_evaluation(
         version = _fetch_version_by_model_id(client, model_id)
         _validate_model_version_tags(version, expected_model_id=model_id)
         record = _build_record(version)
+        _reject_development_only_source(record)
         if record.record_validity == RecordValidity.INVALID.value:
             raise InvalidModelRecord(f"model {model_id} 已 invalid")
         if record.eval_id is not None and record.eval_id != eval_id:
@@ -849,6 +1139,7 @@ def _approve_model_for_production_locked(
     version = _fetch_version_by_model_id(client, model_id)
     _validate_model_version_tags(version, expected_model_id=model_id)
     record = _build_record(version)
+    _reject_development_only_source(record)
 
     if record.record_validity == RecordValidity.INVALID.value:
         raise InvalidModelRecord(f"model {model_id} 已 invalid")
@@ -903,6 +1194,7 @@ def _set_alias_locked(
     version = _fetch_version_by_model_id(client, model_id)
     _validate_model_version_tags(version, expected_model_id=model_id)
     record = _build_record(version)
+    _reject_development_only_source(record)
 
     if record.record_validity == RecordValidity.INVALID.value:
         raise InvalidModelRecord(f"model {model_id} 已 invalid")
@@ -1030,6 +1322,8 @@ def _build_materialized_payload(record: RegisteredModelRecord) -> dict[str, Any]
         "record_validity": record.record_validity,
         "offline_backup_scope": record.offline_backup_scope,
         "manifest": f"records/models/{record.model_id}/manifest.yaml",
+        **({"source_kind": record.source_kind, "source_evidence": record.source_evidence}
+           if record.source_evidence else {}),
     }
 
 
@@ -1038,6 +1332,10 @@ def validate_materialized_artifacts(
 ) -> None:
     """逐项验证 Registry 声明的 artifact 在物化根中真实存在且有内容。"""
     root = Path(materialized_root).resolve()
+    if record.source_evidence:
+        for prefix, files in record.source_evidence["snapshot"].items():
+            if _artifact_tree(root / "artifacts" / prefix) != files:
+                raise IllegalRegistryRecord("materialized model source bytes drifted")
     for entries in record.artifacts.values():
         for declared in entries.values():
             target = (root / declared).resolve()

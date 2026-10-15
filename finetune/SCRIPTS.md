@@ -18,7 +18,9 @@ Non-goals:
 | `holdout_metrics.py` | 复用原Stage D七项冻结门槛与私有指标定义；输出公开二值gate，不读取数据或模型 |
 | `eval_holdout.py` | 新入口full媒体推理及显式score授权评分；逐样本细节仅存受限目录，公开aggregate证据 |
 | `train_with_contract.py` | 直接YAML启动CLI已停用；run_training接收新入口已冻结的内存配置 |
-| `eval_run.py` | 裸model-dir CLI已停用；版本化评测函数与严格评分器供新入口调用 |
+| `eval_run.py` | 裸 model-dir CLI 已停用；版本化开发评测冻结/推理/导出，显式 strict-v4.1 或 semantic-v4.1 协议 |
+| `eval_semantics.py` | 纯语义提取、已封存盲评导入、GT 子集统计、同组 bootstrap 和逐折开发门；不加载模型或部署低权限评审进程 |
+| `eval_baselines.py` | 仅从开发训练集构造多数类对照及同条件配对报告；不读取 test、不改变绝对质量门 |
 | `train_monitor_run.py` | 查看训练进度 |
 | `eval_audit_effective_views.py` | 审计模型实际采样帧 |
 | `release_validate.py` | 校验冻结数据发布 |
@@ -26,3 +28,5 @@ Non-goals:
 | `v4_1_runtime.py` | 公共校验与运行时模块，不直接执行 |
 
 当前工作树不含 `finetune/archive/`；已移出的历史复现脚本从 Git 历史查询，不作为现行入口。
+
+语义开发配置、来源登记、judge 交接及报告见 [versioning 语义开发协议](../versioning/SCRIPTS.md#语义开发协议)。base/diagnostic 来源由 Registry 核验，不能伪造 train 或借服务 alias 使用。新 holdout、实际评审权限隔离、受控性能和完整生产接线仍待实施；本机合成验证不证明真实模型质量、训练机运行或 E2E 通过。

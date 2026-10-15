@@ -8,7 +8,7 @@
 
 **最近现场及环境证据（2026-10-13）**：DOC-INTEGRATION 和 REMOTE-STATE-REFRESH 已完成。用户随后授权新建正式Conda环境；ENV-ACTIVATION 已在训练机建立 `mvllm2`（Python3.11.17），按GPU锁安装并绑定正式checkout，通过环境验收，见[部署记录](results/conda-environment-setup-20261013.md)。保留agent/cpm45，不同步代码，不启动数据处理、训练、推理或评测。候选模型来源及实际运行授权仍须核定；新体系正式训练/评测/模型记录尚未产生符合当前阶段，不作为迁移失败，也不创建空记录补目录。环境可用不等于模型质量或恢复通过。
 
-**当前文档进展（2026-10-15）**：完整[测评方案](model-evaluation.md)及[实施计划](plans/model-evaluation-implementation.md)已入库；本轮继续补齐已确认的基座真实来源登记、已完成折快照诊断、盲评权限及独立性能测试入口。预测判读改为可扩展多 Agent：默认两名独立判读，分歧交第三名仲裁，不要求多个真人。上述设计及执行配置均已确认，详见[已确认执行配置](model-evaluation.md)。评审采用本机 Ollama 的 Qwen3.5 9B＋Ornith-1.5 9B，仅匿名回答本地判读、无云端回退；统计、视频规格、超时及预算按已确认配置实施，不再重复征询。现场权重摘要、实际交付参数、隔离适配与样本数量对应的质量预算属于实施前核验，不是重开设计。现行代码未切换，旧六指标/七门不代表新协议；本轮只有文档授权，没有代码、模型调用、训练、test 使用、账户部署、外部 Agent 发包或性能运行授权。
+**当前文档进展（2026-10-15）**：完整[测评方案](model-evaluation.md)及[实施计划](plans/model-evaluation-implementation.md)已入库；本轮继续补齐已确认的基座真实来源登记、已完成折快照诊断、盲评权限及独立性能测试入口。预测判读改为可扩展多 Agent：默认两名独立判读，分歧交第三名仲裁，不要求多个真人。上述设计及执行配置均已确认，详见[已确认执行配置](model-evaluation.md)。评审采用本机 Ollama 的 Qwen3.5 9B＋Ornith-1.5 9B，仅匿名回答本地判读、无云端回退；统计、视频规格、超时及预算按已确认配置实施，不再重复征询。现场权重摘要、实际交付参数、隔离适配与样本数量对应的质量预算属于实施前核验，不是重开设计。2026-10-15 用户已授权开始实施测评基础能力和开发验证接线（批次 A/B）；Codex 已完成基础能力和开发接线，新增关键集102项合成测试及独立复核通过；真实环境证据未取得。旧六指标/七门不代表新协议。授权不包含真实模型调用、训练、test 使用、账户部署、外部 Agent 发包或性能运行。
 
 新体系正式入口为 `python -m versioning`，显式使用五类完整可读身份。train 数据分支用于三折开发验证和 full 训练，test 分支只用于最终独立测试；代码中的 `development` / `holdout` / `test_audit` 保留原值。旧媒体仍被新 store 引用，不得按“迁移完成”删除旧目录。
 
@@ -19,8 +19,8 @@
 | 已完成前序 | DOC-CONSOLIDATION | 已解决：文档及台账收敛 | 独立核查通过；验证第68节；候选手册及运行约定见文档整理记录 |
 | 本轮已完成 | REMOTE-STATE-REFRESH | 已解决：限定范围训练机只读刷新 | 实时事实及缺口已记录；未执行同步、环境切换或模型运行 |
 | 文档交付 | EVAL-PROTOCOL | 已解决：四项前置与多 Agent 判读已入库 | 本批独立源码核查及静态检查通过；只关闭文档增量，代码与真实验收未完成 |
-| 实施前置 A | EVAL-SEMANTICS | 待处理：全样本语义评分与盲评证据 | 已确认设计；代码未授权；先冻结字段提取/指标定义与合成验收 |
-| 开发接线 B | EVAL-DEVELOPMENT | 待处理：真实基座与单折快照登记、逐折门槛 | 来源分支和父partial不变已确认；先核具体来源/字段契约再授权实施 |
+| 本轮已完成 A | EVAL-SEMANTICS | 已解决：纯语义评分与封存判读基础 | 102项新增关键测试通过、独立复核通过；真实隔离归C，模型效果另验 |
+| 开发接线 B | EVAL-DEVELOPMENT | 进行中（Codex）：工程接线已完成，待真实环境证据 | 基座/完成折、逐折门、导出/配对/备份合成通过；下一步现场核验及适用运行授权 |
 | 独立评分 C | EVAL-HOLDOUT | 待处理：多 Agent 隔离、预注册与一次评分接线 | 权限设计已确认；本地模型与匿名回答范围已确认；实际隔离条件须实现验证，依赖 HOLDOUT-BUILD |
 | 性能接线 D | EVAL-PERFORMANCE | 待处理：五分钟全请求性能基准 | 实现可独立准备；规格/超时/预算已确认；真实运行需现场核验与单独授权，不消费 test |
 | 完整绑定 E | EVAL-INTEGRATION | 待处理：新证据导出与模型/服务准入 | 依赖 B/C/D 对应结论；旧 passed 不继承新质量/性能资格 |
@@ -38,23 +38,14 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 ## 待处理、待确认与阻塞事项
 
-### EVAL-SEMANTICS — 全样本语义评分与多 Agent 判读
-
-- **状态/来源**：待处理；来自已确认方案及本轮多 Agent 扩展，代码实施未授权；父目标 MODEL-DIAG / MODEL-QUALITY。
-- **事实与差距**：严格解析与旧 V2 修补器不是 V4.1 语义提取；当前没有多 Agent 预测判读、分歧回收、仲裁或对应审计链。
-- **基本内容与做法**：保留固定规则恢复；剩余匿名冻结回答由两个 Agent 独立按字段提取，一致字段采用，分歧交第三 Agent 先独立判断再仲裁。可配置更多 Agent，但参与者/准确模型版本/提示词/规则/汇总及故障重试策略在评测前冻结，不能不断加 Agent 或重试挑答案。未解字段由用户盲态复核或计不可读失败。
-- **依赖/下一动作**：按[计划批次 A](plans/model-evaluation-implementation.md)冻结提取和统计定义，开发判读编排、结果导入及合成反例；本地匿名回答范围已确认，隔离由 EVAL-HOLDOUT 实现验证，禁止云端回退，不将设计确认当真实发包授权。
-- **验收标准**：Agent始终不看GT/视频/被测模型身份，独立初判不见其他答案；第三Agent仅封存初判后查看分歧，不补缺失字段；总分母、GT适用子集、null误填、拒答、缺类与互斥恢复分类均有保护性用例。记录各Agent原结果、一致/分歧/仲裁/人工复核及改判；同模型共错风险如实披露。先冻结判读再score，不看分数回改；评测Agent恢复不算被测模型自动交互成功。
-- **证据/限制**：[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)；本轮仅文档，不调用评审 Agent 判读真实样本，不运行评分。
-
 ### EVAL-DEVELOPMENT — 基座、已完成单折登记与开发门槛
 
-- **状态/来源**：待处理；父任务 MODEL-DIAG；基座/单折登记设计已确认，代码与实际模型执行均未授权。
-- **事实与差距**：现行六指标/pooled及Registry完成门未变；base无真实来源分支，partial train中的成功折不能直接登记。每折 execution-evidence 可作为适配基础，不等于现成新入口。
-- **基本内容与做法**：基座和训练所得模型明确来源分支，base固定上游来源及权重/config/tokenizer/processor摘要，不造train/data；base eval显式绑Prompt/data，训练模型继承真实train Prompt。成功折冻结真实字节和父run/折号/step/输入/基座证据，诊断登记只核该折及共享输入有效；父partial保持不变，三折真实齐全才完成。其他折失败不抹去该折事实，共享来源失效则阻止新使用；初版不扩任意中间checkpoint。
-- **依赖/下一动作**：按批次 B 完成来源记录/兼容契约及诊断登记、prepare/validate/run/export、逐折和pooled门、基座配对报告。来源类型不能临时切换，旧对象不补字段；沿用当前项目基座，现场核验固定版本/路径及完整摘要，异常停止、不自动换新版；推理配置沿实际交付配置统一并冻结。
-- **验收标准**：不伪造train、不虚补折、不把partial改完成或借full绕门；诊断模型仅支持对应折开发/受控性能，不替代CV/full或自动服务资格。每折状态macro≥65%、各状态≥50%；pooled joint≥50%、机制macro F1≥50%、位置macro F1≥60%；特殊情况仅报告。双方同媒体/Prompt/预算/评分，缺类/缺折/篡改不放行。
-- **证据/限制**：[计划](plans/model-evaluation-implementation.md)、`finetune/train_prepare_run.py` 每折证据、`versioning/registry.py`；没有基座推理、单折新登记或三折新结果。
+- **状态/来源**：进行中（Codex，2026-10-15；本轮工程接线已完成，待真实环境证据）；父任务 MODEL-DIAG；用户授权 A/B 代码及合成验证，未授权真实模型执行。
+- **已实现事实**：同一 Registry 的 base/trained 互斥来源及实际字节快照，FINISHED 完成折独立诊断登记且父 partial 不变；显式 semantic-v4.1 的 prepare/validate/run/score/export、完整来源组映射、每折与 pooled 门、多数类及真实 base 配对 CLI、MLflow/manifest 重验和来源备份兼容。base/诊断不授服务 alias 或生产资格；原 strict 历史仅按已核精确适配保留原义。
+- **验收标准**：不伪造 train/缺折/中途 checkpoint；诊断仅对应完整 validation。每折 macro≥65%、各状态≥50%，完整三折 pooled joint≥50%、机制F1≥50%、位置F1≥60%；特殊类报告。双方同媒体/Prompt/抽帧/生成与真实基座字节，缺类/缺折/漂移/评审未完成不放行。完整链路来源、分母及判读尝试可追溯。
+- **本轮验证**：主 Agent 新增关键集102 passed（64.23s，退出码0）；独立 reviewer 最终14项接线专项均通过（13+1，两次间只修测试fixture chmod），包含完整三折 passed、单折坍缩 failed、导出/Registry、诊断父 partial、旧 strict/holdout 兼容、attempt 篡改/改判/超额 retry 拒绝。无剩余可执行问题。最终受影响eval回归315 passed / 1 skipped（正常退出码0）；并行实施广回归1028 passed / 1 skipped / 2 failed，两失败已在最终关键集覆盖通过，解释器退出GC中止清理限制如实记入证据。完整数字见[实施记录](results/evaluation-development-implementation-20261015.md)。
+- **差距/依赖/下一动作**：核验当前真实基座来源/revision/完整摘要、开发 data/Prompt、同源及更高试件映射、交付推理参数和样本对应预算；取得适用授权后 baseline → 对应完整单折 → 完整三折。模型不可加载或来源不明停止，不任意换模型/Prompt，不用裸目录绕 Registry。
+- **证据/限制**：[实施记录](results/evaluation-development-implementation-20261015.md)、[操作入口](../versioning/SCRIPTS.md#语义开发协议)、[模型工作流](model-workflow.md)。本轮 Mac 合成及微型文件验证，没有真实新登记、推理或质量结果；没有训练机证据时不关闭本条或 MODEL-DIAG。
 
 ### EVAL-HOLDOUT — 多 Agent 权限与独立质量接线
 
@@ -123,11 +114,11 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：待处理；用户已确认单折诊断后完整三折验证、开发质量门、全样本语义评分及基座公平对比，见[测评方案](model-evaluation.md)。方案确认不是实验授权，不再重复要求确认已确定的阈值。
 - **事实与差距**：已同步报告记录 `v4.1-prompt-concise-cv-v1-seed3411` 的 1581 条评测：contract 合法率 79.63%、joint correct 32.07%、`clip_state` 35.80%，322 条非法输出中 311 条缺 `special_case`，“临界未断裂”和“已断裂”召回为 0%。这支持退化症状，不证明 Prompt、采样或早停中的任何一个是单独根因。
-- **差距与依赖**：现行 formal validation 仅 strict-v4.1 六指标/pooled，规则提取、预测盲评、逐折召回门和基座正式评测适配未实现，依赖 EVAL-SEMANTICS / EVAL-DEVELOPMENT。仅完成一折的 partial train 不能登记，已确认采用成功折冻结快照及独立诊断登记，代码适配仍是前置。候选基座来源、data/Prompt、环境/代码/权重身份及资源预算仍须核定；不伪造 completed train，不用裸目录绕 Registry。
+- **差距与依赖**：本轮 EVAL-SEMANTICS / EVAL-DEVELOPMENT 已实现 semantic-v4.1、冻结判读导入、逐折召回门、基座及成功折快照登记，新增关键集102项及独立复核通过；真实开发质量证据仍缺。旧 strict-v4.1 记录保留其六指标定义，不能代表新门。partial train 可按真实 FINISHED 折证据进入独立诊断分支，不能伪造完整训练或三折资格。候选基座来源、data/Prompt、环境/代码/权重身份及资源预算仍须核定；不伪造 completed train，不用裸目录绕 Registry。
 - **下一动作**：先完成新评测协议的实现边界和输入准备；获相应授权后做基座/多数类参照、对应完整单折 validation 诊断，再完整三折。每轮冻结其他因素，保留逐样本配对改善/退化；不自动引入 canary、任意交叉替换训练 Prompt 或重新划分数据。
-- **入口与产物**：保留 `python -m versioning eval prepare/validate/run/export` 的正式身份和原始预测/manifest 链；新语义与逐折判定尚待接线，不能把新阈值填入旧配置即运行。历史缺失权重继续记录，不全盘反复搜寻，也不把报告视为可加载模型。
+- **入口与产物**：保留 `python -m versioning eval prepare/validate/run/export` 的正式身份和原始预测/manifest 链；新语义与逐折判定通过显式 semantic-v4.1 配置接线，不能把新阈值填入旧 strict 配置即运行。历史缺失权重继续记录，不全盘反复搜寻，也不把报告视为可加载模型。
 - **验收标准**：每折四状态 macro recall≥65%、每状态 recall≥50%；pooled 语义 joint≥50%、机制 macro F1≥50%、位置 macro F1≥60%；特殊情况完整报告。身份链、原始预测、盲评记录和配对分析可追溯；缺类/来源覆盖不足不自动通过。达到新三折门才支持 FINAL-TRAIN，运行完成与效果改善分别下结论。
-- **授权/限制**：只读公开开发证据准备不等待 HOLDOUT-BUILD；实际训练/推理及代码仍未授权。禁止使用 sealed-test 调参、修补原始输出伪造合法率或删除受保护 checkpoint。历史现场/环境记录不作为本轮重新验证。
+- **授权/限制**：只读公开开发证据准备不等待 HOLDOUT-BUILD；本轮仅授权 A/B 代码实施与合成验证，实际训练/推理未授权。禁止使用 sealed-test 调参、修补原始输出伪造合法率或删除受保护 checkpoint。历史现场/环境记录不作为本轮重新验证。
 - **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[模型门禁基线](results/model-gate-baseline-20260914.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；2026-09-13 在 Linux 重算历史 visual 的 1216 条开发原记录，concise原始预测仍缺且未复算。新增[第48节证据](results/version-control-migration/verification.md#delivery-preparation-20260913)记录三fold模型断链和能力前置，不能据历史输出关闭改善任务。
 
 ### RELEASE-POINTER — 安全更新并激活数据 release 指针
@@ -177,6 +168,13 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **验收标准（未来获准修改时）**：改进有案例和边界，保留项目介绍与任务执行职责分离，用初次创建、后续更新、误报关闭、执行中新发现等案例验证；当前只记录候选。
 
 ## 已解决与已关闭
+
+### EVAL-SEMANTICS — 全样本语义评分与多 Agent 判读
+
+- **状态/来源**：已解决（2026-10-15，Codex，批次 A 纯基础能力）；用户授权按已确认方案实施代码及合成验证，父目标 MODEL-DIAG / MODEL-QUALITY 不因此关闭。
+- **结果**：新增 `finetune/eval_semantics.py`，严格/规则/离线盲评/不可读互斥分支、缺失与显式 null、全样本分母、GT 适用子集、状态召回/机制位置 F1/特殊类 P/R、来源组 bootstrap 均已实现。参与者/规则/手册与结果封存、先独立后仲裁及未完成状态可审计；正式接线保留全部故障尝试、成功初判锁定和最多一次故障 retry，不能挑答案。
+- **验收证据**：主 Agent 最终执行四个新增测试文件：102 passed，64.23s，退出码0；其中语义28、baseline30、来源30、开发接线14。独立 reviewer 已核分母/缺类/规则漂移/仲裁顺序与成本/恢复拒绝逻辑，无剩余可执行问题；详见[实施记录](results/evaluation-development-implementation-20261015.md)。提交由相关文件 git log 追溯。
+- **交接/限制**：原始严格合法率独立报告；评审未完成不给最终视觉率或 passed，不补模型未表达字段。匿名包/seal 不证明真实低权限隔离，本机 Ollama 调用与实际隔离由 EVAL-HOLDOUT 继续完成；本轮仅合成数据，不证明模型质量。
 
 ### EVAL-PROTOCOL — 已确认测评方案与差距实施计划入库
 
@@ -371,3 +369,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-15（Codex，前置设计与多Agent续补）**：EVAL-PROTOCOL文档增量已解决；补齐base/trained来源、完成折快照诊断、受限多Agent判读/预测exposed、独立performance加载与用途分离。默认2个独立Agent、分歧第三先独立后仲裁，可预先扩员；已确认选项不再重复待决。6份Markdown经独立源码核查通过，139链接/锚点、37原ID及视觉门槛表检查通过。具体统计/供应方版本/数据发送/运行规格仍须冻结，无代码、模型调用、账户部署、远程或真实测试动作。
 
 - **2026-10-15（Codex，执行配置收口）**：用户确认沿当前基座现场核验、本机Ollama双模型及第三独立上下文、匿名回答限定、统计口径、视频规格、超时与资源预算；同步设计/计划/状态及TODO，不再将这些配置列为待讨论。功能条目仍待处理；仅修改文档，未运行模型、训练或评测。4份Markdown的115个本地文件链接有效，原质量门槛表及固定任务标识不变，`git diff --check`通过；独立reviewer核查通过（仅文档；历史Ollama摘要未独立复盘，执行前复核）。提交版本可用`git log -- docs/model-evaluation.md`追溯。
+
+- **2026-10-15（Codex，A/B 实施启动）**：用户授权按现有 TODO/设计实施测评基础能力与开发验证接线。起始本机 `512cc8b4`，工作区干净；本轮代码使用短期分支 `feat/evaluation-development`；已分派纯语义评分、模型来源/完成折登记和开发评测接线，尚未验收。仅本机代码及合成测试，不运行真实模型、SSH 或受限 test；逐步补记验证及独立审查证据。
+
+- **2026-10-15（Codex，A/B 工程接线完成）**：新增语义/基线/来源及开发接线关键集102 passed，独立reviewer完成14项最终接线专项并核查流程文档，无剩余可执行问题。EVAL-SEMANTICS按纯基础能力关闭；EVAL-DEVELOPMENT工程完成但保留进行中，待现场及真实运行证据。C/D/E和真实模型父任务不关闭。最终受影响eval回归315 passed/1 skipped、退出码0；并行广回归的两项早期失败和退出清理限制亦如实入证据。整体验证见实施记录；无SSH/真实模型/test使用/push/merge。

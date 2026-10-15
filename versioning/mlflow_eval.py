@@ -548,6 +548,14 @@ def _validate_registry_reference(
         raise IllegalEvalRecord("Registry 数值 Model Version 与 model_id 不匹配")
     if version.tags.get(RECORD_VALIDITY_TAG) != RecordValidity.VALID.value:
         raise IllegalEvalRecord("Registry Model Version 无效或缺少有效性标记")
+    if version.tags.get("source_kind") == "base" or version.tags.get("source_scope") == "diagnostic_fold":
+        from versioning.registry import open_registry_store, validate_model_for_evaluation
+        try:
+            validate_model_for_evaluation(open_registry_store(store.root, data_root=data_root),
+                model_id, model_version_number)
+        except Exception as exc:
+            raise IllegalEvalRecord(f"Registry frozen source rejected: {exc}") from exc
+        return
     required_tags = ("train_id", DATA_VERSION_TAG, "prompt_version", GIT_COMMIT_TAG)
     if any(not version.tags.get(key) for key in required_tags):
         raise IllegalEvalRecord("Registry Model Version 缺少训练来源绑定")

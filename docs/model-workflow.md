@@ -4,9 +4,9 @@
 
 项目已实现冻结训练输入、三折与全量训练、严格评测、Registry 晋级及服务门禁。现有历史开发结果尚不能证明最终模型质量；新体系真实合格模型的加载与媒体推理成功路径、独立 test 使用资格、大型产物组合恢复仍未完成验收。命令接线和 CPU 合成验证不等于真实模型验收。
 
-**测评设计已更新，代码尚未切换。** 用户已确认[完整测评方案](model-evaluation.md)：全样本语义评分、格式可靠性单独报告、开发逐折门槛、最终视觉质量门及五分钟交互性能验收。本文的命令和配置仍描述现行 `strict-v4.1` 实现，不是新方案的操作入口；功能差距、依赖和实施验收见[实施计划](plans/model-evaluation-implementation.md)，进度仅在[项目 TODO](project-todo.md)维护。不得通过修改旧七门常量或手工补写 passed 代替协议切换。
+**开发测评显式区分协议。** `strict-v4.1` 保留历史严格评分；新开发配置选择 `semantic-v4.1`，使用全样本语义评分、独立格式诊断和逐折开发门。基座与成功折诊断来源已接入同一 Registry。接口及合成检查不构成真实模型质量证据；新 holdout、真实低权限盲评进程、受控性能入口和完整生产准入仍按[实施计划](plans/model-evaluation-implementation.md)推进，实际状态见[项目 TODO](project-todo.md)。不得修改旧门或补写 passed 代替新协议证据。
 
-后续前置设计也已确认：基座真实来源登记、已完成折快照诊断、受限多 Agent 判读及独立性能测试入口。预测判读默认两个 Agent 独立处理，分歧交第三个先独立再仲裁；可扩人数但配置预先冻结，不要求多个真人。以上均待实现；实际评审模型/数据发送/隔离环境、统计口径和运行输入仍需核定，不从方案确认推导外部调用或模型执行授权。
+基座真实来源登记、已完成折快照诊断、开发语义统计及已封存盲评答案导入已接入代码。预测判读策略默认两个 Agent 独立处理，分歧交第三个先独立再仲裁；可扩人数但配置预先冻结，不要求多个真人。纯导入接口不执行判读，也不证明真实隔离：本地评审进程、账户权限、安装摘要及现场输入仍须核验，新 holdout 和独立性能入口仍待实施。设计确认和接口实现均不授予真实模型调用、受限数据发送或测试集使用权限。
 
 GPU 训练、权重合并、实际推理与完整评测在训练机执行，运行入口直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。Mac 开发及人工审查使用 uv 的方式见[快速开始](../README.md#快速开始)。以下命令是操作说明，执行仍需相应任务授权。准备与摘要校验虽不加载模型，也可能扫描大量权重和媒体，须按实际数据量安排执行位置与磁盘空间。
 
@@ -40,7 +40,7 @@ store 不会为使用者自动下载基座、提供训练数据或分配质量�
 "$PYTHON" -m versioning prompt show --root "$STORE" --version "$PROMPT"
 ```
 
-正式对象位于 `records/prompts/<prompt>.yaml`，已有身份拒绝覆盖。Prompt 正文与 schema 合法只证明输入可用，不证明模型质量。后续 `train prepare` 将它冻结到该训练的 `input/prompt.yaml`；评测和服务继承模型绑定的训练 Prompt，不允许临时替换正文以改变已登记模型。
+正式对象位于 `records/prompts/<prompt>.yaml`，已有身份拒绝覆盖。Prompt 正文与 schema 合法只证明输入可用，不证明模型质量。后续 `train prepare` 将它冻结到该训练的 `input/prompt.yaml`；训练模型的评测和服务继承其绑定的训练 Prompt，不允许临时替换正文以改变已登记模型；base 开发评测在配置中显式绑定正式任务 Prompt。
 
 ## 3. 冻结并执行训练
 
@@ -89,9 +89,20 @@ full 禁止训练中 validation、最佳 checkpoint 选择、隐式验证切分�
 
 ## 4. 登记模型与验证集评测
 
-本节为现行严格评分链。新方案要求的基座对比、规则语义提取、预测盲评、各状态召回与逐折通过条件尚未接线；旧 six-rate/pooled 的 passed 不能证明已达到新开发门槛。未经微调的基座也不能伪造 completed train 后登记，或用裸目录绕过 Registry；其正式来源与评测适配属于实施前置。
+开发评测由明确的 Registry 来源进入，禁止使用裸权重路径绕过身份与摘要检查。已完成训练沿下述 `model register` 登记；基座和成功折使用独立来源分支，不造训练记录、不改变父训练状态。
 
-已选做法是在同一 Registry 中分开真实 base/trained 来源；base 不造 train/data，评测显式绑定 Prompt/data。已完成折复用真实执行证据形成不可变快照、绑定准确基座及真实折号，允许诊断但不改变父训练 partial；完整三折和 full 的原完成条件保留。新登记分支尚不存在，以下 register 示例仍不支持这些新增行为。
+```sh
+"$PYTHON" -m versioning model register "$BASE_MODEL" --root "$STORE" \
+  --source-kind base --source-scope base --base-model-path "$BASE_MODEL_PATH" \
+  --upstream-source "$UPSTREAM_SOURCE" --upstream-revision "$UPSTREAM_REVISION" \
+  --git-commit "$GIT_COMMIT"
+"$PYTHON" -m versioning model register "$DIAGNOSTIC_MODEL" --root "$STORE" \
+  --source-scope diagnostic_fold --train-version "$TRAIN" --fold 0
+```
+
+`BASE_MODEL`、`DIAGNOSTIC_MODEL` 都是调用者分配的完整 model 身份。基座目录须含实际权重、config、tokenizer/processor，来源与固定 revision 须先核实；可用 config 来源字段或可识别 HF snapshot 路径须与声明一致；二者不足时，目录须含 `source-provenance.json`，schema 为 `tensile-base-provenance/v1`，含匹配的 upstream_source/upstream_revision 及非空 verified_by。该文件随字节冻结；一致性检查不等于密码学证明上游真实性。不接受 main/latest 等活动引用，不自动下载或升级。登记创建来源 Run 的实际字节快照和 `model-source.json`，不造 train/data/Prompt。基座评测另显式绑定开发 data 与任务 Prompt。
+
+诊断来源只接受真实 FINISHED 折的 execution receipt 和 adapter，冻结 checkpoint step、父 train/run、共享输入、基座与真实折号；不接受任意中途 checkpoint 或自定义 artifact。父 train 保持 partial，后续使用重验共享输入及来源。base/diagnostic 只用于开发测评；性能受控入口尚待实现，不能借 candidate/production alias 部署，也不能 finalize 为生产资格。
 
 登记先校验真实训练执行证据、声明 artifact 全部文件和冻结基座，创建 Registry `mVllm2` 的 staging Model Version。它同时具有完整 `MODEL` 身份和 MLflow 数值版本；后者由登记结果取得，不猜测或默认选择最新版本。
 
@@ -108,11 +119,11 @@ fold2: {adapter: artifacts/fold2/adapter}
   --train-version "$TRAIN" --source-scope cross_validation --artifacts "$ARTIFACTS"
 ```
 
-三折组不能提供 `--deploy-target`，也不能直接部署。single_fold 以 fold0 为例，使用仅含 `fold0` 的声明及 `--source-scope single_fold --deploy-target artifacts/fold0/adapter`；full 使用 `full: {adapter: artifacts/full/adapter}` 及 `--source-scope full --deploy-target artifacts/full/adapter`。每种声明均须对应训练证据中的真实 artifact。**现行 single_fold 是从已完成的三折训练选择一折，不是仅训练一折即可登记。** 只完成 fold0 的父 train 仍为 partial，登记门拒绝；已确认的先单折诊断还需训练证据与登记适配，不能虚补折或修改完成状态绕过。
+三折组不能提供 `--deploy-target`，也不能直接部署。single_fold 以 fold0 为例，使用仅含 `fold0` 的声明及 `--source-scope single_fold --deploy-target artifacts/fold0/adapter`；full 使用 `full: {adapter: artifacts/full/adapter}` 及 `--source-scope full --deploy-target artifacts/full/adapter`。每种声明均须对应训练证据中的真实 artifact。`single_fold` 仍从已完成的三折训练选一折；只有成功折的训练改用上面的 `diagnostic_fold` 分支，不能虚补其余折或修改父状态绕过。
 
 当前正式执行链使用 adapter：训练执行器上传 adapter，Registry 逐文件核对训练执行证据中的 `<fold>/adapter/` 内容。接口接受 `merged` artifact 类型不代表已经实现独立合并及其证据登记通路。另行准备完整 merged 权重、修改 mapping，或在冻结 adapter 子树中后添 merged 文件，均不能补齐证据。真实 merged 合并、登记与后续使用须先完成独立确认的实现和验收；历史 BF16/merged 结果仅保留为原实验成果，不能沿用为新模型资格。
 
-验证集评测只支持 single_fold 或 cross_validation 模型，使用对应开发 data 的完整 validation，无新增抽样。配置精确包含：
+旧严格协议仍支持 single_fold 或 cross_validation 训练模型，使用对应开发 data 的完整 validation，无新增抽样。旧配置精确包含：
 
 | 字段 | validation 配置 |
 | --- | --- |
@@ -135,13 +146,32 @@ fold2: {adapter: artifacts/fold2/adapter}
 
 迁移数据同样省去 `--data-inputs`。prepare 冻结模型、Prompt、数据、媒体、生成规则和评分实现，不下载权重或推理；必要时初始化 store 的本地 MLflow 基础设施。取得实际评测授权后在训练机执行 `eval run "$EVAL" --root "$STORE"`，正式权重由 Registry artifact 物化，执行前后核验摘要。
 
-逐折结果为 `records.jsonl`、`failures.jsonl`、`summary.json`；父 Run 汇总逐样本预测与严格评分，正式导出为 `records/evaluations/<eval>/manifest.yaml`。运行失败不产生正式完成 manifest；完整推理但非法 JSON/schema 或指标不达标形成质量失败。完成后的导出故障可用 `eval export` 从同一 Run 补导出，不调用模型。失败 Run、已有输出或进程强制中断不提供自动覆盖重跑。
+旧严格协议逐折结果为 `records.jsonl`、`failures.jsonl`、`summary.json`；父 Run 汇总逐样本预测与严格评分，正式导出为 `records/evaluations/<eval>/manifest.yaml`。运行失败不产生正式完成 manifest；完整推理但非法 JSON/schema 或指标不达标形成质量失败。完成后的导出故障可用 `eval export` 从同一 Run 补导出，不调用模型。失败 Run、已有输出或进程强制中断不提供自动覆盖重跑。
 
-现行质量分析应查看运行失败、严格合法率、四字段准确率、联合准确率及状态混淆，并据逐样本记录分析召回与位置错误；正式配置仍不支持召回或逐折质量门。当前解析器不补字段。新方案保留原始严格结果，另建语义提取与盲评记录，不在旧结果上补字段。validation 开发指标不替代最终独立 test 验收。
+新开发协议的完整配置、judge 导入恢复和 baseline 报告见 [versioning 参数索引](../versioning/SCRIPTS.md#语义开发协议)。设置 `scorer: semantic-v4.1` 才使用新门；旧结果不会重新解释。所有失败、空输出与缺失字段保留在原样本分母，严格合法率独立于恢复结果；机制/位置按 GT 非 null 子集评分，预测状态不能改变分母。
+
+三折分别检查状态 macro recall ≥ 0.65、每状态 recall ≥ 0.50，pooled 检查 joint ≥ 0.50、机制 macro F1 ≥ 0.50、位置 macro F1 ≥ 0.60。单折可以形成诊断，不能自动宣称三折通过；缺必测类或评审未完成报告证据不足。source_groups 必须由操作者核定候选到独立组的完整映射，包括更高试件依赖，视频来源名称不能证明统计独立。CI 是同组 bootstrap 报告，不新增 CI 硬门。
+
+以下是开发链路的输入与产物交接；真实执行顺序为基座对照、对应完整单折诊断、完整三折。validation 结果不能替代独立 test 验收。
+
+| 环节 | 输入提供者与入口 | 产物及下游 |
+| --- | --- | --- |
+| 数据与任务 Prompt | data 发布/迁移校验、`prompt create` | data release 与 `records/prompts/<prompt>.yaml` → train/eval prepare |
+| 训练与成功折 | `train prepare/validate/run/export`；真实媒体、配置和基座 | 冻结 input、折 execution receipt、adapter；完整训练 manifest → trained register，成功折 receipt → diagnostic register |
+| 来源登记 | `model register` 的 trained/base/diagnostic 分支 | Registry 数值版本、完整 model 身份；base/diagnostic 来源快照及 `model-source.json` → eval prepare/run |
+| 冻结开发测评 | 操作者配置、完整独立组映射；`eval prepare/validate` | `workspace/evaluations/<eval>/input/evaluation.yaml`，媒体/Prompt/规则/来源摘要与多数类定义 → run |
+| 推理与整理 | `eval run`；必要时 `eval score --blind-reviews` 导入已封存 judge 答案 | 原始逐样本与语义记录、逐折和 pooled 汇总 → export；judge 恢复不重新推理 |
+| 正式导出与比较 | `eval export` 重验；多数类摘要与 `eval compare --baseline-eval-version` | `records/evaluations/<eval>/manifest.yaml` 和可追溯报告；质量绝对门与对照提升分开解释 |
+
+判读恢复的每次有效导入先封存为 `output/review_attempts/0001.json`，上传父 Run 并由 `sha256_review_attempt_0001` 钉扎。相同导入幂等；已完成初判不可更换，仅基础设施故障可按冻结策略重试一次。全部尝试（含故障）的实际成本与计算总耗时进入 `summary.blind_import_audit`，累计耗时不代表墙钟延迟；export 重验尝试链、最终采用结果及摘要，将尝试文件纳入 manifest。恢复不会重置原 raw 或重推理。
+
+`eval compare "$EVAL" --root "$STORE" --baseline-eval-version "$BASE_EVAL"` 从两个已完成的 semantic validation Run 形成 `records/evaluations/<eval>/paired/<base-eval>.json`，重验来源和同条件完整配对，不重新推理。多数类自动摘要是合成对照，其合法率或耗时不是模型能力。
+
+接口可执行性和合成验证只证明接线、统计及拒绝逻辑，不能据此声称完成真实模型调用、训练机评测或质量通过；真实运行证据以项目 TODO 的验收记录为准。真实低权限 Agent 工作区、Ollama 运行和权限隔离尚未完成，内容封存/访问声明不能代替技术隔离。新 holdout、性能与服务全链分别属于后续实施范围。
 
 ## 5. Full 模型的独立 test 验收
 
-**以下七门是现行旧协议的代码事实，不是新确认的最终视觉标准。** 新标准及格式分离规则以[测评方案](model-evaluation.md)为准，但新授权评分、人工盲评与导出/准入绑定尚未实现。以下命令不能执行新语义验收；旧身份、旧报告与已消费 test 的限制保留，新协议不得重新利用已暴露 test。
+**以下七门是现行旧协议的代码事实，不是新确认的最终视觉标准。** 新标准及格式分离规则以[测评方案](model-evaluation.md)为准，但新 holdout 授权评分、受限盲评与最终导出/准入绑定尚未实现；开发侧的语义与盲评导入不能替代这些环节。以下命令不能执行新语义验收；旧身份、旧报告与已消费 test 的限制保留，新协议不得重新利用已暴露 test。
 
 新语义环节采用匿名多 Agent 判读而非双真人审查；Agent只见固定回答/手册，不能访问GT/视频/被测模型身份或其他初判，未决才交用户盲态复核或计失败。发包的预测 exposure、逐 Agent 结果封存和同身份恢复需新增实现；现行 run 不读真值、score 才读真值并在完成时消费授权的时点不改写为已存在的新功能。匿名包发放和外部 Agent 调用仍须具体授权及权限核验。
 
@@ -268,6 +298,8 @@ curl --fail --silent --show-error -H "Authorization: Bearer ${API_KEY}" \
   --models-root "$RESTORE_ROOT/workspace/models/materialized" \
   --mlflow-root "$RESTORE_ROOT/workspace/mlflow"
 ```
+
+base/diagnostic 备份保留来源 receipt 和字节快照；diagnostic 还保留父 train 共享 input 和对应折 execution receipt。base 没有训练 Prompt，完整基座使用 production_bundle 备份范围，名称不表示生产批准。恢复不改外部基座冻结路径，仍须可核验原基座字节。
 
 恢复重定位 MLflow 活动 artifact 地址，保留身份、alias、授权消费事实与冻结来源原文，不自动选服务 current。外部基座仍需在冻结引用路径可用并验签；重新训练或评测还须备齐原媒体、输入及代码依赖。四类对象发布不是整体事务，后段 I/O 失败可留下已发布部分；先检查结果，再向新隔离目标恢复，不自动覆盖或清理。
 
