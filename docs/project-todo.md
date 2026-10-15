@@ -8,6 +8,8 @@
 
 **最近现场及环境证据（2026-10-13）**：DOC-INTEGRATION 和 REMOTE-STATE-REFRESH 已完成。用户随后授权新建正式Conda环境；ENV-ACTIVATION 已在训练机建立 `mvllm2`（Python3.11.17），按GPU锁安装并绑定正式checkout，通过环境验收，见[部署记录](results/conda-environment-setup-20261013.md)。保留agent/cpm45，不同步代码，不启动数据处理、训练、推理或评测。候选模型来源及实际运行授权仍须核定；新体系正式训练/评测/模型记录尚未产生符合当前阶段，不作为迁移失败，也不创建空记录补目录。环境可用不等于模型质量或恢复通过。
 
+**真实运行前准备（2026-10-15，核验与独立准备完成／Codex）**：用户授权核验评审模型、tokenizer受审映射和客户端显示测点，并先完成独立准备；本轮从本机 `6a92ca3b` 干净工作区开始，仅本地只读盘点与准备文件，不运行真实模型、不读取真实test，不创建claim/eval或部署客户端。三类缺口与可用准备产物已记录，结果实时写回下列EVAL-HOLDOUT / EVAL-PERFORMANCE / EVAL-INTEGRATION；不把资产在场等同部署或真实性能合格。
+
 **当前实施进展（2026-10-15）**：完整[测评方案](model-evaluation.md)及[实施计划](plans/model-evaluation-implementation.md)已入库；本轮继续补齐已确认的基座真实来源登记、已完成折快照诊断、盲评权限及独立性能测试入口。预测判读改为可扩展多 Agent：默认两名独立判读，分歧交第三名仲裁，不要求多个真人。上述设计及执行配置均已确认，详见[已确认执行配置](model-evaluation.md)。评审采用本机 Ollama 的 Qwen3.5 9B＋Ornith-1.5 9B，仅匿名回答本地判读、无云端回退；统计、视频规格、超时及预算按已确认配置实施，不再重复征询。现场权重摘要、实际交付参数、隔离适配与样本数量对应的质量预算属于实施前核验，不是重开设计。2026-10-15 用户已授权开始实施测评基础能力和开发验证接线（批次 A/B）；Codex 已完成基础能力和开发接线，新增关键集102项合成测试及独立复核通过；真实环境证据未取得。后续 C/D/E 工程接线已实现，合成验证及独立复核已通过，真实环境证据待补，详见[接线记录](results/evaluation-independent-performance-admission-20261015.md)。新准入统一要求独立质量与性能，历史批准/alias保留读取及同身份幂等恢复。旧六指标/七门不代表新协议。授权不包含真实模型调用、训练、test 使用、账户部署、外部 Agent 发包或性能运行。
 
 新体系正式入口为 `python -m versioning`，显式使用五类完整可读身份。train 数据分支用于三折开发验证和 full 训练，test 分支只用于最终独立测试；代码中的 `development` / `holdout` / `test_audit` 保留原值。旧媒体仍被新 store 引用，不得按“迁移完成”删除旧目录。
@@ -21,8 +23,8 @@
 | 文档交付 | EVAL-PROTOCOL | 已解决：四项前置与多 Agent 判读已入库 | 本批独立源码核查及静态检查通过；只关闭文档增量，代码与真实验收未完成 |
 | 本轮已完成 A | EVAL-SEMANTICS | 已解决：纯语义评分与封存判读基础 | 102项新增关键测试通过、独立复核通过；真实隔离归C，模型效果另验 |
 | 开发接线 B | EVAL-DEVELOPMENT | 进行中（Codex）：工程接线已完成，待真实环境证据 | 基座/完成折、逐折门、导出/配对/备份合成通过；下一步现场核验及适用运行授权 |
-| 独立评分 C | EVAL-HOLDOUT | 进行中（Codex）：工程已完成，待真实环境证据 | 143项合成回归通过；下一步真实资产/受审映射与部署核验，真实test依赖 HOLDOUT-BUILD |
-| 性能接线 D | EVAL-PERFORMANCE | 进行中（Codex）：工程已完成，待真实GPU/E2E证据 | 会话/loader/双签名接收已接线；外部客户端部署及真实运行仍需适用授权，不消费test |
+| 独立评分 C | EVAL-HOLDOUT | 进行中（Codex）：工程已完成，待真实环境证据 | 工程合成已过；当前缺匹配HF tokenizer、独立受审映射与Python3.11评审依赖，真实test仍依赖HOLDOUT-BUILD |
+| 性能接线 D | EVAL-PERFORMANCE | 进行中（Codex）：工程已完成，待真实GPU/E2E证据 | 会话/loader/双签名接收已接线；候选客户端缺原ID/nonce/单调显示测点/签名链，跨库实施及真实运行另授权 |
 | 完整绑定 E | EVAL-INTEGRATION | 进行中（Codex）：工程已完成，待真实联合验收 | 77项准入/恢复/服务/开发合成通过；旧passed不继承新资格，真实服务另验 |
 | 模型准备 | MODEL-DIAG | 待处理：方向和门槛已确认，尚未执行 | 依赖新评分/开发接线、基座来源与输入核定及实际运行授权 |
 | 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
@@ -56,6 +58,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **依赖/下一动作**：C工程已接入A纯评分和判读证据；下一步先补核真实本地模型/tokenizer受审映射、隔离部署及runtime输入，真实运行依赖 HOLDOUT-BUILD、冻结full及单独使用授权。新权限设计已确定，不再重复讨论；账户/Agent环境部署并未执行。
 - **验收标准**：新旧身份/协议分开、旧test不复用、授权不重置；越权读取/看GT改判/串看初判/漂移/重试挑答案均拒绝；最终所有门及覆盖证据合格才通过，缺类不放行，未获公开许可内容保持受限。
 - **本轮进展**：工程已完成，先完成143 passed（新增33＋旧holdout110，71.40s，退出0），总deadline窄修后新增35＋兼容/CLI6共41 passed（29.61s，退出0）；独立reviewer新C35 passed（20.50s）。包括实际Mac sandbox拒绝探针、新最终门/缺类、显式聚合授权、封存/仲裁、exposed/consumed恢复、runtime采集及可信部署receipt。曾失败的受限启动已修，只证明合成worker隔离。HF raw prompt与token计数同构；每次判读120秒为覆盖metadata与生成的统一monotonic总deadline，终态不明持久阻后续；GGUF/HF受审等价映射/basis/golden案例必须未来现场提供，代码验绑定，真实性信任独立审计者，不提供则拒真实执行。
+- **运行前现场核验（2026-10-15，Codex）**：本机Ollama0.33.1已有两个批准标签，tags与manifest摘要匹配冻结digest，声明blob在场/大小一致；随后只读复验全部7个唯一blob SHA256，6.6秒内全部匹配且stat稳定，无未核项；未推理，ps无驻留模型。限定标准缓存和源码资产检查未找到匹配HF tokenizer或真实独立GGUF↔HF audit/basis/goldens；项目Python3.11 `.venv` 缺transformers/tokenizers，不能混用系统Python3.12。下一步先取得核定HF来源/revision、本地隔离依赖和独立auditor证据，再用合法冻结eval做review_verify；不为准备创建空eval/claim。离线盘点工具与不能通过生产校验的来源草稿已完成，主Agent38项合成测试通过；只核静态结构/字节，不认证auditor或执行golden，不生成部署receipt。证据见[运行前核验](results/evaluation-readiness-20261015.md)及其中模型库存快照。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)、现行 `finetune/eval_holdout.py` / `versioning/holdout.py`；未读取受限语义、创建账户或claim、发送评审包。
 
 ### EVAL-PERFORMANCE — 受控加载与五分钟交互基准
@@ -66,6 +69,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **依赖/下一动作**：D加载权限、生命周期、计时/计数、资源采集与双签名接收工程已实现；下一步现场核定真实执行资产及客户端测点，获得适用授权后运行。沿用已确认视频规格（≤60秒、≤100MiB、MP4/H.264 8bit、长边≤1920/短边≤1080、≤60fps），不得据此删质量测试样本；300秒达标、后端600秒/客户端660秒绝对超时，全上传处理及重试总计时；预检≤1 GPU小时、正式性能≤20 GPU小时，达到预算停止并报告未完成。质量预算按冻结样本数事前计算，不中途缩样。TensileAgent测点及跨库写入另授权，后端证据不冒充完整显示。单用户单请求不外推并发。
 - **验收标准**：全部合格请求≥95%在300秒内自动显示完整结果，失败/超时/需评测Agent或人工判读不算按时完成；失败率≤1%、无OOM/崩溃/持续增长；≥100请求且≥30分钟连续处理，预热/冷启动分开，不通过重试重置时间和分母。具体持续增长判断口径在执行前冻结。
 - **本轮进展**：受控plan/session、Registry实际loader、事件/双签名显示回执接收及export已实现；视频加载器摘要一致性已补齐并由实际两侧input builder测试保护，最终61项合成测试通过（6.15s，退出0；实现者来源），独立reviewer另61 passed（2.36s）。实际runtime核NF4六项与resampler；OOM可观测、clean finish、线程超时终态不明停止接新请求、warmup.request_ids冻结及增长算法已实现。外部客户端未部署，本轮synthetic不能获正式passed；独立审查通过，无剩余可执行问题，限工程及合成范围。
+- **运行前客户端核验（2026-10-15，Codex）**：仅只读本地TensileAgent候选 `codex/competition-demo-chat-mock@86e50c65`（有未跟踪tmp未读）；上传、VLM调用/重试及React结果render未贯通原request ID/nonce、upload→render单调ns与签名回执。已有服务finished_at/event不能作显示端点。保留单次视觉自动结果口径，Agent多轮另报；需未来获得跨库授权后实现专用测点、签名/密钥保管、版本化冻结与部署，本轮只准备既有receiver契约交接清单、不改外仓/生成密钥/启动客户端。详见[运行前核验](results/evaluation-readiness-20261015.md)。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)与现行服务；未启动临时端点、跨机通道或真实计时。
 
 ### EVAL-INTEGRATION — 来源、评审及质量/性能用途绑定
@@ -76,6 +80,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **依赖/下一动作**：E联合合成验证核对B/C/D来源、分母、判读、授权、输出、恢复及准入；下一步补真实证据后复验服务，不以合成状态升级；统计采用原精度判门、百分比两位显示、同源组95%CI/2000次重采样（固定种子），不增加CI门槛，不因“证据不足”文字自动改底层状态机。
 - **验收标准**：错用途/错版本/缺证据/规则或模型漂移/性能冒充视觉均拒绝；开发和test报告权限分开，保留既有批准。代码合成检查与训练机真实质量/交互/恢复证据分别记录。
 - **本轮进展**：工程已完成；最终77 passed（54恢复/准入＋9服务＋14开发，89.08s，退出0），精确旧源码兼容＋CLI另6 passed。独立reviewer准入/恢复/兼容/CLI/服务69 passed。新增purpose/protocol、联合复验、私有工作区备份、0400受控位置receipt及scoped MLflow client；异根sealed续score与consumed不重truth通过。按用户裁决拒旧strict新晋级，仅保留既有批准/alias读取及同绑定幂等。相邻旧Registry/materialize158、manifest/model_registry204及CLI57个不同用例分轮通过，不作为新真实准入证据。
+- **当前前置（2026-10-15）**：C缺真实tokenizer/受审映射及评审环境，D缺可信客户端实际测点/冻结部署；库存和离线草稿均不能授予新准入。先补资产/环境及跨库实现准备，再取得适用真实运行授权；本轮不解除MODEL-QUALITY等父任务。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[实施计划](plans/model-evaluation-implementation.md)；本轮不登记真实模型、不更改真实alias/服务或真实评测记录；合成store中的新旧准入动作仅用于测试。
 
 ### RECOVERY-VALIDATION — 真实大型产物与外部依赖组合恢复
@@ -382,3 +387,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-15（用户裁决，旧准入入口迁移边界）**：用户选择“新准入统一要求新质量＋性能证据；保留既有批准/alias的读取与幂等恢复”。授权据此停用旧strict的新finalize/alias/approve晋级，不撤销既有批准或修改历史记录；幂等仅同身份/同冻结绑定，不得借恢复重绑。该选择适用于本轮C/D/E工程，真实模型/test仍禁止。
 
 - **2026-10-15（Codex，C/D/E工程接线完成）**：新独立质量、受控性能/可信显示接收、统一准入和私有异根恢复已接线。C先143 passed，120秒统一总deadline增量后41 passed；D最终61 passed；准入/恢复/服务/开发联合77 passed，旧源兼容/CLI6 passed。独立reviewer分别35/61/69 passed并核8文档完整链路，通过且无剩余可执行问题。相邻eval首轮368 passed/7 failed/1 skipped，7旧strict新晋级fixture按用户决策迁移后test_eval_run全文件47 passed/1 skipped；其他旧Registry/materialize/manifest/model_registry/CLI分轮419个不同用例已有通过证据。163链接/锚点、37唯一任务ID、compileall及diff-check通过。详见[接线记录](results/evaluation-independent-performance-admission-20261015.md)。执行本机Mac，提交由git log追溯；没有SSH/真实模型/Ollama/真实test/外部客户端部署/push/merge。C/D/E保持进行中：工程完成待真实证据，不关闭MODEL-QUALITY等父任务。
+
+- **2026-10-15（Codex，真实运行前核验启动）**：用户继续授权环境/资产核验及独立准备，保持真实模型评测与test禁令。已派发本机Ollama与HF资产、tokenizer受审映射/依赖、客户端显示测点三类只读核验；主线程维护准备产物和唯一TODO。起始 `6a92ca3b`、Mac、干净工作区；不执行pull/模型加载/真实推理/跨库写入。
+
+- **2026-10-15（Codex，真实运行前核验与独立准备完成）**：Mac本机Ollama两个冻结标签及manifest匹配，全部7个唯一引用blob在6.442秒流式SHA256复验匹配且stat稳定，无模型驻留或推理。明确缺匹配HF tokenizer、真实独立受审映射/basis/golden及项目Python3.11评审依赖；候选TensileAgent分支未实现所需upload→render单调时钟/原ID/nonce/签名链。已新增完全离线盘点工具、无证据效力的来源/审计草稿、机器可读库存和客户端既有契约交接清单；最终38项合成测试通过，静态audit结构/权限漏报已修。真实部署/运行仍缺证，不创建eval/claim，不读真实test，不下载/安装/跨库写入或push/merge。详见[运行前核验](results/evaluation-readiness-20261015.md)，同次提交由git log追溯；独立reviewer38项复跑与7blob完整字节复验通过，无剩余可执行问题，限本轮核验/离线准备；174链接/锚点、37唯一ID、compileall/diff-check通过。

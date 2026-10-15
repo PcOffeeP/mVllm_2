@@ -1,0 +1,117 @@
+{
+  "schema_version": "tensile-review-readiness-inventory/v1",
+  "inventory_only": true,
+  "deployment_proof": false,
+  "ready_for_real_review": false,
+  "approved_models": {
+    "qwen3.5:9b": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+    "ornith-1.5:9b": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e"
+  },
+  "provider_source_sha256": "c3ad8c47332be102249ce85be067c2bf2426084c03c0369a2fe0972b9e2c6215",
+  "libraries": {
+    "transformers": {
+      "available": false,
+      "error": "No package metadata was found for transformers"
+    },
+    "tokenizers": {
+      "available": false,
+      "error": "No package metadata was found for tokenizers"
+    }
+  },
+  "tokenizer_sources": null,
+  "blockers": [
+    "installed dependency missing or unreadable: transformers",
+    "installed dependency missing or unreadable: tokenizers",
+    "explicit tokenizer sources JSON missing; reviewed mapping and asset inventory unknown",
+    "inventory cannot establish reviewed tokenizer equivalence, deployment isolation or real-review authorization"
+  ],
+  "not_checked": [
+    "installed Ollama models or templates",
+    "tokenizer loading or golden execution",
+    "GGUF/HF algorithm equivalence or reviewer authenticity",
+    "process isolation",
+    "client display instrumentation",
+    "model inference or evaluation/admission state"
+  ],
+  "templates": {
+    "draft_only": true,
+    "tokenizer_sources": {
+      "qwen3.5:9b": {
+        "path": null,
+        "upstream_source": null,
+        "upstream_revision": null,
+        "model_sha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+        "files": {},
+        "libraries": {
+          "transformers": {
+            "version": null,
+            "code_sha256": null
+          },
+          "tokenizers": {
+            "version": null,
+            "code_sha256": null
+          }
+        },
+        "implementation_sha256": null,
+        "ollama_template_sha256": null,
+        "tokenizer_equivalence_audit": {
+          "path": null,
+          "sha256": null
+        }
+      },
+      "ornith-1.5:9b": {
+        "path": null,
+        "upstream_source": null,
+        "upstream_revision": null,
+        "model_sha256": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+        "files": {},
+        "libraries": {
+          "transformers": {
+            "version": null,
+            "code_sha256": null
+          },
+          "tokenizers": {
+            "version": null,
+            "code_sha256": null
+          }
+        },
+        "implementation_sha256": null,
+        "ollama_template_sha256": null,
+        "tokenizer_equivalence_audit": {
+          "path": null,
+          "sha256": null
+        }
+      }
+    },
+    "equivalence_audits": {
+      "qwen3.5:9b": {
+        "schema_version": "tensile-reviewed-tokenizer-equivalence/v1",
+        "purpose": "precall-context-budget",
+        "reviewer": {
+          "id": null,
+          "role": null
+        },
+        "reviewed_at": null,
+        "review_source": null,
+        "binding": null,
+        "gguf_counter_source": null,
+        "basis": [],
+        "golden_cases": []
+      },
+      "ornith-1.5:9b": {
+        "schema_version": "tensile-reviewed-tokenizer-equivalence/v1",
+        "purpose": "precall-context-budget",
+        "reviewer": {
+          "id": null,
+          "role": null
+        },
+        "reviewed_at": null,
+        "review_source": null,
+        "binding": null,
+        "gguf_counter_source": null,
+        "basis": [],
+        "golden_cases": []
+      }
+    }
+  }
+}

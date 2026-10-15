@@ -1,0 +1,114 @@
+{
+  "schema_version": "evaluation-readiness-inventory/v1",
+  "observed_at": "2026-10-15T13:56:57.868791+00:00",
+  "code_commit": "6a92ca3b3ec491f8d4a87ad5a181a6939107ec41",
+  "metadata_only": true,
+  "deployment_verified": false,
+  "model_inference_executed": false,
+  "ollama_version": {
+    "version": "0.33.1"
+  },
+  "resident_model_count": 0,
+  "models": {
+    "qwen3.5:9b": {
+      "expected_digest": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+      "tag_matches": true,
+      "observed_digest": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+      "size_bytes": 6594474711,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen35",
+        "families": [
+          "qwen35"
+        ],
+        "parameter_size": "9.7B",
+        "quantization_level": "Q4_K_M"
+      },
+      "template_sha256": "b507b9c2f6ca642bffcd06665ea7c91f235fd32daeefdf875a0f938db05fb315",
+      "manifest_sha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+      "manifest_matches_tag_digest": true,
+      "blobs": [
+        {
+          "manifest_digest": "sha256:be595b49fe22012bd1f5605ec14c7ffa58331783a88a4fd8c22e5fc8ec42cf9f",
+          "declared_size": 475,
+          "present": true,
+          "actual_size": 475,
+          "content_rehashed": false
+        },
+        {
+          "manifest_digest": "sha256:dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c",
+          "declared_size": 6594462816,
+          "present": true,
+          "actual_size": 6594462816,
+          "content_rehashed": false
+        },
+        {
+          "manifest_digest": "sha256:7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2",
+          "declared_size": 11355,
+          "present": true,
+          "actual_size": 11355,
+          "content_rehashed": false
+        },
+        {
+          "manifest_digest": "sha256:9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff",
+          "declared_size": 65,
+          "present": true,
+          "actual_size": 65,
+          "content_rehashed": false
+        }
+      ],
+      "gguf_tokens_exposed": false,
+      "gguf_merges_exposed": false
+    },
+    "ornith-1.5:9b": {
+      "expected_digest": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+      "tag_matches": true,
+      "observed_digest": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+      "size_bytes": 6550813657,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen35",
+        "families": [
+          "qwen35"
+        ],
+        "parameter_size": "9.0B",
+        "quantization_level": "Q4_K_M"
+      },
+      "template_sha256": "f55f52930aa8bf44ab5cb85f99370fcc3c56e9a85640b812086d5330bce5d86b",
+      "manifest_sha256": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+      "manifest_matches_tag_digest": true,
+      "blobs": [
+        {
+          "manifest_digest": "sha256:3d561cca0c790e33a88dd2ce5e4be9ee59176212b2fc62d7c4c2654821bc59d1",
+          "declared_size": 153,
+          "present": true,
+          "actual_size": 153,
+          "content_rehashed": false
+        },
+        {
+          "manifest_digest": "sha256:852922174ee4f76621df26105333f1dfe2171cdfb60ebe5a4b013836681a8a77",
+          "declared_size": 5629109056,
+          "present": true,
+          "actual_size": 5629109056,
+          "content_rehashed": false
+        },
+        {
+          "manifest_digest": "sha256:2635637dd72b4d39a97331373a73366b69a0a6a14151b2a1da0a97b311e2461f",
+          "declared_size": 921704448,
+          "present": true,
+          "actual_size": 921704448,
+          "content_rehashed": false
+        }
+      ],
+      "gguf_tokens_exposed": false,
+      "gguf_merges_exposed": false
+    }
+  },
+  "limitations": [
+    "Only loopback version/tags/ps/show metadata was requested.",
+    "Large model blobs were checked for presence and size, not rehashed.",
+    "Metadata availability does not prove tokenizer equivalence, runtime isolation or review readiness."
+  ]
+}
