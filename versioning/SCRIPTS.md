@@ -29,6 +29,8 @@ Non-goals:
 
 **测评协议边界**：下文 validation 六指标和 holdout 七门仍是现行 `strict-v4.1` 接口。[已确认测评方案](../docs/model-evaluation.md)另要求语义提取/盲评、逐折质量门及五分钟交互性能验收，目前尚未接入这些命令。具体缺口见[实施计划](../docs/plans/model-evaluation-implementation.md)。不得把新门槛填入旧配置后声称新验收可执行，也不得覆盖旧协议或公开受限 test 明细。
 
+新增基座来源登记、成功折诊断快照、默认2个 Agent 加分歧第三仲裁及 performance 受控加载的设计已确认，接口仍待实施。不能把以下现行 model register 当作支持 base 或 partial 来源，也不能用现行服务 alias 代替受控测试会话；未来质量/性能 passed 的用途必须在导出及准入中分别复验。多 Agent 外部调用和受限回答发送不属于本轮文档授权。
+
 ## Prompt注册与冻结
 
 现行入口为`python -m versioning prompt`。操作者准备定义YAML，包含非空`system_prompt`、`user_prompt`与非空且无重复字符串的`output_fields`列表；可给`protocol_label`以保存业务协议标签。定义不是旧active_prompt.yaml格式，不能直接把旧文件当新定义发布。已有Prompt应按确认mapping走migration，保持原正文和身份对应。
