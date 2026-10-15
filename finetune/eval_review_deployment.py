@@ -14,7 +14,8 @@ from finetune.eval_review import MODEL_DIGESTS, REVIEW_RUNTIME, probe_review_iso
 from finetune.eval_semantics import content_digest
 
 TOKENIZER_FILES = frozenset(('tokenizer.json', 'tokenizer_config.json', 'special_tokens_map.json',
-    'added_tokens.json', 'merges.txt', 'vocab.json', 'vocab.txt', 'tokenizer.model', 'config.json'))
+    'added_tokens.json', 'merges.txt', 'vocab.json', 'vocab.txt', 'tokenizer.model', 'config.json',
+    'chat_template.jinja'))
 
 
 def _sha(path):

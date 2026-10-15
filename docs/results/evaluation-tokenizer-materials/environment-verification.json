@@ -1,0 +1,170 @@
+{
+  "base_executable": "/Users/pcoffeep/.local/share/uv/python/cpython-3.11.14-macos-aarch64-none/bin/python3.11",
+  "base_executable_sha256": "919787994eb5274940e98aeef2989349e6da83eb0b6ee61e7eb49a0876e62eee",
+  "base_prefix": "/Users/pcoffeep/.local/share/uv/python/cpython-3.11.14-macos-aarch64-none",
+  "created_at": "2026-10-15T14:14:06.296214+00:00",
+  "executable": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/python311/bin/python",
+  "freeze_sha256": "494a4c301cd48d0be1846115cbb19c6b8d3382aa78d416ed1fc0427042d40ed4",
+  "imports": [
+    "finetune.eval_review_deployment",
+    "finetune.eval_audit_readiness",
+    "transformers.AutoTokenizer",
+    "tokenizers.Tokenizer"
+  ],
+  "include_system_site_packages": false,
+  "installed_inventory_sha256": "46791b4451857b0041a4276c4151ce448cf95a90f42a2106dc7a11ba7c78cb0d",
+  "interpreter_provenance": "existing uv-managed CPython reused as base only; existing project .venv dependencies unchanged",
+  "libraries": {
+    "tokenizers": {
+      "code_sha256": "f6da2c50615036db4838decc6c96809833720193f02ec922e7c57d91d1e6be9b",
+      "version": "0.23.3"
+    },
+    "transformers": {
+      "code_sha256": "c257c42548fd35c95e4807b87d7b149aecbbf333479c5cad409bb02c0e007dd2",
+      "version": "5.19.0"
+    }
+  },
+  "model_inference_performed": false,
+  "model_weights_loaded": false,
+  "official_wheel_inventory": {
+    "installed_wheel_files_verified": 5010,
+    "package_count": 29,
+    "path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/official-wheel-inventory.json",
+    "sha256": "4438028fb50c42d60b6ea3b4b314ce33a8b91503f86c47e475f4d2839d095007",
+    "wheel_bytes": 29644920
+  },
+  "packages": {
+    "Jinja2": {
+      "installed_files_sha256": "967223eed69d37fd9536baa0c17bf53aaacbdd763ccc09b1f70871c0d0a6b39e",
+      "version": "3.1.6"
+    },
+    "MarkupSafe": {
+      "installed_files_sha256": "47604bf7b0af947249fa1e2fe65ef9922fd90f2218b1f3312ab4ac9ec70dfd4d",
+      "version": "3.0.4"
+    },
+    "PyYAML": {
+      "installed_files_sha256": "7a10279d2418e8fce5a50f34a7fa2126eea140172305482c098d83bee9bc4603",
+      "version": "6.0.3"
+    },
+    "Pygments": {
+      "installed_files_sha256": "51b3ab67940efcf057e5df91cc5db93d6513b03c62a3af73f4b9ffc4ed9f5abf",
+      "version": "2.21.0"
+    },
+    "annotated-doc": {
+      "installed_files_sha256": "4cfa933f599a320f114cc51e1e5109afa20aa3b036e9043bb32c2ce08d58870a",
+      "version": "0.0.5"
+    },
+    "anyio": {
+      "installed_files_sha256": "06cf50dbcaa2f8e1e94176fa26957814fef5789a84927ef3ff2472fed1bfbb6a",
+      "version": "4.15.1"
+    },
+    "click": {
+      "installed_files_sha256": "8daf214d7a5424181a5ccf1bca2f75cc743408f6c76a073b2343ae7a774fc6d6",
+      "version": "8.5.0"
+    },
+    "filelock": {
+      "installed_files_sha256": "ce21e1c707b1c37edfaa72fadd7caa64109ce69b63a88ab318b4b6fde5916d02",
+      "version": "4.2.0"
+    },
+    "fsspec": {
+      "installed_files_sha256": "5b0862deeffd196ae9dbfa748175f01375d48a2256a8ea887376ff18849ed61c",
+      "version": "2026.9.0"
+    },
+    "h11": {
+      "installed_files_sha256": "857c7d63b556a47bed43326fe0eda2c959dd209eafaff0bcd50be34704d3caca",
+      "version": "0.16.0"
+    },
+    "hf-xet": {
+      "installed_files_sha256": "52db7c7e3327a5ca619b0f18d68b16edd7f012c52ec9e89ec0ebc8c3c16a37f8",
+      "version": "1.7.0"
+    },
+    "httpcore2": {
+      "installed_files_sha256": "7c7c46736b528c8d62c8058411dbb945714f0d80db9972e357b359c5dadffa00",
+      "version": "2.13.1"
+    },
+    "httpx2": {
+      "installed_files_sha256": "285be0fe51574d28ea3627aa7c57182a129d51a436d0f48d75727020a5c001cb",
+      "version": "2.13.1"
+    },
+    "huggingface_hub": {
+      "installed_files_sha256": "0a4ebd4c6e73f1b546edef3b9cbd6775db68f9e7808f6cc2462ff402741650f0",
+      "version": "2.2.0"
+    },
+    "idna": {
+      "installed_files_sha256": "3de3f368b52126de493483a8e71a1008aefd376ce0a429f5c9874805cf9e7cbb",
+      "version": "3.20"
+    },
+    "markdown-it-py": {
+      "installed_files_sha256": "991d2b30a506200077263ba6787d7bd806e93eb541cba01b5c5474f23af3a2db",
+      "version": "4.2.0"
+    },
+    "mdurl": {
+      "installed_files_sha256": "5631ec1f9640e389146e511511d1ab79c9e1b7d138490fefd029ac75380665a5",
+      "version": "0.1.2"
+    },
+    "numpy": {
+      "installed_files_sha256": "d57e060d2463abc27ab6ba803f65afc0a355a532b2a73bde01ccb41655013f8b",
+      "version": "2.4.6"
+    },
+    "packaging": {
+      "installed_files_sha256": "bb5419dae5e3f4ce2e11a0fa3eb0835e3ea3ce1ba55b9741ceb75bdbfa2ec084",
+      "version": "26.3"
+    },
+    "regex": {
+      "installed_files_sha256": "cd6667b2f340326aa53d212cd771c3ecb97011523f8664214b76024480b09f1b",
+      "version": "2026.9.29"
+    },
+    "rich": {
+      "installed_files_sha256": "2279d2697c433a4de63e5167de20a9dff32996f59cacce18ae33374a8db179e9",
+      "version": "15.0.0"
+    },
+    "safetensors": {
+      "installed_files_sha256": "ca6b71a876cb099c574562d868ee2cddcfde79f4d4853569451d13b1b7354ea6",
+      "version": "0.8.0"
+    },
+    "shellingham": {
+      "installed_files_sha256": "587de847adf330e9fe98cbaadbeed622dcdd4fe4285dfc6eaaa250d451ef4d3f",
+      "version": "1.5.4"
+    },
+    "tokenizers": {
+      "installed_files_sha256": "1a0a2fde07b5c769864cf8fd01783dbb864008610df33d8aa292426d45ca8fcd",
+      "version": "0.23.3"
+    },
+    "tqdm": {
+      "installed_files_sha256": "7e7fd7b1d227d8ac489d95be6d4d4741893248ee60ceb09fec0e6d317d38c0b3",
+      "version": "4.70.1"
+    },
+    "transformers": {
+      "installed_files_sha256": "f121fa3a7f0fe1c47e45a352ba7022a2596b809d5172d91aca2d13b81c45240a",
+      "version": "5.19.0"
+    },
+    "truststore": {
+      "installed_files_sha256": "3adafdb9c2ad56651224b65bde8c332772d9f8e7a7d33e5d869dc0bd1911de20",
+      "version": "0.10.5"
+    },
+    "typer": {
+      "installed_files_sha256": "478ec5a55057b5a38f4b0c4b36671cfcd9f6c9cf50e25f1dc182f642547fe764",
+      "version": "0.27.3"
+    },
+    "typing_extensions": {
+      "installed_files_sha256": "41ea07475370548a5279a49d8267fbc3e4037db7823ad573a1e0cc9ae86ff862",
+      "version": "4.16.0"
+    }
+  },
+  "platform": "macOS-26.0.1-arm64-arm-64bit",
+  "prefix": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/python311",
+  "python": "3.11.14 (main, Feb  4 2026, 00:01:31) [Clang 21.1.4 ]",
+  "real_test_used": false,
+  "requirements": {
+    "requirements-review.in": "6482c7f0912e1a3d894dd7bda4a2733cca9fbcfc031ccb057bbc819dc345ca05",
+    "requirements-review.lock": "7b1e4b85c2b11c14c1a4b7787156e3b9b37d3b9371f4f155566de016b0d42a01"
+  },
+  "synthetic_tokenizer_render": {
+    "prompt": "synthetic verification",
+    "token_ids": [
+      1,
+      2
+    ]
+  },
+  "torch_installed": false
+}

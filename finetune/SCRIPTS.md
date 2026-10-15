@@ -34,3 +34,5 @@ Non-goals:
 当前工作树不含 `finetune/archive/`；已移出的历史复现脚本从 Git 历史查询，不作为现行入口。
 
 语义开发配置、来源登记、judge 交接及报告见 [versioning 语义开发协议](../versioning/SCRIPTS.md#语义开发协议)。base/diagnostic 来源由 Registry 核验，不能伪造 train 或借服务 alias 使用。独立评分、受控性能证据及按用途准入已接线；真实评审模型隔离、GPU性能和可信显示端仍未验收；本机合成验证不证明真实模型质量、训练机运行或 E2E 通过。
+
+独立本地tokenizer准备环境使用根 `requirements-review.in` / `requirements-review.lock`，位于忽略的 `workspace/review-environment/python311/`，不替换开发或GPU环境。固定HF来源、独立Jinja、官方wheel及HF/GGUF公开合成文本比对见[映射材料记录](../docs/results/evaluation-tokenizer-materials-20261015.md)；实际存在NFC/NFD token差异，材料不能当已审等价映射或部署通过。

@@ -1,0 +1,7 @@
+# Isolated Python 3.11 tokenizer-only review environment (no model runtime).
+# Resolve with official PyPI and hashes; keep separate from the GPU/runtime locks.
+# Transformers 5.19.0 supports Python >=3.10 and tokenizers >=0.23.1,<0.24.0.
+# chat-template adds Jinja2 required by the frozen non-thinking prompt renderer.
+transformers[chat-template]==5.19.0
+tokenizers==0.23.3
+pyyaml==6.0.3
