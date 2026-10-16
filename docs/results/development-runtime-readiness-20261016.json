@@ -288,5 +288,12 @@
         }
       }
     }
+  },
+  "source_group_preparation": {
+    "path": "docs/results/development-source-groups-20261016.json",
+    "sha256": "781aa0b142e20fc03568fcb8286639bc9670d42e7233b265cd03a808a242bd04",
+    "ready": true,
+    "basis": "direct user confirmation plus prior observed candidate/source relations",
+    "formal_evaluation_frozen": false
   }
 }
