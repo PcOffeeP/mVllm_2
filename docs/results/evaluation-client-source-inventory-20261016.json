@@ -1,0 +1,60 @@
+{
+  "schema_version": "tensile-client-source-preflight-inventory/v1",
+  "created_at": "2026-10-16T01:58:28.589873+00:00",
+  "repository": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent",
+  "git_before": {
+    "branch": "codex/competition-demo-chat-mock",
+    "head": "86e50c6544d0e92a9141bde6d16525c36d11ee8f",
+    "tracked_status": ""
+  },
+  "git_after": {
+    "branch": "codex/competition-demo-chat-mock",
+    "head": "86e50c6544d0e92a9141bde6d16525c36d11ee8f",
+    "tracked_status": ""
+  },
+  "files": {
+    "AGENTS.md": {
+      "size_bytes": 2611,
+      "sha256": "2d76d7b94e43a2ea43457628684a0b5b2ceddd7f5d3b6714c6802735f4c71411",
+      "tracked": true
+    },
+    "web/src/api.ts": {
+      "size_bytes": 10697,
+      "sha256": "0e1aa919231f538cdf2754c0a2d8762ec87b687a59420ae63ac332d048b962ae",
+      "tracked": true
+    },
+    "web/src/hooks/useAgentTaskEvents.ts": {
+      "size_bytes": 7519,
+      "sha256": "13e6dce993b7eb76435a4ff92f0cebd353fc180f48df957cc6a4500751ea8f4e",
+      "tracked": true
+    },
+    "web/src/components/FinalResultPanel.tsx": {
+      "size_bytes": 9559,
+      "sha256": "8d10260f9eb626bbbbc718d24f9571ac56138cf1b02867867585714b9c278fc5",
+      "tracked": true
+    },
+    "agent/web_api.py": {
+      "size_bytes": 46989,
+      "sha256": "dd0fd926fe9ce93fbc6a72f44fb57ebec6b8fdeb6db9891482ca940839d8ef47",
+      "tracked": true
+    },
+    "agent/inference.py": {
+      "size_bytes": 38031,
+      "sha256": "c800c15106ffd0884d1ff52a70d079a0b0dbfe72efb92369705192b6790afc4e",
+      "tracked": true
+    }
+  },
+  "source_identity_stable_during_read": true,
+  "candidate_only": true,
+  "deployment_qualified": false,
+  "untracked_contents_read": false,
+  "external_repository_modified": false,
+  "model_or_service_executed": false,
+  "real_test_used": false,
+  "gaps": [
+    "No single-vision performance request identity/nonce/upload-complete-to-DOM clock chain observed in the candidate client.",
+    "Ordinary multi-round Agent completion cannot substitute single-vision automatic display completion.",
+    "No real display instrumentation/signing authority deployed or frozen by this inventory."
+  ],
+  "source_of_gap_findings": "Read-only /root/client_preflight_scope inspection of these tracked files; not a browser execution."
+}

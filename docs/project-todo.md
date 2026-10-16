@@ -4,11 +4,13 @@
 
 ## 当前状态与下一步
 
+**本轮隔离与显示测点准备（2026-10-16，无模型接线与准备已完成／Codex）**：用户授权继续按TODO核验与接线，优先完成不依赖真实模型的部分；起始Mac `ae4ccd15`、工作区干净。已完成评审sandbox独立预检、三actor匿名请求构建及客户端回执桥接，实际Mac canary与合成ASGI闭环通过、独立复核通过；真实部署/DOM显示仍未验收。真实模型评测/生成、真实test和正式eval/claim持续不执行；不以合成结果授真实资格。
+
 **本轮兼容修复（2026-10-16，修复与独立准备已完成／Codex）**：用户明确按原方案处理分词兼容，不再扩大为A/B方案讨论；前轮待确认选择撤回。起始 `4d397f1a` 干净工作区，已完成本地兼容计数、独立复核和运行前材料，不改原始回答/HF资产/既定模板、判读、质量门或样本分母。真实模型评测/真实test禁令持续；不创建真实eval/claim或启动完整服务，不改外部客户端。
 
 **前轮实际分词核验（2026-10-15；A/B讨论已于2026-10-16撤回）**：用户授权继续核定本机Ollama实际分词路径与NFC/NFD差异，提出不改原文的对齐方案；重大取舍须先确认。起始 `52d6afbd` 干净工作区；已核签名/架构并实际调用安装包x86词表库：24公开case，16与HF同ID，原22与前轮counter同ID；原生arm64 server未执行测量。预算反例HF4013／x86库8013，加512后HF误判可入8K。当时曾提出A/B草案，用户后续要求按原方案修复，该选择前置已撤回；不再待用户确认。详见[本轮核验](results/ollama-tokenizer-verification-20261015.md)及[方案草案](plans/2026-10-15-review-tokenizer-alignment-design.md)。只做公开合成文本和无推理权重的核验，不调用真实模型评测/生成、不读真实test，不改计数provider或冻结协议；未知及重大决策只局部阻塞。
 
-**本轮tokenizer与环境补齐（2026-10-15，独立准备完成／Codex；映射因实测不等阻塞）**：用户授权核定两个批准评审模型的HF来源及固定revision、建立独立Python3.11评审环境并准备受审映射材料。从 `696ea17c` 干净工作区开始；可下载核定的tokenizer小文件并安装隔离环境依赖，不改现有开发/GPU环境或模型身份；禁止真实模型评测/真实test，不创建eval/claim，不生成真实回答。两个HF固定来源、10文件、Python3.11隔离环境及词表counter材料已完成；16次比较14匹配2不匹配，已确认HF NFC／GGUF NFD差异，不能出具等价映射或运行真实评审。详见[固定来源与映射材料](results/evaluation-tokenizer-materials-20261015.md)。
+**前轮tokenizer与环境补齐（2026-10-15；原HF差异已于2026-10-16兼容修复）**：用户授权核定两个批准评审模型的HF来源及固定revision、建立独立Python3.11评审环境并准备受审映射材料。从 `696ea17c` 干净工作区开始；可下载核定的tokenizer小文件并安装隔离环境依赖，不改现有开发/GPU环境或模型身份；禁止真实模型评测/真实test，不创建eval/claim，不生成真实回答。两个HF固定来源、10文件、Python3.11隔离环境及词表counter材料已完成；16次比较14匹配2不匹配，已确认HF NFC／GGUF NFD差异，当时不能出具等价映射；后续兼容修复与v2材料见上条，真实评审仍未执行。详见[固定来源与映射材料](results/evaluation-tokenizer-materials-20261015.md)。
 
 **数据处理及活动入口的工程迁移已解决。** 2026-09-14，迁移分支先推送，再快进 Codeup main 至 `5acebc27` 并同步训练机正式代码；集成与双机 CLI 记录见[验证第67节](results/version-control-migration/verification.md)。这不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。
 
@@ -69,6 +71,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **前轮映射反证及本轮处理**：固定llama.cpp vocab-only counter共16case仅14完整ID相同，两个Unicode case均HF31／GGUF32；原始HF资产及直接加载均NFC，GGUF counter保留NFD，不能归因为缺包或仅待auditor签字。固定HF来源不证明本机GGUF转制历史，Ornith官方Q4与本机blob也不同。保留全部反证，不改raw/模板/模型、不删除失败case、不伪造已审mapping；前轮已核官方Ollama0.33.1/b10630及安装包x86词表观察。现按用户2026-10-16授权修复本地兼容并重做准备证据，不再以新方案选择为前置；修复/来源/隔离等证据不足时真实调用仍拒绝。真实模型评测/test仍未授权。
 - **本轮实际分词核验（2026-10-15）**：App/工件签名及架构已核：arm64 server静态嵌入，库仅x86。通过已有Rosetta和安装包实际签名x86库vocab-only执行24公开case（不tensor/context/GPU/生成），实测重现NFC/NFD差异；16与HF同ID，22/22与旧counter相同。预算反例HF4013+512=4525，实际x86库8013+512=8525，8K安全判定相反。28项合成保护和独立复跑通过，最终24词表case亦独立完整复现；实际loaded images/角色/摘要/批准manifest受控，准备审查无剩余可执行问题。原生arm64未实测，不能用x86放行native。证据见[核验记录](results/ollama-tokenizer-verification-20261015.md)。
 - **兼容修复完成（2026-10-16，Codex）**：provider已保留HF模板渲染并构建内存兼容编码器，完整校验冻结manifest/GGUF元数据，覆盖两个模型的不同追加/控制/unused规则。实现者原24组公开回归与新增566组词表专用case全部完整ID匹配安装包x86库；NFD预算8013+512越界被正确识别，原文/HF文件不改。独立reviewer另582组完整ID全部匹配，并复跑新增29＋旧semantic35共64 passed；tester新增29 passed，inventory最终63 passed。两个模型各9条实际golden的v2受审映射已补、离线build与verify通过，旧证据不追认；实际离线库存两模型v2结构/来源/依赖绑定匹配；库存不授真实资格，最终独立审查通过，无剩余可执行问题，不代表真实模型或native服务通过。见[修复记录](results/evaluation-review-compatibility-repair-20261016.md)。
+- **隔离运行前接线（2026-10-16，准备完成／Codex）**：现有canary探针及只读匿名worker可复用，但尚无脱离正式eval的显式预检CLI；本轮新增仅合成输入的独立入口，并实际核当前Mac的文件/进程/网络拒绝及三actor匿名请求生成。不调用Ollama/broker、不创建正式eval/claim，不将预检作为独立账户或真实评审部署证明。实现者Mac CLI已实测8项canary通过、三actor各2条匿名请求，新增29项保护与相关联合92 passed（17.08秒，旧pytest清理299 warnings）；独立指定新basetemp复跑57＋35共92项通过、无warning；实际CLI再跑/输出0600/拒覆盖通过，证据见[运行前接线记录](results/evaluation-isolation-display-preflight-20261016.md)。
 - **兼容修复授权（2026-10-16）**：用户明确按原方案处理本地兼容问题，不再另起方案讨论；前轮[A/B草案](plans/2026-10-15-review-tokenizer-alignment-design.md)已撤回为历史探索，不再是待用户决策的前置。保持原方案和原文，修复现有provider内部计数兼容，核验完整GGUF元数据与既有公开词表结果；旧冻结证据不追认，真实调用授权门不放宽。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)、现行 `finetune/eval_holdout.py` / `versioning/holdout.py`；未读取受限语义、创建账户或claim、发送评审包。
 
@@ -81,6 +84,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **验收标准**：全部合格请求≥95%在300秒内自动显示完整结果，失败/超时/需评测Agent或人工判读不算按时完成；失败率≤1%、无OOM/崩溃/持续增长；≥100请求且≥30分钟连续处理，预热/冷启动分开，不通过重试重置时间和分母。具体持续增长判断口径在执行前冻结。
 - **本轮进展**：受控plan/session、Registry实际loader、事件/双签名显示回执接收及export已实现；视频加载器摘要一致性已补齐并由实际两侧input builder测试保护，最终61项合成测试通过（6.15s，退出0；实现者来源），独立reviewer另61 passed（2.36s）。实际runtime核NF4六项与resampler；OOM可观测、clean finish、线程超时终态不明停止接新请求、warmup.request_ids冻结及增长算法已实现。外部客户端未部署，本轮synthetic不能获正式passed；独立审查通过，无剩余可执行问题，限工程及合成范围。
 - **运行前客户端核验（2026-10-15，Codex）**：仅只读本地TensileAgent候选 `codex/competition-demo-chat-mock@86e50c65`（有未跟踪tmp未读）；上传、VLM调用/重试及React结果render未贯通原request ID/nonce、upload→render单调ns与签名回执。已有服务finished_at/event不能作显示端点。保留单次视觉自动结果口径，Agent多轮另报；需未来获得跨库授权后实现专用测点、签名/密钥保管、版本化冻结与部署，本轮只准备既有receiver契约交接清单、不改外仓/生成密钥/启动客户端。详见[运行前核验](results/evaluation-readiness-20261015.md)。
+- **显示测点运行前接线（2026-10-16，准备完成／Codex）**：按既有receipt协议新增主仓薄客户端适配，贯通稳定ID/nonce、显式上传完成/完整显示回调的同一单调时钟、backend签名绑定与签名回执提交；transport/signer注入，先以公开合成输入验证，不选择真实密钥托管、不改候选外仓UI或将回调称为DOM部署证据。候选TensileAgent当前分支/HEAD与上轮相同，6个tracked文件已只读摘要盘点，仅未跟踪tmp未读；真实页面、单次视觉请求与密钥冻结仍未部署。新增47＋现有61共108项合成通过（2.66秒），现有ASGI三路由/临时双密钥闭环仍synthetic；独立reviewer另108 passed（2.75秒）、无warning，当前代码/结果/候选源码绑定复验通过；详见[运行前接线记录](results/evaluation-isolation-display-preflight-20261016.md)。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)与现行服务；未启动临时端点、跨机通道或真实计时。
 
 ### EVAL-INTEGRATION — 来源、评审及质量/性能用途绑定
@@ -414,3 +418,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-16（用户授权／Codex，兼容修复启动）**：用户要求按原方案处理兼容、继续运行前准备，不再扩展新方案讨论，真实模型评测/test仍禁。起始 `4d397f1a` 干净工作区；撤回前轮A/B待确认前置并分派本地provider最小修复，保留原文/模板/模型/样本和既有门。独立可执行准备继续，后续证据实时补记。
 
 - **2026-10-16（Codex，兼容修复与运行前材料完成）**：按原方案修复本地计数适配，原文/HF文件/模板及既有门不变；前轮A/B讨论撤回。实现者原24＋新增566公开case完整IDs匹配，独立reviewer另582组全部匹配。tester新增29 passed、实现者既有38 passed；独立兼容/semantic共64 passed，inventory最终63 passed且独立63复跑通过；发现畸形v2可绕过GGUF禁读边界已修复。两个模型各9条golden的具名v2映射和最终来源输入已封存，实际离线build/verify及独立复验通过；独立Py3.11 inventory结构/依赖/静态绑定匹配、仍ready_for_real_review=false。独立审查通过，现行文档收敛；214链接/锚点、37唯一ID、compileall/diff-check通过。证据见[修复与准备记录](results/evaluation-review-compatibility-repair-20261016.md)，本次Mac提交可由git log追溯。真实评审、GPU/E2E、隔离部署和客户端显示测点仍缺，C/D/E及父任务不关闭；无真实模型生成/评测、真实test、完整server、eval/claim、SSH或外部客户端写入，无push/merge。
+
+- **2026-10-16（Codex，隔离与显示测点准备启动）**：起始 `ae4ccd15` 干净工作区，按用户授权并行只读定位评审隔离和客户端测点剩余接线；先完成无模型准备，不运行真实模型评测/生成、不使用真实test。后续实现、合成验证和实际边界实时补记。
+
+- **2026-10-16（Codex，隔离与显示测点无模型接线完成）**：新增显式sandbox预检CLI、三actor公开合成请求构建及薄客户端receipt桥接；本机8项canary全通过、三actor各2请求、无broker。新隔离29＋既有semantic/semantics联合92项通过，独立92项复跑无warning；新client47＋既有performance61共108 passed，独立108 passed（2.75秒）且无warning；真实ASGI receiver合成闭环仍synthetic/无DOM证明。候选外仓6源码文件及Git身份只读盘点，未读tmp或修改外仓。独立审查通过、无剩余可执行问题；223链接/37唯一ID、compileall/diff-check通过。入口/输出/边界见[本轮记录](results/evaluation-isolation-display-preflight-20261016.md)，同次Mac提交git log追溯。真实部署、独立账户、DOM测点/真实密钥及GPU/E2E仍缺，C/D/E及MODEL-QUALITY不关闭；无真实模型/真实test/正式evalclaim/SSH/外仓写入/push/merge。

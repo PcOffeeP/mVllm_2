@@ -25,6 +25,8 @@ Non-goals:
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
 
+`performance_client.py` 提供模型无关的 `PerformanceClientBridge`，复用既有header/单调时钟/签名回执契约；上传完成和完整显示必须由外部instrument显式回调，transport/signer由部署注入，不内置网络或密钥托管。它不提供新CLI、不证明真实DOM显示或性能通过；[运行前接线记录](../docs/results/evaluation-isolation-display-preflight-20261016.md)列出调用链与验证边界。
+
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
 
 **测评协议边界**：`strict-v4.1` 的 validation 六指标与旧 holdout 七门保留冻结语义；`semantic-v4.1` 显式接入全样本语义整理和逐折开发门。两种结果不能互相改写或继承资格。`eval_compatibility.py` 仅为已核实的 `512cc8b4` 严格实现登记历史摘要到本次准确适配代码摘要的映射；未知旧摘要、适配代码或其他依赖漂移仍拒绝，不自动接受未来代码。基座/成功折已接入开发测评来源；新独立评分、performance 事件证据和按用途准入已接线，真实低权限模型评审、GPU 性能及显示端验收仍见[实施计划](../docs/plans/model-evaluation-implementation.md)。合成检查不构成真实模型、真实权限隔离、GPU、test 或 E2E 证据；不得公开受限 test 明细。
