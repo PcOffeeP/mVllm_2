@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-16",
+  "status": "partial",
+  "executor": "Codex",
+  "platform": "Mac initiated SSH; remote execution not reached",
+  "target": {
+    "host": "100.70.83.68",
+    "user": "liuyang",
+    "port": 22,
+    "repo": "/home/liuyang/文档/mVllm_2",
+    "store": "/data/mVllm_2",
+    "base_models": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5"
+  },
+  "authorization": "Read-only bounded remote preparation audit; no training, GPU inference, evaluation, generation, or true-test access.",
+  "connection_policy": {
+    "BatchMode": true,
+    "StrictHostKeyChecking": true,
+    "ConnectTimeout_seconds": 10,
+    "attempt_limit": 2,
+    "total_connection_limit_seconds": 30
+  },
+  "commands": [
+    {
+      "cwd": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+      "command": "ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 liuyang@100.70.83.68 'printf \\\"HOST=\\\"; hostname; printf \\\"REMOTE_REPO=\\\"; cd /home/liuyang/文档/mVllm_2 && pwd; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks branch --show-current; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks rev-parse HEAD; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks status --short --branch; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks show-ref --heads'",
+      "attempt": 1,
+      "exit_status": 255,
+      "stdout": "",
+      "stderr": "ssh: connect to host 100.70.83.68 port 22: Operation timed out",
+      "elapsed_seconds": 9.874
+    },
+    {
+      "cwd": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+      "command": "ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 liuyang@100.70.83.68 'printf \\\"HOST=\\\"; hostname; printf \\\"REMOTE_REPO=\\\"; cd /home/liuyang/文档/mVllm_2 && pwd; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks branch --show-current; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks rev-parse HEAD; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks status --short --branch; GIT_OPTIONAL_LOCKS=0 git --no-optional-locks show-ref --heads'",
+      "attempt": 2,
+      "exit_status": 255,
+      "stdout": "",
+      "stderr": "ssh: connect to host 100.70.83.68 port 22: Operation timed out",
+      "elapsed_seconds": 9.873
+    }
+  ],
+  "remote_queries_not_executed": [
+    "remote branch, HEAD, status and local refs comparison",
+    "base model allowlisted metadata and four index shard stat",
+    "known legacy current symlink, adapter config selected fields and merged index shard stat",
+    "store records/models, training, evaluations and MLflow path existence/stat",
+    "filesystem/mount capacity"
+  ],
+  "scope_and_restrictions": {
+    "remote_files_read": [],
+    "model_weights_hashed": false,
+    "metrics_predictions_media_or_labels_read": false,
+    "test_directories_accessed": false,
+    "model_import_or_execution": false,
+    "remote_writes_installs_fetch_sync_or_process_control": false
+  },
+  "result": "No remote state could be verified. Current remote reachability is unknown beyond two SSH connection timeouts. No remote command body ran.",
+  "limits_and_next_step": "Resume only after the known SSH route becomes reachable; then rerun the same explicit read-only allowlist. Do not widen network scope, alter keys, infer missing assets, or claim prior snapshot remains current.",
+  "local_context_at_capture": {
+    "mac_repo": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+    "mac_branch": "feat/evaluation-development",
+    "mac_head": "a0f1e1ab60e448f77357194360a4ebc12a8f98dc",
+    "mac_status": "docs/project-todo.md modified before audit; preserved"
+  },
+  "evidence": {
+    "raw_command_retries_saved_in_this_json": true,
+    "remote_script_file": null,
+    "reason": "No remote process could be started; no Python stdin script was transmitted."
+  }
+}

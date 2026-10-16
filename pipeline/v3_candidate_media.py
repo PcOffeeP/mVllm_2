@@ -1,4 +1,11 @@
-"""Materialize v3 candidate clips and exact MiniCPM frame mappings safely."""
+"""Materialize candidate clips and exact MiniCPM frame mappings safely.
+
+The v3 name refers to the candidate plan consumed here. Media identity binds
+that plan, processor fingerprint, and encoding profile; this module does not
+select the downstream training-release contract. The legacy rebuild flow
+reuses these media in V4.1 review and release stages, where the V4.1 contract
+is loaded separately.
+"""
 
 from __future__ import annotations
 

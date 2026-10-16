@@ -1,0 +1,1139 @@
+{
+  "date": "2026-10-16",
+  "status": "completed",
+  "executor": "Codex",
+  "platform": "Mac initiated SSH; read-only inspection ran on dell-Precision-3660",
+  "target": {
+    "ssh": "liuyang@100.70.83.68:22",
+    "repo": "/home/liuyang/文档/mVllm_2",
+    "store": "/data/mVllm_2",
+    "base_model": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5"
+  },
+  "authorization": "Bounded read-only train-machine preparation audit. No training, model inference, evaluation, generation, or true-test access.",
+  "connection_policy": {
+    "BatchMode": true,
+    "StrictHostKeyChecking": true,
+    "ConnectTimeout_seconds": 10,
+    "attempt_limit": 2,
+    "actual_connection_attempts": 1,
+    "actual_connect_result": "connected"
+  },
+  "commands": [
+    {
+      "cwd": null,
+      "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks [branch --show-current | rev-parse HEAD | status --short --branch | show-ref --heads], before and after remote inspection",
+      "exit_status": 0,
+      "result": "branch main; HEAD 3f200461026a59676aaac7ea864f8fadb599688d; clean status ## main...origin/main; local refs captured before and after.",
+      "controller_cwd": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+      "remote_execution_cwd": "/home/liuyang/文档/mVllm_2 (git commands run with cwd set by subprocess)"
+    },
+    {
+      "cwd": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+      "command": "ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 liuyang@100.70.83.68 python3 -B - < /tmp/remote-preparation-audit-connected-20261016.py > /tmp/remote-preparation-audit-connected-20261016.json",
+      "exit_status": 0,
+      "result": "Read-only allowlist query completed; stdout parsed as JSON; exit 0."
+    },
+    {
+      "cwd": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+      "command": "python3 -B -c JSON parse and summarize /tmp/remote-preparation-audit-connected-20261016.json",
+      "exit_status": 0,
+      "result": "Host dell-Precision-3660; four base shards stat-present, aggregate 17,391,890,184 bytes; after status clean."
+    }
+  ],
+  "remote_result": {
+    "host": "dell-Precision-3660",
+    "repo": "/home/liuyang/文档/mVllm_2",
+    "store": "/data/mVllm_2",
+    "base_model": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+    "git_before": {
+      "branch": {
+        "exit_status": 0,
+        "stdout": "main\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks branch --show-current"
+      },
+      "head": {
+        "exit_status": 0,
+        "stdout": "3f200461026a59676aaac7ea864f8fadb599688d\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks rev-parse HEAD"
+      },
+      "status": {
+        "exit_status": 0,
+        "stdout": "## main...origin/main\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks status --short --branch"
+      },
+      "refs": {
+        "exit_status": 0,
+        "stdout": "6a4f23658a069de0dea0b3fb54513479c1823dc1 refs/heads/backup/pre-canonical-20260723\nbcdf4f36288861bd9b986535e0699f4deafe981e refs/heads/diagnostics/data-visual-audit\n3f200461026a59676aaac7ea864f8fadb599688d refs/heads/main\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks show-ref --heads"
+      }
+    },
+    "base_metadata": {
+      "config.json": {
+        "stat": {
+          "exists": true,
+          "type": "file",
+          "mode": "0o755",
+          "size": 1461,
+          "mtime": 1782491793,
+          "link_target": null
+        },
+        "sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+        "selected": {
+          "model_type": "minicpmv",
+          "architectures": [
+            "MiniCPMV"
+          ],
+          "version": 4.5,
+          "auto_map": {
+            "AutoConfig": "configuration_minicpm.MiniCPMVConfig",
+            "AutoModel": "modeling_minicpmv.MiniCPMV",
+            "AutoModelForCausalLM": "modeling_minicpmv.MiniCPMV"
+          }
+        }
+      },
+      "tokenizer_config.json": {
+        "stat": {
+          "exists": true,
+          "type": "file",
+          "mode": "0o755",
+          "size": 25786,
+          "mtime": 1782491793,
+          "link_target": null
+        },
+        "sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+        "selected": {
+          "tokenizer_class": "MiniCPMVTokenizerFast",
+          "auto_map": {
+            "AutoTokenizer": [
+              "tokenization_minicpmv_fast.MiniCPMVTokenizerFast",
+              null
+            ]
+          },
+          "bos_token": "<|im_start|>",
+          "eos_token": "<|im_end|>"
+        }
+      },
+      "source-provenance.json": {
+        "stat": {
+          "exists": false
+        }
+      },
+      ".gitattributes": {
+        "stat": {
+          "exists": false
+        }
+      },
+      "model.safetensors.index.json": {
+        "stat": {
+          "exists": true,
+          "type": "file",
+          "mode": "0o755",
+          "size": 72172,
+          "mtime": 1782491797,
+          "link_target": null
+        },
+        "sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+        "selected": {
+          "metadata.total_size": 17391790560
+        }
+      },
+      "known_hf_download_metadata": {
+        ".cache/huggingface/download/config.json.metadata": {
+          "stat": {
+            "exists": false
+          }
+        },
+        ".cache/huggingface/download/tokenizer_config.json.metadata": {
+          "stat": {
+            "exists": false
+          }
+        },
+        ".cache/huggingface/download/source-provenance.json.metadata": {
+          "stat": {
+            "exists": false
+          }
+        },
+        ".cache/huggingface/download/.gitattributes.metadata": {
+          "stat": {
+            "exists": false
+          }
+        }
+      }
+    },
+    "base_index": {
+      "stat": {
+        "exists": true,
+        "type": "file",
+        "mode": "0o755",
+        "size": 72172,
+        "mtime": 1782491797,
+        "link_target": null
+      },
+      "tensor_reference_count": 849,
+      "shards": [
+        {
+          "name": "model-00001-of-00004.safetensors",
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o755",
+            "size": 5286612176,
+            "mtime": 1782491793,
+            "link_target": null
+          }
+        },
+        {
+          "name": "model-00002-of-00004.safetensors",
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o755",
+            "size": 5301855088,
+            "mtime": 1782491807,
+            "link_target": null
+          }
+        },
+        {
+          "name": "model-00003-of-00004.safetensors",
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o755",
+            "size": 4546851120,
+            "mtime": 1782491797,
+            "link_target": null
+          }
+        },
+        {
+          "name": "model-00004-of-00004.safetensors",
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o755",
+            "size": 2256571800,
+            "mtime": 1782491791,
+            "link_target": null
+          }
+        }
+      ]
+    },
+    "legacy_current": {
+      "path": "/home/liuyang/文档/mVllm_2/workspace/models/current",
+      "stat": {
+        "exists": true,
+        "type": "symlink",
+        "mode": "0o777",
+        "size": 37,
+        "mtime": 1785292317,
+        "link_target": "releases/v4.1-agent-pipeline-fold0-r1"
+      },
+      "link_target": "releases/v4.1-agent-pipeline-fold0-r1",
+      "resolved_path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1",
+      "release_manifest": {
+        "stat": {
+          "exists": true,
+          "type": "file",
+          "mode": "0o664",
+          "size": 2151,
+          "mtime": 1785292158,
+          "link_target": null
+        },
+        "sha256": "3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008",
+        "selected": {
+          "model_name": "v4.1-agent-pipeline-fold0-r1",
+          "lifecycle_status": "current"
+        }
+      },
+      "adapter": {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
+        "stat": {
+          "exists": true,
+          "type": "dir",
+          "mode": "0o775",
+          "size": 4096,
+          "mtime": 1785292307,
+          "link_target": null
+        },
+        "config": {
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o664",
+            "size": 1123,
+            "mtime": 1785111359,
+            "link_target": null
+          },
+          "sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+          "selected": {
+            "base_model_name_or_path": "../models/minicpm_v_4_5",
+            "r": 8,
+            "lora_alpha": 16,
+            "target_modules": [
+              "kv_proj",
+              "up_proj",
+              "v_proj",
+              "fc1",
+              "k_proj",
+              "q_proj",
+              "o_proj",
+              "gate_proj",
+              "out_proj",
+              "down_proj",
+              "fc2"
+            ],
+            "peft_type": "LORA",
+            "task_type": "CAUSAL_LM"
+          }
+        },
+        "weights": [
+          {
+            "name": "adapter_model.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 460430776,
+              "mtime": 1785111359,
+              "link_target": null
+            }
+          }
+        ]
+      },
+      "merged": {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+        "stat": {
+          "exists": true,
+          "type": "dir",
+          "mode": "0o775",
+          "size": 4096,
+          "mtime": 1785111744,
+          "link_target": null
+        },
+        "index": {
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o664",
+            "size": 72209,
+            "mtime": 1785111743,
+            "link_target": null
+          },
+          "sha256": "39760fa6d7171527eaf19fe8830717b2cc5e2eaadaa677d0375595cb54c01095",
+          "selected": {
+            "metadata.total_size": 17391790560
+          }
+        },
+        "shards": [
+          {
+            "name": "model-00001-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1914228064,
+              "mtime": 1785111735,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00002-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1929470832,
+              "mtime": 1785111736,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00003-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1929470856,
+              "mtime": 1785111736,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00004-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1929470888,
+              "mtime": 1785111737,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00005-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1929470888,
+              "mtime": 1785111737,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00006-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1929470888,
+              "mtime": 1785111738,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00007-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1929470888,
+              "mtime": 1785111738,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00008-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1644265032,
+              "mtime": 1785111739,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00009-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 1997939416,
+              "mtime": 1785111742,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00010-of-00010.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o600",
+              "size": 258632328,
+              "mtime": 1785111743,
+              "link_target": null
+            }
+          }
+        ]
+      }
+    },
+    "store_paths": {
+      "records": {
+        "path": "/data/mVllm_2/records",
+        "stat": {
+          "exists": true,
+          "type": "dir",
+          "mode": "0o775",
+          "size": 4096,
+          "mtime": 1789271146,
+          "link_target": null
+        },
+        "direct_entries": [
+          {
+            "name": "prompts",
+            "exists": true,
+            "type": "dir",
+            "mode": "0o775",
+            "size": 4096,
+            "mtime": 1789271146,
+            "link_target": null
+          }
+        ]
+      },
+      "records/models": {
+        "path": "/data/mVllm_2/records/models",
+        "stat": {
+          "exists": false
+        }
+      },
+      "records/training": {
+        "path": "/data/mVllm_2/records/training",
+        "stat": {
+          "exists": false
+        }
+      },
+      "records/evaluations": {
+        "path": "/data/mVllm_2/records/evaluations",
+        "stat": {
+          "exists": false
+        }
+      },
+      "workspace/mlflow": {
+        "path": "/data/mVllm_2/workspace/mlflow",
+        "stat": {
+          "exists": false
+        }
+      },
+      "workspace/mlflow/mlflow.db": {
+        "path": "/data/mVllm_2/workspace/mlflow/mlflow.db",
+        "stat": {
+          "exists": false
+        }
+      },
+      "workspace/mlflow/artifacts": {
+        "path": "/data/mVllm_2/workspace/mlflow/artifacts",
+        "stat": {
+          "exists": false
+        }
+      },
+      "workspace/models/materialized": {
+        "path": "/data/mVllm_2/workspace/models/materialized",
+        "stat": {
+          "exists": false
+        }
+      }
+    },
+    "capacity": [
+      {
+        "path": "/home/liuyang/文档/mVllm_2",
+        "exit_status": 0,
+        "stdout": "文件系统        1024的块      已用      可用 容量 挂载点\n/dev/nvme0n1p2 982230492 549185456 383076704  59% /home\n",
+        "stderr": ""
+      },
+      {
+        "path": "/data/mVllm_2",
+        "exit_status": 0,
+        "stdout": "文件系统         1024的块  已用       可用 容量 挂载点\n/dev/sda1      3844549616 46324 3649136076   1% /data\n",
+        "stderr": ""
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+        "exit_status": 0,
+        "stdout": "文件系统        1024的块      已用      可用 容量 挂载点\n/dev/nvme0n1p2 982230492 549185456 383076704  59% /home\n",
+        "stderr": ""
+      }
+    ],
+    "mounts": [
+      {
+        "path": "/home/liuyang/文档/mVllm_2",
+        "exit_status": 0,
+        "stdout": "/dev/nvme0n1p2 ext4   /home\n",
+        "stderr": ""
+      },
+      {
+        "path": "/data/mVllm_2",
+        "exit_status": 0,
+        "stdout": "/dev/sda1 ext4   /data\n",
+        "stderr": ""
+      },
+      {
+        "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+        "exit_status": 0,
+        "stdout": "/dev/nvme0n1p2 ext4   /home\n",
+        "stderr": ""
+      }
+    ],
+    "git_after": {
+      "branch": {
+        "exit_status": 0,
+        "stdout": "main\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks branch --show-current"
+      },
+      "head": {
+        "exit_status": 0,
+        "stdout": "3f200461026a59676aaac7ea864f8fadb599688d\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks rev-parse HEAD"
+      },
+      "status": {
+        "exit_status": 0,
+        "stdout": "## main...origin/main\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks status --short --branch"
+      },
+      "refs": {
+        "exit_status": 0,
+        "stdout": "6a4f23658a069de0dea0b3fb54513479c1823dc1 refs/heads/backup/pre-canonical-20260723\nbcdf4f36288861bd9b986535e0699f4deafe981e refs/heads/diagnostics/data-visual-audit\n3f200461026a59676aaac7ea864f8fadb599688d refs/heads/main\n",
+        "stderr": "",
+        "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks show-ref --heads"
+      }
+    }
+  },
+  "scope_and_restrictions": {
+    "remote_files_read": "Only Git state; base-model allowlisted metadata/index and listed shards stat; known legacy current, release manifest, adapter config and merged index/shards; listed store paths; df/findmnt for repo/store/base.",
+    "weights_hashed": false,
+    "metrics_predictions_media_or_labels_read": false,
+    "test_directories_accessed": false,
+    "models_imported_or_executed": false,
+    "remote_writes_installs_fetch_sync_or_process_control": false
+  },
+  "interpretation": {
+    "confirmed": "Base index lists four shards and all four are present by stat; legacy current points to Fold0 release, adapter and merged index shards stat present; specified new-store model/training/evaluation records and default MLflow/materialized paths are absent; /data has large free capacity per df.",
+    "source_limit": "No source-provenance.json, .gitattributes, or checked Hugging Face download metadata files were present at the exact allowlisted paths. Local config/tokenizer metadata hashes were recorded. This does not establish a trusted upstream revision or full source provenance.",
+    "weights_limit": "No full-file hashing or model load was performed; stat presence is not content integrity or runtime-load evidence."
+  },
+  "evidence_files": {
+    "this_json": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/remote-preparation-audit-connected-20261016.json",
+    "remote_script": "/tmp/remote-preparation-audit-connected-20261016.py",
+    "raw_remote_json": "/tmp/remote-preparation-audit-connected-20261016.json",
+    "script_sha256": "1e5a329bca3715f47cff8890a49aa9c687b6555bdb0dbe5c5d5f29117f80b2ad",
+    "raw_json_sha256": "130b3abedb0cb35c979b2f86c556828bf7266952ae44462b63a74e489123c909",
+    "connected_script_embedded": "import hashlib, json, os, pathlib, stat, subprocess\nrepo=pathlib.Path('/home/liuyang/文档/mVllm_2'); base=repo/'models/minicpmv4_5'; store=pathlib.Path('/data/mVllm_2')\ndef st(p,follow=True):\n try:\n  x=p.stat() if follow else p.lstat(); link=os.readlink(p) if stat.S_ISLNK(x.st_mode) else None\n  return {'exists':True,'type':'symlink' if stat.S_ISLNK(x.st_mode) else 'dir' if stat.S_ISDIR(x.st_mode) else 'file','mode':oct(stat.S_IMODE(x.st_mode)),'size':x.st_size,'mtime':int(x.st_mtime),'link_target':link}\n except FileNotFoundError:return {'exists':False}\ndef meta(p,fields):\n try:\n  b=p.read_bytes(); d=json.loads(b); s={}\n  for k in fields:\n   cur=d\n   try:\n    for q in k.split('.'):cur=cur[q]\n    s[k]=cur\n   except Exception:pass\n  return {'stat':st(p),'sha256':hashlib.sha256(b).hexdigest(),'selected':s}\n except FileNotFoundError:return {'stat':{'exists':False}}\n except Exception as e:return {'stat':st(p),'error':type(e).__name__+': '+str(e)[:120]}\ndef git(args):\n env=os.environ.copy();env['GIT_OPTIONAL_LOCKS']='0'; p=subprocess.run(['git','--no-optional-locks',*args],cwd=repo,env=env,text=True,capture_output=True)\n return {'exit_status':p.returncode,'stdout':p.stdout,'stderr':p.stderr,'command':'GIT_OPTIONAL_LOCKS=0 git --no-optional-locks '+' '.join(args)}\ndef gitstate():return {k:git(a) for k,a in [('branch',['branch','--show-current']),('head',['rev-parse','HEAD']),('status',['status','--short','--branch']),('refs',['show-ref','--heads'])]}\nr={'host':subprocess.run(['hostname'],capture_output=True,text=True).stdout.strip(),'repo':str(repo),'store':str(store),'base_model':str(base),'git_before':gitstate()}\nr['base_metadata']={n:meta(base/n,f) for n,f in {\n 'config.json':['model_type','architectures','version','auto_map'],\n 'tokenizer_config.json':['tokenizer_class','auto_map','bos_token','eos_token'],\n 'source-provenance.json':['source','repo_id','revision','commit_hash','resolved_revision','files'],\n '.gitattributes':['*'],\n 'model.safetensors.index.json':['metadata.total_size']}.items()}\nr['base_metadata']['known_hf_download_metadata']={n:meta(base/n,['etag','commit_hash','url','size']) for n in [\n '.cache/huggingface/download/config.json.metadata','.cache/huggingface/download/tokenizer_config.json.metadata','.cache/huggingface/download/source-provenance.json.metadata','.cache/huggingface/download/.gitattributes.metadata']}\nidx=base/'model.safetensors.index.json'; d=json.loads(idx.read_text()); shards=sorted(set(d['weight_map'].values()))\nr['base_index']={'stat':st(idx),'tensor_reference_count':len(d['weight_map']),'shards':[{'name':n,'stat':st(base/n)} for n in shards]}\ncur=repo/'workspace/models/current'; target=os.readlink(cur) if stat.S_ISLNK(cur.lstat().st_mode) else None; resolved=cur.resolve(strict=False)\nr['legacy_current']={'path':str(cur),'stat':st(cur,False),'link_target':target,'resolved_path':str(resolved)}\nr['legacy_current']['release_manifest']=meta(repo/'pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json',['model_name','lifecycle_status','base_model','origin_experiment','data_release'])\nap=resolved/'adapter'; cp=ap/'adapter_config.json'\nr['legacy_current']['adapter']={'path':str(ap),'stat':st(ap),'config':meta(cp,['base_model_name_or_path','r','lora_alpha','target_modules','peft_type','task_type']),'weights':[{'name':n,'stat':st(ap/n)} for n in ['adapter_model.safetensors','adapter_model.bin'] if (ap/n).exists()]}\nmp=resolved/'merged'; mi=mp/'model.safetensors.index.json'; md=json.loads(mi.read_text()); mn=sorted(set(md['weight_map'].values()))\nr['legacy_current']['merged']={'path':str(mp),'stat':st(mp),'index':meta(mi,['metadata.total_size']),'shards':[{'name':n,'stat':st(mp/n)} for n in mn]}\nr['store_paths']={}\nfor q in ['records','records/models','records/training','records/evaluations','workspace/mlflow','workspace/mlflow/mlflow.db','workspace/mlflow/artifacts','workspace/models/materialized']:\n p=store/q; e={'path':str(p),'stat':st(p)}\n if q=='records' and p.is_dir():e['direct_entries']=[{'name':z.name,**st(z,False)} for z in sorted(p.iterdir(),key=lambda z:z.name)]\n r['store_paths'][q]=e\nr['capacity']=[];r['mounts']=[]\nfor p in [repo,store,base]:\n for cmd,key in [(['df','-P',str(p)],'capacity'),(['findmnt','-T',str(p),'-no','SOURCE,FSTYPE,TARGET'],'mounts')]:\n  x=subprocess.run(cmd,capture_output=True,text=True);r[key].append({'path':str(p),'exit_status':x.returncode,'stdout':x.stdout,'stderr':x.stderr})\nr['git_after']=gitstate()\nprint(json.dumps(r,ensure_ascii=False,separators=(',',':')))\n",
+    "raw_remote_json_embedded": {
+      "host": "dell-Precision-3660",
+      "repo": "/home/liuyang/文档/mVllm_2",
+      "store": "/data/mVllm_2",
+      "base_model": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+      "git_before": {
+        "branch": {
+          "exit_status": 0,
+          "stdout": "main\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks branch --show-current"
+        },
+        "head": {
+          "exit_status": 0,
+          "stdout": "3f200461026a59676aaac7ea864f8fadb599688d\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks rev-parse HEAD"
+        },
+        "status": {
+          "exit_status": 0,
+          "stdout": "## main...origin/main\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks status --short --branch"
+        },
+        "refs": {
+          "exit_status": 0,
+          "stdout": "6a4f23658a069de0dea0b3fb54513479c1823dc1 refs/heads/backup/pre-canonical-20260723\nbcdf4f36288861bd9b986535e0699f4deafe981e refs/heads/diagnostics/data-visual-audit\n3f200461026a59676aaac7ea864f8fadb599688d refs/heads/main\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks show-ref --heads"
+        }
+      },
+      "base_metadata": {
+        "config.json": {
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o755",
+            "size": 1461,
+            "mtime": 1782491793,
+            "link_target": null
+          },
+          "sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+          "selected": {
+            "model_type": "minicpmv",
+            "architectures": [
+              "MiniCPMV"
+            ],
+            "version": 4.5,
+            "auto_map": {
+              "AutoConfig": "configuration_minicpm.MiniCPMVConfig",
+              "AutoModel": "modeling_minicpmv.MiniCPMV",
+              "AutoModelForCausalLM": "modeling_minicpmv.MiniCPMV"
+            }
+          }
+        },
+        "tokenizer_config.json": {
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o755",
+            "size": 25786,
+            "mtime": 1782491793,
+            "link_target": null
+          },
+          "sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+          "selected": {
+            "tokenizer_class": "MiniCPMVTokenizerFast",
+            "auto_map": {
+              "AutoTokenizer": [
+                "tokenization_minicpmv_fast.MiniCPMVTokenizerFast",
+                null
+              ]
+            },
+            "bos_token": "<|im_start|>",
+            "eos_token": "<|im_end|>"
+          }
+        },
+        "source-provenance.json": {
+          "stat": {
+            "exists": false
+          }
+        },
+        ".gitattributes": {
+          "stat": {
+            "exists": false
+          }
+        },
+        "model.safetensors.index.json": {
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o755",
+            "size": 72172,
+            "mtime": 1782491797,
+            "link_target": null
+          },
+          "sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+          "selected": {
+            "metadata.total_size": 17391790560
+          }
+        },
+        "known_hf_download_metadata": {
+          ".cache/huggingface/download/config.json.metadata": {
+            "stat": {
+              "exists": false
+            }
+          },
+          ".cache/huggingface/download/tokenizer_config.json.metadata": {
+            "stat": {
+              "exists": false
+            }
+          },
+          ".cache/huggingface/download/source-provenance.json.metadata": {
+            "stat": {
+              "exists": false
+            }
+          },
+          ".cache/huggingface/download/.gitattributes.metadata": {
+            "stat": {
+              "exists": false
+            }
+          }
+        }
+      },
+      "base_index": {
+        "stat": {
+          "exists": true,
+          "type": "file",
+          "mode": "0o755",
+          "size": 72172,
+          "mtime": 1782491797,
+          "link_target": null
+        },
+        "tensor_reference_count": 849,
+        "shards": [
+          {
+            "name": "model-00001-of-00004.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o755",
+              "size": 5286612176,
+              "mtime": 1782491793,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00002-of-00004.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o755",
+              "size": 5301855088,
+              "mtime": 1782491807,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00003-of-00004.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o755",
+              "size": 4546851120,
+              "mtime": 1782491797,
+              "link_target": null
+            }
+          },
+          {
+            "name": "model-00004-of-00004.safetensors",
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o755",
+              "size": 2256571800,
+              "mtime": 1782491791,
+              "link_target": null
+            }
+          }
+        ]
+      },
+      "legacy_current": {
+        "path": "/home/liuyang/文档/mVllm_2/workspace/models/current",
+        "stat": {
+          "exists": true,
+          "type": "symlink",
+          "mode": "0o777",
+          "size": 37,
+          "mtime": 1785292317,
+          "link_target": "releases/v4.1-agent-pipeline-fold0-r1"
+        },
+        "link_target": "releases/v4.1-agent-pipeline-fold0-r1",
+        "resolved_path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1",
+        "release_manifest": {
+          "stat": {
+            "exists": true,
+            "type": "file",
+            "mode": "0o664",
+            "size": 2151,
+            "mtime": 1785292158,
+            "link_target": null
+          },
+          "sha256": "3d3fbd91be5cdb7a55aa729ebd7066f8c247ed18f10fa17bf3dc677787bb6008",
+          "selected": {
+            "model_name": "v4.1-agent-pipeline-fold0-r1",
+            "lifecycle_status": "current"
+          }
+        },
+        "adapter": {
+          "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
+          "stat": {
+            "exists": true,
+            "type": "dir",
+            "mode": "0o775",
+            "size": 4096,
+            "mtime": 1785292307,
+            "link_target": null
+          },
+          "config": {
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o664",
+              "size": 1123,
+              "mtime": 1785111359,
+              "link_target": null
+            },
+            "sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+            "selected": {
+              "base_model_name_or_path": "../models/minicpm_v_4_5",
+              "r": 8,
+              "lora_alpha": 16,
+              "target_modules": [
+                "kv_proj",
+                "up_proj",
+                "v_proj",
+                "fc1",
+                "k_proj",
+                "q_proj",
+                "o_proj",
+                "gate_proj",
+                "out_proj",
+                "down_proj",
+                "fc2"
+              ],
+              "peft_type": "LORA",
+              "task_type": "CAUSAL_LM"
+            }
+          },
+          "weights": [
+            {
+              "name": "adapter_model.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 460430776,
+                "mtime": 1785111359,
+                "link_target": null
+              }
+            }
+          ]
+        },
+        "merged": {
+          "path": "/home/liuyang/文档/mVllm_2/workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+          "stat": {
+            "exists": true,
+            "type": "dir",
+            "mode": "0o775",
+            "size": 4096,
+            "mtime": 1785111744,
+            "link_target": null
+          },
+          "index": {
+            "stat": {
+              "exists": true,
+              "type": "file",
+              "mode": "0o664",
+              "size": 72209,
+              "mtime": 1785111743,
+              "link_target": null
+            },
+            "sha256": "39760fa6d7171527eaf19fe8830717b2cc5e2eaadaa677d0375595cb54c01095",
+            "selected": {
+              "metadata.total_size": 17391790560
+            }
+          },
+          "shards": [
+            {
+              "name": "model-00001-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1914228064,
+                "mtime": 1785111735,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00002-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1929470832,
+                "mtime": 1785111736,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00003-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1929470856,
+                "mtime": 1785111736,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00004-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1929470888,
+                "mtime": 1785111737,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00005-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1929470888,
+                "mtime": 1785111737,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00006-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1929470888,
+                "mtime": 1785111738,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00007-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1929470888,
+                "mtime": 1785111738,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00008-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1644265032,
+                "mtime": 1785111739,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00009-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 1997939416,
+                "mtime": 1785111742,
+                "link_target": null
+              }
+            },
+            {
+              "name": "model-00010-of-00010.safetensors",
+              "stat": {
+                "exists": true,
+                "type": "file",
+                "mode": "0o600",
+                "size": 258632328,
+                "mtime": 1785111743,
+                "link_target": null
+              }
+            }
+          ]
+        }
+      },
+      "store_paths": {
+        "records": {
+          "path": "/data/mVllm_2/records",
+          "stat": {
+            "exists": true,
+            "type": "dir",
+            "mode": "0o775",
+            "size": 4096,
+            "mtime": 1789271146,
+            "link_target": null
+          },
+          "direct_entries": [
+            {
+              "name": "prompts",
+              "exists": true,
+              "type": "dir",
+              "mode": "0o775",
+              "size": 4096,
+              "mtime": 1789271146,
+              "link_target": null
+            }
+          ]
+        },
+        "records/models": {
+          "path": "/data/mVllm_2/records/models",
+          "stat": {
+            "exists": false
+          }
+        },
+        "records/training": {
+          "path": "/data/mVllm_2/records/training",
+          "stat": {
+            "exists": false
+          }
+        },
+        "records/evaluations": {
+          "path": "/data/mVllm_2/records/evaluations",
+          "stat": {
+            "exists": false
+          }
+        },
+        "workspace/mlflow": {
+          "path": "/data/mVllm_2/workspace/mlflow",
+          "stat": {
+            "exists": false
+          }
+        },
+        "workspace/mlflow/mlflow.db": {
+          "path": "/data/mVllm_2/workspace/mlflow/mlflow.db",
+          "stat": {
+            "exists": false
+          }
+        },
+        "workspace/mlflow/artifacts": {
+          "path": "/data/mVllm_2/workspace/mlflow/artifacts",
+          "stat": {
+            "exists": false
+          }
+        },
+        "workspace/models/materialized": {
+          "path": "/data/mVllm_2/workspace/models/materialized",
+          "stat": {
+            "exists": false
+          }
+        }
+      },
+      "capacity": [
+        {
+          "path": "/home/liuyang/文档/mVllm_2",
+          "exit_status": 0,
+          "stdout": "文件系统        1024的块      已用      可用 容量 挂载点\n/dev/nvme0n1p2 982230492 549185456 383076704  59% /home\n",
+          "stderr": ""
+        },
+        {
+          "path": "/data/mVllm_2",
+          "exit_status": 0,
+          "stdout": "文件系统         1024的块  已用       可用 容量 挂载点\n/dev/sda1      3844549616 46324 3649136076   1% /data\n",
+          "stderr": ""
+        },
+        {
+          "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+          "exit_status": 0,
+          "stdout": "文件系统        1024的块      已用      可用 容量 挂载点\n/dev/nvme0n1p2 982230492 549185456 383076704  59% /home\n",
+          "stderr": ""
+        }
+      ],
+      "mounts": [
+        {
+          "path": "/home/liuyang/文档/mVllm_2",
+          "exit_status": 0,
+          "stdout": "/dev/nvme0n1p2 ext4   /home\n",
+          "stderr": ""
+        },
+        {
+          "path": "/data/mVllm_2",
+          "exit_status": 0,
+          "stdout": "/dev/sda1 ext4   /data\n",
+          "stderr": ""
+        },
+        {
+          "path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+          "exit_status": 0,
+          "stdout": "/dev/nvme0n1p2 ext4   /home\n",
+          "stderr": ""
+        }
+      ],
+      "git_after": {
+        "branch": {
+          "exit_status": 0,
+          "stdout": "main\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks branch --show-current"
+        },
+        "head": {
+          "exit_status": 0,
+          "stdout": "3f200461026a59676aaac7ea864f8fadb599688d\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks rev-parse HEAD"
+        },
+        "status": {
+          "exit_status": 0,
+          "stdout": "## main...origin/main\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks status --short --branch"
+        },
+        "refs": {
+          "exit_status": 0,
+          "stdout": "6a4f23658a069de0dea0b3fb54513479c1823dc1 refs/heads/backup/pre-canonical-20260723\nbcdf4f36288861bd9b986535e0699f4deafe981e refs/heads/diagnostics/data-visual-audit\n3f200461026a59676aaac7ea864f8fadb599688d refs/heads/main\n",
+          "stderr": "",
+          "command": "GIT_OPTIONAL_LOCKS=0 git --no-optional-locks show-ref --heads"
+        }
+      }
+    },
+    "note": "Full script and original raw remote JSON are embedded so evidence does not depend on temporary files."
+  },
+  "mac_context": {
+    "branch": "feat/evaluation-development",
+    "head": "a0f1e1ab60e448f77357194360a4ebc12a8f98dc",
+    "preexisting_modified_file": "docs/project-todo.md",
+    "new_connected_audit_file": "docs/results/remote-preparation-audit-connected-20261016.json"
+  }
+}

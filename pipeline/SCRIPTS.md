@@ -16,6 +16,13 @@ Non-goals:
 
 日常操作只需要查看 `scripts/SCRIPTS.md`。
 
+## 候选规划与媒体物化的契约边界
+
+- [`v3_candidate_plan.py`](v3_candidate_plan.py) 校验 `tensile-vlm/v3`，负责候选窗口与标签规划，不读写媒体。legacy [`rebuild_data.py`](scripts/rebuild_data.py) 在此阶段加载 `tensile_vlm_v3.json`。
+- [`v3_candidate_media.py`](v3_candidate_media.py) 消费候选计划，物化子视频与 MiniCPM 帧映射，并将计划、处理器指纹及编码配置绑定到媒体身份。后续 V4.1 审查和训练发布复用这些候选与媒体，分别加载 `tensile_vlm_v4_1.json`。
+
+两个模块的 `v3` 名称对应候选层职责，不能据此推断最终发布契约。现行正式数据入口仍是 `python -m versioning data`，显式使用完整 `data-v<协议>-r<N>` 身份；legacy 重建入口仅用于理解上述复用关系。流程说明见[数据指南](../docs/data-workflow.md#候选层与发布契约)。
+
 ## 服务入口（M5）
 
 新服务必须显式选择store根、alias与模式。先完成正式train/eval、Registry登记与所需备份/批准，在store的records/models/保留该模型的正式manifest及records/prompts/中的训练Prompt，然后显式物化alias：

@@ -1,4 +1,11 @@
-"""Plan immutable v3 subvideo candidates without reading or writing media."""
+"""Plan immutable subvideo candidates under the tensile-vlm/v3 contract.
+
+The v3 name describes the candidate-planning contract enforced here, not the
+downstream training-release contract. The legacy rebuild flow loads
+tensile_vlm_v3.json for this stage, then reuses its candidates in V4.1 review
+and release stages that load tensile_vlm_v4_1.json separately. This module
+does not read or write media; its name does not select a release protocol.
+"""
 
 from __future__ import annotations
 

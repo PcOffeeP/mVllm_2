@@ -4,6 +4,12 @@
 
 本文是现行数据处理指南。当前项目证据和未完成事项见[项目现状](project-status.md)，模型训练及测试使用见[模型流程](model-workflow.md)。命令说明不代表真实数据构建、test 使用或模型运行已经获准。
 
+## 候选层与发布契约
+
+[`v3_candidate_plan.py`](../pipeline/v3_candidate_plan.py) 在候选规划层要求 `tensile-vlm/v3`；[`v3_candidate_media.py`](../pipeline/v3_candidate_media.py) 消费候选计划，冻结与计划、处理器指纹和编码配置绑定的媒体身份。legacy [`rebuild_data.py`](../pipeline/scripts/rebuild_data.py) 为候选规划加载 `tensile_vlm_v3.json`，后续 V4.1 审查和训练发布复用候选与媒体，并另行加载 `tensile_vlm_v4_1.json`。因此模块名中的 `v3` 不能用于判断最终发布契约，也不应直接替换为 V4.1。
+
+这段说明解释共享模块的复用边界；正式处理仍使用本文的 `python -m versioning data` 及显式完整 data 身份，不从 legacy 重建入口或模块名称选择发布版本。模块索引见 [pipeline/SCRIPTS.md](../pipeline/SCRIPTS.md#候选规划与媒体物化的契约边界)。
+
 ## 执行前认识两个目录
 
 代码 checkout 保存实现、契约和配置；独立的 versioning **store** 保存工作产物、发布及登记对象。所有命令都明确提供 store，不从旧 `LATEST`、集合索引或短哈希推断版本。

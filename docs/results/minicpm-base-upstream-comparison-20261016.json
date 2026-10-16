@@ -1,0 +1,75 @@
+{
+  "schema_version": "minicpm-base-official-metadata-comparison/v1",
+  "comparison_created_at": "2026-10-16T02:17:39.605251+00:00",
+  "external_observation_source": "/root/base_upstream_metadata researcher; official HF API/model card/OpenBMB GitHub; no weight downloads",
+  "external_observation_date": "2026-10-16",
+  "external_observation_exact_utc_time_recorded": false,
+  "repo_id": "openbmb/MiniCPM-V-4_5",
+  "official_model_card": "https://huggingface.co/openbmb/MiniCPM-V-4_5",
+  "official_api": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5",
+  "official_project_link": "https://github.com/OpenBMB/MiniCPM-V/blob/main/docs/minicpm_v4dot5_en.md",
+  "observed_api_revision": "daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+  "observed_api_last_modified": "2026-08-18T03:58:09.000Z",
+  "weight_metadata_ref_actually_read": "main",
+  "fixed_revision_file_metadata_read": false,
+  "files": [
+    {
+      "path": "model-00001-of-00004.safetensors",
+      "size_bytes": 5286612176,
+      "official_lfs_sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+      "official_pointer_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/main/model-00001-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00001-of-00004.safetensors",
+      "remote_sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "model-00002-of-00004.safetensors",
+      "size_bytes": 5301855088,
+      "official_lfs_sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+      "official_pointer_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/main/model-00002-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00002-of-00004.safetensors",
+      "remote_sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "model-00003-of-00004.safetensors",
+      "size_bytes": 4546851120,
+      "official_lfs_sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+      "official_pointer_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/main/model-00003-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00003-of-00004.safetensors",
+      "remote_sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "model-00004-of-00004.safetensors",
+      "size_bytes": 2256571800,
+      "official_lfs_sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+      "official_pointer_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/main/model-00004-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00004-of-00004.safetensors",
+      "remote_sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+      "sha256_matches": true,
+      "size_matches": true
+    }
+  ],
+  "all_four_weight_sha256_match_main_observation": true,
+  "weight_total_bytes": 17391890184,
+  "remote_integrity_report": {
+    "path": "docs/results/remote-base-integrity-20261016.json",
+    "sha256": "ad52ce4ad312dab9bb239c024a752302fac6477ac96d7dca3e6596b7528ed1f1"
+  },
+  "config_and_tokenizer_config_official_byte_comparison": "not_performed",
+  "all_processor_and_remote_code_source_revision_verified": false,
+  "source_provenance_established": false,
+  "formal_model_registration_created": false,
+  "model_loaded_or_evaluated": false,
+  "real_test_used": false,
+  "limitations": [
+    "The current API commit and raw/main pointer reads are separate observations; fixed-commit files were not retrieved.",
+    "Official default TLS/API/resolve access limitations prevented small-file byte comparison; no certificate checks were disabled.",
+    "Weight equality does not establish the complete config/tokenizer/processor/code revision or original download history.",
+    "No source-provenance.json was fabricated; real registration and model-run gates remain in effect."
+  ]
+}

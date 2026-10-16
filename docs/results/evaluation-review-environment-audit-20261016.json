@@ -1,0 +1,304 @@
+{
+  "schema_version": "local-review-environment-audit/v1",
+  "created_at": "2026-10-16T02:12:06.210438+00:00",
+  "baseline_commit": "a0f1e1ab60e448f77357194360a4ebc12a8f98dc",
+  "platform": {
+    "system": "Darwin",
+    "release": "25.0.0",
+    "machine": "arm64",
+    "host": "PcOffeePdeMacBook-Air.local",
+    "python": "3.11.14",
+    "executable": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/python311/bin/python",
+    "prefix": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/python311"
+  },
+  "command": {
+    "executable": "workspace/review-environment/python311/bin/python",
+    "script": "/tmp/review_environment_audit_20261016.py",
+    "outer_timeout_seconds": 600,
+    "exit_code": 0
+  },
+  "source_manifest": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/tokenizer-sources.json",
+  "source_manifest_sha256": "9244e40336b993f475a2dd9b6d89e0fa0d03bbef757b2aa7c73613179693ff26",
+  "source_and_provider_bytes_frozen": true,
+  "source_inventory_sha256": {
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/tokenizer-sources.json": "9244e40336b993f475a2dd9b6d89e0fa0d03bbef757b2aa7c73613179693ff26",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_review_deployment.py": "d1a782ce3d2be18c6afb4ed2b1de857ca268b47de121f8d7bd71d7d5e32cdfd9",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_review.py": "2f6ca8535be5824a69eebe6a2f3fd228f0b3d74f8cc32bf153c059abe1a159df",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_audit_isolation.py": "a6f8e4b898a77f525bcc0f89dd0633758e29ddc50f576c64b0f8ced2e36f9af8",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/chat_template.jinja": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/tokenizer.json": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/tokenizer_config.json": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/qwen3.5-9b-audit.json": "bcc6c41dda954e724d2cef4a4b068cdea1c03b66ab7060f51bf6cd202b3ecd68",
+    "/Users/pcoffeep/.ollama/models/manifests/registry.ollama.ai/library/qwen3.5/9b": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+    "/Users/pcoffeep/.ollama/models/blobs/sha256-dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c": "dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/chat_template.jinja": "9dd2fbd270feaa1fbef2d4f634d7887c9c506e3bde140f8e7351c8944e8fd235",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/tokenizer.json": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/tokenizer_config.json": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/ornith-1.5-9b-audit.json": "53f82719e09bafcdb8745bb4849c24a6101936b45442768b1f62b4e6fde8ff11",
+    "/Users/pcoffeep/.ollama/models/manifests/registry.ollama.ai/library/ornith-1.5/9b": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+    "/Users/pcoffeep/.ollama/models/blobs/sha256-852922174ee4f76621df26105333f1dfe2171cdfb60ebe5a4b013836681a8a77": "852922174ee4f76621df26105333f1dfe2171cdfb60ebe5a4b013836681a8a77"
+  },
+  "source_and_provider_inventory_sha256_after": {
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/tokenizer-sources.json": "9244e40336b993f475a2dd9b6d89e0fa0d03bbef757b2aa7c73613179693ff26",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_review_deployment.py": "d1a782ce3d2be18c6afb4ed2b1de857ca268b47de121f8d7bd71d7d5e32cdfd9",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_review.py": "2f6ca8535be5824a69eebe6a2f3fd228f0b3d74f8cc32bf153c059abe1a159df",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_audit_isolation.py": "a6f8e4b898a77f525bcc0f89dd0633758e29ddc50f576c64b0f8ced2e36f9af8",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/chat_template.jinja": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/tokenizer.json": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/tokenizer_config.json": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b/vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/qwen3.5-9b-audit.json": "bcc6c41dda954e724d2cef4a4b068cdea1c03b66ab7060f51bf6cd202b3ecd68",
+    "/Users/pcoffeep/.ollama/models/manifests/registry.ollama.ai/library/qwen3.5/9b": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+    "/Users/pcoffeep/.ollama/models/blobs/sha256-dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c": "dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/chat_template.jinja": "9dd2fbd270feaa1fbef2d4f634d7887c9c506e3bde140f8e7351c8944e8fd235",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/tokenizer.json": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/tokenizer_config.json": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b/vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/ornith-1.5-9b-audit.json": "53f82719e09bafcdb8745bb4849c24a6101936b45442768b1f62b4e6fde8ff11",
+    "/Users/pcoffeep/.ollama/models/manifests/registry.ollama.ai/library/ornith-1.5/9b": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+    "/Users/pcoffeep/.ollama/models/blobs/sha256-852922174ee4f76621df26105333f1dfe2171cdfb60ebe5a4b013836681a8a77": "852922174ee4f76621df26105333f1dfe2171cdfb60ebe5a4b013836681a8a77"
+  },
+  "provider_source_files": [
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_review_deployment.py",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_review.py",
+    "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/finetune/eval_audit_isolation.py"
+  ],
+  "script_path": "/tmp/review_environment_audit_20261016.py",
+  "script_sha256": "0ed1424ee0783fc033a9716330f5422b12afe38e278e45f4bf7489cc4327e3f9",
+  "execution_script": "import argparse, hashlib, json, os, platform, stat, subprocess, sys, time\nfrom pathlib import Path\nfrom datetime import datetime, timezone\nROOT=Path('/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2')\nSOURCES=ROOT/'docs/results/evaluation-tokenizer-compatibility-materials-20261016/tokenizer-sources.json'\nDEFAULT_OUT=ROOT/'docs/results/evaluation-review-environment-audit-20261016.json'\nsys.path.insert(0,str(ROOT))\nfrom finetune.eval_review import MODEL_DIGESTS, REVIEW_RUNTIME\nfrom finetune import eval_review_deployment as dep\nfrom finetune import eval_audit_isolation\nsha=lambda b:hashlib.sha256(b).hexdigest()\ndef file_sha(p):\n h=hashlib.sha256()\n with Path(p).open('rb') as f:\n  for b in iter(lambda:f.read(1024*1024),b''):h.update(b)\n return h.hexdigest()\ndef read_url(path, body=None):\n import urllib.request\n class NoRedirect(urllib.request.HTTPRedirectHandler):\n  def redirect_request(self,*a,**k): raise ValueError('redirect rejected')\n opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())\n req=urllib.request.Request(REVIEW_RUNTIME['endpoint']+path,data=body,headers={'Content-Type':'application/json'},method='POST' if body else 'GET')\n with opener.open(req,timeout=4) as r:return json.loads(r.read())\ndef ps():\n try:\n  x=read_url('/api/ps')\n  return {'reachable':True,'models':[{'name':i.get('name'),'digest':i.get('digest'),'size':i.get('size'),'size_vram':i.get('size_vram')} for i in x.get('models',[])]}\n except Exception as e:return {'reachable':False,'error_type':type(e).__name__,'error':str(e)[:300]}\ndef snapshot_sources_and_providers():\n raw=SOURCES.read_bytes(); value=json.loads(raw); inventory={str(SOURCES):sha(raw)}\n provider_paths=[Path(dep.__file__).resolve(),Path(sys.modules['finetune.eval_review'].__file__).resolve(),Path(eval_audit_isolation.__file__).resolve()]\n for p in provider_paths: inventory[str(p)]=file_sha(p)\n for spec in value.values():\n  for n in spec['files']: inventory[str(Path(spec['path'])/n)]=file_sha(Path(spec['path'])/n)\n  aud=Path(spec['tokenizer_equivalence_audit']['path']); inventory[str(aud)]=file_sha(aud)\n  a=json.loads(aud.read_bytes())\n  for it in a['compatibility_assets'].values(): inventory[it['path']]=file_sha(it['path'])\n return inventory\ndef run():\n start=time.monotonic(); before=snapshot_sources_and_providers(); ps_before=ps()\n sources=json.loads(SOURCES.read_bytes()); dep.validate_tokenizer_sources(sources)\n models={}\n for model,spec in sources.items():\n  assets=dep._check_assets(spec); renderer=dep._load_local_tokenizer(spec)\n  compatible=dep.build_compatible_tokenizer(spec,renderer)\n  eq=dep.verify_tokenizer_equivalence_audit(model,spec,compatible)\n  raw=json.loads(Path(spec['tokenizer_equivalence_audit']['path']).read_bytes())\n  models[model]={'approved_digest':MODEL_DIGESTS[model],'source':{'upstream':spec['upstream_source'],'revision':spec['upstream_revision'],'local_assets':len(assets),'files':{k:{'size_bytes':v['size_bytes'],'sha256':v['sha256']} for k,v in assets.items()}},'libraries':{k:{'version':v['version'],'code_sha256':v['code_sha256']} for k,v in spec['libraries'].items()},'manifest_digest_matches':spec['model_sha256']==MODEL_DIGESTS[model],'gguf_sha256':compatible.compatibility_counter_identity['gguf_sha256'],'compatibility_counter':compatible.compatibility_counter_identity,'golden_cases':eq['golden_case_count'],'all_golden_full_ids_matched':True,'audit_sha256':eq['sha256'],'audit_reviewer':raw['reviewer'],'audit_reviewed_at':raw['reviewed_at']}\n metadata={}\n try:\n  tags=dep.local_metadata_transport('/api/tags')\n  metadata['tags']={'reachable':True,'models':[{'name':m.get('name'),'digest':m.get('digest'),'matches_approved':m.get('name') in MODEL_DIGESTS and m.get('digest','').removeprefix('sha256:')==MODEL_DIGESTS[m['name']]} for m in tags.get('models',[]) if m.get('name') in MODEL_DIGESTS]}\n  for model,spec in sources.items():\n   info=dep.local_metadata_transport('/api/show',{'model':model}); template=info.get('template')\n   metadata[model]={'reachable':True,'returned_model':info.get('details',{}).get('family') or info.get('model_info',{}).get('general.name'),'template_sha256':sha(template.encode()) if isinstance(template,str) else None,'template_matches_frozen':isinstance(template,str) and sha(template.encode())==spec['ollama_template_sha256']}\n except Exception as e: metadata['error']={'reachable':False,'error_type':type(e).__name__,'error':str(e)[:300]}\n probe=dep.probe_review_isolation()\n synthetic=eval_audit_isolation.run_preflight(command=[sys.executable,'/tmp/review_environment_audit_20261016.py','--stdout'])\n ps_after=ps(); after=snapshot_sources_and_providers()\n tags_ok=metadata.get('tags',{}).get('reachable') is True and {m['name']:m['matches_approved'] for m in metadata['tags']['models']}=={name:True for name in MODEL_DIGESTS}\n show_ok=all(metadata.get(m,{}).get('template_matches_frozen') is True for m in MODEL_DIGESTS)\n canary_ok=all(probe['checks'].values()) and synthetic['synthetic_preflight_passed'] is True\n frozen=before==after; resident_unchanged=ps_before==ps_after\n ok=tags_ok and show_ok and canary_ok and frozen and resident_unchanged and all(x['golden_cases']==9 and x['all_golden_full_ids_matched'] for x in models.values())\n script=Path(__file__).read_text()\n report={'schema_version':'local-review-environment-audit/v1','created_at':datetime.now(timezone.utc).isoformat(),'baseline_commit':'a0f1e1ab60e448f77357194360a4ebc12a8f98dc','platform':{'system':platform.system(),'release':platform.release(),'machine':platform.machine(),'host':platform.node(),'python':sys.version.split()[0],'executable':sys.executable,'prefix':sys.prefix},'command':{'executable':'workspace/review-environment/python311/bin/python','script':'/tmp/review_environment_audit_20261016.py','outer_timeout_seconds':600,'exit_code':0 if ok else 2},'source_manifest':str(SOURCES),'source_manifest_sha256':sha(SOURCES.read_bytes()),'source_and_provider_bytes_frozen':frozen,'source_inventory_sha256':before,'source_and_provider_inventory_sha256_after':after,'provider_source_files':[str(Path(dep.__file__).resolve()),str(Path(sys.modules['finetune.eval_review'].__file__).resolve()),str(Path(eval_audit_isolation.__file__).resolve())],'script_path':'/tmp/review_environment_audit_20261016.py','script_sha256':sha(script.encode()),'execution_script':script,'replay_command':'PYTHONPATH=<repository-root> <repository-root>/workspace/review-environment/python311/bin/python /tmp/review_environment_audit_20261016.py [--output /absolute/new/path.json | --stdout], under an outer subprocess timeout of 600 seconds. Default output is the canonical audit path and uses exclusive creation; reruns must choose a new --output path or --stdout.','replay_stdout_is_read_only':True,'approved_models':models,'local_metadata':metadata,'metadata_checks_passed':tags_ok and show_ok,'resident_models_before':ps_before,'resident_models_after':ps_after,'resident_model_inventory_unchanged':resident_unchanged,'sandbox_canary':{'checks':probe['checks'],'all_passed':all(probe['checks'].values()),'synthetic':True,'real_model_deployment_verified':False},'actor_sandbox_preflight':{'synthetic_preflight_passed':synthetic['synthetic_preflight_passed'],'actors':len(synthetic['actor_request_preflight']['actors']),'checks':probe['checks'],'admission_proof':False},'boundaries':{'model_generation_executed':False,'model_tensor_loading_executed':False,'real_test_used':False,'formal_evalclaim_created':False,'production_deployment_receipt_created':False,'network_external':False,'admission_proof':False,'ready_for_real_review':False},'duration_seconds':round(time.monotonic()-start,3)}\n return report\ndef write_new(path,data):\n path=Path(path).absolute(); fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)\n with os.fdopen(fd,'wb') as f: f.write(data); os.fchmod(f.fileno(),0o600)\ndef main():\n p=argparse.ArgumentParser(); p.add_argument('--output'); p.add_argument('--stdout',action='store_true'); a=p.parse_args()\n if a.stdout and a.output: p.error('--stdout and --output are mutually exclusive')\n r=run(); data=(json.dumps(r,ensure_ascii=False,indent=2)+'\\n').encode()\n if a.stdout: sys.stdout.buffer.write(data)\n else: write_new(a.output or DEFAULT_OUT,data)\n return r['command']['exit_code']\nif __name__=='__main__': raise SystemExit(main())\n",
+  "replay_command": "PYTHONPATH=<repository-root> <repository-root>/workspace/review-environment/python311/bin/python /tmp/review_environment_audit_20261016.py [--output /absolute/new/path.json | --stdout], under an outer subprocess timeout of 600 seconds. Default output is the canonical audit path and uses exclusive creation; reruns must choose a new --output path or --stdout.",
+  "replay_stdout_is_read_only": true,
+  "approved_models": {
+    "qwen3.5:9b": {
+      "approved_digest": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+      "source": {
+        "upstream": "Qwen/Qwen3.5-9B",
+        "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+        "local_assets": 5,
+        "files": {
+          "tokenizer_config.json": {
+            "size_bytes": 16710,
+            "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+          },
+          "tokenizer.json": {
+            "size_bytes": 12807982,
+            "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+          },
+          "merges.txt": {
+            "size_bytes": 3353259,
+            "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+          },
+          "chat_template.jinja": {
+            "size_bytes": 7756,
+            "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+          },
+          "vocab.json": {
+            "size_bytes": 6722759,
+            "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+          }
+        }
+      },
+      "libraries": {
+        "transformers": {
+          "version": "5.19.0",
+          "code_sha256": "c257c42548fd35c95e4807b87d7b149aecbbf333479c5cad409bb02c0e007dd2"
+        },
+        "tokenizers": {
+          "version": "0.23.3",
+          "code_sha256": "f6da2c50615036db4838decc6c96809833720193f02ec922e7c57d91d1e6be9b"
+        }
+      },
+      "manifest_digest_matches": true,
+      "gguf_sha256": "dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c",
+      "compatibility_counter": {
+        "method": "qwen35-gguf-compatible-encoder/v1",
+        "normalizer": null,
+        "parse_special": true,
+        "add_special_tokens": false,
+        "runtime_regex": "(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+        "gguf_sha256": "dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c",
+        "manifest_sha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+        "gguf_tokenizer_metadata_sha256": "46c104bebd092ad3afd8dbc378d3026ddee009dbb262aab74e376d1b1e1ccabb",
+        "derived_tokenizer_sha256": "dbcef8165c70c3a18c94d3c8d18efba629fcaaa5934e31f3862350849629ca69",
+        "original_tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "token_count": 248320,
+        "merge_count": 247587,
+        "added_token_count": 276,
+        "encoder_token_count": 248320,
+        "loader_control_overrides": [
+          248060,
+          248061,
+          248062,
+          248063,
+          248064,
+          248065
+        ],
+        "unused_token_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "provider_implementation_sha256": "d1a782ce3d2be18c6afb4ed2b1de857ca268b47de121f8d7bd71d7d5e32cdfd9"
+      },
+      "golden_cases": 9,
+      "all_golden_full_ids_matched": true,
+      "audit_sha256": "bcc6c41dda954e724d2cef4a4b068cdea1c03b66ab7060f51bf6cd202b3ecd68",
+      "audit_reviewer": {
+        "id": "codex-independent-reviewer:/root/compat_repair_review",
+        "role": "independent-tokenizer-auditor"
+      },
+      "audit_reviewed_at": "2026-10-16T01:44:49+00:00"
+    },
+    "ornith-1.5:9b": {
+      "approved_digest": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+      "source": {
+        "upstream": "ornith-ai/Ornith-1.5-9B",
+        "revision": "489cb97981b8654bcfcf30ce1f94ed1b62e07b53",
+        "local_assets": 5,
+        "files": {
+          "tokenizer_config.json": {
+            "size_bytes": 16710,
+            "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+          },
+          "tokenizer.json": {
+            "size_bytes": 12807982,
+            "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+          },
+          "merges.txt": {
+            "size_bytes": 3353259,
+            "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+          },
+          "chat_template.jinja": {
+            "size_bytes": 7593,
+            "sha256": "9dd2fbd270feaa1fbef2d4f634d7887c9c506e3bde140f8e7351c8944e8fd235"
+          },
+          "vocab.json": {
+            "size_bytes": 6722759,
+            "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+          }
+        }
+      },
+      "libraries": {
+        "transformers": {
+          "version": "5.19.0",
+          "code_sha256": "c257c42548fd35c95e4807b87d7b149aecbbf333479c5cad409bb02c0e007dd2"
+        },
+        "tokenizers": {
+          "version": "0.23.3",
+          "code_sha256": "f6da2c50615036db4838decc6c96809833720193f02ec922e7c57d91d1e6be9b"
+        }
+      },
+      "manifest_digest_matches": true,
+      "gguf_sha256": "852922174ee4f76621df26105333f1dfe2171cdfb60ebe5a4b013836681a8a77",
+      "compatibility_counter": {
+        "method": "qwen35-gguf-compatible-encoder/v1",
+        "normalizer": null,
+        "parse_special": true,
+        "add_special_tokens": false,
+        "runtime_regex": "(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+        "gguf_sha256": "852922174ee4f76621df26105333f1dfe2171cdfb60ebe5a4b013836681a8a77",
+        "manifest_sha256": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+        "gguf_tokenizer_metadata_sha256": "c77460216cd48b27fabbb9aa4db35b6a41fbb0948e7b08faf38b5ed1dfd155e2",
+        "derived_tokenizer_sha256": "2d52529e8c602ef4acfdbc7d4a3969d508b36dcacff413ebf250bf1081b8fe3d",
+        "original_tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "token_count": 248320,
+        "merge_count": 247587,
+        "added_token_count": 33,
+        "encoder_token_count": 248077,
+        "loader_control_overrides": [],
+        "unused_token_ids_sha256": "38a77e3b6a798df50f22fafa2c5ebad4840d493922d40eb16c58a20db74778cf",
+        "provider_implementation_sha256": "d1a782ce3d2be18c6afb4ed2b1de857ca268b47de121f8d7bd71d7d5e32cdfd9"
+      },
+      "golden_cases": 9,
+      "all_golden_full_ids_matched": true,
+      "audit_sha256": "53f82719e09bafcdb8745bb4849c24a6101936b45442768b1f62b4e6fde8ff11",
+      "audit_reviewer": {
+        "id": "codex-independent-reviewer:/root/compat_repair_review",
+        "role": "independent-tokenizer-auditor"
+      },
+      "audit_reviewed_at": "2026-10-16T01:44:49+00:00"
+    }
+  },
+  "local_metadata": {
+    "tags": {
+      "reachable": true,
+      "models": [
+        {
+          "name": "ornith-1.5:9b",
+          "digest": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+          "matches_approved": true
+        },
+        {
+          "name": "qwen3.5:9b",
+          "digest": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+          "matches_approved": true
+        }
+      ]
+    },
+    "qwen3.5:9b": {
+      "reachable": true,
+      "returned_model": "qwen35",
+      "template_sha256": "b507b9c2f6ca642bffcd06665ea7c91f235fd32daeefdf875a0f938db05fb315",
+      "template_matches_frozen": true
+    },
+    "ornith-1.5:9b": {
+      "reachable": true,
+      "returned_model": "qwen35",
+      "template_sha256": "f55f52930aa8bf44ab5cb85f99370fcc3c56e9a85640b812086d5330bce5d86b",
+      "template_matches_frozen": true
+    }
+  },
+  "metadata_checks_passed": true,
+  "resident_models_before": {
+    "reachable": true,
+    "models": []
+  },
+  "resident_models_after": {
+    "reachable": true,
+    "models": []
+  },
+  "resident_model_inventory_unchanged": true,
+  "sandbox_canary": {
+    "checks": {
+      "package_read": true,
+      "truth_denied": true,
+      "credential_denied": true,
+      "package_write_denied": true,
+      "peer_write_denied": true,
+      "network_denied": true,
+      "tools_denied": true,
+      "credential_environment_absent": true
+    },
+    "all_passed": true,
+    "synthetic": true,
+    "real_model_deployment_verified": false
+  },
+  "actor_sandbox_preflight": {
+    "synthetic_preflight_passed": true,
+    "actors": 3,
+    "checks": {
+      "package_read": true,
+      "truth_denied": true,
+      "credential_denied": true,
+      "package_write_denied": true,
+      "peer_write_denied": true,
+      "network_denied": true,
+      "tools_denied": true,
+      "credential_environment_absent": true
+    },
+    "admission_proof": false
+  },
+  "boundaries": {
+    "model_generation_executed": false,
+    "model_tensor_loading_executed": false,
+    "real_test_used": false,
+    "formal_evalclaim_created": false,
+    "production_deployment_receipt_created": false,
+    "network_external": false,
+    "admission_proof": false,
+    "ready_for_real_review": false
+  },
+  "duration_seconds": 21.195
+}
