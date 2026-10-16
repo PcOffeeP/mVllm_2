@@ -1,0 +1,292 @@
+{
+  "schema": "development-runtime-readiness/v1",
+  "date": "2026-10-16",
+  "executor": "Codex",
+  "local_baseline": "57670abc2939f6a9987b3078aa5c9299bb8e25e8",
+  "method": "local source reading, AST literal inspection and SHA256 only",
+  "scope": {
+    "model_execution": false,
+    "real_evaluation": false,
+    "test_data_used": false,
+    "base_rewritten": false,
+    "formal_records_created": false
+  },
+  "source_files": {
+    "finetune/eval_run.py": {
+      "bytes": 80573,
+      "sha256": "e8b61ba6cfe5965f3e3bc358e7155638ccc63029710367086bfe9c39c58b64b2"
+    },
+    "finetune/validation/constants.py": {
+      "bytes": 1830,
+      "sha256": "24d2b020ba07bb3f55a353c68ee2e66b6835e1d45c52fbbec839e5e3e480a61a"
+    },
+    "finetune/validation/model_runtime.py": {
+      "bytes": 6769,
+      "sha256": "ee0b064760b717bb7ec66f6a58580ab412c524c077af4a219a19e805b50784ac"
+    },
+    "finetune/validation/video_loader.py": {
+      "bytes": 3359,
+      "sha256": "241d4089b649b086578fee3c140b8944a383660de382d8b63c7ff5ba532f95c2"
+    },
+    "pipeline/server_proxy.py": {
+      "bytes": 20302,
+      "sha256": "d83893056a5a9362d7c9ec1e94467cda5588aa142be42c5d441b4be42d915c84"
+    },
+    "pipeline/model_registry.py": {
+      "bytes": 18201,
+      "sha256": "83cc5a3625d9b422ae8d24053b901a0b6f954c6b07ffe250cceaef54baf9deb9"
+    },
+    "pipeline/preprocessing/minicpm_preprocessor.py": {
+      "bytes": 29128,
+      "sha256": "65661229eecd300c23cbce32cf178e8107a6f93f01756f358de3b1b3ed2e4e74"
+    },
+    "pipeline/llamafactory_contract.py": {
+      "bytes": 9110,
+      "sha256": "1494ce6b9546fe15f4f095283cb46e85ddc62f05e8cb306a183992290e48f0a8"
+    },
+    "LlamaFactory/src/llamafactory/data/mm_plugin.py": {
+      "bytes": 123762,
+      "sha256": "939028b2c648e6cbcd2b556cd645a969c1820f8c0986173c26a2d682264348ff"
+    },
+    "LlamaFactory/src/llamafactory/hparams/model_args.py": {
+      "bytes": 23611,
+      "sha256": "fd04cec23f68489a4e449d1a1f48c266ea63c6119c67929432867b6665295d2f"
+    },
+    "versioning/performance.py": {
+      "bytes": 46904,
+      "sha256": "31d216f0969181943dd3489fd5b8a3fae710f2a93987c9f7c4a7d0adf14f0f70"
+    },
+    "finetune/eval_performance.py": {
+      "bytes": 34764,
+      "sha256": "fc6db37e75fb1648bb5c11e64a4eb70367be40ba53faa9c2ebb47255154d48cd"
+    },
+    "records/prompts/prompt-v4.1-r1.yaml": {
+      "bytes": 1200,
+      "sha256": "907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6"
+    },
+    "pipeline/contracts/tensile_vlm_v4_1.json": {
+      "bytes": 8149,
+      "sha256": "9fa15b4a267c295727a9a99240b629b65a78508dcd5cc44887168d1878581331"
+    },
+    "finetune/eval_review.py": {
+      "bytes": 31763,
+      "sha256": "2f6ca8535be5824a69eebe6a2f3fd228f0b3d74f8cc32bf153c059abe1a159df"
+    },
+    "finetune/train_build_dataset.py": {
+      "bytes": 21094,
+      "sha256": "e2773d8cf19313c9a6111f2555d775e29e6104f261e0db304d449f5cd1758059"
+    },
+    "finetune/release_validate.py": {
+      "bytes": 4035,
+      "sha256": "e1e7f6d2b279dcb384da5666fbe17685851879f36dbfade253c9bc15be7f0bf6"
+    },
+    "finetune/train_prepare_run.py": {
+      "bytes": 39816,
+      "sha256": "7378c64447d83e330a2b2338e521bbb38c9612153e46b1f496532bb233a69b15"
+    },
+    "pipeline/production_contract.py": {
+      "bytes": 5090,
+      "sha256": "1253699cf862e6f954072cabe49f1a8b2d85a4b3ecbd9cc86836254dd38d1ecb"
+    },
+    "finetune/MiniCPM/config/active/v4_1_source_aware_3k_coverage_first/train_seed3407.yaml": {
+      "bytes": 1499,
+      "sha256": "d3fd4000fb593c64fa653261fafda118651de2268b59195c6b94f8e46a89cac3"
+    },
+    "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json": {
+      "bytes": 2593,
+      "sha256": "1afc1b841fd46130b3fd7b788191718ee0734f0ff57538b97ff246784e44f9c5"
+    },
+    "finetune/MiniCPM/config/active/v4_1_source_aware_3k_coverage_first/run_manifest.json": {
+      "bytes": 1555,
+      "sha256": "b7b76ade22d4fe042023d1095cff202a7a2ada697e9e91008145e22874dc4a3e"
+    }
+  },
+  "generation": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 256,
+    "video_max_frames": 8
+  },
+  "path_alignment": {
+    "development": "finetune.eval_run -> finetune.validation.model_runtime -> AutoModel / independent video_loader",
+    "controlled_performance": "RegistryPerformanceLoader -> ChatModel -> pipeline.server_proxy.create_integrated_app",
+    "final_service": "Registry binding -> ChatModel -> same create_integrated_app",
+    "generation_numeric_match": true,
+    "sampling_equivalence_verified": false,
+    "sampling_limit_match": {
+      "configured_target_frames": 8,
+      "actual_processor_attributes_verified": false,
+      "limit": "configure_processor_max_frames may return without change if no supported attribute is present; runtime capture required"
+    },
+    "sampling_gaps": [
+      "service stream.frames versus development decoded eligible frame count",
+      "stream.frames == 0 uses different fallback",
+      "stream.duration missing: development container duration fallback versus service direct duration arithmetic"
+    ],
+    "request_policy_gap": {
+      "development_max_model_calls_per_sample": 1,
+      "service_analysis_max_model_calls_per_request": 3,
+      "service_retry_changes_context": true,
+      "semantic_equivalence_verified": false,
+      "source": "pipeline/server_proxy.py:342-365; finetune/eval_run.py:930-950"
+    },
+    "processor_difference": {
+      "development": {
+        "max_slice_nums": 1,
+        "use_image_id": false
+      },
+      "service_video_plugin": {
+        "max_slice_nums": 2
+      },
+      "source": [
+        "finetune/validation/model_runtime.py:120-127",
+        "LlamaFactory/src/llamafactory/data/mm_plugin.py:1252"
+      ],
+      "status": "Confirmed local static difference; no processor/model execution, no claim actual tensor behavior equal or different for every media. Must resolve target parity before freezing fair comparison."
+    }
+  },
+  "runtime_variant": {
+    "selected": false,
+    "reason": "Do not choose null/4 or claim actual dtype from historical merged BF16 deployment; actual proposed target and loaded attestation are not frozen.",
+    "declaration_options": [
+      null,
+      4
+    ],
+    "actual_loader_verification_pending": [
+      "device",
+      "dtype",
+      "is_loaded_in_4bit",
+      "NF4/double_quant/compute_dtype/storage_dtype",
+      "resampler actual dtype and excluded modules"
+    ]
+  },
+  "resource_budget": {
+    "performance_preflight_cap_gpu_hours": 1,
+    "performance_formal_cap_gpu_hours": 20,
+    "backend_timeout_seconds": 600,
+    "client_timeout_seconds": 660,
+    "on_time_seconds": 300,
+    "formal_min_requests": 100,
+    "formal_min_continuous_seconds": 1800,
+    "quality_estimate_gpu_hours": null,
+    "quality_cap_gpu_hours": null,
+    "quality_budget_frozen": false,
+    "quality_formula": "sum over explicitly selected model/fold comparisons: N_validation[fold] * measured_seconds_per_sample[variant,fold] * gpu_count / 3600, plus measured loading and policy-defined retry overhead; no guessed throughput",
+    "limits": "This is a planning worksheet, not a new approved cap, performance claim, or measured duration. Selected model scope, throughput, deployment variant and retry alignment remain unavailable; performance caps do not apply as quality caps.",
+    "review_volume_boundary": {
+      "applicable_to": "Existing independent reviewer runner only; not a measured cost or development review deployment proof",
+      "definitions": "U unique raw answer hashes, D disagreements with completed initial judgments (0 <= D <= U); default two initial reviewers. U and D not known before inference.",
+      "nominal_invocations": "2*U + 2*D (arbiter first independent, then disclosed arbitration)",
+      "infrastructure_retry_upper_bound": "4*U + 3*D; each initial actor at most two invocations, arbiter initial+dependent phases share at most one infrastructure retry",
+      "source": "finetune/eval_review.py:487-539",
+      "separate_from": "Model inference sample denominator; duplicate raw answer reuse does not delete model evaluation samples"
+    },
+    "sample_volume_worksheet": {
+      "source": "docs/results/development-input-inventory-20261016.json",
+      "validation_counts": [
+        425,
+        664,
+        492
+      ],
+      "validation_total": 1581,
+      "release_candidate_total": 1678,
+      "not_in_validation": 97,
+      "scenarios_are_not_selected_or_frozen": true,
+      "single_fold0_one_model": {
+        "model_calls_without_runtime_retries": 425,
+        "max_new_output_tokens": 108800
+      },
+      "single_fold0_base_and_one_completed_fold": {
+        "model_calls_without_runtime_retries": 850,
+        "max_new_output_tokens": 217600
+      },
+      "three_fold_one_model_family": {
+        "model_calls_without_runtime_retries": 1581,
+        "max_new_output_tokens": 404736
+      },
+      "three_fold_base_and_trained_comparison": {
+        "model_calls_without_runtime_retries": 3162,
+        "max_new_output_tokens": 809472
+      },
+      "limits": "Arithmetic based on current development splits and one-call development implementation. Does not authorize or select any run, assume trained folds exist, infer throughput, include model loading/retries/reviewer costs, or remove the 97 train-only-by-observation candidates from the release."
+    }
+  },
+  "ready_for_real_run": false,
+  "source_groups_frozen": false,
+  "input_inventory": {
+    "path": "docs/results/development-input-inventory-20261016.json",
+    "sha256": "e70ef33a61f442700a536f37f42fe8c2edc65b3fe5b6c6f4c51a8ba8f578cdbe",
+    "remote_facts": "Source executor read-only SSH collection; this local worksheet does not reperform collection."
+  },
+  "prompt_contract_analysis": {
+    "historical_commit": "97d36a90003957be3c13b5dbfc017452a308e54d",
+    "historical_git_object": "97d36a90003957be3c13b5dbfc017452a308e54d:pipeline/contracts/tensile_vlm_v4_1.json",
+    "historical_file_sha256": "583201775f33c2b413b9bc1491054ab66d787942ece9c88b8537b1fbacebf20a",
+    "historical_declared_contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+    "current_file_sha256": "9fa15b4a267c295727a9a99240b629b65a78508dcd5cc44887168d1878581331",
+    "current_declared_contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+    "both_self_hashes_match_canonical_json": true,
+    "canonical_algorithm": "copy JSON object, remove contract_hash, UTF-8 json.dumps(ensure_ascii=False, sort_keys=True, separators=(comma,colon)), SHA256",
+    "differing_paths": [
+      "$.analysis.retry_prompt",
+      "$.analysis.system_prompt",
+      "$.analysis.user_prompt",
+      "$.contract_hash"
+    ],
+    "label_schema_and_enum_generation_video_objects_unchanged": true,
+    "semantics_boundary": "Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.",
+    "builder_behavior": "Explicit registered Prompt replaces data JSON system/user while retaining assistant labels; candidate metadata contract_hash is not compared to current scoring contract_hash. Code allowance alone is not semantic equivalence.",
+    "builder_source": "finetune/train_build_dataset.py:92-137"
+  },
+  "legacy_training_config_recovery": {
+    "training_manifest": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json",
+    "current_active_config": "finetune/MiniCPM/config/active/v4_1_source_aware_3k_coverage_first/train_seed3407.yaml",
+    "current_active_config_sha256": "d3fd4000fb593c64fa653261fafda118651de2268b59195c6b94f8e46a89cac3",
+    "recorded_training_code_commit": "f54d9ca617e455454f28e31ae058eda2dfdb5ec7",
+    "recovered_git_object": "f54d9ca617e455454f28e31ae058eda2dfdb5ec7:finetune/MiniCPM/config/active/v4_1_source_aware_3k_coverage_first/train_seed3407.yaml",
+    "recovered_config_sha256": "036c9c69f9d79ca837214f1a796d426f7ac7dec1078c11055eed25a866ad8bd9",
+    "recovered_config_size_bytes": 1535,
+    "matches_training_manifest": true,
+    "recovered_config_text": "# Stage B coverage-first revision on immutable release v4.1.0-ecb5aeb9657c.\nmodel_name_or_path: ../models/minicpm_v_4_5\ncache_dir: null\ntrust_remote_code: true\nflash_attn: sdpa\n\nstage: sft\ndo_train: true\ndo_eval: true\nfinetuning_type: lora\nlora_target: all\nlora_rank: 8\nlora_alpha: 16\nlora_dropout: 0.25\nadditional_target: resampler\nfreeze_vision_tower: false\nfreeze_multi_modal_projector: false\nquantization_bit: 4\nquantization_method: bnb\ndouble_quantization: true\nupcast_layernorm: true\n\ndataset: tensile_v4_1_phase2_3k_seed3407\neval_dataset: tensile_v4_1_phase2_fold0_val\ndataset_dir: ../../tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-2a84e8b6cfc3\ntemplate: minicpm_v\nmedia_dir: ../../tensile-data/current/.compat/workspace\ncutoff_len: 2048\nvideo_maxlen: 8\npreprocessing_num_workers: 4\noverwrite_cache: true\n\noutput_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407\nlogging_steps: 5\nsave_strategy: steps\nsave_steps: 50\nsave_total_limit: 5\neval_strategy: steps\neval_steps: 50\nload_best_model_at_end: true\nmetric_for_best_model: eval_loss\ngreater_is_better: false\nplot_loss: true\noverwrite_output_dir: false\n\nper_device_train_batch_size: 1\nper_device_eval_batch_size: 1\ngradient_accumulation_steps: 8\nlearning_rate: 0.000005\nnum_train_epochs: 3\nlr_scheduler_type: cosine\nwarmup_ratio: 0.1\nbf16: true\nmax_grad_norm: 1.0\nweight_decay: 0.2\nadam_beta2: 0.95\noptim: adamw_torch\ngradient_checkpointing: true\nddp_timeout: 1800\nseed: 3407\n",
+    "interpretation": "Exact historical YAML bytes recovered from recorded training-code Git object match the training manifest; current active YAML differs. This proves a matching configuration artifact exists, not actual dataset message content or exact old training Prompt. No Prompt revision/version is declared in recovered YAML. The legacy workspace/runs probe was not authoritative.",
+    "aggregate_metadata_probe": {
+      "scope": "Two explicit aggregate development metadata files only, no dataset rows/media/test/model/weights; max64KiB each, no remote writes",
+      "argv": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "liuyang@100.70.83.68",
+        "/home/liuyang/miniconda3/envs/mvllm2/bin/python -B -"
+      ],
+      "program": "import pathlib,json,hashlib,subprocess,os\nrepo=pathlib.Path('/home/liuyang/文档/mVllm_2')\nbase=pathlib.Path('/home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-2a84e8b6cfc3')\nenv=dict(os.environ);env['GIT_OPTIONAL_LOCKS']='0'\ndef git():\n return {k:subprocess.run(['git','--no-optional-locks',*a],cwd=repo,env=env,text=True,capture_output=True,check=True).stdout.strip() for k,a in {'branch':['branch','--show-current'],'head':['rev-parse','HEAD'],'status':['status','--porcelain=v1']}.items()}\nout={'before':git(),'files':{}}\nfor name in ['summary.json','dataset_info.json']:\n p=base/name\n if not p.is_file():out['files'][name]={'path':str(p),'exists':False};continue\n st=p.stat()\n if st.st_size>65536:out['files'][name]={'path':str(p),'exists':True,'skipped':'size exceeds explicit 64KiB bound'};continue\n b=p.read_bytes();after=p.stat();out['files'][name]={'path':str(p),'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'stable':(st.st_ino,st.st_size,st.st_mtime_ns,st.st_ctime_ns)==(after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns),'aggregate_metadata':json.loads(b)}\nout['after']=git();print(json.dumps(out,ensure_ascii=False))\n",
+      "exit": 0,
+      "stderr": "",
+      "result": {
+        "before": {
+          "branch": "main",
+          "head": "3f200461026a59676aaac7ea864f8fadb599688d",
+          "status": ""
+        },
+        "files": {
+          "summary.json": {
+            "path": "/home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-2a84e8b6cfc3/summary.json",
+            "exists": false
+          },
+          "dataset_info.json": {
+            "path": "/home/liuyang/文档/tensile-data/current/derived/metadata/v4_1/source_aware_3k/source-aware-3k-2a84e8b6cfc3/dataset_info.json",
+            "exists": false
+          }
+        },
+        "after": {
+          "branch": "main",
+          "head": "3f200461026a59676aaac7ea864f8fadb599688d",
+          "status": ""
+        }
+      }
+    }
+  }
+}

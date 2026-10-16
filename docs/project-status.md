@@ -49,6 +49,8 @@
 
 这不是隐式“默认版本”清单。r1/r2生命周期、划分计数及外部媒体路径已于2026-10-13只读核对；Prompt仍依据历史迁移证据，本轮未重验内容。r1/r2复制保留原payload及划分，其中仍有外部媒体引用；不能按迁移完成删除旧workspace。正式记录在 `<store>/data/releases/<完整身份>/` 与 `records/prompts/`，映射和生命周期决定见[对象映射](results/version-control-migration/object-mapping.yaml)，内容验签见[验证第20–24及43节](results/version-control-migration/verification.md)。
 
+2026-10-16后续开发输入只读核验：实际r2为sealed/development/active且training_allowed=true，1,678候选、85来源视频；三折validation为425/664/492，共1,581，97个候选未进入validation。来源视频层级无折间泄漏，试件独立性尚无映射证明；正式Prompt在store/代码仓库一致，与旧注册v2文本相同，但不能代替旧Fold0实际训练Prompt绑定。已备无标签来源关系、三入口参数与预算材料；开发/服务切片、抽帧边界和请求重试仍有差异，质量GPU小时与实际变体未冻结。见[开发准备记录](results/development-input-runtime-preparation-20261016.md)，未运行模型或使用test。
+
 Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1253/425、1014/664、1186/492。基础发布有1275条，三折为850/425、830/445、929/346。数据来源和详细统计见[Phase2发布记录](results/v4_1_phase2_development_release/README.md)及[有效视图审计记录](results/v4_1_phase1_effective_view_audit/README.md)；不同发布分数不能直接作单变量因果比较。
 
 ## 历史模型成果

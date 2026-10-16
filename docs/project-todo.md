@@ -4,6 +4,8 @@
 
 ## 当前状态与下一步
 
+**本轮开发输入与预算准备（2026-10-16，限定核验与材料完成／Codex）**：起始Mac `57670abc` 干净；训练机限定只读核实际 `data-v4.1-r2` / `prompt-v4.1-r1`。1,678开发候选/85来源视频，三折validation为425/664/492（合计1,581），97候选未进入validation；来源层级无泄漏不等于独立试件。已保存无标签候选→来源关系、Prompt/契约字段对照、三入口参数与预算计算材料。实际旧Fold0训练Prompt及更高试件关系未证；评测/服务存在切片、抽帧边界、重试差异，须按既有一致性要求处理后冻结，不擅选量化或更改流程。质量GPU小时预算未虚填，性能1/20小时仍为既定上限。详见[本轮准备记录](results/development-input-runtime-preparation-20261016.md)。未模型/真实评测/训练/test、不改基座、不再追查`self.post_init()`；真实验收未升级。
+
 **本轮post_init核验收口（2026-10-16，来源追查已按用户要求取消／Codex）**：用户不记得添加记录，明确要求删除这项待办；现已移除历史来源/动机追查的下一动作，不再持续追查。已完成实际 Transformers 4.56.1 源码与官方标签核对、构造收尾用途及加载上下文静态分析；现有代码差异保留记录，不能据取消事项声称原样官方快照或放行来源登记。基座未改写、真实模型与test未运行。见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。
 
 **本轮基座固定来源核验（2026-10-16，逐项比对完成、代码差异保留／Codex）**：用户要求继续核固定revision配置/tokenizer/代码，起始 `defa954b` 干净工作区。复用已知官方commit `daef484c35ec93210ec93c5e901f8f3e9b78ee34`、上轮完整SHA及已存在的默认验证HTTPS路径，取官方固定小文件/树与LFS pointer，核训练机真实静态配置/代码闭包；不加载/执行模型、不读真实test、不登记正式模型/evalclaim、不改写原资产或关闭TLS检查。已核官方固定树/配置/tokenizer/processor/代码和真实副本，HF20同/2不同/1额外；官方ModelScope历史来源解释README与额外配置，剩1处构造代码偏差`self.post_init()`。不改写基座、不冒称原样快照；来源声明/正式登记仍不放行。见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)。
@@ -36,11 +38,11 @@
 | 本轮已完成 | REMOTE-STATE-REFRESH | 已解决：限定范围训练机只读刷新 | 实时事实及缺口已记录；未执行同步、环境切换或模型运行 |
 | 文档交付 | EVAL-PROTOCOL | 已解决：四项前置与多 Agent 判读已入库 | 本批独立源码核查及静态检查通过；只关闭文档增量，代码与真实验收未完成 |
 | 本轮已完成 A | EVAL-SEMANTICS | 已解决：纯语义评分与封存判读基础 | 102项新增关键测试通过、独立复核通过；真实隔离归C，模型效果另验 |
-| 开发接线 B | EVAL-DEVELOPMENT | 进行中（Codex）：工程接线已完成，待真实环境证据 | 基座/完成折、逐折门、导出/配对/备份合成通过；下一步现场核验及适用运行授权 |
+| 开发接线 B | EVAL-DEVELOPMENT | 进行中（Codex）：工程接线已完成，待真实环境证据 | 开发data/Prompt/来源视频及分母已核；补试件/旧训练Prompt并对齐切片、抽帧、重试及质量预算，真实运行另授权 |
 | 独立评分 C | EVAL-HOLDOUT | 进行中（Codex）：工程及无模型环境核验完成 | 实际tags/show、来源/依赖/18golden及canary已核；待真实独立账户/完整服务；真实test仍依赖HOLDOUT-BUILD |
 | 性能接线 D | EVAL-PERFORMANCE | 进行中（Codex）：工程已完成，待真实GPU/E2E证据 | 会话/loader/双签名接收已接线；候选客户端缺原ID/nonce/单调显示测点/签名链，跨库实施及真实运行另授权 |
 | 完整绑定 E | EVAL-INTEGRATION | 进行中（Codex）：工程已完成，待真实联合验收 | 77项准入/恢复/服务/开发合成通过；旧passed不继承新资格，真实服务另验 |
-| 模型准备 | MODEL-DIAG | 进行中（Codex）：输入核验已推进，诊断未执行 | 固定HF配置/tokenizer/processor及权重身份已核；MS来源及构造调用用途已核；历史来源追查取消，代码差异保留，未运行诊断 |
+| 模型准备 | MODEL-DIAG | 进行中（Codex）：输入核验已推进，诊断未执行 | 基座静态身份及开发data/Prompt/分母已核；试件依赖、旧训练Prompt和开发/交付差异待补，诊断未运行 |
 | 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
 | 本轮已完成 | ENV-ACTIVATION | 已解决：正式Conda环境与checkout绑定 | mvllm2 Python3.11.17、241锁项一致、doctor/pip check通过；真实业务未运行 |
 | 备份验收 | RECOVERY-VALIDATION | 进行中（Codex）：容量/已知位置已核，真实恢复未执行 | 缺准确独立备份root/目标及完整模型、SQLite、外部依赖snapshot |
@@ -62,7 +64,9 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **本轮验证**：主 Agent 新增关键集102 passed（64.23s，退出码0）；独立 reviewer 最终14项接线专项均通过（13+1，两次间只修测试fixture chmod），包含完整三折 passed、单折坍缩 failed、导出/Registry、诊断父 partial、旧 strict/holdout 兼容、attempt 篡改/改判/超额 retry 拒绝。无剩余可执行问题。最终受影响eval回归315 passed / 1 skipped（正常退出码0）；并行实施广回归1028 passed / 1 skipped / 2 failed，两失败已在最终关键集覆盖通过，解释器退出GC中止清理限制如实记入证据。完整数字见[实施记录](results/evaluation-development-implementation-20261015.md)。
 - **本轮输入核验（2026-10-16）**：训练机main@3f200461干净，较本轮起始Mac少17提交，未同步。基座23个白名单文件与旧Fold0 adapter共24文件完整SHA已核；四片权重共17,391,890,184字节与官方main LFS观察一一相同。后续本轮已完成HF固定revision逐项比对，配置/tokenizer/processor和四权重身份匹配；README/额外配置由官方MS历史树解释，构造函数多`self.post_init()`仍不同，不能把实际目录作为未经修改的官方快照登记。未补造source-provenance，不据此运行。指定store的model/train/eval与默认MLflow记录未创建，符合尚未开展新体系业务阶段，不造空记录补目录。证据见[推进记录](results/todo-preparation-progress-20261016.md)。
 - **固定来源收口（2026-10-16）**：官方HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`完整23tree对象Gitblob核验通过，tokenizer正文及4权重固定LFS身份已核。训练机19小文件及缓存元数据只读采集，7仓内代码文件AST闭包可追；官方MS `2626e837a54905aab70fae9325153ef3454387ab`历史树与cache23条revision对应、22/23身份相同，只有`modeling_minicpmv.py`新增`self.post_init()`与官方来源不同。后续已核框架用途，历史来源/动机追查按用户要求取消，见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。未知修改不能用verified_by空泛签字补过，既有来源helper在未附证明时实际拒绝。见[固定来源记录](results/minicpm-fixed-source-audit-20261016.md)。
-- **差距/依赖/下一动作**：构造调用历史来源追查已按用户要求移出待办；保留实际字节差异及来源登记约束。继续核开发 data/Prompt、同源及更高试件映射、交付推理参数和样本对应预算；取得适用授权后 baseline → 对应完整单折 → 完整三折。模型不可加载或来源不明停止，不任意换模型/Prompt，不用裸目录绕 Registry。
+- **开发输入现场（2026-10-16）**：r2 sealed/development/active、training_allowed=true；六份开发JSON与metadata候选全集1,678精确匹配，85来源视频。validation三折425/664/492、合计1,581且无候选/来源视频跨折交集；97候选不在任何validation，不改既有划分或以1,678作validation分母。正式Prompt在store/代码仓库字节相同、正文与旧注册v2相同；正式构建器显式重渲染system/user并保留标签，数据内嵌Prompt不同不是自动错误；已从记录的训练代码Git对象恢复与manifest摘要一致的旧Fold0训练YAML；原冻结目录两份摘要不在场，实际训练Prompt仍未证，不以当前active YAML替代。更高试件映射未获直接依据，完整来源关系仅为观察材料，不当作已冻结独立组。契约字段差异与代码行为分开记录，不补造语义等价。见[准备记录](results/development-input-runtime-preparation-20261016.md)。
+- **交付一致性前置（2026-10-16）**：解码数值一致但开发/服务Processor切片为1/2、抽帧元数据边界不同、一次调用/analysis最多三次且追加上下文；受控性能复用服务链路。未选择改任一路径、未声称整体等价，按既有“与实际交付统一后冻结”要求保留前置。质量预算已按425与1,581完整validation提供条件算术量，GPU耗时与量化/device/dtype未冻结；性能上限不能冒充质量预算。
+- **差距/依赖/下一动作**：构造调用历史来源追查已按用户要求移出待办；保留实际字节差异及来源登记约束。实际data/Prompt及来源层级已核；下一步补更高试件映射依据、旧模型实际训练Prompt绑定，并处理已明确的开发/交付切片、抽帧和重试差异；对齐后冻结变体与按完整样本计算的质量资源预算；取得适用授权后 baseline → 对应完整单折 → 完整三折。模型不可加载或来源不明停止，不任意换模型/Prompt，不用裸目录绕 Registry。
 - **证据/限制**：[实施记录](results/evaluation-development-implementation-20261015.md)、[操作入口](../versioning/SCRIPTS.md#语义开发协议)、[模型工作流](model-workflow.md)。本轮 Mac 合成及微型文件验证，没有真实新登记、推理或质量结果；没有训练机证据时不关闭本条或 MODEL-DIAG。
 
 ### EVAL-HOLDOUT — 多 Agent 权限与独立质量接线
@@ -92,6 +96,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **依赖/下一动作**：D加载权限、生命周期、计时/计数、资源采集与双签名接收工程已实现；下一步现场核定真实执行资产及客户端测点，获得适用授权后运行。沿用已确认视频规格（≤60秒、≤100MiB、MP4/H.264 8bit、长边≤1920/短边≤1080、≤60fps），不得据此删质量测试样本；300秒达标、后端600秒/客户端660秒绝对超时，全上传处理及重试总计时；预检≤1 GPU小时、正式性能≤20 GPU小时，达到预算停止并报告未完成。质量预算按冻结样本数事前计算，不中途缩样。TensileAgent测点及跨库写入另授权，后端证据不冒充完整显示。单用户单请求不外推并发。
 - **验收标准**：全部合格请求≥95%在300秒内自动显示完整结果，失败/超时/需评测Agent或人工判读不算按时完成；失败率≤1%、无OOM/崩溃/持续增长；≥100请求且≥30分钟连续处理，预热/冷启动分开，不通过重试重置时间和分母。具体持续增长判断口径在执行前冻结。
 - **本轮进展**：受控plan/session、Registry实际loader、事件/双签名显示回执接收及export已实现；视频加载器摘要一致性已补齐并由实际两侧input builder测试保护，最终61项合成测试通过（6.15s，退出0；实现者来源），独立reviewer另61 passed（2.36s）。实际runtime核NF4六项与resampler；OOM可观测、clean finish、线程超时终态不明停止接新请求、warmup.request_ids冻结及增长算法已实现。外部客户端未部署，本轮synthetic不能获正式passed；独立审查通过，无剩余可执行问题，限工程及合成范围。
+- **交付参数准备（2026-10-16）**：受控性能与最终服务共用ChatModel/adapter，开发评测另用AutoModel/video_loader；解码同值不等于整体一致，开发slice1/服务视频slice2、抽帧边界及1/最多3次调用差异已并入EVAL-DEVELOPMENT前置。性能预检1/正式20GPU小时及600/660秒timeout已核代码停止条件；未创建实际session/TTL，不据静态配置认加载device/dtype/NF4/resampler已验真。见[参数及预算材料](results/development-runtime-readiness-20261016.json)。
 - **运行前客户端核验（2026-10-15，Codex）**：仅只读本地TensileAgent候选 `codex/competition-demo-chat-mock@86e50c65`（有未跟踪tmp未读）；上传、VLM调用/重试及React结果render未贯通原request ID/nonce、upload→render单调ns与签名回执。已有服务finished_at/event不能作显示端点。保留单次视觉自动结果口径，Agent多轮另报；需未来获得跨库授权后实现专用测点、签名/密钥保管、版本化冻结与部署，本轮只准备既有receiver契约交接清单、不改外仓/生成密钥/启动客户端。详见[运行前核验](results/evaluation-readiness-20261015.md)。
 - **显示测点运行前接线（2026-10-16，准备完成／Codex）**：按既有receipt协议新增主仓薄客户端适配，贯通稳定ID/nonce、显式上传完成/完整显示回调的同一单调时钟、backend签名绑定与签名回执提交；transport/signer注入，先以公开合成输入验证，不选择真实密钥托管、不改候选外仓UI或将回调称为DOM部署证据。候选TensileAgent当前分支/HEAD与上轮相同，6个tracked文件已只读摘要盘点，仅未跟踪tmp未读；真实页面、单次视觉请求与密钥冻结仍未部署。新增47＋现有61共108项合成通过（2.66秒），现有ASGI三路由/临时双密钥闭环仍synthetic；独立reviewer另108 passed（2.75秒）、无warning，当前代码/结果/候选源码绑定复验通过；详见[运行前接线记录](results/evaluation-isolation-display-preflight-20261016.md)。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)与现行服务；未启动临时端点、跨机通道或真实计时。
@@ -148,7 +153,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：进行中（Codex，2026-10-16；输入完整性/来源核验已推进，真实诊断未执行）；用户已确认单折诊断后完整三折验证、开发质量门、全样本语义评分及基座公平对比，见[测评方案](model-evaluation.md)。方案确认不是实验授权，不再重复要求确认已确定的阈值。
 - **事实与差距**：已同步报告记录 `v4.1-prompt-concise-cv-v1-seed3411` 的 1581 条评测：contract 合法率 79.63%、joint correct 32.07%、`clip_state` 35.80%，322 条非法输出中 311 条缺 `special_case`，“临界未断裂”和“已断裂”召回为 0%。这支持退化症状，不证明 Prompt、采样或早停中的任何一个是单独根因。
-- **差距与依赖**：本轮 EVAL-SEMANTICS / EVAL-DEVELOPMENT 已实现 semantic-v4.1、冻结判读导入、逐折召回门、基座及成功折快照登记，新增关键集102项及独立复核通过；真实开发质量证据仍缺。旧 strict-v4.1 记录保留其六指标定义，不能代表新门。partial train 可按真实 FINISHED 折证据进入独立诊断分支，不能伪造完整训练或三折资格。候选基座配置/tokenizer/processor与固定HF版本已匹配，官方MS历史来源亦已追到；构造代码多self.post_init()，框架用途已核，历史来源追查按用户要求取消；仍不能声明未修改官方基座。data/Prompt、环境/代码/权重身份及资源预算仍须核定；不伪造 completed train，不用裸目录绕 Registry。
+- **差距与依赖**：本轮 EVAL-SEMANTICS / EVAL-DEVELOPMENT 已实现 semantic-v4.1、冻结判读导入、逐折召回门、基座及成功折快照登记，新增关键集102项及独立复核通过；真实开发质量证据仍缺。旧 strict-v4.1 记录保留其六指标定义，不能代表新门。partial train 可按真实 FINISHED 折证据进入独立诊断分支，不能伪造完整训练或三折资格。候选基座配置/tokenizer/processor与固定HF版本已匹配，官方MS历史来源亦已追到；构造代码多self.post_init()，框架用途已核，历史来源追查按用户要求取消；仍不能声明未修改官方基座。后续实际data/Prompt及来源视频层级已核（见EVAL-DEVELOPMENT）；更高试件、旧训练Prompt、开发/交付预处理及请求差异、实际变体和质量资源预算仍须补齐；不伪造 completed train，不用裸目录绕 Registry。
 - **下一动作**：保留原基座与代码差异，移除构造调用历史来源追查，不以取消追查代替可登记来源证明；沿既有新评测协议完成其他输入准备；获相应授权后做基座/多数类参照、对应完整单折 validation 诊断，再完整三折。每轮冻结其他因素，保留逐样本配对改善/退化；不自动引入 canary、任意交叉替换训练 Prompt 或重新划分数据。
 - **入口与产物**：保留 `python -m versioning eval prepare/validate/run/export` 的正式身份和原始预测/manifest 链；新语义与逐折判定通过显式 semantic-v4.1 配置接线，不能把新阈值填入旧 strict 配置即运行。历史缺失权重继续记录，不全盘反复搜寻，也不把报告视为可加载模型。
 - **验收标准**：每折四状态 macro recall≥65%、每状态 recall≥50%；pooled 语义 joint≥50%、机制 macro F1≥50%、位置 macro F1≥60%；特殊情况完整报告。身份链、原始预测、盲评记录和配对分析可追溯；缺类/来源覆盖不足不自动通过。达到新三折门才支持 FINAL-TRAIN，运行完成与效果改善分别下结论。
@@ -444,3 +449,5 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-16（Codex，post_init来源与用途核验启动）**：起始3c643f25干净；用户继续授权只读来源追踪和无模型准备，明确不改基座。已分派项目历史、实际框架源码及官方目的分析，不改动任何模型资产或来源声明。
 
 - **2026-10-16（用户取消／Codex，post_init核验收口）**：用户明确不再追查添加记录并要求删除待办；已从当前下一动作移除该子事项，保留简短取消记录，37个既有父任务标识不变。实际框架源码及用途核验结果留档，未找到本机修改者/动机的直接记录，不再为此发起搜索或方案讨论。保留原基座，不补造来源声明，不升级真实验收。独立reviewer核查通过，无可执行问题；JSON/跨报告与源码摘要、300链接/37唯一ID、diff-check通过，未运行测试。见[收口记录](results/minicpm-postinit-origin-purpose-20261016.md)；本次Mac提交由git log追溯。
+
+- **2026-10-16（Codex，开发输入与预算准备）**：起始57670abc，限定SSH核r2开发六文件及候选metadata/Prompt；远端main@3f200461前后干净，不同步。1,678候选、85来源，validation425/664/492共1,581，97仅出现于train，无候选/source层级泄漏；不宣称试件独立。保存无标签来源关系、成功采集脚本及已知失败记录；成功调用13,365,233字节/0.161秒，不把它冒充整个阶段累计IO。Prompt/契约差异按正式重渲染行为解释，旧训练Prompt未知。现行开发/交付切片、抽帧边界和请求重试差异入既有前置；不擅改路径/选变体。样本及调用条件算术量已备，质量GPU小时未虚填，真实性能/质量未通过。JSON/22来源摘要/映射与跨报告绑定、310链接/37唯一ID、diff-check通过；独立reviewer及最终历史配置增量复核通过，无剩余可执行问题，未重新SSH复核或运行测试。详细验收及提交由[本轮记录](results/development-input-runtime-preparation-20261016.md)与git log追溯；真实模型/test/训练/基座改写/来源追查/pushmerge未执行。
