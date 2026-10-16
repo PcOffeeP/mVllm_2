@@ -1,0 +1,533 @@
+{
+  "schema_version": "minicpm-postinit-purpose-analysis/v1",
+  "status": "completed",
+  "created_at_utc": "2026-10-16T03:46:43.039519+00:00",
+  "executor": "Codex",
+  "execution_platform": "local Mac: standard-library AST/hash analysis and Requests default-TLS acquisition of small official text sources only",
+  "project_baseline": "3c643f25",
+  "scope": {
+    "purpose": "Explain the added MiniCPMV.__init__ self.post_init() call without selecting whether to keep/remove it",
+    "model_loading": false,
+    "torch_import": false,
+    "transformers_import": false,
+    "generation": false,
+    "training": false,
+    "evaluation": false,
+    "tests": false,
+    "weights_downloaded": false,
+    "base_files_modified": false
+  },
+  "runtime_source_evidence": {
+    "path": "docs/results/minicpm-postinit-runtime-source-20261016.json",
+    "sha256": "9935b93d0c66028970ca5cffd5ed31b40d72b12753196756935d1164f3d95ac3",
+    "version": "4.56.1",
+    "provenance": "Remote installed metadata and source acquisition performed by sibling executor postinit_runtime_source; this analysis did not reconnect or rerun the remote acquisition."
+  },
+  "direct_answer": {
+    "confirmed": "这是补上 Hugging Face PreTrainedModel 的构造收尾钩子。正式环境4.56.1中，它涉及初始化入口、旧梯度检查点配置、fp32模块校验和并行计划整理；通过from_pretrained构造时初始化入口被no_init_weights限制。",
+    "public_analogue": "OpenBMB官方int4仓库存在同位置、同构造函数AST的公开补丁，明确为较新Transformers加载兼容性修复；不能据此认定本机补丁作者、来源或当前4.56.1中必需。"
+  },
+  "confirmed_facts": [
+    {
+      "id": "F1",
+      "fact": "MiniCPMV -> MiniCPMVPreTrainedModel -> Qwen3PreTrainedModel -> PreTrainedModel；前三级均未重写post_init，因而调用4.56.1 PreTrainedModel.post_init。",
+      "evidence": [
+        "remote_model lines 18-34",
+        "runtime_qwen3 lines 281-296",
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L2224-L2271",
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/models/qwen3/modeling_qwen3.py#L281-L296"
+      ]
+    },
+    {
+      "id": "F2",
+      "fact": "实际训练机modeling_utils.py和Qwen3 modeling源字节哈希分别与官方v4.56.1标签完全一致，精确源码可定位。",
+      "evidence": [
+        "static_analysis.runtime_utils_equals_official_4_56_1",
+        "static_analysis.runtime_qwen3_equals_official_4_56_1"
+      ]
+    },
+    {
+      "id": "F3",
+      "fact": "post_init按序调用init_weights和旧gradient_checkpointing兼容处理；随后条件检查fp32模块名单，建立_pp_plan/_tp_plan/_ep_plan并合并子模块带前缀的计划。该方法本体没有启动分布式任务或直接调用并行hook添加函数。",
+      "evidence": [
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L2224-L2271"
+      ]
+    },
+    {
+      "id": "F4",
+      "fact": "init_weights先按config.pruned_heads决定剪枝，再仅在全局_init_weights为True时initialize_weights与tie_weights。initialize_weights跳过已有_is_hf_initialized标志的模块，并为复合PreTrainedModel分派各自初始化函数。",
+      "evidence": [
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L3064-L3102",
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L3758-L3773"
+      ]
+    },
+    {
+      "id": "F5",
+      "fact": "正常from_pretrained使用get_init_context返回的no_init_weights包围cls(config...)；所以构造期间新增post_init不进行initialize_weights或由init_weights触发的tie_weights。其余post_init逻辑未被该条件关闭。from_pretrained在构造上下文后以及加载后另行调用model.tie_weights。",
+      "evidence": [
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L228-L251",
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L4482-L4496",
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L5099-L5106",
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/modeling_utils.py#L5193-L5197"
+      ]
+    },
+    {
+      "id": "F6",
+      "fact": "4.56.1的Qwen3PreTrainedModel未自定义_init_weights，继承通用实现；4.51.0的Qwen3PreTrainedModel自定义Linear/Embedding初始化。配置中的transformers_version=4.51.0是文件声明，不是当前运行版本。",
+      "evidence": [
+        "https://github.com/huggingface/transformers/blob/v4.56.1/src/transformers/models/qwen3/modeling_qwen3.py#L281-L296",
+        "https://github.com/huggingface/transformers/blob/v4.51.0/src/transformers/models/qwen3/modeling_qwen3.py#L370-L394",
+        "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/config.json"
+      ]
+    },
+    {
+      "id": "F7",
+      "fact": "本次读取的4.56.1与4.51.0 modeling_utils.py均不出现all_tied_weights_keys；不能把公开PR该错误直接套为当前4.56.1的故障。",
+      "evidence": [
+        "static_analysis.files.runtime_utils.all_tied_weights_keys_occurrences",
+        "static_analysis.files.v451_utils.all_tied_weights_keys_occurrences"
+      ]
+    }
+  ],
+  "static_inferences": [
+    {
+      "id": "I1",
+      "inference": "如果直接MiniCPMV(config)且不在no_init_weights中，新增钩子可能初始化之前未标记的模块并改变随机状态/参数；不应笼统视为无作用。已标记的HF子模块不会经_initialize_weights重复初始化。实际哪些对象满足条件须运行才能确认。",
+      "basis": [
+        "F4",
+        "F6"
+      ]
+    },
+    {
+      "id": "I2",
+      "inference": "通过4.56.1原生from_pretrained路径时，不能把此调用描述为重置已载入checkpoint的权重：构造先于checkpoint装载且初始化被关闭。此静态事实仍不足以证明最终加载结果与无补丁完全等价。",
+      "basis": [
+        "F5"
+      ]
+    },
+    {
+      "id": "I3",
+      "inference": "MiniCPMVConfig继承Qwen3Config；新增钩子使外层实例得到配置计划及llm等子模块的带前缀计划。这是元数据/状态变化；不能据此宣称该模型已经支持正确张量/流水线/专家并行。",
+      "basis": [
+        "F3",
+        ".cache/base-source-audit/remote-assets-20261016/configuration_minicpm.py:48",
+        ".cache/postinit-audit/transformers-current-20261016/models/qwen3/configuration_qwen3.py:140"
+      ]
+    },
+    {
+      "id": "I4",
+      "inference": "gradient_checkpointing兼容方法仅在支持且config.gradient_checkpointing为真时启用并删除该配置属性；默认配置JSON未声明该标志，调用者是否覆盖它未经运行确认。tie_word_embeddings=false也使默认文本embedding共享条件为假，但不代表所有tie_weights逻辑绝不发生。",
+      "basis": [
+        "F3",
+        "F5",
+        "config.json",
+        "runtime_utils lines 2356-2360 and 3104-3139"
+      ]
+    }
+  ],
+  "official_analogue": {
+    "repo": "openbmb/MiniCPM-V-4_5-int4",
+    "discussion_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5-int4/discussions/3",
+    "patch_commit": "7c66f9b17af663aef5e7b60ec3d0a324f1cd3c07",
+    "patch_commit_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5-int4/commit/7c66f9b17af663aef5e7b60ec3d0a324f1cd3c07",
+    "merged_commit": "0b262cf27c5880c432667f84465c06dfb83ac7b4",
+    "merged_at_utc": "2026-08-13T07:55:56.000Z",
+    "created_at_utc": "2026-02-13T01:54:17.000Z",
+    "status_at_query": "merged",
+    "author": "LintyDev",
+    "merging_org_member": "tc-mb",
+    "stated_motivation_paraphrase": "作者说明新增调用是为了适配较新的Transformers，并修复MiniCPMV缺少all_tied_weights_keys的加载错误。",
+    "maintainer_statement_paraphrase": "2026-08-13组织成员tc-mb表示已经在近期Transformers验证修复，并确认4.51.0兼容；未给出近期版本的确切编号、命令或原始结果。",
+    "exact_patch_shape": "modeling_minicpmv.py only +1/-0: self.post_init() immediately after self.terminators assignment",
+    "remote_init_ast_identical": true,
+    "whole_file_identical": false,
+    "patch_diff_path": ".cache/postinit-audit/upstream-purpose/int4-pr3.diff",
+    "patch_diff_sha256": "15f8deed18270e3fbbf4c59a4b90f213143814e2066220149563b609250605cc",
+    "boundary": "这是官方组织名下另一个int4仓库的公开合入记录；构造函数AST一致不等于整个文件相同，不证明本机补丁取自该PR，也不证明本机修改者或当时动机。HF主模型固定daef和MS固定80f6的无调用结论来自其他审计，非本报告重新读取ModelScope。"
+  },
+  "unknowns": [
+    "本机调用的修改者、修改时间、原始补丁来源和当时故障；文件mtime或相似公开PR不能证明这些。",
+    "当前实际from_pretrained调用全部参数、运行时配置、动态代码类和wrapper是否覆盖原生流程；本次未执行加载。",
+    "补丁对实际加载成功、警告、缺失/多余参数、内存、随机状态、参数值、并行行为和生成的实际影响。",
+    "4.56.1正式环境中删除调用是否出错、保留调用是否必须，以及补丁对模型质量/安全性的意义；未运行模型，不能确定。",
+    "公开int4 PR提到的近期Transformers确切版本及其all_tied_weights_keys首次引入版本；本次有界研究未扩展全版本历史。"
+  ],
+  "bounded_search": {
+    "date": "2026-10-16",
+    "primary_sources_only": true,
+    "searched": "OpenBMB/MiniCPM GitHub及openbmb/MiniCPM-V-4_5 HF post_init相关公开检索，随后读取int4 PR完整API、精确commit源码和diff。",
+    "limit": "没有穷尽所有issues、历史分支、镜像或Transformers版本；未发现不能表述为不存在。"
+  },
+  "official_documentation_url": "https://huggingface.co/docs/transformers/v4.56.1/en/main_classes/model#transformers.PreTrainedModel.post_init",
+  "acquired_sources": [
+    {
+      "path": ".cache/postinit-audit/upstream-purpose/v4.56.1-modeling_utils.py",
+      "url": "https://raw.githubusercontent.com/huggingface/transformers/v4.56.1/src/transformers/modeling_utils.py",
+      "status": 200,
+      "size": 314628,
+      "sha256": "25906edd06eb4c409cad9f4a9d63dd5d0f55e13e604e73dac3827371ab5e8a71",
+      "retrieved_at": "2026-10-16T03:44:34.529708+00:00",
+      "tls_verify": true
+    },
+    {
+      "path": ".cache/postinit-audit/upstream-purpose/v4.56.1-modeling_qwen3.py",
+      "url": "https://raw.githubusercontent.com/huggingface/transformers/v4.56.1/src/transformers/models/qwen3/modeling_qwen3.py",
+      "status": 200,
+      "size": 23067,
+      "sha256": "4b95c371fd26d40c69083dab36ac1eafd8cf82b415a0bb827275097c5ad2305b",
+      "retrieved_at": "2026-10-16T03:44:34.992472+00:00",
+      "tls_verify": true
+    },
+    {
+      "path": ".cache/postinit-audit/upstream-purpose/v4.51.0-modeling_utils.py",
+      "url": "https://raw.githubusercontent.com/huggingface/transformers/v4.51.0/src/transformers/modeling_utils.py",
+      "status": 200,
+      "size": 291267,
+      "sha256": "d4dc7e2291c0d5f783ef98fb98fde0cc9ec476aa237ce8ceca9b3f686cdaf3ad",
+      "retrieved_at": "2026-10-16T03:44:35.632406+00:00",
+      "tls_verify": true
+    },
+    {
+      "path": ".cache/postinit-audit/upstream-purpose/v4.51.0-modeling_qwen3.py",
+      "url": "https://raw.githubusercontent.com/huggingface/transformers/v4.51.0/src/transformers/models/qwen3/modeling_qwen3.py",
+      "status": 200,
+      "size": 51968,
+      "sha256": "704c914530530a1acb0b443add1f520404e3ac2c28c0ab7e16f80f86cfe8ccb2",
+      "retrieved_at": "2026-10-16T03:44:36.303304+00:00",
+      "tls_verify": true
+    },
+    {
+      "path": ".cache/postinit-audit/upstream-purpose/int4-pr3.json",
+      "url": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5-int4/discussions/3",
+      "status": 200,
+      "size": 6675,
+      "sha256": "36d2c484fa85d8eac5296b1aef59294e22f1817b710552fec68a93227311989b",
+      "retrieved_at": "2026-10-16T03:44:37.070621+00:00",
+      "tls_verify": true
+    },
+    {
+      "path": ".cache/postinit-audit/upstream-purpose/int4-pr3-modeling_minicpmv.py",
+      "url": "https://huggingface.co/openbmb/MiniCPM-V-4_5-int4/resolve/7c66f9b17af663aef5e7b60ec3d0a324f1cd3c07/modeling_minicpmv.py",
+      "status": 200,
+      "size": 17704,
+      "sha256": "f8548558fa7e035df42410859cc8558ea810d48ef55ee718c5acc7f71272c522",
+      "retrieved_at": "2026-10-16T03:44:37.754685+00:00",
+      "tls_verify": true
+    },
+    {
+      "path": ".cache/postinit-audit/upstream-purpose/int4-merge-commits.json",
+      "url": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5-int4/commits/main",
+      "status": 200,
+      "size": 6191,
+      "sha256": "84c4e60210f0a7d4c3b9ef66e6f7b3ccad7f36f8bf09bea2f2ecf009b7649e3a",
+      "retrieved_at": "2026-10-16T03:44:38.218709+00:00",
+      "tls_verify": true
+    }
+  ],
+  "static_analysis": {
+    "method": "ast.parse plus exact byte hashing only; no model/library source executed",
+    "files": {
+      "remote_model": {
+        "path": ".cache/base-source-audit/remote-assets-20261016/modeling_minicpmv.py",
+        "sha256": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10",
+        "bytes": 18609,
+        "classes": {
+          "MiniCPMVPreTrainedModel": {
+            "bases": [
+              "Qwen3PreTrainedModel"
+            ],
+            "start_line": 18,
+            "end_line": 19,
+            "methods": {}
+          },
+          "MiniCPMV": {
+            "bases": [
+              "MiniCPMVPreTrainedModel"
+            ],
+            "start_line": 22,
+            "end_line": 487,
+            "methods": {
+              "__init__": {
+                "start_line": 23,
+                "end_line": 34
+              }
+            }
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      },
+      "runtime_utils": {
+        "path": ".cache/postinit-audit/transformers-current-20261016/modeling_utils.py",
+        "sha256": "25906edd06eb4c409cad9f4a9d63dd5d0f55e13e604e73dac3827371ab5e8a71",
+        "bytes": 314628,
+        "classes": {
+          "PreTrainedModel": {
+            "bases": [
+              "nn.Module",
+              "EmbeddingAccessMixin",
+              "ModuleUtilsMixin",
+              "PushToHubMixin",
+              "PeftAdapterMixin"
+            ],
+            "start_line": 2003,
+            "end_line": 6089,
+            "methods": {
+              "__init__": {
+                "start_line": 2185,
+                "end_line": 2222
+              },
+              "post_init": {
+                "start_line": 2224,
+                "end_line": 2271
+              },
+              "_backward_compatibility_gradient_checkpointing": {
+                "start_line": 2356,
+                "end_line": 2360
+              },
+              "_init_weights": {
+                "start_line": 3028,
+                "end_line": 3062
+              },
+              "_initialize_weights": {
+                "start_line": 3064,
+                "end_line": 3071
+              },
+              "initialize_weights": {
+                "start_line": 3074,
+                "end_line": 3102
+              },
+              "tie_weights": {
+                "start_line": 3128,
+                "end_line": 3139
+              },
+              "init_weights": {
+                "start_line": 3758,
+                "end_line": 3773
+              },
+              "get_init_context": {
+                "start_line": 4482,
+                "end_line": 4496
+              },
+              "from_pretrained": {
+                "start_line": 4500,
+                "end_line": 5302
+              }
+            }
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      },
+      "runtime_qwen3": {
+        "path": ".cache/postinit-audit/transformers-current-20261016/models/qwen3/modeling_qwen3.py",
+        "sha256": "4b95c371fd26d40c69083dab36ac1eafd8cf82b415a0bb827275097c5ad2305b",
+        "bytes": 23067,
+        "classes": {
+          "Qwen3PreTrainedModel": {
+            "bases": [
+              "PreTrainedModel"
+            ],
+            "start_line": 281,
+            "end_line": 296,
+            "methods": {}
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      },
+      "official_utils": {
+        "path": ".cache/postinit-audit/upstream-purpose/v4.56.1-modeling_utils.py",
+        "sha256": "25906edd06eb4c409cad9f4a9d63dd5d0f55e13e604e73dac3827371ab5e8a71",
+        "bytes": 314628,
+        "classes": {
+          "PreTrainedModel": {
+            "bases": [
+              "nn.Module",
+              "EmbeddingAccessMixin",
+              "ModuleUtilsMixin",
+              "PushToHubMixin",
+              "PeftAdapterMixin"
+            ],
+            "start_line": 2003,
+            "end_line": 6089,
+            "methods": {
+              "__init__": {
+                "start_line": 2185,
+                "end_line": 2222
+              },
+              "post_init": {
+                "start_line": 2224,
+                "end_line": 2271
+              },
+              "_backward_compatibility_gradient_checkpointing": {
+                "start_line": 2356,
+                "end_line": 2360
+              },
+              "_init_weights": {
+                "start_line": 3028,
+                "end_line": 3062
+              },
+              "_initialize_weights": {
+                "start_line": 3064,
+                "end_line": 3071
+              },
+              "initialize_weights": {
+                "start_line": 3074,
+                "end_line": 3102
+              },
+              "tie_weights": {
+                "start_line": 3128,
+                "end_line": 3139
+              },
+              "init_weights": {
+                "start_line": 3758,
+                "end_line": 3773
+              },
+              "get_init_context": {
+                "start_line": 4482,
+                "end_line": 4496
+              },
+              "from_pretrained": {
+                "start_line": 4500,
+                "end_line": 5302
+              }
+            }
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      },
+      "official_qwen3": {
+        "path": ".cache/postinit-audit/upstream-purpose/v4.56.1-modeling_qwen3.py",
+        "sha256": "4b95c371fd26d40c69083dab36ac1eafd8cf82b415a0bb827275097c5ad2305b",
+        "bytes": 23067,
+        "classes": {
+          "Qwen3PreTrainedModel": {
+            "bases": [
+              "PreTrainedModel"
+            ],
+            "start_line": 281,
+            "end_line": 296,
+            "methods": {}
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      },
+      "int4_pr_model": {
+        "path": ".cache/postinit-audit/upstream-purpose/int4-pr3-modeling_minicpmv.py",
+        "sha256": "f8548558fa7e035df42410859cc8558ea810d48ef55ee718c5acc7f71272c522",
+        "bytes": 17704,
+        "classes": {
+          "MiniCPMVPreTrainedModel": {
+            "bases": [
+              "Qwen3PreTrainedModel"
+            ],
+            "start_line": 18,
+            "end_line": 19,
+            "methods": {}
+          },
+          "MiniCPMV": {
+            "bases": [
+              "MiniCPMVPreTrainedModel"
+            ],
+            "start_line": 22,
+            "end_line": 462,
+            "methods": {
+              "__init__": {
+                "start_line": 23,
+                "end_line": 33
+              }
+            }
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      },
+      "v451_utils": {
+        "path": ".cache/postinit-audit/upstream-purpose/v4.51.0-modeling_utils.py",
+        "sha256": "d4dc7e2291c0d5f783ef98fb98fde0cc9ec476aa237ce8ceca9b3f686cdaf3ad",
+        "bytes": 291267,
+        "classes": {
+          "PreTrainedModel": {
+            "bases": [
+              "nn.Module",
+              "ModuleUtilsMixin",
+              "GenerationMixin",
+              "PushToHubMixin",
+              "PeftAdapterMixin"
+            ],
+            "start_line": 1747,
+            "end_line": 5277,
+            "methods": {
+              "__init__": {
+                "start_line": 1857,
+                "end_line": 1890
+              },
+              "post_init": {
+                "start_line": 1892,
+                "end_line": 1929
+              },
+              "_backward_compatibility_gradient_checkpointing": {
+                "start_line": 1943,
+                "end_line": 1947
+              },
+              "_init_weights": {
+                "start_line": 2436,
+                "end_line": 2443
+              },
+              "_initialize_weights": {
+                "start_line": 2445,
+                "end_line": 2452
+              },
+              "tie_weights": {
+                "start_line": 2454,
+                "end_line": 2479
+              },
+              "init_weights": {
+                "start_line": 3068,
+                "end_line": 3083
+              },
+              "get_init_context": {
+                "start_line": 3721,
+                "end_line": 3738
+              },
+              "from_pretrained": {
+                "start_line": 3742,
+                "end_line": 4502
+              }
+            }
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      },
+      "v451_qwen3": {
+        "path": ".cache/postinit-audit/upstream-purpose/v4.51.0-modeling_qwen3.py",
+        "sha256": "704c914530530a1acb0b443add1f520404e3ac2c28c0ab7e16f80f86cfe8ccb2",
+        "bytes": 51968,
+        "classes": {
+          "Qwen3PreTrainedModel": {
+            "bases": [
+              "PreTrainedModel"
+            ],
+            "start_line": 370,
+            "end_line": 393,
+            "methods": {
+              "_init_weights": {
+                "start_line": 384,
+                "end_line": 393
+              }
+            }
+          }
+        },
+        "all_tied_weights_keys_occurrences": 0
+      }
+    },
+    "runtime_utils_equals_official_4_56_1": true,
+    "runtime_qwen3_equals_official_4_56_1": true,
+    "remote_init_AST_equals_int4_pr_init": true
+  },
+  "reproduction": {
+    "command": ".venv/bin/python .cache/postinit-audit/upstream-purpose/analyze_static.py",
+    "script_sha256": "2f184d65980e409d02f2cb7ae715413f87b562d4445423912430cfe89e3578b2",
+    "script_embedded": "import ast, hashlib, json, pathlib\nroot = pathlib.Path.cwd()\nfiles = {\n 'remote_model': '.cache/base-source-audit/remote-assets-20261016/modeling_minicpmv.py',\n 'runtime_utils': '.cache/postinit-audit/transformers-current-20261016/modeling_utils.py',\n 'runtime_qwen3': '.cache/postinit-audit/transformers-current-20261016/models/qwen3/modeling_qwen3.py',\n 'official_utils': '.cache/postinit-audit/upstream-purpose/v4.56.1-modeling_utils.py',\n 'official_qwen3': '.cache/postinit-audit/upstream-purpose/v4.56.1-modeling_qwen3.py',\n 'int4_pr_model': '.cache/postinit-audit/upstream-purpose/int4-pr3-modeling_minicpmv.py',\n 'v451_utils': '.cache/postinit-audit/upstream-purpose/v4.51.0-modeling_utils.py',\n 'v451_qwen3': '.cache/postinit-audit/upstream-purpose/v4.51.0-modeling_qwen3.py',\n}\nresult = {'method':'ast.parse plus exact byte hashing only; no model/library source executed', 'files':{}}\nconstructors = {}\nfor key, rel in files.items():\n b = (root / rel).read_bytes(); source = b.decode(); t = ast.parse(source)\n entry = {'path':rel,'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b),'classes':{},'all_tied_weights_keys_occurrences':source.count('all_tied_weights_keys')}\n for c in t.body:\n  if isinstance(c,ast.ClassDef) and c.name in ['MiniCPMV','MiniCPMVPreTrainedModel','Qwen3PreTrainedModel','PreTrainedModel']:\n   methods = {}\n   for n in c.body:\n    if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name in ['__init__','post_init','init_weights','_initialize_weights','initialize_weights','tie_weights','_init_weights','_backward_compatibility_gradient_checkpointing','get_init_context','from_pretrained']:\n     methods[n.name] = {'start_line':n.lineno,'end_line':n.end_lineno}\n     if c.name=='MiniCPMV' and n.name=='__init__': constructors[key]=ast.dump(n,include_attributes=False)\n   entry['classes'][c.name]={'bases':[ast.unparse(x) for x in c.bases],'start_line':c.lineno,'end_line':c.end_lineno,'methods':methods}\n result['files'][key] = entry\nresult['runtime_utils_equals_official_4_56_1'] = result['files']['runtime_utils']['sha256'] == result['files']['official_utils']['sha256']\nresult['runtime_qwen3_equals_official_4_56_1'] = result['files']['runtime_qwen3']['sha256'] == result['files']['official_qwen3']['sha256']\nresult['remote_init_AST_equals_int4_pr_init'] = constructors['remote_model'] == constructors['int4_pr_model']\nprint(json.dumps(result,indent=2))\n",
+    "operation": "AST parse and exact hash only; no imports from analyzed sources and no model/test execution",
+    "cache_limitation": "Ignored cache sources are local supplementary evidence; official URLs, byte hashes, method locations and analysis script are retained in this JSON."
+  },
+  "decision": "No keep/remove/replace decision made; no implementation recommendation promoted to user approval."
+}

@@ -4,6 +4,8 @@
 
 ## 当前状态与下一步
 
+**本轮post_init核验收口（2026-10-16，来源追查已按用户要求取消／Codex）**：用户不记得添加记录，明确要求删除这项待办；现已移除历史来源/动机追查的下一动作，不再持续追查。已完成实际 Transformers 4.56.1 源码与官方标签核对、构造收尾用途及加载上下文静态分析；现有代码差异保留记录，不能据取消事项声称原样官方快照或放行来源登记。基座未改写、真实模型与test未运行。见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。
+
 **本轮基座固定来源核验（2026-10-16，逐项比对完成、代码差异保留／Codex）**：用户要求继续核固定revision配置/tokenizer/代码，起始 `defa954b` 干净工作区。复用已知官方commit `daef484c35ec93210ec93c5e901f8f3e9b78ee34`、上轮完整SHA及已存在的默认验证HTTPS路径，取官方固定小文件/树与LFS pointer，核训练机真实静态配置/代码闭包；不加载/执行模型、不读真实test、不登记正式模型/evalclaim、不改写原资产或关闭TLS检查。已核官方固定树/配置/tokenizer/processor/代码和真实副本，HF20同/2不同/1额外；官方ModelScope历史来源解释README与额外配置，剩1处构造代码偏差`self.post_init()`。不改写基座、不冒称原样快照；来源声明/正式登记仍不放行。见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)。
 
 **本轮可执行TODO推进（2026-10-16，核验与澄清完成／Codex）**：用户要求把接下来可做事项全部做好；起始Mac `a0f1e1ab`、干净工作区。继续保持真实模型评测/生成/训练及真实test限制。并行核定开发输入/基座来源、既知归档/恢复资产与容量、候选契约说明和旧指针适用性；训练机只读查询，不同步/安装/停止任务或删除文件。已完成本机评审实际元数据/固定资产与隔离核验、训练机Git/基座完整性/已知归档位置及容量核定，并澄清候选契约；完整固定来源、真实隔离/客户端DOM、备份目标与真实运行仍保留。见[本轮记录](results/todo-preparation-progress-20261016.md)。
@@ -38,7 +40,7 @@
 | 独立评分 C | EVAL-HOLDOUT | 进行中（Codex）：工程及无模型环境核验完成 | 实际tags/show、来源/依赖/18golden及canary已核；待真实独立账户/完整服务；真实test仍依赖HOLDOUT-BUILD |
 | 性能接线 D | EVAL-PERFORMANCE | 进行中（Codex）：工程已完成，待真实GPU/E2E证据 | 会话/loader/双签名接收已接线；候选客户端缺原ID/nonce/单调显示测点/签名链，跨库实施及真实运行另授权 |
 | 完整绑定 E | EVAL-INTEGRATION | 进行中（Codex）：工程已完成，待真实联合验收 | 77项准入/恢复/服务/开发合成通过；旧passed不继承新资格，真实服务另验 |
-| 模型准备 | MODEL-DIAG | 进行中（Codex）：输入核验已推进，诊断未执行 | 固定HF配置/tokenizer/processor及权重身份已核；MS来源已追，剩1构造代码偏差待核，未运行诊断 |
+| 模型准备 | MODEL-DIAG | 进行中（Codex）：输入核验已推进，诊断未执行 | 固定HF配置/tokenizer/processor及权重身份已核；MS来源及构造调用用途已核；历史来源追查取消，代码差异保留，未运行诊断 |
 | 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
 | 本轮已完成 | ENV-ACTIVATION | 已解决：正式Conda环境与checkout绑定 | mvllm2 Python3.11.17、241锁项一致、doctor/pip check通过；真实业务未运行 |
 | 备份验收 | RECOVERY-VALIDATION | 进行中（Codex）：容量/已知位置已核，真实恢复未执行 | 缺准确独立备份root/目标及完整模型、SQLite、外部依赖snapshot |
@@ -59,8 +61,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **验收标准**：不伪造 train/缺折/中途 checkpoint；诊断仅对应完整 validation。每折 macro≥65%、各状态≥50%，完整三折 pooled joint≥50%、机制F1≥50%、位置F1≥60%；特殊类报告。双方同媒体/Prompt/抽帧/生成与真实基座字节，缺类/缺折/漂移/评审未完成不放行。完整链路来源、分母及判读尝试可追溯。
 - **本轮验证**：主 Agent 新增关键集102 passed（64.23s，退出码0）；独立 reviewer 最终14项接线专项均通过（13+1，两次间只修测试fixture chmod），包含完整三折 passed、单折坍缩 failed、导出/Registry、诊断父 partial、旧 strict/holdout 兼容、attempt 篡改/改判/超额 retry 拒绝。无剩余可执行问题。最终受影响eval回归315 passed / 1 skipped（正常退出码0）；并行实施广回归1028 passed / 1 skipped / 2 failed，两失败已在最终关键集覆盖通过，解释器退出GC中止清理限制如实记入证据。完整数字见[实施记录](results/evaluation-development-implementation-20261015.md)。
 - **本轮输入核验（2026-10-16）**：训练机main@3f200461干净，较本轮起始Mac少17提交，未同步。基座23个白名单文件与旧Fold0 adapter共24文件完整SHA已核；四片权重共17,391,890,184字节与官方main LFS观察一一相同。后续本轮已完成HF固定revision逐项比对，配置/tokenizer/processor和四权重身份匹配；README/额外配置由官方MS历史树解释，构造函数多`self.post_init()`仍不同，不能把实际目录作为未经修改的官方快照登记。未补造source-provenance，不据此运行。指定store的model/train/eval与默认MLflow记录未创建，符合尚未开展新体系业务阶段，不造空记录补目录。证据见[推进记录](results/todo-preparation-progress-20261016.md)。
-- **固定来源收口（2026-10-16）**：官方HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`完整23tree对象Gitblob核验通过，tokenizer正文及4权重固定LFS身份已核。训练机19小文件及缓存元数据只读采集，7仓内代码文件AST闭包可追；官方MS `2626e837a54905aab70fae9325153ef3454387ab`历史树与cache23条revision对应、22/23身份相同，只有`modeling_minicpmv.py`新增`self.post_init()`未核来源/用途。未知修改不能用verified_by空泛签字补过，既有来源helper在未附证明时实际拒绝。见[固定来源记录](results/minicpm-fixed-source-audit-20261016.md)。
-- **差距/依赖/下一动作**：核定已发现构造代码偏差的来源/用途及基座身份，继续核开发 data/Prompt、同源及更高试件映射、交付推理参数和样本对应预算；取得适用授权后 baseline → 对应完整单折 → 完整三折。模型不可加载或来源不明停止，不任意换模型/Prompt，不用裸目录绕 Registry。
+- **固定来源收口（2026-10-16）**：官方HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`完整23tree对象Gitblob核验通过，tokenizer正文及4权重固定LFS身份已核。训练机19小文件及缓存元数据只读采集，7仓内代码文件AST闭包可追；官方MS `2626e837a54905aab70fae9325153ef3454387ab`历史树与cache23条revision对应、22/23身份相同，只有`modeling_minicpmv.py`新增`self.post_init()`与官方来源不同。后续已核框架用途，历史来源/动机追查按用户要求取消，见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。未知修改不能用verified_by空泛签字补过，既有来源helper在未附证明时实际拒绝。见[固定来源记录](results/minicpm-fixed-source-audit-20261016.md)。
+- **差距/依赖/下一动作**：构造调用历史来源追查已按用户要求移出待办；保留实际字节差异及来源登记约束。继续核开发 data/Prompt、同源及更高试件映射、交付推理参数和样本对应预算；取得适用授权后 baseline → 对应完整单折 → 完整三折。模型不可加载或来源不明停止，不任意换模型/Prompt，不用裸目录绕 Registry。
 - **证据/限制**：[实施记录](results/evaluation-development-implementation-20261015.md)、[操作入口](../versioning/SCRIPTS.md#语义开发协议)、[模型工作流](model-workflow.md)。本轮 Mac 合成及微型文件验证，没有真实新登记、推理或质量结果；没有训练机证据时不关闭本条或 MODEL-DIAG。
 
 ### EVAL-HOLDOUT — 多 Agent 权限与独立质量接线
@@ -146,8 +148,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：进行中（Codex，2026-10-16；输入完整性/来源核验已推进，真实诊断未执行）；用户已确认单折诊断后完整三折验证、开发质量门、全样本语义评分及基座公平对比，见[测评方案](model-evaluation.md)。方案确认不是实验授权，不再重复要求确认已确定的阈值。
 - **事实与差距**：已同步报告记录 `v4.1-prompt-concise-cv-v1-seed3411` 的 1581 条评测：contract 合法率 79.63%、joint correct 32.07%、`clip_state` 35.80%，322 条非法输出中 311 条缺 `special_case`，“临界未断裂”和“已断裂”召回为 0%。这支持退化症状，不证明 Prompt、采样或早停中的任何一个是单独根因。
-- **差距与依赖**：本轮 EVAL-SEMANTICS / EVAL-DEVELOPMENT 已实现 semantic-v4.1、冻结判读导入、逐折召回门、基座及成功折快照登记，新增关键集102项及独立复核通过；真实开发质量证据仍缺。旧 strict-v4.1 记录保留其六指标定义，不能代表新门。partial train 可按真实 FINISHED 折证据进入独立诊断分支，不能伪造完整训练或三折资格。候选基座配置/tokenizer/processor与固定HF版本已匹配，官方MS历史来源亦已追到；但构造代码多self.post_init()且来源/用途未核，不能声明未修改官方基座。data/Prompt、环境/代码/权重身份及资源预算仍须核定；不伪造 completed train，不用裸目录绕 Registry。
-- **下一动作**：保留原基座与代码差异，先核定构造调用偏差及可登记来源身份，沿既有新评测协议完成其他输入准备；获相应授权后做基座/多数类参照、对应完整单折 validation 诊断，再完整三折。每轮冻结其他因素，保留逐样本配对改善/退化；不自动引入 canary、任意交叉替换训练 Prompt 或重新划分数据。
+- **差距与依赖**：本轮 EVAL-SEMANTICS / EVAL-DEVELOPMENT 已实现 semantic-v4.1、冻结判读导入、逐折召回门、基座及成功折快照登记，新增关键集102项及独立复核通过；真实开发质量证据仍缺。旧 strict-v4.1 记录保留其六指标定义，不能代表新门。partial train 可按真实 FINISHED 折证据进入独立诊断分支，不能伪造完整训练或三折资格。候选基座配置/tokenizer/processor与固定HF版本已匹配，官方MS历史来源亦已追到；构造代码多self.post_init()，框架用途已核，历史来源追查按用户要求取消；仍不能声明未修改官方基座。data/Prompt、环境/代码/权重身份及资源预算仍须核定；不伪造 completed train，不用裸目录绕 Registry。
+- **下一动作**：保留原基座与代码差异，移除构造调用历史来源追查，不以取消追查代替可登记来源证明；沿既有新评测协议完成其他输入准备；获相应授权后做基座/多数类参照、对应完整单折 validation 诊断，再完整三折。每轮冻结其他因素，保留逐样本配对改善/退化；不自动引入 canary、任意交叉替换训练 Prompt 或重新划分数据。
 - **入口与产物**：保留 `python -m versioning eval prepare/validate/run/export` 的正式身份和原始预测/manifest 链；新语义与逐折判定通过显式 semantic-v4.1 配置接线，不能把新阈值填入旧 strict 配置即运行。历史缺失权重继续记录，不全盘反复搜寻，也不把报告视为可加载模型。
 - **验收标准**：每折四状态 macro recall≥65%、每状态 recall≥50%；pooled 语义 joint≥50%、机制 macro F1≥50%、位置 macro F1≥60%；特殊情况完整报告。身份链、原始预测、盲评记录和配对分析可追溯；缺类/来源覆盖不足不自动通过。达到新三折门才支持 FINAL-TRAIN，运行完成与效果改善分别下结论。
 - **授权/限制**：只读公开开发证据准备不等待 HOLDOUT-BUILD；本轮仅授权 A/B 代码实施与合成验证，实际训练/推理未授权。禁止使用 sealed-test 调参、修补原始输出伪造合法率或删除受保护 checkpoint。历史现场/环境记录不作为本轮重新验证。
@@ -438,3 +440,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-16（Codex，基座固定来源补齐启动）**：起始defa954b干净，按用户授权固定revision下配置/tokenizer/processor/代码来源核验；并行官方来源取证、训练机19小文件静态采集和登记预检边界定位，不重复读取大权重或执行模型/真实test。
 
 - **2026-10-16（Codex，固定revision来源核验完成）**：复用现有Requests默认TLS，官方HF daef484c...完整23对象Gitblob及tokenizer正文/LFS核验通过；真实19小文件与先前SHA一致，4权重只stat不重复读取。HF20同/2diff/1extra，官方MS历史2626e837...树解释README/额外configuration并与23缓存revision对应，22/23身份相同，唯模型构造新增self.post_init()仍不同。安全解析.msc/.mv，5 auto_map入口传递闭合到7仓内文件，外部依赖/实际执行不冒称已核。未覆盖基座或签发原样provenance/正式记录；来源helper实际拒绝unknown，独立guarded复跑通过。3份来源报告+1份拒绝观测、官方bytes/闭包/diff/跨报告SHA和文档经独立审查通过，无剩余可执行问题；293链接/37唯一ID、JSON/摘要/diff-check通过。详见[固定来源记录](results/minicpm-fixed-source-audit-20261016.md)，本次Mac提交git log追溯。代码偏差合并回MODEL-DIAG/EVAL-DEVELOPMENT既有来源前置，不新增重复任务、不擅自回退/改写或重开原方案；真实模型/训练/test/正式model evalclaim/pushmerge均未执行。
+
+- **2026-10-16（Codex，post_init来源与用途核验启动）**：起始3c643f25干净；用户继续授权只读来源追踪和无模型准备，明确不改基座。已分派项目历史、实际框架源码及官方目的分析，不改动任何模型资产或来源声明。
+
+- **2026-10-16（用户取消／Codex，post_init核验收口）**：用户明确不再追查添加记录并要求删除待办；已从当前下一动作移除该子事项，保留简短取消记录，37个既有父任务标识不变。实际框架源码及用途核验结果留档，未找到本机修改者/动机的直接记录，不再为此发起搜索或方案讨论。保留原基座，不补造来源声明，不升级真实验收。独立reviewer核查通过，无可执行问题；JSON/跨报告与源码摘要、300链接/37唯一ID、diff-check通过，未运行测试。见[收口记录](results/minicpm-postinit-origin-purpose-20261016.md)；本次Mac提交由git log追溯。
