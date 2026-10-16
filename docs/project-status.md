@@ -20,7 +20,7 @@
 | 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660` |
 | 训练机代码目录 | `/home/liuyang/文档/mVllm_2` |
 | 正式store | `/data/mVllm_2`，与代码checkout分开 |
-| 基座位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；2026-10-16四片完整SHA匹配官方main观察；完整固定来源与加载可用性仍需核定 |
+| 基座位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；2026-10-16四片SHA已对应官方固定HF revision；配置/tokenizer已核，但构造代码有1处偏差、加载可用性未验 |
 
 通过已有OpenSSH配置、密钥或SSH agent连接：`ssh liuyang@100.70.83.68`。在该机器项目根目录直接使用已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 执行数据及模型说明中的命令；连接前明确命令、输入/输出和资源。凭据不入Git，删除/覆盖远端文件、切换环境、停止已有任务或push/merge仍按项目授权处理。同日用户追加授权新环境部署，已单独验收；后续同步和模型运行仍需对应授权。
 
@@ -65,7 +65,9 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 
 2026-10-13现场核查：旧current仍指向Fold0发布，其adapter和merged索引10个分片在场；基座索引4个分片在场。限定run目录中concise缺权重、visual未找到，不代表全盘丢失。指定store的records/models、training、evaluations及默认MLflow路径未创建；用户说明尚未开展新体系正式业务流程，这符合阶段预期，不作为迁移失败。首次正式运行时仍需明确Registry配置根。旧current与旧Registry身份不授予新alias或passed。细节和限制见[现场报告](results/remote-state-refresh-20261013.md)；模型质量、旧预测及历史恢复调查仍以原证据日期为准。
 
-2026-10-16补充限定只读核验：训练机仍为干净 `main@3f200461`，本轮起始Mac `a0f1e1ab` 比它多17个提交，未同步。基座23个白名单文件及旧Fold0 adapter完整SHA已核；四片基座权重与官方main LFS观察一致，但固定commit配置/tokenizer/processor/代码未完整核定，未补造来源声明或登记模型。指定store的model/train/eval与默认MLflow仍未创建。minimal试点归档缺逐样本记录副本，原run只stat未读；未删除文件，真实备份/恢复仍缺准确根路径。该核验不刷新2026-10-13 GPU环境验收，不运行模型；见[本轮推进记录](results/todo-preparation-progress-20261016.md)。
+2026-10-16补充限定只读核验：训练机仍为干净 `main@3f200461`，本轮起始Mac `a0f1e1ab` 比它多17个提交，未同步。基座23个白名单文件及旧Fold0 adapter完整SHA已核；前序已确认四片权重与官方main观察一致，后续固定revision比对及代码差异见下；未补造来源声明或登记模型。指定store的model/train/eval与默认MLflow仍未创建。minimal试点归档缺逐样本记录副本，原run只stat未读；未删除文件，真实备份/恢复仍缺准确根路径。该核验不刷新2026-10-13 GPU环境验收，不运行模型；见[本轮推进记录](results/todo-preparation-progress-20261016.md)。
+
+2026-10-16后续固定来源比对已完成：HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`的配置、tokenizer、processor与四权重身份相符，官方ModelScope历史树解释了README和额外配置来源。唯一代码偏差为实际基座构造函数新增`self.post_init()`，来源、原因和运行影响未核；未覆盖原文件、补造来源声明或登记模型。7个仓内代码文件仅做AST闭包，没有执行远程代码。详见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)。
 
 ## 仍需独立解决的缺口
 

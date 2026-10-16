@@ -1,0 +1,30 @@
+{
+  "schema_version": "guarded-base-source-rejection-observation/v1",
+  "recorded_at": "2026-10-16T03:34:36.461207+00:00",
+  "execution_platform": "Mac / Codex",
+  "working_directory": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+  "evidence_source": "Observed root tool execution of the embedded stdin script, not an inference/deployment/registration receipt",
+  "command": [
+    ".venv/bin/python",
+    "-B",
+    "-"
+  ],
+  "stdin_script": "from pathlib import Path\nimport builtins,socket\noriginal=builtins.__import__\ndef guarded(name,*args,**kwargs):\n if name.split('.')[0] in {'torch','transformers','safetensors','modeling_minicpmv','configuration_minicpm','processing_minicpmv'}:\n  raise AssertionError('model/runtime import forbidden: '+name)\n return original(name,*args,**kwargs)\nbuiltins.__import__=guarded\ndef denied(*args,**kwargs):raise AssertionError('network forbidden')\nsocket.socket.connect=denied\nsocket.create_connection=denied\nfrom versioning.registry import _base_provenance\ntry:\n _base_provenance(Path('.cache/base-source-audit/remote-assets-20261016'), 'openbmb/MiniCPM-V-4_5', 'daef484c35ec93210ec93c5e901f8f3e9b78ee34')\nexcept ValueError as e:\n assert 'base source is unknown' in str(e)\n print('Expected rejection:',e)\nelse:\n raise AssertionError('unattested local snapshot must not pass source readiness')\nprint('No model/runtime imports, network, register or eval/claim calls')\n",
+  "script_sha256": "b0bfd4cc67f55e538327aabc8eab5f8077bdcbb66d18907a6b3cec5c79964fa8",
+  "exit_code": 0,
+  "stdout": "Expected rejection: base source is unknown: require consistent local metadata or source-provenance.json\nNo model/runtime imports, network, register or eval/claim calls\n",
+  "source_files": {
+    "versioning/registry.py": "21f11089efacb55430474cea608258eefd6bd512283386e4dac1186209a020ac",
+    ".cache/base-source-audit/remote-assets-20261016/config.json": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8"
+  },
+  "expected_rejection_observed": true,
+  "base_ready_for_registration": false,
+  "real_model_evaluation_executed": false,
+  "real_test_used": false,
+  "formal_registry_or_evalclaim_created": false,
+  "limits": [
+    "Only the source-provenance helper ran, not full base registration or weight inventory.",
+    "The helper does not fetch or compare upstream code; the official/local difference audit is separate.",
+    "No source-provenance.json was inserted to make the unverified snapshot pass."
+  ]
+}

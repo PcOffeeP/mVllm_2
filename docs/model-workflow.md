@@ -100,7 +100,7 @@ full 禁止训练中 validation、最佳 checkpoint 选择、隐式验证切分�
   --source-scope diagnostic_fold --train-version "$TRAIN" --fold 0
 ```
 
-`BASE_MODEL`、`DIAGNOSTIC_MODEL` 都是调用者分配的完整 model 身份。基座目录须含实际权重、config、tokenizer/processor，来源与固定 revision 须先核实；可用 config 来源字段或可识别 HF snapshot 路径须与声明一致；二者不足时，目录须含 `source-provenance.json`，schema 为 `tensile-base-provenance/v1`，含匹配的 upstream_source/upstream_revision 及非空 verified_by。该文件随字节冻结；一致性检查不等于密码学证明上游真实性。不接受 main/latest 等活动引用，不自动下载或升级。登记创建来源 Run 的实际字节快照和 `model-source.json`，不造 train/data/Prompt。基座评测另显式绑定开发 data 与任务 Prompt。
+`BASE_MODEL`、`DIAGNOSTIC_MODEL` 都是调用者分配的完整 model 身份。基座目录须含实际权重、config、tokenizer/processor，来源与固定 revision 须先核实；可用 config 来源字段或可识别 HF snapshot 路径须与声明一致；二者不足时，目录须含 `source-provenance.json`，schema 为 `tensile-base-provenance/v1`，含匹配的 upstream_source/upstream_revision 及非空 verified_by。该文件随字节冻结；一致性检查不等于密码学证明上游真实性。不接受 main/latest 等活动引用，不自动下载或升级。当前MiniCPM基座的固定文件比对与构造代码偏差见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)；权重相同不能替代代码来源，未核差异不通过空泛来源声明追认。登记创建来源 Run 的实际字节快照和 `model-source.json`，不造 train/data/Prompt。基座评测另显式绑定开发 data 与任务 Prompt。
 
 诊断来源只接受真实 FINISHED 折的 execution receipt 和 adapter，冻结 checkpoint step、父 train/run、共享输入、基座与真实折号；不接受任意中途 checkpoint 或自定义 artifact。父 train 保持 partial，后续使用重验共享输入及来源。base/diagnostic 可用于开发测评和受控性能测量；性能入口见第 7 节，不能借 candidate/production alias 部署，也不能 finalize 为生产资格。
 

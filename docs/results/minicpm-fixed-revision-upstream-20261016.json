@@ -1,0 +1,1887 @@
+{
+  "schema_version": "minicpm-fixed-revision-upstream/v1",
+  "status": "completed",
+  "created_at_utc": "2026-10-16T03:21:26.666250+00:00",
+  "executor": "Codex",
+  "platform": "local Mac project .venv Python Requests",
+  "repo_id": "openbmb/MiniCPM-V-4_5",
+  "fixed_revision": "daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+  "execution_environment": {
+    "python_executable": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.venv/bin/python",
+    "python_version": "3.11.14",
+    "requests_version": "2.34.2",
+    "certifi_version": "2026.06.17",
+    "ca_bundle": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.venv/lib/python3.11/site-packages/certifi/cacert.pem",
+    "ca_bundle_sha256": "bbc7e9c01d7551bb8a159b5dedd989b8ee3ce105aff522b68eb1b01bf854cab0",
+    "default_certificate_verification": true
+  },
+  "official_revision_api": {
+    "requested_url": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/revision/daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+    "requested_at_utc": "2026-10-16T03:21:10.186875+00:00",
+    "tls_verify": true,
+    "limit_bytes": 16777216,
+    "http_status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "ETag": "W/\"1e52-Md1Azh3neXlfNnImNqCtVpWiRwg\""
+    },
+    "completed_at_utc": "2026-10-16T03:21:10.720000+00:00",
+    "size_bytes": 7762,
+    "sha256": "94824ae7ce1bafa1ad96379e16a2c3bfd41fb1fdf26fab0a359b051d27cfef14",
+    "git_blob_sha1": "55f46a881eeee66b806b14388aef3ff6cdd8c75a",
+    "saved_path": "official/revision.json"
+  },
+  "official_tree_api": {
+    "requested_url": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/tree/daef484c35ec93210ec93c5e901f8f3e9b78ee34?recursive=false&expand=false",
+    "requested_at_utc": "2026-10-16T03:21:10.721332+00:00",
+    "tls_verify": true,
+    "limit_bytes": 16777216,
+    "http_status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "ETag": "W/\"dad-Wgrtae6kKOe3JZKAVIOybc1Kgk0\""
+    },
+    "completed_at_utc": "2026-10-16T03:21:11.181955+00:00",
+    "size_bytes": 3501,
+    "sha256": "54e2738701464591d8fbfee9751dc907b966f1aaf3ac86b60fcefabe50502831",
+    "git_blob_sha1": "dda88df3a800f1a88a872ff8c3c5c85f8afed211",
+    "saved_path": "official/tree.json"
+  },
+  "official_revision_metadata": {
+    "_id": "68aaebfbfe684542cfc51e66",
+    "id": "openbmb/MiniCPM-V-4_5",
+    "private": false,
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers",
+    "tags": [
+      "transformers",
+      "safetensors",
+      "minicpmv",
+      "feature-extraction",
+      "minicpm-v",
+      "vision",
+      "ocr",
+      "multi-image",
+      "video",
+      "custom_code",
+      "image-text-to-text",
+      "conversational",
+      "multilingual",
+      "dataset:openbmb/RLAIF-V-Dataset",
+      "arxiv:2509.18154",
+      "arxiv:2403.11703",
+      "license:apache-2.0",
+      "eval-results",
+      "region:us"
+    ],
+    "downloads": 83708,
+    "likes": 1107,
+    "modelId": "openbmb/MiniCPM-V-4_5",
+    "author": "openbmb",
+    "sha": "daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+    "lastModified": "2026-08-18T03:58:09.000Z",
+    "gated": false,
+    "disabled": false,
+    "model-index": null,
+    "config": {
+      "architectures": [
+        "MiniCPMV"
+      ],
+      "auto_map": {
+        "AutoConfig": "configuration_minicpm.MiniCPMVConfig",
+        "AutoModel": "modeling_minicpmv.MiniCPMV",
+        "AutoModelForCausalLM": "modeling_minicpmv.MiniCPMV"
+      },
+      "model_type": "minicpmv",
+      "tokenizer_config": {
+        "bos_token": "<|im_start|>",
+        "chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set content = message.content %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in message.content %}\n                {%- set content = message.content.split('</think>')[-1].lstrip('\\n') %}\n                {%- set reasoning_content = message.content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n    {%- if enable_thinking is defined and enable_thinking is true %}\n        {{- '<think>\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "eos_token": "<|im_end|>",
+        "pad_token": "<|endoftext|>",
+        "unk_token": "<unk>"
+      }
+    },
+    "cardData": {
+      "pipeline_tag": "image-text-to-text",
+      "datasets": [
+        "openbmb/RLAIF-V-Dataset"
+      ],
+      "library_name": "transformers",
+      "language": [
+        "multilingual"
+      ],
+      "tags": [
+        "minicpm-v",
+        "vision",
+        "ocr",
+        "multi-image",
+        "video",
+        "custom_code"
+      ],
+      "license": "apache-2.0"
+    },
+    "transformersInfo": {
+      "auto_model": "AutoModel",
+      "custom_class": "modeling_minicpmv.MiniCPMV",
+      "pipeline_tag": "feature-extraction"
+    },
+    "siblings": [
+      {
+        "rfilename": ".gitattributes"
+      },
+      {
+        "rfilename": "README.md"
+      },
+      {
+        "rfilename": "added_tokens.json"
+      },
+      {
+        "rfilename": "config.json"
+      },
+      {
+        "rfilename": "configuration_minicpm.py"
+      },
+      {
+        "rfilename": "generation_config.json"
+      },
+      {
+        "rfilename": "image_processing_minicpmv.py"
+      },
+      {
+        "rfilename": "merges.txt"
+      },
+      {
+        "rfilename": "model-00001-of-00004.safetensors"
+      },
+      {
+        "rfilename": "model-00002-of-00004.safetensors"
+      },
+      {
+        "rfilename": "model-00003-of-00004.safetensors"
+      },
+      {
+        "rfilename": "model-00004-of-00004.safetensors"
+      },
+      {
+        "rfilename": "model.safetensors.index.json"
+      },
+      {
+        "rfilename": "modeling_minicpmv.py"
+      },
+      {
+        "rfilename": "modeling_navit_siglip.py"
+      },
+      {
+        "rfilename": "preprocessor_config.json"
+      },
+      {
+        "rfilename": "processing_minicpmv.py"
+      },
+      {
+        "rfilename": "resampler.py"
+      },
+      {
+        "rfilename": "special_tokens_map.json"
+      },
+      {
+        "rfilename": "tokenization_minicpmv_fast.py"
+      },
+      {
+        "rfilename": "tokenizer.json"
+      },
+      {
+        "rfilename": "tokenizer_config.json"
+      },
+      {
+        "rfilename": "vocab.json"
+      }
+    ],
+    "spaces": [
+      "openbmb/MiniCPM-V-4_5-Demo",
+      "jairwaal/image",
+      "akhaliq/MiniCPM-V-4_5",
+      "Jakob08/moneychatbot",
+      "akhaliq/MiniCPM-V-4_5-video-chat",
+      "Secondprinsipal/image",
+      "build-small-hackathon/repair-guy",
+      "build-small-hackathon/unstuck",
+      "build-small-hackathon/pareidolia",
+      "build-small-hackathon/tutordesk-ai",
+      "huggingfaceramki/Ramkiran_searchgpt",
+      "build-small-hackathon/Pharma-Copilot",
+      "build-small-hackathon/Redac",
+      "build-small-hackathon/rupkotha",
+      "CGQN/MiniCPM-V-4_5",
+      "CGQN/MiniCPM-V-4_5-from_gpt5",
+      "CGQN/MiniCPM-V-4_5-CPU-0",
+      "orrzxz/MiniCPM-V-4_5",
+      "WYC-2025/MiniCPM-V-4_5",
+      "NovaCorp/Mi-modelo",
+      "malekradwan130/EbWFsZWtyYWR3YW4xMzBAZ21haWwuY",
+      "aatankwad/firstpish",
+      "Karenae/MiniCPM-V-4_5-video-chat",
+      "j4s0ch3/muse-buddy-assistant",
+      "armaansingh752k1/Image_generator_Docker",
+      "lipu-2026/LifeSnapPlanner",
+      "airayven7/repair-guy",
+      "mkim0818/paia-lane-train",
+      "mkim0818/paia-lane-12f-eval",
+      "mkim0818/paia-hier-eval-space",
+      "Urytorre1/MiniCPM-V-4_5"
+    ],
+    "createdAt": "2025-08-24T10:39:55.000Z",
+    "safetensors": {
+      "parameters": {
+        "BF16": 8695895280
+      },
+      "total": 8695895280
+    },
+    "usedStorage": 17403328052
+  },
+  "official_tree_entries": [
+    {
+      "type": "file",
+      "oid": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+      "size": 1570,
+      "path": ".gitattributes"
+    },
+    {
+      "type": "file",
+      "oid": "79ef5eb1e8e9cbac45634eb2f3a0680705bbded0",
+      "size": 25542,
+      "path": "README.md"
+    },
+    {
+      "type": "file",
+      "oid": "4238f03344983475055a3487e654be7f5bbd5e15",
+      "size": 2862,
+      "path": "added_tokens.json"
+    },
+    {
+      "type": "file",
+      "oid": "126378bbec97e713ebbb7d2bb2b389543107fff1",
+      "size": 1461,
+      "path": "config.json"
+    },
+    {
+      "type": "file",
+      "oid": "5bfd3f4d7c2a00ded7f8c7d40e9433ea0dbd6370",
+      "size": 3288,
+      "path": "configuration_minicpm.py"
+    },
+    {
+      "type": "file",
+      "oid": "233aece9d4f5ae3a524de27c8bab1bf74d25c1dc",
+      "size": 268,
+      "path": "generation_config.json"
+    },
+    {
+      "type": "file",
+      "oid": "7ae14cf95bda781e178f9543a1635b02e3605939",
+      "size": 20757,
+      "path": "image_processing_minicpmv.py"
+    },
+    {
+      "type": "file",
+      "oid": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+      "size": 1671853,
+      "path": "merges.txt"
+    },
+    {
+      "type": "file",
+      "oid": "07249848673af4f922d6dfc05fada1ce693053bd",
+      "size": 5286612176,
+      "lfs": {
+        "oid": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+        "size": 5286612176,
+        "pointerSize": 135
+      },
+      "xetHash": "eae4d1d693fa0a7d00e8e4609f3ac641007c601a74b33192f9259a7b2aab1041",
+      "path": "model-00001-of-00004.safetensors"
+    },
+    {
+      "type": "file",
+      "oid": "8081279c437b5468109d7c16aeaba79b76a17de8",
+      "size": 5301855088,
+      "lfs": {
+        "oid": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+        "size": 5301855088,
+        "pointerSize": 135
+      },
+      "xetHash": "d1bf0797bd3ea8ff852fddff88c58226de2a40d7205712c384fa68f480b9a69e",
+      "path": "model-00002-of-00004.safetensors"
+    },
+    {
+      "type": "file",
+      "oid": "fe78157ba94e94968562161cdca5d722c920064e",
+      "size": 4546851120,
+      "lfs": {
+        "oid": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+        "size": 4546851120,
+        "pointerSize": 135
+      },
+      "xetHash": "ccce26c953e86c6662428f2ba623e95802274628d56dd4388dabdba595905efa",
+      "path": "model-00003-of-00004.safetensors"
+    },
+    {
+      "type": "file",
+      "oid": "a32a968b978ba56ea304917c05202dfb19b0debc",
+      "size": 2256571800,
+      "lfs": {
+        "oid": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+        "size": 2256571800,
+        "pointerSize": 135
+      },
+      "xetHash": "4e405f6ac1df9451c3fed2ddb8d5a907ab9d78b89e86c0244f49168f272a4025",
+      "path": "model-00004-of-00004.safetensors"
+    },
+    {
+      "type": "file",
+      "oid": "6091053aca66160ee87b9433b444d6cc2fc6332b",
+      "size": 72172,
+      "path": "model.safetensors.index.json"
+    },
+    {
+      "type": "file",
+      "oid": "d10cfc05681c8e19f33292c49f8a317658d1aed5",
+      "size": 18583,
+      "path": "modeling_minicpmv.py"
+    },
+    {
+      "type": "file",
+      "oid": "6fe732cf0d5884613003c00bccea0c5ae64a1905",
+      "size": 41835,
+      "path": "modeling_navit_siglip.py"
+    },
+    {
+      "type": "file",
+      "oid": "7111b617df9ae1127d9383c0983b996af98ff957",
+      "size": 714,
+      "path": "preprocessor_config.json"
+    },
+    {
+      "type": "file",
+      "oid": "cefc24566249cd47da7b3d2ee3f936941455f4e4",
+      "size": 11026,
+      "path": "processing_minicpmv.py"
+    },
+    {
+      "type": "file",
+      "oid": "d7d1756294deb0f5a9e083a086392c786eda6f5a",
+      "size": 11732,
+      "path": "resampler.py"
+    },
+    {
+      "type": "file",
+      "oid": "b0204ae49160c057726f8e0eb1eec485129bc87e",
+      "size": 12103,
+      "path": "special_tokens_map.json"
+    },
+    {
+      "type": "file",
+      "oid": "c8411fa70c616474142442f883fc88b40363e0f2",
+      "size": 1647,
+      "path": "tokenization_minicpmv_fast.py"
+    },
+    {
+      "type": "file",
+      "oid": "f655efc3ba23a4eaca6bbec6113cd7b7617470fd",
+      "size": 11437868,
+      "lfs": {
+        "oid": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+        "size": 11437868,
+        "pointerSize": 133
+      },
+      "xetHash": "ca07380391088af0403c2208088b9f1074c2c15c66a67fbec7a3f1630be51cd2",
+      "path": "tokenizer.json"
+    },
+    {
+      "type": "file",
+      "oid": "aaf1d40a5ce6edc302b3c5f8de9e6074b643ce59",
+      "size": 25786,
+      "path": "tokenizer_config.json"
+    },
+    {
+      "type": "file",
+      "oid": "4783fe10ac3adce15ac8f358ef5462739852c569",
+      "size": 2776833,
+      "path": "vocab.json"
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/README.md",
+      "remote_sha256": "5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64",
+      "remote_size_bytes": 25454,
+      "tree_entry": {
+        "type": "file",
+        "oid": "79ef5eb1e8e9cbac45634eb2f3a0680705bbded0",
+        "size": 25542,
+        "path": "README.md"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/README.md",
+        "requested_at_utc": "2026-10-16T03:21:11.184059+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"79ef5eb1e8e9cbac45634eb2f3a0680705bbded0\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:11.714058+00:00",
+        "size_bytes": 25542,
+        "sha256": "0919332bbca6c5d64f4bee3fe1f4c30a36245a430db2056a00d7b06444b34c4c",
+        "git_blob_sha1": "79ef5eb1e8e9cbac45634eb2f3a0680705bbded0",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/README.md"
+      },
+      "content_sha256": "0919332bbca6c5d64f4bee3fe1f4c30a36245a430db2056a00d7b06444b34c4c",
+      "content_size_bytes": 25542,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": false,
+      "size_matches_remote": false,
+      "finding": "remote_bytes_differ_from_official_fixed_revision"
+    },
+    {
+      "path": "added_tokens.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/added_tokens.json",
+      "remote_sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+      "remote_size_bytes": 2862,
+      "tree_entry": {
+        "type": "file",
+        "oid": "4238f03344983475055a3487e654be7f5bbd5e15",
+        "size": 2862,
+        "path": "added_tokens.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/added_tokens.json",
+        "requested_at_utc": "2026-10-16T03:21:11.715415+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"4238f03344983475055a3487e654be7f5bbd5e15\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:12.178440+00:00",
+        "size_bytes": 2862,
+        "sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+        "git_blob_sha1": "4238f03344983475055a3487e654be7f5bbd5e15",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/added_tokens.json"
+      },
+      "content_sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+      "content_size_bytes": 2862,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/config.json",
+      "remote_sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+      "remote_size_bytes": 1461,
+      "tree_entry": {
+        "type": "file",
+        "oid": "126378bbec97e713ebbb7d2bb2b389543107fff1",
+        "size": 1461,
+        "path": "config.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/config.json",
+        "requested_at_utc": "2026-10-16T03:21:12.179679+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"126378bbec97e713ebbb7d2bb2b389543107fff1\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:12.609676+00:00",
+        "size_bytes": 1461,
+        "sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+        "git_blob_sha1": "126378bbec97e713ebbb7d2bb2b389543107fff1",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/config.json"
+      },
+      "content_sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+      "content_size_bytes": 1461,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "configuration.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/configuration.json",
+      "remote_sha256": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+      "remote_size_bytes": 51,
+      "tree_entry": null,
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/configuration.json",
+        "requested_at_utc": "2026-10-16T03:21:12.611369+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 404,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "15",
+          "ETag": "W/\"f-mY2VvLxuxB7KhsoOdQTlMTccuAQ\""
+        },
+        "error": "Entry not found"
+      },
+      "finding": "remote_file_not_in_official_fixed_tree_and_raw_returns_404"
+    },
+    {
+      "path": "configuration_minicpm.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/configuration_minicpm.py",
+      "remote_sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+      "remote_size_bytes": 3288,
+      "tree_entry": {
+        "type": "file",
+        "oid": "5bfd3f4d7c2a00ded7f8c7d40e9433ea0dbd6370",
+        "size": 3288,
+        "path": "configuration_minicpm.py"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/configuration_minicpm.py",
+        "requested_at_utc": "2026-10-16T03:21:13.104062+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"5bfd3f4d7c2a00ded7f8c7d40e9433ea0dbd6370\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:13.548721+00:00",
+        "size_bytes": 3288,
+        "sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+        "git_blob_sha1": "5bfd3f4d7c2a00ded7f8c7d40e9433ea0dbd6370",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/configuration_minicpm.py"
+      },
+      "content_sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+      "content_size_bytes": 3288,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "generation_config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/generation_config.json",
+      "remote_sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+      "remote_size_bytes": 268,
+      "tree_entry": {
+        "type": "file",
+        "oid": "233aece9d4f5ae3a524de27c8bab1bf74d25c1dc",
+        "size": 268,
+        "path": "generation_config.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/generation_config.json",
+        "requested_at_utc": "2026-10-16T03:21:13.550012+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "268",
+          "ETag": "\"233aece9d4f5ae3a524de27c8bab1bf74d25c1dc\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:14.191374+00:00",
+        "size_bytes": 268,
+        "sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+        "git_blob_sha1": "233aece9d4f5ae3a524de27c8bab1bf74d25c1dc",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/generation_config.json"
+      },
+      "content_sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+      "content_size_bytes": 268,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "image_processing_minicpmv.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/image_processing_minicpmv.py",
+      "remote_sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+      "remote_size_bytes": 20757,
+      "tree_entry": {
+        "type": "file",
+        "oid": "7ae14cf95bda781e178f9543a1635b02e3605939",
+        "size": 20757,
+        "path": "image_processing_minicpmv.py"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/image_processing_minicpmv.py",
+        "requested_at_utc": "2026-10-16T03:21:14.193113+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"7ae14cf95bda781e178f9543a1635b02e3605939\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:14.631891+00:00",
+        "size_bytes": 20757,
+        "sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+        "git_blob_sha1": "7ae14cf95bda781e178f9543a1635b02e3605939",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/image_processing_minicpmv.py"
+      },
+      "content_sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+      "content_size_bytes": 20757,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "merges.txt",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/merges.txt",
+      "remote_sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+      "remote_size_bytes": 1671853,
+      "tree_entry": {
+        "type": "file",
+        "oid": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+        "size": 1671853,
+        "path": "merges.txt"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/merges.txt",
+        "requested_at_utc": "2026-10-16T03:21:14.632294+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"31349551d90c7606f325fe0f11bbb8bd5fa0d7c7\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:15.284194+00:00",
+        "size_bytes": 1671853,
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "git_blob_sha1": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/merges.txt"
+      },
+      "content_sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+      "content_size_bytes": 1671853,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "model-00001-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00001-of-00004.safetensors",
+      "remote_sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+      "remote_size_bytes": 5286612176,
+      "tree_entry": {
+        "type": "file",
+        "oid": "07249848673af4f922d6dfc05fada1ce693053bd",
+        "size": 5286612176,
+        "lfs": {
+          "oid": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+          "size": 5286612176,
+          "pointerSize": 135
+        },
+        "xetHash": "eae4d1d693fa0a7d00e8e4609f3ac641007c601a74b33192f9259a7b2aab1041",
+        "path": "model-00001-of-00004.safetensors"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00001-of-00004.safetensors",
+        "requested_at_utc": "2026-10-16T03:21:15.289515+00:00",
+        "tls_verify": true,
+        "limit_bytes": 4096,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "135",
+          "ETag": "\"07249848673af4f922d6dfc05fada1ce693053bd\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:15.766535+00:00",
+        "size_bytes": 135,
+        "sha256": "fdb26a91616d73d496799862d7dc92329a055599ae5c7c3db3edde73d9ee0461",
+        "git_blob_sha1": "07249848673af4f922d6dfc05fada1ce693053bd",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00001-of-00004.safetensors"
+      },
+      "lfs_pointer": {
+        "version": "https://git-lfs.github.com/spec/v1",
+        "oid": "sha256:22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+        "size": "5286612176"
+      },
+      "content_sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+      "content_size_bytes": 5286612176,
+      "comparison_kind": "fixed_commit_lfs_identity",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "model-00002-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00002-of-00004.safetensors",
+      "remote_sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+      "remote_size_bytes": 5301855088,
+      "tree_entry": {
+        "type": "file",
+        "oid": "8081279c437b5468109d7c16aeaba79b76a17de8",
+        "size": 5301855088,
+        "lfs": {
+          "oid": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+          "size": 5301855088,
+          "pointerSize": 135
+        },
+        "xetHash": "d1bf0797bd3ea8ff852fddff88c58226de2a40d7205712c384fa68f480b9a69e",
+        "path": "model-00002-of-00004.safetensors"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00002-of-00004.safetensors",
+        "requested_at_utc": "2026-10-16T03:21:15.766877+00:00",
+        "tls_verify": true,
+        "limit_bytes": 4096,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "135",
+          "ETag": "\"8081279c437b5468109d7c16aeaba79b76a17de8\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:16.219632+00:00",
+        "size_bytes": 135,
+        "sha256": "5c066440b43ab691140ebc24ee764793deebd43ba62d0d4122c73524d574bca0",
+        "git_blob_sha1": "8081279c437b5468109d7c16aeaba79b76a17de8",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00002-of-00004.safetensors"
+      },
+      "lfs_pointer": {
+        "version": "https://git-lfs.github.com/spec/v1",
+        "oid": "sha256:8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+        "size": "5301855088"
+      },
+      "content_sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+      "content_size_bytes": 5301855088,
+      "comparison_kind": "fixed_commit_lfs_identity",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "model-00003-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00003-of-00004.safetensors",
+      "remote_sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+      "remote_size_bytes": 4546851120,
+      "tree_entry": {
+        "type": "file",
+        "oid": "fe78157ba94e94968562161cdca5d722c920064e",
+        "size": 4546851120,
+        "lfs": {
+          "oid": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+          "size": 4546851120,
+          "pointerSize": 135
+        },
+        "xetHash": "ccce26c953e86c6662428f2ba623e95802274628d56dd4388dabdba595905efa",
+        "path": "model-00003-of-00004.safetensors"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00003-of-00004.safetensors",
+        "requested_at_utc": "2026-10-16T03:21:16.219959+00:00",
+        "tls_verify": true,
+        "limit_bytes": 4096,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "135",
+          "ETag": "\"fe78157ba94e94968562161cdca5d722c920064e\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:16.668964+00:00",
+        "size_bytes": 135,
+        "sha256": "15bd3d8779ca087e28f6541cb1445b44af27afcafa4d10b9c9684910fa71065f",
+        "git_blob_sha1": "fe78157ba94e94968562161cdca5d722c920064e",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00003-of-00004.safetensors"
+      },
+      "lfs_pointer": {
+        "version": "https://git-lfs.github.com/spec/v1",
+        "oid": "sha256:9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+        "size": "4546851120"
+      },
+      "content_sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+      "content_size_bytes": 4546851120,
+      "comparison_kind": "fixed_commit_lfs_identity",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "model-00004-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00004-of-00004.safetensors",
+      "remote_sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+      "remote_size_bytes": 2256571800,
+      "tree_entry": {
+        "type": "file",
+        "oid": "a32a968b978ba56ea304917c05202dfb19b0debc",
+        "size": 2256571800,
+        "lfs": {
+          "oid": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+          "size": 2256571800,
+          "pointerSize": 135
+        },
+        "xetHash": "4e405f6ac1df9451c3fed2ddb8d5a907ab9d78b89e86c0244f49168f272a4025",
+        "path": "model-00004-of-00004.safetensors"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00004-of-00004.safetensors",
+        "requested_at_utc": "2026-10-16T03:21:16.670135+00:00",
+        "tls_verify": true,
+        "limit_bytes": 4096,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "135",
+          "ETag": "\"a32a968b978ba56ea304917c05202dfb19b0debc\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:17.109168+00:00",
+        "size_bytes": 135,
+        "sha256": "014bedc5c29663d2fa5187b42e9171649fa8a26ec1668be75902213205ef0e1a",
+        "git_blob_sha1": "a32a968b978ba56ea304917c05202dfb19b0debc",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00004-of-00004.safetensors"
+      },
+      "lfs_pointer": {
+        "version": "https://git-lfs.github.com/spec/v1",
+        "oid": "sha256:f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+        "size": "2256571800"
+      },
+      "content_sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+      "content_size_bytes": 2256571800,
+      "comparison_kind": "fixed_commit_lfs_identity",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "model.safetensors.index.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model.safetensors.index.json",
+      "remote_sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+      "remote_size_bytes": 72172,
+      "tree_entry": {
+        "type": "file",
+        "oid": "6091053aca66160ee87b9433b444d6cc2fc6332b",
+        "size": 72172,
+        "path": "model.safetensors.index.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model.safetensors.index.json",
+        "requested_at_utc": "2026-10-16T03:21:17.110742+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"6091053aca66160ee87b9433b444d6cc2fc6332b\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:17.572356+00:00",
+        "size_bytes": 72172,
+        "sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+        "git_blob_sha1": "6091053aca66160ee87b9433b444d6cc2fc6332b",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model.safetensors.index.json"
+      },
+      "content_sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+      "content_size_bytes": 72172,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "modeling_minicpmv.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/modeling_minicpmv.py",
+      "remote_sha256": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10",
+      "remote_size_bytes": 18609,
+      "tree_entry": {
+        "type": "file",
+        "oid": "d10cfc05681c8e19f33292c49f8a317658d1aed5",
+        "size": 18583,
+        "path": "modeling_minicpmv.py"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/modeling_minicpmv.py",
+        "requested_at_utc": "2026-10-16T03:21:17.573830+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"d10cfc05681c8e19f33292c49f8a317658d1aed5\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:18.014439+00:00",
+        "size_bytes": 18583,
+        "sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+        "git_blob_sha1": "d10cfc05681c8e19f33292c49f8a317658d1aed5",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/modeling_minicpmv.py"
+      },
+      "content_sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+      "content_size_bytes": 18583,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": false,
+      "size_matches_remote": false,
+      "finding": "remote_bytes_differ_from_official_fixed_revision"
+    },
+    {
+      "path": "modeling_navit_siglip.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/modeling_navit_siglip.py",
+      "remote_sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+      "remote_size_bytes": 41835,
+      "tree_entry": {
+        "type": "file",
+        "oid": "6fe732cf0d5884613003c00bccea0c5ae64a1905",
+        "size": 41835,
+        "path": "modeling_navit_siglip.py"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/modeling_navit_siglip.py",
+        "requested_at_utc": "2026-10-16T03:21:18.015684+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"6fe732cf0d5884613003c00bccea0c5ae64a1905\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:18.467932+00:00",
+        "size_bytes": 41835,
+        "sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+        "git_blob_sha1": "6fe732cf0d5884613003c00bccea0c5ae64a1905",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/modeling_navit_siglip.py"
+      },
+      "content_sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+      "content_size_bytes": 41835,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "preprocessor_config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/preprocessor_config.json",
+      "remote_sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+      "remote_size_bytes": 714,
+      "tree_entry": {
+        "type": "file",
+        "oid": "7111b617df9ae1127d9383c0983b996af98ff957",
+        "size": 714,
+        "path": "preprocessor_config.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/preprocessor_config.json",
+        "requested_at_utc": "2026-10-16T03:21:18.469139+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "714",
+          "ETag": "\"7111b617df9ae1127d9383c0983b996af98ff957\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:18.928256+00:00",
+        "size_bytes": 714,
+        "sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+        "git_blob_sha1": "7111b617df9ae1127d9383c0983b996af98ff957",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/preprocessor_config.json"
+      },
+      "content_sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+      "content_size_bytes": 714,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "processing_minicpmv.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/processing_minicpmv.py",
+      "remote_sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+      "remote_size_bytes": 11026,
+      "tree_entry": {
+        "type": "file",
+        "oid": "cefc24566249cd47da7b3d2ee3f936941455f4e4",
+        "size": 11026,
+        "path": "processing_minicpmv.py"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/processing_minicpmv.py",
+        "requested_at_utc": "2026-10-16T03:21:18.929679+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"cefc24566249cd47da7b3d2ee3f936941455f4e4\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:19.377128+00:00",
+        "size_bytes": 11026,
+        "sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+        "git_blob_sha1": "cefc24566249cd47da7b3d2ee3f936941455f4e4",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/processing_minicpmv.py"
+      },
+      "content_sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+      "content_size_bytes": 11026,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "resampler.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/resampler.py",
+      "remote_sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+      "remote_size_bytes": 11732,
+      "tree_entry": {
+        "type": "file",
+        "oid": "d7d1756294deb0f5a9e083a086392c786eda6f5a",
+        "size": 11732,
+        "path": "resampler.py"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/resampler.py",
+        "requested_at_utc": "2026-10-16T03:21:19.378802+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"d7d1756294deb0f5a9e083a086392c786eda6f5a\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:20.008162+00:00",
+        "size_bytes": 11732,
+        "sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+        "git_blob_sha1": "d7d1756294deb0f5a9e083a086392c786eda6f5a",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/resampler.py"
+      },
+      "content_sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+      "content_size_bytes": 11732,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "special_tokens_map.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/special_tokens_map.json",
+      "remote_sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+      "remote_size_bytes": 12103,
+      "tree_entry": {
+        "type": "file",
+        "oid": "b0204ae49160c057726f8e0eb1eec485129bc87e",
+        "size": 12103,
+        "path": "special_tokens_map.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/special_tokens_map.json",
+        "requested_at_utc": "2026-10-16T03:21:20.008498+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"b0204ae49160c057726f8e0eb1eec485129bc87e\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:20.623460+00:00",
+        "size_bytes": 12103,
+        "sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+        "git_blob_sha1": "b0204ae49160c057726f8e0eb1eec485129bc87e",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/special_tokens_map.json"
+      },
+      "content_sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+      "content_size_bytes": 12103,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "tokenization_minicpmv_fast.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenization_minicpmv_fast.py",
+      "remote_sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+      "remote_size_bytes": 1647,
+      "tree_entry": {
+        "type": "file",
+        "oid": "c8411fa70c616474142442f883fc88b40363e0f2",
+        "size": 1647,
+        "path": "tokenization_minicpmv_fast.py"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenization_minicpmv_fast.py",
+        "requested_at_utc": "2026-10-16T03:21:20.623871+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"c8411fa70c616474142442f883fc88b40363e0f2\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:21.099043+00:00",
+        "size_bytes": 1647,
+        "sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+        "git_blob_sha1": "c8411fa70c616474142442f883fc88b40363e0f2",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/tokenization_minicpmv_fast.py"
+      },
+      "content_sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+      "content_size_bytes": 1647,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "tokenizer.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenizer.json",
+      "remote_sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+      "remote_size_bytes": 11437868,
+      "tree_entry": {
+        "type": "file",
+        "oid": "f655efc3ba23a4eaca6bbec6113cd7b7617470fd",
+        "size": 11437868,
+        "lfs": {
+          "oid": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+          "size": 11437868,
+          "pointerSize": 133
+        },
+        "xetHash": "ca07380391088af0403c2208088b9f1074c2c15c66a67fbec7a3f1630be51cd2",
+        "path": "tokenizer.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenizer.json",
+        "requested_at_utc": "2026-10-16T03:21:21.100128+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "133",
+          "ETag": "\"f655efc3ba23a4eaca6bbec6113cd7b7617470fd\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:21.528072+00:00",
+        "size_bytes": 133,
+        "sha256": "5d44d99536425a317120e7c2b810079f8fe02cafc1578e41f04e00f73af6fb99",
+        "git_blob_sha1": "f655efc3ba23a4eaca6bbec6113cd7b7617470fd",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/tokenizer.json"
+      },
+      "lfs_pointer": {
+        "version": "https://git-lfs.github.com/spec/v1",
+        "oid": "sha256:c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+        "size": "11437868"
+      },
+      "content_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/resolve/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenizer.json",
+        "requested_at_utc": "2026-10-16T03:21:21.528633+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "etag": "\"ca07380391088af0403c2208088b9f1074c2c15c66a67fbec7a3f1630be51cd2\"",
+          "content-length": "11437868"
+        },
+        "completed_at_utc": "2026-10-16T03:21:25.325997+00:00",
+        "size_bytes": 11437868,
+        "sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+        "git_blob_sha1": "82d77eb96fa55da0eb493b72a3b751acf154f3f0",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/content/tokenizer.json"
+      },
+      "content_sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+      "content_size_bytes": 11437868,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "resolved_content_matches_pointer": true,
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenizer_config.json",
+      "remote_sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+      "remote_size_bytes": 25786,
+      "tree_entry": {
+        "type": "file",
+        "oid": "aaf1d40a5ce6edc302b3c5f8de9e6074b643ce59",
+        "size": 25786,
+        "path": "tokenizer_config.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenizer_config.json",
+        "requested_at_utc": "2026-10-16T03:21:25.356558+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"aaf1d40a5ce6edc302b3c5f8de9e6074b643ce59\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:25.794425+00:00",
+        "size_bytes": 25786,
+        "sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+        "git_blob_sha1": "aaf1d40a5ce6edc302b3c5f8de9e6074b643ce59",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/tokenizer_config.json"
+      },
+      "content_sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+      "content_size_bytes": 25786,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    },
+    {
+      "path": "vocab.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/vocab.json",
+      "remote_sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "remote_size_bytes": 2776833,
+      "tree_entry": {
+        "type": "file",
+        "oid": "4783fe10ac3adce15ac8f358ef5462739852c569",
+        "size": 2776833,
+        "path": "vocab.json"
+      },
+      "raw_observation": {
+        "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/vocab.json",
+        "requested_at_utc": "2026-10-16T03:21:25.794764+00:00",
+        "tls_verify": true,
+        "limit_bytes": 16777216,
+        "http_status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "ETag": "W/\"4783fe10ac3adce15ac8f358ef5462739852c569\"",
+          "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+        },
+        "completed_at_utc": "2026-10-16T03:21:26.662219+00:00",
+        "size_bytes": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+        "git_blob_sha1": "4783fe10ac3adce15ac8f358ef5462739852c569",
+        "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/vocab.json"
+      },
+      "content_sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "content_size_bytes": 2776833,
+      "comparison_kind": "fixed_commit_exact_bytes",
+      "raw_git_blob_matches_tree": true,
+      "sha256_matches_remote": true,
+      "size_matches_remote": true,
+      "finding": "remote_identity_matches_official_fixed_revision"
+    }
+  ],
+  "acquisition_script_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/fixed-daef484c35ec-20261016/acquire.py",
+  "acquisition_script_sha256": "164cfda3a41339521ad588905805127765a7391dcd8e1416697f8dab3e1cc7e4",
+  "all_http_observations": [
+    {
+      "requested_url": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/revision/daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+      "requested_at_utc": "2026-10-16T03:21:10.186875+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "ETag": "W/\"1e52-Md1Azh3neXlfNnImNqCtVpWiRwg\""
+      },
+      "completed_at_utc": "2026-10-16T03:21:10.720000+00:00",
+      "size_bytes": 7762,
+      "sha256": "94824ae7ce1bafa1ad96379e16a2c3bfd41fb1fdf26fab0a359b051d27cfef14",
+      "git_blob_sha1": "55f46a881eeee66b806b14388aef3ff6cdd8c75a",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/revision.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/tree/daef484c35ec93210ec93c5e901f8f3e9b78ee34?recursive=false&expand=false",
+      "requested_at_utc": "2026-10-16T03:21:10.721332+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "ETag": "W/\"dad-Wgrtae6kKOe3JZKAVIOybc1Kgk0\""
+      },
+      "completed_at_utc": "2026-10-16T03:21:11.181955+00:00",
+      "size_bytes": 3501,
+      "sha256": "54e2738701464591d8fbfee9751dc907b966f1aaf3ac86b60fcefabe50502831",
+      "git_blob_sha1": "dda88df3a800f1a88a872ff8c3c5c85f8afed211",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/tree.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/README.md",
+      "requested_at_utc": "2026-10-16T03:21:11.184059+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"79ef5eb1e8e9cbac45634eb2f3a0680705bbded0\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:11.714058+00:00",
+      "size_bytes": 25542,
+      "sha256": "0919332bbca6c5d64f4bee3fe1f4c30a36245a430db2056a00d7b06444b34c4c",
+      "git_blob_sha1": "79ef5eb1e8e9cbac45634eb2f3a0680705bbded0",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/README.md"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/added_tokens.json",
+      "requested_at_utc": "2026-10-16T03:21:11.715415+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"4238f03344983475055a3487e654be7f5bbd5e15\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:12.178440+00:00",
+      "size_bytes": 2862,
+      "sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+      "git_blob_sha1": "4238f03344983475055a3487e654be7f5bbd5e15",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/added_tokens.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/config.json",
+      "requested_at_utc": "2026-10-16T03:21:12.179679+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"126378bbec97e713ebbb7d2bb2b389543107fff1\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:12.609676+00:00",
+      "size_bytes": 1461,
+      "sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+      "git_blob_sha1": "126378bbec97e713ebbb7d2bb2b389543107fff1",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/config.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/configuration.json",
+      "requested_at_utc": "2026-10-16T03:21:12.611369+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 404,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "15",
+        "ETag": "W/\"f-mY2VvLxuxB7KhsoOdQTlMTccuAQ\""
+      },
+      "error": "Entry not found"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/configuration_minicpm.py",
+      "requested_at_utc": "2026-10-16T03:21:13.104062+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"5bfd3f4d7c2a00ded7f8c7d40e9433ea0dbd6370\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:13.548721+00:00",
+      "size_bytes": 3288,
+      "sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+      "git_blob_sha1": "5bfd3f4d7c2a00ded7f8c7d40e9433ea0dbd6370",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/configuration_minicpm.py"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/generation_config.json",
+      "requested_at_utc": "2026-10-16T03:21:13.550012+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "268",
+        "ETag": "\"233aece9d4f5ae3a524de27c8bab1bf74d25c1dc\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:14.191374+00:00",
+      "size_bytes": 268,
+      "sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+      "git_blob_sha1": "233aece9d4f5ae3a524de27c8bab1bf74d25c1dc",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/generation_config.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/image_processing_minicpmv.py",
+      "requested_at_utc": "2026-10-16T03:21:14.193113+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"7ae14cf95bda781e178f9543a1635b02e3605939\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:14.631891+00:00",
+      "size_bytes": 20757,
+      "sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+      "git_blob_sha1": "7ae14cf95bda781e178f9543a1635b02e3605939",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/image_processing_minicpmv.py"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/merges.txt",
+      "requested_at_utc": "2026-10-16T03:21:14.632294+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"31349551d90c7606f325fe0f11bbb8bd5fa0d7c7\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:15.284194+00:00",
+      "size_bytes": 1671853,
+      "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+      "git_blob_sha1": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/merges.txt"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00001-of-00004.safetensors",
+      "requested_at_utc": "2026-10-16T03:21:15.289515+00:00",
+      "tls_verify": true,
+      "limit_bytes": 4096,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "135",
+        "ETag": "\"07249848673af4f922d6dfc05fada1ce693053bd\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:15.766535+00:00",
+      "size_bytes": 135,
+      "sha256": "fdb26a91616d73d496799862d7dc92329a055599ae5c7c3db3edde73d9ee0461",
+      "git_blob_sha1": "07249848673af4f922d6dfc05fada1ce693053bd",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00001-of-00004.safetensors"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00002-of-00004.safetensors",
+      "requested_at_utc": "2026-10-16T03:21:15.766877+00:00",
+      "tls_verify": true,
+      "limit_bytes": 4096,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "135",
+        "ETag": "\"8081279c437b5468109d7c16aeaba79b76a17de8\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:16.219632+00:00",
+      "size_bytes": 135,
+      "sha256": "5c066440b43ab691140ebc24ee764793deebd43ba62d0d4122c73524d574bca0",
+      "git_blob_sha1": "8081279c437b5468109d7c16aeaba79b76a17de8",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00002-of-00004.safetensors"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00003-of-00004.safetensors",
+      "requested_at_utc": "2026-10-16T03:21:16.219959+00:00",
+      "tls_verify": true,
+      "limit_bytes": 4096,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "135",
+        "ETag": "\"fe78157ba94e94968562161cdca5d722c920064e\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:16.668964+00:00",
+      "size_bytes": 135,
+      "sha256": "15bd3d8779ca087e28f6541cb1445b44af27afcafa4d10b9c9684910fa71065f",
+      "git_blob_sha1": "fe78157ba94e94968562161cdca5d722c920064e",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00003-of-00004.safetensors"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model-00004-of-00004.safetensors",
+      "requested_at_utc": "2026-10-16T03:21:16.670135+00:00",
+      "tls_verify": true,
+      "limit_bytes": 4096,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "135",
+        "ETag": "\"a32a968b978ba56ea304917c05202dfb19b0debc\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:17.109168+00:00",
+      "size_bytes": 135,
+      "sha256": "014bedc5c29663d2fa5187b42e9171649fa8a26ec1668be75902213205ef0e1a",
+      "git_blob_sha1": "a32a968b978ba56ea304917c05202dfb19b0debc",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model-00004-of-00004.safetensors"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/model.safetensors.index.json",
+      "requested_at_utc": "2026-10-16T03:21:17.110742+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"6091053aca66160ee87b9433b444d6cc2fc6332b\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:17.572356+00:00",
+      "size_bytes": 72172,
+      "sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+      "git_blob_sha1": "6091053aca66160ee87b9433b444d6cc2fc6332b",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/model.safetensors.index.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/modeling_minicpmv.py",
+      "requested_at_utc": "2026-10-16T03:21:17.573830+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"d10cfc05681c8e19f33292c49f8a317658d1aed5\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:18.014439+00:00",
+      "size_bytes": 18583,
+      "sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+      "git_blob_sha1": "d10cfc05681c8e19f33292c49f8a317658d1aed5",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/modeling_minicpmv.py"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/modeling_navit_siglip.py",
+      "requested_at_utc": "2026-10-16T03:21:18.015684+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"6fe732cf0d5884613003c00bccea0c5ae64a1905\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:18.467932+00:00",
+      "size_bytes": 41835,
+      "sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+      "git_blob_sha1": "6fe732cf0d5884613003c00bccea0c5ae64a1905",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/modeling_navit_siglip.py"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/preprocessor_config.json",
+      "requested_at_utc": "2026-10-16T03:21:18.469139+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "714",
+        "ETag": "\"7111b617df9ae1127d9383c0983b996af98ff957\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:18.928256+00:00",
+      "size_bytes": 714,
+      "sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+      "git_blob_sha1": "7111b617df9ae1127d9383c0983b996af98ff957",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/preprocessor_config.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/processing_minicpmv.py",
+      "requested_at_utc": "2026-10-16T03:21:18.929679+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"cefc24566249cd47da7b3d2ee3f936941455f4e4\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:19.377128+00:00",
+      "size_bytes": 11026,
+      "sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+      "git_blob_sha1": "cefc24566249cd47da7b3d2ee3f936941455f4e4",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/processing_minicpmv.py"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/resampler.py",
+      "requested_at_utc": "2026-10-16T03:21:19.378802+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"d7d1756294deb0f5a9e083a086392c786eda6f5a\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:20.008162+00:00",
+      "size_bytes": 11732,
+      "sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+      "git_blob_sha1": "d7d1756294deb0f5a9e083a086392c786eda6f5a",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/resampler.py"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/special_tokens_map.json",
+      "requested_at_utc": "2026-10-16T03:21:20.008498+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"b0204ae49160c057726f8e0eb1eec485129bc87e\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:20.623460+00:00",
+      "size_bytes": 12103,
+      "sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+      "git_blob_sha1": "b0204ae49160c057726f8e0eb1eec485129bc87e",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/special_tokens_map.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenization_minicpmv_fast.py",
+      "requested_at_utc": "2026-10-16T03:21:20.623871+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"c8411fa70c616474142442f883fc88b40363e0f2\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:21.099043+00:00",
+      "size_bytes": 1647,
+      "sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+      "git_blob_sha1": "c8411fa70c616474142442f883fc88b40363e0f2",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/tokenization_minicpmv_fast.py"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenizer.json",
+      "requested_at_utc": "2026-10-16T03:21:21.100128+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "133",
+        "ETag": "\"f655efc3ba23a4eaca6bbec6113cd7b7617470fd\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:21.528072+00:00",
+      "size_bytes": 133,
+      "sha256": "5d44d99536425a317120e7c2b810079f8fe02cafc1578e41f04e00f73af6fb99",
+      "git_blob_sha1": "f655efc3ba23a4eaca6bbec6113cd7b7617470fd",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/tokenizer.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/resolve/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenizer.json",
+      "requested_at_utc": "2026-10-16T03:21:21.528633+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"ca07380391088af0403c2208088b9f1074c2c15c66a67fbec7a3f1630be51cd2\"",
+        "content-length": "11437868"
+      },
+      "completed_at_utc": "2026-10-16T03:21:25.325997+00:00",
+      "size_bytes": 11437868,
+      "sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+      "git_blob_sha1": "82d77eb96fa55da0eb493b72a3b751acf154f3f0",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/content/tokenizer.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/tokenizer_config.json",
+      "requested_at_utc": "2026-10-16T03:21:25.356558+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"aaf1d40a5ce6edc302b3c5f8de9e6074b643ce59\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:25.794425+00:00",
+      "size_bytes": 25786,
+      "sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+      "git_blob_sha1": "aaf1d40a5ce6edc302b3c5f8de9e6074b643ce59",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/tokenizer_config.json"
+    },
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/vocab.json",
+      "requested_at_utc": "2026-10-16T03:21:25.794764+00:00",
+      "tls_verify": true,
+      "limit_bytes": 16777216,
+      "http_status": 200,
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8",
+        "ETag": "W/\"4783fe10ac3adce15ac8f358ef5462739852c569\"",
+        "X-Repo-Commit": "daef484c35ec93210ec93c5e901f8f3e9b78ee34"
+      },
+      "completed_at_utc": "2026-10-16T03:21:26.662219+00:00",
+      "size_bytes": 2776833,
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "git_blob_sha1": "4783fe10ac3adce15ac8f358ef5462739852c569",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/vocab.json"
+    }
+  ],
+  "supplemental_tree_files": [
+    {
+      "requested_url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/.gitattributes",
+      "requested_at_utc": "2026-10-16T03:21:49.154396+00:00",
+      "http_status": 200,
+      "tls_verify": true,
+      "size_bytes": 1570,
+      "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+      "git_blob_sha1": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+      "saved_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/.gitattributes"
+    }
+  ],
+  "audit_outcome": "fixed_revision_exists_and_official_tree_acquired_but_training_machine_snapshot_is_not_identical",
+  "scope": {
+    "remote_base_files": 23,
+    "official_top_level_tree_entries": 23,
+    "official_tree_has_subdirectories": false,
+    "official_tree_response_has_link_header": false,
+    "downloaded_weight_content": false,
+    "downloaded_official_small_files_and_lfs_pointers_only": true,
+    "model_execution": false,
+    "test_media_labels_predictions_or_metrics_access": false,
+    "certificate_verification_disabled": false,
+    "dependency_or_certificate_modification": false,
+    "formal_registration_created": false,
+    "remote_files_modified": false
+  },
+  "summary": {
+    "remote_files_matching_fixed_revision_identity": 20,
+    "matching_small_files_exact_bytes": 16,
+    "matching_weight_files_lfs_sha256_and_size": 4,
+    "remote_files_with_different_bytes": [
+      "README.md",
+      "modeling_minicpmv.py"
+    ],
+    "remote_files_absent_from_fixed_revision_tree": [
+      "configuration.json"
+    ],
+    "official_tree_files_absent_from_remote_allowlist": [
+      ".gitattributes"
+    ],
+    "all_23_remote_files_identical_to_fixed_revision": false,
+    "all_config_tokenizer_processor_small_files_present_in_official_tree_match": true,
+    "all_remote_python_files_identical_to_fixed_revision": false,
+    "source_provenance_established_for_entire_remote_snapshot": false,
+    "original_download_history_established": false,
+    "model_loadability_or_semantic_equivalence_established": false
+  },
+  "remote_integrity_evidence": {
+    "path": "docs/results/remote-base-integrity-20261016.json",
+    "sha256": "ad52ce4ad312dab9bb239c024a752302fac6477ac96d7dca3e6596b7528ed1f1",
+    "comparison_source": "successful_hash_phase.per_file_results; prior recorded remote run, not rehashed by this researcher"
+  },
+  "source_audit_directory": "workspace/base-source-audit/fixed-daef484c35ec-20261016",
+  "fixed_tree_completeness": {
+    "entry_count": 23,
+    "all_entries_are_files": true,
+    "pagination_link_absent": true,
+    "all_23_tree_git_blob_identities_match_downloaded_raw_bytes": true,
+    "fixed_api_sha_matches_requested_revision": true,
+    "tokenizer_lfs_content_matches_fixed_pointer": true
+  },
+  "safe_transport_attempts": [
+    {
+      "platform": "local Mac /usr/bin/curl default TLS",
+      "url": "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/revision/daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+      "result": "curl exit 60; self signed certificate in certificate chain; no bypass attempted"
+    },
+    {
+      "platform": "web tool",
+      "result": "fixed API/tree/raw opens initially inaccessible; official commit and tree became readable by following commit Browse files link; browser text is supplementary evidence only and not used as byte-hash basis"
+    },
+    {
+      "platform": "project .venv Requests",
+      "result": "default TLS verification succeeded; exact HTTP response bytes saved and hashed"
+    }
+  ],
+  "supplementary_official_web_observations": [
+    {
+      "url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/commit/daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+      "observed_date": "2026-10-16",
+      "observation": "Official page names commit Update README.md, parent 1a043e0ec642651f2505aa9b6da4d4633f68ce27, and a one-file README diff. Page verified label was observed; independent cryptographic signature verification was not performed."
+    },
+    {
+      "url": "https://huggingface.co/openbmb/MiniCPM-V-4_5/tree/daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+      "observed_date": "2026-10-16",
+      "observation": "Official pinned tree webpage lists .gitattributes plus 22 of remote 23 names; configuration.json is absent. Exact tree API bytes and raw Git blob identities are the primary evidence."
+    }
+  ],
+  "limitations": [
+    "This audit compares exact fixed-revision official bytes/LFS identities to the previously recorded training-machine SHA256 inventory. It does not reconstruct original download history.",
+    "README.md and modeling_minicpmv.py differ; configuration.json is extra. Do not register the complete remote directory as an unchanged snapshot of this revision.",
+    "No conclusion about behavioral equivalence, modified-code safety, loadability, model quality, GPU execution or test-set eligibility follows from matching bytes.",
+    "All official small files are saved under ignored workspace paths; this tracked JSON embeds metadata and acquisition script, not the full text of all downloaded assets."
+  ],
+  "acquisition_script_embedded": "import requests,certifi,hashlib,json,pathlib,datetime,sys,platform,re\nROOT=pathlib.Path(__file__).resolve().parent\nREV='daef484c35ec93210ec93c5e901f8f3e9b78ee34'; REPO='openbmb/MiniCPM-V-4_5'\nBASE='https://huggingface.co/'; small_limit=16*1024*1024\nnow=lambda:datetime.datetime.now(datetime.timezone.utc).isoformat()\nrecords=[]\ndef get(url,dest,limit=small_limit):\n rec={'requested_url':url,'requested_at_utc':now(),'tls_verify':True,'limit_bytes':limit}\n try:\n  with requests.get(url,timeout=(10,30),stream=True) as r:\n   rec.update(http_status=r.status_code,headers={k:v for k,v in r.headers.items() if k.lower() in ['etag','content-length','content-type','x-repo-commit','x-linked-etag','x-linked-size','link']})\n   if r.status_code!=200: rec['error']=r.text[:250]; records.append(rec);return None,rec\n   b=bytearray()\n   for chunk in r.iter_content(1024*256):\n    b.extend(chunk)\n    if len(b)>limit:raise ValueError('response exceeds bounded small-file limit')\n   b=bytes(b);dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(b)\n   rec.update(completed_at_utc=now(),size_bytes=len(b),sha256=hashlib.sha256(b).hexdigest(),git_blob_sha1=hashlib.sha1(b'blob '+str(len(b)).encode()+b'\\0'+b).hexdigest(),saved_path=str(dest.relative_to(ROOT)))\n   records.append(rec);return b,rec\n except Exception as e:\n  rec.update(error_type=type(e).__name__,error=str(e)[:400]);records.append(rec);return None,rec\napi,api_rec=get(BASE+'api/models/'+REPO+'/revision/'+REV,ROOT/'official/revision.json')\ntree,tree_rec=get(BASE+'api/models/'+REPO+'/tree/'+REV+'?recursive=false&expand=false',ROOT/'official/tree.json')\nremote=json.load(open('docs/results/remote-base-integrity-20261016.json'))\nitems=[i for i in remote['successful_hash_phase']['per_file_results'] if '/models/minicpmv4_5/' in i['path']]\nfiles=[]; tree_obj=json.loads(tree) if tree else []; byname={i['path']:i for i in tree_obj}\nfor i in items:\n name=i['path'].rsplit('/',1)[1]; is_weight=name.endswith('.safetensors')\n b,rec=get(BASE+REPO+'/raw/'+REV+'/'+name,ROOT/'official/raw'/name,4096 if is_weight else small_limit)\n e={'path':name,'remote_path':i['path'],'remote_sha256':i['sha256'],'remote_size_bytes':i['bytes_read'],'tree_entry':byname.get(name),'raw_observation':rec}\n if b is not None:\n  if b.startswith(b'version https://git-lfs.github.com/spec/v1\\n'):\n   pointer={k:v for k,v in (l.split(' ',1) for l in b.decode().splitlines())};e['lfs_pointer']=pointer\n   if is_weight:\n    e.update(content_sha256=pointer['oid'].split(':',1)[1],content_size_bytes=int(pointer['size']),comparison_kind='fixed_commit_lfs_identity')\n   else:\n    data,datarec=get(BASE+REPO+'/resolve/'+REV+'/'+name,ROOT/'official/content'/name);e['content_observation']=datarec\n    if data is not None:e.update(content_sha256=hashlib.sha256(data).hexdigest(),content_size_bytes=len(data),comparison_kind='fixed_commit_exact_bytes',resolved_content_matches_pointer=hashlib.sha256(data).hexdigest()==pointer['oid'].split(':',1)[1] and len(data)==int(pointer['size']))\n  else:e.update(content_sha256=hashlib.sha256(b).hexdigest(),content_size_bytes=len(b),comparison_kind='fixed_commit_exact_bytes')\n  e['raw_git_blob_matches_tree']=rec['git_blob_sha1']==byname.get(name,{}).get('oid')\n if 'content_sha256' in e:e.update(sha256_matches_remote=e['content_sha256']==i['sha256'],size_matches_remote=e['content_size_bytes']==i['bytes_read'])\n files.append(e)\n print(name,rec.get('http_status'),e.get('sha256_matches_remote'),flush=True)\nreport={'schema_version':'minicpm-fixed-revision-upstream/v1','status':'partial','created_at_utc':now(),'executor':'Codex','platform':'local Mac project .venv Python Requests','repo_id':REPO,'fixed_revision':REV,'execution_environment':{'python_executable':sys.executable,'python_version':platform.python_version(),'requests_version':requests.__version__,'certifi_version':certifi.__version__,'ca_bundle':certifi.where(),'ca_bundle_sha256':hashlib.sha256(pathlib.Path(certifi.where()).read_bytes()).hexdigest(),'default_certificate_verification':True},'official_revision_api':api_rec,'official_tree_api':tree_rec,'official_revision_metadata':json.loads(api) if api else None,'official_tree_entries':tree_obj,'files':files,'acquisition_script_path':str(ROOT/'acquire.py'),'acquisition_script_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'all_http_observations':records}\n(ROOT/'acquisition.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\\n')\n",
+  "supplemental_acquisition_method": "Project .venv Python requests.get(default verify, timeout=15) fetched the fixed raw .gitattributes URL, required status 200 and <4096 bytes, saved exact response bytes, computed SHA256 and Git blob SHA1; no content execution.",
+  "report_generated_at_utc": "2026-10-16T03:23:02.101714+00:00",
+  "verified_difference_details": [
+    {
+      "path": "modeling_minicpmv.py",
+      "official_copy_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/modeling_minicpmv.py",
+      "remote_copy_path": ".cache/base-source-audit/remote-assets-20261016/modeling_minicpmv.py",
+      "remote_copy_sha256_matches_recorded_remote_inventory": true,
+      "unified_diff": "--- official_fixed/modeling_minicpmv.py\n+++ remote_snapshot/modeling_minicpmv.py\n@@ -30,6 +30,8 @@\n         self.processor = None\n \n         self.terminators = ['<|im_end|>', '<|endoftext|>']\n+\n+        self.post_init()\n \n     def init_vision_module(self):\n         # same as HuggingFaceM4/siglip-so400m-14-980-flash-attn2-navit add tgt_sizes\n",
+      "diff_sha256": "3fd9205f117ca54cf41a068173eec7f60df2f0e425bc9b7d92058fdcc981d602"
+    },
+    {
+      "path": "README.md",
+      "official_copy_path": "workspace/base-source-audit/fixed-daef484c35ec-20261016/official/raw/README.md",
+      "remote_copy_path": ".cache/base-source-audit/remote-assets-20261016/README.md",
+      "remote_copy_sha256_matches_recorded_remote_inventory": true,
+      "unified_diff": "--- official_fixed/README.md\n+++ remote_snapshot/README.md\n@@ -17,7 +17,7 @@\n \n <h1>A GPT-4o Level MLLM for Single Image, Multi Image and High-FPS Video Understanding on Your Phone</h1>\n \n-[GitHub](https://github.com/OpenBMB/MiniCPM-o) | [MiniCPM Wiki(Chinese)](https://modelbest.feishu.cn/wiki/UtWxwcERfiRIpIkBOjuc3h9tn1D) | [CookBook](https://github.com/OpenSQZ/MiniCPM-V-CookBook) | [Technical Report](https://huggingface.co/papers/2509.18154) | [Demo](http://211.93.21.133:18120/) </a> \n+[GitHub](https://github.com/OpenBMB/MiniCPM-o) | [CookBook](https://github.com/OpenSQZ/MiniCPM-V-CookBook) | [Technical Report](https://huggingface.co/papers/2509.18154) | [Demo](http://211.93.21.133:18120/) </a> \n \n \n \n",
+      "diff_sha256": "94913477284f7a33624b32586752dd13b4b0a1367dd891e5c97169921afc2157"
+    }
+  ],
+  "extra_configuration_json": {
+    "remote_copy_path": ".cache/base-source-audit/remote-assets-20261016/configuration.json",
+    "sha256_matches_recorded_remote_inventory": true,
+    "utf8_text": "{\"framework\":\"Pytorch\",\"task\":\"image-text-to-text\"}",
+    "official_tree_absent": true,
+    "fixed_raw_http_status": 404
+  },
+  "remote_small_file_copy_evidence": {
+    "path": "docs/results/remote-base-static-source-20261016.json",
+    "sha256": "18ec12f7e0e0833765e71ee5a367aec778ded7127f79f92d2cf1a8c1973cb3f4",
+    "source": "executor supplied read-only remote exact allowlist copies; researcher rehashed only 3 difference/extra copies before diff; not a new remote hashing phase",
+    "size_bytes": 82644
+  },
+  "difference_interpretation": {
+    "modeling_minicpmv.py": "Remote snapshot adds self.post_init() in MiniCPMV.__init__ after self.terminators; exact byte difference is confirmed. Behavioral effect was not executed or approved.",
+    "README.md": "Remote snapshot removes MiniCPM Wiki(Chinese) hyperlink from the heading link row.",
+    "configuration.json": "Remote-only JSON declares framework Pytorch and task image-text-to-text; origin is not established by this fixed official Hugging Face tree."
+  }
+}

@@ -1,0 +1,1313 @@
+{
+  "schema_version": "minicpm-base-download-origin/v1",
+  "status": "completed",
+  "created_at_utc": "2026-10-16T03:28:32.909550+00:00",
+  "executor": "Codex",
+  "platform": "Mac project .venv Requests; only prior executor SSH asset copies consumed",
+  "purpose": "Investigate evidence of ModelScope download origin without replacing or erasing the HF fixed-revision comparison.",
+  "scope": {
+    "official_small_files_and_metadata_only": true,
+    "downloaded_model_weights": false,
+    "model_code_executed": false,
+    "pickle_unpickled": false,
+    "tls_verification_disabled": false,
+    "dependency_installation": false,
+    "remote_assets_changed": false,
+    "base_revision_or_design_selected": false
+  },
+  "transport": {
+    "requests_version": "2.34.2",
+    "certifi_version": "2026.06.17",
+    "verify": "Requests default verify=True with existing environment; no CA modification"
+  },
+  "local_sidecars": {
+    "msc": {
+      "path": ".cache/base-source-audit/remote-assets-20261016/.msc",
+      "size_bytes": 1766,
+      "sha256": "52f3ec11f0c281c0b094202c53ef760b7484948eccfb3f6c0a62a8128e79e7f4",
+      "static_analysis": "pickletools.genops/dis and explicit allowlisted primitive-opcode interpreter; no pickle.load(s) or GLOBAL/REDUCE/object constructors",
+      "allowed_and_observed_opcodes": [
+        "APPENDS",
+        "BINGET",
+        "EMPTY_DICT",
+        "EMPTY_LIST",
+        "FRAME",
+        "MARK",
+        "MEMOIZE",
+        "PROTO",
+        "SETITEMS",
+        "SHORT_BINUNICODE",
+        "STOP"
+      ],
+      "entries": [
+        {
+          "Path": "added_tokens.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "configuration.json",
+          "Revision": "c196f92faf05d1295b1a3b2239cb50a06e43d622"
+        },
+        {
+          "Path": "configuration_minicpm.py",
+          "Revision": "32e46eb2b07128e33bc24e60b766008662f9bcd6"
+        },
+        {
+          "Path": "generation_config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "image_processing_minicpmv.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "merges.txt",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "model.safetensors.index.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "modeling_minicpmv.py",
+          "Revision": "80f6f183c296da5ef84f6dc9a29bb5f4070a5896"
+        },
+        {
+          "Path": "modeling_navit_siglip.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "preprocessor_config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "processing_minicpmv.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "README.md",
+          "Revision": "2626e837a54905aab70fae9325153ef3454387ab"
+        },
+        {
+          "Path": "special_tokens_map.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "resampler.py",
+          "Revision": "3c24f7899c12921ef0bf89f9a5545c5c16c0a62d"
+        },
+        {
+          "Path": "tokenization_minicpmv_fast.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "tokenizer_config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "vocab.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "tokenizer.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283"
+        },
+        {
+          "Path": "model-00004-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0"
+        },
+        {
+          "Path": "model-00003-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0"
+        },
+        {
+          "Path": "model-00001-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0"
+        },
+        {
+          "Path": "model-00002-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0"
+        }
+      ]
+    },
+    "mv": {
+      "path": ".cache/base-source-audit/remote-assets-20261016/.mv",
+      "size_bytes": 36,
+      "sha256": "de31a81198609b9e042141f3b3060e12122007854e616728b08001315cee14d2",
+      "utf8_text": "Revision:master,CreatedAt:1773133067",
+      "declared_revision": "master",
+      "declared_created_at_unix": 1773133067
+    }
+  },
+  "official_sdk_cache_format_evidence": {
+    "url": "https://raw.githubusercontent.com/modelscope/modelscope/master/modelscope/hub/utils/caching.py",
+    "requested_at_utc": "2026-10-16T03:27:40.685715+00:00",
+    "tls_verify": true,
+    "http_status": 200,
+    "size_bytes": 14305,
+    "sha256": "41082750f99bfd1c8492d7d09fee7d6a297ae2f414ec05e8f48a7f0752bbbf8f",
+    "relevant_lines": [
+      {
+        "line": 25,
+        "text": "    KEY_FILE_NAME = '.msc'"
+      },
+      {
+        "line": 28,
+        "text": "    MODEL_VERSION_FILE_NAME = '.mv'"
+      },
+      {
+        "line": 103,
+        "text": "        Example of the cached content:"
+      },
+      {
+        "line": 227,
+        "text": "                version_info_str = 'Revision:%s,CreatedAt:%s' % ("
+      }
+    ]
+  },
+  "official_family_crosslink": {
+    "url": "https://huggingface.co/openbmb/MiniCPM-V-4_5-AWQ/raw/56a52c2c83c490355db6f86ad2d0ddf4be9b0605/README.md",
+    "requested_at_utc": "2026-10-16T03:27:07.785181+00:00",
+    "http_status": 200,
+    "tls_verify": true,
+    "size_bytes": 81226,
+    "sha256": "c5f202fae04bf5af28b6ad41828857a3cca6a01b0aee4ddeb2f7c1284ae5df49",
+    "matching_lines": [
+      {
+        "line": 1237,
+        "text": "| MiniCPM-V 4.5| GPU | 18 GB  | The latest version, strong end-side multimodal performance for single image, multi-image and video understanding.   |  [🤗](https://huggingface.co/openbmb/MiniCPM-V-4_5) &nbsp;&nbsp; [<img src=\"./assets/modelscope_logo.png\" width=\"20px\"></img>](https://modelscope.cn/models/OpenBMB/MiniCPM-V-4_5) |"
+      }
+    ]
+  },
+  "official_modelscope_model_metadata_url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5",
+  "official_modelscope_model_identity": {
+    "repo_id": "OpenBMB/MiniCPM-V-4_5",
+    "id": 541200,
+    "created_by": "zerg13",
+    "current_revision_alias": "master"
+  },
+  "historical_snapshot_identified_by_evidence": {
+    "revision": "2626e837a54905aab70fae9325153ef3454387ab",
+    "basis": "Exact README per-file Revision in .msc and official fixed tree LatestCommitter.CreatedAt matches .mv timestamp; this is an investigated origin candidate, not a newly selected base.",
+    "official_tree_metadata": {
+      "Files": [
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": ".gitattributes",
+          "Path": ".gitattributes",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "088e25d6bceaa8943f4f292006210358292349cc36e7578f80c62fce75535f46",
+          "Size": 2127,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Update README.md",
+          "CommittedDate": 1773133067,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "README.md",
+          "Path": "README.md",
+          "Revision": "2626e837a54905aab70fae9325153ef3454387ab",
+          "Sha256": "5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64",
+          "Size": 25454,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "added_tokens.json",
+          "Path": "added_tokens.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+          "Size": 2862,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "config.json",
+          "Path": "config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+          "Size": 1461,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "System init configuration.json",
+          "CommittedDate": 1756130072,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "configuration.json",
+          "Path": "configuration.json",
+          "Revision": "c196f92faf05d1295b1a3b2239cb50a06e43d622",
+          "Sha256": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+          "Size": 51,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Update configuration_minicpm.py",
+          "CommittedDate": 1756711574,
+          "CommitterName": "Cherrytest",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "configuration_minicpm.py",
+          "Path": "configuration_minicpm.py",
+          "Revision": "32e46eb2b07128e33bc24e60b766008662f9bcd6",
+          "Sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+          "Size": 3288,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "generation_config.json",
+          "Path": "generation_config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+          "Size": 268,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "image_processing_minicpmv.py",
+          "Path": "image_processing_minicpmv.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+          "Size": 20757,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "merges.txt",
+          "Path": "merges.txt",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+          "Size": 1671853,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138188,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": true,
+          "Mode": "33188",
+          "Name": "model-00001-of-00004.safetensors",
+          "Path": "model-00001-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+          "Sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+          "Size": 5286612176,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138188,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": true,
+          "Mode": "33188",
+          "Name": "model-00002-of-00004.safetensors",
+          "Path": "model-00002-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+          "Sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+          "Size": 5301855088,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138188,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": true,
+          "Mode": "33188",
+          "Name": "model-00003-of-00004.safetensors",
+          "Path": "model-00003-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+          "Sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+          "Size": 4546851120,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138188,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": true,
+          "Mode": "33188",
+          "Name": "model-00004-of-00004.safetensors",
+          "Path": "model-00004-of-00004.safetensors",
+          "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+          "Sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+          "Size": 2256571800,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "model.safetensors.index.json",
+          "Path": "model.safetensors.index.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+          "Size": 72172,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Update modeling_minicpmv.py (batch 1/1)",
+          "CommittedDate": 1766048752,
+          "CommitterName": "systemd",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "modeling_minicpmv.py",
+          "Path": "modeling_minicpmv.py",
+          "Revision": "80f6f183c296da5ef84f6dc9a29bb5f4070a5896",
+          "Sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+          "Size": 18583,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "modeling_navit_siglip.py",
+          "Path": "modeling_navit_siglip.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+          "Size": 41835,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "preprocessor_config.json",
+          "Path": "preprocessor_config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+          "Size": 714,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "processing_minicpmv.py",
+          "Path": "processing_minicpmv.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+          "Size": 11026,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Update resampler.py",
+          "CommittedDate": 1757749036,
+          "CommitterName": "Cherrytest",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "resampler.py",
+          "Path": "resampler.py",
+          "Revision": "3c24f7899c12921ef0bf89f9a5545c5c16c0a62d",
+          "Sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+          "Size": 11732,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "special_tokens_map.json",
+          "Path": "special_tokens_map.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+          "Size": 12103,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "tokenization_minicpmv_fast.py",
+          "Path": "tokenization_minicpmv_fast.py",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+          "Size": 1647,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": true,
+          "Mode": "33188",
+          "Name": "tokenizer.json",
+          "Path": "tokenizer.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+          "Size": 11437868,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "tokenizer_config.json",
+          "Path": "tokenizer_config.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+          "Size": 25786,
+          "Type": "blob"
+        },
+        {
+          "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+          "CommittedDate": 1756138187,
+          "CommitterName": "zerg13",
+          "InCheck": false,
+          "IsLFS": false,
+          "Mode": "33188",
+          "Name": "vocab.json",
+          "Path": "vocab.json",
+          "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+          "Sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+          "Size": 2776833,
+          "Type": "blob"
+        }
+      ],
+      "IsVisual": 0,
+      "LatestCommitter": {
+        "AuthorEmail": "",
+        "AuthorName": "zerg13",
+        "AuthoredDate": 0,
+        "CommittedDate": 1773133067,
+        "CommitterEmail": "",
+        "CommitterName": "zerg13",
+        "CreatedAt": 1773133067,
+        "Id": "",
+        "Message": "Update README.md",
+        "ParentIds": [
+          "80f6f183c296da5ef84f6dc9a29bb5f4070a5896"
+        ],
+        "ShortId": "2626e837",
+        "Title": "Update README.md"
+      }
+    },
+    "official_snapshot_created_at_matches_local_mv": true,
+    "entry_count": 24,
+    "fixed_revision_request_and_response_binding": {
+      "request_url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo/files?Revision=2626e837a54905aab70fae9325153ef3454387ab&Recursive=true",
+      "requested_full_revision": "2626e837a54905aab70fae9325153ef3454387ab",
+      "response_top_level_full_revision_field_present": false,
+      "response_latest_committer_id": "",
+      "response_latest_committer_short_id": "2626e837",
+      "response_readme_full_revision": "2626e837a54905aab70fae9325153ef3454387ab",
+      "response_latest_committer_created_at": 1773133067,
+      "interpretation": "Fixed full-revision API URL returned successful Code=200 tree whose LatestCommitter.ShortId=2626e837, README full Revision equals requested pin and timestamp equals .mv; API does not separately echo a complete root-commit hash. Per-file fixed raw retrieval is independently pinned to recorded full revisions."
+    }
+  },
+  "file_comparisons": [
+    {
+      "path": "README.md",
+      "remote_sha256": "5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64",
+      "remote_size_bytes": 25454,
+      "cache_declared_file_revision": "2626e837a54905aab70fae9325153ef3454387ab",
+      "official_file_metadata": {
+        "CommitMessage": "Update README.md",
+        "CommittedDate": 1773133067,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "README.md",
+        "Path": "README.md",
+        "Revision": "2626e837a54905aab70fae9325153ef3454387ab",
+        "Sha256": "5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64",
+        "Size": 25454,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "added_tokens.json",
+      "remote_sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+      "remote_size_bytes": 2862,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "added_tokens.json",
+        "Path": "added_tokens.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+        "Size": 2862,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "config.json",
+      "remote_sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+      "remote_size_bytes": 1461,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "config.json",
+        "Path": "config.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+        "Size": 1461,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "configuration.json",
+      "remote_sha256": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+      "remote_size_bytes": 51,
+      "cache_declared_file_revision": "c196f92faf05d1295b1a3b2239cb50a06e43d622",
+      "official_file_metadata": {
+        "CommitMessage": "System init configuration.json",
+        "CommittedDate": 1756130072,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "configuration.json",
+        "Path": "configuration.json",
+        "Revision": "c196f92faf05d1295b1a3b2239cb50a06e43d622",
+        "Sha256": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+        "Size": 51,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "configuration_minicpm.py",
+      "remote_sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+      "remote_size_bytes": 3288,
+      "cache_declared_file_revision": "32e46eb2b07128e33bc24e60b766008662f9bcd6",
+      "official_file_metadata": {
+        "CommitMessage": "Update configuration_minicpm.py",
+        "CommittedDate": 1756711574,
+        "CommitterName": "Cherrytest",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "configuration_minicpm.py",
+        "Path": "configuration_minicpm.py",
+        "Revision": "32e46eb2b07128e33bc24e60b766008662f9bcd6",
+        "Sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+        "Size": 3288,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "generation_config.json",
+      "remote_sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+      "remote_size_bytes": 268,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "generation_config.json",
+        "Path": "generation_config.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+        "Size": 268,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "image_processing_minicpmv.py",
+      "remote_sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+      "remote_size_bytes": 20757,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "image_processing_minicpmv.py",
+        "Path": "image_processing_minicpmv.py",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+        "Size": 20757,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "merges.txt",
+      "remote_sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+      "remote_size_bytes": 1671853,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "merges.txt",
+        "Path": "merges.txt",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "Size": 1671853,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "model-00001-of-00004.safetensors",
+      "remote_sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+      "remote_size_bytes": 5286612176,
+      "cache_declared_file_revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138188,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": true,
+        "Mode": "33188",
+        "Name": "model-00001-of-00004.safetensors",
+        "Path": "model-00001-of-00004.safetensors",
+        "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+        "Sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+        "Size": 5286612176,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "model-00002-of-00004.safetensors",
+      "remote_sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+      "remote_size_bytes": 5301855088,
+      "cache_declared_file_revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138188,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": true,
+        "Mode": "33188",
+        "Name": "model-00002-of-00004.safetensors",
+        "Path": "model-00002-of-00004.safetensors",
+        "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+        "Sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+        "Size": 5301855088,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "model-00003-of-00004.safetensors",
+      "remote_sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+      "remote_size_bytes": 4546851120,
+      "cache_declared_file_revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138188,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": true,
+        "Mode": "33188",
+        "Name": "model-00003-of-00004.safetensors",
+        "Path": "model-00003-of-00004.safetensors",
+        "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+        "Sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+        "Size": 4546851120,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "model-00004-of-00004.safetensors",
+      "remote_sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+      "remote_size_bytes": 2256571800,
+      "cache_declared_file_revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138188,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": true,
+        "Mode": "33188",
+        "Name": "model-00004-of-00004.safetensors",
+        "Path": "model-00004-of-00004.safetensors",
+        "Revision": "6bdf5ec4c060b4625dab83d420b8b8b4853e93f0",
+        "Sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+        "Size": 2256571800,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "model.safetensors.index.json",
+      "remote_sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+      "remote_size_bytes": 72172,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "model.safetensors.index.json",
+        "Path": "model.safetensors.index.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+        "Size": 72172,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "modeling_minicpmv.py",
+      "remote_sha256": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10",
+      "remote_size_bytes": 18609,
+      "cache_declared_file_revision": "80f6f183c296da5ef84f6dc9a29bb5f4070a5896",
+      "official_file_metadata": {
+        "CommitMessage": "Update modeling_minicpmv.py (batch 1/1)",
+        "CommittedDate": 1766048752,
+        "CommitterName": "systemd",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "modeling_minicpmv.py",
+        "Path": "modeling_minicpmv.py",
+        "Revision": "80f6f183c296da5ef84f6dc9a29bb5f4070a5896",
+        "Sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+        "Size": 18583,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": false,
+      "size_matches_official_snapshot_metadata": false
+    },
+    {
+      "path": "modeling_navit_siglip.py",
+      "remote_sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+      "remote_size_bytes": 41835,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "modeling_navit_siglip.py",
+        "Path": "modeling_navit_siglip.py",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+        "Size": 41835,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "preprocessor_config.json",
+      "remote_sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+      "remote_size_bytes": 714,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "preprocessor_config.json",
+        "Path": "preprocessor_config.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+        "Size": 714,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "processing_minicpmv.py",
+      "remote_sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+      "remote_size_bytes": 11026,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "processing_minicpmv.py",
+        "Path": "processing_minicpmv.py",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+        "Size": 11026,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "resampler.py",
+      "remote_sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+      "remote_size_bytes": 11732,
+      "cache_declared_file_revision": "3c24f7899c12921ef0bf89f9a5545c5c16c0a62d",
+      "official_file_metadata": {
+        "CommitMessage": "Update resampler.py",
+        "CommittedDate": 1757749036,
+        "CommitterName": "Cherrytest",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "resampler.py",
+        "Path": "resampler.py",
+        "Revision": "3c24f7899c12921ef0bf89f9a5545c5c16c0a62d",
+        "Sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+        "Size": 11732,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "special_tokens_map.json",
+      "remote_sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+      "remote_size_bytes": 12103,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "special_tokens_map.json",
+        "Path": "special_tokens_map.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+        "Size": 12103,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "tokenization_minicpmv_fast.py",
+      "remote_sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+      "remote_size_bytes": 1647,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "tokenization_minicpmv_fast.py",
+        "Path": "tokenization_minicpmv_fast.py",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+        "Size": 1647,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "tokenizer.json",
+      "remote_sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+      "remote_size_bytes": 11437868,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": true,
+        "Mode": "33188",
+        "Name": "tokenizer.json",
+        "Path": "tokenizer.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+        "Size": 11437868,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "tokenizer_config.json",
+      "remote_sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+      "remote_size_bytes": 25786,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "tokenizer_config.json",
+        "Path": "tokenizer_config.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+        "Size": 25786,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    },
+    {
+      "path": "vocab.json",
+      "remote_sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "remote_size_bytes": 2776833,
+      "cache_declared_file_revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+      "official_file_metadata": {
+        "CommitMessage": "Initial commit: MiniCPM-V-4_5 model",
+        "CommittedDate": 1756138187,
+        "CommitterName": "zerg13",
+        "InCheck": false,
+        "IsLFS": false,
+        "Mode": "33188",
+        "Name": "vocab.json",
+        "Path": "vocab.json",
+        "Revision": "b587cfcc712142b3cbe7c0b3a38556cd1a329283",
+        "Sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+        "Size": 2776833,
+        "Type": "blob"
+      },
+      "cache_revision_matches_official_snapshot_file_revision": true,
+      "sha256_matches_official_snapshot_metadata": true,
+      "size_matches_official_snapshot_metadata": true
+    }
+  ],
+  "exact_small_file_retrievals": [
+    {
+      "path": "modeling_minicpmv.py",
+      "acquisition_record": {
+        "name": "ms_code_fixed",
+        "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=80f6f183c296da5ef84f6dc9a29bb5f4070a5896&FilePath=modeling_minicpmv.py",
+        "requested_at_utc": "2026-10-16T03:26:21.176244+00:00",
+        "tls_verify": true,
+        "http_status": 200,
+        "size_bytes": 18583,
+        "sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+        "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_code_fixed.txt"
+      },
+      "downloaded_bytes_match_official_file_metadata": true,
+      "downloaded_bytes_match_remote_inventory": false
+    },
+    {
+      "path": "configuration.json",
+      "acquisition_record": {
+        "name": "ms_configuration_fixed",
+        "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=c196f92faf05d1295b1a3b2239cb50a06e43d622&FilePath=configuration.json",
+        "requested_at_utc": "2026-10-16T03:26:21.613936+00:00",
+        "tls_verify": true,
+        "http_status": 200,
+        "size_bytes": 51,
+        "sha256": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+        "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_configuration_fixed.txt"
+      },
+      "downloaded_bytes_match_official_file_metadata": true,
+      "downloaded_bytes_match_remote_inventory": true
+    },
+    {
+      "path": "README.md",
+      "acquisition_record": {
+        "name": "ms_readme_recorded",
+        "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=2626e837a54905aab70fae9325153ef3454387ab&FilePath=README.md",
+        "requested_at_utc": "2026-10-16T03:26:21.958435+00:00",
+        "tls_verify": true,
+        "http_status": 200,
+        "size_bytes": 25454,
+        "sha256": "5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64",
+        "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_readme_recorded.txt"
+      },
+      "downloaded_bytes_match_official_file_metadata": true,
+      "downloaded_bytes_match_remote_inventory": true
+    }
+  ],
+  "summary": {
+    "all_23_cache_file_revisions_match_fixed_modelscope_tree_metadata": true,
+    "remote_files_matching_modelscope_fixed_snapshot_metadata": 22,
+    "remote_files_differing_from_modelscope_fixed_snapshot": [
+      "modeling_minicpmv.py"
+    ],
+    "readme_difference_from_hf_explained_by_official_modelscope_history": true,
+    "configuration_json_origin_consistent_with_official_modelscope": true,
+    "remote_code_identical_to_cache_declared_official_revision": false,
+    "complete_unmodified_official_snapshot_established": false,
+    "identity_or_date_of_code_modifier_established": false,
+    "original_download_event_cryptographically_proven": false
+  },
+  "findings": [
+    "OpenBMB official HF AWQ-family README at a fixed commit links both the exact base HF repository and ModelScope OpenBMB/MiniCPM-V-4_5; corroborates ModelScope as an official alternate distribution, without switching the evaluated base.",
+    "Local .msc/.mv use the ModelScope SDK cache format. All 23 per-file revisions correspond exactly to the official historical tree at 2626e837a54905aab70fae9325153ef3454387ab; its CreatedAt equals .mv 1773133067. Sidecars remain local unsigned claims, corroborated by official metadata.",
+    "Official historical README bytes and configuration.json bytes exactly match remote; these two HF differences do not establish local customization.",
+    "Official ModelScope modeling_minicpmv.py at cache-declared 80f6f183c296da5ef84f6dc9a29bb5f4070a5896 is 18583 bytes SHA256 da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6, identical to HF fixed code. Remote 18609-byte file adds self.post_init(). Origin, author, timing and behavioral effects of that code deviation remain unknown."
+  ],
+  "official_requests": [
+    {
+      "name": "github_doc",
+      "url": "https://raw.githubusercontent.com/OpenBMB/MiniCPM-V/main/docs/minicpm_v4dot5_en.md",
+      "requested_at_utc": "2026-10-16T03:25:41.590960+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 9894,
+      "sha256": "2d791853f20e73da9bf0a7e1166e797aec85af3475b539cc5ed1075bfdc7ea64",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/github_doc.txt"
+    },
+    {
+      "name": "ms_model",
+      "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5",
+      "requested_at_utc": "2026-10-16T03:25:42.204951+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 39304,
+      "sha256": "e52ee0a1c8fd7029fd458f814ecd9f35262e80ba16ef0d1885a6e4226c20e2f3",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_model.txt"
+    },
+    {
+      "name": "ms_revisions",
+      "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/revisions",
+      "requested_at_utc": "2026-10-16T03:25:42.651990+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 420,
+      "sha256": "c3fb160a36cb3d25f0d21f16ee1560bb1096d1001920bc40c890899abeeb1a06",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_revisions.txt"
+    },
+    {
+      "name": "ms_files_master",
+      "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo/files?Revision=master&Recursive=true",
+      "requested_at_utc": "2026-10-16T03:25:42.974835+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 9397,
+      "sha256": "cb29c798d5ae98cc45f83b8015a22907cb52d087c255e2016b2e1c9497e57abe",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_files_master.txt"
+    },
+    {
+      "name": "github_readme",
+      "url": "https://raw.githubusercontent.com/OpenBMB/MiniCPM-V/main/README.md",
+      "requested_at_utc": "2026-10-16T03:26:20.696452+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 15668,
+      "sha256": "fdb9e4559e2f633f32d66dc2f409787b2d3f9deeed2cdbd72f768775129715bb",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/github_readme.txt"
+    },
+    {
+      "name": "ms_code_fixed",
+      "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=80f6f183c296da5ef84f6dc9a29bb5f4070a5896&FilePath=modeling_minicpmv.py",
+      "requested_at_utc": "2026-10-16T03:26:21.176244+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 18583,
+      "sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_code_fixed.txt"
+    },
+    {
+      "name": "ms_configuration_fixed",
+      "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=c196f92faf05d1295b1a3b2239cb50a06e43d622&FilePath=configuration.json",
+      "requested_at_utc": "2026-10-16T03:26:21.613936+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 51,
+      "sha256": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_configuration_fixed.txt"
+    },
+    {
+      "name": "ms_readme_recorded",
+      "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=2626e837a54905aab70fae9325153ef3454387ab&FilePath=README.md",
+      "requested_at_utc": "2026-10-16T03:26:21.958435+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 25454,
+      "sha256": "5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_readme_recorded.txt"
+    },
+    {
+      "name": "ms_files_recorded",
+      "url": "https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo/files?Revision=2626e837a54905aab70fae9325153ef3454387ab&Recursive=true",
+      "requested_at_utc": "2026-10-16T03:26:22.470096+00:00",
+      "tls_verify": true,
+      "http_status": 200,
+      "size_bytes": 9358,
+      "sha256": "7d5f0fe05c7ccdb37555faa6ee3444b140cc0e11ace301457e6a4b78d1b4db51",
+      "saved_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/ms_files_recorded.txt"
+    }
+  ],
+  "limitations": [
+    "Original download procedure, credentials, transfer history and authorship are not proven by local unsigned cache files.",
+    "All 23 remote digests are compared to fixed ModelScope official file metadata, but only README, configuration.json and modeling_minicpmv.py were downloaded from ModelScope for exact-byte verification. The prior HF audit independently verified the other common assets.",
+    "Official current master and historical fixed revision observations are retained separately; no base revision was changed for matching.",
+    "No model loading, generation, training, GPU task, real test access or formal registration occurred.",
+    "HF audit content and mismatch findings remain separate and unchanged; only its cross-reference to the final executor static-source evidence was refreshed after that report froze."
+  ],
+  "cross_evidence": [
+    {
+      "path": "docs/results/remote-base-integrity-20261016.json",
+      "sha256": "ad52ce4ad312dab9bb239c024a752302fac6477ac96d7dca3e6596b7528ed1f1",
+      "size_bytes": 62530
+    },
+    {
+      "path": "docs/results/remote-base-static-source-20261016.json",
+      "sha256": "18ec12f7e0e0833765e71ee5a367aec778ded7127f79f92d2cf1a8c1973cb3f4",
+      "size_bytes": 82644
+    },
+    {
+      "path": "docs/results/minicpm-fixed-revision-upstream-20261016.json",
+      "sha256": "add7e63fff34eddc52791c2f9451c37a556b9d7f80e8685a672809e749f0df68",
+      "size_bytes": 94381
+    },
+    {
+      "path": ".cache/base-source-audit/remote-assets-20261016/sidecar-read-metadata.json",
+      "sha256": "6db4cf69b0fe2e1f03e71be3944d44086ba59ecf571d22f9ef3e08ab98a9f98f",
+      "size_bytes": 3146
+    }
+  ],
+  "audit_directory": "workspace/base-source-audit/modelscope-origin-20261016",
+  "scripts": [
+    {
+      "path": "workspace/base-source-audit/modelscope-origin-20261016/probe.py",
+      "sha256": "4695dbd92bf8b456d9738d4fe69055896859d25bc0d3fcd96bdd2bcf8ccbd7e5",
+      "source_embedded": "import requests,pathlib,datetime,hashlib,json\nroot=pathlib.Path(__file__).resolve().parent\nurls=[('github_doc','https://raw.githubusercontent.com/OpenBMB/MiniCPM-V/main/docs/minicpm_v4dot5_en.md'),('ms_model','https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5'),('ms_revisions','https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/revisions'),('ms_files_master','https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo/files?Revision=master&Recursive=true')]\nres=[]\nfor name,url in urls:\n e={'name':name,'url':url,'requested_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tls_verify':True}\n try:\n  r=requests.get(url,timeout=(10,20));b=r.content;assert len(b)<1024*1024\n  (root/(name+'.txt')).write_bytes(b);e.update(http_status=r.status_code,size_bytes=len(b),sha256=hashlib.sha256(b).hexdigest(),saved_path=str(root/(name+'.txt')))\n  print(name,r.status_code,len(b),r.text[:350])\n except Exception as ex:e['error']=str(ex)[:400];print(name,e['error'])\n res.append(e)\n(root/'probes.json').write_text(json.dumps(res,indent=2)+'\\n')\n"
+    },
+    {
+      "path": "workspace/base-source-audit/modelscope-origin-20261016/followup.py",
+      "sha256": "6864b8fef801ace7f86adb0b7f6965e4f971287c82a59289d52738f0b8821af0",
+      "source_embedded": "import requests,pathlib,datetime,hashlib,json\nroot=pathlib.Path(__file__).resolve().parent\nurls=[('github_readme','https://raw.githubusercontent.com/OpenBMB/MiniCPM-V/main/README.md'),('ms_code_fixed','https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=80f6f183c296da5ef84f6dc9a29bb5f4070a5896&FilePath=modeling_minicpmv.py'),('ms_configuration_fixed','https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=c196f92faf05d1295b1a3b2239cb50a06e43d622&FilePath=configuration.json'),('ms_readme_recorded','https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo?Revision=2626e837a54905aab70fae9325153ef3454387ab&FilePath=README.md'),('ms_files_recorded','https://modelscope.cn/api/v1/models/OpenBMB/MiniCPM-V-4_5/repo/files?Revision=2626e837a54905aab70fae9325153ef3454387ab&Recursive=true')]\nres=[]\nfor name,url in urls:\n e={'name':name,'url':url,'requested_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tls_verify':True}\n try:\n  r=requests.get(url,timeout=(10,20));b=r.content;assert len(b)<1024*1024;(root/(name+'.txt')).write_bytes(b);e.update(http_status=r.status_code,size_bytes=len(b),sha256=hashlib.sha256(b).hexdigest(),saved_path=str(root/(name+'.txt')));print(name,r.status_code,len(b),hashlib.sha256(b).hexdigest(),r.text[:90],flush=True)\n except Exception as ex:e['error']=str(ex)[:400];print(name,e['error'],flush=True)\n res.append(e)\n(root/'followup.json').write_text(json.dumps(res,indent=2)+'\\n')\n"
+    }
+  ],
+  "static_analysis_script": {
+    "path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/base-source-audit/modelscope-origin-20261016/build_origin_report.py",
+    "sha256": "b054437032676f47e70971af62a9f10342ed5a237668ccd3c934600a1f42a936"
+  },
+  "historical_sidecar_inventory_evidence": {
+    "path": "docs/results/version-control-migration/verification.md",
+    "lines": "1565-1604",
+    "sha256": "b18cafd7bf088e56170f73d15c7e30bdfa934aa1b481612eb10d154c7e9dd5a3",
+    "meaning": "Historical inventory listed the same .msc/.mv hashes; original note only identified Revision:master and did not establish trusted upstream fixed source."
+  },
+  "source_code_difference_evidence": {
+    "hf_report_path": "docs/results/minicpm-fixed-revision-upstream-20261016.json",
+    "fixed_official_modelscope_code_sha256": "da7e53e9fd1ee931f8888ea5d78a53a903edb97a5634f0961d3347571f411cc6",
+    "remote_sha256": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10",
+    "statement": "The same official code bytes were already diffed to the remote copy in the HF report; this source inquiry adds ModelScope pin corroboration, not a second behavioral audit."
+  }
+}

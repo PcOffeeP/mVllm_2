@@ -1,0 +1,1581 @@
+{
+  "date": "2026-10-16",
+  "status": "completed",
+  "controller_cwd": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2",
+  "authorization_scope": "one remote read of 19 allowlisted non-safetensors base files; four safetensors stat-only; local AST/JSON processing only; no model load/import/compile/execution, inference/evaluation/generation/training/test use",
+  "base_file_identity_count": 23,
+  "base_file_identities": [
+    {
+      "name": "README.md",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/README.md",
+      "size_bytes": 25454,
+      "sha256": "5ea75ed3217e073b80ae1c857f5b90b64f120b63d755177d28fd478120b3fa64",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/README.md",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "added_tokens.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/added_tokens.json",
+      "size_bytes": 2862,
+      "sha256": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/added_tokens.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/config.json",
+      "size_bytes": 1461,
+      "sha256": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/config.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "configuration.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/configuration.json",
+      "size_bytes": 51,
+      "sha256": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/configuration.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "configuration_minicpm.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/configuration_minicpm.py",
+      "size_bytes": 3288,
+      "sha256": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/configuration_minicpm.py",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "generation_config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/generation_config.json",
+      "size_bytes": 268,
+      "sha256": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/generation_config.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "image_processing_minicpmv.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/image_processing_minicpmv.py",
+      "size_bytes": 20757,
+      "sha256": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/image_processing_minicpmv.py",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "merges.txt",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/merges.txt",
+      "size_bytes": 1671853,
+      "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/merges.txt",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "model-00001-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00001-of-00004.safetensors",
+      "size_bytes": 5286612176,
+      "sha256": "22643c1760b755c3c83b8631cd767fd667cb8aaababee5e4b3113210cd6177f0",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "stat only; no read or rehash",
+      "current_stat_matches_historical_before_after": true
+    },
+    {
+      "name": "model-00002-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00002-of-00004.safetensors",
+      "size_bytes": 5301855088,
+      "sha256": "8be1ef2c54e913ef8824520cfa9b4e604c2afcf089907992b340048bf502896a",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "stat only; no read or rehash",
+      "current_stat_matches_historical_before_after": true
+    },
+    {
+      "name": "model-00003-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00003-of-00004.safetensors",
+      "size_bytes": 4546851120,
+      "sha256": "9a2bd9a7b254f0671bccb84953876111fa64b889507dc12e22e98a1143b64fd7",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "stat only; no read or rehash",
+      "current_stat_matches_historical_before_after": true
+    },
+    {
+      "name": "model-00004-of-00004.safetensors",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model-00004-of-00004.safetensors",
+      "size_bytes": 2256571800,
+      "sha256": "f425aa9a351f9e9f600d1235e9a583ff6931a5225e7b2b02a159248b32bd522e",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "stat only; no read or rehash",
+      "current_stat_matches_historical_before_after": true
+    },
+    {
+      "name": "model.safetensors.index.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/model.safetensors.index.json",
+      "size_bytes": 72172,
+      "sha256": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/model.safetensors.index.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "modeling_minicpmv.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/modeling_minicpmv.py",
+      "size_bytes": 18609,
+      "sha256": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/modeling_minicpmv.py",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "modeling_navit_siglip.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/modeling_navit_siglip.py",
+      "size_bytes": 41835,
+      "sha256": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/modeling_navit_siglip.py",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "preprocessor_config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/preprocessor_config.json",
+      "size_bytes": 714,
+      "sha256": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/preprocessor_config.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "processing_minicpmv.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/processing_minicpmv.py",
+      "size_bytes": 11026,
+      "sha256": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/processing_minicpmv.py",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "resampler.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/resampler.py",
+      "size_bytes": 11732,
+      "sha256": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/resampler.py",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "special_tokens_map.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/special_tokens_map.json",
+      "size_bytes": 12103,
+      "sha256": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/special_tokens_map.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "tokenization_minicpmv_fast.py",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenization_minicpmv_fast.py",
+      "size_bytes": 1647,
+      "sha256": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/tokenization_minicpmv_fast.py",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "tokenizer.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenizer.json",
+      "size_bytes": 11437868,
+      "sha256": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/tokenizer.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "tokenizer_config.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/tokenizer_config.json",
+      "size_bytes": 25786,
+      "sha256": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/tokenizer_config.json",
+      "matches_previous_sha256": true
+    },
+    {
+      "name": "vocab.json",
+      "remote_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5/vocab.json",
+      "size_bytes": 2776833,
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "source": "2026-10-16 successful_hash_phase",
+      "current_round_action": "read exact bytes once; archived locally",
+      "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/vocab.json",
+      "matches_previous_sha256": true
+    }
+  ],
+  "archived_small_file_count": 19,
+  "archived_small_file_bytes": 16136319,
+  "assets_dir": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016",
+  "all_archived_sha256_verified_locally": true,
+  "json_extracts": {
+    "config.json": {
+      "_name_or_path": "openbmb/MiniCPM-V-4_5",
+      "version": 4.5,
+      "architectures": [
+        "MiniCPMV"
+      ],
+      "auto_map": {
+        "AutoConfig": "configuration_minicpm.MiniCPMVConfig",
+        "AutoModel": "modeling_minicpmv.MiniCPMV",
+        "AutoModelForCausalLM": "modeling_minicpmv.MiniCPMV"
+      },
+      "attention_bias": false,
+      "attention_dropout": 0.0,
+      "bos_token_id": 151643,
+      "eos_token_id": 151645,
+      "head_dim": 128,
+      "hidden_act": "silu",
+      "hidden_size": 4096,
+      "initializer_range": 0.02,
+      "intermediate_size": 12288,
+      "max_position_embeddings": 40960,
+      "max_window_layers": 36,
+      "num_attention_heads": 32,
+      "num_hidden_layers": 36,
+      "num_key_value_heads": 8,
+      "rms_norm_eps": 1e-06,
+      "rope_scaling": null,
+      "rope_theta": 1000000,
+      "sliding_window": null,
+      "tie_word_embeddings": false,
+      "torch_dtype": "bfloat16",
+      "transformers_version": "4.51.0",
+      "use_cache": true,
+      "use_sliding_window": false,
+      "vocab_size": 151748,
+      "batch_vision_input": true,
+      "batch_3d_resampler": true,
+      "drop_vision_last_layer": false,
+      "image_size": 448,
+      "model_type": "minicpmv",
+      "patch_size": 14,
+      "query_num": 64,
+      "slice_config": {
+        "max_slice_nums": 9,
+        "patch_size": 14,
+        "model_type": "minicpmv"
+      },
+      "slice_mode": true,
+      "vision_config": {
+        "hidden_size": 1152,
+        "image_size": 980,
+        "intermediate_size": 4304,
+        "model_type": "siglip",
+        "num_attention_heads": 16,
+        "num_hidden_layers": 27,
+        "patch_size": 14
+      }
+    },
+    "preprocessor_config.json": {
+      "image_processor_type": "MiniCPMVImageProcessor",
+      "auto_map": {
+        "AutoProcessor": "processing_minicpmv.MiniCPMVProcessor",
+        "AutoImageProcessor": "image_processing_minicpmv.MiniCPMVImageProcessor"
+      },
+      "processor_class": "MiniCPMVProcessor",
+      "max_slice_nums": 9,
+      "scale_resolution": 448,
+      "patch_size": 14,
+      "use_image_id": true,
+      "image_feature_size": 64,
+      "im_start": "<image>",
+      "im_end": "</image>",
+      "slice_start": "<slice>",
+      "slice_end": "</slice>",
+      "unk": "<unk>",
+      "im_id_start": "<image_id>",
+      "im_id_end": "</image_id>",
+      "slice_mode": true,
+      "norm_mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "norm_std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "version": 2.6
+    },
+    "tokenizer_config.json": {
+      "tokenizer_class": "MiniCPMVTokenizerFast",
+      "auto_map": {
+        "AutoTokenizer": [
+          "tokenization_minicpmv_fast.MiniCPMVTokenizerFast",
+          null
+        ]
+      },
+      "model_max_length": 131072,
+      "clean_up_tokenization_spaces": false
+    },
+    "tokenizer.json": {
+      "version": "1.0",
+      "truncation": null,
+      "padding": null,
+      "added_tokens_count": 106,
+      "normalizer_type": "NFC",
+      "pre_tokenizer_type": "Sequence",
+      "model_type": "BPE",
+      "vocab_entries": 151643,
+      "merge_entries": 151387
+    },
+    "model.safetensors.index.json": {
+      "metadata": {
+        "total_size": 17391790560
+      },
+      "weight_map_entry_count": 849,
+      "shard_names": [
+        "model-00001-of-00004.safetensors",
+        "model-00002-of-00004.safetensors",
+        "model-00003-of-00004.safetensors",
+        "model-00004-of-00004.safetensors"
+      ]
+    }
+  },
+  "auto_map_references": [
+    {
+      "file": "config.json",
+      "path": "auto_map.AutoConfig",
+      "value": "configuration_minicpm.MiniCPMVConfig"
+    },
+    {
+      "file": "config.json",
+      "path": "auto_map.AutoModel",
+      "value": "modeling_minicpmv.MiniCPMV"
+    },
+    {
+      "file": "config.json",
+      "path": "auto_map.AutoModelForCausalLM",
+      "value": "modeling_minicpmv.MiniCPMV"
+    },
+    {
+      "file": "preprocessor_config.json",
+      "path": "auto_map.AutoProcessor",
+      "value": "processing_minicpmv.MiniCPMVProcessor"
+    },
+    {
+      "file": "preprocessor_config.json",
+      "path": "auto_map.AutoImageProcessor",
+      "value": "image_processing_minicpmv.MiniCPMVImageProcessor"
+    },
+    {
+      "file": "tokenizer_config.json",
+      "path": "auto_map.AutoTokenizer",
+      "value": [
+        "tokenization_minicpmv_fast.MiniCPMVTokenizerFast",
+        null
+      ]
+    }
+  ],
+  "static_python_closure": {
+    "entry_files": [
+      "configuration_minicpm.py",
+      "image_processing_minicpmv.py",
+      "modeling_minicpmv.py",
+      "processing_minicpmv.py",
+      "tokenization_minicpmv_fast.py"
+    ],
+    "reachable_files": [
+      "configuration_minicpm.py",
+      "image_processing_minicpmv.py",
+      "modeling_minicpmv.py",
+      "modeling_navit_siglip.py",
+      "processing_minicpmv.py",
+      "resampler.py",
+      "tokenization_minicpmv_fast.py"
+    ],
+    "all_seven_reachable": true,
+    "local_import_edges": [
+      {
+        "source": "configuration_minicpm.py",
+        "targets": [
+          "modeling_navit_siglip.py"
+        ]
+      },
+      {
+        "source": "modeling_minicpmv.py",
+        "targets": [
+          "configuration_minicpm.py",
+          "modeling_navit_siglip.py",
+          "resampler.py"
+        ]
+      },
+      {
+        "source": "processing_minicpmv.py",
+        "targets": [
+          "image_processing_minicpmv.py"
+        ]
+      }
+    ],
+    "third_party_or_unclassified_top_level_imports": [
+      "PIL",
+      "flash_attn",
+      "numpy",
+      "torch",
+      "torchvision",
+      "transformers"
+    ],
+    "standard_library_top_level_imports": [
+      "copy",
+      "dataclasses",
+      "functools",
+      "itertools",
+      "json",
+      "math",
+      "os",
+      "re",
+      "threading",
+      "typing",
+      "warnings"
+    ],
+    "third_party_dependencies_closed": false,
+    "third_party_closure_status": "Not resolved or version-validated in this static source audit; module names only. No packages imported.",
+    "AST_parse_only": true
+  },
+  "ast_import_records": [
+    {
+      "source": "configuration_minicpm.py",
+      "line": 4,
+      "form": "import",
+      "module": "os",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "configuration_minicpm.py",
+      "line": 5,
+      "form": "from",
+      "level": 0,
+      "module": "typing",
+      "names": [
+        "Union"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "configuration_minicpm.py",
+      "line": 7,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.utils",
+      "names": [
+        "logging"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "configuration_minicpm.py",
+      "line": 8,
+      "form": "from",
+      "level": 0,
+      "module": "transformers",
+      "names": [
+        "Qwen3Config",
+        "PretrainedConfig"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "configuration_minicpm.py",
+      "line": 9,
+      "form": "from",
+      "level": 1,
+      "module": "modeling_navit_siglip",
+      "names": [
+        "SiglipVisionConfig"
+      ],
+      "classification": "local",
+      "target": "modeling_navit_siglip.py"
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 1,
+      "form": "from",
+      "level": 0,
+      "module": "typing",
+      "names": [
+        "Optional",
+        "Union",
+        "Dict",
+        "Any",
+        "List"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 2,
+      "form": "from",
+      "level": 0,
+      "module": "itertools",
+      "names": [
+        "chain"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 4,
+      "form": "import",
+      "module": "torch",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 5,
+      "form": "import",
+      "module": "math",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 6,
+      "form": "import",
+      "module": "PIL.Image",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 7,
+      "form": "import",
+      "module": "PIL.ImageSequence",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 8,
+      "form": "import",
+      "module": "numpy",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 9,
+      "form": "import",
+      "module": "PIL",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 10,
+      "form": "from",
+      "level": 0,
+      "module": "PIL",
+      "names": [
+        "Image"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 12,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.utils",
+      "names": [
+        "TensorType",
+        "requires_backends",
+        "is_torch_dtype",
+        "is_torch_device"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 13,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.image_processing_utils",
+      "names": [
+        "BaseImageProcessor",
+        "BatchFeature"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 14,
+      "form": "from",
+      "level": 0,
+      "module": "transformers",
+      "names": [
+        "AutoImageProcessor"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 15,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.image_transforms",
+      "names": [
+        "to_channel_dimension_format"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 16,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.image_utils",
+      "names": [
+        "ImageInput",
+        "make_list_of_images",
+        "valid_images",
+        "is_torch_tensor",
+        "is_batched",
+        "to_numpy_array",
+        "infer_channel_dimension_format",
+        "ChannelDimension"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "image_processing_minicpmv.py",
+      "line": 78,
+      "form": "import",
+      "module": "torch",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 1,
+      "form": "import",
+      "module": "math",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 2,
+      "form": "from",
+      "level": 0,
+      "module": "typing",
+      "names": [
+        "List",
+        "Optional"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 3,
+      "form": "import",
+      "module": "json",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 4,
+      "form": "import",
+      "module": "torch",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 5,
+      "form": "import",
+      "module": "torchvision",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 7,
+      "form": "from",
+      "level": 0,
+      "module": "threading",
+      "names": [
+        "Thread"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 8,
+      "form": "from",
+      "level": 0,
+      "module": "copy",
+      "names": [
+        "deepcopy"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 9,
+      "form": "from",
+      "level": 0,
+      "module": "PIL",
+      "names": [
+        "Image"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 10,
+      "form": "from",
+      "level": 0,
+      "module": "transformers",
+      "names": [
+        "AutoProcessor",
+        "Qwen3PreTrainedModel",
+        "Qwen3ForCausalLM",
+        "TextIteratorStreamer"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 12,
+      "form": "from",
+      "level": 1,
+      "module": "configuration_minicpm",
+      "names": [
+        "MiniCPMVConfig"
+      ],
+      "classification": "local",
+      "target": "configuration_minicpm.py"
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 13,
+      "form": "from",
+      "level": 1,
+      "module": "modeling_navit_siglip",
+      "names": [
+        "SiglipVisionTransformer"
+      ],
+      "classification": "local",
+      "target": "modeling_navit_siglip.py"
+    },
+    {
+      "source": "modeling_minicpmv.py",
+      "line": 14,
+      "form": "from",
+      "level": 1,
+      "module": "resampler",
+      "names": [
+        "Resampler"
+      ],
+      "classification": "local",
+      "target": "resampler.py"
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 19,
+      "form": "import",
+      "module": "os",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 20,
+      "form": "import",
+      "module": "math",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 21,
+      "form": "import",
+      "module": "warnings",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 22,
+      "form": "from",
+      "level": 0,
+      "module": "dataclasses",
+      "names": [
+        "dataclass"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 23,
+      "form": "from",
+      "level": 0,
+      "module": "typing",
+      "names": [
+        "Any",
+        "Optional",
+        "Tuple",
+        "Union"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 25,
+      "form": "import",
+      "module": "numpy",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 26,
+      "form": "import",
+      "module": "torch",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 27,
+      "form": "import",
+      "module": "torch.nn.functional",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 28,
+      "form": "import",
+      "module": "torch.utils.checkpoint",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 29,
+      "form": "from",
+      "level": 0,
+      "module": "torch",
+      "names": [
+        "nn"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 30,
+      "form": "from",
+      "level": 0,
+      "module": "torch.nn.init",
+      "names": [
+        "_calculate_fan_in_and_fan_out"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 32,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.activations",
+      "names": [
+        "ACT2FN"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 33,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.modeling_attn_mask_utils",
+      "names": [
+        "_prepare_4d_attention_mask"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 34,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.modeling_outputs",
+      "names": [
+        "BaseModelOutput",
+        "BaseModelOutputWithPooling"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 35,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.modeling_utils",
+      "names": [
+        "PreTrainedModel"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 36,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.configuration_utils",
+      "names": [
+        "PretrainedConfig"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 37,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.utils",
+      "names": [
+        "ModelOutput",
+        "add_start_docstrings",
+        "add_start_docstrings_to_model_forward",
+        "is_flash_attn_2_available",
+        "logging",
+        "replace_return_docstrings"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 45,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.utils",
+      "names": [
+        "logging"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 146,
+      "form": "from",
+      "level": 0,
+      "module": "flash_attn",
+      "names": [
+        "flash_attn_func",
+        "flash_attn_varlen_func"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "modeling_navit_siglip.py",
+      "line": 147,
+      "form": "from",
+      "level": 0,
+      "module": "flash_attn.bert_padding",
+      "names": [
+        "index_first_axis",
+        "pad_input",
+        "unpad_input"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 19,
+      "form": "from",
+      "level": 0,
+      "module": "typing",
+      "names": [
+        "List",
+        "Optional",
+        "Union",
+        "Dict",
+        "Any"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 20,
+      "form": "import",
+      "module": "torch",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 21,
+      "form": "import",
+      "module": "re",
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 23,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.image_processing_utils",
+      "names": [
+        "BatchFeature"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 24,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.image_utils",
+      "names": [
+        "ImageInput"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 25,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.processing_utils",
+      "names": [
+        "ProcessorMixin"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 26,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.tokenization_utils_base",
+      "names": [
+        "PaddingStrategy",
+        "PreTokenizedInput",
+        "TextInput",
+        "TruncationStrategy"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 27,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.utils",
+      "names": [
+        "TensorType",
+        "requires_backends",
+        "is_torch_dtype",
+        "is_torch_device"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "processing_minicpmv.py",
+      "line": 29,
+      "form": "from",
+      "level": 1,
+      "module": "image_processing_minicpmv",
+      "names": [
+        "MiniCPMVBatchFeature"
+      ],
+      "classification": "local",
+      "target": "image_processing_minicpmv.py"
+    },
+    {
+      "source": "resampler.py",
+      "line": 1,
+      "form": "from",
+      "level": 0,
+      "module": "functools",
+      "names": [
+        "partial"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "resampler.py",
+      "line": 2,
+      "form": "from",
+      "level": 0,
+      "module": "itertools",
+      "names": [
+        "chain"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "resampler.py",
+      "line": 3,
+      "form": "from",
+      "level": 0,
+      "module": "typing",
+      "names": [
+        "Optional",
+        "Tuple",
+        "List"
+      ],
+      "classification": "stdlib",
+      "target": null
+    },
+    {
+      "source": "resampler.py",
+      "line": 4,
+      "form": "import",
+      "module": "numpy",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "resampler.py",
+      "line": 6,
+      "form": "import",
+      "module": "torch",
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "resampler.py",
+      "line": 7,
+      "form": "from",
+      "level": 0,
+      "module": "torch",
+      "names": [
+        "nn"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "resampler.py",
+      "line": 8,
+      "form": "from",
+      "level": 0,
+      "module": "torch.nn.init",
+      "names": [
+        "trunc_normal_"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "resampler.py",
+      "line": 10,
+      "form": "from",
+      "level": 0,
+      "module": "transformers.integrations",
+      "names": [
+        "is_deepspeed_zero3_enabled"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    },
+    {
+      "source": "tokenization_minicpmv_fast.py",
+      "line": 1,
+      "form": "from",
+      "level": 0,
+      "module": "transformers",
+      "names": [
+        "Qwen2TokenizerFast"
+      ],
+      "classification": "third_party_or_unclassified",
+      "target": null
+    }
+  ],
+  "weights_stat_only": {
+    "argv": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "StrictHostKeyChecking=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "liuyang@100.70.83.68",
+      "python3 -B -"
+    ],
+    "remote_script": "import json; from pathlib import Path; b=Path('/home/liuyang/文档/mVllm_2/models/minicpmv4_5'); names=['model-00001-of-00004.safetensors', 'model-00002-of-00004.safetensors', 'model-00003-of-00004.safetensors', 'model-00004-of-00004.safetensors']; out=[]\nfor n in names:\n s=(b/n).stat(); out.append({'name':n,'inode':s.st_ino,'device':s.st_dev,'size':s.st_size,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns,'mode':s.st_mode})\nprint(json.dumps(out,separators=(',',':')))",
+    "remote_exit_status": 0,
+    "elapsed_seconds": 0.22047275002114475,
+    "files": [
+      {
+        "name": "model-00001-of-00004.safetensors",
+        "inode": 44060805,
+        "device": 66306,
+        "size": 5286612176,
+        "mtime_ns": 1782491793708245564,
+        "ctime_ns": 1782491793708245564,
+        "mode": 33261,
+        "historical_before": {
+          "inode": 44060805,
+          "device": 66306,
+          "size": 5286612176,
+          "mtime_ns": 1782491793708245564,
+          "ctime_ns": 1782491793708245564,
+          "mode": 32768
+        },
+        "historical_after": {
+          "inode": 44060805,
+          "device": 66306,
+          "size": 5286612176,
+          "mtime_ns": 1782491793708245564,
+          "ctime_ns": 1782491793708245564,
+          "mode": 32768
+        },
+        "current_mode_raw": 33261,
+        "historical_mode_recorded_before_raw": 32768,
+        "historical_mode_recorded_after_raw": 32768,
+        "comparison_fields": [
+          "inode",
+          "device",
+          "size",
+          "mtime_ns",
+          "ctime_ns",
+          "S_IFMT(mode)"
+        ],
+        "identity_stat_fields_match": true
+      },
+      {
+        "name": "model-00002-of-00004.safetensors",
+        "inode": 44060845,
+        "device": 66306,
+        "size": 5301855088,
+        "mtime_ns": 1782491807328249354,
+        "ctime_ns": 1782491807328249354,
+        "mode": 33261,
+        "historical_before": {
+          "inode": 44060845,
+          "device": 66306,
+          "size": 5301855088,
+          "mtime_ns": 1782491807328249354,
+          "ctime_ns": 1782491807328249354,
+          "mode": 32768
+        },
+        "historical_after": {
+          "inode": 44060845,
+          "device": 66306,
+          "size": 5301855088,
+          "mtime_ns": 1782491807328249354,
+          "ctime_ns": 1782491807328249354,
+          "mode": 32768
+        },
+        "current_mode_raw": 33261,
+        "historical_mode_recorded_before_raw": 32768,
+        "historical_mode_recorded_after_raw": 32768,
+        "comparison_fields": [
+          "inode",
+          "device",
+          "size",
+          "mtime_ns",
+          "ctime_ns",
+          "S_IFMT(mode)"
+        ],
+        "identity_stat_fields_match": true
+      },
+      {
+        "name": "model-00003-of-00004.safetensors",
+        "inode": 44060832,
+        "device": 66306,
+        "size": 4546851120,
+        "mtime_ns": 1782491797024246139,
+        "ctime_ns": 1782491797024246139,
+        "mode": 33261,
+        "historical_before": {
+          "inode": 44060832,
+          "device": 66306,
+          "size": 4546851120,
+          "mtime_ns": 1782491797024246139,
+          "ctime_ns": 1782491797024246139,
+          "mode": 32768
+        },
+        "historical_after": {
+          "inode": 44060832,
+          "device": 66306,
+          "size": 4546851120,
+          "mtime_ns": 1782491797024246139,
+          "ctime_ns": 1782491797024246139,
+          "mode": 32768
+        },
+        "current_mode_raw": 33261,
+        "historical_mode_recorded_before_raw": 32768,
+        "historical_mode_recorded_after_raw": 32768,
+        "comparison_fields": [
+          "inode",
+          "device",
+          "size",
+          "mtime_ns",
+          "ctime_ns",
+          "S_IFMT(mode)"
+        ],
+        "identity_stat_fields_match": true
+      },
+      {
+        "name": "model-00004-of-00004.safetensors",
+        "inode": 44060803,
+        "device": 66306,
+        "size": 2256571800,
+        "mtime_ns": 1782491791064245263,
+        "ctime_ns": 1782491791064245263,
+        "mode": 33261,
+        "historical_before": {
+          "inode": 44060803,
+          "device": 66306,
+          "size": 2256571800,
+          "mtime_ns": 1782491791064245263,
+          "ctime_ns": 1782491791064245263,
+          "mode": 32768
+        },
+        "historical_after": {
+          "inode": 44060803,
+          "device": 66306,
+          "size": 2256571800,
+          "mtime_ns": 1782491791064245263,
+          "ctime_ns": 1782491791064245263,
+          "mode": 32768
+        },
+        "current_mode_raw": 33261,
+        "historical_mode_recorded_before_raw": 32768,
+        "historical_mode_recorded_after_raw": 32768,
+        "comparison_fields": [
+          "inode",
+          "device",
+          "size",
+          "mtime_ns",
+          "ctime_ns",
+          "S_IFMT(mode)"
+        ],
+        "identity_stat_fields_match": true
+      }
+    ],
+    "all_identity_stat_fields_match": true,
+    "mode_comparison_note": "Raw current mode is preserved (for these files 33261); historical mode contains only S_IFMT value 32768. Comparison applies S_IFMT(current_mode) against historical mode. Permission bits are not compared or claimed identical.",
+    "actual_collection": {
+      "controller_argv": [
+        "python3",
+        "-B",
+        "/tmp/base_source_static_finalize_20261016.py"
+      ],
+      "controller_execution_location": "Mac local working copy",
+      "controller_exit_status": 0,
+      "controller_script_sha256": "91a56df2c754efa3494b802be97d6c32a1fae3f710090a304601b5d7d10fd976",
+      "controller_script": "import json,hashlib,pathlib,subprocess,time,urllib.parse\nfrom datetime import datetime,timezone\nroot=pathlib.Path('/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2'); old=json.loads((root/'docs/results/remote-base-integrity-20261016.json').read_text()); ph=old['successful_hash_phase']; base=old['target']['base_model']; assets=root/'base-source-audit/remote-assets-20261016'\nhistory={pathlib.PurePosixPath(x['path']).name:x for x in ph['per_file_results'] if x['path'].startswith(base+'/')}; names=sorted(n for n in history if not n.endswith('.safetensors') and n!='adapter_model.safetensors'); assert len(names)==19\nfiles=[]; docs={}\nfor n in names:\n b=(assets/n).read_bytes(); h=hashlib.sha256(b).hexdigest(); prior=history[n]; assert h==prior['sha256'] and len(b)==prior['bytes_read'], n\n row={'name':n,'path':str(assets/n),'size':len(b),'sha256':h,'matches_historical':True,'historical_sha256':prior['sha256'],'historical_stat_before':prior['before'],'historical_stat_after':prior['after']}; files.append(row)\n if n.endswith('.json'): docs[n]=json.loads(b)\ndef flatten(v,p=''):\n o=[]\n if isinstance(v,dict):\n  for k,z in v.items():\n   q=f'{p}.{k}' if p else k\n   if k=='auto_map': o.append((q,z))\n   o+=flatten(z,q)\n elif isinstance(v,list):\n  for i,z in enumerate(v):o+=flatten(z,f'{p}[{i}]')\n return o\nauto=[]; closure=[]\nfor fn,d in docs.items():\n for path,val in flatten(d):\n  auto.append({'file':fn,'path':path,'value':val})\n  vals=val if isinstance(val,dict) else {'value':val}\n  for key,ref in vals.items():\n   if isinstance(ref,str):\n    mod=ref.split('--')[-1].split('.')[0]; cand=mod+'.py'; hit=next((x for x in files if x['name']==cand),None)\n    closure.append({'source_file':fn,'auto_map_path':path,'key':key,'reference':ref,'module':mod,'candidate_local_file':cand,'present_in_allowlist':hit is not None,'sha256':hit['sha256'] if hit else None})\nweight_names=sorted(n for n in history if n.endswith('.safetensors') and n!='adapter_model.safetensors'); assert len(weight_names)==4\nremote_script=\"import json; from pathlib import Path; b=Path(\"+repr(base)+\"); names=\"+repr(weight_names)+\"; out=[]\\nfor n in names:\\n s=(b/n).stat(); out.append({'name':n,'inode':s.st_ino,'device':s.st_dev,'size':s.st_size,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns,'mode':s.st_mode})\\nprint(json.dumps(out,separators=(',',':')))\"\nargv=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','liuyang@100.70.83.68','python3 -B -']\nt=time.monotonic(); p=subprocess.run(argv,input=remote_script.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False); elapsed=time.monotonic()-t\nif p.returncode: raise SystemExit(p.stderr.decode(errors='replace')[-2000:])\nweights=json.loads(p.stdout); oldw={n:history[n] for n in weight_names}\nfor w in weights:\n h=oldw[w['name']]; w['historical_before']=h['before']; w['historical_after']=h['after']; w['matches_historical_before_after']=all(h['before'][k]==h['after'][k]==w[k] for k in ['inode','device','size','mtime_ns','ctime_ns','mode'])\n# No endpoint probe run here: upstream owner is independently conducting it. Preserve the narrow allowed endpoint references.\nurls=['https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/revision/daef484c35ec93210ec93c5e901f8f3e9b78ee34','https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/config.json']\nr={'date':'2026-10-16','status':'completed','executor':'Codex','platform':'Mac controller + remote Linux read-only source','controller_cwd':str(root),'created_utc':datetime.now(timezone.utc).isoformat(),'authorization_scope':'19 allowlisted non-safetensors base files reread once and exact bytes archived locally; four base safetensors stat-only; no model loading/import/inference/evaluation/generation/training/test use','files':files,'file_count':len(files),'bytes_archived':sum(x['size'] for x in files),'assets_dir':str(assets),'official_https_probe':{'urls':urls,'status':'not independently executed in this run; delegated upstream researcher already obtained the fixed revision tree over verified default TLS; see sibling minicpm-base-upstream-comparison-20261016.json'},'json_documents':docs,'auto_map_references':auto,'static_auto_map_closure':closure,'weights_stat_only':{'argv':argv,'remote_script':remote_script,'remote_exit_status':p.returncode,'elapsed_seconds':elapsed,'files':weights,'all_match_historical_before_after':all(x['matches_historical_before_after'] for x in weights)},'first_read_transfer_controller_script_path':'/tmp/base_source_static_audit_20261016.py','first_read_remote_extraction_script':open('/tmp/base_source_static_audit_20261016.py').read().split(\"remote_script=r'''\",1)[1].split(\"'''\\nssh_argv\",1)[0],'limitations':['configuration.py/model code closure is static path resolution only; no import or execution.','Four large safetensors were not read or rehashed.','Official pinned URL TLS status is reported from the upstream researcher record, not independently probed here.'],'scripts':{'archive_controller':'python3 -B /tmp/base_source_static_audit_20261016.py','finalize_controller':'python3 -B /tmp/base_source_static_finalize_20261016.py','weights_stat_argv':argv,'weights_stat_remote_script':remote_script}}\n(root/'docs/results/remote-base-static-source-20261016.json').write_text(json.dumps(r,ensure_ascii=False,indent=2)+'\\n')\nprint(json.dumps({'status':r['status'],'files':len(files),'bytes':r['bytes_archived'],'weights_stat_match':r['weights_stat_only']['all_match_historical_before_after'],'auto_map':auto,'closure':closure,'report':str(root/'docs/results/remote-base-static-source-20261016.json'),'elapsed_stat_seconds':elapsed},ensure_ascii=False))\n",
+      "remote_argv": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "liuyang@100.70.83.68",
+        "python3 -B -"
+      ],
+      "remote_execution_location": "liuyang@100.70.83.68 via SSH; Python stat-only script in /home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+      "remote_exit_status": 0,
+      "remote_stat_script": "import json; from pathlib import Path; b=Path('/home/liuyang/文档/mVllm_2/models/minicpmv4_5'); names=['model-00001-of-00004.safetensors', 'model-00002-of-00004.safetensors', 'model-00003-of-00004.safetensors', 'model-00004-of-00004.safetensors']; out=[]\nfor n in names:\n s=(b/n).stat(); out.append({'name':n,'inode':s.st_ino,'device':s.st_dev,'size':s.st_size,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns,'mode':s.st_mode})\nprint(json.dumps(out,separators=(',',':')))",
+      "remote_read_or_hash_weights": false
+    },
+    "local_normalization": {
+      "argv": [
+        "python3",
+        "-B",
+        "/tmp/weights_stat_normalize_20261016.py"
+      ],
+      "status": "executed successfully on captured raw stat values; no SSH or weight access",
+      "script_sha256": "1ce891f6889d3458410ec4b2f1c25bd611413564e388533297e8971c6c8db74d",
+      "script": "\"\"\"Deterministic local normalization of already captured stat evidence; no SSH or weight read.\"\"\"\nimport hashlib,json,pathlib,stat\nroot=pathlib.Path('/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2')\npath=root/'docs/results/remote-base-static-source-20261016.json'\nd=json.loads(path.read_text())\nd.pop('source_revision',None)\nd['comparison_reference_revision']={'repo_id':'openbmb/MiniCPM-V-4_5','revision':'daef484c35ec93210ec93c5e901f8f3e9b78ee34','purpose':'fixed upstream revision used for comparison only; does not identify the actual origin of the training-machine snapshot'}\nd['actual_snapshot_origin_established']=False\nd['actual_snapshot_origin_note']='The training-machine snapshot origin is not established by this report. The fixed Hugging Face revision is a comparison reference. Separate .msc/.mv sidecar evidence is recorded as a provenance lead and must not be treated as proof that the snapshot is wholly or byte-for-byte sourced from Hugging Face.'\nw=d['weights_stat_only']\nfields=['inode','device','size','mtime_ns','ctime_ns']\ncompare_fields=fields+['S_IFMT(mode)']\nfor row in w['files']:\n current_mode=row['mode']\n hist_before=row['historical_before']; hist_after=row['historical_after']\n row['current_mode_raw']=current_mode\n row['historical_mode_recorded_before_raw']=hist_before['mode']\n row['historical_mode_recorded_after_raw']=hist_after['mode']\n row['comparison_fields']=compare_fields\n row['identity_stat_fields_match']=all(hist_before[k]==hist_after[k]==row[k] for k in fields) and stat.S_IFMT(current_mode)==hist_before['mode']==hist_after['mode']\n row.pop('matches_historical_before_after',None)\nw['all_identity_stat_fields_match']=all(x['identity_stat_fields_match'] for x in w['files'])\nw['mode_comparison_note']='Raw current mode is preserved (for these files 33261); historical mode contains only S_IFMT value 32768. Comparison applies S_IFMT(current_mode) against historical mode. Permission bits are not compared or claimed identical.'\nw.pop('all_match_historical_before_after',None)\n# Retain both the exact remote stat command and the successful Mac controller source used for the capture.\ncontroller=pathlib.Path('/tmp/base_source_static_finalize_20261016.py').read_text()\nw['actual_collection']={'controller_argv':['python3','-B','/tmp/base_source_static_finalize_20261016.py'],'controller_execution_location':'Mac local working copy','controller_exit_status':0,'controller_script_sha256':hashlib.sha256(controller.encode()).hexdigest(),'controller_script':controller,'remote_argv':w['argv'],'remote_execution_location':'liuyang@100.70.83.68 via SSH; Python stat-only script in /home/liuyang/文档/mVllm_2/models/minicpmv4_5','remote_exit_status':w['remote_exit_status'],'remote_stat_script':w['remote_script'],'remote_read_or_hash_weights':False}\nscript=pathlib.Path('/tmp/weights_stat_normalize_20261016.py').read_text()\nw['local_normalization']={'argv':['python3','-B','/tmp/weights_stat_normalize_20261016.py'],'status':'executed successfully on captured raw stat values; no SSH or weight access','script_sha256':hashlib.sha256(script.encode()).hexdigest(),'script':script}\npath.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\\n')\nprint(json.dumps({'report':str(path),'report_bytes':path.stat().st_size,'all_identity_stat_fields_match':w['all_identity_stat_fields_match'],'rows':[{'name':x['name'],'current_mode_raw':x['current_mode_raw'],'historical_mode_raw':x['historical_mode_recorded_before_raw'],'compared_mode_type':stat.S_IFMT(x['current_mode_raw']),'identity_stat_fields_match':x['identity_stat_fields_match']} for x in w['files']],'actual_origin_established':d['actual_snapshot_origin_established']},ensure_ascii=False))\n"
+    }
+  },
+  "official_https_probe": {
+    "urls": [
+      "https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/revision/daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+      "https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/config.json"
+    ],
+    "status": "not independently executed in this run; delegated upstream researcher already obtained the fixed revision tree over verified default TLS; see sibling minicpm-base-upstream-comparison-20261016.json"
+  },
+  "actual_acquisition": {
+    "controller_argv": [
+      "python3",
+      "-B",
+      "/tmp/base_source_static_audit_20261016.py"
+    ],
+    "ssh_argv": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "StrictHostKeyChecking=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "liuyang@100.70.83.68",
+      "python3 -B -"
+    ],
+    "outer_controller_final_status": "exit 1 after remote transfer and local file writes, while preparing weight-name list due historical-record key mismatch; remote SSH/read subprocess exit 0",
+    "remote_read_occurred_once": true,
+    "repeat_remote_file_read": false,
+    "actual_acquisition_script": "import base64, hashlib, json, os, pathlib, subprocess, time, urllib.request, urllib.error\nfrom datetime import datetime, timezone\nroot=pathlib.Path('/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2')\nreport=json.loads((root/'docs/results/remote-base-integrity-20261016.json').read_text())\nphase=report['successful_hash_phase']\nbase=report['target']['base_model']\nitems=[x for x in phase['per_file_results'] if x['path'].startswith(base+'/') and not x['path'].endswith('.safetensors')]\nassert len(items)==19, len(items)\nallow={pathlib.PurePosixPath(x['path']).name:x for x in items}\nremote_script=r'''import base64,hashlib,json,os,sys\nfrom pathlib import Path\nbase=Path('/home/liuyang/文档/mVllm_2/models/minicpmv4_5')\nallow='''+repr(sorted(allow))+r'''\nfiles=[]\nfor name in allow:\n p=base/name\n st=p.stat()\n if not p.is_file() or st.st_size>30*1024*1024: raise SystemExit('invalid file '+name)\n b=p.read_bytes()\n st2=p.stat()\n if st.st_size!=len(b) or (st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns,st.st_ctime_ns)!=(st2.st_ino,st2.st_dev,st2.st_size,st2.st_mtime_ns,st2.st_ctime_ns): raise SystemExit('unstable file '+name)\n files.append({'name':name,'size':len(b),'sha256':hashlib.sha256(b).hexdigest(),'b64':base64.b64encode(b).decode('ascii'),'stat':{'inode':st.st_ino,'device':st.st_dev,'size':st.st_size,'mtime_ns':st.st_mtime_ns,'ctime_ns':st.st_ctime_ns,'mode':st.st_mode}})\nprint(json.dumps({'files':files},separators=(',',':')))\n'''\nssh_argv=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','liuyang@100.70.83.68','python3 -B -']\nt0=time.monotonic(); run=subprocess.run(ssh_argv,input=remote_script.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False); elapsed=time.monotonic()-t0\nif run.returncode: raise SystemExit(json.dumps({'ssh_exit':run.returncode,'stderr':run.stderr.decode(errors='replace')[-3000:]}))\nremote=json.loads(run.stdout); files=[]\nassets=root/'base-source-audit/remote-assets-20261016'; assets.mkdir(parents=True,exist_ok=True)\nfor x in remote['files']:\n b=base64.b64decode(x.pop('b64'),validate=True)\n h=hashlib.sha256(b).hexdigest()\n if len(b)!=x['size'] or h!=x['sha256']: raise SystemExit('transfer integrity mismatch '+x['name'])\n (assets/x['name']).write_bytes(b)\n prior=allow[x['name']]\n if prior['sha256']!=h or prior['bytes_read']!=len(b): raise SystemExit('historical mismatch '+x['name'])\n x.update({'path':str(assets/x['name']),'historical_sha256':prior['sha256'],'matches_historical':True})\n files.append(x)\n# Analyze static JSON and auto_map references, without importing code.\njson_docs={}\nfor x in files:\n if x['name'].endswith('.json'):\n  try: json_docs[x['name']]=json.loads((assets/x['name']).read_text())\n  except Exception as e: json_docs[x['name']]={'_parse_error':str(e)}\ndef flatten(v,p=''):\n out=[]\n if isinstance(v,dict):\n  for k,z in v.items():\n   q=f'{p}.{k}' if p else k\n   if k=='auto_map': out.append((q,z))\n   out+=flatten(z,q)\n elif isinstance(v,list):\n  for i,z in enumerate(v): out+=flatten(z,f'{p}[{i}]')\n return out\nauto=[]\nfor fn,obj in json_docs.items():\n for path,val in flatten(obj): auto.append({'file':fn,'path':path,'value':val})\n# Resolve local module filename portions statically, do not import/execute.\nclosure=[]\nfor a in auto:\n vals=a['value'] if isinstance(a['value'],dict) else {'value':a['value']}\n for key,val in vals.items():\n  if isinstance(val,str):\n   mod=val.split('--')[-1].split('.')[0]\n   candidate=mod+'.py'\n   closure.append({'source_file':a['file'],'auto_map_path':a['path'],'key':key,'reference':val,'module':mod,'candidate_local_file':candidate,'present_in_allowlist':candidate in allow,'local_sha256':next((f['sha256'] for f in files if f['name']==candidate),None)})\n# Four large weight files: stat only now; never hash/read.\nweight_names=sorted(x['name'] for x in phase['per_file_results'] if x['path'].startswith(base+'/') and x['path'].endswith('.safetensors'))\nweight_script=\"import json; from pathlib import Path; b=Path('/home/liuyang/文档/mVllm_2/models/minicpmv4_5'); names=\"+repr(weight_names)+\"; out=[]\\nfor n in names:\\n s=(b/n).stat(); out.append({'name':n,'inode':s.st_ino,'device':s.st_dev,'size':s.st_size,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns,'mode':s.st_mode})\\nprint(json.dumps(out,separators=(',',':')))\"\nws=subprocess.run(ssh_argv,input=weight_script.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False)\nif ws.returncode: weights={'error':ws.stderr.decode(errors='replace')[-2000:],'exit_status':ws.returncode}\nelse:\n weights=json.loads(ws.stdout); prior={pathlib.PurePosixPath(x['path']).name:x for x in phase['per_file_results'] if x['path'].startswith(base+'/') and x['path'].endswith('.safetensors')}\n for x in weights:\n  p=prior[x['name']]['before']; q=prior[x['name']]['after']; fields=['inode','device','size','mtime_ns','ctime_ns','mode']\n  x['historical_before']=p; x['historical_after']=q; x['matches_historical_before_after']=all(p.get(k)==q.get(k)==x.get(k) for k in fields)\n# Verified default-TLS official endpoint probes; no tokens and no custom SSL context.\nurls=['https://huggingface.co/api/models/openbmb/MiniCPM-V-4_5/revision/daef484c35ec93210ec93c5e901f8f3e9b78ee34','https://huggingface.co/openbmb/MiniCPM-V-4_5/raw/daef484c35ec93210ec93c5e901f8f3e9b78ee34/config.json']\nhttps=[]\nfor url in urls:\n t=datetime.now(timezone.utc).isoformat(); row={'url':url,'started_utc':t}\n try:\n  req=urllib.request.Request(url,headers={'User-Agent':'base-source-static-audit/1.0'})\n  with urllib.request.urlopen(req,timeout=20) as resp:\n   b=resp.read(5*1024*1024+1)\n   row.update({'status':'success','status_code':resp.status,'final_url':resp.geturl(),'headers':dict(resp.headers),'size':len(b),'sha256':hashlib.sha256(b).hexdigest(),'body':base64.b64encode(b).decode('ascii')})\n except Exception as e: row.update({'status':'error','error_type':type(e).__name__,'error':str(e)})\n https.append(row)\nresult={'date':'2026-10-16','executor':'Codex','platform':'Mac controller + remote Linux read-only source','controller_cwd':str(root),'created_utc':datetime.now(timezone.utc).isoformat(),'authorization_scope':'19 allowlisted non-safetensors base files only; four base safetensors stat-only; official pinned HTTPS probes with default TLS verification','remote_argv':ssh_argv,'remote_script':remote_script,'remote_exit_status':run.returncode,'elapsed_seconds':elapsed,'file_count':len(files),'files':files,'json_documents':json_docs,'auto_map_references':auto,'static_auto_map_closure':closure,'weights_stat_argv':ssh_argv,'weights_stat_script':weight_script,'weights_exit_status':ws.returncode,'weights_stat_only':weights,'official_https':https,'limitations':['No model loading/import/inference/evaluation/generation/training/test use.','Large safetensors were not read or rehashed.','configuration.py reference closure is static filename resolution only.']}\n(root/'docs/results/remote-base-static-source-20261016.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\\n')\nprint(json.dumps({'status':'complete','files':len(files),'bytes':sum(x['size'] for x in files),'remote_exit':run.returncode,'elapsed':elapsed,'assets':str(assets),'report':str(root/'docs/results/remote-base-static-source-20261016.json'),'https':[{'url':x['url'],'status':x['status'],'code':x.get('status_code'),'error':x.get('error')} for x in https],'weights_all_stat_match':all(x.get('matches_historical_before_after',False) for x in weights) if isinstance(weights,list) else False},ensure_ascii=False))\n",
+    "actual_acquisition_script_sha256": "fd91141feb185421de4a0ce8b44cfa2fb19b5b7c233ecd12c1c6dd0f7e30b7c8",
+    "execution_locations": {
+      "controller": "Mac local working copy; Python controller subprocess started SSH and captured stdout/stderr",
+      "remote": "liuyang@100.70.83.68; remote Python script executed with python3 -B - in SSH session; all target paths explicit under /home/liuyang/文档/mVllm_2/models/minicpmv4_5"
+    }
+  },
+  "local_postprocess": {
+    "argv": [
+      "python3",
+      "-B",
+      "/tmp/base_source_static_postprocess_20261016.py"
+    ],
+    "status": "executed successfully",
+    "source": "Created in response to correction request; reads ignored local archived bytes and prior JSON evidence only; no SSH",
+    "script_sha256": "a1edc95d148cefd4ac304900d2d31df3cc0f82ca654918599804484e13c8db67",
+    "script": "\"\"\"Local-only report compaction and AST closure. Reads archived bytes; no SSH/import/exec of model code.\"\"\"\nimport ast, hashlib, json, pathlib, re, stat\nfrom datetime import datetime, timezone\nroot=pathlib.Path('/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2')\nassets=root/'.cache/base-source-audit/remote-assets-20261016'\nold=json.loads((root/'docs/results/remote-base-static-source-20261016.json').read_text())\nhistory=json.loads((root/'docs/results/remote-base-integrity-20261016.json').read_text())\nphase=history['successful_hash_phase']; base=history['target']['base_model']\n# prior entries use path, not a name member\nprior={pathlib.PurePosixPath(x['path']).name:x for x in phase['per_file_results'] if x['path'].startswith(base+'/')}\nasset_rows={x['name']:{'sha256':x['sha256'],'matches_historical':x.get('matches_previous_sha256',x.get('matches_historical',True))} for x in old.get('files',old.get('base_file_identities',[])) if 'local_asset_path' in x or x.get('name','').endswith('.py') or x.get('matches_previous_sha256')}\nidentities=[]\nfor n,x in sorted(prior.items()):\n if n=='adapter_model.safetensors': continue\n row={'name':n,'remote_path':x['path'],'size_bytes':x.get('bytes_read',x['before']['size']),'sha256':x['sha256'],'source':'2026-10-16 successful_hash_phase'}\n if n in asset_rows:\n  row.update({'current_round_action':'read exact bytes once; archived locally','local_asset_path':str(assets/n),'matches_previous_sha256':asset_rows[n]['matches_historical']})\n else:\n  row.update({'current_round_action':'stat only; no read or rehash','current_stat_matches_historical_before_after':next((w['matches_historical_before_after'] for w in old['weights_stat_only']['files'] if w['name']==n),False)})\n identities.append(row)\nassert len(identities)==23\n# Verify exact archived bytes locally and collect only compact identities.\nfor f in identities:\n if 'local_asset_path' in f:\n  b=(assets/f['name']).read_bytes(); assert len(b)==f['size_bytes'] and hashlib.sha256(b).hexdigest()==f['sha256']\n# Parse selected JSON and summarize large JSON payloads instead of copying vocab/weight_map.\ndef loadj(n): return json.loads((assets/n).read_text())\nconfig=loadj('config.json'); pre=loadj('preprocessor_config.json'); tok=loadj('tokenizer_config.json'); index=loadj('model.safetensors.index.json'); tokenizer=loadj('tokenizer.json')\njson_extracts={\n 'config.json':config,\n 'preprocessor_config.json':pre,\n 'tokenizer_config.json':{k:tok[k] for k in ('tokenizer_class','auto_map','model_max_length','padding_side','truncation_side','clean_up_tokenization_spaces','legacy') if k in tok},\n 'tokenizer.json':{'version':tokenizer.get('version'),'truncation':tokenizer.get('truncation'),'padding':tokenizer.get('padding'),'added_tokens_count':len(tokenizer.get('added_tokens',[])),'normalizer_type':(tokenizer.get('normalizer') or {}).get('type'),'pre_tokenizer_type':(tokenizer.get('pre_tokenizer') or {}).get('type'),'model_type':(tokenizer.get('model') or {}).get('type'),'vocab_entries':len((tokenizer.get('model') or {}).get('vocab',{})),'merge_entries':len((tokenizer.get('model') or {}).get('merges',[]))},\n 'model.safetensors.index.json':{'metadata':index.get('metadata',{}),'weight_map_entry_count':len(index.get('weight_map',{})),'shard_names':sorted(set(index.get('weight_map',{}).values()))},\n}\n# Tokenizer auto_map must preserve list form, including its null fallback.\nauto_refs=[]\nfor filename,obj in [('config.json',config),('preprocessor_config.json',pre),('tokenizer_config.json',tok)]:\n am=obj.get('auto_map',{})\n for key,value in am.items():\n  auto_refs.append({'file':filename,'path':'auto_map.'+key,'value':value})\n# AST-only closure across all Python files in the exact 23-file set.\npy_names=sorted(n for n in asset_rows if n.endswith('.py'))\nassert len(py_names)==7, py_names\nstems={pathlib.Path(n).stem:n for n in py_names}\nparsed={n:ast.parse((assets/n).read_text(),filename=n) for n in py_names}\nentries=sorted({pathlib.Path(v.split('--')[-1].split('.')[0]).stem+'.py' for a in auto_refs for v in ([a['value']] if isinstance(a['value'],str) else a['value'] if isinstance(a['value'],list) else []) if isinstance(v,str)})\nassert set(entries)<=set(py_names),entries\ngraph={n:set() for n in py_names}; import_records=[]; external=set(); stdlib=set(); stdmods=set(getattr(__import__('sys'),'stdlib_module_names',()))\nfor filename,tree in parsed.items():\n current=pathlib.Path(filename).stem\n for node in ast.walk(tree):\n  if isinstance(node,ast.Import):\n   for a in node.names:\n    top=a.name.split('.')[0]\n    if top in stems: graph[filename].add(stems[top]); kind='local'\n    elif top in stdmods: stdlib.add(top); kind='stdlib'\n    else: external.add(top); kind='third_party_or_unclassified'\n    import_records.append({'source':filename,'line':node.lineno,'form':'import','module':a.name,'classification':kind,'target':stems[top] if top in stems else None})\n  elif isinstance(node,ast.ImportFrom):\n   mod=node.module or ''\n   top=mod.split('.')[0] if mod else ''\n   target=None\n   if node.level:\n    # HF auto_map modules resolve into a synthetic package; use the local module stem after the relative dot.\n    if top in stems: target=stems[top]\n    elif current in stems and any(a.name in stems for a in node.names):\n     # `from . import sibling` form\n     for a in node.names:\n      if a.name in stems: graph[filename].add(stems[a.name])\n   elif top in stems: target=stems[top]\n   if target:\n    graph[filename].add(target); kind='local'\n   elif top in stdmods: stdlib.add(top); kind='stdlib'\n   elif top: external.add(top); kind='third_party_or_unclassified'\n   else: kind='relative unresolved'\n   import_records.append({'source':filename,'line':node.lineno,'form':'from','level':node.level,'module':mod,'names':[a.name for a in node.names],'classification':kind,'target':target})\n# Explicit transitive reachability from auto_map entrypoints.\nreachable=set(); stack=list(entries)\nwhile stack:\n n=stack.pop()\n if n in reachable: continue\n reachable.add(n); stack.extend(sorted(graph[n]-reachable))\nclosure={'entry_files':entries,'reachable_files':sorted(reachable),'all_seven_reachable':reachable==set(py_names),'local_import_edges':[{'source':n,'targets':sorted(v)} for n,v in sorted(graph.items()) if v], 'third_party_or_unclassified_top_level_imports':sorted(external),'standard_library_top_level_imports':sorted(stdlib),'third_party_dependencies_closed':False,'third_party_closure_status':'Not resolved or version-validated in this static source audit; module names only. No packages imported.' ,'AST_parse_only':True}\nassert closure['all_seven_reachable']\n# The acquisition script below is the exact controller source used during the one remote read.\nacq=pathlib.Path('/tmp/base_source_static_audit_20261016.py').read_text()\npost=pathlib.Path('/tmp/base_source_static_postprocess_20261016.py').read_text()\nreport={\n 'date':'2026-10-16','status':'completed','controller_cwd':str(root),'source_revision':'openbmb/MiniCPM-V-4_5@daef484c35ec93210ec93c5e901f8f3e9b78ee34','authorization_scope':'one remote read of 19 allowlisted non-safetensors base files; four safetensors stat-only; local AST/JSON processing only; no model load/import/compile/execution, inference/evaluation/generation/training/test use',\n 'base_file_identity_count':23,'base_file_identities':identities,'archived_small_file_count':19,'archived_small_file_bytes':sum(x['size_bytes'] for x in identities if 'local_asset_path' in x),'assets_dir':str(assets),'all_archived_sha256_verified_locally':True,\n 'json_extracts':json_extracts,'auto_map_references':auto_refs,'static_python_closure':closure,'ast_import_records':import_records,\n 'weights_stat_only':old['weights_stat_only'],\n 'official_https_probe':old['official_https_probe'],\n 'actual_acquisition':{'controller_argv':['python3','-B','/tmp/base_source_static_audit_20261016.py'],'ssh_argv':['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','liuyang@100.70.83.68','python3 -B -'],'outer_controller_final_status':'exit 1 after remote transfer and local file writes, while preparing weight-name list due historical-record key mismatch; remote SSH/read subprocess exit 0','remote_read_occurred_once':True,'repeat_remote_file_read':False,'actual_acquisition_script':acq,'actual_acquisition_script_sha256':hashlib.sha256(acq.encode()).hexdigest()},\n 'local_postprocess':{'argv':['python3','-B','/tmp/base_source_static_postprocess_20261016.py'],'status':'executed successfully','source':'Created in response to correction request; reads ignored local archived bytes and prior JSON evidence only; no SSH','script_sha256':hashlib.sha256(post.encode()).hexdigest(),'script':post},\n 'limitations':['Large tokenizer vocabulary and model weight_map are represented by counts and metadata only; original raw bytes remain in ignored assets.','Third-party imports are listed by module name but are not resolved or version-checked.','Static closure follows AST imports in the seven allowed Python files; dynamic runtime behavior and compatibility are not established.','No source code is imported, compiled, or executed.']}\nsidecar=json.loads((assets/'sidecar-read-metadata.json').read_text())\nsidecar_rows=[{k:v for k,v in x.items() if k!='bytes_base64_removed'} for x in sidecar['results']]\nsidecar_controller=pathlib.Path('/tmp/base_sidecar_read_20261016.py').read_text()\nreport['extra_hidden_metadata']={'files':sidecar_rows,'actual_remote_read':{'controller_argv':['python3','-B','/tmp/base_sidecar_read_20261016.py'],'controller_exit_status':0,'controller_script':sidecar_controller,'controller_script_sha256':hashlib.sha256(sidecar_controller.encode()).hexdigest(),'argv':sidecar['argv'],'remote_exit_status':sidecar['remote_exit_status'],'elapsed_seconds':sidecar['elapsed_seconds'],'script':sidecar['remote_script']},'historical_evidence':'docs/results/version-control-migration/verification.md lines 1565-1604','scope_boundary':'The 23 identities above are the exact base-file allowlist, not a complete directory listing. Historical verification describes 29 top-level files including these 23 plus .msc, .mv and four ._model-* sidecars. This run read only .msc and .mv from those extras; it did not inspect the four ._model-* sidecars.'}\nout=root/'docs/results/remote-base-static-source-20261016.json'; out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\\n')\nprint(json.dumps({'report_bytes':out.stat().st_size,'identities':len(identities),'small_bytes':report['archived_small_file_bytes'],'python_files':py_names,'entries':entries,'reachable':sorted(reachable),'external':sorted(external),'AST_parse_only':True},ensure_ascii=False))\n"
+  },
+  "limitations": [
+    "Large tokenizer vocabulary and model weight_map are represented by counts and metadata only; original raw bytes remain in ignored assets.",
+    "Third-party imports are listed by module name but are not resolved or version-checked.",
+    "Static closure follows AST imports in the seven allowed Python files; dynamic runtime behavior and compatibility are not established.",
+    "No source code is imported, compiled, or executed."
+  ],
+  "extra_hidden_metadata": {
+    "files": [
+      {
+        "name": ".msc",
+        "size": 1766,
+        "sha256": "52f3ec11f0c281c0b094202c53ef760b7484948eccfb3f6c0a62a8128e79e7f4",
+        "stat": {
+          "inode": 44060830,
+          "device": 66306,
+          "size": 1766,
+          "mtime_ns": 1782491793716245564,
+          "ctime_ns": 1782491793716245564,
+          "mode_type": 32768
+        },
+        "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/.msc",
+        "matches_historical_hash": true
+      },
+      {
+        "name": ".mv",
+        "size": 36,
+        "sha256": "de31a81198609b9e042141f3b3060e12122007854e616728b08001315cee14d2",
+        "stat": {
+          "inode": 44060837,
+          "device": 66306,
+          "size": 36,
+          "mtime_ns": 1782491797036246142,
+          "ctime_ns": 1782491797036246142,
+          "mode_type": 32768
+        },
+        "local_asset_path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.cache/base-source-audit/remote-assets-20261016/.mv",
+        "matches_historical_hash": true
+      }
+    ],
+    "actual_remote_read": {
+      "controller_argv": [
+        "python3",
+        "-B",
+        "/tmp/base_sidecar_read_20261016.py"
+      ],
+      "controller_exit_status": 0,
+      "controller_script": "import base64,hashlib,json,pathlib,subprocess,time\nfrom datetime import datetime,timezone\nroot=pathlib.Path('/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2')\nassets=root/'.cache/base-source-audit/remote-assets-20261016'\nexpected={'.msc':(1766,'52f3ec11f0c281c0b094202c53ef760b7484948eccfb3f6c0a62a8128e79e7f4'),'.mv':(36,'de31a81198609b9e042141f3b3060e12122007854e616728b08001315cee14d2')}\nscript='''import os,stat,json,hashlib,base64\\nfrom pathlib import Path\\nb=Path(\"/home/liuyang/文档/mVllm_2/models/minicpmv4_5\")\\nnames=[\".msc\",\".mv\"]\\nout=[]\\nfor n in names:\\n p=b/n; a=os.lstat(p)\\n if not stat.S_ISREG(a.st_mode) or a.st_size>65536: raise SystemExit(\"not regular or too large: \"+n)\\n fd=os.open(p,os.O_RDONLY|getattr(os,\"O_NOFOLLOW\",0))\\n try:\\n  s=os.fstat(fd)\\n  if not stat.S_ISREG(s.st_mode) or s.st_size>65536: raise SystemExit(\"unsafe opened file: \"+n)\\n  chunks=[]; total=0\\n  while True:\\n   q=os.read(fd,65537-total)\\n   if not q: break\\n   chunks.append(q); total+=len(q)\\n   if total>65536: raise SystemExit(\"too large: \"+n)\\n  data=b\"\".join(chunks)\\n finally: os.close(fd)\\n z=os.lstat(p)\\n fields=(\"st_ino\",\"st_dev\",\"st_size\",\"st_mtime_ns\",\"st_ctime_ns\")\\n if any(getattr(a,k)!=getattr(z,k) for k in fields) or len(data)!=z.st_size: raise SystemExit(\"changed during read: \"+n)\\n out.append({\"name\":n,\"size\":len(data),\"sha256\":hashlib.sha256(data).hexdigest(),\"stat\":{\"inode\":z.st_ino,\"device\":z.st_dev,\"size\":z.st_size,\"mtime_ns\":z.st_mtime_ns,\"ctime_ns\":z.st_ctime_ns,\"mode_type\":stat.S_IFMT(z.st_mode)},\"base64\":base64.b64encode(data).decode(\"ascii\")})\\nprint(json.dumps(out,separators=(\",\",\":\")))\\n'''\nargv=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','liuyang@100.70.83.68','python3 -B -']\nstart=datetime.now(timezone.utc).isoformat(); t=time.monotonic(); p=subprocess.run(argv,input=script.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False); elapsed=time.monotonic()-t\nif p.returncode: raise SystemExit(f'ssh exit {p.returncode}: '+p.stderr.decode(errors='replace')[-1500:])\nrows=json.loads(p.stdout)\nfor r in rows:\n b=base64.b64decode(r.pop('base64'),validate=True); size,sha=expected[r['name']]\n assert len(b)==size==r['size'] and hashlib.sha256(b).hexdigest()==sha==r['sha256']\n (assets/r['name']).write_bytes(b); r['local_asset_path']=str(assets/r['name']); r['matches_historical_hash']=True; r['bytes_base64_removed']=True\nout={'date':'2026-10-16','started_utc':start,'finished_utc':datetime.now(timezone.utc).isoformat(),'cwd':str(root),'argv':argv,'remote_script':script,'remote_exit_status':p.returncode,'elapsed_seconds':elapsed,'results':rows,'scope':'Only /home/liuyang/文档/mVllm_2/models/minicpmv4_5/.msc and .mv lstat/read; each <=64 KiB; no other hidden files read. No unpickle or execution.','historical_source':'docs/results/version-control-migration/verification.md lines 1565-1604'}\npath=root/'.cache/base-source-audit/remote-assets-20261016/sidecar-read-metadata.json';path.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\\n')\nprint(json.dumps({'remote_exit':p.returncode,'files':[(r['name'],r['size'],r['sha256']) for r in rows],'sidecar_report':str(path),'elapsed':elapsed},ensure_ascii=False))\n",
+      "controller_script_sha256": "8e4b19fb6ef0c9fba5158d319d692bdbcce3934dd88d7f0ce6a50015735cb6d3",
+      "argv": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "liuyang@100.70.83.68",
+        "python3 -B -"
+      ],
+      "remote_exit_status": 0,
+      "elapsed_seconds": 0.2552020000293851,
+      "script": "import os,stat,json,hashlib,base64\nfrom pathlib import Path\nb=Path(\"/home/liuyang/文档/mVllm_2/models/minicpmv4_5\")\nnames=[\".msc\",\".mv\"]\nout=[]\nfor n in names:\n p=b/n; a=os.lstat(p)\n if not stat.S_ISREG(a.st_mode) or a.st_size>65536: raise SystemExit(\"not regular or too large: \"+n)\n fd=os.open(p,os.O_RDONLY|getattr(os,\"O_NOFOLLOW\",0))\n try:\n  s=os.fstat(fd)\n  if not stat.S_ISREG(s.st_mode) or s.st_size>65536: raise SystemExit(\"unsafe opened file: \"+n)\n  chunks=[]; total=0\n  while True:\n   q=os.read(fd,65537-total)\n   if not q: break\n   chunks.append(q); total+=len(q)\n   if total>65536: raise SystemExit(\"too large: \"+n)\n  data=b\"\".join(chunks)\n finally: os.close(fd)\n z=os.lstat(p)\n fields=(\"st_ino\",\"st_dev\",\"st_size\",\"st_mtime_ns\",\"st_ctime_ns\")\n if any(getattr(a,k)!=getattr(z,k) for k in fields) or len(data)!=z.st_size: raise SystemExit(\"changed during read: \"+n)\n out.append({\"name\":n,\"size\":len(data),\"sha256\":hashlib.sha256(data).hexdigest(),\"stat\":{\"inode\":z.st_ino,\"device\":z.st_dev,\"size\":z.st_size,\"mtime_ns\":z.st_mtime_ns,\"ctime_ns\":z.st_ctime_ns,\"mode_type\":stat.S_IFMT(z.st_mode)},\"base64\":base64.b64encode(data).decode(\"ascii\")})\nprint(json.dumps(out,separators=(\",\",\":\")))\n"
+    },
+    "historical_evidence": "docs/results/version-control-migration/verification.md lines 1565-1604",
+    "scope_boundary": "The 23 identities above are the exact base-file allowlist, not a complete directory listing. Historical verification describes 29 top-level files including these 23 plus .msc, .mv and four ._model-* sidecars. This run read only .msc and .mv from those extras; it did not inspect the four ._model-* sidecars."
+  },
+  "comparison_reference_revision": {
+    "repo_id": "openbmb/MiniCPM-V-4_5",
+    "revision": "daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+    "purpose": "fixed upstream revision used for comparison only; does not identify the actual origin of the training-machine snapshot"
+  },
+  "actual_snapshot_origin_established": false,
+  "actual_snapshot_origin_note": "The training-machine snapshot origin is not established by this report. The fixed Hugging Face revision is a comparison reference. Separate .msc/.mv sidecar evidence is recorded as a provenance lead and must not be treated as proof that the snapshot is wholly or byte-for-byte sourced from Hugging Face."
+}
