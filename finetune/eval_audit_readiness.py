@@ -49,9 +49,12 @@ def draft_templates():
                           for name in ("transformers", "tokenizers")},
             "implementation_sha256": None, "ollama_template_sha256": None,
             "tokenizer_equivalence_audit": {"path": None, "sha256": None}}
-        audits[model] = {"schema_version": "tensile-reviewed-tokenizer-equivalence/v1",
+        audits[model] = {"schema_version": "tensile-reviewed-tokenizer-equivalence/v2",
             "purpose": "precall-context-budget", "reviewer": {"id": None, "role": None},
-            "reviewed_at": None, "review_source": None, "binding": None,
+            "reviewed_at": None, "review_source": None,
+            "binding": {"compatibility_counter": None},
+            "compatibility_assets": {"manifest": {"path": None, "sha256": None},
+                                     "gguf": {"path": None, "sha256": None}},
             "gguf_counter_source": None, "basis": [], "golden_cases": []}
     return {"draft_only": True, "tokenizer_sources": sources, "equivalence_audits": audits}
 
@@ -73,9 +76,13 @@ def _audit_static_schema_errors(value, model, spec):
         return isinstance(item, str) and len(item) == 64 and all(c in "0123456789abcdef" for c in item)
     required = {"schema_version", "purpose", "reviewer", "reviewed_at", "review_source",
                 "binding", "gguf_counter_source", "basis", "golden_cases"}
+    is_v2 = value.get("schema_version") == "tensile-reviewed-tokenizer-equivalence/v2"
+    if is_v2:
+        required.add("compatibility_assets")
     if set(value) != required:
         errors.append("audit requires exact declared fields")
-    if value.get("schema_version") != "tensile-reviewed-tokenizer-equivalence/v1":
+    if value.get("schema_version") not in ("tensile-reviewed-tokenizer-equivalence/v1",
+                                            "tensile-reviewed-tokenizer-equivalence/v2"):
         errors.append("audit schema_version invalid")
     if value.get("purpose") != "precall-context-budget":
         errors.append("audit purpose invalid")
@@ -102,7 +109,11 @@ def _audit_static_schema_errors(value, model, spec):
         errors.append("audit GGUF counter implementation identity invalid")
     binding = value.get("binding")
     expected_binding = _expected_static_binding(model, spec)
-    if (not isinstance(binding, dict) or set(binding) != set(expected_binding) | {"special_token_behavior"}
+    binding_fields = set(expected_binding) | {"special_token_behavior"}
+    if is_v2:
+        binding_fields.add("compatibility_counter")
+        errors.extend(_compatibility_schema_errors(value, spec))
+    if (not isinstance(binding, dict) or set(binding) != binding_fields
         or any(binding.get(key) != expected for key, expected in expected_binding.items())):
         errors.append("audit exact static binding fields/source/model mismatch")
     special = binding.get("special_token_behavior") if isinstance(binding, dict) else None
@@ -145,6 +156,78 @@ def _audit_static_schema_errors(value, model, spec):
     return errors
 
 
+def _compatibility_schema_errors(value, spec):
+    """Check v2 declarations without loading an encoder or opening GGUF bytes."""
+    errors = []
+    def digest(item):
+        return isinstance(item, str) and len(item) == 64 and all(c in "0123456789abcdef" for c in item)
+    assets = value.get("compatibility_assets")
+    if not isinstance(assets, dict) or set(assets) != {"manifest", "gguf"}:
+        return ["audit compatibility assets require exact manifest/GGUF declarations"]
+    for asset in assets.values():
+        if (not isinstance(asset, dict) or set(asset) != {"path", "sha256"}
+            or not isinstance(asset.get("path"), str) or not Path(asset["path"]).is_absolute()
+            or not digest(asset.get("sha256"))):
+            errors.append("audit compatibility asset path/digest declaration invalid")
+    if errors:
+        return errors
+    if assets["manifest"]["sha256"] != spec["model_sha256"]:
+        errors.append("audit compatibility manifest/model binding mismatch")
+    binding = value.get("binding")
+    counter = binding.get("compatibility_counter") if isinstance(binding, dict) else None
+    expected = {"method": "qwen35-gguf-compatible-encoder/v1", "normalizer": None,
+        "parse_special": True, "add_special_tokens": False,
+        "runtime_regex": deployment._QWEN35_RUNTIME_REGEX,
+        "gguf_sha256": assets["gguf"]["sha256"], "manifest_sha256": assets["manifest"]["sha256"],
+        "original_tokenizer_sha256": spec["files"].get("tokenizer.json", {}).get("sha256"),
+        "provider_implementation_sha256": spec["implementation_sha256"]}
+    digest_fields = {"gguf_tokenizer_metadata_sha256", "derived_tokenizer_sha256", "unused_token_ids_sha256"}
+    count_fields = {"token_count", "merge_count", "added_token_count", "encoder_token_count"}
+    if (not isinstance(counter, dict) or set(counter) != set(expected) | digest_fields | count_fields | {"loader_control_overrides"}
+        or any(type(counter.get(key)) is not type(item) or counter.get(key) != item for key, item in expected.items())
+        or expected["original_tokenizer_sha256"] is None
+        or any(not digest(counter.get(key)) for key in digest_fields)
+        or any(type(counter.get(key)) is not int or counter[key] <= 0 for key in count_fields)):
+        errors.append("audit compatibility counter exact identity/binding invalid")
+    if isinstance(counter, dict):
+        overrides = counter.get("loader_control_overrides")
+        expected_overrides = list(range(248060, 248066)) if spec["model_sha256"] == MODEL_DIGESTS["qwen3.5:9b"] else []
+        if (not isinstance(overrides, list) or any(type(item) is not int for item in overrides)
+            or overrides != expected_overrides):
+            errors.append("audit compatibility counter loader control overrides invalid")
+    return errors
+
+
+def _compatibility_inventory(value, blockers, model):
+    """Inventory the small manifest; GGUF identity remains a declaration only."""
+    assets = value["compatibility_assets"]
+    result = {"gguf_bytes_read": False, "gguf_byte_identity_verified": False}
+    manifest_path = _ordinary(assets["manifest"]["path"])
+    gguf = _ordinary(assets["gguf"]["path"])
+    if manifest_path.samefile(gguf):
+        raise ValueError("compatibility manifest must not alias GGUF bytes")
+    manifest = _identity(manifest_path)
+    result["manifest"] = manifest
+    manifest["byte_identity_matches"] = manifest["sha256"] == assets["manifest"]["sha256"]
+    info = gguf.stat()
+    result["gguf"] = {"path": str(gguf), "size_bytes": info.st_size,
+        "declared_sha256": assets["gguf"]["sha256"], "mode": oct(stat.S_IMODE(info.st_mode)),
+        "group_or_world_writable": bool(info.st_mode & 0o022)}
+    content = json.loads(Path(manifest["path"]).read_bytes())
+    layers = content.get("layers") if isinstance(content, dict) else None
+    model_layers = ([layer for layer in layers if isinstance(layer, dict)
+                     and layer.get("mediaType") == "application/vnd.ollama.image.model"]
+                    if isinstance(layers, list) else [])
+    result["declared_model_layer_matches"] = (len(model_layers) == 1
+        and model_layers[0].get("digest") == "sha256:" + assets["gguf"]["sha256"]
+        and type(model_layers[0].get("size")) is int and model_layers[0]["size"] == info.st_size)
+    if not manifest["byte_identity_matches"] or not result["declared_model_layer_matches"]:
+        blockers.append(f"{model}: compatibility manifest bytes or declared GGUF model layer mismatch")
+    if manifest["group_or_world_writable"] or result["gguf"]["group_or_world_writable"]:
+        blockers.append(f"{model}: compatibility manifest/GGUF is group/world writable")
+    return result
+
+
 def _audit_inventory(model, spec, blockers):
     descriptor = spec["tokenizer_equivalence_audit"]
     audit = {"verified_equivalence": False, "golden_cases_executed": False,
@@ -164,19 +247,35 @@ def _audit_inventory(model, spec, blockers):
         audit["audit_static_schema_valid"] = not errors
         audit["static_schema_errors"] = errors
         blockers.extend(f"{model}: {error}" for error in errors)
+        audit["current_mapping_schema"] = value.get("schema_version") == "tensile-reviewed-tokenizer-equivalence/v2"
+        if not audit["current_mapping_schema"]:
+            blockers.append(f"{model}: current production mapping requires a newly reviewed v2 audit; v1 is historical only")
+        elif not _compatibility_schema_errors(value, spec):
+            audit["compatibility_assets"] = _compatibility_inventory(value, blockers, model)
         # These are untrusted declarations, not verification of an auditor or
         # GGUF implementation, and must never be reused as deployment evidence.
         audit["declared_review"] = {key: value.get(key) for key in
             ("schema_version", "purpose", "reviewer", "reviewed_at", "review_source", "gguf_counter_source")}
         binding = value.get("binding")
         static_binding = _expected_static_binding(model, spec)
+        binding_fields = set(static_binding) | {"special_token_behavior"}
+        if audit["current_mapping_schema"]:
+            binding_fields.add("compatibility_counter")
         audit["static_binding_matches"] = (isinstance(binding, dict)
-            and set(binding) == set(static_binding) | {"special_token_behavior"}
-            and all(key in binding and binding[key] == expected for key, expected in static_binding.items()))
+            and set(binding) == binding_fields
+            and all(key in binding and binding[key] == expected for key, expected in static_binding.items())
+            and (not audit["current_mapping_schema"] or not _compatibility_schema_errors(value, spec)))
         if not audit["static_binding_matches"]:
             blockers.append(f"{model}: audit static source/model binding missing or mismatched")
         basis = value.get("basis")
         audit["basis"] = []
+        gguf_path = None
+        if audit["current_mapping_schema"]:
+            assets = value.get("compatibility_assets")
+            declared_gguf = assets.get("gguf") if isinstance(assets, dict) else None
+            if not isinstance(declared_gguf, dict) or not isinstance(declared_gguf.get("path"), str):
+                raise ValueError("v2 GGUF path unavailable; audit basis bytes not read")
+            gguf_path = _ordinary(declared_gguf["path"])
         if not isinstance(basis, list) or not basis:
             blockers.append(f"{model}: audit basis missing")
         else:
@@ -184,7 +283,10 @@ def _audit_inventory(model, spec, blockers):
                 if (not isinstance(reference, dict) or set(reference) != {"path", "sha256", "description"}
                     or not isinstance(reference["description"], str) or not reference["description"].strip()):
                     raise ValueError("audit basis requires explicit path/digest/description")
-                entry = {"description": reference["description"], **_identity(_ordinary(reference["path"]))}
+                basis_path = _ordinary(reference["path"])
+                if gguf_path is not None and basis_path.samefile(gguf_path):
+                    raise ValueError("inventory cannot read GGUF bytes as audit basis")
+                entry = {"description": reference["description"], **_identity(basis_path)}
                 entry["byte_identity_matches"] = entry["sha256"] == reference["sha256"]
                 audit["basis"].append(entry)
                 if not entry["byte_identity_matches"] or entry["group_or_world_writable"]:
@@ -207,7 +309,7 @@ def inventory(tokenizer_sources=None, *, include_template=False):
         "approved_models": dict(MODEL_DIGESTS), "provider_source_sha256": provider_sha,
         "libraries": {}, "tokenizer_sources": None, "blockers": blockers,
         "not_checked": ["installed Ollama models or templates", "tokenizer loading or golden execution",
-            "GGUF/HF algorithm equivalence or reviewer authenticity", "process isolation",
+            "GGUF bytes or GGUF/HF algorithm equivalence or reviewer authenticity", "process isolation",
             "client display instrumentation", "model inference or evaluation/admission state"]}
     for name in ("transformers", "tokenizers"):
         try:

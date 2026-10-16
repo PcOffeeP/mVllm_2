@@ -1,0 +1,90 @@
+{
+  "qwen3.5:9b": {
+    "path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/qwen3.5-9b",
+    "upstream_source": "Qwen/Qwen3.5-9B",
+    "upstream_revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+    "model_sha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+    "files": {
+      "chat_template.jinja": {
+        "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+        "size_bytes": 7756
+      },
+      "merges.txt": {
+        "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+        "size_bytes": 3353259
+      },
+      "tokenizer.json": {
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "size_bytes": 12807982
+      },
+      "tokenizer_config.json": {
+        "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+        "size_bytes": 16710
+      },
+      "vocab.json": {
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+        "size_bytes": 6722759
+      }
+    },
+    "libraries": {
+      "transformers": {
+        "version": "5.19.0",
+        "code_sha256": "c257c42548fd35c95e4807b87d7b149aecbbf333479c5cad409bb02c0e007dd2"
+      },
+      "tokenizers": {
+        "version": "0.23.3",
+        "code_sha256": "f6da2c50615036db4838decc6c96809833720193f02ec922e7c57d91d1e6be9b"
+      }
+    },
+    "implementation_sha256": "d1a782ce3d2be18c6afb4ed2b1de857ca268b47de121f8d7bd71d7d5e32cdfd9",
+    "ollama_template_sha256": "b507b9c2f6ca642bffcd06665ea7c91f235fd32daeefdf875a0f938db05fb315",
+    "tokenizer_equivalence_audit": {
+      "path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/qwen3.5-9b-audit.json",
+      "sha256": "bcc6c41dda954e724d2cef4a4b068cdea1c03b66ab7060f51bf6cd202b3ecd68"
+    }
+  },
+  "ornith-1.5:9b": {
+    "path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/workspace/review-environment/tokenizers/ornith-1.5-9b",
+    "upstream_source": "ornith-ai/Ornith-1.5-9B",
+    "upstream_revision": "489cb97981b8654bcfcf30ce1f94ed1b62e07b53",
+    "model_sha256": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
+    "files": {
+      "chat_template.jinja": {
+        "sha256": "9dd2fbd270feaa1fbef2d4f634d7887c9c506e3bde140f8e7351c8944e8fd235",
+        "size_bytes": 7593
+      },
+      "merges.txt": {
+        "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+        "size_bytes": 3353259
+      },
+      "tokenizer.json": {
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "size_bytes": 12807982
+      },
+      "tokenizer_config.json": {
+        "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+        "size_bytes": 16710
+      },
+      "vocab.json": {
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+        "size_bytes": 6722759
+      }
+    },
+    "libraries": {
+      "transformers": {
+        "version": "5.19.0",
+        "code_sha256": "c257c42548fd35c95e4807b87d7b149aecbbf333479c5cad409bb02c0e007dd2"
+      },
+      "tokenizers": {
+        "version": "0.23.3",
+        "code_sha256": "f6da2c50615036db4838decc6c96809833720193f02ec922e7c57d91d1e6be9b"
+      }
+    },
+    "implementation_sha256": "d1a782ce3d2be18c6afb4ed2b1de857ca268b47de121f8d7bd71d7d5e32cdfd9",
+    "ollama_template_sha256": "f55f52930aa8bf44ab5cb85f99370fcc3c56e9a85640b812086d5330bce5d86b",
+    "tokenizer_equivalence_audit": {
+      "path": "/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/docs/results/evaluation-tokenizer-compatibility-materials-20261016/ornith-1.5-9b-audit.json",
+      "sha256": "53f82719e09bafcdb8745bb4849c24a6101936b45442768b1f62b4e6fde8ff11"
+    }
+  }
+}

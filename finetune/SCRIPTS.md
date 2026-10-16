@@ -21,7 +21,7 @@ Non-goals:
 | `eval_run.py` | 裸 model-dir CLI 已停用；版本化开发评测冻结/推理/导出，显式 strict-v4.1 或 semantic-v4.1 协议 |
 | `eval_semantics.py` | 纯语义提取、已封存盲评导入、GT 子集统计、同组 bootstrap 和逐折开发门；不加载模型或部署低权限评审进程 |
 | `eval_review.py` | 独立最终语义门、固定本地评审配置、Mac sandbox 探针及受控 worker/localhost Ollama broker；部署receipt核验及HF exact render/raw generate；缺真实部署/tokenizer凭据时请求前拒绝，ambiguous后禁止自动retry/切模型 |
-| `eval_review_deployment.py` | 本地资产/源码/模板/独立受审GGUF↔HF映射和golden核验，生成部署receipt；默认不联网，未来显式仅本地元数据，不生成回答 |
+| `eval_review_deployment.py` | 本地资产/源码/模板、GGUF兼容内存计数器及v2独立受审映射/golden核验，生成部署receipt；保留HF原模板和发送原文，旧绑定不追认；默认不联网，未来显式仅本地元数据，不生成回答 |
 | `eval_audit_readiness.py` | `python -m finetune.eval_audit_readiness [--tokenizer-sources /绝对路径/sources.json] [--template] [--output /路径/新报告.json]`：完全离线盘点批准模型摘要、当前provider源码、已安装tokenizer依赖及显式资产/审计basis字节；不导入/实例化tokenizer、不请求Ollama、不读取评测store/truth、不生成凭据。JSON恒为inventory-only且`ready_for_real_review=false`，草稿模板不可用于生产证明；指定输出仅新建0600文件，缺口不代表评审失败或通过 |
 | `eval_audit_tokenizer_parity.py` | 显式spec的离线词表核验；冻结安装包x86库/实际loaded images、helper、HF/GGUF与公开合成输入，不启动完整server/推理，不改原文、不授native或等价/部署资格 |
 | `eval_performance.py` | 冻结开发性能输入、全请求事件/资源重放、MLflow和manifest；配合versioning/performance_receipts双签名接收/核验；缺真实client/runtimecollector/cleanfinish或synthetic时不能passed |
@@ -36,4 +36,4 @@ Non-goals:
 
 语义开发配置、来源登记、judge 交接及报告见 [versioning 语义开发协议](../versioning/SCRIPTS.md#语义开发协议)。base/diagnostic 来源由 Registry 核验，不能伪造 train 或借服务 alias 使用。独立评分、受控性能证据及按用途准入已接线；真实评审模型隔离、GPU性能和可信显示端仍未验收；本机合成验证不证明真实模型质量、训练机运行或 E2E 通过。
 
-独立本地tokenizer准备环境使用根 `requirements-review.in` / `requirements-review.lock`，位于忽略的 `workspace/review-environment/python311/`，不替换开发或GPU环境。固定HF来源、独立Jinja、官方wheel及HF/GGUF公开合成文本比对见[映射材料记录](../docs/results/evaluation-tokenizer-materials-20261015.md)；实际存在NFC/NFD token差异，材料不能当已审等价映射或部署通过。
+独立本地tokenizer准备环境使用根 `requirements-review.in` / `requirements-review.lock`，位于忽略的 `workspace/review-environment/python311/`，不替换开发或GPU环境。固定HF来源、独立Jinja、官方wheel及HF/GGUF公开合成文本比对见[映射材料记录](../docs/results/evaluation-tokenizer-materials-20261015.md)；原HF直接计数存在NFC/NFD差异；当前适配层兼容修复和新版受审材料见[修复记录](../docs/results/evaluation-review-compatibility-repair-20261016.md)。历史材料不追认为新实现证明，公开词表回归不等同真实部署通过。

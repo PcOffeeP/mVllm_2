@@ -57,6 +57,42 @@ def sources(tmp_path, monkeypatch):
     return path, value
 
 
+@pytest.fixture
+def v2_sources(sources, tmp_path, monkeypatch):
+    path, value = sources
+    for index, (model, spec) in enumerate(value.items()):
+        gguf = tmp_path / f"model-{index}.gguf"
+        gguf.write_bytes(f"synthetic {index}; never read by inventory".encode())
+        manifest = tmp_path / f"manifest-{index}.json"
+        manifest.write_text(json.dumps({"layers": [{"mediaType": "application/vnd.ollama.image.model",
+            "digest": "sha256:" + sha(gguf), "size": gguf.stat().st_size}]}))
+        digest = sha(manifest)
+        monkeypatch.setitem(readiness.MODEL_DIGESTS, model, digest)
+        spec["model_sha256"] = digest
+        audit_path = Path(spec["tokenizer_equivalence_audit"]["path"])
+        audit = json.loads(audit_path.read_text())
+        audit["schema_version"] = "tensile-reviewed-tokenizer-equivalence/v2"
+        audit["binding"]["model_sha256"] = audit["gguf_counter_source"]["model_sha256"] = digest
+        audit["compatibility_assets"] = {"manifest": {"path": str(manifest), "sha256": digest},
+            "gguf": {"path": str(gguf), "sha256": sha(gguf)}}
+        audit["binding"]["compatibility_counter"] = {
+            "method": "qwen35-gguf-compatible-encoder/v1", "normalizer": None,
+            "parse_special": True, "add_special_tokens": False,
+            "runtime_regex": readiness.deployment._QWEN35_RUNTIME_REGEX,
+            "gguf_sha256": sha(gguf), "manifest_sha256": digest,
+            "gguf_tokenizer_metadata_sha256": "1" * 64, "derived_tokenizer_sha256": "2" * 64,
+            "original_tokenizer_sha256": spec["files"]["tokenizer.json"]["sha256"],
+            "provider_implementation_sha256": spec["implementation_sha256"],
+            "unused_token_ids_sha256": "3" * 64, "token_count": 248320,
+            "merge_count": 1, "added_token_count": 276 if model == "qwen3.5:9b" else 33,
+            "encoder_token_count": 248320 if model == "qwen3.5:9b" else 248077,
+            "loader_control_overrides": list(range(248060, 248066)) if model == "qwen3.5:9b" else []}
+        audit_path.write_text(json.dumps(audit))
+        spec["tokenizer_equivalence_audit"]["sha256"] = sha(audit_path)
+    path.write_text(json.dumps(value))
+    return path, value
+
+
 def test_default_inventory_never_imports_models_networks_or_reads_data():
     script = """
 import builtins, socket
@@ -89,7 +125,7 @@ assert all(not item['available'] for item in result['libraries'].values())
     assert completed.returncode == 0, completed.stderr
 
 
-def test_matching_bytes_remain_inventory_not_equivalence_or_deployment(sources, monkeypatch):
+def test_historical_v1_declarations_are_inventory_only_and_block_current_mapping(sources, monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("tokenizer/deployment verification forbidden")
     monkeypatch.setattr(readiness.deployment, "_load_local_tokenizer", forbidden)
@@ -101,8 +137,126 @@ def test_matching_bytes_remain_inventory_not_equivalence_or_deployment(sources, 
         assert item["byte_inventory_matches"]
         assert item["audit"]["byte_identity_matches"] and item["audit"]["static_binding_matches"]
         assert item["audit"]["audit_static_schema_valid"]
+        assert not item["audit"]["current_mapping_schema"]
         assert not item["audit"]["verified_equivalence"] and not item["audit"]["golden_cases_executed"]
+    assert len(result["blockers"]) == 1 + len(sources[1])
+    assert sum("v1 is historical only" in blocker for blocker in result["blockers"]) == len(sources[1])
+
+
+def test_v2_inventory_never_loads_tokenizer_or_reads_gguf(v2_sources, monkeypatch):
+    path, value = v2_sources
+    def forbidden(*args, **kwargs):
+        raise AssertionError("tokenizer/GGUF execution forbidden")
+    for name in ("_load_local_tokenizer", "build_compatible_tokenizer", "_read_gguf_tokenizer_metadata",
+                 "_validate_compatibility_assets", "verify_tokenizer_equivalence_audit", "local_metadata_transport"):
+        monkeypatch.setattr(readiness.deployment, name, forbidden)
+    original_open = Path.open
+    def guarded_open(item, *args, **kwargs):
+        assert item.suffix != ".gguf", "GGUF body was opened"
+        return original_open(item, *args, **kwargs)
+    monkeypatch.setattr(Path, "open", guarded_open)
+    result = readiness.inventory(path)
+    assert not result["ready_for_real_review"] and not result["deployment_proof"]
     assert len(result["blockers"]) == 1
+    for entry in result["tokenizer_sources"]["models"].values():
+        audit = entry["audit"]
+        assert audit["audit_static_schema_valid"] and audit["static_binding_matches"]
+        assert audit["current_mapping_schema"]
+        assert not audit["verified_equivalence"] and not audit["golden_cases_executed"]
+        assets = audit["compatibility_assets"]
+        assert assets["manifest"]["byte_identity_matches"] and assets["declared_model_layer_matches"]
+        assert not assets["gguf_bytes_read"] and not assets["gguf_byte_identity_verified"]
+
+
+@pytest.mark.parametrize("change", ["missing_assets", "extra_asset", "relative_path", "bad_digest",
+    "manifest_binding", "missing_counter", "extra_counter", "counter_method", "counter_digest",
+    "counter_original", "counter_provider", "counter_normalizer", "counter_bool", "counter_regex",
+    "counter_count", "counter_overrides"])
+def test_malformed_v2_declarations_are_rejected_offline(v2_sources, change):
+    path, value = v2_sources
+    model, spec = next(iter(value.items()))
+    audit_path = Path(spec["tokenizer_equivalence_audit"]["path"])
+    audit = json.loads(audit_path.read_text())
+    counter = audit["binding"]["compatibility_counter"]
+    if change == "missing_assets":
+        del audit["compatibility_assets"]
+    elif change == "extra_asset":
+        audit["compatibility_assets"]["extra"] = {}
+    elif change == "relative_path":
+        audit["compatibility_assets"]["gguf"]["path"] = "relative.gguf"
+    elif change == "bad_digest":
+        audit["compatibility_assets"]["gguf"]["sha256"] = "bad"
+    elif change == "manifest_binding":
+        audit["compatibility_assets"]["manifest"]["sha256"] = "f" * 64
+    elif change == "missing_counter":
+        del audit["binding"]["compatibility_counter"]
+    else:
+        key, bad = {"extra_counter": ("extra", True), "counter_method": ("method", "hf-only"),
+            "counter_digest": ("derived_tokenizer_sha256", "bad"),
+            "counter_original": ("original_tokenizer_sha256", "f" * 64),
+            "counter_provider": ("provider_implementation_sha256", "f" * 64),
+            "counter_normalizer": ("normalizer", "NFC"), "counter_bool": ("parse_special", 1),
+            "counter_regex": ("runtime_regex", "other"), "counter_count": ("token_count", True),
+            "counter_overrides": ("loader_control_overrides", [True])}[change]
+        counter[key] = bad
+    audit_path.write_text(json.dumps(audit))
+    spec["tokenizer_equivalence_audit"]["sha256"] = sha(audit_path)
+    path.write_text(json.dumps(value))
+    result = readiness.inventory(path)
+    report = result["tokenizer_sources"]["models"][model]["audit"]
+    assert not report["audit_static_schema_valid"] and report["static_schema_errors"]
+    assert not report["static_binding_matches"] and not result["ready_for_real_review"]
+
+
+@pytest.mark.parametrize("change", ["manifest_drift", "gguf_size", "symlink", "permissions"])
+def test_v2_compatibility_asset_inventory_reports_drift_without_reading_gguf(v2_sources, change):
+    path, value = v2_sources
+    model, spec = next(iter(value.items()))
+    audit = json.loads(Path(spec["tokenizer_equivalence_audit"]["path"]).read_text())
+    manifest = Path(audit["compatibility_assets"]["manifest"]["path"])
+    gguf = Path(audit["compatibility_assets"]["gguf"]["path"])
+    if change == "manifest_drift":
+        manifest.write_text('{"layers": []}')
+    elif change == "gguf_size":
+        gguf.write_bytes(b"different size")
+    elif change == "symlink":
+        gguf.unlink()
+        gguf.symlink_to(manifest)
+    else:
+        gguf.chmod(0o666)
+    result = readiness.inventory(path)
+    assert len(result["blockers"]) > 1 and not result["ready_for_real_review"]
+
+
+@pytest.mark.parametrize("alias", ["manifest", "basis", "malformed_basis", "unknown_gguf"])
+def test_v2_gguf_cannot_be_read_through_manifest_or_basis_alias(v2_sources, monkeypatch, alias):
+    path, value = v2_sources
+    model, spec = next(iter(value.items()))
+    audit_path = Path(spec["tokenizer_equivalence_audit"]["path"])
+    audit = json.loads(audit_path.read_text())
+    gguf = Path(audit["compatibility_assets"]["gguf"]["path"])
+    if alias == "manifest":
+        manifest = Path(audit["compatibility_assets"]["manifest"]["path"])
+        manifest.unlink()
+        manifest.hardlink_to(gguf)
+    else:
+        basis = Path(audit["basis"][0]["path"])
+        basis.unlink()
+        basis.hardlink_to(gguf)
+        if alias == "malformed_basis":
+            audit["binding"]["compatibility_counter"]["method"] = "invalid"
+        elif alias == "unknown_gguf":
+            audit["compatibility_assets"]["gguf"]["path"] = None
+        audit_path.write_text(json.dumps(audit))
+        spec["tokenizer_equivalence_audit"]["sha256"] = sha(audit_path)
+        path.write_text(json.dumps(value))
+    original = Path.open
+    def guarded(item, *args, **kwargs):
+        assert not item.samefile(gguf), "GGUF bytes opened through alias"
+        return original(item, *args, **kwargs)
+    monkeypatch.setattr(Path, "open", guarded)
+    result = readiness.inventory(path)
+    assert len(result["blockers"]) > 1 and not result["ready_for_real_review"]
 
 
 @pytest.mark.parametrize("field,bad", [
@@ -233,6 +387,10 @@ def test_drafts_have_no_invented_audit_or_golden_and_fail_production_validation(
     template = readiness.draft_templates()
     assert template["draft_only"]
     for audit in template["equivalence_audits"].values():
+        assert audit["schema_version"] == "tensile-reviewed-tokenizer-equivalence/v2"
+        assert audit["binding"]["compatibility_counter"] is None
+        assert audit["compatibility_assets"] == {"manifest": {"path": None, "sha256": None},
+            "gguf": {"path": None, "sha256": None}}
         assert audit["reviewed_at"] is None and audit["reviewer"]["id"] is None
         assert audit["basis"] == [] and audit["golden_cases"] == []
     with pytest.raises(ValueError):

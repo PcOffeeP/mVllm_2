@@ -1,5 +1,7 @@
 # Ollama安装包分词核验与NFC/NFD差异
 
+后续状态（2026-10-16）：用户要求按原方案修复兼容，原A/B选择已撤回；本文保留当时观测，现行执行见[兼容修复记录](evaluation-review-compatibility-repair-20261016.md)和TODO。
+
 ## 授权与观察范围
 
 2026-10-15用户授权继续按TODO核定本机Ollama分词、查清NFC/NFD差异、提出不改原文方案；重大取舍须先确认，真实模型评测和真实test继续禁止。起始Mac `52d6afbd`、工作区干净、分支 `feat/evaluation-development`。本轮仅已安装工件只读身份检查及公开合成字符串的词表专用编码；不启动完整Ollama runner/server、不加载推理tensor、不创建context或decode、不生成模型回答、不读真实test/项目预测，不创建eval/claim/部署receipt、不改生产计数provider/冻结规则或既有环境，不push/merge。

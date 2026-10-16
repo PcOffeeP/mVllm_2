@@ -105,6 +105,218 @@ def _load_local_tokenizer(spec):
     return tokenizer
 
 
+# These rules implement only the two frozen qwen35/GPT-2 vocabularies.  They
+# deliberately do not infer behavior for other GGUF pretokenizer families.
+_QWEN35_HF_REGEX = r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+"
+_QWEN35_RUNTIME_REGEX = r"(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+"
+
+
+def _file_sha256(path):
+    """Bound large GGUF bytes without loading tensor data into memory."""
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _read_gguf_tokenizer_metadata(path):
+    """Read bounded GGUF v3 metadata only; never seek into/load tensor data."""
+    import struct
+    limit = 64 * 1024 * 1024
+    with Path(path).open('rb') as stream:
+        def read(size):
+            if type(size) is not int or size < 0 or stream.tell() + size > limit:
+                raise ValueError('GGUF tokenizer metadata exceeds bounded header limit')
+            raw = stream.read(size)
+            if len(raw) != size:
+                raise ValueError('truncated GGUF tokenizer header')
+            return raw
+        def number(fmt):
+            return struct.unpack('<' + fmt, read(struct.calcsize(fmt)))[0]
+        def string():
+            try:
+                return read(number('Q')).decode('utf-8')
+            except UnicodeDecodeError as exc:
+                raise ValueError('GGUF metadata is not valid UTF-8') from exc
+        def value(kind, depth=0):
+            if kind == 8:
+                return string()
+            if kind == 9:
+                subtype, size = number('I'), number('Q')
+                if depth or subtype == 9 or size > 1000000:
+                    raise ValueError('unsupported GGUF tokenizer metadata array')
+                return [value(subtype, depth + 1) for _ in range(size)]
+            formats = {0: 'B', 1: 'b', 2: 'H', 3: 'h', 4: 'I', 5: 'i',
+                       6: 'f', 7: '?', 10: 'Q', 11: 'q', 12: 'd'}
+            if kind not in formats:
+                raise ValueError('unsupported GGUF metadata type')
+            return number(formats[kind])
+        if read(4) != b'GGUF' or number('I') != 3:
+            raise ValueError('compatible counter requires GGUF v3')
+        number('Q')  # Tensor count; no tensor descriptors or data are read.
+        count = number('Q')
+        if count > 10000:
+            raise ValueError('GGUF metadata key count exceeds limit')
+        result, seen = {}, set()
+        for _ in range(count):
+            key = string()
+            if key in seen:
+                raise ValueError('duplicate GGUF metadata key')
+            seen.add(key)
+            item = value(number('I'))
+            if key.startswith('tokenizer.'):
+                result[key] = item
+        return result
+
+
+def _compatibility_assets(spec):
+    descriptor = spec['tokenizer_equivalence_audit']
+    path = _ordinary_audit(descriptor['path'])
+    if _sha(path) != descriptor['sha256']:
+        raise ValueError('reviewed tokenizer equivalence audit byte drift')
+    audit = json.loads(path.read_bytes())
+    if audit.get('schema_version') != 'tensile-reviewed-tokenizer-equivalence/v2':
+        raise ValueError('compatible counter requires a newly reviewed v2 mapping')
+    assets = audit.get('compatibility_assets')
+    return _validate_compatibility_assets(spec, assets)
+
+
+def _validate_compatibility_assets(spec, assets):
+    if not isinstance(assets, dict) or set(assets) != {'manifest', 'gguf'}:
+        raise ValueError('compatible counter requires frozen manifest and GGUF assets')
+    for name, identity in assets.items():
+        if (not isinstance(identity, dict) or set(identity) != {'path', 'sha256'}
+            or not isinstance(identity['sha256'], str) or len(identity['sha256']) != 64
+            or any(c not in '0123456789abcdef' for c in identity['sha256'])
+            or _file_sha256(_ordinary_audit(identity['path'])) != identity['sha256']):
+            raise ValueError('compatible counter manifest/GGUF byte identity drift')
+    if assets['manifest']['sha256'] != spec['model_sha256']:
+        raise ValueError('compatible counter manifest must be the frozen approved model')
+    manifest = json.loads(Path(assets['manifest']['path']).read_bytes())
+    layers = [layer for layer in manifest.get('layers', [])
+              if layer.get('mediaType') == 'application/vnd.ollama.image.model']
+    if len(layers) != 1 or layers[0].get('digest') != 'sha256:' + assets['gguf']['sha256']:
+        raise ValueError('compatible counter GGUF is not the approved manifest model layer')
+    if layers[0].get('size') != Path(assets['gguf']['path']).stat().st_size:
+        raise ValueError('compatible counter GGUF model layer size drift')
+    return assets
+
+
+class CompatibleLocalTokenizer:
+    """Keep frozen HF rendering; encode its exact output using GGUF rules."""
+    def __init__(self, renderer, encoder, identity):
+        self.renderer, self.encoder = renderer, encoder
+        self.compatibility_counter_identity = identity
+        self.add_bos_token = renderer.add_bos_token
+        self.add_eos_token = renderer.add_eos_token
+        self.special_tokens_map = renderer.special_tokens_map
+
+    def apply_chat_template(self, *args, **kwargs):
+        return self.renderer.apply_chat_template(*args, **kwargs)
+
+    def encode(self, text, *, add_special_tokens=False):
+        if add_special_tokens is not False:
+            raise ValueError('compatible counter never adds BOS/EOS')
+        return self.encoder.encode(text, add_special_tokens=False).ids
+
+
+def build_compatible_tokenizer(spec, renderer, *, assets=None):
+    """Derive a local encoder after checking every token, merge and special ID.
+
+    The original HF files/renderer and text are never modified.  This is not a
+    claim of native Ollama calibration: the separately reviewed mapping and
+    golden cases remain mandatory in verify_local_deployment.
+    """
+    from tokenizers import Tokenizer
+    assets = (_compatibility_assets(spec) if assets is None
+              else _validate_compatibility_assets(spec, assets))
+    gguf = _read_gguf_tokenizer_metadata(assets['gguf']['path'])
+    original = json.loads((Path(spec['path']) / 'tokenizer.json').read_bytes())
+    model = original.get('model', {})
+    options = {key: item for key, item in model.items() if key not in ('vocab', 'merges')}
+    expected_options = {'type': 'BPE', 'dropout': None, 'unk_token': None,
+        'continuing_subword_prefix': '', 'end_of_word_suffix': '', 'fuse_unk': False,
+        'byte_fallback': False, 'ignore_merges': False}
+    bytelevel = {'type': 'ByteLevel', 'add_prefix_space': False, 'trim_offsets': False, 'use_regex': False}
+    expected_pre = {'type': 'Sequence', 'pretokenizers': [
+        {'type': 'Split', 'pattern': {'Regex': _QWEN35_HF_REGEX}, 'behavior': 'Isolated', 'invert': False}, bytelevel]}
+    if (options != expected_options or original.get('normalizer') != {'type': 'NFC'}
+        or original.get('pre_tokenizer') != expected_pre or original.get('post_processor') != bytelevel
+        or original.get('decoder') != bytelevel or original.get('truncation') is not None
+        or original.get('padding') is not None):
+        raise ValueError('unsupported frozen HF qwen35 tokenizer rules')
+    shared_keys = {'tokenizer.chat_template', 'tokenizer.ggml.eos_token_id',
+        'tokenizer.ggml.merges', 'tokenizer.ggml.model', 'tokenizer.ggml.padding_token_id',
+        'tokenizer.ggml.pre', 'tokenizer.ggml.token_type', 'tokenizer.ggml.tokens'}
+    is_qwen = spec['model_sha256'] == MODEL_DIGESTS['qwen3.5:9b']
+    is_ornith = spec['model_sha256'] == MODEL_DIGESTS['ornith-1.5:9b']
+    variant_keys = ({'tokenizer.ggml.add_eos_token', 'tokenizer.ggml.add_padding_token',
+                     'tokenizer.ggml.scores'} if is_qwen else {'tokenizer.ggml.add_bos_token'})
+    if (not (is_qwen or is_ornith) or set(gguf) != shared_keys | variant_keys
+        or gguf['tokenizer.ggml.model'] != 'gpt2' or gguf['tokenizer.ggml.pre'] != 'qwen35'
+        or any(gguf.get(key, False) is not False for key in (
+            'tokenizer.ggml.add_bos_token', 'tokenizer.ggml.add_eos_token', 'tokenizer.ggml.add_padding_token'))
+        or gguf['tokenizer.ggml.eos_token_id'] != 248046
+        or gguf['tokenizer.ggml.padding_token_id'] != 248044
+        or renderer.add_bos_token is not False or renderer.add_eos_token is not False):
+        raise ValueError('unsupported GGUF qwen35 special/pretokenizer settings')
+    tokens, types = gguf['tokenizer.ggml.tokens'], gguf['tokenizer.ggml.token_type']
+    vocabulary, added = model.get('vocab'), original.get('added_tokens')
+    expected_types = ([1] * 248044 + [3] * 14 + [4] * 262 if is_qwen else
+        [1] * 248044 + [3] * 14 + [4] * 2 + [3] * 6 + [4] * 4 + [3] * 7 + [5] * 243)
+    if (not isinstance(vocabulary, dict) or len(vocabulary) != 248044
+        or set(vocabulary.values()) != set(range(248044))
+        or not isinstance(added, list) or len(added) != 26
+        or len(tokens) != 248320 or len(set(tokens)) != len(tokens)
+        or types != expected_types
+        or (is_qwen and gguf['tokenizer.ggml.scores'] != list(range(248070)) + [-1.0] * 250)
+        or any(tokens[index] != token for token, index in vocabulary.items())
+        or gguf['tokenizer.ggml.merges'] != model.get('merges')):
+        raise ValueError('GGUF/HF complete vocabulary, token types or ordered merges differ')
+    for offset, token in enumerate(added):
+        index = 248044 + offset
+        expected = {'id': index, 'content': tokens[index], 'single_word': False,
+                    'lstrip': False, 'rstrip': False, 'normalized': False, 'special': offset < 14}
+        if token != expected:
+            raise ValueError('HF/GGUF added-token rules or complete ID mapping differ')
+    expected_tail = ([f'[PAD{i}]' for i in range(250)] if is_qwen else
+        ['<|audio_start|>', '<|audio_end|>', '<tts_pad>', '<tts_text_bos>', '<tts_text_eod>',
+         '<tts_text_bos_single>', '<|audio_pad|>'] + [f'[PAD{i}]' for i in range(248077, 248320)])
+    if tokens[248070:] != expected_tail:
+        raise ValueError('unsupported GGUF additional control/user-defined/unused token tail')
+    derived = json.loads(json.dumps(original))
+    derived['normalizer'] = None
+    derived['pre_tokenizer']['pretokenizers'][0]['pattern']['Regex'] = _QWEN35_RUNTIME_REGEX
+    # GGUF CONTROL/USER_DEFINED are atomically recognized with parse_special;
+    # UNUSED entries must never become literal added-token matches.
+    # llama's loader additionally marks six Qwen FIM/repository entries as
+    # CONTROL. With parse_special=True they retain the same atomic IDs, but
+    # preserve that effective classification in the encoder/audit identity.
+    control_overrides = list(range(248060, 248066)) if is_qwen else []
+    derived['added_tokens'] = [{'id': index, 'content': tokens[index],
+        'single_word': False, 'lstrip': False, 'rstrip': False, 'normalized': False,
+        'special': types[index] == 3 or index in control_overrides} for index in range(248044, len(tokens)) if types[index] in (3, 4)]
+    encoder = Tokenizer.from_str(json.dumps(derived, ensure_ascii=False))
+    expected_vocabulary = {token: index for index, token in enumerate(tokens) if types[index] != 5}
+    if encoder.get_vocab(with_added_tokens=True) != expected_vocabulary:
+        raise ValueError('constructed compatible counter vocabulary drift')
+    identity = {'method': 'qwen35-gguf-compatible-encoder/v1',
+        'normalizer': None, 'parse_special': True, 'add_special_tokens': False,
+        'runtime_regex': _QWEN35_RUNTIME_REGEX, 'gguf_sha256': assets['gguf']['sha256'],
+        'manifest_sha256': assets['manifest']['sha256'],
+        'gguf_tokenizer_metadata_sha256': content_digest(gguf),
+        'derived_tokenizer_sha256': content_digest(derived),
+        'original_tokenizer_sha256': _sha(Path(spec['path']) / 'tokenizer.json'),
+        'token_count': len(tokens), 'merge_count': len(model['merges']),
+        'added_token_count': len(derived['added_tokens']),
+        'encoder_token_count': len(expected_vocabulary),
+        'loader_control_overrides': control_overrides,
+        'unused_token_ids_sha256': content_digest([index for index, kind in enumerate(types) if kind == 5]),
+        'provider_implementation_sha256': _sha(__file__)}
+    return CompatibleLocalTokenizer(renderer, encoder, identity)
+
+
 def local_metadata_transport(route, payload=None):
     """Fixed loopback metadata only. This function never sends raw or calls chat."""
     import urllib.request
@@ -165,6 +377,8 @@ def verify_local_deployment(*, sources, binding, allow_local_metadata=False,
         if not isinstance(template, str) or hashlib.sha256(template.encode()).hexdigest() != spec['ollama_template_sha256']:
             raise ValueError('approved local judge chat template drift')
         tokenizers[model] = factory(spec)
+        if tokenizer_factory is None:
+            tokenizers[model] = build_compatible_tokenizer(spec, tokenizers[model])
         equivalence = verify_tokenizer_equivalence_audit(model, spec, tokenizers[model])
         identities[model] = {'model_sha256': MODEL_DIGESTS[model], 'template_sha256': spec['ollama_template_sha256'],
             'tokenizer_sources_sha256': content_digest(spec), 'files': assets,
@@ -203,10 +417,14 @@ def verify_tokenizer_equivalence_audit(model, spec, tokenizer):
     if _sha(path) != descriptor['sha256']:
         raise ValueError('reviewed tokenizer equivalence audit byte drift')
     value = json.loads(path.read_bytes())
+    compatibility = getattr(tokenizer, 'compatibility_counter_identity', None)
     required = {'schema_version', 'purpose', 'reviewer', 'reviewed_at', 'review_source',
         'binding', 'gguf_counter_source', 'basis', 'golden_cases'}
+    if compatibility is not None:
+        required.add('compatibility_assets')
     if (not isinstance(value, dict) or set(value) != required
-        or value['schema_version'] != 'tensile-reviewed-tokenizer-equivalence/v1'
+        or value['schema_version'] != ('tensile-reviewed-tokenizer-equivalence/v2' if compatibility is not None
+                                            else 'tensile-reviewed-tokenizer-equivalence/v1')
         or value['purpose'] != 'precall-context-budget'
         or not isinstance(value['reviewer'], dict) or set(value['reviewer']) != {'id', 'role'}
         or not isinstance(value['reviewer']['id'], str) or not value['reviewer']['id'].strip()
@@ -228,6 +446,8 @@ def verify_tokenizer_equivalence_audit(model, spec, tokenizer):
         'provider_implementation_sha256': spec['implementation_sha256'],
         'format': 'hf-rendered-raw-generate-v1', 'enable_thinking': False,
         'add_special_tokens': False, 'special_token_behavior': actual_special}
+    if compatibility is not None:
+        binding['compatibility_counter'] = compatibility
     if value['binding'] != binding:
         raise ValueError('reviewed GGUF/HF tokenizer mapping binding or special-token behavior drift')
     source = value['gguf_counter_source']
