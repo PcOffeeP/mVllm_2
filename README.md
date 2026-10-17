@@ -40,7 +40,7 @@
 
 ### 初步成果
 
-数据处理、审查交接、版本管理及训练/评测/服务入口已有工程实现与验收记录。历史 Fold0 中间模型曾完成权重合并、真实视频服务和 Agent 调用；其 425 条开发侧 validation 的严格输出合法率为 **100%**，四字段联合正确率为 **41.18%**。该组数字属旧 strict v4.1 协议、实验身份为 Fold0 中间模型（发布身份 `v4.1-agent-pipeline-fold0-r1`，来源实验 `v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`，seed3407、fold0）、口径为开发侧 validation，与后续 concise 三折记录（实验 `v4.1-prompt-concise-cv-v1-seed3411`，1,581 条，合法率 79.63%、联合正确率 32.07%）不是同一次评测，两者不可混读。这是单折开发结果，尚未证明最终独立 test 通过或生产可用。
+数据处理、审查交接、版本管理及训练/评测/服务入口已有工程实现与验收记录。历史 Fold0 中间模型曾完成权重合并、真实视频服务和 Agent 调用；其 425 条开发侧 validation 的严格输出合法率为 **99.53%（423/425）**，四字段联合正确率为 **41.18%**；合法率取自 [stage-b 中间模型验收摘要](docs/results/v4_1_stage_b_intermediate/acceptance_summary.json) 的 `artifact_gate.strict_valid_rate: 0.995294` 与 `artifact_gate.evaluation_sample_count: 425`。该组数字属旧 strict v4.1 协议、实验身份为 Fold0 中间模型（发布身份 `v4.1-agent-pipeline-fold0-r1`，来源实验 `v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`，seed3407、fold0）、口径为开发侧 validation，与后续 concise 三折记录（实验 `v4.1-prompt-concise-cv-v1-seed3411`，1,581 条，合法率 79.63%、联合正确率 32.07%）不是同一次评测，两者不可混读。这是单折开发结果，尚未证明最终独立 test 通过或生产可用。
 
 当前重点仍是提升任务效果并完成真实模型验收。代码不附带原始视频、基座、adapter 或完整实验目录，也没有可据现有证据提供的一键最终模型演示。历史效果、资产缺口和当前工程边界统一见[项目现状](docs/project-status.md)。
 
