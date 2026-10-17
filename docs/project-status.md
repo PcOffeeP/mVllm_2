@@ -19,7 +19,7 @@
 | 本机 | macOS 开发、审查 UI 及结果复核；用 uv 调用已部署的 Mac Python 3.11.x |
 | 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660` |
 | 训练机代码目录 | `/home/liuyang/文档/mVllm_2` |
-| 正式store（授权目标） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/workspace/store`；2026-10-17 已授权由 `/data/mVllm_2` 迁入，原目录拟改名 `/data/.store-old-20261017` 保留 7 天。迁移结果待核，核验完成前 `/data/mVllm_2` 仍是现役 store，不得按已迁移使用；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION` |
+| 正式store（授权目标） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已授权由 `/data/mVllm_2` 迁入，原目录拟改名 `/data/.store-old-20261017` 保留 7 天。迁移结果待核，核验完成前 `/data/mVllm_2` 仍是现役 store，不得按已迁移使用；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（迁移后随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION` |
 | 备份总目录 | `/data/mVllm_2-backups/`；迁移核验通过后 `/data` 只放备份。单次备份的 `--backup-root` 取该目录下的 `baseline-YYYYMMDD` 或 `round<N>-YYYYMMDD` 子目录，不得使用总目录本身；`20261017/` 是历史旧物落点、不再写入（据用户口径，本机未核） |
 | 基座位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；2026-10-16四片SHA已对应官方固定HF revision；配置/tokenizer已核，但构造代码有1处偏差、加载可用性未验 |
 
