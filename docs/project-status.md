@@ -59,11 +59,11 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 
 | 对象 | 样本口径 | 历史结果 | 结论 |
 | --- | --- | --- | --- |
-| Fold0中间发布 `v4.1-agent-pipeline-fold0-r1` | Phase2 Fold0 validation，425条 | strict valid 100%；joint 41.18%；clip_state 56.00% | 输出结构与旧服务/Agent链路已有基础，任务质量与production资格未通过 |
+| Fold0中间发布 `v4.1-agent-pipeline-fold0-r1` | Phase2 Fold0 validation，425条 | strict valid 99.53%（423/425）；joint 41.18%；clip_state 56.00% | 输出结构与旧服务/Agent链路已有基础，任务质量与production资格未通过 |
 | concise三折 | Phase2 validation，1581条 | valid 79.63%；joint 32.07%；clip_state 35.80% | 322条非法输出，临界未断裂及已断裂召回均0%，类别坍缩和契约退化未解决 |
 | visual三折的merged BF16路线 | 基础发布开发侧，1216条 | valid 97.12%；joint 40.21%；clip_state 49.67% | 已有预测曾按严格解析器复算一致，不表示对应权重今天可加载 |
 
-来源为[旧发布身份](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](results/v4_1_agent_pipeline_fold0_r1/README.md)、[concise报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[visual报告](results/v4_1_0_760050fad303_20260724_visual/README.md)及[开发证据预检](results/model-diagnostics-preflight-20260913.json)。
+来源为[旧发布身份](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](results/v4_1_agent_pipeline_fold0_r1/README.md)、[concise报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[visual报告](results/v4_1_0_760050fad303_20260724_visual/README.md)及[开发证据预检](results/model-diagnostics-preflight-20260913.json)。Fold0中间发布的严格合法率与样本量取自[Stage B中间验收摘要](results/v4_1_stage_b_intermediate/acceptance_summary.json)，其中`artifact_gate.strict_valid_rate: 0.995294`、`artifact_gate.evaluation_sample_count: 425`。
 
 2026-10-13现场核查：旧current仍指向Fold0发布，其adapter和merged索引10个分片在场；基座索引4个分片在场。限定run目录中concise缺权重、visual未找到，不代表全盘丢失。指定store的records/models、training、evaluations及默认MLflow路径未创建；用户说明尚未开展新体系正式业务流程，这符合阶段预期，不作为迁移失败。首次正式运行时仍需明确Registry配置根。旧current与旧Registry身份不授予新alias或passed。细节和限制见[现场报告](results/remote-state-refresh-20261013.md)；模型质量、旧预测及历史恢复调查仍以原证据日期为准。
 
