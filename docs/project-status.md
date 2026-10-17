@@ -19,8 +19,8 @@
 | 本机 | macOS 开发、审查 UI 及结果复核；用 uv 调用已部署的 Mac Python 3.11.x |
 | 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660` |
 | 训练机代码目录 | `/home/liuyang/文档/mVllm_2` |
-| 正式store（授权目标） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已授权由 `/data/mVllm_2` 迁入，原目录拟改名 `/data/.store-old-20261017` 保留 7 天。迁移结果待核，核验完成前 `/data/mVllm_2` 仍是现役 store，不得按已迁移使用；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（迁移后随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION` |
-| 备份总目录 | `/data/mVllm_2-backups/`；迁移核验通过后 `/data` 只放备份。单次备份的 `--backup-root` 取该目录下的 `baseline-YYYYMMDD` 或 `round<N>-YYYYMMDD` 子目录，不得使用总目录本身；`20261017/` 是历史旧物落点、不再写入（据用户口径，本机未核） |
+| 正式store（已归位） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已将活 store 由 `/data/mVllm_2` 归位至此，逐文件 sha256 核验 48/48 一致；旧目录改名 `/data/.store-old-20261017` 保留 7 天回滚窗口（核验记录见仓库外 `~/pi-workspace/mVllm_2-audit/cleanup-execution-20261017.md` 第六轮 48/48，本机未复跑且 checkout 无 `store/` 现场）；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION` |
+| 备份总目录 | `/data/mVllm_2-backups/`；2026-10-17 归位后 `/data` 只放备份。单次备份的 `--backup-root` 取该目录下的 `baseline-YYYYMMDD` 或 `round<N>-YYYYMMDD` 子目录，不得使用总目录本身；`20261017/` 是历史旧物落点、不再写入（据用户口径，本机未核） |
 | 基座位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；2026-10-16四片SHA已对应官方固定HF revision；配置/tokenizer已核，但构造代码有1处偏差、加载可用性未验 |
 
 通过已有OpenSSH配置、密钥或SSH agent连接：`ssh liuyang@100.70.83.68`。在该机器项目根目录直接使用已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 执行数据及模型说明中的命令；连接前明确命令、输入/输出和资源。凭据不入Git，删除/覆盖远端文件、切换环境、停止已有任务或push/merge仍按项目授权处理。同日用户追加授权新环境部署，已单独验收；后续同步和模型运行仍需对应授权。
