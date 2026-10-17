@@ -207,7 +207,7 @@ fold2: {adapter: artifacts/fold2/adapter}
 
 ### 旧 strict 冻结协议
 
-**以下七门保留旧 strict 协议的冻结含义。** 新标准及格式分离规则以[测评方案](model-evaluation.md)及上节显式新协议为准。旧身份、旧报告与已消费 test 的限制保留，新协议不得重新利用已暴露 test；旧 passed 不获得新语义或性能资格。
+**以下七门保留旧 strict 协议的冻结含义。** 新标准及格式分离规则以[测评方案](model-evaluation.md)及上节显式新协议为准。旧身份、旧报告与已消费 test 的限制保留，新协议不得重新利用已暴露 test；旧 passed 不获得新语义或性能资格。唯一例外为[测评方案 §10](model-evaluation.md#10-最终测试的非盲参考性口径) 明文裁决的 21 个既定 test source 非盲重建；该例外不改变其余已暴露 test 的禁用规则，也不授予任何独立资格。
 
 匿名多 Agent 判读只适用于上节新协议；下述 strict 路线不执行新判读。两条路线均在 run 不读真值、score 才读真值并消费授权，禁止混用旧门与新规则。
 

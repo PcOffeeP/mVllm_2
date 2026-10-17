@@ -8,11 +8,13 @@
 
 评测分别形成三类结论：
 
-- 视觉语义能力：四字段表达是否正确，是否达到开发或最终质量门。
-- 输出形式与评测整理依赖：原始严格 JSON/schema 合法率、规则恢复率、Agent 判读及人工复核比例、一致性和恢复成本。
+- 视觉语义能力：四字段表达是否正确，是否达到开发或最终质量门。主门是四字段语义联合正确率＋分字段召回，见[§5](#5-开发与最终质量门)；能力观测项另见[§9](#9-视觉证据提及率evidence-mention-rate能力观测项)。
+- 输出形式与评测整理依赖：原始严格 JSON/schema 合法率、规则恢复率、Agent 判读及人工复核比例、一致性和恢复成本。这些都是报告项，不构成晋级门。
 - 交互性能与服务稳定性：用户端自动完整结果的时限、失败率及资源表现。
 
 严格格式失败不直接判定视觉能力失败；评测 Agent 恢复或人工复核的语义正确也不能当作被测模型自动服务成功。训练 loss 收敛、相对 base 改善、开发通过、最终视觉质量通过及生产批准分别记录，不相互替代。
+
+在新语义评测体系（`semantic-v4.1` / `semantic-holdout-v4.1`）下，严格输出合法率（`strict_valid_rate`）作为**报告项**呈现：仅用于说明输出形式与评测整理成本，**不作为晋级主门**，也不参与 pass/fail 判定。已冻结的旧 `strict-v4.1` 七门（其中 `strict_valid_rate: 1.0`）继续按原协议适用于历史记录与既有 strict 绑定，不追溯修改、不被新体系重新解释，也不与新语义指标混用或相互替代。两套口径各自成立：旧记录按旧七门读取，新语义结果按本文档第 5 节的主门与报告项分工读取。本次调整只改变新语义体系中各指标的定位（报告项 / 主门），不修改任何已冻结阈值数值，也不改写历史记录。合法率的报告项定位只针对视觉语义质量门，不改变[§2](#2-所有样本计分与语义整理)与[§8](#8-交互性能与稳定性)关于「自动完成」的定义：只有严格解析或冻结规则解析成功才计自动完成。
 
 ## 2. 所有样本计分与语义整理
 
@@ -36,7 +38,7 @@
 | `qwen3.5:9b` | `6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7` | 历史只读盘点，非加载验证；执行前复核 |
 | `ornith-1.5:9b` | `e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e` | 历史只读盘点，非加载验证；执行前复核 |
 
-报告总样本数、互斥分支数量/比例、逐字段可读率、逐 Agent 原始结果及字段来源、一致率、分歧率、仲裁率、人工复核比例与改判，以及恢复成本和延迟；统计具体算法在执行前冻结，尚无已确认硬门。原始严格 JSON/schema 合法率始终独立报告，不能用语义整理后合法率替换。Agent 判读是评测整理，不属于被测模型自动交互成功，恢复耗时不拼入五分钟模型服务成绩；只有严格解析或冻结规则解析成功才计自动完成。未来若把 Agent 纳入部署，需另行设计和授权。
+报告总样本数、互斥分支数量/比例、逐字段可读率、逐 Agent 原始结果及字段来源、一致率、分歧率、仲裁率、人工复核比例与改判，以及恢复成本和延迟；统计具体算法在执行前冻结，尚无已确认硬门。原始严格 JSON/schema 合法率始终独立报告，不能用语义整理后合法率替换；它是报告项而非晋级门（定位见[§1](#1-目标与结论边界)）。Agent 判读是评测整理，不属于被测模型自动交互成功，恢复耗时不拼入五分钟模型服务成绩；只有严格解析或冻结规则解析成功才计自动完成。未来若把 Agent 纳入部署，需另行设计和授权。
 
 ## 3. 评分口径
 
@@ -73,6 +75,8 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 
 以下数值是已确认的新协议目标；开发列已通过显式 semantic-v4.1 接入，旧严格协议保持原义，最终独立验收列仍待后续实现。所有适用门同时满足才能通过；缺类或证据不足不能据其他门达标而通过。
 
+表中全部六行门槛都是新语义体系的主门，缺一不可，按表中行序为：四状态 macro recall、每个状态 recall、joint correct rate、机制 macro F1、位置 macro F1、未夹紧/视频异常逐类 P/R（该行在开发列是完整报告要求，在最终 test 列是逐类数值门）。主门构成即四字段语义联合正确率（`joint correct rate`）＋分字段召回（当前协议中体现为 `clip_state` 四状态 recall，对应表中「每个状态 recall」行及其「四状态 macro recall」汇总门）＋机制/位置 macro F1＋`special_case` 逐类 precision/recall（表中「未夹紧、视频异常逐类 P/R」行）。数值沿用已确认口径，本次只明确其定位，不改动任何数字。报告要求：`clip_state` 四状态 recall 必须逐状态给出各自 recall 与支持数，机制、位置按各自 macro F1 报告，`special_case` 按逐类 P/R 报告；宏平均只能作为附加汇总，不得替代逐状态或逐类结果。分字段召回不止覆盖 `clip_state`：机制与位置按其各自适用子集的 P/R/F1 报告（见[§3](#3-评分口径)），`special_case` 按逐类 P/R 报告（见上表末行），`clip_state` 则以四状态 recall 逐状态报告；本条不新增任何门槛数值。严格合法率、规则恢复率、Agent 判读与人工复核比例、CI 及相对 base 提升仍独立报告，不属于主门。视觉证据提及率是能力观测项，与主门并列呈现但不参与晋级，定义见[§9](#9-视觉证据提及率evidence-mention-rate能力观测项)。表中「最终独立 test 门」的「独立」指独立于开发流程的验收环节，不表示盲性或无偏，口径见[§10](#10-最终测试的非盲参考性口径)。
+
 | 指标 | 开发门 | 最终独立 test 门 |
 | --- | --- | --- |
 | 四状态 macro recall | ≥ 0.65，且每折都达到 | ≥ 0.70 |
@@ -82,7 +86,7 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 | 位置 macro F1 | 三折 pooled ≥ 0.60 | ≥ 0.70 |
 | 未夹紧、视频异常逐类 P/R | 完整报告，无开发硬门 | 每一类 precision 和 recall 均 ≥ 0.60 |
 
-单折诊断用于定位问题，不能代替完整三折。三折 pooled 由完整逐样本记录合并计算，不能简单平均三个 F1；状态门另检查每折，防止 pooled 掩盖某折坍缩。严格合法率、分支比例、评测整理依赖、CI 与相对 baseline 提升独立报告，不擅自增加新硬门。
+单折诊断用于定位问题，不能代替完整三折。三折 pooled 由完整逐样本记录合并计算，不能简单平均三个 F1；状态门另检查每折，防止 pooled 掩盖某折坍缩。严格合法率、分支比例、评测整理依赖、CI 与相对 baseline 提升独立报告，是报告项而不是门，不擅自增加新硬门。
 
 “先单折诊断”的完成折登记已实现并通过合成验证，真实执行证据尚待取得：复用已 FINISHED 折的 execution receipt，形成实际字节的不可变快照；绑定 parent train/run、真实 fold 号、checkpoint step、input/config/data/Prompt/code、base、tokenizer/processor 和权重摘要。诊断 model 登记只核验该完成折及共享 input 有效，父 train 保持 partial；三折真实全完成后才记 completed。其他折失败不抹去该折已成功的历史证据；共享输入漂移或来源 invalid 阻止后续使用，但不删除历史。
 
@@ -92,16 +96,16 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 
 | 顺序 | 输入及前置 | 目标动作与输出 |
 | --- | --- | --- |
-| 资格与规则冻结 | 开发 data、契约、候选来源、依赖/预算；独立来源和近重复检查 | 冻结评分规则、盲评手册、对照条件及开发阈值；`input/evaluation.yaml` 的规则、配置与实现摘要 |
+| 资格与规则冻结 | 开发 data、契约、候选来源、依赖/预算；独立来源和近重复检查（test 侧来源资格按[§10](#10-最终测试的非盲参考性口径)非盲口径核定） | 冻结评分规则、盲评手册、对照条件及开发阈值；`input/evaluation.yaml` 的规则、配置与实现摘要 |
 | baseline 与单折诊断 | 有正式身份的 base、开发多数类 baseline；对应 diagnostic_fold 模型（评测 scope 为 single_fold）与完整 validation | 同媒体对照，保留 raw、失败与完整诊断；不抽掉困难样本 |
 | 完整三折 | 已冻结开发方案及三折模型/完整 validation | 每折状态门与 pooled 门同时检查，形成开发结论 |
-| test 构建就绪 | 未使用 test 资格、独立来源、完整人工数据审查和封存 | 发布无标签推理输入、受限真值及构建证据；完成可预先确定的预注册准备 |
+| test 构建就绪 | 既定 21 个 test source 的重建资格按[§10](#10-最终测试的非盲参考性口径)逐 source 现场核定（含 `video_0005` 在内均待逐 source 核定）；source 隔离、全量人工审查与封存仍须验证 | 发布无标签推理输入、受限真值及构建证据；完成可预先确定的预注册准备 |
 | 独立 full 训练 | 开发三折达到门槛、test 构建/冻结及预注册准备就绪、适用训练授权 | 开发全集去重，每候选一次独立训练；不以 test 选 checkpoint 或日程 |
 | 一次性绑定 | full 候选 model/eval 身份已确定，获 test 使用授权 | 首次模型调用前，claim 精确绑定 model/eval/data/split/executor/规则；不要求先 test 通过才训 full |
 | 一次推理与 raw 冻结 | 无标签媒体输入、已核验权重与冻结调用规则 | 一次媒体推理、保留失败；冻结原始响应与运行证据 |
 | 盲评语义整理 | 匿名 raw、冻结规则与手册、获授权评审 | restricted 匿名包/映射/exposure、review_attempts 与 judge 证据；不看 GT/video/model |
 | 受限 score 与报告 | 已冻结 raw/语义记录、受限真值、同一授权绑定 | 按新协议受限评分，保留授权消费、实际指标、公开许可范围内报告及导出证据 |
-| 发布与服务 | 精确绑定的质量、形式/评测整理依赖、性能证据及相应批准 | 保留 candidate / production 区别；视觉过门不自动证明服务或生产合格 |
+| 发布与服务 | 精确绑定的质量、形式/评测整理依赖的**报告证据齐备**、性能证据及相应批准 | 保留 candidate / production 区别；视觉过门不自动证明服务或生产合格 |
 
 表中是目标流程；工程入口和实际产物见下一节及[模型工作流](model-workflow.md#5-full-模型的独立-test-验收)，真实运行状态以 TODO 为准。test 数据准备可与开发工作并行，性能准备也不依赖一次 test 结果。最终 claim 在候选出现后建立；test 资格及数据构建就绪在 FINAL-TRAIN 前完成。
 
@@ -118,7 +122,7 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 | 数据与 Prompt | `versioning data` 发布开发 data；`prompt create` 从定义生成 `records/prompts/<prompt>.yaml`；契约来自 `pipeline/contracts/tensile_vlm_v4_1.json` | 新协议来源分组/支持数/近重复证据须核验，不能从窗口数推定 |
 | 训练 | `train prepare/validate/run/export`；冻结 data、Prompt、基座、配置/环境；`workspace/runs/<train>/input/` → adapter、执行证据及 `records/training/<train>/manifest.yaml` | 三折/full 编排已存在，真实运行与开发门证据未由本文产生 |
 | 模型登记 | `model register` 支持原 completed trained、独立 base 来源及 FINISHED 折的 diagnostic_fold 字节快照；同一完整 model 身份与数值 Registry 版本 | A/B 接线已实现且合成验证；真实基座来源及字节需现场核定，禁止空 train、partial 冒充完成或虚补折，base/diagnostic 不授生产资格 |
-| 开发评测 | `eval prepare/validate/run/export`；`finetune/eval_run.py` 冻结输入于 `workspace/evaluations/<eval>/input/evaluation.yaml`；逐折 `records.jsonl/failures.jsonl/summary.json` → MLflow 父 Run → `records/evaluations/<eval>/manifest.yaml` | 显式 `semantic-v4.1` 已实现规则/封存判读导入、macro F1、逐折状态门、统计及配对报告；原 strict 六指标保留原义。真实低权限判读运行与训练机质量仍未验证 |
+| 开发评测 | `eval prepare/validate/run/export`；`finetune/eval_run.py` 冻结输入于 `workspace/evaluations/<eval>/input/evaluation.yaml`；逐折 `records.jsonl/failures.jsonl/summary.json` → MLflow 父 Run → `records/evaluations/<eval>/manifest.yaml` | 显式 `semantic-v4.1` 已实现规则/封存判读导入、macro F1、逐折状态门、统计及配对报告；原 strict 开发路径的六个通用指标保留原义。真实低权限判读运行与训练机质量仍未验证 |
 | test 数据 | `versioning/holdout_pipeline.py` 的 source/roi/subvideo/review_export/review_import/release/release_validate；`data/releases/<data>/` 的媒体、`evaluation_inputs/manifest.json`、`sealed_ground_truth/`、`build_receipt.json` | 数据标签审查不是预测盲评；真实资格与构建状态见 HOLDOUT-BUILD |
 | test 授权与评分 | `data claim` → `eval prepare/validate/run/score/export`；`finetune/eval_holdout.py`、`versioning/holdout.py`；实际评分在 `workspace/evaluations/<eval>/restricted/`，公开二值 gate | strict 原七门不变；新 semantic-holdout 独立门、匿名发包/封存、exposed/consumed、安全公开分界及恢复已接线。工程 receipt 标 synthetic，真实本地模型隔离与使用资格未验收 |
 | 晋级与服务 | `versioning/registry.py` 校验 train/model 数值版本/正式 eval；`model finalize/alias/current` → `pipeline.server_proxy` → adapter；`pipeline/scripts/serve_smoke.py` 核查响应绑定 | 用途/协议和同模型配置绑定已接线，受控 performance session/事件导入可用；真实显示端未验真时 fail-closed。旧 passed 不代表新协议通过；新准入停止旧 strict 新写入，既有批准/alias仅同绑定幂等恢复。smoke 的 300 秒 timeout 不是性能门 |
@@ -145,3 +149,54 @@ base 绑定真实固定来源/上游 revision，以及权重、配置、tokenize
 性能工程通路已接线：eval 的 `performance_prepare/validate/run/export` 和 `ControlledPerformanceSession` API 负责 performance 用途，精确绑定 Registry 数值 model、冻结来源/权重、Prompt/generation、开发媒体 allowlist、设备、预算、TTL 和授权会话。可测尚未质量或性能 passed 的 base、诊断完成折或 full；复用 adapter 实际推理代码，通过临时 loopback 受控端点和受控通道连接 client，不使用 candidate/production alias、裸路径或 test。测后仅退出本次自己的进程，不影响已有服务。
 
 performance passed 不等于 quality passed；export、finalize、manifest 与准入均验用途及同模型配置。来源核验 → 可诊断/可测 → 视觉通过/性能通过 → 正式服务批准分层成立，旧服务门不放宽，也不形成“先 passed 才能测、先测才能 passed”的循环。开发基础、独立评分及性能工程接线已实现；性能事件导入不隐式运行模型，显示端双签名 receipt 接收/核验及服务端ledger签名工程已接入；外部可信客户端与真实测点未部署验收。本轮全synthetic，不能产生真实性能 passed；缺可信receipt、实际runtimecollector资格或cleanfinish同样拒绝。剩余现场工作是现场核验当前基座/安装摘要、交付参数一致性、分组映射、权限隔离与运行适配，不能写成已通过或重新标为方案待定。
+
+## 9. 视觉证据提及率（evidence mention rate，能力观测项）
+
+`evidence_mention_rate` 是能力观测项：它不是正确率、不是主门，也不参与 pass/fail 判定。它只回答一个问题——模型对该样本的自由文本输出是否以肯定式表述指出了该样本真实存在的视觉线索。
+
+输入为两项，缺一不可：
+
+1. 模型对该样本的**原始自由文本输出**。该输出永久保留、一字不改，不得修剪、重排、补全，也不得用规则恢复后的 JSON 或语义整理结果替代。
+2. 该样本真实存在的视觉线索清单，来源为人工审查记录或 GT 中可判定的视觉事实。示例类别：是否可见颈缩、断裂位置、标距内/标距外、夹持异常、连续到分离的过程。清单须在评测前冻结并逐样本可追溯，不得在看到输出后追加线索。
+
+提及率判读是**独立判读任务**：使用独立的受限包、独立的判读者身份与规则版本记录，不得与四字段盲评共用同一评审包、同一进程或同一判读者上下文。判读者可查看已冻结的线索清单（本指标定义所需），但不得看四字段标签（含 GT 标签）、不得看四字段盲评的答案或其他判读结果，也不看视频与被测模型身份，只判断「该输出是否以肯定式表述指出真实存在的线索类型」。
+
+提及极性：仅「肯定式表述该线索确实存在」计为提及；否定式（如「未见颈缩」「没有夹持异常」）、中性枚举、无断言地整份照抄或枚举线索清单（等同中性枚举）、泛泛而谈（未指向该样本）一律不计提及。最小对照：线索清单为「可见颈缩」时，输出「未见颈缩」→ 未提及；输出「可见颈缩（断言存在）」→ 提及。
+
+判读规则、线索类型词表、判定边界与极性规则须在判读前冻结并记录规则版本；规则冻结后不得因本轮结果放宽。判读者身份须包含其模型版本/权重摘要（或被记录为人类判读者：记录评审者标识、独立性声明——与被执行模型及候选无利益关系；对人类不适用的提示词摘要、上下文长度与解码参数记 N/A 并一并冻结）、提示词摘要、上下文长度与解码参数；上述信息与规则版本摘要、逐样本线索清单摘要一并在判读前冻结并绑定该 eval 身份，任一项与冻结值不一致即拒绝对该批提及率判读（fail-closed，不静默降级）。本指标只共享[§2](#2-所有样本计分与语义整理)的「不替模型补全」原则，不共享其输入面与判读者。本指标只适用于新语义体系运行产生的 raw，不追溯适用于历史 strict 记录的原始响应。
+
+指标定义：`evidence_mention_rate` = 提到至少一项真实线索的样本数 / 分母样本数，分子只计上文的肯定式提及。分母样本数是评测清单中线索清单非空的全部样本；运行失败、空输出、不可读输出均计入分母样本数、不计入分子，并单列其数量，与全文按全部样本计分的原则一致，不剔除困难样本。运行失败、空输出按「无输出」定档；不可读输出有 raw 但无法判读，单列为「不可判读」并同样计入分母、不计入分子；三类都不得据此重跑或补生成输出。否定式或中性提及不计入分子，其数量必须单列，并在报告中给出否定式模板输出的检出与占比（作为独立性证据，不作为通过依据）。线索清单为空的样本不进入分母样本数，另行单列数量；此类样本须逐样本说明原因（如该样本确实无可判定视觉线索），空清单占比超过执行前冻结的比例上限时本指标记「证据不足」，不得据其余样本宣称提及率。
+
+分类型统计：对每个线索类型，分母为该类型线索真实存在的样本数，分子为输出以肯定式提到该类型线索的样本数；报告「提及样本数 / 该类型分母样本数」、比例、该类型支持数、该类型下的否定式或中性提及数量、失败/空输出数量及不可判读数量。至少覆盖颈缩、断裂位置、夹持异常、分离过程四类，类型可细分时逐细分报告。各类型比例只在各自类型分母内可比，不跨类型直接比较。
+
+提及不等于判断正确：提到「有颈缩」不代表 `clip_state` 判对，提到「标距内断裂」也不代表 `fracture_site` 判对。因此本指标必须与四字段语义正确率、joint correct rate 并列呈现，不得单独引用为质量提升证据，不得替代主门或作为晋级依据。真实判读尚未运行，本轮无证据。
+
+配对报告：开发集按[§4](#4-数据独立性与固定对照)的同媒体、同 Prompt、同解码配对原则，并列报告 base 与 fine-tuned 的 `evidence_mention_rate`（仍不参与晋级）；否则该指标无法支撑「微调带来识别能力」的结论。最终 test 不额外增加 base 调用，沿用 §4 既有约定。
+
+防自欺约束：
+
+1. 禁止用本指标回溯调整 Prompt、阈值或 checkpoint 选择；与 test 结果不得回流同一约束，见[§10](#10-最终测试的非盲参考性口径)。
+2. 原始输出不得修改或重新生成以抬升提及率。
+3. 若出现「提及率高但四字段全错」的样本，必须作为典型案例保留并公开列出；受限原文沿用既有公开许可范围，不得剔除、不得改写。
+4. 若发现输出以模板化否定覆盖全部线索类型，须在报告单列该模板的检出率与占比，不得因该指标的数值而免于说明。
+
+## 10. 最终测试的非盲参考性口径
+
+最终测试使用既定的 21 个 test source 重建 test release，不复用旧 sealed-test 身份。该口径由用户 2026-10-17 裁决；与此前「新建未使用 holdout」的表述并列时，须标明该既往策略已由同一裁决取代，历史记录不追溯改写。按本节重建会生成新的 release 身份与新的全量人工审查记录，并显式标注非盲；这不属于[§4](#4-数据独立性与固定对照)所说「把历史 test 改名为新 test」，也不主张独立资格。
+
+因这批 source 在历史上已被评测暴露，最终测试结论为**非盲、参考性**口径：不得表述为无偏独立估计，也不得作为「数据未被使用」的证明。报告须显式标注该口径。
+
+三条边界不得放宽：
+
+1. 这 21 个 source 绝不进入任何训练分支（含 full 最终训练）；train 侧入口与 manifest 均不得消费这批 source。
+2. test 结果不得回流：不据此调 Prompt、不调阈值、不挑 checkpoint。
+3. 报告显式标注非盲口径；本条与[§4](#4-数据独立性与固定对照)、[§6](#6-从开发到最终验收)一起读，非盲不等于放弃 source 隔离、人工审查与封存。
+
+已知缺口：21 个 source 中 20 个存在该批媒体凭据（[验证记录](results/version-control-migration/verification.md#历史使用资格边界)：332 份媒体 receipt 映射 20 个 source，唯一没有该批 receipt 者为 `video_0005`），`video_0005` 无该批候选凭据（[sealed-test 性能报告](reports/2026-07-30-current-release-model-sealed-test-performance-report.md#2-测试集形成过程)：该报告记载其因视频异常无候选，具体原因仍待现场核定）；重建资格须逐 source 现场核定，不得据「21 个」直接推定 21 个都可物化。
+
+真实构建尚未执行：本轮的资格核验、全量人工审查与真实媒体验证均无证据，不得据本口径宣称最终测试已就绪。
+
+## 11. Decision Log
+
+- D001 — 严格输出合法率降为报告项，主门改为四字段语义联合正确率＋分字段召回。Why：用户 2026-10-17 裁决；格式失败不应直接判视觉能力失败；旧 strict 七门保持原义、不追溯改写。详见[§1](#1-目标与结论边界)。
+- D002 — 新增视觉证据提及率为能力观测项。Why：用户要求确认模型识别到拉伸试验的视觉信息；提及不等于正确，故只作观测、与正确率并列、不参与晋级。详见[§9](#9-视觉证据提及率evidence-mention-rate能力观测项)。
