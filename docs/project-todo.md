@@ -27,16 +27,29 @@
 | 性能接线 D | EVAL-PERFORMANCE | 进行中（Codex）：主仓工程已完成；外仓跨库测点、签名链与密钥托管未做，需跨库授权 | 会话/loader/双签名接收已接线；候选客户端缺原ID/nonce/单调显示测点/签名链，跨库实施及真实运行另授权 |
 | 完整绑定 E | EVAL-INTEGRATION | 进行中（Codex）：工程已完成，待真实联合验收 | 77项准入/恢复/服务/开发合成通过；旧passed不继承新资格，真实服务另验 |
 | 模型准备 | MODEL-DIAG | 进行中（Codex）：输入核验已推进，诊断未执行 | 基座静态身份及开发data/Prompt/分母已核；试件分组材料已备；旧训练Prompt和开发/交付差异待补，诊断未运行 |
-| 独立验收前置 | HOLDOUT-BUILD | 阻塞：未使用 test 数据资格及构建 | 既定 21 source 已定位；缺使用资格、非语义来源清单及真实审查/构建条件 |
+| 独立验收前置 | HOLDOUT-BUILD | 阻塞：21 source 重建 test release 的构建条件 | 既定 21 source 已定位，使用资格已按用户 2026-10-17 裁决视为已定；缺构建授权、非语义来源清单及真实审查/媒体验证条件 |
 | 本轮已完成 | ENV-ACTIVATION | 已解决：正式Conda环境与checkout绑定 | mvllm2 Python3.11.17、241锁项一致、doctor/pip check通过；真实业务未运行 |
-| 备份验收 | RECOVERY-VALIDATION | 阻塞（Codex）：容量/已知位置已核，真实恢复未执行；待准确独立备份 root 与恢复目标 | 缺准确独立备份root/目标及完整模型、SQLite、外部依赖snapshot |
+| 备份验收 | RECOVERY-VALIDATION | 阻塞（Codex）：容量/已知位置已核，真实恢复未执行；待恢复目标路径与恢复操作授权（备份根已由用户 2026-10-17 裁决给定为 `/data`） | 缺恢复目标及完整模型、SQLite、外部依赖snapshot |
 | 后续训练 | FINAL-TRAIN | 阻塞：full 最终候选 | 按新门槛三折通过、test 构建冻结与预注册准备就绪及适用训练授权 |
 | 总体验收 | MODEL-QUALITY | 阻塞：最终质量及晋级 | FINAL-TRAIN、HOLDOUT-BUILD、新语义验收和性能/绑定证据；真实服务及批准另核 |
 | 非阻塞清理 | MODEL-ARCHIVE | 阻塞（主 Agent）：归档与条件清理准备；待完整迁移核验与独立备份达成 | 证明完整迁移、冗余、引用退出及诊断保护；候选未删除 |
 | 目标裁决 | RELEASE-POINTER | 待确认：旧指针目标适用性 | 新入口已显式选版本；不恢复旧写入、不阻塞新数据选择 |
 | 本轮已解决 | CONTRACT-NAMING | 已解决：候选契约与下游发布复用边界已澄清 | 两module仅docstring、AST行为相同；索引/数据指南一致，不重命名或改身份 |
+| 口径裁决 | TEST-SOURCE-REUSE | 待处理：21 个既定 test source 重建 test release 的口径已裁决，真实构建未执行 | 三条边界（不入任何训练分支／非盲参考性口径／结果不回流）约束构建与报告；构建仍待授权、人工审查与真实媒体验证 |
+| 归档纪律 | ARTIFACT-RETENTION | 进行中：备份节奏、过期文件管理与清理红线已定，待按节奏执行 | 首次适用待全量训练+评测归档；清理红线三项不得进入任何清理候选 |
 
 MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练最终候选；绑定 model/eval 的一次性 claim 在最终身份确定并获测试使用授权后、首次模型调用前建立。不能倒置为先测试通过才允许训练该候选。
+
+## 2026-10-17 用户裁决：执行口径与全局纪律
+
+本节集中登记用户在 2026-10-17 作出的一批裁决，逐条来源均标注「用户 2026-10-17 裁决」。测试集口径与产物归档纪律的完整边界分别见固定标识 `TEST-SOURCE-REUSE`、`ARTIFACT-RETENTION`；本节只记跨任务通用部分，不改变任何既有验收阈值或门限数值。
+
+- **测试集口径（用户 2026-10-17 裁决）**：虽然存在“已用于测试的数据不得再用于后续训练”的设计规范，但项目数据总量有限，明确使用既定 21 个 test source 重新构建一份 test release 用于最终测试；三条边界（绝不进入任何训练分支、最终测试结论为非盲参考性口径、test 结果不得回流）以 `TEST-SOURCE-REUSE` 为准。HOLDOUT-BUILD 原解除条件中的「核清既定 test source 独立使用资格」按本裁决视为已定。
+- **当前模型定位（用户 2026-10-17 裁决）**：`v4.1-agent-pipeline-fold0-r1` 冻结为参考基线 r0，禁止参与任何准入、晋级或 production alias，仅作后续训练的配对比较锚点。
+- **数据处理粒度（用户 2026-10-17 裁决）**：复用已冻结的 `data-v4.1-r2`（1,678 候选 / 85 来源），不重做 ROI 人工审查；所称「全流程重跑」指训练 → 三折 → 评测 → 性能。
+- **产物保存与身份四元（用户 2026-10-17 裁决）**：数据/媒体/审查包走现有 DVC（data 身份）；Prompt 正文与身份、训练评测配置 YAML、四字段契约、三折划分进 Git（按 prompt/train/eval 身份钉住）；adapter/merged 与实验指标走 Registry + MLflow。每次 train/eval 记录必须同时引用 data 身份 + prompt 身份 + 代码 commit + 配置哈希，使「哪份数据、哪个 Prompt、哪套配置、哪版代码」可反查。
+- **阶段硬门（用户 2026-10-17 裁决）**：每个阶段进入下一阶段前，上一阶段产物必须先落盘并记录身份；未落盘不得进入下一阶段。
+- **备份根与节奏（用户 2026-10-17 裁决）**：`/data`（`/dev/sda1`，3.4 T 空闲，独立于主仓 `/dev/nvme0n1p2`）为第一级备份根，1 T 移动硬盘为第二级；节奏为每完成一次全量训练+评测归档一次，不做持续同步；`/data/mVllm_2` 是正式 store，备份须另开目录（如 `/data/mVllm_2-backups/`），不得混入 store 内部。细节见 `ARTIFACT-RETENTION`。
 
 ## 待处理、待确认与阻塞事项
 
@@ -98,7 +111,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 ### RECOVERY-VALIDATION — 真实大型产物与外部依赖组合恢复
 
-- **状态/来源**：阻塞（Codex，2026-10-16；只读准备已推进，真实恢复未执行；解除条件：用户提供准确的独立备份 root、恢复目标路径与恢复操作授权）；迁移 Spec 保留的物理恢复限制，工程交付后继续单独验收。
+- **状态/来源**：阻塞（Codex，2026-10-16；只读准备已推进，真实恢复未执行；解除条件：恢复目标路径与恢复操作授权（第一级备份根已由用户 2026-10-17 裁决给定为 `/data`，见固定标识 `ARTIFACT-RETENTION`））；迁移 Spec 保留的物理恢复限制，工程交付后继续单独验收。
 - **事实与差距**：store 级异根恢复、SQLite/artifact 小对象联合恢复已通过；真实移动硬盘、大型 adapter/merged、SQLite、外部媒体与基座的整机组合恢复未完整验收，新 store 不自包含。
 - **本轮核定（2026-10-16）**：训练机/data可用约3.65TB、/home约383GB，容量不证明备份独立或可恢复；本机/Volumes仅观察到系统盘入口，未获得准确外置盘/完整snapshot根。指定store尚无实际模型/训练/评测及默认MLflow，真实大型组合恢复缺可执行完整来源与目标，保留源、不创建空对象。见[推进记录](results/todo-preparation-progress-20261016.md)。
 - **依赖/下一动作**：只读刷新已完成；继续核定备份、源/目标、设备容量及受保护引用，准备明确恢复任务单及适用操作授权；不删除唯一源。
@@ -118,21 +131,45 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **证据/版本/验证限制**：[模型清单](results/model-inventory.md#8-2026-08-31-清理可行性核查)、[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)、[模型归档证据包索引](results/model_evidence/README.md)、[试点证据包`v4.1-prompt-minimal-v1-seed3411`](results/model_evidence/v4.1-prompt-minimal-v1-seed3411/README.md)。本地核查基线 `7b8192bd`，远端 `main@f1b7d8a3` 干净，本地独有 3 提交、远端独有 0；2026-08-31 调查的 SSH 仅执行 Git 状态、文件 stat/目录/链接与轻量 JSON 读取，不启动 GPU 任务、训练、合并或评测，不读取受限测试语义结果。仅快照及文档落本机，未同步/删除远程文件。独立 reviewer 的原稿 findings 已核对：保护条件缺失 P1、模型清单过期/证据不足/效果结论过度 P2；修订后独立 reviewer 复审通过，无剩余可执行文档问题；10 个清单链接、指标/契约对照与 `git diff --check` 通过。修正归档要求仍不代表已满足删除条件。
 - **后续证据**：2026-09-13 条件清理授权涵盖旧数据及旧 run/model 的已核实冗余副本；89 个 train 视频大小/SHA 一致，但占用预检权限不足，删除 0、释放 0。新 store 的外部媒体与当前发布库仍受保护；见[验证记录](results/version-control-migration/verification.md)第56–58节。下一轮刷新后核定候选，不能将历史验签当作今日可删除证明。
 
+### ARTIFACT-RETENTION — 产物归档、过期清理与备份节奏纪律
+
+- **状态/来源**：进行中（Pi，2026-10-17；纪律已生效，首次按节奏执行待全量训练+评测归档）；用户 2026-10-17 裁决，用户明确要求主动管理过期文件、不要积累。父任务 MODEL-ARCHIVE / RECOVERY-VALIDATION；本条只补纪律与红线，不改变这两个父任务的阻塞状态与既有条件删除授权范围。
+- **备份根与节奏（用户 2026-10-17 裁决）**：`/data`（`/dev/sda1`，3.4 T 空闲，独立于主仓 `/dev/nvme0n1p2`）为第一级备份根；1 T 移动硬盘为第二级，按「每完成一次全量训练+评测归档一次」的节奏，不做持续同步。`/data/mVllm_2` 是正式 store，备份必须另开目录（如 `/data/mVllm_2-backups/`），不得混入 store 内部。
+- **家目录去重（用户 2026-10-17 裁决）**：训练机家目录下本项目只保留一个项目目录，作为后续开发的唯一目录；重复项目副本、旧 checkout、未发布模型 merged 与历史 checkpoint 走「迁移 → 核验 → 清理」顺序，删除前须过 `/data` 7 天隔离区。已发布/部署 merged 与 registry 不进入本去重清理范围，见下方清理红线。
+- **过期文件管理纪律（用户 2026-10-17 裁决，用户明确要求主动管理）**：(a) 一次训练一次归档，不留中间态；(b) 每个产物目录必须有 manifest（是什么、哪次训练、保留期限），无 manifest 默认视为临时；(c) 主 Agent 在每次训练完成或用户开启新任务时主动输出「过期候选 + 体积 + 建议动作」清单，用户确认后执行。
+- **待办（用户 2026-10-17 裁决，用户要求记住）**：把 `/data` 下归档数据定期拷贝到用户的 1 T 移动硬盘，在每次训练完成后执行。
+- **清理红线（用户 2026-10-17 裁决，任何清理提案都不得包含）**：① 原始视频源 `workspace/data/source/videos`（被 `data-v4.1-r2` manifest 引用）；② 基座权重（约 17 G / 23 文件）；③ 部署模型本体 merged 与 registry。以上三项属活数据，既不进入过期候选清单，也不因「已备份」而从保护范围移出。
+- **与 RECOVERY-VALIDATION 的关系**：本节给出第一级备份根，但真实整机组合恢复仍未执行，恢复目标路径与恢复操作授权仍缺，该父任务保持阻塞。
+- **验收标准**：每次全量训练+评测后有对应归档与 manifest；过期候选清单按体积与建议动作逐项给出且经用户确认后才执行；清理红线三项在每次候选清单中明确排除；备份目录位于 `/data/mVllm_2` 之外。
+- **证据/限制**：备份根与容量取自 [训练就绪现场记录](results/training-readiness-20260913.json) 的 `df` 记录（`/dev/sda1 3.6T 已用 46M 可用 3.4T /data`、`/dev/nvme0n1p2 937G /home`）与 [连接态准备审计](results/remote-preparation-audit-connected-20261016.json) 的 `df`/`lsblk` 记录（`/dev/sda1 ext4 /data`）；`df -h` 记 3.4 TiB（十进制约 3.74 TB），2026-10-16 推进记录另记约 3.65 TB，属两次不同读数，本台账不把二者当作同一精确值；本条未执行任何归档、拷贝、迁移或删除，未 SSH。
+
 ### HOLDOUT-BUILD — 构建并授权未使用的 test 数据分支
 
-- **状态/来源**：阻塞（代码与接线已实现 abafdbf2：test 数据分支处理、封存发布与最终测试入口；未使用的新 test/holdout 数据未构建（旧 sealed-test 曾构建并已暴露）、原发布目录已缺失、未使用的新 release 未发现；解除条件：核清既定 test source 独立使用资格、取得适用真实构建授权、完成全量人工审查及真实媒体验证）；由TEST-POLICY拆出，数据冻结支撑FINAL-TRAIN，最终候选测试支撑MODEL-QUALITY。
-- **事实与差距**：既定test分支21个视频及三折隔离已在训练机找到，不再以“source未指定”阻塞定位。旧release `v4.1-sealed-test-5546b8bf1ec3` 的一次性claim与completed/exposed凭据仍在；其摘要20source与332份媒体凭据的20source集合相关联，video_0005无该批候选凭据。原发布目录已缺失，不能把“缺文件”解释为“没用过”，也不能仅据无候选就认定video_0005可独立覆盖七门。当前缺口是使用资格及正式输入证据，不是初始划分不存在；未使用的新release尚未发现。
-- **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。
+- **状态/来源**：阻塞（代码与接线已实现 abafdbf2：test 数据分支处理、封存发布与最终测试入口；未使用的新 test/holdout 数据未构建（旧 sealed-test 曾构建并已暴露）、原发布目录已缺失、未使用的新 release 未发现；解除条件：取得适用真实构建授权、完成全量人工审查及真实媒体验证（原「核清既定 test source 独立使用资格」已按用户 2026-10-17 裁决视为已定，真实构建尚未执行））；由TEST-POLICY拆出，数据冻结支撑FINAL-TRAIN，最终候选测试支撑MODEL-QUALITY。
+- **事实与差距**：既定test分支21个视频及三折隔离已在训练机找到，不再以“source未指定”阻塞定位。旧release `v4.1-sealed-test-5546b8bf1ec3` 的一次性claim与completed/exposed凭据仍在；其摘要20source与332份媒体凭据的20source集合相关联，video_0005无该批候选凭据。原发布目录已缺失，不能把“缺文件”解释为“没用过”，也不能仅据无候选就认定video_0005可独立覆盖七门。当前缺口是正式输入证据与非语义来源清单（使用资格已按用户 2026-10-17 裁决视为已定，见固定标识 `TEST-SOURCE-REUSE`），不是初始划分不存在；未使用的新release尚未发现。
+- **数据来源**：定义并人工审查一个独立于开发/调参的 source；沿用 `development_source_isolation_verified`、`test_split_binding_verified` 的隔离要求，纳入前核对 source 边界，避免与现有 sealed-test 或开发验证集混用。按用户 2026-10-17 裁决，本条改为以既定 21 个 test source 重建 test release（见固定标识 `TEST-SOURCE-REUSE`），原「未使用 holdout」表述由该裁决取代；此处所称隔离指相对开发/调参集并不得复用旧 sealed-test 身份与 claim，具体边界以 `TEST-SOURCE-REUSE` 为准。
 - **人工审查**：对候选样本执行有效视图/剪裁人工审查（对应 `review_*` 流程），核对批次与 source 分层，形成冻结的 review batch 后再生成 release。
-- **发布入口与差距**：test七阶段显式使用`--purpose holdout --test-config ...`，新模块`versioning/holdout_pipeline.py`在owner-only工作区复用媒体算法，所有候选必须人工审查。train默认路径不变。真实输入必须为独立test批次、具备冻结train版本的source清单及旧测试非语义来源清单；当前既定test source已定位；可用资格与完整非语义清单仍须核定。新入口及完整参数/产物来源见[入口说明](../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)。
+- **发布入口与差距**：test七阶段显式使用`--purpose holdout --test-config ...`，新模块`versioning/holdout_pipeline.py`在owner-only工作区复用媒体算法，所有候选必须人工审查。train默认路径不变。真实输入必须为独立于开发/调参的 test 批次、具备冻结train版本的source清单及旧测试非语义来源清单；当前既定test source已定位（使用资格已按用户 2026-10-17 裁决视为已定，见固定标识 `TEST-SOURCE-REUSE`）；完整非语义来源清单仍须核定。新入口及完整参数/产物来源见[入口说明](../versioning/SCRIPTS.md#test-数据分支处理全量人工审查与封存)。
 - **已确认实施与限制**：用户于 2026-09-13 确认 test 分支方案，Mac合成完整builder→claim→prepare→run→score通过。原审查发现真值摘要未校验P1和发布rename后封存尾步恢复P2均修复并专项复核；公开input仅固定整体receipt摘要，真值pin在授权score读取。当前test分支不自动向DVC remote发布受限数据；2026-09-13 源码与 Mac 验证完成不表示真实数据已构建，随后 Linux 同代码 427 passed/1 skipped 通过，见第52节。
 - **授权流程**：预注册一次性授权 + one-time claim，沿用现有 stage_d 流程；授权条件 `one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，首次模型调用前原子写入 claim，只允许同一 run identity 恢复。
 - **现行旧协议阈值（历史及代码兼容事实）**：`stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
 - **新方案衔接**：已确认的最终视觉门与格式分离规则见[测评方案](model-evaluation.md)，由 EVAL-HOLDOUT 实现；本任务不直接修改旧七门或授权。多Agent匿名访问与受限聚合报告设计已确认；实际调用身份/数据发送和环境须核定，逐样本及公开详情仍受限；来源资格、全量人工审查和封存职责不变。
-- **依赖/边界**：本任务只负责构建、审查、发布与授权一个未使用 holdout，不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。
-- **下一动作**：先由用户裁决既定 test 分支 21 个 source 视频中是否存在可独立使用且未暴露的部分（其中 20 个有该批媒体凭据，`video_0005` 无该批候选凭据）；如无，则另指定 source；取得授权后按 `review_*` 流程完成全量人工审查、构建新 holdout release 并封存，同时补齐完整非语义来源清单；真实媒体验证与预注册准备就绪后才可用于最终独立测试。
-- **验收标准**：新的未使用 holdout release 已构建并经人工审查，source 隔离与 test-split binding 校验通过，manifest/ground-truth/quality_report及预注册准备可追溯。数据冻结就绪先支撑FINAL-TRAIN；最终model/eval身份确定并获使用授权后，首次模型调用前建立绑定claim，再支撑MODEL-QUALITY。不能要求先有最终模型claim才能训练该模型。
+- **依赖/边界**：本任务只负责构建、审查、发布与授权一个 test release（按用户 2026-10-17 裁决以既定 21 个 source 重建，见固定标识 `TEST-SOURCE-REUSE`），不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。
+- **下一动作**：按用户 2026-10-17 裁决，使用既定 test 分支 21 个 source 重建一份 test release 用于最终测试（三条边界见固定标识 `TEST-SOURCE-REUSE`）；取得适用真实构建授权后按 `review_*` 流程完成全量人工审查、构建并封存新 test release、补齐完整非语义来源清单；真实媒体验证与预注册准备就绪后才可用于最终测试。
+- **验收标准**：新的 test release（既定 21 个 source 重建、非盲参考口径，见固定标识 `TEST-SOURCE-REUSE`）已构建并经人工审查，source 隔离与 test-split binding 校验通过，manifest/ground-truth/quality_report及预注册准备可追溯。数据冻结就绪先支撑FINAL-TRAIN；最终model/eval身份确定并获使用授权后，首次模型调用前建立绑定claim，再支撑MODEL-QUALITY。不能要求先有最终模型claim才能训练该模型。
 - **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)及[轻量证据](results/model-diagnostics-preflight-20260913.json)。2026-09-13 已核查新 store 集合与公开入口，未全盘扫描旧sealed-test集合，不推断历史对象已消失；未读取受限语义或创建真实holdout。最终候选model/eval身份形成前不提前创建绑定它们的一次性claim；保留预注册和首次模型调用前claim的要求。
+
+### TEST-SOURCE-REUSE — 既定 21 个 test source 重建 test release
+
+- **状态/来源**：待处理（Pi，2026-10-17；口径已由用户裁决，真实构建未执行，等待适用构建授权）；用户 2026-10-17 裁决：虽然存在“已用于测试的数据不得再用于后续训练”的设计规范，但项目数据总量有限，明确使用既定 21 个 test source 重新构建一份 test release 用于最终测试。父任务 HOLDOUT-BUILD / MODEL-QUALITY；由 TEST-POLICY 原「新建未使用 holdout」策略调整而来，TEST-POLICY 本身保持已关闭且原结论不改。
+- **三条边界（用户 2026-10-17 裁决，不得放宽）**：
+  1. 这 21 个 source **绝不进入任何训练分支**（含 full 最终训练），`tuning_use: forbidden` 继续有效；train 侧任何入口与 manifest 均不得消费这批 source。
+  2. 因这批 source 历史上已被评测暴露，最终报告的测试结论口径为**非盲、参考性**，不得表述为无偏独立估计，也不得作为「数据未被使用」的证明。
+  3. test 结果**不得回流**用于调 Prompt、调阈值或挑选 checkpoint。
+- **与 HOLDOUT-BUILD 的关系**：本条目只承接口径裁决，不改变 HOLDOUT-BUILD 的阻塞状态；原「核清既定 test source 独立使用资格」按同一裁决视为已定，适用真实构建授权、全量人工审查与真实媒体验证仍未完成，真实构建尚未执行。
+- **事实与差距**：既定 test 分支 21 个 source 已在训练机定位（其中 20 个有该批媒体凭据，`video_0005` 无该批候选凭据）；旧 release `v4.1-sealed-test-5546b8bf1ec3` 的一次性 claim 与 completed/exposed 凭据仍在，原发布目录已缺失。按本裁决重建的 test release 须生成新的 release 身份、manifest 与人工审查记录，不复用旧 sealed-test 身份，也不把已消耗 claim 当作可用授权。
+- **验收标准**：新 test release 以 21 个既定 source 为来源、经全量人工审查与真实媒体验证；train 侧配置与 manifest 可核未引用这批 source；最终报告明确标注非盲、参考性口径；无任何 test 结果回流记录。
+- **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)、[轻量证据](results/model-diagnostics-preflight-20260913.json)；本条目为口径裁决记录，未构建、未运行、未读取受限测试语义。
 
 ### MODEL-DIAG — 诊断并改善三折类别坍缩与契约退化
 
@@ -161,6 +198,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **状态/来源**：阻塞；从原“独立测试 release 与 full-data final”拆出，是 MODEL-QUALITY 的前置。
 - **事实与差距**：当前发布模型只用 Fold0，`full_data_final: false`；development release 有 1678 条发布候选。候选数不自动等于最终训练行数，训练资格与采样策略仍须冻结。
 - **依赖**：MODEL-DIAG 达到开发侧三折标准；HOLDOUT-BUILD 的 test 数据构建/审查/冻结与预注册准备就绪（模型绑定 claim 在最终候选产生并获测试使用授权后、首次模型调用前建立）；适用训练授权。
+- **数据粒度与阶段门（用户 2026-10-17 裁决）**：复用已冻结的 `data-v4.1-r2`（1,678 候选 / 85 来源），不重做 ROI 人工审查；「全流程重跑」指训练 → 三折 → 评测 → 性能；上一阶段产物未落盘不得进入下一阶段，见「2026-10-17 用户裁决：执行口径与全局纪律」一节。
 - **下一动作/解除条件**：MODEL-DIAG 达到开发侧三折标准、HOLDOUT-BUILD的数据构建/审查/冻结及预注册准备就绪（模型绑定claim在候选产生并获测试使用授权后建立）并取得适用训练授权后，冻结最终数据范围、Prompt、采样、训练日程与模型身份。
 - **入口与产物**：独立full能力已由fed9bcfc实现且双机隔离CPU验收；正式入口为`versioning train prepare --scope full`，消费同一开发release全集、每候选一次及显式full配置，继而validate/run/export产生一个full/adapter，登记时`--source-scope full`。详见[新入口说明](../versioning/SCRIPTS.md#独立全量训练)。不再安排重做full代码；真实运行仍等待上列模型、holdout及训练授权前置。
 - **验收标准**：全部合格开发数据按冻结方案纳入，未混入测试来源；真实 full 训练及 adapter 执行证据完整，模型与数据/配置/代码/哈希可追溯，保存最终候选及轻量 manifest。完成本项不自动获得 production approval。
@@ -170,6 +208,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：阻塞；原“当前发布模型质量门未通过”，作为总目标，依赖 MODEL-DIAG、FINAL-TRAIN、HOLDOUT-BUILD 及 EVAL-HOLDOUT / EVAL-PERFORMANCE / EVAL-INTEGRATION；HOLDOUT-METRICS 已解决的旧协议实现保留；RELEASE-POINTER原目标适用性另待裁决。
 - **事实与差距**：`v4.1-agent-pipeline-fold0-r1` 已用于工程链路验证，但历史质量阶段标志均为 false——`historical_quality_status` 中的 `stage_b_passed` / `stage_c_completed` / `stage_d_passed` / `stage_g_passed` 全部为 false，见[部署摘要](results/v4_1_agent_pipeline_fold0_r1/deployment_summary.json)；`production_approved: false` 见模型注册。标志为 false 不等于每一门都已执行失败，须查各门证据。
+- **当前模型定位（用户 2026-10-17 裁决）**：`v4.1-agent-pipeline-fold0-r1` 冻结为参考基线 r0，禁止参与任何准入、晋级或 production alias，仅作后续训练的配对比较锚点；冻结为基线不改变其历史质量标志为 false 的事实。
 - **下一动作**：按已确认[测评方案](model-evaluation.md)落实新语义/性能证据与准入绑定；最终候选、测试资格和适用授权齐备后完成一次独立验收。视觉质量、输出使用能力、交互性能分别报告；旧 passed 或历史工程 smoke 不替代新结论。
 - **入口与产物**：参照 [发布证据](results/v4_1_agent_pipeline_fold0_r1/README.md) 和 [模型流程](model-workflow.md) 核对执行入口；冻结报告和模型哈希，经注册表发布新身份并同步 delivery，核对服务加载对象。缺可执行入口则先补任务单/实现，不把历史归档命令写成现成流程。
 - **验收标准**：预定质量门与身份校验均有证据，模型/报告/注册表/delivery/服务一致；新候选不覆盖旧模型历史结论，工程成功不能替代质量通过。
@@ -344,6 +383,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **阈值冻结时点**：沿用 preparation `stage-d-preparation-5cd1b3fa343c` 已冻结的 7 项阈值（`four_state_macro_recall 0.4006`、`fracture_three_state_macro_recall 0.3`、`joint_correct_rate 0.3921`、`runtime_failure_count 0`、`strict_valid_rate 1.0`、`已断裂_recall 0.15`、`未断裂_recall 0.7`）。
 - **授权条件**：`one_time`、`tuning_use: forbidden`、`pre_stage_g_outputs: aggregate_pass_fail_and_integrity_only`，沿用现有 stage_d 预注册一次性授权 + claim 流程。
 - **证据/限制**：现有 sealed-test 证据位于 [公开结果](results/v4_1_stage_d_sealed_test_release/public_gate_summary.json)、[阶段记录](results/v4_1_stage_d_sealed_test_release/README.md) 及 `finetune/results/v4_1_stage_d_*`（授权/claim/run）；新 holdout 证据位置由 HOLDOUT-BUILD 任务执行时定义。本项只记录策略与依据，不执行推理或调参。
+- **2026-10-17 调整**：用户 2026-10-17 裁决改用既定 21 个 test source 重建 test release，见固定标识 `TEST-SOURCE-REUSE`；本条保持已关闭，关闭依据与选定策略原文不改。
 
 ### REL-VERIFY — 训练机 release 指针实证：已解决
 
@@ -375,6 +415,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **残余**：Streamlit 显示原始 ValueError traceback 是此前接受的呈现层风险；该批未重新验收 UI。
 
 ## 最近维护记录
+
+- **2026-10-17（用户裁决／Pi，执行口径入账）**：把用户 2026-10-17 的一整批裁决写入台账：既定 21 个 test source 重建 test release 及三条边界、`v4.1-agent-pipeline-fold0-r1` 冻结为参考基线 r0、复用 `data-v4.1-r2` 不重做 ROI 审查、产物保存与身份四元、阶段硬门、`/data` 第一级备份根与归档节奏、家目录去重、过期文件管理与清理红线。新增 2 个固定标识 `TEST-SOURCE-REUSE`、`ARTIFACT-RETENTION`，原 37 个标识不变，无任务被关闭或升级；落点为：新增总节「2026-10-17 用户裁决：执行口径与全局纪律」、两个新条目、FINAL-TRAIN / MODEL-QUALITY / TEST-POLICY 各一行、HOLDOUT-BUILD 的解除条件、下一动作、发布入口与差距及与 `TEST-SOURCE-REUSE` 相关的事实与差距/数据来源/依赖边界/验收标准（状态仍为阻塞，未改状态词）、RECOVERY-VALIDATION 解除条件、顺序表 2 行改写 + 2 行新增；HOLDOUT-BUILD 保持阻塞（未改状态词），TEST-POLICY 保持已关闭、原结论不改。仅修改本文件，未 SSH、未构建、未运行模型或 test、未删除或移动任何产物。独立 reviewer 已对照 diff 复核并在提交前给出裁决，报告留档于仓库外 `~/pi-workspace/mVllm_2-audit/`；本次提交在复核后进行并由 git log 追溯。
 
 - **2026-10-12（Codex，正式文档整合）**：新增 DOC-INTEGRATION，承接用户的根 README 替换和覆盖旧说明清理授权；保留原 30 个任务标识、设计决策和原始验证证据，最终独立核查通过、无可执行问题，DOC-INTEGRATION已解决。Mac uv、训练机 Conda Python 与 3.11.x 约定保持；本轮无 SSH、实际数据处理、训练、推理或评测，现场刷新仍为下一步。
 
