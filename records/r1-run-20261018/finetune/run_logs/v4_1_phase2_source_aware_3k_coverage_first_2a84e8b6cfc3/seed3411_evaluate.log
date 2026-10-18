@@ -1,0 +1,481 @@
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+/home/liuyang/miniconda3/envs/agent/lib/python3.11/site-packages/transformers/models/auto/image_processing_auto.py:646: FutureWarning: The image_processor_class argument is deprecated and will be removed in v4.42. Please use `slow_image_processor_class`, or `fast_image_processor_class` instead
+  warnings.warn(
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/10 [00:00<?, ?it/s]Loading checkpoint shards:  10%|█         | 1/10 [00:00<00:01,  5.53it/s]Loading checkpoint shards:  20%|██        | 2/10 [00:00<00:01,  5.36it/s]Loading checkpoint shards:  30%|███       | 3/10 [00:00<00:01,  5.23it/s]Loading checkpoint shards:  40%|████      | 4/10 [00:00<00:01,  5.14it/s]Loading checkpoint shards:  50%|█████     | 5/10 [00:00<00:00,  5.14it/s]Loading checkpoint shards:  60%|██████    | 6/10 [00:01<00:00,  5.15it/s]Loading checkpoint shards:  70%|███████   | 7/10 [00:01<00:00,  5.19it/s]Loading checkpoint shards:  80%|████████  | 8/10 [00:01<00:00,  5.40it/s]Loading checkpoint shards:  90%|█████████ | 9/10 [00:01<00:00,  5.00it/s]Loading checkpoint shards: 100%|██████████| 10/10 [00:01<00:00,  5.63it/s]
+progress=1/425 candidate_id=video_0001_v3_transition_f001145-001205 strict_valid=True joint=False
+progress=2/425 candidate_id=video_0001_v3_transition_f001121-001211 strict_valid=True joint=False
+progress=3/425 candidate_id=video_0001_v3_transition_f000980-001213 strict_valid=True joint=False
+progress=4/425 candidate_id=video_0001_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=5/425 candidate_id=video_0001_v3_pre_f000546-000606 strict_valid=True joint=True
+progress=6/425 candidate_id=video_0001_v3_pre_f001091-001151 strict_valid=True joint=False
+progress=7/425 candidate_id=video_0001_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=8/425 candidate_id=video_0001_v3_pre_f000530-000620 strict_valid=True joint=True
+progress=9/425 candidate_id=video_0001_v3_pre_f001061-001151 strict_valid=True joint=False
+progress=10/425 candidate_id=video_0001_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=11/425 candidate_id=video_0001_v3_pre_f000500-000650 strict_valid=True joint=True
+progress=12/425 candidate_id=video_0001_v3_pre_f001001-001151 strict_valid=True joint=False
+progress=13/425 candidate_id=video_0001_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=14/425 candidate_id=video_0001_v3_pre_f000426-000726 strict_valid=True joint=True
+progress=15/425 candidate_id=video_0001_v3_pre_f000851-001151 strict_valid=True joint=False
+progress=16/425 candidate_id=video_0001_v3_pre_f000000-000600 strict_valid=True joint=True
+progress=17/425 candidate_id=video_0001_v3_pre_f000276-000876 strict_valid=True joint=True
+progress=18/425 candidate_id=video_0001_v3_pre_f000551-001151 strict_valid=True joint=False
+progress=19/425 candidate_id=video_0001_v3_post_f001182-001213 strict_valid=True joint=False
+progress=20/425 candidate_id=video_0006_v3_transition_f000633-000693 strict_valid=True joint=False
+progress=21/425 candidate_id=video_0006_v3_transition_f000624-000684 strict_valid=True joint=False
+progress=22/425 candidate_id=video_0006_v3_transition_f000600-000690 strict_valid=True joint=False
+progress=23/425 candidate_id=video_0006_v3_transition_f000548-000698 strict_valid=True joint=False
+progress=24/425 candidate_id=video_0006_v3_transition_f000429-000699 strict_valid=True joint=False
+progress=25/425 candidate_id=video_0006_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=26/425 candidate_id=video_0006_v3_pre_f000285-000345 strict_valid=True joint=False
+progress=27/425 candidate_id=video_0006_v3_pre_f000570-000630 strict_valid=True joint=False
+progress=28/425 candidate_id=video_0006_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=29/425 candidate_id=video_0006_v3_pre_f000270-000360 strict_valid=True joint=False
+progress=30/425 candidate_id=video_0006_v3_pre_f000540-000630 strict_valid=True joint=False
+progress=31/425 candidate_id=video_0006_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=32/425 candidate_id=video_0006_v3_pre_f000240-000390 strict_valid=True joint=False
+progress=33/425 candidate_id=video_0006_v3_pre_f000480-000630 strict_valid=True joint=False
+progress=34/425 candidate_id=video_0006_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=35/425 candidate_id=video_0006_v3_pre_f000165-000465 strict_valid=True joint=False
+progress=36/425 candidate_id=video_0006_v3_pre_f000330-000630 strict_valid=True joint=False
+progress=37/425 candidate_id=video_0006_v3_pre_f000000-000600 strict_valid=True joint=True
+progress=38/425 candidate_id=video_0006_v3_pre_f000015-000615 strict_valid=True joint=True
+progress=39/425 candidate_id=video_0006_v3_pre_f000030-000630 strict_valid=True joint=False
+progress=40/425 candidate_id=video_0006_v3_post_f000660-000699 strict_valid=True joint=False
+progress=41/425 candidate_id=video_0009_v3_transition_f005632-005692 strict_valid=True joint=True
+progress=42/425 candidate_id=video_0009_v3_transition_f005608-005698 strict_valid=True joint=True
+progress=43/425 candidate_id=video_0009_v3_transition_f005555-005705 strict_valid=True joint=True
+progress=44/425 candidate_id=video_0009_v3_transition_f005413-005713 strict_valid=True joint=True
+progress=45/425 candidate_id=video_0009_v3_transition_f005641-005701 strict_valid=True joint=True
+progress=46/425 candidate_id=video_0009_v3_transition_f005621-005711 strict_valid=True joint=True
+progress=47/425 candidate_id=video_0009_v3_transition_f005578-005728 strict_valid=True joint=True
+progress=48/425 candidate_id=video_0009_v3_transition_f005458-005758 strict_valid=True joint=True
+progress=49/425 candidate_id=video_0009_v3_transition_f005197-005767 strict_valid=True joint=True
+progress=50/425 candidate_id=video_0009_v3_pre_f005577-005637 strict_valid=True joint=True
+progress=51/425 candidate_id=video_0009_v3_pre_f005487-005637 strict_valid=True joint=True
+progress=52/425 candidate_id=video_0009_v3_pre_f005337-005637 strict_valid=True joint=True
+progress=53/425 candidate_id=video_0009_v3_pre_f005037-005637 strict_valid=True joint=True
+progress=54/425 candidate_id=video_0009_v3_post_f005668-005767 strict_valid=True joint=False
+progress=55/425 candidate_id=video_0009_v3_post_f005668-005718 strict_valid=True joint=False
+progress=56/425 candidate_id=video_0009_v3_post_f005718-005767 strict_valid=True joint=False
+progress=57/425 candidate_id=video_0013_v3_transition_f001208-001294 strict_valid=True joint=False
+progress=58/425 candidate_id=video_0013_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=59/425 candidate_id=video_0013_v3_pre_f000600-000660 strict_valid=True joint=True
+progress=60/425 candidate_id=video_0013_v3_pre_f001201-001261 strict_valid=True joint=False
+progress=61/425 candidate_id=video_0013_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=62/425 candidate_id=video_0013_v3_pre_f000586-000676 strict_valid=True joint=True
+progress=63/425 candidate_id=video_0013_v3_pre_f001171-001261 strict_valid=True joint=False
+progress=64/425 candidate_id=video_0013_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=65/425 candidate_id=video_0013_v3_pre_f000556-000706 strict_valid=True joint=True
+progress=66/425 candidate_id=video_0013_v3_pre_f001111-001261 strict_valid=True joint=False
+progress=67/425 candidate_id=video_0013_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=68/425 candidate_id=video_0013_v3_pre_f000480-000780 strict_valid=True joint=True
+progress=69/425 candidate_id=video_0013_v3_pre_f000961-001261 strict_valid=True joint=False
+progress=70/425 candidate_id=video_0013_v3_pre_f000000-000600 strict_valid=True joint=True
+progress=71/425 candidate_id=video_0013_v3_pre_f000330-000930 strict_valid=True joint=True
+progress=72/425 candidate_id=video_0013_v3_pre_f000661-001261 strict_valid=True joint=False
+progress=73/425 candidate_id=video_0015_v3_transition_f000418-000478 strict_valid=True joint=True
+progress=74/425 candidate_id=video_0015_v3_transition_f000389-000479 strict_valid=True joint=True
+progress=75/425 candidate_id=video_0015_v3_transition_f000328-000478 strict_valid=True joint=True
+progress=76/425 candidate_id=video_0015_v3_transition_f000427-000487 strict_valid=True joint=False
+progress=77/425 candidate_id=video_0015_v3_transition_f000403-000493 strict_valid=True joint=True
+progress=78/425 candidate_id=video_0015_v3_transition_f000260-000495 strict_valid=True joint=False
+progress=79/425 candidate_id=video_0015_v3_pre_f000000-000060 strict_valid=True joint=False
+progress=80/425 candidate_id=video_0015_v3_pre_f000186-000246 strict_valid=True joint=False
+progress=81/425 candidate_id=video_0015_v3_pre_f000372-000432 strict_valid=True joint=False
+progress=82/425 candidate_id=video_0015_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=83/425 candidate_id=video_0015_v3_pre_f000171-000261 strict_valid=True joint=False
+progress=84/425 candidate_id=video_0015_v3_pre_f000342-000432 strict_valid=True joint=False
+progress=85/425 candidate_id=video_0015_v3_pre_f000000-000150 strict_valid=True joint=False
+progress=86/425 candidate_id=video_0015_v3_pre_f000141-000291 strict_valid=True joint=False
+progress=87/425 candidate_id=video_0015_v3_pre_f000282-000432 strict_valid=True joint=False
+progress=88/425 candidate_id=video_0015_v3_pre_f000000-000300 strict_valid=True joint=False
+progress=89/425 candidate_id=video_0015_v3_pre_f000066-000366 strict_valid=True joint=False
+progress=90/425 candidate_id=video_0015_v3_pre_f000132-000432 strict_valid=True joint=False
+progress=91/425 candidate_id=video_0022_v3_transition_f001701-001761 strict_valid=True joint=False
+progress=92/425 candidate_id=video_0022_v3_transition_f001682-001772 strict_valid=True joint=False
+progress=93/425 candidate_id=video_0022_v3_transition_f001638-001788 strict_valid=True joint=False
+progress=94/425 candidate_id=video_0022_v3_transition_f001518-001818 strict_valid=True joint=False
+progress=95/425 candidate_id=video_0022_v3_transition_f001233-001833 strict_valid=True joint=False
+progress=96/425 candidate_id=video_0022_v3_transition_f001692-001752 strict_valid=True joint=False
+progress=97/425 candidate_id=video_0022_v3_transition_f001668-001758 strict_valid=True joint=False
+progress=98/425 candidate_id=video_0022_v3_transition_f001616-001766 strict_valid=True joint=False
+progress=99/425 candidate_id=video_0022_v3_transition_f001473-001773 strict_valid=True joint=False
+progress=100/425 candidate_id=video_0022_v3_transition_f001683-001834 strict_valid=True joint=False
+progress=101/425 candidate_id=video_0022_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=102/425 candidate_id=video_0022_v3_pre_f000819-000879 strict_valid=True joint=True
+progress=103/425 candidate_id=video_0022_v3_pre_f001638-001698 strict_valid=True joint=False
+progress=104/425 candidate_id=video_0022_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=105/425 candidate_id=video_0022_v3_pre_f000804-000894 strict_valid=True joint=True
+progress=106/425 candidate_id=video_0022_v3_pre_f001608-001698 strict_valid=True joint=False
+progress=107/425 candidate_id=video_0022_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=108/425 candidate_id=video_0022_v3_pre_f000774-000924 strict_valid=True joint=True
+progress=109/425 candidate_id=video_0022_v3_pre_f001548-001698 strict_valid=True joint=False
+progress=110/425 candidate_id=video_0022_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=111/425 candidate_id=video_0022_v3_pre_f000699-000999 strict_valid=True joint=True
+progress=112/425 candidate_id=video_0022_v3_pre_f001398-001698 strict_valid=True joint=False
+progress=113/425 candidate_id=video_0022_v3_pre_f000000-000600 strict_valid=True joint=True
+progress=114/425 candidate_id=video_0022_v3_pre_f000549-001149 strict_valid=True joint=True
+progress=115/425 candidate_id=video_0022_v3_pre_f001098-001698 strict_valid=True joint=False
+progress=116/425 candidate_id=video_0022_v3_post_f001728-001834 strict_valid=True joint=False
+progress=117/425 candidate_id=video_0022_v3_post_f001728-001781 strict_valid=True joint=False
+progress=118/425 candidate_id=video_0022_v3_post_f001781-001834 strict_valid=True joint=False
+progress=119/425 candidate_id=video_0023_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=120/425 candidate_id=video_0023_v3_pre_f000105-000165 strict_valid=True joint=True
+progress=121/425 candidate_id=video_0023_v3_pre_f000210-000270 strict_valid=True joint=False
+progress=122/425 candidate_id=video_0023_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=123/425 candidate_id=video_0023_v3_pre_f000090-000180 strict_valid=True joint=True
+progress=124/425 candidate_id=video_0023_v3_pre_f000180-000270 strict_valid=True joint=False
+progress=125/425 candidate_id=video_0023_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=126/425 candidate_id=video_0023_v3_pre_f000060-000210 strict_valid=True joint=True
+progress=127/425 candidate_id=video_0023_v3_pre_f000120-000270 strict_valid=True joint=False
+progress=128/425 candidate_id=video_0044_v3_transition_f005289-005349 strict_valid=True joint=False
+progress=129/425 candidate_id=video_0044_v3_transition_f005269-005359 strict_valid=True joint=False
+progress=130/425 candidate_id=video_0044_v3_transition_f005226-005376 strict_valid=True joint=False
+progress=131/425 candidate_id=video_0044_v3_transition_f005106-005406 strict_valid=True joint=False
+progress=132/425 candidate_id=video_0044_v3_transition_f004821-005421 strict_valid=True joint=False
+progress=133/425 candidate_id=video_0044_v3_transition_f005280-005340 strict_valid=True joint=False
+progress=134/425 candidate_id=video_0044_v3_transition_f005256-005346 strict_valid=True joint=False
+progress=135/425 candidate_id=video_0044_v3_transition_f005203-005353 strict_valid=True joint=False
+progress=136/425 candidate_id=video_0044_v3_transition_f005061-005361 strict_valid=True joint=False
+progress=137/425 candidate_id=video_0044_v3_transition_f005255-005482 strict_valid=True joint=False
+progress=138/425 candidate_id=video_0044_v3_pre_f005225-005285 strict_valid=True joint=True
+progress=139/425 candidate_id=video_0044_v3_pre_f005135-005285 strict_valid=True joint=True
+progress=140/425 candidate_id=video_0044_v3_pre_f004985-005285 strict_valid=True joint=True
+progress=141/425 candidate_id=video_0044_v3_pre_f004685-005285 strict_valid=True joint=True
+progress=142/425 candidate_id=video_0044_v3_post_f005316-005482 strict_valid=True joint=False
+progress=143/425 candidate_id=video_0044_v3_post_f005316-005399 strict_valid=True joint=False
+progress=144/425 candidate_id=video_0044_v3_post_f005399-005482 strict_valid=True joint=False
+progress=145/425 candidate_id=video_0046_v3_transition_f000085-000175 strict_valid=True joint=False
+progress=146/425 candidate_id=video_0046_v3_transition_f000122-000176 strict_valid=True joint=False
+progress=147/425 candidate_id=video_0046_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=148/425 candidate_id=video_0046_v3_pre_f000041-000101 strict_valid=True joint=False
+progress=149/425 candidate_id=video_0046_v3_pre_f000082-000142 strict_valid=True joint=False
+progress=150/425 candidate_id=video_0046_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=151/425 candidate_id=video_0046_v3_pre_f000026-000116 strict_valid=True joint=False
+progress=152/425 candidate_id=video_0046_v3_pre_f000052-000142 strict_valid=True joint=False
+progress=153/425 candidate_id=video_0055_v3_transition_f000138-000291 strict_valid=True joint=False
+progress=154/425 candidate_id=video_0055_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=155/425 candidate_id=video_0055_v3_pre_f000092-000152 strict_valid=True joint=True
+progress=156/425 candidate_id=video_0055_v3_pre_f000185-000245 strict_valid=True joint=True
+progress=157/425 candidate_id=video_0055_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=158/425 candidate_id=video_0055_v3_pre_f000078-000168 strict_valid=True joint=True
+progress=159/425 candidate_id=video_0055_v3_pre_f000155-000245 strict_valid=True joint=True
+progress=160/425 candidate_id=video_0055_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=161/425 candidate_id=video_0055_v3_pre_f000048-000198 strict_valid=True joint=True
+progress=162/425 candidate_id=video_0055_v3_pre_f000095-000245 strict_valid=True joint=True
+progress=163/425 candidate_id=video_0056_v3_pre_f001736-001796 strict_valid=True joint=False
+progress=164/425 candidate_id=video_0056_v3_pre_f000397-000487 strict_valid=True joint=True
+progress=165/425 candidate_id=video_0056_v3_pre_f000698-000848 strict_valid=True joint=True
+progress=166/425 candidate_id=video_0056_v3_pre_f000954-001254 strict_valid=True joint=True
+progress=167/425 candidate_id=video_0056_v3_pre_f001135-001735 strict_valid=True joint=True
+progress=168/425 candidate_id=video_0060_v3_transition_f000174-000234 strict_valid=True joint=False
+progress=169/425 candidate_id=video_0060_v3_transition_f000155-000245 strict_valid=True joint=False
+progress=170/425 candidate_id=video_0060_v3_transition_f000111-000261 strict_valid=True joint=False
+progress=171/425 candidate_id=video_0060_v3_transition_f000165-000225 strict_valid=True joint=False
+progress=172/425 candidate_id=video_0060_v3_transition_f000141-000231 strict_valid=True joint=False
+progress=173/425 candidate_id=video_0060_v3_transition_f000089-000239 strict_valid=True joint=False
+progress=174/425 candidate_id=video_0060_v3_transition_f000014-000279 strict_valid=True joint=False
+progress=175/425 candidate_id=video_0060_v3_pre_f000111-000171 strict_valid=True joint=True
+progress=176/425 candidate_id=video_0060_v3_pre_f000081-000171 strict_valid=True joint=True
+progress=177/425 candidate_id=video_0060_v3_pre_f000021-000171 strict_valid=True joint=True
+progress=178/425 candidate_id=video_0060_v3_post_f000202-000279 strict_valid=True joint=False
+progress=179/425 candidate_id=video_0065_v3_transition_f000012-000072 strict_valid=True joint=False
+progress=180/425 candidate_id=video_0065_v3_transition_f000003-000063 strict_valid=True joint=False
+progress=181/425 candidate_id=video_0065_v3_transition_f000000-000069 strict_valid=True joint=False
+progress=182/425 candidate_id=video_0065_v3_post_f000039-000079 strict_valid=True joint=False
+progress=183/425 candidate_id=video_0070_v3_transition_f004525-004585 strict_valid=True joint=False
+progress=184/425 candidate_id=video_0070_v3_transition_f004505-004595 strict_valid=True joint=False
+progress=185/425 candidate_id=video_0070_v3_transition_f004462-004612 strict_valid=True joint=False
+progress=186/425 candidate_id=video_0070_v3_transition_f004516-004576 strict_valid=True joint=False
+progress=187/425 candidate_id=video_0070_v3_transition_f004492-004582 strict_valid=True joint=False
+progress=188/425 candidate_id=video_0070_v3_transition_f004439-004589 strict_valid=True joint=False
+progress=189/425 candidate_id=video_0070_v3_transition_f004297-004597 strict_valid=True joint=False
+progress=190/425 candidate_id=video_0070_v3_transition_f004169-004629 strict_valid=True joint=False
+progress=191/425 candidate_id=video_0070_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=192/425 candidate_id=video_0070_v3_pre_f002230-002290 strict_valid=True joint=True
+progress=193/425 candidate_id=video_0070_v3_pre_f004461-004521 strict_valid=True joint=False
+progress=194/425 candidate_id=video_0070_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=195/425 candidate_id=video_0070_v3_pre_f002216-002306 strict_valid=True joint=True
+progress=196/425 candidate_id=video_0070_v3_pre_f004431-004521 strict_valid=True joint=False
+progress=197/425 candidate_id=video_0070_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=198/425 candidate_id=video_0070_v3_pre_f002186-002336 strict_valid=True joint=True
+progress=199/425 candidate_id=video_0070_v3_pre_f004371-004521 strict_valid=True joint=False
+progress=200/425 candidate_id=video_0070_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=201/425 candidate_id=video_0070_v3_pre_f002110-002410 strict_valid=True joint=True
+progress=202/425 candidate_id=video_0070_v3_pre_f004221-004521 strict_valid=True joint=False
+progress=203/425 candidate_id=video_0070_v3_pre_f000000-000600 strict_valid=True joint=True
+progress=204/425 candidate_id=video_0070_v3_pre_f001960-002560 strict_valid=True joint=True
+progress=205/425 candidate_id=video_0070_v3_pre_f003921-004521 strict_valid=True joint=False
+progress=206/425 candidate_id=video_0070_v3_post_f004552-004629 strict_valid=True joint=False
+progress=207/425 candidate_id=video_0071_v3_transition_f000067-000157 strict_valid=True joint=False
+progress=208/425 candidate_id=video_0071_v3_pre_f000063-000123 strict_valid=True joint=True
+progress=209/425 candidate_id=video_0071_v3_pre_f000033-000123 strict_valid=True joint=True
+progress=210/425 candidate_id=video_0072_v3_transition_f003422-003482 strict_valid=True joint=False
+progress=211/425 candidate_id=video_0072_v3_transition_f003403-003493 strict_valid=True joint=False
+progress=212/425 candidate_id=video_0072_v3_transition_f003359-003509 strict_valid=True joint=False
+progress=213/425 candidate_id=video_0072_v3_transition_f003413-003473 strict_valid=True joint=False
+progress=214/425 candidate_id=video_0072_v3_transition_f003389-003479 strict_valid=True joint=False
+progress=215/425 candidate_id=video_0072_v3_transition_f003337-003487 strict_valid=True joint=False
+progress=216/425 candidate_id=video_0072_v3_transition_f003194-003494 strict_valid=True joint=False
+progress=217/425 candidate_id=video_0072_v3_transition_f003099-003518 strict_valid=True joint=False
+progress=218/425 candidate_id=video_0072_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=219/425 candidate_id=video_0072_v3_pre_f001680-001740 strict_valid=True joint=True
+progress=220/425 candidate_id=video_0072_v3_pre_f003359-003419 strict_valid=True joint=False
+progress=221/425 candidate_id=video_0072_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=222/425 candidate_id=video_0072_v3_pre_f001664-001754 strict_valid=True joint=False
+progress=223/425 candidate_id=video_0072_v3_pre_f003329-003419 strict_valid=True joint=False
+progress=224/425 candidate_id=video_0072_v3_pre_f000000-000150 strict_valid=True joint=False
+progress=225/425 candidate_id=video_0072_v3_pre_f001634-001784 strict_valid=True joint=False
+progress=226/425 candidate_id=video_0072_v3_pre_f003269-003419 strict_valid=True joint=False
+progress=227/425 candidate_id=video_0072_v3_pre_f000000-000300 strict_valid=True joint=False
+progress=228/425 candidate_id=video_0072_v3_pre_f001560-001860 strict_valid=True joint=False
+progress=229/425 candidate_id=video_0072_v3_pre_f003119-003419 strict_valid=True joint=False
+progress=230/425 candidate_id=video_0072_v3_pre_f000000-000600 strict_valid=True joint=False
+progress=231/425 candidate_id=video_0072_v3_pre_f001410-002010 strict_valid=True joint=False
+progress=232/425 candidate_id=video_0072_v3_pre_f002819-003419 strict_valid=True joint=False
+progress=233/425 candidate_id=video_0072_v3_post_f003450-003518 strict_valid=True joint=False
+progress=234/425 candidate_id=video_0074_v3_transition_f000218-000278 strict_valid=True joint=False
+progress=235/425 candidate_id=video_0074_v3_transition_f000199-000289 strict_valid=True joint=False
+progress=236/425 candidate_id=video_0074_v3_transition_f000155-000305 strict_valid=True joint=False
+progress=237/425 candidate_id=video_0074_v3_transition_f000035-000335 strict_valid=True joint=False
+progress=238/425 candidate_id=video_0074_v3_transition_f000191-000251 strict_valid=True joint=False
+progress=239/425 candidate_id=video_0074_v3_transition_f000158-000248 strict_valid=True joint=False
+progress=240/425 candidate_id=video_0074_v3_transition_f000200-000350 strict_valid=True joint=False
+progress=241/425 candidate_id=video_0074_v3_transition_f000092-000368 strict_valid=True joint=False
+progress=242/425 candidate_id=video_0074_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=243/425 candidate_id=video_0074_v3_pre_f000078-000138 strict_valid=True joint=True
+progress=244/425 candidate_id=video_0074_v3_pre_f000155-000215 strict_valid=True joint=True
+progress=245/425 candidate_id=video_0074_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=246/425 candidate_id=video_0074_v3_pre_f000062-000152 strict_valid=True joint=True
+progress=247/425 candidate_id=video_0074_v3_pre_f000125-000215 strict_valid=True joint=True
+progress=248/425 candidate_id=video_0074_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=249/425 candidate_id=video_0074_v3_pre_f000032-000182 strict_valid=True joint=True
+progress=250/425 candidate_id=video_0074_v3_pre_f000065-000215 strict_valid=True joint=True
+progress=251/425 candidate_id=video_0074_v3_post_f000246-000368 strict_valid=True joint=False
+progress=252/425 candidate_id=video_0074_v3_post_f000246-000307 strict_valid=True joint=False
+progress=253/425 candidate_id=video_0074_v3_post_f000307-000368 strict_valid=True joint=False
+progress=254/425 candidate_id=video_0075_v3_transition_f000005-000095 strict_valid=True joint=False
+progress=255/425 candidate_id=video_0075_v3_transition_f000011-000071 strict_valid=True joint=False
+progress=256/425 candidate_id=video_0075_v3_transition_f000000-000046 strict_valid=True joint=False
+progress=257/425 candidate_id=video_0075_v3_post_f000039-000116 strict_valid=True joint=False
+progress=258/425 candidate_id=video_0076_v3_transition_f005337-005397 strict_valid=True joint=False
+progress=259/425 candidate_id=video_0076_v3_transition_f005318-005408 strict_valid=True joint=False
+progress=260/425 candidate_id=video_0076_v3_transition_f005274-005424 strict_valid=True joint=False
+progress=261/425 candidate_id=video_0076_v3_transition_f005154-005454 strict_valid=True joint=False
+progress=262/425 candidate_id=video_0076_v3_transition_f004869-005469 strict_valid=True joint=False
+progress=263/425 candidate_id=video_0076_v3_transition_f005328-005388 strict_valid=True joint=False
+progress=264/425 candidate_id=video_0076_v3_transition_f005304-005394 strict_valid=True joint=False
+progress=265/425 candidate_id=video_0076_v3_transition_f005252-005402 strict_valid=True joint=False
+progress=266/425 candidate_id=video_0076_v3_transition_f005109-005409 strict_valid=True joint=False
+progress=267/425 candidate_id=video_0076_v3_transition_f005304-005529 strict_valid=True joint=False
+progress=268/425 candidate_id=video_0076_v3_pre_f005274-005334 strict_valid=True joint=False
+progress=269/425 candidate_id=video_0076_v3_pre_f005184-005334 strict_valid=True joint=True
+progress=270/425 candidate_id=video_0076_v3_pre_f005034-005334 strict_valid=True joint=True
+progress=271/425 candidate_id=video_0076_v3_pre_f004734-005334 strict_valid=True joint=False
+progress=272/425 candidate_id=video_0076_v3_post_f005365-005529 strict_valid=True joint=False
+progress=273/425 candidate_id=video_0076_v3_post_f005365-005447 strict_valid=True joint=False
+progress=274/425 candidate_id=video_0076_v3_post_f005447-005529 strict_valid=True joint=False
+progress=275/425 candidate_id=video_0080_v3_transition_f002581-002641 strict_valid=True joint=False
+progress=276/425 candidate_id=video_0080_v3_transition_f002562-002652 strict_valid=True joint=False
+progress=277/425 candidate_id=video_0080_v3_transition_f002518-002668 strict_valid=True joint=False
+progress=278/425 candidate_id=video_0080_v3_transition_f002398-002698 strict_valid=True joint=False
+progress=279/425 candidate_id=video_0080_v3_transition_f002572-002632 strict_valid=True joint=False
+progress=280/425 candidate_id=video_0080_v3_transition_f002548-002638 strict_valid=True joint=False
+progress=281/425 candidate_id=video_0080_v3_transition_f002496-002646 strict_valid=True joint=False
+progress=282/425 candidate_id=video_0080_v3_transition_f002353-002653 strict_valid=True joint=False
+progress=283/425 candidate_id=video_0080_v3_transition_f002565-002706 strict_valid=True joint=False
+progress=284/425 candidate_id=video_0080_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=285/425 candidate_id=video_0080_v3_pre_f001259-001319 strict_valid=True joint=True
+progress=286/425 candidate_id=video_0080_v3_pre_f002518-002578 strict_valid=True joint=False
+progress=287/425 candidate_id=video_0080_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=288/425 candidate_id=video_0080_v3_pre_f001244-001334 strict_valid=True joint=True
+progress=289/425 candidate_id=video_0080_v3_pre_f002488-002578 strict_valid=True joint=True
+progress=290/425 candidate_id=video_0080_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=291/425 candidate_id=video_0080_v3_pre_f001214-001364 strict_valid=True joint=True
+progress=292/425 candidate_id=video_0080_v3_pre_f002428-002578 strict_valid=True joint=True
+progress=293/425 candidate_id=video_0080_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=294/425 candidate_id=video_0080_v3_pre_f001139-001439 strict_valid=True joint=True
+progress=295/425 candidate_id=video_0080_v3_pre_f002278-002578 strict_valid=True joint=True
+progress=296/425 candidate_id=video_0080_v3_pre_f000000-000600 strict_valid=True joint=True
+progress=297/425 candidate_id=video_0080_v3_pre_f000989-001589 strict_valid=True joint=True
+progress=298/425 candidate_id=video_0080_v3_pre_f001978-002578 strict_valid=True joint=True
+progress=299/425 candidate_id=video_0080_v3_post_f002609-002706 strict_valid=True joint=False
+progress=300/425 candidate_id=video_0080_v3_post_f002609-002658 strict_valid=True joint=False
+progress=301/425 candidate_id=video_0080_v3_post_f002658-002706 strict_valid=True joint=False
+progress=302/425 candidate_id=video_0081_v3_transition_f002967-003027 strict_valid=True joint=False
+progress=303/425 candidate_id=video_0081_v3_transition_f002943-003033 strict_valid=True joint=False
+progress=304/425 candidate_id=video_0081_v3_transition_f002890-003040 strict_valid=True joint=False
+progress=305/425 candidate_id=video_0081_v3_transition_f002748-003048 strict_valid=True joint=False
+progress=306/425 candidate_id=video_0081_v3_transition_f002976-003036 strict_valid=True joint=False
+progress=307/425 candidate_id=video_0081_v3_transition_f002956-003046 strict_valid=True joint=False
+progress=308/425 candidate_id=video_0081_v3_transition_f002913-003063 strict_valid=True joint=False
+progress=309/425 candidate_id=video_0081_v3_transition_f002793-003093 strict_valid=True joint=False
+progress=310/425 candidate_id=video_0081_v3_transition_f002560-003095 strict_valid=True joint=False
+progress=311/425 candidate_id=video_0081_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=312/425 candidate_id=video_0081_v3_pre_f001456-001516 strict_valid=True joint=True
+progress=313/425 candidate_id=video_0081_v3_pre_f002913-002973 strict_valid=True joint=False
+progress=314/425 candidate_id=video_0081_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=315/425 candidate_id=video_0081_v3_pre_f001442-001532 strict_valid=True joint=False
+progress=316/425 candidate_id=video_0081_v3_pre_f002883-002973 strict_valid=True joint=False
+progress=317/425 candidate_id=video_0081_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=318/425 candidate_id=video_0081_v3_pre_f001412-001562 strict_valid=True joint=False
+progress=319/425 candidate_id=video_0081_v3_pre_f002823-002973 strict_valid=True joint=False
+progress=320/425 candidate_id=video_0081_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=321/425 candidate_id=video_0081_v3_pre_f001336-001636 strict_valid=True joint=True
+progress=322/425 candidate_id=video_0081_v3_pre_f002673-002973 strict_valid=True joint=False
+progress=323/425 candidate_id=video_0081_v3_pre_f000000-000600 strict_valid=True joint=True
+progress=324/425 candidate_id=video_0081_v3_pre_f001186-001786 strict_valid=True joint=True
+progress=325/425 candidate_id=video_0081_v3_pre_f002373-002973 strict_valid=True joint=False
+progress=326/425 candidate_id=video_0081_v3_post_f003003-003095 strict_valid=True joint=False
+progress=327/425 candidate_id=video_0081_v3_post_f003003-003049 strict_valid=True joint=False
+progress=328/425 candidate_id=video_0081_v3_post_f003049-003095 strict_valid=True joint=False
+progress=329/425 candidate_id=video_0083_v3_pre_f003226-003286 strict_valid=True joint=True
+progress=330/425 candidate_id=video_0083_v3_pre_f003962-004052 strict_valid=True joint=True
+progress=331/425 candidate_id=video_0083_v3_pre_f000927-001077 strict_valid=True joint=True
+progress=332/425 candidate_id=video_0083_v3_pre_f001603-001903 strict_valid=True joint=True
+progress=333/425 candidate_id=video_0083_v3_pre_f002204-002804 strict_valid=True joint=True
+progress=334/425 candidate_id=video_0085_v3_transition_f000271-000331 strict_valid=True joint=False
+progress=335/425 candidate_id=video_0085_v3_transition_f000247-000337 strict_valid=True joint=False
+progress=336/425 candidate_id=video_0085_v3_transition_f000194-000344 strict_valid=True joint=False
+progress=337/425 candidate_id=video_0085_v3_transition_f000262-000322 strict_valid=True joint=False
+progress=338/425 candidate_id=video_0085_v3_transition_f000233-000323 strict_valid=True joint=False
+progress=339/425 candidate_id=video_0085_v3_transition_f000172-000322 strict_valid=True joint=False
+progress=340/425 candidate_id=video_0085_v3_transition_f000278-000348 strict_valid=True joint=False
+progress=341/425 candidate_id=video_0085_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=342/425 candidate_id=video_0085_v3_pre_f000108-000168 strict_valid=True joint=True
+progress=343/425 candidate_id=video_0085_v3_pre_f000216-000276 strict_valid=True joint=True
+progress=344/425 candidate_id=video_0085_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=345/425 candidate_id=video_0085_v3_pre_f000093-000183 strict_valid=True joint=True
+progress=346/425 candidate_id=video_0085_v3_pre_f000186-000276 strict_valid=True joint=True
+progress=347/425 candidate_id=video_0085_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=348/425 candidate_id=video_0085_v3_pre_f000063-000213 strict_valid=True joint=True
+progress=349/425 candidate_id=video_0085_v3_pre_f000126-000276 strict_valid=True joint=True
+progress=350/425 candidate_id=video_0085_v3_post_f000307-000348 strict_valid=True joint=False
+progress=351/425 candidate_id=video_0092_v3_transition_f000425-000485 strict_valid=True joint=False
+progress=352/425 candidate_id=video_0092_v3_transition_f000396-000486 strict_valid=True joint=False
+progress=353/425 candidate_id=video_0092_v3_transition_f000335-000485 strict_valid=True joint=False
+progress=354/425 candidate_id=video_0092_v3_transition_f000434-000494 strict_valid=True joint=False
+progress=355/425 candidate_id=video_0092_v3_transition_f000410-000500 strict_valid=True joint=False
+progress=356/425 candidate_id=video_0092_v3_transition_f000250-000506 strict_valid=True joint=False
+progress=357/425 candidate_id=video_0092_v3_pre_f000000-000060 strict_valid=True joint=True
+progress=358/425 candidate_id=video_0092_v3_pre_f000190-000250 strict_valid=True joint=True
+progress=359/425 candidate_id=video_0092_v3_pre_f000379-000439 strict_valid=True joint=False
+progress=360/425 candidate_id=video_0092_v3_pre_f000000-000090 strict_valid=True joint=True
+progress=361/425 candidate_id=video_0092_v3_pre_f000174-000264 strict_valid=True joint=True
+progress=362/425 candidate_id=video_0092_v3_pre_f000349-000439 strict_valid=True joint=False
+progress=363/425 candidate_id=video_0092_v3_pre_f000000-000150 strict_valid=True joint=True
+progress=364/425 candidate_id=video_0092_v3_pre_f000144-000294 strict_valid=True joint=True
+progress=365/425 candidate_id=video_0092_v3_pre_f000289-000439 strict_valid=True joint=False
+progress=366/425 candidate_id=video_0092_v3_pre_f000000-000300 strict_valid=True joint=True
+progress=367/425 candidate_id=video_0092_v3_pre_f000070-000370 strict_valid=True joint=True
+progress=368/425 candidate_id=video_0092_v3_pre_f000139-000439 strict_valid=True joint=False
+progress=369/425 candidate_id=video_0092_v3_post_f000470-000506 strict_valid=True joint=False
+progress=370/425 candidate_id=video_0096_v3_pre_f002334-002394 strict_valid=True joint=False
+progress=371/425 candidate_id=video_0096_v3_pre_f003333-003423 strict_valid=True joint=False
+progress=372/425 candidate_id=video_0096_v3_pre_f004316-004466 strict_valid=True joint=False
+progress=373/425 candidate_id=video_0096_v3_pre_f005254-005554 strict_valid=True joint=False
+progress=374/425 candidate_id=video_0096_v3_pre_f001051-001651 strict_valid=True joint=False
+progress=375/425 candidate_id=video_0102_v3_transition_f005401-005451 strict_valid=True joint=False
+progress=376/425 candidate_id=video_0102_v3_transition_f005385-005460 strict_valid=True joint=False
+progress=377/425 candidate_id=video_0102_v3_transition_f005348-005474 strict_valid=True joint=False
+progress=378/425 candidate_id=video_0102_v3_transition_f005248-005498 strict_valid=True joint=False
+progress=379/425 candidate_id=video_0102_v3_transition_f005011-005511 strict_valid=True joint=False
+progress=380/425 candidate_id=video_0102_v3_transition_f005394-005444 strict_valid=True joint=False
+progress=381/425 candidate_id=video_0102_v3_transition_f005374-005448 strict_valid=True joint=False
+progress=382/425 candidate_id=video_0102_v3_transition_f005330-005455 strict_valid=True joint=False
+progress=383/425 candidate_id=video_0102_v3_transition_f005211-005461 strict_valid=True joint=False
+progress=384/425 candidate_id=video_0102_v3_transition_f005378-005544 strict_valid=True joint=False
+progress=385/425 candidate_id=video_0102_v3_pre_f005348-005398 strict_valid=True joint=True
+progress=386/425 candidate_id=video_0102_v3_pre_f005273-005398 strict_valid=True joint=True
+progress=387/425 candidate_id=video_0102_v3_pre_f004898-005398 strict_valid=True joint=True
+progress=388/425 candidate_id=video_0103_v3_transition_f004400-004450 strict_valid=True joint=False
+progress=389/425 candidate_id=video_0103_v3_transition_f004384-004459 strict_valid=True joint=False
+progress=390/425 candidate_id=video_0103_v3_transition_f004348-004472 strict_valid=True joint=False
+progress=391/425 candidate_id=video_0103_v3_transition_f004248-004498 strict_valid=True joint=False
+progress=392/425 candidate_id=video_0103_v3_transition_f004010-004510 strict_valid=True joint=False
+progress=393/425 candidate_id=video_0103_v3_transition_f004392-004442 strict_valid=True joint=False
+progress=394/425 candidate_id=video_0103_v3_transition_f004372-004448 strict_valid=True joint=False
+progress=395/425 candidate_id=video_0103_v3_transition_f004329-004454 strict_valid=True joint=False
+progress=396/425 candidate_id=video_0103_v3_transition_f004210-004460 strict_valid=True joint=False
+progress=397/425 candidate_id=video_0103_v3_transition_f004378-004536 strict_valid=True joint=False
+progress=398/425 candidate_id=video_0103_v3_pre_f004347-004397 strict_valid=True joint=True
+progress=399/425 candidate_id=video_0103_v3_pre_f004272-004397 strict_valid=True joint=False
+progress=400/425 candidate_id=video_0103_v3_pre_f003897-004397 strict_valid=True joint=True
+progress=401/425 candidate_id=video_0103_v3_post_f004423-004536 strict_valid=True joint=False
+progress=402/425 candidate_id=video_0103_v3_post_f004423-004480 strict_valid=True joint=False
+progress=403/425 candidate_id=video_0103_v3_post_f004480-004536 strict_valid=True joint=False
+progress=404/425 candidate_id=video_0107_v3_pre_f002476-002526 strict_valid=True joint=False
+progress=405/425 candidate_id=video_0107_v3_pre_f003041-003116 strict_valid=True joint=True
+progress=406/425 candidate_id=video_0107_v3_pre_f000707-000832 strict_valid=True joint=False
+progress=407/425 candidate_id=video_0107_v3_pre_f001222-001472 strict_valid=True joint=False
+progress=408/425 candidate_id=video_0107_v3_pre_f001674-002174 strict_valid=True joint=True
+progress=409/425 candidate_id=video_0110_v3_transition_f004326-004376 strict_valid=True joint=False
+progress=410/425 candidate_id=video_0110_v3_transition_f004310-004385 strict_valid=True joint=False
+progress=411/425 candidate_id=video_0110_v3_transition_f004274-004399 strict_valid=True joint=False
+progress=412/425 candidate_id=video_0110_v3_transition_f004174-004424 strict_valid=True joint=False
+progress=413/425 candidate_id=video_0110_v3_transition_f003936-004436 strict_valid=True joint=False
+progress=414/425 candidate_id=video_0110_v3_transition_f004319-004369 strict_valid=True joint=False
+progress=415/425 candidate_id=video_0110_v3_transition_f004299-004374 strict_valid=True joint=False
+progress=416/425 candidate_id=video_0110_v3_transition_f004255-004380 strict_valid=True joint=False
+progress=417/425 candidate_id=video_0110_v3_transition_f004136-004386 strict_valid=True joint=False
+progress=418/425 candidate_id=video_0110_v3_transition_f004287-004535 strict_valid=True joint=False
+progress=419/425 candidate_id=video_0110_v3_pre_f004273-004323 strict_valid=True joint=False
+progress=420/425 candidate_id=video_0110_v3_pre_f004198-004323 strict_valid=True joint=False
+progress=421/425 candidate_id=video_0110_v3_pre_f003823-004323 strict_valid=True joint=False
+progress=422/425 candidate_id=video_0110_v3_post_f004349-004535 strict_valid=True joint=False
+progress=423/425 candidate_id=video_0110_v3_post_f004349-004411 strict_valid=True joint=False
+progress=424/425 candidate_id=video_0110_v3_post_f004411-004473 strict_valid=True joint=False
+progress=425/425 candidate_id=video_0110_v3_post_f004473-004535 strict_valid=True joint=False
+{
+  "total_samples": 425,
+  "runtime_failure_count": 0,
+  "strict_valid_count": 425,
+  "strict_valid_rate": 1.0,
+  "metrics": {
+    "total": 425,
+    "contract_valid_rate": 1.0,
+    "joint_correct_rate": 0.374118,
+    "clip_state_correct_rate": 0.557647,
+    "fracture_mechanism_correct_rate": 0.44,
+    "fracture_site_correct_rate": 0.510588,
+    "special_case_correct_rate": 1.0
+  },
+  "target_clip_state_distribution": {
+    "临界未断裂": 57,
+    "发生断裂": 144,
+    "已断裂": 33,
+    "未断裂": 191
+  },
+  "prediction_clip_state_distribution": {
+    "临界未断裂": 26,
+    "发生断裂": 153,
+    "已断裂": 6,
+    "未断裂": 240
+  },
+  "clip_state_confusion": {
+    "临界未断裂": {
+      "临界未断裂": 13,
+      "发生断裂": 18,
+      "未断裂": 26
+    },
+    "发生断裂": {
+      "临界未断裂": 6,
+      "发生断裂": 78,
+      "已断裂": 1,
+      "未断裂": 59
+    },
+    "已断裂": {
+      "临界未断裂": 1,
+      "发生断裂": 23,
+      "未断裂": 9
+    },
+    "未断裂": {
+      "临界未断裂": 6,
+      "发生断裂": 34,
+      "已断裂": 5,
+      "未断裂": 146
+    }
+  }
+}

@@ -1,6 +1,7 @@
 # `docs/results/` 文件索引（117 个文件）
 
 > **变更记录** 2026-10-18 清理：移除 24 个文件，现存 117 个。N/M 由 `find docs/results -type f` + `os.path.getsize` 统计；清单见 C 节主表，被清空的两个一级子目录（`v4_1_0_760050fad303_20260724_visual/`、`v4_1_prompt_concise_cv_v1_seed3411/`）整组移除。
+> **变更记录** 2026-10-18 另有 R1 训练过程信息 24 个文件同步入库，落位 `records/r1-run-20261018/`，不属 `docs/results` 范围，故不计入本索引统计。
 
 ## A. 头部声明
 

@@ -1,0 +1,11 @@
+model_name_or_path: ../models/minicpm_v_4_5
+cache_dir: null
+adapter_name_or_path: ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407
+template: minicpm_v
+finetuning_type: lora
+trust_remote_code: true
+
+export_dir: ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407_merged
+export_size: 2
+export_device: cpu
+export_legacy_format: false

@@ -1,0 +1,396 @@
+[WARNING|2026-07-28 04:20:56] llamafactory.extras.misc:155 >> Version checking has been disabled, may lead to unexpected behaviors.
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,675 >> loading file vocab.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,675 >> loading file merges.txt
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,675 >> loading file tokenizer.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,675 >> loading file added_tokens.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,675 >> loading file special_tokens_map.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,675 >> loading file tokenizer_config.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,675 >> loading file chat_template.jinja
+[INFO|tokenization_utils_base.py:2337] 2026-07-28 04:20:57,848 >> Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+[INFO|image_processing_base.py:374] 2026-07-28 04:20:57,848 >> loading configuration file ../models/minicpm_v_4_5/preprocessor_config.json
+/home/liuyang/miniconda3/envs/agent/lib/python3.11/site-packages/transformers/models/auto/image_processing_auto.py:646: FutureWarning: The image_processor_class argument is deprecated and will be removed in v4.42. Please use `slow_image_processor_class`, or `fast_image_processor_class` instead
+  warnings.warn(
+[INFO|image_processing_base.py:374] 2026-07-28 04:20:57,850 >> loading configuration file ../models/minicpm_v_4_5/preprocessor_config.json
+[WARNING|logging.py:328] 2026-07-28 04:20:57,850 >> `use_fast` is set to `True` but the image processor class does not have a fast version.  Falling back to the slow version.
+[INFO|image_processing_base.py:421] 2026-07-28 04:20:57,851 >> Image processor MiniCPMVImageProcessor {
+  "auto_map": {
+    "AutoImageProcessor": "image_processing_minicpmv.MiniCPMVImageProcessor",
+    "AutoProcessor": "processing_minicpmv.MiniCPMVProcessor"
+  },
+  "im_end": "</image>",
+  "im_end_token": "</image>",
+  "im_id_end": "</image_id>",
+  "im_id_start": "<image_id>",
+  "im_start": "<image>",
+  "im_start_token": "<image>",
+  "image_feature_size": 64,
+  "image_processor_type": "MiniCPMVImageProcessor",
+  "max_slice_nums": 9,
+  "mean": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "norm_mean": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "norm_std": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "patch_size": 14,
+  "processor_class": "MiniCPMVProcessor",
+  "scale_resolution": 448,
+  "slice_end": "</slice>",
+  "slice_end_token": "</slice>",
+  "slice_mode": true,
+  "slice_start": "<slice>",
+  "slice_start_token": "<slice>",
+  "std": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "unk": "<unk>",
+  "unk_token": "<unk>",
+  "use_image_id": true,
+  "version": 2.6
+}
+
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,851 >> loading file vocab.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,851 >> loading file merges.txt
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,851 >> loading file tokenizer.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,851 >> loading file added_tokens.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,851 >> loading file special_tokens_map.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,851 >> loading file tokenizer_config.json
+[INFO|tokenization_utils_base.py:2066] 2026-07-28 04:20:57,851 >> loading file chat_template.jinja
+[INFO|tokenization_utils_base.py:2337] 2026-07-28 04:20:58,024 >> Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+[INFO|processing_utils.py:1051] 2026-07-28 04:20:58,025 >> loading configuration file None
+[INFO|processing_utils.py:1136] 2026-07-28 04:20:58,223 >> Processor MiniCPMVProcessor:
+- image_processor: MiniCPMVImageProcessor {
+  "auto_map": {
+    "AutoImageProcessor": "image_processing_minicpmv.MiniCPMVImageProcessor",
+    "AutoProcessor": "processing_minicpmv.MiniCPMVProcessor"
+  },
+  "im_end": "</image>",
+  "im_end_token": "</image>",
+  "im_id_end": "</image_id>",
+  "im_id_start": "<image_id>",
+  "im_start": "<image>",
+  "im_start_token": "<image>",
+  "image_feature_size": 64,
+  "image_processor_type": "MiniCPMVImageProcessor",
+  "max_slice_nums": 9,
+  "mean": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "norm_mean": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "norm_std": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "patch_size": 14,
+  "processor_class": "MiniCPMVProcessor",
+  "scale_resolution": 448,
+  "slice_end": "</slice>",
+  "slice_end_token": "</slice>",
+  "slice_mode": true,
+  "slice_start": "<slice>",
+  "slice_start_token": "<slice>",
+  "std": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "unk": "<unk>",
+  "unk_token": "<unk>",
+  "use_image_id": true,
+  "version": 2.6
+}
+
+- tokenizer: MiniCPMVTokenizerFast(name_or_path='../models/minicpm_v_4_5', vocab_size=151643, model_max_length=131072, is_fast=True, padding_side='right', truncation_side='right', special_tokens={'bos_token': '<|im_start|>', 'eos_token': '<|im_end|>', 'unk_token': '<unk>', 'pad_token': '<|endoftext|>', 'additional_special_tokens': ['<unk>', '<image>', '</image>', '<ref>', '</ref>', '<box>', '</box>', '<quad>', '</quad>', '<point>', '</point>', '<slice>', '</slice>', '<image_id>', '</image_id>', '<unit>', '</unit>', '<|reserved_0|>', '<|reserved_1|>', '<|reserved_2|>', '<|reserved_3|>', '<|reserved_4|>', '<|reserved_5|>', '<|reserved_6|>', '<|reserved_7|>', '<|reserved_8|>', '<|reserved_9|>', '<|reserved_10|>', '<|reserved_11|>', '<|reserved_12|>', '<|reserved_13|>', '<|reserved_14|>', '<|reserved_15|>', '<|reserved_16|>', '<|reserved_17|>', '<|reserved_18|>', '<|reserved_19|>', '<|reserved_20|>', '<|reserved_21|>', '<|reserved_22|>', '<|reserved_23|>', '<|reserved_24|>', '<|reserved_25|>', '<|reserved_26|>', '<|reserved_27|>', '<|reserved_28|>', '<|reserved_29|>', '<|reserved_30|>', '<|reserved_31|>', '<|reserved_32|>', '<|reserved_33|>', '<|reserved_34|>', '<|reserved_35|>', '<|reserved_36|>', '<|reserved_37|>', '<|reserved_38|>', '<|reserved_39|>', '<|reserved_40|>', '<|reserved_41|>', '<|reserved_42|>', '<|reserved_43|>', '<|reserved_44|>', '<|reserved_45|>', '<|reserved_46|>', '<|reserved_47|>', '<|reserved_48|>', '<|reserved_49|>', '<|reserved_50|>', '<|reserved_51|>', '<|reserved_52|>', '<|reserved_53|>', '<|reserved_54|>', '<|reserved_55|>', '<|reserved_56|>', '<|reserved_57|>', '<|reserved_58|>', '<|reserved_59|>', '<|reserved_60|>', '<|reserved_61|>', '<|reserved_62|>']}, clean_up_tokenization_spaces=False, added_tokens_decoder={
+	128244: AddedToken("<unk>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151643: AddedToken("<|endoftext|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151644: AddedToken("<|im_start|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151645: AddedToken("<|im_end|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151646: AddedToken("<|object_ref_start|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151647: AddedToken("<|object_ref_end|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151648: AddedToken("<|box_start|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151649: AddedToken("<|box_end|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151650: AddedToken("<|quad_start|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151651: AddedToken("<|quad_end|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151652: AddedToken("<|vision_start|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151653: AddedToken("<|vision_end|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151654: AddedToken("<|vision_pad|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151655: AddedToken("<|image_pad|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151656: AddedToken("<|video_pad|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151657: AddedToken("<tool_call>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151658: AddedToken("</tool_call>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151659: AddedToken("<|fim_prefix|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151660: AddedToken("<|fim_middle|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151661: AddedToken("<|fim_suffix|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151662: AddedToken("<|fim_pad|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151663: AddedToken("<|repo_name|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151664: AddedToken("<|file_sep|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151665: AddedToken("<tool_response>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151666: AddedToken("</tool_response>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151667: AddedToken("<think>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151668: AddedToken("</think>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=False),
+	151669: AddedToken("<image>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151670: AddedToken("</image>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151671: AddedToken("<ref>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151672: AddedToken("</ref>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151673: AddedToken("<box>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151674: AddedToken("</box>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151675: AddedToken("<quad>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151676: AddedToken("</quad>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151677: AddedToken("<point>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151678: AddedToken("</point>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151679: AddedToken("<slice>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151680: AddedToken("</slice>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151681: AddedToken("<image_id>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151682: AddedToken("</image_id>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151683: AddedToken("<unit>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151684: AddedToken("</unit>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151685: AddedToken("<|reserved_0|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151686: AddedToken("<|reserved_1|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151687: AddedToken("<|reserved_2|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151688: AddedToken("<|reserved_3|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151689: AddedToken("<|reserved_4|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151690: AddedToken("<|reserved_5|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151691: AddedToken("<|reserved_6|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151692: AddedToken("<|reserved_7|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151693: AddedToken("<|reserved_8|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151694: AddedToken("<|reserved_9|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151695: AddedToken("<|reserved_10|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151696: AddedToken("<|reserved_11|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151697: AddedToken("<|reserved_12|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151698: AddedToken("<|reserved_13|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151699: AddedToken("<|reserved_14|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151700: AddedToken("<|reserved_15|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151701: AddedToken("<|reserved_16|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151702: AddedToken("<|reserved_17|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151703: AddedToken("<|reserved_18|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151704: AddedToken("<|reserved_19|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151705: AddedToken("<|reserved_20|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151706: AddedToken("<|reserved_21|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151707: AddedToken("<|reserved_22|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151708: AddedToken("<|reserved_23|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151709: AddedToken("<|reserved_24|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151710: AddedToken("<|reserved_25|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151711: AddedToken("<|reserved_26|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151712: AddedToken("<|reserved_27|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151713: AddedToken("<|reserved_28|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151714: AddedToken("<|reserved_29|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151715: AddedToken("<|reserved_30|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151716: AddedToken("<|reserved_31|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151717: AddedToken("<|reserved_32|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151718: AddedToken("<|reserved_33|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151719: AddedToken("<|reserved_34|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151720: AddedToken("<|reserved_35|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151721: AddedToken("<|reserved_36|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151722: AddedToken("<|reserved_37|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151723: AddedToken("<|reserved_38|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151724: AddedToken("<|reserved_39|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151725: AddedToken("<|reserved_40|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151726: AddedToken("<|reserved_41|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151727: AddedToken("<|reserved_42|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151728: AddedToken("<|reserved_43|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151729: AddedToken("<|reserved_44|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151730: AddedToken("<|reserved_45|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151731: AddedToken("<|reserved_46|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151732: AddedToken("<|reserved_47|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151733: AddedToken("<|reserved_48|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151734: AddedToken("<|reserved_49|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151735: AddedToken("<|reserved_50|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151736: AddedToken("<|reserved_51|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151737: AddedToken("<|reserved_52|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151738: AddedToken("<|reserved_53|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151739: AddedToken("<|reserved_54|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151740: AddedToken("<|reserved_55|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151741: AddedToken("<|reserved_56|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151742: AddedToken("<|reserved_57|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151743: AddedToken("<|reserved_58|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151744: AddedToken("<|reserved_59|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151745: AddedToken("<|reserved_60|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151746: AddedToken("<|reserved_61|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+	151747: AddedToken("<|reserved_62|>", rstrip=False, lstrip=False, single_word=False, normalized=False, special=True),
+}
+)
+
+{
+  "processor_class": "MiniCPMVProcessor"
+}
+
+⚙️  Running in WANDB offline mode
+[INFO|2026-07-28 04:20:58] llamafactory.data.template:144 >> Add <|im_end|> to stop words.
+[INFO|configuration_utils.py:763] 2026-07-28 04:20:58,239 >> loading configuration file ../models/minicpm_v_4_5/config.json
+[INFO|configuration_utils.py:763] 2026-07-28 04:20:58,242 >> loading configuration file ../models/minicpm_v_4_5/config.json
+[INFO|configuration_utils.py:839] 2026-07-28 04:20:58,243 >> Model config MiniCPMVConfig {
+  "architectures": [
+    "MiniCPMV"
+  ],
+  "attention_bias": false,
+  "attention_dropout": 0.0,
+  "auto_map": {
+    "AutoConfig": "configuration_minicpm.MiniCPMVConfig",
+    "AutoModel": "modeling_minicpmv.MiniCPMV",
+    "AutoModelForCausalLM": "modeling_minicpmv.MiniCPMV"
+  },
+  "batch_3d_resampler": true,
+  "batch_vision_input": true,
+  "bos_token_id": 151643,
+  "drop_vision_last_layer": false,
+  "dtype": "bfloat16",
+  "eos_token_id": 151645,
+  "head_dim": 128,
+  "hidden_act": "silu",
+  "hidden_size": 4096,
+  "image_size": 448,
+  "initializer_range": 0.02,
+  "intermediate_size": 12288,
+  "layer_types": [
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention",
+    "full_attention"
+  ],
+  "max_position_embeddings": 40960,
+  "max_window_layers": 36,
+  "model_type": "minicpmv",
+  "num_attention_heads": 32,
+  "num_hidden_layers": 36,
+  "num_key_value_heads": 8,
+  "patch_size": 14,
+  "query_num": 64,
+  "rms_norm_eps": 1e-06,
+  "rope_scaling": null,
+  "rope_theta": 1000000,
+  "slice_config": {
+    "max_slice_nums": 9,
+    "model_type": "minicpmv",
+    "patch_size": 14,
+    "scale_resolution": 448
+  },
+  "slice_mode": true,
+  "sliding_window": null,
+  "tie_word_embeddings": false,
+  "transformers_version": "4.56.1",
+  "use_cache": true,
+  "use_image_id": true,
+  "use_sliding_window": false,
+  "version": 4.5,
+  "vision_batch_size": 16,
+  "vision_config": {
+    "attention_dropout": 0.0,
+    "hidden_act": "gelu_pytorch_tanh",
+    "hidden_size": 1152,
+    "image_size": 980,
+    "intermediate_size": 4304,
+    "layer_norm_eps": 1e-06,
+    "model_type": "siglip_vision_model",
+    "num_attention_heads": 16,
+    "num_channels": 3,
+    "num_hidden_layers": 27,
+    "patch_size": 14
+  },
+  "vocab_size": 151748
+}
+
+[WARNING|logging.py:328] 2026-07-28 04:20:58,243 >> `torch_dtype` is deprecated! Use `dtype` instead!
+[INFO|2026-07-28 04:20:58] llamafactory.model.model_utils.kv_cache:144 >> KV cache is enabled for faster generation.
+[WARNING|logging.py:328] 2026-07-28 04:20:58,340 >> `torch_dtype` is deprecated! Use `dtype` instead!
+[INFO|modeling_utils.py:1277] 2026-07-28 04:20:58,340 >> loading weights file ../models/minicpm_v_4_5/model.safetensors.index.json
+[INFO|modeling_utils.py:1351] 2026-07-28 04:20:58,340 >> Will use dtype=torch.bfloat16 as defined in model's config object
+[INFO|modeling_utils.py:2466] 2026-07-28 04:20:58,340 >> Instantiating MiniCPMV model under default dtype torch.bfloat16.
+[INFO|configuration_utils.py:1055] 2026-07-28 04:20:58,341 >> Generate config GenerationConfig {
+  "bos_token_id": 151643,
+  "eos_token_id": 151645
+}
+
+[INFO|configuration_utils.py:1055] 2026-07-28 04:20:58,342 >> Generate config GenerationConfig {
+  "bos_token_id": 151643,
+  "eos_token_id": 151645
+}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 107.77it/s]
+[INFO|modeling_utils.py:5721] 2026-07-28 04:20:59,621 >> All model checkpoint weights were used when initializing MiniCPMV.
+
+[INFO|modeling_utils.py:5729] 2026-07-28 04:20:59,621 >> All the weights of MiniCPMV were initialized from the model checkpoint at ../models/minicpm_v_4_5.
+If your task is similar to the task the model of the checkpoint was trained on, you can already use MiniCPMV for predictions without further training.
+[INFO|configuration_utils.py:1008] 2026-07-28 04:20:59,623 >> loading configuration file ../models/minicpm_v_4_5/generation_config.json
+[INFO|configuration_utils.py:1055] 2026-07-28 04:20:59,623 >> Generate config GenerationConfig {
+  "bos_token_id": 151643,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  },
+  "do_sample": true,
+  "eos_token_id": [
+    151645,
+    151643
+  ],
+  "pad_token_id": 151643,
+  "temperature": 0.6,
+  "top_k": 20,
+  "top_p": 0.95
+}
+
+[INFO|2026-07-28 04:20:59] llamafactory.model.model_utils.attention:144 >> Using torch SDPA for faster training and inference.
+[INFO|2026-07-28 04:21:12] llamafactory.model.adapter:144 >> Merged 1 adapter(s).
+[INFO|2026-07-28 04:21:12] llamafactory.model.adapter:144 >> Loaded adapter(s): ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411
+[INFO|2026-07-28 04:21:12] llamafactory.model.loader:144 >> all params: 8,695,895,280
+[INFO|2026-07-28 04:21:12] llamafactory.train.tuner:144 >> Convert model dtype to: torch.bfloat16.
+[INFO|configuration_utils.py:491] 2026-07-28 04:21:12,838 >> Configuration saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/config.json
+[INFO|configuration_utils.py:826] 2026-07-28 04:21:12,838 >> Configuration saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/generation_config.json
+[INFO|modeling_utils.py:4305] 2026-07-28 04:21:21,221 >> The model is bigger than the maximum size per checkpoint (2GB) and is going to be split in 10 checkpoint shards. You can find where each parameters has been saved in the index located at ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/model.safetensors.index.json.
+[INFO|tokenization_utils_base.py:2394] 2026-07-28 04:21:21,221 >> chat template saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/chat_template.jinja
+[INFO|tokenization_utils_base.py:2563] 2026-07-28 04:21:21,222 >> tokenizer config file saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/tokenizer_config.json
+[INFO|tokenization_utils_base.py:2572] 2026-07-28 04:21:21,222 >> Special tokens file saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/special_tokens_map.json
+[INFO|image_processing_base.py:253] 2026-07-28 04:21:21,478 >> Image processor saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/preprocessor_config.json
+[INFO|tokenization_utils_base.py:2394] 2026-07-28 04:21:21,478 >> chat template saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/chat_template.jinja
+[INFO|tokenization_utils_base.py:2563] 2026-07-28 04:21:21,479 >> tokenizer config file saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/tokenizer_config.json
+[INFO|tokenization_utils_base.py:2572] 2026-07-28 04:21:21,479 >> Special tokens file saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/special_tokens_map.json
+[INFO|processing_utils.py:791] 2026-07-28 04:21:22,405 >> processor saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/processor_config.json
+[INFO|2026-07-28 04:21:22] llamafactory.train.tuner:144 >> Ollama modelfile saved in ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3411_merged/Modelfile

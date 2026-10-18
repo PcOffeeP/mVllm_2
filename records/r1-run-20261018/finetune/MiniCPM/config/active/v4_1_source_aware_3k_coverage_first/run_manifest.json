@@ -1,0 +1,32 @@
+{
+  "schema_version": "tensile-vlm-v4.1-source-aware-3k-run/v1",
+  "run_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+  "revision_of_run_id": "v4_1_phase2_source_aware_3k_dd89b70e9d63",
+  "revision_reason": "failed_development_gate",
+  "changed_variable": "coverage_first_shared_candidate_multiset",
+  "training_code_commit": "f54d9ca617e455454f28e31ae058eda2dfdb5ec7",
+  "launch_run_manifest_sha256": "8880686e9856dde0c176978c4662996f291634fd6bd34cca36f63949bb2cdcd9",
+  "release_id": "v4.1.0-ecb5aeb9657c",
+  "release_manifest_sha256": "ba61695cdc78fcdbfe55f7cc6a1474235709aee4c798abc98905f35a8d34d65b",
+  "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+  "sampling_manifest_sha256": "d939fc004e3f9af4b4b0dad1ecad4ba6d9b8f4c862ee87fe4c47aae7c28a7038",
+  "rows_per_epoch": 3000,
+  "epochs": 3,
+  "total_exposures_per_seed": 9000,
+  "gradient_accumulation_steps": 8,
+  "expected_optimizer_steps_per_seed": 1125,
+  "seeds": {
+    "3407": {
+      "train_config": "train_seed3407.yaml",
+      "train_config_sha256": "d3fd4000fb593c64fa653261fafda118651de2268b59195c6b94f8e46a89cac3",
+      "merge_config": "merge_seed3407.yaml",
+      "merge_config_sha256": "cd2d0dfcef2decbfb7b91db61893d734bd23927060e5d2d3d9c04ba76b037c6a"
+    },
+    "3411": {
+      "train_config": "train_seed3411.yaml",
+      "train_config_sha256": "162feb83a162fd73109ec13dca21f21a0489e348b533051d4d8c4ba0a47e3cac",
+      "merge_config": "merge_seed3411.yaml",
+      "merge_config_sha256": "28a93aa390331ae1079fcee56daa917d73308b8a287acfd2c6dcf553065095f2"
+    }
+  }
+}
