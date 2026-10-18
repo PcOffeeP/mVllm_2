@@ -41,9 +41,6 @@ LlamaFactory/saves/minicpmv4_5/lora/*
 /finetune/results/**/runtime_failures.csv
 /finetune/results/**/*.restricted.json
 
-# dependency lock files (not cross-platform)
-uv.lock
-
 # cache 文件
 .cache/
 
@@ -96,6 +93,7 @@ data/sample_subvideos/04_frames
 
 # Codex/Drive 本地上传缓存
 /.tmp.driveupload/
+/.tmp.drivedownload/
 
 # 活 store 已归位到 <项目>/store（迁移完成）：仅放行 Prompt 等小体积 records，其余媒体与权重忽略。
 # 注意：本块必须位于所有全局扩展名规则（如 *.mp4、*.mov）之后，后匹配者胜。

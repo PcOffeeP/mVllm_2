@@ -1,0 +1,364 @@
+{
+  "schema": "training-data-ledger/v1",
+  "generated_at": "2026-10-17",
+  "generator": {
+    "method": "训练机只读 SSH 实测 + 本机只读统计",
+    "remote_readonly": true,
+    "local_write_scope": "docs/results/ 新增两个文件",
+    "scripts": "python3 只读脚本（open('r')/json.load/hashlib），无写入远端"
+  },
+  "data_identity": {
+    "version": "data-v4.1-r2",
+    "protocol": "tensile-vlm/v4.1",
+    "state": "sealed",
+    "status": "active",
+    "purpose": "development",
+    "training_allowed": true,
+    "release_yaml_sha256": "3a42da0db7837c3a21d36d923a428b1b009f7b2d7b00bde7cf7ecafab84f0039",
+    "identity_hash_note": "release.yaml 无 content_hash 字段，data 身份哈希由 release.yaml 文件内容哈希承担"
+  },
+  "release_path": {
+    "remote_root": "/home/liuyang/文档/mVllm_2/store/data/releases/data-v4.1-r2",
+    "primary_manifest": "metadata/training_candidates.json"
+  },
+  "files": [
+    {
+      "path": "release.yaml",
+      "sha256": "3a42da0db7837c3a21d36d923a428b1b009f7b2d7b00bde7cf7ecafab84f0039",
+      "bytes": 476
+    },
+    {
+      "path": "dataset_info.json",
+      "sha256": "37f299b964917984f27f35502bef919e3df42cb553c8342b3422f0337f7c2e7c"
+    },
+    {
+      "path": "metadata/training_candidates.json",
+      "sha256": "390447dee4bdec6ead93df7ed2ebf8eac0dd5b41f6f1aecf21320c0201a0eacf",
+      "role": "主清单"
+    },
+    {
+      "path": "metadata/combined_review_decisions.json",
+      "sha256": "0537ba7b783f3709fe7bd5c4eedc1a728a89e2c35b10cd1ba1987653d601c25a"
+    },
+    {
+      "path": "reports/delta_report.json",
+      "sha256": "3a00790640b35bd63f77a71c0d4eff768d87fae5c199a4d34b791953fee0bdea"
+    },
+    {
+      "path": "reports/quality_report.json",
+      "sha256": "6917bc9908ef0bd45b3478bc3d50833abdba8239322190927a02c8710e3d9b3c"
+    },
+    {
+      "path": "datasets/train/fold_0.json",
+      "sha256": "6f1f8c733a3a2107d15ac9b0c9e41b9a8d031eee846403cd3c5d6bf2ffef6be9"
+    },
+    {
+      "path": "datasets/train/fold_1.json",
+      "sha256": "56f6beecbb866820df847a857c991f87c2809a01f62b0e68c94ae5b5125039a3"
+    },
+    {
+      "path": "datasets/train/fold_2.json",
+      "sha256": "e62d830a436e82582f7bf5117305eab3faea38b9caa6c43803d0267986606791"
+    },
+    {
+      "path": "datasets/validation/fold_0.json",
+      "sha256": "a619d00645dab9a2f1b0b0e88137066cf3bd6825af63b07b266cd065af088da7"
+    },
+    {
+      "path": "datasets/validation/fold_1.json",
+      "sha256": "4ffeef09706d25e46bc28c5503ca55eeb3be8270b620653626cec8235d639722"
+    },
+    {
+      "path": "datasets/validation/fold_2.json",
+      "sha256": "aafec7b6e0846fdace0dc56b3cb99182afb83dfe8751c60db78ac3029d9c337a"
+    }
+  ],
+  "files_notes": {
+    "absent_in_release_dir": [
+      "index.json",
+      "LATEST",
+      "*manifest*"
+    ],
+    "absent_fields_in_release_yaml": [
+      "content_hash",
+      "digest",
+      "sha256",
+      "checksum"
+    ]
+  },
+  "counts": {
+    "candidates": 1678,
+    "excluded_count": 17,
+    "distinct_source_videos": 85,
+    "candidate_id_count_matches": {
+      "candidate_count": 1678,
+      "list_length": 1678,
+      "distinct": 1678
+    },
+    "media": {
+      "video_refs": 1678,
+      "video_refs_distinct": 1678,
+      "frame_refs": 10308,
+      "frame_refs_distinct": 10308,
+      "frames_per_candidate_min": 2,
+      "frames_per_candidate_max": 8
+    }
+  },
+  "folds": [
+    {
+      "fold": "fold_0",
+      "train": 1253,
+      "validation": 425,
+      "source_groups_train": 56,
+      "source_groups_validation": 29
+    },
+    {
+      "fold": "fold_1",
+      "train": 1014,
+      "validation": 664,
+      "source_groups_train": 56,
+      "source_groups_validation": 29
+    },
+    {
+      "fold": "fold_2",
+      "train": 1186,
+      "validation": 492,
+      "source_groups_train": 63,
+      "source_groups_validation": 22
+    }
+  ],
+  "cross_validation": {
+    "validation_pairwise_intersection": {
+      "fold_0_fold_1": 0,
+      "fold_0_fold_2": 0,
+      "fold_1_fold_2": 0
+    },
+    "validation_union": 1581,
+    "validation_sum": 1581,
+    "train_validation_overlap_per_fold": [
+      0,
+      0,
+      0
+    ],
+    "train_union_equals_full": [
+      true,
+      true,
+      true
+    ],
+    "train_union_equals_full_detail": "每折 train 与其 validation 的并集 = 1678（全量）",
+    "dataset_vs_full_bidirectional_diff": [
+      0,
+      0,
+      0
+    ],
+    "dataset_dup_ids_per_file": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "videos_refs_per_fold_file_equals_sample_count": true
+  },
+  "only_train_candidates": {
+    "count": 97,
+    "definition": "全集减去三折 validation 并集；始终只作为某折 train 出现",
+    "in_any_validation": 0,
+    "present_in_all_three_train_splits": true,
+    "missing_in_train_per_fold": [
+      0,
+      0,
+      0
+    ],
+    "sorted_newline_sha256": "c9d461b045a9be3806fe787f893e4c31e21956dcdd669cda41a702c6ddcba4ad",
+    "sample_head": [
+      "video_0014_v3_pre_f000000-000060",
+      "video_0014_v3_pre_f000000-000090",
+      "video_0014_v3_pre_f000020-000110"
+    ],
+    "handling": "仅作为训练样本使用；三折 validation 并集 1581 已覆盖 80 个来源组，剩余 5 个来源组 97 个候选从不参与验证，因此任何单一折的验证集都不能代表这 5 组来源；结论适用范围必须限定在 1581 个 validation 候选上"
+  },
+  "specimen_grouping": {
+    "file": "docs/results/development-source-groups-20261016.json",
+    "sha256": "781aa0b142e20fc03568fcb8286639bc9670d42e7233b265cd03a808a242bd04",
+    "bytes": 100105,
+    "schema": "development-source-groups-preparation/v1",
+    "groups": 85,
+    "group_key": "source_video",
+    "candidates_per_group": {
+      "min": 3,
+      "median": 20.0,
+      "max": 43
+    },
+    "groups_never_in_any_validation": 5,
+    "basis": "直接用户确认（每个试样只对应一个视频），非独立物理观测",
+    "per_fold_validation_group_candidates": {
+      "fold_0": {
+        "min": 3,
+        "median": 16,
+        "max": 28
+      },
+      "fold_1": {
+        "min": 3,
+        "median": 25,
+        "max": 41
+      },
+      "fold_2": {
+        "min": 4,
+        "median": 24.5,
+        "max": 43
+      }
+    },
+    "validation_group_pairwise_intersection": [
+      0,
+      0,
+      0
+    ],
+    "local_vs_remote_candidate_diff": {
+      "local_minus_remote": 0,
+      "remote_minus_local": 0
+    },
+    "group_label_vs_source_video_mismatch": 0
+  },
+  "quality_and_review_reports": {
+    "quality_report": {
+      "status": "passed",
+      "errors": 0,
+      "warnings": 0,
+      "checks": {
+        "source_and_near_duplicate_split_isolation": true
+      }
+    },
+    "combined_review_decisions": {
+      "candidate_count": 410,
+      "admitted": 403,
+      "excluded": 7
+    },
+    "delta_report": {
+      "base": "v4.1.0-760050fad303",
+      "base_samples": 1275,
+      "final_samples": 1678,
+      "candidate_id_overlap": []
+    }
+  },
+  "measurement_method": {
+    "candidate_id_definition": "datasets/**.json 中 videos[0] basename 去 .mp4",
+    "candidate_id_cross_check": "该值与 metadata/training_candidates.json 中 candidate_id 同值同格式",
+    "denominator": "候选分母 = training_candidates.json 的 candidate_count=1678（与 sample_count、distinct、quality_report published 一致）",
+    "fold_denominator": "每折样本数以 datasets/{train,validation}/fold_N.json 的样本条数计，dup_ids=0 故条数=distinct",
+    "excluded_items": [
+      "excluded_count=17 的排除候选（不进任何折文件）",
+      "test 集（sealed test release，不在本 release，未读取其语义）",
+      "410 条 phase2 提交中 7 条 dropped、403 条 admitted 之外的项"
+    ],
+    "group_statistics": "组内候选数用 python statistics.median；组数按 source_video distinct 计",
+    "not_measured": [
+      "模型效果/准确率",
+      "test 集性能",
+      "审查通过性",
+      "耗时以外的资源占用"
+    ]
+  },
+  "timing_baseline": {
+    "source_run": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+    "seed": 3407,
+    "release_id_of_source_run": "v4.1.0-ecb5aeb9657c",
+    "release_note": "该历史 run 使用的是旧 release v4.1.0-ecb5aeb9657c，不是 r2",
+    "evidence": {
+      "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json:59": "train_runtime_seconds = 16797.2917",
+      "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json:2": "actual_optimizer_steps = 1125",
+      "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json:44": "run_id",
+      "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json:58": "seed",
+      "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json:43": "release_id = v4.1.0-ecb5aeb9657c",
+      "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json:30": "train_results.sha256 = 89bf51381e28f4905caf45c476ed3ac0554f4db407890a4af7df79d06cf90c7c",
+      "docs/results/model-inventory-audit-20260831/remote_snapshot.json:1720": "train_runtime = 16797.2917",
+      "docs/results/model-inventory-audit-20260831/remote_snapshot.json:2752": "train_runtime = 16797.2917",
+      "docs/results/model-inventory-audit-20260831/remote_snapshot.json:1666": "eval_runtime = 203.5864（425 样本）",
+      "docs/results/model-inventory-audit-20260831/remote_snapshot.json:1681": "global_step = 1125",
+      "docs/results/model-inventory-audit-20260831/remote_snapshot.json:1686": "max_steps = 1125",
+      "docs/results/model-inventory-audit-20260831/all_results.json": "file_sha256 = d3fecdc634306014ba775b6a26c70bc16500d69313af4629982d5293aff47d18（与 manifest:30 属不同层但同一 run 的产物链）",
+      "docs/results/development-runtime-readiness-20261016.json:250": "recovered_config_text：per_device_train_batch_size=1, gradient_accumulation_steps=8, num_train_epochs=3, quantization_bit=4"
+    },
+    "cross_binding": "remote_snapshot.json:1720 与 :2752 的 train_runtime 同为 16797.2917；all_results.json 的 file_sha256 与 manifest:30 的 train_results.sha256 不同层，属同一 run 的产物链",
+    "samples_per_step": 8,
+    "samples_per_step_derivation": "per_device_train_batch_size(1) × gradient_accumulation_steps(8) = 8",
+    "baseline_steps_self_consistency": "该 run 每 epoch 3000 样本 → 1125 = 3000×3/8，自洽",
+    "s_per_step": 14.9309,
+    "s_per_step_derivation": "16797.2917 / 1125 = 14.9309",
+    "observed_range_s_per_step": {
+      "min": 14.6582,
+      "max": 14.9882
+    },
+    "observed_runs_train_runtime_seconds": [
+      16490.5132,
+      16730.6081,
+      16769.6197,
+      16790.3818,
+      16797.2917,
+      16861.6903
+    ],
+    "per_fold_steps": {
+      "fold_0": 470,
+      "fold_1": 381,
+      "fold_2": 445
+    },
+    "per_fold_steps_derivation": "ceil(train_samples × 3 epochs / 8 samples per step)",
+    "per_fold_hours": {
+      "fold_0": 1.9493,
+      "fold_1": 1.5802,
+      "fold_2": 1.8456
+    },
+    "three_fold_steps_total": 1296,
+    "three_fold_hours": {
+      "point": 5.3751,
+      "min": 5.277,
+      "max": 5.3957,
+      "seconds_point": 19350.5
+    },
+    "eval_estimate": {
+      "definition": "独立 validation 推理：每折 1 次，不入训练内部 eval",
+      "s_per_sample": 0.479,
+      "s_per_sample_derivation": "203.5864 / 425 = 0.479",
+      "validation_samples_total": 1581,
+      "seconds": 757.3,
+      "hours": 0.2104
+    },
+    "three_fold_plus_eval_hours": {
+      "min": 5.4873,
+      "max": 5.6061
+    },
+    "full_conditional": {
+      "conditional": true,
+      "steps": 630,
+      "hours": 2.6129,
+      "definition": "full = 全 1678 样本 × 3 epoch × 同配置",
+      "note": "仅在上述 full 定义被确认时才成立；该定义当前未确认，属未定义风险项",
+      "derivation": "ceil(1678×3/8) = 630 步"
+    },
+    "assumptions": [
+      "沿用旧 release 3k run 的每步 8 样本配置（bs=1 × ga=8）",
+      "沿用 epochs=3 与 4bit 量化等训练配置",
+      "train_runtime_seconds 是 Trainer 总时长，包含 eval_strategy=steps / eval_steps=50 触发的训练内 eval 开销；eval 频率或 eval 集大小不同则单步耗时不可直接比较",
+      "r2 各折的序列长度、帧数分布与旧 run 的 3k 采样相近；差异会改变单步耗时",
+      "三折验证推理按 425 样本 eval_runtime 线性外推到 1581 样本"
+    ],
+    "forbidden_derivation": "不得用「单折 4.67 h × 3」推算三折预算：历史 run 每折为 3000 样本/1125 步，而 r2 各折仅 1253/1014/1186 样本",
+    "excluded_from_this_ledger": "performance_formal_cap_gpu_hours=20 属交互性能预算，与本训练质量预算无关，未使用"
+  },
+  "budget_status": {
+    "training_quality_budget_frozen": false,
+    "status": "derived_estimate_not_approved",
+    "note": "本台账给出的是基于实测单步耗时与实测样本数的派生区间，不是已批准的预算上限；quality_estimate_gpu_hours 在 readiness 文件中仍为 null"
+  },
+  "limitations": [
+    "本文件不代表数据已审查通过 / 不代表模型质量已验收",
+    "逐候选人工审查覆盖率与结论不由本台账保证：phase2 410 条提交中仅 403 条 admitted、7 条 dropped，其余历史候选来自既有批次",
+    "试件分组基于用户直接确认，非独立物理观测，不覆盖实验批次/仪器相关性",
+    "97 个候选不参与任何 validation，结论不能代表这 5 个来源组",
+    "耗时基准来自旧 release v4.1.0-ecb5aeb9657c 的 3k 采样 run，不是 r2 实测训练；序列长度/帧数差异会改变单步耗时",
+    "单步耗时含训练过程内部 eval 开销（eval 频率配置不同则不可比）",
+    "训练机只读实测，未重跑任何训练，本台账不含任何新实验"
+  ],
+  "disclaimer": "本文件不代表数据已审查通过。"
+}
