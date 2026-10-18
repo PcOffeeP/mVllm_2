@@ -10,6 +10,8 @@ from finetune.validation.run_evaluation import evaluate_sample, summarize
 from finetune.validation.datasets import EvalSample
 
 
+# ground_truth 必须带合法区间：若目标与预测两侧的 fracture_between 同时缺失，
+# 该类样本在新判分语义下不计 joint 正确（2026-10-18 修复），无法作为正样本使用。
 def _record(name: str, correct: bool) -> dict:
     sample = EvalSample(
         sample_id=name,
@@ -17,17 +19,17 @@ def _record(name: str, correct: bool) -> dict:
         video_path=Path(f"/tmp/{name}.mp4"),
         metadata={
             "ground_truth": {
-                "has_fracture": False,
-                "fracture_between": None,
-                "type": "未断裂",
-                "location": None,
+                "has_fracture": True,
+                "fracture_between": [1, 2],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
             }
         },
     )
     raw = (
-        '{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'
+        '{"has_fracture":true,"fracture_between":[1,2],"type":"韧性断裂","location":"inside_gauge"}'
         if correct
-        else '{"has_fracture":true,"fracture_between":[1,2],"type":"韧性断裂","location":"inside_gauge"}'
+        else '{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}'
     )
     return evaluate_sample(sample, raw)
 

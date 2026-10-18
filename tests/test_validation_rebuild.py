@@ -145,7 +145,8 @@ def test_task_metrics_keep_invalid_outputs_in_denominator():
     assert metrics["scored_samples"] == 2
     assert metrics["has_fracture_accuracy"] == 0.5
     assert metrics["interval_exact_accuracy"] == 0.0
-    assert metrics["joint_success_rate"] == 0.5
+    # 目标与预测的 fracture_between 同为 None 不构成区间证据，不得白送 joint_success。
+    assert metrics["joint_success_rate"] == 0.0
     assert metrics["has_fracture_confusion"] == {
         "target=false|pred=false": 1,
         "target=true|pred=invalid": 1,
@@ -179,6 +180,133 @@ def test_task_metrics_credit_valid_fields_when_contract_is_incomplete():
     assert metrics["type_accuracy"] == 0.0
     assert metrics["location_accuracy"] == 1.0
     assert metrics["joint_success_rate"] == 0.0
+
+
+def test_task_metrics_missing_interval_never_credits_joint_success():
+    """目标与预测的 fracture_between 均为 None 时，不得凭 None == None 白送 joint_success。"""
+    samples = [
+        EvalSample(
+            sample_id=f"no_fracture_{index:02d}",
+            video_id=f"no_fracture_{index:02d}",
+            video_path=f"/tmp/no_fracture_{index:02d}.mp4",
+            metadata={
+                "ground_truth": {
+                    "has_fracture": False,
+                    "fracture_between": None,
+                    "type": "未断裂",
+                    "location": None,
+                }
+            },
+        )
+        for index in range(10)
+    ]
+    records = [
+        evaluate_sample(
+            sample,
+            '{"has_fracture":false,"fracture_between":null,"type":"未断裂","location":null}',
+        )
+        for sample in samples
+    ]
+
+    metrics = summarize_task_metrics(records)
+
+    assert metrics["scored_samples"] == 10
+    assert metrics["interval_scored_samples"] == 0
+    assert metrics["interval_exact_accuracy"] is None
+    assert metrics["joint_success_rate"] == 0.0
+
+
+def test_task_metrics_one_sided_missing_interval_is_never_correct():
+    """目标有合法区间而预测 fracture_between 为 null 时，样本计入区间评分且判错。"""
+    sample = EvalSample(
+        sample_id="partial_interval",
+        video_id="partial_interval",
+        video_path="/tmp/partial_interval.mp4",
+        metadata={
+            "ground_truth": {
+                "has_fracture": True,
+                "fracture_between": [1, 2],
+                "type": "脆性断裂",
+                "location": "inside_gauge",
+            }
+        },
+    )
+
+    record = evaluate_sample(
+        sample,
+        '{"has_fracture":true,"fracture_between":null,"type":"脆性断裂","location":"inside_gauge"}',
+    )
+    metrics = summarize_task_metrics([record])
+
+    assert record["task_scores"]["interval_available"] is True
+    assert record["task_scores"]["interval_correct"] is False
+    assert record["task_scores"]["joint_success"] is False
+    assert metrics["interval_scored_samples"] == 1
+    assert metrics["interval_exact_accuracy"] == 0.0
+
+
+def test_task_metrics_bool_interval_is_not_credited():
+    """区间 [true, 2] 不得被当成 [1, 2] 记分。"""
+    sample = EvalSample(
+        sample_id="bool_interval",
+        video_id="bool_interval",
+        video_path="/tmp/bool_interval.mp4",
+        metadata={
+            "ground_truth": {
+                "has_fracture": True,
+                "fracture_between": [1, 2],
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+            }
+        },
+    )
+
+    # JSON 的 true 解析成 Python bool，而 bool 是 int 的子类，因此 [True, 2] == [1, 2]
+    # 会成立；区间合法性与相等比较都必须显式排除 bool，否则布尔值会被当成帧号白送分数。
+    record = evaluate_sample(
+        sample,
+        '{"has_fracture": true, "fracture_between": [true, 2], "type": "韧性断裂", "location": "inside_gauge"}',
+    )
+    metrics = summarize_task_metrics([record])
+
+    assert record["task_scores"]["interval_available"] is True
+    assert record["task_scores"]["interval_correct"] is False
+    assert record["task_scores"]["joint_success"] is False
+    assert metrics["interval_scored_samples"] == 1
+    assert metrics["interval_exact_accuracy"] == 0.0
+
+
+def test_evaluate_sample_raw_without_legacy_interval_key():
+    """v2 字段集去掉 fracture_between 的混合形状 raw 端到端不产生该字段、不产生修复标记且判定合法。
+
+    注意：该 raw 形如 {"has_fracture", "type", "location"}，是 v2 字段集去掉 fracture_between
+    后的混合形状，**不是** v4.1 契约形状（v4.1 四字段为
+    clip_state / fracture_mechanism / fracture_site / special_case）。
+    """
+    sample = EvalSample(
+        sample_id="raw_without_interval_key",
+        video_id="raw_without_interval_key",
+        video_path="/tmp/raw_without_interval_key.mp4",
+        metadata={
+            "ground_truth": {
+                "has_fracture": True,
+                "type": "韧性断裂",
+                "location": "inside_gauge",
+            }
+        },
+    )
+
+    # 该混合形状 raw 的端到端路径（v2 字段集去掉 fracture_between，非 v4.1 契约形状）：
+    # 旧字段 fracture_between 在 raw 中缺失时，
+    # 归一化输出既不补键也不产生 repair 标记，且整体仍判为合法。
+    record = evaluate_sample(
+        sample,
+        '{"has_fracture": true, "type": "韧性断裂", "location": "inside_gauge"}',
+    )
+
+    assert "fracture_between" not in record["normalized_output"]
+    assert record["normalization_repairs"] == []
+    assert record["normalized_valid"] is True
 
 
 def test_run_evaluation_prediction_file_mode(tmp_path, monkeypatch):

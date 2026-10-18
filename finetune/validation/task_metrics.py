@@ -22,9 +22,17 @@ def score_record(record: dict[str, Any]) -> dict[str, Any] | None:
     location_correct = prediction.get("location", object()) == target.get("location")
 
     target_interval = target.get("fracture_between")
+    # interval_available is decided solely by the target side
+    # (_valid_interval(target_interval)). When the prediction side is missing, the
+    # sample still stays in the interval denominator and interval_correct scores it
+    # incorrect — so "emit no interval" cannot escape the denominator.
     interval_available = _valid_interval(target_interval)
+    predicted_interval = prediction.get("fracture_between")
+    # The _valid_interval guard below is NOT redundant: JSON true/false arrive as Python
+    # bool, and bool is an int subclass, so [True, 2] == [1, 2] holds. Explicitly
+    # rejecting bool stops an output like [true, 2] from being credited as interval-correct.
     interval_correct = (
-        prediction.get("fracture_between") == target_interval
+        _valid_interval(predicted_interval) and predicted_interval == target_interval
         if interval_available
         else None
     )
@@ -48,7 +56,9 @@ def score_record(record: dict[str, Any]) -> dict[str, Any] | None:
     elif time_available:
         temporal_correct = time_hit is True
     else:
-        temporal_correct = prediction.get("fracture_between") == target_interval
+        # Neither an interval comparison nor a time hit is possible: a missing interval
+        # on either side must not be treated as agreement (e.g. None == None).
+        temporal_correct = False
 
     joint_success = (
         contract_valid
@@ -104,7 +114,8 @@ def summarize_task_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
             "Joint success additionally requires the complete normalized output contract to be valid.",
             "Interval accuracy is exact sampled-frame bracket accuracy where a target interval exists.",
             "Time hit requires the ground-truth event time to fall inside the predicted sampled-frame time bracket.",
-            "Joint success uses exact interval agreement when available, otherwise time hit for timed positive source videos.",
+            "Joint success uses exact interval agreement when the target interval is comparable, otherwise time hit for timed positive source videos; only when the target interval is not comparable and the time branch does not apply is the sample not credited as correct.",
+            "joint_success_rate divides by all scored samples, while negative targets and positive targets with neither a comparable interval nor time evidence can never reach joint success structurally, so its value is capped by the positive-sample share of the scored set. For raw outputs that omit the legacy fracture_between key (that is the v2 field set minus the interval field, NOT the four-field v4.1 contract shape), neither the interval nor the time branch can ever be credited as correct: the predicted time bracket is derived from the prediction-side fracture_between together with the sampled timestamps, so with that key absent predicted_time_range stays None and time_hit stays False even for a positive target that carries an event time. That drives interval_exact_accuracy to 0 whenever the target set carries intervals (with an empty denominator it reads None instead), time_hit_rate to 0 for every timed positive target (or None when there is none), and joint_success_rate to 0; those readings must not be cited as a model capability measurement in that case. Such outputs can still pass the normalized contract because the key is optional, so a high contract-valid rate alongside zero interval/time/joint readings is expected and is not evidence of contract violation. A true four-field v4.1 raw lacks the legacy fields themselves as well, in which case normalized validity fails and the field accuracies are not interpretable either. joint_success_rate is a legacy v2 field-contract joint (has_fracture, type, location and either a matching fracture_between interval or a time hit, plus contract validity, over all scored samples) and is not the v4.1 four-field joint_correct_rate scored elsewhere; the two are different metrics and this rate must not be quoted as the gating joint.",
         ],
     }
 
