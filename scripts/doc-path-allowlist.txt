@@ -1,0 +1,53 @@
+# 文档路径自检白名单（scripts/verify_design_facts.py --check-doc-paths）
+#
+# 语义：脚本对每条规则用 re.fullmatch 逐条匹配（不做子串搜索，因此规则必须写全整条路径）。
+#   refs: <regex>    匹配「引用路径本身」（按仓库根书写的路径）；可省略 `refs:` 前缀，默认即 refs。
+#   files: <regex>   匹配「引用所在文件」（相对仓库根）；命中任一出现处所在文件即豁免该路径。
+# `#` 开头为注释，空行忽略。
+# 只登记已确认「本仓库本就不该有 / 尚未产出 / 有意保留原文」的引用，不写无注释的通配条目。
+
+# --- 诊断脚本索引的原路径列（历史源提交 bcdf4f36） ----------------------------
+# pipeline/scripts/diagnostics/SCRIPTS.md 的「原路径（bcdf4f36 上）」列有意保留 2026-07 诊断工具
+# 在源提交里的位置；按新命名规范，这些脚本现在位于 pipeline/scripts/diagnostics/，原路径本就不应存在。
+refs: finetune/results/diagnostics/.*
+# 同一索引的「未迁文件」小节：该测试硬编码了旧路径，且放进 tests/ 会改变 pytest 收集基线，故有意未迁。
+refs: tests/test_diagnostic_scorer\.py
+
+# --- 设计稿计划产出、尚未落地 -------------------------------------------------
+# docs/plans/2026-10-18-full-chain-validation.md：全链验证的 c1–c14 产物与审计脚本均标注为待产出。
+refs: records/full-chain-validation-20261018/.*
+refs: scripts/(?:eval|train)_audit_[a-z_]+\.py
+refs: scripts/release_audit_source_media\.py
+# docs/pending-blockers.md:62 与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md:492/:519：
+# 门槛精算脚本按设计待建，pending-blockers 原文已注明「该文件目前不存在」。
+refs: finetune/eval_build_gate_thresholds\.py
+# docs/pending-blockers.md:86/:88 与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md:491：
+# 判例库标为「新增 / 阶段一产出」，finetune/validation/cases/ 目录当前整体不存在。
+refs: finetune/validation/cases/judge_cases\.jsonl
+# docs/plans/2026-10-18-evaluation-pipeline-redesign.md:490：T1 判读器标为「新增」，待建。
+refs: finetune/validation/t1_judge\.py
+
+# --- 有意引用的反例路径（误读条目里的错误写法） -------------------------------
+# docs/design-facts.md 的误读条目「路径能对上内容 = 引用正确」有意引用不存在的错误写法
+# `pipeline/scripts/v3_candidate_plan.py` 作反例，正确路径是 pipeline/v3_candidate_plan.py；
+# 不得据此创建文件。
+refs: pipeline/scripts/v3_candidate_plan\.py
+
+# --- 已被合并/清理的历史文档名（台账与历史文档按原文保留，不改写） -------------
+# docs/DATA_PROCESSING_RUNBOOK.md 在 59dee2d1（docs: adopt consolidated workflows…）随文档合并迁出，
+# 现由 docs/data-workflow.md 承担；docs/project-todo.md 等处的历史记录保留原文。
+refs: docs/DATA_PROCESSING_RUNBOOK\.md
+# docs/results/conda-environment-setup-20261013.md 在 749e9dba 的文档清理中删除，
+# docs/project-todo.md:318 的历史记录保留原文。
+refs: docs/results/conda-environment-setup-20261013\.md
+
+# --- 历史/设计文档：保留原文，不改写其中的路径 --------------------------------
+# 可读版本控制设计稿与实施台账：记录当时计划中的 tests/versioning/*、versioning/*、
+# records/{prompts,training,models,evaluations}/<版本> 布局，部分从未落地或已改名/删除。
+files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\.md
+# 历史任务文档（迁移计划、规格、交接记录）。
+files: docs/tasks/.*
+# 历史评测、诊断报告与归档结果。
+files: docs/results/.*
+# 调研笔记（含 finetune/readme.md 这类与仓库实际大小写不一致的写法）。
+files: docs/research/.*

@@ -28,7 +28,8 @@ Non-goals:
 1. `docs/design-facts.md` —— 现行设计事实（**必读**；不看等于从碎片推断）
 2. `docs/project-status.md` —— 当前阶段与结论
 3. `docs/project-todo.md` —— 任务台账与状态
-4. 按任务看具体文档
+4. `docs/pending-blockers.md` —— 未结事项登记册；开工前先看有无与本次任务相关的挂起项（`blocked` / `waiting-decision` / `ready`）
+5. 按任务看具体文档
 
 ## 结论优先级与引用规则
 

@@ -154,3 +154,11 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 正确：错。几何自洽是同义反复：post 窗口起点与「已断裂」判据共用 `event + 0.5` 这一条不等式，物化阶段又主动拒绝早于该时刻的帧，核算必然成立，它不包含任何视觉信息；标签正确性必须由独立的视觉判据（可见分离第一帧）验证，见 DF-012 / DF-013。
   - 出处：pipeline/v3_candidate_plan.py:314
   - 出处：pipeline/v3_candidate_media.py:433
+- **误读**：预测缺失 = 不计入统计
+  - 正确：错。分母由真值侧决定：只要真值区间可用，样本就留在区间分母里，预测缺失按不正确计分；否则「拒答/不输出」会成为逃避评分的策略。
+  - 出处：finetune/validation/task_metrics.py:27
+  - 出处：finetune/validation/task_metrics.py:34
+  - 出处：finetune/validation/task_metrics.py:107
+- **误读**：路径能对上内容 = 引用正确
+  - 正确：错。行号与内容对得上不代表文件路径存在：本轮即出现 `pipeline/scripts/v3_candidate_plan.py`（不存在）实为 `pipeline/v3_candidate_plan.py` 的情形；引用前必须对路径本身做存在性实测（现由 `--check-doc-paths` 兜底）。
+  - 出处：pipeline/SCRIPTS.md:23

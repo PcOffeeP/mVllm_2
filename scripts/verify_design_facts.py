@@ -4,9 +4,18 @@
 用法：
     python scripts/verify_design_facts.py            # 逐项打印 PASS/FAIL，任一失败退出 1
     python scripts/verify_design_facts.py --render   # 由 yaml 重新生成 docs/design-facts.md，退出 0
+    python scripts/verify_design_facts.py --check-doc-paths
+                                                     # 检查 md 里引用的仓库内路径是否真实存在，缺失退出 1
+    python scripts/verify_design_facts.py --check-doc-paths --root /tmp/repo
+                                                     # 只对指定仓库根自检；--root 仅在 --check-doc-paths 下合法
     python scripts/verify_design_facts.py --help     # 打印本说明，退出 0
 
 未知参数（如拼错的 --rendr）打印用法并退出 2，绝不静默回落到校验模式。
+
+--check-doc-paths 的白名单是 `scripts/doc-path-allowlist.txt`（相对被检查的仓库根）：
+- `refs: <regex>`（可省略 `refs:` 前缀）用 `re.fullmatch` 匹配「引用路径本身」；
+- `files: <regex>` 用 `re.fullmatch` 匹配「引用所在文件」（相对仓库根，命中任一出现处即豁免该路径）；
+- `#` 开头为注释；文件不存在时视为空白名单（不 FATAL），但会在输出里注明。
 
 实现约束：
 - 只用标准库，不 import 任何项目模块。
@@ -16,12 +25,15 @@
 - 仓库根按脚本自身位置推断（`Path(__file__).resolve().parents[1]`），不依赖 cwd，便于在隔离的假仓库中运行。
 - yaml 只用标准库解析其子集（映射、序列、块标量 `|`/`>`、行内序列 `[a, b]`、整行注释）；
   超出子集时明确报错，不静默误解析。
+- `--check-doc-paths` 只做存在性检查，不校验行号；引用的路径主体限 ASCII 字符，
+  避免把「`a.py`和`b.py`」这类中文连写吞成一条假路径。
 """
 
 from __future__ import annotations
 
 import ast
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -49,7 +61,18 @@ THRESHOLD_PAIR_RE = re.compile(
     r"(?P<key>[A-Za-z0-9_\u4e00-\u9fff]+)\s*[:：]?\s*(?P<number>" + NUMBER + r")"
 )
 THRESHOLD_KEY_LIKE_RE = re.compile(r"[A-Za-z_]")
-USAGE = "用法：python scripts/verify_design_facts.py [--render | --help]"
+USAGE = (
+    "用法：python scripts/verify_design_facts.py "
+    "[--render | --check-doc-paths [--root <仓库根>] | --help]"
+)
+# 文档路径自检：引用主体限 ASCII（不用 \w，`\w` 会匹配中文导致相邻两个路径被吞成一条）。
+# 扩展名里 jsonl 必须排在 json 之前，否则 `.jsonl` 会被截成 `.json`。
+DOC_PATH_RE = re.compile(
+    r"(?<![A-Za-z0-9_./\-])"
+    r"(?P<ref>(?:docs|pipeline|finetune|versioning|tests|scripts|records)/"
+    r"[A-Za-z0-9_./\-]+\.(?:md|py|jsonl|json|yaml|yml|csv))(?![A-Za-z0-9_])"
+)
+DOC_PATH_ALLOWLIST = Path("scripts") / "doc-path-allowlist.txt"
 RENDER_HINT = "请重新运行 `python scripts/verify_design_facts.py --render`（该文件是生成产物，禁止手改）"
 
 
@@ -562,6 +585,165 @@ def render_markdown(data) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# 文档路径存在性自检（--check-doc-paths）
+# --------------------------------------------------------------------------- #
+def _git_md_files(root: Path) -> tuple[list[str] | None, str | None]:
+    """用 `git -C <root> ls-files -z '*.md'` 取受跟踪的 md 清单；失败时返回原因。
+
+    用 `-z` 是为了关掉 git 对非 ASCII 路径的引号转义，否则中文文件名无法直接打开。
+    """
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--", "*.md"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        return None, f"无法执行 git：{exc}"
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).strip() or "无输出"
+        return None, (
+            f"git -C {root} ls-files -z '*.md' 退出码 {completed.returncode}"
+            f"（不是 git 仓库或 git 不可用？）：{detail}"
+        )
+    files = [chunk for chunk in completed.stdout.split("\0") if chunk.strip()]
+    return files, None
+
+
+def _scan_md_refs(root: Path, md_files: list[str]) -> tuple[list[dict], list[str]]:
+    """逐行抽取 md 里的仓库内路径引用；含省略号（`...` / `…`）的占位引用跳过不报。"""
+    refs: list[dict] = []
+    problems: list[str] = []
+    for relative in md_files:
+        try:
+            text = (root / relative).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            problems.append(f"{relative} 无法读取：{exc}")
+            continue
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            for match in DOC_PATH_RE.finditer(line):
+                ref = match.group("ref")
+                if "..." in ref or "…" in ref:
+                    continue
+                refs.append({"ref": ref, "file": relative, "line": lineno})
+    return refs, problems
+
+
+def load_doc_path_allowlist(path: Path) -> tuple[list[tuple[str, str, re.Pattern]], list[str]]:
+    """读白名单：返回 [(类别, 源码文本, 已编译正则)] 与问题列表；文件不存在时视为空白名单。"""
+    rules: list[tuple[str, str, re.Pattern]] = []
+    problems: list[str] = []
+    if not path.is_file():
+        return rules, problems
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return rules, [f"白名单 {path} 无法读取：{exc}"]
+    for lineno, raw in enumerate(text.splitlines(), start=1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        kind, pattern = "refs", line
+        for prefix in ("refs:", "files:"):
+            if line.startswith(prefix):
+                kind, pattern = prefix[:-1], line[len(prefix):].strip()
+                break
+        if not pattern:
+            problems.append(f"{path}:{lineno} 规则为空（{kind}: 后缺正则）")
+            continue
+        try:
+            rules.append((kind, pattern, re.compile(pattern)))
+        except re.error as exc:
+            problems.append(f"{path}:{lineno} 正则无效：{pattern!r}（{exc}）")
+    return rules, problems
+
+
+def _ref_exists(root: Path, ref: str, md_file: str) -> tuple[bool, bool]:
+    """双解析存在性：返回 (按仓库根拼接是否存在, 按引用所在 md 的目录拼接是否存在)。"""
+    try:
+        at_root = (root / ref).exists()
+        at_file = ((root / md_file).parent / ref).exists()
+    except OSError:
+        return False, False
+    return at_root, at_file
+
+
+def check_doc_paths_mode(root: Path) -> int:
+    """校验 md 里引用的仓库内路径确实存在；缺失则逐条报 MISSING 并退出 1。"""
+    print(f"CHECK 文档路径存在性：{root}")
+    md_files, error = _git_md_files(root)
+    if error is not None:
+        print(f"FAIL  {error}")
+        return 1
+    if not md_files:
+        print("FAIL  git ls-files '*.md' 没有返回任何文件，无法自检（不在 git 仓库内或没有受跟踪的 md）")
+        return 1
+
+    refs, problems = _scan_md_refs(root, md_files)
+    if problems:
+        for problem in problems:
+            print(f"FAIL  {problem}")
+        return 1
+
+    allowlist_path = root / DOC_PATH_ALLOWLIST
+    rules, allow_problems = load_doc_path_allowlist(allowlist_path)
+    if allow_problems:
+        for problem in allow_problems:
+            print(f"FAIL  {problem}")
+        return 1
+    if not allowlist_path.is_file():
+        print(f"NOTE  白名单文件不存在：{allowlist_path}（视为空白名单）")
+
+    by_ref: dict[str, list[dict]] = {}
+    for item in refs:
+        by_ref.setdefault(item["ref"], []).append(item)
+
+    hits = {"both": 0, "root": 0, "file": 0}
+    missing: list[str] = []
+    exempt: list[str] = []
+    for ref in sorted(by_ref):
+        places = by_ref[ref]
+        resolved = [_ref_exists(root, ref, item["file"]) for item in places]
+        at_root = any(pair[0] for pair in resolved)
+        at_file = any(pair[1] for pair in resolved)
+        if at_root and at_file:
+            hits["both"] += 1
+            continue
+        if at_root or at_file:
+            hits["root" if at_root else "file"] += 1
+            continue
+        ref_exempt = any(kind == "refs" and pattern.fullmatch(ref) for kind, _, pattern in rules)
+        files_exempt = any(
+            kind == "files" and pattern.fullmatch(item["file"])
+            for kind, _, pattern in rules
+            for item in places
+        )
+        if ref_exempt or files_exempt:
+            exempt.append(ref)
+            continue
+        missing.append(ref)
+
+    for ref in missing:
+        for item in by_ref[ref]:
+            print(f"MISSING {ref}  <- {item['file']}:{item['line']}")
+
+    print(
+        f"扫描：{len(md_files)} 个受跟踪 md，{len(refs)} 处引用，{len(by_ref)} 个唯一路径；"
+        f"命中口径 root {hits['root']}、file {hits['file']}、both {hits['both']}"
+    )
+    print(
+        f"合计 {len(refs)} 处引用，唯一路径 {len(by_ref)}，不存在 {len(missing)}"
+        f"（白名单豁免 {len(exempt)}）"
+    )
+    if missing:
+        print("若为示例/计划路径，可加入 `scripts/doc-path-allowlist.txt`")
+        return 1
+    print("PASS  所有引用的目标路径均存在，或已由 scripts/doc-path-allowlist.txt 豁免")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 # 模式
 # --------------------------------------------------------------------------- #
 def _collect(results: list[tuple[bool, str]], label: str, problems: list[str]) -> None:
@@ -660,17 +842,57 @@ def render_mode() -> int:
     return 0
 
 
+def _split_root_arg(args: list[str]) -> tuple[list[str], str | None, str | None]:
+    """抽出 `--root <路径>` / `--root=<路径>`；返回 (其余参数, root 文本, 错误信息)。"""
+    rest: list[str] = []
+    root: str | None = None
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--root":
+            if index + 1 >= len(args):
+                return rest, None, "--root 缺少取值"
+            root = args[index + 1]
+            index += 2
+            continue
+        if arg.startswith("--root="):
+            root = arg[len("--root="):]
+            index += 1
+            continue
+        rest.append(arg)
+        index += 1
+    if root is not None and not root.strip():
+        return rest, None, "--root 取值为空"
+    return rest, root, None
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if "-h" in args or "--help" in args:
         print(__doc__)
         return 0
-    unknown = [arg for arg in args if arg != "--render"]
+    rest, root_text, root_error = _split_root_arg(args)
+    if root_error is not None:
+        print(f"FAIL  {root_error}", file=sys.stderr)
+        print(USAGE, file=sys.stderr)
+        return 2
+    check_doc_paths = "--check-doc-paths" in rest
+    unknown = [arg for arg in rest if arg not in ("--render", "--check-doc-paths")]
     if unknown:
         print(f"FAIL  未知参数：{' '.join(unknown)}", file=sys.stderr)
         print(USAGE, file=sys.stderr)
         return 2
-    if "--render" in args:
+    if root_text is not None and not check_doc_paths:
+        print("FAIL  --root 只能与 --check-doc-paths 一起使用", file=sys.stderr)
+        print(USAGE, file=sys.stderr)
+        return 2
+    if check_doc_paths and "--render" in rest:
+        print("FAIL  --render 与 --check-doc-paths 互斥，一次只运行一种模式", file=sys.stderr)
+        print(USAGE, file=sys.stderr)
+        return 2
+    if check_doc_paths:
+        return check_doc_paths_mode(Path(root_text).expanduser() if root_text else ROOT)
+    if "--render" in rest:
         return render_mode()
     return validate_mode()
 
