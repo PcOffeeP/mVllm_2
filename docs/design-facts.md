@@ -160,5 +160,5 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 出处：finetune/validation/task_metrics.py:34
   - 出处：finetune/validation/task_metrics.py:107
 - **误读**：路径能对上内容 = 引用正确
-  - 正确：错。行号与内容对得上不代表文件路径存在：本轮即出现 `pipeline/scripts/v3_candidate_plan.py`（不存在）实为 `pipeline/v3_candidate_plan.py` 的情形；引用前必须对路径本身做存在性实测（现由 `--check-doc-paths` 兜底）。
+  - 正确：错。行号与内容对得上不代表文件路径存在：本轮实测遇到把 `v3_candidate_plan.py` 误记成放在 `pipeline/scripts/` 下（实际位置是 `pipeline/` 根）的情形；引用前必须对路径本身做存在性实测，现由 `scripts/verify_design_facts.py --check-doc-paths` 兜底。
   - 出处：pipeline/SCRIPTS.md:23

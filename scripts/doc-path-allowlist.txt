@@ -27,12 +27,6 @@ refs: finetune/validation/cases/judge_cases\.jsonl
 # docs/plans/2026-10-18-evaluation-pipeline-redesign.md:490：T1 判读器标为「新增」，待建。
 refs: finetune/validation/t1_judge\.py
 
-# --- 有意引用的反例路径（误读条目里的错误写法） -------------------------------
-# docs/design-facts.md 的误读条目「路径能对上内容 = 引用正确」有意引用不存在的错误写法
-# `pipeline/scripts/v3_candidate_plan.py` 作反例，正确路径是 pipeline/v3_candidate_plan.py；
-# 不得据此创建文件。
-refs: pipeline/scripts/v3_candidate_plan\.py
-
 # --- 已被合并/清理的历史文档名（台账与历史文档按原文保留，不改写） -------------
 # docs/DATA_PROCESSING_RUNBOOK.md 在 59dee2d1（docs: adopt consolidated workflows…）随文档合并迁出，
 # 现由 docs/data-workflow.md 承担；docs/project-todo.md 等处的历史记录保留原文。
