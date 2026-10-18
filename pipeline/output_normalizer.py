@@ -209,18 +209,25 @@ def normalize_structured_output(
         raw: Raw model output parsed as a Python dict. May contain type errors,
              string representations of booleans, malformed intervals, etc.
         frame_count: Number of sampled frames *N* (typically 8). Used to validate
-                     the *fracture_between* interval.
+                     the legacy *fracture_between* interval when present.
 
     Returns:
         ``(normalized, repair_flags)``
 
-        - **normalized**: A dict with exactly four keys —
-          ``has_fracture``, ``fracture_between``, ``type``, ``location``.
-          Every value is in a valid state per the normalization rules below.
+        - **normalized**: A dict with the three required keys —
+          ``has_fracture``, ``type``, ``location`` — plus the legacy
+          ``fracture_between`` key **only when** *raw* carries that key (old v2
+          records). Every value is in a valid state per the rules below.
         - **repair_flags**: A list of human-readable strings describing each
           repair that was applied. Empty list if no repairs were needed.
 
-    Normalization rules (applied in priority order):
+    Normalization rules (applied in priority order). ``fracture_between`` is
+    legacy v2 metadata and is handled by these rules only when *raw* carries the
+    key: when the key is absent the field takes part in no rule and never
+    appears in the returned dict. The v4.1 contract (``clip_state`` /
+    ``fracture_mechanism`` / ``fracture_site`` / ``special_case``) has no such
+    field, and old v2 records that do carry it keep the pre-existing behaviour
+    unchanged.
 
     1. **``has_fracture`` is ``False``**
        - ``fracture_between`` → ``None`` (forced)
@@ -251,12 +258,16 @@ def normalize_structured_output(
     has_fracture, hf_repairs = _coerce_has_fracture(raw)
     repairs.extend(hf_repairs)
 
-    # --- Extra repair: string interval conversion ---
-    fracture_between, interval_flag = _parse_string_interval(
-        raw.get("fracture_between")
-    )
-    if interval_flag:
-        repairs.append(interval_flag)
+    # --- Legacy field gate: only touch fracture_between when raw carries it ---
+    has_legacy_interval = "fracture_between" in raw
+    fracture_between: Any = None
+    if has_legacy_interval:
+        # Extra repair: string interval conversion
+        fracture_between, interval_flag = _parse_string_interval(
+            raw.get("fracture_between")
+        )
+        if interval_flag:
+            repairs.append(interval_flag)
 
     raw_type = raw.get("type")
     raw_location = raw.get("location")
@@ -300,12 +311,11 @@ def normalize_structured_output(
         type_val = "视频异常"
         location = None
 
-    normalized: dict[str, Any] = {
-        "has_fracture": has_fracture,
-        "fracture_between": fracture_between,
-        "type": type_val,
-        "location": location,
-    }
+    normalized: dict[str, Any] = {"has_fracture": has_fracture}
+    if has_legacy_interval:
+        normalized["fracture_between"] = fracture_between
+    normalized["type"] = type_val
+    normalized["location"] = location
 
     return normalized, repairs
 
@@ -318,9 +328,10 @@ def validate_structured_output(normalized: dict, frame_count: int) -> bool:
 
     Checks performed:
 
-    - All four required keys exist.
+    - All three required keys exist (``has_fracture``, ``type``, ``location``).
+    - ``fracture_between`` (legacy v2 key) is optional: a missing key is valid;
+      when present it must be ``None`` or a valid ``[i, i+1]`` interval.
     - ``has_fracture`` is ``bool`` or ``None``.
-    - ``fracture_between`` is ``None`` or a valid ``[i, i+1]`` interval.
     - ``type`` is consistent with ``has_fracture``.
     - ``location`` is ``None`` or in ``ALLOWED_LOCATIONS``.
 
@@ -332,13 +343,13 @@ def validate_structured_output(normalized: dict, frame_count: int) -> bool:
     Returns:
         ``True`` if the dict passes all checks, ``False`` otherwise.
     """
-    # Required keys
-    for key in ("has_fracture", "fracture_between", "type", "location"):
+    # Required keys (fracture_between is optional legacy metadata)
+    for key in ("has_fracture", "type", "location"):
         if key not in normalized:
             return False
 
     hf = normalized["has_fracture"]
-    fb = normalized["fracture_between"]
+    fb = normalized.get("fracture_between")
     t = normalized["type"]
     loc = normalized["location"]
 
@@ -380,10 +391,11 @@ def needs_retry(normalized: dict) -> bool:
     """Determine whether the model call should be retried.
 
     Returns ``True`` when ``has_fracture`` is ``True`` but one or more
-    secondary fields (``fracture_between``, ``type``, ``location``) are
-    ``None`` — i.e. the model detected a fracture but could not produce
-    sufficient detail.  This is a signal to the caller that a retry (with
-    a different prompt or temperature) may help.
+    secondary fields (``type``, ``location``) are ``None`` — i.e. the model
+    detected a fracture but could not produce sufficient detail.  This is a
+    signal to the caller that a retry (with a different prompt or temperature)
+    may help.  The legacy ``fracture_between`` key is not part of the retry
+    criteria.
 
     Args:
         normalized: A dict produced by ``normalize_structured_output``.
@@ -393,8 +405,4 @@ def needs_retry(normalized: dict) -> bool:
     """
     if normalized.get("has_fracture") is not True:
         return False
-    return (
-        normalized.get("fracture_between") is None
-        or normalized.get("type") is None
-        or normalized.get("location") is None
-    )
+    return normalized.get("type") is None or normalized.get("location") is None

@@ -26,6 +26,7 @@ class TestNormalizeStructuredOutput:
     # --- has_fracture=True: valid values pass through ------------------------
 
     def test_true_valid_fields_preserved(self) -> None:
+        # 旧 v2 记录兼容：raw 里显式带 fracture_between 时行为与移除前一致。
         raw = {
             "has_fracture": True,
             "fracture_between": [2, 3],
@@ -37,6 +38,35 @@ class TestNormalizeStructuredOutput:
         assert normalized["fracture_between"] == [2, 3]
         assert normalized["type"] == "韧性断裂"
         assert normalized["location"] == "inside_gauge"
+        assert repairs == []
+
+    # --- fracture_between 已不在 v4.1 契约内：raw 无该键时不得凭空产出 ----
+
+    def test_true_raw_without_fracture_between_key_omits_it(self) -> None:
+        """v4.1 raw 不含 fracture_between 时，normalized 不得补出该键。"""
+        raw = {
+            "has_fracture": True,
+            "type": "韧性断裂",
+            "location": "inside_gauge",
+        }
+        normalized, repairs = normalize_structured_output(raw, FRAME_COUNT)
+        assert "fracture_between" not in normalized
+        assert not any("fracture_between" in r for r in repairs)
+        assert normalized["has_fracture"] is True
+        assert normalized["type"] == "韧性断裂"
+        assert normalized["location"] == "inside_gauge"
+        assert repairs == []
+
+    def test_false_raw_without_fracture_between_key_omits_it(self) -> None:
+        """has_fracture=False 且 raw 无该键时：缺键且不产生任何 repair。"""
+        raw = {
+            "has_fracture": False,
+            "type": "未断裂",
+            "location": None,
+        }
+        normalized, repairs = normalize_structured_output(raw, FRAME_COUNT)
+        assert "fracture_between" not in normalized
+        assert not any("fracture_between" in r for r in repairs)
         assert repairs == []
 
     # --- has_fracture=True: None secondary fields stay None ------------------
@@ -108,6 +138,7 @@ class TestNormalizeStructuredOutput:
         ],
     )
     def test_true_invalid_fracture_between_set_to_none(self, bad_interval) -> None:
+        # 旧 v2 记录兼容：显式带该键时仍按 [i, i+1] 校验并丢弃非法值。
         raw = {
             "has_fracture": True,
             "fracture_between": bad_interval,
@@ -338,7 +369,7 @@ class TestValidateStructuredOutput:
         }
         assert validate_structured_output(d, FRAME_COUNT) is False
 
-    @pytest.mark.parametrize("missing_key", ["has_fracture", "fracture_between", "type", "location"])
+    @pytest.mark.parametrize("missing_key", ["has_fracture", "type", "location"])
     def test_missing_any_required_key_returns_false(self, missing_key: str) -> None:
         d = {
             "has_fracture": True,
@@ -348,6 +379,15 @@ class TestValidateStructuredOutput:
         }
         del d[missing_key]
         assert validate_structured_output(d, FRAME_COUNT) is False
+
+    def test_missing_fracture_between_is_tolerated_returns_true(self) -> None:
+        """v4.1 契约已无 fracture_between：缺该键必须视为合法。"""
+        d = {
+            "has_fracture": True,
+            "type": "韧性断裂",
+            "location": "inside_gauge",
+        }
+        assert validate_structured_output(d, FRAME_COUNT) is True
 
     def test_has_fracture_none_with_non_none_type_returns_false(self) -> None:
         d = {
@@ -359,6 +399,7 @@ class TestValidateStructuredOutput:
         assert validate_structured_output(d, FRAME_COUNT) is False
 
     def test_invalid_interval_returns_false(self) -> None:
+        # 旧 v2 记录兼容：显式带该键且区间非法时仍必须被校验。
         d = {
             "has_fracture": True,
             "fracture_between": [7, 8],
@@ -396,14 +437,15 @@ class TestNeedsRetry:
         }
         assert needs_retry(d) is True
 
-    def test_true_fracture_between_only_returns_true(self) -> None:
+    def test_true_missing_fracture_between_alone_does_not_trigger_retry(self) -> None:
+        # fracture_between 已不在 retry 判据内：仅该字段为 None 不再触发重试。
         d = {
             "has_fracture": True,
             "fracture_between": None,
             "type": "韧性断裂",
             "location": "inside_gauge",
         }
-        assert needs_retry(d) is True
+        assert needs_retry(d) is False
 
     def test_true_type_only_none_returns_true(self) -> None:
         d = {
