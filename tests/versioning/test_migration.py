@@ -21397,6 +21397,141 @@ def test_weight_run_archive_removed_reason_names_directory_level_archive_path(
         )
 
 
+# ---------------------------------------------------------------------------
+# 「归档缺失 → 显式状态」的护栏：清理声明只在归档根与本 run 包同时缺席时成立
+# ---------------------------------------------------------------------------
+# 契约：清理声明（``reason_code == "unavailable_archive_removed"`` 与「目录
+# 已于 2026-10-18 整体移除」文案）只能在本 run 归档包目录与归档根目录
+# ``docs/results/model_evidence`` **同时缺席**时才成立。归档根存在（哪怕为
+# 空、或只含别的 run 的包）说明目录并未被整体移除，此时不得声称清理。
+# 反之，归档根与本 run 包都缺席时必须照旧贴上该状态——不能靠「一律不贴标
+# 签」把这条护栏糊弄过去。
+
+def test_weight_run_empty_archive_root_is_not_marked_removed(
+    tmp_path: Path,
+) -> None:
+    """归档根存在但为空（本 run 包目录不存在）时不得声称目录被清理。
+
+    契约：清理声明只能在本 run 包与归档根同时缺席时才成立。
+    ``docs/results/model_evidence/`` 存在即为「目录未被整体移除」的可观测
+    证据；此时 core train params 必须回落到既有字段级 unknown（不带
+    ``reason_code``），否则输出「目录已整体移除」与事实矛盾。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    # Arrange：归档根存在但为空，本 run 的归档包目录缺席。
+    archive_root = tmp_path / "docs" / "results" / "model_evidence"
+    archive_root.mkdir(parents=True, exist_ok=True)
+    assert archive_root.is_dir(), "前置事实：归档根目录必须存在（区别于整目录被移除）"
+    assert not (archive_root / WEIGHT_RUN_DECLARED_ID).exists(), (
+        "前置事实：本 run 的归档包目录必须缺席"
+    )
+    entry = _confirmed_weight_run_entry()
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert：归档根仍在 → 清理声明不成立，回落既有字段级 unknown。
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert "reason_code" not in facts[name], (
+            f"归档根 docs/results/model_evidence 存在（空目录）时，核心训练参数 "
+            f"{name} 不得携带 reason_code（清理声明只能在本 run 包与归档根同时"
+            f"缺席时才成立）：实际 {facts[name]!r}"
+        )
+
+
+def test_weight_run_archive_root_with_other_run_package_is_not_marked_removed(
+    tmp_path: Path,
+) -> None:
+    """归档根存在且含另一个 run 的包时不得声称目录被清理。
+
+    契约：清理声明只能在本 run 包与归档根同时缺席时才成立。归档根下存在
+    别的 run 的归档包，直接证伪「目录已整体移除」；本 run 的事实必须回落
+    既有字段级 unknown（不带 ``reason_code``）。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    # Arrange：归档根存在，里面是另一个 run 的完整包。
+    other_run_id = "v4.1-phase2-unrelated-v1-seed9991"
+    other_package = (
+        tmp_path / "docs" / "results" / "model_evidence" / other_run_id
+    )
+    other_package.mkdir(parents=True, exist_ok=True)
+    (other_package / "input").mkdir(parents=True, exist_ok=True)
+    (other_package / "MANIFEST.json").write_bytes(
+        _fixture_pretty_json_bytes(
+            {
+                "schema_version": "v4.1-archival-evidence-package/v1",
+                "run_id": other_run_id,
+            }
+        )
+    )
+    (other_package / "input" / "training_run_manifest.json").write_bytes(
+        _fixture_pretty_json_bytes(
+            {
+                "schema_version": (
+                    "tensile-vlm-v4.1-source-aware-3k-training-run/v1"
+                ),
+                "run_id": other_run_id,
+            }
+        )
+    )
+    assert other_package.is_dir(), "前置事实：归档根下必须有另一个 run 的包"
+    assert not (
+        tmp_path / "docs" / "results" / "model_evidence" / WEIGHT_RUN_DECLARED_ID
+    ).exists(), "前置事实：本 run 的归档包目录必须缺席"
+    entry = _confirmed_weight_run_entry()
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert：归档根仍在 → 清理声明不成立，回落既有字段级 unknown。
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert "reason_code" not in facts[name], (
+            f"归档根 docs/results/model_evidence 下存在其它 run 的包时，核心训练"
+            f"参数 {name} 不得携带 reason_code（清理声明只能在本 run 包与归档根"
+            f"同时缺席时才成立）：实际 {facts[name]!r}"
+        )
+
+
+def test_weight_run_missing_archive_root_still_marks_core_params_removed(
+    tmp_path: Path,
+) -> None:
+    """反向确认：归档根与本 run 包同时缺席时仍必须贴上清理状态。
+
+    契约：清理声明只能在本 run 包与归档根同时缺席时才成立——本用例钉住
+    「成立」这一侧：根目录确实不存在时，九个核心训练参数必须全部携带
+    ``reason_code == ARCHIVE_REMOVED_REASON_CODE``，防止实现用「一律不贴
+    标签」的退化解规避根目录探测。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    # Arrange：归档根与包目录都缺席。
+    archive_root = tmp_path / "docs" / "results" / "model_evidence"
+    assert not archive_root.exists(), (
+        "前置事实：归档根 docs/results/model_evidence 必须不存在"
+    )
+    entry = _confirmed_weight_run_entry()
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert：归档根缺席 → 清理声明成立。
+    missing_state = [
+        name
+        for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS
+        if facts[name].get("reason_code") != ARCHIVE_REMOVED_REASON_CODE
+    ]
+    assert not missing_state, (
+        "归档根与本 run 包同时缺席时，核心训练参数必须携带"
+        f" {ARCHIVE_REMOVED_REASON_CODE!r}（不得用「一律不贴标签」规避根目录"
+        f"探测）：未携带该状态的参数 {missing_state}，实际 facts {facts!r}"
+    )
+
+
 def test_history_summary_multi_entry_preserves_order_and_mixed_evidence(
     tmp_path: Path,
 ) -> None:

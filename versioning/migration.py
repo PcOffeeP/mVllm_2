@@ -1677,11 +1677,13 @@ _WEIGHT_RUN_OBSERVED_TRAINING_STATUS = "weights_observed"
 # 下不再有可读归档包。「目录级归档路径已移除、且该 run 的归档包路径当前
 # 不可读」与「M0 调查从未记录参数值」是两种不同的缺失来源：两者都保持
 # 字段级 unknown（缺失不伪装成已知值），但前者额外携带机读 reason_code，
-# 并在说明里写明目录级路径、清理日期与原 run id。代码可观测的只有「目录
-# 已移除」与「该包路径当前不存在」这两个事实：单个 run 的归档包是否曾存
-# 在于该目录、能否按删除前的 Git 历史补回，均未经观测，须人工核实。该状
-# 态只对应归档包目录缺席，不得用于归档存在但验签 / 身份 / 交叉校验失败
-# 等其它失败原因。
+# 并在说明里写明目录级路径、清理日期与原 run id。代码可观测的只有「归档
+# 根目录已不存在」与「该 run 的归档包路径当前不存在」这两个事实 —— 归档
+# 根 docs/results/model_evidence 仍存在（哪怕为空、或只含别的 run 的包）
+# 即证伪「整目录已移除」，本状态不成立：单个 run 的归档包是否曾存在于该
+# 目录、能否按删除前的 Git 历史补回，均未经观测，须人工核实。该状态只对
+# 应归档根与本 run 包目录同时缺席，不得用于归档存在但验签 / 身份 / 交叉
+# 校验失败等其它失败原因。
 _WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE = "unavailable_archive_removed"
 _WEIGHT_RUN_ARCHIVE_REMOVED_DATE = "2026-10-18"
 # 2026-10-18 清理移除的目录级路径（说明文本与归档包路径共用同一来源）。
@@ -1722,7 +1724,8 @@ def _weight_run_archive_removed_fact(
 ) -> dict[str, Any]:
     """构造「归档目录级路径已清理、该 run 归档包当前不可读」的 unknown 事实。
 
-    只在归档包目录当前不存在且来源链不含符号链接时使用：保持既有
+    只在本 run 归档包目录与归档根目录 ``docs/results/model_evidence`` 同时
+    不存在、来源链不含符号链接且探测未抛 ``OSError`` 时使用：保持既有
     unknown_reason / attempted_source / 不携带非 None value 的形态，另
     叠加机读 reason_code 区分缺失来源。说明文本只陈述代码实际观测到的对
     象：目录级路径 docs/results/model_evidence/ 已于 2026-10-18 的仓库清
@@ -2449,14 +2452,17 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     记），但在既有 unknown_reason / attempted_source 形态之上叠加机读字段
     ``reason_code: "unavailable_archive_removed"``，说明文本写明目录级
     路径、清理日期 2026-10-18 与原 run id。触发条件严格限定为「归档包目
-    录当前不存在且来源链不含链接」（``docs/results/model_evidence/<source_legacy_id>``
-    不存在、不是链接、祖先路径也没有链接）：归档存在但验签 / schema /
-    身份 / 交叉字段校验失败，或归档路径不可读，一律保持既有字段级
-    unknown 形态、不叠加 reason_code。说明文本只陈述代码可观测的两个事实
-    （目录级路径已移除、该 run 的归档包路径当前不存在），不声称该 run 的
-    归档包曾存在，也不声称可按删除前的 Git 历史重建（需人工按 Git 历史核
-    实）；该状态与「M0 未记录参数」unknown 可区分：后者从未被记录（不
-    携带 reason_code，说明不提清理日期）。
+    录与归档根目录 ``docs/results/model_evidence`` 同时不存在、来源链不含
+    链接、且探测未抛 ``OSError``」（``docs/results/model_evidence/<source_legacy_id>``
+    与 ``docs/results/model_evidence`` 都不存在、都不是链接、祖先路径也没
+    有链接；归档根仍存在——哪怕为空、或只含别的 run 的包——即证伪「整目录
+    已移除」，本状态不成立）：归档存在但验签 / schema / 身份 / 交叉字段
+    校验失败，或归档路径不可读（``exists()`` 抛 ``OSError``），一律保持既
+    有字段级 unknown 形态、不叠加 reason_code。说明文本只陈述代码可观测的
+    两个事实（目录级路径已移除、该 run 的归档包路径当前不存在），不声称
+    该 run 的归档包曾存在，也不声称可按删除前的 Git 历史重建（需人工按
+    Git 历史核实）；该状态与「M0 未记录参数」unknown 可区分：后者从未被
+    记录（不携带 reason_code，说明不提清理日期）。
 
     本状态与结构事实正交：声明 run 源整源缺失时在早退分支直接返回，不进
     入归档观察、不叠加 reason_code；而声明 run 源存在、仅某个已知结构组
@@ -2775,6 +2781,7 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     # 漂移，不参与历史参数推断；一个包内任一身份、哈希或交叉字段矛盾
     # 时全部参数保持字段级 unknown，结构事实仍按上文独立观察。
     archive_rel = _WEIGHT_RUN_ARCHIVE_ROOT_REL / source_id
+    archive_root = root / _WEIGHT_RUN_ARCHIVE_ROOT_REL
     archive_dir = root / archive_rel
     archive_manifest = archive_dir / "MANIFEST.json"
     training_manifest = archive_dir / "input" / "training_run_manifest.json"
@@ -2785,11 +2792,12 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         "adapter/adapter_config.json": declared_adapter_config,
         "adapter/trainer_state.json": archived_trainer_state,
     }
-    # 归档包缺席是「已被清理移除」的唯一触发条件（2026-10-18 清理删除了
-    # docs/results/model_evidence/ 整目录）：只有归档包目录本身不存在且
-    # 来源链不含链接时才在核心训练参数上叠加显式状态；归档存在但验签 /
-    # 身份 / 交叉字段校验失败等其它失败原因保持既有字段级 unknown 形态，
-    # 不得降格成同一状态。
+    # 归档包与归档根目录同时缺席才是「已被清理移除」的触发条件
+    # （2026-10-18 清理删除了 docs/results/model_evidence/ 整目录）：只有
+    # 本 run 归档包目录与归档根目录都不存在且来源链不含链接时才在核心训练
+    # 参数上叠加显式状态；归档根仍存在（哪怕为空、或只含别的 run 的包）即
+    # 证伪「整目录已移除」，归档存在但验签 / 身份 / 交叉字段校验失败等其它
+    # 失败原因保持既有字段级 unknown 形态，不得降格成同一状态。
     # 探测放在 try 内：Path.exists() 只吞 ENOENT/ENOTDIR/EBADF/ELOOP，
     # EACCES/EPERM/EIO 会直接冒泡，放在 try 外则把「归档不可读」从字段级
     # unknown 变成整批 traceback（基线在 try 内用 is_file()，OSError 被
@@ -2798,12 +2806,17 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     # 来源链含符号链接时同样不判为已移除：祖先目录被换成悬空链接时
     # exists() 会因父链断裂返回 False，会把链接可读性缺口伪装成历史清理，
     # 与仓库既有 has_link_component fail-closed 链接纪律冲突。
+    # has_link_component(archive_rel) 逐组件检查 docs → results →
+    # model_evidence → <run_id>，已覆盖归档根目录与本 run 包目录本身是否为
+    # 链接（含悬空链接），故不再单列 archive_dir.is_symlink()；归档根缺席时
+    # 包目录必然缺席（后者是前者的路径前缀），保留 archive_dir.exists() 只是
+    # 把「本 run 包不存在」写成显式条件。
     archive_package_removed = False
     try:
         archive_package_removed = (
             not has_link_component(archive_rel)
+            and not archive_root.exists()
             and not archive_dir.exists()
-            and not archive_dir.is_symlink()
         )
         for path in (archive_manifest, *parameter_files.values()):
             relative = path.relative_to(root)
