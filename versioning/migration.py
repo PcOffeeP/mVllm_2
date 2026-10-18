@@ -1671,6 +1671,17 @@ _PREPARE_ONLY_CORE_TRAIN_PARAMS = (
 # unknown。声明 run 源定位与 prepare-only run 同为 workspace/runs/。
 _WEIGHT_RUN_KIND = "weight_run"
 _WEIGHT_RUN_OBSERVED_TRAINING_STATUS = "weights_observed"
+# H9 归档参数不可用的一种具体原因：归档证据包已被清理移除。2026-10-18
+# 清理（docs/results/INDEX.md 的 A1 批）把 docs/results/model_evidence/
+# 整目录（40 个文件）从仓库移除，非 R1 的 weight run 从此没有可读归档
+# 包。「曾有归档证据但已被清理移除」（可按删除前的 Git 历史重建）与
+# 「M0 调查从未记录参数值」是两种不同的缺失来源：两者都保持字段级
+# unknown（缺失不伪装成已知值），但前者额外携带机读 reason_code，并在
+# 说明里写明清理日期与原 run id，使调用方能判断缺失是否能补回。该状态
+# 只对应归档包缺席，不得用于归档存在但验签 / 身份 / 交叉校验失败等其它
+# 失败原因。
+_WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE = "unavailable_archive_removed"
+_WEIGHT_RUN_ARCHIVE_REMOVED_DATE = "2026-10-18"
 _MODEL_HISTORY_KIND = "model_history"
 _EVAL_HISTORY_KIND = "eval_history"
 _EVAL_HISTORY_METRIC_KEYS = frozenset(
@@ -1700,6 +1711,29 @@ def _history_path_has_link(root: Path, relative_path: Path) -> bool:
 
 def _history_unknown(reason: str, attempted: Path) -> dict[str, Any]:
     return {"unknown_reason": reason, "attempted_source": attempted.as_posix()}
+
+
+def _weight_run_archive_removed_fact(
+    name: str, source_id: str, attempted: Path, archive_rel: Path
+) -> dict[str, Any]:
+    """构造「归档证据包已被清理移除」的字段级 unknown 事实。
+
+    只在归档包目录确实缺席（2026-10-18 清理移除）时使用：保持既有
+    unknown_reason / attempted_source / 不携带非 None value 的形态，另
+    叠加机读 reason_code 区分缺失来源；说明写明归档包路径、清理日期与
+    原 run id，便于判断能否按删除前的 Git 历史重建归档包。归档存在但
+    验签 / 身份 / 交叉字段校验失败等其它失败原因不得使用本形态。
+    """
+    return {
+        "unknown_reason": (
+            f"weight run {source_id} 的归档证据包 {archive_rel.as_posix()} "
+            f"已于 {_WEIGHT_RUN_ARCHIVE_REMOVED_DATE} 的仓库清理中整体移除，"
+            f"归档训练参数证据不可再读取，{name} 保持未知：归档缺失不可观察，"
+            "缺失不伪装成已知值，也不从 planned 配置或 sibling 归档补登记"
+        ),
+        "attempted_source": attempted.as_posix(),
+        "reason_code": _WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE,
+    }
 
 
 def _history_json_equal(left: Any, right: Any) -> bool:
@@ -2398,6 +2432,20 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     目录事实仍按观察输出（可读无权重 -> 已知 False），且因不可完整观察
     不输出 training_status 键（部分结构观察不足以支撑 evidence-derived
     分类，Reviewer P3）。
+
+    归档证据包已被清理移除（2026-10-18 清理把 ``docs/results/model_evidence/``
+    整目录移除）时，核心训练参数仍为字段级 unknown（不伪造已知值、不从
+    planned 配置或 sibling 归档补登记），但在既有 unknown_reason /
+    attempted_source 形态之上叠加机读字段
+    ``reason_code: "unavailable_archive_removed"``，说明文本写明归档包
+    路径、清理日期 2026-10-18 与原 run id。触发条件严格限定为「归档包
+    目录缺席」（``docs/results/model_evidence/<source_legacy_id>`` 不存
+    在且不是链接）：归档存在但验签 / schema / 身份 / 交叉字段校验失败，
+    以及声明 run 源或已知结构缺失，一律保持既有字段级 unknown 形态、不
+    叠加 reason_code。该状态与「M0 未记录参数」unknown 可区分：后者从未
+    被记录（不携带 reason_code，说明不提清理日期），前者表示曾有归档
+    证据但已于 2026-10-18 清理移除（可按删除前的 Git 历史重建归档包）；
+    facts 的事实名集合与归档齐备场景的返回形状都不因此改变。
     """
     def has_link_component(relative_path: Path) -> bool:
         """Return whether any lexical component below the trusted root is a link."""
@@ -2720,6 +2768,12 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         "adapter/adapter_config.json": declared_adapter_config,
         "adapter/trainer_state.json": archived_trainer_state,
     }
+    # 归档包缺席是「已被清理移除」的唯一触发条件（2026-10-18 清理删除了
+    # docs/results/model_evidence/ 整目录）：只有归档包目录本身不存在且
+    # 不是链接时才在核心训练参数上叠加显式状态；归档存在但验签 / 身份 /
+    # 交叉字段校验失败等其它失败原因保持既有字段级 unknown 形态，不得
+    # 降格成同一状态。
+    archive_package_removed = not archive_dir.exists() and not archive_dir.is_symlink()
     try:
         for path in (archive_manifest, *parameter_files.values()):
             relative = path.relative_to(root)
@@ -2896,7 +2950,16 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
             package_manifest_rel,
         )
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
-        pass
+        # 归档参数证据整体不可用：核心训练参数停留在上方字段级 unknown。
+        # 归档包已被清理移除属于其中「具体原因明确」的一种（2026-10-18
+        # 清理），单独叠加机读 reason_code 以便与「M0 未记录参数」等其它
+        # unknown 形态区分；归档存在但验签 / schema / 身份 / 交叉字段校验
+        # 失败等其它原因不标记，保持既有形态。
+        if archive_package_removed:
+            for name in _PREPARE_ONLY_CORE_TRAIN_PARAMS:
+                facts[name] = _weight_run_archive_removed_fact(
+                    name, source_id, run_rel, archive_rel
+                )
     entry: dict[str, Any] = {
         "entry_id": f"history-{_WEIGHT_RUN_KIND}-{source_id}",
         "kind": _WEIGHT_RUN_KIND,

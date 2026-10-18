@@ -20994,6 +20994,239 @@ def test_weight_run_parameter_archive_rejects_bool_cross_evidence(
         )
 
 
+# ---------------------------------------------------------------------------
+# 归档包已被清理（2026-10-18）的 weight run：核心训练参数必须携带显式可
+# 区分状态（先写测试，不改 production）
+# ---------------------------------------------------------------------------
+#
+# 背景：2026-10-18 清理删除了 docs/results/model_evidence/ 整目录（非 R1 的
+# 归档证据包）。此后 weight run 核心训练参数回退为笼统 unknown（「M0 调查只
+# 记录权重目录结构观察……」），与「M0 未记录参数」等其它 unknown 形态无法
+# 区分。
+#
+# 断言契约（本切片钉定的最小侵入形态，便于 coder 对齐）：
+# - 归档目录 docs/results/model_evidence/<source_legacy_id> 缺失（且声明 run
+#   源结构可读）时，_PREPARE_ONLY_CORE_TRAIN_PARAMS 九个核心训练参数事实在
+#   既有字段级 unknown 形态（unknown_reason + attempted_source、无非 None
+#   value）之上新增机读字段：
+#
+#       fact["reason_code"] == "unavailable_archive_removed"
+#
+# - 该状态的 unknown_reason 必须写明归档包已清理（含「归档」）、清理日期
+#   2026-10-18 与原 run id，不能是泛化文案；
+# - 归档齐备且可核验（H9 已验签归档）的场景不得出现状态
+#   "unavailable_archive_removed"，entry / facts 字段集合不增删；
+# - 该状态与「M0 未记录参数」原有 unknown 形态在结构（是否携带
+#   reason_code）与文案上均可区分。
+ARCHIVE_REMOVED_REASON_CODE = "unavailable_archive_removed"
+ARCHIVE_REMOVED_DATE_TOKEN = "2026-10-18"
+
+
+def _write_weight_run_scenario_without_archive(root: Path) -> None:
+    """声明 weight run 源结构齐备、但 docs/results/model_evidence 归档已清理。
+
+    复用 H5/H6a fixture：声明 run ``v4.1-phase2-source-aware-v1-seed3407``
+    的 ``fold0/{adapter,merged}`` 权重齐备（因此走归档读取主分支，而不是
+    「声明 run 源缺失」早退分支），且 docs/ 整个不存在 —— 对齐 2026-10-18
+    清理后 docs/results/model_evidence/ 整目录被移除的真实形态。
+    """
+    _write_prepare_only_runs_layout(root)
+    _write_weight_run_root_sibling_layout(root)
+    declared_run = root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    assert (declared_run / "fold0" / "adapter" / "adapter_model.safetensors").is_file(), (
+        "fixture 前置事实失败：声明的 weight run 必须有可观察的 adapter 权重"
+        "（归档缺失场景必须走归档读取主分支，而非声明 run 源缺失分支）"
+    )
+    assert not (root / "docs" / "results" / "model_evidence").exists(), (
+        "fixture 前置事实失败：归档缺失场景下 docs/results/model_evidence/ 必须不存在"
+    )
+
+
+def _weight_run_facts(root: Path, entry: dict[str, Any] | None = None) -> Mapping:
+    """构建单条 weight run history-summary entry 并返回其 facts。"""
+    declared = _confirmed_weight_run_entry() if entry is None else entry
+    document = _resolve_history_summary_entry()(root, [declared])
+    return document["entries"][0]["facts"]
+
+
+def test_weight_run_archive_removed_marks_core_params_with_explicit_reason_code(
+    tmp_path: Path,
+) -> None:
+    """归档包被清理后核心训练参数不得停留在笼统 unknown：必须携带
+    ``reason_code == "unavailable_archive_removed"``，且在既有字段级
+    unknown 形态之上叠加（不破坏既有 unknown_reason / attempted_source
+    契约）。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    entry = _confirmed_weight_run_entry()
+
+    facts = _weight_run_facts(tmp_path, entry)
+
+    missing_state = [
+        name
+        for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS
+        if facts[name].get("reason_code") != ARCHIVE_REMOVED_REASON_CODE
+    ]
+    assert not missing_state, (
+        "归档包已清理（2026-10-18）的 weight run 核心训练参数必须携带显式可"
+        f"区分状态 reason_code == {ARCHIVE_REMOVED_REASON_CODE!r}（当前实现"
+        "只给出笼统 unknown，无法与「M0 未记录参数」等形态区分）：未携带该"
+        f"状态的参数 {missing_state}，实际 facts {facts!r}"
+    )
+    # 显式状态叠加在既有字段级 unknown 形态之上：unknown_reason /
+    # attempted_source 契约保持不变（既有断言助手必须照样通过）。
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+
+
+def test_weight_run_archive_removed_reason_names_cleanup_date_and_run_id(
+    tmp_path: Path,
+) -> None:
+    """归档缺失状态的说明文本必须写明归档已清理、2026-10-18 与原 run id，
+    不能是泛化文案。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    entry = _confirmed_weight_run_entry()
+    run_id = entry["source_legacy_id"]
+
+    facts = _weight_run_facts(tmp_path, entry)
+
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        fact = facts[name]
+        assert fact.get("reason_code") == ARCHIVE_REMOVED_REASON_CODE, (
+            f"核心训练参数 {name} 缺少归档缺失显式状态（前置断言，随后才校验"
+            f"说明文本）：实际 {fact!r}"
+        )
+        reason = fact.get("unknown_reason")
+        assert isinstance(reason, str), (
+            f"归档缺失状态的事实 {name} 必须携带字符串 unknown_reason：实际 "
+            f"{reason!r}"
+        )
+        assert "归档" in reason, (
+            f"归档缺失状态的事实 {name} 的 unknown_reason 必须写明归档相关内"
+            f"容（归档包已清理）：实际 {reason!r}"
+        )
+        assert ARCHIVE_REMOVED_DATE_TOKEN in reason, (
+            f"归档缺失状态的事实 {name} 的 unknown_reason 必须写出清理日期 "
+            f"{ARCHIVE_REMOVED_DATE_TOKEN}（泛化文案无法区分缺失来源）：实际 "
+            f"{reason!r}"
+        )
+        assert run_id in reason, (
+            f"归档缺失状态的事实 {name} 的 unknown_reason 必须写出原 run id "
+            f"{run_id}（说明针对哪个 run 的归档）：实际 {reason!r}"
+        )
+
+
+def test_weight_run_archive_removed_does_not_fabricate_parameter_values(
+    tmp_path: Path,
+) -> None:
+    """归档缺失状态不得伪装成已知值：核心训练参数仍不得携带非 None value。"""
+    _write_weight_run_scenario_without_archive(tmp_path)
+
+    facts = _weight_run_facts(tmp_path)
+
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        fact = facts[name]
+        assert fact.get("reason_code") == ARCHIVE_REMOVED_REASON_CODE, (
+            f"核心训练参数 {name} 缺少归档缺失显式状态（前置断言，随后才校验"
+            f"不伪造已知值）：实际 {fact!r}"
+        )
+        assert "value" not in fact or fact["value"] is None, (
+            f"归档缺失状态的事实 {name} 不得携带非 None value（归档包已被清"
+            f"理，缺失不伪装成已知值）：实际 {fact.get('value')!r}"
+        )
+
+
+def test_weight_run_verified_archive_carries_no_archive_removed_state(
+    tmp_path: Path,
+) -> None:
+    """归档齐备且可核验时不出现 ``unavailable_archive_removed``，entry 与
+    facts 的字段集合不发生增删（新状态不得反向污染既有形态）。
+    """
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    _write_verified_parameter_archive(tmp_path)
+    entry = _confirmed_weight_run_entry()
+
+    document = _resolve_history_summary_entry()(tmp_path, [entry])
+
+    summary_entry = document["entries"][0]
+    facts = summary_entry["facts"]
+    assert facts["seed"].get("value") == 3407 and facts["epochs"].get("value") == 3.0, (
+        "归档齐备场景必须仍按 H9 提取已验签参数（新状态不得污染既有提取）："
+        f"实际 seed={facts['seed']!r}, epochs={facts['epochs']!r}"
+    )
+    for name, fact in facts.items():
+        assert fact.get("reason_code") != ARCHIVE_REMOVED_REASON_CODE, (
+            f"归档齐备场景的事实 {name} 不得出现 {ARCHIVE_REMOVED_REASON_CODE!r}"
+            f"（禁止把「归档缺失」状态误伤到可核验归档）：实际 {fact!r}"
+        )
+    assert set(facts) == {
+        "fold_scope",
+        "adapter_present",
+        "merged_present",
+        *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS,
+        "per_process_accumulated_batch",
+    }, (
+        "归档齐备场景的 facts 字段集合不得增删（新状态只能是既有 unknown 事实"
+        f"上的附加字段，不得新增 / 删除事实名）：实际键集 {sorted(facts)}"
+    )
+    assert set(summary_entry) == {
+        "entry_id",
+        "kind",
+        "original_id",
+        "history_only",
+        "formal_identity",
+        "facts",
+        "training_status",
+    }, (
+        "weight run summary entry 的字段集合不得因新状态增删：实际键集 "
+        f"{sorted(summary_entry)}"
+    )
+    assert set(document) == {"history_summary_schema", "entries"}, (
+        "history-summary 文档形状不得因新状态改变：实际键集 " f"{sorted(document)}"
+    )
+
+
+def test_weight_run_archive_removed_state_distinguishes_from_m0_unrecorded_unknown(
+    tmp_path: Path,
+) -> None:
+    """「归档缺失」状态与「M0 未记录参数」原有 unknown 形态在结构与文案上
+    均可区分（不得共用同一笼统文案）。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    weight_entry = _confirmed_weight_run_entry()
+    prepare_entry = _confirmed_prepare_only_run_entry()
+
+    document = _resolve_history_summary_entry()(tmp_path, [weight_entry, prepare_entry])
+
+    weight_fact = document["entries"][0]["facts"]["seed"]
+    m0_fact = document["entries"][1]["facts"]["seed"]
+    assert weight_fact.get("reason_code") == ARCHIVE_REMOVED_REASON_CODE, (
+        "归档缺失的 weight run 核心训练参数必须携带显式状态：实际 "
+        f"{weight_fact!r}"
+    )
+    assert m0_fact.get("reason_code") != ARCHIVE_REMOVED_REASON_CODE, (
+        "「M0 未记录参数」的 prepare-only run unknown 不得被标为归档缺失状态"
+        f"（两种缺失形态必须可区分）：实际 {m0_fact!r}"
+    )
+    assert weight_fact["unknown_reason"] != m0_fact["unknown_reason"], (
+        "归档缺失与 M0 未记录参数的 unknown_reason 文案不得共用（文案须可区"
+        f"分）：weight={weight_fact['unknown_reason']!r} / "
+        f"m0={m0_fact['unknown_reason']!r}"
+    )
+    assert ARCHIVE_REMOVED_DATE_TOKEN in weight_fact["unknown_reason"], (
+        "归档缺失状态的文案必须写明清理日期（可区分点之一）：实际 "
+        f"{weight_fact['unknown_reason']!r}"
+    )
+    assert ARCHIVE_REMOVED_DATE_TOKEN not in m0_fact["unknown_reason"], (
+        "M0 未记录参数的文案不得夹带归档清理日期（否则两种形态文案不可区分）："
+        f"实际 {m0_fact['unknown_reason']!r}"
+    )
+
+
 def test_history_summary_multi_entry_preserves_order_and_mixed_evidence(
     tmp_path: Path,
 ) -> None:
