@@ -26,7 +26,7 @@
 - 解除条件: 在训练机只读查明并给出书面结论，归因到以下三类之一并附命令与输出原文——(a) 配置未传、(b) plugin 不支持、(c) 需 patch。
 - 前置动作: PB-001 解除后开专项任务，先只读复现并 dump 传入 processor 的 `temporal_ids`（不加载权重、不改代码即可完成的先做）。
 - 负责人: agent（需用户先授权 GPU/训练机）
-- 证据与背景: 仓库内 `docs/project-todo.md:69`（CPU 复验实测 `temporal_ids` 全 `-1`，flat `[-1]×8`，depth `1/8/1`，由 processor 回填）、`docs/project-todo.md:96`（`load_video_frames` 默认 `temporal_fusion=False`，返回 `temporal_ids=None` 交给 processor 回填，逐帧成组）；仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**）。
+- 证据与背景: 仓库内 `docs/project-todo.md:69`（CPU 复验实测 `temporal_ids` 全 `-1`，flat `[-1]×8`，depth `1/8/1`，由 processor 回填）、`docs/project-todo.md:99`（`load_video_frames` 默认 `temporal_fusion=False`，返回 `temporal_ids=None` 交给 processor 回填，逐帧成组）；仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**）。
 - 记录日期: 2026-10-18
 - 备注: 允许临时改动以复现，但查清后必须还原，**不得提交 LlamaFactory 子模块**；结论未定前不得把「模型不具备时序感知」写入 `docs/design-facts.*`。
 
@@ -162,7 +162,7 @@
 - 解除条件: `docs/design-facts.yaml` 的 `misreadings` 段追加一条（误读「每帧独立编码 = 模型知道时序」→ 正确结论），且 `python scripts/verify_design_facts.py` 通过。
 - 前置动作: 起草该条 wrong/correct 文案并附 evidence 行号，交给负责事实库的 agent 合入。
 - 负责人: agent
-- 证据与背景: `docs/design-facts.yaml:154`（`misreadings:` 段现有 4 条，分别起于 `:155`、`:157`、`:160`、`:163`，不含该条）；`docs/project-todo.md:96`（逐帧成组的实现事实）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测）。
+- 证据与背景: `docs/design-facts.yaml:245`（`misreadings:` 段现有 7 条，分别起于 `:246`、`:248`、`:253`、`:258`、`:263`、`:270`、`:281`，不含该条）；`docs/project-todo.md:99`（逐帧成组的实现事实）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测）。
 - 记录日期: 2026-10-18
 - 备注: 事实库由脚本校验 evidence 行号必须指向真实非空行，行号入册前须复核；该结论与 PB-002 的归因边界相邻——PB-002 未结前，本条只登记「逐帧编码 ≠ 时序感知」，不得写成「模型已知/不知帧序」。
 
@@ -194,6 +194,6 @@
 
 1. 换管线（64 → 512 token）不是「已断裂」零召回的原因：同模型、同数据、同 Prompt，两侧均 0/33。出处：`docs/design-facts.yaml` DF-009、`docs/project-todo.md:82`。
 2. `strict_valid_rate` 只校验形式，不校验语义。出处：`docs/design-facts.yaml` DF-003、`finetune/eval_semantics.py:126`（`result.update(..., strict_valid=True)` 即「形式校验通过」的赋值点）、`finetune/eval_semantics.py:376`（`metrics["strict_valid_rate"]` 汇总处）；`finetune/eval_semantics.py:101` 的 docstring 只说明 `extract_semantics` 不接收标签 / 视频 / 模型身份，是该结论的旁证而非直接陈述。
-3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml:154` 的 misreadings 首条**。出处：`docs/design-facts.yaml:154`（首条正文在 `:155`–`:156`）。
+3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml:245` 的 misreadings 首条**。出处：`docs/design-facts.yaml:245`（首条正文在 `:246`–`:247`）。
 4. 模型输出「已断裂」在 425 条预测中出现 0 次。出处：`docs/project-todo.md:82`、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:368`（`prediction_clip_state_distribution` 里没有「已断裂」键）。
-5. 训练池「已断裂」占 15.00%，非数据稀缺。出处：`docs/design-facts.yaml` DF-010、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:83`（1253 条候选 188 条 = 15.00%，每 epoch 3000 行 564 行 = 18.80%）、`finetune/train_build_source_aware_dataset.py:30`（`SIGNATURE_COUNT_CAP = 3`，支撑「重复倍率 3.0 已顶上限」）。
+5. 训练池「已断裂」占 15.00%，非数据稀缺。出处：`docs/design-facts.yaml` DF-010、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:85`（1253 条候选 188 条 = 15.00%，每 epoch 3000 行 564 行 = 18.80%）、`finetune/train_build_source_aware_dataset.py:30`（`SIGNATURE_COUNT_CAP = 3`，支撑「重复倍率 3.0 已顶上限」）。
