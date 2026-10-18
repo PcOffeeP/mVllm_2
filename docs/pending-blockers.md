@@ -33,8 +33,8 @@
 ### PB-003 R2 三折真实训练与评测
 
 - status: blocked
-- 阻塞/依赖: PB-001、PB-002、门禁 v2 定稿（PB-004/PB-007/PB-008 合流）、训练预算实测校准四条全部 `closed`，且用户给出 GPU 训练授权。
-- 解除条件: 上述四条状态均为 `closed`（各自附结项证据）+ 用户书面 GPU 授权记录。
+- 阻塞/依赖: PB-001、PB-002、门禁 v2 定稿（PB-004 / PB-007 / PB-008 三条均 `closed`）、训练预算实测校准完成（本条「前置动作」要求的那份首 50 步实测记录已落盘）；四项齐备前不得开训，另需用户给出 GPU 训练授权。
+- 解除条件: PB-001、PB-002、门禁 v2 定稿（PB-004 / PB-007 / PB-008 三条均 `closed`）均 `closed`，且训练预算实测校准完成——即本条「前置动作」要求的那份首 50 步实测记录已落盘并写明口径，四项各附结项证据；另有用户书面 GPU 授权记录。
 - 前置动作: 冻结 r2 训练 YAML（仓库内当前不存在），跑首 50 步实测校准预算（现 3 epoch 三折约 5.78 h 为推算值）。
 - 负责人: 用户 + agent
 - 证据与背景: `docs/project-todo.md:40`（台账顺序表 R2-REALTRAIN 行）、`docs/project-todo.md:57`（R2-REALTRAIN 章节）、`docs/project-todo.md:83`（R2 前置四项）。
@@ -74,7 +74,7 @@
 - 负责人: 用户主导、agent 辅助整理
 - 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:491`（判例库登记路径 `finetune/validation/cases/judge_cases.jsonl`，标为「新增 / 阶段一产出」）；`docs/project-todo.md:83`（③ T1 须完成校准）。
 - 记录日期: 2026-10-18
-- 备注: 本登记册沿用请求中的 `golden/cases.jsonl` 说法，而仓库内设计稿写作 `finetune/validation/cases/judge_cases.jsonl`——**两处命名不一致，以实施定稿为准**；落库时须先统一并回写本条。
+- 备注: 本登记册沿用请求中的 `golden/cases.jsonl` 说法，而仓库内设计稿写作 `finetune/validation/cases/judge_cases.jsonl`——**两处命名不一致，以实施定稿为准**；落库时须先统一并回写本条。`golden/cases.jsonl` 在仓库内不存在（`git ls-files '*golden*'` 无命中），此名仅为请求中的说法，**勿当仓库内路径引用**。
 
 ### PB-007 「机制」「位置」两字段的判分口径
 
@@ -120,23 +120,23 @@
 - 记录日期: 2026-10-18
 - 备注: 「否定命题不可证」的论证目前**仅见仓库外材料与本轮对话（均不在 Git 内），仓库内暂无锚点，待补写进本节证据**；改 Prompt 必须同步升版本并同步 `docs/design-facts.*`。DF-002 记载的是现行 r2 正文已含首帧锚点文字，与「补显式三段式锚点」不矛盾，但重写时须避免与 DF-002 表述冲突。
 
-## C. 技术债（按依赖标 blocked 或 ready）
+## C. 技术债（状态按实际依赖标注）
 
 ### PB-011 过期设计残留（模型输出帧区间 `fracture_between`）
 
-- status: blocked
+- status: waiting-decision
 - 阻塞/依赖: 需用户裁定 v2 legacy 路径是否继续维护；裁定前不得改。
 - 解除条件: 用户裁定「下线」或「保留」——若下线，删除残留后 `contract_hash` 与 `EXPECTED_CONTRACT_HASH` 同步更新，且相关测试同步通过。
 - 前置动作: 先产出引用清单（哪些代码/测试/产物仍读 `fracture_between`），再提交裁定请求。
 - 负责人: 用户决策、agent 执行
-- 证据与背景: `pipeline/contracts/tensile_vlm_v2.json:4`（`model_output_fields` 含 `fracture_between`）、`:12`（字段定义）、`:46`（`user_prompt` 要求给断裂帧区间）；`pipeline/prompt_library.yaml:9`、`:30`；`pipeline/production_contract.py:15`（`EXPECTED_CONTRACT_HASH`）、`:19`（`fracture_between` 列在固定字段清单里）；测试强耦合 `tests/test_production_contract.py:52`、`:295`（两处断言 `contract_hash == EXPECTED_CONTRACT_HASH`）；仓库外 `~/pi-workspace/mVllm_2-audit/obsolete-frame-design-20261018.md`（**不在 Git 内**）。
+- 证据与背景: `pipeline/contracts/tensile_vlm_v2.json:4`（`model_output_fields` 含 `fracture_between`）、`:12`（字段定义）、`:46`（`user_prompt` 要求给断裂帧区间）；`pipeline/prompt_library.yaml:9`、`:30`；`pipeline/production_contract.py:15`（`EXPECTED_CONTRACT_HASH`）、`:19`（`fracture_between` 列在固定字段清单里）；测试强耦合 `tests/test_production_contract.py:52`（断言 `load_production_contract()` 结果的 hash）、`:295`（断言 preflight 响应的 `contract_hash`，`:293` 才是 `status_code` 断言）；仓库外 `~/pi-workspace/mVllm_2-audit/obsolete-frame-design-20261018.md`（**不在 Git 内**）。
 - 记录日期: 2026-10-18
 - 备注: `pipeline/prompt_library.yaml` 与 v2 契约正文被测试强制逐字相等，任何改动都会连带改哈希与冻结测试，不能顺手改。
 
 ### PB-012 源数据体检（帧内容与主题无关）
 
-- status: blocked
-- 阻塞/依赖: 需读取 1,678 候选的帧画面；本机是否存在对应媒体副本尚未核实，抽检须在能读媒体的机器上执行。
+- status: ready
+- 阻塞/依赖: 需读取 1,678 候选的帧画面。本机是否存在对应媒体副本**尚未核实**（未核实陈述，非「已确认缺失」）；抽检须在能读媒体的机器上执行，但「确认媒体可访问性」本身当下即可执行，不依赖外部条件。
 - 解除条件: 对 1,678 候选做帧内容一致性抽检，产出问题样本清单（候选 ID + 帧号 + 问题描述 + 是否影响标注），清单落盘并有路径。
 - 前置动作: 先确认媒体可访问性（本机 store 或训练机），再定抽检比例与判据。
 - 负责人: agent
@@ -171,7 +171,7 @@
 本节为已定论结论，登记目的是避免重复调研；引用时按下面给出的 `DF-xxx` 或 `文件:行` 标注。
 
 1. 换管线（64 → 512 token）不是「已断裂」零召回的原因：同模型、同数据、同 Prompt，两侧均 0/33。出处：`docs/design-facts.yaml` DF-009、`docs/project-todo.md:82`。
-2. `strict_valid_rate` 只校验形式，不校验语义。出处：`docs/design-facts.yaml` DF-003、`finetune/eval_semantics.py:101`。
+2. `strict_valid_rate` 只校验形式，不校验语义。出处：`docs/design-facts.yaml` DF-003、`finetune/eval_semantics.py:126`（`result.update(..., strict_valid=True)` 即「形式校验通过」的赋值点）、`finetune/eval_semantics.py:376`（`metrics["strict_valid_rate"]` 汇总处）；`finetune/eval_semantics.py:101` 的 docstring 只说明 `extract_semantics` 不接收标签 / 视频 / 模型身份，是该结论的旁证而非直接陈述。
 3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml:154` 的 misreadings 首条**。出处：`docs/design-facts.yaml:154`（首条正文在 `:155`–`:156`）。
-4. 模型输出「已断裂」在 425 条预测中出现 0 次。出处：`docs/project-todo.md:82`、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:362`（预测分布无「已断裂」键）。
+4. 模型输出「已断裂」在 425 条预测中出现 0 次。出处：`docs/project-todo.md:82`、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:368`（`prediction_clip_state_distribution` 里没有「已断裂」键）。
 5. 训练池「已断裂」占 15.00%，非数据稀缺。出处：`docs/design-facts.yaml` DF-010、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:83`（1253 条候选 188 条 = 15.00%，每 epoch 3000 行 564 行 = 18.80%）、`finetune/train_build_source_aware_dataset.py:30`（`SIGNATURE_COUNT_CAP = 3`，支撑「重复倍率 3.0 已顶上限」）。
