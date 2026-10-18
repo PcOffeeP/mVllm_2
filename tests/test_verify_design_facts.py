@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "verify_design_facts.py"
 
 
@@ -146,3 +148,131 @@ def test_dot_prefixed_references_resolve_without_false_missing(tmp_path: Path):
     assert "合计 2 处引用" in result.stdout, _context(result)
     # 两条基址各命中一次：`./` 只能按仓库根命中，`../` 只能按引用所在 md 的目录命中。
     assert "存在 2 处（root 1、file 1、both 0）" in result.stdout, _context(result)
+
+
+# --------------------------------------------------------------------------- #
+# `files:` 单条件、`refs:` + `files:` 双条件与变异自证
+#
+# 这一组用例守住 `_match_rule` 的 AND 语义：`ref` / `file` 非 None 时必须各自 fullmatch，
+# 任一不匹配都不得豁免。E/F/G 是同一缺陷的三种照妖镜（files 恒真、refs 恒真、任一条件被忽略），
+# H 用真实源码的变异副本把 F 的红绿关系固化成机器可验证的断言。
+# --------------------------------------------------------------------------- #
+MISSING_REF = "versioning/nope_missing.py"
+REF_MD = "docs/tasks/x.md"
+_ALLOWLIST = "scripts/doc-path-allowlist.txt"
+
+
+def _run_script(script: Path, root: Path) -> subprocess.CompletedProcess:
+    """同 `_run`，但可指定脚本副本（变异自证需要跑临时目录里的改写版）。"""
+    return subprocess.run(
+        [sys.executable, str(script), "--check-doc-paths", "--root", str(root)],
+        cwd=str(root),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=_child_env(),
+    )
+
+
+def _repo_with_missing_ref(root: Path, allowlist: str) -> None:
+    """造一个「md 引用不存在路径 + 给定白名单」的假仓库。"""
+    _write(root, REF_MD, f"示例见 {MISSING_REF} 。\n")
+    _write(root, _ALLOWLIST, allowlist)
+    _git_index(root)
+
+
+def test_files_only_rule_exempts_references_in_matching_file(tmp_path: Path):
+    # E：只给 `files:` 时，ref 为 None，`files` 命中即整篇豁免。
+    _repo_with_missing_ref(tmp_path, "files: docs/tasks/.*\n")
+
+    result = _run(tmp_path)
+
+    assert result.returncode == 0, _context(result)
+    assert "PASS" in result.stdout, _context(result)
+    assert _missing_refs(result.stdout) == [], _context(result)
+    # 断言「确实走了 files 分支的豁免」，而非引用没被抽取（零引用会判 FAIL）。
+    assert "白名单豁免 1 处" in result.stdout, _context(result)
+
+
+def test_files_only_rule_does_not_exempt_when_file_not_matching(tmp_path: Path):
+    # F：防恒真关键用例——`files:` 不匹配引用所在文件时绝不能豁免。
+    _repo_with_missing_ref(tmp_path, "files: docs/other/.*\n")
+
+    result = _run(tmp_path)
+
+    assert result.returncode == 1, _context(result)
+    assert f"MISSING {MISSING_REF}" in result.stdout, _context(result)
+    assert _missing_refs(result.stdout) == [MISSING_REF], _context(result)
+    assert "白名单豁免 0 处" in result.stdout, _context(result)
+    # 规则被读入但 0 命中：证明白名单确实被解析过，不是文件被整体忽略。
+    assert "UNUSED RULE" in result.stdout, _context(result)
+
+
+@pytest.mark.parametrize(
+    ("allowlist_line", "expected_returncode", "expect_missing"),
+    [
+        pytest.param(
+            "refs: versioning/nope_missing\\.py files: docs/other/.*\n",
+            1,
+            True,
+            id="g1-ref-matches-file-does-not",
+        ),
+        pytest.param(
+            "refs: versioning/other\\.py files: docs/tasks/.*\n",
+            1,
+            True,
+            id="g2-file-matches-ref-does-not",
+        ),
+        pytest.param(
+            "refs: versioning/nope_missing\\.py files: docs/tasks/.*\n",
+            0,
+            False,
+            id="g3-both-match",
+        ),
+    ],
+)
+def test_refs_and_files_conditions_must_both_match(
+    tmp_path: Path, allowlist_line: str, expected_returncode: int, expect_missing: bool
+):
+    # G：同行 `refs:` + `files:` 是 AND 语义，只匹配一边不得豁免（正则按 fullmatch 全整匹配）。
+    _repo_with_missing_ref(tmp_path, allowlist_line)
+
+    result = _run(tmp_path)
+
+    assert result.returncode == expected_returncode, _context(result)
+    if expect_missing:
+        assert f"MISSING {MISSING_REF}" in result.stdout, _context(result)
+        assert _missing_refs(result.stdout) == [MISSING_REF], _context(result)
+        assert "白名单豁免 0 处" in result.stdout, _context(result)
+    else:
+        assert "PASS" in result.stdout, _context(result)
+        assert _missing_refs(result.stdout) == [], _context(result)
+        assert "白名单豁免 1 处" in result.stdout, _context(result)
+
+
+def test_files_branch_forced_true_is_caught_by_case_f(tmp_path: Path):
+    # H：变异自证——把 `_match_rule` 的 files 分支改成「永不拦截」（恒真）后，
+    # F 的负向判据必须失效（returncode 由 1 变 0）。这样 F 的红绿关系被机器固化：
+    # 若有人把 files 判定写成恒真，F 会红；F 绿则说明 files 分支真的在拦截。
+    original = SCRIPT.read_text(encoding="utf-8")
+    guard = 'if rule["file"] is not None and not rule["file"].fullmatch(md_file):'
+    assert original.count(guard) == 1, "变异锚点在源码里不再唯一，需先复核 scripts/verify_design_facts.py"
+    mutated_guard = "if False and " + guard[len("if "):]
+    mutated = original.replace(guard, mutated_guard)
+    assert mutated != original, "变异替换未命中，脚本源码可能已改动"
+
+    _repo_with_missing_ref(tmp_path, "files: docs/other/.*\n")
+    mutated_script = tmp_path / "mutated_verify_design_facts.py"
+    mutated_script.write_text(mutated, encoding="utf-8")
+
+    # 变异副本跑到 F 场景：恒真缺陷让 files 不匹配也豁免，负向判据失效。
+    mutated_result = _run_script(mutated_script, tmp_path)
+    # 同一场景用原脚本对照：证明失败只来自变异本身，不是环境或假仓库的问题。
+    original_result = _run(tmp_path)
+
+    assert mutated_result.returncode == 0, (
+        "变异副本没有复现恒真缺陷（说明变异锚点已漂移）" + _context(mutated_result)
+    )
+    assert _missing_refs(mutated_result.stdout) == [], _context(mutated_result)
+    assert original_result.returncode == 1, _context(original_result)
+    assert f"MISSING {MISSING_REF}" in original_result.stdout, _context(original_result)
