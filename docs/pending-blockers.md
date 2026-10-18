@@ -177,6 +177,17 @@
 - 记录日期: 2026-10-18
 - 备注: 抽看结果直接决定轴 2 判定前提，未完成前不得把轴 2 数值当结论。
 
+### PB-016 `_build_eval_history_entry` 与 run 源整源缺失的早退分支未修（技术债）
+
+- status: ready
+- 阻塞/依赖: 无外部条件阻塞；本批不修代码，只登记。
+- 解除条件: 两处根因有明确处置并附证据——① `versioning/migration.py` 的 `_build_eval_history_entry` 在指标来源缺失时的降级行为被显式定义（当前与归档包缺失不同源，未区分缺失成因）；② run 源整源缺失（`workspace/runs/<run>` 整体不存在）的早退分支被显式定义并带机读 reason_code。两处均需有回归用例覆盖，且不得把缺失伪装成已知值。
+- 前置动作: 先只读复核两处现有降级文案与既有 `unavailable_archive_removed` 实现（`versioning/migration.py`，`grep -n 'unavailable_archive_removed\|_build_eval_history_entry' versioning/migration.py` 定位，行号近似），再起草改动方案并交用户裁决是否纳入下一批。
+- 负责人: agent
+- 证据与背景: 仓库内 `versioning/migration.py`（`_WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE = "unavailable_archive_removed"` 赋值处行号用 `grep -n` 现场确认，近似 `:1687`；`def _build_eval_history_entry` 近似 `:1935`）；`docs/project-todo.md` 的 `ARTIFACT-RETENTION` 条目「待确认（技术债，2026-10-18 审查发现）」段与「归档包缺失状态已修（2026-10-18）」段。归档包缺失这条根因**已修**（提交 `2ea8c256`/`8dfa8fcd`/`ca46c57e`），本条只登记**未修**的两处同族根因。
+- 记录日期: 2026-10-18
+- 备注: 上述 `migration.py` 行号均为近似值，引用前须 `grep -n` 复核；本批不修改 `versioning/migration.py`，不改变任何既有语义。
+
 ## D. 已确认结论（供对照，避免重复调研）
 
 本节为已定论结论，登记目的是避免重复调研；引用时按下面给出的 `DF-xxx` 或 `文件:行` 标注。
