@@ -11,13 +11,17 @@
     python scripts/verify_design_facts.py --help     # 打印本说明，退出 0
 
 未知参数（如拼错的 --rendr）打印用法并退出 2，绝不静默回落到校验模式。
+若 `--check-doc-paths` 扫不到任何可判定引用（例如正则 / 扩展名 / 前缀常量被改坏），该模式判 FAIL 而非 PASS。
 
 --check-doc-paths 的覆盖范围与已知盲区（PASS 只代表「受检范围内路径存在」）：
 - 扫描对象：`git ls-files '*.md'` 的受跟踪文件；引用主体限 ASCII `[A-Za-z0-9_./-]`。
 - 识别前缀：`docs/`、`pipeline/`、`finetune/`、`versioning/`、`tests/`、`scripts/`、`records/`，
   可带若干 `./` 或 `../` 段；扩展名限 md / py / jsonl / json / yaml / yml / csv。
-- 判定：同一引用按「仓库根」与「引用所在 md 的目录」双解析，任一存在即通过；只判存在性，不校验行号。
-- 含 `...` 的占位引用不判存在性，逐条打印 SKIP 并计数。
+- 判定：同一引用按「仓库根」与「引用所在 md 的目录」双解析，两条解析路径任一命中才算通过。命中还须同时满足
+  「解析结果落在仓库根之内」与「目标是普通文件（`is_file()`）」：越出仓库根的解析结果一律判缺失（如 `../../x`），
+  同名的目录不算存在；指向符号链接时按其解析目标判定。只判存在性，不校验行号。
+- 含 `...` 的占位引用不判存在性，逐条打印 SKIP 并计数；含全角省略号 `…` 的引用只打印 NOTE、不判定。
+- 大小写是否敏感取决于文件系统：Linux（区分大小写）会判缺失，macOS 默认大小写不敏感卷可能判通过。
 - 不覆盖：上述七类前缀以外的写法（绝对路径、`store/…`、`workspace/…`、`~/…`、URL）、行号后缀的
   正确性、非 md 文件、未被 git 跟踪的文件；因此 PASS 不等于「全仓路径都对」。
 
@@ -687,7 +691,8 @@ def load_doc_path_allowlist(path: Path) -> tuple[list[dict], list[str]]:
     """读白名单：返回规则列表与问题列表；文件不存在时视为空白名单。
 
     每条规则是 {ref, file, source, text, hits}：ref / file 是已编译正则或 None，
-    两者均给出时必须同时 fullmatch 才豁免；hits 记录它实际豁免了多少个出现处。
+    两者均给出时必须同时 fullmatch 才豁免；hits 记录它**匹配到**的出现处数，仅用于判 UNUSED RULE
+    （豁免归属取首个匹配的规则），不代表实际豁免数量。
     """
     rules: list[dict] = []
     problems: list[str] = []
@@ -746,7 +751,7 @@ def _ref_exists(root: Path, ref: str, md_file: str) -> tuple[bool, bool]:
     try:
         root_resolved = root.resolve()
     except OSError:
-        root_resolved = root
+        root_resolved = root.absolute()
     results: list[bool] = []
     for base in (root, (root / md_file).parent):
         try:
@@ -782,10 +787,6 @@ def check_doc_paths_mode(root: Path) -> int:
         for problem in problems:
             print(f"FAIL  {problem}")
         return 1
-    if not refs:
-        print("FAIL  未扫描到任何引用，无法证明覆盖（检查正则/扩展名/前缀常量）")
-        return 1
-
     allowlist_path = root / DOC_PATH_ALLOWLIST
     rules, allow_problems = load_doc_path_allowlist(allowlist_path)
     if allow_problems:
@@ -803,6 +804,13 @@ def check_doc_paths_mode(root: Path) -> int:
         print(f"SKIP {item['ref']}  <- {item['file']}:{item['line']}")
     for item in hints:
         print(f"NOTE  含全角省略号、未判定  <- {item['file']}:{item['line']}")
+
+    if not refs:
+        print(
+            "FAIL  未扫描到任何可判定引用"
+            f"（占位符 SKIP {len(skipped)} 处、全角省略号 NOTE {len(hints)} 处）"
+        )
+        return 1
 
     hits = {"both": 0, "root": 0, "file": 0}
     missing: list[dict] = []
