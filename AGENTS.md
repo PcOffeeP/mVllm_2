@@ -63,7 +63,7 @@ Non-goals:
 - 引用历史数字必须标来源（文件:行 / commit / 报告路径）与产生日期。
 - 同一结论里混用不同口径的数字时，必须分别标注口径（例如「旧管线 425 条」vs「新管线 425 条」），不得并列比较，也不得跨口径加减。
 - 修改或新增文档中的路径引用后，必须跑 `python scripts/verify_design_facts.py --check-doc-paths`，0 不存在方可提交；历史溯源与计划中文件应加入白名单并在白名单内注明原因。
-- `--check-doc-paths` 的结论只能表述为「未豁免引用中缺失 0 处」；不得表述为「文档路径 0 不存在」——豁免引用未做存在性校验，且 `assets/`、`delivery/`、`data/`、`LlamaFactory/` 与根级文件不在扫描范围。
+- `--check-doc-paths` 的结论只能表述为「未豁免引用中缺失 0 处」；不得表述为「文档路径 0 不存在」——豁免引用未做存在性校验；且仅对 `docs|pipeline|finetune|versioning|tests|scripts|records` 七类前缀的引用目标判存在性，其它前缀（含 `assets/`、`delivery/`、`data/`、`LlamaFactory/` 与根级文件）不做判断。
 
 ### 测试基线快照（参照用，不作判据）
 
