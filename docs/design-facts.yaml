@@ -134,7 +134,7 @@ facts:
     claim: >
       训练池中已断裂的占比：1253 条候选中 188 条（15.00%），每 epoch 3000 行中 564 行（18.80%），重复倍率 3.0 已顶到 `SIGNATURE_COUNT_CAP` 的上限值 3。
     evidence:
-      - docs/plans/2026-10-18-evaluation-pipeline-redesign.md:83
+      - docs/plans/2026-10-18-evaluation-pipeline-redesign.md:85
       - finetune/train_build_source_aware_dataset.py:30
     established: 2026-10-18
     established_by: 代码核对

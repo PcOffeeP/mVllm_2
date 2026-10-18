@@ -71,7 +71,7 @@ R1 模型 `v4.1-agent-pipeline-fold0-r1` 的 425 条评测记录暴露出三个�
 | 结论门放宽 | 两门为 false 仍授权 stage_e/f | 未通过的门不阻止下一阶段 |
 | 绝对性能降级 | 绝对性能指标取 `record_only` | 只记录，不阻断 |
 
-闸机分布不齐。新体系 `versioning/registry.py:995` 有 `require_passed=True` 硬闸机，结论不是 `passed` 即抛 `PromotionGateRejected`。老体系 `pipeline/model_registry.py` 与 `finetune/release_validate.py` 没有对应闸机，走老路径的结论可以绕过门。
+闸机分布不齐。新体系 `versioning/registry.py:995` 有 `require_passed=True` 硬闸机，结论不是 `passed` 即抛 `PromotionGateRejected`。老体系 `pipeline/model_registry.py` 与 `finetune/release_validate.py` 没有对应的强制拦截（门禁判定有，但不阻断晋级），走老路径的结论可以绕过门。
 
 ### 1.5 真值分布与训练池供给
 

@@ -93,7 +93,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-010 [active] 训练池里已断裂不稀缺
 训练池中已断裂的占比：1253 条候选中 188 条（15.00%），每 epoch 3000 行中 564 行（18.80%），重复倍率 3.0 已顶到 `SIGNATURE_COUNT_CAP` 的上限值 3。
 出处：
-- docs/plans/2026-10-18-evaluation-pipeline-redesign.md:83
+- docs/plans/2026-10-18-evaluation-pipeline-redesign.md:85
 - finetune/train_build_source_aware_dataset.py:30
 
 ## 训练机项目工作区路径

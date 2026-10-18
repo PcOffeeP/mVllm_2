@@ -552,21 +552,21 @@ $ .venv/bin/python scripts/eval_audit_aggregate_support.py --records <预测记�
 质疑点
 
 1. 每个阈值的定义出处与设定理由是什么？已知 `0.65` 与 `0.4006` 的来源不明或不完整【推断】，必须列为「阈值来源无法追溯」问题。
-2. 新体系有硬闸机，老体系无闸机【实测】（`finetune/eval_holdout.py:474-478` 只把 `outcome` 写进摘要，`:526` 不论 passed/failed 都以 `completed` 收尾、无拦截分支；`finetune/holdout_metrics.py:91` 只返回 `'passed'`/`'failed'` 文本）。老链路是否仍能产出被后续文档引用的评测结论？
+2. 新体系有硬闸机，老体系无强制拦截（有门禁判定，但不阻断晋级）【实测】（`finetune/eval_holdout.py:474-478` 只把 `outcome` 写进摘要，`:526` 不论 passed/failed 都以 `completed` 收尾、无拦截分支；`finetune/holdout_metrics.py:91` 只返回 `'passed'`/`'failed'` 文本）。老链路是否仍能产出被后续文档引用的评测结论？
 3. 政策层已知存在三条显式放宽。这三条现在是否仍然成立、写在哪个文件？【待验证】
 4. 阈值可被谁改、改后如何发现？`validate_thresholds` 只与冻结常量比对（近似 `:33`–`:39`），改常量即同时改门禁【实测】。
 
 验证方法
 
 - 逐阈值追出处：对每个阈值数值与其常量名做全仓检索（`docs/`、契约、`records/`），输出「阈值 → 出处 → 设定理由」三列表，缺口写「无法追溯」。
-- 老体系闸机检查：检索 legacy 入口（`pipeline/`、`finetune/`）是否存在 outcome 判定与阻断逻辑，输出命中的文件与行。
+- 老体系门禁与拦截检查：检索 legacy 入口（`pipeline/`、`finetune/`）是否存在 outcome 判定与阻断逻辑，输出命中的文件与行。
 - 政策放宽条目定位：检索 `docs/` 中的放宽表述，逐条核对是否仍有效。
 - 阈值变更检测：核对是否有校验锁定阈值常量（现有 `validate_thresholds` 只能防传入值偏离常量）。
 
 通过判据
 
 - 每个阈值都有可追溯出处与理由（性质型）。不能追溯的阈值必须单列为待裁决，且在裁决前不得用于放行（性质型）。
-- 老体系闸机缺失的事实复现，并写明影响范围（性质型）。
+- 老体系无强制拦截的事实复现，并写明影响范围（性质型）。
 - 三条政策放宽逐条给出文件位置与当前有效性（性质型，缺项即 failed）。
 
 产出证据
@@ -694,7 +694,7 @@ $ .venv/bin/python scripts/eval_audit_metric_provenance.py --docs docs/plans/202
 | C9 | 输出解析与形式校验 | 字段集三向相等、畸形输入全判不合法、`None == None` 回归通过 | 未验证 | `records/full-chain-validation-20261018/c9/` |
 | C10 | 判分实现 | 反打用例不一致 0、覆盖塌缩与完美两类 | 未验证 | `records/full-chain-validation-20261018/c10/` |
 | C11 | 聚合与统计 | 输出含 support、塌缩可报出、CI 口径固定 | 未验证 | `records/full-chain-validation-20261018/c11/` |
-| C12 | 门禁 | 阈值出处与理由可追溯、老体系无闸机事实复现并写明范围 | 未验证 | `records/full-chain-validation-20261018/c12/` |
+| C12 | 门禁 | 阈值出处与理由可追溯、老体系无强制拦截事实复现并写明范围 | 未验证 | `records/full-chain-validation-20261018/c12/` |
 | C13 | 晋级与登记 | 前置 gate 覆盖率 100%、`outcome=failed` 下写出入口 0 | 未验证 | `records/full-chain-validation-20261018/c13/` |
 | C14 | 报告与档案 | 「必须加注」清单完整、矛盾条目逐条列出 | 未验证 | `records/full-chain-validation-20261018/c14/` |
 
@@ -727,7 +727,7 @@ $ .venv/bin/python scripts/eval_audit_metric_provenance.py --docs docs/plans/202
 | K4 | R1 425 条预测中「已断裂」出现 0 次 | C11、C10 | 已实测 | `docs/results/model-r1-effect-profile-20261018.md:216`、`:488`（旧口径；新口径 425 结果尚未入库，见 `docs/project-todo.md:82`）；`records/full-chain-validation-20261018/c11/aggregate_with_support.json` 为计划产物，待生成 |
 | K5 | `finetune/validation/task_metrics.py:51` 一带曾因 `None == None` 白送判对 | C9 | 已修，待回归 | `records/full-chain-validation-20261018/c9/pytest_output.txt`（计划产物，待生成） |
 | K6 | 过期字段 `fracture_between` 残留（v2 契约已删，`pipeline/prompt_library.yaml:9` 仍要求） | C5、C9 | 未清理（暂缓） | `records/full-chain-validation-20261018/c5/prompt_field_diff.json`（计划产物，待生成） |
-| K7 | 老体系无闸机 | C12、C13 | 已读代码确认（非运行实测） | 仓库外 `~/pi-workspace/mVllm_2-audit/gate-status-20261018.md:250`（`pipeline/model_registry.py`、`finetune/release_validate.py` 只算分不拦人；不入 Git）；`records/full-chain-validation-20261018/c12/legacy_gate_check.txt` 为计划产物，待生成 |
+| K7 | 老体系无强制拦截 | C12、C13 | 已读代码确认（非运行实测） | 仓库外 `~/pi-workspace/mVllm_2-audit/gate-status-20261018.md:250`（`pipeline/model_registry.py`、`finetune/release_validate.py` 只算分不拦人；不入 Git）；`records/full-chain-validation-20261018/c12/legacy_gate_check.txt` 为计划产物，待生成 |
 | K8 | `strict_valid` 只校验形式 | C9、C10 | 已读代码确认（非运行实测） | `finetune/eval_run.py:344`（`strict_valid = prediction is not None`）+ `finetune/v4_1_runtime.py:451-461`（`parse_v4_1_output` 只做 `json.loads` 与标签词表规范化）；`records/full-chain-validation-20261018/c9/strict_valid_cases.md` 为计划产物，待生成 |
 | K9 | 训练池「已断裂」占 15.00%（DF-010），模型从不输出该类 | C6、C11 | 已核对（DF-010 为代码核对结论，非运行实测；两侧事实各自成立） | `docs/design-facts.yaml:131-142`（DF-010，`established_by: 代码核对`，evidence 指 `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:83`）；`records/full-chain-validation-20261018/c6/class_balance.csv` 为计划产物，待生成 |
 | K10 | 源数据个别帧内容与主题无关（某样本把「锡纸擦不锈钢」镜头当成试样画面） | C1、C4 | 已知 1 例，未系统排查 | `~/pi-workspace/mVllm_2-audit/full-chain-validation-20261018/c1/visual_review.md`（仓库外，不入 Git） |
