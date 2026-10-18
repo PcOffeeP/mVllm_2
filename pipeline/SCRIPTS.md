@@ -14,6 +14,7 @@ Non-goals:
 - 当前可执行命令放在 [`scripts/`](scripts/SCRIPTS.md)。
 - 历史命令放在 [`scripts/archive/`](scripts/archive/README.md)。
 - 2026-07 数据与视觉诊断工具放在 `scripts/diagnostics/`：14 个脚本于 2026-10-18 从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 迁入，仅供历史证据复核，当期未接入主链（不属现行数据/服务入口）；这些脚本原先读写 `finetune/results/diagnostics/` 下的数据，数据未随迁，正文路径可能已失效，见各文件顶部「迁入说明」。
+- 本目录另有 [`scripts/diagnostics/SCRIPTS.md`](scripts/diagnostics/SCRIPTS.md)：记录 14 个迁入脚本的索引（用途/原路径/已知失效项）与 6 个未迁脚本（含各自「main 是否有等价物」的检查命令结论与不迁理由），另含本目录的命名豁免说明。
 
 日常操作只需要查看 `scripts/SCRIPTS.md`。
 

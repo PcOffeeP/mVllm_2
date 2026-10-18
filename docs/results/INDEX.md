@@ -3,7 +3,7 @@
 > **变更记录** 2026-10-18 清理：移除 24 个文件，现存 117 个。N/M 由 `find docs/results -type f` + `os.path.getsize` 统计；清单见 C 节主表，被清空的两个一级子目录（`v4_1_0_760050fad303_20260724_visual/`、`v4_1_prompt_concise_cv_v1_seed3411/`）整组移除。
 > **变更记录** 2026-10-18 清理（A1）：`model_evidence/` 整目录移除 —— 移除 40 个文件，现存 77 个。N/M 同由 `find docs/results -type f` + `os.path.getsize` 重新统计；该目录已于 2026-10-18 清理整组移除，C 节不再列出其条目。
 > **变更记录** 2026-10-18 迁入批：本批在 `docs/results` 下移除 0 个文件，现存 77 个；随后按分支裁决迁入 6 个 2026-07 诊断报告（现存 83 个，见下条）。迁入后 `diagnostics-data-visual-audit-plan-20260717.md` 「迁入说明」补两行改名映射与反引号说明（正文仅 1 行链接改反引号），体积 9,499→9,749 B，合计随实测重算。
-> **变更记录** 2026-10-18 迁入：按分支裁决从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 取 6 个 2026-07 诊断报告落 `docs/results/`（统一 `diagnostics-` 前缀并保留日期以便溯源），迁入 6 个文件，现存 83 个；正文逐字节未改，头部另加「迁入说明」块，档位按「仓库内零引用」如实落 C。
+> **变更记录** 2026-10-18 迁入：按分支裁决从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 取 6 个 2026-07 诊断报告落 `docs/results/`（统一 `diagnostics-` 前缀并保留日期以便溯源），迁入 6 个文件，现存 83 个；正文数字与结论未改；其中 `plan` 文件有 1 行链接改为反引号写法（见该文件迁入说明），头部另加「迁入说明」块，档位按「仓库内零引用」如实落 C。
 > **变更记录** 2026-10-18 另有 R1 训练过程信息 24 个文件同步入库，落位 `records/r1-run-20261018/`，不属 `docs/results` 范围，故不计入本索引统计。
 
 ## A. 头部声明
@@ -213,7 +213,9 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138
 
 前 3 个为随 `187822fe`、`36016711` 入库的新证据，不得删；后 2 个为门禁/准备结论的唯一凭证，须由用户核定。
 
-后 6 个 `diagnostics-*` 为 2026-10-18 从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 迁入的 2026-07 诊断报告：正文逐字节未改（头部只加「迁入说明」块），属负面证据（`has_fracture` recall 9.50%、legal/joint 0%、任何 checkpoint 与 E1～E4 不得发布），保留不得删；迁入后仓库内暂无引用者，按判据如实落 C 档，不代表可删。
+后 6 个 `diagnostics-*` 为 2026-10-18 从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 迁入的 2026-07 诊断报告：正文数字与结论未改；其中 `plan` 文件有 1 行链接改为反引号写法（见该文件迁入说明），属负面证据（`has_fracture` recall 9.50%、legal/joint 0%、任何 checkpoint 与 E1～E4 不得发布），保留不得删；迁入后仓库内暂无引用者，按判据如实落 C 档，不代表可删。
+
+这 6 个中有 1 个（`docs/results/diagnostics-data-visual-audit-20260719.md`）因 `plan` 文件中的改名映射被 `git grep` 视为非零引用，档位沿用 C，差异登记见 E.3。
 
 ### E.2 NOISY 降级 8 个（basename 命中取第 4.6 节）
 
@@ -378,4 +380,4 @@ PASS F 节引用的运行输出声明退出码 0 / 0 FAIL
 - 本批另有 2 个 `docs/results/` 文档在前序步骤被改写，主表与 E 节体积已按改写后的磁盘实测重同步，故与审计第 4.5 节快照值不同：`model-inventory.md` 18290 B → 18464 B（+174 B）、`version-control-migration-20260907.md` 7138 B → 7188 B（+50 B）。两处偏差与 A1 整目录删除本身无关。
 - 单元格长度与「（顶层散文件，未归属实验目录）」后缀是本索引自定的书写约定，**非任务书要求**；本表「是什么」按字符数 ≤40 执行；「对应实验」「取代者」两列以实验标识符（如 `v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`）和文件路径为主体，另加本索引自定的固定后缀，按中文字符数 ≤25 校验（两列当前最长分别为 62 / 41 字符，均为拉丁标识）。
 - 审计清单置于仓库外，本文件只以行内代码记录其路径；仅引用其判据与数值，未复制审计正文段落，未建立链接。
-- 2026-10-18 迁入批次：从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 迁入 6 个 2026-07 诊断报告（`docs/results/diagnostics-*`，合计 27,871 B，含各自「迁入说明」块）与 14 个诊断脚本（`pipeline/scripts/diagnostics/`，不在本索引统计范围）。迁入文件正文与分支持逐字节一致，头部说明块使体积大于分支原值，主表体积取迁入后磁盘实测；迁入文件仓库内暂无引用者，档位落 C 并列入 E.1，处置建议为「迁入保留（负面证据）」，不适用 C 类「不得判可删」的原始语境。
+- 2026-10-18 迁入批次：从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 迁入 6 个 2026-07 诊断报告（`docs/results/diagnostics-*`，合计 27,871 B，含各自「迁入说明」块）与 14 个诊断脚本（`pipeline/scripts/diagnostics/`，不在本索引统计范围）。迁入文件正文与分支基本逐字节一致（`plan` 文件有 1 行链接改为反引号写法），头部说明块使体积大于分支原值，主表体积取迁入后磁盘实测；迁入文件仓库内暂无引用者（`plan` 的改名映射使 `docs/results/diagnostics-data-visual-audit-20260719.md` 被 `git grep` 计为非零引用，档位仍落 C 并列入 E.1，差异见 E.3 第 7 条），处置建议为「迁入保留（负面证据）」，不适用 C 类「不得判可删」的原始语境。

@@ -8,7 +8,9 @@
 # 未随迁（原 finetune/results/diagnostics/ 下的输入/输出数据与依赖，留 bcdf4f36 + bundle）：
 #   - finetune/results/diagnostics/checkpoint_comparison
 #   - finetune/results/diagnostics/run_dataset_evaluation.py
-#   - finetune/results/diagnostics/score_diagnostic_evaluation.py
+# 已迁（原 finetune/results/diagnostics/ 下依赖，已落入本目录同名文件）：
+#   - score_diagnostic_evaluation.py → 本目录 score_diagnostic_evaluation.py
+# 因此正文中写死的 `finetune/results/diagnostics/score_diagnostic_evaluation.py` 路径已失效，应改按本目录同名文件解析。
 
 #!/usr/bin/env python3
 """Merge, evaluate, score, and summarize the diagnostic checkpoint series."""
