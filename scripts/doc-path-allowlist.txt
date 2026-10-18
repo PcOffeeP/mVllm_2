@@ -45,7 +45,7 @@ refs: docs/results/conda-environment-setup-20261013\.md files: docs/project-todo
 # `records/{training,models,evaluations}/<版本>/manifest.yaml`」——是目标布局描述，
 # `-rN` 为版本号占位；records/ 现存只有 prompts/prompt-v4.1-r{1,2}.yaml 与 r1-run-20261018/，
 # 下列具体路径 git 全历史 0 记录。
-refs: records/(?:prompts/prompt-v4\.1-rN\.yaml|(?:training|models|evaluations)/[a-z]+-v4\.1-r1/manifest\.yaml) files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\.md
+refs: records/(?:prompts/prompt-v4\.1-rN\.yaml|(?:training|models|evaluations)/(?:train|model|eval)-v4\.1-r1/manifest\.yaml) files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\.md
 # 实施台账各批「将修改的模块/文档」记录的 9 个模块与测试从未落地：versioning/authorization.py、
 # versioning/_sealed_ground_truth.py、versioning/mock_train_entry.py、versioning/scope.py 与
 # tests/versioning/test_{cli_data,holdout_auth,manifest_model,scope,restore}.py 当前均不存在，
