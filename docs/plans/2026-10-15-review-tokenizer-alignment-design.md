@@ -4,6 +4,6 @@
 
 现行工作是修复既有provider内部兼容：原始回答和冻结模板不变，使本地预算检查符合冻结模型的编码规则；模型、判读/仲裁、质量门、样本分母、8K上下文/512输出及超长不截断保持原方案。用户持续禁止真实模型评测或使用真实test。
 
-实际状态与证据只查[项目TODO](../project-todo.md)和[兼容修复记录](../results/evaluation-review-compatibility-repair-20261016.md)。此前[安装包分词核验](../results/ollama-tokenizer-verification-20261015.md)保留为历史观察，不是新方案或原生arm64服务通过证明。
+实际状态与证据只查[项目TODO](../project-todo.md)和兼容修复记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。此前[安装包分词核验](../results/ollama-tokenizer-verification-20261015.md)保留为历史观察，不是新方案或原生arm64服务通过证明。
 
 原A/B讨论全文可从 `git show 4d397f1a:docs/plans/2026-10-15-review-tokenizer-alignment-design.md` 查询，不再保留为当前操作指引。

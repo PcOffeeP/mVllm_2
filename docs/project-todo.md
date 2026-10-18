@@ -8,9 +8,9 @@
 
 **开发侧输入与预算（2026-10-16，Codex；分母口径与试件分组详载 EVAL-DEVELOPMENT）**：起始 Mac `57670abc` 干净，训练机限定只读核实际 `data-v4.1-r2` / `prompt-v4.1-r1`；候选/来源视频、三折 validation、未进入 validation 的候选数及试件分组的分母与依据以 EVAL-DEVELOPMENT 与本轮准备记录为准，来源层级无泄漏不等于独立试件，试件分组依据为用户确认而非独立现场验真。仍未冻结：旧 Fold0 实际训练 Prompt 未证实；评测与服务存在切片1/切片2、抽帧边界及一次调用与最多三次重试的差异；质量 GPU 小时预算未虚填、实际变体未冻结，性能 1/20 小时为既定上限但不能冒充质量预算。详见[本轮准备记录](results/development-input-runtime-preparation-20261016.md)。未运行模型/真实评测/训练/test、不改基座，真实验收未升级。
 
-**基座来源与评审侧准备（2026-10-15～2026-10-16，Codex；权威表述见 EVAL-DEVELOPMENT / MODEL-DIAG（基座来源）与 EVAL-HOLDOUT / EVAL-PERFORMANCE / EVAL-INTEGRATION（评审与显示测点））**：官方固定 revision 的配置/tokenizer/processor 与四份权重身份已比对，唯一代码偏差为实际基座构造函数多 `self.post_init()`；框架用途已静态核定，历史来源/动机追查按用户要求取消，不改写基座、不冒称原样官方快照，来源声明与正式登记仍不放行，见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)、[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。评审 tokenizer 的 HF NFC / GGUF NFD 差异经本机安装包 x86 词表实测复现，原生 arm64 server 未实测（[分词核验](results/ollama-tokenizer-verification-20261015.md)、[固定来源与材料](results/evaluation-tokenizer-materials-20261015.md)；原 [A/B 草案](plans/2026-10-15-review-tokenizer-alignment-design.md)已撤回为历史探索）；此后按用户授权以原方案完成本地兼容修复及两个模型各 9 条 golden 的 v2 受审映射，真实评审仍未执行（[兼容修复记录](results/evaluation-review-compatibility-repair-20261016.md)）。评审隔离 canary 预检与显示测点桥接已在本机合成闭环通过，真实部署、独立账户、DOM 测点与真实密钥仍缺（[运行前接线](results/evaluation-isolation-display-preflight-20261016.md)）。以上均为合成或无模型范围，不以合成结果授真实资格；不改判读、质量门与样本分母，不关闭 TLS 校验；不创建正式 eval/claim、不启动完整服务、不改外部客户端、不读真实 test、不生成真实回答。
+**基座来源与评审侧准备（2026-10-15～2026-10-16，Codex；权威表述见 EVAL-DEVELOPMENT / MODEL-DIAG（基座来源）与 EVAL-HOLDOUT / EVAL-PERFORMANCE / EVAL-INTEGRATION（评审与显示测点））**：官方固定 revision 的配置/tokenizer/processor 与四份权重身份已比对，唯一代码偏差为实际基座构造函数多 `self.post_init()`；框架用途已静态核定，历史来源/动机追查按用户要求取消，不改写基座、不冒称原样官方快照，来源声明与正式登记仍不放行，见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)、[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。评审 tokenizer 的 HF NFC / GGUF NFD 差异经本机安装包 x86 词表实测复现，原生 arm64 server 未实测（[分词核验](results/ollama-tokenizer-verification-20261015.md)、[固定来源与材料](results/evaluation-tokenizer-materials-20261015.md)；原 [A/B 草案](plans/2026-10-15-review-tokenizer-alignment-design.md)已撤回为历史探索）；此后按用户授权以原方案完成本地兼容修复及两个模型各 9 条 golden 的 v2 受审映射，真实评审仍未执行（兼容修复记录，该记录已随 2026-10-18 清理移除）。评审隔离 canary 预检与显示测点桥接已在本机合成闭环通过，真实部署、独立账户、DOM 测点与真实密钥仍缺（运行前接线，该记录已随 2026-10-18 清理移除）。以上均为合成或无模型范围，不以合成结果授真实资格；不改判读、质量门与样本分母，不关闭 TLS 校验；不创建正式 eval/claim、不启动完整服务、不改外部客户端、不读真实 test、不生成真实回答。
 
-**工程迁移、环境与测评准备（2026-09-14 / 2026-10-13 / 2026-10-15～16，Codex）**：数据处理及活动入口的工程迁移已解决（`5acebc27` 先推迁移分支再快进 Codeup main 并同步训练机正式代码，见[验证第67节](results/version-control-migration/verification.md)），不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。DOC-INTEGRATION、REMOTE-STATE-REFRESH 已完成；ENV-ACTIVATION 已在训练机建立 `mvllm2`（Python3.11.17）并通过环境验收（[部署记录](results/conda-environment-setup-20261013.md)），agent/cpm45 保留、未同步代码、未启动数据处理/训练/推理/评测，环境可用不等于模型质量或恢复通过；候选模型来源及实际运行授权仍须核定，指定 store 尚无新体系正式训练/评测/模型记录。测评[方案](model-evaluation.md)与[实施计划](plans/model-evaluation-implementation.md)已入库，主仓侧 A/B 及 C/D/E 工程接线与合成验证已完成并经独立复核，真实环境证据待补（[接线记录](results/evaluation-independent-performance-admission-20261015.md)、[推进记录](results/todo-preparation-progress-20261016.md)）；新准入统一要求独立质量与性能，旧六指标/七门不代表新协议；授权不包含真实模型调用、训练、test 使用、账户部署、外部 Agent 发包或性能运行，资产在场不等于部署或真实性能合格。
+**工程迁移、环境与测评准备（2026-09-14 / 2026-10-13 / 2026-10-15～16，Codex）**：数据处理及活动入口的工程迁移已解决（`5acebc27` 先推迁移分支再快进 Codeup main 并同步训练机正式代码，见[验证第67节](results/version-control-migration/verification.md)），不表示真实 GPU 训练、最终模型质量、独立 test、真实服务成功路径或整机恢复通过。DOC-INTEGRATION、REMOTE-STATE-REFRESH 已完成；ENV-ACTIVATION 已在训练机建立 `mvllm2`（Python3.11.17）并通过环境验收（部署记录，该记录已随 2026-10-18 清理移除），agent/cpm45 保留、未同步代码、未启动数据处理/训练/推理/评测，环境可用不等于模型质量或恢复通过；候选模型来源及实际运行授权仍须核定，指定 store 尚无新体系正式训练/评测/模型记录。测评[方案](model-evaluation.md)与[实施计划](plans/model-evaluation-implementation.md)已入库，主仓侧 A/B 及 C/D/E 工程接线与合成验证已完成并经独立复核，真实环境证据待补（[接线记录](results/evaluation-independent-performance-admission-20261015.md)、推进记录，该记录已随 2026-10-18 清理移除）；新准入统一要求独立质量与性能，旧六指标/七门不代表新协议；授权不包含真实模型调用、训练、test 使用、账户部署、外部 Agent 发包或性能运行，资产在场不等于部署或真实性能合格。
 
 新体系正式入口为 `python -m versioning`，显式使用五类完整可读身份。train 数据分支用于三折开发验证和 full 训练，test 分支只用于最终独立测试；代码中的 `development` / `holdout` / `test_audit` 保留原值。旧媒体仍被新 store 引用，不得按“迁移完成”删除旧目录。
 
@@ -86,7 +86,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **已实现事实**：同一 Registry 的 base/trained 互斥来源及实际字节快照，FINISHED 完成折独立诊断登记且父 partial 不变；显式 semantic-v4.1 的 prepare/validate/run/score/export、完整来源组映射、每折与 pooled 门、多数类及真实 base 配对 CLI、MLflow/manifest 重验和来源备份兼容。base/诊断不授服务 alias 或生产资格；原 strict 历史仅按已核精确适配保留原义。
 - **验收标准**：不伪造 train/缺折/中途 checkpoint；诊断仅对应完整 validation。每折 macro≥65%、各状态≥50%，完整三折 pooled joint≥50%、机制F1≥50%、位置F1≥60%；特殊类报告。双方同媒体/Prompt/抽帧/生成与真实基座字节，缺类/缺折/漂移/评审未完成不放行。完整链路来源、分母及判读尝试可追溯。
 - **本轮验证**：主 Agent 新增关键集102 passed（64.23s，退出码0）；独立 reviewer 最终14项接线专项均通过（13+1，两次间只修测试fixture chmod），包含完整三折 passed、单折坍缩 failed、导出/Registry、诊断父 partial、旧 strict/holdout 兼容、attempt 篡改/改判/超额 retry 拒绝。无剩余可执行问题。最终受影响eval回归315 passed / 1 skipped（正常退出码0）；并行实施广回归1028 passed / 1 skipped / 2 failed，两失败已在最终关键集覆盖通过，解释器退出GC中止清理限制如实记入证据。完整数字见[实施记录](results/evaluation-development-implementation-20261015.md)。
-- **本轮输入核验（2026-10-16）**：训练机main@3f200461干净，较本轮起始Mac少17提交，未同步。基座23个白名单文件与旧Fold0 adapter共24文件完整SHA已核；四片权重共17,391,890,184字节与官方main LFS观察一一相同。后续本轮已完成HF固定revision逐项比对，配置/tokenizer/processor和四权重身份匹配；README/额外配置由官方MS历史树解释，构造函数多`self.post_init()`仍不同，不能把实际目录作为未经修改的官方快照登记。未补造source-provenance，不据此运行。指定store的model/train/eval与默认MLflow记录未创建，符合尚未开展新体系业务阶段，不造空记录补目录。证据见[推进记录](results/todo-preparation-progress-20261016.md)。
+- **本轮输入核验（2026-10-16）**：训练机main@3f200461干净，较本轮起始Mac少17提交，未同步。基座23个白名单文件与旧Fold0 adapter共24文件完整SHA已核；四片权重共17,391,890,184字节与官方main LFS观察一一相同。后续本轮已完成HF固定revision逐项比对，配置/tokenizer/processor和四权重身份匹配；README/额外配置由官方MS历史树解释，构造函数多`self.post_init()`仍不同，不能把实际目录作为未经修改的官方快照登记。未补造source-provenance，不据此运行。指定store的model/train/eval与默认MLflow记录未创建，符合尚未开展新体系业务阶段，不造空记录补目录。证据见推进记录（该记录已随 2026-10-18 清理移除）。
 - **固定来源收口（2026-10-16）**：官方HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`完整23tree对象Gitblob核验通过，tokenizer正文及4权重固定LFS身份已核。训练机19小文件及缓存元数据只读采集，7仓内代码文件AST闭包可追；官方MS `2626e837a54905aab70fae9325153ef3454387ab`历史树与cache23条revision对应、22/23身份相同，只有`modeling_minicpmv.py`新增`self.post_init()`与官方来源不同。后续已核框架用途，历史来源/动机追查按用户要求取消，见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。未知修改不能用verified_by空泛签字补过，既有来源helper在未附证明时实际拒绝。见[固定来源记录](results/minicpm-fixed-source-audit-20261016.md)。
 - **开发输入现场（2026-10-16）**：r2 sealed/development/active、training_allowed=true；六份开发JSON与metadata候选全集1,678精确匹配，85来源视频。validation三折425/664/492、合计1,581且无候选/来源视频跨折交集；97候选不在任何validation，不改既有划分或以1,678作validation分母。正式Prompt在store/代码仓库字节相同、正文与旧注册v2相同；正式构建器显式重渲染system/user并保留标签，数据内嵌Prompt不同不是自动错误；已从记录的训练代码Git对象恢复与manifest摘要一致的旧Fold0训练YAML；原冻结目录两份摘要不在场，实际训练Prompt仍未证，不以当前active YAML替代。后续用户明确每个试样仅对应一个来源视频且无重复，已按source_video备齐1,678候选/85试件组材料；物理身份依据为用户确认，非独立现场验真，正式eval输入尚未创建/冻结。契约字段差异与代码行为分开记录，不补造语义等价。见[准备记录](results/development-input-runtime-preparation-20261016.md)。
 - **交付一致性前置（2026-10-16）**：解码数值一致但开发/服务Processor切片为1/2、抽帧元数据边界不同、一次调用/analysis最多三次且追加上下文；受控性能复用服务链路。未选择改任一路径、未声称整体等价，按既有“与实际交付统一后冻结”要求保留前置。质量预算已按425与1,581完整validation提供条件算术量，GPU耗时与量化/device/dtype未冻结；性能上限不能冒充质量预算。本条记录的是 2026-10-16 当时状态；2026-10-17 已在开发评测侧对齐切片、像素与时序组并把 Prompt 统一到 `prompt-v4.1-r2`，抽帧边界经实测确定为同帧，重试按用户裁决保留，更新后的现状见下条。
@@ -103,14 +103,14 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **依赖/下一动作**：C工程已接入A纯评分和判读证据；下一步补核真实本地模型隔离部署及 runtime 输入（tokenizer 受审映射已按 v2 补齐，见下文「兼容修复完成」），真实运行依赖 HOLDOUT-BUILD、冻结full及单独使用授权。新权限设计已确定，不再重复讨论；账户/Agent环境部署并未执行。
 - **验收标准**：新旧身份/协议分开、旧test不复用、授权不重置；越权读取/看GT改判/串看初判/漂移/重试挑答案均拒绝；最终所有门及覆盖证据合格才通过，缺类不放行，未获公开许可内容保持受限。
 - **本轮进展**：工程已完成，先完成143 passed（新增33＋旧holdout110，71.40s，退出0），总deadline窄修后新增35＋兼容/CLI6共41 passed（29.61s，退出0）；独立reviewer新C35 passed（20.50s）。包括实际Mac sandbox拒绝探针、新最终门/缺类、显式聚合授权、封存/仲裁、exposed/consumed恢复、runtime采集及可信部署receipt。曾失败的受限启动已修，只证明合成worker隔离。HF raw prompt与token计数同构；每次判读120秒为覆盖metadata与生成的统一monotonic总deadline，终态不明持久阻后续；GGUF/HF受审等价映射/basis/golden案例必须未来现场提供（此句保留为兼容修复前的历史反证与当时限制，已被 2026-10-16 兼容修复与 v2 受审映射取代：两个模型各 9 条实际 golden 的 v2 映射已补并经离线 build/verify 通过，见本条目下文「兼容修复完成」；旧冻结证据不追认），代码验绑定，真实性信任独立审计者，不提供则拒真实执行。
-- **前轮现场快照（2026-10-15，Codex；本轮补齐见下条）**：本机Ollama0.33.1已有两个批准标签，tags与manifest摘要匹配冻结digest，声明blob在场/大小一致；随后只读复验全部7个唯一blob SHA256，6.6秒内全部匹配且stat稳定，无未核项；未推理，ps无驻留模型。限定标准缓存和源码资产检查未找到匹配HF tokenizer或真实独立GGUF↔HF audit/basis/goldens；项目Python3.11 `.venv` 缺transformers/tokenizers，不能混用系统Python3.12。当时缺HF来源/隔离依赖；本轮已补齐候选资产和环境，后续发现的Unicode兼容问题已在2026-10-16修复并补审，见下文「兼容修复完成」——该条已取代本条中"未找到匹配 HF tokenizer 或真实独立 GGUF↔HF audit/basis/goldens"的当时状态，不为准备创建空eval/claim。离线盘点工具与不能通过生产校验的来源草稿已完成，主Agent38项合成测试通过；只核静态结构/字节，不认证auditor或执行golden，不生成部署receipt。证据见[运行前核验](results/evaluation-readiness-20261015.md)及其中模型库存快照。
+- **前轮现场快照（2026-10-15，Codex；本轮补齐见下条）**：本机Ollama0.33.1已有两个批准标签，tags与manifest摘要匹配冻结digest，声明blob在场/大小一致；随后只读复验全部7个唯一blob SHA256，6.6秒内全部匹配且stat稳定，无未核项；未推理，ps无驻留模型。限定标准缓存和源码资产检查未找到匹配HF tokenizer或真实独立GGUF↔HF audit/basis/goldens；项目Python3.11 `.venv` 缺transformers/tokenizers，不能混用系统Python3.12。当时缺HF来源/隔离依赖；本轮已补齐候选资产和环境，后续发现的Unicode兼容问题已在2026-10-16修复并补审，见下文「兼容修复完成」——该条已取代本条中"未找到匹配 HF tokenizer 或真实独立 GGUF↔HF audit/basis/goldens"的当时状态，不为准备创建空eval/claim。离线盘点工具与不能通过生产校验的来源草稿已完成，主Agent38项合成测试通过；只核静态结构/字节，不认证auditor或执行golden，不生成部署receipt。证据见运行前核验（该记录已随 2026-10-18 清理移除）及当时的模型库存快照（原记录已移除）。
 - **本轮补齐（2026-10-15，Codex）**：已核官方HF固定候选 Qwen/Qwen3.5-9B@c202236235762e1c871ad0ccb60c8ee5ba337b9a、ornith-ai/Ornith-1.5-9B@489cb97981b8654bcfcf30ce1f94ed1b62e07b53；10小文件完整SHA/API对象核验，分别保存独立Jinja。独立Py3.11.14环境29包hash锁/官方wheel/5010安装文件字节通过，实际离线tokenizer加载/渲染通过，无Torch。provider仅白名单增Jinja，旧冻结字节不追认；76项相关合成回归通过，独立reviewer41项及16+16+6个tokenizer材料复核通过，准备交付无剩余可执行问题，但正式等价映射（当时）不通过（该结论为 2026-10-15 当时状态，2026-10-16 兼容修复后已按 v2 受审映射补齐，见下文「兼容修复完成」）。详见[固定来源与材料](results/evaluation-tokenizer-materials-20261015.md)。
 - **前轮映射反证及本轮处理**：固定llama.cpp vocab-only counter共16case仅14完整ID相同，两个Unicode case均HF31／GGUF32；原始HF资产及直接加载均NFC，GGUF counter保留NFD，不能归因为缺包或仅待auditor签字。固定HF来源不证明本机GGUF转制历史，Ornith官方Q4与本机blob也不同。保留全部反证，不改raw/模板/模型、不删除失败case、不伪造已审mapping；前轮已核官方Ollama0.33.1/b10630及安装包x86词表观察。现按用户2026-10-16授权修复本地兼容并重做准备证据，不再以新方案选择为前置；修复/来源/隔离等证据不足时真实调用仍拒绝。真实模型评测/test仍未授权。
 - **本轮实际分词核验（2026-10-15）**：App/工件签名及架构已核：arm64 server静态嵌入，库仅x86。通过已有Rosetta和安装包实际签名x86库vocab-only执行24公开case（不tensor/context/GPU/生成），实测重现NFC/NFD差异；16与HF同ID，22/22与旧counter相同。预算反例HF4013+512=4525，实际x86库8013+512=8525，8K安全判定相反。28项合成保护和独立复跑通过，最终24词表case亦独立完整复现；实际loaded images/角色/摘要/批准manifest受控，准备审查无剩余可执行问题。原生arm64未实测，不能用x86放行native。证据见[核验记录](results/ollama-tokenizer-verification-20261015.md)。
-- **兼容修复完成（2026-10-16，Codex）**：provider已保留HF模板渲染并构建内存兼容编码器，完整校验冻结manifest/GGUF元数据，覆盖两个模型的不同追加/控制/unused规则。实现者原24组公开回归与新增566组词表专用case全部完整ID匹配安装包x86库；NFD预算8013+512越界被正确识别，原文/HF文件不改。独立reviewer另582组完整ID全部匹配，并复跑新增29＋旧semantic35共64 passed；tester新增29 passed，inventory最终63 passed。两个模型各9条实际golden的v2受审映射已补、离线build与verify通过，旧证据不追认；实际离线库存两模型v2结构/来源/依赖绑定匹配；库存不授真实资格，最终独立审查通过，无剩余可执行问题，不代表真实模型或native服务通过。见[修复记录](results/evaluation-review-compatibility-repair-20261016.md)。
-- **隔离运行前接线（2026-10-16，准备完成／Codex）**：现有canary探针及只读匿名worker可复用，但尚无脱离正式eval的显式预检CLI；本轮新增仅合成输入的独立入口，并实际核当前Mac的文件/进程/网络拒绝及三actor匿名请求生成。不调用Ollama/broker、不创建正式eval/claim，不将预检作为独立账户或真实评审部署证明。实现者Mac CLI已实测8项canary通过、三actor各2条匿名请求，新增29项保护与相关联合92 passed（17.08秒，旧pytest清理299 warnings）；独立指定新basetemp复跑57＋35共92项通过、无warning；实际CLI再跑/输出0600/拒覆盖通过，证据见[运行前接线记录](results/evaluation-isolation-display-preflight-20261016.md)。
+- **兼容修复完成（2026-10-16，Codex）**：provider已保留HF模板渲染并构建内存兼容编码器，完整校验冻结manifest/GGUF元数据，覆盖两个模型的不同追加/控制/unused规则。实现者原24组公开回归与新增566组词表专用case全部完整ID匹配安装包x86库；NFD预算8013+512越界被正确识别，原文/HF文件不改。独立reviewer另582组完整ID全部匹配，并复跑新增29＋旧semantic35共64 passed；tester新增29 passed，inventory最终63 passed。两个模型各9条实际golden的v2受审映射已补、离线build与verify通过，旧证据不追认；实际离线库存两模型v2结构/来源/依赖绑定匹配；库存不授真实资格，最终独立审查通过，无剩余可执行问题，不代表真实模型或native服务通过。见修复记录（该记录已随 2026-10-18 清理移除）。
+- **隔离运行前接线（2026-10-16，准备完成／Codex）**：现有canary探针及只读匿名worker可复用，但尚无脱离正式eval的显式预检CLI；本轮新增仅合成输入的独立入口，并实际核当前Mac的文件/进程/网络拒绝及三actor匿名请求生成。不调用Ollama/broker、不创建正式eval/claim，不将预检作为独立账户或真实评审部署证明。实现者Mac CLI已实测8项canary通过、三actor各2条匿名请求，新增29项保护与相关联合92 passed（17.08秒，旧pytest清理299 warnings）；独立指定新basetemp复跑57＋35共92项通过、无warning；实际CLI再跑/输出0600/拒覆盖通过，证据见运行前接线记录（该记录已随 2026-10-18 清理移除）。
 - **兼容修复授权（2026-10-16）**：用户明确按原方案处理本地兼容问题，不再另起方案讨论；前轮[A/B草案](plans/2026-10-15-review-tokenizer-alignment-design.md)已撤回为历史探索，不再是待用户决策的前置。保持原方案和原文，修复现有provider内部计数兼容，核验完整GGUF元数据与既有公开词表结果；旧冻结证据不追认，真实调用授权门不放宽。
-- **实际环境核验（2026-10-16）**：独立Py3.11实际加载固定tokenizer/兼容映射，18条golden通过；现有Ollama仅tags/show/ps元数据，批准digest/模板匹配、前后无驻留模型变化，三个provider/source SHA前后一致，8canary及匿名worker通过。已保存[真实无模型环境报告](results/evaluation-review-environment-audit-20261016.json)，未调用generate/chat或制造生产deployment receipt；独立账户/真实上下文及完整服务仍未验证，ready_for_real_review=false。
+- **实际环境核验（2026-10-16）**：独立Py3.11实际加载固定tokenizer/兼容映射，18条golden通过；现有Ollama仅tags/show/ps元数据，批准digest/模板匹配、前后无驻留模型变化，三个provider/source SHA前后一致，8canary及匿名worker通过。已保存真实无模型环境报告（该记录已随 2026-10-18 清理移除），未调用generate/chat或制造生产deployment receipt；独立账户/真实上下文及完整服务仍未验证，ready_for_real_review=false。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)、现行 `finetune/eval_holdout.py` / `versioning/holdout.py`；未读取受限语义、创建账户或claim、发送评审包。
 
 ### EVAL-PERFORMANCE — 受控加载与五分钟交互基准
@@ -122,8 +122,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **验收标准**：全部合格请求≥95%在300秒内自动显示完整结果，失败/超时/需评测Agent或人工判读不算按时完成；失败率≤1%、无OOM/崩溃/持续增长；≥100请求且≥30分钟连续处理，预热/冷启动分开，不通过重试重置时间和分母。具体持续增长判断口径在执行前冻结。
 - **本轮进展**：受控plan/session、Registry实际loader、事件/双签名显示回执接收及export已实现；视频加载器摘要一致性已补齐并由实际两侧input builder测试保护，最终61项合成测试通过（6.15s，退出0；实现者来源），独立reviewer另61 passed（2.36s）。实际runtime核NF4六项与resampler；OOM可观测、clean finish、线程超时终态不明停止接新请求、warmup.request_ids冻结及增长算法已实现。外部客户端未部署，本轮synthetic不能获正式passed；独立审查通过，无剩余可执行问题，限工程及合成范围。
 - **交付参数准备（2026-10-16）**：受控性能与最终服务共用ChatModel/adapter，开发评测另用AutoModel/video_loader；解码同值不等于整体一致，开发slice1/服务视频slice2、抽帧边界及1/最多3次调用差异已并入EVAL-DEVELOPMENT前置。性能预检1/正式20GPU小时及600/660秒timeout已核代码停止条件；未创建实际session/TTL，不据静态配置认加载device/dtype/NF4/resampler已验真。见[参数及预算材料](results/development-runtime-readiness-20261016.json)。
-- **运行前客户端核验（2026-10-15，Codex）**：仅只读本地TensileAgent候选 `codex/competition-demo-chat-mock@86e50c65`（有未跟踪tmp未读）；上传、VLM调用/重试及React结果render未贯通原request ID/nonce、upload→render单调ns与签名回执。已有服务finished_at/event不能作显示端点。保留单次视觉自动结果口径，Agent多轮另报；需未来获得跨库授权后实现专用测点、签名/密钥保管、版本化冻结与部署，本轮只准备既有receiver契约交接清单、不改外仓/生成密钥/启动客户端。详见[运行前核验](results/evaluation-readiness-20261015.md)。
-- **显示测点运行前接线（2026-10-16，准备完成／Codex）**：按既有receipt协议新增主仓薄客户端适配，贯通稳定ID/nonce、显式上传完成/完整显示回调的同一单调时钟、backend签名绑定与签名回执提交；transport/signer注入，先以公开合成输入验证，不选择真实密钥托管、不改候选外仓UI或将回调称为DOM部署证据。候选TensileAgent当前分支/HEAD与上轮相同，6个tracked文件已只读摘要盘点，仅未跟踪tmp未读；真实页面、单次视觉请求与密钥冻结仍未部署。新增47＋现有61共108项合成通过（2.66秒），现有ASGI三路由/临时双密钥闭环仍synthetic；独立reviewer另108 passed（2.75秒）、无warning，当前代码/结果/候选源码绑定复验通过；详见[运行前接线记录](results/evaluation-isolation-display-preflight-20261016.md)。
+- **运行前客户端核验（2026-10-15，Codex）**：仅只读本地TensileAgent候选 `codex/competition-demo-chat-mock@86e50c65`（有未跟踪tmp未读）；上传、VLM调用/重试及React结果render未贯通原request ID/nonce、upload→render单调ns与签名回执。已有服务finished_at/event不能作显示端点。保留单次视觉自动结果口径，Agent多轮另报；需未来获得跨库授权后实现专用测点、签名/密钥保管、版本化冻结与部署，本轮只准备既有receiver契约交接清单、不改外仓/生成密钥/启动客户端。详见运行前核验（该记录已随 2026-10-18 清理移除）。
+- **显示测点运行前接线（2026-10-16，准备完成／Codex）**：按既有receipt协议新增主仓薄客户端适配，贯通稳定ID/nonce、显式上传完成/完整显示回调的同一单调时钟、backend签名绑定与签名回执提交；transport/signer注入，先以公开合成输入验证，不选择真实密钥托管、不改候选外仓UI或将回调称为DOM部署证据。候选TensileAgent当前分支/HEAD与上轮相同，6个tracked文件已只读摘要盘点，仅未跟踪tmp未读；真实页面、单次视觉请求与密钥冻结仍未部署。新增47＋现有61共108项合成通过（2.66秒），现有ASGI三路由/临时双密钥闭环仍synthetic；独立reviewer另108 passed（2.75秒）、无warning，当前代码/结果/候选源码绑定复验通过；详见运行前接线记录（该记录已随 2026-10-18 清理移除）。
 - **证据/限制**：[本轮接线与验证记录](results/evaluation-independent-performance-admission-20261015.md)；[方案](model-evaluation.md)、[计划](plans/model-evaluation-implementation.md)与现行服务；未启动临时端点、跨机通道或真实计时。
 
 ### EVAL-INTEGRATION — 来源、评审及质量/性能用途绑定
@@ -141,7 +141,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：阻塞（Codex，2026-10-16；只读准备已推进，真实恢复未执行；解除条件：恢复目标路径与恢复操作授权（第一级备份根已由用户 2026-10-17 裁决给定为 `/data`，见固定标识 `ARTIFACT-RETENTION`））；迁移 Spec 保留的物理恢复限制，工程交付后继续单独验收。
 - **事实与差距**：store 级异根恢复、SQLite/artifact 小对象联合恢复已通过；真实移动硬盘、大型 adapter/merged、SQLite、外部媒体与基座的整机组合恢复未完整验收，新 store 不自包含。
-- **本轮核定（2026-10-16）**：训练机/data可用约3.65TB、/home约383GB，容量不证明备份独立或可恢复；本机/Volumes仅观察到系统盘入口，未获得准确外置盘/完整snapshot根。指定store尚无实际模型/训练/评测及默认MLflow，真实大型组合恢复缺可执行完整来源与目标，保留源、不创建空对象。见[推进记录](results/todo-preparation-progress-20261016.md)。
+- **本轮核定（2026-10-16）**：训练机/data可用约3.65TB、/home约383GB，容量不证明备份独立或可恢复；本机/Volumes仅观察到系统盘入口，未获得准确外置盘/完整snapshot根。指定store尚无实际模型/训练/评测及默认MLflow，真实大型组合恢复缺可执行完整来源与目标，保留源、不创建空对象。见推进记录（该记录已随 2026-10-18 清理移除）。
 - **依赖/下一动作**：只读刷新已完成；继续核定备份、源/目标、设备容量及受保护引用，准备明确恢复任务单及适用操作授权；不删除唯一源。
 - **验收标准**：恢复对象和外部依赖范围明确，摘要一致；原路径不可用时，恢复副本可解析并支持约定读取/准入；原备份和不可变事实保持。GPU 加载/模型效果另按授权验收。
 - **证据/限制**：[验证记录](results/version-control-migration/verification.md)第33、39、41、66–67节；已有 CPU/store 证据不能外推为灾难恢复通过，本轮不执行恢复。
@@ -201,7 +201,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **依赖/边界**：本任务只负责构建、审查、发布与授权一个 test release（按用户 2026-10-17 裁决以既定 21 个 source 重建，见固定标识 `TEST-SOURCE-REUSE`），不隐含“策略已确定即已构建”；完成本项不等同于最终模型已通过该 holdout 验收。不得读取现有 sealed-test 受限语义结果来构造 holdout。
 - **下一动作**：按用户 2026-10-17 裁决，使用既定 test 分支 21 个 source 重建一份 test release 用于最终测试（三条边界见固定标识 `TEST-SOURCE-REUSE`）；取得适用真实构建授权后按 `review_*` 流程完成全量人工审查、构建并封存新 test release、补齐完整非语义来源清单；真实媒体验证与预注册准备就绪后才可用于最终测试。
 - **验收标准**：新的 test release（既定 21 个 source 重建、非盲参考口径，见固定标识 `TEST-SOURCE-REUSE`）已构建并经人工审查，source 隔离与 test-split binding 校验通过，manifest/ground-truth/quality_report及预注册准备可追溯。数据冻结就绪先支撑FINAL-TRAIN；最终model/eval身份确定并获使用授权后，首次模型调用前建立绑定claim，再支撑MODEL-QUALITY。不能要求先有最终模型claim才能训练该模型。
-- **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)及[轻量证据](results/model-diagnostics-preflight-20260913.json)。2026-09-13 已核查新 store 集合与公开入口，未全盘扫描旧sealed-test集合，不推断历史对象已消失；未读取受限语义或创建真实holdout。最终候选model/eval身份形成前不提前创建绑定它们的一次性claim；保留预注册和首次模型调用前claim的要求。
+- **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)及轻量证据（该记录已随 2026-10-18 清理移除，结论见 `docs/results/version-control-migration/verification.md` 第 48 节）。2026-09-13 已核查新 store 集合与公开入口，未全盘扫描旧sealed-test集合，不推断历史对象已消失；未读取受限语义或创建真实holdout。最终候选model/eval身份形成前不提前创建绑定它们的一次性claim；保留预注册和首次模型调用前claim的要求。
 
 ### TEST-SOURCE-REUSE — 既定 21 个 test source 重建 test release
 
@@ -213,7 +213,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **与 HOLDOUT-BUILD 的关系**：本条目只承接口径裁决，不改变 HOLDOUT-BUILD 的阻塞状态；原「核清既定 test source 独立使用资格」按同一裁决视为已定，适用真实构建授权、全量人工审查与真实媒体验证仍未完成，真实构建尚未执行。
 - **事实与差距**：既定 test 分支 21 个 source 已在训练机定位（其中 20 个有该批媒体凭据，`video_0005` 无该批候选凭据）；旧 release `v4.1-sealed-test-5546b8bf1ec3` 的一次性 claim 与 completed/exposed 凭据仍在，原发布目录已缺失。按本裁决重建的 test release 须生成新的 release 身份、manifest 与人工审查记录，不复用旧 sealed-test 身份，也不把已消耗 claim 当作可用授权。
 - **验收标准**：新 test release 以 21 个既定 source 为来源、经全量人工审查与真实媒体验证；train 侧配置与 manifest 可核未引用这批 source；最终报告明确标注非盲、参考性口径；无任何 test 结果回流记录。
-- **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)、[轻量证据](results/model-diagnostics-preflight-20260913.json)；本条目为口径裁决记录，未构建、未运行、未读取受限测试语义。
+- **证据/限制**：[验证第48节](results/version-control-migration/verification.md#delivery-preparation-20260913)、轻量证据（该记录已随 2026-10-18 清理移除，结论见 `docs/results/version-control-migration/verification.md` 第 48 节）；本条目为口径裁决记录，未构建、未运行、未读取受限测试语义。
 
 ### MODEL-DIAG — 诊断并改善三折类别坍缩与契约退化
 
@@ -224,7 +224,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **入口与产物**：保留 `python -m versioning eval prepare/validate/run/export` 的正式身份和原始预测/manifest 链；新语义与逐折判定通过显式 semantic-v4.1 配置接线，不能把新阈值填入旧 strict 配置即运行。历史缺失权重继续记录，不全盘反复搜寻，也不把报告视为可加载模型。
 - **验收标准**：每折四状态 macro recall≥65%、每状态 recall≥50%；pooled 语义 joint≥50%、机制 macro F1≥50%、位置 macro F1≥60%；特殊情况完整报告。身份链、原始预测、盲评记录和配对分析可追溯；缺类/来源覆盖不足不自动通过。达到新三折门才支持 FINAL-TRAIN，运行完成与效果改善分别下结论。
 - **授权/限制**：只读公开开发证据准备不等待 HOLDOUT-BUILD；本轮仅授权 A/B 代码实施与合成验证，实际训练/推理未授权。禁止使用 sealed-test 调参、修补原始输出伪造合法率或删除受保护 checkpoint。历史现场/环境记录不作为本轮重新验证。
-- **证据/限制**：[三折报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[模型门禁基线](results/model-gate-baseline-20260914.md)、[交付配置](../delivery/model_component.json)。报告第 10.2 节同时改 Prompt/采样/早停的建议不满足本任务的单变量标准；2026-09-13 在 Linux 重算历史 visual 的 1216 条开发原记录，concise原始预测仍缺且未复算。新增[第48节证据](results/version-control-migration/verification.md#delivery-preparation-20260913)记录三fold模型断链和能力前置，不能据历史输出关闭改善任务。
+- **证据/限制**：三折报告（该记录已随 2026-10-18 清理移除）、[模型门禁基线](results/model-gate-baseline-20260914.md)、[交付配置](../delivery/model_component.json)。原报告已随 2026-10-18 清理移除，其第 10.2 节「下一轮训练只改受控变量」的内容仅存于 Git 历史（提交 c7a99772），此处仅保留当时结论记录；2026-09-13 在 Linux 重算历史 visual 的 1216 条开发原记录，concise原始预测仍缺且未复算。新增[第48节证据](results/version-control-migration/verification.md#delivery-preparation-20260913)记录三fold模型断链和能力前置，不能据历史输出关闭改善任务。
 
 ### RELEASE-POINTER — 安全更新并激活数据 release 指针
 
@@ -293,7 +293,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：已解决（Codex，2026-10-16）；按当前可执行TODO授权完成原澄清目标，不引入模块重命名。
 - **结论/变更**：两个candidate模块仅补module docstring，说明候选规划校验tensile-vlm/v3、媒体绑定计划/处理器/编码，下游V4.1审查/训练发布另载契约；pipeline/SCRIPTS和数据指南一致。新versioning仍显式完整身份，legacy重建仅为复用关系证据。
-- **验收/证据**：两模块去除module docstring后与a0f1e1ab完整AST相同，imports/函数/身份构造未变，源码SHA不参与候选/媒体派生身份；compileall/diff-check和独立核查通过。见[本轮记录](results/todo-preparation-progress-20261016.md)、[模块索引](../pipeline/SCRIPTS.md#候选规划与媒体物化的契约边界)、[数据指南](data-workflow.md#候选层与发布契约)。纯文字澄清，未另跑业务测试、真实模型或真实test。
+- **验收/证据**：两模块去除module docstring后与a0f1e1ab完整AST相同，imports/函数/身份构造未变，源码SHA不参与候选/媒体派生身份；compileall/diff-check和独立核查通过。见本轮记录（该记录已随 2026-10-18 清理移除）、[模块索引](../pipeline/SCRIPTS.md#候选规划与媒体物化的契约边界)、[数据指南](data-workflow.md#候选层与发布契约)。纯文字澄清，未另跑业务测试、真实模型或真实test。
 
 ### REMOTE-STATE-REFRESH — 训练机现状只读刷新
 
@@ -308,8 +308,9 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **状态/来源**：已解决（Codex，2026-10-13）；用户同意按当前GPU锁新建Conda Python3.11环境、保留旧环境并绑定正式checkout。
 - **结果**：训练机 `/home/liuyang/miniconda3/envs/mvllm2/bin/python` 为Python3.11.17；GPU锁241个精确项缺失0/版本差0，244包兼容检查通过，doctor errors为空、CUDA可见且训练模块导入通过。LlamaFactory editable绑定正式 `/home/liuyang/文档/mVllm_2/LlamaFactory`，checkout/submodule为3f200461/4447137e且保持干净。
 - **保护与后续使用**：agent/cpm45的发行包元数据、conda-meta和指定pycache快照前后相同；没有修改用户shell默认环境。后续显式使用新Conda解释器，checkout/依赖/子模块变动后重新核验绑定；历史venv和旧环境继续保留，不重新打开已解决部署功能任务。
-- **验收/证据**：[部署报告](results/conda-environment-setup-20261013.md)、[执行快照](results/conda-environment-setup-20261013.json)；安装及审计SSH均exit0，冻结脚本通过独立执行前审查，结果独立核查通过：脚本身份及返回快照一致、241锁项和旧环境保护证据匹配，原31任务标识保留，83本地链接/锚点有效；未关闭模型/test/恢复任务。Mac本地记录提交由 `git log -- docs/results/conda-environment-setup-20261013.md` 追溯。
+- **验收/证据**：部署报告（该记录已随 2026-10-18 清理移除）、执行快照（该记录已随 2026-10-18 清理移除）；安装及审计SSH均exit0，冻结脚本通过独立执行前审查，结果独立核查通过：脚本身份及返回快照一致、241锁项和旧环境保护证据匹配，原31任务标识保留，83本地链接/锚点有效；未关闭模型/test/恢复任务。Mac本地记录提交由 `git log -- docs/results/conda-environment-setup-20261013.md` 追溯。
 - **限制**：没有同步代码、初始化业务store、处理媒体、加载模型、训练、推理或评测；环境验收不关闭模型/test/真实服务及恢复门槛，旧环境摘要比较不等于所有文件逐字节审计。
+- **凭证降级说明**：原始验收凭证已随 2026-10-18 清理移除，本条为历史结论记录，不再作为当前可复核凭证。
 
 
 以下保留前序任务原验收依据，历史测试未因文档整理而复跑。工程任务关闭不自动关闭模型、test 或真实恢复验收。
@@ -319,7 +320,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **状态/来源**：已解决（Codex，2026-10-12，本机）；用户认可四份说明并授权正式替换根README、清理覆盖旧说明，保留任务台账、设计决策和原始验证证据。
 - **结果/验收**：正式入口为根README与docs下data-workflow、model-workflow、project-status；删除七份重复说明及候选目录，完整归档模型现场基线、模型清单和阶段一审计报告。同步AGENTS/架构/接口索引和停用CLI提示导航，不改变运行入口行为或授权。Mac uv、训练机Conda Python、3.11.x及两平台依赖分工保持。
 - **独立核查**：reviewer结论通过，无可执行问题；冻结版本50份Markdown、289个本地链接/锚点0错误，25个shell块语法通过。原30个任务标识保留，31标识唯一；65份非Markdown原结果、ADR/迁移确认链/研究材料及决策日志完整性核对通过，归档统计和清理标准未丢失；十个Python变更严格仅停用提示路径文本。
-- **证据/限制**：[正式整合记录](results/documentation-consolidation-20261012.md)；提交由 `git log -- README.md docs/project-todo.md` 追溯。本轮不执行pytest、业务CLI、安装、UI/server、SSH、实际数据处理、训练、推理或评测；历史结果未复跑，不关闭模型/test/Conda现场或真实恢复缺口。下一步仍为REMOTE-STATE-REFRESH。
+- **证据/限制**：正式整合记录（该记录已随 2026-10-18 清理移除）；提交由 `git log -- README.md docs/project-todo.md` 追溯。本轮不执行pytest、业务CLI、安装、UI/server、SSH、实际数据处理、训练、推理或评测；历史结果未复跑，不关闭模型/test/Conda现场或真实恢复缺口。下一步仍为REMOTE-STATE-REFRESH。
+- **凭证降级说明**：原始验收凭证已随 2026-10-18 清理移除，本条为历史结论记录，不再作为当前可复核凭证。
 
 ### README-PUBLIC-INTRO — 项目介绍与新人快速开始：已解决
 
@@ -332,7 +334,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **状态/来源**：已解决（Codex，2026-10-12，本机）；用户授权统一迁移后状态、正文和导航，保留设计/决定/验证证据，清除过期下一动作并独立核查。
 - **结果/验收**：前序现行数据、训练与服务正文退出旧 CLI 操作；当前状态、完整数据身份与入口导航一致。工程迁移等已解决事项统一进入关闭区；MODEL-DIAG 待确认，模型/test/真实恢复限制保留。已执行 Plan 保存范围、选择与最终矩阵，详细历史仍在验证记录和 Git。
-- **后续成果**：新候选手册在 `389c797e` 完成交付及独立核查，`f8af0bba` 修复 ROI 直接文件导入并统一 Mac uv/训练机 Conda Python 及 Python 3.11.x；具体实际检查和限制见[文档整理记录](results/documentation-consolidation-20261012.md)。这些结果没有刷新训练机或关闭真实环境、模型/test 与恢复缺口；正式目录切换由 DOC-INTEGRATION 承接。
+- **后续成果**：新候选手册在 `389c797e` 完成交付及独立核查，`f8af0bba` 修复 ROI 直接文件导入并统一 Mac uv/训练机 Conda Python 及 Python 3.11.x；具体实际检查和限制见文档整理记录（该记录已随 2026-10-18 清理移除）。这些结果没有刷新训练机或关闭真实环境、模型/test 与恢复缺口；正式目录切换由 DOC-INTEGRATION 承接。
 - **独立核查**：reviewer 对照代码及历史证据核查17份正文；首轮服务模板路径 P2 已修复并复核，最终无剩余可执行问题，结论通过。输入来源、七阶段产物、UI交接、claim/评分、alias服务参数及证据边界均静态核对。
 - **证据/限制**：[验证第68节](results/version-control-migration/verification.md#document-consolidation-20261012)记录该次覆盖、检查和限制；该次未 SSH、训练、推理、评测、运行应用或 pytest，历史动态结果未复跑。提交由 `git log -- docs/project-todo.md` 追溯。
 
@@ -502,7 +504,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **2026-10-15（Codex，真实运行前核验启动）**：用户继续授权环境/资产核验及独立准备，保持真实模型评测与test禁令。已派发本机Ollama与HF资产、tokenizer受审映射/依赖、客户端显示测点三类只读核验；主线程维护准备产物和唯一TODO。起始 `6a92ca3b`、Mac、干净工作区；不执行pull/模型加载/真实推理/跨库写入。
 
-- **2026-10-15（Codex，真实运行前核验与独立准备完成）**：Mac本机Ollama两个冻结标签及manifest匹配，全部7个唯一引用blob在6.442秒流式SHA256复验匹配且stat稳定，无模型驻留或推理。明确缺匹配HF tokenizer、真实独立受审映射/basis/golden及项目Python3.11评审依赖；候选TensileAgent分支未实现所需upload→render单调时钟/原ID/nonce/签名链。已新增完全离线盘点工具、无证据效力的来源/审计草稿、机器可读库存和客户端既有契约交接清单；最终38项合成测试通过，静态audit结构/权限漏报已修。真实部署/运行仍缺证，不创建eval/claim，不读真实test，不下载/安装/跨库写入或push/merge。详见[运行前核验](results/evaluation-readiness-20261015.md)，同次提交由git log追溯；独立reviewer38项复跑与7blob完整字节复验通过，无剩余可执行问题，限本轮核验/离线准备；174链接/锚点、37唯一ID、compileall/diff-check通过。
+- **2026-10-15（Codex，真实运行前核验与独立准备完成）**：Mac本机Ollama两个冻结标签及manifest匹配，全部7个唯一引用blob在6.442秒流式SHA256复验匹配且stat稳定，无模型驻留或推理。明确缺匹配HF tokenizer、真实独立受审映射/basis/golden及项目Python3.11评审依赖；候选TensileAgent分支未实现所需upload→render单调时钟/原ID/nonce/签名链。已新增完全离线盘点工具、无证据效力的来源/审计草稿、机器可读库存和客户端既有契约交接清单；最终38项合成测试通过，静态audit结构/权限漏报已修。真实部署/运行仍缺证，不创建eval/claim，不读真实test，不下载/安装/跨库写入或push/merge。详见运行前核验（该记录已随 2026-10-18 清理移除），同次提交由git log追溯；独立reviewer38项复跑与7blob完整字节复验通过，无剩余可执行问题，限本轮核验/离线准备；174链接/锚点、37唯一ID、compileall/diff-check通过。
 
 - **2026-10-15（Codex，tokenizer来源与评审环境补齐启动）**：用户继续授权HF固定来源/revision、独立Python3.11环境及受审材料准备，真实模型评测/test禁令持续。起始 `696ea17c`、Mac、工作区干净；分派上游来源、隔离依赖与GGUF tokenizer-only可行性核验，不更换模型、不改外部客户端或既有环境。
 
@@ -514,15 +516,15 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 - **2026-10-16（用户授权／Codex，兼容修复启动）**：用户要求按原方案处理兼容、继续运行前准备，不再扩展新方案讨论，真实模型评测/test仍禁。起始 `4d397f1a` 干净工作区；撤回前轮A/B待确认前置并分派本地provider最小修复，保留原文/模板/模型/样本和既有门。独立可执行准备继续，后续证据实时补记。
 
-- **2026-10-16（Codex，兼容修复与运行前材料完成）**：按原方案修复本地计数适配，原文/HF文件/模板及既有门不变；前轮A/B讨论撤回。实现者原24＋新增566公开case完整IDs匹配，独立reviewer另582组全部匹配。tester新增29 passed、实现者既有38 passed；独立兼容/semantic共64 passed，inventory最终63 passed且独立63复跑通过；发现畸形v2可绕过GGUF禁读边界已修复。两个模型各9条golden的具名v2映射和最终来源输入已封存，实际离线build/verify及独立复验通过；独立Py3.11 inventory结构/依赖/静态绑定匹配、仍ready_for_real_review=false。独立审查通过，现行文档收敛；214链接/锚点、37唯一ID、compileall/diff-check通过。证据见[修复与准备记录](results/evaluation-review-compatibility-repair-20261016.md)，本次Mac提交可由git log追溯。真实评审、GPU/E2E、隔离部署和客户端显示测点仍缺，C/D/E及父任务不关闭；无真实模型生成/评测、真实test、完整server、eval/claim、SSH或外部客户端写入，无push/merge。
+- **2026-10-16（Codex，兼容修复与运行前材料完成）**：按原方案修复本地计数适配，原文/HF文件/模板及既有门不变；前轮A/B讨论撤回。实现者原24＋新增566公开case完整IDs匹配，独立reviewer另582组全部匹配。tester新增29 passed、实现者既有38 passed；独立兼容/semantic共64 passed，inventory最终63 passed且独立63复跑通过；发现畸形v2可绕过GGUF禁读边界已修复。两个模型各9条golden的具名v2映射和最终来源输入已封存，实际离线build/verify及独立复验通过；独立Py3.11 inventory结构/依赖/静态绑定匹配、仍ready_for_real_review=false。独立审查通过，现行文档收敛；214链接/锚点、37唯一ID、compileall/diff-check通过。证据见修复与准备记录（该记录已随 2026-10-18 清理移除），本次Mac提交可由git log追溯。真实评审、GPU/E2E、隔离部署和客户端显示测点仍缺，C/D/E及父任务不关闭；无真实模型生成/评测、真实test、完整server、eval/claim、SSH或外部客户端写入，无push/merge。
 
 - **2026-10-16（Codex，隔离与显示测点准备启动）**：起始 `ae4ccd15` 干净工作区，按用户授权并行只读定位评审隔离和客户端测点剩余接线；先完成无模型准备，不运行真实模型评测/生成、不使用真实test。后续实现、合成验证和实际边界实时补记。
 
-- **2026-10-16（Codex，隔离与显示测点无模型接线完成）**：新增显式sandbox预检CLI、三actor公开合成请求构建及薄客户端receipt桥接；本机8项canary全通过、三actor各2请求、无broker。新隔离29＋既有semantic/semantics联合92项通过，独立92项复跑无warning；新client47＋既有performance61共108 passed，独立108 passed（2.75秒）且无warning；真实ASGI receiver合成闭环仍synthetic/无DOM证明。候选外仓6源码文件及Git身份只读盘点，未读tmp或修改外仓。独立审查通过、无剩余可执行问题；223链接/37唯一ID、compileall/diff-check通过。入口/输出/边界见[本轮记录](results/evaluation-isolation-display-preflight-20261016.md)，同次Mac提交git log追溯。真实部署、独立账户、DOM测点/真实密钥及GPU/E2E仍缺，C/D/E及MODEL-QUALITY不关闭；无真实模型/真实test/正式evalclaim/SSH/外仓写入/push/merge。
+- **2026-10-16（Codex，隔离与显示测点无模型接线完成）**：新增显式sandbox预检CLI、三actor公开合成请求构建及薄客户端receipt桥接；本机8项canary全通过、三actor各2请求、无broker。新隔离29＋既有semantic/semantics联合92项通过，独立92项复跑无warning；新client47＋既有performance61共108 passed，独立108 passed（2.75秒）且无warning；真实ASGI receiver合成闭环仍synthetic/无DOM证明。候选外仓6源码文件及Git身份只读盘点，未读tmp或修改外仓。独立审查通过、无剩余可执行问题；223链接/37唯一ID、compileall/diff-check通过。入口/输出/边界见本轮记录（该记录已随 2026-10-18 清理移除），同次Mac提交git log追溯。真实部署、独立账户、DOM测点/真实密钥及GPU/E2E仍缺，C/D/E及MODEL-QUALITY不关闭；无真实模型/真实test/正式evalclaim/SSH/外仓写入/push/merge。
 
 - **2026-10-16（Codex，可执行TODO推进启动）**：起始 `a0f1e1ab`，工作区干净；用户要求完成所有当前可做事项。已分派剩余输入/归档/恢复、契约/指针范围定位及训练机限定只读核验。真实模型/真实test禁令持续，不以广义推进替代真实运行授权，不执行条件尚未满足的删除。
 
-- **2026-10-16（Codex，可执行准备与契约澄清完成）**：本机实际评审元数据/完整固定资产/18golden/canary及源码前后绑定通过；用户开启训练机后，限定只读Git/基座/归档/容量核验完成。有效hash结果覆盖23个基座文件+旧Fold0 adapter共24文件17,868,457,279字节；另一次同hash会话输出/状态未回收、可能短暂重叠，总IO与单调用性不作保证。四基座分片完整SHA与官方main LFS观察匹配，完整固定revision配置/代码仍未核，不补造来源/正式模型。minimal归档原始记录副本缺失而原run只stat在场，不删文件；真实恢复缺准确备份root。CONTRACT-NAMING仅两module docstring与说明，AST去doc后完全相同并通过独立核查，按澄清目标已解决；旧指针仍有legacy消费者，待确认不恢复写入。独立审查通过，无剩余可执行问题；283链接/37唯一ID、JSON/AST/compileall/diff-check通过；未为纯说明变更跑业务测试。见[本轮记录](results/todo-preparation-progress-20261016.md)，本次Mac提交git log追溯；远程保持main@3f200461，未同步，本机起始a0f1e1ab多17提交。真实模型/真实test/训练/正式evalclaim/pushmerge均未执行，真实隔离/DOM/备份和模型质量仍未关闭。
+- **2026-10-16（Codex，可执行准备与契约澄清完成）**：本机实际评审元数据/完整固定资产/18golden/canary及源码前后绑定通过；用户开启训练机后，限定只读Git/基座/归档/容量核验完成。有效hash结果覆盖23个基座文件+旧Fold0 adapter共24文件17,868,457,279字节；另一次同hash会话输出/状态未回收、可能短暂重叠，总IO与单调用性不作保证。四基座分片完整SHA与官方main LFS观察匹配，完整固定revision配置/代码仍未核，不补造来源/正式模型。minimal归档原始记录副本缺失而原run只stat在场，不删文件；真实恢复缺准确备份root。CONTRACT-NAMING仅两module docstring与说明，AST去doc后完全相同并通过独立核查，按澄清目标已解决；旧指针仍有legacy消费者，待确认不恢复写入。独立审查通过，无剩余可执行问题；283链接/37唯一ID、JSON/AST/compileall/diff-check通过；未为纯说明变更跑业务测试。见本轮记录（该记录已随 2026-10-18 清理移除），本次Mac提交git log追溯；远程保持main@3f200461，未同步，本机起始a0f1e1ab多17提交。真实模型/真实test/训练/正式evalclaim/pushmerge均未执行，真实隔离/DOM/备份和模型质量仍未关闭。
 
 - **2026-10-16（Codex，基座固定来源补齐启动）**：起始defa954b干净，按用户授权固定revision下配置/tokenizer/processor/代码来源核验；并行官方来源取证、训练机19小文件静态采集和登记预检边界定位，不重复读取大权重或执行模型/真实test。
 

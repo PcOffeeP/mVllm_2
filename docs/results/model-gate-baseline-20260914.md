@@ -31,7 +31,7 @@ Non-goals:
 
 历史报告记载该模型曾完成旧工程链路的合并权重验签、loopback服务、视频smoke及Agent调用；本次没有复跑这些步骤。另做只读现场检查，历史端口8002当时无TCP监听；GPU计算进程查询仅列出gnome-remote-desktop-daemon。未检查其他端口或请求模型API，不能据此断言整台机器没有其他服务。旧报告的工程通过不能迁移为新alias、production批准或新的正式eval passed。
 
-来源：[历史交付配置](../../delivery/model_component.json)、[旧发布身份](../../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[前轮身份调查](model-recovery-targets-20260913.json)。
+来源：[历史交付配置](../../delivery/model_component.json)、[旧发布身份](../../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、前轮身份调查（该记录已随 2026-10-18 清理移除）。
 
 ## 2. 其他实验资产与基座
 
@@ -61,7 +61,7 @@ MiniCPM-V-4.5基座位于 `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`，�
 | concise-cv三折 | phase2三折validation，共1581条 | valid 79.63%；joint 32.07%；clip_state 35.80%；322条严格非法；临界未断裂、已断裂召回均0% | 类别坍缩及契约退化未解决，不晋级 |
 | 历史visual三折 | 基础release的开发侧记录，共1216条 | valid 97.12%；joint 40.21%；clip_state 49.67% | 前轮按现行解析器复算已有预测与各折原摘要一致；没有新的模型推理 |
 
-以上来源为[模型清单](model-inventory.md)、[concise三折报告](v4_1_prompt_concise_cv_v1_seed3411/README.md)和[开发记录预检](model-diagnostics-preflight-20260913.json)。concise原始逐样本预测尚未找回，不能将报告指标写成本轮独立复算结果。不同数据release、采样、Prompt、seed或工具版本下的指标不能直接作为单变量因果对比，也不能拿validation分数代替test评分。
+以上来源为[模型清单](model-inventory.md)、concise三折报告（该记录已随 2026-10-18 清理移除）和开发记录预检（该记录已随 2026-10-18 清理移除，结论见 `docs/results/version-control-migration/verification.md` 第 48 节）。concise原始逐样本预测尚未找回，不能将报告指标写成本轮独立复算结果。不同数据release、采样、Prompt、seed或工具版本下的指标不能直接作为单变量因果对比，也不能拿validation分数代替test评分。
 
 旧交付配置中的Stage B/D/G质量未通过与production未批准事实继续保留。本文不读取或重述受限test逐样本内容。
 

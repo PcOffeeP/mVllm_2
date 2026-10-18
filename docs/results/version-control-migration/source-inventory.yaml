@@ -126,7 +126,7 @@ base_model:
       - "含 model.safetensors.index.json, config.json 等；base 模型文件清单存在"
     notes: "存在即基座文件在；不验证模型可加载或推理成功。"
 local_run_evidence:
-  - source_id: "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/tentative_model_selection.json"
+  - source_id: "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/tentative_model_selection.json"  # 该文件已随 2026-10-18 清理移除（原本未被 git 跟踪），原 source_id 保留
     evidence_level: verified_local
     facts:
       - "status: tentative_not_quality_approved"

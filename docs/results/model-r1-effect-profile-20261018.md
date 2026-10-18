@@ -460,7 +460,7 @@ adapter 覆盖范围（字段组 `adapter_coverage`）：目标模块数 11；�
 
 同一变更并未只动 Prompt 正文：还包含 `retry_prompt` 与契约结构差异（`$.contract_hash` 一并改变，schema 与 generation 字段不同），仓库内没有受控单变量实验。因此不能把严格合法率 0.995294 到 1、四字段 joint 正确率 0.400 到 0.411765 的差值单独归因于 Prompt 正文改动。
 
-与之相关的代码记录：`docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md` 第 3.2 节记录提交 `c6098ab1` 修正了 evaluator 的 contract 身份记录并增加 Prompt contract 支持，未修改 `parse_v4_1_output`、`score_v4_1_prediction` 与标签语义。
+与之相关的代码记录：原 concise 三折报告第 3.2 节（该记录已随 2026-10-18 清理移除）记录提交 `c6098ab1` 修正了 evaluator 的 contract 身份记录并增加 Prompt contract 支持，未修改 `parse_v4_1_output`、`score_v4_1_prediction` 与标签语义。
 
 ### 3.2 行 1 至行 6 全部测于改动前开发侧管线
 
@@ -508,7 +508,7 @@ adapter 覆盖范围（字段组 `adapter_coverage`）：目标模块数 11；�
 - `docs/results/remote-state-refresh-20261013.md:46`：三折 train 与 validation 计数 1253/425、1014/664、1186/492。
 - `docs/project-todo.md:64`：1,678 候选、85 个来源视频、validation 三折 425/664/492 合计 1,581。
 
-迁移 receipt：`/data/mVllm_2/migration_receipts/data-v4.1-r2.receipt.yaml`。内容摘要见 `docs/results/conditional-cleanup-preflight-20260913.json`，`target_release_digest` 为 `a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b`。
+迁移 receipt：`/data/mVllm_2/migration_receipts/data-v4.1-r2.receipt.yaml`。内容摘要原见清理预检记录（该记录已随 2026-10-18 清理移除），`target_release_digest` 为 `a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b`。
 
 提示版本 `prompt-v4.1-r2`：仓库跟踪记录 `records/prompts/prompt-v4.1-r2.yaml`，文件 SHA-256 `9c6ec5274cd804d21bf54585343344a67443f94b8396fe5bc01f41ab2de7269f`，字节数 1808。该文件只有 `version`、`protocol`、`system_prompt`、`user_prompt`、`output_fields` 五个键，没有 sealed、training_allowed 之类的生命周期字段。生命周期是 data release 的属性，不是 prompt 记录的属性。
 
@@ -597,10 +597,10 @@ R2 与 R1 不构成同一代迭代关系。R2 是新体系的第一代 data 与 
 | `records/prompts/prompt-v4.1-r2.yaml` | R2 提示版本记录 | `9c6ec5274cd804d21bf54585343344a67443f94b8396fe5bc01f41ab2de7269f` |
 | `pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json` | 部署清单，记 `processor_version`、`max_frames`、`model_version`、`transformers_version`、`llamafactory_version`、`base_model_version`、`adapter_version`、`config_fingerprint`、`runtime_device`、`runtime_dtype`；未记像素预算、时序分组、单次推理超时 | — |
 | `docs/results/development-runtime-readiness-20261016.json` | 两版契约正文差异与 `semantics_boundary`（`prompt_contract_analysis`） | — |
-| `docs/results/conditional-cleanup-preflight-20260913.json` | 迁移 receipt 内容摘要 | `target_release_digest` 为 `a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b` |
+| 清理预检记录（已随 2026-10-18 清理移除） | 迁移 receipt 内容摘要 | `target_release_digest` 为 `a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b` |
 | `docs/data-workflow.md:180` | `data-v4.1-r2` 的 active 状态与来源发布（仅支持此两项） | — |
 | `docs/results/remote-state-refresh-20261013.md:42`、`:46` | 状态、sample_count、receipt、去重计数与三折计数 | — |
-| `docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md` | 第 3.2 节，提交 `c6098ab1` 的 evaluator 契约身份修正记录 | — |
+| 原 concise 三折报告（已随 2026-10-18 清理移除） | 第 3.2 节，提交 `c6098ab1` 的 evaluator 契约身份修正记录 | — |
 
 ### 6.5 复述与台账
 

@@ -2,7 +2,7 @@
 
 ## 如何理解这里的“当前”
 
-本页更新日期为 **2026-10-16**。页面覆盖三类证据：2026-10-13 的只读现场核查（起始 Mac 基线 `59dee2d1`，训练机 `main@3f200461`，详见[现场报告](results/remote-state-refresh-20261013.md)）、2026-10-15 的实施增量与 2026-10-16 的限定只读核验与固定来源比对；三类增量各自注明日期与限制，2026-10-16 未执行完整现场刷新，仅限定只读核验。工程能力依据代码及仓库验收记录；环境、数据引用和限定模型文件位置已刷新（2026-10-13 层），模型质量仍依据历史结果。2026-10-13 同日后续新建正式Conda环境并通过检查，见[部署记录](results/conda-environment-setup-20261013.md)。没有加载模型或重新评测，过去的服务成功不表示今天有同一服务在运行。
+本页更新日期为 **2026-10-16**。页面覆盖三类证据：2026-10-13 的只读现场核查（起始 Mac 基线 `59dee2d1`，训练机 `main@3f200461`，详见[现场报告](results/remote-state-refresh-20261013.md)）、2026-10-15 的实施增量与 2026-10-16 的限定只读核验与固定来源比对；三类增量各自注明日期与限制，2026-10-16 未执行完整现场刷新，仅限定只读核验。工程能力依据代码及仓库验收记录；环境、数据引用和限定模型文件位置已刷新（2026-10-13 层），模型质量仍依据历史结果。2026-10-13 同日后续新建正式Conda环境并通过检查，见部署记录（该记录已随 2026-10-18 清理移除）。Conda `mvllm2`（Python3.11.17）与 GPU 锁 241 项一致这一环境事实的原始凭证已移除；如需复核须在训练机重跑环境检查。没有加载模型或重新评测，过去的服务成功不表示今天有同一服务在运行。
 
 项目任务仍由[唯一台账](project-todo.md)维护。本页是现状与证据摘要，不另列一套执行任务、优先级或授权。
 
@@ -36,7 +36,7 @@
 | 部署环境 | 两平台锁与doctor已有验收；2026-10-13新Conda mvllm2全锁、依赖、CUDA可见及正式源码绑定检查通过；既有Linux部署脚本仍创建venv | 真实媒体和模型工作负载、训练成功或模型质量通过 |
 | 备份恢复 | 小对象跨机与store级异根恢复有证据 | 真实硬盘、大型权重、SQLite及外部媒体/基座组合灾难恢复可用 |
 
-正式运行环境：已建立Conda `mvllm2`（Python3.11.17），解释器为 `/home/liuyang/miniconda3/envs/mvllm2/bin/python`；GPU锁241项一致、依赖检查和doctor通过，LlamaFactory绑定正式main@3f200461。agent/cpm45及历史mirror venv保留，但不作为此次正式环境验收目标。Mac继续使用独立Mac锁及uv；本次CUDA可见与模块导入不证明实际模型或训练工作负载成功。 详见[本轮部署验收](results/conda-environment-setup-20261013.md)。
+正式运行环境：已建立Conda `mvllm2`（Python3.11.17），解释器为 `/home/liuyang/miniconda3/envs/mvllm2/bin/python`；GPU锁241项一致、依赖检查和doctor通过，LlamaFactory绑定正式main@3f200461。agent/cpm45及历史mirror venv保留，但不作为此次正式环境验收目标。Mac继续使用独立Mac锁及uv；本次CUDA可见与模块导入不证明实际模型或训练工作负载成功。 详见本轮部署验收记录（该记录已随 2026-10-18 清理移除）。
 
 工程迁移已按确认范围合并并同步正式代码，证据见[最终集成记录第66–67节](results/version-control-migration/verification.md)。原公共CLI的退役范围见[入口清单](results/version-control-migration/entrypoint-map.md)；共享业务库和历史读取依赖仍有用途，不能删除整个旧包。
 
@@ -64,11 +64,11 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 | concise三折 | Phase2 validation，1581条 | valid 79.63%；joint 32.07%；clip_state 35.80% | 322条非法输出，临界未断裂及已断裂召回均0%，类别坍缩和契约退化未解决 |
 | visual三折的merged BF16路线 | 基础发布开发侧，1216条 | valid 97.12%；joint 40.21%；clip_state 49.67% | 已有预测曾按严格解析器复算一致，不表示对应权重今天可加载 |
 
-来源为[旧发布身份](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](results/v4_1_agent_pipeline_fold0_r1/README.md)、[concise报告](results/v4_1_prompt_concise_cv_v1_seed3411/README.md)、[visual报告](results/v4_1_0_760050fad303_20260724_visual/README.md)及[开发证据预检](results/model-diagnostics-preflight-20260913.json)。Fold0中间发布的严格合法率与样本量取自[Stage B中间验收摘要](results/v4_1_stage_b_intermediate/acceptance_summary.json)，其中`artifact_gate.strict_valid_rate: 0.995294`、`artifact_gate.evaluation_sample_count: 425`。
+来源为[旧发布身份](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](results/v4_1_agent_pipeline_fold0_r1/README.md)、concise三折数值（见[模型清单第 5 节效果对比表](results/model-inventory.md#5-效果对比)，其中 322 条严格非法一项见[质量门基线](results/model-gate-baseline-20260914.md)）、visual 三折数值（见[模型清单第 5 节参考表](results/model-inventory.md#5-效果对比)）及开发证据预检（该记录已随 2026-10-18 清理移除，结论见 `docs/results/version-control-migration/verification.md` 第 48 节）。Fold0中间发布的严格合法率与样本量取自[Stage B中间验收摘要](results/v4_1_stage_b_intermediate/acceptance_summary.json)，其中`artifact_gate.strict_valid_rate: 0.995294`、`artifact_gate.evaluation_sample_count: 425`。
 
 2026-10-13现场核查：旧current仍指向Fold0发布，其adapter和merged索引10个分片在场；基座索引4个分片在场。限定run目录中concise缺权重、visual未找到，不代表全盘丢失。指定store的records/models、training、evaluations及默认MLflow路径未创建；用户说明尚未开展新体系正式业务流程，这符合阶段预期，不作为迁移失败。首次正式运行时仍需明确Registry配置根。旧current与旧Registry身份不授予新alias或passed。细节和限制见[现场报告](results/remote-state-refresh-20261013.md)；模型质量、旧预测及历史恢复调查仍以原证据日期为准。
 
-2026-10-16补充限定只读核验：训练机仍为干净 `main@3f200461`，本轮起始Mac `a0f1e1ab` 比它多17个提交，未同步。基座23个白名单文件及旧Fold0 adapter完整SHA已核；前序已确认四片权重与官方main观察一致，后续固定revision比对及代码差异见下；未补造来源声明或登记模型。指定store的model/train/eval与默认MLflow仍未创建。minimal试点归档缺逐样本记录副本，原run只stat未读；未删除文件，真实备份/恢复仍缺准确根路径。该核验不刷新2026-10-13 GPU环境验收，不运行模型；见[本轮推进记录](results/todo-preparation-progress-20261016.md)。
+2026-10-16补充限定只读核验：训练机仍为干净 `main@3f200461`，本轮起始Mac `a0f1e1ab` 比它多17个提交，未同步。基座23个白名单文件及旧Fold0 adapter完整SHA已核；前序已确认四片权重与官方main观察一致，后续固定revision比对及代码差异见下；未补造来源声明或登记模型。指定store的model/train/eval与默认MLflow仍未创建。minimal试点归档缺逐样本记录副本，原run只stat未读；未删除文件，真实备份/恢复仍缺准确根路径。该核验不刷新2026-10-13 GPU环境验收，不运行模型；见本轮推进记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。
 
 2026-10-16后续固定来源比对已完成：HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`的配置、tokenizer、processor与四权重身份相符，官方ModelScope历史树解释了README和额外配置来源。唯一代码偏差为实际基座构造函数新增`self.post_init()`；后续已静态核定框架用途，历史来源/动机追查按用户要求取消，实际运行影响未验（见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)）；未覆盖原文件、补造来源声明或登记模型。7个仓内代码文件仅做AST闭包，没有执行远程代码。详见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)。
 

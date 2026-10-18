@@ -117,6 +117,7 @@
       "observed_ollama_model_sha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
       "observed_ollama_template_sha256": "b507b9c2f6ca642bffcd06665ea7c91f235fd32daeefdf875a0f938db05fb315",
       "observation_source": "docs/results/evaluation-readiness-model-inventory-20261015.json",
+      "observation_source_note": "该记录已随 2026-10-18 清理移除，观测时点为 2026-10-15",
       "equivalence_established": false
     },
     "ornith-1.5:9b": {
@@ -235,6 +236,7 @@
       "observed_ollama_model_sha256": "e5df7dcdd8a263994df62d610317e07be0d6af23f96fcbd8543273058fce575e",
       "observed_ollama_template_sha256": "f55f52930aa8bf44ab5cb85f99370fcc3c56e9a85640b812086d5330bce5d86b",
       "observation_source": "docs/results/evaluation-readiness-model-inventory-20261015.json",
+      "observation_source_note": "该记录已随 2026-10-18 清理移除，观测时点为 2026-10-15",
       "equivalence_established": false
     }
   },

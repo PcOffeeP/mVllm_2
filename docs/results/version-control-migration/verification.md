@@ -1234,7 +1234,7 @@ Mac将四份轻量台账/Plan/verification/handoff提交为`c3685578923a46ab078f
 
 用户明确要求继续剩余实施，先补交付文档核查，并按台账推进HOLDOUT-BUILD和MODEL-DIAG。执行前Mac工作区干净，任务HEAD为`f76d0f4ab43a23b346e38069e6625aa64b859d0b`；SSH核对Linux隔离分支同HEAD、tracked干净，正式项目干净`main@f1b7d8a361b9ae5e2c7ad4ca09924f9f7af95e52`。本机`git ls-remote codeup refs/heads/main`得到同一发布基线；本地main对任务分支独有提交为0/136，Mac与隔离同HEAD为0/0。原stash保留。本轮只读远端，未同步checkout、运行训练/推理、读取受限测试语义、删除或恢复产物、push/merge。
 
-本轮新增机器可读证据：[model-diagnostics-preflight-20260913.json](../model-diagnostics-preflight-20260913.json)，SHA `b0e379a02249647f6d9c731d6980ef7a0b08181f997341ae237d25359b448c39`。该文件保存六段实际执行程序、返回JSON、原stdout SHA及实际exit0，执行版本均为上述基线。`preflight/locate/development/links/recompute`在Linux执行；`threshold_probe`在Mac执行。Linux前四项用系统python3，复算用隔离`.venv-m3/bin/python`，Mac配置探针用`.venv/bin/python`。复算环境为CUDA不可见、HF/Transformers离线、`PYTHONDONTWRITEBYTECODE=1`；从SSH stdin执行JSON所载程序，输出保存到Mac `/private/tmp/mvllm2-next-20260913/` 同名文件。没有把Linux原记录复算说成模型重新推理，或把Mac配置验证说成GPU证据。
+本轮新增机器可读证据：模型诊断预检记录（该记录已随 2026-10-18 清理移除，本节保留其执行摘要），SHA `b0e379a02249647f6d9c731d6980ef7a0b08181f997341ae237d25359b448c39`。该文件保存六段实际执行程序、返回JSON、原stdout SHA及实际exit0，执行版本均为上述基线。`preflight/locate/development/links/recompute`在Linux执行；`threshold_probe`在Mac执行。Linux前四项用系统python3，复算用隔离`.venv-m3/bin/python`，Mac配置探针用`.venv/bin/python`。复算环境为CUDA不可见、HF/Transformers离线、`PYTHONDONTWRITEBYTECODE=1`；从SSH stdin执行JSON所载程序，输出保存到Mac `/private/tmp/mvllm2-next-20260913/` 同名文件。没有把Linux原记录复算说成模型重新推理，或把Mac配置验证说成GPU证据。
 
 ### 四份交付文档独立核查
 
@@ -1254,7 +1254,7 @@ Mac将四份轻量台账/Plan/verification/handoff提交为`c3685578923a46ab078f
 
 限定核对报告声明run、`workspace/runs`的一层名称、已知结果根、`workspace/evidence_archive`一层名称，以及历史run_identity指定的LlamaFactory路径和其已知experiments子目录。concise-cv约定run、三fold adapter/merged、逐样本预测/摘要/身份及约定实验manifest均不存在，所查范围未发现迁移备份。不能据此断言全机没有备份；下一步需用户给出精确备份/迁移位置，或恢复原开发证据后再验证。
 
-历史`v4_1_0_760050fad303_20260724_visual/three_fold_validation/fold{0,1,2}`原记录可读，合计1,171,841字节。Linux从每条raw_output重新运行现行严格解析器和评分器（不修补缺字段），核对prediction、strict_valid、scores和重复candidate：全部零差异，各fold summary metrics完全相同。
+历史 visual 三折 `three_fold_validation/fold{0,1,2}` 原记录当时可读（该目录已随 2026-10-18 清理移除），合计1,171,841字节。Linux从每条raw_output重新运行现行严格解析器和评分器（不修补缺字段），核对prediction、strict_valid、scores和重复candidate：全部零差异，各fold summary metrics完全相同。
 
 | fold | 原记录条数 | source数 | 合法率 | joint正确率 | 当前权重路径 |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -1499,9 +1499,9 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 <a id="model-location-followup-20260913"></a>
 ## 54. MODEL-DIAG模型位置限定续查
 
-2026-09-13 MODEL-DIAG限定目录续查：Linux只读目录与路径stat实际exit0。evidence_archive顶层5组名称不含目标concise/visual三折；现存concise-v1仅input/reference、concise-v2仅input，不能替代concise-cv；/data/mVllm_2/workspace仅data、finetune仅active_data_release.json。六个约定三折merged目标仍不存在。未检查其他发布库内容或全盘备份，不能断言模型全部丢失；没有读取权重/预测/test内容或重跑既有评分。下一步需目标身份绑定的模型/原始预测备份，或另行确认诊断方案；test资格阻塞不取消MODEL-DIAG，也不授权重训。证据见verification第54节及docs/results/model-location-followup-20260913.json。
+2026-09-13 MODEL-DIAG限定目录续查：Linux只读目录与路径stat实际exit0。evidence_archive顶层5组名称不含目标concise/visual三折；现存concise-v1仅input/reference、concise-v2仅input，不能替代concise-cv；/data/mVllm_2/workspace仅data、finetune仅active_data_release.json。六个约定三折merged目标仍不存在。未检查其他发布库内容或全盘备份，不能断言模型全部丢失；没有读取权重/预测/test内容或重跑既有评分。下一步需目标身份绑定的模型/原始预测备份，或另行确认诊断方案；test资格阻塞不取消MODEL-DIAG，也不授权重训。证据见本节及原调查记录（该记录已随 2026-10-18 清理移除）。
 
-本机基线bb73e4dd，远端隔离同提交且tracked干净；正式main仍f1b7d8a3且tracked干净。本轮只在Mac保存轻量证据和维护台账，没有修改远端文件，也没有同步本轮提交。七个明确目录和六个merged路径的读取程序、实际输出及SHA保存于[调查证据](../model-location-followup-20260913.json)，文件SHA256为`f70bf9b73d90015324d1b23e811ed279aaf8df0fa8d8ce244d1252efdaf4ddd5`。这里的“目标不存在”指实际stat的路径，不证明其他位置没有副本；目录名不证明其中内容完整。前轮visual1216条复算属于第48节既有证据，本轮未运行测试或推理，没有新的模型效果结论。
+本机基线bb73e4dd，远端隔离同提交且tracked干净；正式main仍f1b7d8a3且tracked干净。本轮只在Mac保存轻量证据和维护台账，没有修改远端文件，也没有同步本轮提交。七个明确目录和六个merged路径的读取程序、实际输出及SHA保存于调查证据（该记录已随 2026-10-18 清理移除），当时文件SHA256为`f70bf9b73d90015324d1b23e811ed279aaf8df0fa8d8ce244d1252efdaf4ddd5`。这里的“目标不存在”指实际stat的路径，不证明其他位置没有副本；目录名不证明其中内容完整。前轮visual1216条复算属于第48节既有证据，本轮未运行测试或推理，没有新的模型效果结论。
 
 本轮为既有任务的证据补充和执行顺序纠正，主Agent核对JSON可解析、程序摘要、目录/路径数量及Git diff；不冒充独立审查或权威操作手册验收。
 
@@ -1511,7 +1511,7 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 
 2026-09-13 MODEL-DIAG发布库身份及恢复目标：Linux只读release-manifest核查exit0，已知legacy发布库只有v4.1-agent-pipeline-fold0-r1，origin为coverage-first单折实验，不能替代concise/visual三折。已从历史concise报告提取三折summary/records共6个SHA256恢复比对目标；尚未找回文件，报告摘要不是原件或模型权重的独立证明。已知位置线索核查到此收束，等待准确备份路径/迁移记录；不重复扫描、重训或擅自改用其他模型。详见verification第55节。
 
-[恢复比对证据](../model-recovery-targets-20260913.json)包含远端只读程序/摘要、发布manifest身份投影及文件SHA、历史报告文件SHA与六个逐fold恢复目标。现有release的origin为`v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`、fold0、seed3407、1125steps；仅核查身份清单，没有读取或哈希权重。其current链接解析到该release，不表示三折模型找回或最终模型验收通过。
+恢复比对证据（该记录已随 2026-10-18 清理移除，本节保留其结论摘要）包含远端只读程序/摘要、发布manifest身份投影及文件SHA、历史报告文件SHA与六个逐fold恢复目标。现有release的origin为`v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`、fold0、seed3407、1125steps；仅核查身份清单，没有读取或哈希权重。其current链接解析到该release，不表示三折模型找回或最终模型验收通过。
 
 本机基线0c6169e3；远端正式main f1b7d8a3、隔离bb73e4dd，tracked均干净。历史报告给出的三个summary及三个records摘要仅用作恢复后的比对依据；报告自身注明未独立审查，当前未验证这些原始文件。未来原件即便匹配，也须另外核验模型、Prompt、数据及fold训练排除关系。
 
@@ -1523,7 +1523,7 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 
 2026-09-13 条件清理授权（Codex）：用户明确旧数据和旧训练run/模型两类均包括，只删除已验证完整迁移且不再需要的旧副本。本轮Linux预检exit0：历史迁移source_root已不存在；pre-semantic备份不在该迁移清单映射内；旧LlamaFactory顶层16个模型软链接，10个目标存在、6个断链，不能当作重复权重。workspace/runs包含迁移后的实际目标，当前发布库保持保护。删除白名单为空，实际删除0、释放0字节；不是授权缺失，而是完整迁移/冗余性证据未满足。后续先建立旧备份到保留位置的逐文件映射、内容一致性和引用退出证明，再在本次条件授权内清理；不继续索取缺失三折模型备份，不把此次决定解释为取消MODEL-DIAG或TEST-POLICY。
 
-[预检原件](../conditional-cleanup-preflight-20260913.json)保存SSH程序、摘要、实际exit0、迁移清单与两份receipt、16个旧模型链接目标和两端Git状态。本机基线cf40dd70，远端main f1b7d8a3、隔离bb73e4dd均tracked干净。本轮没有远端写入；未读取权重或受限test，未计算整树一致性。主Agent验证JSON、程序摘要、16链接/10有效目标及空删除列表，git diff --check通过。迁移receipt committed不证明source/derived/备份全量移走；既有整机/大型产物恢复缺口仍在。此为清理预检记录，不是已完成删除或独立审查结论。
+预检原件（该记录已随 2026-10-18 清理移除，本节保留其结论摘要）保存SSH程序、摘要、实际exit0、迁移清单与两份receipt、16个旧模型链接目标和两端Git状态。本机基线cf40dd70，远端main f1b7d8a3、隔离bb73e4dd均tracked干净。本轮没有远端写入；未读取权重或受限test，未计算整树一致性。主Agent验证JSON、程序摘要、16链接/10有效目标及空删除列表，git diff --check通过。迁移receipt committed不证明source/derived/备份全量移走；既有整机/大型产物恢复缺口仍在。此为清理预检记录，不是已完成删除或独立审查结论。
 
 
 <a id="train-video-cleanup-20260913"></a>
@@ -1531,7 +1531,7 @@ RUN绝对路径：`/home/liuyang/文档/mVllm_2-migration-7eeb93a7/test-branch-v
 
 2026-09-13 train原视频清理候选：按用户条件授权在Linux核对旧备份01_videos到workspace/data/source/videos，89个train视频逐文件大小/SHA256一致，共5852142357字节（约5.45GiB），21个test视频未读内容。两工作区tracked运行代码/配置未见该备份路径引用。删除程序的占用预检遇到不可读/proc文件句柄，实际exit1且发生于首次unlink和证据目录创建之前；sudo -n只读能力探针要求密码，未提权。删除0、释放0，旧副本保留。候选清单与完整程序已保存；后续完成有权限的占用检查后再沿用授权执行，不能把候选已验签写成已删除。
 
-[逐文件证据与程序](../train-video-cleanup-candidates-20260913.json)记录每个旧路径、保留路径、SHA256、大小、inode/mtime及远端Git。内容核验SSH实际exit0；删除尝试exit1（原stderr保留）。不可读PID最初为164474/271119/3474702；随后ps显示前两者为sd-pam和ssh-agent，第三个已退出，未将进程名当作完整占用证明。没有改系统权限、停止进程、读取test内容或删除其他产物。此批只核定89个train原视频，不外推整个备份或模型可删。主Agent检查JSON、89条唯一映射/摘要、总字节和diff-check。
+逐文件证据与程序（该记录已随 2026-10-18 清理移除，本节保留其结论摘要）记录每个旧路径、保留路径、SHA256、大小、inode/mtime及远端Git。内容核验SSH实际exit0；删除尝试exit1（原stderr保留）。不可读PID最初为164474/271119/3474702；随后ps显示前两者为sd-pam和ssh-agent，第三个已退出，未将进程名当作完整占用证明。没有改系统权限、停止进程、读取test内容或删除其他产物。此批只核定89个train原视频，不外推整个备份或模型可删。主Agent检查JSON、89条唯一映射/摘要、总字节和diff-check。
 
 
 ## 58. 工程收口与模型交付拆分

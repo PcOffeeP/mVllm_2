@@ -2,7 +2,7 @@
 
 ## 本轮范围
 
-2026-10-15用户授权继续核定两批准评审模型的HF tokenizer来源与固定revision，补独立Python3.11环境及受审映射材料。起始Mac `696ea17c`、干净工作区、`feat/evaluation-development`。本轮允许固定tokenizer小文件下载、隔离依赖安装和公开合成字符串的CPU tokenizer-only核验；不下载模型权重、不进行真实模型评测/生成、不读真实test或项目预测，不创建eval/claim/exposed/部署receipt，不改训练机、现有开发/GPU环境或TensileAgent，不push/merge。前轮[库存核验](evaluation-readiness-20261015.md)的“未安装/未下载”只描述前轮，本轮授权已扩展。
+2026-10-15用户授权继续核定两批准评审模型的HF tokenizer来源与固定revision，补独立Python3.11环境及受审映射材料。起始Mac `696ea17c`、干净工作区、`feat/evaluation-development`。本轮允许固定tokenizer小文件下载、隔离依赖安装和公开合成字符串的CPU tokenizer-only核验；不下载模型权重、不进行真实模型评测/生成、不读真实test或项目预测，不创建eval/claim/exposed/部署receipt，不改训练机、现有开发/GPU环境或TensileAgent，不push/merge。前轮库存核验（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）的“未安装/未下载”只描述前轮，本轮授权已扩展。
 
 ## HF来源与固定revision
 

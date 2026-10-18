@@ -126,4 +126,4 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 实现入口为 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。设计决定与历史验证作为证据保留，不需要首次访问者先读完。
 
-当前任务与执行顺序以[项目台账](docs/project-todo.md)为准，设计边界见[架构说明](ARCHITECTURE.md)。目录整理与核查记录见[文档整合记录](docs/results/documentation-consolidation-20261012.md)。
+当前任务与执行顺序以[项目台账](docs/project-todo.md)为准，设计边界见[架构说明](ARCHITECTURE.md)。目录整理与核查记录原见文档整合记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。

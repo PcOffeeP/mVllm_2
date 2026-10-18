@@ -37,4 +37,4 @@ Non-goals:
 
 语义开发配置、来源登记、judge 交接及报告见 [versioning 语义开发协议](../versioning/SCRIPTS.md#语义开发协议)。base/diagnostic 来源由 Registry 核验，不能伪造 train 或借服务 alias 使用。独立评分、受控性能证据及按用途准入已接线；真实评审模型隔离、GPU性能和可信显示端仍未验收；本机合成验证不证明真实模型质量、训练机运行或 E2E 通过。
 
-独立本地tokenizer准备环境使用根 `requirements-review.in` / `requirements-review.lock`，位于忽略的 `workspace/review-environment/python311/`，不替换开发或GPU环境。固定HF来源、独立Jinja、官方wheel及HF/GGUF公开合成文本比对见[映射材料记录](../docs/results/evaluation-tokenizer-materials-20261015.md)；原HF直接计数存在NFC/NFD差异；当前适配层兼容修复和新版受审材料见[修复记录](../docs/results/evaluation-review-compatibility-repair-20261016.md)。历史材料不追认为新实现证明，公开词表回归不等同真实部署通过。
+独立本地tokenizer准备环境使用根 `requirements-review.in` / `requirements-review.lock`，位于忽略的 `workspace/review-environment/python311/`，不替换开发或GPU环境。固定HF来源、独立Jinja、官方wheel及HF/GGUF公开合成文本比对见[映射材料记录](../docs/results/evaluation-tokenizer-materials-20261015.md)；原HF直接计数存在NFC/NFD差异；当前适配层兼容修复和新版受审材料见修复记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。历史材料不追认为新实现证明，公开词表回归不等同真实部署通过。

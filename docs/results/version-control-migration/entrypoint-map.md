@@ -84,6 +84,10 @@ full训练使用同一开发release三折共同全集去重，冻结六份来源
 - versioning/mlflow_train.py / mlflow_eval.py：train/eval Run 生命周期与记录存储
 - versioning/backup.py：离线备份 create/verify/restore与显式SSH transfer，catalog钉扎与原子不覆盖发布；M6实测证据见verification第33节
 
+## history-summary 中的历史路径说明
+
+`history-summary.yaml` 中 16 处 `path: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md` 指向的文件已随 2026-10-18 清理移除；该字段记录迁移当时被接受的历史路径，保留原文以维持接受史原貌。该文件为 schema `tensile-migration/history-summary/v1` 的生成产物，重生成会覆盖手写内容，故说明只写在本节。
+
 ## 保护清单
 1. 仅按已确认迁移计划逐入口切换；已停用上述三个数据和四个训练/评测CLI，其他legacy路径和历史产物保留，不批量删除包。
 2. versioning 只接受 <kind>-v<协议>-r<N> 完整身份，fail-closed；禁止哈希/ LATEST/短前缀/隐式最新。

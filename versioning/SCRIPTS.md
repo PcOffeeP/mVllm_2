@@ -25,7 +25,7 @@ Non-goals:
 | `backup` | `backup.py` | 离线备份 catalog、完整性验证与显式目标恢复 |
 | `migration` | `migration.py` | 从显式 object mapping 执行 Prompt/Data 只读预检或迁移，从声明 entry 纯构建或固定路径发布 history-summary |
 
-`performance_client.py` 提供模型无关的 `PerformanceClientBridge`，复用既有header/单调时钟/签名回执契约；上传完成和完整显示必须由外部instrument显式回调，transport/signer由部署注入，不内置网络或密钥托管。它不提供新CLI、不证明真实DOM显示或性能通过；[运行前接线记录](../docs/results/evaluation-isolation-display-preflight-20261016.md)列出调用链与验证边界。
+`performance_client.py` 提供模型无关的 `PerformanceClientBridge`，复用既有header/单调时钟/签名回执契约；上传完成和完整显示必须由外部instrument显式回调，transport/signer由部署注入，不内置网络或密钥托管。它不提供新CLI、不证明真实DOM显示或性能通过；运行前接线记录（该记录已随 2026-10-18 清理移除，其当时列出的调用链与验证边界不再有原始凭证可查，结论见 `docs/project-todo.md` 对应条目）。
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
 

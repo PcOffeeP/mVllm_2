@@ -5,7 +5,6 @@
 ```text
 results/
 ├── README.md
-├── v4_1_0_760050fad303_20260724_visual/  历史视觉三折对比结果
 ├── v4_1_0_760050fad303_20260723/         V4.1 基线与消融证据
 ├── archive/
 │   ├── v2/                               已封存 V2 结果
@@ -18,9 +17,9 @@ results/
 ## 根目录
 
 根目录只保留仍被正式证据链或当前 V4.1 对比实验直接引用的版本化运行。
-`v4_1_0_760050fad303_20260724_visual` 是历史完整视觉三折对比基准，路径和内容都不得
-随意修改。最新 prompt-concise 三折结果位于对应 `workspace/runs/` 的 evaluation
-目录，Git 中的权威摘要位于 `docs/results/v4_1_prompt_concise_cv_v1_seed3411/`。
+历史视觉三折结果目录已随 2026-10-18 清理移除，prompt-concise 三折的 Git 摘要记录
+同样移除，现存版本化运行目录见本节上方目录树。最新 prompt-concise 三折结果位于对应
+`workspace/runs/` 的 evaluation 目录。
 `v4_1_0_760050fad303_20260723` 保留上一轮语言基线及 fold0 消融的证据关系。
 
 ## archive
