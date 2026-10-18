@@ -66,7 +66,29 @@ Non-goals:
 | 日期 | 基线 | 收集数 | 说明 |
 |---|---|---|---|
 | 2026-10-18 | `ca46c57e` 干净 HEAD（detached worktree 口径） | 实测 3300，0 error | 仅作参照，不作判据；实际以当次实测为准 |
-| 2026-10-18 | 当前工作区（含 3 个未提交改动） | 实测 3304，0 error | 同上 |
+| 2026-10-18 | 当前工作区 `31b0ab2d` 含 3 个未提交改动 | 实测 3304，0 error | 同上 |
+
+- 复现命令与实测输出（实测时刻 `2026-10-19 01:25:05 +0800`，取自 `git show -s --format=%ci 31b0ab2d`；日期列记的是会话日期，实测跨零点）：
+
+```console
+# 口径 A：当前工作区（仓库根目录）
+$ .venv/bin/python -m pytest --collect-only -q 2>&1 | tail -3; echo "exit=$?"
+tests/versioning/test_state.py::TestDataStatusReferenceSemantics::test_invalid_rejects_historical_restore
+
+3304 tests collected in 1.39s
+exit=0
+
+# 口径 B：ca46c57e detached worktree（cwd 为 worktree，用同一 venv 解释器）
+$ git worktree add --detach /tmp/wt-ca46c57e ca46c57e
+$ cd /tmp/wt-ca46c57e && /Users/pcoffeep/AgentPlayground/active-projects/mVllm_2/.venv/bin/python -m pytest --collect-only -q 2>&1 | tail -3; echo "exit=$?"
+tests/versioning/test_state.py::TestDataStatusReferenceSemantics::test_invalid_rejects_historical_restore
+
+3300 tests collected in 4.46s
+exit=0
+```
+
+- 口径对应：表中第一行 = 口径 B（`ca46c57e` detached worktree，3300）；第二行 = 口径 A（工作区 `31b0ab2d` + 3 个未提交改动，3304）。两次均 `exit=0`，无 collection error。
+- 表内只记**净数**：净数不变或上升，可能同时掩盖用例被删除与被重命名；核对改动必须比对 test id 集合，不能只看总数。
 
 ## 双机工作机制
 
