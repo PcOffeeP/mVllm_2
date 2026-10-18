@@ -45,10 +45,10 @@
 
 - status: blocked（同时等两个前提：训练机可用 + 用户对 D1/D2 的裁决；两者未同时满足前不得开工）
 - 阻塞/依赖: ① 训练机可用——抽帧、视频访问、ROI metadata 读取、自动检测运行、复测推理均需训练机，PB-001 未净时不可做；② 用户对两项决策的裁决——D1：`event_time` 是「裂纹起始时刻」还是「完全分离时刻」；D2：标签锚在「可见分离第一帧」还是「物理事件起始」。两项未定前重标无意义。
-- 解除条件: `docs/plans/2026-10-18-label-rebuild.md` 五阶段全部完成且验收闸门通过（金标准 50 条判据达标、自动检测误差达标、全量 1,678 重算完成、「已断裂」首帧可见分离比例达用户定阈值、抽样复核一致率达标、新标签下 425 条复测结果可解释），并有新 `release_id` 落盘。**该方案已起草但尚未入库**（2026-10-19 01:35 核：`git status` 显示 `??`、`git ls-files` 零命中），重建前须先把方案随 docs 提交入库，否则本条解除条件没有仓库内可核对象。
+- 解除条件: `docs/plans/2026-10-18-label-rebuild.md` 五阶段全部完成且验收闸门通过（金标准 50 条判据达标、自动检测误差达标、全量 1,678 重算完成、「已断裂」首帧可见分离比例达用户定阈值、抽样复核一致率达标、新标签下 425 条复测结果可解释），并有新 `release_id` 落盘。该方案随本提交入库（`docs/plans/2026-10-18-label-rebuild.md`）。
 - 前置动作: 用户先裁决 D1/D2 → 训练机只读核实 `event_time` 的产生环节与原始定义（`pipeline/source_bootstrap.py:293`、`:296`–`:297`、`:319`）。
 - 负责人: 用户（D1/D2 裁决）+ agent（执行）
-- 证据与背景: 用户目视抽查结论（2026-10-18：标为「已断裂」的样本中首帧无可见断裂者**比例高且分散**，非集中在个别视频）；仓库外 `~/pi-workspace/mVllm_2-audit/label-visual-mismatch-20261018.md`（**不在 Git 内**）；仓库内锚点 `pipeline/v3_candidate_plan.py:36`（`EVENT_GUARD_SECONDS = 0.5`）、`:301`（`_state_for_interval`）、`:312`/`:314`/`:316`（未断裂 / 已断裂 / 发生断裂 三档判定）、`:627`/`:659`（`pre`/`post` 窗口偏移）、`pipeline/source_bootstrap.py:293`（`event_time` 直接取自源表列「断裂时间点」）、`:296`–`:297`（仅当「断裂帧数」为空才用 `event_time × fps` 回填帧号）、`:319`（`event_time_reliable`）；`docs/design-facts.md:69`（425 条中已断裂 0/33）；`docs/plans/2026-10-18-label-rebuild.md`（重建方案，**尚未入库**，见「解除条件」）。偏差线索：`video_0110` 约 3.5 s 为**推断**（来源 `~/pi-workspace/mVllm_2-audit/subvideo-window-logic-20261018.md:19`，该文自标「推断/单参数拟合」，不得当实测）。
+- 证据与背景: 用户目视抽查结论（2026-10-18：标为「已断裂」的样本中首帧无可见断裂者**比例高且分散**，非集中在个别视频）；仓库外 `~/pi-workspace/mVllm_2-audit/label-visual-mismatch-20261018.md`（**不在 Git 内**）；仓库内锚点 `pipeline/v3_candidate_plan.py:36`（`EVENT_GUARD_SECONDS = 0.5`）、`:301`（`_state_for_interval`）、`:312`/`:314`/`:316`（未断裂 / 已断裂 / 发生断裂 三档判定）、`:627`/`:659`（`pre`/`post` 窗口偏移）、`pipeline/source_bootstrap.py:293`（`event_time` 直接取自源表列「断裂时间点」）、`:296`–`:297`（仅当「断裂帧数」为空才用 `event_time × fps` 回填帧号）、`:319`（`event_time_reliable`）；`docs/design-facts.md:69`（425 条中已断裂 0/33）；`docs/plans/2026-10-18-label-rebuild.md`（重建方案，见「解除条件」）。偏差线索：`video_0110` 约 3.5 s 为**推断**（来源 `~/pi-workspace/mVllm_2-audit/subvideo-window-logic-20261018.md:19`，该文自标「推断/单参数拟合」，不得当实测）。
 - 记录日期: 2026-10-18
 - 备注: 影响面是「未断裂 / 发生断裂 / 已断裂」三档标签**全部**依赖 `event_time`，不是只修 33 条；重建前不得用旧标签下的任何结论支持 R2 或模型能力判断；旧 `evaluation_records.jsonl`（`records/r1-run-20261018/` 下 3 份）保留，但与新评估分账，不得混算。
 
