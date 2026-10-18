@@ -37,6 +37,7 @@
 | 本轮已解决 | CONTRACT-NAMING | 已解决：候选契约与下游发布复用边界已澄清 | 两module仅docstring、AST行为相同；索引/数据指南一致，不重命名或改身份 |
 | 口径裁决 | TEST-SOURCE-REUSE | 待处理：21 个既定 test source 重建 test release 的口径已裁决，真实构建未执行 | 三条边界（不入任何训练分支／非盲参考性口径／结果不回流）约束构建与报告；构建仍待授权、人工审查与真实媒体验证 |
 | 归档纪律 | ARTIFACT-RETENTION | 进行中：备份节奏、过期文件管理与清理红线已定，待按节奏执行 | 首次适用待全量训练+评测归档；清理红线三项不得进入任何清理候选 |
+| 后续主任务 | R2-REALTRAIN | 待处理：用 `data-v4.1-r2` + `prompt-v4.1-r2` 完成 fold 0 → 三折真实训练与评测，未开始 | 待清理收尾后；依赖 r2 训练 YAML 冻结 + 用户 GPU 授权；预算均为推算，需首 50 步实测校准 |
 
 MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练最终候选；绑定 model/eval 的一次性 claim 在最终身份确定并获测试使用授权后、首次模型调用前建立。不能倒置为先测试通过才允许训练该候选。
 
@@ -52,6 +53,26 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **备份根与节奏（用户 2026-10-17 裁决）**：`/data`（`/dev/sda1`，3.4 T 空闲，独立于主仓 `/dev/nvme0n1p2`）为第一级备份根，1 T 移动硬盘为第二级；节奏为每完成一次全量训练+评测归档一次，不做持续同步；备份须另开目录（如 `/data/mVllm_2-backups/`），不得混入 store 内部。细节见 `ARTIFACT-RETENTION`。
 
 ## 待处理、待确认与阻塞事项
+
+### R2-REALTRAIN — 用 r2 数据与 Prompt 完成三折真实训练与评测
+
+- **状态/来源**：待处理（Pi，2026-10-18；未开始，排在当前清理收尾之后）；用户 2026-10-18 指示把「新一轮 R2 数据的真实训练与评测」登记进台账，并标注它排在清理收尾之后、后续按时间推进。父任务 FINAL-TRAIN / MODEL-QUALITY（三折开发验证口径）；本条不改变这两个父任务的阻塞状态，不改任何既有阈值。
+- **目标**：用 `data-v4.1-r2` + `prompt-v4.1-r2` 完成 fold 0 → 三折的真实训练与评测，产出新体系（`python -m versioning`）的第一条 `train` 记录、第一个 `model` 身份、第一份正式 `eval` 记录。本轮不含 test 分支与 full 训练。
+- **已就绪（逐项带证据）**：
+  1. **数据**：`data-v4.1-r2` 为 sealed / development / `training_allowed: true` / active，1,678 候选 / 85 来源；三折 1253-425、1014-664、1186-492（每折 train∪val=1678、交集 0、dup 0）。证据：`docs/results/training-data-ledger-20261017.json`（`state`、`status`、`training_allowed` 字段）与同目录 `.md` 的分折表。该台账为训练机只读实测 + 本机只读统计，未重跑训练。
+  2. **Prompt（Git 记录 + store 注册）**：Git 侧 `records/prompts/prompt-v4.1-r2.yaml` 已建（sha256 `9c6ec527…26f9`，1808 字节），store 侧 `prompt create` 已执行且两侧 sha256 相同；其 system/user 与契约 `3798f00c…38ab` 正文逐字节一致。证据：仓库外，他机不可达 `~/pi-workspace/mVllm_2-audit/dev-eval-alignment-20261017.md`（Git 侧正文与哈希）、`~/pi-workspace/mVllm_2-audit/eval-r0-realign-20261017.md`（训练机 `prompt create` EXIT=0、两侧哈希一致）。
+  3. **开发评测侧预处理**：8 帧 → 8 组、时序组全 `-1`，训练机 CPU 实测六项断言全 PASS（`all_pass: true`）；**视觉 token 512 是推导值，服务侧一致性仍是同一 `mm_plugin` 路径的推定，像素、时序与超时预算未取证**。证据：仓库外，他机不可达 `~/pi-workspace/mVllm_2-audit/eval-r0-realign-20261017.md`（六项断言逐项实测）；服务侧推定的边界见同前 `dev-eval-alignment-20261017.md`。
+  4. **门禁路径**：已摸清全链 61 行门禁（C1）与从零训练按实际报错顺序 14 道门（C2）的顺序、位置与触发条件。证据：仓库外，他机不可达 `~/pi-workspace/mVllm_2-audit/pipeline-and-gates-20261018.md`。该报告 C3 九行汇总只把 2 行判为当前已满足，且限于 data/prompt 的**产物存在性**；prompt 双份字节一致在 C3 中列为当前未满足（该项已由上述训练机 `prompt create` 取证），train/model/eval/serve 侧前置全部当前未满足。
+- **未就绪（明确差距）**：
+  1. **r2 训练 YAML 不存在**：训练机 `finetune/` 下没有任何引用 `data-v4.1-r2` 的配置；「3 epoch / bs 1 / ga 8 / eval 每 50 步」是沿用历史 run 的假设，必须先冻结成三折 YAML 才能过 `train prepare` 的配置门。
+  2. **GPU 训练授权未给**：训练机真实训练授权属执行纪律，无代码门可替代。
+  3. **训练输入其余门未逐项复核**：`train prepare` 还会挡 data 验证路径（committed receipt 或显式 `--data-inputs`）、折计数与成员和 release 元数据一致、媒体根、基座完整清单、`environment` YAML 与 `git_commit`；`pipeline-and-gates-20261018.md` 的 C2 把其中多道判为「待核」或「当前未满足」，均未在训练机逐项跑过 prepare。
+  4. **训练预算未定，全部为推算**：3 epoch 按 epoch-based 语义推算 1,290 步（468/378/444）× 10.94 s/step，加 27 次 eval（训练内 24 次 + 每折训练后最终 3 次），三折约 **5.78 h**；单折约 1.86–1.99 h；2 epoch 约 3.93 h；若改为 1 epoch，按 5.78 h 线性折算三折约 1.9 h（该折算值由本条给出，重算报告只给到 2 epoch 的 3.93 h）。以上**均为推算，非实测**，且 10.94 s/step 是在旧 prompt/release 下测得，须用 r2 首 50 步实测校准。口径说明：`docs/results/training-data-ledger-20261017.json` 的 timing 段用的是 eval-inclusive 14.9309 s/step 与 ceil 语义，得 1,296 步 / 5.3751 h，与本条 10.94 s/step + 27 次 eval 的口径不同，两个数字不可互指矛盾。证据：仓库外，他机不可达 `~/pi-workspace/mVllm_2-audit/training-time-recalc-20261018.md`。
+- **依赖**：清理收尾完成（本轮清理批次，非 `MODEL-ARCHIVE` / `ARTIFACT-RETENTION` 项下执行，收尾状态以清理批次记录为准）+ r2 训练配置冻结 + 用户 GPU 授权。
+- **下一动作（按序，不跳步）**：① 冻结 r2 训练 YAML（三折参数、epoch 数、eval 频率、`cutoff_len`/`video_maxlen` 等），同轮补齐 `environment` YAML、`git_commit`、媒体根与 data 验证路径；② 首 50 步冒烟实测 s/step 校准预算 ③ 跑 fold 0 ④ 三折 ⑤ 各自 export → `model register` → `eval prepare`/`run`。
+- **验收标准**：三件产物齐全——新体系第一条 `train` 记录（`records/training/<train>/manifest.yaml` + `training-evidence.json`（落在 `workspace/runs/<train>/` 并作为 MLflow artifact 上传，与 manifest 不同目录））、第一个 `model` 身份（Registry Model Version）、第一份正式 `eval` 记录（`records/evaluations/<eval>/manifest.yaml`）；每个结论可追溯到 data 身份 + prompt 身份 + 配置哈希 + 代码 commit；全程不读 sealed test、不跑 full（除非另有授权）。
+- **证据位置**：`docs/results/training-data-ledger-20261017.json`、`docs/results/training-data-ledger-20261017.md`、`docs/results/model-r1-effect-profile-20261018.md`、`docs/results/model-r1-effect-profile-20261018.json`；以下四份在仓库外，他机不可达，不写作链接：`~/pi-workspace/mVllm_2-audit/pipeline-and-gates-20261018.md`、`~/pi-workspace/mVllm_2-audit/dev-eval-alignment-20261017.md`、`~/pi-workspace/mVllm_2-audit/eval-r0-realign-20261017.md`、`~/pi-workspace/mVllm_2-audit/training-time-recalc-20261018.md`。
+- **限制声明（不得越界引用）**：① **R1 与 R2 不可直接比较**——R1（`v4.1-agent-pipeline-fold0-r1`）是 legacy 命名、旧体系产物，R2 是新体系第一代，中间没有任何记录把两者接起来；② R1 的全部 425 数字测于 1 组融合 / 64 token 的旧预处理链路，与生产链路（8 帧 → 8 组、视觉 token 512）口径不同，数值差异不能归因于模型能力；不可比的原因在预处理链路而非契约哈希——R1 的 425 记录中也有在 `3798f00c…` 契约下产出的（见 `docs/results/model-r1-effect-profile-20261018.md`），不得以契约相同或不同解释可比性。③ 本条登记不构成训练、评测或读 test 的授权。
 
 ### EVAL-DEVELOPMENT — 基座、已完成单折登记与开发门槛
 
@@ -432,6 +453,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **残余**：Streamlit 显示原始 ValueError traceback 是此前接受的呈现层风险；该批未重新验收 UI。
 
 ## 最近维护记录
+
+- **2026-10-18（Pi，清理与信息分层 + R2 训练待办入账）**：按用户 2026-10-18 指示，把「新一轮 R2 数据的真实训练与评测」登记为固定标识 `R2-REALTRAIN`（原 39 个标识增至 40 个，其余标识与全部既有阈值、状态、验收标准零改动，本轮无任务被关闭或升级），并在「当前状态与下一步」顺序表新增一行定位「待清理收尾后」，明确该任务排在当前清理收尾之后、后续按时间推进。条目如实区分已核事实与推算：数据与 Prompt 身份、开发评测侧对齐、门禁路径属有证据的就绪项；r2 训练 YAML 不存在、GPU 训练授权未给、训练预算仅为推算（3 epoch 三折约 5.78 h）属未就绪项；R1 与 R2 不可直接比较的限制一并写入。本轮清理与信息分层另有两路只读审计并行进行（不写文件），本条只做台账登记，未训练、未评测、未读 test、未 SSH、未改动任何产物或代码；仓库外证据路径均标注「仓库外，他机不可达」，未写作相对链接。
 
 - **2026-10-17（Pi，store 归位口径转既成事实 + Prompt 一致性核查）**：按用户 2026-10-17 指示，把 `docs/project-status.md` 机器与资产位置表及本文件 `ARTIFACT-RETENTION` 内 store 迁移口径由「已授权／结果待核」改为已完成（2026-10-17 归位至 `<项目>/store`、逐文件 sha256 48/48 一致、旧目录改名 `/data/.store-old-20261017` 保留 7 天）；核验记录在训练机，本机 checkout 无 `store/` 现场，本次未 SSH。同时按代码核查补记 Prompt 双份（Git `records/prompts/` vs store `store/records/prompts/`）与一致性门现状：store 内部有 fail-closed 门，Git 版与 store 版无自动检测，该缺口已登记为 `ARTIFACT-RETENTION` 内对应条目的下一动作、未实施。仅修改本文件与 `docs/project-status.md`，未改代码/`.gitignore`/`docs/results/**`/README，未运行模型或测试；遗留项见仓库外 `~/pi-workspace/mVllm_2-audit/prompt-consistency-audit-20261017.md`。
 
