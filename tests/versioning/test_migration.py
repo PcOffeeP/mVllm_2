@@ -20962,6 +20962,12 @@ def test_weight_run_parameter_archive_rejects_unsafe_manifest_paths(
         _assert_h6_fact_is_unknown(
             facts[name], name=name, run_id=entry["source_legacy_id"]
         )
+        # 护栏：evidence path 越界属于「归档存在但校验失败」，不得被降格成
+        # 「归档已清理移除」（那种状态只对应归档包目录本身缺席）。
+        assert "reason_code" not in facts[name], (
+            f"归档 evidence path 越界（{bad_path!r}）时，核心训练参数 {name} "
+            f"不得携带 reason_code：实际 {facts[name]!r}"
+        )
 
 
 def test_weight_run_parameter_archive_rejects_bool_cross_evidence(
@@ -20991,6 +20997,12 @@ def test_weight_run_parameter_archive_rejects_bool_cross_evidence(
     for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
         _assert_h6_fact_is_unknown(
             facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        # 护栏：交叉字段校验失败属于「归档存在但校验失败」，不得被降格成
+        # 「归档已清理移除」（那种状态只对应归档包目录本身缺席）。
+        assert "reason_code" not in facts[name], (
+            f"归档交叉字段校验失败时，核心训练参数 {name} 不得携带 "
+            f"reason_code：实际 {facts[name]!r}"
         )
 
 
@@ -21225,6 +21237,164 @@ def test_weight_run_archive_removed_state_distinguishes_from_m0_unrecorded_unkno
         "M0 未记录参数的文案不得夹带归档清理日期（否则两种形态文案不可区分）："
         f"实际 {m0_fact['unknown_reason']!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# 「归档缺失 → 显式状态」的护栏：其它失败原因不得被降格成同一状态
+# ---------------------------------------------------------------------------
+# 契约（reviewer 对抗式审阅指出的性质）：reason_code ==
+# "unavailable_archive_removed" 只允许出现在「归档包目录本身缺席」这一种
+# 情形。归档存在但验签 / 坏 JSON / 路径越界失败、归档父目录为悬空符号链
+# 接、归档路径不可读等情形，核心训练参数必须保持既有中性字段级 unknown
+# （不带 reason_code）。若 production 把 guard 去掉改成无条件叠加，下面这
+# 组用例必须失败，否则回归会静默通过。
+@pytest.mark.parametrize(
+    "failure_mode",
+    ["hash_mismatch", "manifest_missing", "corrupt_manifest_json"],
+)
+def test_weight_run_present_archive_failure_carries_no_removed_state(
+    tmp_path: Path, failure_mode: str
+) -> None:
+    """归档目录存在但验签 / 解析失败时不得被打成「归档已清理移除」。
+
+    契约：归档包目录本身存在时 ``reason_code`` 必须缺席——「验签失败」与
+    「清理移除」是不同缺失来源，降格会误导调用方按 Git 历史去重建一个其
+    实仍在的归档包（或反之，把仍在的包当作已删）。
+    """
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    archive = _write_verified_parameter_archive(tmp_path)
+    assert archive.is_dir(), "前置事实：归档包目录必须存在（区别于清理移除）"
+    if failure_mode == "hash_mismatch":
+        # evidence_package_files 中登记的哈希与实际文件内容不符。
+        (archive / "adapter" / "trainer_state.json").write_bytes(
+            _fixture_pretty_json_bytes({"num_train_epochs": 99})
+        )
+    elif failure_mode == "manifest_missing":
+        # 目录存在但 MANIFEST.json 缺失：目录本身仍在，不是清理移除。
+        (archive / "MANIFEST.json").unlink()
+    else:
+        # 归档清单是坏 JSON。
+        (archive / "MANIFEST.json").write_bytes(b"{not-json-at-all")
+    entry = _confirmed_weight_run_entry()
+
+    facts = _weight_run_facts(tmp_path, entry)
+
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert "reason_code" not in facts[name], (
+            f"归档存在但{failure_mode}失败时，核心训练参数 {name} 不得携带"
+            f"reason_code（只有「归档包目录本身缺席」才可标记"
+            f" {ARCHIVE_REMOVED_REASON_CODE!r}）：实际 {facts[name]!r}"
+        )
+
+
+def test_weight_run_dangling_archive_parent_symlink_is_not_marked_removed(
+    tmp_path: Path,
+) -> None:
+    """归档父目录是悬空符号链接时不得被标成「已清理移除」。
+
+    契约：``docs/results/model_evidence`` 被换成指向不存在目标的符号链接
+    时，「归档包目录缺席」无法被观测为清理事实（无法区分「清理删除」与
+    「路径被替换成未解析链接」），因此核心训练参数必须保持中性字段级
+    unknown：断言 ``reason_code`` 缺席（而不是断言某个专门的中性取值）。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    archive_parent = tmp_path / "docs" / "results" / "model_evidence"
+    archive_parent.parent.mkdir(parents=True, exist_ok=True)
+    archive_parent.symlink_to(tmp_path / "docs" / "results" / "no-such-archive")
+    # 前置事实：父目录是悬空链接，叶子包路径本身既不存在也不是链接。
+    assert archive_parent.is_symlink()
+    assert not archive_parent.exists()
+    entry = _confirmed_weight_run_entry()
+
+    facts = _weight_run_facts(tmp_path, entry)
+
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert "reason_code" not in facts[name], (
+            f"归档父目录为悬空符号链接时，核心训练参数 {name} 不得携带"
+            f"reason_code（缺席不是「已清理移除」的可观测证据）：实际 "
+            f"{facts[name]!r}"
+        )
+
+
+def test_weight_run_unreadable_archive_parent_does_not_raise(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """归档路径不可读时不得抛异常，且事实回落既有 unknown 形态。
+
+    契约：观测归档目录是否存在时遇到 ``PermissionError``，构建必须照常返
+    回条目（缺失 / 不可读不等于整批失败，也不等于「已清理移除」），核心
+    训练参数保持既有字段级 unknown，不带 ``reason_code``。
+    """
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    _write_verified_parameter_archive(tmp_path)
+    real_exists = Path.exists
+
+    def _deny_archive_probe(self: Path) -> bool:
+        if "model_evidence" in self.parts:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_exists(self)
+
+    monkeypatch.setattr(Path, "exists", _deny_archive_probe)
+    entry = _confirmed_weight_run_entry()
+
+    document = _resolve_history_summary_entry()(tmp_path, [entry])
+
+    facts = document["entries"][0]["facts"]
+    assert [item["original_id"] for item in document["entries"]] == [
+        entry["source_legacy_id"]
+    ], "归档路径不可读不得让条目消失或整批抛异常"
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert "reason_code" not in facts[name], (
+            f"归档路径不可读时，核心训练参数 {name} 不得携带 reason_code"
+            f"（不可读不等于「已清理移除」）：实际 {facts[name]!r}"
+        )
+
+
+def test_weight_run_archive_removed_reason_names_directory_level_archive_path(
+    tmp_path: Path,
+) -> None:
+    """清理说明的对象必须是目录级路径，而不是未经观测的单个归档包。
+
+    契约：2026-10-18 清理删除的是 ``docs/results/model_evidence`` 整个目
+    录（A1 批），单个 run 的归档包因此「未经观测」；说明文本必须同时给出
+    目录级路径 ``docs/results/model_evidence``、清理日期与原 run id，使调
+    用方能区分「目录被整体移除」与「个别包校验失败」。
+    """
+    _write_weight_run_scenario_without_archive(tmp_path)
+    entry = _confirmed_weight_run_entry()
+    run_id = entry["source_legacy_id"]
+
+    facts = _weight_run_facts(tmp_path, entry)
+
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        fact = facts[name]
+        assert fact.get("reason_code") == ARCHIVE_REMOVED_REASON_CODE, (
+            f"核心训练参数 {name} 缺少归档缺失显式状态（前置断言，随后才校验"
+            f"说明文本的对象层级）：实际 {fact!r}"
+        )
+        reason = fact["unknown_reason"]
+        assert "docs/results/model_evidence" in reason, (
+            f"归档缺失状态的说明必须写明目录级路径 docs/results/model_evidence"
+            f"（清理对象是目录，不是未经观测的单个包）：实际 {reason!r}"
+        )
+        assert ARCHIVE_REMOVED_DATE_TOKEN in reason, (
+            f"归档缺失状态的说明必须写明清理日期"
+            f" {ARCHIVE_REMOVED_DATE_TOKEN}：实际 {reason!r}"
+        )
+        assert run_id in reason, (
+            f"归档缺失状态的说明必须写明原 run id {run_id}：实际 {reason!r}"
+        )
 
 
 def test_history_summary_multi_entry_preserves_order_and_mixed_evidence(
