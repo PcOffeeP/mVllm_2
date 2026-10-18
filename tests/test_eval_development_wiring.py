@@ -133,11 +133,12 @@ def test_semantic_blind_resume_never_reruns_model_and_seals_evidence(tmp_path, m
 
 
 def _paired_fixture(tmp_path, monkeypatch):
-    from test_train_with_contract import _versioned_data_fixture
+    from test_train_with_contract import _versioned_data_fixture, _mirror_prompt_checkout
     from test_model_sources import base_files
     from finetune.train_prepare_run import prepare_versioned_run, execute_versioned_run
     from versioning.registry import open_registry_store, register_model, register_base_model
     root, media, _, _ = _versioned_data_fixture(tmp_path)
+    _mirror_prompt_checkout(root)
     base = base_files(tmp_path / "paired-base")
     (base / "source-provenance.json").write_text(json.dumps({"schema": "tensile-base-provenance/v1",
         "upstream_source": "org/synthetic", "upstream_revision": "fixed-fixture-revision", "verified_by": "synthetic fixture"}))
@@ -349,14 +350,16 @@ def test_actual_archived_holdout_uses_its_original_seven_gates(tmp_path, monkeyp
     legacy.prepare_versioned_evaluation(**kwargs)
     legacy.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
     old_holdout.score_holdout_evaluation(root=root, eval_version="eval-v4.1-r1", executor="synthetic")
-    frozen = runtime.verify_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
-    assert frozen["implementation_sha256"]["finetune/eval_holdout.py"] == archived["finetune/eval_holdout.py"]
-    # Restore the actual current holdout validator before proving compatibility.
+    # Restore the actual current holdout validator before the current runtime
+    # verifies and exports: verify resolves build_holdout_input through
+    # sys.modules and must not receive the archived signature.
     import importlib.util, sys
     spec = importlib.util.spec_from_file_location("current_holdout", runtime.ROOT / "finetune/eval_holdout.py")
     current_holdout = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(current_holdout)
     monkeypatch.setitem(sys.modules, "finetune.eval_holdout", current_holdout)
+    frozen = runtime.verify_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
+    assert frozen["implementation_sha256"]["finetune/eval_holdout.py"] == archived["finetune/eval_holdout.py"]
     with monkeypatch.context() as guard:
         forbid_truth(guard, truth)
         manifest = runtime.export_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")

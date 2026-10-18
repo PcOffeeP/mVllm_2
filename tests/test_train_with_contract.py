@@ -103,6 +103,20 @@ def test_legacy_yaml_parser_rejects_duplicate_keys_before_execution(monkeypatch,
     assert events == []
 
 
+def _mirror_prompt_checkout(root, *, version="prompt-v4.1-r1"):
+    """在 <store 根>/../records/prompts 写入与 store 副本逐字节一致的 checkout 副本。
+
+    训练冻结与评测取 Prompt 都会先要求两侧字节一致，因此真正跑 prepare 或
+    prepare_versioned_evaluation 的夹具必须先建立这份副本。
+    """
+    from versioning.prompts import prompt_path
+
+    checkout = prompt_path(root.parent, version)
+    checkout.parent.mkdir(parents=True, exist_ok=True)
+    checkout.write_bytes(prompt_path(root, version).read_bytes())
+    return checkout
+
+
 def _versioned_data_fixture(tmp_path, *, prompt_definition=None):
     import json
     import yaml
@@ -197,6 +211,7 @@ def test_versioned_datasets_reject_payload_drift(tmp_path):
 def _prepare_versioned_fixture(tmp_path):
     from finetune.train_prepare_run import prepare_versioned_run
     root, media, release, rows = _versioned_data_fixture(tmp_path)
+    _mirror_prompt_checkout(root)
     model = tmp_path / "model"
     model.mkdir()
     (model / "model.safetensors").write_bytes(b"synthetic base")
@@ -270,6 +285,7 @@ def test_versioned_prepare_rejects_tokenized_cache(tmp_path):
     import pytest
     from finetune.train_prepare_run import prepare_versioned_run
     root, media, release, rows = _versioned_data_fixture(tmp_path)
+    _mirror_prompt_checkout(root)
     configs = {f"fold{i}": {"model_name_or_path": str(tmp_path), "tokenized_path": str(tmp_path / "cache")} for i in range(3)}
     with pytest.raises(ValueError, match="tokenized_path"):
         prepare_versioned_run(root=root, train_version="train-v4.1-r1", data_version="data-v4.1-r2",

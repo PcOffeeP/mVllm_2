@@ -714,19 +714,21 @@ def _model_binding(record) -> dict[str, Any]:
 def _formal_input(*, root: Path, eval_version: str, model_version: str,
                   model_version_number: int, data_version: str, config: Mapping[str, Any],
                   git_commit: str, media_root: Path, inputs_path: Path | None = None,
-                  pre_registration: Path | None = None, executor: str | None = None) -> dict[str, Any]:
+                  pre_registration: Path | None = None, executor: str | None = None,
+                  prompt_checkout_root: Path | None = None) -> dict[str, Any]:
     if isinstance(config, Mapping) and config.get("scope") == "full":
         from finetune.eval_holdout import build_holdout_input
         return build_holdout_input(root=root, eval_version=eval_version, model_version=model_version,
             model_version_number=model_version_number, data_version=data_version, config=config,
             git_commit=git_commit, media_root=media_root, inputs_path=inputs_path,
-            pre_registration=pre_registration, executor=executor)
+            pre_registration=pre_registration, executor=executor,
+            prompt_checkout_root=prompt_checkout_root)
     if pre_registration is not None or executor is not None:
         raise ValueError("holdout authorization arguments require full holdout evaluation")
     from versioning.ids import parse_eval_id, parse_model_id, parse_data_id
     from versioning.data_release import load_release_metadata
     from versioning.registry import open_registry_store, validate_model_for_evaluation
-    from versioning.prompts import load_prompt
+    from versioning.prompts import load_prompt, verify_prompt_checkout_copy
     from finetune.train_build_dataset import build_versioned_datasets
 
     protocols = {parse_eval_id(eval_version).protocol, parse_model_id(model_version).protocol,
@@ -771,6 +773,10 @@ def _formal_input(*, root: Path, eval_version: str, model_version: str,
     prompt_version = config["prompt_version"] if is_base else model.prompt_version
     if not is_base and "prompt_version" in config and config["prompt_version"] != prompt_version:
         raise ValueError("trained evaluation must inherit the registered training Prompt")
+    # Prompt 的 store 副本与 Git checkout 副本必须逐字节一致。prompt_version
+    # 一旦确定就校验，先于 build_versioned_datasets 与任何评测产物落盘，
+    # 与训练侧 prepare 同构。
+    verify_prompt_checkout_copy(root, prompt_version, checkout_root=prompt_checkout_root)
     if model.source_scope == "single_fold" and model.deploy_target != model.artifacts["fold0"][config["artifact_kind"]]:
         raise ValueError("evaluated artifact must match the registered deploy_target")
     contract, _ = _load_contract()
@@ -847,7 +853,8 @@ def prepare_versioned_evaluation(**kwargs) -> Path:
         fcntl.flock(lock, fcntl.LOCK_EX)
         target = workspace / "input"
         if target.exists():
-            current = verify_versioned_evaluation(root=kwargs["root"], eval_version=kwargs["eval_version"])
+            current = verify_versioned_evaluation(root=kwargs["root"], eval_version=kwargs["eval_version"],
+                prompt_checkout_root=kwargs.get("prompt_checkout_root"))
             if _formal_bytes(_historical_strict_comparison(value, current)) != _formal_bytes(current):
                 raise ValueError("frozen evaluation input conflict")
             return target / "evaluation.yaml"
@@ -864,7 +871,8 @@ def prepare_versioned_evaluation(**kwargs) -> Path:
     return target / "evaluation.yaml"
 
 
-def verify_versioned_evaluation(*, root: Path, eval_version: str, live: bool = True) -> dict[str, Any]:
+def verify_versioned_evaluation(*, root: Path, eval_version: str, live: bool = True,
+                                prompt_checkout_root: Path | None = None) -> dict[str, Any]:
     folder = _formal_workspace(root, eval_version) / "input"
     if folder.is_symlink() or not folder.is_dir() or {p.name for p in folder.iterdir()} != {"evaluation.yaml", "sha256"}:
         raise ValueError("frozen evaluation input is missing or malformed")
@@ -883,6 +891,7 @@ def verify_versioned_evaluation(*, root: Path, eval_version: str, live: bool = T
             model_version=value["model"]["model_id"], model_version_number=value["model"]["version"],
             data_version=value["data_version"], config=value["config"], git_commit=value["git_commit"],
             media_root=media_root, inputs_path=Path(value["inputs_path"]) if value["inputs_path"] else None,
+            prompt_checkout_root=prompt_checkout_root,
             **({"pre_registration": Path(root).absolute() / "evaluations/staging" / eval_version / "authorization/pre_registration.yaml",
                 "executor": value["authorization"]["executor"]} if "authorization" in value else {}))
         if media_root != Path(value["media_root"]):
@@ -970,7 +979,8 @@ def _execute_formal_fold(value, fold, model_dir, adapter_dir, output):
     return records
 
 
-def execute_versioned_evaluation(*, root: Path, eval_version: str):
+def execute_versioned_evaluation(*, root: Path, eval_version: str,
+                                prompt_checkout_root: Path | None = None):
     import fcntl
     import tempfile
     from versioning.backup import scoped_mlflow_client
@@ -978,17 +988,20 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
     from versioning.mlflow_eval import (open_eval_store, create_eval_run, execute_eval_fold_run,
         log_eval_aggregate, log_eval_summary, transition_eval_state, get_eval_run)
 
-    value = verify_versioned_evaluation(root=root, eval_version=eval_version)
+    value = verify_versioned_evaluation(root=root, eval_version=eval_version,
+        prompt_checkout_root=prompt_checkout_root)
     if value["config"]["scope"] == "full":
         from finetune.eval_holdout import execute_holdout_inference
-        return execute_holdout_inference(root=root, eval_version=eval_version)
+        return execute_holdout_inference(root=root, eval_version=eval_version,
+            prompt_checkout_root=prompt_checkout_root)
     workspace = _formal_workspace(root, eval_version)
     with (workspace / ".execution.lock").open("a+b") as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ValueError("evaluation is already executing") from exc
-        value = verify_versioned_evaluation(root=root, eval_version=eval_version)
+        value = verify_versioned_evaluation(root=root, eval_version=eval_version,
+            prompt_checkout_root=prompt_checkout_root)
         output = workspace / "output"
         if output.exists():
             raise ValueError("existing evaluation output requires recovery; use export for a completed run")
@@ -1007,10 +1020,12 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
             # A fresh private materialization cannot silently reuse an old model cache.
             with tempfile.TemporaryDirectory(prefix=".weights-", dir=workspace) as cache:
                 materialized = materialize_model(registry, value["model"]["model_id"], Path(cache))
-                verify_versioned_evaluation(root=root, eval_version=eval_version)
+                verify_versioned_evaluation(root=root, eval_version=eval_version,
+                    prompt_checkout_root=prompt_checkout_root)
                 all_records, weight_inputs = [], {}
                 for fold in value["folds"]:
-                    verify_versioned_evaluation(root=root, eval_version=eval_version)
+                    verify_versioned_evaluation(root=root, eval_version=eval_version,
+                        prompt_checkout_root=prompt_checkout_root)
                     declared = value["model"]["artifacts"][_formal_artifact_key(value, fold)][value["config"]["artifact_kind"]]
                     artifact = materialized / declared
                     adapter = artifact if value["config"]["artifact_kind"] == "adapter" else None
@@ -1023,10 +1038,12 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str):
                     client.log_artifact(parent.run_id, str(output / "evaluation.yaml"))
                     fold_output = output / f"fold{fold}"
                     def execute():
-                        verify_versioned_evaluation(root=root, eval_version=eval_version)
+                        verify_versioned_evaluation(root=root, eval_version=eval_version,
+                            prompt_checkout_root=prompt_checkout_root)
                         records = _execute_formal_fold(value, fold, base, adapter, fold_output)
                         client.log_artifacts(parent.run_id, str(fold_output), artifact_path=f"fold{fold}")
-                        verify_versioned_evaluation(root=root, eval_version=eval_version)
+                        verify_versioned_evaluation(root=root, eval_version=eval_version,
+                            prompt_checkout_root=prompt_checkout_root)
                         _checked_loader_path(base)
                         if adapter is not None:
                             _checked_loader_path(adapter)
@@ -1171,13 +1188,15 @@ def _read_review_attempts(folder, params, *, pending=None):
         paths[name] = path
     return attempts, paths
 
-def resume_versioned_evaluation(*, root: Path, eval_version: str, blind_reviews: Path) -> Path:
+def resume_versioned_evaluation(*, root: Path, eval_version: str, blind_reviews: Path,
+                                prompt_checkout_root: Path | None = None) -> Path:
     """Import sealed prediction-only reviews and score the same frozen raw bytes."""
     import fcntl
     from versioning.backup import scoped_mlflow_client
     from finetune.eval_semantics import extract_semantics
     from versioning.mlflow_eval import open_eval_store, get_eval_run
-    value = verify_versioned_evaluation(root=root, eval_version=eval_version)
+    value = verify_versioned_evaluation(root=root, eval_version=eval_version,
+        prompt_checkout_root=prompt_checkout_root)
     if value["config"]["scorer"] != "semantic-v4.1" or not value["config"].get("blind_policy"):
         raise ValueError("blind resume requires semantic evaluation with a pre-frozen blind_policy")
     workspace = _formal_workspace(root, eval_version)

@@ -150,7 +150,7 @@ def test_evaluation_succeeds_when_inference_has_no_runtime_failures() -> None:
 # runtime failure versus quality failure; authoritative export retry; no raw
 # weight override or holdout bypass through the public CLI.
 def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter", service_contract=False, prompt_definition=None):
-    from test_train_with_contract import _versioned_data_fixture
+    from test_train_with_contract import _versioned_data_fixture, _mirror_prompt_checkout
     from finetune.train_prepare_run import prepare_versioned_run, execute_versioned_run
     from versioning.registry import open_registry_store, register_model
     from unittest.mock import patch
@@ -162,6 +162,7 @@ def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter", 
         contract = load_v4_1_production_contract()
         definition = {**{k: contract["analysis"][k] for k in ("system_prompt", "user_prompt")}, "output_fields": contract["model_output_fields"]}
     root, media, release, rows = _versioned_data_fixture(tmp_path, prompt_definition=definition)
+    _mirror_prompt_checkout(root)
     base = tmp_path / "base-model"
     base.mkdir()
     (base / "config.json").write_text("{}")

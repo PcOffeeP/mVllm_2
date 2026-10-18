@@ -163,6 +163,8 @@ def _build_parser() -> argparse.ArgumentParser:
     train.add_argument("--media-root", type=Path, help="显式真实训练媒体根")
     train.add_argument("--data-inputs", type=Path, help="七阶段发布的原始 inputs YAML；迁移对象使用既有 receipt")
     train.add_argument("--scope", choices=("cross_validation", "full"), help="prepare 的训练范围，默认三折")
+    train.add_argument("--prompt-checkout-root", type=Path,
+        help="显式 Git checkout 根，用于与 store 副本比对；缺省按 <store>/.. 推导，推导不到即失败")
     train.add_argument("--fold", type=int, help="fold 编号（train run 可选单折0/1/2）")
     train.add_argument("--params", type=Path, help="fold 参数 YAML mapping")
     train.add_argument("--metrics", type=Path, help="指标 YAML mapping")
@@ -202,6 +204,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     evaluate.add_argument("--split", help="single_fold/full 或 holdout split")
     evaluate.add_argument("--pre-registration", type=Path, help="holdout 预注册 YAML")
+    evaluate.add_argument("--prompt-checkout-root", type=Path,
+        help="显式 Git checkout 根，用于与 store 副本比对；缺省按 <store>/.. 推导，推导不到即失败")
     evaluate.add_argument("--executor", help="holdout claim 执行身份")
     evaluate.add_argument("--blind-reviews", type=Path, help="开发语义评测的已封存盲评证据 JSON")
     evaluate.add_argument("--manual", type=Path, help="匿名判读手册；不含真值或媒体")
@@ -543,13 +547,16 @@ def _handle_train(args: argparse.Namespace) -> Any:
             raise CLIUsageError("实际训练仅使用 <root>/workspace/mlflow；请指定对应 root")
         if args.fold is not None and args.action != "run":
             raise CLIUsageError("--fold 仅适用于 train run")
+        if args.prompt_checkout_root is not None and args.action != "prepare":
+            raise CLIUsageError("--prompt-checkout-root 仅适用于 train prepare；后续使用冻结输入")
         if args.action == "prepare":
             _required(args, "data_version", "prompt_version", "git_commit", "config", "environment", "media_root")
             return {"input": prepare_versioned_run(root=args.root, train_version=args.train_version,
                 data_version=args.data_version, prompt_version=args.prompt_version,
                 media_root=args.media_root, fold_configs=_load_mapping(args.config, "fold configs"),
                 git_commit=args.git_commit, environment=_load_mapping(args.environment, "environment"),
-                inputs_path=args.data_inputs, scope=args.scope or "cross_validation")}
+                inputs_path=args.data_inputs, scope=args.scope or "cross_validation",
+                prompt_checkout_root=args.prompt_checkout_root)}
         if args.scope is not None:
             raise CLIUsageError("--scope 仅适用于 train prepare；后续使用冻结范围")
         if args.action == "validate":
@@ -624,7 +631,8 @@ def _handle_eval(args: argparse.Namespace) -> Any:
             execute_performance_evaluation, export_performance_evaluation)
         forbidden = {"pre_registration", "executor", "blind_reviews", "manual", "baseline_eval_version",
             "scope", "split", "fold", "model_artifact", "data_split", "sample_count", "records", "failures",
-            "metrics", "folds", "outcome", "source_train", "prompt_version", "result_refs", "target", "actor", "session_id", "port"}
+            "metrics", "folds", "outcome", "source_train", "prompt_version", "result_refs", "target", "actor", "session_id", "port",
+            "prompt_checkout_root"}
         if args.allow_real_model_calls or args.allow_local_review_metadata:
             raise CLIUsageError("performance cannot invoke answer-review models")
         if args.action == "performance_serve":
@@ -676,6 +684,8 @@ def _handle_eval(args: argparse.Namespace) -> Any:
             rejected.add("manual")
         rejected.add("performance_evidence")
         rejected |= {"session_id", "port"}
+        if args.action not in {"prepare", "validate", "run", "score"}:
+            rejected.add("prompt_checkout_root")
         if args.action != "restricted_summary":
             rejected.add("actor")
         if args.allow_real_model_calls and args.action != "review_run":
@@ -713,7 +723,8 @@ def _handle_eval(args: argparse.Namespace) -> Any:
                 model_version=args.model_version, model_version_number=args.model_version_number,
                 data_version=args.data_version, config=config, git_commit=args.git_commit,
                 media_root=args.media_root, inputs_path=args.data_inputs,
-                pre_registration=args.pre_registration, executor=args.executor)}
+                pre_registration=args.pre_registration, executor=args.executor,
+                prompt_checkout_root=args.prompt_checkout_root)}
         if args.action == "compare":
             _required(args, "baseline_eval_version")
             from finetune.eval_run import compare_versioned_evaluations
@@ -725,15 +736,18 @@ def _handle_eval(args: argparse.Namespace) -> Any:
                     raise CLIUsageError("development blind scoring does not accept a holdout executor")
                 from finetune.eval_run import resume_versioned_evaluation
                 return {"manifest": resume_versioned_evaluation(root=args.root, eval_version=args.eval_version,
-                    blind_reviews=args.blind_reviews)}
+                    blind_reviews=args.blind_reviews, prompt_checkout_root=args.prompt_checkout_root)}
             _required(args, "executor")
             from finetune.eval_holdout import score_holdout_evaluation
-            return {"manifest": score_holdout_evaluation(root=args.root, eval_version=args.eval_version, executor=args.executor)}
+            return {"manifest": score_holdout_evaluation(root=args.root, eval_version=args.eval_version,
+                executor=args.executor, prompt_checkout_root=args.prompt_checkout_root)}
         if args.action == "validate":
-            return verify_versioned_evaluation(root=args.root, eval_version=args.eval_version)
+            return verify_versioned_evaluation(root=args.root, eval_version=args.eval_version,
+                prompt_checkout_root=args.prompt_checkout_root)
         if args.action == "export":
             return {"path": export_versioned_evaluation(root=args.root, eval_version=args.eval_version)}
-        return execute_versioned_evaluation(root=args.root, eval_version=args.eval_version)
+        return execute_versioned_evaluation(root=args.root, eval_version=args.eval_version,
+            prompt_checkout_root=args.prompt_checkout_root)
     if args.action == "create":
         _required(
             args,

@@ -6,7 +6,7 @@ update; this never treats arbitrary new source as equivalent to old evidence.
 """
 
 # Populated after the adapter implementation is finalized and tested.
-STRICT_ADAPTERS = {'finetune/eval_run.py': {'frozen_sha256': '67c9da220108adf612d0ad92d617548be8df43e8ffe86df723d6ed96e83da5ef', 'adapter_sha256': 'e8b61ba6cfe5965f3e3bc358e7155638ccc63029710367086bfe9c39c58b64b2'}, 'finetune/eval_holdout.py': {'frozen_sha256': 'd5ba919cfc94b4c774032c4580ad867e19cee6cebe8885118ad41c8ea16ea4cb', 'adapter_sha256': '2c7a38e9259139b46f7f68ee62a7289b9ae05b5f73edf39d915ce9607390f12f'}}
+STRICT_ADAPTERS = {'finetune/eval_run.py': {'frozen_sha256': '67c9da220108adf612d0ad92d617548be8df43e8ffe86df723d6ed96e83da5ef', 'adapter_sha256': 'b80cacca8c8939128ddbe6bfdec2c21f3c2ac8d3af7e760bde8956c924049a39'}, 'finetune/eval_holdout.py': {'frozen_sha256': 'd5ba919cfc94b4c774032c4580ad867e19cee6cebe8885118ad41c8ea16ea4cb', 'adapter_sha256': 'f96e56568d04c94eda43f1a2a653ca874c0c08dc3b8fa077bf5d25a1ad1718fc'}}
 
 
 def strict_adapter_matches(source: str, *, frozen_digest: str, current_digest: str) -> bool:

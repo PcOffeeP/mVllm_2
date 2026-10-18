@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import itertools
 import os
 from collections.abc import Mapping, Sequence
@@ -49,6 +50,10 @@ class PromptSchemaError(PromptError):
 
 class FrozenPromptMismatch(PromptError):
     """冻结副本缺失、损坏或与正式版本结构化不一致。"""
+
+
+class PromptCheckoutDrift(PromptError):
+    """checkout 副本缺失，或与 store 正式副本字节不一致（两侧内容已分叉）。"""
 
 
 @dataclass(frozen=True)
@@ -344,3 +349,82 @@ def verify_frozen_prompt(
 
     if frozen != formal:
         raise FrozenPromptMismatch("冻结副本与正式 prompt 结构化不一致")
+
+
+def _content_digest(path: Path) -> tuple[str, int]:
+    """返回文件内容的完整 sha256 hex 与字节数。"""
+    content = path.read_bytes()
+    return hashlib.sha256(content).hexdigest(), len(content)
+
+
+def verify_prompt_checkout_copy(
+    root: Path, version: str, *, checkout_root: Path | None = None
+) -> None:
+    """校验 Git checkout 副本与 store 正式副本逐字节一致。
+
+    正式 Prompt 的单一正式位置是 ``<store根>/records/prompts/<version>.yaml``，
+    同一份内容另由 Git 跟踪在 ``<checkout根>/records/prompts/<version>.yaml``。
+    两侧分叉时冻结副本与评测 Prompt 会来自不同事实，因此在冻结或取用之前
+    先比对两侧 sha256 与字节长度，不一致就拒绝，不猜测哪一侧权威。
+
+    ``checkout_root`` 为 None 时按 ``<store根>/..`` 推导，并要求该位置已有
+    同名副本；推导不到或副本缺失均拒绝。显式传入时只比对传入位置。
+
+    只读，不写任何文件。
+
+    Raises:
+        InvalidIdentifier: ``version`` 不是完整 prompt ID。
+        PromptNotFound: store 侧正式 prompt 不存在。
+        PromptCheckoutDrift: checkout 副本缺失、无法定位、与 store 副本解析到同一
+            文件（无法提供比对证据），或与 store 副本字节不一致。
+    """
+    parse_prompt_id(version)
+    root = Path(root).absolute()
+    store_copy = prompt_path(root, version)
+    if not store_copy.is_file():
+        raise PromptNotFound(f"prompt 不存在: {version}")
+
+    store_digest, store_size = _content_digest(store_copy)
+
+    if checkout_root is None:
+        checkout_copy = prompt_path(root.parent, version)
+        if not checkout_copy.is_file():
+            raise PromptCheckoutDrift(
+                f"{version} 的 checkout 副本无法定位：store 正式副本 {store_copy} "
+                f"sha256={store_digest} size={store_size}；"
+                f"按 <store 根>/.. 推导的副本 {checkout_copy} 不存在。"
+                "请用 --prompt-checkout-root 显式指定 Git checkout 根"
+                "（该根下须有 records/prompts/<version>.yaml）。"
+            )
+    else:
+        checkout_copy = prompt_path(Path(checkout_root).absolute(), version)
+        if not checkout_copy.is_file():
+            raise PromptCheckoutDrift(
+                f"{version} 的 checkout 副本无法定位：store 正式副本 {store_copy} "
+                f"sha256={store_digest} size={store_size}；"
+                f"--prompt-checkout-root 指定的副本 {checkout_copy} 不存在。"
+                "请用 --prompt-checkout-root 指向含 records/prompts/<version>.yaml "
+                "的 Git checkout 根。"
+            )
+
+    if checkout_copy.resolve() == store_copy.resolve():
+        raise PromptCheckoutDrift(
+            f"{version} 的 checkout 副本 {checkout_copy} 与 store 正式副本 {store_copy} "
+            "解析到同一文件：两侧是同一文件，无法提供比对证据。"
+            "请把 --prompt-checkout-root 指向真正独立的 Git checkout 根"
+            "（该根下须有 checkout 自己的 records/prompts/<version>.yaml，"
+            "而不是 store 根或指向 store 副本的路径）。"
+        )
+
+    checkout_digest, checkout_size = _content_digest(checkout_copy)
+    if store_digest == checkout_digest and store_size == checkout_size:
+        return None
+
+    raise PromptCheckoutDrift(
+        f"{version} 的 checkout 副本与 store 正式副本字节不一致：\n"
+        f"  store 正式副本: {store_copy} sha256={store_digest} size={store_size}\n"
+        f"  checkout 副本: {checkout_copy} sha256={checkout_digest} size={checkout_size}\n"
+        "请先确认哪一侧是权威内容，再把另一侧更新为相同字节后重试"
+        "（权威侧在 store 时按权威侧覆盖 checkout 副本，反之则重新注册正式 Prompt）；"
+        "checkout 根不是 <store 根>/.. 时用 --prompt-checkout-root 显式指定。"
+    )

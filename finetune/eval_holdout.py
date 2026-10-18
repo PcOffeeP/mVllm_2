@@ -118,12 +118,12 @@ def _authorization(root, value, *, allow_consumed=False):
 
 def build_holdout_input(*, root, eval_version, model_version, model_version_number,
                         data_version, config, git_commit, media_root, inputs_path=None,
-                        pre_registration=None, executor=None):
+                        pre_registration=None, executor=None, prompt_checkout_root=None):
     from versioning.ids import parse_eval_id, parse_model_id, parse_data_id
     from versioning.data_release import load_release_metadata
     from versioning.holdout import validate_holdout_layout
     from versioning.registry import open_registry_store, validate_model_for_evaluation, _run_artifact_root
-    from versioning.prompts import load_prompt, parse_prompt_definition
+    from versioning.prompts import load_prompt, parse_prompt_definition, verify_prompt_checkout_copy
     import yaml
     root = Path(root).absolute()
     if {parse_eval_id(eval_version).protocol, parse_model_id(model_version).protocol,
@@ -194,6 +194,10 @@ def build_holdout_input(*, root, eval_version, model_version, model_version_numb
         seen.add(row['candidate_id']); seen_paths.add(path)
         file = _ordinary(Path(media_root) / path)
         media[row['video_path']] = {'size': file.stat().st_size, 'sha256': ev._sha256(file)}
+    # Prompt 的 store 副本与 Git checkout 副本必须逐字节一致；取 Prompt 之前
+    # 先校验，与训练冻结、评测 prepare 同构。这里只是额外一层，下方「训练
+    # Prompt 与 store 正式副本一致」的判定保持不变。
+    verify_prompt_checkout_copy(root, model.prompt_version, checkout_root=prompt_checkout_root)
     prompt = parse_prompt_definition(yaml.safe_load((training_root / 'prompt.yaml').read_text()))
     if prompt != load_prompt(root, model.prompt_version):
         raise ValueError('holdout model training Prompt drifted')
@@ -271,15 +275,17 @@ def _infer(value, model_dir, adapter_dir):
     return {'predictions': predictions, **runtime_evidence} if _semantic(value) else predictions
 
 
-def execute_holdout_inference(*, root, eval_version):
+def execute_holdout_inference(*, root, eval_version, prompt_checkout_root=None):
     from versioning.backup import scoped_mlflow_client
     from versioning.registry import open_registry_store, materialize_model
     from versioning.mlflow_eval import open_eval_store, create_eval_run, transition_eval_state
     root = Path(root).absolute()
-    value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version)
+    value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version,
+        prompt_checkout_root=prompt_checkout_root)
     workspace = ev._formal_workspace(root, eval_version)
     with _lock(workspace):
-        value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version)
+        value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version,
+            prompt_checkout_root=prompt_checkout_root)
         prereg = _authorization(root, value)
         if (root / 'data/releases' / value['data_version'] / 'authorization/exposed.yaml').exists():
             raise ValueError('holdout predictions already exposed; reinference forbidden')
@@ -307,7 +313,8 @@ def execute_holdout_inference(*, root, eval_version):
                     'adapter_files': ev._weight_inventory(adapter) if adapter else None}
                 _save(private / 'started.json', {'run_id': parent.run_id, 'input_sha256': _digest(value) }, private=True)
                 # Fresh live checks immediately before loading, and after return.
-                ev.verify_versioned_evaluation(root=root, eval_version=eval_version)
+                ev.verify_versioned_evaluation(root=root, eval_version=eval_version,
+                    prompt_checkout_root=prompt_checkout_root)
                 inference_value = {**value, 'media_root': str(ev._restored_evaluation_media_root(root, value))}
                 inferred = _infer(inference_value, base, adapter)
                 if _semantic(value):
@@ -318,7 +325,8 @@ def execute_holdout_inference(*, root, eval_version):
                     _validate_runtime_evidence(value, runtime_evidence)
                 else:
                     predictions, runtime_evidence = inferred, {}
-                ev.verify_versioned_evaluation(root=root, eval_version=eval_version)
+                ev.verify_versioned_evaluation(root=root, eval_version=eval_version,
+                    prompt_checkout_root=prompt_checkout_root)
                 if ev._weight_inventory(base) != weights['model_files'] or (adapter and ev._weight_inventory(adapter) != weights['adapter_files']):
                     raise ValueError('holdout loaded weights drifted')
             _save(private / 'predictions.json', predictions, private=True)
@@ -397,17 +405,19 @@ def _verify_private_scoring(private, value, inference, receipt):
         raise ValueError('holdout actual aggregate scoring mismatch')
 
 
-def score_holdout_evaluation(*, root, eval_version, executor):
+def score_holdout_evaluation(*, root, eval_version, executor, prompt_checkout_root=None):
     from versioning.backup import scoped_mlflow_client
     from versioning.mlflow_eval import open_eval_store, log_eval_summary, transition_eval_state
     from pipeline.v4_1_labels import validate_v4_1_labels
     root = Path(root).absolute()
     workspace = ev._formal_workspace(root, eval_version)
-    value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version)
+    value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version,
+        prompt_checkout_root=prompt_checkout_root)
     if value['config']['scope'] != 'full' or executor != value['authorization']['executor']:
         raise ValueError('holdout scoring executor mismatch')
     with _lock(workspace):
-        value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version)
+        value = ev.verify_versioned_evaluation(root=root, eval_version=eval_version,
+            prompt_checkout_root=prompt_checkout_root)
         prereg = _authorization(root, value, allow_consumed=True)
         private = _private(workspace)
         inference = _json(private / 'inference.json', private=True)

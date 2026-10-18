@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.test_train_with_contract import _versioned_data_fixture
+from tests.test_train_with_contract import _versioned_data_fixture, _mirror_prompt_checkout
 from finetune.train_prepare_run import prepare_versioned_run, execute_versioned_run, verify_versioned_run
 from versioning.mlflow_train import open_train_store, get_train_run, create_fold_run
 from versioning.registry import open_registry_store, register_model
@@ -13,6 +13,7 @@ from versioning.registry import open_registry_store, register_model
 
 def prepare_full(tmp_path, **overrides):
     root, media, release, rows = _versioned_data_fixture(tmp_path)
+    _mirror_prompt_checkout(root)
     base = tmp_path / 'base'
     base.mkdir()
     (base / 'model.safetensors').write_bytes(b'synthetic base')
@@ -50,6 +51,7 @@ def test_unfrozen_external_weights_fail_before_training_freeze(tmp_path, scope, 
 def test_old_frozen_external_weights_cannot_execute(tmp_path, monkeypatch, scope, external_input):
     from finetune import train_prepare_run as preparation
     root, media, _, _ = _versioned_data_fixture(tmp_path)
+    _mirror_prompt_checkout(root)
     base = tmp_path / 'base'
     base.mkdir()
     (base / 'model.safetensors').write_bytes(b'base')

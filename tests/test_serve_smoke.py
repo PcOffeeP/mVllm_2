@@ -445,6 +445,7 @@ def test_service_rejects_frozen_prompt_damage(tmp_path, source):
 def test_service_rejects_individually_valid_but_different_evaluated_prompt(tmp_path, monkeypatch):
     import yaml
     from test_eval_run import _formal_eval_fixture, _fake_formal_runtime
+    from test_train_with_contract import _mirror_prompt_checkout
     from finetune import eval_run
     from pipeline.model_registry import resolve_service_model
     from pipeline.v4_1_production_contract import load_v4_1_production_contract
@@ -458,6 +459,10 @@ def test_service_rejects_individually_valid_but_different_evaluated_prompt(tmp_p
     fixed = load_v4_1_production_contract()
     changed = {**definition, **{k: fixed['analysis'][k] for k in ('system_prompt', 'user_prompt')}}
     current.write_text(yaml.safe_dump(changed, allow_unicode=True))
+    # store 副本被改成另一份合法 Prompt 时，checkout 副本随之同步，使 prepare
+    # 阶段只受「两侧字节一致」这道门约束；本用例要验证的「evaluated Prompt
+    # differs」由随后把 store 副本恢复成原内容触发。
+    _mirror_prompt_checkout(root)
     eval_run.prepare_versioned_evaluation(root=root, eval_version='eval-v4.1-r1', model_version=model.model_id,
         model_version_number=model.version, data_version='data-v4.1-r2', config=config, git_commit='fixture', media_root=media)
     _fake_formal_runtime(monkeypatch, prompt_definition=changed)

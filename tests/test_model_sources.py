@@ -104,9 +104,10 @@ def test_source_cli_rejects_ambiguous_branches_before_store_creation(tmp_path, a
 
 @pytest.fixture
 def diagnostic_model(tmp_path, monkeypatch):
-    from tests.test_train_with_contract import _versioned_data_fixture
+    from tests.test_train_with_contract import _versioned_data_fixture, _mirror_prompt_checkout
     from finetune.train_prepare_run import prepare_versioned_run, execute_versioned_run
     root, media, _, _ = _versioned_data_fixture(tmp_path)
+    _mirror_prompt_checkout(root)
     path = base_files(tmp_path / 'base')
     configs = {f'fold{i}': {'seed': 3411 + i, 'model_name_or_path': str(path),
                'learning_rate': 0.0001, 'do_train': True} for i in range(3)}

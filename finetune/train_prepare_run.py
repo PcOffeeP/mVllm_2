@@ -425,12 +425,13 @@ def _reject_unfrozen_training_inputs(config: Mapping) -> None:
 def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
                           prompt_version: str, media_root: Path, fold_configs: Mapping,
                           git_commit: str, environment: Mapping,
-                          inputs_path: Path | None = None, scope: str = "cross_validation") -> Path:
+                          inputs_path: Path | None = None, scope: str = "cross_validation",
+                          prompt_checkout_root: Path | None = None) -> Path:
     """Freeze a complete scoped invocation without creating MLflow Runs."""
     import fcntl
     from finetune.train_build_dataset import build_versioned_datasets
     from versioning.ids import parse_train_id, parse_data_id, parse_prompt_id
-    from versioning.prompts import prompt_path
+    from versioning.prompts import prompt_path, verify_prompt_checkout_copy
 
     protocols = {parse_train_id(train_version).protocol, parse_data_id(data_version).protocol,
                  parse_prompt_id(prompt_version).protocol}
@@ -454,6 +455,9 @@ def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
     target = run / "input"
     if any(path.is_symlink() for path in (target, *target.parents)):
         raise ValueError("training paths must not contain symlinks")
+    # Prompt 的 store 副本与 Git checkout 副本必须逐字节一致；不一致时在任何
+    # 冻结产物落盘之前拒绝，workspace/runs 下的内容都不会被创建。
+    verify_prompt_checkout_copy(root, prompt_version, checkout_root=prompt_checkout_root)
     files, binding = build_versioned_datasets(root=root, data_version=data_version,
         prompt_version=prompt_version, media_root=media_root, inputs_path=inputs_path, scope=scope)
     configs = {}
