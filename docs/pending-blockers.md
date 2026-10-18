@@ -188,6 +188,17 @@
 - 记录日期: 2026-10-18
 - 备注: 上述 `migration.py` 行号均为近似值，引用前须 `grep -n` 复核；本批不修改 `versioning/migration.py`，不改变任何既有语义。
 
+### PB-017 review 环境清理导致 `tokenizers` 缺失，评测审查兼容性测试需跳过
+
+- status: waiting-decision
+- 阻塞/依赖: 需用户裁定是否恢复 review 环境的 `tokenizers` 依赖；裁定前 `tests/test_eval_review_tokenizer_compatibility.py` 中需真实 `tokenizers` 的 23 项保持 skipped（另 6 项不依赖该包，仍真跑），本轮不新增依赖、不改环境。
+- 解除条件: 用户裁定「恢复」→ 按本条目「证据与背景」的重建命令恢复独立环境并装上 `tokenizers`，实测 `pytest tests/test_eval_review_tokenizer_compatibility.py -q -rs` 为 29 passed（该模块实测收集 29 项，其中 23 项当前 `-rs` 显示 skipped、6 项真跑 passed；恢复依赖后 0 failed / 0 error / 0 skipped 方可视为解除）；用户裁定「不再需要该能力」→ 该模块的去留另行授权处理，本条不得据此自行删用例。
+- 前置动作: 先确认 `requirements-review.lock` 仍可解析且哈希可用（`uv --no-config pip sync --require-hashes` 的输入未变），再决定是否重建 `workspace/review-environment/python311`；重建属环境操作，需单独授权。
+- 负责人: 用户（裁定）；agent（授权后执行恢复与复测）
+- 证据与背景: 仓库内 `tests/test_eval_review_tokenizer_compatibility.py:22` 定义 `_needs_tokenizers = pytest.mark.skipif(importlib.util.find_spec("tokenizers") is None, reason=...)`，仅加在需真实 `tokenizers` 的 10 个测试函数（含 4 个参数化函数，覆盖 23 项）上；纯 stdlib 的 GGUF 头部解析与资产哈希 3 个函数（6 项）不标记，缺包时仍真跑。skip reason 原文为「review 环境 workspace/review-environment/python311 已被清理（仅剩 bin 空壳），缺 tokenizers 包；属清理连带成本，见 docs/pending-blockers.md PB-017」；环境定位与用途见 `finetune/SCRIPTS.md:40`（独立 tokenizer 准备环境位于忽略的 `workspace/review-environment/python311/`，不替换开发或 GPU 环境）；重建命令见 `docs/results/evaluation-tokenizer-materials-20261015.md:41`–`:43`（`uv --no-config venv --python 3.11 workspace/review-environment/python311` 与随后的 `pip sync`/`pip check`）。仓库外/仅本机观察：`workspace/review-environment/python311/` 现只剩 `bin/`（python 符号链接），`workspace/` 被 `.gitignore:13` 忽略，故该清理事实无 Git 证据，仅本机 `ls` 观察；本机 `.venv` 解释器 `importlib.util.find_spec("tokenizers")` 返回 `None`（2026-10-19 实测）。改前基线（同一实测时刻）：`pytest tests/test_eval_review_tokenizer_compatibility.py -q` 为 `23 failed, 6 passed`（23 项全部因 `ModuleNotFoundError: No module named 'tokenizers'`），`--collect-only -q` 实测收集 29 项——差值 6 即不依赖 `tokenizers` 的用例（改前本就 passed）。改为逐用例标记后同一命令实测 `6 passed, 23 skipped`：本次 skip 的 23 项为缺包失败项；另 6 项不依赖 tokenizers，仍真跑。
+- 记录日期: 2026-10-18
+- 备注: 这是环境清理的连带成本，需要决定是否恢复依赖；恢复前不得把跳过项当作「该能力已通过」。（恢复后仅剩余的 skip 即依赖缺失项，6 项纯 stdlib 用例始终真跑。）
+
 ## D. 已确认结论（供对照，避免重复调研）
 
 本节为已定论结论，登记目的是避免重复调研；引用时按下面给出的 `DF-xxx` 或 `文件:行` 标注。

@@ -8,11 +8,24 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import struct
 
 import pytest
+
+# 本模块需要真实 tokenizers 的用例由 _needs_tokenizers 逐项 skip；GGUF 头部解析与
+# 资产哈希等纯 stdlib 用例不依赖 tokenizers，仍真跑（缺包时不制造覆盖损失）。
+# review 环境 workspace/review-environment/python311 已被清理（仅剩 bin 空壳），缺
+# tokenizers 包；这是环境清理的连带成本，处置待定，见 docs/pending-blockers.md PB-017。
+_needs_tokenizers = pytest.mark.skipif(
+    importlib.util.find_spec("tokenizers") is None,
+    reason=(
+        "review 环境 workspace/review-environment/python311 已被清理（仅剩 bin 空壳），"
+        "缺 tokenizers 包；属清理连带成本，见 docs/pending-blockers.md PB-017"
+    ),
+)
 
 from finetune import eval_review_deployment as provider
 from finetune.eval_review import LocalOllamaBroker, MODEL_DIGESTS
@@ -157,6 +170,7 @@ def _build(assets):
     return provider.build_compatible_tokenizer(assets["spec"], assets["renderer"], assets=assets["assets"])
 
 
+@_needs_tokenizers
 def test_original_assets_renderer_and_raw_unicode_are_unchanged(assets):
     from tokenizers import Tokenizer
     path = Path(assets["spec"]["path"]) / "tokenizer.json"
@@ -179,6 +193,7 @@ def test_original_assets_renderer_and_raw_unicode_are_unchanged(assets):
         counter.encode(nfd, add_special_tokens=True)
 
 
+@_needs_tokenizers
 def test_4013_vs_8013_budget_counterexample_is_rejected_before_transport(assets, monkeypatch):
     from tokenizers import Tokenizer
     counter = _build(assets)
@@ -200,6 +215,7 @@ def test_4013_vs_8013_budget_counterexample_is_rejected_before_transport(assets,
     assert calls == []
 
 
+@_needs_tokenizers
 def test_contraction_casefold_is_ascii_only_and_pad_literals_are_recognized(assets):
     from tokenizers import Regex, pre_tokenizers
     counter = _build(assets)
@@ -215,6 +231,7 @@ def test_contraction_casefold_is_ascii_only_and_pad_literals_are_recognized(asse
     assert counter.encode("[PAD0][PAD249]") == [248070, 248319]
 
 
+@_needs_tokenizers
 def test_ornith_audio_controls_are_atomic_and_unused_padding_is_not_added(assets, monkeypatch):
     metadata = assets["metadata"]
     for key in ("tokenizer.ggml.add_eos_token", "tokenizer.ggml.add_padding_token", "tokenizer.ggml.scores"):
@@ -235,6 +252,7 @@ def test_ornith_audio_controls_are_atomic_and_unused_padding_is_not_added(assets
     assert counter.encode("cafe\u0301") != counter.encode("caf\u00e9")
 
 
+@_needs_tokenizers
 @pytest.mark.parametrize("target", ["gguf", "manifest"])
 def test_asset_byte_drift_is_rejected_even_when_explicit_assets_are_supplied(assets, target):
     path = Path(assets["assets"][target]["path"])
@@ -243,6 +261,7 @@ def test_asset_byte_drift_is_rejected_even_when_explicit_assets_are_supplied(ass
         _build(assets)
 
 
+@_needs_tokenizers
 @pytest.mark.parametrize("change", ["vocab", "merges", "special", "pre", "types", "score", "padding"])
 def test_complete_gguf_mapping_drift_is_rejected_after_repinning_bytes(assets, change):
     value = assets["metadata"]
@@ -266,6 +285,7 @@ def test_complete_gguf_mapping_drift_is_rejected_after_repinning_bytes(assets, c
         _build(assets)
 
 
+@_needs_tokenizers
 @pytest.mark.parametrize("change", ["vocab", "merges", "normalizer", "special"])
 def test_original_hf_mapping_cannot_silently_change(assets, change):
     value = assets["original"]
@@ -306,6 +326,7 @@ def test_malformed_or_unbounded_metadata_is_rejected(tmp_path, payload):
         provider._read_gguf_tokenizer_metadata(path)
 
 
+@_needs_tokenizers
 def test_old_pure_hf_audit_cannot_authorize_compatible_counter(assets):
     path = assets["root"] / "old-audit.json"
     _write_json(path, {"schema_version": "tensile-reviewed-tokenizer-equivalence/v1"})
@@ -356,6 +377,7 @@ def _reviewed_mapping(assets, counter):
     return audit, save
 
 
+@_needs_tokenizers
 def test_reviewed_v2_mapping_checks_unchanged_prompt_and_complete_golden_ids(assets):
     counter = _build(assets)
     audit, _ = _reviewed_mapping(assets, counter)
@@ -367,6 +389,7 @@ def test_reviewed_v2_mapping_checks_unchanged_prompt_and_complete_golden_ids(ass
     assert provider.verify_tokenizer_equivalence_audit("qwen3.5:9b", assets["spec"], rebuilt) == result
 
 
+@_needs_tokenizers
 @pytest.mark.parametrize("change", ["counter", "implementation", "golden", "assets"])
 def test_reviewed_v2_mapping_cannot_approve_drift_by_repinning_audit(assets, change):
     counter = _build(assets)
