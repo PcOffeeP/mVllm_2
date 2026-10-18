@@ -68,7 +68,7 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 
 2026-10-13现场核查：旧current仍指向Fold0发布，其adapter和merged索引10个分片在场；基座索引4个分片在场。限定run目录中concise缺权重、visual未找到，不代表全盘丢失。指定store的records/models、training、evaluations及默认MLflow路径未创建；用户说明尚未开展新体系正式业务流程，这符合阶段预期，不作为迁移失败。首次正式运行时仍需明确Registry配置根。旧current与旧Registry身份不授予新alias或passed。细节和限制见[现场报告](results/remote-state-refresh-20261013.md)；模型质量、旧预测及历史恢复调查仍以原证据日期为准。
 
-2026-10-16补充限定只读核验：训练机仍为干净 `main@3f200461`，本轮起始Mac `a0f1e1ab` 比它多17个提交，未同步。基座23个白名单文件及旧Fold0 adapter完整SHA已核；前序已确认四片权重与官方main观察一致，后续固定revision比对及代码差异见下；未补造来源声明或登记模型。指定store的model/train/eval与默认MLflow仍未创建。minimal试点归档缺逐样本记录副本，原run只stat未读；未删除文件，真实备份/恢复仍缺准确根路径。该核验不刷新2026-10-13 GPU环境验收，不运行模型；见本轮推进记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。
+2026-10-16补充限定只读核验：训练机当时为干净 `main@3f200461`，本轮起始Mac `a0f1e1ab` 比它多17个提交，未同步；训练机工作区当前已在 `feat/evaluation-development@e7bd1e75`（2026-10-18 经 bundle + `--ff-only` 同步完成，未产生合并提交），故本段 2026-10-16 的 `main@3f200461` 只是当时的核验起点，不代表当前工作区状态。基座23个白名单文件及旧Fold0 adapter完整SHA已核；前序已确认四片权重与官方main观察一致，后续固定revision比对及代码差异见下；未补造来源声明或登记模型。指定store的model/train/eval与默认MLflow仍未创建。minimal试点归档缺逐样本记录副本，原run只stat未读；未删除文件，真实备份/恢复仍缺准确根路径。该核验不刷新2026-10-13 GPU环境验收，不运行模型；见本轮推进记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。
 
 2026-10-16后续固定来源比对已完成：HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`的配置、tokenizer、processor与四权重身份相符，官方ModelScope历史树解释了README和额外配置来源。唯一代码偏差为实际基座构造函数新增`self.post_init()`；后续已静态核定框架用途，历史来源/动机追查按用户要求取消，实际运行影响未验（见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)）；未覆盖原文件、补造来源声明或登记模型。7个仓内代码文件仅做AST闭包，没有执行远程代码。详见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)。
 
