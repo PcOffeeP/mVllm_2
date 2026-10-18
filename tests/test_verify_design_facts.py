@@ -6,11 +6,18 @@
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "verify_design_facts.py"
+
+
+def _child_env() -> dict[str, str]:
+    """去掉 `GIT_*` 变量：父进程若设了 `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE`，
+    子进程里的 `git init` / `git add` 与被测脚本的 `git ls-files` 都会落到别的仓库上。"""
+    return {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
 
 
 def _run(root: Path) -> subprocess.CompletedProcess:
@@ -20,6 +27,8 @@ def _run(root: Path) -> subprocess.CompletedProcess:
         cwd=str(root),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env=_child_env(),
     )
 
 
@@ -33,7 +42,15 @@ def _write(root: Path, relative: str, text: str) -> Path:
 def _git_index(root: Path) -> None:
     """建仓并把当前文件全部加入索引（`--check-doc-paths` 只扫受跟踪的 md）。"""
     for command in (["git", "init", "-q"], ["git", "add", "-A"]):
-        subprocess.run(command, cwd=str(root), check=True, capture_output=True, text=True)
+        subprocess.run(
+            command,
+            cwd=str(root),
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=_child_env(),
+        )
 
 
 def _context(result: subprocess.CompletedProcess) -> str:
@@ -90,7 +107,25 @@ def test_allowlisted_reference_is_exempt_from_missing_check(tmp_path: Path):
 
     assert result.returncode == 0, _context(result)
     assert "PASS" in result.stdout, _context(result)
-    assert "docs/results/nope-missing.md" not in _missing_refs(result.stdout), _context(result)
+    # 断言「确实走了豁免分支」：只断言退出 0 无法排除「有白名单就整体豁免」的假绿。
+    assert "白名单豁免 1 处" in result.stdout, _context(result)
+
+
+def test_allowlist_rule_that_matches_nothing_does_not_exempt(tmp_path: Path):
+    # 负向控制：白名单文件存在、但规则不匹配该引用时，缺口路径仍必须判 MISSING。
+    _write(tmp_path, "docs/a.md", "示例见 docs/results/nope-missing.md 。\n")
+    _write(
+        tmp_path,
+        "scripts/doc-path-allowlist.txt",
+        "# 规则指向另一个路径，与被引用的缺口路径无关\nrefs: docs/results/other\\.md\n",
+    )
+    _git_index(tmp_path)
+
+    result = _run(tmp_path)
+
+    assert result.returncode != 0, _context(result)
+    assert "MISSING docs/results/nope-missing.md" in result.stdout, _context(result)
+    assert "白名单豁免 0 处" in result.stdout, _context(result)
 
 
 def test_dot_prefixed_references_resolve_without_false_missing(tmp_path: Path):
@@ -109,3 +144,5 @@ def test_dot_prefixed_references_resolve_without_false_missing(tmp_path: Path):
     assert _missing_refs(result.stdout) == [], _context(result)
     # 两条引用都要真的被抽取判定，避免 `./` `../` 因提取失败而「零引用即 PASS」。
     assert "合计 2 处引用" in result.stdout, _context(result)
+    # 两条基址各命中一次：`./` 只能按仓库根命中，`../` 只能按引用所在 md 的目录命中。
+    assert "存在 2 处（root 1、file 1、both 0）" in result.stdout, _context(result)
