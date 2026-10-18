@@ -16,7 +16,8 @@ refs: finetune/results/diagnostics/.* files: pipeline/scripts/diagnostics/SCRIPT
 refs: tests/test_diagnostic_scorer\.py files: pipeline/scripts/diagnostics/SCRIPTS\.md
 
 # --- 设计稿计划产出、尚未落地（只对对应设计稿生效） ---------------------------
-# docs/plans/2026-10-18-full-chain-validation.md：全链验证 c1–c14 产物与审计脚本均标「待产出」。
+# docs/plans/2026-10-18-full-chain-validation.md：审计脚本在「产出证据」中标明「待新建」
+# （原文「本轮提交不含这些脚本」），c1–c14 产物是其待跑命令的 --out 结果，均尚未落地。
 refs: records/full-chain-validation-20261018/.* files: docs/plans/2026-10-18-full-chain-validation\.md
 refs: scripts/(?:eval|train)_audit_[a-z_]+\.py files: docs/plans/2026-10-18-full-chain-validation\.md
 refs: scripts/release_audit_source_media\.py files: docs/plans/2026-10-18-full-chain-validation\.md
@@ -43,6 +44,6 @@ files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\
 files: docs/tasks/.*
 # 历史评测、诊断报告与归档结果。
 files: docs/results/.*
-# 调研笔记：其引用的 docs/llamafactory_train_and_infer.md 与 finetune/readme.md 在本仓库
-# 从未存在（外部或未落地文档，大小写写法也都不存在），保留原文不改写。
+# 调研笔记：其引用的 docs/llamafactory_train_and_infer.md 在本仓库从未存在（外部或未落地文档）；
+# finetune/README.md 曾存在（55 个提交）并于 59dee2d1 删除，小写 finetune/readme.md 从未存在。
 files: docs/research/.*

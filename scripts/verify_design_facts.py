@@ -88,6 +88,10 @@ DOC_PATH_RE = re.compile(
     r"[A-Za-z0-9_./\-]+\.(?:md|py|jsonl|json|yaml|yml|csv)"
     r")(?![A-Za-z0-9_])"
 )
+# 全角省略号占位：ASCII 正则提不到这种写法（如 `docs/plans/…report.md`），单列一条 NOTE 以免静默消失。
+ELLIPSIS_HINT_RE = re.compile(
+    r"(?:docs|pipeline|finetune|versioning|tests|scripts|records)/\S*…"
+)
 # 白名单规则关键字：`refs:` 与 `files:` 可单独出现，也可同行同时出现（两个都匹配才豁免）。
 RULE_KEYWORD_RE = re.compile(r"(?:^|\s)(?P<kind>refs|files):\s*")
 DOC_PATH_ALLOWLIST = Path("scripts") / "doc-path-allowlist.txt"
@@ -629,14 +633,16 @@ def _git_md_files(root: Path) -> tuple[list[str] | None, str | None]:
     return files, None
 
 
-def _scan_md_refs(root: Path, md_files: list[str]) -> tuple[list[dict], list[dict], list[str]]:
+def _scan_md_refs(root: Path, md_files: list[str]) -> tuple[list[dict], list[dict], list[dict], list[str]]:
     """逐行抽取 md 里的仓库内路径引用。
 
-    返回 (引用列表, 占位跳过列表, 读取问题)；含 `...` 的占位引用记入跳过列表而不判存在性，
-    以便输出里区分「占位符」与「手滑写错的路径」。
+    返回 (引用列表, 占位跳过列表, 全角省略号提示列表, 读取问题)；含 `...` 的占位引用记入跳过列表
+    而不判存在性，以便输出里区分「占位符」与「手滑写错的路径」；含全角 `…` 的写法提不到，
+    单独记入提示列表，避免静默消失。
     """
     refs: list[dict] = []
     skipped: list[dict] = []
+    hints: list[dict] = []
     problems: list[str] = []
     for relative in md_files:
         try:
@@ -651,7 +657,9 @@ def _scan_md_refs(root: Path, md_files: list[str]) -> tuple[list[dict], list[dic
                     skipped.append(item)
                     continue
                 refs.append(item)
-    return refs, skipped, problems
+            if "…" in line and ELLIPSIS_HINT_RE.search(line):
+                hints.append({"file": relative, "line": lineno})
+    return refs, skipped, hints, problems
 
 
 def _parse_rule_line(line: str) -> tuple[dict | None, str | None]:
@@ -729,13 +737,30 @@ def _match_rule(rule: dict, ref: str, md_file: str) -> bool:
 
 
 def _ref_exists(root: Path, ref: str, md_file: str) -> tuple[bool, bool]:
-    """双解析存在性：返回 (按仓库根拼接是否存在, 按引用所在 md 的目录拼接是否存在)。"""
+    """双解析存在性：返回 (按仓库根拼接是否为文件, 按引用所在 md 的目录拼接是否为文件)。
+
+    两条解析路径都要求最终路径落在仓库根之内（与默认模式的 evidence 校验一致）：
+    `../` 只要不出根仍合法，`../..` 这类越出仓库根的写法一律按「不存在」处理；
+    目标必须是普通文件，同名的目录不算命中。
+    """
     try:
-        at_root = (root / ref).exists()
-        at_file = ((root / md_file).parent / ref).exists()
+        root_resolved = root.resolve()
     except OSError:
-        return False, False
-    return at_root, at_file
+        root_resolved = root
+    results: list[bool] = []
+    for base in (root, (root / md_file).parent):
+        try:
+            target = (base / ref).resolve()
+        except OSError:
+            results.append(False)
+            continue
+        try:
+            target.relative_to(root_resolved)
+        except ValueError:
+            results.append(False)
+            continue
+        results.append(target.is_file())
+    return results[0], results[1]
 
 
 def check_doc_paths_mode(root: Path) -> int:
@@ -752,10 +777,13 @@ def check_doc_paths_mode(root: Path) -> int:
         print("FAIL  git ls-files '*.md' 没有返回任何文件，无法自检（不在 git 仓库内或没有受跟踪的 md）")
         return 1
 
-    refs, skipped, problems = _scan_md_refs(root, md_files)
+    refs, skipped, hints, problems = _scan_md_refs(root, md_files)
     if problems:
         for problem in problems:
             print(f"FAIL  {problem}")
+        return 1
+    if not refs:
+        print("FAIL  未扫描到任何引用，无法证明覆盖（检查正则/扩展名/前缀常量）")
         return 1
 
     allowlist_path = root / DOC_PATH_ALLOWLIST
@@ -773,6 +801,8 @@ def check_doc_paths_mode(root: Path) -> int:
 
     for item in skipped:
         print(f"SKIP {item['ref']}  <- {item['file']}:{item['line']}")
+    for item in hints:
+        print(f"NOTE  含全角省略号、未判定  <- {item['file']}:{item['line']}")
 
     hits = {"both": 0, "root": 0, "file": 0}
     missing: list[dict] = []
@@ -788,9 +818,10 @@ def check_doc_paths_mode(root: Path) -> int:
             if at_root or at_file:
                 hits["root" if at_root else "file"] += 1
                 continue
-            rule = next((rule for rule in rules if _match_rule(rule, ref, item["file"])), None)
-            if rule is not None:
-                rule["hits"] += 1
+            matched = [rule for rule in rules if _match_rule(rule, ref, item["file"])]
+            if matched:
+                for rule in matched:
+                    rule["hits"] += 1
                 exempt_places += 1
                 continue
             unresolved.append(item)
@@ -816,6 +847,8 @@ def check_doc_paths_mode(root: Path) -> int:
     )
     if skipped:
         print(f"占位符跳过 {len(skipped)} 处（含 `...`，不判存在性）")
+    if hints:
+        print(f"含全角省略号、未判定 {len(hints)} 处")
     if missing:
         print("若为示例/计划路径，可加入 `scripts/doc-path-allowlist.txt`")
         return 1
@@ -923,7 +956,11 @@ def render_mode() -> int:
 
 
 def _split_root_arg(args: list[str]) -> tuple[list[str], str | None, str | None]:
-    """抽出 `--root <路径>` / `--root=<路径>`；返回 (其余参数, root 文本, 错误信息)。"""
+    """抽出 `--root <路径>` / `--root=<路径>`；返回 (其余参数, root 文本, 错误信息)。
+
+    下面三种情况按参数错误处理（退出 2）：取值缺失或为空、取值以 `--` 开头（疑似把参数当路径）、
+    重复给出 `--root`（不静默取最后一个）。
+    """
     rest: list[str] = []
     root: str | None = None
     index = 0
@@ -931,18 +968,30 @@ def _split_root_arg(args: list[str]) -> tuple[list[str], str | None, str | None]
         arg = args[index]
         if arg == "--root":
             if index + 1 >= len(args):
-                return rest, None, "--root 缺少取值"
-            root = args[index + 1]
+                return rest, None, "--root 缺少取值（后面没有参数）"
+            value = args[index + 1]
+            if value.startswith("--"):
+                return rest, None, f"--root 缺少取值（后面紧跟的是参数 {value}，疑似把参数当路径）"
+            if not value.strip():
+                return rest, None, "--root 取值为空"
+            if root is not None:
+                return rest, None, f"--root 重复给出（已给 {root}，又给 {value}）"
+            root = value
             index += 2
             continue
         if arg.startswith("--root="):
-            root = arg[len("--root="):]
+            value = arg[len("--root="):]
+            if not value.strip():
+                return rest, None, "--root 取值为空"
+            if value.startswith("--"):
+                return rest, None, f"--root 缺少取值（{value} 以 -- 开头，疑似把参数当路径）"
+            if root is not None:
+                return rest, None, f"--root 重复给出（已给 {root}，又给 {value}）"
+            root = value
             index += 1
             continue
         rest.append(arg)
         index += 1
-    if root is not None and not root.strip():
-        return rest, None, "--root 取值为空"
     return rest, root, None
 
 
