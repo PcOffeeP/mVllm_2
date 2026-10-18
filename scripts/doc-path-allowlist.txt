@@ -18,7 +18,26 @@ refs: tests/test_diagnostic_scorer\.py files: pipeline/scripts/diagnostics/SCRIP
 # --- 设计稿计划产出、尚未落地（只对对应设计稿生效） ---------------------------
 # docs/plans/2026-10-18-full-chain-validation.md：审计脚本在「产出证据」中标明「待新建」
 # （原文「本轮提交不含这些脚本」），c1–c14 产物是其待跑命令的 --out 结果，均尚未落地。
-refs: records/full-chain-validation-20261018/.* files: docs/plans/2026-10-18-full-chain-validation\.md
+# 下列 17 条是上述设计稿的计划产物（c1–c14 待跑命令的 --out 结果），records/full-chain-validation-20261018/
+# 目录当前整体不存在；原为 `refs: records/full-chain-validation-20261018/.*` 一条子树通配，现收窄为逐条
+# 精确路径，避免通配顺带豁免未来新增的失效引用。产物生成落地后必须逐条移除对应豁免，不得长期保留。
+refs: records/full-chain-validation-20261018/c1/media_probe\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c2/event_time_bias\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c2/summary\.json files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c3/geometry_assert\.json files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c4/confusion_geometry_vs_visual\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c5/prompt_field_diff\.json files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c6/fold_counts\.json files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c6/class_balance\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c7/param_provenance\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c7/token_lengths\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c8/processor_inputs\.json files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c9/parse_matrix\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c9/strict_valid_cases\.md files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c10/synthetic_results\.json files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c11/aggregate_with_support\.json files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c13/gate_coverage\.md files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: records/full-chain-validation-20261018/c14/metric_provenance\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
 refs: scripts/(?:eval|train)_audit_[a-z_]+\.py files: docs/plans/2026-10-18-full-chain-validation\.md
 refs: scripts/release_audit_source_media\.py files: docs/plans/2026-10-18-full-chain-validation\.md
 # docs/pending-blockers.md:62/:86/:88 与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md:490–:519
