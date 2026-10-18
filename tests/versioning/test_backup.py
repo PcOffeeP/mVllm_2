@@ -254,16 +254,16 @@ from versioning.manifest import export_model_manifest, validate_model_manifest
 from versioning.materialize import materialize_current, validate_service_current
 from versioning.prompts import create_prompt, load_prompt, prompt_path
 from versioning.registry import (
+    EVAL_ID_TAG,
     MATERIALIZED_METADATA_FILE,
+    PRODUCTION_APPROVED_TAG,
+    REGISTERED_MODEL_NAME,
     ModelRegistryStore,
-    approve_model_for_production,
-    finalize_model_evaluation,
     get_model,
     get_model_by_alias,
     materialize_model,
     open_registry_store,
     register_model,
-    set_alias,
     set_offline_backup_scope,
 )
 
@@ -408,6 +408,77 @@ def backup_root(tmp_path: Path) -> Path:
     return tmp_path / "drive"
 
 
+def _historical_eval_binding(
+    registry: ModelRegistryStore,
+    eval_store: EvalRecordStore,
+    model_id: str,
+    eval_id: str,
+) -> None:
+    """按 pre-migration 状态装入 eval 绑定，不调用新严格准入 API。
+
+    本模块测离线备份（源集合 / catalog / 恢复），eval ↔ 模型的绑定只是被携带的
+    既有状态，不是被测对象；新准入门禁本身由 tests/versioning/test_registry.py
+    与 tests/versioning/test_eval_admission_restore.py 覆盖。装入前用真实读回
+    （get_eval_run / get_model）核对绑定一致，不一致直接 fail，避免把不一致的
+    状态静默当成黄金世界。
+    """
+    model = get_model(registry, model_id)
+    eval_record = get_eval_run(eval_store, eval_id)
+    assert eval_record.model_id == model_id, (
+        f"eval {eval_id} 的 model_id {eval_record.model_id!r} 与 {model_id!r} 不一致"
+    )
+    assert eval_record.model_version_number == model.version, (
+        f"eval {eval_id} 引用的数值版本 {eval_record.model_version_number} "
+        f"与 model {model_id} 的实际版本 {model.version} 不一致"
+    )
+    assert eval_record.outcome == "passed", (
+        f"eval {eval_id} 的 outcome 为 {eval_record.outcome!r}，备份世界只装入已通过记录"
+    )
+    MlflowClient(tracking_uri=registry.tracking_uri).set_model_version_tag(
+        REGISTERED_MODEL_NAME, str(model.version), EVAL_ID_TAG, eval_id
+    )
+    bound = get_model(registry, model_id)
+    assert bound.eval_id == eval_id, (
+        f"model {model_id} 读回 eval_id 为 {bound.eval_id!r}，期望 {eval_id!r}"
+    )
+
+
+def _historical_alias(
+    registry: ModelRegistryStore, model_id: str, alias: str
+) -> None:
+    """按 pre-migration 状态装入既有 alias。
+
+    set_alias 在 alias 未指向同一数值版本时会走新准入（_require_new_quality_protocol），
+    历史 strict 记录必被拒绝；这里直接写 alias 并读回核对。
+    """
+    model = get_model(registry, model_id)
+    MlflowClient(tracking_uri=registry.tracking_uri).set_registered_model_alias(
+        REGISTERED_MODEL_NAME, alias, str(model.version)
+    )
+    assert get_model_by_alias(registry, alias).model_id == model_id, (
+        f"alias {alias!r} 读回未指向 {model_id!r}"
+    )
+
+
+def _historical_production_approval(
+    registry: ModelRegistryStore, model_id: str
+) -> None:
+    """按 pre-migration 状态装入 production_approved 标记，不调用公开批准 API。
+
+    approve_model_for_production 对历史 strict 记录走不通：非已批准分支在
+    versioning/registry.py:1296 调 _require_new_quality_protocol（与本模块原来的
+    64 处 finalize 拒绝同一道门禁）。本模块只测备份/恢复携带的状态，故直接写
+    tag 并读回核对。
+    """
+    model = get_model(registry, model_id)
+    MlflowClient(tracking_uri=registry.tracking_uri).set_model_version_tag(
+        REGISTERED_MODEL_NAME, str(model.version), PRODUCTION_APPROVED_TAG, "true"
+    )
+    assert get_model(registry, model_id).production_approved is True, (
+        f"model {model_id} 读回 production_approved 未生效"
+    )
+
+
 @pytest.fixture()
 def world(
     registry: ModelRegistryStore,
@@ -435,7 +506,7 @@ def world(
     }
     register_model(registry, MODEL_ID, train_id=TRAIN_ID)
     _eval_chain(eval_store, data_root, EVAL_ID, MODEL_ID, model_version_number=1)
-    finalize_model_evaluation(registry, MODEL_ID, eval_id=EVAL_ID)
+    _historical_eval_binding(registry, eval_store, MODEL_ID, EVAL_ID)
 
     train2 = _train_chain(train_store, BUNDLED_TRAIN_ID, PROMPT_VERSION)
     register_model(
@@ -446,17 +517,17 @@ def world(
         deploy_target="artifacts/fold0/merged",
     )
     _eval_chain(eval_store, data_root, BUNDLED_EVAL_ID, BUNDLED_MODEL_ID, model_version_number=2)
-    finalize_model_evaluation(registry, BUNDLED_MODEL_ID, eval_id=BUNDLED_EVAL_ID)
+    _historical_eval_binding(registry, eval_store, BUNDLED_MODEL_ID, BUNDLED_EVAL_ID)
 
     _train_chain(train_store, UNSCOPED_TRAIN_ID, UNSCOPED_PROMPT_VERSION)
     register_model(registry, UNSCOPED_MODEL_ID, train_id=UNSCOPED_TRAIN_ID)
     _eval_chain(eval_store, data_root, UNSCOPED_EVAL_ID, UNSCOPED_MODEL_ID, model_version_number=3)
-    finalize_model_evaluation(registry, UNSCOPED_MODEL_ID, eval_id=UNSCOPED_EVAL_ID)
+    _historical_eval_binding(registry, eval_store, UNSCOPED_MODEL_ID, UNSCOPED_EVAL_ID)
 
     # 粘性备份范围（B8 前移状态）：r1→adapter，r2→production_bundle；r3 不设。
     set_offline_backup_scope(registry, MODEL_ID, "adapter")
     set_offline_backup_scope(registry, BUNDLED_MODEL_ID, "production_bundle")
-    set_alias(registry, MODEL_ID, "candidate")
+    _historical_alias(registry, MODEL_ID, "candidate")
 
     # 作用域模型的真实 artifacts + 物化（模型备份源）。
     _log_train_artifacts(registry, train1.run_id, tmp_path)
@@ -951,7 +1022,7 @@ class TestEnumerateBackupSources:
 
         # candidate 切到另一模型：r1 失去 alias，但历史最高范围不降级、
         # 不退出源集合（§2.11：不得依据当前 alias 反推历史角色）
-        set_alias(registry, BUNDLED_MODEL_ID, "candidate")
+        _historical_alias(registry, BUNDLED_MODEL_ID, "candidate")
         assert _raw_aliases(registry, 1) == []
         assert _raw_aliases(registry, 2) == ["candidate"]
 
@@ -1499,8 +1570,8 @@ class TestRestoreBackup:
         self, world: World, registry: ModelRegistryStore, backup_root: Path, tmp_path: Path
     ) -> None:
         # 恢复前把 r2 升为 production（alias 路由纳入备份/恢复验证）
-        approve_model_for_production(registry, BUNDLED_MODEL_ID)
-        set_alias(registry, BUNDLED_MODEL_ID, "production")
+        _historical_production_approval(registry, BUNDLED_MODEL_ID)
+        _historical_alias(registry, BUNDLED_MODEL_ID, "production")
 
         catalog = create_backup(registry, **_backup_args(world, backup_root))
         assert set(EXPECTED_OBJECT_IDS) == {
@@ -1597,6 +1668,10 @@ class TestRestoreBackup:
         assert (
             get_model_by_alias(restored_registry, "production").model_id
             == BUNDLED_MODEL_ID
+        )
+        # production_approved 必须随备份/恢复被真实携带，而非仅 alias 被重建
+        assert (
+            get_model(restored_registry, BUNDLED_MODEL_ID).production_approved is True
         )
         materialize_current(
             restored_registry,
@@ -1745,7 +1820,7 @@ class TestCatalogWriteGate:
         # 世界演进：candidate alias 移到另一作用域模型 → 源 SQLite 字节变化，
         # 下次运行 mlflow-store 走真实重拷（修复路径），随后被注入位腐。
         # 源集合不变：范围由 scope tag 决定，与当前 alias 无关。
-        set_alias(registry, BUNDLED_MODEL_ID, "candidate")
+        _historical_alias(registry, BUNDLED_MODEL_ID, "candidate")
 
         _install_mlflow_copy_corruption(monkeypatch, backup_root)
         with pytest.raises(BackupIntegrityError):
