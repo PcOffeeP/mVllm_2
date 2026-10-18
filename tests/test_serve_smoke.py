@@ -10,6 +10,57 @@ from pipeline.scripts.serve_smoke import (
 )
 
 
+def _historical_eval_binding(registry, model_id, eval_id):
+    """按 pre-migration 状态装入 eval 绑定，不调用新严格准入 API。
+
+    本文件测的是服务解析 / 预检 / 冒烟，eval ↔ 模型的绑定只是被携带的既有状态；
+    新准入门禁本身由 tests/versioning/test_registry.py 与
+    tests/versioning/test_eval_admission_restore.py 覆盖。装入前用真实读回
+    （get_eval_run / get_model）核对一致，不一致直接 fail。
+    """
+    from mlflow.tracking import MlflowClient
+    from versioning.mlflow_eval import get_eval_run, open_eval_store
+    from versioning.registry import EVAL_ID_TAG, REGISTERED_MODEL_NAME, get_model
+
+    model = get_model(registry, model_id)
+    eval_record = get_eval_run(open_eval_store(registry.root), eval_id)
+    assert eval_record.model_id == model_id, (
+        f"eval {eval_id} 的 model_id {eval_record.model_id!r} 与 {model_id!r} 不一致"
+    )
+    assert eval_record.model_version_number == model.version, (
+        f"eval {eval_id} 引用的数值版本 {eval_record.model_version_number} "
+        f"与 model {model_id} 的实际版本 {model.version} 不一致"
+    )
+    assert eval_record.outcome == "passed", (
+        f"eval {eval_id} 的 outcome 为 {eval_record.outcome!r}，服务世界只装入已通过记录"
+    )
+    MlflowClient(tracking_uri=registry.tracking_uri).set_model_version_tag(
+        REGISTERED_MODEL_NAME, str(model.version), EVAL_ID_TAG, eval_id
+    )
+    bound = get_model(registry, model_id)
+    assert bound.eval_id == eval_id, (
+        f"model {model_id} 读回 eval_id 为 {bound.eval_id!r}，期望 {eval_id!r}"
+    )
+
+
+def _historical_alias(registry, model_id, alias):
+    """按 pre-migration 状态装入既有 alias（set_alias 会走新准入并被历史记录拒绝）。"""
+    from mlflow.tracking import MlflowClient
+    from versioning.registry import (
+        REGISTERED_MODEL_NAME,
+        get_model,
+        get_model_by_alias,
+    )
+
+    model = get_model(registry, model_id)
+    MlflowClient(tracking_uri=registry.tracking_uri).set_registered_model_alias(
+        REGISTERED_MODEL_NAME, alias, str(model.version)
+    )
+    assert get_model_by_alias(registry, alias).model_id == model_id, (
+        f"alias {alias!r} 读回未指向 {model_id!r}"
+    )
+
+
 def test_build_analysis_payload_uses_canonical_prompts_and_one_mp4():
     contract = load_production_contract()
     payload = build_analysis_payload(b"video-bytes", contract)
@@ -69,7 +120,7 @@ def test_validate_analysis_response_requires_evidence_and_identity():
 def _service_fixture(tmp_path, artifact_kind="adapter", *, prompt_definition=None):
     from test_eval_run import _formal_eval_fixture, _fake_formal_runtime
     from finetune import eval_run
-    from versioning.registry import open_registry_store, finalize_model_evaluation, set_offline_backup_scope, set_alias
+    from versioning.registry import open_registry_store, set_offline_backup_scope
     from versioning.manifest import export_model_manifest
     from versioning.materialize import materialize_current
     root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold", kind=artifact_kind, service_contract=True, prompt_definition=prompt_definition)
@@ -80,10 +131,10 @@ def _service_fixture(tmp_path, artifact_kind="adapter", *, prompt_definition=Non
         _fake_formal_runtime(patch, service_contract=True, prompt_definition=prompt_definition)
         eval_run.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
     registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
-    finalize_model_evaluation(registry, model.model_id, eval_id="eval-v4.1-r1")
+    _historical_eval_binding(registry, model.model_id, "eval-v4.1-r1")
     set_offline_backup_scope(registry, model.model_id, "adapter" if artifact_kind == "adapter" else "production_bundle")
     export_model_manifest(root / "records/models" / model.model_id / "manifest.yaml", store=registry, model_id=model.model_id)
-    set_alias(registry, model.model_id, "candidate")
+    _historical_alias(registry, model.model_id, "candidate")
     materialize_current(registry, alias="candidate", service_mode="development",
         models_root=root / "workspace/models", records_root=root)
     return root, registry, model
@@ -449,7 +500,7 @@ def test_service_rejects_individually_valid_but_different_evaluated_prompt(tmp_p
     from finetune import eval_run
     from pipeline.model_registry import resolve_service_model
     from pipeline.v4_1_production_contract import load_v4_1_production_contract
-    from versioning.registry import open_registry_store, finalize_model_evaluation, set_offline_backup_scope, set_alias
+    from versioning.registry import open_registry_store, set_offline_backup_scope
     from versioning.manifest import export_model_manifest
     from versioning.materialize import materialize_current
     definition = _migrated_prompt()
@@ -468,10 +519,10 @@ def test_service_rejects_individually_valid_but_different_evaluated_prompt(tmp_p
     _fake_formal_runtime(monkeypatch, prompt_definition=changed)
     eval_run.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
     registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
-    finalize_model_evaluation(registry, model.model_id, eval_id='eval-v4.1-r1')
+    _historical_eval_binding(registry, model.model_id, 'eval-v4.1-r1')
     set_offline_backup_scope(registry, model.model_id, 'adapter')
     export_model_manifest(root / 'records/models' / model.model_id / 'manifest.yaml', store=registry, model_id=model.model_id)
-    set_alias(registry, model.model_id, 'candidate')
+    _historical_alias(registry, model.model_id, 'candidate')
     materialize_current(registry, alias='candidate', service_mode='development', models_root=root / 'workspace/models', records_root=root)
     current.write_bytes(original)
     with pytest.raises(ValueError, match='evaluated Prompt differs'):
