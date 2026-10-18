@@ -1,0 +1,802 @@
+{
+  "schema_version": "tensile-vlm-effect-profile/r1/v1",
+  "profile_date": "2026-10-18",
+  "model": {
+    "model_name": "v4.1-agent-pipeline-fold0-r1",
+    "protocol_version": "v4.1",
+    "core_purpose": "agent-pipeline",
+    "training_scope": "fold0",
+    "round": 1,
+    "release_type": "milestone",
+    "quality_tier": "intermediate_development_model",
+    "full_data_final": false,
+    "production_approved": false,
+    "contract_version": "tensile-vlm/v4.1",
+    "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+    "experiment_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+    "release_id": "v4.1.0-ecb5aeb9657c",
+    "seed": 3407,
+    "training_variant": "coverage-first",
+    "optimizer_steps": 1125,
+    "adapter_aggregate_sha256": "74842170d69a5a17f466a9f560db27cdc1aafde83730b71807d2996471d43aa7",
+    "merged_aggregate_sha256": "1f75e4f91db487273588c1e1c8bf867b20acdfc565c191d914915b366c4c1b1c",
+    "adapter_model_sha256": "9e7941c994faa5a4beb5277258290a740b412e0aeda78ca8000adfddc2d67064",
+    "adapter_model_size_bytes": 460430776,
+    "registry_path": "pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json",
+    "limitations": [
+      "single_fold_only",
+      "not_full_data_final",
+      "not_production_approved",
+      "quality_gates_not_passed"
+    ]
+  },
+  "base_model": {
+    "name": "MiniCPM-V-4.5",
+    "local_path": "/home/liuyang/文档/mVllm_2/models/minicpmv4_5",
+    "hf_revision": "daef484c35ec93210ec93c5e901f8f3e9b78ee34",
+    "safetensors_shard_count": 4,
+    "weights_total_bytes": 17391890184,
+    "content_manifest_digest": "2ffb284ff1a0db561633e91c768c1a9732b33838147113004966c1ff112faa21",
+    "known_divergence": "本地 modeling_minicpmv.py 多一处 self.post_init()，与官方来源不同；不能把本地目录登记为未经修改的官方快照",
+    "tensor_index_check": "849 个 tensor 与索引一致",
+    "gitblob_check": "完整 23 个 tree 对象 Gitblob 核验通过",
+    "sources": [
+      "docs/results/model-gate-baseline-20260914.md 第 2 节",
+      "docs/project-todo.md 本轮输入核验（2026-10-16）条"
+    ]
+  },
+  "training": {
+    "actual_optimizer_steps": 1125,
+    "expected_optimizer_steps": 1125,
+    "epochs": 3.0,
+    "train_runtime_seconds": 16797.2917,
+    "best_metric": 0.054742854088544846,
+    "best_model_checkpoint": "../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407/checkpoint-250",
+    "completed_at": "2026-07-27T08:15:59+08:00",
+    "training_code_commit": "f54d9ca617e455454f28e31ae058eda2dfdb5ec7",
+    "run_manifest_path": "finetune/MiniCPM/config/active/v4_1_source_aware_3k_coverage_first/run_manifest.json",
+    "run_manifest_sha256": "b911c6a0e295c0dc99565f5a27082820bc5ba8542c11c0c1a5c5f06069ebd866",
+    "sampling_id": "source-aware-3k-2a84e8b6cfc3",
+    "sampling_sequence_sha256": "2e5c9d6894b115d94d0a085cf7f4c643b65482bb63b253b45a34a116dec1ba9c",
+    "adapter_coverage": {
+      "target_module_count": 11,
+      "visual": true,
+      "visual_weight_count": 324,
+      "resampler_saved": true,
+      "resampler_weight_count": 13
+    },
+    "artifact_file_hashes": {
+      "adapter_model": {
+        "sha256": "9e7941c994faa5a4beb5277258290a740b412e0aeda78ca8000adfddc2d67064",
+        "size_bytes": 460430776
+      },
+      "adapter_config": {
+        "sha256": "d7dadf6efeed393a9379a14aadb29edddc3ee56261e758cba8e5177306493c0a",
+        "size_bytes": 1123
+      },
+      "train_config": {
+        "sha256": "036c9c69f9d79ca837214f1a796d426f7ac7dec1078c11055eed25a866ad8bd9",
+        "size_bytes": 1535
+      },
+      "trainer_state": {
+        "sha256": "6855109d36b2cb3981f4560e4e1e91e1e72a4184fb541fd7c924f0217368d10b",
+        "size_bytes": 43857
+      },
+      "trainer_log": {
+        "sha256": "68cdfb6847c13014eb75f7d1650aff1a57389585ec41f599a789bf6bb9cd95fa",
+        "size_bytes": 46969
+      },
+      "train_results": {
+        "sha256": "89bf51381e28f4905caf45c476ed3ac0554f4db407890a4af7df79d06cf90c7c",
+        "size_bytes": 207
+      }
+    },
+    "record_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json",
+    "completed_at_note": "completed_at 取自训练运行清单的 completed_at 字段，时区 +08:00"
+  },
+  "checkpoint_relationship": {
+    "best_global_step": 250,
+    "recorded_fact": "best_model_checkpoint 指向 checkpoint-250，字段 training_run_manifest.json 的 best_model_checkpoint",
+    "hash_evidence_for_checkpoint_250": "未找到",
+    "size_equality_only": "docs/results/model-inventory-audit-20260831/remote_snapshot.json 记录根 adapter 与 checkpoint-250、checkpoint-1125 三处 adapter_model.safetensors 的 bytes 均为 460430776；该快照只记 size 与 mtime，不记 sha256",
+    "mtime_ns": {
+      "root_adapter": 1785111359186057389,
+      "checkpoint_1125": 1785111356998054611,
+      "checkpoint_250": 1785098315160646857
+    },
+    "can_assert_byte_identical": false,
+    "root_adapter_sha256": "9e7941c994faa5a4beb5277258290a740b412e0aeda78ca8000adfddc2d67064",
+    "root_adapter_sha256_locations": [
+      "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json:22",
+      "finetune/results/v4_1_stage_b_intermediate_acceptances/stage-b-intermediate-8e1fdb09f8e6/intermediate_model_acceptance.json:60",
+      "docs/results/remote-base-integrity-20261016.json:581",
+      "docs/results/remote-base-integrity-20261016.json:1148"
+    ],
+    "counter_reference_note": "同 run 的 concise-cv 三折报告曾记录最终 adapter 均与各自最佳 checkpoint 权重 SHA-256 一致，那是另一个实验口径，不能搬用于此"
+  },
+  "training_prompt": {
+    "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+    "contract_role": "training contract（数据发布内联契约）",
+    "source_git_object": "97d36a90003957be3c13b5dbfc017452a308e54d:pipeline/contracts/tensile_vlm_v4_1.json",
+    "source_file_sha256": "583201775f33c2b413b9bc1491054ab66d787942ece9c88b8537b1fbacebf20a",
+    "source_file_size_bytes": 7747,
+    "system_prompt_chars": 74,
+    "system_prompt_bytes": 210,
+    "system_prompt_sha256": "b64660279c93e5dfe943a1233870a5a12fc3bab5438644a6dc4fe0e0a34eab3e",
+    "user_prompt_chars": 504,
+    "user_prompt_bytes": 1066,
+    "user_prompt_sha256": "adef9ae94a15fb56e125cb72fbd50c6de95e7df694d72cecde4b7bf674aff562",
+    "retry_prompt_chars": 121,
+    "retry_prompt_bytes": 191,
+    "retry_prompt_sha256": "54e0677ed9127d35bd71d76b9e599b5942d6d2a8432f9efcbf61f8e20699ba62",
+    "current_contract_prompt": {
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "source_path": "pipeline/contracts/tensile_vlm_v4_1.json",
+      "source_file_sha256": "9fa15b4a267c295727a9a99240b629b65a78508dcd5cc44887168d1878581331",
+      "source_file_size_bytes": 8149,
+      "system_prompt_chars": 99,
+      "system_prompt_bytes": 285,
+      "system_prompt_sha256": "c9cde7a213b6a118b4ea06b5b27d38993c71e48a49ec3ce78502226afc328980",
+      "user_prompt_chars": 666,
+      "user_prompt_bytes": 1360,
+      "user_prompt_sha256": "d06d167b7d67e09c9518f364c175e2d3678b241ff1cc10ae5be1bc3afd9b1a45",
+      "retry_prompt_chars": 132,
+      "retry_prompt_bytes": 224,
+      "retry_prompt_sha256": "651e0f1036b4141ec3a27c5ea858ea874a17f92a6b56a6ac0710868aa7597068",
+      "note": "当前契约正文是后续修订版，不等于历史契约正文"
+    },
+    "texts_identical": false,
+    "differing_paths": [
+      "$.analysis.retry_prompt",
+      "$.analysis.system_prompt",
+      "$.analysis.user_prompt",
+      "$.contract_hash"
+    ],
+    "differing_paths_source": "docs/results/development-runtime-readiness-20261016.json 的 prompt_contract_analysis.differing_paths",
+    "semantics_boundary": "Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.",
+    "label_schema_and_enum_generation_video_objects_unchanged": true,
+    "prompt_clarified_file_note": "pipeline/contracts/tensile_vlm_v4_1_prompt_clarified.json 的 base_contract_hash 为 47e393…，但其 analysis 段正文是当前修订版（system 与 prompt-v4.1-r2.yaml 同文），不能当作历史契约正文",
+    "inline_text_source": "历史契约正文取自 git 对象 97d36a90003957be3c13b5dbfc017452a308e54d:pipeline/contracts/tensile_vlm_v4_1.json；不能用当前工作区 tensile_vlm_v4_1.json 的 analysis 段替代",
+    "actually_used_in_training": "未证实",
+    "evidence": "docs/project-todo.md 开发输入现场（2026-10-16）条：原冻结目录两份摘要不在场，实际训练 Prompt 未证，不以当前 active YAML 替代；development-runtime-readiness-20261016.json 的 semantics_boundary 亦明写不复原旧 Fold0 实际训练 Prompt",
+    "legacy_prompt_files_not_evidence": [
+      "pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/prompt.yaml",
+      "records/prompts/prompt-v4.1-r1.yaml",
+      "records/prompts/prompt-v4.1-r2.yaml"
+    ]
+  },
+  "input_pipeline_modes": {
+    "legacy_development": {
+      "temporal_fusion": "单组时间融合",
+      "groups": 1,
+      "tokens_per_group": 64,
+      "applies_to_evaluations": ["row-1", "row-2", "row-3", "row-4", "row-5", "row-6"],
+      "source": "docs/project-todo.md 开发评测侧对齐训练/服务条：改动前返回 [[0]*n]，是单组时间融合，1 组等于 64 token"
+    },
+    "aligned_train_service": {
+      "temporal_fusion": "逐帧成组",
+      "frames": 8,
+      "groups": 8,
+      "visual_tokens_derived": 512,
+      "derivation": "512 = 8 × query_num 64，需加载 resampler 前向才能实测",
+      "applies_to_evaluations": [],
+      "source": "docs/project-todo.md 开发评测侧对齐训练/服务条"
+    }
+  },
+  "evaluations": [
+    {
+      "eval_id": "row-1",
+      "label": "开发侧 425 条 / training contract",
+      "record_type": "evaluation_summary",
+      "record_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/fold0/evaluation_summary.json",
+      "sample_set": "v4.1.0-ecb5aeb9657c release fold 0 validation",
+      "sample_count": 425,
+      "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+      "contract_role": "training contract",
+      "prompt_source": "历史契约 47e393 的内联正文（system 74 字符、user 504 字符、retry 121 字符）；训练时实际喂入文本未证实",
+      "input_pipeline": "legacy_development: 单组时间融合，1 组 = 64 token",
+      "strict_valid_count": 423,
+      "strict_valid_rate": 0.995294,
+      "joint_correct_rate": 0.4,
+      "clip_state_correct_rate": 0.470588,
+      "fracture_mechanism_correct_rate": 0.56,
+      "fracture_site_correct_rate": 0.597647,
+      "special_case_correct_rate": 0.995294,
+      "clip_state_recall": {
+        "临界未断裂": 0.491228,
+        "发生断裂": 0.263889,
+        "已断裂": 0.151515,
+        "未断裂": 0.675393
+      },
+      "extended_metrics": {
+        "clip_state_recall_derivation": "clip_state_confusion 对角线 ÷ target_clip_state_distribution",
+        "临界未断裂": "28/57",
+        "发生断裂": "38/144",
+        "已断裂": "5/33",
+        "未断裂": "129/191",
+        "prediction_clip_state_distribution.__invalid__": 2,
+        "records_sha256": "4c8ea6c3bc77bc9aa05681d8f7033cacd72da541209750ffdc8b2959ced715a5",
+        "records_size_bytes": 411826
+      },
+      "runtime_failure_count": 0,
+      "field_paths": [
+        "sample_count: sample_count",
+        "严格合法条数: strict_valid_count",
+        "严格合法率: strict_valid_rate",
+        "四字段 joint 正确率: metrics.joint_correct_rate",
+        "clip_state 正确率: metrics.clip_state_correct_rate",
+        "fracture_mechanism 正确率: metrics.fracture_mechanism_correct_rate",
+        "fracture_site 正确率: metrics.fracture_site_correct_rate",
+        "special_case 正确率: metrics.special_case_correct_rate",
+        "运行失败数: runtime_failure_count",
+        "预测分布 __invalid__: prediction_clip_state_distribution.__invalid__",
+        "分状态召回: clip_state_confusion[真值][状态] ÷ target_clip_state_distribution[状态]，与 seed3407_canary_gate_report.json 的 metrics.clip_state_recall 逐项一致",
+        "逐样本记录哈希: finetune/results/v4_1_stage_b_intermediate_acceptances/stage-b-intermediate-8e1fdb09f8e6/intermediate_model_acceptance.json 的 evidence.evaluation_records.sha256"
+      ],
+      "notes": "逐样本 evaluation_records.jsonl 按 .gitignore 只留在训练机，本仓库内不存在。输入链路口径来自 docs/project-todo.md，旧 425 与 1,581 指标全部产自改动前管线。"
+    },
+    {
+      "eval_id": "row-2",
+      "label": "开发侧 425 条 / runtime contract",
+      "record_type": "evaluation_summary",
+      "record_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json",
+      "sample_set": "v4.1.0-ecb5aeb9657c release fold 0 validation（与行 1 同一批，model_dir 相同）",
+      "sample_count": 425,
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "contract_role": "runtime contract",
+      "prompt_source": "当前契约 3798f00c 的内联正文（system 99 字符、user 666 字符、retry 132 字符）；训练时实际喂入文本未证实",
+      "input_pipeline": "legacy_development: 单组时间融合，1 组 = 64 token",
+      "strict_valid_count": 425,
+      "strict_valid_rate": 1.0,
+      "joint_correct_rate": 0.411765,
+      "clip_state_correct_rate": 0.56,
+      "fracture_mechanism_correct_rate": 0.458824,
+      "fracture_site_correct_rate": 0.548235,
+      "special_case_correct_rate": 1.0,
+      "clip_state_recall": {
+        "临界未断裂": 0.22807,
+        "发生断裂": 0.458333,
+        "已断裂": 0.0,
+        "未断裂": 0.832461
+      },
+      "extended_metrics": {
+        "clip_state_recall_derivation": "clip_state_confusion 对角线 ÷ target_clip_state_distribution",
+        "临界未断裂": "13/57",
+        "发生断裂": "66/144",
+        "已断裂": "0/33",
+        "未断裂": "159/191",
+        "prediction_clip_state_distribution.未断裂": 270,
+        "prediction_clip_state_distribution.未断裂_share": 0.635294,
+        "fracture_mechanism_conditional_accuracy": 0.1126,
+        "fracture_site_conditional_accuracy": 0.2863,
+        "conditional_accuracy_source": "docs/reports/2026-07-30-current-release-model-sealed-test-performance-report.md 第 6 节表；来自受限逐样本记录的条件统计，不在本仓库的 summary 字段里",
+        "conditional_accuracy_note": "只统计真值非空的样本"
+      },
+      "runtime_failure_count": 0,
+      "field_paths": [
+        "sample_count: sample_count",
+        "严格合法条数: strict_valid_count",
+        "严格合法率: strict_valid_rate",
+        "四字段 joint 正确率: metrics.joint_correct_rate",
+        "clip_state 正确率: metrics.clip_state_correct_rate",
+        "fracture_mechanism 正确率: metrics.fracture_mechanism_correct_rate",
+        "fracture_site 正确率: metrics.fracture_site_correct_rate",
+        "special_case 正确率: metrics.special_case_correct_rate",
+        "运行失败数: runtime_failure_count",
+        "预测分布 未断裂: prediction_clip_state_distribution.未断裂 ÷ sample_count",
+        "分状态召回: clip_state_confusion[真值][状态] ÷ target_clip_state_distribution[状态]",
+        "条件准确率: docs/reports/2026-07-30-current-release-model-sealed-test-performance-report.md 第 6 节"
+      ],
+      "notes": "与行 1 同一模型、同一批样本、同一 merged 目录，只换了契约身份。条件准确率不在 summary 字段里，取报告第 6 节。"
+    },
+    {
+      "eval_id": "row-3",
+      "label": "Stage B 中间模型验收门（聚合行 1 的同一批 425）",
+      "record_type": "intermediate_acceptance_gate",
+      "record_path": "docs/results/v4_1_stage_b_intermediate/acceptance_summary.json",
+      "sample_set": "v4.1.0-ecb5aeb9657c release fold 0 validation，与行 1 同一批",
+      "sample_count": 425,
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "contract_role": "runtime contract 与 training contract 同时登记（runtime_contract_hash / training_contract_hash）",
+      "prompt_source": "历史契约 47e393 的内联正文（74/504/121 字符）与当前契约 3798f00c 的内联正文（99/666/132 字符）同时登记；训练时实际喂入文本未证实",
+      "input_pipeline": "legacy_development: 单组时间融合，1 组 = 64 token",
+      "strict_valid_count": null,
+      "strict_valid_rate": 0.995294,
+      "joint_correct_rate": 0.4,
+      "clip_state_correct_rate": 0.470588,
+      "fracture_mechanism_correct_rate": 0.56,
+      "fracture_site_correct_rate": 0.597647,
+      "special_case_correct_rate": 0.995294,
+      "clip_state_recall": null,
+      "extended_metrics": {
+        "acceptance_id": "stage-b-intermediate-8e1fdb09f8e6",
+        "decision_id": "stage-b-intermediate-user-accepted-20260727",
+        "status": "accepted_as_intermediate_with_known_limits",
+        "acceptance_code_commit": "2d049afa3133845939f7fa7782bd58e4d9c2757f",
+        "artifact_gate.actual_optimizer_steps": 1125,
+        "artifact_gate.evaluation_sample_count": 425,
+        "artifact_gate.visual_weight_count": 324,
+        "artifact_gate.resampler_weight_count": 13,
+        "quality_gate.original_stage_b_performance_gate_passed": false,
+        "quality_gate.leave_one_source_out_gate_passed": false,
+        "quality_gate.failed_gate_report_sha256": "f7b1ae6c41c85ab3e9ae01b87c8a78349bec255ac639254640526232b3655a71",
+        "authorization_scope.stage_c_additional_training": false,
+        "authorization_scope.stage_d_independent_model_acceptance": false,
+        "authorization_scope.production_alias": false,
+        "sealed_labels_read": false,
+        "intermediate_model_acceptance_path": "finetune/results/v4_1_stage_b_intermediate_acceptances/stage-b-intermediate-8e1fdb09f8e6/intermediate_model_acceptance.json"
+      },
+      "runtime_failure_count": 0,
+      "field_paths": [
+        "严格合法率: artifact_gate.strict_valid_rate",
+        "评测样本数: artifact_gate.evaluation_sample_count",
+        "运行失败数: artifact_gate.runtime_failure_count",
+        "四字段 joint 正确率与其余三项准确率: intermediate_model_acceptance.json 的 evaluation.metrics（与行 1 同值）",
+        "验收身份: acceptance_id、decision_id、status、acceptance_code_commit",
+        "门判定: quality_gate.original_stage_b_performance_gate_passed、quality_gate.leave_one_source_out_gate_passed",
+        "授权范围: authorization_scope.*",
+        "密封标签: sealed_labels_read"
+      ],
+      "notes": "acceptance_summary.json 本身不登记 strict_valid_count 与分状态召回，故置 null。joint_correct_rate 与其他三项准确率取 intermediate_model_acceptance.json 的 evaluation.metrics，与行 1 同值；此处置值并在 notes 标明跨文件来源。"
+    },
+    {
+      "eval_id": "row-4",
+      "label": "Canary 门报告（同一批 425，training contract）",
+      "record_type": "canary_gate_report",
+      "record_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_canary_gate_report.json",
+      "sample_set": "v4.1.0-ecb5aeb9657c release fold 0 validation，与行 1 同一批（records_sha256 相同）",
+      "sample_count": 425,
+      "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+      "contract_role": "training contract",
+      "prompt_source": "历史契约 47e393 的内联正文（system 74 字符、user 504 字符、retry 121 字符）；训练时实际喂入文本未证实",
+      "input_pipeline": "legacy_development: 单组时间融合，1 组 = 64 token",
+      "strict_valid_count": null,
+      "strict_valid_rate": 0.995294,
+      "joint_correct_rate": 0.4,
+      "clip_state_correct_rate": null,
+      "fracture_mechanism_correct_rate": null,
+      "fracture_site_correct_rate": null,
+      "special_case_correct_rate": null,
+      "clip_state_recall": {
+        "临界未断裂": 0.491228,
+        "发生断裂": 0.263889,
+        "已断裂": 0.151515,
+        "未断裂": 0.675393
+      },
+      "extended_metrics": {
+        "run_id": "v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3",
+        "seed": 3407,
+        "records_sha256": "4c8ea6c3bc77bc9aa05681d8f7033cacd72da541209750ffdc8b2959ced715a5",
+        "metrics.fracture_three_state_macro_recall": 0.302211,
+        "metrics.four_state_macro_recall": 0.395506,
+        "metrics.已断裂_recall": 0.151515,
+        "metrics.未断裂_recall": 0.675393,
+        "passed": false,
+        "next_action": "freeze_failure_and_continue_development_only_attribution",
+        "absolute_gates": {
+          "fracture_three_state_macro_recall": {
+            "threshold": 0.3272,
+            "passed": false
+          },
+          "four_state_macro_recall": {
+            "threshold": 0.4382,
+            "passed": false
+          },
+          "已断裂_recall": {
+            "threshold": 0.2015,
+            "passed": false
+          },
+          "未断裂_recall": {
+            "threshold": 0.751,
+            "passed": false
+          },
+          "joint_correct_rate": {
+            "threshold": 0.4112,
+            "passed": false
+          },
+          "strict_valid_rate": {
+            "threshold": 1.0,
+            "passed": false
+          },
+          "runtime_failure_count": {
+            "threshold": 0,
+            "passed": true
+          }
+        },
+        "baseline_model_note": "以下 baseline 块属于另一个模型 v4_1_0_760050fad303_20260724_visual，不得与本模型数字混列",
+        "baseline.run_id": "v4_1_0_760050fad303_20260724_visual",
+        "baseline.metrics.sample_count": 425,
+        "baseline.metrics.strict_valid_rate": 0.981176,
+        "baseline.metrics.joint_correct_rate": 0.421176,
+        "baseline.metrics.fracture_three_state_macro_recall": 0.277235,
+        "baseline.metrics.four_state_macro_recall": 0.408188,
+        "source_error_analysis_source_count": 29,
+        "leave_one_source_out_present": true
+      },
+      "runtime_failure_count": 0,
+      "field_paths": [
+        "样本数: metrics.sample_count",
+        "严格合法率: metrics.strict_valid_rate",
+        "四字段 joint 正确率: metrics.joint_correct_rate",
+        "分状态召回: metrics.clip_state_recall.*",
+        "三态断裂 macro recall: metrics.fracture_three_state_macro_recall",
+        "四状态 macro recall: metrics.four_state_macro_recall",
+        "运行失败数: metrics.runtime_failure_count",
+        "门阈值与判定: absolute_gates.*.threshold、absolute_gates.*.passed",
+        "整体判定: passed",
+        "下一步: next_action",
+        "对照基线（另一模型）: baseline.run_id、baseline.metrics.*"
+      ],
+      "notes": "该文件不登记 clip_state 正确率与三个字段的准确率，故置 null；相关指标以 macro recall 与逐状态召回登记。对照基线是另一个模型，已单独标注。"
+    },
+    {
+      "eval_id": "row-5",
+      "label": "双 seed 稳定性绝对表现快照（runtime contract）",
+      "record_type": "absolute_performance_snapshot",
+      "record_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/dual_seed_stability/absolute_performance_snapshot.json",
+      "sample_set": "v4.1.0-ecb5aeb9657c release fold 0 validation，425 条",
+      "sample_count": 425,
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "contract_role": "runtime contract",
+      "prompt_source": "契约内联正文（runtime contract）；训练时实际喂入文本未证实",
+      "input_pipeline": "legacy_development: 单组时间融合，1 组 = 64 token",
+      "strict_valid_count": null,
+      "strict_valid_rate": 1.0,
+      "joint_correct_rate": null,
+      "clip_state_correct_rate": null,
+      "fracture_mechanism_correct_rate": null,
+      "fracture_site_correct_rate": null,
+      "special_case_correct_rate": null,
+      "clip_state_recall": null,
+      "extended_metrics": {
+        "mode": "record_only",
+        "identity_corrected": true,
+        "scorer_identity": "run_v4_1_evaluation.py:82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e;runtime_contract:3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "historical_reference.fracture_recall": 0.5,
+        "seeds.3407.strict_valid_rate": 1.0,
+        "seeds.3407.fracture_f1": 0.5490196078431373,
+        "seeds.3407.fracture_recall": 0.4745762711864407,
+        "seeds.3407.non_fracture_recall": 0.8185483870967742,
+        "seeds.3407.macro_f1": 0.647671568627451,
+        "seeds.3411_note": "seeds.3411 与 seeds.3413 是另外两个模型，本档案不复述其数值，不并列比较",
+        "sibling_snapshot_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/dual_seed_stability/invalidated_contract_mismatch/absolute_performance_snapshot.json",
+        "sibling_snapshot_note": "同名快照的 scorer_identity 为 …;contract:47e393…，其 seeds.3407 数值与本文件不同；两份是不同契约下的记录，不可混用",
+        "sibling.seeds.3407.fracture_f1": 0.5311475409836065,
+        "sibling.seeds.3407.fracture_recall": 0.4576271186440678,
+        "sibling.seeds.3407.macro_f1": 0.6357395163481568,
+        "sibling.seeds.3407.non_fracture_recall": 0.8104838709677419,
+        "sibling.seeds.3407.strict_valid_rate": 0.9952941176470588
+      },
+      "runtime_failure_count": null,
+      "field_paths": [
+        "模式: mode",
+        "身份已修正: identity_corrected",
+        "评分器身份: scorer_identity",
+        "历史参考: historical_reference.fracture_recall",
+        "严格合法率: seeds.3407.strict_valid_rate",
+        "fracture F1: seeds.3407.fracture_f1",
+        "fracture recall: seeds.3407.fracture_recall",
+        "non-fracture recall: seeds.3407.non_fracture_recall",
+        "macro F1: seeds.3407.macro_f1"
+      ],
+      "notes": "该快照只登记二分类召回与 F1，不登记四状态召回、joint 与各字段准确率，故相应置 null。sample_count 取样本集口径 425，该文件未直接登记该字段。同路径另有一份同名文件（invalidated_contract_mismatch/absolute_performance_snapshot.json，scorer_identity 含 contract:47e393…），seeds.3407 数值不同，见 extended_metrics 的 sibling.*；本行数值取顶层文件（runtime_contract:3798f00c…）。"
+    },
+    {
+      "eval_id": "row-6",
+      "label": "双 seed 稳定性契约不一致，判定作废",
+      "record_type": "stability_invalidation_disposition",
+      "record_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/dual_seed_stability/invalidated_contract_mismatch/final_stability_disposition.json",
+      "sample_set": "v4.1.0-ecb5aeb9657c release fold 0 validation，425 条（三个 seed 记录相同）",
+      "sample_count": 425,
+      "contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+      "contract_role": "seed3407 为 training contract；seed3411 与 seed3413 为 runtime contract",
+      "prompt_source": "seed3407 为历史契约 47e393 正文（74/504/121 字符），seed3411 与 seed3413 为当前契约 3798f00c 正文（99/666/132 字符）；训练时实际喂入文本未证实",
+      "input_pipeline": "legacy_development: 单组时间融合，1 组 = 64 token",
+      "strict_valid_count": null,
+      "strict_valid_rate": null,
+      "joint_correct_rate": null,
+      "clip_state_correct_rate": null,
+      "fracture_mechanism_correct_rate": null,
+      "fracture_site_correct_rate": null,
+      "special_case_correct_rate": null,
+      "clip_state_recall": null,
+      "extended_metrics": {
+        "status": "integrity_blocked",
+        "reason": "evaluation_contract_hash_mismatch",
+        "blocked_at": "2026-07-28T10:18:19+08:00",
+        "continue_to_crossval": false,
+        "identities.seed3407.contract_hash": "47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+        "identities.seed3411.contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "identities.seed3413.contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "identities.*.release_id": "v4.1.0-ecb5aeb9657c",
+        "identities.*.fold": 0,
+        "identities.*.sample_count": 425,
+        "invalidated_comparison_outputs": [
+          "primary_stability_comparison.json",
+          "relative_stability_gate.json",
+          "fallback_stability_comparison.json",
+          "final_stability_disposition.json"
+        ],
+        "required_resolution": "maintainer decision and identity-correct evidence; seed3407 must not be retrained",
+        "sibling_snapshot_path": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/dual_seed_stability/invalidated_contract_mismatch/absolute_performance_snapshot.json",
+        "sibling.scorer_identity": "run_v4_1_evaluation.py:82babe5554936fa835a7a573dead7caf4f93ab3c3ac371ada24a33d49f71567e;contract:47e393007ff1677c8b60a47d6d86f8181d7b1388a238d79469a3046bc045b937",
+        "sibling.seeds.3407.fracture_f1": 0.5311475409836065,
+        "sibling.seeds.3407.fracture_recall": 0.4576271186440678,
+        "sibling.seeds.3407.macro_f1": 0.6357395163481568,
+        "sibling.seeds.3407.non_fracture_recall": 0.8104838709677419,
+        "sibling.seeds.3407.strict_valid_rate": 0.9952941176470588,
+        "sibling_snapshot_note": "dual_seed_stability 顶层另有一份同名快照（row-5），scorer_identity 含 runtime_contract:3798f00c…，seeds.3407 数值与本目录这份不同，不可混用"
+      },
+      "runtime_failure_count": null,
+      "field_paths": [
+        "状态: status",
+        "原因: reason",
+        "阻断时间: blocked_at",
+        "是否继续交叉验证: continue_to_crossval",
+        "三 seed 契约身份: identities.seed3407.contract_hash、identities.seed3411.contract_hash、identities.seed3413.contract_hash",
+        "三 seed 数据/折/样本数: identities.*.release_id、identities.*.fold、identities.*.sample_count",
+        "作废清单: invalidated_comparison_outputs",
+        "解除条件: required_resolution"
+      ],
+      "notes": "该文件不登记任何指标，故指标字段全部置 null。同目录 absolute_performance_snapshot.json 在作废清单语境下使用，其 seeds.3407 即本行 extended_metrics 的 sibling.* 值（契约 47e393…）；dual_seed_stability 顶层另有同名快照（row-5），scorer_identity 含 runtime_contract:3798f00c…，seeds.3407 数值不同。两份不同契约下的记录不可混用。"
+    },
+    {
+      "eval_id": "row-7",
+      "label": "Stage D 密封独立测试 299 条",
+      "record_type": "public_gate_summary",
+      "record_path": "docs/results/v4_1_stage_d_sealed_test_release/public_gate_summary.json",
+      "sample_set": "v4.1-sealed-test-5546b8bf1ec3 密封独立测试，与 425 条 development validation 不是同一集合",
+      "sample_count": 299,
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "contract_role": "runtime contract；身份见 run_identity.json 的 identity.contract_hash 与 release_summary.json 的 identity.contract_hash；public_gate_summary.json 本身无契约字段",
+      "prompt_source": "未找到该次运行的 Prompt 记录",
+      "input_pipeline": "未找到该次运行的抽帧分组与 token 记录，不做推定",
+      "strict_valid_count": null,
+      "strict_valid_rate": null,
+      "joint_correct_rate": 0.3779,
+      "clip_state_correct_rate": 0.5251,
+      "fracture_mechanism_correct_rate": 0.0222,
+      "fracture_site_correct_rate": 0.095,
+      "special_case_correct_rate": null,
+      "clip_state_recall": {
+        "已断裂": 0.0,
+        "未断裂": 0.9483
+      },
+      "extended_metrics": {
+        "run_id": "stage-d-run-da566a5644f8",
+        "integrity.record_count_matches_release": true,
+        "integrity.runtime_failure_zero": true,
+        "integrity.strict_contract_100_percent": true,
+        "gates.fracture_three_state_macro_recall": false,
+        "gates.four_state_macro_recall": false,
+        "gates.已断裂_recall": false,
+        "gates.未断裂_recall": true,
+        "gates.joint_correct_rate": false,
+        "gates.strict_valid_rate": true,
+        "gates.runtime_failure_count": true,
+        "passed": false,
+        "sealed_test_exposed": true,
+        "restricted_semantic_metrics_withheld": true,
+        "release.release_id": "v4.1-sealed-test-5546b8bf1ec3",
+        "release.manifest_sha256": "b996f0540681066de0731ffcab5a0f760bc691fcb6e6bd1e687eb150b7b96e72",
+        "review.queue_id": "v4-1-phase2-sealed_test-4f66487a6315",
+        "review.review_batch_id": "review-batch-6a8d94bd7675",
+        "counts.review_queue_candidates": 332,
+        "counts.admitted_candidates": 299,
+        "counts.excluded_candidates": 33,
+        "counts.admitted_sources": 20,
+        "counts.approved": 209,
+        "counts.corrected": 90,
+        "counts.dropped": 33,
+        "counts.needs_regenerate": 0,
+        "counts.test_split_sources_without_candidates": 1,
+        "release_summary_count_source": "docs/results/v4_1_stage_d_sealed_test_release/release_summary.json 的 release.*、review.* 与 counts.*",
+        "identity.contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+        "run_identity.sample_count": 299,
+        "run_identity.code_commit": "f04ca7cb63cd1bbaa921b9dcd7fed3f4dada8d64",
+        "run_identity.status": "authorized_not_started",
+        "stage_d_gate.status": "completed",
+        "status_inconsistency_note": "run_identity.json 的 status 为 authorized_not_started，stage_d_gate.json 的 status 为 completed，两者不一致，照实记录，不下判断",
+        "stage_d_gate_sha256": "e9ebe1f6ad32946a65a65589ce99121641ea150ad48e29212d083ded34039b88",
+        "stage_d_gate_size_bytes": 834,
+        "public_gate_file_sha256": "64c76d43615e938302e8b510f8a138a23ba0b6df4612fecb2f711b4965483432",
+        "public_gate_file_size_bytes": 1013,
+        "metrics_source": "docs/reports/2026-07-30-current-release-model-sealed-test-performance-report.md 第 5 节",
+        "four_state_macro_recall": 0.3862,
+        "three_fracture_state_macro_recall": 0.1988,
+        "fracture_mechanism_non_null_truth": "4/180",
+        "fracture_site_non_null_truth": "17/179",
+        "special_case_note": "299/299 为 null 真值，无正样本",
+        "report_model_name": "v4.1-agent-pipeline-fold0-r1",
+        "report_model_aggregate_sha256_prefix": "1f75e4f9"
+      },
+      "runtime_failure_count": 0,
+      "field_paths": [
+        "样本数: sample_count",
+        "整体判定: passed",
+        "门判定: gates.*",
+        "完整性: integrity.*",
+        "暴露状态: sealed_test_exposed",
+        "受限语义指标扣留: restricted_semantic_metrics_withheld",
+        "契约身份: finetune/results/v4_1_stage_d_runs/stage-d-run-da566a5644f8/run_identity.json 的 identity.contract_hash；docs/results/v4_1_stage_d_sealed_test_release/release_summary.json 的 identity.contract_hash",
+        "发布与准入计数（332 / 299 / 33 / 20）: release_summary.json 的 counts.review_queue_candidates、counts.admitted_candidates、counts.excluded_candidates、counts.admitted_sources",
+        "发布清单 SHA-256 与审查队列: release_summary.json 的 release.manifest_sha256、review.queue_id",
+        "运行身份: run_identity.json 的 identity.sample_count、identity.code_commit、identity.release_id、status",
+        "门判定原始记录: finetune/results/v4_1_stage_d_runs/stage-d-run-da566a5644f8/stage_d_gate.json 的 gates 与 status",
+        "四字段 joint 正确率 0.3779: docs/reports/2026-07-30-current-release-model-sealed-test-performance-report.md 第 5 节",
+        "clip_state 准确率 0.5251: 报告第 6 节对比表（由第 5.2 节混淆矩阵自算 157/299）",
+        "四状态 macro recall 0.3862: 同上报告第 5 节",
+        "三断裂相关状态 macro recall 0.1988: 同上报告第 5 节",
+        "已断裂 召回 0.0 与 未断裂 召回 0.9483: 同上报告第 5 节",
+        "fracture_mechanism 非空真值 4/180 = 0.0222: 同上报告第 5 节",
+        "fracture_site 非空真值 17/179 = 0.095: 同上报告第 5 节"
+      ],
+      "notes": "public_gate_summary.json 的 restricted_semantic_metrics_withheld 为 true，该文件不登记受限语义指标数值，故各项数值取报告第 5 节并在 field_paths 标明跨文件来源。契约身份不在公开门文件里，取自 run_identity.json 的 identity.contract_hash（3798f00c…），与 release_summary.json 的 identity.contract_hash 相同；public_gate_summary.json 的 gates 与 stage_d_gate.json 的 gates 一致。发布与准入计数取自 release_summary.json。输入链路未找到记录，故 input_pipeline 为该情况说明。sealed_test_exposed 为 true。special_case 无正样本，准确率置 null。run_identity.json 的 status 与 stage_d_gate.json 的 status 不一致，照实记录。"
+    },
+    {
+      "eval_id": "row-8",
+      "label": "服务冒烟与 Agent 联调冒烟（无数值指标）",
+      "record_type": "deployment_summary",
+      "record_path": "docs/results/v4_1_agent_pipeline_fold0_r1/deployment_summary.json",
+      "sample_set": "无样本集；该文件只登记布尔结果与单值响应，未登记请求次数",
+      "sample_count": null,
+      "contract_hash": "3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab",
+      "contract_role": "runtime contract",
+      "prompt_source": "未找到；该文件未登记 Prompt 记录",
+      "input_pipeline": "服务侧链路；与开发侧切片、像素、时序组的一致性未现场取证",
+      "strict_valid_count": null,
+      "strict_valid_rate": null,
+      "joint_correct_rate": null,
+      "clip_state_correct_rate": null,
+      "fracture_mechanism_correct_rate": null,
+      "fracture_site_correct_rate": null,
+      "special_case_correct_rate": null,
+      "clip_state_recall": null,
+      "extended_metrics": null,
+      "runtime_failure_count": null,
+      "field_paths": [
+        "验证时间: validated_at",
+        "服务状态: status",
+        "运行参数: runtime.host、runtime.port、runtime.model_argument、runtime.runtime_device、runtime.runtime_dtype、runtime.production_alias",
+        "真实媒体冒烟: real_media_service_smoke.passed、real_media_service_smoke.strict_output_valid、real_media_service_smoke.request_id_present、real_media_service_smoke.actual_frame_table_present、real_media_service_smoke.tensor_digest_present、real_media_service_smoke.tensor_shape_present",
+        "Agent 联调冒烟: agent_pipeline_smoke.doctor_passed、agent_pipeline_smoke.real_gpu_call_passed、agent_pipeline_smoke.result_schema、agent_pipeline_smoke.response_status、agent_pipeline_smoke.result_sha256、agent_pipeline_smoke.deployment_identity_matched",
+        "历史质量状态: historical_quality_status.stage_b_passed、.stage_c_completed、.stage_d_passed、.stage_g_passed、.production_approved"
+      ],
+      "notes": "整行没有任何指标数值，不能当作效果测量。tensor_shape_present 等布尔值在全仓只出现在该文件 deployment_summary.json:32，未找到生成这些布尔值的脚本或原始响应落盘，来源待核。该文件另记 real_media_smoke_passed 为 true 于 delivery/service_component.json。"
+    }
+  ],
+  "restated_only_sources": [
+    "README.md:43（只复述 425 条的 strict_valid_rate 0.995294 与 joint_correct_rate 0.411765）",
+    "docs/project-status.md Fold0 中间模型段落（只复述上述两项）",
+    "docs/results/model-gate-baseline-20260914.md 第 3 节（表只列 425 / 1,581 / 1,216 三行；第 66 行明写不读取或重述受限 test 逐样本内容）"
+  ],
+  "restated_only_note": "299 条数值未被这三处复述",
+  "comparability": [
+    "行 1 与行 2 是同一个模型、同一批 425 条样本、同一个 merged 目录，换了契约身份（47e393… 换成 3798f00c…）。两版契约的 analysis.system_prompt、analysis.user_prompt、analysis.retry_prompt 确实不同（证据：docs/results/development-runtime-readiness-20261016.json 的 prompt_contract_analysis.differing_paths 列出这三个路径加 $.contract_hash；semantics_boundary 原文为 Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.）。因此行 1 到行 2 是同一模型换了契约（含 Prompt 指令正文），既不表示模型能力发生变化，也不涉及重新训练。但同一变更还涉及 retry_prompt 与契约结构差异，仓库内没有受控单变量实验，所以不能把严格合法率 0.995294 到 1、四字段 joint 正确率 0.400 到 0.411765 的差值单独归因于 Prompt 正文改动。相关代码记录见 docs/results/v4_1_prompt_concise_cv_v1_seed3411/README.md 第 3.2 节（提交 c6098ab1 修正 evaluator 的 contract 身份记录并增加 Prompt contract 支持，未修改 parse_v4_1_output、score_v4_1_prediction 与标签语义）。",
+    "所有 425 条数字（行 1 至行 6）都测于改动前开发侧管线：单组时间融合，1 组 = 64 token。训练侧与开发侧对齐后是逐帧成组，8 帧即 8 组，视觉 token 推导值 512（512 = 8 × query_num 64，需加载 resampler 前向才能实测）。两种口径不可直接比较。",
+    "R1 在 8 组 / 512 token 链路下的表现没有任何一次真实测量；仓库里没有该口径下的 R1 评测记录，只有行 8 的服务冒烟，该文件只登记布尔结果与单值响应，未登记请求次数，也没有指标数值。",
+    "行 7 的 299 条是密封独立测试，与 425 条 development validation 不是同一集合，且 sealed_test_exposed 为 true。两者契约同为 3798f00c…，不可比的原因不在契约，而在不同 release（v4.1-sealed-test-5546b8bf1ec3 与 v4.1.0-ecb5aeb9657c）、不同样本集合（20 个 test 来源与 29 个 development 来源）、sealed_test_exposed 为 true、以及该次抽帧分组未记录。不同 release、不同集合、不同链路之间只能并列陈述，不能相互换算，也不能作单变量因果对比。"
+  ],
+  "conclusion_boundaries": {
+    "can_assert": [
+      "契约身份层面：同一个 merged 模型在 3798f00c… 契约下对 425 条 fold 0 validation 达到严格合法率 1、四字段 joint 正确率 0.411765（seed3407_runtime_contract_3798/fold0/evaluation_summary.json 的 strict_valid_rate 与 metrics.joint_correct_rate）。",
+      "输出分布层面：425 条下预测 未断裂 占 270/425；已断裂 在开发 425（3798f00c… 口径）与密封 299 两次评测中召回均为 0。",
+      "工程链路层面：merged 与 adapter 的完整聚合哈希校验通过（1f75e4f9… 与 74842170…），服务冒烟与 Agent 调用冒烟有通过记录（deployment_summary.json 的 artifacts.full_hash_verification_passed 与 agent_pipeline_smoke）。",
+      "门禁记录层面：Stage B 性能门与 leave-one-source-out 门记录为 false，Stage D 质量门记录为 false，production_approved 为 false。"
+    ],
+    "cannot_assert": [
+      "不能断言「Prompt 正文改动单独导致严格合法率 0.995294 到 1、四字段 joint 正确率 0.400 到 0.411765」：同一变更还包含 retry_prompt 与契约结构差异，且没有受控单变量实验；也不能断言该差值代表模型能力变化。",
+      "不能断言「R1 在服务链路（8 组 / 512 token）上的表现」：全仓没有该口径的 R1 评测记录；服务冒烟只有布尔值，且 tensor_shape_present 等布尔值无生成脚本可追。",
+      "不能断言「根 adapter 与 checkpoint-250 字节相同」：checkpoint-250 的权重 SHA-256 未在任何记录中出现，只有三者字节数相同与修改时间不同的旁证。",
+      "不能断言「425 条开发验证与 299 条密封测试可比」：两者契约同为 3798f00c…，但 release 不同（v4.1.0-ecb5aeb9657c 与 v4.1-sealed-test-5546b8bf1ec3）、样本集合不同（29 个 development 来源与 20 个 test 来源）、sealed_test_exposed 为 true，且前者为 1 组 64 token、后者输入链路未记录。",
+      "不能断言「训练时实际喂入的 Prompt 就是 47e393… 契约内联正文」：原冻结目录两份摘要不在场，实际训练 Prompt 未证实。",
+      "不能断言「joint 0.411765 表示四字段判断整体可用」：special_case 在 425 与 299 上都没有正样本（真值全为 null），该字段准确率不具备区分能力；mechanism 与 site 的非空真值条件准确率分别为 11.26% 与 28.63%（425 条，3798f00c… 口径）以及 2.22% 与 9.50%（299 条）。",
+      "不能断言「服务侧部署参数与开发侧的切片、像素、时序组一致」：docs/project-todo.md 记录服务侧为推定链路（pipeline/server_proxy.py 经 LlamaFactory ChatModel、hf_engine、mm_plugin 共用同一路径）。部署清单 pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json 记录了 processor_version、max_frames（8）、model_version、transformers_version、llamafactory_version、base_model_version、adapter_version、config_fingerprint、runtime_device、runtime_dtype，未记录像素预算、时序分组、单次推理超时；未现场取证。docs/project-todo.md 把该清单表述为只记 processor_version 与 max_frames: 8，与清单实际键不一致，此处以清单实际键为准。"
+    ]
+  },
+  "r2": {
+    "data_version": {
+      "name": "data-v4.1-r2",
+      "migrated_from": "v4.1.0-ecb5aeb9657c Phase2 train 发布",
+      "status": "sealed",
+      "purpose": "development",
+      "training_allowed": true,
+      "active": true,
+      "receipt": "committed",
+      "sample_count": 1678,
+      "fold_counts": [
+        {
+          "fold": 0,
+          "train": 1253,
+          "validation": 425
+        },
+        {
+          "fold": 1,
+          "train": 1014,
+          "validation": 664
+        },
+        {
+          "fold": 2,
+          "train": 1186,
+          "validation": 492
+        }
+      ],
+      "validation_total": 1581,
+      "source_video_count": 85,
+      "reference_dedup_count": 1678,
+      "reference_missing_count": 0,
+      "receipt_path": "/data/mVllm_2/migration_receipts/data-v4.1-r2.receipt.yaml",
+      "target_release_digest": "a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b",
+      "evidence": {
+        "docs/data-workflow.md:180": "只支持 active 与来源为 v4.1.0-ecb5aeb9657c Phase2 train 发布两项",
+        "docs/results/remote-state-refresh-20261013.md:42": "sealed、development、training_allowed=true、sample_count=1678、active、receipt committed、引用去重 1678 / 缺失 0",
+        "docs/results/remote-state-refresh-20261013.md:46": "三折 train 与 validation 计数 1253/425、1014/664、1186/492",
+        "docs/project-todo.md:64": "1,678 候选、85 个来源视频、validation 三折 425/664/492 合计 1,581",
+        "docs/results/conditional-cleanup-preflight-20260913.json": "迁移 receipt 内容摘要与 target_release_digest",
+        "attribution_note": "不把 data-workflow.md 当作 sealed、sample_count、receipt 等字段的依据"
+      }
+    },
+    "prompt_version": {
+      "name": "prompt-v4.1-r2",
+      "record_path": "records/prompts/prompt-v4.1-r2.yaml",
+      "file_sha256": "9c6ec5274cd804d21bf54585343344a67443f94b8396fe5bc01f41ab2de7269f",
+      "size_bytes": 1808,
+      "keys": [
+        "version",
+        "protocol",
+        "system_prompt",
+        "user_prompt",
+        "output_fields"
+      ],
+      "lifecycle_fields_present": false,
+      "lifecycle_note": "该文件没有 sealed、training_allowed 之类的生命周期字段；生命周期是 data release 的属性，不是 prompt 记录的属性",
+      "runtime_contract_path": "pipeline/contracts/tensile_vlm_v4_1.json",
+      "system_prompt_sha256": "c9cde7a213b6a118b4ea06b5b27d38993c71e48a49ec3ce78502226afc328980",
+      "system_prompt_bytes": 285,
+      "user_prompt_sha256": "d06d167b7d67e09c9518f364c175e2d3678b241ff1cc10ae5be1bc3afd9b1a45",
+      "user_prompt_bytes": 1360,
+      "body_equals_runtime_contract": true,
+      "previous_version": {
+        "name": "prompt-v4.1-r1",
+        "record_path": "records/prompts/prompt-v4.1-r1.yaml",
+        "file_sha256": "907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6",
+        "retained_unmodified": true
+      },
+      "sources": [
+        "docs/project-todo.md 开发评测侧对齐训练/服务条"
+      ]
+    },
+    "not_yet_happened": [
+      "没有 train 记录：仓库与 store 的 records/ 下只有 prompts/（records/prompts/prompt-v4.1-r1.yaml、records/prompts/prompt-v4.1-r2.yaml），未找到 train、model、eval 任何一类记录。",
+      "没有 R2 模型身份：没有 model-v4.1-r* 记录，workspace/models/releases/ 下唯一发布目录仍是 v4.1-agent-pipeline-fold0-r1（docs/results/model-gate-baseline-20260914.md 第 1 节）。",
+      "没有 R2 评测记录：未找到任何以 data-v4.1-r2 与 prompt-v4.1-r2 为输入的 eval 记录；docs/project-todo.md 明确记尚未重测 r0，旧的 425 与 1,581 指标全部产自改动前管线。"
+    ],
+    "relation_to_r1": [
+      "R1 的 model_name 是 legacy 命名 v4.1-agent-pipeline-fold0-r1（协议 + 用途 + fold + round），不满足新体系 <kind>-v<协议>-r<N> 的命名与登记要求（kind 仅限 data、prompt、train、model、eval）；R1 是旧体系产物，其数据身份与模型身份来自 legacy registry 与老实验目录。",
+      "R2 不是 R1 的升级版：R2 是新体系的第一代 data 与 prompt 记录（data-v4.1-r2、prompt-v4.1-r2），与 R1 之间没有 train、model、eval 记录把两端接起来；两者只在内容上有承接关系（data-v4.1-r2 由 R1 训练所用的 v4.1.0-ecb5aeb9657c 迁移而来），在体系身份上不是同一代的迭代。"
+    ],
+    "training_cost_estimate": {
+      "is_estimate": true,
+      "three_fold_hours": 5.78,
+      "one_epoch_hours": 1.5,
+      "optimizer_steps_in_estimate": 1290,
+      "seconds_per_step_in_estimate": 10.94,
+      "eval_count_in_estimate": 22,
+      "basis": "epoch 口径推算",
+      "evidence_in_repo": "未找到对应的计算记录或实测日志",
+      "measured_anchor": {
+        "source": "finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407/training_run_manifest.json 的 train_runtime_seconds 与 actual_optimizer_steps",
+        "train_runtime_seconds": 16797.2917,
+        "optimizer_steps": 1125,
+        "seconds_per_step": 14.93,
+        "applicability_note": "同机同配置的历史实测，但步数、数据版本、Prompt 与评测次数都不同，不能直接套算 R2"
+      },
+      "value_statement": "data-v4.1-r2 是三折齐全、training_allowed 为 true 的 sealed development 数据；prompt-v4.1-r2 与运行期契约字节相同；R2 训练是新体系下第一条能生成完整 train-v…-r… 与 model-v…-r… 身份的路径。此处只做事实陈述。"
+    }
+  },
+  "statement": {
+    "records_modified": false,
+    "model_executed": false,
+    "push_force": false
+  }
+}
