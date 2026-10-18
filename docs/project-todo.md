@@ -152,6 +152,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **过期文件管理纪律（用户 2026-10-17 裁决，用户明确要求主动管理）**：(a) 一次训练一次归档，不留中间态；(b) 每个产物目录必须有 manifest（是什么、哪次训练、保留期限），无 manifest 默认视为临时；(c) 主 Agent 在每次训练完成或用户开启新任务时主动输出「过期候选 + 体积 + 建议动作」清单，用户确认后执行。
 - **待办（用户 2026-10-17 裁决，用户要求记住）**：把 `/data` 下归档数据定期拷贝到用户的 1 T 移动硬盘，在每次训练完成后执行。
 - **清理红线（用户 2026-10-17 裁决，任何清理提案都不得包含）**：① 原始视频源 `workspace/data/source/videos`（被 `data-v4.1-r2` manifest 引用）；② 基座权重（约 17 G / 23 文件）；③ 部署模型本体 merged 与 registry。以上三项属活数据，既不进入过期候选清单，也不因「已备份」而从保护范围移出。
+- **本机保留清单（不得随清理删除）**：以下路径在本机 checkout 内，删除任一项前必须先确认零引用与副本存在，任何过期候选清单一律排除：`.venv/`（本机轻量验证环境，可 `uv sync` 重建但日常依赖它）；`workspace/base-source-audit/`（源审计证据包，可能为唯一副本）；`workspace/data/source/videos`、`workspace/data/derived/subvideos`（r2 媒体实体，删则数据失效）；`LlamaFactory/` 子模块（含 6 个 MiniCPM-V 补丁，仅存于 Gitee fork）；`records/prompts/`、`store/records/prompts/`（Prompt 双份，漂移门依赖）；`finetune/results/`、`docs/results/`（评测与发布原始证据）。本条与上方「清理红线」并列，不替换其三项。
 - **隔离区不等于已清理**：同盘 `mv` 到隔离区不释放磁盘空间，只有真删才释放；报告“已清理”时必须区分“已隔离”与“已释放”。
 - **真删前置条件**：删除任何模型产物前，必须核实 adapter + 训练配置 + 基座三者齐备，缺一不得删；且必须保留 `MANIFEST.json` 等身份证据。
 - **首次执行记录（2026-10-17，训练机实测）**：首轮清理将 193 G 移入隔离区 `/home/liuyang/文档/.trash-20261017/`，`/home` 可用空间未变（366 G，同盘 rename 不释放）；第二轮真删 5 个未发布 merged（各 17 G）+ conda setup run（7.6 G）+ 两个旧 venv（2.3 G），共约 91.7 G，`df` 实测 used 524 G → 441 G、可用 366 G → 449 G（+83 G），`du` 与 `df` 差额约 8 G 未解释，如实记录不推断；adapter 保护核实：5 个 merged 目录内无 adapter（`find` 空输出），5 个 adapter（各 455 M）在位，基座在位；项目目录 134 G → 52 G。尚待完成：备份迁移到 `/data`、73 G 与 30 G 两项删除（另单执行中），完成后由后续任务补记。
