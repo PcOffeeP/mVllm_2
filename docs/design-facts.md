@@ -156,9 +156,10 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 出处：pipeline/v3_candidate_media.py:433
 - **误读**：预测缺失 = 不计入统计
   - 正确：错。分母由真值侧决定：只要真值区间可用，样本就留在区间分母里，预测缺失按不正确计分；否则「拒答/不输出」会成为逃避评分的策略。
-  - 出处：finetune/validation/task_metrics.py:27
-  - 出处：finetune/validation/task_metrics.py:34
+  - 出处：finetune/validation/task_metrics.py:29
+  - 出处：finetune/validation/task_metrics.py:35
+  - 出处：finetune/validation/task_metrics.py:96
   - 出处：finetune/validation/task_metrics.py:107
 - **误读**：路径能对上内容 = 引用正确
-  - 正确：错。行号与内容对得上不代表文件路径存在：本轮实测遇到把 `v3_candidate_plan.py` 误记成放在 `pipeline/scripts/` 下（实际位置是 `pipeline/` 根）的情形；引用前必须对路径本身做存在性实测，现由 `scripts/verify_design_facts.py --check-doc-paths` 兜底。
+  - 正确：错。行号与内容对得上不代表文件路径存在：把 `v3_candidate_plan.py` 放在 `pipeline/scripts/` 下（实际位置是 `pipeline/` 根）时，引用处的行号与内容仍可能对得上，但该路径并不存在；引用前必须对路径本身做存在性实测，现由 `scripts/verify_design_facts.py --check-doc-paths` 兜底。这属于条件式反例：该错误写法曾出现在仓库外审计 brief 中（订正记录见仓库外 `~/pi-workspace/mVllm_2-audit/label-anchor-decision-20261018.md:22`，不在 Git 内，不是仓库证据）；仓库内从未有过该路径。
   - 出处：pipeline/SCRIPTS.md:23

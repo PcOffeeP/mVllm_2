@@ -12,10 +12,22 @@
 
 未知参数（如拼错的 --rendr）打印用法并退出 2，绝不静默回落到校验模式。
 
---check-doc-paths 的白名单是 `scripts/doc-path-allowlist.txt`（相对被检查的仓库根）：
-- `refs: <regex>`（可省略 `refs:` 前缀）用 `re.fullmatch` 匹配「引用路径本身」；
-- `files: <regex>` 用 `re.fullmatch` 匹配「引用所在文件」（相对仓库根，命中任一出现处即豁免该路径）；
-- `#` 开头为注释；文件不存在时视为空白名单（不 FATAL），但会在输出里注明。
+--check-doc-paths 的覆盖范围与已知盲区（PASS 只代表「受检范围内路径存在」）：
+- 扫描对象：`git ls-files '*.md'` 的受跟踪文件；引用主体限 ASCII `[A-Za-z0-9_./-]`。
+- 识别前缀：`docs/`、`pipeline/`、`finetune/`、`versioning/`、`tests/`、`scripts/`、`records/`，
+  可带若干 `./` 或 `../` 段；扩展名限 md / py / jsonl / json / yaml / yml / csv。
+- 判定：同一引用按「仓库根」与「引用所在 md 的目录」双解析，任一存在即通过；只判存在性，不校验行号。
+- 含 `...` 的占位引用不判存在性，逐条打印 SKIP 并计数。
+- 不覆盖：上述七类前缀以外的写法（绝对路径、`store/…`、`workspace/…`、`~/…`、URL）、行号后缀的
+  正确性、非 md 文件、未被 git 跟踪的文件；因此 PASS 不等于「全仓路径都对」。
+
+--check-doc-paths 的白名单是 `scripts/doc-path-allowlist.txt`（相对被检查的仓库根），三种规则形式：
+- `refs: <regex>`（可省略前缀，默认 refs）用 `re.fullmatch` 匹配「引用路径本身」，豁免该路径的所有出现处；
+- `files: <regex>` 用 `re.fullmatch` 匹配「引用所在文件」，豁免这些文件里的所有引用；
+- `refs: <regex> files: <regex>`（同一行，顺序不限）要求两者都匹配才豁免，用于精确到「某文件中的某引用」。
+豁免按**出现处**判定：同一路径在 A 文件被豁免，不会连带豁免 B 文件里的同名引用；一条路径只有在
+所有出现处都存在或都被豁免时才算通过。`#` 开头为注释；文件不存在时视为空白名单（不 FATAL）但会注明；
+0 命中的规则会打印 UNUSED RULE（仅提示，不改退出码）。
 
 实现约束：
 - 只用标准库，不 import 任何项目模块。
@@ -66,12 +78,18 @@ USAGE = (
     "[--render | --check-doc-paths [--root <仓库根>] | --help]"
 )
 # 文档路径自检：引用主体限 ASCII（不用 \w，`\w` 会匹配中文导致相邻两个路径被吞成一条）。
+# 允许若干 `./` / `../` 前缀（提取时保留，判存在性时按仓库根或引用所在目录解析）。
 # 扩展名里 jsonl 必须排在 json 之前，否则 `.jsonl` 会被截成 `.json`。
 DOC_PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_./\-])"
-    r"(?P<ref>(?:docs|pipeline|finetune|versioning|tests|scripts|records)/"
-    r"[A-Za-z0-9_./\-]+\.(?:md|py|jsonl|json|yaml|yml|csv))(?![A-Za-z0-9_])"
+    r"(?P<ref>"
+    r"(?:\.\.?/)*"
+    r"(?:docs|pipeline|finetune|versioning|tests|scripts|records)/"
+    r"[A-Za-z0-9_./\-]+\.(?:md|py|jsonl|json|yaml|yml|csv)"
+    r")(?![A-Za-z0-9_])"
 )
+# 白名单规则关键字：`refs:` 与 `files:` 可单独出现，也可同行同时出现（两个都匹配才豁免）。
+RULE_KEYWORD_RE = re.compile(r"(?:^|\s)(?P<kind>refs|files):\s*")
 DOC_PATH_ALLOWLIST = Path("scripts") / "doc-path-allowlist.txt"
 RENDER_HINT = "请重新运行 `python scripts/verify_design_facts.py --render`（该文件是生成产物，禁止手改）"
 
@@ -611,9 +629,14 @@ def _git_md_files(root: Path) -> tuple[list[str] | None, str | None]:
     return files, None
 
 
-def _scan_md_refs(root: Path, md_files: list[str]) -> tuple[list[dict], list[str]]:
-    """逐行抽取 md 里的仓库内路径引用；含省略号（`...` / `…`）的占位引用跳过不报。"""
+def _scan_md_refs(root: Path, md_files: list[str]) -> tuple[list[dict], list[dict], list[str]]:
+    """逐行抽取 md 里的仓库内路径引用。
+
+    返回 (引用列表, 占位跳过列表, 读取问题)；含 `...` 的占位引用记入跳过列表而不判存在性，
+    以便输出里区分「占位符」与「手滑写错的路径」。
+    """
     refs: list[dict] = []
+    skipped: list[dict] = []
     problems: list[str] = []
     for relative in md_files:
         try:
@@ -623,16 +646,42 @@ def _scan_md_refs(root: Path, md_files: list[str]) -> tuple[list[dict], list[str
             continue
         for lineno, line in enumerate(text.splitlines(), start=1):
             for match in DOC_PATH_RE.finditer(line):
-                ref = match.group("ref")
-                if "..." in ref or "…" in ref:
+                item = {"ref": match.group("ref"), "file": relative, "line": lineno}
+                if "..." in item["ref"]:
+                    skipped.append(item)
                     continue
-                refs.append({"ref": ref, "file": relative, "line": lineno})
-    return refs, problems
+                refs.append(item)
+    return refs, skipped, problems
 
 
-def load_doc_path_allowlist(path: Path) -> tuple[list[tuple[str, str, re.Pattern]], list[str]]:
-    """读白名单：返回 [(类别, 源码文本, 已编译正则)] 与问题列表；文件不存在时视为空白名单。"""
-    rules: list[tuple[str, str, re.Pattern]] = []
+def _parse_rule_line(line: str) -> tuple[dict | None, str | None]:
+    """解析一行白名单规则：返回 ({refs 源码或 None, files 源码或 None}, 错误信息)。
+
+    支持三种形式：`refs: R`（可省略前缀）、`files: F`、`refs: R files: F`（顺序不限）。
+    """
+    marks = list(RULE_KEYWORD_RE.finditer(line))
+    if not marks:
+        return {"refs": line.strip(), "files": None}, None
+    parts: dict[str, str] = {}
+    for index, mark in enumerate(marks):
+        end = marks[index + 1].start() if index + 1 < len(marks) else len(line)
+        kind = mark.group("kind")
+        value = line[mark.end():end].strip()
+        if kind in parts:
+            return None, f"{kind}: 在同一行重复出现"
+        if not value:
+            return None, f"{kind}: 后缺正则"
+        parts[kind] = value
+    return {"refs": parts.get("refs"), "files": parts.get("files")}, None
+
+
+def load_doc_path_allowlist(path: Path) -> tuple[list[dict], list[str]]:
+    """读白名单：返回规则列表与问题列表；文件不存在时视为空白名单。
+
+    每条规则是 {ref, file, source, text, hits}：ref / file 是已编译正则或 None，
+    两者均给出时必须同时 fullmatch 才豁免；hits 记录它实际豁免了多少个出现处。
+    """
+    rules: list[dict] = []
     problems: list[str] = []
     if not path.is_file():
         return rules, problems
@@ -640,23 +689,43 @@ def load_doc_path_allowlist(path: Path) -> tuple[list[tuple[str, str, re.Pattern
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
         return rules, [f"白名单 {path} 无法读取：{exc}"]
+    label = DOC_PATH_ALLOWLIST.as_posix()
     for lineno, raw in enumerate(text.splitlines(), start=1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        kind, pattern = "refs", line
-        for prefix in ("refs:", "files:"):
-            if line.startswith(prefix):
-                kind, pattern = prefix[:-1], line[len(prefix):].strip()
-                break
-        if not pattern:
-            problems.append(f"{path}:{lineno} 规则为空（{kind}: 后缺正则）")
+        parsed, error = _parse_rule_line(line)
+        if error is not None:
+            problems.append(f"{label}:{lineno} {error}")
             continue
-        try:
-            rules.append((kind, pattern, re.compile(pattern)))
-        except re.error as exc:
-            problems.append(f"{path}:{lineno} 正则无效：{pattern!r}（{exc}）")
+        compiled: dict[str, re.Pattern | None] = {"refs": None, "files": None}
+        for kind in ("refs", "files"):
+            pattern = parsed[kind]
+            if pattern is None:
+                continue
+            try:
+                compiled[kind] = re.compile(pattern)
+            except re.error as exc:
+                problems.append(f"{label}:{lineno} {kind}: 正则无效：{pattern!r}（{exc}）")
+        rules.append(
+            {
+                "ref": compiled["refs"],
+                "file": compiled["files"],
+                "source": f"{label}:{lineno}",
+                "text": line,
+                "hits": 0,
+            }
+        )
     return rules, problems
+
+
+def _match_rule(rule: dict, ref: str, md_file: str) -> bool:
+    """判定一条规则是否豁免某个出现处：refs 与 files 都给出时必须同时匹配。"""
+    if rule["ref"] is not None and not rule["ref"].fullmatch(ref):
+        return False
+    if rule["file"] is not None and not rule["file"].fullmatch(md_file):
+        return False
+    return True
 
 
 def _ref_exists(root: Path, ref: str, md_file: str) -> tuple[bool, bool]:
@@ -670,7 +739,10 @@ def _ref_exists(root: Path, ref: str, md_file: str) -> tuple[bool, bool]:
 
 
 def check_doc_paths_mode(root: Path) -> int:
-    """校验 md 里引用的仓库内路径确实存在；缺失则逐条报 MISSING 并退出 1。"""
+    """校验 md 里引用的仓库内路径确实存在；缺失则逐条报 MISSING 并退出 1。
+
+    豁免按出现处判定：同一路径在历史文档里被豁免，不会连带豁免当前文档里的同名引用。
+    """
     print(f"CHECK 文档路径存在性：{root}")
     md_files, error = _git_md_files(root)
     if error is not None:
@@ -680,7 +752,7 @@ def check_doc_paths_mode(root: Path) -> int:
         print("FAIL  git ls-files '*.md' 没有返回任何文件，无法自检（不在 git 仓库内或没有受跟踪的 md）")
         return 1
 
-    refs, problems = _scan_md_refs(root, md_files)
+    refs, skipped, problems = _scan_md_refs(root, md_files)
     if problems:
         for problem in problems:
             print(f"FAIL  {problem}")
@@ -699,43 +771,51 @@ def check_doc_paths_mode(root: Path) -> int:
     for item in refs:
         by_ref.setdefault(item["ref"], []).append(item)
 
-    hits = {"both": 0, "root": 0, "file": 0}
-    missing: list[str] = []
-    exempt: list[str] = []
-    for ref in sorted(by_ref):
-        places = by_ref[ref]
-        resolved = [_ref_exists(root, ref, item["file"]) for item in places]
-        at_root = any(pair[0] for pair in resolved)
-        at_file = any(pair[1] for pair in resolved)
-        if at_root and at_file:
-            hits["both"] += 1
-            continue
-        if at_root or at_file:
-            hits["root" if at_root else "file"] += 1
-            continue
-        ref_exempt = any(kind == "refs" and pattern.fullmatch(ref) for kind, _, pattern in rules)
-        files_exempt = any(
-            kind == "files" and pattern.fullmatch(item["file"])
-            for kind, _, pattern in rules
-            for item in places
-        )
-        if ref_exempt or files_exempt:
-            exempt.append(ref)
-            continue
-        missing.append(ref)
+    for item in skipped:
+        print(f"SKIP {item['ref']}  <- {item['file']}:{item['line']}")
 
-    for ref in missing:
+    hits = {"both": 0, "root": 0, "file": 0}
+    missing: list[dict] = []
+    unknown_refs: list[str] = []
+    exempt_places = 0
+    for ref in sorted(by_ref):
+        unresolved: list[dict] = []
         for item in by_ref[ref]:
-            print(f"MISSING {ref}  <- {item['file']}:{item['line']}")
+            at_root, at_file = _ref_exists(root, ref, item["file"])
+            if at_root and at_file:
+                hits["both"] += 1
+                continue
+            if at_root or at_file:
+                hits["root" if at_root else "file"] += 1
+                continue
+            rule = next((rule for rule in rules if _match_rule(rule, ref, item["file"])), None)
+            if rule is not None:
+                rule["hits"] += 1
+                exempt_places += 1
+                continue
+            unresolved.append(item)
+        if unresolved:
+            unknown_refs.append(ref)
+            missing.extend(unresolved)
+
+    for item in missing:
+        print(f"MISSING {item['ref']}  <- {item['file']}:{item['line']}")
+
+    if rules:
+        for rule in rules:
+            if rule["hits"] == 0:
+                print(f"UNUSED RULE {rule['source']} {rule['text']}")
 
     print(
         f"扫描：{len(md_files)} 个受跟踪 md，{len(refs)} 处引用，{len(by_ref)} 个唯一路径；"
-        f"命中口径 root {hits['root']}、file {hits['file']}、both {hits['both']}"
+        f"存在 {sum(hits.values())} 处（root {hits['root']}、file {hits['file']}、both {hits['both']}）"
     )
     print(
-        f"合计 {len(refs)} 处引用，唯一路径 {len(by_ref)}，不存在 {len(missing)}"
-        f"（白名单豁免 {len(exempt)}）"
+        f"合计 {len(refs)} 处引用，唯一路径 {len(by_ref)}，不存在 {len(missing)} 处"
+        f"（涉 {len(unknown_refs)} 个路径，白名单豁免 {exempt_places} 处）"
     )
+    if skipped:
+        print(f"占位符跳过 {len(skipped)} 处（含 `...`，不判存在性）")
     if missing:
         print("若为示例/计划路径，可加入 `scripts/doc-path-allowlist.txt`")
         return 1

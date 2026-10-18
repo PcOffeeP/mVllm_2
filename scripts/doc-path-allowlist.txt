@@ -1,39 +1,39 @@
 # 文档路径自检白名单（scripts/verify_design_facts.py --check-doc-paths）
 #
 # 语义：脚本对每条规则用 re.fullmatch 逐条匹配（不做子串搜索，因此规则必须写全整条路径）。
-#   refs: <regex>    匹配「引用路径本身」（按仓库根书写的路径）；可省略 `refs:` 前缀，默认即 refs。
-#   files: <regex>   匹配「引用所在文件」（相对仓库根）；命中任一出现处所在文件即豁免该路径。
-# `#` 开头为注释，空行忽略。
-# 只登记已确认「本仓库本就不该有 / 尚未产出 / 有意保留原文」的引用，不写无注释的通配条目。
+#   refs: <regex>              匹配「引用路径本身」，豁免该路径的所有出现处；
+#   files: <regex>             匹配「引用所在文件」（相对仓库根），豁免这些文件里的所有引用；
+#   refs: <regex> files: <rx>  同行给出两个正则（顺序不限），两者都匹配才豁免。
+# 豁免按出现处判定：同一路径在历史文档里被豁免，不会连带豁免其他文件里的同名引用，
+# 因此当前权威文档里的引用必须单独登记（见下方「现行文档逐条收口」段）。
+# `#` 开头为注释，空行忽略；0 命中的规则会打印 UNUSED RULE（防止只增不减）。
 
-# --- 诊断脚本索引的原路径列（历史源提交 bcdf4f36） ----------------------------
-# pipeline/scripts/diagnostics/SCRIPTS.md 的「原路径（bcdf4f36 上）」列有意保留 2026-07 诊断工具
-# 在源提交里的位置；按新命名规范，这些脚本现在位于 pipeline/scripts/diagnostics/，原路径本就不应存在。
-refs: finetune/results/diagnostics/.*
-# 同一索引的「未迁文件」小节：该测试硬编码了旧路径，且放进 tests/ 会改变 pytest 收集基线，故有意未迁。
-refs: tests/test_diagnostic_scorer\.py
+# --- 诊断脚本索引的原路径列（历史源提交 bcdf4f36），只对该索引文件生效 ---------
+# 该索引的「原路径（bcdf4f36 上）」列有意保留 2026-07 诊断工具在源提交里的位置；
+# 按新命名规范它们现在位于 pipeline/scripts/diagnostics/，原路径本就不应存在。
+refs: finetune/results/diagnostics/.* files: pipeline/scripts/diagnostics/SCRIPTS\.md
+# 同一索引的「未迁文件」小节：该测试硬编码旧路径，且放进 tests/ 会改变 pytest 收集基线，故有意未迁。
+refs: tests/test_diagnostic_scorer\.py files: pipeline/scripts/diagnostics/SCRIPTS\.md
 
-# --- 设计稿计划产出、尚未落地 -------------------------------------------------
-# docs/plans/2026-10-18-full-chain-validation.md：全链验证的 c1–c14 产物与审计脚本均标注为待产出。
-refs: records/full-chain-validation-20261018/.*
-refs: scripts/(?:eval|train)_audit_[a-z_]+\.py
-refs: scripts/release_audit_source_media\.py
-# docs/pending-blockers.md:62 与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md:492/:519：
-# 门槛精算脚本按设计待建，pending-blockers 原文已注明「该文件目前不存在」。
-refs: finetune/eval_build_gate_thresholds\.py
-# docs/pending-blockers.md:86/:88 与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md:491：
-# 判例库标为「新增 / 阶段一产出」，finetune/validation/cases/ 目录当前整体不存在。
-refs: finetune/validation/cases/judge_cases\.jsonl
-# docs/plans/2026-10-18-evaluation-pipeline-redesign.md:490：T1 判读器标为「新增」，待建。
-refs: finetune/validation/t1_judge\.py
+# --- 设计稿计划产出、尚未落地（只对对应设计稿生效） ---------------------------
+# docs/plans/2026-10-18-full-chain-validation.md：全链验证 c1–c14 产物与审计脚本均标「待产出」。
+refs: records/full-chain-validation-20261018/.* files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: scripts/(?:eval|train)_audit_[a-z_]+\.py files: docs/plans/2026-10-18-full-chain-validation\.md
+refs: scripts/release_audit_source_media\.py files: docs/plans/2026-10-18-full-chain-validation\.md
+# docs/pending-blockers.md:62/:86/:88 与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md:490–:519
+# 引用的三个文件尚未产出：pending-blockers 原文注明门槛脚本「该文件目前不存在」，判例库与 T1
+# 判读器标「新增 / 阶段一产出」，finetune/validation/cases/ 目录当前整体不存在。
+refs: finetune/eval_build_gate_thresholds\.py files: (?:docs/pending-blockers\.md|docs/plans/2026-10-18-evaluation-pipeline-redesign\.md)
+refs: finetune/validation/cases/judge_cases\.jsonl files: (?:docs/pending-blockers\.md|docs/plans/2026-10-18-evaluation-pipeline-redesign\.md)
+refs: finetune/validation/t1_judge\.py files: docs/plans/2026-10-18-evaluation-pipeline-redesign\.md
 
-# --- 已被合并/清理的历史文档名（台账与历史文档按原文保留，不改写） -------------
+# --- 现行文档逐条收口：已被合并/清理的历史文档名（不改台账原文） -------------
 # docs/DATA_PROCESSING_RUNBOOK.md 在 59dee2d1（docs: adopt consolidated workflows…）随文档合并迁出，
-# 现由 docs/data-workflow.md 承担；docs/project-todo.md 等处的历史记录保留原文。
-refs: docs/DATA_PROCESSING_RUNBOOK\.md
+# 现由 docs/data-workflow.md 承担；docs/project-todo.md:425 是历史记录，保留原文。
+refs: docs/DATA_PROCESSING_RUNBOOK\.md files: docs/project-todo\.md
 # docs/results/conda-environment-setup-20261013.md 在 749e9dba 的文档清理中删除，
 # docs/project-todo.md:318 的历史记录保留原文。
-refs: docs/results/conda-environment-setup-20261013\.md
+refs: docs/results/conda-environment-setup-20261013\.md files: docs/project-todo\.md
 
 # --- 历史/设计文档：保留原文，不改写其中的路径 --------------------------------
 # 可读版本控制设计稿与实施台账：记录当时计划中的 tests/versioning/*、versioning/*、
@@ -43,5 +43,6 @@ files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\
 files: docs/tasks/.*
 # 历史评测、诊断报告与归档结果。
 files: docs/results/.*
-# 调研笔记（含 finetune/readme.md 这类与仓库实际大小写不一致的写法）。
+# 调研笔记：其引用的 docs/llamafactory_train_and_infer.md 与 finetune/readme.md 在本仓库
+# 从未存在（外部或未落地文档，大小写写法也都不存在），保留原文不改写。
 files: docs/research/.*
