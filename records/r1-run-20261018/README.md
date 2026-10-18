@@ -51,4 +51,4 @@ LoRA adapter（460,430,776 B）与 merged 全量权重（10 个分片，合计 1
 
 ## 5. 与 R1 数字无关的目录
 
-`docs/results/model_evidence/v4.1-phase2-source-aware-v1-seed3407/` 的 `model_dir` 指向 `dd89b70e9d63`（joint 0.362353），那**不是 R1**，不得当作 R1 的数字使用。
+证据包 `v4.1-phase2-source-aware-v1-seed3407`（原位于 `docs/results/model_evidence/`，已随 2026-10-18 清理移除）的 `model_dir` 指向 `dd89b70e9d63`（joint 0.362353），那**不是 R1**，不得当作 R1 的数字使用。

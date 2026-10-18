@@ -85,4 +85,4 @@ Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1
 
 [设计与决定](plans/2026-09-01-readable-version-control-design.md)、[ADR](adr/ADR-0001.md)、[已确认Spec](tasks/2026-09-07-readable-version-control-migration/spec.md)描述确认的规则；[对象映射](results/version-control-migration/object-mapping.yaml)、[历史摘要](results/version-control-migration/history-summary.yaml)、[验证记录](results/version-control-migration/verification.md)描述实际发生的事实。
 
-模型资料从[证据包索引](results/model_evidence/README.md)查找；本地五份轻量README/MANIFEST存在不等于训练机原始日志、预测和权重完整，也不是删除放行单。原始结果、摘要和证据不要因概览文档被替换而一起删除。
+模型归档证据包索引与五份轻量 README/MANIFEST 已随 2026-10-18 清理移除，逐文件指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`，来源与限制结论见[模型清单](results/model-inventory.md)与[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)；本地记录存在不等于训练机原始日志、预测和权重完整，也不是删除放行单。原始结果、摘要和证据不要因概览文档被替换而一起删除。

@@ -5,10 +5,6 @@
 ```text
 results/
 ├── README.md
-├── v4_1_0_760050fad303_20260723/         V4.1 基线与消融证据
-├── archive/
-│   ├── v2/                               已封存 V2 结果
-│   └── legacy/                           更早的冒烟与基线结果
 └── experiments/
     ├── diagnostics/                      诊断推理输出
     └── prompt_sweep/                     Prompt 扫描输出
@@ -20,13 +16,14 @@ results/
 历史视觉三折结果目录已随 2026-10-18 清理移除，prompt-concise 三折的 Git 摘要记录
 同样移除，现存版本化运行目录见本节上方目录树。最新 prompt-concise 三折结果位于对应
 `workspace/runs/` 的 evaluation 目录。
-`v4_1_0_760050fad303_20260723` 保留上一轮语言基线及 fold0 消融的证据关系。
+上一轮语言基线及 fold0 消融的 V4.1 证据目录已随 2026-10-18 清理移除；其指标结论见
+`docs/results/model-inventory.md`，删除前逐文件指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`。
 
-## archive
+## 已清理的历史结果集
 
-`archive/v2` 保存 V2 冻结发布的三折、全量训练与测试结果。
-`archive/legacy` 保存 V2 正式流水线以前的 base/finetune 冒烟结果。它们用于追溯，
-不作为当前模型质量结论。
+2026-07 legacy 结果集（V2 正式流水线以前的 base/finetune 冒烟结果）与 v2.0.0（20260719）
+冻结发布结果集（三折、全量训练与测试）已于 2026-10-18 清理移除，`archive/` 目录不再存在。
+这些结果原本只用于追溯，不作为当前模型质量结论；删除前逐文件指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`。
 
 ## experiments
 

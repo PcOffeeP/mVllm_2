@@ -46,7 +46,7 @@
 | [活动数据指针](../../finetune/active_data_release.json) | `v4.1.0-ecb5aeb9657c` 及钉扎 manifest 摘要 | release、payload、审查来源与实际使用关系 |
 | [模型指针](../../pipeline/model_registry/current.json) | `v4.1-agent-pipeline-fold0-r1` | 注册记录、权重、来源训练及实际服务选择 |
 | [交付配置](../../delivery/model_component.json) | `production_approved: false`，Stage B/D/G 标记为 false | 既有质量证据的真实含义；false 不自动等同于已执行失败 |
-| [归档索引](model_evidence/README.md)及同目录文件 | 索引称一个试点，实际存在五个模型证据目录 | 各目录对应的完整归档、原始记录与权重是否存在 |
+| 归档索引（原 `model_evidence/README.md`，该目录已于 2026-10-18 清理移除）及同目录文件 | 索引称一个试点，实际存在五个模型证据目录 | 各目录对应的完整归档、原始记录与权重是否存在 |
 
 五个本地证据目录为 `v4.1-prompt-minimal-v1-seed3411`、`v4.1-phase2-source-aware-v1-seed3407`、`v4.1-phase2-source-aware-v1-seed3411`、`v4.1-phase2-coverage-first-v1-seed3411`、`v4.1-phase2-coverage-fallback-v1-seed3413`。目录存在不证明归档完整，也不证明这些对象都需迁移。历史 concise-cv 权重缺失记录仍须在训练机核实，不能沿用旧快照作为当前结论。
 

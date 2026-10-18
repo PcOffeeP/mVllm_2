@@ -131,10 +131,10 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 ## 7. 证据与限制
 
 - 模型 1 的评测源：[runtime-contract 3798 摘要](../../finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3407_runtime_contract_3798/fold0/evaluation_summary.json)。
-- 模型 2：[评测摘要](../../finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3411/fold0/evaluation_summary.json)；模型 3：[评测摘要](../../finetune/results/v4_1_phase2_coverage_first_fallback_seed3413/seed3413/fold0/evaluation_summary.json)。
+- 模型 2：[评测摘要](../../finetune/results/v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3/seed3411/fold0/evaluation_summary.json)；模型 3：评测摘要（该记录已随 2026-10-18 清理移除，删除前指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`）。
 - 模型 4：训练机 `workspace/runs/v4.1-prompt-minimal-v1-seed3411/evaluation/evaluation_summary.json`，本轮内容已收入第 8 节快照；原始逐样本记录未复制到本快照。
 - 模型 7 及历史 visual 对比：三折报告（该记录已随 2026-10-18 清理移除），数值见第 5 节表格。本轮只核报告，没有重跑三折评测或验证缺失权重。
-- 模型 11/12：[seed3407 摘要](../../finetune/results/v4_1_phase2_source_aware_3k_dd89b70e9d63/seed3407/fold0/evaluation_summary.json)、[seed3411 摘要](../../finetune/results/v4_1_phase2_source_aware_3k_dd89b70e9d63/seed3411/fold0/evaluation_summary.json)；同目录上层 `training_run_manifest.json` 记录训练代码、采样序列哈希、best step 等，训练 YAML 在 `finetune/MiniCPM/config/active/v4_1_source_aware_3k/`，归档前需校验其与 manifest 哈希一致。
+- 模型 11/12：run `v4_1_phase2_source_aware_3k_dd89b70e9d63` 的 seed3407 / seed3411 评测摘要已随 2026-10-18 清理移除（删除前指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`）；其上层 `training_run_manifest.json` 记录训练代码、采样序列哈希、best step 等，训练 YAML 在 `finetune/MiniCPM/config/active/v4_1_source_aware_3k/`，归档前需校验其与 manifest 哈希一致。
 - **数据契约与推理契约不同**：第 2 节的 `47e393...` 是数据发布契约；模型 1–4 上述推理记录为 `3798f00cbec7a3cad3e50de66dd2b5bdeecca1a95ae74297cbd0d71e7ec438ab`，模型 11/12 为 `47e393...`。相同 V4.1 标签不能代替逐次评测的契约和 Prompt 内容绑定。
 - 本文修正事实与归档要求，不修改配置、契约、指针，不删除远程文件。数字摘录与文件存在性核查不等于本轮完整模型质量验收。
 
@@ -170,7 +170,7 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 每个实际训练模型、每个 fold 单独绑定以下证据；摘要中无空间展开的内容保留原文件并链接，不增加多份重复叙述。
 
-> 已归档证据包统一位于 [模型归档证据包索引](model_evidence/README.md)，按 `model_id/` 存放于 `docs/results/model_evidence/`。该链接**仅作为证据定位入口**，索引内已有目录不等于归档已完整、也不等于清理已放行；能否删除仍以本节归档验收条件与 TODO 的 MODEL-ARCHIVE 显式授权为准。
+> 已归档证据包原按 `model_id/` 存放于 `docs/results/model_evidence/`，该目录已随 2026-10-18 清理移除，删除前逐文件指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`。归档索引**仅作为证据定位入口**，索引内已有目录不等于归档已完整、也不等于清理已放行；能否删除仍以本节归档验收条件与 TODO 的 MODEL-ARCHIVE 显式授权为准。
 
 | 信息 | 最小留存内容 |
 | --- | --- |
