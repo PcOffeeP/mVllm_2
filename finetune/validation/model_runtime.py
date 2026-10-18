@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import signal
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .constants import GENERATION_CONFIG, VIDEO_MAX_FRAMES
+from .constants import (
+    GENERATION_CONFIG,
+    INFERENCE_TIMEOUT_SECONDS,
+    TEMPORAL_FUSION_LEGACY,
+    VIDEO_MAX_FRAMES,
+    VIDEO_SLICE_MAX_NUMS,
+)
 from pipeline.preprocessing.minicpm_preprocessor import configure_processor_max_frames
 
 FOUR_BIT_INFERENCE_PRECISION = "bnb_4bit_nf4_merged_resampler_bf16"
@@ -12,6 +20,10 @@ FOUR_BIT_ADAPTER_INFERENCE_PRECISION = (
     "bnb_4bit_nf4_adapter_resampler_bf16"
 )
 FOUR_BIT_SKIP_MODULES = ("resampler",)
+
+
+class InferenceTimeoutError(RuntimeError):
+    """Raised when a single inference call exceeds its wall-clock budget."""
 
 
 @dataclass(frozen=True)
@@ -103,12 +115,29 @@ def run_model_on_video_detailed(
     system_prompt: str | None = None,
     max_new_tokens: int = GENERATION_CONFIG["max_new_tokens"],
     frame_dir: Path | None = None,
+    temporal_fusion: bool | None = None,
+    max_slice_nums: int | None = None,
+    timeout_seconds: float | None = None,
 ) -> ModelRunResult:
     import torch
 
     from .video_loader import load_video_frames
 
-    frames, temporal_ids, timestamps = load_video_frames(str(video_path), max_frames=VIDEO_MAX_FRAMES)
+    resolved_temporal_fusion = (
+        TEMPORAL_FUSION_LEGACY if temporal_fusion is None else temporal_fusion
+    )
+    resolved_max_slice_nums = (
+        VIDEO_SLICE_MAX_NUMS if max_slice_nums is None else max_slice_nums
+    )
+    resolved_timeout_seconds = (
+        INFERENCE_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds
+    )
+
+    frames, temporal_ids, timestamps = load_video_frames(
+        str(video_path),
+        max_frames=VIDEO_MAX_FRAMES,
+        temporal_fusion=resolved_temporal_fusion,
+    )
     frame_paths = _write_sampled_frames(frames, timestamps, frame_dir) if frame_dir else []
     image_tags = "".join("(<image>./</image>)" for _ in frames)
     messages = []
@@ -120,7 +149,7 @@ def run_model_on_video_detailed(
         text=prompt_text,
         images=frames,
         temporal_ids=temporal_ids,
-        max_slice_nums=1,
+        max_slice_nums=resolved_max_slice_nums,
         use_image_id=False,
         return_tensors="pt",
     ).to(model.device)
@@ -129,15 +158,18 @@ def run_model_on_video_detailed(
     # needs them to build video embeddings.
     inputs.pop("image_sizes", None)
 
-    with torch.no_grad():
-        generated = model.generate(
+    def _generate() -> Any:
+        return model.generate(
             **inputs,
             tokenizer=processor.tokenizer,
             do_sample=GENERATION_CONFIG["do_sample"],
             num_beams=GENERATION_CONFIG["num_beams"],
             max_new_tokens=max_new_tokens,
             decode_text=True,
-        )[0]
+        )
+
+    with torch.no_grad():
+        generated = _call_with_timeout(_generate, resolved_timeout_seconds)[0]
     raw_output = str(generated)
     token_count: int | None = None
     try:
@@ -151,6 +183,33 @@ def run_model_on_video_detailed(
         hit_token_limit=token_count >= max_new_tokens if token_count is not None else None,
         frame_paths=frame_paths,
     )
+
+
+def _call_with_timeout(call: Any, timeout_seconds: float | None) -> Any:
+    """Run ``call`` once under a POSIX wall-clock timeout (no retry).
+
+    ``timeout_seconds`` of None or <= 0 disables the timeout. Everything else is
+    fail-closed: without SIGALRM and a main-thread caller the timeout cannot be
+    enforced, so we refuse to run instead of silently ignoring the budget.
+    """
+    if timeout_seconds is None or timeout_seconds <= 0:
+        return call()
+    if not hasattr(signal, "SIGALRM") or threading.current_thread() is not threading.main_thread():
+        raise RuntimeError(
+            "inference timeout requires a POSIX main thread with SIGALRM; "
+            "refusing to run inference without an enforceable timeout"
+        )
+
+    def _on_timeout(signum: Any, frame: Any) -> None:
+        raise InferenceTimeoutError(f"inference timeout after {timeout_seconds:g}s")
+
+    previous_handler = signal.signal(signal.SIGALRM, _on_timeout)
+    try:
+        signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+        return call()
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def _write_sampled_frames(frames: list[Any], timestamps: list[float], frame_dir: Path) -> list[str]:

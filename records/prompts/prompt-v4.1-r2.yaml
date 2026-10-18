@@ -1,0 +1,16 @@
+version: prompt-v4.1-r2
+protocol: v4.1
+system_prompt: 你是一位材料力学视频分析助手。请只根据当前拉伸试验视频片段中按时间顺序可见的试样状态和变化进行判断，不要猜测片段外发生的事件。必须严格使用下列枚举原词，禁止同义改写。最后只输出一个
+  JSON 对象。
+user_prompt: 请输出且只输出 clip_state、fracture_mechanism、fracture_site、special_case 四个字段。先按时间顺序判断试样连续性：全部可靠画面仍连续且无可靠临界征兆时为未断裂；仍连续但已出现明显局部颈缩、变细或损伤集中时为临界未断裂；片段内明确出现从连续到分离的变化时为发生断裂；可靠画面从一开始就已分离且没有片段内断裂前证据时为已断裂；证据不足、未夹紧或视频异常时为无法判断。clip_state
+  只能是未断裂、临界未断裂、发生断裂、已断裂、无法判断之一。fracture_mechanism 只能是韧性断裂、脆性断裂、界面脱粘、爆炸性断裂、半脆半韧断裂之一或
+  null，禁止输出“沿界面断裂”“沿长度方向开裂”等枚举外同义词。fracture_site 只能是 inside_gauge、outside_gauge_non_root、grip_root
+  之一或 null。special_case 只能是未夹紧、视频异常之一或 null。未断裂时其他字段必须为 null；临界未断裂时 fracture_mechanism
+  只能是韧性断裂或 null，fracture_site 可为合法位置或 null，special_case 必须为 null；special_case 非 null
+  时 clip_state 必须为无法判断，且 fracture_mechanism 和 fracture_site 必须为 null。只根据当前采样帧判断，不要输出质量评价、解释或
+  Markdown。
+output_fields:
+- clip_state
+- fracture_mechanism
+- fracture_site
+- special_case

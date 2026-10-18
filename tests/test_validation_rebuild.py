@@ -430,7 +430,13 @@ def test_model_runtime_keeps_minicpm_video_embedding_inputs(monkeypatch, tmp_pat
     # the imported module path instead of model_runtime globals.
     import finetune.validation.video_loader as video_loader
 
-    monkeypatch.setattr(video_loader, "load_video_frames", lambda video_path, max_frames: (["frame1", "frame2"], [[0, 0]], [0.0, 1.0]))
+    # fake 需接受 run_model_on_video_detailed 新增的关键字参数；返回值仍是 1 组
+    # 时间融合，用于断言透传保真（不做新的语义承诺）。
+    monkeypatch.setattr(
+        video_loader,
+        "load_video_frames",
+        lambda video_path, max_frames, **kwargs: (["frame1", "frame2"], [[0, 0]], [0.0, 1.0]),
+    )
 
     assert model_runtime.run_model_on_video(FakeModel(), FakeProcessor(), tmp_path / "sample.mp4", "prompt") == "{}"
     assert "image_sizes" not in captured
@@ -475,7 +481,7 @@ def test_model_runtime_includes_system_prompt_when_provided(monkeypatch, tmp_pat
     monkeypatch.setattr(
         video_loader,
         "load_video_frames",
-        lambda video_path, max_frames: (["frame1"], [[0, 0]], [0.0]),
+        lambda video_path, max_frames, **kwargs: (["frame1"], [[0, 0]], [0.0]),
     )
 
     result = model_runtime.run_model_on_video(
@@ -528,7 +534,7 @@ def test_model_runtime_omits_system_prompt_when_none(monkeypatch, tmp_path):
     monkeypatch.setattr(
         video_loader,
         "load_video_frames",
-        lambda video_path, max_frames: (["frame1"], [[0, 0]], [0.0]),
+        lambda video_path, max_frames, **kwargs: (["frame1"], [[0, 0]], [0.0]),
     )
 
     result = model_runtime.run_model_on_video(

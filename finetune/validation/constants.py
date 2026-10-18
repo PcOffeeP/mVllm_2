@@ -41,3 +41,12 @@ GENERATION_CONFIG = {
 }
 
 CORE_FIELDS = ("has_fracture", "fracture_between", "type", "location")
+
+# 训练/服务侧 LlamaFactory MiniCPMVPlugin 的视频默认上限（mm_plugin.py 的 getattr 默认值）
+VIDEO_MAX_PIXELS = 65536
+VIDEO_MIN_PIXELS = 256
+VIDEO_SLICE_MAX_NUMS = 2
+# 单次推理超时，与服务后端 600s 对齐（versioning/performance.py 的会话绝对上限）
+INFERENCE_TIMEOUT_SECONDS = 600.0
+# 回退开关：True 时恢复旧的 [[0]*n] 单组时间融合，仅供对比实验；默认关闭
+TEMPORAL_FUSION_LEGACY = False
