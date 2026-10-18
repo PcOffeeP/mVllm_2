@@ -2,6 +2,7 @@
 
 > **变更记录** 2026-10-18 清理：移除 24 个文件，现存 117 个。N/M 由 `find docs/results -type f` + `os.path.getsize` 统计；清单见 C 节主表，被清空的两个一级子目录（`v4_1_0_760050fad303_20260724_visual/`、`v4_1_prompt_concise_cv_v1_seed3411/`）整组移除。
 > **变更记录** 2026-10-18 清理（A1）：`model_evidence/` 整目录移除 —— 移除 40 个文件，现存 77 个。N/M 同由 `find docs/results -type f` + `os.path.getsize` 重新统计；该目录已于 2026-10-18 清理整组移除，C 节不再列出其条目。
+> **变更记录** 2026-10-18 迁入批：本批在 `docs/results` 下移除 0 个文件，现存 77 个；随后按分支裁决迁入 6 个 2026-07 诊断报告（现存 83 个，见下条）。迁入后 `diagnostics-data-visual-audit-plan-20260717.md` 「迁入说明」补两行改名映射与反引号说明（正文仅 1 行链接改反引号），体积 9,499→9,749 B，合计随实测重算。
 > **变更记录** 2026-10-18 迁入：按分支裁决从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 取 6 个 2026-07 诊断报告落 `docs/results/`（统一 `diagnostics-` 前缀并保留日期以便溯源），迁入 6 个文件，现存 83 个；正文逐字节未改，头部另加「迁入说明」块，档位按「仓库内零引用」如实落 C。
 > **变更记录** 2026-10-18 另有 R1 训练过程信息 24 个文件同步入库，落位 `records/r1-run-20261018/`，不属 `docs/results` 范围，故不计入本索引统计。
 
@@ -20,12 +21,12 @@
 |---|---|---|---|
 | A | 被 `*.py`、`README.md`、`AGENTS.md` 或 `docs/*.md` 正文引用 | 25 | 8,218,361 B |
 | B | 仅被 `docs/results/**` 其它文件或 `docs/project-todo.md` 引用 | 39 | 3,681,340 B |
-| C | 零引用 | 19 | 151,032 B |
-| 合计 | A+B+C | 83 | 12,050,733 B |
+| C | 零引用 | 19 | 151,282 B |
+| 合计 | A+B+C | 83 | 12,050,983 B |
 
-自检：25 + 39 + 19 = 83，与现存活文件总数相等。总量换算：12,050,733 B = 11.49 MiB。
+自检：25 + 39 + 19 = 83，与现存活文件总数相等。总量换算：12,050,983 B = 11.49 MiB。
 
-C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138,657 B + NOISY 降级 8 个 / 12,375 B = 151,032 B。
+C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138,907 B + NOISY 降级 8 个 / 12,375 B = 151,282 B。
 
 ## C. 主表：83 行 × 9 字段
 
@@ -159,7 +160,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138
 | `docs/results/model-gate-baseline-20260914.md` | 10628 B（10.4 KB） | B | 模型资产与门禁背景档案（文档契约 Purpose） | 2026-10-12 15:14（文件名日期 2026-09-14，与 mtime 不同源） | model-gate-baseline（顶层散文件，未归属实验目录） | 说明文档 | 无（未见取代记录） | 保留（实验间互相引用） |
 | `docs/results/remote-state-refresh-20261013.md` | 10487 B（10.2 KB） | A | 训练机只读现状核查正文（H1 标题自述） | 2026-10-13 16:25 | remote-state-refresh（顶层散文件，未归属实验目录） | 说明文档 | 无（未见取代记录） | 保留（被代码或正式文档引用） |
 | `docs/results/development-input-runtime-preparation-20261016.md` | 10180 B（9.9 KB） | A | 开发输入与资源预算运行前核验（H1 标题自述） | 2026-10-16 12:33 | development-input-runtime-preparation（顶层散文件，未归属实验目录） | 说明文档 | 无（未见取代记录） | 保留（被代码或正式文档引用） |
-| `docs/results/diagnostics-data-visual-audit-plan-20260717.md` | 9499 B（9.3 KB） | C | 2026-07 诊断计划与阶段结论总览（H1 标题自述） | 2026-07-19（文件名日期 2026-07-17） | diagnostics-data-visual-audit（顶层散文件，未归属实验目录） | 历史归档 | 无（未见取代记录） | 2026-10-18 迁入，保留（负面证据） |
+| `docs/results/diagnostics-data-visual-audit-plan-20260717.md` | 9749 B（9.5 KB） | C | 2026-07 诊断计划与阶段结论总览（H1 标题自述） | 2026-07-19（文件名日期 2026-07-17） | diagnostics-data-visual-audit（顶层散文件，未归属实验目录） | 历史归档 | 无（未见取代记录） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/evaluation-development-implementation-20261015.md` | 9278 B（9.1 KB） | A | 测评基础能力与开发接线记录（H1 标题自述） | 2026-10-15 20:37 | evaluation-development-implementation（顶层散文件，未归属实验目录） | 说明文档 | 无（未见取代记录） | 保留（被代码或正式文档引用） |
 | `docs/results/diagnostics-data-visual-audit-20260719.md` | 9211 B（9.0 KB） | C | 2026-07 诊断执行总报告与重评结论（H1 标题自述） | 2026-07-19（迁入 2026-10-18） | diagnostics-data-visual-audit（顶层散文件，未归属实验目录） | 历史归档 | 无（未见取代记录） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/ollama-tokenizer-verification-20261015.md` | 8077 B（7.9 KB） | A | Ollama 分词核验与 NFC/NFD 差异（H1 标题自述） | 2026-10-16 09:40（文件名日期 2026-10-15，与 mtime 不同源） | ollama-tokenizer-verification（顶层散文件，未归属实验目录） | 历史归档 | 原指向的兼容修复记录已随 2026-10-18 清理移除 | 保留（被代码或正式文档引用） |
@@ -203,7 +204,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138
 | `docs/results/training-data-ledger-20261017.md` | 4663 B（4.6 KB） | 保留（新入库证据，不得删） |
 | `docs/results/v4_1_phase2_source_aware_3k_coverage_first/stage_b_canary_gate_summary.json` | 2458 B（2.4 KB） | 保留待用户核定（门禁/准备结论唯一凭证） |
 | `docs/results/v4_1_stage_d_sealed_test_release/preparation_summary.json` | 1297 B（1.3 KB） | 保留待用户核定（门禁/准备结论唯一凭证） |
-| `docs/results/diagnostics-data-visual-audit-plan-20260717.md` | 9499 B（9.3 KB） | 2026-10-18 迁入，保留（负面证据） |
+| `docs/results/diagnostics-data-visual-audit-plan-20260717.md` | 9749 B（9.5 KB） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/diagnostics-data-visual-audit-20260719.md` | 9211 B（9.0 KB） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/diagnostics-visual-audit-preparation-report-20260717.md` | 4685 B（4.6 KB） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/diagnostics-checkpoint-comparison-full-run-exact-20260719.md` | 1592 B（1.6 KB） | 2026-10-18 迁入，保留（负面证据） |
@@ -233,7 +234,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138
 
 ### E.3 档位重算差异登记（不改档位，逐条留证）
 
-`check_index_v2.py` 已改为用仓库内引用（`git grep`）重算零引用判定（A/B 分界沿用审计 4.1 节，不随引用变化重算）并逐条比对。下列 6 处重算结果与本表抄录的审计归属不同：一律**保留审计档位不改**，在此逐条留证；脚本会断言「重算差异集合 = 本节登记集合」，任何未登记的新漂移都会让自检失败。
+`check_index_v2.py` 已改为用仓库内引用（`git grep`）重算零引用判定（A/B 分界沿用审计 4.1 节，不随引用变化重算）并逐条比对。下列 7 处重算结果与本表抄录的审计归属不同：一律**保留审计档位不改**，在此逐条留证；脚本会断言「重算差异集合 = 本节登记集合」，任何未登记的新漂移都会让自检失败。
 
 | # | 文件 | 表内档位 | 重算档位 | 差异原因 |
 |---|---|---|---|---|
@@ -243,6 +244,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138
 | 4 | model-r1-effect-profile-20261018.json | C | B | `c5ad8311` 在审计采集（17:11）之后把该文件登记为证据位置（`docs/project-todo.md`），已不是零引用 |
 | 5 | model-r1-effect-profile-20261018.md | C | B | 同上 |
 | 6 | training-data-ledger-20261017.md | C | B | 同上 |
+| 7 | diagnostics-data-visual-audit-20260719.md | C | B | 2026-10-18 迁入批在 `diagnostics-data-visual-audit-plan-20260717.md` 的「迁入说明」中登记改名映射，按 `git grep` 已非零引用；档位沿用迁入批裁决仍记 C（该引用只是说明性溯源，不是使用它的消费者） |
 
 本批引用清理还在「零引用边界」之外造成 3 处 A/B 分界漂移（三者仍被引用，故不属于上面的零引用差异集合；档位一律不改，沿用审计 4.1 节）：
 
@@ -254,12 +256,12 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 138
 
 受影响的表述：E.1「真零引用 5 条」中第 4–6 项现已被 `docs/project-todo.md` 引用（按判据属 B），但三条的处置建议（保留、不得删）不因此改变；第 1–3 项在被引者删除后已变为零引用，处置建议仍按原登记保留，不据此判可删。上表 3 处 A/B 分界漂移同理：`docs/project-status.md` 只是新增的引用来源（`model-inventory.md`、`model-gate-baseline-20260914.md` 两处由前序批次 `749e9dba` 引入，`remote_snapshot.json` 一处由本批——2026-10-18 清理第 2 批，基线 `793dc725`——引入），档位与处置建议均不因此改变，自检脚本另有专门断言防止此类漂移静默。
 
-`model_evidence/` 整目录移除（A1，40 个文件）**未新增零引用漂移**：该目录内的引用者与其被引对象同批删除，实测重算的零引用差异仍为上面登记的 6 处（删除前后同一集合）；该目录内的文件只互相引用（HEAD 侧 `docs/results/model_evidence/README.md` 确实另有 3 处指向 `docs/results/` 之外的 `../model-inventory.md` 与 1 处 `../../project-todo.md`，但它们指向的存活文件本身不因此改变档位），删除后零引用重算差异集合仍为上面登记的同一组 6 条，没有任何存活文件因失去唯一引用者而改变档位，A1 只改变 A/B/C 计数与体积，不改变任何存活文件的档位归属。
+`model_evidence/` 整目录移除（A1，40 个文件）**未新增零引用漂移**：该目录内的引用者与其被引对象同批删除，实测重算的零引用差异仍为 A1 之前登记的 6 处（删除前后同一集合；第 7 处由 2026-10-18 迁入批引入，见上表）；该目录内的文件只互相引用（HEAD 侧 `docs/results/model_evidence/README.md` 确实另有 3 处指向 `docs/results/` 之外的 `../model-inventory.md` 与 1 处 `../../project-todo.md`，但它们指向的存活文件本身不因此改变档位），删除后零引用重算差异集合仍为 A1 之前登记的同一组 6 条，没有任何存活文件因失去唯一引用者而改变档位，A1 只改变 A/B/C 计数与体积，不改变任何存活文件的档位归属。
 
 
 ## F. 机器自检
 
-自检脚本：`/Users/pcoffeep/pi-workspace/mVllm_2-audit/check_index_v2.py`（仓库外）。清理后的期望值全部由磁盘推导：文件集来自 `os.walk('docs/results')`，逐文件字节数取 `os.path.getsize`，B 节分级汇总、C 类拆分、头部「移除 N 个文件，现存 M 个」均由该实测集重算；审计清单只用于 mtime、basename 命中与 A/B 分界的审计快照基线。档位里只有「是否零引用」用 `git grep` 在仓库内重算（A/B 分界的**档位**沿用审计 4.1 节，不随引用变化重算），A/B 分界**漂移集合**则由主表档位 + 仓库引用实测派生（`docs/project-todo.md` 按 B 节判据属 B 类来源，不计入 A 类来源）；6 处零引用边界差异与 3 处 A/B 分界漂移都逐条登记在 E.3，脚本分别断言「零引用重算差异集合 = E.3 零引用登记集合」与「E.3 A/B 分界登记集合 = 实测派生集合」，均为集合相等断言，任何未登记的新漂移都会失败。
+自检脚本：`/Users/pcoffeep/pi-workspace/mVllm_2-audit/check_index_v2.py`（仓库外）。清理后的期望值全部由磁盘推导：文件集来自 `os.walk('docs/results')`，逐文件字节数取 `os.path.getsize`，B 节分级汇总、C 类拆分、头部「移除 N 个文件，现存 M 个」均由该实测集重算；审计清单只用于 mtime、basename 命中与 A/B 分界的审计快照基线。档位里只有「是否零引用」用 `git grep` 在仓库内重算（A/B 分界的**档位**沿用审计 4.1 节，不随引用变化重算），A/B 分界**漂移集合**则由主表档位 + 仓库引用实测派生（`docs/project-todo.md` 按 B 节判据属 B 类来源，不计入 A 类来源）；7 处零引用边界差异（6 处由清理引入、1 处由 2026-10-18 迁入批引入）与 3 处 A/B 分界漂移都逐条登记在 E.3，脚本分别断言「零引用重算差异集合 = E.3 零引用登记集合」与「E.3 A/B 分界登记集合 = 实测派生集合」，均为集合相等断言，任何未登记的新漂移都会失败。
 
 体积与汇总数字由两个同步脚本写入，均为 `os.path.getsize` 现场计算、不含手改：`sync_index_sizes.py`（主表逐文件体积，含同一路径在 E 节重复出现的情形）与 `sync_index_totals.py`（头部变更记录链（按 141 基线 + `git status` 暂存删除数反推）、A 节计数、B 节 A/B/C/合计、自检句、MiB 换算、C 类构成句、C 节行数、E 节与 E.1/E.2 标题计数）。清理前的 `check_index.py` 在同一目录保留为历史基线（其 141 行期望值已不适用于当前文件集，不再执行）。
 
@@ -271,7 +273,7 @@ $ .venv/bin/python /Users/pcoffeep/pi-workspace/mVllm_2-audit/check_index_v2.py
 退出码：0
 
 PASS 索引文件自身在磁盘上
-磁盘实测：docs/results 共 84 个文件（含 INDEX.md），主表应覆盖 83 个，合计 12,050,733 B
+磁盘实测：docs/results 共 84 个文件（含 INDEX.md），主表应覆盖 83 个，合计 12,050,983 B
 == A. 主表行数与字段 ==
 PASS 主表数据行数 = 磁盘实际文件数  -> 主表 83 行 / 磁盘 83 个
 PASS 每行恰 9 个字段（无多余分隔符）
@@ -293,14 +295,15 @@ PASS 档位只出现 A/B/C
 PASS 时点以审计 4.5 节 mtime 开头  -> []
 == D2. 零引用重算（A/B 沿用审计 4.1 节，不随引用变化重算） ==
 NOISY（改用完整路径判据）的 basename：['README.md(basename 命中 41)', 'manifest.json(basename 命中 97)', 'verification.md(basename 命中 18)']
-零引用判定与 INDEX 档位不一致：6 处
+零引用判定与 INDEX 档位不一致：7 处
+  漂移 docs/results/diagnostics-data-visual-audit-20260719.md 表=C 重算=B 引用来源=['docs/results/diagnostics-data-visual-audit-plan-20260717.md']
   漂移 docs/results/evaluation-client-source-inventory-20261016.json 表=B 重算=C 引用来源=[]
   漂移 docs/results/evaluation-tokenizer-compatibility-materials-20261016/offline-validation.json 表=B 重算=C 引用来源=[]
   漂移 docs/results/model-r1-effect-profile-20261018.json 表=C 重算=B 引用来源=['docs/project-todo.md']
   漂移 docs/results/model-r1-effect-profile-20261018.md 表=C 重算=B 引用来源=['docs/project-todo.md']
   漂移 docs/results/remote-preparation-audit-20261016.json 表=B 重算=C 引用来源=[]
   漂移 docs/results/training-data-ledger-20261017.md 表=C 重算=B 引用来源=['docs/project-todo.md']
-PASS 零引用边界重算差异 = INDEX E.3 逐条登记集合（不含 A/B 分界漂移）  -> 重算 6 / 登记 6；未登记 []；登记多余 []
+PASS 零引用边界重算差异 = INDEX E.3 逐条登记集合（不含 A/B 分界漂移）  -> 重算 7 / 登记 7；未登记 []；登记多余 []
 PASS E.3 A/B 分界登记路径均在磁盘上（无悬空条目）  -> []
 PASS 该批文件在主表仍标 B（档位不随引用变化重算）  -> []
 PASS 登记的 A/B 分界漂移集合 = 由主表档位与仓库引用派生的实测集合  -> 登记 3 / 实测 3；未登记 []；登记多余 []
@@ -308,11 +311,11 @@ PASS 主表 A 档文件均仍有 A 类来源引用（反向 A→B 漂移为空�
 PASS E.2 条数 = C 档计数 - E.1 的 11 条（由磁盘与主表派生，不硬编码）  -> 8 vs 8
 PASS E.2 的 8 个 NOISY 条目在放开 basename 规则后全部落 A 类  -> 未落 A：[]
 == E. 分级计数与体积累加（由磁盘重算） ==
-重算结果：A=25/8,218,361 B=39 3,681,340 C=19 151,032
+重算结果：A=25/8,218,361 B=39 3,681,340 C=19 151,282
 PASS B 节 A 行 = 磁盘实测计数与体积  -> 表=25/8,218,361 B 实测=25/8,218,361
 PASS B 节 B 行 = 磁盘实测计数与体积  -> 表=39/3,681,340 B 实测=39/3,681,340
-PASS B 节 C 行 = 磁盘实测计数与体积  -> 表=19/151,032 B 实测=19/151,032
-PASS B 节合计行 = 磁盘实测  -> 表=83/12,050,733 B 实测=83/12,050,733
+PASS B 节 C 行 = 磁盘实测计数与体积  -> 表=19/151,282 B 实测=19/151,282
+PASS B 节合计行 = 磁盘实测  -> 表=83/12,050,983 B 实测=83/12,050,983
 PASS A+B+C = 主表行数  -> 83 vs 83
 PASS B 节自检句与重算一致
 == F. 状态词表与「当前有效」 ==
@@ -327,7 +330,7 @@ PASS E 节集合 = 主表 C 档集合
 PASS C_NEW / C_GATE / C_IMPORTED 11 条全部仍在 E 节  -> []
 PASS E.1 恰为真零引用 11 条（C_NEW 3 + C_GATE 2 + 迁入 6）  -> ['docs/results/diagnostics-checkpoint-comparison-full-run-exact-20260719.md', 'docs/results/diagnostics-checkpoint-comparison-production-prompt-20260719.md', 'docs/results/diagnostics-data-visual-audit-20260719.md', 'docs/results/diagnostics-data-visual-audit-plan-20260717.md', 'docs/results/diagnostics-visual-audit-preparation-report-20260717.md', 'docs/results/diagnostics-visual-audit-report-20260719.md', 'docs/results/model-r1-effect-profile-20261018.json', 'docs/results/model-r1-effect-profile-20261018.md', 'docs/results/training-data-ledger-20261017.md', 'docs/results/v4_1_phase2_source_aware_3k_coverage_first/stage_b_canary_gate_summary.json', 'docs/results/v4_1_stage_d_sealed_test_release/preparation_summary.json']
 PASS E.2 恰为剩余 NOISY 条目（扣掉 E.1 的 11 条）  -> 8 条
-PASS E.1+E.2 体积 = C 档体积  -> 138,657+12,375 vs 151,032
+PASS E.1+E.2 体积 = C 档体积  -> 138,907+12,375 vs 151,282
 PASS B 节 C 类构成句由磁盘重算得出
 PASS E.2 命中数仍取审计 4.6 节（存活文件可核对）  -> []
 PASS C_NEW 3 条建议原文正确
@@ -347,8 +350,8 @@ PASS 取代者 总长度 ≤ 60 字符  -> max=41
 PASS INDEX.md 内 Markdown 链接数 = 0  -> []
 PASS 无空链接 / 占位链接
 == J. 头部变更记录与仓库状态 ==
-PASS 头部变更记录链自洽（141 基线逐条扣减/迁入，末条现存数 = 主表行数，净变化 = 141 - 现存）  -> 141-24=117；117-40=77；迁入 6；累计移除 64 vs 141+迁入-现存 64
-PASS 末条变更记录的移除数 = 该批 docs/results 删除数（未提交时取暂存区，已提交时取 HEAD）  -> 表=40 HEAD 提交中的删除=40
+PASS 头部变更记录链自洽（141 基线逐条扣减/迁入，末条现存数 = 主表行数，净变化 = 141 - 现存）  -> 141-24=117；117-40=77；77-0=77；迁入 6；累计移除 64 vs 141+迁入-现存 64
+PASS 末条变更记录的移除数 = 该批 docs/results 删除数（未提交时取暂存区，已提交时取 HEAD）  -> 表=0 HEAD 提交中的删除=0
 git status 已暂存删除（仅用于一致性核对，不硬编码条数）：0 条
 PASS 已删除路径均不在磁盘上且不在主表（磁盘侧）  -> []
 PASS 已删除路径均不在磁盘上且不在主表（主表侧）  -> []
