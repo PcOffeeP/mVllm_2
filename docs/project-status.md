@@ -19,7 +19,7 @@
 | 本机 | macOS 开发、审查 UI 及结果复核；用 uv 调用已部署的 Mac Python 3.11.x |
 | 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660` |
 | 训练机代码目录 | `/home/liuyang/文档/mVllm_2` |
-| 正式store（已归位） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已将活 store 由 `/data/mVllm_2` 归位至此，逐文件 sha256 核验 48/48 一致；旧目录改名 `/data/.store-old-20261017` 保留 7 天回滚窗口（核验记录见仓库外 `~/pi-workspace/mVllm_2-audit/cleanup-execution-20261017.md` 第六轮 48/48，本机未复跑且 checkout 无 `store/` 现场）；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION` |
+| 正式store（已归位） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已将活 store 由 `/data/mVllm_2` 归位至此，逐文件 sha256 核验 48/48 一致；旧目录改名 `/data/.store-old-20261017` 保留 7 天回滚窗口（核验记录见仓库外 `~/pi-workspace/mVllm_2-audit/cleanup-execution-20261017.md` 第六轮 48/48，本机未复跑且 checkout 无 `store/` 现场）；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION`；2026-10-18 训练机实测：`store/` 47,288,387 B / 49 文件，其中 `store/records/prompts/` 含 r1（1,200 B）与 r2（1,808 B）；训练机 `workspace/data/source/videos` 6,662,518,177 B / 110 个 mp4、`workspace/data/derived/subvideos` 208,117,755 B / 2,027 文件（含 2 个 candidate-plan：1,617 + 410）。本机 checkout 无 `store/`、`workspace/data/` 父目录整体缺失，上述媒体与 store 侧 Prompt 的保留义务在训练机侧 |
 | 备份总目录 | `/data/mVllm_2-backups/`；2026-10-17 归位后 `/data` 只放备份。单次备份的 `--backup-root` 取该目录下的 `baseline-YYYYMMDD` 或 `round<N>-YYYYMMDD` 子目录，不得使用总目录本身；`20261017/` 是历史旧物落点、不再写入（据用户口径，本机未核） |
 | 基座位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；2026-10-16四片SHA已对应官方固定HF revision；配置/tokenizer已核，但构造代码有1处偏差、加载可用性未验 |
 
