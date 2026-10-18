@@ -23,6 +23,21 @@ Non-goals:
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [README.md](README.md)
 
+## 开工必读顺序
+
+1. `docs/design-facts.md` —— 现行设计事实（**必读**；不看等于从碎片推断）
+2. `docs/project-status.md` —— 当前阶段与结论
+3. `docs/project-todo.md` —— 任务台账与状态
+4. 按任务看具体文档
+
+## 结论优先级与引用规则
+
+- 冲突时优先级：**契约 > 代码 > 文档 > 推断**。
+- 文档与代码不一致时：**先报冲突，不得择一执行**。
+- 引用任何文档前核其在 `docs/design-facts.yaml` 中的 `state`；`obsolete` 者只能作历史证据，不得作为现行依据。
+- 回答"为什么"类问题时，若依据来自 design-facts，须标注 `DF-xxx`；无编号的结论自动降级为「推断」。
+- 修改契约 / Prompt / 阈值 / 数据生成逻辑后，**必须同步更新 `docs/design-facts.yaml`**，并跑 `python scripts/verify_design_facts.py`；不通过不得提交。
+
 ## 双机工作机制
 
 - 当前电脑用于项目开发、代码查看、结果文件检查、静态分析、文档整理和结论汇总。
