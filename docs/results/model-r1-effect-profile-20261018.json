@@ -152,13 +152,13 @@
       "$.analysis.user_prompt",
       "$.contract_hash"
     ],
-    "differing_paths_source": "docs/results/development-runtime-readiness-20261016.json 的 prompt_contract_analysis.differing_paths",
+    "differing_paths_source": "docs/results/training-data-ledger-20261017.json 的 contract_analysis.differing_paths（2026-10-18 由运行时就绪材料并入门台）",
     "semantics_boundary": "Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.",
     "label_schema_and_enum_generation_video_objects_unchanged": true,
     "prompt_clarified_file_note": "pipeline/contracts/tensile_vlm_v4_1_prompt_clarified.json 的 base_contract_hash 为 47e393…，但其 analysis 段正文是当前修订版（system 与 prompt-v4.1-r2.yaml 同文），不能当作历史契约正文",
     "inline_text_source": "历史契约正文取自 git 对象 97d36a90003957be3c13b5dbfc017452a308e54d:pipeline/contracts/tensile_vlm_v4_1.json；不能用当前工作区 tensile_vlm_v4_1.json 的 analysis 段替代",
     "actually_used_in_training": "未证实",
-    "evidence": "docs/project-todo.md 开发输入现场（2026-10-16）条：原冻结目录两份摘要不在场，实际训练 Prompt 未证，不以当前 active YAML 替代；development-runtime-readiness-20261016.json 的 semantics_boundary 亦明写不复原旧 Fold0 实际训练 Prompt",
+    "evidence": "docs/project-todo.md 开发输入现场（2026-10-16）条：原冻结目录两份摘要不在场，实际训练 Prompt 未证，不以当前 active YAML 替代；docs/results/training-data-ledger-20261017.json 的 contract_analysis.semantics_boundary 亦明写不复原旧 Fold0 实际训练 Prompt",
     "legacy_prompt_files_not_evidence": [
       "pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1/prompt.yaml",
       "records/prompts/prompt-v4.1-r1.yaml",
@@ -672,7 +672,7 @@
   ],
   "restated_only_note": "299 条数值未被这三处复述",
   "comparability": [
-    "行 1 与行 2 是同一个模型、同一批 425 条样本、同一个 merged 目录，换了契约身份（47e393… 换成 3798f00c…）。两版契约的 analysis.system_prompt、analysis.user_prompt、analysis.retry_prompt 确实不同（证据：docs/results/development-runtime-readiness-20261016.json 的 prompt_contract_analysis.differing_paths 列出这三个路径加 $.contract_hash；semantics_boundary 原文为 Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.）。因此行 1 到行 2 是同一模型换了契约（含 Prompt 指令正文），既不表示模型能力发生变化，也不涉及重新训练。但同一变更还涉及 retry_prompt 与契约结构差异，仓库内没有受控单变量实验，所以不能把严格合法率 0.995294 到 1、四字段 joint 正确率 0.400 到 0.411765 的差值单独归因于 Prompt 正文改动。相关代码记录见原 concise 三折报告第 3.2 节（该记录已随 2026-10-18 清理移除）（提交 c6098ab1 修正 evaluator 的 contract 身份记录并增加 Prompt contract 支持，未修改 parse_v4_1_output、score_v4_1_prediction 与标签语义）。",
+    "行 1 与行 2 是同一个模型、同一批 425 条样本、同一个 merged 目录，换了契约身份（47e393… 换成 3798f00c…）。两版契约的 analysis.system_prompt、analysis.user_prompt、analysis.retry_prompt 确实不同（证据：docs/results/training-data-ledger-20261017.json 的 contract_analysis.differing_paths 列出这三个路径加 $.contract_hash；semantics_boundary 原文为 Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.）。因此行 1 到行 2 是同一模型换了契约（含 Prompt 指令正文），既不表示模型能力发生变化，也不涉及重新训练。但同一变更还涉及 retry_prompt 与契约结构差异，仓库内没有受控单变量实验，所以不能把严格合法率 0.995294 到 1、四字段 joint 正确率 0.400 到 0.411765 的差值单独归因于 Prompt 正文改动。相关代码记录见原 concise 三折报告第 3.2 节（该记录已随 2026-10-18 清理移除）（提交 c6098ab1 修正 evaluator 的 contract 身份记录并增加 Prompt contract 支持，未修改 parse_v4_1_output、score_v4_1_prediction 与标签语义）。",
     "所有 425 条数字（行 1 至行 6）都测于改动前开发侧管线：单组时间融合，1 组 = 64 token。训练侧与开发侧对齐后是逐帧成组，8 帧即 8 组，视觉 token 推导值 512（512 = 8 × query_num 64，需加载 resampler 前向才能实测）。两种口径不可直接比较。",
     "R1 在 8 组 / 512 token 链路下的表现没有任何一次真实测量；仓库里没有该口径下的 R1 评测记录，只有行 8 的服务冒烟，该文件只登记布尔结果与单值响应，未登记请求次数，也没有指标数值。",
     "行 7 的 299 条是密封独立测试，与 425 条 development validation 不是同一集合，且 sealed_test_exposed 为 true。两者契约同为 3798f00c…，不可比的原因不在契约，而在不同 release（v4.1-sealed-test-5546b8bf1ec3 与 v4.1.0-ecb5aeb9657c）、不同样本集合（20 个 test 来源与 29 个 development 来源）、sealed_test_exposed 为 true、以及该次抽帧分组未记录。不同 release、不同集合、不同链路之间只能并列陈述，不能相互换算，也不能作单变量因果对比。"

@@ -30,7 +30,7 @@ release.yaml 无 content_hash/digest/sha256/checksum 字段，目录内无 index
 - 三折 validation 两两交集 0/0/0，并集 1581 = 425+664+492；全量减并集 = 97 个「仅 train」候选，与任一 validation 交集 0，三折 train 中均存在（缺失 [0,0,0]），排序拼接 sha256 `c9d461b045a9be3806fe787f893e4c31e21956dcdd669cda41a702c6ddcba4ad`。
 
 ## 试件分组
-`docs/results/development-source-groups-20261016.json`（sha256 `781aa0b142e20fc03568fcb8286639bc9670d42e7233b265cd03a808a242bd04`，100105B）：85 组，组内候选 3 / 20.0 / 43（min/median/max）；val 组 29/29/22（去重 80），三折 val 组两两交集 0/0/0；5 组从不进入任何 validation。分组依据为**用户直接确认「每个试样只对应一个视频」**，非独立物理观测。
+本台账 `source_groups`（分组口径、折内组检查与用户原话）与 `source_map.mapping`（1,678 条 candidate→source_video 本体；原分组材料的 candidate→group 表与之逐条相同，故只存一份）：85 组，组内候选 3 / 20.0 / 43（min/median/max）；val 组 29/29/22（去重 80），三折 val 组两两交集 0/0/0；5 组从不进入任何 validation。分组依据为**用户直接确认「每个试样只对应一个视频」**，非独立物理观测。原分组材料 sha256 `781aa0b142e20fc03568fcb8286639bc9670d42e7233b265cd03a808a242bd04`（100,105 B），2026-10-18 并入台账后原文件已移除。
 
 ## 质量预算（耗时派生，非已批准预算）
 | 项 | 值 |
@@ -57,3 +57,21 @@ release.yaml 无 content_hash/digest/sha256/checksum 字段，目录内无 index
 
 ## 限制与声明
 逐条限制见 JSON 的 `limitations` 与 `timing_baseline.assumptions`（旧 release 外推、试件分组依据、内部 eval 开销、未重跑训练等）。**本文件不代表数据已审查通过。**
+
+## 2026-10-18 并入原始核验材料
+
+2026-10-16 的五个开发输入核验文件（盘点、运行前核验正文、运行时就绪、试件分组、映射观测）已整体并入本台账 `training-data-ledger-20261017.json`，原文件随后移除；其 sha256、体积与并入去向记在 JSON 的 `merged_source_materials.originals`，原文件名可由本批提交的删除记录（`git show --diff-filter=D --name-only <本批提交> -- docs/results`）追溯。
+
+五类关键事实与新位置：
+
+| 事实类 | 内容摘要 | 台账内位置 |
+| --- | --- | --- |
+| 映射本体与折分配 | 1,678 条 candidate→source_video；85 个来源的三折 train/validation 分配全表 | JSON `source_map.mapping`、`source_map.source_fold_allocations`（sha256 由 mapping 复算校验） |
+| 试件分组 | 85 组、组内候选 3/20.0/43、val 组 29/29/22（去重 80）、组交集 0、用户原话依据 | JSON `source_groups`（candidate→group 表与 `source_map.mapping` 相同，未重复存储） |
+| 源码/配置指纹 | 22 份文件的逐文件 sha256 与字节数、生成参数四项 | JSON `source_fingerprints.files`、`source_fingerprints.generation` |
+| 契约双 hash 与差异 | 历史 `47e393…` / 当前 `3798f0…`、四处差异路径、canonical 复算与语义边界 | JSON `contract_analysis` |
+| 旧 Fold0 训练 YAML | 1,535 B 恢复全文、sha256 `036c9c69…`、当前 active `d3fd4000…`、两份 metadata 探测 | JSON `legacy_yaml_recovery` |
+
+其余一并并入的事实：开发输入盘点的基线 HEAD、只读采集调用与成功采集脚本全文、4 次尝试历史、release 授权观测、Prompt 与契约身份、旧 Fold0 绑定、6 份非 release 文件证据、三条 limits（JSON `development_inputs`）；三入口路径对齐、变体未选、性能与时间上限、评审调用边界、样本量算术（JSON `runtime_readiness`）；运行前核验正文的 12 条本轮约束与收尾核查结论（JSON `development_inputs.round_constraints`、`development_inputs.closeout_review`）。
+
+体积：并入前 14,118 B，并入后 211,453 B，未超 500 KB，故未拆分，未产生 `.sources.json`。逐条覆盖核对（102 条事实，0 失败）由仓库外脚本 `~/pi-workspace/mVllm_2-audit/verify_ledger_coverage.py` 在删除前完成，含 1,678 条映射逐条相等、22 份指纹逐项相等、恢复 YAML 字符串相等与 sha256/size 复算、四处差异列表相等、计数相等。

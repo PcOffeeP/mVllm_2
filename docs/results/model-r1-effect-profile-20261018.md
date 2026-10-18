@@ -454,7 +454,7 @@ adapter 覆盖范围（字段组 `adapter_coverage`）：目标模块数 11；�
 
 行 1 与行 2 是同一个模型、同一批 425 条样本、同一个 merged 目录，换了契约身份（`47e393…` 换成 `3798f00c…`）。
 
-两版契约的 `analysis.system_prompt`、`analysis.user_prompt`、`analysis.retry_prompt` **确实不同**。证据：`docs/results/development-runtime-readiness-20261016.json` 的 `prompt_contract_analysis.differing_paths` 列出 `$.analysis.retry_prompt`、`$.analysis.system_prompt`、`$.analysis.user_prompt`、`$.contract_hash` 四个路径；同一对象的 `semantics_boundary` 原文为「Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.」；`label_schema_and_enum_generation_video_objects_unchanged` 为 true。两侧正文的字符数、字节数与 SHA-256 见 1.5 节。
+两版契约的 `analysis.system_prompt`、`analysis.user_prompt`、`analysis.retry_prompt` **确实不同**。证据：`docs/results/training-data-ledger-20261017.json` 的 `contract_analysis.differing_paths` 列出 `$.analysis.retry_prompt`、`$.analysis.system_prompt`、`$.analysis.user_prompt`、`$.contract_hash` 四个路径；同一对象的 `semantics_boundary` 原文为「Analysis instructional text changed, so equal structured label definitions do not prove identical annotation guidance or model task behavior. Does not recover actual old Fold0 training Prompt.」；`label_schema_and_enum_generation_video_objects_unchanged` 为 true。两侧正文的字符数、字节数与 SHA-256 见 1.5 节。
 
 因此行 1 到行 2 是同一模型换了契约（含 Prompt 指令正文），既不表示模型能力发生变化，也不涉及重新训练。
 
@@ -596,7 +596,7 @@ R2 与 R1 不构成同一代迭代关系。R2 是新体系的第一代 data 与 
 | `records/prompts/prompt-v4.1-r1.yaml` | legacy Prompt，仅供辨析 | `907e3b5a025df70add5933ec6bf1795d09b5a7a723c6adc98f34a77a0cf82bd6` |
 | `records/prompts/prompt-v4.1-r2.yaml` | R2 提示版本记录 | `9c6ec5274cd804d21bf54585343344a67443f94b8396fe5bc01f41ab2de7269f` |
 | `pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json` | 部署清单，记 `processor_version`、`max_frames`、`model_version`、`transformers_version`、`llamafactory_version`、`base_model_version`、`adapter_version`、`config_fingerprint`、`runtime_device`、`runtime_dtype`；未记像素预算、时序分组、单次推理超时 | — |
-| `docs/results/development-runtime-readiness-20261016.json` | 两版契约正文差异与 `semantics_boundary`（`prompt_contract_analysis`） | — |
+| `docs/results/training-data-ledger-20261017.json` | 两版契约正文差异与 `semantics_boundary`（`contract_analysis`；原运行时就绪材料已于 2026-10-18 并入台账） | — |
 | 清理预检记录（已随 2026-10-18 清理移除） | 迁移 receipt 内容摘要 | `target_release_digest` 为 `a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b` |
 | `docs/data-workflow.md:180` | `data-v4.1-r2` 的 active 状态与来源发布（仅支持此两项） | — |
 | `docs/results/remote-state-refresh-20261013.md:42`、`:46` | 状态、sample_count、receipt、去重计数与三折计数 | — |
