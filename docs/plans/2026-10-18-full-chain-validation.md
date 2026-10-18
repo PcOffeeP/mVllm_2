@@ -417,7 +417,7 @@ $ .venv/bin/python -m pytest tests/test_frame_contract.py tests/test_dev_eval_pr
 
 质疑点
 
-1. 给一段合法但语义错误的输出（例如 `has_fracture: true` 而区间与类型矛盾），`strict_valid` 是否为 True？`strict_valid` 只校验形式【实测】，本条用于把该事实固化为可回归用例。
+1. 给一段合法但语义错误的输出（例如 `has_fracture: true` 而区间与类型矛盾），`strict_valid` 是否为 True？`strict_valid` 只校验形式【实测】（`finetune/eval_run.py:344`、`finetune/v4_1_runtime.py:451-461`），本条用于把该事实固化为可回归用例。
 2. 给一个已被 v2 契约删除的字段 `fracture_between`，解析器是否静默接受？该字段仍在 `pipeline/prompt_library.yaml:9` 与 `finetune/validation/constants.py:43` 的 `CORE_FIELDS` 中【实测】。
 3. 解析容错层级是否允许剥 markdown 代码块、截取首个 JSON 对象这类修补？这类修补是否掩盖了格式退化？相关测试见 `tests/test_output_normalizer.py`。
 4. 缺字段、额外字段、类型错误、枚举越界四类畸形输入，各自判定结果是什么？是否都判不合法？
@@ -552,7 +552,7 @@ $ .venv/bin/python scripts/eval_audit_aggregate_support.py --records <预测记�
 质疑点
 
 1. 每个阈值的定义出处与设定理由是什么？已知 `0.65` 与 `0.4006` 的来源不明或不完整【推断】，必须列为「阈值来源无法追溯」问题。
-2. 新体系有硬闸机，老体系无闸机【实测】。老链路是否仍能产出被后续文档引用的评测结论？
+2. 新体系有硬闸机，老体系无闸机【实测】（`finetune/eval_holdout.py:474-478` 只把 `outcome` 写进摘要，`:526` 不论 passed/failed 都以 `completed` 收尾、无拦截分支；`finetune/holdout_metrics.py:91` 只返回 `'passed'`/`'failed'` 文本）。老链路是否仍能产出被后续文档引用的评测结论？
 3. 政策层已知存在三条显式放宽。这三条现在是否仍然成立、写在哪个文件？【待验证】
 4. 阈值可被谁改、改后如何发现？`validate_thresholds` 只与冻结常量比对（近似 `:33`–`:39`），改常量即同时改门禁【实测】。
 
@@ -721,15 +721,15 @@ $ .venv/bin/python scripts/eval_audit_metric_provenance.py --docs docs/plans/202
 
 | 编号 | 问题 | 影响环节 | 当前状态 | 追加证据 |
 | --- | --- | --- | --- | --- |
-| K1 | 标为「已断裂」的子视频中很多首帧看不到可见断裂，标签可能与画面不符 | C2、C4、C6、C14 | 未验证（用户目视，待量化） | `records/full-chain-validation-20261018/c4/confusion_geometry_vs_visual.csv` |
-| K2 | `event_time` 与人眼判读差约 3.5 s（`video_0110`） | C2、C3、C4 | 未验证【推断】 | `records/full-chain-validation-20261018/c2/event_time_bias.csv` |
+| K1 | 标为「已断裂」的子视频中很多首帧看不到可见断裂，标签可能与画面不符 | C2、C4、C6、C14 | 未验证（用户目视，待量化） | `records/full-chain-validation-20261018/c4/confusion_geometry_vs_visual.csv`（计划产物，待生成） |
+| K2 | `event_time` 与人眼判读差约 3.5 s（`video_0110`） | C2、C3、C4 | 未验证【推断】 | `records/full-chain-validation-20261018/c2/event_time_bias.csv`（计划产物，待生成） |
 | K3 | 评测侧 `temporal_ids` 全为 `-1` | C8、C10 | 已实测确认，归因未定（见 `docs/pending-blockers.md` 的 PB-002） | `docs/pending-blockers.md:29`（转引 `docs/project-todo.md:69` 的 CPU 复验）+ 仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（不入 Git）；`records/full-chain-validation-20261018/c8/processor_inputs.json` 为计划产物，待生成 |
 | K4 | R1 425 条预测中「已断裂」出现 0 次 | C11、C10 | 已实测 | `docs/results/model-r1-effect-profile-20261018.md:216`、`:488`（旧口径；新口径 425 结果尚未入库，见 `docs/project-todo.md:82`）；`records/full-chain-validation-20261018/c11/aggregate_with_support.json` 为计划产物，待生成 |
-| K5 | `finetune/validation/task_metrics.py:51` 一带曾因 `None == None` 白送判对 | C9 | 已修，待回归 | `records/full-chain-validation-20261018/c9/pytest_output.txt` |
-| K6 | 过期字段 `fracture_between` 残留（v2 契约已删，`pipeline/prompt_library.yaml:9` 仍要求） | C5、C9 | 未清理（暂缓） | `records/full-chain-validation-20261018/c5/prompt_field_diff.json` |
+| K5 | `finetune/validation/task_metrics.py:51` 一带曾因 `None == None` 白送判对 | C9 | 已修，待回归 | `records/full-chain-validation-20261018/c9/pytest_output.txt`（计划产物，待生成） |
+| K6 | 过期字段 `fracture_between` 残留（v2 契约已删，`pipeline/prompt_library.yaml:9` 仍要求） | C5、C9 | 未清理（暂缓） | `records/full-chain-validation-20261018/c5/prompt_field_diff.json`（计划产物，待生成） |
 | K7 | 老体系无闸机 | C12、C13 | 已读代码确认（非运行实测） | 仓库外 `~/pi-workspace/mVllm_2-audit/gate-status-20261018.md:250`（`pipeline/model_registry.py`、`finetune/release_validate.py` 只算分不拦人；不入 Git）；`records/full-chain-validation-20261018/c12/legacy_gate_check.txt` 为计划产物，待生成 |
 | K8 | `strict_valid` 只校验形式 | C9、C10 | 已读代码确认（非运行实测） | `finetune/eval_run.py:344`（`strict_valid = prediction is not None`）+ `finetune/v4_1_runtime.py:451-461`（`parse_v4_1_output` 只做 `json.loads` 与标签词表规范化）；`records/full-chain-validation-20261018/c9/strict_valid_cases.md` 为计划产物，待生成 |
-| K9 | 训练池「已断裂」占 15.00%（DF-010），模型从不输出该类 | C6、C11 | 已实测（两侧事实各自成立） | `docs/design-facts.yaml:131-142`（DF-010，`established_by: 代码核对`，evidence 指 `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:83`）；`records/full-chain-validation-20261018/c6/class_balance.csv` 为计划产物，待生成 |
+| K9 | 训练池「已断裂」占 15.00%（DF-010），模型从不输出该类 | C6、C11 | 已核对（DF-010 为代码核对结论，非运行实测；两侧事实各自成立） | `docs/design-facts.yaml:131-142`（DF-010，`established_by: 代码核对`，evidence 指 `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:83`）；`records/full-chain-validation-20261018/c6/class_balance.csv` 为计划产物，待生成 |
 | K10 | 源数据个别帧内容与主题无关（某样本把「锡纸擦不锈钢」镜头当成试样画面） | C1、C4 | 已知 1 例，未系统排查 | `~/pi-workspace/mVllm_2-audit/full-chain-validation-20261018/c1/visual_review.md`（仓库外，不入 Git） |
 
 K10 的原始出处为仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md` 的 P3 段落，该文件不在 Git 内。
