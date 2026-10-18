@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """校验 docs/design-facts.yaml，并由它渲染 docs/design-facts.md。
 
-用法：
-    python scripts/verify_design_facts.py            # 逐项打印 PASS/FAIL，任一失败退出 1
-    python scripts/verify_design_facts.py --render   # 由 yaml 重新生成 docs/design-facts.md，退出 0
-    python scripts/verify_design_facts.py --check-doc-paths
-                                                     # 检查 md 里引用的仓库内路径是否真实存在，缺失退出 1
-    python scripts/verify_design_facts.py --check-doc-paths --root /tmp/repo
-                                                     # 只对指定仓库根自检；--root 仅在 --check-doc-paths 下合法
-    python scripts/verify_design_facts.py --help     # 打印本说明，退出 0
+用法（三种模式互斥，缺省为校验；`--root` 对三种模式均可用）：
+    python scripts/verify_design_facts.py [--root <仓库根>]
+                                                     # 校验：逐项打印 PASS/PASS(no-expect)/FAIL，任一 FAIL 退出 1
+    python scripts/verify_design_facts.py --render [--root <仓库根>]
+                                                     # 渲染：由 yaml 重新生成 docs/design-facts.md，退出 0
+    python scripts/verify_design_facts.py --check-doc-paths [--root <仓库根>]
+                                                     # 路径自检：检查 md 里引用的仓库内路径是否存在，缺失退出 1
+    python scripts/verify_design_facts.py --help     # 打印本说明，退出 0（独立于模式与 --root）
+
+`--root` 把仓库根与 yaml / md / 阈值源码路径一并重定向；校验、渲染、路径自检三种模式都接受它。
+`--root` 必须是**已存在的目录**，否则按参数错误打印用法并退出 2（三种模式一致）。这是相对旧版的
+行为变化：旧版对不存在的目录会继续执行，`--check-doc-paths` 要到 `git -C <目录> ls-files` 才报
+`退出码 128` 并退出 1，错误原因被藏在 git 的 stderr 里。
 
 未知参数（如拼错的 --rendr）打印用法并退出 2，绝不静默回落到校验模式。
 若 `--check-doc-paths` 扫不到任何可判定引用（例如正则 / 扩展名 / 前缀常量被改坏），该模式判 FAIL 而非 PASS。
@@ -37,8 +42,41 @@
 - 只用标准库，不 import 任何项目模块。
 - 冻结阈值一律用 `ast` 解析 `finetune/holdout_metrics.py` 的 `THRESHOLDS` 字面量，不 import 该模块。
 - 阈值校验是双向的：源码 THRESHOLDS 的项数、键集合与 claim 抽出的键集合必须一致，再逐项比值。
-- evidence 只接受仓库内相对路径（绝对路径与越出仓库根的引用一律 FAIL），防止事实锚定到仓库外。
-- 仓库根按脚本自身位置推断（`Path(__file__).resolve().parents[1]`），不依赖 cwd，便于在隔离的假仓库中运行。
+- evidence 支持两种写法：字符串 `path:LINE`（旧格式，无内容断言，标记 `PASS(no-expect)`）与映射
+  `{ref: path:LINE, expect: 片段}`。映射只允许 `ref` 与 `expect` 两个键，`expect` 必须是非空、单行的
+  字符串：拼错键名、缺 expect、空串 / null / 非字符串 / 含换行一律 FAIL（fail-closed），不得降级成
+  `PASS(no-expect)`，否则断言会被静默丢弃。有 expect 时目标行必须按字面包含该片段（区分大小写、非模糊、
+  非正则），失败文案同时打印期望片段与目标行实际内容。evidence 只接受仓库内相对路径
+  （绝对路径与越出仓库根的引用一律 FAIL），防止事实锚定到仓库外。
+- `expect` 值内**不支持行内注释**：yaml 子集只认整行注释，`expect: def target  # 说明` 会把
+  `# 说明` 一并吞进期望片段。该写法不会静默通过（片段通常匹配不上而判 FAIL），需要整行注释请另起一行。
+  值里的 `#` 一律原样保留（加不加引号都一样），只是 YAML 行内注释不被本子集支持。
+- `expect` 必须是能唯一钉住该行语义的片段（唯一性由人工判断，工具只做字面命中校验）；
+  越短越接近恒真（如 `expect: def` 无意义），应能区分「该行确实表达了这条事实」与
+  「该行只是碰巧还在同一行号」。片段长度以能钉住语义为准；受标识符长度或引用语法限制时可超出常规长度
+  （不以字数设硬阈值），但不得为了凑长度裁成恒真片段。
+- 校验模式逐条 evidence 各占一行；聚合行按「带 expect 的 evidence N 条，命中 M 条」表述。该聚合行只在
+  evidence 全部通过时打印，因此 M 恒等于 N，读者看不到 M < N；有 FAIL 时改由逐条 FAIL 行说明（N 为 0
+  即没有任何内容断言）。
+- 总结区的 `无内容断言的 evidence：N 条` 口径：N 只统计最终判定为 `PASS(no-expect)` 的条目（旧格式
+  字符串，且 ref / 行号 / 非空行等检查全部通过）；被判 FAIL 的条目一律不计入，否则出现 FAIL 时这个数
+  会「凭空变好」，被误读成断言健全程度提升。结构校验失败、evidence 根本没被检查时，该行改为打印
+  `无内容断言的 evidence：未检查（结构校验已失败）`，不打印会误导的 0。
+- 仓库根缺省按脚本自身位置推断（`Path(__file__).resolve().parents[1]`），不依赖 cwd；`--root <仓库根>`
+  可显式重定向（校验 / 渲染 / --check-doc-paths 均可用），便于在隔离的假仓库中运行。
+- `--render` 同样 fail-closed：evidence 形状非法（尤其 `expect` 含换行）时退出 1 且不写文件，
+  不把多行片段折叠成源码里并不存在的单行假片段。边界：该预检只挡「evidence 形状非法」，**不**校验
+  `ref` 是否符合 `path:LINE`、行号是否越界、目标文件是否存在——这些是校验模式的职责，`--render`
+  不重复实现，也就不会因它们拒写。渲染会把 `expect` 原样写进 `docs/design-facts.md`，
+  而该 md 又是 `--check-doc-paths` 的扫描对象：回填 `expect` 时应避开形如仓库相对路径的文本
+  （如 `docs/...`、`scripts/...`），否则可能被当成引用扫描而引入假 MISSING。
+- 写文件副作用：`--render`（含 `--render --root <目录>`）会在目标根下 `mkdir -p docs/` 并写
+  `docs/design-facts.md`；校验模式与 `--check-doc-paths` 只读。写入走「同目录临时文件 + `os.replace`」
+  的原子替换，中途 `OSError` 不会留下被截断的 md（`mkdir -p` 建出的空目录可能保留）。
+- 符号链接边界：`os.replace` 替换的是链接这个目录项本身，md 若是符号链接，渲染后它变成普通文件
+  （旧实现是穿透写，内容会落到链接目标里），链接关系不再保留。
+- 残留边界：`finally` 清理临时文件在 SIGKILL / 外部超时杀进程时不会执行，此时会残留
+  `docs/.design-facts.md.<pid>.tmp`，需要手工删除；它不是 md 本体，不影响后续校验。
 - yaml 只用标准库解析其子集（映射、序列、块标量 `|`/`>`、行内序列 `[a, b]`、整行注释）；
   超出子集时明确报错，不静默误解析。
 - `--check-doc-paths` 只做存在性检查，不校验行号；引用的路径主体限 ASCII 字符，
@@ -48,9 +86,11 @@
 from __future__ import annotations
 
 import ast
+import os
 import re
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,8 +118,9 @@ THRESHOLD_PAIR_RE = re.compile(
 )
 THRESHOLD_KEY_LIKE_RE = re.compile(r"[A-Za-z_]")
 USAGE = (
-    "用法：python scripts/verify_design_facts.py "
-    "[--render | --check-doc-paths [--root <仓库根>] | --help]"
+    "用法：python scripts/verify_design_facts.py <模式> [--root <仓库根>]\n"
+    "模式（三选一，缺省为校验）：--render | --check-doc-paths | 不带模式参数\n"
+    "其它：--help（打印本说明，独立于模式与 --root）"
 )
 # 文档路径自检：引用主体限 ASCII（不用 \w，`\w` 会匹配中文导致相邻两个路径被吞成一条）。
 # 允许若干 `./` / `../` 前缀（提取时保留，判存在性时按仓库根或引用所在目录解析）。
@@ -369,77 +410,191 @@ def check_residue(facts_raw) -> list[str]:
     return problems
 
 
-def _check_evidence_refs(label: str, refs, root: Path) -> list[str]:
-    """校验一组 `path:LINE` 引用：仓库内相对路径、文件存在、行号在 1..总行数、该行非空。"""
+EVIDENCE_KEYS = ("ref", "expect")
+
+
+def _evidence_entry(entry) -> tuple[str, str | None, str | None]:
+    """把 evidence 条目归一成 (ref 文本, expect 片段, 结构错误)。
+
+    字符串 `path:LINE` 是旧格式（无内容断言，标记 `PASS(no-expect)`）；映射只允许 `ref` 与 `expect`
+    两个键，且必须带非空、单行的字符串 `expect`。任何形状错误都返回错误文案，不降级成「无内容断言」：
+    拼错键名、缺 expect、空串 / null / 非字符串 / 含换行的 expect 都会让断言静默丢失，必须 fail-closed。
+    """
+    if not isinstance(entry, dict):
+        return ("" if entry is None else str(entry).strip()), None, None
+    reference = entry.get("ref")
+    ref_text = reference.strip() if isinstance(reference, str) else ""
+    unknown = [key for key in entry if key not in EVIDENCE_KEYS]
+    if unknown:
+        names = "、".join(repr(key) for key in unknown)
+        return ref_text, None, f"evidence 映射出现未知键 {names}（只允许 ref 与 expect）"
+    if reference is None:
+        return ref_text, None, "evidence 映射缺少 ref"
+    if not ref_text:
+        return ref_text, None, "evidence 映射的 ref 必须是非空字符串"
+    if "expect" not in entry:
+        return (
+            ref_text,
+            None,
+            "evidence 映射缺少 expect（映射写法必须带内容断言；无断言请改用字符串 path:LINE）",
+        )
+    expect = entry.get("expect")
+    if not isinstance(expect, str):
+        return (
+            ref_text,
+            None,
+            f"evidence 的 expect 必须是字符串，实际是 {type(expect).__name__}（禁止隐式转换）",
+        )
+    if not expect.strip():
+        return ref_text, None, "evidence 的 expect 为空（空白串不能当内容断言）"
+    if "\n" in expect or "\r" in expect:
+        return ref_text, None, "evidence 的 expect 含换行，无法作为单行内容断言"
+    return ref_text, expect, None
+
+
+def _evidence_shape_problems(data) -> list[str]:
+    """用与校验相同的形状规则扫 facts 与 misreadings 的 evidence，返回问题清单（渲染前 fail-closed 用）。"""
     problems: list[str] = []
+    for fact in _facts_of(data):
+        label = _text(fact.get("id")) or "<无 id>"
+        for entry in _as_list(fact.get("evidence")):
+            _, _, shape_error = _evidence_entry(entry)
+            if shape_error is not None:
+                problems.append(f"{label} evidence：{shape_error}")
+    misreadings = data.get("misreadings") if isinstance(data, dict) else None
+    for index, item in enumerate(_as_list(misreadings), start=1):
+        if not isinstance(item, dict):
+            continue
+        for entry in _as_list(item.get("evidence")):
+            _, _, shape_error = _evidence_entry(entry)
+            if shape_error is not None:
+                problems.append(f"misreadings[{index}] evidence：{shape_error}")
+    return problems
+
+
+def _check_evidence_refs(
+    label: str, refs, root: Path
+) -> tuple[list[tuple[str, str]], int, int, int]:
+    """逐条校验 evidence，返回 ([(状态, 文案)], 无内容断言的条数, 带 expect 的检查条数, 命中条数)。
+
+    状态取值：`pass`（有 expect 且命中）、`no-expect`（旧格式字符串，保持原校验）、`fail`。
+    「带 expect 的检查条数」与「命中条数」是两个量：前者是真正到达内容断言比较的条数，后者是片段
+    确实出现在目标行的条数，二者在全部通过时相等。
+    有 expect 时要求目标行按字面包含该片段（区分大小写、非模糊、非正则），失败文案同带期望片段与实际行内容。
+    被判 FAIL 的条目不计入「无内容断言」：断言被静默丢弃不应伪装成缺省行为。
+    """
+    records: list[tuple[str, str]] = []
+    no_expect = 0
+    expect_checked = 0
+    expect_hits = 0
     try:
         root_resolved = root.resolve()
     except OSError:
         root_resolved = root
-    for ref in refs:
-        reference = "" if ref is None else str(ref).strip()
+    for entry in refs:
+        reference, expect, shape_error = _evidence_entry(entry)
+        if shape_error is not None:
+            records.append(("fail", f"{label} evidence {reference or entry!r}：{shape_error}"))
+            continue
         match = EVIDENCE_RE.match(reference)
         if not match:
-            problems.append(f"{label} 的 evidence {reference!r} 不符合 path:LINE 形式")
+            records.append(("fail", f"{label} evidence ref {reference!r} 不符合 path:LINE 形式"))
             continue
         relative = match.group("path")
         line_no = int(match.group("line"))
         if Path(relative).is_absolute():
-            problems.append(f"{label} 的 evidence 必须是仓库内相对路径，实际是绝对路径：{reference}")
+            records.append(("fail", f"{label} evidence {reference}：必须是仓库内相对路径，实际是绝对路径"))
             continue
         target = root / relative
         try:
             resolved = target.resolve()
         except OSError as exc:
-            problems.append(f"{label} 的 evidence 无法解析路径：{reference}（{exc}）")
+            records.append(("fail", f"{label} evidence {reference}：无法解析路径（{exc}）"))
             continue
         try:
             resolved.relative_to(root_resolved)
         except ValueError:
-            problems.append(f"{label} 的 evidence 越出仓库根：{reference}")
+            records.append(("fail", f"{label} evidence {reference}：越出仓库根"))
             continue
         if not target.is_file():
-            problems.append(f"{label} 的 evidence 文件不存在：{relative}（引用 {reference}）")
+            records.append(("fail", f"{label} evidence {reference}：文件不存在（{relative}）"))
             continue
         try:
             lines = target.read_text(encoding="utf-8").splitlines()
         except (OSError, UnicodeDecodeError) as exc:
-            problems.append(f"{label} 的 evidence 无法读取：{relative}（{exc}）")
+            records.append(("fail", f"{label} evidence {reference}：无法读取 {relative}（{exc}）"))
             continue
         if line_no < 1 or line_no > len(lines):
-            problems.append(
-                f"{label} 的 evidence 行号越界：{reference}（{relative} 共 {len(lines)} 行）"
+            records.append(
+                ("fail", f"{label} evidence {reference}：行号越界（{relative} 共 {len(lines)} 行）")
             )
             continue
-        if not lines[line_no - 1].strip():
-            problems.append(f"{label} 的 evidence 指向空行：{reference}")
-    return problems
+        line_text = lines[line_no - 1]
+        if not line_text.strip():
+            records.append(("fail", f"{label} evidence {reference}：指向空行"))
+            continue
+        if expect is not None:
+            expect_checked += 1
+            if expect not in line_text:
+                records.append(
+                    (
+                        "fail",
+                        f"{label} evidence {reference}：期望片段 {expect!r} 未出现在该行；"
+                        f"实际行内容 {line_text!r}",
+                    )
+                )
+                continue
+            expect_hits += 1
+            records.append(("pass", f"{label} evidence {reference}"))
+        else:
+            no_expect += 1
+            records.append(("no-expect", f"{label} evidence {reference}"))
+    return records, no_expect, expect_checked, expect_hits
 
 
-def check_evidence(facts_raw, misreadings, root: Path) -> list[str]:
-    """facts 与 misreadings 的 evidence 用同一套规则校验；misreadings 另要求 wrong/correct 非空。"""
-    problems: list[str] = []
+def check_evidence(
+    facts_raw, misreadings, root: Path
+) -> tuple[list[tuple[str, str]], int, int, int, list[str]]:
+    """facts 与 misreadings 的 evidence 用同一套规则校验；misreadings 另要求 wrong/correct 非空。
+
+    返回 (逐条结果, 无内容断言的 evidence 条数, 带 expect 的检查条数, 命中条数, 非 evidence 逐条的结构问题)。
+    """
+    records: list[tuple[str, str]] = []
+    no_expect = 0
+    expect_checked = 0
+    expect_hits = 0
+    extra: list[str] = []
     for fact in _facts_of({"facts": facts_raw}):
         label = _text(fact.get("id")) or "<无 id>"
         refs = _as_list(fact.get("evidence"))
         if not refs:
-            problems.append(f"{label} 缺少 evidence")
+            extra.append(f"{label} 缺少 evidence")
             continue
-        problems.extend(_check_evidence_refs(label, refs, root))
+        fact_records, fact_no_expect, fact_checked, fact_hits = _check_evidence_refs(label, refs, root)
+        records.extend(fact_records)
+        no_expect += fact_no_expect
+        expect_checked += fact_checked
+        expect_hits += fact_hits
     for index, item in enumerate(_as_list(misreadings), start=1):
         label = f"misreadings[{index}]"
         if not isinstance(item, dict):
-            problems.append(f"{label} 不是映射，无法校验")
+            extra.append(f"{label} 不是映射，无法校验")
             continue
         if not _text(item.get("wrong")):
-            problems.append(f"{label} 缺少非空 wrong")
+            extra.append(f"{label} 缺少非空 wrong")
         if not _text(item.get("correct")):
-            problems.append(f"{label} 缺少非空 correct")
+            extra.append(f"{label} 缺少非空 correct")
         # evidence 对误读条目是可选补充锚点，有则必须同规则合法。
         refs = _as_list(item.get("evidence"))
         if refs:
-            problems.extend(_check_evidence_refs(label, refs, root))
-    return problems
+            item_records, item_no_expect, item_checked, item_hits = _check_evidence_refs(
+                label, refs, root
+            )
+            records.extend(item_records)
+            no_expect += item_no_expect
+            expect_checked += item_checked
+            expect_hits += item_hits
+    return records, no_expect, expect_checked, expect_hits, extra
 
 
 def read_thresholds(path: Path) -> tuple[dict | None, str | None]:
@@ -549,12 +704,27 @@ def check_markdown(data) -> list[str]:
 # --------------------------------------------------------------------------- #
 # 渲染
 # --------------------------------------------------------------------------- #
+def _render_evidence(entry) -> str:
+    """把 evidence 渲染成 `path:LINE` 或 `path:LINE（expect：片段）`，绝不输出映射的 repr。
+
+    `expect` 原样输出、不折叠空白：折叠会造出源码里并不存在的假片段，多行 expect 由 render_mode
+    在写文件前直接拒绝（fail-closed）。
+    """
+    if isinstance(entry, dict):
+        reference = "" if entry.get("ref") is None else str(entry.get("ref")).strip()
+        expect = entry.get("expect")
+        if isinstance(expect, str) and expect.strip():
+            return f"{reference}（expect：{expect}）"
+        return reference
+    return "" if entry is None else str(entry).strip()
+
+
 def _render_fact(fact: dict) -> list[str]:
     lines = [f"### {_text(fact.get('id'))} [{_text(fact.get('state'))}] {_text(fact.get('topic'))}"]
     lines.append(_text(fact.get("claim")))
     lines.append("出处：")
     for ref in _as_list(fact.get("evidence")):
-        lines.append(f"- {'' if ref is None else str(ref).strip()}")
+        lines.append(f"- {_render_evidence(ref)}")
     lines.append("")
     return lines
 
@@ -603,7 +773,7 @@ def render_markdown(data) -> str:
             lines.append(f"- **误读**：{_text(item.get('wrong'))}")
             lines.append(f"  - 正确：{_text(item.get('correct'))}")
             for ref in _as_list(item.get("evidence")):
-                lines.append(f"  - 出处：{'' if ref is None else str(ref).strip()}")
+                lines.append(f"  - 出处：{_render_evidence(ref)}")
     else:
         lines.append("（当前没有登记常见误读。）")
 
@@ -867,28 +1037,33 @@ def check_doc_paths_mode(root: Path) -> int:
 # --------------------------------------------------------------------------- #
 # 模式
 # --------------------------------------------------------------------------- #
-def _collect(results: list[tuple[bool, str]], label: str, problems: list[str]) -> None:
+def _collect(results: list[tuple[str, str]], label: str, problems: list[str]) -> None:
     if problems:
-        results.extend((False, f"{label}：{problem}") for problem in problems)
+        results.extend(("fail", f"{label}：{problem}") for problem in problems)
     else:
-        results.append((True, label))
+        results.append(("pass", label))
 
 
-def run_checks() -> list[tuple[bool, str]]:
-    results: list[tuple[bool, str]] = []
+def run_checks() -> tuple[list[tuple[str, str]], int | None]:
+    """跑全部校验项，返回 ([(状态, 文案)], 无内容断言的 evidence 条数)。
+
+    第二个元素为 `None` 表示 evidence 根本没被检查（前置结构已失败）：调用方不得当成 0 打印，
+    否则会被误读成「没有无断言条目」。
+    """
+    results: list[tuple[str, str]] = []
     try:
         data = load_yaml(YAML_PATH)
     except YamlError as exc:
-        return [(False, f"无法解析 docs/design-facts.yaml：{exc}")]
+        return [("fail", f"无法解析 docs/design-facts.yaml：{exc}")], None
     if not isinstance(data, dict):
-        return [(False, "docs/design-facts.yaml 顶层不是映射（缺少 version / facts 结构）")]
+        return [("fail", "docs/design-facts.yaml 顶层不是映射（缺少 version / facts 结构）")], None
 
     facts_raw = data.get("facts")
     misreadings_raw = _as_list(data.get("misreadings"))
     misreadings = [item for item in misreadings_raw if isinstance(item, dict)]
     results.append(
         (
-            True,
+            "pass",
             f"docs/design-facts.yaml 可解析：{len(_as_list(facts_raw))} 条事实，"
             f"{len(misreadings)} 条常见误读",
         )
@@ -903,19 +1078,28 @@ def run_checks() -> list[tuple[bool, str]]:
         top_problems.append(f"顶层 facts 应为列表，实际 {type(facts_raw).__name__}")
     _collect(results, "顶层字段 version 与 facts 齐全", top_problems)
     if top_problems:
-        return results
+        return results, None
 
     _collect(
         results,
         "facts 字段合法（id 唯一且匹配 ^DF-\\d{3}$、state 在枚举内、affects 取值合法、topic 与 claim 非空）",
         check_structure(facts_raw),
     )
-    _collect(
-        results,
-        "facts 与 misreadings 的 evidence 均为仓库内存在的 path:LINE 且指向非空行；"
-        "misreadings 的 wrong 与 correct 非空",
-        check_evidence(facts_raw, misreadings_raw, ROOT),
+    # evidence 逐条打印；有任何逐条 FAIL 或结构问题时不再输出聚合 PASS 行（避免自相矛盾）。
+    evidence_records, no_expect, expect_checked, expect_hits, evidence_extra = check_evidence(
+        facts_raw, misreadings_raw, ROOT
     )
+    results.extend(evidence_records)
+    results.extend(("fail", f"evidence 结构问题：{problem}") for problem in evidence_extra)
+    if not evidence_extra and all(status != "fail" for status, _ in evidence_records):
+        results.append(
+            (
+                "pass",
+                "facts 与 misreadings 的 evidence 均为仓库内存在的 path:LINE 且指向非空行；"
+                f"带 expect 的 evidence {expect_checked} 条，命中 {expect_hits} 条"
+                "（0 条即没有任何内容断言）；misreadings 的 wrong 与 correct 非空",
+            )
+        )
     _collect(results, "state=obsolete 的条目都带非空 residue", check_residue(facts_raw))
     _collect(
         results,
@@ -923,44 +1107,96 @@ def run_checks() -> list[tuple[bool, str]]:
         check_thresholds(facts_raw),
     )
     _collect(results, "docs/design-facts.md 与 --render 结果逐字节一致", check_markdown(data))
-    return results
+    return results, no_expect
 
 
-def validate_mode() -> int:
+@contextmanager
+def _root_scope(root: Path | None):
+    """临时把仓库根及 yaml / md / 阈值源码路径重定向到 `root`，退出时（含异常）还原。
+
+    默认（`root is None`）不重定向；用上下文而不是裸函数，避免被 import 复用时状态泄漏到下一次调用。
+    """
+    global ROOT, YAML_PATH, MD_PATH, THRESHOLDS_PATH
+    if root is None:
+        yield
+        return
+    saved = (ROOT, YAML_PATH, MD_PATH, THRESHOLDS_PATH)
+    ROOT = root
+    YAML_PATH = root / "docs" / "design-facts.yaml"
+    MD_PATH = root / "docs" / "design-facts.md"
+    THRESHOLDS_PATH = root / "finetune" / "holdout_metrics.py"
     try:
-        results = run_checks()
-    except Exception as exc:  # 兜底：绝不以 traceback 结束
-        print(f"FAIL  校验过程异常：{type(exc).__name__}: {exc}")
-        return 1
-    failed = 0
-    for ok, message in results:
-        if ok:
-            print(f"PASS  {message}")
+        yield
+    finally:
+        ROOT, YAML_PATH, MD_PATH, THRESHOLDS_PATH = saved
+
+
+def validate_mode(root: Path | None = None) -> int:
+    with _root_scope(root):
+        try:
+            results, no_expect = run_checks()
+        except Exception as exc:  # 兜底：绝不以 traceback 结束
+            print(f"FAIL  校验过程异常：{type(exc).__name__}: {exc}")
+            return 1
+        failed = 0
+        passed = 0
+        no_expect_rows = 0
+        for status, message in results:
+            if status == "pass":
+                passed += 1
+                print(f"PASS  {message}")
+            elif status == "no-expect":
+                no_expect_rows += 1
+                print(f"PASS(no-expect)  {message}")
+            else:
+                failed += 1
+                print(f"FAIL  {message}")
+        print(
+            f"\n合计 {len(results)} 项：PASS {passed}，PASS(no-expect) {no_expect_rows}，FAIL {failed}"
+        )
+        if no_expect is None:
+            print("无内容断言的 evidence：未检查（结构校验已失败）")
         else:
-            failed += 1
-            print(f"FAIL  {message}")
-    print(f"\n合计 {len(results)} 项：PASS {len(results) - failed}，FAIL {failed}")
-    return 1 if failed else 0
+            print(f"无内容断言的 evidence：{no_expect} 条")
+        return 1 if failed else 0
 
 
-def render_mode() -> int:
-    try:
-        data = load_yaml(YAML_PATH)
-    except YamlError as exc:
-        print(f"FAIL  无法解析 docs/design-facts.yaml，未渲染：{exc}")
-        return 1
-    if not isinstance(data, dict):
-        print("FAIL  docs/design-facts.yaml 顶层不是映射，未渲染")
-        return 1
-    try:
-        MD_PATH.parent.mkdir(parents=True, exist_ok=True)
-        MD_PATH.write_text(render_markdown(data), encoding="utf-8", newline="\n")
-    except OSError as exc:
-        print(f"FAIL  无法写入 docs/design-facts.md：{exc}")
-        return 1
-    print(f"RENDER docs/design-facts.md：{len(_facts_of(data))} 条事实")
-    print("提示：请再运行 `python scripts/verify_design_facts.py` 校验")
-    return 0
+def render_mode(root: Path | None = None) -> int:
+    with _root_scope(root):
+        try:
+            data = load_yaml(YAML_PATH)
+        except YamlError as exc:
+            print(f"FAIL  无法解析 docs/design-facts.yaml，未渲染：{exc}")
+            return 1
+        if not isinstance(data, dict):
+            print("FAIL  docs/design-facts.yaml 顶层不是映射，未渲染")
+            return 1
+        # fail-closed：形状非法的 evidence（尤其多行 expect）不得被折叠成假片段写进 md。
+        shape_problems = _evidence_shape_problems(data)
+        if shape_problems:
+            print("FAIL  存在非法 evidence，未渲染（含换行 / 空值 / 非字符串 / 未知键的写法会让断言失真）：")
+            for problem in shape_problems:
+                print(f"  - {problem}")
+            return 1
+        # 先写同目录临时文件再 os.replace：中途 OSError 不会把已存在的 md 截成半成品。
+        tmp_path = MD_PATH.parent / f".{MD_PATH.name}.{os.getpid()}.tmp"
+        try:
+            MD_PATH.parent.mkdir(parents=True, exist_ok=True)
+            text = render_markdown(data)
+            tmp_path.write_text(text, encoding="utf-8", newline="\n")
+            os.replace(tmp_path, MD_PATH)
+        except OSError as exc:
+            print(f"FAIL  无法写入 docs/design-facts.md：{exc}")
+            return 1
+        finally:
+            # 成功时临时文件已被 replace 移走，这里只是无害地清掉失败残留。
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+        print(f"RENDER docs/design-facts.md：{len(_facts_of(data))} 条事实")
+        print("提示：请再运行 `python scripts/verify_design_facts.py` 校验")
+        return 0
 
 
 def _split_root_arg(args: list[str]) -> tuple[list[str], str | None, str | None]:
@@ -1019,19 +1255,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FAIL  未知参数：{' '.join(unknown)}", file=sys.stderr)
         print(USAGE, file=sys.stderr)
         return 2
-    if root_text is not None and not check_doc_paths:
-        print("FAIL  --root 只能与 --check-doc-paths 一起使用", file=sys.stderr)
+    if root_text is not None and not Path(root_text).expanduser().is_dir():
+        print(f"FAIL  --root 指向的不是目录：{root_text}", file=sys.stderr)
         print(USAGE, file=sys.stderr)
         return 2
     if check_doc_paths and "--render" in rest:
         print("FAIL  --render 与 --check-doc-paths 互斥，一次只运行一种模式", file=sys.stderr)
         print(USAGE, file=sys.stderr)
         return 2
+    root = Path(root_text).expanduser() if root_text else None
     if check_doc_paths:
-        return check_doc_paths_mode(Path(root_text).expanduser() if root_text else ROOT)
+        return check_doc_paths_mode(root if root is not None else ROOT)
     if "--render" in rest:
-        return render_mode()
-    return validate_mode()
+        return render_mode(root)
+    return validate_mode(root)
 
 
 if __name__ == "__main__":
