@@ -1,19 +1,20 @@
-# `docs/results/` 文件索引（78 个文件）
+# `docs/results/` 文件索引（77 个文件）
 
 > **变更记录** 2026-10-18 清理：移除 24 个文件，现存 117 个。N/M 由 `find docs/results -type f` + `os.path.getsize` 统计；清单见 C 节主表，被清空的两个一级子目录（`v4_1_0_760050fad303_20260724_visual/`、`v4_1_prompt_concise_cv_v1_seed3411/`）整组移除。
 > **变更记录** 2026-10-18 清理（A1）：`model_evidence/` 整目录移除 —— 移除 40 个文件，现存 77 个。N/M 同由 `find docs/results -type f` + `os.path.getsize` 重新统计；该目录已于 2026-10-18 清理整组移除，C 节不再列出其条目。
 > **变更记录** 2026-10-18 迁入批：本批在 `docs/results` 下移除 0 个文件，现存 77 个；随后按分支裁决迁入 6 个 2026-07 诊断报告（现存 83 个，见下条）。迁入后 `diagnostics-data-visual-audit-plan-20260717.md` 「迁入说明」补两行改名映射与反引号说明（正文仅 1 行链接改反引号），体积 9,499→9,749 B，合计随实测重算。
 > **变更记录** 2026-10-18 迁入：按分支裁决从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 取 6 个 2026-07 诊断报告落 `docs/results/`（统一 `diagnostics-` 前缀并保留日期以便溯源），迁入 6 个文件，现存 83 个；正文数字与结论未改；其中 `plan` 文件有 1 行链接改为反引号写法（见该文件迁入说明），头部另加「迁入说明」块，档位按「仓库内零引用」如实落 C。
 > **变更记录** 2026-10-18 并入批：把 2026-10-16 五个开发输入核验文件（盘点、运行前核验正文、运行时就绪、试件分组、映射观测）的事实并入 `training-data-ledger-20261017.json` 的 `development_inputs` / `source_map` / `source_groups` / `source_fingerprints` / `contract_analysis` / `legacy_yaml_recovery` / `runtime_readiness` 七个顶层键后，本批移除 5 个文件，现存 78 个（合计 289,837 B）；台账 `.json` 由 14,118 B 增至 211,453 B（未拆分，未生成 `.sources.json`），`.md` 由 4,663 B 增至 7,374 B。档位不因引用变化重算（A 24 / B 35 / C 19），重算差异仍为 E.3 登记的同一组。
+> **变更记录** 2026-10-18 清理（项 B）：移除 1 个文件，现存 77 个 —— `v4_1_stage_d_sealed_test_release/` 目录下的一次性推理准备结论快照（1,297 B）已被同目录 `stage-d-run-da566a5644f8` 运行产物覆盖；其两条测试计数先迁入同目录 `README.md`（该文件 2,289→2,457 B，+168 B）。文件数与体积按 `find docs/results -type f` + `os.path.getsize` 重新统计。
 > **变更记录** 2026-10-18 另有 R1 训练过程信息 24 个文件同步入库，落位 `records/r1-run-20261018/`，不属 `docs/results` 范围，故不计入本索引统计。
 
 ## A. 头部声明
 
-- 覆盖范围：`docs/results/` 现存活 **78** 个文件（顶层散落 39 个，其余分布在 11 个一级子目录）。两批清理（24 个 + `model_evidence/` 整目录 40 个）与 2026-10-18 迁入 6 个 2026-07 诊断报告后，子目录数与各组文件数按磁盘实测重算。
+- 覆盖范围：`docs/results/` 现存活 **77** 个文件（顶层散落 39 个，其余分布在 11 个一级子目录）。两批清理（24 个 + `model_evidence/` 整目录 40 个）与 2026-10-18 迁入 6 个 2026-07 诊断报告后，子目录数与各组文件数按磁盘实测重算。
 - 数据来源：2026-10-18 全项目审计清单第 4.5 节主表（原 141 行，清理后 77 行 + 迁入 6 行）与第 4.6 节 C 类清单，文件路径 `/Users/pcoffeep/pi-workspace/mVllm_2-audit/project-inventory-audit-20261018.md`（仓库外，本机另存，不入 Git）。
 - 审计采集基线 `36016711`；本索引编写基线 `21229565`（分支 `feat/evaluation-development`）。
 - 本文件只做索引与状态标注：**档位与 mtime 照抄审计清单**；2026-10-18 清理后体积由 `find docs/results -type f` + `os.path.getsize` 逐文件实测，B 节计数与体积累加同由该实测集重算（F 节 `check_index_v2.py`）。不新增比率、不判定删除。
-- 本文件 `INDEX.md` 自身不计入主表：主表 78 个文件，目录现有 79 个文件（含本索引）。
+- 本文件 `INDEX.md` 自身不计入主表：主表 77 个文件，目录现有 78 个文件（含本索引）。
 - 全部路径使用行内代码书写，未使用 Markdown 链接，故不存在失效链接。
 
 ## B. 分级汇总（判据照抄审计第 4.1 节；计数与体积按清理后磁盘实测重算）
@@ -22,14 +23,14 @@
 |---|---|---|---|
 | A | 被 `*.py`、`README.md`、`AGENTS.md` 或 `docs/*.md` 正文引用 | 24 | 8,208,181 B |
 | B | 仅被 `docs/results/**` 其它文件或 `docs/project-todo.md` 引用 | 35 | 3,599,018 B |
-| C | 零引用 | 19 | 154,061 B |
-| 合计 | A+B+C | 78 | 11,961,260 B |
+| C | 零引用 | 18 | 152,932 B |
+| 合计 | A+B+C | 77 | 11,960,131 B |
 
-自检：24 + 35 + 19 = 78，与现存活文件总数相等。总量换算：11,961,260 B = 11.41 MiB。
+自检：24 + 35 + 18 = 77，与现存活文件总数相等。总量换算：11,960,131 B = 11.41 MiB。
 
-C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 141,686 B + NOISY 降级 8 个 / 12,375 B = 154,061 B。
+C 类构成（第 4.6 节口径，清理后重算）：真零引用 10 个 / 140,389 B + NOISY 降级 8 个 / 12,543 B = 152,932 B。
 
-## C. 主表：78 行 × 9 字段
+## C. 主表：77 行 × 9 字段
 
 分组顺序照抄第 4.2 节表（一级子目录在前，`（顶层散落文件）` 在最后），组内沿用原体积降序；每组前置小标题并重复表头，组内文件数为清理后的实测值。
 
@@ -109,13 +110,12 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 141
 | `docs/results/v4_1_stage_b_intermediate/acceptance_summary.json` | 1950 B（1.9 KB） | A | 中间模型准入结论与产物门（JSON 顶层键：artifact_gate） | 2026-07-27 09:39 | v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3 | 现行有效 | 无（未见取代记录） | 保留（被代码或正式文档引用） |
 | `docs/results/v4_1_stage_b_intermediate/README.md` | 1449 B（1.4 KB） | C | Stage B 中间模型准入说明（README 自述） | 2026-07-27 09:39 | v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3 | 说明文档 | 无（未见取代记录） | 不得判可删，NOISY 降级（basename 命中 45） |
 
-### `v4_1_stage_d_sealed_test_release/`（4 个文件）
+### `v4_1_stage_d_sealed_test_release/`（3 个文件）
 
 | 路径 | 体积 | 档位 | 是什么 | 时点 | 对应实验 | 状态 | 取代者 | 建议 |
 |---|---|---|---|---|---|---|---|---|
-| `docs/results/v4_1_stage_d_sealed_test_release/README.md` | 2289 B（2.2 KB） | C | Stage D 密封测试发布说明（README 自述） | 2026-07-27 17:11 | stage-d-run-da566a5644f8；release v4.1-sealed-test-5546b8bf1ec3 | 说明文档 | 无（未见取代记录） | 不得判可删，NOISY 降级（basename 命中 45） |
+| `docs/results/v4_1_stage_d_sealed_test_release/README.md` | 2457 B（2.4 KB） | C | Stage D 密封测试发布说明（README 自述） | 2026-07-27 17:11 | stage-d-run-da566a5644f8；release v4.1-sealed-test-5546b8bf1ec3 | 说明文档 | 无（未见取代记录） | 不得判可删，NOISY 降级（basename 命中 45） |
 | `docs/results/v4_1_stage_d_sealed_test_release/release_summary.json` | 1765 B（1.7 KB） | A | 密封测试 release 摘要（JSON 顶层键：counts） | 2026-07-27 16:07 | stage-d-run-da566a5644f8；release v4.1-sealed-test-5546b8bf1ec3 | 证据-可复核底稿 | 无（未见取代记录） | 保留（被代码或正式文档引用） |
-| `docs/results/v4_1_stage_d_sealed_test_release/preparation_summary.json` | 1297 B（1.3 KB） | C | 一次性推理准备结论（JSON 顶层键：status） | 2026-07-27 16:30 | stage-d-run-da566a5644f8；release v4.1-sealed-test-5546b8bf1ec3 | 门禁或准入结论 | 无（未见取代记录） | 保留待用户核定（门禁/准备结论唯一凭证） |
 | `docs/results/v4_1_stage_d_sealed_test_release/public_gate_summary.json` | 1013 B（1013 B） | B | 公开门结果与完整性（JSON 顶层键：gates/passed） | 2026-07-27 17:11 | stage-d-run-da566a5644f8；release v4.1-sealed-test-5546b8bf1ec3 | 门禁或准入结论 | 无（未见取代记录） | 保留（实验间互相引用） |
 
 ### `version-control-migration/`（8 个文件）
@@ -187,11 +187,11 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 141
 | 6 | `docs/results/v4_1_stage_b_intermediate/acceptance_summary.json` | 当前晋级中间模型的准入结论：`delivery/model_component.json` 以 `acceptance_summary_path` + `acceptance_summary_sha256` 直接指向，`pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json` 的 `acceptance_summary_path` 同指。 |
 | 7 | `docs/results/version-control-migration/verification.md` | 版本控制迁移验收凭证，被 `ARCHITECTURE.md`、`versioning/SCRIPTS.md`、`docs/project-todo.md`、`docs/model-workflow.md` 等引用（第 4.5 节引用数 16）。 |
 
-> 说明：本表只声明「当前有效」，不改变 C 节任何档位；C 类中真零引用 5 个的处置见 E 节。
+> 说明：本表只声明「当前有效」，不改变 C 节任何档位；C 类中真零引用 4 个的处置见 E 节。
 
-## E. C 类专节（真零引用 11 / NOISY 降级 8）
+## E. C 类专节（真零引用 10 / NOISY 降级 8）
 
-### E.1 真零引用 11 个（第 4.6 节 5 个 + 2026-10-18 迁入 6 个）
+### E.1 真零引用 10 个（第 4.6 节 4 个 + 2026-10-18 迁入 6 个）
 
 | 路径 | 体积 | 建议 |
 |---|---|---|
@@ -199,7 +199,6 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 141
 | `docs/results/model-r1-effect-profile-20261018.md` | 50212 B（49.0 KB） | 保留（新入库证据，不得删） |
 | `docs/results/training-data-ledger-20261017.md` | 7374 B（7.2 KB） | 保留（新入库证据，不得删） |
 | `docs/results/v4_1_phase2_source_aware_3k_coverage_first/stage_b_canary_gate_summary.json` | 2458 B（2.4 KB） | 保留待用户核定（门禁/准备结论唯一凭证） |
-| `docs/results/v4_1_stage_d_sealed_test_release/preparation_summary.json` | 1297 B（1.3 KB） | 保留待用户核定（门禁/准备结论唯一凭证） |
 | `docs/results/diagnostics-data-visual-audit-plan-20260717.md` | 9749 B（9.5 KB） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/diagnostics-data-visual-audit-20260719.md` | 9211 B（9.0 KB） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/diagnostics-visual-audit-preparation-report-20260717.md` | 4685 B（4.6 KB） | 2026-10-18 迁入，保留（负面证据） |
@@ -207,7 +206,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 141
 | `docs/results/diagnostics-checkpoint-comparison-production-prompt-20260719.md` | 1558 B（1.5 KB） | 2026-10-18 迁入，保留（负面证据） |
 | `docs/results/diagnostics-visual-audit-report-20260719.md` | 1326 B（1.3 KB） | 2026-10-18 迁入，保留（负面证据） |
 
-前 3 个为随 `187822fe`、`36016711` 入库的新证据，不得删；后 2 个为门禁/准备结论的唯一凭证，须由用户核定。
+前 3 个为随 `187822fe`、`36016711` 入库的新证据，不得删；后 1 个为门禁结论的唯一凭证，须由用户核定。
 
 后 6 个 `diagnostics-*` 为 2026-10-18 从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 迁入的 2026-07 诊断报告：正文数字与结论未改；其中 `plan` 文件有 1 行链接改为反引号写法（见该文件迁入说明），属负面证据（`has_fracture` recall 9.50%、legal/joint 0%、任何 checkpoint 与 E1～E4 不得发布），保留不得删；迁入后仓库内暂无引用者，按判据如实落 C 档，不代表可删。
 
@@ -218,7 +217,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 141
 | 路径 | 体积 | basename 命中 | 建议 |
 |---|---|---|---|
 | `docs/results/v4_1_phase2_development_release/README.md` | 2410 B（2.4 KB） | 45 | 不得判可删，NOISY 降级（basename 命中 45） |
-| `docs/results/v4_1_stage_d_sealed_test_release/README.md` | 2289 B（2.2 KB） | 45 | 不得判可删，NOISY 降级（basename 命中 45） |
+| `docs/results/v4_1_stage_d_sealed_test_release/README.md` | 2457 B（2.4 KB） | 45 | 不得判可删，NOISY 降级（basename 命中 45） |
 | `docs/results/v4_1_phase2_review_queues/README.md` | 1957 B（1.9 KB） | 45 | 不得判可删，NOISY 降级（basename 命中 45） |
 | `docs/results/v4_1_phase2_review_queues/manifest.json` | 1830 B（1.8 KB） | 110 | 不得判可删，NOISY 降级（basename 命中 110） |
 | `docs/results/v4_1_stage_b_intermediate/README.md` | 1449 B（1.4 KB） | 45 | 不得判可删，NOISY 降级（basename 命中 45） |
@@ -226,7 +225,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 11 个 / 141
 | `docs/results/v4_1_phase1_effective_view_audit/manifest.json` | 1023 B（1023 B） | 109 | 不得判可删，NOISY 降级（basename 命中 109） |
 | `docs/results/v4_1_phase1_effective_view_audit/README.md` | 342 B（342 B） | 45 | 不得判可删，NOISY 降级（basename 命中 45） |
 
-8 个 NOISY 放开规则后全部落 A 类，故「清理后 C 类 19 个」不等于「19 个可删」。
+8 个 NOISY 放开规则后全部落 A 类，故「清理后 C 类 18 个」不等于「18 个可删」。
 
 > 基线说明：审计采集于 `36016711`，该提交时 `docs/project-todo.md` 尚无 R2-REALTRAIN 条（`grep -c R2-REALTRAIN` = 0）；`c5ad8311` 新增该条、`21229565` 补记进展后，该条已把 `model-r1-effect-profile-20261018.*` 与两份数据台账列为证据位置。档位仍按审计清单如实照抄；文件数与体积按 2026-10-18 清理后的磁盘实测重算（见 B 节与 F 节）。
 
@@ -271,16 +270,16 @@ $ .venv/bin/python /Users/pcoffeep/pi-workspace/mVllm_2-audit/check_index_v2.py
 退出码：0
 
 PASS 索引文件自身在磁盘上
-磁盘实测：docs/results 共 79 个文件（含 INDEX.md），主表应覆盖 78 个，合计 11,961,260 B
+磁盘实测：docs/results 共 78 个文件（含 INDEX.md），主表应覆盖 77 个，合计 11,960,131 B
 == A. 主表行数与字段 ==
-PASS 主表数据行数 = 磁盘实际文件数  -> 主表 78 行 / 磁盘 78 个
+PASS 主表数据行数 = 磁盘实际文件数  -> 主表 77 行 / 磁盘 77 个
 PASS 每行恰 9 个字段（无多余分隔符）
 PASS 9 列逐格非空（空单元格数 = 0）  -> 空单元格 0 处 []
 == B. 路径与磁盘文件集一一对应 ==
 PASS 无重复路径  -> []
 PASS 仅在 INDEX 出现的路径（应为空集）  -> []
 PASS 磁盘上存在但未入主表的路径（应为空集）  -> []
-路径集合 diff：only_in_index=0，only_on_disk=0，交集=78
+路径集合 diff：only_in_index=0，only_on_disk=0，交集=77
 == C. 体积逐条等于磁盘实测 ==
 PASS 体积列逐条等于 os.path.getsize  -> []
 == D. 档位 / 时点仍与审计 4.5 节一致（仅对存活文件） ==
@@ -306,15 +305,15 @@ PASS E.3 A/B 分界登记路径均在磁盘上（无悬空条目）  -> []
 PASS 该批文件在主表仍标 B（档位不随引用变化重算）  -> []
 PASS 登记的 A/B 分界漂移集合 = 由主表档位与仓库引用派生的实测集合  -> 登记 3 / 实测 3；未登记 []；登记多余 []
 PASS 主表 A 档文件均仍有 A 类来源引用（反向 A→B 漂移为空）  -> []
-PASS E.2 条数 = C 档计数 - E.1 的 11 条（由磁盘与主表派生，不硬编码）  -> 8 vs 8
+PASS E.2 条数 = C 档计数 - E.1 的 10 条（由磁盘与主表派生，不硬编码）  -> 8 vs 8
 PASS E.2 的 8 个 NOISY 条目在放开 basename 规则后全部落 A 类  -> 未落 A：[]
 == E. 分级计数与体积累加（由磁盘重算） ==
-重算结果：A=24/8,208,181 B=35 3,599,018 C=19 154,061
+重算结果：A=24/8,208,181 B=35 3,599,018 C=18 152,932
 PASS B 节 A 行 = 磁盘实测计数与体积  -> 表=24/8,208,181 B 实测=24/8,208,181
 PASS B 节 B 行 = 磁盘实测计数与体积  -> 表=35/3,599,018 B 实测=35/3,599,018
-PASS B 节 C 行 = 磁盘实测计数与体积  -> 表=19/154,061 B 实测=19/154,061
-PASS B 节合计行 = 磁盘实测  -> 表=78/11,961,260 B 实测=78/11,961,260
-PASS A+B+C = 主表行数  -> 78 vs 78
+PASS B 节 C 行 = 磁盘实测计数与体积  -> 表=18/152,932 B 实测=18/152,932
+PASS B 节合计行 = 磁盘实测  -> 表=77/11,960,131 B 实测=77/11,960,131
+PASS A+B+C = 主表行数  -> 77 vs 77
 PASS B 节自检句与重算一致
 == F. 状态词表与「当前有效」 ==
 PASS 状态只用词表内 7 个值  -> []
@@ -323,16 +322,16 @@ PASS D 节「当前有效」表格行数 = 7  -> 7
 PASS D 节 7 条路径与预期一致
 PASS D 节 7 条路径在磁盘上真实存在
 == G. C 类专节（保留清单 + 磁盘重算） ==
-PASS E 节总条数 = C 档计数  -> 19 vs 19
+PASS E 节总条数 = C 档计数  -> 18 vs 18
 PASS E 节集合 = 主表 C 档集合
-PASS C_NEW / C_GATE / C_IMPORTED 11 条全部仍在 E 节  -> []
-PASS E.1 恰为真零引用 11 条（C_NEW 3 + C_GATE 2 + 迁入 6）  -> ['docs/results/diagnostics-checkpoint-comparison-full-run-exact-20260719.md', 'docs/results/diagnostics-checkpoint-comparison-production-prompt-20260719.md', 'docs/results/diagnostics-data-visual-audit-20260719.md', 'docs/results/diagnostics-data-visual-audit-plan-20260717.md', 'docs/results/diagnostics-visual-audit-preparation-report-20260717.md', 'docs/results/diagnostics-visual-audit-report-20260719.md', 'docs/results/model-r1-effect-profile-20261018.json', 'docs/results/model-r1-effect-profile-20261018.md', 'docs/results/training-data-ledger-20261017.md', 'docs/results/v4_1_phase2_source_aware_3k_coverage_first/stage_b_canary_gate_summary.json', 'docs/results/v4_1_stage_d_sealed_test_release/preparation_summary.json']
-PASS E.2 恰为剩余 NOISY 条目（扣掉 E.1 的 11 条）  -> 8 条
-PASS E.1+E.2 体积 = C 档体积  -> 141,686+12,375 vs 154,061
+PASS C_NEW / C_GATE / C_IMPORTED 10 条全部仍在 E 节  -> []
+PASS E.1 恰为真零引用 10 条（C_NEW 3 + C_GATE 1 + 迁入 6）  -> ['docs/results/diagnostics-checkpoint-comparison-full-run-exact-20260719.md', 'docs/results/diagnostics-checkpoint-comparison-production-prompt-20260719.md', 'docs/results/diagnostics-data-visual-audit-20260719.md', 'docs/results/diagnostics-data-visual-audit-plan-20260717.md', 'docs/results/diagnostics-visual-audit-preparation-report-20260717.md', 'docs/results/diagnostics-visual-audit-report-20260719.md', 'docs/results/model-r1-effect-profile-20261018.json', 'docs/results/model-r1-effect-profile-20261018.md', 'docs/results/training-data-ledger-20261017.md', 'docs/results/v4_1_phase2_source_aware_3k_coverage_first/stage_b_canary_gate_summary.json']
+PASS E.2 恰为剩余 NOISY 条目（扣掉 E.1 的 10 条）  -> 8 条
+PASS E.1+E.2 体积 = C 档体积  -> 140,389+12,543 vs 152,932
 PASS B 节 C 类构成句由磁盘重算得出
 PASS E.2 命中数仍取审计 4.6 节（存活文件可核对）  -> []
 PASS C_NEW 3 条建议原文正确
-PASS C_GATE 2 条建议原文正确
+PASS C_GATE 1 条建议原文正确
 == H. 单元格长度 ==
 PASS 是什么 ≤ 40 字符  -> []
 PASS 时点 ≤ 55 字符  -> []
@@ -348,9 +347,9 @@ PASS 取代者 总长度 ≤ 60 字符  -> max=41
 PASS INDEX.md 内 Markdown 链接数 = 0  -> []
 PASS 无空链接 / 占位链接
 == J. 头部变更记录与仓库状态 ==
-PASS 头部变更记录链自洽（141 基线，按文档顺序逐条扣减/迁入，末条现存数 = 主表行数）  -> 141-24=117；117-40=77；77-0=77；77+6=83；83-5=78
-PASS 末条变更记录的移除数 = 该批 docs/results 删除数（未提交时取暂存区，已提交时取 HEAD）  -> 表=5 git 暂存删除=5
-git status 已暂存删除（仅用于一致性核对，不硬编码条数）：5 条
+PASS 头部变更记录链自洽（141 基线，按文档顺序逐条扣减/迁入，末条现存数 = 主表行数）  -> 141-24=117；117-40=77；77-0=77；77+6=83；83-5=78；78-1=77
+PASS 末条变更记录的移除数 = 该批 docs/results 删除数（未提交时取暂存区，已提交时取 HEAD）  -> 表=1 git 暂存删除=1
+git status 已暂存删除（仅用于一致性核对，不硬编码条数）：1 条
 PASS 已删除路径均不在磁盘上且不在主表（磁盘侧）  -> []
 PASS 已删除路径均不在磁盘上且不在主表（主表侧）  -> []
 PASS grep -c "^### " docs/project-todo.md = 40  -> 40
@@ -367,13 +366,14 @@ PASS F 节引用的运行输出声明退出码 0 / 0 FAIL
 
 ## G. 偏差
 
-本批无未解释偏差。78 个存活文件的体积逐条等于磁盘实测（F 节 C 段输出「体积列逐条等于 os.path.getsize  -> []」），路径集合与磁盘文件集双向一致（only_in_index=0，only_on_disk=0）。
+本批无未解释偏差。77 个存活文件的体积逐条等于磁盘实测（F 节 C 段输出「体积列逐条等于 os.path.getsize  -> []」），路径集合与磁盘文件集双向一致（only_in_index=0，only_on_disk=0）。
 
 已解释的偏差（供复核）：
 
 - 本轮引用清理改写了 11 个仍存活的 `docs/results/` 文件正文（`version-control-migration/verification.md`、`version-control-migration/entrypoint-map.md`、`version-control-migration/object-mapping.yaml`、`version-control-migration/source-inventory.yaml`、`model-r1-effect-profile-20261018.md`、`model-r1-effect-profile-20261018.json`、`model-inventory.md`、`model-gate-baseline-20260914.md`、`evaluation-tokenizer-materials-20261015.md`、`evaluation-tokenizer-hf-assets-20261015.json`、`ollama-tokenizer-verification-20261015.md`），其体积因此不再等于审计第 4.5 节快照值；主表体积按清理后磁盘实测填写，B 节汇总同源。逐文件实测偏差：verification.md +125 B、entrypoint-map.md +425 B、object-mapping.yaml +121 B、source-inventory.yaml +95 B、model-r1-effect-profile-20261018.md +13 B、model-r1-effect-profile-20261018.json +55 B、model-inventory.md +82 B、model-gate-baseline-20260914.md +82 B、evaluation-tokenizer-materials-20261015.md +57 B、evaluation-tokenizer-hf-assets-20261015.json +210 B、ollama-tokenizer-verification-20261015.md +39 B。
 - 档位（A/B/C）与 mtime 仍照抄审计清单，不因清理重算；被删文件只影响 A/B/C 计数，判据不变。
 - 本批另有 2 个 `docs/results/` 文档在前序步骤被改写，主表与 E 节体积已按改写后的磁盘实测重同步，故与审计第 4.5 节快照值不同：`model-inventory.md` 18290 B → 18464 B（+174 B）、`version-control-migration-20260907.md` 7138 B → 7188 B（+50 B）。两处偏差与 A1 整目录删除本身无关。
+- 2026-10-18 清理（项 B）：删除 `v4_1_stage_d_sealed_test_release/` 目录下的一次性推理准备结论快照（1,297 B，C 档，全仓唯一引用者为本索引），其两条测试计数（本地 `585 passed, 1 skipped`、远端 stage-d 套件 `10 passed`）迁入同目录 `README.md` 第 39 行，该文件 2,289→2,457 B（+168 B），故主表与 E.2 中该行体积按改写后实测重同步。删除后零引用重算差异集合不变，无存活文件因失去唯一引用者而改变档位（HEAD 与工作区的逐文件引用集合比对为 0 处变化）。
 - 单元格长度与「（顶层散文件，未归属实验目录）」后缀是本索引自定的书写约定，**非任务书要求**；本表「是什么」按字符数 ≤40 执行；「对应实验」「取代者」两列以实验标识符（如 `v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`）和文件路径为主体，另加本索引自定的固定后缀，按中文字符数 ≤25 校验（两列当前最长分别为 62 / 41 字符，均为拉丁标识）。
 - 审计清单置于仓库外，本文件只以行内代码记录其路径；仅引用其判据与数值，未复制审计正文段落，未建立链接。
 - 2026-10-18 迁入批次：从 `codeup/diagnostics/data-visual-audit` @ `bcdf4f36` 迁入 6 个 2026-07 诊断报告（`docs/results/diagnostics-*`，合计 27,871 B，含各自「迁入说明」块）与 14 个诊断脚本（`pipeline/scripts/diagnostics/`，不在本索引统计范围）。迁入文件正文与分支基本逐字节一致（`plan` 文件有 1 行链接改为反引号写法），头部说明块使体积大于分支原值，主表体积取迁入后磁盘实测；迁入文件仓库内暂无引用者（`plan` 的改名映射使 `docs/results/diagnostics-data-visual-audit-20260719.md` 被 `git grep` 计为非零引用，档位仍落 C 并列入 E.1，差异见 E.3 第 7 条），处置建议为「迁入保留（负面证据）」，不适用 C 类「不得判可删」的原始语境。
