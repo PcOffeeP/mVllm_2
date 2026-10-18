@@ -103,6 +103,36 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 出处：
 - docs/project-status.md:21
 
+## 「已断裂」标签是 event_time 的循环推论，不是视觉判据
+
+### DF-012 [active] 「已断裂」标签是 event_time 的循环推论，不是视觉判据
+「已断裂」不是独立的视觉判据，而是 `event_time` 的循环推论：post 窗口起点硬编码为 `event + 0.5s`（`EVENT_GUARD_SECONDS = 0.5`），「已断裂」又由同一条不等式判出——区间 `start` 不早于 `event + 0.5`；物化阶段再主动拒绝任何采样帧早于 `event + 0.5` 的「已断裂」候选（`post_event_sample_crosses_guard`）。因此「标签 vs 窗口起点」的几何核算在定义上必然成立，不能用于证伪标签；标签正确性只能由独立的视觉判据（可见分离第一帧的人工标注或确定性检测）验证。
+出处：
+- pipeline/v3_candidate_plan.py:36
+- pipeline/v3_candidate_plan.py:314
+- pipeline/v3_candidate_plan.py:659
+- pipeline/v3_candidate_media.py:430
+- pipeline/v3_candidate_media.py:433
+- pipeline/v3_candidate_media.py:434
+
+## 标签锚点已裁决为「可见分离第一帧」
+
+### DF-013 [active] 标签锚点已裁决为「可见分离第一帧」
+用户于 2026-10-18 裁决：标签锚点采用「可见分离第一帧」（视觉可判），不锚在物理裂纹起始（视觉不可判）。`event_time` 改为该锚点的时间，但历史列不覆盖——数据表新增 `visible_separation_time` 列承载新值，原 `断裂时间点` 列原样保留、不改写不换算，用于新旧锚点的偏差分布统计与可追溯。理由：只有视觉可判的量才能作为视觉模型的标签与被评测对象；该锚点与用户原始判读口径一致；该锚点可被标注者独立复标，也可被确定性检测规则独立复现。
+出处：
+- docs/plans/2026-10-18-label-rebuild.md:70
+- docs/plans/2026-10-18-label-rebuild.md:72
+- docs/plans/2026-10-18-label-rebuild.md:101
+
+## 标签语义变更必须升契约哈希
+
+### DF-014 [active] 标签语义变更必须升契约哈希
+若 `已断裂` 等标签的语义改变，即使枚举集合与取值域不变，也必须升 `contract_hash`，否则同一契约编号下会并存两套标签定义，使同一 `contract_hash` 下记录的评测结果无法判断是按哪套标签算的。反向不成立：只重算 `event_time` 的数值而不改标签语义定义时，不需要升哈希。本次标签重建（锚点由 `event + 0.5` 的几何偏移改为可见分离第一帧）属必须升哈希的一侧。
+出处：
+- pipeline/contracts/tensile_vlm_v4_1.json:3
+- docs/plans/2026-10-18-label-rebuild.md:184
+- docs/plans/2026-10-18-label-rebuild.md:185
+
 ## 已废弃（墓碑）
 
 （当前没有已废弃条目。）
@@ -120,3 +150,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - **误读**：模型答不出帧数 = 模型缺陷
   - 正确：错。帧序输出属过期要求，现行契约 `analysis.user_prompt` 只要求四字段输出
   - 出处：pipeline/contracts/tensile_vlm_v4_1.json:168
+- **误读**：几何上自洽 = 标签正确
+  - 正确：错。几何自洽是同义反复：post 窗口起点与「已断裂」判据共用 `event + 0.5` 这一条不等式，物化阶段又主动拒绝早于该时刻的帧，核算必然成立，它不包含任何视觉信息；标签正确性必须由独立的视觉判据（可见分离第一帧）验证，见 DF-012 / DF-013。
+  - 出处：pipeline/v3_candidate_plan.py:314
+  - 出处：pipeline/v3_candidate_media.py:433
