@@ -169,14 +169,21 @@
 
 ### PB-013 帧感知实验结论待并入事实库
 
-- status: ready
+- status: closed
 - 阻塞/依赖: 无外部条件；但 `docs/design-facts.*` 属另一 agent 的写入面，本任务不得改动。
 - 解除条件: `docs/design-facts.yaml` 的 `misreadings` 段追加一条（误读「每帧独立编码 = 模型知道时序」→ 正确结论），且 `python scripts/verify_design_facts.py` 通过。
 - 前置动作: 起草该条 wrong/correct 文案并附 evidence 行号，交给负责事实库的 agent 合入。
 - 负责人: agent
-- 证据与背景: `docs/design-facts.yaml:245`（`misreadings:` 段现有 7 条，分别起于 `:246`、`:248`、`:253`、`:258`、`:263`、`:270`、`:281`，不含该条）；`docs/project-todo.md:99`（逐帧成组的实现事实）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测）。
+- 证据与背景: `docs/design-facts.yaml` 的 `misreadings` 段（条目定位用条目文本，不用行号：本段在 `bf1ed03` 后为 8 条，本轮追加「每帧独立编码 = 模型知道帧序」后为 9 条；旧文所记「现有 7 条 + 起行 `:246`/`:248`/`:253`/`:258`/`:263`/`:270`/`:281`」是插入 DF-015/DF-016 之前的过期行号，已作废）；`docs/project-todo.md:103`（逐帧成组的实现事实，2026-10-19 `grep -n` 实测；旧文所记 `:99` 为过期行号）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测，2026-10-19 复核）。
 - 记录日期: 2026-10-18
 - 备注: 事实库由脚本校验 evidence 行号必须指向真实非空行，行号入册前须复核；该结论与 PB-002 的归因边界相邻——PB-002 未结前，本条只登记「逐帧编码 ≠ 时序感知」，不得写成「模型已知/不知帧序」。
+
+**解除记录（2026-10-19，Pi）**：解除条件两项均已满足，本条解除；上方原文（阻塞/依赖、解除条件、前置动作、负责人、记录日期、备注）原样保留为历史记录。
+
+- ① `docs/design-facts.yaml` 的 `misreadings` 段已追加「每帧独立编码 = 模型知道帧序」一条（条目文本定位，不用行号），带 2 条 evidence 且均含 `expect`：`finetune/validation/video_loader.py:52`（`own group (8 frames -> 8 groups)`）、`docs/project-todo.md:69`（`8 帧 → 8 组、每组 1 帧`）。两处 `expect` 均经 `grep -nF` 实测为该行唯一字面出现，`python scripts/verify_design_facts.py` 逐条判 PASS。
+- ② `python scripts/verify_design_facts.py`：`FAIL 0`（`合计 79 项：PASS 79，PASS(no-expect) 0`，其中「带 expect 的 evidence 72 条，命中 72 条」）；完整原始输出见仓库外 `~/pi-workspace/mVllm_2-audit/design-facts-20261019-followup/checks/01-verify.txt`（**不在 Git 内**，他机不可达，不写作链接）。
+- ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交即**本条所在提交**（哈希见同一报告的提交记录，不在文档内嵌入，避免自指）。
+- ④ 结论边界：本条只登记「编码分组方式 ≠ 时序感知」；`temporal_ids` 全为 `-1` 的成因**未归因**（PB-002 已按用户 2026-10-19 决定取消排查），不得读作「模型已知帧序」或「模型不知帧序」。
 
 ### PB-014 人工抽看 20 条帧画面
 
@@ -279,11 +286,11 @@
 
 1. 换管线（64 → 512 token）不是「已断裂」零召回的原因：同模型、同数据、同 Prompt，两侧均 0/33。出处：`docs/design-facts.yaml` DF-009、`docs/project-todo.md:82`。
 2. `strict_valid_rate` 只校验形式，不校验语义。出处：`docs/design-facts.yaml` DF-003、`finetune/eval_semantics.py:126`（`result.update(..., strict_valid=True)` 即「形式校验通过」的赋值点）、`finetune/eval_semantics.py:376`（`metrics["strict_valid_rate"]` 汇总处）；`finetune/eval_semantics.py:101` 的 docstring 只说明 `extract_semantics` 不接收标签 / 视频 / 模型身份，是该结论的旁证而非直接陈述。
-3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml:245` 的 misreadings 首条**。出处：`docs/design-facts.yaml:245`（首条正文在 `:246`–`:247`）。
+3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"）**。出处：`docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"；引用以条目文本定位为准，2026-10-19 实测位于 `:286`，正文 `:287`，行号仅作附注）。
 4. 模型输出「已断裂」在 425 条预测中出现 0 次。出处：`docs/project-todo.md:82`、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:368`（`prediction_clip_state_distribution` 里没有「已断裂」键）。
 5. 训练池「已断裂」占 15.00%，非数据稀缺。出处：`docs/design-facts.yaml` DF-010、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:85`（1253 条候选 188 条 = 15.00%，每 epoch 3000 行 564 行 = 18.80%）、`finetune/train_build_source_aware_dataset.py:30`（`SIGNATURE_COUNT_CAP = 3`，支撑「重复倍率 3.0 已顶上限」）。
 
-## E. 决策填答表（9/9 待答）
+## E. 决策填答表（9 项待答 + §E-2 另 2 项）
 
 本节是**索引与填答入口**，不构成第二份权威。每条的完整定义、解除条件、证据与验收标准以对应 `PB-0xx` 原条目为准；若本节与原条目冲突，以原条目为准。本节不含任何新的门槛数值、推荐值或替代判断。
 
@@ -323,3 +330,12 @@ PB-017  tokenizers 环境：恢复 / 不恢复
 ```
 
 填答后由 agent 把答案回写到对应 `PB-0xx` 原条目，并把 status 从 `waiting-decision` 改为 `ready` 或 `closed`；本节标题的计数随之更新。
+
+### §E-2　2026-10-19 新增待决（2 项，不在上表内）
+
+上表是用户 2026-10-18 批次的 9 项，原样保留；本节另列 2026-10-19 新增的 2 项。与 §E 同样只是索引，完整定义、解除条件与证据以对应 `PB-0xx` 原条目为准。
+
+| 编号 | 一句话问题（不用术语） | 需要你给出的答案形式 | 不答会卡住什么 | 依赖 |
+|---|---|---|---|---|
+| PB-019 | 这轮改的是标签「定义」还是标签「数值」？要不要因此换一个新的契约哈希？ | 「升」或「不升」，附一句依据 | 契约哈希无法定稿；同一哈希下会并存两套标签口径，评测结果无法判断按哪套算 | 无 |
+| PB-020 | 台账里同一件事有两处说法不一致（共 6 组冲突），哪些要改、往哪边改？ | 逐条「处理 / 不处理 / 改为其他口径」 | 指标数字无法回溯到确定的代码 / 数据 / Prompt 版本；文档间冲突保持原样 | 无 |
