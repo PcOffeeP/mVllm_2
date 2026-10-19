@@ -110,6 +110,8 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 "$PYTHON" -m versioning --help
 ```
 
+非交互 SSH 会话（`ssh <host> '...'`）不加载 `.bashrc` 和 `.profile`，Conda 在交互式登录时设置的 `PATH` 不会生效。环境检查器会以隔离模式重新执行自身，并剥离 `VIRTUAL_ENV` 以及全部 `PYTHON*`、`UV_*`、`PIP_*` 环境变量；`uv`、`ffmpeg`、`ffprobe` 都经 `shutil.which` 从 `PATH` 查找，缺失者记为 `missing prerequisite <tool>` 并返回非零，`uv` 缺失时即报 `missing prerequisite uv`。`uv` 存在时，检查器还执行 `uv --no-config pip check --python <解释器>`。因此这类会话要先让该环境的 `bin` 进入 `PATH`，例如 `PATH=/absolute/verified/conda-environment/bin:$PATH "$PYTHON" scripts/source_validate_environment.py --profile linux-gpu`。`conda run -n <env> ...` 与登录 shell（`ssh <host> 'bash -lc "..."'`）同样满足这一条件。
+
 检查覆盖锁定依赖、公共入口、媒体工具、CUDA 和训练模块来源，不下载或加载模型，也不训练或推理。Linux editable 依赖绑定代码工作区，后续使用时须保留或重新核定该来源。只有检查通过的环境才用于后续实际处理；历史环境名字不能代替核验。
 
 如果没有合格的 Conda 环境，先准备并核验，不能直接开始真实任务。现有 `source_prepare_environment.py --profile linux-gpu` 创建的是新的 venv，既不创建 Conda 环境，也不修补已有 Conda 环境；其 `--env` 不接受已存在目录。部署接口与依赖维护规则见[脚本索引](scripts/SCRIPTS.md)。
