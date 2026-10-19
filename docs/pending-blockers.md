@@ -182,7 +182,7 @@
 
 - ① `docs/design-facts.yaml` 的 `misreadings` 段已追加「每帧独立编码 = 模型知道帧序」一条（条目文本定位，不用行号），带 2 条 evidence 且均含 `expect`：`finetune/validation/video_loader.py:52`（`own group (8 frames -> 8 groups)`）、`docs/project-todo.md:69`（`8 帧 → 8 组、每组 1 帧`）。两处 `expect` 均经 `grep -nF` 实测为该行唯一字面出现，`python scripts/verify_design_facts.py` 逐条判 PASS。
 - ② `python scripts/verify_design_facts.py`：`FAIL 0`（`合计 79 项：PASS 79，PASS(no-expect) 0`，其中「带 expect 的 evidence 72 条，命中 72 条」）；该结论可在仓库内用同一命令 `python scripts/verify_design_facts.py` 自行复现（evidence 行号校验与 expect 命中判定都在仓库内完成，不依赖仓库外文件），仓库外 `~/pi-workspace/mVllm_2-audit/design-facts-20261019-followup/checks/01-verify.txt` 只是那一次运行的原始输出副本（**不在 Git 内**，他机不可达，不写作链接），不是唯一举证。
-- ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交：`git log -1 --format=%h --grep='收口 PB-013 与 §D/§E 口径'` 的输出（按提交主题锚定、不嵌字面哈希；该主题在历史中唯一，后续对同一文件的其它改动不会改变其指向）。
+- ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交：`f06dea6`（该提交把 PB-013 置 closed 并在 misreadings 段追加本条；哈希为已发生提交的确定值，不受后续改动影响）。
 - ④ 结论边界：本条只登记「编码分组方式 ≠ 时序感知」；`temporal_ids` 全为 `-1` 的成因**未归因**（PB-002 已按用户 2026-10-19 决定取消排查），不得读作「模型已知帧序」或「模型不知帧序」。
 
 ### PB-014 人工抽看 20 条帧画面
