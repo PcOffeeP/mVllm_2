@@ -1688,6 +1688,16 @@ _WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE = "unavailable_archive_removed"
 _WEIGHT_RUN_ARCHIVE_REMOVED_DATE = "2026-10-18"
 # 2026-10-18 清理移除的目录级路径（说明文本与归档包路径共用同一来源）。
 _WEIGHT_RUN_ARCHIVE_ROOT_REL = Path("docs") / "results" / "model_evidence"
+# 声明 run 源整体不存在（M0 known_gap：预期路径不存在）是可观测的另一种
+# 缺失来源：与「M0 调查只记录权重目录结构观察、未记录任何训练参数值」
+# 不同，源路径本身缺失。两者都保持字段级 unknown（缺失不伪装成已知值），
+# 但前者额外携带机读 reason_code，说明里写明原 run id 与缺失的源路径
+# workspace/runs/<run_id>。源缺失没有任何可观测的清理日期，说明文本不得
+# 夹带归档清理日期。触发条件严格限定为「声明 run 源整体不存在、来源链不
+# 含链接、且探测未抛 OSError」：源目录存在、只是某个已知结构组件缺失时
+# 「源缺失」是假陈述，本状态不成立；探测失败意味源可读性未知，不得升级为
+# 源缺失声明。
+_WEIGHT_RUN_SOURCE_MISSING_REASON_CODE = "unavailable_source_missing"
 _MODEL_HISTORY_KIND = "model_history"
 _EVAL_HISTORY_KIND = "eval_history"
 _EVAL_HISTORY_METRIC_KEYS = frozenset(
@@ -1746,6 +1756,34 @@ def _weight_run_archive_removed_fact(
         ),
         "attempted_source": attempted.as_posix(),
         "reason_code": _WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE,
+    }
+
+
+def _weight_run_source_missing_fact(
+    name: str, source_id: str, run_rel: Path
+) -> dict[str, Any]:
+    """构造「声明 run 源整体不存在」的 unknown 事实。
+
+    只在声明 run 源 ``workspace/runs/<source_legacy_id>`` 整体不存在、来源
+    链不含符号链接且探测未抛 ``OSError`` 时使用：保持既有 unknown_reason /
+    attempted_source / 不携带非 None value 的形态，另叠加机读 reason_code
+    区分缺失来源。说明文本写明原 run id 与缺失的源路径，并显式区别于
+    「M0 调查只记录权重目录结构观察、未记录任何训练参数值」—— 后者声明源
+    路径可读、只是从未记录参数值，本形态连声明的源路径本身都不存在。源
+    缺失没有可观测的清理日期，说明文本不夹带任何日期。源目录存在、只是某
+    个已知结构组件缺失时不使用本形态（「源缺失」是假陈述）。
+    """
+    return {
+        "unknown_reason": (
+            f"weight run {source_id} 的声明 run 源 {run_rel.as_posix()} 整体不"
+            f"存在（M0 known_gap：预期路径不存在），{name} 无从经只读观察取得："
+            "该形态区别于「M0 调查只记录权重目录结构观察、未记录任何训练参数"
+            "值」—— 后者声明源路径可读、只是从未记录参数值，本形态连声明的"
+            "源路径本身都不存在；缺席不可观察，缺失不伪装成已知值，也不从 "
+            "sibling 取内容"
+        ),
+        "attempted_source": run_rel.as_posix(),
+        "reason_code": _WEIGHT_RUN_SOURCE_MISSING_REASON_CODE,
     }
 
 
@@ -2464,11 +2502,18 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     Git 历史核实）；该状态与「M0 未记录参数」unknown 可区分：后者从未被
     记录（不携带 reason_code，说明不提清理日期）。
 
-    本状态与结构事实正交：声明 run 源整源缺失时在早退分支直接返回，不进
-    入归档观察、不叠加 reason_code；而声明 run 源存在、仅某个已知结构组
-    件（如 ``fold0/adapter``）缺失时仍走归档读取主分支，若归档包同样缺席
-    则在核心训练参数上叠加本状态（结构事实各自保持字段级 unknown）。
-    facts 的事实名集合与归档齐备场景的返回形状都不因此改变。
+    本状态与结构事实正交：声明 run 源整源缺失时叠加的是另一种状态——早退
+    分支不进入归档观察、不叠加本状态，而是在其产出的 12 个事实（3 个结构
+    事实 + 9 个核心训练参数）上统一叠加 ``reason_code:
+    "unavailable_source_missing"``，说明文本写明原 run id 与缺失的源路径
+    ``workspace/runs/<source_legacy_id>``，且不含任何日期（源缺失没有可
+    观测的清理日期）；触发条件严格限定为「声明 run 源整体不存在、来源链
+    不含链接、且探测未抛 ``OSError``」——源目录存在、仅某个已知结构组件
+    （如 ``fold0/adapter``）缺失时不成立（此时「源缺失」是假陈述），保持
+    既有字段级 unknown 形态；而声明 run 源存在、仅某个已知结构组件缺失
+    时仍走归档读取主分支，若归档包同样缺席则在核心训练参数上叠加本状态
+    （结构事实各自保持字段级 unknown）。facts 的事实名集合与归档齐备场
+    景的返回形状都不因此改变。
     """
     def has_link_component(relative_path: Path) -> bool:
         """Return whether any lexical component below the trusted root is a link."""
@@ -2526,6 +2571,17 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
         # training_status 分类（weights_observed / completed /
         # not_completed / prepared_only 均为无证据声明），也不信任 entry
         # 声明代替重新观察。
+        # PB-016：声明 run 源整体不存在是可观测的缺失来源，与上述笼统
+        # unknown 可区分：12 个事实统一叠加 reason_code（源目录存在、只是已
+        # 知结构组件缺失时「源缺失」是假陈述，保持笼统 unknown 形态）。
+        # 探测放在 try 内：Path.exists() 只吞 ENOENT/ENOTDIR/EBADF/ELOOP，
+        # EACCES/EPERM/EIO 会冒泡；探测失败意味源可读性未知，不得升级为
+        # 「源缺失」声明。
+        run_source_missing = False
+        try:
+            run_source_missing = not run_source_has_link and not run_dir.exists()
+        except OSError:
+            run_source_missing = False
         facts: dict[str, dict[str, Any]] = {
             name: {
                 "unknown_reason": (
@@ -2548,6 +2604,14 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
                     "登记为已知值"
                 ),
                 "attempted_source": run_rel.as_posix(),
+            }
+        if run_source_missing:
+            # 源整体不存在时，上述两组笼统 unknown 文案都会与「M0 未记录参
+            # 数」或「已知结构组件缺失」混淆：统一换成显式源缺失状态（事实
+            # 名集合与顺序不变，沿用上方 dict 的插入顺序）。
+            facts = {
+                name: _weight_run_source_missing_fact(name, source_id, run_rel)
+                for name in facts
             }
         return {
             "entry_id": f"history-{_WEIGHT_RUN_KIND}-{source_id}",

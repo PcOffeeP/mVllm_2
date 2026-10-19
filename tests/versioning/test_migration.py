@@ -21532,6 +21532,320 @@ def test_weight_run_missing_archive_root_still_marks_core_params_removed(
     )
 
 
+# ---------------------------------------------------------------------------
+# 声明 run 源整源缺失的 weight run：全部事实必须携带可区分的显式机读状态
+# （PB-016 任务 1，先写测试，不改 production）
+# ---------------------------------------------------------------------------
+#
+# 背景：声明 run 源 ``workspace/runs/<source_legacy_id>`` 整体不存在（M0
+# known_gap 真实形态：source-inventory.yaml ``known_gap.expected_run``）时，
+# ``_build_weight_run_history_entry`` 走早退分支，只把 3 个结构事实
+# （fold_scope / adapter_present / merged_present）与 9 个核心训练参数写成
+# 字段级 unknown，不带任何机读状态；其中 9 个核心参数的说明文本与「M0 从未
+# 记录参数值」同款，调用方无法区分「被声明的源路径本身不存在」与「M0 未记录
+# 参数值」。本区段把该缺失来源钉成显式机读状态。
+#
+# 断言契约（本切片钉定，供 coder 对齐）：
+# 1. 源路径整体不存在（且来源链不含符号链接）时，早退分支产出的**全部 12 个
+#    事实**（3 个结构事实 + 9 个核心训练参数）额外携带
+#
+#        fact["reason_code"] == "unavailable_source_missing"
+#
+# 2. 事实形态仍是字段级 unknown：``unknown_reason`` 非空、``attempted_source``
+#    指回 ``workspace/runs/<run_id>``、不携带非 None ``value``；
+# 3. ``unknown_reason`` 必须含原 run id 与缺失的源路径
+#    ``workspace/runs/<run_id>``，并与「M0 未记录参数」文案可区分；源缺失没有
+#    任何可观测的清理日期，**禁止伪造归档清理日期 2026-10-18**；
+# 4. entry 级字段不变（entry_id / kind / original_id / history_only /
+#    formal_identity），且不输出无证据的 ``training_status``；
+# 5. 区分度守卫：run 源目录存在、只是 fold0 与 run 根 adapter / merged 都不
+#    存在（部分结构缺失）时，**不得**携带 ``unavailable_source_missing`` ——
+#    该场景下源存在，「源缺失」是假陈述；
+# 6. 词汇不混用守卫：归档已被清理（2026-10-18，源结构可读而归档根缺席）时
+#    必须仍为 ``unavailable_archive_removed``，不得被改写成
+#    ``unavailable_source_missing``；
+# 7. 纯构建零写入：全树快照逐字节不变。
+#
+# 捕获的合理但错误实现：
+# - 只在 9 个核心训练参数上贴标签、3 个结构事实仍裸 unknown -> 全部事实断言
+#   失败；
+# - 一律贴 source_missing（去掉「源路径确实不存在」这一前置判定）-> 部分结构
+#   缺失守卫失败；
+# - 把归档清理场景也改判成 source_missing（两种缺失来源共用一词）-> 词汇不
+#   混用守卫失败；
+# - 贴标签同时丢掉 unknown 形态 / 塞入伪造 value / 输出 training_status ->
+#   unknown 形态与 entry 级断言失败；
+# - 文案照抄「M0 调查只记录权重目录结构观察，未记录任何训练参数值」-> 文案
+#   区分断言失败；
+# - 顺带伪造 2026-10-18 清理日期 -> 日期禁断言失败。
+SOURCE_MISSING_REASON_CODE = "unavailable_source_missing"
+
+
+def _write_weight_run_scenario_without_declared_source(root: Path) -> dict[str, Any]:
+    """声明 weight run 源整体缺失（M0 known_gap 形态），sibling 保持完好。
+
+    复用 H5/H6a fixture 三件套后整体移除声明 run 目录：未声明 sibling（两个
+    prepare-only run、run 根结构 weight run）保持完好，缺失只能由声明源移除
+    引起；prompt registry 不在本区段依赖范围内，故不写入。
+    """
+    _write_prepare_only_runs_layout(root)
+    _write_weight_run_root_sibling_layout(root)
+    declared_run = root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    assert declared_run.is_dir() and (declared_run / "fold0").is_dir(), (
+        "fixture 前置事实失败：声明 run 源必须先完整存在（mutation 才能钉定「源"
+        "整源缺失」这一形态）"
+    )
+    shutil.rmtree(declared_run)
+    assert not declared_run.exists(), (
+        "fixture 前置事实失败：mutation 后声明 run 源目录必须不存在（M0 "
+        "known_gap：预期路径不存在）"
+    )
+    for sibling_id in (PREPARE_ONLY_RUN_V1_ID, PREPARE_ONLY_RUN_V2_ID, WEIGHT_RUN_ROOT_SIBLING_ID):
+        assert (root / "workspace" / "runs" / sibling_id).is_dir(), (
+            f"fixture 前置事实失败：mutation 后未声明 sibling {sibling_id} 必须"
+            "保持完好（缺失只能由声明源引起）"
+        )
+    return _confirmed_weight_run_entry()
+
+
+def test_weight_run_source_missing_marks_all_facts_with_explicit_reason_code(
+    tmp_path: Path,
+) -> None:
+    """声明 run 源整源缺失时，3 个结构事实与 9 个核心训练参数必须**全部**
+    携带 ``reason_code == "unavailable_source_missing"``（不得只覆盖其中
+    一族，也不得让任何一个事实停留在笼统 unknown）。
+    """
+    # Arrange
+    entry = _write_weight_run_scenario_without_declared_source(tmp_path)
+    expected_names = {*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS}
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert
+    assert set(facts) == expected_names, (
+        "源缺失时 weight run 的事实名集合不得增删（新状态只能是既有 unknown "
+        f"事实上的附加字段）：实际键集 {sorted(facts)}"
+    )
+    missing_state = [
+        name
+        for name in sorted(expected_names)
+        if facts[name].get("reason_code") != SOURCE_MISSING_REASON_CODE
+    ]
+    assert not missing_state, (
+        "声明 run 源整源缺失的 weight run，全部事实（3 个结构事实 + 9 个核心训"
+        f"练参数）必须携带显式机读状态 reason_code == {SOURCE_MISSING_REASON_CODE!r}"
+        f"（当前实现只给出笼统 unknown，无法与「M0 未记录参数」区分）：未携带该"
+        f"状态的事实 {missing_state}，实际 facts {facts!r}"
+    )
+
+
+def test_weight_run_source_missing_keeps_field_level_unknown_shape(
+    tmp_path: Path,
+) -> None:
+    """显式状态叠加在既有字段级 unknown 形态之上：12 个事实仍必须携带非空
+    ``unknown_reason``、``attempted_source`` 指回 ``workspace/runs/<run_id>``、
+    且不携带非 None ``value``（源缺失不得伪装成已知值）。
+    """
+    # Arrange
+    entry = _write_weight_run_scenario_without_declared_source(tmp_path)
+    run_id = entry["source_legacy_id"]
+    expected_source = f"workspace/runs/{run_id}"
+    expected_names = sorted({*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS})
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert
+    for name in expected_names:
+        fact = facts[name]
+        assert fact.get("reason_code") == SOURCE_MISSING_REASON_CODE, (
+            f"事实 {name} 缺少源缺失显式状态（前置断言，随后才校验 unknown 形态）："
+            f"实际 {fact!r}"
+        )
+        _assert_h6_fact_is_unknown(fact, name=name, run_id=run_id)
+        assert fact["attempted_source"] == expected_source, (
+            f"源缺失状态的事实 {name} 的 attempted_source 必须指回声明的 run 源 "
+            f"{expected_source!r}：实际 {fact['attempted_source']!r}"
+        )
+
+
+def test_weight_run_source_missing_reason_names_run_id_and_declared_path(
+    tmp_path: Path,
+) -> None:
+    """源缺失状态的说明文本必须写出原 run id 与缺失的源路径
+    ``workspace/runs/<run_id>``，与「M0 未记录参数值」的文案可区分，且不得
+    伪造任何清理日期（源缺失无人可观测的清理日期）。
+    """
+    # Arrange
+    entry = _write_weight_run_scenario_without_declared_source(tmp_path)
+    prepare_entry = _confirmed_prepare_only_run_entry()
+    run_id = entry["source_legacy_id"]
+    expected_source = f"workspace/runs/{run_id}"
+    document = _resolve_history_summary_entry()(tmp_path, [entry, prepare_entry])
+
+    # Act
+    facts = document["entries"][0]["facts"]
+    m0_facts = document["entries"][1]["facts"]
+
+    # Assert
+    for name in sorted({*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS}):
+        fact = facts[name]
+        assert fact.get("reason_code") == SOURCE_MISSING_REASON_CODE, (
+            f"事实 {name} 缺少源缺失显式状态（前置断言，随后才校验说明文本）："
+            f"实际 {fact!r}"
+        )
+        reason = fact["unknown_reason"]
+        assert run_id in reason, (
+            f"源缺失状态的事实 {name} 的 unknown_reason 必须写出原 run id "
+            f"{run_id}：实际 {reason!r}"
+        )
+        assert expected_source in reason, (
+            f"源缺失状态的事实 {name} 的 unknown_reason 必须写出缺失的源路径 "
+            f"{expected_source!r}（否则与「M0 未记录参数」不可区分）：实际 "
+            f"{reason!r}"
+        )
+        assert ARCHIVE_REMOVED_DATE_TOKEN not in reason, (
+            f"源缺失状态的事实 {name} 的 unknown_reason 不得夹带归档清理日期 "
+            f"{ARCHIVE_REMOVED_DATE_TOKEN}（源缺失没有可观测的清理日期，禁止伪造）："
+            f"实际 {reason!r}"
+        )
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert facts[name]["unknown_reason"] != m0_facts[name]["unknown_reason"], (
+            f"源缺失与「M0 未记录参数值」的 unknown_reason 不得共用同一文案"
+            f"（参数 {name}）：source_missing={facts[name]['unknown_reason']!r} / "
+            f"m0={m0_facts[name]['unknown_reason']!r}"
+        )
+
+
+def test_weight_run_source_missing_keeps_entry_level_fields_and_no_training_status(
+    tmp_path: Path,
+) -> None:
+    """源缺失状态只附加在事实层：entry 级字段集合与取值保持不变，且不输出
+    无证据的 ``training_status``（源缺失既非权重观察也非准备资料观察）。
+    """
+    # Arrange
+    entry = _write_weight_run_scenario_without_declared_source(tmp_path)
+    run_id = entry["source_legacy_id"]
+
+    # Act
+    summary_entry = _resolve_history_summary_entry()(tmp_path, [entry])["entries"][0]
+
+    # Assert
+    assert set(summary_entry) == {
+        "entry_id",
+        "kind",
+        "original_id",
+        "history_only",
+        "formal_identity",
+        "facts",
+    }, (
+        "源缺失时 weight run entry 的字段集合不得增删（尤其不得输出无证据的 "
+        f"training_status）：实际键集 {sorted(summary_entry)}"
+    )
+    assert summary_entry["kind"] == "weight_run", (
+        f"源缺失时 entry 分类必须保持 weight_run：实际 {summary_entry['kind']!r}"
+    )
+    assert summary_entry["original_id"] == run_id, (
+        f"源缺失时 entry 必须保留原始 run id {run_id!r}：实际 "
+        f"{summary_entry['original_id']!r}"
+    )
+    assert summary_entry["entry_id"] == f"history-weight_run-{run_id}", (
+        "源缺失时 entry_id 必须仍为文档内 slug（history-weight_run-<run_id>）："
+        f"实际 {summary_entry['entry_id']!r}"
+    )
+    assert summary_entry["history_only"] is True, (
+        f"源缺失时 history_only 必须为 True：实际 {summary_entry['history_only']!r}"
+    )
+    assert summary_entry["formal_identity"] == "none", (
+        "源缺失时不得分配正式身份（formal_identity 必须为 'none'）：实际 "
+        f"{summary_entry['formal_identity']!r}"
+    )
+
+
+def test_weight_run_source_missing_build_is_zero_write(tmp_path: Path) -> None:
+    """源缺失状态是纯构建产物：全树快照逐字节不变（不写 history-summary
+    文件、不重建缺失源、不改 sibling）。
+    """
+    # Arrange
+    entry = _write_weight_run_scenario_without_declared_source(tmp_path)
+    before = _snapshot_tree(tmp_path)
+
+    # Act
+    _resolve_history_summary_entry()(tmp_path, [entry])
+
+    # Assert
+    assert _snapshot_tree(tmp_path) == before, (
+        "源缺失状态的构建必须零写入（不得写 history-summary 文件、不得重建被移除"
+        "的声明 run 源、不得改 sibling 内容）"
+    )
+
+
+def test_weight_run_partial_structure_missing_is_not_marked_source_missing(
+    tmp_path: Path,
+) -> None:
+    """区分度守卫：run 源目录存在、只是 fold0 与 run 根 adapter / merged 都
+    不存在（部分结构缺失），不得被标成「源缺失」—— 该场景下源确实存在，
+    ``unavailable_source_missing`` 是假陈述。
+    """
+    # Arrange：声明 run 目录存在但内部为空，run 根也没有 adapter / merged。
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_weight_run_root_sibling_layout(tmp_path)
+    declared_run = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    shutil.rmtree(declared_run)
+    declared_run.mkdir(parents=True)
+    assert declared_run.is_dir(), "前置事实：声明 run 源目录必须存在（源并未缺失）"
+    assert not (declared_run / "fold0").exists(), "前置事实：fold0 必须不存在"
+    assert not (declared_run / "adapter").exists() and not (
+        declared_run / "merged"
+    ).exists(), "前置事实：run 根 adapter / merged 必须都不存在"
+    entry = _confirmed_weight_run_entry()
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert：源存在 -> 「源缺失」不成立。
+    for name in sorted({*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS}):
+        assert facts[name].get("reason_code") != SOURCE_MISSING_REASON_CODE, (
+            f"run 源目录存在、仅结构组件缺失时，事实 {name} 不得携带 "
+            f"{SOURCE_MISSING_REASON_CODE!r}（源存在，「源缺失」是假陈述）：实际 "
+            f"{facts[name]!r}"
+        )
+
+
+def test_weight_run_archive_removed_keeps_archive_vocabulary_not_source_missing(
+    tmp_path: Path,
+) -> None:
+    """词汇不混用守卫：归档已被清理（2026-10-18、源结构可读而归档根缺席）
+    场景必须仍为 ``unavailable_archive_removed``，不得被改写成
+    ``unavailable_source_missing``（两种缺失的可观测条件不同）。
+    """
+    # Arrange
+    _write_weight_run_scenario_without_archive(tmp_path)
+    entry = _confirmed_weight_run_entry()
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert
+    assert facts[WEIGHT_RUN_FOLD_SCOPE_FACT].get("value") == "fold0", (
+        "前置事实：归档清理场景下声明 run 源结构必须可读（fold_scope 观察到 "
+        f"fold0）：实际 {facts[WEIGHT_RUN_FOLD_SCOPE_FACT]!r}"
+    )
+    for name in WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS:
+        assert facts[name].get("reason_code") == ARCHIVE_REMOVED_REASON_CODE, (
+            f"归档已清理场景的核心训练参数 {name} 必须仍为 "
+            f"{ARCHIVE_REMOVED_REASON_CODE!r}（词汇不得被改写成源缺失）：实际 "
+            f"{facts[name]!r}"
+        )
+    for name in sorted({*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS}):
+        assert facts[name].get("reason_code") != SOURCE_MISSING_REASON_CODE, (
+            f"归档已清理场景的事实 {name} 不得被标成 "
+            f"{SOURCE_MISSING_REASON_CODE!r}（归档根缺席、源结构可读，与「源缺失」"
+            f"是不同可观测条件）：实际 {facts[name]!r}"
+        )
+
+
 def test_history_summary_multi_entry_preserves_order_and_mixed_evidence(
     tmp_path: Path,
 ) -> None:
