@@ -21804,12 +21804,110 @@ def test_weight_run_partial_structure_missing_is_not_marked_source_missing(
     # Act
     facts = _weight_run_facts(tmp_path, entry)
 
-    # Assert：源存在 -> 「源缺失」不成立。
+    # Assert：源存在 -> 事实必须停留在既有笼统 unknown 形态。
+    # Reviewer P3 加强：只断言 ``!= unavailable_source_missing`` 会放过「源缺失」
+    # 之外任何词汇的误标（例如把源存在误判成归档已清理），故直接断言
+    # ``reason_code`` 键整体缺席——比单一取值更严，且同时覆盖全部缺失来源词汇。
     for name in sorted({*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS}):
-        assert facts[name].get("reason_code") != SOURCE_MISSING_REASON_CODE, (
-            f"run 源目录存在、仅结构组件缺失时，事实 {name} 不得携带 "
-            f"{SOURCE_MISSING_REASON_CODE!r}（源存在，「源缺失」是假陈述）：实际 "
-            f"{facts[name]!r}"
+        _assert_h6_fact_is_unknown(facts[name], name=name, run_id=entry["source_legacy_id"])
+        assert "reason_code" not in facts[name], (
+            f"run 源目录存在、仅结构组件缺失时，事实 {name} 不得携带 reason_code"
+            f" 键（源存在，「源缺失」是假陈述，且不得被任何其它缺失来源词汇误标）："
+            f"实际 {facts[name]!r}"
+        )
+
+
+def test_weight_run_dangling_source_symlink_is_not_marked_source_missing(
+    tmp_path: Path,
+) -> None:
+    """声明 run 源是悬空符号链接时不得被标成「源缺失」。
+
+    契约：源缺失声明要求「来源链不含链接 且 声明 run 目录不存在」两个条件
+    同时成立。把 ``workspace/runs/<source_legacy_id>`` 换成指向不存在目标
+    的符号链接时，``Path.exists()`` 同样返回 False（链接未被解析到实体），
+    但来源链含链接意味着源缺失不可观测，因此 12 个事实必须保持既有字段级
+    unknown 形态：断言 ``reason_code`` 键整体缺席（而不是断言某个专门的中
+    性取值）。
+
+    变异钉定：删掉生产侧 ``not run_source_has_link and`` 前置判定后，本用
+    例必须判红。
+    """
+    # Arrange：声明 run 目录整体换成指向不存在目标的符号链接。
+    entry = _write_weight_run_scenario_without_declared_source(tmp_path)
+    declared_run = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run.symlink_to(tmp_path / "workspace" / "runs" / "no-such-run-source")
+    # 前置事实：叶子路径是链接且未解析到实体 —— 与「源整源缺失」在
+    # Path.exists() 上不可区分，只有来源链链接可区分。
+    assert declared_run.is_symlink(), "前置事实：声明 run 路径必须为符号链接"
+    assert not declared_run.exists(), (
+        "前置事实：符号链接必须悬空（目标不存在），否则本用例无法钉定「源缺失"
+        "与链接不可区分」这一形态"
+    )
+
+    # Act
+    facts = _weight_run_facts(tmp_path, entry)
+
+    # Assert：来源链含链接 -> 「源缺失」不成立，12 个事实保持笼统 unknown。
+    expected_names = sorted(
+        {*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS}
+    )
+    assert len(expected_names) == 12, (
+        "断言前提：本用例必须覆盖 12 个事实（3 个结构事实 + 9 个核心训练参数）"
+        f"：实际 {len(expected_names)} 个（{expected_names}）"
+    )
+    for name in expected_names:
+        fact = facts[name]
+        _assert_h6_fact_is_unknown(fact, name=name, run_id=entry["source_legacy_id"])
+        assert "reason_code" not in fact, (
+            f"声明 run 源为悬空符号链接（来源链含链接）时，事实 {name} 不得携带"
+            f" reason_code 键（链接来源链下「源缺失」不可观测，不得升级为源缺失"
+            f"声明）：实际 {fact!r}"
+        )
+
+
+def test_weight_run_unreadable_source_does_not_raise(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """声明 run 源探测抛 ``OSError`` 时不得抛异常，也不得降格成源缺失。
+
+    契约：``Path.exists()`` 只吞 ENOENT/ENOTDIR/EBADF/ELOOP，EACCES/EPERM
+    会冒泡；探测失败意味源可读性未知，构建必须照常返回条目，12 个事实保持
+    既有字段级 unknown 形态、不带 ``reason_code``——可读性未知不得被声明成
+    「源路径不存在」。
+
+    变异钉定：删掉生产侧 run 源探测的 ``try/except OSError`` 后，本用例必须
+    因 ``PermissionError`` 冒泡而判红。
+    """
+    # Arrange：声明 run 源在磁盘上缺失，且对它的存在性探测被拒绝。
+    entry = _write_weight_run_scenario_without_declared_source(tmp_path)
+    declared_run = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    real_exists = Path.exists
+
+    def _deny_source_probe(self: Path) -> bool:
+        if self.parts[-1] == WEIGHT_RUN_DECLARED_ID and self.parts[-2] == "runs":
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_exists(self)
+
+    monkeypatch.setattr(Path, "exists", _deny_source_probe)
+
+    # Act
+    document = _resolve_history_summary_entry()(tmp_path, [entry])
+
+    # Assert：探测失败不得抛异常、不得让条目消失、更不得降格成源缺失声明。
+    facts = document["entries"][0]["facts"]
+    assert [item["original_id"] for item in document["entries"]] == [
+        entry["source_legacy_id"]
+    ], "源探测抛 OSError 不得让条目消失或整批抛异常"
+    expected_names = sorted(
+        {*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS}
+    )
+    for name in expected_names:
+        fact = facts[name]
+        _assert_h6_fact_is_unknown(fact, name=name, run_id=entry["source_legacy_id"])
+        assert "reason_code" not in fact, (
+            f"声明 run 源探测抛 OSError（可读性未知）时，事实 {name} 不得携带"
+            f" reason_code 键：可读性未知不得把探测失败降格成源缺失声明：实际 "
+            f"{fact!r}"
         )
 
 
@@ -22601,6 +22699,113 @@ def test_eval_history_verified_archive_carries_no_reason_code(tmp_path: Path) ->
     _assert_h6_fact_is_unknown(
         facts["split"], name="split", run_id=_confirmed_eval_history_entry()["source_legacy_id"]
     )
+
+
+def test_eval_history_archive_root_present_without_package_marks_source_missing(
+    tmp_path: Path,
+) -> None:
+    """归档根存在、但本 run 包目录整体不存在时不得声称「归档已清理移除」。
+
+    契约：清理声明要求「归档根与本 run 包目录**同时**不存在」；只建
+    ``docs/results/model_evidence/``（不建 ``<source_legacy_id>`` 包目录）时
+    归档根仍在，即证伪「整目录已移除」，12 个事实必须携带
+    ``unavailable_source_missing``，且**显式不得**为
+    ``unavailable_archive_removed``。
+
+    变异钉定：生产侧判定从 ``not root.exists() and not dir.exists()`` 改成
+    ``or`` 后，本用例必须判红——既有两用例（根与包同时缺 / 包在但缺一个
+    文件）都无法区分 ``and`` 与 ``or``。
+    """
+    # Arrange：只建归档根目录，本 run 包目录整体不存在。
+    entry = _confirmed_eval_history_entry()
+    archive_root = tmp_path / "docs" / "results" / "model_evidence"
+    archive_root.mkdir(parents=True, exist_ok=True)
+    archive_dir = archive_root / entry["source_legacy_id"]
+    archive_rel = f"docs/results/model_evidence/{entry['source_legacy_id']}"
+    assert archive_root.is_dir(), (
+        "前置事实：归档根 docs/results/model_evidence 必须存在（区别于整目录被清理）"
+    )
+    assert not archive_dir.exists(), (
+        "前置事实：本 run 的归档包目录必须整体不存在（未创建）"
+    )
+
+    # Act
+    facts = _eval_history_facts(tmp_path)
+
+    # Assert：归档根仍在 -> 只能声明「记录不全」，不得声明「归档已清理移除」。
+    assert set(facts) == set(EVAL_HISTORY_FACT_NAMES), (
+        f"归档根存在而包目录缺失时事实名集合不得增删：实际键集 {sorted(facts)}"
+    )
+    missing_state = [
+        name
+        for name in EVAL_HISTORY_FACT_NAMES
+        if facts[name].get("reason_code") != SOURCE_MISSING_REASON_CODE
+    ]
+    assert not missing_state, (
+        "归档根仍在、仅本 run 包目录缺失时，eval history 全部事实必须携带 "
+        f"{SOURCE_MISSING_REASON_CODE!r}（and/or 混淆会在这里揭开）：未携带该状态"
+        f"的事实 {missing_state}，实际 facts {facts!r}"
+    )
+    for name in EVAL_HISTORY_FACT_NAMES:
+        assert facts[name].get("reason_code") != ARCHIVE_REMOVED_REASON_CODE, (
+            f"归档根 docs/results/model_evidence 存在时，事实 {name} 不得声称 "
+            f"{ARCHIVE_REMOVED_REASON_CODE!r}（清理声明只在根与包同时缺席时成立，"
+            f"归档根仍在即证伪「整目录已移除」）：实际 {facts[name]!r}"
+        )
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert facts[name]["attempted_source"] == archive_rel, (
+            f"记录不全状态的事实 {name} 的 attempted_source 必须指回归档相对路径 "
+            f"{archive_rel!r}：实际 {facts[name]['attempted_source']!r}"
+        )
+
+
+def test_eval_history_unreadable_archive_probe_does_not_raise(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """归档根探测抛 ``PermissionError`` 时不得抛异常，也不得声明缺失来源。
+
+    契约：探测抛 ``OSError`` 意味归档可读性未知，既不是「整目录已清理」也
+    不是「记录不全」：构建必须照常返回条目，12 个事实回落既有笼统 unknown
+    形态、``reason_code`` 键整体缺席（不得声称任何缺失来源）。
+
+    变异钉定：生产侧 ``except OSError`` 改成其它异常类型（如 ``ValueError``）
+    后，本用例必须因 ``PermissionError`` 冒泡而判红。
+    """
+    # Arrange：归档根真实存在，但对其的存在性探测被拒绝。
+    entry = _confirmed_eval_history_entry()
+    archive_root = tmp_path / "docs" / "results" / "model_evidence"
+    archive_root.mkdir(parents=True, exist_ok=True)
+    real_exists = Path.exists
+
+    def _deny_archive_probe(self: Path) -> bool:
+        if "model_evidence" in self.parts:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_exists(self)
+
+    monkeypatch.setattr(Path, "exists", _deny_archive_probe)
+
+    # Act
+    document = _resolve_history_summary_entry()(tmp_path, [entry])
+
+    # Assert：探测失败 -> 条目照常构建，事实不叠加任何缺失来源声明。
+    facts = document["entries"][0]["facts"]
+    assert [item["original_id"] for item in document["entries"]] == [
+        entry["source_legacy_id"]
+    ], "归档探测抛 OSError 不得让条目消失或整批抛异常"
+    expected_names = sorted(EVAL_HISTORY_FACT_NAMES)
+    assert len(expected_names) == 12, (
+        f"断言前提：eval history 必须有 12 个事实：实际 {expected_names}"
+    )
+    for name in expected_names:
+        fact = facts[name]
+        _assert_h6_fact_is_unknown(fact, name=name, run_id=entry["source_legacy_id"])
+        assert "reason_code" not in fact, (
+            f"归档探测抛 OSError（可读性未知）时，事实 {name} 不得携带 reason_code"
+            f" 键：探测失败不得被降格成任何缺失来源声明（既非整目录已清理也非记录"
+            f"不全）：实际 {fact!r}"
+        )
 
 
 def test_write_history_summary_atomically_publishes_exact_built_document(
