@@ -33,7 +33,7 @@
 - 解除条件: 在训练机只读查明并给出书面结论，归因到以下三类之一并附命令与输出原文——(a) 配置未传、(b) plugin 不支持、(c) 需 patch。
 - 前置动作: PB-001 解除后开专项任务，先只读复现并 dump 传入 processor 的 `temporal_ids`（不加载权重、不改代码即可完成的先做）。
 - 负责人: agent（需用户先授权 GPU/训练机）
-- 证据与背景: 仓库内 `docs/project-todo.md:69`（CPU 复验实测 `temporal_ids` 全 `-1`，flat `[-1]×8`，depth `1/8/1`，由 processor 回填）、`docs/project-todo.md:99`（`load_video_frames` 默认 `temporal_fusion=False`，返回 `temporal_ids=None` 交给 processor 回填，逐帧成组）；仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**）。
+- 证据与背景: 仓库内 `docs/project-todo.md:69`（CPU 复验实测 `temporal_ids` 全 `-1`，flat `[-1]×8`，depth `1/8/1`，由 processor 回填）、`docs/project-todo.md:103`（`load_video_frames` 默认 `temporal_fusion=False`，返回 `temporal_ids=None` 交给 processor 回填，逐帧成组；原引 `:99` 有误，2026-10-19 实测应为 `:103`）；仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**）。
 - 记录日期: 2026-10-18
 - 备注: 允许临时改动以复现，但查清后必须还原，**不得提交 LlamaFactory 子模块**；结论未定前不得把「模型不具备时序感知」写入 `docs/design-facts.*`。
 - 取消记录（2026-10-19，用户裁决）: **未完成归因**，本条因整体数据与训练链路将重新设计而取消排查。原「解除条件」「前置动作」与上方「备注」原文保留，作为未执行的记录，不得据此视为已查明或已归因；本条结项理由不是查清成因，归因结论仍为空缺。
@@ -174,7 +174,7 @@
 - 解除条件: `docs/design-facts.yaml` 的 `misreadings` 段追加一条（误读「每帧独立编码 = 模型知道时序」→ 正确结论），且 `python scripts/verify_design_facts.py` 通过。
 - 前置动作: 起草该条 wrong/correct 文案并附 evidence 行号，交给负责事实库的 agent 合入。
 - 负责人: agent
-- 证据与背景: `docs/design-facts.yaml` 的 `misreadings` 段（条目定位用条目文本，不用行号：本段在 `bf1ed03` 后为 8 条，本轮追加「每帧独立编码 = 模型知道帧序」后为 9 条；旧文所记「现有 7 条 + 起行 `:246`/`:248`/`:253`/`:258`/`:263`/`:270`/`:281`」是插入 DF-015/DF-016 之前的过期行号，已作废）；`docs/project-todo.md:103`（逐帧成组的实现事实，2026-10-19 `grep -n` 实测；旧文所记 `:99` 为过期行号）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测，2026-10-19 复核）。
+- 证据与背景: `docs/design-facts.yaml` 的 `misreadings` 段（条目定位用条目文本，不用行号：本段在 `bf1ed03` 后为 8 条，本轮追加「每帧独立编码 = 模型知道帧序」后为 9 条；旧文所记「现有 7 条 + 起行 `:246`/`:248`/`:253`/`:258`/`:263`/`:270`/`:281`」是插入 DF-015/DF-016 之前的过期行号，已作废）；`docs/project-todo.md:103`（逐帧成组的实现事实，2026-10-19 `grep -n` 实测；原引 `:99` 有误，实测应为 `:103`）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测，2026-10-19 复核）。
 - 记录日期: 2026-10-18
 - 备注: 事实库由脚本校验 evidence 行号必须指向真实非空行，行号入册前须复核；该结论与 PB-002 的归因边界相邻——PB-002 未结前，本条只登记「逐帧编码 ≠ 时序感知」，不得写成「模型已知/不知帧序」。
 
@@ -182,7 +182,7 @@
 
 - ① `docs/design-facts.yaml` 的 `misreadings` 段已追加「每帧独立编码 = 模型知道帧序」一条（条目文本定位，不用行号），带 2 条 evidence 且均含 `expect`：`finetune/validation/video_loader.py:52`（`own group (8 frames -> 8 groups)`）、`docs/project-todo.md:69`（`8 帧 → 8 组、每组 1 帧`）。两处 `expect` 均经 `grep -nF` 实测为该行唯一字面出现，`python scripts/verify_design_facts.py` 逐条判 PASS。
 - ② `python scripts/verify_design_facts.py`：`FAIL 0`（`合计 79 项：PASS 79，PASS(no-expect) 0`，其中「带 expect 的 evidence 72 条，命中 72 条」）；完整原始输出见仓库外 `~/pi-workspace/mVllm_2-audit/design-facts-20261019-followup/checks/01-verify.txt`（**不在 Git 内**，他机不可达，不写作链接）。
-- ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交即**本条所在提交**（哈希见同一报告的提交记录，不在文档内嵌入，避免自指）。
+- ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交为 `git log -1 --format=%h -- docs/pending-blockers.md` 的输出（即本条所在提交，不嵌入字面哈希以避免自指）。
 - ④ 结论边界：本条只登记「编码分组方式 ≠ 时序感知」；`temporal_ids` 全为 `-1` 的成因**未归因**（PB-002 已按用户 2026-10-19 决定取消排查），不得读作「模型已知帧序」或「模型不知帧序」。
 
 ### PB-014 人工抽看 20 条帧画面
@@ -270,7 +270,7 @@
 - C-01「不改标签值」vs「标签全量重标」: 出处 A `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:142`/`:146`；出处 B `docs/plans/2026-10-18-label-rebuild.md:103` 与 PB-015 解除条件（「全量 1,678 重算完成」，`docs/pending-blockers.md:58`）。
 - C-02 PB-015 内部：阻塞原因称 PB-001 未 closed，同条「状态说明（2026-10-19）」又记 PB-001 已 closed: 出处 A `docs/pending-blockers.md:56`（PB-015「阻塞/依赖」）；出处 B `docs/pending-blockers.md:57`（同条「状态说明（2026-10-19）」）。行号已于 2026-10-19 本轮插入后实测。
 - C-03 PB-003 内部：前置条件「四项」与「七项」并存: 出处 A `docs/pending-blockers.md:44`（PB-003「阻塞/依赖」）；出处 B `docs/pending-blockers.md:46`（PB-003「解除条件」，明列七项）。行号已于 2026-10-19 本轮插入后实测。
-- C-04 父子窗口状态：一处称「正在核实中」，事实库已列为定论: 出处 A `docs/pending-blockers.md:263`（§D 已确认结论第 3 条）；出处 B `docs/design-facts.yaml:286`–`:287`（misreadings 首条，已以定论形式列出且无 evidence 行）。两处行号均为 2026-10-19 本轮插入后实测；§D 第 3 条原文里的 `docs/design-facts.yaml:245`/`:246`–`:247` 是本轮插入 DF-015/DF-016 之前的旧行号，本轮未修改该条原文。
+- C-04 父子窗口状态：一处称「正在核实中」，事实库已列为定论: 出处 A 为 `docs/pending-blockers.md` 的 §D 已确认结论第 3 条（「父子窗口状态不同是设计使然，不是数据矛盾」；引用以条目文本定位为准，2026-10-19 实测位于 `:289`，行号仅作附注）；出处 B 为 `docs/design-facts.yaml` 的 misreadings 首条（「父子窗口状态不同 = 数据矛盾」，已以定论形式列出且无 evidence 行；引用以条目文本定位为准，2026-10-19 实测 `- wrong:` 在 `:286`、`correct` 正文在 `:287`，行号仅作附注）。原引的 `docs/design-facts.yaml:245`/`:246`–`:247` 为插入 DF-015/DF-016 之前的过期行号，已作废；该条原文已在提交 `f06dea6` 中改为不依赖行号、按条目文本定位的写法，原先「本轮未修改该条原文」的表述随之失效。本条只列冲突、不择一，不裁定哪一侧对。
 - C-05 `docs/project-todo.md` 的 ARTIFACT-RETENTION 条目内部：「待确认（技术债）」段与「已修」段并存: 出处 A `docs/project-todo.md:195`；出处 B `docs/project-todo.md:196`。
 - C-06 `docs/results/version-control-migration/verification.md` 仍把已删除目录 `docs/results/model_evidence/` 描述为契约来源: 出处 A `docs/results/version-control-migration/verification.md:87`；出处 B `docs/project-todo.md:195`（自述该目录已在 A1 删除、该描述与磁盘现实不再对应）。
 - 解除条件: 用户给出逐条裁定（处理 / 不处理 / 改为其他口径），并明确哪些条目需回写原文；未裁定的条目保留原样。
@@ -306,7 +306,7 @@
 | PB-011 | 老契约里已不用的 `fracture_between`（输出断裂帧区间）下线还是保留？ | 下线 / 保留 | 无法确定 v2 legacy 是否继续维护；下线会连带改 `contract_hash` 与冻结测试 | 无 |
 | PB-017 | review 环境的 `tokenizers` 包要不要重建？ | 恢复 / 不恢复 | 23 项兼容性测试长期 skip，「该能力已通过」无法举证 | 无 |
 
-### 填答区（答完请把本节标题改为「决策填答表（x/9 已答）」）
+### 填答区（答完请把本节标题改为「决策填答表（x/9 已答 + §E-2 另 y/2 已答）」）
 
 ```text
 PB-004  k =
