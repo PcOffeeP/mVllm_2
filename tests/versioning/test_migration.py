@@ -22416,6 +22416,193 @@ def test_model_history_invalid_origin_number_fails_closed(
         _resolve_history_summary_entry()(tmp_path, [entry])
 
 
+# ---------------------------------------------------------------------------
+# eval history 归档缺失的两种可区分状态：归档已清理 vs 记录不全
+# （PB-016 任务 2，先写测试，不改 production）
+# ---------------------------------------------------------------------------
+#
+# 背景：``_build_eval_history_entry`` 在包或 evaluation summary 缺失时对 12 个
+# 事实统一走 ``_history_unknown``（只产 unknown_reason + attempted_source），
+# 不带任何机读状态；「归档整目录已于 2026-10-18 清理移除」与「归档记录不全」
+# 两种不同缺失来源因此无法被调用方区分。
+#
+# 断言契约（与 weight run 同一词汇表，同一可观测条件同一状态）：
+# 1. ``docs/results/model_evidence`` 归档根目录与本 run 包目录**同时不存在**
+#    时，12 个事实全部携带
+#
+#        fact["reason_code"] == "unavailable_archive_removed"
+#
+# 2. 归档根目录**存在**、但本 run 的 ``MANIFEST.json`` 或
+#    ``evaluation/evaluation_summary.json`` 缺失（记录不全）时，12 个事实全部
+#    携带 ``reason_code == "unavailable_source_missing"``；
+# 3. 归档齐备（``_write_h11_model_and_eval_sources`` 场景可用）时，任何事实
+#    **都不得**出现 ``reason_code`` 键（防无条件叠加）；
+# 4. 事实仍为字段级 unknown 形态：``attempted_source`` 指回归档相对路径、不
+#    携带非 None ``value``。
+#
+# 捕获的合理但错误实现：
+# - 只区分「整目录清理」不区分「记录不全」（或反之）-> 某一侧全部事实断言
+#   失败；
+# - 两种缺失共用同一 reason_code（一个词汇遮蔽另一个）-> 互斥断言失败；
+# - 无条件给所有 eval 事实叠加 reason_code -> 归档齐备守卫失败；
+# - 贴标签同时丢掉 unknown 形态或指向错误来源路径 -> 形态断言失败。
+EVAL_HISTORY_FACT_NAMES = (
+    "model_reference",
+    "evaluated_weight_path",
+    "data_release_id",
+    "fold",
+    "split",
+    "sample_count",
+    "evaluation_contract",
+    "metrics",
+    "runtime_failure_count",
+    "strict_valid_count",
+    "strict_valid_rate",
+    "evaluation_status",
+)
+
+
+def _eval_history_facts(root: Path) -> Mapping:
+    """构建单条 eval_history history-summary entry 并返回其 facts。"""
+    document = _resolve_history_summary_entry()(root, [_confirmed_eval_history_entry()])
+    return document["entries"][0]["facts"]
+
+
+def test_eval_history_missing_archive_root_marks_archive_removed(
+    tmp_path: Path,
+) -> None:
+    """归档根与本 run 包目录同时不存在时，12 个事实必须全部携带
+    ``unavailable_archive_removed``（与 weight run 同一词汇、同一可观测条件），
+    且不得被标成源缺失。
+    """
+    # Arrange
+    entry = _confirmed_eval_history_entry()
+    archive_rel = f"docs/results/model_evidence/{entry['source_legacy_id']}"
+    assert not (tmp_path / "docs" / "results" / "model_evidence").exists(), (
+        "前置事实：归档根 docs/results/model_evidence 必须不存在（整目录已被清理）"
+    )
+
+    # Act
+    facts = _eval_history_facts(tmp_path)
+
+    # Assert
+    assert set(facts) == set(EVAL_HISTORY_FACT_NAMES), (
+        "归档缺失时 eval history 的事实名集合不得增删：实际键集 "
+        f"{sorted(facts)}"
+    )
+    missing_state = [
+        name
+        for name in EVAL_HISTORY_FACT_NAMES
+        if facts[name].get("reason_code") != ARCHIVE_REMOVED_REASON_CODE
+    ]
+    assert not missing_state, (
+        "归档根与本 run 包同时缺席时，eval history 全部事实必须携带 "
+        f"{ARCHIVE_REMOVED_REASON_CODE!r}（否则与「记录不全」不可区分）：未携带该"
+        f"状态的事实 {missing_state}，实际 facts {facts!r}"
+    )
+    for name in EVAL_HISTORY_FACT_NAMES:
+        assert facts[name].get("reason_code") != SOURCE_MISSING_REASON_CODE, (
+            f"归档根整目录已清理时，事实 {name} 不得被标成 "
+            f"{SOURCE_MISSING_REASON_CODE!r}（两种缺失来源共用一词会让调用方"
+            f"误判缺失层级）：实际 {facts[name]!r}"
+        )
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert facts[name]["attempted_source"] == archive_rel, (
+            f"归档清理状态的事实 {name} 的 attempted_source 必须指回归档相对路径 "
+            f"{archive_rel!r}：实际 {facts[name]['attempted_source']!r}"
+        )
+
+
+@pytest.mark.parametrize("missing_file", ["manifest_missing", "summary_missing"])
+def test_eval_history_incomplete_archive_record_marks_source_missing(
+    tmp_path: Path, missing_file: str
+) -> None:
+    """归档根存在、但本 run 的 MANIFEST.json 或 evaluation summary 缺失（记录
+    不全）时，12 个事实必须全部携带 ``unavailable_source_missing``，且不得被
+    标成``unavailable_archive_removed``（归档根仍在，证伪「整目录已移除」）。
+    """
+    # Arrange
+    entry = _confirmed_eval_history_entry()
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+    archive_dir = (
+        tmp_path / "docs" / "results" / "model_evidence" / entry["source_legacy_id"]
+    )
+    target = (
+        archive_dir / "MANIFEST.json"
+        if missing_file == "manifest_missing"
+        else archive_dir / "evaluation" / "evaluation_summary.json"
+    )
+    target.unlink()
+    assert (tmp_path / "docs" / "results" / "model_evidence").is_dir(), (
+        "前置事实：归档根 docs/results/model_evidence 必须存在（区别于整目录被清理）"
+    )
+    assert archive_dir.is_dir(), "前置事实：本 run 的归档包目录必须存在"
+    assert not target.exists(), (
+        f"前置事实：{target.relative_to(tmp_path).as_posix()} 必须缺失（记录不全）"
+    )
+    archive_rel = f"docs/results/model_evidence/{entry['source_legacy_id']}"
+
+    # Act
+    facts = _eval_history_facts(tmp_path)
+
+    # Assert
+    missing_state = [
+        name
+        for name in EVAL_HISTORY_FACT_NAMES
+        if facts[name].get("reason_code") != SOURCE_MISSING_REASON_CODE
+    ]
+    assert not missing_state, (
+        "归档根存在但本 run 归档记录不全时，eval history 全部事实必须携带 "
+        f"{SOURCE_MISSING_REASON_CODE!r}（否则与「整目录已清理」不可区分）：未携带"
+        f"该状态的事实 {missing_state}，实际 facts {facts!r}"
+    )
+    for name in EVAL_HISTORY_FACT_NAMES:
+        assert facts[name].get("reason_code") != ARCHIVE_REMOVED_REASON_CODE, (
+            f"归档根仍存在（{missing_file}）时，事实 {name} 不得声称 "
+            f"{ARCHIVE_REMOVED_REASON_CODE!r}（目录并未被整体移除）：实际 "
+            f"{facts[name]!r}"
+        )
+        _assert_h6_fact_is_unknown(
+            facts[name], name=name, run_id=entry["source_legacy_id"]
+        )
+        assert facts[name]["attempted_source"] == archive_rel, (
+            f"记录不全状态的事实 {name} 的 attempted_source 必须指回归档相对路径 "
+            f"{archive_rel!r}：实际 {facts[name]['attempted_source']!r}"
+        )
+
+
+def test_eval_history_verified_archive_carries_no_reason_code(tmp_path: Path) -> None:
+    """归档齐备且可核验时不得给任何 eval 事实叠加 ``reason_code``（防无条件
+    叠加），且事实名称集合与既有关联值提取不回归。
+    """
+    # Arrange
+    _write_prepare_only_runs_layout(tmp_path)
+    _write_h11_model_and_eval_sources(tmp_path)
+
+    # Act
+    facts = _eval_history_facts(tmp_path)
+
+    # Assert
+    assert set(facts) == set(EVAL_HISTORY_FACT_NAMES), (
+        f"归档齐备时 eval history 的事实名集合不得增删：实际键集 {sorted(facts)}"
+    )
+    assert facts["sample_count"].get("value") == 425, (
+        "归档齐备场景必须仍按 H9/H11 提取已验签事实（新状态不得污染既有提取）："
+        f"实际 {facts['sample_count']!r}"
+    )
+    for name, fact in facts.items():
+        assert "reason_code" not in fact, (
+            f"归档齐备场景的事实 {name} 不得出现 reason_code 键（只允许在归档缺失"
+            f"且缺失来源可观测时叠加）：实际 {fact!r}"
+        )
+    _assert_h6_fact_is_unknown(
+        facts["split"], name="split", run_id=_confirmed_eval_history_entry()["source_legacy_id"]
+    )
+
+
 def test_write_history_summary_atomically_publishes_exact_built_document(
     tmp_path: Path,
 ) -> None:

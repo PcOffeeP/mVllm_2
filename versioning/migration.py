@@ -1787,6 +1787,58 @@ def _weight_run_source_missing_fact(
     }
 
 
+def _eval_history_missing_fact(
+    name: str, source_id: str, attempted: Path, reason_code: str | None
+) -> dict[str, Any]:
+    """构造 eval history 归档证据缺失的 unknown 事实。
+
+    ``reason_code`` 只接受两种可观测缺失来源：归档根
+    ``docs/results/model_evidence`` 与本 run 归档包目录同时不存在时为
+    ``unavailable_archive_removed``（2026-10-18 仓库清理把目录级路径整体移
+    除，与 weight run 同词汇、同一可观测条件）；归档根仍存在、只是本 run
+    的 ``MANIFEST.json`` 或 ``evaluation/evaluation_summary.json`` 缺失（归
+    档记录不全）时为 ``unavailable_source_missing``——归档根仍在即证伪
+    「整目录已移除」，两种缺失不得共用一词。传 ``None`` 表示缺失来源不可观
+    测（探测抛 ``OSError``），保持既有笼统 unknown 形态、不叠加
+    reason_code：可读性未知不得升级为缺失来源声明。两种已观测形态都保持
+    字段级 unknown 形状（非空 unknown_reason + 指回归档相对路径的
+    attempted_source，不携带非 None value）；归档齐备或验签 / schema /
+    身份 / 交叉字段校验失败时不使用本函数。
+    """
+    if reason_code is None:
+        return _history_unknown(
+            f"eval history {source_id} 的归档 package 或 evaluation summary 缺失",
+            attempted,
+        )
+    if reason_code == _WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE:
+        reason = (
+            f"eval history {source_id} 的归档证据包路径 {attempted.as_posix()} "
+            "当前不存在；归档所在的目录级路径 "
+            f"{_WEIGHT_RUN_ARCHIVE_ROOT_REL.as_posix()}/ 已于 "
+            f"{_WEIGHT_RUN_ARCHIVE_REMOVED_DATE} 的仓库清理中整体移除，该 run "
+            "的归档包是否曾存在于该目录未经验证，需人工按 Git 历史核实能否补"
+            f"回，{name} 保持未知：归档缺失不可观察，缺失不伪装成已知值，也不"
+            "从 planned 配置或 sibling 归档补登记"
+        )
+    elif reason_code == _WEIGHT_RUN_SOURCE_MISSING_REASON_CODE:
+        reason = (
+            f"eval history {source_id} 的归档记录不全：归档根目录 "
+            f"{_WEIGHT_RUN_ARCHIVE_ROOT_REL.as_posix()}/ 仍存在（证伪「整目录已"
+            "移除」），本 run 的 MANIFEST.json 或 evaluation/evaluation_summary"
+            f".json 缺失，{name} 保持未知：归档缺失不可观察，缺失不伪装成已知"
+            "值，也不从 planned 配置或 sibling 归档补登记"
+        )
+    else:
+        raise PromptMigrationBlocked(
+            f"eval history {source_id} 的归档缺失来源不受支持: {reason_code!r}"
+        )
+    return {
+        "unknown_reason": reason,
+        "attempted_source": attempted.as_posix(),
+        "reason_code": reason_code,
+    }
+
+
 def _history_json_equal(left: Any, right: Any) -> bool:
     """按 JSON 类型和值比较，避免 bool 与 0/1 被 Python 视为相等。"""
     if type(left) is not type(right):
@@ -1971,8 +2023,31 @@ def _build_model_history_entry(root: Path, source_id: str) -> dict[str, Any]:
 
 
 def _build_eval_history_entry(root: Path, source_id: str) -> dict[str, Any]:
-    """从逐文件验签的归档评估摘要构建 history-only 记录。"""
+    """从逐文件验签的归档评估摘要构建 history-only 记录。
+
+    归档证据缺失时 entry 不消失、事实保持字段级 unknown（非空
+    unknown_reason + 指回归档相对路径
+    ``docs/results/model_evidence/<source_legacy_id>`` 的 attempted_source，
+    不携带非 None value），并按可观测的缺失来源叠加机读 reason_code：
+
+      - 归档根目录 ``docs/results/model_evidence`` 与本 run 归档包目录同时
+        不存在（且来源链无链接、探测未抛 ``OSError``）时叠加
+        ``reason_code: "unavailable_archive_removed"``：与 weight run 同一
+        词汇、同一可观测条件（2026-10-18 清理把目录级路径整体移除）；
+      - 归档根目录仍存在、只是本 run 的 ``MANIFEST.json`` 或
+        ``evaluation/evaluation_summary.json`` 缺失（归档记录不全）时叠加
+        ``reason_code: "unavailable_source_missing"``：归档根仍在即证伪
+        「整目录已移除」，两种缺失不得共用一词；
+      - 探测抛 ``OSError``（归档可读性未知）等不可观测情形不叠加
+        reason_code，保持既有笼统 unknown 形态。
+
+    归档齐备时按验签提取已知事实，任何事实都不携带 reason_code；归档存在
+    但验签 / schema / 身份 / 交叉字段校验失败仍整批 fail-closed，不改变
+    事实名集合与返回形状。
+    """
     archive_rel = Path("docs") / "results" / "model_evidence" / source_id
+    archive_root = root / _WEIGHT_RUN_ARCHIVE_ROOT_REL
+    archive_dir = root / archive_rel
     package_rel = archive_rel / "MANIFEST.json"
     summary_rel = archive_rel / "evaluation" / "evaluation_summary.json"
     package_file = root / package_rel
@@ -1998,10 +2073,25 @@ def _build_eval_history_entry(root: Path, source_id: str) -> dict[str, Any]:
             f"eval history {source_id} 的归档来源链含符号链接"
         )
     if not package_file.is_file() or not summary_file.is_file():
+        # 两种可观测缺失来源不得共用一词：归档根与本 run 包目录同时不存在
+        # 才是「整目录已清理移除」（与 weight run 同一可观测条件，沿用
+        # 2026-10-18 清理口径）；归档根仍存在（哪怕为空、或只含别的 run 的
+        # 包）即证伪该声明，只是本 run 的记录不全。来源链含链接已在上方
+        # fail-closed。探测放在 try 内：Path.exists() 只吞
+        # ENOENT/ENOTDIR/EBADF/ELOOP，EACCES/EPERM/EIO 会冒泡，探测失败意
+        # 味归档可读性未知，不得声明任何缺失来源（保持既有笼统 unknown 形
+        # 态、不叠加 reason_code）。
+        missing_reason_code: str | None = None
+        try:
+            if not archive_root.exists() and not archive_dir.exists():
+                missing_reason_code = _WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE
+            elif archive_root.exists():
+                missing_reason_code = _WEIGHT_RUN_SOURCE_MISSING_REASON_CODE
+        except OSError:
+            missing_reason_code = None
         facts = {
-            name: _history_unknown(
-                f"eval history {source_id} 的归档 package 或 evaluation summary 缺失",
-                archive_rel,
+            name: _eval_history_missing_fact(
+                name, source_id, archive_rel, missing_reason_code
             )
             for name in names
         }
