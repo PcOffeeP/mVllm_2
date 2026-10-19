@@ -133,6 +133,28 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - docs/plans/2026-10-18-label-rebuild.md:184（expect：即使枚举集合不变（四档名字与取值域都没变））
 - docs/plans/2026-10-18-label-rebuild.md:185（expect：若只是**重算 `event_time` 的数值**）
 
+## 可见分离最小观察窗取 2.0 秒
+
+### DF-015 [active] 可见分离最小观察窗取 2.0 秒
+用户于 2026-10-19 裁决「可见分离最小观察窗 = 2.0 秒」：post 候选在事件时刻之后（guard 之外）至少还需 2.0 秒素材，不足则不生成该候选。该值来自用户裁决，**不是**现有代码里的常量（代码现值 `MIN_CANDIDATE_SECONDS = 1.0`），落地待新链路设计；本轮不改任何代码与阈值。
+出处：
+- docs/pending-blockers.md:235（expect：可见分离最小观察窗 = 2.0 秒）
+- pipeline/v3_candidate_plan.py:37（expect：MIN_CANDIDATE_SECONDS = 1.0）
+- pipeline/v3_candidate_plan.py:34（expect：TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)）
+
+## 逐帧独立编码不等于模型知道帧序
+
+### DF-016 [active] 逐帧独立编码不等于模型知道帧序
+评测侧 `load_video_frames` 在 `temporal_fusion=False`（`TEMPORAL_FUSION_LEGACY = False`）时返回 `temporal_ids=None`，由 processor 回填全 `-1`，8 帧成 8 组；这只是**编码分组方式**，不构成「模型具备时序感知」的证据。成因未归因（PB-002 已由用户 2026-10-19 取消），本事实不对模型是否感知帧序下任何结论。
+出处：
+- finetune/validation/video_loader.py:20（expect：def load_video_frames(）
+- finetune/validation/video_loader.py:50（expect：None when temporal_fusion）
+- finetune/validation/video_loader.py:52（expect：8 frames -> 8 groups）
+- finetune/validation/video_loader.py:114（expect：if temporal_fusion else None）
+- finetune/validation/constants.py:52（expect：TEMPORAL_FUSION_LEGACY = False）
+- finetune/validation/model_runtime.py:136（expect：load_video_frames(）
+- finetune/validation/model_runtime.py:151（expect：temporal_ids=temporal_ids,）
+
 ## 已废弃（墓碑）
 
 （当前没有已废弃条目。）
@@ -163,3 +185,6 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - **误读**：路径能对上内容 = 引用正确
   - 正确：错。行号与内容对得上不代表文件路径存在：把 `v3_candidate_plan.py` 放在 `pipeline/scripts/` 下（实际位置是 `pipeline/` 根）时，引用处的行号与内容仍可能对得上，但该路径并不存在；引用前必须对路径本身做存在性实测，现由 `scripts/verify_design_facts.py --check-doc-paths` 兜底。这属于条件式反例：该错误写法曾出现在仓库外审计 brief 中（订正记录见仓库外 `~/pi-workspace/mVllm_2-audit/label-anchor-decision-20261018.md:22`，不在 Git 内，不是仓库证据）；仓库内从未有过该路径。
   - 出处：pipeline/SCRIPTS.md:23（expect：v3_candidate_plan.py`](v3_candidate_plan.py)）
+- **误读**：文档里印了数字 = 这个数字可追溯
+  - 正确：错。抽出的 826 个数字中，`code_commit`/`data_release`/`prompt_version` 三项齐全的为 0 行，绝大多数只有笼统口径描述，引用前必须回到产生它的记录；见 PB-020。
+  - 出处：docs/pending-blockers.md:257（expect：指标数字缺口径三元组）

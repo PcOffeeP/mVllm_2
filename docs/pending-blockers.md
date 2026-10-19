@@ -28,7 +28,7 @@
 
 ### PB-002 `temporal_ids` 全为 -1 的归因（模型是否感知帧序）
 
-- status: blocked
+- status: closed
 - 阻塞/依赖: 需训练机可用（见 PB-001）与用户 GPU/训练机授权。成因未查明前，无法决定 R2 是「修链路注入时序」还是「改判据绕开时序」。
 - 解除条件: 在训练机只读查明并给出书面结论，归因到以下三类之一并附命令与输出原文——(a) 配置未传、(b) plugin 不支持、(c) 需 patch。
 - 前置动作: PB-001 解除后开专项任务，先只读复现并 dump 传入 processor 的 `temporal_ids`（不加载权重、不改代码即可完成的先做）。
@@ -36,6 +36,7 @@
 - 证据与背景: 仓库内 `docs/project-todo.md:69`（CPU 复验实测 `temporal_ids` 全 `-1`，flat `[-1]×8`，depth `1/8/1`，由 processor 回填）、`docs/project-todo.md:99`（`load_video_frames` 默认 `temporal_fusion=False`，返回 `temporal_ids=None` 交给 processor 回填，逐帧成组）；仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**）。
 - 记录日期: 2026-10-18
 - 备注: 允许临时改动以复现，但查清后必须还原，**不得提交 LlamaFactory 子模块**；结论未定前不得把「模型不具备时序感知」写入 `docs/design-facts.*`。
+- 取消记录（2026-10-19，用户裁决）: **未完成归因**，本条因整体数据与训练链路将重新设计而取消排查。原「解除条件」「前置动作」与上方「备注」原文保留，作为未执行的记录，不得据此视为已查明或已归因；本条结项理由不是查清成因，归因结论仍为空缺。
 
 ### PB-003 R2 三折真实训练与评测
 
@@ -60,6 +61,7 @@
 - 证据与背景: 用户目视抽查结论（2026-10-18：标为「已断裂」的样本中首帧无可见断裂者**比例高且分散**，非集中在个别视频）；仓库外 `~/pi-workspace/mVllm_2-audit/label-visual-mismatch-20261018.md`（**不在 Git 内**）；仓库内锚点 `pipeline/v3_candidate_plan.py:36`（`EVENT_GUARD_SECONDS = 0.5`）、`:301`（`_state_for_interval`）、`:312`/`:314`/`:316`（未断裂 / 已断裂 / 发生断裂 三档判定）、`:627`/`:659`（`pre`/`post` 窗口偏移）、`pipeline/source_bootstrap.py:293`（`event_time` 直接取自源表列「断裂时间点」）、`:296`–`:297`（仅当「断裂帧数」为空才用 `event_time × fps` 回填帧号）、`:319`（`event_time_reliable`）；`docs/design-facts.md:69`（425 条中已断裂 0/33）；`docs/plans/2026-10-18-label-rebuild.md`（重建方案，见「解除条件」）。偏差线索：`video_0110` 约 3.5 s 为**推断**（来源 `~/pi-workspace/mVllm_2-audit/subvideo-window-logic-20261018.md:19`，该文自标「推断/单参数拟合」，不得当实测）。
 - 记录日期: 2026-10-18（2026-10-18 补记 D1/D2 裁决）
 - 备注: 影响面是「未断裂 / 发生断裂 / 已断裂」三档标签**全部**依赖 `event_time`，不是只修 33 条；重建前不得用旧标签下的任何结论支持 R2 或模型能力判断；旧 `evaluation_records.jsonl`（`records/r1-run-20261018/` 下 3 份）保留，但与新评估分账，不得混算。**决策已定，非决策阻塞**：本条仍为 `blocked` 只因训练机不可达与金标准未建立两项条件，D1/D2 不再是待决项；重标范围仍为全部 1,678 条候选（锚点变更影响四档全部判定），不是只修 33 条。
+- 2026-10-19 用户裁决说明: 标签将从最开始重新设计，路径不是在现有标签上继续打补丁；原五阶段方案（`docs/plans/2026-10-18-label-rebuild.md`）降为参考实现，待新设计定稿后按新设计重写本条。60 条金标准工作**暂缓，不是取消**。本条 status 保持原样（仍为 `blocked`），「解除条件」与「备注」原文不改；其中「全量 1,678 重算完成」等表述以新设计定稿后的重写为准。
 
 ## B. 等待决策（waiting-decision）
 
@@ -155,7 +157,7 @@
 
 ### PB-012 源数据体检（帧内容与主题无关）
 
-- status: ready（依赖标签重建，见 PB-015；帧内容体检结论须作为 PB-015 自动检测的输入之一）
+- status: closed
 - 阻塞/依赖: 需读取 1,678 候选的帧画面。本机是否存在对应媒体副本**尚未核实**（未核实陈述，非「已确认缺失」）；抽检须在能读媒体的机器上执行，但「确认媒体可访问性」本身当下即可执行，不依赖外部条件。
 - 解除条件: 对 1,678 候选做帧内容一致性抽检，产出问题样本清单（候选 ID + 帧号 + 问题描述 + 是否影响标注），清单落盘并有路径。
 - 前置动作: 先确认媒体可访问性（本机 store 或训练机），再定抽检比例与判据。
@@ -163,6 +165,7 @@
 - 证据与背景: 仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**，:325`–`:349 近似，其中 P3 段落记录模型把首帧描述为试样、把另一帧描述为「锡纸擦不锈钢」）；仓库内仅有 `docs/project-todo.md:50`（1,678 候选 / 85 来源的数据口径）和 `docs/results/training-data-ledger-20261017.md`（分折表），都不含帧内容体检结论。
 - 记录日期: 2026-10-18
 - 备注: 现象目前只见于**模型自述**（非人工看图），未核实前不得据此否定数据可用性；须人工或直接看帧复核后才算证据。与 PB-015 的关系：体检结论若确认帧内容问题，则不能只靠重算 `event_time` 修标签，须并入 PB-015 的重建方案一并处置。
+- 取消记录（2026-10-19，用户裁决）: 帧内容体检取消，原因同 PB-002——整体数据与训练链路将重新设计、标签从头重做；本条现象仍仅见于模型自述，**未核实**。原 status 行附注「依赖标签重建，见 PB-015；帧内容体检结论须作为 PB-015 自动检测的输入之一」随本条关闭不再生效；条目其余原文原样保留，作为未执行的待办记录，不得当作已完成的体检结论。
 
 ### PB-013 帧感知实验结论待并入事实库
 
@@ -228,6 +231,47 @@
 - 证据与背景: 既有证据（仓库外，均**不在 Git 内**，他机不可达，不写作链接）——`~/pi-workspace/mVllm_2-audit/event-time-sign-20261019.md`（`event_time` 符号与位置调查）、`~/pi-workspace/mVllm_2-audit/verify-frames-20261019/`（逐帧可见分离核验与时间线导出）。已观察到的事实：① `E_t` 中位落全片约 96% 位置，33 条已断裂样本涉及 18 个源；② `video_0110` 从 `E_t−5s` 到片尾 `E_t+7s` 全程无可见分离；③ `video_0076` 可见分离晚于 `E_t` 约 4–5 s；④ `video_0103` 与上述一致；⑤ CSV 内部自洽（`E_t` 与 `E_f` 在 30/33 条上差 ≤ 半帧）；⑥ fps 与 `roi.json` 在 110/110 上相等。这些事实说明部分候选在**素材覆盖**上就不可能产出合法窗口，与标签对错是两件独立的事。
 - 记录日期: 2026-10-19
 - 备注: 本项属整链路清洗范畴，将在后续独立会话处理；本轮只登记约束与前置统计要求，不据此判定既有标签对错，也不作为模型能力结论。
+- 2026-10-19 用户裁决与口径记录（本节为 2026-10-19 追加，不改上方原文）:
+- 用户裁决（2026-10-19）：可见分离最小观察窗 = 2.0 秒。定义——post 窗口生成前须校验「事件时刻之后、guard 之外，剩余素材至少 2.0 秒」，不足则该候选不生成。**该值来自用户裁决（2026-10-19），不是代码里现存的常量**；代码现值仍是 `MIN_CANDIDATE_SECONDS = 1.0`，落地待新链路设计与实施授权。
+- 现有代码事实（行号于 2026-10-19 现场 `grep -n` 复核）：`MIN_CANDIDATE_SECONDS = 1.0`（`pipeline/v3_candidate_plan.py:37`）；`TARGET_DURATIONS` 最短为 2.0（`pipeline/v3_candidate_plan.py:34`）；`EVENT_GUARD_SECONDS = 0.5`（`pipeline/v3_candidate_plan.py:36`）；post 窗口起点 `post_start = min(duration, event + EVENT_GUARD_SECONDS)`，即 full 变体取到片尾（`pipeline/v3_candidate_plan.py:659`）；`post_event_full`（`:445`）之外还有 `post_event_part_*`（`:460`），即并非所有 post 片段都以片尾收束。
+- 三档统计的口径与实测计数（实测时刻 2026-10-19 16:00:15 +0800；出处为仓库外纯文本路径 `~/pi-workspace/mVllm_2-audit/pb018-source-capability-20261019/raw/summary.json`，**不在 Git 内，他机不可达，不写作链接**）：下列三档各自独立，不得跨档合并或相互换算。
+- A 档（剩余不足 1 秒）：按当前 `event_time`，事件时刻之后的剩余素材不足 1 秒（< `MIN_CANDIDATE_SECONDS`），按现有规则一条 post 候选都切不出来——实测 20 个源。
+- B 档（剩余上界与 `event_time` 无关）：剩余上界只由 `duration − EVENT_GUARD_SECONDS` 决定，即「只要事件时刻足够早，这个源就能撑起观察窗」——实测 110 个源（全部源）参与该口径的分布统计：min 2.1333 / p05 4.8333 / p10 7.7333 / p25 18.2333 / p50 49.9 / p75 152.5 / p90 186.2 / p95 193.94 / max 224.6857 / mean 79.1861；同次实测中 `min_obs = 2.0` 时 `sources_below = 0`，即 110 个源在 2.0 秒观察窗下无一不足。
+- C 档（`1.0 <= budget < 6.0`）：必须看到画面（可见分离实际发生在哪一帧）才能定论——实测 10 个源；本次无帧证据，**不给结论**。
+- 结论边界：**「A 档只证明当前标签不成立，不证明该源永远产不出合法候选」**。
+
+### PB-019 标签语义变更是否需升契约哈希：文档结论与自述判据冲突
+
+- status: waiting-decision
+- 阻塞/依赖: 需用户裁定「升」或「不升」；裁定前不得改 `pipeline/production_contract.py`、不得改 `EXPECTED_CONTRACT_HASH`、不得改任何冻结断言哈希的测试。
+- 两个读法与其原文出处（行号于 2026-10-19 现场 `grep -n` 复核）: 读法一「定义不动」——`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:142`（小节「3.4 因此不改标签值」），同文件 `:146` 明写「不改的是四态定义与闭集，不禁止纠正单条错误标注」；读法二「数值重算」——`docs/plans/2026-10-18-label-rebuild.md:103`「**后果（照实写）**：全部 1,678 条候选标签需重算」。
+- 冲突实质: 前者读作「定义不动」，后者读作「数值重算」，两者其实相容——同一闭集下更换取值来源（锚点）既可称「不改定义」也可称「重算数值」。冲突落在事实库的自述结论上：`docs/design-facts.yaml` 的 DF-014 把结论写成「本次标签重建（锚点由 `event + 0.5` 的几何偏移改为可见分离第一帧）属必须升哈希的一侧」，而 DF-014 自己给出的判据是「契约正文里标签语义的定义是否改变」；契约 Prompt 已含可见分离表述（DF-002，evidence 指向契约 `:168`），而几何偏移规则（`EVENT_GUARD_SECONDS = 0.5`，`pipeline/v3_candidate_plan.py:36`）在代码里、不在契约里。按 DF-014 自己的判据读，两种结论都能自洽，故需用户裁定。
+- 两种后果（供裁定参考，不构成推荐）: 若判「升」，需改 `pipeline/production_contract.py` 的 `EXPECTED_CONTRACT_HASH`（现 `:15`）并同步一批冻结断言哈希的测试（例如 `tests/test_production_contract.py` 对 `load_production_contract()` 哈希与 preflight 响应 `contract_hash` 的断言，见 PB-011 证据行）；若判「不升」，则同一契约编号下会并存两套标签定义，按 DF-014 的原始理由，同一 `contract_hash` 下记录的评测结果将无法判断按哪套标签算。
+- 解除条件: 用户给出「升」或「不升」的书面裁定并附依据。若裁定「升」，转为实施项（改契约哈希、改 `EXPECTED_CONTRACT_HASH`、同步冻结测试），需另立实施授权；若裁定「不升」，须另立事实库改动任务订正 DF-014 的结论表述，不得静默改。
+- 前置动作: 已将两处原文与 DF-014 判据并列登记于本条，本轮不再重复调研；裁定前不动任何契约、哈希或测试。
+- 负责人: 用户
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:142`、`:146`；`docs/plans/2026-10-18-label-rebuild.md:103`；`docs/design-facts.yaml` DF-014（判据原文见其 evidence 指向的 `docs/plans/2026-10-18-label-rebuild.md:184`、`:185`）；契约 Prompt 的可见分离表述见 DF-002。
+- 记录日期: 2026-10-19
+- 备注: 本条只登记两种读法与各自后果，**不预判结论，不得由 agent 自行裁定升或不升**；本轮未改 `pipeline/production_contract.py`、未改 `EXPECTED_CONTRACT_HASH`、未改任何测试。
+
+### PB-020 指标数字缺口径三元组，与文档间冲突未裁
+
+- status: waiting-decision
+- 阻塞/依赖: 需用户裁定下方冲突清单中哪些条目要处理、按什么方向处理；裁定前不改任何文档的既有结论、不改任何指标数值。
+- 清点结论（只读清点，2026-10-19）: 仓库文档中抽出的 **826** 个数字里，可同时还原 `code_commit` / `data_release` / `prompt_version` 三项的为 **0** 行；绝大多数只有笼统口径描述，引用前必须回到产生它的记录。
+- 冲突清单（**只列清单与两处出处，不择一、不判谁对**，编号沿用清点原文 C-01–C-06）:
+- C-01「不改标签值」vs「标签全量重标」: 出处 A `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:142`/`:146`；出处 B `docs/plans/2026-10-18-label-rebuild.md:103` 与 PB-015 解除条件（「全量 1,678 重算完成」，`docs/pending-blockers.md:58`）。
+- C-02 PB-015 内部：阻塞原因称 PB-001 未 closed，同条「状态说明（2026-10-19）」又记 PB-001 已 closed: 出处 A `docs/pending-blockers.md:56`（PB-015「阻塞/依赖」）；出处 B `docs/pending-blockers.md:57`（同条「状态说明（2026-10-19）」）。行号已于 2026-10-19 本轮插入后实测。
+- C-03 PB-003 内部：前置条件「四项」与「七项」并存: 出处 A `docs/pending-blockers.md:44`（PB-003「阻塞/依赖」）；出处 B `docs/pending-blockers.md:46`（PB-003「解除条件」，明列七项）。行号已于 2026-10-19 本轮插入后实测。
+- C-04 父子窗口状态：一处称「正在核实中」，事实库已列为定论: 出处 A `docs/pending-blockers.md:263`（§D 已确认结论第 3 条）；出处 B `docs/design-facts.yaml:286`–`:287`（misreadings 首条，已以定论形式列出且无 evidence 行）。两处行号均为 2026-10-19 本轮插入后实测；§D 第 3 条原文里的 `docs/design-facts.yaml:245`/`:246`–`:247` 是本轮插入 DF-015/DF-016 之前的旧行号，本轮未修改该条原文。
+- C-05 `docs/project-todo.md` 的 ARTIFACT-RETENTION 条目内部：「待确认（技术债）」段与「已修」段并存: 出处 A `docs/project-todo.md:195`；出处 B `docs/project-todo.md:196`。
+- C-06 `docs/results/version-control-migration/verification.md` 仍把已删除目录 `docs/results/model_evidence/` 描述为契约来源: 出处 A `docs/results/version-control-migration/verification.md:87`；出处 B `docs/project-todo.md:195`（自述该目录已在 A1 删除、该描述与磁盘现实不再对应）。
+- 解除条件: 用户给出逐条裁定（处理 / 不处理 / 改为其他口径），并明确哪些条目需回写原文；未裁定的条目保留原样。
+- 前置动作: 已把清点结果与冲突清单登记于本条（本轮只读清点，未改任何数字或结论）；裁定后再逐条出改写方案。
+- 负责人: 用户
+- 证据与背景: 仓库外纯文本路径 `~/pi-workspace/mVllm_2-audit/decisions-census-20261019/census.md`（**不在 Git 内，他机不可达，不写作链接**）：其「表二」为 826 行数据清单，`## 3. 冲突清单` 为 C-01–C-06 原文。
+- 记录日期: 2026-10-19
+- 备注: 本条**不改变任何既有结论的有效性**，只登记「数字无法逐行回溯到确定的 code / data / prompt 版本」与「文档之间对同一事项说法不一致」两项事实；冲突条目未裁定前不得据此删改原文。
 
 ## D. 已确认结论（供对照，避免重复调研）
 
