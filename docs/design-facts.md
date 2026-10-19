@@ -79,14 +79,14 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-008 [active] R1 在 8 帧 / 8 组 / 512 token 新口径下的重测结果
 同一模型、同一 425 条数据、同一 Prompt，仅把管线换成 8 帧 / 8 组 / 512 视觉 token 重测（2026-10-18）：四字段 joint 由 41.18% 升到 50.59%、已断裂仍 0/33、发生断裂 recall 由 45.83% 升到 59.72%、strict_valid 0.9906、临界未断裂 recall 由 0.2281 降到 0.1053；该重测结果文件尚未入库，本事实的仓库内锚点是任务台账的 R2-REALTRAIN 条目。
 出处：
-- docs/project-todo.md:82（expect：joint 由 **41.18%**（旧口径 1 组 / 64 token）升至 **50.59%**）
+- docs/project-todo.md:98（expect：joint 由 **41.18%**（旧口径 1 组 / 64 token）升至 **50.59%**）
 
 ## 换管线已被实测否证为已断裂零召回的原因
 
 ### DF-009 [active] 换管线已被实测否证为已断裂零召回的原因
 同模型、同 425 条、同 Prompt、只改管线的对照实测两侧已断裂召回均为 0/33，「64 token 丢帧序导致零召回」这一假设被否证（2026-10-18）（台账记载的对照实测；原始 425 条结果文件尚未入库）。
 出处：
-- docs/project-todo.md:82（expect：结论：**换管线不是零召回的原因**）
+- docs/project-todo.md:98（expect：结论：**换管线不是零召回的原因**）
 
 ## 训练池里已断裂不稀缺
 
@@ -140,7 +140,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-015 [active] 可见分离最小观察窗取 2.0 秒
 用户于 2026-10-19 裁决「可见分离最小观察窗 = 2.0 秒」：post 候选在事件时刻之后（guard 之外）至少还需 2.0 秒素材，不足则不生成该候选。该值来自用户裁决，**不是**现有代码里的常量（代码现值 `MIN_CANDIDATE_SECONDS = 1.0`），落地待新链路设计；本轮不改任何代码与阈值。
 出处：
-- docs/pending-blockers.md:271（expect：可见分离最小观察窗 = 2.0 秒）
+- docs/pending-blockers.md:273（expect：可见分离最小观察窗 = 2.0 秒）
 - pipeline/v3_candidate_plan.py:37（expect：MIN_CANDIDATE_SECONDS = 1.0）
 - pipeline/v3_candidate_plan.py:34（expect：TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)）
 
@@ -170,7 +170,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 出处：finetune/eval_semantics.py:101（expect：never receives labels, video or model identity）
 - **误读**：已断裂召回 0 = 管线丢掉帧序
   - 正确：错。已实测换管线仍 0/33，管线不是零召回的原因
-  - 出处：docs/project-todo.md:82（expect：已断裂仍 **0/33**）
+  - 出处：docs/project-todo.md:98（expect：已断裂仍 **0/33**）
 - **误读**：模型答不出帧数 = 模型缺陷
   - 正确：错。帧序输出属过期要求，现行契约 `analysis.user_prompt` 只要求四字段输出
   - 出处：pipeline/contracts/tensile_vlm_v4_1.json:168（expect：请输出且只输出 clip_state、fracture_mechanism）
@@ -189,8 +189,8 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 出处：pipeline/SCRIPTS.md:23（expect：v3_candidate_plan.py`](v3_candidate_plan.py)）
 - **误读**：文档里印了数字 = 这个数字可追溯
   - 正确：错。抽出的 826 个数字中，`code_commit`/`data_release`/`prompt_version` 三项齐全的为 0 行，绝大多数只有笼统口径描述，引用前必须回到产生它的记录；见 PB-020。
-  - 出处：docs/pending-blockers.md:305（expect：指标数字缺口径三元组）
+  - 出处：docs/pending-blockers.md:307（expect：指标数字缺口径三元组）
 - **误读**：每帧独立编码 = 模型知道帧序
   - 正确：错。逐帧单独编码只说明帧被分成多组送入，不构成模型具备时序感知的证据；`temporal_ids` 全为 -1 的成因尚未归因（PB-002 已按用户 2026-10-19 决定取消排查），不得写成「模型已知帧序」或「模型不知帧序」。
   - 出处：finetune/validation/video_loader.py:52（expect：own group (8 frames -> 8 groups)）
-  - 出处：docs/project-todo.md:69（expect：8 帧 → 8 组、每组 1 帧）
+  - 出处：docs/project-todo.md:85（expect：8 帧 → 8 组、每组 1 帧）
