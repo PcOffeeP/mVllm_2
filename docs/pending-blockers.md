@@ -174,15 +174,15 @@
 - 解除条件: `docs/design-facts.yaml` 的 `misreadings` 段追加一条（误读「每帧独立编码 = 模型知道时序」→ 正确结论），且 `python scripts/verify_design_facts.py` 通过。
 - 前置动作: 起草该条 wrong/correct 文案并附 evidence 行号，交给负责事实库的 agent 合入。
 - 负责人: agent
-- 证据与背景: `docs/design-facts.yaml` 的 `misreadings` 段（条目定位用条目文本，不用行号：本段在 `bf1ed03` 后为 8 条，本轮追加「每帧独立编码 = 模型知道帧序」后为 9 条；旧文所记「现有 7 条 + 起行 `:246`/`:248`/`:253`/`:258`/`:263`/`:270`/`:281`」是插入 DF-015/DF-016 之前的过期行号，已作废）；`docs/project-todo.md:103`（逐帧成组的实现事实，2026-10-19 `grep -n` 实测；原引 `:99` 有误，实测应为 `:103`）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测，2026-10-19 复核）。
+- 证据与背景: `docs/design-facts.yaml` 的 `misreadings` 段（条目定位用条目文本，不用行号：本段在 `bf1ed03` 后为 8 条，本轮追加「每帧独立编码 = 模型知道帧序」后为 9 条；旧文所记「现有 7 条 + 起行 `:246`/`:248`/`:253`/`:258`/`:263`/`:270`/`:281`」是插入 DF-015/DF-016 之前的过期行号，已作废）；`docs/project-todo.md:103`（逐帧成组的实现事实，2026-10-19 `grep -n` 实测；原引 `:99` 有误，2026-10-19 实测应为 `:103`）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测，2026-10-19 复核）。
 - 记录日期: 2026-10-18
 - 备注: 事实库由脚本校验 evidence 行号必须指向真实非空行，行号入册前须复核；该结论与 PB-002 的归因边界相邻——PB-002 未结前，本条只登记「逐帧编码 ≠ 时序感知」，不得写成「模型已知/不知帧序」。
 
 **解除记录（2026-10-19，Pi）**：解除条件两项均已满足，本条解除；上方原文（阻塞/依赖、解除条件、前置动作、负责人、记录日期、备注）原样保留为历史记录。
 
 - ① `docs/design-facts.yaml` 的 `misreadings` 段已追加「每帧独立编码 = 模型知道帧序」一条（条目文本定位，不用行号），带 2 条 evidence 且均含 `expect`：`finetune/validation/video_loader.py:52`（`own group (8 frames -> 8 groups)`）、`docs/project-todo.md:69`（`8 帧 → 8 组、每组 1 帧`）。两处 `expect` 均经 `grep -nF` 实测为该行唯一字面出现，`python scripts/verify_design_facts.py` 逐条判 PASS。
-- ② `python scripts/verify_design_facts.py`：`FAIL 0`（`合计 79 项：PASS 79，PASS(no-expect) 0`，其中「带 expect 的 evidence 72 条，命中 72 条」）；完整原始输出见仓库外 `~/pi-workspace/mVllm_2-audit/design-facts-20261019-followup/checks/01-verify.txt`（**不在 Git 内**，他机不可达，不写作链接）。
-- ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交为 `git log -1 --format=%h -- docs/pending-blockers.md` 的输出（即本条所在提交，不嵌入字面哈希以避免自指）。
+- ② `python scripts/verify_design_facts.py`：`FAIL 0`（`合计 79 项：PASS 79，PASS(no-expect) 0`，其中「带 expect 的 evidence 72 条，命中 72 条」）；该结论可在仓库内用同一命令 `python scripts/verify_design_facts.py` 自行复现（evidence 行号校验与 expect 命中判定都在仓库内完成，不依赖仓库外文件），仓库外 `~/pi-workspace/mVllm_2-audit/design-facts-20261019-followup/checks/01-verify.txt` 只是那一次运行的原始输出副本（**不在 Git 内**，他机不可达，不写作链接），不是唯一举证。
+- ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交：`git log -1 --format=%h --grep='修正审查发现的引用失效与 §E 填答区计数'` 的输出（按提交主题锚定，不嵌字面哈希，避免自指与因后续改动而指向无关提交）。
 - ④ 结论边界：本条只登记「编码分组方式 ≠ 时序感知」；`temporal_ids` 全为 `-1` 的成因**未归因**（PB-002 已按用户 2026-10-19 决定取消排查），不得读作「模型已知帧序」或「模型不知帧序」。
 
 ### PB-014 人工抽看 20 条帧画面
