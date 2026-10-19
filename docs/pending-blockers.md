@@ -65,7 +65,7 @@
 
 - 2026-10-19 用户新设计方向（未实施）: 本节为 2026-10-19 追加，不改上方原文；与上方「2026-10-19 用户裁决说明」同源，是本条将来重写时的设计输入。
 - 设计方向（用户计划，**尚未实施**）: 在**原始标注文件**中新增**两列**，承载人工标注识别出的关键断裂时刻；语义为「前一帧显示未断裂、后一帧显示已断裂」，**将后一帧作为发生断裂的真实时刻**。〔该措辞已由 2026-10-19 裁决回填取代，原文保留；见本条「裁决回填（2026-10-19，用户裁决）」〕
-- 本轮范围边界: 本轮不设计字段名、不写空值规则、不改 `pipeline/source_bootstrap.py`（该文件现把 `event_time` 直接取自源表列「断裂时间点」，见本条「证据与背景」）。〔该措辞已由 2026-10-19 裁决回填取代，原文保留；见本条「裁决回填（2026-10-19，用户裁决）」〕
+- 本轮范围边界: 本轮不设计字段名、不写空值规则、不改 `pipeline/source_bootstrap.py`（该文件现把 `event_time` 直接取自源表列「断裂时间点」，见本条「证据与背景」）。〔本条「不设计字段名、不写空值规则」的措辞已由 2026-10-19 裁决回填取代，原文保留；括号内关于 `pipeline/source_bootstrap.py` 的代码事实不受影响。见本条「裁决回填（2026-10-19，用户裁决）」〕
 - 待定事项（**须用户裁决，agent 不得自行决定**）: ① 两列的确切含义——存帧号还是存时刻；是否同时存「最后一帧未断裂」与「第一帧已断裂」两个值（即两列是「区间两端」还是「前后帧各一」）。② 空值规则——新列缺失时是**拒绝**（fail-closed）还是**回落到旧列 `断裂时间点`**；两条路后果不同（前者让缺列的历史数据整体不能进新链路，后者让新旧两种口径在同一批数据里并存），必须由用户定。〔该措辞已由 2026-10-19 裁决回填取代，原文保留；见本条「裁决回填（2026-10-19，用户裁决）」〕
 - 方法学结论（供将来写检测器验收判据用）: 「第 t 帧已分离、第 t−1 帧未分离」这一对本身就是可机检的**性质**，比「误差 ≤N 帧」这类容差判据更强——性质判据不会随帧率、窗口长度或抽样密度漂移。
 - 连带暂停: 上述两列落地前，任何「把标签生成规则写进契约」的工作都应暂停（与 PB-019 的暂停理由同源：口径未定就写进契约，之后还要再改一次）。
@@ -300,7 +300,7 @@
 - C-01「不改标签值」vs「标签全量重标」: 出处 A `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:142`/`:146`；出处 B `docs/plans/2026-10-18-label-rebuild.md:103` 与 PB-015 解除条件（「全量 1,678 重算完成」，`docs/pending-blockers.md:58`）。
 - C-02 PB-015 内部：阻塞原因称 PB-001 未 closed，同条「状态说明（2026-10-19）」又记 PB-001 已 closed: 出处 A `docs/pending-blockers.md:56`（PB-015「阻塞/依赖」）；出处 B `docs/pending-blockers.md:57`（同条「状态说明（2026-10-19）」）。行号已于 2026-10-19 本轮插入后实测。
 - C-03 PB-003 内部：前置条件「四项」与「七项」并存: 出处 A `docs/pending-blockers.md:44`（PB-003「阻塞/依赖」）；出处 B `docs/pending-blockers.md:46`（PB-003「解除条件」，明列七项）。行号已于 2026-10-19 本轮插入后实测。
-- C-04 父子窗口状态：一处称「正在核实中」，事实库已列为定论: 出处 A 为 `docs/pending-blockers.md` 的 §D 已确认结论第 3 条（「父子窗口状态不同是设计使然，不是数据矛盾」；引用以条目文本定位为准，2026-10-19 实测位于 `:307`，行号仅作附注）；出处 B 为 `docs/design-facts.yaml` 的 misreadings 首条（「父子窗口状态不同 = 数据矛盾」，已以定论形式列出且无 evidence 行；引用以条目文本定位为准，2026-10-19 实测 `- wrong:` 在 `:286`、`correct` 正文在 `:287`，行号仅作附注）。原引的 `docs/design-facts.yaml:245`/`:246`–`:247` 为插入 DF-015/DF-016 之前的过期行号，已作废；该条原文已在提交 `f06dea6` 中改为不依赖行号、按条目文本定位的写法，原先「本轮未修改该条原文」的表述随之失效。本条只列冲突、不择一，不裁定哪一侧对。
+- C-04 父子窗口状态：一处称「正在核实中」，事实库已列为定论: 出处 A 为 `docs/pending-blockers.md` 的 §D 已确认结论第 3 条（「父子窗口状态不同是设计使然，不是数据矛盾」；引用以条目文本定位为准，2026-10-19 实测位于 `:319`，行号仅作附注）；出处 B 为 `docs/design-facts.yaml` 的 misreadings 首条（「父子窗口状态不同 = 数据矛盾」，已以定论形式列出且无 evidence 行；引用以条目文本定位为准，2026-10-19 实测 `- wrong:` 在 `:291`、`correct` 正文在 `:292`，行号仅作附注）。原引的 `docs/design-facts.yaml:245`/`:246`–`:247` 为插入 DF-015/DF-016 之前的过期行号，已作废；该条原文已在提交 `f06dea6` 中改为不依赖行号、按条目文本定位的写法，原先「本轮未修改该条原文」的表述随之失效。本条只列冲突、不择一，不裁定哪一侧对。
 - C-05 `docs/project-todo.md` 的 ARTIFACT-RETENTION 条目内部：「待确认（技术债）」段与「已修」段并存: 出处 A `docs/project-todo.md:195`；出处 B `docs/project-todo.md:196`。
 - C-06 `docs/results/version-control-migration/verification.md` 仍把已删除目录 `docs/results/model_evidence/` 描述为契约来源: 出处 A `docs/results/version-control-migration/verification.md:87`；出处 B `docs/project-todo.md:195`（自述该目录已在 A1 删除、该描述与磁盘现实不再对应）。
 - 解除条件: 用户给出逐条裁定（处理 / 不处理 / 改为其他口径），并明确哪些条目需回写原文；未裁定的条目保留原样。
@@ -316,7 +316,7 @@
 
 1. 换管线（64 → 512 token）不是「已断裂」零召回的原因：同模型、同数据、同 Prompt，两侧均 0/33。出处：`docs/design-facts.yaml` DF-009、`docs/project-todo.md:82`。
 2. `strict_valid_rate` 只校验形式，不校验语义。出处：`docs/design-facts.yaml` DF-003、`finetune/eval_semantics.py:126`（`result.update(..., strict_valid=True)` 即「形式校验通过」的赋值点）、`finetune/eval_semantics.py:376`（`metrics["strict_valid_rate"]` 汇总处）；`finetune/eval_semantics.py:101` 的 docstring 只说明 `extract_semantics` 不接收标签 / 视频 / 模型身份，是该结论的旁证而非直接陈述。
-3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"）**。出处：`docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"；引用以条目文本定位为准，2026-10-19 实测位于 `:286`，正文 `:287`，行号仅作附注）。
+3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"）**。出处：`docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"；引用以条目文本定位为准，2026-10-19 实测位于 `:291`，正文 `:292`，行号仅作附注）。
 4. 模型输出「已断裂」在 425 条预测中出现 0 次。出处：`docs/project-todo.md:82`、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:368`（`prediction_clip_state_distribution` 里没有「已断裂」键）。
 5. 训练池「已断裂」占 15.00%，非数据稀缺。出处：`docs/design-facts.yaml` DF-010、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:85`（1253 条候选 188 条 = 15.00%，每 epoch 3000 行 564 行 = 18.80%）、`finetune/train_build_source_aware_dataset.py:30`（`SIGNATURE_COUNT_CAP = 3`，支撑「重复倍率 3.0 已顶上限」）。
 
