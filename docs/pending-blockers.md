@@ -10,7 +10,7 @@
 
 ### PB-001 训练机无法访问 Codeup
 
-- status: blocked
+- status: closed
 - 阻塞/依赖: 训练机所在校园网处于 Srun 强制门户未认证态：出站 `:80` 被劫持并返回逐字节相同的 `302 Server: SrunServer1.0`，`:22`/`:443`/`:9418` 被静默丢弃（超时）；`codeup.aliyun.com` 只有 A 记录、无原生 AAAA（`getent ahostsv6` 只返回 `::ffff:` IPv4-mapped），因此无法改走当时正常的 IPv6 通道。提供方=用户，需在门户完成实名认证。
 - 解除条件: 训练机 `nmcli` 输出显示 `IP4-CONNECTIVITY:4 (full)`，且 `nc -zv codeup.aliyun.com 22` 成功（退出码 0）。两条命令的输出原文须留存。
 - 前置动作: 用户在 `https://gw.buaa.edu.cn/index_1.html` 完成实名认证（门户 `Location` 已携带该机 MAC `a4:fa:76:08:8a:01` 与 `user_ip=172.19.53.12`），认证完成后由 agent 复跑上述两条命令并保留输出原文。
@@ -18,6 +18,13 @@
 - 证据与背景: 仓库内 `docs/project-status.md:20`（仅证明目标机 SSH 地址与身份，不含网络故障事实）；仓库外 `~/pi-workspace/mVllm_2-audit/codeup-unreachable-20261018.md`（**不在 Git 内**，:18、:24–:25、:109、:154、:162 为成因与判据原文）。门户 URL、MAC、丢包与 DNS 现象均仅见于该报告。
 - 记录日期: 2026-10-18
 - 备注: 认证必须在训练机实际所在网络环境完成；不能把「本机能连 Codeup」当作训练机可用。报告记为 `IP4-CONNECTIVITY:2 (portal)`，与本条解除条件要求的 `4 (full)` 是同一指标的前后态。
+- 解除记录（2026-10-19，Pi）: 两条解除条件均已在训练机（`liuyang@100.70.83.68`，项目根 `/home/liuyang/文档/mVllm_2`）实测满足。① 连通性——`nmcli -f GENERAL.DEVICE,GENERAL.IP4-CONNECTIVITY device show enp0s31f6` 输出 `GENERAL.IP4-CONNECTIVITY:               4（完全）`（等价口径 `nmcli -g GENERAL.IP4-CONNECTIVITY,... device show` → `4 (full)`；`nmcli general status` 的 `CONNECTIVITY` = `完全`）：生效网卡 `enp0s31f6`，其余设备 `tailscale0` IP4=`3（受限）`、`lo` IP4=`0（未知）`。即解除条件要求的 `IP4-CONNECTIVITY:4 (full)` 已达成，与 2026-10-18 记录的 `2 (portal)` 是同一指标的前后态。② 可达性——`nc -zv -w 5 codeup.aliyun.com 22` 输出原文 `Connection to codeup.aliyun.com (118.31.165.50) 22 port [tcp/ssh] succeeded!`，`EXIT=0`（非 timeout、非 refused）。
+- 解除记录·Git 可达性: 训练机 `git ls-remote <remote> refs/heads/main refs/heads/feat/evaluation-development` → `EXIT=0`，两分支均为 `02094cfb818da84dbbc85eee28b3ddf7726fe5cf`。**训练机 remote 名为 `origin`**（`git@codeup.aliyun.com:61fa7f5774c3f3b55074132e/mVllm_2.git`），本机 remote 名为 `codeup`（URL 完全相同，同一仓库）；本记录中训练机侧一律按 `origin` 表述。
+- 解除记录·远端同步: 训练机已 `git fetch origin` 并把 `feat/evaluation-development` 由 `fb2ee8fb` 快进（fast-forward）到 `02094cfb`——落后 52 个提交、独有 0 个，`34 files changed, 9598 insertions(+), 5663 deletions(-)`，快进成功、无冲突、无合并提交；`main` 同步指向 `02094cfb`。
+- 解除记录·回滚锚点: 已打 tag `pre-sync-2026-10-19` → `fb2ee8fb25f4d1c81ecce1314972e8a2857e5463`（同步前 HEAD），作为回退锚点保留。
+- 解除记录·资产体量（`du` 实测）: videos 6.3G / subvideos 203M / store/records/prompts 12K / adapter 7.0G / merged 17G（对应 `workspace/data/source/videos`、`workspace/data/derived/subvideos`、`store/records/prompts`、`workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter`、`workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged`）。
+- 解除记录·证据: 仓库外 `~/pi-workspace/mVllm_2-audit/training-machine-network-verify-20261019.md`（网络与 Git 可达性实测原文；:21、:60–:75、:95–:99、:127–:136）与 `~/pi-workspace/mVllm_2-audit/training-machine-sync-20261019.md`（fetch/快进/回滚锚点/资产体量原文；:44、:111、:136、:196–:205、:292）。两份文件均**不在 Git 内**，故不写成 markdown 链接。
+- 解除范围: 本项 `closed` 仅表示训练机网络与 Codeup 可达性恢复（含远端同步到 `02094cfb`）；**不等于 PB-003（R2 三折）可开训**——PB-003 的其余前置（PB-002、门禁 v2、预算校准、全链路 14 环节、标签重建、GPU 授权）仍未满足。
 
 ### PB-002 `temporal_ids` 全为 -1 的归因（模型是否感知帧序）
 
@@ -34,6 +41,7 @@
 
 - status: blocked
 - 阻塞/依赖: PB-001、PB-002、门禁 v2 定稿（PB-004 / PB-007 / PB-008 三条均 `closed`）、训练预算实测校准完成（本条「前置动作」要求的那份首 50 步实测记录已落盘）；四项齐备前不得开训，另需用户给出 GPU 训练授权。
+- 状态说明（2026-10-19）: PB-001 已于 2026-10-19 closed，本项其余前置未变。
 - 解除条件: 下列七项**全部**满足才解除，任一项未满足即不得开训——① PB-001 `closed`、② PB-002 `closed`、③ 门禁 v2 定稿（PB-004 / PB-007 / PB-008 三条均 `closed`）、④ 训练预算实测校准完成（即本条「前置动作」要求的那份首 50 步实测记录已落盘并写明口径），以上①–④四项各附结项证据；⑤ 全链路验证 14 环节全部 `passed`（见 `docs/plans/2026-10-18-full-chain-validation.md`，逐环节证据落 `records/full-chain-validation-20261018/<环节编号>/`）；⑥ 标签重建完成（PB-015 `closed`，新 `release_id` 落盘）；⑦ 用户书面 GPU 授权记录。⑤–⑦ 为在原有①–④之上追加的前置，与①–④串联——任一项未满足即不得开训；其中标签变更会使 C4/C6/C11/C14 的验证结论失效（见该方案失效传播矩阵），故 ⑥ 须先于 ⑤ 完成。
 - 前置动作: 冻结 r2 训练 YAML（仓库内当前不存在），跑首 50 步实测校准预算（现 3 epoch 三折约 5.78 h 为推算值）。
 - 负责人: 用户 + agent
@@ -45,6 +53,7 @@
 
 - status: blocked（**决策已定，非决策阻塞**；仍为 blocked 是因两项外部条件未满足：训练机不可达 + 金标准未建立）
 - 阻塞/依赖: 剩余两项，均非决策阻塞——① 训练机不可达（PB-001 未 `closed`）：从源视频抽帧、访问源视频文件、读取 ROI metadata、自动检测批量运行、全量重算、新标签复测推理均需训练机；② 金标准未建立：60 条逐帧标注（`docs/plans/2026-10-18-label-rebuild.md` 第 3.1 节可执行清单）尚未产出，自动检测没有对照物、闸门 1 无法判定。**D1/D2 已于 2026-10-18 由用户裁决，不再是阻塞项**：D2 标签锚点 = 可见分离第一帧（视觉可判，不锚在物理事件起始）；D1 `event_time` 改为该锚点的时间，但历史列不覆盖——新增 `visible_separation_time` 承载新值，原 `断裂时间点` 原样保留，用于新旧锚点的偏差分布统计与可追溯。裁决记录见 `docs/plans/2026-10-18-label-rebuild.md:70`（D1 裁决结论）、`:72`（历史列不覆盖）、`:101`（D2 裁决结论）与 `docs/design-facts.yaml` DF-013。
+- 状态说明（2026-10-19）: PB-001 已于 2026-10-19 closed（训练机网络已恢复），本项其余前置未变，status 不变。
 - 解除条件: `docs/plans/2026-10-18-label-rebuild.md` 五阶段全部完成且验收闸门通过（金标准 **60 条**判据达标（60 条、跨 ≥10 个 `source_video`、每源 ≥3 条、四档覆盖、复标一致率 ≥90%，见方案第 3.1 节）、自动检测误差达标、全量 1,678 重算完成、「已断裂」首帧可见分离比例达用户定阈值、抽样复核一致率达标、新标签下 425 条复测结果可解释），并有新 `release_id` 落盘。该方案随本提交入库（`docs/plans/2026-10-18-label-rebuild.md`）。标签语义已定且改变，落地时必须按 DF-014 升 `contract_hash`（契约当前仍是旧哈希 `3798f00c…`），不得在旧契约编号下发布新语义标签。
 - 前置动作: D1/D2 已裁决（2026-10-18，见「阻塞/依赖」），无需再等决策；下一步按顺序为——(1) PB-001 恢复后，训练机只读核实 `event_time` 的产生环节与原始定义（`pipeline/source_bootstrap.py:293`、`:296`–`:297`、`:319`）；(2) 产出第 1 阶段金标准 60 条（抽样脚本与种子记录须先落定，见方案第 3.1 节第 2 条，脚本框架可在本机起草）；(3) 金标准验收五项通过后才进第 2 阶段自动检测。
 - 负责人: agent（执行）+ 用户（PB-001 训练机恢复与 GPU 授权；D1/D2 裁决已于 2026-10-18 完成）
