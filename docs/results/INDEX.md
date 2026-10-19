@@ -145,7 +145,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 10 个 / 140
 | `docs/results/minicpm-postinit-runtime-source-20261016.json` | 61106 B（59.7 KB） | B | 训练机源码采集（JSON 顶层键：transformers_sources） | 2026-10-16 11:45 | minicpm-postinit-runtime-source（顶层散文件，未归属实验目录） | 证据-可复核底稿 | 无（未见取代记录） | 保留（实验间互相引用） |
 | `docs/results/minicpm-base-download-origin-20261016.json` | 58830 B（57.5 KB） | B | 基座下载来源取证（JSON 顶层键：file_comparisons） | 2026-10-16 11:29 | minicpm-base-download-origin（顶层散文件，未归属实验目录） | 证据-可复核底稿 | 无（未见取代记录） | 保留（实验间互相引用） |
 | `docs/results/model-r1-effect-profile-20261018.json` | 52224 B（51.0 KB） | C | R1 效果档案配套数据（JSON 顶层键：model/statement） | 2026-10-18 17:05 | v4.1-agent-pipeline-fold0-r1（顶层散文件，未归属实验目录） | 现行有效 | 无（未见取代记录） | 保留（新入库证据，不得删） |
-| `docs/results/model-r1-effect-profile-20261018.md` | 50212 B（49.0 KB） | C | R1 模型效果档案正文（H1 标题自述） | 2026-10-18 17:06 | v4.1-agent-pipeline-fold0-r1（顶层散文件，未归属实验目录） | 现行有效 | 无（未见取代记录） | 保留（新入库证据，不得删） |
+| `docs/results/model-r1-effect-profile-20261018.md` | 50542 B（49.4 KB） | C | R1 模型效果档案正文（H1 标题自述） | 2026-10-18 17:06 | v4.1-agent-pipeline-fold0-r1（顶层散文件，未归属实验目录） | 现行有效 | 无（未见取代记录） | 保留（新入库证据，不得删） |
 | `docs/results/remote-preparation-audit-connected-20261016.json` | 41081 B（40.1 KB） | B | 连通后的训练机准备审计（JSON 顶层键：remote_result） | 2026-10-16 10:12 | remote-preparation-audit-connected（顶层散文件，未归属实验目录） | 证据-可复核底稿 | 无（未见取代记录） | 保留（实验间互相引用） |
 | `docs/results/minicpm-postinit-purpose-analysis-20261016.json` | 25402 B（24.8 KB） | B | post_init 用途静态分析（JSON 顶层键：direct_answer） | 2026-10-16 11:46 | minicpm-postinit-purpose-analysis（顶层散文件，未归属实验目录） | 证据-可复核底稿 | 无（未见取代记录） | 保留（实验间互相引用） |
 | `docs/results/model-inventory.md` | 18464 B（18.0 KB） | B | V4.1 模型清单与效果对比（H1 标题自述） | 2026-10-16 10:20 | model-inventory（顶层散文件，未归属实验目录） | 说明文档 | `model-gate-baseline-20260914.md`（本文自述指向） | 保留（实验间互相引用） |
@@ -196,7 +196,7 @@ C 类构成（第 4.6 节口径，清理后重算）：真零引用 10 个 / 140
 | 路径 | 体积 | 建议 |
 |---|---|---|
 | `docs/results/model-r1-effect-profile-20261018.json` | 52224 B（51.0 KB） | 保留（新入库证据，不得删） |
-| `docs/results/model-r1-effect-profile-20261018.md` | 50212 B（49.0 KB） | 保留（新入库证据，不得删） |
+| `docs/results/model-r1-effect-profile-20261018.md` | 50542 B（49.4 KB） | 保留（新入库证据，不得删） |
 | `docs/results/training-data-ledger-20261017.md` | 7374 B（7.2 KB） | 保留（新入库证据，不得删） |
 | `docs/results/v4_1_phase2_source_aware_3k_coverage_first/stage_b_canary_gate_summary.json` | 2458 B（2.4 KB） | 保留待用户核定（门禁/准备结论唯一凭证） |
 | `docs/results/diagnostics-data-visual-audit-plan-20260717.md` | 9749 B（9.5 KB） | 2026-10-18 迁入，保留（负面证据） |

@@ -179,7 +179,7 @@
 
 ### PB-016 `_build_eval_history_entry` 与 run 源整源缺失的早退分支未修（技术债）
 
-- status: ready
+- status: closed
 - 阻塞/依赖: 无外部条件阻塞；本批不修代码，只登记。
 - 解除条件: 两处根因有明确处置并附证据——① `versioning/migration.py` 的 `_build_eval_history_entry` 在指标来源缺失时的降级行为被显式定义（当前与归档包缺失不同源，未区分缺失成因）；② run 源整源缺失（`workspace/runs/<run>` 整体不存在）的早退分支被显式定义并带机读 reason_code。两处均需有回归用例覆盖，且不得把缺失伪装成已知值。
 - 前置动作: 先只读复核两处现有降级文案与既有 `unavailable_archive_removed` 实现（`versioning/migration.py`，`grep -n 'unavailable_archive_removed\|_build_eval_history_entry' versioning/migration.py` 定位，行号近似），再起草改动方案并交用户裁决是否纳入下一批。
@@ -187,6 +187,16 @@
 - 证据与背景: 仓库内 `versioning/migration.py`（`_WEIGHT_RUN_ARCHIVE_REMOVED_REASON_CODE = "unavailable_archive_removed"` 赋值处行号用 `grep -n` 现场确认，近似 `:1687`；`def _build_eval_history_entry` 近似 `:1935`）；`docs/project-todo.md` 的 `ARTIFACT-RETENTION` 条目「待确认（技术债，2026-10-18 审查发现）」段与「归档包缺失状态已修（2026-10-18）」段。归档包缺失这条根因**已修**（提交 `2ea8c256`/`8dfa8fcd`/`ca46c57e`），本条只登记**未修**的两处同族根因。
 - 记录日期: 2026-10-18
 - 备注: 上述 `migration.py` 行号均为近似值，引用前须 `grep -n` 复核；本批不修改 `versioning/migration.py`，不改变任何既有语义。
+
+**解除记录（2026-10-19，Pi）**：三项落地，已由主 agent 逐项读代码核验（非转述报告），本条解除。
+
+- ① 任务 1（run 源整源缺失）：`versioning/migration.py` 的 `_build_weight_run_history_entry`（`:2533`）早退分支在探测到声明 run 源整体不存在且来源链无链接、探测未抛 `OSError` 时，把 12 个事实（3 个结构事实 + 9 个核心训练参数）统一替换为 `_weight_run_source_missing_fact`（构造器约 `:1762`，调用点约 `:2704`）的返回值，携 `reason_code: "unavailable_source_missing"`；常量 `_WEIGHT_RUN_SOURCE_MISSING_REASON_CODE` 在 `:1700` 赋值；说明文本含原 run id 与缺失源路径 `workspace/runs/<run_id>`（`run_rel = _PREPARE_ONLY_RUN_SOURCE_ROOT / source_id`），且不含任何日期。
+- ② 任务 2（eval 归档缺失分派）：`_build_eval_history_entry`（`:2025`）缺失分支（约 `:2079`–`:2096`）按可观测缺失来源分派——归档根 `docs/results/model_evidence` 与本 run 包目录同时不存在 → `unavailable_archive_removed`；归档根仍在、只是 `MANIFEST.json` 或 `evaluation/evaluation_summary.json` 缺失 → `unavailable_source_missing`；探测抛 `OSError` 时 `missing_reason_code` 置 `None`，经 `_eval_history_missing_fact` 回落既有笼统 unknown，不叠加 `reason_code`。
+- ③ 任务 3（三份 `_write_json` 统一）：`tests/test_train_build_dataset.py:21`、`tests/test_train_build_source_aware_dataset.py:21`、`tests/test_eval_review_tokenizer_compatibility.py:38` 三处函数体已逐行一致——`mkdir(parents=True, exist_ok=True)` + `ensure_ascii=False, indent=2, sort_keys=True` + 末尾 `"\n"` + `encoding="utf-8"`；两份基准文件（前两者）仍为该最严形态，未被削弱。
+
+- 回归证据：改前 3308 passed / 0 failed / 0 error / 34 skipped（收集 3342）→ 改后 3323 / 0 / 0 / 34（收集 3357）——**该组数字为 PB-016 批次自报口径，本轮收口另跑全量终验，实测结果见仓库外 `~/pi-workspace/mVllm_2-audit/round-close-20261019.md` §4**。
+- 提交：`a3736dbb`（run 源整源缺失时返回显式状态）、`56d39280`（eval 历史条目在归档缺失时显式标记）、`354d4ed`（补齐源缺失链接 / `OSError` 与 eval 包目录缺失守卫用例）、`618a47f`（统一三份同名 helper 的校验强度）。
+- 报告：仓库外 `~/pi-workspace/mVllm_2-audit/pb016-tech-debt-20261019.md`（**不在 Git 内**，他机不可达，不写作链接）。
 
 ### PB-017 review 环境清理导致 `tokenizers` 缺失，评测审查兼容性测试需跳过
 
@@ -198,6 +208,17 @@
 - 证据与背景: 仓库内 `tests/test_eval_review_tokenizer_compatibility.py:22` 定义 `_needs_tokenizers = pytest.mark.skipif(importlib.util.find_spec("tokenizers") is None, reason=...)`，仅加在需真实 `tokenizers` 的 10 个测试函数（含 4 个参数化函数，覆盖 23 项）上；纯 stdlib 的 GGUF 头部解析与资产哈希 3 个函数（6 项）不标记，缺包时仍真跑。skip reason 原文为「review 环境 workspace/review-environment/python311 已被清理（仅剩 bin 空壳），缺 tokenizers 包；属清理连带成本，见 docs/pending-blockers.md PB-017」；环境定位与用途见 `finetune/SCRIPTS.md:40`（独立 tokenizer 准备环境位于忽略的 `workspace/review-environment/python311/`，不替换开发或 GPU 环境）；重建命令见 `docs/results/evaluation-tokenizer-materials-20261015.md:41`–`:43`（`uv --no-config venv --python 3.11 workspace/review-environment/python311` 与随后的 `pip sync`/`pip check`）。仓库外/仅本机观察：`workspace/review-environment/python311/` 现只剩 `bin/`（python 符号链接），`workspace/` 被 `.gitignore:13` 忽略，故该清理事实无 Git 证据，仅本机 `ls` 观察；本机 `.venv` 解释器 `importlib.util.find_spec("tokenizers")` 返回 `None`（2026-10-19 实测）。改前基线（同一实测时刻）：`pytest tests/test_eval_review_tokenizer_compatibility.py -q` 为 `23 failed, 6 passed`（23 项全部因 `ModuleNotFoundError: No module named 'tokenizers'`），`--collect-only -q` 实测收集 29 项——差值 6 即不依赖 `tokenizers` 的用例（改前本就 passed）。改为逐用例标记后同一命令实测 `6 passed, 23 skipped`：本次 skip 的 23 项为缺包失败项；另 6 项不依赖 tokenizers，仍真跑。
 - 记录日期: 2026-10-18
 - 备注: 这是环境清理的连带成本，需要决定是否恢复依赖；恢复前不得把跳过项当作「该能力已通过」。（恢复后仅剩余的 skip 即依赖缺失项，6 项纯 stdlib 用例始终真跑。）
+
+### PB-018 窗口生成前置约束校验（子视频素材覆盖不足）
+
+- status: ready
+- 阻塞/依赖: 无外部条件阻塞；本项属于**整链路清洗范畴**，将在后续独立会话处理，本轮只登记、不实现、不改任何窗口生成逻辑。
+- 解除条件: 三条约束全部落地并有回归用例才算解除——① 事件时刻须与「可见分离第一帧」对齐，不得只抄 CSV 的 `E_t`；② `post` 窗口生成前须校验「事件时刻之后剩余素材时长 ≥ 窗口长 + guard + 可见分离最小观察窗」，不足则该候选不生成；③ 同源 pre / post / transition 须通过时间区间互斥与标签一致性验算。任一条未落地即保持本条未解除。
+- 前置动作: 先做一项确定性统计——对每个源计算「剩余时长 = 总时长 − `E_t`」，与②中的必要时长比较，给出「不可能产出合法候选」的源清单；清单与三条约束一并交用户裁决清洗范围后再动代码。
+- 负责人: agent（实现待后续独立会话与用户授权）
+- 证据与背景: 既有证据（仓库外，均**不在 Git 内**，他机不可达，不写作链接）——`~/pi-workspace/mVllm_2-audit/event-time-sign-20261019.md`（`event_time` 符号与位置调查）、`~/pi-workspace/mVllm_2-audit/verify-frames-20261019/`（逐帧可见分离核验与时间线导出）。已观察到的事实：① `E_t` 中位落全片约 96% 位置，33 条已断裂样本涉及 18 个源；② `video_0110` 从 `E_t−5s` 到片尾 `E_t+7s` 全程无可见分离；③ `video_0076` 可见分离晚于 `E_t` 约 4–5 s；④ `video_0103` 与上述一致；⑤ CSV 内部自洽（`E_t` 与 `E_f` 在 30/33 条上差 ≤ 半帧）；⑥ fps 与 `roi.json` 在 110/110 上相等。这些事实说明部分候选在**素材覆盖**上就不可能产出合法窗口，与标签对错是两件独立的事。
+- 记录日期: 2026-10-19
+- 备注: 本项属整链路清洗范畴，将在后续独立会话处理；本轮只登记约束与前置统计要求，不据此判定既有标签对错，也不作为模型能力结论。
 
 ## D. 已确认结论（供对照，避免重复调研）
 
