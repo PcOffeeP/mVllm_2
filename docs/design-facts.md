@@ -138,7 +138,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-015 [active] 可见分离最小观察窗取 2.0 秒
 用户于 2026-10-19 裁决「可见分离最小观察窗 = 2.0 秒」：post 候选在事件时刻之后（guard 之外）至少还需 2.0 秒素材，不足则不生成该候选。该值来自用户裁决，**不是**现有代码里的常量（代码现值 `MIN_CANDIDATE_SECONDS = 1.0`），落地待新链路设计；本轮不改任何代码与阈值。
 出处：
-- docs/pending-blockers.md:242（expect：可见分离最小观察窗 = 2.0 秒）
+- docs/pending-blockers.md:249（expect：可见分离最小观察窗 = 2.0 秒）
 - pipeline/v3_candidate_plan.py:37（expect：MIN_CANDIDATE_SECONDS = 1.0）
 - pipeline/v3_candidate_plan.py:34（expect：TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)）
 
@@ -187,7 +187,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 出处：pipeline/SCRIPTS.md:23（expect：v3_candidate_plan.py`](v3_candidate_plan.py)）
 - **误读**：文档里印了数字 = 这个数字可追溯
   - 正确：错。抽出的 826 个数字中，`code_commit`/`data_release`/`prompt_version` 三项齐全的为 0 行，绝大多数只有笼统口径描述，引用前必须回到产生它的记录；见 PB-020。
-  - 出处：docs/pending-blockers.md:264（expect：指标数字缺口径三元组）
+  - 出处：docs/pending-blockers.md:282（expect：指标数字缺口径三元组）
 - **误读**：每帧独立编码 = 模型知道帧序
   - 正确：错。逐帧单独编码只说明帧被分成多组送入，不构成模型具备时序感知的证据；`temporal_ids` 全为 -1 的成因尚未归因（PB-002 已按用户 2026-10-19 决定取消排查），不得写成「模型已知帧序」或「模型不知帧序」。
   - 出处：finetune/validation/video_loader.py:52（expect：own group (8 frames -> 8 groups)）
