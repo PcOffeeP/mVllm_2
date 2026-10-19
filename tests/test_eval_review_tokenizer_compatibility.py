@@ -31,12 +31,23 @@ from finetune import eval_review_deployment as provider
 from finetune.eval_review import LocalOllamaBroker, MODEL_DIGESTS
 
 
-def _sha(path):
+def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _write_json(path, value):
-    path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+def _write_json(path: Path, payload: object) -> None:
+    """写入 JSON 固件（与 tests/ 下同名字 helper 的最严形态对齐）。
+
+    逐项对齐理由：``parents=True`` 让固件路径与生产目录层级一致、不在缺目录
+    时静默失败；``indent=2`` / ``sort_keys=True`` / 末尾换行使字节与生产侧
+    美化且稳定的写法一致，顺带消除 dict 插入顺序对固件字节的影响；
+    ``encoding="utf-8"`` 显式声明编码，不依赖平台默认值。
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _descriptor(path):
