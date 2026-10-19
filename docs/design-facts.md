@@ -118,11 +118,13 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ## 标签锚点已裁决为「可见分离第一帧」
 
 ### DF-013 [active] 标签锚点已裁决为「可见分离第一帧」
-用户于 2026-10-18 裁决：标签锚点采用「可见分离第一帧」（视觉可判），不锚在物理裂纹起始（视觉不可判）。`event_time` 改为该锚点的时间，但历史列不覆盖——数据表新增 `visible_separation_time` 列承载新值，原 `断裂时间点` 列原样保留、不改写不换算，用于新旧锚点的偏差分布统计与可追溯。理由：只有视觉可判的量才能作为视觉模型的标签与被评测对象；该锚点与用户原始判读口径一致；该锚点可被标注者独立复标，也可被确定性检测规则独立复现。
+用户于 2026-10-18 裁决：标签锚点采用「可见分离第一帧」（视觉可判），不锚在物理裂纹起始（视觉不可判）。`event_time` 改为该锚点的时间，但历史列不覆盖——数据表新增 `visible_separation_time` 列承载新值，原 `断裂时间点` 列原样保留、不改写不换算，用于新旧锚点的偏差分布统计与可追溯。理由：只有视觉可判的量才能作为视觉模型的标签与被评测对象；该锚点与用户原始判读口径一致；该锚点可被标注者独立复标，也可被确定性检测规则独立复现。 2026-10-19 用户补充裁决：承载改为两列**帧号** `断裂帧_前`（最后一帧仍连通）与 `断裂帧_后`（第一帧已分离，权威值），时刻由脚本按实测 fps 派生、不手填；**锚点语义不变**，仍为可见分离第一帧。
 出处：
 - docs/plans/2026-10-18-label-rebuild.md:70（expect：语义定为「**可见分离第一帧**」的时间）
 - docs/plans/2026-10-18-label-rebuild.md:72（expect：数据表新增 `visible_separation_time` 列）
 - docs/plans/2026-10-18-label-rebuild.md:101（expect：选 A —— **可见分离第一帧**（视觉可判））
+- docs/label-annotation-spec.md:54（expect：角色是权威值）
+- docs/label-annotation-spec.md:58（expect：时刻由脚本计算，禁止手填）
 
 ## 标签语义变更必须升契约哈希
 
@@ -130,15 +132,15 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 若 `已断裂` 等标签的语义改变，即使枚举集合与取值域不变，也必须升 `contract_hash`，否则同一契约编号下会并存两套标签定义，使同一 `contract_hash` 下记录的评测结果无法判断是按哪套标签算的。反向不成立：只重算 `event_time` 的数值而不改标签语义定义时，不需要升哈希。本次标签重建（锚点由 `event + 0.5` 的几何偏移改为可见分离第一帧）属必须升哈希的一侧。
 出处：
 - pipeline/contracts/tensile_vlm_v4_1.json:3（expect：contract_hash": "3798f00cbec7）
-- docs/plans/2026-10-18-label-rebuild.md:184（expect：即使枚举集合不变（四档名字与取值域都没变））
-- docs/plans/2026-10-18-label-rebuild.md:185（expect：若只是**重算 `event_time` 的数值**）
+- docs/plans/2026-10-18-label-rebuild.md:192（expect：即使枚举集合不变（四档名字与取值域都没变））
+- docs/plans/2026-10-18-label-rebuild.md:193（expect：若只是**重算 `event_time` 的数值**）
 
 ## 可见分离最小观察窗取 2.0 秒
 
 ### DF-015 [active] 可见分离最小观察窗取 2.0 秒
 用户于 2026-10-19 裁决「可见分离最小观察窗 = 2.0 秒」：post 候选在事件时刻之后（guard 之外）至少还需 2.0 秒素材，不足则不生成该候选。该值来自用户裁决，**不是**现有代码里的常量（代码现值 `MIN_CANDIDATE_SECONDS = 1.0`），落地待新链路设计；本轮不改任何代码与阈值。
 出处：
-- docs/pending-blockers.md:249（expect：可见分离最小观察窗 = 2.0 秒）
+- docs/pending-blockers.md:261（expect：可见分离最小观察窗 = 2.0 秒）
 - pipeline/v3_candidate_plan.py:37（expect：MIN_CANDIDATE_SECONDS = 1.0）
 - pipeline/v3_candidate_plan.py:34（expect：TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)）
 
@@ -187,7 +189,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 出处：pipeline/SCRIPTS.md:23（expect：v3_candidate_plan.py`](v3_candidate_plan.py)）
 - **误读**：文档里印了数字 = 这个数字可追溯
   - 正确：错。抽出的 826 个数字中，`code_commit`/`data_release`/`prompt_version` 三项齐全的为 0 行，绝大多数只有笼统口径描述，引用前必须回到产生它的记录；见 PB-020。
-  - 出处：docs/pending-blockers.md:282（expect：指标数字缺口径三元组）
+  - 出处：docs/pending-blockers.md:294（expect：指标数字缺口径三元组）
 - **误读**：每帧独立编码 = 模型知道帧序
   - 正确：错。逐帧单独编码只说明帧被分成多组送入，不构成模型具备时序感知的证据；`temporal_ids` 全为 -1 的成因尚未归因（PB-002 已按用户 2026-10-19 决定取消排查），不得写成「模型已知帧序」或「模型不知帧序」。
   - 出处：finetune/validation/video_loader.py:52（expect：own group (8 frames -> 8 groups)）
