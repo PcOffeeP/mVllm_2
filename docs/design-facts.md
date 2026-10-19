@@ -124,7 +124,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - docs/plans/2026-10-18-label-rebuild.md:72（expect：数据表新增 `visible_separation_time` 列）
 - docs/plans/2026-10-18-label-rebuild.md:101（expect：选 A —— **可见分离第一帧**（视觉可判））
 - docs/label-annotation-spec.md:54（expect：角色是权威值）
-- docs/label-annotation-spec.md:58（expect：时刻由脚本计算，禁止手填）
+- docs/label-annotation-spec.md:62（expect：标注表不出现承载新锚点时刻的列。事件时刻由脚本按）
 
 ## 标签语义变更必须升契约哈希
 

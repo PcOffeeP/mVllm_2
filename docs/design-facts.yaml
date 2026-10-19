@@ -225,8 +225,8 @@ facts:
         expect: 选 A —— **可见分离第一帧**（视觉可判）
       - ref: docs/label-annotation-spec.md:54
         expect: 角色是权威值
-      - ref: docs/label-annotation-spec.md:58
-        expect: 时刻由脚本计算，禁止手填
+      - ref: docs/label-annotation-spec.md:62
+        expect: 标注表不出现承载新锚点时刻的列。事件时刻由脚本按
     established: 2026-10-18
     established_by: 用户裁决 2026-10-18
     supersedes: null
