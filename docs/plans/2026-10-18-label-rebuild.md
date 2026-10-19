@@ -55,7 +55,7 @@ Non-goals:
 
 `event_time` 参与四档标签的每一档判定，见 1.3 节的表。`event_time` 不可靠的样本会整体落入「无法判断」，这一档的规模同样受事件时刻影响。
 
-当前规模：`data-v4.1-r2` 共 1,678 条候选、85 个来源（`docs/project-todo.md:50`、`docs/project-todo.md:62`）。Fold0 validation 为 425 条，其中「已断裂」33 条（`docs/design-facts.md:69` 记载的 R1 旧口径结果）。训练池「已断裂」占 15.00%（DF-010）。
+当前规模：`data-v4.1-r2` 共 1,678 条候选、85 个来源（`docs/project-todo.md` 的「数据处理粒度（用户 2026-10-17 裁决）」条、同一文档 `R2-REALTRAIN` 章节的「**数据**：`data-v4.1-r2` 为 sealed」条）。Fold0 validation 为 425 条，其中「已断裂」33 条（`docs/design-facts.md:69` 记载的 R1 旧口径结果）。训练池「已断裂」占 15.00%（DF-010）。
 
 复核范围覆盖全部 1,678 条候选。只修 33 条会把「未断裂」与「发生断裂」的错标留在数据里，下一轮训练与评测继续带病。
 

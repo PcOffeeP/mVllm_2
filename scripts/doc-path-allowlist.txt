@@ -40,7 +40,7 @@ refs: records/full-chain-validation-20261018/c13/gate_coverage\.md files: docs/p
 refs: records/full-chain-validation-20261018/c14/metric_provenance\.csv files: docs/plans/2026-10-18-full-chain-validation\.md
 refs: scripts/(?:eval|train)_audit_[a-z_]+\.py files: docs/plans/2026-10-18-full-chain-validation\.md
 refs: scripts/release_audit_source_media\.py files: docs/plans/2026-10-18-full-chain-validation\.md
-# docs/pending-blockers.md:62/:86/:88 与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md:490–:519
+# docs/pending-blockers.md（门槛脚本出处）与 docs/plans/2026-10-18-evaluation-pipeline-redesign.md（判例库与 T1 判读器出处）
 # 引用的三个文件尚未产出：pending-blockers 原文注明门槛脚本「该文件目前不存在」，判例库与 T1
 # 判读器标「新增 / 阶段一产出」，finetune/validation/cases/ 目录当前整体不存在。
 refs: finetune/eval_build_gate_thresholds\.py files: (?:docs/pending-blockers\.md|docs/plans/2026-10-18-evaluation-pipeline-redesign\.md)
@@ -49,10 +49,10 @@ refs: finetune/validation/t1_judge\.py files: docs/plans/2026-10-18-evaluation-p
 
 # --- 现行文档逐条收口：已被合并/清理的历史文档名（不改台账原文） -------------
 # docs/DATA_PROCESSING_RUNBOOK.md 在 59dee2d1（docs: adopt consolidated workflows…）随文档合并迁出，
-# 现由 docs/data-workflow.md 承担；docs/project-todo.md:425 是历史记录，保留原文。
+# 现由 docs/data-workflow.md 承担；docs/project-todo.md 内以该文档名为标题的历史记录保留原文。
 refs: docs/DATA_PROCESSING_RUNBOOK\.md files: docs/project-todo\.md
 # docs/results/conda-environment-setup-20261013.md 在 749e9dba 的文档清理中删除，
-# docs/project-todo.md:318 的历史记录保留原文。
+# docs/project-todo.md 的「模型盘点一次普通git status可能刷新.git/index」段的历史记录保留原文。
 refs: docs/results/conda-environment-setup-20261013\.md files: docs/project-todo\.md
 
 # --- 历史/设计文档：保留原文，按「文档 × 引用」精确收口 -----------------------
@@ -75,7 +75,7 @@ refs: (?:versioning/(?:authorization|_sealed_ground_truth|mock_train_entry|scope
 refs: (?:docs/DATA_PROCESSING_RUNBOOK\.md|finetune/README\.md) files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\.md
 
 # 历史任务文档（迁移计划、规格、交接记录）逐条收口。
-# plan.md:30「文档收敛」清单与后续批次引用的 4 个文档均删除于 59dee2d1；spec.md:48 的冻结代码依据
+# plan.md 的「文档收敛」清单与后续批次引用的 4 个文档均删除于 59dee2d1；spec.md 的冻结代码依据
 # finetune/v4_1_stage_d_runtime.py 删除于 567138bc（refactor: simplify Python script layout）。
 # 同目录 intent.md 无失效引用，故不登记任何整文件规则。
 refs: (?:docs/project-guide\.md|docs/DATA_PROCESSING_RUNBOOK\.md|docs/INFERENCE_SERVICE_RUNBOOK\.md|finetune/README\.md) files: docs/tasks/2026-09-07-readable-version-control-migration/plan\.md
@@ -83,26 +83,26 @@ refs: finetune/v4_1_stage_d_runtime\.py files: docs/tasks/2026-09-07-readable-ve
 
 # 历史评测、诊断报告与归档结果：正文记录当轮实际使用的路径，报告头已逐条写明「失效路径」
 # 「未随迁」，一律保留原文；docs/results/ 不再整文件免检。
-# INDEX.md:256 叙述 model_evidence/ 整目录移除（e7bd1e75，A1：40 个文件），属删除追述。
+# INDEX.md 叙述 model_evidence/ 整目录移除（e7bd1e75，A1：40 个文件），属删除追述。
 refs: docs/results/model_evidence/README\.md files: docs/results/INDEX\.md
-# diagnostics-data-visual-audit-20260719.md 迁入说明 :8/:9 标注「失效路径」「未随迁」：
+# diagnostics-data-visual-audit-20260719.md 的迁入说明标注「失效路径」「未随迁」：
 # pipeline/contracts/tensile_vlm_v1.json 删除于 9707160f；minimal_overfit/ 数据留 bcdf4f36 + bundle。
 refs: (?:pipeline/contracts/tensile_vlm_v1\.json|finetune/results/diagnostics/minimal_overfit/preprocessing_alignment\.json) files: docs/results/diagnostics-data-visual-audit-20260719\.md
-# diagnostics-data-visual-audit-plan-20260717.md：:8 为改名映射（原 docs/diagnostics_report.md 迁入后改名
-# 20260719 报告，源在 bcdf4f36）；:10 明列「失效路径」——quality_check.py 删除于 567138bc，
+# diagnostics-data-visual-audit-plan-20260717.md 的改名映射段（原 docs/diagnostics_report.md 迁入后改名
+# 20260719 报告，源在 bcdf4f36）；「失效路径」清单明列——quality_check.py 删除于 567138bc，
 # minicpmv4_5_lora_sft_interval_fold0.yaml 删除于 4e4c063a。
 refs: (?:docs/diagnostics_report\.md|pipeline/scripts/quality_check\.py|finetune/MiniCPM/config/minicpmv4_5_lora_sft_interval_fold0\.yaml) files: docs/results/diagnostics-data-visual-audit-plan-20260717\.md
-# 同一报告 :11 与产物表 :120–:126 的 7 个 finetune/results/diagnostics/ 产物属「未随迁」（留 bcdf4f36 + bundle）。
+# 同一报告的「未随迁」说明与产物表所列 7 个 finetune/results/diagnostics/ 产物属「未随迁」（留 bcdf4f36 + bundle）。
 refs: finetune/results/diagnostics/(?:checkpoint_comparison/(?:full_run_exact|production_prompt_run)/checkpoint_comparison|control_experiments/(?:control_comparison|visual_gate/visual_gate_summary\.temporal_reindexed)|data_audit/training_distribution|minimal_overfit/minimal_overfit_summary_exact|visual_audit/visual_audit_summary)\.json files: docs/results/diagnostics-data-visual-audit-plan-20260717\.md
-# v4_1_stage_b_intermediate/README.md:23 追述冻结实现所用的脚本，该脚本删除于 567138bc。
+# v4_1_stage_b_intermediate/README.md 追述冻结实现所用的脚本，该脚本删除于 567138bc。
 refs: finetune/accept_v4_1_intermediate_model\.py files: docs/results/v4_1_stage_b_intermediate/README\.md
-# entrypoint-map.md:89 原文「已随 2026-10-18 清理移除」，该文件删除于 749e9dba。
+# entrypoint-map.md 原文「已随 2026-10-18 清理移除」，该文件删除于 749e9dba。
 refs: docs/results/v4_1_prompt_concise_cv_v1_seed3411/README\.md files: docs/results/version-control-migration/entrypoint-map\.md
 # version-control-migration/verification.md 为历史交接/审查记录：docs/DATA_PROCESSING_RUNBOOK.md、
 # docs/MODEL_GATE_BASELINE.md、finetune/README.md 删除于 59dee2d1；finetune/v4_1_stage_d_runtime.py
 # 删除于 567138bc（原文按 `f04ca7cb:` 前缀引用该历史代码）。
 refs: (?:docs/DATA_PROCESSING_RUNBOOK\.md|docs/MODEL_GATE_BASELINE\.md|finetune/README\.md|finetune/v4_1_stage_d_runtime\.py) files: docs/results/version-control-migration/verification\.md
-# 同文件 :146 原文「只有未跟踪的 docs/tasks/2026-09-07-readable-version-control-migration/agent-handoff.md」：
+# 同文件原文「只有未跟踪的 docs/tasks/2026-09-07-readable-version-control-migration/agent-handoff.md」：
 # 该文件从未入 Git，属未跟踪运行/交接产物叙述。
 refs: docs/tasks/2026-09-07-readable-version-control-migration/agent-handoff\.md files: docs/results/version-control-migration/verification\.md
 

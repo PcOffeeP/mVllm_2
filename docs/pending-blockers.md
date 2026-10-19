@@ -33,7 +33,7 @@
 - 解除条件: 在训练机只读查明并给出书面结论，归因到以下三类之一并附命令与输出原文——(a) 配置未传、(b) plugin 不支持、(c) 需 patch。
 - 前置动作: PB-001 解除后开专项任务，先只读复现并 dump 传入 processor 的 `temporal_ids`（不加载权重、不改代码即可完成的先做）。
 - 负责人: agent（需用户先授权 GPU/训练机）
-- 证据与背景: 仓库内 `docs/project-todo.md:69`（CPU 复验实测 `temporal_ids` 全 `-1`，flat `[-1]×8`，depth `1/8/1`，由 processor 回填）、`docs/project-todo.md:103`（`load_video_frames` 默认 `temporal_fusion=False`，返回 `temporal_ids=None` 交给 processor 回填，逐帧成组；原引 `:99` 有误，2026-10-19 实测应为 `:103`）；仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**）。
+- 证据与背景: 仓库内 `docs/project-todo.md` 的「CPU 复验六项全部通过」条（实测 `temporal_ids` 全 `-1`，flat `[-1]×8`，depth `1/8/1`，由 processor 回填）、同一文档的「开发评测侧对齐训练/服务 + Prompt 统一 r2（服务侧仅为推定，待取证）（2026-10-17，Pi；未重测 r0）」条（`load_video_frames` 默认 `temporal_fusion=False`，返回 `temporal_ids=None` 交给 processor 回填，逐帧成组；定位以条目文本为准、不用行号：本条曾引 `:99`，2026-10-19 订正为当时实测 `:103`，行号随插入位移，仅作历史记录）；仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**）。
 - 记录日期: 2026-10-18
 - 备注: 允许临时改动以复现，但查清后必须还原，**不得提交 LlamaFactory 子模块**；结论未定前不得把「模型不具备时序感知」写入 `docs/design-facts.*`。
 - 取消记录（2026-10-19，用户裁决）: **未完成归因**，本条因整体数据与训练链路将重新设计而取消排查。原「解除条件」「前置动作」与上方「备注」原文保留，作为未执行的记录，不得据此视为已查明或已归因；本条结项理由不是查清成因，归因结论仍为空缺。
@@ -46,7 +46,7 @@
 - 解除条件: 下列七项**全部**满足才解除，任一项未满足即不得开训——① PB-001 `closed`、② PB-002 `closed`、③ 门禁 v2 定稿（PB-004 / PB-007 / PB-008 三条均 `closed`）、④ 训练预算实测校准完成（即本条「前置动作」要求的那份首 50 步实测记录已落盘并写明口径），以上①–④四项各附结项证据；⑤ 全链路验证 14 环节全部 `passed`（见 `docs/plans/2026-10-18-full-chain-validation.md`，逐环节证据落 `records/full-chain-validation-20261018/<环节编号>/`）；⑥ 标签重建完成（PB-015 `closed`，新 `release_id` 落盘）；⑦ 用户书面 GPU 授权记录。⑤–⑦ 为在原有①–④之上追加的前置，与①–④串联——任一项未满足即不得开训；其中标签变更会使 C4/C6/C11/C14 的验证结论失效（见该方案失效传播矩阵），故 ⑥ 须先于 ⑤ 完成。
 - 前置动作: 冻结 r2 训练 YAML（仓库内当前不存在），跑首 50 步实测校准预算（现 3 epoch 三折约 5.78 h 为推算值）。
 - 负责人: 用户 + agent
-- 证据与背景: `docs/project-todo.md:40`（台账顺序表 R2-REALTRAIN 行）、`docs/project-todo.md:57`（R2-REALTRAIN 章节）、`docs/project-todo.md:83`（R2 前置四项）。
+- 证据与背景: `docs/project-todo.md` 的台账顺序表 R2-REALTRAIN 行、同一文档的 `R2-REALTRAIN` 章节、同一文档的「标签判据现状（2026-10-18 订正）」条（R2 前置四项）。
 - 记录日期: 2026-10-18
 - 备注: 预算为推算值；本轮口径与 R1 不可比，见 PB-009。前置未完成就开训，评测结论将无法与 R1 同口径比较。标签未重建前开训无意义（标签系统性存疑，见 PB-015）。
 
@@ -103,7 +103,7 @@
 - 解除条件: 用户给出 k 的数量级（如 3 / 10 / 50）并指明依据。
 - 前置动作: 按 k 推导各 L1 门限，落 `finetune/eval_build_gate_thresholds.py`（该文件目前不存在，`git ls-files` 已确认）并复现三档情景。
 - 负责人: 用户
-- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:513`（U1 k 值取多少）、同文件 `:514`（U2/T1 选型）；`docs/project-todo.md:83`（④ 门槛由 k 推导、不许沿用现有数值）；现行阈值现状 `finetune/holdout_metrics.py:12`–`:19`（`four_state_macro_recall: 0.4006` 在 `:13`），`finetune/eval_run.py:612`（`expected_thresholds` 内 `four_state_macro_recall: 0.65`）。
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:513`（U1 k 值取多少）、同文件 `:514`（U2/T1 选型）；`docs/project-todo.md` 的「标签判据现状（2026-10-18 订正）」条（④ 门槛由 k 推导、不许沿用现有数值）；现行阈值现状 `finetune/holdout_metrics.py:12`–`:19`（`four_state_macro_recall: 0.4006` 在 `:13`），`finetune/eval_run.py:612`（`expected_thresholds` 内 `four_state_macro_recall: 0.65`）。
 - 记录日期: 2026-10-18
 - 备注: k 未定时所有 L1 门限数值均不可写入实现；改门槛属门禁口径变更，须与指标定义、报告口径同批（见 PB-008）。
 
@@ -114,7 +114,7 @@
 - 解除条件: 用户书面指定模型名、单价口径（含平均 token 数来源），并回答数据出境是否允许。
 - 前置动作: 实现 judge 客户端骨架，用 18 条 golden 跑双判读 κ 与人工一致率校准（判据：Cohen's κ ≥ 0.6、与人工一致率 ≥ 0.85）。
 - 负责人: 用户
-- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:514`（U2 用哪个 API 模型）、`:521`（U9 单价与平均 token 数，待取供应商公开价）、`:224`–`:228`（双判读一致性、与人工一致率、偏置统计、版本冻结）、`:14`（待用户裁决清单）；`docs/project-todo.md:84`（用户已裁决 T 判读器走 API 调用，本地只能跑 89B 级模型）。
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:514`（U2 用哪个 API 模型）、`:521`（U9 单价与平均 token 数，待取供应商公开价）、`:224`–`:228`（双判读一致性、与人工一致率、偏置统计、版本冻结）、`:14`（待用户裁决清单）；`docs/project-todo.md` 的「标签存疑（2026-10-18）」条（用户已裁决 T 判读器走 API 调用，本地只能跑 89B 级模型）。
 - 记录日期: 2026-10-18
 - 备注: 模型、Prompt 版本、`temperature=0` 三项须同时冻结并写入 `judge_id`，任一变化即新判读器、须重做一致率检验。
 
@@ -125,7 +125,7 @@
 - 解除条件: 标注集入库且条数落在 100–150，每条形如「原文 / 人工判定等级 / 等价表述」，入库路径固定。
 - 前置动作: 按已定抽取口径产出候选 200 条，人工标注后裁剪到 100–150。
 - 负责人: 用户主导、agent 辅助整理
-- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:491`（判例库登记路径 `finetune/validation/cases/judge_cases.jsonl`，标为「新增 / 阶段一产出」）；`docs/project-todo.md:83`（③ T1 须完成校准）。
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:491`（判例库登记路径 `finetune/validation/cases/judge_cases.jsonl`，标为「新增 / 阶段一产出」）；`docs/project-todo.md` 的「标签判据现状（2026-10-18 订正）」条（③ T1 须完成校准）。
 - 记录日期: 2026-10-18
 - 备注: 本登记册沿用请求中的 `golden/cases.jsonl` 说法，而仓库内设计稿写作 `finetune/validation/cases/judge_cases.jsonl`——**两处命名不一致，以实施定稿为准**；落库时须先统一并回写本条。`golden/cases.jsonl` 在仓库内不存在（`git ls-files '*golden*'` 无命中），此名仅为请求中的说法，**勿当仓库内路径引用**。
 
@@ -136,7 +136,7 @@
 - 解除条件: 用户给出字段取值空间（词表 or 自由文本）与语义等价的判定规则，并明确 M2/M3 计分方式。
 - 前置动作: 把口径写进判据表，补对应规则与测试样例。
 - 负责人: 用户
-- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:189`（S7c 机制/位置判分，标为「位置与机制的表述空间大，规则覆盖不全」）、`:212`（`reason_code` 枚举含「机制错 / 表述歧义」）、`:518`（U6 M3 权重 w）、`:525`（U13 evidence 通道是否纳入常规诊断）；`docs/project-todo.md:84`（M3 不计入严格正确但必须单列报告）。
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:189`（S7c 机制/位置判分，标为「位置与机制的表述空间大，规则覆盖不全」）、`:212`（`reason_code` 枚举含「机制错 / 表述歧义」）、`:518`（U6 M3 权重 w）、`:525`（U13 evidence 通道是否纳入常规诊断）；`docs/project-todo.md` 的「标签存疑（2026-10-18）」条（M3 不计入严格正确但必须单列报告）。
 - 记录日期: 2026-10-18
 - 备注: 口径定稿前不要动 Prompt 与判分实现；改口径即改门禁，须与 PB-004/PB-008 同批。
 
@@ -147,7 +147,7 @@
 - 解除条件: k 定稿后**同批**修改三项——指标定义、门槛、报告口径，三项缺一不得单独合入。
 - 前置动作: 按 k 推导轴 1 / 轴 2 门槛，复算 R1 旧口径两值做对照。
 - 负责人: 双方
-- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:311`–`:338`（§6.5 两轴定义与成对报告要求）、`:364`（旧口径点估计 84/177=0.474576、66/129=0.511628，标注「待验证」）；`docs/project-todo.md:83`（指标定义、门槛、口径必须同批改）。
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:311`–`:338`（§6.5 两轴定义与成对报告要求）、`:364`（旧口径点估计 84/177=0.474576、66/129=0.511628，标注「待验证」）；`docs/project-todo.md` 的「标签判据现状（2026-10-18 订正）」条（指标定义、门槛、口径必须同批改）。
 - 记录日期: 2026-10-18
 - 备注: 时序定位准确率条件于预测侧，单独引用无效，必须与断裂检出率成对报告；`:364` 两值在 PB-014 抽看完成前按「标注待验证」使用。
 
@@ -158,7 +158,7 @@
 - 解除条件: 用户确认三件事——在哪登记（台账 / 报告）、如何表述（是否显式建「不同口径」对照行）、旧数字是否标「不可直接比较」。
 - 前置动作: 按裁决改台账口径说明与报告模板（不删旧数字、不做静默换算）。
 - 负责人: 用户
-- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:517`（U5 R1 与 R2 可比性如何登记）、`:16`、`:36`（新口径数字来源与「仓库内尚无对应结果文件」）、`:505`–`:507`（§10.3 旧口径数字处理：补写四项元数据、禁止用换算系数折算）；`docs/project-todo.md:82`（新口径 425 条结果尚未入库）。
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:517`（U5 R1 与 R2 可比性如何登记）、`:16`、`:36`（新口径数字来源与「仓库内尚无对应结果文件」）、`:505`–`:507`（§10.3 旧口径数字处理：补写四项元数据、禁止用换算系数折算）；`docs/project-todo.md` 的「2026-10-18 实测（换管线重测 R1，未训练）」条（新口径 425 条结果尚未入库）。
 - 记录日期: 2026-10-18
 - 备注: 禁止用换算系数把旧数字折算成新口径——换算依赖对分布形状的假设，假设无从验证。
 
@@ -169,7 +169,7 @@
 - 解除条件: PB-007 定稿 + 重写方案评审通过 + 口径登记方式确定（见 PB-009）。
 - 前置动作: 起草重写后的 `analysis.user_prompt`（含「先描述首帧状态 → 再看末帧 → 再定档」的显式首帧锚点），走评审后升版本。
 - 负责人: 双方
-- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:110`（§3.2 判据已编码在契约，U4 已查证关闭）；契约 `pipeline/contracts/tensile_vlm_v4_1.json:168`（`analysis.user_prompt` 现有首帧锚点文字，见 DF-002）；`docs/project-todo.md:83`（① 按权威语义重写 Prompt 并补首帧锚点）。
+- 证据与背景: `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:110`（§3.2 判据已编码在契约，U4 已查证关闭）；契约 `pipeline/contracts/tensile_vlm_v4_1.json:168`（`analysis.user_prompt` 现有首帧锚点文字，见 DF-002）；`docs/project-todo.md` 的「标签判据现状（2026-10-18 订正）」条（① 按权威语义重写 Prompt 并补首帧锚点）。
 - 记录日期: 2026-10-18
 - 备注: 「否定命题不可证」的论证目前**仅见仓库外材料与本轮对话（均不在 Git 内），仓库内暂无锚点，待补写进本节证据**；改 Prompt 必须同步升版本并同步 `docs/design-facts.*`。DF-002 记载的是现行 r2 正文已含首帧锚点文字，与「补显式三段式锚点」不矛盾，但重写时须避免与 DF-002 表述冲突。
 
@@ -193,7 +193,7 @@
 - 解除条件: 对 1,678 候选做帧内容一致性抽检，产出问题样本清单（候选 ID + 帧号 + 问题描述 + 是否影响标注），清单落盘并有路径。
 - 前置动作: 先确认媒体可访问性（本机 store 或训练机），再定抽检比例与判据。
 - 负责人: agent
-- 证据与背景: 仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**，:325`–`:349 近似，其中 P3 段落记录模型把首帧描述为试样、把另一帧描述为「锡纸擦不锈钢」）；仓库内仅有 `docs/project-todo.md:50`（1,678 候选 / 85 来源的数据口径）和 `docs/results/training-data-ledger-20261017.md`（分折表），都不含帧内容体检结论。
+- 证据与背景: 仓库外 `~/pi-workspace/mVllm_2-audit/frame-awareness-report-20261018.md`（**不在 Git 内**，:325`–`:349 近似，其中 P3 段落记录模型把首帧描述为试样、把另一帧描述为「锡纸擦不锈钢」）；仓库内仅有 `docs/project-todo.md` 的「数据处理粒度（用户 2026-10-17 裁决）」条（1,678 候选 / 85 来源的数据口径）和 `docs/results/training-data-ledger-20261017.md`（分折表），都不含帧内容体检结论。
 - 记录日期: 2026-10-18
 - 备注: 现象目前只见于**模型自述**（非人工看图），未核实前不得据此否定数据可用性；须人工或直接看帧复核后才算证据。与 PB-015 的关系：体检结论若确认帧内容问题，则不能只靠重算 `event_time` 修标签，须并入 PB-015 的重建方案一并处置。
 - 取消记录（2026-10-19，用户裁决）: 帧内容体检取消，原因同 PB-002——整体数据与训练链路将重新设计、标签从头重做；本条现象仍仅见于模型自述，**未核实**。原 status 行附注「依赖标签重建，见 PB-015；帧内容体检结论须作为 PB-015 自动检测的输入之一」随本条关闭不再生效；条目其余原文原样保留，作为未执行的待办记录，不得当作已完成的体检结论。
@@ -205,13 +205,13 @@
 - 解除条件: `docs/design-facts.yaml` 的 `misreadings` 段追加一条（误读「每帧独立编码 = 模型知道时序」→ 正确结论），且 `python scripts/verify_design_facts.py` 通过。
 - 前置动作: 起草该条 wrong/correct 文案并附 evidence 行号，交给负责事实库的 agent 合入。
 - 负责人: agent
-- 证据与背景: `docs/design-facts.yaml` 的 `misreadings` 段（条目定位用条目文本，不用行号：本段在 `bf1ed03` 后为 8 条，本轮追加「每帧独立编码 = 模型知道帧序」后为 9 条；旧文所记「现有 7 条 + 起行 `:246`/`:248`/`:253`/`:258`/`:263`/`:270`/`:281`」是插入 DF-015/DF-016 之前的过期行号，已作废）；`docs/project-todo.md:103`（逐帧成组的实现事实，`grep -n` 实测；原引 `:99` 有误，2026-10-19 实测应为 `:103`）、`docs/project-todo.md:69`（`temporal_ids` 全 `-1` 实测，2026-10-19 复核）。
+- 证据与背景: `docs/design-facts.yaml` 的 `misreadings` 段（条目定位用条目文本，不用行号：本段在 `bf1ed03` 后为 8 条，本轮追加「每帧独立编码 = 模型知道帧序」后为 9 条；旧文所记「现有 7 条 + 起行 `:246`/`:248`/`:253`/`:258`/`:263`/`:270`/`:281`」是插入 DF-015/DF-016 之前的过期行号，已作废）；`docs/project-todo.md` 的「开发评测侧对齐训练/服务 + Prompt 统一 r2（服务侧仅为推定，待取证）（2026-10-17，Pi；未重测 r0）」条（逐帧成组的实现事实；定位以条目文本为准、不用行号：本条曾引 `:99`，2026-10-19 订正为当时实测 `:103`，行号随插入位移，仅作历史记录）、同一文档的「CPU 复验六项全部通过」条（`temporal_ids` 全 `-1` 实测，2026-10-19 复核）。
 - 记录日期: 2026-10-18
 - 备注: 事实库由脚本校验 evidence 行号必须指向真实非空行，行号入册前须复核；该结论与 PB-002 的归因边界相邻——PB-002 未结前，本条只登记「逐帧编码 ≠ 时序感知」，不得写成「模型已知/不知帧序」。
 
 **解除记录（2026-10-19，Pi）**：解除条件两项均已满足，本条解除；上方原文（阻塞/依赖、解除条件、前置动作、负责人、记录日期、备注）原样保留为历史记录。
 
-- ① `docs/design-facts.yaml` 的 `misreadings` 段已追加「每帧独立编码 = 模型知道帧序」一条（条目文本定位，不用行号），带 2 条 evidence 且均含 `expect`：`finetune/validation/video_loader.py:52`（`own group (8 frames -> 8 groups)`）、`docs/project-todo.md:69`（`8 帧 → 8 组、每组 1 帧`）。两处 `expect` 均经 `grep -nF` 实测为该行唯一字面出现，`python scripts/verify_design_facts.py` 逐条判 PASS。
+- ① `docs/design-facts.yaml` 的 `misreadings` 段已追加「每帧独立编码 = 模型知道帧序」一条（条目文本定位，不用行号），带 2 条 evidence 且均含 `expect`：`finetune/validation/video_loader.py:52`（`own group (8 frames -> 8 groups)`）、`docs/project-todo.md` 的「CPU 复验六项全部通过」条（`8 帧 → 8 组、每组 1 帧`）。两处 `expect` 均经 `grep -nF` 实测为该行唯一字面出现，`python scripts/verify_design_facts.py` 逐条判 PASS。
 - ② `python scripts/verify_design_facts.py`：`FAIL 0`（`合计 79 项：PASS 79，PASS(no-expect) 0`，其中「带 expect 的 evidence 72 条，命中 72 条」）；该结论可在仓库内用同一命令 `python scripts/verify_design_facts.py` 自行复现（evidence 行号校验与 expect 命中判定都在仓库内完成，不依赖仓库外文件），仓库外 `~/pi-workspace/mVllm_2-audit/design-facts-20261019-followup/checks/01-verify.txt` 只是那一次运行的原始输出副本（**不在 Git 内**，他机不可达，不写作链接），不是唯一举证。
 - ③ 证据提交：该条文案与 evidence 取自上一提交 `bf1ed03`（DF-016 与「文档里印了数字」条同批落地，本条当时的判据差 misreadings 这一条）；本轮收口提交：`f06dea6`（该提交把 PB-013 置 closed 并在 misreadings 段追加本条；哈希为已发生提交的确定值，不受后续改动影响）。
 - ④ 结论边界：本条只登记「编码分组方式 ≠ 时序感知」；`temporal_ids` 全为 `-1` 的成因**未归因**（PB-002 已按用户 2026-10-19 决定取消排查），不得读作「模型已知帧序」或「模型不知帧序」。
@@ -313,9 +313,9 @@
 - C-01「不改标签值」vs「标签全量重标」: 出处 A `docs/plans/2026-10-18-evaluation-pipeline-redesign.md:142`/`:146`；出处 B `docs/plans/2026-10-18-label-rebuild.md:103` 与 PB-015 解除条件（「全量 1,678 重算完成」，`docs/pending-blockers.md:58`）。
 - C-02 PB-015 内部：阻塞原因称 PB-001 未 closed，同条「状态说明（2026-10-19）」又记 PB-001 已 closed: 出处 A `docs/pending-blockers.md:56`（PB-015「阻塞/依赖」）；出处 B `docs/pending-blockers.md:57`（同条「状态说明（2026-10-19）」）。行号已于 2026-10-19 本轮插入后实测。
 - C-03 PB-003 内部：前置条件「四项」与「七项」并存: 出处 A `docs/pending-blockers.md:44`（PB-003「阻塞/依赖」）；出处 B `docs/pending-blockers.md:46`（PB-003「解除条件」，明列七项）。行号已于 2026-10-19 本轮插入后实测。
-- C-04 父子窗口状态：一处称「正在核实中」，事实库已列为定论: 出处 A 为 `docs/pending-blockers.md` 的 §D 已确认结论第 3 条（「父子窗口状态不同是设计使然，不是数据矛盾」；引用以条目文本定位为准，2026-10-19 实测位于 `:330`（第二批裁决回填插入后复测），行号仅作附注）；出处 B 为 `docs/design-facts.yaml` 的 misreadings 首条（「父子窗口状态不同 = 数据矛盾」，已以定论形式列出且无 evidence 行；引用以条目文本定位为准，2026-10-19 实测 `- wrong:` 在 `:291`、`correct` 正文在 `:292`，行号仅作附注）。原引的 `docs/design-facts.yaml:245`/`:246`–`:247` 为插入 DF-015/DF-016 之前的过期行号，已作废；该条原文已在提交 `f06dea6` 中改为不依赖行号、按条目文本定位的写法，原先「本轮未修改该条原文」的表述随之失效。本条只列冲突、不择一，不裁定哪一侧对。
-- C-05 `docs/project-todo.md` 的 ARTIFACT-RETENTION 条目内部：「待确认（技术债）」段与「已修」段并存: 出处 A `docs/project-todo.md:195`；出处 B `docs/project-todo.md:196`。
-- C-06 `docs/results/version-control-migration/verification.md` 仍把已删除目录 `docs/results/model_evidence/` 描述为契约来源: 出处 A `docs/results/version-control-migration/verification.md:87`；出处 B `docs/project-todo.md:195`（自述该目录已在 A1 删除、该描述与磁盘现实不再对应）。
+- C-04 父子窗口状态：一处称「正在核实中」，事实库已列为定论: 出处 A 为 `docs/pending-blockers.md` 的 §D 已确认结论第 3 条（「父子窗口状态不同是设计使然，不是数据矛盾」；引用以条目文本定位为准，不用行号；2026-10-19 曾实测位于 `:330`，行号随插入位移，仅作历史附注）；出处 B 为 `docs/design-facts.yaml` 的 misreadings 首条（「父子窗口状态不同 = 数据矛盾」，已以定论形式列出且无 evidence 行；引用以条目文本定位为准，2026-10-19 实测 `- wrong:` 在 `:291`、`correct` 正文在 `:292`，行号仅作附注）。原引的 `docs/design-facts.yaml:245`/`:246`–`:247` 为插入 DF-015/DF-016 之前的过期行号，已作废；该条原文已在提交 `f06dea6` 中改为不依赖行号、按条目文本定位的写法，原先「本轮未修改该条原文」的表述随之失效。本条只列冲突、不择一，不裁定哪一侧对。
+- C-05 `docs/project-todo.md` 的 ARTIFACT-RETENTION 条目内部：「待确认（技术债）」段与「已修」段并存: 出处 A `docs/project-todo.md` 的「待确认（技术债，2026-10-18 审查发现）」条；出处 B 同一文档的「归档包缺失状态已修（2026-10-18）」条。
+- C-06 `docs/results/version-control-migration/verification.md` 仍把已删除目录 `docs/results/model_evidence/` 描述为契约来源: 出处 A `docs/results/version-control-migration/verification.md:87`；出处 B `docs/project-todo.md` 的「待确认（技术债，2026-10-18 审查发现）」条（自述该目录已在 A1 删除、该描述与磁盘现实不再对应）。
 - 解除条件: 用户给出逐条裁定（处理 / 不处理 / 改为其他口径），并明确哪些条目需回写原文；未裁定的条目保留原样。
 - 前置动作: 已把清点结果与冲突清单登记于本条（本轮只读清点，未改任何数字或结论）；裁定后再逐条出改写方案。
 - 负责人: 用户
@@ -327,10 +327,10 @@
 
 本节为已定论结论，登记目的是避免重复调研；引用时按下面给出的 `DF-xxx` 或 `文件:行` 标注。
 
-1. 换管线（64 → 512 token）不是「已断裂」零召回的原因：同模型、同数据、同 Prompt，两侧均 0/33。出处：`docs/design-facts.yaml` DF-009、`docs/project-todo.md:82`。
+1. 换管线（64 → 512 token）不是「已断裂」零召回的原因：同模型、同数据、同 Prompt，两侧均 0/33。出处：`docs/design-facts.yaml` DF-009、`docs/project-todo.md` 的「2026-10-18 实测（换管线重测 R1，未训练）」条。
 2. `strict_valid_rate` 只校验形式，不校验语义。出处：`docs/design-facts.yaml` DF-003、`finetune/eval_semantics.py:126`（`result.update(..., strict_valid=True)` 即「形式校验通过」的赋值点）、`finetune/eval_semantics.py:376`（`metrics["strict_valid_rate"]` 汇总处）；`finetune/eval_semantics.py:101` 的 docstring 只说明 `extract_semantics` 不接收标签 / 视频 / 模型身份，是该结论的旁证而非直接陈述。
 3. 父子窗口状态不同是设计使然，不是数据矛盾——**此条正在核实中，若核实否证须同时更新本节与 `docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"）**。出处：`docs/design-facts.yaml` 的 misreadings 首条（"父子窗口状态不同 = 数据矛盾"；引用以条目文本定位为准，2026-10-19 实测位于 `:291`，正文 `:292`，行号仅作附注）。
-4. 模型输出「已断裂」在 425 条预测中出现 0 次。出处：`docs/project-todo.md:82`、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:368`（`prediction_clip_state_distribution` 里没有「已断裂」键）。
+4. 模型输出「已断裂」在 425 条预测中出现 0 次。出处：`docs/project-todo.md` 的「2026-10-18 实测（换管线重测 R1，未训练）」条、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:368`（`prediction_clip_state_distribution` 里没有「已断裂」键）。
 5. 训练池「已断裂」占 15.00%，非数据稀缺。出处：`docs/design-facts.yaml` DF-010、`docs/plans/2026-10-18-evaluation-pipeline-redesign.md:85`（1253 条候选 188 条 = 15.00%，每 epoch 3000 行 564 行 = 18.80%）、`finetune/train_build_source_aware_dataset.py:30`（`SIGNATURE_COUNT_CAP = 3`，支撑「重复倍率 3.0 已顶上限」）。
 
 ## E. 决策填答表（9 项待答 + §E-2 另 2 项）
