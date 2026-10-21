@@ -45,7 +45,7 @@ from pipeline.v3_candidate_media import (  # noqa: E402
 )
 
 
-DEFAULT_MODEL = PROJECT_ROOT / "models/minicpmv4_5"
+DEFAULT_MODEL = PROJECT_ROOT / "base-models/minicpmv4_5"
 
 
 def build_parser() -> argparse.ArgumentParser:

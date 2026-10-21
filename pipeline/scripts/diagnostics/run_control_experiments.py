@@ -4,7 +4,7 @@
 # 迁入日期：2026-10-18
 # 迁入原因：保留 2026-07 诊断结论与负面证据：has_fracture recall 9.50%、legal/joint 0%、任何 checkpoint 与 E1～E4 不得发布。
 # 阅读提示：本文件结论形成于 2026-07，其中路径、命令与数据位置可能已失效；正文数字与结论保持原样未改，请按历史证据阅读，不要当作当前状态。
-# 失效路径（正文引用、当前仓库不存在）：`models/minicpmv4_5`
+# 失效路径（正文引用、当前仓库不存在）：`base-models/minicpmv4_5`
 # 未随迁（原 finetune/results/diagnostics/ 下的输入/输出数据与依赖，留 bcdf4f36 + bundle）：
 #   - finetune/results/diagnostics/control_experiments
 #   - finetune/results/diagnostics/checkpoint_comparison/full_run_exact/final
@@ -30,7 +30,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 RESULT_ROOT = ROOT / "finetune/results/diagnostics/control_experiments"
-BASE_MODEL = ROOT / "models/minicpmv4_5"
+BASE_MODEL = ROOT / "base-models/minicpmv4_5"
 EXPERIMENTS = ("E1", "E2", "E3", "E4")
 
 

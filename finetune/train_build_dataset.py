@@ -225,7 +225,7 @@ def _rewrite_rows(
             portable_video = str(resolved_video.relative_to(data_root))
         except ValueError as exc:
             raise SourceAware3kError(
-                f"{label}[{index}] 视频路径不属于项目 workspace/data"
+                f"{label}[{index}] 视频路径不属于项目 data 根"
             ) from exc
         row = {
             "videos": [portable_video],

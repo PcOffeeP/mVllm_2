@@ -800,7 +800,7 @@ def promote(
         ):
             raise DataRebuildError("当前 source fingerprint 已变化")
         if rebuild.root.stat().st_dev != current.root.stat().st_dev:
-            raise DataRebuildError("staging 与 workspace/data 不在同一文件系统")
+            raise DataRebuildError("staging 与 data 不在同一文件系统")
 
         entries = manifest.get("entries")
         if not isinstance(entries, list) or not entries:

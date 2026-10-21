@@ -283,7 +283,7 @@ def build_performance_input(*, root, eval_version, model_version, model_version_
         raise ValueError("explicit quantization_bit must be null or 4")
     if "quantization_bit" not in config:
         raise ValueError("freeze quantization_bit explicitly")
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     model = validate_model_for_evaluation(registry, model_version, model_version_number)
     if model.source_scope not in {"base", "diagnostic_fold", "full"}:
         raise ValueError("performance supports verified base/completed-fold/full sources")
@@ -340,7 +340,7 @@ def build_performance_input(*, root, eval_version, model_version, model_version_
 def prepare_performance_evaluation(**kwargs):
     from versioning.manifest import _publish_immutable
     value = build_performance_input(**kwargs)
-    path = Path(kwargs["root"]) / "workspace/evaluations" / value["eval_version"] / "input/evaluation.yaml"
+    path = Path(kwargs["root"]) / "evaluations" / value["eval_version"] / "input/evaluation.yaml"
     _publish_immutable(path, canonical(value), label="performance frozen input")
     _publish_immutable(path.parent / "sha256", (digest(value) + "\n").encode(), label="performance input seal")
     return path
@@ -349,7 +349,7 @@ def prepare_performance_evaluation(**kwargs):
 def verify_performance_evaluation(*, root, eval_version, live=True, probe=None):
     from versioning.ids import parse_eval_id
     parse_eval_id(eval_version)
-    path = Path(root) / "workspace/evaluations" / eval_version / "input/evaluation.yaml"
+    path = Path(root) / "evaluations" / eval_version / "input/evaluation.yaml"
     file_digest(path)
     value = json.loads(path.read_bytes())
     file_digest(path.parent / "sha256")
@@ -381,11 +381,11 @@ def execute_performance_evaluation(*, root, eval_version, evidence_path):
     file_digest(evidence_path)
     evidence = json.loads(Path(evidence_path).read_bytes())
     report = replay_performance_evidence(value, evidence)
-    output = Path(root) / "workspace/evaluations" / eval_version / "output"
+    output = Path(root) / "evaluations" / eval_version / "output"
     # Reserve a new output once; a second import cannot reset the request
     # denominator, switch synthetic provenance or replace a prior failure.
     output.mkdir(exist_ok=False)
-    store = open_eval_store(Path(root) / "workspace/mlflow")
+    store = open_eval_store(Path(root) / "mlflow")
     record = create_eval_run(store, eval_version, model_id=value["model"]["model_id"],
         model_version_number=value["model"]["version"], data_version=value["data_version"],
         config="sha256:" + digest(value), git_commit=value["git_commit"], scope="single_fold", split="validation",
@@ -471,7 +471,7 @@ def export_performance_evaluation(*, root, eval_version):
     from versioning.mlflow_eval import open_eval_store, validate_eval_for_conclusion
     from versioning.manifest import _publish_immutable
     value = verify_performance_evaluation(root=root, eval_version=eval_version, live=False)
-    store = open_registry_store(Path(root) / "workspace/mlflow", data_root=Path(root) / "data")
+    store = open_registry_store(Path(root) / "mlflow", data_root=Path(root) / "data")
     record = validate_eval_for_conclusion(open_eval_store(store.root), eval_version)
     artifact_root = _run_artifact_root(store, record.run_id)
     input_value = json.loads((artifact_root / "input/evaluation.yaml").read_bytes())

@@ -197,7 +197,7 @@ def dataset_registration(file_name: str) -> dict[str, Any]:
 
 def base_config(output_name: str) -> dict[str, Any]:
     return {
-        "model_name_or_path": "../models/minicpmv4_5",
+        "model_name_or_path": "../base-models/minicpmv4_5",
         "trust_remote_code": True,
         "flash_attn": "sdpa",
         "stage": "sft",

@@ -245,7 +245,7 @@ def main() -> None:
     )
 
     config = {
-        "model_name_or_path": "../models/minicpmv4_5",
+        "model_name_or_path": "../base-models/minicpmv4_5",
         "trust_remote_code": True,
         "flash_attn": "sdpa",
         "stage": "sft",
@@ -321,7 +321,7 @@ def main() -> None:
         encoding="utf-8",
     )
     merge_config = {
-        "model_name_or_path": "../models/minicpmv4_5",
+        "model_name_or_path": "../base-models/minicpmv4_5",
         "adapter_name_or_path": (
             "../LlamaFactory/saves/minicpmv4_5/lora/diagnostic_overfit"
         ),

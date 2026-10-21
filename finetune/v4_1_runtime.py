@@ -98,7 +98,7 @@ def load_release_expectations(
 ) -> dict[str, Any]:
     """Load the frozen contract_hash and counts from a release manifest.
 
-    Reads from workspace/data/releases/<release_id>/manifest/release_manifest.json
+    Reads from data/releases/<release_id>/manifest/release_manifest.json
     and verifies the manifest's contract_hash against the pinned value stored in
     finetune/active_data_release.json. Raises V4_1FinetuneError when the pointer
     is incomplete or when the manifest has drifted (e.g. through tampering).

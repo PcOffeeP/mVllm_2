@@ -720,7 +720,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default=str(Path(__file__).resolve().parents[2] / "models" / "minicpmv4_5"),
+        default=str(Path(__file__).resolve().parents[2] / "base-models" / "minicpmv4_5"),
         help="模型路径或 HuggingFace 名称",
     )
     return parser

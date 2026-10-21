@@ -97,7 +97,7 @@ from pipeline.v4_1_training_release import (  # noqa: E402
 )
 
 DEFAULT_REVIEW_REFERENCE_ID = "review-ref-7cd2e73a1cd1"
-DEFAULT_MODEL = PROJECT_ROOT / "models/minicpmv4_5"
+DEFAULT_MODEL = PROJECT_ROOT / "base-models/minicpmv4_5"
 
 
 def _record_stage(
@@ -871,7 +871,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command")
     run = subparsers.add_parser("run")
-    run.add_argument("--source-data-root", type=Path, default=PROJECT_ROOT / "workspace/data")
+    run.add_argument("--source-data-root", type=Path, default=PROJECT_ROOT / "data")
     run.add_argument("--run-root", type=Path, required=True)
     run.add_argument("--roi-mode", choices=("reuse", "review"))
     run.add_argument("--review-mode", choices=("reuse", "review"))
@@ -913,7 +913,7 @@ def _legacy_main() -> int:
             args.model = _project_path(args.model)
             if _project_path(args.source_data_root) != current.root:
                 raise DataRebuildError(
-                    "source-data-root 必须是当前 workspace/data"
+                    "source-data-root 必须是当前 data 根"
                 )
             if args.source_only:
                 if args.roi_mode is None:

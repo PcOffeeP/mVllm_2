@@ -546,7 +546,7 @@ def _formal_workspace(root: Path, eval_version: str) -> Path:
     from versioning.ids import parse_eval_id
     parse_eval_id(eval_version)
     root = Path(root).absolute()
-    path = root / "workspace/evaluations" / eval_version
+    path = root / "evaluations" / eval_version
     if any(p.is_symlink() for p in (path, *path.parents)):
         raise ValueError("evaluation workspace must not contain symlinks")
     return path
@@ -747,7 +747,7 @@ def _formal_input(*, root: Path, eval_version: str, model_version: str,
         raise ValueError("holdout actual execution is not connected; refusing before truth access or model loading")
     # No caller-supplied model directory: the complete registered identity is
     # checked before artifacts are materialized or any weight path is resolved.
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     model = validate_model_for_evaluation(registry, model_version, model_version_number)
     semantic = config["scorer"] == "semantic-v4.1"
     is_base = getattr(model, "source_kind", "trained") == "base"
@@ -1005,7 +1005,7 @@ def execute_versioned_evaluation(*, root: Path, eval_version: str,
         output = workspace / "output"
         if output.exists():
             raise ValueError("existing evaluation output requires recovery; use export for a completed run")
-        store = open_eval_store(Path(root) / "workspace/mlflow")
+        store = open_eval_store(Path(root) / "mlflow")
         client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
         input_sha = hashlib.sha256(_formal_bytes(value)).hexdigest()
         parent = create_eval_run(store, eval_version, model_id=value["model"]["model_id"],
@@ -1202,7 +1202,7 @@ def resume_versioned_evaluation(*, root: Path, eval_version: str, blind_reviews:
     workspace = _formal_workspace(root, eval_version)
     with (workspace / ".execution.lock").open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        store = open_eval_store(Path(root) / "workspace/mlflow")
+        store = open_eval_store(Path(root) / "mlflow")
         parent = get_eval_run(store, eval_version)
         if parent.workflow_state != "running" or parent.outcome is not None or set(parent.folds) != set(value["folds"]) or any(r.status != "FINISHED" for r in parent.folds.values()):
             raise ValueError("only completed inference awaiting review can resume scoring")
@@ -1433,7 +1433,7 @@ def export_versioned_evaluation(*, root: Path, eval_version: str) -> Path:
     from versioning.registry import open_registry_store
     from versioning.manifest import _publish_immutable
     value = verify_versioned_evaluation(root=root, eval_version=eval_version, live=False)
-    store = open_registry_store(Path(root) / "workspace/mlflow", data_root=Path(root) / "data")
+    store = open_registry_store(Path(root) / "mlflow", data_root=Path(root) / "data")
     record = validate_eval_for_conclusion(open_eval_store(store.root), eval_version)
     document = validate_evaluation_execution_artifacts(store=store, record=record)
     if document["input_sha256"] != hashlib.sha256(_formal_bytes(value)).hexdigest():
@@ -1451,7 +1451,7 @@ def compare_versioned_evaluations(*, root: Path, eval_version: str, baseline_eva
     from finetune.eval_baselines import compare_paired_records
     parse_eval_id(eval_version)
     parse_eval_id(baseline_eval_version)
-    store = open_registry_store(Path(root) / "workspace/mlflow", data_root=Path(root) / "data")
+    store = open_registry_store(Path(root) / "mlflow", data_root=Path(root) / "data")
     eval_store = open_eval_store(store.root)
     inputs, rows, manifests = {}, {}, {}
     for role, identity in (("base", baseline_eval_version), ("trained", eval_version)):

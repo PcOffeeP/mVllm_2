@@ -158,7 +158,7 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path, default=None, help="默认按 --round 推导")
     parser.add_argument("--output-metadata", type=Path, default=None, help="默认按 --round 推导")
     parser.add_argument("--report", type=Path, default=None, help="默认按 --round 推导")
-    parser.add_argument("--model", default="models/minicpmv4_5")
+    parser.add_argument("--model", default="base-models/minicpmv4_5")
     parser.add_argument("--reasons", nargs="+", default=["baseline_needs_regenerate"], help="默认只生成 needs_regenerate；传入 approved_interval_conflict 可扩展")
     parser.add_argument("--skip-healthcheck", action="store_true")
     args = parser.parse_args()

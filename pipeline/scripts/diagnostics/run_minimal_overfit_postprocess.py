@@ -4,7 +4,7 @@
 # 迁入日期：2026-10-18
 # 迁入原因：保留 2026-07 诊断结论与负面证据：has_fracture recall 9.50%、legal/joint 0%、任何 checkpoint 与 E1～E4 不得发布。
 # 阅读提示：本文件结论形成于 2026-07，其中路径、命令与数据位置可能已失效；正文数字与结论保持原样未改，请按历史证据阅读，不要当作当前状态。
-# 失效路径（正文引用、当前仓库不存在）：`data/diagnostic_overfit.json`、`models/minicpmv4_5`
+# 失效路径（正文引用、当前仓库不存在）：`data/diagnostic_overfit.json`、`base-models/minicpmv4_5`
 # 未随迁（原 finetune/results/diagnostics/ 下的输入/输出数据与依赖，留 bcdf4f36 + bundle）：
 #   - finetune/results/diagnostics/minimal_overfit
 #   - finetune/results/diagnostics/run_dataset_evaluation.py
@@ -90,7 +90,7 @@ def main() -> None:
         shutil.rmtree(merged_dir)
     if not (merged_dir / "model.safetensors.index.json").is_file():
         merge_config = {
-            "model_name_or_path": str((ROOT / "models/minicpmv4_5").resolve()),
+            "model_name_or_path": str((ROOT / "base-models/minicpmv4_5").resolve()),
             "adapter_name_or_path": str(adapter_dir),
             "template": "minicpm_v",
             "finetuning_type": "lora",
@@ -124,7 +124,7 @@ def main() -> None:
     manifest = {
         "experiment_id": "minimal_overfit",
         "model_kind": "merged",
-        "base_model": "models/minicpmv4_5",
+        "base_model": "base-models/minicpmv4_5",
         "adapter": str(adapter_dir),
         "adapter_sha256": sha256(adapter_file),
         "dataset": str(dataset_file),

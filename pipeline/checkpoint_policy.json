@@ -4,7 +4,7 @@
   "protected_experiments": [
     {
       "reason": "current_release_training_source",
-      "adapter": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
+      "adapter": "trains/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
       "retention": "all"
     }
   ],

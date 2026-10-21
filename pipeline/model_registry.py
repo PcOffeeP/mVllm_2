@@ -139,10 +139,10 @@ def _validate_artifact(
     aggregate = value.get("aggregate_sha256")
     if (
         not isinstance(managed_path, str)
-        or not managed_path.startswith("workspace/models/")
+        or not managed_path.startswith("models/")
     ):
         raise ModelRegistryError(
-            f"artifacts.{name}.managed_path 必须位于 workspace/models/"
+            f"artifacts.{name}.managed_path 必须位于 models/"
         )
     if not isinstance(frozen_path, str) or not Path(frozen_path).is_absolute():
         raise ModelRegistryError(
@@ -159,9 +159,9 @@ def _validate_artifact(
         if project_root is None:
             raise ModelRegistryError("校验物理模型时必须提供 project_root")
         path = (Path(project_root).resolve() / managed_path).resolve()
-        workspace = (Path(project_root).resolve() / "workspace/models").resolve()
-        if path != workspace and workspace not in path.parents:
-            raise ModelRegistryError(f"受管路径逃逸 workspace/models: {path}")
+        models_root = (Path(project_root).resolve() / "models").resolve()
+        if path != models_root and models_root not in path.parents:
+            raise ModelRegistryError(f"受管路径逃逸 models: {path}")
         if not path.is_dir():
             raise ModelRegistryError(f"受管模型目录不存在: {path}")
     return dict(value)
@@ -390,11 +390,11 @@ def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[
     from versioning.registry import open_registry_store
     _validate_route(service_mode, alias)
     root = Path(root).absolute()
-    store = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    store = open_registry_store(root / "mlflow", data_root=root / "data")
     record = validate_service_current(store, alias=alias, service_mode=service_mode,
-        models_root=root / "workspace/models", records_root=root)
+        models_root=root / "models", records_root=root)
     prompt = _service_prompt(root, store, record)
-    target = root / "workspace/models/materialized" / record.model_id
+    target = root / "models/materialized" / record.model_id
     client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
     inventory = {}
     with tempfile.TemporaryDirectory(prefix="service-artifacts-") as temp:
@@ -415,7 +415,7 @@ def resolve_service_model(root: Path, *, alias: str, service_mode: str) -> dict[
     inventory["base_model"] = _service_files(model_path)
     # Detect Registry/current changes during content verification.
     if validate_service_current(store, alias=alias, service_mode=service_mode,
-        models_root=root / "workspace/models", records_root=root) != record:
+        models_root=root / "models", records_root=root) != record:
         raise ModelRegistryError("service Registry binding changed during validation")
     if _service_prompt(root, store, record) != prompt:
         raise ModelRegistryError("service Prompt changed during validation")

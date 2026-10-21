@@ -1,4 +1,4 @@
-model_name_or_path: ../models/minicpm_v_4_5
+model_name_or_path: ../base-models/minicpmv4_5
 cache_dir: null
 adapter_name_or_path: ../LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407
 template: minicpm_v

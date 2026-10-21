@@ -225,11 +225,11 @@ def prepare_fixed_prompt_run(
     baseline_merge = _read_yaml(baseline_merge_path, "baseline merge config")
     train = {
         **baseline_train,
-        "model_name_or_path": "models/minicpm_v_4_5",
+        "model_name_or_path": "base-models/minicpmv4_5",
         "dataset": "tensile_v4_1_fixed_full_fields_seed3411",
         "eval_dataset": "tensile_v4_1_fixed_full_fields_fold0_val",
         "dataset_dir": _repo_relative(paths.input, project_root),
-        "media_dir": "workspace/data",
+        "media_dir": "data",
         "output_dir": _repo_relative(paths.adapter, project_root),
     }
     if early_stopping_steps is not None:
@@ -238,7 +238,7 @@ def prepare_fixed_prompt_run(
         train["early_stopping_steps"] = early_stopping_steps
     merge = {
         **baseline_merge,
-        "model_name_or_path": "models/minicpm_v_4_5",
+        "model_name_or_path": "base-models/minicpmv4_5",
         "adapter_name_or_path": _repo_relative(paths.adapter, project_root),
         "export_dir": _repo_relative(paths.merged, project_root),
     }
@@ -450,12 +450,12 @@ def prepare_versioned_run(*, root: Path, train_version: str, data_version: str,
             raise ValueError("fold config must be a non-empty mapping")
         _reject_unfrozen_training_inputs(source)
     root = Path(root).absolute()
-    run = root / "workspace/runs" / train_version
+    run = root / "trains" / train_version
     target = run / "input"
     if any(path.is_symlink() for path in (target, *target.parents)):
         raise ValueError("training paths must not contain symlinks")
     # Prompt 的 store 副本与 Git checkout 副本必须逐字节一致；不一致时在任何
-    # 冻结产物落盘之前拒绝，workspace/runs 下的内容都不会被创建。
+    # 冻结产物落盘之前拒绝，trains 下的内容都不会被创建。
     verify_prompt_checkout_copy(root, prompt_version, checkout_root=prompt_checkout_root)
     files, binding = build_versioned_datasets(root=root, data_version=data_version,
         prompt_version=prompt_version, media_root=media_root, inputs_path=inputs_path, scope=scope)
@@ -517,7 +517,7 @@ def verify_versioned_run(*, root: Path, train_version: str, for_execution: bool 
     from versioning.prompts import verify_frozen_prompt
     parse_train_id(train_version)
     root = Path(root).absolute()
-    target = root / "workspace/runs" / train_version / "input"
+    target = root / "trains" / train_version / "input"
     if any(p.is_symlink() for p in (target, *target.parents)):
         raise ValueError("frozen input paths must not contain symlinks")
     inventory = _read_json(target / "input-manifest.json", "frozen input manifest")
@@ -625,7 +625,7 @@ def execute_versioned_run(*, root: Path, train_version: str, fold: int | None = 
     training = verify_versioned_run(root=root, train_version=train_version)
     if fold is not None and training.get("scope") == "full":
         raise ValueError("full training does not accept fold")
-    run = root / "workspace/runs" / train_version
+    run = root / "trains" / train_version
     with (run / ".execution.lock").open("a+b") as lock:
         try:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -640,7 +640,7 @@ def execute_versioned_run(*, root: Path, train_version: str, fold: int | None = 
         if any(len(value) > MAX_PARAM_VAL_LENGTH for value in params.values()):
             raise ValueError("frozen config exceeds MLflow parameter limit")
         from versioning.mlflow_train import get_train_run, TrainRecordNotFound
-        store = open_train_store(root / "workspace/mlflow")
+        store = open_train_store(root / "mlflow")
         client = MlflowClient(tracking_uri=store.tracking_uri)
         try:
             parent = get_train_run(store, train_version)
@@ -761,7 +761,7 @@ def export_versioned_run(*, root: Path, train_version: str) -> Path:
     from versioning.mlflow_train import open_train_store, validate_train_for_promotion
     root = Path(root).absolute()
     training = verify_versioned_run(root=root, train_version=train_version, for_execution=False)
-    store = open_train_store(root / "workspace/mlflow")
+    store = open_train_store(root / "mlflow")
     parent = validate_train_for_promotion(store, train_version)
     from versioning.registry import _validate_train_execution_artifacts
     _validate_train_execution_artifacts(store, parent, require_all_outputs=True)

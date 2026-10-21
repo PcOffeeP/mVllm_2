@@ -1,5 +1,5 @@
 # Formal visual-LoRA run on immutable release v4.1.0-760050fad303.
-model_name_or_path: ../models/minicpm_v_4_5
+model_name_or_path: ../base-models/minicpmv4_5
 cache_dir: null
 trust_remote_code: true
 flash_attn: sdpa
@@ -22,9 +22,9 @@ upcast_layernorm: true
 
 dataset: tensile_v4_1_fold2_train
 eval_dataset: tensile_v4_1_fold2_val
-dataset_dir: ../workspace/data/releases/v4.1.0-760050fad303
+dataset_dir: ../data/releases/v4.1.0-760050fad303
 template: minicpm_v
-media_dir: ../workspace/data
+media_dir: ../data
 cutoff_len: 2048
 video_maxlen: 8
 preprocessing_num_workers: 4

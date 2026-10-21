@@ -149,7 +149,7 @@ def build_holdout_input(*, root, eval_version, model_version, model_version_numb
     validate_holdout_layout(release)  # Only directory metadata, never labels.
     if Path(media_root).absolute() != release / 'media':
         raise ValueError('holdout media_root must be the release media directory')
-    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    registry = open_registry_store(root / 'mlflow', data_root=root / 'data')
     model = validate_model_for_evaluation(registry, model_version, model_version_number)
     if model.source_scope != 'full' or model.deploy_target != model.artifacts['full'].get(config['artifact_kind']):
         raise ValueError('full holdout must evaluate the full model deploy_target')
@@ -292,7 +292,7 @@ def execute_holdout_inference(*, root, eval_version, prompt_checkout_root=None):
         private = _private(workspace)
         if any(private.iterdir()):
             raise ValueError('existing holdout inference requires same-run scoring/recovery, never reinference')
-        store = open_eval_store(root / 'workspace/mlflow')
+        store = open_eval_store(root / 'mlflow')
         parent = create_eval_run(store, eval_version, model_id=value['model']['model_id'],
             model_version_number=value['model']['version'], data_version=value['data_version'],
             config=f'sha256:{_digest(value)}', git_commit=value['git_commit'], scope='full',
@@ -421,7 +421,7 @@ def score_holdout_evaluation(*, root, eval_version, executor, prompt_checkout_ro
         prereg = _authorization(root, value, allow_consumed=True)
         private = _private(workspace)
         inference = _json(private / 'inference.json', private=True)
-        store = open_eval_store(root / 'workspace/mlflow')
+        store = open_eval_store(root / 'mlflow')
         client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
         run = _check_run(client, inference['run_id'], value)
         if (inference['input_sha256'] != _digest(value)
@@ -637,7 +637,7 @@ def _review_context(root, eval_version):
     _authorization(root, value, allow_consumed=True)
     private = _private(ev._formal_workspace(root, eval_version))
     inference = _json(private / 'inference.json', private=True)
-    store = open_eval_store(Path(root) / 'workspace/mlflow')
+    store = open_eval_store(Path(root) / 'mlflow')
     client = scoped_mlflow_client(tracking_uri=store.tracking_uri)
     run = _check_run(client, inference['run_id'], value)
     if (inference['input_sha256'] != _digest(value)
@@ -732,14 +732,14 @@ def _verified_exposure(private, value, inference):
     from finetune.eval_review import _profile, _worker_executable
     from versioning.backup import scoped_mlflow_client
     from versioning.mlflow_eval import open_eval_store
-    params = scoped_mlflow_client(tracking_uri=open_eval_store(private.parents[3] / 'workspace/mlflow').tracking_uri).get_run(inference['run_id']).data.params
+    params = scoped_mlflow_client(tracking_uri=open_eval_store(private.parents[2] / 'mlflow').tracking_uri).get_run(inference['run_id']).data.params
     actors = [*value['config']['blind_policy']['participants'], value['config']['blind_policy']['arbiter']]
     for index, actor in enumerate(actors):
         receipt_path = private / f'actor-worker-{index}.json'
         request_path = private / f'actor-requests-{index}.json'
         receipt = _json(receipt_path, private=True)
         from versioning.backup import restored_review_profile_paths
-        profile_package, profile_output = restored_review_profile_paths(private.parents[3], value,
+        profile_package, profile_output = restored_review_profile_paths(private.parents[2], value,
             package=private / 'anonymous-review.json', output=request_path)
         expected_profile_sha256 = hashlib.sha256(_profile(profile_package, profile_output).encode()).hexdigest()
         if (params.get(f'sha256_holdout_worker_{index}') != ev._sha256(receipt_path)
@@ -806,8 +806,8 @@ def _verified_judge(private, value, inference):
     from versioning.mlflow_eval import open_eval_store
     exposure = _verified_exposure(private, value, inference)
     judge = _json(private / 'judge.json', private=True)
-    root = private.parents[3]
-    store = open_eval_store(root / 'workspace/mlflow')
+    root = private.parents[2]
+    store = open_eval_store(root / 'mlflow')
     params = scoped_mlflow_client(tracking_uri=store.tracking_uri).get_run(inference['run_id']).data.params
     if (judge['input_sha256'] != _digest(value)
         or judge['inference_sha256'] != ev._sha256(private / 'inference.json')

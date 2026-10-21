@@ -24,13 +24,13 @@
   },
   "artifacts": {
     "adapter": {
-      "managed_path": "workspace/models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
+      "managed_path": "models/releases/v4.1-agent-pipeline-fold0-r1/adapter",
       "path_at_freeze": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407",
       "format": "peft_lora",
       "aggregate_sha256": "74842170d69a5a17f466a9f560db27cdc1aafde83730b71807d2996471d43aa7"
     },
     "merged": {
-      "managed_path": "workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged",
+      "managed_path": "models/releases/v4.1-agent-pipeline-fold0-r1/merged",
       "path_at_freeze": "/home/liuyang/文档/mVllm_2/LlamaFactory/saves/minicpmv4_5/lora/sft_tensile_v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3_seed3407_merged",
       "format": "merged_bf16",
       "expected_safetensors_shards": 10,
