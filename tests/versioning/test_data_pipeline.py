@@ -139,7 +139,7 @@ tests/versioning/test_dvc_pipeline.py 的 docstring 为准）：
         #              "sealed_release":{"passed":bool,...}}}
         # passed 为全部检查的逻辑与；任何检查未过 -> 报告 passed=false 落盘后
         # 再抛 DataPipelineError（CLI 据此非零退出，fail-closed）。
-        # 绝不启动训练：不得在 root 下创建 workspace/ 或任何 runs/ 目录。
+        # 绝不启动训练：不得在 root 下创建 trains/ 或任何 runs/ 目录。
 
     def run_stage(root: Path, stage: str, **kwargs) -> StageResult
         # 七阶段分发；stage 不在 STAGES -> UnknownStageError（fail-closed）。
@@ -901,8 +901,8 @@ class TestReleaseValidate:
         assert report["checks"]["sealed_release"]["passed"] is True
         assert report["passed"] is True
 
-        # D035：只报告，不启动训练 —— 不产生 workspace/ 或任何 runs/ 目录
-        assert not (root / "workspace").exists()
+        # D035：只报告，不启动训练 —— 不产生 trains/ 或任何 runs/ 目录
+        assert not (root / "trains").exists()
         assert [p for p in root.rglob("*") if p.is_dir() and p.name == "runs"] == []
 
     def test_validate_reports_unsealed_release_fail_closed(self, tmp_path: Path) -> None:
@@ -2039,7 +2039,7 @@ def test_seven_stage_release_feeds_versioned_three_fold_training(reviewed_inputs
             assert len(before) == len(after)
             assert [r['videos'] for r in before] == [r['videos'] for r in after]
             assert [r['messages'][2] for r in before] == [r['messages'][2] for r in after]
-    assert not (root / 'workspace/mlflow').exists()
+    assert not (root / 'mlflow').exists()
 
 
 @pytest.mark.parametrize("argv", [["--queue", "old.json"], ["--queue=old.json"], ["--", "--queue", "old.json"]])

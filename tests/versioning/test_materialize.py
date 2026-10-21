@@ -5,7 +5,7 @@
 下列历史 B8 说明仅描述这些状态机和存储约束，不能替代新的准入条件。
 
 对应权威设计 docs/plans/2026-09-01-readable-version-control-design.md：
-- §5.4（``workspace/models/materialized/model-v...`` 只是从权威 Registry 对象
+- §5.4（``models/materialized/model-v...`` 只是从权威 Registry 对象
   生成的本地部署副本，可以重新物化，不能反向修改 Registry 模型；模型内容、
   可读 model_id、数值 Model Version 与训练输入关系不可修改）、
 - §7（每个物化目标必须携带机器生成的本地元数据，至少记录

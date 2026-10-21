@@ -255,7 +255,7 @@ def test_train_prepare_rejects_drifted_checkout_before_freezing(
     with pytest.raises(PromptCheckoutDrift):
         _prepare(root, media, _fold_configs(tmp_path))
 
-    assert not (root / "workspace/runs").exists()
+    assert not (root / "trains").exists()
 
 
 # --------------------------------------------------------------------------- #
@@ -290,7 +290,7 @@ def test_train_prepare_rejects_missing_checkout_without_frozen_input(
     with pytest.raises(PromptCheckoutDrift):
         _prepare(root, media, _fold_configs(tmp_path))
 
-    assert not (root / "workspace/runs").exists()
+    assert not (root / "trains").exists()
 
 
 def test_missing_store_prompt_raises_prompt_not_found(tmp_path: Path) -> None:
@@ -400,7 +400,7 @@ def test_eval_prepare_rejects_drifted_checkout_before_producing_input(
             media_root=media,
         )
 
-    assert not (root / "workspace/evaluations" / EVAL_VERSION / "input").exists()
+    assert not (root / "evaluations" / EVAL_VERSION / "input").exists()
 
 
 # --------------------------------------------------------------------------- #
@@ -492,7 +492,7 @@ def test_checkout_root_resolving_to_store_copy_is_rejected(tmp_path: Path) -> No
         assert any(form in message for form in _path_forms(store_copy))
 
     assert store_copy.is_file()
-    assert not (root / "workspace/runs").exists()
+    assert not (root / "trains").exists()
 
 
 def test_holdout_prepare_rejects_drifted_checkout_copy(
@@ -520,7 +520,7 @@ def test_holdout_prepare_rejects_drifted_checkout_copy(
     with pytest.raises(PromptCheckoutDrift):
         evaluation.prepare_versioned_evaluation(**kwargs)
 
-    assert not (root / "workspace/evaluations" / EVAL_VERSION / "input").exists()
+    assert not (root / "evaluations" / EVAL_VERSION / "input").exists()
 
 
 def test_formal_input_forwards_checkout_root_to_holdout(
@@ -717,7 +717,7 @@ def test_train_non_prepare_cli_actions_reject_prompt_checkout_root(
         assert "仅适用于 train prepare" in message, (
             f"train {action} 缺少稳定拒绝文案: {message!r}"
         )
-        assert not (root / "workspace" / "runs").exists(), (
+        assert not (root / "trains").exists(), (
             f"train {action} 被拒绝前不应产生 run 目录"
         )
         assert not list(root.glob("**/input")), (

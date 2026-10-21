@@ -80,12 +80,12 @@
 
     def freeze_prompt(root: Path, prompt_version: str, train_version: str) -> Path
         # 训练准备冻结：把 records/prompts/<prompt_version>.yaml 逐字节复制到
-        #   root/workspace/runs/<train_version>/input/prompt.yaml，
+        #   root/trains/<train_version>/input/prompt.yaml，
         #   来源 prompt ID 由副本内 version 字段记录，返回目标路径。
         # prompt_version / train_version 先各自经 parse_prompt_id / parse_train_id
         #   校验（latest / 短前缀 / None / 类别不符 -> InvalidIdentifier）；
         # 正式文件不存在 -> PromptNotFound；源文件 load 校验失败 -> PromptSchemaError
-        #   （篡改 fail-closed，不产生任何副本、不创建 workspace 残留目录）；
+        #   （篡改 fail-closed，不产生任何副本、不创建 trains 残留目录）；
         # 冻结目标已存在 -> PromptConflict
         #   （钉死语义：重复冻结拒绝而非幂等覆盖，原副本逐字节不动，对齐 §8
         #   “发现同名必须停止，不自动复用、补写、覆盖或删除”）。
@@ -113,7 +113,7 @@ production 未同步修复时，显式纪律用例为有效 RED（create_prompt 
 接受 version=None；失效集合 = TestExplicitVersionDiscipline 3 例 +
 test_explicit_version_malformed_rejected 的 None 参数化 1 例），
 其余用例保持 GREEN。
-所有用例只在 pytest ``tmp_path`` 下模拟仓库根，不触碰真实 records/ 与 workspace/。
+所有用例只在 pytest ``tmp_path`` 下模拟仓库根，不触碰真实 records/ 与 trains/。
 """
 
 from __future__ import annotations
@@ -506,7 +506,7 @@ class TestFreezePrompt:
         target = freeze_prompt(root, version, "train-v4.1-r1")
 
         expected = (
-            root / "workspace" / "runs" / "train-v4.1-r1" / "input" / "prompt.yaml"
+            root / "trains" / "train-v4.1-r1" / "input" / "prompt.yaml"
         )
         assert target == expected
         assert target.is_file()
@@ -550,7 +550,7 @@ class TestFreezePrompt:
         with pytest.raises(PromptNotFound):
             freeze_prompt(root, "prompt-v4.1-r99", "train-v4.1-r1")
         # fail-closed：不创建训练目录或 input 残留
-        assert not (root / "workspace").exists()
+        assert not (root / "trains").exists()
 
     def test_repeat_freeze_same_train_rejected_and_copy_untouched(
         self, root: Path
@@ -586,7 +586,7 @@ class TestFreezePrompt:
             freeze_prompt(root, version, "train-v4.1-r1")
 
         assert not (
-            root / "workspace" / "runs" / "train-v4.1-r1" / "input" / "prompt.yaml"
+            root / "trains" / "train-v4.1-r1" / "input" / "prompt.yaml"
         ).exists()
 
 
@@ -703,7 +703,7 @@ def test_concurrent_prompt_publication_has_one_winner(tmp_path, monkeypatch, ope
     from concurrent.futures import ThreadPoolExecutor
     import threading
     target = (tmp_path / 'records/prompts/prompt-v4.1-r1.yaml' if operation == 'create'
-              else tmp_path / 'workspace/runs/train-v4.1-r1/input/prompt.yaml')
+              else tmp_path / 'trains/train-v4.1-r1/input/prompt.yaml')
     if operation == 'freeze':
         for revision in (1, 2):
             create_prompt(tmp_path, 'v4.1', version=f'prompt-v4.1-r{revision}',

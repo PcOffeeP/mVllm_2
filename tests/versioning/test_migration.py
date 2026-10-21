@@ -123,7 +123,7 @@ D1：r1 superseded、replacement=data-v4.1-r2；r2 active）执行批级只读
 "ready"；未映射 sibling release 不得进入对象报告 —— 实现必须按映射项
 定位源，不得扫描全 releases 目录）；全程零写入：不创建 ``<root>/data``、
 working、release_staging、records 或任何目标条目；legacy 源树
-（workspace/data/releases/）与旧 active pointers
+（data/releases/）与旧 active pointers
 （finetune/active_data_release.json、pipeline/prompt_control/
 active_prompt.yaml）逐字节不变；ready 不得依赖 payload 已验证 ——
 映射项的 source_verified / source_payload_complete 保持 M0 事实分级
@@ -175,7 +175,7 @@ pinned_by: ~，无钉扎）：
 2. 指针 ``release_id`` 必须精确等于该映射项的 ``source_legacy_id``
    （指向未映射 sibling 或错误源均 = 不符）；
 3. 按 manifest 文件字节独立复算
-   ``workspace/data/releases/<source_legacy_id>/manifest/
+   ``data/releases/<source_legacy_id>/manifest/
    release_manifest.json`` 的 SHA-256（测试与实现均不 import legacy
    ``pipeline`` / ``finetune`` 代码，哈希口径独立镜像自算）；
 4. 与指针 ``expected_manifest_sha256`` 比对；
@@ -196,7 +196,7 @@ manifest payload 文件哈希 provenance 门，先写测试）—— 批级只�
 不只对已钉扎活动 release —— T13 是指针钉扎的 manifest 文件字节门，
 本切片是 manifest 自洽性/内容完整性门）：
 1. 对每个映射项读取
-   ``workspace/data/releases/<source_legacy_id>/manifest/
+   ``data/releases/<source_legacy_id>/manifest/
    release_manifest.json``；
 2. 对 manifest ``files[]`` 中声明的每个 payload 文件，按文件字节
    独立复算 SHA-256（测试与实现均不 import legacy ``pipeline`` /
@@ -283,7 +283,7 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   replacement（r1 条目）与 source_verified /
         #   source_payload_complete 事实分级）。逐对象校验映射项确认状态、
         #   候选目标身份合法性（data 完整身份 <kind>-v<协议>-r<N>）、
-        #   legacy 源 workspace/data/releases/<source_legacy_id>/ 的
+        #   legacy 源 data/releases/<source_legacy_id>/ 的
         #   manifest/release_manifest.json 与 payload 存在性、目标无冲突
         #   （T12 起目标冲突判定必须覆盖 data 正式对象根 data/releases/：
         #   映射 target_path 文件、data/releases/<身份>/ 同身份目录 ——
@@ -293,7 +293,7 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   provenance 门（T13 起：对旧数据活动指针 finetune/
         #   active_data_release.json 钉扎的映射项，指针 release_id 必须
         #   精确等于该映射项 source_legacy_id，按 manifest 文件字节复算
-        #   workspace/data/releases/<source_legacy_id>/manifest/
+        #   data/releases/<source_legacy_id>/manifest/
         #   release_manifest.json 的 sha256 必须与指针
         #   expected_manifest_sha256 匹配 —— 指针文件缺失、非 JSON、
         #   release_id / expected_manifest_sha256 字段缺失、release_id
@@ -304,7 +304,7 @@ release.yaml 保留创建时写位（sealed 后唯一受控修改通道，封存
         #   blocked，fail-closed）+ report.object_reports（逐对象报告
         #   序列，每条含 source_legacy_id / target_identity /
         #   target_path / status；未映射 release 不得出现）。
-        # 预检全程零写入：不创建 <root>/data、working、release_staging、
+        # 预检全程零写入：不创建 <root>/data/working、<root>/data/release_staging、
         #   records 或任何目标条目，不改 legacy 源树与旧 active pointers，
         #   不写任何报告/缓存文件（报告只经返回值给出）；不就地修改传入
         #   映射项（不得把 training_observed 等来源状态伪造成 payload
@@ -1038,7 +1038,7 @@ payload 无法产出任何合法哈希），预检必须 fail-closed 经报告�
 blocked + 非空 reasons，不得让 ValueError/TypeError 穿透
 precheck_prompt_migration；零写入、legacy 源不变；合法 Prompt 仍
 ready（既有正向用例钉定，本切片不改其判定）。所有用例只在
-pytest ``tmp_path`` 下模拟仓库根，不触碰真实 records/、workspace/、
+pytest ``tmp_path`` 下模拟仓库根，不触碰真实 records/、data/、
 pipeline/、finetune/；legacy 树为按 M0 证据布局重建的合成 fixture
 （字段值合成、结构与事实字段对齐 M0 证据）。
 """
@@ -1314,9 +1314,9 @@ def _write_full_legacy_prompt_layout(root: Path) -> bytes:
         json.dumps(
             {
                 "release_id": "v4.1.0-ecb5aeb9657c",
-                "release_dir": "workspace/data/releases/v4.1.0-ecb5aeb9657c",
+                "release_dir": "data/releases/v4.1.0-ecb5aeb9657c",
                 "manifest": (
-                    "workspace/data/releases/v4.1.0-ecb5aeb9657c"
+                    "data/releases/v4.1.0-ecb5aeb9657c"
                     "/manifest/release_manifest.json"
                 ),
                 "expected_contract_hash": (
@@ -3010,10 +3010,53 @@ CONFIRMED_DATA_TARGET_R2 = "data-v4.1-r2"
 # 实现必被本切片捕获）。
 UNMAPPED_DATA_SIBLING = "v4.1.0-0a1b2c3d4e5f"
 
-# 批级只读预检必须保持不存在的目标根（M0：本机 <root>/data、records
-# 均不存在）；working / release_staging 为数据 release 生命周期目录名
-# （versioning/data_release.py），records/ 为新体系正式对象根。
-_PRECHECK_FORBIDDEN_ROOTS = ("data", "working", "release_staging", "records")
+# 批级只读预检必须保持不存在的目标侧路径（M0：本机新体系正式对象与
+# records 均不存在）；working / release_staging 为数据 release 生命周期目录
+# （versioning/data_release.py，已随布局扁平化落到 data/ 下），records/ 为
+# 新体系正式对象根。注意新布局下 legacy 源树与目标共享 data/ 根（legacy
+# release 就在 data/releases/ 下），因此这里逐个钉目标对象与生命周期目录，
+# 而不是整个 data 根。
+_PRECHECK_FORBIDDEN_ROOTS = (
+    "data/working",
+    "data/release_staging",
+    f"data/releases/{CONFIRMED_DATA_TARGET_R1}",
+    f"data/releases/{CONFIRMED_DATA_TARGET_R2}",
+    "records",
+)
+
+# 布局扁平化后 legacy 源数据树与目标共享 ``data/releases/`` 根：legacy 源
+# release 就落在 ``data/releases/<legacy-id>``。凡「data/releases/ 恰含…」
+# 类断言都必须先剔除 legacy 源身份，才能继续表达「不自动改号 / 不夹带
+# sibling / 拒绝不产生新条目」。
+_LEGACY_DATA_SOURCE_DIR_NAMES = frozenset(
+    {CONFIRMED_DATA_SOURCE_R1, CONFIRMED_DATA_SOURCE_R2, UNMAPPED_DATA_SIBLING}
+)
+
+
+def _target_release_names(releases_root: Path) -> list[str]:
+    """``data/releases/`` 下的目标侧条目名（已剔除 legacy 源 release 目录）。"""
+    return sorted(
+        entry.name
+        for entry in releases_root.iterdir()
+        if entry.name not in _LEGACY_DATA_SOURCE_DIR_NAMES
+    )
+
+
+# legacy 侧（源树 + 旧 active pointers）在扁平化后布局下的相对路径前缀：
+# legacy data release 落在 ``data/releases/<legacy-id>/``；旧数据 / Prompt
+# 活动指针仍在 ``finetune/`` 与 ``pipeline/``。凡「legacy 侧必须逐字节 /
+# 权限位不变」类断言都以本前缀集取子树 —— 不得用整个 ``data/`` 段：目标
+# 正式对象同样就在 ``data/releases/`` 下，整段取会误伤正常写入。
+_LEGACY_SIDE_PREFIXES = (
+    *(f"data/releases/{name}/" for name in sorted(_LEGACY_DATA_SOURCE_DIR_NAMES)),
+    "finetune/",
+    "pipeline/",
+)
+
+
+def _is_legacy_side(rel: str) -> bool:
+    """相对路径是否属于 legacy 侧（含目录条目自身）。"""
+    return (rel + "/").startswith(_LEGACY_SIDE_PREFIXES)
 
 
 def _fixture_pretty_json_bytes(value: Any) -> bytes:
@@ -3125,7 +3168,7 @@ def _write_legacy_data_release(
     contract_hash: str,
     base_release_id: str | None = None,
 ) -> bytes:
-    """在 workspace/data/releases/<release_id> 下写入合成 legacy data release。
+    """在 data/releases/<release_id> 下写入合成 legacy data release。
 
     镜像 M0 source-inventory.yaml data_releases 证据布局：
     ``<release_id>/manifest/release_manifest.json`` + payload。manifest
@@ -3137,7 +3180,7 @@ def _write_legacy_data_release(
     保持源内自洽（真实声明值见训练机 payload；fixture 字段值合成）。
     返回 manifest 字节。
     """
-    release_dir = root / "workspace" / "data" / "releases" / release_id
+    release_dir = root / "data" / "releases" / release_id
     payload = _legacy_data_payload_files(
         release_id, contract_hash, phase2=base_release_id is not None
     )
@@ -3231,10 +3274,10 @@ def _write_legacy_data_layout(root: Path) -> bytes:
             {
                 "release_id": CONFIRMED_DATA_SOURCE_R2,
                 "release_dir": (
-                    f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R2}"
+                    f"data/releases/{CONFIRMED_DATA_SOURCE_R2}"
                 ),
                 "manifest": (
-                    f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R2}"
+                    f"data/releases/{CONFIRMED_DATA_SOURCE_R2}"
                     "/manifest/release_manifest.json"
                 ),
                 "expected_contract_hash": contract_hash,
@@ -3276,7 +3319,7 @@ def _confirmed_data_mapping_items() -> list[dict[str, Any]]:
             "role": "当前活动数据 release（活动指针）",
             "source_verified": "verified_local",
             "source_inventory": (
-                f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R2}"
+                f"data/releases/{CONFIRMED_DATA_SOURCE_R2}"
             ),
             "source_payload_complete": "training_observed",
             "candidate_target_identity": CONFIRMED_DATA_TARGET_R2,
@@ -3303,7 +3346,7 @@ def _confirmed_data_mapping_items() -> list[dict[str, Any]]:
             "role": "历史并存的非活动数据 release",
             "source_verified": "training_observed",
             "source_inventory": (
-                f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R1}"
+                f"data/releases/{CONFIRMED_DATA_SOURCE_R1}"
             ),
             "source_payload_complete": "training_observed",
             "candidate_target_identity": CONFIRMED_DATA_TARGET_R1,
@@ -3356,9 +3399,9 @@ def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
        归因，每条 target_identity / target_path 与映射一致且对象级
        status == "ready"（未映射 sibling 不得进入对象报告 —— 实现
        必须按映射项定位源，不得扫描全 releases 目录）；
-    3. 零写入：不创建 ``<root>/data``、working、release_staging、
+    3. 零写入：不创建 ``<root>/data/working``、``<root>/data/release_staging``、
        records 或任何目标条目，全树无任何新增/修改/删除；
-    4. legacy 源树（workspace/data/releases/ 下三份 release，含未映射
+    4. legacy 源树（data/releases/ 下三份 release，含未映射
        sibling）与旧 active pointers
        （finetune/active_data_release.json、pipeline/prompt_control/
        active_prompt.yaml）逐字节不变，旧指针仍声明 legacy 身份；
@@ -3368,7 +3411,7 @@ def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
        ready 也不得依赖 payload 已验证（本切片不做 payload 内容
        provenance 门）。
 
-    fixture（M0 证据布局，合成内容）：workspace/data/releases/
+    fixture（M0 证据布局，合成内容）：data/releases/
     <legacy-id>/manifest/release_manifest.json + payload（metadata/
     training_candidates.json、datasets/train|validation/fold_N.json、
     reports/quality_report.json；Phase2 release 另含 metadata/
@@ -3386,7 +3429,7 @@ def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
     - 扫描全 releases 目录：要求所有 release 都有映射（未映射 sibling
       导致误 blocked）或把 sibling 一并写进对象报告（三条）-> ready
       断言或数量断言失败；
-    - 从错误位置读源（root/releases、workspace/releases 等）-> 源
+    - 从错误位置读源（root/releases 等）-> 源
       不存在误 blocked -> ready 断言失败；
     - 预检即真实转换（创建 <root>/data/releases/<target>/release.yaml、
       working / release_staging、records）-> 目标根存在性断言 +
@@ -3415,9 +3458,10 @@ def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
     # 各含 manifest/release_manifest.json 与全部声明的 payload 文件
     # （manifest release_id / status 自洽）；旧数据指针声明活动 release
     # 并绑定合成 manifest 字节；旧 Prompt 指针声明 legacy revision_id；
-    # 目标根（data / records 及生命周期目录 working / release_staging）
-    # 均不存在。
-    releases_root = tmp_path / "workspace" / "data" / "releases"
+    # 目标侧落点（data/releases/<target>、data/working、
+    #    data/release_staging 与 records）均不存在（data/ 本身由 legacy
+    #    源树先占）。
+    releases_root = tmp_path / "data" / "releases"
     for source_id in (
         CONFIRMED_DATA_SOURCE_R1,
         CONFIRMED_DATA_SOURCE_R2,
@@ -3518,7 +3562,7 @@ def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
             f"{target_path!r}：实际 {obj_report.target_path!r}"
         )
 
-    # 3：零写入 —— 不创建 <root>/data、working、release_staging、
+    # 3：零写入 —— 不创建 <root>/data/working、<root>/data/release_staging、
     #    records 或任何目标条目；全树无任何新增/修改/删除（含 staging、
     #    报告/缓存文件）。
     for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
@@ -3526,7 +3570,7 @@ def test_confirmed_data_mappings_batch_precheck_returns_ready_without_writes(
             f"批级只读预检不得创建目标根 {forbidden!r}"
         )
     assert _snapshot_tree(tmp_path) == before, (
-        "批级只读预检必须零写入：不创建 <root>/data、working、staging、"
+        "批级只读预检必须零写入：不创建 <root>/data/working、staging、"
         "records 或任何目标条目，不产生报告/缓存文件，不改 legacy 源树"
     )
 
@@ -3641,7 +3685,7 @@ def test_data_batch_precheck_target_conflict_on_data_release_root(
     目录名，钉死判定必须按精确身份而非目录内容；fixture 只在 pytest
     tmp_path 下按映射指定的 ``data/releases/...`` 目标布局模拟 data
     正式对象根，不把 data 根写成训练机真实路径（legacy 源树仍为
-    workspace/data/releases/ 的合成 fixture）。
+    data/releases/ 的合成 fixture）。
 
     捕获的合理但错误实现：
     - 沿用 Prompt 的 _check_target_conflict（只扫 records/；data 正
@@ -3696,7 +3740,7 @@ def test_data_batch_precheck_target_conflict_on_data_release_root(
     # 保持空闲（冲突只能经 data 正式对象根上的同身份扫描发现，隔离
     # target_path 占用分支）；旧数据指针绑定活动 release manifest 字
     # 节；旧 Prompt 指针声明 legacy revision_id。
-    releases_root = tmp_path / "workspace" / "data" / "releases"
+    releases_root = tmp_path / "data" / "releases"
     for source_id in (
         CONFIRMED_DATA_SOURCE_R1,
         CONFIRMED_DATA_SOURCE_R2,
@@ -3867,7 +3911,6 @@ def _manifest_file_of(root: Path, source_id: str) -> Path:
     """legacy data release manifest 文件路径（M0 source-inventory 布局）。"""
     return (
         root
-        / "workspace"
         / "data"
         / "releases"
         / source_id
@@ -3971,7 +4014,7 @@ def test_data_batch_precheck_pinned_manifest_provenance_gate(
     2. 指针 ``release_id`` 精确等于该映射项的 ``source_legacy_id``
        （指向未映射 sibling 或错误源 = 不符）；
     3. 按 manifest 文件字节独立复算
-       ``workspace/data/releases/<source_legacy_id>/manifest/
+       ``data/releases/<source_legacy_id>/manifest/
        release_manifest.json`` 的 SHA-256（测试与实现均不 import
        legacy ``pipeline`` / ``finetune`` 代码，哈希独立镜像自算）；
     4. 与指针 ``expected_manifest_sha256`` 比对；
@@ -4046,10 +4089,10 @@ def test_data_batch_precheck_pinned_manifest_provenance_gate(
         pointer = json.loads(pointer_file.read_text(encoding="utf-8"))
         pointer["release_id"] = UNMAPPED_DATA_SIBLING
         pointer["release_dir"] = (
-            f"workspace/data/releases/{UNMAPPED_DATA_SIBLING}"
+            f"data/releases/{UNMAPPED_DATA_SIBLING}"
         )
         pointer["manifest"] = (
-            f"workspace/data/releases/{UNMAPPED_DATA_SIBLING}"
+            f"data/releases/{UNMAPPED_DATA_SIBLING}"
             "/manifest/release_manifest.json"
         )
         pointer["expected_manifest_sha256"] = hashlib.sha256(
@@ -4063,10 +4106,10 @@ def test_data_batch_precheck_pinned_manifest_provenance_gate(
         pointer = json.loads(pointer_file.read_text(encoding="utf-8"))
         pointer["release_id"] = CONFIRMED_DATA_SOURCE_R1
         pointer["release_dir"] = (
-            f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R1}"
+            f"data/releases/{CONFIRMED_DATA_SOURCE_R1}"
         )
         pointer["manifest"] = (
-            f"workspace/data/releases/{CONFIRMED_DATA_SOURCE_R1}"
+            f"data/releases/{CONFIRMED_DATA_SOURCE_R1}"
             "/manifest/release_manifest.json"
         )
         pointer["expected_manifest_sha256"] = hashlib.sha256(
@@ -4260,7 +4303,7 @@ def test_data_batch_precheck_pinned_manifest_provenance_gate(
         f"reasons={getattr(r1_report, 'reasons', None)!r}"
     )
 
-    # 3：零写入 —— 不创建 <root>/data、working、release_staging、
+    # 3：零写入 —— 不创建 <root>/data/working、<root>/data/release_staging、
     #    records 或任何目标条目；全树无任何新增/修改/删除（含报告/
     #    缓存文件）；blocked 不得修复指针、重建 manifest 或就地规范化
     #    任何文件。
@@ -4324,7 +4367,7 @@ _PATH_ANOMALY_ENTRY_REL = "metadata/training_candidates.json"
 
 def _payload_file_of(root: Path, source_id: str, relative_path: str) -> Path:
     """legacy release 声明 payload 文件的绝对路径（M0 布局）。"""
-    return root / "workspace" / "data" / "releases" / source_id / relative_path
+    return root / "data" / "releases" / source_id / relative_path
 
 
 def _assert_payload_declared_hashes_self_consistent(
@@ -4341,7 +4384,7 @@ def _assert_payload_declared_hashes_self_consistent(
     manifest = json.loads(
         _manifest_file_of(root, source_id).read_text(encoding="utf-8")
     )
-    release_dir = root / "workspace" / "data" / "releases" / source_id
+    release_dir = root / "data" / "releases" / source_id
     for entry in manifest["files"]:
         payload_file = release_dir / entry["path"]
         assert payload_file.is_file(), (
@@ -4453,7 +4496,7 @@ def test_data_batch_precheck_payload_file_hash_provenance_gate(
     T14 behavior（本切片，主 Agent 选定，先写测试）—— 批级只读预检
     对每个映射项（不只对已钉扎活动 release —— T13 是指针钉扎的
     manifest 文件字节门，本切片是 manifest 自洽性/内容完整性门）：
-    1. 读取 ``workspace/data/releases/<source_legacy_id>/manifest/
+    1. 读取 ``data/releases/<source_legacy_id>/manifest/
        release_manifest.json``；
     2. 对 manifest ``files[]`` 声明的每个 payload 文件按文件字节独立
        复算 SHA-256（fixture 与实现均不 import legacy ``pipeline`` /
@@ -4655,7 +4698,6 @@ def test_data_batch_precheck_payload_file_hash_provenance_gate(
         entry = _manifest_files_entry(manifest, anomalous_path)
         r1_release_dir = (
             tmp_path
-            / "workspace"
             / "data"
             / "releases"
             / CONFIRMED_DATA_SOURCE_R1
@@ -4746,7 +4788,7 @@ def test_data_batch_precheck_payload_file_hash_provenance_gate(
                 f"reasons={getattr(obj_report, 'reasons', None)!r}"
             )
 
-    # 3：零写入 —— 不创建 <root>/data、working、release_staging、
+    # 3：零写入 —— 不创建 <root>/data/working、<root>/data/release_staging、
     #    records 或任何目标条目；全树无任何新增/修改/删除（含报告/
     #    缓存文件）；blocked 不得修复 manifest / 重建 payload。
     for forbidden in _PRECHECK_FORBIDDEN_ROOTS:
@@ -5406,7 +5448,7 @@ def test_migrate_data_single_r2_mapping_creates_active_release_and_committed_rec
         f"payload 文件集合：实际 {sorted(target_content)}"
     )
     legacy_release_root = (
-        tmp_path / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
+        tmp_path / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
     )
     for relative in declared_payload_paths:
         legacy_bytes = (legacy_release_root / relative).read_bytes()
@@ -5551,7 +5593,7 @@ def test_migrate_data_single_r2_mapping_creates_active_release_and_committed_rec
     #    树、旧数据指针与 pipeline 子树精确比对）；旧指针仍声明 legacy
     #    身份，不得被切换到新身份。
     after = _snapshot_tree(tmp_path)
-    for subtree in ("workspace/", "finetune/", "pipeline/"):
+    for subtree in _LEGACY_SIDE_PREFIXES:
         before_subtree = {
             key: value for key, value in before.items() if key.startswith(subtree)
         }
@@ -5577,17 +5619,18 @@ def test_migrate_data_single_r2_mapping_creates_active_release_and_committed_rec
     )
 
     # 7：不写 records、不触发 DVC、不夹带批外对象；目标数据根以可注入
-    #    root 表示 —— 新增顶层条目恰为 data/ 与 migration_receipts/
-    #    （硬编码训练机真实路径 /data/mVllm_2 的实现不会在注入 root 下
-    #    留下目标条目，已被上方存在性断言捕获；本用例不触碰真实 /data）。
+    #    root 表示 —— 新增顶层条目只剩 migration_receipts/（扁平化后
+    #    legacy 源树与目标正式对象同处 data/releases/，data/ 由 fixture 的
+    #    legacy 源先占，不再作为“新根”出现；硬编码训练机真实路径
+    #    /data/mVllm_2 的实现不会在注入 root 下留下目标条目，已被上方
+    #    存在性断言捕获；本用例不触碰真实 /data）。
     before_top_levels = {key.split("/", 1)[0] for key in before}
     after_top_levels = {key.split("/", 1)[0] for key in after}
     assert after_top_levels - before_top_levels == {
-        "data",
         "migration_receipts",
     }, (
-        "真实转换只允许新增目标 data 根与 receipt 目录（目标数据根必须"
-        f"以可注入 root 表示）：实际新增 "
+        "真实转换只允许新增 receipt 目录顶层条目（data/ 已被 legacy 源树"
+        f"先占，目标对象只能落在其内）：实际新增 "
         f"{sorted(after_top_levels - before_top_levels)}"
     )
     for forbidden in (
@@ -5609,7 +5652,7 @@ def test_migrate_data_single_r2_mapping_creates_active_release_and_committed_rec
     # data/releases/ 恰含批内对象；migration_receipts/ 恰含批内 receipt
     # （批只有 r2 单条，不夹带 r1 或未映射 sibling 的目标条目/凭证）。
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R2
     ], (
         "data/releases/ 必须恰含批内对象 data-v4.1-r2（批只传 r2 单条"
@@ -5680,7 +5723,8 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
        不得随封存去写位 —— 封存范围是 release 目录子树，不是迁移
        控制面；receipt 已写入（is_file + committed 契约）；
     7. legacy 源树与旧 active pointers 逐字节不变，且 legacy 源
-       权限位不变（封存不得顺手波及 workspace/）；旧指针仍声明
+       权限位不变（封存不得顺手波及 data/releases/<legacy-id>/ 源树）；
+       旧指针仍声明
        legacy 身份；
     8. 不触发 DVC、不写 records/ 与生命周期目录；不就地修改映射项。
 
@@ -5704,7 +5748,8 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
       通道）、migration_receipts/ 与 receipt、data/releases/ 一并去
       写位（破坏 release 外部迁移控制面与后续对象写入）-> 探针写位
       比对失败；
-    - 封存波及 legacy：workspace/ 权限位漂移 -> legacy 权限位快照比对
+    - 封存波及 legacy：data/releases/<legacy-id>/ 权限位漂移 -> legacy
+      权限位快照比对
       失败；
     - 封存改变内容契约（封存时规范化/重写 payload、补 README.md /
       manifest 副本等额外文件）-> T15 精确内容集合 + 逐字节 + receipt
@@ -5788,7 +5833,15 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
     ], "fixture 前置事实失败：映射批必须恰为 r2 单条"
 
     before = _snapshot_tree(tmp_path)
-    legacy_modes_before = _snapshot_modes(tmp_path / "workspace")
+    # legacy 源权限位基线：扁平化后 legacy 源 release 落在 data/releases/ 下，
+    # 与目标正式对象同根，因此逐个 legacy 源目录取快照（不得取 data/ 整段，
+    # 否则目标 release 的正常去写位会被误判成 legacy 被动）。
+    legacy_modes_before = {
+        source_id: _snapshot_modes(
+            tmp_path / "data" / "releases" / source_id
+        )
+        for source_id in sorted(_LEGACY_DATA_SOURCE_DIR_NAMES)
+    }
 
     migrate_data = _resolve_migrate_data_entry()
     assert migrate_data is not None, (
@@ -5845,7 +5898,7 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
         f"{sorted(target_content)}"
     )
     legacy_release_root = (
-        tmp_path / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
+        tmp_path / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
     )
     for relative in declared_payload_paths:
         assert target_content[relative] == (
@@ -5935,9 +5988,10 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
     )
 
     # 7：legacy 源与旧 pointers 逐字节不变 + legacy 权限位不变（封存
-    #    不得顺手波及 workspace/）；旧指针仍声明 legacy 身份。
+    #    不得顺手波及 data/releases/<legacy-id>/ 源树）；旧指针仍声明
+    #    legacy 身份。
     after = _snapshot_tree(tmp_path)
-    for subtree in ("workspace/", "finetune/", "pipeline/"):
+    for subtree in _LEGACY_SIDE_PREFIXES:
         before_subtree = {
             key: value for key, value in before.items() if key.startswith(subtree)
         }
@@ -5948,9 +6002,14 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
             f"封存不得改动 {subtree} 子树（legacy 源与旧 active pointers "
             "逐字节不变；不改写、不规范化、不去写位）"
         )
-    assert _snapshot_modes(tmp_path / "workspace") == legacy_modes_before, (
-        "封存不得波及 legacy 源树权限位（workspace/ 被去写位同样是"
-        "修改 legacy）"
+    assert {
+        source_id: _snapshot_modes(
+            tmp_path / "data" / "releases" / source_id
+        )
+        for source_id in sorted(_LEGACY_DATA_SOURCE_DIR_NAMES)
+    } == legacy_modes_before, (
+        "封存不得波及 legacy 源树权限位（data/releases/<legacy-id>/ 被去写"
+        "位同样是修改 legacy）"
     )
     data_pointer_after = json.loads(
         (tmp_path / _DATA_POINTER_REL).read_text(encoding="utf-8")
@@ -5966,17 +6025,16 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
         "旧 Prompt 活动指针必须仍声明 legacy revision_id"
     )
 
-    # 8：不触发 DVC、不写 records/ / 生命周期目录；新增顶层恰为 data/
-    #    与 migration_receipts/；data/releases/ 与 migration_receipts/
-    #    恰含批内对象；不就地修改映射项。
+    # 8：不触发 DVC、不写 records/ / 生命周期目录；新增顶层恰为
+    #    migration_receipts/（data/ 由 legacy 源树先占）；data/releases/
+    #    与 migration_receipts/ 恰含批内对象；不就地修改映射项。
     before_top_levels = {key.split("/", 1)[0] for key in before}
     after_top_levels = {key.split("/", 1)[0] for key in after}
     assert after_top_levels - before_top_levels == {
-        "data",
         "migration_receipts",
     }, (
-        "真实转换只允许新增目标 data 根与 receipt 目录：实际新增 "
-        f"{sorted(after_top_levels - before_top_levels)}"
+        "真实转换只允许新增 receipt 目录顶层条目（data/ 已被 legacy 源树"
+        f"先占）：实际新增 {sorted(after_top_levels - before_top_levels)}"
     )
     for forbidden in (
         "records",
@@ -5993,7 +6051,7 @@ def test_migrate_data_target_release_declaring_sealed_state_is_actually_sealed(
     )
     assert ".gitignore" not in after_top_levels
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R2
     ], "data/releases/ 必须恰含批内对象 data-v4.1-r2"
     receipts_root = tmp_path / "migration_receipts"
@@ -6082,7 +6140,7 @@ def _tamper_r2_manifest_entry_path_to_traversal(root: Path) -> None:
         "（对齐既有预检路径安全口径：拒绝绝对路径与 .. 穿越）"
     )
     legacy_release_dir = (
-        root / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
+        root / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
     )
     traversed_source = legacy_release_dir / _P2_2_TRAVERSED_PATH
     assert traversed_source.is_file(), (
@@ -6411,18 +6469,22 @@ def test_migrate_data_revalidates_manifest_paths_and_payload_after_precheck(
         f"在篡改前返回 ready（实际 {record['report_status']!r}）"
     )
 
-    # ---- 1/2：fail-closed 必须零写入。目标 data 根与 receipt 目录
-    # 不得被创建（无半写 release、无 receipt 的最外层事实）。----
-    for root_name in ("data", "migration_receipts"):
+    # ---- 1/2：fail-closed 必须零写入。目标正式对象、生命周期目录与
+    # receipt 目录不得被创建（无半写 release、无 receipt 的最外层事实）。
+    # 布局扁平化后 legacy 源树与目标共享 data/ 根，因此逐个钉目标侧路径。----
+    for root_name in (*_PRECHECK_FORBIDDEN_ROOTS, "migration_receipts"):
         assert not (tmp_path / root_name).exists(), (
-            f"fail-closed 拒绝必须发生在任何写入之前：{root_name}/ 不得被"
+            f"fail-closed 拒绝必须发生在任何写入之前：{root_name} 不得被"
             "创建（不得留下半写 release，不得写 receipt）"
         )
     if scenario == "manifest_entry_path_traversal":
-        escaped_dir = tmp_path / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
-        assert not escaped_dir.exists(), (
-            "不得写目标外路径：穿越声明路径在目标 release 之外的写入"
-            "逃逸不得发生"
+        # 扁平化后穿越目标（../<源身份>/…）解析回 legacy 源目录本身（该
+        # 目录本就存在，不再能靠“目录不存在”判定逃逸未发生），因此改钉
+        # 目标侧零对象：逃逸不得借道在 data/releases/ 留下任何目标正式
+        # 对象；legacy 源内字节不变由下方全树快照逐字节钉定。
+        assert _target_release_names(tmp_path / "data" / "releases") == [], (
+            "不得写目标外路径：穿越声明路径不得在 data/releases/ 留下任何"
+            "目标侧条目（逃逸写入必须可观察）"
         )
 
     # ---- 零写入全树比对：除场景篡改自身（manifest 改写 / payload
@@ -6833,7 +6895,7 @@ def test_migrate_data_single_r1_superseded_mapping_creates_superseded_release_wi
         f"的 payload 文件集合：实际 {sorted(target_content)}"
     )
     legacy_release_root = (
-        tmp_path / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R1
+        tmp_path / "data" / "releases" / CONFIRMED_DATA_SOURCE_R1
     )
     for relative in declared_payload_paths:
         legacy_bytes = (legacy_release_root / relative).read_bytes()
@@ -7047,8 +7109,8 @@ def test_migrate_data_single_r1_superseded_mapping_creates_superseded_release_wi
     before_top_levels = {key.split("/", 1)[0] for key in before}
     after_top_levels = {key.split("/", 1)[0] for key in after}
     assert after_top_levels == before_top_levels, (
-        "r1 真实转换不得新增任何顶层条目（data/ 与 migration_receipts/ "
-        "已由 r2 创建存在）：实际新增 "
+        "r1 真实转换不得新增任何顶层条目（data/ 由 legacy 源树先占、"
+        "migration_receipts/ 已由 r2 创建存在）：实际新增 "
         f"{sorted(after_top_levels - before_top_levels)}"
     )
     for forbidden in (
@@ -7071,7 +7133,7 @@ def test_migrate_data_single_r1_superseded_mapping_creates_superseded_release_wi
     # 含两份 receipt（r2 先行创建、r1 本切片写入；不夹带未映射 sibling
     # 的目标条目/凭证）。
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -7125,8 +7187,9 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
        data-v4.1-r2）和两份 receipt（migration_receipts/ 恰含两份
        receipt）；
     7. 未映射 sibling（v4.1.0-0a1b2c3d4e5f，不在映射批内）不被转换；
-    8. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
-       子树逐字节不变；旧指针仍声明 legacy 身份）；
+    8. legacy 源（data/releases/<legacy-id>/）与旧 pointers
+       （finetune/、pipeline/）子树逐字节不变；旧指针仍声明
+       legacy 身份）；
     9. 本切片不做中断恢复、凭证失配、重跑幂等（批内乱序输入
        （r1 先于 r2）的写入顺序行为不绑定）。
 
@@ -7384,7 +7447,7 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
         f"声明的 payload 文件集合：实际 {sorted(r2_content)}"
     )
     r2_legacy_release_root = (
-        tmp_path / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
+        tmp_path / "data" / "releases" / CONFIRMED_DATA_SOURCE_R2
     )
     for relative in r2_declared_payload_paths:
         legacy_bytes = (r2_legacy_release_root / relative).read_bytes()
@@ -7404,7 +7467,7 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
         f"声明的 payload 文件集合：实际 {sorted(r1_content)}"
     )
     r1_legacy_release_root = (
-        tmp_path / "workspace" / "data" / "releases" / CONFIRMED_DATA_SOURCE_R1
+        tmp_path / "data" / "releases" / CONFIRMED_DATA_SOURCE_R1
     )
     for relative in r1_declared_payload_paths:
         legacy_bytes = (r1_legacy_release_root / relative).read_bytes()
@@ -7683,7 +7746,7 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
     # 6：目标根恰有两个 release 和两份 receipt（不夹带未映射 sibling
     #    的目标条目/凭证，无任何第三对象）。
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -7701,13 +7764,15 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
     )
 
     # 7：未映射 sibling 不被转换（实现必须按映射项定位源与目标，不得
-    #    扫描全 releases 目录把 sibling 一并转换；sibling 的 legacy 源
-    #    逐字节不变由第 8 项 legacy 快照钉定）。
+    #    扫描全 releases 目录把 sibling 一并转换）。扁平化后 sibling 的
+    #    legacy 源目录本来就落在 data/releases/ 下，因此改钉「未在其中生成
+    #    目标正式对象产物（release.yaml）」；sibling 的 legacy 源逐字节不变
+    #    由第 8 项 legacy 快照钉定。
     assert not (
-        tmp_path / "data" / "releases" / UNMAPPED_DATA_SIBLING
+        tmp_path / "data" / "releases" / UNMAPPED_DATA_SIBLING / "release.yaml"
     ).exists(), (
-        "未映射 sibling release 不得被转换（不得在 data/releases/ 下产生"
-        f"任何 {UNMAPPED_DATA_SIBLING!r} 相关目标条目）"
+        "未映射 sibling release 不得被转换（不得在 "
+        f"data/releases/{UNMAPPED_DATA_SIBLING} 下生成目标 release.yaml）"
     )
     assert not any(
         UNMAPPED_DATA_SIBLING in receipt_name
@@ -7717,12 +7782,13 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
         )
     ), "未映射 sibling 不得产生任何 receipt"
 
-    # 8：legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
-    #    子树逐字节不变；旧指针仍声明 legacy 身份，不得被切换到新身份）；
+    # 8：legacy 源（data/releases/<legacy-id>/）与旧 pointers
+    #    （finetune/、pipeline/）子树逐字节不变；旧指针仍声明
+    #    legacy 身份，不得被切换到新身份）；
     #    新增条目只允许落在两个目标 release 目录子树与两份 receipt；
     #    不写 records、不触发 DVC、不就地修改传入映射项。
     after = _snapshot_tree(tmp_path)
-    for subtree in ("workspace/", "finetune/", "pipeline/"):
+    for subtree in _LEGACY_SIDE_PREFIXES:
         before_subtree = {
             key: value for key, value in before.items() if key.startswith(subtree)
         }
@@ -7782,12 +7848,12 @@ def test_migrate_data_dual_object_batch_creates_both_releases_and_committed_rece
     before_top_levels = {key.split("/", 1)[0] for key in before}
     after_top_levels = {key.split("/", 1)[0] for key in after}
     assert after_top_levels - before_top_levels == {
-        "data",
         "migration_receipts",
     }, (
-        "双对象批真实转换只允许新增目标 data 根与 receipt 目录（目标数据"
-        "根必须以可注入 root 表示；本用例只传 pytest tmp_path，不触碰真实"
-        f"/data）：实际新增 {sorted(after_top_levels - before_top_levels)}"
+        "双对象批真实转换只允许新增 receipt 目录顶层条目（data/ 已被 "
+        "legacy 源树先占，目标对象只能落在其内；本用例只传 pytest "
+        f"tmp_path，不触碰真实 /data）：实际新增 "
+        f"{sorted(after_top_levels - before_top_levels)}"
     )
     for forbidden in (
         "records",
@@ -7862,8 +7928,9 @@ def test_migrate_data_completed_dual_object_batch_rerun_skips_completed_objects_
     5. 不产生 ``data-v4.1-r3`` 或其他新身份（data/releases/ 恰含 r1、
        r2 两个正式对象；migration_receipts/ 恰含两份 receipt；全树无
        任何新增/删除条目）；
-    6. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
-       子树逐字节不变；旧指针仍声明 legacy 身份，不得被切换）；
+    6. legacy 源（data/releases/<legacy-id>/）与旧 pointers
+       （finetune/、pipeline/）子树逐字节不变；旧指针仍声明
+       legacy 身份，不得被切换）；
     7. 本切片不做中断恢复（批内存在未完成对象时的“继续”语义）、凭
        证失配（跳过判定的凭证不匹配分支）、migrate_data 返回值契约
        （T15 起不绑定，跳过时返回什么不绑定）与跳过报告通道（跳过
@@ -8225,7 +8292,7 @@ def test_migrate_data_completed_dual_object_batch_rerun_skips_completed_objects_
     # 5：无新身份 —— data/releases/ 恰含 r1、r2 两个正式对象（不产生
     #    data-v4.1-r3）；migration_receipts/ 恰含两份 receipt。
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -8345,8 +8412,9 @@ def test_migrate_data_completed_batch_rerun_with_changed_replacement_fails_close
     3. 零新增/删除条目：不产生 data-v4.1-r9 / data-v4.1-r3 等新身份
        （data/releases/ 恰含 r1、r2；migration_receipts/ 恰含两份
        receipt；目标侧 mtime 与权限位零变化 —— 无任何重写痕迹）；
-    4. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
-       子树逐字节不变；旧指针仍声明 legacy 身份）；
+    4. legacy 源（data/releases/<legacy-id>/）与旧 pointers
+       （finetune/、pipeline/）子树逐字节不变；旧指针仍声明
+       legacy 身份）；
     5. 不就地修改传入映射项（原批与变更批都不被 production 改写）；
     6. 拒绝的具体机制（核实口径如何纳入 replacement —— receipt 新
        字段 / operation_id 派生 / 目标 release.yaml 比对）与拒绝信息
@@ -8793,7 +8861,7 @@ def test_migrate_data_completed_batch_rerun_with_changed_replacement_fails_close
     # 3：无新身份 —— data/releases/ 恰含 r1、r2（不产生 data-v4.1-r9 /
     #    data-v4.1-r3）；migration_receipts/ 恰含两份 receipt。
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -9043,11 +9111,11 @@ def _write_interrupt_scenario_layout(root: Path) -> None:
 
 
 def _legacy_side_of(snapshot: dict[str, bytes]) -> dict[str, bytes]:
-    """从整树快照取 legacy 侧条目（workspace/、finetune/、pipeline/ 子树）。"""
+    """从整树快照取 legacy 侧条目（``_LEGACY_SIDE_PREFIXES`` 子树）。"""
     return {
         rel: content
         for rel, content in snapshot.items()
-        if rel.split("/", 1)[0] in ("workspace", "finetune", "pipeline")
+        if _is_legacy_side(rel)
     }
 
 
@@ -9063,7 +9131,8 @@ def _assert_legacy_side_unchanged(
     )
     assert not changed, (
         "data 迁移（含中断失败路径与恢复重跑）不得修改、删除或新增 "
-        "workspace/、finetune/、pipeline/ 子树的任何条目（legacy 源与旧 "
+        "data/releases/<legacy-id>/、finetune/、pipeline/ 子树的任何条目"
+        "（legacy 源与旧 "
         f"active pointers 逐字节不变）：变化 {changed}"
     )
 
@@ -9278,8 +9347,8 @@ def test_migrate_data_interrupted_dual_object_batch_rerun_skips_completed_r2_and
        target_release_digest: null），成功恢复后同一文件原子转为
        committed（用户确认生命周期，T19-P4 钉存在性与字段绑定契约；
        本切片只排除把未完成对象伪称 committed）；
-    4. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
-       子树逐字节不变）；
+    4. legacy 源（data/releases/<legacy-id>/）与旧 pointers
+       （finetune/、pipeline/）子树逐字节不变）；
     5. 恢复注入后，用相同 root、相同映射、相同 legacy 源重跑同一
        ``migrate_data``：必须成功 —— 跳过凭证匹配的已完成 r2（release
        与 receipt 逐字节不变、written_at 不刷新、r2 侧 mtime 不动），
@@ -9920,7 +9989,7 @@ def test_migrate_data_interrupted_dual_object_batch_rerun_skips_completed_r2_and
 
     # ---- 行为 7：无新身份 —— 目标根恰含两个正式对象与两份 receipt。----
     releases_root = interrupted_root / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -9931,9 +10000,11 @@ def test_migrate_data_interrupted_dual_object_batch_rerun_skips_completed_r2_and
     assert not (releases_root / "data-v4.1-r3").exists(), (
         "中断 + 恢复重跑不得自动改号到 data-v4.1-r3"
     )
-    assert not (releases_root / UNMAPPED_DATA_SIBLING).exists(), (
-        "未映射 sibling release 不得被转换（不得在 data/releases/ 下产生"
-        f"任何 {UNMAPPED_DATA_SIBLING!r} 相关目标条目）"
+    assert not (
+        releases_root / UNMAPPED_DATA_SIBLING / "release.yaml"
+    ).exists(), (
+        "未映射 sibling release 不得被转换（sibling 的 legacy 源目录本就在 "
+        f"data/releases/ 下；不得在其中生成目标 release.yaml）"
     )
     receipts_root = interrupted_root / "migration_receipts"
     assert [entry.name for entry in sorted(receipts_root.iterdir())] == [
@@ -10122,8 +10193,9 @@ def test_migrate_data_completed_batch_rerun_with_missing_or_tampered_receipt_fai
        receipt（未被扰动的 r2 receipt）逐字节不变（含 written_at /
        status committed）；不产生 data-v4.1-r3 等新身份；data/releases/
        与 migration_receipts/ 精确内容不变；
-    4. legacy 源和旧 pointers 不变（workspace/、finetune/、pipeline/
-       子树逐字节不变；旧指针仍声明 legacy 身份）；不就地修改传入映射项；
+    4. legacy 源（data/releases/<legacy-id>/）与旧 pointers
+       （finetune/、pipeline/）子树逐字节不变；旧指针仍声明
+       legacy 身份）；不就地修改传入映射项；
     5. 前置对照（T18 既有行为）：扰动前同 root、同映射的完成态重跑必须
        成功跳过且零变化 —— 完整 receipt 下的正常幂等跳过不被本切片破
        坏，重跑的拒绝只能由 receipt 缺失/失配归因；
@@ -10609,7 +10681,7 @@ def test_migrate_data_completed_batch_rerun_with_missing_or_tampered_receipt_fai
     # 无新身份 —— data/releases/ 恰含 r1、r2；migration_receipts/ 恰含
     # 各场景扰动后的 receipt 集合。
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -11337,7 +11409,7 @@ def test_migrate_data_interrupted_batch_rerun_after_legacy_source_change_fails_c
         "不得先解封再重建）"
     )
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -11561,7 +11633,7 @@ def test_migrate_data_interrupted_batch_rerun_after_legacy_source_change_fails_c
     assert not set(interrupted_tree) - set(final_tree), (
         "末尾对照重跑不得删除任何既有条目"
     )
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -12092,7 +12164,7 @@ def test_migrate_data_interrupted_partial_object_persists_verifiable_in_progress
         relative
         for relative, mapping in candidates
         if mapping.get("status") != "committed"
-        and not relative.startswith(("workspace/", "finetune/", "pipeline/"))
+        and not _is_legacy_side(relative)
     )
     assert target_side_in_progress_claims == [r1_receipt_rel], (
         "中断后绑定 r1 的 in-progress 凭证只允许存在于同一个 receipt 文件 "
@@ -12292,7 +12364,7 @@ def test_migrate_data_interrupted_partial_object_persists_verifiable_in_progress
         "r2 receipt 全部条目 mtime_ns 不变）"
     )
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -12699,7 +12771,7 @@ def test_migrate_data_interrupted_batch_rerun_after_prefix_unaffected_source_man
         relative
         for relative, mapping in credential_candidates
         if mapping.get("status") != "committed"
-        and not relative.startswith(("workspace/", "finetune/", "pipeline/"))
+        and not _is_legacy_side(relative)
         and relative != r1_receipt_rel
     )
     assert not extra_in_progress_credentials, (
@@ -12921,7 +12993,7 @@ def test_migrate_data_interrupted_batch_rerun_after_prefix_unaffected_source_man
         "不得先解封再重建）"
     )
     releases_root = tmp_path / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -13101,7 +13173,7 @@ def test_migrate_data_interrupted_batch_rerun_after_prefix_unaffected_source_man
         "末尾对照重跑不得触碰已完成 r2 侧任何条目元数据（r2 release 子树"
         "与 r2 receipt 全部条目 mtime_ns 不变）"
     )
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
@@ -13285,13 +13357,13 @@ def _assert_rejected_object_zero_writes(
         f"{[entry.name for entry in sorted(receipts_root.iterdir())]}"
     )
     releases_root = root / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         completed_identity
     ], (
         f"{rejection_context}后 data/releases/ 必须恰含已完成对象 "
         f"{completed_identity} 的 release 子树一棵（失败对象零目标写入、"
         "不得产生任何其他身份/新条目）：实际 "
-        f"{[entry.name for entry in sorted(releases_root.iterdir())]}"
+        f"{_target_release_names(releases_root)}"
     )
     after_tree = _snapshot_tree(root)
     _assert_legacy_side_unchanged(snapshot_before_first_call, after_tree)
@@ -13387,13 +13459,13 @@ def _rerun_after_input_fix_and_assert_dual_batch_final_state(
     )
 
     releases_root = root / "data" / "releases"
-    assert [entry.name for entry in sorted(releases_root.iterdir())] == [
+    assert _target_release_names(releases_root) == [
         CONFIRMED_DATA_TARGET_R1,
         CONFIRMED_DATA_TARGET_R2,
     ], (
         f"{fix_context}后的重跑不得产生新身份/新条目：data/releases/ 必须"
         f"恰含 {CONFIRMED_DATA_TARGET_R1} 与 {CONFIRMED_DATA_TARGET_R2}："
-        f"实际 {[entry.name for entry in sorted(releases_root.iterdir())]}"
+        f"实际 {_target_release_names(releases_root)}"
     )
     receipts_root = root / "migration_receipts"
     assert [entry.name for entry in sorted(receipts_root.iterdir())] == [
@@ -15961,7 +16033,7 @@ PREPARE_ONLY_RUN_V2_ID = "v4.1-prompt-concise-v2/seed3411"
 
 # M0 training_machine_run_evidence.weight_runs 首条真实 run（训练机只读
 # 调查："fold0 有 adapter 与 10 个 merged 分片，有 evidence_archive"）。
-# 作为未声明 sibling 写入 fixture：扫描 workspace/runs/ 或从 sibling 取
+# 作为未声明 sibling 写入 fixture：扫描 trains/ 或从 sibling 取
 # 权重事实的实现必被本切片捕获。
 WEIGHT_RUN_SIBLING_ID = "v4.1-phase2-source-aware-v1-seed3407"
 
@@ -16038,7 +16110,7 @@ def _write_prepare_only_runs_layout(root: Path) -> None:
     字段值合成（非真实权重/资料），结构与事实字段对齐 M0 证据；planned
     参数与 planned 输出路径都是准备资料，不是训练执行事实。
     """
-    runs_root = root / "workspace" / "runs"
+    runs_root = root / "trains"
 
     def _write_inputs(run_dir: Path, run_id: str) -> None:
         inputs_dir = run_dir / "inputs"
@@ -16096,7 +16168,7 @@ def _write_prepare_only_runs_layout(root: Path) -> None:
                 "status": "prepared",
                 "seed": 3411,
                 "paths": {
-                    "input": f"workspace/runs/{PREPARE_ONLY_RUN_V1_ID}/inputs",
+                    "input": f"trains/{PREPARE_ONLY_RUN_V1_ID}/inputs",
                     "adapter": f"finetune/experiments/{experiment_dir_name}/adapter",
                     "merged": f"finetune/experiments/{experiment_dir_name}/merged",
                 },
@@ -16320,13 +16392,13 @@ def test_confirmed_prepare_only_run_entry_not_registered_as_training_fact(
        完成 / 通过 / 评测结果 / 模型身份值；
     9. 纯构建零写入：全树快照逐字节不变（不写 history-summary 文件、
        不创建 records/ 或任何目标条目、不改 legacy 源树 —— 含
-       workspace/runs/ 准备资料与 pipeline/prompt_registry/）；
+       trains/ 准备资料与 pipeline/prompt_registry/）；
        不就地修改传入 entry；
     10. 合法已确认 prompt_history entry 对照仍正常构建（H1 正向不回
         归，反向门不得因新增 run 分类而误伤既有合法 entry）。
 
     fixture：_write_prepare_only_runs_layout 镜像 M0
-    training_machine_run_evidence 的 workspace/runs/ 布局 ——
+    training_machine_run_evidence 的 trains/ 布局 ——
     已声明 prepare-only run 只有 inputs/ 与 prepared-config-untrained/
     （无任何权重命名文件）；未声明 sibling prepare-only run
     （v4.1-prompt-concise-v2/seed3411，仅 input 资料）与未声明 sibling
@@ -16365,7 +16437,7 @@ def test_confirmed_prepare_only_run_entry_not_registered_as_training_fact(
       反走私断言失败；
     - 把 entry 分到有权重 run 分组 -> 行为 5 断言失败；
     - 派生 model 概念条目 / 分配正式身份 -> 行为 6 断言失败；
-    - 扫描 workspace/runs/ 生成 sibling 条目或取 sibling 事实 ->
+    - 扫描 trains/ 生成 sibling 条目或取 sibling 事实 ->
       entries 数量 / sibling ID 断言失败；
     - 构建路径写盘（history-summary 文件、records/、staging、改准备
       资料）-> 全树快照对比失败；
@@ -16402,7 +16474,7 @@ def test_confirmed_prepare_only_run_entry_not_registered_as_training_fact(
     """
     _write_full_history_prompt_registry(tmp_path)
     _write_prepare_only_runs_layout(tmp_path)
-    declared_run_dir = tmp_path / "workspace" / "runs" / PREPARE_ONLY_RUN_V1_ID
+    declared_run_dir = tmp_path / "trains" / PREPARE_ONLY_RUN_V1_ID
 
     # ---- fixture 前置事实（对齐 M0 证据）：已声明 prepare-only run
     #      只有输入/准备资料；planned 参数真实存在（使"核心参数
@@ -16441,13 +16513,13 @@ def test_confirmed_prepare_only_run_entry_not_registered_as_training_fact(
         "fixture 前置事实失败：planned adapter/merged 输出位置必须未物化"
         "（prepare-only run 本次未发现权重）"
     )
-    v2_run_dir = tmp_path / "workspace" / "runs" / PREPARE_ONLY_RUN_V2_ID
+    v2_run_dir = tmp_path / "trains" / PREPARE_ONLY_RUN_V2_ID
     assert v2_run_dir.is_dir() and any(v2_run_dir.rglob("*.json")), (
         "fixture 前置事实失败：第二个 prepare-only run（未声明 sibling）必须以"
         "input 资料存在"
     )
     weight_fold_dir = (
-        tmp_path / "workspace" / "runs" / WEIGHT_RUN_SIBLING_ID / "fold0"
+        tmp_path / "trains" / WEIGHT_RUN_SIBLING_ID / "fold0"
     )
     assert (weight_fold_dir / "adapter" / "adapter_model.safetensors").is_file() and (
         any((weight_fold_dir / "merged").glob("*.safetensors"))
@@ -16617,7 +16689,7 @@ def test_confirmed_prepare_only_run_entry_not_registered_as_training_fact(
     assert _snapshot_tree(tmp_path) == before, (
         "build_history_summary 必须纯构建零写入：全树快照逐字节不变"
         "（不写 history-summary 文件、不创建 records/ 或任何目标条目、不改 "
-        "legacy 源树含 workspace/runs/ 准备资料）"
+        "legacy 源树含 trains/ 准备资料）"
     )
     assert not (tmp_path / "records").exists(), (
         "纯构建不得创建 records/ 或任何正式对象条目（不分配新正式身份）"
@@ -16691,7 +16763,7 @@ def test_confirmed_prepare_only_run_entry_not_registered_as_training_fact(
 #    <kind>-v<协议>-r<N> 正式身份；
 # 9. 纯构建零写入：全树快照逐字节不变（不写 history-summary 文件、
 #    不创建 records/ 或任何目标条目、不改 legacy 源树含
-#    workspace/runs/ 权重与准备资料）；不就地修改传入 entry；
+#    trains/ 权重与准备资料）；不就地修改传入 entry；
 # 10. 合法已确认 prompt_history 与 prepare_only_run entry 对照仍正常
 #     构建（H1/H5 正向不回归，新增 run 分类不得反向过宽）。
 # 其余 weight run 结构形态（prompt-minimal run 根结构声明、
@@ -16712,7 +16784,7 @@ WEIGHT_RUN_DECLARED_ID = WEIGHT_RUN_SIBLING_ID
 # M0 weight_runs 第 5 条真实 run（"run 根下有 adapter 与 10 个 merged
 # 分片，有归档目录；结构与 fold0 子目录模式不同"）。作为未声明
 # sibling 写入 fixture：权重直接位于 run 根（无 fold0/ 子目录），
-# 扫描 workspace/runs/ 或从 sibling 取结构事实的实现必被捕获。
+# 扫描 trains/ 或从 sibling 取结构事实的实现必被捕获。
 WEIGHT_RUN_ROOT_SIBLING_ID = "v4.1-prompt-minimal-v1-seed3411"
 
 # H7 run 根结构声明切片将 M0 第 5 条 weight run 作为声明源。该 run
@@ -16792,7 +16864,7 @@ def _write_weight_run_root_sibling_layout(root: Path) -> None:
     值都只可能来自 sibling。字段值合成（非真实资料），结构与事实字段
     对齐 M0 证据。
     """
-    run_dir = root / "workspace" / "runs" / WEIGHT_RUN_ROOT_SIBLING_ID
+    run_dir = root / "trains" / WEIGHT_RUN_ROOT_SIBLING_ID
     (run_dir / "adapter").mkdir(parents=True, exist_ok=True)
     (run_dir / "adapter" / "adapter_model.safetensors").write_bytes(
         f"<synthetic adapter bytes: {WEIGHT_RUN_ROOT_SIBLING_ID}>".encode("utf-8")
@@ -17086,8 +17158,8 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
        显式非存在记录）；weights / adapter / merged / checkpoint /
        safetensors 命名族键允许携带存在性值 —— 与 H5 相反，权重存在
        是本 run 的 M0 观察事实；
-    7. 不扫描 sibling：entries 恰含声明的一条（不得扫描 workspace/
-       runs/ 生成 sibling 条目，也不得为 run 派生 model 等其他概念条
+    7. 不扫描 sibling：entries 恰含声明的一条（不得扫描 trains/
+       生成 sibling 条目，也不得为 run 派生 model 等其他概念条
        目）；未声明 sibling（v4.1-prompt-concise-v1/seed3411、
        v4.1-prompt-concise-v2/seed3411、v4.1-prompt-minimal-v1-
        seed3411 与三个 prompt registry 条目）的 ID 不得进入文档任何字
@@ -17097,12 +17169,12 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
        scope_note：不为复用导出器伪造 completed Run / 模型）；
     9. 纯构建零写入：全树快照逐字节不变（不写 history-summary 文件、
        不创建 records/ 或任何目标条目、不改 legacy 源树含
-       workspace/runs/ 权重与准备资料）；不就地修改传入 entry；
+       trains/ 权重与准备资料）；不就地修改传入 entry；
     10. 合法已确认 prompt_history 与 prepare_only_run entry 对照仍正常
         构建（H1/H5 正向不回归，新增 run 分类不得反向过宽）。
 
     fixture：_write_prepare_only_runs_layout 镜像 M0
-    training_machine_run_evidence 的 workspace/runs/ 布局 —— 已声明
+    training_machine_run_evidence 的 trains/ 布局 —— 已声明
     weight run ``v4.1-phase2-source-aware-v1-seed3407`` 呈 M0 观察的
     fold0 结构（fold0/adapter + 10 个 merged 分片 + 空 evidence_archive/
     —— M0 未核实归档内容，故声明 run 内没有任何参数来源文件）；两个
@@ -17147,13 +17219,13 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
     - 声明训练完成 / passed / 评测结果 / model 身份 -> 行为 6 claims
       扫描失败；
     - 声明权重完整性 / 哈希已验证 -> 行为 6 claims 扫描失败；
-    - 扫描 workspace/runs/ 生成 sibling 条目或取 sibling 结构事实
+    - 扫描 trains/ 生成 sibling 条目或取 sibling 结构事实
       （run 根结构 sibling 无 fold0/）-> 行为 7 / fold_scope 断言失
       败；
     - 为 run 派生 model 概念条目 / 分配正式身份 -> 行为 7/8 断言失
       败；
     - 构建路径写盘（history-summary 文件、records/、staging、改
-      workspace/runs/ 权重与准备资料）-> 全树快照对比失败；
+      trains/ 权重与准备资料）-> 全树快照对比失败；
     - 丢失原始 run ID -> original_id 断言失败；
     - 就地改写传入 entry -> 输入不变断言失败；
     - 对合法 prompt_history / prepare_only_run entry 改变 H1/H5 行为
@@ -17189,7 +17261,7 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
     _write_full_history_prompt_registry(tmp_path)
     _write_prepare_only_runs_layout(tmp_path)
     _write_weight_run_root_sibling_layout(tmp_path)
-    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run_dir = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
     declared_fold_dir = declared_run_dir / "fold0"
 
     # ---- fixture 前置事实（对齐 M0 证据）：已声明 run 呈 M0 观察的
@@ -17223,7 +17295,7 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
             f"发现 {path}"
         )
     prepare_only_dir = (
-        tmp_path / "workspace" / "runs" / PREPARE_ONLY_RUN_V1_ID
+        tmp_path / "trains" / PREPARE_ONLY_RUN_V1_ID
     )
     prepared_manifest = json.loads(
         (
@@ -17247,7 +17319,7 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
         "为该 weight run 的训练事实）"
     )
     root_sibling_dir = (
-        tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_SIBLING_ID
+        tmp_path / "trains" / WEIGHT_RUN_ROOT_SIBLING_ID
     )
     assert (root_sibling_dir / "adapter" / "adapter_model.safetensors").is_file(), (
         "fixture 前置事实失败：run 根结构 weight run sibling 必须存在"
@@ -17464,12 +17536,12 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
         )
 
     # ---- 行为 9：纯构建零写入 —— 全树逐字节不变（legacy 源不变含
-    #      workspace/runs/ 权重与准备资料、不写 history-summary 文件、
+    #      trains/ 权重与准备资料、不写 history-summary 文件、
     #      不创建任何目标条目）。----
     assert _snapshot_tree(tmp_path) == before, (
         "build_history_summary 必须纯构建零写入：全树快照逐字节不变"
         "（不写 history-summary 文件、不创建 records/ 或任何目标条目、不改 "
-        "legacy 源树含 workspace/runs/ 权重与准备资料）"
+        "legacy 源树含 trains/ 权重与准备资料）"
     )
     assert not (tmp_path / "records").exists(), (
         "纯构建不得创建 records/ 或任何正式对象条目（不分配新正式身份）"
@@ -17505,9 +17577,9 @@ def test_confirmed_weight_run_entry_records_observed_weights_and_evidence_gaps(
 #    观察到权重 -> entry 照常构建且 training_status 仍为
 #    weights_observed（H6a 既有"未观察到 adapter / merged 权重存在性
 #    证据"才拒绝的任一证据规则保持，H6a 不回归）。
-# 2. 声明 run 源缺失（workspace/runs/<source_legacy_id> 整个缺失；M0
+# 2. 声明 run 源缺失（trains/<source_legacy_id> 整个缺失；M0
 #    known_gap 真实形态：source-inventory.yaml known_gap.expected_run
-#    workspace/runs/v4.1-prompt-concise-cv-v1-seed3411 "训练机预期路
+#    trains/v4.1-prompt-concise-cv-v1-seed3411 "训练机预期路
 #    径不存在"，object-mapping model_train_eval_history 将该 run 列为
 #    用户确认 history-only entry："训练机对应 run 路径缺失（known
 #    gap）"）时，weight_run entry 不得 fail-closed 拒绝使 entry 消
@@ -17553,7 +17625,7 @@ def _replace_declared_adapter_weights_with_non_weight_files(root: Path) -> None:
     定由 H6a selector 与本用例的 sibling 走私诱饵覆盖）。
     """
     adapter_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
     )
     weight_file = adapter_dir / "adapter_model.safetensors"
     assert weight_file.is_file(), (
@@ -17576,7 +17648,7 @@ def _replace_declared_adapter_weights_with_non_weight_files(root: Path) -> None:
 def _restore_declared_adapter_weight_file(root: Path) -> None:
     """场景 B 前置：恢复声明 run 的 fold0/adapter 权重文件（场景 A 已移除）。"""
     adapter_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
     )
     weight_file = adapter_dir / "adapter_model.safetensors"
     assert not weight_file.exists(), (
@@ -17590,7 +17662,7 @@ def _restore_declared_adapter_weight_file(root: Path) -> None:
 def _replace_declared_merged_shards_with_non_weight_file(root: Path) -> None:
     """场景 B mutation：声明 run 的 fold0/merged 只剩非权重元数据文件。"""
     merged_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
     )
     shards = sorted(merged_dir.glob("*.safetensors"))
     assert len(shards) == 10, (
@@ -17743,7 +17815,7 @@ def test_confirmed_weight_run_entry_weight_existence_requires_weight_named_files
     _write_full_history_prompt_registry(tmp_path)
     _write_prepare_only_runs_layout(tmp_path)
     _write_weight_run_root_sibling_layout(tmp_path)
-    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run_dir = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
     adapter_dir = declared_run_dir / "fold0" / "adapter"
     merged_dir = declared_run_dir / "fold0" / "merged"
 
@@ -17761,15 +17833,14 @@ def test_confirmed_weight_run_entry_weight_existence_requires_weight_named_files
     assert (declared_run_dir / "evidence_archive").is_dir(), (
         "fixture 前置事实失败：声明 run 必须有 M0 观察的 evidence_archive"
     )
-    root_sibling_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_SIBLING_ID
+    root_sibling_dir = tmp_path / "trains" / WEIGHT_RUN_ROOT_SIBLING_ID
     assert (root_sibling_dir / "adapter" / "adapter_model.safetensors").is_file(), (
         "fixture 前置事实失败：run 根结构 sibling 必须存在（反扫描诱饵）"
     )
     planned_config = yaml.safe_load(
         (
             tmp_path
-            / "workspace"
-            / "runs"
+            / "trains"
             / PREPARE_ONLY_RUN_V1_ID
             / "prepared-config-untrained"
             / "train.yaml"
@@ -18101,10 +18172,10 @@ def test_confirmed_weight_run_entry_missing_declared_source_records_unknown_with
     进入字段级 unknown，整批不 blocked（H6b 第二切片，M1b history-
     summary，先写测试，不改 production）。
 
-    H6b behavior —— 声明 run 源（workspace/runs/<source_legacy_id>）整
+    H6b behavior —— 声明 run 源（trains/<source_legacy_id>）整
     个缺失（M0 known_gap 真实形态：source-inventory.yaml
     training_machine_run_evidence.known_gap：expected_run
-    workspace/runs/v4.1-prompt-concise-cv-v1-seed3411 "训练机预期路
+    trains/v4.1-prompt-concise-cv-v1-seed3411 "训练机预期路
     径不存在"，meaning "不能断言模型在整台训练机上不存在；需沿历史
     报告定位"；object-mapping model_train_eval_history 将该 run 列为
     用户确认 history-only entry："训练机对应 run 路径缺失（known
@@ -18132,7 +18203,7 @@ def test_confirmed_weight_run_entry_missing_declared_source_records_unknown_with
     4. 结构事实与核心参数全部字段级 unknown（缺失不是删字段，也与
        已知 False 可区分 —— 源缺失时判定不可观察）：fold_scope /
        adapter_present / merged_present 与九个核心训练参数均携带非空
-       unknown_reason 与指回声明 run 源（workspace/runs/<run_id>）的
+       unknown_reason 与指回声明 run 源（trains/<run_id>）的
        attempted_source，不携带非 None value（缺失源不得伪装成已知
        值，不得把 H6a 的 M0 结构观察声明值当作仍然成立）；参数名 /
        数据与 Prompt 引用名反走私：不得从 sibling（planned 配置 seed
@@ -18206,8 +18277,8 @@ def test_confirmed_weight_run_entry_missing_declared_source_records_unknown_with
     _write_full_history_prompt_registry(tmp_path)
     _write_prepare_only_runs_layout(tmp_path)
     _write_weight_run_root_sibling_layout(tmp_path)
-    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
-    runs_root = tmp_path / "workspace" / "runs"
+    declared_run_dir = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
+    runs_root = tmp_path / "trains"
 
     # ---- fixture 前置事实（mutation 前）：声明 run 源完整呈 fold0 结
     #      构；未声明 sibling 完整（缺失只能由声明源移除引起）；prompt
@@ -18508,7 +18579,7 @@ def test_confirmed_weight_run_entry_missing_declared_source_records_unknown_with
 def _remove_declared_merged_metadata_leaving_dir_empty(root: Path) -> None:
     """H6c T1 场景 B mutation：fold0/merged 变为完全空目录（可读、零条目）。"""
     merged_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
     )
     metadata_file = merged_dir / "model-index.json"
     assert metadata_file.is_file(), (
@@ -18531,7 +18602,7 @@ def _nest_declared_run_weight_files(root: Path) -> None:
     存在并输出 weights_observed。
     """
     adapter_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
     )
     weight_file = adapter_dir / "adapter_model.safetensors"
     assert weight_file.is_file(), (
@@ -18541,7 +18612,7 @@ def _nest_declared_run_weight_files(root: Path) -> None:
     nested_adapter_dir.mkdir()
     weight_file.rename(nested_adapter_dir / "adapter_model.safetensors")
     merged_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
     )
     shards = sorted(merged_dir.glob("*.safetensors"))
     assert len(shards) == 10, (
@@ -18557,7 +18628,7 @@ def _nest_declared_run_weight_files(root: Path) -> None:
 def _restore_declared_adapter_weight_to_top_level(root: Path) -> None:
     """H6c T2 深度场景 D 前置：adapter 权重移回顶层（merged 保持仅嵌套）。"""
     adapter_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
     )
     nested_file = adapter_dir / "nested_weights" / "adapter_model.safetensors"
     assert nested_file.is_file(), (
@@ -18830,11 +18901,11 @@ def test_confirmed_weight_run_entry_without_weight_evidence_records_observed_abs
     _write_full_history_prompt_registry(tmp_path)
     _write_prepare_only_runs_layout(tmp_path)
     _write_weight_run_root_sibling_layout(tmp_path)
-    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run_dir = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
     adapter_dir = declared_run_dir / "fold0" / "adapter"
     merged_dir = declared_run_dir / "fold0" / "merged"
     fold_dir = declared_run_dir / "fold0"
-    runs_root = tmp_path / "workspace" / "runs"
+    runs_root = tmp_path / "trains"
 
     # ---- fixture 前置事实（mutation 前）：声明 run 源完整呈 fold0 结
     #      构；sibling 诱饵与 prompt registry 完整；目标根不存在。----
@@ -19111,10 +19182,10 @@ def test_confirmed_weight_run_entry_weight_existence_depth_consistent_between_ad
     _write_prepare_only_runs_layout(tmp_path)
     _write_weight_run_root_sibling_layout(tmp_path)
     adapter_dir = (
-        tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+        tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
     )
     merged_dir = (
-        tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
+        tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
     )
 
     # ---- fixture 前置事实（对齐 M0/H6a）：顶层权重文件真实存在（口径
@@ -19130,7 +19201,7 @@ def test_confirmed_weight_run_entry_weight_existence_depth_consistent_between_ad
     )
     assert not any(
         path.is_file()
-        for path in (tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID)
+        for path in (tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID)
         .rglob("*.safetensors")
         if "nested_weights" in path.parts
     ), (
@@ -19140,8 +19211,7 @@ def test_confirmed_weight_run_entry_weight_existence_depth_consistent_between_ad
     planned_config = yaml.safe_load(
         (
             tmp_path
-            / "workspace"
-            / "runs"
+            / "trains"
             / PREPARE_ONLY_RUN_V1_ID
             / "prepared-config-untrained"
             / "train.yaml"
@@ -19153,8 +19223,7 @@ def test_confirmed_weight_run_entry_weight_existence_depth_consistent_between_ad
     sibling_manifest = json.loads(
         (
             tmp_path
-            / "workspace"
-            / "runs"
+            / "trains"
             / WEIGHT_RUN_ROOT_SIBLING_ID
             / "evidence_archive"
             / "training_run_manifest.json"
@@ -19428,7 +19497,7 @@ def test_confirmed_weight_run_entry_weight_existence_depth_consistent_between_ad
 #    9999 不得登记为已知值）；不扫描 sibling：entries 恰含声明的一
 #    条，未声明 sibling ID 不得进入文档任何字符串；
 # 7. 纯构建零写入：每次 build 全树快照逐字节不变；不就地修改传入
-#    entry；legacy（prompt registry / workspace/runs/ sibling 与声明
+#    entry；legacy（prompt registry / trains/ sibling 与声明
 #    源残余部分）不变；
 # 8. 基线（adapter / merged 目录齐全）不回归 H6a/H6c：两事实已知
 #    True、training_status == weights_observed —— 缺失分流不得过宽到
@@ -19499,7 +19568,7 @@ def _remove_declared_adapter_dir(root: Path) -> None:
     必须可区分 —— 本 mutation 制造前者。
     """
     adapter_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
     )
     assert adapter_dir.is_dir(), (
         "fixture 前置事实失败：移除前 fold0/adapter 目录必须存在"
@@ -19513,7 +19582,7 @@ def _remove_declared_adapter_dir(root: Path) -> None:
 def _remove_declared_merged_dir(root: Path) -> None:
     """H6d mutation：整体移除声明 run 的 fold0/merged 目录。"""
     merged_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
     )
     assert merged_dir.is_dir(), (
         "fixture 前置事实失败：移除前 fold0/merged 目录必须存在"
@@ -19533,7 +19602,7 @@ def _recreate_declared_adapter_dir_with_metadata_only(root: Path) -> None:
     态），供"merged 目录缺失 + adapter 可读无权重"镜像场景使用。
     """
     adapter_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "adapter"
     )
     assert not adapter_dir.exists(), (
         "fixture 前置事实失败：重建前 fold0/adapter 目录必须不存在"
@@ -19558,7 +19627,7 @@ def _recreate_declared_adapter_dir_with_metadata_only(root: Path) -> None:
 def _recreate_declared_merged_shards(root: Path) -> None:
     """H6d mutation：重建 fold0/merged 目录与 M0 观察的 10 个顶层分片。"""
     merged_dir = (
-        root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
+        root / "trains" / WEIGHT_RUN_DECLARED_ID / "fold0" / "merged"
     )
     assert not merged_dir.exists(), (
         "fixture 前置事实失败：重建前 fold0/merged 目录必须不存在"
@@ -19601,7 +19670,7 @@ def _assert_h6d_missing_weight_dir_fact(
     if isinstance(fact, Mapping) and fact.get("value") is False and "source" in fact:
         component = "adapter" if "adapter" in name else "merged"
         raise AssertionError(
-            f"{scenario_label}：缺失的声明权重目录（workspace/runs/{run_id}/"
+            f"{scenario_label}：缺失的声明权重目录（trains/{run_id}/"
             f"fold0/{component}）不得被标为已知 False：目录缺席不可观察（目"
             "录不存在不是可读的无权重目录），provenance 不得声称观察到不存"
             "在的目录（Reviewer P2）；必须进入字段级 unknown（非空 "
@@ -19874,7 +19943,7 @@ def test_confirmed_weight_run_entry_missing_declared_weight_dir_records_unknown_
       test_confirmed_weight_run_entry_missing_declared_weight_dir_records_unknown_fact_and_withholds_classification``
     - RED failure signature：恰一个失败用例（本 selector），失败为场
       景 A 的"缺失目录事实不得标为已知 False" 显式 AssertionError（
-      "缺失的声明权重目录（workspace/runs/v4.1-phase2-source-aware-
+      "缺失的声明权重目录（trains/v4.1-phase2-source-aware-
       v1-seed3407/fold0/adapter）不得被标为已知 False…Reviewer P2"，
       实际 adapter_present={"value": False, "source": {...声称观察到
       fold0/adapter...}}）；fixture 前置事实、合法对照、基线与
@@ -19889,11 +19958,11 @@ def test_confirmed_weight_run_entry_missing_declared_weight_dir_records_unknown_
     _write_full_history_prompt_registry(tmp_path)
     _write_prepare_only_runs_layout(tmp_path)
     _write_weight_run_root_sibling_layout(tmp_path)
-    declared_run_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run_dir = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
     fold_dir = declared_run_dir / "fold0"
     adapter_dir = fold_dir / "adapter"
     merged_dir = fold_dir / "merged"
-    runs_root = tmp_path / "workspace" / "runs"
+    runs_root = tmp_path / "trains"
 
     # ---- fixture 前置事实（mutation 前）：声明 run 源完整呈 fold0 结
     #      构（adapter 顶层权重 + merged 10 顶层分片 + evidence_archive）；
@@ -20379,7 +20448,7 @@ def test_build_history_summary_observes_declared_root_weight_layout(
 
     facts = summary_entry.get("facts")
     assert isinstance(facts, Mapping)
-    run_rel = Path("workspace") / "runs" / WEIGHT_RUN_ROOT_DECLARED_ID
+    run_rel = Path("trains") / WEIGHT_RUN_ROOT_DECLARED_ID
     expected_structure = (
         (WEIGHT_RUN_FOLD_SCOPE_FACT, "run_root", run_rel),
         (WEIGHT_RUN_ADAPTER_PRESENT_FACT, True, run_rel / "adapter"),
@@ -20417,14 +20486,14 @@ def test_root_weight_layout_does_not_follow_component_links_to_sibling(
 ) -> None:
     """根级组件链接越出声明 run 时不得读取 sibling 权重（reviewer P2）。"""
     sibling_id = "v4.1-root-weight-sibling-v1-seed9999"
-    sibling_dir = tmp_path / "workspace" / "runs" / sibling_id
+    sibling_dir = tmp_path / "trains" / sibling_id
     for component in ("adapter", "merged"):
         component_dir = sibling_dir / component
         component_dir.mkdir(parents=True, exist_ok=True)
         (component_dir / f"{component}.safetensors").write_bytes(b"sibling-only")
 
     declared_dir = (
-        tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_DECLARED_ID
+        tmp_path / "trains" / WEIGHT_RUN_ROOT_DECLARED_ID
     )
     declared_dir.mkdir(parents=True, exist_ok=True)
     (declared_dir / "adapter").symlink_to(sibling_dir / "adapter", target_is_directory=True)
@@ -20461,13 +20530,13 @@ def test_root_weight_layout_rejects_remaining_sibling_link_paths(
 ) -> None:
     """run 祖先链接与权重文件链接都不得成为根结构权重证据。"""
     sibling_id = "v4.1-root-weight-sibling-v1-seed9998"
-    sibling_dir = tmp_path / "workspace" / "runs" / sibling_id
+    sibling_dir = tmp_path / "trains" / sibling_id
     for component in ("adapter", "merged"):
         component_dir = sibling_dir / component
         component_dir.mkdir(parents=True, exist_ok=True)
         (component_dir / f"{component}.safetensors").write_bytes(b"sibling-only")
 
-    declared_dir = tmp_path / "workspace" / "runs" / WEIGHT_RUN_ROOT_DECLARED_ID
+    declared_dir = tmp_path / "trains" / WEIGHT_RUN_ROOT_DECLARED_ID
     if attack_kind == "run_link":
         declared_dir.parent.mkdir(parents=True, exist_ok=True)
         declared_dir.symlink_to(sibling_dir, target_is_directory=True)
@@ -20502,14 +20571,14 @@ def test_root_weight_layout_rejects_remaining_sibling_link_paths(
 def _write_fold_merged_link_layout(root: Path, *, target_model: str) -> Path:
     """创建 H8 fold0 merged 发布模型链接 fixture，返回 run 目录。"""
     run_id = "v4.1-phase2-coverage-first-v1-seed3407"
-    run_dir = root / "workspace" / "runs" / run_id
+    run_dir = root / "trains" / run_id
     fold_dir = run_dir / "fold0"
     adapter_dir = fold_dir / "adapter"
     adapter_dir.mkdir(parents=True, exist_ok=True)
     (adapter_dir / "adapter_model.safetensors").write_bytes(b"declared-adapter")
 
     release_merged = (
-        root / "workspace" / "models" / "releases" / target_model / "merged"
+        root / "models" / "releases" / target_model / "merged"
     )
     release_merged.mkdir(parents=True, exist_ok=True)
     for index in range(1, 11):
@@ -20527,8 +20596,8 @@ def _write_fold_merged_link_layout(root: Path, *, target_model: str) -> Path:
             {
                 "schema_version": "tensile-model-registry/local-identity/v1",
                 "model_name": target_model,
-                "adapter_path": f"workspace/runs/{run_id}/fold0/adapter",
-                "merged_path": f"workspace/runs/{run_id}/fold0/merged",
+                "adapter_path": f"trains/{run_id}/fold0/adapter",
+                "merged_path": f"trains/{run_id}/fold0/merged",
                 "source_adapter_path": source_adapter_path,
                 "source_merged_path": source_merged_path,
             }
@@ -20546,13 +20615,13 @@ def _write_fold_merged_link_layout(root: Path, *, target_model: str) -> Path:
         "artifacts": {
             "adapter": {
                 "managed_path": (
-                    f"workspace/models/releases/{target_model}/adapter"
+                    f"models/releases/{target_model}/adapter"
                 ),
                 "path_at_freeze": str(root / source_adapter_path),
             },
             "merged": {
                 "managed_path": (
-                    f"workspace/models/releases/{target_model}/merged"
+                    f"models/releases/{target_model}/merged"
                 ),
                 "path_at_freeze": str(root / source_merged_path),
                 "expected_safetensors_shards": 10,
@@ -20600,14 +20669,14 @@ def test_fold_merged_link_requires_matching_run_and_release_identity(
     assert merged_fact["value"] is True
     source = merged_fact["source"]
     assert source["path"] == (
-        "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged"
+        "trains/v4.1-phase2-coverage-first-v1-seed3407/fold0/merged"
     )
     assert source["resolved_path"] == (
-        f"workspace/models/releases/{model_name}/merged"
+        f"models/releases/{model_name}/merged"
     )
     assert source["model_identity_path"].endswith("fold0/model_identity.json")
     assert source["release_manifest_path"] == (
-        f"workspace/models/releases/{model_name}/release-manifest.json"
+        f"models/releases/{model_name}/release-manifest.json"
     )
     assert source["registry_manifest_path"] == (
         f"pipeline/model_registry/releases/{model_name}.json"
@@ -20669,7 +20738,6 @@ def test_fold_merged_link_origin_must_bind_declared_run(
     else:
         release_path = (
             tmp_path
-            / "workspace"
             / "models"
             / "releases"
             / model_name
@@ -20757,14 +20825,13 @@ def test_fold_merged_link_rejects_unapproved_link_layers(
     elif attack_kind == "merged_weight_link":
         merged_dir = (
             tmp_path
-            / "workspace"
             / "models"
             / "releases"
             / model_name
             / "merged"
         )
         weight = merged_dir / "model-00001-of-00010.safetensors"
-        sibling_weight = tmp_path / "workspace" / "models" / "sibling.safetensors"
+        sibling_weight = tmp_path / "models" / "sibling.safetensors"
         sibling_weight.write_bytes(weight.read_bytes())
         weight.unlink()
         weight.symlink_to(sibling_weight)
@@ -20772,12 +20839,12 @@ def test_fold_merged_link_rejects_unapproved_link_layers(
             other.unlink()
         (merged_dir / "model-00010-of-00010.safetensors").unlink()
     elif attack_kind == "runs_ancestor_link":
-        runs = tmp_path / "workspace" / "runs"
+        runs = tmp_path / "trains"
         sibling_runs = tmp_path / "sibling-runs"
         runs.rename(sibling_runs)
         runs.symlink_to(sibling_runs, target_is_directory=True)
     elif attack_kind == "release_ancestor_link":
-        releases = tmp_path / "workspace" / "models" / "releases"
+        releases = tmp_path / "models" / "releases"
         sibling_releases = tmp_path / "sibling-releases"
         releases.rename(sibling_releases)
         releases.symlink_to(sibling_releases, target_is_directory=True)
@@ -20841,8 +20908,7 @@ def _write_verified_parameter_archive(root: Path) -> Path:
         if relative == "adapter/adapter_config.json":
             declared_config = (
                 root
-                / "workspace"
-                / "runs"
+                / "trains"
                 / WEIGHT_RUN_DECLARED_ID
                 / "fold0"
                 / "adapter"
@@ -20909,7 +20975,7 @@ def test_weight_run_extracts_only_hash_verified_archival_parameters(
         "train_batch_size * gradient_accumulation_steps; world_size unknown"
     )
     expected_adapter_source = (
-        f"workspace/runs/{WEIGHT_RUN_DECLARED_ID}/fold0/adapter/adapter_config.json"
+        f"trains/{WEIGHT_RUN_DECLARED_ID}/fold0/adapter/adapter_config.json"
     )
     for name in ("lora_rank", "lora_alpha", "lora_target_modules"):
         assert facts[name]["source"]["path"] == expected_adapter_source
@@ -21044,7 +21110,7 @@ def _write_weight_run_scenario_without_archive(root: Path) -> None:
     """
     _write_prepare_only_runs_layout(root)
     _write_weight_run_root_sibling_layout(root)
-    declared_run = root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run = root / "trains" / WEIGHT_RUN_DECLARED_ID
     assert (declared_run / "fold0" / "adapter" / "adapter_model.safetensors").is_file(), (
         "fixture 前置事实失败：声明的 weight run 必须有可观察的 adapter 权重"
         "（归档缺失场景必须走归档读取主分支，而非声明 run 源缺失分支）"
@@ -21537,7 +21603,7 @@ def test_weight_run_missing_archive_root_still_marks_core_params_removed(
 # （PB-016 任务 1，先写测试，不改 production）
 # ---------------------------------------------------------------------------
 #
-# 背景：声明 run 源 ``workspace/runs/<source_legacy_id>`` 整体不存在（M0
+# 背景：声明 run 源 ``trains/<source_legacy_id>`` 整体不存在（M0
 # known_gap 真实形态：source-inventory.yaml ``known_gap.expected_run``）时，
 # ``_build_weight_run_history_entry`` 走早退分支，只把 3 个结构事实
 # （fold_scope / adapter_present / merged_present）与 9 个核心训练参数写成
@@ -21552,9 +21618,9 @@ def test_weight_run_missing_archive_root_still_marks_core_params_removed(
 #        fact["reason_code"] == "unavailable_source_missing"
 #
 # 2. 事实形态仍是字段级 unknown：``unknown_reason`` 非空、``attempted_source``
-#    指回 ``workspace/runs/<run_id>``、不携带非 None ``value``；
+#    指回 ``trains/<run_id>``、不携带非 None ``value``；
 # 3. ``unknown_reason`` 必须含原 run id 与缺失的源路径
-#    ``workspace/runs/<run_id>``，并与「M0 未记录参数」文案可区分；源缺失没有
+#    ``trains/<run_id>``，并与「M0 未记录参数」文案可区分；源缺失没有
 #    任何可观测的清理日期，**禁止伪造归档清理日期 2026-10-18**；
 # 4. entry 级字段不变（entry_id / kind / original_id / history_only /
 #    formal_identity），且不输出无证据的 ``training_status``；
@@ -21590,7 +21656,7 @@ def _write_weight_run_scenario_without_declared_source(root: Path) -> dict[str, 
     """
     _write_prepare_only_runs_layout(root)
     _write_weight_run_root_sibling_layout(root)
-    declared_run = root / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run = root / "trains" / WEIGHT_RUN_DECLARED_ID
     assert declared_run.is_dir() and (declared_run / "fold0").is_dir(), (
         "fixture 前置事实失败：声明 run 源必须先完整存在（mutation 才能钉定「源"
         "整源缺失」这一形态）"
@@ -21601,7 +21667,7 @@ def _write_weight_run_scenario_without_declared_source(root: Path) -> dict[str, 
         "known_gap：预期路径不存在）"
     )
     for sibling_id in (PREPARE_ONLY_RUN_V1_ID, PREPARE_ONLY_RUN_V2_ID, WEIGHT_RUN_ROOT_SIBLING_ID):
-        assert (root / "workspace" / "runs" / sibling_id).is_dir(), (
+        assert (root / "trains" / sibling_id).is_dir(), (
             f"fixture 前置事实失败：mutation 后未声明 sibling {sibling_id} 必须"
             "保持完好（缺失只能由声明源引起）"
         )
@@ -21644,13 +21710,13 @@ def test_weight_run_source_missing_keeps_field_level_unknown_shape(
     tmp_path: Path,
 ) -> None:
     """显式状态叠加在既有字段级 unknown 形态之上：12 个事实仍必须携带非空
-    ``unknown_reason``、``attempted_source`` 指回 ``workspace/runs/<run_id>``、
+    ``unknown_reason``、``attempted_source`` 指回 ``trains/<run_id>``、
     且不携带非 None ``value``（源缺失不得伪装成已知值）。
     """
     # Arrange
     entry = _write_weight_run_scenario_without_declared_source(tmp_path)
     run_id = entry["source_legacy_id"]
-    expected_source = f"workspace/runs/{run_id}"
+    expected_source = f"trains/{run_id}"
     expected_names = sorted({*WEIGHT_RUN_KNOWN_FACTS, *WEIGHT_RUN_CORE_TRAIN_PARAM_FACTS})
 
     # Act
@@ -21674,14 +21740,14 @@ def test_weight_run_source_missing_reason_names_run_id_and_declared_path(
     tmp_path: Path,
 ) -> None:
     """源缺失状态的说明文本必须写出原 run id 与缺失的源路径
-    ``workspace/runs/<run_id>``，与「M0 未记录参数值」的文案可区分，且不得
+    ``trains/<run_id>``，与「M0 未记录参数值」的文案可区分，且不得
     伪造任何清理日期（源缺失无人可观测的清理日期）。
     """
     # Arrange
     entry = _write_weight_run_scenario_without_declared_source(tmp_path)
     prepare_entry = _confirmed_prepare_only_run_entry()
     run_id = entry["source_legacy_id"]
-    expected_source = f"workspace/runs/{run_id}"
+    expected_source = f"trains/{run_id}"
     document = _resolve_history_summary_entry()(tmp_path, [entry, prepare_entry])
 
     # Act
@@ -21791,7 +21857,7 @@ def test_weight_run_partial_structure_missing_is_not_marked_source_missing(
     # Arrange：声明 run 目录存在但内部为空，run 根也没有 adapter / merged。
     _write_prepare_only_runs_layout(tmp_path)
     _write_weight_run_root_sibling_layout(tmp_path)
-    declared_run = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
     shutil.rmtree(declared_run)
     declared_run.mkdir(parents=True)
     assert declared_run.is_dir(), "前置事实：声明 run 源目录必须存在（源并未缺失）"
@@ -21823,7 +21889,7 @@ def test_weight_run_dangling_source_symlink_is_not_marked_source_missing(
     """声明 run 源是悬空符号链接时不得被标成「源缺失」。
 
     契约：源缺失声明要求「来源链不含链接 且 声明 run 目录不存在」两个条件
-    同时成立。把 ``workspace/runs/<source_legacy_id>`` 换成指向不存在目标
+    同时成立。把 ``trains/<source_legacy_id>`` 换成指向不存在目标
     的符号链接时，``Path.exists()`` 同样返回 False（链接未被解析到实体），
     但来源链含链接意味着源缺失不可观测，因此 12 个事实必须保持既有字段级
     unknown 形态：断言 ``reason_code`` 键整体缺席（而不是断言某个专门的中
@@ -21834,8 +21900,8 @@ def test_weight_run_dangling_source_symlink_is_not_marked_source_missing(
     """
     # Arrange：声明 run 目录整体换成指向不存在目标的符号链接。
     entry = _write_weight_run_scenario_without_declared_source(tmp_path)
-    declared_run = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
-    declared_run.symlink_to(tmp_path / "workspace" / "runs" / "no-such-run-source")
+    declared_run = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
+    declared_run.symlink_to(tmp_path / "trains" / "no-such-run-source")
     # 前置事实：叶子路径是链接且未解析到实体 —— 与「源整源缺失」在
     # Path.exists() 上不可区分，只有来源链链接可区分。
     assert declared_run.is_symlink(), "前置事实：声明 run 路径必须为符号链接"
@@ -21880,11 +21946,11 @@ def test_weight_run_unreadable_source_does_not_raise(
     """
     # Arrange：声明 run 源在磁盘上缺失，且对它的存在性探测被拒绝。
     entry = _write_weight_run_scenario_without_declared_source(tmp_path)
-    declared_run = tmp_path / "workspace" / "runs" / WEIGHT_RUN_DECLARED_ID
+    declared_run = tmp_path / "trains" / WEIGHT_RUN_DECLARED_ID
     real_exists = Path.exists
 
     def _deny_source_probe(self: Path) -> bool:
-        if self.parts[-1] == WEIGHT_RUN_DECLARED_ID and self.parts[-2] == "runs":
+        if self.parts[-1] == WEIGHT_RUN_DECLARED_ID and self.parts[-2] == "trains":
             raise PermissionError(13, "Permission denied", str(self))
         return real_exists(self)
 
@@ -22060,9 +22126,9 @@ def _write_h11_model_and_eval_sources(root: Path) -> None:
         "production_approved": False,
         "limitations": ["single_fold_only", "quality_gates_not_passed"],
         "artifacts": {
-            "adapter": {"managed_path": f"workspace/models/releases/{model_name}/adapter"},
+            "adapter": {"managed_path": f"models/releases/{model_name}/adapter"},
             "merged": {
-                "managed_path": f"workspace/models/releases/{model_name}/merged",
+                "managed_path": f"models/releases/{model_name}/merged",
                 "aggregate_sha256": "m" * 64,
             },
         },

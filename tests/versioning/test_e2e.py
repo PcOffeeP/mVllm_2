@@ -26,7 +26,7 @@ def test_data_cli_lifecycle_cannot_create_synthetic_training(tmp_path: Path, med
     from pipeline import source_bootstrap
     monkeypatch.setattr(source_bootstrap, 'probe_video', _source_probe)
     inputs, _, root, _ = media_inputs
-    store = root / "workspace" / "mlflow"
+    store = root / "mlflow"
     batch = "batch-001"
     common = ("--root", str(root), "--batch", batch, "--inputs", str(inputs))
     for stage in ("source", "roi", "subvideo", "review_export"):

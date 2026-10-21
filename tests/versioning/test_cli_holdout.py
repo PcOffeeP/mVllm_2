@@ -54,7 +54,7 @@ def test_train_cli_rejects_holdout_before_creating_store(tmp_path: Path) -> None
             str(config),
         ]
     ) == 2
-    assert not (root / "workspace" / "mlflow").exists()
+    assert not (root / "mlflow").exists()
 
 
 def test_holdout_eval_requires_claim_and_preregistration(
@@ -63,7 +63,7 @@ def test_holdout_eval_requires_claim_and_preregistration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     root = tmp_path / "project"
-    store_path = root / "workspace" / "mlflow"
+    store_path = root / "mlflow"
     version = "data-v4.1-r3"
     eval_id = "eval-v4.1-r3"
     model_id = "model-v4.1-r3"

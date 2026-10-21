@@ -66,7 +66,7 @@ def test_non_create_usage_errors_do_not_initialize_store(
     assert main([*argv, "--root", str(root)]) == 2
     message = capsys.readouterr().err
     assert "缺少必填参数" in message or "实际执行器" in message
-    assert not (root / "workspace" / "mlflow").exists()
+    assert not (root / "mlflow").exists()
 
 
 def _write_migration_mapping(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -529,7 +529,7 @@ def test_manual_execution_commands_refused_before_store(tmp_path, capsys, domain
     for action in actions:
         assert main([domain, action, f'{domain}-v4.1-r1', '--root', str(tmp_path)]) == 2
         assert '实际执行器' in capsys.readouterr().err
-        assert not (tmp_path / 'workspace/mlflow').exists()
+        assert not (tmp_path / 'mlflow').exists()
 
 
 def test_train_run_routes_explicit_fold_and_other_actions_reject_it(tmp_path, monkeypatch):
