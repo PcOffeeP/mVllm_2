@@ -39,6 +39,7 @@
 | 口径裁决 | TEST-SOURCE-REUSE | 待处理：21 个既定 test source 重建 test release 的口径已裁决，真实构建未执行 | 三条边界（不入任何训练分支／非盲参考性口径／结果不回流）约束构建与报告；构建仍待授权、人工审查与真实媒体验证 |
 | 归档纪律 | ARTIFACT-RETENTION | 进行中：备份节奏、过期文件管理与清理红线已定，待按节奏执行 | 首次适用待全量训练+评测归档；清理红线三项不得进入任何清理候选 |
 | 后续主任务 | R2-REALTRAIN | 待处理：用 `data-v4.1-r2` + `prompt-v4.1-r2` 完成 fold 0 → 三折真实训练与评测，未开始 | 待清理收尾后；依赖 r2 训练 YAML 冻结 + 用户 GPU 授权；预算均为推算，需首 50 步实测校准 |
+| 本期收尾 | LAYOUT-FLATTEN | 进行中（Pi）：取消 `workspace/` 根段的布局扁平化；代码/测试/`.gitignore`/现行文档已改，P2 物理搬迁未做 | 见下文 LAYOUT-FLATTEN 条目及[布局迁移说明](layout-migration-20261021.md) |
 
 MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练最终候选；绑定 model/eval 的一次性 claim 在最终身份确定并获测试使用授权后、首次模型调用前建立。不能倒置为先测试通过才允许训练该候选。
 
@@ -289,6 +290,65 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **入口与产物**：参照 [发布证据](results/v4_1_agent_pipeline_fold0_r1/README.md) 和 [模型流程](model-workflow.md) 核对执行入口；冻结报告和模型哈希，经注册表发布新身份并同步 delivery，核对服务加载对象。缺可执行入口则先补任务单/实现，不把历史归档命令写成现成流程。
 - **验收标准**：预定质量门与身份校验均有证据，模型/报告/注册表/delivery/服务一致；新候选不覆盖旧模型历史结论，工程成功不能替代质量通过。
 - **证据/限制**：[交付配置](../delivery/model_component.json)、[模型注册](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json) 及现有 sealed-test 公开结果；目前不满足最终交付标准；历史阶段标志的真实所在为[部署摘要](results/v4_1_agent_pipeline_fold0_r1/deployment_summary.json) 的 `historical_quality_status`，模型注册 JSON 不含 stage 字段。
+
+### LAYOUT-FLATTEN — 取消 `workspace/` 根段的项目本地布局扁平化
+
+- **状态/来源**：进行中（Pi，2026-10-21）；用户 2026-10-21 决定彻底拆掉 `workspace/` 目录，内容搬到顶层语义目录（`data`/`trains`/`models`/`base-models`/`mlflow`/`evaluations`/`audits/*`/`data-staging`/`data-rebuild`）。完整映射表、本阶段范围与 P2 清单见[布局迁移说明](layout-migration-20261021.md)，本条不重复。
+- **已完成批次（按 commit 顺序；逐条主题取 `git log --oneline`）**：
+  1. `3c11c93` refactor(layout): 取消 workspace/ 根段，核心路径层改指向顶层语义目录
+  2. `e3dfb62` refactor(layout): versioning 与 scripts 侧改指顶层语义目录
+  3. `cf66874` refactor(layout): pipeline/finetune/delivery 与配置改指顶层语义目录
+  4. `e97ea32` fix(layout): project_local 默认收敛为 False 并按实参显式声明
+  5. `fd93d55` test(layout): 适配 tests/versioning 的新布局并加固护栏豁免规则（新增布局守卫 `tests/test_layout_migration_guard.py`）
+  6. `471c778` test(layout): 适配非 versioning 测试的新布局
+  7. `a49476e` fix(layout): 刷新兼容审计摘要并修正备份源项目根深度
+  8. 本批收尾 `docs(layout): 收口 workspace/ 扁平化的忽略规则与现行文档`：`.gitignore` 用顶层语义目录取代 `/workspace/` 并删除 15 条失效的 `/data/` 家族子规则；现行操作文档改指新路径；新增布局映射说明；sha 由 `git log --oneline -1 -- docs/layout-migration-20261021.md` 取得（不在文内自引 sha）。
+- **未完成（P2 物理搬迁，本阶段明确不做）**：① 把 `workspace/{data,runs,models,mlflow,evaluations,base-source-audit,review-environment,data-staging,data-rebuild}` 搬到对应顶层目录；② `models/minicpm-v-4.5` → `base-models/minicpmv4_5`；③ 清理空的 `workspace/` 目录；④ 搬迁后跑守卫测试 T1/T2，并清空 `tests/test_layout_migration_guard.py` 的 `PENDING_PHYSICAL_MOVE`。逐项清单见[布局迁移说明](layout-migration-20261021.md)「尚未做：P2 物理搬迁清单」。
+- **验收标准**：全量 `pytest` **真跑** 0 failed / 0 error（`--collect-only` 不作判据）；`scripts/verify_design_facts.py` 与 `scripts/verify_design_facts.py --check-doc-paths` 均通过；P2 完成后守卫的 T1/T2 翻转为「旧路径必须消失、顶层 `evaluations` 必须存在」。
+- **证据位置**：本条 commit 列表（`git log -- docs/layout-migration-20261021.md .gitignore`）、`.gitignore` 顶部「项目本地产物」块、[布局迁移说明](layout-migration-20261021.md)、`tests/test_layout_migration_guard.py`。
+- **验证限制**：本机 macOS 无 GPU，未在训练机验证真实路径解析与真实产物落点；`workspace/data`、`workspace/evaluations`、`workspace/data-staging`、`workspace/data-rebuild` 在本机 checkout 整体不存在，P2 搬迁对象须在训练机现场核对后再执行。
+
+### LAYOUT-CANDIDATES-JSON — `training_candidates.json` 内的绝对路径重写
+
+- **状态/来源**：待处理（Pi，2026-10-21）；布局扁平化收尾时发现数据发布里的 `metadata/training_candidates.json` 记录媒体绝对路径（由 `pipeline/v4_1_phase2_training_release.py` 写出）。**用户明确本阶段不做**，只登记。
+- **事实与差距**：该文件内的绝对路径仍指向扁平化前的位置，新布局下需重写或重生成；它属数据发布内容，改动会牵动发布内容哈希与既有记录。
+- **下一动作/理由**：单开一批处理（先判定该文件是生成产物还是手写输入，再选重生成或重写），不与布局收尾混做——同时改路径与改身份会让证据链无法归因。
+
+### LAYOUT-PATHS-UNUSED — `ProjectWorkspacePaths` 的 0 消费者字段清理
+
+- **状态/来源**：待处理（Pi，2026-10-21）；扁平化时发现 `ProjectWorkspacePaths` 的 `root`、`models`、`model_releases`、`model_archive` 在生产代码中零消费者（生产只用 `.data` 与 `.runs`，其余仅被测试断言）。**用户明确本阶段不做**，只登记。
+- **事实与差距**：保留这些字段会让「路径语义已扁平化」出现两套说法（字段名与真实消费者不一致），但删除会改动公开 dataclass 形状与测试，属接口变更。
+- **下一动作/理由**：与 dataclass 使用面一起评估后单批删除或标注废弃；不在布局收尾中顺手删，避免把布局迁移扩大成 API 变更。
+
+### LAYOUT-DATA-ROOTS-PARAM — `data_roots.py` 的 `workspace=` 形参重命名
+
+- **状态/来源**：待处理（Pi，2026-10-21）；`pipeline/data_roots.py` 的 `resolve_workspace_artifact(..., workspace=...)` 仍以「workspace」命名项目数据根，扁平化后该词只剩历史含义。**用户明确本阶段不做**，只登记。
+- **事实与差距**：形参名不影响行为，但与现行目录语义不一致；改名会波及所有调用点与测试，属纯接口重命名。
+- **下一动作/理由**：待相关模块下一次实质改动时一并重命名（保留 `is_legacy_workspace_data_root`、`COMPAT_WORKSPACE_NAME` 等确实指旧布局的常量）；不单独为改名跑一轮全量回归。
+
+### STORE-WORKSPACE-RENAME — `<store>/workspace/` 改名
+
+- **状态/来源**：待处理（Pi，2026-10-21）；store 内部历史上存在 `<store>/workspace/{mlflow,evaluations,models}` 段，现行代码写 `<store>/mlflow` 等，兼容分支保留在 `versioning/registry.py` 的 `root.parent.name == "workspace"` 判定。**用户明确本阶段不做**：store 域是独立命名空间。
+- **事实与差距**：训练机 store 里的 `workspace/` 段是否仍存在、是否仍被历史记录引用，尚未在现场核对；改名会移动活数据目录。
+- **下一动作/理由**：需要用户授权后按「先核对引用与备份、再改名」的顺序做，且仅在 store 域内决策；不与项目本地布局迁移合并。
+
+### REBUILD-DATA-ROOT-PROJECT-LOCAL — `data-rebuild` 数据根的 `project_local` 取值与改造前不同
+
+- **状态/来源**：待处理（Pi，2026-10-21）；`pipeline/data_roots.py` 的 `project_local` 现默认 False，且仅在 `is_legacy_workspace_data_root()` 命中时按旧布局补判。`data-rebuild` 数据根在新布局下不再命中该判定，取值与改造前不同。
+- **事实与差距**：`project_local` 决定 `data/...` 冻结路径按语义映射（如 `data/01_videos` → `source/videos`）还是字面拼接；取值变化可能使新 rebuild run 的媒体身份格式与旧 run 不一致，进而影响与历史 run 的可比性。
+- **下一动作/理由**：需在训练机实际跑一次 rebuild 并在真实数据根上对比新旧媒体身份格式；本机无 `data-rebuild` 数据根，无法验证。未验证前不得声称 rebuild 产物与旧 run 同口径。
+
+### RESTORE-ORIGINAL-PROJECT — 备份恢复中 `original_project` 的路径推导未在真实历史冻结构上验证
+
+- **状态/来源**：待处理（Pi，2026-10-21）；`versioning/backup.py` 恢复时用 `original_project` 推导旧位置（`original_project / "evaluations" / <eval> / "restricted"`），对「扁平化前冻结的 `evaluation.yaml`」其项目根推导路径未在真实历史冻结构上验证。
+- **事实与差距**：扁平化前冻结的记录其原始根含 `workspace/` 段，恢复代码在探 `evaluations` 时会落到 `workspace/evaluations` 还是顶层 `evaluations` 未实测；只跑过合成用例。
+- **下一动作/理由**：在一份**真实**扁平化前冻结的 eval 记录上做隔离副本恢复核验（不改原存储），确认路径推导与重定位结果；在真实数据上验证前，恢复结论只能表述为合成验证。
+
+### TEST-ARTIFACT-LEAK — `tests/` 中 `mlflow/` 等测试副产物落在仓库根
+
+- **状态/来源**：待处理（Pi，2026-10-21）；测试运行的 `mlflow/` 等副产物会落在仓库根（既有泄漏），扁平化后因 `/mlflow` 已忽略而变得可见性下降，但仍是工作区污染。
+- **事实与差距**：本轮 `git status --porcelain` 实测只有 `?? mlflow/`，未把它纳入 Git，也未清理；根因是测试未统一用 `tmp_path` 隔离。
+- **下一动作/理由**：后续给相关测试加 tmp 隔离（改 `tests/` 需单独授权）；本轮只记录，不掩盖该泄漏，也不据此把 `mlflow/` 加进提交。
 
 ## Skill 改进候选（待确认，不属于当前实现范围）
 

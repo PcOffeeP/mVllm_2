@@ -23,6 +23,8 @@
 
 身份格式是 `data-v<协议>-r<N>`，例如 `data-v4.1-r3`。摘要用于校验文件完整性，不是身份。批次名字和完整版本由操作者明确选择，不能静默改号重试。
 
+第二个“两个目录”指项目本地目录：checkout 根下**不含** `workspace/` 段（2026-10-21 起扁平化），数据、训练、模型、基座、MLflow、评测、审计、暂存与重建的落点分别是顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。本阶段只改了代码、配置、测试与忽略规则，磁盘上的物理搬迁（P2）尚未执行；旧布局映射与阅读历史记录时的换算见[布局迁移说明](layout-migration-20261021.md)。
+
 Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件检查。真实 ROI 物化、子视频生成、大量校验及正式数据发布在训练机执行；模型训练、GPU 推理及完整评测也只在训练机执行。Mac 通过 uv 调用已部署的 Python 3.11.x 解释器；训练机直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。解释器须对应实际 checkout 与依赖，不按旧环境名猜测。机器与环境准备见[快速开始](../README.md#快速开始)。
 
 ## 1. 准备真实输入
@@ -183,7 +185,7 @@ test 的 release_validate 会读取本次新 test 真值核对构建内容，实
 
 发布数量和各折统计集中在[项目现状](project-status.md)，来源是[原始发布报告](results/v4_1_phase2_development_release/README.md)；身份与状态来自[对象映射](results/version-control-migration/object-mapping.yaml)及[迁移验证](results/version-control-migration/verification.md)。新训练引用仍须在线校验状态及许可。
 
-迁移保留原内容和 split，不能重新生成数据冒充同一发布。两个迁移对象仍引用旧 workspace 外部媒体，store 尚不自包含。旧 workspace、历史元数据及共享 pipeline 函数可能仍被发布或实验引用；入口退役不表示目录和函数可以删除。清理前必须扫描引用、归档必要证据并验证备份，执行范围由项目现有台账和用户授权决定。
+迁移保留原内容和 split，不能重新生成数据冒充同一发布。两个迁移对象仍引用旧布局（扁平化前的 `workspace/`）外部媒体，store 尚不自包含。旧 `workspace/` 目录、历史元数据及共享 pipeline 函数可能仍被发布或实验引用；入口退役不表示目录和函数可以删除。清理前必须扫描引用、归档必要证据并验证备份，执行范围由项目现有台账和用户授权决定。
 
 ## 失败时如何处理
 

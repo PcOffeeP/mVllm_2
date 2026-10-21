@@ -25,6 +25,10 @@
 
 通过已有OpenSSH配置、密钥或SSH agent连接：`ssh liuyang@100.70.83.68`。在该机器项目根目录直接使用已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 执行数据及模型说明中的命令；连接前明确命令、输入/输出和资源。凭据不入Git，删除/覆盖远端文件、切换环境、停止已有任务或push/merge仍按项目授权处理。同日用户追加授权新环境部署，已单独验收；后续同步和模型运行仍需对应授权。
 
+## 项目本地目录布局
+
+2026-10-21 起项目本地布局扁平化，取消 `workspace/` 根段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建的落点分别是仓库根下顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。本阶段只改代码、配置、测试与忽略规则，磁盘上的物理搬迁（P2）尚未执行，因此本页及他处带日期的实测记录仍按旧路径书写，阅读时按[布局迁移说明](layout-migration-20261021.md)的映射表换算；未完成清单也记在该文档与[台账](project-todo.md)。
+
 ## 工程能力与真实验收
 
 | 范围 | 已有事实 | 尚不能证明的内容 |

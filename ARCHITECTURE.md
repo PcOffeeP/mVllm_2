@@ -35,6 +35,7 @@ Non-goals:
 - **训练机**（SSH `100.70.83.68`，主机 `dell-Precision-3660`）：实际模型训练、GPU 推理、评测跑分、长时间数据处理，以及正式版本写入。
 - 本机看到的训练目录、日志、指标、预测文件和报告视为从训练机同步/复制的结果；本机默认不能复现实验，效果结论以训练机真实产物为准。
 - 当前电脑缺 checkpoint、LoRA adapter、merged 模型、预测样例或评测指标时，结论标注为"证据不足"，并明确需要补跑或补同步的内容。
+- **项目本地目录布局**（2026-10-21 起扁平化，取消 `workspace/` 根段）：仓库根下`data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild` 分别是数据、训练、模型、基座、MLflow store、评测、审计、暂存与重建的落点，全部不入 Git；store 与这些项目本地目录是两套根，互不替代。旧布局映射、本阶段只改代码/配置/测试/忽略规则未做物理搬迁的事实，以及 P2 搬迁清单见[布局迁移说明](docs/layout-migration-20261021.md)。
 
 ## 3. 新旧入口边界
 
@@ -62,7 +63,7 @@ ROI输入准备仍保留，显式选择metadata/output/project-root；人工审�
 - **数据七阶段与DVC**：根dvc.yaml是模板；显式root/inputs/batch与发布version由生成配置绑定。source→roi→subvideo→review_export→review_import→release→release_validate调用run_input_*真实业务链，冻结原视频、注释、原split、人工ROI及实际候选媒体。完整审查包交给UI，包外review_return.json由review_import验签后消费。
   - 工作阶段输出使用persist；输入漂移拒绝，不自动清旧结果。release封存data/releases/<完整版本>/payload，元数据同级，DVC只跟踪payload；不写release_pointer.json。release_validate只读复验，不启动训练。完整链路见数据手册。
 - **已实现能力（B5，Prompt 版本与冻结）**：
-  - **`versioning/prompts.py`**：Prompt 版本注册、不可变性与训练 input 冻结副本——正式 Prompt 单一权威位置 `records/prompts/prompt-v<协议>-r<N>.yaml`（Git 跟踪、不可覆盖）；训练时仅从该位置冻结复制到 `workspace/runs/train-v.../input/prompt.yaml`，不形成第二套正式位置、不扫描历史目录猜测当前 Prompt、单一状态权威；冻结副本与源结构不一致 / 篡改检测 fail-closed。
+  - **`versioning/prompts.py`**：Prompt 版本注册、不可变性与训练 input 冻结副本——正式 Prompt 单一权威位置 `records/prompts/prompt-v<协议>-r<N>.yaml`（Git 跟踪、不可覆盖）；训练时仅从该位置冻结复制到 `trains/train-v.../input/prompt.yaml`，不形成第二套正式位置、不扫描历史目录猜测当前 Prompt、单一状态权威；冻结副本与源结构不一致 / 篡改检测 fail-closed。
 - **已实现能力（B6，MLflow 训练记录）**：
   - **`versioning/mlflow_train.py`**：train-v 父 Run + fold0/1/2 嵌套子 Run（`mlflow.parentRunId`）的 MLflow 训练记录模型；父 Run 记录共同输入 tags（data_version/prompt_version/git_commit/base_model）与 config params，三折汇总指标写父 Run；`workflow_state`↔原生 RunStatus 固定组合（委托 `versioning.state`）；受控恢复（FAILED/KILLED 子 Run 经原 Run ID 恢复 RUNNING，不新建）；completed 晋级门（全部必需 fold FINISHED + summary_complete）；`record_validity=invalid` 下游拒绝（`validate_train_for_promotion`）；读取 fail-closed（篡改 workflow_state/run_status 组合或 record_validity 值域拒绝）；store 句柄寻址双隔离（`TrainRecordStore` 独立 tracking_uri，不依赖全局 tracking 状态）。
 - **已实现能力（B7，MLflow 测评与 manifest 单向导出）**：
@@ -70,7 +71,7 @@ ROI输入准备仍保留，显式选择metadata/output/project-root；人工审�
   - **`versioning/manifest.py`**：data/prompt/train/eval 四段聚合 manifest 与独立 model manifest 的**单向导出**证据文件及发布门；严格校验键集合、值域、跨段血缘，以及模型的 Registry 数值版本、source run、source scope、artifacts 和唯一 deploy target；export 幂等重导或冲突拒绝，且不反向修改源对象。
 - **已实现能力（B8，Model Registry、物化与晋级门）**：
   - **`versioning/registry.py`**：唯一 Registered Model `mVllm2` 的两阶段 Model Registry 与晋级门。完成 train 先由 `register_model` 创建无 `eval_id` 的 staging Model Version；登记时在线复验 train、data release 与训练许可，进程内锁 + 文件锁把同 ID 查重/创建及 eval 绑定读改写串行化；eval 创建前按 `model_id` + 数值版本在线精确校验，passed 后由 `finalize_model_evaluation` 单向绑定且不得覆盖。candidate/production 均拒绝未绑定模型及 `deploy_target: null` 的三折模型组；解析 alias 时仍在线复验 train/eval/data、source scope 与唯一部署目标。
-  - **`versioning/materialize.py`**：服务物化必须显式给出 `service_mode` 与 alias；完整下载到同文件系统临时目录，核对 Registry 精确数值版本、严格 model manifest、本地元数据和唯一 deploy target 后，才原子切换 `workspace/models/current`。下载失败、manifest 缺失/错配、旧目标损坏、断链或 alias 漂移均保留旧 current 并 fail-closed。
+  - **`versioning/materialize.py`**：服务物化必须显式给出 `service_mode` 与 alias；完整下载到同文件系统临时目录，核对 Registry 精确数值版本、严格 model manifest、本地元数据和唯一 deploy target 后，才原子切换 `models/current`。下载失败、manifest 缺失/错配、旧目标损坏、断链或 alias 漂移均保留旧 current 并 fail-closed。
 - **已实现能力（B9，离线备份 catalog 与恢复）**：
   - **`versioning/backup.py`**：离线备份 catalog 与恢复。`enumerate_backup_sources`（scope tag 驱动、物化目录为模型备份源、fail-closed）；adapter 模型按白名单仅备份本地身份资料、严格 model manifest 与声明的 adapter，production_bundle 才备份声明的 adapter 与 merged；MLflow store 只保留 SQLite、作用域模型声明的训练 artifact 和已绑定正式 eval artifact，避免从 store 整树夹带 adapter 模型的 merged；`create_backup`（真实复制 + 落盘前全量校验含 SQLite integrity_check + 差异修复 + 原子替换 + prev 快照）；`load_backup_catalog` / `verify_backup` / `restore_backup`（零副作用、目标冲突拒绝、灾难恢复 + manifest 原路径恢复 + 封存权限重放）。
   - **`versioning/data_release.py`**：`seal_payload` 提升为公开 API（保留 `_seal_payload` 兼容别名）。

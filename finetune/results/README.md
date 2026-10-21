@@ -15,7 +15,7 @@ results/
 根目录只保留仍被正式证据链或当前 V4.1 对比实验直接引用的版本化运行。
 历史视觉三折结果目录已随 2026-10-18 清理移除，prompt-concise 三折的 Git 摘要记录
 同样移除，现存版本化运行目录见本节上方目录树。最新 prompt-concise 三折结果位于对应
-`workspace/runs/` 的 evaluation 目录。
+`trains/` 的 evaluation 目录。
 上一轮语言基线及 fold0 消融的 V4.1 证据目录已随 2026-10-18 清理移除；其指标结论见
 `docs/results/model-inventory.md`，删除前逐文件指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`。
 
@@ -32,8 +32,8 @@ results/
 
 ## 安全规则
 
-- 不在这里存放模型权重；实验权重统一位于 `workspace/runs/`，发布权重位于
-  `workspace/models/releases/`。
+- 不在这里存放模型权重；实验权重统一位于 `trains/`，发布权重位于
+  `models/releases/`。
 - 不覆盖已有版本化运行；新运行使用新的 run ID。
 - 发布或迁移正式结果前先生成完整 SHA-256 证据索引。
 - 历史 JSON 中记录的绝对路径是运行时快照，迁移目录不会改写这类原始证据。

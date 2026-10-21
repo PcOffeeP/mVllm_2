@@ -14,12 +14,14 @@ GPU 训练、权重合并、实际推理与完整评测在训练机执行，运�
 
 从训练机仓库根目录运行以下 Python 命令；可以使用已激活 Conda 环境中的 Python，本文以 `"$PYTHON"` 显式绑定解释器。每次任务明确一个 store，并保留它的记录、MLflow 数据库和 artifact；不能用旧活动指针或最近目录自动选择输入。
 
+项目本地（checkout 根）是另一套根，**不含** `workspace/` 段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。旧布局与本阶段的物理搬迁状态见[布局迁移说明](layout-migration-20261021.md)。
+
 | 参数或文件 | 来源与要求 |
 | --- | --- |
 | `PYTHON` | 已按 Linux GPU 锁核验的训练机 Conda Python 3.11.x 解释器绝对路径；核对所绑定的代码 checkout |
 | `STORE` | 明确的 versioning store 绝对路径，数据、Prompt、训练、Registry 和评测共用此根 |
 | `DATA`、`PROMPT`、`TRAIN`、`MODEL`、`EVAL` | 已确认的完整身份；新对象身份不得占用已有不可变对象 |
-| `MEDIA_ROOT` | 数据实际引用的媒体根；七阶段开发发布为对应 `payload/`，迁移发布可能仍依赖外部旧 workspace 媒体 |
+| `MEDIA_ROOT` | 数据实际引用的媒体根；七阶段开发发布为对应 `payload/`，迁移发布可能仍依赖外部旧布局（扁平化前的 `workspace/`）媒体 |
 | `DATA_INPUTS` | 七阶段发布所用的原 inputs YAML，用于训练或 validation 准备时复验数据链；迁移数据改由 committed receipt 验签 |
 | `TRAIN_CONFIG` | 调用者明确准备的 LLaMA-Factory 配置 YAML，包含实际基座路径、超参数、seed 和训练日程 |
 | `ENVIRONMENT` | 从实际环境核实的非空依赖版本 YAML，例如 Python、torch、transformers、LLaMA-Factory 版本 |
@@ -61,7 +63,7 @@ store 不会为使用者自动下载基座、提供训练数据或分配质量�
 
 上述示例面向七阶段发布；使用 committed receipt 验证的迁移数据时省去 `--data-inputs`，媒体根仍必须指向真实媒体，不能指向迁移来源镜像。
 
-准备产物为 `workspace/runs/<train>/input/`，包含三折六份数据、dataset 索引、正式 Prompt 副本、训练配置、环境版本和校验清单。prepare/validate 不创建训练 Run，不加载推理模型。
+准备产物为 `trains/<train>/input/`，包含三折六份数据、dataset 索引、正式 Prompt 副本、训练配置、环境版本和校验清单。prepare/validate 不创建训练 Run，不加载推理模型。
 
 取得实际训练授权后，可以一次运行全部三折，或分次运行：
 
@@ -159,7 +161,7 @@ fold2: {adapter: artifacts/fold2/adapter}
 | 数据与任务 Prompt | data 发布/迁移校验、`prompt create` | data release 与 `records/prompts/<prompt>.yaml` → train/eval prepare |
 | 训练与成功折 | `train prepare/validate/run/export`；真实媒体、配置和基座 | 冻结 input、折 execution receipt、adapter；完整训练 manifest → trained register，成功折 receipt → diagnostic register |
 | 来源登记 | `model register` 的 trained/base/diagnostic 分支 | Registry 数值版本、完整 model 身份；base/diagnostic 来源快照及 `model-source.json` → eval prepare/run |
-| 冻结开发测评 | 操作者配置、完整独立组映射；`eval prepare/validate` | `workspace/evaluations/<eval>/input/evaluation.yaml`，媒体/Prompt/规则/来源摘要与多数类定义 → run |
+| 冻结开发测评 | 操作者配置、完整独立组映射；`eval prepare/validate` | `evaluations/<eval>/input/evaluation.yaml`，媒体/Prompt/规则/来源摘要与多数类定义 → run |
 | 推理与整理 | `eval run`；必要时 `eval score --blind-reviews` 导入已封存 judge 答案 | 原始逐样本与语义记录、逐折和 pooled 汇总 → export；judge 恢复不重新推理 |
 | 正式导出与比较 | `eval export` 重验；多数类摘要与 `eval compare --baseline-eval-version` | `records/evaluations/<eval>/manifest.yaml` 和可追溯报告；质量绝对门与对照提升分开解释 |
 
@@ -180,7 +182,7 @@ fold2: {adapter: artifacts/fold2/adapter}
 | 环节 | 输入提供者与入口 | 真实文件与消费者 |
 | --- | --- | --- |
 | 一次性锁定 | 获授权操作者先准备预注册；`data claim` 精确绑定 eval/model/data/split/executor/规则 | release 的 `authorization/` 与 staging 预注册 → `eval prepare/validate/run` |
-| 一次推理 | 已发布无标签媒体、Registry 权重、训练 Prompt；`eval run` | `workspace/evaluations/<eval>/restricted/predictions.json`、`inference.json` → 匿名发包；此时不读真值 |
+| 一次推理 | 已发布无标签媒体、Registry 权重、训练 Prompt；`eval run` | `evaluations/<eval>/restricted/predictions.json`、`inference.json` → 匿名发包；此时不读真值 |
 | 发包与暴露登记 | 操作者提供与冻结 policy 摘要一致的手册；`eval review_prepare --manual` | 受限 `anonymous-review.json`、映射及 `exposure.json`，授权目录 `exposed.yaml` → 本地评审和封存；不能恢复成未暴露 |
 | 判读封存 | 独立执行者提供已封存判断 JSON；`eval review_seal --blind-reviews` | 受限 `review_attempts/`、`judge.json` → score；同内容重传幂等，完成初判不可替换，故障按冻结策略重试 |
 | 受限评分与消费 | `eval score --executor` 核验原身份、raw、发包、判读，再读 sealed truth | 受限真值快照、语义记录、实际指标/CI、评分 receipt；承诺和 `consumed` → 公开 export |
@@ -245,7 +247,7 @@ thresholds:
 
 prepare/validate/run 不读真值。run 仅媒体推理，完成后等待 score，不创建折子 Run。score 核验同一 executor、冻结规则、预测和权重，再访问受限真值；七门均通过才 passed。无论质量通过或失败，评分均消费一次性授权；迁移、备份、恢复不重置消费状态。
 
-实际七指标、预测、真值快照及逐样本评分保存在 `workspace/evaluations/<eval>/restricted/`，目录 0700、文件 0400，不上传普通 MLflow artifact。公开结果仅含七个 `gate_<指标名>` 0/1 状态与绑定证据，导出或服务准入不重读真值。权限控制不等于独立账户沙箱，须另保证受限运行环境。
+实际七指标、预测、真值快照及逐样本评分保存在 `evaluations/<eval>/restricted/`，目录 0700、文件 0400，不上传普通 MLflow artifact。公开结果仅含七个 `gate_<指标名>` 0/1 状态与绑定证据，导出或服务准入不重读真值。权限控制不等于独立账户沙箱，须另保证受限运行环境。
 
 恢复只允许同一完整绑定：尚未提交评分承诺时需重新授权核验原真值；已有承诺的完成或导出中断可用同一 score 恢复，不重新推理或重读原真值。推理中断且缺完整凭据、跨身份、内容漂移均拒绝。完整恢复条件见[接口规范](../versioning/SCRIPTS.md#full-模型的独立-holdout-验收)，不清空 authorization 后重试。
 
@@ -266,7 +268,7 @@ prepare/validate/run 不读真值。run 仅媒体推理，完成后等待 score�
 
 新语义路线还须在服务 alias/批准前执行 `model bind-performance "$MODEL" --root "$STORE" --eval-version "$PERFORMANCE_EVAL"`，其中 `PERFORMANCE_EVAL` 为同一模型的独立 performance eval。绑定会重验模型/数值版本、Prompt、generation、量化、artifact 及抽帧预处理实现，要求非合成、完整显示端 E2E 和 passed；已有不同绑定不能替换。新准入还要求质量 execution 的 `runtime_attestation` 与性能的 runtime_variant/device/quantization_bit 完全一致；默认真实 runtime collector 已接线；本轮现场 attestation 未取得，缺少或不一致时拒绝，自报标志不能补证。manifest 保存质量/性能分开的 `evaluation_binding`，备份必须保留双方 Run/输入/产物，恢复后继续重验，不把恢复当作新资格。当前合成评审和未验真的显示端证据会被拒绝，所以上述命令示例不表示新生产通路已通过。
 
-scope 是持久化的备份范围声明，不能把设置 scope 当作备份完成；只允许从 adapter 升级为 production_bundle。candidate 要求 finalized/passed、完整训练/评测证据、唯一 deploy_target 和有效 scope。`current` 再次验签并原子物化 `workspace/models/current`；它是显式服务缓存，不是可缺省的数据或模型版本指针。
+scope 是持久化的备份范围声明，不能把设置 scope 当作备份完成；只允许从 adapter 升级为 production_bundle。candidate 要求 finalized/passed、完整训练/评测证据、唯一 deploy_target 和有效 scope。`current` 再次验签并原子物化 `models/current`；它是显式服务缓存，不是可缺省的数据或模型版本指针。
 
 production 须具 `production_bundle`、真实批准及对应准入条件。`production_bundle` 是备份范围机制，不提供 merged 合并或登记能力；缺少真实 merged 证据通路时，设置此 scope 不能证明完整生产交付链已经通过。只有用户明确批准生产使用后才执行 `model approve`，再设置 production alias，并以 `--alias production --service-mode production` 物化与启动。development 成功不能代替生产批准。三折组不能晋级为部署目标。
 
@@ -289,7 +291,7 @@ production 须具 `production_bundle`、真实批准及对应准入条件。`pro
 "$PYTHON" -m versioning eval performance_export "$PERFORMANCE_EVAL" --root "$STORE"
 ```
 
-`PERFORMANCE_EVENTS` 是受控采集器或合成测试提供的事件 JSON，schema 为 `tensile.performance-events/v1`；`performance_run` 导入、重放和封存事件，不隐式启动真实模型。prepare 以 ffprobe 和实际字节冻结白名单到 `workspace/evaluations/<eval>/input/evaluation.yaml`；执行保存 `output/events.json`、`summary.json` 和 `evaluation.yaml` 到同一 MLflow Run，export 重算全部原始事件/资源序列并发布 `records/evaluations/<eval>/manifest.yaml`。不可覆盖已有 output 以重置失败或分母。
+`PERFORMANCE_EVENTS` 是受控采集器或合成测试提供的事件 JSON，schema 为 `tensile.performance-events/v1`；`performance_run` 导入、重放和封存事件，不隐式启动真实模型。prepare 以 ffprobe 和实际字节冻结白名单到 `evaluations/<eval>/input/evaluation.yaml`；执行保存 `output/events.json`、`summary.json` 和 `evaluation.yaml` 到同一 MLflow Run，export 重算全部原始事件/资源序列并发布 `records/evaluations/<eval>/manifest.yaml`。不可覆盖已有 output 以重置失败或分母。
 
 `versioning.performance.ControlledPerformanceSession` 提供受控 session API：加载前和每次请求重验 Registry 来源、权重、冻结输入、executor/session、TTL 和开发媒体；仅 loopback、独立 token，复用实际 adapter；退出只关闭本 session。`open_performance_session(root=..., eval_version=..., executor=..., session_id=...)` 默认使用 `RegistryPerformanceLoader`，从 Registry 物化权重并核验实际 device/dtype/量化；4-bit 配置在 `runtime_variant.quantization` 精确冻结 `quant_type: nf4`、`double_quant: true`、`compute_dtype`、`quant_storage`、`skip_modules: [resampler]` 和 `excluded_module_dtype: bfloat16`，逐实际模块核验计算类型与存储类型，不把 uint8 存储视为计算精度；调用 `session.serve(port=...)` 启动、`session.export_events(path)` 封存采集事件，`session.close()` 关闭。该 API 会真实加载模型，只有取得训练机运行授权后才调用；本轮未调用。`run_performance_session(root=..., eval_version=..., executor=..., session_id=..., port=..., evidence_path=...)` 封装启动及 finally 清理：临时 `.session.json` 以 0600 保存本地 capability，退出后导出事件并删除该文件，只关闭自己的服务。CLI 对应 `eval performance_serve "$PERFORMANCE_EVAL" --root "$STORE" --executor "$EXECUTOR" --session-id "$SESSION_ID" --port "$PORT" --performance-evidence "$PERFORMANCE_EVENTS"`，它会真实加载模型，本轮未启动。采集器周期读取本进程 nvidia-smi VRAM、psutil RSS 与 GPU 保留时长预算；缺采集器报告证据缺口，不填零。不能以裸路径或服务 alias 绕过。预检预算最多 1 GPU 小时、正式最多 20 GPU 小时；到期/耗尽停止新请求并保留未完成事实。
 
@@ -360,8 +362,8 @@ curl --fail --silent --show-error -H "Authorization: Bearer ${API_KEY}" \
 ```sh
 "$PYTHON" -m versioning backup restore --root "$RESTORE_ROOT" --backup-root "$BACKUP" \
   --data-root "$RESTORE_ROOT/data" --prompts-root "$RESTORE_ROOT" \
-  --models-root "$RESTORE_ROOT/workspace/models/materialized" \
-  --mlflow-root "$RESTORE_ROOT/workspace/mlflow"
+  --models-root "$RESTORE_ROOT/models/materialized" \
+  --mlflow-root "$RESTORE_ROOT/mlflow"
 ```
 
 base/diagnostic 备份保留来源 receipt 和字节快照；diagnostic 还保留父 train 共享 input 和对应折 execution receipt。base 没有训练 Prompt，完整基座使用 production_bundle 备份范围，名称不表示生产批准。恢复不改外部基座冻结路径，仍须可核验原基座字节。

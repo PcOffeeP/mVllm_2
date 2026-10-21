@@ -49,9 +49,9 @@
 ### DF-005 [active] 新体系晋级有硬闸机
 新体系晋级路径以 `require_passed=True` 调用 eval 结论门；eval 记录 `outcome` 不等于 `passed` 时抛 `PromotionGateRejected`，晋级被硬性拒绝，不降级为警告。
 出处：
-- versioning/registry.py:522（expect：record.eval_id, require_passed=True)）
-- versioning/registry.py:995（expect：record.outcome != "passed"）
-- versioning/registry.py:997（expect：outcome={record.outcome!r}，未通过）
+- versioning/registry.py:524（expect：record.eval_id, require_passed=True)）
+- versioning/registry.py:997（expect：record.outcome != "passed"）
+- versioning/registry.py:999（expect：outcome={record.outcome!r}，未通过）
 
 ## 老体系模型登记与发布校验没有等价的 pass/fail 拦截
 
@@ -79,14 +79,14 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-008 [active] R1 在 8 帧 / 8 组 / 512 token 新口径下的重测结果
 同一模型、同一 425 条数据、同一 Prompt，仅把管线换成 8 帧 / 8 组 / 512 视觉 token 重测（2026-10-18）：四字段 joint 由 41.18% 升到 50.59%、已断裂仍 0/33、发生断裂 recall 由 45.83% 升到 59.72%、strict_valid 0.9906、临界未断裂 recall 由 0.2281 降到 0.1053；该重测结果文件尚未入库，本事实的仓库内锚点是任务台账的 R2-REALTRAIN 条目。
 出处：
-- docs/project-todo.md:98（expect：joint 由 **41.18%**（旧口径 1 组 / 64 token）升至 **50.59%**）
+- docs/project-todo.md:99（expect：joint 由 **41.18%**（旧口径 1 组 / 64 token）升至 **50.59%**）
 
 ## 换管线已被实测否证为已断裂零召回的原因
 
 ### DF-009 [active] 换管线已被实测否证为已断裂零召回的原因
 同模型、同 425 条、同 Prompt、只改管线的对照实测两侧已断裂召回均为 0/33，「64 token 丢帧序导致零召回」这一假设被否证（2026-10-18）（台账记载的对照实测；原始 425 条结果文件尚未入库）。
 出处：
-- docs/project-todo.md:98（expect：结论：**换管线不是零召回的原因**）
+- docs/project-todo.md:99（expect：结论：**换管线不是零召回的原因**）
 
 ## 训练池里已断裂不稀缺
 
@@ -157,6 +157,16 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - finetune/validation/model_runtime.py:136（expect：load_video_frames(）
 - finetune/validation/model_runtime.py:151（expect：temporal_ids=temporal_ids,）
 
+## 项目本地布局已扁平化，`workspace/` 根段取消
+
+### DF-017 [active] 项目本地布局已扁平化，`workspace/` 根段取消
+用户 2026-10-21 决定取消项目本地 `workspace/` 根段：项目根即 workspace 根，数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，这些目录一律不入 Git。P0+P1 只改代码、配置、测试与忽略规则，磁盘上的物理搬迁（P2）尚未执行，`workspace/` 目录仍在磁盘上；`.compat/workspace` 与 `store/workspace/**` 不属本次映射。
+出处：
+- pipeline/project_workspace.py:61（expect：runs=root / "trains",）
+- versioning/prompts.py:93（expect：return root / "trains" / train_version / "input" / "prompt.yaml"）
+- tests/test_layout_migration_guard.py:64（expect："models/minicpm-v-4.5": "base-models/minicpmv4_5",）
+- .gitignore:20（expect：/audits）
+
 ## 已废弃（墓碑）
 
 （当前没有已废弃条目。）
@@ -170,7 +180,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 出处：finetune/eval_semantics.py:101（expect：never receives labels, video or model identity）
 - **误读**：已断裂召回 0 = 管线丢掉帧序
   - 正确：错。已实测换管线仍 0/33，管线不是零召回的原因
-  - 出处：docs/project-todo.md:98（expect：已断裂仍 **0/33**）
+  - 出处：docs/project-todo.md:99（expect：已断裂仍 **0/33**）
 - **误读**：模型答不出帧数 = 模型缺陷
   - 正确：错。帧序输出属过期要求，现行契约 `analysis.user_prompt` 只要求四字段输出
   - 出处：pipeline/contracts/tensile_vlm_v4_1.json:168（expect：请输出且只输出 clip_state、fracture_mechanism）
@@ -193,4 +203,4 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - **误读**：每帧独立编码 = 模型知道帧序
   - 正确：错。逐帧单独编码只说明帧被分成多组送入，不构成模型具备时序感知的证据；`temporal_ids` 全为 -1 的成因尚未归因（PB-002 已按用户 2026-10-19 决定取消排查），不得写成「模型已知帧序」或「模型不知帧序」。
   - 出处：finetune/validation/video_loader.py:52（expect：own group (8 frames -> 8 groups)）
-  - 出处：docs/project-todo.md:85（expect：8 帧 → 8 组、每组 1 帧）
+  - 出处：docs/project-todo.md:86（expect：8 帧 → 8 组、每组 1 帧）

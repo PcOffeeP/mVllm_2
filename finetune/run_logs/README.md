@@ -1,7 +1,7 @@
 # 训练日志目录
 
 这里存放历史训练入口、推理服务和迁移管理产生的日志、PID 与状态 JSON。新实验的
-实验内日志优先放在 `workspace/runs/<experiment-id>/logs/`；跨实验服务、迁移和资产管理
+实验内日志优先放在 `trains/<experiment-id>/logs/`；跨实验服务、迁移和资产管理
 日志仍放在本目录。除本说明外，内容只保存在训练机，不提交 Git。
 
 ```text

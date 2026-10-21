@@ -9,8 +9,17 @@ wheels/
 # Virtual environments
 .venv
 
-# Project-local active V4.1 data, models, logs, and run outputs
-/workspace/
+# 项目本地产物：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建一律不入 Git
+# 若将来需放行某子目录，须把该项改为 /xxx/* 并追加 !/xxx/sub/ 三段式（父目录被排除时 ! 失效）
+# 不带尾斜杠：`/xxx/` 只匹配目录，P2 物理搬迁前这些目录尚不存在，git check-ignore 判不出来（守卫 T6 依赖此语义）
+/data
+/trains
+/base-models
+/mlflow
+/evaluations
+/audits
+/data-staging
+/data-rebuild
 
 # video files
 *.mp4
@@ -50,15 +59,6 @@ LlamaFactory/saves/minicpmv4_5/lora/*
 # pytest cache
 .pytest_cache/
 
-# Data pipeline artifacts (numbered outputs, ignored; 01_videos and 02_annotations are not ignored)
-/data/03_subvideos/
-/data/03_roi_videos/
-/data/03_subvideos_roi/
-/data/04_frames/
-/data/04_frames_roi/
-/data/08_runtime/
-data/08_incremental_review
-
 .agents/skills/
 
 # API key file
@@ -78,18 +78,6 @@ finetune/wandb/
 
 # macOS Trash
 .Trashes
-
-# 人工审核数据
-data/08_review/
-data/07_metadata/tail_contamination_audit.jsonl
-
-# 测试子视频
-data/sample_subvideos/03_subvideos
-data/sample_subvideos/04_frames
-/data/sample_roi_videos/
-/data/sample_v3_candidate_media/
-/data/07_metadata/v3/candidate_media_results/
-/data/07_metadata/v3/candidate_media_*.log
 
 # Codex/Drive 本地上传缓存
 /.tmp.driveupload/

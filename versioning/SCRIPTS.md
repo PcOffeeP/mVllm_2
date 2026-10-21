@@ -50,7 +50,7 @@ python -m versioning prompt verify --root <store绝对路径> \
   --version <完整prompt版本> --train-version <完整train版本>
 ```
 
-冻结副本位于`workspace/runs/<train>/input/prompt.yaml`，正式对象仍以records/prompts为权威。旧`python -m pipeline.prompt_control validate/publish`及其脚本入口均已停用；旧core读取、校验和发布函数保留历史业务回归，不是现行操作接口。
+冻结副本位于`trains/<train>/input/prompt.yaml`，正式对象仍以records/prompts为权威。旧`python -m pipeline.prompt_control validate/publish`及其脚本入口均已停用；旧core读取、校验和发布函数保留历史业务回归，不是现行操作接口。
 
 ## 三折训练准备与执行
 
@@ -67,11 +67,11 @@ python -m versioning train prepare <完整train版本> \
 python -m versioning train validate <完整train版本> --root <store绝对路径>
 ```
 
-迁移数据通过该 store 的 committed receipt 核验平铺发布内容；七阶段数据须额外传 `--data-inputs <原inputs.yaml>`，复验原发布链及 `payload/`。迁移数据的媒体根通常是原训练机项目的 `workspace/data`，来源镜像不能替代它；自包含七阶段发布使用该版本 `payload/` 作为媒体根。准备时冻结实际视频与基座模型全部文件的 SHA/大小，创建 Run 前及每折训练前后复验。检查、准备及验证只以 CPU 流式读取文件作摘要，不创建 MLflow Run 或加载推理模型。
+迁移数据通过该 store 的 committed receipt 核验平铺发布内容；七阶段数据须额外传 `--data-inputs <原inputs.yaml>`，复验原发布链及 `payload/`。迁移数据的媒体根通常是原训练机项目的 `data`（2026-10-21 扁平化前为 `workspace/data`），来源镜像不能替代它；自包含七阶段发布使用该版本 `payload/` 作为媒体根。准备时冻结实际视频与基座模型全部文件的 SHA/大小，创建 Run 前及每折训练前后复验。检查、准备及验证只以 CPU 流式读取文件作摘要，不创建 MLflow Run 或加载推理模型。
 
-准备产物为 `workspace/runs/<train>/input/`，含 `data-version.txt`、`prompt.yaml`、`training.yaml`、`environment.yaml`、六份数据 JSON、`dataset_info.json` 和内容校验清单。正式 Prompt 必须预先存在于 `records/prompts/`。旧记录中的样本数量与历史训练结果不会因准备而改变。
+准备产物为 `trains/<train>/input/`，含 `data-version.txt`、`prompt.yaml`、`training.yaml`、`environment.yaml`、六份数据 JSON、`dataset_info.json` 和内容校验清单。正式 Prompt 必须预先存在于 `records/prompts/`。旧记录中的样本数量与历史训练结果不会因准备而改变。
 
-取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/workspace/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后，执行器校验实际 adapter 权重、配置和结果，在父 Run 保存 `training-evidence.json` 并钉扎其摘要，再导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。 单折分次执行可在run中显式传`--fold 0/1/2`；缺折为partial，已完成折验签复用，省略参数继续未完成折。完整续办与失败边界见[训练入口说明](../docs/model-workflow.md#3-冻结并执行训练)。
+取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后，执行器校验实际 adapter 权重、配置和结果，在父 Run 保存 `training-evidence.json` 并钉扎其摘要，再导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。 单折分次执行可在run中显式传`--fold 0/1/2`；缺折为partial，已完成折验签复用，省略参数继续未完成折。完整续办与失败边界见[训练入口说明](../docs/model-workflow.md#3-冻结并执行训练)。
 
 完成后的导出若失败，可用 `python -m versioning train export <完整train版本> --root <store绝对路径>` 从同一 completed Run 补导出；不重新训练，不覆盖不同内容。已有训练输出或失败 Run 不会由 `run` 自动覆盖或恢复；须先核对原 Run 和 checkpoint 后处理。公共 CLI 的 `create/fold-start/fold-end/summary/complete` 已停用，调用时在创建 store 前拒绝；同名底层 Python 记录 API 保留，不能凭手工 completed 状态通过模型登记或导出。Registry 校验执行证据、声明目录的完整文件清单及训练基座。
 完整参数运行 `python -m versioning <领域> --help` 查看。
@@ -122,9 +122,9 @@ python -m versioning eval prepare <完整eval版本> --root <store绝对路径> 
 | `generation` | 精确mapping：`do_sample: false`、`num_beams: 1`、`max_new_tokens: 256`、`video_max_frames: 8` |
 | `thresholds` | 必须显式给出非空mapping，各值为已确定的0到1最低阈值，全部达到才判为passed；没有默认质量阈值 |
 
-阈值可用指标为`contract_valid_rate`、`joint_correct_rate`、`clip_state_correct_rate`、`fracture_mechanism_correct_rate`、`fracture_site_correct_rate`、`special_case_correct_rate`。分母为所选样本数，空值与非法预测遵守现有严格评分器规则。跨折汇总将各折实际结果按行合并评分，沿用六位小数的指标口径。配置内容、模型绑定、Prompt、样本、媒体摘要、生成参数和评分实现摘要冻结在`workspace/evaluations/<eval>/input/evaluation.yaml`；prepare不下载权重，不创建eval Run，不执行推理。它会访问显式store中的Registry，必要时初始化本地MLflow基础设施。
+阈值可用指标为`contract_valid_rate`、`joint_correct_rate`、`clip_state_correct_rate`、`fracture_mechanism_correct_rate`、`fracture_site_correct_rate`、`special_case_correct_rate`。分母为所选样本数，空值与非法预测遵守现有严格评分器规则。跨折汇总将各折实际结果按行合并评分，沿用六位小数的指标口径。配置内容、模型绑定、Prompt、样本、媒体摘要、生成参数和评分实现摘要冻结在`evaluations/<eval>/input/evaluation.yaml`；prepare不下载权重，不创建eval Run，不执行推理。它会访问显式store中的Registry，必要时初始化本地MLflow基础设施。
 
-`python -m versioning eval validate <完整eval版本> --root <store绝对路径>`重核冻结输入和上游内容，不执行推理。取得实际测评授权后，在训练机运行`python -m versioning eval run <完整eval版本> --root <store绝对路径>`。run从冻结输入取得身份，拒绝命令行覆盖model、data、outcome等参数，且只使用`<store>/workspace/mlflow`。权重从已验证的Registry artifact物化到本次私有临时目录；adapter使用Registry绑定的基座目录，基座必须是存在的普通绝对目录。旧加载器需要的下划线目录别名必须解析到同一已核验目录，已有同名其他目录或错误软链接会在加载前拒绝。执行前后核验内容摘要，并保留实际权重摘要。该过程包含权重复制、媒体与权重哈希扫描及GPU推理，资源预算须按实际模型和数据量核定。
+`python -m versioning eval validate <完整eval版本> --root <store绝对路径>`重核冻结输入和上游内容，不执行推理。取得实际测评授权后，在训练机运行`python -m versioning eval run <完整eval版本> --root <store绝对路径>`。run从冻结输入取得身份，拒绝命令行覆盖model、data、outcome等参数，且只使用`<store>/mlflow`。权重从已验证的Registry artifact物化到本次私有临时目录；adapter使用Registry绑定的基座目录，基座必须是存在的普通绝对目录。旧加载器需要的下划线目录别名必须解析到同一已核验目录，已有同名其他目录或错误软链接会在加载前拒绝。执行前后核验内容摘要，并保留实际权重摘要。该过程包含权重复制、媒体与权重哈希扫描及GPU推理，资源预算须按实际模型和数据量核定。
 
 每折记录`records.jsonl`、`failures.jsonl`和`summary.json`；正式父Run保存`evaluation.yaml`、汇总`summary.json`及两份合并JSONL。运行失败保留已有结果并标记failed，无正式manifest；解析非法但推理完整属于质量结果，可形成`outcome: failed`。全部结果上传完成后才提交结论并导出`records/evaluations/<eval>/manifest.yaml`，其中保存Run引用、数值模型版本和产物摘要。staging结果不是导出权威。
 
@@ -366,7 +366,7 @@ transfer只通过SSH调用远端tar读取显式源目录，不在远端创建快
 恢复使用显式隔离目录。以下布局使恢复后的CLI与服务使用同一个store；四类对象目标须不存在，MLflow根也允许预先存在的空普通目录：
 
 ```sh
-python -m versioning backup restore --root /absolute/isolated-project --backup-root /absolute/destination --data-root /absolute/isolated-project/data --prompts-root /absolute/isolated-project --models-root /absolute/isolated-project/workspace/models/materialized --mlflow-root /absolute/isolated-project/workspace/mlflow
+python -m versioning backup restore --root /absolute/isolated-project --backup-root /absolute/destination --data-root /absolute/isolated-project/data --prompts-root /absolute/isolated-project --models-root /absolute/isolated-project/models/materialized --mlflow-root /absolute/isolated-project/mlflow
 ```
 
 restore先校验快照、目标和存储地址映射，再复制到各目标同级的私有临时目录。MLflow副本以catalog记录的源store为依据，将experiment、Run、ModelVersion及logged-model的本地artifact地址改为新MLflow根下的file URI；合法且指向已知Run的`runs:/`逻辑引用保留。唯一特殊情形是MLflow自动创建且没有Run或logged-model记录的Default experiment，其空占位地址落到新artifact根的`0`目录。原store无需可访问，原备份字节不修改；Run/ModelVersion身份、指标、生命周期、alias、scope及holdout状态保持原值。
@@ -458,7 +458,7 @@ python -m versioning eval score <完整eval版本> --root <store绝对路径> --
 python -m versioning eval export <完整eval版本> --root <store绝对路径>
 ```
 
-prepare/validate/run均不读取truth文件。run用冻结媒体、模型权重与模型训练Prompt推理，完整推理后仍保持父Run running，提示执行score，不创建fold子Run。score先核验同一授权身份和推理证据，再记录真值访问、读取标签并严格评分；逐样本推理、真值快照和评分仅存于 `workspace/evaluations/<eval>/restricted/`（0700，文件0400），不会上传普通MLflow artifacts。目录权限与阶段调用控制不等于独立操作系统账户沙箱；运行环境仍须限制未授权账户读取受限目录。
+prepare/validate/run均不读取truth文件。run用冻结媒体、模型权重与模型训练Prompt推理，完整推理后仍保持父Run running，提示执行score，不创建fold子Run。score先核验同一授权身份和推理证据，再记录真值访问、读取标签并严格评分；逐样本推理、真值快照和评分仅存于 `evaluations/<eval>/restricted/`（0700，文件0400），不会上传普通MLflow artifacts。目录权限与阶段调用控制不等于独立操作系统账户沙箱；运行环境仍须限制未授权账户读取受限目录。
 
 公开MLflow仅保存无标签input/evaluation、权重/规则绑定、七门通过/失败summary及执行摘要；公开manifest仅引用aggregate证据。消费前先完整核验私有预测、真值快照和逐样本严格评分，将执行摘要钉扎为同一Run不可改写的评分承诺；仅有一份汇总文件不能恢复或晋级。评分落盘后承诺尚未提交的恢复也须重新授权读取原truth、对照私有快照并复验上述完整证据；私有文件自洽不能代替来源核验，既有承诺不符立即拒绝。评分后无论质量passed或failed，均先持久化consumed再提交completed。评分中断且尚未生成scoring凭据时，相同身份可用score复用完整推理，重新授权读取原truth并与已保存只读快照比对，内容冲突拒绝；已有MLflow评分承诺的完成/导出中断用同命令恢复，不重新推理、不重读原始真值；只有私有scoring文件而尚无承诺时仍需重新授权核验原truth。run不会覆盖已有推理输出；推理阶段中断而缺少完整inference凭据时必须保持失败并另行核查，不提供自动重跑。错误executor、输入/权重/预测/已冻结真值漂移及跨身份恢复均拒绝；迁移、备份和恢复不重置消费状态。
 
