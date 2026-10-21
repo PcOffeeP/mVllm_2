@@ -287,13 +287,28 @@ def test_module_does_not_expose_a_default_experiment_id() -> None:
     assert not hasattr(project_workspace, "CURRENT_EXPERIMENT_ID")
 
 
-def test_workspace_is_ignored_by_git() -> None:
-    result = subprocess.run(
-        ["git", "check-ignore", "-q", "workspace/probe"],
-        cwd=ROOT,
-        check=False,
+def test_flattened_local_artifacts_are_ignored_by_git() -> None:
+    """项目本地产物（扁平化后的顶层语义目录）不得进入 Git。"""
+    not_ignored = [
+        path
+        for path in (
+            "mlflow/probe",
+            "audits/probe",
+            "base-models/probe",
+            "trains/probe",
+            "data/probe",
+        )
+        if subprocess.run(
+            ["git", "check-ignore", "-q", path],
+            cwd=ROOT,
+            check=False,
+        ).returncode
+        != 0
+    ]
+
+    assert not_ignored == [], (
+        f".gitignore 未覆盖这些本地产物路径：{not_ignored}"
     )
-    assert result.returncode == 0
 
 
 def test_project_workspace_has_no_environment_dependency(

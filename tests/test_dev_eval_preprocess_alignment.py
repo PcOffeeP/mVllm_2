@@ -495,7 +495,7 @@ def test_runtime_forwards_default_temporal_fusion_false_to_frame_loader(
 # batch feature、resampler 的组数由 len(temporal_ids) 决定。真实前向数值必须在
 # 训练机验证。不复制任何切片/重采样算法。
 # ---------------------------------------------------------------------------
-MODEL_DIR = Path(__file__).resolve().parents[1] / "models" / "minicpm-v-4.5"
+MODEL_DIR = Path(__file__).resolve().parents[1] / "base-models" / "minicpmv4_5"
 
 
 def _model_source(filename: str) -> str:

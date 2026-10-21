@@ -10,7 +10,7 @@
 
 守卫分三块：
 
-* T1：旧物理路径不该再存在（P2 未完成的少数目录暂列 ``PENDING_PHYSICAL_MOVE``）。
+* T1：旧物理路径不该再存在（P2 已完成，``PENDING_PHYSICAL_MOVE`` 必须为空）。
 * T2：``evaluations`` 不再位于 ``workspace/`` 之下。
 * T3：源码 / 配置里的旧布局字面量（``root / "workspace" / "mlflow"``、
   ``"workspace/models/"``、``workspace/data-staging`` 三种写法）必须清零，
@@ -65,16 +65,8 @@ LEGACY_TO_FLATTENED = {
     "models/minicpmv4_5": "base-models/minicpmv4_5",
 }
 
-# P2 物理搬迁完成后必须清空本集合（届时 T1 会要求这些旧路径全部消失）。
-# 现值为实测仍在磁盘上的旧路径：workspace/ 下仅剩这四个子目录，另加本地权重目录
-# models/minicpm-v-4.5（被 .gitignore 忽略、不进 Git，属于 P2 的物理搬迁对象）。
-PENDING_PHYSICAL_MOVE = {
-    "workspace/runs",
-    "workspace/mlflow",
-    "workspace/base-source-audit",
-    "workspace/review-environment",
-    "models/minicpm-v-4.5",
-}
+# P2 物理搬迁已完成，本集合必须保持为空；新增旧路径一律视为写回旧布局。
+PENDING_PHYSICAL_MOVE: set[str] = set()
 
 # 新布局的顶层目录名。models 走既有规则（models/* 已被忽略），不在 T6 断言内。
 FLATTENED_TOP_LEVEL = (
