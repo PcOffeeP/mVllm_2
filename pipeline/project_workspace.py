@@ -9,7 +9,6 @@ from pathlib import Path
 EXPERIMENT_ID_PATTERN = re.compile(
     r"^v4\.1-[a-z0-9]+(?:-[a-z0-9]+)*-v[0-9]+-seed[0-9]+$"
 )
-CURRENT_EXPERIMENT_ID = "v4.1-prompt-minimal-v1-seed3411"
 
 
 class ProjectWorkspaceError(ValueError):

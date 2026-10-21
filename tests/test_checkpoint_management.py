@@ -9,6 +9,18 @@ from pipeline.checkpoint_management import (
     CheckpointManagementError,
     apply_plan,
     build_plan,
+    load_policy,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+POLICY_PATH = ROOT / "pipeline/checkpoint_policy.json"
+# 已在训练机删除的微调 run：不得再作为 checkpoint 保护项残留。
+DELETED_RUN_ID = "v4.1-prompt-concise-cv-v1-seed3411"
+CURRENT_RELEASE_SOURCE_ADAPTER = (
+    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter"
+)
+STALE_ARCHIVE_CLAIM = (
+    "All other models are completed comparison or archive artifacts"
 )
 
 
@@ -81,3 +93,48 @@ def test_apply_requires_exact_confirmation_and_detects_drift(
     target.write_bytes(b"changed")
     with pytest.raises(CheckpointManagementError, match="发生变化"):
         apply_plan(tmp_path, plan, "DELETE-2-CHECKPOINTS")
+
+
+def test_policy_has_no_protected_entries_for_deleted_run() -> None:
+    policy = load_policy(POLICY_PATH)
+
+    dangling = [
+        entry["adapter"]
+        for entry in policy["protected_experiments"]
+        if DELETED_RUN_ID in entry["adapter"]
+    ]
+
+    assert dangling == []
+
+
+def test_policy_keeps_current_release_training_source_protected() -> None:
+    policy = load_policy(POLICY_PATH)
+
+    entries = [
+        entry
+        for entry in policy["protected_experiments"]
+        if entry["adapter"] == CURRENT_RELEASE_SOURCE_ADAPTER
+    ]
+
+    assert len(entries) == 1
+    assert entries[0]["reason"] == "current_release_training_source"
+    assert entries[0]["retention"] == "all"
+
+
+def test_policy_protected_entries_declare_reason_adapter_and_retain_all() -> None:
+    policy = load_policy(POLICY_PATH)
+
+    protected = policy["protected_experiments"]
+
+    assert protected
+    for entry in protected:
+        assert {"reason", "adapter", "retention"} <= set(entry)
+        assert entry["retention"] == "all"
+
+
+def test_policy_notes_drop_stale_archive_claim() -> None:
+    policy = load_policy(POLICY_PATH)
+
+    notes = policy["notes"]
+
+    assert all(STALE_ARCHIVE_CLAIM not in note for note in notes)

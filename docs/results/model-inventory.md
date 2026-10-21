@@ -45,20 +45,22 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 不表示已通过哈希验证；`历史已删记录` = 前序记录，本轮未核实删除事件；
 `仅 input` = 当前目录只见输入，无权重；`未找到` 不等于已证明删除。
 
-| # | 模型 / 实验 ID | 数据 release | Prompt revision | 状态 |
-| --- | --- | --- | --- | --- |
-| 1 | `v4.1-agent-pipeline-fold0-r1`（来源 `v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`） | `v4.1.0-ecb5aeb9657c` | V4.1 契约 Prompt | 存活（已发布） |
-| 2 | coverage-first seed3411（fold0） | `v4.1.0-ecb5aeb9657c` | V4.1 契约 Prompt | 存活 |
-| 3 | coverage-fallback seed3413（fold0） | `v4.1.0-ecb5aeb9657c` | V4.1 契约 Prompt | 存活 |
-| 4 | prompt-minimal seed3411（fold0） | `v4.1.0-ecb5aeb9657c` | `v4.1-fixed-full-fields-initial-v1` | 存活 |
-| 5 | prompt-concise-v1 seed3411 | `v4.1.0-ecb5aeb9657c` | `v4.1-concise-evidence-json-v1` | 仅 input |
-| 6 | prompt-concise-v2 seed3411 | `v4.1.0-ecb5aeb9657c` | `v4.1-concise-evidence-json-v2` | 仅 input（后转三折） |
-| 7 | `v4.1-prompt-concise-cv-v1-seed3411`（三折） | `v4.1.0-ecb5aeb9657c` | `v4.1-concise-evidence-json-v2` | 约定路径未找到，待查备份 |
-| 8 | `v4.1-visual-cv-v1-seed3407`（三折） | `v4.1.0-760050fad303` | — | 历史已删记录 |
-| 9 | `v4.1-language-cv-v1-seed3407`（三折） | — | — | 历史已删记录 |
-| 10 | `v2.0.0-1dab1e5e`（fold0/1/2/full） | — | — | 历史已删记录 |
-| 11 | source-aware seed3407（fold0，`v4.1-sampling-source-aware-fold0-r1`） | `v4.1.0-ecb5aeb9657c` | 契约 Prompt，精确内容待归档绑定 | 存活，原清单漏列 |
-| 12 | source-aware seed3411（fold0，`v4.1-sampling-source-aware-fold0-r2`） | `v4.1.0-ecb5aeb9657c` | 契约 Prompt，精确内容待归档绑定 | 存活，原清单漏列 |
+| # | 模型 / 实验 ID | 数据 release | Prompt revision | 状态 | 2026-10-21 处置 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `v4.1-agent-pipeline-fold0-r1`（来源 `v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`） | `v4.1.0-ecb5aeb9657c` | V4.1 契约 Prompt | 存活（已发布） | 保留（长期参考基线） |
+| 2 | coverage-first seed3411（fold0） | `v4.1.0-ecb5aeb9657c` | V4.1 契约 Prompt | 存活 | 已删除（2026-10-21，用户授权） |
+| 3 | coverage-fallback seed3413（fold0） | `v4.1.0-ecb5aeb9657c` | V4.1 契约 Prompt | 存活 | 已删除（2026-10-21，用户授权） |
+| 4 | prompt-minimal seed3411（fold0） | `v4.1.0-ecb5aeb9657c` | `v4.1-fixed-full-fields-initial-v1` | 存活 | 已删除（2026-10-21，用户授权） |
+| 5 | prompt-concise-v1 seed3411 | `v4.1.0-ecb5aeb9657c` | `v4.1-concise-evidence-json-v1` | 仅 input | 随非 R1 产物清理（2026-10-21，用户授权）；本机未核 |
+| 6 | prompt-concise-v2 seed3411 | `v4.1.0-ecb5aeb9657c` | `v4.1-concise-evidence-json-v2` | 仅 input（后转三折） | 随非 R1 产物清理（2026-10-21，用户授权）；本机未核 |
+| 7 | `v4.1-prompt-concise-cv-v1-seed3411`（三折） | `v4.1.0-ecb5aeb9657c` | `v4.1-concise-evidence-json-v2` | 约定路径未找到，待查备份 | 不变（更早已不存在） |
+| 8 | `v4.1-visual-cv-v1-seed3407`（三折） | `v4.1.0-760050fad303` | — | 历史已删记录 | 不变（更早已删） |
+| 9 | `v4.1-language-cv-v1-seed3407`（三折） | — | — | 历史已删记录 | 不变（更早已删） |
+| 10 | `v2.0.0-1dab1e5e`（fold0/1/2/full） | — | — | 历史已删记录 | 不变（更早已删） |
+| 11 | source-aware seed3407（fold0，`v4.1-sampling-source-aware-fold0-r1`） | `v4.1.0-ecb5aeb9657c` | 契约 Prompt，精确内容待归档绑定 | 存活，原清单漏列 | 已删除（2026-10-21，用户授权） |
+| 12 | source-aware seed3411（fold0，`v4.1-sampling-source-aware-fold0-r2`） | `v4.1.0-ecb5aeb9657c` | 契约 Prompt，精确内容待归档绑定 | 存活，原清单漏列 | 已删除（2026-10-21，用户授权） |
+
+上表「2026-10-21 处置」列取自上游任务书，不是本机核实结论：本机无训练机现场（`workspace/runs` 为空），逐 run 明细以训练机侧 2026-10-21 删除清单为准，清单路径待该任务回归后补录。
 
 ## 4. 训练参数
 
@@ -150,6 +152,9 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 以下路径相对训练机项目根；占用按分配字节计，不跟随软链接，GiB = 2^30 字节。
 
+> 2026-10-21 时点说明：本表为 2026-08-31 采集的历史快照，其中非 R1 run 的 root adapter / merged / checkpoint 已于 2026-10-21 按用户授权删除；表内体积数字保留为历史读数，**不再代表当前占用**；建议边界列的结论同样只对当时成立。
+
+
 | `workspace/runs/` 下目录 | 本轮实际状态 | 占用 | 建议边界（未获删除放行） |
 | --- | --- | ---: | --- |
 | `v4.1-phase2-source-aware-v1-seed3407` | root adapter + merged | 16.656 GiB | 补齐归档及诊断取舍后列为候选 |
@@ -192,7 +197,7 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 
 - **只保留研究记录**：完整冻结上述证据后，可将已明确退役、无后续模型依赖的 adapter/merged/训练恢复状态纳入删除候选；代价是永久失去该权重的新推理能力。重新训练不能保证得到同一模型。
 - **兼顾空间和后续使用**：保留约 439 MiB 的原始 adapter、准确基座及自定义模型/processor 代码、配置和合并环境，优先考虑删除约 16.2 GiB 的 merged 权重。必须先验证重新合并链路；不能以“4-bit 基座直挂 adapter”替代历史 merged BF16 评测口径。本轮未进行恢复/合并验证。
-- **当前发布与诊断**：保留 `workspace/models/releases/v4.1-agent-pipeline-fold0-r1`；[checkpoint 保留策略](../../pipeline/checkpoint_policy.json) 还保护 r1 来源及 concise 三折。TODO 的 MODEL-DIAG 需要模型交叉推理/中间 step 评测；要删除其依赖，须先完成对应诊断或由用户明确取消该诊断目标。本次提出节省空间不自动等于取消诊断。
+- **当前发布与诊断**：保留 `workspace/models/releases/v4.1-agent-pipeline-fold0-r1`；[checkpoint 保留策略](../../pipeline/checkpoint_policy.json) 原记：保护 r1 来源及 concise 三折；2026-10-21 起：仅保护 R1 训练源，`v4.1-prompt-concise-cv-v1-seed3411` 的三条保护项已移除（该 run 产物已不存在）。TODO 的 MODEL-DIAG 需要模型交叉推理/中间 step 评测；要删除其依赖，须先完成对应诊断或由用户明确取消该诊断目标。本次提出节省空间不自动等于取消诊断。
 - **现有工具不能代替新清理方案**：[serve_manage_checkpoints.py](../../scripts/serve_manage_checkpoints.py) 仅针对 checkpoint 子目录，不是 root adapter/merged 或整个 run 的归档清理器。不能直接套用到本次目标。
 - **执行前再验证**：核对两机 Git、真实路径/链接、当前模型完整性、在用进程与文件占用、归档校验及备份；固定显式路径清单，排除发布库、基座、数据、证据目录。这里只读核查不构成删除授权，不提供整目录通配删除命令。
 

@@ -50,7 +50,6 @@ from pipeline.prompt_control import (  # noqa: E402
 from pipeline.prompt_control.core import sha256_file  # noqa: E402
 from pipeline.data_roots import resolve_workspace_artifact  # noqa: E402
 from pipeline.project_workspace import (  # noqa: E402
-    CURRENT_EXPERIMENT_ID,
     project_workspace_paths,
     validate_experiment_id,
 )
@@ -312,7 +311,7 @@ def build_fixed_prompt_dataset(
     source_sampling_dir: Path,
     prompt_revision_dir: Path,
     output_root: Path,
-    experiment_id: str = CURRENT_EXPERIMENT_ID,
+    experiment_id: str,
     project_root: Path = ROOT,
     release_dir: Path | None = None,
     validate_only: bool = False,
@@ -501,7 +500,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=project_workspace_paths(ROOT).runs,
     )
-    parser.add_argument("--experiment-id", default=CURRENT_EXPERIMENT_ID)
+    parser.add_argument(
+        "--experiment-id",
+        required=True,
+        help="必填，无默认值：目标实验的完整语义 ID",
+    )
     parser.add_argument("--validate-only", action="store_true")
     return parser.parse_args()
 

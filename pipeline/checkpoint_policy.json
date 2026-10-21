@@ -6,21 +6,6 @@
       "reason": "current_release_training_source",
       "adapter": "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter",
       "retention": "all"
-    },
-    {
-      "reason": "latest_three_fold_analysis",
-      "adapter": "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold0/adapter",
-      "retention": "all"
-    },
-    {
-      "reason": "latest_three_fold_analysis",
-      "adapter": "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold1/adapter",
-      "retention": "all"
-    },
-    {
-      "reason": "latest_three_fold_analysis",
-      "adapter": "workspace/runs/v4.1-prompt-concise-cv-v1-seed3411/fold2/adapter",
-      "retention": "all"
     }
   ],
   "completed_experiment_retention": [],
@@ -31,9 +16,9 @@
     "training_process_absent": true
   },
   "notes": [
-    "Checkpoint deletion does not delete the root adapter, merged model, metrics, logs, trainer state, or model identity.",
+    "Checkpoint deletion does not delete the root adapter, merged model, metrics, logs, trainer state, or model identity. (This note describes only the scope of this checkpoint-cleanup tool; it does not assert that those artifacts currently exist.)",
     "The current release source retains every checkpoint for recovery and intermediate-learning analysis.",
-    "The latest prompt-concise three-fold run retains every checkpoint until its training trajectory has been fully analyzed.",
-    "All other models are completed comparison or archive artifacts and retain root adapters plus merged models."
+    "2026-10-21: the user authorized deleting every fine-tuned model artifact except R1. The v4.1-prompt-concise-cv-v1-seed3411 three-fold run no longer exists, so its earlier three-fold trajectory-analysis protection is removed.",
+    "2026-10-21: non-R1 fine-tuned artifacts no longer exist on the training machine. Root adapters, merged models and checkpoints of completed comparison runs were deleted under that decision, so they are not protected and are not retained. protected_experiments now lists only the R1 training source."
   ]
 }

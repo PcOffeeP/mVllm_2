@@ -1,21 +1,26 @@
 from __future__ import annotations
 
+import inspect
 import json
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
+import finetune.train_build_dataset as build_dataset_module
+import finetune.train_prepare_run as prepare_run_module
 from finetune.train_build_dataset import build_fixed_prompt_dataset
 from finetune.train_build_source_aware_dataset import SourceAware3kError
 from finetune.train_prepare_run import prepare_fixed_prompt_run
 from finetune.eval_run import _load_contract
 from pipeline.prompt_control import load_experiment_contract
 from pipeline.prompt_control.core import sha256_file
-from pipeline.project_workspace import CURRENT_EXPERIMENT_ID
 
 ROOT = Path(__file__).resolve().parents[1]
 REVISION = ROOT / "pipeline/prompt_registry/v4.1-fixed-full-fields-initial-v1"
+# 测试自带的合法实验 ID 字面量：本文件不再依赖被测模块的默认常量。
+EXAMPLE_EXPERIMENT_ID = "v4.1-prompt-minimal-v1-seed3411"
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -103,6 +108,7 @@ def test_builds_prompt_only_derivative_and_evaluation_loads_same_snapshot(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
         output_root=tmp_path / "workspace/runs",
+        experiment_id=EXAMPLE_EXPERIMENT_ID,
         project_root=tmp_path,
     )
     experiment_path = output / "experiment_contract.json"
@@ -139,6 +145,7 @@ def test_builds_prompt_only_derivative_and_evaluation_loads_same_snapshot(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
         output_root=tmp_path / "workspace/runs",
+        experiment_id=EXAMPLE_EXPERIMENT_ID,
         project_root=tmp_path,
         validate_only=True,
     )
@@ -155,6 +162,7 @@ def test_rejects_source_sampling_file_drift(tmp_path: Path) -> None:
             source_sampling_dir=source,
             prompt_revision_dir=REVISION,
             output_root=tmp_path / "workspace/runs",
+            experiment_id=EXAMPLE_EXPERIMENT_ID,
             project_root=tmp_path,
         )
 
@@ -167,11 +175,12 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
         output_root=tmp_path / "workspace/runs",
+        experiment_id=EXAMPLE_EXPERIMENT_ID,
         project_root=tmp_path,
     )
     config_dir, manifest = prepare_fixed_prompt_run(
         input_dir=input_dir,
-        experiment_id=CURRENT_EXPERIMENT_ID,
+        experiment_id=EXAMPLE_EXPERIMENT_ID,
         project_root=tmp_path,
         training_code_commit="test-commit",
     )
@@ -189,7 +198,7 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
     assert manifest["commands"]["evaluate"][-2:] == [
         "--experiment-contract",
         (
-            f"workspace/runs/{CURRENT_EXPERIMENT_ID}/"
+            f"workspace/runs/{EXAMPLE_EXPERIMENT_ID}/"
             "input/experiment_contract.json"
         ),
     ]
@@ -197,11 +206,81 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
         f"/LlamaFactory/src:{tmp_path}"
     )
     assert config_dir == (
-        tmp_path / "finetune/experiments" / CURRENT_EXPERIMENT_ID
+        tmp_path / "finetune/experiments" / EXAMPLE_EXPERIMENT_ID
     )
     assert sha256_file(config_dir / "train.yaml") == manifest[
         "train_config"
     ]["sha256"]
     semantic = yaml.safe_load((config_dir / "experiment.yaml").read_text())
-    assert semantic["id"] == CURRENT_EXPERIMENT_ID
-    assert manifest["experiment_id"] == CURRENT_EXPERIMENT_ID
+    assert semantic["id"] == EXAMPLE_EXPERIMENT_ID
+    assert manifest["experiment_id"] == EXAMPLE_EXPERIMENT_ID
+
+
+def test_build_fixed_prompt_dataset_has_no_experiment_id_default() -> None:
+    parameters = inspect.signature(build_fixed_prompt_dataset).parameters
+
+    assert "experiment_id" in parameters
+    assert parameters["experiment_id"].default is inspect.Parameter.empty
+
+
+def test_prepare_fixed_prompt_run_has_no_experiment_id_default() -> None:
+    parameters = inspect.signature(prepare_fixed_prompt_run).parameters
+
+    assert "experiment_id" in parameters
+    assert parameters["experiment_id"].default is inspect.Parameter.empty
+
+
+def test_build_fixed_prompt_dataset_rejects_missing_experiment_id(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(TypeError, match="experiment_id"):
+        build_fixed_prompt_dataset(
+            source_sampling_dir=tmp_path / "absent-source-sampling",
+            prompt_revision_dir=tmp_path / "absent-prompt-revision",
+            output_root=tmp_path / "workspace/runs",
+            project_root=tmp_path,
+        )
+
+
+def test_train_build_dataset_cli_fails_closed_without_experiment_id(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["train_build_dataset.py"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        build_dataset_module.parse_args()
+
+    captured = capsys.readouterr()
+    assert excinfo.value.code == 2
+    assert "--experiment-id" in captured.err
+
+
+def test_train_prepare_run_cli_fails_closed_without_experiment_id(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["train_prepare_run.py"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        prepare_run_module.parse_args()
+
+    captured = capsys.readouterr()
+    assert excinfo.value.code == 2
+    assert "--experiment-id" in captured.err
+
+
+def test_parse_args_accepts_explicit_experiment_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["train_cli.py", "--experiment-id", EXAMPLE_EXPERIMENT_ID],
+    )
+
+    build_dataset_args = build_dataset_module.parse_args()
+    prepare_run_args = prepare_run_module.parse_args()
+
+    assert build_dataset_args.experiment_id == EXAMPLE_EXPERIMENT_ID
+    assert prepare_run_args.experiment_id == EXAMPLE_EXPERIMENT_ID

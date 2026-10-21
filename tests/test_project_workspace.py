@@ -16,9 +16,9 @@ from pipeline.current_data import (
     resume_staging_context,
 )
 import pipeline.current_data as current_data_module
+import pipeline.project_workspace as project_workspace
 from pipeline.data_roots import DataRootError
 from pipeline.project_workspace import (
-    CURRENT_EXPERIMENT_ID,
     ProjectWorkspaceError,
     experiment_workspace_paths,
     project_workspace_paths,
@@ -30,6 +30,9 @@ from pipeline.v3_candidate_media import _frame_artifacts
 from pipeline.v4_1_review_workflow import _portable_identity_path
 
 ROOT = Path(__file__).resolve().parents[1]
+# 测试自带的合法实验 ID 字面量：本文件不再依赖被测模块的默认常量，
+# 以便在模块删除过期默认值后仍能验证 ID 驱动路径与格式校验。
+EXAMPLE_EXPERIMENT_ID = "v4.1-prompt-minimal-v1-seed3411"
 
 
 def test_current_v4_1_paths_are_project_local(
@@ -263,21 +266,25 @@ def test_writer_output_guard_rejects_legacy_and_versioned_roots(
 def test_semantic_experiment_id_drives_git_and_run_directories(
     tmp_path: Path,
 ) -> None:
-    paths = experiment_workspace_paths(tmp_path, CURRENT_EXPERIMENT_ID)
+    paths = experiment_workspace_paths(tmp_path, EXAMPLE_EXPERIMENT_ID)
 
     assert paths.git_dir == (
-        tmp_path / "finetune/experiments" / CURRENT_EXPERIMENT_ID
+        tmp_path / "finetune/experiments" / EXAMPLE_EXPERIMENT_ID
     ).resolve()
     assert paths.run_dir == (
-        tmp_path / "workspace/runs" / CURRENT_EXPERIMENT_ID
+        tmp_path / "workspace/runs" / EXAMPLE_EXPERIMENT_ID
     ).resolve()
     assert paths.input == paths.run_dir / "input"
     assert paths.adapter == paths.run_dir / "adapter"
     assert paths.merged == paths.run_dir / "merged"
-    assert validate_experiment_id(CURRENT_EXPERIMENT_ID) == CURRENT_EXPERIMENT_ID
+    assert validate_experiment_id(EXAMPLE_EXPERIMENT_ID) == EXAMPLE_EXPERIMENT_ID
 
     with pytest.raises(ProjectWorkspaceError):
         validate_experiment_id("hash-8fe58f171667")
+
+
+def test_module_does_not_expose_a_default_experiment_id() -> None:
+    assert not hasattr(project_workspace, "CURRENT_EXPERIMENT_ID")
 
 
 def test_workspace_is_ignored_by_git() -> None:

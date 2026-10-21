@@ -46,7 +46,6 @@ from finetune.train_build_source_aware_dataset import (  # noqa: E402
 from pipeline.prompt_control import load_experiment_contract  # noqa: E402
 from pipeline.prompt_control.core import sha256_file  # noqa: E402
 from pipeline.project_workspace import (  # noqa: E402
-    CURRENT_EXPERIMENT_ID,
     experiment_workspace_paths,
     validate_experiment_id,
 )
@@ -200,7 +199,7 @@ def _write_experiment_directory(
 def prepare_fixed_prompt_run(
     *,
     input_dir: Path,
-    experiment_id: str = CURRENT_EXPERIMENT_ID,
+    experiment_id: str,
     baseline_config_root: Path = DEFAULT_BASELINE_ROOT,
     project_root: Path = ROOT,
     training_code_commit: str | None = None,
@@ -786,7 +785,11 @@ def export_versioned_run(*, root: Path, train_version: str) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--experiment-id", default=CURRENT_EXPERIMENT_ID)
+    parser.add_argument(
+        "--experiment-id",
+        required=True,
+        help="必填，无默认值：目标实验的完整语义 ID",
+    )
     parser.add_argument("--input-dir", type=Path)
     parser.add_argument(
         "--baseline-config-root",
