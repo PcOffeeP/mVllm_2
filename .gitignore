@@ -20,6 +20,8 @@ wheels/
 /audits
 /data-staging
 /data-rebuild
+# 物理搬迁（P2）完成前的临时保护：workspace/ 仍在磁盘上，避免被误提交；P2 删除该目录后连本行一起删除
+/workspace/
 
 # video files
 *.mp4
