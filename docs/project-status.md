@@ -2,7 +2,7 @@
 
 ## 如何理解这里的“当前”
 
-本页更新日期为 **2026-10-18**。页面覆盖三类证据：2026-10-13 的只读现场核查（起始 Mac 基线 `59dee2d1`，训练机 `main@3f200461`，详见[现场报告](results/remote-state-refresh-20261013.md)）、2026-10-15 的实施增量与 2026-10-16 的限定只读核验与固定来源比对；三类增量各自注明日期与限制，2026-10-16 未执行完整现场刷新，仅限定只读核验。工程能力依据代码及仓库验收记录；环境、数据引用和限定模型文件位置已刷新（2026-10-13 层），模型质量仍依据历史结果。2026-10-13 同日后续新建正式Conda环境并通过检查，见部署记录（该记录已随 2026-10-18 清理移除）。Conda `mvllm2`（Python3.11.17）与 GPU 锁 241 项一致这一环境事实的原始凭证已移除；如需复核须在训练机重跑环境检查。没有加载模型或重新评测，过去的服务成功不表示今天有同一服务在运行。
+本页主体证据更新日期为 **2026-10-18**（「项目本地目录布局」一节随双端物理搬迁完成更新到 2026-10-21）。页面覆盖三类证据：2026-10-13 的只读现场核查（起始 Mac 基线 `59dee2d1`，训练机 `main@3f200461`，详见[现场报告](results/remote-state-refresh-20261013.md)）、2026-10-15 的实施增量与 2026-10-16 的限定只读核验与固定来源比对；三类增量各自注明日期与限制，2026-10-16 未执行完整现场刷新，仅限定只读核验。工程能力依据代码及仓库验收记录；环境、数据引用和限定模型文件位置已刷新（2026-10-13 层），模型质量仍依据历史结果。2026-10-13 同日后续新建正式Conda环境并通过检查，见部署记录（该记录已随 2026-10-18 清理移除）。Conda `mvllm2`（Python3.11.17）与 GPU 锁 241 项一致这一环境事实的原始凭证已移除；如需复核须在训练机重跑环境检查。没有加载模型或重新评测，过去的服务成功不表示今天有同一服务在运行。
 
 项目任务仍由[唯一台账](project-todo.md)维护。本页是现状与证据摘要，不另列一套执行任务、优先级或授权。
 
@@ -19,15 +19,38 @@
 | 本机 | macOS 开发、审查 UI 及结果复核；用 uv 调用已部署的 Mac Python 3.11.x |
 | 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660` |
 | 训练机代码目录 | `/home/liuyang/文档/mVllm_2` |
-| 正式store（已归位） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已将活 store 由 `/data/mVllm_2` 归位至此，逐文件 sha256 核验 48/48 一致；旧目录改名 `/data/.store-old-20261017` 保留 7 天回滚窗口（核验记录见仓库外 `~/pi-workspace/mVllm_2-audit/cleanup-execution-20261017.md` 第六轮 48/48，本机未复跑且 checkout 无 `store/` 现场）；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION`；2026-10-18 训练机实测：`store/` 47,288,387 B / 49 文件，其中 `store/records/prompts/` 含 r1（1,200 B）与 r2（1,808 B）；训练机 `workspace/data/source/videos` 6,662,518,177 B / 110 个 mp4、`workspace/data/derived/subvideos` 208,117,755 B / 2,027 文件（含 2 个 candidate-plan：1,617 + 410）。本机 checkout 无 `store/`、`workspace/data/` 父目录整体缺失，上述媒体与 store 侧 Prompt 的保留义务在训练机侧 |
+| 正式store（已归位） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已将活 store 由 `/data/mVllm_2` 归位至此，逐文件 sha256 核验 48/48 一致；旧目录改名 `/data/.store-old-20261017` 保留 7 天回滚窗口（核验记录见仓库外 `~/pi-workspace/mVllm_2-audit/cleanup-execution-20261017.md` 第六轮 48/48，本机未复跑且 checkout 无 `store/` 现场）；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION`；2026-10-18 训练机实测：`store/` 47,288,387 B / 49 文件，其中 `store/records/prompts/` 含 r1（1,200 B）与 r2（1,808 B）；训练机 `data/source/videos` 6,662,518,177 B / 110 个 mp4、`data/derived/subvideos` 208,117,755 B / 2,027 文件（含 2 个 candidate-plan：1,617 + 410）（路径按现行扁平化布局书写，2026-10-18 实测时旧布局写作 `workspace/data/...`）。本机 checkout 无 `store/`、数据目录 `data/` 整体缺失，上述媒体与 store 侧 Prompt 的保留义务在训练机侧 |
 | 备份总目录 | `/data/mVllm_2-backups/`；2026-10-17 归位后 `/data` 只放备份。单次备份的 `--backup-root` 取该目录下的 `baseline-YYYYMMDD` 或 `round<N>-YYYYMMDD` 子目录，不得使用总目录本身；`20261017/` 是历史旧物落点、不再写入（据用户口径，本机未核） |
-| 基座位置 | `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`；2026-10-16四片SHA已对应官方固定HF revision；配置/tokenizer已核，但构造代码有1处偏差、加载可用性未验 |
+| 基座位置 | `/home/liuyang/文档/mVllm_2/base-models/minicpmv4_5`（2026-10-21 布局扁平化后由 `models/minicpmv4_5` 迁入）；2026-10-16四片SHA已对应官方固定HF revision；配置/tokenizer已核，但构造代码有1处偏差、加载可用性未验 |
 
 通过已有OpenSSH配置、密钥或SSH agent连接：`ssh liuyang@100.70.83.68`。在该机器项目根目录直接使用已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 执行数据及模型说明中的命令；连接前明确命令、输入/输出和资源。凭据不入Git，删除/覆盖远端文件、切换环境、停止已有任务或push/merge仍按项目授权处理。同日用户追加授权新环境部署，已单独验收；后续同步和模型运行仍需对应授权。
 
 ## 项目本地目录布局
 
-2026-10-21 起项目本地布局扁平化，取消 `workspace/` 根段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建的落点分别是仓库根下顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。本阶段只改代码、配置、测试与忽略规则，磁盘上的物理搬迁（P2）尚未执行，因此本页及他处带日期的实测记录仍按旧路径书写，阅读时按[布局迁移说明](layout-migration-20261021.md)的映射表换算；未完成清单也记在该文档与[台账](project-todo.md)。
+2026-10-21 起项目本地布局扁平化，取消 `workspace/` 根段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建的落点分别是仓库根下顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git；store 与这些项目本地目录是两套根，互不替代。
+
+**双端物理搬迁已完成**：本机 P2 为 commit `b18e69b`，收口为 `316a1975`；训练机在同一 commit `316a1975` 上完成代码同步与物理搬迁，两端磁盘上均无 `workspace/`。训练机由代码就绪到全部验证通过之间的不可用窗口为 4 秒（脚本定义口径）。训练机四点验收全部通过：① R1 adapter sha256 `9e7941c9…d67064` 在 `models/releases/v4.1-agent-pipeline-fold0-r1/adapter/` 与 `trains/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/` 两处一致；② merged 落 `models/releases/v4.1-agent-pipeline-fold0-r1/merged/` 共 10 个分片；③ `data/source/videos` 110 个 mp4；④ 搬迁前后 dangling 链接对比新增 0。训练机搬迁后顶层实测为 `data`、`trains`、`models`、`base-models` 与 `store`；`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild` 在该机尚未创建，按实际产物需要时生成。仓库外证据为 `~/pi-workspace/mVllm_2-relayout-20261021/`（`relayout.sh`、执行日志、dangling 前后清单），不在仓库内复制。
+
+**旧 → 新映射（唯一依据）**
+
+| 旧 | 新 |
+| --- | --- |
+| `workspace/data` | `data` |
+| `workspace/runs` | `trains` |
+| `workspace/models` | `models` |
+| `workspace/mlflow` | `mlflow` |
+| `workspace/evaluations`（含 `staging/`） | `evaluations` |
+| `workspace/base-source-audit` | `audits/base-source-audit` |
+| `workspace/review-environment` | `audits/review-environment` |
+| `workspace/data-staging` | `data-staging` |
+| `workspace/data-rebuild` | `data-rebuild` |
+| `models/minicpmv4_5` / `models/minicpm-v-4.5`（基座） | `base-models/minicpmv4_5` |
+
+**三个特殊点**：① `.compat/workspace` 与 `store/workspace/**` 不属本次映射——store 域是独立命名空间，两套根不互相换算；② `models/*` 的忽略规则保持原样，它只排除子项、目录本身可跟踪；③ 评测结果、训练记录与历史计划类记录（原 `docs/results/**`、`records/**`、`docs/plans/**`）保留旧路径原文、不回改，阅读时按上表换算；带日期的实测记录描述的是当时磁盘状态，换算只用于理解「那批产物现在该在哪」，不能据此声称目录仍在新位置的旧路径上。这一条有独立旁证：`LlamaFactory` 别名链中历史 dangling 链接的链接文本仍写 `workspace/models/archive/...`（日志抽样 3 条），按约定不重建、不回改，搬迁前后均为 20 条且新增 0。
+
+**实际搬迁顺序与纪律**：训练机按「（1）代码 `--ff-only` 同步到 `316a1975` 并断言 HEAD 等于目标 commit →（2）`models` → `base-models`（基座）→（3）`workspace/models` → `models` →（4）`workspace/data` → `data`（含 mp4 计数 110 校验）→（5）`workspace/runs` → `trains` →（6）`rmdir workspace`（先断言已空）→（7）重建两条 R1 别名相对链接 →（8）跑四点验收」执行；先搬 `models` 是因为基座目标名 `base-models` 不能与既有 `models` 并存。搬迁前必须核对两端 Git 状态、未提交改动与产物唯一副本：该轮代码同步前先做了未跟踪文件碰撞预检（命中即拒绝合并）、再 `--ff-only` 合并，然后才进物理搬迁。完整脚本与日志归档在仓库外证据目录与 Git 历史，本文不抄全文。
+
+**回滚**：搬迁无备份、无软链接代理，是原地 `mv`；脚本**无自动回滚**，只在任一步骤失败时由 ERR trap 打印一份人工反向清单（按「`trains`→`workspace/runs`、`data`→`workspace/data`、`models`→`workspace/models`、`base-models`→`models`」逆序反向 `mv`、按旧文本重写两条 R1 别名链接、必要时 `git reset --hard` 回搬迁前代码 commit，该 commit 在脚本内写死为 `952b6cb3` 开头），并要求逐条先确认状态再执行。实际回滚即按上表反向 `mv`，记录与文档参照 Git 历史。
 
 ## 工程能力与真实验收
 
@@ -52,7 +75,7 @@
 | `data-v4.1-r2` | active | `v4.1.0-ecb5aeb9657c` | 新引用仍须在线校验许可、状态与内容 |
 | `prompt-v4.1-r1` | 已登记正式定义 | 已确认历史Prompt复制迁移 | 实际训练按完整身份冻结，不任意换Prompt复用评测结论 |
 
-这不是隐式“默认版本”清单。r1/r2生命周期、划分计数及外部媒体路径已于2026-10-13只读核对；Prompt仍依据历史迁移证据，本轮未重验内容。r1/r2复制保留原payload及划分，其中仍有外部媒体引用；不能按迁移完成删除旧workspace。正式记录在 `<store>/data/releases/<完整身份>/` 与 `records/prompts/`，映射和生命周期决定见[对象映射](results/version-control-migration/object-mapping.yaml)，内容验签见[验证第20–24及43节](results/version-control-migration/verification.md)。
+这不是隐式“默认版本”清单。r1/r2生命周期、划分计数及外部媒体路径已于2026-10-13只读核对；Prompt仍依据历史迁移证据，本轮未重验内容。r1/r2复制保留原payload及划分，其中仍有外部媒体引用；这些冻结记录里的路径原文仍写旧路径（属历史记录，不回改），磁盘上的旧 `workspace/` 已不存在、也无从删除——不能把这些记录当成已按新布局重写，读取时按「项目本地目录布局」节的映射表换算。正式记录在 `<store>/data/releases/<完整身份>/` 与 `records/prompts/`，映射和生命周期决定见[对象映射](results/version-control-migration/object-mapping.yaml)，内容验签见[验证第20–24及43节](results/version-control-migration/verification.md)。
 
 2026-10-16后续开发输入只读核验：实际r2为sealed/development/active且training_allowed=true，1,678候选、85来源视频；三折validation为425/664/492，共1,581，97个候选未进入validation。来源视频层级无折间泄漏；后续用户确认每试样仅一个视频、无重复，已按source_video准备显式试件分组（用户确认依据，非独立现场验真，正式eval未冻结）；正式Prompt在store/代码仓库一致，与旧注册v2文本相同，但不能代替旧Fold0实际训练Prompt绑定。已备无标签来源关系、三入口参数与预算材料；开发/服务切片、抽帧边界和请求重试仍有差异，质量GPU小时与实际变体未冻结。见[训练数据台账](results/training-data-ledger-20261017.md)「2026-10-18 并入原始核验材料」节（原开发准备记录已于 2026-10-18 并入台账并移除；逐条 key 见该节表），未运行模型或使用test。
 

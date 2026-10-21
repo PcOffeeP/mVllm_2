@@ -14,7 +14,7 @@ GPU 训练、权重合并、实际推理与完整评测在训练机执行，运�
 
 从训练机仓库根目录运行以下 Python 命令；可以使用已激活 Conda 环境中的 Python，本文以 `"$PYTHON"` 显式绑定解释器。每次任务明确一个 store，并保留它的记录、MLflow 数据库和 artifact；不能用旧活动指针或最近目录自动选择输入。
 
-项目本地（checkout 根）是另一套根，**不含** `workspace/` 段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。旧布局与本阶段的物理搬迁状态见[布局迁移说明](layout-migration-20261021.md)。
+项目本地（checkout 根）是另一套根，**不含** `workspace/` 段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`），两端磁盘上均无 `workspace/`；旧→新映射与阅读历史记录时的换算见[项目现状](project-status.md)的「项目本地目录布局」节。
 
 | 参数或文件 | 来源与要求 |
 | --- | --- |

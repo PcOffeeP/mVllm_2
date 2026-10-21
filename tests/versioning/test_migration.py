@@ -16142,7 +16142,7 @@ def _write_prepare_only_runs_layout(root: Path) -> None:
     config_dir = runs_root / PREPARE_ONLY_RUN_V1_ID / "prepared-config-untrained"
     config_dir.mkdir(parents=True, exist_ok=True)
     planned_config = {
-        "model_name_or_path": "models/minicpm-v-4.5",
+        "model_name_or_path": "base-models/minicpmv4_5",
         "output_dir": f"finetune/experiments/{experiment_dir_name}/adapter",
         "seed": 3411,
         "learning_rate": 5e-05,

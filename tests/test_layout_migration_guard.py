@@ -10,17 +10,21 @@
 
 守卫分三块：
 
-* T1：旧物理路径不该再存在（P2 已完成，``PENDING_PHYSICAL_MOVE`` 必须为空）。
-* T2：``evaluations`` 不再位于 ``workspace/`` 之下。
+* T1：旧物理路径不该再存在（P2 已完成，``PENDING_PHYSICAL_MOVE`` 必须为空，
+  ``workspace/`` 根段本身也必须不存在）。
+* T2：``evaluations`` 不再位于 ``workspace/`` 之下；顶层 ``evaluations`` 若存在
+  必须是目录。均为无条件性质断言，不依赖任何「搬迁完成信号」目录是否落盘。
 * T3：源码 / 配置里的旧布局字面量（``root / "workspace" / "mlflow"``、
   ``"workspace/models/"``、``workspace/data-staging`` 三种写法）必须清零，
   仅允许 ``versioning/backup.py`` 的「备份包内结构」行用 ``layout-guard-allow``
   标记豁免（标记行还必须同时含 ``workspace/evaluations``，并有行数上限）。
   同一区块还覆盖 P2 搬走的**旧基座路径**：``models/minicpm-v-4.5`` /
   ``models/minicpmv4_5`` 的斜杠连写字面量必须清零（新位置是
-  ``base-models/minicpmv4_5``），只为历史测试夹具保留 ``_BASE_MODEL_ALLOWLIST``
-  豁免——条目形如 ``(相对路径, 行内唯一片段) -> 理由``，条数受性质型上限约束，
-  且每条都必须仍能唯一命中宿主文件里的一行（腐坏即失败）。
+  ``base-models/minicpmv4_5``）。``_BASE_MODEL_ALLOWLIST`` 豁免机制保留但**当前为空**
+  （历史测试夹具已改指新基座路径，不再需要豁免）；空集由用例显式断言，条目形如
+  ``(相对路径, 行内唯一片段) -> 理由``，条数受性质型上限约束，且每条都必须仍能唯一
+  命中宿主文件里的一行（腐坏即失败）。遮蔽自证用 ``monkeypatch`` 临时注入条目，
+  不依赖真实豁免存在。
 * T4：``pipeline.project_workspace`` 的路径语义直接以仓库根为根。
 * T5 / T6：新布局路径不得被 git 跟踪，且必须被 ``.gitignore`` 覆盖。
 
@@ -96,15 +100,6 @@ FLATTENED_TOP_LEVEL = (
 )
 
 
-def _flattened() -> bool:
-    """P2 物理搬迁完成信号：只有新布局才会出现的目录已经落盘。
-
-    注意这不是 skip：搬迁完成后 T1 会把 ``PENDING_PHYSICAL_MOVE`` 全部按「必须消失」
-    判定，T2 会要求 ``evaluations`` 出现在顶层。
-    """
-    return (REPO_ROOT / "trains").is_dir() or (REPO_ROOT / "evaluations").is_dir()
-
-
 # --------------------------------------------------------------------------- #
 # T1 旧物理目录不存在
 # --------------------------------------------------------------------------- #
@@ -119,19 +114,34 @@ def test_t1_pending_physical_move_is_subset_of_mapping() -> None:
 
 
 def test_t1_legacy_physical_paths_are_absent() -> None:
-    """除 P2 待搬迁项外，映射表里的旧物理路径必须全部不存在。"""
-    flattened = _flattened()
-    still_present = [
-        old
-        for old in LEGACY_TO_FLATTENED
-        if (REPO_ROOT / old).exists()
-        and not (old in PENDING_PHYSICAL_MOVE and not flattened)
-    ]
+    """映射表里的旧物理路径必须全部不存在（无任何「待搬迁」例外）。"""
+    still_present = [old for old in LEGACY_TO_FLATTENED if (REPO_ROOT / old).exists()]
 
     assert still_present == [], (
         f"旧路径仍存在，代码可能已写回旧布局：{still_present}；"
         f"新位置应分别是 "
         f"{[LEGACY_TO_FLATTENED[old] for old in still_present]}"
+    )
+
+
+def test_t1_workspace_root_directory_is_absent() -> None:
+    """``workspace/`` 根段本身必须不存在（双端物理搬迁完成后的性质判据）。"""
+    workspace_root = REPO_ROOT / "workspace"
+
+    assert not workspace_root.exists(), (
+        f"旧布局根目录仍存在：{workspace_root}；内容应已搬到顶层语义目录"
+    )
+    assert not workspace_root.is_symlink(), (
+        f"旧布局根目录仍以符号链接形式存在：{workspace_root}；"
+        "搬迁后不得留下任何 workspace 入口"
+    )
+
+
+def test_t1_pending_physical_move_must_stay_empty() -> None:
+    """``PENDING_PHYSICAL_MOVE`` 必须为空：搬迁完成后旧路径不再有「待搬迁」例外。"""
+    assert PENDING_PHYSICAL_MOVE == set(), (
+        f"P2 已完成，PENDING_PHYSICAL_MOVE 必须为空，实际含 "
+        f"{sorted(PENDING_PHYSICAL_MOVE)}；新增旧路径不得以「待搬迁」名义继续存在"
     )
 
 
@@ -153,11 +163,26 @@ def test_t2_workspace_evaluations_paths_are_absent() -> None:
 
 
 def test_t2_evaluations_lives_at_top_level_when_flattened() -> None:
-    """物理搬迁完成后，evaluations 必须出现在顶层。"""
-    if _flattened():  # 完成信号，不是 skip
-        assert (REPO_ROOT / "evaluations").is_dir(), (
-            "新布局已生效但顶层 evaluations/ 不存在；"
-            "evaluations 产物必须有明确落点"
+    """``evaluations`` 只能落在顶层，且顶层落点若存在必须是目录。
+
+    刻意不设「``trains`` / ``evaluations`` 是否已落盘」的门槛：本机搬迁后这些运行
+    产物目录并不存在，任何这类门槛都会让本用例恒真空转。改用无条件性质断言，
+    两种仓库形态（产物目录存在 / 不存在）都真实执行。
+    """
+    under_workspace = REPO_ROOT / "workspace" / "evaluations"
+    top_level = REPO_ROOT / "evaluations"
+
+    assert not under_workspace.exists(), (
+        f"evaluations 不得位于 workspace/ 之下：{under_workspace}；"
+        f"唯一合法落点是 {top_level}"
+    )
+    assert not top_level.is_file(), (
+        f"顶层 evaluations 必须是目录（或不存在），不能是普通文件：{top_level}"
+    )
+    if top_level.exists():
+        assert top_level.is_dir(), (
+            f"顶层 evaluations 已存在但不是目录：{top_level}；"
+            "evaluations 产物必须有明确的目录落点"
         )
 
 
@@ -352,25 +377,13 @@ _LEGACY_BASE_MODEL_PATTERNS = (
 )
 
 # (相对路径, 行内唯一片段, 理由)：正则边界无法结构性排除、但确认不是真实旧路径引用的
-# 历史 / 测试夹具内容。宿主文件不在本次改动授权范围内，只能就地登记豁免。
-_BASE_MODEL_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
-    (
-        "tests/test_frame_contract.py",
-        'MiniCPMVideoPreprocessor("models/minicpmv4_5", processor=processor)',
-        "processor 由测试注入；对该占位路径及其同目录别名做 ``Path.exists()`` 探测"
-        "（``_resolve_model_path``），探测均失败即原样返回：不加载权重、不读文件"
-        "内容，也不指向任何真实基座产物",
-    ),
-    (
-        "tests/versioning/test_migration.py",
-        '"model_name_or_path": "models/minicpm-v-4.5",',
-        "测试夹具合成值：镜像历史 run 的 planned 配置，migration / validate 均"
-        "不读取 planned 参数，该值无行为作用；值本身待后续统一改指"
-        " base-models/minicpmv4_5（宿主文件不在本批授权范围）",
-    ),
-)
+# 历史 / 测试夹具内容。**当前为空**：两条历史夹具（``tests/test_frame_contract.py``
+# 与 ``tests/versioning/test_migration.py``）已改指 ``base-models/minicpmv4_5``，
+# 不再需要豁免。机制保留只为将来真有不可迁移的历史夹具时逐条登记；空集本身由
+# ``test_t3_base_model_allowlist_*`` 显式断言，不会静默变成空转。
+_BASE_MODEL_ALLOWLIST: tuple[tuple[str, str, str], ...] = ()
 
-# 性质型上限而非等值：豁免只服务上述历史夹具，不得随需求增长。
+# 性质型上限而非等值：豁免只服务确有不可迁移理由的历史夹具，不得随需求增长。
 _BASE_MODEL_ALLOW_LIMIT = 3
 
 
@@ -421,7 +434,9 @@ def test_t3_no_legacy_base_model_literals_in_sources() -> None:
     )
 
 
-def test_t3_base_model_detector_matches_legacy_literals() -> None:
+def test_t3_base_model_detector_matches_legacy_literals(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """自证检测能力：正例必须命中、反例必须不命中（防止护栏空转）。"""
     positives = (
         'BASE = ROOT / "models/minicpm-v-4.5"',
@@ -446,9 +461,24 @@ def test_t3_base_model_detector_matches_legacy_literals() -> None:
     assert false_hits == [], f"这些反例（新布局 / 裸名字）被误报：{false_hits}"
 
     # 遮蔽自证：allowlist 只豁免片段本身，同一行里的第二处旧路径不得被连带
-    # 豁免（否则一条豁免可以让整行放行）。
-    assert _BASE_MODEL_ALLOWLIST, "allowlist 为空，遮蔽用例无从构造"
-    allow_rel, allow_fragment, _reason = _BASE_MODEL_ALLOWLIST[0]
+    # 豁免（否则一条豁免可以让整行放行）。真实 allowlist 已空，因此用 monkeypatch
+    # 临时注入一条只认本自证片段的豁免，让豁免分支真实执行——不得因为空集就
+    # 删掉这条自证。
+    allow_rel = "tests/test_frame_contract.py"
+    allow_fragment = (
+        'MiniCPMVideoPreprocessor("models/minicpmv4_5", processor=processor)'
+    )
+    monkeypatch.setattr(
+        f"{__name__}._BASE_MODEL_ALLOWLIST",
+        ((allow_rel, allow_fragment, "遮蔽自证临时条目（非真实豁免）"),),
+    )
+
+    # 正控：片段单独出现时豁免必须真的放行，否则下面「不得连带豁免」的断言
+    # 可以因为豁免完全失效而恒真。
+    assert _base_model_allowlisted(allow_rel, f"{allow_fragment}\n"), (
+        "注入的豁免对单处命中必须放行，否则遮蔽自证失去对照：" f"{allow_fragment}"
+    )
+
     masked = f'{allow_fragment}  # 另见 "models/minicpm-v-4.5"'
     assert _matches_legacy_base_model(masked), f"遮蔽用例本身必须命中检测：{masked}"
     assert not _base_model_allowlisted(allow_rel, masked), (
@@ -457,7 +487,18 @@ def test_t3_base_model_detector_matches_legacy_literals() -> None:
 
 
 def test_t3_base_model_allowlist_entries_still_match_single_host_line() -> None:
-    """防 allowlist 腐烂：每条豁免必须仍能唯一命中宿主文件里的 1 行。"""
+    """防 allowlist 腐烂：每条豁免必须仍能唯一命中宿主文件里的 1 行。
+
+    当前无任何豁免，逐条校验没有主体，因此先显式断言空集（否则本用例会静默
+    变成「看起来通过但什么都没查」）；将来新增条目的唯一性与存在性由下面
+    的循环继续断言。
+    """
+    assert _BASE_MODEL_ALLOWLIST == (), (
+        "当前不应保留旧基座路径豁免（历史夹具已改指 base-models/minicpmv4_5）；"
+        f"新增豁免必须先证明它不是可迁移的旧布局引用，实际为 "
+        f"{_BASE_MODEL_ALLOWLIST!r}"
+    )
+
     missing: list[str] = []
     ambiguous: list[str] = []
     for rel, fragment, _reason in _BASE_MODEL_ALLOWLIST:
@@ -534,9 +575,12 @@ def test_t3_base_model_guard_flags_legacy_and_passes_new_end_to_end(
 
 
 def test_t3_base_model_allowlist_count_is_within_limit() -> None:
-    """豁免条数不得超过上限（性质型上限，不作等值断言）。"""
+    """豁免条数不得超过上限，且当前为空（性质型上限，不作等值断言）。"""
     count = len(_BASE_MODEL_ALLOWLIST)
 
+    assert not _BASE_MODEL_ALLOWLIST, (
+        "当前无豁免条目，实际为 " f"{_BASE_MODEL_ALLOWLIST!r}"
+    )
     assert count <= _BASE_MODEL_ALLOW_LIMIT, (
         f"_BASE_MODEL_ALLOWLIST 有 {count} 条，超过上限 {_BASE_MODEL_ALLOW_LIMIT}；"
         "豁免只覆盖历史夹具，新增代码必须直接改指 base-models/minicpmv4_5"

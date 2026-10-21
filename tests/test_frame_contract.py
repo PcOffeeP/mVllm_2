@@ -63,7 +63,9 @@ def test_minicpm_sample_uses_image_processor_video_path(monkeypatch) -> None:
             raise AssertionError("top-level processor path must not be used")
 
     processor = Processor()
-    preprocessor = MiniCPMVideoPreprocessor("models/minicpmv4_5", processor=processor)
+    preprocessor = MiniCPMVideoPreprocessor(
+        "base-models/minicpmv4_5", processor=processor
+    )
     frames = [object(), object(), object()]
 
     monkeypatch.setattr(
