@@ -50,7 +50,7 @@
 
 **实际搬迁顺序与纪律**：训练机按「（1）代码 `--ff-only` 同步到 `316a1975` 并断言 HEAD 等于目标 commit →（2）`models` → `base-models`（基座）→（3）`workspace/models` → `models` →（4）`workspace/data` → `data`（含 mp4 计数 110 校验）→（5）`workspace/runs` → `trains` →（6）`rmdir workspace`（先断言已空）→（7）重建两条 R1 别名相对链接 →（8）跑四点验收」执行；先搬 `models` 是因为基座目标名 `base-models` 不能与既有 `models` 并存。搬迁前必须核对两端 Git 状态、未提交改动与产物唯一副本：该轮代码同步前先做了未跟踪文件碰撞预检（命中即拒绝合并）、再 `--ff-only` 合并，然后才进物理搬迁。完整脚本与日志归档在仓库外证据目录与 Git 历史，本文不抄全文。
 
-**回滚**：搬迁无备份、无软链接代理，是原地 `mv`；脚本**无自动回滚**，只在任一步骤失败时由 ERR trap 打印一份人工反向清单（按「`trains`→`workspace/runs`、`data`→`workspace/data`、`models`→`workspace/models`、`base-models`→`models`」逆序反向 `mv`、按旧文本重写两条 R1 别名链接、必要时 `git reset --hard` 回搬迁前代码 commit，该 commit 在脚本内写死为 `952b6cb3` 开头），并要求逐条先确认状态再执行。实际回滚即按上表反向 `mv`，记录与文档参照 Git 历史。
+**回滚**：搬迁无备份、无软链接代理，是原地 `mv`；脚本**无自动回滚**，只在任一步骤失败时由 ERR trap 打印一份人工反向清单，并要求逐条先确认状态再执行。该清单的真实顺序为三步：① 先用两条 `ln -sfn` 按旧文本重写 R1 别名链接，指回 `workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter` 与 `workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged`；② `mkdir -p workspace` 后按「`trains`→`workspace/runs`、`data`→`workspace/data`、`models`→`workspace/models`、`base-models`→`models`」的顺序反向 `mv`（每条前先判 `[ -e ]`）；③ 仅在需要完全回到搬迁前状态时 `git reset --hard` 到脚本内写死的 `952b6cb3c38b0f5086349c512bb56ea1294552d3`（即以 `952b6cb3` 开头）。实际回滚即按上表反向 `mv`，记录与文档参照 Git 历史。
 
 ## 工程能力与真实验收
 
