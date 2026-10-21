@@ -1336,7 +1336,14 @@ def _relocated_mlflow_updates(db_path: Path, source_root: str, target_root: Path
                     updates.append((f"UPDATE {table} SET {column}=? WHERE rowid=?", (destination, rowid)))
             # Relocate only storage-address tags; identity, rule hashes and
             # claim/exposure/consumption facts retain their original bytes.
-            old_project = original.parent.parent
+            # Backups recorded their source root under the layout that was current
+            # when they were taken, and the flattening removed one level from the
+            # store root: the historical store root still carries the compat
+            # workspace segment, today's store root does not. Derive the project
+            # root from whichever form the recorded source actually has.
+            from pipeline.data_roots import COMPAT_WORKSPACE_NAME
+            old_project = (original.parent.parent if original.parent.name == COMPAT_WORKSPACE_NAME
+                           else original.parent)
             new_project = Path(prompts_root) if prompts_root is not None else target_root.parent.parent
             new_data = Path(data_root) if data_root is not None else new_project / "data"
             for rowid, key, value in connection.execute(

@@ -171,7 +171,7 @@ def resolve_data_artifact(
     ``PROJECT_LOCAL_LEGACY_PATHS`` 的 legacy 编号目录重映射。默认 ``False``
     表示不按实参类型声明数据根、只按实参做字面拼接，避免把非数据根实参（如
     ``.compat/workspace``、发布媒体根）误当数据根；未声明时仅保留改造前的
-    旧版 ``<...>/workspace/data`` 与 staging/rebuild 语义父目录判定。
+    旧版项目数据根（``workspace`` 段下的 ``data`` 目录）与 staging/rebuild 语义父目录判定。
     """
     root = Path(data_root).resolve()
     semantic_root = is_project_data_root(

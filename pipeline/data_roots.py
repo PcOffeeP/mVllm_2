@@ -186,7 +186,7 @@ def resolve_workspace_artifact(
     ``PROJECT_LOCAL_LEGACY_PATHS`` 的 legacy 编号目录重映射。默认 ``False``
     表示只按实参做字面拼接，避免把非数据根实参（如 ``.compat/workspace``、
     发布媒体根）误当数据根；未声明时仅保留改造前对旧版
-    ``<...>/workspace/data`` 布局的兼容判定（``is_legacy_workspace_data_root``），
+    ``workspace`` 段下的 ``data`` 目录这一旧版布局的兼容判定（``is_legacy_workspace_data_root``），
     该形态确为旧版项目数据根，其余形态一律字面拼接。
     """
     path = Path(value)
@@ -231,7 +231,7 @@ COMPAT_WORKSPACE_NAME = "workspace"
 def is_legacy_workspace_data_root(path: Path) -> bool:
     """改造前未显式声明 ``project_local`` 时的兼容判据。
 
-    只识别旧版 ``<...>/workspace/data`` 布局（扁平化前的项目数据根）。其余
+    只识别旧版 ``workspace`` 段下的 ``data`` 目录布局（扁平化前的项目数据根）。其余
     形态（``.compat/workspace``、发布媒体根等）一律不是数据根，保持字面拼接。
     """
     path = Path(path)
@@ -274,7 +274,7 @@ def workspace_portable_path(
     ``PROJECT_LOCAL_LEGACY_PATHS`` 的 legacy 编号目录重映射。默认 ``False``
     表示只按实参做字面拼接，避免把非数据根实参（如 ``.compat/workspace``、
     发布媒体根）误当数据根；未声明时仅保留改造前对旧版
-    ``<...>/workspace/data`` 布局的兼容判定（``is_legacy_workspace_data_root``），
+    ``workspace`` 段下的 ``data`` 目录这一旧版布局的兼容判定（``is_legacy_workspace_data_root``），
     该形态确为旧版项目数据根，其余形态一律字面拼接。
     """
     path = Path(path).absolute()

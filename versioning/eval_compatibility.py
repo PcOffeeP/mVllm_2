@@ -6,7 +6,13 @@ update; this never treats arbitrary new source as equivalent to old evidence.
 """
 
 # Populated after the adapter implementation is finalized and tested.
-STRICT_ADAPTERS = {'finetune/eval_run.py': {'frozen_sha256': '67c9da220108adf612d0ad92d617548be8df43e8ffe86df723d6ed96e83da5ef', 'adapter_sha256': 'b80cacca8c8939128ddbe6bfdec2c21f3c2ac8d3af7e760bde8956c924049a39'}, 'finetune/eval_holdout.py': {'frozen_sha256': 'd5ba919cfc94b4c774032c4580ad867e19cee6cebe8885118ad41c8ea16ea4cb', 'adapter_sha256': 'f96e56568d04c94eda43f1a2a653ca874c0c08dc3b8fa077bf5d25a1ad1718fc'}}
+#
+# 2026-10-21 layout flattening refreshed only the adapter digests below: the diff
+# from 336adf93 to the flattening commits was reviewed hunk by hunk and every hunk
+# replaces a path literal (or the matching parent-index depth) with no scoring,
+# threshold, denominator or contract change. The frozen digests stay exactly as
+# recorded: only the audited adapter bytes moved, historical evidence did not.
+STRICT_ADAPTERS = {'finetune/eval_run.py': {'frozen_sha256': '67c9da220108adf612d0ad92d617548be8df43e8ffe86df723d6ed96e83da5ef', 'adapter_sha256': '0e68725e409c8753d9cf8616541c6c3d80f6d1523c230a31d881734ee938ed50'}, 'finetune/eval_holdout.py': {'frozen_sha256': 'd5ba919cfc94b4c774032c4580ad867e19cee6cebe8885118ad41c8ea16ea4cb', 'adapter_sha256': '4acefb403560405647b236a0e12afc69f457b9638e368ca4d23eb02205a47543'}}
 
 
 def strict_adapter_matches(source: str, *, frozen_digest: str, current_digest: str) -> bool:
