@@ -9,7 +9,10 @@ import pytest
 
 from finetune import eval_run as runtime
 from finetune.eval_semantics import freeze_blind_policy, rules_digest, seal_judgment
-from test_eval_run import _formal_eval_fixture, _fake_formal_runtime, _labels
+from pipeline.data_roots import COMPAT_WORKSPACE_NAME
+from test_eval_run import (
+    _formal_eval_fixture, _fake_formal_runtime, _labels, _bridge_archived_layout,
+)
 
 
 def _config(config):
@@ -46,7 +49,7 @@ def test_semantic_formal_freezes_all_rows_and_exports_insufficient_support(tmp_p
     record = runtime.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
     assert len(calls) == 3
     assert record.workflow_state == "completed" and record.outcome == "failed"
-    output = root / "workspace/evaluations/eval-v4.1-r1/output"
+    output = root / "evaluations/eval-v4.1-r1/output"
     summary = json.loads((output / "summary.json").read_bytes())
     assert summary["development_gates"]["outcome"] == "insufficient_evidence"
     assert summary["semantic"]["support"]["total"] == 3
@@ -81,11 +84,11 @@ def test_semantic_blind_resume_never_reruns_model_and_seals_evidence(tmp_path, m
     with pytest.raises(runtime.EvaluationReviewPending):
         runtime.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
     assert len(calls) == 3
-    store = open_eval_store(root / "workspace/mlflow")
+    store = open_eval_store(root / "mlflow")
     pending = get_eval_run(store, "eval-v4.1-r1")
     assert pending.workflow_state == "running" and pending.outcome is None
     assert all(child.status == "FINISHED" for child in pending.folds.values())
-    raw = root / "workspace/evaluations/eval-v4.1-r1/output/raw_records.jsonl"
+    raw = root / "evaluations/eval-v4.1-r1/output/raw_records.jsonl"
     raw_bytes = raw.read_bytes()
     raw_digest = hashlib.sha256(b"bad json").hexdigest()
     sealed = freeze_blind_policy(policy)
@@ -154,7 +157,7 @@ def _paired_fixture(tmp_path, monkeypatch):
         (output / "train_results.json").write_text('{"loss":0.1}')
     monkeypatch.setattr("finetune.train_with_contract.run_training", tune)
     execute_versioned_run(root=root, train_version="train-v4.1-r1")
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     trained = register_model(registry, "model-v4.1-r1", train_id="train-v4.1-r1", source_scope="cross_validation", deploy_target=None,
         artifacts={f"fold{i}": {"adapter": f"artifacts/fold{i}/adapter"} for i in range(3)})
     baseline = register_base_model(registry, "model-v4.1-r2", model_path=base,
@@ -188,7 +191,7 @@ def test_completed_real_fold_is_evaluated_without_parent_promotion(tmp_path, mon
     from test_model_sources import diagnostic_model
     # Invoke the existing synthetic fixture body explicitly; no hardware runtime.
     store, model, parent, root = diagnostic_model.__wrapped__(tmp_path, monkeypatch)
-    media = tmp_path / "original/workspace/data"
+    media = tmp_path / "original" / COMPAT_WORKSPACE_NAME / "data"
     config = _config({"scope": "single_fold", "split": "validation", "artifact_kind": "adapter",
         "scorer": "semantic-v4.1", "sample_selection": "all", "quantization_bit": None,
         "aggregation": "pooled", "generation": runtime.FORMAL_GENERATION})
@@ -206,7 +209,7 @@ def _rich_data_fixture(tmp_path):
     from versioning.data_release import seal_payload
     from versioning.migration import _release_content_digest
     from versioning.prompts import create_prompt
-    root, media = tmp_path / "store", tmp_path / "original/workspace/data"
+    root, media = tmp_path / "store", tmp_path / "original" / COMPAT_WORKSPACE_NAME / "data"
     release = root / "data/releases/data-v4.1-r2"
     mechanisms = ["韧性断裂", "脆性断裂", "界面脱粘", "爆炸性断裂", "半脆半韧断裂"]
     sites = ["inside_gauge", "outside_gauge_non_root", "grip_root"]
@@ -263,9 +266,9 @@ def test_complete_semantic_formal_pass_and_collapsed_fold_gate(tmp_path, monkeyp
     monkeypatch.setattr(runtime, "run_model_on_video_detailed", infer)
     record = runtime.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
     assert record.outcome == ("failed" if collapse else "passed")
-    summary = json.loads((root / "workspace/evaluations/eval-v4.1-r1/output/summary.json").read_bytes())
+    summary = json.loads((root / "evaluations/eval-v4.1-r1/output/summary.json").read_bytes())
     assert all(v for k, v in summary["development_gates"]["gates"].items() if k.startswith("pooled_"))
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     # Development can report passed while remaining ineligible as final quality.
     with pytest.raises(PromotionGateRejected):
         _run_eval_gate(registry, record.eval_id, require_passed=True)
@@ -282,7 +285,7 @@ def _archived_module(path):
     return module, source
 
 
-def _archived_runtime(monkeypatch):
+def _archived_runtime(monkeypatch, root):
     legacy, source = _archived_module("finetune/eval_run.py")
     legacy_holdout, holdout_source = _archived_module("finetune/eval_holdout.py")
     original_sha = legacy._sha256
@@ -295,6 +298,7 @@ def _archived_runtime(monkeypatch):
     legacy_holdout.ev = legacy
     import sys
     monkeypatch.setitem(sys.modules, "finetune.eval_holdout", legacy_holdout)
+    _bridge_archived_layout(legacy, root)
     return legacy, legacy_holdout, archived
 
 
@@ -303,7 +307,7 @@ def test_actual_archived_strict_record_preserves_export_and_existing_alias(tmp_p
     from versioning.registry import (open_registry_store, finalize_model_evaluation,
         set_alias, get_model_by_alias, get_model, PromotionGateRejected, REGISTERED_MODEL_NAME)
     root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold")
-    legacy, _, archived = _archived_runtime(monkeypatch)
+    legacy, _, archived = _archived_runtime(monkeypatch, root)
     calls = _fake_formal_runtime(monkeypatch)
     legacy.load_model = runtime.load_model
     legacy.run_model_on_video_detailed = runtime.run_model_on_video_detailed
@@ -316,7 +320,7 @@ def test_actual_archived_strict_record_preserves_export_and_existing_alias(tmp_p
     assert frozen["implementation_sha256"]["finetune/eval_run.py"] == archived["finetune/eval_run.py"]
     runtime.export_versioned_evaluation(root=root, eval_version=result.eval_id)
     runtime.prepare_versioned_evaluation(**_prepare_legacy)  # idempotent historical prepare
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     with pytest.raises(PromotionGateRejected, match="new admission"):
         finalize_model_evaluation(registry, model.model_id, eval_id=result.eval_id)
     assert get_model(registry, model.model_id).eval_id is None
@@ -344,7 +348,7 @@ def test_actual_archived_strict_record_preserves_export_and_existing_alias(tmp_p
 def test_actual_archived_holdout_uses_its_original_seven_gates(tmp_path, monkeypatch):
     from test_eval_holdout import prepare_holdout, forbid_truth
     root, registry, truth, kwargs = prepare_holdout(tmp_path, monkeypatch, prepare=False)
-    legacy, old_holdout, archived = _archived_runtime(monkeypatch)
+    legacy, old_holdout, archived = _archived_runtime(monkeypatch, root)
     legacy.load_model = runtime.load_model
     legacy.run_model_on_video_detailed = runtime.run_model_on_video_detailed
     legacy.prepare_versioned_evaluation(**kwargs)
@@ -392,9 +396,9 @@ def test_blind_attempt_budget_and_attempt_drift_are_formally_enforced(tmp_path, 
     reviews.write_text(json.dumps({raw_digest: evidence("completed", 3)}, ensure_ascii=False))
     with pytest.raises(ValueError, match="at most one retry"):
         runtime.resume_versioned_evaluation(root=root, eval_version="eval-v4.1-r1", blind_reviews=reviews)
-    output = root / "workspace/evaluations/eval-v4.1-r1/output"
+    output = root / "evaluations/eval-v4.1-r1/output"
     assert len(list((output / "review_attempts").iterdir())) == 2
-    store = open_eval_store(root / "workspace/mlflow")
+    store = open_eval_store(root / "mlflow")
     record = get_eval_run(store, "eval-v4.1-r1")
     assert record.workflow_state == "running" and record.outcome is None
     registry = open_registry_store(store.root, data_root=root / "data")

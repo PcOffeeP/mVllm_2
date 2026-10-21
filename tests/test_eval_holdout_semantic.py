@@ -82,7 +82,7 @@ def prepare(tmp_path, monkeypatch, *, blind=False, aggregate_authorization=None,
 
 
 def import_reviews(root, tmp_path, *, failed=False):
-    private = root / 'workspace/evaluations/eval-v4.1-r2/restricted'
+    private = root / 'evaluations/eval-v4.1-r2/restricted'
     rows = json.loads((private / 'predictions.json').read_bytes())
     evidence = {}
     for row in rows:
@@ -217,7 +217,7 @@ def test_synthetic_broker_runs_only_anonymous_fixed_context_and_retry(tmp_path, 
         result = run_holdout_review(root=root, eval_version=kwargs['eval_version'], broker=broker)
     assert result['phase'] == 'judge-sealed'
     assert len(broker.calls) == 9  # 4 raws x 2 initial contexts + one runtime retry
-    private = root / 'workspace/evaluations/eval-v4.1-r2/restricted'
+    private = root / 'evaluations/eval-v4.1-r2/restricted'
     judge = json.loads((private / 'judge.json').read_bytes())
     assert judge['audit']['infrastructure_failure_count'] == 1
     assert len(list((private / 'review_attempts').iterdir())) == 2
@@ -242,7 +242,7 @@ def test_synthetic_broker_arbiter_seals_before_disclosure(tmp_path, monkeypatch)
         prepare_holdout_review(root=root, eval_version=kwargs['eval_version'], manual=manual)
         result = run_holdout_review(root=root, eval_version=kwargs['eval_version'], broker=Broker())
     assert result['phase'] == 'judge-sealed'
-    private = root / 'workspace/evaluations/eval-v4.1-r2/restricted'
+    private = root / 'evaluations/eval-v4.1-r2/restricted'
     for review in json.loads((private / 'judge.json').read_bytes())['reviews'].values():
         assert review['arbiter_independent']['sequence'] < review['disclosed_at'] < review['arbitration']['sequence']
 
@@ -335,7 +335,7 @@ def test_worker_request_mutation_rejected_before_truth(tmp_path, monkeypatch):
     root, registry, truth, kwargs, manual = prepare(tmp_path, monkeypatch)
     version = kwargs['eval_version']
     prepare_holdout_review(root=root, eval_version=version, manual=manual)
-    request = root / 'workspace/evaluations' / version / 'restricted/actor-requests-0.json'
+    request = root / 'evaluations' / version / 'restricted/actor-requests-0.json'
     request.chmod(0o600); request.write_text('{}'); request.chmod(0o400)
     empty = tmp_path / 'empty.json'; empty.write_text('{}')
     with monkeypatch.context() as guard:
@@ -359,7 +359,7 @@ def test_broker_timeout_unknown_backend_does_not_retry_or_switch(tmp_path, monke
     with pytest.raises(ReviewExecutionAmbiguous, match='backend termination unknown'):
         run_holdout_review(root=root, eval_version=kwargs['eval_version'], broker=broker)
     assert broker.calls == 1
-    private = root / 'workspace/evaluations' / kwargs['eval_version'] / 'restricted'
+    private = root / 'evaluations' / kwargs['eval_version'] / 'restricted'
     assert (private / 'broker-started.json').is_file()
     assert len(list((private / 'broker_calls').glob('*-started.json'))) == 1
     assert not list((private / 'broker_calls').glob('*-sealed.json'))
@@ -408,7 +408,7 @@ def test_local_broker_runtime_leaf_symlink_rejected(tmp_path):
 
 def test_default_quality_loader_records_actual_runtime_without_real_loading(tmp_path, monkeypatch):
     root, registry, truth, kwargs, manual = prepare(tmp_path, monkeypatch)
-    private = root / 'workspace/evaluations' / kwargs['eval_version'] / 'restricted'
+    private = root / 'evaluations' / kwargs['eval_version'] / 'restricted'
     inference = json.loads((private / 'inference.json').read_bytes())
     assert inference['runtime_attestation'] == {key: kwargs['config'][key] for key in ('device', 'runtime_variant', 'quantization_bit')}
     assert inference['runtime_observation']['loaded_runtime']['runtime_dtype'] == 'bfloat16'
@@ -523,7 +523,7 @@ def test_local_deployment_counter_fixture_is_synthetic_and_cannot_upgrade(tmp_pa
     assert not result['model_inference_performed']
     with pytest.raises(ValueError, match='synthetic or uncommitted'):
         run_holdout_review(root=root, eval_version=version, allow_real_model_calls=True)
-    receipt = root / 'workspace/evaluations' / version / 'restricted/review-deployment.json'
+    receipt = root / 'evaluations' / version / 'restricted/review-deployment.json'
     receipt.chmod(0o600)
     fake = json.loads(receipt.read_bytes()); fake['synthetic'] = False; fake['real_model_deployment_verified'] = True
     fake['sha256'] = content_digest({key: item for key, item in fake.items() if key != 'sha256'})

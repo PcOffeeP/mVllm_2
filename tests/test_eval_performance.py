@@ -10,6 +10,7 @@ import pytest
 
 from finetune.eval_performance import PerformanceRecorder, replay_performance_evidence
 from finetune.eval_semantics import default_rules
+from pipeline.data_roots import COMPAT_WORKSPACE_NAME
 from versioning.performance import (ControlledPerformanceSession, digest, performance_binding,
     validate_media_metadata, validate_performance_plan)
 
@@ -301,7 +302,7 @@ def test_prepare_import_export_rechecks_data_model_and_synthetic(tmp_path,monkey
     root,media,_,_=_versioned_data_fixture(tmp_path)
     base=base_files(tmp_path/"base")
     (base/"source-provenance.json").write_text(json.dumps({"schema":"tensile-base-provenance/v1","upstream_source":"fixture/base","upstream_revision":"fixture-revision","verified_by":"fixture"}))
-    registry=open_registry_store(root/"workspace/mlflow",data_root=root/"data")
+    registry=open_registry_store(root/"mlflow",data_root=root/"data")
     model=register_base_model(registry,"model-v4.1-r1",model_path=base,upstream_source="fixture/base",upstream_revision="fixture-revision",git_commit="fixture")
     def probe(path):
         return {**plan()["media_allowlist"][0]["metadata"],"size_bytes":Path(path).stat().st_size}
@@ -656,7 +657,7 @@ def test_actual_quality_and_performance_input_builders_share_required_frame_sour
     config=plan()["config"]
     config.update(artifact_kind="adapter",media_ids=["video_0000"])
     config["runtime_variant"]["preprocessing_sha256"]=hashlib.sha256(Path("pipeline/preprocessing/minicpm_preprocessor.py").read_bytes()).hexdigest()
-    media_root=tmp_path/"original/workspace/data"
+    media_root=tmp_path/"original"/COMPAT_WORKSPACE_NAME/"data"
     def probe(path):
         return {**plan()["media_allowlist"][0]["metadata"],"size_bytes":Path(path).stat().st_size}
     performance=build_performance_input(root=root,eval_version="eval-v4.1-r2",model_version=quality["model"]["model_id"],

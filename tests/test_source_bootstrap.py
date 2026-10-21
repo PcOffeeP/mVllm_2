@@ -102,7 +102,7 @@ def test_source_snapshot_is_deterministic_and_materializes_isolated_copy(
     current = current_data_context(project)
     rebuild = data_context_for_root(
         project,
-        project / "workspace/data-staging/rebuild-test/data",
+        project / "data-staging/rebuild-test/data",
     )
 
     first = build_source_snapshot(
@@ -150,7 +150,7 @@ def test_source_and_split_identities_are_independent(tmp_path: Path) -> None:
     current = current_data_context(project)
     staging = data_context_for_root(
         project,
-        project / "workspace/data-staging/rebuild-test/data",
+        project / "data-staging/rebuild-test/data",
     )
     first = build_source_snapshot(
         current,
@@ -177,7 +177,7 @@ def test_source_snapshot_resume_rejects_metadata_drift(tmp_path: Path) -> None:
         current_data_context(project),
         data_context_for_root(
             project,
-            project / "workspace/data-staging/rebuild-test/data",
+            project / "data-staging/rebuild-test/data",
         ),
         expected_count=9,
         probe=_probe,
@@ -194,7 +194,7 @@ def test_source_snapshot_resume_rejects_staged_symlink(tmp_path: Path) -> None:
     _fixture(project)
     rebuild = data_context_for_root(
         project,
-        project / "workspace/data-staging/rebuild-test/data",
+        project / "data-staging/rebuild-test/data",
     )
     bundle = build_source_snapshot(
         current_data_context(project),
@@ -224,7 +224,7 @@ def test_source_snapshot_rejects_duplicate_tag_id(tmp_path: Path) -> None:
             current_data_context(project),
             data_context_for_root(
                 project,
-                project / "workspace/data-staging/rebuild-test/data",
+                project / "data-staging/rebuild-test/data",
             ),
             expected_count=3,
             probe=_probe,

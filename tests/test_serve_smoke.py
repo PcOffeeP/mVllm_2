@@ -130,13 +130,13 @@ def _service_fixture(tmp_path, artifact_kind="adapter", *, prompt_definition=Non
     with pytest.MonkeyPatch.context() as patch:
         _fake_formal_runtime(patch, service_contract=True, prompt_definition=prompt_definition)
         eval_run.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     _historical_eval_binding(registry, model.model_id, "eval-v4.1-r1")
     set_offline_backup_scope(registry, model.model_id, "adapter" if artifact_kind == "adapter" else "production_bundle")
     export_model_manifest(root / "records/models" / model.model_id / "manifest.yaml", store=registry, model_id=model.model_id)
     _historical_alias(registry, model.model_id, "candidate")
     materialize_current(registry, alias="candidate", service_mode="development",
-        models_root=root / "workspace/models", records_root=root)
+        models_root=root / "models", records_root=root)
     return root, registry, model
 
 
@@ -163,7 +163,7 @@ def test_service_resolver_returns_only_qualified_exact_paths(tmp_path):
 def test_service_resolver_rejects_modified_materialized_bytes(tmp_path):
     from pipeline.model_registry import resolve_service_model
     root, registry, model = _service_fixture(tmp_path)
-    cache = root / "workspace/models/materialized" / model.model_id / "artifacts/fold0/adapter/adapter_model.safetensors"
+    cache = root / "models/materialized" / model.model_id / "artifacts/fold0/adapter/adapter_model.safetensors"
     cache.write_bytes(b"wrong cached weights")
     with pytest.raises(ValueError, match="content|artifact"):
         resolve_service_model(root, alias="candidate", service_mode="development")
@@ -282,12 +282,12 @@ def test_service_main_rejects_before_loader(tmp_path, monkeypatch, fault):
     if fault == "invalid":
         mark_model_invalid(registry, model.model_id)
     elif fault == "wrong_current":
-        (root / "workspace/models/current").unlink()
+        (root / "models/current").unlink()
     elif fault == "cache":
-        (root / "workspace/models/materialized" / model.model_id /
+        (root / "models/materialized" / model.model_id /
          "artifacts/fold0/adapter/adapter_model.safetensors").write_bytes(b"wrong")
     elif fault == "backend":
-        (root / "workspace/mlflow/mlflow.db").write_bytes(b"corrupt database")
+        (root / "mlflow/mlflow.db").write_bytes(b"corrupt database")
     calls = []
     chat = types.ModuleType("llamafactory.chat")
     chat.ChatModel = lambda args: calls.append(args)
@@ -307,7 +307,7 @@ def test_service_resolver_merged_uses_deploy_target_without_adapter(tmp_path):
     root, registry, model = _service_fixture(tmp_path, artifact_kind="merged")
     binding = resolve_service_model(root, alias="candidate", service_mode="development")
     assert binding["adapter_path"] is None
-    assert Path(binding["model_path"]) == root / "workspace/models/materialized" / model.model_id / model.deploy_target
+    assert Path(binding["model_path"]) == root / "models/materialized" / model.model_id / model.deploy_target
 
 
 # M8-R5: actual training/eval evidence gates; only trainer/inference are CPU substitutes.
@@ -518,12 +518,12 @@ def test_service_rejects_individually_valid_but_different_evaluated_prompt(tmp_p
         model_version_number=model.version, data_version='data-v4.1-r2', config=config, git_commit='fixture', media_root=media)
     _fake_formal_runtime(monkeypatch, prompt_definition=changed)
     eval_run.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
-    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    registry = open_registry_store(root / 'mlflow', data_root=root / 'data')
     _historical_eval_binding(registry, model.model_id, 'eval-v4.1-r1')
     set_offline_backup_scope(registry, model.model_id, 'adapter')
     export_model_manifest(root / 'records/models' / model.model_id / 'manifest.yaml', store=registry, model_id=model.model_id)
     _historical_alias(registry, model.model_id, 'candidate')
-    materialize_current(registry, alias='candidate', service_mode='development', models_root=root / 'workspace/models', records_root=root)
+    materialize_current(registry, alias='candidate', service_mode='development', models_root=root / 'models', records_root=root)
     current.write_bytes(original)
     with pytest.raises(ValueError, match='evaluated Prompt differs'):
         resolve_service_model(root, alias='candidate', service_mode='development')

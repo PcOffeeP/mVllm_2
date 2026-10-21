@@ -13,6 +13,7 @@ from finetune.eval_run import (
     summarize_records,
 )
 from finetune.v4_1_runtime import release_dir, score_v4_1_prediction
+from pipeline.data_roots import COMPAT_WORKSPACE_NAME
 
 
 def _labels(
@@ -45,7 +46,7 @@ def _record(
 
 def test_loads_committed_fold_validation_sets() -> None:
     if not release_dir(Path(__file__).resolve().parents[1]).is_dir():
-        pytest.skip("project-local V4.1 workspace data is not present")
+        pytest.skip("project-local V4.1 data is not present")
     assert len(load_validation_samples(0)) == 425
     assert len(load_validation_samples(1)) == 445
     assert len(load_validation_samples(2)) == 346
@@ -184,7 +185,7 @@ def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter", 
             (merged / "model.safetensors").write_bytes(b"synthetic merged")
     with patch("finetune.train_with_contract.run_training", side_effect=tuner):
         execute_versioned_run(root=root, train_version="train-v4.1-r1")
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     suffix = "adapter" if kind == "adapter" else "adapter/merged"
     model = register_model(registry, "model-v4.1-r1", train_id="train-v4.1-r1",
         source_scope=scope, deploy_target=None if scope == "cross_validation" else f"artifacts/fold0/{suffix}",
@@ -194,6 +195,28 @@ def _formal_eval_fixture(tmp_path, *, scope="cross_validation", kind="adapter", 
         "generation": {"do_sample": False, "num_beams": 1, "max_new_tokens": 256, "video_max_frames": 8},
         "thresholds": {"joint_correct_rate": 1.0}}
     return root, media, model, config
+
+
+def _bridge_archived_layout(legacy, root):
+    """把历史模块写死的旧布局寻址桥接到扁平化布局的同一物理位置。
+
+    从 git 历史取出的冻结实现（``finetune/eval_run.py``、``finetune/eval_holdout.py``）
+    按扁平化前的项目布局，把 eval workspace 与 MLflow store 定位在项目根下多一层
+    ``COMPAT_WORKSPACE_NAME`` 段的旧路径；fixture 已按 2026-10-21 的扁平化布局写在
+    ``<root>/evaluations``、``<root>/mlflow``。冻结源码本身不可改动，因此测试侧只
+    桥接这两处寻址，被验证的行为不变：
+
+    * ``_formal_workspace`` 是纯路径计算，直接换成当前实现（同一 eval_version 落点）；
+    * 旧路径下的 ``mlflow`` 用目录 symlink 指向 ``<root>/mlflow``，使两边读写同一份
+      SQLite store。
+    """
+    legacy._formal_workspace = evaluation_cli._formal_workspace
+    workspace_container = Path(root) / COMPAT_WORKSPACE_NAME
+    workspace_container.mkdir(exist_ok=True)
+    mlflow_link = workspace_container / "mlflow"
+    if not mlflow_link.exists():
+        mlflow_link.symlink_to(Path(root) / "mlflow", target_is_directory=True)
+    return legacy
 
 
 def _prepare_formal(tmp_path):
@@ -241,14 +264,14 @@ def test_formal_prepare_validates_registry_before_weights(tmp_path, monkeypatch)
         evaluation_cli.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
             model_version=model.model_id, model_version_number=model.version + 1,
             data_version="data-v4.1-r2", config=config, git_commit="fixture", media_root=media)
-    assert not (root / "workspace/evaluations/eval-v4.1-r1/input").exists()
+    assert not (root / "evaluations/eval-v4.1-r1/input").exists()
     path = evaluation_cli.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
         model_version=model.model_id, model_version_number=model.version,
         data_version="data-v4.1-r2", config=config, git_commit="fixture", media_root=media)
     assert path.is_file()
     from versioning.mlflow_eval import get_eval_run, open_eval_store, EvalRecordNotFound
     with pytest.raises(EvalRecordNotFound):
-        get_eval_run(open_eval_store(root / "workspace/mlflow"), "eval-v4.1-r1")
+        get_eval_run(open_eval_store(root / "mlflow"), "eval-v4.1-r1")
 
 
 @pytest.mark.parametrize("invalid_output,expected_outcome", [(False, "passed"), (True, "failed")])
@@ -273,13 +296,13 @@ def test_formal_evaluation_runtime_failure_has_no_conclusion(tmp_path, monkeypat
     calls = _fake_formal_runtime(monkeypatch, runtime_error=True)
     with pytest.raises(RuntimeError, match="incomplete"):
         evaluation_cli.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
-    result = get_eval_run(open_eval_store(root / "workspace/mlflow"), "eval-v4.1-r1")
+    result = get_eval_run(open_eval_store(root / "mlflow"), "eval-v4.1-r1")
     assert result.workflow_state == "failed"
     assert result.outcome is None
     assert result.folds[0].status == "FAILED"
     assert len(calls) == 1
     assert not (root / "records/evaluations/eval-v4.1-r1/manifest.yaml").exists()
-    assert (root / "workspace/evaluations/eval-v4.1-r1/output/fold0/failures.jsonl").is_file()
+    assert (root / "evaluations/eval-v4.1-r1/output/fold0/failures.jsonl").is_file()
 
 
 def test_formal_evaluation_media_drift_stops_before_weights(tmp_path, monkeypatch):
@@ -368,7 +391,7 @@ def test_formal_config_rejects_unbound_policy(tmp_path, change):
         evaluation_cli.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
             model_version=model.model_id, model_version_number=model.version,
             data_version="data-v4.1-r2", config=config, git_commit="fixture", media_root=media)
-    assert not (root / "workspace/evaluations/eval-v4.1-r1/input").exists()
+    assert not (root / "evaluations/eval-v4.1-r1/input").exists()
 
 
 def test_formal_holdout_refuses_before_dataset_or_weights(tmp_path, monkeypatch):
@@ -401,7 +424,7 @@ def test_formal_registry_drift_stops_before_materialization(tmp_path, monkeypatc
     import versioning.registry as registry
     from mlflow.tracking import MlflowClient
     root, media, model, path = _prepare_formal(tmp_path)
-    store = registry.open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    store = registry.open_registry_store(root / "mlflow", data_root=root / "data")
     MlflowClient(tracking_uri=store.tracking_uri).set_model_version_tag("mVllm2", str(model.version), "record_validity", "invalid")
     monkeypatch.setattr(registry, "materialize_model", lambda *a: pytest.fail("invalid model materialized"))
     with pytest.raises(ValueError):
@@ -414,10 +437,10 @@ def test_formal_export_uses_mlflow_and_rejects_artifact_drift(tmp_path, monkeypa
     root, media, model, path = _prepare_formal(tmp_path)
     _fake_formal_runtime(monkeypatch)
     result = evaluation_cli.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
-    local = root / "workspace/evaluations/eval-v4.1-r1/output/summary.json"
+    local = root / "evaluations/eval-v4.1-r1/output/summary.json"
     local.write_text("local staging is not authoritative")
     assert evaluation_cli.export_versioned_evaluation(root=root, eval_version="eval-v4.1-r1").is_file()
-    store = open_eval_store(root / "workspace/mlflow")
+    store = open_eval_store(root / "mlflow")
     client = MlflowClient(tracking_uri=store.tracking_uri)
     tampered = tmp_path / "summary.json"
     tampered.write_text('{}')
@@ -461,7 +484,7 @@ def test_formal_mid_execution_media_drift_cannot_complete(tmp_path, monkeypatch)
     monkeypatch.setattr(evaluation_cli, "run_model_on_video_detailed", mutate)
     with pytest.raises(ValueError, match="drift"):
         evaluation_cli.execute_versioned_evaluation(root=root, eval_version="eval-v4.1-r1")
-    result = get_eval_run(open_eval_store(root / "workspace/mlflow"), "eval-v4.1-r1")
+    result = get_eval_run(open_eval_store(root / "mlflow"), "eval-v4.1-r1")
     assert result.workflow_state == "failed"
     assert result.outcome is None
 
@@ -522,7 +545,7 @@ def test_registry_rejects_passed_eval_without_actual_results(tmp_path):
     from versioning.registry import (open_registry_store, finalize_model_evaluation,
         get_model, PromotionGateRejected)
     root, media, model, config = _formal_eval_fixture(tmp_path, scope='single_fold')
-    store = open_eval_store(root / 'workspace/mlflow')
+    store = open_eval_store(root / 'mlflow')
     create_eval_run(store, 'eval-v4.1-r1', model_id=model.model_id,
         model_version_number=model.version, data_version='data-v4.1-r2', config='missing.yaml',
         git_commit='unexecuted', scope='single_fold', split='validation', data_root=root / 'data')
@@ -564,7 +587,7 @@ def test_historical_alias_rechecks_actual_execution_bytes(tmp_path, monkeypatch,
         config=config, git_commit='fixture', media_root=media)
     _fake_formal_runtime(monkeypatch)
     result = evaluation_cli.execute_versioned_evaluation(root=root, eval_version='eval-v4.1-r1')
-    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    registry = open_registry_store(root / 'mlflow', data_root=root / 'data')
     _install_historical_strict_candidate(registry, model, result.eval_id)
     finalize_model_evaluation(registry, model.model_id, eval_id=result.eval_id)
     set_offline_backup_scope(registry, model.model_id, 'adapter')
@@ -605,14 +628,14 @@ def test_historical_execution_candidate_and_backup_through_cli(tmp_path, monkeyp
         '--git-commit', 'fixture', '--media-root', str(media)]) == 0
     _fake_formal_runtime(monkeypatch)
     assert main(['eval', 'run', 'eval-v4.1-r1', *common]) == 0
-    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    registry = open_registry_store(root / 'mlflow', data_root=root / 'data')
     _install_historical_strict_candidate(registry, model, 'eval-v4.1-r1')
     assert get_model_by_alias(registry, 'candidate').model_id == model.model_id
     # These commands recover an existing binding and alias, not a new admission.
     for args in [('finalize', '--eval-version', 'eval-v4.1-r1'),
                  ('scope', '--backup-scope', 'adapter'), ('alias', '--alias', 'candidate')]:
         assert main(['model', args[0], model.model_id, *common, *args[1:]]) == 0
-    registry = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    registry = open_registry_store(root / 'mlflow', data_root=root / 'data')
     assert get_model_by_alias(registry, 'candidate').model_id == model.model_id
     manifest = root / 'records/models' / model.model_id / 'manifest.yaml'
     assert main(['model', 'manifest', model.model_id, *common, '--target', str(manifest)]) == 0
@@ -627,8 +650,8 @@ def test_historical_execution_candidate_and_backup_through_cli(tmp_path, monkeyp
     assert evaluation_object.object_type == 'evaluation_workspace'
     # Independent workspace evidence must survive alongside the MLflow copy.
     for relative in ('input/evaluation.yaml', 'output/records.jsonl', 'output/evaluation.yaml'):
-        source = root / 'workspace/evaluations/eval-v4.1-r1' / relative
-        archived = backup / 'evaluations/eval-v4.1-r1/workspace/evaluations/eval-v4.1-r1' / relative
+        source = root / 'evaluations/eval-v4.1-r1' / relative
+        archived = backup / "evaluations/eval-v4.1-r1" / COMPAT_WORKSPACE_NAME / "evaluations/eval-v4.1-r1" / relative
         assert archived.read_bytes() == source.read_bytes()
     store_files = [file.path for obj in catalog.objects if obj.object_id == 'mlflow-store' for file in obj.files]
     assert any(path.endswith('/training-evidence.json') for path in store_files)
@@ -644,7 +667,7 @@ def test_historical_execution_candidate_and_backup_through_cli(tmp_path, monkeyp
         root.rename(tmp_path / "retained-original")
         fresh = tmp_path / "restored store"
         restore_backup(backup, data_root=fresh / "data", prompts_root=fresh,
-            models_root=fresh / "workspace/models/materialized", mlflow_root=fresh / "workspace/mlflow")
+            models_root=fresh / "models/materialized", mlflow_root=fresh / "mlflow")
         import sqlite3
         def historical_rows(database):
             changed = {"experiments": {"artifact_location"}, "runs": {"artifact_uri"},
@@ -656,8 +679,8 @@ def test_historical_execution_candidate_and_backup_through_cli(tmp_path, monkeyp
                     selected = ','.join('"' + column + '"' for column in columns)
                     snapshot[table] = sorted(connection.execute(f'SELECT {selected} FROM "{table}"').fetchall(), key=repr)
             return snapshot
-        assert historical_rows(backup / "mlflow/mlflow.db") == historical_rows(fresh / "workspace/mlflow/mlflow.db")
-        restored = open_registry_store(fresh / "workspace/mlflow", data_root=fresh / "data")
+        assert historical_rows(backup / "mlflow/mlflow.db") == historical_rows(fresh / "mlflow/mlflow.db")
+        restored = open_registry_store(fresh / "mlflow", data_root=fresh / "data")
         resolved = get_model_by_alias(restored, "candidate")
         assert resolved.model_id == model.model_id and resolved.version == model.version
         client = MlflowClient(tracking_uri=restored.tracking_uri)
@@ -687,7 +710,7 @@ def test_historical_execution_candidate_and_backup_through_cli(tmp_path, monkeyp
 def test_model_rejects_training_artifact_drift_before_first_evaluation(tmp_path, drift):
     from versioning.registry import open_registry_store, register_model, PromotionGateRejected, _run_artifact_root
     root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold")
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     if drift == "base":
         (Path(model.base_model) / "model.safetensors").write_bytes(b"changed base")
     else:
@@ -698,13 +721,13 @@ def test_model_rejects_training_artifact_drift_before_first_evaluation(tmp_path,
         evaluation_cli.prepare_versioned_evaluation(root=root, eval_version="eval-v4.1-r1",
             model_version=model.model_id, model_version_number=model.version, data_version="data-v4.1-r2",
             config=config, git_commit="fixture", media_root=media)
-    assert not (root / "workspace/evaluations/eval-v4.1-r1").exists()
+    assert not (root / "evaluations/eval-v4.1-r1").exists()
 
 
 def test_evaluation_cannot_qualify_another_deploy_artifact(tmp_path):
     from versioning.registry import open_registry_store, register_model
     root, media, model, config = _formal_eval_fixture(tmp_path, scope="single_fold", kind="merged")
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     model = register_model(registry, "model-v4.1-r2", train_id="train-v4.1-r1",
         artifacts={"fold0": {"adapter": "artifacts/fold0/adapter", "merged": "artifacts/fold0/adapter/merged"}},
         deploy_target="artifacts/fold0/adapter/merged")
@@ -718,7 +741,7 @@ def test_declared_fold_evidence_survives_unselected_weight_retirement(tmp_path):
     import shutil
     from versioning.registry import open_registry_store, validate_model_for_evaluation, PromotionGateRejected, _run_artifact_root
     root, _, model, _ = _formal_eval_fixture(tmp_path, scope="single_fold")
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     artifacts = _run_artifact_root(registry, model.run_id)
     for fold in (1, 2):
         shutil.rmtree(artifacts / f"fold{fold}")

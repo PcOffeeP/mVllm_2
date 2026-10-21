@@ -260,7 +260,7 @@ def test_source_snapshot_appends_index_entries(tmp_path: Path) -> None:
     current = current_data_context(project)
     rebuild = data_context_for_root(
         project,
-        project / "workspace/data-staging/rebuild-test/data",
+        project / "data-staging/rebuild-test/data",
     )
     bundle = build_source_snapshot(
         current,

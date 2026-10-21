@@ -31,7 +31,7 @@ def _manifest() -> dict:
         "artifacts": {
             name: {
                 "managed_path": (
-                    "workspace/models/releases/"
+                    "models/releases/"
                     f"v4.1-agent-pipeline-fold0-r1/{name}"
                 ),
                 "path_at_freeze": f"/old/{name}",
@@ -74,7 +74,7 @@ def test_managed_artifacts_cannot_escape_workspace_models() -> None:
     manifest["artifacts"]["merged"]["managed_path"] = (
         "LlamaFactory/saves/model"
     )
-    with pytest.raises(ModelRegistryError, match="workspace/models"):
+    with pytest.raises(ModelRegistryError, match="models"):
         validate_model_manifest(manifest)
 
 

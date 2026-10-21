@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from pipeline.data_roots import (
+    COMPAT_WORKSPACE_NAME,
     DataRootError,
     initialize_root,
     initialize_workspace,
@@ -131,7 +132,7 @@ def test_workspace_links_stay_inside_version_root(tmp_path: Path) -> None:
     )
 
     assert result["link_count"] == 8
-    assert (workspace / "data/03_subvideos_roi").resolve() == (
+    assert workspace.joinpath("data/03_subvideos_roi").resolve() == (
         root / "derived/subvideos"
     ).resolve()
 
@@ -144,7 +145,7 @@ def test_remaps_frozen_absolute_data_path_without_following_symlink(
 
     mapped = resolve_workspace_artifact(old, workspace)
 
-    assert mapped == workspace / "data/03_subvideos_roi/example.mp4"
+    assert mapped == workspace.joinpath("data/03_subvideos_roi/example.mp4")
     assert workspace_relative_path(mapped, workspace) == (
         "data/03_subvideos_roi/example.mp4"
     )
@@ -154,7 +155,7 @@ def test_maps_semantic_target_back_to_frozen_workspace_path(tmp_path: Path) -> N
     workspace = tmp_path / "current/.compat/workspace"
     target = tmp_path / "current/derived/subvideos"
     target.mkdir(parents=True)
-    link = workspace / "data/03_subvideos_roi"
+    link = workspace.joinpath("data/03_subvideos_roi")
     link.parent.mkdir(parents=True)
     link.symlink_to(Path("../../../derived/subvideos"))
     video = target / "example.mp4"
@@ -168,7 +169,7 @@ def test_maps_semantic_target_back_to_frozen_workspace_path(tmp_path: Path) -> N
 def test_project_local_root_maps_frozen_paths_without_symlinks(
     tmp_path: Path,
 ) -> None:
-    data_root = tmp_path / "workspace/data"
+    data_root = tmp_path.joinpath(COMPAT_WORKSPACE_NAME, "data")
     frozen = "data/03_subvideos_roi/example.mp4"
     semantic = data_root / "derived/subvideos/example.mp4"
 

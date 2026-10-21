@@ -11,7 +11,7 @@ import pytest
 
 from finetune import eval_run as runtime
 from test_eval_development_wiring import _config
-from test_eval_run import _formal_eval_fixture, _fake_formal_runtime
+from test_eval_run import _formal_eval_fixture, _fake_formal_runtime, _bridge_archived_layout
 
 
 def _ab_runtime():
@@ -33,6 +33,7 @@ def test_actual_ab_runtime_record_can_revalidate_export_but_not_gain_new_admissi
     if scorer == "semantic-v4.1":
         config = _config(config)
     legacy, frozen_digest = _ab_runtime()
+    _bridge_archived_layout(legacy, root)
     calls = _fake_formal_runtime(monkeypatch)
     legacy.load_model = runtime.load_model
     legacy.run_model_on_video_detailed = runtime.run_model_on_video_detailed
@@ -47,8 +48,8 @@ def test_actual_ab_runtime_record_can_revalidate_export_but_not_gain_new_admissi
     runtime.prepare_versioned_evaluation(**kwargs)
     document = json.loads(runtime.export_versioned_evaluation(root=root, eval_version=kwargs["eval_version"]).read_bytes())
     assert document.get("scoring_protocol", "strict-v4.1") == scorer
-    assert get_eval_run(open_eval_store(root / "workspace/mlflow"), kwargs["eval_version"]).purpose == "legacy"
-    registry = open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    assert get_eval_run(open_eval_store(root / "mlflow"), kwargs["eval_version"]).purpose == "legacy"
+    registry = open_registry_store(root / "mlflow", data_root=root / "data")
     if scorer == "semantic-v4.1":
         with pytest.raises(PromotionGateRejected, match="development semantic"):
             _run_eval_gate(registry, kwargs["eval_version"], require_passed=False)

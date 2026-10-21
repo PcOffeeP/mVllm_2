@@ -58,10 +58,10 @@ def test_reuse_rejects_corruption_before_any_new_trainer_call(staged, damage):
     from versioning.registry import _run_artifact_root
     root, calls = staged
     parent = run(root, 0)
-    store = open_train_store(root / 'workspace/mlflow')
+    store = open_train_store(root / 'mlflow')
     client = MlflowClient(tracking_uri=store.tracking_uri)
     remote = _run_artifact_root(store, parent.run_id)
-    local = root / 'workspace/runs/train-v4.1-r1'
+    local = root / 'trains/train-v4.1-r1'
     if damage == 'local':
         (local / 'fold0/adapter/adapter_model.safetensors').write_bytes(b'changed')
     elif damage == 'uploaded':
@@ -94,7 +94,7 @@ def test_failure_cannot_be_automatically_retried(staged, monkeypatch):
 def test_same_train_lock_rejects_concurrent_execution(staged):
     import fcntl
     root, calls = staged
-    with (root / 'workspace/runs/train-v4.1-r1/.execution.lock').open('a+b') as lock:
+    with (root / 'trains/train-v4.1-r1/.execution.lock').open('a+b') as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         with pytest.raises(ValueError, match='already executing'):
             run(root, 1)
@@ -117,7 +117,7 @@ def test_partial_cannot_export_or_promote(staged):
     with pytest.raises(IncompleteTrainRecord):
         export_versioned_run(root=root, train_version='train-v4.1-r1')
     with pytest.raises(IncompleteTrainRecord):
-        validate_train_for_promotion(open_train_store(root / 'workspace/mlflow'), 'train-v4.1-r1')
+        validate_train_for_promotion(open_train_store(root / 'mlflow'), 'train-v4.1-r1')
     assert calls == [0]
 
 
@@ -125,8 +125,8 @@ def test_both_output_copies_cannot_be_changed_to_bypass_receipt(staged):
     from versioning.registry import _run_artifact_root
     root, calls = staged
     parent = run(root, 0)
-    uploaded = _run_artifact_root(open_train_store(root / 'workspace/mlflow'), parent.run_id)
-    for base in (uploaded, root / 'workspace/runs/train-v4.1-r1'):
+    uploaded = _run_artifact_root(open_train_store(root / 'mlflow'), parent.run_id)
+    for base in (uploaded, root / 'trains/train-v4.1-r1'):
         (base / 'fold0/adapter/adapter_model.safetensors').write_bytes(b'same changed bytes')
     with pytest.raises(ValueError, match='evidence differs'):
         run(root, 1)
@@ -140,12 +140,12 @@ def test_residual_evidence_and_duplicate_children_reject_before_trainer(staged, 
     parent = run(root, 0)
     if residual in ('receipt', 'uploaded_receipt'):
         from versioning.registry import _run_artifact_root
-        path = (root / 'workspace/runs/train-v4.1-r1/fold1' if residual == 'receipt'
-                else _run_artifact_root(open_train_store(root / 'workspace/mlflow'), parent.run_id) / 'fold1')
+        path = (root / 'trains/train-v4.1-r1/fold1' if residual == 'receipt'
+                else _run_artifact_root(open_train_store(root / 'mlflow'), parent.run_id) / 'fold1')
         path.mkdir()
         (path / 'execution-evidence.json').write_text('{}')
     else:
-        store = open_train_store(root / 'workspace/mlflow')
+        store = open_train_store(root / 'mlflow')
         client = MlflowClient(tracking_uri=store.tracking_uri)
         duplicate = client.create_run(store.experiment_id,
             tags={'mlflow.parentRunId': parent.run_id, 'fold': 'fold0'})
@@ -160,7 +160,7 @@ def test_partial_with_premature_summary_rejects_before_trainer(staged):
     from mlflow.tracking import MlflowClient
     root, calls = staged
     parent = run(root, 0)
-    store = open_train_store(root / 'workspace/mlflow')
+    store = open_train_store(root / 'mlflow')
     MlflowClient(tracking_uri=store.tracking_uri).log_metric(parent.run_id, 'train_loss_mean', 0.25)
     with pytest.raises(ValueError, match='partial training requires explicit recovery'):
         run(root, 1)

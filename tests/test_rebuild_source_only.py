@@ -127,7 +127,7 @@ def test_source_only_materializes_source_and_split_snapshots(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     project = _make_source_project(tmp_path)
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc, parsed, _ = _run_rebuild(
         monkeypatch, capsys, project, run_root, "--source-only"
@@ -158,7 +158,7 @@ def test_source_only_does_not_require_roi_or_review_modes(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     project = _make_source_project(tmp_path)
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc, parsed, _ = _run_rebuild(
         monkeypatch, capsys, project, run_root, "--source-only"
@@ -174,7 +174,7 @@ def test_source_only_with_check_only_validates_and_writes_nothing(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     project = _make_source_project(tmp_path)
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc, parsed, _ = _run_rebuild(
         monkeypatch, capsys, project, run_root, "--source-only", "--check-only"
@@ -196,7 +196,7 @@ def test_source_only_repeated_run_is_idempotent(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     project = _make_source_project(tmp_path)
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc1, parsed1, _ = _run_rebuild(
         monkeypatch, capsys, project, run_root, "--source-only"
@@ -222,7 +222,7 @@ def test_source_only_fails_when_videos_missing(
     # remove one video to break the expected count invariant
     current = current_data_context(project)
     list(current.videos.glob("*.mp4"))[0].unlink()
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc, _, err = _run_rebuild(monkeypatch, capsys, project, run_root, "--source-only")
 
@@ -238,7 +238,7 @@ def test_source_only_fails_when_tag_csv_missing(
     project = _make_source_project(tmp_path)
     current = current_data_context(project)
     (current.annotations / "all_videos_tag.csv").unlink()
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc, _, err = _run_rebuild(monkeypatch, capsys, project, run_root, "--source-only")
 
@@ -252,7 +252,7 @@ def test_full_pipeline_still_requires_roi_and_review_modes(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     project = _make_source_project(tmp_path)
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc, _, err = _run_rebuild(monkeypatch, capsys, project, run_root)
 
@@ -274,7 +274,7 @@ def test_review_mode_first_run_enters_waiting_for_roi_review(
     # 因 DataRebuildError("非法状态跳转") 崩溃。main() 契约：等待态返回 0，
     # 错误返回 1。
     project = _make_source_project(tmp_path)
-    run_root = project / "workspace/data-staging/run-test"
+    run_root = project / "data-staging/run-test"
 
     rc, parsed, err = _run_rebuild(
         monkeypatch,

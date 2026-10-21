@@ -49,8 +49,8 @@ def _pointer(
         ).hexdigest()
     pointer: dict[str, object] = {
         "release_id": release_id,
-        "release_dir": f"workspace/data/releases/{release_id}",
-        "manifest": f"workspace/data/releases/{release_id}/manifest/release_manifest.json",
+        "release_dir": f"data/releases/{release_id}",
+        "manifest": f"data/releases/{release_id}/manifest/release_manifest.json",
         "expected_contract_hash": contract_hash,
     }
     if expected_manifest_sha256 is not None:
@@ -86,7 +86,7 @@ def _write_manifest(
 ) -> Path:
     manifest_path = (
         project_root
-        / "workspace/data/releases"
+        / "data/releases"
         / release_id
         / "manifest/release_manifest.json"
     )
@@ -185,7 +185,7 @@ def test_load_release_expectations_manifest_sha256_drift_fail_closed(
     # while preserving the contract_hash field, simulating a self-certification attack.
     manifest_path = (
         tmp_path
-        / "workspace/data/releases"
+        / "data/releases"
         / release_id
         / "manifest/release_manifest.json"
     )
@@ -207,8 +207,8 @@ def test_load_release_expectations_missing_manifest_sha256_fail_closed(
     release_id = "v4.1.0-testmanifest"
     pointer = {
         "release_id": release_id,
-        "release_dir": f"workspace/data/releases/{release_id}",
-        "manifest": f"workspace/data/releases/{release_id}/manifest/release_manifest.json",
+        "release_dir": f"data/releases/{release_id}",
+        "manifest": f"data/releases/{release_id}/manifest/release_manifest.json",
         "expected_contract_hash": "47e393" + "0" * 58,
     }
     _write_json(tmp_path / "finetune/active_data_release.json", pointer)
@@ -228,8 +228,8 @@ def test_load_release_expectations_missing_pointer_field_fail_closed(
     release_id = "v4.1.0-testmanifest"
     pointer = {
         "release_id": release_id,
-        "release_dir": f"workspace/data/releases/{release_id}",
-        "manifest": f"workspace/data/releases/{release_id}/manifest/release_manifest.json",
+        "release_dir": f"data/releases/{release_id}",
+        "manifest": f"data/releases/{release_id}/manifest/release_manifest.json",
     }
     _write_json(tmp_path / "finetune/active_data_release.json", pointer)
 

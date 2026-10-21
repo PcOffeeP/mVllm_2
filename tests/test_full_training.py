@@ -42,8 +42,8 @@ def test_unfrozen_external_weights_fail_before_training_freeze(tmp_path, scope, 
         prepare_versioned_run(root=root, train_version='train-v4.1-r1',
             data_version='data-v4.1-r2', prompt_version='prompt-v4.1-r1', media_root=media,
             fold_configs=configs, scope=scope, git_commit='synthetic', environment={'python': 'fixture'})
-    assert not (root / 'workspace/runs/train-v4.1-r1/input').exists()
-    assert not (root / 'workspace/mlflow').exists()
+    assert not (root / 'trains/train-v4.1-r1/input').exists()
+    assert not (root / 'mlflow').exists()
 
 
 @pytest.mark.parametrize('scope,external_input', [
@@ -72,7 +72,7 @@ def test_old_frozen_external_weights_cannot_execute(tmp_path, monkeypatch, scope
         preparation.verify_versioned_run(root=root, train_version='train-v4.1-r1', for_execution=False)
     with pytest.raises(ValueError, match=external_input):
         preparation.execute_versioned_run(root=root, train_version='train-v4.1-r1')
-    assert not (root / 'workspace/mlflow').exists()
+    assert not (root / 'mlflow').exists()
 
 
 def test_old_completed_run_with_unfrozen_adapter_cannot_register_model(tmp_path, monkeypatch):
@@ -87,7 +87,7 @@ def test_old_completed_run_with_unfrozen_adapter_cannot_register_model(tmp_path,
         old_gate.setattr('finetune.train_with_contract.run_training', fake_tuner)
         completed = execute_versioned_run(root=root, train_version='train-v4.1-r1')
     assert completed.workflow_state == 'completed'
-    store = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    store = open_registry_store(root / 'mlflow', data_root=root / 'data')
     with pytest.raises(PromotionGateRejected, match='adapter_name_or_path'):
         register_model(store, 'model-v4.1-r1', train_id='train-v4.1-r1', source_scope='full',
             artifacts={'full': {'adapter': 'artifacts/full/adapter'}},
@@ -108,7 +108,7 @@ def full_model(tmp_path, monkeypatch):
     root, path = prepare_full(tmp_path)
     monkeypatch.setattr('finetune.train_with_contract.run_training', fake_tuner)
     execute_versioned_run(root=root, train_version='train-v4.1-r1')
-    store = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    store = open_registry_store(root / 'mlflow', data_root=root / 'data')
     model = register_model(store, 'model-v4.1-r1', train_id='train-v4.1-r1',
         source_scope='full', artifacts={'full': {'adapter': 'artifacts/full/adapter'}},
         deploy_target='artifacts/full/adapter')
@@ -169,10 +169,10 @@ def test_full_failure_never_completes_or_creates_children(tmp_path, monkeypatch)
     monkeypatch.setattr('finetune.train_with_contract.run_training', fail)
     with pytest.raises(RuntimeError, match='tuner failure'):
         execute_versioned_run(root=root, train_version='train-v4.1-r1')
-    record = get_train_run(open_train_store(root / 'workspace/mlflow'), 'train-v4.1-r1')
+    record = get_train_run(open_train_store(root / 'mlflow'), 'train-v4.1-r1')
     assert record.workflow_state == 'failed' and record.folds == {}
     with pytest.raises(ValueError, match='full training'):
-        create_fold_run(open_train_store(root / 'workspace/mlflow'), 'train-v4.1-r1', 0)
+        create_fold_run(open_train_store(root / 'mlflow'), 'train-v4.1-r1', 0)
 
 
 @pytest.mark.parametrize('tampered', [False, True])
@@ -212,4 +212,4 @@ def test_full_rejects_fold_before_creating_run(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match='full training does not accept fold'):
         execute_versioned_run(root=root, train_version='train-v4.1-r1', fold=0)
     assert not calls
-    assert not (root / 'workspace/mlflow').exists()
+    assert not (root / 'mlflow').exists()

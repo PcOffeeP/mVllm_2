@@ -304,12 +304,12 @@ def test_save_payload_preserves_multiple_decisions_atomically(tmp_path: Path):
 def _staging_app_context(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> tuple[Path, Path]:
-    """构造 workspace/data-staging/run10/data 上下文并隔离 app.PROJECT_ROOT。
+    """构造 data-staging/run10/data 上下文并隔离 app.PROJECT_ROOT。
 
     返回 (data_root, source_snapshots collection_dir)。
     """
     project_root = tmp_path / "proj"
-    data_root = project_root / "workspace" / "data-staging" / "run10" / "data"
+    data_root = project_root / "data-staging" / "run10" / "data"
     collection = data_root / "derived" / "metadata" / "source_snapshots"
     collection.mkdir(parents=True)
     monkeypatch.setattr(app, "PROJECT_ROOT", project_root)

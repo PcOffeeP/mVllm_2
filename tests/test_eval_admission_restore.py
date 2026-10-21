@@ -211,12 +211,12 @@ def tree_bytes(root):
 
 def backup_args(root, drive):
     return dict(data_root=root / "data", prompts_root=root,
-        models_root=root / "workspace/models/materialized", backup_root=drive)
+        models_root=root / "models/materialized", backup_root=drive)
 
 
 def restore_args(root):
     return dict(data_root=root / "data", prompts_root=root,
-        models_root=root / "workspace/models/materialized", mlflow_root=root / "workspace/mlflow")
+        models_root=root / "models/materialized", mlflow_root=root / "mlflow")
 
 
 def prepared_phase(tmp_path, monkeypatch, phase):
@@ -264,7 +264,7 @@ def test_in_progress_unscoped_evaluation_restores_raw_authorization_and_review_a
     assert tree_bytes(restored_workspace) == source_files
     assert tree_bytes(fresh / "evaluations/staging" / version) == prereg_files
     assert tree_bytes(fresh / "data/releases/data-v4.1-r3/authorization") == auth_files
-    restored = get_eval_run(open_eval_store(fresh / "workspace/mlflow"), version)
+    restored = get_eval_run(open_eval_store(fresh / "mlflow"), version)
     assert (restored.run_id, restored.workflow_state, restored.outcome) == (
         run.run_id, run.workflow_state, run.outcome)
     for path in (restored_workspace / "restricted", *(restored_workspace / "restricted").rglob("*")):
@@ -278,7 +278,7 @@ def test_consumed_disaster_recovery_is_same_run_and_never_reopens_truth_or_infer
     model = reg.set_offline_backup_scope(store, "model-v4.1-r1", "adapter")
     export_model_manifest(root / f"records/models/{model.model_id}/manifest.yaml",
         store=store, model_id=model.model_id)
-    reg.materialize_model(store, model.model_id, root / "workspace/models/materialized")
+    reg.materialize_model(store, model.model_id, root / "models/materialized")
     workspace_bytes = tree_bytes(ev._formal_workspace(root, version))
     auth_bytes = tree_bytes(truth.parent.parent / "authorization")
     run = get_eval_run(open_eval_store(store.root), version)
@@ -297,7 +297,7 @@ def test_consumed_disaster_recovery_is_same_run_and_never_reopens_truth_or_infer
         assert manifest == ev.export_versioned_evaluation(root=root, eval_version=version)
         with pytest.raises(ValueError, match="consumed|exposed"):
             ev.execute_versioned_evaluation(root=root, eval_version=version)
-    restored = get_eval_run(open_eval_store(root / "workspace/mlflow"), version)
+    restored = get_eval_run(open_eval_store(root / "mlflow"), version)
     assert (restored.run_id, restored.workflow_state, restored.outcome) == (
         run.run_id, "completed", run.outcome)
     assert tree_bytes(truth.parent.parent / "authorization") == auth_bytes
@@ -391,12 +391,12 @@ def test_historical_strict_approval_and_alias_restore_and_recover_only_same_iden
     before = historical_model_tags(store, version, approved=True, alias="production")
     export_model_manifest(root / f"records/models/{before.model_id}/manifest.yaml",
         store=store, model_id=before.model_id)
-    reg.materialize_model(store, before.model_id, root / "workspace/models/materialized")
+    reg.materialize_model(store, before.model_id, root / "models/materialized")
     drive = tmp_path / "historical-drive"
     backup.create_backup(store, **backup_args(root, drive))
     root.rename(tmp_path / "unavailable-historical-source")
     backup.restore_backup(drive, **restore_args(root))
-    restored_store = reg.open_registry_store(root / "workspace/mlflow", data_root=root / "data")
+    restored_store = reg.open_registry_store(root / "mlflow", data_root=root / "data")
     with monkeypatch.context() as guard:
         forbid_truth(guard, truth)
         guard.setattr(ev, "load_model", lambda *a, **k: pytest.fail("historical restore must not infer"))
@@ -421,7 +421,7 @@ def test_relocated_same_identity_resumes_score_without_old_store_or_inference(
     model = reg.set_offline_backup_scope(store, "model-v4.1-r1", "adapter")
     export_model_manifest(root / f"records/models/{model.model_id}/manifest.yaml",
         store=store, model_id=model.model_id)
-    reg.materialize_model(store, model.model_id, root / "workspace/models/materialized")
+    reg.materialize_model(store, model.model_id, root / "models/materialized")
     frozen_bytes = (ev._formal_workspace(root, version) / "input/evaluation.yaml").read_bytes()
     private_bytes = tree_bytes(ev._formal_workspace(root, version) / "restricted")
     claim_bytes = tree_bytes(truth.parent.parent / "authorization")
@@ -432,7 +432,7 @@ def test_relocated_same_identity_resumes_score_without_old_store_or_inference(
     assert not root.exists()
     backup.restore_backup(drive, **restore_args(fresh))
     for name in ("restore-catalog.yaml", "restore-locations.json"):
-        proof = fresh / "workspace/mlflow" / name
+        proof = fresh / "mlflow" / name
         assert proof.is_file() and proof.stat().st_mode & 0o777 == 0o400
     monkeypatch.setattr(ev, "load_model", lambda *a, **k: pytest.fail("relocation cannot rerun inference"))
     restored_truth = fresh / "data/releases/data-v4.1-r3/sealed_ground_truth/labels.json"
@@ -455,7 +455,7 @@ def test_relocated_same_identity_resumes_score_without_old_store_or_inference(
     restored_auth = tree_bytes(restored_truth.parent.parent / "authorization")
     assert all(restored_auth[path] == data for path, data in claim_bytes.items())
     assert "exposed.yaml" in restored_auth and "consumed.yaml" in restored_auth
-    restored_record = get_eval_run(open_eval_store(fresh / "workspace/mlflow"), version)
+    restored_record = get_eval_run(open_eval_store(fresh / "mlflow"), version)
     assert restored_record.run_id == record.run_id and restored_record.workflow_state == "completed"
     assert not root.exists(), "recovery must not recreate or consult the original store"
 
@@ -469,7 +469,7 @@ def test_relocated_recovery_refuses_dependency_or_locator_drift_before_truth(
     model = reg.set_offline_backup_scope(store, "model-v4.1-r1", "adapter")
     export_model_manifest(root / f"records/models/{model.model_id}/manifest.yaml",
         store=store, model_id=model.model_id)
-    reg.materialize_model(store, model.model_id, root / "workspace/models/materialized")
+    reg.materialize_model(store, model.model_id, root / "models/materialized")
     drive, fresh = tmp_path / "drive", tmp_path / "fresh"
     backup.create_backup(store, **backup_args(root, drive))
     root.rename(tmp_path / "unavailable-source")
@@ -485,16 +485,16 @@ def test_relocated_recovery_refuses_dependency_or_locator_drift_before_truth(
         media.chmod(0o600)
         media.write_bytes(b"changed managed synthetic media")
     elif damage == "changed_locator":
-        locator = fresh / "workspace/mlflow/restore-locations.json"
+        locator = fresh / "mlflow/restore-locations.json"
         data = json.loads(locator.read_bytes())
         data["evaluations"][version]["restored_media_root"] = str(tmp_path / "arbitrary-media")
         locator.chmod(0o600)
         locator.write_text(json.dumps(data))
         locator.chmod(0o400)
     elif damage == "writable_locator":
-        (fresh / "workspace/mlflow/restore-locations.json").chmod(0o600)
+        (fresh / "mlflow/restore-locations.json").chmod(0o600)
     else:
-        (fresh / "workspace/mlflow/restore-catalog.yaml").chmod(0o444)
+        (fresh / "mlflow/restore-catalog.yaml").chmod(0o444)
     restored_truth = fresh / "data/releases/data-v4.1-r3/sealed_ground_truth/labels.json"
     monkeypatch.setattr(ev, "load_model", lambda *a, **k: pytest.fail("invalid recovery must not infer"))
     with monkeypatch.context() as guard:

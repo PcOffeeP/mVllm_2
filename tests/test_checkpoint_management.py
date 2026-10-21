@@ -17,7 +17,7 @@ POLICY_PATH = ROOT / "pipeline/checkpoint_policy.json"
 # 已在训练机删除的微调 run：不得再作为 checkpoint 保护项残留。
 DELETED_RUN_ID = "v4.1-prompt-concise-cv-v1-seed3411"
 CURRENT_RELEASE_SOURCE_ADAPTER = (
-    "workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter"
+    "trains/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter"
 )
 STALE_ARCHIVE_CLAIM = (
     "All other models are completed comparison or archive artifacts"
@@ -25,7 +25,7 @@ STALE_ARCHIVE_CLAIM = (
 
 
 def _experiment(root: Path, name: str, *, best: int | None) -> Path:
-    parent = root / f"workspace/runs/{name}"
+    parent = root / f"trains/{name}"
     adapter = parent / "adapter"
     merged = parent / "merged"
     adapter.mkdir(parents=True)

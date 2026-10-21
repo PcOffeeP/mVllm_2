@@ -143,7 +143,7 @@ def _formal_gate_artifacts(data: Path) -> tuple[Path, Path, str]:
 
 
 def _ready_run(project: Path) -> tuple[Path, dict[str, str]]:
-    run = project / "workspace/data-staging/rebuild-test"
+    run = project / "data-staging/rebuild-test"
     current = current_data_context(project)
     current.root.mkdir(parents=True)
     source_fingerprint = {"source_snapshot_id": "source-snapshot-test"}
@@ -490,7 +490,7 @@ def test_promotion_manifest_requires_completed_release_and_human_gate(
     tmp_path: Path,
 ) -> None:
     project = tmp_path / "repo"
-    run = project / "workspace/data-staging/rebuild-test"
+    run = project / "data-staging/rebuild-test"
     initialize_state(
         project,
         run,
@@ -638,7 +638,7 @@ def test_incomplete_existing_candidate_dirs_cannot_reduce_space_guard(
 
 def test_resume_rejects_runtime_provenance_drift(tmp_path: Path) -> None:
     project = tmp_path / "repo"
-    run = project / "workspace/data-staging/rebuild-test"
+    run = project / "data-staging/rebuild-test"
     common = {
         "project_root": project,
         "run_root": run,
@@ -661,7 +661,7 @@ def test_resume_rejects_runtime_provenance_drift(tmp_path: Path) -> None:
 
 def test_rebuild_paths_rejects_forged_existing_state(tmp_path: Path) -> None:
     project = tmp_path / "repo"
-    run = project / "workspace/data-staging/forged"
+    run = project / "data-staging/forged"
     (run / "data").mkdir(parents=True)
     (run / "control").mkdir()
     (run / "control/rebuild.json").write_text(
@@ -682,7 +682,7 @@ def test_rebuild_paths_rejects_forged_existing_state(tmp_path: Path) -> None:
 
 def test_rebuild_paths_rejects_symlink_alias(tmp_path: Path) -> None:
     project = tmp_path / "repo"
-    run = project / "workspace/data-staging/real"
+    run = project / "data-staging/real"
     initialize_state(
         project,
         run,
@@ -691,7 +691,7 @@ def test_rebuild_paths_rejects_symlink_alias(tmp_path: Path) -> None:
         source_identity={"fingerprint": "same"},
         git_commit="abc123",
     )
-    alias = project / "workspace/data-staging/alias"
+    alias = project / "data-staging/alias"
     alias.symlink_to(run, target_is_directory=True)
 
     with pytest.raises(DataRebuildError, match="symlink"):
@@ -703,7 +703,7 @@ def test_stage_wal_fails_closed_between_state_and_completion_record(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project = tmp_path / "repo"
-    run = project / "workspace/data-staging/rebuild-test"
+    run = project / "data-staging/rebuild-test"
     state = initialize_state(
         project,
         run,
@@ -842,7 +842,7 @@ def _ready_run_with_snapshot_payloads(
     split snapshot 目录携带 split_decision.json 与 test.json（真实布局），
     以便 promote 能从被晋级快照内容构造 index entry 的 stats 字段。
     """
-    run = project / "workspace/data-staging/rebuild-test"
+    run = project / "data-staging/rebuild-test"
     current = current_data_context(project)
     current.root.mkdir(parents=True)
     source_fingerprint = {"source_snapshot_id": "source-snapshot-test"}

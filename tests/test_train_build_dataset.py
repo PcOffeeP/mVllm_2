@@ -107,7 +107,7 @@ def test_builds_prompt_only_derivative_and_evaluation_loads_same_snapshot(
     output, summary = build_fixed_prompt_dataset(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
-        output_root=tmp_path / "workspace/runs",
+        output_root=tmp_path / "trains",
         experiment_id=EXAMPLE_EXPERIMENT_ID,
         project_root=tmp_path,
     )
@@ -144,7 +144,7 @@ def test_builds_prompt_only_derivative_and_evaluation_loads_same_snapshot(
     repeated, repeated_summary = build_fixed_prompt_dataset(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
-        output_root=tmp_path / "workspace/runs",
+        output_root=tmp_path / "trains",
         experiment_id=EXAMPLE_EXPERIMENT_ID,
         project_root=tmp_path,
         validate_only=True,
@@ -161,7 +161,7 @@ def test_rejects_source_sampling_file_drift(tmp_path: Path) -> None:
         build_fixed_prompt_dataset(
             source_sampling_dir=source,
             prompt_revision_dir=REVISION,
-            output_root=tmp_path / "workspace/runs",
+            output_root=tmp_path / "trains",
             experiment_id=EXAMPLE_EXPERIMENT_ID,
             project_root=tmp_path,
         )
@@ -174,7 +174,7 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
     input_dir, _ = build_fixed_prompt_dataset(
         source_sampling_dir=source,
         prompt_revision_dir=REVISION,
-        output_root=tmp_path / "workspace/runs",
+        output_root=tmp_path / "trains",
         experiment_id=EXAMPLE_EXPERIMENT_ID,
         project_root=tmp_path,
     )
@@ -198,7 +198,7 @@ def test_prepares_seed3411_run_without_hyperparameter_drift(
     assert manifest["commands"]["evaluate"][-2:] == [
         "--experiment-contract",
         (
-            f"workspace/runs/{EXAMPLE_EXPERIMENT_ID}/"
+            f"trains/{EXAMPLE_EXPERIMENT_ID}/"
             "input/experiment_contract.json"
         ),
     ]
@@ -237,7 +237,7 @@ def test_build_fixed_prompt_dataset_rejects_missing_experiment_id(
         build_fixed_prompt_dataset(
             source_sampling_dir=tmp_path / "absent-source-sampling",
             prompt_revision_dir=tmp_path / "absent-prompt-revision",
-            output_root=tmp_path / "workspace/runs",
+            output_root=tmp_path / "trains",
             project_root=tmp_path,
         )
 

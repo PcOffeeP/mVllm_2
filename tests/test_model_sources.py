@@ -99,7 +99,7 @@ def test_base_requires_locally_consistent_provenance(tmp_path, damage):
 def test_source_cli_rejects_ambiguous_branches_before_store_creation(tmp_path, argv):
     from versioning.cli import main
     assert main(['model', 'register', 'model-v4.1-r1', '--root', str(tmp_path), *argv]) == 2
-    assert not (tmp_path / 'workspace/mlflow').exists()
+    assert not (tmp_path / 'mlflow').exists()
 
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def diagnostic_model(tmp_path, monkeypatch):
         (output / 'trainer_state.json').write_text('{"global_step":42}')
     monkeypatch.setattr('finetune.train_with_contract.run_training', tuner)
     parent = execute_versioned_run(root=root, train_version='train-v4.1-r1', fold=2)
-    store = open_registry_store(root / 'workspace/mlflow', data_root=root / 'data')
+    store = open_registry_store(root / 'mlflow', data_root=root / 'data')
     record = register_completed_fold_model(store, 'model-v4.1-r1', train_id=parent.train_id, fold=2)
     return store, record, parent, root
 
@@ -202,8 +202,8 @@ def test_source_backup_restore_preserves_snapshot_and_external_base_dependency(r
     create_backup(store, data_root=data_root, prompts_root=project, models_root=project / 'models', backup_root=backup)
     restored = tmp_path / 'restored'
     restore_backup(backup, data_root=restored / 'data', prompts_root=restored,
-                   models_root=restored / 'models', mlflow_root=restored / 'workspace/mlflow')
-    restored_store = open_registry_store(restored / 'workspace/mlflow', data_root=restored / 'data')
+                   models_root=restored / 'models', mlflow_root=restored / 'mlflow')
+    restored_store = open_registry_store(restored / 'mlflow', data_root=restored / 'data')
     actual = validate_model_for_evaluation(restored_store, record.model_id, record.version)
     assert actual.source_evidence == record.source_evidence
     assert actual.base_model == record.base_model

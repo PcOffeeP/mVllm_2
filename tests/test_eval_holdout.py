@@ -137,7 +137,7 @@ def test_prepare_refuses_inconsistent_holdout_before_truth_access(tmp_path, monk
     forbid_truth(monkeypatch, truth)
     with pytest.raises(ValueError):
         ev.prepare_versioned_evaluation(**kwargs)
-    assert not (root / 'workspace/evaluations/eval-v4.1-r1/input').exists()
+    assert not (root / 'evaluations/eval-v4.1-r1/input').exists()
 
 
 def test_wrong_scoring_executor_or_drift_does_not_read_truth(tmp_path, monkeypatch):
@@ -215,7 +215,7 @@ def test_prepare_rejects_metadata_links_before_opening_truth(tmp_path, monkeypat
     forbid_truth(monkeypatch, truth)
     with pytest.raises(ValueError, match='ordinary'):
         ev.prepare_versioned_evaluation(**kwargs)
-    assert not (root / 'workspace/evaluations/eval-v4.1-r1/input').exists()
+    assert not (root / 'evaluations/eval-v4.1-r1/input').exists()
 
 
 def test_forged_scoring_receipt_cannot_skip_actual_scoring(tmp_path, monkeypatch):

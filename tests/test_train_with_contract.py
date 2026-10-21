@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 
 from finetune.train_with_contract import LLAMAFACTORY_SRC, ROOT
+from pipeline.data_roots import COMPAT_WORKSPACE_NAME
 
 
 def test_training_entrypoint_prefers_current_repository_llamafactory() -> None:
@@ -125,7 +126,7 @@ def _versioned_data_fixture(tmp_path, *, prompt_definition=None):
     from versioning.prompts import create_prompt
 
     root = tmp_path / "store"
-    media = tmp_path / "original/workspace/data"
+    media = tmp_path / "original" / COMPAT_WORKSPACE_NAME / "data"
     release = root / "data/releases/data-v4.1-r2"
     payload = release
     labels = {"clip_state": "未断裂", "fracture_mechanism": None,
@@ -179,7 +180,7 @@ def test_versioned_datasets_keep_each_fold_members_and_labels(tmp_path):
                 assert row["messages"][0]["content"] == "frozen system"
                 assert row["messages"][1]["content"] == "<video>\nfrozen user"
                 assert (media / row["videos"][0]).is_file()
-    assert not (root / "workspace/runs").exists()
+    assert not (root / "trains").exists()
 
 
 def test_versioned_datasets_reject_wrong_external_media_root(tmp_path):
@@ -187,7 +188,8 @@ def test_versioned_datasets_reject_wrong_external_media_root(tmp_path):
     from finetune.train_build_dataset import build_versioned_datasets
 
     root, media, release, original = _versioned_data_fixture(tmp_path)
-    wrong = root / "workspace/data"
+    # 扁平化后 store 下的 data/ 已由 release 占用，改在 store 之外构造一个空的外部数据根。
+    wrong = tmp_path / "external-media" / "data"
     wrong.mkdir(parents=True)
     with pytest.raises(ValueError, match="media"):
         build_versioned_datasets(root=root, data_version="data-v4.1-r2",
@@ -228,7 +230,7 @@ def test_versioned_prepare_freezes_three_folds_without_creating_run(tmp_path):
     import yaml
     root, media, release, prepared = _prepare_versioned_fixture(tmp_path)
     training = yaml.safe_load((prepared / "training.yaml").read_text())
-    assert not (root / "workspace/mlflow").exists()
+    assert not (root / "mlflow").exists()
     for fold in range(3):
         config = training["folds"][f"fold{fold}"]
         assert config["seed"] == 3411 + fold
@@ -278,7 +280,7 @@ def test_versioned_execution_rejects_frozen_input_tampering_before_run(tmp_path,
     with pytest.raises(ValueError, match="frozen"):
         execute_versioned_run(root=root, train_version="train-v4.1-r1")
     assert calls == []
-    assert not (root / "workspace/mlflow").exists()
+    assert not (root / "mlflow").exists()
 
 
 def test_versioned_prepare_rejects_tokenized_cache(tmp_path):
@@ -291,7 +293,7 @@ def test_versioned_prepare_rejects_tokenized_cache(tmp_path):
         prepare_versioned_run(root=root, train_version="train-v4.1-r1", data_version="data-v4.1-r2",
             prompt_version="prompt-v4.1-r1", media_root=media, fold_configs=configs,
             git_commit="fixture", environment={"python": "fixture"})
-    assert not (root / "workspace/runs/train-v4.1-r1/input").exists()
+    assert not (root / "trains/train-v4.1-r1/input").exists()
 
 
 def test_versioned_validate_rejects_changed_media_bytes(tmp_path):
@@ -376,7 +378,7 @@ def test_registry_rejects_completed_train_without_execution_evidence(tmp_path):
     from versioning.registry import open_registry_store, register_model, PromotionGateRejected
     from mlflow.tracking import MlflowClient
     root, media, release, rows = _versioned_data_fixture(tmp_path)
-    store = open_train_store(root / 'workspace/mlflow')
+    store = open_train_store(root / 'mlflow')
     create_train_run(store, 'train-v4.1-r1', data_version='data-v4.1-r2',
         prompt_version='prompt-v4.1-r1', git_commit='unexecuted', base_model='missing', config={'epochs': 1})
     for fold in range(3):
@@ -400,7 +402,7 @@ def test_training_base_drift_before_run_creates_no_run(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="base model"):
         execute_versioned_run(root=root, train_version="train-v4.1-r1")
     assert calls == []
-    assert not (root / "workspace/mlflow").exists()
+    assert not (root / "mlflow").exists()
 
 
 def test_training_base_drift_during_fold_marks_run_failed(tmp_path, monkeypatch):
@@ -415,7 +417,7 @@ def test_training_base_drift_during_fold_marks_run_failed(tmp_path, monkeypatch)
     monkeypatch.setattr("finetune.train_with_contract.run_training", tuner)
     with pytest.raises(ValueError, match="base model"):
         execute_versioned_run(root=root, train_version="train-v4.1-r1")
-    record = get_train_run(open_train_store(root / "workspace/mlflow"), "train-v4.1-r1")
+    record = get_train_run(open_train_store(root / "mlflow"), "train-v4.1-r1")
     assert record.workflow_state == "failed"
     assert len(calls) == 1
     assert not (root / "records/training/train-v4.1-r1/manifest.yaml").exists()
