@@ -220,7 +220,9 @@ def _rewrite_rows(
     for index, source_row in enumerate(rows):
         video_path, _ = validate_training_row(source_row, label, index)
         messages = source_row["messages"]
-        resolved_video = resolve_workspace_artifact(video_path, data_root)
+        resolved_video = resolve_workspace_artifact(
+            video_path, data_root, project_local=True
+        )
         try:
             portable_video = str(resolved_video.relative_to(data_root))
         except ValueError as exc:

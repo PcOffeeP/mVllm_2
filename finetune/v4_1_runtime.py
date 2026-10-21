@@ -336,7 +336,9 @@ def validate_release(
                         f"fold_{fold}: train/val 重复候选媒体: {video_path}"
                     )
                 seen_videos.add(video_path)
-                media_path = resolve_workspace_artifact(video_path, media_root)
+                media_path = resolve_workspace_artifact(
+                    video_path, media_root, project_local=True
+                )
                 if verify_media and not media_path.is_file():
                     raise V4_1FinetuneError(f"训练媒体不存在: {media_path}")
                 canonicalize_v4_1_labels(labels)

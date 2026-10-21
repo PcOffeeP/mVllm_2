@@ -212,9 +212,11 @@ def apply_plan(root: Path, plan: dict[str, Any], confirmation: str) -> dict[str,
         if action.get("decision") != "delete":
             continue
         target = Path(os.path.abspath(root / action["path"]))
-        trains = root / "trains"
-        if trains not in target.parents:
-            raise CheckpointManagementError(f"删除路径不在 trains: {target}")
+        allowed_roots = (root / "trains", root / "models")
+        if not any(base in target.parents for base in allowed_roots):
+            raise CheckpointManagementError(
+                f"删除路径不在 trains/ 或 models/: {target}"
+            )
         if not CHECKPOINT_RE.fullmatch(target.name):
             raise CheckpointManagementError(f"删除目标不是 checkpoint: {target}")
         if target.is_symlink() or not target.is_dir():

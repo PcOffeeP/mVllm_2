@@ -172,16 +172,26 @@ def resolve_workspace_artifact(
     value: str | Path,
     workspace: Path,
     *,
-    project_local: bool = True,
+    project_local: bool = False,
 ) -> Path:
     """Map frozen ``data/...`` paths into one version's workspace.
 
     Historical manifests may contain an absolute path from the machine where
     they were created.  Only the suffix beginning with ``data`` is portable;
     all other absolute paths remain unchanged.
+
+    ``project_local=True`` 声明 ``workspace`` 实参是受管数据根（项目数据根
+    ``<repo>/data``，或 ``data-staging/<run>/data``、
+    ``data-rebuild/<run>/data``），只有此时才启用
+    ``PROJECT_LOCAL_LEGACY_PATHS`` 的 legacy 编号目录重映射。默认 ``False``
+    表示只按实参做字面拼接，避免把非数据根实参（如 ``.compat/workspace``、
+    发布媒体根）误当数据根；未声明时仅保留改造前对旧版
+    ``<...>/workspace/data`` 布局的兼容判定（``is_legacy_workspace_data_root``），
+    该形态确为旧版项目数据根，其余形态一律字面拼接。
     """
     path = Path(value)
     workspace = Path(workspace).absolute()
+    project_local = project_local or is_legacy_workspace_data_root(workspace)
     if not path.is_absolute():
         return (
             _resolve_project_local_legacy_path(path, workspace)
@@ -215,6 +225,17 @@ def _resolve_project_local_legacy_path(path: Path, workspace: Path) -> Path:
 
 
 SEMANTIC_DATA_PARENT_NAMES = frozenset({"data-rebuild", "data-staging"})
+COMPAT_WORKSPACE_NAME = "workspace"
+
+
+def is_legacy_workspace_data_root(path: Path) -> bool:
+    """改造前未显式声明 ``project_local`` 时的兼容判据。
+
+    只识别旧版 ``<...>/workspace/data`` 布局（扁平化前的项目数据根）。其余
+    形态（``.compat/workspace``、发布媒体根等）一律不是数据根，保持字面拼接。
+    """
+    path = Path(path)
+    return path.name == "data" and path.parent.name == COMPAT_WORKSPACE_NAME
 
 
 def is_project_data_root(path: Path, *, project_local: bool = False) -> bool:
@@ -243,11 +264,22 @@ def workspace_portable_path(
     path: Path,
     workspace: Path,
     *,
-    project_local: bool = True,
+    project_local: bool = False,
 ) -> str:
-    """Return the frozen ``data/...`` identity for a semantic target."""
+    """Return the frozen ``data/...`` identity for a semantic target.
+
+    ``project_local=True`` 声明 ``workspace`` 实参是受管数据根（项目数据根
+    ``<repo>/data``，或 ``data-staging/<run>/data``、
+    ``data-rebuild/<run>/data``），只有此时才启用
+    ``PROJECT_LOCAL_LEGACY_PATHS`` 的 legacy 编号目录重映射。默认 ``False``
+    表示只按实参做字面拼接，避免把非数据根实参（如 ``.compat/workspace``、
+    发布媒体根）误当数据根；未声明时仅保留改造前对旧版
+    ``<...>/workspace/data`` 布局的兼容判定（``is_legacy_workspace_data_root``），
+    该形态确为旧版项目数据根，其余形态一律字面拼接。
+    """
     path = Path(path).absolute()
     workspace = Path(workspace).absolute()
+    project_local = project_local or is_legacy_workspace_data_root(workspace)
     if project_local:
         resolved = path.resolve()
         for legacy, semantic in PROJECT_LOCAL_LEGACY_PATHS.items():

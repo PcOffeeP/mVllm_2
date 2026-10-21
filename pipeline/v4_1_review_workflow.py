@@ -25,6 +25,7 @@ from pipeline.v4_1_labels import (
 )
 from pipeline.data_roots import (
     DataRootError,
+    is_legacy_workspace_data_root,
     is_project_data_root,
     resolve_workspace_artifact,
     workspace_portable_path,
@@ -92,7 +93,7 @@ def _contract_identity(contract_path: Path) -> tuple[str, str]:
 
 
 def _resolve_path(value: Any, project_root: Path) -> Path:
-    return resolve_workspace_artifact(str(value), project_root)
+    return resolve_workspace_artifact(str(value), project_root, project_local=True)
 
 
 def _resolve_contract_path(
@@ -126,8 +127,18 @@ def _portable_identity_path(
     path: Path,
     data_root: Path,
     *,
-    project_local: bool = True,
+    project_local: bool = False,
 ) -> str:
+    """Return the frozen ``data/...`` identity relative to ``data_root``.
+
+    ``project_local=True`` 声明 ``data_root`` 实参是受管数据根（项目数据根
+    ``<repo>/data``，或 ``data-staging/<run>/data``、
+    ``data-rebuild/<run>/data``），只有此时才启用
+    ``PROJECT_LOCAL_LEGACY_PATHS`` 的 legacy 编号目录重映射。默认 ``False``
+    表示不按实参类型声明数据根、只按实参做字面拼接，避免把非数据根实参（如
+    ``.compat/workspace``、发布媒体根）误当数据根；未声明时仅保留改造前的
+    旧版 ``<...>/workspace/data`` 与 staging/rebuild 语义父目录判定。
+    """
     resolved = Path(path).resolve()
     try:
         relative = resolved.relative_to(Path(data_root).resolve())
@@ -138,7 +149,11 @@ def _portable_identity_path(
             raise V4_1ReviewWorkflowError(
                 f"路径无法转换为稳定身份: {path}"
             ) from exc
-    semantic_root = is_project_data_root(data_root, project_local=project_local)
+    semantic_root = is_project_data_root(
+        data_root,
+        project_local=project_local
+        or is_legacy_workspace_data_root(data_root),
+    )
     if semantic_root and (
         not relative.parts
         or relative.parts[0] not in {"source", "derived", "releases"}
@@ -265,17 +280,19 @@ def build_v4_1_review_queue(
         "queue_id": queue_id,
         "migration_policy_version": MIGRATION_POLICY_VERSION,
         "contract": {
-            "path": _portable_identity_path(contract_path, project_root),
+            "path": _portable_identity_path(
+                contract_path, project_root, project_local=True
+            ),
             "contract_hash": contract_hash,
             "file_sha256": contract_file_sha256,
         },
         "source_media": {
             "materialized_path": _portable_identity_path(
-                materialized_path, project_root
+                materialized_path, project_root, project_local=True
             ),
             "materialized_sha256": sha256_file(materialized_path),
             "manifest_path": _portable_identity_path(
-                manifest_path, project_root
+                manifest_path, project_root, project_local=True
             ),
             "manifest_sha256": sha256_file(manifest_path),
             "media_id": payload["media_id"],
@@ -339,7 +356,7 @@ def _phase2_scope_input_name(scope: str) -> str:
 
 def _portable_binding_path(path: Path, project_root: Path) -> str:
     try:
-        return workspace_portable_path(path, project_root)
+        return workspace_portable_path(path, project_root, project_local=True)
     except DataRootError:
         return str(Path(path).resolve())
 

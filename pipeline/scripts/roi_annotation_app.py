@@ -148,7 +148,7 @@ def resolve_video_path(record: Mapping[str, Any], project_root: Path) -> Path:
     raw = record.get("video_path") or (
         f"source/videos/{record['video_id']}.mp4"
     )
-    return resolve_data_artifact(str(raw), project_root)
+    return resolve_data_artifact(str(raw), project_root, project_local=True)
 
 
 def load_roi_payload(path: Path) -> dict[str, Any]:

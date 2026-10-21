@@ -98,7 +98,7 @@ def _atomic_write(path: Path, payload: Any) -> None:
 def _resolve_project_path(path_value: Any, project_root: Path) -> Path:
     if not isinstance(path_value, str) or not path_value:
         raise CandidateMediaError(f"无效项目路径: {path_value}")
-    return resolve_data_artifact(path_value, project_root)
+    return resolve_data_artifact(path_value, project_root, project_local=True)
 
 
 def _event_time(record: Mapping[str, Any]) -> float | None:
@@ -485,7 +485,7 @@ def _frame_artifacts(
 
 def _portable(path: Path, project_root: Path) -> str:
     try:
-        return workspace_portable_path(path, project_root)
+        return workspace_portable_path(path, project_root, project_local=True)
     except DataRootError as exc:
         raise CandidateMediaError(f"输出路径不属于当前数据 workspace: {path}") from exc
 

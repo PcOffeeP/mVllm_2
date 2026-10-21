@@ -110,9 +110,9 @@ def _contract_identity(contract_path: Path) -> tuple[dict[str, Any], str]:
 def _relative_media_path(value: Any, project_root: Path, candidate_id: str) -> str:
     if not isinstance(value, str) or not value:
         raise V4_1TrainingReleaseError(f"{candidate_id}: video_path 不能为空")
-    resolved = resolve_workspace_artifact(value, project_root)
+    resolved = resolve_workspace_artifact(value, project_root, project_local=True)
     try:
-        return workspace_portable_path(resolved, project_root)
+        return workspace_portable_path(resolved, project_root, project_local=True)
     except DataRootError as exc:
         raise V4_1TrainingReleaseError(
             f"{candidate_id}: 媒体必须位于项目目录内: {resolved}"
@@ -120,7 +120,9 @@ def _relative_media_path(value: Any, project_root: Path, candidate_id: str) -> s
 
 
 def _verify_artifact(path_value: Any, expected_sha: Any, project_root: Path, label: str) -> Path:
-    resolved = resolve_workspace_artifact(str(path_value), project_root)
+    resolved = resolve_workspace_artifact(
+        str(path_value), project_root, project_local=True
+    )
     if not resolved.is_file():
         raise V4_1TrainingReleaseError(f"{label}不存在: {resolved}")
     actual = sha256_file(resolved)
@@ -200,7 +202,9 @@ def _load_materialized(
             timestamps.append(float(timestamp))
             verified_frames.append(
                 {
-                    "path": workspace_portable_path(frame_path, project_root),
+                    "path": workspace_portable_path(
+                        frame_path, project_root, project_local=True
+                    ),
                     "sha256": frame["sha256"],
                 }
             )
@@ -209,7 +213,9 @@ def _load_materialized(
         candidates.append(
             {
                 **item,
-                "_release_video_path": workspace_portable_path(video, project_root),
+                "_release_video_path": workspace_portable_path(
+                    video, project_root, project_local=True
+                ),
                 "_release_frames": verified_frames,
                 "_sampled_timestamps": timestamps,
             }

@@ -10,6 +10,7 @@ from typing import Any, Mapping
 from pipeline.data_roots import (
     DataRootError,
     PROJECT_LOCAL_LEGACY_PATHS,
+    is_legacy_workspace_data_root,
     is_project_data_root,
 )
 from pipeline.project_workspace import project_workspace_paths
@@ -71,7 +72,7 @@ class DataContext:
         Unknown absolute paths fail closed instead of leaking to an external
         machine-specific root.
         """
-        return resolve_data_artifact(value, self.root)
+        return resolve_data_artifact(value, self.root, project_local=True)
 
     def semantic_path(self, value: str | Path) -> str:
         """Return a normalized semantic path relative to this data root."""
@@ -160,11 +161,22 @@ def resolve_data_artifact(
     value: str | Path,
     data_root: Path,
     *,
-    project_local: bool = True,
+    project_local: bool = False,
 ) -> Path:
-    """Resolve one artifact against any semantic current/rebuild data root."""
+    """Resolve one artifact against any semantic current/rebuild data root.
+
+    ``project_local=True`` 声明 ``data_root`` 实参是受管数据根（项目数据根
+    ``<repo>/data``，或 ``data-staging/<run>/data``、
+    ``data-rebuild/<run>/data``），只有此时才启用
+    ``PROJECT_LOCAL_LEGACY_PATHS`` 的 legacy 编号目录重映射。默认 ``False``
+    表示不按实参类型声明数据根、只按实参做字面拼接，避免把非数据根实参（如
+    ``.compat/workspace``、发布媒体根）误当数据根；未声明时仅保留改造前的
+    旧版 ``<...>/workspace/data`` 与 staging/rebuild 语义父目录判定。
+    """
     root = Path(data_root).resolve()
-    semantic_root = is_project_data_root(root, project_local=project_local)
+    semantic_root = is_project_data_root(
+        root, project_local=project_local or is_legacy_workspace_data_root(root)
+    )
     raw = Path(value)
     if not raw.is_absolute() and ".." in raw.parts:
         raise DataRootError(f"相对路径不能包含父目录跳转: {value}")

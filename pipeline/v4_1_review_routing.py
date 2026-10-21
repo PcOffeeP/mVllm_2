@@ -59,7 +59,7 @@ def _candidate_ids_sha256(candidate_ids: Iterable[str]) -> str:
 
 def _portable_path(path: Path, project_root: Path) -> str:
     try:
-        return workspace_portable_path(path, project_root)
+        return workspace_portable_path(path, project_root, project_local=True)
     except DataRootError:
         return str(Path(path).resolve())
 

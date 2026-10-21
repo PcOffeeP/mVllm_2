@@ -98,7 +98,9 @@ def _verified_release_file(
 
 def _verify_media_row(row: Mapping[str, Any], project_root: Path) -> None:
     candidate_id = str(row.get("candidate_id") or "")
-    video = resolve_workspace_artifact(str(row.get("video_path")), project_root)
+    video = resolve_workspace_artifact(
+        str(row.get("video_path")), project_root, project_local=True
+    )
     if not video.is_file() or sha256_file(video) != row.get("video_sha256"):
         raise V4_1TrainingReleaseError(f"{candidate_id}: 基础发布视频缺失或哈希漂移")
     frames = _require_list(row.get("frames"), f"{candidate_id}.frames")
@@ -106,7 +108,9 @@ def _verify_media_row(row: Mapping[str, Any], project_root: Path) -> None:
         raise V4_1TrainingReleaseError(f"{candidate_id}: 基础发布帧证据为空")
     for index, item in enumerate(frames):
         frame = _require_mapping(item, f"{candidate_id}.frames[{index}]")
-        path = resolve_workspace_artifact(str(frame.get("path")), project_root)
+        path = resolve_workspace_artifact(
+            str(frame.get("path")), project_root, project_local=True
+        )
         if not path.is_file() or sha256_file(path) != frame.get("sha256"):
             raise V4_1TrainingReleaseError(
                 f"{candidate_id}: 基础发布帧[{index}]缺失或哈希漂移"

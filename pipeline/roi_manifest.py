@@ -114,7 +114,7 @@ def _resolve_source_path(
         or video.get("video_path")
         or f"source/videos/{video['video_id']}.mp4"
     )
-    return resolve_data_artifact(str(raw), project_root)
+    return resolve_data_artifact(str(raw), project_root, project_local=True)
 
 
 def _validate_decision(

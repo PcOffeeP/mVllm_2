@@ -283,6 +283,7 @@ def load_generation_plan(
         source_path = resolve_data_artifact(
             str(decision.get("source_video_path") or video.get("video_path")),
             project_root,
+            project_local=True,
         )
         if not source_path.is_file():
             raise RoiMediaError(f"{video_id}: 源视频不存在: {source_path}")
