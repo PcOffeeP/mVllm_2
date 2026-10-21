@@ -48,7 +48,10 @@ from pipeline.prompt_control import (  # noqa: E402
     load_prompt_revision,
 )
 from pipeline.prompt_control.core import sha256_file  # noqa: E402
-from pipeline.data_roots import resolve_workspace_artifact  # noqa: E402
+from pipeline.data_roots import (  # noqa: E402
+    is_data_root_shaped,
+    resolve_workspace_artifact,
+)
 from pipeline.project_workspace import (  # noqa: E402
     project_workspace_paths,
     validate_experiment_id,
@@ -109,7 +112,9 @@ def build_versioned_datasets(*, root: Path, data_version: str, prompt_version: s
             rows, seen = [], set()
             for index, row in enumerate(source):
                 video, _ = validate_training_row(row, relative, index)
-                resolved = resolve_workspace_artifact(video, media_root).resolve()
+                resolved = resolve_workspace_artifact(
+                    video, media_root, project_local=is_data_root_shaped(media_root)
+                ).resolve()
                 if not resolved.is_relative_to(media_root.resolve()) or not resolved.is_file():
                     raise ValueError(f"media missing or outside explicit root: {video}")
                 if resolved in seen:

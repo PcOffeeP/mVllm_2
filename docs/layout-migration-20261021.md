@@ -38,8 +38,9 @@ P2 物理搬迁完成且新布局登记进 `docs/design-facts.yaml` 之后，本
 
 ## 2. 本阶段做了什么
 
-- 只改代码、配置、测试与 `.gitignore`：路径层不再拼接 `workspace/` 段，项目根即 workspace 根；`.gitignore` 以 `/data`、`/trains`、`/base-models`、`/mlflow`、`/evaluations`、`/audits`、`/data-staging`、`/data-rebuild` 取代 `/workspace/`，并删除失效的 `/data/` 家族子规则；`models/*` 保持原样（它只排除子项，目录本身可跟踪）。
+- 只改代码、配置、测试与 `.gitignore`：路径层不再拼接 `workspace/` 段，项目根即 workspace 根；`.gitignore` 以 `/data`、`/trains`、`/base-models`、`/mlflow`、`/evaluations`、`/audits`、`/data-staging`、`/data-rebuild` 取代 `/workspace/`，并删除失效的 `/data/` 家族子规则；`models/*` 保持原样（它只排除子项，目录本身可跟踪）。除这 8 条新规则外，`.gitignore` **另保留一条 `/workspace/` 临时忽略**（注释已写明用途）：P2 物理搬迁前该目录仍在磁盘上，删掉该行会让残留产物变成未跟踪文件；P2 删除目录后连该行一并删除。
 - **未做物理搬迁**：`workspace/` 目录仍在磁盘上，本机现含 `base-source-audit/`、`mlflow/`、`review-environment/`、`runs/`；`models/` 下仍是 `minicpm-v-4.5` 基座。
+- **验证限制（P2 前，审查 Finding #4）**：`versioning/migration.py` 的 legacy 常量已按 P2 后的落点书写——`_LEGACY_DATA_RELEASES` 为 `data/releases`、`_PREPARE_ONLY_RUN_SOURCE_ROOT` 为 `trains`、模型侧取 `models/releases/<模型名>`。P2 物理搬迁完成前，`workspace/` 下的旧源仍在原处，在训练机上跑 migration / backup restore 相关入口会因旧源路径缺失而 fail-closed；这些入口在 P2 前的输出一律视为**未验证**，不得据此声称迁移或恢复可用。P2 搬迁完成后须在训练机重跑并按结果更新本段。
 - 现行操作文档改指新路径；历史证据快照（`docs/results/**` 与 `records/r1-run-20261018/**`）与历史计划（`docs/plans/**`）零改动。
 
 ## 3. 尚未做：P2 物理搬迁清单

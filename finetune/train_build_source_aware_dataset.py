@@ -14,7 +14,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from finetune.v4_1_runtime import validate_training_row
-from pipeline.data_roots import resolve_workspace_artifact
+from pipeline.data_roots import is_data_root_shaped, resolve_workspace_artifact
 from pipeline.v3_review_workflow import sha256_file
 from pipeline.v4_1_labels import canonicalize_v4_1_labels
 
@@ -187,7 +187,9 @@ def _release_inputs(
             )
         candidate["labels"] = canonicalize_v4_1_labels(candidate.get("labels"))
         if verify_media:
-            media = resolve_workspace_artifact(video_path, media_root)
+            media = resolve_workspace_artifact(
+                video_path, media_root, project_local=is_data_root_shaped(media_root)
+            )
             if not media.is_file() or sha256_file(media) != candidate.get("video_sha256"):
                 raise SourceAware3kError(f"{candidate_id}: 训练媒体缺失或哈希漂移")
         by_video[video_path] = candidate

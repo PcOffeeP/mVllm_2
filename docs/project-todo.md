@@ -332,11 +332,12 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **事实与差距**：训练机 store 里的 `workspace/` 段是否仍存在、是否仍被历史记录引用，尚未在现场核对；改名会移动活数据目录。
 - **下一动作/理由**：需要用户授权后按「先核对引用与备份、再改名」的顺序做，且仅在 store 域内决策；不与项目本地布局迁移合并。
 
-### REBUILD-DATA-ROOT-PROJECT-LOCAL — `data-rebuild` 数据根的 `project_local` 取值与改造前不同
+### REBUILD-DATA-ROOT-PROJECT-LOCAL — 运行期媒体根的 legacy 重映射改按数据根形状判定（原「取值与改造前不同」描述失实，已改写）
 
-- **状态/来源**：待处理（Pi，2026-10-21）；`pipeline/data_roots.py` 的 `project_local` 现默认 False，且仅在 `is_legacy_workspace_data_root()` 命中时按旧布局补判。`data-rebuild` 数据根在新布局下不再命中该判定，取值与改造前不同。
-- **事实与差距**：`project_local` 决定 `data/...` 冻结路径按语义映射（如 `data/01_videos` → `source/videos`）还是字面拼接；取值变化可能使新 rebuild run 的媒体身份格式与旧 run 不一致，进而影响与历史 run 的可比性。
-- **下一动作/理由**：需在训练机实际跑一次 rebuild 并在真实数据根上对比新旧媒体身份格式；本机无 `data-rebuild` 数据根，无法验证。未验证前不得声称 rebuild 产物与旧 run 同口径。
+- **状态/来源**：待验证（Pi，2026-10-21 登记，2026-10-21 同批改写）。原描述「`data-rebuild` 数据根在新布局下不再命中该判定，取值与改造前不同」**事实不成立**：`pipeline/current_data.resolve_data_artifact` 仍通过 `pipeline/data_roots.SEMANTIC_DATA_PARENT_NAMES` 命中 `data-rebuild/<run>/data`（本机实测 `data/03_subvideos/x.mp4` 解析为 `data-rebuild/<run>/data/derived/subvideos/x.mp4`）；`resolve_workspace_artifact` 改造前（`336adf9`）用的判据要求末段 `data` 且上一段为搬迁前的旧根段，**从不识别** `data-rebuild/<run>/data`，故「取值与改造前不同」不成立。
+- **真实风险（修复前）**：`finetune/train_build_dataset.py`、`finetune/train_build_source_aware_dataset.py`、`finetune/eval_run.py` 三处在**运行期**把 `media_root` 传给 `resolve_workspace_artifact` 却未传 `project_local`，默认 `False` 只按名称内省旧布局。P2 物理搬迁后项目数据根是 `<repo>/data`，旧判据不再命中，冻结编号身份 `data/…` 会被字面拼成 `<root>/data/data/…`（媒体不存在）；`eval_run.evaluate_one` 的 `current_data_paths(ROOT).root` 回退分支同样受影响。
+- **修复**：`pipeline/data_roots.is_data_root_shaped(path)`（判末段名是否 `data`，不依赖 `COMPAT_WORKSPACE_NAME`、不写旧布局路径字面量）在三处调用点以 `project_local=is_data_root_shaped(<运行期实参>)` 传入，使数据根走 `source/`/`derived/` 语义重映射，发布媒体根与七阶段 payload 根保持字面拼接。修复 commit 用 `git log --oneline -1 -- pipeline/data_roots.py` 取得（不在文内自引 sha）；未改任何评分、阈值或判据逻辑。
+- **未验证/下一动作**：本机没有真实 `data`/`data-rebuild` 媒体，未在训练机跑过真实发布。**下一动作**：P2 搬迁后在训练机用真实迁移发布跑一次 `train_build_dataset`，核对媒体解析落到 `data/derived/subvideos`（而非 `data/data/...`），并在 `eval_run` 默认媒体根分支上复核一次；结果补进本条证据后再关闭。
 
 ### RESTORE-ORIGINAL-PROJECT — 备份恢复中 `original_project` 的路径推导未在真实历史冻结构上验证
 

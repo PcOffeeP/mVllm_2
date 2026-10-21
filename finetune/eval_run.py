@@ -51,7 +51,7 @@ from finetune.validation.model_runtime import (
     run_model_on_video_detailed,
 )
 from pipeline.current_data import current_data_paths
-from pipeline.data_roots import resolve_workspace_artifact
+from pipeline.data_roots import is_data_root_shaped, resolve_workspace_artifact
 from pipeline.prompt_control import load_experiment_contract
 from pipeline.prompt_control.core import PromptControlError, sha256_file
 from pipeline.v4_1_production_contract import EXPECTED_CONTRACT_HASH
@@ -311,9 +311,13 @@ def evaluate_one(
     sampled_timestamps: list[float] | None = None
     generated_token_count: int | None = None
     hit_token_limit: bool | None = None
+    runtime_media_root = (
+        media_root if media_root is not None else current_data_paths(ROOT).root
+    )
     video_path = resolve_workspace_artifact(
         str(sample["video_path"]),
-        media_root if media_root is not None else current_data_paths(ROOT).root,
+        runtime_media_root,
+        project_local=is_data_root_shaped(runtime_media_root),
     )
     try:
         result = run_model_on_video_detailed(

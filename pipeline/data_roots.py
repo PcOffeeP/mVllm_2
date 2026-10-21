@@ -238,6 +238,19 @@ def is_legacy_workspace_data_root(path: Path) -> bool:
     return path.name == "data" and path.parent.name == COMPAT_WORKSPACE_NAME
 
 
+def is_data_root_shaped(path: Path) -> bool:
+    """实参是否呈受管数据根形状（末段名为 ``data``）。
+
+    2026-10-21 扁平化后项目数据根落点是 ``<repo>/data``；发布媒体根形如
+    ``<root>/data/releases/<data 版本>/media``（末段 ``media``），七阶段
+    payload 根末段为 ``payload``。运行期调用方既可能传数据根，也可能传这两类
+    非数据根，故按末段名判定是否需要 legacy 编号身份重映射，而不依赖目录名
+    内省搬迁前的目录结构（``COMPAT_WORKSPACE_NAME`` 只描述搬迁前形态）。
+    这里只判形状，不判存在性，也不校验调用方传入的是哪一类子树。
+    """
+    return Path(path).name == "data"
+
+
 def is_project_data_root(path: Path, *, project_local: bool = False) -> bool:
     """收敛「项目语义数据根」判据（取代三处逐字复制的名称内省）。
 
