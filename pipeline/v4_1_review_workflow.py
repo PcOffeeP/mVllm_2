@@ -25,6 +25,7 @@ from pipeline.v4_1_labels import (
 )
 from pipeline.data_roots import (
     DataRootError,
+    is_project_data_root,
     resolve_workspace_artifact,
     workspace_portable_path,
 )
@@ -121,7 +122,12 @@ def _resolve_contract_path(
     return path
 
 
-def _portable_identity_path(path: Path, data_root: Path) -> str:
+def _portable_identity_path(
+    path: Path,
+    data_root: Path,
+    *,
+    project_local: bool = True,
+) -> str:
     resolved = Path(path).resolve()
     try:
         relative = resolved.relative_to(Path(data_root).resolve())
@@ -132,11 +138,7 @@ def _portable_identity_path(path: Path, data_root: Path) -> str:
             raise V4_1ReviewWorkflowError(
                 f"路径无法转换为稳定身份: {path}"
             ) from exc
-    semantic_root = Path(data_root).name == "data" and (
-        Path(data_root).parent.name == "workspace"
-        or Path(data_root).parent.parent.name
-        in {"data-rebuild", "data-staging"}
-    )
+    semantic_root = is_project_data_root(data_root, project_local=project_local)
     if semantic_root and (
         not relative.parts
         or relative.parts[0] not in {"source", "derived", "releases"}

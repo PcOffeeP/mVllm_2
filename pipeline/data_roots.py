@@ -168,7 +168,12 @@ def workspace_root(
     ) / ".compat" / "workspace"
 
 
-def resolve_workspace_artifact(value: str | Path, workspace: Path) -> Path:
+def resolve_workspace_artifact(
+    value: str | Path,
+    workspace: Path,
+    *,
+    project_local: bool = True,
+) -> Path:
     """Map frozen ``data/...`` paths into one version's workspace.
 
     Historical manifests may contain an absolute path from the machine where
@@ -177,7 +182,6 @@ def resolve_workspace_artifact(value: str | Path, workspace: Path) -> Path:
     """
     path = Path(value)
     workspace = Path(workspace).absolute()
-    project_local = _is_project_local_data_root(workspace)
     if not path.is_absolute():
         return (
             _resolve_project_local_legacy_path(path, workspace)
@@ -210,9 +214,22 @@ def _resolve_project_local_legacy_path(path: Path, workspace: Path) -> Path:
     return workspace / path
 
 
-def _is_project_local_data_root(workspace: Path) -> bool:
-    workspace = Path(workspace)
-    return workspace.name == "data" and workspace.parent.name == "workspace"
+SEMANTIC_DATA_PARENT_NAMES = frozenset({"data-rebuild", "data-staging"})
+
+
+def is_project_data_root(path: Path, *, project_local: bool = False) -> bool:
+    """收敛「项目语义数据根」判据（取代三处逐字复制的名称内省）。
+
+    2026-10-21 布局变更后项目数据根是 ``<repo>/data``，不再有 ``workspace/`` 段，
+    无法从路径名称推断，因此由调用方用 ``project_local`` 显式声明。
+    ``project_local=False`` 时只按 staging/rebuild 的语义父目录名识别。
+    """
+    path = Path(path)
+    if path.name != "data":
+        return False
+    if project_local:
+        return True
+    return path.parent.parent.name in SEMANTIC_DATA_PARENT_NAMES
 
 
 def workspace_relative_path(path: Path, workspace: Path) -> str:
@@ -222,11 +239,16 @@ def workspace_relative_path(path: Path, workspace: Path) -> str:
         raise DataRootError(f"路径不属于版本 workspace: {path}") from exc
 
 
-def workspace_portable_path(path: Path, workspace: Path) -> str:
+def workspace_portable_path(
+    path: Path,
+    workspace: Path,
+    *,
+    project_local: bool = True,
+) -> str:
     """Return the frozen ``data/...`` identity for a semantic target."""
     path = Path(path).absolute()
     workspace = Path(workspace).absolute()
-    if _is_project_local_data_root(workspace):
+    if project_local:
         resolved = path.resolve()
         for legacy, semantic in PROJECT_LOCAL_LEGACY_PATHS.items():
             target = (workspace / semantic).resolve()

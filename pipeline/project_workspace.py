@@ -1,4 +1,8 @@
-"""Project-local workspace paths and semantic experiment identities."""
+"""Project-local workspace paths and semantic experiment identities.
+
+2026-10-21 起项目本地布局扁平化，``workspace/`` 段已取消：项目根即 workspace 根，
+数据 / 运行 / 模型分别落在顶层的 ``data`` / ``trains`` / ``models``。
+"""
 
 from __future__ import annotations
 
@@ -49,12 +53,12 @@ class ExperimentWorkspacePaths:
 
 def project_workspace_paths(project_root: Path) -> ProjectWorkspacePaths:
     repo_root = Path(project_root).resolve()
-    root = repo_root / "workspace"
+    root = repo_root
     return ProjectWorkspacePaths(
         repo_root=repo_root,
         root=root,
         data=root / "data",
-        runs=root / "runs",
+        runs=root / "trains",
         models=root / "models",
         model_releases=root / "models/releases",
         model_archive=root / "models/archive",
@@ -69,7 +73,7 @@ def validate_model_output_path(project_root: Path, value: Path | str) -> Path:
     path = path.resolve()
     if workspace.runs != path and workspace.runs not in path.parents:
         raise ProjectWorkspaceError(
-            f"训练模型输出必须位于 workspace/runs/: {path}"
+            f"训练模型输出必须位于 trains/: {path}"
         )
     return path
 

@@ -10,6 +10,7 @@ from typing import Any, Mapping
 from pipeline.data_roots import (
     DataRootError,
     PROJECT_LOCAL_LEGACY_PATHS,
+    is_project_data_root,
 )
 from pipeline.project_workspace import project_workspace_paths
 
@@ -155,13 +156,15 @@ class DataContext:
 CurrentDataPaths = DataContext
 
 
-def resolve_data_artifact(value: str | Path, data_root: Path) -> Path:
+def resolve_data_artifact(
+    value: str | Path,
+    data_root: Path,
+    *,
+    project_local: bool = True,
+) -> Path:
     """Resolve one artifact against any semantic current/rebuild data root."""
     root = Path(data_root).resolve()
-    semantic_root = root.name == "data" and (
-        root.parent.name == "workspace"
-        or root.parent.parent.name in {"data-rebuild", "data-staging"}
-    )
+    semantic_root = is_project_data_root(root, project_local=project_local)
     raw = Path(value)
     if not raw.is_absolute() and ".." in raw.parts:
         raise DataRootError(f"相对路径不能包含父目录跳转: {value}")
@@ -267,14 +270,14 @@ def data_context_for_root(
     if data_root.is_symlink() or data_root.parent.is_symlink():
         raise DataRootError("staging data root 不允许 symlink")
     data_root = data_root.resolve()
-    staging = project_root / "workspace" / "data-staging"
+    staging = project_root / "data-staging"
     try:
         relative = data_root.relative_to(staging)
     except ValueError as exc:
         raise DataRootError(f"staging data root 必须位于 {staging}") from exc
     if len(relative.parts) != 2 or relative.parts[1] != "data":
         raise DataRootError(
-            "staging data root 必须符合 workspace/data-staging/<run-id>/data"
+            "staging data root 必须符合 data-staging/<run-id>/data"
         )
     run_id = relative.parts[0]
     if run_id in {"", ".", ".."}:
@@ -363,11 +366,11 @@ def inspect_legacy_context(
     if raw_run_root.is_symlink() or not raw_run_root.is_dir():
         raise DataRootError(f"legacy run 必须是既存物理目录: {raw_run_root}")
     resolved_run_root = raw_run_root.resolve()
-    legacy_parent = (project_root / "workspace/data-rebuild").resolve()
+    legacy_parent = (project_root / "data-rebuild").resolve()
     try:
         relative = resolved_run_root.relative_to(legacy_parent)
     except ValueError as exc:
-        raise DataRootError("legacy run 不在 workspace/data-rebuild") from exc
+        raise DataRootError("legacy run 不在 data-rebuild") from exc
     if len(relative.parts) != 1:
         raise DataRootError("legacy run root 层级非法")
     state_path = resolved_run_root / "control/rebuild.json"

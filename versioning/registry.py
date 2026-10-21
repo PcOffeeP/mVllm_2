@@ -287,6 +287,8 @@ def open_registry_store(
     """创建（缺失时）本地 SQLite + artifact store，复用/新建 mVllm2-training/mVllm2-evaluation 实验与 mVllm2 Registered Model。"""
     root = Path(root)
     if data_root is None:
+        # 旧布局（mlflow 曾位于 workspace 段下）的兼容分支：2026-10-21 布局
+        # 扁平化后 mlflow 位于仓库顶层，走 else 分支即可得到 <root>/data。
         if root.name == "mlflow" and root.parent.name == "workspace":
             data_root = root.parent.parent / "data"
         else:

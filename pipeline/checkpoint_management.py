@@ -81,12 +81,15 @@ def _checkpoint_dirs(adapter: Path) -> list[Path]:
 
 
 def _adapter_roots(root: Path) -> list[Path]:
-    workspace = root / "workspace"
-    roots = {
-        path.parent
-        for path in workspace.rglob("adapter_model.safetensors")
-        if not CHECKPOINT_RE.fullmatch(path.parent.name)
-    }
+    roots: set[Path] = set()
+    for scan_root in (root / "trains", root / "models"):
+        if not scan_root.is_dir():
+            continue
+        roots.update(
+            path.parent
+            for path in scan_root.rglob("adapter_model.safetensors")
+            if not CHECKPOINT_RE.fullmatch(path.parent.name)
+        )
     return sorted(roots)
 
 
@@ -209,9 +212,9 @@ def apply_plan(root: Path, plan: dict[str, Any], confirmation: str) -> dict[str,
         if action.get("decision") != "delete":
             continue
         target = Path(os.path.abspath(root / action["path"]))
-        workspace = root / "workspace"
-        if workspace not in target.parents:
-            raise CheckpointManagementError(f"删除路径不在 workspace: {target}")
+        trains = root / "trains"
+        if trains not in target.parents:
+            raise CheckpointManagementError(f"删除路径不在 trains: {target}")
         if not CHECKPOINT_RE.fullmatch(target.name):
             raise CheckpointManagementError(f"删除目标不是 checkpoint: {target}")
         if target.is_symlink() or not target.is_dir():

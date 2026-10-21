@@ -17,10 +17,11 @@ from pipeline.model_registry import resolve_service_model  # noqa: E402
 
 
 def _inventory(root: Path) -> dict[str, Any]:
-    base = (root / "models/minicpmv4_5").resolve()
+    base = (root / "base-models/minicpmv4_5").resolve()
     roots = [
         root / "models",
-        root / "workspace",
+        root / "trains",
+        root / "mlflow",
         root / "LlamaFactory",
         root / "finetune",
     ]
