@@ -106,6 +106,11 @@ class BackupSource:
     scope: str
     source: Path
     include_paths: tuple[str, ...] | None = None
+    # 2026-10-21 布局变更：evaluations 已迁到仓库顶层，但备份包内部落点必须保持
+    # 历史布局（evaluations 对象仍在包的 ``workspace`` 段下），否则旧包无法恢复。
+    # 该映射给出「仓库源相对路径 → 备份包内相对路径」，仅在两者不同时使用；
+    # 未列出的白名单项按恒等处理，其它对象类型不受影响。
+    include_pack_paths: tuple[tuple[str, str], ...] = ()
     manifest_source: Path | None = None
 
 
@@ -271,18 +276,27 @@ def _copy_tree_atomic_replace(src: Path, dst: Path) -> None:
             shutil.rmtree(temp)
 
 
+def _include_pairs(source: BackupSource) -> tuple[tuple[str, str], ...]:
+    """白名单项的 ``(仓库源相对路径, 备份包内相对路径)``；未映射项恒等。"""
+    packed_by_source = dict(source.include_pack_paths)
+    return tuple(
+        (relative, packed_by_source.get(relative, relative))
+        for relative in source.include_paths or ()
+    )
+
+
 def _selected_tree_digests(source: BackupSource) -> dict[str, str]:
-    """返回源对象实际应进入备份的白名单文件摘要。"""
+    """返回源对象实际应进入备份的白名单文件摘要（键为备份包内相对路径）。"""
     result = _tree_digests(source.source) if source.include_paths is None else {}
     if source.include_paths is not None:
-        for relative in source.include_paths:
+        for relative, packed in _include_pairs(source):
             selected = source.source / relative
             if selected.is_file():
-                result[relative] = _sha256_file(selected)
+                result[packed] = _sha256_file(selected)
             elif selected.is_dir():
                 for path in sorted(selected.rglob("*")):
                     if path.is_file():
-                        result[path.relative_to(source.source).as_posix()] = _sha256_file(path)
+                        result[(PurePosixPath(packed) / path.relative_to(selected).as_posix()).as_posix()] = _sha256_file(path)
             else:
                 raise BackupSourceSetError(f"备份白名单路径缺失: {relative}")
     if source.manifest_source is not None:
@@ -302,9 +316,9 @@ def _copy_selected_tree_atomic_replace(source: BackupSource, dst: Path) -> None:
     temp = Path(tempfile.mkdtemp(prefix=f".tmp.{dst.name}.", dir=dst.parent))
     old = dst.parent / f".old.{dst.name}.{os.getpid()}"
     try:
-        for relative in source.include_paths:
+        for relative, packed in _include_pairs(source):
             src = source.source / relative
-            target = temp / relative
+            target = temp / packed
             target.parent.mkdir(parents=True, exist_ok=True)
             if src.is_dir():
                 shutil.copytree(src, target, copy_function=shutil.copy2)
@@ -569,6 +583,14 @@ def _enumerate_scoped_models(
     return model_sources, prompt_versions, mlflow_paths
 
 
+# 2026-10-21 布局变更后 staging 是 evaluations/ 的子目录，父 base 扫描必须跳过它，
+# 否则 staging 会被当成 eval id 解析、且与第二个 base 重复收录同一对象。
+_EVALUATION_BASE_SCAN = (
+    ("evaluations", frozenset({"staging"})),
+    ("evaluations/staging", frozenset()),
+)
+
+
 def enumerate_backup_sources(
     store: ModelRegistryStore,
     *,
@@ -591,21 +613,29 @@ def enumerate_backup_sources(
 
     # Claims and prediction exposure can exist before model finalization.
     # Retain those workspaces independently of a serving alias or outcome.
-    bases = (prompts_root / "workspace/evaluations", prompts_root / "evaluations/staging")
     identities = set()
-    for base in bases:
+    for relative, excluded_names in _EVALUATION_BASE_SCAN:
+        base = prompts_root / relative
         if not base.exists():
             continue
         for workspace in base.iterdir():
+            if workspace.name in excluded_names:
+                continue
             if workspace.is_symlink() or not workspace.is_dir():
                 raise BackupSourceSetError("evaluation workspace must be an ordinary directory")
             parse_eval_id(workspace.name)
             identities.add(workspace.name)
     for evaluation_id in sorted(identities):
-        relative = Path("workspace/evaluations") / evaluation_id
-        workspace = prompts_root / relative
-        selected = [str(relative / name) for name in ("input", "output", "restricted")
-                    if (workspace / name).exists()]
+        source_relative = Path("evaluations") / evaluation_id
+        workspace = prompts_root / source_relative
+        # 仓库源已在顶层 evaluations/，但备份包内落点保持历史布局（包的
+        # ``workspace`` 段内），故需单独给出包内相对路径。
+        packed_relative = Path("workspace/evaluations") / evaluation_id  # layout-guard-allow: 备份包内结构，历史包兼容不得改写
+        selected_names = [name for name in ("input", "output", "restricted")
+                          if (workspace / name).exists()]
+        selected = [str(source_relative / name) for name in selected_names]
+        packed = [(str(source_relative / name), str(packed_relative / name))
+                  for name in selected_names]
         authorization = Path("evaluations/staging") / evaluation_id / "authorization"
         if (prompts_root / authorization).exists():
             selected.append(str(authorization))
@@ -618,7 +648,7 @@ def enumerate_backup_sources(
                     raise BackupSourceSetError("restricted evaluation workspace must remain owner-only")
         sources.append(BackupSource(object_id=evaluation_id,
             object_type=OBJECT_TYPE_EVALUATION_WORKSPACE, scope="evaluation", source=prompts_root,
-            include_paths=tuple(selected)))
+            include_paths=tuple(selected), include_pack_paths=tuple(packed)))
         try:
             evaluation = get_eval_run(open_eval_store(store.root), evaluation_id)
         except Exception as exc:
@@ -1048,7 +1078,7 @@ def _verify_object_files(
         expected_prefix = f"{BACKUP_DIR_EVALUATIONS}/{entry.object_id}/"
         if entry.scope != "evaluation" or any(not f.path.startswith(expected_prefix) for f in entry.files):
             raise BackupIntegrityError("evaluation workspace backup scope/path differs")
-        private = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id / "workspace/evaluations" / entry.object_id / "restricted"
+        private = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id / "workspace/evaluations" / entry.object_id / "restricted"  # layout-guard-allow: 备份包内结构，历史包兼容不得改写
         if private.exists() and any(p.stat().st_mode & 0o077 or p.is_symlink() for p in (private, *private.rglob("*"))):
             raise BackupIntegrityError("restricted backup permissions are not owner-only")
     for file_entry in entry.files:
@@ -1214,7 +1244,7 @@ def _target_exists_for_object(
         return prompt_path(prompts_root, entry.object_id).exists()
     if entry.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
         return any((Path(prompts_root) / relative / entry.object_id).exists()
-                   for relative in ("workspace/evaluations", "evaluations/staging"))
+                   for relative in ("evaluations", "evaluations/staging"))
     if entry.object_type == OBJECT_TYPE_MODEL:
         return (
             (Path(models_root) / entry.object_id).exists()
@@ -1337,7 +1367,7 @@ def _restore_targets(catalog: BackupCatalog, backup_root: Path, *, data_root: Pa
             targets.append(prompt_path(prompts_root, entry.object_id))
         elif entry.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
             targets.extend(Path(prompts_root) / relative / entry.object_id
-                           for relative in ("workspace/evaluations", "evaluations/staging"))
+                           for relative in ("evaluations", "evaluations/staging"))
         elif entry.object_type == OBJECT_TYPE_MODEL:
             targets.extend([Path(models_root) / entry.object_id,
                             Path(prompts_root) / "records/models" / entry.object_id / "manifest.yaml"])
@@ -1412,10 +1442,13 @@ def _restore_object(
         _restore_file_no_replace(src, dst)
     elif entry.object_type == OBJECT_TYPE_EVALUATION_WORKSPACE:
         src = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id
-        for relative in ("workspace/evaluations", "evaluations/staging"):
-            subtree = Path(relative) / entry.object_id
+        # 包内结构（历史布局）与仓库目标（2026-10-21 顶层布局）不同，逐项成对给出：
+        # 包内 src 侧仍读历史包内的 evaluations 子树，仓库 dst 侧写顶层 evaluations/<id>。
+        for packed_base, target_base in (("workspace/evaluations", "evaluations"),  # layout-guard-allow: 备份包内结构，历史包兼容不得改写
+                                        ("evaluations/staging", "evaluations/staging")):
+            subtree = Path(packed_base) / entry.object_id
             if (src / subtree).exists():
-                _restore_tree_no_replace(src / subtree, Path(prompts_root) / subtree)
+                _restore_tree_no_replace(src / subtree, Path(prompts_root) / target_base / entry.object_id)
     elif entry.object_type == OBJECT_TYPE_MODEL:
         src = backup_root / BACKUP_DIR_MODELS / entry.object_id
         dst = Path(models_root) / entry.object_id
@@ -1476,12 +1509,12 @@ def restore_backup(
     for entry in catalog.objects:
         if entry.object_type != OBJECT_TYPE_EVALUATION_WORKSPACE:
             continue
-        frozen = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id / "workspace/evaluations" / entry.object_id / "input/evaluation.yaml"
+        frozen = backup_root / BACKUP_DIR_EVALUATIONS / entry.object_id / "workspace/evaluations" / entry.object_id / "input/evaluation.yaml"  # layout-guard-allow: 备份包内结构，历史包兼容不得改写
         if frozen.is_file():
             import json
             if json.loads(frozen.read_bytes()).get("schema_version") == "tensile-vlm/v4.1-holdout-evaluation" and (
                     Path(data_root) != Path(prompts_root) / "data" or
-                    Path(mlflow_root) != Path(prompts_root) / "workspace/mlflow"):
+                    Path(mlflow_root) != Path(prompts_root) / "mlflow"):
                 raise BackupIntegrityError("live holdout recovery requires the formal managed project layout")
     _restore_targets(catalog, backup_root, data_root=data_root, prompts_root=prompts_root,
                      models_root=models_root, mlflow_root=mlflow_root)
@@ -1534,7 +1567,8 @@ def _write_restore_locations(backup_root: Path, catalog: BackupCatalog, project_
     for entry in catalog.objects:
         if entry.object_type != OBJECT_TYPE_EVALUATION_WORKSPACE:
             continue
-        relative = f"workspace/evaluations/{entry.object_id}/input/evaluation.yaml"
+        # 仓库侧相对路径（2026-10-21 顶层布局）：evaluations/<id>/input/evaluation.yaml
+        relative = f"evaluations/{entry.object_id}/input/evaluation.yaml"
         path = project_root / relative
         if not path.exists():
             continue
@@ -1547,7 +1581,7 @@ def _write_restore_locations(backup_root: Path, catalog: BackupCatalog, project_
         if (value.get("eval_version") != entry.object_id or not original_media.is_absolute()
                 or tuple(original_media.parts[-len(expected_suffix.parts):]) != expected_suffix.parts):
             raise BackupIntegrityError("holdout restore locator does not match the frozen managed release")
-        expected_file = f"{BACKUP_DIR_EVALUATIONS}/{entry.object_id}/{relative}"
+        expected_file = f"{BACKUP_DIR_EVALUATIONS}/{entry.object_id}/workspace/evaluations/{entry.object_id}/input/evaluation.yaml"  # layout-guard-allow: 备份包内结构，历史包兼容不得改写
         file = next((f for f in entry.files if f.path == expected_file), None)
         if file is None or _sha256_file(path) != file.sha256:
             raise BackupIntegrityError("holdout restore locator input is not in the verified catalog")
@@ -1558,7 +1592,7 @@ def _write_restore_locations(backup_root: Path, catalog: BackupCatalog, project_
         return
     # Current formal builders require these managed roots; do not invent
     # arbitrary path remapping for unsupported restore layouts.
-    if data_root != project_root / "data" or mlflow_root != project_root / "workspace/mlflow":
+    if data_root != project_root / "data" or mlflow_root != project_root / "mlflow":
         raise BackupIntegrityError("live holdout recovery requires the formal managed project layout")
     catalog_bytes = (backup_root / BACKUP_CATALOG_FILENAME).read_bytes()
     catalog_proof = _publish_immutable(mlflow_root / "restore-catalog.yaml", catalog_bytes, label="restore catalog provenance")
@@ -1576,7 +1610,7 @@ def restored_holdout_media_root(root: Path, value: Mapping[str, Any]) -> Path:
     """Accept only a verified catalog's exact managed holdout-media relocation."""
     import json
     root = Path(root).absolute()
-    store_root = root / "workspace/mlflow"
+    store_root = root / "mlflow"
     receipt_path = store_root / "restore-locations.json"
     if not receipt_path.exists():
         return Path(value["media_root"])
@@ -1599,7 +1633,7 @@ def restored_holdout_media_root(root: Path, value: Mapping[str, Any]) -> Path:
     catalog = yaml.safe_load(catalog_path.read_bytes())
     original_store = next((entry["source"] for entry in catalog["objects"]
                            if entry["object_type"] == OBJECT_TYPE_MLFLOW_STORE), None)
-    expected_path = f"evaluations/{identity}/workspace/evaluations/{identity}/input/evaluation.yaml"
+    expected_path = f"evaluations/{identity}/workspace/evaluations/{identity}/input/evaluation.yaml"  # layout-guard-allow: 备份包内结构，历史包兼容不得改写
     file = next((f for entry in catalog["objects"] if entry["object_type"] == OBJECT_TYPE_EVALUATION_WORKSPACE
                  and entry["object_id"] == identity for f in entry["files"] if f["path"] == expected_path), None)
     expected_media = root / "data/releases" / value["data_version"] / "media"
@@ -1619,11 +1653,11 @@ def restored_review_profile_paths(root: Path, value: Mapping[str, Any], package:
     mapped = restored_holdout_media_root(root, value)
     if mapped == Path(value["media_root"]):
         return package, output
-    private = root / "workspace/evaluations" / value["eval_version"] / "restricted"
+    private = root / "evaluations" / value["eval_version"] / "restricted"
     if package != private / "anonymous-review.json" or output.parent != private or not re.fullmatch(r"actor-requests-[0-9]+\.json", output.name):
         raise BackupIntegrityError("review profile relocation is outside the frozen worker scope")
-    catalog = yaml.safe_load((root / "workspace/mlflow/restore-catalog.yaml").read_bytes())
-    prefix = f"evaluations/{value['eval_version']}/workspace/evaluations/{value['eval_version']}/restricted/"
+    catalog = yaml.safe_load((root / "mlflow/restore-catalog.yaml").read_bytes())
+    prefix = f"evaluations/{value['eval_version']}/workspace/evaluations/{value['eval_version']}/restricted/"  # layout-guard-allow: 备份包内结构，历史包兼容不得改写
     proof = next((file for entry in catalog["objects"] if entry["object_type"] == OBJECT_TYPE_EVALUATION_WORKSPACE
                   and entry["object_id"] == value["eval_version"] for file in entry["files"]
                   if file["path"] == prefix + "exposure.json"), None)
@@ -1632,7 +1666,7 @@ def restored_review_profile_paths(root: Path, value: Mapping[str, Any], package:
     if _sha256_file(private / "exposure.json") != proof["sha256"]:
         raise BackupIntegrityError("restored exposure differs from its catalog-sealed profile")
     original_project = Path(value["media_root"]).parents[3]
-    original_private = original_project / "workspace/evaluations" / value["eval_version"] / "restricted"
+    original_private = original_project / "evaluations" / value["eval_version"] / "restricted"
     return original_private / package.name, original_private / output.name
 
 

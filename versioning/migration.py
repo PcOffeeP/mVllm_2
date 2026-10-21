@@ -70,7 +70,9 @@ _DATA_PROTOCOL = "v4.1"
 _DATA_TARGET_STATUSES = ("active", "superseded")
 
 # legacy data release 相对根的路径模板（source-inventory.yaml data_releases）。
-_LEGACY_DATA_RELEASES = Path("workspace") / "data" / "releases"
+# 2026-10-21 布局变更：data 已从 ``workspace`` 段迁到仓库顶层 data/，legacy 源的定位
+# 根随之改写（迁移已实施的轮次直接按新布局读取）。
+_LEGACY_DATA_RELEASES = Path("data") / "releases"
 _LEGACY_DATA_MANIFEST = Path("manifest") / "release_manifest.json"
 _LEGACY_DATA_REQUIRED_FILES = (_LEGACY_DATA_MANIFEST,)
 
@@ -80,7 +82,7 @@ _LEGACY_DATA_ACTIVE_POINTER = Path("finetune") / "active_data_release.json"
 
 # 指针 provenance 门必需字段：release_id 必须钉扎映射项声明的
 # source_legacy_id；expected_manifest_sha256 是钉扎时的
-# workspace/data/releases/<source_legacy_id>/manifest/release_manifest.json
+# data/releases/<source_legacy_id>/manifest/release_manifest.json
 # 文件字节 SHA-256（复算比对口径，非 canonical JSON、非 payload 哈希）。
 _LEGACY_DATA_POINTER_REQUIRED_FIELDS = (
     "release_id",
@@ -181,7 +183,7 @@ def _check_legacy_data_source(
     """检查 legacy data 源 manifest 与声明 payload 内容完整性（只读，fail-closed）。
 
     按映射项的 source_legacy_id 定位
-    ``workspace/data/releases/<source_legacy_id>``（不扫描 releases 目录，
+    ``data/releases/<source_legacy_id>``（不扫描 releases 目录，
     未映射 sibling 不参与本对象报告）；manifest/release_manifest.json 必须
     存在且其 release_id 与源身份一致；manifest files 声明的每个 payload
     文件（manifest 自洽性/内容完整性门）必须：
@@ -298,7 +300,7 @@ def _check_pinned_manifest_provenance(
       2. 指针 ``release_id`` 必须精确等于该映射项的 ``source_legacy_id``
          （钉扎未映射 sibling 或错误源 = 不符）；
       3. 按文件字节独立复算
-         ``workspace/data/releases/<source_legacy_id>/manifest/
+         ``data/releases/<source_legacy_id>/manifest/
          release_manifest.json`` 的 SHA-256（不 import legacy
          pipeline / finetune 代码，独立镜像自算；不用 canonical JSON、
          目录哈希或 payload 哈希，不回读 manifest 声明值自比）；
@@ -382,7 +384,7 @@ def precheck_data_migration(
       2. 候选目标身份为合法 ``data-v<协议>-r<N>`` 完整身份且协议为 v4.1；
       3. D1 用户确认字段：``target_status`` 为 active / superseded；
          superseded 时 ``replacement`` 为合法 data 身份；
-      4. legacy 源 ``workspace/data/releases/<source_legacy_id>`` 的
+      4. legacy 源 ``data/releases/<source_legacy_id>`` 的
          manifest/release_manifest.json 存在、release_id 与源身份一致、
          声明的 payload 文件路径安全（拒绝绝对路径 / ``..`` 穿越 / 解析后
          越出 release 根）且齐全，并按文件字节复算每个声明 payload 文件
@@ -395,7 +397,7 @@ def precheck_data_migration(
          的映射项（M0 pinned_by 钉扎）经旧数据活动指针
          ``finetune/active_data_release.json`` 核验 —— 指针
          ``release_id`` 必须等于该映射项 ``source_legacy_id``，且
-         ``workspace/data/releases/<source_legacy_id>/manifest/
+         ``data/releases/<source_legacy_id>/manifest/
          release_manifest.json`` 文件字节 SHA-256 必须与指针
          ``expected_manifest_sha256`` 匹配；指针缺失 / 非 JSON / 字段
          缺失 / release_id 不符 / 哈希不匹配即该对象 blocked；无钉扎
@@ -1649,7 +1651,8 @@ _HISTORY_SUMMARY_SCHEMA = "tensile-migration/history-summary/v1"
 # 参数以字段级 unknown 进入 facts，绝不把 planned 参数登记为已知值。
 _PREPARE_ONLY_RUN_KIND = "prepare_only_run"
 _PREPARED_ONLY_TRAINING_STATUS = "prepared_only"
-_PREPARE_ONLY_RUN_SOURCE_ROOT = Path("workspace") / "runs"
+# 2026-10-21 布局变更：run 已从 ``workspace`` 段迁到仓库顶层 trains/。
+_PREPARE_ONLY_RUN_SOURCE_ROOT = Path("trains")
 _PREPARE_ONLY_CORE_TRAIN_PARAMS = (
     "seed",
     "learning_rate",
@@ -1668,7 +1671,7 @@ _PREPARE_ONLY_CORE_TRAIN_PARAMS = (
 # completed（无证据的完成声明），也不输出 not_completed（无证据的负向
 # 声明），唯一有证据的分类是 "观察到权重存在" 本身。核心训练参数与
 # H5 同族：M0 只记录目录结构观察，未记录任何参数值，一律字段级
-# unknown。声明 run 源定位与 prepare-only run 同为 workspace/runs/。
+# unknown。声明 run 源定位与 prepare-only run 同为 trains/。
 _WEIGHT_RUN_KIND = "weight_run"
 _WEIGHT_RUN_OBSERVED_TRAINING_STATUS = "weights_observed"
 # H9 归档参数不可用的一种具体原因：归档所在的目录级路径已被清理移除。
@@ -1692,7 +1695,7 @@ _WEIGHT_RUN_ARCHIVE_ROOT_REL = Path("docs") / "results" / "model_evidence"
 # 缺失来源：与「M0 调查只记录权重目录结构观察、未记录任何训练参数值」
 # 不同，源路径本身缺失。两者都保持字段级 unknown（缺失不伪装成已知值），
 # 但前者额外携带机读 reason_code，说明里写明原 run id 与缺失的源路径
-# workspace/runs/<run_id>。源缺失没有任何可观测的清理日期，说明文本不得
+# trains/<run_id>。源缺失没有任何可观测的清理日期，说明文本不得
 # 夹带归档清理日期。触发条件严格限定为「声明 run 源整体不存在、来源链不
 # 含链接、且探测未抛 OSError」：源目录存在、只是某个已知结构组件缺失时
 # 「源缺失」是假陈述，本状态不成立；探测失败意味源可读性未知，不得升级为
@@ -1764,7 +1767,7 @@ def _weight_run_source_missing_fact(
 ) -> dict[str, Any]:
     """构造「声明 run 源整体不存在」的 unknown 事实。
 
-    只在声明 run 源 ``workspace/runs/<source_legacy_id>`` 整体不存在、来源
+    只在声明 run 源 ``trains/<source_legacy_id>`` 整体不存在、来源
     链不含符号链接且探测未抛 ``OSError`` 时使用：保持既有 unknown_reason /
     attempted_source / 不携带非 None value 的形态，另叠加机读 reason_code
     区分缺失来源。说明文本写明原 run id 与缺失的源路径，并显式区别于
@@ -2405,7 +2408,7 @@ def _build_history_summary_entry(
     # H5/H6a 按 kind 分流：run 类历史条目（prepare-only run、weight
     # run）是允许的历史查询记录（仅进 history-summary，不是训练执行
     # 事实），走独立构建路径 —— 不读 prompt registry 源，也不扫描
-    # workspace/runs/ 的 sibling。
+    # trains/ 的 sibling。
     if kind == _PREPARE_ONLY_RUN_KIND:
         return _build_prepare_only_run_history_entry(source_id)
     if kind == _WEIGHT_RUN_KIND:
@@ -2534,7 +2537,7 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     """构建 weight run 历史条目（H6a，纯构建零写入）。
 
     只按声明 ``source_legacy_id`` 定位声明 run 源
-    ``workspace/runs/<source_legacy_id>`` 并只读观察其目录结构，不扫描
+    ``trains/<source_legacy_id>`` 并只读观察其目录结构，不扫描
     runs 目录、不取任何 sibling 内容。保留原始 run ID 与分类
     （kind ``weight_run``）；``training_status: weights_observed`` 是
     M0 weight_runs 分组的 evidence-derived 分类（观察事实是权重存在，
@@ -2596,7 +2599,7 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
     分支不进入归档观察、不叠加本状态，而是在其产出的 12 个事实（3 个结构
     事实 + 9 个核心训练参数）上统一叠加 ``reason_code:
     "unavailable_source_missing"``，说明文本写明原 run id 与缺失的源路径
-    ``workspace/runs/<source_legacy_id>``，且不含任何日期（源缺失没有可
+    ``trains/<source_legacy_id>``，且不含任何日期（源缺失没有可
     观测的清理日期）；触发条件严格限定为「声明 run 源整体不存在、来源链
     不含链接、且探测未抛 ``OSError``」——源目录存在、仅某个已知结构组件
     （如 ``fold0/adapter``）缺失时不成立（此时「源缺失」是假陈述），保持
@@ -2747,8 +2750,9 @@ def _build_weight_run_history_entry(root: Path, source_id: str) -> dict[str, Any
                 raise ValueError("model_identity.json source_adapter_path 与声明 run 不符")
             if source_merged_path != f"{source_adapter_path}_merged":
                 raise ValueError("model_identity.json source_merged_path 与声明 run 不符")
+            # 2026-10-21 布局变更：受管模型已从 ``workspace`` 段迁到仓库顶层 models/。
             release_rel = (
-                Path("workspace") / "models" / "releases" / model_name
+                Path("models") / "releases" / model_name
             )
             release_manifest_rel = release_rel / "release-manifest.json"
             registry_manifest_rel = (
@@ -3188,7 +3192,7 @@ def _build_prepare_only_run_history_entry(source_id: str) -> dict[str, Any]:
     等任何概念条目，不分配正式身份。核心训练参数一律字段级 unknown：
     planned 配置（prepared-config-untrained 的 seed / learning_rate 等）
     是准备资料，不是训练执行事实，不读取、不登记为已知值；unknown 事实
-    携带非空 unknown_reason 与指回声明 run 源（workspace/runs/<run_id>）
+    携带非空 unknown_reason 与指回声明 run 源（trains/<run_id>）
     的 attempted_source，不从 sibling run 取任何内容、不扫描 runs 目录。
     """
     attempted = (_PREPARE_ONLY_RUN_SOURCE_ROOT / source_id).as_posix()

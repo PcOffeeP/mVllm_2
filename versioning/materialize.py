@@ -1,4 +1,4 @@
-"""Registry alias 到 ``workspace/models/current`` 的原子物化与启动校验。"""
+"""Registry alias 到 ``models/current`` 的原子物化与启动校验。"""
 
 from __future__ import annotations
 

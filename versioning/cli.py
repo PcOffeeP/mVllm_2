@@ -108,12 +108,12 @@ def _add_store(parser: argparse.ArgumentParser) -> None:
         "--store",
         type=Path,
         default=None,
-        help="MLflow store 根目录（默认 <root>/workspace/mlflow）",
+        help="MLflow store 根目录（默认 <root>/mlflow）",
     )
 
 
 def _store_path(args: argparse.Namespace) -> Path:
-    return args.store if args.store is not None else args.root / "workspace" / "mlflow"
+    return args.store if args.store is not None else args.root / "mlflow"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -543,8 +543,8 @@ def _handle_train(args: argparse.Namespace) -> Any:
         raise CLIUsageError("手工状态写入已停用；请使用实际执行器 train prepare/validate/run/export")
     if args.action in {"prepare", "validate", "run", "export"}:
         from finetune.train_prepare_run import prepare_versioned_run, verify_versioned_run, execute_versioned_run, export_versioned_run
-        if args.store is not None and args.store.absolute() != (args.root / "workspace/mlflow").absolute():
-            raise CLIUsageError("实际训练仅使用 <root>/workspace/mlflow；请指定对应 root")
+        if args.store is not None and args.store.absolute() != (args.root / "mlflow").absolute():
+            raise CLIUsageError("实际训练仅使用 <root>/mlflow；请指定对应 root")
         if args.fold is not None and args.action != "run":
             raise CLIUsageError("--fold 仅适用于 train run")
         if args.prompt_checkout_root is not None and args.action != "prepare":
@@ -625,8 +625,8 @@ def _parse_folds(value: str | None) -> tuple[int, ...]:
 
 def _handle_eval(args: argparse.Namespace) -> Any:
     if args.action.startswith("performance_"):
-        if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
-            raise CLIUsageError("performance evaluation must use root/workspace/mlflow")
+        if _store_path(args).resolve() != (args.root / "mlflow").resolve():
+            raise CLIUsageError("performance evaluation must use root/mlflow")
         from finetune.eval_performance import (prepare_performance_evaluation, verify_performance_evaluation,
             execute_performance_evaluation, export_performance_evaluation)
         forbidden = {"pre_registration", "executor", "blind_reviews", "manual", "baseline_eval_version",
@@ -664,8 +664,8 @@ def _handle_eval(args: argparse.Namespace) -> Any:
     if args.action in {'manifest', 'fold-start', 'fold-end', 'aggregate', 'complete', 'summary', 'create'}:
         raise CLIUsageError("手工状态写入已停用；请使用实际执行器 eval prepare/validate/run/export")
     if args.action in {"prepare", "validate", "run", "score", "export", "compare", "review_prepare", "review_seal", "review_run", "review_verify", "restricted_summary"}:
-        if _store_path(args).resolve() != (args.root / "workspace/mlflow").resolve():
-            raise CLIUsageError("actual evaluation must use root/workspace/mlflow")
+        if _store_path(args).resolve() != (args.root / "mlflow").resolve():
+            raise CLIUsageError("actual evaluation must use root/mlflow")
         input_flags = {"model_version", "model_version_number", "data_version", "config",
                        "git_commit", "media_root", "data_inputs"}
         legacy_flags = {"scope", "split", "fold", "model_artifact",
@@ -961,7 +961,7 @@ def _handle_model(args: argparse.Namespace) -> Any:
     if args.action == "materialize":
         target_root = (
             args.models_root
-            or args.root / "workspace" / "models" / "materialized"
+            or args.root / "models" / "materialized"
         )
         return {"path": materialize_model(store, args.model_version, target_root)}
     if args.action == "manifest":
@@ -971,7 +971,7 @@ def _handle_model(args: argparse.Namespace) -> Any:
             )
         }
     if args.action in {"current", "validate-current"}:
-        models_root = args.models_root or args.root / "workspace" / "models"
+        models_root = args.models_root or args.root / "models"
         records_root = args.records_root or args.root
         if args.action == "current":
             return {
@@ -1001,7 +1001,7 @@ def _handle_backup(args: argparse.Namespace) -> Any:
     data_root = args.data_root or args.root / "data"
     prompts_root = args.prompts_root or args.root
     models_root = (
-        args.models_root or args.root / "workspace" / "models" / "materialized"
+        args.models_root or args.root / "models" / "materialized"
     )
     if args.action == "verify":
         return verify_backup(args.backup_root)

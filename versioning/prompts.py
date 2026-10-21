@@ -90,7 +90,7 @@ def prompt_path(root: Path, version: str) -> Path:
 
 def _train_prompt_path(root: Path, train_version: str) -> Path:
     """构造训练冻结 prompt 副本路径。"""
-    return root / "workspace" / "runs" / train_version / "input" / "prompt.yaml"
+    return root / "trains" / train_version / "input" / "prompt.yaml"
 
 
 def _validate_non_empty_string(value: object, field: str) -> str:

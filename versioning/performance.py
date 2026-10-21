@@ -735,7 +735,7 @@ def open_performance_session(*, root, eval_version, executor, session_id, clock=
     from finetune.eval_performance import verify_performance_evaluation
     from versioning.registry import open_registry_store
     value = verify_performance_evaluation(root=root, eval_version=eval_version)
-    store = open_registry_store(Path(root) / "workspace/mlflow", data_root=Path(root) / "data")
+    store = open_registry_store(Path(root) / "mlflow", data_root=Path(root) / "data")
     def revalidate():
         return digest(verify_performance_evaluation(root=root, eval_version=eval_version))
     return ControlledPerformanceSession(value, store=store, executor=executor, session_id=session_id,
