@@ -12,7 +12,12 @@ update; this never treats arbitrary new source as equivalent to old evidence.
 # replaces a path literal (or the matching parent-index depth) with no scoring,
 # threshold, denominator or contract change. The frozen digests stay exactly as
 # recorded: only the audited adapter bytes moved, historical evidence did not.
-STRICT_ADAPTERS = {'finetune/eval_run.py': {'frozen_sha256': '67c9da220108adf612d0ad92d617548be8df43e8ffe86df723d6ed96e83da5ef', 'adapter_sha256': '0e68725e409c8753d9cf8616541c6c3d80f6d1523c230a31d881734ee938ed50'}, 'finetune/eval_holdout.py': {'frozen_sha256': 'd5ba919cfc94b4c774032c4580ad867e19cee6cebe8885118ad41c8ea16ea4cb', 'adapter_sha256': '4acefb403560405647b236a0e12afc69f457b9638e368ca4d23eb02205a47543'}}
+#
+# b7f31e8 then passed the runtime media root through one extracted local and one
+# path-resolution keyword (``project_local=is_data_root_shaped(...)``); reviewed
+# hunk by hunk as path-only with no scoring, threshold, denominator or contract
+# change, so only finetune/eval_run.py's adapter bytes moved again.
+STRICT_ADAPTERS = {'finetune/eval_run.py': {'frozen_sha256': '67c9da220108adf612d0ad92d617548be8df43e8ffe86df723d6ed96e83da5ef', 'adapter_sha256': '97e626fc7b7f71c64acbd211822bb0356d0d75b756bf5d9c10df4f13dbb765fb'}, 'finetune/eval_holdout.py': {'frozen_sha256': 'd5ba919cfc94b4c774032c4580ad867e19cee6cebe8885118ad41c8ea16ea4cb', 'adapter_sha256': '4acefb403560405647b236a0e12afc69f457b9638e368ca4d23eb02205a47543'}}
 
 
 def strict_adapter_matches(source: str, *, frozen_digest: str, current_digest: str) -> bool:
