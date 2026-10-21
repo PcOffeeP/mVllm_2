@@ -39,7 +39,7 @@
 | 口径裁决 | TEST-SOURCE-REUSE | 待处理：21 个既定 test source 重建 test release 的口径已裁决，真实构建未执行 | 三条边界（不入任何训练分支／非盲参考性口径／结果不回流）约束构建与报告；构建仍待授权、人工审查与真实媒体验证 |
 | 归档纪律 | ARTIFACT-RETENTION | 进行中：备份节奏、过期文件管理与清理红线已定，待按节奏执行 | 首次适用待全量训练+评测归档；清理红线三项不得进入任何清理候选 |
 | 后续主任务 | R2-REALTRAIN | 待处理：用 `data-v4.1-r2` + `prompt-v4.1-r2` 完成 fold 0 → 三折真实训练与评测，未开始 | 待清理收尾后；依赖 r2 训练 YAML 冻结 + 用户 GPU 授权；预算均为推算，需首 50 步实测校准 |
-| 本期收尾 | LAYOUT-FLATTEN | 进行中（Pi）：取消 `workspace/` 根段的布局扁平化；代码/测试/`.gitignore`/现行文档已改，P2 物理搬迁未做 | 见下文 LAYOUT-FLATTEN 条目及[布局迁移说明](layout-migration-20261021.md) |
+| 本期收尾 | LAYOUT-FLATTEN | 进行中（Pi）：取消 `workspace/` 根段的布局扁平化；本机侧 P2 已完成（`b18e69b`），训练机侧搬迁未执行 | 见下文 LAYOUT-FLATTEN 条目及[布局迁移说明](layout-migration-20261021.md) |
 
 MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练最终候选；绑定 model/eval 的一次性 claim 在最终身份确定并获测试使用授权后、首次模型调用前建立。不能倒置为先测试通过才允许训练该候选。
 
@@ -293,7 +293,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 
 ### LAYOUT-FLATTEN — 取消 `workspace/` 根段的项目本地布局扁平化
 
-- **状态/来源**：进行中（Pi，2026-10-21）；用户 2026-10-21 决定彻底拆掉 `workspace/` 目录，内容搬到顶层语义目录（`data`/`trains`/`models`/`base-models`/`mlflow`/`evaluations`/`audits/*`/`data-staging`/`data-rebuild`）。完整映射表、本阶段范围与 P2 清单见[布局迁移说明](layout-migration-20261021.md)，本条不重复。
+- **状态/来源**：进行中（Pi，2026-10-21）；用户 2026-10-21 决定彻底拆掉 `workspace/` 目录，内容搬到顶层语义目录（`data`/`trains`/`models`/`base-models`/`mlflow`/`evaluations`/`audits/*`/`data-staging`/`data-rebuild`）。**本机侧 P2 物理搬迁已完成**（commit `b18e69b`，2026-10-21，`workspace/` 已从本机磁盘消失）；**训练机侧搬迁未执行**，训练机仍为旧布局。完整映射表、本阶段范围与搬迁清单见[布局迁移说明](layout-migration-20261021.md)，本条不重复。
 - **已完成批次（按 commit 顺序；逐条主题取 `git log --oneline`）**：
   1. `3c11c93` refactor(layout): 取消 workspace/ 根段，核心路径层改指向顶层语义目录
   2. `e3dfb62` refactor(layout): versioning 与 scripts 侧改指顶层语义目录
@@ -303,10 +303,15 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
   6. `471c778` test(layout): 适配非 versioning 测试的新布局
   7. `a49476e` fix(layout): 刷新兼容审计摘要并修正备份源项目根深度
   8. 本批收尾 `docs(layout): 收口 workspace/ 扁平化的忽略规则与现行文档`：`.gitignore` 用顶层语义目录取代 `/workspace/` 并删除 15 条失效的 `/data/` 家族子规则；现行操作文档改指新路径；新增布局映射说明；sha 由 `git log --oneline -1 -- docs/layout-migration-20261021.md` 取得（不在文内自引 sha）。
-- **未完成（P2 物理搬迁，本阶段明确不做）**：① 把 `workspace/{data,runs,models,mlflow,evaluations,base-source-audit,review-environment,data-staging,data-rebuild}` 搬到对应顶层目录；② `models/minicpm-v-4.5` → `base-models/minicpmv4_5`；③ 清理空的 `workspace/` 目录；④ 搬迁后跑守卫测试 T1/T2，并清空 `tests/test_layout_migration_guard.py` 的 `PENDING_PHYSICAL_MOVE`。逐项清单见[布局迁移说明](layout-migration-20261021.md)「尚未做：P2 物理搬迁清单」。
-- **验收标准**：全量 `pytest` **真跑** 0 failed / 0 error（`--collect-only` 不作判据）；`scripts/verify_design_facts.py` 与 `scripts/verify_design_facts.py --check-doc-paths` 均通过；P2 完成后守卫的 T1/T2 翻转为「旧路径必须消失、顶层 `evaluations` 必须存在」。
-- **证据位置**：本条 commit 列表（`git log -- docs/layout-migration-20261021.md .gitignore`）、`.gitignore` 顶部「项目本地产物」块、[布局迁移说明](layout-migration-20261021.md)、`tests/test_layout_migration_guard.py`。
+  9. 本批收尾（P2 落地与文档收口）：① P2 物理搬迁 + 布局守卫转正——按映射把当时磁盘上存在的 `workspace/{mlflow,base-source-audit,review-environment}` 与 `models/minicpm-v-4.5` 搬到顶层语义目录（`workspace/runs` 的映射落点 `trains/` 本机不存在，与 `b18e69b` 提交信息所称「已搬 runs」不符，见本条「待确认（`workspace/runs` 落点缺失）」；本机没有 `data`、`trains`、`evaluations`、`data-staging`、`data-rebuild`，映射表左列的这些条目在本机没有对应产物，是否创建由训练机侧按实际存在情况决定）、清空 `workspace/`、`.gitignore` 删除临时 `/workspace/` 保护行、清空守卫的 `PENDING_PHYSICAL_MOVE`；② `mlflow/mlflow.db` 的 `experiments` 表 experiment_id 1/2 的 `artifact_location` 从旧路径改指 `mlflow/artifacts`，改前备份 `mlflow/mlflow.db.bak-20261021`（sha256 `e3249dad790df776e3d4e6ed54dc182101934cb8ec761a26773ba4807a3ab0ed`；改前该库不含任何 run 记录）；③ 清理 P1/P2 期间测试泄漏到仓库根、已隔离的 mlflow 副本：被删路径为 `~/pi-workspace/mVllm_2-layout-p2-20261021/stray-mlflow/`（内容为 `mlflow.db` 与空 `artifacts/`）及其父目录 `~/pi-workspace/mVllm_2-layout-p2-20261021/`；删除前清单要点为该 `mlflow.db` 的 `runs` 表 0 行、`artifacts/` 下 0 个文件、目录约 852 KB（`du -sh` 实测，仅作记录、不作判据）；授权依据是本批任务 brief 的授权路径集合明确包含 `~/pi-workspace/mVllm_2-layout-p2-20261021/`，并给出「仅当 runs=0 且 artifacts 为空才删除」的判定条件，删除依该条件执行；删除前的 `ls` / `du` 输出保存在本批会话记录中、**未**写入仓库，因此本条为「依授权执行 + 会话内输出佐证」，非仓库内可复核证据；④ T3 静态扫描扩展覆盖旧基座路径字面量 `models/minicpm-v-4.5` / `models/minicpmv4_5`（新位置 `base-models/minicpmv4_5`），并新增自证用例（检测能力正反例、allowlist 遮蔽、allowlist 陈旧条目、allowlist 规模上限、端到端扫描链）；⑤ 文档收口（DF-017、布局迁移说明、本条）。sha 由 `git log --oneline -1 -- <path>` 取得，不在文内自引。
+- **剩余：训练机侧搬迁（本机侧 ①–⑤ 已完成）**：训练机仍为旧布局，下列条目仍需在训练机逐条执行——① 按映射把 `workspace/{data,runs,models,mlflow,evaluations,base-source-audit,review-environment,data-staging,data-rebuild}` 搬到对应顶层目录；② `models/minicpm-v-4.5` → `base-models/minicpmv4_5`；③ 清空 `workspace/` 目录；④ 搬后跑守卫测试 T1/T2；⑤ 在训练机重跑 migration / backup restore 相关入口，并按结果更新[布局迁移说明](layout-migration-20261021.md)的验证限制段。逐项清单见该文「P2 物理搬迁清单（本机已处理磁盘上存在的条目；训练机待执行）」。
+- **验收标准**：全量 `pytest` **真跑** 0 failed / 0 error（`--collect-only` 不作判据）；`scripts/verify_design_facts.py` 与 `scripts/verify_design_facts.py --check-doc-paths` 均通过；P2 完成后守卫的 T1/T2 翻转为「旧路径必须消失、顶层 `evaluations` 必须存在」。本机侧已真跑 `pytest tests/test_layout_migration_guard.py` 与全量 `pytest`，由本批证据支撑（数字不写入本条）。
+- **证据位置**：本条 commit 列表（`git log -- docs/layout-migration-20261021.md .gitignore`）、`.gitignore` 顶部「项目本地产物」块、[布局迁移说明](layout-migration-20261021.md)、`tests/test_layout_migration_guard.py`（含 T3 旧基座路径区块及其自证用例）、`mlflow/mlflow.db.bak-20261021`（`mlflow.db` 改动前备份，sha256 见本批第 9 条）。
 - **验证限制**：本机 macOS 无 GPU，未在训练机验证真实路径解析与真实产物落点；`workspace/data`、`workspace/evaluations`、`workspace/data-staging`、`workspace/data-rebuild` 在本机 checkout 整体不存在，P2 搬迁对象须在训练机现场核对后再执行。
+- **待确认（跨文档矛盾与遗留，未在本批修正）**：以下三份**现行**文档仍写「磁盘上的物理搬迁（P2）尚未执行」，与本批更新后的 DF-017（本机侧已随 `b18e69b` 完成、本机 `workspace/` 已消失）冲突；因不在本批授权路径内，未就地修正，待授权后统一收口——`docs/data-workflow.md`（「本阶段只改了代码、配置、测试与忽略规则，磁盘上的物理搬迁（P2）尚未执行」段）、`docs/project-status.md`（同句式段）、`ARCHITECTURE.md`（「本阶段只改代码/配置/测试/忽略规则未做物理搬迁的事实」）。同批遗留（两条豁免，宿主文件均未获本批授权，待授权后统一改指 `base-models/minicpmv4_5`）：① `tests/versioning/test_migration.py` 的 `_write_prepare_only_runs_layout` 夹具在 planned 配置里仍写旧基座路径 `models/minicpm-v-4.5`（守卫已按「测试夹具合成值」登记豁免；该值无行为作用——migration / validate 不读 planned 参数）；② `tests/test_frame_contract.py` 里 `MiniCPMVideoPreprocessor("models/minicpmv4_5", processor=processor)`（processor 由测试注入，不加载权重、不读文件内容，仅对该占位路径做存在性探测，探测失败即原样返回，不指向任何真实基座产物）。
+- **待确认（`workspace/runs` 落点缺失）**：`b18e69b` 提交信息声称 `workspace/runs` 已按映射搬到 `trains`，但本机不存在 `trains/`，`workspace/` 也已删除；该目录从未进 Git，搬迁前内容与去向本地已无法取证。需在训练机侧核对 `workspace/runs` 实际体量，并据此确认「本机 `runs` 无有效产物」还是「存在未登记的删除」，再回填结论。本批未改此事实，仅登记。
+- **待确认（T2 完成信号在本机空转）**：`tests/test_layout_migration_guard.py` 的 `_flattened()` 以 `trains/` 或 `evaluations/` 存在为 P2 完成信号，本机两者都不存在，因此 `test_t2_evaluations_lives_at_top_level_when_flattened` 的正向断言在本机不执行（用例仍显示 passed，属「无断言通过」）；本机完成声明目前只由 T1（映射表旧路径全部不存在）与 `PENDING_PHYSICAL_MOVE` 清空支撑。判据是否改为「`workspace/` 不存在」需另行裁决，本批未改判据。
+- **待确认（MLflow `Default` 实验的旧 artifact 落点；仅事实登记，本批不改库）**：`mlflow/mlflow.db` 的 `experiments` 表中 `experiment_id 0`（`Default`）的 `artifact_location` 仍指 `<repo>/mlruns/0`，该目录本机不存在；本批只把 experiment_id 1/2 改指 `mlflow/artifacts`。
 
 ### LAYOUT-CANDIDATES-JSON — `training_candidates.json` 内的绝对路径重写
 

@@ -291,13 +291,13 @@ facts:
     state: active
     topic: 项目本地布局已扁平化，`workspace/` 根段取消
     claim: >
-      用户 2026-10-21 决定取消项目本地 `workspace/` 根段：项目根即 workspace 根，数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，这些目录一律不入 Git。P0+P1 只改代码、配置、测试与忽略规则，磁盘上的物理搬迁（P2）尚未执行，`workspace/` 目录仍在磁盘上；`.compat/workspace` 与 `store/workspace/**` 不属本次映射。
+      用户 2026-10-21 决定取消项目本地 `workspace/` 根段：项目根即 workspace 根，数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，这些目录一律不入 Git。P0+P1 只改代码、配置、测试与忽略规则；P2 物理搬迁的本机侧已于 2026-10-21 随 commit `b18e69b` 完成，本机磁盘上的 `workspace/` 目录已消失。训练机侧的搬迁尚未执行，训练机仍为旧布局。`.compat/workspace` 与 `store/workspace/**` 不属本次映射。
     evidence:
       - ref: pipeline/project_workspace.py:61
         expect: runs=root / "trains",
       - ref: versioning/prompts.py:93
         expect: return root / "trains" / train_version / "input" / "prompt.yaml"
-      - ref: tests/test_layout_migration_guard.py:64
+      - ref: tests/test_layout_migration_guard.py:79
         expect: "models/minicpm-v-4.5": "base-models/minicpmv4_5",
       - ref: .gitignore:20
         expect: /audits
