@@ -140,7 +140,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-015 [active] 可见分离最小观察窗取 2.0 秒
 用户于 2026-10-19 裁决「可见分离最小观察窗 = 2.0 秒」：post 候选在事件时刻之后（guard 之外）至少还需 2.0 秒素材，不足则不生成该候选。该值来自用户裁决，**不是**现有代码里的常量（代码现值 `MIN_CANDIDATE_SECONDS = 1.0`），落地待新链路设计；本轮不改任何代码与阈值。
 出处：
-- docs/pending-blockers.md:275（expect：可见分离最小观察窗 = 2.0 秒）
+- docs/results/training-data-ledger-20261017.md:89（expect：可见分离最小观察窗 = 2.0 秒）
 - pipeline/v3_candidate_plan.py:37（expect：MIN_CANDIDATE_SECONDS = 1.0）
 - pipeline/v3_candidate_plan.py:34（expect：TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)）
 
@@ -172,8 +172,8 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-018 [active] 新一轮人工标注基准与旧契约分域
 用户于 2026-11-05 确认本轮人工标注采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；现象首版为伸长、颈缩、开裂、层间分离，可多选。未断裂或未夹紧时，模式和位置均填写固定文字值「无对应值」，与未标注及无法识别分开。该基准仅规定人工标注，v4.1 契约及运行时保持冻结，新契约与数据接入未实施。
 出处：
-- docs/fracture-label-reference.md:25（expect：伸长、颈缩、开裂、层间分离）
-- docs/fracture-label-reference.md:106（expect：状态为“未断裂”时，模式和位置都填 **无对应值**）
+- docs/fracture-label-reference.md:21（expect：伸长、颈缩、开裂、层间分离）
+- docs/fracture-label-reference.md:102（expect：状态为“未断裂”时，模式和位置都填 **无对应值**）
 
 ## 已废弃（墓碑）
 
@@ -206,8 +206,8 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
   - 正确：错。行号与内容对得上不代表文件路径存在：把 `v3_candidate_plan.py` 放在 `pipeline/scripts/` 下（实际位置是 `pipeline/` 根）时，引用处的行号与内容仍可能对得上，但该路径并不存在；引用前必须对路径本身做存在性实测，现由 `scripts/verify_design_facts.py --check-doc-paths` 兜底。这属于条件式反例：该错误写法曾出现在仓库外审计 brief 中（订正记录见仓库外 `~/pi-workspace/mVllm_2-audit/label-anchor-decision-20261018.md:22`，不在 Git 内，不是仓库证据）；仓库内从未有过该路径。
   - 出处：pipeline/SCRIPTS.md:23（expect：v3_candidate_plan.py`](v3_candidate_plan.py)）
 - **误读**：文档里印了数字 = 这个数字可追溯
-  - 正确：错。抽出的 826 个数字中，`code_commit`/`data_release`/`prompt_version` 三项齐全的为 0 行，绝大多数只有笼统口径描述，引用前必须回到产生它的记录；见 PB-020。
-  - 出处：docs/pending-blockers.md:309（expect：指标数字缺口径三元组）
+  - 正确：错。抽出的 826 个数字中，`code_commit`/`data_release`/`prompt_version` 三项齐全的为 0 行，绝大多数只有笼统口径描述，引用前必须回到产生它的历史记录。
+  - 出处：docs/results/training-data-ledger-20261017.md:91（expect：指标数字缺口径三元组）
 - **误读**：每帧独立编码 = 模型知道帧序
   - 正确：错。逐帧单独编码只说明帧被分成多组送入，不构成模型具备时序感知的证据；`temporal_ids` 全为 -1 的成因尚未归因（PB-002 已按用户 2026-10-19 决定取消排查），不得写成「模型已知帧序」或「模型不知帧序」。
   - 出处：finetune/validation/video_loader.py:52（expect：own group (8 frames -> 8 groups)）

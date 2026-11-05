@@ -81,3 +81,11 @@ release.yaml 无 content_hash/digest/sha256/checksum 字段，目录内无 index
 来源：本机历史提交 `41f4800` 的原项目台账 R2-REALTRAIN 条目；并非本轮复验。
 
   3. **CPU 复验六项全部通过**（`all_pass: true`；全程 `CUDA_VISIBLE_DEVICES=''`、`torch.cuda.is_available()=False`、未加载任何权重）：`temporal_ids` 全 `-1`（flat `[-1]×8`，depth `1/8/1`，由 processor 回填）；8 帧 → 8 组、每组 1 帧；帧索引 `[0, 54, 109, 164, 218, 273, 328, 383]` 与生产形态 A8 逐项相同（PTS 差值全 0.0，解码总帧 384）；规整尺寸 `(229, 286)`（`tgt_sizes` 全 `[36, 29]`，单帧 `pixel_values` 为 `(3, 14, 14616)`）；`max_slice_nums` 生效值 2；切片次数 0（`get_sliced_grid=None`、`len(get_sliced_images)=1`）。
+
+## 既有登记册中的事实摘录
+
+来源：本机历史提交 `8ca9ce0` 的原未结事项登记册；作为历史依据保留，不构成新增待办。
+
+- 用户裁决（2026-10-19）：可见分离最小观察窗 = 2.0 秒。定义——post 窗口生成前须校验「事件时刻之后、guard 之外，剩余素材至少 2.0 秒」，不足则该候选不生成。**该值来自用户裁决（2026-10-19），不是代码里现存的常量**；代码现值仍是 `MIN_CANDIDATE_SECONDS = 1.0`，落地待新链路设计与实施授权。
+
+指标数字缺口径三元组的历史盘点：- 清点结论（只读清点，2026-10-19）: 仓库文档中抽出的 **826** 个数字里，可同时还原 `code_commit` / `data_release` / `prompt_version` 三项的为 **0** 行；绝大多数只有笼统口径描述，引用前必须回到产生它的记录。
