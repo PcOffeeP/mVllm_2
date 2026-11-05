@@ -167,6 +167,14 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - tests/test_layout_migration_guard.py:83（expect："models/minicpm-v-4.5": "base-models/minicpmv4_5",）
 - .gitignore:20（expect：/audits）
 
+## 新一轮人工标注基准与旧契约分域
+
+### DF-018 [active] 新一轮人工标注基准与旧契约分域
+用户于 2026-11-05 确认本轮人工标注采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；现象首版为伸长、颈缩、开裂、层间分离，可多选。未断裂或未夹紧时，模式和位置均填写固定文字值「无对应值」，与未标注及无法识别分开。该基准仅规定人工标注，v4.1 契约及运行时保持冻结，新契约与数据接入未实施。
+出处：
+- docs/fracture-label-reference.md:25（expect：伸长、颈缩、开裂、层间分离）
+- docs/fracture-label-reference.md:106（expect：状态为“未断裂”时，模式和位置都填 **无对应值**）
+
 ## 已废弃（墓碑）
 
 （当前没有已废弃条目。）

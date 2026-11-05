@@ -305,6 +305,20 @@ facts:
     established_by: 用户裁决 2026-10-21 + 代码核对
     supersedes: null
     affects: [code, data, ops]
+  - id: DF-018
+    state: active
+    topic: 新一轮人工标注基准与旧契约分域
+    claim: >
+      用户于 2026-11-05 确认本轮人工标注采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；现象首版为伸长、颈缩、开裂、层间分离，可多选。未断裂或未夹紧时，模式和位置均填写固定文字值「无对应值」，与未标注及无法识别分开。该基准仅规定人工标注，v4.1 契约及运行时保持冻结，新契约与数据接入未实施。
+    evidence:
+      - ref: docs/fracture-label-reference.md:25
+        expect: '伸长、颈缩、开裂、层间分离'
+      - ref: docs/fracture-label-reference.md:106
+        expect: '状态为“未断裂”时，模式和位置都填 **无对应值**'
+    established: 2026-11-05
+    established_by: 用户确认的人工标注基准
+    supersedes: null
+    affects: [data, eval]
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
     correct: 错。子窗口以断裂事件为锚重新裁剪，本来就可以包含断裂前片段，父子窗口状态不同是设计预期
