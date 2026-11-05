@@ -4,9 +4,9 @@
 
 ## 当前状态与下一步
 
-**当前阶段（2026-10-16）**：工程与流程基础设施基本建成，真实模型效果与独立验收仍缺证据。数据处理、审查交接、版本管理及训练/评测/服务入口已有工程实现与合成验证；真实 GPU 训练、真实 test、最终模型质量、真实服务成功路径与整机恢复均无证据，真实验收未升级。本节只保留结论与最新增量，逐条事实、状态、授权与限制以下方子条目及[最近维护记录](#最近维护记录)为准。
+**当前阶段（2026-11-05，按既有记录整理；未刷新训练机或标注进度）**：当前主线为 LABEL-ANNOTATION 人工标注，完成后依既定裁决推进数据重建设计及其授权；R2 三折真实训练、最终独立 test、真实服务性能与组合恢复仍未验收。数据、训练、评测及服务已有工程接线与合成验证；历史 R1 有真实开发侧评测与重测记录，不能写成从未真实运行，也不能据历史结果认定最终质量通过。逐条事实、状态与授权以下方任务及[最近维护记录](#最近维护记录)为准。
 
-**开发侧输入与预算（2026-10-16，Codex；分母口径与试件分组详载 EVAL-DEVELOPMENT）**：起始 Mac `57670abc` 干净，训练机限定只读核实际 `data-v4.1-r2` / `prompt-v4.1-r1`；候选/来源视频、三折 validation、未进入 validation 的候选数及试件分组的分母与依据以 EVAL-DEVELOPMENT 与本轮准备记录为准，来源层级无泄漏不等于独立试件，试件分组依据为用户确认而非独立现场验真。仍未冻结：旧 Fold0 实际训练 Prompt 未证实；评测与服务存在切片1/切片2、抽帧边界及一次调用与最多三次重试的差异；质量 GPU 小时预算未虚填、实际变体未冻结，性能 1/20 小时为既定上限但不能冒充质量预算。详见[训练数据台账](results/training-data-ledger-20261017.md)「2026-10-18 并入原始核验材料」节（原开发输入核验材料已于 2026-10-18 并入台账并移除原文件）。未运行模型/真实评测/训练/test、不改基座，真实验收未升级。
+**开发侧输入与预算（2026-10-16 历史快照，Codex；后续对齐情况以 EVAL-DEVELOPMENT 为准）**：起始 Mac `57670abc` 干净，训练机限定只读核实际 `data-v4.1-r2` / `prompt-v4.1-r1`；候选/来源视频、三折 validation、未进入 validation 的候选数及试件分组的分母与依据以 EVAL-DEVELOPMENT 与本轮准备记录为准，来源层级无泄漏不等于独立试件，试件分组依据为用户确认而非独立现场验真。仍未冻结：旧 Fold0 实际训练 Prompt 未证实；评测与服务存在切片1/切片2、抽帧边界及一次调用与最多三次重试的差异；质量 GPU 小时预算未虚填、实际变体未冻结，性能 1/20 小时为既定上限但不能冒充质量预算。详见[训练数据台账](results/training-data-ledger-20261017.md)「2026-10-18 并入原始核验材料」节（原开发输入核验材料已于 2026-10-18 并入台账并移除原文件）。未运行模型/真实评测/训练/test、不改基座，真实验收未升级。
 
 **基座来源与评审侧准备（2026-10-15～2026-10-16，Codex；权威表述见 EVAL-DEVELOPMENT / MODEL-DIAG（基座来源）与 EVAL-HOLDOUT / EVAL-PERFORMANCE / EVAL-INTEGRATION（评审与显示测点））**：官方固定 revision 的配置/tokenizer/processor 与四份权重身份已比对，唯一代码偏差为实际基座构造函数多 `self.post_init()`；框架用途已静态核定，历史来源/动机追查按用户要求取消，不改写基座、不冒称原样官方快照，来源声明与正式登记仍不放行，见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)、[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。评审 tokenizer 的 HF NFC / GGUF NFD 差异经本机安装包 x86 词表实测复现，原生 arm64 server 未实测（[分词核验](results/ollama-tokenizer-verification-20261015.md)、[固定来源与材料](results/evaluation-tokenizer-materials-20261015.md)；原 [A/B 草案](plans/2026-10-15-review-tokenizer-alignment-design.md)已撤回为历史探索）；此后按用户授权以原方案完成本地兼容修复及两个模型各 9 条 golden 的 v2 受审映射，真实评审仍未执行（兼容修复记录，该记录已随 2026-10-18 清理移除）。评审隔离 canary 预检与显示测点桥接已在本机合成闭环通过，真实部署、独立账户、DOM 测点与真实密钥仍缺（运行前接线，该记录已随 2026-10-18 清理移除）。以上均为合成或无模型范围，不以合成结果授真实资格；不改判读、质量门与样本分母，不关闭 TLS 校验；不创建正式 eval/claim、不启动完整服务、不改外部客户端、不读真实 test、不生成真实回答。
 
@@ -38,7 +38,7 @@
 | 本轮已解决 | CONTRACT-NAMING | 已解决：候选契约与下游发布复用边界已澄清 | 两module仅docstring、AST行为相同；索引/数据指南一致，不重命名或改身份 |
 | 口径裁决 | TEST-SOURCE-REUSE | 待处理：21 个既定 test source 重建 test release 的口径已裁决，真实构建未执行 | 三条边界（不入任何训练分支／非盲参考性口径／结果不回流）约束构建与报告；构建仍待授权、人工审查与真实媒体验证 |
 | 归档纪律 | ARTIFACT-RETENTION | 进行中：备份节奏、过期文件管理与清理红线已定，待按节奏执行 | 首次适用待全量训练+评测归档；清理红线三项不得进入任何清理候选 |
-| 后续主任务 | R2-REALTRAIN | 待处理：用 `data-v4.1-r2` + `prompt-v4.1-r2` 完成 fold 0 → 三折真实训练与评测，未开始 | 待清理收尾后；依赖 r2 训练 YAML 冻结 + 用户 GPU 授权；预算均为推算，需首 50 步实测校准 |
+| 后续主任务 | R2-REALTRAIN | 待处理：原登记的 r2 数据与 Prompt 三折训练计划未开始 | 标签从头重建设计及标注为前置；旧 r2 目标是历史登记，重建后的实际输入身份须依既定裁决核定，不自动改写；尚需训练配置与预算、适用 GPU 授权 |
 | 本期已收尾 | LAYOUT-FLATTEN | 已完成（双端）：取消 `workspace/` 根段的布局扁平化；本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975` | 见下文 LAYOUT-FLATTEN 条目与[项目现状](project-status.md)「项目本地目录布局」节 |
 
 MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练最终候选；绑定 model/eval 的一次性 claim 在最终身份确定并获测试使用授权后、首次模型调用前建立。不能倒置为先测试通过才允许训练该候选。
@@ -74,7 +74,7 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 ### R2-REALTRAIN — 用 r2 数据与 Prompt 完成三折真实训练与评测
 
 - **状态/来源**：待处理（Pi，2026-10-18；未开始，排在当前清理收尾之后）；用户 2026-10-18 指示把「新一轮 R2 数据的真实训练与评测」登记进台账，并标注它排在清理收尾之后、后续按时间推进。父任务 FINAL-TRAIN / MODEL-QUALITY（三折开发验证口径）；本条不改变这两个父任务的阻塞状态，不改任何既有阈值。
-- **目标**：用 `data-v4.1-r2` + `prompt-v4.1-r2` 完成 fold 0 → 三折的真实训练与评测，产出新体系（`python -m versioning`）的第一条 `train` 记录、第一个 `model` 身份、第一份正式 `eval` 记录。本轮不含 test 分支与 full 训练。
+- **原登记目标（2026-10-18；后续标签重建裁决适用，重建后实际输入身份尚待核定）**：用 `data-v4.1-r2` + `prompt-v4.1-r2` 完成 fold 0 → 三折的真实训练与评测，产出新体系（`python -m versioning`）的第一条 `train` 记录、第一个 `model` 身份、第一份正式 `eval` 记录。本轮不含 test 分支与 full 训练。
 - **已就绪（逐项带证据）**：
   1. **数据**：`data-v4.1-r2` 为 sealed / development / `training_allowed: true` / active，1,678 候选 / 85 来源；三折 1253-425、1014-664、1186-492（每折 train∪val=1678、交集 0、dup 0）。证据：`docs/results/training-data-ledger-20261017.json`（`state`、`status`、`training_allowed` 字段）与同目录 `.md` 的分折表。该台账为训练机只读实测 + 本机只读统计，未重跑训练。
   2. **Prompt（Git 记录 + store 注册）**：Git 侧 `records/prompts/prompt-v4.1-r2.yaml` 已建（sha256 `9c6ec527…26f9`，1808 字节），store 侧 `prompt create` 已执行且两侧 sha256 相同；其 system/user 与契约 `3798f00c…38ab` 正文逐字节一致。证据：仓库外，他机不可达 `~/pi-workspace/mVllm_2-audit/dev-eval-alignment-20261017.md`（Git 侧正文与哈希）、`~/pi-workspace/mVllm_2-audit/eval-r0-realign-20261017.md`（训练机 `prompt create` EXIT=0、两侧哈希一致）。
@@ -91,8 +91,8 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
   2. **GPU 训练授权未给**：训练机真实训练授权属执行纪律，无代码门可替代。
   3. **训练输入其余门未逐项复核**：`train prepare` 还会挡 data 验证路径（committed receipt 或显式 `--data-inputs`）、折计数与成员和 release 元数据一致、媒体根、基座完整清单、`environment` YAML 与 `git_commit`；`pipeline-and-gates-20261018.md` 的 C2 把其中多道判为「待核」或「当前未满足」，均未在训练机逐项跑过 prepare。
   4. **训练预算未定，全部为推算**：3 epoch 按 epoch-based 语义推算 1,290 步（468/378/444）× 10.94 s/step，加 27 次 eval（训练内 24 次 + 每折训练后最终 3 次），三折约 **5.78 h**；单折约 1.86–1.99 h；2 epoch 约 3.93 h；若改为 1 epoch，按 5.78 h 线性折算三折约 1.9 h（该折算值由本条给出，重算报告只给到 2 epoch 的 3.93 h）。以上**均为推算，非实测**，且 10.94 s/step 是在旧 prompt/release 下测得，须用 r2 首 50 步实测校准。口径说明：`docs/results/training-data-ledger-20261017.json` 的 timing 段用的是 eval-inclusive 14.9309 s/step 与 ceil 语义，得 1,296 步 / 5.3751 h，与本条 10.94 s/step + 27 次 eval 的口径不同，两个数字不可互指矛盾。证据：仓库外，他机不可达 `~/pi-workspace/mVllm_2-audit/training-time-recalc-20261018.md`。
-- **依赖**：清理收尾完成（本轮清理批次，非 `MODEL-ARCHIVE` / `ARTIFACT-RETENTION` 项下执行，收尾状态以清理批次记录为准）+ r2 训练配置冻结 + 用户 GPU 授权。
-- **下一动作（按序，不跳步）**：① 冻结 r2 训练 YAML（三折参数、epoch 数、eval 频率、`cutoff_len`/`video_maxlen` 等），同轮补齐 `environment` YAML、`git_commit`、媒体根与 data 验证路径；② 首 50 步冒烟实测 s/step 校准预算 ③ 跑 fold 0 ④ 三折 ⑤ 各自 export → `model register` → `eval prepare`/`run`。
+- **依赖**：后续用户裁决的源视频标注和标签重建设计为前置；未来数据/Prompt 身份及训练配置须按重建结果与既定裁决核定。原登记还包括清理收尾、训练配置冻结和用户 GPU 授权；具体执行继续遵守授权与验收门。
+- **原登记下一动作（2026-10-18，须先满足后续标注及重建设计前置；未来输入身份未预判）**：① 冻结 r2 训练 YAML（三折参数、epoch 数、eval 频率、`cutoff_len`/`video_maxlen` 等），同轮补齐 `environment` YAML、`git_commit`、媒体根与 data 验证路径；② 首 50 步冒烟实测 s/step 校准预算 ③ 跑 fold 0 ④ 三折 ⑤ 各自 export → `model register` → `eval prepare`/`run`。
 - **验收标准**：三件产物齐全——新体系第一条 `train` 记录（`records/training/<train>/manifest.yaml` + `training-evidence.json`（落在 `trains/<train>/` 并作为 MLflow artifact 上传，与 manifest 不同目录））、第一个 `model` 身份（Registry Model Version）、第一份正式 `eval` 记录（`records/evaluations/<eval>/manifest.yaml`）；每个结论可追溯到 data 身份 + prompt 身份 + 配置哈希 + 代码 commit；全程不读 sealed test、不跑 full（除非另有授权）。
 - **证据位置**：`docs/results/training-data-ledger-20261017.json`、`docs/results/training-data-ledger-20261017.md`、`docs/results/model-r1-effect-profile-20261018.md`、`docs/results/model-r1-effect-profile-20261018.json`；以下四份在仓库外，他机不可达，不写作链接：`~/pi-workspace/mVllm_2-audit/pipeline-and-gates-20261018.md`、`~/pi-workspace/mVllm_2-audit/dev-eval-alignment-20261017.md`、`~/pi-workspace/mVllm_2-audit/eval-r0-realign-20261017.md`、`~/pi-workspace/mVllm_2-audit/training-time-recalc-20261018.md`。
 - **限制声明（不得越界引用）**：① **R1 与 R2 不可直接比较**——R1（`v4.1-agent-pipeline-fold0-r1`）是 legacy 命名、旧体系产物，R2 是新体系第一代，中间没有任何记录把两者接起来；② R1 的全部 425 数字测于 1 组融合 / 64 token 的旧预处理链路，与生产链路（8 帧 → 8 组、视觉 token 512）口径不同，数值差异不能归因于模型能力；不可比的原因在预处理链路而非契约哈希——R1 的 425 记录中也有在 `3798f00c…` 契约下产出的（见 `docs/results/model-r1-effect-profile-20261018.md`），不得以契约相同或不同解释可比性。③ 本条登记不构成训练、评测或读 test 的授权。
@@ -638,3 +638,5 @@ MODEL-QUALITY 是总目标。先冻结 test 数据及预注册准备，再训练
 - **2026-10-16（Codex，开发输入与预算准备）**：起始57670abc，限定SSH核r2开发六文件及候选metadata/Prompt；远端main@3f200461前后干净，不同步。1,678候选、85来源，validation425/664/492共1,581，97仅出现于train，无候选/source层级泄漏；不宣称试件独立。保存无标签来源关系、成功采集脚本及已知失败记录；成功调用13,365,233字节/0.161秒，不把它冒充整个阶段累计IO。Prompt/契约差异按正式重渲染行为解释，旧训练Prompt未知。现行开发/交付切片、抽帧边界和请求重试差异入既有前置；不擅改路径/选变体。样本及调用条件算术量已备，质量GPU小时未虚填，真实性能/质量未通过。JSON/22来源摘要/映射与跨报告绑定、310链接/37唯一ID、diff-check通过；独立reviewer及最终历史配置增量复核通过，无剩余可执行问题，未重新SSH复核或运行测试。详细验收及提交由[训练数据台账](results/training-data-ledger-20261017.md)（原开发输入核验材料已于 2026-10-18 并入）与git log追溯；真实模型/test/训练/基座改写/来源追查/pushmerge未执行。
 
 - **2026-10-16（用户确认／Codex，开发试件分组材料补齐）**：用户确认“每一个式样只对应一个视频，不会出现重复的”。据此沿已核candidate→source关系，将同视频全部窗口归一组，生成显式分组材料（现为[训练数据台账](results/training-data-ledger-20261017.md) 的 `source_groups` 与 `source_map.mapping`）：1,678候选、85组，validation三折29/29/22组共80，折内及验证折间组交集为0。来源依据保留用户原话与观察材料SHA，非独立物理身份验真；未宣称所有实验批次相关性不存在。移除等待试件映射的下一动作，原观察快照不追改；正式eval输入/真实模型/test未创建或执行，其他准备缺口保留。本次Mac提交git log追溯。
+
+- **2026-11-05（Codex，台账状态梳理）**：基线本机 `1a905e0`；依据 LABEL-ANNOTATION、R2-REALTRAIN、PB-001/PB-015 后续裁决及 DF-008/DF-009，更新当前概览并标注早期快照与旧标签重建步骤的历史性质。PB-015 保持阻塞：现行标注和重建设计、后续必要授权尚未完成，PB-001 已关闭不再列作当前网络阻塞，旧60条金标准暂缓未取消；同步标明 PB-020 的 C-02 状态矛盾已澄清，其他冲突仍待裁、v4.2 仍暂停。仅文档状态整理，未实测标注进度、远端连接、模型或 test。`python3 scripts/verify_design_facts.py` 退出0（输出 `FAIL 0`）；`python3 scripts/verify_design_facts.py --check-doc-paths` 退出0（未豁免引用中缺失0处，豁免及占位符不判存在）；`git diff --check` 无输出。独立reviewer对三份文档及R2后续修订核查通过，未SSH或运行pytest；提交由 git log 追溯。
