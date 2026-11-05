@@ -75,3 +75,9 @@ release.yaml 无 content_hash/digest/sha256/checksum 字段，目录内无 index
 其余一并并入的事实：开发输入盘点的基线 HEAD、只读采集调用与成功采集脚本全文、4 次尝试历史、release 授权观测、Prompt 与契约身份、旧 Fold0 绑定、6 份非 release 文件证据、三条 limits（JSON `development_inputs`）；三入口路径对齐、变体未选、性能与时间上限、评审调用边界、样本量算术（JSON `runtime_readiness`）；运行前核验正文的 12 条本轮约束与收尾核查结论（JSON `development_inputs.round_constraints`、`development_inputs.closeout_review`）。
 
 体积：并入前 14,118 B，并入后 211,453 B，未超 500 KB，故未拆分，未产生 `.sources.json`。逐条覆盖核对（102 条事实，0 失败）由仓库外脚本 `~/pi-workspace/mVllm_2-audit/verify_ledger_coverage.py` 在删除前完成，含 1,678 条映射逐条相等、22 份指纹逐项相等、恢复 YAML 字符串相等与 sha256/size 复算、四处差异列表相等、计数相等。
+
+## 既有台账中的 CPU 核验（历史摘录）
+
+来源：本机历史提交 `41f4800` 的原项目台账 R2-REALTRAIN 条目；并非本轮复验。
+
+  3. **CPU 复验六项全部通过**（`all_pass: true`；全程 `CUDA_VISIBLE_DEVICES=''`、`torch.cuda.is_available()=False`、未加载任何权重）：`temporal_ids` 全 `-1`（flat `[-1]×8`，depth `1/8/1`，由 processor 回填）；8 帧 → 8 组、每组 1 帧；帧索引 `[0, 54, 109, 164, 218, 273, 328, 383]` 与生产形态 A8 逐项相同（PTS 差值全 0.0，解码总帧 384）；规整尺寸 `(229, 286)`（`tgt_sizes` 全 `[36, 29]`，单帧 `pixel_values` 为 `(3, 14, 14616)`）；`max_slice_nums` 生效值 2；切片次数 0（`get_sliced_grid=None`、`len(get_sliced_images)=1`）。

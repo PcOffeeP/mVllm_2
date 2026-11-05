@@ -142,9 +142,9 @@ facts:
     state: active
     topic: R1 在 8 帧 / 8 组 / 512 token 新口径下的重测结果
     claim: >
-      同一模型、同一 425 条数据、同一 Prompt，仅把管线换成 8 帧 / 8 组 / 512 视觉 token 重测（2026-10-18）：四字段 joint 由 41.18% 升到 50.59%、已断裂仍 0/33、发生断裂 recall 由 45.83% 升到 59.72%、strict_valid 0.9906、临界未断裂 recall 由 0.2281 降到 0.1053；该重测结果文件尚未入库，本事实的仓库内锚点是任务台账的 R2-REALTRAIN 条目。
+      同一模型、同一 425 条数据、同一 Prompt，仅把管线换成 8 帧 / 8 组 / 512 视觉 token 重测（2026-10-18）：四字段 joint 由 41.18% 升到 50.59%、已断裂仍 0/33、发生断裂 recall 由 45.83% 升到 59.72%、strict_valid 0.9906、临界未断裂 recall 由 0.2281 降到 0.1053；该重测结果文件尚未入库，本事实的仓库内锚点是历史台账摘录。
     evidence:
-      - ref: docs/project-todo.md:99
+      - ref: docs/results/model-r1-effect-profile-20261018.md:626
         expect: joint 由 **41.18%**（旧口径 1 组 / 64 token）升至 **50.59%**
     established: 2026-10-18
     established_by: 实测（训练机，文档/台账记载）
@@ -156,7 +156,7 @@ facts:
     claim: >
       同模型、同 425 条、同 Prompt、只改管线的对照实测两侧已断裂召回均为 0/33，「64 token 丢帧序导致零召回」这一假设被否证（2026-10-18）（台账记载的对照实测；原始 425 条结果文件尚未入库）。
     evidence:
-      - ref: docs/project-todo.md:99
+      - ref: docs/results/model-r1-effect-profile-20261018.md:626
         expect: 结论：**换管线不是零召回的原因**
     established: 2026-10-18
     established_by: 实测（训练机，文档/台账记载）
@@ -253,7 +253,7 @@ facts:
     claim: >
       用户于 2026-10-19 裁决「可见分离最小观察窗 = 2.0 秒」：post 候选在事件时刻之后（guard 之外）至少还需 2.0 秒素材，不足则不生成该候选。该值来自用户裁决，**不是**现有代码里的常量（代码现值 `MIN_CANDIDATE_SECONDS = 1.0`），落地待新链路设计；本轮不改任何代码与阈值。
     evidence:
-      - ref: docs/pending-blockers.md:273
+      - ref: docs/pending-blockers.md:275
         expect: 可见分离最小观察窗 = 2.0 秒
       - ref: pipeline/v3_candidate_plan.py:37
         expect: MIN_CANDIDATE_SECONDS = 1.0
@@ -316,7 +316,7 @@ misreadings:
   - wrong: 已断裂召回 0 = 管线丢掉帧序
     correct: 错。已实测换管线仍 0/33，管线不是零召回的原因
     evidence:
-      - ref: docs/project-todo.md:99
+      - ref: docs/results/model-r1-effect-profile-20261018.md:626
         expect: 已断裂仍 **0/33**
   - wrong: 模型答不出帧数 = 模型缺陷
     correct: 错。帧序输出属过期要求，现行契约 `analysis.user_prompt` 只要求四字段输出
@@ -349,12 +349,12 @@ misreadings:
   - wrong: 文档里印了数字 = 这个数字可追溯
     correct: 错。抽出的 826 个数字中，`code_commit`/`data_release`/`prompt_version` 三项齐全的为 0 行，绝大多数只有笼统口径描述，引用前必须回到产生它的记录；见 PB-020。
     evidence:
-      - ref: docs/pending-blockers.md:307
+      - ref: docs/pending-blockers.md:309
         expect: 指标数字缺口径三元组
   - wrong: 每帧独立编码 = 模型知道帧序
     correct: 错。逐帧单独编码只说明帧被分成多组送入，不构成模型具备时序感知的证据；`temporal_ids` 全为 -1 的成因尚未归因（PB-002 已按用户 2026-10-19 决定取消排查），不得写成「模型已知帧序」或「模型不知帧序」。
     evidence:
       - ref: finetune/validation/video_loader.py:52
         expect: own group (8 frames -> 8 groups)
-      - ref: docs/project-todo.md:86
+      - ref: docs/results/training-data-ledger-20261017.md:83
         expect: 8 帧 → 8 组、每组 1 帧
