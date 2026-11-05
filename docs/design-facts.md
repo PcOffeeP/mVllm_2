@@ -101,7 +101,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-011 [active] 训练机项目工作区路径
 训练机上的项目代码目录是 `/home/liuyang/文档/mVllm_2`。
 出处：
-- docs/project-status.md:21（expect：训练机代码目录 | `/home/liuyang/文档/mVllm_2`）
+- docs/project-status.md:23（expect：训练机代码目录 | `/home/liuyang/文档/mVllm_2`）
 
 ## 「已断裂」标签是 event_time 的循环推论，不是视觉判据
 
@@ -123,7 +123,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - docs/plans/2026-10-18-label-rebuild.md:70（expect：语义定为「**可见分离第一帧**」的时间）
 - docs/plans/2026-10-18-label-rebuild.md:72（expect：数据表新增 `visible_separation_time` 列）
 - docs/plans/2026-10-18-label-rebuild.md:101（expect：选 A —— **可见分离第一帧**（视觉可判））
-- docs/Lable.md:36（expect：第一帧已分离、也是权威值，时刻由实测 fps 派生）
+- docs/label.md:36（expect：第一帧已分离、也是权威值，时刻由实测 fps 派生）
 
 ## 标签语义变更必须升契约哈希
 
@@ -171,8 +171,8 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-018 [active] 新一轮人工标注基准与旧契约分域
 用户于 2026-11-05 确认本轮人工标注采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；现象首版为伸长、颈缩、开裂、层间分离，可多选。未断裂或未夹紧时，模式和位置均填写固定文字值「无对应值」，与未标注及无法识别分开。该基准仅规定人工标注，v4.1 契约及运行时保持冻结，新契约与数据接入未实施。
 出处：
-- docs/Lable.md:21（expect：伸长、颈缩、开裂、层间分离）
-- docs/Lable.md:102（expect：状态为“未断裂”时，模式和位置都填 **无对应值**）
+- docs/label.md:21（expect：伸长、颈缩、开裂、层间分离）
+- docs/label.md:102（expect：状态为“未断裂”时，模式和位置都填 **无对应值**）
 
 ## 已废弃（墓碑）
 

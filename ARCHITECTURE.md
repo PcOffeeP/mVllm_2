@@ -17,11 +17,12 @@ Non-goals:
 
 ## 1. 文档导航
 
-- [README.md](README.md)：仓库概述、当前维护协议与常用流程入口。
+- [README.md](README.md)：仓库概述与文档入口。
+- [docs/label.md](docs/label.md)：本轮人工标注的五类标签与填写规则。
 - [AGENTS.md](AGENTS.md)：项目 Agent 运行规则，含双机边界、新旧体系分域与提交信息约定。
 - [docs/data-workflow.md](docs/data-workflow.md)：显式七阶段数据操作手册。
 - [docs/model-workflow.md](docs/model-workflow.md)：现行训练、评测、模型服务与备份流程。
-- [docs/model-evaluation.md](docs/model-evaluation.md)：已确认的开发验证、最终视觉质量和交互性能设计；代码尚未切换，差距见[实施计划](docs/plans/model-evaluation-implementation.md)。
+- [docs/model-evaluation.md](docs/model-evaluation.md)：旧 v4.1 的开发验证、视觉质量和交互性能设计；新标签的评价体系尚待设计。
 - [docs/plans/2026-09-01-readable-version-control-design.md](docs/plans/2026-09-01-readable-version-control-design.md)：可读版本控制架构权威设计（目标）。
 - [docs/plans/2026-09-01-readable-version-control-implementation.md](docs/plans/2026-09-01-readable-version-control-implementation.md)：B0–B12 基础设施历史实施台账。
 - [docs/project-todo.md](docs/project-todo.md)：项目唯一任务台账与下一步入口。

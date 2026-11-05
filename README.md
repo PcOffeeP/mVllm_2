@@ -1,61 +1,22 @@
 # mVllm_2
 
-**把材料拉伸试验视频转化为可审查的视觉样本与结构化判断。** 本项目基于 MiniCPM-V-4.5，围绕试样是否断裂、断裂机制、断裂位置及特殊情况，提供数据准备、人工审查、LoRA 微调、严格评测和视觉服务流程。
+本项目研究从材料拉伸试验视频中识别断裂信息，并提供数据处理、模型训练、评测与服务的工程链路。
 
-项目当前工程能力、历史效果及尚未完成的验收见[项目现状](docs/project-status.md)。
+当前工作集中在两件事：按照[断裂标签说明](docs/label.md)进行人工标注，以及设计基于这些标签的评价体系。进度和下一步见[项目 TODO](docs/project-todo.md)。
 
-## 项目介绍
-
-### 判断一个时间窗口里的画面
-
-模型观察一个有限视频窗口中的采样帧，每个窗口最多 8 帧。它依据窗口内实际可见的证据回答问题，不用片段外事件补全标签，也不直接把整段长视频当作一个训练样本。
-
-当前使用 `tensile-vlm/v4.1` 四字段契约：
-
-| 字段 | 含义 |
-| --- | --- |
-| `clip_state` | 未断裂、临界未断裂、发生断裂、已断裂或无法判断 |
-| `fracture_mechanism` | 可见证据支持的断裂机制，不能判断或不适用时为 `null` |
-| `fracture_site` | 标距内、标距外非夹具根部、夹具根部，或 `null` |
-| `special_case` | 未夹紧、视频异常，或 `null` |
-
-格式示例，不代表实际推理结果：
-
-```json
-{
-  "clip_state": "发生断裂",
-  "fracture_mechanism": "韧性断裂",
-  "fracture_site": "inside_gauge",
-  "special_case": null
-}
-```
-
-“发生断裂”表示窗口内可见连续到分离的变化；“已断裂”表示可靠画面从窗口开始就已分离。普通“未断裂”窗口的其余三个字段均为 `null`。完整枚举与约束见[业务契约](pipeline/contracts/tensile_vlm_v4_1.json)。
-
-### 从视频到模型
-
-先保留视频来源和源视频级划分，以 ROI（需要观察的试样区域）裁剪或保留画面，生成候选窗口及采样帧。人工审查结果与媒体一起冻结成数据发布，再用 LoRA 更新少量附加参数，使基座适配拉伸试验画面。
-
-开发阶段沿用三折 train/validation 划分，分别训练和验证以比较方案；最终 full 模型使用合格开发数据全集训练，另用独立 test 验收。上层自然语言任务编排、视频搜索和展示由独立的 TensileAgent 项目负责，本仓库提供视觉判断与相关数据、模型流程。
-
-### 初步成果
-
-数据处理、审查交接、版本管理及训练/评测/服务入口已有工程实现与验收记录。历史 Fold0 中间模型曾完成权重合并、真实视频服务和 Agent 调用；其 425 条开发侧 validation 的严格输出合法率为 **99.53%（423/425）**，四字段联合正确率为 **41.18%**；合法率取自 [stage-b 中间模型验收摘要](docs/results/v4_1_stage_b_intermediate/acceptance_summary.json) 的 `artifact_gate.strict_valid_rate: 0.995294` 与 `artifact_gate.evaluation_sample_count: 425`。该组数字属旧 strict v4.1 协议、实验身份为 Fold0 中间模型（发布身份 `v4.1-agent-pipeline-fold0-r1`，来源实验 `v4_1_phase2_source_aware_3k_coverage_first_2a84e8b6cfc3`，seed3407、fold0）、口径为开发侧 validation，与后续 concise 三折记录（实验 `v4.1-prompt-concise-cv-v1-seed3411`，1,581 条，合法率 79.63%、联合正确率 32.07%）不是同一次评测，两者不可混读。这是单折开发结果，尚未证明最终独立 test 通过或生产可用。
-
-当前重点仍是提升任务效果并完成真实模型验收。代码不附带原始视频、基座、adapter 或完整实验目录，也没有可据现有证据提供的一键最终模型演示。历史效果、资产缺口和当前工程边界统一见[项目现状](docs/project-status.md)。
+人工标注基准包含断裂状态、断裂模式、断裂位置、异常情况和断裂现象五类。现有代码仍使用冻结的 [v4.1 四字段契约](pipeline/contracts/tensile_vlm_v4_1.json)；新标签尚未接入数据或模型链路，两者不能直接混用。历史模型结果和证据边界见[项目现状](docs/project-status.md)。
 
 ## 快速开始
 
-### 1. 不安装也能了解项目
+### 1. 先看哪份文档
 
-先阅读上面的输出示例，然后按目标选一份说明：
-
-| 目标 | 阅读入口 |
+| 你要做什么 | 阅读文档 |
 | --- | --- |
-| 把自己的试验视频整理成可训练数据 | [数据处理](docs/data-workflow.md) |
-| 准备实验、评测模型并部署服务 | [模型流程](docs/model-workflow.md) |
-| 了解已确认的测评指标、通过标准和执行框架 | [模型测评方案](docs/model-evaluation.md) |
-| 了解现有成果、未完成项和证据日期 | [项目现状](docs/project-status.md) |
+| 人工标注视频 | [断裂标签说明](docs/label.md) |
+| 查看当前进度和下一步 | [项目 TODO](docs/project-todo.md) |
+| 了解项目已有成果和证据限制 | [项目现状](docs/project-status.md) |
+| 处理数据或了解现有训练、服务流程 | [数据流程](docs/data-workflow.md)、[模型流程](docs/model-workflow.md) |
+| 查阅旧评价设计 | [v4.1 模型测评方案](docs/model-evaluation.md)；新标签的评价体系仍待设计 |
 
 ### 2. 按机器准备 Python 3.11.x 环境
 
@@ -122,10 +83,8 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 接下来按[数据处理](docs/data-workflow.md)准备视频、注释、split 和人工决定；按[模型流程](docs/model-workflow.md)准备基座、正式数据、Prompt 和配置。GPU 训练、推理、完整评测及长时间媒体处理在训练机执行。环境安装通过与实际模型效果达标分别验收。
 
-## 文档与代码导航
+## 其他资料
 
-首次使用从四份主说明进入：本页负责介绍与初次安装，数据说明负责视频到发布，模型说明负责训练到服务，现状说明负责成果及限制。[模型测评方案](docs/model-evaluation.md)补充已确认的质量和性能标准；[实施计划](docs/plans/model-evaluation-implementation.md)列出现有功能差距，方案确认不表示代码已实现或模型已通过。
+[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[设计事实](docs/design-facts.md)记录可追溯的现行设计事实。`docs/plans/`、`docs/tasks/`、`docs/adr/` 保存设计和决策背景，`docs/results/`、`docs/reports/` 保存历史结果，`docs/research/` 保存专题研究。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
 
-实现入口为 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。设计决定与历史验证作为证据保留，不需要首次访问者先读完。
-
-当前任务与执行顺序以[项目台账](docs/project-todo.md)为准，设计边界见[架构说明](ARCHITECTURE.md)。目录整理与核查记录原见文档整合记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。
+代码入口见 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。
