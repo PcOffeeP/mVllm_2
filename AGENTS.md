@@ -5,7 +5,7 @@ Must Preserve:
 - GPU、完整评测和长时间数据处理只在训练机执行；证据不足时不得用本机轻量检查冒充真实效果。
 - legacy 旧链路与 versioning 新体系必须分域，versioning 仅接受五类完整可读身份并 fail-closed。
 - Agent 提交必须准确标明实际执行平台；push、merge 和远程高风险操作必须遵守明确授权边界。
-- docs/project-todo.md 是唯一项目任务台账，状态、证据、依赖和交接必须可追溯。
+- docs/TODO.md 是唯一项目任务台账，状态、证据、依赖和交接必须可追溯。
 Non-goals:
 - 不保存临时分支、HEAD、当前任务状态或实施批次。
 - 不展开 SSH、评测指标或其他已有权威文档负责的低频操作细节。
@@ -16,7 +16,7 @@ Non-goals:
 
 关联文档：
 
-- [docs/project-todo.md](docs/project-todo.md)：唯一项目任务台账与下一步入口。
+- [docs/TODO.md](docs/TODO.md)：唯一项目任务台账与下一步入口。
 - [docs/project-status.md](docs/project-status.md)：项目现状、双机角色与训练机连接信息。
 - [docs/data-workflow.md](docs/data-workflow.md)
 - [docs/model-workflow.md](docs/model-workflow.md)
@@ -27,7 +27,7 @@ Non-goals:
 
 1. `docs/design-facts.md` —— 现行设计事实（**必读**；不看等于从碎片推断）
 2. `docs/project-status.md` —— 当前阶段与结论
-3. `docs/project-todo.md` —— 任务台账与状态
+3. `docs/TODO.md` —— 任务台账与状态
 4. `docs/pending-blockers.md` —— 未结事项登记册；开工前先看有无与本次任务相关的挂起项（`blocked` / `waiting-decision` / `ready`）
 5. 按任务看具体文档
 
@@ -135,7 +135,7 @@ exit=0
 ## 新旧体系边界
 
 - 新旧边界按入口核定，不按整个包推断。尚未切换的 `pipeline/`、`finetune/` legacy 路径维持既有规则；只有在已确认迁移方案、实施授权及该入口验收范围内才能停止旧写入。已停用入口不得恢复为宽松回退，历史产物及仍被调用的业务函数不得因此批量删除或改名。
-- 新体系入口为顶层包 `versioning/`，启动方式为 `python -m versioning`；当前状态及逐入口证据以 [项目TODO](docs/project-todo.md) 为准，设计与基础设施历史见 [可读版本控制实施台账](docs/plans/2026-09-01-readable-version-control-implementation.md)。
+- 新体系入口为顶层包 `versioning/`，启动方式为 `python -m versioning`；当前状态及逐入口证据以 [项目TODO](docs/TODO.md) 为准，设计与基础设施历史见 [可读版本控制实施台账](docs/plans/2026-09-01-readable-version-control-implementation.md)。
 
 ## 新体系（versioning）规则
 
@@ -169,7 +169,7 @@ exit=0
 
 ## TODO 执行与维护
 
-本节规定项目内的持续维护规则；具体任务、优先级与证据只放在 `docs/project-todo.md`。主 Agent 负责汇总和最终更新，执行其他任务的 Agent 同样必须交接状态与新发现，不能把维护留给最初创建文档的 skill。
+本节规定项目内的持续维护规则；具体任务、优先级与证据只放在 `docs/TODO.md`。主 Agent 负责汇总和最终更新，执行其他任务的 Agent 同样必须交接状态与新发现，不能把维护留给最初创建文档的 skill。
 
 1. **开始前**：读 TODO 的“下一步”及目标条目，核对相关代码、产物和 Git 修改；保留其他 Agent 的未提交工作。按依赖选择可执行任务，排序变化写明原因；任务标识固定，不因移动、关闭或重开而改号。
 2. **条目内容**：每个未关闭任务写明状态、来源/用户目标、已证实事实与差距、依赖、下一动作、验收标准、证据位置和验证限制。状态使用“待处理 / 进行中 / 阻塞 / 待确认 / 已解决 / 已关闭（误报或取消）”；进行中注明执行者，阻塞注明解除条件。建议阈值与假设不得冒充用户决定或既定要求。

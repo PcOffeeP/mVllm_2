@@ -182,7 +182,7 @@ facts:
     claim: >
       训练机上的项目代码目录是 `/home/liuyang/文档/mVllm_2`。
     evidence:
-      - ref: docs/project-status.md:23
+      - ref: docs/project-status.md:30
         expect: 训练机代码目录 | `/home/liuyang/文档/mVllm_2`
     established: 2026-10-13
     established_by: 实测（2026-10-13 只读 SSH 现场核对，文档记载）

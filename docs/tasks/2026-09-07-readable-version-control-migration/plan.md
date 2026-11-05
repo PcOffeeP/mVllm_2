@@ -3,7 +3,7 @@
 - **Task ID**：`2026-09-07-readable-version-control-migration`。
 - **上游**：[Intent](intent.md) 确认提交 `3dae30a0`；[Spec](spec.md) 确认提交 `b1aaf315`（承接31d20154；用户确认逐折执行与证据复用）。
 - **历史任务分支**：`refactor/2026-09-07-readable-version-control-migration`；本机工作区 `/Users/pcoffeep/AgentPlayground/active-projects/mVllm_2`。
-- **目标**：保存已确认的实施范围、选择、完成门及 Proof。工程迁移于 2026-09-14 完成交付；后续任务只在[项目 TODO](../../project-todo.md)维护。
+- **目标**：保存已确认的实施范围、选择、完成门及 Proof。工程迁移于 2026-09-14 完成交付；后续任务只在[项目 TODO](../../TODO.md)维护。
 - **确认与执行边界**：本 Plan 的实施已按历次确认与授权执行，最终集成先推任务分支、再快进 Codeup main 至 `5acebc27` 并同步训练机（验证第67节）。本文件保留的施工步骤和 Proof 用于追溯，不是新的执行授权。2026-10-12 仅整理文档与独立核查，不 SSH、不训练或评测。
 
 ## 规划基线与当时接入缺口
@@ -53,7 +53,7 @@
 
 ## 最终工程交付矩阵
 
-工程交付按确认范围已解决；详细失败、修复和分组日志保留在[验证记录](../../results/version-control-migration/verification.md)，当前后续动作只查[项目 TODO](../../project-todo.md)。
+工程交付按确认范围已解决；详细失败、修复和分组日志保留在[验证记录](../../results/version-control-migration/verification.md)，当前后续动作只查[项目 TODO](../../TODO.md)。
 
 | 范围 | 最终工程结果 | 验证证据及限制 |
 | --- | --- | --- |

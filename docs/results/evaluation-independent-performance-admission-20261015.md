@@ -1,5 +1,7 @@
 # 独立评分、性能与准入工程接线记录
 
+> 本文为历史记录：文中当时的任务、进度与建议不代表当前待办。原台账可在 Git 提交 `41f4800` 查阅，当前任务见 [TODO](../TODO.md)。
+
 ## 授权与执行边界
 
 2026-10-15 用户授权按 TODO 继续实施独立评分、性能测试和准入绑定的工程接线、合成验证及实时台账维护，明确暂不运行真实模型评测或使用真实 test。起始为 Mac `30e96f97`、工作区干净，沿用 `feat/evaluation-development`。提交通过 `git log -- docs/results/evaluation-independent-performance-admission-20261015.md` 追溯。
@@ -72,4 +74,4 @@
 
 ## 台账交接
 
-唯一状态入口是 [项目 TODO](../project-todo.md)。本轮工程完成不自动关闭真实独立测试、真实性能、真实隔离/模型部署、完整生产服务或大型灾难恢复验收；MODEL-DIAG、HOLDOUT-BUILD、FINAL-TRAIN 和 MODEL-QUALITY 保持各自条件。
+唯一状态入口是 [项目 TODO](../TODO.md)。本轮工程完成不自动关闭真实独立测试、真实性能、真实隔离/模型部署、完整生产服务或大型灾难恢复验收；MODEL-DIAG、HOLDOUT-BUILD、FINAL-TRAIN 和 MODEL-QUALITY 保持各自条件。

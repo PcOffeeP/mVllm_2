@@ -2,7 +2,7 @@
 
 > 本文适用于 v4.1 旧契约。以[本轮人工标签](label.md)为基础的评价体系尚待设计，本文指标与阈值不直接套用。
 
-本文保存已确认的评测设计，覆盖开发诊断、最终独立验收及交互性能。它是目标协议；工程接口已按批次接入，**不表示真实评测已完成，也不是直接执行的操作手册**。现行命令及原协议见[模型工作流](model-workflow.md)与 [versioning 参数索引](../versioning/SCRIPTS.md)；实现差距及验收批次见[实施计划](plans/model-evaluation-implementation.md)，任务状态只由[项目 TODO](project-todo.md)维护。
+本文保存已确认的评测设计，覆盖开发诊断、最终独立验收及交互性能。它是目标协议；工程接口已按批次接入，**不表示真实评测已完成，也不是直接执行的操作手册**。现行命令及原协议见[模型工作流](model-workflow.md)与 [versioning 参数索引](../versioning/SCRIPTS.md)；实现差距及验收批次见[实施计划](plans/model-evaluation-implementation.md)，任务状态只由[项目 TODO](TODO.md)维护。
 
 ## 1. 目标与结论边界
 

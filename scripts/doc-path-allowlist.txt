@@ -110,3 +110,6 @@ refs: docs/tasks/2026-09-07-readable-version-control-migration/agent-handoff\.md
 # （git 全历史 0 记录），两处均为 MiniCPM-V 官方仓库的 GitHub 链接展示文本（外部上游文档）；
 # 仓库内曾存在的 finetune/README.md 已于 59dee2d1 删除，小写 finetune/readme.md 从未存在。
 refs: (?:docs/llamafactory_train_and_infer\.md|finetune/readme\.md) files: (?:docs/research/minicpmv45_范围D_多模态训练范式与对话格式\.md|docs/research/范围E_MiniCPM-V_LoRA_SFT工程细节调研\.md)
+
+# 旧台账于重命名前及 41f4800 保留历史正文；历史报告里的路径和执行记录不改写为新台账。
+refs: docs/project-todo\.md files: docs/(plans|results|tasks)/.*\.md

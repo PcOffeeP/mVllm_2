@@ -1,5 +1,7 @@
 # V4.1 模型清单与效果对比
 
+> 本文为历史记录：文中当时的任务、进度与建议不代表当前待办。原台账可在 Git 提交 `41f4800` 查阅，当前任务见 [TODO](../TODO.md)。
+
 > 本文保留历史阶段记录。2026-09-14现场模型资产与新体系门禁背景见[2026-09-14模型核查档案](model-gate-baseline-20260914.md)；历史工程通过、旧指针及清单中的存活状态不代表当前新门禁通过。
 
 本文记录 V4.1 阶段各训练模型的「数据 release / Prompt revision / 训练参数 / 效果指标」，
@@ -201,4 +203,4 @@ V4.1 阶段存在两个内容寻址、不可覆盖的训练数据发布，共享
 - **现有工具不能代替新清理方案**：[serve_manage_checkpoints.py](../../scripts/serve_manage_checkpoints.py) 仅针对 checkpoint 子目录，不是 root adapter/merged 或整个 run 的归档清理器。不能直接套用到本次目标。
 - **执行前再验证**：核对两机 Git、真实路径/链接、当前模型完整性、在用进程与文件占用、归档校验及备份；固定显式路径清单，排除发布库、基座、数据、证据目录。这里只读核查不构成删除授权，不提供整目录通配删除命令。
 
-状态与下一动作统一追踪于 [project-todo.md](../project-todo.md) 的 MODEL-ARCHIVE；MODEL-DIAG 的权重缺失需同步处理。
+状态与下一动作统一追踪于 [project-todo.md](../TODO.md) 的 MODEL-ARCHIVE；MODEL-DIAG 的权重缺失需同步处理。

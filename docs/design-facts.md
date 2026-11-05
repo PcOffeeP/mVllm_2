@@ -101,7 +101,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-011 [active] 训练机项目工作区路径
 训练机上的项目代码目录是 `/home/liuyang/文档/mVllm_2`。
 出处：
-- docs/project-status.md:23（expect：训练机代码目录 | `/home/liuyang/文档/mVllm_2`）
+- docs/project-status.md:30（expect：训练机代码目录 | `/home/liuyang/文档/mVllm_2`）
 
 ## 「已断裂」标签是 event_time 的循环推论，不是视觉判据
 

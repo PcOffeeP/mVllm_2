@@ -40,4 +40,4 @@
 
 固定官方配置/tokenizer/processor/代码比对、下载缓存来源追踪及静态闭包已完成；剩余来源前置已收敛为上述构造函数差异的核定，原目录的完整身份仍不能按“未经修改的官方基座”登记。MODEL-DIAG、EVAL-DEVELOPMENT及真实模型父任务保持未完成；本轮不重开已确认的模型/质量方案或擅自处理代码差异。
 
-[项目TODO](../project-todo.md)是唯一台账。独立审查通过，无剩余可执行问题。reviewer独立核HF固定API/tree/config及全部本地Gitblob/LFS身份，复取MS固定树的Data内容和代码正文，检查safe metadata解析、7文件闭包及实际代码diff；静态采集的比较reference/实际来源字段、SSH argv和mode比较口径已校正，跨报告SHA逐项一致。来源helper原样guarded脚本另经reviewer复跑0.73秒、退出0、stdout一致。主Agent最终293个本地链接/锚点、37唯一任务ID、4份新JSON/引用摘要与diff-check通过；同次提交用 `git log -- docs/results/minicpm-fixed-source-audit-20261016.md docs/project-todo.md` 追溯，不push/merge。
+[项目TODO](../TODO.md)是唯一台账。独立审查通过，无剩余可执行问题。reviewer独立核HF固定API/tree/config及全部本地Gitblob/LFS身份，复取MS固定树的Data内容和代码正文，检查safe metadata解析、7文件闭包及实际代码diff；静态采集的比较reference/实际来源字段、SSH argv和mode比较口径已校正，跨报告SHA逐项一致。来源helper原样guarded脚本另经reviewer复跑0.73秒、退出0、stdout一致。主Agent最终293个本地链接/锚点、37唯一任务ID、4份新JSON/引用摘要与diff-check通过；同次提交用 `git log -- docs/results/minicpm-fixed-source-audit-20261016.md docs/project-todo.md` 追溯，不push/merge。

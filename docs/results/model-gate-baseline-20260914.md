@@ -1,4 +1,6 @@
 <!-- DOCUMENT-CONTRACT
+
+> 本文为历史记录：文中当时的任务、进度与建议不代表当前待办。原台账可在 Git 提交 `41f4800` 查阅，当前任务见 [TODO](../TODO.md)。
 Purpose: 为后续模型诊断、训练和晋级提供可核查的实际模型背景。
 Scope: 现存模型资产、历史效果、证据缺口及模型门禁依赖。
 Must Preserve:
@@ -51,7 +53,7 @@ Non-goals:
 
 MiniCPM-V-4.5基座位于 `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`，本轮4个safetensors分片在场。前轮已对29个文件做流式SHA256及分片结构核验：849个tensor与索引一致，内容清单摘要为`2ffb284ff1a0db561633e91c768c1a9732b33838147113004966c1ff112faa21`。这是[验证记录第61节](version-control-migration/verification.md)的历史验签，本轮未重算。下载备注的`master`不是可信固定上游修订，仍缺上游来源冻结证明；本地结构一致不等于模型可加载或来源可信。
 
-本轮没有删除任何旧模型、checkpoint、索引、隐藏侧车或唯一源文件。清理继续归[MODEL-ARCHIVE台账](../project-todo.md)，本文不是删除放行单。
+本轮没有删除任何旧模型、checkpoint、索引、隐藏侧车或唯一源文件。清理继续归[MODEL-ARCHIVE台账](../TODO.md)，本文不是删除放行单。
 
 ## 3. 已知效果：仅引用历史开发侧证据
 
@@ -93,6 +95,6 @@ MiniCPM-V-4.5基座位于 `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`，�
 
 ## 5. 后续工作与证据维护
 
-当前分支按工程范围合并，不安排新的模型微调。后续由[项目TODO](../project-todo.md)继续管理MODEL-DIAG、HOLDOUT-BUILD、FINAL-TRAIN、MODEL-QUALITY：先明确诊断方案与所需原始证据，再按授权分次训练/开发验证；开发方案稳定、test就绪后才冻结full候选并做独立验收。实际命令以[训练与评测入口](../model-workflow.md)为准。
+当前分支按工程范围合并，不安排新的模型微调。后续由[项目TODO](../TODO.md)继续管理MODEL-DIAG、HOLDOUT-BUILD、FINAL-TRAIN、MODEL-QUALITY：先明确诊断方案与所需原始证据，再按授权分次训练/开发验证；开发方案稳定、test就绪后才冻结full候选并做独立验收。实际命令以[训练与评测入口](../model-workflow.md)为准。
 
 本轮现场探针及原始JSON只保存在本机临时目录，SHA和机器/退出记录见[迁移验证记录第67节](version-control-migration/verification.md)。本文保留必要摘要，不新建一份平行模型台账或复制大型结果文件。未来更新须标明哪些事实重新现场核实、哪些仍来自历史报告。

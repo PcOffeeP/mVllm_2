@@ -1,41 +1,45 @@
 # 项目现状与证据
 
-> 当前主线是按照[标签说明](label.md)人工标注，以及设计新标签的评价体系；进度见[项目 TODO](project-todo.md)。以下主要是带日期的工程与历史证据，不表示新标签已经接入或模型已完成新一轮验收。
+本页说明项目做到哪一步、已有证据能支持什么，以及机器和资产的已记录位置。当前任务及进度只在 [TODO](TODO.md) 维护；人工标注按[断裂标签说明](label.md)执行。
 
-## 如何理解这里的“当前”
+## 当前阶段
 
-本页主体证据更新日期为 **2026-10-18**（「项目本地目录布局」一节随双端物理搬迁完成更新到 2026-10-21）。页面覆盖三类证据：2026-10-13 的只读现场核查（起始 Mac 基线 `59dee2d1`，训练机 `main@3f200461`，详见[现场报告](results/remote-state-refresh-20261013.md)）、2026-10-15 的实施增量与 2026-10-16 的限定只读核验与固定来源比对；三类增量各自注明日期与限制，2026-10-16 未执行完整现场刷新，仅限定只读核验。工程能力依据代码及仓库验收记录；环境、数据引用和限定模型文件位置已刷新（2026-10-13 层），模型质量仍依据历史结果。2026-10-13 同日后续新建正式Conda环境并通过检查，见部署记录（该记录已随 2026-10-18 清理移除）。Conda `mvllm2`（Python3.11.17）与 GPU 锁 241 项一致这一环境事实的原始凭证已移除；如需复核须在训练机重跑环境检查。没有加载模型或重新评测，过去的服务成功不表示今天有同一服务在运行。
+本轮主线是人工标注与新标签评价体系设计。新标签尚未接入数据或模型链路，v4.1 契约及运行时保持冻结；新版本实施当前仍暂停。实际人工标注完成范围尚未核验。
 
-项目任务仍由[唯一台账](project-todo.md)维护。本页是现状与证据摘要，不另列一套执行任务、优先级或授权。
+以下工程与资产结论来自既有记录：现场核查主要发生于 2026-10-13 至 2026-10-18，目录搬迁记录更新到 2026-10-21。本次文档整理未刷新训练机、加载模型或复跑评测。历史服务成功不表示今天同一服务仍在运行。
 
-**2026-10-15 实施增量**：按已确认[模型测评方案](model-evaluation.md)及[实施计划](plans/model-evaluation-implementation.md)，本机已实现批次 A/B 的纯语义评分、冻结判读导入、base/成功折来源登记和正式开发接线，独立合成复核通过，整体验证证据见[实施记录](results/evaluation-development-implementation-20261015.md)。后续 C/D/E 续接独立语义评分、匿名发包/封存、性能事件导入/受控 session 和按用途准入；实际合成验证与独立核查状态以[唯一台账](project-todo.md)为准。旧 strict 协议保留原定义，semantic-v4.1 / semantic-holdout-v4.1 / performance-v1 分别显式选择；真实独立 holdout、评审模型隔离和五分钟性能验收尚未完成。用户已选新准入统一新质量加性能，停止旧 strict 新晋级/服务写入，既有批准/alias只按原绑定读取与幂等恢复。本轮没有刷新训练机、模型或数据，上列现场事实日期仍为 2026-10-13。
+## 工程能力与真实验收
 
-同日续补的设计选择已确认：base/trained 真实来源分支、成功折不可变快照且父训练保持 partial、匿名受限多 Agent 评审，以及不授正式服务资格的受控性能加载。评审默认两个独立 Agent 加分歧第三仲裁，可预先配置更多；不再要求双真人。执行配置现已确认：评审在当前Mac使用本地Ollama Qwen3.5 9B＋Ornith-1.5 9B，仅匿名回答、不外发；基座沿用当前项目并现场核验。统计、视频规格、超时和预算见[测评方案](model-evaluation.md)。来源登记、开发与独立评分入口、受控性能 session/事件证据和准入绑定已接线；受控评审 worker/固定 broker 与全局 ambiguous 拒绝机制已接线；当前 sandbox 探针和评审 receipt 仍为合成，部署/tokenizer receipt 与实际 runtime collector 工程已接线，真实资产和独立审计映射未验真时请求前拒绝；显示端双签名接收/核验工程也已接入，外部可信客户端/测点、GPU测量和现场运行 attestation 仍未验收。本轮全synthetic不得passed。本轮没有启动评审模型判读、模型加载或使用真实 test。
+| 范围 | 已有证据 | 结论边界与详细来源 |
+| --- | --- | --- |
+| 数据处理与版本管理 | 数据七阶段、人工审查交接、封存、五类完整身份及引用校验已实现，保留真实小样本和迁移验签记录 | 不证明新标签数据已重建；见[迁移验证](results/version-control-migration/verification.md)及[入口清单](results/version-control-migration/entrypoint-map.md) |
+| 训练与评测接线 | 逐折/full 训练、开发与独立语义评分、性能事件和准入绑定已有工程及合成验证 | 不等于新一轮真实训练、最终质量或真实性能通过；见[开发接线记录](results/evaluation-development-implementation-20261015.md)及[独立评分与性能记录](results/evaluation-independent-performance-admission-20261015.md) |
+| 模型与服务 | Registry 绑定、alias、部署目标、冻结 Prompt 校验和受控加载器已有实现 | 历史批准不自动授予新版本资格；真实 GPU/HTTP 服务须有对应证据 |
+| 环境与恢复 | 保留两平台依赖锁、环境检查入口和小对象/异根恢复记录 | 历史环境检查不证明今天仍合格，也不证明模型负载或大型权重组合恢复可用；操作入口见[模型流程](model-workflow.md) |
+
+旧评测设计、已实现接口和本轮新标签分开理解：[模型评测设计](model-evaluation.md)针对 v4.1，新标签的评价口径仍待设计。旧 strict 记录保留原义；新准入统一要求新质量与性能证据，既有批准/alias 仅按原绑定读取与幂等恢复。本次不运行真实模型评测或使用 test。
 
 ## 已记录的机器与资产位置
 
-2026-10-13已通过SSH核对训练机、代码目录、正式store和基座的指定位置。训练机工作区与LlamaFactory子模块干净；只读核查起始版本59dee2d1比现场main领先5提交；之后的本地文档提交由Git追溯，本轮没有同步。后续连接仍先核对状态，不直接同步覆盖。
+以下是已记录位置，使用前应核对机器状态、当前分支和文件，不能直接据此同步或覆盖。
 
 | 位置 | 记录值与用途 |
 | --- | --- |
-| 本机 | macOS 开发、审查 UI 及结果复核；用 uv 调用已部署的 Mac Python 3.11.x |
-| 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660` |
+| 本机 | macOS：开发、审查 UI、轻量核验和结果复核；使用已部署的 Mac Python 3.11.x |
+| 训练机 | `liuyang@100.70.83.68:22`，主机名 `dell-Precision-3660`；GPU 训练、推理、评测与长时间数据处理在此执行 |
 | 训练机代码目录 | `/home/liuyang/文档/mVllm_2` |
-| 正式store（已归位） | 训练机项目目录内 `/home/liuyang/文档/mVllm_2/store`；2026-10-17 已将活 store 由 `/data/mVllm_2` 归位至此，逐文件 sha256 核验 48/48 一致；旧目录改名 `/data/.store-old-20261017` 保留 7 天回滚窗口（核验记录见仓库外 `~/pi-workspace/mVllm_2-audit/cleanup-execution-20261017.md` 第六轮 48/48，本机未复跑且 checkout 无 `store/` 现场）；`store/records/prompts/` 已由 `.gitignore` 逐级白名单放行（随 store 进 Git），其余内容忽略；各子命令 `--root` 口径与备份规则见台账 `ARTIFACT-RETENTION`；2026-10-18 训练机实测：`store/` 47,288,387 B / 49 文件，其中 `store/records/prompts/` 含 r1（1,200 B）与 r2（1,808 B）；训练机 `data/source/videos` 6,662,518,177 B / 110 个 mp4、`data/derived/subvideos` 208,117,755 B / 2,027 文件（含 2 个 candidate-plan：1,617 + 410）（路径按现行扁平化布局书写，2026-10-18 实测时旧布局写作 `workspace/data/...`）。本机 checkout 无 `store/`、数据目录 `data/` 整体缺失，上述媒体与 store 侧 Prompt 的保留义务在训练机侧 |
-| 备份总目录 | `/data/mVllm_2-backups/`；2026-10-17 归位后 `/data` 只放备份。单次备份的 `--backup-root` 取该目录下的 `baseline-YYYYMMDD` 或 `round<N>-YYYYMMDD` 子目录，不得使用总目录本身；`20261017/` 是历史旧物落点、不再写入（据用户口径，本机未核） |
-| 基座位置 | `/home/liuyang/文档/mVllm_2/base-models/minicpmv4_5`（2026-10-21 布局扁平化后由 `models/minicpmv4_5` 迁入）；2026-10-16四片SHA已对应官方固定HF revision；配置/tokenizer已核，但构造代码有1处偏差、加载可用性未验 |
+| 正式 store | `/home/liuyang/文档/mVllm_2/store`；2026-10-17 归位记录，使用时显式指定根目录 |
+| 备份总目录 | `/data/mVllm_2-backups/`；单次 `--backup-root` 使用其中独立子目录，不使用总目录本身 |
+| 基座目录 | `/home/liuyang/文档/mVllm_2/base-models/minicpmv4_5` |
+| 已记录的正式 Conda 解释器 | `/home/liuyang/miniconda3/envs/mvllm2/bin/python`；历史环境名不能代替当前依赖和源码来源核验 |
 
-通过已有OpenSSH配置、密钥或SSH agent连接：`ssh liuyang@100.70.83.68`。在该机器项目根目录直接使用已按 Linux GPU 锁核验、匹配 checkout 的 Conda Python 3.11.x 执行数据及模型说明中的命令；连接前明确命令、输入/输出和资源。凭据不入Git，删除/覆盖远端文件、切换环境、停止已有任务或push/merge仍按项目授权处理。同日用户追加授权新环境部署，已单独验收；后续同步和模型运行仍需对应授权。
+连接使用已有 OpenSSH 密钥或 SSH agent：`ssh liuyang@100.70.83.68`。连接与操作约束见 [AGENTS.md](../AGENTS.md)，环境核验及执行入口见[模型流程](model-workflow.md)。历史 Conda 检查原始凭证已随前次清理移除，需要确认当前可用性时须重新核验。
 
 ## 项目本地目录布局
 
-2026-10-21 起项目本地布局扁平化，取消 `workspace/` 根段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建的落点分别是仓库根下顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git；store 与这些项目本地目录是两套根，互不替代。
+2026-10-21 起，项目本地布局取消 `workspace/` 根段。双端搬迁记录已完成，收口版本为 `316a1975`；这描述当时状态，不是本次重新检查。数据、训练、模型、基座、MLflow、评测、审计、暂存与重建落在仓库根目录下，均不入 Git。`store` 是独立存储根，不与这些目录互相替代。
 
-**双端物理搬迁已完成**：本机 P2 为 commit `b18e69b`，收口为 `316a1975`；训练机在同一 commit `316a1975` 上完成代码同步与物理搬迁，两端磁盘上均无 `workspace/`。训练机由代码就绪到全部验证通过之间的不可用窗口为 4 秒（脚本定义口径）。训练机四点验收全部通过：① R1 adapter sha256 `9e7941c9…d67064` 在 `models/releases/v4.1-agent-pipeline-fold0-r1/adapter/` 与 `trains/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter/` 两处一致；② merged 落 `models/releases/v4.1-agent-pipeline-fold0-r1/merged/` 共 10 个分片；③ `data/source/videos` 110 个 mp4；④ 搬迁前后 dangling 链接对比新增 0。训练机搬迁后顶层实测为 `data`、`trains`、`models`、`base-models` 与 `store`；`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild` 在该机尚未创建，按实际产物需要时生成。仓库外证据为 `~/pi-workspace/mVllm_2-relayout-20261021/`（`relayout.sh`、执行日志、dangling 前后清单），不在仓库内复制。
-
-**旧 → 新映射（唯一依据）**
-
-| 旧 | 新 |
+| 历史路径 | 现行路径 |
 | --- | --- |
 | `workspace/data` | `data` |
 | `workspace/runs` | `trains` |
@@ -48,70 +52,28 @@
 | `workspace/data-rebuild` | `data-rebuild` |
 | `models/minicpmv4_5` / `models/minicpm-v-4.5`（基座） | `base-models/minicpmv4_5` |
 
-**三个特殊点**：① `.compat/workspace` 与 `store/workspace/**` 不属本次映射——store 域是独立命名空间，两套根不互相换算；② `models/*` 的忽略规则保持原样，它只排除子项、目录本身可跟踪；③ 评测结果、训练记录与历史计划类记录（原 `docs/results/**`、`records/**`、`docs/plans/**`）保留旧路径原文、不回改，阅读时按上表换算；带日期的实测记录描述的是当时磁盘状态，换算只用于理解「那批产物现在该在哪」，不能据此声称目录仍在新位置的旧路径上。这一条有独立旁证：`LlamaFactory` 别名链中历史 dangling 链接的链接文本仍写 `workspace/models/archive/...`（日志抽样 3 条），按约定不重建、不回改，搬迁前后均为 20 条且新增 0。
+`.compat/workspace` 与 `store/workspace/**` 不属此映射；`models/*` 的忽略规则仍只排除子项。历史报告、训练记录及冻结元数据保留路径原文，阅读时按上表换算，不把旧路径文本当作磁盘现状。
 
-**实际搬迁顺序与纪律**：训练机按「（1）代码 `--ff-only` 同步到 `316a1975` 并断言 HEAD 等于目标 commit →（2）`models` → `base-models`（基座）→（3）`workspace/models` → `models` →（4）`workspace/data` → `data`（含 mp4 计数 110 校验）→（5）`workspace/runs` → `trains` →（6）`rmdir workspace`（先断言已空）→（7）重建两条 R1 别名相对链接 →（8）跑四点验收」执行；先搬 `models` 是因为基座目标名 `base-models` 不能与既有 `models` 并存。搬迁前必须核对两端 Git 状态、未提交改动与产物唯一副本：该轮代码同步前先做了未跟踪文件碰撞预检（命中即拒绝合并）、再 `--ff-only` 合并，然后才进物理搬迁。完整脚本与日志归档在仓库外证据目录与 Git 历史，本文不抄全文。
+搬迁过程、验收数字、别名链接及人工回滚说明可在 Git 提交 `2f8cf09` 的本文件中查阅；对应仓库外材料位于 `~/pi-workspace/mVllm_2-relayout-20261021/`。历史回滚步骤与当时版本绑定，不能作为当前工作区的直接操作指令。
 
-**回滚**：搬迁无备份、无软链接代理，是原地 `mv`；脚本**无自动回滚**，只在任一步骤失败时由 ERR trap 打印一份人工反向清单，并要求逐条先确认状态再执行。该清单的真实顺序为三步：① 先用两条 `ln -sfn` 按旧文本重写 R1 别名链接，指回 `workspace/runs/v4.1-phase2-coverage-first-v1-seed3407/fold0/adapter` 与 `workspace/models/releases/v4.1-agent-pipeline-fold0-r1/merged`；② `mkdir -p workspace` 后按「`trains`→`workspace/runs`、`data`→`workspace/data`、`models`→`workspace/models`、`base-models`→`models`」的顺序反向 `mv`（每条前先判 `[ -e ]`）；③ 仅在需要完全回到搬迁前状态时 `git reset --hard` 到脚本内写死的 `952b6cb3c38b0f5086349c512bb56ea1294552d3`（即以 `952b6cb3` 开头）。实际回滚即按上表反向 `mv`，记录与文档参照 Git 历史。
+## 数据与 Prompt 的落点
 
-## 工程能力与真实验收
+已记录的旧版本包括：`data-v4.1-r1` 为 superseded，`data-v4.1-r2` 为 active，`prompt-v4.1-r1` 已登记正式定义。这不是默认版本清单；使用时仍须在线校验状态、许可、内容与完整身份，不能由历史状态推定当前状态。
 
-| 范围 | 已有事实 | 尚不能证明的内容 |
-| --- | --- | --- |
-| 数据处理 | 显式七阶段、ROI/采样媒体、完整审查包、封存和数据引用门；有真实小样本与迁移验签证据 | 全量新批次已重建，或所有媒体已进入新 store |
-| 正式身份与记录 | 五类完整身份；DVC数据管理、Git/YAML输入定义、MLflow实际运行与模型记录 | 旧模型目录自动成为新completed或passed对象 |
-| 训练与评测 | 逐折/三折、独立full、validation、holdout推理及授权评分已接线并有合成验证；当前训练执行证据绑定adapter | 新体系真实GPU训练或最终独立test通过；另备merged不能直接成为正式登记产物 |
-| 模型与服务 | Registry评测绑定、alias、唯一部署目标及冻结Prompt准入；受控加载器验证 | 新体系合格真实模型已加载并成功提供GPU/HTTP服务 |
-| 部署环境 | 两平台锁与doctor已有验收；2026-10-13新Conda mvllm2全锁、依赖、CUDA可见及正式源码绑定检查通过；既有Linux部署脚本仍创建venv | 真实媒体和模型工作负载、训练成功或模型质量通过 |
-| 备份恢复 | 小对象跨机与store级异根恢复有证据 | 真实硬盘、大型权重、SQLite及外部媒体/基座组合灾难恢复可用 |
-
-正式运行环境：已建立Conda `mvllm2`（Python3.11.17），解释器为 `/home/liuyang/miniconda3/envs/mvllm2/bin/python`；GPU锁241项一致、依赖检查和doctor通过，LlamaFactory绑定正式main@3f200461。agent/cpm45及历史mirror venv保留，但不作为此次正式环境验收目标。Mac继续使用独立Mac锁及uv；本次CUDA可见与模块导入不证明实际模型或训练工作负载成功。 详见本轮部署验收记录（该记录已随 2026-10-18 清理移除）。
-
-工程迁移已按确认范围合并并同步正式代码，证据见[最终集成记录第66–67节](results/version-control-migration/verification.md)。原公共CLI的退役范围见[入口清单](results/version-control-migration/entrypoint-map.md)；共享业务库和历史读取依赖仍有用途，不能删除整个旧包。
-
-## 数据与Prompt的落点
-
-| 正式身份 | 已确认迁移状态 | 历史来源 | 使用边界 |
-| --- | --- | --- | --- |
-| `data-v4.1-r1` | superseded | `v4.1.0-760050fad303` | 恢复历史引用，不建立新训练引用 |
-| `data-v4.1-r2` | active | `v4.1.0-ecb5aeb9657c` | 新引用仍须在线校验许可、状态与内容 |
-| `prompt-v4.1-r1` | 已登记正式定义 | 已确认历史Prompt复制迁移 | 实际训练按完整身份冻结，不任意换Prompt复用评测结论 |
-
-这不是隐式“默认版本”清单。r1/r2生命周期、划分计数及外部媒体路径已于2026-10-13只读核对；Prompt仍依据历史迁移证据，本轮未重验内容。r1/r2复制保留原payload及划分，其中仍有外部媒体引用；这些冻结记录里的路径原文仍写旧路径（属历史记录，不回改），磁盘上的旧 `workspace/` 已不存在、也无从删除——不能把这些记录当成已按新布局重写，读取时按「项目本地目录布局」节的映射表换算。正式记录在 `<store>/data/releases/<完整身份>/` 与 `records/prompts/`，映射和生命周期决定见[对象映射](results/version-control-migration/object-mapping.yaml)，内容验签见[验证第20–24及43节](results/version-control-migration/verification.md)。
-
-2026-10-16后续开发输入只读核验：实际r2为sealed/development/active且training_allowed=true，1,678候选、85来源视频；三折validation为425/664/492，共1,581，97个候选未进入validation。来源视频层级无折间泄漏；后续用户确认每试样仅一个视频、无重复，已按source_video准备显式试件分组（用户确认依据，非独立现场验真，正式eval未冻结）；正式Prompt在store/代码仓库一致，与旧注册v2文本相同，但不能代替旧Fold0实际训练Prompt绑定。已备无标签来源关系、三入口参数与预算材料；开发/服务切片、抽帧边界和请求重试仍有差异，质量GPU小时与实际变体未冻结。见[训练数据台账](results/training-data-ledger-20261017.md)「2026-10-18 并入原始核验材料」节（原开发准备记录已于 2026-10-18 并入台账并移除；逐条 key 见该节表），未运行模型或使用test。
-
-Phase2历史train发布有1678个唯一媒体，三折train/validation记录为1253/425、1014/664、1186/492。基础发布有1275条，三折为850/425、830/445、929/346。数据来源和详细统计见[Phase2发布记录](results/v4_1_phase2_development_release/README.md)及[有效视图审计记录](results/v4_1_phase1_effective_view_audit/README.md)；不同发布分数不能直接作单变量因果比较。
+- 版本映射、正式记录位置与迁移血缘见[对象映射](results/version-control-migration/object-mapping.yaml)和[迁移验证](results/version-control-migration/verification.md)。冻结记录含外部媒体路径，按上面的布局映射理解。
+- 候选、来源视频、三折划分、试件分组及耗时外推集中见[训练数据台账](results/training-data-ledger-20261017.md)。用户已确认每个试样只对应一个来源视频；这是用户确认依据，不是独立物理验真。
+- 基座固定 revision 的配置、tokenizer、processor 和权重身份见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)。实际构造代码新增 `self.post_init()` 的框架用途已静态核定，历史来源追查按用户要求取消；实际运行影响仍未验证，见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)。
 
 ## 历史模型成果
 
-以下均为开发侧历史证据，不能当作最终test成绩或本轮新推理。
+历史 Fold0、concise 三折和 visual 三折的结果分别对应不同实验、数据及处理口径。统一从[模型清单](results/model-inventory.md)、[R1 效果分析](results/model-r1-effect-profile-20261018.md)及[历史结果索引](results/INDEX.md)查阅，不在本页重复维护数值。
 
-| 对象 | 样本口径 | 历史结果 | 结论 |
-| --- | --- | --- | --- |
-| Fold0中间发布 `v4.1-agent-pipeline-fold0-r1` | Phase2 Fold0 validation，425条 | strict valid 99.53%（423/425）；joint 41.18%；clip_state 56.00% | 输出结构与旧服务/Agent链路已有基础，任务质量与production资格未通过 |
-| concise三折 | Phase2 validation，1581条 | valid 79.63%；joint 32.07%；clip_state 35.80% | 322条非法输出，临界未断裂及已断裂召回均0%，类别坍缩和契约退化未解决 |
-| visual三折的merged BF16路线 | 基础发布开发侧，1216条 | valid 97.12%；joint 40.21%；clip_state 49.67% | 已有预测曾按严格解析器复算一致，不表示对应权重今天可加载 |
+这些开发侧结果不能当作本轮新标签的质量或最终 test 成绩。历史可加载、已有预测和当前权重完整是不同结论；限定目录未找到文件也不能推断全盘丢失。原始现场范围见[训练机核查](results/remote-state-refresh-20261013.md)。旧 current/Registry 身份不自动授予新 alias 或 passed。
 
-来源为[旧发布身份](../pipeline/model_registry/releases/v4.1-agent-pipeline-fold0-r1.json)、[历史服务记录](results/v4_1_agent_pipeline_fold0_r1/README.md)、concise三折数值（见[模型清单第 5 节效果对比表](results/model-inventory.md#5-效果对比)，其中 322 条严格非法一项见[质量门基线](results/model-gate-baseline-20260914.md)）、visual 三折数值（见[模型清单第 5 节参考表](results/model-inventory.md#5-效果对比)）及开发证据预检（该记录已随 2026-10-18 清理移除，结论见 `docs/results/version-control-migration/verification.md` 第 48 节）。Fold0中间发布的严格合法率与样本量取自[Stage B中间验收摘要](results/v4_1_stage_b_intermediate/acceptance_summary.json)，其中`artifact_gate.strict_valid_rate: 0.995294`、`artifact_gate.evaluation_sample_count: 425`。
+## 历史证据与后续设计
 
-2026-10-13现场核查：旧current仍指向Fold0发布，其adapter和merged索引10个分片在场；基座索引4个分片在场。限定run目录中concise缺权重、visual未找到，不代表全盘丢失。指定store的records/models、training、evaluations及默认MLflow路径未创建；用户说明尚未开展新体系正式业务流程，这符合阶段预期，不作为迁移失败。首次正式运行时仍需明确Registry配置根。旧current与旧Registry身份不授予新alias或passed。细节和限制见[现场报告](results/remote-state-refresh-20261013.md)；模型质量、旧预测及历史恢复调查仍以原证据日期为准。
+此前未结事项已按用户决定移除，后续遇到问题再按实际情况设计，不从历史记录自动恢复任务。旧测试来源曾暴露的限制仍是历史事实；将其改名不能恢复盲性，2026-10-17 用户决定的重建结论口径为非盲参考性，完整记载见 Git 提交 `2f8cf09` 的本文件。
 
-2026-10-16补充限定只读核验：训练机当时为干净 `main@3f200461`，本轮起始Mac `a0f1e1ab` 比它多17个提交，未同步；训练机工作区当前已在 `feat/evaluation-development@e7bd1e75`（2026-10-18 经 bundle + `--ff-only` 同步完成，未产生合并提交），故本段 2026-10-16 的 `main@3f200461` 只是当时的核验起点，不代表当前工作区状态。基座23个白名单文件及旧Fold0 adapter完整SHA已核；前序已确认四片权重与官方main观察一致，后续固定revision比对及代码差异见下；未补造来源声明或登记模型。指定store的model/train/eval与默认MLflow仍未创建。minimal试点归档缺逐样本记录副本，原run只stat未读；未删除文件，真实备份/恢复仍缺准确根路径。该核验不刷新2026-10-13 GPU环境验收，不运行模型；见本轮推进记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。
+规则依据见[版本体系设计](plans/2026-09-01-readable-version-control-design.md)、[ADR](adr/ADR-0001.md)与[迁移 Spec](tasks/2026-09-07-readable-version-control-migration/spec.md)；实际发生的事见[历史摘要](results/version-control-migration/history-summary.yaml)和[迁移验证](results/version-control-migration/verification.md)。归档、备份和删除资格须有各自证据，本页压缩不构成资产删除许可。
 
-2026-10-16后续固定来源比对已完成：HF `daef484c35ec93210ec93c5e901f8f3e9b78ee34`的配置、tokenizer、processor与四权重身份相符，官方ModelScope历史树解释了README和额外配置来源。唯一代码偏差为实际基座构造函数新增`self.post_init()`；后续已静态核定框架用途，历史来源/动机追查按用户要求取消，实际运行影响未验（见[核验收口](results/minicpm-postinit-origin-purpose-20261016.md)）；未覆盖原文件、补造来源声明或登记模型。7个仓内代码文件仅做AST闭包，没有执行远程代码。详见[固定来源核验](results/minicpm-fixed-source-audit-20261016.md)。
-
-## 仍需独立解决的缺口
-
-- **模型测评与诊断**：流程、质量门及四项前置选择已确认，见[测评方案](model-evaluation.md)；来源/成功折登记、纯语义评分、离线判读导入和逐折开发门已实现并经合成验证；独立最终语义评分、发包/封存、exposed/consumed、受控性能事件与按用途准入已接线；真实多 Agent 隔离判读、新独立 holdout、GPU性能采集与显示端可信证据仍未验收。执行配置已确认；现场来源摘要/交付参数及隔离须核验，实际执行另获授权；canary和任意替换训练Prompt不是现成接口。没有对应权重时不据历史报告安排推理。
-- **独立test资格**：既定21个test source已找到，但旧测试发布曾暴露，20个source有媒体凭据关联；余下source也未证实具备独立使用资格。禁止用旧测试调参或仅改名重新获得资格。用户 2026-10-17 裁决：使用既定 21 个 source 重建 test release，最终测试结论口径为非盲参考性（见台账 `TEST-SOURCE-REUSE`）。
-- **真实质量与服务**：训练成功、严格评测通过、最终质量、production批准和GPU服务成功分别取得真实证据，不互相替代。
-- **清理与恢复**：未完成引用、归档和备份证明的旧媒体/权重仍保留；大型及外部依赖组合恢复不能用小对象测试替代。
-
-当前主线为 TODO 的 LABEL-ANNOTATION 人工断裂帧标注，后续数据重建设计与实施按既有裁决和授权推进；模型侧仍需处理开发评测与交付一致性、资源预算及真实验收前置。历史 R1 已有真实开发侧评测和重测记录（DF-007、DF-008），新一轮 R2 训练、最终 test 和真实服务性能验收仍未完成。本次整理未刷新训练机或人工标注进度；用户当前要求不运行真实模型评测或使用 test，具体任务及操作授权以唯一台账为准。
-
-## 证据应怎样保留
-
-[设计与决定](plans/2026-09-01-readable-version-control-design.md)、[ADR](adr/ADR-0001.md)、[已确认Spec](tasks/2026-09-07-readable-version-control-migration/spec.md)描述确认的规则；[对象映射](results/version-control-migration/object-mapping.yaml)、[历史摘要](results/version-control-migration/history-summary.yaml)、[验证记录](results/version-control-migration/verification.md)描述实际发生的事实。
-
-模型归档证据包索引与五份轻量 README/MANIFEST 已随 2026-10-18 清理移除，逐文件指纹与 SHA-256 见 `pi-workspace/mVllm_2-audit/deleted-artifacts-manifest-20261018.tsv`，来源与限制结论见[模型清单](results/model-inventory.md)与[训练机快照](results/model-inventory-audit-20260831/remote_snapshot.json)；本地记录存在不等于训练机原始日志、预测和权重完整，也不是删除放行单。原始结果、摘要和证据不要因概览文档被替换而一起删除。
+本页随实际阶段或资产布局变化更新；被后续记录取代的过程细节留在 Git 历史，原始结果与必要证据继续保留。

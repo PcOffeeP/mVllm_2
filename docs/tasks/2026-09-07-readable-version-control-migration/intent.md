@@ -27,7 +27,7 @@
 - GPU、真实模型加载与推理、长时间数据处理遵守训练机执行边界。模型质量改善、重新训练和独立测试集使用不因迁移自动获得授权。
 - 备份复制校验与真实恢复验证分别记录；未取得真实恢复证据的类型，不宣称已验证可恢复。
 - 历史大型产物清理、merge 和 push 按项目现有明确授权执行。
-- [项目 TODO](../../project-todo.md)保持唯一项目任务台账，关联现有 `VERSION-CONTROL-FORMAL-MIGRATION`；Artifact 负责目标、规格与执行计划。
+- [项目 TODO](../../TODO.md)保持唯一项目任务台账，关联现有 `VERSION-CONTROL-FORMAL-MIGRATION`；Artifact 负责目标、规格与执行计划。
 - 本次请求授权形成 Task Artifact；正式迁移实施范围在后续 Plan 确认时明确。
 - 用户于 2026-09-07 确认承接现有未合并分支，例外于从稳定 main 新建任务分支的默认规则：保留全部提交历史，将原分支重命名为 `refactor/2026-09-07-readable-version-control-migration`，以 `1b0d5823` 为基础设施承接基线。任务身份为 `2026-09-07-readable-version-control-migration`。该确认不授权提前合并 main。
 

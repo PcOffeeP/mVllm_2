@@ -4,7 +4,7 @@
 
 项目已实现冻结训练输入、三折与全量训练、严格评测、Registry 晋级及服务门禁。现有历史开发结果尚不能证明最终模型质量；新体系真实合格模型的加载与媒体推理成功路径、独立 test 使用资格、大型产物组合恢复仍未完成验收。命令接线和 CPU 合成验证不等于真实模型验收。
 
-**开发测评显式区分协议。** `strict-v4.1` 保留历史严格评分；新开发配置选择 `semantic-v4.1`，使用全样本语义评分、独立格式诊断和逐折开发门。基座与成功折诊断来源已接入同一 Registry。接口及合成检查不构成真实模型质量证据；独立语义评分、受控性能证据和按用途准入的工程接线见下文；真实低权限判读、性能运行及生产验收仍按[实施计划](plans/model-evaluation-implementation.md)推进，实际状态见[项目 TODO](project-todo.md)。不得修改旧门或补写 passed 代替新协议证据。
+**开发测评显式区分协议。** `strict-v4.1` 保留历史严格评分；新开发配置选择 `semantic-v4.1`，使用全样本语义评分、独立格式诊断和逐折开发门。基座与成功折诊断来源已接入同一 Registry。接口及合成检查不构成真实模型质量证据；独立语义评分、受控性能证据和按用途准入的工程接线见下文；真实低权限判读、性能运行及生产验收的历史安排见[实施计划](plans/model-evaluation-implementation.md)，当前任务见[项目 TODO](TODO.md)。不得修改旧门或补写 passed 代替新协议证据。
 
 基座真实来源登记、已完成折快照诊断、开发语义统计及已封存盲评答案导入已接入代码。预测判读策略默认两个 Agent 独立处理，分歧交第三个先独立再仲裁；可扩人数但配置预先冻结，不要求多个真人。纯导入接口不执行判读，也不证明真实隔离：本地评审进程、账户权限、安装摘要及现场输入仍须核验。独立评分已增加发包、封存和消费接线，性能入口接收冻结事件证据；两者的合成证据均不能取得真实生产资格。设计确认和接口实现均不授予真实模型调用、受限数据发送或测试集使用权限。
 
@@ -197,9 +197,9 @@ fold2: {adapter: artifacts/fold2/adapter}
 
 `REVIEW_MANUAL` 是操作者在 prepare 前冻结、与 policy 匹配的普通文件；`SEALED_REVIEWS` 由获授权的独立判读过程提供，不是代码自动生成的正确答案。受控执行入口为 `eval review_run "$EVAL" --root "$STORE"`，默认禁止真实模型调用；未来即使显式添加 `--allow-real-model-calls`，仍须实际部署/tokenizer/隔离证据齐全。固定 localhost Ollama broker 与 Mac worker 的 transport、部署凭据核验接口已实现；真实部署/tokenizer receipt 缺失或当前资产漂移时在真实请求前拒绝，测试仅使用合成资产/stub。本轮不执行该入口的真实调用。发包前实际运行 Mac `sandbox-exec` 拒绝访问探针，验证包只读、受限 canary/凭据不可读、他人结果不可写及网络/任意工具受限；不可用即拒绝发包。本轮合成工程 receipt 标记 `synthetic: true`、`real_model_deployment_verified: false`，未调用真实评审模型、未证明真实评审部署，因此即使合成 gate 全过仍不能晋级或取得服务资格。broker 每次调用保存 started/sealed 与 attempt 证据；未证实后台终止的 timeout 记 ambiguous 并立即停止，不自动重试或切模型。owner-only 全局锁和 `backend-ambiguous.json` 哨兵阻止后续请求，核定终态前不继续，也不停止共享 Ollama。
 
-无正式eval的隔离准备先运行 `python -m finetune.eval_audit_isolation --run-probes --output /绝对路径/新报告.json`：只用合成canary和匿名worker，失败拒绝，不请求Ollama或生成正式部署凭据；详见隔离与显示测点准备（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目）。
+无正式eval的隔离准备先运行 `python -m finetune.eval_audit_isolation --run-probes --output /绝对路径/新报告.json`：只用合成canary和匿名worker，失败拒绝，不请求Ollama或生成正式部署凭据；详见隔离与显示测点准备（该记录已随 2026-10-18 清理移除，对应旧台账可在 Git 提交 `41f4800` 查阅）。
 
-真实评审部署凭据由 `eval review_verify "$EVAL" --root "$STORE"` 核验；默认不联网，未来显式加 `--allow-local-review-metadata` 只准固定 localhost 的 tags/show 元数据，不生成回答。本地tokenizer候选已按固定HF revision落地，独立Python3.11依赖见根 `requirements-review.lock`；原HF直接编码存在NFC/NFD差异；2026-10-16按原方案修复现有适配层，保留HF模板与原文，以冻结GGUF规则构造内存计数器，进展与新版受审材料见兼容修复记录（该记录已随 2026-10-18 清理移除，结论见 `docs/project-todo.md` 对应条目），原始来源见[固定来源及材料](results/evaluation-tokenizer-materials-20261015.md)。输入 `config.review_tokenizers` 须在 prepare 前冻结每个批准模型的本地 HF 完整文件/大小/摘要、固定上游来源/revision、GGUF 模型摘要、依赖版本及源码摘要、provider 实现摘要、模板摘要和 `tokenizer_equivalence_audit: {path, sha256}`。本地加载使用 local_files_only、trust_remote_code=False，核验模板、special tokens 和关闭 thinking 的行为，封存受限 `review-deployment.json` 并提交 MLflow 摘要；注入 provider 的 receipt 永远 synthetic。
+真实评审部署凭据由 `eval review_verify "$EVAL" --root "$STORE"` 核验；默认不联网，未来显式加 `--allow-local-review-metadata` 只准固定 localhost 的 tags/show 元数据，不生成回答。本地tokenizer候选已按固定HF revision落地，独立Python3.11依赖见根 `requirements-review.lock`；原HF直接编码存在NFC/NFD差异；2026-10-16按原方案修复现有适配层，保留HF模板与原文，以冻结GGUF规则构造内存计数器，进展与新版受审材料见兼容修复记录（该记录已随 2026-10-18 清理移除，对应旧台账可在 Git 提交 `41f4800` 查阅），原始来源见[固定来源及材料](results/evaluation-tokenizer-materials-20261015.md)。输入 `config.review_tokenizers` 须在 prepare 前冻结每个批准模型的本地 HF 完整文件/大小/摘要、固定上游来源/revision、GGUF 模型摘要、依赖版本及源码摘要、provider 实现摘要、模板摘要和 `tokenizer_equivalence_audit: {path, sha256}`。本地加载使用 local_files_only、trust_remote_code=False，核验模板、special tokens 和关闭 thinking 的行为，封存受限 `review-deployment.json` 并提交 MLflow 摘要；注入 provider 的 receipt 永远 synthetic。
 
 等价审计必须由具名 independent-tokenizer-auditor 提供受审 GGUF↔HF 映射、可核查 basis 文件/独立 GGUF counter 来源摘要及 golden messages→rendered prompt 摘要→token IDs。代码核验绑定、字节和本地 golden case，不接受 `equivalent: true` 自报；映射的独立审查范围与证据限制须明确，新兼容计数器要求v2映射绑定完整manifest/GGUF及派生规则；旧v1证据不自动升级。实际调用前以 HF 按冻结非 thinking 模板精确 render，同一字符串由兼容计数器 encode 核 8K 上限，再由 Ollama raw generate 使用同字符串，避免另套隐式模板；返回模型/token count 不一致拒绝。真实 review_run 还须显式调用授权、已提交真实部署凭据及当前模型/资产/依赖/profile 一致，不能仅凭开关放行。
 
@@ -376,4 +376,4 @@ base/diagnostic 备份保留来源 receipt 和字节快照；diagnostic 还保�
 
 缺身份、基座、媒体、正式证据或资格时停止在对应前置准备；内容漂移时核对来源，不手改摘要通过门禁；失败或中断保留 Run 和已有输出，不自动重跑。每次真实执行记录机器、代码提交、输入/输出路径、完整对象绑定、命令、结果和限制，再交接台账。
 
-详细接口以 [versioning/SCRIPTS.md](../versioning/SCRIPTS.md)、[训练准备实现](../finetune/train_prepare_run.py)、[Registry 门禁](../versioning/registry.py)、[服务入口](../pipeline/server_proxy.py)为依据。既有工程验证及其范围见[迁移验证记录](results/version-control-migration/verification.md)；当前能力与缺口见[项目现状](project-status.md)，任务和执行顺序以[唯一台账](project-todo.md)为准。
+详细接口以 [versioning/SCRIPTS.md](../versioning/SCRIPTS.md)、[训练准备实现](../finetune/train_prepare_run.py)、[Registry 门禁](../versioning/registry.py)、[服务入口](../pipeline/server_proxy.py)为依据。既有工程验证及其范围见[迁移验证记录](results/version-control-migration/verification.md)；当前能力与缺口见[项目现状](project-status.md)，任务和执行顺序以[唯一台账](TODO.md)为准。

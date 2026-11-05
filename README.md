@@ -2,7 +2,7 @@
 
 本项目研究从材料拉伸试验视频中识别断裂信息，并提供数据处理、模型训练、评测与服务的工程链路。
 
-当前工作集中在两件事：按照[断裂标签说明](docs/label.md)进行人工标注，以及设计基于这些标签的评价体系。进度和下一步见[项目 TODO](docs/project-todo.md)。
+当前工作集中在两件事：按照[断裂标签说明](docs/label.md)进行人工标注，以及设计基于这些标签的评价体系。进度和下一步见[项目 TODO](docs/TODO.md)。
 
 人工标注基准包含断裂状态、断裂模式、断裂位置、异常情况和断裂现象五类。现有代码仍使用冻结的 [v4.1 四字段契约](pipeline/contracts/tensile_vlm_v4_1.json)；新标签尚未接入数据或模型链路，两者不能直接混用。历史模型结果和证据边界见[项目现状](docs/project-status.md)。
 
@@ -13,7 +13,7 @@
 | 你要做什么 | 阅读文档 |
 | --- | --- |
 | 人工标注视频 | [断裂标签说明](docs/label.md) |
-| 查看当前进度和下一步 | [项目 TODO](docs/project-todo.md) |
+| 查看当前进度和下一步 | [项目 TODO](docs/TODO.md) |
 | 了解项目已有成果和证据限制 | [项目现状](docs/project-status.md) |
 | 处理数据或了解现有训练、服务流程 | [数据流程](docs/data-workflow.md)、[模型流程](docs/model-workflow.md) |
 | 查阅旧评价设计 | [v4.1 模型测评方案](docs/model-evaluation.md)；新标签的评价体系仍待设计 |
@@ -85,6 +85,6 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 ## 其他资料
 
-[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[设计事实](docs/design-facts.md)记录可追溯的现行设计事实。`docs/plans/`、`docs/tasks/`、`docs/adr/` 保存设计和决策背景，`docs/results/`、`docs/reports/` 保存历史结果，`docs/research/` 保存专题研究。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
+[文档目录](docs/README.md)逐份说明用途；[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[设计事实](docs/design-facts.md)记录可追溯的现行设计事实。`docs/plans/`、`docs/tasks/`、`docs/adr/` 保存设计和决策背景，`docs/results/`、`docs/reports/` 保存历史结果，`docs/research/` 保存专题研究。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
 
 代码入口见 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。

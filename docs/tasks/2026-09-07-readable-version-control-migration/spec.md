@@ -1,6 +1,6 @@
 # 正式迁移行为规格
 
-上游：[Intent](intent.md)，确认提交 `3dae30a0`。**本文件定义用户已确认的行为契约；实施安排与授权在 Plan 阶段明确。** 现场观察见[训练机调查记录](../../results/version-control-migration-20260907.md)，执行进度由[项目 TODO](../../project-todo.md)管理。
+上游：[Intent](intent.md)，确认提交 `3dae30a0`。**本文件定义用户已确认的行为契约；实施安排与授权在 Plan 阶段明确。** 现场观察见[训练机调查记录](../../results/version-control-migration-20260907.md)，执行进度由[项目 TODO](../../TODO.md)管理。
 
 ## 对象范围与身份保真
 

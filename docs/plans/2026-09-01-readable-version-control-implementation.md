@@ -1,6 +1,6 @@
 # 可读版本控制架构实施台账（refactor/readable-version-control）
 
-> 历史范围：本文只记录B0–B12基础设施实施，不再承载后续正式迁移进度。后续实际接入、入口退役和两端证据见[项目TODO](../project-todo.md)、[迁移Plan](../tasks/2026-09-07-readable-version-control-migration/plan.md)及[验证记录](../results/version-control-migration/verification.md)。下文当时的未迁移边界、测试数量和命令保持历史语义，不能当作现行操作要求。
+> 历史范围：本文只记录B0–B12基础设施实施，不再承载后续正式迁移进度。后续实际接入、入口退役和两端证据见[项目TODO](../TODO.md)、[迁移Plan](../tasks/2026-09-07-readable-version-control-migration/plan.md)及[验证记录](../results/version-control-migration/verification.md)。下文当时的未迁移边界、测试数量和命令保持历史语义，不能当作现行操作要求。
 
 
 > 文档定位：本文件是 `refactor/readable-version-control` 分支的**实施台账**，记录本分支分批实施"可读版本控制架构"核心基础设施的批次计划、状态跟踪与恢复上下文。它不是项目级 TODO（项目级任务台账见 `docs/project-todo.md`），也不是架构权威（架构权威见设计文档）。
@@ -437,7 +437,7 @@ B0–B12 已结项；后续正式迁移也已按确认工程范围交付，见[�
 ### 6.7 追溯基础设施批次
 
 - 核心修复提交 `9965dc1b`；完整提交映射见 §6.3，独立审查 findings 见 §6.4。
-- 确认规则见[设计文档](2026-09-01-readable-version-control-design.md)，后续任务与授权边界统一见[项目TODO](../project-todo.md)。
+- 确认规则见[设计文档](2026-09-01-readable-version-control-design.md)，后续任务与授权边界统一见[项目TODO](../TODO.md)。
 - 最终测试与退出证据见文首及 §6.3；中断的修复前运行不作为最终通过证据。
 - 不依据本历史台账中的临时分支、stash、环境或目录信息操作今天的工作区。
 

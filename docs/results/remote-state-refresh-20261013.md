@@ -65,7 +65,7 @@ SSH 使用 `BatchMode=yes`、`StrictHostKeyChecking=yes`、`ConnectTimeout=10`�
 
 ## 下一步与验收限制
 
-优先处理 [ENV-ACTIVATION](../project-todo.md#env-activation--正式解释器与最终-checkout-绑定)：先选定正式 Conda 环境及 checkout，准备锁依赖、子模块和 editable 来源的验收方案；实际环境创建、修复或切换另需实施授权。代码同步也须在确认提交内容和目标后另行授权，本轮不执行。
+当时建议优先处理 ENV-ACTIVATION（历史任务，旧台账见 Git 提交 `41f4800`）：先选定正式 Conda 环境及 checkout，准备锁依赖、子模块和 editable 来源的验收方案；实际环境创建、修复或切换另需实施授权。代码同步也须在确认提交内容和目标后另行授权，本轮不执行。
 
 环境方案之后先核定正式 Registry 的实际配置根、旧 Fold0 与候选模型的来源/权重/基座关联及 concise、visual 的指定恢复位置，再准备开发侧 MODEL-DIAG 方案。不要在未确认正式运行环境和数据/模型身份时直接启动全量训练。数据内容验证、模型加载验证、独立 test 资格和真实恢复仍是分开的后续任务。当前检查不关闭这些效果或恢复门槛。
 

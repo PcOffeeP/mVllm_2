@@ -1,5 +1,7 @@
 # 可读版本控制迁移交接
 
+> 本文为历史记录：文中当时的任务、进度与建议不代表当前待办。原台账可在 Git 提交 `41f4800` 查阅，当前任务见 [TODO](../../TODO.md)。
+
 ## 已交付范围
 
 2026-09-14 工程迁移按用户确认范围集成：先推送任务分支 `5acebc27`，再快进并推送 Codeup main，随后同步训练机正式 main。双机公共 CLI 检查通过，模型资产 stat/身份前后一致；最终回执及其提交由[验证第67节](verification.md)和 `git log -- docs/results/version-control-migration/handoff.md` 追溯。本次 2026-10-12 文档整理没有刷新远端或再次执行集成。
@@ -22,7 +24,7 @@
 
 ## 接收者从哪里继续
 
-[项目 TODO](../../project-todo.md)是唯一任务入口，已执行计划见[迁移 Plan](../../tasks/2026-09-07-readable-version-control-migration/plan.md)。下一轮先只读刷新训练机代码、store、引用、模型与环境绑定；本轮不连接训练机、不训练、不评测。
+[项目 TODO](../../TODO.md)是唯一任务入口，已执行计划见[迁移 Plan](../../tasks/2026-09-07-readable-version-control-migration/plan.md)。下一轮先只读刷新训练机代码、store、引用、模型与环境绑定；本轮不连接训练机、不训练、不评测。
 
 - [当前项目状态](../../project-status.md)：工程与模型边界。
 - [模型背景](../model-gate-baseline-20260914.md)：2026-09-14现场资产及历史效果来源。

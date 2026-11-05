@@ -13,7 +13,7 @@ Non-goals:
 
 # mVllm_2 架构
 
-> 状态：正式入口迁移已按确认工程范围完成并于 2026-09-14 合并 main；真实模型质量、GPU/服务成功路径及物理组合恢复仍未验收。本文负责模块边界；当前任务以[项目TODO](docs/project-todo.md)为准，确认规则见[设计文档](docs/plans/2026-09-01-readable-version-control-design.md)。
+> 状态：正式入口迁移已按确认工程范围完成并于 2026-09-14 合并 main；真实模型质量、GPU/服务成功路径及物理组合恢复仍未验收。本文负责模块边界；当前任务以[项目TODO](docs/TODO.md)为准，确认规则见[设计文档](docs/plans/2026-09-01-readable-version-control-design.md)。
 
 ## 1. 文档导航
 
@@ -25,7 +25,7 @@ Non-goals:
 - [docs/model-evaluation.md](docs/model-evaluation.md)：旧 v4.1 的开发验证、视觉质量和交互性能设计；新标签的评价体系尚待设计。
 - [docs/plans/2026-09-01-readable-version-control-design.md](docs/plans/2026-09-01-readable-version-control-design.md)：可读版本控制架构权威设计（目标）。
 - [docs/plans/2026-09-01-readable-version-control-implementation.md](docs/plans/2026-09-01-readable-version-control-implementation.md)：B0–B12 基础设施历史实施台账。
-- [docs/project-todo.md](docs/project-todo.md)：项目唯一任务台账与下一步入口。
+- [docs/TODO.md](docs/TODO.md)：项目唯一任务台账与下一步入口。
 - [docs/adr/ADR-0001.md](docs/adr/ADR-0001.md)：采用可读版本控制及 Git/DVC/MLflow 职责边界的决策记录。
 
 ## 2. 系统边界与双机角色
