@@ -36,7 +36,7 @@ Non-goals:
 - **训练机**（SSH `100.70.83.68`，主机 `dell-Precision-3660`）：实际模型训练、GPU 推理、评测跑分、长时间数据处理，以及正式版本写入。
 - 本机看到的训练目录、日志、指标、预测文件和报告视为从训练机同步/复制的结果；本机默认不能复现实验，效果结论以训练机真实产物为准。
 - 当前电脑缺 checkpoint、LoRA adapter、merged 模型、预测样例或评测指标时，结论标注为"证据不足"，并明确需要补跑或补同步的内容。
-- **项目本地目录布局**（2026-10-21 起扁平化，取消 `workspace/` 根段）：仓库根下`data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild` 分别是数据、训练、模型、基座、MLflow store、评测、审计、暂存与重建的落点，全部不入 Git；store 与这些项目本地目录是两套根，互不替代。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`，搬迁期间不可用窗口 4 秒），两端磁盘上均无 `workspace/`；旧→新映射、验收结论与阅读历史记录时的换算见[项目现状](docs/project-status.md#项目本地目录布局)，事实条目为 `docs/design-facts.yaml` 的 DF-017。
+- **项目本地目录布局**（2026-10-21 起扁平化，取消 `workspace/` 根段）：仓库根下`data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild` 分别是数据、训练、模型、基座、MLflow store、评测、审计、暂存与重建的落点，全部不入 Git；store 与这些项目本地目录是两套根，互不替代。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`，搬迁期间不可用窗口 4 秒），两端磁盘上均无 `workspace/`；旧→新映射与阅读历史记录时的换算见[设计事实](docs/design-facts.md) DF-017。
 
 ## 3. 新旧入口边界
 

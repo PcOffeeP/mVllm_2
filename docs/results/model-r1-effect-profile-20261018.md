@@ -445,7 +445,7 @@ adapter 覆盖范围（字段组 `adapter_coverage`）：目标模块数 11；�
 
 以下三处只复述 425 条的部分数字，不是独立评测，不构成新的评测行：
 
-- `README.md` 第 43 行与 `docs/project-status.md` 的 Fold0 中间模型段落：只复述 425 条的 `strict_valid_rate` 0.995294 与 `joint_correct_rate` 0.411765。
+- 旧版项目介绍的 Fold0 中间模型段落：只复述 425 条的 `strict_valid_rate` 0.995294 与 `joint_correct_rate` 0.411765。
 - `docs/results/model-gate-baseline-20260914.md` 第 3 节：表内只列 425 条、1,581 条、1,216 条三行；该文件第 66 行明写「本文不读取或重述受限test逐样本内容」。
 
 **299 条数值未被这三处复述。**
@@ -609,7 +609,7 @@ R2 与 R1 不构成同一代迭代关系。R2 是新体系的第一代 data 与 
 | 路径 | 用途 |
 | --- | --- |
 | `README.md`（第 43 行） | 只复述 425 条的 0.995294 与 0.411765，非独立评测 |
-| `docs/project-status.md` | Fold0 中间模型段落只复述 425 条上述两项，非独立评测 |
+| 旧版项目介绍 | Fold0 中间模型段落只复述 425 条上述两项，非独立评测 |
 | `docs/results/model-gate-baseline-20260914.md` | 第 3 节表只列 425 / 1,581 / 1,216 三行；第 66 行明写不读取或重述受限 test 逐样本内容 |
 | `docs/project-todo.md` | 「开发评测侧对齐训练/服务」「开发输入现场（2026-10-16）」「本轮输入核验（2026-10-16）」三条的口径记录 |
 

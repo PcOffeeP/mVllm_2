@@ -4,7 +4,7 @@
 
 | 想了解什么 | 入口 |
 | --- | --- |
-| 项目整体进展和证据边界 | [项目现状](../project-status.md) |
+| 当前任务 | [TODO](../TODO.md) |
 | 训练数据来源与历史核验 | [训练数据台账](training-data-ledger-20261017.md) |
 | 历史模型和实验结果 | [模型清单](model-inventory.md)、[R1 效果分析](model-r1-effect-profile-20261018.md) |
 | 评测工程的历史接线与验证 | [开发评测记录](evaluation-development-implementation-20261015.md)、[独立评分与性能接线记录](evaluation-independent-performance-admission-20261015.md) |

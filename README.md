@@ -4,7 +4,7 @@
 
 当前工作集中在两件事：按照[断裂标签说明](docs/label.md)进行人工标注，以及设计基于这些标签的评价体系。进度和下一步见[项目 TODO](docs/TODO.md)。
 
-人工标注基准包含断裂状态、断裂模式、断裂位置、异常情况和断裂现象五类。现有代码仍使用冻结的 [v4.1 四字段契约](pipeline/contracts/tensile_vlm_v4_1.json)；新标签尚未接入数据或模型链路，两者不能直接混用。历史模型结果和证据边界见[项目现状](docs/project-status.md)。
+人工标注基准包含断裂状态、断裂模式、断裂位置、异常情况和断裂现象五类。现有代码仍使用冻结的 [v4.1 四字段契约](pipeline/contracts/tensile_vlm_v4_1.json)；新标签尚未接入数据或模型链路，两者不能直接混用。历史模型结果见[模型清单](docs/results/model-inventory.md)。
 
 ## 快速开始
 
@@ -14,7 +14,7 @@
 | --- | --- |
 | 人工标注视频 | [断裂标签说明](docs/label.md) |
 | 查看当前进度和下一步 | [项目 TODO](docs/TODO.md) |
-| 了解项目已有成果和证据限制 | [项目现状](docs/project-status.md) |
+| 了解历史模型结果及限制 | [模型清单](docs/results/model-inventory.md) |
 | 处理数据或了解现有训练、服务流程 | [数据流程](docs/data-workflow.md)、[模型流程](docs/model-workflow.md) |
 | 查阅旧评价设计 | [v4.1 模型测评方案](docs/model-evaluation.md)；新标签的评价体系仍待设计 |
 

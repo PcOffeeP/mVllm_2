@@ -14,7 +14,7 @@ GPU 训练、权重合并、实际推理与完整评测在训练机执行，运�
 
 从训练机仓库根目录运行以下 Python 命令；可以使用已激活 Conda 环境中的 Python，本文以 `"$PYTHON"` 显式绑定解释器。每次任务明确一个 store，并保留它的记录、MLflow 数据库和 artifact；不能用旧活动指针或最近目录自动选择输入。
 
-项目本地（checkout 根）是另一套根，**不含** `workspace/` 段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`），两端磁盘上均无 `workspace/`；旧→新映射与阅读历史记录时的换算见[项目现状](project-status.md)的「项目本地目录布局」节。
+项目本地（checkout 根）是另一套根，**不含** `workspace/` 段：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`），两端磁盘上均无 `workspace/`；旧→新映射见[设计事实](design-facts.md) DF-017。
 
 | 参数或文件 | 来源与要求 |
 | --- | --- |
@@ -376,4 +376,4 @@ base/diagnostic 备份保留来源 receipt 和字节快照；diagnostic 还保�
 
 缺身份、基座、媒体、正式证据或资格时停止在对应前置准备；内容漂移时核对来源，不手改摘要通过门禁；失败或中断保留 Run 和已有输出，不自动重跑。每次真实执行记录机器、代码提交、输入/输出路径、完整对象绑定、命令、结果和限制，再交接台账。
 
-详细接口以 [versioning/SCRIPTS.md](../versioning/SCRIPTS.md)、[训练准备实现](../finetune/train_prepare_run.py)、[Registry 门禁](../versioning/registry.py)、[服务入口](../pipeline/server_proxy.py)为依据。既有工程验证及其范围见[迁移验证记录](results/version-control-migration/verification.md)；当前能力与缺口见[项目现状](project-status.md)，任务和执行顺序以[唯一台账](TODO.md)为准。
+详细接口以 [versioning/SCRIPTS.md](../versioning/SCRIPTS.md)、[训练准备实现](../finetune/train_prepare_run.py)、[Registry 门禁](../versioning/registry.py)、[服务入口](../pipeline/server_proxy.py)为依据。既有工程验证及其范围见[迁移验证记录](results/version-control-migration/verification.md)；当前任务和执行顺序见[TODO](TODO.md)。

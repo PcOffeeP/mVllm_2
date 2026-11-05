@@ -2,7 +2,7 @@
 
 本项目把材料拉伸视频整理为经过裁剪、采样和标签审查的子视频。train 数据用于三折训练、验证和独立全量训练；test 数据用于最终独立测试，构建与使用都有单独的隔离及授权要求。正式处理入口是 `python -m versioning data`。
 
-本文是现行数据处理指南。当前项目证据和未完成事项见[项目现状](project-status.md)，模型训练及测试使用见[模型流程](model-workflow.md)。命令说明不代表真实数据构建、test 使用或模型运行已经获准。
+本文是现行数据处理指南。当前任务见[TODO](TODO.md)，模型训练及测试使用见[模型流程](model-workflow.md)。命令说明不代表真实数据构建、test 使用或模型运行已经获准。
 
 ## 候选层与发布契约
 
@@ -23,7 +23,7 @@
 
 身份格式是 `data-v<协议>-r<N>`，例如 `data-v4.1-r3`。摘要用于校验文件完整性，不是身份。批次名字和完整版本由操作者明确选择，不能静默改号重试。
 
-第二个“两个目录”指项目本地目录：checkout 根下**不含** `workspace/` 段（2026-10-21 起扁平化），数据、训练、模型、基座、MLflow、评测、审计、暂存与重建的落点分别是顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`），两端磁盘上均无 `workspace/`；旧→新映射与阅读历史记录时的换算见[项目现状](project-status.md)的「项目本地目录布局」节。
+第二个“两个目录”指项目本地目录：checkout 根下**不含** `workspace/` 段（2026-10-21 起扁平化），数据、训练、模型、基座、MLflow、评测、审计、暂存与重建的落点分别是顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，全部不入 Git。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`），两端磁盘上均无 `workspace/`；旧→新映射见[设计事实](design-facts.md) DF-017。
 
 Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件检查。真实 ROI 物化、子视频生成、大量校验及正式数据发布在训练机执行；模型训练、GPU 推理及完整评测也只在训练机执行。Mac 通过 uv 调用已部署的 Python 3.11.x 解释器；训练机直接使用已按 Linux GPU 锁核验的 Conda Python 3.11.x。解释器须对应实际 checkout 与依赖，不按旧环境名猜测。机器与环境准备见[快速开始](../README.md#快速开始)。
 
@@ -183,9 +183,9 @@ test 的 release_validate 会读取本次新 test 真值核对构建内容，实
 | `data-v4.1-r1` | superseded | 原 `v4.1.0-760050fad303` 基础发布，用于恢复历史引用，不能建立新训练引用 |
 | `data-v4.1-r2` | active | 原 `v4.1.0-ecb5aeb9657c` Phase2 train 发布 |
 
-发布数量和各折统计集中在[项目现状](project-status.md)，来源是[原始发布报告](results/v4_1_phase2_development_release/README.md)；身份与状态来自[对象映射](results/version-control-migration/object-mapping.yaml)及[迁移验证](results/version-control-migration/verification.md)。新训练引用仍须在线校验状态及许可。
+发布数量和各折统计见[原始发布报告](results/v4_1_phase2_development_release/README.md)；身份与状态来自[对象映射](results/version-control-migration/object-mapping.yaml)及[迁移验证](results/version-control-migration/verification.md)。新训练引用仍须在线校验状态及许可。
 
-迁移保留原内容和 split，不能重新生成数据冒充同一发布。两个迁移对象仍引用旧布局（扁平化前的 `workspace/`）外部媒体，store 尚不自包含：这些冻结记录与历史元数据里的路径**原文仍写旧路径**，属历史记录、不回改；磁盘上的 `workspace/` 已随双端物理搬迁消失，因此记录里的旧路径只能按[映射表](project-status.md)换算到顶层对应目录（例如视频落在 `data/source/videos`）后读取——**记录里仍写旧路径不等于目录还在**。历史元数据及共享 pipeline 函数可能仍被发布或实验引用；入口退役不表示这些记录和函数可以删除。清理前必须扫描引用、归档必要证据并验证备份，执行范围由项目现有台账和用户授权决定。
+迁移保留原内容和 split，不能重新生成数据冒充同一发布。两个迁移对象仍引用旧布局（扁平化前的 `workspace/`）外部媒体，store 尚不自包含：这些冻结记录与历史元数据里的路径**原文仍写旧路径**，属历史记录、不回改；磁盘上的 `workspace/` 已随双端物理搬迁消失，因此记录里的旧路径只能按[设计事实 DF-017](design-facts.md)换算到顶层对应目录（例如视频落在 `data/source/videos`）后读取——**记录里仍写旧路径不等于目录还在**。历史元数据及共享 pipeline 函数可能仍被发布或实验引用；入口退役不表示这些记录和函数可以删除。清理前必须扫描引用、归档必要证据并验证备份，执行范围由项目现有台账和用户授权决定。
 
 ## 失败时如何处理
 

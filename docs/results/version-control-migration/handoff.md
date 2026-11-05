@@ -25,7 +25,6 @@
 
 [项目 TODO](../../TODO.md)是唯一任务入口，已执行计划见[迁移 Plan](../../tasks/2026-09-07-readable-version-control-migration/plan.md)。下一轮先只读刷新训练机代码、store、引用、模型与环境绑定；本轮不连接训练机、不训练、不评测。
 
-- [当前项目状态](../../project-status.md)：工程与模型边界。
 - [模型背景](../model-gate-baseline-20260914.md)：2026-09-14现场资产及历史效果来源。
 - [数据手册](../../data-workflow.md)、[训练索引](../../model-workflow.md)、[服务手册](../../model-workflow.md)：现行操作链路。
 

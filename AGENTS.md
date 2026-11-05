@@ -17,7 +17,6 @@ Non-goals:
 关联文档：
 
 - [docs/TODO.md](docs/TODO.md)：唯一项目任务台账与下一步入口。
-- [docs/project-status.md](docs/project-status.md)：项目现状、双机角色与训练机连接信息。
 - [docs/data-workflow.md](docs/data-workflow.md)
 - [docs/model-workflow.md](docs/model-workflow.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
@@ -26,10 +25,9 @@ Non-goals:
 ## 开工必读顺序
 
 1. `docs/design-facts.md` —— 现行设计事实（**必读**；不看等于从碎片推断）
-2. `docs/project-status.md` —— 当前阶段与结论
-3. `docs/TODO.md` —— 任务台账与状态
-4. `docs/pending-blockers.md` —— 未结事项登记册；开工前先看有无与本次任务相关的挂起项（`blocked` / `waiting-decision` / `ready`）
-5. 按任务看具体文档
+2. `docs/TODO.md` —— 当前阶段、任务台账与状态
+3. `docs/pending-blockers.md` —— 未结事项登记册；开工前先看有无与本次任务相关的挂起项（`blocked` / `waiting-decision` / `ready`）
+4. 按任务看具体文档
 
 ## 结论优先级与引用规则
 
@@ -121,7 +119,7 @@ exit=0
 
 ## 训练机操作
 
-- 连接信息、远程项目路径和命令格式以 [docs/project-status.md](docs/project-status.md#已记录的机器与资产位置) 为准；认证只使用本机已有的 OpenSSH 密钥或 SSH agent，不在仓库中保存私钥、口令或其他凭据。
+- 训练机连接：`ssh liuyang@100.70.83.68`；训练机代码目录 | `/home/liuyang/文档/mVllm_2`。正式 store 在代码目录下的 `store`，已记录 Conda Python 为 `/home/liuyang/miniconda3/envs/mvllm2/bin/python`。使用前核对当前状态；认证只使用本机已有的 OpenSSH 密钥或 SSH agent，不在仓库中保存私钥、口令或其他凭据。
 - 需要训练、GPU 推理、完整评测或长时间数据处理时，通过 SSH 在训练机执行；连接前先明确命令、输入、输出位置和预计资源占用。
 - 默认只操作远程项目目录及明确指定的训练产物。删除或覆盖远程文件、修改系统配置、安装系统级依赖、停止已有任务等高风险操作，必须先获得用户明确授权。
 
