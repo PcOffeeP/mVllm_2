@@ -123,8 +123,7 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 - docs/plans/2026-10-18-label-rebuild.md:70（expect：语义定为「**可见分离第一帧**」的时间）
 - docs/plans/2026-10-18-label-rebuild.md:72（expect：数据表新增 `visible_separation_time` 列）
 - docs/plans/2026-10-18-label-rebuild.md:101（expect：选 A —— **可见分离第一帧**（视觉可判））
-- docs/label-annotation-spec.md:57（expect：角色是权威值）
-- docs/label-annotation-spec.md:65（expect：标注表不出现承载新锚点时刻的列。事件时刻由脚本按）
+- docs/Lable.md:36（expect：第一帧已分离、也是权威值，时刻由实测 fps 派生）
 
 ## 标签语义变更必须升契约哈希
 
@@ -172,8 +171,8 @@ R1 模型在旧口径（1 组 / 64 视觉 token、425 条 fold 0 validation）�
 ### DF-018 [active] 新一轮人工标注基准与旧契约分域
 用户于 2026-11-05 确认本轮人工标注采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；现象首版为伸长、颈缩、开裂、层间分离，可多选。未断裂或未夹紧时，模式和位置均填写固定文字值「无对应值」，与未标注及无法识别分开。该基准仅规定人工标注，v4.1 契约及运行时保持冻结，新契约与数据接入未实施。
 出处：
-- docs/fracture-label-reference.md:21（expect：伸长、颈缩、开裂、层间分离）
-- docs/fracture-label-reference.md:102（expect：状态为“未断裂”时，模式和位置都填 **无对应值**）
+- docs/Lable.md:21（expect：伸长、颈缩、开裂、层间分离）
+- docs/Lable.md:102（expect：状态为“未断裂”时，模式和位置都填 **无对应值**）
 
 ## 已废弃（墓碑）
 
