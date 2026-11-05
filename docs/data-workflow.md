@@ -42,7 +42,7 @@ Mac 适合输入准备、ROI 人工决定、完整审查包 UI 和轻量文件�
 
 tags 的 `video_path` 文件名与 ID 对应。mapping 的原始文件名及来源目录非空，状态是 `existing` 或 `new`。列语义及治理逻辑见[输入实现](../pipeline/source_bootstrap.py)和[现行校验](../versioning/data_pipeline.py)的 `run_input_source`。历史 110 个原视频或特定 train/test 数量不构成新批次固定要求。
 
-本轮人工标签及可见分离锚点见[断裂标签说明](label.md)。源表新增帧号与标注状态列的接入尚未实施，现有输入校验仍按上表执行；原断裂帧规范可在 Git 提交 `284c425` 中查阅。
+本轮人工标签及可见分离锚点见[断裂标签说明](label.md)。源表新增帧号与标注状态列的接入尚未实施，现有输入校验仍按上表执行。
 
 ### split 与 ROI 决定
 

@@ -85,6 +85,6 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 ## 其他资料
 
-[文档目录](docs/README.md)逐份说明用途；[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[设计事实](docs/design-facts.md)记录可追溯的现行设计事实。`docs/plans/`、`docs/tasks/`、`docs/adr/` 保存设计和决策背景，`docs/results/`、`docs/reports/` 保存历史结果，`docs/research/` 保存专题研究。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
+[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[设计事实](docs/design-facts.md)记录可追溯的现行设计事实。`docs/plans/`、`docs/tasks/`、`docs/adr/` 保存设计和决策背景，`docs/results/`、`docs/reports/` 保存历史结果。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
 
 代码入口见 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。
