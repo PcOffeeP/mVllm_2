@@ -298,7 +298,7 @@ facts:
     evidence:
       - ref: docs/label.md:21
         expect: '伸长、颈缩、开裂、层间分离'
-      - ref: docs/label.md:102
+      - ref: docs/label.md:104
         expect: '状态为“未断裂”时，模式和位置都填 **无对应值**'
     established: 2026-11-05
     established_by: 用户确认的人工标注基准
