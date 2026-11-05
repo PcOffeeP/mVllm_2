@@ -29,7 +29,7 @@ Non-goals:
 
 `cli.py` 只编排上述领域模块，不实现第二套状态或身份规则；`__main__.py` 仅转发统一入口。
 
-**测评协议边界**：`strict-v4.1` 的 validation 六指标与旧 holdout 七门保留冻结语义；`semantic-v4.1` 显式接入全样本语义整理和逐折开发门。两种结果不能互相改写或继承资格。`eval_compatibility.py` 仅为已核实的 `512cc8b4` 严格实现登记历史摘要到本次准确适配代码摘要的映射；未知旧摘要、适配代码或其他依赖漂移仍拒绝，不自动接受未来代码。基座/成功折已接入开发测评来源；新独立评分、performance 事件证据和按用途准入已接线，真实低权限模型评审、GPU 性能及显示端验收仍见[实施计划](../docs/plans/model-evaluation-implementation.md)。合成检查不构成真实模型、真实权限隔离、GPU、test 或 E2E 证据；不得公开受限 test 明细。
+**测评协议边界**：`strict-v4.1` 的 validation 六指标与旧 holdout 七门保留冻结语义；`semantic-v4.1` 显式接入全样本语义整理和逐折开发门。两种结果不能互相改写或继承资格。`eval_compatibility.py` 仅为已核实的 `512cc8b4` 严格实现登记历史摘要到本次准确适配代码摘要的映射；未知旧摘要、适配代码或其他依赖漂移仍拒绝，不自动接受未来代码。基座/成功折已接入开发测评来源；新独立评分、performance 事件证据和按用途准入已接线，真实低权限模型评审、GPU 性能及显示端验收仍见实施计划。合成检查不构成真实模型、真实权限隔离、GPU、test 或 E2E 证据；不得公开受限 test 明细。
 
 ## Prompt注册与冻结
 
@@ -71,7 +71,7 @@ python -m versioning train validate <完整train版本> --root <store绝对路�
 
 准备产物为 `trains/<train>/input/`，含 `data-version.txt`、`prompt.yaml`、`training.yaml`、`environment.yaml`、六份数据 JSON、`dataset_info.json` 和内容校验清单。正式 Prompt 必须预先存在于 `records/prompts/`。旧记录中的样本数量与历史训练结果不会因准备而改变。
 
-取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后，执行器校验实际 adapter 权重、配置和结果，在父 Run 保存 `training-evidence.json` 并钉扎其摘要，再导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。 单折分次执行可在run中显式传`--fold 0/1/2`；缺折为partial，已完成折验签复用，省略参数继续未完成折。完整续办与失败边界见[训练入口说明](../docs/model-workflow.md#3-冻结并执行训练)。
+取得训练授权后，在训练机运行 `python -m versioning train run <完整train版本> --root <store绝对路径>`。该命令调用真实训练适配器，使用冻结配置，向 `<store>/mlflow` 写入父 Run 和三个子 Run；每折实际 `train_results.json` 必须有有限数值指标，产物上传到父 Run 的 `foldN/adapter`。三折和汇总完成后，执行器校验实际 adapter 权重、配置和结果，在父 Run 保存 `training-evidence.json` 并钉扎其摘要，再导出 `records/training/<train>/manifest.yaml`。训练损失汇总不代表质量通过。 单折分次执行可在run中显式传`--fold 0/1/2`；缺折为partial，已完成折验签复用，省略参数继续未完成折。完整续办与失败边界见训练入口说明。
 
 完成后的导出若失败，可用 `python -m versioning train export <完整train版本> --root <store绝对路径>` 从同一 completed Run 补导出；不重新训练，不覆盖不同内容。已有训练输出或失败 Run 不会由 `run` 自动覆盖或恢复；须先核对原 Run 和 checkpoint 后处理。公共 CLI 的 `create/fold-start/fold-end/summary/complete` 已停用，调用时在创建 store 前拒绝；同名底层 Python 记录 API 保留，不能凭手工 completed 状态通过模型登记或导出。Registry 校验执行证据、声明目录的完整文件清单及训练基座。
 完整参数运行 `python -m versioning <领域> --help` 查看。
@@ -193,7 +193,7 @@ python -m versioning eval compare <trained完整eval版本> --root <store绝对�
 
 ## 受控性能测量
 
-`eval performance_prepare / performance_validate / performance_run / performance_export` 使用完整 eval 身份、独立 `purpose: performance`、`protocol: performance-v1`；不以质量 passed 为测量前提，也不能代替质量。命令参数、输入提供者和事件产物流转见[模型工作流第 7 节](../docs/model-workflow.md#7-服务配置启动与真实媒体检查)。prepare 与普通 prepare 同样显式提供 root、model-version、model-version-number、data-version、config、git-commit、media-root，七阶段数据另给 data-inputs；run 只接受 `--performance-evidence <事件JSON>`，不启动真实模型。真实受控启动另用 `eval performance_serve <eval> --root <store> --executor <身份> --session-id <会话> --port <端口> --performance-evidence <新事件文件>`；会加载模型，本轮未启动。其余动作从同 eval 冻结输入恢复，不允许命令行覆盖配置。
+`eval performance_prepare / performance_validate / performance_run / performance_export` 使用完整 eval 身份、独立 `purpose: performance`、`protocol: performance-v1`；不以质量 passed 为测量前提，也不能代替质量。命令参数、输入提供者和事件产物流转见模型工作流第 7 节。prepare 与普通 prepare 同样显式提供 root、model-version、model-version-number、data-version、config、git-commit、media-root，七阶段数据另给 data-inputs；run 只接受 `--performance-evidence <事件JSON>`，不启动真实模型。真实受控启动另用 `eval performance_serve <eval> --root <store> --executor <身份> --session-id <会话> --port <端口> --performance-evidence <新事件文件>`；会加载模型，本轮未启动。其余动作从同 eval 冻结输入恢复，不允许命令行覆盖配置。
 
 | 性能配置字段 | 要求与提供者 |
 | --- | --- |
@@ -206,7 +206,7 @@ python -m versioning eval compare <trained完整eval版本> --root <store绝对�
 | `policies` | 精确包含 media_strata、cache、repetition、retry、warmup、cold_start、client_instrumentation；warmup 为 {request_ids: [显式ID...]}，全部预热终结后才进入正式请求，不能事后增添或换类 |
 | `resource_growth_policy` | algorithm 为 window-net-growth，metric 为 vram_bytes 或 rss_bytes；window_seconds、min_samples（≥2）、max_growth_bytes 明确冻结 |
 
-`finetune.eval_performance.PerformanceRecorder` 记录上传完成、各阶段、自动解析、后端/显示完成、重试、错误和资源采样，生成 `tensile.performance-events/v1`；每个 request 的原时钟与失败事实不重置。导入重放原事件/资源，保存 `output/{evaluation.yaml,events.json,summary.json}` 并上传父 Run，形成独立 manifest；export 与准入重算全分母、摘要、来源、权重和实现。正式门为全部合格请求不少于 100 次、连续至少 1800 秒、300 秒自动完整显示率 ≥95%、失败率 ≤1%，且无 OOM/crash/持续增长；预热单列，P95 只辅助。媒体规格与 600/660 秒超时见[测评方案](../docs/model-evaluation.md#8-交互性能与稳定性)。
+`finetune.eval_performance.PerformanceRecorder` 记录上传完成、各阶段、自动解析、后端/显示完成、重试、错误和资源采样，生成 `tensile.performance-events/v1`；每个 request 的原时钟与失败事实不重置。导入重放原事件/资源，保存 `output/{evaluation.yaml,events.json,summary.json}` 并上传父 Run，形成独立 manifest；export 与准入重算全分母、摘要、来源、权重和实现。正式门为全部合格请求不少于 100 次、连续至少 1800 秒、300 秒自动完整显示率 ≥95%、失败率 ≤1%，且无 OOM/crash/持续增长；预热单列，P95 只辅助。媒体规格与 600/660 秒超时见测评方案。
 
 `versioning.performance.ControlledPerformanceSession` 在加载与每请求前核验冻结来源、allowlist、TTL/预算、executor/session；使用 loopback 独立 token 和实际 adapter API，关闭仅影响本会话。`open_performance_session(root=..., eval_version=..., executor=..., session_id=...)` 默认连接 `RegistryPerformanceLoader` 实际加载器，核验物化字节及实际 device/dtype/量化；`session.serve(port=...)` 启动、`export_events(path)` 封存后端事件/资源、`close()` 关闭。`run_performance_session(..., port=..., evidence_path=...)` 封装自身服务启动、0600临时 `.session.json` capability、退出导出事件和清理；API 会真实加载模型，本轮未调用，未来仅在训练机取得运行授权后使用，不借 candidate/production alias。当前实际采集外层 queue/inference/auto_parse/backend_complete 及周期 VRAM/RSS/GPU保留时长；读取/预处理内部细阶段未接 hooks，报告 stage_measurement_gaps；OOM 只按显式事件，不把通用 adapter 500 当 OOM；cold start 保存实际 started/ready/seconds，warmup 独立，不虚构耗时。事件导入不证明真实采集；显示 receipt 接收/核验工程已实现，外部可信 client/显示测点未部署验收。本轮所有事件 synthetic，不可 passed。`synthetic`、`backend-only`、`untrusted-display-events` 和 incomplete/failed 状态必须原样保留，不能手工改标志晋级。
 
@@ -405,7 +405,7 @@ full 使用三折 train/validation 的共同开发全集，按媒体身份去重
 
 ## Full 模型的独立 holdout 验收
 
-本节输入要求与 claim/prepare/run/score/export 共用。新独立协议显式 `scorer: semantic-holdout-v4.1`，阈值、source_groups、blind_policy、review_runtime 由 `finetune/eval_review.py` 核验，最终质量门见[测评方案](../docs/model-evaluation.md)；不套用下文旧 strict 七门。完整新协议流转见[模型工作流第 5 节](../docs/model-workflow.md#5-full-模型的独立-test-验收)。run 后、score 前须执行 `eval review_prepare <eval> --root <store> --manual <冻结手册>` 与 `eval review_seal <eval> --root <store> --blind-reviews <封存判断JSON>`。前者核验实际 sandbox canary 探针并写 restricted 匿名包/映射/exposure 和 authorization/exposed.yaml；`eval review_run <eval> --root <store>` 使用固定 localhost Ollama broker 与 Mac worker，默认不允许真实调用，即使带 --allow-real-model-calls 仍先核实际部署/tokenizer/隔离，当前未验真时硬拒任何真实请求；后者核验 raw/policy/独立判断及尝试链后写 review_attempts/judge，未完成禁止读真值。所有判断（含故障）成本封存，已完成初判不能替换。当前工程探针及导入仍标 synthetic、真实模型部署未验收，不能取得新生产资格。
+本节输入要求与 claim/prepare/run/score/export 共用。新独立协议显式 `scorer: semantic-holdout-v4.1`，阈值、source_groups、blind_policy、review_runtime 由 `finetune/eval_review.py` 核验，最终质量门见测评方案；不套用下文旧 strict 七门。完整新协议流转见模型工作流第 5 节。run 后、score 前须执行 `eval review_prepare <eval> --root <store> --manual <冻结手册>` 与 `eval review_seal <eval> --root <store> --blind-reviews <封存判断JSON>`。前者核验实际 sandbox canary 探针并写 restricted 匿名包/映射/exposure 和 authorization/exposed.yaml；`eval review_run <eval> --root <store>` 使用固定 localhost Ollama broker 与 Mac worker，默认不允许真实调用，即使带 --allow-real-model-calls 仍先核实际部署/tokenizer/隔离，当前未验真时硬拒任何真实请求；后者核验 raw/policy/独立判断及尝试链后写 review_attempts/judge，未完成禁止读真值。所有判断（含故障）成本封存，已完成初判不能替换。当前工程探针及导入仍标 synthetic、真实模型部署未验收，不能取得新生产资格。
 
 `eval review_verify <eval> --root <store>` 默认不联网；未来显式 --allow-local-review-metadata 仅准固定 localhost tags/show 元数据，不生成回答。prepare 前可冻结 review_tokenizers，每个批准模型声明完整本地 HF 文件/大小/摘要、固定上游 source/revision、GGUF model digest、transformers/tokenizers 库版本及源码、provider implementation、模板和 tokenizer_equivalence_audit 路径/摘要。`eval_review_deployment.py` 核本地 local_files_only/trust_remote_code=False、specialtoken/thinkFalse；独立具名 auditor 的 GGUF↔HF 映射、可核 basis 文件/counter来源与 golden messages→prompt摘要→token IDs 均须一致，不能以 equivalent:true 代替。代码验绑定/bytes/goldens，未来 auditor 负责映射真实性，本轮无真实审计资产。凭据封存 restricted/review-deployment.json 并提交 MLflow；注入 provider 永远 synthetic。真实运行须显式授权及真实凭据，调用前 HF exact render/encode 计8K token，再 Ollama raw generate 同字符串，返回 model/token count 不一致拒绝。
 

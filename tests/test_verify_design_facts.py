@@ -4,13 +4,12 @@
 `ls-files`，不需要 commit），再用真实脚本对着它跑一遍，只读仓库内的脚本文件。
 断言覆盖退出码与具体文案（`MISSING <路径>` / `PASS`），避免「什么都没检查」也算通过。
 
-后半部分（I/J/K/L 与 `--render`）覆盖 evidence 的内容断言：`{ref, expect}` 映射写法、
-新旧格式的输出标记（`PASS` / `PASS(no-expect)` / `FAIL`）、无内容断言的计数、validate 模式的
-`--root`，以及渲染时是否把 expect 片段一并写进 md。
+后半部分覆盖 evidence 的内容断言、旧格式兼容和 validate 模式的 `--root`。
+事实库只读取 `docs/facts.yaml`；旧 `--render` 入口必须明确拒绝，且不能创建或改写文件。
 
 末尾一组用例守住「evidence 映射的形状必须被强制」这条契约：映射缺 `ref`、`ref` 非字符串或不带行号、
 键名拼错、缺 `expect`、`expect` 为空 / null / 非字符串 / 含换行时一律 FAIL，不得静默降级成
-`PASS(no-expect)`；`--render` 遇到同样的形状时 fail-closed（退出 1、不写 md）。
+`PASS(no-expect)`。
 """
 from __future__ import annotations
 
@@ -289,7 +288,7 @@ def test_files_branch_forced_true_is_caught_by_case_f(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
-# evidence 的内容断言（`{ref, expect}`）、旧格式兼容、validate 模式 `--root` 与渲染
+# evidence 的内容断言（`{ref, expect}`）、旧格式兼容与 validate 模式 `--root`
 #
 # 目标契约（用户已授权改实现）：
 # - evidence 支持字符串 `path:LINE`（旧格式）与映射 `{ref: path:LINE, expect: 片段}`；
@@ -299,11 +298,10 @@ def test_files_branch_forced_true_is_caught_by_case_f(tmp_path: Path):
 #   `无内容断言的 evidence：N 条`，出现 FAIL 退出 1，全 PASS 退出 0；
 # - validate 支持 `--root <仓库根>`，语义与 `--check-doc-paths` 一致。
 #
-# tmp 仓库里的阈值事实与 md 渲染都按真实规则构造成「本来就该通过」，这样断言咬住的是 evidence
-# 判定本身，而不是被无关检查的噪音带偏（见 `_build_design_facts_repo` 的注释）。
+# tmp 仓库里的阈值事实按真实规则构造成「本来就该通过」，让断言只针对 evidence 判定本身。
 # --------------------------------------------------------------------------- #
-DEFAULT_YAML = "docs/design-facts.yaml"
-DEFAULT_MD = "docs/design-facts.md"
+DEFAULT_YAML = "docs/facts.yaml"
+LEGACY_MD = "docs/design-facts.md"
 # 目标文件三行：第 1 行给阈值事实做锚点，第 2 行带 expect，第 3 行给旧格式字符串 evidence。
 TARGET_SOURCE = "# 说明行：阈值事实的 evidence 锚点\ndef target():\n    return 1\n"
 TARGET_REF = "src/target.py:2"
@@ -374,7 +372,7 @@ def _design_facts_yaml_with_evidence_block(evidence_block: str) -> str:
 
 
 def _build_design_facts_repo(root: Path, *, expect: str) -> None:
-    """造一个 evidence / 阈值 / md 三项都能通过的最小仓库（只写 `root` 内的文件）。"""
+    """造一个 evidence / 阈值都能通过的最小仓库（只写 `root` 内的文件）。"""
     _build_design_facts_repo_with_evidence_block(
         root, evidence_block=f"      - ref: {TARGET_REF}\n        expect: {expect}\n"
     )
@@ -388,11 +386,7 @@ def _build_design_facts_repo_with_evidence_block(root: Path, *, evidence_block: 
 
 
 def _render_in_repo(root: Path) -> subprocess.CompletedProcess:
-    """对 tmp 仓库跑 `--render --root <root>`：渲染结果落到 `<root>/docs/design-facts.md`。
-
-    `--root` 把仓库根与 yaml / md / 阈值路径一并重定向（与 `--check-doc-paths` 同语义），
-    因此不需要把脚本复制进 tmp 仓库，也不会碰到当前仓库的 docs/。
-    """
+    """调用已停用的渲染入口，验证其明确拒绝且不写文件。"""
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--render", "--root", str(root)],
         cwd=str(root),
@@ -431,8 +425,6 @@ def _fail_lines(stdout: str) -> list[str]:
 def test_evidence_expect_hit_passes_when_target_line_contains_snippet(tmp_path: Path):
     # I：expect 命中 → 该 evidence 判 PASS，且整仓无其它 FAIL（退出码 0）。
     _build_design_facts_repo(tmp_path, expect=EXPECT_GOOD)
-    render = _render_in_repo(tmp_path)
-    assert render.returncode == 0, _context(render)
 
     result = _validate_repo(tmp_path)
 
@@ -445,8 +437,6 @@ def test_evidence_expect_mismatch_fails_naming_fact_ref_and_snippet(tmp_path: Pa
     # J：防恒真的关键用例——expect 写成文件里不存在的串时必须 FAIL，绝不判恒真。
     # 三个要素（fact_id / ref / 期望片段）必须出现在同一条 FAIL 行里。
     _build_design_facts_repo(tmp_path, expect=EXPECT_WRONG)
-    render = _render_in_repo(tmp_path)
-    assert render.returncode == 0, _context(render)
 
     result = _validate_repo(tmp_path)
 
@@ -454,7 +444,7 @@ def test_evidence_expect_mismatch_fails_naming_fact_ref_and_snippet(tmp_path: Pa
     assert _evidence_pass_line("DF-001", TARGET_REF).search(result.stdout) is None, _context(result)
     fails = _fail_lines(result.stdout)
     assert fails, _context(result)
-    # 失败只应来自 DF-001 的 expect 不匹配：其它检查（阈值、md 一致性）都按真实规则构造成通过。
+    # 失败只应来自 DF-001 的 expect 不匹配：其它检查（阈值）都按真实规则构造成通过。
     assert all("DF-001" in line for line in fails), (
         "出现了与 expect 不匹配无关的 FAIL" + _context(result)
     )
@@ -471,8 +461,6 @@ def test_evidence_expect_mismatch_fails_naming_fact_ref_and_snippet(tmp_path: Pa
 def test_legacy_string_evidence_passes_with_no_expect_marker(tmp_path: Path):
     # K：旧格式（字符串、无 expect）仍 PASS，但必须显式标记 no-expect，且总结区给出计数。
     _build_design_facts_repo(tmp_path, expect=EXPECT_GOOD)
-    render = _render_in_repo(tmp_path)
-    assert render.returncode == 0, _context(render)
 
     result = _validate_repo(tmp_path)
 
@@ -490,8 +478,6 @@ def test_flipping_expect_to_wrong_value_turns_pass_into_fail(tmp_path: Path):
     # L：变异自证——同一 tmp 仓库里只把 expect 由正确值改成错误值，判决必须从 PASS 翻成 FAIL。
     # 全程只写 tmp_path 内的副本，不动仓库内任何文件。
     _build_design_facts_repo(tmp_path, expect=EXPECT_GOOD)
-    first_render = _render_in_repo(tmp_path)
-    assert first_render.returncode == 0, _context(first_render)
 
     before = _validate_repo(tmp_path)
     assert before.returncode == 0, _context(before)
@@ -499,8 +485,6 @@ def test_flipping_expect_to_wrong_value_turns_pass_into_fail(tmp_path: Path):
 
     # 变异：只改 expect 的取值，ref 与目标文件都保持不变。
     _write(tmp_path, DEFAULT_YAML, _design_facts_yaml(EXPECT_WRONG))
-    second_render = _render_in_repo(tmp_path)
-    assert second_render.returncode == 0, _context(second_render)
 
     after = _validate_repo(tmp_path)
 
@@ -509,7 +493,7 @@ def test_flipping_expect_to_wrong_value_turns_pass_into_fail(tmp_path: Path):
     fails = _fail_lines(after.stdout)
     assert fails, _context(after)
     assert all("DF-001" in line for line in fails), (
-        "翻转后的 FAIL 不只来自 expect 不匹配（validate --root 可能没把 md / 阈值检查一并重定向）"
+        "翻转后的 FAIL 不只来自 expect 不匹配（validate --root 可能没把阈值检查一并重定向）"
         + _context(after)
     )
     assert EXPECT_WRONG in fails[0] and TARGET_REF in fails[0], _context(after)
@@ -517,86 +501,47 @@ def test_flipping_expect_to_wrong_value_turns_pass_into_fail(tmp_path: Path):
     assert _evidence_no_expect_line("DF-002", LINE3_REF).search(after.stdout), _context(after)
 
 
-def test_render_shows_expect_snippet_for_mapping_evidence(tmp_path: Path):
-    # `--render` 必须把 expect 片段渲染出来；同时旧格式仍渲染成原来的 `- path:LINE`。
+def test_yaml_only_validation_neither_requires_nor_creates_markdown(tmp_path: Path):
     _build_design_facts_repo(tmp_path, expect=EXPECT_GOOD)
+    before = {path.relative_to(tmp_path): path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
 
-    render = _render_in_repo(tmp_path)
+    result = _validate_repo(tmp_path)
 
-    assert render.returncode == 0, _context(render)
-    md = (tmp_path / DEFAULT_MD).read_text(encoding="utf-8")
-    bullets = [line for line in md.splitlines() if TARGET_REF in line]
-    assert len(bullets) == 1, md
-    bullet = bullets[0]
-    assert EXPECT_GOOD in bullet, "渲染结果里没有 expect 片段：" + md
-    # 排除「把 dict 直接 str() 出来」这种假命中（当前实现的 `- {'ref': ..., 'expect': ...}`）。
-    assert "{" not in bullet and "'ref'" not in bullet, "evidence 被渲染成了 dict 的 repr：" + md
-    stripped = [line.strip() for line in md.splitlines()]
-    assert f"- {LINE3_REF}" in stripped, "旧格式字符串 evidence 的渲染结果被改动了：" + md
+    assert result.returncode == 0, _context(result)
+    after = {path.relative_to(tmp_path): path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    assert after == before, "只读 YAML 校验创建或修改了文件" + _context(result)
+    assert not (tmp_path / LEGACY_MD).exists(), _context(result)
 
 
-# --------------------------------------------------------------------------- #
-# `--render --root` 的落盘边界与「折行假片段」
-#
-# `--root` 对 `--render` 同样生效（把仓库根、yaml / md / 阈值路径一并重定向），因此 tmp 仓库的渲染
-# 不需要复制脚本，也不会碰当前仓库的 docs/。含换行的 expect 在渲染侧不得被折成单行：
-# 折出来的单行片段在源码里根本不存在，会被读文档的人当成真断言。
-# --------------------------------------------------------------------------- #
-REPO_MD = Path(__file__).resolve().parents[1] / "docs" / "design-facts.md"
 MULTILINE_EXPECT_BLOCK = (
     f"      - ref: {TARGET_REF}\n"
     "        expect: |\n"
     "          def target():\n"
     "              return 1\n"
 )
-# 若渲染用 `" ".join(text.split())` 折叠，`def target():\n    return 1` 会变成这个单行假片段。
-FOLDED_MULTILINE_EXPECT = "def target(): return 1"
-# 预置在目标 md 里的哨兵内容：渲染在预检阶段就 fail-closed，文件必须原样保留（不得被改写）。
-SENTINEL_MD = "# 哨兵：含换行 expect 时应被预检拦住，本行不得被覆盖\n"
 
 
-def test_render_with_root_writes_only_inside_the_target_root(tmp_path: Path):
-    # `--render --root` 必须只改写目标根下的 md；当前仓库的 docs/design-facts.md 保持逐字节不变。
+def test_retired_render_rejects_without_modifying_existing_files(tmp_path: Path):
     _build_design_facts_repo(tmp_path, expect=EXPECT_GOOD)
-    repo_md_existed = REPO_MD.exists()
-    repo_md_before = REPO_MD.read_bytes() if repo_md_existed else None
+    _write(tmp_path, LEGACY_MD, "# 旧副本不得被覆盖\n")
+    before = {path.relative_to(tmp_path): path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
 
-    render = _render_in_repo(tmp_path)
+    result = _render_in_repo(tmp_path)
 
-    assert render.returncode == 0, _context(render)
-    rendered = tmp_path / DEFAULT_MD
-    assert rendered.is_file(), "--render --root 没有把 md 写到目标根下" + _context(render)
-    assert "DF-001" in rendered.read_text(encoding="utf-8"), (
-        "目标根下的 md 不是本次渲染结果" + _context(render)
-    )
-    assert REPO_MD.exists() == repo_md_existed, (
-        "--render --root 在当前仓库里新建了 docs/design-facts.md" + _context(render)
-    )
-    assert (REPO_MD.read_bytes() if repo_md_existed else None) == repo_md_before, (
-        "--render --root 改动了当前仓库的 docs/design-facts.md" + _context(render)
-    )
+    assert result.returncode == 2, _context(result)
+    assert "--render 已停用" in result.stderr, _context(result)
+    assert "docs/facts.yaml" in result.stderr, _context(result)
+    after = {path.relative_to(tmp_path): path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    assert after == before, "已停用的渲染入口修改了现有文件" + _context(result)
 
 
-def test_render_does_not_fold_multiline_expect_into_a_fake_snippet(tmp_path: Path):
-    # 渲染侧 fail-closed：含换行的 expect 使 `--render` 退出 1 且**不写文件**。
-    # 只断「不折叠」是恒真的（渲染器本就不折叠），必须断到预检真的拦住了落盘。
-    _build_design_facts_repo_with_evidence_block(tmp_path, evidence_block=MULTILINE_EXPECT_BLOCK)
-    _write(tmp_path, DEFAULT_MD, SENTINEL_MD)
+def test_retired_render_rejects_without_requiring_yaml_or_creating_files(tmp_path: Path):
+    # 空目录可区分“明确拒绝旧入口”与“试图读取 YAML 后因缺文件失败”。
+    result = _render_in_repo(tmp_path)
 
-    render = _render_in_repo(tmp_path)
-
-    assert render.returncode == 1, (
-        "含换行的 expect 没有被 render 侧预检判 FAIL（应 fail-closed）" + _context(render)
-    )
-    assert "未渲染" in render.stdout, "render 的失败文案没有说明没落盘" + _context(render)
-    assert "DF-001" in render.stdout, "render 的失败文案没有点名出错的事实" + _context(render)
-    md_path = tmp_path / DEFAULT_MD
-    assert md_path.read_text(encoding="utf-8") == SENTINEL_MD, (
-        "预检没拦住写文件：目标 md 被改写或重新生成了" + _context(render)
-    )
-    assert FOLDED_MULTILINE_EXPECT not in md_path.read_text(encoding="utf-8"), (
-        "渲染把含换行的 expect 折成了源码里不存在的单行片段" + _context(render)
-    )
+    assert result.returncode == 2, _context(result)
+    assert "--render 已停用" in result.stderr, _context(result)
+    assert list(tmp_path.iterdir()) == [], "已停用的渲染入口仍有落盘副作用" + _context(result)
 
 
 # --------------------------------------------------------------------------- #
@@ -730,8 +675,6 @@ def test_malformed_expect_must_fail_instead_of_degrading_to_no_expect(
     # 所有形状都必须：退出 1 + 有一条点名 DF-001 与形态关键词的 FAIL 行 + 不得出现
     # DF-001 的 PASS / PASS(no-expect) 行（后者正是「断言被静默丢弃」的表面绿）。
     _build_design_facts_repo_with_evidence_block(tmp_path, evidence_block=evidence_block)
-    render = _render_in_repo(tmp_path)
-
     result = _validate_repo(tmp_path)
 
     assert result.returncode == 1, _context(result)
@@ -749,11 +692,9 @@ def test_malformed_expect_must_fail_instead_of_degrading_to_no_expect(
             f"FAIL 行里出现了 {forbidden!r}：判决来自相邻分支而非本形态的守卫，"
             "该 param 无法唯一咬住这条守卫" + _context(result)
         )
-    # 渲染成功时 md 与 yaml 一致，FAIL 只应来自 evidence 判定，不该被 md 不一致的噪音带走。
-    if (tmp_path / DEFAULT_MD).exists() and render.returncode == 0:
-        assert all("DF-001" in line for line in _fail_lines(result.stdout)), (
-            "出现了与 evidence 形状无关的 FAIL" + _context(result)
-        )
+    assert all("DF-001" in line for line in _fail_lines(result.stdout)), (
+        "出现了与 evidence 形状无关的 FAIL" + _context(result)
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -796,8 +737,6 @@ def test_failed_legacy_evidence_is_not_counted_as_no_expect(tmp_path: Path):
     yaml_text = _design_facts_yaml(EXPECT_GOOD) + EXTRA_LEGACY_FACTS
     _build_design_facts_repo(tmp_path, expect=EXPECT_GOOD)
     _write(tmp_path, DEFAULT_YAML, yaml_text)
-    render = _render_in_repo(tmp_path)
-    assert render.returncode == 0, _context(render)
 
     result = _validate_repo(tmp_path)
 
@@ -854,7 +793,7 @@ MISSING_VERSION_YAML = _design_facts_yaml(EXPECT_GOOD).replace("version: 1\n", "
 def test_structural_failure_reports_unchecked_instead_of_zero_no_expect(
     tmp_path: Path, yaml_text: str, case: str
 ):
-    # 早退发生在 evidence 检查之前，渲染/ md 一致性都不会被走到，故只写 yaml。
+    # 早退发生在 evidence 检查之前，只需写入 YAML。
     assert yaml_text != _design_facts_yaml(EXPECT_GOOD), f"{case} 夹具没改动 yaml"
     _build_design_facts_repo(tmp_path, expect=EXPECT_GOOD)
     _write(tmp_path, DEFAULT_YAML, yaml_text)
@@ -918,12 +857,11 @@ def test_internal_exception_reports_failure_without_zero_count(
 # 本用例把「仓库内 evidence 必须全部带内容断言」这条已确立的项目约定钉成回归。
 #
 # 例外说明：这是本文件**唯一对真实仓库「内容状态」做断言**的用例，其余用例一律 tmp 仓库 + `--root`。
-# （`test_render_with_root_writes_only_inside_the_target_root` 也会读真实的 docs/design-facts.md，
-# 但只断言它未被改动，不判断其内容正确与否。）理由：被守的对象是「真实事实库此刻是否守约定」，
+# 理由：被守的对象是「真实事实库此刻是否守约定」，
 # 只有对真实仓库跑一次才成立；因此用例只读仓库——子进程 cwd 指向仓库根、不加 `--root`、不写任何文件。
 #
 # 变红时怎么办：新增的旧格式 evidence 要改写成映射形式
-# `{ref: <path:LINE>, expect: <该行必然包含的片段>}`（写法见 docs/design-facts.yaml 里 DF-001）。
+# `{ref: <path:LINE>, expect: <该行必然包含的片段>}`（写法见 docs/facts.yaml 里 DF-001）。
 # 不得为让它变绿而删断言或改本用例。
 # --------------------------------------------------------------------------- #
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -934,11 +872,11 @@ NO_EXPECT_HINT = (
     "仓库内 evidence 必须全部带内容断言：旧格式字符串 evidence 会被判 PASS(no-expect) 且退出码不变，"
     "等于把断言静默丢弃。请把它改写成映射形式 {ref: <path:LINE>, expect: <该行必然包含的片段>}。"
 )
-# 退出码非 0 的红态有多种成因（行号漂移、md 未重渲染、evidence 缺内容断言……），首条断言只能用
+# 退出码非 0 的红态有多种成因（行号漂移、evidence 缺内容断言……），首条断言只能用
 # 中性提示指向真因候选；把 NO_EXPECT_HINT 用在这里会把读者误导向「改写成映射形式」这一种可能。
 REAL_REPO_RED_HINT = (
     "真实仓库自检未全绿（退出码非 0）。成因候选：ref 的行号已漂移（path:LINE 指向的行挪位）、"
-    "docs/design-facts.md 未按设计事实重新渲染、或某条 evidence 缺内容断言。真因见下方 stdout 的 FAIL 行。"
+    "或某条 evidence 缺内容断言。真因见下方 stdout 的 FAIL 行。"
 )
 
 
@@ -958,7 +896,7 @@ def test_real_repo_evidence_all_carry_content_assertions():
     """真实仓库此刻的自检必须全绿，且 evidence 全部带内容断言。
 
     边界：本用例读的是工作区当前状态，依赖整仓一致性——他人未提交的半成品（例如改了
-    docs/design-facts.yaml 却没重渲染 md）同样会让它变红。作为整仓门禁可以接受，但不应被
+    docs/facts.yaml 却没同步 evidence 锚点）同样会让它变红。作为整仓门禁可以接受，但不应被
     当作判断「本次改动是否 OK」的纯单测信号。
     """
     # Act：对真实仓库跑一次真实脚本。
@@ -971,7 +909,7 @@ def test_real_repo_evidence_all_carry_content_assertions():
     ]
 
     # Assert ①：真实仓库此刻应全 PASS（红态既可能来自新增的旧格式 evidence，也可能来自行号漂移、
-    # md 未重渲染或别处未提交改动，所以提示保持中性并指向真因候选，完整 stdout 一并带上）。
+    # 或别处未提交改动，所以提示保持中性并指向真因候选，完整 stdout 一并带上）。
     assert result.returncode == 0, REAL_REPO_RED_HINT + _context(result)
     # Assert ②：逐条 PASS(no-expect) 行数必须为 0（一条都不许有），失败时点名具体条目。
     # 放在总结区断言之前：红态才能直接指出是哪一条 evidence 缺内容断言，而不是只报「总结区数字不对」。

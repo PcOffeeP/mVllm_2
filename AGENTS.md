@@ -17,25 +17,22 @@ Non-goals:
 关联文档：
 
 - [docs/TODO.md](docs/TODO.md)：唯一项目任务台账与下一步入口。
-- [docs/data-workflow.md](docs/data-workflow.md)
-- [docs/model-workflow.md](docs/model-workflow.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [README.md](README.md)
 
 ## 开工必读顺序
 
-1. `docs/design-facts.md` —— 现行设计事实（**必读**；不看等于从碎片推断）
+1. `docs/facts.yaml` —— 项目设计与代码事实（**必读**；不看等于从碎片推断）
 2. `docs/TODO.md` —— 当前阶段、任务台账与状态
-3. `docs/pending-blockers.md` —— 未结事项登记册；开工前先看有无与本次任务相关的挂起项（`blocked` / `waiting-decision` / `ready`）
-4. 按任务看具体文档
+3. 按任务看具体文档
 
 ## 结论优先级与引用规则
 
 - 冲突时优先级：**契约 > 代码 > 文档 > 推断**。
 - 文档与代码不一致时：**先报冲突，不得择一执行**。
-- 引用任何文档前核其在 `docs/design-facts.yaml` 中的 `state`；`obsolete` 者只能作历史证据，不得作为现行依据。
-- 回答"为什么"类问题时，若依据来自 design-facts，须标注 `DF-xxx`；无编号的结论自动降级为「推断」。
-- 修改契约 / Prompt / 阈值 / 数据生成逻辑后，**必须同步更新 `docs/design-facts.yaml`**，并跑 `python scripts/verify_design_facts.py`；不通过不得提交。
+- 引用 `docs/facts.yaml` 中的事实前核其 `state`；`obsolete` 者只能作历史证据，不得作为现行依据。
+- 回答"为什么"类问题时，若依据来自 facts.yaml，须标注 `DF-xxx`；无编号的结论自动降级为「推断」。
+- 修改契约 / Prompt / 阈值 / 数据生成逻辑后，**必须同步更新 `docs/facts.yaml`**，并跑 `python scripts/verify_design_facts.py`；不通过不得提交。
 
 ## 验收与举证规则
 
@@ -126,14 +123,14 @@ exit=0
 ## 训练结果验收口径
 
 - `train_loss` / `eval_loss` 下降只能证明训练目标收敛，不能单独证明模型任务效果好。
-- 按被评模型的冻结契约和 [docs/model-workflow.md](docs/model-workflow.md) 中的严格评测口径验收；不得在不同契约之间混用字段或指标。
+- 按被评模型的冻结契约及对应版本的严格评测口径验收；不得在不同契约之间混用字段或指标。
 - 对 LoRA/merged 模型做结论前，应确认实际加载的模型路径、checkpoint step、adapter 文件、metadata 和评测结果彼此一致。
 - 如果训练目录中的 metadata 指向旧实验、缺少 adapter/checkpoint，或评测结果无法对应到当前模型，应优先指出产物链路问题，而不是给出正向效果结论。
 
 ## 新旧体系边界
 
 - 新旧边界按入口核定，不按整个包推断。尚未切换的 `pipeline/`、`finetune/` legacy 路径维持既有规则；只有在已确认迁移方案、实施授权及该入口验收范围内才能停止旧写入。已停用入口不得恢复为宽松回退，历史产物及仍被调用的业务函数不得因此批量删除或改名。
-- 新体系入口为顶层包 `versioning/`，启动方式为 `python -m versioning`；当前状态及逐入口证据以 [项目TODO](docs/TODO.md) 为准，设计与基础设施历史见 [可读版本控制实施台账](docs/plans/2026-09-01-readable-version-control-implementation.md)。
+- 新体系入口为顶层包 `versioning/`，启动方式为 `python -m versioning`；当前状态及逐入口证据以 [项目TODO](docs/TODO.md) 为准。
 
 ## 新体系（versioning）规则
 
@@ -181,8 +178,8 @@ exit=0
 2. 派发任务时必须明确区分已确认的背景事实与验收标准；结构性、完整性要求必须写入验收标准，不得只作为背景说明。
 3. 重写/新建流程类文档的验收标准必须包含链路完整性检查：目标流程每个环节的入口脚本与产物在文档中可追溯（无"从天而降"的参数或产物）。
 4. 表述规范：在各种文档中或向用户表述时，禁止使用「节点几」这类内部抽象表达（如「节点5」「节点9」）；应直接使用模型训练整个链路中对应的流程名称，例如人工审查、数据发布、模型训练。
-5. **文档失效条件**：新建任何文档必须写明「何时作废」；到期只有两条路——内容并入 `docs/design-facts.yaml`，或直接删除。**没有失效条件的文档不得新建。**
-6. **文档间引用不得依赖行号**：除 `docs/design-facts.yaml` 的 `evidence`（行号由 `scripts/verify_design_facts.py` 校验，必须保留）外，文档之间相互引用一律用条目编号、标题或稳定关键词定位，`文件:行` 只能作附注。理由：行号在每次插入后整体位移，而现有校验（`verify_design_facts.py --check-doc-paths`）只判路径存在性、不判行号，漂移会静默通过——2026-10-19 实测（基线 commit `7d163207e06ece2554b5179f16b1d85c403fc253`）：该提交改动的 4 个被引文件中受审引用 **90 条**（去重；按引用词元出现位置计 93 处），其中 **41 条漂移**（按引用词元计 44 处，涉 27 个锚点行）。口径与复现：同一（引用处行、被引文件、行号）三元组计 1 处，同一行内重复写同一目标不重复计；复现脚本与逐条清单见仓库外 `~/pi-workspace/mVllm_2-audit/ref-drift-20261019/`（`scan2.py` 抽引用、`01-inventory.md` 全量清单）。
+5. **文档失效条件**：新建任何文档必须写明「何时作废」；到期只有两条路——内容并入 `docs/facts.yaml`，或直接删除。**没有失效条件的文档不得新建。**
+6. **文档间引用不得依赖行号**：除 `docs/facts.yaml` 的 `evidence`（行号由 `scripts/verify_design_facts.py` 校验，必须保留）外，文档之间相互引用一律用条目编号、标题或稳定关键词定位，`文件:行` 只能作附注。理由：行号在每次插入后整体位移，而现有校验（`verify_design_facts.py --check-doc-paths`）只判路径存在性、不判行号，漂移会静默通过——2026-10-19 实测（基线 commit `7d163207e06ece2554b5179f16b1d85c403fc253`）：该提交改动的 4 个被引文件中受审引用 **90 条**（去重；按引用词元出现位置计 93 处），其中 **41 条漂移**（按引用词元计 44 处，涉 27 个锚点行）。口径与复现：同一（引用处行、被引文件、行号）三元组计 1 处，同一行内重复写同一目标不重复计；复现脚本与逐条清单见仓库外 `~/pi-workspace/mVllm_2-audit/ref-drift-20261019/`（`scan2.py` 抽引用、`01-inventory.md` 全量清单）。
 
 <!-- DECISION-LOG
 D001 — 仓库级 Instruction 同时服务 Codex 与 Pi，提交尾注按真实执行平台区分。
@@ -195,5 +192,5 @@ D003 — 迁移保护按实际入口和已确认验收边界生效，当前状�
 Why: 已确认方案要求逐入口停止旧写入；把整个包永久视作未迁移会与实际停用门冲突，也不能据局部迁移删除仍被调用的业务实现。
 
 D004 — 新建文档必须写明失效条件（到期并入 design-facts 或直接删除）；文档间引用改用条目编号/标题/稳定关键词定位，行号只作附注。
-Why: 无失效条件的文档会长期滞留并持续被引用；行号在每次插入后整体位移，而 `--check-doc-paths` 只判路径存在性、不判行号，漂移会静默通过（2026-10-19 基线 `7d16320` 实测单提交造成 41 处去重引用错位，按词元计 44 处）。`docs/design-facts.yaml` 的 evidence 行号由 `scripts/verify_design_facts.py` 校验，属例外，必须保留。
+Why: 无失效条件的文档会长期滞留并持续被引用；行号在每次插入后整体位移，而 `--check-doc-paths` 只判路径存在性、不判行号，漂移会静默通过（2026-10-19 基线 `7d16320` 实测单提交造成 41 处去重引用错位，按词元计 44 处）。`docs/facts.yaml` 的 evidence 行号由 `scripts/verify_design_facts.py` 校验，属例外，必须保留。
 -->

@@ -13,20 +13,14 @@ Non-goals:
 
 # mVllm_2 架构
 
-> 状态：正式入口迁移已按确认工程范围完成并于 2026-09-14 合并 main；真实模型质量、GPU/服务成功路径及物理组合恢复仍未验收。本文负责模块边界；当前任务以[项目TODO](docs/TODO.md)为准，确认规则见[设计文档](docs/plans/2026-09-01-readable-version-control-design.md)。
+> 状态：正式入口迁移已按确认工程范围完成并于 2026-09-14 合并 main；真实模型质量、GPU/服务成功路径及物理组合恢复仍未验收。本文负责模块边界；当前任务以[项目TODO](docs/TODO.md)为准。
 
 ## 1. 文档导航
 
 - [README.md](README.md)：仓库概述与文档入口。
 - [docs/label.md](docs/label.md)：本轮人工标注的五类标签与填写规则。
 - [AGENTS.md](AGENTS.md)：项目 Agent 运行规则，含双机边界、新旧体系分域与提交信息约定。
-- [docs/data-workflow.md](docs/data-workflow.md)：显式七阶段数据操作手册。
-- [docs/model-workflow.md](docs/model-workflow.md)：现行训练、评测、模型服务与备份流程。
-- [docs/model-evaluation.md](docs/model-evaluation.md)：旧 v4.1 的开发验证、视觉质量和交互性能设计；新标签的评价体系尚待设计。
-- [docs/plans/2026-09-01-readable-version-control-design.md](docs/plans/2026-09-01-readable-version-control-design.md)：可读版本控制架构权威设计（目标）。
-- [docs/plans/2026-09-01-readable-version-control-implementation.md](docs/plans/2026-09-01-readable-version-control-implementation.md)：B0–B12 基础设施历史实施台账。
 - [docs/TODO.md](docs/TODO.md)：项目唯一任务台账与下一步入口。
-- [docs/adr/ADR-0001.md](docs/adr/ADR-0001.md)：采用可读版本控制及 Git/DVC/MLflow 职责边界的决策记录。
 
 ## 2. 系统边界与双机角色
 
@@ -36,7 +30,7 @@ Non-goals:
 - **训练机**（SSH `100.70.83.68`，主机 `dell-Precision-3660`）：实际模型训练、GPU 推理、评测跑分、长时间数据处理，以及正式版本写入。
 - 本机看到的训练目录、日志、指标、预测文件和报告视为从训练机同步/复制的结果；本机默认不能复现实验，效果结论以训练机真实产物为准。
 - 当前电脑缺 checkpoint、LoRA adapter、merged 模型、预测样例或评测指标时，结论标注为"证据不足"，并明确需要补跑或补同步的内容。
-- **项目本地目录布局**（2026-10-21 起扁平化，取消 `workspace/` 根段）：仓库根下`data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild` 分别是数据、训练、模型、基座、MLflow store、评测、审计、暂存与重建的落点，全部不入 Git；store 与这些项目本地目录是两套根，互不替代。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`，搬迁期间不可用窗口 4 秒），两端磁盘上均无 `workspace/`；旧→新映射与阅读历史记录时的换算见[设计事实](docs/design-facts.md) DF-017。
+- **项目本地目录布局**（2026-10-21 起扁平化，取消 `workspace/` 根段）：仓库根下`data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild` 分别是数据、训练、模型、基座、MLflow store、评测、审计、暂存与重建的落点，全部不入 Git；store 与这些项目本地目录是两套根，互不替代。取消 `workspace/` 的双端物理搬迁已完成（本机 P2 `b18e69b`、收口 `316a1975`，训练机同 `316a1975`，搬迁期间不可用窗口 4 秒），两端磁盘上均无 `workspace/`；旧→新映射与阅读历史记录时的换算见设计事实 DF-017。
 
 ## 3. 新旧入口边界
 
@@ -83,7 +77,7 @@ ROI输入准备仍保留，显式选择metadata/output/project-root；人工审�
 
 ## 5. 设计与实施证据
 
-B0–B12 的批次、提交、测试和审查保留在[基础设施实施台账](docs/plans/2026-09-01-readable-version-control-implementation.md)；正式迁移的确认范围、实施选择与最终矩阵见[已执行迁移计划](docs/tasks/2026-09-07-readable-version-control-migration/plan.md)，逐批真实/合成证据见[验证记录](docs/results/version-control-migration/verification.md)。不在架构正文重复维护历史测试数量和已被替换的最小 pipeline 布局。
+正式迁移的逐批真实/合成证据见[验证记录](docs/results/version-control-migration/verification.md)。不在架构正文重复维护历史测试数量和已被替换的最小 pipeline 布局。
 
 ## 6. 保留的 legacy 依赖
 

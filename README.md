@@ -15,8 +15,6 @@
 | 人工标注视频 | [断裂标签说明](docs/label.md) |
 | 查看当前进度和下一步 | [项目 TODO](docs/TODO.md) |
 | 了解历史模型结果及限制 | [模型清单](docs/results/model-inventory.md) |
-| 处理数据或了解现有训练、服务流程 | [数据流程](docs/data-workflow.md)、[模型流程](docs/model-workflow.md) |
-| 查阅旧评价设计 | [v4.1 模型测评方案](docs/model-evaluation.md)；新标签的评价体系仍待设计 |
 
 ### 2. 按机器准备 Python 3.11.x 环境
 
@@ -81,10 +79,10 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 正式版本只有 data、prompt、train、model、eval 五类，名称为 `<kind>-v<协议>-r<N>`，例如 `data-v4.1-r2`。示例身份不表示你本地已有资产；版本和输入必须显式提供，不自动猜测“最新”。
 
-接下来按[数据处理](docs/data-workflow.md)准备视频、注释、split 和人工决定；按[模型流程](docs/model-workflow.md)准备基座、正式数据、Prompt 和配置。GPU 训练、推理、完整评测及长时间媒体处理在训练机执行。环境安装通过与实际模型效果达标分别验收。
+后续数据接入、训练和评价流程以新标签为基础另行设计。GPU 训练、推理、完整评测及长时间媒体处理在训练机执行。环境安装通过与实际模型效果达标分别验收。
 
 ## 其他资料
 
-[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[设计事实](docs/design-facts.md)记录可追溯的现行设计事实。`docs/plans/`、`docs/tasks/`、`docs/adr/` 保存设计和决策背景，`docs/results/`、`docs/reports/` 保存历史结果。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
+[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[项目事实](docs/facts.yaml)记录设计要点及代码事实。`docs/results/`、`docs/reports/` 保存历史结果。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
 
 代码入口见 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。

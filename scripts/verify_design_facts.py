@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""校验 docs/design-facts.yaml，并由它渲染 docs/design-facts.md。
+"""只读校验 docs/facts.yaml 及文档中的仓库内路径。
 
-用法（三种模式互斥，缺省为校验；`--root` 对三种模式均可用）：
+用法（两种模式互斥，缺省为校验；`--root` 对两种模式均可用）：
     python scripts/verify_design_facts.py [--root <仓库根>]
                                                      # 校验：逐项打印 PASS/PASS(no-expect)/FAIL，任一 FAIL 退出 1
-    python scripts/verify_design_facts.py --render [--root <仓库根>]
-                                                     # 渲染：由 yaml 重新生成 docs/design-facts.md，退出 0
     python scripts/verify_design_facts.py --check-doc-paths [--root <仓库根>]
                                                      # 路径自检：检查 md 里引用的仓库内路径是否存在，缺失退出 1
     python scripts/verify_design_facts.py --help     # 打印本说明，退出 0（独立于模式与 --root）
 
-`--root` 把仓库根与 yaml / md / 阈值源码路径一并重定向；校验、渲染、路径自检三种模式都接受它。
-`--root` 必须是**已存在的目录**，否则按参数错误打印用法并退出 2（三种模式一致）。这是相对旧版的
+`--root` 把仓库根与 yaml / 阈值源码路径一并重定向；校验与路径自检两种模式都接受它。
+`--root` 必须是**已存在的目录**，否则按参数错误打印用法并退出 2（两种模式一致）。这是相对旧版的
 行为变化：旧版对不存在的目录会继续执行，`--check-doc-paths` 要到 `git -C <目录> ls-files` 才报
 `退出码 128` 并退出 1，错误原因被藏在 git 的 stderr 里。
 
+`--render` 已停用：仅保留 YAML，不生成 Markdown，传入该参数时明确报错并退出 2。
 未知参数（如拼错的 --rendr）打印用法并退出 2，绝不静默回落到校验模式。
 若 `--check-doc-paths` 扫不到任何可判定引用（例如正则 / 扩展名 / 前缀常量被改坏），该模式判 FAIL 而非 PASS。
 
@@ -63,20 +62,8 @@
   会「凭空变好」，被误读成断言健全程度提升。结构校验失败、evidence 根本没被检查时，该行改为打印
   `无内容断言的 evidence：未检查（结构校验已失败）`，不打印会误导的 0。
 - 仓库根缺省按脚本自身位置推断（`Path(__file__).resolve().parents[1]`），不依赖 cwd；`--root <仓库根>`
-  可显式重定向（校验 / 渲染 / --check-doc-paths 均可用），便于在隔离的假仓库中运行。
-- `--render` 同样 fail-closed：evidence 形状非法（尤其 `expect` 含换行）时退出 1 且不写文件，
-  不把多行片段折叠成源码里并不存在的单行假片段。边界：该预检只挡「evidence 形状非法」，**不**校验
-  `ref` 是否符合 `path:LINE`、行号是否越界、目标文件是否存在——这些是校验模式的职责，`--render`
-  不重复实现，也就不会因它们拒写。渲染会把 `expect` 原样写进 `docs/design-facts.md`，
-  而该 md 又是 `--check-doc-paths` 的扫描对象：回填 `expect` 时应避开形如仓库相对路径的文本
-  （如 `docs/...`、`scripts/...`），否则可能被当成引用扫描而引入假 MISSING。
-- 写文件副作用：`--render`（含 `--render --root <目录>`）会在目标根下 `mkdir -p docs/` 并写
-  `docs/design-facts.md`；校验模式与 `--check-doc-paths` 只读。写入走「同目录临时文件 + `os.replace`」
-  的原子替换，中途 `OSError` 不会留下被截断的 md（`mkdir -p` 建出的空目录可能保留）。
-- 符号链接边界：`os.replace` 替换的是链接这个目录项本身，md 若是符号链接，渲染后它变成普通文件
-  （旧实现是穿透写，内容会落到链接目标里），链接关系不再保留。
-- 残留边界：`finally` 清理临时文件在 SIGKILL / 外部超时杀进程时不会执行，此时会残留
-  `docs/.design-facts.md.<pid>.tmp`，需要手工删除；它不是 md 本体，不影响后续校验。
+  可显式重定向（校验 / --check-doc-paths 均可用），便于在隔离的假仓库中运行。
+- 两种模式均只读，不生成或修改项目设计文件。
 - yaml 只用标准库解析其子集（映射、序列、块标量 `|`/`>`、行内序列 `[a, b]`、整行注释）；
   超出子集时明确报错，不静默误解析。
 - `--check-doc-paths` 只做存在性检查，不校验行号；引用的路径主体限 ASCII 字符，
@@ -86,7 +73,6 @@
 from __future__ import annotations
 
 import ast
-import os
 import re
 import subprocess
 import sys
@@ -94,14 +80,8 @@ from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-YAML_PATH = ROOT / "docs" / "design-facts.yaml"
-MD_PATH = ROOT / "docs" / "design-facts.md"
+YAML_PATH = ROOT / "docs" / "facts.yaml"
 THRESHOLDS_PATH = ROOT / "finetune" / "holdout_metrics.py"
-
-HEADER = (
-    "<!-- generated from docs/design-facts.yaml by "
-    "scripts/verify_design_facts.py --render，请勿手改 -->"
-)
 
 ALLOWED_STATES = ("active", "obsolete", "superseded")
 ALLOWED_AFFECTS = ("prompt", "contract", "code", "data", "eval", "metrics", "gate", "ops")
@@ -119,7 +99,7 @@ THRESHOLD_PAIR_RE = re.compile(
 THRESHOLD_KEY_LIKE_RE = re.compile(r"[A-Za-z_]")
 USAGE = (
     "用法：python scripts/verify_design_facts.py <模式> [--root <仓库根>]\n"
-    "模式（三选一，缺省为校验）：--render | --check-doc-paths | 不带模式参数\n"
+    "模式（二选一，缺省为校验）：--check-doc-paths | 不带模式参数\n"
     "其它：--help（打印本说明，独立于模式与 --root）"
 )
 # 文档路径自检：引用主体限 ASCII（不用 \w，`\w` 会匹配中文导致相邻两个路径被吞成一条）。
@@ -140,7 +120,6 @@ ELLIPSIS_HINT_RE = re.compile(
 # 白名单规则关键字：`refs:` 与 `files:` 可单独出现，也可同行同时出现（两个都匹配才豁免）。
 RULE_KEYWORD_RE = re.compile(r"(?:^|\s)(?P<kind>refs|files):\s*")
 DOC_PATH_ALLOWLIST = Path("scripts") / "doc-path-allowlist.txt"
-RENDER_HINT = "请重新运行 `python scripts/verify_design_facts.py --render`（该文件是生成产物，禁止手改）"
 
 
 # --------------------------------------------------------------------------- #
@@ -692,94 +671,6 @@ def check_thresholds(facts_raw) -> list[str]:
     return problems
 
 
-def check_markdown(data) -> list[str]:
-    expected = render_markdown(data).encode("utf-8")
-    if not MD_PATH.is_file():
-        return [f"docs/design-facts.md 不存在，{RENDER_HINT}"]
-    if MD_PATH.read_bytes() != expected:
-        return [f"docs/design-facts.md 与 --render 结果不一致（被手改或未重新生成），{RENDER_HINT}"]
-    return []
-
-
-# --------------------------------------------------------------------------- #
-# 渲染
-# --------------------------------------------------------------------------- #
-def _render_evidence(entry) -> str:
-    """把 evidence 渲染成 `path:LINE` 或 `path:LINE（expect：片段）`，绝不输出映射的 repr。
-
-    `expect` 原样输出、不折叠空白：折叠会造出源码里并不存在的假片段，多行 expect 由 render_mode
-    在写文件前直接拒绝（fail-closed）。
-    """
-    if isinstance(entry, dict):
-        reference = "" if entry.get("ref") is None else str(entry.get("ref")).strip()
-        expect = entry.get("expect")
-        if isinstance(expect, str) and expect.strip():
-            return f"{reference}（expect：{expect}）"
-        return reference
-    return "" if entry is None else str(entry).strip()
-
-
-def _render_fact(fact: dict) -> list[str]:
-    lines = [f"### {_text(fact.get('id'))} [{_text(fact.get('state'))}] {_text(fact.get('topic'))}"]
-    lines.append(_text(fact.get("claim")))
-    lines.append("出处：")
-    for ref in _as_list(fact.get("evidence")):
-        lines.append(f"- {_render_evidence(ref)}")
-    lines.append("")
-    return lines
-
-
-def render_markdown(data) -> str:
-    facts = _facts_of(data)
-    misreadings = [item for item in _as_list(data.get("misreadings") if isinstance(data, dict) else None)
-                   if isinstance(item, dict)]
-
-    lines: list[str] = [HEADER, ""]
-
-    groups: dict[str, list[dict]] = {}
-    order: list[str] = []
-    for fact in facts:
-        if _text(fact.get("state")) == "obsolete":
-            continue
-        topic = _text(fact.get("topic"))
-        if topic not in groups:
-            groups[topic] = []
-            order.append(topic)
-        groups[topic].append(fact)
-    for topic in order:
-        lines.append(f"## {topic}")
-        lines.append("")
-        for fact in groups[topic]:
-            lines.extend(_render_fact(fact))
-
-    lines.append("## 已废弃（墓碑）")
-    lines.append("")
-    obsolete = [fact for fact in facts if _text(fact.get("state")) == "obsolete"]
-    if obsolete:
-        for fact in obsolete:
-            lines.extend(_render_fact(fact))
-            residue = _text(fact.get("residue"))
-            if residue:
-                lines.append(f"墓碑：{residue}")
-                lines.append("")
-    else:
-        lines.append("（当前没有已废弃条目。）")
-        lines.append("")
-
-    lines.append("## 常见误读")
-    lines.append("")
-    if misreadings:
-        for item in misreadings:
-            lines.append(f"- **误读**：{_text(item.get('wrong'))}")
-            lines.append(f"  - 正确：{_text(item.get('correct'))}")
-            for ref in _as_list(item.get("evidence")):
-                lines.append(f"  - 出处：{_render_evidence(ref)}")
-    else:
-        lines.append("（当前没有登记常见误读。）")
-
-    return "\n".join(lines).rstrip("\n") + "\n"
-
-
 # --------------------------------------------------------------------------- #
 # 文档路径存在性自检（--check-doc-paths）
 # --------------------------------------------------------------------------- #
@@ -1054,9 +945,9 @@ def run_checks() -> tuple[list[tuple[str, str]], int | None]:
     try:
         data = load_yaml(YAML_PATH)
     except YamlError as exc:
-        return [("fail", f"无法解析 docs/design-facts.yaml：{exc}")], None
+        return [("fail", f"无法解析 docs/facts.yaml：{exc}")], None
     if not isinstance(data, dict):
-        return [("fail", "docs/design-facts.yaml 顶层不是映射（缺少 version / facts 结构）")], None
+        return [("fail", "docs/facts.yaml 顶层不是映射（缺少 version / facts 结构）")], None
 
     facts_raw = data.get("facts")
     misreadings_raw = _as_list(data.get("misreadings"))
@@ -1064,7 +955,7 @@ def run_checks() -> tuple[list[tuple[str, str]], int | None]:
     results.append(
         (
             "pass",
-            f"docs/design-facts.yaml 可解析：{len(_as_list(facts_raw))} 条事实，"
+            f"docs/facts.yaml 可解析：{len(_as_list(facts_raw))} 条事实，"
             f"{len(misreadings)} 条常见误读",
         )
     )
@@ -1106,29 +997,27 @@ def run_checks() -> tuple[list[tuple[str, str]], int | None]:
         f"{THRESHOLD_FACT_ID} claim 的阈值键集与 ast 解析的 THRESHOLDS 一致（各 {EXPECTED_THRESHOLD_COUNT} 项）且逐项相等",
         check_thresholds(facts_raw),
     )
-    _collect(results, "docs/design-facts.md 与 --render 结果逐字节一致", check_markdown(data))
     return results, no_expect
 
 
 @contextmanager
 def _root_scope(root: Path | None):
-    """临时把仓库根及 yaml / md / 阈值源码路径重定向到 `root`，退出时（含异常）还原。
+    """临时把仓库根及 yaml / 阈值源码路径重定向到 `root`，退出时（含异常）还原。
 
     默认（`root is None`）不重定向；用上下文而不是裸函数，避免被 import 复用时状态泄漏到下一次调用。
     """
-    global ROOT, YAML_PATH, MD_PATH, THRESHOLDS_PATH
+    global ROOT, YAML_PATH, THRESHOLDS_PATH
     if root is None:
         yield
         return
-    saved = (ROOT, YAML_PATH, MD_PATH, THRESHOLDS_PATH)
+    saved = (ROOT, YAML_PATH, THRESHOLDS_PATH)
     ROOT = root
-    YAML_PATH = root / "docs" / "design-facts.yaml"
-    MD_PATH = root / "docs" / "design-facts.md"
+    YAML_PATH = root / "docs" / "facts.yaml"
     THRESHOLDS_PATH = root / "finetune" / "holdout_metrics.py"
     try:
         yield
     finally:
-        ROOT, YAML_PATH, MD_PATH, THRESHOLDS_PATH = saved
+        ROOT, YAML_PATH, THRESHOLDS_PATH = saved
 
 
 def validate_mode(root: Path | None = None) -> int:
@@ -1162,41 +1051,9 @@ def validate_mode(root: Path | None = None) -> int:
 
 
 def render_mode(root: Path | None = None) -> int:
-    with _root_scope(root):
-        try:
-            data = load_yaml(YAML_PATH)
-        except YamlError as exc:
-            print(f"FAIL  无法解析 docs/design-facts.yaml，未渲染：{exc}")
-            return 1
-        if not isinstance(data, dict):
-            print("FAIL  docs/design-facts.yaml 顶层不是映射，未渲染")
-            return 1
-        # fail-closed：形状非法的 evidence（尤其多行 expect）不得被折叠成假片段写进 md。
-        shape_problems = _evidence_shape_problems(data)
-        if shape_problems:
-            print("FAIL  存在非法 evidence，未渲染（含换行 / 空值 / 非字符串 / 未知键的写法会让断言失真）：")
-            for problem in shape_problems:
-                print(f"  - {problem}")
-            return 1
-        # 先写同目录临时文件再 os.replace：中途 OSError 不会把已存在的 md 截成半成品。
-        tmp_path = MD_PATH.parent / f".{MD_PATH.name}.{os.getpid()}.tmp"
-        try:
-            MD_PATH.parent.mkdir(parents=True, exist_ok=True)
-            text = render_markdown(data)
-            tmp_path.write_text(text, encoding="utf-8", newline="\n")
-            os.replace(tmp_path, MD_PATH)
-        except OSError as exc:
-            print(f"FAIL  无法写入 docs/design-facts.md：{exc}")
-            return 1
-        finally:
-            # 成功时临时文件已被 replace 移走，这里只是无害地清掉失败残留。
-            try:
-                tmp_path.unlink()
-            except OSError:
-                pass
-        print(f"RENDER docs/design-facts.md：{len(_facts_of(data))} 条事实")
-        print("提示：请再运行 `python scripts/verify_design_facts.py` 校验")
-        return 0
+    """拒绝旧渲染入口，避免重新生成已停用的 Markdown 副本。"""
+    print("FAIL  --render 已停用；项目设计仅保留 docs/facts.yaml，不生成 Markdown", file=sys.stderr)
+    return 2
 
 
 def _split_root_arg(args: list[str]) -> tuple[list[str], str | None, str | None]:

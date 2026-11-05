@@ -12,7 +12,7 @@ Non-goals:
 
 # 模型资产与门禁现场核查（2026-09-14）
 
-本文是当日现场核查档案，保留原始摘要与未知项。当前操作入口见[模型流程](../model-workflow.md)，不按本档案判断当前服务或文件是否在场。
+本文是当日现场核查档案，保留原始摘要与未知项。当前操作入口见模型流程，不按本档案判断当前服务或文件是否在场。
 
 核查日期：2026-09-14。范围为训练机 `/home/liuyang/文档/mVllm_2` 的 `models`、`workspace/models/releases`、`workspace/runs`，以及新正式 store `/data/mVllm_2` 的目录状态。调查时正式代码为 `f1b7d8a3`；工程候选已验证的业务代码为 `61effebd`。本次仅读取文件身份、路径、大小和非评测manifest，没有读取权重内容、预测或受限测试语义，没有加载模型或跑分。
 
@@ -94,6 +94,6 @@ MiniCPM-V-4.5基座位于 `/home/liuyang/文档/mVllm_2/models/minicpmv4_5`，�
 
 ## 5. 后续工作与证据维护
 
-当前分支按工程范围合并，不安排新的模型微调。后续由[项目TODO](../TODO.md)继续管理MODEL-DIAG、HOLDOUT-BUILD、FINAL-TRAIN、MODEL-QUALITY：先明确诊断方案与所需原始证据，再按授权分次训练/开发验证；开发方案稳定、test就绪后才冻结full候选并做独立验收。实际命令以[训练与评测入口](../model-workflow.md)为准。
+当前分支按工程范围合并，不安排新的模型微调。后续由[项目TODO](../TODO.md)继续管理MODEL-DIAG、HOLDOUT-BUILD、FINAL-TRAIN、MODEL-QUALITY：先明确诊断方案与所需原始证据，再按授权分次训练/开发验证；开发方案稳定、test就绪后才冻结full候选并做独立验收。实际命令以训练与评测入口为准。
 
 本轮现场探针及原始JSON只保存在本机临时目录，SHA和机器/退出记录见[迁移验证记录第67节](version-control-migration/verification.md)。本文保留必要摘要，不新建一份平行模型台账或复制大型结果文件。未来更新须标明哪些事实重新现场核实、哪些仍来自历史报告。

@@ -22,7 +22,7 @@
 | 准入与服务 | `model bind-performance` → finalize → scope/manifest → alias/current/approve | 同模型完整/数值身份、权重、Prompt、运行变体的质量与性能复验；批准另行取得，base/诊断不能晋级生产 |
 | 备份恢复 | backup catalog 包含公开/私有 evaluation workspace 与授权事实 | owner-only 恢复、受控位置 receipt、同 raw/claim/exposed/consumed；不重推理、不重置消费 |
 
-本表是工程入口与交接索引；准确参数以 [versioning/SCRIPTS.md](../../versioning/SCRIPTS.md) 和 [模型工作流](../model-workflow.md) 为准。
+本表是工程入口与交接索引；准确参数以 [versioning/SCRIPTS.md](../../versioning/SCRIPTS.md) 和 模型工作流 为准。
 
 ## 关键验收边界
 

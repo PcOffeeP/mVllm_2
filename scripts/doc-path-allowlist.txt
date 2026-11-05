@@ -15,49 +15,8 @@ refs: finetune/results/diagnostics/.* files: pipeline/scripts/diagnostics/SCRIPT
 # 同一索引的「未迁文件」小节：该测试硬编码旧路径，且放进 tests/ 会改变 pytest 收集基线，故有意未迁。
 refs: tests/test_diagnostic_scorer\.py files: pipeline/scripts/diagnostics/SCRIPTS\.md
 
-# 旧评测设计中列出的计划文件尚未落地。
-refs: finetune/eval_build_gate_thresholds\.py files: docs/plans/2026-10-18-evaluation-pipeline-redesign\.md
-refs: finetune/validation/cases/judge_cases\.jsonl files: docs/plans/2026-10-18-evaluation-pipeline-redesign\.md
-refs: finetune/validation/t1_judge\.py files: docs/plans/2026-10-18-evaluation-pipeline-redesign\.md
-
-# --- 现行文档逐条收口：已被合并/清理的历史文档名（不改台账原文） -------------
-# docs/DATA_PROCESSING_RUNBOOK.md 在 59dee2d1（docs: adopt consolidated workflows…）随文档合并迁出，
-# 现由 docs/data-workflow.md 承担；docs/project-todo.md 内以该文档名为标题的历史记录保留原文。
-refs: docs/DATA_PROCESSING_RUNBOOK\.md files: docs/project-todo\.md
-# docs/results/conda-environment-setup-20261013.md 在 749e9dba 的文档清理中删除，
-# docs/project-todo.md 的「模型盘点一次普通git status可能刷新.git/index」段的历史记录保留原文。
-refs: docs/results/conda-environment-setup-20261013\.md files: docs/project-todo\.md
-
-# --- 历史/设计文档：保留原文，按「文档 × 引用」精确收口 -----------------------
-# 本段不含整文件免检规则：每条都同时限定引用路径与所在文档，新增失效引用不会被顺带豁免。
-
-# 可读版本控制设计稿与实施台账：
-# 设计稿原文「为完整内容分配 `prompt-v4.1-rN` 并保存为 Git 跟踪的
-# `records/prompts/prompt-v4.1-rN.yaml`」「MLflow 将…导出到 Git 跟踪的
-# `records/{training,models,evaluations}/<版本>/manifest.yaml`」——是目标布局描述，
-# `-rN` 为版本号占位；records/ 现存只有 prompts/prompt-v4.1-r{1,2}.yaml 与 r1-run-20261018/，
-# 下列具体路径 git 全历史 0 记录。
-refs: records/(?:prompts/prompt-v4\.1-rN\.yaml|(?:training|models|evaluations)/(?:train|model|eval)-v4\.1-r1/manifest\.yaml) files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\.md
-# 实施台账各批「将修改的模块/文档」记录的 9 个模块与测试从未落地：versioning/authorization.py、
-# versioning/_sealed_ground_truth.py、versioning/mock_train_entry.py、versioning/scope.py 与
-# tests/versioning/test_{cli_data,holdout_auth,manifest_model,scope,restore}.py 当前均不存在，
-# git log --all -- <路径> 亦无记录。
-refs: (?:versioning/(?:authorization|_sealed_ground_truth|mock_train_entry|scope)\.py|tests/versioning/test_(?:cli_data|holdout_auth|manifest_model|scope|restore)\.py) files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\.md
-# 同一对文档登记的「将修改的模块/文档」含两张已合并删除的文档：docs/DATA_PROCESSING_RUNBOOK.md 与
-# finetune/README.md 均删除于 59dee2d1（docs: adopt consolidated workflows…，合并入 docs/data-workflow.md）。
-refs: (?:docs/DATA_PROCESSING_RUNBOOK\.md|finetune/README\.md) files: docs/plans/2026-09-01-readable-version-control-(?:design|implementation)\.md
-
-# 历史任务文档（迁移计划、规格、交接记录）逐条收口。
-# plan.md 的「文档收敛」清单与后续批次引用的 4 个文档均删除于 59dee2d1；spec.md 的冻结代码依据
-# finetune/v4_1_stage_d_runtime.py 删除于 567138bc（refactor: simplify Python script layout）。
-# 同目录 intent.md 无失效引用，故不登记任何整文件规则。
-refs: (?:docs/project-guide\.md|docs/DATA_PROCESSING_RUNBOOK\.md|docs/INFERENCE_SERVICE_RUNBOOK\.md|finetune/README\.md) files: docs/tasks/2026-09-07-readable-version-control-migration/plan\.md
-refs: finetune/v4_1_stage_d_runtime\.py files: docs/tasks/2026-09-07-readable-version-control-migration/spec\.md
-
 # 历史评测、诊断报告与归档结果：正文记录当轮实际使用的路径，报告头已逐条写明「失效路径」
 # 「未随迁」，一律保留原文；docs/results/ 不再整文件免检。
-# INDEX.md 叙述 model_evidence/ 整目录移除（e7bd1e75，A1：40 个文件），属删除追述。
-refs: docs/results/model_evidence/README\.md files: docs/results/INDEX\.md
 # diagnostics-data-visual-audit-20260719.md 的迁入说明标注「失效路径」「未随迁」：
 # pipeline/contracts/tensile_vlm_v1.json 删除于 9707160f；minimal_overfit/ 数据留 bcdf4f36 + bundle。
 refs: (?:pipeline/contracts/tensile_vlm_v1\.json|finetune/results/diagnostics/minimal_overfit/preprocessing_alignment\.json) files: docs/results/diagnostics-data-visual-audit-20260719\.md

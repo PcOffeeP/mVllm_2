@@ -1,5 +1,4 @@
-# 现行设计事实的单一入口。手写本文件；docs/design-facts.md 是它的生成产物，
-# 由 `python scripts/verify_design_facts.py --render` 重建，禁手改。
+# 项目设计与代码事实的单一入口。
 # 校验：`python scripts/verify_design_facts.py`（evidence 行号必须指向真实非空行）。
 version: 1
 generated_at: null
@@ -168,12 +167,10 @@ facts:
     claim: >
       训练池中已断裂的占比：1253 条候选中 188 条（15.00%），每 epoch 3000 行中 564 行（18.80%），重复倍率 3.0 已顶到 `SIGNATURE_COUNT_CAP` 的上限值 3。
     evidence:
-      - ref: docs/plans/2026-10-18-evaluation-pipeline-redesign.md:85
-        expect: 1253 条候选中 188 条（15.00%）
       - ref: finetune/train_build_source_aware_dataset.py:30
         expect: SIGNATURE_COUNT_CAP = 3
     established: 2026-10-18
-    established_by: 代码核对
+    established_by: 历史设计记录（原统计证据已删除）；代码仅证实上限常量
     supersedes: null
     affects: [data, code]
   - id: DF-011
@@ -182,7 +179,7 @@ facts:
     claim: >
       训练机上的项目代码目录是 `/home/liuyang/文档/mVllm_2`。
     evidence:
-      - ref: AGENTS.md:122
+      - ref: AGENTS.md:119
         expect: 训练机代码目录 | `/home/liuyang/文档/mVllm_2`
     established: 2026-10-13
     established_by: 实测（2026-10-13 只读 SSH 现场核对，文档记载）
@@ -217,16 +214,10 @@ facts:
       用户于 2026-10-18 裁决：标签锚点采用「可见分离第一帧」（视觉可判），不锚在物理裂纹起始（视觉不可判）。`event_time` 改为该锚点的时间，但历史列不覆盖——数据表新增 `visible_separation_time` 列承载新值（该表述已由 2026-10-19 裁决取代，见本句末补充句），原 `断裂时间点` 列原样保留、不改写不换算，用于新旧锚点的偏差分布统计与可追溯。理由：只有视觉可判的量才能作为视觉模型的标签与被评测对象；该锚点与用户原始判读口径一致；该锚点可被标注者独立复标，也可被确定性检测规则独立复现。
       2026-10-19 用户补充裁决：承载改为两列**帧号** `断裂帧_前`（最后一帧仍连通）与 `断裂帧_后`（第一帧已分离，权威值），时刻由脚本按实测 fps 派生、不手填；**锚点语义不变**，仍为可见分离第一帧。
     evidence:
-      - ref: docs/plans/2026-10-18-label-rebuild.md:70
-        expect: 语义定为「**可见分离第一帧**」的时间
-      - ref: docs/plans/2026-10-18-label-rebuild.md:72
-        expect: 数据表新增 `visible_separation_time` 列
-      - ref: docs/plans/2026-10-18-label-rebuild.md:101
-        expect: 选 A —— **可见分离第一帧**（视觉可判）
       - ref: docs/label.md:36
         expect: 第一帧已分离、也是权威值，时刻由实测 fps 派生
     established: 2026-10-18
-    established_by: 用户裁决 2026-10-18
+    established_by: 用户裁决 2026-10-18；现存标签说明仅支持帧锚点，旧列历史依据已删除
     supersedes: null
     affects: [data, contract, eval, prompt]
   - id: DF-014
@@ -237,12 +228,8 @@ facts:
     evidence:
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:3
         expect: contract_hash": "3798f00cbec7
-      - ref: docs/plans/2026-10-18-label-rebuild.md:192
-        expect: 即使枚举集合不变（四档名字与取值域都没变）
-      - ref: docs/plans/2026-10-18-label-rebuild.md:193
-        expect: 若只是**重算 `event_time` 的数值**
     established: 2026-10-18
-    established_by: 代码核对 + 用户裁决 2026-10-18
+    established_by: 代码核对 + 用户裁决 2026-10-18；现存代码只证明旧契约哈希，原规则出处已删除
     supersedes: null
     affects: [contract, data, eval]
   - id: DF-015
@@ -289,7 +276,7 @@ facts:
     state: active
     topic: 项目本地布局已扁平化（`workspace/` 根段取消），双端物理搬迁已完成
     claim: >
-      用户 2026-10-21 决定取消项目本地 `workspace/` 根段：项目根即 workspace 根，数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，这些目录一律不入 Git；store 与这些项目本地目录是两套根，互不替代。取消 `workspace/` 的物理搬迁已在双端完成：本机 P2 为 commit `b18e69b`、收口为 `316a1975`，训练机在同 commit `316a1975` 上完成代码同步与物理搬迁，两端磁盘上均无 `workspace/`；训练机从代码就绪到全部验证通过之间的不可用窗口为 4 秒（脚本定义口径）。训练机四点验收全部通过：R1 adapter sha256 `9e7941c9…d67064` 在 models releases 与 trains 两个落点一致、merged 10 个分片、`data/source/videos` 110 个 mp4、搬迁前后对比新增 dangling 链接 0；脚本在 rmdir 前断言 `workspace/` 已空，故其余映射项在该机无残留。旧→新映射（唯一依据）：`workspace/data`→`data`、`workspace/runs`→`trains`、`workspace/models`→`models`、`workspace/mlflow`→`mlflow`、`workspace/evaluations`（含 staging）→`evaluations`、`workspace/base-source-audit`→`audits/base-source-audit`、`workspace/review-environment`→`audits/review-environment`、`workspace/data-staging`→`data-staging`、`workspace/data-rebuild`→`data-rebuild`、`models/minicpmv4_5` 与 `models/minicpm-v-4.5`（基座）→`base-models/minicpmv4_5`。三个特殊点：① `.compat/workspace` 与 `store/workspace/**` 不属本次映射（store 域是独立命名空间）；② `models/*` 的忽略规则保持原样，它只排除子项、目录本身可跟踪；③ 评测结果、训练记录与历史计划类记录保留旧路径原文、不回改，阅读时按上述映射换算——记录里仍写旧路径不等于目录仍在。上述双端验收数字与断裂窗口口径的证据为仓库外证据目录（记录搬迁脚本、训练机日志与 dangling 清单），不在 Git 内。
+      用户 2026-10-21 决定取消项目本地 `workspace/` 根段：项目根即 workspace 根，数据、训练、模型、基座、MLflow、评测、审计、暂存与重建分别落在顶层 `data`、`trains`、`models`、`base-models`、`mlflow`、`evaluations`、`audits`、`data-staging`、`data-rebuild`，这些目录一律不入 Git；store 与这些项目本地目录是两套根，互不替代。取消 `workspace/` 的物理搬迁已在双端完成：本机 P2 为 commit `b18e69b`、收口为 `316a1975`，训练机在同 commit `316a1975` 上完成代码同步与物理搬迁，两端磁盘上均无 `workspace/`；训练机从代码就绪到全部验证通过之间的不可用窗口为 4 秒（脚本定义口径）。训练机四点验收全部通过：R1 adapter sha256 `9e7941c9…d67064` 在 models releases 与 trains 两个落点一致、merged 10 个分片、`data/source/videos` 110 个 mp4、搬迁前后对比新增 dangling 链接 0；脚本在 rmdir 前断言 `workspace/` 已空，故其余映射项在该机无残留。旧→新映射（唯一依据）：`workspace/data`→`data`、`workspace/runs`→`trains`、`workspace/models`→`models`、`workspace/mlflow`→`mlflow`、`workspace/evaluations`（含 staging）→`evaluations`、`workspace/base-source-audit`→`audits/base-source-audit`、`workspace/review-environment`→`audits/review-environment`、`workspace/data-staging`→`data-staging`、`workspace/data-rebuild`→`data-rebuild`、`models/minicpmv4_5` 与 `models/minicpm-v-4.5`（基座）→`base-models/minicpmv4_5`。三个特殊点：① `.compat/workspace` 与 `store/workspace/**` 不属本次映射（store 域是独立命名空间）；② `models/*` 的忽略规则保持原样，它只排除子项、目录本身可跟踪；③ 评测结果、训练记录与历史计划类记录保留旧路径原文、不回改，阅读时按上述映射换算——记录里仍写旧路径不等于目录仍在。上述双端验收数字与断裂窗口口径的证据为仓库外证据目录（本文件代码锚点只支持本地布局实现，不能独立证明历史双端验收）（记录搬迁脚本、训练机日志与 dangling 清单），不在 Git 内。
     evidence:
       - ref: pipeline/project_workspace.py:61
         expect: runs=root / "trains",

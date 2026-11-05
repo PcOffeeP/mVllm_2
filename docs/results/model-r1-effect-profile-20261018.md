@@ -505,7 +505,7 @@ adapter 覆盖范围（字段组 `adapter_coverage`）：目标模块数 11；�
 
 数据版本 `data-v4.1-r2`：由 `v4.1.0-ecb5aeb9657c` 的 Phase2 train 发布迁移而来。状态为 `sealed`、`development`，`training_allowed` 为 true，`active`，receipt 为 `committed`。样本数 1678，三折 train 与 validation 计数为 1253/425、1014/664、1186/492（validation 合计 1,581），85 个来源视频，引用去重 1678、缺失 0。来源分层写清，不把一份文件当成全部事实的依据：
 
-- `docs/data-workflow.md:180`：只支持 `active` 与「来源是 `v4.1.0-ecb5aeb9657c` Phase2 train 发布」两项。
+- 旧数据流程说明：只支持 `active` 与「来源是 `v4.1.0-ecb5aeb9657c` Phase2 train 发布」两项。
 - `docs/results/remote-state-refresh-20261013.md:42`：`sealed`、`development`、`training_allowed=true`、`sample_count=1678`、`active`、`receipt committed`、引用去重 1678 / 缺失 0。
 - `docs/results/remote-state-refresh-20261013.md:46`：三折 train 与 validation 计数 1253/425、1014/664、1186/492。
 - `docs/project-todo.md:64`：1,678 候选、85 个来源视频、validation 三折 425/664/492 合计 1,581。
@@ -600,7 +600,7 @@ R2 与 R1 不构成同一代迭代关系。R2 是新体系的第一代 data 与 
 | `pipeline/deployments/v4_1_intermediate_stage_b_8e1fdb09f8e6.json` | 部署清单，记 `processor_version`、`max_frames`、`model_version`、`transformers_version`、`llamafactory_version`、`base_model_version`、`adapter_version`、`config_fingerprint`、`runtime_device`、`runtime_dtype`；未记像素预算、时序分组、单次推理超时 | — |
 | `docs/results/training-data-ledger-20261017.json` | 两版契约正文差异与 `semantics_boundary`（`contract_analysis`；原运行时就绪材料已于 2026-10-18 并入台账） | — |
 | 清理预检记录（已随 2026-10-18 清理移除） | 迁移 receipt 内容摘要 | `target_release_digest` 为 `a80199ee464b45250fd6a1f0369f3c23415e5c0d161cfd3591e65b9f8638ac8b` |
-| `docs/data-workflow.md:180` | `data-v4.1-r2` 的 active 状态与来源发布（仅支持此两项） | — |
+| 旧数据流程说明 | `data-v4.1-r2` 的 active 状态与来源发布（仅支持此两项） | — |
 | `docs/results/remote-state-refresh-20261013.md:42`、`:46` | 状态、sample_count、receipt、去重计数与三折计数 | — |
 | 原 concise 三折报告（已随 2026-10-18 清理移除） | 第 3.2 节，提交 `c6098ab1` 的 evaluator 契约身份修正记录 | — |
 

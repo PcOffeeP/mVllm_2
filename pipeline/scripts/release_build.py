@@ -14,7 +14,7 @@ def main() -> int:
         "此历史数据写入CLI已停用。请使用 python -m versioning data <stage>，"
         "显式指定 --root、--inputs、--batch；发布时另需完整 --version。"
         "迁移既有release请使用 python -m versioning migration --help。"
-        "操作说明：docs/data-workflow.md。"
+        "操作说明：versioning/SCRIPTS.md。"
     )
     if sys.argv[1:] in (["--help"], ["-h"]):
         print(message)
