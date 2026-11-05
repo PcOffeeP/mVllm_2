@@ -227,7 +227,7 @@ facts:
     evidence:
       - ref: docs/label.md:32
         expect: 第一帧已分离、也是权威值，时刻由实测 fps 派生
-      - ref: docs/TODO.md:11
+      - ref: docs/TODO.md:12
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -319,7 +319,7 @@ facts:
         expect: 未断裂、发生断裂、已断裂、无法判断
       - ref: docs/label.md:79
         expect: 不作为模型微调的预测标签
-      - ref: docs/TODO.md:15
+      - ref: docs/TODO.md:16
         expect: 现有 v4.1 评分与旧阈值不直接套用
     established: 2026-11-05
     established_by: 用户确认的人工标注基准
