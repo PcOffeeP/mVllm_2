@@ -223,7 +223,7 @@ facts:
     state: active
     topic: 本轮事件锚点采用可见分离第一帧和前后帧号
     claim: >
-      本轮人工标注以「可见分离第一帧」为事件锚点：`断裂帧_前` 记最后一帧仍连通，`断裂帧_后` 记第一帧已分离并作为权威值，时刻由实测 fps 派生；确认完整视频未发生断裂时，两列填「无」。此前已记录原 `断裂时间点` 历史列原样保留、不改写；旧列处置的原始裁决依据已删除，接入时须核对，不以本次整理改写历史数据。旧的 `visible_separation_time` 列方案已被前后帧号方案取代，不再作为实施要求。整源帧号记录与片段状态记录分别判断；新列读取和后续数据转换尚未接入，具体接入按后续设计与授权实施。
+      本轮人工标注以「可见分离第一帧」为事件锚点：`断裂帧_前` 记最后一帧仍连通，`断裂帧_后` 记第一帧已分离并作为权威值，时刻由实测 fps 派生；确认完整视频未发生断裂时，两列及断裂时间点填「无」。此前已记录的历史时间数值在覆盖前须经用户确认；旧列处置的原始裁决依据已删除，接入时仍须核对。已确认断裂但一侧边界不可辨时，该侧帧填「无」。旧的 `visible_separation_time` 列方案已被前后帧号方案取代，不再作为实施要求。整源帧号记录与片段状态记录分别判断；新列读取和后续数据转换尚未接入，具体接入按后续设计与授权实施。
     evidence:
       - ref: docs/label.md:32
         expect: 第一帧已分离、也是权威值，时刻由实测 fps 派生
@@ -323,9 +323,9 @@ facts:
         expect: 不作为模型微调的预测标签
       - ref: docs/TODO.md:18
         expect: 现有 v4.1 评分与旧阈值不直接套用
-      - ref: pipeline/scripts/review_annotation.js:374
+      - ref: pipeline/scripts/review_annotation.js:423
         expect: function ruleTargets(state, grip, wholeVideoUnbroken)
-      - ref: pipeline/scripts/review_annotation.js:150
+      - ref: pipeline/scripts/review_annotation.js:152
         expect: function serializeCsv
     established: 2026-11-05
     established_by: 用户确认的人工标注基准

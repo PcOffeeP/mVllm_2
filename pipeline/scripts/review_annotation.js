@@ -36,14 +36,16 @@
 
   const stateColumn = "断裂状态";
   const gripColumn = "异常_未夹紧";
+  const explosiveColumn = "异常_爆炸性断裂";
+  const annotationStatusColumn = "标注状态";
   const mechanismColumn = "断裂模式";
   const siteColumn = "断裂位置";
   const timeColumn = "断裂时间点";
   const frameColumns = ["断裂帧_前", "断裂帧_后"];
+  const numericColumns = new Set([timeColumn, ...frameColumns]);
   const fractureColumns = [mechanismColumn, siteColumn];
   const gripColumns = [...fractureColumns, timeColumn];
-  const wholeVideoColumns = [...fractureColumns, ...frameColumns];
-  const wholeVideoGripColumns = [...gripColumns, ...frameColumns];
+  const wholeVideoColumns = [...gripColumns, ...frameColumns];
   const multiFields = [...document.querySelectorAll('select[name="anomaly"], select[name="phenomenon"]')]
     .map((control) => {
       const prefix = control.name === "anomaly" ? "异常" : "现象";
@@ -56,7 +58,7 @@
     [byId("time"), timeColumn],
     [frameBeforeField, frameColumns[0]],
     [frameAfterField, frameColumns[1]],
-    [byId("annotation-status"), "标注状态"],
+    [byId("annotation-status"), annotationStatusColumn],
     [byId("annotation-note"), "标注备注"],
     ...multiFields,
   ]);
@@ -181,7 +183,10 @@
     }
     const pending = draft.revision > draft.savedRevision;
     const recovered = draft.localRevision >= draft.revision && !draft.journalFailed;
-    if (pending) window.addEventListener("beforeunload", preventLoss);
+    const row = table.rows[rowIndex];
+    const numericEditing = row && [...fields].some(([control, column]) => numericColumns.has(column)
+      && !control.disabled && control.value !== value(row, column));
+    if (pending || numericEditing) window.addEventListener("beforeunload", preventLoss);
     if (draft.journalFailed) {
       reconnectCsv.hidden = !draft.handle;
       saveMessage("error", "本地草稿保存失败。请导出 CSV 保留当前修改。");
@@ -193,6 +198,8 @@
       reconnectCsv.hidden = false;
       reconnectCsv.textContent = draft.permission === "granted" ? "重试写回" : "授权写回";
       saveMessage("warning", draft.problem + (recovered ? " 草稿已保存在此浏览器地址。" : ""));
+    } else if (numericEditing) {
+      saveMessage("pending", "数值编辑尚未提交。离开输入框或按回车后保存。");
     } else if (pending) {
       saveMessage("pending", recovered ? "草稿已保存，等待写回原 CSV…" : "正在保存标注…");
     } else {
@@ -371,10 +378,50 @@
     if (control.value !== current) control.value = current;
   }
 
-  function ruleTargets(state, grip, wholeVideoUnbroken) {
-    if (state === "未断裂" && wholeVideoUnbroken) {
-      return grip === "是" ? wholeVideoGripColumns : wholeVideoColumns;
+  function annotationIssues(row, column, candidate) {
+    const read = (name) => name === column ? candidate : value(row, name);
+    const issues = [];
+    if (read(stateColumn) === "未断裂") {
+      if (read(explosiveColumn) === "是") {
+        issues.push({
+          columns: [stateColumn, explosiveColumn],
+          message: "“未断裂”与“爆炸性断裂”为“是”不能同时填写。",
+        });
+      }
+      if (read(annotationStatusColumn) === "已标注·有断裂") {
+        issues.push({
+          columns: [stateColumn, annotationStatusColumn],
+          message: "“未断裂”与标注状态“已标注·有断裂”不能同时填写。",
+        });
+      }
     }
+
+    const time = read(timeColumn);
+    if (time !== "" && time !== "无"
+      && (!/^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(time) || !Number.isFinite(Number(time)))) {
+      issues.push({ columns: [timeColumn], message: "断裂时间点请输入以秒为单位的有限数值，或填写“无”。" });
+    }
+
+    const indices = frameColumns.map((name) => {
+      const frame = read(name);
+      if (frame === "" || frame === "无") return null;
+      const index = Number(frame);
+      if (/^[0-9]+$/.test(frame) && Number.isSafeInteger(index)) return index;
+      issues.push({ columns: [name], message: `${name}请输入从 0 开始的整数，或填写“无”。` });
+      return null;
+    });
+    if (indices[0] !== null && indices[1] !== null && indices[0] >= indices[1]) {
+      issues.push({ columns: frameColumns, message: "断裂前帧必须小于断裂后帧。" });
+    }
+    return issues;
+  }
+
+  function editIssue(row, column, candidate) {
+    return annotationIssues(row, column, candidate).find((issue) => issue.columns.includes(column));
+  }
+
+  function ruleTargets(state, grip, wholeVideoUnbroken) {
+    if (state === "未断裂" && wholeVideoUnbroken) return wholeVideoColumns;
     if (grip === "是") return gripColumns;
     if (state === "未断裂") return fractureColumns;
     return [];
@@ -386,7 +433,7 @@
 
   function frameConfirmationAvailable(row) {
     return value(row, stateColumn) === "未断裂" && !table.confirmedUnbrokenVideos.has(row)
-      && frameColumns.some((name) => value(row, name) !== "无");
+      && [timeColumn, ...frameColumns].some((name) => value(row, name) !== "无");
   }
 
   function ensureFrameColumns() {
@@ -406,7 +453,7 @@
       && state === "未断裂" && table.confirmedUnbrokenVideos.has(row);
     if (!revokeFrameConfirmation && state === "未断裂" && !wholeVideoUnbroken
       && (trigger === stateColumn || (!trigger && frameConfirmationAvailable(row)))) {
-      wholeVideoUnbroken = window.confirm("确认完整视频全程未发生断裂？确认后，断裂帧_前和断裂帧_后将填为“无”。");
+      wholeVideoUnbroken = window.confirm("确认完整视频全程未发生断裂？确认后，断裂时间点和断裂前后帧将填为“无”。");
       if (!wholeVideoUnbroken) {
         const hasOtherUpdates = ruleTargets(state, grip).some((name) => value(row, name) !== "无");
         if ((!trigger && !hasOtherUpdates)
@@ -488,27 +535,28 @@
     }));
   }
 
-  function renderRuleHint(row, targets) {
+  function renderRuleHint(row, targets, rejectedEdit) {
     const hints = [];
     const canConfirmFrames = row && frameConfirmationAvailable(row);
-    const canRevokeFrames = row && table.confirmedUnbrokenVideos.has(row);
     const inconsistent = row && targets.some((name) => value(row, name) !== "无");
+    const canRevokeFrames = row && table.confirmedUnbrokenVideos.has(row);
     const review = row && !targets.length && stateOptions.has(value(row, stateColumn))
       ? fractureColumns.filter((name) => value(row, name) === "无")
       : [];
     if (row && table.reviewTimes.has(row) && !targets.includes(timeColumn) && value(row, timeColumn) === "无") {
       review.push(timeColumn);
     }
-    if (row && stateOptions.has(value(row, stateColumn)) && value(row, stateColumn) !== "未断裂") {
-      review.push(...frameColumns.filter((name) => value(row, name) === "无"));
-    }
+    if (rejectedEdit) hints.push("未接受此次修改。" + rejectedEdit.message);
+    const existingIssues = row ? annotationIssues(row) : [];
+    if (existingIssues.length) hints.push("本行原值待复核。" + existingIssues.map((issue) => issue.message).join(""));
     if (inconsistent) {
       hints.push("此行已有值与固定组合不一致，原值已保留。");
+      if (canRevokeFrames) hints.push("如需补填，请撤销后重新确认完整视频未断裂。");
     } else if (targets.length) {
       hints.push(targets.join("、") + "按固定组合填写“无”。");
       if (table.originals.has(row)) hints.push("解除条件可恢复本页覆盖前的值。");
     }
-    if (canConfirmFrames) hints.push("若完整视频全程未断裂，可确认并补填断裂前后帧。");
+    if (canConfirmFrames) hints.push("若完整视频全程未断裂，可确认并补填断裂时间点及前后帧。");
     if (review.length) hints.push(review.join("、") + "仍为“无”，请按画面手动复核。");
     ruleHint.textContent = hints.join("");
     if (canRevokeFrames) {
@@ -580,7 +628,7 @@
   }
 
   function matchedVideoStatus(status) {
-    return `${status} · ${playingFile.webkitRelativePath}。按文件名匹配，请核对视频。`;
+    return `${status} · ${playingFile.webkitRelativePath}。按文件名匹配，请核对这是完整源视频。`;
   }
 
   function frameMessage(state, message) {
@@ -805,10 +853,17 @@
     if (!session || !activeFrameSession(session) || session.request || session.index == null
       || frameImage.hidden || field.disabled) return;
     const index = String(session.index);
-    if (field.value && field.value !== index
-      && !window.confirm(`将${fields.get(field)}从“${field.value}”改为“${index}”？`)) return;
+    const column = fields.get(field);
+    const error = editIssue(session.row, column, index);
+    if (error) {
+      frameMessage("error", error.message);
+      return;
+    }
+    const previousValue = value(session.row, column);
+    if (previousValue && previousValue !== index
+      && !window.confirm(`将${column}从“${previousValue}”改为“${index}”？`)) return;
     field.value = index;
-    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   function releaseVideo() {
@@ -861,26 +916,62 @@
   }
 
   for (const [control, column] of fields) {
-    control.addEventListener(control.tagName === "SELECT" ? "change" : "input", () => {
+    const isSelection = control.tagName === "SELECT";
+    const numericField = numericColumns.has(column);
+    const handleEdit = (event) => {
       const row = table?.rows[rowIndex];
-      if (!row || control.disabled || control.value === value(row, column)) return;
+      if (!row || control.disabled || event?.isComposing) return;
+      const previousValue = value(row, column);
+      if (control.value === previousValue) return;
+      const issue = editIssue(row, column, control.value);
+      if (issue) {
+        setControl(control, previousValue);
+        renderRuleHint(row, activeRuleTargets(row), issue);
+        if (numericField) renderSaveStatus();
+        return;
+      }
       if (column === stateColumn || column === gripColumn) {
         const changed = changeRule(row, column, control.value);
         renderFields();
         if (!changed) return;
       } else {
         row[table.columns.get(column)] = control.value;
-        if (gripColumns.includes(column) || frameColumns.includes(column)) renderRuleHint(row, activeRuleTargets(row));
+        renderRuleHint(row, activeRuleTargets(row));
       }
       noteChange();
       if (column === stateColumn) updateProgress();
-    });
+    };
+    control.addEventListener(isSelection || numericField ? "change" : "input", handleEdit);
+    if (numericField) {
+      control.addEventListener("input", () => {
+        const row = table?.rows[rowIndex];
+        if (!row || control.disabled) return;
+        renderRuleHint(row, activeRuleTargets(row));
+        renderSaveStatus();
+      });
+      control.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" || event.isComposing) return;
+        event.preventDefault();
+        handleEdit(event);
+      });
+      control.addEventListener("blur", () => {
+        const row = table?.rows[rowIndex];
+        if (row && !control.disabled) handleEdit();
+      });
+    }
   }
 
   applyRuleButton.addEventListener("click", () => {
     const row = table?.rows[rowIndex];
     if (!row || applyRuleButton.disabled) return;
     const revokeFrameConfirmation = table.confirmedUnbrokenVideos.has(row);
+    if (!revokeFrameConfirmation && value(row, stateColumn) === "未断裂") {
+      const issue = editIssue(row, stateColumn, "未断裂");
+      if (issue) {
+        renderRuleHint(row, activeRuleTargets(row), issue);
+        return;
+      }
+    }
     if (!changeRule(row, null, "", { revokeFrameConfirmation })) return;
     renderFields();
     noteChange();
@@ -1018,7 +1109,7 @@
     }
     const folder = [...folders][0];
     const csvName = table ? `标注表“${table.filename}”` : "即将导入的标注表";
-    if (!window.confirm(`浏览器按文件名匹配视频，无法核验 CSV 记录的原路径。请确认“${folder}”是${csvName}对应的源视频文件夹。`)) {
+    if (!window.confirm(`浏览器按文件名匹配视频，无法核验 CSV 记录的原路径。请确认“${folder}”存放${csvName}对应的完整源视频，子视频请使用对应的审查工具。`)) {
       videoStatus.textContent = "未确认所选视频文件夹，未播放视频。";
       return;
     }
