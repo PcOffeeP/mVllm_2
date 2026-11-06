@@ -229,7 +229,7 @@ facts:
         expect: 第一帧已分离、也是权威值，时刻由实测 fps 派生
       - ref: docs/label.md:82
         expect: 确认完整视频未发生断裂时
-      - ref: docs/TODO.md:13
+      - ref: docs/TODO.md:14
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -321,11 +321,11 @@ facts:
         expect: 未断裂、发生断裂、已断裂、无法判断
       - ref: docs/label.md:79
         expect: 不作为模型微调的预测标签
-      - ref: docs/TODO.md:17
+      - ref: docs/TODO.md:18
         expect: 现有 v4.1 评分与旧阈值不直接套用
-      - ref: pipeline/scripts/review_annotation.js:365
-        expect: function ruleTargets(state, grip)
-      - ref: pipeline/scripts/review_annotation.js:144
+      - ref: pipeline/scripts/review_annotation.js:374
+        expect: function ruleTargets(state, grip, wholeVideoUnbroken)
+      - ref: pipeline/scripts/review_annotation.js:150
         expect: function serializeCsv
     established: 2026-11-05
     established_by: 用户确认的人工标注基准

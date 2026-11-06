@@ -39,8 +39,11 @@
   const mechanismColumn = "断裂模式";
   const siteColumn = "断裂位置";
   const timeColumn = "断裂时间点";
+  const frameColumns = ["断裂帧_前", "断裂帧_后"];
   const fractureColumns = [mechanismColumn, siteColumn];
   const gripColumns = [...fractureColumns, timeColumn];
+  const wholeVideoColumns = [...fractureColumns, ...frameColumns];
+  const wholeVideoGripColumns = [...gripColumns, ...frameColumns];
   const multiFields = [...document.querySelectorAll('select[name="anomaly"], select[name="phenomenon"]')]
     .map((control) => {
       const prefix = control.name === "anomaly" ? "异常" : "现象";
@@ -51,8 +54,8 @@
     [byId("mechanism"), mechanismColumn],
     [byId("site"), siteColumn],
     [byId("time"), timeColumn],
-    [frameBeforeField, "断裂帧_前"],
-    [frameAfterField, "断裂帧_后"],
+    [frameBeforeField, frameColumns[0]],
+    [frameAfterField, frameColumns[1]],
     [byId("annotation-status"), "标注状态"],
     [byId("annotation-note"), "标注备注"],
     ...multiFields,
@@ -138,7 +141,10 @@
     }
     const columns = new Map(headers.map((name, i) => [name, i]));
     const references = collectVideoReferences(rows, columns.get("video_path"), idIndex);
-    return { headers, rows, columns, ...references, originals: new WeakMap(), reviewTimes: new WeakSet() };
+    return {
+      headers, rows, columns, ...references,
+      originals: new WeakMap(), reviewTimes: new WeakSet(), confirmedUnbrokenVideos: new WeakSet(),
+    };
   }
 
   function serializeCsv({ headers, rows }) {
@@ -218,10 +224,12 @@
     try {
       const originals = [];
       const reviewTimes = [];
+      const confirmedUnbrokenVideos = [];
       for (const [index, row] of table.rows.entries()) {
         const previousValues = table.originals.get(row);
         if (previousValues) originals.push([index, [...previousValues]]);
         if (table.reviewTimes.has(row)) reviewTimes.push(index);
+        if (table.confirmedUnbrokenVideos.has(row)) confirmedUnbrokenVideos.push(index);
       }
       // Queue the transaction immediately so refresh recovery includes the latest edit.
       await new Promise((resolve, reject) => {
@@ -234,6 +242,7 @@
           rowIndex,
           originals,
           reviewTimes,
+          confirmedUnbrokenVideos,
           handle: active.handle,
           revision,
           savedRevision: active.savedRevision,
@@ -362,22 +371,52 @@
     if (control.value !== current) control.value = current;
   }
 
-  function ruleTargets(state, grip) {
+  function ruleTargets(state, grip, wholeVideoUnbroken) {
+    if (state === "未断裂" && wholeVideoUnbroken) {
+      return grip === "是" ? wholeVideoGripColumns : wholeVideoColumns;
+    }
     if (grip === "是") return gripColumns;
     if (state === "未断裂") return fractureColumns;
     return [];
   }
 
   function activeRuleTargets(row) {
-    return ruleTargets(value(row, stateColumn), value(row, gripColumn));
+    return ruleTargets(value(row, stateColumn), value(row, gripColumn), table.confirmedUnbrokenVideos.has(row));
   }
 
-  function changeRule(row, trigger, nextValue) {
+  function frameConfirmationAvailable(row) {
+    return value(row, stateColumn) === "未断裂" && !table.confirmedUnbrokenVideos.has(row)
+      && frameColumns.some((name) => value(row, name) !== "无");
+  }
+
+  function ensureFrameColumns() {
+    for (const name of frameColumns) {
+      if (table.columns.has(name)) continue;
+      table.columns.set(name, table.headers.length);
+      table.headers.push(name);
+      for (const row of table.rows) row.push("");
+    }
+  }
+
+  function changeRule(row, trigger, nextValue, { revokeFrameConfirmation = false } = {}) {
     const previousTargets = activeRuleTargets(row);
     const state = trigger === stateColumn ? nextValue : value(row, stateColumn);
     const grip = trigger === gripColumn ? nextValue : value(row, gripColumn);
-    const targets = ruleTargets(state, grip);
-    const applying = !trigger || targets !== previousTargets ? targets : [];
+    let wholeVideoUnbroken = !revokeFrameConfirmation
+      && state === "未断裂" && table.confirmedUnbrokenVideos.has(row);
+    if (!revokeFrameConfirmation && state === "未断裂" && !wholeVideoUnbroken
+      && (trigger === stateColumn || (!trigger && frameConfirmationAvailable(row)))) {
+      wholeVideoUnbroken = window.confirm("确认完整视频全程未发生断裂？确认后，断裂帧_前和断裂帧_后将填为“无”。");
+      if (!wholeVideoUnbroken) {
+        const hasOtherUpdates = ruleTargets(state, grip).some((name) => value(row, name) !== "无");
+        if ((!trigger && !hasOtherUpdates)
+          || !window.confirm("只按当前片段的“未断裂”应用标注规则，并保留完整视频的断裂前后帧？取消将保留本条当前标注。")) {
+          return false;
+        }
+      }
+    }
+    const targets = ruleTargets(state, grip, wholeVideoUnbroken);
+    const applying = !revokeFrameConfirmation && (!trigger || targets !== previousTargets) ? targets : [];
     const updates = applying.filter((name) => value(row, name) !== "无");
     const conflicts = updates.filter((name) => value(row, name) !== "");
     if (conflicts.length) {
@@ -385,6 +424,13 @@
       if (!window.confirm("按固定组合填写“无”将替换以下原值。取消将保留本条记录当前值。\n\n" + prior)) {
         return false;
       }
+    }
+
+    if (wholeVideoUnbroken) {
+      ensureFrameColumns();
+      table.confirmedUnbrokenVideos.add(row);
+    } else {
+      table.confirmedUnbrokenVideos.delete(row);
     }
 
     // 保存实际被覆盖的值，使重叠规则解除时能按字段恢复。
@@ -444,6 +490,8 @@
 
   function renderRuleHint(row, targets) {
     const hints = [];
+    const canConfirmFrames = row && frameConfirmationAvailable(row);
+    const canRevokeFrames = row && table.confirmedUnbrokenVideos.has(row);
     const inconsistent = row && targets.some((name) => value(row, name) !== "无");
     const review = row && !targets.length && stateOptions.has(value(row, stateColumn))
       ? fractureColumns.filter((name) => value(row, name) === "无")
@@ -451,15 +499,24 @@
     if (row && table.reviewTimes.has(row) && !targets.includes(timeColumn) && value(row, timeColumn) === "无") {
       review.push(timeColumn);
     }
+    if (row && stateOptions.has(value(row, stateColumn)) && value(row, stateColumn) !== "未断裂") {
+      review.push(...frameColumns.filter((name) => value(row, name) === "无"));
+    }
     if (inconsistent) {
-      hints.push("此行已有值与固定组合不一致，原值已保留。可点击应用固定组合。");
+      hints.push("此行已有值与固定组合不一致，原值已保留。");
     } else if (targets.length) {
       hints.push(targets.join("、") + "按固定组合填写“无”。");
       if (table.originals.has(row)) hints.push("解除条件可恢复本页覆盖前的值。");
     }
+    if (canConfirmFrames) hints.push("若完整视频全程未断裂，可确认并补填断裂前后帧。");
     if (review.length) hints.push(review.join("、") + "仍为“无”，请按画面手动复核。");
     ruleHint.textContent = hints.join("");
-    applyRuleButton.hidden = !inconsistent;
+    if (canRevokeFrames) {
+      applyRuleButton.textContent = "撤销完整视频未断裂确认";
+    } else {
+      applyRuleButton.textContent = canConfirmFrames ? "确认完整视频未断裂" : "应用固定组合";
+    }
+    applyRuleButton.hidden = !inconsistent && !canConfirmFrames && !canRevokeFrames;
     applyRuleButton.disabled = !editorReady || openingCsv || reconnecting || applyRuleButton.hidden;
   }
 
@@ -813,7 +870,7 @@
         if (!changed) return;
       } else {
         row[table.columns.get(column)] = control.value;
-        if (gripColumns.includes(column)) renderRuleHint(row, activeRuleTargets(row));
+        if (gripColumns.includes(column) || frameColumns.includes(column)) renderRuleHint(row, activeRuleTargets(row));
       }
       noteChange();
       if (column === stateColumn) updateProgress();
@@ -822,7 +879,9 @@
 
   applyRuleButton.addEventListener("click", () => {
     const row = table?.rows[rowIndex];
-    if (!row || applyRuleButton.disabled || !changeRule(row, null, "")) return;
+    if (!row || applyRuleButton.disabled) return;
+    const revokeFrameConfirmation = table.confirmedUnbrokenVideos.has(row);
+    if (!changeRule(row, null, "", { revokeFrameConfirmation })) return;
     renderFields();
     noteChange();
   });
@@ -1070,6 +1129,7 @@
       table.originals.set(table.rows[index], new Map(originals));
     }
     for (const index of stored.reviewTimes) table.reviewTimes.add(table.rows[index]);
+    for (const index of stored.confirmedUnbrokenVideos ?? []) table.confirmedUnbrokenVideos.add(table.rows[index]);
     rowIndex = Math.max(0, Math.min(stored.rowIndex, table.rows.length - 1));
     draft = {
       handle: stored.handle,
