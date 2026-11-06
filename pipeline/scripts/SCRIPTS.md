@@ -12,6 +12,7 @@ Non-goals:
 
 | 文件 | 作用 |
 | --- | --- |
+| `review_annotation.html`、`review_annotation.js` | 本机人工标签页面；导入并导出 CSV，数据接入与训练另行设计 |
 | `roi_annotation_app.py` | ROI输入准备；必填metadata文件/output/project-root，不再解析current/LATEST或快照ID |
 | `roi_freeze_decisions.py` | CLI已停用；现行数据链使用versioning data roi；历史函数和产物保留 |
 | `roi_materialize_videos.py` | CLI已停用；现行数据链使用versioning data roi；历史函数和产物保留 |

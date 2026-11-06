@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>拉伸试验标注</title>
+  <style>
+    :root {
+      --ink: #182233;
+      --muted: #5c6879;
+      --line: #d7dee8;
+      --surface: #ffffff;
+      --canvas: #f4f7fa;
+      --soft: #eef4f7;
+      --accent: #0b6070;
+      --accent-dark: #074b58;
+      --focus: #e58b2e;
+      --danger: #a64135;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--canvas); }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button, input, select, textarea { border-radius: 6px; }
+
+    button, select, input, textarea {
+      border: 1px solid #b9c5d3;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    button {
+      min-height: 38px;
+      padding: 7px 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover { border-color: #7793a0; background: #f7fafb; }
+
+    button.primary {
+      border-color: var(--accent);
+      color: #fff;
+      background: var(--accent);
+    }
+
+    button.primary:hover { border-color: var(--accent-dark); background: var(--accent-dark); }
+
+    :focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 60%, transparent);
+      outline-offset: 2px;
+    }
+
+    .page-header {
+      border-bottom: 3px solid var(--accent);
+      color: #fff;
+      background: #183744;
+    }
+
+    .header-inner, main { max-width: 1440px; margin: 0 auto; }
+
+    .header-inner {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 20px 28px 17px;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 0; font-size: clamp(22px, 2.4vw, 30px); letter-spacing: .04em; }
+    h2 { margin-bottom: 14px; font-size: 18px; }
+    h3 { margin-bottom: 10px; font-size: 15px; }
+
+    .header-note { margin: 0; color: #d5e2e6; font-size: 13px; }
+
+    main { padding: 24px 28px 36px; }
+
+    .notice {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 11px 14px;
+      border-left: 4px solid #cc7b22;
+      color: #513511;
+      background: #fff6e8;
+    }
+
+    .notice strong { white-space: nowrap; }
+
+    .setup-panel, .workspace, .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 1px 2px rgba(24, 34, 51, .05);
+    }
+
+    .setup-panel { padding: 19px; margin-bottom: 20px; }
+
+    .setup-grid {
+      display: grid;
+      grid-template-columns: minmax(230px, 1fr) minmax(230px, 1fr) minmax(220px, .8fr);
+      gap: 16px;
+      align-items: end;
+    }
+
+    .field, .status-block { min-width: 0; }
+    label, .field-label { display: block; margin-bottom: 5px; font-weight: 700; }
+    .field-help, .status-text, .muted { color: var(--muted); font-size: 13px; }
+    .field-help { display: block; margin-top: 5px; }
+
+    .file-control { display: flex; gap: 8px; align-items: center; }
+    .file-control input[type="file"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .file-button { display: inline-flex; align-items: center; min-height: 38px; padding: 7px 14px; border: 1px solid #7793a0; border-radius: 6px; color: var(--accent-dark); background: #fff; cursor: pointer; font-weight: 700; white-space: nowrap; }
+    .file-button:hover { background: #f0f7f8; }
+
+    .status-block { min-height: 61px; padding: 9px 12px; border-radius: 6px; background: var(--soft); }
+    .status-block .field-label { margin-bottom: 2px; color: #405262; font-size: 13px; }
+
+    .workspace { overflow: hidden; }
+    .record-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 18px;
+      padding: 13px 19px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .record-name { font-weight: 700; }
+    #item-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #item-path { flex: 1 1 280px; overflow-wrap: anywhere; }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(390px, 1.15fr) minmax(410px, 1fr);
+      gap: 0;
+    }
+
+    .video-section { padding: 20px; border-right: 1px solid var(--line); }
+    .annotation-section { padding: 20px; }
+
+    .video-frame {
+      display: grid;
+      place-items: center;
+      min-height: 310px;
+      border: 1px solid #aab9c5;
+      border-radius: 6px;
+      background: #17232b;
+    }
+
+    video { display: block; width: 100%; max-height: 68vh; background: #17232b; }
+    .video-empty { display: none; }
+
+    .time-grid, .select-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .select-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .annotation-section section + section { margin-top: 19px; padding-top: 18px; border-top: 1px solid var(--line); }
+    input[type="text"], input[type="number"], select, textarea { width: 100%; min-height: 38px; padding: 7px 9px; }
+    textarea { min-height: 74px; resize: vertical; }
+
+    .choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .choice-cell { padding: 8px 9px; border: 1px solid #dbe2e9; border-radius: 6px; background: #fbfcfd; }
+    .choice-cell label { margin-bottom: 4px; color: #405262; font-size: 13px; }
+    .choice-cell select { min-height: 35px; }
+
+    .rule-hint { margin: 0; padding: 10px 12px; border-left: 3px solid #5c8995; color: #405262; background: #f3f8f9; font-size: 13px; }
+
+    .footer-bar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 19px;
+      border-top: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .pager, .jump { display: flex; gap: 8px; align-items: center; }
+    .jump label { margin: 0; white-space: nowrap; }
+    #row-jump { width: 92px; }
+    #progress, #save-status { color: var(--muted); font-size: 13px; }
+    #save-status { text-align: right; }
+
+    @media (max-width: 930px) {
+      .setup-grid { grid-template-columns: 1fr 1fr; }
+      .setup-grid .status-block { grid-column: 1 / -1; }
+      .content-grid { grid-template-columns: 1fr; }
+      .video-section { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+
+    @media (max-width: 620px) {
+      .header-inner, main { padding-left: 16px; padding-right: 16px; }
+      .header-inner { display: block; }
+      .header-note { margin-top: 6px; }
+      .setup-grid, .time-grid, .select-grid, .choice-grid { grid-template-columns: 1fr; }
+      .video-section, .annotation-section { padding: 16px; }
+      .footer-bar { grid-template-columns: 1fr; }
+      #save-status { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div class="header-inner">
+      <h1>拉伸试验标注</h1>
+      <p class="header-note">本地人工标注工具 · 数据仅在本机处理</p>
+    </div>
+  </header>
+
+  <main>
+    <aside class="notice" aria-label="使用说明">
+      <strong>开始前：</strong>
+      <span>请先选择 CSV 和视频文件夹；标注完成后需手动导出 CSV。原始 <code>video_path</code> 仅作为文本显示，不会作为页面内容加载。</span>
+    </aside>
+
+    <section class="setup-panel" aria-labelledby="source-title">
+      <h2 id="source-title">导入标注来源</h2>
+      <div class="setup-grid">
+        <div class="field">
+          <span class="field-label">标注 CSV</span>
+          <div class="file-control">
+            <input id="csv-file" type="file" accept=".csv" aria-describedby="csv-help">
+            <label class="file-button" for="csv-file">选择 CSV 文件</label>
+          </div>
+          <small class="field-help" id="csv-help">选择后才能逐条标注。</small>
+        </div>
+        <div class="field">
+          <span class="field-label">视频文件夹</span>
+          <div class="file-control">
+            <input id="video-files" type="file" webkitdirectory multiple aria-describedby="video-status">
+            <label class="file-button" for="video-files">选择视频文件夹</label>
+          </div>
+          <small class="field-help" id="video-status">尚未导入视频文件夹。</small>
+        </div>
+        <div class="status-block" aria-live="polite">
+          <span class="field-label">文件状态</span>
+          <span class="status-text" id="file-status">未导入 CSV，暂无可标注记录。</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace" aria-label="视频与标注工作区">
+      <div class="record-strip" aria-live="polite">
+        <span class="record-name">当前记录</span>
+        <span id="item-id">—</span>
+        <span id="item-path" class="muted">导入 CSV 后显示原始 video_path 文本。</span>
+      </div>
+
+      <div class="content-grid">
+        <section class="video-section" aria-labelledby="video-title">
+          <h2 id="video-title">试验视频</h2>
+          <div class="video-frame">
+            <video id="video-player" controls aria-label="当前试验视频"></video>
+            <p class="video-empty">尚未载入视频<br><span class="muted">请先导入 CSV 与视频文件夹</span></p>
+          </div>
+        </section>
+
+        <form class="annotation-section" aria-labelledby="annotation-title">
+          <h2 id="annotation-title">本条标注</h2>
+          <section aria-labelledby="result-title">
+            <h3 id="result-title">断裂结论</h3>
+            <div class="select-grid">
+              <div class="field">
+                <label for="state">断裂状态</label>
+                <select id="state" name="state">
+                  <option value="">请选择</option>
+                  <option value="未断裂">未断裂</option>
+                  <option value="发生断裂">发生断裂</option>
+                  <option value="已断裂">已断裂</option>
+                  <option value="无法判断">无法判断</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="mechanism">断裂模式</label>
+                <select id="mechanism" name="mechanism">
+                  <option value="">请选择</option>
+                  <option value="脆性断裂">脆性断裂</option>
+                  <option value="韧性断裂">韧性断裂</option>
+                  <option value="半脆半韧断裂">半脆半韧断裂</option>
+                  <option value="无法识别">无法识别</option>
+                  <option value="无">无</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="site">断裂位置</label>
+                <select id="site" name="site">
+                  <option value="">请选择</option>
+                  <option value="标距内">标距内</option>
+                  <option value="标距外非根部">标距外非根部</option>
+                  <option value="夹持根部">夹持根部</option>
+                  <option value="无法确定">无法确定</option>
+                  <option value="无">无</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="time-title">
+            <h3 id="time-title">关键帧定位</h3>
+            <div class="time-grid">
+              <div class="field"><label for="time">发生时间（秒）</label><input id="time" name="time" type="text" inputmode="decimal"></div>
+              <div class="field"><label for="frame-before">断裂前帧</label><input id="frame-before" name="frame-before" type="text" inputmode="numeric"></div>
+              <div class="field"><label for="frame-after">断裂后帧</label><input id="frame-after" name="frame-after" type="text" inputmode="numeric"></div>
+            </div>
+          </section>
+
+          <section aria-labelledby="detail-title">
+            <h3 id="detail-title">异常与现象</h3>
+            <div class="choice-grid">
+              <div class="choice-cell"><label for="anomaly-clamped">未夹紧</label><select id="anomaly-clamped" name="anomaly" data-label="未夹紧"><option value="">未标注</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              <div class="choice-cell"><label for="anomaly-video">视频异常</label><select id="anomaly-video" name="anomaly" data-label="视频异常"><option value="">未标注</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              <div class="choice-cell"><label for="anomaly-explosive">爆炸性断裂</label><select id="anomaly-explosive" name="anomaly" data-label="爆炸性断裂"><option value="">未标注</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              <div class="choice-cell"><label for="phenomenon-elongation">伸长</label><select id="phenomenon-elongation" name="phenomenon" data-label="伸长"><option value="">未标注</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              <div class="choice-cell"><label for="phenomenon-necking">颈缩</label><select id="phenomenon-necking" name="phenomenon" data-label="颈缩"><option value="">未标注</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              <div class="choice-cell"><label for="phenomenon-cracking">开裂</label><select id="phenomenon-cracking" name="phenomenon" data-label="开裂"><option value="">未标注</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              <div class="choice-cell"><label for="phenomenon-separation">界面分离</label><select id="phenomenon-separation" name="phenomenon" data-label="界面分离"><option value="">未标注</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+            </div>
+          </section>
+
+          <section aria-labelledby="record-title">
+            <h3 id="record-title">标注记录</h3>
+            <div class="field"><label for="annotation-status">标注状态</label><select id="annotation-status" name="annotation-status"><option value="">请选择</option><option value="已标注·有断裂">已标注·有断裂</option><option value="已标注·无断裂">已标注·无断裂</option><option value="未标注">未标注</option><option value="无法判读">无法判读</option></select></div>
+            <div class="field" style="margin-top:12px"><label for="annotation-note">备注</label><textarea id="annotation-note" name="annotation-note" placeholder="记录判断依据、视频问题或需要复核的内容。"></textarea></div>
+          </section>
+
+          <section aria-label="自动规则说明">
+            <p id="rule-hint" class="rule-hint">规则提示将在导入后显示。未夹紧选择“是”时，工具将自动填入相应的“无”值；请在导出前复核。</p>
+            <button id="apply-rule" type="button" hidden>按规则修正本行</button>
+          </section>
+        </form>
+      </div>
+
+      <footer class="footer-bar" aria-label="记录导航与导出">
+        <div class="pager">
+          <button id="prev" type="button">上一条</button>
+          <button id="next" type="button" class="primary">下一条</button>
+        </div>
+        <div class="jump">
+          <label for="row-jump">跳转至行</label>
+          <input id="row-jump" type="number" min="1" step="1" inputmode="numeric">
+          <button id="jump-btn" type="button">跳转</button>
+          <span id="progress" aria-live="polite">尚无导入记录。</span>
+        </div>
+        <div>
+          <button id="export-csv" type="button">导出 CSV</button>
+          <button id="confirm-save" type="button" hidden>已确认下载完成</button>
+          <div id="save-status" role="status" aria-live="polite">请先导入 CSV。</div>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <script src="review_annotation.js"></script>
+</body>
+</html>

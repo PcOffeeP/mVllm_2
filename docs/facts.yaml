@@ -307,7 +307,7 @@ facts:
     state: active
     topic: 本轮人工标注基准与冻结 v4.1 的适用边界
     claim: >
-      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法判断，不含临界未断裂。现象首版为伸长、颈缩、开裂、界面分离，可多选。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及无法识别分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新契约、JSON 编码与数据接入尚未实施，新评价体系待设计。
+      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法判断，不含临界未断裂。现象首版为伸长、颈缩、开裂、界面分离，可多选。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及无法识别分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新契约、JSON 编码与数据接入尚未实施，新评价体系待设计。本机标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
     evidence:
       - ref: docs/label.md:19
         expect: '伸长、颈缩、开裂、界面分离'
@@ -321,6 +321,10 @@ facts:
         expect: 不作为模型微调的预测标签
       - ref: docs/TODO.md:16
         expect: 现有 v4.1 评分与旧阈值不直接套用
+      - ref: pipeline/scripts/review_annotation.js:160
+        expect: function ruleTargets(state, grip)
+      - ref: pipeline/scripts/review_annotation.js:120
+        expect: function serializeCsv
     established: 2026-11-05
     established_by: 用户确认的人工标注基准
     supersedes: null
