@@ -16,6 +16,22 @@
   const jumpButton = byId("jump-btn");
   const exportButton = byId("export-csv");
   const confirmSaveButton = byId("confirm-save");
+  const frameImage = byId("frame-image");
+  const framePreview = byId("frame-preview");
+  const frameStatus = byId("frame-status");
+  const frameOpen = byId("frame-open");
+  const frameFromVideo = byId("frame-from-video");
+  const framePrevious = byId("frame-prev");
+  const frameNext = byId("frame-next");
+  const frameIndex = byId("frame-index");
+  const frameGo = byId("frame-go");
+  const frameBefore = byId("frame-use-before");
+  const frameAfter = byId("frame-use-after");
+  const frameBeforeField = byId("frame-before");
+  const frameAfterField = byId("frame-after");
+  const originalFields = byId("original-fields");
+  const sessionToken = location.protocol === "http:" && location.hostname === "127.0.0.1"
+    && /^[a-f0-9]{64}$/.test(location.hash.slice(1)) ? location.hash.slice(1) : "";
 
   const stateColumn = "断裂状态";
   const gripColumn = "异常_未夹紧";
@@ -34,13 +50,14 @@
     [byId("mechanism"), mechanismColumn],
     [byId("site"), siteColumn],
     [byId("time"), timeColumn],
-    [byId("frame-before"), "断裂帧_前"],
-    [byId("frame-after"), "断裂帧_后"],
+    [frameBeforeField, "断裂帧_前"],
+    [frameAfterField, "断裂帧_后"],
     [byId("annotation-status"), "标注状态"],
     [byId("annotation-note"), "标注备注"],
     ...multiFields,
   ]);
   const newColumns = [stateColumn, ...multiFields.map(([, name]) => name)];
+  const displayedColumns = new Set(["id", "video_path", ...fields.values()]);
   const stateOptions = new Set([...byId("state").options].map((option) => option.value).filter(Boolean));
 
   let table = null;
@@ -50,6 +67,7 @@
   let videos = [];
   let videoUrl = "";
   let playingFile = null;
+  let frameSession = null;
 
   function parseCsv(text) {
     if (text.startsWith("\uFEFF")) text = text.slice(1);
@@ -216,6 +234,24 @@
     }
 
     renderRuleHint(row, targets);
+    updateFrameControls();
+  }
+
+  function renderOriginalFields(row) {
+    const columns = row ? table.headers.filter((column) => !displayedColumns.has(column)) : [];
+    const entries = columns.map((column) => [column, value(row, column) || "（空白）"]);
+    if (!entries.length) {
+      entries.push(["原表其他字段", row ? "此表没有其他字段。" : "导入 CSV 后显示。"]);
+    }
+    originalFields.replaceChildren(...entries.map(([column, current]) => {
+      const group = document.createElement("div");
+      const name = document.createElement("dt");
+      const content = document.createElement("dd");
+      name.textContent = column;
+      content.textContent = current;
+      group.append(name, content);
+      return group;
+    }));
   }
 
   function renderRuleHint(row, targets) {
@@ -302,14 +338,176 @@
     return `${status} · ${playingFile.webkitRelativePath}。按文件名匹配，请核对视频。`;
   }
 
-  function releaseVideo() {
-    if (!videoUrl) return;
+  function frameMessage(state, message) {
+    frameStatus.dataset.state = state;
+    frameStatus.textContent = message;
+  }
+
+  function updateFrameControls() {
+    const waiting = !!frameSession?.request;
+    const ready = !!frameSession?.count && !waiting;
+    const displayed = frameSession?.index;
+    frameOpen.disabled = !sessionToken || !playingFile || waiting;
+    frameOpen.textContent = frameSession?.count ? "重新打开逐帧查看" : "打开逐帧查看";
+    frameFromVideo.disabled = !ready || !Number.isFinite(player.duration) || player.duration <= 0;
+    frameIndex.disabled = frameGo.disabled = !ready;
+    framePrevious.disabled = !ready || displayed == null || displayed === 0;
+    frameNext.disabled = !ready || displayed == null || displayed + 1 >= frameSession.count;
+    frameBefore.disabled = !ready || displayed == null || frameBeforeField.disabled;
+    frameAfter.disabled = !ready || displayed == null || frameAfterField.disabled;
+  }
+
+  async function frameFetch(path, options = {}) {
+    let response;
+    try {
+      response = await fetch(path, {
+        ...options,
+        headers: { "X-Annotation-Session": sessionToken, ...options.headers },
+      });
+    } catch (error) {
+      if (error.name === "AbortError") throw error;
+      throw new Error("无法连接本机逐帧服务，请重新启动标注工具。");
+    }
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "无法连接本机逐帧服务，请重新启动标注工具。");
+    }
+    return response;
+  }
+
+  function clearFrameImage() {
+    if (frameSession?.imageUrl) {
+      URL.revokeObjectURL(frameSession.imageUrl);
+      frameSession.imageUrl = "";
+    }
+    frameImage.hidden = true;
+    frameImage.removeAttribute("src");
+    framePreview.classList.remove("has-frame");
+  }
+
+  function releaseFrameReview() {
+    const session = frameSession;
+    session?.request?.abort();
+    clearFrameImage();
+    frameSession = null;
+    frameIndex.value = "";
+    frameIndex.removeAttribute("max");
+    frameIndex.setCustomValidity("");
+    if (session) {
+      frameFetch(session.path, { method: "DELETE", keepalive: true }).catch(() => {});
+    }
+    frameMessage("idle", sessionToken
+      ? "匹配到视频后可打开逐帧查看。"
+      : "请从本机标注工具打开此页，启用逐帧查看。");
+    updateFrameControls();
+  }
+
+  function activeFrameSession(session) {
+    return frameSession === session && session.file === playingFile && session.row === table?.rows[rowIndex];
+  }
+
+  async function showFrame(index, fromPlayback = false) {
+    const session = frameSession;
+    if (!session?.count || !activeFrameSession(session) || session.request) return;
+    if (!Number.isSafeInteger(index) || index < 0 || index >= session.count) {
+      frameIndex.setCustomValidity(`请输入 0 到 ${session.count - 1} 的整数帧索引。`);
+      frameIndex.reportValidity();
+      return;
+    }
+    const request = new AbortController();
+    session.request = request;
+    session.index = null;
+    clearFrameImage();
+    frameIndex.value = String(index);
+    frameMessage("loading", `正在解码索引 ${index} 的画面…`);
+    updateFrameControls();
+    try {
+      const response = await frameFetch(`${session.path}/frame/${index}`, { signal: request.signal });
+      const blob = await response.blob();
+      if (!activeFrameSession(session)) return;
+      if (blob.type !== "image/png") throw new Error("未收到可核验的解码画面。");
+      session.imageUrl = URL.createObjectURL(blob);
+      frameImage.src = session.imageUrl;
+      await frameImage.decode();
+      if (!activeFrameSession(session)) return;
+      frameImage.hidden = false;
+      framePreview.classList.add("has-frame");
+      session.index = index;
+      const hint = fromPlayback ? " · 已按播放位置粗定位，请逐帧核对" : "";
+      frameMessage("ready", `当前帧索引 ${index} / ${session.count - 1}（从 0 开始）${hint}`);
+    } catch (error) {
+      if (!activeFrameSession(session)) return;
+      clearFrameImage();
+      frameMessage("error", error.message || "无法显示已解码的画面。");
+    } finally {
+      if (activeFrameSession(session)) {
+        session.request = null;
+        updateFrameControls();
+      }
+    }
+  }
+
+  function playbackFrame(count) {
+    if (!Number.isFinite(player.duration) || player.duration <= 0) return 0;
+    return Math.max(0, Math.min(count - 1, Math.floor(player.currentTime / player.duration * count)));
+  }
+
+  async function openFrameReview() {
+    const row = table?.rows[rowIndex];
+    if (!sessionToken || !playingFile || !row || frameSession?.request) return;
+    releaseFrameReview();
     player.pause();
-    player.removeAttribute("src");
-    player.load();
-    URL.revokeObjectURL(videoUrl);
-    videoUrl = "";
-    playingFile = null;
+    const request = new AbortController();
+    const id = crypto.randomUUID().replaceAll("-", "");
+    const session = { path: "/api/video/" + id, file: playingFile, row, request, index: null };
+    frameSession = session;
+    frameMessage("loading", "正在将当前视频交给本机服务读取并确认解码帧数…");
+    updateFrameControls();
+    try {
+      const response = await frameFetch(session.path, {
+        method: "POST",
+        body: session.file,
+        headers: { "Content-Type": "application/octet-stream" },
+        signal: request.signal,
+      });
+      const payload = await response.json();
+      if (!activeFrameSession(session)) return;
+      if (!Number.isSafeInteger(payload.frame_count) || payload.frame_count < 1) {
+        throw new Error("无法确认视频的解码帧数。");
+      }
+      session.count = payload.frame_count;
+      session.request = null;
+      frameIndex.max = String(session.count - 1);
+      const index = playbackFrame(session.count);
+      await showFrame(index, player.currentTime > 0);
+    } catch (error) {
+      if (!activeFrameSession(session)) return;
+      session.request = null;
+      frameMessage("error", error.message || "无法打开逐帧查看。");
+      updateFrameControls();
+    }
+  }
+
+  function assignFrame(field) {
+    const session = frameSession;
+    if (!session || !activeFrameSession(session) || session.request || session.index == null || field.disabled) return;
+    const index = String(session.index);
+    if (field.value && field.value !== index
+      && !window.confirm(`将${fields.get(field)}从“${field.value}”改为“${index}”？`)) return;
+    field.value = index;
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function releaseVideo() {
+    if (videoUrl) {
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
+      URL.revokeObjectURL(videoUrl);
+      videoUrl = "";
+      playingFile = null;
+    }
+    releaseFrameReview();
   }
 
   function renderVideo() {
@@ -324,6 +522,7 @@
       playingFile = file;
       videoStatus.textContent = matchedVideoStatus("正在打开");
       player.src = videoUrl;
+      updateFrameControls();
     } catch (error) {
       releaseVideo();
       videoStatus.textContent = error.message;
@@ -342,6 +541,7 @@
     jump.value = row ? String(rowIndex + 1) : "";
     exportButton.disabled = !table;
     renderFields();
+    renderOriginalFields(row);
     updateProgress();
     renderVideo();
   }
@@ -427,6 +627,7 @@
 
   player.addEventListener("loadedmetadata", () => {
     if (playingFile && player.currentSrc === videoUrl) videoStatus.textContent = matchedVideoStatus("已载入");
+    updateFrameControls();
   });
   player.addEventListener("error", () => {
     if (playingFile && player.error && player.src === videoUrl) {
@@ -438,8 +639,36 @@
     if (event.persisted) renderVideo();
   });
 
+  frameOpen.addEventListener("click", openFrameReview);
+  frameFromVideo.addEventListener("click", () => {
+    if (frameSession?.count) {
+      player.pause();
+      showFrame(playbackFrame(frameSession.count), true);
+    }
+  });
+  framePrevious.addEventListener("click", () => {
+    if (!framePrevious.disabled) showFrame(frameSession.index - 1);
+  });
+  frameNext.addEventListener("click", () => {
+    if (!frameNext.disabled) showFrame(frameSession.index + 1);
+  });
+  function jumpToFrame() {
+    showFrame(frameIndex.value.trim() ? Number(frameIndex.value) : NaN);
+  }
+  frameGo.addEventListener("click", jumpToFrame);
+  frameIndex.addEventListener("input", () => frameIndex.setCustomValidity(""));
+  frameIndex.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToFrame();
+    }
+  });
+  frameBefore.addEventListener("click", () => assignFrame(frameBeforeField));
+  frameAfter.addEventListener("click", () => assignFrame(frameAfterField));
+
   function showRow(index) {
     if (index === rowIndex || !table || index < 0 || index >= table.rows.length) return;
+    releaseFrameReview();
     rowIndex = index;
     renderRow();
   }

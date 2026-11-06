@@ -168,6 +168,74 @@
     video { display: block; width: 100%; max-height: 68vh; background: #17232b; }
     .video-empty { display: none; }
 
+    .frame-review {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .frame-review-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px 16px;
+      margin-bottom: 9px;
+    }
+
+    .frame-review-header h3 { margin: 0; }
+
+    .frame-preview {
+      display: grid;
+      place-items: center;
+      min-height: 164px;
+      overflow: hidden;
+      border: 1px solid #aab9c5;
+      border-radius: 6px;
+      background: #17232b;
+    }
+
+    .frame-preview img {
+      display: none;
+      width: 100%;
+      max-height: 50vh;
+      object-fit: contain;
+    }
+
+    .frame-preview.has-frame img { display: block; }
+    .frame-preview.has-frame .frame-empty { display: none; }
+    .frame-empty { margin: 16px; color: #d5e2e6; text-align: center; }
+
+    .frame-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: end;
+      margin-top: 11px;
+    }
+
+    .frame-index-field { width: min(174px, 100%); }
+    .frame-index-field label { margin-bottom: 4px; font-size: 13px; }
+    .frame-index-field input { min-height: 38px; }
+
+    .frame-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .frame-status {
+      min-height: 20px;
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .frame-status[data-state="error"] { color: var(--danger); }
+    .frame-status[data-state="loading"] { color: var(--accent-dark); }
+    .frame-status[data-state="ready"] { color: #215d4a; }
+
     .time-grid, .select-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
     .select-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .annotation-section section + section { margin-top: 19px; padding-top: 18px; border-top: 1px solid var(--line); }
@@ -178,6 +246,22 @@
     .choice-cell { padding: 8px 9px; border: 1px solid #dbe2e9; border-radius: 6px; background: #fbfcfd; }
     .choice-cell label { margin-bottom: 4px; color: #405262; font-size: 13px; }
     .choice-cell select { min-height: 35px; }
+
+    .original-fields { display: grid; gap: 8px; margin: 10px 0 0; }
+    .original-fields:empty::before { content: "此行没有可显示的其他字段。"; color: var(--muted); font-size: 13px; }
+    .original-fields > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .55fr) minmax(0, 1.45fr);
+      gap: 5px 12px;
+      padding: 10px 11px;
+      border: 1px solid #dbe2e9;
+      border-radius: 6px;
+      background: #fbfcfd;
+      font-size: 13px;
+    }
+
+    .original-fields dt { color: #405262; font-weight: 700; }
+    .original-fields dd { min-width: 0; margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 
     .rule-hint { margin: 0; padding: 10px 12px; border-left: 3px solid #5c8995; color: #405262; background: #f3f8f9; font-size: 13px; }
 
@@ -212,6 +296,8 @@
       .video-section, .annotation-section { padding: 16px; }
       .footer-bar { grid-template-columns: 1fr; }
       #save-status { text-align: left; }
+      .frame-index-field { width: 100%; }
+      .original-fields > div { grid-template-columns: 1fr; gap: 2px; }
     }
   </style>
 </head>
@@ -269,10 +355,44 @@
             <video id="video-player" controls aria-label="当前试验视频"></video>
             <p class="video-empty">尚未载入视频<br><span class="muted">请先导入 CSV 与视频文件夹</span></p>
           </div>
+
+          <section id="frame-review" class="frame-review" aria-labelledby="frame-review-title">
+            <div class="frame-review-header">
+              <h3 id="frame-review-title">逐帧定位</h3>
+              <span class="muted">本机解码画面</span>
+            </div>
+            <p class="field-help">开始逐帧定位后，可逐帧查看当前视频。这里的画面与原生播放器分开显示；写入断裂前、后帧时，只使用此处显示的帧号。</p>
+            <div id="frame-preview" class="frame-preview" aria-live="polite">
+              <img id="frame-image" alt="当前逐帧解码画面" hidden>
+              <p class="frame-empty">尚未载入逐帧画面<br><span class="muted">请先导入 CSV、视频文件夹，并启动本机标注服务。</span></p>
+            </div>
+            <div class="frame-controls" aria-label="逐帧定位操作">
+              <div class="frame-index-field">
+                <label for="frame-index">跳转到帧</label>
+                <input id="frame-index" type="number" min="0" step="1" inputmode="numeric" disabled>
+              </div>
+              <div class="frame-actions">
+                <button id="frame-open" type="button" class="primary" disabled>开始逐帧定位</button>
+                <button id="frame-from-video" type="button" disabled>从播放器位置定位</button>
+                <button id="frame-prev" type="button" disabled>上一帧</button>
+                <button id="frame-go" type="button" disabled>查看此帧</button>
+                <button id="frame-next" type="button" disabled>下一帧</button>
+                <button id="frame-use-before" type="button" disabled>填入断裂前帧</button>
+                <button id="frame-use-after" type="button" disabled>填入断裂后帧</button>
+              </div>
+            </div>
+            <p id="frame-status" class="frame-status" data-state="idle" role="status" aria-live="polite">逐帧服务尚未连接。</p>
+          </section>
         </section>
 
         <form class="annotation-section" aria-labelledby="annotation-title">
           <h2 id="annotation-title">本条标注</h2>
+          <section aria-labelledby="original-fields-title">
+            <details open>
+              <summary id="original-fields-title">原表其他字段（只读）</summary>
+              <dl id="original-fields" class="original-fields" aria-live="polite"></dl>
+            </details>
+          </section>
           <section aria-labelledby="result-title">
             <h3 id="result-title">断裂结论</h3>
             <div class="select-grid">
