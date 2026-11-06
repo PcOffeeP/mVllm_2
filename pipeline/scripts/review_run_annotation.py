@@ -8,11 +8,14 @@ import json
 import os
 import re
 import secrets
+import selectors
 import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import webbrowser
+from collections import OrderedDict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -29,7 +32,12 @@ FORMAT_WHITELIST = "mov,matroska,webm,avi,ogg,mpeg,mpegvideo,mpegts,asf,flv"
 MAX_VIDEO_BYTES = 2 * 1024**3
 MAX_PIXELS = 16 * 1024**2
 DECODE_TIMEOUT = 90
-FRAME_BATCH = 4
+FRAME_LOOKBACK = 4
+FRAME_REWIND_LOOKBACK = 24
+FRAME_CONTINUE_LIMIT = 24
+FRAME_CACHE_COUNT = 48
+FRAME_CACHE_BYTES = 64 * 1024**2
+MAX_PNG_BYTES = MAX_PIXELS * 9
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -57,33 +65,111 @@ def decode(command: list[str], video: BinaryIO) -> bytes:
     return result.stdout
 
 
-def split_pngs(data: bytes) -> list[bytes]:
-    frames = []
-    offset = 0
-    while offset < len(data):
-        start = offset
-        if data[offset:offset + 8] != PNG_SIGNATURE:
+class FrameDecoder:
+    """Read a continuous stream of PNG frames in source presentation order."""
+
+    def __init__(self, command: list[str], video: BinaryIO, start: int):
+        video.seek(0)
+        self.readers = selectors.DefaultSelector()
+        try:
+            self.process = subprocess.Popen(
+                command,
+                pass_fds=(video.fileno(),),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except Exception:
+            self.readers.close()
+            raise
+        self.stdout = self.process.stdout
+        self.stderr = self.process.stderr
+        try:
+            self.readers.register(self.stdout, selectors.EVENT_READ)
+            self.readers.register(self.stderr, selectors.EVENT_READ)
+        except Exception:
+            self.close()
+            raise
+        self.buffer = bytearray()
+        self.next_index = start
+
+    @staticmethod
+    def remaining(deadline: float) -> float:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ReviewError(HTTPStatus.GATEWAY_TIMEOUT, "逐帧解码超时，请尝试较短的视频。")
+        return remaining
+
+    def receive(self, deadline: float) -> None:
+        readable = {key.fileobj for key, _ in self.readers.select(self.remaining(deadline))}
+        for stream in (self.stderr, self.stdout):
+            if stream not in readable:
+                continue
+            chunk = os.read(stream.fileno(), 64 * 1024)
+            if not chunk:
+                self.readers.unregister(stream)
+            elif stream is self.stderr:
+                raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "无法可靠解码该视频，请检查视频格式或文件是否损坏。")
+            else:
+                self.buffer.extend(chunk)
+
+    def read(self, size: int, deadline: float) -> bytes:
+        while len(self.buffer) < size and self.stdout in self.readers.get_map():
+            self.receive(deadline)
+        if len(self.buffer) < size:
             raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "解码输出不完整，无法确认帧号。")
-        offset += 8
-        while offset + 12 <= len(data):
-            length = int.from_bytes(data[offset:offset + 4], "big")
-            kind = data[offset + 4:offset + 8]
-            offset += length + 12
-            if offset > len(data):
-                raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "解码输出不完整，无法确认帧号。")
-            if kind == b"IEND" and length == 0:
-                frames.append(data[start:offset])
-                break
-        else:
+        result = bytes(self.buffer[:size])
+        del self.buffer[:size]
+        return result
+
+    def frame(self, deadline: float) -> bytes:
+        image = bytearray(self.read(len(PNG_SIGNATURE), deadline))
+        if image != PNG_SIGNATURE:
             raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "解码输出不完整，无法确认帧号。")
-    return frames
+        while True:
+            header = self.read(8, deadline)
+            length = int.from_bytes(header[:4], "big")
+            if len(image) + length + 12 > MAX_PNG_BYTES:
+                raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "解码画面超出大小限制，无法确认帧号。")
+            image.extend(header)
+            image.extend(self.read(length + 4, deadline))
+            if header[4:] == b"IEND" and length == 0:
+                self.next_index += 1
+                return bytes(image)
+
+    def finish(self, deadline: float) -> None:
+        while self.readers.get_map() and not self.buffer:
+            self.receive(deadline)
+        if self.buffer:
+            raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "实际解码帧数不匹配，无法确认帧号。")
+        try:
+            returncode = self.process.wait(timeout=self.remaining(deadline))
+        except subprocess.TimeoutExpired as error:
+            raise ReviewError(HTTPStatus.GATEWAY_TIMEOUT, "逐帧解码超时，请尝试较短的视频。") from error
+        if returncode:
+            raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "无法可靠解码该视频，请检查视频格式或文件是否损坏。")
+
+    def close(self) -> None:
+        # A blocked pipe writer must be released before waiting for the process.
+        self.readers.close()
+        self.stdout.close()
+        self.stderr.close()
+        if self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
 
 
 class Video:
     def __init__(self, video_id: str, file: BinaryIO):
         self.video_id = video_id
         self.file = file
-        self.cache: dict[int, bytes] = {}
+        self.cache: OrderedDict[int, bytes] = OrderedDict()
+        self.cache_bytes = 0
+        self.decoder: FrameDecoder | None = None
         # An anonymous temporary file remains seekable and needs no pathname from the browser.
         self.input_options = [
             "-protocol_whitelist", "fd", "-format_whitelist", FORMAT_WHITELIST,
@@ -113,24 +199,57 @@ class Video:
             )
         self.frame_count = len(frames)
 
+    def stop_decoder(self) -> None:
+        if self.decoder:
+            self.decoder.close()
+            self.decoder = None
+
+    def close(self) -> None:
+        try:
+            self.stop_decoder()
+        finally:
+            self.file.close()
+
     def frame(self, index: int) -> bytes:
-        if index >= self.frame_count:
+        if not 0 <= index < self.frame_count:
             raise ReviewError(HTTPStatus.BAD_REQUEST, "该索引超出视频范围。")
-        if index not in self.cache:
-            # Decode from the beginning to keep n tied to frame order even with variable timestamps.
-            start = index - index % FRAME_BATCH
-            end = min(start + FRAME_BATCH, self.frame_count) - 1
-            output = decode([
-                "ffmpeg", "-v", "error", "-nostdin", "-xerror", *self.input_options,
-                "-reinit_filter", "0", "-i", "fd:", "-map", "0:V:0",
-                "-vf", f"select=between(n\\,{start}\\,{end})", "-fps_mode", "passthrough",
-                "-frames:v", str(end - start + 1), "-threads", "2", "-c:v", "png",
-                "-compression_level", "1", "-f", "image2pipe", "pipe:1",
-            ], self.file)
-            frames = split_pngs(output)
-            if len(frames) != end - start + 1:
-                raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "实际解码帧数不匹配，无法确认帧号。")
-            self.cache = dict(enumerate(frames, start))
+        if index in self.cache:
+            return self.cache[index]
+        deadline = time.monotonic() + DECODE_TIMEOUT
+        try:
+            if not self.decoder or not 0 <= index - self.decoder.next_index <= FRAME_CONTINUE_LIMIT:
+                lookback = FRAME_LOOKBACK
+                if self.cache and index < next(iter(self.cache)):
+                    average_bytes = self.cache_bytes // len(self.cache)
+                    lookback = min(FRAME_REWIND_LOOKBACK, FRAME_CACHE_BYTES // average_bytes - 1)
+                self.stop_decoder()
+                self.cache.clear()
+                self.cache_bytes = 0
+                # A fresh decode still starts at frame zero, so n has no timestamp dependence.
+                start = max(0, index - max(0, lookback))
+                self.decoder = FrameDecoder([
+                    "ffmpeg", "-v", "error", "-nostdin", "-xerror", *self.input_options,
+                    "-reinit_filter", "0", "-i", "fd:", "-map", "0:V:0",
+                    "-vf", f"select=gte(n\\,{start})", "-fps_mode", "passthrough",
+                    "-threads", "2", "-c:v", "png",
+                    "-compression_level", "1", "-f", "image2pipe", "pipe:1",
+                ], self.file, start)
+            while self.decoder.next_index <= index:
+                frame_index = self.decoder.next_index
+                frame = self.decoder.frame(deadline)
+                self.cache[frame_index] = frame
+                self.cache_bytes += len(frame)
+                while len(self.cache) > FRAME_CACHE_COUNT or (len(self.cache) > 1 and self.cache_bytes > FRAME_CACHE_BYTES):
+                    _, evicted = self.cache.popitem(last=False)
+                    self.cache_bytes -= len(evicted)
+            if index == self.frame_count - 1:
+                self.decoder.finish(deadline)
+                self.stop_decoder()
+        except Exception:
+            self.stop_decoder()
+            self.cache.clear()
+            self.cache_bytes = 0
+            raise
         return self.cache[index]
 
 
@@ -145,8 +264,13 @@ class LocalServer(ThreadingHTTPServer):
 
     def clear_video(self) -> None:
         if self.video:
-            self.video.file.close()
+            self.video.close()
             self.video = None
+
+    def server_close(self) -> None:
+        super().server_close()
+        with self.lock:
+            self.clear_video()
 
     def upload(self, video_id: str, body: BinaryIO, size: int) -> int:
         self.clear_video()
