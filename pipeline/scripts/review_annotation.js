@@ -85,6 +85,7 @@
   const annotationOptions = new Map([...fields]
     .filter(([control, name]) => control.tagName === "SELECT" && name !== annotationStatusColumn)
     .map(([control, name]) => [name, new Set([...control.options].map((option) => option.value).filter(Boolean))]));
+  const legacyUncertainLabels = new Map([[stateColumn, "无法判断"], [mechanismColumn, "无法识别"]]);
 
   let table = null;
   let rowIndex = 0;
@@ -389,6 +390,10 @@
     scheduleSave();
   }
 
+  function annotationLabel(column, current) {
+    return legacyUncertainLabels.get(column) === current ? "无法确定" : current;
+  }
+
   function setControl(control, current) {
     const previousOption = control.querySelector("option[data-legacy]");
     if (previousOption) previousOption.remove();
@@ -396,7 +401,10 @@
       const option = document.createElement("option");
       option.dataset.legacy = "";
       option.value = current;
-      option.textContent = current ? "原值（待复核） · " + current : "未填写";
+      const label = annotationLabel(fields.get(control), current);
+      option.disabled = label !== current;
+      option.textContent = option.disabled ? `${label}（原值：${current}）`
+        : current ? "原值（待复核） · " + current : "未填写";
       control.append(option);
     }
     if (control.value !== current) control.value = current;
@@ -565,7 +573,7 @@
     const missing = [];
     const invalid = [];
     for (const [name, options] of annotationOptions) {
-      const current = read(name);
+      const current = annotationLabel(name, read(name));
       if (!current) missing.push(name);
       else if (!options.has(current)) invalid.push(name);
     }
@@ -575,13 +583,13 @@
     if (missing.length) issues.push(`请填写：${missing.join("、")}。`);
     if (invalid.length) issues.push(`请按现行选项修正：${invalid.join("、")}。`);
 
-    const state = read(stateColumn);
-    if (state === "无法判断") issues.push("断裂状态无法判断时，请将标注状态设为“无法判读”。");
+    const state = annotationLabel(stateColumn, read(stateColumn));
+    if (state === "无法确定") issues.push("断裂状态为“无法确定”时，请将标注状态设为“无法判读”。");
     const fixed = status === markedUnbroken ? wholeVideoColumns : targets;
     const wrongFixed = fixed.filter((name) => read(name) !== "无");
     if (wrongFixed.length) issues.push(`按固定规则，${wrongFixed.join("、")}应填写“无”。`);
     if (isFractureState(state) && read(gripColumn) !== "是") {
-      if (read(mechanismColumn) === "无") issues.push("已确认断裂，模式证据不足时请选择“无法识别”。");
+      if (read(mechanismColumn) === "无") issues.push("已确认断裂，模式证据不足时请选择“无法确定”。");
       if (read(siteColumn) === "无") issues.push("已确认断裂，位置证据不足时请选择“无法确定”。");
     }
     if (state === "发生断裂" && frameIndexValue(read(frameColumns[1])) === 0) {
@@ -746,7 +754,7 @@
     const derived = row && !targets.includes(timeColumn)
       ? calculatedTime((name) => value(row, name), targets) : {};
     const timePending = derived.time && !sameTime(value(row, timeColumn), derived.time);
-    const review = row && !targets.length && stateOptions.has(value(row, stateColumn))
+    const review = row && !targets.length && stateOptions.has(annotationLabel(stateColumn, value(row, stateColumn)))
       ? fractureColumns.filter((name) => value(row, name) === "无")
       : [];
     if (row && table.reviewTimes.has(row) && !targets.includes(timeColumn) && value(row, timeColumn) === "无") {
@@ -782,7 +790,7 @@
 
   function updateProgress() {
     const total = table?.rows.length ?? 0;
-    const labeled = table?.rows.filter((row) => stateOptions.has(value(row, stateColumn))).length ?? 0;
+    const labeled = table?.rows.filter((row) => stateOptions.has(annotationLabel(stateColumn, value(row, stateColumn)))).length ?? 0;
     byId("progress").textContent = total
       ? `第 ${rowIndex + 1} / ${total} 条 · 已填断裂状态 ${labeled} 条`
       : "暂无记录";
