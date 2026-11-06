@@ -32,6 +32,14 @@
   const frameAfter = byId("frame-use-after");
   const frameBeforeField = byId("frame-before");
   const frameAfterField = byId("frame-after");
+  const rangeActions = byId("range-actions");
+  const rangeStatus = byId("range-status");
+  const rangeClear = byId("range-clear");
+  const rangeBounds = [
+    { column: "断裂时间范围_下界", field: byId("range-lower"), use: byId("range-use-lower"), unavailable: byId("range-no-lower") },
+    { column: "断裂时间范围_上界", field: byId("range-upper"), use: byId("range-use-upper"), unavailable: byId("range-no-upper") },
+  ];
+  const rangeColumns = rangeBounds.map(({ column }) => column);
   const originalFields = byId("original-fields");
   const sessionToken = location.protocol === "http:" && location.hostname === "127.0.0.1"
     && /^[a-f0-9]{64}$/.test(location.hash.slice(1)) ? location.hash.slice(1) : "";
@@ -71,8 +79,8 @@
     ...multiFields,
   ]);
   const newColumns = [stateColumn, ...frameColumns, annotationStatusColumn, annotationNoteColumn,
-    ...multiFields.map(([, name]) => name)];
-  const displayedColumns = new Set(["id", "video_path", ...fields.values()]);
+    ...multiFields.map(([, name]) => name), ...rangeColumns];
+  const displayedColumns = new Set(["id", "video_path", ...fields.values(), ...rangeColumns]);
   const stateOptions = new Set([...byId("state").options].map((option) => option.value).filter(Boolean));
   const annotationOptions = new Map([...fields]
     .filter(([control, name]) => control.tagName === "SELECT" && name !== annotationStatusColumn)
@@ -407,8 +415,53 @@
     return /^[0-9]+$/.test(frame) && Number.isSafeInteger(index) ? index : null;
   }
 
-  function annotationIssues(row, read = (name) => value(row, name)) {
+  function timeRange(read) {
+    const values = rangeColumns.map(read);
+    const seconds = values.map((raw) => {
+      const number = Number(raw);
+      return decimalPattern.test(raw) && Number.isFinite(number) && number >= 0 ? number : null;
+    });
     const issues = [];
+    for (const [i, raw] of values.entries()) {
+      if (raw !== "" && raw !== "无" && seconds[i] === null) {
+        issues.push({ columns: [rangeColumns[i]], message: `${rangeColumns[i]}应为非负秒数或“无”。` });
+      }
+    }
+    const [lower, upper] = seconds;
+    if (lower !== null && upper !== null && lower >= upper) {
+      issues.push({ columns: rangeColumns, message: "断裂时间范围下界必须小于上界。" });
+    }
+    if (upper === 0 && read(stateColumn) === "发生断裂") {
+      issues.push({ columns: [stateColumn, rangeColumns[1]],
+        message: "范围上界为 0 表示首帧已分离，请按“已断裂”的首帧规则标注。" });
+    }
+    const before = frameIndexValue(read(frameColumns[0]));
+    if (before !== null && (lower !== null || upper !== null)) {
+      const { time } = timeAtFrame(read, before);
+      if (time !== undefined) {
+        const beforeSeconds = Number(time);
+        if (lower !== null && lower > beforeSeconds) {
+          issues.push({ columns: [frameColumns[0], rangeColumns[0]],
+            message: "按 CSV 帧率换算，范围下界晚于已标断裂前帧，请核对仍连通的证据。" });
+        }
+        if (upper !== null && upper <= beforeSeconds) {
+          issues.push({ columns: [frameColumns[0], rangeColumns[1]],
+            message: "按 CSV 帧率换算，范围上界必须晚于已标断裂前帧。" });
+        }
+      }
+    }
+    const twoSided = lower !== null && upper !== null;
+    const oneSided = (lower !== null && values[1] === "无") || (upper !== null && values[0] === "无");
+    return { lower, upper, issues, used: values.some(Boolean), complete: !issues.length && (twoSided || oneSided) };
+  }
+
+  function canRecordRange(read, targets) {
+    return read(frameColumns[1]) === "无" && !targets.includes(frameColumns[1])
+      && read(annotationStatusColumn) !== markedUnbroken;
+  }
+
+  function annotationIssues(row, read = (name) => value(row, name)) {
+    const issues = timeRange(read).issues;
     const state = read(stateColumn);
     const status = read(annotationStatusColumn);
     if (state === "未断裂" && read(explosiveColumn) === "是") {
@@ -461,23 +514,27 @@
     return ratio ? Number(ratio[1]) / Number(ratio[2]) : NaN;
   }
 
+  function timeAtFrame(read, index) {
+    if (index === 0) return { time: "0" };
+    const fps = frameRate(read(fpsColumn));
+    const seconds = index / fps;
+    if (fps <= 0 || !Number.isFinite(fps) || !Number.isFinite(seconds) || seconds <= 0) {
+      return { problem: "无法根据帧号换算时间，请核对源视频的“视频帧率”列。" };
+    }
+    // Trim machine-precision noise without rounding to a fixed number of seconds.
+    return { time: String(Number(seconds.toPrecision(15))) };
+  }
+
   function calculatedTime(read, targets) {
     if (targets.includes(timeColumn)) return { time: "无" };
     const after = read(frameColumns[1]);
     if (after === "") return { time: "" };
     if (after === "无") {
-      return { problem: "断裂后帧为“无”时，需要记录大致时间。填写方式待确认，原时间已保留，此行可继续保存为草稿。" };
+      if (timeRange(read).complete) return {};
+      return { problem: "断裂后帧不可辨时，请记录时间范围。只看得到一侧时，另一侧标为“无”。" };
     }
     const index = frameIndexValue(after);
-    if (index === null) return {};
-    if (index === 0) return { time: "0" };
-    const fps = frameRate(read(fpsColumn));
-    const seconds = index / fps;
-    if (fps <= 0 || !Number.isFinite(fps) || !Number.isFinite(seconds) || seconds <= 0) {
-      return { problem: "无法计算断裂时间点，请核对源视频的“视频帧率”列。" };
-    }
-    // Trim machine-precision noise without rounding to a fixed number of seconds.
-    return { time: String(Number(seconds.toPrecision(15))) };
+    return index === null ? {} : timeAtFrame(read, index);
   }
 
   function sameTime(left, right) {
@@ -534,6 +591,12 @@
       issues.push("请在备注中说明视频异常影响了哪些判断。");
     }
 
+    const range = timeRange(read);
+    if (range.used && !canRecordRange(read, fixed)) {
+      issues.push("此记录不适用断裂时间范围。请核对原标注并清除范围。");
+    } else if (range.used && !range.complete && !range.issues.length && fixed.includes(timeColumn)) {
+      issues.push("断裂时间范围须有一个可确认的时间，另一侧填写时间或“无”。");
+    }
     const derived = calculatedTime(read, fixed);
     if (derived.problem) issues.push(derived.problem);
     if (derived.time !== undefined && !sameTime(read(timeColumn), derived.time)) {
@@ -795,6 +858,40 @@
     }
   }
 
+  function rangeMessage(state, message) {
+    rangeStatus.dataset.state = state;
+    if (rangeStatus.textContent !== message) rangeStatus.textContent = message;
+  }
+
+  function updateRangeControls(canAssign) {
+    const row = table?.rows[rowIndex];
+    const read = (name) => row ? value(row, name) : "";
+    const range = timeRange(read);
+    const applicable = row && canRecordRange(read, activeRuleTargets(row));
+    const editable = row && editorReady && !openingCsv && !reconnecting;
+    rangeActions.hidden = !applicable && !range.used;
+    rangeClear.disabled = !editable || !range.used;
+    for (const bound of rangeBounds) {
+      setControl(bound.field, read(bound.column));
+      bound.use.disabled = !editable || !applicable || !canAssign;
+      bound.unavailable.disabled = !editable || !applicable || read(bound.column) === "无";
+    }
+    if (range.issues.length) {
+      rangeMessage("error", range.issues.map((issue) => issue.message).join(""));
+    } else if (range.used && !applicable) {
+      rangeMessage("error", "此记录不适用断裂时间范围。请核对原标注并清除范围。");
+    } else if (range.complete) {
+      const message = range.lower === null ? `单侧边界：上界 ${range.upper} 秒，下界不可见。`
+        : range.upper === null ? `单侧边界：下界 ${range.lower} 秒，上界不可见。`
+          : `断裂时间范围：${range.lower}～${range.upper} 秒。`;
+      rangeMessage("ready", message + "时间按 CSV 视频帧率换算，变帧率视频仅为估算。");
+    } else if (applicable) {
+      rangeMessage("idle", "请从逐帧画面选取范围。只看得到一侧时，将另一侧标为“无”。");
+    } else {
+      rangeMessage("idle", "无需记录时间范围时，两列留空。");
+    }
+  }
+
   function updateFrameControls() {
     const waiting = !!frameSession?.request;
     const displayed = frameSession?.index;
@@ -807,6 +904,7 @@
     frameNext.disabled = !canDecode || (displayed != null && displayed + 1 >= frameSession.count);
     frameBefore.disabled = !canAssign || frameBeforeField.disabled;
     frameAfter.disabled = !canAssign || frameAfterField.disabled;
+    updateRangeControls(canAssign);
   }
 
   async function frameFetch(path, options = {}) {
@@ -1015,6 +1113,47 @@
     field.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
+  function commitRange(changes, selectedFrame = null) {
+    const row = table?.rows[rowIndex];
+    if (!row || !editorReady || openingCsv || reconnecting) return;
+    const targets = activeRuleTargets(row);
+    const readCurrent = (name) => value(row, name);
+    if (changes.some(([, candidate]) => candidate !== "") && !canRecordRange(readCurrent, targets)) return;
+    const updates = new Map(changes.filter(([name, candidate]) => !sameTime(readCurrent(name), candidate)));
+    if (!updates.size) return;
+    const read = (name) => updates.has(name) ? updates.get(name) : readCurrent(name);
+    const issues = timeRange(read).issues.map((issue) => issue.message);
+    issues.push(...completedEditIssues(row, read, targets));
+    if (issues.length) {
+      rangeMessage("error", [...new Set(issues)].join(" "));
+      return;
+    }
+    const conflicts = [...updates].filter(([name]) => readCurrent(name) !== "");
+    if (conflicts.length) {
+      const summary = conflicts.map(([name, candidate]) =>
+        `${name}：由“${readCurrent(name)}”改为“${candidate || "空白"}”`).join("\n");
+      if (!window.confirm(`确认更改已有的时间范围？\n\n${summary}`)) return;
+    }
+    for (const [name, candidate] of updates) row[table.columns.get(name)] = candidate;
+    renderFields();
+    if (selectedFrame !== null) {
+      rangeMessage("ready", `已根据第 ${selectedFrame} 帧换算边界。 ${rangeStatus.textContent}`);
+    }
+    noteChange();
+  }
+
+  function assignRangeBound(bound) {
+    const session = frameSession;
+    if (bound.use.disabled || !session || !activeFrameSession(session) || session.request
+      || session.index == null || frameImage.hidden) return;
+    const { time, problem } = timeAtFrame((name) => value(session.row, name), session.index);
+    if (problem) {
+      rangeMessage("error", problem);
+      return;
+    }
+    commitRange([[bound.column, time]], session.index);
+  }
+
   function releaseVideo() {
     if (videoUrl) {
       player.pause();
@@ -1114,6 +1253,7 @@
         setControl(byId("time"), value(row, timeColumn));
         renderRuleHint(row, targets);
         showCompletionError(completionIssues(row));
+        if (column === frameColumns[1] || column === annotationStatusColumn) updateFrameControls();
       }
       noteChange();
       if (column === stateColumn) updateProgress();
@@ -1359,6 +1499,15 @@
   });
   frameBefore.addEventListener("click", () => assignFrame(frameBeforeField));
   frameAfter.addEventListener("click", () => assignFrame(frameAfterField));
+  for (const bound of rangeBounds) {
+    bound.use.addEventListener("click", () => assignRangeBound(bound));
+    bound.unavailable.addEventListener("click", () => {
+      if (!bound.unavailable.disabled) commitRange([[bound.column, "无"]]);
+    });
+  }
+  rangeClear.addEventListener("click", () => {
+    if (!rangeClear.disabled) commitRange(rangeColumns.map((name) => [name, ""]));
+  });
 
   function showRow(index) {
     if (openingCsv || reconnecting || index === rowIndex || !table || index < 0 || index >= table.rows.length) return;

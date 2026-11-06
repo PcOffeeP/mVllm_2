@@ -223,12 +223,16 @@ facts:
     state: active
     topic: 本轮事件锚点采用可见分离第一帧和前后帧号
     claim: >
-      本轮人工标注以「可见分离第一帧」为事件锚点：`断裂帧_前` 记最后一帧仍连通，`断裂帧_后` 记第一帧已分离并作为权威值，时间按后帧号和实测 fps 派生；首帧已可见分离时可记后帧 0 和观测时间 0，不代表物理断裂发生在视频起点。变帧率视频按单一 fps 算出的时间为估算。确认完整视频未发生断裂时，两帧及断裂时间点填「无」。此前已记录的历史时间数值在覆盖前须经用户确认；旧列处置的原始裁决依据已删除，接入时仍须核对。已确认断裂但一侧边界不可辨时，该侧帧填「无」；后帧不可见时大致时间的记录方案待单独确认。旧的 `visible_separation_time` 列方案已被前后帧号方案取代，不再作为实施要求。整源帧号记录与片段状态记录分别判断；新列读取和后续数据转换尚未接入，具体接入按后续设计与授权实施。
+      本轮人工标注以「可见分离第一帧」为事件锚点：`断裂帧_前` 记最后一帧仍连通，`断裂帧_后` 记第一帧已分离并作为权威值，时间按后帧号和实测 fps 派生；首帧已可见分离时可记后帧 0 和观测时间 0，不代表物理断裂发生在视频起点。变帧率视频按单一 fps 算出的时间为估算。确认完整视频未发生断裂时，两帧及断裂时间点填「无」。此前已记录的历史时间数值在覆盖前须经用户确认；旧列处置的原始裁决依据已删除，接入时仍须核对。已确认断裂但一侧边界不可辨时，该侧帧填「无」；无法确定精确时刻时可单独记录时间范围上下界，普通视频默认留空，未夹紧但确有断裂也可记录范围，原时间点仍为「无」。旧的 `visible_separation_time` 列方案已被前后帧号方案取代，不再作为实施要求。整源帧号记录与片段状态记录分别判断；新列读取和后续数据转换尚未接入，具体接入按后续设计与授权实施。
     evidence:
       - ref: docs/label.md:32
         expect: 第一帧已分离、也是权威值，时刻由实测 fps 派生
       - ref: docs/label.md:82
         expect: 确认完整视频未发生断裂时
+      - ref: docs/label.md:90
+        expect: 两列默认留空
+      - ref: docs/label.md:92
+        expect: 未夹紧的视频若能确认确有断裂
       - ref: docs/TODO.md:14
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
@@ -325,9 +329,9 @@ facts:
         expect: 不作为模型微调的预测标签
       - ref: docs/TODO.md:18
         expect: 现有 v4.1 评分与旧阈值不直接套用
-      - ref: pipeline/scripts/review_annotation.js:557
+      - ref: pipeline/scripts/review_annotation.js:620
         expect: function ruleTargets(state, grip, wholeVideoUnbroken)
-      - ref: pipeline/scripts/review_annotation.js:165
+      - ref: pipeline/scripts/review_annotation.js:173
         expect: function serializeCsv
     established: 2026-11-05
     established_by: 用户确认的人工标注基准

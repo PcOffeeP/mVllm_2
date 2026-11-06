@@ -240,6 +240,24 @@
       align-items: center;
     }
 
+    .range-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #dbe2e9;
+    }
+
+    .range-actions[hidden] { display: none; }
+
+    .range-actions .field-label {
+      margin: 0 2px 0 0;
+      color: #405262;
+      font-size: 13px;
+    }
+
     .frame-status {
       min-height: 20px;
       margin: 9px 0 0;
@@ -252,6 +270,7 @@
     .frame-status[data-state="ready"] { color: #215d4a; }
 
     .time-grid, .select-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .range-time-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
     .select-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .annotation-section section + section { margin-top: 19px; padding-top: 18px; border-top: 1px solid var(--line); }
     input[type="text"], input[type="number"], select, textarea { width: 100%; min-height: 38px; padding: 7px 9px; }
@@ -321,7 +340,7 @@
       .header-inner, main { padding-left: 16px; padding-right: 16px; }
       .header-inner { display: block; }
       .header-note { margin-top: 6px; }
-      .setup-grid, .time-grid, .select-grid, .choice-grid { grid-template-columns: 1fr; }
+      .setup-grid, .time-grid, .range-time-grid, .select-grid, .choice-grid { grid-template-columns: 1fr; }
       .video-section, .annotation-section { padding: 16px; }
       .footer-bar { grid-template-columns: 1fr; }
       #save-status, #save-status-footer { text-align: left; }
@@ -414,8 +433,17 @@
                 <button id="frame-use-before" type="button" disabled>填入断裂前帧</button>
                 <button id="frame-use-after" type="button" disabled>填入断裂后帧</button>
               </div>
+              <div id="range-actions" class="range-actions" aria-label="不确定断裂时间范围操作">
+                <span class="field-label">时间范围（可选）</span>
+                <button id="range-use-lower" type="button" disabled>设当前帧为下界</button>
+                <button id="range-use-upper" type="button" disabled>设当前帧为上界</button>
+                <button id="range-no-lower" type="button" disabled>下界不可见</button>
+                <button id="range-no-upper" type="button" disabled>上界不可见</button>
+                <button id="range-clear" type="button" disabled>清除时间范围</button>
+              </div>
             </div>
             <p id="frame-status" class="frame-status" data-state="idle" role="status" aria-live="polite">逐帧服务尚未连接。</p>
+            <p id="range-status" class="frame-status" data-state="idle" role="status" aria-live="polite">时间范围尚未填写。</p>
           </section>
         </section>
 
@@ -472,6 +500,11 @@
               <div class="field"><label for="frame-before">断裂前帧</label><input id="frame-before" name="frame-before" type="text" inputmode="numeric"></div>
               <div class="field"><label for="frame-after">断裂后帧</label><input id="frame-after" name="frame-after" type="text" inputmode="numeric"></div>
             </div>
+            <div class="range-time-grid" aria-label="不确定断裂时间范围">
+              <div class="field"><label for="range-lower">断裂时间范围下界（秒）</label><input id="range-lower" name="range-lower" type="text" readonly aria-describedby="range-help"></div>
+              <div class="field"><label for="range-upper">断裂时间范围上界（秒）</label><input id="range-upper" name="range-upper" type="text" readonly aria-describedby="range-help"></div>
+            </div>
+            <p id="range-help" class="field-help">仅在遮挡、缺帧或只能确定一侧边界时填写；正常能确定断裂帧的视频保持空白。当前逐帧画面换算为秒后写入 CSV；单侧不可见时记为“无”。</p>
           </section>
 
           <section aria-labelledby="detail-title">
