@@ -19,8 +19,7 @@
   const frameImage = byId("frame-image");
   const framePreview = byId("frame-preview");
   const frameStatus = byId("frame-status");
-  const frameOpen = byId("frame-open");
-  const frameFromVideo = byId("frame-from-video");
+  const framePlay = byId("frame-play");
   const framePrevious = byId("frame-prev");
   const frameNext = byId("frame-next");
   const frameIndex = byId("frame-index");
@@ -343,18 +342,28 @@
     frameStatus.textContent = message;
   }
 
+  function showPlaybackStatus() {
+    if (!sessionToken) {
+      frameMessage("idle", "请从本机标注工具打开此页，启用逐帧查看。");
+    } else if (!playingFile) {
+      frameMessage("idle", "匹配到视频后即可逐帧查看。");
+    } else {
+      frameMessage("idle", "可直接点击上一帧或下一帧。首次按播放位置粗定位，标注以解码帧为准。");
+    }
+  }
+
   function updateFrameControls() {
     const waiting = !!frameSession?.request;
-    const ready = !!frameSession?.count && !waiting;
     const displayed = frameSession?.index;
-    frameOpen.disabled = !sessionToken || !playingFile || waiting;
-    frameOpen.textContent = frameSession?.count ? "重新打开逐帧查看" : "打开逐帧查看";
-    frameFromVideo.disabled = !ready || !Number.isFinite(player.duration) || player.duration <= 0;
-    frameIndex.disabled = frameGo.disabled = !ready;
-    framePrevious.disabled = !ready || displayed == null || displayed === 0;
-    frameNext.disabled = !ready || displayed == null || displayed + 1 >= frameSession.count;
-    frameBefore.disabled = !ready || displayed == null || frameBeforeField.disabled;
-    frameAfter.disabled = !ready || displayed == null || frameAfterField.disabled;
+    const canDecode = !!sessionToken && !!playingFile && !waiting;
+    const canAssign = canDecode && displayed != null && !frameImage.hidden;
+    framePlay.disabled = !playingFile || !!player.error;
+    framePlay.textContent = waiting || displayed != null ? "继续播放" : player.paused ? "播放" : "暂停";
+    frameIndex.disabled = frameGo.disabled = !canDecode;
+    framePrevious.disabled = !canDecode || displayed === 0;
+    frameNext.disabled = !canDecode || (displayed != null && displayed + 1 >= frameSession.count);
+    frameBefore.disabled = !canAssign || frameBeforeField.disabled;
+    frameAfter.disabled = !canAssign || frameAfterField.disabled;
   }
 
   async function frameFetch(path, options = {}) {
@@ -383,6 +392,7 @@
     frameImage.hidden = true;
     frameImage.removeAttribute("src");
     framePreview.classList.remove("has-frame");
+    player.hidden = false;
   }
 
   function releaseFrameReview() {
@@ -396,9 +406,7 @@
     if (session) {
       frameFetch(session.path, { method: "DELETE", keepalive: true }).catch(() => {});
     }
-    frameMessage("idle", sessionToken
-      ? "匹配到视频后可打开逐帧查看。"
-      : "请从本机标注工具打开此页，启用逐帧查看。");
+    showPlaybackStatus();
     updateFrameControls();
   }
 
@@ -410,14 +418,15 @@
     const session = frameSession;
     if (!session?.count || !activeFrameSession(session) || session.request) return;
     if (!Number.isSafeInteger(index) || index < 0 || index >= session.count) {
-      frameIndex.setCustomValidity(`请输入 0 到 ${session.count - 1} 的整数帧索引。`);
+      const message = `请输入 0 到 ${session.count - 1} 的整数帧索引。`;
+      if (session.index == null) frameMessage("idle", message);
+      frameIndex.setCustomValidity(message);
       frameIndex.reportValidity();
       return;
     }
     const request = new AbortController();
     session.request = request;
-    session.index = null;
-    clearFrameImage();
+    frameIndex.setCustomValidity("");
     frameIndex.value = String(index);
     frameMessage("loading", `正在解码索引 ${index} 的画面…`);
     updateFrameControls();
@@ -426,18 +435,20 @@
       const blob = await response.blob();
       if (!activeFrameSession(session)) return;
       if (blob.type !== "image/png") throw new Error("未收到可核验的解码画面。");
+      if (session.imageUrl) URL.revokeObjectURL(session.imageUrl);
       session.imageUrl = URL.createObjectURL(blob);
       frameImage.src = session.imageUrl;
       await frameImage.decode();
       if (!activeFrameSession(session)) return;
       frameImage.hidden = false;
       framePreview.classList.add("has-frame");
+      player.hidden = true;
       session.index = index;
       const hint = fromPlayback ? " · 已按播放位置粗定位，请逐帧核对" : "";
       frameMessage("ready", `当前帧索引 ${index} / ${session.count - 1}（从 0 开始）${hint}`);
     } catch (error) {
       if (!activeFrameSession(session)) return;
-      clearFrameImage();
+      releaseFrameReview();
       frameMessage("error", error.message || "无法显示已解码的画面。");
     } finally {
       if (activeFrameSession(session)) {
@@ -452,11 +463,17 @@
     return Math.max(0, Math.min(count - 1, Math.floor(player.currentTime / player.duration * count)));
   }
 
-  async function openFrameReview() {
+  async function requestFrame({ index, step } = {}) {
     const row = table?.rows[rowIndex];
     if (!sessionToken || !playingFile || !row || frameSession?.request) return;
-    releaseFrameReview();
     player.pause();
+    if (frameSession?.count && activeFrameSession(frameSession)) {
+      const fromPlayback = index == null && frameSession.index == null;
+      const target = index ?? stepFrame(frameSession, step);
+      await showFrame(target, fromPlayback);
+      return;
+    }
+    if (frameSession) releaseFrameReview();
     const request = new AbortController();
     const id = crypto.randomUUID().replaceAll("-", "");
     const session = { path: "/api/video/" + id, file: playingFile, row, request, index: null };
@@ -478,8 +495,8 @@
       session.count = payload.frame_count;
       session.request = null;
       frameIndex.max = String(session.count - 1);
-      const index = playbackFrame(session.count);
-      await showFrame(index, player.currentTime > 0);
+      updateFrameControls();
+      await showFrame(index ?? stepFrame(session, step), index == null);
     } catch (error) {
       if (!activeFrameSession(session)) return;
       session.request = null;
@@ -488,9 +505,59 @@
     }
   }
 
+  function stepFrame(session, step) {
+    const base = session.index ?? playbackFrame(session.count);
+    return Math.max(0, Math.min(session.count - 1, base + step));
+  }
+
+  function leaveFrameView() {
+    if (frameSession?.request) {
+      releaseFrameReview();
+    } else if (frameSession) {
+      clearFrameImage();
+      frameSession.index = null;
+      frameIndex.value = "";
+      frameIndex.setCustomValidity("");
+    }
+  }
+
+  async function togglePlayback() {
+    if (!playingFile || player.error) return;
+    if (!player.paused && !player.ended) {
+      player.pause();
+      return;
+    }
+    const file = playingFile;
+    const row = table?.rows[rowIndex];
+    const index = frameSession?.index;
+    const count = frameSession?.count;
+    leaveFrameView();
+    showPlaybackStatus();
+    if (index != null) {
+      if (Number.isFinite(player.duration) && player.duration > 0) {
+        player.currentTime = index / count * player.duration;
+        frameMessage("idle", "已从解码帧附近继续播放，播放位置为近似，标注以解码帧为准。");
+      } else {
+        frameMessage("idle", "无法定位该帧的播放时间，将从原播放位置继续，标注以解码帧为准。");
+      }
+    }
+    updateFrameControls();
+    try {
+      await player.play();
+    } catch (error) {
+      if (error.name !== "AbortError" && file === playingFile && row === table?.rows[rowIndex]
+        && !frameSession?.request && frameSession?.index == null) {
+        frameMessage("error", "无法继续播放，请检查视频格式，或使用逐帧按钮查看。");
+      }
+    } finally {
+      updateFrameControls();
+    }
+  }
+
   function assignFrame(field) {
     const session = frameSession;
-    if (!session || !activeFrameSession(session) || session.request || session.index == null || field.disabled) return;
+    if (!session || !activeFrameSession(session) || session.request || session.index == null
+      || frameImage.hidden || field.disabled) return;
     const index = String(session.index);
     if (field.value && field.value !== index
       && !window.confirm(`将${fields.get(field)}从“${field.value}”改为“${index}”？`)) return;
@@ -522,6 +589,7 @@
       playingFile = file;
       videoStatus.textContent = matchedVideoStatus("正在打开");
       player.src = videoUrl;
+      showPlaybackStatus();
       updateFrameControls();
     } catch (error) {
       releaseVideo();
@@ -633,27 +701,38 @@
     if (playingFile && player.error && player.src === videoUrl) {
       videoStatus.textContent = matchedVideoStatus("无法播放") + "请检查视频是否损坏或编码是否受浏览器支持。";
     }
+    updateFrameControls();
   });
+  player.addEventListener("play", () => {
+    if (!player.paused && (frameSession?.request || frameSession?.index != null)) {
+      leaveFrameView();
+      showPlaybackStatus();
+    }
+    updateFrameControls();
+  });
+  player.addEventListener("pause", updateFrameControls);
+  player.addEventListener("ended", updateFrameControls);
   window.addEventListener("pagehide", releaseVideo);
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) renderVideo();
   });
 
-  frameOpen.addEventListener("click", openFrameReview);
-  frameFromVideo.addEventListener("click", () => {
-    if (frameSession?.count) {
-      player.pause();
-      showFrame(playbackFrame(frameSession.count), true);
-    }
-  });
+  framePlay.addEventListener("click", togglePlayback);
   framePrevious.addEventListener("click", () => {
-    if (!framePrevious.disabled) showFrame(frameSession.index - 1);
+    if (!framePrevious.disabled) requestFrame({ step: -1 });
   });
   frameNext.addEventListener("click", () => {
-    if (!frameNext.disabled) showFrame(frameSession.index + 1);
+    if (!frameNext.disabled) requestFrame({ step: 1 });
   });
   function jumpToFrame() {
-    showFrame(frameIndex.value.trim() ? Number(frameIndex.value) : NaN);
+    if (frameGo.disabled) return;
+    const index = frameIndex.value.trim() ? Number(frameIndex.value) : NaN;
+    if (!Number.isSafeInteger(index) || index < 0) {
+      frameIndex.setCustomValidity("请输入从 0 开始的整数帧索引。");
+      frameIndex.reportValidity();
+      return;
+    }
+    requestFrame({ index });
   }
   frameGo.addEventListener("click", jumpToFrame);
   frameIndex.addEventListener("input", () => frameIndex.setCustomValidity(""));

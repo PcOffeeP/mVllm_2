@@ -156,23 +156,31 @@
     .video-section { padding: 20px; border-right: 1px solid var(--line); }
     .annotation-section { padding: 20px; }
 
-    .video-frame {
+    .viewer-stage {
+      position: relative;
       display: grid;
       place-items: center;
+      height: min(68vh, 560px);
       min-height: 310px;
+      overflow: hidden;
       border: 1px solid #aab9c5;
       border-radius: 6px;
       background: #17232b;
     }
 
-    video { display: block; width: 100%; max-height: 68vh; background: #17232b; }
+    video {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #17232b;
+    }
+    video[hidden] { display: none; }
     .video-empty { display: none; }
 
-    .frame-review {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid var(--line);
-    }
+    .frame-review { margin-top: 16px; }
 
     .frame-review-header {
       display: flex;
@@ -186,23 +194,25 @@
     .frame-review-header h3 { margin: 0; }
 
     .frame-preview {
-      display: grid;
+      position: absolute;
+      inset: 0;
+      display: none;
       place-items: center;
-      min-height: 164px;
       overflow: hidden;
-      border: 1px solid #aab9c5;
-      border-radius: 6px;
       background: #17232b;
     }
 
+    .frame-preview.has-frame { display: grid; }
     .frame-preview img {
-      display: none;
+      position: absolute;
+      inset: 0;
+      display: block;
       width: 100%;
-      max-height: 50vh;
+      height: 100%;
       object-fit: contain;
     }
 
-    .frame-preview.has-frame img { display: block; }
+    .frame-preview img[hidden] { display: none; }
     .frame-preview.has-frame .frame-empty { display: none; }
     .frame-empty { margin: 16px; color: #d5e2e6; text-align: center; }
 
@@ -211,7 +221,11 @@
       flex-wrap: wrap;
       gap: 8px;
       align-items: end;
-      margin-top: 11px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #dbe2e9;
+      border-radius: 6px;
+      background: #fbfcfd;
     }
 
     .frame-index-field { width: min(174px, 100%); }
@@ -351,29 +365,28 @@
       <div class="content-grid">
         <section class="video-section" aria-labelledby="video-title">
           <h2 id="video-title">试验视频</h2>
-          <div class="video-frame">
+          <div id="viewer-stage" class="viewer-stage" aria-live="polite">
             <video id="video-player" controls aria-label="当前试验视频"></video>
+            <div id="frame-preview" class="frame-preview" aria-label="当前精确帧画面">
+              <img id="frame-image" alt="当前逐帧解码画面" hidden>
+              <p class="frame-empty">尚未载入逐帧画面</p>
+            </div>
             <p class="video-empty">尚未载入视频<br><span class="muted">请先导入 CSV 与视频文件夹</span></p>
           </div>
 
           <section id="frame-review" class="frame-review" aria-labelledby="frame-review-title">
             <div class="frame-review-header">
-              <h3 id="frame-review-title">逐帧定位</h3>
-              <span class="muted">本机解码画面</span>
+              <h3 id="frame-review-title">播放与逐帧定位</h3>
+              <span class="muted">逐帧画面会在上方原位显示</span>
             </div>
-            <p class="field-help">开始逐帧定位后，可逐帧查看当前视频。这里的画面与原生播放器分开显示；写入断裂前、后帧时，只使用此处显示的帧号。</p>
-            <div id="frame-preview" class="frame-preview" aria-live="polite">
-              <img id="frame-image" alt="当前逐帧解码画面" hidden>
-              <p class="frame-empty">尚未载入逐帧画面<br><span class="muted">请先导入 CSV、视频文件夹，并启动本机标注服务。</span></p>
-            </div>
+            <p class="field-help">先播放或拖动上方视频找到附近位置；点击上一帧、下一帧或查看此帧，即可在同一画面中精确定位。填写断裂前、后帧时，只使用当前显示的逐帧画面。</p>
             <div class="frame-controls" aria-label="逐帧定位操作">
               <div class="frame-index-field">
                 <label for="frame-index">跳转到帧</label>
                 <input id="frame-index" type="number" min="0" step="1" inputmode="numeric" disabled>
               </div>
               <div class="frame-actions">
-                <button id="frame-open" type="button" class="primary" disabled>开始逐帧定位</button>
-                <button id="frame-from-video" type="button" disabled>从播放器位置定位</button>
+                <button id="frame-play" type="button" class="primary" disabled>播放</button>
                 <button id="frame-prev" type="button" disabled>上一帧</button>
                 <button id="frame-go" type="button" disabled>查看此帧</button>
                 <button id="frame-next" type="button" disabled>下一帧</button>
