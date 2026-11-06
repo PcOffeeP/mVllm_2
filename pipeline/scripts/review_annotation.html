@@ -292,8 +292,20 @@
     .pager, .jump { display: flex; gap: 8px; align-items: center; }
     .jump label { margin: 0; white-space: nowrap; }
     #row-jump { width: 92px; }
-    #progress, #save-status { color: var(--muted); font-size: 13px; }
+    #progress, #save-status, #save-status-footer { color: var(--muted); font-size: 13px; }
     #save-status { text-align: right; }
+    #save-status-footer { display: block; margin-top: 5px; text-align: right; }
+    #save-status[data-state="pending"] { color: var(--accent-dark); }
+    #save-status[data-state="saved"] { color: #215d4a; }
+    #save-status[data-state="warning"] { color: #8a5815; }
+    #save-status[data-state="error"] { color: var(--danger); }
+    #save-status-footer[data-state="pending"] { color: var(--accent-dark); }
+    #save-status-footer[data-state="saved"] { color: #215d4a; }
+    #save-status-footer[data-state="warning"] { color: #8a5815; }
+    #save-status-footer[data-state="error"] { color: var(--danger); }
+    .save-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .status-block #save-status { display: block; margin-top: 2px; text-align: left; }
+    .status-block .save-actions { justify-content: flex-start; margin-top: 6px; }
 
     @media (max-width: 930px) {
       .setup-grid { grid-template-columns: 1fr 1fr; }
@@ -309,7 +321,7 @@
       .setup-grid, .time-grid, .select-grid, .choice-grid { grid-template-columns: 1fr; }
       .video-section, .annotation-section { padding: 16px; }
       .footer-bar { grid-template-columns: 1fr; }
-      #save-status { text-align: left; }
+      #save-status, #save-status-footer { text-align: left; }
       .frame-index-field { width: 100%; }
       .original-fields > div { grid-template-columns: 1fr; gap: 2px; }
     }
@@ -326,7 +338,7 @@
   <main>
     <aside class="notice" aria-label="使用说明">
       <strong>开始前：</strong>
-      <span>请先选择 CSV 和视频文件夹；标注完成后需手动导出 CSV。原始 <code>video_path</code> 仅作为文本显示，不会作为页面内容加载。</span>
+      <span>请先选择 CSV 和视频文件夹；每次修改会自动写回所选 CSV，并保留本机恢复记录。原始 <code>video_path</code> 仅作为文本显示，不会作为页面内容加载。</span>
     </aside>
 
     <section class="setup-panel" aria-labelledby="source-title">
@@ -335,10 +347,10 @@
         <div class="field">
           <span class="field-label">标注 CSV</span>
           <div class="file-control">
-            <input id="csv-file" type="file" accept=".csv" aria-describedby="csv-help">
-            <label class="file-button" for="csv-file">选择 CSV 文件</label>
+            <input id="csv-file" type="file" accept=".csv" aria-describedby="csv-help" tabindex="-1">
+            <button id="open-csv" type="button" class="file-button" aria-describedby="csv-help">选择 CSV 文件</button>
           </div>
-          <small class="field-help" id="csv-help">选择后才能逐条标注。</small>
+          <small class="field-help" id="csv-help">选择后可逐条标注；支持自动写回原文件与刷新恢复。</small>
         </div>
         <div class="field">
           <span class="field-label">视频文件夹</span>
@@ -351,6 +363,12 @@
         <div class="status-block" aria-live="polite">
           <span class="field-label">文件状态</span>
           <span class="status-text" id="file-status">未导入 CSV，暂无可标注记录。</span>
+          <span class="field-label" style="margin-top:7px">保存状态</span>
+          <span id="save-status" role="status" aria-live="polite" data-state="idle">选择 CSV 后会显示保存状态。</span>
+          <div class="save-actions">
+            <button id="csv-reconnect" type="button" hidden>授权写回 CSV</button>
+          </div>
+          <small class="field-help">选择 CSV 后如提示授权，请点击“授权写回 CSV”。</small>
         </div>
       </div>
     </section>
@@ -491,9 +509,8 @@
           <span id="progress" aria-live="polite">尚无导入记录。</span>
         </div>
         <div>
-          <button id="export-csv" type="button">导出 CSV</button>
-          <button id="confirm-save" type="button" hidden>已确认下载完成</button>
-          <div id="save-status" role="status" aria-live="polite">请先导入 CSV。</div>
+          <div class="save-actions"><button id="export-csv" type="button">导出 CSV 备份</button></div>
+          <span id="save-status-footer" aria-live="off" data-state="idle">请先导入 CSV。</span>
         </div>
       </footer>
     </section>

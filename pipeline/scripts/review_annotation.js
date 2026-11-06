@@ -3,11 +3,14 @@
 
   const byId = (id) => document.getElementById(id);
   const csvInput = byId("csv-file");
+  const openCsv = byId("open-csv");
+  const reconnectCsv = byId("csv-reconnect");
   const videoInput = byId("video-files");
   const player = byId("video-player");
   const csvStatus = byId("file-status");
   const videoStatus = byId("video-status");
   const saveStatus = byId("save-status");
+  const saveStatusFooter = byId("save-status-footer");
   const ruleHint = byId("rule-hint");
   const applyRuleButton = byId("apply-rule");
   const previous = byId("prev");
@@ -15,7 +18,6 @@
   const jump = byId("row-jump");
   const jumpButton = byId("jump-btn");
   const exportButton = byId("export-csv");
-  const confirmSaveButton = byId("confirm-save");
   const frameImage = byId("frame-image");
   const framePreview = byId("frame-preview");
   const frameStatus = byId("frame-status");
@@ -61,8 +63,13 @@
 
   let table = null;
   let rowIndex = 0;
-  let dirty = false;
-  let importSequence = 0;
+  let draft = null;
+  let journal = null;
+  let editorReady = false;
+  let openingCsv = false;
+  let reconnecting = false;
+  let saveTimer = null;
+  let saving = null;
   let videos = [];
   let videoUrl = "";
   let playingFile = null;
@@ -150,15 +157,196 @@
     event.returnValue = "";
   }
 
-  function setDirty(value, message) {
-    dirty = value;
+  function saveMessage(state, message) {
+    saveStatus.dataset.state = state;
     saveStatus.textContent = message;
-    if (confirmSaveButton) confirmSaveButton.hidden = true;
-    if (dirty) {
-      window.addEventListener("beforeunload", preventLoss);
-    } else {
-      window.removeEventListener("beforeunload", preventLoss);
+    saveStatusFooter.dataset.state = state;
+    saveStatusFooter.textContent = message;
+  }
+
+  function renderSaveStatus() {
+    if (!editorReady) return;
+    reconnectCsv.hidden = true;
+    reconnectCsv.disabled = openingCsv || reconnecting || !!saving;
+    window.removeEventListener("beforeunload", preventLoss);
+    if (!draft) {
+      saveMessage("idle", "请先打开 CSV。");
+      return;
     }
+    const pending = draft.revision > draft.savedRevision;
+    const recovered = draft.localRevision >= draft.revision && !draft.journalFailed;
+    if (pending) window.addEventListener("beforeunload", preventLoss);
+    if (draft.journalFailed) {
+      reconnectCsv.hidden = !draft.handle;
+      saveMessage("error", "本地草稿保存失败。请导出 CSV 保留当前修改。");
+    } else if (!draft.handle) {
+      saveMessage("warning", recovered
+        ? "当前 CSV 只能读取。草稿已保存在此浏览器地址，可导出 CSV。"
+        : "当前 CSV 只能读取。请导出 CSV 保留修改。");
+    } else if (draft.problem) {
+      reconnectCsv.hidden = false;
+      reconnectCsv.textContent = draft.permission === "granted" ? "重试写回" : "授权写回";
+      saveMessage("warning", draft.problem + (recovered ? " 草稿已保存在此浏览器地址。" : ""));
+    } else if (pending) {
+      saveMessage("pending", recovered ? "草稿已保存，等待写回原 CSV…" : "正在保存标注…");
+    } else {
+      saveMessage("saved", draft.revision ? "已写回原 CSV。" : "自动保存已开启，修改将写回此 CSV。");
+    }
+  }
+
+  function openJournal() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("review-annotation", 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("drafts");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error("无法打开本地草稿。"));
+    });
+  }
+
+  function readDraft() {
+    return new Promise((resolve, reject) => {
+      const request = journal.transaction("drafts").objectStore("drafts").get("active");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function persistDraft(active) {
+    if (!journal || active !== draft) return false;
+    const revision = active.revision;
+    try {
+      const originals = [];
+      const reviewTimes = [];
+      for (const [index, row] of table.rows.entries()) {
+        const previousValues = table.originals.get(row);
+        if (previousValues) originals.push([index, [...previousValues]]);
+        if (table.reviewTimes.has(row)) reviewTimes.push(index);
+      }
+      // Queue the transaction immediately so refresh recovery includes the latest edit.
+      await new Promise((resolve, reject) => {
+        const transaction = journal.transaction("drafts", "readwrite", { durability: "strict" });
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () => reject(transaction.error);
+        transaction.objectStore("drafts").put({
+          filename: table.filename,
+          csv: serializeCsv(table),
+          rowIndex,
+          originals,
+          reviewTimes,
+          handle: active.handle,
+          revision,
+          savedRevision: active.savedRevision,
+          diskHash: active.diskHash,
+          pendingHash: active.pendingHash,
+          pendingRevision: active.pendingRevision,
+        }, "active");
+      });
+      active.localRevision = Math.max(active.localRevision, revision);
+      active.journalFailed = false;
+      return true;
+    } catch {
+      active.journalFailed = true;
+      return false;
+    } finally {
+      if (active === draft) renderSaveStatus();
+    }
+  }
+
+  async function digest(bytes) {
+    const hash = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function readFileHash(handle) {
+    return digest(await (await handle.getFile()).arrayBuffer());
+  }
+
+  function clearPending(active) {
+    active.pendingHash = null;
+    active.pendingRevision = null;
+  }
+
+  async function writeOriginal(active) {
+    if (active.revision === active.savedRevision && !active.pendingHash) return;
+    active.permission = await active.handle.queryPermission({ mode: "readwrite" });
+    if (active.permission !== "granted") {
+      active.problem = "尚未授权写回原 CSV。";
+      return;
+    }
+    const revision = active.revision;
+    const bytes = new TextEncoder().encode(serializeCsv(table));
+    const expected = await digest(bytes);
+    const actual = await readFileHash(active.handle);
+    if (active.pendingHash === actual) {
+      // A refresh can interrupt the journal update after the file commit.
+      active.diskHash = actual;
+      active.savedRevision = active.pendingRevision;
+      clearPending(active);
+    }
+    if (actual !== active.diskHash) {
+      active.problem = "原 CSV 已被其他程序修改，已暂停写回。可导出当前标注另存。";
+      return;
+    }
+    if (actual !== expected) {
+      active.pendingHash = expected;
+      active.pendingRevision = revision;
+      if (!await persistDraft(active)) throw new Error("本地草稿不可用，已暂停写回。");
+      const writable = await active.handle.createWritable({ mode: "exclusive" });
+      try {
+        await writable.write(bytes);
+        // The file stream stages changes until close. Check the original before replacing it.
+        if (await readFileHash(active.handle) !== actual) {
+          throw new Error("原 CSV 在保存期间被其他程序修改，已暂停写回。可导出当前标注另存。");
+        }
+        await writable.close();
+      } catch (error) {
+        await writable.abort().catch(() => {});
+        throw error;
+      }
+      if (await readFileHash(active.handle) !== expected) {
+        throw new Error("写回后原 CSV 内容与当前标注不符，已暂停写回。");
+      }
+    }
+    active.diskHash = expected;
+    active.savedRevision = revision;
+    clearPending(active);
+    await persistDraft(active);
+  }
+
+  function flushSave() {
+    window.clearTimeout(saveTimer);
+    const active = draft;
+    if (saving) return saving;
+    if (!active?.handle || active.problem || !journal
+      || (active.revision === active.savedRevision && !active.pendingHash)) return Promise.resolve();
+    saving = writeOriginal(active).catch((error) => {
+      if (error.name === "NotAllowedError") {
+        active.permission = "prompt";
+        active.problem = "尚未授权写回原 CSV。";
+      } else {
+        active.problem = error.name === "Error" && error.message
+          ? error.message : "写回原 CSV 失败，请检查文件是否可写。";
+      }
+    }).finally(() => {
+      saving = null;
+      renderSaveStatus();
+      if (active === draft && !active.journalFailed && active.revision > active.savedRevision) scheduleSave();
+    });
+    renderSaveStatus();
+    return saving;
+  }
+
+  function scheduleSave() {
+    window.clearTimeout(saveTimer);
+    if (!openingCsv && draft?.handle && !draft.problem) saveTimer = window.setTimeout(flushSave, 250);
+  }
+
+  function noteChange() {
+    draft.revision += 1;
+    renderSaveStatus();
+    void persistDraft(draft);
+    scheduleSave();
   }
 
   function setControl(control, current) {
@@ -229,7 +417,8 @@
     for (const [control, column] of fields) {
       const current = row ? value(row, column) : "";
       setControl(control, current);
-      control.disabled = !row || !table.columns.has(column) || targets.includes(column);
+      control.disabled = !editorReady || openingCsv || reconnecting
+        || !row || !table.columns.has(column) || targets.includes(column);
     }
 
     renderRuleHint(row, targets);
@@ -271,7 +460,7 @@
     if (review.length) hints.push(review.join("、") + "仍为“无”，请按画面手动复核。");
     ruleHint.textContent = hints.join("");
     applyRuleButton.hidden = !inconsistent;
-    applyRuleButton.disabled = applyRuleButton.hidden;
+    applyRuleButton.disabled = !editorReady || openingCsv || reconnecting || applyRuleButton.hidden;
   }
 
   function updateProgress() {
@@ -626,7 +815,7 @@
         row[table.columns.get(column)] = control.value;
         if (gripColumns.includes(column)) renderRuleHint(row, activeRuleTargets(row));
       }
-      setDirty(true, "本次修改已保存在当前页面，请导出 CSV。");
+      noteChange();
       if (column === stateColumn) updateProgress();
     });
   }
@@ -635,34 +824,119 @@
     const row = table?.rows[rowIndex];
     if (!row || applyRuleButton.disabled || !changeRule(row, null, "")) return;
     renderFields();
-    setDirty(true, "本次修改已保存在当前页面，请导出 CSV。");
+    noteChange();
+  });
+
+  function setOpening(value) {
+    openingCsv = value;
+    openCsv.disabled = !editorReady || value || reconnecting;
+    if (value) window.clearTimeout(saveTimer);
+    renderFields();
+    renderSaveStatus();
+    if (!value && draft?.revision > draft?.savedRevision) scheduleSave();
+  }
+
+  async function loadCsv(file, handle, permission) {
+    await flushSave();
+    // An earlier in-flight write may have captured an older revision.
+    await flushSave();
+    const input = handle ? await handle.getFile() : file;
+    csvStatus.textContent = "正在读取 · " + input.name;
+    const bytes = await input.arrayBuffer();
+    const csv = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    const imported = parseCsv(csv);
+    const diskHash = handle ? await digest(bytes) : null;
+    if (draft?.revision > draft?.savedRevision
+      && !window.confirm("当前草稿有未写回原 CSV 的修改。打开另一份 CSV 将替换草稿，是否继续？")) {
+      csvStatus.textContent = "已取消打开，继续使用 · " + table.filename;
+      return;
+    }
+    if (table) videos = [];
+    table = { ...imported, filename: input.name };
+    draft = {
+      handle,
+      diskHash,
+      revision: 0,
+      savedRevision: 0,
+      localRevision: -1,
+      permission,
+      problem: handle && permission !== "granted" ? "尚未授权写回原 CSV。" : null,
+    };
+    rowIndex = 0;
+    csvStatus.textContent = "已载入 · " + table.filename;
+    renderRow();
+    await persistDraft(draft);
+  }
+
+  function reportOpenError(error) {
+    if (error.name === "AbortError") return;
+    const reason = error instanceof TypeError ? "请确认 CSV 使用 UTF-8 编码且文件可读。" : error.message;
+    const retained = table ? " 仍在使用 · " + table.filename : "";
+    csvStatus.textContent = "打开失败 · " + reason + retained;
+  }
+
+  async function askWriteAccess(handle) {
+    try {
+      return await handle.requestPermission({ mode: "readwrite" });
+    } catch {
+      // A browser may require a fresh click after the native picker returns.
+      return "prompt";
+    }
+  }
+
+  openCsv.addEventListener("click", async () => {
+    if (!editorReady || openingCsv || reconnecting) return;
+    if (!journal || typeof window.showOpenFilePicker !== "function") {
+      csvInput.click();
+      return;
+    }
+    setOpening(true);
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: "CSV 文件", accept: { "text/csv": [".csv"] } }],
+        multiple: false,
+      });
+      const permission = await askWriteAccess(handle);
+      await loadCsv(null, handle, permission);
+    } catch (error) {
+      reportOpenError(error);
+    } finally {
+      setOpening(false);
+    }
   });
 
   csvInput.addEventListener("change", async () => {
     const file = csvInput.files[0];
     csvInput.value = "";
-    if (!file) return;
-    const sequence = ++importSequence;
-    csvStatus.textContent = "正在读取 · " + file.name;
+    if (!editorReady || !file || openingCsv || reconnecting) return;
+    setOpening(true);
     try {
-      const bytes = await file.arrayBuffer();
-      if (sequence !== importSequence) return;
-      const csv = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
-      const imported = parseCsv(csv);
-      if (dirty && !window.confirm("当前有未导出的修改。打开新 CSV 将丢弃这些修改，是否继续？")) {
-        csvStatus.textContent = "已取消导入，继续使用 · " + table.filename;
-        return;
-      }
-      if (table) videos = [];
-      table = { ...imported, filename: file.name };
-      rowIndex = 0;
-      csvStatus.textContent = "已载入 · " + file.name;
-      setDirty(false, "修改只保存在当前页面，导出后可继续标注。");
-      renderRow();
+      await loadCsv(file, null, null);
     } catch (error) {
-      const reason = error instanceof TypeError ? "请确认 CSV 使用 UTF-8 编码且文件可读。" : error.message;
-      const retained = table ? " 仍在使用 · " + table.filename : "";
-      if (sequence === importSequence) csvStatus.textContent = "导入失败 · " + reason + retained;
+      reportOpenError(error);
+    } finally {
+      setOpening(false);
+    }
+  });
+
+  reconnectCsv.addEventListener("click", async () => {
+    const active = draft;
+    if (openingCsv || reconnecting || saving || !active?.handle) return;
+    reconnecting = true;
+    openCsv.disabled = true;
+    renderFields();
+    renderSaveStatus();
+    try {
+      active.permission = await askWriteAccess(active.handle);
+      active.problem = active.permission === "granted" ? null : "尚未授权写回原 CSV。";
+      if (!active.problem) await checkCleanSource(active);
+      if (active.journalFailed) await persistDraft(active);
+      if (!active.journalFailed) await flushSave();
+    } finally {
+      reconnecting = false;
+      openCsv.disabled = false;
+      renderFields();
+      renderSaveStatus();
     }
   });
 
@@ -746,10 +1020,12 @@
   frameAfter.addEventListener("click", () => assignFrame(frameAfterField));
 
   function showRow(index) {
-    if (index === rowIndex || !table || index < 0 || index >= table.rows.length) return;
+    if (openingCsv || reconnecting || index === rowIndex || !table || index < 0 || index >= table.rows.length) return;
     releaseFrameReview();
     rowIndex = index;
     renderRow();
+    void persistDraft(draft);
+    void flushSave();
   }
 
   function jumpToRow() {
@@ -784,14 +1060,93 @@
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-    saveStatus.textContent = "已发起新文件下载 · " + filename + "。请在浏览器中确认保存位置和下载结果。";
-    if (dirty && confirmSaveButton) confirmSaveButton.hidden = false;
-  });
-  confirmSaveButton?.addEventListener("click", () => {
-    if (!confirmSaveButton.hidden) {
-      setDirty(false, "你已确认本次下载完成。继续标注后可再次导出。");
-    }
+    // Exporting a copy does not confirm that pending edits reached the original.
+    csvStatus.textContent = "已发起下载 · " + filename + "。请检查浏览器的下载结果。";
   });
 
-  renderRow();
+  function restoreDraft(stored) {
+    table = { ...parseCsv(stored.csv), filename: stored.filename };
+    for (const [index, originals] of stored.originals) {
+      table.originals.set(table.rows[index], new Map(originals));
+    }
+    for (const index of stored.reviewTimes) table.reviewTimes.add(table.rows[index]);
+    rowIndex = Math.max(0, Math.min(stored.rowIndex, table.rows.length - 1));
+    draft = {
+      handle: stored.handle,
+      diskHash: stored.diskHash,
+      pendingHash: stored.pendingHash,
+      pendingRevision: stored.pendingRevision,
+      revision: stored.revision,
+      savedRevision: stored.savedRevision,
+      localRevision: stored.revision,
+    };
+    csvStatus.textContent = "已恢复上次标注 · " + table.filename;
+    renderRow();
+  }
+
+  function acquireEditor() {
+    return new Promise((resolve, reject) => {
+      navigator.locks.request("review-annotation-editor", { ifAvailable: true }, (lock) => {
+        resolve(!!lock);
+        if (lock) return new Promise(() => {});
+      }).catch(reject);
+    });
+  }
+
+  async function checkCleanSource(active) {
+    if (active.revision !== active.savedRevision || active.pendingHash) return;
+    try {
+      const file = await active.handle.getFile();
+      const bytes = await file.arrayBuffer();
+      const hash = await digest(bytes);
+      if (hash === active.diskHash) return;
+      const csv = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+      table = { ...parseCsv(csv), filename: file.name };
+      rowIndex = Math.max(0, Math.min(rowIndex, table.rows.length - 1));
+      active.diskHash = hash;
+      csvStatus.textContent = "原 CSV 有更新，已读取最新内容 · " + table.filename;
+      renderRow();
+      await persistDraft(active);
+    } catch {
+      active.problem = "无法核对原 CSV 的最新内容，已暂停写回。可导出恢复的标注。";
+    }
+  }
+
+  async function initializeEditor() {
+    openCsv.disabled = true;
+    renderRow();
+    if (sessionToken && typeof indexedDB !== "undefined" && navigator.locks && crypto.subtle) {
+      try {
+        if (!await acquireEditor()) {
+          saveMessage("warning", "此地址已有一个标注页面。请关闭另一页后刷新。");
+          return;
+        }
+        journal = await openJournal();
+        const stored = await readDraft();
+        if (stored) restoreDraft(stored);
+      } catch {
+        journal?.close();
+        journal = null;
+        saveMessage("error", "无法读取本地草稿，可打开 CSV 并手动导出。");
+      }
+    }
+    if (draft?.handle) {
+      try {
+        draft.permission = await draft.handle.queryPermission({ mode: "readwrite" });
+        await checkCleanSource(draft);
+        if (!draft.problem && draft.permission !== "granted") {
+          draft.problem = "草稿已恢复，需要重新授权写回原 CSV。";
+        }
+      } catch {
+        draft.problem = "暂时无法访问原 CSV。请重新授权或导出当前标注。";
+      }
+      void flushSave();
+    }
+    editorReady = true;
+    openCsv.disabled = false;
+    renderFields();
+    if (journal || !sessionToken) renderSaveStatus();
+  }
+
+  void initializeEditor();
 })();
