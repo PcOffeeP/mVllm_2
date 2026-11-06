@@ -12,7 +12,7 @@ Non-goals:
 
 | 文件 | 作用 |
 | --- | --- |
-| `review_run_annotation.command`、`review_run_annotation.py`、`review_annotation.html`、`review_annotation.js` | 双击启动本机人工标签工具，导入并导出 CSV，通过本机解码查看源视频帧；数据接入与训练另行设计 |
+| `review_run_annotation.command`、`review_run_annotation.py`、`review_annotation.html`、`review_annotation.js` | 双击启动本机人工标签工具，自动打开默认标注表和源视频目录，可在页面更换本机路径。刷新同一页面会恢复通过路径设置的来源和草稿，支持写回、导出及逐帧查看 |
 | `roi_annotation_app.py` | ROI输入准备；必填metadata文件/output/project-root，不再解析current/LATEST或快照ID |
 | `roi_freeze_decisions.py` | CLI已停用；现行数据链使用versioning data roi；历史函数和产物保留 |
 | `roi_materialize_videos.py` | CLI已停用；现行数据链使用versioning data roi；历史函数和产物保留 |

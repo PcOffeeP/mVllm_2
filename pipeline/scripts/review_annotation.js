@@ -3,9 +3,13 @@
 
   const byId = (id) => document.getElementById(id);
   const csvInput = byId("csv-file");
+  const csvPath = byId("csv-path");
+  const applyCsvPath = byId("apply-csv-path");
   const openCsv = byId("open-csv");
   const reconnectCsv = byId("csv-reconnect");
   const videoInput = byId("video-files");
+  const videoPath = byId("video-path");
+  const applyVideoPath = byId("apply-video-path");
   const player = byId("video-player");
   const csvStatus = byId("file-status");
   const videoStatus = byId("video-status");
@@ -96,7 +100,11 @@
   let reconnecting = false;
   let saveTimer = null;
   let saving = null;
+  let defaultSources = null;
+  let openingVideoPath = false;
+  let videoDirectory = "";
   let videos = [];
+  let videoRequest = null;
   let videoUrl = "";
   let playingFile = null;
   let frameSession = null;
@@ -187,6 +195,10 @@
     event.returnValue = "";
   }
 
+  function writableSource(active) {
+    return !!(active?.handle || active?.path);
+  }
+
   function saveMessage(state, message) {
     saveStatus.dataset.state = state;
     saveStatus.textContent = message;
@@ -210,9 +222,9 @@
       && !control.disabled && control.value !== value(row, column));
     if (pending || numericEditing) window.addEventListener("beforeunload", preventLoss);
     if (draft.journalFailed) {
-      reconnectCsv.hidden = !draft.handle;
+      reconnectCsv.hidden = !writableSource(draft);
       saveMessage("error", "本地草稿保存失败。请导出 CSV 保留当前修改。");
-    } else if (!draft.handle) {
+    } else if (!writableSource(draft)) {
       saveMessage("warning", recovered
         ? "当前 CSV 只能读取。草稿已保存在此浏览器地址，可导出 CSV。"
         : "当前 CSV 只能读取。请导出 CSV 保留修改。");
@@ -276,6 +288,7 @@
           confirmedUnbrokenVideos,
           generatedTimes,
           handle: active.handle,
+          path: active.path,
           revision,
           savedRevision: active.savedRevision,
           diskHash: active.diskHash,
@@ -303,6 +316,10 @@
     return digest(await (await handle.getFile()).arrayBuffer());
   }
 
+  async function readPathCsv(path) {
+    return localJson("/api/csv/read", { path });
+  }
+
   function clearPending(active) {
     active.pendingHash = null;
     active.pendingRevision = null;
@@ -310,15 +327,22 @@
 
   async function writeOriginal(active) {
     if (active.revision === active.savedRevision && !active.pendingHash) return;
-    active.permission = await active.handle.queryPermission({ mode: "readwrite" });
-    if (active.permission !== "granted") {
-      active.problem = "尚未授权写回原 CSV。";
-      return;
+    if (active.handle) {
+      active.permission = await active.handle.queryPermission({ mode: "readwrite" });
+      if (active.permission !== "granted") {
+        active.problem = "尚未授权写回原 CSV。";
+        return;
+      }
     }
     const revision = active.revision;
-    const bytes = new TextEncoder().encode(serializeCsv(table));
+    const csv = serializeCsv(table);
+    const bytes = new TextEncoder().encode(csv);
     const expected = await digest(bytes);
-    const actual = await readFileHash(active.handle);
+    const source = active.path ? await readPathCsv(active.path) : null;
+    if (source && source.path !== active.path) {
+      throw new Error("原 CSV 路径已变化，已暂停写回。可导出当前标注另存。");
+    }
+    const actual = source ? source.sha256 : await readFileHash(active.handle);
     if (active.pendingHash === actual) {
       // A refresh can interrupt the journal update after the file commit.
       active.diskHash = actual;
@@ -333,19 +357,10 @@
       active.pendingHash = expected;
       active.pendingRevision = revision;
       if (!await persistDraft(active)) throw new Error("本地草稿不可用，已暂停写回。");
-      const writable = await active.handle.createWritable({ mode: "exclusive" });
-      try {
-        await writable.write(bytes);
-        // The file stream stages changes until close. Check the original before replacing it.
-        if (await readFileHash(active.handle) !== actual) {
-          throw new Error("原 CSV 在保存期间被其他程序修改，已暂停写回。可导出当前标注另存。");
-        }
-        await writable.close();
-      } catch (error) {
-        await writable.abort().catch(() => {});
-        throw error;
-      }
-      if (await readFileHash(active.handle) !== expected) {
+      const saved = active.path
+        ? (await localJson("/api/csv/write", { path: active.path, expected_sha256: actual, csv })).sha256
+        : await writeFileHandle(active.handle, bytes, actual);
+      if (saved !== expected) {
         throw new Error("写回后原 CSV 内容与当前标注不符，已暂停写回。");
       }
     }
@@ -355,11 +370,27 @@
     await persistDraft(active);
   }
 
+  async function writeFileHandle(handle, bytes, actual) {
+    const writable = await handle.createWritable({ mode: "exclusive" });
+    try {
+      await writable.write(bytes);
+      // The file stream stages changes until close. Check the original before replacing it.
+      if (await readFileHash(handle) !== actual) {
+        throw new Error("原 CSV 在保存期间被其他程序修改，已暂停写回。可导出当前标注另存。");
+      }
+      await writable.close();
+    } catch (error) {
+      await writable.abort().catch(() => {});
+      throw error;
+    }
+    return readFileHash(handle);
+  }
+
   function flushSave() {
     window.clearTimeout(saveTimer);
     const active = draft;
     if (saving) return saving;
-    if (!active?.handle || active.problem || !journal
+    if (!writableSource(active) || active.problem || !journal
       || (active.revision === active.savedRevision && !active.pendingHash)) return Promise.resolve();
     saving = writeOriginal(active).catch((error) => {
       if (error.name === "NotAllowedError") {
@@ -380,7 +411,7 @@
 
   function scheduleSave() {
     window.clearTimeout(saveTimer);
-    if (!openingCsv && draft?.handle && !draft.problem) saveTimer = window.setTimeout(flushSave, 250);
+    if (!openingCsv && writableSource(draft) && !draft.problem) saveTimer = window.setTimeout(flushSave, 250);
   }
 
   function noteChange() {
@@ -905,7 +936,7 @@
     const displayed = frameSession?.index;
     const canDecode = !!sessionToken && !!playingFile && !waiting;
     const canAssign = canDecode && displayed != null && !frameImage.hidden;
-    framePlay.disabled = !playingFile || !!player.error;
+    framePlay.disabled = !videoUrl || !!player.error;
     framePlay.textContent = waiting || displayed != null ? "继续播放" : player.paused ? "播放" : "暂停";
     frameIndex.disabled = frameGo.disabled = !canDecode;
     framePrevious.disabled = !canDecode || displayed === 0;
@@ -915,7 +946,7 @@
     updateRangeControls(canAssign);
   }
 
-  async function frameFetch(path, options = {}) {
+  async function localFetch(path, options = {}) {
     let response;
     try {
       response = await fetch(path, {
@@ -924,13 +955,22 @@
       });
     } catch (error) {
       if (error.name === "AbortError") throw error;
-      throw new Error("无法连接本机逐帧服务，请重新启动标注工具。");
+      throw new Error("无法连接本机服务，请重新启动标注工具。");
     }
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.error || "无法连接本机逐帧服务，请重新启动标注工具。");
+      throw new Error(payload.error || "无法连接本机服务，请重新启动标注工具。");
     }
     return response;
+  }
+
+  async function localJson(path, data) {
+    const response = await localFetch(path, data === undefined ? {} : {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return response.json();
   }
 
   function clearFrameImage() {
@@ -953,7 +993,7 @@
     frameIndex.removeAttribute("max");
     frameIndex.setCustomValidity("");
     if (session) {
-      frameFetch(session.path, { method: "DELETE", keepalive: true }).catch(() => {});
+      localFetch(session.path, { method: "DELETE", keepalive: true }).catch(() => {});
     }
     showPlaybackStatus();
     updateFrameControls();
@@ -980,7 +1020,7 @@
     frameMessage("loading", `正在解码索引 ${index} 的画面…`);
     updateFrameControls();
     try {
-      const response = await frameFetch(`${session.path}/frame/${index}`, { signal: request.signal });
+      const response = await localFetch(`${session.path}/frame/${index}`, { signal: request.signal });
       const blob = await response.blob();
       if (!activeFrameSession(session)) return;
       if (blob.type !== "image/png") throw new Error("未收到可核验的解码画面。");
@@ -1030,10 +1070,11 @@
     frameMessage("loading", "正在将当前视频交给本机服务读取并确认解码帧数…");
     updateFrameControls();
     try {
-      const response = await frameFetch(session.path, {
+      const fileId = session.file.serverId;
+      const response = await localFetch(session.path, {
         method: "POST",
-        body: session.file,
-        headers: { "Content-Type": "application/octet-stream" },
+        body: fileId ? JSON.stringify({ file_id: fileId }) : session.file,
+        headers: { "Content-Type": fileId ? "application/json" : "application/octet-stream" },
         signal: request.signal,
       });
       const payload = await response.json();
@@ -1163,15 +1204,38 @@
   }
 
   function releaseVideo() {
+    videoRequest?.abort();
+    videoRequest = null;
     if (videoUrl) {
       player.pause();
       player.removeAttribute("src");
       player.load();
       URL.revokeObjectURL(videoUrl);
       videoUrl = "";
-      playingFile = null;
     }
+    playingFile = null;
     releaseFrameReview();
+  }
+
+  function playVideoBlob(blob) {
+    videoUrl = URL.createObjectURL(blob);
+    player.src = videoUrl;
+    if (!frameSession) showPlaybackStatus();
+    updateFrameControls();
+  }
+
+  async function readVideoBlob(file) {
+    const request = new AbortController();
+    videoRequest = request;
+    try {
+      const response = await localFetch("/api/video/file/" + file.serverId, { signal: request.signal });
+      const blob = await response.blob();
+      if (videoRequest === request) playVideoBlob(blob);
+    } catch (error) {
+      if (videoRequest === request) videoStatus.textContent = error.message;
+    } finally {
+      if (videoRequest === request) videoRequest = null;
+    }
   }
 
   function renderVideo() {
@@ -1182,12 +1246,15 @@
       const file = matchVideo(value(row, "video_path"), value(row, "id"));
       if (file === playingFile) return;
       releaseVideo();
-      videoUrl = URL.createObjectURL(file);
       playingFile = file;
       videoStatus.textContent = matchedVideoStatus("正在打开");
-      player.src = videoUrl;
-      showPlaybackStatus();
-      updateFrameControls();
+      if (file.serverId) {
+        showPlaybackStatus();
+        updateFrameControls();
+        void readVideoBlob(file);
+      } else {
+        playVideoBlob(file);
+      }
     } catch (error) {
       releaseVideo();
       videoStatus.textContent = error.message;
@@ -1319,43 +1386,64 @@
   function setOpening(value) {
     openingCsv = value;
     openCsv.disabled = !editorReady || value || reconnecting;
+    csvPath.disabled = applyCsvPath.disabled = openCsv.disabled || !defaultSources;
     if (value) window.clearTimeout(saveTimer);
     renderFields();
     renderSaveStatus();
     if (!value && draft?.revision > draft?.savedRevision) scheduleSave();
   }
 
-  async function loadCsv(file, handle, permission) {
+  async function loadCsv(file, handle, permission, requestedPath = null) {
     await flushSave();
     // An earlier in-flight write may have captured an older revision.
     await flushSave();
-    const input = handle ? await handle.getFile() : file;
-    csvStatus.textContent = "正在读取 · " + input.name;
-    const bytes = await input.arrayBuffer();
-    const csv = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
-    const imported = parseCsv(csv);
-    const diskHash = handle ? await digest(bytes) : null;
+    let source;
+    if (requestedPath !== null) {
+      csvStatus.textContent = "正在读取 · " + requestedPath;
+      source = await readPathCsv(requestedPath);
+    } else {
+      const input = handle ? await handle.getFile() : file;
+      csvStatus.textContent = "正在读取 · " + input.name;
+      const bytes = await input.arrayBuffer();
+      const csv = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+      source = { name: input.name, csv, sha256: handle ? await digest(bytes) : null };
+    }
+    const imported = parseCsv(source.csv);
     if (draft?.revision > draft?.savedRevision
       && !window.confirm("当前草稿有未写回原 CSV 的修改。打开另一份 CSV 将替换草稿，是否继续？")) {
       csvStatus.textContent = "已取消打开，继续使用 · " + table.filename;
       return;
     }
-    if (table) videos = [];
-    table = { ...imported, filename: input.name };
+    if (table && !videoDirectory) videos = [];
+    table = { ...imported, filename: source.name };
     draft = {
       handle,
-      diskHash,
+      path: source.path ?? null,
+      diskHash: source.sha256,
       revision: 0,
       savedRevision: 0,
       localRevision: -1,
       permission,
       problem: handle && permission !== "granted" ? "尚未授权写回原 CSV。" : null,
     };
+    csvPath.value = draft.path ?? "";
     rowIndex = 0;
     csvStatus.textContent = "已载入 · " + table.filename;
     renderRow();
     await persistDraft(draft);
   }
+
+  applyCsvPath.addEventListener("click", async () => {
+    if (applyCsvPath.disabled) return;
+    setOpening(true);
+    try {
+      await loadCsv(null, null, "granted", csvPath.value.trim() || defaultSources.csv_path);
+    } catch (error) {
+      reportOpenError(error);
+    } finally {
+      setOpening(false);
+    }
+  });
 
   function reportOpenError(error) {
     if (error.name === "AbortError") return;
@@ -1410,13 +1498,14 @@
 
   reconnectCsv.addEventListener("click", async () => {
     const active = draft;
-    if (openingCsv || reconnecting || saving || !active?.handle) return;
+    if (openingCsv || reconnecting || saving || !writableSource(active)) return;
     reconnecting = true;
     openCsv.disabled = true;
+    csvPath.disabled = applyCsvPath.disabled = true;
     renderFields();
     renderSaveStatus();
     try {
-      active.permission = await askWriteAccess(active.handle);
+      active.permission = active.path ? "granted" : await askWriteAccess(active.handle);
       active.problem = active.permission === "granted" ? null : "尚未授权写回原 CSV。";
       if (!active.problem) await checkCleanSource(active);
       if (active.journalFailed) await persistDraft(active);
@@ -1424,17 +1513,49 @@
     } finally {
       reconnecting = false;
       openCsv.disabled = false;
+      csvPath.disabled = applyCsvPath.disabled = !defaultSources;
       renderFields();
       renderSaveStatus();
     }
   });
 
+  async function loadVideoDirectory(path) {
+    openingVideoPath = true;
+    videoPath.disabled = applyVideoPath.disabled = true;
+    videoInput.disabled = true;
+    try {
+      const source = await localJson("/api/video/library", { path });
+      videos = source.files.map((file) => ({
+        name: file.name,
+        webkitRelativePath: file.relative_path,
+        serverId: file.id,
+      }));
+      videoDirectory = videoPath.value = source.path;
+      try {
+        sessionStorage.setItem("review-annotation-video-directory", videoDirectory);
+      } catch {
+        // The directory can still be used if this browser blocks session storage.
+      }
+      renderVideo();
+      if (!videos.length) videoStatus.textContent = "此目录没有可识别的视频文件。";
+    } catch (error) {
+      videoStatus.textContent = "打开视频目录失败 · " + error.message;
+    } finally {
+      openingVideoPath = false;
+      videoPath.disabled = applyVideoPath.disabled = !editorReady || !defaultSources;
+      videoInput.disabled = false;
+    }
+  }
+
+  applyVideoPath.addEventListener("click", () => {
+    if (applyVideoPath.disabled) return;
+    void loadVideoDirectory(videoPath.value.trim() || defaultSources.video_directory);
+  });
+
   videoInput.addEventListener("change", () => {
     const selection = [...videoInput.files];
     videoInput.value = "";
-    if (!selection.length) return;
-    videos = [];
-    releaseVideo();
+    if (!selection.length || openingVideoPath) return;
     const candidates = selection.filter((file) => file.type.startsWith("video/")
       || /\.(mp4|mov|m4v|webm|avi|mkv|ogv|mpeg|mpg|mts|m2ts|wmv|3gp|flv)$/i.test(file.name));
     if (!candidates.length) {
@@ -1449,9 +1570,11 @@
     const folder = [...folders][0];
     const csvName = table ? `标注表“${table.filename}”` : "即将导入的标注表";
     if (!window.confirm(`浏览器按文件名匹配视频，无法核验 CSV 记录的原路径。请确认“${folder}”存放${csvName}对应的完整源视频，子视频请使用对应的审查工具。`)) {
-      videoStatus.textContent = "未确认所选视频文件夹，未播放视频。";
+      videoStatus.textContent = "未更换视频文件夹。";
       return;
     }
+    videoDirectory = "";
+    videoPath.value = "";
     videos = candidates;
     renderVideo();
   });
@@ -1573,6 +1696,7 @@
     rowIndex = Math.max(0, Math.min(stored.rowIndex, table.rows.length - 1));
     draft = {
       handle: stored.handle,
+      path: stored.path ?? null,
       diskHash: stored.diskHash,
       pendingHash: stored.pendingHash,
       pendingRevision: stored.pendingRevision,
@@ -1580,6 +1704,7 @@
       savedRevision: stored.savedRevision,
       localRevision: stored.revision,
     };
+    csvPath.value = draft.path ?? "";
     csvStatus.textContent = "已恢复上次标注 · " + table.filename;
     renderRow();
   }
@@ -1596,12 +1721,14 @@
   async function checkCleanSource(active) {
     if (active.revision !== active.savedRevision || active.pendingHash) return;
     try {
-      const file = await active.handle.getFile();
-      const bytes = await file.arrayBuffer();
-      const hash = await digest(bytes);
+      const source = active.path ? await readPathCsv(active.path) : null;
+      if (source && source.path !== active.path) throw new Error("原 CSV 路径已变化。");
+      const file = source ? null : await active.handle.getFile();
+      const bytes = file ? await file.arrayBuffer() : null;
+      const hash = source ? source.sha256 : await digest(bytes);
       if (hash === active.diskHash) return;
-      const csv = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
-      table = { ...parseCsv(csv), filename: file.name };
+      const csv = source ? source.csv : new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+      table = { ...parseCsv(csv), filename: source ? source.name : file.name };
       rowIndex = Math.max(0, Math.min(rowIndex, table.rows.length - 1));
       active.diskHash = hash;
       csvStatus.textContent = "原 CSV 有更新，已读取最新内容 · " + table.filename;
@@ -1614,6 +1741,7 @@
 
   async function initializeEditor() {
     openCsv.disabled = true;
+    videoInput.disabled = true;
     renderRow();
     if (sessionToken && typeof indexedDB !== "undefined" && navigator.locks && crypto.subtle) {
       try {
@@ -1630,9 +1758,19 @@
         saveMessage("error", "无法读取本地草稿，可打开 CSV 并手动导出。");
       }
     }
-    if (draft?.handle) {
+    if (sessionToken) {
       try {
-        draft.permission = await draft.handle.queryPermission({ mode: "readwrite" });
+        defaultSources = await localJson("/api/default-sources");
+        csvPath.placeholder = defaultSources.csv_path;
+        videoPath.placeholder = defaultSources.video_directory;
+        if (!draft) await loadCsv(null, null, "granted", defaultSources.csv_path);
+      } catch (error) {
+        reportOpenError(error);
+      }
+    }
+    if (writableSource(draft)) {
+      try {
+        draft.permission = draft.path ? "granted" : await draft.handle.queryPermission({ mode: "readwrite" });
         await checkCleanSource(draft);
         if (!draft.problem && draft.permission !== "granted") {
           draft.problem = "草稿已恢复，需要重新授权写回原 CSV。";
@@ -1644,8 +1782,19 @@
     }
     editorReady = true;
     openCsv.disabled = false;
+    videoInput.disabled = false;
+    csvPath.disabled = applyCsvPath.disabled = !defaultSources;
     renderFields();
     if (journal || !sessionToken) renderSaveStatus();
+    if (defaultSources) {
+      let path;
+      try {
+        path = sessionStorage.getItem("review-annotation-video-directory");
+      } catch {
+        // Fall back to the default when session storage is unavailable.
+      }
+      await loadVideoDirectory(path || defaultSources.video_directory);
+    }
   }
 
   void initializeEditor();

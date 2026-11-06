@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
-"""Run the annotation page and decode frames from a user-selected local video."""
+"""Run the annotation page with local annotation files and frame decoding."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import mimetypes
 import os
 import re
 import secrets
 import selectors
 import shutil
+import stat
 import subprocess
 import tempfile
 import threading
 import time
 import webbrowser
 from collections import OrderedDict
+from contextlib import contextmanager
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -23,13 +27,21 @@ from typing import BinaryIO
 
 
 HERE = Path(__file__).resolve().parent
+PROJECT_ROOT = HERE.parents[1]
+DEFAULT_CSV = "data/annotation/annotation-table-full.csv"
+DEFAULT_VIDEOS = "data/source/videos"
 ASSETS = {
     "/": (HERE / "review_annotation.html", "text/html; charset=utf-8"),
     "/review_annotation.js": (HERE / "review_annotation.js", "text/javascript; charset=utf-8"),
 }
 VIDEO_ROUTE = re.compile(r"/api/video/([a-f0-9]{32})(?:/frame/([0-9]{1,9}))?")
+VIDEO_FILE_ROUTE = re.compile(r"/api/video/file/([a-f0-9]{32})")
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".avi", ".mkv", ".ogv", ".mpeg",
+                    ".mpg", ".mts", ".m2ts", ".wmv", ".3gp", ".flv"}
 FORMAT_WHITELIST = "mov,matroska,webm,avi,ogg,mpeg,mpegvideo,mpegts,asf,flv"
 MAX_VIDEO_BYTES = 2 * 1024**3
+MAX_CSV_BYTES = 32 * 1024**2
+MAX_VIDEO_ENTRIES = 10000
 MAX_PIXELS = 16 * 1024**2
 DECODE_TIMEOUT = 90
 FRAME_LOOKBACK = 4
@@ -45,6 +57,47 @@ class ReviewError(Exception):
     def __init__(self, status: HTTPStatus, message: str):
         super().__init__(message)
         self.status = status
+
+
+@contextmanager
+def open_directory(path: Path):
+    """Open an already resolved directory without following replaced symlinks."""
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    fd = os.open(path.anchor, flags)
+    try:
+        for part in path.parts[1:]:
+            child = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def open_regular(directory: int, name: str) -> BinaryIO:
+    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise OSError("not a regular file")
+        return os.fdopen(fd, "rb")
+    except Exception:
+        os.close(fd)
+        raise
+
+
+def read_csv_bytes(file: BinaryIO) -> bytes:
+    raw = file.read(MAX_CSV_BYTES + 1)
+    if len(raw) > MAX_CSV_BYTES:
+        raise ReviewError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "CSV 超出大小限制。")
+    return raw
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def file_identity(info: os.stat_result) -> tuple[int, int, int, int, int]:
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
 
 def decode(command: list[str], video: BinaryIO) -> bytes:
@@ -170,7 +223,7 @@ class Video:
         self.cache: OrderedDict[int, bytes] = OrderedDict()
         self.cache_bytes = 0
         self.decoder: FrameDecoder | None = None
-        # An anonymous temporary file remains seekable and needs no pathname from the browser.
+        # A seekable file descriptor keeps ffmpeg from resolving any paths from the browser.
         self.input_options = [
             "-protocol_whitelist", "fd", "-format_whitelist", FORMAT_WHITELIST,
             "-max_pixels", str(MAX_PIXELS), "-err_detect", "explode", "-threads", "2",
@@ -254,13 +307,156 @@ class Video:
 
 
 class LocalServer(ThreadingHTTPServer):
-    def __init__(self):
+    def __init__(self, project_root: Path = PROJECT_ROOT):
         super().__init__(("127.0.0.1", 0), Handler)
         self.host = f"127.0.0.1:{self.server_port}"
         self.origin = f"http://{self.host}"
         self.token = secrets.token_hex(32)
         self.video: Video | None = None
         self.lock = threading.Lock()
+        self.source_lock = threading.Lock()
+        self.project_root = project_root.resolve()
+        self.csv_paths: set[Path] = set()
+        self.video_paths: dict[str, tuple[Path, tuple[int, int, int, int, int]]] = {}
+
+    def source_path(self, value: object) -> Path:
+        if not isinstance(value, str) or not value.strip() or "\x00" in value:
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "请填写有效的本机路径。")
+        try:
+            path = Path(value).expanduser()
+            return (self.project_root / path).resolve(strict=True)
+        except (OSError, RuntimeError, ValueError) as error:
+            raise ReviewError(HTTPStatus.NOT_FOUND, "找不到此路径，或本机没有访问权限。") from error
+
+    def read_csv(self, value: object) -> dict:
+        path = self.source_path(value)
+        if path.suffix.lower() != ".csv":
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "请选择 CSV 文件。")
+        try:
+            with open_directory(path.parent) as directory, open_regular(directory, path.name) as file:
+                raw = read_csv_bytes(file)
+            csv = raw.decode("utf-8")
+        except (OSError, UnicodeDecodeError) as error:
+            raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "无法读取此 CSV，请检查文件和 UTF-8 编码。") from error
+        with self.source_lock:
+            self.csv_paths.add(path)
+        return {"path": str(path), "name": path.name, "csv": csv, "sha256": sha256(raw)}
+
+    def write_csv(self, value: object, expected: object, csv: object) -> dict:
+        if not isinstance(value, str) or not isinstance(expected, str) or not isinstance(csv, str):
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "CSV 写回请求格式无效。")
+        if not re.fullmatch(r"[a-f0-9]{64}", expected):
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "CSV 原内容校验值无效。")
+        try:
+            raw = csv.encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "CSV 必须使用有效的 UTF-8 编码。") from error
+        if not raw or len(raw) > MAX_CSV_BYTES:
+            raise ReviewError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "CSV 为空或超出大小限制。")
+        path = Path(value)
+        with self.source_lock:
+            if path not in self.csv_paths:
+                raise ReviewError(HTTPStatus.FORBIDDEN, "请先从当前页面打开要写回的 CSV。")
+            try:
+                with open_directory(path.parent) as directory:
+                    self.replace_csv(directory, path.name, expected, raw)
+            except OSError as error:
+                raise ReviewError(HTTPStatus.CONFLICT, "原 CSV 无法写回，请核对文件是否被移动或已变成只读。") from error
+        return {"sha256": sha256(raw)}
+
+    @staticmethod
+    def replace_csv(directory: int, name: str, expected: str, raw: bytes) -> None:
+        def conflict():
+            return ReviewError(HTTPStatus.CONFLICT, "原 CSV 已被其他程序修改，已暂停写回。可导出当前标注另存。")
+
+        with open_regular(directory, name) as original:
+            before = os.fstat(original.fileno())
+            if sha256(read_csv_bytes(original)) != expected:
+                raise conflict()
+            if not os.access(name, os.W_OK, dir_fd=directory, follow_symlinks=False):
+                raise OSError("not writable")
+        temporary = ".annotation-" + secrets.token_hex(16) + ".tmp"
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=directory)
+        try:
+            with os.fdopen(fd, "wb") as staged:
+                staged.write(raw)
+                os.fchmod(staged.fileno(), stat.S_IMODE(before.st_mode) & 0o777)
+                staged.flush()
+                os.fsync(staged.fileno())
+            with open_regular(directory, name) as original:
+                latest = os.fstat(original.fileno())
+                if (latest.st_dev, latest.st_ino) != (before.st_dev, before.st_ino):
+                    raise conflict()
+                if sha256(read_csv_bytes(original)) != expected:
+                    raise conflict()
+                current = os.stat(name, dir_fd=directory, follow_symlinks=False)
+                if file_identity(current) != file_identity(latest):
+                    raise conflict()
+            os.replace(temporary, name, src_dir_fd=directory, dst_dir_fd=directory)
+        finally:
+            try:
+                os.unlink(temporary, dir_fd=directory)
+            except FileNotFoundError:
+                pass
+
+    def video_library(self, value: object) -> dict:
+        root = self.source_path(value)
+        if not root.is_dir():
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "请选择视频目录。")
+        paths = {}
+        files = []
+        with open_directory(root) as root_fd:
+            for directory, subdirectories, names, fd in os.fwalk(".", dir_fd=root_fd, follow_symlinks=False):
+                subdirectories.sort()
+                for name in sorted(names):
+                    path = root / directory / name
+                    if path.suffix.lower() not in VIDEO_EXTENSIONS:
+                        continue
+                    try:
+                        info = os.stat(name, dir_fd=fd, follow_symlinks=False)
+                    except FileNotFoundError:
+                        continue
+                    if not stat.S_ISREG(info.st_mode):
+                        continue
+                    if len(paths) >= MAX_VIDEO_ENTRIES:
+                        raise ReviewError(HTTPStatus.BAD_REQUEST, "目录中的视频太多，请缩小视频目录范围。")
+                    file_id = secrets.token_hex(16)
+                    paths[file_id] = path, file_identity(info)
+                    files.append({"id": file_id, "name": name, "relative_path": path.relative_to(root).as_posix()})
+        with self.source_lock:
+            self.video_paths = paths
+        return {"path": str(root), "files": files}
+
+    def open_video(self, file_id: object) -> tuple[Path, BinaryIO]:
+        with self.source_lock:
+            entry = self.video_paths.get(file_id) if isinstance(file_id, str) else None
+        if entry is None:
+            raise ReviewError(HTTPStatus.NOT_FOUND, "视频已不在当前目录列表中，请重新读取视频目录。")
+        path, identity = entry
+        try:
+            with open_directory(path.parent) as directory:
+                file = open_regular(directory, path.name)
+        except OSError as error:
+            raise ReviewError(HTTPStatus.NOT_FOUND, "视频已移动或无法读取，请重新读取视频目录。") from error
+        info = os.fstat(file.fileno())
+        if file_identity(info) != identity:
+            file.close()
+            raise ReviewError(HTTPStatus.CONFLICT, "视频文件在读取目录后发生变化，请重新打开视频目录。")
+        if not 0 < info.st_size <= MAX_VIDEO_BYTES:
+            file.close()
+            raise ReviewError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "仅支持不超过 2 GiB 的非空视频。")
+        return path, file
+
+    def select_video(self, video_id: str, file_id: object) -> int:
+        _, file = self.open_video(file_id)
+        with self.lock:
+            self.clear_video()
+            try:
+                self.video = Video(video_id, file)
+            except Exception:
+                file.close()
+                raise
+            return self.video.frame_count
 
     def clear_video(self) -> None:
         if self.video:
@@ -303,10 +499,10 @@ class Handler(BaseHTTPRequestHandler):
         # Do not log URLs or user-controlled request text.
         pass
 
-    def respond(self, status: HTTPStatus, body: bytes, content_type: str) -> None:
+    def respond_headers(self, status: HTTPStatus, length: int, content_type: str) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(length))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
@@ -316,11 +512,64 @@ class Handler(BaseHTTPRequestHandler):
             "connect-src 'self'; img-src blob:; media-src blob:; frame-ancestors 'none'; base-uri 'none'",
         )
         self.end_headers()
+
+    def respond(self, status: HTTPStatus, body: bytes, content_type: str) -> None:
+        self.respond_headers(status, len(body), content_type)
         if body:
             self.wfile.write(body)
 
     def respond_json(self, status: HTTPStatus, content: dict) -> None:
         self.respond(status, json.dumps(content, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+
+    def read_json(self, max_size: int = 16384) -> dict:
+        lengths = self.headers.get_all("Content-Length") or []
+        if (
+            self.headers.get_content_type() != "application/json"
+            or self.headers.get("Transfer-Encoding")
+            or len(lengths) != 1
+            or not re.fullmatch(r"[0-9]{1,10}", lengths[0])
+        ):
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "请求格式无效。")
+        size = int(lengths[0])
+        if size > max_size:
+            raise ReviewError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "请求内容超出大小限制。")
+        try:
+            data = json.loads(self.rfile.read(size).decode("utf-8"))
+        except (UnicodeDecodeError, ValueError, RecursionError) as error:
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "请求不是有效的 JSON。") from error
+        if not isinstance(data, dict):
+            raise ReviewError(HTTPStatus.BAD_REQUEST, "请求格式无效。")
+        return data
+
+    def serve_source(self) -> bool:
+        if self.command == "GET" and self.path == "/api/default-sources":
+            self.respond_json(HTTPStatus.OK, {"csv_path": DEFAULT_CSV, "video_directory": DEFAULT_VIDEOS})
+            return True
+        if self.command == "POST" and self.path in {"/api/csv/read", "/api/csv/write", "/api/video/library"}:
+            data = self.read_json(6 * MAX_CSV_BYTES + 16384) if self.path == "/api/csv/write" else self.read_json()
+            path = data.get("path")
+            if self.path == "/api/csv/read":
+                result = self.server.read_csv(path)
+            elif self.path == "/api/csv/write":
+                result = self.server.write_csv(path, data.get("expected_sha256"), data.get("csv"))
+            else:
+                result = self.server.video_library(path)
+            self.respond_json(HTTPStatus.OK, result)
+            return True
+        match = VIDEO_FILE_ROUTE.fullmatch(self.path)
+        if self.command == "GET" and match:
+            path, file = self.server.open_video(match[1])
+            with file:
+                length = os.fstat(file.fileno()).st_size
+                self.respond_headers(HTTPStatus.OK, length, mimetypes.guess_type(path.name)[0] or "application/octet-stream")
+                while length:
+                    chunk = file.read(min(length, 1024**2))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    length -= len(chunk)
+            return True
+        return False
 
     def run_request(self) -> None:
         try:
@@ -337,13 +586,19 @@ class Handler(BaseHTTPRequestHandler):
                     self.headers.get("X-Annotation-Session", "").encode(), self.server.token.encode()
                 )
             ):
-                raise ReviewError(HTTPStatus.FORBIDDEN, "逐帧服务只接受当前本机标注页面的请求。")
+                raise ReviewError(HTTPStatus.FORBIDDEN, "本机服务只接受当前标注页面的请求。")
+            if self.serve_source():
+                return
             match = VIDEO_ROUTE.fullmatch(self.path)
             if not match:
                 raise ReviewError(HTTPStatus.NOT_FOUND, "请求路径无效。")
             video_id, index = match.groups()
             if self.command == "POST" and index is None:
-                self.handle_upload(video_id)
+                if self.headers.get_content_type() == "application/json":
+                    count = self.server.select_video(video_id, self.read_json().get("file_id"))
+                    self.respond_json(HTTPStatus.OK, {"frame_count": count})
+                else:
+                    self.handle_upload(video_id)
                 return
             with self.server.lock:
                 video = self.server.video
@@ -366,7 +621,7 @@ class Handler(BaseHTTPRequestHandler):
             # The browser can cancel an upload or navigation while changing rows.
             pass
         except OSError:
-            self.respond_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "本机服务读写失败，请检查临时空间后重试。"})
+            self.respond_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "本机服务读写失败，请检查路径、权限或可用空间。"})
 
     def handle_upload(self, video_id: str) -> None:
         lengths = self.headers.get_all("Content-Length") or []

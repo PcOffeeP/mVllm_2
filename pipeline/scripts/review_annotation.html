@@ -125,7 +125,7 @@
     .field-help { display: block; margin-top: 5px; }
     input[readonly] { color: #405262; background: #f3f6f8; cursor: default; }
 
-    .file-control { display: flex; gap: 8px; align-items: center; }
+    .file-control { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .file-control input[type="file"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
     .file-button { display: inline-flex; align-items: center; min-height: 38px; padding: 7px 14px; border: 1px solid #7793a0; border-radius: 6px; color: var(--accent-dark); background: #fff; cursor: pointer; font-weight: 700; white-space: nowrap; }
     .file-button:hover { background: #f0f7f8; }
@@ -360,26 +360,31 @@
   <main>
     <aside class="notice" aria-label="使用说明">
       <strong>开始前：</strong>
-      <span>请先选择 CSV 和视频文件夹；每次修改会自动写回所选 CSV，并保留本机恢复记录。原始 <code>video_path</code> 仅作为文本显示，不会作为页面内容加载。</span>
+      <span>本机工具会自动打开默认标注表和源视频目录，刷新时恢复当前来源。修改会自动写回当前 CSV，并保留草稿。原始 <code>video_path</code> 仅用于显示和文件名匹配。</span>
     </aside>
 
     <section class="setup-panel" aria-labelledby="source-title">
-      <h2 id="source-title">导入标注来源</h2>
+      <h2 id="source-title">标注来源</h2>
       <div class="setup-grid">
         <div class="field">
-          <span class="field-label">标注 CSV</span>
+          <label class="field-label" for="csv-path">标注 CSV</label>
+          <input id="csv-path" type="text" aria-describedby="csv-help" autocomplete="off" spellcheck="false" disabled>
           <div class="file-control">
+            <button id="apply-csv-path" type="button" disabled>打开 CSV 路径</button>
             <input id="csv-file" type="file" accept=".csv" aria-describedby="csv-help" tabindex="-1">
             <button id="open-csv" type="button" class="file-button" aria-describedby="csv-help">选择 CSV 文件</button>
           </div>
-          <small class="field-help" id="csv-help">选择后可逐条标注；支持自动写回原文件与刷新恢复。</small>
+          <small class="field-help" id="csv-help">可输入项目相对路径或本机绝对路径。留空并点击打开可恢复默认。</small>
         </div>
         <div class="field">
-          <span class="field-label">视频文件夹</span>
+          <label class="field-label" for="video-path">视频目录</label>
+          <input id="video-path" type="text" aria-describedby="video-path-help" autocomplete="off" spellcheck="false" disabled>
           <div class="file-control">
+            <button id="apply-video-path" type="button" disabled>打开视频目录</button>
             <input id="video-files" type="file" webkitdirectory multiple aria-describedby="video-status">
-            <label class="file-button" for="video-files">选择视频文件夹</label>
+            <label class="file-button" for="video-files">临时选择文件夹</label>
           </div>
+          <small class="field-help" id="video-path-help">可输入项目相对路径或本机绝对路径。留空并点击打开可恢复默认。</small>
           <small class="field-help" id="video-status">尚未导入视频文件夹。</small>
         </div>
         <div class="status-block" aria-live="polite">
