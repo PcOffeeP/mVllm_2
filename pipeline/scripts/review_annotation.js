@@ -12,7 +12,9 @@
   const saveStatus = byId("save-status");
   const saveStatusFooter = byId("save-status-footer");
   const ruleHint = byId("rule-hint");
+  const completionError = byId("completion-error");
   const applyRuleButton = byId("apply-rule");
+  const calculateTimeButton = byId("calculate-time");
   const previous = byId("prev");
   const next = byId("next");
   const jump = byId("row-jump");
@@ -36,13 +38,19 @@
 
   const stateColumn = "断裂状态";
   const gripColumn = "异常_未夹紧";
+  const videoAnomalyColumn = "异常_视频异常";
   const explosiveColumn = "异常_爆炸性断裂";
   const annotationStatusColumn = "标注状态";
+  const annotationNoteColumn = "标注备注";
+  const markedFracture = "已标注·有断裂";
+  const markedUnbroken = "已标注·无断裂";
   const mechanismColumn = "断裂模式";
   const siteColumn = "断裂位置";
   const timeColumn = "断裂时间点";
+  const fpsColumn = "视频帧率";
   const frameColumns = ["断裂帧_前", "断裂帧_后"];
-  const numericColumns = new Set([timeColumn, ...frameColumns]);
+  const numericColumns = new Set(frameColumns);
+  const decimalPattern = /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
   const fractureColumns = [mechanismColumn, siteColumn];
   const gripColumns = [...fractureColumns, timeColumn];
   const wholeVideoColumns = [...gripColumns, ...frameColumns];
@@ -59,12 +67,16 @@
     [frameBeforeField, frameColumns[0]],
     [frameAfterField, frameColumns[1]],
     [byId("annotation-status"), annotationStatusColumn],
-    [byId("annotation-note"), "标注备注"],
+    [byId("annotation-note"), annotationNoteColumn],
     ...multiFields,
   ]);
-  const newColumns = [stateColumn, ...multiFields.map(([, name]) => name)];
+  const newColumns = [stateColumn, ...frameColumns, annotationStatusColumn, annotationNoteColumn,
+    ...multiFields.map(([, name]) => name)];
   const displayedColumns = new Set(["id", "video_path", ...fields.values()]);
   const stateOptions = new Set([...byId("state").options].map((option) => option.value).filter(Boolean));
+  const annotationOptions = new Map([...fields]
+    .filter(([control, name]) => control.tagName === "SELECT" && name !== annotationStatusColumn)
+    .map(([control, name]) => [name, new Set([...control.options].map((option) => option.value).filter(Boolean))]));
 
   let table = null;
   let rowIndex = 0;
@@ -146,6 +158,7 @@
     return {
       headers, rows, columns, ...references,
       originals: new WeakMap(), reviewTimes: new WeakSet(), confirmedUnbrokenVideos: new WeakSet(),
+      generatedTimes: new WeakSet(),
     };
   }
 
@@ -232,11 +245,13 @@
       const originals = [];
       const reviewTimes = [];
       const confirmedUnbrokenVideos = [];
+      const generatedTimes = [];
       for (const [index, row] of table.rows.entries()) {
         const previousValues = table.originals.get(row);
         if (previousValues) originals.push([index, [...previousValues]]);
         if (table.reviewTimes.has(row)) reviewTimes.push(index);
         if (table.confirmedUnbrokenVideos.has(row)) confirmedUnbrokenVideos.push(index);
+        if (table.generatedTimes.has(row)) generatedTimes.push(index);
       }
       // Queue the transaction immediately so refresh recovery includes the latest edit.
       await new Promise((resolve, reject) => {
@@ -250,6 +265,7 @@
           originals,
           reviewTimes,
           confirmedUnbrokenVideos,
+          generatedTimes,
           handle: active.handle,
           revision,
           savedRevision: active.savedRevision,
@@ -378,37 +394,54 @@
     if (control.value !== current) control.value = current;
   }
 
-  function annotationIssues(row, column, candidate) {
-    const read = (name) => name === column ? candidate : value(row, name);
+  function isFractureState(state) {
+    return state === "发生断裂" || state === "已断裂";
+  }
+
+  function isCompletedStatus(status) {
+    return status === markedFracture || status === markedUnbroken;
+  }
+
+  function frameIndexValue(frame) {
+    const index = Number(frame);
+    return /^[0-9]+$/.test(frame) && Number.isSafeInteger(index) ? index : null;
+  }
+
+  function annotationIssues(row, read = (name) => value(row, name)) {
     const issues = [];
-    if (read(stateColumn) === "未断裂") {
-      if (read(explosiveColumn) === "是") {
-        issues.push({
-          columns: [stateColumn, explosiveColumn],
-          message: "“未断裂”与“爆炸性断裂”为“是”不能同时填写。",
-        });
-      }
-      if (read(annotationStatusColumn) === "已标注·有断裂") {
-        issues.push({
-          columns: [stateColumn, annotationStatusColumn],
-          message: "“未断裂”与标注状态“已标注·有断裂”不能同时填写。",
-        });
-      }
+    const state = read(stateColumn);
+    const status = read(annotationStatusColumn);
+    if (state === "未断裂" && read(explosiveColumn) === "是") {
+      issues.push({
+        columns: [stateColumn, explosiveColumn],
+        message: "“未断裂”与“爆炸性断裂”为“是”不能同时填写。",
+      });
+    }
+    if ((state === "未断裂" && status === markedFracture)
+      || (isFractureState(state) && status === markedUnbroken)) {
+      issues.push({
+        columns: [stateColumn, annotationStatusColumn],
+        message: `断裂状态“${state}”与标注状态“${status}”冲突。`,
+      });
     }
 
     const time = read(timeColumn);
     if (time !== "" && time !== "无"
-      && (!/^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(time) || !Number.isFinite(Number(time)))) {
-      issues.push({ columns: [timeColumn], message: "断裂时间点请输入以秒为单位的有限数值，或填写“无”。" });
+      && (!decimalPattern.test(time) || !Number.isFinite(Number(time)) || Number(time) < 0)) {
+      issues.push({ columns: [timeColumn], message: "断裂时间点应为非负秒数或“无”。" });
     }
 
+    const frameCount = frameSession?.row === row ? frameSession.count : null;
     const indices = frameColumns.map((name) => {
       const frame = read(name);
       if (frame === "" || frame === "无") return null;
-      const index = Number(frame);
-      if (/^[0-9]+$/.test(frame) && Number.isSafeInteger(index)) return index;
-      issues.push({ columns: [name], message: `${name}请输入从 0 开始的整数，或填写“无”。` });
-      return null;
+      const index = frameIndexValue(frame);
+      if (index === null) {
+        issues.push({ columns: [name], message: `${name}请输入从 0 开始的整数，或填写“无”。` });
+      } else if (frameCount && index >= frameCount) {
+        issues.push({ columns: [name], message: `${name}超出当前源视频的帧号范围。` });
+      }
+      return index;
     });
     if (indices[0] !== null && indices[1] !== null && indices[0] >= indices[1]) {
       issues.push({ columns: frameColumns, message: "断裂前帧必须小于断裂后帧。" });
@@ -417,7 +450,108 @@
   }
 
   function editIssue(row, column, candidate) {
-    return annotationIssues(row, column, candidate).find((issue) => issue.columns.includes(column));
+    const read = (name) => name === column ? candidate : value(row, name);
+    return annotationIssues(row, read).find((issue) => issue.columns.includes(column));
+  }
+
+  function frameRate(raw) {
+    const text = raw.trim();
+    if (decimalPattern.test(text)) return Number(text);
+    const ratio = /^([0-9]+)\/([0-9]+)$/.exec(text);
+    return ratio ? Number(ratio[1]) / Number(ratio[2]) : NaN;
+  }
+
+  function calculatedTime(read, targets) {
+    if (targets.includes(timeColumn)) return { time: "无" };
+    const after = read(frameColumns[1]);
+    if (after === "") return { time: "" };
+    if (after === "无") {
+      return { problem: "断裂后帧为“无”时，需要记录大致时间。填写方式待确认，原时间已保留，此行可继续保存为草稿。" };
+    }
+    const index = frameIndexValue(after);
+    if (index === null) return {};
+    if (index === 0) return { time: "0" };
+    const fps = frameRate(read(fpsColumn));
+    const seconds = index / fps;
+    if (fps <= 0 || !Number.isFinite(fps) || !Number.isFinite(seconds) || seconds <= 0) {
+      return { problem: "无法计算断裂时间点，请核对源视频的“视频帧率”列。" };
+    }
+    // Trim machine-precision noise without rounding to a fixed number of seconds.
+    return { time: String(Number(seconds.toPrecision(15))) };
+  }
+
+  function sameTime(left, right) {
+    if (left === right) return true;
+    if (!decimalPattern.test(left) || !decimalPattern.test(right)) return false;
+    const a = Number(left);
+    const b = Number(right);
+    return Number.isFinite(a) && Number.isFinite(b) && a.toPrecision(15) === b.toPrecision(15);
+  }
+
+  function approveTimeChange(row, nextTime) {
+    const currentTime = value(row, timeColumn);
+    if (nextTime === undefined || sameTime(currentTime, nextTime) || !currentTime || table.generatedTimes.has(row)) return true;
+    return window.confirm(`断裂时间点原值为“${currentTime}”，更新后为“${nextTime || "空白"}”。是否覆盖原值？`);
+  }
+
+  function setCalculatedTime(row, nextTime) {
+    if (nextTime === undefined || sameTime(value(row, timeColumn), nextTime)) return;
+    row[table.columns.get(timeColumn)] = nextTime;
+    table.generatedTimes.add(row);
+    table.reviewTimes.delete(row);
+  }
+
+  function completionIssues(row, read = (name) => value(row, name), targets = activeRuleTargets(row)) {
+    const status = read(annotationStatusColumn);
+    if (!isCompletedStatus(status)) return [];
+    const issues = annotationIssues(row, read).map((issue) => issue.message);
+    const missing = [];
+    const invalid = [];
+    for (const [name, options] of annotationOptions) {
+      const current = read(name);
+      if (!current) missing.push(name);
+      else if (!options.has(current)) invalid.push(name);
+    }
+    for (const name of frameColumns) {
+      if (read(name) === "") missing.push(name);
+    }
+    if (missing.length) issues.push(`请填写：${missing.join("、")}。`);
+    if (invalid.length) issues.push(`请按现行选项修正：${invalid.join("、")}。`);
+
+    const state = read(stateColumn);
+    if (state === "无法判断") issues.push("断裂状态无法判断时，请将标注状态设为“无法判读”。");
+    const fixed = status === markedUnbroken ? wholeVideoColumns : targets;
+    const wrongFixed = fixed.filter((name) => read(name) !== "无");
+    if (wrongFixed.length) issues.push(`按固定规则，${wrongFixed.join("、")}应填写“无”。`);
+    if (isFractureState(state) && read(gripColumn) !== "是") {
+      if (read(mechanismColumn) === "无") issues.push("已确认断裂，模式证据不足时请选择“无法识别”。");
+      if (read(siteColumn) === "无") issues.push("已确认断裂，位置证据不足时请选择“无法确定”。");
+    }
+    if (state === "发生断裂" && frameIndexValue(read(frameColumns[1])) === 0) {
+      issues.push("首帧已经分离时，请复核断裂状态是否应为“已断裂”。");
+    }
+    if (read(videoAnomalyColumn) === "是" && !read(annotationNoteColumn).trim()) {
+      issues.push("请在备注中说明视频异常影响了哪些判断。");
+    }
+
+    const derived = calculatedTime(read, fixed);
+    if (derived.problem) issues.push(derived.problem);
+    if (derived.time !== undefined && !sameTime(read(timeColumn), derived.time)) {
+      issues.push("断裂时间点与当前断裂后帧及视频帧率不一致。");
+    }
+    return issues;
+  }
+
+  function completedEditIssues(row, read, targets) {
+    if (!isCompletedStatus(value(row, annotationStatusColumn)) || completionIssues(row).length) return [];
+    const issues = completionIssues(row, read, targets);
+    return issues.length ? ["请先将标注状态改为“未标注”，再提交会使已完成记录失效的修改。", ...issues] : [];
+  }
+
+  function showCompletionError(issues) {
+    const message = issues.join(" ");
+    completionError.hidden = !issues.length;
+    if (completionError.textContent !== message) completionError.textContent = message;
   }
 
   function ruleTargets(state, grip, wholeVideoUnbroken) {
@@ -436,15 +570,6 @@
       && [timeColumn, ...frameColumns].some((name) => value(row, name) !== "无");
   }
 
-  function ensureFrameColumns() {
-    for (const name of frameColumns) {
-      if (table.columns.has(name)) continue;
-      table.columns.set(name, table.headers.length);
-      table.headers.push(name);
-      for (const row of table.rows) row.push("");
-    }
-  }
-
   function changeRule(row, trigger, nextValue, { revokeFrameConfirmation = false } = {}) {
     const previousTargets = activeRuleTargets(row);
     const state = trigger === stateColumn ? nextValue : value(row, stateColumn);
@@ -458,31 +583,42 @@
         const hasOtherUpdates = ruleTargets(state, grip).some((name) => value(row, name) !== "无");
         if ((!trigger && !hasOtherUpdates)
           || !window.confirm("只按当前片段的“未断裂”应用标注规则，并保留完整视频的断裂前后帧？取消将保留本条当前标注。")) {
-          return false;
+          return { applied: false };
         }
       }
     }
     const targets = ruleTargets(state, grip, wholeVideoUnbroken);
     const applying = !revokeFrameConfirmation && (!trigger || targets !== previousTargets) ? targets : [];
     const updates = applying.filter((name) => value(row, name) !== "无");
+    const originals = table.originals.get(row) ?? new Map();
+    const proposed = new Map([...originals].filter(([name]) => !targets.includes(name)));
+    if (trigger) proposed.set(trigger, nextValue);
+    for (const name of updates) proposed.set(name, "无");
+    const read = (name) => proposed.has(name) ? proposed.get(name) : value(row, name);
+    const releasedTime = previousTargets.includes(timeColumn) && !targets.includes(timeColumn);
+    const currentTime = read(timeColumn);
+    const derived = releasedTime && !originals.has(timeColumn) && (currentTime === "" || currentTime === "无")
+      ? calculatedTime(read, targets).time : undefined;
+    if (derived !== undefined) proposed.set(timeColumn, derived);
+    const issues = completedEditIssues(row, read, targets);
+    if (issues.length) return { applied: false, issues };
+
     const conflicts = updates.filter((name) => value(row, name) !== "");
     if (conflicts.length) {
       const prior = conflicts.map((name) => `${name}「${value(row, name)}」`).join("\n");
       if (!window.confirm("按固定组合填写“无”将替换以下原值。取消将保留本条记录当前值。\n\n" + prior)) {
-        return false;
+        return { applied: false };
       }
     }
 
     if (wholeVideoUnbroken) {
-      ensureFrameColumns();
       table.confirmedUnbrokenVideos.add(row);
     } else {
       table.confirmedUnbrokenVideos.delete(row);
     }
 
     // 保存实际被覆盖的值，使重叠规则解除时能按字段恢复。
-    const originals = table.originals.get(row) ?? new Map();
-    if (previousTargets.includes(timeColumn) && !targets.includes(timeColumn)
+    if (releasedTime
       && !originals.has(timeColumn) && value(row, timeColumn) === "无") {
       table.reviewTimes.add(row);
     }
@@ -495,13 +631,15 @@
       originals.set(name, value(row, name));
       row[table.columns.get(name)] = "无";
     }
+    if (updates.includes(timeColumn) || releasedTime) table.generatedTimes.delete(row);
+    setCalculatedTime(row, derived);
     if (originals.size) {
       table.originals.set(row, originals);
     } else {
       table.originals.delete(row);
     }
     if (trigger) row[table.columns.get(trigger)] = nextValue;
-    return true;
+    return { applied: true };
   }
 
   function renderFields() {
@@ -512,9 +650,11 @@
       setControl(control, current);
       control.disabled = !editorReady || openingCsv || reconnecting
         || !row || !table.columns.has(column) || targets.includes(column);
+      if (column === timeColumn) control.readOnly = true;
     }
 
     renderRuleHint(row, targets);
+    showCompletionError(row ? completionIssues(row) : []);
     updateFrameControls();
   }
 
@@ -540,6 +680,9 @@
     const canConfirmFrames = row && frameConfirmationAvailable(row);
     const inconsistent = row && targets.some((name) => value(row, name) !== "无");
     const canRevokeFrames = row && table.confirmedUnbrokenVideos.has(row);
+    const derived = row && !targets.includes(timeColumn)
+      ? calculatedTime((name) => value(row, name), targets) : {};
+    const timePending = derived.time && !sameTime(value(row, timeColumn), derived.time);
     const review = row && !targets.length && stateOptions.has(value(row, stateColumn))
       ? fractureColumns.filter((name) => value(row, name) === "无")
       : [];
@@ -557,7 +700,11 @@
       if (table.originals.has(row)) hints.push("解除条件可恢复本页覆盖前的值。");
     }
     if (canConfirmFrames) hints.push("若完整视频全程未断裂，可确认并补填断裂时间点及前后帧。");
-    if (review.length) hints.push(review.join("、") + "仍为“无”，请按画面手动复核。");
+    if (review.length) hints.push(review.join("、") + "仍为“无”，请复核画面与填写规则。");
+    if (derived.problem) hints.push(derived.problem);
+    if (timePending) {
+      hints.push(`按当前后帧和视频帧率可计算为 ${derived.time} 秒。点击“计算发生时间”可写入当前行。`);
+    }
     ruleHint.textContent = hints.join("");
     if (canRevokeFrames) {
       applyRuleButton.textContent = "撤销完整视频未断裂确认";
@@ -566,6 +713,8 @@
     }
     applyRuleButton.hidden = !inconsistent && !canConfirmFrames && !canRevokeFrames;
     applyRuleButton.disabled = !editorReady || openingCsv || reconnecting || applyRuleButton.hidden;
+    calculateTimeButton.hidden = !timePending;
+    calculateTimeButton.disabled = !editorReady || openingCsv || reconnecting || calculateTimeButton.hidden;
   }
 
   function updateProgress() {
@@ -916,6 +1065,7 @@
   }
 
   for (const [control, column] of fields) {
+    if (column === timeColumn) continue;
     const isSelection = control.tagName === "SELECT";
     const numericField = numericColumns.has(column);
     const handleEdit = (event) => {
@@ -923,7 +1073,9 @@
       if (!row || control.disabled || event?.isComposing) return;
       const previousValue = value(row, column);
       if (control.value === previousValue) return;
-      const issue = editIssue(row, column, control.value);
+      const candidate = control.value;
+      const choosingCompletion = column === annotationStatusColumn && isCompletedStatus(candidate);
+      const issue = choosingCompletion ? undefined : editIssue(row, column, candidate);
       if (issue) {
         setControl(control, previousValue);
         renderRuleHint(row, activeRuleTargets(row), issue);
@@ -931,12 +1083,37 @@
         return;
       }
       if (column === stateColumn || column === gripColumn) {
-        const changed = changeRule(row, column, control.value);
+        const result = changeRule(row, column, candidate);
         renderFields();
-        if (!changed) return;
+        if (!result.applied) {
+          if (result.issues) showCompletionError(result.issues);
+          return;
+        }
       } else {
-        row[table.columns.get(column)] = control.value;
-        renderRuleHint(row, activeRuleTargets(row));
+        const targets = activeRuleTargets(row);
+        const readCandidate = (name) => name === column ? candidate : value(row, name);
+        let nextTime;
+        if (choosingCompletion || column === frameColumns[1]) {
+          const timeTargets = choosingCompletion && candidate === markedUnbroken ? wholeVideoColumns : targets;
+          const derived = calculatedTime(readCandidate, timeTargets);
+          nextTime = derived.time;
+          if (nextTime === "" && !table.generatedTimes.has(row)) nextTime = undefined;
+          if (derived.problem && readCandidate(frameColumns[1]) !== "无" && table.generatedTimes.has(row)) nextTime = "";
+        }
+        const read = (name) => name === timeColumn && nextTime !== undefined ? nextTime : readCandidate(name);
+        const issues = choosingCompletion ? completionIssues(row, read, targets) : completedEditIssues(row, read, targets);
+        if (issues.length || !approveTimeChange(row, nextTime)) {
+          setControl(control, previousValue);
+          renderRuleHint(row, targets);
+          showCompletionError(issues.length ? issues : completionIssues(row));
+          if (numericField) renderSaveStatus();
+          return;
+        }
+        row[table.columns.get(column)] = candidate;
+        setCalculatedTime(row, nextTime);
+        setControl(byId("time"), value(row, timeColumn));
+        renderRuleHint(row, targets);
+        showCompletionError(completionIssues(row));
       }
       noteChange();
       if (column === stateColumn) updateProgress();
@@ -961,6 +1138,16 @@
     }
   }
 
+  calculateTimeButton.addEventListener("click", () => {
+    const row = table?.rows[rowIndex];
+    if (!row || calculateTimeButton.disabled) return;
+    const { time } = calculatedTime((name) => value(row, name), activeRuleTargets(row));
+    if (!time || !approveTimeChange(row, time)) return;
+    setCalculatedTime(row, time);
+    renderFields();
+    noteChange();
+  });
+
   applyRuleButton.addEventListener("click", () => {
     const row = table?.rows[rowIndex];
     if (!row || applyRuleButton.disabled) return;
@@ -972,7 +1159,11 @@
         return;
       }
     }
-    if (!changeRule(row, null, "", { revokeFrameConfirmation })) return;
+    const result = changeRule(row, null, "", { revokeFrameConfirmation });
+    if (!result.applied) {
+      if (result.issues) showCompletionError(result.issues);
+      return;
+    }
     renderFields();
     noteChange();
   });
@@ -1221,6 +1412,7 @@
     }
     for (const index of stored.reviewTimes) table.reviewTimes.add(table.rows[index]);
     for (const index of stored.confirmedUnbrokenVideos ?? []) table.confirmedUnbrokenVideos.add(table.rows[index]);
+    for (const index of stored.generatedTimes ?? []) table.generatedTimes.add(table.rows[index]);
     rowIndex = Math.max(0, Math.min(stored.rowIndex, table.rows.length - 1));
     draft = {
       handle: stored.handle,

@@ -123,6 +123,7 @@
     label, .field-label { display: block; margin-bottom: 5px; font-weight: 700; }
     .field-help, .status-text, .muted { color: var(--muted); font-size: 13px; }
     .field-help { display: block; margin-top: 5px; }
+    input[readonly] { color: #405262; background: #f3f6f8; cursor: default; }
 
     .file-control { display: flex; gap: 8px; align-items: center; }
     .file-control input[type="file"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -278,6 +279,8 @@
     .original-fields dd { min-width: 0; margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 
     .rule-hint { margin: 0; padding: 10px 12px; border-left: 3px solid #5c8995; color: #405262; background: #f3f8f9; font-size: 13px; }
+    .completion-error { margin: 10px 0 0; padding: 10px 12px; border-left: 3px solid var(--danger); color: #762c24; background: #fff1ef; font-size: 13px; }
+    .rule-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
     .footer-bar {
       display: grid;
@@ -465,7 +468,7 @@
           <section aria-labelledby="time-title">
             <h3 id="time-title">关键帧定位</h3>
             <div class="time-grid">
-              <div class="field"><label for="time">发生时间（秒）</label><input id="time" name="time" type="text" inputmode="decimal"></div>
+              <div class="field"><label for="time">发生时间（秒，自动计算）</label><input id="time" name="time" type="text" readonly aria-describedby="time-help"><span id="time-help" class="field-help">由断裂后帧 ÷ CSV 的视频帧率自动计算；后帧为 0 时记为 0。</span></div>
               <div class="field"><label for="frame-before">断裂前帧</label><input id="frame-before" name="frame-before" type="text" inputmode="numeric"></div>
               <div class="field"><label for="frame-after">断裂后帧</label><input id="frame-after" name="frame-after" type="text" inputmode="numeric"></div>
             </div>
@@ -492,7 +495,11 @@
 
           <section aria-label="自动规则说明">
             <p id="rule-hint" class="rule-hint">规则提示将在导入后显示。未夹紧选择“是”时，工具将自动填入相应的“无”值；请在导出前复核。</p>
-            <button id="apply-rule" type="button" hidden>按规则修正本行</button>
+            <p id="completion-error" class="completion-error" role="alert" aria-live="assertive" hidden></p>
+            <div class="rule-actions">
+              <button id="apply-rule" type="button" hidden>按规则修正本行</button>
+              <button id="calculate-time" type="button" hidden>计算发生时间</button>
+            </div>
           </section>
         </form>
       </div>
