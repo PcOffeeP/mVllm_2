@@ -44,6 +44,9 @@
 
 两机都需要 Git、ffmpeg、ffprobe 和 uv 在 PATH 中可用。训练机的运行入口仍是 Conda Python；环境检查器内部使用 `uv pip check`，所以 uv 也是检查工具前置。训练机另需 Linux x86_64、NVIDIA 驱动及可用 `nvidia-smi`。
 
+<details>
+<summary>Mac：首次部署与日常运行</summary>
+
 ### Mac：首次部署与日常运行
 
 先准备一个已经存在的 Python 3.11.x 解释器，以其绝对路径设置 `BOOTSTRAP_PYTHON`。`MAC_ENV` 是准备新建且尚不存在的环境绝对目录，不得经过符号链接或包含 `..`。从仓库根运行：
@@ -70,6 +73,11 @@ uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
 
 这里 `uv run` 复用显式选定的解释器，跳过项目依赖自动同步并禁止下载 Python；它不替代首次部署。不要用未指定解释器的默认 `uv run` 去选择另一套环境。
 
+</details>
+
+<details>
+<summary>训练机：核验已有 Conda 环境</summary>
+
 ### 训练机：核验已有 Conda 环境
 
 先确认具备[子模块](.gitmodules)对应 Gitee SSH 仓库的访问资格，初始化固定版本并保持干净：
@@ -91,6 +99,8 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 检查覆盖锁定依赖、公共入口、媒体工具、CUDA 和训练模块来源，不下载或加载模型，也不训练或推理。Linux editable 依赖绑定代码工作区，后续使用时须保留或重新核定该来源。只有检查通过的环境才用于后续实际处理；历史环境名字不能代替核验。
 
 如果没有合格的 Conda 环境，先准备并核验，不能直接开始真实任务。现有 `source_prepare_environment.py --profile linux-gpu` 创建的是新的 venv，既不创建 Conda 环境，也不修补已有 Conda 环境；其 `--env` 不接受已存在目录。部署接口与依赖维护规则见[脚本索引](scripts/SCRIPTS.md)。
+
+</details>
 
 ### 准备实际输入
 
