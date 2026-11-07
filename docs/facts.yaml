@@ -233,7 +233,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:96
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:33
+      - ref: docs/TODO.md:108
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -331,7 +331,7 @@ facts:
         expect: 导入、恢复草稿和导出会保留这些原值
       - ref: docs/label.md:82
         expect: 不作为模型微调的预测标签
-      - ref: docs/TODO.md:45
+      - ref: docs/TODO.md:11
         expect: 现有 v4.1 评分与旧阈值不直接套用
       - ref: pipeline/scripts/review_annotation.js:663
         expect: function ruleTargets(state, grip, wholeVideoUnbroken)
