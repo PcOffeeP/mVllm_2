@@ -1,0 +1,434 @@
+"""Synthetic behavior checks for the confirmed source-group split contract.
+
+No fixture reads project annotations, split members, or media. A group declaration
+is supplied explicitly; these tests do not establish real source independence.
+"""
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+import pytest
+
+from script.data_split import generate as splitter
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+MODEL_FIELDS = (
+    "断裂状态", "断裂模式", "断裂位置",
+    "异常_未夹紧", "异常_视频异常", "异常_爆炸性断裂",
+    "现象_伸长", "现象_颈缩", "现象_开裂", "现象_界面分离", "现象_断后脱夹",
+)
+
+
+def video_id(alias):
+    if alias.startswith("video_"):
+        return alias
+    fixed = {"a": 901, "b": 902, "c": 903, "d": 904, "test": 999, "unknown": 9999}
+    if alias in fixed:
+        number = fixed[alias]
+    elif alias.startswith("rare"):
+        number = 101 + int(alias[4:])
+    elif alias.startswith("common"):
+        number = 201 + int(alias[6:])
+    else:
+        number = 1 + int(alias[1:])
+    return f"video_{number:04d}"
+
+
+def row(alias, **changes):
+    value = {
+        "id": video_id(alias),
+        "video_path": f"not-real-media/{video_id(alias)}.mp4",
+        "标注状态": "已标注·有断裂",
+        "断裂状态": "发生断裂",
+        "断裂模式": "韧性断裂",
+        "断裂位置": "标距内",
+        **{field: "否" for field in MODEL_FIELDS[3:]},
+    }
+    value.update(changes)
+    return value
+
+
+def labels_for(rows):
+    return splitter.validate_labels(rows, expected_count=None)
+
+
+def group(group_id, *video_ids):
+    return {"group_id": group_id, "video_ids": [video_id(v) for v in video_ids]}
+
+
+def problem(rows, groups):
+    labels = labels_for(rows)
+    return splitter.Problem(labels, groups)
+
+
+def test_singleton_is_held_out_once_and_two_positives_use_two_validation_folds():
+    rows = [row(f"v{i}") for i in range(6)]
+    rows[0]["异常_视频异常"] = "是"  # One supporting group, not permanent training.
+    rows[1]["现象_开裂"] = rows[2]["现象_开裂"] = "是"
+    groups = [group(f"g{i}", f"v{i}") for i in range(6)]
+    result = splitter.search(problem(rows, groups))
+    assignment = result["best_assignment"]
+
+    singleton_fold = assignment[0]
+    assert sum(singleton_fold == fold for fold in range(3)) == 1
+    assert sum(singleton_fold != fold for fold in range(3)) == 2
+    assert assignment[1] != assignment[2]
+    assert sorted(sum(assignment[i] == fold for i in (1, 2)) for fold in range(3)) == [0, 1, 1]
+
+
+def test_coverage_outranks_a_more_balanced_video_count():
+    rows = [row(f"rare{i}", **{"现象_开裂": "是"}) for i in range(3)]
+    rows += [row(f"common{i}") for i in range(3)]
+    groups = [group(f"g{i}", f"rare{i}") for i in range(3)]
+    groups.append(group("g3", "common0", "common1", "common2"))
+    candidate = problem(rows, groups)
+
+    covered = candidate.score((0, 1, 2, 0))  # Validation video counts 4, 1, 1.
+    balanced = candidate.score((0, 0, 1, 2))  # Counts 2, 1, 3, but one rare fold absent.
+    assert covered[:3] == (0, 6, 12)
+    assert balanced[:3] == (1, 3, 6)
+    assert covered < balanced
+
+
+def test_group_evidence_is_union_of_member_labels_not_number_of_videos():
+    rows = [row("a", **{"现象_开裂": "是"}), row("b", **{"现象_开裂": "是"}), row("c"), row("d")]
+    candidate = problem(rows, [group("g0", "a", "b"), group("g1", "c"), group("g2", "d")])
+    # There is only one supporting group for 是. Duplicating its videos cannot
+    # turn it into g=2 or create a required second validation fold.
+    assert candidate.score((0, 1, 2))[0] == 0
+
+
+def test_unknown_multiselect_does_not_supply_negative_evidence():
+    rows = [row(f"v{i}", **{"现象_伸长": "否" if i < 2 else "无法判断"}) for i in range(6)]
+    candidate = problem(rows, [group(f"g{i}", f"v{i}") for i in range(6)])
+    # Two known negatives share fold 0, whereas unknowns appear in every fold.
+    # Only the known negatives trigger g=2 coverage, leaving exactly one gap.
+    assert candidate.score((0, 0, 0, 1, 2, 2))[0] == 1
+
+
+def test_unknown_and_fixed_none_do_not_create_determined_coverage_targets():
+    rows = [row(f"v{i}", **{
+        "断裂状态": "未断裂" if i < 3 else "无法确定",
+        "断裂模式": "无" if i < 3 else "无法确定",
+        "断裂位置": "无" if i < 3 else "无法确定",
+        "标注状态": "已标注·无断裂" if i < 3 else "无法判读",
+    }) for i in range(6)]
+    candidate = problem(rows, [group(f"g{i}", f"v{i}") for i in range(6)])
+    # Determined 未断裂 is balanced. 无 and unknown each cluster, but do not
+    # generate coverage penalties; they remain separate distribution targets.
+    score = candidate.score((0, 1, 2, 0, 0, 0))
+    assert score[0] == 0
+    assert score[3] > 0
+
+
+@pytest.mark.parametrize("damage", ["missing_id", "duplicate_id", "blank_label", "bad_enum", "bad_fixed_combination"])
+def test_incomplete_or_invalid_labels_fail_closed(damage):
+    rows = [row("a"), row("b")]
+    if damage == "missing_id":
+        del rows[0]["id"]
+    elif damage == "duplicate_id":
+        rows[1]["id"] = rows[0]["id"]
+    elif damage == "blank_label":
+        rows[0]["现象_开裂"] = ""
+    elif damage == "bad_enum":
+        rows[0]["现象_开裂"] = "未知的新标签"
+    else:
+        rows[0]["断裂状态"] = "未断裂"  # Requires mode/location 无.
+        rows[0]["标注状态"] = "已标注·无断裂"
+    with pytest.raises(ValueError):
+        labels_for(rows)
+
+
+@pytest.mark.parametrize("groups,test_ids", [
+    ([group("g", "a", "test")], ["test"]),
+    ([group("g", "a"), group("h", "a", "test")], ["test"]),
+    ([group("g", "a")], ["test"]),
+    ([group("g", "a", "unknown"), group("t", "test")], ["test"]),
+    ([group("g", "a"), group("g", "test")], ["test"]),
+])
+def test_cross_boundary_or_incomplete_group_declarations_are_rejected(groups, test_ids):
+    labels = labels_for([row("a"), row("test")])
+    with pytest.raises(ValueError):
+        splitter.validate_groups({"groups": groups}, labels, [video_id(v) for v in test_ids])
+
+
+def test_final_tie_uses_sorted_group_id_fold_sequence():
+    candidate = problem([row("a"), row("b"), row("c")], [group("g0", "a"), group("g1", "b"), group("g2", "c")])
+    left = candidate.score((0, 1, 2))
+    right = candidate.score((1, 0, 2))
+    assert left[:-1] == right[:-1]
+    assert left < right
+
+
+def test_declared_seed_range_and_input_order_give_reproducible_search():
+    rows = [row(f"v{i}", **{"现象_开裂": "是" if i < 2 else "否"}) for i in range(6)]
+    groups = [group(f"g{i}", f"v{i}") for i in range(6)]
+    first = splitter.search(problem(rows, groups), seeds=range(42, 142))
+    second = splitter.search(problem(list(reversed(rows)), list(reversed(groups))), seeds=range(42, 142))
+    assert first == second
+    assert len(first["candidates"]) == 100
+
+
+def write_inputs(directory, *, reverse=False):
+    directory.mkdir(parents=True)
+    rows = [row(f"video_{i+1:04d}") for i in range(110)]
+    rows[0].update({"断裂状态": "未断裂", "断裂模式": "无", "断裂位置": "无", "标注状态": "已标注·无断裂"})
+    rows[1].update({"断裂状态": "无法判断", "断裂模式": "无法识别", "断裂位置": "无法确定", "标注状态": "无法判读"})
+    rows[2]["现象_伸长"] = "无法判断"
+    for index, entry in enumerate(rows):
+        entry["标注备注"] = '合成备注，保留逗号,"引号"\n以及换行' if index in (1, 90) else ""
+        entry["断裂时间点"] = "无" if index == 0 else f"{index}.25"
+    test_ids = [entry["id"] for entry in rows[89:]]
+    # Deliberately declare only three synthetic development sources, each with
+    # multiple videos. 110 IDs are not evidence of 110 independent sources.
+    groups = [
+        group("dev_a", *(entry["id"] for entry in rows[:30])),
+        group("dev_b", *(entry["id"] for entry in rows[30:60])),
+        group("dev_c", *(entry["id"] for entry in rows[60:89])),
+        *[group(f"test_{i:03d}", entry["id"]) for i, entry in enumerate(rows[89:])],
+    ]
+    if reverse:
+        rows.reverse()
+        groups.reverse()
+        for entry in groups:
+            entry["video_ids"].reverse()
+    labels_path = directory / "labels.csv"
+    with labels_path.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    test_path = directory / "test.json"
+    test_path.write_text(json.dumps({"video_ids": test_ids}, ensure_ascii=False), encoding="utf-8")
+    groups_path = directory / "groups.json"
+    groups_path.write_text(json.dumps({"groups": groups}, ensure_ascii=False), encoding="utf-8")
+    return labels_path, test_path, groups_path
+
+
+def run_cli(inputs, output_dir, *, hash_seed="1"):
+    labels, test, groups = inputs
+    return subprocess.run(
+        [sys.executable, str(PROJECT_ROOT / "script/data_split/generate.py"),
+         "--labels", str(labels), "--test-split", str(test), "--groups", str(groups),
+         "--output-dir", str(output_dir)],
+        cwd=PROJECT_ROOT, env={**os.environ, "PYTHONHASHSEED": hash_seed},
+        capture_output=True, text=True, timeout=120,
+    )
+
+
+def output_bytes(directory):
+    return {str(path.relative_to(directory)): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+
+
+def test_existing_output_directory_is_preserved(tmp_path):
+    inputs = write_inputs(tmp_path / "inputs")
+    output = tmp_path / "release"
+    output.mkdir()
+    (output / "keep.txt").write_text("user-owned existing data", encoding="utf-8")
+    before = output_bytes(output)
+    result = run_cli(inputs, output)
+    assert result.returncode != 0
+    assert output_bytes(output) == before
+
+
+def test_rejected_input_does_not_publish_a_partial_directory(tmp_path):
+    labels, test, groups_path = write_inputs(tmp_path / "inputs")
+    groups = json.loads(groups_path.read_text(encoding="utf-8"))
+    groups["groups"][0]["video_ids"].append("video_0090")
+    groups_path.write_text(json.dumps(groups), encoding="utf-8")
+    output = tmp_path / "release"
+    result = run_cli((labels, test, groups_path), output)
+    assert result.returncode != 0
+    assert not output.exists()
+
+
+def test_test_labels_cannot_change_the_development_score_or_assignment():
+    dev = [row(f"v{i}") for i in range(6)]
+    groups = [group(f"g{i}", f"v{i}") for i in range(6)]
+    first_labels = labels_for(dev + [row("test")])
+    second_labels = labels_for(dev + [row("test", **{
+        "断裂状态": "无法确定", "断裂模式": "无法确定",
+        "断裂位置": "无法确定", "标注状态": "无法判读",
+        "现象_开裂": "是", "现象_伸长": "无法判断",
+    })])
+    first = splitter.Problem(first_labels, groups)
+    second = splitter.Problem(second_labels, groups)
+    assert first.score((0, 1, 2, 0, 1, 2)) == second.score((0, 1, 2, 0, 1, 2))
+    assert splitter.search(first)["best_assignment"] == splitter.search(second)["best_assignment"]
+
+
+@pytest.fixture
+def published(tmp_path):
+    inputs = write_inputs(tmp_path / "inputs")
+    output = tmp_path / "release"
+    result = run_cli(inputs, output)
+    assert result.returncode == 0, result.stderr
+    return inputs, output, json.loads(result.stdout)
+
+
+def load_json(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_cli_preserves_test_and_rotates_whole_development_sources(published):
+    inputs, output, _ = published
+    test_ids = set(load_json(inputs[1])["video_ids"])
+    dev_ids = {f"video_{i:04d}" for i in range(1, 90)}
+    assert (output / "test.json").read_bytes() == inputs[1].read_bytes()
+    validation_occurrences = {video: 0 for video in dev_ids}
+    training_occurrences = {video: 0 for video in dev_ids}
+    declared = load_json(inputs[2])["groups"][:3]
+    for fold in range(3):
+        train_ids = load_json(output / f"fold_{fold}_train.json")["video_ids"]
+        val_ids = load_json(output / f"fold_{fold}_val.json")["video_ids"]
+        assert train_ids == sorted(train_ids)
+        assert val_ids == sorted(val_ids)
+        train, val = set(train_ids), set(val_ids)
+        assert len(train_ids) == len(train) and len(val_ids) == len(val)
+        assert train.isdisjoint(val)
+        assert (train | val) == dev_ids
+        assert (train | val).isdisjoint(test_ids)
+        for source in declared:
+            members = set(source["video_ids"])
+            assert members <= train or members <= val
+        for video in train:
+            training_occurrences[video] += 1
+        for video in val:
+            validation_occurrences[video] += 1
+    assert set(validation_occurrences.values()) == {1}
+    assert set(training_occurrences.values()) == {2}
+
+
+def test_release_binds_input_rules_code_and_all_output_bytes(published):
+    inputs, output, cli = published
+    manifest_path = output / "manifest.json"
+    manifest = load_json(manifest_path)
+    assert cli["manifest_sha256"] == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    expected_inputs = {"labels.csv": inputs[0], "test.json": inputs[1], "groups.json": inputs[2],
+                       "docs_label.md": PROJECT_ROOT / "docs/label.md",
+                       "docs_data-split-design.md": PROJECT_ROOT / "docs/data-split-design.md",
+                       "generate.py": PROJECT_ROOT / "script/data_split/generate.py"}
+    for name, path in expected_inputs.items():
+        content = path.read_bytes()
+        assert manifest["inputs"][name]["sha256"] == hashlib.sha256(content).hexdigest()
+        assert (output / f"input_{name}").read_bytes() == content
+    assert set(manifest["outputs"]) == set(output_bytes(output)) - {"manifest.json"}
+    for name, identity in manifest["outputs"].items():
+        assert identity["sha256"] == hashlib.sha256((output / name).read_bytes()).hexdigest()
+    assert manifest["code_commit"]
+    assert manifest["environment"]["python"]
+    assert manifest["rule_version"]
+    assert manifest["manual_exceptions"] == []
+    search = load_json(output / "search.json")
+    assert search["seeds"] == list(range(42, 142))
+    assert [candidate["seed"] for candidate in search["candidates"]] == list(range(42, 142))
+    assert search["global_optimality_proven"] is False
+    assert search["test_labels_used_for_objective"] is False
+
+
+def read_csv(path):
+    with path.open(encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        return reader.fieldnames, list(reader)
+
+
+def test_annotation_subsets_preserve_raw_fields_values_and_json_membership(published):
+    inputs, output, _ = published
+    source_headers, source_rows = read_csv(inputs[0])
+    originals = {entry["id"]: entry for entry in source_rows}
+    split_names = [*(f"fold_{fold}_{split}" for fold in range(3) for split in ("train", "val")), "test"]
+    manifest = load_json(output / "manifest.json")
+    for name in split_names:
+        csv_path = output / f"{name}.csv"
+        headers, subset = read_csv(csv_path)
+        expected_ids = sorted(load_json(output / f"{name}.json")["video_ids"])
+        assert headers == source_headers, name
+        assert [entry["id"] for entry in subset] == expected_ids, name
+        assert subset == [originals[video] for video in expected_ids], name
+        assert manifest["outputs"][csv_path.name]["sha256"] == hashlib.sha256(csv_path.read_bytes()).hexdigest()
+    # Check the whole raw rows above rather than only normalized model labels:
+    # paths, fixed 无, legacy aliases, blank notes, time strings, CSV quoting
+    # and embedded newlines all have to survive in the applicable subsets.
+    assert originals["video_0002"]["断裂状态"] == "无法判断"
+    assert originals["video_0002"]["断裂模式"] == "无法识别"
+    assert (output / "test.json").read_bytes() == inputs[1].read_bytes()
+
+
+def test_release_keeps_unknown_none_and_legacy_alias_evidence_distinct(published):
+    _, output, _ = published
+    report = load_json(output / "distributions.json")
+    counts = report["canonical_by_split"]["all"]
+    assert counts["断裂模式"]["无"] == {"videos": 1, "groups": 1}
+    assert counts["断裂模式"]["无法确定"] == {"videos": 1, "groups": 1}
+    assert counts["现象_伸长"]["无法判断"] == {"videos": 1, "groups": 1}
+    assert counts["现象_伸长"]["否"]["videos"] == 109
+    assert report["raw_value_video_counts"]["all"]["断裂模式"]["无法识别"] == 1
+    assert {entry["field"] for entry in report["alias_records"]} == {"断裂状态", "断裂模式"}
+    # The 30 videos in dev_a supply one independent group for this mode.
+    assert report["canonical_by_split"]["development"]["断裂模式"]["韧性断裂"] == {"videos": 87, "groups": 3}
+
+
+def test_cli_same_inputs_are_byte_reproducible_across_hash_seeds(published, tmp_path):
+    inputs, output, _ = published
+    second = tmp_path / "second-release"
+    result = run_cli(inputs, second, hash_seed="994")
+    assert result.returncode == 0, result.stderr
+    assert output_bytes(output) == output_bytes(second)
+
+
+def test_cli_sorted_assignments_ignore_csv_group_and_member_order(published, tmp_path):
+    _, output, _ = published
+    inputs = write_inputs(tmp_path / "reordered", reverse=True)
+    second = tmp_path / "reordered-release"
+    result = run_cli(inputs, second)
+    assert result.returncode == 0, result.stderr
+    for name in [*(f"fold_{fold}_{split}.json" for fold in range(3) for split in ("train", "val")),
+                 *(f"fold_{fold}_{split}.csv" for fold in range(3) for split in ("train", "val")), "test.csv",
+                 "groups.json", "search.json"]:
+        assert (output / name).read_bytes() == (second / name).read_bytes(), name
+    # Input-byte identities must still reflect the changed CSV/group order.
+    assert load_json(output / "manifest.json")["inputs"]["labels.csv"] != load_json(second / "manifest.json")["inputs"]["labels.csv"]
+
+
+def test_publication_failure_after_staging_leaves_no_formal_or_partial_release(tmp_path, monkeypatch):
+    inputs = write_inputs(tmp_path / "inputs")
+    output = tmp_path / "release"
+    attempted = []
+
+    def fail_rename(source, destination):
+        assert Path(source).is_dir()
+        assert (Path(source) / "manifest.json").is_file()
+        attempted.append((source, destination))
+        raise OSError("synthetic publication failure")
+
+    monkeypatch.setattr(splitter, "_publish_new_directory", fail_rename)
+    with pytest.raises(OSError, match="synthetic publication failure"):
+        splitter.generate(*inputs, output)
+    assert len(attempted) == 1
+    assert not output.exists()
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["inputs"]
+
+
+def test_output_appearing_at_atomic_publication_is_not_replaced(tmp_path, monkeypatch):
+    inputs = write_inputs(tmp_path / "inputs")
+    output = tmp_path / "release"
+    publish = splitter._publish_new_directory
+
+    def concurrent_directory(source, destination):
+        # An empty existing directory is significant: POSIX rename() alone can
+        # replace it even after an earlier exists() check has passed.
+        Path(destination).mkdir()
+        publish(source, destination)
+
+    monkeypatch.setattr(splitter, "_publish_new_directory", concurrent_directory)
+    with pytest.raises(OSError):
+        splitter.generate(*inputs, output)
+    assert output.is_dir()
+    assert list(output.iterdir()) == []
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["inputs", "release"]

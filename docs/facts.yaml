@@ -359,6 +359,26 @@ facts:
     established_by: 用户于 2026-11-07 澄清使用范围；旧代码依赖由代码核对
     supersedes: null
     affects: [data, eval, code]
+  - id: DF-020
+    state: active
+    topic: 本轮来源组划分的用户确认与生成器边界
+    claim: >
+      用户于 2026-11-07 确认当前 110 个源视频分别来自独立试验，本轮以每个视频为一来源组；这是用户提供的来源事实，不由文件哈希证明。文件哈希检查未发现完全相同视频，但未完成近似素材或模拟来源审查。已确认固定旧 21 个测试成员、仅重排开发集三折；生成器要求显式来源组并检查完整性和跨测试／开发冲突，按种子 42 至 141 搜索候选。测试集历史使用边界保持；这些代码和合成测试不证明实际划分已生成、来源完全无泄漏或模型效果改善。
+    evidence:
+      - ref: docs/data-split-design.md:19
+        expect: 用户已确认 110 个源视频分别来自独立试验
+      - ref: docs/data-split-design.md:3
+        expect: 固定已有 21 个 test 视频
+      - ref: script/data_split/generate.py:49
+        expect: SEEDS = tuple(range(42, 142))
+      - ref: script/data_split/generate.py:142
+        expect: def validate_groups(payload, labels, test_ids):
+      - ref: script/data_split/generate.py:326
+        expect: def search(problem, seeds=SEEDS):
+    established: 2026-11-07
+    established_by: 用户确认来源与划分规则；代码核对及合成测试
+    supersedes: null
+    affects: [data, code]
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
     correct: 旧候选链路中，子窗口按事件时刻重新裁剪，可以落在不同事件阶段，父子窗口状态不同并不自动构成矛盾。本轮人工标注仍需按各自片段的可见证据判断，不能仅凭父子关系自动验真。
