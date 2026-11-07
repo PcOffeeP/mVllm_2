@@ -381,6 +381,22 @@ facts:
     established_by: 用户确认来源与划分规则；代码核对及合成测试
     supersedes: null
     affects: [data, code]
+  - id: DF-021
+    state: active
+    topic: ROI 独立工具的规则身份与人工审核边界
+    claim: >
+      `script/roi` 使用 `roi-rules/1` 规则身份，提供完整源视频的固定框或全画面补边处理；旧决定和旧裁剪结果只能作为候选，必须核对来源与输出身份，并分别完成源画面和实际输出的证据审核。缺少决定是正常待处理状态，不自动视为审核通过。编码参数采用 H.264、fast、CRF 23、yuv420p 和去音频的初始配置；媒体属性通过不证明视觉细节或逐帧时间戳保真。具体数据是否可复用和真实画面验收须以对应记录为准。
+    evidence:
+      - ref: script/roi/core.py:26
+        expect: RULE_VERSION = "roi-rules/1"
+      - ref: script/roi/core.py:193
+        expect: def review_errors(review: Mapping | None, duration: float)
+      - ref: script/roi/README.md:30
+        expect: 没有已有决定属于正常情况
+    established: 2026-11-08
+    established_by: 用户确认 ROI 规则及代码核对；真实视频画面验收仍待完成
+    supersedes: null
+    affects: [data, code, ops]
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
     correct: 旧候选链路中，子窗口按事件时刻重新裁剪，可以落在不同事件阶段，父子窗口状态不同并不自动构成矛盾。本轮人工标注仍需按各自片段的可见证据判断，不能仅凭父子关系自动验真。
