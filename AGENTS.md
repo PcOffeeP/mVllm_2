@@ -1,5 +1,10 @@
 # Project Agent Instructions
 
+## 工作区与主线分支
+
+- `TensileAgent-Finetune` 工作区的长期主线分支为 `feat/tensileagent-finetune`。开始工作和合并前核对当前 worktree、分支与提交；任务分支仍按下方规则从当前工作分支创建并合并回原工作分支。
+- `main` 是原项目 `mVllm_2` 工作区的分支，不是本工作区的长期主线。不要仅凭共享仓库或分支名称将两者等同；向主线合并及推送仍需用户授权。
+
 ## 项目资料
 
 开始工作时，依次阅读 `docs/facts.yaml`、`docs/TODO.md` 和 `docs/guide.md`。涉及迁移时，另读 `docs/migration-review-outline.md`。
