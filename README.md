@@ -1,23 +1,39 @@
 # mVllm_2
 
-本项目研究从材料拉伸试验视频中识别断裂信息，并提供数据处理、模型训练、评测与服务的工程链路。
+本项目研究利用多模态模型理解材料拉伸试验视频中的断裂信息，并维护数据处理、模型训练、评测和服务的工程链路。
 
-本轮人工标注结果已整理，当前正在完善基于这些标签的评价设计。先通过[项目设计与规则导航](docs/guide.md)定位专题，再阅读相应详细文档；进度和下一步见[项目 TODO](docs/TODO.md)。
+[设计与规则导航](docs/guide.md) · [标签说明](docs/label.md) · [评价设计](docs/design-test.md) · [项目进度](docs/TODO.md) · [架构](ARCHITECTURE.md)
 
-人工标注基准包含断裂状态、断裂模式、断裂位置、异常情况和断裂现象五类。现有代码仍使用冻结的 [v4.1 四字段契约](pipeline/contracts/tensile_vlm_v4_1.json)；新标签尚未接入数据或模型链路，两者不能直接混用。历史模型结果见[模型清单](docs/results/model-inventory.md)。
+## 项目概览
+
+项目围绕拉伸视频的人工标注、数据处理、模型训练及评价展开。本轮人工标注基准覆盖**断裂状态、断裂模式、断裂位置、异常情况和断裂现象**五类信息；具体判断和填写规则见[标签说明](docs/label.md)。
+
+### 当前状态
+
+- 本轮人工标注及结果整理已完成，源级材料和使用边界见[设计与规则导航](docs/guide.md)。本机材料未发布为训练或评价数据，也不构成独立备份。
+- [整体模型测评设计](docs/design-test.md)已有初稿，仍需进一步确认；新评价接口、正式阈值及晋级衔接尚未落地，不代表已完成本轮真实模型测评。
+- 现有旧链路使用冻结的 [v4.1 四字段契约](pipeline/contracts/tensile_vlm_v4_1.json)；本轮新标签尚未接入数据或模型链路，不能与旧契约直接混用。
+
+当前任务、依赖和下一步以[项目 TODO](docs/TODO.md)为准。历史结果及其限制见[模型清单](docs/results/model-inventory.md)。
+
+## 文档导航
+
+从[设计与规则导航](docs/guide.md)定位专题，再阅读对应的详细文档。
+
+| 文档 | 内容 |
+| --- | --- |
+| [标签说明](docs/label.md) | 本轮人工标注依据和填写规则 |
+| [整体模型测评设计](docs/design-test.md) | 待确认的评价设计初稿 |
+| [项目 TODO](docs/TODO.md) | 项目唯一任务台账、当前状态和下一步 |
+| [项目事实](docs/facts.yaml) | 设计与代码事实及其证据 |
+| [架构说明](ARCHITECTURE.md) | 系统、模块及新旧入口边界 |
+| [模型清单](docs/results/model-inventory.md) | 历史模型结果与证据限制 |
 
 ## 快速开始
 
-### 1. 先看哪份文档
+下面的步骤用于准备或核验开发环境，以及查看已有命令入口；环境检查通过不等于新标签已接入或模型效果通过验收。
 
-| 你要做什么 | 阅读文档 |
-| --- | --- |
-| 定位当前源材料及各专题设计和规则 | [项目设计与规则导航](docs/guide.md)，再阅读对应专题文档 |
-| 人工标注视频 | [断裂标签说明](docs/label.md) |
-| 查看当前进度和下一步 | [项目 TODO](docs/TODO.md) |
-| 了解历史模型结果及限制 | [模型清单](docs/results/model-inventory.md) |
-
-### 2. 按机器准备 Python 3.11.x 环境
+### 环境要求
 
 本项目支持 **Python 3.11.x**。当前 Mac 用于开发、ROI/审查 UI 和轻量结果检查，通过 `uv` 调用已部署的 Mac 解释器；实际数据处理、训练、评测和模型服务在 Linux GPU 训练机上，直接使用对应的 **Conda 环境 Python**。两平台的依赖保持分开：
 
@@ -28,7 +44,7 @@
 
 两机都需要 Git、ffmpeg、ffprobe 和 uv 在 PATH 中可用。训练机的运行入口仍是 Conda Python；环境检查器内部使用 `uv pip check`，所以 uv 也是检查工具前置。训练机另需 Linux x86_64、NVIDIA 驱动及可用 `nvidia-smi`。
 
-#### Mac：首次部署与日常运行
+### Mac：首次部署与日常运行
 
 先准备一个已经存在的 Python 3.11.x 解释器，以其绝对路径设置 `BOOTSTRAP_PYTHON`。`MAC_ENV` 是准备新建且尚不存在的环境绝对目录，不得经过符号链接或包含 `..`。从仓库根运行：
 
@@ -54,7 +70,7 @@ uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
 
 这里 `uv run` 复用显式选定的解释器，跳过项目依赖自动同步并禁止下载 Python；它不替代首次部署。不要用未指定解释器的默认 `uv run` 去选择另一套环境。
 
-#### 训练机：核验已有 Conda 环境
+### 训练机：核验已有 Conda 环境
 
 先确认具备[子模块](.gitmodules)对应 Gitee SSH 仓库的访问资格，初始化固定版本并保持干净：
 
@@ -76,14 +92,21 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 如果没有合格的 Conda 环境，先准备并核验，不能直接开始真实任务。现有 `source_prepare_environment.py --profile linux-gpu` 创建的是新的 venv，既不创建 Conda 环境，也不修补已有 Conda 环境；其 `--env` 不接受已存在目录。部署接口与依赖维护规则见[脚本索引](scripts/SCRIPTS.md)。
 
-### 3. 准备实际输入
+### 准备实际输入
 
 正式版本只有 data、prompt、train、model、eval 五类，名称为 `<kind>-v<协议>-r<N>`，例如 `data-v4.1-r2`。示例身份不表示你本地已有资产；版本和输入必须显式提供，不自动猜测“最新”。
 
 后续数据接入、训练和评价流程以新标签为基础另行设计。GPU 训练、推理、完整评测及长时间媒体处理在训练机执行。环境安装通过与实际模型效果达标分别验收。
 
-## 其他资料
+## 仓库结构
 
-[架构说明](ARCHITECTURE.md)介绍系统与模块边界；[项目事实](docs/facts.yaml)记录设计要点及代码事实。`docs/results/`、`docs/reports/` 保存历史结果。它们主要用于追溯，不必在开始标注前逐篇阅读；旧材料须结合版本和日期理解。
+| 路径 | 用途 |
+| --- | --- |
+| [versioning/](versioning) | 新体系入口及版本管理；命令见[脚本接口索引](versioning/SCRIPTS.md) |
+| [pipeline/](pipeline) | 数据处理与人工审查相关代码 |
+| [finetune/](finetune) | 训练与评测相关代码 |
+| [scripts/](scripts) | 环境等项目脚本，见[脚本索引](scripts/SCRIPTS.md) |
+| [docs/](docs) | 专题文档、任务台账与历史结果 |
+| [tests/](tests) | 项目测试 |
 
-代码入口见 [versioning](versioning)、[pipeline](pipeline)、[finetune](finetune) 和[脚本接口索引](versioning/SCRIPTS.md)。
+各入口的新旧体系适用边界见[架构说明](ARCHITECTURE.md)。`docs/results/`、`docs/reports/` 保存历史结果，应结合版本和日期理解，不能直接当作本轮效果证据。
