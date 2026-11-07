@@ -8,7 +8,7 @@
 
 | 对象 | 当前基准与边界 |
 | --- | --- |
-| 本轮视频与标注 | [新标注表](../data/v2/annotation-table-full.csv)及 `data/v2/videos/`；标签解释以[标签说明](label.md)为准。CSV 被 Git 忽略，尚未发布或接入训练；标注工具仍默认旧路径。 |
+| 本轮视频与标注 | [新标注表](../data/annotation-table-full.csv)及 `data/videos/`；标签解释以[标签说明](label.md)为准。CSV 被 Git 忽略，尚未发布或接入训练；标注工具仍默认旧路径。 |
 | 既有真实视频划分 | 按[迁移大纲](migration-review-outline.md)保留，不因本次整理重划；同源片段应保持相同划分。来源疑问或冲突先报告。 |
 | 模型任务 | 当前面向模型判别的是断裂状态、断裂模式、断裂位置、异常情况和断裂现象五类；新旧标签边界见 [facts.yaml](facts.yaml) DF-018。 |
 | 断裂时间信息 | **按用户本轮澄清，可用于子视频生成；模型不训练或评测时间类任务。** 允许作为生成依据，不等于已经确认具体窗口、标签映射或实现规则。 |
@@ -98,7 +98,7 @@ ID 对应也不等于素材身份和防泄漏检查已完成：
 
 | 材料 | 所读身份与适用范围 |
 | --- | --- |
-| 本工作区 CSV | `data/v2/annotation-table-full.csv`；SHA-256：`d8ef6206da327971ad731ffcfdfeb31cfacc2c8c3775268cd1f38478cdbb6584`。 |
+| 本工作区 CSV | `data/annotation-table-full.csv`；路径更新后 SHA-256：`9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81`。本审查读取的更新前版本 SHA-256：`d8ef6206da327971ad731ffcfdfeb31cfacc2c8c3775268cd1f38478cdbb6584`；本次仅调整视频路径。 |
 | 既有划分 | 原项目同级 `mVllm_2` 工作区本机 `data/source/splits/*.json`，七份文件指纹见下表。文件被 Git 忽略，不能声称属于代码提交。 |
 | 原项目代码 | `main` 提交 `2c272ce3548c917bbfa96fe474858f9bf1998893`；本文源码链接指向该工作区，不代表代码已经迁入。 |
 

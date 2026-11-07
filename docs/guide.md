@@ -4,8 +4,8 @@
 
 ## 本轮源级材料
 
-- 标注表：[data/v2/annotation-table-full.csv](../data/v2/annotation-table-full.csv)。
-- 对应原视频副本：[data/v2/videos/](../data/v2/videos/)。
+- 标注表：[data/annotation-table-full.csv](../data/annotation-table-full.csv)。
+- 对应原视频副本：[data/videos/](../data/videos/)。
 - 人工标注依据：[标签说明](label.md)。
 
 本轮标注及结果整理已完成；上述材料不因此成为已冻结或已发布的数据，也不代表已有独立备份或已接入训练和评价。标注工具默认路径仍是旧位置，详见 TODO 的 LABEL-ANNOTATION 条目。

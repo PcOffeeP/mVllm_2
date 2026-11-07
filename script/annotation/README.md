@@ -4,7 +4,7 @@
 
 在 macOS 双击 `review_run_annotation.command`，或运行 `python3 script/annotation/review_run_annotation.py`。需要 Python 3.10 及以上，以及 PATH 中支持 `fd` 输入协议的 ffmpeg、ffprobe。
 
-默认仍读取项目根目录下的 `data/annotation/annotation-table-full.csv` 和 `data/source/videos`。本轮成果在 `data/v2/`，如需查看或标注，请在页面中自行选择对应表格和视频目录；保存会写入所选标注表，操作前请确认路径并保留备份。此次迁移未使用或修改真实标注数据。
+默认仍读取项目根目录下的 `data/annotation/annotation-table-full.csv` 和 `data/source/videos`。本轮成果在 `data/`，如需查看或标注，请在页面中自行选择对应表格和视频目录；保存会写入所选标注表，操作前请确认路径并保留备份。此次迁移未使用或修改真实标注数据。
 
 测试使用临时合成数据，运行 `python3 -m pytest -q script/annotation/tests/test_review_run_annotation.py`。通过测试不代表真实长视频、所有页面控件或模型数据链路已经验收。
 
