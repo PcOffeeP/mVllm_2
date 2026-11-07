@@ -2,7 +2,9 @@
 
 本文梳理 `versioning data subvideo` 实际调用的代码。这里的**默认标签**是生成候选片段时根据源记录和时间窗口推导的初始标签；它不是人工审查结论，也不是模型预测。
 
-本文只依据静态代码，未运行子视频生成或验证视频画面。旧标签语义不等同于当前人工标注说明。
+本文只依据静态代码，未运行子视频生成或验证视频画面。旧标签语义不等同于当前人工标注说明。本文来源为同级 `mVllm_2` 工作区 `main` 提交 `2c272ce3548c917bbfa96fe474858f9bf1998893`；下列源码链接指向该工作区，不表示脚本已经迁入。本文尚未经用户确认。
+
+**与本轮规则的冲突：** 当前数据处理不使用断裂时间类标注（[facts.yaml](facts.yaml) DF-019），而下述旧代码依赖事件时间选窗和推导状态。因此以下均是旧行为，不是本轮可直接执行的方案；解决方式需确认。历史已确认的事件后 guard 外至少 2 秒素材要求（DF-015）仍待明确接入对象与检查位置，不能与旧代码 1 秒最短候选时长混为一谈。
 
 **失效条件：** 子视频入口、候选规划、标签映射或审查衔接发生影响本文规则的变更时，本文作废；届时将仍有效的内容并入 `docs/facts.yaml`，或删除本文。
 
@@ -24,7 +26,7 @@
 
 入口为 `python -m versioning data subvideo`，需要显式指定根目录、冻结输入和批次。它读取 ROI 阶段清单、预处理器配置及文件，以及开发集和测试审计的参考记录；两组源视频分别规划，测试候选的 scope 为 `test_audit`。参考记录还参与部分窗口选择与匹配。
 
-代码位置：[阶段分派和子视频阶段](../versioning/data_pipeline.py) 的 `run_stage`、`run_input_subvideo`。
+代码位置：[阶段分派和子视频阶段](../../mVllm_2/versioning/data_pipeline.py) 的 `run_stage`、`run_input_subvideo`。
 
 ## 2. 哪些源视频参与生成
 
@@ -37,7 +39,7 @@
 
 这里的分类来自输入记录字段；规划器不会重新观看视频判断源视频状态。
 
-代码位置：[候选规划](../pipeline/v3_candidate_plan.py) 的 `_source_kind`、`_build_scope_candidates`、`_skip_record`。
+代码位置：[候选规划](../../mVllm_2/pipeline/v3_candidate_plan.py) 的 `_source_kind`、`_build_scope_candidates`、`_skip_record`。
 
 ## 3. 片段窗口怎样选
 
@@ -54,7 +56,7 @@
 
 **事件后长度的边界：** 当前代码检查的是候选最短 1 秒，不表示已经检查事件后至少有 2 秒素材。
 
-代码位置：[候选规划](../pipeline/v3_candidate_plan.py) 的常量、`_aligned_interval`、`_raw_candidates_for_source`。
+代码位置：[候选规划](../../mVllm_2/pipeline/v3_candidate_plan.py) 的常量、`_aligned_interval`、`_raw_candidates_for_source`。
 
 ### 按源视频类型选窗口
 
@@ -67,7 +69,7 @@
 
 包含事件的窗口会参考历史记录：已批准或已修正的记录中，帧范围和标签均完全一致的数量会影响模板排序。
 
-代码位置：[候选规划](../pipeline/v3_candidate_plan.py) 的 `_transition_templates_for_source`、`_selected_pre_event_durations`、`_post_event_windows`、`_raw_candidates_for_source`。
+代码位置：[候选规划](../../mVllm_2/pipeline/v3_candidate_plan.py) 的 `_transition_templates_for_source`、`_selected_pre_event_durations`、`_post_event_windows`、`_raw_candidates_for_source`。
 
 ## 4. 默认标签怎样确定
 
@@ -97,7 +99,7 @@
 
 例如，旧类型“韧性断裂”映射为韧性机制和 `root_break=false`；“齐根断裂”映射为机制 `null` 和 `root_break=true`。代码会校验字段和组合。**时间与源标签推导出的结果，即使内部自洽，也不能证明画面中的标签正确。**
 
-代码位置：[候选规划](../pipeline/v3_candidate_plan.py) 的 `_state_for_interval`、`_candidate_labels`；[v3 标签规则](../pipeline/v3_labels.py) 的 `_LEGACY_TYPE_MAP`、`map_legacy_fracture_type`、`validate_v3_labels`。
+代码位置：[候选规划](../../mVllm_2/pipeline/v3_candidate_plan.py) 的 `_state_for_interval`、`_candidate_labels`；[v3 标签规则](../../mVllm_2/pipeline/v3_labels.py) 的 `_LEGACY_TYPE_MAP`、`map_legacy_fracture_type`、`validate_v3_labels`。
 
 ## 5. 裁剪和采样怎样把关
 
@@ -111,7 +113,7 @@
 | 预处理器指纹不一致、采样数超限等 | 阶段失败 |
 | 阶段清单 | 记录规划、成功物化、排除和跳过的信息 |
 
-代码位置：[子视频阶段](../versioning/data_pipeline.py) 的 `run_input_subvideo`；[媒体处理](../pipeline/v3_candidate_media.py) 的 `build_crop_command`、`validate_actual_sampling_gate`。
+代码位置：[子视频阶段](../../mVllm_2/versioning/data_pipeline.py) 的 `run_input_subvideo`；[媒体处理](../../mVllm_2/pipeline/v3_candidate_media.py) 的 `build_crop_command`、`validate_actual_sampling_gate`。
 
 ## 6. 默认标签如何进入审查
 
@@ -133,7 +135,7 @@
 2. 开发集发布时，需要人工审查的候选若缺少决定，会报错；被标为丢弃或需要重新生成的候选被排除。
 3. 未进入人工队列的候选，只有转换并校验为普通“未断裂”标签时才能自动准入。
 
-代码位置：[候选规划](../pipeline/v3_candidate_plan.py) 的 `_build_scope_candidates`；[审查及发布阶段](../versioning/data_pipeline.py) 的 `run_input_review_export`、`_validate_input_review_return`、`_input_release_rows`；[审查候选规则](../pipeline/v4_1_review_workflow.py) 的 `_is_incipient_candidate`、`_proposal`。
+代码位置：[候选规划](../../mVllm_2/pipeline/v3_candidate_plan.py) 的 `_build_scope_candidates`；[审查及发布阶段](../../mVllm_2/versioning/data_pipeline.py) 的 `run_input_review_export`、`_validate_input_review_return`、`_input_release_rows`；[审查候选规则](../../mVllm_2/pipeline/v4_1_review_workflow.py) 的 `_is_incipient_candidate`、`_proposal`。
 
 ## 7. 入口边界与待确认事项
 
@@ -141,8 +143,15 @@
 | --- | --- |
 | `versioning data subvideo` | 本文所述入口，复用 v3 候选规划及媒体函数 |
 | `pipeline/scripts/subvideo_build_plan.py`、`pipeline/scripts/subvideo_materialize_media.py` | 旧独立命令入口已停用；文件内仍保留旧实现 |
-| [归档生成器](../pipeline/scripts/archive/subvideo_builder.py) | 更早的历史逻辑，字段和默认值不能直接套到本文入口 |
+| [归档生成器](../../mVllm_2/pipeline/scripts/archive/subvideo_builder.py) | 更早的历史逻辑，字段和默认值不能直接套到本文入口 |
 
-代码位置：[旧命令索引](../pipeline/scripts/SCRIPTS.md)、[规划命令](../pipeline/scripts/subvideo_build_plan.py)、[媒体命令](../pipeline/scripts/subvideo_materialize_media.py)。
+代码位置：[旧命令索引](../../mVllm_2/pipeline/scripts/SCRIPTS.md)、[规划命令](../../mVllm_2/pipeline/scripts/subvideo_build_plan.py)、[媒体命令](../../mVllm_2/pipeline/scripts/subvideo_materialize_media.py)。
 
 仅看代码不能确定某次实际批次使用了哪些输入、生成了哪些片段、标签是否符合画面，以及人工审查是否完成。这些事项须对照该批次产物和审查记录确认。
+
+
+## 8. 本次独立核查与限制
+
+2026-11-07 对原项目 `main@2c272ce` 的入口、候选规划、标签、采样门禁和审查发布进行独立静态核对；未发现正文中这些核心规则与所查代码不一致。独立核查发现原代码链接在本工作区失效、缺少来源版本及 DF-019 适用边界；本稿已补充原工作区和版本、调整链接，并在文首注明冲突。
+
+审查者还以合成输入检查纯函数：30 秒、30 fps、20 秒处事件的韧性断裂源生成 10 个事件窗口、12 个事件前窗口、4 个事件后窗口；事件时间缺失或不可靠时不生成断裂候选。事件和 guard 之后仅剩 1.5 秒时旧代码仍生成 1.5 秒 post 候选，证实旧实现未落实 DF-015 的 2 秒要求。这些是合成检查，不是视频生成、真实处理或视觉标签验收。用户仍需审阅并明确确认本文；在此之前不将其作为已确认的本轮规则或加入专题导航。
