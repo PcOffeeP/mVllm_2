@@ -9,7 +9,7 @@ from threading import Thread
 
 import pytest
 
-from script.review_run_annotation import LocalServer, PROJECT_ROOT
+from script.annotation.review_run_annotation import LocalServer, PROJECT_ROOT
 
 
 DEFAULT_CSV = Path("data/annotation/annotation-table-full.csv")
@@ -18,7 +18,7 @@ ORIGINAL_CSV = "id,video_path,断裂模式,断裂位置,断裂时间点\n1,video
 
 
 def test_project_root_matches_migrated_script_location():
-    assert PROJECT_ROOT == Path(__file__).resolve().parents[2]
+    assert PROJECT_ROOT == Path(__file__).resolve().parents[3]
 
 
 @pytest.fixture

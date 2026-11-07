@@ -27,7 +27,7 @@ from typing import BinaryIO
 
 
 HERE = Path(__file__).resolve().parent
-PROJECT_ROOT = HERE.parent
+PROJECT_ROOT = HERE.parents[1]
 DEFAULT_CSV = "data/annotation/annotation-table-full.csv"
 DEFAULT_VIDEOS = "data/source/videos"
 ASSETS = {
