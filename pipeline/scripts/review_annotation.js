@@ -28,6 +28,8 @@
   const framePreview = byId("frame-preview");
   const frameStatus = byId("frame-status");
   const framePlay = byId("frame-play");
+  const previewPlayback = byId("preview-playback");
+  const previewStatus = byId("preview-status");
   const framePrevious = byId("frame-prev");
   const frameNext = byId("frame-next");
   const frameIndex = byId("frame-index");
@@ -106,6 +108,8 @@
   let videos = [];
   let videoRequest = null;
   let videoUrl = "";
+  let usingPlaybackPreview = false;
+  let previewStartTime = 0;
   let playingFile = null;
   let frameSession = null;
 
@@ -938,6 +942,10 @@
     const canAssign = canDecode && displayed != null && !frameImage.hidden;
     framePlay.disabled = !videoUrl || !!player.error;
     framePlay.textContent = waiting || displayed != null ? "继续播放" : player.paused ? "播放" : "暂停";
+    previewPlayback.hidden = !playingFile?.serverId || (usingPlaybackPreview && !!videoUrl && !player.error);
+    previewPlayback.disabled = usingPlaybackPreview && !!videoRequest;
+    previewPlayback.textContent = usingPlaybackPreview
+      ? (videoRequest ? "正在准备兼容播放…" : "重试兼容播放") : "使用兼容播放";
     frameIndex.disabled = frameGo.disabled = !canDecode;
     framePrevious.disabled = !canDecode || displayed === 0;
     frameNext.disabled = !canDecode || (displayed != null && displayed + 1 >= frameSession.count);
@@ -1203,9 +1211,7 @@
     commitRange([[bound.column, time]], session.index);
   }
 
-  function releaseVideo() {
-    videoRequest?.abort();
-    videoRequest = null;
+  function clearPlayback() {
     if (videoUrl) {
       player.pause();
       player.removeAttribute("src");
@@ -1213,6 +1219,15 @@
       URL.revokeObjectURL(videoUrl);
       videoUrl = "";
     }
+  }
+
+  function releaseVideo() {
+    videoRequest?.abort();
+    videoRequest = null;
+    clearPlayback();
+    usingPlaybackPreview = false;
+    previewStartTime = 0;
+    setPreviewStatus("idle", "");
     playingFile = null;
     releaseFrameReview();
   }
@@ -1224,18 +1239,44 @@
     updateFrameControls();
   }
 
-  async function readVideoBlob(file) {
+  async function readVideoBlob(file, preview = false) {
     const request = new AbortController();
     videoRequest = request;
     try {
-      const response = await localFetch("/api/video/file/" + file.serverId, { signal: request.signal });
+      const route = preview ? "/api/video/preview/" : "/api/video/file/";
+      const response = await localFetch(route + file.serverId, { signal: request.signal });
       const blob = await response.blob();
       if (videoRequest === request) playVideoBlob(blob);
     } catch (error) {
-      if (videoRequest === request) videoStatus.textContent = error.message;
+      if (videoRequest === request) {
+        if (preview) setPreviewStatus("error", `兼容播放失败 · ${error.message}`);
+        videoStatus.textContent = preview ? matchedVideoStatus("兼容播放失败") : error.message;
+      }
     } finally {
-      if (videoRequest === request) videoRequest = null;
+      if (videoRequest === request) {
+        videoRequest = null;
+        updateFrameControls();
+      }
     }
+  }
+
+  function setPreviewStatus(state, message) {
+    previewStatus.hidden = !message;
+    previewStatus.dataset.state = state;
+    previewStatus.textContent = message;
+  }
+
+  function startPlaybackPreview({ automatic = false } = {}) {
+    if (!playingFile?.serverId || previewPlayback.disabled) return;
+    videoRequest?.abort();
+    previewStartTime = player.currentTime;
+    usingPlaybackPreview = true;
+    clearPlayback();
+    const reason = automatic ? "浏览器无法直接播放，" : "";
+    videoStatus.textContent = matchedVideoStatus("正在准备兼容画面");
+    setPreviewStatus("loading", `${reason}正在准备兼容画面。可先逐帧查看原视频。`);
+    void readVideoBlob(playingFile, true);
+    updateFrameControls();
   }
 
   function renderVideo() {
@@ -1580,12 +1621,31 @@
   });
 
   player.addEventListener("loadedmetadata", () => {
-    if (playingFile && player.currentSrc === videoUrl) videoStatus.textContent = matchedVideoStatus("已载入");
+    if (playingFile && player.currentSrc === videoUrl) {
+      if (usingPlaybackPreview) {
+        if (previewStartTime > 0 && Number.isFinite(player.duration)) {
+          player.currentTime = Math.min(previewStartTime, player.duration);
+        }
+        videoStatus.textContent = matchedVideoStatus("已载入兼容播放画面");
+        setPreviewStatus("ready", "已载入兼容播放画面。逐帧及标注帧号以原视频为准。");
+      } else {
+        videoStatus.textContent = matchedVideoStatus("已载入");
+      }
+    }
     updateFrameControls();
   });
   player.addEventListener("error", () => {
     if (playingFile && player.error && player.src === videoUrl) {
-      videoStatus.textContent = matchedVideoStatus("无法播放") + "请检查视频是否损坏或编码是否受浏览器支持。";
+      const incompatible = [3, 4].includes(player.error.code);
+      if (incompatible && playingFile.serverId && !usingPlaybackPreview) {
+        startPlaybackPreview({ automatic: true });
+      } else if (incompatible && sessionToken && !playingFile.serverId) {
+        videoStatus.textContent = matchedVideoStatus("无法直接播放") + "请通过“视频目录”打开本机路径，启用兼容播放。";
+        setPreviewStatus("error", "无法直接播放。请通过“视频目录”打开本机路径，启用兼容播放。");
+      } else {
+        videoStatus.textContent = matchedVideoStatus("无法播放") + "可逐帧查看，或检查视频文件和浏览器编码支持。";
+        if (usingPlaybackPreview) setPreviewStatus("error", "浏览器无法播放兼容画面。仍可逐帧查看原视频。");
+      }
     }
     updateFrameControls();
   });
@@ -1604,6 +1664,7 @@
   });
 
   framePlay.addEventListener("click", togglePlayback);
+  previewPlayback.addEventListener("click", () => startPlaybackPreview());
   framePrevious.addEventListener("click", () => {
     if (!framePrevious.disabled) requestFrame({ step: -1 });
   });

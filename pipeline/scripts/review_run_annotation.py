@@ -36,6 +36,7 @@ ASSETS = {
 }
 VIDEO_ROUTE = re.compile(r"/api/video/([a-f0-9]{32})(?:/frame/([0-9]{1,9}))?")
 VIDEO_FILE_ROUTE = re.compile(r"/api/video/file/([a-f0-9]{32})")
+VIDEO_PREVIEW_ROUTE = re.compile(r"/api/video/preview/([a-f0-9]{32})")
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".avi", ".mkv", ".ogv", ".mpeg",
                     ".mpg", ".mts", ".m2ts", ".wmv", ".3gp", ".flv"}
 FORMAT_WHITELIST = "mov,matroska,webm,avi,ogg,mpeg,mpegvideo,mpegts,asf,flv"
@@ -44,6 +45,8 @@ MAX_CSV_BYTES = 32 * 1024**2
 MAX_VIDEO_ENTRIES = 10000
 MAX_PIXELS = 16 * 1024**2
 DECODE_TIMEOUT = 90
+PREVIEW_TIMEOUT = 180
+MAX_PREVIEW_BYTES = 512 * 1024**2
 FRAME_LOOKBACK = 4
 FRAME_REWIND_LOOKBACK = 24
 FRAME_CONTINUE_LIMIT = 24
@@ -315,6 +318,8 @@ class LocalServer(ThreadingHTTPServer):
         self.video: Video | None = None
         self.lock = threading.Lock()
         self.source_lock = threading.Lock()
+        self.preview_lock = threading.Lock()
+        self.preview_stop = threading.Event()
         self.project_root = project_root.resolve()
         self.csv_paths: set[Path] = set()
         self.video_paths: dict[str, tuple[Path, tuple[int, int, int, int, int]]] = {}
@@ -464,7 +469,10 @@ class LocalServer(ThreadingHTTPServer):
             self.video = None
 
     def server_close(self) -> None:
+        self.preview_stop.set()
         super().server_close()
+        with self.preview_lock:
+            pass
         with self.lock:
             self.clear_video()
 
@@ -541,6 +549,66 @@ class Handler(BaseHTTPRequestHandler):
             raise ReviewError(HTTPStatus.BAD_REQUEST, "请求格式无效。")
         return data
 
+    def send_video(self, file: BinaryIO, content_type: str) -> None:
+        length = os.fstat(file.fileno()).st_size
+        self.respond_headers(HTTPStatus.OK, length, content_type)
+        while chunk := file.read(min(length, 1024**2)):
+            self.wfile.write(chunk)
+            length -= len(chunk)
+
+    def build_preview(self, source: BinaryIO, output: Path) -> None:
+        fd = source.fileno()
+        before = file_identity(os.fstat(fd))
+        command = [
+            "ffmpeg", "-v", "error", "-nostdin", "-xerror", "-filter_threads", "1",
+            "-protocol_whitelist", "fd", "-format_whitelist", FORMAT_WHITELIST,
+            "-max_pixels", str(MAX_PIXELS), "-err_detect", "explode", "-threads", "2",
+            "-fd", str(fd), "-i", "fd:", "-map", "0:V:0", "-map", "0:a:0?",
+            "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-threads:v", "2",
+            "-fps_mode", "passthrough", "-enc_time_base:v", "demux",
+            "-c:a", "aac", "-fs", str(MAX_PREVIEW_BYTES),
+            "-movflags", "+faststart", str(output),
+        ]
+        deadline = time.monotonic() + PREVIEW_TIMEOUT
+        with selectors.DefaultSelector() as selector, subprocess.Popen(
+            command, pass_fds=(fd,), stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        ) as process:
+            try:
+                selector.register(self.connection, selectors.EVENT_READ)
+                while process.poll() is None:
+                    if self.server.preview_stop.is_set() or selector.select(timeout=0.2):
+                        # A GET has no request body. Socket readability here means the browser
+                        # disconnected or sent unexpected bytes before receiving a response.
+                        raise ConnectionResetError
+                    if time.monotonic() >= deadline:
+                        raise ReviewError(HTTPStatus.GATEWAY_TIMEOUT, "兼容视频准备超时，可继续使用原视频逐帧查看。")
+            finally:
+                if process.poll() is None:
+                    process.kill()
+            if process.returncode or not output.is_file() or output.stat().st_size == 0:
+                raise ReviewError(HTTPStatus.UNPROCESSABLE_ENTITY, "无法生成兼容视频，请检查本机 FFmpeg 的 libx264 支持或视频文件。")
+        if output.stat().st_size >= MAX_PREVIEW_BYTES:
+            raise ReviewError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "兼容视频超出预览大小限制，可继续使用原视频逐帧查看。")
+        if file_identity(os.fstat(fd)) != before:
+            raise ReviewError(HTTPStatus.CONFLICT, "视频文件在生成预览时发生变化，请重新打开视频目录。")
+
+    def serve_preview(self, file_id: str) -> None:
+        if not self.server.preview_lock.acquire(timeout=1):
+            raise ReviewError(HTTPStatus.SERVICE_UNAVAILABLE, "另一个视频正在准备兼容播放，请稍候重试。")
+        try:
+            if self.server.preview_stop.is_set():
+                raise ConnectionResetError
+            _, source = self.server.open_video(file_id)
+            with source, tempfile.TemporaryDirectory(prefix="annotation-preview-") as directory:
+                output = Path(directory) / "preview.mp4"
+                self.build_preview(source, output)
+                with output.open("rb") as preview:
+                    self.send_video(preview, "video/mp4")
+        finally:
+            self.server.preview_lock.release()
+
     def serve_source(self) -> bool:
         if self.command == "GET" and self.path == "/api/default-sources":
             self.respond_json(HTTPStatus.OK, {"csv_path": DEFAULT_CSV, "video_directory": DEFAULT_VIDEOS})
@@ -560,14 +628,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.command == "GET" and match:
             path, file = self.server.open_video(match[1])
             with file:
-                length = os.fstat(file.fileno()).st_size
-                self.respond_headers(HTTPStatus.OK, length, mimetypes.guess_type(path.name)[0] or "application/octet-stream")
-                while length:
-                    chunk = file.read(min(length, 1024**2))
-                    if not chunk:
-                        break
-                    self.wfile.write(chunk)
-                    length -= len(chunk)
+                self.send_video(file, mimetypes.guess_type(path.name)[0] or "application/octet-stream")
+            return True
+        match = VIDEO_PREVIEW_ROUTE.fullmatch(self.path)
+        if self.command == "GET" and match:
+            self.serve_preview(match[1])
             return True
         return False
 

@@ -432,6 +432,7 @@
               </div>
               <div class="frame-actions">
                 <button id="frame-play" type="button" class="primary" disabled>播放</button>
+                <button id="preview-playback" type="button" hidden>使用兼容播放</button>
                 <button id="frame-prev" type="button" disabled>上一帧</button>
                 <button id="frame-go" type="button" disabled>查看此帧</button>
                 <button id="frame-next" type="button" disabled>下一帧</button>
@@ -447,6 +448,7 @@
                 <button id="range-clear" type="button" disabled>清除时间范围</button>
               </div>
             </div>
+            <p id="preview-status" class="frame-status" role="status" aria-live="polite" hidden></p>
             <p id="frame-status" class="frame-status" data-state="idle" role="status" aria-live="polite">逐帧服务尚未连接。</p>
             <p id="range-status" class="frame-status" data-state="idle" role="status" aria-live="polite">时间范围尚未填写。</p>
           </section>

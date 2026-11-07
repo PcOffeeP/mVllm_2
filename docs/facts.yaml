@@ -333,9 +333,9 @@ facts:
         expect: 不作为模型微调的预测标签
       - ref: docs/TODO.md:45
         expect: 现有 v4.1 评分与旧阈值不直接套用
-      - ref: pipeline/scripts/review_annotation.js:659
+      - ref: pipeline/scripts/review_annotation.js:663
         expect: function ruleTargets(state, grip, wholeVideoUnbroken)
-      - ref: pipeline/scripts/review_annotation.js:182
+      - ref: pipeline/scripts/review_annotation.js:186
         expect: function serializeCsv
     established: 2026-11-05
     established_by: 用户确认的人工标注基准
