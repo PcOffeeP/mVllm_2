@@ -162,6 +162,16 @@ def test_invalid_source_paths_leave_existing_files_and_video_access_intact(annot
     assert not missing_csv.exists()
     assert (project / DEFAULT_CSV).read_text(encoding="utf-8") == ORIGINAL_CSV
 
+    unopened_csv = tmp_path / "unopened.csv"
+    unopened_csv.write_text(ORIGINAL_CSV, encoding="utf-8")
+    status, _ = request(server, "POST", "/api/csv/write", {
+        "path": str(unopened_csv.resolve()),
+        "expected_sha256": csv["sha256"],
+        "csv": ORIGINAL_CSV.replace("无,无,无", "韧性断裂,标距内,2.5"),
+    })
+    assert status == HTTPStatus.FORBIDDEN
+    assert unopened_csv.read_text(encoding="utf-8") == ORIGINAL_CSV
+
     status, _ = request(server, "POST", "/api/video/library", {"path": str(tmp_path / "missing-videos")})
     assert 400 <= status < 500
     status, video = request(server, "GET", f"/api/video/file/{video_id}")
