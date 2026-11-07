@@ -43,7 +43,7 @@
 | `development` | 显式输入清单中的全部视频 ID，减去既有 `test` ID。 | 包含既有训练和验证源视频；不是另划一份“开发集”，也不等同于某一折的验证集。 |
 | `test_audit` | 显式 `test` 清单中的源视频 ID。 | 作为测试审计范围独立规划，不进入本文所述开发集发布分支；有这个分支不等于本轮获准使用 test。 |
 
-`_load_media_inputs` 要求两份历史参考的 `source_inventory` 分别精确对应上述集合，再由 `run_input_subvideo` 分 scope 调用规划器。已完成的[划分 ID 对照](data-split-migration-review.md)记录开发集 89 个、测试集 21 个；各折 train 与 val 的并集均为同一批 89 个开发 ID。该数量是既有清单的核查结果，不是本入口重新划分或本轮视频已生成的证据。
+`_load_media_inputs` 要求两份历史参考的 `source_inventory` 分别精确对应上述集合，再由 `run_input_subvideo` 分 scope 调用规划器。已完成的[划分规则设计稿中的 ID 对照](data-split-design.md)记录开发集 89 个、测试集 21 个；各折 train 与 val 的并集均为同一批 89 个开发 ID。该数量是既有清单的核查结果，不是本入口重新划分或本轮视频已生成的证据。
 
 后续开发集发布还检查入选片段的源视频是否被每折 train/val 覆盖，且不与 test 交叉。片段沿源视频划分归属，不因生成窗口变成新的划分单位。
 
