@@ -2,7 +2,7 @@
 
 Geometry and encoding are adapted from mVllm_2 pipeline/roi_media.py and
 pipeline/scripts/roi_annotation_app.py (2c272ce). Records use a new schema:
-legacy visibility booleans are candidates, never evidence of current review.
+legacy media keeps its original pixels; visual review is optional and never inferred.
 """
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Mapping
 
-RULE_VERSION = "roi-rules/1"
-PROCESSING_VERSION = "roi-processing/2"
+RULE_VERSION = "roi-rules/2"
+PROCESSING_VERSION = "roi-processing/3"
 SCHEMA = "tensile-roi/1"
 EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".m4v", ".webm"}
 EVIDENCE_ITEMS = {
@@ -144,6 +144,54 @@ def geometry(decision: Mapping) -> dict:
     return {"filter":f"crop={w}:{h}:{x}:{y}:exact=1,setsar=1", "output_resolution":[w,h],
             "crop_pixels":{"top":y,"bottom":height-y-h,"left":x,"right":width-x-w},
             "pad_pixels":{k:0 for k in ("top","bottom","left","right")}}
+
+
+def chroma_grid(pixel_format: str) -> tuple[int, int] | None:
+    match=re.fullmatch(r"(?:yuv|yuva|yuvj)(420|422|444|411|410)p(?:\d+(?:le|be))?",pixel_format)
+    if match:
+        return {"420":(2,2),"422":(2,1),"444":(1,1),"411":(4,1),"410":(4,4)}[match.group(1)]
+    if pixel_format in {"gray","gray8","rgb24","bgr24","rgba","bgra","gbrp"}:
+        return (1,1)
+    return None
+
+
+def legacy_geometry(source: Mapping, decision: Mapping, entry: Mapping) -> dict:
+    """Describe the old file's actual geometry without moving/re-encoding pixels."""
+    width,height=source["media"]["width"],source["media"]["height"]
+    requested=entry.get("pixel_box") or decision.get("pixel_box")
+    value={"filter":entry.get("video_filter"),"output_resolution":entry.get("output_resolution"),
+           "requested_pixel_box":requested,"effective_pixel_box":None,"crop_pixels":None,
+           "pad_pixels":None,"geometry_status":"uncertain",
+           "note":"保留旧视频原始字节；当前记录不足以可靠还原生效边界。"}
+    video_filter=str(entry.get("video_filter", ""))
+    grid=chroma_grid(source["media"].get("pixel_format","unknown"))
+    if video_filter.startswith("format=yuv444p,"): grid=(1,1)
+    if decision.get("mode")=="fixed_roi":
+        crop=re.search(r"(?:^|,)crop=(\d+):(\d+):(\d+):(\d+)(?=[:,]|$)",video_filter)
+        if crop is None: return value
+        w,h,x,y=map(int,crop.groups())
+        exact=":exact=1" in video_filter
+        if not exact and grid is None: return value
+        gx,gy=(1,1) if exact else grid
+        x,y,w,h=x//gx*gx,y//gy*gy,w//gx*gx,h//gy*gy
+        if min(w,h)<=0 or min(x,y)<0 or x+w>width or y+h>height: return value
+        if entry.get("output_resolution") != [w,h]: return value
+        value.update(effective_pixel_box={"x":x,"y":y,"width":w,"height":h},
+            crop_pixels={"top":y,"bottom":height-y-h,"left":x,"right":width-x-w},
+            pad_pixels={k:0 for k in ("top","bottom","left","right")})
+    elif decision.get("mode")=="no_crop":
+        pad=re.search(r"(?:^|,)pad=(\d+):(\d+):(\d+):(\d+)(?=[:,]|$)",video_filter)
+        if pad is None or grid is None: return value
+        w,h,x,y=map(int,pad.groups()); gx,gy=grid
+        x,y=x//gx*gx,y//gy*gy
+        if x+width>w or y+height>h or entry.get("output_resolution") != [w,h]: return value
+        value.update(effective_pixel_box={"x":0,"y":0,"width":width,"height":height},
+            crop_pixels={k:0 for k in ("top","bottom","left","right")},
+            pad_pixels={"top":y,"bottom":h-y-height,"left":x,"right":w-x-width})
+    else: return value
+    value.update(geometry_status="verified_from_filter_and_source_format",
+                 note="按旧滤镜和源像素格式记录实际边界；旧视频原始字节保持不变。")
+    return value
 
 
 def probe_video(path: Path) -> dict:
@@ -374,117 +422,165 @@ class Workspace:
 
     def inventory(self, *, verify_source_ids: set[str] | None = None,
                   decode_source_ids: set[str] | None = None) -> dict:
-        verify_source_ids = verify_source_ids or set()
-        decode_source_ids = decode_source_ids or set()
-        candidates=load_decisions(self.candidate_path)
-        decisions=load_decisions(self.decisions_path)
+        verify_source_ids=verify_source_ids or set(); decode_source_ids=decode_source_ids or set()
+        candidates=load_decisions(self.candidate_path); decisions=load_decisions(self.decisions_path)
         previous=load_json(self.manifest_path,{})
         old={r["video_id"]:r for r in previous.get("videos",[])}
-        labels=labels_by_id(self.labels)
-        drafts=load_json(self.drafts_path,{})
+        labels=labels_by_id(self.labels); drafts=load_json(self.drafts_path,{})
         splits,split_input=load_splits(self.splits_dir)
-        rows=[]
-        directory_error=None
-        try:
-            found_videos=discover_videos(self.videos_dir)
+        legacy_entries=self._legacy_entries()
+        rows=[]; directory_error=None
+        try: found_videos=discover_videos(self.videos_dir)
         except RoiError as exc:
             if not old: raise
-            found_videos=[]
-            directory_error=str(exc)
+            found_videos=[]; directory_error=str(exc)
         found_ids={item["video_id"] for item in found_videos}
         for found in found_videos:
             key=found["video_id"]
             if found.get("status")=="failed": rows.append(found); continue
-            path=Path(found["path"])
+            path=Path(found["path"]); previous_row=old.get(key,{})
             row={"video_id":key,"source_path":str(path),"labels":labels.get(key,{}),
-                 "split":splits.get(key,{"status":"not_provided","partition":None,"folds":{}})}
-            previous_row=old.get(key,{})
+                 "split":splits.get(key,{"status":"not_provided","partition":None,"folds":{}}),
+                 "visual_review":{"required":False,"status":"not_recorded"}}
+            # Keep earlier human records and drafts as history, never synthesize them.
+            for field in ("output_review","output_review_draft","source_review","historical_review_records"):
+                if field in previous_row: row[field]=previous_row[field]
             history=dict(previous_row.get("history",{}))
             if previous_row.get("recipe_hash") and previous_row.get("output"):
                 history[previous_row["recipe_hash"]]={"output":previous_row["output"],
                     "output_review":previous_row.get("output_review"),
                     "output_review_draft":previous_row.get("output_review_draft")}
             if history: row["history"]=history
+            if key in drafts:
+                row["draft_history" if drafts[key].get("saved_as_decision_at") else "draft"]=drafts[key]
             try:
-                stat=path.stat(); cache=old.get(key,{}).get("source",{})
+                stat=path.stat(); cache=previous_row.get("source",{})
                 state={"size":stat.st_size,"mtime_ns":stat.st_mtime_ns}
-                cached = (cache.get("path")==str(path) and cache.get("stat")==state and
-                          "pixel_format" in cache.get("media",{}) and
-                          "frame_count_basis" in cache.get("media",{}))
+                cached=(cache.get("path")==str(path) and cache.get("stat")==state and
+                        "pixel_format" in cache.get("media",{}) and "frame_count_basis" in cache.get("media",{}))
                 if cached and key not in verify_source_ids:
-                    source=cache
-                    row["source_identity_check"]="cached_file_state"
+                    source=cache; row["source_identity_check"]="cached_file_state"
                 else:
                     current_sha=sha256_file(path)
                     if cache.get("sha256")==current_sha and "frame_count_basis" in cache.get("media",{}):
-                        # Restoring the same bytes may change path/stat; its
-                        # previously decoded count remains valid by SHA-256.
                         source={**cache,"path":str(path),"stat":state}
-                    else:
-                        source={"path":str(path),"sha256":current_sha,"stat":state,"media":probe_video(path)}
+                    else: source={"path":str(path),"sha256":current_sha,"stat":state,"media":probe_video(path)}
                     row["source_identity_check"]="sha256_verified"
-                if key in decode_source_ids and source["media"].get("frame_count_basis") != "decoded":
+                if key in decode_source_ids and source["media"].get("frame_count_basis")!="decoded":
                     source={**source,"media":verified_media(path,source["media"])}
                 row["source"]=source
-                decision=decisions.get(key) or candidates.get(key)
+                selected=decisions.get(key)
+                candidate=candidates.get(key)
+                decision=selected or candidate
                 if decision:
                     row["decision"]=decision
+                    row["decision_origin"]="selected" if selected else "legacy"
                     if not source_matches(source,decision):
-                        row.update(status="needs_review",reason="决定与源视频身份或方向不一致")
+                        row.update(status="needs_decision",reason="当前源视频与旧决定不同，请为当前视频保存画面范围。")
+                        row["reference_decision"]=decision
                     else:
                         geometry(decision)
-                        errors=review_errors(decision.get("source_review"),source["media"]["duration"])
-                        if decision.get("rule_version") != RULE_VERSION: errors.insert(0,"决定需要按当前规则复核")
-                        row.update(status="needs_review" if errors else "ready",reason="；".join(errors))
-                        if not errors:
-                            row["recipe_hash"]=recipe(source,decision)
-                            prior=old.get(key,{})
-                            if prior.get("recipe_hash") != row["recipe_hash"] and row["recipe_hash"] in history:
-                                prior={"recipe_hash":row["recipe_hash"],**history[row["recipe_hash"]]}
-                            if prior.get("recipe_hash")==row["recipe_hash"] and prior.get("generation_error"):
-                                row.update(status="failed",reason=prior["generation_error"],generation_error=prior["generation_error"])
-                            media=prior.get("output")
-                            if prior.get("recipe_hash")==row["recipe_hash"] and media:
-                                output=Path(media["path"])
-                                output_state = {"size":output.stat().st_size,"mtime_ns":output.stat().st_mtime_ns} if output.is_file() else None
-                                output_cached = output_state is not None and media.get("stat")==output_state
-                                if output_state is not None and ((output_cached and key not in verify_source_ids) or sha256_file(output)==media["sha256"]):
-                                    row["output"]=media
-                                    row["output_review"]=prior.get("output_review")
-                                    if prior.get("output_review_draft"):
-                                        row["output_review_draft"]=prior["output_review_draft"]
-                                    if (row["output_review"] or {}).get("output_sha256") == media["sha256"]:
-                                        review= row["output_review"]
-                                        err=review_errors(review,source["media"]["duration"])
-                                        row.update(status="needs_output_review" if err else "success",reason="；".join(err))
-                                    else: row.update(status="needs_output_review",reason="实际输出尚未审核")
-                                    if row.get("output_review_draft"):
-                                        row.update(status="needs_output_review",reason=row["output_review_draft"].get("pending_reason") or "输出审核草稿待完成")
-                else: row.update(status="needs_decision",reason="请选择范围并审核")
-                if key in drafts:
-                    row["draft"]=drafts[key]
-                    row.update(status="needs_review",reason=drafts[key].get("pending_reason") or "选框或审核草稿待完成")
-                if source["media"]["rotation"] != 0:
-                    row.update(status="needs_verification",reason="视频含旋转标记，需先明确显示方向与坐标；暂不自动处理")
+                        row.update(status="ready",reason="画面范围已记录，可以生成ROI。")
+                        row["recipe_hash"]=recipe(source,decision)
+                        prior=previous_row
+                        if prior.get("recipe_hash")!=row["recipe_hash"]:
+                            prior={"recipe_hash":row["recipe_hash"],**history.get(row["recipe_hash"],{})}
+                        media=prior.get("output")
+                        if media and self._output_matches(media,key in verify_source_ids):
+                            row.update(output=media,status="success",reason="ROI可用，可直接查看；有问题再调整。")
+                            if prior.get("output_review"): row["output_review"]=prior["output_review"]
+                        elif prior.get("generation_error"):
+                            row.update(status="failed",reason=prior["generation_error"],generation_error=prior["generation_error"])
+                        # An explicit new range wins; otherwise retain the old result itself.
+                        if selected is None:
+                            legacy=legacy_entries.get(key)
+                            if legacy:
+                                output=self._preserved_legacy(source,decision,legacy,previous_row,key in verify_source_ids)
+                                row.update(output=output,status="success",reason="沿用旧ROI结果，可直接查看；标签采用已有标注。")
+                                row["recipe_hash"]=digest({"origin":"preserved_legacy","source_sha256":source["sha256"],
+                                                          "output_sha256":output["sha256"]})
+                else: row.update(status="needs_decision",reason="新视频尚无范围，请选框或保留全画面后生成。")
+                for field in ("output_review","output_review_draft"):
+                    if field in row and (not row.get("output") or row[field].get("output_sha256")!=row["output"]["sha256"]):
+                        records=dict(row.get("historical_review_records",{}))
+                        record=row.pop(field)
+                        records[digest({"field":field,"record":record})]={"field":field,"record":record}
+                        row["historical_review_records"]=records
+                if row.get("output") and row.get("output_review",{}).get("output_sha256")==row["output"]["sha256"]:
+                    row["visual_review"]={"required":False,"status":"recorded_earlier"}
+                if source["media"]["rotation"]!=0:
+                    row.update(status="needs_verification",reason="视频含旋转标记，需要明确画面方向和坐标。")
                 if row["split"]["status"]=="conflict":
                     row.update(status="needs_verification",reason="划分冲突："+"；".join(row["split"]["conflicts"]))
             except (RoiError,OSError,subprocess.SubprocessError) as exc:
                 row.update(status="failed",reason=str(exc))
+                row.pop("output",None)
             rows.append(row)
-        # A refresh must not erase an expected source merely because the file
-        # disappeared. Preserve its identity/history until it is restored.
         for key,previous_row in old.items():
             if key not in found_ids:
-                row=dict(previous_row)
-                row.update(status="failed",source_missing=True,
+                row=dict(previous_row); row.update(status="failed",source_missing=True,
                     reason=directory_error or "此前登记的源视频已缺失或不可访问，请恢复原文件后刷新")
-                row.pop("generation_error",None)
-                rows.append(row)
+                row.pop("generation_error",None); rows.append(row)
         result={"schema":SCHEMA,"rule_version":RULE_VERSION,"generated_at":now(),
-                "videos_dir":str(self.videos_dir),"split_input":split_input,"videos":rows}
-        result["summary"]={s:sum(r.get("status")==s for r in rows) for s in sorted({r.get("status") for r in rows})}
+                "videos_dir":str(self.videos_dir),"split_input":split_input,"videos":rows,
+                "completion_basis":"roi_media_available","visual_review_required":False}
+        result["summary"]={state:sum(r.get("status")==state for r in rows) for state in sorted({r.get("status") for r in rows})}
         result["total"]=len(rows); result["complete"]=bool(rows) and all(r.get("status")=="success" for r in rows)
         return result
+
+    def _output_matches(self, media: Mapping, verify: bool=False) -> bool:
+        output=Path(media["path"])
+        if not output.is_file(): return False
+        state={"size":output.stat().st_size,"mtime_ns":output.stat().st_mtime_ns}
+        return (not verify and media.get("stat")==state) or sha256_file(output)==media.get("sha256")
+
+    def _preserved_legacy(self, source: Mapping, decision: Mapping, legacy: Mapping,
+                          previous: Mapping, verify: bool) -> dict:
+        if legacy.get("source_sha256")!=source["sha256"]:
+            raise RoiError("旧ROI清单绑定的是另一份源视频，不能用于当前视频。")
+        if legacy.get("mode")!=decision.get("mode") or (decision.get("mode")=="fixed_roi" and
+                legacy.get("pixel_box")!=decision.get("pixel_box")):
+            raise RoiError("旧ROI清单与旧决定的画面范围不一致。")
+        path=self.existing_media_dir/(safe_id(decision["source_video_id"])+".mp4")
+        if not path.is_file(): raise RoiError("旧ROI视频缺失，原决定仍可参考，请重新生成。")
+        expected=legacy.get("output_sha256") or legacy.get("sha256")
+        if not isinstance(expected,str) or not re.fullmatch(r"[0-9a-f]{64}",expected):
+            raise RoiError("旧ROI清单缺少完整输出摘要。")
+        prior=previous.get("output",{})
+        state={"size":path.stat().st_size,"mtime_ns":path.stat().st_mtime_ns}
+        cached=(prior.get("path")==str(path) and prior.get("sha256")==expected and prior.get("stat")==state)
+        if (verify or not cached) and sha256_file(path)!=expected:
+            raise RoiError("旧ROI视频摘要与清单不一致，请核实文件。")
+        media=prior.get("media") if cached else probe_video(path)
+        resolution=legacy.get("output_resolution")
+        if resolution!=[media["width"],media["height"]]: raise RoiError("旧ROI分辨率与清单不一致。")
+        if media.get("rotation",0)!=0: raise RoiError("旧ROI视频方向异常。")
+        recorded_rate=legacy.get("nominal_frame_rate") or legacy.get("frame_rate")
+        if recorded_rate and not math.isclose(float(Fraction(recorded_rate)),float(Fraction(media["nominal_frame_rate"])),rel_tol=1e-6,abs_tol=1e-9):
+            raise RoiError("旧ROI帧率与清单不一致。")
+        recorded_count=legacy.get("frame_count")
+        if recorded_count is not None and media.get("frame_count") is not None and int(recorded_count)!=media["frame_count"]:
+            raise RoiError("旧ROI文件头帧数与清单不一致。")
+        recorded_duration=legacy.get("duration")
+        rate=float(Fraction(media["nominal_frame_rate"]))
+        if recorded_duration is not None and abs(float(recorded_duration)-media["duration"])>max(.02,1/max(rate,1)+.005):
+            raise RoiError("旧ROI时长与清单不一致。")
+        # A self-consistent short output is not a complete ROI for a longer source.
+        source_media=source["media"]
+        source_rate=float(Fraction(source_media["nominal_frame_rate"]))
+        if not math.isclose(source_rate,rate,rel_tol=1e-6,abs_tol=1e-9):
+            raise RoiError("旧ROI与当前源视频的标称帧率不一致。")
+        if abs(source_media["duration"]-media["duration"])>max(.02,1/max(source_rate,1)+.005):
+            raise RoiError("旧ROI未覆盖当前源视频的完整时长。")
+        source_count=source_media.get("frame_count")
+        output_count=media.get("frame_count")
+        if source_count is not None and output_count is not None and source_count!=output_count:
+            raise RoiError("旧ROI与当前源的帧数记录不一致，需要实际计帧核实。")
+        return {"path":str(path),"sha256":expected,"stat":state,"media":media,"origin":"preserved_legacy",
+                "encoding":legacy.get("_encoding_profile",{}),"geometry":legacy_geometry(source,decision,legacy),
+                "validation":{"source_identity":"sha256","output_identity":"sha256",
+                              "media_properties":"metadata_matches_legacy_manifest","full_decode":"not_performed"},
+                "visual_review":{"required":False,"status":"not_recorded"}}
 
     @serialized
     def refresh(self, *, verify_source_ids: set[str] | None = None) -> dict:
@@ -508,27 +604,39 @@ class Workspace:
     def save_decision(self, row: Mapping, decision: Mapping):
         source=row["source"]; path=Path(source["path"])
         if sha256_file(path)!=source["sha256"]: raise RoiError("保存前源视频发生变化，请刷新")
-        d=dict(decision); d.update(source_video_id=row["video_id"],source_sha256=source["sha256"],
+        drafts=load_json(self.drafts_path,{})
+        prior_draft=drafts.get(row["video_id"],{})
+        d=dict(decision)
+        if prior_draft:
+            d["prior_draft"]=prior_draft
+            if not d.get("pending_reason"): d["pending_reason"]=prior_draft.get("pending_reason","")
+        d.update(source_video_id=row["video_id"],source_sha256=source["sha256"],
             source_resolution=[source["media"]["width"],source["media"]["height"]],
-            source_rotation=source["media"]["rotation"],rule_version=RULE_VERSION,reviewed_at=now())
+            source_rotation=source["media"]["rotation"],rule_version=RULE_VERSION,saved_at=now())
         geometry(d)
-        errors=review_errors(d.get("source_review"),source["media"]["duration"])
-        if errors: raise RoiError("；".join(errors))
         if source["media"]["rotation"] != 0: raise RoiError("旋转方向尚待核实")
         decisions=load_decisions(self.decisions_path); decisions[row["video_id"]]=d
         atomic_json(self.decisions_path,{"schema":SCHEMA,"rule_version":RULE_VERSION,"decisions":list(decisions.values())})
-        drafts=load_json(self.drafts_path,{})
-        if drafts.pop(row["video_id"],None) is not None:
+        if prior_draft:
+            drafts[row["video_id"]]={**prior_draft,"saved_as_decision_at":d["saved_at"]}
             atomic_json(self.drafts_path,drafts)
         self.refresh()
 
-    def _legacy_entry(self, video_id: str) -> dict | None:
+    def _legacy_entries(self) -> dict:
         raw=load_json(self.existing_manifest,{})
         entries=raw.get("videos",raw.get("entries",raw.get("items",[]))) if isinstance(raw,dict) else []
         if isinstance(entries,dict): entries=list(entries.values())
-        entry=next((e for e in entries if e.get("source_video_id",e.get("video_id"))==video_id),None)
-        if entry is None: return None
-        return {**entry,"_encoding_profile":raw.get("encoding_profile",{})}
+        if not isinstance(entries,list): raise RoiError("旧ROI清单须包含视频数组。")
+        result={}
+        for entry in entries:
+            if not isinstance(entry,Mapping): raise RoiError("旧ROI清单含非对象条目。")
+            key=entry.get("source_video_id",entry.get("video_id"))
+            if not isinstance(key,str) or key in result: raise RoiError("旧ROI清单ID缺失或重复。")
+            result[key]={**entry,"_encoding_profile":raw.get("encoding_profile",{})}
+        return result
+
+    def _legacy_entry(self, video_id: str) -> dict | None:
+        return self._legacy_entries().get(video_id)
 
     @serialized
     def generate(self, video_id: str) -> dict:
@@ -553,51 +661,8 @@ class Workspace:
         temporary=folder/(".building-"+next(tempfile._get_candidate_names())+".mp4")
         origin="generated"
         try:
-            legacy=self._legacy_entry(video_id)
-            candidate=self.existing_media_dir/(video_id+".mp4")
-            # Legacy media is eligible only with source, output and geometry identity.
-            if legacy and candidate.is_file():
-                source_hash=legacy.get("source_sha256")
-                output_hash=legacy.get("output_sha256") or legacy.get("sha256")
-                legacy_box=legacy.get("pixel_box")
-                profile=legacy.get("_encoding_profile",{})
-                encoding_matches=(profile.get("video_codec")=="libx264" and profile.get("preset")=="fast" and
-                    profile.get("crf")==23 and profile.get("pixel_format")=="yuv420p" and
-                    profile.get("audio")=="dropped" and profile.get("frame_sync") in {"vsync_0_passthrough","passthrough"})
-                # crop aligns to the INPUT chroma grid unless exact=1. The
-                # encoded output pixel format cannot establish that grid.
-                pixel_format=source["media"].get("pixel_format", "unknown")
-                subsampling=re.fullmatch(r"(?:yuv|yuva|yuvj)(420|422|444)p(?:\d+(?:le|be))?",pixel_format)
-                aligned=False
-                if subsampling and d["mode"]=="fixed_roi":
-                    grid={"420":(2,2),"422":(2,1),"444":(1,1)}[subsampling.group(1)]
-                    aligned=(all(d["pixel_box"][field] % grid[0] == 0 for field in ("x","width")) and
-                             all(d["pixel_box"][field] % grid[1] == 0 for field in ("y","height")))
-                if d["mode"]=="no_crop":
-                    geo=geometry(d)
-                    pad=geo["pad_pixels"]
-                    legacy_filter=str(legacy.get("video_filter",""))
-                    legacy_pad=re.search(r"(?:^|,)pad=(\d+):(\d+):(\d+):(\d+)(?=[:,]|$)",legacy_filter)
-                    expected_pad=(*geo["output_resolution"],pad["left"],pad["top"])
-                    same_pad=(legacy_pad is not None and tuple(map(int,legacy_pad.groups()))==expected_pad)
-                    # Old pad also rounds to the INPUT chroma grid. Do not
-                    # infer that grid from the encoded output format.
-                    pad_aligned=False
-                    if subsampling:
-                        grid={"420":(2,2),"422":(2,1),"444":(1,1)}[subsampling.group(1)]
-                        pad_aligned=(pad["left"] % grid[0] == 0 and pad["top"] % grid[1] == 0)
-                    exact_geometry=(same_pad and
-                        (pad_aligned or legacy_filter.startswith("format=yuv444p,")))
-                else:
-                    exact_geometry=(aligned or ":exact=1" in str(legacy.get("video_filter","")))
-                compatible=(source_hash==source["sha256"] and output_hash and encoding_matches and exact_geometry and
-                    legacy.get("mode")==d["mode"] and
-                    (d["mode"]=="no_crop" or legacy_box==d.get("pixel_box")))
-                if compatible and sha256_file(candidate)==output_hash:
-                    shutil.copyfile(candidate,temporary); origin="imported"
-            if not temporary.exists():
-                result=subprocess.run(build_ffmpeg_command(Path(source["path"]),temporary,d),capture_output=True,text=True)
-                if result.returncode: raise RoiError("ffmpeg 失败："+result.stderr.strip()[-1500:])
+            result=subprocess.run(build_ffmpeg_command(Path(source["path"]),temporary,d),capture_output=True,text=True)
+            if result.returncode: raise RoiError("ffmpeg 失败："+result.stderr.strip()[-1500:])
             output_probe=verified_media(temporary,probe_video(temporary))
             validate_media(source["media"],output_probe,geometry(d)["output_resolution"])
             # Check full decode in addition to actual frame counting.
@@ -610,7 +675,7 @@ class Workspace:
             os.rename(temporary,target)
             row.pop("generation_error",None)
             row.update(output={"path":str(target),"sha256":sha,"media":output_probe,"stat":{"size":target.stat().st_size,"mtime_ns":target.stat().st_mtime_ns},"origin":origin,
-                "encoding":ENCODING,"geometry":geometry(d)},status="needs_output_review",reason="媒体检查通过，等待实际输出审核")
+                "encoding":ENCODING,"geometry":geometry(d)},status="success",reason="ROI已生成并通过媒体检查，可直接查看，有问题再修改。")
             for i,item in enumerate(manifest["videos"]):
                 if item["video_id"]==video_id: manifest["videos"][i]=row
             atomic_json(self.manifest_path,manifest)
@@ -623,6 +688,81 @@ class Workspace:
             self.refresh()
             raise
         finally: temporary.unlink(missing_ok=True)
+
+    @serialized
+    def import_generated(self, video_id: str, staged_path: Path, decision: Mapping,
+                         expected_sha256: str, *, expected_source_sha256: str, generated_on: str) -> dict:
+        """Accept one externally generated ROI after current-source/media checks.
+
+        This internal helper does not add a user workflow or claim visual review.
+        Source, old media, other rows and draft files are never overwritten.
+        """
+        if not re.fullmatch(r"[0-9a-f]{64}",expected_sha256) or not generated_on.strip():
+            raise RoiError("导入需要完整输出摘要和生成位置记录。")
+        staged_path=Path(staged_path).resolve()
+        if staged_path.is_relative_to(self.videos_dir) or not staged_path.is_file():
+            raise RoiError("待导入文件必须位于源视频目录之外且可读取。")
+        if sha256_file(staged_path)!=expected_sha256:
+            raise RoiError("待导入输出摘要不符。")
+        manifest=self.inventory(verify_source_ids={video_id},decode_source_ids={video_id})
+        row=next((item for item in manifest["videos"] if item["video_id"]==video_id),None)
+        if row is None or "source" not in row or row.get("source_missing"):
+            raise RoiError("当前源视频不在清单或不可读取。")
+        if row["source"]["media"].get("frame_count_basis")!="decoded":
+            raise RoiError("当前源实际计帧未完成。")
+        if row["split"].get("status")=="conflict" or row["source"]["media"]["rotation"]!=0:
+            raise RoiError("源视频方向或划分尚待核实。")
+        source=row["source"]
+        if source["sha256"]!=expected_source_sha256:
+            raise RoiError("外部生成时的源摘要与当前源视频不一致。")
+        required={"source_video_id","source_sha256","source_resolution","source_rotation"}
+        if not required.issubset(decision) or decision.get("source_video_id")!=video_id or not source_matches(source,decision):
+            raise RoiError("外部生成决定缺少完整来源身份，或与当前源视频不一致。")
+        d=dict(decision)
+        d.update(source_video_id=video_id,source_sha256=source["sha256"],
+            source_resolution=[source["media"]["width"],source["media"]["height"]],
+            source_rotation=source["media"]["rotation"],rule_version=RULE_VERSION,saved_at=now())
+        geo=geometry(d); key=recipe(source,d)
+        output_media=verified_media(staged_path,probe_video(staged_path))
+        validate_media(source["media"],output_media,geo["output_resolution"])
+        decode=subprocess.run(["ffmpeg","-v","error","-xerror","-i",str(staged_path),"-map","0:v:0","-f","null","-"],capture_output=True,text=True)
+        if decode.returncode: raise RoiError("导入输出解码校验失败："+decode.stderr.strip()[-1000:])
+        folder=self.output_dir/"media"/safe_id(video_id); folder.mkdir(parents=True,exist_ok=True)
+        target=folder/(key+".mp4")
+        history=dict(row.get("history",{}))
+        if row.get("recipe_hash") and row.get("output"):
+            history[row["recipe_hash"]]={"output":row["output"],"output_review":row.get("output_review"),
+                                        "output_review_draft":row.get("output_review_draft")}
+        known=row.get("output") if row.get("recipe_hash")==key else history.get(key,{}).get("output")
+        if target.exists():
+            if not known or known.get("path")!=str(target) or known.get("sha256")!=expected_sha256 or sha256_file(target)!=expected_sha256:
+                raise RoiError("目标文件已存在但身份不符或没有记录；保留原文件，拒绝覆盖。")
+        else:
+            temporary=folder/(".importing-"+next(tempfile._get_candidate_names())+".mp4")
+            try:
+                shutil.copyfile(staged_path,temporary)
+                if sha256_file(temporary)!=expected_sha256 or sha256_file(Path(source["path"]))!=source["sha256"]:
+                    raise RoiError("导入期间源视频或输出发生变化。")
+                # Hard-link publication is atomic and refuses a concurrent existing target.
+                os.link(temporary,target)
+            finally: temporary.unlink(missing_ok=True)
+        if sha256_file(Path(source["path"]))!=source["sha256"]:
+            raise RoiError("接入记录前源视频发生变化，请重新核对。")
+        decisions=load_decisions(self.decisions_path); decisions[video_id]=d
+        atomic_json(self.decisions_path,{"schema":SCHEMA,"rule_version":RULE_VERSION,"decisions":list(decisions.values())})
+        row.update(decision=d,decision_origin="selected",recipe_hash=key,history=history,status="success",
+            reason="已接入外部生成的ROI，媒体检查通过，可直接查看。",
+            output={"path":str(target),"sha256":expected_sha256,"media":output_media,
+                    "stat":{"size":target.stat().st_size,"mtime_ns":target.stat().st_mtime_ns},
+                    "origin":"imported_generated","generated_on":generated_on,"encoding":ENCODING,"geometry":geo,
+                    "validation":{"source_identity":"sha256","output_identity":"sha256","full_decode":"passed"}},
+            visual_review={"required":False,"status":"not_recorded"})
+        for field in ("generation_error","output_review","output_review_draft"):
+            row.pop(field,None)
+        for index,item in enumerate(manifest["videos"]):
+            if item["video_id"]==video_id: manifest["videos"][index]=row
+        atomic_json(self.manifest_path,manifest)
+        return self.refresh()
 
     @serialized
     def save_output_draft(self, video_id: str, review: Mapping):

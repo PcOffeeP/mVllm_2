@@ -53,7 +53,7 @@ def workspace(tmp_path, monkeypatch):
     def run(command, **kwargs):
         calls.append(command)
         if "-c:v" in command:
-            Path(command[-1]).write_bytes(b"synthetic generated output")
+            Path(command[-1]).write_bytes(b"synthetic generated output:" + command[command.index("-vf") + 1].encode())
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(core, "probe_video", probe)
@@ -83,7 +83,7 @@ def test_new_video_without_any_decision_is_pending_not_a_failure(workspace):
     assert (ws.videos_dir / "new.mp4").read_bytes() == before
 
 
-def test_legacy_approval_does_not_supply_current_evidence_review(workspace):
+def test_valid_legacy_crop_does_not_require_label_evidence_review(workspace):
     ws, _ = workspace
     source = ws.refresh()["videos"][0]["source"]
     legacy = {**fixed_decision(), "source_video_id": "new",
@@ -93,11 +93,13 @@ def test_legacy_approval_does_not_supply_current_evidence_review(workspace):
     legacy.pop("source_review")
     core.atomic_json(ws.candidate_path, {"decisions": [legacy]})
     manifest = ws.refresh()
-    assert manifest["videos"][0]["status"] == "needs_review"
+    assert manifest["videos"][0]["status"] == "ready"
     assert manifest["complete"] is False
-    with pytest.raises(core.RoiError):
-        ws.generate("new")
-    assert not list((ws.output_dir / "media").rglob("*.mp4"))
+    ws.generate("new")
+    row = ws.inventory()["videos"][0]
+    assert row["status"] == "success"
+    assert not row.get("output_review")
+    assert not row["decision"].get("source_review")
 
 
 def test_wrong_source_identity_cannot_generate_even_with_valid_review(workspace):
@@ -105,26 +107,20 @@ def test_wrong_source_identity_cannot_generate_even_with_valid_review(workspace)
     decision = {**fixed_decision(), "source_video_id": "new", "source_sha256": "0" * 64,
                 "source_resolution": [640, 480], "rule_version": core.RULE_VERSION}
     core.atomic_json(ws.candidate_path, {"decisions": [decision]})
-    assert ws.refresh()["videos"][0]["status"] == "needs_review"
-    with pytest.raises(core.RoiError, match="身份"):
+    assert ws.refresh()["videos"][0]["status"] == "needs_decision"
+    with pytest.raises(core.RoiError, match="源视频"):
         ws.generate("new")
 
 
-def test_generated_media_requires_separate_output_review_and_binds_it_to_bytes(workspace):
+def test_generated_media_is_available_without_fabricating_output_review(workspace):
     ws, _ = ready_workspace(workspace)
     ws.generate("new")
     manifest = ws.inventory()
     row = manifest["videos"][0]
-    assert row["status"] == "needs_output_review"
-    assert manifest["complete"] is False
-    assert "output_review" not in row or row["output_review"] is None
-
-    ws.save_output_review("new", checked_review())
-    manifest = ws.inventory()
-    row = manifest["videos"][0]
     assert row["status"] == "success"
     assert manifest["complete"] is True
-    assert row["output_review"]["output_sha256"] == row["output"]["sha256"]
+    assert not row.get("output_review")
+    assert row["visual_review"] == {"required": False, "status": "not_recorded"}
     Path(row["output"]["path"]).write_bytes(b"different output bytes")
     invalidated = ws.inventory()
     assert invalidated["complete"] is False
@@ -136,11 +132,20 @@ def test_changed_recipe_does_not_inherit_output_approval(workspace):
     ws.generate("new")
     ws.save_output_review("new", checked_review())
     approved = ws.inventory()["videos"][0]
-    ws.save_decision(approved, {"mode": "no_crop", "source_review": checked_review()})
+    changed_decision = fixed_decision()
+    changed_decision["pixel_box"]["x"] = 32
+    ws.save_decision(approved, changed_decision)
     changed = ws.inventory()
     assert changed["videos"][0]["status"] == "ready"
     assert changed["videos"][0]["recipe_hash"] != approved["recipe_hash"]
     assert changed["complete"] is False
+    assert not changed["videos"][0].get("output_review")
+    assert changed["videos"][0]["history"][approved["recipe_hash"]]["output_review"] == approved["output_review"]
+    ws.generate("new")
+    current = ws.inventory()["videos"][0]
+    assert current["status"] == "success"
+    assert not current.get("output_review")
+    assert current["visual_review"] == {"required": False, "status": "not_recorded"}
 
 
 def test_source_change_between_view_and_save_cannot_be_silently_rebound(workspace):
@@ -248,7 +253,7 @@ def test_review_must_record_actual_valid_viewing_positions():
         assert core.review_errors(review, 10)
 
 
-def test_matching_historical_output_is_reused_but_still_needs_output_review(workspace):
+def test_explicit_new_crop_is_generated_without_using_unselected_historical_media(workspace):
     ws, calls = ready_workspace(workspace)
     row = ws.inventory()["videos"][0]
     ws.existing_media_dir.mkdir(parents=True)
@@ -257,15 +262,15 @@ def test_matching_historical_output_is_reused_but_still_needs_output_review(work
     core.atomic_json(ws.existing_manifest, {"encoding_profile": legacy_profile(), "videos": [{
         "source_video_id": "new", "source_sha256": row["source"]["sha256"],
         "output_sha256": core.sha256_file(candidate), "mode": "fixed_roi",
-        "pixel_box": fixed_decision()["pixel_box"],
+        "pixel_box": fixed_decision()["pixel_box"], "output_resolution": [300, 400],
     }]})
     ws.generate("new")
-    imported = ws.inventory()["videos"][0]
-    assert imported["output"]["origin"] == "imported"
-    assert Path(imported["output"]["path"]).read_bytes() == candidate.read_bytes()
-    assert imported["status"] == "needs_output_review"
-    assert ws.inventory()["complete"] is False
-    assert not any("-c:v" in command for command in calls)
+    generated = ws.inventory()["videos"][0]
+    assert generated["output"]["origin"] == "generated"
+    assert Path(generated["output"]["path"]).read_bytes() != candidate.read_bytes()
+    assert generated["status"] == "success"
+    assert ws.inventory()["complete"] is True
+    assert any("-c:v" in command for command in calls)
 
 
 def test_historical_output_with_wrong_digest_is_not_reused(workspace):
@@ -341,7 +346,7 @@ def install_legacy(ws, row, *, profile=None, video_filter=None):
     entry = {
         "source_video_id": "new", "source_sha256": row["source"]["sha256"],
         "output_sha256": core.sha256_file(candidate), "mode": "fixed_roi",
-        "pixel_box": row["decision"]["pixel_box"],
+        "pixel_box": row["decision"]["pixel_box"], "output_resolution": [300, 400],
     }
     if video_filter is not None:
         entry["video_filter"] = video_filter
@@ -362,32 +367,41 @@ def test_missing_or_incompatible_legacy_encoding_is_regenerated(workspace, profi
 
 
 @pytest.mark.parametrize("pixel_format,x,y,explicit_exact,expected", [
-    ("yuv420p", 30, 10, False, "imported"),
-    ("yuv420p", 31, 11, False, "generated"),
-    ("yuv420p", 31, 11, True, "imported"),
-    ("yuv411p", 2, 10, False, "generated"),
-    ("unknown", 30, 10, False, "generated"),
-    ("yuv422p", 30, 11, False, "imported"),
-    ("yuv444p", 31, 11, False, "imported"),
+    ("yuv420p", 30, 10, False, {"x": 30, "y": 10, "width": 300, "height": 400}),
+    ("yuv420p", 31, 11, False, {"x": 30, "y": 10, "width": 300, "height": 400}),
+    ("yuv420p", 31, 11, True, {"x": 31, "y": 11, "width": 300, "height": 400}),
+    ("yuv411p", 2, 10, False, {"x": 0, "y": 10, "width": 300, "height": 400}),
+    ("unknown", 30, 10, False, None),
+    ("yuv422p", 30, 11, False, {"x": 30, "y": 11, "width": 300, "height": 400}),
+    ("yuv444p", 31, 11, False, {"x": 31, "y": 11, "width": 300, "height": 400}),
 ])
-def test_legacy_crop_compatibility_uses_source_chroma_grid(workspace, monkeypatch, pixel_format, x, y, explicit_exact, expected):
+def test_legacy_crop_is_preserved_and_records_the_actual_chroma_aligned_box(workspace, monkeypatch, pixel_format, x, y, explicit_exact, expected):
     ws, calls = workspace
     original = core.probe_video
-
     def probe(path):
         return {**original(path), "pixel_format": pixel_format}
-
     monkeypatch.setattr(core, "probe_video", probe)
     row = ws.refresh()["videos"][0]
     decision = fixed_decision()
+    decision.pop("source_review")
     decision["pixel_box"].update(x=x, y=y)
-    ws.save_decision(row, decision)
+    decision.update(source_video_id="new", source_sha256=row["source"]["sha256"], source_resolution=[640, 480])
+    core.atomic_json(ws.candidate_path, {"decisions": [decision]})
     row = ws.inventory()["videos"][0]
     install_legacy(ws, row, profile=legacy_profile(),
-                   video_filter=f"crop=300:400:{x}:{y}:exact=1,setsar=1" if explicit_exact else None)
-    ws.generate("new")
-    assert ws.inventory()["videos"][0]["output"]["origin"] == expected
-    assert any("-c:v" in command for command in calls) == (expected == "generated")
+                   video_filter=f"crop=300:400:{x}:{y}:exact=1,setsar=1" if explicit_exact else f"crop=300:400:{x}:{y},setsar=1")
+    result = ws.refresh()
+    output = result["videos"][0]["output"]
+    assert output["origin"] == "preserved_legacy"
+    assert result["complete"] is True
+    assert not calls
+    geometry = output["geometry"]
+    if expected is None:
+        assert geometry["geometry_status"] == "uncertain"
+        assert geometry["effective_pixel_box"] is None
+    else:
+        assert geometry["effective_pixel_box"] == expected
+        assert geometry["geometry_status"] == "verified_from_filter_and_source_format"
 
 
 def test_switching_a_to_b_to_a_restores_recorded_output_and_approval(workspace):
@@ -420,7 +434,7 @@ def test_switching_a_to_b_to_a_restores_recorded_output_and_approval(workspace):
         ws.generate("new")
 
 
-def test_source_and_output_drafts_survive_reload_without_granting_approval(workspace):
+def test_historical_drafts_survive_without_blocking_available_roi(workspace):
     ws, _ = workspace
     row = ws.refresh()["videos"][0]
     draft = fixed_decision()
@@ -429,30 +443,27 @@ def test_source_and_output_drafts_survive_reload_without_granting_approval(works
     ws.save_draft(row, draft)
     reloaded = core.Workspace(ws.videos_dir, ws.output_dir)
     pending = reloaded.inventory()["videos"][0]
-    assert pending["status"] == "needs_review"
+    assert pending["status"] == "needs_decision"
     assert pending["draft"]["pending_reason"] == "明天继续检查"
     with pytest.raises(core.RoiError):
         reloaded.generate("new")
-    reloaded.save_decision(pending, fixed_decision())
+    reloaded.save_decision(pending, {k: v for k, v in fixed_decision().items() if k != "source_review"})
     assert "draft" not in reloaded.inventory()["videos"][0]
     reloaded.generate("new")
-    reloaded.save_output_review("new", checked_review())
     output_draft = checked_review()
     output_draft["items"]["location"]["result"] = "unchecked"
-    output_draft["pending_reason"] = "需要再检查夹具"
+    output_draft["pending_reason"] = "旧复核备注"
     reloaded.save_output_draft("new", output_draft)
     again = core.Workspace(ws.videos_dir, ws.output_dir)
     row = again.inventory()["videos"][0]
-    assert row["status"] == "needs_output_review"
-    assert row["output_review_draft"]["pending_reason"] == "需要再检查夹具"
-    assert again.inventory()["complete"] is False
-    again.save_output_review("new", checked_review())
+    assert row["status"] == "success"
+    assert row["output_review_draft"]["pending_reason"] == "旧复核备注"
     assert again.inventory()["complete"] is True
-    assert "output_review_draft" not in again.inventory()["videos"][0]
+    assert not row.get("output_review")
 
 
 @pytest.mark.parametrize("obstruction", ["draft", "split_conflict"])
-def test_generation_failure_does_not_bypass_new_review_or_split_obstruction(workspace, monkeypatch, obstruction):
+def test_retry_keeps_split_identity_gate_but_does_not_reintroduce_label_review(workspace, monkeypatch, obstruction):
     ws, calls = ready_workspace(workspace)
     original = core.subprocess.run
 
@@ -470,7 +481,7 @@ def test_generation_failure_does_not_bypass_new_review_or_split_obstruction(work
         draft = fixed_decision()
         draft["source_review"]["items"]["state"]["result"] = "unchecked"
         ws.save_draft(failed_row, draft)
-        expected = "needs_review"
+        expected = "failed"
     else:
         directory = ws.output_dir.parent / "splits"
         directory.mkdir()
@@ -480,17 +491,14 @@ def test_generation_failure_does_not_bypass_new_review_or_split_obstruction(work
         expected = "needs_verification"
     assert ws.inventory()["videos"][0]["status"] == expected
     before = len(calls)
-    with pytest.raises(core.RoiError):
-        ws.generate("new")
-    assert len(calls) == before
-
-    if obstruction == "draft":
-        ws.save_decision(ws.inventory()["videos"][0], fixed_decision())
-    else:
+    if obstruction == "split_conflict":
+        with pytest.raises(core.RoiError):
+            ws.generate("new")
+        assert len(calls) == before
         (ws.splits_dir / "fold_0_val.json").unlink()
     monkeypatch.setattr(core.subprocess, "run", original)
     ws.generate("new")
-    assert ws.inventory()["videos"][0]["status"] == "needs_output_review"
+    assert ws.inventory()["videos"][0]["status"] == "success"
 
 
 def test_invalid_fold_filename_is_a_friendly_input_error(tmp_path):
@@ -564,7 +572,7 @@ def test_concurrent_refresh_cannot_enter_manifest_write_while_generation_holds_l
     assert not generation_thread.is_alive()
     assert not refresh_thread.is_alive()
     assert errors == []
-    assert ws.inventory()["videos"][0]["status"] == "needs_output_review"
+    assert ws.inventory()["videos"][0]["status"] == "success"
 
 
 @pytest.mark.parametrize("missing_was_successful", [False, True])
@@ -625,3 +633,148 @@ def test_failed_selected_source_frame_count_is_reported_without_encoding(workspa
     assert not any("-c:v" in command for command in calls)
     manifest = json.loads(ws.manifest_path.read_text())
     assert manifest["complete"] is False
+
+
+def external_generated_input(ws):
+    row = ws.refresh()["videos"][0]
+    staged = ws.output_dir.parent / "externally_generated.mp4"
+    staged.write_bytes(b"verified external output")
+    source = row["source"]
+    decision = {"source_video_id": "new", "source_sha256": source["sha256"],
+                "source_resolution": [640, 480], "source_rotation": 0,
+                "mode": "fixed_roi", "pixel_box": fixed_decision()["pixel_box"]}
+    return row, staged, decision
+
+
+def import_external(ws, staged, decision, *, output_hash=None, source_hash=None):
+    return ws.import_generated("new", staged, decision, output_hash or core.sha256_file(staged),
+                               expected_source_sha256=source_hash or core.sha256_file(ws.videos_dir / "new.mp4"),
+                               generated_on="synthetic training machine")
+
+
+def test_external_generated_output_is_checked_without_claiming_visual_review(workspace, monkeypatch):
+    ws, calls = workspace
+    row, staged, decision = external_generated_input(ws)
+    counts = []
+    monkeypatch.setattr(core, "decoded_frame_count", lambda path: counts.append(Path(path)) or 250)
+    result = import_external(ws, staged, decision)
+    imported = result["videos"][0]
+    assert result["complete"] is True
+    assert imported["status"] == "success"
+    assert imported["output"]["origin"] == "imported_generated"
+    assert imported["output"]["generated_on"] == "synthetic training machine"
+    assert imported["output"]["validation"]["full_decode"] == "passed"
+    assert imported["source"]["media"]["frame_count_basis"] == "decoded"
+    assert imported["output"]["media"]["frame_count_basis"] == "decoded"
+    assert ws.videos_dir / "new.mp4" in counts
+    assert staged in counts
+    assert Path(imported["output"]["path"]).read_bytes() == staged.read_bytes()
+    assert not imported.get("output_review")
+    assert not imported["decision"].get("source_review")
+    assert imported["visual_review"] == {"required": False, "status": "not_recorded"}
+    assert any(command[0] == "ffmpeg" and "null" in command for command in calls)
+    assert not any("-c:v" in command for command in calls)
+
+
+@pytest.mark.parametrize("field,wrong", [
+    ("source_sha256", "0" * 64), ("source_resolution", [638, 480]), ("source_rotation", 90),
+])
+@pytest.mark.parametrize("missing", [False, True])
+def test_external_decision_must_explicitly_match_source_identity(workspace, field, wrong, missing):
+    ws, calls = workspace
+    _, staged, decision = external_generated_input(ws)
+    if missing:
+        decision.pop(field)
+    else:
+        decision[field] = wrong
+    with pytest.raises(core.RoiError):
+        import_external(ws, staged, decision)
+    assert not ws.decisions_path.exists()
+    assert not list((ws.output_dir / "media").rglob("*.mp4"))
+    assert not any("-c:v" in command for command in calls)
+
+
+@pytest.mark.parametrize("identity", ["source", "output"])
+def test_external_hash_mismatch_cannot_publish_or_rebind_source(workspace, identity):
+    ws, _ = workspace
+    _, staged, decision = external_generated_input(ws)
+    before = staged.read_bytes()
+    kwargs = {"source_hash": "0" * 64} if identity == "source" else {"output_hash": "0" * 64}
+    with pytest.raises(core.RoiError):
+        import_external(ws, staged, decision, **kwargs)
+    assert staged.read_bytes() == before
+    assert not ws.decisions_path.exists()
+    assert not list((ws.output_dir / "media").rglob("*.mp4"))
+
+
+def test_external_output_must_have_verified_source_frame_count(workspace, monkeypatch):
+    ws, _ = workspace
+    _, staged, decision = external_generated_input(ws)
+    monkeypatch.setattr(core, "decoded_frame_count", lambda path: 249 if Path(path) == staged else 250)
+    with pytest.raises(core.RoiError, match="帧数"):
+        import_external(ws, staged, decision)
+    assert not ws.decisions_path.exists()
+    assert not list((ws.output_dir / "media").rglob("*.mp4"))
+
+
+def test_external_import_refuses_orphan_target_without_overwrite(workspace):
+    ws, _ = workspace
+    row, staged, decision = external_generated_input(ws)
+    target = ws.output_dir / "media/new" / (core.recipe(row["source"], decision) + ".mp4")
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"orphan must not be overwritten")
+    with pytest.raises(core.RoiError, match="拒绝覆盖"):
+        import_external(ws, staged, decision)
+    assert target.read_bytes() == b"orphan must not be overwritten"
+    assert not ws.decisions_path.exists()
+
+
+def test_external_import_and_refresh_share_manifest_lock(workspace, monkeypatch):
+    from threading import Event, Thread
+
+    ws, _ = workspace
+    _, staged, decision = external_generated_input(ws)
+    copying, release = Event(), Event()
+    refresh_started, refresh_finished = Event(), Event()
+    errors = []
+    original_copy = core.shutil.copyfile
+
+    def blocked_copy(src, dst):
+        copying.set()
+        assert release.wait(3)
+        return original_copy(src, dst)
+
+    monkeypatch.setattr(core.shutil, "copyfile", blocked_copy)
+
+    def importing():
+        try:
+            import_external(ws, staged, decision)
+        except Exception as exc:
+            errors.append(exc)
+
+    def refreshing():
+        refresh_started.set()
+        try:
+            ws.refresh()
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            refresh_finished.set()
+
+    import_thread = Thread(target=importing)
+    import_thread.start()
+    assert copying.wait(3)
+    refresh_thread = Thread(target=refreshing)
+    refresh_thread.start()
+    try:
+        assert refresh_started.wait(3)
+        assert not refresh_finished.wait(0.1)
+    finally:
+        release.set()
+        import_thread.join(3)
+        refresh_thread.join(3)
+    assert not import_thread.is_alive() and not refresh_thread.is_alive()
+    assert errors == []
+    row = ws.inventory()["videos"][0]
+    assert row["status"] == "success"
+    assert row["output"]["origin"] == "imported_generated"

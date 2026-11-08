@@ -383,24 +383,25 @@ facts:
     affects: [data, code]
   - id: DF-021
     state: active
-    topic: ROI 独立工具的规则身份与人工审核边界
+    topic: ROI 沿用旧结果与按需查看的边界
     claim: >
-      `script/roi` 使用 `roi-rules/1` 规则身份及 `roi-processing/2` 处理身份，提供完整源视频的固定框或全画面补边处理；旧决定和旧裁剪结果只能作为候选，必须核对来源与输出身份，并分别完成源画面和实际输出的证据审核。缺少决定是正常待处理状态，不自动视为审核通过；此前登记的源文件缺失时保留失败条目。普通列表读取文件头帧数，生成或复用时针对当前源视频和输出实际计帧，不能把未核实的文件头计数当作已验收帧数。补边在 4:4:4 画面上执行，避免奇数边距被色度网格取整。编码参数采用 H.264、fast、CRF 23、yuv420p 和去音频的初始配置；媒体属性通过不证明视觉细节或逐帧时间戳保真。具体数据是否可复用和真实画面验收须以对应记录为准。
+      `script/roi` 使用 `roi-rules/2` 规则身份及 `roi-processing/3` 处理身份。标签直接只读采用已有标注，不要求逐标签或逐视频审核确认。旧 ROI 在来源摘要、输出摘要及清单媒体信息一致时保留原视频字节并直接列为可用，记录旧请求范围与可还原的实际边界；不能可靠还原的几何明确记为不确定，不把旧结果改写成新的精确框。界面按需查看、有问题再调整，ROI 可用及 complete 不表示已完成人工复核。旧输出绑定不同源视频时不能直接采用。缺少决定的新视频仍需设置范围；此前登记的源文件缺失时保留失败条目及历史。旧媒体沿用不自动执行整批解码，新生成时针对当前源视频和输出实际计帧，并以源摘要缓存，不能把未核实的文件头计数当作实际计数。新补边在 4:4:4 画面上执行；编码采用 H.264、fast、CRF 23、yuv420p 和去音频，媒体检查不证明细节或时间戳无损。
     evidence:
       - ref: script/roi/core.py:26
-        expect: RULE_VERSION = "roi-rules/1"
-      - ref: script/roi/core.py:219
-        expect: def review_errors(review: Mapping | None, duration: float)
+        expect: RULE_VERSION = "roi-rules/2"
       - ref: script/roi/core.py:27
-        expect: PROCESSING_VERSION = "roi-processing/2"
-      - ref: script/roi/core.py:176
+        expect: PROCESSING_VERSION = "roi-processing/3"
+      - ref: script/roi/core.py:158
+        expect: def legacy_geometry(source: Mapping, decision: Mapping, entry: Mapping)
+      - ref: script/roi/core.py:224
         expect: def decoded_frame_count(path: Path)
-      - ref: script/roi/README.md:30
-        expect: 没有已有决定属于正常情况
+      - ref: script/roi/core.py:537
+        expect: def _preserved_legacy(self, source: Mapping, decision: Mapping, legacy: Mapping,
     established: 2026-11-08
-    established_by: 用户确认 ROI 规则及代码核对；真实视频画面验收仍待完成
+    established_by: 用户确认直接沿用旧 ROI 和已有标签、按需查看后修改；代码核对
     supersedes: null
     affects: [data, code, ops]
+
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
     correct: 旧候选链路中，子窗口按事件时刻重新裁剪，可以落在不同事件阶段，父子窗口状态不同并不自动构成矛盾。本轮人工标注仍需按各自片段的可见证据判断，不能仅凭父子关系自动验真。

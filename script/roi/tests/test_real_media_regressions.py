@@ -77,7 +77,7 @@ def test_trim_with_header_preroll_generates_using_decoded_count_and_reuses_verif
     work.save_decision(row, {"mode": "no_crop", "source_review": review(1)})
     work.generate("trimmed")
     generated = work.inventory()["videos"][0]
-    assert generated["status"] == "needs_output_review"
+    assert generated["status"] == "success"
     assert generated["source"]["media"]["frame_count"] == 30
     assert generated["output"]["media"]["frame_count"] == 30
     source_count_calls = calls.count(str(trimmed))
@@ -91,7 +91,7 @@ def test_trim_with_header_preroll_generates_using_decoded_count_and_reuses_verif
     assert len(calls) == count_after_generation
 
 
-def test_old_no_crop_with_chroma_rounded_padding_is_regenerated(tmp_path):
+def test_explicit_new_no_crop_rebuilds_padding_without_altering_legacy_file(tmp_path):
     source = tmp_path / "videos/red.mp4"
     make_source(source, rate=10, solid=True)
     work = core.Workspace(source.parent, tmp_path / "roi")
@@ -114,7 +114,7 @@ def test_old_no_crop_with_chroma_rounded_padding_is_regenerated(tmp_path):
     work.generate("red")
     output = work.inventory()["videos"][0]
     assert output["output"]["origin"] == "generated"
-    assert output["status"] == "needs_output_review"
+    assert output["status"] == "success"
     assert core.sha256_file(candidate) == old_hash
 
 
@@ -133,4 +133,96 @@ def test_preview_near_video_end_does_not_crash_the_page(tmp_path, monkeypatch):
     preview = next(widget for widget in page.number_input if widget.label.startswith("预览位置"))
     page = preview.set_value(0.5).run(timeout=10)
     assert not page.exception
-    assert any(widget.label == "保存选框和审核进度" for widget in page.button)
+    assert any(widget.label == "保存选框进度" for widget in page.button)
+
+
+def install_real_legacy(work, source, candidate, *, mode, box, video_filter):
+    media = core.probe_video(source)
+    output_media = core.probe_video(candidate)
+    decision = {"source_video_id": source.stem, "source_sha256": core.sha256_file(source),
+                "source_resolution": [media["width"], media["height"]],
+                "mode": mode, "pixel_box": box, "review_status": "approved"}
+    core.atomic_json(work.candidate_path, {"decisions": [decision]})
+    core.atomic_json(work.existing_manifest, {"videos": [{
+        "source_video_id": source.stem, "source_sha256": decision["source_sha256"],
+        "mode": mode, "pixel_box": box, "output_sha256": core.sha256_file(candidate),
+        "output_resolution": [output_media["width"], output_media["height"]],
+        "duration": output_media["duration"], "nominal_frame_rate": output_media["nominal_frame_rate"],
+        "video_filter": video_filter,
+    }]})
+
+
+def test_old_rounded_padding_is_kept_byte_for_byte_and_records_real_margins(tmp_path):
+    source = tmp_path / "videos/red.mp4"
+    make_source(source, rate=10, solid=True)
+    work = core.Workspace(source.parent, tmp_path / "roi")
+    work.existing_media_dir.mkdir(parents=True)
+    candidate = work.existing_media_dir / "red.mp4"
+    old_filter = "pad=66:88:1:20:color=black,setsar=1"
+    run(["ffmpeg", "-v", "error", "-i", str(source), "-vf", old_filter,
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(candidate)])
+    old_bytes = candidate.read_bytes()
+    install_real_legacy(work, source, candidate, mode="no_crop", box=None, video_filter=old_filter)
+    result = work.refresh()
+    row = result["videos"][0]
+    assert result["complete"] is True
+    assert row["status"] == "success"
+    assert row["output"]["origin"] == "preserved_legacy"
+    assert Path(row["output"]["path"]).read_bytes() == old_bytes == candidate.read_bytes()
+    assert row["output"]["geometry"]["pad_pixels"] == {"left": 0, "right": 2, "top": 20, "bottom": 20}
+    raw = run(["ffmpeg", "-v", "error", "-i", str(candidate), "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "gray", "-"]).stdout
+    positions = [(i % 66, i // 66) for i, value in enumerate(raw) if value > 40]
+    assert (min(x for x, _ in positions), max(x for x, _ in positions)) == (0, 63)
+    assert (min(y for _, y in positions), max(y for _, y in positions)) == (20, 67)
+    assert row["visual_review"] == {"required": False, "status": "not_recorded"}
+    assert not row.get("output_review")
+
+
+def test_old_nonexact_crop_is_kept_with_effective_offset_not_silently_reencoded(tmp_path):
+    source = tmp_path / "videos/cropped.mp4"
+    make_source(source, rate=10)
+    work = core.Workspace(source.parent, tmp_path / "roi")
+    work.existing_media_dir.mkdir(parents=True)
+    candidate = work.existing_media_dir / "cropped.mp4"
+    old_filter = "crop=30:40:3:3,setsar=1"
+    run(["ffmpeg", "-v", "error", "-i", str(source), "-vf", old_filter,
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(candidate)])
+    box = {"x": 3, "y": 3, "width": 30, "height": 40}
+    install_real_legacy(work, source, candidate, mode="fixed_roi", box=box, video_filter=old_filter)
+    old_hash = core.sha256_file(candidate)
+    row = work.refresh()["videos"][0]
+    assert row["status"] == "success"
+    assert row["output"]["origin"] == "preserved_legacy"
+    assert row["output"]["sha256"] == old_hash
+    assert core.sha256_file(Path(row["output"]["path"])) == old_hash
+    geometry = row["output"]["geometry"]
+    assert geometry["requested_pixel_box"] == box
+    assert geometry["effective_pixel_box"] == {"x": 2, "y": 2, "width": 30, "height": 40}
+    assert geometry["crop_pixels"] == {"left": 2, "right": 32, "top": 2, "bottom": 6}
+    assert not row.get("output_review")
+
+
+def test_existing_roi_page_only_needs_viewing_no_label_or_approval_controls(tmp_path, monkeypatch):
+    from streamlit.testing.v1 import AppTest
+
+    source = tmp_path / "data/videos/old.mp4"
+    make_source(source, rate=10)
+    work = core.Workspace(source.parent, tmp_path / "data/roi")
+    work.existing_media_dir.mkdir(parents=True)
+    candidate = work.existing_media_dir / "old.mp4"
+    old_filter = "crop=30:40:3:3,setsar=1"
+    run(["ffmpeg", "-v", "error", "-i", str(source), "-vf", old_filter,
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(candidate)])
+    install_real_legacy(work, source, candidate, mode="fixed_roi",
+                        box={"x": 3, "y": 3, "width": 30, "height": 40}, video_filter=old_filter)
+    app = Path(core.__file__).with_name("app.py")
+    monkeypatch.syspath_prepend(str(app.parent))
+    monkeypatch.setattr(sys, "argv", [str(app), "--project-root", str(tmp_path)])
+    page = AppTest.from_file(str(app)).run(timeout=10)
+    assert not page.exception
+    assert [widget.label for widget in page.selectbox] == ["视频"]
+    assert [widget.label for widget in page.checkbox] == ["需要调整裁剪范围"]
+    assert not any("审核" in widget.label or "通过" in widget.label for widget in page.button)
+    manifest = core.load_json(work.manifest_path)
+    assert manifest["complete"] is True
+    assert manifest["videos"][0]["visual_review"]["status"] == "not_recorded"

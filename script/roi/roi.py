@@ -11,7 +11,7 @@ from core import RoiError, Workspace
 
 
 def parser() -> argparse.ArgumentParser:
-    p=argparse.ArgumentParser(description="视频 ROI：默认打开统一选框、审核和输出工作列表")
+    p=argparse.ArgumentParser(description="视频 ROI：查看已有裁剪，有问题再调整")
     p.add_argument("--project-root",type=Path,default=Path(__file__).resolve().parents[2])
     p.add_argument("--videos-dir",type=Path,default=Path("data/videos"))
     p.add_argument("--output-dir",type=Path,default=Path("data/roi"))
@@ -21,7 +21,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--existing-media-dir",type=Path)
     p.add_argument("--splits-dir",type=Path,help="可选：一个划分版本目录，含 test.json 和 fold_N_train/val.json")
     p.add_argument("--scan",action="store_true",help="仅核对输入并保存状态，不生成视频")
-    p.add_argument("--batch",action="store_true",help="仅生成源画面审核已完成的条目，其余保留待处理")
+    p.add_argument("--batch",action="store_true",help="仅生成已保存画面范围的条目，其余保留待处理")
     return p
 
 
