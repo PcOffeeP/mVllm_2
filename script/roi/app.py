@@ -75,30 +75,28 @@ def main():
     args=parser().parse_args(sys.argv[1:]); work=workspace(args)
     st.set_page_config(page_title="视频 ROI",layout="wide")
     st.markdown("""<style>
-    .block-container { padding-top: 0.45rem; padding-bottom: 0.75rem; }
-    .stApp h1 { font-size: 1.85rem; line-height: 1.25; margin-bottom: 0; }
-    div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] { gap: 0.25rem; }
+    /* Keep the original ROI annotation workbench's straightforward three-column layout. */
+    .block-container { padding-top: 0.8rem; padding-bottom: 1.2rem; }
+    div[data-testid="stMarkdownContainer"] h5 { margin-bottom: .2rem; }
+    /* The ROI result is an inspection surface, not a poster: constrain its
+       player box to the viewport while preserving every source pixel and its
+       native controls.  The source-player expander uses the same behavior. */
+    div[data-testid="stVideo"] {
+      height: min(38vh, 320px) !important;
+      max-height: min(38vh, 320px) !important;
+      width: 100% !important;
+      background: #000;
+    }
+    div[data-testid="stVideo"] video,
     video[data-testid="stVideo"] {
-      height: min(31vh, 278px) !important;
-      max-height: 278px !important;
+      height: min(38vh, 320px) !important;
+      max-height: min(38vh, 320px) !important;
       width: 100% !important;
       object-fit: contain !important;
-      background: #111;
-    }
-    div[data-testid="stMarkdownContainer"] h5 { font-size: 1rem; line-height: 1; margin: 0.05rem 0 0; }
-    div[data-testid="stWidgetLabel"] { margin-bottom: -0.35rem; }
-    div[data-testid="stWidgetLabel"] p { font-size: 0.84rem; line-height: 1.1; }
-    div[data-baseweb="select"] > div { min-height: 2rem; }
-    div[data-baseweb="select"] span { line-height: 1.9rem; }
-    @media (max-width: 1000px) {
-      div[data-testid="stColumn"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-        flex: 1 1 45% !important;
-        min-width: 45% !important;
-      }
-      video[data-testid="stVideo"] { height: 250px !important; max-height: 250px !important; }
+      background: #000;
     }
     </style>""", unsafe_allow_html=True)
-    st.title("视频 ROI 裁剪")
+    st.title("源视频固定 ROI 标注")
     try: manifest=work.refresh()
     except (RoiError,OSError,subprocess.SubprocessError) as exc:
         st.error(str(exc)); return
@@ -107,7 +105,27 @@ def main():
     if not manifest["videos"]:
         st.info("目录中没有支持的视频文件。"); return
     mapping={row["video_id"]:row for row in manifest["videos"]}
-    selected=st.selectbox("视频",list(mapping),format_func=lambda k:f"{k} · {STATUS_LABELS.get(mapping[k]['status'],mapping[k]['status'])}")
+    # This is intentionally the original annotation app's left / centre / right
+    # workbench, rather than a separate inspection dashboard.
+    left, center, right=st.columns([1.1,2.2,1.5])
+    with left:
+        st.subheader("源视频")
+        choices=list(mapping)
+        status_filter=st.multiselect("状态",list(STATUS_LABELS),default=list(STATUS_LABELS),key="video-status-filter")
+        search=st.text_input("搜索 video_id / 类型",key="video-search").strip().lower()
+        filtered=[]
+        for video_id in choices:
+            candidate=mapping[video_id]
+            if candidate.get("status") not in status_filter: continue
+            labels=candidate.get("labels",{})
+            haystack=f"{video_id} {labels.get('材料类型','')} {labels.get('类型','')}".lower()
+            if search and search not in haystack: continue
+            filtered.append(video_id)
+        if not filtered:
+            st.info("没有符合筛选条件的视频。")
+            return
+        selected=st.selectbox("选择视频",filtered,
+            format_func=lambda k:f"{k} · {STATUS_LABELS.get(mapping[k]['status'],mapping[k]['status'])}",key="selected-video")
     row=mapping[selected]; source=row.get("source",{}); key=selected+"-"+source.get("sha256","")[:12]
     if row.get("status")!="success" and row.get("reason"):
         if row.get("status")=="failed": st.error(row["reason"])
@@ -132,10 +150,12 @@ def main():
             field.column:field_value(saved_values,field.column) for field in LABEL_FIELDS
         }
     form_values=st.session_state[draft_store_key]
-    video_column, labels_column = st.columns((1.18,1),gap="large")
-    with video_column:
+    # The centre keeps the legacy app's video / draggable-frame working area.
+    # An existing ROI is deliberately displayed before its source controls.
+    with center:
+        st.subheader(selected)
         if output:
-            st.subheader("ROI 结果")
+            st.markdown("**ROI 结果**")
             st.video(output["path"])
             if output.get("origin")=="preserved_legacy":
                 st.caption("沿用旧裁剪视频，保留原始文件内容。此状态表示 ROI 可用，不表示已完成人工复核。")
@@ -150,9 +170,12 @@ def main():
             st.video(source["path"])
             st.caption("尚无 ROI 结果；可在下方设置画面范围。")
         else:
-            st.subheader("ROI 结果")
+            st.markdown("**ROI 结果**")
             st.warning("没有可播放的 ROI 或源视频。")
-    with labels_column:
+    # The right-hand "crop decision" panel remains the place where the
+    # reviewer records the information associated with the selected ROI.
+    with right:
+        st.subheader("裁剪决定")
         label_draft=render_label_review(form_values,review_key)
         st.session_state[draft_store_key]=dict(label_draft)
         changed_fields=[field.column for field in LABEL_FIELDS
@@ -178,55 +201,72 @@ def main():
     # The per-video key prevents edits from leaking across video switches.
     st.session_state[review_key+"-label-draft"]=label_draft
     if not source:
-        st.warning("此条目尚无可访问的源视频信息。"); return
+        with center: st.warning("此条目尚无可访问的源视频信息。")
+        return
     if row.get("source_missing") or not Path(source["path"]).is_file():
-        st.warning("源视频缺失或不可访问，已保留历史记录。请恢复原文件后刷新。"); return
+        with center: st.warning("源视频缺失或不可访问，已保留历史记录。请恢复原文件后刷新。")
+        return
     media=source["media"]
     if media["rotation"]!=0:
-        st.warning("视频有旋转标记，需要先核实画面方向和坐标。"); return
-    if output and not st.checkbox("需要调整裁剪范围",key=key+"-edit"):
+        with center: st.warning("视频有旋转标记，需要先核实画面方向和坐标。")
         return
-    st.subheader("调整画面范围" if output else "设置画面范围")
+    with center:
+        with st.expander("原始视频播放",expanded=not bool(output)):
+            st.video(source["path"])
+        should_edit=not output or st.checkbox("需要调整裁剪范围",key=key+"-edit")
+    if not should_edit:
+        return
     existing=row.get("draft") or row.get("decision") or row.get("reference_decision") or {}
     effective=(output or {}).get("geometry",{}).get("effective_pixel_box")
-    time=st.number_input("预览位置（秒）",min_value=0.,max_value=max(0.,media["duration"]-.001),value=0.,
-        step=float(1/float(__import__('fractions').Fraction(media["nominal_frame_rate"]))),key=key+"-time")
+    with center:
+        st.markdown("**调整画面范围**" if output else "**设置画面范围**")
+        time=st.slider("抽帧时间（可拖动）",min_value=0.,max_value=max(0.,media["duration"]-.001),value=0.,
+            step=float(1/float(__import__('fractions').Fraction(media["nominal_frame_rate"]))),key=key+"-time")
     try: raw=frame(source["path"],source["sha256"],time)
     except RoiError:
-        st.warning("此位置没有可提取帧，下面显示起始帧。请调整时间或播放原视频查看。");
+        with center: st.warning("此位置没有可提取帧，下面显示起始帧。请调整时间或播放原视频查看。")
         try: raw=frame(source["path"],source["sha256"],0.)
-        except RoiError as exc: st.error(str(exc)); return
+        except RoiError as exc:
+            with center: st.error(str(exc))
+            return
     image=Image.open(io.BytesIO(raw)).convert("RGB")
-    mode=st.radio("画面范围",["fixed_roi","no_crop"],index=1 if existing.get("mode")=="no_crop" else 0,
-        format_func=lambda x:"固定 3:4 框" if x=="fixed_roi" else "全画面补边",key=key+"-mode")
-    if mode=="fixed_roi":
-        if st_cropper is None:
-            st.error("缺少 streamlit-cropper，请按 README 安装依赖。"); return
-        chosen_box=st_cropper(image,realtime_update=True,box_color="#2679D1",aspect_ratio=(3,4),return_type="box",key=key+"-cropper")
-        try: normalized=normalize_drag_box(chosen_box,media["width"],media["height"])
-        except RoiError as exc: st.error(str(exc)); return
-        if st.button("采用当前拖框",key=key+"-apply"): st.session_state[key+"-box"]=normalized
-        chosen=st.session_state.get(key+"-box",effective or existing.get("pixel_box") or normalized)
-        cols=st.columns(4)
-        box={field:int(col.number_input(field,value=int(chosen[field]),min_value=0 if field in {"x","y"} else 2,
-            key=f"{key}-{field}-{chosen[field]}")) for field,col in zip(("x","y","width","height"),cols)}
-    else: box=None
+    with right:
+        mode=st.radio("画面范围",["fixed_roi","no_crop"],index=1 if existing.get("mode")=="no_crop" else 0,
+            format_func=lambda x:"固定 ROI" if x=="fixed_roi" else "不裁剪（全画面补边）",key=key+"-mode")
+        st.caption("在中间画面上直接拖动或缩放红框；框的比例锁定为 3:4。" if mode=="fixed_roi" else "保留完整画面，生成时 padding 到 3:4。")
+    with center:
+        if mode=="fixed_roi":
+            if st_cropper is None:
+                st.error("缺少 streamlit-cropper，请按 README 安装依赖。")
+                return
+            # A saved in-progress choice is the user's latest range.  The
+            # existing output supplies an initial box only when no draft does.
+            default_box=(row.get("draft") or {}).get("pixel_box") or effective or existing.get("pixel_box")
+            box_seed=hashlib.sha256(json.dumps(default_box,sort_keys=True).encode()).hexdigest()[:12]
+            cropper_args={"realtime_update":True,"box_color":"#ff2d2d","aspect_ratio":(3,4),"return_type":"box","key":key+"-cropper-"+box_seed,"stroke_width":3}
+            if default_box:
+                cropper_args["default_coords"]=(default_box["x"],default_box["x"]+default_box["width"],default_box["y"],default_box["y"]+default_box["height"])
+            chosen_box=st_cropper(image,**cropper_args)
+            try: box=normalize_drag_box(chosen_box,media["width"],media["height"])
+            except RoiError as exc:
+                st.error(str(exc))
+                return
+            st.caption(f"输出框：x={box['x']}，y={box['y']}，w={box['width']}，h={box['height']}（原始视频像素坐标）")
+        else:
+            box=None
     decision={"mode":mode,"source_resolution":[media["width"],media["height"]],"pixel_box":box}
     try: geo=geometry(decision)
     except RoiError as exc: st.error(str(exc)); return
-    if box:
-        outlined=image.copy(); ImageDraw.Draw(outlined).rectangle((box["x"],box["y"],box["x"]+box["width"]-1,box["y"]+box["height"]-1),outline="#2679D1",width=max(2,image.width//200))
-        st.image(outlined,caption="新范围（仅保存并生成后生效）",width=min(800,image.width))
-    else: st.image(image,caption="保留全部画面",width=min(800,image.width))
-    st.json({k:v for k,v in geo.items() if k!="filter"})
-    pending=st.text_input("备注／下次继续的位置",value=existing.get("pending_reason",""),key=key+"-pending")
-    if st.button("保存选框进度",key=key+"-draft"):
-        try: work.save_draft(row,{**decision,"pending_reason":pending}); st.rerun()
-        except (RoiError,OSError,ValueError) as exc: st.error(str(exc))
-    if st.button("保存范围并生成 ROI",key=key+"-generate"):
-        with st.spinner("正在生成并核对媒体，请稍候"):
-            try: work.save_decision(row,{**decision,"pending_reason":pending}); work.generate(selected); st.rerun()
-            except (RoiError,OSError,ValueError,subprocess.SubprocessError) as exc: st.error(str(exc))
+    with right:
+        st.caption(f"源分辨率：{media['width']}×{media['height']} · 目标比例：3:4")
+        pending=st.text_area("备注／下次继续的位置",value=existing.get("pending_reason",""),key=key+"-pending")
+        if st.button("保存选框进度",key=key+"-draft",width="stretch"):
+            try: work.save_draft(row,{**decision,"pending_reason":pending}); st.rerun()
+            except (RoiError,OSError,ValueError) as exc: st.error(str(exc))
+        if st.button("保存范围并生成 ROI",key=key+"-generate",type="primary",width="stretch"):
+            with st.spinner("正在生成并核对媒体，请稍候"):
+                try: work.save_decision(row,{**decision,"pending_reason":pending}); work.generate(selected); st.rerun()
+                except (RoiError,OSError,ValueError,subprocess.SubprocessError) as exc: st.error(str(exc))
 
 
 if __name__=="__main__": main()

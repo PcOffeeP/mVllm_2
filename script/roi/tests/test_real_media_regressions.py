@@ -127,10 +127,10 @@ def test_preview_near_video_end_does_not_crash_the_page(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", [str(app), "--project-root", str(tmp_path)])
     page = AppTest.from_file(str(app)).run(timeout=10)
     assert not page.exception
-    preview = next(widget for widget in page.number_input if widget.label.startswith("预览位置"))
+    preview = next(widget for widget in page.slider if widget.label == "抽帧时间（可拖动）")
     page = preview.set_value(0.999).run(timeout=10)
     assert not page.exception
-    preview = next(widget for widget in page.number_input if widget.label.startswith("预览位置"))
+    preview = next(widget for widget in page.slider if widget.label == "抽帧时间（可拖动）")
     page = preview.set_value(0.5).run(timeout=10)
     assert not page.exception
     assert any(widget.label == "保存选框进度" for widget in page.button)
@@ -221,7 +221,7 @@ def test_existing_roi_page_shows_prefilled_labels_without_requiring_approval(tmp
     page = AppTest.from_file(str(app)).run(timeout=10)
     assert not page.exception
     selectors = {widget.label: widget for widget in page.selectbox}
-    assert {"视频", "断裂状态", "断裂模式", "断裂位置", "未夹紧", "视频异常", "爆炸性断裂",
+    assert {"选择视频", "断裂状态", "断裂模式", "断裂位置", "未夹紧", "视频异常", "爆炸性断裂",
             "伸长", "颈缩", "开裂", "界面分离", "断后脱夹"} <= set(selectors)
     # Missing annotation cells remain blank, rather than defaulting to a label.
     assert selectors["断裂状态"].value == ""
