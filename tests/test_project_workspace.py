@@ -288,7 +288,7 @@ def test_module_does_not_expose_a_default_experiment_id() -> None:
 
 
 def test_flattened_local_artifacts_are_ignored_by_git() -> None:
-    """项目本地产物（扁平化后的顶层语义目录）不得进入 Git。"""
+    """训练等本地产物、数据视频和 ROI 运行锁不得进入 Git。"""
     not_ignored = [
         path
         for path in (
@@ -296,7 +296,8 @@ def test_flattened_local_artifacts_are_ignored_by_git() -> None:
             "audits/probe",
             "base-models/probe",
             "trains/probe",
-            "data/probe",
+            "data/videos/probe.mp4",
+            "data/roi/.roi.lock",
         )
         if subprocess.run(
             ["git", "check-ignore", "-q", path],

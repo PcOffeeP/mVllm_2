@@ -1,0 +1,672 @@
+{
+  "provenance": {
+    "assertion": "用户确认当前 110 个源视频分别来自不同的独立试验",
+    "confirmed_date": "2026-11-07",
+    "basis": "用户对每个视频均为独立试验的直接确认；按视频 ID 一组一视频",
+    "label_csv_sha256": "9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81",
+    "scope": "当前 110 个真实源视频；不包含模拟视频",
+    "limitations": "该确认不替代跨视频近似素材核查；文件完全相同须另核查"
+  },
+  "groups": [
+    {
+      "group_id": "video_0001",
+      "video_ids": [
+        "video_0001"
+      ]
+    },
+    {
+      "group_id": "video_0002",
+      "video_ids": [
+        "video_0002"
+      ]
+    },
+    {
+      "group_id": "video_0003",
+      "video_ids": [
+        "video_0003"
+      ]
+    },
+    {
+      "group_id": "video_0004",
+      "video_ids": [
+        "video_0004"
+      ]
+    },
+    {
+      "group_id": "video_0005",
+      "video_ids": [
+        "video_0005"
+      ]
+    },
+    {
+      "group_id": "video_0006",
+      "video_ids": [
+        "video_0006"
+      ]
+    },
+    {
+      "group_id": "video_0007",
+      "video_ids": [
+        "video_0007"
+      ]
+    },
+    {
+      "group_id": "video_0008",
+      "video_ids": [
+        "video_0008"
+      ]
+    },
+    {
+      "group_id": "video_0009",
+      "video_ids": [
+        "video_0009"
+      ]
+    },
+    {
+      "group_id": "video_0010",
+      "video_ids": [
+        "video_0010"
+      ]
+    },
+    {
+      "group_id": "video_0011",
+      "video_ids": [
+        "video_0011"
+      ]
+    },
+    {
+      "group_id": "video_0012",
+      "video_ids": [
+        "video_0012"
+      ]
+    },
+    {
+      "group_id": "video_0013",
+      "video_ids": [
+        "video_0013"
+      ]
+    },
+    {
+      "group_id": "video_0014",
+      "video_ids": [
+        "video_0014"
+      ]
+    },
+    {
+      "group_id": "video_0015",
+      "video_ids": [
+        "video_0015"
+      ]
+    },
+    {
+      "group_id": "video_0016",
+      "video_ids": [
+        "video_0016"
+      ]
+    },
+    {
+      "group_id": "video_0017",
+      "video_ids": [
+        "video_0017"
+      ]
+    },
+    {
+      "group_id": "video_0018",
+      "video_ids": [
+        "video_0018"
+      ]
+    },
+    {
+      "group_id": "video_0019",
+      "video_ids": [
+        "video_0019"
+      ]
+    },
+    {
+      "group_id": "video_0020",
+      "video_ids": [
+        "video_0020"
+      ]
+    },
+    {
+      "group_id": "video_0021",
+      "video_ids": [
+        "video_0021"
+      ]
+    },
+    {
+      "group_id": "video_0022",
+      "video_ids": [
+        "video_0022"
+      ]
+    },
+    {
+      "group_id": "video_0023",
+      "video_ids": [
+        "video_0023"
+      ]
+    },
+    {
+      "group_id": "video_0024",
+      "video_ids": [
+        "video_0024"
+      ]
+    },
+    {
+      "group_id": "video_0025",
+      "video_ids": [
+        "video_0025"
+      ]
+    },
+    {
+      "group_id": "video_0026",
+      "video_ids": [
+        "video_0026"
+      ]
+    },
+    {
+      "group_id": "video_0027",
+      "video_ids": [
+        "video_0027"
+      ]
+    },
+    {
+      "group_id": "video_0028",
+      "video_ids": [
+        "video_0028"
+      ]
+    },
+    {
+      "group_id": "video_0029",
+      "video_ids": [
+        "video_0029"
+      ]
+    },
+    {
+      "group_id": "video_0030",
+      "video_ids": [
+        "video_0030"
+      ]
+    },
+    {
+      "group_id": "video_0031",
+      "video_ids": [
+        "video_0031"
+      ]
+    },
+    {
+      "group_id": "video_0032",
+      "video_ids": [
+        "video_0032"
+      ]
+    },
+    {
+      "group_id": "video_0033",
+      "video_ids": [
+        "video_0033"
+      ]
+    },
+    {
+      "group_id": "video_0034",
+      "video_ids": [
+        "video_0034"
+      ]
+    },
+    {
+      "group_id": "video_0035",
+      "video_ids": [
+        "video_0035"
+      ]
+    },
+    {
+      "group_id": "video_0036",
+      "video_ids": [
+        "video_0036"
+      ]
+    },
+    {
+      "group_id": "video_0037",
+      "video_ids": [
+        "video_0037"
+      ]
+    },
+    {
+      "group_id": "video_0038",
+      "video_ids": [
+        "video_0038"
+      ]
+    },
+    {
+      "group_id": "video_0039",
+      "video_ids": [
+        "video_0039"
+      ]
+    },
+    {
+      "group_id": "video_0040",
+      "video_ids": [
+        "video_0040"
+      ]
+    },
+    {
+      "group_id": "video_0041",
+      "video_ids": [
+        "video_0041"
+      ]
+    },
+    {
+      "group_id": "video_0042",
+      "video_ids": [
+        "video_0042"
+      ]
+    },
+    {
+      "group_id": "video_0043",
+      "video_ids": [
+        "video_0043"
+      ]
+    },
+    {
+      "group_id": "video_0044",
+      "video_ids": [
+        "video_0044"
+      ]
+    },
+    {
+      "group_id": "video_0045",
+      "video_ids": [
+        "video_0045"
+      ]
+    },
+    {
+      "group_id": "video_0046",
+      "video_ids": [
+        "video_0046"
+      ]
+    },
+    {
+      "group_id": "video_0047",
+      "video_ids": [
+        "video_0047"
+      ]
+    },
+    {
+      "group_id": "video_0048",
+      "video_ids": [
+        "video_0048"
+      ]
+    },
+    {
+      "group_id": "video_0049",
+      "video_ids": [
+        "video_0049"
+      ]
+    },
+    {
+      "group_id": "video_0050",
+      "video_ids": [
+        "video_0050"
+      ]
+    },
+    {
+      "group_id": "video_0051",
+      "video_ids": [
+        "video_0051"
+      ]
+    },
+    {
+      "group_id": "video_0052",
+      "video_ids": [
+        "video_0052"
+      ]
+    },
+    {
+      "group_id": "video_0053",
+      "video_ids": [
+        "video_0053"
+      ]
+    },
+    {
+      "group_id": "video_0054",
+      "video_ids": [
+        "video_0054"
+      ]
+    },
+    {
+      "group_id": "video_0055",
+      "video_ids": [
+        "video_0055"
+      ]
+    },
+    {
+      "group_id": "video_0056",
+      "video_ids": [
+        "video_0056"
+      ]
+    },
+    {
+      "group_id": "video_0057",
+      "video_ids": [
+        "video_0057"
+      ]
+    },
+    {
+      "group_id": "video_0058",
+      "video_ids": [
+        "video_0058"
+      ]
+    },
+    {
+      "group_id": "video_0059",
+      "video_ids": [
+        "video_0059"
+      ]
+    },
+    {
+      "group_id": "video_0060",
+      "video_ids": [
+        "video_0060"
+      ]
+    },
+    {
+      "group_id": "video_0061",
+      "video_ids": [
+        "video_0061"
+      ]
+    },
+    {
+      "group_id": "video_0062",
+      "video_ids": [
+        "video_0062"
+      ]
+    },
+    {
+      "group_id": "video_0063",
+      "video_ids": [
+        "video_0063"
+      ]
+    },
+    {
+      "group_id": "video_0064",
+      "video_ids": [
+        "video_0064"
+      ]
+    },
+    {
+      "group_id": "video_0065",
+      "video_ids": [
+        "video_0065"
+      ]
+    },
+    {
+      "group_id": "video_0066",
+      "video_ids": [
+        "video_0066"
+      ]
+    },
+    {
+      "group_id": "video_0067",
+      "video_ids": [
+        "video_0067"
+      ]
+    },
+    {
+      "group_id": "video_0068",
+      "video_ids": [
+        "video_0068"
+      ]
+    },
+    {
+      "group_id": "video_0069",
+      "video_ids": [
+        "video_0069"
+      ]
+    },
+    {
+      "group_id": "video_0070",
+      "video_ids": [
+        "video_0070"
+      ]
+    },
+    {
+      "group_id": "video_0071",
+      "video_ids": [
+        "video_0071"
+      ]
+    },
+    {
+      "group_id": "video_0072",
+      "video_ids": [
+        "video_0072"
+      ]
+    },
+    {
+      "group_id": "video_0073",
+      "video_ids": [
+        "video_0073"
+      ]
+    },
+    {
+      "group_id": "video_0074",
+      "video_ids": [
+        "video_0074"
+      ]
+    },
+    {
+      "group_id": "video_0075",
+      "video_ids": [
+        "video_0075"
+      ]
+    },
+    {
+      "group_id": "video_0076",
+      "video_ids": [
+        "video_0076"
+      ]
+    },
+    {
+      "group_id": "video_0077",
+      "video_ids": [
+        "video_0077"
+      ]
+    },
+    {
+      "group_id": "video_0078",
+      "video_ids": [
+        "video_0078"
+      ]
+    },
+    {
+      "group_id": "video_0079",
+      "video_ids": [
+        "video_0079"
+      ]
+    },
+    {
+      "group_id": "video_0080",
+      "video_ids": [
+        "video_0080"
+      ]
+    },
+    {
+      "group_id": "video_0081",
+      "video_ids": [
+        "video_0081"
+      ]
+    },
+    {
+      "group_id": "video_0082",
+      "video_ids": [
+        "video_0082"
+      ]
+    },
+    {
+      "group_id": "video_0083",
+      "video_ids": [
+        "video_0083"
+      ]
+    },
+    {
+      "group_id": "video_0084",
+      "video_ids": [
+        "video_0084"
+      ]
+    },
+    {
+      "group_id": "video_0085",
+      "video_ids": [
+        "video_0085"
+      ]
+    },
+    {
+      "group_id": "video_0086",
+      "video_ids": [
+        "video_0086"
+      ]
+    },
+    {
+      "group_id": "video_0087",
+      "video_ids": [
+        "video_0087"
+      ]
+    },
+    {
+      "group_id": "video_0088",
+      "video_ids": [
+        "video_0088"
+      ]
+    },
+    {
+      "group_id": "video_0089",
+      "video_ids": [
+        "video_0089"
+      ]
+    },
+    {
+      "group_id": "video_0090",
+      "video_ids": [
+        "video_0090"
+      ]
+    },
+    {
+      "group_id": "video_0091",
+      "video_ids": [
+        "video_0091"
+      ]
+    },
+    {
+      "group_id": "video_0092",
+      "video_ids": [
+        "video_0092"
+      ]
+    },
+    {
+      "group_id": "video_0093",
+      "video_ids": [
+        "video_0093"
+      ]
+    },
+    {
+      "group_id": "video_0094",
+      "video_ids": [
+        "video_0094"
+      ]
+    },
+    {
+      "group_id": "video_0095",
+      "video_ids": [
+        "video_0095"
+      ]
+    },
+    {
+      "group_id": "video_0096",
+      "video_ids": [
+        "video_0096"
+      ]
+    },
+    {
+      "group_id": "video_0097",
+      "video_ids": [
+        "video_0097"
+      ]
+    },
+    {
+      "group_id": "video_0098",
+      "video_ids": [
+        "video_0098"
+      ]
+    },
+    {
+      "group_id": "video_0099",
+      "video_ids": [
+        "video_0099"
+      ]
+    },
+    {
+      "group_id": "video_0100",
+      "video_ids": [
+        "video_0100"
+      ]
+    },
+    {
+      "group_id": "video_0101",
+      "video_ids": [
+        "video_0101"
+      ]
+    },
+    {
+      "group_id": "video_0102",
+      "video_ids": [
+        "video_0102"
+      ]
+    },
+    {
+      "group_id": "video_0103",
+      "video_ids": [
+        "video_0103"
+      ]
+    },
+    {
+      "group_id": "video_0104",
+      "video_ids": [
+        "video_0104"
+      ]
+    },
+    {
+      "group_id": "video_0105",
+      "video_ids": [
+        "video_0105"
+      ]
+    },
+    {
+      "group_id": "video_0106",
+      "video_ids": [
+        "video_0106"
+      ]
+    },
+    {
+      "group_id": "video_0107",
+      "video_ids": [
+        "video_0107"
+      ]
+    },
+    {
+      "group_id": "video_0108",
+      "video_ids": [
+        "video_0108"
+      ]
+    },
+    {
+      "group_id": "video_0109",
+      "video_ids": [
+        "video_0109"
+      ]
+    },
+    {
+      "group_id": "video_0110",
+      "video_ids": [
+        "video_0110"
+      ]
+    }
+  ]
+}

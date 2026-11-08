@@ -9,10 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
-# 项目本地产物：数据、训练、模型、基座、MLflow、评测、审计、暂存与重建一律不入 Git
+# 项目本地产物：训练、模型、基座、MLflow、评测、审计、暂存与重建不入 Git
 # 若将来需放行某子目录，须把该项改为 /xxx/* 并追加 !/xxx/sub/ 三段式（父目录被排除时 ! 失效）
 # 不带尾斜杠：`/xxx/` 只匹配目录，P2 物理搬迁前这些目录尚不存在，git check-ignore 判不出来（守卫 T6 依赖此语义）
-/data
 /trains
 /base-models
 /mlflow
@@ -24,6 +23,14 @@ wheels/
 # video files
 *.mp4
 *.mov
+# data 下支持的其他视频格式及大小写变体；标注、划分与 ROI 记录入 Git
+/data/**/*.[mM][pP]4
+/data/**/*.[mM][oO][vV]
+/data/**/*.[mM][kK][vV]
+/data/**/*.[aA][vV][iI]
+/data/**/*.[mM]4[vV]
+/data/**/*.[wW][eE][bB][mM]
+/data/roi/.roi.lock
 
 # 本地模型权重
 models/*

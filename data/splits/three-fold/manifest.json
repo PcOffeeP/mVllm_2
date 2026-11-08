@@ -1,0 +1,447 @@
+{
+  "code_commit": "bf253b2b440e434e259b9c40143de36b7ddceacf",
+  "config": {
+    "expected_labels": 110,
+    "expected_test": 21,
+    "field_formula": "sum_tasks(mean_fields(mean_all_allowed_values(weight * sum_folds(abs(3*n-g)/max(3,g))))) / 5",
+    "folds": 3,
+    "improvement": "stable_group_id_single_moves_then_pairs; strict_lex_improvement_until_no_improvement",
+    "initialization": "rare_label_then_group_id; local_seed_shuffles_fold_ties",
+    "label_order": [
+      [
+        "断裂状态",
+        [
+          "未断裂",
+          "发生断裂",
+          "已断裂",
+          "无法确定"
+        ]
+      ],
+      [
+        "断裂模式",
+        [
+          "脆性断裂",
+          "韧性断裂",
+          "半脆半韧断裂",
+          "无法确定",
+          "无"
+        ]
+      ],
+      [
+        "断裂位置",
+        [
+          "标距内",
+          "标距外非根部",
+          "夹持根部",
+          "无法确定",
+          "无"
+        ]
+      ],
+      [
+        "异常_未夹紧",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ],
+      [
+        "异常_视频异常",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ],
+      [
+        "异常_爆炸性断裂",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ],
+      [
+        "现象_伸长",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ],
+      [
+        "现象_颈缩",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ],
+      [
+        "现象_开裂",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ],
+      [
+        "现象_界面分离",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ],
+      [
+        "现象_断后脱夹",
+        [
+          "是",
+          "否",
+          "无法判断"
+        ]
+      ]
+    ],
+    "objective_order": [
+      "coverage_gap",
+      "max_video_deviation",
+      "sum_video_deviation",
+      "field_deviation",
+      "pair_deviation",
+      "group_fold_vector"
+    ],
+    "pair_formula": "mean_pairs_support_ge_6(sum_folds(abs(3*n-g)/max(3,g)))",
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123,
+      124,
+      125,
+      126,
+      127,
+      128,
+      129,
+      130,
+      131,
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      138,
+      139,
+      140,
+      141
+    ],
+    "tasks": [
+      [
+        "断裂状态"
+      ],
+      [
+        "断裂模式"
+      ],
+      [
+        "断裂位置"
+      ],
+      [
+        "异常_未夹紧",
+        "异常_视频异常",
+        "异常_爆炸性断裂"
+      ],
+      [
+        "现象_伸长",
+        "现象_颈缩",
+        "现象_开裂",
+        "现象_界面分离",
+        "现象_断后脱夹"
+      ]
+    ]
+  },
+  "counts": {
+    "fold_0_train": 60,
+    "fold_0_val": 29,
+    "fold_1_train": 59,
+    "fold_1_val": 30,
+    "fold_2_train": 59,
+    "fold_2_val": 30,
+    "test": 21
+  },
+  "environment": {
+    "implementation": "CPython",
+    "machine": "arm64",
+    "python": "3.12.10",
+    "system": "Darwin"
+  },
+  "hash_rule": "SHA-256 of exact file bytes; manifest excludes itself; no timestamps or absolute input paths",
+  "inputs": {
+    "docs_data-split-design.md": {
+      "sha256": "369b133176e1032f354c0554e4a4e0fe58ba5ec09d3e53465817dcff405cdd94"
+    },
+    "docs_label.md": {
+      "sha256": "77de2795623ff4a7bd3ea57c1bc8a122a91c952308fa43c2485131035ff8cc33"
+    },
+    "generate.py": {
+      "sha256": "b071744ebcf6281286b0e3c76dfc40e032e8707bbd0ba6b41d853e51e99eebc6"
+    },
+    "groups.json": {
+      "sha256": "ce96febf1a41a15a4ecc9eba0e1256ebc5c7105f15c01c22afbca80130dde28b"
+    },
+    "labels.csv": {
+      "sha256": "9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81"
+    },
+    "old_fold_0_train.json": {
+      "sha256": "e9c82eaddb9945067c0975298861a2e5881df2cc02139cf91e383ef7cf9b0d22"
+    },
+    "old_fold_0_val.json": {
+      "sha256": "982159b5eb1c2bdcb3d05966c4c0ad7d12893ea597b373b21735ad3782ee445b"
+    },
+    "old_fold_1_train.json": {
+      "sha256": "ca9546c7986379c8f2efc47419e10c07b31c5661c4916bebe39e673ce7e35962"
+    },
+    "old_fold_1_val.json": {
+      "sha256": "880ad6bc774ed9fa00001840b86cfad5448423637048002ce5b1477ec14f5eda"
+    },
+    "old_fold_2_train.json": {
+      "sha256": "52a03df9152a7094b64f7d3458706790ee27417d007f3650190c5d590eac1a4e"
+    },
+    "old_fold_2_val.json": {
+      "sha256": "56ffda8315ba159d4ac646d2fde9b5f9028f1349796c53f7ec1f0ab606071f47"
+    },
+    "test.json": {
+      "sha256": "26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc"
+    }
+  },
+  "manual_exceptions": [],
+  "migration": {
+    "description": "现有成员文件原样整理；未重新划分",
+    "input_snapshots_and_detailed_reports_retained": false,
+    "original_manifest_sha256": "462c1fac05eebb65628e274f0582d0e2d9af9a3b0b4f2920703be7361d9ab104",
+    "previous_directory": "source-v1-20261107"
+  },
+  "outputs": {
+    "fold_0_train.json": {
+      "sha256": "73abf0f28a3d06b09aa0aabcefd31451bce1b32bba51f7d8356d8c7440ca0421"
+    },
+    "fold_0_val.json": {
+      "sha256": "026410713000db8b3ada0e93c6af63e3e7bc9767aebdf73e490672002c005d34"
+    },
+    "fold_1_train.json": {
+      "sha256": "991229766e2a2ad74ec4298e195937c4fb9ee130d232875ab276ca65f7e2d2a3"
+    },
+    "fold_1_val.json": {
+      "sha256": "61f4e41345bdd5f18c685411aef37800cf8b42b6590ca11b6772252c9da53ab3"
+    },
+    "fold_2_train.json": {
+      "sha256": "a1467c8ed7332473425a73a832a6bf26cf37c76185e52e1b29a118546af0cfc7"
+    },
+    "fold_2_val.json": {
+      "sha256": "cecc8d653ec44bef5e81821d2fee87a3221fd287c7f5c17d644cafaa51ef436c"
+    },
+    "test.json": {
+      "sha256": "26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc"
+    }
+  },
+  "rule_version": "explicit-source-five-task-v1",
+  "search_summary": {
+    "best_score": {
+      "coverage_gap": 0,
+      "field_deviation": {
+        "denominator": 6841551158442000,
+        "numerator": 854376223639537
+      },
+      "group_fold_vector": [
+        0,
+        2,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0,
+        2,
+        0,
+        2,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        2,
+        0,
+        0,
+        1,
+        2,
+        1,
+        2,
+        0,
+        0,
+        2,
+        2,
+        0,
+        2,
+        0,
+        1,
+        1,
+        1,
+        1,
+        2,
+        0,
+        2,
+        0,
+        1,
+        2,
+        0,
+        1,
+        2,
+        1,
+        1,
+        2,
+        2,
+        1,
+        1,
+        2,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        2,
+        2,
+        2,
+        1,
+        2,
+        1,
+        0,
+        2,
+        1,
+        2,
+        1,
+        1,
+        2,
+        2,
+        0
+      ],
+      "max_video_deviation": {
+        "denominator": 3,
+        "numerator": 2
+      },
+      "pair_deviation": {
+        "denominator": 68995121812660121526848400,
+        "numerator": 14991449896237163515405409
+      },
+      "sum_video_deviation": {
+        "denominator": 3,
+        "numerator": 4
+      }
+    },
+    "best_seed": 43,
+    "global_optimality_proven": false,
+    "start_count": 100,
+    "test_labels_used_for_objective": false
+  },
+  "status": "generated_split_not_model_evaluation",
+  "warnings": [
+    "explicit_source_table_is_user_evidence_not_media_deduplication",
+    "historically_exposed_test_is_not_never_used_independent_test",
+    "bounded_local_search_does_not_prove_global_optimality"
+  ]
+}

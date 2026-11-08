@@ -191,7 +191,7 @@ facts:
     claim: >
       原项目操作约束记录训练机代码目录为 `/home/liuyang/文档/mVllm_2`。这是历史记录的连接配置，不是本次远端现场核验；使用前仍需核对训练机、分支和文件状态。
     evidence:
-      - ref: docs/guide.md:34
+      - ref: docs/guide.md:36
         expect: 训练机代码目录为 `/home/liuyang/文档/mVllm_2`
     established: 2026-10-13
     established_by: 2026-10-13 历史现场记录；原项目操作约束中的路径配置由导航记录追溯
@@ -301,9 +301,9 @@ facts:
         expect: runs=root / "trains",
       - ref: versioning/prompts.py:93
         expect: return root / "trains" / train_version / "input" / "prompt.yaml"
-      - ref: tests/test_layout_migration_guard.py:83
+      - ref: tests/test_layout_migration_guard.py:84
         expect: "models/minicpm-v-4.5": "base-models/minicpmv4_5",
-      - ref: .gitignore:20
+      - ref: .gitignore:19
         expect: /audits
     established: 2026-10-21
     established_by: 用户裁决 2026-10-21 + 代码核对

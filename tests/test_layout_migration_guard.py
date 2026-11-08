@@ -26,7 +26,8 @@
   命中宿主文件里的一行（腐坏即失败）。遮蔽自证用 ``monkeypatch`` 临时注入条目，
   不依赖真实豁免存在。
 * T4：``pipeline.project_workspace`` 的路径语义直接以仓库根为根。
-* T5 / T6：新布局路径不得被 git 跟踪，且必须被 ``.gitignore`` 覆盖。
+* T5 / T6：训练等本地产物不得被 git 跟踪；``data`` 中的标注、划分和 ROI
+  记录允许进入 Git，视频与运行锁仍须忽略。
 
 已知限制
 --------
@@ -87,9 +88,8 @@ LEGACY_TO_FLATTENED = {
 # P2 物理搬迁已完成，本集合必须保持为空；新增旧路径一律视为写回旧布局。
 PENDING_PHYSICAL_MOVE: set[str] = set()
 
-# 新布局的顶层目录名。models 走既有规则（models/* 已被忽略），不在 T6 断言内。
+# 本地产物目录名。data 中的结构化记录入 Git；models 走既有规则，不在 T6 断言内。
 FLATTENED_TOP_LEVEL = (
-    "data",
     "trains",
     "mlflow",
     "evaluations",
@@ -639,13 +639,12 @@ def test_t4_experiment_run_dir_lands_in_trains(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------- #
 
 def test_t5_flattened_paths_are_not_git_tracked() -> None:
-    """新布局目录下不得有被 git 跟踪的文件（产物归训练机，不进仓库）。"""
+    """训练、模型等本地产物不得被 Git 跟踪。"""
     result = subprocess.run(
         [
             "git",
             "ls-files",
             "--",
-            "data",
             "trains",
             "models",
             "mlflow",
@@ -666,6 +665,23 @@ def test_t5_flattened_paths_are_not_git_tracked() -> None:
     )
 
 
+def test_t5_data_media_and_runtime_lock_are_not_git_tracked() -> None:
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "--", "data"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    media_extensions = {".mp4", ".mov", ".mkv", ".avi", ".m4v", ".webm"}
+    unexpected = [
+        name for name in result.stdout.split("\0") if name
+        and (Path(name).suffix.lower() in media_extensions
+             or name == "data/roi/.roi.lock")
+    ]
+    assert unexpected == [], f"视频或运行锁不应被 Git 跟踪：{unexpected}"
+
+
 # --------------------------------------------------------------------------- #
 # T6 gitignore 覆盖
 # --------------------------------------------------------------------------- #
@@ -684,3 +700,38 @@ def test_t6_gitignore_covers_flattened_path(path: str) -> None:
         f".gitignore 未覆盖新布局路径 {path!r}（git check-ignore 返回 "
         f"{result.returncode}）"
     )
+
+
+@pytest.mark.parametrize("path", (
+    "data/annotation-table-full.csv",
+    "data/split-inputs/source-groups-20261107.json",
+    "data/splits/three-fold/test.json",
+    "data/splits/three-fold/fold_0_train.json",
+    "data/splits/three-fold/manifest.json",
+    "data/roi/decisions.json",
+    "data/roi/manifest.json",
+    "data/roi/label_reviews.json",
+))
+def test_t6_data_records_are_not_ignored(path: str) -> None:
+    result = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-q", path],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1, (
+        f"标注、划分与 ROI 记录应允许进入 Git：{path!r}；{result.stderr}"
+    )
+
+
+@pytest.mark.parametrize("extension", ("mp4", "mov", "mkv", "avi", "m4v", "webm"))
+@pytest.mark.parametrize("uppercase", (False, True))
+def test_t6_data_video_formats_are_ignored(extension: str, uppercase: bool) -> None:
+    suffix = extension.upper() if uppercase else extension
+    result = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-q", f"data/roi/videos/probe.{suffix}"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"视频应被忽略：{suffix}；{result.stderr}"
