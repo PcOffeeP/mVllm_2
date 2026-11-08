@@ -13,6 +13,7 @@ from script.roi import core
 SOURCE_MEDIA = {
     "width": 640, "height": 480, "frame_rate": "25/1",
     "nominal_frame_rate": "25/1", "frame_count": 250,
+    "metadata_frame_count": 250, "frame_count_basis": "metadata",
     "duration": 10.0, "rotation": 0, "pixel_format": "yuv420p",
 }
 
@@ -56,6 +57,7 @@ def workspace(tmp_path, monkeypatch):
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(core, "probe_video", probe)
+    monkeypatch.setattr(core, "decoded_frame_count", lambda path: SOURCE_MEDIA["frame_count"])
     monkeypatch.setattr(core.subprocess, "run", run)
     return core.Workspace(videos, tmp_path / "roi"), calls
 
@@ -152,7 +154,9 @@ def test_source_change_between_view_and_save_cannot_be_silently_rebound(workspac
 
 def test_orphan_output_is_never_overwritten_or_adopted_by_filename(workspace):
     ws, calls = ready_workspace(workspace)
-    row = ws.inventory()["videos"][0]
+    verified = ws.inventory(decode_source_ids={"new"})
+    core.atomic_json(ws.manifest_path, verified)
+    row = verified["videos"][0]
     orphan = ws.output_dir / "media" / "new" / (row["recipe_hash"] + ".mp4")
     orphan.parent.mkdir(parents=True)
     orphan.write_bytes(b"untracked output must survive")
@@ -561,3 +565,63 @@ def test_concurrent_refresh_cannot_enter_manifest_write_while_generation_holds_l
     assert not refresh_thread.is_alive()
     assert errors == []
     assert ws.inventory()["videos"][0]["status"] == "needs_output_review"
+
+
+@pytest.mark.parametrize("missing_was_successful", [False, True])
+def test_previously_seen_source_cannot_disappear_from_completion_accounting(workspace, missing_was_successful):
+    ws, _ = ready_workspace(workspace)
+    ws.generate("new")
+    ws.save_output_review("new", checked_review())
+    gone = ws.videos_dir / "gone.mp4"
+    gone.write_bytes(b"second synthetic source")
+    rows = {row["video_id"]: row for row in ws.refresh()["videos"]}
+    if missing_was_successful:
+        ws.save_decision(rows["gone"], fixed_decision())
+        ws.generate("gone")
+        ws.save_output_review("gone", checked_review())
+    prior = {row["video_id"]: row for row in ws.refresh()["videos"]}
+    gone.unlink()
+
+    for _ in range(2):
+        manifest = ws.refresh()
+        rows = {row["video_id"]: row for row in manifest["videos"]}
+        assert set(rows) == {"new", "gone"}
+        assert manifest["total"] == 2
+        assert manifest["complete"] is False
+        assert rows["new"]["status"] == "success"
+        assert rows["gone"]["status"] != "success"
+        assert rows["gone"]["reason"]
+        assert rows["gone"]["source"]["sha256"] == prior["gone"]["source"]["sha256"]
+        if missing_was_successful:
+            assert rows["gone"]["output"] == prior["gone"]["output"]
+
+    gone.write_bytes(b"second synthetic source")
+    restored = {row["video_id"]: row for row in ws.refresh()["videos"]}
+    assert restored["gone"]["status"] == ("success" if missing_was_successful else "needs_decision")
+
+
+def test_missing_entire_source_directory_retains_registered_rows(workspace):
+    ws, _ = ready_workspace(workspace)
+    before = ws.refresh()["videos"][0]
+    moved = ws.videos_dir.with_name("temporarily_moved_videos")
+    ws.videos_dir.rename(moved)
+    result = ws.refresh()
+    assert result["total"] == 1
+    assert result["complete"] is False
+    assert result["videos"][0]["video_id"] == before["video_id"]
+    assert result["videos"][0]["source"]["sha256"] == before["source"]["sha256"]
+    assert result["videos"][0]["status"] != "success"
+
+
+def test_failed_selected_source_frame_count_is_reported_without_encoding(workspace, monkeypatch):
+    ws, calls = ready_workspace(workspace)
+
+    def unreadable(path):
+        raise core.RoiError("实际计帧失败：synthetic damaged source")
+
+    monkeypatch.setattr(core, "decoded_frame_count", unreadable)
+    with pytest.raises(core.RoiError, match="计帧失败"):
+        ws.generate("new")
+    assert not any("-c:v" in command for command in calls)
+    manifest = json.loads(ws.manifest_path.read_text())
+    assert manifest["complete"] is False

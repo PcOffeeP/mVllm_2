@@ -1,0 +1,136 @@
+"""Small generated media protects behavior that mocked ffmpeg cannot verify."""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+from script.roi import core
+
+
+def run(command):
+    return subprocess.run(command, check=True, capture_output=True)
+
+
+def make_source(path: Path, *, duration=1, rate=30, solid=False):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pattern = "color=red" if solid else "testsrc2"
+    run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+         f"{pattern}=size=64x48:rate={rate}:duration={duration}" if not solid else
+         f"color=red:size=64x48:rate={rate}:duration={duration}",
+         "-c:v", "libx264", "-g", "90", "-bf", "0", "-pix_fmt", "yuv420p", str(path)])
+
+
+def review(duration):
+    return {"items": {key: {"result": "judgable", "cause": "source", "note": ""}
+                      for key in core.EVIDENCE_ITEMS},
+            "checked_intervals": [[0, duration]], "confirmed": True}
+
+
+def test_recorded_no_crop_padding_equals_real_output_pixels(tmp_path):
+    source = tmp_path / "red.mp4"
+    output = tmp_path / "padded.mp4"
+    make_source(source, rate=10, solid=True)
+    decision = {"mode": "no_crop", "source_resolution": [64, 48]}
+    geometry = core.geometry(decision)
+    run(core.build_ffmpeg_command(source, output, decision))
+    width, height = geometry["output_resolution"]
+    pixels = run(["ffmpeg", "-v", "error", "-i", str(output), "-frames:v", "1",
+                  "-f", "rawvideo", "-pix_fmt", "gray", "-"]).stdout
+    assert len(pixels) == width * height
+    positions = [(i % width, i // width) for i, value in enumerate(pixels) if value > 40]
+    left = min(x for x, _ in positions)
+    right = max(x for x, _ in positions)
+    top = min(y for _, y in positions)
+    bottom = max(y for _, y in positions)
+    assert (left, top, right - left + 1, bottom - top + 1) == (
+        geometry["pad_pixels"]["left"], geometry["pad_pixels"]["top"], 64, 48)
+    assert width - right - 1 == geometry["pad_pixels"]["right"]
+    assert height - bottom - 1 == geometry["pad_pixels"]["bottom"]
+
+
+def test_trim_with_header_preroll_generates_using_decoded_count_and_reuses_verification(tmp_path, monkeypatch):
+    original = tmp_path / "full.mp4"
+    make_source(original, duration=3)
+    videos = tmp_path / "videos"
+    videos.mkdir()
+    trimmed = videos / "trimmed.mp4"
+    run(["ffmpeg", "-v", "error", "-ss", "1", "-i", str(original), "-t", "1",
+         "-c", "copy", str(trimmed)])
+    metadata = json.loads(run(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0",
+                              "-show_entries", "stream=nb_frames,nb_read_frames", "-of", "json",
+                              str(trimmed)]).stdout)["streams"][0]
+    assert int(metadata["nb_frames"]) > int(metadata["nb_read_frames"]) == 30
+    calls = []
+    original_run = core.subprocess.run
+
+    def record_count(command, **kwargs):
+        if command[0] == "ffprobe" and "-count_frames" in command:
+            calls.append(str(command[-1]))
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(core.subprocess, "run", record_count)
+    work = core.Workspace(videos, tmp_path / "roi")
+    row = work.refresh()["videos"][0]
+    assert calls == []  # Browsing the list must not decode every source.
+    work.save_decision(row, {"mode": "no_crop", "source_review": review(1)})
+    work.generate("trimmed")
+    generated = work.inventory()["videos"][0]
+    assert generated["status"] == "needs_output_review"
+    assert generated["source"]["media"]["frame_count"] == 30
+    assert generated["output"]["media"]["frame_count"] == 30
+    source_count_calls = calls.count(str(trimmed))
+    assert source_count_calls == 1
+    count_after_generation = len(calls)
+    work.refresh()
+    work.save_output_review("trimmed", review(1))
+    work.refresh(verify_source_ids={"trimmed"})
+    assert work.inventory()["complete"] is True
+    assert calls.count(str(trimmed)) == source_count_calls
+    assert len(calls) == count_after_generation
+
+
+def test_old_no_crop_with_chroma_rounded_padding_is_regenerated(tmp_path):
+    source = tmp_path / "videos/red.mp4"
+    make_source(source, rate=10, solid=True)
+    work = core.Workspace(source.parent, tmp_path / "roi")
+    row = work.refresh()["videos"][0]
+    work.save_decision(row, {"mode": "no_crop", "source_review": review(1)})
+    work.existing_media_dir.mkdir(parents=True)
+    candidate = work.existing_media_dir / "red.mp4"
+    old_filter = "pad=66:88:1:20:color=black,setsar=1"
+    run(["ffmpeg", "-v", "error", "-i", str(source), "-vf", old_filter,
+         "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p",
+         "-an", "-vsync", "0", str(candidate)])
+    old_hash = core.sha256_file(candidate)
+    core.atomic_json(work.existing_manifest, {
+        "encoding_profile": {"video_codec": "libx264", "preset": "fast", "crf": 23,
+                             "pixel_format": "yuv420p", "audio": "dropped",
+                             "frame_sync": "vsync_0_passthrough"},
+        "videos": [{"source_video_id": "red", "source_sha256": row["source"]["sha256"],
+                    "mode": "no_crop", "output_sha256": old_hash, "video_filter": old_filter}],
+    })
+    work.generate("red")
+    output = work.inventory()["videos"][0]
+    assert output["output"]["origin"] == "generated"
+    assert output["status"] == "needs_output_review"
+    assert core.sha256_file(candidate) == old_hash
+
+
+def test_preview_near_video_end_does_not_crash_the_page(tmp_path, monkeypatch):
+    from streamlit.testing.v1 import AppTest
+
+    make_source(tmp_path / "data/videos/short.mp4", rate=10)
+    app = Path(core.__file__).with_name("app.py")
+    monkeypatch.syspath_prepend(str(app.parent))
+    monkeypatch.setattr(sys, "argv", [str(app), "--project-root", str(tmp_path)])
+    page = AppTest.from_file(str(app)).run(timeout=10)
+    assert not page.exception
+    preview = next(widget for widget in page.number_input if widget.label.startswith("预览位置"))
+    page = preview.set_value(0.999).run(timeout=10)
+    assert not page.exception
+    preview = next(widget for widget in page.number_input if widget.label.startswith("预览位置"))
+    page = preview.set_value(0.5).run(timeout=10)
+    assert not page.exception
+    assert any(widget.label == "保存选框和审核进度" for widget in page.button)

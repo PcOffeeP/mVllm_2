@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 RULE_VERSION = "roi-rules/1"
+PROCESSING_VERSION = "roi-processing/2"
 SCHEMA = "tensile-roi/1"
 EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".m4v", ".webm"}
 EVIDENCE_ITEMS = {
@@ -125,7 +126,8 @@ def geometry(decision: Mapping) -> dict:
     if decision.get("mode") == "no_crop":
         w, h = exact_pad_dimensions(width, height)
         x, y = (w-width)//2, (h-height)//2
-        return {"filter": f"pad={w}:{h}:{x}:{y}:color=black,setsar=1", "output_resolution": [w,h],
+        # Pad in 4:4:4 so FFmpeg cannot round an odd offset to a chroma grid.
+        return {"filter": f"format=yuv444p,pad={w}:{h}:{x}:{y}:color=black,setsar=1", "output_resolution": [w,h],
                 "crop_pixels": {k: 0 for k in ("top","bottom","left","right")},
                 "pad_pixels": {"top":y,"bottom":h-height-y,"left":x,"right":w-width-x}}
     if decision.get("mode") != "fixed_roi":
@@ -158,15 +160,39 @@ def probe_video(path: Path) -> dict:
                 rotation = float(side["rotation"])
         rate = float(Fraction(stream["r_frame_rate"]))
         duration = float(stream.get("duration") or raw["format"]["duration"])
-        count = int(stream.get("nb_read_frames") or stream["nb_frames"])
+        header_count = stream.get("nb_frames")
+        count = int(header_count) if header_count not in (None, "N/A") else None
         width, height = int(stream["width"]), int(stream["height"])
-        if not math.isfinite(duration) or not math.isfinite(rotation) or duration <= 0 or rate <= 0 or count <= 0:
+        if not math.isfinite(duration) or not math.isfinite(rotation) or duration <= 0 or rate <= 0 or (count is not None and count <= 0):
             raise ValueError("无效时间或方向")
         return {"width":width,"height":height,"frame_rate":stream["avg_frame_rate"],
                 "nominal_frame_rate":stream["r_frame_rate"],"frame_count":count,
+                "metadata_frame_count":count,"frame_count_basis":"metadata",
                 "duration":duration,"rotation":rotation % 360,"pixel_format":stream.get("pix_fmt","unknown")}
     except (ValueError, KeyError, TypeError, IndexError, ZeroDivisionError) as exc:
         raise RoiError(f"媒体属性无法可靠获取：{path}") from exc
+
+
+def decoded_frame_count(path: Path) -> int:
+    """Read actual frames only when handling one selected source/output."""
+    result = subprocess.run(["ffprobe","-v","error","-select_streams","v:0",
+        "-count_frames","-show_entries","stream=nb_read_frames","-of","json",str(path)],
+        capture_output=True, text=True)
+    if result.returncode or result.stderr.strip():
+        raise RoiError(f"实际计帧失败：{path}: {result.stderr.strip()[-1000:]}")
+    try:
+        count = int(json.loads(result.stdout)["streams"][0]["nb_read_frames"])
+        if count <= 0: raise ValueError("没有可解码帧")
+        return count
+    except (ValueError,KeyError,TypeError,IndexError) as exc:
+        raise RoiError(f"无法可靠取得实际帧数：{path}") from exc
+
+
+def verified_media(path: Path, media: Mapping) -> dict:
+    value=dict(media)
+    value.setdefault("metadata_frame_count",value.get("frame_count"))
+    value.update(frame_count=decoded_frame_count(path),frame_count_basis="decoded")
+    return value
 
 
 def validate_media(source: Mapping, output: Mapping, resolution: list[int]):
@@ -219,9 +245,12 @@ def review_errors(review: Mapping | None, duration: float) -> list[str]:
 
 
 def recipe(source: Mapping, decision: Mapping) -> str:
-    return digest({"source_sha256":source["sha256"],"media":source["media"],
+    # Verification provenance is not a different spatial/temporal recipe.
+    media={key:value for key,value in source["media"].items()
+           if key not in {"metadata_frame_count","frame_count_basis"}}
+    return digest({"source_sha256":source["sha256"],"media":media,
                    "mode":decision.get("mode"),"pixel_box":decision.get("pixel_box"),
-                   "rule_version":RULE_VERSION,"encoding":ENCODING})
+                   "rule_version":RULE_VERSION,"processing_version":PROCESSING_VERSION,"encoding":ENCODING})
 
 
 def source_matches(source: Mapping, decision: Mapping) -> bool:
@@ -343,8 +372,10 @@ class Workspace:
         self.manifest_path=self.output_dir/"manifest.json"
         self.drafts_path=self.output_dir/"drafts.json"
 
-    def inventory(self, *, verify_source_ids: set[str] | None = None) -> dict:
+    def inventory(self, *, verify_source_ids: set[str] | None = None,
+                  decode_source_ids: set[str] | None = None) -> dict:
         verify_source_ids = verify_source_ids or set()
+        decode_source_ids = decode_source_ids or set()
         candidates=load_decisions(self.candidate_path)
         decisions=load_decisions(self.decisions_path)
         previous=load_json(self.manifest_path,{})
@@ -353,7 +384,15 @@ class Workspace:
         drafts=load_json(self.drafts_path,{})
         splits,split_input=load_splits(self.splits_dir)
         rows=[]
-        for found in discover_videos(self.videos_dir):
+        directory_error=None
+        try:
+            found_videos=discover_videos(self.videos_dir)
+        except RoiError as exc:
+            if not old: raise
+            found_videos=[]
+            directory_error=str(exc)
+        found_ids={item["video_id"] for item in found_videos}
+        for found in found_videos:
             key=found["video_id"]
             if found.get("status")=="failed": rows.append(found); continue
             path=Path(found["path"])
@@ -370,17 +409,22 @@ class Workspace:
                 stat=path.stat(); cache=old.get(key,{}).get("source",{})
                 state={"size":stat.st_size,"mtime_ns":stat.st_mtime_ns}
                 cached = (cache.get("path")==str(path) and cache.get("stat")==state and
-                          "pixel_format" in cache.get("media",{}))
+                          "pixel_format" in cache.get("media",{}) and
+                          "frame_count_basis" in cache.get("media",{}))
                 if cached and key not in verify_source_ids:
                     source=cache
                     row["source_identity_check"]="cached_file_state"
                 else:
                     current_sha=sha256_file(path)
-                    if cached and cache.get("sha256")==current_sha:
-                        source=cache
+                    if cache.get("sha256")==current_sha and "frame_count_basis" in cache.get("media",{}):
+                        # Restoring the same bytes may change path/stat; its
+                        # previously decoded count remains valid by SHA-256.
+                        source={**cache,"path":str(path),"stat":state}
                     else:
                         source={"path":str(path),"sha256":current_sha,"stat":state,"media":probe_video(path)}
                     row["source_identity_check"]="sha256_verified"
+                if key in decode_source_ids and source["media"].get("frame_count_basis") != "decoded":
+                    source={**source,"media":verified_media(path,source["media"])}
                 row["source"]=source
                 decision=decisions.get(key) or candidates.get(key)
                 if decision:
@@ -427,6 +471,15 @@ class Workspace:
             except (RoiError,OSError,subprocess.SubprocessError) as exc:
                 row.update(status="failed",reason=str(exc))
             rows.append(row)
+        # A refresh must not erase an expected source merely because the file
+        # disappeared. Preserve its identity/history until it is restored.
+        for key,previous_row in old.items():
+            if key not in found_ids:
+                row=dict(previous_row)
+                row.update(status="failed",source_missing=True,
+                    reason=directory_error or "此前登记的源视频已缺失或不可访问，请恢复原文件后刷新")
+                row.pop("generation_error",None)
+                rows.append(row)
         result={"schema":SCHEMA,"rule_version":RULE_VERSION,"generated_at":now(),
                 "videos_dir":str(self.videos_dir),"split_input":split_input,"videos":rows}
         result["summary"]={s:sum(r.get("status")==s for r in rows) for s in sorted({r.get("status") for r in rows})}
@@ -484,6 +537,14 @@ class Workspace:
         if row["status"] in {"success","needs_output_review"}: return row
         if not (row["status"] == "ready" or (row["status"] == "failed" and row.get("generation_error"))):
             raise RoiError(row.get("reason","尚未就绪"))
+        # Metadata frame counts can be stale after stream-copy trimming. Count
+        # only this source, cache it under the checked source hash, then derive
+        # the recipe from the verified media identity.
+        manifest=self.inventory(verify_source_ids={video_id},decode_source_ids={video_id})
+        atomic_json(self.manifest_path,manifest)
+        row=next(r for r in manifest["videos"] if r["video_id"]==video_id)
+        if not (row["status"] == "ready" or (row["status"] == "failed" and row.get("generation_error"))):
+            raise RoiError(row.get("reason","实际计帧未能完成，请核实源视频"))
         source=row["source"]; d=row["decision"]; key=row["recipe_hash"]
         folder=self.output_dir/"media"/safe_id(video_id); folder.mkdir(parents=True,exist_ok=True)
         target=folder/(key+".mp4")
@@ -512,8 +573,23 @@ class Workspace:
                     grid={"420":(2,2),"422":(2,1),"444":(1,1)}[subsampling.group(1)]
                     aligned=(all(d["pixel_box"][field] % grid[0] == 0 for field in ("x","width")) and
                              all(d["pixel_box"][field] % grid[1] == 0 for field in ("y","height")))
-                exact_geometry=(d["mode"]=="no_crop" or aligned or
-                    ":exact=1" in str(legacy.get("video_filter","")))
+                if d["mode"]=="no_crop":
+                    geo=geometry(d)
+                    pad=geo["pad_pixels"]
+                    legacy_filter=str(legacy.get("video_filter",""))
+                    legacy_pad=re.search(r"(?:^|,)pad=(\d+):(\d+):(\d+):(\d+)(?=[:,]|$)",legacy_filter)
+                    expected_pad=(*geo["output_resolution"],pad["left"],pad["top"])
+                    same_pad=(legacy_pad is not None and tuple(map(int,legacy_pad.groups()))==expected_pad)
+                    # Old pad also rounds to the INPUT chroma grid. Do not
+                    # infer that grid from the encoded output format.
+                    pad_aligned=False
+                    if subsampling:
+                        grid={"420":(2,2),"422":(2,1),"444":(1,1)}[subsampling.group(1)]
+                        pad_aligned=(pad["left"] % grid[0] == 0 and pad["top"] % grid[1] == 0)
+                    exact_geometry=(same_pad and
+                        (pad_aligned or legacy_filter.startswith("format=yuv444p,")))
+                else:
+                    exact_geometry=(aligned or ":exact=1" in str(legacy.get("video_filter","")))
                 compatible=(source_hash==source["sha256"] and output_hash and encoding_matches and exact_geometry and
                     legacy.get("mode")==d["mode"] and
                     (d["mode"]=="no_crop" or legacy_box==d.get("pixel_box")))
@@ -522,9 +598,9 @@ class Workspace:
             if not temporary.exists():
                 result=subprocess.run(build_ffmpeg_command(Path(source["path"]),temporary,d),capture_output=True,text=True)
                 if result.returncode: raise RoiError("ffmpeg 失败："+result.stderr.strip()[-1500:])
-            output_probe=probe_video(temporary)
+            output_probe=verified_media(temporary,probe_video(temporary))
             validate_media(source["media"],output_probe,geometry(d)["output_resolution"])
-            # Check full decode in addition to the inexpensive metadata probe.
+            # Check full decode in addition to actual frame counting.
             decode=subprocess.run(["ffmpeg","-v","error","-xerror","-i",str(temporary),"-map","0:v:0","-f","null","-"],capture_output=True,text=True)
             if decode.returncode: raise RoiError("输出解码校验失败："+decode.stderr.strip()[-1000:])
             if sha256_file(Path(source["path"]))!=source["sha256"]: raise RoiError("生成时源视频发生变化")

@@ -89,15 +89,26 @@ def main():
     row=mapping[selected]; key=selected+"-"+row.get("source",{}).get("sha256", "")[:12]; st.info(row.get("reason") or STATUS_LABELS.get(row["status"],row["status"]))
     if "source" not in row: return
     source=row["source"]; media=source["media"]
+    if row.get("source_missing") or not Path(source["path"]).is_file():
+        st.warning("源视频缺失或不可访问，已保留此条目的历史记录。请恢复原文件后刷新。"); return
     if media["rotation"] != 0:
         st.warning("视频有旋转标记。为避免显示方向与裁剪坐标不一致，当前保持待核实，保留源文件。"); return
     with st.expander("源视频属性和辅助标签"):
         st.json({"media":media,"labels":row.get("labels",{}),"sha256":source["sha256"]})
+    if media.get("frame_count_basis") == "decoded":
+        st.caption(f"实际解码帧数：{media['frame_count']}；文件头记录：{media.get('metadata_frame_count', '未知')}。")
+    else:
+        st.caption(f"文件头帧数：{media.get('metadata_frame_count', media.get('frame_count'))}（尚未实际计帧，生成或复用时核对）。")
     st.video(source["path"])
     # Slider and adjacent-frame controls are navigation, never proof of viewing.
     time=st.number_input("预览位置（秒，可按单帧步长调整）",min_value=0.,max_value=max(0.,media["duration"]-.001),
         value=0.,step=float(1/float(__import__('fractions').Fraction(media["nominal_frame_rate"]))),key=key+"-time")
-    raw=frame(source["path"],source["sha256"],time)
+    try:
+        raw=frame(source["path"],source["sha256"],time)
+    except RoiError:
+        st.warning("该时间点没有可提取的画面，下面显示起始帧供选框。此回退不代表已检查所选位置，请调整预览时间或播放视频核对。")
+        try: raw=frame(source["path"],source["sha256"],0.)
+        except RoiError as exc: st.error(str(exc)); return
     image=Image.open(io.BytesIO(raw)).convert("RGB")
     existing=row.get("draft") or row.get("decision",{})
     mode=st.radio("画面范围",["fixed_roi","no_crop"],index=1 if existing.get("mode")=="no_crop" else 0,
