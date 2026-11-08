@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a new, immutable three-fold split from explicitly supplied sources.
 
-Standard library only; no video, model or ROI access. Rules: docs/data-split-design.md.
+Standard library only; rules: docs/split/data-split-design.md (legacy: docs/data-split-design.md).
 The CLI requires the current 110 IDs and 21 fixed test members. Small synthetic
 examples may use validate_labels(..., expected_count=None) and Problem directly.
 """
@@ -438,6 +438,31 @@ def _publish_new_directory(source, destination):
         raise OSError(code, os.strerror(code), str(destination))
 
 
+def resolve_design_document(root):
+    """Resolve the rules document without choosing between conflicting copies.
+
+    Both supported layouts use the existing manifest/snapshot key
+    ``docs_data-split-design.md``; moving an identical document does not rename
+    that evidence field or change the explicit data-input interface.
+    """
+    root = Path(root)
+    candidates = (root / "docs/split/data-split-design.md",
+                  root / "docs/data-split-design.md")
+    present = []
+    for path in candidates:
+        if path.exists():
+            if not path.is_file():
+                raise SplitError(f"split design document is not a file: {path}")
+            present.append(path)
+    if not present:
+        raise SplitError("split design document not found; expected " +
+                         " or ".join(str(path) for path in candidates))
+    if len(present) == 2 and present[0].read_bytes() != present[1].read_bytes():
+        raise SplitError("conflicting split design documents: " +
+                         " and ".join(str(path) for path in present))
+    return present[0]
+
+
 def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=None):
     """Read explicit inputs, search 100 starts, then publish a new directory once.
 
@@ -451,8 +476,8 @@ def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=Non
     inputs = {"labels.csv": Path(labels_path), "test.json": Path(test_path),
               "groups.json": Path(groups_path)}
     root = Path(__file__).resolve().parents[2]
-    for name in ("docs/label.md", "docs/data-split-design.md"):
-        inputs[name.replace("/", "_")] = root / name
+    inputs["docs_label.md"] = root / "docs/label.md"
+    inputs["docs_data-split-design.md"] = resolve_design_document(root)
     inputs["generate.py"] = Path(__file__).resolve()
     if old_splits_dir is not None:
         for fold in range(3):
@@ -571,6 +596,8 @@ def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=Non
         "hash_rule": "SHA-256 of exact file bytes; manifest excludes itself; no timestamps or absolute input paths",
         "manual_exceptions": [], "warnings": warnings}
     payloads["manifest.json"] = canonical_bytes(manifest)
+    # A second layout copy may have appeared or changed during the search.
+    resolve_design_document(root)
     # Re-read all inputs immediately before publication, including rules and code.
     if any(path.read_bytes() != content[name] for name, path in resolved.items()):
         raise SplitError("input changed during search; publication aborted")
@@ -589,6 +616,12 @@ def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=Non
         lock_owned = True
         if output.exists() or output.is_symlink():
             raise SplitError(f"output appeared during search: {output}")
+        # Staging can take time: check again while holding the publication lock,
+        # immediately before making the directory visible. This lock coordinates
+        # publishers; external input writers must still keep inputs immutable.
+        resolve_design_document(root)
+        if any(path.read_bytes() != content[name] for name, path in resolved.items()):
+            raise SplitError("input changed while staging; publication aborted")
         # Under the exclusive sibling lock, the directory appears all at once.
         _publish_new_directory(temporary, output)
     finally:

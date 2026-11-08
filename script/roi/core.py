@@ -661,15 +661,21 @@ class Workspace:
             raise RoiError("旧ROI清单缺少完整输出摘要。")
         prior=previous.get("output") or {}
         canonical=self.organized_videos_dir/(safe_id(decision["source_video_id"])+".mp4")
-        # Organization is explicit: a same-named file alone never adopts media.
-        # Keep using the canonical file only after its identity was recorded in
-        # this row.  Old imports remain available as historical source material.
+        # A same-named file alone never adopts media.  Prefer a previously
+        # recorded canonical identity; narrowly recover below only with the
+        # legacy source/output identities and a fresh hash of canonical bytes.
         references=[prior,*[entry.get("output") or {} for entry in previous.get("history",{}).values()]]
         organized_reference=next((item for item in references
                                   if item.get("path")==str(canonical) and item.get("sha256")==expected),None)
         organized=organized_reference is not None
         if organized: prior=organized_reference
-        path=canonical if organized else self.existing_media_dir/(safe_id(decision["source_video_id"])+".mp4")
+        legacy_path=self.existing_media_dir/(safe_id(decision["source_video_id"])+".mp4")
+        # After an explicitly approved cleanup, the original media copy may be
+        # absent.  Recovery still needs the frozen source/output identities and
+        # a fresh hash of the canonical bytes; a same-named file is insufficient.
+        recovering=(not organized and not legacy_path.exists() and canonical.is_file()
+                    and not canonical.is_symlink() and sha256_file(canonical)==expected)
+        path=canonical if organized or recovering else legacy_path
         if not path.is_file(): raise RoiError("旧ROI视频缺失，原决定仍可参考，请重新生成。")
         state={"size":path.stat().st_size,"mtime_ns":path.stat().st_mtime_ns}
         cached=(prior.get("path")==str(path) and prior.get("sha256")==expected and prior.get("stat")==state)
@@ -736,7 +742,9 @@ class Workspace:
                               "media_properties":"metadata_matches_legacy_manifest","full_decode":"not_performed",
                               "nominal_frame_rate":nominal,"frame_timestamps":"not_compared"},
                 "visual_review":{"required":False,"status":"not_recorded"},
-                **({"organized_from":prior["organized_from"]} if organized and prior.get("organized_from") else {})}
+                **({"organized_from":prior["organized_from"]} if organized and prior.get("organized_from") else {}),
+                **({"historical_locations":prior["historical_locations"]}
+                   if organized and prior.get("historical_locations") else {})}
 
     @serialized
     def refresh(self, *, verify_source_ids: set[str] | None = None) -> dict:
@@ -833,6 +841,103 @@ class Workspace:
                        for row in result["videos"])):
             raise RoiError("结果目录已接入，但刷新发现输入或输出变化，请核对当前清单。")
         return result
+
+    @serialized
+    def prepare_cleanup(self, *, apply: bool = False) -> dict:
+        """Preview duplicate media and safely normalize same-content references.
+
+        Applying this preparation updates only the manifest.  Media, decisions,
+        drafts, labels and label-review files are never deleted or rewritten.
+        """
+        if not self.manifest_path.is_file():
+            raise RoiError("请先建立完整 ROI 工作清单，再预览清理准备。")
+        before=self.manifest_path.read_bytes()
+        previous=load_json(self.manifest_path,{})
+        ids={row["video_id"] for row in previous.get("videos",[])}
+        if not ids:
+            raise RoiError("ROI 工作清单为空，不能准备清理。")
+        manifest=self.inventory(verify_source_ids=ids)
+        if not manifest.get("complete") or {row["video_id"] for row in manifest["videos"]}!=ids:
+            raise RoiError("ROI 清单存在未完成、缺失或新增条目，请先核对。")
+        snapshot=self._organization_identity(manifest)
+        previous_rows={row["video_id"]:row for row in previous["videos"]}
+        folder=self.organized_videos_dir
+        if folder.is_symlink() or not folder.is_dir():
+            raise RoiError("统一结果 videos 必须是已存在的普通目录。")
+        canonical={}
+        updates=[]
+        for row in manifest["videos"]:
+            video_id=row["video_id"]; active=row["output"]
+            target=folder/(safe_id(video_id)+".mp4")
+            expected=active.get("sha256")
+            if (target.is_symlink() or not target.is_file() or
+                    not isinstance(expected,str) or re.fullmatch(r"[0-9a-f]{64}",expected) is None or
+                    sha256_file(target)!=expected):
+                raise RoiError(f"{video_id} 统一结果缺失、为符号链接或摘要不符。")
+            canonical[video_id]={"path":target,"sha256":expected,"geometry":active.get("geometry")}
+            recorded=previous_rows[video_id]
+            if not recorded.get("output"):
+                raise RoiError(f"{video_id} 工作清单缺少当前输出记录，请先扫描核实。")
+            references=[("output",recorded)]
+            references.extend((f"history/{key}/output",entry)
+                              for key,entry in recorded.get("history",{}).items())
+            for location,container in references:
+                record=container.get("output")
+                if not isinstance(record,dict) or record.get("sha256")!=expected:
+                    continue  # A different recipe's bytes remain historical output.
+                old_path=Path(record.get("path",""))
+                if str(old_path)==str(target):
+                    continue
+                if record.get("geometry")!=active.get("geometry"):
+                    raise RoiError(f"{video_id} 同摘要历史记录的几何与当前结果不同，保留原记录并先核实。")
+                if old_path.is_symlink():
+                    raise RoiError(f"{video_id} 历史引用是符号链接，保留原记录并先核实。")
+                if old_path.exists() and (not old_path.is_file() or sha256_file(old_path)!=expected):
+                    raise RoiError(f"{video_id} 历史引用内容与记录摘要不同，不能自动重关联。")
+                provenance=list(record.get("historical_locations",[]))
+                origin={"path":str(old_path),"sha256":expected,"role":"historical_provenance"}
+                if origin not in provenance: provenance.append(origin)
+                container["output"]={**record,"path":str(target),
+                    "stat":{"size":target.stat().st_size,"mtime_ns":target.stat().st_mtime_ns},
+                    "historical_locations":provenance}
+                updates.append({"video_id":video_id,"location":location,
+                    "from_path":str(old_path),"to_path":str(target),"sha256":expected})
+        duplicates=[]; retained=[]; seen=set()
+        for directory in (self.existing_media_dir,self.output_dir/"media"):
+            if not directory.exists(): continue
+            if directory.is_symlink() or not directory.is_dir():
+                raise RoiError("历史媒体根目录不是普通目录，不能自动预览清理。")
+            for path in sorted(directory.rglob("*.mp4")):
+                if str(path) in seen: continue
+                seen.add(str(path))
+                video_id=path.stem if path.stem in canonical else path.parent.name
+                item={"video_id":video_id,"path":str(path)}
+                if path.is_symlink() or not path.is_file():
+                    retained.append({**item,"reason":"符号链接或非普通文件，保留核实"}); continue
+                value=sha256_file(path); item.update(sha256=value,size_bytes=path.stat().st_size)
+                current=canonical.get(video_id)
+                if current and value==current["sha256"] and path.resolve()!=current["path"].resolve():
+                    duplicates.append(item)
+                else:
+                    retained.append({**item,"reason":"不同版本或不属于当前结果，保留历史"})
+        plan={"schema":"tensile-roi-cleanup-preparation/1","applied":False,
+              "total":len(ids),"complete":True,"reference_updates":updates,
+              "duplicate_media":duplicates,"retained_media":retained,
+              "duplicate_bytes":sum(item["size_bytes"] for item in duplicates),
+              "media_deleted":False}
+        if apply:
+            current=self.inventory(verify_source_ids=ids)
+            if (self.manifest_path.read_bytes()!=before or not current.get("complete") or
+                    self._organization_identity(current)!=snapshot):
+                raise RoiError("准备期间输入、决定或工作清单发生变化，请重新预览。")
+            for item in canonical.values():
+                if item["path"].is_symlink() or sha256_file(item["path"])!=item["sha256"]:
+                    raise RoiError("接入前统一结果发生变化，请重新核对。")
+            if updates:
+                previous["generated_at"]=now()
+                atomic_json(self.manifest_path,previous)
+            plan["applied"]=True
+        return plan
 
     @serialized
     def save_draft(self, row: Mapping, draft: Mapping):

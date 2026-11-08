@@ -312,7 +312,7 @@ def test_release_binds_input_rules_code_and_all_output_bytes(published):
     assert cli["manifest_sha256"] == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     expected_inputs = {"labels.csv": inputs[0], "test.json": inputs[1], "groups.json": inputs[2],
                        "docs_label.md": PROJECT_ROOT / "docs/label.md",
-                       "docs_data-split-design.md": PROJECT_ROOT / "docs/data-split-design.md",
+                       "docs_data-split-design.md": splitter.resolve_design_document(PROJECT_ROOT),
                        "generate.py": PROJECT_ROOT / "script/data_split/generate.py"}
     for name, path in expected_inputs.items():
         content = path.read_bytes()
@@ -432,3 +432,165 @@ def test_output_appearing_at_atomic_publication_is_not_replaced(tmp_path, monkey
     assert output.is_dir()
     assert list(output.iterdir()) == []
     assert sorted(path.name for path in tmp_path.iterdir()) == ["inputs", "release"]
+
+
+@pytest.mark.parametrize("relative", [
+    "docs/data-split-design.md", "docs/split/data-split-design.md",
+])
+def test_design_document_accepts_either_single_known_location(tmp_path, relative):
+    document = tmp_path / relative
+    document.parent.mkdir(parents=True)
+    document.write_bytes(b"confirmed split rules\n")
+
+    assert splitter.resolve_design_document(tmp_path) == document
+
+
+def test_identical_design_documents_prefer_the_current_location(tmp_path):
+    old = tmp_path / "docs/data-split-design.md"
+    current = tmp_path / "docs/split/data-split-design.md"
+    current.parent.mkdir(parents=True)
+    old.write_bytes(b"same confirmed rules\n")
+    current.write_bytes(old.read_bytes())
+
+    assert splitter.resolve_design_document(tmp_path) == current
+
+
+def test_conflicting_design_documents_are_not_silently_selected(tmp_path):
+    old = tmp_path / "docs/data-split-design.md"
+    current = tmp_path / "docs/split/data-split-design.md"
+    current.parent.mkdir(parents=True)
+    old.write_bytes(b"first confirmed rules\n")
+    current.write_bytes(b"different rules awaiting confirmation\n")
+
+    with pytest.raises(splitter.SplitError):
+        splitter.resolve_design_document(tmp_path)
+    assert old.read_bytes() == b"first confirmed rules\n"
+    assert current.read_bytes() == b"different rules awaiting confirmation\n"
+
+
+def test_missing_design_documents_report_a_split_input_error(tmp_path):
+    with pytest.raises(splitter.SplitError):
+        splitter.resolve_design_document(tmp_path)
+
+
+@pytest.mark.parametrize("invalid", [
+    "docs/data-split-design.md", "docs/split/data-split-design.md",
+])
+def test_design_document_directory_cannot_be_ignored_for_another_valid_file(tmp_path, invalid):
+    old = tmp_path / "docs/data-split-design.md"
+    current = tmp_path / "docs/split/data-split-design.md"
+    invalid_path = tmp_path / invalid
+    valid_path = current if invalid_path == old else old
+    invalid_path.mkdir(parents=True)
+    valid_path.parent.mkdir(parents=True, exist_ok=True)
+    valid_path.write_bytes(b"valid rules do not excuse an invalid competing path\n")
+
+    with pytest.raises(splitter.SplitError):
+        splitter.resolve_design_document(tmp_path)
+
+
+def test_generation_uses_current_design_and_versioned_groups_snapshot_without_old_directories(tmp_path, monkeypatch):
+    root = tmp_path / "project"
+    module = root / "script/data_split/generate.py"
+    module.parent.mkdir(parents=True)
+    module.write_bytes(Path(splitter.__file__).read_bytes())
+    design = root / "docs/split/data-split-design.md"
+    design.parent.mkdir(parents=True)
+    design.write_bytes(b"current confirmed design snapshot\n")
+    (root / "docs/label.md").write_bytes(b"synthetic label rules snapshot\n")
+    labels, test, original_groups = write_inputs(root / "synthetic-inputs")
+    groups = root / "data/splits/previous/input_groups.json"
+    groups.parent.mkdir(parents=True)
+    groups.write_bytes(original_groups.read_bytes())
+    original_groups.unlink()
+    groups_before = groups.read_bytes()
+    monkeypatch.setattr(splitter, "__file__", str(module))
+    output = root / "data/splits/new-version"
+
+    result = splitter.generate(labels, test, groups, output)
+
+    assert result["inputs"]["groups.json"]["sha256"] == hashlib.sha256(groups_before).hexdigest()
+    assert (output / "input_groups.json").read_bytes() == groups_before
+    # The old manifest/snapshot key remains stable even though the document
+    # now comes from docs/split. This preserves downstream evidence consumers.
+    assert result["inputs"]["docs_data-split-design.md"]["sha256"] == hashlib.sha256(design.read_bytes()).hexdigest()
+    assert (output / "input_docs_data-split-design.md").read_bytes() == design.read_bytes()
+    assert "docs_split_data-split-design.md" not in result["inputs"]
+    assert not (root / "docs/data-split-design.md").exists()
+    assert not (root / "data/split-inputs").exists()
+    assert groups.read_bytes() == groups_before
+
+
+def test_cli_still_requires_an_explicit_groups_input(tmp_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        splitter.main(["--labels", str(tmp_path / "labels.csv"),
+                       "--test-split", str(tmp_path / "test.json"),
+                       "--output-dir", str(tmp_path / "new-version")])
+    assert exc.value.code == 2
+    assert "--groups" in capsys.readouterr().err
+    assert not (tmp_path / "new-version").exists()
+
+
+def test_conflicting_design_copy_appearing_during_search_prevents_publication(tmp_path, monkeypatch):
+    root = tmp_path / "project"
+    module = root / "script/data_split/generate.py"
+    module.parent.mkdir(parents=True)
+    module.write_bytes(Path(splitter.__file__).read_bytes())
+    design = root / "docs/split/data-split-design.md"
+    design.parent.mkdir(parents=True)
+    design.write_bytes(b"current confirmed rules\n")
+    (root / "docs/label.md").write_bytes(b"synthetic label rules\n")
+    inputs = write_inputs(root / "inputs")
+    monkeypatch.setattr(splitter, "__file__", str(module))
+    search = splitter.search
+
+    def search_while_another_tool_creates_a_conflicting_document(*args, **kwargs):
+        result = search(*args, **kwargs)
+        (root / "docs/data-split-design.md").write_bytes(b"different competing rules\n")
+        return result
+
+    monkeypatch.setattr(splitter, "search", search_while_another_tool_creates_a_conflicting_document)
+    output = root / "release"
+    with pytest.raises(splitter.SplitError):
+        splitter.generate(*inputs, output)
+    assert not output.exists()
+    assert not list(root.glob(".release*"))
+    assert design.read_bytes() == b"current confirmed rules\n"
+
+
+@pytest.mark.parametrize("change", ["competing_design", "groups"])
+def test_input_changes_after_staging_creation_prevent_publication(tmp_path, monkeypatch, change):
+    root = tmp_path / "project"
+    module = root / "script/data_split/generate.py"
+    module.parent.mkdir(parents=True)
+    module.write_bytes(Path(splitter.__file__).read_bytes())
+    design = root / "docs/split/data-split-design.md"
+    design.parent.mkdir(parents=True)
+    design.write_bytes(b"current confirmed rules\n")
+    (root / "docs/label.md").write_bytes(b"synthetic label rules\n")
+    inputs = write_inputs(root / "inputs")
+    monkeypatch.setattr(splitter, "__file__", str(module))
+    create_staging = splitter.tempfile.mkdtemp
+    staged = []
+
+    def create_staging_then_change_an_input(*args, **kwargs):
+        path = create_staging(*args, **kwargs)
+        staged.append(Path(path))
+        if change == "competing_design":
+            (root / "docs/data-split-design.md").write_bytes(b"competing rules after staging\n")
+        else:
+            # Semantically valid but different bytes must also invalidate the
+            # release, whose groups snapshot was captured before staging.
+            inputs[2].write_bytes(inputs[2].read_bytes() + b"\n")
+        return path
+
+    monkeypatch.setattr(splitter.tempfile, "mkdtemp", create_staging_then_change_an_input)
+    output = root / "release"
+    with pytest.raises(splitter.SplitError):
+        splitter.generate(*inputs, output)
+
+    assert len(staged) == 1, "exercise the late staging window, not early validation"
+    assert not output.exists()
+    assert not staged[0].exists()
+    assert not (root / ".release.publish-lock").exists()
+    assert design.read_bytes() == b"current confirmed rules\n"
