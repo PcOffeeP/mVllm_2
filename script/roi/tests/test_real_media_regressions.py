@@ -202,7 +202,7 @@ def test_old_nonexact_crop_is_kept_with_effective_offset_not_silently_reencoded(
     assert not row.get("output_review")
 
 
-def test_existing_roi_page_only_needs_viewing_no_label_or_approval_controls(tmp_path, monkeypatch):
+def test_existing_roi_page_shows_prefilled_labels_without_requiring_approval(tmp_path, monkeypatch):
     from streamlit.testing.v1 import AppTest
 
     source = tmp_path / "data/videos/old.mp4"
@@ -220,7 +220,12 @@ def test_existing_roi_page_only_needs_viewing_no_label_or_approval_controls(tmp_
     monkeypatch.setattr(sys, "argv", [str(app), "--project-root", str(tmp_path)])
     page = AppTest.from_file(str(app)).run(timeout=10)
     assert not page.exception
-    assert [widget.label for widget in page.selectbox] == ["视频"]
+    selectors = {widget.label: widget for widget in page.selectbox}
+    assert {"视频", "断裂状态", "断裂模式", "断裂位置", "未夹紧", "视频异常", "爆炸性断裂",
+            "伸长", "颈缩", "开裂", "界面分离", "断后脱夹"} <= set(selectors)
+    # Missing annotation cells remain blank, rather than defaulting to a label.
+    assert selectors["断裂状态"].value == ""
+    assert selectors["未夹紧"].value == ""
     assert [widget.label for widget in page.checkbox] == ["需要调整裁剪范围"]
     assert not any("审核" in widget.label or "通过" in widget.label for widget in page.button)
     manifest = core.load_json(work.manifest_path)

@@ -23,6 +23,11 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Mapping
 
+if __package__:
+    from .label_fields import FIELDS_BY_COLUMN, values_from_labels
+else:
+    from label_fields import FIELDS_BY_COLUMN, values_from_labels
+
 RULE_VERSION = "roi-rules/2"
 PROCESSING_VERSION = "roi-processing/3"
 SCHEMA = "tensile-roi/1"
@@ -419,6 +424,115 @@ class Workspace:
         self.decisions_path=self.output_dir/"decisions.json"
         self.manifest_path=self.output_dir/"manifest.json"
         self.drafts_path=self.output_dir/"drafts.json"
+        self.label_reviews_path=self.output_dir/"label_reviews.json"
+
+    def _load_label_reviews(self) -> dict:
+        raw=load_json(self.label_reviews_path,{"schema":"tensile-roi-label-review/1","videos":{}})
+        if (not isinstance(raw,dict) or raw.get("schema")!="tensile-roi-label-review/1"
+                or not isinstance(raw.get("videos"),dict)):
+            raise RoiError("ROI 标签审查记录格式无效，已保留原文件。")
+        for video_id,entry in raw["videos"].items():
+            if (not isinstance(video_id,str) or not isinstance(entry,dict)
+                    or not isinstance(entry.get("revisions"),list)
+                    or any(not isinstance(revision,dict) for revision in entry["revisions"])):
+                raise RoiError("ROI 标签审查历史格式无效，已保留原文件。")
+        return raw
+
+    @staticmethod
+    def _label_review_identity(row: Mapping) -> dict | None:
+        source_sha=row.get("source",{}).get("sha256")
+        output_sha=row.get("output",{}).get("sha256")
+        video_id=row.get("video_id")
+        if (not isinstance(video_id,str) or any(not isinstance(value,str)
+                or re.fullmatch(r"[0-9a-f]{64}",value) is None for value in (source_sha,output_sha))):
+            return None
+        return {"video_id":video_id,"source_sha256":source_sha,"output_sha256":output_sha,
+                "source_labels_sha256":digest(dict(row.get("labels",{})))}
+
+    def _label_review_state(self, row: Mapping, store: Mapping) -> dict:
+        values=values_from_labels(row.get("labels",{}))
+        identity=self._label_review_identity(row)
+        entry=store["videos"].get(row.get("video_id"),{})
+        revisions=entry.get("revisions",[])
+        state={"status":"unmodified","values":values,"changes":{},"revision":None,
+               "revision_id":None,"history_count":len(revisions)}
+        if identity is None or row.get("source_missing"):
+            state["status"]="unavailable"
+            return state
+        matching=next((revision for revision in reversed(revisions)
+                       if revision.get("identity")==identity),None)
+        if matching is None:
+            if revisions: state["status"]="stale"
+            return state
+        changes=matching.get("changes")
+        if (not isinstance(changes,dict) or any(column not in FIELDS_BY_COLUMN
+                or not isinstance(value,str) for column,value in changes.items())
+                or not isinstance(matching.get("revision_id"),str)):
+            raise RoiError("ROI 标签审查内容无效，已保留原记录。")
+        state.update(status="saved",changes=dict(changes),revision=matching,
+                     revision_id=matching["revision_id"],values={**values,**changes})
+        return state
+
+    def label_review_state(self, row: Mapping) -> dict:
+        """Load only revisions bound to this video, ROI and annotation row.
+
+        This does not mark the video as visually reviewed.  Source annotation
+        values remain available in ``row['labels']`` and in each saved snapshot.
+        """
+        return self._label_review_state(row,self._load_label_reviews())
+
+    @serialized
+    def save_label_review(self, row: Mapping, values: Mapping, *, expected_revision: str | None) -> dict:
+        """Save explicitly edited label values separately from the source CSV.
+
+        The caller passes the viewed row and its revision token.  Media hashes,
+        the original annotation row and the current review revision are checked
+        again under the existing workspace lock before atomic publication.
+        """
+        expected=self._label_review_identity(row)
+        if expected is None or row.get("source_missing"):
+            raise RoiError("尚无可绑定的源视频和 ROI 输出，不能保存标签审查。")
+        if not isinstance(values,Mapping) or any(column not in FIELDS_BY_COLUMN
+                or not isinstance(value,str) for column,value in values.items()):
+            raise RoiError("标签修改必须使用界面字段及原始文本值。")
+        video_id=expected["video_id"]
+        manifest=self.inventory(verify_source_ids={video_id})
+        current=next((item for item in manifest["videos"] if item["video_id"]==video_id),None)
+        if (current is None or current.get("source_missing")
+                or current.get("status") not in {"success","needs_output_review"}
+                or self._label_review_identity(current)!=expected):
+            raise RoiError("源视频、ROI 输出或原始标签已变化，请刷新后再保存。")
+        store=self._load_label_reviews()
+        state=self._label_review_state(current,store)
+        if state["revision_id"]!=expected_revision:
+            raise RoiError("标签审查已被其他页面更新，请刷新后再保存。")
+        updated={**state["values"],**dict(values)}
+        original=values_from_labels(current.get("labels",{}))
+        for column,value in values.items():
+            field=FIELDS_BY_COLUMN[column]
+            if field.readonly and value!=original[column]:
+                raise RoiError(f"{field.label}为来源信息，不能在 ROI 审查中修改。")
+            if field.kind=="select" and value not in field.options and value!=original[column]:
+                raise RoiError(f"{field.label}包含不支持的新标签值。")
+        changes={column:value for column,value in updated.items() if value!=original[column]}
+        if changes==state["changes"]:
+            return state
+        labels_sha=sha256_file(self.labels) if self.labels and self.labels.is_file() else None
+        # Recheck identity just before writing; no source/ROI/annotation file is changed.
+        if (sha256_file(Path(current["source"]["path"]))!=expected["source_sha256"]
+                or sha256_file(Path(current["output"]["path"]))!=expected["output_sha256"]
+                or digest(labels_by_id(self.labels).get(video_id,{}))!=expected["source_labels_sha256"]):
+            raise RoiError("保存期间源视频、ROI 输出或原始标签发生变化，请刷新。")
+        revision={"identity":expected,"saved_at":now(),"changes":changes,
+                  "original_labels":dict(current.get("labels",{})),
+                  "label_source":{"path":str(self.labels) if self.labels else None,
+                                  "csv_sha256":labels_sha},
+                  "record_type":"label_edits","visual_review_claimed":False}
+        revision["revision_id"]=digest(revision)
+        entry=store["videos"].setdefault(video_id,{"revisions":[]})
+        entry["revisions"].append(revision)
+        atomic_json(self.label_reviews_path,store)
+        return self._label_review_state(current,store)
 
     def inventory(self, *, verify_source_ids: set[str] | None = None,
                   decode_source_ids: set[str] | None = None) -> dict:
