@@ -43,6 +43,8 @@ python3 -m pip install -r script/roi/requirements.txt
 | --- | --- | --- |
 | 源视频 | `data/videos/`，递归读取，文件名去扩展名作为唯一 ID | `--videos-dir` |
 | 已有标注 | `data/annotation-table-full.csv`，可缺失，只读 | `--labels` |
+| 当前决定及处理清单 | 输出目录中的 `decisions.json`、`manifest.json`；缺失时从空记录开始 | 随 `--output-dir` |
+| 草稿和标签审查记录 | 输出目录中的 `drafts.json`、`label_reviews.json`；按需读取，可缺失 | 随 `--output-dir` |
 | 旧决定 | `data/roi/imports/roi_decisions.legacy.json`，可缺失 | `--decisions` |
 | 旧结果清单 | `data/roi/imports/media-manifest.legacy.json`，可缺失 | `--existing-manifest` |
 | 旧视频 | `data/roi/imports/media/<视频ID>.mp4`，可缺失 | `--existing-media-dir` |
@@ -59,23 +61,28 @@ python3 -m pip install -r script/roi/requirements.txt
 
 支持 `.mp4`、`.mov`、`.mkv`、`.avi`、`.m4v`、`.webm`，大小写均可。相同文件名对应多个路径时记录 ID 冲突。浏览器能否播放取决于封装与编码；无法播放原视频时，可用外部播放器对照，界面单帧预览仍可辅助选框。
 
-旧决定文件包含 `decisions` 数组，每条以 `source_video_id`、`source_sha256`、`source_resolution`、`mode` 和 `pixel_box` 绑定原视频及范围。旧清单包含 `videos` 数组，每条须有来源与输出的完整摘要、处理方式，以及与实际媒体一致的输出分辨率；帧率与时长如有记录也会核对。仅凭文件名不会认领旧视频。
+当前决定优先于可选的旧决定；已有结果也依赖当前清单中保存的输出身份和处理记录。新视频没有决定时仍能进入工作列表，待用户选框或选择全画面后处理。当前项目已将决定和结果整理到当前工作区，`imports/` 不再是当前数据的必需目录。
+
+可选旧决定文件包含 `decisions` 数组，每条以 `source_video_id`、`source_sha256`、`source_resolution`、`mode` 和 `pixel_box` 绑定原视频及范围。旧清单包含 `videos` 数组，每条须有来源与输出的完整摘要、处理方式，以及与实际媒体一致的输出分辨率；帧率与时长如有记录也会核对。仅凭文件名不会认领旧视频。
 
 同一源文件在不同 ffprobe 版本中可能得到不同的标称帧率。仅对沿用旧结果，工具在来源和输出摘要一致、旧来源与旧输出记录自洽、当前帧数和总时长匹配、平均帧率差异不超过与一帧相称的容差时保留旧视频，并提示这项元数据差异。该检查未比较逐帧时间戳；记录不足、明显缺帧或时长变化仍会阻止采用。新生成结果的验收规则不因此放宽。
+
+下表是脚本可能读取或生成的文件，不表示每项都会存在。`videos/` 中是显式整理后的结果；批处理新生成的结果先写入 `media/`。
 
 ```text
 data/roi/
 ├── videos/<视频ID>.mp4             # 显式整理后统一摆放的当前结果
-├── imports/                        # 旧材料和媒体，保留为只读历史及兼容来源
-├── drafts.json                     # 尚未保存生效的选框进度
-├── decisions.json                  # 用户明确保存的新范围
-├── label_reviews.json              # 用户主动保存的标签审查修改，原标注另行保留
-├── manifest.json                   # 全量身份、原标注、划分、结果与处理状态
-├── batch-errors.json               # 最近一次有错误的批处理记录
-└── media/<视频ID>/<处理摘要>.mp4     # 按新范围生成的结果
+├── decisions.json                  # 已保存的裁剪决定及源视频身份
+├── manifest.json                   # 源、标签、划分、裁剪结果、身份及状态
+├── .roi.lock                       # 并发读写协调锁，不是裁剪结果
+├── drafts.json                     # 可选：选框草稿及已转存决定的历史草稿
+├── label_reviews.json              # 可选：主动保存的标签审查修改
+├── batch-errors.json               # 可选：批处理中发生错误时写入的记录
+├── media/<视频ID>/<处理摘要>.mp4     # 可选：按已保存范围新生成的结果
+└── imports/                        # 可选：外部提供的旧决定、清单及视频
 ```
 
-清单保留源视频和输出摘要、媒体信息、旧请求框与实际边界、原有审核及草稿、历次输出。`origin=preserved_legacy` 表示沿用旧视频，`origin=generated` 表示按新范围生成，`origin=imported_generated` 表示接入其他机器按当前源及范围生成并通过检查的结果；`visual_review.required=false` 说明不强制逐视频确认，`status=not_recorded` 不应解释为已被人工看过。
+清单保留源视频和输出摘要、媒体信息、旧请求框与实际边界、原有审核及草稿、历次输出。`origin=preserved_legacy` 表示沿用旧视频，`origin=generated` 表示按新范围生成，`origin=imported_generated` 表示接入其他机器按当前源及范围生成并通过检查的结果；`visual_review.required=false` 说明不强制逐视频确认，`status=not_recorded` 不应解释为已被人工看过。`batch-errors.json` 仅在批处理遇到错误时写入；之后成功运行不会自动清除它，不能单凭文件存在判断最近一次运行失败。
 
 ## 整理现有 ROI 视频
 
@@ -87,7 +94,7 @@ data/roi/
 
 此命令以当前清单的输出路径为准，逐项核对源与输出摘要，再复制文件并统一更新当前引用；不会编码视频。已有同名同内容文件可重复核验，已有不同内容则停止且不覆盖。复制中断时原清单仍保留，重跑可继续利用已核验的文件。所有结果复制并核对完成后才切换清单，之后刷新仍读取 `videos/` 中已关联的结果。
 
-`imports/` 和原 `media/` 文件继续保留，其他历史引用、当前决定、草稿及标签审查记录也保留。不要把 `--existing-media-dir` 改指 `videos/`：该参数表示历史导入来源，历史 `video_0093` 与当前采用版本可能不同。整理不会凭文件名把历史结果当成当前结果。
+整理操作不会删除已有的 `imports/` 和 `media/` 文件，也保留历史引用、当前决定、草稿及标签审查记录。不要把 `--existing-media-dir` 改指 `videos/`：该参数表示可选的历史导入来源，同名历史视频与当前采用版本可能不同。整理不会凭文件名把历史结果当成当前结果。
 
 ### 清理前核查引用与重复文件
 
@@ -97,7 +104,7 @@ data/roi/
 .venv/bin/python script/roi/prepare_cleanup.py
 ```
 
-输出 JSON 中，`reference_updates` 列出可以安全改指 `videos/` 的当前或历史输出引用，`duplicate_media` 列出与当前结果摘要相同的历史副本及大小，`retained_media` 列出内容不同或需要核实的文件。只有来源摘要仍匹配、统一结果实际摘要正确，而且引用记录的输出摘要与几何信息均一致，引用才可更新。同名文件本身不构成证据；历史长视频版 `video_0093` 与当前采用版本内容不同时会保留在历史文件列表。
+输出 JSON 中，`reference_updates` 列出可以安全改指 `videos/` 的当前或历史输出引用，`duplicate_media` 列出与当前结果摘要相同的历史副本及大小，`retained_media` 列出内容不同或需要核实的文件。只有来源摘要仍匹配、统一结果实际摘要正确，而且引用记录的输出摘要与几何信息均一致，引用才可更新。同名文件本身不构成证据；如存在内容不同的历史版本，会列为保留项。
 
 预览不改工作清单、媒体、决定或标签记录；命令仍使用工作区并发锁，必要时会建立输出目录和 `.roi.lock` 运行锁文件。锁文件不承载裁剪结果，保留它可避免不同进程同时写入。
 
@@ -137,7 +144,7 @@ data/roi/
 .venv/bin/python script/roi/roi.py --batch
 ```
 
-退出码 `0` 表示扫描完成，或批处理后全部 ROI 可用；`2` 表示仍有待处理项；`1` 表示配置、读取或生成错误。`complete` 不表示人工复核完成，也不表示源标签已被重新评价。
+扫描会更新 `manifest.json`，不是只读操作。退出码 `0` 表示扫描完成（即使清单仍有待处理项），或批处理后全部 ROI 可用；`2` 表示批处理后仍有待处理项；`1` 表示配置、读取或生成错误。`complete` 不表示人工复核完成，也不表示源标签已被重新评价。
 
 首次列表扫描计算来源和旧结果摘要并读取媒体头信息，后续未变化文件使用状态缓存；处理前针对当前视频重新核对摘要。旧结果沿用不会自动执行整批完整解码，清单如实记录 `full_decode=not_performed`。新生成时针对当前源与输出实际计帧，并缓存与源摘要绑定的计数，避免误用不可靠的文件头帧数。新输出还执行完整解码检查。
 
