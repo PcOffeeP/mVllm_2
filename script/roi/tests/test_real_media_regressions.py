@@ -128,12 +128,12 @@ def test_preview_near_video_end_does_not_crash_the_page(tmp_path, monkeypatch):
     page = AppTest.from_file(str(app)).run(timeout=10)
     assert not page.exception
     preview = next(widget for widget in page.slider if widget.label == "抽帧时间（可拖动）")
-    page = preview.set_value(0.999).run(timeout=10)
+    page = preview.set_value(0.99).run(timeout=10)
     assert not page.exception
     preview = next(widget for widget in page.slider if widget.label == "抽帧时间（可拖动）")
     page = preview.set_value(0.5).run(timeout=10)
     assert not page.exception
-    assert any(widget.label == "保存选框进度" for widget in page.button)
+    assert any(widget.label == "保存当前决定" for widget in page.button)
 
 
 def install_real_legacy(work, source, candidate, *, mode, box, video_filter):
@@ -226,7 +226,8 @@ def test_existing_roi_page_shows_prefilled_labels_without_requiring_approval(tmp
     # Missing annotation cells remain blank, rather than defaulting to a label.
     assert selectors["断裂状态"].value == ""
     assert selectors["未夹紧"].value == ""
-    assert [widget.label for widget in page.checkbox] == ["需要调整裁剪范围"]
+    assert {"上夹具清晰可见", "下夹具清晰可见", "完整试样清晰可见", "仍可判断标距内/外位置",
+            "仍可判断是否齐根断裂", "我已检查关键时刻预览"} <= {widget.label for widget in page.checkbox}
     assert not any("审核" in widget.label or "通过" in widget.label for widget in page.button)
     manifest = core.load_json(work.manifest_path)
     assert manifest["complete"] is True

@@ -79,6 +79,15 @@ def test_existing_roi_and_all_prefilled_labels_are_available_without_opening_a_l
     for expander in page.expander:
         assert not any(widget.label in label_names for widget in expander.selectbox)
     assert not any("通过" in button.label or "确认审核" in button.label for button in page.button)
+    # This page keeps the original frame/time observation together.  Editing
+    # frames while retaining a read-only derived time would store contradictory
+    # annotations; frame corrections remain in the dedicated annotation tool.
+    for group in label_fields.LABEL_GROUPS:
+        if group.title == "关键帧与时间":
+            for field in group.fields:
+                widget = next(widget for widget in page.text_input if widget.label == field.label)
+                assert widget.value == annotations[0][field.column]
+                assert widget.disabled
     assert labels.read_bytes() == before
 
 
@@ -102,7 +111,7 @@ def test_label_edits_need_explicit_save_and_reload_from_roi_records_only(labelle
     record = labels.parent / "roi/label_reviews.json"
     assert not record.exists()
     assert labels.read_bytes() == before
-    button = next(button for button in page.button if button.label == "保存标签修改到 ROI 审查记录")
+    button = next(button for button in page.button if button.label == "保存标签审查记录")
     page = button.click().run(timeout=10)
     assert not page.exception
     assert record.is_file()
@@ -121,11 +130,11 @@ def test_a_second_open_page_cannot_revert_newer_label_edits_without_refresh(labe
     app = Path(core.__file__).with_name("app.py")
     second = AppTest.from_file(str(app)).run(timeout=10)
     first = select_widget(first, "断裂位置").set_value("夹持根部").run(timeout=10)
-    first = next(button for button in first.button if button.label == "保存标签修改到 ROI 审查记录").click().run(timeout=10)
+    first = next(button for button in first.button if button.label == "保存标签审查记录").click().run(timeout=10)
     assert not first.exception
     # The second page still has the pre-edit annotation in its widget state.
     second = select_widget(second, "颈缩").set_value("是").run(timeout=10)
-    second = next(button for button in second.button if button.label == "保存标签修改到 ROI 审查记录").click().run(timeout=10)
+    second = next(button for button in second.button if button.label == "保存标签审查记录").click().run(timeout=10)
     assert not second.exception
     current = AppTest.from_file(str(app)).run(timeout=10)
     assert select_widget(current, "断裂位置").value == "夹持根部"
@@ -159,7 +168,7 @@ def test_unsaved_edits_return_with_the_video_without_writing_source_or_roi_recor
 def test_changed_roi_output_does_not_reuse_the_previous_outputs_label_draft(labelled_app):
     page, annotations, labels, before = labelled_app
     page = select_widget(page, "断裂位置").set_value("夹持根部").run(timeout=10)
-    page = next(button for button in page.button if button.label == "保存标签修改到 ROI 审查记录").click().run(timeout=10)
+    page = next(button for button in page.button if button.label == "保存标签审查记录").click().run(timeout=10)
     assert not page.exception
     work = core.Workspace(labels.parent / "videos", labels.parent / "roi", labels=labels)
     row = next(row for row in work.refresh()["videos"] if row["video_id"] == "video_a")
@@ -207,18 +216,20 @@ def test_legacy_workbench_search_and_status_filters_keep_the_selected_rows_label
     assert_visual_labels(page, annotations[1])
 
     status_filter = next(widget for widget in page.multiselect if widget.label == "状态")
-    page = status_filter.set_value(["needs_decision"]).run(timeout=10)
+    page = status_filter.set_value(["unreviewed"]).run(timeout=10)
     assert not page.exception
     assert any("没有符合筛选条件的视频" in element.value for element in page.info)
     assert not any(widget.label == "选择视频" for widget in page.selectbox)
 
-    page = next(widget for widget in page.multiselect if widget.label == "状态").set_value(["success"]).run(timeout=10)
+    page = next(widget for widget in page.multiselect if widget.label == "状态").set_value(
+        ["unreviewed", "approved", "needs_review", "outdated_policy"]
+    ).run(timeout=10)
     assert select_widget(page, "视频").value == "video_b"
     assert_visual_labels(page, annotations[1])
     assert labels.read_bytes() == before
 
 
-def test_legacy_frame_slider_and_drag_box_generate_a_new_roi_without_approval_fields(labelled_app, monkeypatch):
+def test_copied_original_ui_keeps_its_workbench_controls_and_saves_only_a_decision(labelled_app, monkeypatch):
     import streamlit_cropper
 
     page, annotations, labels, before = labelled_app
@@ -233,21 +244,26 @@ def test_legacy_frame_slider_and_drag_box_generate_a_new_roi_without_approval_fi
     monkeypatch.setattr(streamlit_cropper, "st_cropper", lambda image, **kwargs: {
         "left": 2, "top": 2, "width": 30, "height": 40,
     })
-    page = next(widget for widget in page.checkbox if widget.label == "需要调整裁剪范围").check().run(timeout=10)
-    page = next(widget for widget in page.radio if widget.label == "画面范围").set_value("fixed_roi").run(timeout=10)
+    page = next(widget for widget in page.radio if widget.label == "模式").set_value("fixed_roi").run(timeout=10)
     assert not page.exception
     page = next(widget for widget in page.slider if widget.label == "抽帧时间（可拖动）").set_value(0.5).run(timeout=10)
     assert not page.exception
-    assert not any("审核" in widget.label or "检查关键" in widget.label for widget in page.checkbox)
-    page = next(button for button in page.button if button.label == "保存范围并生成 ROI").click().run(timeout=10)
+    assert {"原始视频播放", "当前帧 ROI 对照预览", "关键时刻 ROI 预览", "源视频信息"} <= {
+        item.label for item in page.expander
+    }
+    assert next(widget for widget in page.selectbox if widget.label == "审核状态")
+    assert {"上夹具清晰可见", "下夹具清晰可见", "完整试样清晰可见", "仍可判断标距内/外位置",
+            "仍可判断是否齐根断裂", "我已检查关键时刻预览"} <= {widget.label for widget in page.checkbox}
+    # The copied legacy tool keeps these controls visible; the current workflow
+    # does not require checking them individually just to save a crop decision.
+    page = next(button for button in page.button if button.label == "保存当前决定").click().run(timeout=10)
     assert not page.exception
     current = next(row for row in work.inventory()["videos"] if row["video_id"] == "video_a")
-    assert current["status"] == "success"
+    assert current["status"] == "ready"
     assert current["decision"]["mode"] == "fixed_roi"
     assert current["decision"]["pixel_box"] == {"x": 2, "y": 2, "width": 30, "height": 40}
-    assert current["output"]["media"]["width"] == 30
-    assert current["output"]["media"]["height"] == 40
-    assert current["visual_review"]["status"] == "not_recorded"
+    assert not work.inventory()["complete"]
+    assert not current.get("output_review")
     assert core.sha256_file(original_output) == original_hash
     assert core.sha256_file(labels.parent / "videos/video_a.mp4") == source_hash
     assert_visual_labels(page, annotations[0])
@@ -256,6 +272,7 @@ def test_legacy_frame_slider_and_drag_box_generate_a_new_roi_without_approval_fi
 
 def test_reopening_legacy_drag_editor_starts_at_the_existing_effective_roi(labelled_app, monkeypatch):
     import streamlit_cropper
+    from streamlit.testing.v1 import AppTest
 
     page, _, labels, before = labelled_app
     work = core.Workspace(labels.parent / "videos", labels.parent / "roi", labels=labels)
@@ -270,10 +287,11 @@ def test_reopening_legacy_drag_editor_starts_at_the_existing_effective_roi(label
         return {"left": box["x"], "top": box["y"], "width": box["width"], "height": box["height"]}
 
     monkeypatch.setattr(streamlit_cropper, "st_cropper", existing_box)
-    page = page.run(timeout=10)
-    page = next(widget for widget in page.checkbox if widget.label == "需要调整裁剪范围").check().run(timeout=10)
+    # Reopening is a fresh page, rather than rerunning an already open radio
+    # that legitimately still contains the user's unsaved selection.
+    page = AppTest.from_file(str(Path(core.__file__).with_name("app.py"))).run(timeout=10)
     assert not page.exception
-    assert next(widget for widget in page.radio if widget.label == "画面范围").value == "fixed_roi"
+    assert next(widget for widget in page.radio if widget.label == "模式").value == "fixed_roi"
     assert observed[-1] == (2, 32, 2, 42)
     assert labels.read_bytes() == before
 
@@ -284,8 +302,7 @@ def test_saving_after_a_second_drag_uses_the_current_red_box_not_a_previously_ap
     page, _, labels, before = labelled_app
     chosen = {"left": 2, "top": 2, "width": 30, "height": 40}
     monkeypatch.setattr(streamlit_cropper, "st_cropper", lambda image, **kwargs: dict(chosen))
-    page = next(widget for widget in page.checkbox if widget.label == "需要调整裁剪范围").check().run(timeout=10)
-    page = next(widget for widget in page.radio if widget.label == "画面范围").set_value("fixed_roi").run(timeout=10)
+    page = next(widget for widget in page.radio if widget.label == "模式").set_value("fixed_roi").run(timeout=10)
     assert not page.exception
     # Earlier versions exposed an Apply action. If retained, using it must not
     # freeze the crop and silently ignore a later visible red-box adjustment.
@@ -296,17 +313,18 @@ def test_saving_after_a_second_drag_uses_the_current_red_box_not_a_previously_ap
     chosen.update(left=10, top=4)
     page = page.run(timeout=10)
     assert not page.exception
-    page = next(button for button in page.button if button.label == "保存范围并生成 ROI").click().run(timeout=10)
+    page = next(button for button in page.button if button.label == "保存当前决定").click().run(timeout=10)
     assert not page.exception
     work = core.Workspace(labels.parent / "videos", labels.parent / "roi", labels=labels)
     current = next(row for row in work.inventory()["videos"] if row["video_id"] == "video_a")
     assert current["decision"]["pixel_box"] == {"x": 10, "y": 4, "width": 30, "height": 40}
-    assert current["status"] == "success"
+    assert current["status"] == "ready"
     assert labels.read_bytes() == before
 
 
 def test_saved_crop_draft_takes_precedence_over_the_old_generated_rois_box(labelled_app, monkeypatch):
     import streamlit_cropper
+    from streamlit.testing.v1 import AppTest
 
     page, _, labels, before = labelled_app
     work = core.Workspace(labels.parent / "videos", labels.parent / "roi", labels=labels)
@@ -328,11 +346,10 @@ def test_saved_crop_draft_takes_precedence_over_the_old_generated_rois_box(label
         return {"left": left, "top": top, "width": right - left, "height": bottom - top}
 
     monkeypatch.setattr(streamlit_cropper, "st_cropper", use_default_box)
-    page = page.run(timeout=10)
-    page = next(widget for widget in page.checkbox if widget.label == "需要调整裁剪范围").check().run(timeout=10)
+    page = AppTest.from_file(str(Path(core.__file__).with_name("app.py"))).run(timeout=10)
     assert not page.exception
     assert observed[-1] == (10, 40, 4, 44)
-    page = next(button for button in page.button if button.label == "保存范围并生成 ROI").click().run(timeout=10)
+    page = next(button for button in page.button if button.label == "保存当前决定").click().run(timeout=10)
     assert not page.exception
     current = next(row for row in work.inventory()["videos"] if row["video_id"] == "video_a")
     assert current["decision"]["pixel_box"] == draft_box
