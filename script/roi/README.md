@@ -46,6 +46,7 @@ python3 -m pip install -r script/roi/requirements.txt
 | 旧决定 | `data/roi/imports/roi_decisions.legacy.json`，可缺失 | `--decisions` |
 | 旧结果清单 | `data/roi/imports/media-manifest.legacy.json`，可缺失 | `--existing-manifest` |
 | 旧视频 | `data/roi/imports/media/<视频ID>.mp4`，可缺失 | `--existing-media-dir` |
+| 已整理的当前结果 | `data/roi/videos/<视频ID>.mp4`，由清单确认身份后读取 | 随 `--output-dir` |
 | 输出目录 | `data/roi/` | `--output-dir` |
 | 划分记录 | `data/splits/` 下唯一可识别版本自动读取；多个版本须选择 | `--splits-dir` |
 | 项目根目录 | 按脚本位置定位 | `--project-root` |
@@ -64,7 +65,8 @@ python3 -m pip install -r script/roi/requirements.txt
 
 ```text
 data/roi/
-├── imports/                        # 旧材料，只读；可直接作为现有ROI结果使用
+├── videos/<视频ID>.mp4             # 显式整理后统一摆放的当前结果
+├── imports/                        # 旧材料和媒体，保留为只读历史及兼容来源
 ├── drafts.json                     # 尚未保存生效的选框进度
 ├── decisions.json                  # 用户明确保存的新范围
 ├── label_reviews.json              # 用户主动保存的标签审查修改，原标注另行保留
@@ -74,6 +76,20 @@ data/roi/
 ```
 
 清单保留源视频和输出摘要、媒体信息、旧请求框与实际边界、原有审核及草稿、历次输出。`origin=preserved_legacy` 表示沿用旧视频，`origin=generated` 表示按新范围生成，`origin=imported_generated` 表示接入其他机器按当前源及范围生成并通过检查的结果；`visual_review.required=false` 说明不强制逐视频确认，`status=not_recorded` 不应解释为已被人工看过。
+
+## 整理现有 ROI 视频
+
+工作清单中的视频均已提供结果后，可把当前采用的结果统一复制到 `data/roi/videos/<视频ID>.mp4`：
+
+```bash
+.venv/bin/python script/roi/organize_videos.py
+```
+
+此命令以当前清单的输出路径为准，逐项核对源与输出摘要，再复制文件并统一更新当前引用；不会编码视频。已有同名同内容文件可重复核验，已有不同内容则停止且不覆盖。复制中断时原清单仍保留，重跑可继续利用已核验的文件。所有结果复制并核对完成后才切换清单，之后刷新仍读取 `videos/` 中已关联的结果。
+
+`imports/` 和原 `media/` 文件继续保留，其他历史引用、当前决定、草稿及标签审查记录也保留。不要把 `--existing-media-dir` 改指 `videos/`：该参数表示历史导入来源，历史 `video_0093` 与当前采用版本可能不同。整理不会凭文件名把历史结果当成当前结果。
+
+未来调整范围生成的新版本仍写入 `media/<视频ID>/<处理摘要>.mp4`，以保留原有版本与不覆盖策略；需要再次统一摆放时显式运行整理命令。如果 `videos/` 中已有该 ID 的旧版本而内容不同，命令会拒绝覆盖，应先确定旧版本的归档方式。目录整理和 ROI 媒体可用状态均不表示人工画面审核。
 
 | 状态 | 含义 |
 | --- | --- |

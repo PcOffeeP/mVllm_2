@@ -425,6 +425,7 @@ class Workspace:
         self.manifest_path=self.output_dir/"manifest.json"
         self.drafts_path=self.output_dir/"drafts.json"
         self.label_reviews_path=self.output_dir/"label_reviews.json"
+        self.organized_videos_dir=self.output_dir/"videos"
 
     def _load_label_reviews(self) -> dict:
         raw=load_json(self.label_reviews_path,{"schema":"tensile-roi-label-review/1","videos":{}})
@@ -655,12 +656,21 @@ class Workspace:
         if legacy.get("mode")!=decision.get("mode") or (decision.get("mode")=="fixed_roi" and
                 legacy.get("pixel_box")!=decision.get("pixel_box")):
             raise RoiError("旧ROI清单与旧决定的画面范围不一致。")
-        path=self.existing_media_dir/(safe_id(decision["source_video_id"])+".mp4")
-        if not path.is_file(): raise RoiError("旧ROI视频缺失，原决定仍可参考，请重新生成。")
         expected=legacy.get("output_sha256") or legacy.get("sha256")
         if not isinstance(expected,str) or not re.fullmatch(r"[0-9a-f]{64}",expected):
             raise RoiError("旧ROI清单缺少完整输出摘要。")
-        prior=previous.get("output",{})
+        prior=previous.get("output") or {}
+        canonical=self.organized_videos_dir/(safe_id(decision["source_video_id"])+".mp4")
+        # Organization is explicit: a same-named file alone never adopts media.
+        # Keep using the canonical file only after its identity was recorded in
+        # this row.  Old imports remain available as historical source material.
+        references=[prior,*[entry.get("output") or {} for entry in previous.get("history",{}).values()]]
+        organized_reference=next((item for item in references
+                                  if item.get("path")==str(canonical) and item.get("sha256")==expected),None)
+        organized=organized_reference is not None
+        if organized: prior=organized_reference
+        path=canonical if organized else self.existing_media_dir/(safe_id(decision["source_video_id"])+".mp4")
+        if not path.is_file(): raise RoiError("旧ROI视频缺失，原决定仍可参考，请重新生成。")
         state={"size":path.stat().st_size,"mtime_ns":path.stat().st_mtime_ns}
         cached=(prior.get("path")==str(path) and prior.get("sha256")==expected and prior.get("stat")==state)
         if (verify or not cached) and sha256_file(path)!=expected:
@@ -725,11 +735,104 @@ class Workspace:
                 "validation":{"source_identity":"sha256","output_identity":"sha256",
                               "media_properties":"metadata_matches_legacy_manifest","full_decode":"not_performed",
                               "nominal_frame_rate":nominal,"frame_timestamps":"not_compared"},
-                "visual_review":{"required":False,"status":"not_recorded"}}
+                "visual_review":{"required":False,"status":"not_recorded"},
+                **({"organized_from":prior["organized_from"]} if organized and prior.get("organized_from") else {})}
 
     @serialized
     def refresh(self, *, verify_source_ids: set[str] | None = None) -> dict:
         result=self.inventory(verify_source_ids=verify_source_ids); atomic_json(self.manifest_path,result); return result
+
+    @staticmethod
+    def _organization_identity(manifest: Mapping) -> dict:
+        return {row["video_id"]:{"source_sha256":row.get("source",{}).get("sha256"),
+                "decision":row.get("decision"),"recipe_hash":row.get("recipe_hash"),
+                "output_path":row.get("output",{}).get("path"),
+                "output_sha256":row.get("output",{}).get("sha256"),"status":row.get("status")}
+                for row in manifest.get("videos",[])}
+
+    @serialized
+    def organize_videos(self) -> dict:
+        """Copy all current successful results to videos/<ID>.mp4 and relink.
+
+        No source, historical media, decision, draft or label file is modified.
+        Copies are verified before the manifest is atomically published.  A
+        partial copy can be resumed, but an existing different file is refused.
+        Future recipe generation keeps its versioned ``media/`` destination.
+        """
+        prior=load_json(self.manifest_path,{})
+        ids={row["video_id"] for row in prior.get("videos",[])}
+        if not ids:
+            raise RoiError("请先扫描并确认已有 ROI 工作清单，再整理结果目录。")
+        manifest=self.inventory(verify_source_ids=ids)
+        if not manifest.get("complete") or {row["video_id"] for row in manifest["videos"]}!=ids:
+            raise RoiError("ROI 清单含未完成、缺失或新增条目；先核对清单后再整理。")
+        folder=self.organized_videos_dir
+        if folder.is_symlink() or (folder.exists() and not folder.is_dir()):
+            raise RoiError("ROI videos 目标必须是普通目录，拒绝符号链接或同名文件。")
+        plans=[]
+        for row in manifest["videos"]:
+            output=row.get("output") or {}
+            expected=output.get("sha256")
+            if not isinstance(expected,str) or re.fullmatch(r"[0-9a-f]{64}",expected) is None:
+                raise RoiError(f"{row['video_id']} 缺少完整的当前输出摘要。")
+            source=Path(output.get("path",""))
+            target=folder/(safe_id(row["video_id"])+".mp4")
+            if not source.is_file() or sha256_file(source)!=expected:
+                raise RoiError(f"{row['video_id']} 当前 ROI 文件缺失或摘要不符。")
+            if target.is_symlink():
+                raise RoiError(f"{row['video_id']} 目标是符号链接，拒绝覆盖。")
+            if target.exists() and (not target.is_file() or sha256_file(target)!=expected):
+                raise RoiError(f"{row['video_id']} 目标已有不同内容，保留文件并停止整理。")
+            plans.append((row,source,target,expected))
+        snapshot=self._organization_identity(manifest)
+        folder.mkdir(parents=True,exist_ok=True)
+        for row,source,target,expected in plans:
+            if target.exists():
+                if target.is_symlink() or not target.is_file() or sha256_file(target)!=expected:
+                    raise RoiError(f"{row['video_id']} 整理期间目标发生变化。")
+                continue
+            fd,name=tempfile.mkstemp(prefix=".organizing-",suffix=".mp4",dir=folder)
+            os.close(fd); temporary=Path(name)
+            try:
+                shutil.copyfile(source,temporary)
+                if sha256_file(temporary)!=expected:
+                    raise RoiError(f"{row['video_id']} 复制后摘要不符。")
+                # Atomic publication without overwriting a concurrent file.
+                try: os.link(temporary,target)
+                except FileExistsError:
+                    if target.is_symlink() or not target.is_file() or sha256_file(target)!=expected:
+                        raise RoiError(f"{row['video_id']} 目标已被其他内容占用，拒绝覆盖。")
+            finally: temporary.unlink(missing_ok=True)
+        current=self.inventory(verify_source_ids=ids)
+        if not current.get("complete") or self._organization_identity(current)!=snapshot:
+            raise RoiError("整理期间输入或当前结果改变；已保留原清单及复制文件，请重新核对。")
+        for row,_,target,expected in plans:
+            if target.is_symlink() or not target.is_file() or sha256_file(target)!=expected:
+                raise RoiError(f"{row['video_id']} 接入前目标摘要不符。")
+        targets={row["video_id"]:target for row,_,target,_ in plans}
+        for row in current["videos"]:
+            old_output=row["output"]; target=targets[row["video_id"]]
+            output={**old_output,"path":str(target),
+                    "stat":{"size":target.stat().st_size,"mtime_ns":target.stat().st_mtime_ns}}
+            if old_output["path"]!=str(target):
+                output.setdefault("organized_from",old_output["path"])
+            row["output"]=output
+            key=row.get("recipe_hash")
+            if key:
+                history=dict(row.get("history",{}))
+                entry=dict(history.get(key,{}))
+                entry.update(output=output)
+                if row.get("output_review"): entry["output_review"]=row["output_review"]
+                if row.get("output_review_draft"): entry["output_review_draft"]=row["output_review_draft"]
+                history[key]=entry; row["history"]=history
+        current["generated_at"]=now()
+        atomic_json(self.manifest_path,current)
+        result=self.refresh(verify_source_ids=ids)
+        if (not result.get("complete") or {row["video_id"] for row in result["videos"]}!=ids
+                or any(row.get("output",{}).get("path")!=str(targets[row["video_id"]])
+                       for row in result["videos"])):
+            raise RoiError("结果目录已接入，但刷新发现输入或输出变化，请核对当前清单。")
+        return result
 
     @serialized
     def save_draft(self, row: Mapping, draft: Mapping):
