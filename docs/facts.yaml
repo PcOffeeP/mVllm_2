@@ -413,6 +413,26 @@ facts:
     established_by: 用户确认沿用旧 ROI、预填已有标签、修改仅保存至 ROI 审查记录；代码核对
     supersedes: null
     affects: [data, code, ops]
+  - id: DF-022
+    state: active
+    topic: 开发集旧窗口加严初裁的实现边界
+    claim: >
+      用户确认先按旧窗口规则加严生成开发集初步片段，再依据实际结果提出新规则供审查；审查后才按新规则重新生成。初裁工具以旧规划器空参考行为选窗，对断裂时间和源、ROI 身份执行严格检查，事件后保护间隔外以可解码帧末端和记录时长的较小值检查至少 2 秒素材；不处理测试集媒体，不把旧几何辅助标签当作本轮最终标签，也不执行模型采样门禁。初裁结果不等于人工审核或数据发布；所有拟发布片段须人工审核。
+    evidence:
+      - ref: script/subvideo_pilot/pilot.py:120
+        expect: def adapt_annotation(row: dict, media: dict)
+      - ref: script/subvideo_pilot/pilot.py:167
+        expect: def plan_windows(record: dict)
+      - ref: script/subvideo_pilot/pilot.py:184
+        expect: def load_inputs(project_root: Path)
+      - ref: script/subvideo_pilot/pilot.py:319
+        expect: model_sampling_gate
+      - ref: docs/migration-review-outline.md:110
+        expect: 初裁
+    established: 2026-11-08
+    established_by: 用户确认先旧规则加严初裁、汇总后审查新规则；初裁工具代码及合成测试核对
+    supersedes: null
+    affects: [data, code, ops]
 
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
