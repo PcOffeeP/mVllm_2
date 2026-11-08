@@ -568,18 +568,49 @@ class Workspace:
         # A self-consistent short output is not a complete ROI for a longer source.
         source_media=source["media"]
         source_rate=float(Fraction(source_media["nominal_frame_rate"]))
-        if not math.isclose(source_rate,rate,rel_tol=1e-6,abs_tol=1e-9):
-            raise RoiError("旧ROI与当前源视频的标称帧率不一致。")
         if abs(source_media["duration"]-media["duration"])>max(.02,1/max(source_rate,1)+.005):
             raise RoiError("旧ROI未覆盖当前源视频的完整时长。")
         source_count=source_media.get("frame_count")
         output_count=media.get("frame_count")
         if source_count is not None and output_count is not None and source_count!=output_count:
             raise RoiError("旧ROI与当前源的帧数记录不一致，需要实际计帧核实。")
+        nominal={"status":"matches","source_current":source_media["nominal_frame_rate"],
+                 "source_recorded":legacy.get("source_nominal_frame_rate"),
+                 "output_current":media["nominal_frame_rate"],"output_recorded":recorded_rate}
+        if not math.isclose(source_rate,rate,rel_tol=1e-6,abs_tol=1e-9):
+            # ffprobe versions may report different r_frame_rate for the same
+            # source bytes. This narrow legacy path requires the old source and
+            # output records, counts, durations and averages to remain coherent.
+            try:
+                old_source_rate=float(Fraction(legacy["source_nominal_frame_rate"]))
+                source_average=float(Fraction(source_media["frame_rate"]))
+                output_average=float(Fraction(media["frame_rate"]))
+                old_source_average=float(Fraction(legacy["source_frame_rate"]))
+                old_output_average=float(Fraction(legacy["frame_rate"]))
+                old_source_count=int(legacy["source_frame_count"])
+                old_output_count=int(legacy["frame_count"])
+                old_source_duration=float(legacy["source_duration"])
+                tolerance=max(.02,1/max(old_source_rate,1)+.005)
+                one_frame_rate_tolerance=max(1/source_media["duration"],1/media["duration"])
+                coherent=(source_count is not None and output_count is not None and
+                    source_count==output_count==old_source_count==old_output_count and
+                    math.isclose(old_source_rate,rate,rel_tol=1e-6,abs_tol=1e-9) and
+                    math.isclose(source_average,old_source_average,rel_tol=1e-6,abs_tol=1e-9) and
+                    math.isclose(output_average,old_output_average,rel_tol=1e-6,abs_tol=1e-9) and
+                    abs(old_source_duration-source_media["duration"])<=tolerance and
+                    abs(source_average-output_average)<=one_frame_rate_tolerance)
+            except (KeyError,ValueError,TypeError,ZeroDivisionError): coherent=False
+            if not coherent:
+                raise RoiError("旧ROI与当前源视频的标称帧率不同，且已有时序记录不足以证明兼容。")
+            nominal.update(status="metadata_disagreement",
+                source_average=source_media["frame_rate"],output_average=media["frame_rate"],
+                average_rate_tolerance_fps=one_frame_rate_tolerance,
+                note="标称帧率元数据存在差异；来源、帧数、总时长和平均帧率核对通过，旧视频保持原样。未比较逐帧时间戳。")
         return {"path":str(path),"sha256":expected,"stat":state,"media":media,"origin":"preserved_legacy",
                 "encoding":legacy.get("_encoding_profile",{}),"geometry":legacy_geometry(source,decision,legacy),
                 "validation":{"source_identity":"sha256","output_identity":"sha256",
-                              "media_properties":"metadata_matches_legacy_manifest","full_decode":"not_performed"},
+                              "media_properties":"metadata_matches_legacy_manifest","full_decode":"not_performed",
+                              "nominal_frame_rate":nominal,"frame_timestamps":"not_compared"},
                 "visual_review":{"required":False,"status":"not_recorded"}}
 
     @serialized

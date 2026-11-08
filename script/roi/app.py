@@ -49,6 +49,9 @@ def main():
         if output.get("origin")=="preserved_legacy":
             st.caption("沿用旧裁剪视频，保留原始文件内容。此状态表示ROI可用，不表示已完成人工复核。")
         else: st.caption("按保存的范围生成，可直接查看；有问题再调整。")
+        timing_note=output.get("validation",{}).get("nominal_frame_rate",{})
+        if timing_note.get("status")=="metadata_disagreement":
+            st.caption("帧率元数据存在差异；来源、帧数、总时长和平均帧率核对通过，旧结果保持原样。未逐帧比较时间戳。")
         if output.get("geometry",{}).get("geometry_status")=="uncertain":
             st.caption("旧视频已按来源和输出摘要核对；已有记录不足以准确还原边界，原文件保持不变。")
         with st.expander("裁剪参数和处理记录"):

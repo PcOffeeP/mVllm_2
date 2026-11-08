@@ -247,3 +247,85 @@ def test_saving_crop_and_generating_keeps_the_existing_draft_reason_traceable(si
     assert stored_draft["pending_reason"] == draft["pending_reason"]
     assert stored_draft["saved_as_decision_at"]
     assert_no_fabricated_review(row)
+
+
+def install_nominal_rate_compatibility_case(work, monkeypatch, *, output_nominal="30/1", change=None):
+    original_probe = core.probe_video
+    change = change or {}
+
+    def version_different_probe(path):
+        media = original_probe(path)
+        media.update(frame_count=300, metadata_frame_count=300, duration=10., frame_rate="30/1")
+        if Path(path).parent == work.videos_dir:
+            media.update(nominal_frame_rate="60/1", frame_rate="29999/1000")
+            media.update(change.get("source", {}))
+        else:
+            media.update(nominal_frame_rate=output_nominal)
+            media.update(change.get("output", {}))
+        return media
+
+    monkeypatch.setattr(core, "probe_video", version_different_probe)
+    candidate, _ = install_legacy(work)
+    manifest = core.load_json(work.existing_manifest)
+    manifest["videos"][0].update(frame_count=300, source_frame_count=300, nominal_frame_rate="30/1",
+                                  source_nominal_frame_rate="30/1", frame_rate="30/1", source_frame_rate="29999/1000")
+    core.atomic_json(work.existing_manifest, manifest)
+    return candidate
+
+
+def test_legacy_probe_version_nominal_rate_difference_preserves_bytes_with_a_warning(simple_work, monkeypatch):
+    work, calls = simple_work
+    candidate = install_nominal_rate_compatibility_case(work, monkeypatch)
+    original_hash = core.sha256_file(candidate)
+    result = work.refresh()
+    row = result["videos"][0]
+    assert result["complete"] is True, row.get("reason")
+    assert row["status"] == "success"
+    assert row["output"]["origin"] == "preserved_legacy"
+    assert row["output"]["sha256"] == original_hash == core.sha256_file(candidate)
+    assert not calls
+    assert row["output"]["validation"]["full_decode"] == "not_performed"
+    # A metadata compatibility decision must never silently imply frame-time equivalence.
+    compatibility = row["output"]["validation"]["nominal_frame_rate"]
+    assert compatibility["status"] == "metadata_disagreement"
+    assert compatibility["source_current"] == "60/1"
+    assert compatibility["source_recorded"] == "30/1"
+    assert compatibility["output_current"] == compatibility["output_recorded"] == "30/1"
+    assert compatibility["note"]
+    assert row["output"]["validation"]["frame_timestamps"] == "not_compared"
+    assert_no_fabricated_review(row)
+
+
+@pytest.mark.parametrize("change", [
+    {"source": {"duration": 20.}},
+    {"source": {"frame_count": 600, "metadata_frame_count": 600}},
+    {"source": {"frame_rate": "60/1"}},
+    {"source": {"frame_count": None, "metadata_frame_count": None}},
+])
+def test_legacy_nominal_rate_fallback_does_not_hide_real_timing_or_missing_evidence(simple_work, monkeypatch, change):
+    work, _ = simple_work
+    candidate = install_nominal_rate_compatibility_case(work, monkeypatch, change=change)
+    original_hash = core.sha256_file(candidate)
+    result = work.refresh()
+    assert result["complete"] is False
+    row = result["videos"][0]
+    assert row["status"] != "success"
+    assert not row.get("output")
+    assert row["reason"]
+    assert core.sha256_file(candidate) == original_hash
+
+
+def test_new_generated_media_does_not_use_the_legacy_nominal_rate_exception():
+    source = {**MEDIA, "nominal_frame_rate": "60/1", "frame_rate": "30/1", "frame_count": 300}
+    output = {**source, "nominal_frame_rate": "30/1", "width": 300, "height": 400}
+    with pytest.raises(core.RoiError, match="标称帧率"):
+        core.validate_media(source, output, [300, 400])
+
+
+def test_legacy_output_probe_difference_from_its_own_record_is_still_rejected(simple_work, monkeypatch):
+    work, _ = simple_work
+    install_nominal_rate_compatibility_case(work, monkeypatch, output_nominal="60/1")
+    result = work.refresh()
+    assert result["complete"] is False
+    assert result["videos"][0]["status"] != "success"
+    assert not result["videos"][0].get("output")
