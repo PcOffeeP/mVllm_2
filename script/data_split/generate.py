@@ -340,15 +340,6 @@ def search(problem, seeds=SEEDS):
             "candidates": candidates}
 
 
-def _distribution(labels, groups, ids):
-    selected = set(ids)
-    group_sets = [{v for v in group["video_ids"] if v in selected} for group in groups]
-    return {field: {value: {
-        "videos": sum(labels[v][field] == value for v in selected),
-        "groups": sum(any(labels[v][field] == value for v in vs) for vs in group_sets),
-    } for value in allowed} for field, allowed in FIELDS.items()}
-
-
 def _coverage_report(problem, assignment):
     counts, _ = problem.counts(assignment)
     result = []
@@ -395,16 +386,6 @@ def _csv_rows(content):
         raise SplitError(f"invalid label CSV: {exc}") from exc
 
 
-def _label_subset_csv(raw_rows, video_ids, *, with_bom=False):
-    """Select original cells in ID order without rewriting labels or paths."""
-    raw_index = {row["id"]: row for row in raw_rows}
-    stream = io.StringIO(newline="")
-    writer = csv.DictWriter(stream, fieldnames=list(raw_rows[0]), lineterminator="\n")
-    writer.writeheader()
-    writer.writerows(raw_index[video_id] for video_id in sorted(video_ids))
-    return stream.getvalue().encode("utf-8-sig" if with_bom else "utf-8")
-
-
 def _publish_new_directory(source, destination):
     """Atomically rename without replacing even an empty competing directory.
 
@@ -441,7 +422,7 @@ def _publish_new_directory(source, destination):
 def resolve_design_document(root):
     """Resolve the rules document without choosing between conflicting copies.
 
-    Both supported layouts use the existing manifest/snapshot key
+    Both supported layouts use the existing manifest input key
     ``docs_data-split-design.md``; moving an identical document does not rename
     that evidence field or change the explicit data-input interface.
     """
@@ -467,7 +448,8 @@ def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=Non
     """Read explicit inputs, search 100 starts, then publish a new directory once.
 
     All output bytes are deterministic for identical files, code and environment.
-    manifest hashes every other artifact; its own hash is returned to the caller,
+    Only seven membership JSON files and a manifest are published. The manifest
+    hashes every membership file; its own hash is returned to the caller,
     avoiding a self-referential hash. Existing destinations are always rejected.
     """
     output = Path(output_dir).absolute()
@@ -514,7 +496,6 @@ def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=Non
     warnings = ["explicit_source_table_is_user_evidence_not_media_deduplication",
                 "historically_exposed_test_is_not_never_used_independent_test",
                 "bounded_local_search_does_not_prove_global_optimality"]
-    differences = {"status": "not_verified", "reason": "--old-splits-dir not supplied", "videos": []}
     if old_splits_dir is None:
         warnings.append("old_fold_differences_not_verified")
     else:
@@ -527,58 +508,23 @@ def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=Non
         old_vals = [set(old[f"fold_{f}_val"]) for f in range(3)]
         if any(old_vals[a] & old_vals[b] for a, b in itertools.combinations(range(3), 2)):
             raise SplitError("old validation folds overlap")
-        differences = {"status": "verified_against_explicit_old_lists", "videos": [
-            {"video_id": v, "group_id": next(g["group_id"] for g in dev_groups if v in g["video_ids"]),
-             "old_val_folds": [f for f in range(3) if v in old_vals[f]],
-             "new_val_fold": next(f for f in range(3) if v in splits[f"fold_{f}_val"]),
-             "folds": [{"fold": f, "old": "val" if v in old_vals[f] else "train",
-                        "new": "val" if v in splits[f"fold_{f}_val"] else "train"} for f in range(3)]}
-            for v in sorted(dev_ids)]}
     coverage = _coverage_report(problem, assignment)
     if any(c["coverage_gap"] for c in coverage):
         warnings.append("remaining_coverage_gaps_require_review_search_is_not_infeasibility_proof")
     counts, sizes = problem.counts(assignment)
     if max(abs(Fraction(s)-Fraction(problem.video_count, 3)) for s in sizes) > 2:
         warnings.append("validation_video_count_deviation_exceeds_two")
-    group_report = []
-    for g in groups:
-        is_test = bool(test.intersection(g["video_ids"]))
-        fold = None if is_test else assignment[next(i for i, dg in enumerate(problem.groups) if dg["group_id"] == g["group_id"])]
-        group_report.append({**g, "partition": "test" if is_test else "development", "val_fold": fold,
-                             "label_evidence": {f: [value for value in allowed if
-                                any(labels[v][f] == value for v in g["video_ids"])] for f, allowed in FIELDS.items()}})
     payloads = {f"{name}.json": canonical_bytes({"split": name, "video_ids": ids, "count": len(ids),
                  "method": RULE_VERSION, "fold": int(name.split("_")[1]), "seed": result["best_seed"]})
                 for name, ids in splits.items() if name != "test"}
     # Preserve test bytes, order, membership and metadata exactly.
     payloads["test.json"] = content["test.json"]
-    for name, ids in splits.items():
-        payloads[f"{name}.csv"] = _label_subset_csv(
-            raw_rows, ids, with_bom=content["labels.csv"].startswith(b"\xef\xbb\xbf"))
-    # Exact input snapshots preserve raw aliases, notes and source declarations.
-    for name, data in content.items():
-        payloads[f"input_{name}"] = data
-    payloads["groups.json"] = canonical_bytes({"groups": group_report})
-    payloads["differences.json"] = canonical_bytes(differences)
-    payloads["distributions.json"] = canonical_bytes({
-        "canonical_by_split": {name: _distribution(labels, groups, ids) for name, ids in
-                               {"all": sorted(labels), "development": sorted(dev_ids), **splits}.items()},
-        "raw_value_video_counts": {name: {f: dict(sorted(Counter(row[f] for row in raw_rows if
-                                            row["id"] in set(ids)).items())) for f in FIELDS}
-                                   for name, ids in {"all": sorted(labels), **splits}.items()},
-        "alias_records": [{"video_id": row["id"], "field": f, "original": row[f], "normalized": labels[row["id"]][f]}
-                          for row in raw_rows for f in FIELDS if row[f] != labels[row["id"]][f]],
-    })
-    payloads["search.json"] = canonical_bytes({"seeds": list(SEEDS), "start_count": len(SEEDS),
-        "best_seed": result["best_seed"], "best_score": problem.explain_score(result["best_score"]),
-        "candidates": result["candidates"], "failed_starts": [], "global_optimality_proven": False,
-        "test_labels_used_for_objective": False, "coverage": coverage, "warnings": warnings,
-        "proven_combination_conflicts": [],
-        "cooccurrences": [{"labels": [problem.tokens[a], problem.tokens[b]], "support_groups": problem.pair_support[i],
-                           "val_groups": [counts[f][i+len(problem.tokens)] for f in range(3)]}
-                          for i, (a, b) in enumerate(problem.pairs)]})
     git = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, text=True, capture_output=True, check=False)
     manifest = {"rule_version": RULE_VERSION, "status": "generated_split_not_model_evaluation",
+        "counts": {name: len(ids) for name, ids in splits.items()},
+        "search_summary": {"start_count": len(SEEDS), "best_seed": result["best_seed"],
+                           "best_score": problem.explain_score(result["best_score"]),
+                           "global_optimality_proven": False, "test_labels_used_for_objective": False},
         "inputs": {name: {"sha256": sha256(data)} for name, data in sorted(content.items())},
         "outputs": {name: {"sha256": sha256(data)} for name, data in sorted(payloads.items())},
         "code_commit": git.stdout.strip() if git.returncode == 0 else None,
@@ -591,7 +537,6 @@ def generate(labels_path, test_path, groups_path, output_dir, old_splits_dir=Non
             "field_formula": "sum_tasks(mean_fields(mean_all_allowed_values(weight * sum_folds(abs(3*n-g)/max(3,g))))) / 5",
             "pair_formula": "mean_pairs_support_ge_6(sum_folds(abs(3*n-g)/max(3,g)))",
             "initialization": "rare_label_then_group_id; local_seed_shuffles_fold_ties",
-            "label_csv_export": "original header order and cell values; ascending ID; UTF-8 with input BOM policy; LF rows",
             "improvement": "stable_group_id_single_moves_then_pairs; strict_lex_improvement_until_no_improvement"},
         "hash_rule": "SHA-256 of exact file bytes; manifest excludes itself; no timestamps or absolute input paths",
         "manual_exceptions": [], "warnings": warnings}

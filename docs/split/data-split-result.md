@@ -1,13 +1,13 @@
 # 本轮源视频划分结果
 
-**2026-11-07 已生成并核验三折划分。** 新清单位于 [data/splits/source-v1-20261107](../data/splits/source-v1-20261107/)，测试集 21 个视频保持原样；89 个开发视频全部各进入一次验证集。
+**2026-11-07 已生成并核验三折划分。** 测试集 21 个视频保持原样；89 个开发视频全部各进入一次验证集。2026-11-08 已按用户授权将当前结果精简到 [data/splits/three-fold](../../data/splits/three-fold/)，本次只整理文件，不重新运行划分搜索；迁移和 ROI 扫描的实际验证结果见下文。
 
 按照已确认的规则，实际搜索完成 **100 个起点**（seed 42–141），选中本次候选中评分最好的 seed 43；其覆盖目标缺口为 0。这个结果不代表数学上的全局最优，也不证明模型效果提升。
 
 ## 输入和来源
 
-- 标注表：[data/annotation-table-full.csv](../data/annotation-table-full.csv)，110 条源视频，SHA-256 `9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81`。
-- 用户确认 110 个视频分别来自独立试验；本轮据此将每个视频作为一个来源组。本轮来源组输入原位于 `data/split-inputs/source-groups-20261107.json`；内容完全相同的[输入快照](../../data/splits/source-v1-20261107/input_groups.json)保留在结果目录，后续使用该快照作为来源组输入。原输入文件的重复副本已清理。
+- 当次生成使用的标注表：[data/annotation-table-full.csv](../../data/annotation-table-full.csv)，110 条源视频，SHA-256 `9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81`。
+- 用户确认 110 个视频分别来自独立试验；本轮据此将每个视频作为一个来源组。本次整理已将来源组恢复到稳定输入位置 [data/split-inputs/source-groups-20261107.json](../../data/split-inputs/source-groups-20261107.json)，并核验与原 `input_groups.json` 字节一致，避免删除结果目录中的输入快照后丢失必需输入。
 - 对 110 个视频进行了路径和文件 SHA-256 检查，未发现字节完全相同的文件。**不同哈希不能排除近似素材，也不能独立证明试验来源。** 模拟视频不在此次 110 个真实视频的输入内，其来源关系未在本次发布中核验。
 - 旧七份划分清单的指纹均与[划分设计](data-split-design.md)记录一致；新 `test.json` 与旧文件字节完全一致。测试集已有历史使用记录，本次没有运行模型测评或用模型结果选划分。
 
@@ -15,13 +15,13 @@
 
 | 折 | 训练源视频 | 验证源视频 | 对应文件 |
 | --- | ---: | ---: | --- |
-| 0 | 60 | 29 | [训练标注](../data/splits/source-v1-20261107/fold_0_train.csv) · [验证标注](../data/splits/source-v1-20261107/fold_0_val.csv) |
-| 1 | 59 | 30 | [训练标注](../data/splits/source-v1-20261107/fold_1_train.csv) · [验证标注](../data/splits/source-v1-20261107/fold_1_val.csv) |
-| 2 | 59 | 30 | [训练标注](../data/splits/source-v1-20261107/fold_2_train.csv) · [验证标注](../data/splits/source-v1-20261107/fold_2_val.csv) |
+| 0 | 60 | 29 | [训练成员](../../data/splits/three-fold/fold_0_train.json) · [验证成员](../../data/splits/three-fold/fold_0_val.json) |
+| 1 | 59 | 30 | [训练成员](../../data/splits/three-fold/fold_1_train.json) · [验证成员](../../data/splits/three-fold/fold_1_val.json) |
+| 2 | 59 | 30 | [训练成员](../../data/splits/three-fold/fold_2_train.json) · [验证成员](../../data/splits/three-fold/fold_2_val.json) |
 
-[测试标注](../data/splits/source-v1-20261107/test.csv)共 21 条。每份 CSV 保留原标注字段和项目相对视频路径，不复制或重新编码视频；同名 JSON 保存该划分的视频 ID。原标注表、视频及旧清单均保留。
+[测试成员](../../data/splits/three-fold/test.json)共 21 条。当前输出仅保留 7 份成员 JSON 和 `manifest.json`；完整标注由上游标注表维护，不再默认复制成 7 份划分 CSV。整理不复制或重新编码视频。
 
-独立核查确认：每折 train／val 不交叉、并集均为同一批 89 个开发 ID，与 test 不交叉；每个开发 ID 恰好进入一折 val。七份 CSV 的成员及原始字段与其 JSON 和输入标注表相符。[移动记录](../data/splits/source-v1-20261107/differences.json)给出各开发视频相对于旧三折的位置。
+2026-11-07 独立核查确认：每折 train／val 不交叉、并集均为同一批 89 个开发 ID，与 test 不交叉；每个开发 ID 恰好进入一折 val。当时也核对了划分 CSV 与 JSON、输入标注表的一致性。CSV 和旧折移动记录按本次精简方案删除，该项是历史验证记录，不表示对应明细文件仍在当前目录。
 
 ## 稀有标签仍有哪些限制
 
@@ -34,11 +34,33 @@
 
 “覆盖目标缺口 0”按已确认规则计算：只有 1 个来源的标签**不要求三折都出现**，没有来源的标签也不能靠划分制造出来。因此它不意味着每个标签在每一折都有正例，更不能表示类别表现稳定。固定 test 中未夹紧、爆炸性断裂、开裂均无正例；这些缺口不能靠重排开发集解决。
 
-## 搜索与验证证据
+## 历史搜索与本次整理
 
-- 搜索完成 100 个起点，检查 676,465 个邻居，接受 4,713 次改进；选定的三折验证人数为 29／30／30。完整过程及各标签覆盖见 [search.json](../data/splits/source-v1-20261107/search.json)。
-- [manifest.json](../data/splits/source-v1-20261107/manifest.json) 记录规则、代码提交 `bf253b2b440e434e259b9c40143de36b7ddceacf`、输入及输出文件哈希；manifest 自身 SHA-256 为 `462c1fac05eebb65628e274f0582d0e2d9af9a3b0b4f2920703be7361d9ab104`。独立核查了 12 项输入快照、30 项输出的哈希与结构。
-- 生成器的 28 项合成测试及独立代码审查通过。实际产物的成员、标注内容、test 原文件和哈希也已独立核查；这些检查不能代替近似素材去重、片段标签复核、训练或模型评价。
-- 结果目录及来源表位于 Git 忽略的 `data/` 下；本次保存的是本机产物，不代表已纳入 Git 或已建立独立备份。
+- 2026-11-07 搜索完成 100 个起点，检查 676,465 个邻居，接受 4,713 次改进；选定的三折验证人数为 29／30／30。原生成代码提交为 `bf253b2b440e434e259b9c40143de36b7ddceacf`。
+- 原完整结果曾独立核查 12 项输入快照、30 项输出的哈希与结构；原 manifest SHA-256 为 `462c1fac05eebb65628e274f0582d0e2d9af9a3b0b4f2920703be7361d9ab104`。这些数字记录当次核查范围，不是当前精简目录的文件数量或 manifest 身份。
+- 用户确认本次删除输入快照、划分 CSV、独立分析报告和完整搜索轨迹，不保留历史归档。删除后无法仅凭哈希恢复这些原文件，也不能把本页历史概述当作仍可逐项重查的完整搜索证据。
+- 当前 [manifest.json](../../data/splits/three-fold/manifest.json) 记录精简目录的七份成员摘要，并保留原生成时的输入、代码和搜索摘要；其中原生成身份不表示本次又运行了该搜索。`migration` 记录原目录与原 manifest 摘要。
+- 原生成器的 28 项合成测试及独立代码审查是历史检查记录；本次修改后的测试结果另行记录。合成检查和成员一致性检查不能代替近似素材去重、片段标签复核、训练或模型评价。
+- 结果目录及来源表位于 Git 忽略的 `data/` 下；本机目录整理不代表已纳入 Git 或已建立独立备份。本次不运行模型测评，也不以模型结果选划分。
+
+## 2026-11-08 整理与 ROI 衔接验证
+
+本次先核对原 manifest 中 30 项输出的摘要，再将结果目录改为 `data/splits/three-fold/`。七份成员 JSON 与迁移前基准逐字节、逐 ID 一致；110 条标注和来源分组覆盖核对通过，21 个 test 与 89 个开发成员不交叉，各折 train／val 互斥且每个开发成员恰好验证一次。未重新运行划分搜索，没有重新生成视频。
+
+来源组恢复后 SHA-256 为 `ce96febf1a41a15a4ecc9eba0e1256ebc5c7105f15c01c22afbca80130dde28b`，与原输入快照一致。原目录多余的 23 个文件已删除，当前目录共 8 个文件，不保留单独归档。
+
+| 成员文件 | 迁移前后相同的 SHA-256 |
+| --- | --- |
+| `fold_0_train.json` | `73abf0f28a3d06b09aa0aabcefd31451bce1b32bba51f7d8356d8c7440ca0421` |
+| `fold_0_val.json` | `026410713000db8b3ada0e93c6af63e3e7bc9767aebdf73e490672002c005d34` |
+| `fold_1_train.json` | `991229766e2a2ad74ec4298e195937c4fb9ee130d232875ab276ca65f7e2d2a3` |
+| `fold_1_val.json` | `61f4e41345bdd5f18c685411aef37800cf8b42b6590ca11b6772252c9da53ab3` |
+| `fold_2_train.json` | `a1467c8ed7332473425a73a832a6bf26cf37c76185e52e1b29a118546af0cfc7` |
+| `fold_2_val.json` | `cecc8d653ec44bef5e81821d2fee87a3221fd287c7f5c17d644cafaa51ef436c` |
+| `test.json` | `26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc` |
+
+本次生成器合成测试实际执行 `.venv/bin/python -m pytest -q script/data_split/tests --basetemp=/tmp/tensile-split-output-tests-implementation`，结果为 **40 passed in 2.72s**，包含输出精简前后七成员文件的字节回归；该检查未重划当前真实数据。
+
+实际执行 `.venv/bin/python script/roi/roi.py --splits-dir data/splits/three-fold --scan`，退出码为 0。ROI 清单记录的新划分路径及七个文件摘要正确，110 个视频均为 `success`，逐视频划分归属与成员清单一致。扫描更新 `data/roi/manifest.json`，未执行 ROI 视频生成；`success` 只表示媒体可用，不表示人工画面审核完成。
 
 **失效条件：** 标注表、视频身份、来源关系、原测试成员、划分规则或结果文件改变后，须重新核对对应身份和受影响结果；新划分替代本版本时，本记录作为历史结果保留。

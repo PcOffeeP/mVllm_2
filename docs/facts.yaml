@@ -233,7 +233,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:96
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:144
+      - ref: docs/TODO.md:145
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -363,14 +363,18 @@ facts:
     state: active
     topic: 本轮来源组划分的用户确认与生成器边界
     claim: >
-      用户于 2026-11-07 确认当前 110 个源视频分别来自独立试验，本轮以每个视频为一来源组；这是用户提供的来源事实，不由文件哈希证明。文件哈希检查未发现完全相同视频，但未完成近似素材或模拟来源审查。已确认固定旧 21 个测试成员、仅重排开发集三折；生成器要求显式来源组并检查完整性和跨测试／开发冲突，按种子 42 至 141 搜索候选。测试集历史使用边界保持；本轮已生成并核验源视频划分，详见结果记录。代码、合成测试及已生成清单不能证明来源完全无泄漏或模型效果改善。
+      用户于 2026-11-07 确认当前 110 个源视频分别来自独立试验，本轮以每个视频为一来源组；这是用户提供的来源事实，不由文件哈希证明。文件哈希检查未发现完全相同视频，但未完成近似素材或模拟来源审查。已确认固定旧 21 个测试成员、仅重排开发集三折；生成器要求显式来源组并检查完整性和跨测试／开发冲突，按种子 42 至 141 搜索候选。测试集历史使用边界保持；本轮已生成并核验源视频划分，详见结果记录。用户于 2026-11-08 授权精简输出为 `data/splits/three-fold/` 下七份成员 JSON 与 manifest，删除旧快照、CSV、独立分析和搜索轨迹且不保留归档；本次整理未重跑搜索或重新分配成员，七文件已逐字节、逐 ID 核对不变，来源组恢复到稳定输入路径；ROI 扫描退出 0，110 个视频均为 success，划分路径、摘要和归属核对通过。代码、合成测试及已生成清单不能证明来源完全无泄漏或模型效果改善。
     evidence:
-      - ref: docs/data-split-design.md:19
+      - ref: docs/split/data-split-design.md:19
         expect: 用户已确认 110 个源视频分别来自独立试验
-      - ref: docs/data-split-design.md:3
+      - ref: docs/split/data-split-design.md:3
         expect: 固定已有 21 个 test 视频
-      - ref: docs/data-split-result.md:5
+      - ref: docs/split/data-split-result.md:5
         expect: 100 个起点
+      - ref: docs/split/data-split-result.md:48
+        expect: 七份成员 JSON 与迁移前基准逐字节
+      - ref: docs/split/data-split-result.md:64
+        expect: 退出码为 0。ROI 清单
       - ref: script/data_split/generate.py:49
         expect: SEEDS = tuple(range(42, 142))
       - ref: script/data_split/generate.py:142
@@ -378,7 +382,7 @@ facts:
       - ref: script/data_split/generate.py:326
         expect: def search(problem, seeds=SEEDS):
     established: 2026-11-07
-    established_by: 用户确认来源与划分规则；代码核对及合成测试
+    established_by: 用户确认来源与划分规则；代码核对及合成测试；2026-11-08 实际整理与 ROI 扫描
     supersedes: null
     affects: [data, code]
   - id: DF-021

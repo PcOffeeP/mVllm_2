@@ -317,7 +317,6 @@ def test_release_binds_input_rules_code_and_all_output_bytes(published):
     for name, path in expected_inputs.items():
         content = path.read_bytes()
         assert manifest["inputs"][name]["sha256"] == hashlib.sha256(content).hexdigest()
-        assert (output / f"input_{name}").read_bytes() == content
     assert set(manifest["outputs"]) == set(output_bytes(output)) - {"manifest.json"}
     for name, identity in manifest["outputs"].items():
         assert identity["sha256"] == hashlib.sha256((output / name).read_bytes()).hexdigest()
@@ -325,53 +324,44 @@ def test_release_binds_input_rules_code_and_all_output_bytes(published):
     assert manifest["environment"]["python"]
     assert manifest["rule_version"]
     assert manifest["manual_exceptions"] == []
-    search = load_json(output / "search.json")
-    assert search["seeds"] == list(range(42, 142))
-    assert [candidate["seed"] for candidate in search["candidates"]] == list(range(42, 142))
+    search = manifest["search_summary"]
+    assert manifest["config"]["seeds"] == list(range(42, 142))
+    assert search["start_count"] == 100
     assert search["global_optimality_proven"] is False
     assert search["test_labels_used_for_objective"] is False
 
 
-def read_csv(path):
-    with path.open(encoding="utf-8-sig", newline="") as stream:
-        reader = csv.DictReader(stream)
-        return reader.fieldnames, list(reader)
-
-
-def test_annotation_subsets_preserve_raw_fields_values_and_json_membership(published):
-    inputs, output, _ = published
-    source_headers, source_rows = read_csv(inputs[0])
-    originals = {entry["id"]: entry for entry in source_rows}
-    split_names = [*(f"fold_{fold}_{split}" for fold in range(3) for split in ("train", "val")), "test"]
+def test_release_contains_only_members_and_manifest_and_preserves_inputs(tmp_path):
+    inputs = write_inputs(tmp_path / "inputs")
+    before = {path: path.read_bytes() for path in inputs}
+    output = tmp_path / "release"
+    result = run_cli(inputs, output)
+    assert result.returncode == 0, result.stderr
+    expected = {"test.json", "manifest.json"} | {
+        f"fold_{fold}_{split}.json" for fold in range(3) for split in ("train", "val")}
+    assert set(output_bytes(output)) == expected
+    assert all(path.read_bytes() == content for path, content in before.items())
     manifest = load_json(output / "manifest.json")
-    for name in split_names:
-        csv_path = output / f"{name}.csv"
-        headers, subset = read_csv(csv_path)
-        expected_ids = sorted(load_json(output / f"{name}.json")["video_ids"])
-        assert headers == source_headers, name
-        assert [entry["id"] for entry in subset] == expected_ids, name
-        assert subset == [originals[video] for video in expected_ids], name
-        assert manifest["outputs"][csv_path.name]["sha256"] == hashlib.sha256(csv_path.read_bytes()).hexdigest()
-    # Check the whole raw rows above rather than only normalized model labels:
-    # paths, fixed 无, legacy aliases, blank notes, time strings, CSV quoting
-    # and embedded newlines all have to survive in the applicable subsets.
-    assert originals["video_0002"]["断裂状态"] == "无法判断"
-    assert originals["video_0002"]["断裂模式"] == "无法识别"
-    assert (output / "test.json").read_bytes() == inputs[1].read_bytes()
+    assert manifest["counts"] == {
+        name.removesuffix(".json"): len(load_json(output / name)["video_ids"])
+        for name in expected - {"manifest.json"}}
 
 
-def test_release_keeps_unknown_none_and_legacy_alias_evidence_distinct(published):
+def test_compact_output_preserves_pre_cleanup_synthetic_member_bytes(published):
+    # Captured from the previous full-output implementation using write_inputs.
+    # These are synthetic fixtures, not project annotations or real test data.
+    expected = {
+        "fold_0_train.json": "afb0bdd913ad006fd1f58c5d36d984b4f1f36061c319d0de5c47aec86d14f2b8",
+        "fold_0_val.json": "0a3cf69c252e30b2bc4f1fbcb8f3ac64778635b8e0a187c6206116a2cd0010b1",
+        "fold_1_train.json": "bfc8118c9727b352e37329359fbc5bfa67158a2e18d2a1bbd4eae76a2fe0f58a",
+        "fold_1_val.json": "05fb138dca2f9f62ebc5370f219905f53acf79b009cbb5b88bd7965478c3feec",
+        "fold_2_train.json": "40dcd8117bd157e1fa46814a0bcd6418941b9fc7eeb4b17e32a41b6c9b6a5eef",
+        "fold_2_val.json": "8cfa1601d0f743df1e1831de631102f92fbd728fa80bb86082af9ee62a99f969",
+        "test.json": "b2a923a4988562c713e66bf14e107999f33b7b9a615c5980ed8a467e956abc04",
+    }
     _, output, _ = published
-    report = load_json(output / "distributions.json")
-    counts = report["canonical_by_split"]["all"]
-    assert counts["断裂模式"]["无"] == {"videos": 1, "groups": 1}
-    assert counts["断裂模式"]["无法确定"] == {"videos": 1, "groups": 1}
-    assert counts["现象_伸长"]["无法判断"] == {"videos": 1, "groups": 1}
-    assert counts["现象_伸长"]["否"]["videos"] == 109
-    assert report["raw_value_video_counts"]["all"]["断裂模式"]["无法识别"] == 1
-    assert {entry["field"] for entry in report["alias_records"]} == {"断裂状态", "断裂模式"}
-    # The 30 videos in dev_a supply one independent group for this mode.
-    assert report["canonical_by_split"]["development"]["断裂模式"]["韧性断裂"] == {"videos": 87, "groups": 3}
+    assert {name: hashlib.sha256((output / name).read_bytes()).hexdigest()
+            for name in expected} == expected
 
 
 def test_cli_same_inputs_are_byte_reproducible_across_hash_seeds(published, tmp_path):
@@ -389,8 +379,7 @@ def test_cli_sorted_assignments_ignore_csv_group_and_member_order(published, tmp
     result = run_cli(inputs, second)
     assert result.returncode == 0, result.stderr
     for name in [*(f"fold_{fold}_{split}.json" for fold in range(3) for split in ("train", "val")),
-                 *(f"fold_{fold}_{split}.csv" for fold in range(3) for split in ("train", "val")), "test.csv",
-                 "groups.json", "search.json"]:
+                 "test.json"]:
         assert (output / name).read_bytes() == (second / name).read_bytes(), name
     # Input-byte identities must still reflect the changed CSV/group order.
     assert load_json(output / "manifest.json")["inputs"]["labels.csv"] != load_json(second / "manifest.json")["inputs"]["labels.csv"]
@@ -510,11 +499,9 @@ def test_generation_uses_current_design_and_versioned_groups_snapshot_without_ol
     result = splitter.generate(labels, test, groups, output)
 
     assert result["inputs"]["groups.json"]["sha256"] == hashlib.sha256(groups_before).hexdigest()
-    assert (output / "input_groups.json").read_bytes() == groups_before
-    # The old manifest/snapshot key remains stable even though the document
+    # The old manifest input key remains stable even though the document
     # now comes from docs/split. This preserves downstream evidence consumers.
     assert result["inputs"]["docs_data-split-design.md"]["sha256"] == hashlib.sha256(design.read_bytes()).hexdigest()
-    assert (output / "input_docs_data-split-design.md").read_bytes() == design.read_bytes()
     assert "docs_split_data-split-design.md" not in result["inputs"]
     assert not (root / "docs/data-split-design.md").exists()
     assert not (root / "data/split-inputs").exists()
