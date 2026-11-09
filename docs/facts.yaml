@@ -437,7 +437,7 @@ facts:
     state: active
     topic: 本轮子视频帧对应和时间范围的已确认边界
     claim: >
-      用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；三个视频 video_0002、video_0015、video_0050 暂留待讨论，不生成子视频。新对齐入口已有合成测试，真实媒体对应和新批次尚未验收；原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
+      用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；三个视频 video_0002、video_0015、video_0050 暂留待讨论，不生成子视频。本轮已生成开发集候选并完成两段重放检查；19 个来源仍待处理，详见 DF-024。原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
     evidence:
       - ref: script/subvideo_pilot/aligned.py:129
         expect: def adapt_annotation(row: dict, media: dict)
@@ -457,7 +457,7 @@ facts:
     state: active
     topic: 子视频帧对应的两段严格重放验证
     claim: >
-      本轮自动生成采用两段独立帧对应证据：源到 ROI 仅接受身份一致、固定空间滤镜的可复现重放，现有 ROI 与重放文件及完整解码帧序列、时间戳一致；ROI 到片段使用独立绝对帧 select 重放主 trim 结果，核对输入标注帧、边界及保护间隔后，比较完整结果与帧映射。任一重放不能验证时保持待核实，不以画面相似替代；通过不等于人工审核、标签正确或数据发布。21 个来源已取得源到现有 ROI 的实际重放证据，ROI 到本轮新片段的真实批次仍未验收。
+      本轮自动生成采用两段独立帧对应证据：源到 ROI 仅接受身份一致、固定空间滤镜的可复现重放，现有 ROI 与重放文件及完整解码帧序列、时间戳一致；ROI 到片段使用独立绝对帧 select 重放主 trim 结果，核对输入标注帧、边界及保护间隔后，比较完整结果与帧映射。任一重放不能验证时保持待核实，不以画面相似替代；通过不等于人工审核、标签正确或数据发布。真实开发集批次中 67 个来源通过源到 ROI 重放，1123 个片段全部通过片段重放及文件摘要核对；19 个来源待处理，另 3 个特殊来源按约定暂留。测试集媒体不参与生成。记录的 842 个被窗口覆盖的标注锚点均核对帧映射；模型采样、人工标签审核与发布未进行。
     evidence:
       - ref: script/subvideo_pilot/replay.py:201
         expect: def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict
@@ -465,8 +465,10 @@ facts:
         expect: def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict
       - ref: data/subvideo-initial/roi-replay-evidence-20261109.json:1
         expect: '{'
+      - ref: data/subvideos/frame-aligned/summary.json:2
+        expect: '"candidate_count": 1123'
     established: 2026-11-09
-    established_by: 21 来源真实重放核验、独立审查及两段验证合成测试
+    established_by: 两段验证合成测试、独立审查及训练机真实开发集批次核验
     supersedes: null
     affects: [data, code, ops]
 
