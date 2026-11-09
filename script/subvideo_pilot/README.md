@@ -86,3 +86,9 @@ python script/subvideo_pilot/aligned.py --project-root /path/to/project --output
 这些检查属于机器画面证据。64×64 灰度特征、允许的有损压缩差异及全段匹配门槛写入记录；检查通过不能替代最终人工画面审核。只要另一个位置也落入相同的压缩误差容许范围，锚点就记为 `pending`，即使同索引的误差更小也不能认定唯一。这会让静止、低对比和重复画面更保守地留待核实，不能据此声称这些视频无用。错误或无法确认的来源、候选不生成最终文件。`complete` 只在全部应处理来源和候选均无待核实或失败时为真，三个明确保留的视频不计为处理失败。
 
 输出保留 ROI 区间内部 PTS 节奏并从零开始，量化误差按输入输出的实际时间基核对。候选中的 `geometry_time_range` 是旧几何用于选择帧的虚拟时间；`source_start_pts`、`source_end_pts` 和 `source_duration` 才是源视频实际帧时间。最终标签仍未赋值，模型采样门禁与发布均未执行。
+
+## 实验性锚点歧义分析
+
+`anchor_evidence.analyze_project_anchor(project_root, video_id, anchor_index)` 只读核对开发集输入及源／ROI 摘要，使用实际有效裁剪和补边几何，保留现有 64×64 粗特征，并逐帧测量原生分辨率的整幅、局部分区和边缘差异。返回每个备选索引的证据，不写入候选或生成状态；三个特殊视频仍不处理。
+
+所有返回值固定为 `evidence_only_pending`，`automatic_generation_allowed=false`。局部细节只是供人工查看和后续独立校准的测量，不能用来绕过现有严格待核实状态。整段所有竞争帧均保留；静止、重复或有损编码使中心帧仍不唯一时，前后文也不能将它自动放行。纯数组接口 `analyze_anchor` 可用于合成实验，未提供生产粗特征时会明确标记其面积池化代理与生产重检不同。
