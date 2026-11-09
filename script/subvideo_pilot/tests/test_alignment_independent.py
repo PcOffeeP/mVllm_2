@@ -191,6 +191,37 @@ def test_monotonic_nonuniform_pts_is_not_rejected_as_a_cfr_grid_error(monkeypatc
     assert result["timestamp_origin"] == 100
 
 
+@pytest.mark.parametrize("rotation", [0, 90, -90, None])
+def test_ffprobe_442_compatible_section_still_checks_rotation_side_data(rotation, monkeypatch):
+    payload = ffprobe_payload([0, .031, .071, .102])
+    payload["streams"][0]["tags"] = {"rotate": "0"}
+    side_data = {"side_data_type": "Display Matrix"}
+    if rotation is not None:
+        side_data["rotation"] = rotation
+    payload["streams"][0]["side_data_list"] = [side_data]
+
+    def ffprobe_442(command):
+        entries = command[command.index("-show_entries") + 1]
+        sections = {part.split("=", 1)[0] for part in entries.split(":")}
+        if "stream_side_data" in sections:
+            raise aligned.base.PilotError("No match for section 'stream_side_data'")
+        selected = dict(part.split("=", 1) for part in entries.split(":"))
+        assert "rotation" in selected["stream_side_data_list"].split(",")
+        return SimpleNamespace(stdout=json.dumps(payload))
+
+    monkeypatch.setattr(aligned.base, "_checked", ffprobe_442)
+    if rotation is None:
+        with pytest.raises(aligned.AlignmentUncertain, match="without_readable_rotation"):
+            aligned.probe_video(Path("synthetic.mp4"))
+    elif rotation:
+        with pytest.raises(aligned.AlignmentUncertain, match="unsupported_rotation"):
+            aligned.probe_video(Path("synthetic.mp4"))
+    else:
+        result = aligned.probe_video(Path("synthetic.mp4"))
+        assert result["rotation"] == 0
+        assert result["total_frames"] == 4
+
+
 @pytest.mark.parametrize("times", [
     [0, .033, .033, .1],  # Duplicate presentation instant.
     [0, .066, .033, .1],  # Frame presentation order goes backwards.

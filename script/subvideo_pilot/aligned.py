@@ -46,7 +46,7 @@ def probe_video(path: Path) -> dict:
         "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_streams",
         "-show_format", "-show_frames", "-show_entries",
         "stream=width,height,r_frame_rate,avg_frame_rate,duration,time_base:"
-        "stream_tags=rotate:stream_side_data=rotation:format=duration:"
+        "stream_tags=rotate:stream_side_data_list=rotation,side_data_type:format=duration:"
         "frame=best_effort_timestamp_time,pkt_duration_time", "-of", "json", str(path),
     ]).stdout)
     try:
@@ -59,12 +59,27 @@ def probe_video(path: Path) -> dict:
             raise ValueError("invalid frame timestamps")
         if any(b <= a for a, b in zip(times, times[1:])):
             raise AlignmentUncertain("missing_or_non_increasing_frame_timestamps")
-        rotation = float(stream.get("tags", {}).get("rotate", 0))
-        for side in stream.get("side_data_list", []):
+        tags = stream.get("tags", {})
+        side_data = stream.get("side_data_list", [])
+        if not isinstance(tags, dict) or not isinstance(side_data, list):
+            raise AlignmentUncertain("invalid_rotation_metadata")
+        rotations = [tags["rotate"]] if "rotate" in tags else []
+        for side in side_data:
+            if not isinstance(side, dict):
+                raise AlignmentUncertain("invalid_rotation_metadata")
             if "rotation" in side:
-                rotation = float(side["rotation"])
-        if rotation % 360:
+                rotations.append(side["rotation"])
+            elif "display matrix" in str(side.get("side_data_type", "")).lower():
+                raise AlignmentUncertain("display_matrix_without_readable_rotation")
+        try:
+            rotations = [float(value) for value in rotations]
+            if any(not math.isfinite(value) for value in rotations):
+                raise ValueError("non-finite rotation")
+        except (TypeError, ValueError) as exc:
+            raise AlignmentUncertain("invalid_rotation_metadata") from exc
+        if any(value % 360 for value in rotations):
             raise AlignmentUncertain("unsupported_rotation_for_frame_correspondence")
+        rotation = 0.0
         origin = times[0]
         timestamps = [t - origin for t in times]
         last_duration = base._number(data["frames"][-1].get("pkt_duration_time"))
