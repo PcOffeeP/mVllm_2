@@ -306,7 +306,7 @@ def test_nonrecoverable_range_does_not_round_to_an_unverified_frame():
         aligned.adapt_annotation(range_row() | {"断裂时间范围_下界": "29.045"}, irregular_media())
 
 
-def test_actual_irregular_pts_crop_keeps_the_annotated_frame_picture(tmp_path):
+def test_actual_irregular_pts_without_source_proof_cannot_generate(tmp_path):
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         pytest.skip("FFmpeg required for synthetic frame/PTS integration")
     tiles = np.random.default_rng(625).integers(20, 236, size=(24, 8, 8), dtype=np.uint8)
@@ -333,18 +333,8 @@ def test_actual_irregular_pts_crop_keeps_the_annotated_frame_picture(tmp_path):
     assert gaps.max() - gaps.min() > .005, "fixture must retain nonuniform PTS"
     candidate = {"start_frame": 4, "end_frame": 20, "source_anchor_frames": [8, 9],
                  "roi_sha256": aligned.base.sha256_file(source)}
-    result = aligned.crop_video(source, output, candidate, media, source_frames)
-    output_frames = decoded_gray(output)
-    assert len(output_frames) == 16
-    assert result["frame_mapping"]["anchors"] == [
-        {"source_frame": 8, "roi_frame": 8, "output_frame": 4},
-        {"source_frame": 9, "roi_frame": 9, "output_frame": 5},
-    ]
-    # Independent whole-source MSE search confirms each known event picture,
-    # rather than trusting the production frame_mapping field by itself.
-    for source_index, output_index in [(8, 4), (9, 5)]:
-        error = ((source_frames.astype(np.float64)
-                  - output_frames[output_index].astype(np.float64)) ** 2).mean(axis=(1, 2))
-        assert int(error.argmin()) == source_index
-    expected_pts = np.asarray(media["timestamps"][4:20]) - media["timestamps"][4]
-    assert result["media"]["timestamps"] == pytest.approx(expected_pts, abs=.001)
+    # The real variable-PTS media remains readable. Picture similarity alone
+    # is no longer sufficient to create an automatically accepted clip.
+    with pytest.raises(aligned.AlignmentUncertain, match="replay_required"):
+        aligned.crop_video(source, output, candidate, media, source_frames)
+    assert not output.exists()

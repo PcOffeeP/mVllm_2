@@ -7,7 +7,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from subvideo_pilot import aligned
+from subvideo_pilot import aligned, replay
 
 
 def _video(tmp_path):
@@ -27,20 +27,41 @@ def _video(tmp_path):
     return path
 
 
-def test_actual_frame_crop_has_recorded_anchor_and_picture_sequence(tmp_path):
-    source = _video(tmp_path)
+def test_actual_frame_crop_has_recorded_anchor_and_picture_sequence(tmp_path, monkeypatch):
+    raw = _video(tmp_path)
+    source = tmp_path / 'roi.mp4'
+    subprocess.run(['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-n', '-i', str(raw),
+                    '-map', '0:v:0', '-vf', 'crop=128:96:0:0,setsar=1', '-vsync', '0',
+                    '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
+                    '-an', '-movflags', '+faststart', str(source)], check=True)
+    sha = aligned.base.sha256_file
+    roi = {'video_id':'video_0001','source':{'sha256':sha(raw)},
+           'decision':{'source_sha256':sha(raw),'mode':'fixed_roi','source_resolution':[128,96],
+                       'pixel_box':{'x':0,'y':0,'width':128,'height':96}},
+           'output':{'sha256':sha(source),'encoding':{'video_codec':'libx264','preset':'fast','crf':23,
+                     'pixel_format':'yuv420p','audio':'dropped','frame_sync':'vsync_0_passthrough'},
+                     'geometry':{'filter':'crop=128:96:0:0,setsar=1',
+                                 'effective_pixel_box':{'x':0,'y':0,'width':128,'height':96},
+                                 'pad_pixels':{'left':0,'right':0,'top':0,'bottom':0},
+                                 'output_resolution':[128,96]}}}
+    row = {'id':'video_0001','断裂状态':'发生断裂','断裂帧_前':'29','断裂帧_后':'30'}
+    monkeypatch.setattr(replay,'_toolchain',lambda:{'synthetic_version_gate':'4.4.2 simulated'})
+    proof = replay.verify_source_replay(raw, source, roi, source_annotation=row)
     media = aligned.probe_video(source)
     candidate = {'start_frame': 10, 'end_frame': 40, 'source_anchor_frames': [29, 30],
-                 'roi_sha256': aligned.base.sha256_file(source)}
+                 'source_video_id':'video_0001','source_frame_range':[10,40],
+                 'source_sha256':sha(raw),'event_kind':'exact','window_role':'transition',
+                 'roi_sha256': sha(source)}
     output = tmp_path / 'output.mp4'
-    result = aligned.crop_video(source, output, candidate, media, aligned._features(source))
+    result = aligned.crop_video(source, output, candidate, media, aligned._features(source), source_proof=proof)
     assert result['media']['total_frames'] == 30
     assert result['frame_mapping']['anchors'] == [
         {'source_frame': 29, 'roi_frame': 29, 'output_frame': 19},
         {'source_frame': 30, 'roi_frame': 30, 'output_frame': 20}]
     assert result['picture_correspondence']['decoded_frames'] == 30
+    assert result['frame_preserving_replay']['status'] == replay.VERIFIED
     with pytest.raises(FileExistsError):
-        aligned.crop_video(source, output, candidate, media, aligned._features(source))
+        aligned.crop_video(source, output, candidate, media, aligned._features(source), source_proof=proof)
 
 
 def test_real_pts_probe_accepts_nonuniform_monotonic_timestamps(tmp_path):

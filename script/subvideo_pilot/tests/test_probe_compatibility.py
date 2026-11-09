@@ -60,3 +60,13 @@ def test_missing_rotation_side_data_is_zero_without_a_display_matrix(monkeypatch
     payload['streams'][0].pop('side_data_list')
     _mock_probe(monkeypatch, payload)
     assert aligned.probe_video(Path('synthetic.mp4'))['rotation'] == 0
+
+
+def test_newer_frame_duration_field_preserves_measured_final_frame_coverage(monkeypatch):
+    payload = _payload()
+    for frame in payload['frames']:
+        frame['duration_time'] = frame.pop('pkt_duration_time')
+    _mock_probe(monkeypatch, payload)
+    media = aligned.probe_video(Path('synthetic.mp4'))
+    assert media['final_frame_duration'] == pytest.approx(.033333)
+    assert media['duration'] == pytest.approx(.066666)

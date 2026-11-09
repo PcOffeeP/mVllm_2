@@ -439,18 +439,34 @@ facts:
     claim: >
       用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；三个视频 video_0002、video_0015、video_0050 暂留待讨论，不生成子视频。新对齐入口已有合成测试，真实媒体对应和新批次尚未验收；原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
     evidence:
-      - ref: script/subvideo_pilot/aligned.py:124
+      - ref: script/subvideo_pilot/aligned.py:129
         expect: def adapt_annotation(row: dict, media: dict)
-      - ref: script/subvideo_pilot/aligned.py:179
+      - ref: script/subvideo_pilot/aligned.py:184
         expect: def plan_windows(record: dict, source_media: dict | None = None)
-      - ref: script/subvideo_pilot/aligned.py:243
+      - ref: script/subvideo_pilot/aligned.py:248
         expect: def compare_sequences(expected_frames, actual_frames, anchor_indices)
-      - ref: script/subvideo_pilot/aligned.py:325
+      - ref: script/subvideo_pilot/aligned.py:330
         expect: def build_crop_command(source: Path, output: Path, candidate: dict)
       - ref: script/subvideo_pilot/anchor_evidence.py:199
         expect: def analyze_project_anchor(project_root: Path, video_id: str, anchor_index: int
     established: 2026-11-09
     established_by: 用户确认时间范围两端保护间隔、保留特殊视频与帧画面对应；代码及合成测试核对
+    supersedes: null
+    affects: [data, code, ops]
+  - id: DF-024
+    state: active
+    topic: 子视频帧对应的两段严格重放验证
+    claim: >
+      本轮自动生成采用两段独立帧对应证据：源到 ROI 仅接受身份一致、固定空间滤镜的可复现重放，现有 ROI 与重放文件及完整解码帧序列、时间戳一致；ROI 到片段使用独立绝对帧 select 重放主 trim 结果，核对输入标注帧、边界及保护间隔后，比较完整结果与帧映射。任一重放不能验证时保持待核实，不以画面相似替代；通过不等于人工审核、标签正确或数据发布。21 个来源已取得源到现有 ROI 的实际重放证据，ROI 到本轮新片段的真实批次仍未验收。
+    evidence:
+      - ref: script/subvideo_pilot/replay.py:201
+        expect: def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict
+      - ref: script/subvideo_pilot/replay.py:374
+        expect: def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict
+      - ref: data/subvideo-initial/roi-replay-evidence-20261109.json:1
+        expect: '{'
+    established: 2026-11-09
+    established_by: 21 来源真实重放核验、独立审查及两段验证合成测试
     supersedes: null
     affects: [data, code, ops]
 

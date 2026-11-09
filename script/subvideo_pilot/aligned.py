@@ -18,12 +18,13 @@ import tempfile
 from typing import Any
 
 try:
-    from . import geometry, pilot as base
+    from . import geometry, pilot as base, replay
 except ImportError:
     import geometry
     import pilot as base
+    import replay
 
-SCHEMA = "tensile-frame-aligned-subvideo-cut/1"
+SCHEMA = "tensile-frame-aligned-subvideo-cut/2"
 HELD_IDS = frozenset({"video_0002", "video_0015", "video_0050"})
 GUARD_SECONDS = 0.5
 POST_REMAINING_SECONDS = 2.0
@@ -47,7 +48,7 @@ def probe_video(path: Path) -> dict:
         "-show_format", "-show_frames", "-show_entries",
         "stream=width,height,r_frame_rate,avg_frame_rate,duration,time_base:"
         "stream_tags=rotate:stream_side_data_list=rotation,side_data_type:format=duration:"
-        "frame=best_effort_timestamp_time,pkt_duration_time", "-of", "json", str(path),
+        "frame=best_effort_timestamp_time,pkt_duration_time,duration_time", "-of", "json", str(path),
     ]).stdout)
     try:
         if len(data["streams"]) != 1:
@@ -83,6 +84,10 @@ def probe_video(path: Path) -> dict:
         origin = times[0]
         timestamps = [t - origin for t in times]
         last_duration = base._number(data["frames"][-1].get("pkt_duration_time"))
+        if last_duration is None:
+            # FFprobe 4.4 reports pkt_duration_time; newer versions renamed the
+            # decoded frame-duration field. Both describe measured metadata.
+            last_duration = base._number(data["frames"][-1].get("duration_time"))
         # The final PTS itself is a conservative usable endpoint if its duration
         # is unavailable; never invent extra post-event material from nominal FPS.
         decoded_end = timestamps[-1] + (last_duration if last_duration and last_duration > 0 else 0)
@@ -330,7 +335,15 @@ def build_crop_command(source: Path, output: Path, candidate: dict) -> list[str]
             "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(output)]
 
 
-def crop_video(source: Path, output: Path, candidate: dict, roi_media: dict, roi_features) -> dict:
+def crop_video(source: Path, output: Path, candidate: dict, roi_media: dict, roi_features,
+               source_proof: dict | None = None) -> dict:
+    if source_proof is None:
+        raise AlignmentUncertain("source_frame_preserving_replay_required")
+    try:
+        replay.validate_source_receipt(source_proof, source, candidate)
+    except replay.ReplayUncertain as exc:
+        raise AlignmentUncertain("source_frame_preserving_replay_unverified",
+                                 {"replay_reason": str(exc), "replay_details": exc.details}) from exc
     fd, name = tempfile.mkstemp(prefix=".aligned-cut-", suffix=".mp4", dir=output.parent)
     os.close(fd); Path(name).unlink()
     try:
@@ -350,12 +363,25 @@ def crop_video(source: Path, output: Path, candidate: dict, roi_media: dict, roi
         if pts_error > pts_tolerance:
             raise AlignmentUncertain("output_presentation_timestamps_changed")
         anchors = [0, end - start - 1] + [i - start for i in candidate["source_anchor_frames"] if start <= i < end]
-        picture = compare_sequences(roi_features[start:end], _features(Path(name)), anchors)
+        picture_issue = None
+        try:
+            picture = compare_sequences(roi_features[start:end], _features(Path(name)), anchors)
+        except AlignmentUncertain as exc:
+            picture_issue = exc
+            picture = {"status": "pending", "reason": str(exc), "details": exc.details}
+        clip_proof = None
+        try:
+            clip_proof = replay.verify_clip_replay(source, Path(name), candidate, roi_media, source_proof)
+        except replay.ReplayUncertain as exc:
+            raise AlignmentUncertain("clip_frame_preserving_replay_unverified",
+                                     {"replay_reason": str(exc), "replay_details": exc.details,
+                                      "picture_evidence": picture}) from exc
         if base.sha256_file(source) != candidate["roi_sha256"]:
             raise base.PilotError("ROI_changed_during_crop")
         digest = base.sha256_file(Path(name))
         os.link(name, output)
         return {"sha256": digest, "media": media, "picture_correspondence": picture,
+                "frame_preserving_replay": clip_proof,
                 "timestamp_mapping": {"max_error_seconds": pts_error,
                                       "quantization_tolerance_seconds": pts_tolerance},
                 "full_decode": "passed", "frame_mapping": {"roi_start_frame": start, "output_start_frame": 0,
@@ -447,12 +473,26 @@ def run(project_root: Path, output_dir: Path, *, plan_only=False, resume=False) 
                 record = adapt_annotation(rows[video_id], raw_media)
                 source["geometry_input"] = record
                 windows, excluded = plan_windows(record, raw_media)
-                expected = _features(raw, source_roi_filter(roi)); actual = _features(roi_path)
-                evidence = compare_sequences(expected, actual, record["anchor_frames"] or [0, len(expected)//2, len(expected)-1])
+                picture_issue = None
+                try:
+                    expected = _features(raw, source_roi_filter(roi)); actual = _features(roi_path)
+                    evidence = compare_sequences(expected, actual, record["anchor_frames"] or [0, len(expected)//2, len(expected)-1])
+                except (AlignmentUncertain, base.PilotError) as exc:
+                    picture_issue = exc
+                    evidence = {"status": "pending", "reason": str(exc), "details": getattr(exc, "details", {})}
+                source["picture_correspondence"] = evidence
+                source_proof = None
+                try:
+                    source_proof = replay.verify_source_replay(raw, roi_path, roi, source_annotation=rows[video_id])
+                except replay.ReplayUncertain as exc:
+                    source["replay_issue"] = {"reason": str(exc), "details": exc.details}
+                if source_proof is None:
+                    raise AlignmentUncertain("source_frame_preserving_replay_unverified",
+                                             {"picture_evidence": evidence, "replay_issue": source.get("replay_issue")})
                 source.update(status="planned", source_path=raw.relative_to(root).as_posix(),
                               roi_path=roi_path.relative_to(root).as_posix(), source_sha256=raw_sha, roi_sha256=roi_sha,
                               source_media=raw_media, roi_media=roi_media, geometry_input=record,
-                              picture_correspondence=evidence)
+                              picture_correspondence=evidence, frame_preserving_replay=source_proof)
                 source.pop("checking_stage", None)
                 manifest["excluded_windows"].extend(dict(w, source_video_id=video_id) for w in excluded)
                 for w in windows:
@@ -494,7 +534,8 @@ def run(project_root: Path, output_dir: Path, *, plan_only=False, resume=False) 
                     if s["video_id"] not in cache:
                         cache.clear()  # Candidates are source-grouped; keep one decoded sequence.
                         cache[s["video_id"]] = _features(root/s["roi_path"])
-                    result = crop_video(root/s["roi_path"], dest, candidate, s["roi_media"], cache[s["video_id"]])
+                    result = crop_video(root/s["roi_path"], dest, candidate, s["roi_media"], cache[s["video_id"]],
+                                        source_proof=s.get("frame_preserving_replay"))
                     if (base.sha256_file(root/s["roi_path"]) != s["roi_sha256"]
                         or base.sha256_file(root/s["source_path"]) != s["source_sha256"]):
                         dest.unlink(missing_ok=True)  # Only this run's newly linked file.

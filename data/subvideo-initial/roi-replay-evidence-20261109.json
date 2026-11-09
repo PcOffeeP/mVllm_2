@@ -1,0 +1,5844 @@
+{
+  "header": {
+    "baseline_load1": 2.42,
+    "candidate_policy": "replay_one_per_ID_from_existing_pipeline_builder_replace_-y_with_-n",
+    "cpu_count": 32,
+    "ffmpeg_version": {
+      "exit": 0,
+      "first_line": "ffmpeg version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2000-2021 the FFmpeg developers",
+      "stderr": ""
+    },
+    "ffprobe_version": "ffprobe version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2007-2021 the FFmpeg developers",
+    "full_decode": "rgb24 per-frame SHA256 with ffmpeg -xerror -vsync 0",
+    "head": "000716eb0ff28978ebd7a6d151819af0fa38b47a",
+    "held_overlap": [],
+    "ionice": {
+      "class": 2,
+      "level": 7
+    },
+    "load_ceiling_before_next_item": 12.0,
+    "nice": 19,
+    "planned_sample_count": 5,
+    "proof_rule": "all identity, filter, rotation, decoded count, candidate file SHA, per-frame pixel SHA and relevant anchor checks exact; PTS differences recorded but not required equal",
+    "record_type": "run_header",
+    "scratch_dir": "/tmp/subvideo-roi-replay-21-000716e-98dLnN",
+    "source_logs": [
+      "/tmp/subvideo-frame-correspondence-dccc252-20261109.log",
+      "/tmp/subvideo-frame-correspondence-planned-sample5-dccc252-20261109.log"
+    ],
+    "target_count": 21,
+    "target_ids": [
+      "video_0001",
+      "video_0003",
+      "video_0004",
+      "video_0006",
+      "video_0007",
+      "video_0009",
+      "video_0011",
+      "video_0017",
+      "video_0027",
+      "video_0029",
+      "video_0030",
+      "video_0043",
+      "video_0044",
+      "video_0046",
+      "video_0052",
+      "video_0053",
+      "video_0076",
+      "video_0079",
+      "video_0099",
+      "video_0100",
+      "video_0101"
+    ],
+    "test_overlap": [],
+    "timestamp_target_count": 16
+  },
+  "input_sha256": {
+    "frame_diagnostic": "9d7360342028aa84792d326274b547f7ea79249116d2099d27798afcda8eea5c",
+    "labels": "9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81",
+    "roi_manifest": "de202f2091d00acf34b4e6a3a774cb3fc410ff203b841e1aa1ab6a1a893a2ad8"
+  },
+  "limitations": [
+    "source_to_ROI_only",
+    "not_ROI_to_subvideo",
+    "not_human_review_or_final_labels",
+    "temporary_paths_are_historical",
+    "does_not_establish_unchecked_sources"
+  ],
+  "purpose": "source_to_existing_ROI_exact_replay_investigation_only",
+  "results": [
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "1165",
+        "csv_before": "1164",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 1164,
+            "position": "before"
+          },
+          {
+            "index": 1165,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          1164,
+          1165
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0001-replay.mp4",
+      "candidate_sha256": "8433869765eee02384180c3f623d4ac4c9e609955cc9b55619d97ba107ba25b7",
+      "elapsed_seconds": 3.124,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0001.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=222:296:148:162,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0001-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0001-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 1213,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 1213,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0001.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 1213,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.557,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 296,
+          "width": 222,
+          "x": 148,
+          "y": 162
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=222:296:148:162,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=222:296:148:162,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0001.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0001.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 1,
+      "probes": {
+        "candidate": {
+          "duration": 40.433333,
+          "frame_count": 1213,
+          "frame_rate": "30/1",
+          "height": 296,
+          "nominal_frame_rate": "30/1",
+          "width": 222
+        },
+        "existing_roi": {
+          "duration": 40.433333,
+          "frame_count": 1213,
+          "frame_rate": "30/1",
+          "height": 296,
+          "nominal_frame_rate": "30/1",
+          "width": 222
+        },
+        "source": {
+          "duration": 40.4333,
+          "frame_count": 1213,
+          "frame_rate": "30/1",
+          "height": 670,
+          "nominal_frame_rate": "30/1",
+          "width": 456
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "80fbf4334aacc79ae434e1d535e4ca91ae5389d72729e7f86c2be6bdc4928a64",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 38.8,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "80fbf4334aacc79ae434e1d535e4ca91ae5389d72729e7f86c2be6bdc4928a64",
+            "existing_roi_pts": 38.8,
+            "index": 1164,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 38.8
+          },
+          {
+            "candidate_frame_sha256": "4875c7424f63b25b38376c0dd4c6b043cfd785e2f70517e6334da1ab38080456",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 38.833333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "4875c7424f63b25b38376c0dd4c6b043cfd785e2f70517e6334da1ab38080456",
+            "existing_roi_pts": 38.833333,
+            "index": 1165,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 38.833333
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 1213,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 1213,
+          "existing_roi": 1213,
+          "source": 1213
+        },
+        "source_vs_candidate": {
+          "aligned_count": 1213,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "5db06f47a3903b7ae25f95e3b128b2ed367b7029e2210c981d6876d262cacc0f",
+        "roi_actual": "8433869765eee02384180c3f623d4ac4c9e609955cc9b55619d97ba107ba25b7",
+        "roi_manifest": "8433869765eee02384180c3f623d4ac4c9e609955cc9b55619d97ba107ba25b7",
+        "roi_matches": true,
+        "source_actual": "5db06f47a3903b7ae25f95e3b128b2ed367b7029e2210c981d6876d262cacc0f",
+        "source_manifest": "5db06f47a3903b7ae25f95e3b128b2ed367b7029e2210c981d6876d262cacc0f",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0001"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "787",
+        "csv_before": "786",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 786,
+            "position": "before"
+          },
+          {
+            "index": 787,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          786,
+          787
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0003-replay.mp4",
+      "candidate_sha256": "81ebaf15c754bd7526db9d48dc95207153d643aa579ce75c869aff4a4ae00aa7",
+      "elapsed_seconds": 3.097,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0003.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=330:440:85:54,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0003-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0003-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 912,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 912,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0003.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 912,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.613,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 440,
+          "width": 330,
+          "x": 84,
+          "y": 54
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=330:440:85:54,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=330:440:85:54,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0003.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0003.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 2,
+      "probes": {
+        "candidate": {
+          "duration": 30.4,
+          "frame_count": 912,
+          "frame_rate": "30/1",
+          "height": 440,
+          "nominal_frame_rate": "30/1",
+          "width": 330
+        },
+        "existing_roi": {
+          "duration": 30.4,
+          "frame_count": 912,
+          "frame_rate": "30/1",
+          "height": 440,
+          "nominal_frame_rate": "30/1",
+          "width": 330
+        },
+        "source": {
+          "duration": 30.4,
+          "frame_count": 912,
+          "frame_rate": "30/1",
+          "height": 602,
+          "nominal_frame_rate": "30/1",
+          "width": 518
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "5f07a1c612126693221fbc5fc7118e6b8580332f7bbc96f863a752deee8d3ebf",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 26.2,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "5f07a1c612126693221fbc5fc7118e6b8580332f7bbc96f863a752deee8d3ebf",
+            "existing_roi_pts": 26.2,
+            "index": 786,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 26.2
+          },
+          {
+            "candidate_frame_sha256": "540e1ae53e570d20e6e9dbd04b2ac4e566f434b6184cff612ec474db7c14201d",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 26.233333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "540e1ae53e570d20e6e9dbd04b2ac4e566f434b6184cff612ec474db7c14201d",
+            "existing_roi_pts": 26.233333,
+            "index": 787,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 26.233333
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 912,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 912,
+          "existing_roi": 912,
+          "source": 912
+        },
+        "source_vs_candidate": {
+          "aligned_count": 912,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "efb2ba8f01e992fdf8e883d48f99e34f331e1ce2b2dec06bd30d3962439f8634",
+        "roi_actual": "81ebaf15c754bd7526db9d48dc95207153d643aa579ce75c869aff4a4ae00aa7",
+        "roi_manifest": "81ebaf15c754bd7526db9d48dc95207153d643aa579ce75c869aff4a4ae00aa7",
+        "roi_matches": true,
+        "source_actual": "efb2ba8f01e992fdf8e883d48f99e34f331e1ce2b2dec06bd30d3962439f8634",
+        "source_manifest": "efb2ba8f01e992fdf8e883d48f99e34f331e1ce2b2dec06bd30d3962439f8634",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0003"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "5511",
+        "csv_before": "5510",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 5510,
+            "position": "before"
+          },
+          {
+            "index": 5511,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          5510,
+          5511
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0004-replay.mp4",
+      "candidate_sha256": "90067325bdc424c265729f2a7d4fec8ca01628686a26486014b693dd2664e446",
+      "elapsed_seconds": 37.192,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0004.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=144:192:698:196,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0004-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0004-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 5657,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 5657,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0004.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 5657,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 3.189,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 192,
+          "width": 144,
+          "x": 698,
+          "y": 196
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=144:192:698:196,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=144:192:698:196,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0004.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0004.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 3,
+      "probes": {
+        "candidate": {
+          "duration": 188.566667,
+          "frame_count": 5657,
+          "frame_rate": "30/1",
+          "height": 192,
+          "nominal_frame_rate": "30/1",
+          "width": 144
+        },
+        "existing_roi": {
+          "duration": 188.566667,
+          "frame_count": 5657,
+          "frame_rate": "30/1",
+          "height": 192,
+          "nominal_frame_rate": "30/1",
+          "width": 144
+        },
+        "source": {
+          "duration": 188.561667,
+          "frame_count": 5657,
+          "frame_rate": "56570000/1885617",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "48edda6feef1919702e053bb81e438ce142e6e1a1e3073650675b07b290cdff1",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 183.666667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "48edda6feef1919702e053bb81e438ce142e6e1a1e3073650675b07b290cdff1",
+            "existing_roi_pts": 183.666667,
+            "index": 5510,
+            "position": "before",
+            "source_minus_candidate_seconds": -0.0024999999999977263,
+            "source_pts": 183.664167
+          },
+          {
+            "candidate_frame_sha256": "68eeae22f7b0fb956d1ff04a454d8684196fae501ac8a4b42d07035dd0dcc549",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 183.7,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "68eeae22f7b0fb956d1ff04a454d8684196fae501ac8a4b42d07035dd0dcc549",
+            "existing_roi_pts": 183.7,
+            "index": 5511,
+            "position": "after",
+            "source_minus_candidate_seconds": -0.003599999999977399,
+            "source_pts": 183.6964
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 5657,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 5657,
+          "existing_roi": 5657,
+          "source": 5657
+        },
+        "source_vs_candidate": {
+          "aligned_count": 5657,
+          "count_equal": true,
+          "max_abs_seconds": 0.01469999999999061,
+          "max_index": 2807,
+          "mean_abs_seconds": 0.006803093866006765
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "c494ed9fb56c97f9aca35513f73738398e1ce71f9d5505212d54283a3ced68ea",
+        "roi_actual": "90067325bdc424c265729f2a7d4fec8ca01628686a26486014b693dd2664e446",
+        "roi_manifest": "90067325bdc424c265729f2a7d4fec8ca01628686a26486014b693dd2664e446",
+        "roi_matches": true,
+        "source_actual": "c494ed9fb56c97f9aca35513f73738398e1ce71f9d5505212d54283a3ced68ea",
+        "source_manifest": "c494ed9fb56c97f9aca35513f73738398e1ce71f9d5505212d54283a3ced68ea",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0004"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "649",
+        "csv_before": "648",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 648,
+            "position": "before"
+          },
+          {
+            "index": 649,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          648,
+          649
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0006-replay.mp4",
+      "candidate_sha256": "4b0f3c65fbd87c4590ea02389cccca5e0098cb9cbbd7f3ec7494635c957f6f85",
+      "elapsed_seconds": 4.835,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0006.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=426:568:381:123,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0006-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0006-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 699,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 699,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0006.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 699,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.606,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 568,
+          "width": 426,
+          "x": 380,
+          "y": 122
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=426:568:381:123,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=426:568:381:123,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0006.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0006.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 4,
+      "probes": {
+        "candidate": {
+          "duration": 23.3,
+          "frame_count": 699,
+          "frame_rate": "30/1",
+          "height": 568,
+          "nominal_frame_rate": "30/1",
+          "width": 426
+        },
+        "existing_roi": {
+          "duration": 23.3,
+          "frame_count": 699,
+          "frame_rate": "30/1",
+          "height": 568,
+          "nominal_frame_rate": "30/1",
+          "width": 426
+        },
+        "source": {
+          "duration": 23.3,
+          "frame_count": 699,
+          "frame_rate": "30/1",
+          "height": 880,
+          "nominal_frame_rate": "30/1",
+          "width": 1120
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "07fa5a7f7175f259aeac6201298b298e2cccfb3b5a96c5e0b07671bda9d9efe0",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 21.6,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "07fa5a7f7175f259aeac6201298b298e2cccfb3b5a96c5e0b07671bda9d9efe0",
+            "existing_roi_pts": 21.6,
+            "index": 648,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 21.6
+          },
+          {
+            "candidate_frame_sha256": "ee9607ad16bef27aa365bf04a57ffe61e9f681ad623cb5b828575d318aa7cdec",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 21.633333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "ee9607ad16bef27aa365bf04a57ffe61e9f681ad623cb5b828575d318aa7cdec",
+            "existing_roi_pts": 21.633333,
+            "index": 649,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 21.633333
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 699,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 699,
+          "existing_roi": 699,
+          "source": 699
+        },
+        "source_vs_candidate": {
+          "aligned_count": 699,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "cf205cb18b1fc41ca0c69f209d3c6071aa4624e9b1631ba7beec641efa0f68e0",
+        "roi_actual": "4b0f3c65fbd87c4590ea02389cccca5e0098cb9cbbd7f3ec7494635c957f6f85",
+        "roi_manifest": "4b0f3c65fbd87c4590ea02389cccca5e0098cb9cbbd7f3ec7494635c957f6f85",
+        "roi_matches": true,
+        "source_actual": "cf205cb18b1fc41ca0c69f209d3c6071aa4624e9b1631ba7beec641efa0f68e0",
+        "source_manifest": "cf205cb18b1fc41ca0c69f209d3c6071aa4624e9b1631ba7beec641efa0f68e0",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0006"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "1485",
+        "csv_before": "1484",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 1484,
+            "position": "before"
+          },
+          {
+            "index": 1485,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          1484,
+          1485
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0007-replay.mp4",
+      "candidate_sha256": "d10ef57dabf311b866a67ae9ddc117c60b28183207372f7503e98b231a402864",
+      "elapsed_seconds": 4.574,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0007.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=306:408:98:84,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0007-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0007-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 1530,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 1530,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0007.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 1530,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.732,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 408,
+          "width": 306,
+          "x": 98,
+          "y": 84
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=306:408:98:84,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=306:408:98:84,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0007.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0007.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 5,
+      "probes": {
+        "candidate": {
+          "duration": 51.0,
+          "frame_count": 1530,
+          "frame_rate": "30/1",
+          "height": 408,
+          "nominal_frame_rate": "30/1",
+          "width": 306
+        },
+        "existing_roi": {
+          "duration": 51.0,
+          "frame_count": 1530,
+          "frame_rate": "30/1",
+          "height": 408,
+          "nominal_frame_rate": "30/1",
+          "width": 306
+        },
+        "source": {
+          "duration": 51.0,
+          "frame_count": 1530,
+          "frame_rate": "30/1",
+          "height": 688,
+          "nominal_frame_rate": "30/1",
+          "width": 496
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "0cb4340ddc64f7f6a6e9555a2c3a6bd75ee8778a0cbe99ad9b47fbb3cf40803a",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 49.466667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "0cb4340ddc64f7f6a6e9555a2c3a6bd75ee8778a0cbe99ad9b47fbb3cf40803a",
+            "existing_roi_pts": 49.466667,
+            "index": 1484,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 49.466667
+          },
+          {
+            "candidate_frame_sha256": "1413ee89f6c4ed06c87954c118b0401c499cf275013d7a4c83fd9b45414f7dcf",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 49.5,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "1413ee89f6c4ed06c87954c118b0401c499cf275013d7a4c83fd9b45414f7dcf",
+            "existing_roi_pts": 49.5,
+            "index": 1485,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 49.5
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 1530,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 1530,
+          "existing_roi": 1530,
+          "source": 1530
+        },
+        "source_vs_candidate": {
+          "aligned_count": 1530,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "4ec61f34f807cd6962286d9163bab9006be4c19ffe42950bf4b7b22d00755a89",
+        "roi_actual": "d10ef57dabf311b866a67ae9ddc117c60b28183207372f7503e98b231a402864",
+        "roi_manifest": "d10ef57dabf311b866a67ae9ddc117c60b28183207372f7503e98b231a402864",
+        "roi_matches": true,
+        "source_actual": "4ec61f34f807cd6962286d9163bab9006be4c19ffe42950bf4b7b22d00755a89",
+        "source_manifest": "4ec61f34f807cd6962286d9163bab9006be4c19ffe42950bf4b7b22d00755a89",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0007"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "5652",
+        "csv_before": "5651",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 5651,
+            "position": "before"
+          },
+          {
+            "index": 5652,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          5651,
+          5652
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0009-replay.mp4",
+      "candidate_sha256": "a2659da01cef87d4db1090110f0c0ba401a6164453688c17f1673feada2102af",
+      "elapsed_seconds": 39.494,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0009.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=150:200:694:189,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0009-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0009-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 5767,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 5767,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0009.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 5767,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 2.925,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 200,
+          "width": 150,
+          "x": 694,
+          "y": 188
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=150:200:694:189,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=150:200:694:189,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0009.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0009.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 6,
+      "probes": {
+        "candidate": {
+          "duration": 192.233333,
+          "frame_count": 5767,
+          "frame_rate": "30/1",
+          "height": 200,
+          "nominal_frame_rate": "30/1",
+          "width": 150
+        },
+        "existing_roi": {
+          "duration": 192.233333,
+          "frame_count": 5767,
+          "frame_rate": "30/1",
+          "height": 200,
+          "nominal_frame_rate": "30/1",
+          "width": 150
+        },
+        "source": {
+          "duration": 192.225467,
+          "frame_count": 5767,
+          "frame_rate": "43252500/1441691",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "823c668fee99f35bf27e5f9ff266209f04a774d6529d8e0d6601e94fba25a9e1",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 188.366667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "823c668fee99f35bf27e5f9ff266209f04a774d6529d8e0d6601e94fba25a9e1",
+            "existing_roi_pts": 188.366667,
+            "index": 5651,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0015329999999948996,
+            "source_pts": 188.3682
+          },
+          {
+            "candidate_frame_sha256": "9b59dc0db825ac560afdd107b78d6e8aa2142c258b45ca2247e868dd46205f46",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 188.4,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "9b59dc0db825ac560afdd107b78d6e8aa2142c258b45ca2247e868dd46205f46",
+            "existing_roi_pts": 188.4,
+            "index": 5652,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0002000000000066393,
+            "source_pts": 188.4002
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 5767,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 5767,
+          "existing_roi": 5767,
+          "source": 5767
+        },
+        "source_vs_candidate": {
+          "aligned_count": 5767,
+          "count_equal": true,
+          "max_abs_seconds": 0.012033000000002403,
+          "max_index": 5673,
+          "mean_abs_seconds": 0.004801287844633338
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "a6527fda3b2033506f841a65d75989748ea132fcdfd0ecbafc5389d0321242fd",
+        "roi_actual": "a2659da01cef87d4db1090110f0c0ba401a6164453688c17f1673feada2102af",
+        "roi_manifest": "a2659da01cef87d4db1090110f0c0ba401a6164453688c17f1673feada2102af",
+        "roi_matches": true,
+        "source_actual": "a6527fda3b2033506f841a65d75989748ea132fcdfd0ecbafc5389d0321242fd",
+        "source_manifest": "a6527fda3b2033506f841a65d75989748ea132fcdfd0ecbafc5389d0321242fd",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0009"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "404",
+        "csv_before": "403",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 403,
+            "position": "before"
+          },
+          {
+            "index": 404,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          403,
+          404
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0011-replay.mp4",
+      "candidate_sha256": "6c7da50a8d069820cedb1e65d2d6046113482e5f6f86138ef53a8f0c4575be5d",
+      "elapsed_seconds": 1.107,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0011.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=120:160:194:240,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0011-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0011-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 457,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 457,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0011.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 457,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.156,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 160,
+          "width": 120,
+          "x": 194,
+          "y": 240
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=120:160:194:240,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=120:160:194:240,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0011.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0011.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 7,
+      "probes": {
+        "candidate": {
+          "duration": 15.233333,
+          "frame_count": 457,
+          "frame_rate": "30/1",
+          "height": 160,
+          "nominal_frame_rate": "30/1",
+          "width": 120
+        },
+        "existing_roi": {
+          "duration": 15.233333,
+          "frame_count": 457,
+          "frame_rate": "30/1",
+          "height": 160,
+          "nominal_frame_rate": "30/1",
+          "width": 120
+        },
+        "source": {
+          "duration": 15.2333,
+          "frame_count": 457,
+          "frame_rate": "30/1",
+          "height": 582,
+          "nominal_frame_rate": "30/1",
+          "width": 494
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "96f940b0fba27d6701d5f77627630730952c97bf04f6a2bb5ba778173889f70a",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 13.433333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "96f940b0fba27d6701d5f77627630730952c97bf04f6a2bb5ba778173889f70a",
+            "existing_roi_pts": 13.433333,
+            "index": 403,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 13.433333
+          },
+          {
+            "candidate_frame_sha256": "80fbf342f8aa09193f088610913b7c8e0e8ed22d2d2418413f97fdc0b754a38a",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 13.466667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "80fbf342f8aa09193f088610913b7c8e0e8ed22d2d2418413f97fdc0b754a38a",
+            "existing_roi_pts": 13.466667,
+            "index": 404,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 13.466667
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 457,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 457,
+          "existing_roi": 457,
+          "source": 457
+        },
+        "source_vs_candidate": {
+          "aligned_count": 457,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "f5efe80167cc56d04c1a80b7e682db6a71441477e6e8b060cee2d6aabe30b6b2",
+        "roi_actual": "6c7da50a8d069820cedb1e65d2d6046113482e5f6f86138ef53a8f0c4575be5d",
+        "roi_manifest": "6c7da50a8d069820cedb1e65d2d6046113482e5f6f86138ef53a8f0c4575be5d",
+        "roi_matches": true,
+        "source_actual": "f5efe80167cc56d04c1a80b7e682db6a71441477e6e8b060cee2d6aabe30b6b2",
+        "source_manifest": "f5efe80167cc56d04c1a80b7e682db6a71441477e6e8b060cee2d6aabe30b6b2",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0011"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "6208",
+        "csv_before": "6207",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 6207,
+            "position": "before"
+          },
+          {
+            "index": 6208,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          6207,
+          6208
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0017-replay.mp4",
+      "candidate_sha256": "7e393b61d25eb223fed01487ee5fa3fab536c570d1c5859287a713c124fc8b26",
+      "elapsed_seconds": 42.178,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0017.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=162:216:682:178,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0017-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0017-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 6322,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 6322,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0017.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 6322,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 3.382,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 216,
+          "width": 162,
+          "x": 682,
+          "y": 178
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=162:216:682:178,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=162:216:682:178,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0017.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0017.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 8,
+      "probes": {
+        "candidate": {
+          "duration": 210.733333,
+          "frame_count": 6322,
+          "frame_rate": "30/1",
+          "height": 216,
+          "nominal_frame_rate": "30/1",
+          "width": 162
+        },
+        "existing_roi": {
+          "duration": 210.733333,
+          "frame_count": 6322,
+          "frame_rate": "30/1",
+          "height": 216,
+          "nominal_frame_rate": "30/1",
+          "width": 162
+        },
+        "source": {
+          "duration": 210.721733,
+          "frame_count": 6322,
+          "frame_rate": "31610000/1053609",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "82a198c58fe4dd3895a1204ee18a3226a7375b49e8ec82c424bfe82763b6a06e",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 206.9,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "82a198c58fe4dd3895a1204ee18a3226a7375b49e8ec82c424bfe82763b6a06e",
+            "existing_roi_pts": 206.9,
+            "index": 6207,
+            "position": "before",
+            "source_minus_candidate_seconds": -0.004032999999992626,
+            "source_pts": 206.895967
+          },
+          {
+            "candidate_frame_sha256": "c80d5f2723828090b50b27f7f68622708dec20e5daf0a5c2c4c9100266f0c72b",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 206.933333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "c80d5f2723828090b50b27f7f68622708dec20e5daf0a5c2c4c9100266f0c72b",
+            "existing_roi_pts": 206.933333,
+            "index": 6208,
+            "position": "after",
+            "source_minus_candidate_seconds": -0.00533300000000736,
+            "source_pts": 206.928
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 6322,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 6322,
+          "existing_roi": 6322,
+          "source": 6322
+        },
+        "source_vs_candidate": {
+          "aligned_count": 6322,
+          "count_equal": true,
+          "max_abs_seconds": 0.011899999999997135,
+          "max_index": 5193,
+          "mean_abs_seconds": 0.004715260835178772
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "a18c4d9718b30e640da9430db90286be1b633a4314f840637a8972920fbc522b",
+        "roi_actual": "7e393b61d25eb223fed01487ee5fa3fab536c570d1c5859287a713c124fc8b26",
+        "roi_manifest": "7e393b61d25eb223fed01487ee5fa3fab536c570d1c5859287a713c124fc8b26",
+        "roi_matches": true,
+        "source_actual": "a18c4d9718b30e640da9430db90286be1b633a4314f840637a8972920fbc522b",
+        "source_manifest": "a18c4d9718b30e640da9430db90286be1b633a4314f840637a8972920fbc522b",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0017"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "5660",
+        "csv_before": "5659",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 5659,
+            "position": "before"
+          },
+          {
+            "index": 5660,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          5659,
+          5660
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0027-replay.mp4",
+      "candidate_sha256": "25a5220abdcb1667a45dab5e7d27b7db7f3384045ab9bb015f1dc957240b13ca",
+      "elapsed_seconds": 38.394,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0027.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=156:208:690:185,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0027-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0027-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 5744,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 5744,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0027.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 5744,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 3.11,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 208,
+          "width": 156,
+          "x": 690,
+          "y": 184
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=156:208:690:185,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=156:208:690:185,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0027.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0027.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 9,
+      "probes": {
+        "candidate": {
+          "duration": 191.5,
+          "frame_count": 5744,
+          "frame_rate": "11488/383",
+          "height": 208,
+          "nominal_frame_rate": "30/1",
+          "width": 156
+        },
+        "existing_roi": {
+          "duration": 191.5,
+          "frame_count": 5744,
+          "frame_rate": "11488/383",
+          "height": 208,
+          "nominal_frame_rate": "30/1",
+          "width": 156
+        },
+        "source": {
+          "duration": 191.489867,
+          "frame_count": 5744,
+          "frame_rate": "21540000/718087",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "f6d0dfec2ec6edb0ce841c7da09ffd90e9d63dfd47967db825f594be989c7760",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 188.666667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "f6d0dfec2ec6edb0ce841c7da09ffd90e9d63dfd47967db825f594be989c7760",
+            "existing_roi_pts": 188.666667,
+            "index": 5659,
+            "position": "before",
+            "source_minus_candidate_seconds": -0.010166999999995596,
+            "source_pts": 188.6565
+          },
+          {
+            "candidate_frame_sha256": "080d2a191b7ed5e7c1fe72e3465c1d908fc553c658435b49bb97bd4d301b45ce",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 188.7,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "080d2a191b7ed5e7c1fe72e3465c1d908fc553c658435b49bb97bd4d301b45ce",
+            "existing_roi_pts": 188.7,
+            "index": 5660,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0042669999999986885,
+            "source_pts": 188.704267
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 5744,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 5744,
+          "existing_roi": 5744,
+          "source": 5744
+        },
+        "source_vs_candidate": {
+          "aligned_count": 5744,
+          "count_equal": true,
+          "max_abs_seconds": 0.01566700000000054,
+          "max_index": 1223,
+          "mean_abs_seconds": 0.004501439589136555
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "30d2a22b2f2688cb6c0a1736fe7943f32e427b6d0ad15d1f68e84ea6e677166c",
+        "roi_actual": "25a5220abdcb1667a45dab5e7d27b7db7f3384045ab9bb015f1dc957240b13ca",
+        "roi_manifest": "25a5220abdcb1667a45dab5e7d27b7db7f3384045ab9bb015f1dc957240b13ca",
+        "roi_matches": true,
+        "source_actual": "30d2a22b2f2688cb6c0a1736fe7943f32e427b6d0ad15d1f68e84ea6e677166c",
+        "source_manifest": "30d2a22b2f2688cb6c0a1736fe7943f32e427b6d0ad15d1f68e84ea6e677166c",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0027"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "5180",
+        "csv_before": "5179",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 5179,
+            "position": "before"
+          },
+          {
+            "index": 5180,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          5179,
+          5180
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0029-replay.mp4",
+      "candidate_sha256": "72dd1f454b93d41f2b19a1123efcbe78d046605197cbe414bdddf6ef79851165",
+      "elapsed_seconds": 33.683,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0029.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=144:192:697:314,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0029-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0029-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 5310,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 5310,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0029.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 5310,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 2.719,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 192,
+          "width": 144,
+          "x": 696,
+          "y": 314
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=144:192:697:314,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=144:192:697:314,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0029.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0029.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 10,
+      "probes": {
+        "candidate": {
+          "duration": 177.0,
+          "frame_count": 5310,
+          "frame_rate": "30/1",
+          "height": 192,
+          "nominal_frame_rate": "30/1",
+          "width": 144
+        },
+        "existing_roi": {
+          "duration": 177.0,
+          "frame_count": 5310,
+          "frame_rate": "30/1",
+          "height": 192,
+          "nominal_frame_rate": "30/1",
+          "width": 144
+        },
+        "source": {
+          "duration": 176.993767,
+          "frame_count": 5310,
+          "frame_rate": "26550000/884969",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "47058a14cc6fadf55b6abfb143989a7fc24c6b7ad24974f3bcd36b91fd3d1b57",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 172.633333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "47058a14cc6fadf55b6abfb143989a7fc24c6b7ad24974f3bcd36b91fd3d1b57",
+            "existing_roi_pts": 172.633333,
+            "index": 5179,
+            "position": "before",
+            "source_minus_candidate_seconds": -0.009265999999996666,
+            "source_pts": 172.624067
+          },
+          {
+            "candidate_frame_sha256": "a77b64c3bf6382bcb548ee9e7bc0d8bf445d61368e17f27e989c43f8bbb74730",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 172.666667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "a77b64c3bf6382bcb548ee9e7bc0d8bf445d61368e17f27e989c43f8bbb74730",
+            "existing_roi_pts": 172.666667,
+            "index": 5180,
+            "position": "after",
+            "source_minus_candidate_seconds": -0.010266999999998916,
+            "source_pts": 172.6564
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 5310,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 5310,
+          "existing_roi": 5310,
+          "source": 5310
+        },
+        "source_vs_candidate": {
+          "aligned_count": 5310,
+          "count_equal": true,
+          "max_abs_seconds": 0.010567000000008875,
+          "max_index": 5144,
+          "mean_abs_seconds": 0.004147581355932171
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "f74010b4eea1e2ab93411232c2ec8ab4e911e147a93202cff22fcffe1f85c815",
+        "roi_actual": "72dd1f454b93d41f2b19a1123efcbe78d046605197cbe414bdddf6ef79851165",
+        "roi_manifest": "72dd1f454b93d41f2b19a1123efcbe78d046605197cbe414bdddf6ef79851165",
+        "roi_matches": true,
+        "source_actual": "f74010b4eea1e2ab93411232c2ec8ab4e911e147a93202cff22fcffe1f85c815",
+        "source_manifest": "f74010b4eea1e2ab93411232c2ec8ab4e911e147a93202cff22fcffe1f85c815",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0029"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "6076",
+        "csv_before": "6075",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 6075,
+            "position": "before"
+          },
+          {
+            "index": 6076,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          6075,
+          6076
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0030-replay.mp4",
+      "candidate_sha256": "b887410df88f9d0be69f44b06ef54805b364a2caf0468269a5899739996cc36f",
+      "elapsed_seconds": 40.211,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0030.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=138:184:702:312,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0030-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0030-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 6263,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 6263,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0030.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 6263,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 3.112,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 184,
+          "width": 138,
+          "x": 702,
+          "y": 312
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=138:184:702:312,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=138:184:702:312,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0030.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0030.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 11,
+      "probes": {
+        "candidate": {
+          "duration": 208.766667,
+          "frame_count": 6263,
+          "frame_rate": "30/1",
+          "height": 184,
+          "nominal_frame_rate": "30/1",
+          "width": 138
+        },
+        "existing_roi": {
+          "duration": 208.766667,
+          "frame_count": 6263,
+          "frame_rate": "30/1",
+          "height": 184,
+          "nominal_frame_rate": "30/1",
+          "width": 138
+        },
+        "source": {
+          "duration": 208.769433,
+          "frame_count": 6263,
+          "frame_rate": "46972500/1565771",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "6a601b7767e2004f6308e69bd6cb6f58b91d4a771ce5951e26f4e3570f9a097e",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 202.5,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "6a601b7767e2004f6308e69bd6cb6f58b91d4a771ce5951e26f4e3570f9a097e",
+            "existing_roi_pts": 202.5,
+            "index": 6075,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.012100000000003774,
+            "source_pts": 202.5121
+          },
+          {
+            "candidate_frame_sha256": "d13f10de9829a62cfd769ab0d939f759aceba1e5474c0128b52c32dc00a62353",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 202.533333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "d13f10de9829a62cfd769ab0d939f759aceba1e5474c0128b52c32dc00a62353",
+            "existing_roi_pts": 202.533333,
+            "index": 6076,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.01079999999998904,
+            "source_pts": 202.544133
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 6263,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 6263,
+          "existing_roi": 6263,
+          "source": 6263
+        },
+        "source_vs_candidate": {
+          "aligned_count": 6263,
+          "count_equal": true,
+          "max_abs_seconds": 0.014967000000000397,
+          "max_index": 121,
+          "mean_abs_seconds": 0.007092939006865705
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "601c897615581bd060128ad9598e32de2bd3c88928afb9402794996ed1e0831e",
+        "roi_actual": "b887410df88f9d0be69f44b06ef54805b364a2caf0468269a5899739996cc36f",
+        "roi_manifest": "b887410df88f9d0be69f44b06ef54805b364a2caf0468269a5899739996cc36f",
+        "roi_matches": true,
+        "source_actual": "601c897615581bd060128ad9598e32de2bd3c88928afb9402794996ed1e0831e",
+        "source_manifest": "601c897615581bd060128ad9598e32de2bd3c88928afb9402794996ed1e0831e",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0030"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "5473",
+        "csv_before": "5472",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 5472,
+            "position": "before"
+          },
+          {
+            "index": 5473,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          5472,
+          5473
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0043-replay.mp4",
+      "candidate_sha256": "a9d9412d2e87f20869b9ce2892f92ebeccd635ebbe73f7a43ae7a10e7b77b527",
+      "elapsed_seconds": 35.396,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0043.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=126:168:696:234,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0043-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0043-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 5621,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 5621,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0043.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 5621,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 2.944,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 168,
+          "width": 126,
+          "x": 696,
+          "y": 234
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=126:168:696:234,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=126:168:696:234,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0043.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0043.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 12,
+      "probes": {
+        "candidate": {
+          "duration": 187.366667,
+          "frame_count": 5621,
+          "frame_rate": "30/1",
+          "height": 168,
+          "nominal_frame_rate": "30/1",
+          "width": 126
+        },
+        "existing_roi": {
+          "duration": 187.366667,
+          "frame_count": 5621,
+          "frame_rate": "30/1",
+          "height": 168,
+          "nominal_frame_rate": "30/1",
+          "width": 126
+        },
+        "source": {
+          "duration": 187.361567,
+          "frame_count": 5621,
+          "frame_rate": "3513125/117101",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "475e527ce70df397b8321a421b01c5bccddf8446d4330f88264945738bdc0335",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 182.4,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "475e527ce70df397b8321a421b01c5bccddf8446d4330f88264945738bdc0335",
+            "existing_roi_pts": 182.4,
+            "index": 5472,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0002000000000066393,
+            "source_pts": 182.4002
+          },
+          {
+            "candidate_frame_sha256": "699ce2a69d4927a418feb86d012132d7b408d96d9f2b7accd367ca08e8f54d6f",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 182.433333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "699ce2a69d4927a418feb86d012132d7b408d96d9f2b7accd367ca08e8f54d6f",
+            "existing_roi_pts": 182.433333,
+            "index": 5473,
+            "position": "after",
+            "source_minus_candidate_seconds": -0.0011000000000080945,
+            "source_pts": 182.432233
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 5621,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 5621,
+          "existing_roi": 5621,
+          "source": 5621
+        },
+        "source_vs_candidate": {
+          "aligned_count": 5621,
+          "count_equal": true,
+          "max_abs_seconds": 0.010534000000006927,
+          "max_index": 5168,
+          "mean_abs_seconds": 0.004214055506137533
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "a817e0b8a54d15662f7666a2a1717608ffa5b08ff38b768894c9f81d77ac5137",
+        "roi_actual": "a9d9412d2e87f20869b9ce2892f92ebeccd635ebbe73f7a43ae7a10e7b77b527",
+        "roi_manifest": "a9d9412d2e87f20869b9ce2892f92ebeccd635ebbe73f7a43ae7a10e7b77b527",
+        "roi_matches": true,
+        "source_actual": "a817e0b8a54d15662f7666a2a1717608ffa5b08ff38b768894c9f81d77ac5137",
+        "source_manifest": "a817e0b8a54d15662f7666a2a1717608ffa5b08ff38b768894c9f81d77ac5137",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0043"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "5300",
+        "csv_before": "5299",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 5299,
+            "position": "before"
+          },
+          {
+            "index": 5300,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          5299,
+          5300
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0044-replay.mp4",
+      "candidate_sha256": "e02597d875bb2ff7dc445c0f9273fd9ac26c760fc9962aa0bd57de05a340d574",
+      "elapsed_seconds": 34.716,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0044.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=120:160:701:246,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0044-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0044-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 5482,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 5482,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0044.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 5482,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 2.924,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 160,
+          "width": 120,
+          "x": 700,
+          "y": 246
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=120:160:701:246,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=120:160:701:246,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0044.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0044.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 13,
+      "probes": {
+        "candidate": {
+          "duration": 182.733333,
+          "frame_count": 5482,
+          "frame_rate": "30/1",
+          "height": 160,
+          "nominal_frame_rate": "30/1",
+          "width": 120
+        },
+        "existing_roi": {
+          "duration": 182.733333,
+          "frame_count": 5482,
+          "frame_rate": "30/1",
+          "height": 160,
+          "nominal_frame_rate": "30/1",
+          "width": 120
+        },
+        "source": {
+          "duration": 182.721467,
+          "frame_count": 5482,
+          "frame_rate": "41115000/1370411",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "86b1e3e9407c1b3ebaf45fb03451c16cfeabb98f66500ccd4525eb4539f1454f",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 176.633333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "86b1e3e9407c1b3ebaf45fb03451c16cfeabb98f66500ccd4525eb4539f1454f",
+            "existing_roi_pts": 176.633333,
+            "index": 5299,
+            "position": "before",
+            "source_minus_candidate_seconds": -0.009065999999990026,
+            "source_pts": 176.624267
+          },
+          {
+            "candidate_frame_sha256": "99aa23b10dc60f11e9ed37c8ea4b8e8764b8c3cbcb67c4660bc0165589e39dc3",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 176.666667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "99aa23b10dc60f11e9ed37c8ea4b8e8764b8c3cbcb67c4660bc0165589e39dc3",
+            "existing_roi_pts": 176.666667,
+            "index": 5300,
+            "position": "after",
+            "source_minus_candidate_seconds": -0.010367000000002236,
+            "source_pts": 176.6563
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 5482,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 5482,
+          "existing_roi": 5482,
+          "source": 5482
+        },
+        "source_vs_candidate": {
+          "aligned_count": 5482,
+          "count_equal": true,
+          "max_abs_seconds": 0.015733000000011543,
+          "max_index": 4860,
+          "mean_abs_seconds": 0.007308299160890206
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "0a965cfd5ae2c8423277ccf791057cbddf2e4fe6b583379e980f993ee6211fb7",
+        "roi_actual": "e02597d875bb2ff7dc445c0f9273fd9ac26c760fc9962aa0bd57de05a340d574",
+        "roi_manifest": "e02597d875bb2ff7dc445c0f9273fd9ac26c760fc9962aa0bd57de05a340d574",
+        "roi_matches": true,
+        "source_actual": "0a965cfd5ae2c8423277ccf791057cbddf2e4fe6b583379e980f993ee6211fb7",
+        "source_manifest": "0a965cfd5ae2c8423277ccf791057cbddf2e4fe6b583379e980f993ee6211fb7",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0044"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "158",
+        "csv_before": "157",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 157,
+            "position": "before"
+          },
+          {
+            "index": 158,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          157,
+          158
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0046-replay.mp4",
+      "candidate_sha256": "98e79eb6c5039de45cd217457268bb51649b51e41ee05106fde5c87a36bf0488",
+      "elapsed_seconds": 1.174,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0046.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=480:640:97:192,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0046-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0046-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 176,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 176,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0046.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 176,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.166,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 640,
+          "width": 480,
+          "x": 96,
+          "y": 192
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=480:640:97:192,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=480:640:97:192,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0046.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0046.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 14,
+      "probes": {
+        "candidate": {
+          "duration": 5.866667,
+          "frame_count": 176,
+          "frame_rate": "30/1",
+          "height": 640,
+          "nominal_frame_rate": "30/1",
+          "width": 480
+        },
+        "existing_roi": {
+          "duration": 5.866667,
+          "frame_count": 176,
+          "frame_rate": "30/1",
+          "height": 640,
+          "nominal_frame_rate": "30/1",
+          "width": 480
+        },
+        "source": {
+          "duration": 5.856,
+          "frame_count": 176,
+          "frame_rate": "5500/183",
+          "height": 1080,
+          "nominal_frame_rate": "30/1",
+          "width": 642
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "bb9e5ecfbafc154638417f3ba8e8b51fdc5c1e9c24876094dcb5cc6be7865753",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 5.233333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "bb9e5ecfbafc154638417f3ba8e8b51fdc5c1e9c24876094dcb5cc6be7865753",
+            "existing_roi_pts": 5.233333,
+            "index": 157,
+            "position": "before",
+            "source_minus_candidate_seconds": -0.01066599999999962,
+            "source_pts": 5.222667
+          },
+          {
+            "candidate_frame_sha256": "6d81772c7eb58aac3d4f273877b59c48d3c12df860aa2ca594411b3922084dba",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 5.266667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "6d81772c7eb58aac3d4f273877b59c48d3c12df860aa2ca594411b3922084dba",
+            "existing_roi_pts": 5.266667,
+            "index": 158,
+            "position": "after",
+            "source_minus_candidate_seconds": -0.01066699999999976,
+            "source_pts": 5.256
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 176,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 176,
+          "existing_roi": 176,
+          "source": 176
+        },
+        "source_vs_candidate": {
+          "aligned_count": 176,
+          "count_equal": true,
+          "max_abs_seconds": 0.010667000000000648,
+          "max_index": 125,
+          "mean_abs_seconds": 0.010606056818181801
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "667b31d34899585a74d6dd605876fb63e200fcf89249985168a6f3350bf63933",
+        "roi_actual": "98e79eb6c5039de45cd217457268bb51649b51e41ee05106fde5c87a36bf0488",
+        "roi_manifest": "98e79eb6c5039de45cd217457268bb51649b51e41ee05106fde5c87a36bf0488",
+        "roi_matches": true,
+        "source_actual": "667b31d34899585a74d6dd605876fb63e200fcf89249985168a6f3350bf63933",
+        "source_manifest": "667b31d34899585a74d6dd605876fb63e200fcf89249985168a6f3350bf63933",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0046"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "无",
+        "csv_before": "无",
+        "event_kind": "none",
+        "resolved_anchors": [],
+        "saved_analysis_anchor_indices": []
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0052-replay.mp4",
+      "candidate_sha256": "06463b0bc79f71b536c4574bf4077b7600bfa107189d2180770d43a6f3d934ad",
+      "elapsed_seconds": 2.349,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0052.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=150:200:530:234,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0052-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0052-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 301,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 301,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0052.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 301,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.243,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 200,
+          "width": 150,
+          "x": 530,
+          "y": 234
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=150:200:530:234,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=150:200:530:234,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0052.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0052.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 15,
+      "probes": {
+        "candidate": {
+          "duration": 10.033333,
+          "frame_count": 301,
+          "frame_rate": "30/1",
+          "height": 200,
+          "nominal_frame_rate": "30/1",
+          "width": 150
+        },
+        "existing_roi": {
+          "duration": 10.033333,
+          "frame_count": 301,
+          "frame_rate": "30/1",
+          "height": 200,
+          "nominal_frame_rate": "30/1",
+          "width": 150
+        },
+        "source": {
+          "duration": 10.0334,
+          "frame_count": 301,
+          "frame_rate": "1505000/50167",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 301,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 301,
+          "existing_roi": 301,
+          "source": 301
+        },
+        "source_vs_candidate": {
+          "aligned_count": 301,
+          "count_equal": true,
+          "max_abs_seconds": 0.008033000000000179,
+          "max_index": 234,
+          "mean_abs_seconds": 0.003901222591362134
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "5e8b4b97061e24c37c1095a8ec8dfa2b81feeb6563b4a0e4091727f661c8f4e6",
+        "roi_actual": "06463b0bc79f71b536c4574bf4077b7600bfa107189d2180770d43a6f3d934ad",
+        "roi_manifest": "06463b0bc79f71b536c4574bf4077b7600bfa107189d2180770d43a6f3d934ad",
+        "roi_matches": true,
+        "source_actual": "5e8b4b97061e24c37c1095a8ec8dfa2b81feeb6563b4a0e4091727f661c8f4e6",
+        "source_manifest": "5e8b4b97061e24c37c1095a8ec8dfa2b81feeb6563b4a0e4091727f661c8f4e6",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0052"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "4446",
+        "csv_before": "4445",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 4445,
+            "position": "before"
+          },
+          {
+            "index": 4446,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          4445,
+          4446
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0053-replay.mp4",
+      "candidate_sha256": "1653e603c78b5f2e9a3a461b6aa64d6db57c3c14d802f413cebceb5b57c306b3",
+      "elapsed_seconds": 29.393,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0053.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=96:128:727:271,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0053-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0053-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 4569,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 4569,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0053.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 4569,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 2.506,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 128,
+          "width": 96,
+          "x": 726,
+          "y": 270
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=96:128:727:271,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=96:128:727:271,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0053.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0053.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 16,
+      "probes": {
+        "candidate": {
+          "duration": 152.3,
+          "frame_count": 4569,
+          "frame_rate": "30/1",
+          "height": 128,
+          "nominal_frame_rate": "30/1",
+          "width": 96
+        },
+        "existing_roi": {
+          "duration": 152.3,
+          "frame_count": 4569,
+          "frame_rate": "30/1",
+          "height": 128,
+          "nominal_frame_rate": "30/1",
+          "width": 96
+        },
+        "source": {
+          "duration": 152.289567,
+          "frame_count": 4569,
+          "frame_rate": "137070000/4568687",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "7a453af138b0277b151bc29b7471b64a407d16d28610f46dc283d25ed7723f3b",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 148.166667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "7a453af138b0277b151bc29b7471b64a407d16d28610f46dc283d25ed7723f3b",
+            "existing_roi_pts": 148.166667,
+            "index": 4445,
+            "position": "before",
+            "source_minus_candidate_seconds": -0.006466999999986456,
+            "source_pts": 148.1602
+          },
+          {
+            "candidate_frame_sha256": "555e4fa177645d07cc3d8243ad068a9b376260dde3be2fd0935fad6b4ea474a6",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 148.2,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "555e4fa177645d07cc3d8243ad068a9b376260dde3be2fd0935fad6b4ea474a6",
+            "existing_roi_pts": 148.2,
+            "index": 4446,
+            "position": "after",
+            "source_minus_candidate_seconds": -0.007733000000001766,
+            "source_pts": 148.192267
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 4569,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 4569,
+          "existing_roi": 4569,
+          "source": 4569
+        },
+        "source_vs_candidate": {
+          "aligned_count": 4569,
+          "count_equal": true,
+          "max_abs_seconds": 0.015833000000014863,
+          "max_index": 4224,
+          "mean_abs_seconds": 0.008031030422411886
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "453d6cf42dee88d9839c73f559d2d085c6180fb0379eb4814e1dbb72012d723d",
+        "roi_actual": "1653e603c78b5f2e9a3a461b6aa64d6db57c3c14d802f413cebceb5b57c306b3",
+        "roi_manifest": "1653e603c78b5f2e9a3a461b6aa64d6db57c3c14d802f413cebceb5b57c306b3",
+        "roi_matches": true,
+        "source_actual": "453d6cf42dee88d9839c73f559d2d085c6180fb0379eb4814e1dbb72012d723d",
+        "source_manifest": "453d6cf42dee88d9839c73f559d2d085c6180fb0379eb4814e1dbb72012d723d",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0053"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "5348",
+        "csv_before": "5347",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 5347,
+            "position": "before"
+          },
+          {
+            "index": 5348,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          5347,
+          5348
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0076-replay.mp4",
+      "candidate_sha256": "2f6c1be363ff4894c65d827d39a3fe819b733df8b27e6a1321d04d76aaac3f59",
+      "elapsed_seconds": 35.243,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0076.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=144:192:692:224,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0076-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0076-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 5529,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 5529,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0076.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 5529,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 2.955,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 192,
+          "width": 144,
+          "x": 692,
+          "y": 224
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=144:192:692:224,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=144:192:692:224,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0076.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0076.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 17,
+      "probes": {
+        "candidate": {
+          "duration": 184.3,
+          "frame_count": 5529,
+          "frame_rate": "30/1",
+          "height": 192,
+          "nominal_frame_rate": "30/1",
+          "width": 144
+        },
+        "existing_roi": {
+          "duration": 184.3,
+          "frame_count": 5529,
+          "frame_rate": "30/1",
+          "height": 192,
+          "nominal_frame_rate": "30/1",
+          "width": 144
+        },
+        "source": {
+          "duration": 184.305567,
+          "frame_count": 5529,
+          "frame_rate": "1151875/38397",
+          "height": 720,
+          "nominal_frame_rate": "30/1",
+          "width": 1280
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "d4fc2f3f9c0bab320398a87a9d759bbc458cda5734ecb0d4375c954bba270080",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 178.233333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "d4fc2f3f9c0bab320398a87a9d759bbc458cda5734ecb0d4375c954bba270080",
+            "existing_roi_pts": 178.233333,
+            "index": 5347,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.006799999999998363,
+            "source_pts": 178.240133
+          },
+          {
+            "candidate_frame_sha256": "da521c17b7a9a7d43c7389f4f20a8279210d8f617f0204f7e43bba92d3923d6f",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 178.266667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "da521c17b7a9a7d43c7389f4f20a8279210d8f617f0204f7e43bba92d3923d6f",
+            "existing_roi_pts": 178.266667,
+            "index": 5348,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.005465999999984206,
+            "source_pts": 178.272133
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 5529,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 5529,
+          "existing_roi": 5529,
+          "source": 5529
+        },
+        "source_vs_candidate": {
+          "aligned_count": 5529,
+          "count_equal": true,
+          "max_abs_seconds": 0.014133000000015272,
+          "max_index": 3842,
+          "mean_abs_seconds": 0.006138430819316234
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "3ce0e9336780b7c7e61f9b1545f159e1808aa9435d22220b61e65fa74f768e23",
+        "roi_actual": "2f6c1be363ff4894c65d827d39a3fe819b733df8b27e6a1321d04d76aaac3f59",
+        "roi_manifest": "2f6c1be363ff4894c65d827d39a3fe819b733df8b27e6a1321d04d76aaac3f59",
+        "roi_matches": true,
+        "source_actual": "3ce0e9336780b7c7e61f9b1545f159e1808aa9435d22220b61e65fa74f768e23",
+        "source_manifest": "3ce0e9336780b7c7e61f9b1545f159e1808aa9435d22220b61e65fa74f768e23",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0076"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "58",
+        "csv_before": "57",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 57,
+            "position": "before"
+          },
+          {
+            "index": 58,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          57,
+          58
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0079-replay.mp4",
+      "candidate_sha256": "f1ee3ae7903b1c7b8431389ad02ab45da8874f7690d93ddbb7928857f045e86f",
+      "elapsed_seconds": 0.456,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0079.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=282:376:78:170,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0079-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0079-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 92,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 92,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0079.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 92,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 0.067,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 376,
+          "width": 282,
+          "x": 78,
+          "y": 170
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=282:376:78:170,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=282:376:78:170,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0079.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0079.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 18,
+      "probes": {
+        "candidate": {
+          "duration": 3.0,
+          "frame_count": 92,
+          "frame_rate": "92/3",
+          "height": 376,
+          "nominal_frame_rate": "30/1",
+          "width": 282
+        },
+        "existing_roi": {
+          "duration": 3.0,
+          "frame_count": 92,
+          "frame_rate": "92/3",
+          "height": 376,
+          "nominal_frame_rate": "30/1",
+          "width": 282
+        },
+        "source": {
+          "duration": 3.035633,
+          "frame_count": 92,
+          "frame_rate": "276000/9107",
+          "height": 708,
+          "nominal_frame_rate": "30/1",
+          "width": 440
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "323f8304c1f3724dd85aef61a94751d24c302b650fbe056cc7e5d97f361c0bae",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 1.866667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "323f8304c1f3724dd85aef61a94751d24c302b650fbe056cc7e5d97f361c0bae",
+            "existing_roi_pts": 1.866667,
+            "index": 57,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0023329999999999185,
+            "source_pts": 1.869
+          },
+          {
+            "candidate_frame_sha256": "b1edd392cc724bc6a5fa110b7b20f7475ca2d3f7d0e74319f8d22196d1d247d8",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 1.9,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "b1edd392cc724bc6a5fa110b7b20f7475ca2d3f7d0e74319f8d22196d1d247d8",
+            "existing_roi_pts": 1.9,
+            "index": 58,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0023330000000001405,
+            "source_pts": 1.902333
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 92,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 92,
+          "existing_roi": 92,
+          "source": 92
+        },
+        "source_vs_candidate": {
+          "aligned_count": 92,
+          "count_equal": true,
+          "max_abs_seconds": 0.0023340000000002803,
+          "max_index": 62,
+          "mean_abs_seconds": 0.00230726086956522
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "a091ab29bcb4cd0937350994e3b8386dd019b935faf0b6655d4df29a64a79214",
+        "roi_actual": "f1ee3ae7903b1c7b8431389ad02ab45da8874f7690d93ddbb7928857f045e86f",
+        "roi_manifest": "f1ee3ae7903b1c7b8431389ad02ab45da8874f7690d93ddbb7928857f045e86f",
+        "roi_matches": true,
+        "source_actual": "a091ab29bcb4cd0937350994e3b8386dd019b935faf0b6655d4df29a64a79214",
+        "source_manifest": "a091ab29bcb4cd0937350994e3b8386dd019b935faf0b6655d4df29a64a79214",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0079"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "无",
+        "csv_before": "无",
+        "event_kind": "range",
+        "resolved_anchors": [
+          {
+            "index": 3571,
+            "position": "range_lower"
+          },
+          {
+            "index": 3641,
+            "position": "range_upper"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          3571,
+          3641
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0099-replay.mp4",
+      "candidate_sha256": "1706ac0b02b7cfe20033461c4d15dbe7152449489c05285d9c7967a4de96209f",
+      "elapsed_seconds": 17.095,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0099.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=408:544:52:174,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0099-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0099-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 3837,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 3837,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0099.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 3837,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 3.295,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 544,
+          "width": 408,
+          "x": 52,
+          "y": 174
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=408:544:52:174,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=408:544:52:174,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0099.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0099.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 19,
+      "probes": {
+        "candidate": {
+          "duration": 127.966667,
+          "frame_count": 3837,
+          "frame_rate": "115110/3839",
+          "height": 544,
+          "nominal_frame_rate": "30/1",
+          "width": 408
+        },
+        "existing_roi": {
+          "duration": 127.966667,
+          "frame_count": 3837,
+          "frame_rate": "115110/3839",
+          "height": 544,
+          "nominal_frame_rate": "30/1",
+          "width": 408
+        },
+        "source": {
+          "duration": 127.966667,
+          "frame_count": 3837,
+          "frame_rate": "115110/3839",
+          "height": 960,
+          "nominal_frame_rate": "30/1",
+          "width": 544
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "7048057801e7e4e5e22f6bf90de1704d242c445304fdf5833f8755de2eab9d13",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 119.1,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "7048057801e7e4e5e22f6bf90de1704d242c445304fdf5833f8755de2eab9d13",
+            "existing_roi_pts": 119.1,
+            "index": 3571,
+            "position": "range_lower",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 119.1
+          },
+          {
+            "candidate_frame_sha256": "d99522caec17335f65436a7a042a5fe62ebe6cd658e2a43729129aa8a3087f77",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 121.433333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "d99522caec17335f65436a7a042a5fe62ebe6cd658e2a43729129aa8a3087f77",
+            "existing_roi_pts": 121.433333,
+            "index": 3641,
+            "position": "range_upper",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 121.433333
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 3837,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 3837,
+          "existing_roi": 3837,
+          "source": 3837
+        },
+        "source_vs_candidate": {
+          "aligned_count": 3837,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "fcfed01fa0c2283cead6e6db1957c1d35a0dead5dd5626ebeb48286b5a1a2c92",
+        "roi_actual": "1706ac0b02b7cfe20033461c4d15dbe7152449489c05285d9c7967a4de96209f",
+        "roi_manifest": "1706ac0b02b7cfe20033461c4d15dbe7152449489c05285d9c7967a4de96209f",
+        "roi_matches": true,
+        "source_actual": "fcfed01fa0c2283cead6e6db1957c1d35a0dead5dd5626ebeb48286b5a1a2c92",
+        "source_manifest": "fcfed01fa0c2283cead6e6db1957c1d35a0dead5dd5626ebeb48286b5a1a2c92",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0099"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "3000",
+        "csv_before": "2999",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 2999,
+            "position": "before"
+          },
+          {
+            "index": 3000,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          2999,
+          3000
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0100-replay.mp4",
+      "candidate_sha256": "70d0b81c94ad78678feabc6798decf3d56de81236d238945c882e0be54f6a998",
+      "elapsed_seconds": 24.705,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0100.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=552:736:4:348,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0100-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0100-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 3086,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 3086,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0100.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 3086,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 3.91,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 736,
+          "width": 552,
+          "x": 4,
+          "y": 348
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=552:736:4:348,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=552:736:4:348,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0100.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0100.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 20,
+      "probes": {
+        "candidate": {
+          "duration": 102.9,
+          "frame_count": 3086,
+          "frame_rate": "30860/1029",
+          "height": 736,
+          "nominal_frame_rate": "30/1",
+          "width": 552
+        },
+        "existing_roi": {
+          "duration": 102.9,
+          "frame_count": 3086,
+          "frame_rate": "30860/1029",
+          "height": 736,
+          "nominal_frame_rate": "30/1",
+          "width": 552
+        },
+        "source": {
+          "duration": 102.9,
+          "frame_count": 3086,
+          "frame_rate": "30860/1029",
+          "height": 1280,
+          "nominal_frame_rate": "30/1",
+          "width": 720
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "4300dc594f6112fbaaca43518d5b9ad5b43d3bfdde625d5f0afdadd0d695d3a1",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 100.0,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "4300dc594f6112fbaaca43518d5b9ad5b43d3bfdde625d5f0afdadd0d695d3a1",
+            "existing_roi_pts": 100.0,
+            "index": 2999,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 100.0
+          },
+          {
+            "candidate_frame_sha256": "1e81f7297e659ed6f91c05126ba6d5a80015aacd4f530814f83dacc5644c2265",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 100.033333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "1e81f7297e659ed6f91c05126ba6d5a80015aacd4f530814f83dacc5644c2265",
+            "existing_roi_pts": 100.033333,
+            "index": 3000,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 100.033333
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 3086,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 3086,
+          "existing_roi": 3086,
+          "source": 3086
+        },
+        "source_vs_candidate": {
+          "aligned_count": 3086,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "79ad9d52ad9148bc12e946de390acc42c1ce0e6419b64e0220eb4bead9f89e09",
+        "roi_actual": "70d0b81c94ad78678feabc6798decf3d56de81236d238945c882e0be54f6a998",
+        "roi_manifest": "70d0b81c94ad78678feabc6798decf3d56de81236d238945c882e0be54f6a998",
+        "roi_matches": true,
+        "source_actual": "79ad9d52ad9148bc12e946de390acc42c1ce0e6419b64e0220eb4bead9f89e09",
+        "source_manifest": "79ad9d52ad9148bc12e946de390acc42c1ce0e6419b64e0220eb4bead9f89e09",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0100"
+    },
+    {
+      "annotation_anchors": {
+        "consistent_with_current_annotation": true,
+        "csv_after": "4578",
+        "csv_before": "4577",
+        "event_kind": "exact",
+        "resolved_anchors": [
+          {
+            "index": 4577,
+            "position": "before"
+          },
+          {
+            "index": 4578,
+            "position": "after"
+          }
+        ],
+        "saved_analysis_anchor_indices": [
+          4577,
+          4578
+        ]
+      },
+      "candidate_equals_existing_roi_file_sha256": true,
+      "candidate_path": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0101-replay.mp4",
+      "candidate_sha256": "49c4743fd01731485263eb31e9627a3dd184407bfc69014cf296afccf235de61",
+      "elapsed_seconds": 26.123,
+      "ffmpeg_command_args": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-n",
+        "-i",
+        "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0101.mp4",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=504:672:29:150,setsar=1",
+        "-vsync",
+        "0",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0101-replay.mp4"
+      ],
+      "frame_counts_equal_source_old_candidate": true,
+      "full_decode": {
+        "all_per_frame_pixel_hashes_match": true,
+        "candidate_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/tmp/subvideo-roi-replay-21-000716e-98dLnN/video_0101-replay.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "candidate_frame_count": 4627,
+        "candidate_stderr": "",
+        "equal_frame_hash_count": 4627,
+        "existing_roi_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-xerror",
+          "-noautorotate",
+          "-threads",
+          "2",
+          "-i",
+          "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0101.mp4",
+          "-map",
+          "0:v:0",
+          "-vsync",
+          "0",
+          "-f",
+          "rawvideo",
+          "-pix_fmt",
+          "rgb24",
+          "-"
+        ],
+        "existing_roi_frame_count": 4627,
+        "existing_roi_stderr": "",
+        "first_mismatch_indices": [],
+        "mismatch_count": 0
+      },
+      "generation": {
+        "elapsed_seconds": 4.92,
+        "exit_code": 0,
+        "stderr": ""
+      },
+      "geometry": {
+        "effective_pixel_box": {
+          "height": 672,
+          "width": 504,
+          "x": 28,
+          "y": 150
+        },
+        "filter_matches": true,
+        "geometry_status": "verified_from_filter_and_source_format",
+        "manifest_filter": "crop=504:672:29:150,setsar=1",
+        "no_rotation_reusable": true,
+        "pad_pixels": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0
+        },
+        "pipeline_builder_filter": "crop=504:672:29:150,setsar=1",
+        "rotations": {
+          "roi_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/roi/videos/video_0101.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "roi_manifest": 0.0,
+          "source_actual": {
+            "command": [
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              "v:0",
+              "-show_streams",
+              "-show_entries",
+              "stream_tags=rotate:stream_side_data_list=rotation,side_data_type",
+              "-of",
+              "json",
+              "/home/liuyang/文档/tensile-initial-cut.NnLLjJXx/project/data/videos/video_0101.mp4"
+            ],
+            "no_rotation": true,
+            "ok": true,
+            "rotation_values": [],
+            "side_data": [],
+            "tags": {}
+          },
+          "source_manifest": 0.0
+        }
+      },
+      "ordinal": 21,
+      "probes": {
+        "candidate": {
+          "duration": 154.3,
+          "frame_count": 4627,
+          "frame_rate": "46270/1543",
+          "height": 672,
+          "nominal_frame_rate": "30/1",
+          "width": 504
+        },
+        "existing_roi": {
+          "duration": 154.3,
+          "frame_count": 4627,
+          "frame_rate": "46270/1543",
+          "height": 672,
+          "nominal_frame_rate": "30/1",
+          "width": 504
+        },
+        "source": {
+          "duration": 154.3,
+          "frame_count": 4627,
+          "frame_rate": "46270/1543",
+          "height": 960,
+          "nominal_frame_rate": "30/1",
+          "width": 544
+        }
+      },
+      "pts": {
+        "anchors": [
+          {
+            "candidate_frame_sha256": "ef448881353e5726f3f430b086d351965a0a008bb722dd62f0d0cb1cd93d1949",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 152.633333,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "ef448881353e5726f3f430b086d351965a0a008bb722dd62f0d0cb1cd93d1949",
+            "existing_roi_pts": 152.633333,
+            "index": 4577,
+            "position": "before",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 152.633333
+          },
+          {
+            "candidate_frame_sha256": "520c8bc2dc8213e209839ce40d6aaf8f29d3670f0c0d96c1f66ce6045aaec5f3",
+            "candidate_minus_roi_seconds": 0.0,
+            "candidate_pts": 152.666667,
+            "candidate_roi_frame_sha_equal": true,
+            "existing_roi_frame_sha256": "520c8bc2dc8213e209839ce40d6aaf8f29d3670f0c0d96c1f66ce6045aaec5f3",
+            "existing_roi_pts": 152.666667,
+            "index": 4578,
+            "position": "after",
+            "source_minus_candidate_seconds": 0.0,
+            "source_pts": 152.666667
+          }
+        ],
+        "candidate_vs_existing_roi": {
+          "aligned_count": 4627,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        },
+        "frame_counts": {
+          "candidate": 4627,
+          "existing_roi": 4627,
+          "source": 4627
+        },
+        "source_vs_candidate": {
+          "aligned_count": 4627,
+          "count_equal": true,
+          "max_abs_seconds": 0.0,
+          "max_index": 0,
+          "mean_abs_seconds": 0.0
+        }
+      },
+      "reason_codes": [],
+      "record_type": "video_result",
+      "sha256_after": {
+        "existing_roi_unchanged": true,
+        "source_unchanged": true
+      },
+      "sha256_before": {
+        "decision_binds_source": true,
+        "decision_source_sha": "30a08789dd224b59d557f5851085b2172b2776c989906859e04d6a831fd36b84",
+        "roi_actual": "49c4743fd01731485263eb31e9627a3dd184407bfc69014cf296afccf235de61",
+        "roi_manifest": "49c4743fd01731485263eb31e9627a3dd184407bfc69014cf296afccf235de61",
+        "roi_matches": true,
+        "source_actual": "30a08789dd224b59d557f5851085b2172b2776c989906859e04d6a831fd36b84",
+        "source_manifest": "30a08789dd224b59d557f5851085b2172b2776c989906859e04d6a831fd36b84",
+        "source_matches": true
+      },
+      "stages": [
+        "source_roi_decision_sha",
+        "filter_and_rotation_reusability",
+        "temporary_roi_replay",
+        "metadata_frame_counts",
+        "full_decode_per_frame_pixel_sha256",
+        "source_candidate_existing_pts_comparison",
+        "source_and_old_roi_sha_unchanged"
+      ],
+      "status": "replay_match",
+      "video_id": "video_0101"
+    }
+  ],
+  "scope": "21_development_sources_no_test_or_special_videos",
+  "summary": {
+    "evidence_jsonl": "/tmp/subvideo-roi-replay-21-000716e-98dLnN/evidence.jsonl",
+    "processed": 21,
+    "reason_counts": {},
+    "record_type": "run_summary",
+    "requested": 21,
+    "scratch_dir": "/tmp/subvideo-roi-replay-21-000716e-98dLnN",
+    "statuses": {
+      "replay_match": 21
+    },
+    "stopped_for_load": false,
+    "total_elapsed_seconds": 454.768
+  }
+}
