@@ -1,0 +1,2398 @@
+{
+  "code_commit": "dccc252",
+  "input_sha256": {
+    "labels": "9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81",
+    "legacy_pilot_manifest": "32c9965d68069f31c7b985a42c6acbaf2e70043853dfd5ae525ccc374ae2a7d1",
+    "roi_manifest": "de202f2091d00acf34b4e6a3a774cb3fc410ff203b841e1aa1ab6a1a893a2ad8"
+  },
+  "limitations": [
+    "machine_similarity_is_not_mathematical_proof",
+    "pending_does_not_prove_drift",
+    "no_subvideos_generated_in_this_check"
+  ],
+  "previously_planned_first_five": {
+    "results": [
+      {
+        "annotation": {
+          "anchor_frames": [
+            1164,
+            1165
+          ],
+          "anchor_pts": [
+            38.8,
+            38.833333
+          ],
+          "event_frame": 1165,
+          "event_kind": "exact",
+          "lower_frame": 1164,
+          "upper_frame": 1165
+        },
+        "details": {
+          "anchor_frame": 1164,
+          "closest_alternatives": [
+            {
+              "error": 0.630859375,
+              "frame": 1163
+            },
+            {
+              "error": 3.36962890625,
+              "frame": 940
+            },
+            {
+              "error": 3.3759765625,
+              "frame": 941
+            },
+            {
+              "error": 3.98291015625,
+              "frame": 926
+            },
+            {
+              "error": 3.9951171875,
+              "frame": 925
+            }
+          ],
+          "compatible_alternative_count": 13,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.61279296875,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.01806640625,
+          "searched_frames": 1213
+        },
+        "features": {
+          "roi_shape": [
+            1213,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=222:296:148:162:exact=1,format=yuv444p,pad=222:296:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            1213,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 40.433333,
+            "frames": 1213,
+            "pts_sha256": "91266398cedf753ed0a1531ee42387a63ac3965406c57b1c2d55925ea11b24e4",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          },
+          "source": {
+            "duration": 40.433299999999996,
+            "frames": 1213,
+            "pts_sha256": "91266398cedf753ed0a1531ee42387a63ac3965406c57b1c2d55925ea11b24e4",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0001"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            786,
+            787
+          ],
+          "anchor_pts": [
+            26.2,
+            26.233333
+          ],
+          "event_frame": 787,
+          "event_kind": "exact",
+          "lower_frame": 786,
+          "upper_frame": 787
+        },
+        "details": {
+          "anchor_frame": 786,
+          "closest_alternatives": [
+            {
+              "error": 1.948974609375,
+              "frame": 787
+            },
+            {
+              "error": 1.97216796875,
+              "frame": 788
+            },
+            {
+              "error": 2.067138671875,
+              "frame": 785
+            },
+            {
+              "error": 2.128662109375,
+              "frame": 784
+            },
+            {
+              "error": 2.4638671875,
+              "frame": 783
+            }
+          ],
+          "compatible_alternative_count": 11,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.43017578125,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 1.518798828125,
+          "searched_frames": 912
+        },
+        "features": {
+          "roi_shape": [
+            912,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=330:440:84:54:exact=1,format=yuv444p,pad=330:440:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            912,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 30.4,
+            "frames": 912,
+            "pts_sha256": "25c294baf25b890c3337446c425b5f122d06cc2c4a01779529327666dc4c9025",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          },
+          "source": {
+            "duration": 30.4,
+            "frames": 912,
+            "pts_sha256": "25c294baf25b890c3337446c425b5f122d06cc2c4a01779529327666dc4c9025",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0003"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            648,
+            649
+          ],
+          "anchor_pts": [
+            21.6,
+            21.633333
+          ],
+          "event_frame": 649,
+          "event_kind": "exact",
+          "lower_frame": 648,
+          "upper_frame": 649
+        },
+        "details": {
+          "anchor_frame": 648,
+          "closest_alternatives": [
+            {
+              "error": 0.358642578125,
+              "frame": 647
+            },
+            {
+              "error": 3.0390625,
+              "frame": 646
+            },
+            {
+              "error": 3.0595703125,
+              "frame": 645
+            },
+            {
+              "error": 4.61181640625,
+              "frame": 643
+            },
+            {
+              "error": 4.635986328125,
+              "frame": 644
+            }
+          ],
+          "compatible_alternative_count": 5,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.38427734375,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": -0.025634765625,
+          "searched_frames": 699
+        },
+        "features": {
+          "roi_shape": [
+            699,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=426:568:380:122:exact=1,format=yuv444p,pad=426:568:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            699,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 23.3,
+            "frames": 699,
+            "pts_sha256": "8795e5f1885c8b274d25307df20ba4135655fb6c38a299a6870a30bccc7e05d8",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          },
+          "source": {
+            "duration": 23.3,
+            "frames": 699,
+            "pts_sha256": "8795e5f1885c8b274d25307df20ba4135655fb6c38a299a6870a30bccc7e05d8",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0006"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            1484,
+            1485
+          ],
+          "anchor_pts": [
+            49.466667,
+            49.5
+          ],
+          "event_frame": 1485,
+          "event_kind": "exact",
+          "lower_frame": 1484,
+          "upper_frame": 1485
+        },
+        "details": {
+          "anchor_frame": 1484,
+          "closest_alternatives": [
+            {
+              "error": 0.4912109375,
+              "frame": 1483
+            },
+            {
+              "error": 2.121337890625,
+              "frame": 1485
+            },
+            {
+              "error": 3.457275390625,
+              "frame": 1482
+            },
+            {
+              "error": 4.3212890625,
+              "frame": 1481
+            },
+            {
+              "error": 4.350341796875,
+              "frame": 1480
+            }
+          ],
+          "compatible_alternative_count": 5,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.505126953125,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": -0.013916015625,
+          "searched_frames": 1530
+        },
+        "features": {
+          "roi_shape": [
+            1530,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=306:408:98:84:exact=1,format=yuv444p,pad=306:408:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            1530,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 51.0,
+            "frames": 1530,
+            "pts_sha256": "5dc87db9de3f2799c638775842715ba90dbd4fb4b45a39ae411d335995694506",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          },
+          "source": {
+            "duration": 51.0,
+            "frames": 1530,
+            "pts_sha256": "5dc87db9de3f2799c638775842715ba90dbd4fb4b45a39ae411d335995694506",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0007"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            403,
+            404
+          ],
+          "anchor_pts": [
+            13.433333,
+            13.466667
+          ],
+          "event_frame": 404,
+          "event_kind": "exact",
+          "lower_frame": 403,
+          "upper_frame": 404
+        },
+        "details": {
+          "anchor_frame": 403,
+          "closest_alternatives": [
+            {
+              "error": 0.8896484375,
+              "frame": 402
+            },
+            {
+              "error": 2.00146484375,
+              "frame": 401
+            },
+            {
+              "error": 2.85498046875,
+              "frame": 400
+            },
+            {
+              "error": 2.8876953125,
+              "frame": 399
+            },
+            {
+              "error": 3.753173828125,
+              "frame": 404
+            }
+          ],
+          "compatible_alternative_count": 6,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.891845703125,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": -0.002197265625,
+          "searched_frames": 457
+        },
+        "features": {
+          "roi_shape": [
+            457,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=120:160:194:240:exact=1,format=yuv444p,pad=120:160:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            457,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 15.233333,
+            "frames": 457,
+            "pts_sha256": "8d1f76d9e65aee26b98e73ae4464744a0308c3c20d30010fd6452aec9bc8cbc4",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          },
+          "source": {
+            "duration": 15.2333,
+            "frames": 457,
+            "pts_sha256": "8d1f76d9e65aee26b98e73ae4464744a0308c3c20d30010fd6452aec9bc8cbc4",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0011"
+      }
+    ],
+    "summary": {
+      "counts": {
+        "pending": 5
+      },
+      "reasons": {
+        "ambiguous_or_shifted_anchor_picture": 5
+      },
+      "total": 5
+    }
+  },
+  "previously_timestamp_blocked": {
+    "results": [
+      {
+        "annotation": {
+          "anchor_frames": [
+            5510,
+            5511
+          ],
+          "anchor_pts": [
+            183.664167,
+            183.6964
+          ],
+          "event_frame": 5511,
+          "event_kind": "exact",
+          "lower_frame": 5510,
+          "upper_frame": 5511
+        },
+        "details": {
+          "anchor_frame": 5510,
+          "closest_alternatives": [
+            {
+              "error": 1.367431640625,
+              "frame": 5509
+            },
+            {
+              "error": 1.43994140625,
+              "frame": 5508
+            },
+            {
+              "error": 1.54345703125,
+              "frame": 5507
+            },
+            {
+              "error": 1.614501953125,
+              "frame": 5504
+            },
+            {
+              "error": 1.624755859375,
+              "frame": 5505
+            }
+          ],
+          "compatible_alternative_count": 3556,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.292724609375,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.07470703125,
+          "searched_frames": 5657
+        },
+        "features": {
+          "roi_shape": [
+            5657,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=144:192:698:196:exact=1,format=yuv444p,pad=144:192:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            5657,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 188.566666,
+            "frames": 5657,
+            "height": 192,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "31a458a433af1a763c737b73c9476b7f33587c7386a165b06aaad7ffca8bf508",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 144
+          },
+          "source": {
+            "duration": 188.561667,
+            "frames": 5657,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "e06279976d46957bc9f9f92b5a9c1bb9fd516ba32efefa23cdb7266a6e169fce",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0004"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            5651,
+            5652
+          ],
+          "anchor_pts": [
+            188.3682,
+            188.4002
+          ],
+          "event_frame": 5652,
+          "event_kind": "exact",
+          "lower_frame": 5651,
+          "upper_frame": 5652
+        },
+        "details": {
+          "anchor_frame": 5651,
+          "closest_alternatives": [
+            {
+              "error": 1.416748046875,
+              "frame": 5650
+            },
+            {
+              "error": 1.427490234375,
+              "frame": 5649
+            },
+            {
+              "error": 1.46240234375,
+              "frame": 5646
+            },
+            {
+              "error": 1.469482421875,
+              "frame": 5647
+            },
+            {
+              "error": 1.47802734375,
+              "frame": 5648
+            }
+          ],
+          "compatible_alternative_count": 3525,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.38427734375,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.032470703125,
+          "searched_frames": 5767
+        },
+        "features": {
+          "roi_shape": [
+            5767,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=150:200:694:188:exact=1,format=yuv444p,pad=150:200:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            5767,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 192.233333,
+            "frames": 5767,
+            "height": 200,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "caa59c5100b0985bdbeea321de9814d2bf4b2e9ac8e60c79d3cd7ab65f63a0e2",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 150
+          },
+          "source": {
+            "duration": 192.225466,
+            "frames": 5767,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "3b8b74ba8d54e7b79a65cfa4b7ed5f38e52c96096982e103cb7654763ae3a36c",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0009"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            6207,
+            6208
+          ],
+          "anchor_pts": [
+            206.895967,
+            206.928
+          ],
+          "event_frame": 6208,
+          "event_kind": "exact",
+          "lower_frame": 6207,
+          "upper_frame": 6208
+        },
+        "details": {
+          "anchor_frame": 6207,
+          "closest_alternatives": [
+            {
+              "error": 1.29052734375,
+              "frame": 6206
+            },
+            {
+              "error": 1.29638671875,
+              "frame": 6205
+            },
+            {
+              "error": 1.35498046875,
+              "frame": 6204
+            },
+            {
+              "error": 1.355712890625,
+              "frame": 6203
+            },
+            {
+              "error": 1.365234375,
+              "frame": 6202
+            }
+          ],
+          "compatible_alternative_count": 4406,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.274658203125,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.015869140625,
+          "searched_frames": 6322
+        },
+        "features": {
+          "roi_shape": [
+            6322,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=162:216:682:178:exact=1,format=yuv444p,pad=162:216:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            6322,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 210.733333,
+            "frames": 6322,
+            "height": 216,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "f95e0dc2fe0feb6c6e5a6f0bb0dc479e56dc5742166d4dc90baa951b2686f5eb",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 162
+          },
+          "source": {
+            "duration": 210.721733,
+            "frames": 6322,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "a88ad46a0794b774e1d17ecf25af30108c86ca7b42f0964dcdc402dcbe338d04",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0017"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 6.0,
+            "frames": 180,
+            "height": 1072,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "f334b678a3ea89f31f95381f87458af664ef2651f50beb678571e2c7d001f382",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 804
+          },
+          "source": {
+            "duration": 5.994632999999999,
+            "frames": 180,
+            "height": 1072,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "62b3429ed7dd78a5c2e15a3f1f267bebe18a861276b565547ca1f2d8fe14e1da",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 576
+          }
+        },
+        "reason": "unsupported_or_uncertain_source_state",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0021"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            5659,
+            5660
+          ],
+          "anchor_pts": [
+            188.6565,
+            188.704267
+          ],
+          "event_frame": 5660,
+          "event_kind": "exact",
+          "lower_frame": 5659,
+          "upper_frame": 5660
+        },
+        "details": {
+          "anchor_frame": 5659,
+          "closest_alternatives": [
+            {
+              "error": 1.417724609375,
+              "frame": 5658
+            },
+            {
+              "error": 1.42431640625,
+              "frame": 5657
+            },
+            {
+              "error": 1.467041015625,
+              "frame": 5656
+            },
+            {
+              "error": 1.475341796875,
+              "frame": 5655
+            },
+            {
+              "error": 1.482666015625,
+              "frame": 5654
+            }
+          ],
+          "compatible_alternative_count": 3623,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.409912109375,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.0078125,
+          "searched_frames": 5744
+        },
+        "features": {
+          "roi_shape": [
+            5744,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=156:208:690:184:exact=1,format=yuv444p,pad=156:208:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            5744,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 191.5,
+            "frames": 5744,
+            "height": 208,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "a3057e8e76c5ca020511ffbc4c627a0890b8494f8ac63bb66e624d853d12cd3e",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 156
+          },
+          "source": {
+            "duration": 191.489866,
+            "frames": 5744,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "b905bc2f19cd5e79a1c5d1cd13d67341117c0ecd19840127ab19d2f8559018c5",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0027"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            5179,
+            5180
+          ],
+          "anchor_pts": [
+            172.624067,
+            172.6564
+          ],
+          "event_frame": 5180,
+          "event_kind": "exact",
+          "lower_frame": 5179,
+          "upper_frame": 5180
+        },
+        "details": {
+          "anchor_frame": 5179,
+          "closest_alternatives": [
+            {
+              "error": 1.3759765625,
+              "frame": 5174
+            },
+            {
+              "error": 1.37646484375,
+              "frame": 5178
+            },
+            {
+              "error": 1.38720703125,
+              "frame": 5173
+            },
+            {
+              "error": 1.400146484375,
+              "frame": 5170
+            },
+            {
+              "error": 1.40185546875,
+              "frame": 5177
+            }
+          ],
+          "compatible_alternative_count": 2685,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.381591796875,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": -0.005615234375,
+          "searched_frames": 5310
+        },
+        "features": {
+          "roi_shape": [
+            5310,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=144:192:696:314:exact=1,format=yuv444p,pad=144:192:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            5310,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 177.0,
+            "frames": 5310,
+            "height": 192,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "fa7611025af2d8d89254419839875090b643c33582842c6f1355c63a68a312cd",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 144
+          },
+          "source": {
+            "duration": 176.993767,
+            "frames": 5310,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "464f1dc9e16ae8ff96e2875f62357967dacd600592cf2e6a07e44e2d09f3ac34",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0029"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            6075,
+            6076
+          ],
+          "anchor_pts": [
+            202.5121,
+            202.544133
+          ],
+          "event_frame": 6076,
+          "event_kind": "exact",
+          "lower_frame": 6075,
+          "upper_frame": 6076
+        },
+        "details": {
+          "anchor_frame": 6075,
+          "closest_alternatives": [
+            {
+              "error": 1.39697265625,
+              "frame": 6074
+            },
+            {
+              "error": 1.4306640625,
+              "frame": 6073
+            },
+            {
+              "error": 1.45556640625,
+              "frame": 6070
+            },
+            {
+              "error": 1.468017578125,
+              "frame": 6071
+            },
+            {
+              "error": 1.471923828125,
+              "frame": 6042
+            }
+          ],
+          "compatible_alternative_count": 3941,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.40576171875,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": -0.0087890625,
+          "searched_frames": 6263
+        },
+        "features": {
+          "roi_shape": [
+            6263,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=138:184:702:312:exact=1,format=yuv444p,pad=138:184:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            6263,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 208.766666,
+            "frames": 6263,
+            "height": 184,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "f709e66810f130b97bdaea93baed2b7e535164279f2e72a38ae612f342d555ea",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 138
+          },
+          "source": {
+            "duration": 208.769433,
+            "frames": 6263,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "3455e526322fa27c44764651a9f064742093c37a854cda5f4c6f1a92579f1ceb",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0030"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 65.833333,
+            "frames": 1975,
+            "height": 200,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "f87950d66f4b1c581cf220c823fc7376dbdb8ac281b518ffd75f79829740bc4b",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 150
+          },
+          "source": {
+            "duration": 65.8412,
+            "frames": 1975,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "556454a4605a07e496075af61c2b4d6327a49b4c710b04e1348d9d6cf3896ce3",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "video_abnormal",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0034"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 50.866666,
+            "frames": 1526,
+            "height": 200,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "3d64801d3f42978ec77ffe53da984d044c64bababa6a0e76a47f630bb73e3f3e",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 150
+          },
+          "source": {
+            "duration": 50.865899999999996,
+            "frames": 1526,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "a40a8f846dc37c6bc657fd174138e90d797df2ef8411af75b83847e33c475a30",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "video_abnormal",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0036"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            5472,
+            5473
+          ],
+          "anchor_pts": [
+            182.4002,
+            182.432233
+          ],
+          "event_frame": 5473,
+          "event_kind": "exact",
+          "lower_frame": 5472,
+          "upper_frame": 5473
+        },
+        "details": {
+          "anchor_frame": 5472,
+          "closest_alternatives": [
+            {
+              "error": 1.650390625,
+              "frame": 5471
+            },
+            {
+              "error": 1.718994140625,
+              "frame": 5469
+            },
+            {
+              "error": 1.750244140625,
+              "frame": 5470
+            },
+            {
+              "error": 1.771728515625,
+              "frame": 5468
+            },
+            {
+              "error": 1.797119140625,
+              "frame": 5467
+            }
+          ],
+          "compatible_alternative_count": 3027,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.54638671875,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.10400390625,
+          "searched_frames": 5621
+        },
+        "features": {
+          "roi_shape": [
+            5621,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=126:168:696:234:exact=1,format=yuv444p,pad=126:168:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            5621,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 187.366666,
+            "frames": 5621,
+            "height": 168,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "8ffeed11266fbbcd6e1eb998f9d0d95b4afb9772dfc6ab344a51b7cad9258b85",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 126
+          },
+          "source": {
+            "duration": 187.361567,
+            "frames": 5621,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "a66ead754e1a9adee9b819f9ebe8a819a890fdb8d2a4cbcfc617328636c73946",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0043"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            5299,
+            5300
+          ],
+          "anchor_pts": [
+            176.624267,
+            176.6563
+          ],
+          "event_frame": 5300,
+          "event_kind": "exact",
+          "lower_frame": 5299,
+          "upper_frame": 5300
+        },
+        "details": {
+          "anchor_frame": 5299,
+          "closest_alternatives": [
+            {
+              "error": 1.85693359375,
+              "frame": 5298
+            },
+            {
+              "error": 1.881591796875,
+              "frame": 5297
+            },
+            {
+              "error": 1.92626953125,
+              "frame": 5295
+            },
+            {
+              "error": 1.93505859375,
+              "frame": 5294
+            },
+            {
+              "error": 1.955078125,
+              "frame": 5296
+            }
+          ],
+          "compatible_alternative_count": 2640,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.672119140625,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.184814453125,
+          "searched_frames": 5482
+        },
+        "features": {
+          "roi_shape": [
+            5482,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=120:160:700:246:exact=1,format=yuv444p,pad=120:160:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            5482,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 182.733333,
+            "frames": 5482,
+            "height": 160,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "98b8e91ac79be183064cca7b6080b9601611d17733c6052e21ab8b3784bd0f3f",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 120
+          },
+          "source": {
+            "duration": 182.721466,
+            "frames": 5482,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "7b89bda405832f93ed6d3e995038c1be97291925a6e1aa274d64b99a194651ca",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0044"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            157,
+            158
+          ],
+          "anchor_pts": [
+            5.222667,
+            5.256
+          ],
+          "event_frame": 158,
+          "event_kind": "exact",
+          "lower_frame": 157,
+          "upper_frame": 158
+        },
+        "details": {
+          "anchor_frame": 157,
+          "closest_alternatives": [
+            {
+              "error": 0.23193359375,
+              "frame": 155
+            },
+            {
+              "error": 0.236083984375,
+              "frame": 156
+            },
+            {
+              "error": 0.250244140625,
+              "frame": 154
+            },
+            {
+              "error": 0.272705078125,
+              "frame": 153
+            },
+            {
+              "error": 0.292724609375,
+              "frame": 152
+            }
+          ],
+          "compatible_alternative_count": 139,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.231201171875,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.000732421875,
+          "searched_frames": 176
+        },
+        "features": {
+          "roi_shape": [
+            176,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=480:640:96:192:exact=1,format=yuv444p,pad=480:640:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            176,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 5.8666659999999995,
+            "frames": 176,
+            "height": 640,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "61d2d4152aee71b158054993e86ab07950f05e785c41cef55742bbf816b6261b",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 480
+          },
+          "source": {
+            "duration": 5.856,
+            "frames": 176,
+            "height": 1080,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "7c928a9cf2c80916aace78bab1d1d38545080c3bb56b2648708e6f930f4f7f32",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 642
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0046"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 175.366666,
+            "frames": 5261,
+            "height": 200,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "54b8cf35bcd49c986ce8d67f2bb56176045ffa912d36c8e9f328fd3f4178fc18",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 150
+          },
+          "source": {
+            "duration": 175.3622,
+            "frames": 5261,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "773fecdcc957f64df2ea910318183f741fae7eb5399a9ec0330a863e7f4cad22",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "video_abnormal",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0049"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [],
+          "anchor_pts": [],
+          "event_frame": null,
+          "event_kind": "none",
+          "lower_frame": null,
+          "upper_frame": null
+        },
+        "details": {
+          "anchor_frame": 0,
+          "closest_alternatives": [
+            {
+              "error": 0.969482421875,
+              "frame": 1
+            },
+            {
+              "error": 0.998291015625,
+              "frame": 2
+            },
+            {
+              "error": 1.04296875,
+              "frame": 3
+            },
+            {
+              "error": 1.061279296875,
+              "frame": 6
+            },
+            {
+              "error": 1.06640625,
+              "frame": 4
+            }
+          ],
+          "compatible_alternative_count": 300,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.976318359375,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": -0.0068359375,
+          "searched_frames": 301
+        },
+        "features": {
+          "roi_shape": [
+            301,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=150:200:530:234:exact=1,format=yuv444p,pad=150:200:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            301,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 10.033333,
+            "frames": 301,
+            "height": 200,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "440dfc34e0c36b0e0034799b9eab07afbcad74aaaa3362d713d570ec5ae1d7c1",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 150
+          },
+          "source": {
+            "duration": 10.0334,
+            "frames": 301,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "31d75b445a66f13ad8ab1338ede682a98bc6b7829968a42fdc3b3539672fdad4",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0052"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            4445,
+            4446
+          ],
+          "anchor_pts": [
+            148.1602,
+            148.192267
+          ],
+          "event_frame": 4446,
+          "event_kind": "exact",
+          "lower_frame": 4445,
+          "upper_frame": 4446
+        },
+        "details": {
+          "anchor_frame": 4445,
+          "closest_alternatives": [
+            {
+              "error": 2.08935546875,
+              "frame": 4446
+            },
+            {
+              "error": 2.120849609375,
+              "frame": 4444
+            },
+            {
+              "error": 2.142333984375,
+              "frame": 4443
+            },
+            {
+              "error": 2.16943359375,
+              "frame": 4442
+            },
+            {
+              "error": 2.233642578125,
+              "frame": 4447
+            }
+          ],
+          "compatible_alternative_count": 1045,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.82861328125,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.2607421875,
+          "searched_frames": 4569
+        },
+        "features": {
+          "roi_shape": [
+            4569,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=96:128:726:270:exact=1,format=yuv444p,pad=96:128:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            4569,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 152.3,
+            "frames": 4569,
+            "height": 128,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "b1ab3c3805f3f69f520d1f76c671e497878fc24f8b004484c0b85c0593cbdeb8",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 96
+          },
+          "source": {
+            "duration": 152.289566,
+            "frames": 4569,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "0a3d0bbe571004df7f2686316c07579b7b7f896367e2dfee5b98bb73f3d0e79f",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0053"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 73.6,
+            "frames": 2208,
+            "height": 192,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "c3bc7bfd0696d8ff5ecde7ab6e2f68183339fd2b87625a8df6fa8cf9078a7702",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 144
+          },
+          "source": {
+            "duration": 73.6017,
+            "frames": 2208,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "515990f8650c2c11e2ab4821995a246b454dbd7daf2b87e6781a275451e31659",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "video_abnormal",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0056"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 74.933333,
+            "frames": 2248,
+            "height": 240,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "37c919c6cd561c316cdf53dafc1013ee2cd7434446cd5b7ff22b67b0f57f8a08",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 180
+          },
+          "source": {
+            "duration": 74.945266,
+            "frames": 2248,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "e448d3655d765d1f9ef8876da95b7d33bc21bd36fc1cf90c913a254c7665ebaf",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "video_abnormal",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0064"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            5347,
+            5348
+          ],
+          "anchor_pts": [
+            178.240133,
+            178.272133
+          ],
+          "event_frame": 5348,
+          "event_kind": "exact",
+          "lower_frame": 5347,
+          "upper_frame": 5348
+        },
+        "details": {
+          "anchor_frame": 5347,
+          "closest_alternatives": [
+            {
+              "error": 1.290283203125,
+              "frame": 5346
+            },
+            {
+              "error": 1.453369140625,
+              "frame": 5345
+            },
+            {
+              "error": 1.539794921875,
+              "frame": 5344
+            },
+            {
+              "error": 1.648681640625,
+              "frame": 5341
+            },
+            {
+              "error": 1.650390625,
+              "frame": 5343
+            }
+          ],
+          "compatible_alternative_count": 3309,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 1.177978515625,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.1123046875,
+          "searched_frames": 5529
+        },
+        "features": {
+          "roi_shape": [
+            5529,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=144:192:692:224:exact=1,format=yuv444p,pad=144:192:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            5529,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 184.3,
+            "frames": 5529,
+            "height": 192,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "c3b9bcfeb59212417154cb19605e155aaf9559a7f5dcb7dce18729668ccba215",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 144
+          },
+          "source": {
+            "duration": 184.305567,
+            "frames": 5529,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "540dab0b61634e863f5e241bba86b6f33a749338b4480dd3dc85349c259171cc",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0076"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            57,
+            58
+          ],
+          "anchor_pts": [
+            1.869,
+            1.902333
+          ],
+          "event_frame": 58,
+          "event_kind": "exact",
+          "lower_frame": 57,
+          "upper_frame": 58
+        },
+        "details": {
+          "anchor_frame": 57,
+          "closest_alternatives": [
+            {
+              "error": 0.30078125,
+              "frame": 56
+            },
+            {
+              "error": 0.3115234375,
+              "frame": 55
+            },
+            {
+              "error": 0.3232421875,
+              "frame": 54
+            },
+            {
+              "error": 0.345703125,
+              "frame": 53
+            },
+            {
+              "error": 0.360595703125,
+              "frame": 52
+            }
+          ],
+          "compatible_alternative_count": 91,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.300537109375,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.000244140625,
+          "searched_frames": 92
+        },
+        "features": {
+          "roi_shape": [
+            92,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=282:376:78:170:exact=1,format=yuv444p,pad=282:376:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            92,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 3.0,
+            "frames": 92,
+            "height": 376,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "5e26e5d9a3f8dea0f85af9777ce0e607fad971764c56e0a8f044a8b480b48e1b",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 282
+          },
+          "source": {
+            "duration": 3.035633,
+            "frames": 92,
+            "height": 708,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "1da9e068f1208297d1a2b24f3029b6bf63020d08c807d4c072bf15a5d7d011dc",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 440
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0079"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 166.966666,
+            "frames": 5009,
+            "height": 256,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "49a0833628c7cbfab168694881e472523737e312cf909716ef0c8324949ffd8a",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 192
+          },
+          "source": {
+            "duration": 166.9614,
+            "frames": 5009,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "74eba8883b3e7e945ca2e99fc0c5dd865d8b399ae49c8f995e33605f82cbdc1c",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "fracture_mechanism_not_supported_by_window_geometry",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0083"
+      },
+      {
+        "details": {},
+        "media": {
+          "roi": {
+            "duration": 225.2,
+            "frames": 6756,
+            "height": 296,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "6668b4715b0395a623917cd5b6e0e5b3fead82d9c69c06df2712d2eb9c3bf1ff",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 222
+          },
+          "source": {
+            "duration": 225.1857,
+            "frames": 6756,
+            "height": 720,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "3358e340cd673e00dc7891ebeb24d83ef8dfdbfa4636d6e0dce6d54cdfc683f6",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 1280
+          }
+        },
+        "reason": "uncertain_anomaly_annotation:异常_视频异常",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery"
+        ],
+        "status": "pending",
+        "video_id": "video_0096"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            3571,
+            3641
+          ],
+          "anchor_pts": [
+            119.1,
+            121.433333
+          ],
+          "event_frame": null,
+          "event_kind": "range",
+          "lower_frame": 3571,
+          "upper_frame": 3641
+        },
+        "details": {
+          "anchor_frame": 3571,
+          "closest_alternatives": [
+            {
+              "error": 0.831787109375,
+              "frame": 3572
+            },
+            {
+              "error": 1.069091796875,
+              "frame": 3573
+            },
+            {
+              "error": 1.196044921875,
+              "frame": 3570
+            },
+            {
+              "error": 1.25048828125,
+              "frame": 3574
+            },
+            {
+              "error": 1.58984375,
+              "frame": 3569
+            }
+          ],
+          "compatible_alternative_count": 17,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.622802734375,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.208984375,
+          "searched_frames": 3837
+        },
+        "features": {
+          "roi_shape": [
+            3837,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=408:544:52:174:exact=1,format=yuv444p,pad=408:544:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            3837,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 127.966666,
+            "frames": 3837,
+            "height": 544,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "6ff499db10cadbda30c7a8915aac83880a4094f245499690043e26317ed01d4b",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 408
+          },
+          "source": {
+            "duration": 127.966666,
+            "frames": 3837,
+            "height": 960,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "6ff499db10cadbda30c7a8915aac83880a4094f245499690043e26317ed01d4b",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 544
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0099"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            2999,
+            3000
+          ],
+          "anchor_pts": [
+            100.0,
+            100.033333
+          ],
+          "event_frame": 3000,
+          "event_kind": "exact",
+          "lower_frame": 2999,
+          "upper_frame": 3000
+        },
+        "details": {
+          "anchor_frame": 2999,
+          "closest_alternatives": [
+            {
+              "error": 0.695068359375,
+              "frame": 3000
+            },
+            {
+              "error": 0.720703125,
+              "frame": 2998
+            },
+            {
+              "error": 0.888916015625,
+              "frame": 3001
+            },
+            {
+              "error": 1.6181640625,
+              "frame": 2996
+            },
+            {
+              "error": 1.694091796875,
+              "frame": 2997
+            }
+          ],
+          "compatible_alternative_count": 11,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.5205078125,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.174560546875,
+          "searched_frames": 3086
+        },
+        "features": {
+          "roi_shape": [
+            3086,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=552:736:4:348:exact=1,format=yuv444p,pad=552:736:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            3086,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 102.9,
+            "frames": 3086,
+            "height": 736,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "a5de17433df837eb75b3efe0aff3a0a01339fe3f28968ad8b2b7e3298da8a242",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 552
+          },
+          "source": {
+            "duration": 102.9,
+            "frames": 3086,
+            "height": 1280,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "a5de17433df837eb75b3efe0aff3a0a01339fe3f28968ad8b2b7e3298da8a242",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 720
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0100"
+      },
+      {
+        "annotation": {
+          "anchor_frames": [
+            4577,
+            4578
+          ],
+          "anchor_pts": [
+            152.633333,
+            152.666667
+          ],
+          "event_frame": 4578,
+          "event_kind": "exact",
+          "lower_frame": 4577,
+          "upper_frame": 4578
+        },
+        "details": {
+          "anchor_frame": 4577,
+          "closest_alternatives": [
+            {
+              "error": 0.930419921875,
+              "frame": 4578
+            },
+            {
+              "error": 1.344482421875,
+              "frame": 4576
+            },
+            {
+              "error": 1.45166015625,
+              "frame": 4579
+            },
+            {
+              "error": 2.156982421875,
+              "frame": 4584
+            },
+            {
+              "error": 2.267822265625,
+              "frame": 4585
+            }
+          ],
+          "compatible_alternative_count": 28,
+          "compression_tolerance": 5.0,
+          "mean_pixel_error": 0.529541015625,
+          "minimum_anchor_margin": 0.15,
+          "nearest_alternative_margin": 0.40087890625,
+          "searched_frames": 4627
+        },
+        "features": {
+          "roi_shape": [
+            4627,
+            64,
+            64
+          ],
+          "source_roi_filter": "crop=504:672:28:150:exact=1,format=yuv444p,pad=504:672:0:0:color=black,setsar=1",
+          "source_roi_shape": [
+            4627,
+            64,
+            64
+          ]
+        },
+        "media": {
+          "roi": {
+            "duration": 154.3,
+            "frames": 4627,
+            "height": 672,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "69b2d6ede242281897a2f4665886349113f77af9ee8af7682019602991499aba",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 504
+          },
+          "source": {
+            "duration": 154.3,
+            "frames": 4627,
+            "height": 960,
+            "nominal_rate": "30",
+            "pts_origin": 0.0,
+            "pts_sha256": "69b2d6ede242281897a2f4665886349113f77af9ee8af7682019602991499aba",
+            "pts_validation": "decoded_monotonic_pts_no_constant_rate_grid",
+            "rotation": 0.0,
+            "width": 544
+          }
+        },
+        "reason": "ambiguous_or_shifted_anchor_picture",
+        "sha256": {
+          "decision_binds_source": true,
+          "roi_matches_manifest": true,
+          "source_matches_roi_manifest": true
+        },
+        "stages": [
+          "media_sha256_and_decision_binding",
+          "aligned_actual_pts_probe",
+          "annotation_anchor_recovery",
+          "source_roi_geometry_and_full_sequence_features",
+          "same_index_comparison_and_anchor_uniqueness"
+        ],
+        "status": "pending",
+        "video_id": "video_0101"
+      }
+    ],
+    "summary": {
+      "counts": {
+        "pending": 24
+      },
+      "reasons": {
+        "ambiguous_or_shifted_anchor_picture": 16,
+        "fracture_mechanism_not_supported_by_window_geometry": 1,
+        "uncertain_anomaly_annotation:异常_视频异常": 1,
+        "unsupported_or_uncertain_source_state": 1,
+        "video_abnormal": 5
+      },
+      "total": 24
+    }
+  },
+  "purpose": "readonly_source_to_ROI_frame_correspondence",
+  "scope": "development_only_no_test_media_no_special_media"
+}
