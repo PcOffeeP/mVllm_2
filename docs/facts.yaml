@@ -491,7 +491,7 @@ facts:
     claim: >
       用户确认未夹紧现象使用源视频帧号作为锚点，分别尝试 2、3、5、10、20 秒，每种长度最多一个片段；靠近边界时允许移动窗口以容纳现象帧，源素材不足目标长度则记录原因。旧标注对 video_0002 记录 5.800 秒与帧 174，旧记录标为未夹紧且未发生断裂；该值按用户要求迁移到规则文档并作为未夹紧现象时刻，不改当前标注表。文档记录帧号及源视频摘要，入口将文档与视频身份绑定并核对帧对应；锚点无效、来源身份不符或未通过重放时不生成。训练机对该来源做临时单视频核验，2、3、5 秒片段及两段重放通过，10、20 秒因素材不足排除；后续全来源批次见 DF-027，人工标签审核尚未进行。
     evidence:
-      - ref: docs/subvideo-current-logic.md:46
+      - ref: docs/subvideo-current-logic.md:48
         expect: '| video_0002 | 174 |'
       - ref: script/sub_video/anchors.py:20
         expect: 'def load_anchors(document_path: Path)'

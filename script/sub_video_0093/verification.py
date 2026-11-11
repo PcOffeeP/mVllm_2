@@ -193,7 +193,7 @@ def decode_playback(path: Path, info: dict, *, allow_confirmed_preroll=False) ->
         raise ReplayUncertain("0093_editlist_preroll_frame_mapping_unverified")
     actual["presentation_evidence"] = {"declared_frame_count":HEADER_FRAME_COUNT,
         "presented_frame_count":ACTUAL_FRAME_COUNT,"discarded_preroll_frames":PREROLL_FRAMES,
-        "unedited_decode":_compact_decode(unedited),"mapping":"presented_i_equals_unedited_i_plus_38"}
+        "unedited_decode":_compact_decode(unedited),"mapping":"unedited_i_equals_presented_i_plus_38"}
     return actual
 
 

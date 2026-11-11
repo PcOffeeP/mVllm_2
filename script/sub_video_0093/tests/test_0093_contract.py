@@ -60,6 +60,7 @@ def test_real_editlist_733_is_tail_of_771_and_keeps_original_metadata(example):
     assert info==before
     assert decoded['frame_count']==733
     assert decoded['presentation_evidence']['discarded_preroll_frames']==38
+    assert decoded['presentation_evidence']['mapping']=='unedited_i_equals_presented_i_plus_38'
     assert decoded['normalized_pts'][727]=='727/30'
     assert decoded['normalized_pts'][728]=='364/15'
 
