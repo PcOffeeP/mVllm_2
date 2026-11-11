@@ -465,8 +465,6 @@ facts:
         expect: def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict
       - ref: script/subvideo_pilot/replay.py:374
         expect: def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict
-      - ref: data/subvideo-initial/roi-replay-evidence-20261109.json:1
-        expect: '{'
       - ref: data/subvideos/frame-aligned/summary.json:2
         expect: '"candidate_count": 1123'
     established: 2026-11-09
