@@ -1,0 +1,293 @@
+{
+  "status": "passed",
+  "source": {
+    "presented_frames": 733,
+    "header_frames": 771,
+    "discarded_preroll": 38,
+    "annotation_frames": [
+      727,
+      728
+    ],
+    "annotation_to_unedited_frames": {
+      "727": 765,
+      "728": 766
+    },
+    "annotation_pts_seconds": {
+      "727": 24.233333333333334,
+      "728": 24.266666666666666
+    },
+    "all_three_folds": "test",
+    "source_sha256": "14ee72afd09d733b6ab2f8549d477523f0572674fb1aa5f787f608fdf5fef788",
+    "roi_sha256": "11f898897a443e34ade771a3cc38b20efba4a1b2cee8c9280877f7faa73fc9ee"
+  },
+  "outputs_verified": 15,
+  "roles": {
+    "pre_event": 15
+  },
+  "excluded_windows": [],
+  "labels": "all final_labels null; unreviewed; manual review required",
+  "parent_1513_mp4_sha256": "all match pre-generation snapshot",
+  "parent_manifest_summary": "both match pre-generation snapshot",
+  "clips": [
+    {
+      "candidate_id": "video_0093_pre_01",
+      "sha256": "87a54ca0fec1b41cc2f37479810ab6d657df95569c183b5fd8672c267d60686c",
+      "bytes": 32760,
+      "role": "pre_event",
+      "frames": [
+        0,
+        60
+      ],
+      "source_pts": [
+        0.0,
+        2.0
+      ],
+      "decoded_frames": 60,
+      "frame_sequence_sha256": "668168acfbafe2dcc19f956d9a8ad3acfabb3bcacbaad425a5b87ef5f4e69a82",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_02",
+      "sha256": "1ff9936196cd0da6bebd1cec3aba9e9546d50f16d88dfaa46ca590f115e7217c",
+      "bytes": 43298,
+      "role": "pre_event",
+      "frames": [
+        0,
+        90
+      ],
+      "source_pts": [
+        0.0,
+        3.0
+      ],
+      "decoded_frames": 90,
+      "frame_sequence_sha256": "8cf97be99f4f640aa5b79954fb4e6e01d22f7765c04ab0f94545f854f717163e",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_03",
+      "sha256": "e6448b6bfbcaea1bc2460c7aadfcb2d968a507a409823a85c036d283784fde3d",
+      "bytes": 66102,
+      "role": "pre_event",
+      "frames": [
+        0,
+        150
+      ],
+      "source_pts": [
+        0.0,
+        5.0
+      ],
+      "decoded_frames": 150,
+      "frame_sequence_sha256": "225bb6e7c2459345ea52db2b4007d8f839dcd30fb6572cf1ab406878006b70c3",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_04",
+      "sha256": "9d559ff1652b837ba0ff0d428b11c21f39b5a8e9a104c2e81b1c8c1835c29191",
+      "bytes": 141456,
+      "role": "pre_event",
+      "frames": [
+        0,
+        300
+      ],
+      "source_pts": [
+        0.0,
+        10.0
+      ],
+      "decoded_frames": 300,
+      "frame_sequence_sha256": "fa4da7e6d4004c81cb11119027d02397239d59e497babca248e04bcbcb10e085",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_05",
+      "sha256": "e15328d64206f2d27b17d26ff06bc236f12aa6b6ddf574d2fd76c533847607ab",
+      "bytes": 256751,
+      "role": "pre_event",
+      "frames": [
+        0,
+        600
+      ],
+      "source_pts": [
+        0.0,
+        20.0
+      ],
+      "decoded_frames": 600,
+      "frame_sequence_sha256": "047210f20c7ae71e8fe42477f08fedd7044ee1a9a1610bfcf1365d866d76ff93",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_06",
+      "sha256": "9b7ec63fd843fbf0f36eb63794cc749310908d69ba9ec675452723689cd3765c",
+      "bytes": 273344,
+      "role": "pre_event",
+      "frames": [
+        56,
+        656
+      ],
+      "source_pts": [
+        1.866667,
+        21.866667
+      ],
+      "decoded_frames": 600,
+      "frame_sequence_sha256": "cb64200223c1960dfd2066f196209407d33ea8d046736e02322179bb720fbccd",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_07",
+      "sha256": "6221c1c20e6346cb9fa70bcee01e52e4269d32fe35e0853329008007fa87615f",
+      "bytes": 266738,
+      "role": "pre_event",
+      "frames": [
+        113,
+        713
+      ],
+      "source_pts": [
+        3.766667,
+        23.766667
+      ],
+      "decoded_frames": 600,
+      "frame_sequence_sha256": "0fd9d1cc8283036a55bbf3527e54fd89829a8ff18e0dedb958ffa8db46ba1898",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_08",
+      "sha256": "60cc280d465cc9da934cca9652f89f083df90c4825c40e02138f159556f9416c",
+      "bytes": 158713,
+      "role": "pre_event",
+      "frames": [
+        206,
+        506
+      ],
+      "source_pts": [
+        6.866667,
+        16.866667
+      ],
+      "decoded_frames": 300,
+      "frame_sequence_sha256": "183cfd652cc30aea753ba6bca252ca81eac57ea19de01d984a6bd4239fda1157",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_09",
+      "sha256": "68198ac273786b19d0b928afb096bf54d4e22e21c2354fdf8cb84bcd69cfa45b",
+      "bytes": 74746,
+      "role": "pre_event",
+      "frames": [
+        282,
+        432
+      ],
+      "source_pts": [
+        9.4,
+        14.4
+      ],
+      "decoded_frames": 150,
+      "frame_sequence_sha256": "307441b0953861cc213ba6e55623eea115f3dfb4731326c3722184951535e823",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_10",
+      "sha256": "14e81cf65bc23d09b7bdc1faeb6b9e65511ad7e4eff7b900a325099a4458f1f8",
+      "bytes": 54932,
+      "role": "pre_event",
+      "frames": [
+        312,
+        402
+      ],
+      "source_pts": [
+        10.4,
+        13.4
+      ],
+      "decoded_frames": 90,
+      "frame_sequence_sha256": "6e7efed4dcc9661c5015fca336e74a920a71278607d935c35afcf53cd509cf36",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_11",
+      "sha256": "162c74d26233dd14b372ebf5fbfba7a8120a823f24e7c1bfc2b32055ca485eb4",
+      "bytes": 43436,
+      "role": "pre_event",
+      "frames": [
+        326,
+        386
+      ],
+      "source_pts": [
+        10.866667,
+        12.866667
+      ],
+      "decoded_frames": 60,
+      "frame_sequence_sha256": "19b02c90025a82ac32065ce2910ef2c28fbb6833b98d525e63b038eb8a905a9d",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_12",
+      "sha256": "810df5d39c5834454d19ad025c854d3f7c17b1df5c2eac0c2fbf3ad6bbc5d6e3",
+      "bytes": 122636,
+      "role": "pre_event",
+      "frames": [
+        413,
+        713
+      ],
+      "source_pts": [
+        13.766667,
+        23.766667
+      ],
+      "decoded_frames": 300,
+      "frame_sequence_sha256": "87fa4f5f5254af63817dd68fd6d2f19cfb884e230c32d6206d57ccca92df6eee",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_13",
+      "sha256": "7d7bfee585d8595ead6c701aa82297dbbfdbae503e1cb7318e33f506394374e8",
+      "bytes": 54983,
+      "role": "pre_event",
+      "frames": [
+        563,
+        713
+      ],
+      "source_pts": [
+        18.766667,
+        23.766667
+      ],
+      "decoded_frames": 150,
+      "frame_sequence_sha256": "7f7515418b597b11dc28602e12fed6a305a92f6d1a0d8128c42dbd3b4ac6c456",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_14",
+      "sha256": "9fc966323b21aeed4f46d306a41b47d4f846deacc4bd5775f1bcdd9c721cb3e9",
+      "bytes": 48205,
+      "role": "pre_event",
+      "frames": [
+        623,
+        713
+      ],
+      "source_pts": [
+        20.766667,
+        23.766667
+      ],
+      "decoded_frames": 90,
+      "frame_sequence_sha256": "a2138fa7992d733e565a45f8d9fce427f7adfca7a2712e8d231cbe90d8bd54d9",
+      "status": "verified"
+    },
+    {
+      "candidate_id": "video_0093_pre_15",
+      "sha256": "80860ae79b9b239e0b56c09026d9f0da9fda4f96c72f1b15e52d584280c52c41",
+      "bytes": 35610,
+      "role": "pre_event",
+      "frames": [
+        653,
+        713
+      ],
+      "source_pts": [
+        21.766667,
+        23.766667
+      ],
+      "decoded_frames": 60,
+      "frame_sequence_sha256": "e49801cbbf730e253353d72707d4f6f2f79b799b11436150b7d0e092a163d352",
+      "status": "verified"
+    }
+  ],
+  "limitations": [
+    "technical replay does not constitute human visual review or label approval"
+  ],
+  "schema": "tensile-0093-independent-audit/1",
+  "manifest_sha256": "900b2f7d874dce9ae01207d0536254c1fda3d5c223904dcd089f2fa076678744"
+}

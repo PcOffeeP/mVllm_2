@@ -1,0 +1,88 @@
+{
+  "schema": "tensile-sub-video-batches/1",
+  "review": "all clips unreviewed; manual review required before publication",
+  "published": false,
+  "description": "当前候选由以下三个批次合计；首批 manifest 和 summary 为生成时的历史快照，补充批次只处理其待处理来源。",
+  "batches": [
+    {
+      "id": "initial",
+      "manifest": "manifest.json",
+      "manifest_sha256": "2f29f44713d34303eb92805393c988ae2858c036ce4f8e250b4d7a9ecffb5d9a",
+      "summary": "summary.json",
+      "candidate_count": 1513
+    },
+    {
+      "id": "coverage",
+      "manifest": "supplement/manifest.json",
+      "manifest_sha256": "64ac6a6c1a539203e238252dfe41a96d8034f66a4b89cb03fc6a02f9c6a3bcb4",
+      "summary": "supplement/summary.json",
+      "audit": "supplement/audit.json",
+      "candidate_count": 93
+    },
+    {
+      "id": "video_0093",
+      "manifest": "supplement_0093/manifest.json",
+      "manifest_sha256": "900b2f7d874dce9ae01207d0536254c1fda3d5c223904dcd089f2fa076678744",
+      "summary": "supplement_0093/summary.json",
+      "audit": "supplement_0093/audit.json",
+      "candidate_count": 15
+    }
+  ],
+  "combined": {
+    "source_count": 110,
+    "sources_with_candidates": 110,
+    "candidates": 1621,
+    "split_counts": {
+      "development": 1307,
+      "test": 314
+    },
+    "fold_counts": {
+      "0": {
+        "val": 402,
+        "train": 905,
+        "test": 314
+      },
+      "1": {
+        "train": 890,
+        "val": 417,
+        "test": 314
+      },
+      "2": {
+        "train": 819,
+        "val": 488,
+        "test": 314
+      }
+    },
+    "unresolved_sources": [],
+    "window_limitations": [
+      {
+        "source_video_id": "video_0093",
+        "not_generated": [
+          "包含断裂的片段",
+          "断裂后片段"
+        ],
+        "reason": "断裂发生在播放结尾附近：现有事件窗口位置及最短时长要求无法满足；断后 0.5 秒保护间隔之后也没有足够素材。"
+      }
+    ]
+  },
+  "supplement_per_source": {
+    "video_0005": 2,
+    "video_0015": 1,
+    "video_0021": 1,
+    "video_0034": 5,
+    "video_0036": 4,
+    "video_0042": 3,
+    "video_0049": 12,
+    "video_0050": 4,
+    "video_0054": 5,
+    "video_0056": 5,
+    "video_0058": 1,
+    "video_0064": 5,
+    "video_0078": 5,
+    "video_0087": 4,
+    "video_0093": 15,
+    "video_0094": 11,
+    "video_0096": 15,
+    "video_0107": 10
+  }
+}
