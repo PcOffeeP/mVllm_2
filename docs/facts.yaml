@@ -473,16 +473,34 @@ facts:
     state: active
     topic: 新子视频入口的训练集筛选与待审核输出
     claim: >
-      用户要求依据当前子视频规则新建生成入口，使用裁剪后训练视频，结果写入 data/sub_video。新入口须指定三折中的一折，只处理该折训练成员；读取源视频用于验证与 ROI 的帧对应。断裂模式或位置无法确定、视频异常或爆炸性异常不单独阻挡有效断裂帧或完整范围的窗口；视频异常且没有断裂时间时记录“视频异常”。未知模式沿其他模式选窗但保留原标签，源标签参考、候选初值及最终人工标签分开，拟发布片段仍须人工审核。未夹紧现象时刻及窗口规则缺失、仅有时间点而源帧定位规则未确定时分别保留待处理，不猜测锚点。源到 ROI 与 ROI 到片段须通过严格重放；本轮已有合成视频和行为测试，尚未运行真实数据批次或验证训练机实际工具链。
+      用户要求依据当前子视频规则新建生成入口，使用裁剪后训练视频，结果写入 data/sub_video。新入口须指定三折中的一折，只处理该折训练成员；读取源视频用于验证与 ROI 的帧对应。断裂模式或位置无法确定、视频异常或爆炸性异常不单独阻挡有效断裂帧或完整范围的窗口；视频异常且没有断裂时间时记录“视频异常”。未知模式沿其他模式选窗但保留原标签，源标签参考、候选初值及最终人工标签分开，拟发布片段仍须人工审核。未夹紧现象按 DF-026 的独立锚点处理，缺少锚点时保留待处理；仅有断裂时间点而源帧定位规则未确定时不猜测锚点。源到 ROI 与 ROI 到片段须通过严格重放；本轮已有合成视频和行为测试，尚未运行真实数据批次。
     evidence:
       - ref: script/sub_video/generate.py:32
-        expect: 'def adapt_annotation(row: dict, media: dict)'
-      - ref: script/sub_video/generate.py:162
+        expect: 'def adapt_annotation(row: dict, media: dict, phenomenon_anchor'
+      - ref: script/sub_video/generate.py:207
         expect: 'def run(project_root: Path, output_dir: Path | None = None'
-      - ref: script/sub_video/verification.py:199
+      - ref: script/sub_video/verification.py:220
         expect: 'def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict'
     established: 2026-11-11
     established_by: 用户确认规则并授权新脚本；代码与合成测试核对
+    supersedes: null
+    affects: [data, code, ops]
+  - id: DF-026
+    state: active
+    topic: 未夹紧现象的源帧锚点与选窗
+    claim: >
+      用户确认未夹紧现象使用源视频帧号作为锚点，分别尝试 2、3、5、10、20 秒，每种长度最多一个片段；靠近边界时允许移动窗口以容纳现象帧，源素材不足目标长度则记录原因。旧标注对 video_0002 记录 5.800 秒与帧 174，旧记录标为未夹紧且未发生断裂；该值按用户要求迁移到规则文档并作为未夹紧现象时刻，不改当前标注表。文档记录帧号及源视频摘要，入口将文档与视频身份绑定并核对帧对应；锚点无效、来源身份不符或未通过重放时不生成。训练机对该来源做临时单视频核验，2、3、5 秒片段及两段重放通过，10、20 秒因素材不足排除；未进行整批真实生成或人工标签审核。
+    evidence:
+      - ref: docs/subvideo-current-logic.md:46
+        expect: '| video_0002 | 174 |'
+      - ref: script/sub_video/anchors.py:20
+        expect: 'def load_anchors(document_path: Path)'
+      - ref: script/sub_video/generate.py:95
+        expect: 'def plan_windows(record: dict, media: dict)'
+      - ref: script/sub_video/verification.py:439
+        expect: 'def verify_clip_replay(roi_path: Path'
+    established: 2026-11-11
+    established_by: 用户确认未夹紧源帧与窗口策略；旧标注身份、代码和验证核对
     supersedes: null
     affects: [data, code, ops]
 

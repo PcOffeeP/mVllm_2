@@ -13,10 +13,10 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from script.subvideo_pilot import aligned, geometry, pilot as base
-from script.sub_video import verification
+from script.sub_video import anchors, verification
 
-SCHEMA = "tensile-sub-video/1"
-ROLE_NAMES = {"pre_event": "pre", "transition": "fracture", "post_event": "post", "stable_negative": "no_fracture"}
+SCHEMA = "tensile-sub-video/2"
+ROLE_NAMES = {"pre_event": "pre", "transition": "fracture", "post_event": "post", "stable_negative": "no_fracture", "unclamped": "unclamped"}
 ANOMALIES = ("未夹紧", "视频异常", "爆炸性断裂")
 PHENOMENA = ("伸长", "颈缩", "开裂", "界面分离", "断后脱夹")
 
@@ -29,15 +29,24 @@ def _present(value) -> bool:
     return value not in (None, "", "无")
 
 
-def adapt_annotation(row: dict, media: dict) -> dict:
+def adapt_annotation(row: dict, media: dict, phenomenon_anchor: dict | None = None) -> dict:
     """Use current temporal observations without the old label compatibility gates."""
     fields = ("断裂帧_前", "断裂帧_后", "断裂时间点", "断裂时间范围_下界", "断裂时间范围_上界")
     has_event = any(_present(row.get(name)) for name in fields)
     if row.get("异常_视频异常") == "是" and not has_event:
         raise PendingSource("视频异常")
     if row.get("异常_未夹紧") == "是":
-        # Neither a phenomenon field nor its window parameters are approved yet.
-        raise PendingSource("未夹紧：缺少现象时刻及已确认的现象窗口规则")
+        if not isinstance(phenomenon_anchor, dict):
+            raise PendingSource("未夹紧：缺少现象时刻")
+        event = phenomenon_anchor.get("source_frame")
+        if type(event) is not int or not 0 <= event < media["total_frames"]:
+            raise PendingSource("未夹紧：现象帧号无效或越界")
+        return {"video_id": row["id"], "fps": media["fps"], "total_frames": media["total_frames"],
+                "duration": media["duration"], "event_kind": "unclamped", "event_frame": event,
+                "anchor_frames": [event], "source_event_pts": media["timestamps"][event],
+                "phenomenon_anchor": dict(phenomenon_anchor)}
+    if phenomenon_anchor is not None:
+        raise PendingSource("现象帧记录与未夹紧标签不匹配")
     total = media["total_frames"]
     record = {"video_id": row["id"], "fps": media["fps"], "total_frames": total,
               "duration": total / media["fps"], "is_abnormal_canonical": False,
@@ -84,6 +93,40 @@ def adapt_annotation(row: dict, media: dict) -> dict:
 
 
 def plan_windows(record: dict, media: dict) -> tuple[list[dict], list[dict]]:
+    if record["event_kind"] == "unclamped":
+        event = record["event_frame"]
+        times = media["timestamps"]
+        usable_end = media["duration"]
+        boundaries = times + [usable_end]
+        accepted, excluded, seen = [], [], set()
+        for target in geometry.TARGET_DURATIONS:
+            base_window = {"window_role": "unclamped", "event_kind": "unclamped", "target_duration_seconds": target}
+            if usable_end < target - 1e-9:
+                excluded.append(dict(base_window, reason="未夹紧：源素材不足目标时长"))
+                continue
+            preferred_start = times[event] - target / 2
+            desired_start = max(0., min(preferred_start, usable_end - target))
+            start = anchors.nearest_boundary(boundaries, desired_start)
+            end = anchors.nearest_boundary(boundaries, desired_start + target)
+            if not 0 <= start <= event < end <= len(times) or boundaries[end] - boundaries[start] < 1 - 1e-9:
+                excluded.append(dict(base_window, reason="未夹紧：窗口无法覆盖现象帧或不足一秒"))
+                continue
+            if (start, end) in seen:
+                excluded.append(dict(base_window, reason="未夹紧：帧对齐后窗口重复"))
+                continue
+            seen.add((start, end))
+            duration = boundaries[end] - boundaries[start]
+            shifted = abs(desired_start - preferred_start) > 1e-9
+            accepted.append(dict(base_window, start_frame=start, end_frame=end,
+                                 source_frame_range=[start, end], start_time=times[start], end_time=boundaries[end],
+                                 source_start_pts=times[start], source_end_pts=boundaries[end],
+                                 duration=duration, source_duration=duration, duration_policy="standard",
+                                 window_variant="unclamped_shifted" if shifted else "unclamped_centered",
+                                 requested_event_position_ratio=.5,
+                                 event_position_ratio=(times[event]-times[start])/duration,
+                                 position_policy="shift_to_source_boundary" if shifted else "centered",
+                                 phenomenon_anchor=dict(record["phenomenon_anchor"])))
+        return accepted, excluded
     return aligned.plan_windows(record, media)
 
 
@@ -96,7 +139,7 @@ def _source_labels(row: dict) -> dict:
 
 def candidate_labels(row: dict, role: str) -> dict:
     labels = _source_labels(row)
-    labels["断裂状态"] = {"pre": "未断裂", "pre_event": "未断裂", "fracture": "发生断裂",
+    labels["断裂状态"] = row.get("断裂状态", "无法确定") if role == "unclamped" else {"pre": "未断裂", "pre_event": "未断裂", "fracture": "发生断裂",
                             "transition": "发生断裂", "post": "已断裂", "post_event": "已断裂",
                             "no_fracture": "未断裂", "stable_negative": "未断裂"}.get(role, "无法确定")
     if labels["断裂状态"] == "未断裂" or row.get("异常_未夹紧") == "是":
@@ -139,6 +182,8 @@ def crop_video(roi_path: Path, output_path: Path, candidate: dict, roi_media: di
             raise PendingSource("子视频帧数、分辨率或时长不符合窗口")
         proof = verification.verify_clip_replay(roi_path, temporary, candidate, roi_media, source_proof)
         digest = base.sha256_file(temporary)
+        # Keep the document/source pins live through the final atomic publish.
+        verification.validate_source_receipt(source_proof, roi_path, candidate)
         os.link(temporary, output_path)
         compact_media = {k: media[k] for k in ("duration", "total_frames", "fps", "width", "height", "time_base")}
         return {"sha256": digest, "media": compact_media, "full_decode": "passed", "frame_preserving_replay": proof,
@@ -172,9 +217,19 @@ def run(project_root: Path, output_dir: Path | None = None, *, fold: int, plan_o
     if output == root or any(output == p or p in output.parents or output in p.parents for p in protected):
         raise base.PilotError("output directory overlaps protected inputs")
     rows, rois, folds, hashes = base.load_inputs(root)
+    anchor_path = root / anchors.DOCUMENT
+    anchor_document_sha = base.sha256_file(anchor_path) if anchor_path.is_file() else None
+    anchor_records, anchor_issue = {}, None
+    if anchor_document_sha is not None:
+        hashes[anchors.DOCUMENT] = anchor_document_sha
+        try:
+            anchor_records = anchors.load_anchors(anchor_path)
+        except (anchors.AnchorError, UnicodeError) as exc:
+            anchor_issue = str(exc)
     selected = {v for v in rows if folds[v][str(fold)] == "train"}
     identity = {"schema": SCHEMA, "fold": fold, "scope": "training", "inputs": hashes,
-                "code": verification._code(), "guard_seconds": .5, "post_remaining_seconds": 2.0}
+                "code": verification._code(), "guard_seconds": .5, "post_remaining_seconds": 2.0,
+                "phenomenon_document": {"path": anchors.DOCUMENT, "sha256": anchor_document_sha}}
     with base._run_lock(output):
         if output.exists():
             if not resume:
@@ -203,7 +258,10 @@ def run(project_root: Path, output_dir: Path | None = None, *, fold: int, plan_o
                 if row.get("异常_视频异常") == "是" and not any(_present(row.get(k)) for k in event_fields):
                     raise PendingSource("视频异常")
                 if row.get("异常_未夹紧") == "是":
-                    raise PendingSource("未夹紧：缺少现象时刻及已确认的现象窗口规则")
+                    if anchor_issue or video_id not in anchor_records:
+                        raise PendingSource(anchor_issue or "未夹紧：缺少现象时刻")
+                elif video_id in anchor_records:
+                    raise PendingSource("现象帧记录与未夹紧标签不匹配")
                 if roi.get("status") != "success":
                     raise PendingSource("ROI不可用")
                 raw, cropped = root / "data/videos" / (video_id + ".mp4"), root / "data/roi/videos" / (video_id + ".mp4")
@@ -214,9 +272,13 @@ def run(project_root: Path, output_dir: Path | None = None, *, fold: int, plan_o
                 raw_media, roi_media = aligned.probe_video(raw), aligned.probe_video(cropped)
                 if raw_media["total_frames"] != roi_media["total_frames"]:
                     raise PendingSource("源视频与ROI帧数不一致")
-                record = adapt_annotation(row, raw_media)
+                phenomenon_anchor = anchor_records.get(video_id)
+                if phenomenon_anchor and phenomenon_anchor["source_sha256"] != source_sha:
+                    raise PendingSource("未夹紧：现象帧记录的源视频身份不一致")
+                record = adapt_annotation(row, raw_media, phenomenon_anchor=phenomenon_anchor)
                 windows, excluded = plan_windows(record, raw_media)
-                proof = verification.verify_source_replay(raw, cropped, roi, source_annotation=row)
+                proof = verification.verify_source_replay(raw, cropped, roi, source_annotation=row,
+                                                          phenomenon_anchor=phenomenon_anchor)
                 source.update(status="planned", source_path=str(raw.relative_to(root)), roi_path=str(cropped.relative_to(root)),
                               source_sha256=source_sha, roi_sha256=roi_sha, roi_media=roi_media,
                               frame_preserving_replay=proof)
@@ -246,9 +308,17 @@ def run(project_root: Path, output_dir: Path | None = None, *, fold: int, plan_o
                 source = admitted[candidate["source_video_id"]]
                 try:
                     result = crop_video(root / source["roi_path"], dest, candidate, source["roi_media"], source["frame_preserving_replay"])
-                    if (base.sha256_file(root / source["source_path"]) != source["source_sha256"]
-                        or base.sha256_file(root / source["roi_path"]) != source["roi_sha256"]):
-                        dest.unlink(missing_ok=True)
+                    try:
+                        unchanged = (base.sha256_file(root / source["source_path"]) == source["source_sha256"]
+                                     and base.sha256_file(root / source["roi_path"]) == source["roi_sha256"]
+                                     and all(base.sha256_file(root / relative) == digest for relative, digest in hashes.items())
+                                     and not (anchor_document_sha is None and anchor_path.exists()))
+                    except OSError:
+                        unchanged = False
+                    if not unchanged:
+                        # Only remove bytes produced by this call, never a replaced file.
+                        if dest.is_file() and base.sha256_file(dest) == result["sha256"]:
+                            dest.unlink()
                         raise base.PilotError("input media changed during crop")
                     candidate.update(status="cropped", output=result)
                     candidate.pop("reason", None)
@@ -263,6 +333,8 @@ def run(project_root: Path, output_dir: Path | None = None, *, fold: int, plan_o
                 raise base.PilotError("input media changed during run")
         if any(base.sha256_file(root / relative) != digest for relative, digest in hashes.items()):
             raise base.PilotError("metadata inputs changed during run")
+        if anchor_document_sha is None and anchor_path.exists():
+            raise base.PilotError("phenomenon document appeared during run")
         if verification._code() != identity["code"]:
             raise base.PilotError("generation code changed during run")
         manifest["plan_only"] = bool(plan_only)
