@@ -233,7 +233,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:96
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:145
+      - ref: docs/TODO.md:146
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -439,7 +439,7 @@ facts:
     state: active
     topic: 本轮子视频帧对应和时间范围的已确认边界
     claim: >
-      用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；三个视频 video_0002、video_0015、video_0050 暂留待讨论，不生成子视频。此前生成的开发集候选及其当前目录已按用户要求删除；19 个来源的历史待处理状态见 DF-024。原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
+      用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；此前三个视频 video_0002、video_0015、video_0050 在旧批次暂留。此前生成的开发集候选及其当前目录已按用户要求删除；19 个来源的历史待处理状态见 DF-024。原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
     evidence:
       - ref: script/subvideo_pilot/aligned.py:129
         expect: def adapt_annotation(row: dict, media: dict)
@@ -467,6 +467,22 @@ facts:
         expect: def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict
     established: 2026-11-09
     established_by: 两段验证合成测试、独立审查及训练机真实开发集批次核验
+    supersedes: null
+    affects: [data, code, ops]
+  - id: DF-025
+    state: active
+    topic: 新子视频入口的训练集筛选与待审核输出
+    claim: >
+      用户要求依据当前子视频规则新建生成入口，使用裁剪后训练视频，结果写入 data/sub_video。新入口须指定三折中的一折，只处理该折训练成员；读取源视频用于验证与 ROI 的帧对应。断裂模式或位置无法确定、视频异常或爆炸性异常不单独阻挡有效断裂帧或完整范围的窗口；视频异常且没有断裂时间时记录“视频异常”。未知模式沿其他模式选窗但保留原标签，源标签参考、候选初值及最终人工标签分开，拟发布片段仍须人工审核。未夹紧现象时刻及窗口规则缺失、仅有时间点而源帧定位规则未确定时分别保留待处理，不猜测锚点。源到 ROI 与 ROI 到片段须通过严格重放；本轮已有合成视频和行为测试，尚未运行真实数据批次或验证训练机实际工具链。
+    evidence:
+      - ref: script/sub_video/generate.py:32
+        expect: 'def adapt_annotation(row: dict, media: dict)'
+      - ref: script/sub_video/generate.py:162
+        expect: 'def run(project_root: Path, output_dir: Path | None = None'
+      - ref: script/sub_video/verification.py:199
+        expect: 'def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict'
+    established: 2026-11-11
+    established_by: 用户确认规则并授权新脚本；代码与合成测试核对
     supersedes: null
     affects: [data, code, ops]
 
