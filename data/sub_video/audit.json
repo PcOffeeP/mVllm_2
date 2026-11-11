@@ -1,0 +1,462 @@
+{
+  "schema": "sub-video-audit/1",
+  "manifest_sha256": "2f29f44713d34303eb92805393c988ae2858c036ce4f8e250b4d7a9ecffb5d9a",
+  "checked_candidates": 1513,
+  "candidates_needing_attention": 54,
+  "issue_counts": {
+    "未断裂片段的断后脱夹需复核": 51,
+    "未断裂与爆炸性断裂互斥": 6
+  },
+  "status": "candidate_labels_only_unreviewed",
+  "description": "来源级标签作为候选初值时出现时间粒度冲突；须根据片段画面人工审核，不能仅据此推断最终标签。",
+  "candidates": [
+    {
+      "candidate_id": "video_0013_pre_01",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_02",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_03",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_04",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_05",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_06",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_07",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_08",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_09",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_10",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_11",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_12",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_13",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_14",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0013_pre_15",
+      "source_video_id": "video_0013",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0026_pre_01",
+      "source_video_id": "video_0026",
+      "scope": "development",
+      "issues": [
+        "未断裂与爆炸性断裂互斥"
+      ]
+    },
+    {
+      "candidate_id": "video_0026_pre_02",
+      "source_video_id": "video_0026",
+      "scope": "development",
+      "issues": [
+        "未断裂与爆炸性断裂互斥"
+      ]
+    },
+    {
+      "candidate_id": "video_0026_pre_03",
+      "source_video_id": "video_0026",
+      "scope": "development",
+      "issues": [
+        "未断裂与爆炸性断裂互斥"
+      ]
+    },
+    {
+      "candidate_id": "video_0040_pre_01",
+      "source_video_id": "video_0040",
+      "scope": "development",
+      "issues": [
+        "未断裂与爆炸性断裂互斥",
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0040_pre_02",
+      "source_video_id": "video_0040",
+      "scope": "development",
+      "issues": [
+        "未断裂与爆炸性断裂互斥",
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0040_pre_03",
+      "source_video_id": "video_0040",
+      "scope": "development",
+      "issues": [
+        "未断裂与爆炸性断裂互斥",
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_01",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_02",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_03",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_04",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_05",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_06",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_07",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_08",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_09",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_10",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_11",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_12",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_13",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_14",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0041_pre_15",
+      "source_video_id": "video_0041",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_01",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_02",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_03",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_04",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_05",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_06",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_07",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_08",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_09",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0068_pre_10",
+      "source_video_id": "video_0068",
+      "scope": "development",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_01",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_02",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_03",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_04",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_05",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_06",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_07",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    },
+    {
+      "candidate_id": "video_0089_pre_08",
+      "source_video_id": "video_0089",
+      "scope": "test",
+      "issues": [
+        "未断裂片段的断后脱夹需复核"
+      ]
+    }
+  ],
+  "frame_and_file_audit": {
+    "limitations": [
+      "not_new_frame_replay",
+      "not_human_label_review"
+    ],
+    "status": "historical_evidence_matches_current_bytes",
+    "verified_outputs": 1513
+  },
+  "local_transfer": {
+    "media_sha256_checked": 1513,
+    "source_and_roi_sha256_checked": 184,
+    "mismatches": 0
+  }
+}
