@@ -5,6 +5,7 @@ import argparse
 from bisect import bisect_left
 from collections import Counter
 from fractions import Fraction
+import csv
 from pathlib import Path
 import os
 import sys
@@ -67,6 +68,55 @@ def summarize(m):
             'complete':m['complete'],'published':False,'manual_review':'required_for_every_publishable_clip',
             'split_counts':dict(Counter(c['scope'] for c in m['candidates']))}
 
+def _verified_inputs(root):
+    """Cross-check the shared loader against the actual fixed input files."""
+    loader_code=inputs.orchestration_code()
+    rows,rois,folds,hashes=inputs.load_inputs(root)
+    if inputs.orchestration_code()!=loader_code:
+        raise base.PilotError('input loader changed during read')
+    split_dir=root/'data/splits/three-fold';lists={};independent_hashes={}
+    for name in ['test.json']+[f'fold_{i}_{part}.json' for i in range(3) for part in ('train','val')]:
+        path=split_dir/name;values=base._load(path).get('video_ids')
+        if not isinstance(values,list) or not values or any(not isinstance(v,str) for v in values) or len(set(values))!=len(values):
+            raise base.PilotError('invalid fixed split membership')
+        lists[name]=set(values);independent_hashes[str(path.relative_to(root))]=base.sha256_file(path)
+    test=lists['test.json'];dev=lists['fold_0_train.json']|lists['fold_0_val.json']
+    vals=[lists[f'fold_{i}_val.json'] for i in range(3)]
+    if (test&dev or sum(map(len,vals))!=len(dev) or set.union(*vals)!=dev
+        or any(lists[f'fold_{i}_train.json']&vals[i] or lists[f'fold_{i}_train.json']|vals[i]!=dev for i in range(3))):
+        raise base.PilotError('fixed split partition conflict')
+    universe=test|dev;independent_folds={key:{str(i):'test' if key in test else 'val' if key in vals[i] else 'train' for i in range(3)} for key in universe}
+    independent_rows={}
+    annotation=root/'data/annotation-table-full.csv'
+    with annotation.open(encoding='utf-8-sig',newline='') as stream:
+        for row in csv.DictReader(stream):
+            key=row.get('id')
+            if key not in universe or key in independent_rows:raise base.PilotError('annotation inventory mismatch')
+            independent_rows[key]=row
+    roi_path=root/'data/roi/manifest.json';independent_rois={}
+    for row in base._load(roi_path)['videos']:
+        key=row.get('video_id')
+        if key not in universe or key in independent_rois:raise base.PilotError('ROI inventory mismatch')
+        independent_rois[key]=row
+    for path in (annotation,roi_path):independent_hashes[str(path.relative_to(root))]=base.sha256_file(path)
+    if (set(independent_rows)!=universe or set(independent_rois)!=universe or rows!=independent_rows
+        or rois!=independent_rois or folds!=independent_folds or hashes!=independent_hashes
+        or inputs.orchestration_code()!=loader_code):
+        raise base.PilotError('input loader disagrees with actual annotation, ROI or fixed split files')
+    return rows,rois,folds,hashes,loader_code
+
+def _check_parent_membership(parent_data,folds,selected,loader_code):
+    sources={source['video_id']:source for source in parent_data['sources']}
+    if len(sources)!=len(parent_data['sources']):raise base.PilotError('duplicate parent sources')
+    parent_code=parent_data.get('identity',{}).get('orchestration_code')
+    if parent_code is not None and parent_code!=loader_code:raise base.PilotError('input loader differs from parent batch identity')
+    for key in selected:
+        if key not in sources:raise base.PilotError('supplement source missing from parent')
+        expected_scope='test' if folds[key]['0']=='test' else 'development'
+        if ('folds' in sources[key] and sources[key]['folds']!=folds[key]) or ('scope' in sources[key] and sources[key]['scope']!=expected_scope):
+            raise base.PilotError('parent membership differs from fixed splits')
+    return sources
+
 def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=DEFAULT_IDS):
     root=Path(project_root).resolve(); output=Path(output_dir) if output_dir is not None else root/'data/sub_video/supplement'
     if not output.is_absolute():output=root/output
@@ -75,8 +125,8 @@ def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=D
     if not selected or len(set(selected))!=len(selected) or not set(selected)<=set(DEFAULT_IDS):raise base.PilotError('unapproved or duplicate supplement sources')
     protected=[root/'data/videos',root/'data/roi',root/'data/splits',root/'script',root/'docs',parent.parent/'videos']
     if output==root or output==parent.parent or any(output==p or p in output.parents or output in p.parents for p in protected):raise base.PilotError('unsafe supplement output path')
-    rows,rois,folds,hashes=inputs.load_inputs(root)
-    parent_data=base._load(parent);parent_sources={s['video_id']:s for s in parent_data['sources']}
+    rows,rois,folds,hashes,loader_code=_verified_inputs(root)
+    parent_data=base._load(parent);parent_sources=_check_parent_membership(parent_data,folds,selected,loader_code)
     if not set(selected)<=set(parent_sources) or any(c['source_video_id'] in selected for c in parent_data['candidates']):raise base.PilotError('source absent from parent or already has parent candidates')
     parent_inputs=parent_data.get('identity',{}).get('inputs',{})
     if any(k in parent_inputs and parent_inputs[k]!=v for k,v in hashes.items()):
@@ -84,10 +134,10 @@ def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=D
     if any('source_annotation' in parent_sources[k] and parent_sources[k]['source_annotation']!=rows[k] for k in selected):
         raise base.PilotError('current source annotation differs from parent batch')
     hashes['data/sub_video/manifest.json']=base.sha256_file(parent)
-    identity={'schema':SCHEMA,'inputs':hashes,'code':verification.code(),'media_code':core._code(),'source_ids':sorted(selected),
+    identity={'schema':SCHEMA,'inputs':hashes,'code':verification.code(),'media_code':core._code(),'loader_code':loader_code,'source_ids':sorted(selected),
               'window_seconds':20,'step_seconds':15,'parent_manifest_sha256':hashes['data/sub_video/manifest.json']}
     def unchanged():
-        return all((root/p).is_file() and base.sha256_file(root/p)==sha for p,sha in hashes.items()) and verification.code()==identity['code'] and core._code()==identity['media_code']
+        return all((root/p).is_file() and base.sha256_file(root/p)==sha for p,sha in hashes.items()) and verification.code()==identity['code'] and core._code()==identity['media_code'] and inputs.orchestration_code()==identity['loader_code']
     with base._run_lock(output):
         if output.exists():
             if not resume:raise base.PilotError('supplement output exists; use explicit resume')
@@ -103,6 +153,7 @@ def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=D
         for key in sorted(set(selected)-known):
             row,roi=rows[key],rois[key];source={'video_id':key,'source_annotation':row,'folds':folds[key],'scope':'test' if folds[key]['0']=='test' else 'development'}
             try:
+                if not unchanged():raise base.PilotError('supplement inputs or loader changed before source validation')
                 raw=root/'data/videos'/(key+'.mp4');cropped=root/'data/roi/videos'/(key+'.mp4')
                 if roi.get('status')!='success':raise core.ReplayUncertain('ROI_not_available')
                 raw_media,roi_media=aligned.probe_video(raw),aligned.probe_video(cropped)
@@ -142,6 +193,7 @@ def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=D
                 raise base.PilotError('supplement candidate membership or schedule mismatch')
             verification.validate_source_receipt(s['frame_preserving_replay'],root/s['roi_path'],c)
         admitted={s['video_id']:s for s in m['sources'] if s['status']=='planned'}
+        if not unchanged():raise base.PilotError('supplement inputs or loader changed before generation')
         if not plan_only:
             for c in m['candidates']:
                 destination=output/c['output_path']
@@ -151,6 +203,7 @@ def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=D
                 if destination.exists():raise base.PilotError('unrecorded output exists; refusing overwrite')
                 s=admitted[c['source_video_id']]
                 try:
+                    if not unchanged():raise base.PilotError('supplement inputs or loader changed before crop')
                     result=crop_video(root/s['roi_path'],destination,c,s['roi_media'],s['frame_preserving_replay'])
                     try:
                         stable=(unchanged() and base.sha256_file(root/s['source_path'])==s['source_sha256']
@@ -180,7 +233,9 @@ if __name__=='__main__':raise SystemExit(main())
 def audit_outputs(project_root, output_dir):
     """Check historical receipts against current bytes after relocation; do not rewrite receipts."""
     root,out=Path(project_root).resolve(),Path(output_dir).resolve()
-    m=base._load(out/'manifest.json');rows,rois,folds,_=inputs.load_inputs(root)
+    m=base._load(out/'manifest.json');rows,rois,folds,_,loader_code=_verified_inputs(root)
+    if loader_code!=m['identity'].get('loader_code'):raise base.PilotError('supplement audit loader identity mismatch')
+    _check_parent_membership(base._load(root/'data/sub_video/manifest.json'),folds,m['identity']['source_ids'],loader_code)
     for name,sha in m['identity']['inputs'].items():
         if base.sha256_file(root/name)!=sha:raise base.PilotError('relocated supplement input identity mismatch')
     selected=set(m['identity']['source_ids']);sources={s['video_id']:s for s in m['sources']}
@@ -239,4 +294,6 @@ def audit_outputs(project_root, output_dir):
         checked+=1
     disk={str(p.relative_to(out)) for p in (out/'videos').glob('*.mp4')};recorded={c['output_path'] for c in m['candidates'] if c['status']=='cropped'}
     if disk!=recorded:raise base.PilotError('supplement output files missing or unrecorded')
+    if inputs.orchestration_code()!=loader_code:raise base.PilotError('input loader changed during audit')
+    if any(base.sha256_file(root/name)!=sha for name,sha in m['identity']['inputs'].items()):raise base.PilotError('supplement inputs changed during audit')
     return {'status':'historical_evidence_matches_current_bytes','verified_outputs':checked,'limitations':['not_new_frame_replay','not_human_label_review']}

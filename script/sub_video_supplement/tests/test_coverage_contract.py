@@ -1,6 +1,7 @@
 """Coverage-window behavior using only tiny temporary synthetic videos."""
 import csv
 import json
+from pathlib import Path
 import shutil
 import pytest
 from script.sub_video import verification as core
@@ -58,7 +59,10 @@ def project(tmp_path,monkeypatch):
     (root/'data/roi/manifest.json').write_text(json.dumps({'videos':records}))
     anchor_document(root/'docs/subvideo-current-logic.md')
     parent=root/'data/sub_video';(parent/'videos').mkdir(parents=True)
-    (parent/'manifest.json').write_text(json.dumps({'sources':[{'video_id':v,'status':'pending'} for v in ids],'candidates':[]}))
+    from script.sub_video_all import generate as all_sources
+    _,_,memberships,input_hashes=all_sources.load_inputs(root)
+    input_hashes['docs/subvideo-current-logic.md']=digest(root/'docs/subvideo-current-logic.md')
+    (parent/'manifest.json').write_text(json.dumps({'identity':{'inputs':input_hashes,'code':core._code(),'orchestration_code':all_sources.orchestration_code()},'sources':[{'video_id':v,'status':'pending','folds':memberships[v],'scope':'test' if v=='video_0005' else 'development','source_annotation':next(r for r in rows if r['id']==v)} for v in ids],'candidates':[]}))
     (parent/'summary.json').write_text('{"untouched":true}')
     (parent/'audit.json').write_text('{"untouched":true}')
     (parent/'videos/old_keep.mp4').write_bytes(b'existing-result-do-not-change')
@@ -126,6 +130,14 @@ def test_source_proof_failure_cannot_generate_output(project,monkeypatch):
     assert not list((project/'data/sub_video/supplement/videos').glob('*.mp4'))
 
 
+def refresh_parent_input_identity(root):
+    # Fixture construction happens before generation; bind its final media metadata.
+    from script.sub_video_all import generate as all_sources
+    _,_,_,hashes=all_sources.load_inputs(root)
+    hashes['docs/subvideo-current-logic.md']=digest(root/'docs/subvideo-current-logic.md')
+    p=root/'data/sub_video/manifest.json';m=json.loads(p.read_text());m['identity']['inputs']=hashes;p.write_text(json.dumps(m))
+
+
 def replace_media(root,tmp_path,video_id,*,short=False,seconds="6"):
     source=tmp_path/('source-short.mp4' if short else 'source-vfr.mp4');roi=tmp_path/('roi-short.mp4' if short else 'roi-vfr.mp4')
     cmd=['ffmpeg','-v','error','-f','lavfi','-i','testsrc2=size=96x64:rate=10','-t',('0.5' if short else seconds)]
@@ -133,7 +145,7 @@ def replace_media(root,tmp_path,video_id,*,short=False,seconds="6"):
     encode(['ffmpeg','-nostdin','-hide_banner','-loglevel','error','-n','-i',str(source),'-map','0:v:0','-vf','crop=64:48:2:4,setsar=1','-vsync','0','-c:v','libx264','-preset','fast','-crf','23','-pix_fmt','yuv420p','-an','-movflags','+faststart',str(roi)])
     shutil.copyfile(source,root/'data/videos'/f'{video_id}.mp4');shutil.copyfile(roi,root/'data/roi/videos'/f'{video_id}.mp4')
     path=root/'data/roi/manifest.json';data=json.loads(path.read_text());record=next(r for r in data['videos'] if r['video_id']==video_id)
-    record['source']['sha256']=record['decision']['source_sha256']=digest(source);record['output']['sha256']=digest(roi);path.write_text(json.dumps(data))
+    record['source']['sha256']=record['decision']['source_sha256']=digest(source);record['output']['sha256']=digest(roi);path.write_text(json.dumps(data));refresh_parent_input_identity(root)
 
 
 def test_actual_subsecond_source_is_kept_whole(project,tmp_path):
@@ -151,7 +163,7 @@ def test_actual_nonuniform_source_keeps_all_decoded_frames(project,tmp_path):
     encode(['ffmpeg','-v','error','-f','lavfi','-i','testsrc2=size=96x64:rate=10','-t','6','-vf',"settb=1/1000,setpts='N*100+if(eq(mod(N,2),1),20,0)'",'-fps_mode','vfr','-enc_time_base','1:1000','-threads','1','-c:v','libx264','-pix_fmt','yuv420p',str(source)])
     encode(['ffmpeg','-nostdin','-hide_banner','-loglevel','error','-n','-i',str(source),'-map','0:v:0','-vf','crop=64:48:2:4,setsar=1','-vsync','0','-c:v','libx264','-preset','fast','-crf','23','-pix_fmt','yuv420p','-an','-movflags','+faststart',str(roi)])
     shutil.copyfile(source,project/'data/videos/video_0015.mp4');shutil.copyfile(roi,project/'data/roi/videos/video_0015.mp4')
-    p=project/'data/roi/manifest.json';d=json.loads(p.read_text());r=next(x for x in d['videos'] if x['video_id']=='video_0015');r['source']['sha256']=r['decision']['source_sha256']=digest(source);r['output']['sha256']=digest(roi);p.write_text(json.dumps(d))
+    p=project/'data/roi/manifest.json';d=json.loads(p.read_text());r=next(x for x in d['videos'] if x['video_id']=='video_0015');r['source']['sha256']=r['decision']['source_sha256']=digest(source);r['output']['sha256']=digest(roi);p.write_text(json.dumps(d));refresh_parent_input_identity(project)
     from script.subvideo_pilot import aligned
     src=aligned.probe_video(source);intervals=[round(b-a,3) for a,b in zip(src['timestamps'],src['timestamps'][1:])]
     assert len(set(intervals))>1,'test must actually encode nonuniform PTS'
@@ -268,3 +280,50 @@ def test_audit_refuses_candidate_policy_tampering(project,field,value):
     g=generator();r=g.run(project,source_ids=['video_0015']);r['candidates'][0][field]=value
     out=project/'data/sub_video/supplement';(out/'manifest.json').write_text(json.dumps(r))
     with pytest.raises(Exception):g.audit_outputs(project,out)
+
+
+@pytest.mark.parametrize('phase',['plan','resume','audit'])
+def test_untrusted_loader_cannot_relabel_fixed_test_as_train(project,monkeypatch,phase):
+    g=generator();out=project/'data/sub_video/supplement'
+    if phase=='resume':g.run(project,plan_only=True,source_ids=['video_0005'])
+    if phase=='audit':g.run(project,source_ids=['video_0005'])
+    original=g.inputs.load_inputs
+    def corrupted(root):
+        rows,rois,folds,hashes=original(root)
+        folds['video_0005']={'0':'train','1':'train','2':'train'}
+        return rows,rois,folds,hashes
+    monkeypatch.setattr(g.inputs,'load_inputs',corrupted)
+    before=snapshot(project)
+    with pytest.raises(Exception):
+        if phase=='audit':g.audit_outputs(project,out)
+        else:g.run(project,plan_only=phase=='plan',resume=phase=='resume',source_ids=['video_0005'])
+    assert snapshot(project)==before
+    if phase!='audit':assert not list((out/'videos').glob('*.mp4'))
+
+
+@pytest.mark.parametrize('phase',['plan','resume','audit'])
+def test_changed_loader_source_identity_is_refused(project,monkeypatch,phase):
+    g=generator();out=project/'data/sub_video/supplement'
+    if phase=='resume':g.run(project,plan_only=True,source_ids=['video_0015'])
+    if phase=='audit':g.run(project,source_ids=['video_0015'])
+    original=g.base.sha256_file
+    loader=Path(g.inputs.__file__).resolve()
+    def changed(path):
+        return '0'*64 if Path(path).resolve()==loader else original(path)
+    monkeypatch.setattr(g.base,'sha256_file',changed)
+    before=snapshot(project)
+    with pytest.raises(Exception):
+        if phase=='audit':g.audit_outputs(project,out)
+        else:g.run(project,plan_only=phase=='plan',resume=phase=='resume',source_ids=['video_0015'])
+    assert snapshot(project)==before
+    if phase!='audit':assert not list((out/'videos').glob('*.mp4'))
+
+
+@pytest.mark.parametrize('field',['scope','folds'])
+def test_parent_membership_cannot_contradict_fixed_split_files(project,field):
+    g=generator();parent=project/'data/sub_video/manifest.json';m=json.loads(parent.read_text());s=next(s for s in m['sources'] if s['video_id']=='video_0005')
+    s[field]='development' if field=='scope' else {'0':'train','1':'train','2':'train'};parent.write_text(json.dumps(m))
+    before=snapshot(project)
+    with pytest.raises(Exception):g.run(project,source_ids=['video_0005'])
+    assert snapshot(project)==before
+    assert not list((project/'data/sub_video/supplement/videos').glob('*.mp4'))
