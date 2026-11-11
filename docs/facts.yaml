@@ -507,7 +507,7 @@ facts:
     state: active
     topic: 全来源子视频去重生成与测试集边界
     claim: >
-      用户明确要求源视频只生成一次子视频，并授权包含固定测试集的视频以供后续测试；不重新划分，也不因此授权模型训练、测评或数据发布。用户随后要求删除原有三批并按当前规则重新编码生成一个统一批次；旧结果已删除，重建进行中。统一入口记录开发集及固定测试集身份，并保留每个开发来源的三折训练／验证归属，输出单一清单、摘要及视频目录。新批次的实际数量和核验结果须以运行记录为准；媒体与划分身份的机器核验不替代画面审查或模型测评。
+      用户明确要求源视频只生成一次子视频，并授权包含固定测试集的视频以供后续测试；不重新划分，也不因此授权模型训练、测评或数据发布。用户随后要求删除原有三批并按当前规则重新编码生成一个统一批次；旧结果已删除，统一批次对 110 个来源生成 1621 个候选，其中开发集 1307 个、固定测试集 314 个，未复用旧片段。各来源原三折训练／验证归属不变；逐来源窗口、标签初值和划分与重建前规则摘要一致。源到 ROI、ROI 到片段重放及全部输出的最终完整解码检查通过；54 个候选标签初值需人工重点核验。所有候选未人工审核、未发布；媒体与划分身份的机器核验不替代画面审查或模型测评。
     evidence:
       - ref: script/sub_video_unified/generate.py:45
         expect: 'def load_inputs(root):'
@@ -515,15 +515,19 @@ facts:
         expect: 'def run(project_root, output_dir=None, *, plan_only=False, resume=False):'
       - ref: script/sub_video_unified/generate.py:460
         expect: 'def audit_outputs(project_root, output_dir, *, portable=False):'
+      - ref: data/sub_video/summary.json:2
+        expect: '"candidate_count": 1621'
+      - ref: data/sub_video/audit.json:19
+        expect: '"candidates_needing_attention": 54'
     established: 2026-11-11
-    established_by: 用户授权全来源重新生成；统一入口及合成测试核对
+    established_by: 用户授权全来源重新生成；统一入口、实际批次和逐帧核验
     supersedes: null
     affects: [data, code, ops]
   - id: DF-028
     state: active
     topic: 指定来源的覆盖滑窗与 0093 播放帧规则
     claim: >
-      用户确认 17 个来源按 20 秒窗口、15 秒步长覆盖，末段贴近结尾，短于 20 秒时保留全长；不推测断裂时间，来源标签保留参考，候选标签及最终标签留待人工审核。原来源与三折训练、验证和固定测试归属保持不变。用户审查 video_0093 后确认以正常播放解码的 733 帧为准，标注断裂前后帧为 727、728；文件头所列 771 帧包含播放前 38 帧。此前严格重放确认源到既有 ROI 同序帧和时间戳一致；本轮统一重建须重新核验并按既定规则选窗。逐帧机器核验不等于人工画面或标签审核，也不表示数据发布或模型测评完成。
+      用户确认 17 个来源按 20 秒窗口、15 秒步长覆盖，末段贴近结尾，短于 20 秒时保留全长；不推测断裂时间，来源标签保留参考，候选标签及最终标签留待人工审核。本轮 17 个来源生成 93 个覆盖候选，原三折及固定测试归属保持不变。用户审查 video_0093 后确认以正常播放解码的 733 帧为准，标注断裂前后帧为 727、728；文件头所列 771 帧包含播放前 38 帧。本轮严格重放确认源到既有 ROI 同序帧和时间戳一致，按既定规则生成 15 个断裂前候选；事件靠近结尾，未形成事件或断后窗口。逐帧机器核验不等于人工画面或标签审核，也不表示数据发布或模型测评完成。
     evidence:
       - ref: script/sub_video_supplement/generate.py:21
         expect: 'def plan_windows(media):'
@@ -535,8 +539,12 @@ facts:
         expect: '每次取 20 秒并向后移动 15 秒'
       - ref: docs/subvideo-current-logic.md:33
         expect: '正常播放的 733 帧及标注前后帧 727、728'
+      - ref: data/sub_video/summary.json:29
+        expect: '"coverage": 93'
+      - ref: data/sub_video/audit.json:28
+        expect: '"pre": 15'
     established: 2026-11-11
-    established_by: 用户确认播放帧及覆盖规则；此前训练机逐帧重放和当前代码核对
+    established_by: 用户确认播放帧及覆盖规则；本轮生成记录和训练机逐帧重放
     supersedes: null
     affects: [data, code, ops]
 
