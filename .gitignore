@@ -31,6 +31,9 @@ wheels/
 /data/**/*.[mM]4[vV]
 /data/**/*.[wW][eE][bB][mM]
 /data/roi/.roi.lock
+# 子视频人工审核的锁与临时文件；审核记录 JSON 仍可进入 Git
+/data/subvideo-review/reviews.json.lock
+/data/subvideo-review/.reviews-*
 
 # 本地模型权重
 models/*
