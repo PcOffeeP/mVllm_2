@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      name="description"
+      content="子视频五类标签审核工作台。本页面仅提供本地审核界面，不自动采用任何参考标签。"
+    />
+    <title>子视频审核工作台</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳到审核内容</a>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">本地审核 · 五类标签</p>
+        <h1>子视频审核工作台</h1>
+      </div>
+      <div class="header-note" aria-label="审核原则">
+        <strong>审核值默认留空</strong>
+        <span>仅用户本人决定画面与标签</span>
+      </div>
+    </header>
+
+    <main id="main-content" class="workspace">
+      <aside class="candidate-panel" aria-labelledby="candidate-heading">
+        <div class="panel-heading">
+          <div>
+            <p class="section-kicker">候选队列</p>
+            <h2 id="candidate-heading">选择待审核子视频</h2>
+          </div>
+          <span id="candidate-count" class="count-badge" aria-live="polite">等待载入</span>
+        </div>
+
+        <div class="filters" aria-label="候选筛选条件">
+          <label for="scope-filter">数据划分</label>
+          <select id="scope-filter" name="scope-filter">
+            <option value="development" selected>开发集</option>
+            <option value="test">测试集</option>
+            <option value="all">全部</option>
+          </select>
+          <label for="fold-filter">三折归属</label>
+          <select id="fold-filter" name="fold-filter">
+            <option value="all" selected>全部折</option>
+            <option value="0:train">第 0 折 · 训练</option>
+            <option value="0:val">第 0 折 · 验证</option>
+            <option value="1:train">第 1 折 · 训练</option>
+            <option value="1:val">第 1 折 · 验证</option>
+            <option value="2:train">第 2 折 · 训练</option>
+            <option value="2:val">第 2 折 · 验证</option>
+          </select>
+          <label for="source-filter">来源</label>
+          <select id="source-filter" name="source-filter">
+            <option value="">全部来源</option>
+          </select>
+          <label for="status-filter">审核状态</label>
+          <select id="status-filter" name="status-filter">
+            <option value="">全部状态</option>
+          </select>
+          <label for="attention-filter">检查提示</label>
+          <select id="attention-filter" name="attention-filter">
+            <option value="all">全部候选</option>
+            <option value="attention">标签组合待复核</option>
+          </select>
+          <p id="audit-info" role="status"></p>
+          <label for="candidate-search">查找候选</label>
+          <input id="candidate-search" type="search" placeholder="名称、编号或来源" autocomplete="off" />
+        </div>
+
+        <section id="candidate-list" class="candidate-list" aria-live="polite" aria-label="候选列表">
+          <div class="empty-list" role="status">
+            <strong>候选列表将在此处显示</strong>
+            <span>可按来源、审核状态或名称筛选。</span>
+          </div>
+        </section>
+        <details id="pending-sources" class="pending-sources">
+          <summary>待处理来源与暂留原因 <span class="pending-hint">展开查看</span></summary>
+          <div id="pending-list" class="pending-source-empty" role="status">
+            <strong>等待载入待处理来源</strong>
+            <span>待处理或暂留来源的原因，以及可打开原视频的入口，会在此单独显示。</span>
+          </div>
+        </details>
+      </aside>
+
+      <section class="review-panel" aria-labelledby="review-heading">
+        <div class="review-topbar">
+          <div>
+            <p class="section-kicker">当前候选</p>
+            <h2 id="clip-title">尚未选择候选</h2>
+            <p id="clip-meta" class="clip-meta">从左侧候选列表选择一个子视频开始审核。</p>
+          </div>
+          <p id="review-status" class="review-status" aria-live="polite">未开始审核</p>
+        </div>
+
+        <footer class="review-footer" aria-label="审核操作工具条">
+          <div class="candidate-nav" aria-label="候选切换">
+            <button id="previous-candidate" type="button" class="button button-secondary">上一候选</button>
+            <button id="next-candidate" type="button" class="button button-secondary">下一候选</button>
+          </div>
+          <div class="decision-actions" aria-label="审核操作">
+            <button id="save-draft" type="button" class="button button-secondary">保存草稿</button>
+            <button id="question-review" type="button" class="button button-question">记录疑问</button>
+            <button id="return-review" type="button" class="button button-return">退回</button>
+            <button id="confirm-review" type="button" class="button button-primary">一次确认全部</button>
+          </div>
+        </footer>
+
+        <section class="media-and-reference" aria-label="画面和参考信息">
+          <div class="media-column">
+            <div class="video-frame" data-state="empty">
+              <video id="video-player" controls preload="metadata" aria-label="当前候选视频播放器">
+                抱歉，当前浏览器不支持视频播放。
+              </video>
+              <div class="video-placeholder" aria-hidden="true">
+                <span class="placeholder-icon">▶</span>
+                <strong>尚未载入视频</strong>
+                <span>选择候选后可连续播放；播放失败时将在此处显示说明。</span>
+              </div>
+            </div>
+            <div id="timeline-info" class="timeline-info" aria-live="polite">
+              <strong>事件线索</strong>
+              <span>尚未提供事件线索。请以实际画面为准。</span>
+            </div>
+          </div>
+
+          <aside id="source-reference" class="source-reference" aria-labelledby="reference-heading">
+            <div class="reference-heading">
+              <p class="reference-flag">仅供参考</p>
+              <h3 id="reference-heading">源标签与事件线索</h3>
+            </div>
+            <p class="reference-warning">源标签和候选初值只供参考，不会自动写入审核值。</p>
+            <button id="view-source" type="button" class="button button-secondary" disabled>查看原视频</button>
+            <div class="reference-empty" role="status">
+              <strong>尚无来源参考信息</strong>
+              <span>载入候选后，来源标签会单独列在这里。</span>
+            </div>
+          </aside>
+        </section>
+
+        <section class="label-section" aria-labelledby="review-heading">
+          <div class="section-heading-row">
+            <div>
+              <p class="section-kicker">人工填写</p>
+              <h2>五类逐项审核</h2>
+            </div>
+            <p class="field-guidance">所有审核字段初始为空；未判断时请保持空白。</p>
+          </div>
+          <div id="label-fields" class="label-fields" aria-live="polite">
+            <p class="fields-intro">各项审核值均为空白。请选择你本人依据画面作出的判断。</p>
+            <div class="label-grid label-grid-single" aria-label="单选审核字段">
+              <div class="label-control">
+                <label for="fracture-status">断裂状态</label>
+                <select id="fracture-status" name="断裂状态">
+                  <option value="" selected>未选择</option>
+                  <option value="未断裂">未断裂</option>
+                  <option value="发生断裂">发生断裂</option>
+                  <option value="已断裂">已断裂</option>
+                  <option value="无法确定">无法确定</option>
+                </select>
+              </div>
+              <div class="label-control">
+                <label for="fracture-mode">断裂模式</label>
+                <select id="fracture-mode" name="断裂模式">
+                  <option value="" selected>未选择</option>
+                  <option value="脆性断裂">脆性断裂</option>
+                  <option value="韧性断裂">韧性断裂</option>
+                  <option value="半脆半韧断裂">半脆半韧断裂</option>
+                  <option value="无法确定">无法确定</option>
+                  <option value="无">无</option>
+                </select>
+              </div>
+              <div class="label-control">
+                <label for="fracture-location">断裂位置</label>
+                <select id="fracture-location" name="断裂位置">
+                  <option value="" selected>未选择</option>
+                  <option value="标距内">标距内</option>
+                  <option value="标距外非根部">标距外非根部</option>
+                  <option value="夹持根部">夹持根部</option>
+                  <option value="无法确定">无法确定</option>
+                  <option value="无">无</option>
+                </select>
+              </div>
+            </div>
+            <fieldset class="multi-fieldset">
+              <legend>异常情况 <span>（逐项判断）</span></legend>
+              <div class="label-grid label-grid-multi">
+                <div class="label-control"><label for="abnormal-unclamped">未夹紧</label><select id="abnormal-unclamped" name="异常情况.未夹紧"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="abnormal-video">视频异常</label><select id="abnormal-video" name="异常情况.视频异常"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="abnormal-explosive">爆炸性断裂</label><select id="abnormal-explosive" name="异常情况.爆炸性断裂"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              </div>
+            </fieldset>
+            <fieldset class="multi-fieldset">
+              <legend>断裂现象 <span>（逐项判断）</span></legend>
+              <div class="label-grid label-grid-multi">
+                <div class="label-control"><label for="phenomenon-elongation">伸长</label><select id="phenomenon-elongation" name="断裂现象.伸长"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="phenomenon-necking">颈缩</label><select id="phenomenon-necking" name="断裂现象.颈缩"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="phenomenon-cracking">开裂</label><select id="phenomenon-cracking" name="断裂现象.开裂"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="phenomenon-interface-separation">界面分离</label><select id="phenomenon-interface-separation" name="断裂现象.界面分离"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="phenomenon-post-fracture-release">断后脱夹</label><select id="phenomenon-post-fracture-release" name="断裂现象.断后脱夹"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+              </div>
+            </fieldset>
+          </div>
+        </section>
+
+        <section class="notes-section" aria-labelledby="notes-heading">
+          <h2 id="notes-heading" class="visually-hidden">审核说明</h2>
+          <div class="field-block">
+            <label for="review-note">审核备注 <span>（可选）</span></label>
+            <textarea id="review-note" name="review-note" rows="3" placeholder="记录对画面、边界或标签理解的说明。"></textarea>
+          </div>
+          <div class="field-block">
+            <label for="decision-reason">决定依据 <span>（退回、记录疑问或修改已确认结果时填写）</span></label>
+            <textarea id="decision-reason" name="decision-reason" rows="3" placeholder="说明本次决定的原因；不会替你自动生成判断。"></textarea>
+          </div>
+        </section>
+
+        <div id="app-message" class="app-message" role="status" aria-live="polite" aria-atomic="true">
+          <strong>准备就绪</strong><span>选择候选后开始人工审核。</span>
+        </div>
+
+        <section class="history-section" aria-labelledby="history-heading">
+          <div class="history-heading">
+            <div>
+              <p class="section-kicker">版本关联</p>
+              <h2 id="history-heading">审核记录</h2>
+            </div>
+            <span class="history-hint">当前候选的草稿、决定和疑问会在此关联显示</span>
+          </div>
+          <div id="revision-history" class="revision-history" aria-live="polite">
+            <div class="history-empty" role="status">尚无审核记录。</div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

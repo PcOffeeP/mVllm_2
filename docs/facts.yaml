@@ -233,7 +233,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:96
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:146
+      - ref: docs/TODO.md:148
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -489,7 +489,7 @@ facts:
     state: active
     topic: 未夹紧现象的源帧锚点与选窗
     claim: >
-      用户确认未夹紧现象使用源视频帧号作为锚点，分别尝试 2、3、5、10、20 秒，每种长度最多一个片段；靠近边界时允许移动窗口以容纳现象帧，源素材不足目标长度则记录原因。旧标注对 video_0002 记录 5.800 秒与帧 174，旧记录标为未夹紧且未发生断裂；该值按用户要求迁移到规则文档并作为未夹紧现象时刻，不改当前标注表。文档记录帧号及源视频摘要，入口将文档与视频身份绑定并核对帧对应；锚点无效、来源身份不符或未通过重放时不生成。训练机对该来源做临时单视频核验，2、3、5 秒片段及两段重放通过，10、20 秒因素材不足排除；后续全来源批次见 DF-027，人工标签审核尚未进行。
+      用户确认未夹紧现象使用源视频帧号作为锚点，分别尝试 2、3、5、10、20 秒，每种长度最多一个片段；靠近边界时允许移动窗口以容纳现象帧，源素材不足目标长度则记录原因。旧标注对 video_0002 记录 5.800 秒与帧 174，旧记录标为未夹紧且未发生断裂；该值按用户要求迁移到规则文档并作为未夹紧现象时刻，不改当前标注表。文档记录帧号及源视频摘要，入口将文档与视频身份绑定并核对帧对应；锚点无效、来源身份不符或未通过重放时不生成。训练机对该来源做临时单视频核验，2、3、5 秒片段及两段重放通过，10、20 秒因素材不足排除；后续全来源批次见 DF-027，该次技术核验时尚未进行人工标签审核。
     evidence:
       - ref: docs/subvideo-current-logic.md:48
         expect: '| video_0002 | 174 |'
@@ -507,7 +507,7 @@ facts:
     state: active
     topic: 全来源子视频去重生成与测试集边界
     claim: >
-      用户明确要求源视频只生成一次子视频，并授权包含固定测试集的视频以供后续测试；不重新划分，也不因此授权模型训练、测评或数据发布。用户随后要求删除原有三批并按当前规则重新编码生成一个统一批次；旧结果已删除，统一批次对 110 个来源生成 1621 个候选，其中开发集 1307 个、固定测试集 314 个，未复用旧片段。各来源原三折训练／验证归属不变；逐来源窗口、标签初值和划分与重建前规则摘要一致。源到 ROI、ROI 到片段重放及全部输出的最终完整解码检查通过；54 个候选标签初值需人工重点核验。所有候选未人工审核、未发布；媒体与划分身份的机器核验不替代画面审查或模型测评。
+      用户明确要求源视频只生成一次子视频，并授权包含固定测试集的视频以供后续测试；不重新划分，也不因此授权模型训练、测评或数据发布。用户随后要求删除原有三批并按当前规则重新编码生成一个统一批次；旧结果已删除，统一批次对 110 个来源生成 1621 个候选，其中开发集 1307 个、固定测试集 314 个，未复用旧片段。各来源原三折训练／验证归属不变；逐来源窗口、标签初值和划分与重建前规则摘要一致。源到 ROI、ROI 到片段重放及全部输出的最终完整解码检查通过；54 个候选标签初值需人工重点核验。重建完成时所有候选未人工审核、未发布；后续人审进度以独立审核记录为准，机器核验不替代画面审查或模型测评。
     evidence:
       - ref: script/sub_video_unified/generate.py:45
         expect: 'def load_inputs(root):'
@@ -545,6 +545,30 @@ facts:
         expect: '"pre": 15'
     established: 2026-11-11
     established_by: 用户确认播放帧及覆盖规则；本轮生成记录和训练机逐帧重放
+    supersedes: null
+    affects: [data, code, ops]
+  - id: DF-029
+    state: active
+    topic: 统一子视频的本地人工审核与独立记录
+    claim: >
+      人工审核工具读取当前统一候选清单、视频、固定测试及三折成员；源标注和候选标签仅供参考，首次审核值为空。覆盖候选没有初值也可逐片审核。人工决定写入独立的 data/subvideo-review/reviews.json，并与片段、来源、生成规则、划分及标签规则身份关联；媒体播放和保存前核对摘要，不回写生成清单或源标注。audit.json 只有通过清单身份与条目一致性核对后才提供重点提示，技术检查不代替用户人工看片。审核记录进入 Git，视频和本地锁文件不进入 Git；审核本身不等于数据发布、模型训练或模型测评。
+    evidence:
+      - ref: script/subvideo_review/server.py:30
+        expect: 'STORE_SCHEMA = "tensile-subvideo-human-review/2"'
+      - ref: script/subvideo_review/server.py:237
+        expect: 'current["review_subject_sha256"] = digest'
+      - ref: script/subvideo_review/server.py:296
+        expect: 'self.audit_current = True'
+      - ref: script/subvideo_review/server.py:486
+        expect: 'def save(self, payload):'
+      - ref: script/subvideo_review/static/app.js:217
+        expect: '生成时建议关注'
+      - ref: script/subvideo_review/README.md:3
+        expect: '首次审核时不会自动填入答案'
+      - ref: .gitignore:35
+        expect: '/data/subvideo-review/reviews.json.lock'
+    established: 2026-11-11
+    established_by: 用户授权接入当前统一批次；代码、实际清单与本机媒体身份核验
     supersedes: null
     affects: [data, code, ops]
 
