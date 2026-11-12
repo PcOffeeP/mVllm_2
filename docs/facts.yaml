@@ -43,7 +43,7 @@ facts:
     state: active
     topic: v4.1 strict_valid 只校验输出形式
     claim: >
-      现有 v4.1 scorer 中，`strict_valid` 通过只表示输出形式合法：单个 JSON 对象、无重复键、恰含旧契约四字段、枚举合法、跨字段组合合法；`extract_semantics` 不接收标签、视频或模型身份，因此严格合法率不含语义正确性。本轮五类标签的评价设计已有初稿，仍待确认，不能直接套用旧四字段检查。
+      现有 v4.1 scorer 中，`strict_valid` 通过只表示输出形式合法：单个 JSON 对象、无重复键、恰含旧契约四字段、枚举合法、跨字段组合合法；`extract_semantics` 不接收标签、视频或模型身份，因此严格合法率不含语义正确性。本轮五类输出编码、准确率与召回分母及失败处理已确认，不能直接套用旧四字段检查，见 DF-030。
     evidence:
       - ref: finetune/eval_semantics.py:63
         expect: def _validate_target(value: Mapping)
@@ -63,7 +63,7 @@ facts:
     state: active
     topic: 冻结 Stage D / strict-v4.1 的历史七门阈值
     claim: >
-      `finetune/holdout_metrics.py` 保留冻结 Stage D 旧严格协议的七门阈值：four_state_macro_recall 0.4006；fracture_three_state_macro_recall 0.3；joint_correct_rate 0.3921；runtime_failure_count 0；strict_valid_rate 1.0；已断裂_recall 0.15；未断裂_recall 0.7。这些是旧协议的代码常量，不是本轮五类标签的评价标准；新评价口径与阈值尚待确认。
+      `finetune/holdout_metrics.py` 保留冻结 Stage D 旧严格协议的七门阈值：four_state_macro_recall 0.4006；fracture_three_state_macro_recall 0.3；joint_correct_rate 0.3921；runtime_failure_count 0；strict_valid_rate 1.0；已断裂_recall 0.15；未断裂_recall 0.7。这些是旧协议的代码常量，不是本轮五类标签的评价标准；本轮评分的部分口径已确认，正式阈值仍未确定。
     evidence:
       - ref: finetune/holdout_metrics.py:12
         expect: THRESHOLDS = {
@@ -233,7 +233,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:96
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:148
+      - ref: docs/TODO.md:152
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -313,7 +313,7 @@ facts:
     state: active
     topic: 本轮人工标注基准与冻结 v4.1 的适用边界
     claim: >
-      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法确定，不含临界未断裂。状态、模式、位置的不确定选项统一为「无法确定」，标注页面按字段识别历史状态「无法判断」和模式「无法识别」，校验时视为「无法确定」并保留原值，直到用户显式修改。位置采用视频相对位置分类，依次判断夹持根部、明显偏向夹持端及其余可判定位置，不表示测得精确工程标距；典型样例校准及已有标注影响核对待完成。现象包括伸长、颈缩、开裂、界面分离、断后脱夹，可多选；断后脱夹不自动判为未夹紧。异常和现象逐项记录「是」「否」「无法判断」或未标注空白；三项异常均为「否」表示无可见异常。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及无法确定分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新契约、JSON 编码与数据接入尚未实施，新评价设计已有初稿，仍待确认。本机标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
+      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法确定，不含临界未断裂。状态、模式、位置的不确定选项统一为「无法确定」，标注页面按字段识别历史状态「无法判断」和模式「无法识别」，校验时视为「无法确定」并保留原值，直到用户显式修改。位置采用视频相对位置分类，依次判断夹持根部、明显偏向夹持端及其余可判定位置，不表示测得精确工程标距；典型样例校准及已有标注影响核对待完成。现象包括伸长、颈缩、开裂、界面分离、断后脱夹，可多选；断后脱夹不自动判为未夹紧。异常和现象逐项记录「是」「否」「无法判断」或未标注空白；三项异常均为「否」表示无可见异常。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及无法确定分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新训练／业务契约及数据接入尚未实施。本轮五类评分的 JSON 编码及部分统计口径已确认，见 DF-030。本机源视频标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
     evidence:
       - ref: docs/label.md:54
         expect: 是视频视觉分类，不表示已测得精确工程标距
@@ -349,7 +349,7 @@ facts:
     evidence:
       - ref: docs/decisions/0002-time-annotation-scope.md:13
         expect: 记录也可以用于定位、核对时序测评的候选画面
-      - ref: docs/TODO.md:92
+      - ref: docs/TODO.md:93
         expect: 断裂时间类标注可用于子视频生成
       - ref: docs/label.md:15
         expect: 未断裂、发生断裂、已断裂、无法确定
@@ -572,11 +572,59 @@ facts:
     supersedes: null
     affects: [data, code, ops]
 
+  - id: DF-030
+    state: active
+    topic: 子视频人工审核与五类评分的本轮确认范围
+    claim: >
+      用户于 2026-11-10 确认：候选片段由用户本人看画面并审核五类标签；审核字段默认留空，源标签和窗口角色只作另列参考，独立保存草稿、确认、退回、疑问和关联修订，旧决定不因候选同名自动继承。五类评分采用三个单选值及异常三项、现象五项的逐项「是／否／无法判断」编码。每项人工真值有效且请求已尝试者进入对应准确率或召回分母；失败和缺字段不算正确但单列，未处理与人工未标另列，多选人工无法判断不当作正负例。精确率按模型明确报出且人工可比较的样本计；多选误报率以人工为否且模型明确答是或否的样本为分母，失败与模型不确定另列。五类全对作为补充，只以人工各项可比较且请求已尝试的片段为分母；多选人工未知或未标不计入，模型缺项或失败不算全对。冲突按原输出逐项评分并另报，不自动修正或接入晋级与发布。完整片段与实际输入的人审结果分开，真实与虚拟分别报告；其他未定统计和阈值不得擅自定案。代码和合成测试、用户实际审核、模型运行及发布是不同阶段；本条确认不授权真实／虚拟媒体生成、固定测试媒体处理、模型运行或发布。
+      上述不授权固定测试媒体的限制属于 2026-11-10 的原范围；2026-11-11 用户允许本轮已生成的固定测试候选参与人工看片与标签审核，不因此授权模型测试或将测试片段用于训练。现审核入口读取当前 data/sub_video/manifest.json，独立保存人工修订并核对固定划分；其他候选追加后，片段、来源参考、批次、标签规则与划分身份未变的修订可恢复，身份变化的历史隔离。代码和合成检查不表示已审核真实片段。
+    evidence:
+      - ref: docs/subvideo-review-workflow.md:24
+        expect: 11 个可编辑字段全部默认留空
+      - ref: docs/design-test.md:64
+        expect: 已确认逐类准确率和召回采用以下分母
+      - ref: docs/design-test.md:79
+        expect: 已确认异常和现象均逐项编码为
+      - ref: docs/design-test.md:88
+        expect: 多选误报比例为 FP ÷（FP + TN）
+      - ref: docs/design-test.md:103
+        expect: 五类全部正确比例
+      - ref: docs/design-test.md:101
+        expect: 保留原回答，逐类按实际输出评分
+      - ref: script/subvideo_review/server.py:544
+        expect: def export(self, *, all_revisions=False)
+      - ref: script/subvideo_review/server.py:422
+        expect: def matches(row, candidate)
+      - ref: script/five_label_eval/score.py:429
+        expect: def score(manifest, reviews, predictions, input_reviews=())
+    established: 2026-11-10
+    established_by: 用户确认审核和五类评分范围；代码及文档核对
+    supersedes: null
+    affects: [data, eval, code]
+  - id: DF-031
+    state: active
+    topic: 既有虚拟视频的测试来源关联与待核用途
+    claim: >
+      本轮调研的 65 条虚拟视频中，1 条参考固定真实测试来源 video_0025、11 条参考 video_0032。用户于 2026-11-10 决定将这 12 条保留为未来虚拟测评待核候选；它们及其关联变体不得用于训练或开发调参，是否最终纳入须核查模型历史暴露、来源关系并由用户逐片审核，不能视为新增独立真实来源。其余 53 条也不自动具有独立测评资格。未找到历史使用记录不等于证明没有暴露。虚拟记录的最终失去贯通连接时间不自动等于人工首次可见分离帧；不得从模拟参数或旧标签推导本轮五类片段真值。旧爆炸性候选的暂停不因本决定解除。
+    evidence:
+      - ref: docs/design-test.md:44
+        expect: 共 12 条，保留为未来测评的待核候选
+      - ref: docs/subvideo-review-workflow.md:66
+        expect: 不能直接改写为人工首次可见分离
+      - ref: docs/subvideo-review-workflow.md:68
+        expect: 禁止训练和开发调参
+      - ref: docs/subvideo-review-workflow.md:70
+        expect: 方案曾被用户否定，生成继续暂停
+    established: 2026-11-10
+    established_by: 用户确认用途边界；交接报告与项目索引、清单只读核对
+    supersedes: null
+    affects: [data, eval]
+
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
     correct: 旧候选链路中，子窗口按事件时刻重新裁剪，可以落在不同事件阶段，父子窗口状态不同并不自动构成矛盾。本轮人工标注仍需按各自片段的可见证据判断，不能仅凭父子关系自动验真。
   - wrong: 格式合法率 1.0 = 判对了
-    correct: 现有 v4.1 scorer 的 `strict_valid` 只校验旧四字段输出形式与约束，不校验语义正确性；本轮五类标签的评价设计已有初稿，仍待确认。
+    correct: 现有 v4.1 scorer 的 `strict_valid` 只校验旧四字段输出形式与约束，不校验语义正确性；本轮五类评分的部分口径已确认，见 DF-030。
     evidence:
       - ref: finetune/eval_semantics.py:101
         expect: never receives labels, video or model identity
@@ -586,7 +634,7 @@ misreadings:
       - ref: docs/results/model-r1-effect-profile-20261018.md:626
         expect: 已断裂仍 **0/33**
   - wrong: 模型答不出帧数 = 模型缺陷
-    correct: 冻结 v4.1 的 `analysis.user_prompt` 只要求四字段，不要求回答帧数；不能据不满足契约外要求判定模型缺陷。本轮新标签输出接口尚未设计。
+    correct: 冻结 v4.1 的 `analysis.user_prompt` 只要求四字段，不要求回答帧数；不能据不满足契约外要求判定模型缺陷。本轮五类评分输出编码已确认，训练与业务契约接入尚未实施，见 DF-030。
     evidence:
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:168
         expect: 请输出且只输出 clip_state、fracture_mechanism
@@ -598,7 +646,7 @@ misreadings:
       - ref: pipeline/v3_candidate_media.py:433
         expect: any(value < event + EVENT_GUARD_SECONDS
   - wrong: 预测缺失 = 不计入统计
-    correct: 在 legacy fracture_between 区间评分中，分母由真值区间决定；真值可用时，预测缺失仍留在分母并计为不正确。这只描述该旧区间 scorer，本轮五类标签的分母及缺失处理尚待评价设计确认。
+    correct: 在 legacy fracture_between 区间评分中，分母由真值区间决定；真值可用时，预测缺失仍留在分母并计为不正确。这只描述该旧区间 scorer。本轮五类标签已确认的准确率和召回分母及缺失处理另见 DF-030，不能据旧 scorer 推定其他口径。
     evidence:
       - ref: finetune/validation/task_metrics.py:29
         expect: = _valid_interval(target_interval)

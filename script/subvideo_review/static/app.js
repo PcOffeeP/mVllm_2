@@ -132,7 +132,7 @@
       content.append(list);
     };
     appendReference("源视频标注", reference);
-    appendReference("候选标签初值", candidateReference);
+    if (candidateReference && Object.keys(candidateReference).length) appendReference("候选标签初值", candidateReference);
   }
   function previewSource(source) {
     if (state.loading) return;
