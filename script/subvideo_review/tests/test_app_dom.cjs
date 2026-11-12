@@ -18,6 +18,7 @@ class Element {
   replaceChildren(...children) { this.children = children; }
   append(...children) { this.children.push(...children); }
   setAttribute(key, value) { this.attributes[key] = value; }
+  removeAttribute(key) { delete this.attributes[key]; }
   addEventListener(name, listener) { this.listeners[name] = listener; }
   querySelector() { return null; }
   closest() { return this.frame || null; }
@@ -27,8 +28,9 @@ class Element {
 }
 
 test("pending title survives, playback end keeps current candidate, explicit next plays, source preview is read only", async () => {
-  const ids = ["source-filter", "status-filter", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history"];
+  const ids = ["scope-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history"];
   const elements = new Map(ids.map((id) => [id, new Element(id === "pending-sources" ? "details" : "div")]));
+  elements.get("scope-filter").value = "development";
   const videoFrame = new Element("div");
   elements.get("video-player").frame = videoFrame;
   const summary = new Element("summary");
@@ -39,8 +41,9 @@ test("pending title survives, playback end keeps current candidate, explicit nex
   const names = ["断裂状态", "断裂模式", "断裂位置", "异常情况.未夹紧", "异常情况.视频异常", "异常情况.爆炸性断裂", "断裂现象.伸长", "断裂现象.颈缩", "断裂现象.开裂", "断裂现象.界面分离", "断裂现象.断后脱夹"];
   const selects = names.map((name) => Object.assign(new Element("select"), {name}));
   let ready;
+  let allowDiscard = false;
   const requests = [];
-  const candidates = ["candidate_one", "candidate_two"].map((id) => ({candidate_id: id, source_id: "synthetic_source", source_type: "real", clip_sha256: "0".repeat(64), review_status: "unreviewed", window: {}, frame_mapping: {}, source_reference: {}}));
+  const candidates = ["candidate_one", "candidate_two", "candidate_test"].map((id) => ({candidate_id: id, source_id: "synthetic_source", source_type: "real", scope: id === "candidate_test" ? "test" : "development", folds: {}, clip_sha256: "0".repeat(64), review_status: "unreviewed", window: {}, frame_mapping: {}, source_reference: {}, candidate_reference: {"断裂状态": "已断裂"}}));
   const context = {
     document: {
       getElementById: (id) => elements.get(id),
@@ -48,7 +51,7 @@ test("pending title survives, playback end keeps current candidate, explicit nex
       createElement: (tag) => new Element(tag),
       addEventListener: (event, callback) => { if (event === "DOMContentLoaded") ready = callback; },
     },
-    window: {addEventListener() {}},
+    window: {addEventListener() {}, confirm: () => allowDiscard},
     fetch: async (url) => {
       requests.push(url);
       if (url.startsWith("/api/reviews?candidate_id=")) return {ok: true, json: async () => ({latest: null, history: [], isolated_history: []})};
@@ -62,19 +65,34 @@ test("pending title survives, playback end keeps current candidate, explicit nex
   vm.runInNewContext(code, context);
   await ready();
   assert.equal(elements.get("clip-title").textContent, "candidate_one");
+  assert.ok(selects.every((select) => select.value === ""));
+  selects[0].value = "无法确定";
+  selects[0].listeners.change();
+  elements.get("scope-filter").value = "test";
+  await elements.get("scope-filter").listeners.change();
+  assert.equal(elements.get("scope-filter").value, "development");
+  assert.equal(elements.get("clip-title").textContent, "candidate_one");
+  assert.equal(selects[0].value, "无法确定");
+  allowDiscard = true;
   assert.equal(videoFrame.dataset.state, "loading");
   elements.get("video-player").listeners.loadeddata();
   assert.equal(videoFrame.dataset.state, "loaded");
   elements.get("video-player").listeners.ended();
   assert.equal(elements.get("clip-title").textContent, "candidate_one");
   assert.ok(!requests.some((url) => url.includes("candidate_two")));
-  assert.match(elements.get("app-message").textContent, /请填写并确认/);
+  assert.match(elements.get("app-message").textContent, /输入尚未保存/);
   await elements.get("next-candidate").listeners.click();
   assert.equal(elements.get("clip-title").textContent, "candidate_two");
   assert.equal(videoFrame.dataset.state, "loading");
   elements.get("video-player").listeners.loadeddata();
   assert.equal(videoFrame.dataset.state, "loaded");
   assert.ok(requests.some((url) => url.includes("candidate_two")));
+  elements.get("scope-filter").value = "test";
+  await elements.get("scope-filter").listeners.change();
+  assert.equal(elements.get("clip-title").textContent, "candidate_test");
+  assert.match(elements.get("clip-meta").textContent, /测试集/);
+  assert.equal(elements.get("candidate-list").children.length, 1);
+  assert.ok(selects.every((select) => select.value === ""));
   assert.equal(details.children[0], summary);
   assert.equal(details.children[1], pendingList);
   assert.equal(summary.textContent, "待处理来源及原因");

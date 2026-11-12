@@ -27,7 +27,7 @@ OPTIONS = {
     "断裂现象": {k: ["是", "否", "无法判断"] for k in ("伸长", "颈缩", "开裂", "界面分离", "断后脱夹")},
 }
 STATUSES = {"draft", "confirmed", "returned", "question"}
-STORE_SCHEMA = "tensile-subvideo-human-review/1"
+STORE_SCHEMA = "tensile-subvideo-human-review/2"
 
 
 class ReviewError(ValueError):
@@ -112,7 +112,7 @@ def confined_file(root, relative):
 class ReviewApp:
     def __init__(self, project_root, *, manifest=None, records=None, max_media_bytes=512 * 1024 * 1024):
         self.root = Path(project_root).resolve(strict=True)
-        self.manifest_path = Path(manifest) if manifest else self.root / "data/subvideos/frame-aligned/manifest.json"
+        self.manifest_path = Path(manifest) if manifest else self.root / "data/sub_video/manifest.json"
         if not self.manifest_path.is_absolute():
             self.manifest_path = self.root / self.manifest_path
         self.manifest_path = self.manifest_path.resolve(strict=True)
@@ -130,33 +130,75 @@ class ReviewApp:
         self.max_media_bytes = max_media_bytes
         self.token = secrets.token_urlsafe(32)
         self.mutex = threading.Lock()
-        self.sources = {s.get("video_id", s.get("source_id")): s for s in self.manifest.get("sources", [])}
+        self.label_rules_path = self.root / "docs/label.md"
+        self.label_rules_sha256 = digest(self.label_rules_path.read_bytes()) if self.label_rules_path.is_file() else None
+        sources = self.manifest.get("sources", [])
+        if not isinstance(sources, list):
+            raise ReviewError("来源清单无效")
+        self.sources = {}
+        for source in sources:
+            if not isinstance(source, dict):
+                raise ReviewError("来源清单无效")
+            source_id = source.get("video_id", source.get("source_id"))
+            if not isinstance(source_id, str) or not source_id or source_id in self.sources:
+                raise ReviewError("来源 ID 缺失或重复")
+            self.sources[source_id] = source
+        self.audit_issues = {}
+        self.audit_current = False
+        audit_path = self.media_root / "audit.json"
+        if audit_path.is_file():
+            try:
+                audit = json.loads(audit_path.read_text(encoding="utf-8"))
+                self.audit_current = audit.get("manifest_sha256") == self.manifest_sha256
+                if self.audit_current:
+                    self.audit_issues = {row["candidate_id"]: row.get("issues", [])
+                                         for row in audit.get("candidates", [])
+                                         if isinstance(row, dict) and isinstance(row.get("candidate_id"), str)
+                                         and isinstance(row.get("issues", []), list)
+                                         and all(isinstance(issue, str) for issue in row.get("issues", []))}
+            except (OSError, ValueError, TypeError, AttributeError):
+                self.audit_current = False
         test_file = self.root / "data/splits/three-fold/test.json"
         if not test_file.exists():
             raise ReviewError("缺少固定 test 成员清单；无法保证媒体访问边界")
-        test_value = json.loads(test_file.read_text(encoding="utf-8"))
+        split_bytes = test_file.read_bytes()
+        self.split_snapshots = {test_file: digest(split_bytes)}
+        test_value = json.loads(split_bytes)
         self.test_ids = set(test_value["video_ids"] if isinstance(test_value, dict) else test_value)
         self.development_ids = set()
+        self.fold_members = {}
         for fold in range(3):
+            self.fold_members[str(fold)] = {}
             for partition in ("train", "val"):
                 split_file = test_file.parent / f"fold_{fold}_{partition}.json"
                 if not split_file.exists():
                     raise ReviewError("缺少开发 fold 成员清单；无法确认来源归属")
-                split_value = json.loads(split_file.read_text(encoding="utf-8"))
-                self.development_ids.update(split_value["video_ids"] if isinstance(split_value, dict) else split_value)
+                split_bytes = split_file.read_bytes()
+                self.split_snapshots[split_file] = digest(split_bytes)
+                split_value = json.loads(split_bytes)
+                members = set(split_value["video_ids"] if isinstance(split_value, dict) else split_value)
+                self.fold_members[str(fold)][partition] = members
+                self.development_ids.update(members)
         if self.development_ids & self.test_ids:
             raise ReviewError("固定划分存在开发与 test 成员冲突", 403)
         self.candidates = {}
+        seen_candidates = set()
         for item in self.manifest.get("candidates", []):
             candidate_id = item.get("candidate_id")
             source_id = item.get("source_video_id", item.get("source_id"))
-            if not isinstance(candidate_id, str) or not candidate_id or candidate_id in self.candidates:
+            if not isinstance(candidate_id, str) or not candidate_id or candidate_id in seen_candidates:
                 raise ReviewError("候选 ID 缺失或重复")
+            seen_candidates.add(candidate_id)
             source = self.sources.get(source_id, {})
-            if source_id in self.test_ids or item.get("scope") == "test" or source.get("split", {}).get("partition") == "test" or "test" in item.get("folds", {}).values():
-                raise ReviewError(f"拒绝载入固定 test 候选：{candidate_id}", 403)
             self.allowed_source(source_id)
-            self.check_related_sources(item)
+            scope, folds = self.split_for(source_id)
+            self.check_split(item, scope, folds)
+            self.check_related_sources(item, scope)
+            if item.get("status") not in (None, "cropped"):
+                continue
+            for field in ("source_sha256", "roi_sha256"):
+                if item.get(field) and source.get(field) and item[field] != source[field]:
+                    raise ReviewError(f"候选与来源的 {field} 不一致：{candidate_id}", 409)
             clip_sha = item.get("output", {}).get("sha256", item.get("clip_sha256"))
             if not isinstance(clip_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", clip_sha):
                 raise ReviewError(f"候选缺少有效片段摘要：{candidate_id}")
@@ -177,14 +219,46 @@ class ReviewApp:
                 "roi_sha256": item.get("roi_sha256", source.get("roi_sha256")),
                 "source_relationships": {key: source[key] for key in ("related_source_ids", "real_source_ids", "parent_source_id") if key in source},
                 "candidate_record_sha256": digest(canonical(item)),
+                "label_rules_sha256": self.label_rules_sha256,
                 "source_reference": source.get("source_annotation", {}),
+                "candidate_reference": item.get("candidate_labels", {}),
+                "review_focus": item.get("review_focus", []),
+                "audit_issues": self.audit_issues.get(candidate_id, []),
+                "source_preview_available": self.source_preview_available(source_id),
+                "scope": scope, "folds": folds,
                 "window": {key: item[key] for key in ("window_role", "window_variant", "duration", "start_frame", "end_frame", "start_time", "end_time", "source_start_pts", "source_end_pts", "source_frame_range", "source_anchor_frames", "folds") if key in item},
                 "frame_mapping": item.get("output", {}).get("frame_mapping", {}),
                 "output_path": relative,
             }
+            current["review_subject_sha256"] = digest(canonical({key: current[key] for key in (
+                "candidate_id", "source_id", "source_type", "clip_sha256", "candidate_record_sha256",
+                "source_sha256", "roi_sha256", "source_relationships", "source_reference", "scope", "folds",
+                "generation_batch_id", "generation_schema", "label_rules_sha256",
+            )}))
             self.candidates[candidate_id] = current
 
-    def check_related_sources(self, value):
+    def split_for(self, source_id):
+        if source_id in self.test_ids:
+            return "test", {str(fold): "test" for fold in range(3)}
+        if source_id not in self.development_ids:
+            raise ReviewError("来源开发或 test 归属不明", 403)
+        folds = {}
+        for fold, members in self.fold_members.items():
+            found = [part for part in ("train", "val") if source_id in members[part]]
+            if len(found) != 1:
+                raise ReviewError("来源在某一折的训练／验证归属不明或冲突", 403)
+            folds[fold] = found[0]
+        return "development", folds
+
+    @staticmethod
+    def check_split(value, scope, folds):
+        split = value.get("split") or {}
+        if any(declared is not None and declared != scope for declared in (value.get("scope"), split.get("partition"))):
+            raise ReviewError("来源或候选的划分与成员清单不一致", 403)
+        if any(declared is not None and declared != folds for declared in (value.get("folds"), split.get("folds"))):
+            raise ReviewError("来源或候选的折归属与成员清单不一致", 403)
+
+    def check_related_sources(self, value, expected_scope):
         related = []
         for key in ("related_source_ids", "real_source_ids"):
             if key in value:
@@ -194,17 +268,17 @@ class ReviewApp:
         if value.get("parent_source_id"):
             related.append(value["parent_source_id"])
         for source_id in related:
-            if source_id in self.test_ids or source_id not in self.development_ids:
-                raise ReviewError("关联来源属于 test 或开发归属不明；拒绝媒体访问", 403)
+            scope, _ = self.split_for(source_id)
+            if scope != expected_scope:
+                raise ReviewError("关联来源与候选划分不同；拒绝媒体访问", 403)
 
     def allowed_source(self, source_id):
-        if source_id not in self.sources or source_id not in self.development_ids or source_id in self.test_ids:
-            raise ReviewError("来源属于 test 或开发归属不明；拒绝媒体访问", 403)
+        if source_id not in self.sources:
+            raise ReviewError("来源不存在或归属不明；拒绝媒体访问", 403)
         source = self.sources[source_id]
-        split = source.get("split") or {}
-        if source.get("scope") == "test" or "test" in source.get("folds", {}).values() or split.get("partition") == "test" or "test" in split.get("folds", {}).values():
-            raise ReviewError("来源属于 test；拒绝媒体访问", 403)
-        self.check_related_sources(source)
+        scope, folds = self.split_for(source_id)
+        self.check_split(source, scope, folds)
+        self.check_related_sources(source, scope)
         return source
 
     def source_preview_available(self, source_id):
@@ -216,8 +290,16 @@ class ReviewApp:
         return source.get("status") != "held" and source.get("source_path") == f"data/videos/{source_id}.mp4" and isinstance(expected, str) and bool(re.fullmatch(r"[0-9a-f]{64}", expected))
 
     def assert_manifest(self):
-        if digest(self.manifest_path.read_bytes()) != self.manifest_sha256:
-            raise ReviewError("生成清单在服务启动后已变化；请重启并重新核对，不会继承旧审核", 409)
+        try:
+            if digest(self.manifest_path.read_bytes()) != self.manifest_sha256:
+                raise ReviewError("生成清单在服务启动后已变化；请先记录未保存输入并重启。已保存且身份未变的审核记录会保留", 409)
+            if any(digest(path.read_bytes()) != sha for path, sha in self.split_snapshots.items()):
+                raise ReviewError("数据划分在服务启动后已变化；请重启并重新核对", 409)
+            current_rules = digest(self.label_rules_path.read_bytes()) if self.label_rules_path.is_file() else None
+            if current_rules != self.label_rules_sha256:
+                raise ReviewError("标签规则在服务启动后已变化；请重启并重新核对", 409)
+        except OSError as error:
+            raise ReviewError("生成清单或划分文件不可读；请重新核对", 409) from error
 
     def candidate(self, candidate_id):
         self.assert_manifest()
@@ -245,7 +327,7 @@ class ReviewApp:
 
     @staticmethod
     def matches(row, candidate):
-        return all(row.get(k) == candidate[k] for k in ("candidate_id", "clip_sha256", "manifest_sha256", "candidate_record_sha256", "source_id", "source_type"))
+        return all(row.get(k) == candidate[k] for k in ("candidate_id", "clip_sha256", "review_subject_sha256", "source_id", "source_type"))
 
     def review(self, candidate_id, revisions=None):
         candidate = self.candidate(candidate_id)
@@ -265,6 +347,7 @@ class ReviewApp:
             review = self._review(candidate, rows)
             candidates.append({**candidate, "review_status": review["latest"]["review_status"] if review["latest"] else "unreviewed", "review_id": review["latest"]["review_id"] if review["latest"] else None, "isolated_revision_count": len(review["isolated_history"])})
         return {"manifest_sha256": self.manifest_sha256, "token": self.token, "options": OPTIONS, "candidates": candidates,
+                "audit_current": self.audit_current,
                 "pending_sources": [{"source_id": sid, "status": s.get("status"), "reason": s.get("reason"), "source_reference": s.get("source_annotation", {}), "source_preview_available": self.source_preview_available(sid)} for sid, s in self.sources.items() if s.get("status") in ("pending", "held")],
                 "project_root": str(self.root), "records_path": str(self.records_path)}
 
@@ -336,7 +419,7 @@ class ReviewApp:
             prior_confirmed = any(r["review_status"] == "confirmed" for r in rows if self.matches(r, candidate))
             if status != "draft" and prior_confirmed and not reason.strip():
                 raise ReviewError("修订已确认结果须填写原因；草稿可先保存")
-            row = {k: copy.deepcopy(candidate[k]) for k in ("candidate_id", "source_id", "source_type", "clip_sha256", "manifest_sha256", "candidate_record_sha256", "generation_batch_id", "generation_rule", "generation_schema", "parent_candidate", "source_sha256", "roi_sha256", "source_relationships")}
+            row = {k: copy.deepcopy(candidate[k]) for k in ("candidate_id", "source_id", "source_type", "clip_sha256", "manifest_sha256", "candidate_record_sha256", "review_subject_sha256", "label_rules_sha256", "scope", "folds", "generation_batch_id", "generation_rule", "generation_schema", "parent_candidate", "source_sha256", "roi_sha256", "source_relationships")}
             row.update(review_id=str(uuid.uuid4()), previous_review_id=previous_id,
                        created_at=dt.datetime.now(dt.timezone.utc).isoformat(), review_status=status,
                        labels=copy.deepcopy(labels), note=note, reason=reason,
@@ -375,7 +458,7 @@ class ReviewApp:
             if latest:
                 row = copy.deepcopy(latest)
             else:
-                row = {k: copy.deepcopy(v) for k,v in candidate.items() if k not in ("source_reference", "output_path")}
+                row = {k: copy.deepcopy(v) for k,v in candidate.items() if k not in ("source_reference", "candidate_reference", "output_path")}
                 row.update(review_id=None, review_status="unreviewed", labels={}, history_review_ids=[])
             row["isolated_history_review_ids"] = [r["review_id"] for r in review["isolated_history"]]
             row["review_store_schema"] = STORE_SCHEMA
@@ -500,8 +583,8 @@ def handler_for(app):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project-root", type=Path, required=True, help="带现有候选媒体的原工作区；仅读取用户请求的开发候选/开发源媒体，不访问固定 test 媒体")
-    parser.add_argument("--manifest", type=Path, help="默认 data/subvideos/frame-aligned/manifest.json")
+    parser.add_argument("--project-root", type=Path, required=True, help="带候选媒体、标注和划分的项目工作区")
+    parser.add_argument("--manifest", type=Path, help="默认 data/sub_video/manifest.json")
     parser.add_argument("--records", type=Path, help="默认 data/subvideo-review/reviews.json；独立追加历史")
     parser.add_argument("--max-media-mib", type=int, default=512)
     sub = parser.add_subparsers(dest="command", required=True)

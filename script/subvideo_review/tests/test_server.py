@@ -21,7 +21,7 @@ class ReviewTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.manifest_path = self.root / "data/subvideos/frame-aligned/manifest.json"
+        self.manifest_path = self.root / "data/sub_video/manifest.json"
         self.manifest_path.parent.mkdir(parents=True)
         split = self.root / "data/splits/three-fold/test.json"
         split.parent.mkdir(parents=True)
@@ -186,12 +186,12 @@ class ReviewTests(unittest.TestCase):
         self.write_manifest()
         app = ReviewApp(self.root)
         self.assertFalse(app.bootstrap()["pending_sources"][0]["source_preview_available"])
-        with self.assertRaisesRegex(ReviewError, "来源属于 test"):
+        with self.assertRaisesRegex(ReviewError, "划分.*不一致"):
             with app.source_media("pending_source"):
                 self.fail("conflicting test source must not open")
         self.manifest["sources"][0]["split"] = {"partition": "test"}
         self.write_manifest()
-        with self.assertRaisesRegex(ReviewError, "test"):
+        with self.assertRaisesRegex(ReviewError, "划分.*不一致"):
             ReviewApp(self.root)
 
     def test_optimistic_conflict_and_identity_check(self):
@@ -219,12 +219,18 @@ class ReviewTests(unittest.TestCase):
             self.app.save(self.payload())
         self.assertFalse(self.app.records_path.exists())
 
-    def test_changed_manifest_isolation_and_history_export(self):
+    def test_manifest_append_keeps_unchanged_review_but_changed_candidate_is_isolated(self):
         old = self.app.save(self.payload("confirmed", labels=self.labels()))
-        self.manifest["generation_batch_id"] = "new-batch"
+        self.manifest["candidates"].append({**self.manifest["candidates"][1], "candidate_id": "new"})
         self.write_manifest()
         with self.assertRaisesRegex(ReviewError, "已变化"):
             self.app.bootstrap()
+        new_app = ReviewApp(self.root)
+        review = new_app.review("a")
+        self.assertEqual(review["latest"]["review_id"], old["review_id"])
+        self.assertEqual(review["isolated_history"], [])
+        self.manifest["candidates"][0]["start_frame"] = 3
+        self.write_manifest()
         new_app = ReviewApp(self.root)
         review = new_app.review("a")
         self.assertIsNone(review["latest"])
@@ -240,14 +246,91 @@ class ReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ReviewError, "完整性"):
             self.app.export()
 
-    def test_fixed_test_id_and_test_scope_rejected_before_open(self):
-        for change in ({"source_video_id": "fixed_test"}, {"scope": "test"}, {"folds": {"0": "test"}}):
+    def test_older_store_schema_is_not_silently_overwritten(self):
+        self.app.records_path.parent.mkdir(parents=True)
+        old = '{"schema":"tensile-subvideo-human-review/1","revisions":[]}'
+        self.app.records_path.write_text(old, encoding="utf-8")
+        with self.assertRaisesRegex(ReviewError, "格式或修订完整性"):
+            self.app.save(self.payload())
+        self.assertEqual(self.app.records_path.read_text(encoding="utf-8"), old)
+
+    def test_test_candidates_are_accessible_only_with_matching_fixed_split(self):
+        self.manifest["sources"].append({"video_id": "fixed_test", "scope": "test", "folds": {str(f): "test" for f in range(3)}})
+        self.manifest["candidates"][0].update(source_video_id="fixed_test", scope="test", folds={str(f): "test" for f in range(3)})
+        self.write_manifest()
+        app = ReviewApp(self.root)
+        self.assertEqual(app.candidate("a")["scope"], "test")
+        with app.media("a") as (stream, _, _):
+            self.assertEqual(stream.read(), self.media)
+        row = app.save({**self.payload("confirmed", labels=self.labels()), "manifest_sha256": app.manifest_sha256})
+        self.assertEqual(row["scope"], "test")
+        self.assertEqual(row["folds"], {str(f): "test" for f in range(3)})
+        for change in ({"scope": "development"}, {"folds": {"0": "train", "1": "test", "2": "test"}}):
             original = copy.deepcopy(self.manifest["candidates"][0])
             self.manifest["candidates"][0].update(change)
             self.write_manifest()
-            with self.assertRaisesRegex(ReviewError, "test"):
+            with self.assertRaisesRegex(ReviewError, "划分|折归属"):
                 ReviewApp(self.root)
             self.manifest["candidates"][0] = original
+
+    def test_changed_source_reference_isolates_review(self):
+        old = self.app.save(self.payload("confirmed", labels=self.labels()))
+        self.manifest["sources"][0]["source_annotation"]["断裂状态"] = "无法确定"
+        self.write_manifest()
+        review = ReviewApp(self.root).review("a")
+        self.assertIsNone(review["latest"])
+        self.assertEqual(review["isolated_history"][0]["review_id"], old["review_id"])
+
+    def test_conflicting_scope_or_source_media_identity_cannot_be_hidden(self):
+        self.manifest["sources"][0].update(scope="development", split={"partition": "test"})
+        self.write_manifest()
+        with self.assertRaisesRegex(ReviewError, "划分.*不一致"):
+            ReviewApp(self.root)
+        self.manifest["sources"][0].pop("split")
+        for field in ("source_sha256", "roi_sha256"):
+            self.manifest["sources"][0][field] = "1" * 64
+            self.manifest["candidates"][0][field] = "2" * 64
+            self.write_manifest()
+            with self.assertRaisesRegex(ReviewError, field):
+                ReviewApp(self.root)
+            self.manifest["sources"][0].pop(field)
+            self.manifest["candidates"][0].pop(field)
+
+    def test_split_change_blocks_old_session_before_review_is_saved(self):
+        split = self.root / "data/splits/three-fold/fold_0_train.json"
+        split.write_text('{"video_ids": []}', encoding="utf-8")
+        with self.assertRaisesRegex(ReviewError, "数据划分.*变化"):
+            self.app.save(self.payload())
+        self.assertFalse(self.app.records_path.exists())
+
+    def test_changed_label_rules_isolate_existing_review(self):
+        rules = self.root / "docs/label.md"
+        rules.parent.mkdir(parents=True)
+        rules.write_text("synthetic label rules v1", encoding="utf-8")
+        app = ReviewApp(self.root)
+        old = app.save(self.payload("confirmed", labels=self.labels()))
+        rules.write_text("synthetic label rules v2", encoding="utf-8")
+        with self.assertRaisesRegex(ReviewError, "标签规则.*变化"):
+            app.bootstrap()
+        review = ReviewApp(self.root).review("a")
+        self.assertIsNone(review["latest"])
+        self.assertEqual(review["isolated_history"][0]["review_id"], old["review_id"])
+
+    def test_only_matching_audit_and_finished_candidates_are_shown(self):
+        self.manifest["candidates"].append({"candidate_id": "unfinished", "source_video_id": "source_a", "scope": "development", "status": "planned"})
+        self.write_manifest()
+        audit = {"manifest_sha256": hashlib.sha256(self.manifest_path.read_bytes()).hexdigest(),
+                 "candidates": [{"candidate_id": "a", "issues": ["synthetic conflict"]}]}
+        (self.manifest_path.parent / "audit.json").write_text(json.dumps(audit), encoding="utf-8")
+        app = ReviewApp(self.root)
+        self.assertTrue(app.bootstrap()["audit_current"])
+        self.assertEqual(app.candidate("a")["audit_issues"], ["synthetic conflict"])
+        self.assertNotIn("unfinished", app.candidates)
+        self.manifest["generation_batch_id"] = "changed"
+        self.write_manifest()
+        newer = ReviewApp(self.root)
+        self.assertFalse(newer.bootstrap()["audit_current"])
+        self.assertEqual(newer.candidate("a")["audit_issues"], [])
 
     def test_traversal_symlink_and_size_rejected(self):
         self.manifest["candidates"][0]["output_path"] = "../outside.mp4"

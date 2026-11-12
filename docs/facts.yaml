@@ -479,6 +479,7 @@ facts:
     topic: 子视频人工审核与五类评分的本轮确认范围
     claim: >
       用户于 2026-11-10 确认：候选片段由用户本人看画面并审核五类标签；审核字段默认留空，源标签和窗口角色只作另列参考，独立保存草稿、确认、退回、疑问和关联修订，旧决定不因候选同名自动继承。五类评分采用三个单选值及异常三项、现象五项的逐项「是／否／无法判断」编码。每项人工真值有效且请求已尝试者进入对应准确率或召回分母；失败和缺字段不算正确但单列，未处理与人工未标另列，多选人工无法判断不当作正负例。精确率按模型明确报出且人工可比较的样本计；多选误报率以人工为否且模型明确答是或否的样本为分母，失败与模型不确定另列。五类全对作为补充，只以人工各项可比较且请求已尝试的片段为分母；多选人工未知或未标不计入，模型缺项或失败不算全对。冲突按原输出逐项评分并另报，不自动修正或接入晋级与发布。完整片段与实际输入的人审结果分开，真实与虚拟分别报告；其他未定统计和阈值不得擅自定案。代码和合成测试、用户实际审核、模型运行及发布是不同阶段；本条确认不授权真实／虚拟媒体生成、固定测试媒体处理、模型运行或发布。
+      上述不授权固定测试媒体的限制属于 2026-11-10 的原范围；2026-11-11 用户允许本轮已生成的固定测试候选参与人工看片与标签审核，不因此授权模型测试或将测试片段用于训练。现审核入口读取当前 data/sub_video/manifest.json，独立保存人工修订并核对固定划分；其他候选追加后，片段、来源参考、批次、标签规则与划分身份未变的修订可恢复，身份变化的历史隔离。代码和合成检查不表示已审核真实片段。
     evidence:
       - ref: docs/subvideo-review-workflow.md:24
         expect: 11 个可编辑字段全部默认留空
@@ -492,8 +493,10 @@ facts:
         expect: 五类全部正确比例
       - ref: docs/design-test.md:101
         expect: 保留原回答，逐类按实际输出评分
-      - ref: script/subvideo_review/server.py:366
+      - ref: script/subvideo_review/server.py:449
         expect: def export(self, *, all_revisions=False)
+      - ref: script/subvideo_review/server.py:329
+        expect: def matches(row, candidate)
       - ref: script/five_label_eval/score.py:429
         expect: def score(manifest, reviews, predictions, input_reviews=())
     established: 2026-11-10

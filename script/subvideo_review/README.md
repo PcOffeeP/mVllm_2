@@ -1,10 +1,10 @@
 # 本地子视频人工审核工具
 
-本工具让用户播放已有开发集候选，逐片填写五类标签，并把草稿、疑问、退回与确认保存为独立修订。源标注只作参考，不会自动填入新审核值，也不会回写原标注。工具不调用模型、不生成媒体，不执行训练、正式测评或发布；审核确认和 JSONL 导出也不等于数据发布。未审核片段不得进入正式发布。
+本工具让用户播放已有开发集与测试集候选，逐片填写五类标签，并把草稿、疑问、退回与确认保存为独立修订。源标注和候选初值只作参考，不会自动填入新审核值，也不会回写原标注。工具不调用模型、不生成媒体，不执行训练、正式测评或发布；审核确认和 JSONL 导出也不等于数据发布。未审核片段不得进入正式发布。
 
-以下命令对应本次任务工作树和本机已有媒体位置，供用户手动运行。本说明编写时未启动服务或打开真实媒体；完整流程边界见[子视频审核与评价衔接](../../docs/subvideo-review-workflow.md)，标签判据见[标签说明](../../docs/label.md)。
+以下命令对应审核工具工作树和当前项目的媒体位置。五类标签的判据以当前项目的 `docs/label.md` 为准；[子视频审核与评价衔接](../../docs/subvideo-review-workflow.md)记录旧批次的历史设计，旧目录和旧数据范围不代表当前输入。
 
-## 1. 在任务工作树启动，记录也留在任务工作树
+## 1. 在审核工具工作树启动
 
 使用 Python 3.10 或更新版本。服务使用 Python 标准库；当前实现依赖 `fcntl`，适用于本机 macOS 和 Linux，不提供 Windows 原生运行保证。保持启动终端打开，使用本机浏览器访问。
 
@@ -12,8 +12,8 @@
 
 | 路径 | 用途 |
 | --- | --- |
-| `/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench` | 任务工作树：从这里运行新工具，保存独立审核记录及导出文件 |
-| `/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune` | 原工作区：读取已有生成清单、固定划分和被请求的开发候选／开发源视频 |
+| `/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench` | 审核工具工作树：从这里运行工具 |
+| `/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune` | 当前项目：读取生成清单、固定划分和候选媒体；独立保存审核记录 |
 
 在终端执行：
 
@@ -21,11 +21,11 @@
 cd /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench
 python -m script.subvideo_review.server \
   --project-root /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune \
-  --records /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench/data/subvideo-review/reviews.json \
+  --records /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review/reviews.json \
   serve --port 8765
 ```
 
-`--project-root` 必须指向带现有候选媒体的原工作区；Git 工作树通常没有被忽略的视频副本。默认生成清单是该目录下的 `data/subvideos/frame-aligned/manifest.json`，媒体相对该清单所在目录定位。**本次始终显式填写绝对路径 `--records`**：省略它会默认写入 `--project-root` 下的 `data/subvideo-review/reviews.json`，与本次独立记录要求不符；相对记录路径也按 `--project-root` 解释，而非当前终端目录。
+`--project-root` 必须指向带候选媒体的项目目录；默认生成清单为 `data/sub_video/manifest.json`，媒体路径相对该清单所在目录。`--records` 指定独立审核记录，默认是项目的 `data/subvideo-review/reviews.json`；它不会写入生成清单或原标注。相对记录路径按 `--project-root` 解释。本版记录格式为 `tensile-subvideo-human-review/2`；如路径已有旧格式记录，工具会拒绝覆盖，需先核对再迁移。
 
 正常启动后，终端显示本机链接、只读清单路径和独立审核历史路径。核对后打开 [http://127.0.0.1:8765](http://127.0.0.1:8765)。服务仅监听 `127.0.0.1`，不提供局域网访问。若端口已占用，可把命令中的端口改成其他空闲值，并使用终端实际打印的链接。
 
@@ -33,7 +33,7 @@ python -m script.subvideo_review.server \
 
 ## 2. 逐片填写并保存
 
-先按“来源”“审核状态”筛选，或按候选／来源编号搜索，再选择候选。核对标题、来源、媒体摘要、窗口与帧映射信息，观看实际片段后填写。右侧“源标签与事件线索”是原视频参考，不是该片段的真值；窗口角色也不能代替片段判断。
+先按“数据划分”“来源”“审核状态”筛选，或按候选／来源编号搜索，再选择候选。标签组合检查与当前清单匹配时，也可筛选待复核项。核对标题、来源、媒体摘要、窗口与帧映射信息，观看实际片段后填写。右侧源标注和候选初值仅供参考，窗口角色也不能代替片段判断。
 
 首次审核当前身份的候选时，11 项均为空白：三类单选、三项异常、五项现象。单选可明确选“无法确定”，异常和现象可明确选“无法判断”；这些都是已判断后的合法值，填齐后可以确认。空白表示未完成，不能用于完整确认，也不能当成“否”。
 
@@ -48,17 +48,17 @@ python -m script.subvideo_review.server \
 
 未断裂或未夹紧时，模式和位置须由用户手动选择“无”；工具不会自动修改。未断裂与爆炸性断裂互斥；完整确认时，未断裂与断后脱夹也互斥。出现报错时按画面核对，不为通过校验而随意改标签。疑问或草稿同样需要合法取值，并遵守保存时适用的组合检查。
 
-已有当前身份的人工修订会在重新选择候选时恢复，便于继续审核；这不同于自动继承源标签。页面同时列出修订历史。若候选、片段 SHA、生成清单 SHA、候选记录摘要或来源身份发生变化，同名旧修订会隔离，显示数量，不自动套用为当前决定。
+已有当前身份的人工修订会在重新选择候选时恢复；页面同时列出修订历史。清单新增其他候选后，重新启动服务，已审核片段的媒体、候选记录、参考标注、批次、标签规则和划分身份均未变化时保留原修订；这些身份变化时，同名旧修订隔离，不自动套用。
 
 切换候选或转看原视频前，先保存需要保留的输入。片段播放结束不会自动确认或切换；“下一候选”会主动切到筛选结果中的下一条，并尝试播放。未保存输入遇到切换／关闭页面时会有提示，但不要把浏览器提示当作保存成功。多个页面同时修改同一候选时，旧页面保存可能提示已有其他修订；重新载入后核对最新决定，再填写保存。
 
 ## 3. 待处理来源只能复看原片
 
-展开“待处理来源与暂留原因”，查看已有原因。当前批次记录 19 个 pending 和 3 个 held，详见[本轮生成结果](../../docs/subvideo-aligned-results.md)。
+展开“待处理来源与暂留原因”，查看当前生成清单中的原因。候选画面旁也可在来源路径和摘要可验证时打开原视频。
 
-待处理开发来源只有在原片路径和摘要可验证时才显示“查看原视频与源标注”。该入口只读播放完整源视频并展示参考标注，不生成候选、不修改源标注，也不保存片段审核。返回候选列表选择片段后，才能填写并保存候选决定。
+待处理来源只有在原片路径和摘要可验证时才显示“查看原视频与源标注”。该入口只读播放完整源视频并展示参考标注，不生成候选、不修改源标注，也不保存片段审核。返回候选列表选择片段后，才能填写并保存候选决定。
 
-三个 held 来源 `video_0002`、`video_0015`、`video_0050` 只展示暂留原因，不开放原视频入口。工具拒绝固定 test、开发归属不明的来源及关联 test／归属不明来源；不能通过换路径绕过。候选 SHA 与清单不符时拒绝播放和保存；路径缺失、符号链接或清单启动后变化也会阻止相关操作。遇到这些提示先保留错误，核对媒体、划分与清单身份；工具不会自动修复、重新生成或继承旧审核。
+工具根据固定成员清单确认开发集与测试集归属，同源片段保留三折信息；划分不一致或关联来源跨集合时拒绝访问。候选 SHA 与清单不符时拒绝播放和保存；路径缺失、符号链接或清单启动后变化也会阻止相关操作。生成清单更新后需重启服务，未保存输入须先自行记录；工具不会自动修复或重新生成媒体。
 
 ## 4. 导出最新决定或完整历史
 
@@ -68,11 +68,11 @@ python -m script.subvideo_review.server \
 
 ```bash
 cd /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench
-mkdir -p /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench/data/subvideo-review
+mkdir -p /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review
 python -m script.subvideo_review.server \
   --project-root /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune \
-  --records /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench/data/subvideo-review/reviews.json \
-  export > /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench/data/subvideo-review/reviews-latest.jsonl
+  --records /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review/reviews.json \
+  export > /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review/reviews-latest.jsonl
 ```
 
 最新导出每个当前候选一行，保留最新状态，**不只导出已确认记录**；无当前修订的候选有 `unreviewed` 占位行。若旧确认后又保存了草稿，最新导出呈现草稿，不会自动退回采用旧确认。其他身份的历史只列关联修订 ID，不作为当前标签。服务运行时也可打开 [最新 JSONL 导出链接](http://127.0.0.1:8765/api/export)。
@@ -81,11 +81,11 @@ python -m script.subvideo_review.server \
 
 ```bash
 cd /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench
-mkdir -p /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench/data/subvideo-review
+mkdir -p /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review
 python -m script.subvideo_review.server \
   --project-root /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune \
-  --records /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench/data/subvideo-review/reviews.json \
-  export --all-revisions > /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune-review-workbench/data/subvideo-review/reviews-all-revisions.jsonl
+  --records /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review/reviews.json \
+  export --all-revisions > /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review/reviews-all-revisions.jsonl
 ```
 
 完整历史包含记录库内旧身份和旧修订，不添加未审占位行；用于重现显式锁定的旧 `review_id`。服务运行时对应 [完整历史 JSONL 导出链接](http://127.0.0.1:8765/api/export?all_revisions=1)。它不会替评分清单选择修订，也不会自动形成正式测评或发布数据。

@@ -4,7 +4,7 @@
   const byId = (id) => document.getElementById(id);
   const names = ["断裂状态", "断裂模式", "断裂位置", "异常情况.未夹紧", "异常情况.视频异常", "异常情况.爆炸性断裂", "断裂现象.伸长", "断裂现象.颈缩", "断裂现象.开裂", "断裂现象.界面分离", "断裂现象.断后脱夹"];
   const statusNames = {unreviewed: "未审核", draft: "草稿", confirmed: "已确认", returned: "已退回", question: "有疑问"};
-  const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0};
+  const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: ""};
   const controls = new Map();
   const setVideoState = (value) => {
     const frame = byId("video-player").closest(".video-frame");
@@ -26,10 +26,14 @@
     return value;
   }
   function filtered() {
+    const scope = byId("scope-filter").value;
     const source = byId("source-filter").value;
     const status = byId("status-filter").value;
+    const attention = byId("attention-filter").value;
     const search = byId("candidate-search").value.trim().toLowerCase();
     return state.data.candidates.filter((c) =>
+      (!scope || scope === "all" || scope === c.scope) &&
+      (!attention || attention === "all" || (attention === "attention" && c.audit_issues?.length)) &&
       (!source || source === "all" || source === c.source_type || source === `source:${c.source_id}`) &&
       (!status || status === "all" || status === c.review_status) &&
       (!search || `${c.candidate_id} ${c.source_id}`.toLowerCase().includes(search)));
@@ -103,22 +107,29 @@
       node.append(item);
     });
   }
-  function renderReference(reference) {
+  function renderReference(reference, candidateReference = {}) {
     const aside = byId("source-reference");
     let content = aside.querySelector(".reference-empty");
     if (!content) { content = document.createElement("div"); content.className = "reference-empty"; aside.append(content); }
     content.replaceChildren();
-    if (!reference || !Object.keys(reference).length) { content.textContent = "源标注未记录。"; return; }
-    const list = document.createElement("dl");
-    Object.entries(reference).forEach(([key, value]) => {
-      if (value === "" || value === null || value === undefined) return;
-      const term = document.createElement("dt");
-      const detail = document.createElement("dd");
-      term.textContent = key;
-      detail.textContent = typeof value === "object" ? JSON.stringify(value) : String(value);
-      list.append(term, detail);
-    });
-    content.append(list);
+    const appendReference = (title, values) => {
+      const heading = document.createElement("strong");
+      heading.textContent = title;
+      content.append(heading);
+      if (!values || !Object.keys(values).length) { const empty = document.createElement("p"); empty.textContent = "未记录"; content.append(empty); return; }
+      const list = document.createElement("dl");
+      Object.entries(values).forEach(([key, value]) => {
+        if (value === "" || value === null || value === undefined) return;
+        const term = document.createElement("dt");
+        const detail = document.createElement("dd");
+        term.textContent = key;
+        detail.textContent = typeof value === "object" ? JSON.stringify(value) : String(value);
+        list.append(term, detail);
+      });
+      content.append(list);
+    };
+    appendReference("源视频标注", reference);
+    if (candidateReference && Object.keys(candidateReference).length) appendReference("候选标签初值", candidateReference);
   }
   function previewSource(source) {
     if (state.loading) return;
@@ -126,11 +137,12 @@
     state.selected = null;
     state.latest = null;
     state.dirty = false;
+    byId("view-source").disabled = true;
     setControls();
     byId("review-note").value = "";
     byId("decision-reason").value = "";
     byId("clip-title").textContent = `原视频 · ${source.source_id}`;
-    byId("clip-meta").textContent = `待处理来源 · ${source.reason || "原因未记录"}`;
+    byId("clip-meta").textContent = source.status === "pending" || source.status === "held" ? `待处理来源 · ${source.reason || "原因未记录"}` : "来源画面复看";
     byId("timeline-info").textContent = "当前播放完整源视频，仅供人工复看；不会修改源标注、生成候选或保存片段审核。";
     renderReference(source.source_reference);
     byId("review-status").textContent = "原视频只读查看";
@@ -142,7 +154,7 @@
     video.load();
     setBusy(false);
     renderList();
-    message("仅查看当前开发来源。源标注显示为参考，不会写入候选审核。" );
+    message("仅查看当前来源。源标注显示为参考，不会写入候选审核。" );
   }
   function labelsFromControls() {
     const labels = {"异常情况": {}, "断裂现象": {}};
@@ -178,6 +190,7 @@
   }
   function setBusy(busy) {
     state.loading = busy;
+    byId("scope-filter").disabled = busy;
     ["save-draft", "confirm-review", "return-review", "question-review"].forEach((id) => { byId(id).disabled = busy || !state.selected; });
     controls.forEach((node) => { node.disabled = busy || !state.selected; });
     byId("review-note").disabled = busy || !state.selected;
@@ -195,10 +208,11 @@
     byId("review-note").value = "";
     byId("decision-reason").value = "";
     byId("clip-title").textContent = candidate.candidate_id;
-    byId("clip-meta").textContent = `${candidate.source_id} · ${candidate.source_type === "virtual" ? "虚拟" : "真实"} · 批次 ${candidate.generation_batch_id || "未记录"} · SHA256 ${candidate.clip_sha256}`;
+    byId("clip-meta").textContent = `${candidate.source_id} · ${candidate.scope === "test" ? "测试集" : "开发集"} · ${candidate.source_type === "virtual" ? "虚拟" : "真实"} · 三折 ${JSON.stringify(candidate.folds)} · SHA256 ${candidate.clip_sha256}`;
     const w = candidate.window;
-    byId("timeline-info").textContent = `窗口 ${w.window_role || "未记录"} · 源帧 [${w.start_frame ?? "?"}, ${w.end_frame ?? "?"}) · 源时间 ${w.source_start_pts ?? w.start_time ?? "?"}–${w.source_end_pts ?? w.end_time ?? "?"} 秒 · 时长 ${w.duration ?? "?"} 秒\n帧映射：${JSON.stringify(candidate.frame_mapping)}`;
-    renderReference(candidate.source_reference);
+    byId("timeline-info").textContent = `窗口 ${w.window_role || "未记录"} · 源帧 [${w.start_frame ?? "?"}, ${w.end_frame ?? "?"}) · 源时间 ${w.source_start_pts ?? w.start_time ?? "?"}–${w.source_end_pts ?? w.end_time ?? "?"} 秒 · 时长 ${w.duration ?? "?"} 秒\n帧映射：${JSON.stringify(candidate.frame_mapping)}${candidate.audit_issues?.length ? `\n待复核：${candidate.audit_issues.join("；")}` : ""}`;
+    byId("view-source").disabled = !candidate.source_preview_available;
+    renderReference(candidate.source_reference, candidate.candidate_reference);
     byId("review-status").textContent = "正在读取人工修订…";
     const video = byId("video-player");
     video.pause();
@@ -230,6 +244,36 @@
     const candidates = filtered();
     const index = candidates.findIndex((c) => c.candidate_id === state.selected?.candidate_id);
     if (index >= 0 && candidates[index + offset]) await selectCandidate(candidates[index + offset], {autoplay});
+  }
+  async function changeScope() {
+    const scope = byId("scope-filter");
+    if (state.dirty && !window.confirm("有尚未保存的判断，切换数据划分将丢弃这些输入。继续？")) {
+      scope.value = state.activeScope;
+      return;
+    }
+    state.activeScope = scope.value;
+    byId("source-filter").value = "";
+    renderList();
+    const candidates = filtered();
+    if (candidates.length) {
+      await selectCandidate(candidates[0], {force: true});
+      return;
+    }
+    ++state.sequence;
+    state.selected = state.latest = null;
+    state.dirty = false;
+    setControls();
+    byId("review-note").value = "";
+    byId("decision-reason").value = "";
+    byId("view-source").disabled = true;
+    byId("video-player").pause();
+    byId("video-player").removeAttribute("src");
+    byId("video-player").load();
+    byId("clip-title").textContent = "当前划分没有符合筛选条件的候选";
+    byId("clip-meta").textContent = "请调整筛选条件。";
+    byId("review-status").textContent = "未选择候选";
+    setBusy(false);
+    renderList();
   }
   async function save(status) {
     if (!state.selected || state.loading) return;
@@ -267,7 +311,7 @@
     }
   }
   async function start() {
-    const required = ["source-filter", "status-filter", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history"];
+    const required = ["scope-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history"];
     const missing = required.filter((id) => !byId(id));
     names.forEach((name) => {
       const node = [...document.querySelectorAll("#label-fields select[name]")].find((item) => item.name === name);
@@ -275,14 +319,21 @@
     });
     if (missing.length) throw new Error(`页面缺少必要控件：${missing.join("、")}`);
     state.data = await request("/api/bootstrap");
+    state.activeScope = byId("scope-filter").value;
+    byId("attention-filter").disabled = !state.data.audit_current;
+    byId("audit-info").textContent = state.data.audit_current ? "标签组合检查提示已载入。" : "标签组合检查尚未匹配当前清单，暂无法按提示筛选。";
     renderFilters();
     renderPending();
     renderList();
-    ["source-filter", "status-filter"].forEach((id) => byId(id).addEventListener("change", renderList));
+    byId("scope-filter").addEventListener("change", changeScope);
+    ["source-filter", "status-filter", "attention-filter"].forEach((id) => byId(id).addEventListener("change", renderList));
     byId("candidate-search").addEventListener("input", renderList);
     ["save-draft", "confirm-review", "return-review", "question-review"].forEach((id, index) => byId(id).addEventListener("click", () => save(["draft", "confirmed", "returned", "question"][index])));
     byId("previous-candidate").addEventListener("click", () => move(-1));
     byId("next-candidate").addEventListener("click", () => move(1, true));
+    byId("view-source").addEventListener("click", () => {
+      if (state.selected?.source_preview_available) previewSource({source_id: state.selected.source_id, source_reference: state.selected.source_reference});
+    });
     controls.forEach((node) => node.addEventListener("change", () => { state.dirty = true; }));
     ["review-note", "decision-reason"].forEach((id) => byId(id).addEventListener("input", () => { state.dirty = true; }));
     byId("video-player").addEventListener("ended", () => {
@@ -294,7 +345,7 @@
     const exportButton = byId("export-reviews");
     if (exportButton && exportButton.tagName !== "A") exportButton.addEventListener("click", () => { window.location.href = "/api/export"; });
     byId("video-player").addEventListener("loadeddata", () => setVideoState("loaded"));
-    if (state.data.candidates.length) await selectCandidate(state.data.candidates[0]);
+    if (filtered().length) await selectCandidate(filtered()[0]);
     else { setBusy(false); message("清单没有可审核候选；可查看待处理来源。" ); }
   }
   document.addEventListener("DOMContentLoaded", () => start().catch((error) => {

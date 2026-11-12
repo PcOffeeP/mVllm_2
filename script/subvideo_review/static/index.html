@@ -35,6 +35,12 @@
         </div>
 
         <div class="filters" aria-label="候选筛选条件">
+          <label for="scope-filter">数据划分</label>
+          <select id="scope-filter" name="scope-filter">
+            <option value="development" selected>开发集</option>
+            <option value="test">测试集</option>
+            <option value="all">全部</option>
+          </select>
           <label for="source-filter">来源</label>
           <select id="source-filter" name="source-filter">
             <option value="">全部来源</option>
@@ -43,6 +49,12 @@
           <select id="status-filter" name="status-filter">
             <option value="">全部状态</option>
           </select>
+          <label for="attention-filter">检查提示</label>
+          <select id="attention-filter" name="attention-filter">
+            <option value="all">全部候选</option>
+            <option value="attention">标签组合待复核</option>
+          </select>
+          <p id="audit-info" role="status"></p>
           <label for="candidate-search">查找候选</label>
           <input id="candidate-search" type="search" placeholder="名称、编号或来源" autocomplete="off" />
         </div>
@@ -108,7 +120,8 @@
               <p class="reference-flag">仅供参考</p>
               <h3 id="reference-heading">源标签与事件线索</h3>
             </div>
-            <p class="reference-warning">这些信息不会写入审核值，也不代表建议或结论。</p>
+            <p class="reference-warning">源标签和候选初值只供参考，不会自动写入审核值。</p>
+            <button id="view-source" type="button" class="button button-secondary" disabled>查看原视频</button>
             <div class="reference-empty" role="status">
               <strong>尚无来源参考信息</strong>
               <span>载入候选后，来源标签会单独列在这里。</span>

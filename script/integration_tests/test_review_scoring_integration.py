@@ -37,7 +37,7 @@ def write_json(path, value):
 def workspace(tmp_path):
     """Nine real and one virtual independent synthetic sources, never project data."""
     names = ("good", "unknown", "missing", "failed", "unprocessed", "draft", "question", "returned", "unreviewed", "virtual")
-    generation = tmp_path / "data/subvideos/frame-aligned"
+    generation = tmp_path / "data/sub_video"
     (generation / "videos").mkdir(parents=True)
     sources, candidates = [], []
     for name in names:
