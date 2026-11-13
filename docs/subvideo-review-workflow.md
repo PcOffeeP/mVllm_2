@@ -31,7 +31,7 @@
 
 **历史批次标注：** 本节以下关于批次数量、pending/held 状态与文件核对的段落属此前执行记录，对应已删除的 1,123 候选旧批次；当前批次口径见本文开头的 1,621 候选，当前事实见 DF-027。
 
-[本轮生成结果](subvideo-aligned-results.md)记录：89 个开发来源中，67 个生成 1,123 个候选，19 个 pending，3 个 held；`complete=false`。历史训练机记录对有输出的 67 个来源核对了源 → ROI 重放，对 1,123 个片段核对 ROI → 片段重放，842 条被窗口覆盖的标注锚点映射通过。这些是此前执行证据，本轮没有重跑两段真实媒体重放。
+本轮生成结果记录（该旧批次结果文档已随提交 `9c54817` 删除）：89 个开发来源中，67 个生成 1,123 个候选，19 个 pending，3 个 held；`complete=false`。历史训练机记录对有输出的 67 个来源核对了源 → ROI 重放，对 1,123 个片段核对 ROI → 片段重放，842 条被窗口覆盖的标注锚点映射通过。这些是此前执行证据，本轮没有重跑两段真实媒体重放。
 
 本轮在原工作区另行核对 1,123 个唯一文件名与清单一一对应，全部文件 SHA 与清单一致，累计 122,626,625 字节；来源与 21 个 test 来源不交集。该核对只读文件身份，没有解码或观看。另运行并复跑两个子视频模块的合成测试，均为 46 passed，包含合成 H.264；不以单次耗时作为验收依据。这些检查不代表真实媒体画面或模型采样已验证。
 
@@ -90,7 +90,7 @@ PYTHONDONTWRITEBYTECODE=1 python -m pytest -p no:cacheprovider \
 
 ## 6. 依据、授权和更新条件
 
-当前仓内依据为[生成规则](subvideo-generation.md)、[生成结果](subvideo-aligned-results.md)、[标签说明](label.md)、[测评设计](design-test.md)及[迁移大纲](migration-review-outline.md)。本轮三个调研交接副本位于原工作区 `audits/eval-handoff/`，分别为 `evaluation-data-requirements.md`、`minicpm-video-loading.md`、`virtual-video-provenance.md`；正式调研材料已合入 [MiniCPM 视频加载与模型输入核查](research/minicpm-video-loading.md)、[固定测评数据覆盖与虚拟数据制作建议](research/evaluation-data-requirements.md)、[65 条虚拟视频的来源与使用情况](research/virtual-video-provenance.md)。
+当前仓内依据为[子视频生成与审核规则](subvideo-current-logic.md)、[生成结果摘要](../data/sub_video/summary.json)、[标签说明](label.md)、[测评设计](design-test.md)及[迁移大纲](migration-review-outline.md)。本轮三个调研交接副本位于原工作区 `audits/eval-handoff/`，分别为 `evaluation-data-requirements.md`、`minicpm-video-loading.md`、`virtual-video-provenance.md`；正式调研材料已合入 [MiniCPM 视频加载与模型输入核查](research/minicpm-video-loading.md)、[固定测评数据覆盖与虚拟数据制作建议](research/evaluation-data-requirements.md)、[65 条虚拟视频的来源与使用情况](research/virtual-video-provenance.md)。
 
 本轮授权覆盖已确认范围内的本地审核与评分开发、文档衔接及合成验证。真实模型运行、正式 test 媒体制作／使用、训练、发布、修改原标注和 Blender 媒体生成均按各自明确授权执行。新规则的确认不能代替这些操作授权，工具开发也不能自动发布尚未审核的数据。
 
