@@ -14,7 +14,7 @@
 
 ## 启动
 
-需要 Python 3.10 或更新版本；服务使用 Python 标准库和 `fcntl`，适用于 macOS、Linux。
+需要 Python 3.11（`pyproject.toml` 要求 `>=3.11,<3.12`）；服务使用 Python 标准库和 `fcntl`，适用于 macOS、Linux。
 
 ```bash
 cd /Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune
