@@ -90,7 +90,7 @@ PYTHONDONTWRITEBYTECODE=1 python -m pytest -p no:cacheprovider \
 
 ## 6. 依据、授权和更新条件
 
-当前仓内依据为[生成规则](subvideo-generation.md)、[生成结果](subvideo-aligned-results.md)、[标签说明](label.md)、[测评设计](design-test.md)及[迁移大纲](migration-review-outline.md)。本轮三个调研交接副本位于原工作区 `audits/eval-handoff/`，分别为 `evaluation-data-requirements.md`、`minicpm-video-loading.md`、`virtual-video-provenance.md`；正式调研材料保存在尚未合并的提交 `6c1e76b` 与 `83f68e2`，本文不把未落入当前工作树的路径做成可用链接。
+当前仓内依据为[生成规则](subvideo-generation.md)、[生成结果](subvideo-aligned-results.md)、[标签说明](label.md)、[测评设计](design-test.md)及[迁移大纲](migration-review-outline.md)。本轮三个调研交接副本位于原工作区 `audits/eval-handoff/`，分别为 `evaluation-data-requirements.md`、`minicpm-video-loading.md`、`virtual-video-provenance.md`；正式调研材料已合入 [MiniCPM 视频加载与模型输入核查](research/minicpm-video-loading.md)、[固定测评数据覆盖与虚拟数据制作建议](research/evaluation-data-requirements.md)、[65 条虚拟视频的来源与使用情况](research/virtual-video-provenance.md)。
 
 本轮授权覆盖已确认范围内的本地审核与评分开发、文档衔接及合成验证。真实模型运行、正式 test 媒体制作／使用、训练、发布、修改原标注和 Blender 媒体生成均按各自明确授权执行。新规则的确认不能代替这些操作授权，工具开发也不能自动发布尚未审核的数据。
 
