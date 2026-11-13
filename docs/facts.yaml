@@ -609,11 +609,11 @@ facts:
     evidence:
       - ref: docs/design-test.md:44
         expect: 共 12 条，保留为未来测评的待核候选
-      - ref: docs/subvideo-review-workflow.md:66
-        expect: 不能直接改写为人工首次可见分离
       - ref: docs/subvideo-review-workflow.md:68
-        expect: 禁止训练和开发调参
+        expect: 不能直接改写为人工首次可见分离
       - ref: docs/subvideo-review-workflow.md:70
+        expect: 禁止训练和开发调参
+      - ref: docs/subvideo-review-workflow.md:72
         expect: 方案曾被用户否定，生成继续暂停
     established: 2026-11-10
     established_by: 用户确认用途边界；交接报告与项目索引、清单只读核对
