@@ -15,12 +15,21 @@ class Element {
     this.textContent = "";
     this.value = "";
     this.clicks = 0;
+    this.removed = 0;
+    this.parent = null;
   }
-  replaceChildren(...children) { this.children = children; }
-  append(...children) { this.children.push(...children); }
+  replaceChildren(...children) { children.forEach((child) => { if (child instanceof Element) child.parent = this; }); this.children = children; }
+  append(...children) { children.forEach((child) => { if (child instanceof Element) child.parent = this; }); this.children.push(...children); }
   removeChild(child) { const index = this.children.indexOf(child); if (index >= 0) this.children.splice(index, 1); return child; }
-  remove() {}
-  click() { this.clicks += 1; }
+  /* 真实解绑：空实现的 remove() 会让「下载锚点是否被清理」永远测不出来，并记录调用次数便于观察。 */
+  remove() {
+    this.removed += 1;
+    if (!this.parent) return;
+    const index = this.parent.children.indexOf(this);
+    if (index >= 0) this.parent.children.splice(index, 1);
+    this.parent = null;
+  }
+  click() { this.clicks += 1; if (this.failClick) throw new Error("合成下载点击失败"); }
   setAttribute(key, value) { this.attributes[key] = value; }
   removeAttribute(key) { delete this.attributes[key]; }
   addEventListener(name, listener) { this.listeners[name] = listener; }
@@ -55,14 +64,15 @@ async function createHarness(overrides = {}) {
   /* Download anchors are appended to body before click; keep every append so append-then-remove stays observable. */
   const body = new Element("body");
   body.appended = [];
-  body.append = (...children) => { body.children.push(...children); body.appended.push(...children); };
+  body.append = (...children) => { children.forEach((child) => { if (child instanceof Element) child.parent = body; }); body.children.push(...children); body.appended.push(...children); };
   const reviewFor = (id) => overrides.reviews?.[id] || {latest: null, history: [], isolated_history: []};
   const candidates = overrides.candidates || ["candidate_one", "candidate_two", "candidate_test"].map((id) => ({candidate_id: id, source_id: "synthetic_source", source_type: "real", scope: id === "candidate_test" ? "test" : "development", folds: {}, clip_sha256: "0".repeat(64), review_status: "unreviewed", window: {}, frame_mapping: {}, source_reference: {}, candidate_reference: {"断裂状态": "已断裂"}}));
   const context = {
     document: {
       getElementById: (id) => { requestedIds.add(id); return elements.get(id); },
       querySelectorAll: () => selects,
-      createElement: (tag) => { const node = new Element(tag); created.push(node); return node; },
+      /* failDownloadClick 只作用于下载锚点（a），用来验证 a.click() 抛错时的清理路径。 */
+      createElement: (tag) => { const node = new Element(tag); if (overrides.failDownloadClick && String(tag).toLowerCase() === "a") node.failClick = true; created.push(node); return node; },
       addEventListener: (event, callback) => { if (event === "DOMContentLoaded") ready = callback; },
       body,
     },
@@ -83,6 +93,8 @@ async function createHarness(overrides = {}) {
         return {ok: true, json: async () => ({...body, review_id: "synthetic_revision"})};
       }
       if (url.startsWith("/api/export")) {
+        /* exportPending 让测试把导出响应悬停在 in-flight 状态，用于观察重复点击是否产生第二个请求。 */
+        if (overrides.exportPending) await overrides.exportPending;
         /* exportFailure: true keeps the generic default; an object supplies the server-shaped response verbatim. */
         if (overrides.exportFailure === true) return {ok: false, status: 500, blob: async () => ({}), json: async () => ({error: "导出失败"})};
         if (overrides.exportFailure) return overrides.exportFailure;
@@ -312,6 +324,9 @@ test("export button downloads the latest reviews as subvideo-reviews.jsonl and r
   assert.equal(file.download, "subvideo-reviews.jsonl");
   assert.ok(harness.body.appended.includes(file), "下载链接应先挂到 document.body 再触发点击");
   assert.ok(file.clicks > 0, "下载链接应被 click 触发，而不是只创建不点击");
+  /* harness 的 remove() 现在真的解绑，这条才能区分「代码调用了 remove」与「锚点其实留在 body 里」。 */
+  assert.ok(!harness.body.children.includes(file), "下载链接点击后应从 document.body 移除，不能残留孤儿节点");
+  assert.equal(file.removed, 1, "下载链接应被 remove() 移除恰好一次");
   assert.match(harness.elements.get("app-message").textContent, /导出/);
   assert.notEqual(harness.elements.get("app-message").attributes.role, "alert");
   assert.ok(harness.objectUrls.created >= 1, "成功导出应创建 blob URL 供下载链接使用");
@@ -348,6 +363,83 @@ test("export failure surfaces an alert message instead of a silent download", as
   assert.match(message.textContent, /生成清单在服务启动后已变化/,
     `导出失败时 app-message 应包含服务端 error 文案「${serverError}」的片段，实际为「${message.textContent}」——当前实现丢弃了 JSON error，只剩状态码文案`);
   assert.equal(exportDownload(harness), undefined, "导出失败时不应仍然下载文件");
+});
+
+test("plain-text 500 export failure falls back to the status-code message", async () => {
+  /* 代理或网关可能返回 HTML 错误页，response.json() 会抛 SyntaxError；此时仍须给出可读的状态码文案。 */
+  const harness = await createHarness({candidates: [candidate("clip")], exportFailure: {
+    ok: false, status: 500, blob: async () => ({}),
+    json: async () => { throw new SyntaxError("Unexpected token < in JSON at position 0"); },
+  }});
+
+  await clickControl(harness.elements, "export-reviews");
+
+  const message = harness.elements.get("app-message");
+  assert.equal(message.attributes.role, "alert", "非 JSON 的失败响应同样必须用 role=alert 告知，不能静默");
+  /* 必须锁住具体的「导出失败 (500)」：app.js 若去掉解析 JSON 的内层 try/catch，文案会变成 SyntaxError 的 message 而不再包含状态码。 */
+  assert.match(message.textContent, /导出失败 \(500\)/,
+    `响应体不是 JSON 时应回退到状态码文案「导出失败 (500)」，实际为「${message.textContent}」`);
+  assert.equal(exportDownload(harness), undefined, "导出失败时不应仍然创建下载链接");
+  assert.equal(harness.objectUrls.created, 0, "导出失败时不应创建 blob URL");
+});
+
+test("export error detail prefers a string message when the error field is an object", async () => {
+  /* 服务端可能返回 {"error": {"code": ...}, "message": "..."}；只取 value.error 会把对象当文案丢掉，用户看不到真正原因。 */
+  const harness = await createHarness({candidates: [candidate("clip")], exportFailure: {
+    ok: false, status: 400, blob: async () => ({}),
+    json: async () => ({error: {code: "X"}, message: "清单身份不匹配，请重载后核对。"}),
+  }});
+
+  await clickControl(harness.elements, "export-reviews");
+
+  const message = harness.elements.get("app-message");
+  assert.equal(message.attributes.role, "alert", "导出失败必须用 role=alert 明确告知");
+  assert.match(message.textContent, /清单身份不匹配/,
+    `error 字段是对象时应退回字符串 message，实际文案为「${message.textContent}」——当前实现 value?.error || value?.message 短路后丢弃了 message`);
+});
+
+test("a second export click while an export is in flight does not start another request", async () => {
+  /* 导出期间重复点击（包括改点另一个导出按钮）不应产生第二个请求，且完成后按钮必须恢复可用。 */
+  let releaseExport;
+  const exportPending = new Promise((resolve) => { releaseExport = resolve; });
+  const harness = await createHarness({candidates: [candidate("clip")], exportPending});
+  const reviewsButton = harness.elements.get("export-reviews");
+  const historyButton = harness.elements.get("export-all-revisions");
+
+  /* 不等待第一次点击完成就点第二次；这里直接调 listeners.click()，浏览器对 disabled 的抑制不会被模拟。 */
+  const first = reviewsButton.listeners.click();
+  const second = historyButton.listeners.click();
+
+  assert.equal(exportRequests(harness).length, 1,
+    `导出进行中再次点击不应发起第二个 /api/export 请求，实际 ${exportRequests(harness).length} 个`);
+
+  releaseExport();
+  await Promise.all([first, second]);
+
+  /* 只要求「不处于禁用态」：禁用按钮与 in-flight 标记两种实现都满足，不断言 disabled 恰为 false 而非 undefined。 */
+  assert.ok(!reviewsButton.disabled, "导出完成后 export-reviews 不应停留在禁用态");
+  assert.ok(!historyButton.disabled, "导出完成后 export-all-revisions 不应停留在禁用态");
+  const settled = exportRequests(harness).length;
+  await clickControl(harness.elements, "export-reviews");
+  assert.ok(exportRequests(harness).length > settled, "导出完成后再次点击应能发起新的导出请求");
+});
+
+test("download anchor click failure still cleans the DOM and revokes the blob URL", async () => {
+  /* 沙箱或浏览器在 a.click() 抛错时，链接清理与 blob 释放不能被跳过，否则 DOM 累积孤儿节点、blob URL 泄漏。 */
+  const harness = await createHarness({candidates: [candidate("clip")], failDownloadClick: true});
+
+  await clickControl(harness.elements, "export-reviews");
+
+  const message = harness.elements.get("app-message");
+  assert.equal(message.attributes.role, "alert", "下载触发失败必须用 role=alert 告知，不能静默");
+  const file = exportDownload(harness);
+  assert.ok(file, "下载链接应已创建（body.appended 记录 append-then-remove，锚点移除后仍可观察）");
+  assert.ok(harness.body.appended.includes(file), "下载链接应先挂到 document.body 再触发点击");
+  assert.ok(!harness.body.children.includes(file),
+    "下载锚点 click() 抛错后也必须从 document.body 移除，不能残留孤儿节点");
+  assert.ok(harness.objectUrls.created >= 1, "成功取得 blob 后应创建 blob URL");
+  assert.ok(harness.objectUrls.revoked >= harness.objectUrls.created,
+    `click() 抛错时 blob URL 仍须释放，实际创建 ${harness.objectUrls.created} 次、撤销 ${harness.objectUrls.revoked} 次`);
 });
 
 test("every getElementById lookup during start and export clicks resolves an id declared in index.html", async () => {

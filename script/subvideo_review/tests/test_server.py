@@ -561,6 +561,12 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual(response.status, 201)
         with urlopen(base + "/api/export?all_revisions=1") as response:
             self.assertEqual(json.load(response)["review_status"], "draft")
+            # 文件名是用户唯一能判断导出范围的依据：只改 all_revisions 查询参数而沿用同一文件名，会让人把全量修订当成最新修订。
+            self.assertEqual(response.headers["Content-Disposition"], 'attachment; filename="subvideo-reviews-history.jsonl"')
+        with urlopen(base + "/api/export") as response:
+            self.assertEqual(response.status, 200)
+            # 不带参数时仍应是「最新修订」的文件名，避免为区分全量导出而把默认输出一起改掉。
+            self.assertEqual(response.headers["Content-Disposition"], 'attachment; filename="subvideo-reviews.jsonl"')
         for request in (Request(base + "/api/bootstrap", headers={"Host": "evil.example"}), Request(base + "/api/bootstrap", headers={"Origin": "http://evil.example"}), Request(base + "/api/reviews", data=b"{}", method="POST")):
             with self.assertRaises(HTTPError) as error:
                 urlopen(request)
