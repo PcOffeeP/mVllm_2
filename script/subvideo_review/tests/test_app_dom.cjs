@@ -14,9 +14,13 @@ class Element {
     this.attributes = {};
     this.textContent = "";
     this.value = "";
+    this.clicks = 0;
   }
   replaceChildren(...children) { this.children = children; }
   append(...children) { this.children.push(...children); }
+  removeChild(child) { const index = this.children.indexOf(child); if (index >= 0) this.children.splice(index, 1); return child; }
+  remove() {}
+  click() { this.clicks += 1; }
   setAttribute(key, value) { this.attributes[key] = value; }
   removeAttribute(key) { delete this.attributes[key]; }
   addEventListener(name, listener) { this.listeners[name] = listener; }
@@ -28,8 +32,9 @@ class Element {
 }
 
 async function createHarness(overrides = {}) {
-  const ids = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history"];
-  const elements = new Map(ids.map((id) => [id, new Element(id === "pending-sources" ? "details" : "div")]));
+  const ids = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions"];
+  const tags = {"pending-sources": "details", "export-reviews": "button", "export-all-revisions": "button"};
+  const elements = new Map(ids.map((id) => [id, new Element(tags[id] || "div")]));
   elements.get("scope-filter").value = overrides.scope || "development";
   elements.get("fold-filter").value = "all";
   const videoFrame = new Element("div");
@@ -44,16 +49,31 @@ async function createHarness(overrides = {}) {
   let ready;
   let allowDiscard = false;
   const requests = [];
+  const created = [];
+  const requestedIds = new Set();
+  const objectUrls = {created: 0, revoked: 0};
+  /* Download anchors are appended to body before click; keep every append so append-then-remove stays observable. */
+  const body = new Element("body");
+  body.appended = [];
+  body.append = (...children) => { body.children.push(...children); body.appended.push(...children); };
   const reviewFor = (id) => overrides.reviews?.[id] || {latest: null, history: [], isolated_history: []};
   const candidates = overrides.candidates || ["candidate_one", "candidate_two", "candidate_test"].map((id) => ({candidate_id: id, source_id: "synthetic_source", source_type: "real", scope: id === "candidate_test" ? "test" : "development", folds: {}, clip_sha256: "0".repeat(64), review_status: "unreviewed", window: {}, frame_mapping: {}, source_reference: {}, candidate_reference: {"断裂状态": "已断裂"}}));
   const context = {
     document: {
-      getElementById: (id) => elements.get(id),
+      getElementById: (id) => { requestedIds.add(id); return elements.get(id); },
       querySelectorAll: () => selects,
-      createElement: (tag) => new Element(tag),
+      createElement: (tag) => { const node = new Element(tag); created.push(node); return node; },
       addEventListener: (event, callback) => { if (event === "DOMContentLoaded") ready = callback; },
+      body,
     },
-    window: {addEventListener() {}, confirm: () => allowDiscard},
+    window: {addEventListener() {}, confirm: () => allowDiscard, location: {href: ""}},
+    /* Timers run inline: revoke timing (sync vs setTimeout) must not decide pass/fail, and a vm context has no timers of its own. */
+    setTimeout: (callback, ...args) => { callback(...args); return 0; },
+    clearTimeout: () => {},
+    URL: {
+      createObjectURL: () => { objectUrls.created += 1; return `blob:synthetic/${objectUrls.created}`; },
+      revokeObjectURL: () => { objectUrls.revoked += 1; },
+    },
     fetch: async (url, options = {}) => {
       requests.push({url, options});
       if (url.startsWith("/api/reviews?candidate_id=")) return {ok: true, json: async () => reviewFor(decodeURIComponent(url.split("=")[1]))};
@@ -61,6 +81,12 @@ async function createHarness(overrides = {}) {
         if (overrides.saveResponse) return overrides.saveResponse;
         const body = JSON.parse(options.body);
         return {ok: true, json: async () => ({...body, review_id: "synthetic_revision"})};
+      }
+      if (url.startsWith("/api/export")) {
+        /* exportFailure: true keeps the generic default; an object supplies the server-shaped response verbatim. */
+        if (overrides.exportFailure === true) return {ok: false, status: 500, blob: async () => ({}), json: async () => ({error: "导出失败"})};
+        if (overrides.exportFailure) return overrides.exportFailure;
+        return {ok: true, status: 200, blob: async () => ({size: 0}), json: async () => ({})};
       }
       assert.equal(url, "/api/bootstrap");
       return {ok: true, json: async () => ({audit_current: true, audit_status: "current", audit_message: "已匹配当前清单", audit_issue_candidate_count: 0, token: "synthetic-token", manifest_sha256: "1".repeat(64), candidates, pending_sources: [
@@ -72,6 +98,7 @@ async function createHarness(overrides = {}) {
   vm.runInNewContext(code, context);
   await ready();
   return {elements, selects, requests, videoFrame, summary, details, pendingList,
+    created, requestedIds, objectUrls, body,
     allowDiscard: (value) => { allowDiscard = value; }};
 }
 
@@ -257,4 +284,83 @@ test("save conflict leaves human input available and never advances to another c
   assert.equal(elements.get("app-message").attributes.role, "alert");
   assert.ok(!requests.some(({url}) => url.includes("candidate_id=second")));
   assert.equal(elements.get("save-draft").disabled, false);
+});
+
+function exportRequests(harness) {
+  return harness.requests.filter(({url}) => url.split("?")[0] === "/api/export");
+}
+/* The download file is the element carrying a download attribute; body.appended keeps append-then-remove anchors visible. */
+function exportDownload(harness) {
+  return [...harness.created, ...harness.body.appended].find((node) => node instanceof Element && typeof node.download === "string");
+}
+async function clickControl(elements, id) {
+  const node = elements.get(id);
+  assert.ok(node, `页面应当存在 #${id} 元素`);
+  assert.equal(typeof node.listeners.click, "function", `#${id} 应绑定 click 处理函数（index.html 缺少该控件或 app.js 未绑定）；当前实现未绑定`);
+  await node.listeners.click();
+}
+
+test("export button downloads the latest reviews as subvideo-reviews.jsonl and reports success", async () => {
+  const harness = await createHarness({candidates: [candidate("clip")]});
+
+  await clickControl(harness.elements, "export-reviews");
+
+  const latest = exportRequests(harness).find(({url}) => !url.includes("all_revisions=1"));
+  assert.ok(latest, "点击导出应实际请求 /api/export 获取最新修订；仅给 window.location.href 赋值不算导出");
+  const file = exportDownload(harness);
+  assert.ok(file, "导出应创建带 download 属性的下载链接");
+  assert.equal(file.download, "subvideo-reviews.jsonl");
+  assert.ok(harness.body.appended.includes(file), "下载链接应先挂到 document.body 再触发点击");
+  assert.ok(file.clicks > 0, "下载链接应被 click 触发，而不是只创建不点击");
+  assert.match(harness.elements.get("app-message").textContent, /导出/);
+  assert.notEqual(harness.elements.get("app-message").attributes.role, "alert");
+  assert.ok(harness.objectUrls.created >= 1, "成功导出应创建 blob URL 供下载链接使用");
+  /* 只要求成对释放，不锁死同步/异步时机：harness 的 setTimeout 内联执行，两种实现都满足 revoked >= created。 */
+  assert.ok(harness.objectUrls.revoked >= harness.objectUrls.created,
+    `成功导出后应撤销每个 blob URL，实际创建 ${harness.objectUrls.created} 次、撤销 ${harness.objectUrls.revoked} 次`);
+});
+
+test("all-revisions export requests all_revisions=1 and downloads subvideo-reviews-history.jsonl", async () => {
+  const harness = await createHarness({candidates: [candidate("clip")]});
+
+  await clickControl(harness.elements, "export-all-revisions");
+
+  assert.ok(exportRequests(harness).some(({url}) => url.includes("all_revisions=1")),
+    "查看全部修订的导出应请求 /api/export?all_revisions=1");
+  const file = exportDownload(harness);
+  assert.ok(file, "导出应创建带 download 属性的下载链接");
+  assert.equal(file.download, "subvideo-reviews-history.jsonl");
+});
+
+test("export failure surfaces an alert message instead of a silent download", async () => {
+  /* server.py 的 assert_manifest() 走 409 + {"error": ...}；这条文案是用户唯一能据此行动的线索。 */
+  const serverError = "生成清单在服务启动后已变化；请先记录未保存输入并重启。";
+  const harness = await createHarness({candidates: [candidate("clip")], exportFailure: {
+    ok: false, status: 409, blob: async () => ({}), json: async () => ({error: serverError}),
+  }});
+
+  await clickControl(harness.elements, "export-reviews");
+
+  const message = harness.elements.get("app-message");
+  assert.equal(message.attributes.role, "alert", "导出失败必须用 role=alert 明确告知，不能静默");
+  assert.ok(message.textContent.trim().length > 0, "导出失败的 app-message 不能为空");
+  /* 仅匹配 /导出失败|409/ 不能通过：必须是服务端 JSON error 原文的片段，否则用户拿不到可行动的说明。 */
+  assert.match(message.textContent, /生成清单在服务启动后已变化/,
+    `导出失败时 app-message 应包含服务端 error 文案「${serverError}」的片段，实际为「${message.textContent}」——当前实现丢弃了 JSON error，只剩状态码文案`);
+  assert.equal(exportDownload(harness), undefined, "导出失败时不应仍然下载文件");
+});
+
+test("every getElementById lookup during start and export clicks resolves an id declared in index.html", async () => {
+  const harness = await createHarness({candidates: [candidate("clip")]});
+  // Cover the export handlers too; an unbound handler is reported by the export cases above.
+  for (const id of ["export-reviews", "export-all-revisions"]) {
+    const listener = harness.elements.get(id).listeners.click;
+    if (typeof listener === "function") await listener();
+  }
+
+  const html = fs.readFileSync(path.join(__dirname, "../static/index.html"), "utf8");
+  const declared = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(([, id]) => id));
+  // Only ids looked up via getElementById are compared; nodes built by createElement have no id attribute.
+  const missing = [...harness.requestedIds].filter((id) => !declared.has(id)).sort();
+  assert.deepEqual(missing, [], `app.js 通过 getElementById 请求了 index.html 中不存在的 id（死分支）：${missing.join("、")}`);
 });

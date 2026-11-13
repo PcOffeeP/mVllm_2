@@ -314,8 +314,37 @@
       setBusy(false);
     }
   }
+  async function exportReviews(allRevisions) {
+    const filename = allRevisions ? "subvideo-reviews-history.jsonl" : "subvideo-reviews.jsonl";
+    try {
+      const response = await fetch(allRevisions ? "/api/export?all_revisions=1" : "/api/export", {cache: "no-store"});
+      if (!response.ok) {
+        let detail = "";
+        try {
+          const value = await response.json();
+          detail = value?.error || value?.message || "";
+        } catch {}
+        detail = typeof detail === "string" ? detail.trim().replace(/[。！？；.!?;]+$/u, "") : "";
+        throw new Error(`导出失败 (${response.status})${detail ? `：${detail}` : ""}；未生成 ${filename}，审核记录未改动。`);
+      }
+      const href = URL.createObjectURL(await response.blob());
+      try {
+        const link = document.createElement("a");
+        link.href = href;
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+      } finally {
+        URL.revokeObjectURL(href);
+      }
+      message(`已导出${allRevisions ? "全部修订" : "最新修订"}到 ${filename}；这不是数据发布。`);
+    } catch (error) {
+      message(error && typeof error.message === "string" && error.message ? error.message : `导出失败：未知错误；未生成 ${filename}，审核记录未改动。`, true);
+    }
+  }
   async function start() {
-    const required = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history"];
+    const required = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions"];
     const missing = required.filter((id) => !byId(id));
     names.forEach((name) => {
       const node = [...document.querySelectorAll("#label-fields select[name]")].find((item) => item.name === name);
@@ -346,8 +375,8 @@
     });
     byId("video-player").addEventListener("error", () => { setVideoState("error"); message("媒体无法播放；请核对当前工作区路径及片段身份。不会自动生成或修复媒体。", true); });
     window.addEventListener("beforeunload", (event) => { if (state.dirty) { event.preventDefault(); event.returnValue = ""; } });
-    const exportButton = byId("export-reviews");
-    if (exportButton && exportButton.tagName !== "A") exportButton.addEventListener("click", () => { window.location.href = "/api/export"; });
+    byId("export-reviews").addEventListener("click", () => exportReviews(false));
+    byId("export-all-revisions").addEventListener("click", () => exportReviews(true));
     byId("video-player").addEventListener("loadeddata", () => setVideoState("loaded"));
     if (filtered().length) await selectCandidate(filtered()[0]);
     else { setBusy(false); message("清单没有可审核候选；可查看待处理来源。" ); }
