@@ -12,17 +12,17 @@ facts:
       冻结的 `tensile-vlm/v4.1` 契约 `search_semantics` 把 `clip_state` 定义为方向字段：未断裂=`fracture_event_is_after_clip`、发生断裂=`fracture_event_is_within_clip`、已断裂=`fracture_event_is_before_clip`、临界未断裂=`fracture_event_is_after_clip_with_visible_precursors`、无法判断=`no_directional_evidence`。这只描述旧契约；本轮人工标注采用四状态，已移除临界未断裂，见 DF-018。
     evidence:
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:196
-        expect: direction_field": "clip_state
+        expect: 'direction_field": "clip_state'
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:197
-        expect: 未断裂": "fracture_event_is_after_clip",
+        expect: '未断裂": "fracture_event_is_after_clip",'
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:198
-        expect: 发生断裂": "fracture_event_is_within_clip
+        expect: '发生断裂": "fracture_event_is_within_clip'
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:199
-        expect: 已断裂": "fracture_event_is_before_clip
+        expect: '已断裂": "fracture_event_is_before_clip'
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:200
-        expect: 无法判断": "no_directional_evidence
+        expect: '无法判断": "no_directional_evidence'
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:213
-        expect: 临界未断裂": "fracture_event_is_after_clip_with_visible_precursors
+        expect: '临界未断裂": "fracture_event_is_after_clip_with_visible_precursors'
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -46,9 +46,9 @@ facts:
       现有 v4.1 scorer 中，`strict_valid` 通过只表示输出形式合法：单个 JSON 对象、无重复键、恰含旧契约四字段、枚举合法、跨字段组合合法；`extract_semantics` 不接收标签、视频或模型身份，因此严格合法率不含语义正确性。本轮五类输出编码、准确率与召回分母及失败处理已确认，不能直接套用旧四字段检查，见 DF-030。
     evidence:
       - ref: finetune/eval_semantics.py:63
-        expect: def _validate_target(value: Mapping)
+        expect: 'def _validate_target(value: Mapping)'
       - ref: finetune/eval_semantics.py:99
-        expect: extract_semantics(raw_output:
+        expect: 'extract_semantics(raw_output:'
       - ref: finetune/eval_semantics.py:101
         expect: never receives labels, video or model identity
       - ref: finetune/eval_semantics.py:119
@@ -68,19 +68,19 @@ facts:
       - ref: finetune/holdout_metrics.py:12
         expect: THRESHOLDS = {
       - ref: finetune/holdout_metrics.py:13
-        expect: four_state_macro_recall': 0.4006
+        expect: "four_state_macro_recall': 0.4006"
       - ref: finetune/holdout_metrics.py:14
-        expect: fracture_three_state_macro_recall': 0.3
+        expect: "fracture_three_state_macro_recall': 0.3"
       - ref: finetune/holdout_metrics.py:15
-        expect: joint_correct_rate': 0.3921
+        expect: "joint_correct_rate': 0.3921"
       - ref: finetune/holdout_metrics.py:16
-        expect: runtime_failure_count': 0,
+        expect: "runtime_failure_count': 0,"
       - ref: finetune/holdout_metrics.py:17
-        expect: strict_valid_rate': 1.0
+        expect: "strict_valid_rate': 1.0"
       - ref: finetune/holdout_metrics.py:18
-        expect: 已断裂_recall': 0.15
+        expect: "已断裂_recall': 0.15"
       - ref: finetune/holdout_metrics.py:19
-        expect: 未断裂_recall': 0.7
+        expect: "未断裂_recall': 0.7"
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -210,7 +210,7 @@ facts:
       - ref: pipeline/v3_candidate_plan.py:659
         expect: min(duration, event + EVENT_GUARD_SECONDS)
       - ref: pipeline/v3_candidate_media.py:430
-        expect: elif state == "已断裂":
+        expect: 'elif state == "已断裂":'
       - ref: pipeline/v3_candidate_media.py:433
         expect: value < event + EVENT_GUARD_SECONDS
       - ref: pipeline/v3_candidate_media.py:434
@@ -246,7 +246,7 @@ facts:
       此前已记录：改变标签语义时应使用可区分的新契约身份，不能让同一 `contract_hash` 混载两套标签含义。当前仓内 evidence 只证明旧 v4.1 契约的哈希，原裁决出处已删除，不能把该锚点当作整条原则的独立证明。当前已确认边界是 v4.1 冻结、新契约和数据接入未实施；具体新身份、哈希及转换流程留待新链路设计和授权，本次不据此改旧契约。
     evidence:
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:3
-        expect: contract_hash": "3798f00cbec7
+        expect: 'contract_hash": "3798f00cbec7'
     established: 2026-10-18
     established_by: 代码核对 + 用户裁决 2026-10-18；现存代码只证明旧契约哈希，原规则出处已删除
     supersedes: null
@@ -302,7 +302,7 @@ facts:
       - ref: versioning/prompts.py:93
         expect: return root / "trains" / train_version / "input" / "prompt.yaml"
       - ref: tests/test_layout_migration_guard.py:84
-        expect: "models/minicpm-v-4.5": "base-models/minicpmv4_5",
+        expect: '"models/minicpm-v-4.5": "base-models/minicpmv4_5",'
       - ref: .gitignore:19
         expect: /audits
     established: 2026-10-21
@@ -380,9 +380,9 @@ facts:
       - ref: script/data_split/generate.py:49
         expect: SEEDS = tuple(range(42, 142))
       - ref: script/data_split/generate.py:142
-        expect: def validate_groups(payload, labels, test_ids):
+        expect: 'def validate_groups(payload, labels, test_ids):'
       - ref: script/data_split/generate.py:326
-        expect: def search(problem, seeds=SEEDS):
+        expect: 'def search(problem, seeds=SEEDS):'
     established: 2026-11-07
     established_by: 用户确认来源与划分规则；代码核对及合成测试；2026-11-08 实际整理与 ROI 扫描
     supersedes: null
@@ -398,19 +398,19 @@ facts:
       - ref: script/roi/core.py:32
         expect: PROCESSING_VERSION = "roi-processing/3"
       - ref: script/roi/core.py:163
-        expect: def legacy_geometry(source: Mapping, decision: Mapping, entry: Mapping)
+        expect: 'def legacy_geometry(source: Mapping, decision: Mapping, entry: Mapping)'
       - ref: script/roi/core.py:229
-        expect: def decoded_frame_count(path: Path)
+        expect: 'def decoded_frame_count(path: Path)'
       - ref: script/roi/core.py:652
-        expect: def _preserved_legacy(self, source: Mapping, decision: Mapping, legacy: Mapping,
+        expect: 'def _preserved_legacy(self, source: Mapping, decision: Mapping, legacy: Mapping,'
       - ref: script/roi/core.py:477
-        expect: def label_review_state(self, row: Mapping)
+        expect: 'def label_review_state(self, row: Mapping)'
       - ref: script/roi/core.py:486
-        expect: def save_label_review(self, row: Mapping, values: Mapping, *, expected_revision: str | None)
+        expect: 'def save_label_review(self, row: Mapping, values: Mapping, *, expected_revision: str | None)'
       - ref: script/roi/core.py:762
         expect: def organize_videos(self)
       - ref: script/roi/core.py:846
-        expect: def prepare_cleanup(self, *, apply: bool = False)
+        expect: 'def prepare_cleanup(self, *, apply: bool = False)'
     established: 2026-11-08
     established_by: 用户确认沿用旧 ROI、预填已有标签、修改仅保存至 ROI 审查记录；代码核对
     supersedes: null
@@ -422,11 +422,11 @@ facts:
       用户确认先按旧窗口规则加严生成开发集初步片段，再依据实际结果提出新规则供审查；审查后才按新规则重新生成。初裁工具以旧规划器空参考行为选窗，对断裂时间和源、ROI 身份执行严格检查，事件后保护间隔外以可解码帧末端和记录时长的较小值检查至少 2 秒素材；不处理测试集媒体，不把旧几何辅助标签当作本轮最终标签，也不执行模型采样门禁。初裁结果不等于人工审核或数据发布；所有拟发布片段须人工审核。
     evidence:
       - ref: script/subvideo_pilot/pilot.py:120
-        expect: def adapt_annotation(row: dict, media: dict)
+        expect: 'def adapt_annotation(row: dict, media: dict)'
       - ref: script/subvideo_pilot/pilot.py:167
-        expect: def plan_windows(record: dict)
+        expect: 'def plan_windows(record: dict)'
       - ref: script/subvideo_pilot/pilot.py:184
-        expect: def load_inputs(project_root: Path)
+        expect: 'def load_inputs(project_root: Path)'
       - ref: script/subvideo_pilot/pilot.py:319
         expect: model_sampling_gate
       - ref: docs/migration-review-outline.md:110
@@ -442,15 +442,15 @@ facts:
       用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；此前三个视频 video_0002、video_0015、video_0050 在旧批次暂留。此前生成的开发集候选及其当前目录已按用户要求删除；19 个来源的历史待处理状态见 DF-024。原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
     evidence:
       - ref: script/subvideo_pilot/aligned.py:129
-        expect: def adapt_annotation(row: dict, media: dict)
+        expect: 'def adapt_annotation(row: dict, media: dict)'
       - ref: script/subvideo_pilot/aligned.py:184
-        expect: def plan_windows(record: dict, source_media: dict | None = None)
+        expect: 'def plan_windows(record: dict, source_media: dict | None = None)'
       - ref: script/subvideo_pilot/aligned.py:248
         expect: def compare_sequences(expected_frames, actual_frames, anchor_indices)
       - ref: script/subvideo_pilot/aligned.py:330
-        expect: def build_crop_command(source: Path, output: Path, candidate: dict)
+        expect: 'def build_crop_command(source: Path, output: Path, candidate: dict)'
       - ref: script/subvideo_pilot/anchor_evidence.py:199
-        expect: def analyze_project_anchor(project_root: Path, video_id: str, anchor_index: int
+        expect: 'def analyze_project_anchor(project_root: Path, video_id: str, anchor_index: int'
     established: 2026-11-09
     established_by: 用户确认时间范围两端保护间隔、保留特殊视频与帧画面对应；代码及合成测试核对
     supersedes: null
@@ -462,9 +462,9 @@ facts:
       本轮自动生成采用两段独立帧对应证据：源到 ROI 仅接受身份一致、固定空间滤镜的可复现重放，现有 ROI 与重放文件及完整解码帧序列、时间戳一致；ROI 到片段使用独立绝对帧 select 重放主 trim 结果，核对输入标注帧、边界及保护间隔后，比较完整结果与帧映射。任一重放不能验证时保持待核实，不以画面相似替代；通过不等于人工审核、标签正确或数据发布。此前真实开发集批次中 67 个来源通过源到 ROI 重放，1123 个片段通过片段重放及文件摘要核对；当时 19 个来源待处理，另 3 个特殊来源暂留。测试集媒体未参与生成。记录的 842 个被窗口覆盖的标注锚点均核对帧映射；模型采样、人工标签审核与发布未进行。用户已要求删除该批次当前目录，媒体和逐条收据不再作为当前产物，历史 JSON 可从 Git 提交追溯。
     evidence:
       - ref: script/subvideo_pilot/replay.py:201
-        expect: def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict
+        expect: 'def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict'
       - ref: script/subvideo_pilot/replay.py:374
-        expect: def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict
+        expect: 'def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict'
     established: 2026-11-09
     established_by: 两段验证合成测试、独立审查及训练机真实开发集批次核验
     supersedes: null
@@ -642,7 +642,7 @@ misreadings:
     correct: 旧候选生成器的 post 窗口起点与已断裂判据共用 event/guard 规则，物化阶段继续检查同一边界；几何核算自洽不能证明视觉标签正确。当前人工标注按可见分离帧判断，见 DF-012 / DF-013。
     evidence:
       - ref: pipeline/v3_candidate_plan.py:314
-        expect: if start >= event + EVENT_GUARD_SECONDS:
+        expect: 'if start >= event + EVENT_GUARD_SECONDS:'
       - ref: pipeline/v3_candidate_media.py:433
         expect: any(value < event + EVENT_GUARD_SECONDS
   - wrong: 预测缺失 = 不计入统计
@@ -655,7 +655,7 @@ misreadings:
       - ref: finetune/validation/task_metrics.py:96
         expect: score["interval_available"]
       - ref: finetune/validation/task_metrics.py:107
-        expect: interval_scored_samples": len(interval)
+        expect: 'interval_scored_samples": len(interval)'
   - wrong: 路径能对上内容 = 引用正确
     correct: 错。行号与内容对得上不代表文件路径存在：把 `v3_candidate_plan.py` 放在 `pipeline/scripts/` 下（实际位置是 `pipeline/` 根）时，引用处的行号与内容仍可能对得上，但该路径并不存在；引用前必须对路径本身做存在性实测，现由 `scripts/verify_design_facts.py --check-doc-paths` 兜底。这属于条件式反例：该错误写法曾出现在仓库外审计 brief 中（订正记录见仓库外 `~/pi-workspace/mVllm_2-audit/label-anchor-decision-20261018.md:22`，不在 Git 内，不是仓库证据）；仓库内从未有过该路径。
     evidence:
