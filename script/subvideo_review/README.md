@@ -34,6 +34,8 @@ python3 -m script.subvideo_review.server --project-root . serve --port 8765
 
 ## 导出与继续
 
+服务运行时，页面底部有两个导出按钮：「导出审核记录」下载最新审核结果，文件名为 `subvideo-reviews.jsonl`；「导出全部修订」下载完整修订历史，文件名为 `subvideo-reviews-history.jsonl`。两个按钮都在服务运行时直接下载。
+
 服务运行时可打开[最新审核结果](http://127.0.0.1:8765/api/export)或[完整修订历史](http://127.0.0.1:8765/api/export?all_revisions=1)下载；若端口不是 8765，请使用实际启动地址。也可在项目目录执行以下命令，输出到自选文件；已有同名文件会被 shell 覆盖：
 
 ```bash

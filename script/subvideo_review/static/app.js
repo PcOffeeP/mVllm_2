@@ -4,7 +4,7 @@
   const byId = (id) => document.getElementById(id);
   const names = ["断裂状态", "断裂模式", "断裂位置", "异常情况.未夹紧", "异常情况.视频异常", "异常情况.爆炸性断裂", "断裂现象.伸长", "断裂现象.颈缩", "断裂现象.开裂", "断裂现象.界面分离", "断裂现象.断后脱夹"];
   const statusNames = {unreviewed: "未审核", draft: "草稿", confirmed: "已确认", returned: "已退回", question: "有疑问"};
-  const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: ""};
+  const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: "", exporting: false};
   const controls = new Map();
   const setVideoState = (value) => {
     const frame = byId("video-player").closest(".video-frame");
@@ -315,14 +315,18 @@
     }
   }
   async function exportReviews(allRevisions) {
+    if (state.exporting) return;
     const filename = allRevisions ? "subvideo-reviews-history.jsonl" : "subvideo-reviews.jsonl";
+    state.exporting = true;
+    byId("export-reviews").disabled = true;
+    byId("export-all-revisions").disabled = true;
     try {
       const response = await fetch(allRevisions ? "/api/export?all_revisions=1" : "/api/export", {cache: "no-store"});
       if (!response.ok) {
         let detail = "";
         try {
           const value = await response.json();
-          detail = value?.error || value?.message || "";
+          detail = typeof value?.error === "string" ? value.error : typeof value?.message === "string" ? value.message : "";
         } catch {}
         detail = typeof detail === "string" ? detail.trim().replace(/[。！？；.!?;]+$/u, "") : "";
         throw new Error(`导出失败 (${response.status})${detail ? `：${detail}` : ""}；未生成 ${filename}，审核记录未改动。`);
@@ -333,14 +337,21 @@
         link.href = href;
         link.download = filename;
         document.body.append(link);
-        link.click();
-        link.remove();
+        try {
+          link.click();
+        } finally {
+          link.remove();
+        }
       } finally {
-        URL.revokeObjectURL(href);
+        setTimeout(() => URL.revokeObjectURL(href), 0);
       }
       message(`已导出${allRevisions ? "全部修订" : "最新修订"}到 ${filename}；这不是数据发布。`);
     } catch (error) {
       message(error && typeof error.message === "string" && error.message ? error.message : `导出失败：未知错误；未生成 ${filename}，审核记录未改动。`, true);
+    } finally {
+      state.exporting = false;
+      byId("export-reviews").disabled = false;
+      byId("export-all-revisions").disabled = false;
     }
   }
   async function start() {

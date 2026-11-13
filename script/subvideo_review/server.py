@@ -603,7 +603,7 @@ def handler_for(app):
                 elif url.path == "/api/reviews":
                     self.respond(200, canonical(app.review(candidate_id)))
                 elif url.path == "/api/export":
-                    self.respond(200, app.export(all_revisions=query.get("all_revisions", [""])[0] == "1"), "application/x-ndjson; charset=utf-8", {"Content-Disposition": 'attachment; filename="subvideo-reviews.jsonl"'})
+                    self.respond(200, app.export(all_revisions=query.get("all_revisions", [""])[0] == "1"), "application/x-ndjson; charset=utf-8", {"Content-Disposition": 'attachment; filename="%s"' % ("subvideo-reviews-history.jsonl" if query.get("all_revisions", [""])[0] == "1" else "subvideo-reviews.jsonl")})
                 elif url.path == "/media":
                     self.send_media(candidate_id)
                 elif url.path == "/source-media":
