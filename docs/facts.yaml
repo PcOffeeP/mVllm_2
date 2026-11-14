@@ -1,7 +1,10 @@
 # 项目设计与代码事实的单一入口。
 # active 表示条目在写明的适用范围内有效，不表示旧契约、旧实验或待落地裁决可直接用于本轮标注。
 # 本轮人工标注以 docs/label.md 为准；新旧边界见 DF-018，执行阶段见 docs/TODO.md。
-# 校验：`python scripts/verify_design_facts.py`（evidence 行号必须指向真实非空行）；历史 `scripts/` 目录已按用户要求删除（生成与审查脚本在 `script/`，不受影响），`verify_design_facts.py` 不再在仓库内，当前无替代的文档路径自动校验器，evidence 行号与路径存在性须人工核对。
+# 校验：历史 `scripts/verify_design_facts.py` 已随 `scripts/` 目录按用户要求删除（生成与审查脚本在 `script/`，不受影响），当前无自动校验器；evidence 的行号、路径存在性与 expect 匹配须人工核对。
+# evidence 行号复核：2026-11-14 的本次变更按当前工作树对全部 evidence 的行号与 `expect` 逐条复核订正，部分行号因上游提交（如 `045536c`）改动被引文件而顺移（例：`script/data_split/generate.py:49`→`:51`、`script/subvideo_review/server.py:30`→`:36`、`docs/TODO.md:93`→`:94`、`:153`→`:223`）；无法在本仓核对的条目见下方 `evidence_location` 说明。
+# evidence_location: 取值为 `original_worktree` 时表示该条**含**指向本工作区未检出路径的 evidence（`pipeline/`、`finetune/`、`versioning/`、`docs/results/` 等，本仓为 sparse-checkout，这些目录未检出），这部分的 evidence 无法在本仓核对行号与内容，同一 entry 的其余 evidence 仍可在本仓核对；出现原因即这批 evidence 取自原工作区/训练机的代码与结果记录。条目的结论仍有效，但不可在本仓核对的那部分须在原工作区/训练机核对后才可引用，不得当作本仓已核实的行号。
+# `misreadings` 段的 evidence 同样指向本仓未检出的路径，但该段结构没有 `evidence_location` 字段，其证据同样须在原工作区/训练机核对，且不计入任何自动核对覆盖范围。
 version: 1
 generated_at: null
 facts:
@@ -23,6 +26,7 @@ facts:
         expect: '无法判断": "no_directional_evidence'
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:213
         expect: '临界未断裂": "fracture_event_is_after_clip_with_visible_precursors'
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -35,6 +39,7 @@ facts:
     evidence:
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:168
         expect: 可靠画面从一开始就已分离且没有片段内断裂前证据时为已断裂
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -55,6 +60,7 @@ facts:
         expect: raise ValueError("duplicate keys")
       - ref: finetune/eval_semantics.py:126
         expect: fields=fields, strict_valid=True
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -81,6 +87,7 @@ facts:
         expect: "已断裂_recall': 0.15"
       - ref: finetune/holdout_metrics.py:19
         expect: "未断裂_recall': 0.7"
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -97,6 +104,7 @@ facts:
         expect: record.outcome != "passed"
       - ref: versioning/registry.py:999
         expect: outcome={record.outcome!r}，未通过
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -119,6 +127,7 @@ facts:
         expect: def verify_current_artifacts
       - ref: pipeline/model_registry.py:304
         expect: '"passed": True,'
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 按 legacy 数据校验、新体系数据校验与旧模型产物校验函数分别核对
     supersedes: null
@@ -141,6 +150,7 @@ facts:
         expect: 发生断裂 | 66/144 | 0.458333
       - ref: docs/results/model-r1-effect-profile-20261018.md:8
         expect: 不得作为模型能力结论
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 实测（训练机，文档/台账记载）
     supersedes: null
@@ -155,6 +165,7 @@ facts:
         expect: joint 由 **41.18%**（旧口径 1 组 / 64 token）升至 **50.59%**
       - ref: docs/results/model-r1-effect-profile-20261018.md:8
         expect: 不得作为模型能力结论
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 实测（训练机，文档/台账记载）
     supersedes: null
@@ -169,6 +180,7 @@ facts:
         expect: 已断裂仍 **0/33**
       - ref: docs/results/model-r1-effect-profile-20261018.md:8
         expect: 不得作为模型能力结论
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 实测（训练机，文档/台账记载）
     supersedes: null
@@ -181,6 +193,7 @@ facts:
     evidence:
       - ref: finetune/train_build_source_aware_dataset.py:30
         expect: SIGNATURE_COUNT_CAP = 3
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码仅证实上限常量；原训练池统计出处已删除，待核验
     supersedes: null
@@ -215,6 +228,7 @@ facts:
         expect: value < event + EVENT_GUARD_SECONDS
       - ref: pipeline/v3_candidate_media.py:434
         expect: post_event_sample_crosses_guard
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码核对
     supersedes: null
@@ -233,7 +247,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:96
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:153
+      - ref: docs/TODO.md:223
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -247,6 +261,7 @@ facts:
     evidence:
       - ref: pipeline/contracts/tensile_vlm_v4_1.json:3
         expect: 'contract_hash": "3798f00cbec7'
+    evidence_location: original_worktree
     established: 2026-10-18
     established_by: 代码核对 + 用户裁决 2026-10-18；现存代码只证明旧契约哈希，原规则出处已删除
     supersedes: null
@@ -263,6 +278,7 @@ facts:
         expect: MIN_CANDIDATE_SECONDS = 1.0
       - ref: pipeline/v3_candidate_plan.py:34
         expect: TARGET_DURATIONS = (2.0, 3.0, 5.0, 10.0, 20.0)
+    evidence_location: original_worktree
     established: 2026-10-19
     established_by: 用户裁决 2026-10-19
     supersedes: null
@@ -287,6 +303,7 @@ facts:
         expect: load_video_frames(
       - ref: finetune/validation/model_runtime.py:151
         expect: temporal_ids=temporal_ids,
+    evidence_location: original_worktree
     established: 2026-10-19
     established_by: 代码核对
     supersedes: null
@@ -301,10 +318,11 @@ facts:
         expect: runs=root / "trains",
       - ref: versioning/prompts.py:93
         expect: return root / "trains" / train_version / "input" / "prompt.yaml"
-      - ref: tests/test_layout_migration_guard.py:84
+      - ref: tests/test_layout_migration_guard.py:86
         expect: '"models/minicpm-v-4.5": "base-models/minicpmv4_5",'
       - ref: .gitignore:19
         expect: /audits
+    evidence_location: original_worktree
     established: 2026-10-21
     established_by: 用户裁决 2026-10-21 + 代码核对
     supersedes: null
@@ -313,7 +331,7 @@ facts:
     state: active
     topic: 本轮人工标注基准与冻结 v4.1 的适用边界
     claim: >
-      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法确定，不含临界未断裂。状态、模式、位置的不确定选项统一为「无法确定」，标注页面按字段识别历史状态「无法判断」和模式「无法识别」，校验时视为「无法确定」并保留原值，直到用户显式修改。位置采用视频相对位置分类，依次判断夹持根部、明显偏向夹持端及其余可判定位置，不表示测得精确工程标距；典型样例校准及已有标注影响核对待完成。现象包括伸长、颈缩、开裂、界面分离、断后脱夹，可多选；断后脱夹不自动判为未夹紧。异常和现象逐项记录「是」「否」「无法判断」或未标注空白；三项异常均为「否」表示无可见异常。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及无法确定分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新训练／业务契约及数据接入尚未实施。本轮五类评分的 JSON 编码及部分统计口径已确认，见 DF-030。本机源视频标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
+      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法判断，不含临界未断裂。单值三类（状态、模式、位置）的不确定取值现行统一为「无法判断」；历史字面量「无法确定」（状态、模式、位置三列各自的旧值）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**待同步材料**（旧术语残留，待改写为「无法判断」）：① 尚未同步的断裂位置校准参考图文（`docs/label-position-calibration.md`、`docs/label-calibration/`），其中只有「无法确定」，且只出现在「断裂位置」维度（`grep -c 无法识别` 三份材料实测为 0／0／0）；② `docs/research/virtual-video-provenance.md`：:23 把「无法确定」列为断裂状态的现行枚举、:24 称其为「新 `无法确定`」，仍以旧词书写（见 DF-033 同名清单项）。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码（`script/data_split/generate.py:46–49` 的 `ALIASES`、`script/annotation/review_annotation.js:94–95`、`script/roi/label_fields.py:69`、`script/subvideo_generation/_legacy/core/generate.py:31` 等）与测试夹具中；完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1。导入兼容与历史语境的做法是：标注页面登记这些旧写法、按「无法判断」校验并保留原值供追溯，导出与恢复草稿不改写，需要更新时由用户手动改选。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。位置采用视频相对位置分类，依次判断夹持根部、明显偏向夹持端及其余可判定位置，不表示测得精确工程标距；典型样例校准及已有标注影响核对待完成。现象包括伸长、颈缩、开裂、界面分离、断后脱夹，可多选；断后脱夹不自动判为未夹紧。异常和现象逐项记录「是」「否」「无法判断」或未标注空白；三项异常均为「否」表示无可见异常。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及不确定取值分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新训练／业务契约及数据接入尚未实施。本轮五类评分的 JSON 编码及部分统计口径已确认，见 DF-030。本机源视频标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
     evidence:
       - ref: docs/label.md:54
         expect: 是视频视觉分类，不表示已测得精确工程标距
@@ -326,19 +344,29 @@ facts:
       - ref: docs/label.md:84
         expect: '断裂时间和断裂位置填“无”'
       - ref: docs/label.md:15
-        expect: 未断裂、发生断裂、已断裂、无法确定
+        expect: 未断裂、发生断裂、已断裂、无法判断
+      - ref: docs/label.md:16
+        expect: 半脆半韧断裂、无法判断、无
+      - ref: docs/label.md:17
+        expect: 标距外非根部、夹持根部、无法判断
       - ref: docs/label.md:90
-        expect: 导入、恢复草稿和导出会保留这些原值
+        expect: '现行不确定取值为“无法判断”。标注页面登记四组历史写法，均按“无法判断”校验并保留原值供追溯'
+      - ref: docs/label-position-calibration.md:35
+        expect: '覆盖 `断裂位置` 的 `夹持根部`、`标距外非根部`、`标距内`、`无法确定` 四类'
       - ref: docs/label.md:82
         expect: 不作为模型微调的预测标签
       - ref: docs/TODO.md:11
         expect: 现有 v4.1 评分与旧阈值不直接套用
-      - ref: pipeline/scripts/review_annotation.js:663
+      - ref: script/annotation/review_annotation.js:94
+        expect: 'const legacyUncertainLabels = new Map([[stateColumn, ["无法确定"]], [siteColumn, ["无法确定"]],'
+      - ref: script/annotation/review_annotation.js:664
         expect: function ruleTargets(state, grip, wholeVideoUnbroken)
-      - ref: pipeline/scripts/review_annotation.js:186
+      - ref: script/annotation/review_annotation.js:187
         expect: function serializeCsv
+      - ref: docs/split/data-split-result.md:9
+        expect: 当前该文件的 SHA-256 为
     established: 2026-11-05
-    established_by: 用户确认的人工标注基准
+    established_by: 用户确认的人工标注基准；2026-11-14 按现行统一术语订正不确定取值的描述（历史「无法确定」改为现行「无法判断」；「无法确定」除导入兼容与历史语境外，还残留在待同步的断裂位置校准图文与 virtual-video-provenance 的两处；「无法识别」已无文档与数据残留，只见于导入兼容代码（`ALIASES`、标注与审核页面显示层映射、归档生成旧路径的 `LEGACY_UNCERTAIN` 等，完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1）与测试夹具），并逐条复核 evidence 行号与 expect。
     supersedes: null
     affects: [data, eval]
   - id: DF-019
@@ -349,16 +377,17 @@ facts:
     evidence:
       - ref: docs/decisions/0002-time-annotation-scope.md:13
         expect: 记录也可以用于定位、核对时序测评的候选画面
-      - ref: docs/TODO.md:93
+      - ref: docs/TODO.md:94
         expect: 断裂时间类标注可用于子视频生成
       - ref: docs/label.md:15
-        expect: 未断裂、发生断裂、已断裂、无法确定
+        expect: 未断裂、发生断裂、已断裂、无法判断
       - ref: docs/label.md:19
         expect: '伸长、颈缩、开裂、界面分离、断后脱夹'
       - ref: pipeline/v3_candidate_plan.py:314
         expect: if start >= event + EVENT_GUARD_SECONDS
+    evidence_location: original_worktree
     established: 2026-11-07
-    established_by: 用户于 2026-11-07 澄清使用范围，并于 2026-11-10 确认测评候选画面用途；旧代码依赖由代码核对
+    established_by: 用户于 2026-11-07 澄清使用范围，并于 2026-11-10 确认测评候选画面用途；旧代码依赖由代码核对；2026-11-14 订正 evidence（`docs/label.md:15` 的 expect 由旧术语改为现行「无法判断」，`docs/TODO.md` 的引用行由 93 订正为 94）
     supersedes: null
     affects: [data, eval, code]
   - id: DF-020
@@ -377,11 +406,11 @@ facts:
         expect: 七份成员 JSON 与迁移前基准逐字节
       - ref: docs/split/data-split-result.md:64
         expect: 退出码为 0。ROI 清单
-      - ref: script/data_split/generate.py:49
+      - ref: script/data_split/generate.py:51
         expect: SEEDS = tuple(range(42, 142))
-      - ref: script/data_split/generate.py:142
+      - ref: script/data_split/generate.py:144
         expect: 'def validate_groups(payload, labels, test_ids):'
-      - ref: script/data_split/generate.py:326
+      - ref: script/data_split/generate.py:328
         expect: 'def search(problem, seeds=SEEDS):'
     established: 2026-11-07
     established_by: 用户确认来源与划分规则；代码核对及合成测试；2026-11-08 实际整理与 ROI 扫描
@@ -475,9 +504,9 @@ facts:
     claim: >
       用户要求依据当前子视频规则新建生成入口，使用裁剪后训练视频，结果写入 data/sub_video。按折入口须指定三折中的一折，只处理该折训练成员；后续用户授权包含测试集的一次去重生成，见 DF-027。读取源视频用于验证与 ROI 的帧对应。断裂模式或位置无法确定、视频异常或爆炸性异常不单独阻挡有效断裂帧或完整范围的窗口；未列入 DF-028 指定覆盖来源的视频异常且没有断裂时间时记录“视频异常”。未知模式沿其他模式选窗但保留原标签，源标签参考、候选初值及最终人工标签分开，拟发布片段仍须人工审核。未夹紧现象按 DF-026 的独立锚点处理，缺少锚点时保留待处理；仅有断裂时间点而源帧定位规则未确定时不猜测锚点。源到 ROI 与 ROI 到片段须通过严格重放。
     evidence:
-      - ref: script/subvideo_generation/_legacy/core/generate.py:31
+      - ref: script/subvideo_generation/_legacy/core/generate.py:47
         expect: 'def adapt_annotation(row: dict, media: dict, phenomenon_anchor'
-      - ref: script/subvideo_generation/_legacy/core/generate.py:207
+      - ref: script/subvideo_generation/_legacy/core/generate.py:226
         expect: 'def run(project_root: Path, output_dir: Path | None = None'
       - ref: script/subvideo_generation/_legacy/core/verification.py:234
         expect: 'def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict'
@@ -495,7 +524,7 @@ facts:
         expect: '| video_0002 | 174 |'
       - ref: script/subvideo_generation/_legacy/core/anchors.py:20
         expect: 'def load_anchors(document_path: Path)'
-      - ref: script/subvideo_generation/_legacy/core/generate.py:94
+      - ref: script/subvideo_generation/_legacy/core/generate.py:112
         expect: 'def plan_windows(record: dict, media: dict)'
       - ref: script/subvideo_generation/_legacy/core/verification.py:454
         expect: 'def verify_clip_replay(roi_path: Path'
@@ -555,15 +584,15 @@ facts:
     claim: >
       人工审核工具读取当前统一候选清单、视频、固定测试及三折成员；源标注和候选标签仅供参考，首次审核值为空。覆盖候选没有初值也可逐片审核。人工决定写入独立的 data/subvideo-review/reviews.json，并与片段、来源、生成规则、划分及标签规则身份关联；媒体播放和保存前核对摘要，不回写生成清单或源标注。audit.json 只有通过清单身份与条目一致性核对后才提供重点提示，技术检查不代替用户人工看片。审核记录进入 Git，视频和本地锁文件不进入 Git；审核本身不等于数据发布、模型训练或模型测评。
     evidence:
-      - ref: script/subvideo_review/server.py:30
+      - ref: script/subvideo_review/server.py:36
         expect: 'STORE_SCHEMA = "tensile-subvideo-human-review/2"'
-      - ref: script/subvideo_review/server.py:237
+      - ref: script/subvideo_review/server.py:243
         expect: 'current["review_subject_sha256"] = digest'
-      - ref: script/subvideo_review/server.py:296
+      - ref: script/subvideo_review/server.py:302
         expect: 'self.audit_current = True'
-      - ref: script/subvideo_review/server.py:486
+      - ref: script/subvideo_review/server.py:492
         expect: 'def save(self, payload):'
-      - ref: script/subvideo_review/static/app.js:217
+      - ref: script/subvideo_review/static/app.js:226
         expect: '生成时建议关注'
       - ref: script/subvideo_review/README.md:3
         expect: '首次审核时不会自动填入答案'
@@ -593,9 +622,9 @@ facts:
         expect: 五类全部正确比例
       - ref: docs/design-test.md:101
         expect: 保留原回答，逐类按实际输出评分
-      - ref: script/subvideo_review/server.py:544
+      - ref: script/subvideo_review/server.py:550
         expect: def export(self, *, all_revisions=False)
-      - ref: script/subvideo_review/server.py:422
+      - ref: script/subvideo_review/server.py:428
         expect: def matches(row, candidate)
       - ref: script/five_label_eval/score.py:429
         expect: def score(manifest, reviews, predictions, input_reviews=())
@@ -640,6 +669,133 @@ facts:
     established_by: 用户确认以规则指纹取代代码指纹；规则登记、身份投影与内容审计实现及契约测试核对
     supersedes: null
     affects: [code, data, ops]
+
+  - id: DF-033
+    state: active
+    topic: 不确定取值统一为「无法判断」与历史字面量的处理边界
+    claim: >
+      单值三类（断裂状态、断裂模式、断裂位置）与多选两组叶项（异常情况三项、断裂现象五项）的不确定取值统一为「无法判断」。历史字面量「无法确定」（状态、模式、位置三列）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**待同步材料**（旧术语残留，待改写为「无法判断」）：① 尚未同步的断裂位置校准参考图文（`docs/label-position-calibration.md`、`docs/label-calibration/`），其中只有「无法确定」，且只出现在「断裂位置」维度（`grep -c 无法识别` 三份材料实测为 0／0／0）；② `docs/research/virtual-video-provenance.md`：:23 把「无法确定」列为断裂状态的现行枚举、:24 称其为「新 `无法确定`」。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码与测试夹具中。导入兼容与历史语境的做法是：split 管线把两者归一为「无法判断」（`ALIASES` 见 `script/data_split/generate.py:46–49`；同文件第 50 行 `UNCERTAIN` 也仍含「无法确定」），标注与审核页面的旧词只在显示层映射、已存字节不改写（`script/roi/label_fields.py:65` 起的 `_LEGACY_DISPLAY`、`script/subvideo_generation/_legacy/core/generate.py:31` 的 `LEGACY_UNCERTAIN = ("无法确定", "无法识别")`）。其余兼优点不在此穷举，见 `docs/eval/output-contract.md` §5.1。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。评分器不做历史字面量归一化：`allowed()` 只接受「无法判断」，历史值作人工标签时由 `truth_cell()` 判 `invalid`；代码里仍有两处写着旧词——349 行是断言禁令：`cell["evidence"]` 为 insufficient／unknown 时，`cell["label"]` 只放过 `None`／空串／「无法确定」／「无法判断」，写出其余确定值一律抛 `InputError`；被放过的「无法确定」仍由 `truth_cell()`（348 行）判 `invalid`。另一处是预测侧 `explicit_uncertain` 统计（375–376 行）在判断里把「无法确定」与「无法判断」并列。但 375 行受 `pstatus == "valid"` 约束，而 `allowed()` 已不含「无法确定」，写旧词的预测先被判 `invalid`（`pstatus != "valid"`），故**现行值域下该分支的「无法确定」一半不可达，实际只有「无法判断」计入 `explicit_uncertain`**（`docs/eval/output-contract.md` 第 92 行已写明「现行值域下该分支不可达」）。这两处都不把旧词转成合法取值。消费方须与新术语同步，否则取值被判 `invalid`。
+    evidence:
+      - ref: docs/label.md:90
+        expect: '现行不确定取值为“无法判断”'
+      - ref: docs/label-position-calibration.md:35
+        expect: '覆盖 `断裂位置` 的 `夹持根部`、`标距外非根部`、`标距内`、`无法确定` 四类'
+      - ref: script/five_label_eval/score.py:14
+        expect: '"断裂状态": ("未断裂", "发生断裂", "已断裂", "无法判断")'
+      - ref: script/five_label_eval/score.py:121
+        expect: 'return {"status": "unknown" if value == "无法判断" and field not in SINGLES else "valid"'
+      - ref: script/five_label_eval/score.py:349
+        expect: 'cell["evidence"] in ("insufficient", "unknown") and cell["label"] not in (None, "", "无法确定", "无法判断")'
+      - ref: script/five_label_eval/score.py:375
+        expect: 'if pstatus == "valid" and pred["value"] in ("无法确定", "无法判断")'
+      - ref: docs/eval/output-contract.md:92
+        expect: 现行值域下该分支不可达
+      - ref: docs/split/data-split-result.md:9
+        expect: 当前该文件的 SHA-256 为
+      - ref: script/subvideo_review/server.py:29
+        expect: '"断裂状态": ["未断裂", "发生断裂", "已断裂", "无法判断"],'
+      - ref: script/data_split/generate.py:46
+        expect: 'ALIASES = {("断裂状态", "无法确定"): "无法判断"'
+      - ref: script/data_split/generate.py:50
+        expect: 'UNCERTAIN = {"无", "无法确定", "无法判断"}'
+      - ref: script/roi/label_fields.py:65
+        expect: '_LEGACY_DISPLAY = {'
+      - ref: script/roi/label_fields.py:69
+        expect: '无法判断（原值：无法识别）'
+      - ref: script/subvideo_generation/_legacy/core/generate.py:31
+        expect: 'LEGACY_UNCERTAIN = ("无法确定", "无法识别")'
+      - ref: docs/research/virtual-video-provenance.md:23
+        expect: 已断或无法确定须看该片段画面
+      - ref: docs/research/virtual-video-provenance.md:24
+        expect: 与新 `无法确定` 的字面相近也不能跳过新证据检查
+      - ref: script/subvideo_review/static/app.js:10
+        expect: 'const legacyUncertain = new Map([["无法确定", "无法判断"], ["无法识别", "无法判断"]]);'
+      - ref: data/annotation-table-full.csv:2
+        expect: 发生断裂,否,否,否,无法判断
+      - ref: docs/eval/prompt.md:53
+        expect: 'v1 正文当前仍把单值不确定值写成旧字面量 `无法确定`'
+    established: 2026-11-14
+    established_by: 评分器、审核工作台、split 管线与前端显示层代码核对，并核对当前 CSV 取值
+    supersedes: null
+    affects: [data, eval, contract, code]
+
+  - id: DF-034
+    state: active
+    topic: 评测输入契约已拆分为 docs/eval/ 六个专题文件，索引页不再承载字段表
+    claim: >
+      `docs/eval-input-contract.md` 已降级为索引页，不再内联字段表与取值表，只保留职责映射、阅读入口与合并顺序说明；契约内容拆分为 `docs/eval/` 下六个专题文件，各自职责为：`README.md`（范围界定、阅读顺序、改契约时要同步的对象清单、各文件失效条件）、`output-contract.md`（11 个叶字段与 5 个顶层键、四类边界样例、`predictions.jsonl` 必填项、关键词义、代码同步状态）、`prompt.md`（v1 正文位置、版本策略、冻结机制）、`inference-entry.md`（入口 CLI、身份字段、三态与 backend 边界）、`input-record.md`（四层画面谱系与四个帧索引）、`eval-subset.md`（画幅三档、报告必报项、分层抽样与冻结）。因此引用该契约须指向具体专题文件与章节；指向索引页的编号章节会失效（如判据④的四类边界用例应指 `output-contract.md` §2）。
+    evidence:
+      - ref: docs/eval-input-contract.md:1
+        expect: '# 评测输入契约（索引页）'
+      - ref: docs/eval-input-contract.md:5
+        expect: '本路径原为单文件长契约，现已拆分为 `docs/eval/` 专题文档集'
+      - ref: docs/eval-input-contract.md:7
+        expect: '| 专题文件 | 承担内容 | 何时读它 |'
+      - ref: docs/eval/README.md:1
+        expect: '# 评测输入契约 · 专题文档集'
+      - ref: docs/eval/output-contract.md:43
+        expect: '## 2. 四类边界样例'
+      - ref: docs/eval/eval-subset.md:5
+        expect: '## 1. 三档定义'
+    established: 2026-11-14
+    established_by: 契约文件与专题文档集文档核对
+    supersedes: null
+    affects: [contract, eval, prompt]
+
+  - id: DF-035
+    state: active
+    topic: 画幅分档的倍率口径与「约 200 倍」的说法不成立
+    claim: >
+      原始候选画幅跨 60×80 至 924×1232，面积 4,800 至 1,138,368 像素，逐像素约 237 倍（旧文档常写作「约 200 倍」）。经 `max_pixels`（默认 256×256 = 65,536 像素）钳制后**只缩不放、按比例缩放**：两端为 4,800（最小画幅面积不变）与 ≤ 65,536（默认真值 65,536），端点差约 13.6 倍；中间画幅按比例缩放到上限以内，**不收敛成两个离散值**——实测本仓 1,621 个候选按 `min(宽×高, 65,536)` 钳制后仍有 21 个不同面积值（942 个在 65,536 以下保持不变，679 个被压到上限）。分档仍按 `w_le_200`／`w_200_400`／`w_gt_400` 三档报告，但不得用「200 倍」作为报告理由：该数字是预处理前的量，不能用来论证模型侧看到的信息量差异；三档并列报告、不得跨档加权合成。
+    evidence:
+      - ref: docs/eval/eval-subset.md:19
+        expect: '| 原始画幅 | 60×80 至 924×1232；面积 4,800 → 1,138,368 像素 |'
+      - ref: docs/eval/eval-subset.md:20
+        expect: '| 经 `max_pixels` 预处理后 | 4,800 → 65,536 像素 |'
+      - ref: docs/eval/eval-subset.md:22
+        expect: 预处理只缩不放，故 60×80 的候选面积不变（4,800），924×1232 的候选被压到 65,536 以内
+      - ref: docs/eval/eval-subset.md:24
+        expect: 故报告里「200 倍」的说法不成立
+    established: 2026-11-14
+    established_by: 文档核对（docs/eval/eval-subset.md）；画幅端点与离散值数另以本仓 `data/sub_video/manifest.json` 1,621 个候选的宽高实测（钳制到 `min(面积, 65,536)`）
+    supersedes: null
+    affects: [eval, metrics]
+
+  - id: DF-036
+    state: active
+    topic: MiniCPM 路径下单请求帧数不是自由参数
+    claim: >
+      MiniCPM 评价链路下 processor 硬性要求 `max_frames == 8`：调用 `configure_processor_max_frames(processor)`，`max_frames != 8` 时抛 `ValueError("MiniCPM-V contract requires max_frames=8")`。因此单请求帧数不是自由参数，不得作为可调项，也不得写进 `input_id`——否则每调整一次就换一批 `input_id`，历史批次无法比较；帧数只能经 processor 侧契约变更（另立 `input_id` 版本）来改。
+    evidence:
+      - ref: docs/eval/inference-entry.md:79
+        expect: '`max_frames != 8` 时抛 `ValueError("MiniCPM-V contract requires max_frames=8")`'
+      - ref: docs/eval/inference-entry.md:87
+        expect: 帧数不是自由参数
+    established: 2026-11-14
+    established_by: docs/eval/inference-entry.md 文档核对
+    supersedes: null
+    affects: [eval, contract]
+
+  - id: DF-037
+    state: active
+    topic: 本地只验证链路，真实推理在训练机，fake 产出不得作为测评结果
+    claim: >
+      测评链路分工固定：本地 Mac 只承担链路梳理、输入与清单元数据、`fake` backend 切片验证、报告模板与判据文档，不承担真实模型推理、真实指标或任何可对外引用的测评结果；真实权重加载与指标在远程训练机。`fake` backend 的 `model_id` 固定为字符串 `fake`，不可配置为任何真实模型名；**规格要求（未实现）**：报告生成须在写入跨模型比较前校验 `model_id`，命中 `fake` 即报错退出，`fake` 结果只允许出现在链路验证报告里——该条来自 `docs/eval-migration-plan.md:116` 的迁移规格（该文档自述「只写规格，不含代码」，迁移点判据① 仍未勾选，本仓 `script/` 无该实现）。
+    evidence:
+      - ref: docs/eval-migration-plan.md:13
+        expect: '本地 Mac | 链路梳理、输入与清单元数据、fake backend 切片验证、报告模板、判据与文档'
+      - ref: docs/eval-migration-plan.md:33
+        expect: 本地产出永不作为测评结果
+      - ref: docs/eval-migration-plan.md:114
+        expect: '`fake` backend 的 `model_id` 固定为字符串 `fake`'
+      - ref: docs/eval-migration-plan.md:116
+        expect: 命中 `fake` 即报错退出
+      - ref: docs/eval/inference-entry.md:94
+        expect: '**唯一已实现**'
+    established: 2026-11-14
+    established_by: 规格核对：docs/eval-migration-plan.md 与 docs/eval/inference-entry.md 文档核对；其中报告生成的 model_id 校验属迁移规格要求、尚未实现（迁移点判据未勾选，本仓 script/ 无该实现），不应当作已落地行为引用
+    supersedes: null
+    affects: [eval, ops]
 
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
