@@ -178,7 +178,7 @@ def test_plan_predictions_should_omit_fields_for_missing_fields_row():
 def test_plan_predictions_should_emit_invalid_literal_for_third_row():
     obj = labels_of(rows_for()[2]["raw_output"])
 
-    assert obj["断裂状态"] == "无法判断"
+    assert obj["断裂状态"] == "部分断裂"
     assert obj["断裂状态"] not in SINGLES["断裂状态"]
 
 
@@ -273,7 +273,7 @@ def test_fake_raw_output_should_drop_label_position_and_crack_when_missing_field
 def test_fake_raw_output_should_emit_out_of_vocabulary_status_when_invalid_literal():
     obj = labels_of(fake_raw_output("invalid_literal"))
 
-    assert obj["断裂状态"] == "无法判断"
+    assert obj["断裂状态"] == "部分断裂"
     assert obj["断裂状态"] not in SINGLES["断裂状态"]
 
 
@@ -307,7 +307,7 @@ def verdict_missing_fields(extraction):
 def verdict_invalid_literal(extraction):
     assert extraction["strict_format_valid"] is False
     assert leaf_statuses(extraction) == leaves_with(**{"断裂状态": "invalid"})
-    assert extraction["fields"]["断裂状态"]["value"] == "无法判断"
+    assert extraction["fields"]["断裂状态"]["value"] == "部分断裂"
 
 
 def verdict_conflict(extraction):
