@@ -122,6 +122,8 @@ def test_persisted_confirmed_export_has_hand_calculated_separate_denominators(wo
     app = workspace
     for name in ("good", "missing", "failed", "unprocessed"):
         save(app, name)
+    # Human 「无法判断」 on a multi-item leaf is a comparable class, not an unknown truth
+    # status: score.py truth_cell() has no branch yielding "unknown" since five-label-score/2.
     unknown = copy.deepcopy(LABELS)
     unknown["断裂现象"]["颈缩"] = "无法判断"
     save(app, "unknown", unknown)
@@ -144,17 +146,29 @@ def test_persisted_confirmed_export_has_hand_calculated_separate_denominators(wo
     assert real["request_status_counts"] == {"success": 3, "request_failed": 1, "unprocessed": 5}
     assert real["review_status_counts"] == {"confirmed": 5, "draft": 1, "question": 1, "returned": 1, "unreviewed": 1}
     neck = real["fields"]["断裂现象.颈缩"]
-    assert neck["truth_counts"] == {"valid": 4, "unknown": 1, "unlabeled": 4}
+    # Five human cells are comparable (4×是 + 1×无法判断, all "valid"); the other four rows are not
+    # confirmed (review_status draft / question / returned / unreviewed), so their truth is unlabeled.
+    assert neck["truth_counts"] == {"valid": 5, "unlabeled": 4}
     assert neck["prediction_counts"] == {"valid": 2, "missing": 1, "request_failed": 1, "unprocessed": 5}
-    # Three attempted positive truths: correct, missing item, failed request.
-    # Human unknown and unprocessed truths add no negative examples or attempts.
-    assert_ratio(neck["accuracy"], 1, 3)
+    # Four attempted truths: three 「是」 (correct / missing item / failed request) plus the human
+    # 「无法判断」 cell, which entered the accuracy denominator as a comparable class and is scored
+    # incorrect because the model answered 「是」. The unprocessed truth adds no attempt.
+    assert_ratio(neck["accuracy"], 1, 4)
+    # The human 「无法判断」 cell is neither a positive nor a negative example, so it feeds no
+    # TP/FN/FP/TN and no positive/negative_attempted: recall and the explicit-negative counts
+    # only ever look at human 「是」/「否」.
     assert_ratio(neck["recall"], 1, 3)
     assert (neck["TP"], neck["FN"], neck["FP"], neck["TN"]) == (1, 0, 0, 0)
     assert (neck["positive_attempted"], neck["negative_attempted"]) == (3, 0)
     assert neck["failures_or_uncertain_by_truth"] == {"是:missing": 1, "是:request_failed": 1}
+    # Only 颈缩 differs from LABELS, so 断裂状态 counts the same way as before: five comparable
+    # truths (4 attempted, 3 correct); the other four rows are not confirmed, so their truth is
+    # unlabeled rather than a value to compare.
     assert_ratio(real["fields"]["断裂状态"]["accuracy"], 3, 4)
-    assert_ratio(real["all_five_correct_supplement"], 1, 3)
+    # Eligible clips: the four responded ones (good / unknown / missing / failed) now that the human
+    # 「无法判断」 cell is valid too; only "good" matches all eleven leaf fields, so 1/4.
+    assert_ratio(real["all_five_correct_supplement"], 1, 4)
+    # The virtual source is labelled 「否」 here, i.e. an explicit negative, not 「无法判断」.
     virtual_metrics = result["groups"]["virtual"]["full_clip"]["fields"]["断裂现象.颈缩"]
     assert_ratio(virtual_metrics["accuracy"], 0, 1)
     assert virtual_metrics["FP"] == 1 and virtual_metrics["negative_attempted"] == 1
