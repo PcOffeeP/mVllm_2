@@ -19,8 +19,8 @@
 
 | 索引 | 含义 | 帧空间 | 取值约束 |
 | --- | --- | --- | --- |
-| `original_source_frame_index` | 该帧在 L0 原始源视频中的帧号 | L0 | 仅当该帧绑定 `verification` 且声明同序时填整数；否则填 `null` |
-| `roi_frame_index` | 该帧在 L1 ROI 视频中的帧号 | L1 | 由 §4 推导，须落在 `[0, L1.total_frames)` |
+| `original_source_frame_index` | 该帧在 L0 原始源视频中的帧号 | L0 | 仅当**记录级** `verification.method != "unverified"`（声明同序）时填整数；否则填 `null`。`verification` 是记录级字段，帧条目不携带 `verification` |
+| `roi_frame_index` | 该帧在 L1 ROI 视频中的帧号 | L1 | 由 §4 推导，须落在 `[0, L1.total_frames)`；记录级 `unverified` 时为 `null` |
 | `clip_frame_index` | 该帧在 L2 片段中的帧号 | L2 | 由抽帧规则给出，须落在 `[0, L2.total_frames)` |
 | `display_order` | 该帧在送模型序列中的位置 | 记录级序列 | 从 0 起连续，不跳号 |
 
@@ -49,9 +49,9 @@ roi_frame_index   --(源→ROI 同序已验证，且绑定 verification)-->     
 | 级 | 公式 | 前提 |
 | --- | --- | --- |
 | L2 → L1 | `roi_frame_index = source_start_frame + clip_frame_index − output_start_frame` | 该候选 `output.frame_mapping` 存在；当前 1621/1621 条 `output_start_frame == 0`，故实际退化为 `roi_frame_index = source_start_frame + clip_frame_index` |
-| L1 → L0 | `original_source_frame_index = roi_frame_index` | **必须**满足 §5 的同序性证据，且该帧绑定记录级 `verification`（`verdict_id`／`method`／`evidence_sha256`／`checked_at`）；三级判定顺序见 §6 |
+| L1 → L0 | `original_source_frame_index = roi_frame_index` | **必须**满足 §5 的同序性证据，且记录级 `verification` 已绑定并声明同序（`verdict_id`／`method`／`evidence_sha256`／`checked_at` 均为记录级字段，帧条目不携带）；三级判定顺序见 §6 |
 
-**无 `verification` 时**：该帧 `kind` 填 `unverified`，`original_source_frame_index` 填 `null`——不写 `0`、不写 `-1`、不省略字段。一条记录内不同帧允许取不同 `kind`；同一条记录内所有 `kind != "unverified"` 的帧必须来自同一 `verification`（记录级单对象），锚点来源与实测来源需并用时拆成两条记录。
+**记录级 `unverified` 时**（`verification.method == "unverified"`，三级证据都不成立）：`unverified` 是**记录级**判定，由候选决定、不随帧号变化，**帧条目没有 `kind` 字段**——`kind` 只出现在 `frames[].frame_index_mapping` 的三个节点上。此时 `roi_frame_index` 与 `original_source_frame_index` 都是 `null`（不写 `0`、不写 `-1`、不省略字段），`source_to_media` 与 `roi_to_source` 两个节点的 `kind` 以及 `roi_to_source.method` 都写 `unverified`、`offset` 为 `null`、`reason` 非空。同一条记录内所有帧的 `roi_to_source.kind`／`method` **必然同值**，且都须与记录级 `verification.method` 配对：不配对即进 `verify_lineage` 的 reasons、`extract_record` 抛 `InputError`，故「同记录内不同帧取不同 `kind`」不成立。锚点来源与实测来源需并用时拆成两条记录。
 
 ## 5. 同序性证据三条（并列记录，不得只取其一）
 
@@ -61,7 +61,7 @@ roi_frame_index   --(源→ROI 同序已验证，且绑定 verification)-->     
 | 2 | 清单 `sources[].frame_preserving_replay.status == "verified_frame_preserving_replay"`，`proof_type == "exact_static_spatial_pipeline_replay"`，`mapping == "source_frame_i_to_ROI_frame_i_by_verified_frame_preserving_pipeline"` | 110/110 | 与 `docs/facts.yaml` 的 DF-027、DF-028 一致；是声明侧证据，不替代独立复核 |
 | 3 | `output.frame_mapping.anchors` 三元组中 `roi_frame == source_frame` 全等 | 1155/1155 三元组（579 条候选非空；`anchors` 键 1621/1621 都有，1042 条为空数组） | 清单生成侧逐帧记录；空数组表示无锚点，**不能**读成「已核实为不同序」 |
 
-三条证据缺一不可：证据 1 只覆盖 9 例，证据 2 是声明，证据 3 只覆盖 579 条候选。**并列记录要求不因下面的实现而放宽**：同一条记录内所有 `kind != "unverified"` 的帧必须来自同一 `verification`（记录级单对象），锚点来源与实测来源需并用时拆成两条记录。
+三条证据缺一不可：证据 1 只覆盖 9 例，证据 2 是声明，证据 3 只覆盖 579 条候选。**并列记录要求不因下面的实现而放宽**：同一记录的帧共用记录级 `verification`（记录级单对象；帧条目不携带 `verification`，`roi_to_source.kind`／`method` 逐帧同值），锚点来源与实测来源需并用时拆成两条记录。
 
 三条证据在实现里是 §6 三级判定的**输入**，不是彼此替代的判据：证据 3 对应优先级 1，证据 2 对应优先级 2 的 c1 与 c3，证据 1 的口径按 c2 改为解码帧数；实际档位分布见 §8。**独立复核结论未绑定前，仍不得只用优先级 2 的证据做逐帧追溯分析**（原因见 §11）：实现只保证「有证据才填帧号」，不保证「帧号已被字节级核对」。只凭证据 2 或只凭证据 3 提前填源帧号依然不合规。
 
@@ -241,7 +241,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 | 4 | 锚点一致：命中锚点的帧，三个索引与锚点三元组逐项相等 | 锚点与推导冲突，须以锚点为准并记 issue（带候选 ID、帧号与两套取值） |
 | 5 | 身份一致：记录 `candidate_id`／`clip_sha256`／`manifest_sha256` 与清单逐项相等 | 记录绑定了错误的候选或错误的清单版本 |
 
-判据 3 的三个分支是「或」关系，任一成立即通过；三者都不成立时记录级 `verification` 为 `null`、所有 `original_source_frame_index` 为 `null`，**仍可出批次**（评分不受影响），但依赖源帧号的证据选择实验不得在该批次上做。
+判据 3 的三个分支是「或」关系，任一成立即通过；三者都不成立时记录级 `verification.method` 为 `unverified`（`verification` 块必定存在：`verify_lineage` 缺块即判失败，`frames.py:389-392`），所有帧的 `original_source_frame_index` 与 `roi_frame_index` 都是 `null`，**仍可出批次**（评分不受影响），但依赖源帧号的证据选择实验不得在该批次上做。
 
 ## 16. 逐层证据导出
 
