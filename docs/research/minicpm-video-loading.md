@@ -8,7 +8,7 @@
 
 ## 结论
 
-1. **本轮还不能确定实际会加载的模型版本、具体权重、处理器或训练／推理入口。** `docs/design-test.md:9,142` 要求另行核实输入链路，`docs/TODO.md` 的 EVAL-DESIGN 等待确认具体模型名单，迁移大纲第 5 节仍把训练、合并和测评列为后续审查。本轮五类标签和测评入口尚未接到旧链路。仓内存在 MiniCPM 4.5 的历史配置和代码，但它们不是对本轮的选型确认或实际运行证据。
+1. **本轮还不能确定实际会加载的模型版本、具体权重、处理器或训练／推理入口。** `docs/design-test.md:9,142` 要求另行核实输入链路，`docs/TODO.md` 的 EVAL-DESIGN 等待确认具体模型名单，`docs/design-test.md` 第 8 节「训练与测评衔接（F–I 阶段）」仍把训练、合并和测评列为后续审查（原文引用的是《迁移大纲》第 5 节，该文档已于 `a5dd578` 删除，有效内容并入该节）。本轮五类标签和测评入口尚未接到旧链路。仓内存在 MiniCPM 4.5 的历史配置和代码，但它们不是对本轮的选型确认或实际运行证据。
 2. **历史训练和历史评测有不同的读帧入口。** 前者经 LlamaFactory 的 `MiniCPMVPlugin` 用 PyAV 采样；后者经项目自己的 `load_video_frames` 解码抽帧，再把帧列表送入 processor。两者都能保持输入列表的先后顺序，但默认路径没有向 4.5 processor 提供真实时间戳；默认 `None` 在核查的 4.5 image processor 中会被转换为逐图／逐切片的 `[-1]`。顺序位置仍然存在，不能据此判断模型是否理解时序。
 3. **4.5 官方模型卡示例也先由外部代码抽帧，但时间分组与旧默认流程不同。** 它用 Decord 读取视频，计算按 0.1 秒网格量化的时间编号，并把连续帧分组后显式传给 `model.chat`。作者还有一个每秒约 1 帧、最多 64 帧且不传 `temporal_ids` 的 4.5 示例；不存在本报告可以笼统称为“唯一官方默认”的流程。
 4. **可以在实际调用边界留存模型输入，但现有记录尚不等于完整复原。** 旧评测运行时支持可选保存传给 processor 的 RGB 帧，并返回 PTS；目前调用者是否启用、processor 后的切片与张量、帧序及时间组是否随同结果绑定，不能从这一接口本身保证。训练侧没有看到本轮已接入的逐请求输入留证。
@@ -157,6 +157,6 @@ image_processing_minicpmv.py 52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e
 
 ## 8. 来源、验证和失效条件
 
-主要本地证据为 `docs/design-test.md`、`docs/TODO.md`、`docs/migration-review-outline.md`、`docs/facts.yaml` 的 DF-016／DF-018／DF-019、历史取证 `docs/results/minicpm-fixed-source-audit-20261016.md`，以及上文标明的固定 Git 提交和源码位置。官方一手来源均已在对应论述处给出固定 revision 链接。独立 reviewer 核查了当前设计与旧调用链、历史断点和留证边界；其 stub 检查不替代真实 processor 或模型运行。
+主要本地证据为 `docs/design-test.md`（含其第 8 节「训练与测评衔接（F–I 阶段）」，原 `docs/migration-review-outline.md` 已于 `a5dd578` 删除，有效内容并入该节）、`docs/TODO.md`、`docs/facts.yaml` 的 DF-016／DF-018／DF-019、历史取证 `docs/results/minicpm-fixed-source-audit-20261016.md`，以及上文标明的固定 Git 提交和源码位置。官方一手来源均已在对应论述处给出固定 revision 链接。独立 reviewer 核查了当前设计与旧调用链、历史断点和留证边界；其 stub 检查不替代真实 processor 或模型运行。
 
 **失效条件：**本轮模型、权重、processor、加载入口、LlamaFactory 子模块、依赖版本、抽帧／画面处理或时间分组配置发生变化，或者获得新的实际运行记录时，应重新核查受影响部分。本文只记录本次静态和受控验证证据，不作为未来训练或模型效果验收证明。
