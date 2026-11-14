@@ -7,27 +7,27 @@
 | 项 | 现状 |
 | --- | --- |
 | 模块 | `script/five_label_eval/infer.py` |
-| 文件所在分支 | `feat/eval-fake-slice`（参考实现）；**本分支 `feat/tensileagent-finetune` 的工作树里没有该文件**（`script/five_label_eval/` 目录下为 `__init__.py`／`README.md`／`build_manifest.py`／`score.py`／`synthetic_example.py`／`tests`，无 `infer.py`），该分支尚未合入本分支 |
-| 实际入口 | `main(argv=None) -> int`（73 行），无名为 `infer` 的函数 |
-| 退出码 | 0 成功；2 输入身份或文件错误（`InputError`／`OSError`／`UnicodeError`／`NotImplementedError` 统一返回 2，115 行） |
+| 文件位置 | 已随提交 `2baf363` 合入本分支 `feat/tensileagent-finetune`，本工作树内可直接读取 |
+| 实际入口 | `main(argv=None) -> int`（74 行），无名为 `infer` 的函数 |
+| 退出码 | 0 成功；2 输入身份或文件错误（`InputError`／`OSError`／`UnicodeError`／`NotImplementedError` 统一返回 2，116 行） |
 
-上述「行」与 §2 参数行号均指 `feat/eval-fake-slice` 分支的 `infer.py`（未合入本分支），不是本仓库已存在的代码。
+上述「行」与 §2 参数行号均指本分支 `script/five_label_eval/infer.py` 的当前内容。
 
-**接口契约（拟定签名）**：`infer(manifest_path, candidate_ids, model_id, run_id, prompt_id, prompt_file, input_config, output_path) -> int`。该签名尚未落地（仅见 `feat/eval-fake-slice` 参考实现，未合入本分支），只作实现与验收的对齐基准；参考实现（未合入）的对外形态是下节 CLI。
+**接口契约（已落地）**：入口即 `main(argv=None) -> int`（74 行），全部输入走 §2 的 CLI 参数，代码里没有名为 `infer` 的函数、也没有 `infer(manifest_path, ...)` 这类关键字签名。实现与验收以 §2 的 CLI 为对齐基准，调用方不得按函数签名传参。
 
-## 2. CLI 参数表（参考实现见分支 `feat/eval-fake-slice`，未合入本分支；行号指该分支文件）
+## 2. CLI 参数表（行号指 `script/five_label_eval/infer.py`）
 
 | 参数 | 必填 | 含义 | 行号 |
 | --- | --- | --- | --- |
-| `--manifest` | 是 | 评分用清单 JSON，请求按它绑定候选身份 | 75 |
-| `--candidate-ids` | 否 | 候选 ID 的 JSON 字符串数组文件，非空、无重复；给定时按它定记录顺序 | 76 |
-| `--profile` | 否 | 路径配置；仅在未给 `--input-config` 时用来推出默认记录路径 | 77 |
-| `--model-id` | 否（默认 `fake`） | 权重身份；`fake` backend 只接受 `fake` | 78、89 |
-| `--run-id` | 是 | 批次身份 | 79 |
-| `--prompt-file` | 是 | prompt 正文文件；本切片只用其身份（`prompt_id`） | 80 |
-| `--input-config` | 否 | 抽帧记录 JSONL；缺省取 profile 的 `output_dir/records.jsonl` | 81 |
-| `--output` | 是 | 新 `predictions.jsonl`，**独占创建、不覆盖** | 82 |
-| `--backend` | 否（默认 `fake`） | `choices=("fake", "transformers")`；**`http` 拟增，当前未实现** | 83 |
+| `--manifest` | 是 | 评分用清单 JSON，请求按它绑定候选身份 | 76 |
+| `--candidate-ids` | 否 | 候选 ID 的 JSON 字符串数组文件，非空、无重复；给定时按它定记录顺序 | 77 |
+| `--profile` | 否 | 路径配置；仅在未给 `--input-config` 时用来推出默认记录路径 | 78 |
+| `--model-id` | 否（默认 `fake`） | 权重身份；`fake` backend 只接受 `fake` | 79、89 |
+| `--run-id` | 是 | 批次身份 | 80 |
+| `--prompt-file` | 是 | prompt 正文文件；本切片只用其身份（`prompt_id`） | 81 |
+| `--input-config` | 否 | 抽帧记录 JSONL；缺省取 profile 的 `output_dir/records.jsonl` | 82 |
+| `--output` | 是 | 新 `predictions.jsonl`，**独占创建、不覆盖** | 83 |
+| `--backend` | 否（默认 `fake`） | `choices=("fake", "transformers")`；**`http` 拟增，当前未实现** | 84 |
 
 注意：`--backend` 只有两个已声明取值，不要按三选实现或验收；`http` 尚无参数、无代码。
 
@@ -52,7 +52,7 @@
 | `clip_sha256` | 清单该候选 `output.sha256` | 清单侧，入口校验一致 |
 | `manifest_sha256` | 评分清单文件字节 sha256；与输入记录里引用的 `data/sub_video/manifest.json` 摘要是两份不同文件，不得混用 | 清单侧 |
 
-`source_type` ∈ `real|virtual`：清单 1621 条候选与 110 条来源**都没有该字段**，审核工作台按 `real` 回退（`script/subvideo_review/server.py:207`），因此清单必须显式补该字段，否则虚拟候选会被静默计入 `real` 组。
+`source_type` ∈ `real|virtual`：清单 1621 条候选与 110 条来源**都没有该字段**，审核工作台按 `real` 回退（`script/subvideo_review/server.py:213`），因此清单必须显式补该字段，否则虚拟候选会被静默计入 `real` 组。
 
 ## 5. 三态与 `raw_output`
 
@@ -91,8 +91,8 @@
 
 | backend | 状态 | 职责 | 边界 |
 | --- | --- | --- | --- |
-| `fake` | **唯一已实现**（指 `feat/eval-fake-slice` 的参考实现，未合入本分支） | 链路自检：按类别轮转生成合法／非法输出，验证清单绑定、身份透传、每候选一行、文件不覆盖 | 不产生任何真实判读结论；不得用于评测结论 |
-| `transformers` | CLI 已声明（同上，指 `feat/eval-fake-slice` 的参考实现，未合入本分支），本切片抛 `NotImplementedError`（87 行）；本机权重不可用，属训练机侧 | 本地加载权重逐条推理，产出 `raw_output` 原文 | 只在训练机侧执行；本机不得声称已跑通 |
+| `fake` | **唯一已实现**（`infer.py` 的 `plan_predictions`） | 链路自检：按类别轮转生成合法／非法输出，验证清单绑定、身份透传、每候选一行、文件不覆盖 | 不产生任何真实判读结论；不得用于评测结论 |
+| `transformers` | CLI 已声明，本切片抛 `NotImplementedError`（88 行）；本机权重不可用，属训练机侧 | 本地加载权重逐条推理，产出 `raw_output` 原文 | 只在训练机侧执行；本机不得声称已跑通 |
 | `http` | **拟增，当前未实现** | 远端服务推理，按 HTTP 结果映射三态 | 尚无参数、无代码、无超时实现；不得按已支持三选验收 |
 
 不变项：三个 backend 共用同一份身份字段口径、同一份输出字段与三态语义；切换 backend 不改变 `predictions.jsonl` 的字段与校验。
